@@ -1,0 +1,84 @@
+/**
+ * @file ra_error_handler.c
+ * @brief Default implementation of the fatal-error sink
+ *
+ * @details
+ * Default implementation of `internal_ra_fatal_error()`. This function
+ * is called for every assertion failure and every failed
+ * `RA_ERROR_CHECK`. It:
+ *
+ *  1. Masks all maskable interrupts (`__disable_irq`).
+ *  2. Logs the error via the standard `ra_log_error_val()` path.
+ *  3. Triggers a debugger breakpoint via `__BKPT(0)` so that an
+ *     attached J-Link halts with the call stack intact.
+ *  4. Drops into an infinite loop with `__WFI` so the CPU sleeps
+ *     between interrupts (even though all maskable ones are off).
+ *
+ * The function is marked `__attribute__((weak))` so that field builds
+ * can override it to trigger a watchdog reset or a safety-halt
+ * recovery sequence without editing this file.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
+ */
+
+#include "ra_error_handler.h"
+
+#include <stdint.h>
+
+#include "ra_log.h"
+
+/**
+ * @brief Architectural `__disable_irq`: PRIMASK write.
+ *
+ * @details
+ * Inline assembly that sets PRIMASK.PM, masking every maskable
+ * interrupt at the NVIC level. Kept as a static inline here so
+ * `ra_error_handler.c` does not pull in a full CMSIS dependency -- it
+ * is intentionally self-contained so a failure in CMSIS init cannot
+ * prevent the fault handler from running.
+ */
+static inline void internal_disable_irq(void)
+{
+  __asm__ volatile("cpsid i" ::: "memory");
+}
+
+/**
+ * @brief Architectural `__BKPT(0)` wrapper.
+ *
+ * @details
+ * `bkpt #0` halts execution when a debugger is attached. Without a
+ * debugger the instruction faults to the HardFault handler, which is
+ * acceptable -- by the time we reach this function we have already
+ * decided that continuing is unsafe.
+ */
+static inline void internal_bkpt(void)
+{
+  __asm__ volatile("bkpt #0");
+}
+
+/**
+ * @brief Architectural `__WFI` wrapper used inside the halt loop.
+ */
+static inline void internal_wfi(void)
+{
+  __asm__ volatile("wfi");
+}
+
+__attribute__((weak)) void internal_ra_fatal_error(const char* tag,
+                                                   const char* message,
+                                                   uint32_t    err)
+{
+  internal_disable_irq();
+
+  /* Best-effort log. If the log backend itself is broken we still
+   * halt -- logging must never prevent the halt. */
+  ra_log_error(tag, message);
+  ra_log_error_val(tag, "err=", err);
+
+  internal_bkpt();
+
+  while (1) {
+    internal_wfi();
+  }
+}

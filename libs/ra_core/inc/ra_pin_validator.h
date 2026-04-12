@@ -1,0 +1,102 @@
+/**
+ * @file ra_pin_validator.h
+ * @brief Runtime Pin-Ownership Validator
+ *
+ * @details
+ * Centralised bookkeeping that prevents two drivers from accidentally
+ * claiming the same physical pin. Every driver that touches IOPORT or
+ * PFS (Pin Function Select) must call `ra_pin_validator_claim()`
+ * before configuring the pin. The call returns `k_ra_err_gpio_conflict`
+ * if anyone else already owns the pin.
+ *
+ * ## How it works
+ *
+ * - One bit per (port, pin) pair in a static bitmap: 15 ports x 16 pins
+ *   = 240 bits = 30 bytes.
+ * - `ra_pin_validator_claim(pin, owner_tag)` atomically sets the bit
+ *   and records the owner tag.
+ * - `ra_pin_validator_release(pin)` clears the bit.
+ * - `ra_pin_validator_is_claimed(pin)` is a read-only query.
+ *
+ * ## When to call
+ *
+ * - At driver init time, after validating arguments, BEFORE touching
+ *   any hardware registers. If the claim fails, the driver must return
+ *   `k_ra_err_gpio_conflict` without leaving the peripheral in a
+ *   half-initialised state.
+ * - At driver de-init time, release all owned pins so the same pin
+ *   can be re-used by another peripheral later.
+ *
+ * ## Thread safety
+ *
+ * The bitmap is guarded by an IRQ-masked critical section. Safe to call
+ * from any context (init, task body, ISR).
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
+ */
+
+#pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include <stdint.h>
+
+#include "ra_err.h"
+#include "ra_port_constants.h"
+
+/**
+ * @brief Claim a pin for a driver.
+ *
+ * @param[in] pin      Packed port/pin identifier.
+ * @param[in] owner    Short owner tag (e.g. `"SCI0"`, `"LED1"`). Must
+ *                     point to a static string; the validator stores
+ *                     the pointer, not the contents.
+ *
+ * @return `k_ra_err_t` error code.
+ * @retval k_ra_ok                    Pin successfully claimed.
+ * @retval k_ra_err_gpio_invalid_port Port out of range (0..14).
+ * @retval k_ra_err_gpio_invalid_pin  Pin out of range within the port.
+ * @retval k_ra_err_gpio_conflict     Pin already claimed by another owner.
+ *
+ * @pre `ra_infrastructure_init()` has run.
+ * @post On success, the pin is marked as owned by `owner`.
+ */
+[[nodiscard]] ra_err_t ra_pin_validator_claim(ra_port_pin_t pin, const char* owner);
+
+/**
+ * @brief Release a pin previously claimed by a driver.
+ *
+ * @param[in] pin Packed port/pin identifier.
+ *
+ * @return `k_ra_ok` on success, `k_ra_err_*` on invalid arguments.
+ */
+[[nodiscard]] ra_err_t ra_pin_validator_release(ra_port_pin_t pin);
+
+/**
+ * @brief Test whether a pin is currently claimed.
+ *
+ * @param[in] pin Packed port/pin identifier.
+ * @return `true` if claimed, `false` if free or if `pin` is out of range.
+ *
+ * @note This is a best-effort read; the result may be stale the moment
+ *       the function returns. Use for diagnostics, not for
+ *       claim-on-check patterns (call `ra_pin_validator_claim()`
+ *       directly for those).
+ */
+bool ra_pin_validator_is_claimed(ra_port_pin_t pin);
+
+/**
+ * @brief Reset the validator (release every pin).
+ *
+ * @details
+ * Called exactly once during `ra_infrastructure_init()`. Should never
+ * be called from driver code at runtime.
+ */
+void ra_pin_validator_reset(void);
+
+#ifdef __cplusplus
+}
+#endif

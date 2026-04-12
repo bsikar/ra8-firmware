@@ -30,18 +30,20 @@ set(CMAKE_CXX_COMPILER_WORKS 1)
 # RA8D2 (Cortex-M85) CPU flags
 # -----------------------------------------------------------------------------
 # The RA8D2 primary core is a Cortex-M85 with:
-#   - FPv5 single+double precision FPU (fpv5-d16)
+#   - FPv5 SINGLE-precision FPU only (per R7KA8D2KF_core0.h: __FPU_DP = 0)
 #   - Helium / M-profile Vector Extension (MVE) integer + FP
 #   - TrustZone-M and PACBTI (not used yet)
 #
 # Hard-float ABI because we have an FPU.
 # -mthumb because the M-profile cores are Thumb-only.
+# fpv5-sp-d16 is the single-precision variant; fpv5-d16 (double-precision)
+# would silently generate instructions the RA8D2 cannot execute.
 # -----------------------------------------------------------------------------
 set(RA8D2_CPU_FLAGS
     "-mcpu=cortex-m85"
     "-mthumb"
     "-mfloat-abi=hard"
-    "-mfpu=fpv5-d16"
+    "-mfpu=fpv5-sp-d16"
 )
 string(JOIN " " RA8D2_CPU_FLAGS_STR ${RA8D2_CPU_FLAGS})
 
