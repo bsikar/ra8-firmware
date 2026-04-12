@@ -109,6 +109,41 @@ if [[ -n "$c_files" ]]; then
 fi
 
 # -----------------------------------------------------------------------------
+# WAVE-0 CHECKS: HUM citations, world tags, roadmap summary
+# -----------------------------------------------------------------------------
+# These three checks were introduced in Wave 0 of the HAL completion
+# plan. cite_check + check_world_tags run in WARN mode in Wave 0 and
+# get promoted to STRICT in later waves. roadmap_stats runs in --check
+# mode (the script itself never edits files in pre-commit; the
+# developer is expected to run it without --check to refresh).
+
+# ---- HUM citation validator (warn in Wave 0) ----------------------
+if [[ -f scripts/utils/cite_check.py ]]; then
+    if ! python3 scripts/utils/cite_check.py --warn; then
+        echo "[FAIL] cite_check.py reported issues."
+        error_found=1
+    fi
+fi
+
+# ---- World-tag validator (warn in Wave 0) -------------------------
+if [[ -f scripts/utils/check_world_tags.py ]]; then
+    if ! python3 scripts/utils/check_world_tags.py --warn; then
+        echo "[FAIL] check_world_tags.py reported issues."
+        error_found=1
+    fi
+fi
+
+# ---- ROADMAP summary stats (strict: refuse stale summaries) -------
+if [[ -f scripts/utils/roadmap_stats.py && -f docs/ROADMAP.md ]]; then
+    if ! python3 scripts/utils/roadmap_stats.py --check; then
+        echo "[FAIL] ROADMAP.md summary block is stale."
+        echo "       Run: python3 scripts/utils/roadmap_stats.py"
+        echo "       Then re-stage docs/ROADMAP.md and re-commit."
+        error_found=1
+    fi
+fi
+
+# -----------------------------------------------------------------------------
 # CONCLUSION
 # -----------------------------------------------------------------------------
 if [[ $error_found -ne 0 ]]; then
