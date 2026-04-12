@@ -40,27 +40,27 @@ set(CMAKE_C_FLAGS_RELWITHDEBINFO   "-Og -g3")
 set(CMAKE_ASM_FLAGS_RELWITHDEBINFO "-g3")
 
 #############################################################################
-# Source Files -- placeholder
+# Source Files
 #############################################################################
 
-# TODO: Populate these once src/ and libs/ actually contain code.
-# Keep the CMakeLists.txt structure identical to STAR rx72n firmware so
-# future edits are mechanical.
-#
-# file(GLOB APP_SOURCES_ROOT  CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/src/*.c)
-# file(GLOB_RECURSE APP_BOOT  CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/src/boot/*.c
-#                                               ${CMAKE_SOURCE_DIR}/src/boot/*.S)
-# file(GLOB_RECURSE LIB_RA_CORE CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/libs/ra_core/src/*.c)
-# file(GLOB_RECURSE LIB_RA_HAL  CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/libs/ra_hal/src/*.c)
-#
-# set(ALL_SOURCES
-#     ${APP_SOURCES_ROOT}
-#     ${APP_BOOT}
-#     ${LIB_RA_CORE}
-#     ${LIB_RA_HAL}
-# )
+file(GLOB APP_SOURCES_ROOT CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/src/*.c)
+file(GLOB_RECURSE APP_BOOT_SOURCES CONFIGURE_DEPENDS
+    ${CMAKE_SOURCE_DIR}/src/boot/*.c
+    ${CMAKE_SOURCE_DIR}/src/boot/*.S
+)
+file(GLOB_RECURSE LIB_RA_CORE_SOURCES CONFIGURE_DEPENDS
+    ${CMAKE_SOURCE_DIR}/libs/ra_core/src/*.c
+)
+file(GLOB_RECURSE LIB_RA_HAL_SOURCES CONFIGURE_DEPENDS
+    ${CMAKE_SOURCE_DIR}/libs/ra_hal/src/*.c
+)
 
-set(ALL_SOURCES)  # intentionally empty until the first module lands
+set(ALL_SOURCES
+    ${APP_SOURCES_ROOT}
+    ${APP_BOOT_SOURCES}
+    ${LIB_RA_CORE_SOURCES}
+    ${LIB_RA_HAL_SOURCES}
+)
 
 #############################################################################
 # Include Directories
@@ -69,8 +69,8 @@ set(ALL_SOURCES)  # intentionally empty until the first module lands
 include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${CMAKE_CURRENT_SOURCE_DIR}/src/inc
-    # ${CMAKE_CURRENT_SOURCE_DIR}/libs/ra_core/inc
-    # ${CMAKE_CURRENT_SOURCE_DIR}/libs/ra_hal/inc
+    ${CMAKE_CURRENT_SOURCE_DIR}/libs/ra_core/inc
+    ${CMAKE_CURRENT_SOURCE_DIR}/libs/ra_hal/inc
 )
 
 #############################################################################
@@ -98,8 +98,8 @@ if(ALL_SOURCES)
     target_include_directories(${PROJECT_NAME}.elf PRIVATE
         ${CMAKE_SOURCE_DIR}/src
         ${CMAKE_SOURCE_DIR}/src/inc
-        # ${CMAKE_SOURCE_DIR}/libs/ra_core/inc
-        # ${CMAKE_SOURCE_DIR}/libs/ra_hal/inc
+        ${CMAKE_SOURCE_DIR}/libs/ra_core/inc
+        ${CMAKE_SOURCE_DIR}/libs/ra_hal/inc
     )
 
     if(EXISTS ${LINKER_SCRIPT})
