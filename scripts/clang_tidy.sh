@@ -136,11 +136,16 @@ configure_build() {
 # Collect firmware source files (exclude vendor paths)
 # ---------------------------------------------------------------------------
 collect_source_files() {
+    # Lint firmware code only. Tests use assertion macros that trip
+    # cognitive-complexity and function-size thresholds designed for
+    # driver code; they should be linted separately with their own
+    # rule set if we ever need it.
     find "$FIRMWARE_DIR/libs" "$FIRMWARE_DIR/src" \
         \( -name '*.c' -o -name '*.h' \) \
         ! -path '*/build/*' \
         ! -path '*/_deps/*' \
         ! -path '*/third_party/*' \
+        ! -path '*/tests/*' \
         2>/dev/null || true
 }
 

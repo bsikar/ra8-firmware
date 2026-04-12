@@ -75,6 +75,11 @@ static inline volatile uint32_t* internal_itm_tenr(void)
  */
 static inline bool internal_itm_ready(void)
 {
+#ifdef RA_SIMULATOR_MODE
+  /* Host build: the ITM is not real memory. Logging becomes a no-op
+   * so unit tests do not segfault on the first log call. */
+  return false;
+#else
   const uint32_t tcr  = *internal_itm_tcr();
   const uint32_t tenr = *internal_itm_tenr();
   /* TCR bit 0 = ITMENA. TENR bit 0 = stimulus port 0 enabled. */
@@ -85,6 +90,7 @@ static inline bool internal_itm_ready(void)
     return false;
   }
   return (*internal_itm_stim0() != 0U);
+#endif
 }
 
 /**
