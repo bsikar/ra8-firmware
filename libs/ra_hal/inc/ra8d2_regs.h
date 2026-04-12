@@ -45,12 +45,45 @@
 
 #pragma once
 
+/* Core system blocks. */
 #include "ra8d2_system_regs.h"
 #include "ra8d2_mstp_regs.h"
 #include "ra8d2_cgc_regs.h"
+
+/* I/O and pin mux. */
 #include "ra8d2_port_regs.h"
 #include "ra8d2_pfs_regs.h"
+
+/* Interrupts + events. */
 #include "ra8d2_icu_regs.h"
-#include "ra8d2_sci_regs.h"
+#include "ra8d2_elc_regs.h"
+
+/* Data movement. */
+#include "ra8d2_dmac_regs.h"
+#include "ra8d2_dtc_regs.h"
+
+/* Timers. */
+#include "ra8d2_gpt_regs.h"
+#include "ra8d2_agt_regs.h"
 #include "ra8d2_iwdt_regs.h"
 #include "ra8d2_wdt_regs.h"
+
+/* Serial. */
+#include "ra8d2_sci_regs.h"
+#include "ra8d2_iic_regs.h"
+#include "ra8d2_spi_regs.h"
+
+/* Analog. */
+#include "ra8d2_adc_b_regs.h"
+#include "ra8d2_tsn_regs.h"
+
+/* Misc. */
+#include "ra8d2_crc_regs.h"
+#include "ra8d2_flash_regs.h"
+#include "ra8d2_rtc_regs.h"
+
+/* Connectivity / display. */
+#include "ra8d2_usb_regs.h"
+#include "ra8d2_canfd_regs.h"
+#include "ra8d2_glcdc_regs.h"
+#include "ra8d2_ospi_regs.h"
