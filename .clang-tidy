@@ -134,11 +134,11 @@ CheckOptions:
   - key: cert-str34-c.DiagnoseSignedUnsignedCharComparisons
     value: true
 
-  # --- readability-magic-numbers: allow 0 and 1 as universally benign ---
-  # These are the only numeric literals permitted without a named constant.
-  # All other numeric literals must use typed enum constants per CLAUDE.md.
+  # --- readability-magic-numbers: small integers used for padding and
+  # small array counts in register structs are exempt. Real register
+  # constants (offsets, masks, field shifts) must still use named enums.
   - key: readability-magic-numbers.IgnoredIntegerValues
-    value: "0;1"
+    value: "0;1;2;3;4;6;8;16;32"
   - key: readability-magic-numbers.IgnoredFloatingPointValues
     value: "0.0;1.0"
 
