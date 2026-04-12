@@ -35,7 +35,7 @@ pre-commit -- do not hand-edit it.
 
 | Wave | Title                                                  | Sessions | Status |
 |-----:|:-------------------------------------------------------|---------:|:-------|
-|    0 | Citation + architecture infrastructure                 |        1 | [~]    |
+|    0 | Citation + architecture infrastructure                 |        1 | [x]    |
 |    1 | Shared HAL substrate                                   |        3 | [ ]    |
 |    2 | Foundation drivers (ICU, ELC, DMAC, DTC, CGC)          |        2 | [ ]    |
 |    3 | Critical serial / parallel IO                          |        7 | [ ]    |
@@ -85,7 +85,7 @@ that apply and `n/a` the rest.)
 
 ## Wave 0 -- Citation + architecture infrastructure
 
-Status: `[~]` WIP. Track of Wave 0 deliverables themselves; the
+Status: `[x]` DONE. Track of Wave 0 deliverables themselves; the
 14-checkbox template applies to drivers, not to documentation.
 
 - [x] `docs/reference/CHAPTER_MAP.md` -- HUM chapter -> page-range map, hand-verified, Security/TrustZone section.
@@ -96,7 +96,7 @@ Status: `[~]` WIP. Track of Wave 0 deliverables themselves; the
 - [x] `scripts/utils/check_world_tags.py` -- `{World: ...}` tag validator.
 - [x] `scripts/utils/roadmap_stats.py` -- summary block rewriter.
 - [x] `scripts/git/pre-commit` extended with cite_check + check_world_tags + roadmap_stats hooks.
-- [ ] Wave 0 promoted to `[x]` DONE in the wave table (after the verify-gates pass succeeds).
+- [x] Wave 0 promoted to `[x]` DONE in the wave table (verify-gates pass succeeded: 41/41 ctests, 98.0% lines / 92.3% branches coverage, cross-build ELF in budget, 0 doxygen warnings).
 
 ---
 
