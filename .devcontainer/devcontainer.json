@@ -1,0 +1,32 @@
+{
+  "name": "ra8d2-firmware",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "workspaceFolder": "/workspace",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind",
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "C_Cpp.intelliSenseEngine": "disabled",
+        "clangd.path": "/usr/bin/clang-tidy",
+        "cmake.configureOnOpen": false,
+        "files.trimTrailingWhitespace": true,
+        "files.insertFinalNewline": true,
+        "editor.formatOnSave": true,
+        "editor.rulers": [100]
+      },
+      "extensions": [
+        "llvm-vs-code-extensions.vscode-clangd",
+        "marus25.cortex-debug",
+        "ms-vscode.cmake-tools",
+        "twxs.cmake",
+        "eamodio.gitlens",
+        "github.copilot"
+      ]
+    }
+  },
+  "remoteUser": "vscode",
+  "postCreateCommand": "bash scripts/format_code.sh --check || true",
+  "features": {}
+}

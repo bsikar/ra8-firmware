@@ -67,12 +67,16 @@ ra_err_t ra_time_init(uint32_t cpu_hz)
     return k_ra_err_invalid_arg;
   }
 
+#ifndef RA_SIMULATOR_MODE
   /* Disable, programme reload, clear current count, re-enable with
-   * IRQ and CPU clock source. */
+   * IRQ and CPU clock source. The SysTick registers live in the
+   * Cortex-M System Control Space and are not mapped on the host
+   * test build. */
   *internal_csr() = 0U;
   *internal_rvr() = reload;
   *internal_cvr() = 0U;
   *internal_csr() = k_ra_systick_csr_clksource | k_ra_systick_csr_tickint | k_ra_systick_csr_enable;
+#endif
 
   s_tick_ms = 0U;
   ra_log_info_val(s_tag, "systick reload", reload);
