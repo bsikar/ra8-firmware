@@ -1,0 +1,332 @@
+/**
+ * @file ra_check.h
+ * @brief Validation and Error-Checking Macros for ra8d2-firmware
+ *
+ * @details
+ * This header is the *only* place error handling lives. Every function
+ * that can fail uses these macros to check preconditions and propagate
+ * errors, keeping the error-handling vocabulary tiny and uniform.
+ *
+ * ## Design
+ *
+ * - **Macros, not functions**: we need to return from the *caller's*
+ *   stack frame on a failure, and we want the check to disappear at -O2
+ *   when the argument is a compile-time constant. Both require macros.
+ * - **`do { ... } while (0)` wrappers**: safe inside `if`/`else` without
+ *   braces, forces a trailing semicolon, and gives the check its own
+ *   scope so local variables do not leak.
+ * - **Lowercase macro names are forbidden by .clang-tidy**, so each
+ *   identifier is `RA_*`.
+ * - **Fatal vs. non-fatal**: `RA_ASSERT` and `RA_ERROR_CHECK` halt the
+ *   system on failure (they are reserved for irrecoverable programmer
+ *   errors and critical init paths). `RA_RETURN_ON_ERROR`,
+ *   `RA_RETURN_VOID_ON_ERROR`, `RA_RETURN_NULL_ON_ERROR`, and
+ *   `RA_CHECK_*` log and return to let the caller handle it.
+ *
+ * ## Error handling matrix
+ *
+ * | Macro                       | Fatal? | Returns        | Typical use                     |
+ * |-----------------------------|--------|----------------|---------------------------------|
+ * | `RA_ASSERT(cond, msg)`      | yes    | never          | Programmer errors, invariants   |
+ * | `RA_ERROR_CHECK(err)`       | yes    | never          | Critical init steps             |
+ * | `RA_ERROR_CHECK_NO_ABORT`   | no     | -              | Optional init that may fail     |
+ * | `RA_RETURN_ON_ERROR`        | no     | `ra_err_t`     | Error propagation in most APIs  |
+ * | `RA_RETURN_VOID_ON_ERROR`   | no     | `void`         | Error handling in void helpers  |
+ * | `RA_RETURN_NULL_ON_ERROR`   | no     | `void*`        | Pointer-returning factories     |
+ * | `RA_CHECK_NULL_PTR`         | no     | `ra_err_t`     | Precondition: non-NULL pointer  |
+ * | `RA_CHECK_RANGE`            | no     | `ra_err_t`     | Precondition: numeric range     |
+ * | `RA_VALIDATE_INIT`          | no     | `ra_err_t`     | Precondition: module initialised |
+ *
+ * ## NASA Power of 10 Compliance
+ *
+ * - **Rule 5**: every function in this firmware uses at least two of the
+ *   `RA_CHECK_*` / `RA_VALIDATE_*` / `RA_ASSERT` macros. Most drivers hit
+ *   the six-precondition mark.
+ * - **Rule 7**: every `ra_err_t` return flows through exactly one of
+ *   `RA_RETURN_ON_ERROR`, `RA_ERROR_CHECK`, or an explicit `if` in the
+ *   caller. The pre-commit hook rejects unchecked `ra_err_t` values.
+ * - **Rule 8**: macros exist only because the alternative (inline
+ *   function + return code) is strictly worse. There are no macros here
+ *   that could be a function.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
+ */
+
+#pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include <stdint.h>
+
+#include "ra_err.h"
+#include "ra_log.h"
+
+/* =============================================================================
+ * Fatal-error sink
+ * =============================================================================
+ */
+
+/**
+ * @brief Report a fatal error and halt the system.
+ *
+ * @details
+ * Invoked by `RA_ASSERT` and `RA_ERROR_CHECK`. Default implementation
+ * lives in `ra_error_handler.c` and:
+ *  1. Disables interrupts.
+ *  2. Emits a log line tagged `"FATAL"`.
+ *  3. Triggers `__BKPT(0)` so an attached SEGGER J-Link halts.
+ *  4. Drops into an infinite `__WFI()` loop.
+ *
+ * @param[in] tag     Component tag (short literal, e.g. `"SCI"`).
+ * @param[in] message Human-readable message describing the failure.
+ * @param[in] err     Error code classifying the failure
+ *                    (`k_ra_ok` is accepted but implies an assertion
+ *                    failure rather than a propagated error).
+ *
+ * @note Declared as taking a raw `uint32_t` for `err` so the macros do
+ *       not need to include `ra_err.h` into tight inline contexts where
+ *       that would pull in too much. Callers should always pass an
+ *       `ra_err_t`.
+ *
+ * @warning Never returns. Marked `__attribute__((noreturn))` so the
+ *          compiler prunes control flow after a call site.
+ */
+void internal_ra_fatal_error(const char* tag, const char* message, uint32_t err)
+  __attribute__((noreturn));
+
+/* =============================================================================
+ * Static assertion -- enforces compile-time invariants
+ * =============================================================================
+ */
+
+/**
+ * @brief Compile-time assertion wrapper.
+ *
+ * @details
+ * Uses C23 `static_assert`. Provided so code reads consistently with the
+ * runtime `RA_ASSERT` macro and so the pre-commit hook can enforce
+ * `static_assert` (not `_Static_assert`, which is a C11 relic).
+ *
+ * @param cond C-time constant boolean expression.
+ * @param msg  String literal describing the invariant.
+ *
+ * @code{.c}
+ * RA_STATIC_ASSERT(sizeof(ra_err_t) == 2, "ra_err_t must be uint16_t");
+ * @endcode
+ */
+#define RA_STATIC_ASSERT(cond, msg) static_assert((cond), msg)
+
+/* =============================================================================
+ * Runtime assertion
+ * =============================================================================
+ */
+
+/**
+ * @brief Runtime invariant check. Halts the system on failure.
+ *
+ * @details
+ * Use for programmer errors -- preconditions that *must* hold for the
+ * code to make sense. Do NOT use for runtime errors (bad user input,
+ * peripheral timeouts, etc.) -- those are what `ra_err_t` return codes
+ * are for.
+ *
+ * Failure path: logs `message` with tag `"ASSERT"` and calls
+ * `internal_ra_fatal_error`, which halts. No allocation, no RTT.
+ *
+ * @param condition Expression that must be true.
+ * @param message   String literal shown if the assertion fires.
+ *
+ * @note `condition` is evaluated exactly once.
+ */
+#define RA_ASSERT(condition, message)                                                              \
+  do {                                                                                             \
+    if (!(condition)) {                                                                            \
+      internal_ra_fatal_error("ASSERT", (message), (uint32_t)k_ra_err_validation_failed);          \
+    }                                                                                              \
+  } while (0)
+
+/* =============================================================================
+ * Error propagation
+ * =============================================================================
+ */
+
+/**
+ * @brief Halt on fatal error.
+ *
+ * @details
+ * If `err` is non-success, log + halt. Use at critical init points
+ * where there is no meaningful recovery (clock bring-up, vector table
+ * install, etc.).
+ *
+ * @param err `ra_err_t` value to check.
+ *
+ * @note Evaluates `err` exactly once via a local.
+ */
+#define RA_ERROR_CHECK(err)                                                                        \
+  do {                                                                                             \
+    ra_err_t err_rc_ = (err);                                                                      \
+    if (ra_err_is_error(err_rc_)) {                                                                \
+      internal_ra_fatal_error("ERROR_CHECK", "Fatal error", (uint32_t)err_rc_);                    \
+    }                                                                                              \
+  } while (0)
+
+/**
+ * @brief Log and continue on non-fatal error.
+ *
+ * @details
+ * If `err` is non-success, log it but do not halt. Use for optional
+ * init paths where a failure is tolerated (e.g. an optional sensor not
+ * being present).
+ *
+ * @param err `ra_err_t` value to check.
+ */
+#define RA_ERROR_CHECK_NO_ABORT(err)                                                               \
+  do {                                                                                             \
+    ra_err_t err_rc_ = (err);                                                                      \
+    if (ra_err_is_error(err_rc_)) {                                                                \
+      ra_log_error_val("ERROR_CHECK", "Non-fatal error", (uint32_t)err_rc_);                       \
+    }                                                                                              \
+  } while (0)
+
+/**
+ * @brief Early return on error, propagating the code upward.
+ *
+ * @param err     `ra_err_t` value to check.
+ * @param tag     Component tag for logging.
+ * @param message String literal to log on failure.
+ *
+ * @note Must be used only inside a function whose return type is
+ *       `ra_err_t`. See `RA_RETURN_VOID_ON_ERROR` / `RA_RETURN_NULL_ON_ERROR`
+ *       for `void` and pointer-returning callers.
+ */
+#define RA_RETURN_ON_ERROR(err, tag, message)                                                      \
+  do {                                                                                             \
+    ra_err_t err_rc_ = (err);                                                                      \
+    if (ra_err_is_error(err_rc_)) {                                                                \
+      ra_log_error((tag), (message));                                                              \
+      ra_log_error_val((tag), "Error", (uint32_t)err_rc_);                                         \
+      return err_rc_;                                                                              \
+    }                                                                                              \
+  } while (0)
+
+/**
+ * @brief Early return from a `void` function on error.
+ *
+ * @param err     `ra_err_t` value to check.
+ * @param tag     Component tag for logging.
+ * @param message String literal to log on failure.
+ */
+#define RA_RETURN_VOID_ON_ERROR(err, tag, message)                                                 \
+  do {                                                                                             \
+    ra_err_t err_rc_ = (err);                                                                      \
+    if (ra_err_is_error(err_rc_)) {                                                                \
+      ra_log_error((tag), (message));                                                              \
+      ra_log_error_val((tag), "Error", (uint32_t)err_rc_);                                         \
+      return;                                                                                      \
+    }                                                                                              \
+  } while (0)
+
+/**
+ * @brief Early return `nullptr` from a pointer-returning function on error.
+ *
+ * @param err     `ra_err_t` value to check.
+ * @param tag     Component tag for logging.
+ * @param message String literal to log on failure.
+ */
+#define RA_RETURN_NULL_ON_ERROR(err, tag, message)                                                 \
+  do {                                                                                             \
+    ra_err_t err_rc_ = (err);                                                                      \
+    if (ra_err_is_error(err_rc_)) {                                                                \
+      ra_log_error((tag), (message));                                                              \
+      ra_log_error_val((tag), "Error", (uint32_t)err_rc_);                                         \
+      return nullptr;                                                                              \
+    }                                                                                              \
+  } while (0)
+
+/* =============================================================================
+ * Precondition checks
+ * =============================================================================
+ */
+
+/**
+ * @brief Reject `nullptr` pointer, returning `k_ra_err_null_ptr`.
+ *
+ * @param ptr     Pointer expression to test.
+ * @param tag     Component tag for logging.
+ * @param message String literal identifying which argument is NULL.
+ *
+ * @note Expands to `return k_ra_err_null_ptr;` on failure, so the
+ *       enclosing function must return `ra_err_t`.
+ */
+#define RA_CHECK_NULL_PTR(ptr, tag, message)                                                       \
+  do {                                                                                             \
+    if ((ptr) == nullptr) {                                                                        \
+      ra_log_error((tag), (message));                                                              \
+      return k_ra_err_null_ptr;                                                                    \
+    }                                                                                              \
+  } while (0)
+
+/**
+ * @brief Reject out-of-range value, returning `errcode`.
+ *
+ * @param value   Numeric expression to test.
+ * @param min     Inclusive lower bound.
+ * @param max     Inclusive upper bound.
+ * @param errcode `ra_err_t` value to return on failure.
+ */
+#define RA_CHECK_RANGE(value, min, max, errcode)                                                   \
+  do {                                                                                             \
+    if (((value) < (min)) || ((value) > (max))) {                                                  \
+      ra_log_error("CHECK", "Range check failed");                                                 \
+      return (errcode);                                                                            \
+    }                                                                                              \
+  } while (0)
+
+/**
+ * @brief Tagged range check (adds a component tag to the log line).
+ *
+ * @param value   Numeric expression to test.
+ * @param min     Inclusive lower bound (documented only; explicit check
+ *                is omitted to avoid `-Wtype-limits` when `min == 0`
+ *                and `value` is unsigned).
+ * @param max     Inclusive upper bound.
+ * @param errcode `ra_err_t` value to return on failure.
+ * @param tag     Component tag for logging.
+ */
+#define RA_CHECK_RANGE_TAG(value, min, max, errcode, tag)                                          \
+  do {                                                                                             \
+    (void)(min);                                                                                   \
+    if ((value) > (max)) {                                                                         \
+      ra_log_error((tag), "Range check failed");                                                   \
+      return (errcode);                                                                            \
+    }                                                                                              \
+  } while (0)
+
+/**
+ * @brief Alias for `RA_CHECK_NULL_PTR` in precondition style.
+ */
+#define RA_VALIDATE_PTR(ptr, tag, message) RA_CHECK_NULL_PTR(ptr, tag, message)
+
+/**
+ * @brief Precondition: module must be initialised.
+ *
+ * @param initialized Boolean expression (`true` if init complete).
+ * @param tag         Component tag for logging.
+ * @param message     String literal identifying the module.
+ *
+ * @note Returns `k_ra_err_not_initialized` on failure.
+ */
+#define RA_VALIDATE_INIT(initialized, tag, message)                                                \
+  do {                                                                                             \
+    if (!(initialized)) {                                                                          \
+      ra_log_error((tag), (message));                                                              \
+      return k_ra_err_not_initialized;                                                             \
+    }                                                                                              \
+  } while (0)
+
+#ifdef __cplusplus
+}
+#endif

@@ -40,3 +40,13 @@ InlayHints:
   Enabled: Yes
   ParameterNames: Yes
   DeducedTypes: Yes
+
+---
+# Force .h files to be parsed as C (not Objective-C++ which is clangd's
+# default fallback for .h). This is critical because we use C23 syntax
+# (typed enums, nullptr) that Objective-C++ rejects with drv_argument_not_allowed_with.
+If:
+  PathMatch: .*\.h$
+CompileFlags:
+  Add:
+    - -xc

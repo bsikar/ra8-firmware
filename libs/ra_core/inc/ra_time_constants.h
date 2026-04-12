@@ -1,0 +1,114 @@
+/**
+ * @file ra_time_constants.h
+ * @brief Named Time Unit Constants for Delay / Timeout / Tick Math
+ *
+ * @details
+ * Collects every magic number related to time (microseconds,
+ * milliseconds, Hz) into a single typed-enum vocabulary so firmware
+ * code never writes a raw `1000`, `1000000`, or `0.001f`.
+ *
+ * Example rewrite:
+ * @code{.c}
+ * // BAD: reader has to decode the arithmetic
+ * for (uint32_t i = 0; i < 240 * 1000; i++) { ... }
+ *
+ * // GOOD: the intent is in the constant names
+ * for (uint32_t i = 0; i < k_ra_cpu_mhz * k_ra_us_per_ms; i++) { ... }
+ * @endcode
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
+ */
+
+#pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include <stdint.h>
+
+/* =============================================================================
+ * Time unit conversions
+ * =============================================================================
+ */
+
+/**
+ * @enum ra_time_unit_t
+ * @brief Integer conversion factors between common time units.
+ */
+typedef enum : uint32_t {
+  k_ra_ns_per_us     = 1000UL,       /**< Nanoseconds per microsecond. */
+  k_ra_us_per_ms     = 1000UL,       /**< Microseconds per millisecond. */
+  k_ra_ms_per_sec    = 1000UL,       /**< Milliseconds per second.      */
+  k_ra_ns_per_ms     = 1000000UL,    /**< Nanoseconds per millisecond.  */
+  k_ra_us_per_sec    = 1000000UL,    /**< Microseconds per second.      */
+  k_ra_ns_per_sec    = 1000000000UL, /**< Nanoseconds per second.       */
+  k_ra_sec_per_min   = 60UL,         /**< Seconds per minute.           */
+  k_ra_min_per_hour  = 60UL,         /**< Minutes per hour.             */
+  k_ra_hour_per_day  = 24UL,         /**< Hours per day.                */
+  k_ra_sec_per_hour  = 3600UL,       /**< Seconds per hour.             */
+  k_ra_sec_per_day   = 86400UL,      /**< Seconds per day.              */
+} ra_time_unit_t;
+
+/* =============================================================================
+ * Clock frequencies (expected post-PLL values for this project)
+ * =============================================================================
+ */
+
+/**
+ * @enum ra_clock_hz_t
+ * @brief Expected clock frequencies after PLL bring-up.
+ *
+ * @details
+ * These are the *target* values the CGC driver programmes. Real-world
+ * values are measured at runtime via the CAC (Clock Accuracy Check) and
+ * validated to be within +/- 0.1% before any time-critical peripheral
+ * is enabled. Adjust here and the CGC driver will follow.
+ *
+ * @note The main Cortex-M85 core runs at `k_ra_cpuclk0_hz`; the secondary
+ *       Cortex-M33 runs at `k_ra_cpuclk1_hz` from the same PLL. All
+ *       peripheral clocks are derived dividers of the PLL.
+ */
+typedef enum : uint32_t {
+  k_ra_xtal_hz      = 24000000UL,   /**< 24 MHz main crystal on EK-RA8D2. */
+  k_ra_loco_hz      = 32768UL,      /**< Low-speed on-chip oscillator.    */
+  k_ra_moco_hz      = 8000000UL,    /**< Middle-speed on-chip oscillator. */
+  k_ra_hoco_hz      = 20000000UL,   /**< High-speed on-chip oscillator.   */
+  k_ra_cpuclk0_hz   = 1000000000UL, /**< Cortex-M85 target: 1 GHz.        */
+  k_ra_cpuclk1_hz   = 250000000UL,  /**< Cortex-M33 target: 250 MHz.      */
+  k_ra_iclk_hz      = 250000000UL,  /**< ICLK (system clock) target.      */
+  k_ra_pclka_hz     = 125000000UL,  /**< Peripheral clock A target.       */
+  k_ra_pclkb_hz     = 62500000UL,   /**< Peripheral clock B target.       */
+  k_ra_pclkc_hz     = 125000000UL,  /**< Peripheral clock C target.       */
+  k_ra_pclkd_hz     = 125000000UL,  /**< Peripheral clock D target.       */
+  k_ra_pclke_hz     = 250000000UL,  /**< Peripheral clock E target.       */
+  k_ra_fclk_hz      = 62500000UL,   /**< Flash interface clock target.    */
+  k_ra_mriclk_hz    = 250000000UL,  /**< MRAM interface clock target.     */
+} ra_clock_hz_t;
+
+/* =============================================================================
+ * Common timeout values
+ * =============================================================================
+ */
+
+/**
+ * @enum ra_timeout_ms_t
+ * @brief Canonical timeouts used across drivers.
+ *
+ * @details
+ * Centralised so the whole firmware agrees on "short", "default",
+ * "long" timeouts. Individual drivers may override for good reason
+ * but the default should come from here.
+ */
+typedef enum : uint32_t {
+  k_ra_timeout_none_ms       = 0UL,     /**< Poll once, never block.  */
+  k_ra_timeout_short_ms      = 10UL,    /**< 10 ms -- quick bus op.   */
+  k_ra_timeout_default_ms    = 100UL,   /**< 100 ms -- default.       */
+  k_ra_timeout_long_ms       = 1000UL,  /**< 1 s -- slow devices.     */
+  k_ra_timeout_very_long_ms  = 10000UL, /**< 10 s -- boot / recovery. */
+} ra_timeout_ms_t;
+
+#ifdef __cplusplus
+}
+#endif
