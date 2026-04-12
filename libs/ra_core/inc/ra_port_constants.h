@@ -147,9 +147,9 @@ typedef enum : uint16_t {
   k_ra_pin_none = 0xFFFFU, /**< Sentinel: no pin selected.              */
 
   /* ---- On-board LEDs on the EK-RA8D2 (from FSP board_leds.c). ------- */
-  k_ra_pin_led1  = (uint16_t)((6U  << 8) | 0U),  /**< LED1 on P6_00.   */
-  k_ra_pin_led2  = (uint16_t)((3U  << 8) | 3U),  /**< LED2 on P3_03.   */
-  k_ra_pin_led3  = (uint16_t)((10U << 8) | 7U),  /**< LED3 on P10_07.  */
+  k_ra_pin_led1 = 0x0600U, /**< LED1 on P6_00 -- (port 6  << 8) | pin 0. */
+  k_ra_pin_led2 = 0x0303U, /**< LED2 on P3_03 -- (port 3  << 8) | pin 3. */
+  k_ra_pin_led3 = 0x0A07U, /**< LED3 on P10_07 -- (port 10 << 8) | pin 7. */
 } ra_port_pin_t;
 
 /**
