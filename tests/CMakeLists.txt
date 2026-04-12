@@ -71,6 +71,20 @@ target_include_directories(ra_core_hal PUBLIC
 # Enable ctest so `cmake --build . --target test` and bash helpers work.
 enable_testing()
 
-# TODO: real unit tests will live here as `test_ra_*.c` files. For now
-# the build exists purely so compile_commands.json is generated for
-# clang-tidy.
+# ---------------------------------------------------------------------------
+# Unit tests -- one executable per test_*.c file. Each test links
+# against the ra_core_hal OBJECT library and runs standalone.
+# ---------------------------------------------------------------------------
+
+function(ra_add_test name)
+  add_executable(${name} ${name}.c $<TARGET_OBJECTS:ra_core_hal>)
+  target_include_directories(${name} PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${FW_ROOT}/libs/ra_core/inc
+    ${FW_ROOT}/libs/ra_hal/inc
+  )
+  add_test(NAME ${name} COMMAND ${name})
+endfunction()
+
+ra_add_test(test_ra_err)
+ra_add_test(test_ra_pin_validator)
