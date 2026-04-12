@@ -40,7 +40,9 @@
  */
 static inline void internal_disable_irq(void)
 {
+#ifndef RA_SIMULATOR_MODE
   __asm__ volatile("cpsid i" ::: "memory");
+#endif
 }
 
 /**
@@ -54,7 +56,9 @@ static inline void internal_disable_irq(void)
  */
 static inline void internal_bkpt(void)
 {
+#ifndef RA_SIMULATOR_MODE
   __asm__ volatile("bkpt #0");
+#endif
 }
 
 /**
@@ -62,12 +66,13 @@ static inline void internal_bkpt(void)
  */
 static inline void internal_wfi(void)
 {
+#ifndef RA_SIMULATOR_MODE
   __asm__ volatile("wfi");
+#endif
 }
 
-__attribute__((weak)) void internal_ra_fatal_error(const char* tag,
-                                                   const char* message,
-                                                   uint32_t    err)
+__attribute__((weak)) void
+internal_ra_fatal_error(const char* tag, const char* message, uint32_t err)
 {
   internal_disable_irq();
 
@@ -78,7 +83,13 @@ __attribute__((weak)) void internal_ra_fatal_error(const char* tag,
 
   internal_bkpt();
 
+#ifdef RA_SIMULATOR_MODE
+  /* On the host we cannot actually halt; abort makes the unit test
+   * runner fail loudly instead of spinning. */
+  __builtin_trap();
+#else
   while (1) {
     internal_wfi();
   }
+#endif
 }

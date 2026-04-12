@@ -61,23 +61,23 @@ extern "C" {
  * on the package. Use `k_ra_port_count` for loop bounds.
  */
 typedef enum : uint8_t {
-  k_ra_port_0  = 0U,
-  k_ra_port_1  = 1U,
-  k_ra_port_2  = 2U,
-  k_ra_port_3  = 3U,
-  k_ra_port_4  = 4U,
-  k_ra_port_5  = 5U,
-  k_ra_port_6  = 6U,
-  k_ra_port_7  = 7U,
-  k_ra_port_8  = 8U,
-  k_ra_port_9  = 9U,
-  k_ra_port_10 = 10U,
-  k_ra_port_11 = 11U,
-  k_ra_port_12 = 12U,
-  k_ra_port_13 = 13U,
+  k_ra_port_0     = 0U,
+  k_ra_port_1     = 1U,
+  k_ra_port_2     = 2U,
+  k_ra_port_3     = 3U,
+  k_ra_port_4     = 4U,
+  k_ra_port_5     = 5U,
+  k_ra_port_6     = 6U,
+  k_ra_port_7     = 7U,
+  k_ra_port_8     = 8U,
+  k_ra_port_9     = 9U,
+  k_ra_port_10    = 10U,
+  k_ra_port_11    = 11U,
+  k_ra_port_12    = 12U,
+  k_ra_port_13    = 13U,
   k_ra_port_14    = 14U,
-  k_ra_port_count = 15U,           /**< Number of ports (0..14).     */
-  k_ra_port_max   = 14U,           /**< Highest valid port index.    */
+  k_ra_port_count = 15U, /**< Number of ports (0..14).     */
+  k_ra_port_max   = 14U, /**< Highest valid port index.    */
 } ra_port_t;
 
 /* =============================================================================
@@ -90,24 +90,24 @@ typedef enum : uint8_t {
  * @brief Pin indices within an IOPORT port (0..15).
  */
 typedef enum : uint8_t {
-  k_ra_pin_0  = 0U,
-  k_ra_pin_1  = 1U,
-  k_ra_pin_2  = 2U,
-  k_ra_pin_3  = 3U,
-  k_ra_pin_4  = 4U,
-  k_ra_pin_5  = 5U,
-  k_ra_pin_6  = 6U,
-  k_ra_pin_7  = 7U,
-  k_ra_pin_8  = 8U,
-  k_ra_pin_9  = 9U,
-  k_ra_pin_10 = 10U,
-  k_ra_pin_11 = 11U,
-  k_ra_pin_12 = 12U,
-  k_ra_pin_13 = 13U,
-  k_ra_pin_14 = 14U,
+  k_ra_pin_0     = 0U,
+  k_ra_pin_1     = 1U,
+  k_ra_pin_2     = 2U,
+  k_ra_pin_3     = 3U,
+  k_ra_pin_4     = 4U,
+  k_ra_pin_5     = 5U,
+  k_ra_pin_6     = 6U,
+  k_ra_pin_7     = 7U,
+  k_ra_pin_8     = 8U,
+  k_ra_pin_9     = 9U,
+  k_ra_pin_10    = 10U,
+  k_ra_pin_11    = 11U,
+  k_ra_pin_12    = 12U,
+  k_ra_pin_13    = 13U,
+  k_ra_pin_14    = 14U,
   k_ra_pin_15    = 15U,
-  k_ra_pin_count = 16U,            /**< Number of pins per port.     */
-  k_ra_pin_max   = 15U,            /**< Highest valid pin index.     */
+  k_ra_pin_count = 16U, /**< Number of pins per port.     */
+  k_ra_pin_max   = 15U, /**< Highest valid pin index.     */
 } ra_pin_t;
 
 /* =============================================================================
