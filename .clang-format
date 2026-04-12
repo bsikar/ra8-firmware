@@ -1,0 +1,109 @@
+# .clang-format based on the provided custom style and examples (v11 - Optimized for 80-column with comments)
+# Modified to align consecutive variable names and assignments.
+
+# Start with a common base style and customize
+BasedOnStyle: LLVM
+
+#----------------------------------------------------------------------------
+# Indentation
+#----------------------------------------------------------------------------
+IndentWidth: 2             # Use 2 spaces for indentation
+UseTab: Never              # Never use tabs for indentation
+ContinuationIndentWidth: 2 # Indent continuation lines by 2 spaces
+IndentCaseLabels: true     # Indent 'case' labels relative to 'switch'
+
+#----------------------------------------------------------------------------
+# Braces and Blocks
+#----------------------------------------------------------------------------
+BreakBeforeBraces: Custom
+BraceWrapping:
+  AfterControlStatement: false
+  AfterFunction: true
+  AfterStruct: false
+  AfterUnion: false
+  AfterEnum: false
+  AfterNamespace: false
+  AfterExternBlock: false
+  BeforeCatch: false
+  BeforeElse: false
+  BeforeLambdaBody: false
+  BeforeWhile: false
+  SplitEmptyFunction: false
+  SplitEmptyRecord: false
+  SplitEmptyNamespace: false
+
+AllowShortBlocksOnASingleLine: Never
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: Empty
+AllowShortCaseLabelsOnASingleLine: false
+
+#----------------------------------------------------------------------------
+# Spacing
+#----------------------------------------------------------------------------
+SpaceBeforeParens: ControlStatements
+SpaceAfterCStyleCast: false
+SpaceBeforeAssignmentOperators: true
+SpaceInEmptyParentheses: false
+SpacesInParentheses: false
+SpacesInSquareBrackets: false
+SpacesInAngles: false
+SpacesBeforeTrailingComments: 1
+
+#----------------------------------------------------------------------------
+# Line Breaking and Wrapping
+#----------------------------------------------------------------------------
+ColumnLimit: 100
+
+AlignAfterOpenBracket: Align
+
+BinPackParameters: false
+BinPackArguments: false
+
+AllowAllParametersOfDeclarationOnNextLine: false
+AllowAllArgumentsOnNextLine: false
+
+BreakBeforeBinaryOperators: None
+BreakConstructorInitializers: BeforeColon
+Cpp11BracedListStyle: true
+
+#----------------------------------------------------------------------------
+# Comment Handling
+#----------------------------------------------------------------------------
+ReflowComments: false
+AlignTrailingComments: true
+BreakStringLiterals: false
+CommentPragmas: '\/\*.*\*\/'
+
+#----------------------------------------------------------------------------
+# Alignment
+#----------------------------------------------------------------------------
+AlignConsecutiveMacros: true
+AlignConsecutiveDeclarations: true
+AlignConsecutiveAssignments: true
+AlignOperands: Align
+PointerAlignment: Left
+DerivePointerAlignment: false
+
+#----------------------------------------------------------------------------
+# Includes
+#----------------------------------------------------------------------------
+SortIncludes: true
+IncludeBlocks: Regroup
+IncludeCategories:
+  - Regex:           '^"(pstar_|bus_|log_|time_|file_|error_|sd_|main/)'
+    Priority:        1
+  - Regex:           '^"(driver|esp|freertos|nvs|sdmmc|vfs|wear|zlib|fatfs|nvs_flash)/'
+    Priority:        2
+  - Regex:           '^<.*\.h>'
+    Priority:        3
+  - Regex:           '^<.*>'
+    Priority:        4
+  - Regex:           '.*'
+    Priority:        5
+
+#----------------------------------------------------------------------------
+# Miscellaneous
+#----------------------------------------------------------------------------
+AlwaysBreakTemplateDeclarations: Yes
+FixNamespaceComments: true

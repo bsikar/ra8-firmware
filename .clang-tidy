@@ -1,0 +1,155 @@
+---
+# ra8d2-firmware - clang-tidy configuration
+#
+# Run against the host-compiled test build (tests/build/compile_commands.json)
+# because the cross-compiler (arm-none-eabi-gcc) emits Cortex-M85-specific
+# flags that LLVM cannot always parse cleanly. All firmware source files are
+# compiled into the test build via standard gcc/clang, so full coverage is
+# achieved.
+#
+# Minimum clang version: 16 (required for C23 typed enum syntax).
+# Ubuntu 24.04 ships clang-18 via the unversioned 'clang-tidy' package.
+#
+# Usage:
+#   cmake -B build/tidy -S tests/ -DENABLE_CLANG_TIDY=ON
+#   cmake --build build/tidy
+#
+# Or via script:
+#   bash scripts/clang_tidy.sh --check
+
+Checks: >
+  cert-*,
+  bugprone-*,
+  clang-analyzer-*,
+  misc-*,
+  readability-*,
+  portability-*,
+  performance-*,
+  -bugprone-easily-swappable-parameters,
+  -misc-include-cleaner,
+  -readability-identifier-length,
+  -performance-no-int-to-ptr
+
+# ALL warnings are errors -- zero tolerance for any clang-tidy violation.
+WarningsAsErrors: '*'
+
+# Only report diagnostics for project-authored headers; suppress noise from
+# any vendor or generated headers.
+HeaderFilterRegex: '^(?!.*(_deps|tests/mocks|build/|ra8d2_.*_regs)).*\.(h|hpp)$'
+
+CheckOptions:
+  # --- readability-identifier-naming (CLAUDE.md naming conventions) ---
+
+  # Functions: snake_case
+  - key: readability-identifier-naming.FunctionCase
+    value: lower_case
+  # Allow UPPER_CASE for ARM Cortex-M interrupt handler names that are
+  # fixed by the vector table (e.g. Reset_Handler, NMI_Handler, HardFault_Handler,
+  # SysTick_Handler, and the IRQ<N>_Handler pattern).
+  - key: readability-identifier-naming.FunctionIgnoredRegexp
+    value: '^(Reset_Handler|NMI_Handler|HardFault_Handler|MemManage_Handler|BusFault_Handler|UsageFault_Handler|SecureFault_Handler|SVC_Handler|DebugMon_Handler|PendSV_Handler|SysTick_Handler|IRQ[0-9]+_Handler|[A-Z][A-Za-z0-9]*_IRQHandler)$'
+
+  # Variables: snake_case
+  - key: readability-identifier-naming.VariableCase
+    value: lower_case
+
+  # Local variables: snake_case (no prefix)
+  - key: readability-identifier-naming.LocalVariableCase
+    value: lower_case
+
+  # Local constants: snake_case (no prefix)
+  - key: readability-identifier-naming.LocalConstantCase
+    value: lower_case
+
+  # Parameters: snake_case
+  - key: readability-identifier-naming.ParameterCase
+    value: lower_case
+
+  # Const parameters: snake_case (no prefix)
+  - key: readability-identifier-naming.ConstantParameterCase
+    value: lower_case
+
+  # Types (struct/typedef/enum): snake_case with trailing _t
+  - key: readability-identifier-naming.TypedefCase
+    value: lower_case
+  - key: readability-identifier-naming.TypedefSuffix
+    value: _t
+  # Allow _fn suffix for function pointer typedefs (e.g. ra_error_report_fn)
+  - key: readability-identifier-naming.TypedefIgnoredRegexp
+    value: '.*_fn$'
+
+  # Struct names: snake_case (without _t -- the typedef carries it)
+  - key: readability-identifier-naming.StructCase
+    value: lower_case
+
+  # Enum tag names: snake_case
+  - key: readability-identifier-naming.EnumCase
+    value: lower_case
+
+  # Enum constants: k_ prefix, lower_case (project convention)
+  - key: readability-identifier-naming.EnumConstantCase
+    value: lower_case
+  - key: readability-identifier-naming.EnumConstantPrefix
+    value: k_
+
+  # Macros: UPPER_CASE (SCREAMING_SNAKE_CASE)
+  - key: readability-identifier-naming.MacroDefinitionCase
+    value: UPPER_CASE
+  # Allow lowercase macros for function-like logging/check macros.
+  - key: readability-identifier-naming.MacroDefinitionIgnoredRegexp
+    value: '^(ra_log_|__ARM|__CORTEX).*'
+
+  # Global variables (non-static, non-const): g_ prefix
+  # Note: clang-tidy classifies file-scope 'static' vars as "global" in C.
+  # IgnoredRegexp accepts our s_ prefix for file-scope statics while still
+  # enforcing g_ for true (non-static) globals.
+  - key: readability-identifier-naming.GlobalVariableCase
+    value: lower_case
+  - key: readability-identifier-naming.GlobalVariablePrefix
+    value: g_
+  - key: readability-identifier-naming.GlobalVariableIgnoredRegexp
+    value: '^s_.*'
+
+  # Global constants (non-static const): g_ prefix
+  # IgnoredRegexp accepts s_ (static impl details) and k_ (named constants).
+  - key: readability-identifier-naming.GlobalConstantCase
+    value: lower_case
+  - key: readability-identifier-naming.GlobalConstantPrefix
+    value: g_
+  - key: readability-identifier-naming.GlobalConstantIgnoredRegexp
+    value: '^(s_|k_).*'
+
+  # Static variables (non-const): s_ prefix
+  - key: readability-identifier-naming.StaticVariableCase
+    value: lower_case
+  - key: readability-identifier-naming.StaticVariablePrefix
+    value: s_
+
+  # Static constants: lower_case, accept both s_ and k_ prefixes.
+  # s_ for implementation details (s_tag), k_ for named constants (k_max_retries).
+  - key: readability-identifier-naming.StaticConstantCase
+    value: lower_case
+
+  # --- cert-str34-c: cast char to unsigned char before conversion ---
+  - key: cert-str34-c.DiagnoseSignedUnsignedCharComparisons
+    value: true
+
+  # --- readability-magic-numbers: allow 0 and 1 as universally benign ---
+  # These are the only numeric literals permitted without a named constant.
+  # All other numeric literals must use typed enum constants per CLAUDE.md.
+  - key: readability-magic-numbers.IgnoredIntegerValues
+    value: "0;1"
+  - key: readability-magic-numbers.IgnoredFloatingPointValues
+    value: "0.0;1.0"
+
+  # --- readability-function-cognitive-complexity: NASA Power of 10 Rule 4 ---
+  - key: readability-function-cognitive-complexity.Threshold
+    value: "25"
+
+  # --- readability-function-size: Clean Code / NASA Rule 4 function-length limit ---
+  - key: readability-function-size.LineThreshold
+    value: "60"
+  - key: readability-function-size.StatementThreshold
+    value: "40"
+  - key: readability-function-size.NestingThreshold
+    value: "4"
