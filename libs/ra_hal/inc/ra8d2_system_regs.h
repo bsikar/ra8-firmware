@@ -1,0 +1,227 @@
+/**
+ * @file ra8d2_system_regs.h
+ * @brief System Control (SYSC) register layout for the Renesas RA8D2
+ *
+ * @details
+ * Covers the System Control block at `0x4001E000`. The SYSC block
+ * owns reset-cause reporting, software reset, protection-register
+ * unlock, and (along with CGC) clock-source selection.
+ *
+ * ## Map (partial -- only the registers this firmware touches)
+ *
+ * | Offset | Reg       | Purpose                                   |
+ * |-------:|-----------|-------------------------------------------|
+ * | 0x020  | SCKDIVCR  | System clock divider control               |
+ * | 0x026  | SCKSCR    | System clock source select                 |
+ * | 0x036  | HOCOCR    | High-speed on-chip oscillator control      |
+ * | 0x0A2  | MOSCWTCR  | Main clock oscillator wait control         |
+ * | 0x0AC  | PLLCCR    | PLL1 clock control                         |
+ * | 0x0C0  | RSTSR1    | Reset status register 1                    |
+ * | 0x3FA  | PRCR      | Protection register (write with 0xA500 mask) |
+ * | 0xA40  | RSTSR0    | Reset status register 0                    |
+ * | 0xA44  | RSTSR2    | Reset status register 2                    |
+ *
+ * The full R_SYSTEM block spans 3456 bytes and contains dozens of
+ * other registers (RAM wait-state control, LVD, temperature monitor,
+ * VBAT, etc.). We expose only the subset the firmware actually uses
+ * and add new fields as we need them. This keeps the header small
+ * and makes every extension an explicit, reviewed change.
+ *
+ * ## PRCR unlock sequence
+ *
+ * Most CGC and LVD registers are protected. Write `0xA501` to unlock
+ * group 0 (CGC + LVD) before changing them, and `0xA500` to re-lock
+ * when done. The upper byte `0xA5` is the password; the low bit is the
+ * protection-enable for that group.
+ *
+ * See the Hardware User's Manual section 12 ("Register Write
+ * Protection") for the full table.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
+ */
+
+#pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include <stdint.h>
+
+/* =============================================================================
+ * Base addresses
+ * =============================================================================
+ */
+
+typedef enum : uintptr_t {
+  k_ra_system_base_addr = 0x4001E000UL, /**< R_SYSTEM. */
+} ra_system_addr_t;
+
+/* =============================================================================
+ * Register offsets (within the SYSTEM block)
+ * =============================================================================
+ */
+
+typedef enum : uint16_t {
+  k_ra_sys_off_sckdivcr = 0x020U, /**< SCKDIVCR (32-bit). */
+  k_ra_sys_off_sckscr   = 0x026U, /**< SCKSCR   (8-bit).  */
+  k_ra_sys_off_hococr   = 0x036U, /**< HOCOCR   (8-bit).  */
+  k_ra_sys_off_moscwtcr = 0x0A2U, /**< MOSCWTCR (8-bit).  */
+  k_ra_sys_off_pllccr   = 0x0ACU, /**< PLLCCR   (32-bit). */
+  k_ra_sys_off_rstsr1   = 0x0C0U, /**< RSTSR1   (32-bit). */
+  k_ra_sys_off_prcr     = 0x3FAU, /**< PRCR     (16-bit). */
+  k_ra_sys_off_rstsr0   = 0xA40U, /**< RSTSR0   (8-bit).  */
+  k_ra_sys_off_rstsr2   = 0xA44U, /**< RSTSR2   (8-bit).  */
+} ra_system_offset_t;
+
+/* =============================================================================
+ * PRCR protection key and group masks
+ * =============================================================================
+ */
+
+/**
+ * @enum ra_prcr_t
+ * @brief Values to write to PRCR to unlock / lock protection groups.
+ *
+ * @details
+ * `k_ra_prcr_key` is the mandatory 0xA5 password in the upper byte.
+ * OR with one of the group bits to *enable writes* to that group
+ * (counter-intuitive -- bit set = unlocked), then write back with the
+ * group bit cleared to relock.
+ */
+typedef enum : uint16_t {
+  k_ra_prcr_key      = 0xA500U, /**< Password in upper byte.           */
+  k_ra_prcr_grp0_cgc = 0x0001U, /**< Group 0: CGC + LVD.               */
+  k_ra_prcr_grp1_lpm = 0x0002U, /**< Group 1: Low-power modes.         */
+  k_ra_prcr_grp2_osc = 0x0008U, /**< Group 2: LVD reset-detection.     */
+  k_ra_prcr_unlock_cgc = (uint16_t)(k_ra_prcr_key | k_ra_prcr_grp0_cgc),
+  k_ra_prcr_lock_all   = k_ra_prcr_key,
+} ra_prcr_t;
+
+/* =============================================================================
+ * Reset-cause bits (subset -- add as needed)
+ * =============================================================================
+ */
+
+/**
+ * @enum ra_rstsr0_bit_t
+ * @brief Reset Status Register 0 bit positions.
+ *
+ * @details
+ * Set by hardware when a reset of the corresponding cause occurred.
+ * Cleared by software (write 0 after unlocking PRCR group 0).
+ */
+typedef enum : uint8_t {
+  k_ra_rstsr0_bit_porf  = 0U, /**< Power-on reset.            */
+  k_ra_rstsr0_bit_lvd0  = 1U, /**< Voltage-monitor 0 reset.   */
+  k_ra_rstsr0_bit_lvd1  = 2U, /**< Voltage-monitor 1 reset.   */
+  k_ra_rstsr0_bit_lvd2  = 3U, /**< Voltage-monitor 2 reset.   */
+} ra_rstsr0_bit_t;
+
+/**
+ * @enum ra_rstsr2_bit_t
+ * @brief Reset Status Register 2 bit positions.
+ */
+typedef enum : uint8_t {
+  k_ra_rstsr2_bit_cwsf   = 0U, /**< Cold / warm start flag.     */
+  k_ra_rstsr2_bit_iwdtrf = 1U, /**< IWDT reset.                 */
+  k_ra_rstsr2_bit_wdtrf  = 2U, /**< WDT reset.                  */
+  k_ra_rstsr2_bit_swrf   = 3U, /**< Software reset.             */
+} ra_rstsr2_bit_t;
+
+/* =============================================================================
+ * Direct register accessors
+ * =============================================================================
+ *
+ * Rather than define a single bloated R_SYSTEM struct (3456 bytes of
+ * bitfields), we expose a tiny set of typed accessors that each return
+ * a pointer to one register. The caller reads / writes whole 8/16/32-bit
+ * values and masks bits using the named constants above. This is
+ * exactly how the rx72n project handled its SYSTEM block and keeps the
+ * header under 200 lines.
+ */
+
+/** @brief Get pointer to the 32-bit SCKDIVCR register. */
+static inline volatile uint32_t* ra_sys_sckdivcr(void)
+{
+  return (volatile uint32_t*)(k_ra_system_base_addr + k_ra_sys_off_sckdivcr);
+}
+
+/** @brief Get pointer to the 8-bit SCKSCR register. */
+static inline volatile uint8_t* ra_sys_sckscr(void)
+{
+  return (volatile uint8_t*)(k_ra_system_base_addr + k_ra_sys_off_sckscr);
+}
+
+/** @brief Get pointer to the 8-bit HOCOCR register. */
+static inline volatile uint8_t* ra_sys_hococr(void)
+{
+  return (volatile uint8_t*)(k_ra_system_base_addr + k_ra_sys_off_hococr);
+}
+
+/** @brief Get pointer to the 8-bit MOSCWTCR register. */
+static inline volatile uint8_t* ra_sys_moscwtcr(void)
+{
+  return (volatile uint8_t*)(k_ra_system_base_addr + k_ra_sys_off_moscwtcr);
+}
+
+/** @brief Get pointer to the 32-bit PLLCCR register. */
+static inline volatile uint32_t* ra_sys_pllccr(void)
+{
+  return (volatile uint32_t*)(k_ra_system_base_addr + k_ra_sys_off_pllccr);
+}
+
+/** @brief Get pointer to the 32-bit RSTSR1 register. */
+static inline volatile uint32_t* ra_sys_rstsr1(void)
+{
+  return (volatile uint32_t*)(k_ra_system_base_addr + k_ra_sys_off_rstsr1);
+}
+
+/** @brief Get pointer to the 16-bit PRCR register. */
+static inline volatile uint16_t* ra_sys_prcr(void)
+{
+  return (volatile uint16_t*)(k_ra_system_base_addr + k_ra_sys_off_prcr);
+}
+
+/** @brief Get pointer to the 8-bit RSTSR0 register. */
+static inline volatile uint8_t* ra_sys_rstsr0(void)
+{
+  return (volatile uint8_t*)(k_ra_system_base_addr + k_ra_sys_off_rstsr0);
+}
+
+/** @brief Get pointer to the 8-bit RSTSR2 register. */
+static inline volatile uint8_t* ra_sys_rstsr2(void)
+{
+  return (volatile uint8_t*)(k_ra_system_base_addr + k_ra_sys_off_rstsr2);
+}
+
+/* =============================================================================
+ * PRCR unlock helpers
+ * =============================================================================
+ */
+
+/**
+ * @brief Unlock the CGC + LVD protection group so CGC registers can be written.
+ *
+ * @details
+ * Writes `0xA501` to PRCR. Paired with `ra_sys_prcr_lock_all()` once
+ * the CGC programming sequence is complete.
+ *
+ * @note Not thread-safe. Call only from single-threaded init or with
+ *       interrupts masked.
+ */
+static inline void ra_sys_prcr_unlock_cgc(void)
+{
+  *ra_sys_prcr() = (uint16_t)k_ra_prcr_unlock_cgc;
+}
+
+/** @brief Re-lock every protection group (write password with all group bits clear). */
+static inline void ra_sys_prcr_lock_all(void)
+{
+  *ra_sys_prcr() = (uint16_t)k_ra_prcr_lock_all;
+}
+
+#ifdef __cplusplus
+}
+#endif
