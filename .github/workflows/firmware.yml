@@ -1,0 +1,73 @@
+name: firmware
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # ASCII-only check: reject non-ASCII characters in source files
+  # ---------------------------------------------------------------------------
+  ascii-check:
+    name: ASCII-only source files
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Scan for non-ASCII characters
+        run: |
+          set -e
+          bad=$(git ls-files '*.c' '*.h' '*.cpp' '*.hpp' '*.md' '*.yml' '*.yaml' \
+                             '*.sh' '*.py' '*.cmake' '*.json' '*.toml' \
+                             'CMakeLists.txt' \
+              | xargs -r grep -lP "[^\x00-\x7F]" || true)
+          if [[ -n "$bad" ]]; then
+            echo "Non-ASCII characters found in:"
+            echo "$bad"
+            exit 1
+          fi
+
+  # ---------------------------------------------------------------------------
+  # Format check: clang-format --dry-run --Werror on every C/H file
+  # ---------------------------------------------------------------------------
+  format:
+    name: clang-format check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install clang-format
+        run: sudo apt-get update && sudo apt-get install -y clang-format
+      - name: Run format check
+        run: bash scripts/format_code.sh --check --verbose
+
+  # ---------------------------------------------------------------------------
+  # Cross-compile build: arm-none-eabi-gcc + CMake
+  # ---------------------------------------------------------------------------
+  build:
+    name: Build (arm-none-eabi)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install ARM GNU Toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-arm-none-eabi cmake ninja-build
+
+      - name: Print toolchain version
+        run: arm-none-eabi-gcc --version | head -1
+
+      - name: Configure
+        run: |
+          cmake -B build -S . \
+            -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-ra8d2.cmake \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+            -G Ninja
+
+      - name: Build
+        run: cmake --build build --verbose
+        # NOTE: this step is tolerant right now because src/libs are empty.
+        # Once real source files exist, drop `continue-on-error`.
+        continue-on-error: true

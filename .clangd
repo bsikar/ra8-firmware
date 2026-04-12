@@ -1,0 +1,42 @@
+CompileFlags:
+  CompilationDatabase: build/
+  Add:
+    - -std=c23
+    # arm-none-eabi toolchain headers: install from ARM GNU Toolchain
+    # https://developer.arm.com/downloads/-/arm-gnu-toolchain-downloads
+    # Add your local toolchain include path in ~/.config/clangd/config.yaml, e.g.:
+    #   CompileFlags:
+    #     Add: [-I/opt/arm-gnu-toolchain/arm-none-eabi/include]
+    - -I../src
+    - -I../libs/ra_core/inc
+    - -I../libs/ra_hal/inc
+    - -D__ARM_ARCH_8_1M_MAIN__=1
+    - -D__ARM_FEATURE_MVE=3
+  # Strip Cortex-M85 / arm-none-eabi flags that clangd's clang frontend does
+  # not recognize. These are valid for arm-none-eabi-gcc but cause spurious
+  # "unknown argument" errors in the editor. The actual build uses
+  # arm-none-eabi-gcc directly.
+  Remove:
+    - -mcpu=*
+    - -mfpu=*
+    - -mfloat-abi=*
+    - -mthumb
+    - -mlittle-endian
+    - -mbig-endian
+    - -march=*
+    - --specs=*
+
+Index:
+  Background: Build
+  StandardLibrary: No
+
+Diagnostics:
+  UnusedIncludes: Strict
+  # Use None for MissingIncludes: Strict is too noisy for CMSIS-style nested
+  # header aggregates.
+  MissingIncludes: None
+
+InlayHints:
+  Enabled: Yes
+  ParameterNames: Yes
+  DeducedTypes: Yes

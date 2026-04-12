@@ -1,0 +1,214 @@
+#!/bin/bash
+# ra8d2-firmware - clang-tidy Static Analysis Script
+#
+# Runs clang-tidy against the host-compiled test build, which includes all
+# firmware source files via standard gcc/clang and produces a valid
+# compile_commands.json. This approach works around the fact that the
+# cross-compiler (arm-none-eabi-gcc) emits Cortex-M85-specific flags that
+# LLVM cannot always parse.
+#
+# Usage:
+#   ./scripts/clang_tidy.sh              # Check mode (exit non-zero on violations)
+#   ./scripts/clang_tidy.sh --fix        # Apply fixes in-place
+#   ./scripts/clang_tidy.sh --check      # Explicit check mode (same as default)
+#   ./scripts/clang_tidy.sh --verbose    # Verbose output
+#   ./scripts/clang_tidy.sh --help       # Show this help
+#
+# Prerequisites:
+#   clang-tidy >= 16 (Ubuntu 24.04: sudo apt-get install clang-tidy)
+#   cmake (to configure the test build with compile_commands.json)
+
+set -euo pipefail
+set +H
+
+# ---------------------------------------------------------------------------
+# Colors
+# ---------------------------------------------------------------------------
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m'
+
+print_status()  { echo -e "${BLUE}[INFO]${NC} $1" >&2; }
+print_success() { echo -e "${GREEN}[SUCCESS]${NC} $1" >&2; }
+print_warning() { echo -e "${YELLOW}[WARNING]${NC} $1" >&2; }
+print_error()   { echo -e "${RED}[ERROR]${NC} $1" >&2; }
+
+# ---------------------------------------------------------------------------
+# Precomputed path constants
+# ---------------------------------------------------------------------------
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+FIRMWARE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+# ---------------------------------------------------------------------------
+# Defaults
+# ---------------------------------------------------------------------------
+FIX_MODE=false
+VERBOSE=false
+BUILD_DIR=""
+
+# ---------------------------------------------------------------------------
+# Usage
+# ---------------------------------------------------------------------------
+usage() {
+    echo "ra8d2-firmware - clang-tidy Static Analysis Script"
+    echo ""
+    echo "Usage: $0 [options]"
+    echo ""
+    echo "Options:"
+    echo "  --check    Check for violations without modifying files (default)"
+    echo "  --fix      Apply clang-tidy fixes in-place"
+    echo "  --verbose  Verbose output"
+    echo "  --help     Show this help message"
+}
+
+parse_args() {
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --check)    FIX_MODE=false; shift ;;
+            --fix)      FIX_MODE=true; shift ;;
+            --verbose|-v) VERBOSE=true; shift ;;
+            --help|-h)  usage; exit 0 ;;
+            *)
+                print_error "Unknown option: $1"
+                usage
+                exit 1
+                ;;
+        esac
+    done
+}
+
+# ---------------------------------------------------------------------------
+# Locate clang-tidy (prefer versioned binaries, require >= 16)
+# ---------------------------------------------------------------------------
+find_clang_tidy() {
+    local candidates=(clang-tidy-18 clang-tidy-17 clang-tidy-16 clang-tidy)
+    for candidate in "${candidates[@]}"; do
+        if command -v "$candidate" &>/dev/null; then
+            local version
+            version=$("$candidate" --version 2>&1 | sed -n 's/.*version \([0-9]\+\).*/\1/p' | head -1)
+            if [[ -n "$version" && "$version" -ge 16 ]]; then
+                echo "$candidate"
+                return 0
+            fi
+        fi
+    done
+    print_error "clang-tidy >= 16 not found."
+    print_error "Install with: sudo apt-get install clang-tidy"
+    exit 1
+}
+
+# ---------------------------------------------------------------------------
+# Configure test build to generate compile_commands.json
+# ---------------------------------------------------------------------------
+configure_build() {
+    local tests_dir="$FIRMWARE_DIR/tests"
+    BUILD_DIR="$FIRMWARE_DIR/build/tidy"
+
+    if [[ ! -d "$tests_dir" ]]; then
+        print_warning "$tests_dir does not exist yet. Falling back to a host-native"
+        print_warning "configure of the top-level CMakeLists.txt."
+        tests_dir="$FIRMWARE_DIR"
+    fi
+
+    print_status "Configuring test build in $BUILD_DIR ..."
+    local cmake_stdout="/dev/null"
+    if [[ "${VERBOSE:-}" == "true" ]]; then
+        cmake_stdout="/dev/stdout"
+    fi
+
+    cmake -B "$BUILD_DIR" -S "$tests_dir" \
+        -DCMAKE_BUILD_TYPE=Debug \
+        -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+        -DCMAKE_C_FLAGS="-DUNIT_TEST -DRA_SIMULATOR_MODE" \
+        -Wno-dev \
+        >"$cmake_stdout"
+
+    if [[ ! -f "$BUILD_DIR/compile_commands.json" ]]; then
+        print_error "compile_commands.json was not generated."
+        exit 1
+    fi
+    print_status "compile_commands.json ready."
+}
+
+# ---------------------------------------------------------------------------
+# Collect firmware source files (exclude vendor paths)
+# ---------------------------------------------------------------------------
+collect_source_files() {
+    find "$FIRMWARE_DIR/libs" "$FIRMWARE_DIR/src" \
+        \( -name '*.c' -o -name '*.h' \) \
+        ! -path '*/build/*' \
+        ! -path '*/_deps/*' \
+        ! -path '*/third_party/*' \
+        2>/dev/null || true
+}
+
+# ---------------------------------------------------------------------------
+# Run clang-tidy
+# ---------------------------------------------------------------------------
+run_clang_tidy() {
+    local clang_tidy="$1"
+    local config_file="$FIRMWARE_DIR/.clang-tidy"
+
+    if [[ ! -f "$config_file" ]]; then
+        print_error ".clang-tidy not found at $config_file"
+        exit 1
+    fi
+
+    local fix_flag=""
+    if [[ "$FIX_MODE" == "true" ]]; then
+        fix_flag="--fix"
+    fi
+
+    local exit_code=0
+    local files
+    mapfile -t files < <(collect_source_files)
+
+    if [[ ${#files[@]} -eq 0 ]]; then
+        print_warning "No source files found yet -- nothing to lint."
+        exit 0
+    fi
+
+    print_status "Running $clang_tidy on ${#files[@]} file(s)..."
+
+    set +e
+    "$clang_tidy" \
+        --config-file="$config_file" \
+        -p="$BUILD_DIR" \
+        --extra-arg="-std=c2x" \
+        --extra-arg="-DUNIT_TEST" \
+        --extra-arg="-DRA_SIMULATOR_MODE" \
+        ${fix_flag:+"$fix_flag"} \
+        "${files[@]}" 2>&1
+    exit_code=$?
+    set -e
+
+    if [[ $exit_code -ne 0 ]]; then
+        echo ""
+        print_error "clang-tidy found violations."
+        if [[ "$FIX_MODE" == "true" ]]; then
+            print_status "Fixes applied where possible. Review changes with git diff."
+        fi
+        return 1
+    fi
+
+    print_success "clang-tidy: no violations found."
+    return 0
+}
+
+main() {
+    parse_args "$@"
+
+    local clang_tidy
+    clang_tidy="$(find_clang_tidy)"
+
+    if [[ "$VERBOSE" == "true" ]]; then
+        print_status "Using: $($clang_tidy --version | head -1)"
+    fi
+
+    configure_build
+    run_clang_tidy "$clang_tidy"
+}
+
+main "$@"

@@ -1,0 +1,120 @@
+#!/usr/bin/env bash
+# Pre-commit hook for ra8d2-firmware
+# Runs: ASCII check, C23 pattern check, clang-format, clang-tidy
+#
+# Install with:
+#   ln -s ../../scripts/git/pre-commit .git/hooks/pre-commit
+# or just copy this file into .git/hooks/pre-commit and chmod +x.
+
+set -uo pipefail
+
+# Allow skipping checks
+if [[ "${1:-}" == "--no-verify" ]]; then
+    exit 0
+fi
+
+# Get list of staged files
+staged_files=$(git diff --cached --name-only --diff-filter=ACMR)
+
+# Flags to track errors
+error_found=0
+
+echo "Running pre-commit checks..."
+
+# -----------------------------------------------------------------------------
+# ASCII-ONLY SOURCE CODE CHECK
+# -----------------------------------------------------------------------------
+ascii_ok=true
+while IFS= read -r staged_file; do
+    # Check all text source files by extension or by specific filename.
+    if [[ "$staged_file" =~ \.(c|h|cpp|hpp|md|yml|yaml|sh|py|cmake|json|toml|cfg|conf|tex|css|html|xml|txt|ini)$ ]] \
+       || [[ "$(basename "$staged_file")" =~ ^(Makefile|Dockerfile|\.clang-format|\.clang-tidy|\.clangd|\.cppcheck-suppressions|\.editorconfig|\.gitattributes|\.gitignore)$ ]]; then
+        if grep -qP "[^\x00-\x7F]" "$staged_file" 2>/dev/null; then
+            echo "ERROR: Non-ASCII characters in staged file: $staged_file"
+            grep -nP "[^\x00-\x7F]" "$staged_file" | head -5
+            ascii_ok=false
+        fi
+    fi
+done < <(git diff --cached --name-only --diff-filter=ACM)
+
+if [[ "$ascii_ok" == "false" ]]; then
+    echo ""
+    echo "Policy: All source files must use ASCII-only characters."
+    echo "See CLAUDE.md 'Character Encoding Policy' for details."
+    exit 1
+fi
+
+# -----------------------------------------------------------------------------
+# C / C++ CHECKS
+# -----------------------------------------------------------------------------
+c_files=$(echo "$staged_files" | grep -E "\.(c|h)$" \
+  | grep -vE "/(build|_deps|third_party)/" \
+  || true)
+
+if [[ -n "$c_files" ]]; then
+    echo "Checking C/H files..."
+
+    # ---- clang-format ------------------------------------------------------
+    if command -v clang-format &>/dev/null; then
+        if ! bash scripts/format_code.sh --check; then
+            echo "[FAIL] formatting check failed."
+            echo "   Run: bash scripts/format_code.sh"
+            error_found=1
+        fi
+    else
+        echo ""
+        echo "WARNING: clang-format not found -- formatting check SKIPPED."
+        echo "   Install: sudo apt install clang-format"
+    fi
+
+    # ---- C23 pattern enforcement -------------------------------------------
+    c23_ok=true
+    for f in $c_files; do
+        # _Static_assert -> static_assert
+        if grep -qn '_Static_assert' "$f" 2>/dev/null; then
+            echo "[FAIL] C11 _Static_assert in $f (use static_assert)"
+            grep -n '_Static_assert' "$f"
+            c23_ok=false
+        fi
+        # = {0} -> = {}
+        if grep -qnE '= \{0\}' "$f" 2>/dev/null; then
+            echo "[FAIL] C11 = {0} initializer in $f (use = {})"
+            grep -nE '= \{0\}' "$f" | head -5
+            c23_ok=false
+        fi
+        # #include <stdbool.h> (unnecessary in C23)
+        if grep -qn '#include <stdbool.h>' "$f" 2>/dev/null; then
+            echo "[FAIL] Unnecessary #include <stdbool.h> in $f (bool is a C23 keyword)"
+            c23_ok=false
+        fi
+    done
+    if [[ "$c23_ok" == "false" ]]; then
+        echo ""
+        echo "Policy: Use C23 constructs (static_assert, = {}, no stdbool.h)."
+        error_found=1
+    fi
+
+    # ---- clang-tidy --------------------------------------------------------
+    if command -v clang-tidy &>/dev/null || command -v clang-tidy-18 &>/dev/null; then
+        if ! bash scripts/clang_tidy.sh --check; then
+            echo "[FAIL] clang-tidy violations found."
+            echo "   Fix violations above, then re-stage and commit."
+            error_found=1
+        fi
+    else
+        echo ""
+        echo "WARNING: clang-tidy not found -- static analysis SKIPPED."
+        echo "   Install: sudo apt install clang-tidy"
+    fi
+fi
+
+# -----------------------------------------------------------------------------
+# CONCLUSION
+# -----------------------------------------------------------------------------
+if [[ $error_found -ne 0 ]]; then
+    echo "[FAIL] Commit rejected due to linting/formatting errors."
+    exit 1
+fi
+
+echo "[PASS] All checks passed."
+exit 0

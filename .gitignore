@@ -1,0 +1,83 @@
+# CMake build artifacts
+build/
+build-*/
+cmake-build-*/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+compile_commands.json
+
+# Compiled firmware artifacts
+*.elf
+*.bin
+*.hex
+*.map
+*.lst
+*.su
+
+# Test build artifacts
+tests/build/
+tests/Unity/
+
+# GCC coverage instrumentation
+*.gcov
+*.gcda
+*.gcno
+*.gcov.json.gz
+
+# GCC RTL dump files
+*.expand
+
+# Doxygen generated output
+docs/doxygen/html/
+docs/doxygen/xml/
+docs/doxygen/latex/
+docs/doxygen/*.log
+
+# Renesas / vendor IDE artifacts (NOT used here, guarded in case they show up)
+.metadata/
+.settings/
+HardwareDebug/
+output/
+.project
+.cproject
+*.launch
+ra_cfg.txt
+ra_gen/
+ra/
+ra_cfg/
+
+# ARM / Keil / IAR artifacts
+*.uvprojx
+*.uvoptx
+*.ewp
+*.eww
+*.ewd
+Debug/
+Release/
+Objects/
+Listings/
+
+# SEGGER
+*.jdebug
+*.jlink
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*~
+*.bak
+*.tmp
+.DS_Store
+
+# Python / tooling
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# Local environment
+.env
+.env.local

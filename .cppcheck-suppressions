@@ -1,0 +1,83 @@
+# STAR RX72N Firmware - cppcheck suppression list
+#
+# Format: <check-id>[:<file-pattern>[:<line>]]
+# Each suppression must include a justification comment.
+#
+# Applied via: cppcheck --suppressions-list=.cppcheck-suppressions
+#
+# Review policy: suppressions are reviewed during each major firmware release.
+# New suppressions require a comment linking to the relevant MISRA deviation
+# record or architectural decision.
+
+# ---------------------------------------------------------------------------
+# MISRA C 2012 - Rule 14.4: controlling expression shall have essentially
+# Boolean type.
+#
+# Justification: Main task loops use while(1) by design. The ThreadX scheduler
+# runs tasks indefinitely; termination is handled by the hardware watchdog
+# (WDT), not a loop-exit condition. This is the standard embedded RTOS pattern.
+# Formal deviation against MISRA C 2012 Rule 14.4: the controlling expression
+# of a do-while or while loop must be essentially Boolean. RTOS task entry
+# points are permanently-running threads; a Boolean-typed loop condition would
+# be semantically misleading. The project records this as a permitted deviation
+# for RTOS task entry points consistent with MISRA C 2012 Appendix I guidance.
+# ---------------------------------------------------------------------------
+misra-c2012-14.4:*/tasks/*.c
+
+# ---------------------------------------------------------------------------
+# MISRA C 2012 - Rule 21.6: standard library input/output functions shall not
+# be used.
+#
+# Justification: stdio.h (printf, snprintf, putchar) is used exclusively in
+# the simulator build path gated behind #ifdef RX_SIMULATOR_MODE. These code
+# paths are never compiled into the firmware image -- they exist only for
+# host-side unit tests where stdio is the expected output mechanism.
+# ---------------------------------------------------------------------------
+misra-c2012-21.6:*/rx_log.h
+
+# ---------------------------------------------------------------------------
+# MISRA C 2012 - Rule 21.6 (same as above) for mock files used only in tests.
+# ---------------------------------------------------------------------------
+misra-c2012-21.6:*/tests/*
+
+# ---------------------------------------------------------------------------
+# MISRA C 2012 - Rule 17.7: the value returned by a function having
+# non-void return type shall be used.
+#
+# Justification: ThreadX API functions (tx_thread_create, tx_queue_send, etc.)
+# return UINT status codes. The ThreadX design contract states these return
+# TX_SUCCESS (0) when called with valid, pre-validated arguments. Arguments
+# are validated by RX_CHECK_* macros at all call sites before the ThreadX
+# call. Wrapping every ThreadX call in an error check would add dead code that
+# the compiler cannot optimize away under -fno-exceptions.
+#
+# Scope: our task source files where TX_ calls are made (libs/threadx/ is
+# excluded entirely from cppcheck via --exclude so no suppression is needed
+# for the vendor library itself).
+# ---------------------------------------------------------------------------
+misra-c2012-17.7:*/src/tasks/*.c
+
+# ---------------------------------------------------------------------------
+# MISRA C 2012 - Rule 8.4: a compatible declaration shall be visible when an
+# object or function with external linkage is defined.
+#
+# Justification: Unity test framework defines test runner functions (setUp,
+# tearDown, main) that are declared externally by the framework's generated
+# runner. The declarations live in Unity-generated code outside our control.
+# ---------------------------------------------------------------------------
+misra-c2012-8.4:*/tests/test_*.c
+
+# ---------------------------------------------------------------------------
+# missingInclude: cppcheck cannot resolve cross-compiled hardware headers
+# without the full GNURX sysroot. These headers (RIIC, SCI, MTU, CMT, GPTW,
+# etc.) are guarded by #ifdef __RX__ in firmware source files and are never
+# reached in the host test build.  Narrowed to the known hardware-abstraction
+# and HAL directories that directly include RX-specific peripheral headers.
+# ---------------------------------------------------------------------------
+missingInclude:*/libs/rx_hal/*
+missingInclude:*/libs/rx_core/src/rx_wdt.c
+missingInclude:*/libs/rx_core/src/rx_time_threadx.c
+missingInclude:*/libs/rx_core/src/rx_exception.c
+missingInclude:*/libs/rx_core/src/rx_infrastructure.c
+missingInclude:*/src/boot/*
+missingInclude:*/src/tasks/inc/*
