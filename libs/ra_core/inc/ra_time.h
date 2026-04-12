@@ -85,6 +85,19 @@ uint32_t ra_now_ms(void);
 /** @brief Short-form alias for `ra_delay_ms()`. */
 void ra_sleep_ms(uint32_t ms);
 
+/* =============================================================================
+ * Concrete DI interface instance (defined in ra_time.c)
+ * =============================================================================
+ */
+
+#include "ra_time_interface.h"
+
+/**
+ * @brief Production `ra_time_interface_t` that forwards to the
+ *        SysTick-backed `ra_time_ms` / `ra_delay_ms` helpers.
+ */
+extern const ra_time_interface_t g_ra_time_interface_systick;
+
 #ifdef __cplusplus
 }
 #endif

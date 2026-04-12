@@ -41,6 +41,12 @@ typedef struct {
   void* ctx;
 } ra_error_interface_t;
 
+/**
+ * @brief Production `ra_error_interface_t` that pushes reports into
+ *        the standard `ra_log_error_val` backend.
+ */
+extern const ra_error_interface_t g_ra_error_sink_log;
+
 #ifdef __cplusplus
 }
 #endif
