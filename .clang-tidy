@@ -51,7 +51,7 @@ CheckOptions:
   # fixed by the vector table (Reset_Handler, NMI_Handler, HardFault_Handler,
   # SysTick_Handler, Default_Handler, and the IRQ<N>_Handler pattern).
   - key: readability-identifier-naming.FunctionIgnoredRegexp
-    value: '^(Reset_Handler|Default_Handler|NMI_Handler|HardFault_Handler|MemManage_Handler|BusFault_Handler|UsageFault_Handler|SecureFault_Handler|SVC_Handler|DebugMon_Handler|PendSV_Handler|SysTick_Handler|IRQ[0-9]+_Handler|[A-Z][A-Za-z0-9]*_IRQHandler)$'
+    value: '^(SystemInit|Reset_Handler|Default_Handler|NMI_Handler|HardFault_Handler|MemManage_Handler|BusFault_Handler|UsageFault_Handler|SecureFault_Handler|SVC_Handler|DebugMon_Handler|PendSV_Handler|SysTick_Handler|IRQ[0-9]+_Handler|[A-Z][A-Za-z0-9]*_IRQHandler)$'
 
   # Variables: snake_case
   - key: readability-identifier-naming.VariableCase

@@ -57,17 +57,19 @@ extern int main(void);
 
 typedef void (*exc_handler_t)(void);
 
-/* NOLINTNEXTLINE(misc-use-internal-linkage) -- Reset vector target. */
+void SystemInit(void); /* in src/boot/system_init.c */
 void Reset_Handler(void);
-/* NOLINTNEXTLINE(misc-use-internal-linkage) -- Weak-alias base for core exceptions. */
 void Default_Handler(void);
+void HardFault_Handler(void);
+void MemManage_Handler(void);
+void BusFault_Handler(void);
+void UsageFault_Handler(void);
 
-/* Core exceptions (Cortex-M85). */
+/* Core exceptions (Cortex-M85). HardFault / MemManage / BusFault /
+ * UsageFault each get a dedicated naked trampoline below which
+ * forwards to ra_exception_report(). The rest are weak-aliased to
+ * Default_Handler and may be overridden by application code. */
 void NMI_Handler(void) __attribute__((weak, alias("Default_Handler")));
-void HardFault_Handler(void) __attribute__((weak, alias("Default_Handler")));
-void MemManage_Handler(void) __attribute__((weak, alias("Default_Handler")));
-void BusFault_Handler(void) __attribute__((weak, alias("Default_Handler")));
-void UsageFault_Handler(void) __attribute__((weak, alias("Default_Handler")));
 void SecureFault_Handler(void) __attribute__((weak, alias("Default_Handler")));
 void SVC_Handler(void) __attribute__((weak, alias("Default_Handler")));
 void DebugMon_Handler(void) __attribute__((weak, alias("Default_Handler")));
@@ -213,8 +215,8 @@ RA_IRQ_STUB(111);
  * and the reset vector from offset 4.
  */
 
-__attribute__((section(".vectors"),
-               used)) static const exc_handler_t s_vector_table[16U + k_ra_irq_count] = {
+__attribute__((section(".vectors"), used))
+const exc_handler_t g_ra_vector_table_start[16U + k_ra_irq_count] = {
   /* Core exceptions (slots 0..15). */
   (exc_handler_t)&g_ra_ls_stack_top, /* 0  Initial main stack pointer. */
   Reset_Handler,                     /* 1  Reset vector.               */
@@ -358,19 +360,26 @@ __attribute__((section(".vectors"),
 /* NOLINTBEGIN(clang-analyzer-security.ArrayBound,misc-use-internal-linkage) */
 void Reset_Handler(void)
 {
-  /* Copy initialised data from flash/MRAM to SRAM. */
+  /* Step 1: core-level init (VTOR, FPU, caches, priority grouping,
+   * interrupts masked). Runs before we touch .data or .bss so it
+   * must not read or write any global variables. */
+  SystemInit();
+
+  /* Step 2: copy initialised data from flash/MRAM to SRAM. */
   uint32_t* src = &g_ra_ls_sidata;
   uint32_t* dst = &g_ra_ls_sdata;
   while (dst < &g_ra_ls_edata) {
     *dst++ = *src++;
   }
 
-  /* Zero BSS. */
+  /* Step 3: zero BSS. */
   dst = &g_ra_ls_sbss;
   while (dst < &g_ra_ls_ebss) {
     *dst++ = 0U;
   }
 
+  /* Step 4: enter C. `main()` is responsible for enabling interrupts
+   * via `__enable_irq()` once all drivers are ready. */
   (void)main();
 
   /* main() should never return; if it does, halt. */
@@ -378,6 +387,96 @@ void Reset_Handler(void)
     __asm__ volatile("wfi");
   }
 }
+
+/* =============================================================================
+ * HardFault / MemManage / BusFault / UsageFault naked trampolines
+ * =============================================================================
+ *
+ * Each trampoline picks the stack pointer the fault was taken on
+ * (MSP if `EXC_RETURN[2]=0`, PSP otherwise), packs an `exception
+ * number` in `r1`, and tail-calls `ra_exception_report()`. See
+ * `ra_exception.h` for the frame layout and HUM reference.
+ */
+
+extern void ra_exception_report(const void* frame, uint32_t exc_number);
+
+/**
+ * @enum ra_vector_exc_t
+ * @brief Exception numbers matching the Cortex-M vector table slots.
+ */
+typedef enum : uint32_t {
+  k_ra_vector_hardfault  = 3U,
+  k_ra_vector_memmanage  = 4U,
+  k_ra_vector_busfault   = 5U,
+  k_ra_vector_usagefault = 6U,
+} ra_vector_exc_t;
+
+#ifndef RA_SIMULATOR_MODE
+__attribute__((naked, noreturn)) void HardFault_Handler(void)
+{
+  __asm__ volatile("tst lr, #4          \n"
+                   "ite eq              \n"
+                   "mrseq r0, msp       \n"
+                   "mrsne r0, psp       \n"
+                   "mov   r1, #3        \n"
+                   "b     ra_exception_report\n");
+}
+
+__attribute__((naked, noreturn)) void MemManage_Handler(void)
+{
+  __asm__ volatile("tst lr, #4          \n"
+                   "ite eq              \n"
+                   "mrseq r0, msp       \n"
+                   "mrsne r0, psp       \n"
+                   "mov   r1, #4        \n"
+                   "b     ra_exception_report\n");
+}
+
+__attribute__((naked, noreturn)) void BusFault_Handler(void)
+{
+  __asm__ volatile("tst lr, #4          \n"
+                   "ite eq              \n"
+                   "mrseq r0, msp       \n"
+                   "mrsne r0, psp       \n"
+                   "mov   r1, #5        \n"
+                   "b     ra_exception_report\n");
+}
+
+__attribute__((naked, noreturn)) void UsageFault_Handler(void)
+{
+  __asm__ volatile("tst lr, #4          \n"
+                   "ite eq              \n"
+                   "mrseq r0, msp       \n"
+                   "mrsne r0, psp       \n"
+                   "mov   r1, #6        \n"
+                   "b     ra_exception_report\n");
+}
+#else
+/* Host build: fault handlers trap directly to the reporter. The host
+ * compiler does not know `ra_exception_report` is noreturn through
+ * the extern declaration, so we add `__builtin_unreachable()` after
+ * each call to keep the `noreturn` attribute on the handler valid. */
+__attribute__((noreturn)) void HardFault_Handler(void)
+{
+  ra_exception_report(nullptr, (uint32_t)k_ra_vector_hardfault);
+  __builtin_unreachable();
+}
+__attribute__((noreturn)) void MemManage_Handler(void)
+{
+  ra_exception_report(nullptr, (uint32_t)k_ra_vector_memmanage);
+  __builtin_unreachable();
+}
+__attribute__((noreturn)) void BusFault_Handler(void)
+{
+  ra_exception_report(nullptr, (uint32_t)k_ra_vector_busfault);
+  __builtin_unreachable();
+}
+__attribute__((noreturn)) void UsageFault_Handler(void)
+{
+  ra_exception_report(nullptr, (uint32_t)k_ra_vector_usagefault);
+  __builtin_unreachable();
+}
+#endif
 
 /* =============================================================================
  * Default trap

@@ -27,7 +27,9 @@
 #include "ra8d2_port_regs.h"
 #include "ra_check.h"
 #include "ra_err.h"
+#include "ra_gpio_constants.h"
 #include "ra_log.h"
+#include "ra_pin_interface.h"
 #include "ra_pin_validator.h"
 #include "ra_port_constants.h"
 #include "ra_port_utils.h"
@@ -193,3 +195,82 @@ ra_err_t ra_gpio_read(ra_port_pin_t pin, ra_level_t* out_level)
   *out_level              = ((pidr & bit_mask) != 0U) ? k_ra_level_high : k_ra_level_low;
   return k_ra_ok;
 }
+
+ra_err_t ra_gpio_release(ra_port_pin_t pin)
+{
+  return ra_pin_validator_release(pin);
+}
+
+ra_err_t ra_pfs_route_peripheral(ra_port_pin_t pin, ra_psel_t psel, const char* owner)
+{
+  RA_CHECK_NULL_PTR(owner, s_tag, "owner must not be nullptr");
+
+  const ra_port_t port = RA_PIN_PORT(pin);
+  const ra_pin_t  bit  = RA_PIN_PIN(pin);
+  if ((uint8_t)port > (uint8_t)k_ra_port_max) {
+    return k_ra_err_gpio_invalid_port;
+  }
+  if ((uint8_t)bit > (uint8_t)k_ra_pin_max) {
+    return k_ra_err_gpio_invalid_pin;
+  }
+
+  const ra_err_t claim = ra_pin_validator_claim(pin, owner);
+  if (claim != k_ra_ok) {
+    ra_log_error_val(s_tag, "peripheral claim failed", (uint32_t)claim);
+    return claim;
+  }
+
+  volatile uint32_t* pfs = ra_pfs_pmn(port, bit);
+  if (pfs == nullptr) {
+    (void)ra_pin_validator_release(pin);
+    return k_ra_err_hw_unmapped;
+  }
+
+  /* PMR=1 (peripheral), PSEL=requested code, everything else reset. */
+  const uint32_t new_val =
+    (uint32_t)k_ra_pfs_mask_pmr | (((uint32_t)psel) << (uint32_t)k_ra_pfs_bit_psel0);
+
+  ra_pfs_pwpr_unlock();
+  *pfs = new_val;
+  ra_pfs_pwpr_lock();
+
+  ra_log_info_val(s_tag, "peripheral route pin", (uint32_t)pin);
+  return k_ra_ok;
+}
+
+/* =============================================================================
+ * Concrete DI vtable (forwarded thunks)
+ * =============================================================================
+ */
+
+static ra_err_t internal_pin_if_output_init(void* ctx, ra_port_pin_t pin, ra_level_t level)
+{
+  (void)ctx;
+  return ra_gpio_output_init(pin, level);
+}
+
+static ra_err_t internal_pin_if_write(void* ctx, ra_port_pin_t pin, ra_level_t level)
+{
+  (void)ctx;
+  return ra_gpio_write(pin, level);
+}
+
+static ra_err_t internal_pin_if_read(void* ctx, ra_port_pin_t pin, ra_level_t* out)
+{
+  (void)ctx;
+  return ra_gpio_read(pin, out);
+}
+
+static ra_err_t internal_pin_if_toggle(void* ctx, ra_port_pin_t pin)
+{
+  (void)ctx;
+  return ra_gpio_toggle(pin);
+}
+
+const ra_pin_interface_t g_ra_gpio_pin_interface = {
+  .output_init = internal_pin_if_output_init,
+  .write       = internal_pin_if_write,
+  .read        = internal_pin_if_read,
+  .toggle      = internal_pin_if_toggle,
+  .ctx         = nullptr,
+};

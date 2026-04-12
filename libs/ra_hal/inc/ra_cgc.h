@@ -58,6 +58,40 @@ extern "C" {
  */
 [[nodiscard]] ra_err_t ra_cgc_use_hoco(void);
 
+/**
+ * @enum ra_clock_id_t
+ * @brief Identifiers for the clock-tree frequencies queryable at runtime.
+ */
+typedef enum : uint8_t {
+  k_ra_clock_id_cpuclk0 = 0U, /**< Cortex-M85 CPUCLK0.         */
+  k_ra_clock_id_cpuclk1 = 1U, /**< Cortex-M33 CPUCLK1.         */
+  k_ra_clock_id_iclk    = 2U, /**< System ICLK.                */
+  k_ra_clock_id_pclka   = 3U, /**< PCLKA.                      */
+  k_ra_clock_id_pclkb   = 4U, /**< PCLKB.                      */
+  k_ra_clock_id_pclkc   = 5U, /**< PCLKC.                      */
+  k_ra_clock_id_pclkd   = 6U, /**< PCLKD.                      */
+  k_ra_clock_id_pclke   = 7U, /**< PCLKE.                      */
+  k_ra_clock_id_fclk    = 8U, /**< Flash/MRAM interface clock. */
+  k_ra_clock_id_mriclk  = 9U, /**< MRAM bus clock.             */
+} ra_clock_id_t;
+
+/**
+ * @brief Query the current frequency of a clock-tree domain.
+ *
+ * @details
+ * Returns the value last programmed by `ra_cgc_init()` (or the
+ * reset default MOCO value if `ra_cgc_init()` has not yet run).
+ * Drivers that need to compute baud rates or sampling periods
+ * should always go through this function rather than hard-coding
+ * values from `ra_time_constants.h`.
+ *
+ * @param[in]  id      Clock identifier.
+ * @param[out] out_hz  On success, current frequency in Hz.
+ * @return `k_ra_ok` on success, `k_ra_err_invalid_arg` if `out_hz`
+ *         is NULL or `id` is out of range.
+ */
+[[nodiscard]] ra_err_t ra_cgc_get_clock_hz(ra_clock_id_t id, uint32_t* out_hz);
+
 #ifdef __cplusplus
 }
 #endif
