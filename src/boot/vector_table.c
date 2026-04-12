@@ -29,14 +29,19 @@
 /* =============================================================================
  * Linker-provided symbols
  * =============================================================================
+ *
+ * Project convention: linker symbols carry the `g_ra_ls_` prefix so they
+ * are not in the reserved leading-underscore namespace that ISO C (and
+ * cert-dcl37-c / bugprone-reserved-identifier) reject. The linker script
+ * in src/linker_script.ld defines them with this exact spelling.
  */
 
-extern uint32_t _stack_top;   /**< Top of main stack (linker symbol). */
-extern uint32_t _sdata;       /**< Start of .data in SRAM.            */
-extern uint32_t _edata;       /**< End of .data in SRAM.              */
-extern uint32_t _sidata;      /**< Source of .data in MRAM.           */
-extern uint32_t _sbss;        /**< Start of .bss in SRAM.             */
-extern uint32_t _ebss;        /**< End of .bss in SRAM.               */
+extern uint32_t g_ra_ls_stack_top; /**< Top of main stack (linker symbol). */
+extern uint32_t g_ra_ls_sdata;     /**< Start of .data in SRAM.            */
+extern uint32_t g_ra_ls_edata;     /**< End of .data in SRAM.              */
+extern uint32_t g_ra_ls_sidata;    /**< Source of .data in MRAM.           */
+extern uint32_t g_ra_ls_sbss;      /**< Start of .bss in SRAM.             */
+extern uint32_t g_ra_ls_ebss;      /**< End of .bss in SRAM.               */
 
 /* =============================================================================
  * main()
@@ -52,20 +57,22 @@ extern int main(void);
 
 typedef void (*exc_handler_t)(void);
 
+/* NOLINTNEXTLINE(misc-use-internal-linkage) -- Reset vector target. */
 void Reset_Handler(void);
+/* NOLINTNEXTLINE(misc-use-internal-linkage) -- Weak-alias base for core exceptions. */
 void Default_Handler(void);
 
 /* Core exceptions (Cortex-M85). */
-void NMI_Handler(void)          __attribute__((weak, alias("Default_Handler")));
-void HardFault_Handler(void)    __attribute__((weak, alias("Default_Handler")));
-void MemManage_Handler(void)    __attribute__((weak, alias("Default_Handler")));
-void BusFault_Handler(void)     __attribute__((weak, alias("Default_Handler")));
-void UsageFault_Handler(void)   __attribute__((weak, alias("Default_Handler")));
-void SecureFault_Handler(void)  __attribute__((weak, alias("Default_Handler")));
-void SVC_Handler(void)          __attribute__((weak, alias("Default_Handler")));
-void DebugMon_Handler(void)     __attribute__((weak, alias("Default_Handler")));
-void PendSV_Handler(void)       __attribute__((weak, alias("Default_Handler")));
-void SysTick_Handler(void)      __attribute__((weak, alias("Default_Handler")));
+void NMI_Handler(void) __attribute__((weak, alias("Default_Handler")));
+void HardFault_Handler(void) __attribute__((weak, alias("Default_Handler")));
+void MemManage_Handler(void) __attribute__((weak, alias("Default_Handler")));
+void BusFault_Handler(void) __attribute__((weak, alias("Default_Handler")));
+void UsageFault_Handler(void) __attribute__((weak, alias("Default_Handler")));
+void SecureFault_Handler(void) __attribute__((weak, alias("Default_Handler")));
+void SVC_Handler(void) __attribute__((weak, alias("Default_Handler")));
+void DebugMon_Handler(void) __attribute__((weak, alias("Default_Handler")));
+void PendSV_Handler(void) __attribute__((weak, alias("Default_Handler")));
+void SysTick_Handler(void) __attribute__((weak, alias("Default_Handler")));
 
 /* =============================================================================
  * Peripheral IRQ handlers
@@ -80,37 +87,120 @@ enum : uint16_t {
   k_ra_irq_count = 112U,
 };
 
-#define RA_IRQ_STUB(n) \
-  void IRQ##n##_Handler(void) __attribute__((weak, alias("Default_Handler")))
+#define RA_IRQ_STUB(n) void IRQ##n##_Handler(void) __attribute__((weak, alias("Default_Handler")))
 
-RA_IRQ_STUB(0);   RA_IRQ_STUB(1);   RA_IRQ_STUB(2);   RA_IRQ_STUB(3);
-RA_IRQ_STUB(4);   RA_IRQ_STUB(5);   RA_IRQ_STUB(6);   RA_IRQ_STUB(7);
-RA_IRQ_STUB(8);   RA_IRQ_STUB(9);   RA_IRQ_STUB(10);  RA_IRQ_STUB(11);
-RA_IRQ_STUB(12);  RA_IRQ_STUB(13);  RA_IRQ_STUB(14);  RA_IRQ_STUB(15);
-RA_IRQ_STUB(16);  RA_IRQ_STUB(17);  RA_IRQ_STUB(18);  RA_IRQ_STUB(19);
-RA_IRQ_STUB(20);  RA_IRQ_STUB(21);  RA_IRQ_STUB(22);  RA_IRQ_STUB(23);
-RA_IRQ_STUB(24);  RA_IRQ_STUB(25);  RA_IRQ_STUB(26);  RA_IRQ_STUB(27);
-RA_IRQ_STUB(28);  RA_IRQ_STUB(29);  RA_IRQ_STUB(30);  RA_IRQ_STUB(31);
-RA_IRQ_STUB(32);  RA_IRQ_STUB(33);  RA_IRQ_STUB(34);  RA_IRQ_STUB(35);
-RA_IRQ_STUB(36);  RA_IRQ_STUB(37);  RA_IRQ_STUB(38);  RA_IRQ_STUB(39);
-RA_IRQ_STUB(40);  RA_IRQ_STUB(41);  RA_IRQ_STUB(42);  RA_IRQ_STUB(43);
-RA_IRQ_STUB(44);  RA_IRQ_STUB(45);  RA_IRQ_STUB(46);  RA_IRQ_STUB(47);
-RA_IRQ_STUB(48);  RA_IRQ_STUB(49);  RA_IRQ_STUB(50);  RA_IRQ_STUB(51);
-RA_IRQ_STUB(52);  RA_IRQ_STUB(53);  RA_IRQ_STUB(54);  RA_IRQ_STUB(55);
-RA_IRQ_STUB(56);  RA_IRQ_STUB(57);  RA_IRQ_STUB(58);  RA_IRQ_STUB(59);
-RA_IRQ_STUB(60);  RA_IRQ_STUB(61);  RA_IRQ_STUB(62);  RA_IRQ_STUB(63);
-RA_IRQ_STUB(64);  RA_IRQ_STUB(65);  RA_IRQ_STUB(66);  RA_IRQ_STUB(67);
-RA_IRQ_STUB(68);  RA_IRQ_STUB(69);  RA_IRQ_STUB(70);  RA_IRQ_STUB(71);
-RA_IRQ_STUB(72);  RA_IRQ_STUB(73);  RA_IRQ_STUB(74);  RA_IRQ_STUB(75);
-RA_IRQ_STUB(76);  RA_IRQ_STUB(77);  RA_IRQ_STUB(78);  RA_IRQ_STUB(79);
-RA_IRQ_STUB(80);  RA_IRQ_STUB(81);  RA_IRQ_STUB(82);  RA_IRQ_STUB(83);
-RA_IRQ_STUB(84);  RA_IRQ_STUB(85);  RA_IRQ_STUB(86);  RA_IRQ_STUB(87);
-RA_IRQ_STUB(88);  RA_IRQ_STUB(89);  RA_IRQ_STUB(90);  RA_IRQ_STUB(91);
-RA_IRQ_STUB(92);  RA_IRQ_STUB(93);  RA_IRQ_STUB(94);  RA_IRQ_STUB(95);
-RA_IRQ_STUB(96);  RA_IRQ_STUB(97);  RA_IRQ_STUB(98);  RA_IRQ_STUB(99);
-RA_IRQ_STUB(100); RA_IRQ_STUB(101); RA_IRQ_STUB(102); RA_IRQ_STUB(103);
-RA_IRQ_STUB(104); RA_IRQ_STUB(105); RA_IRQ_STUB(106); RA_IRQ_STUB(107);
-RA_IRQ_STUB(108); RA_IRQ_STUB(109); RA_IRQ_STUB(110); RA_IRQ_STUB(111);
+RA_IRQ_STUB(0);
+RA_IRQ_STUB(1);
+RA_IRQ_STUB(2);
+RA_IRQ_STUB(3);
+RA_IRQ_STUB(4);
+RA_IRQ_STUB(5);
+RA_IRQ_STUB(6);
+RA_IRQ_STUB(7);
+RA_IRQ_STUB(8);
+RA_IRQ_STUB(9);
+RA_IRQ_STUB(10);
+RA_IRQ_STUB(11);
+RA_IRQ_STUB(12);
+RA_IRQ_STUB(13);
+RA_IRQ_STUB(14);
+RA_IRQ_STUB(15);
+RA_IRQ_STUB(16);
+RA_IRQ_STUB(17);
+RA_IRQ_STUB(18);
+RA_IRQ_STUB(19);
+RA_IRQ_STUB(20);
+RA_IRQ_STUB(21);
+RA_IRQ_STUB(22);
+RA_IRQ_STUB(23);
+RA_IRQ_STUB(24);
+RA_IRQ_STUB(25);
+RA_IRQ_STUB(26);
+RA_IRQ_STUB(27);
+RA_IRQ_STUB(28);
+RA_IRQ_STUB(29);
+RA_IRQ_STUB(30);
+RA_IRQ_STUB(31);
+RA_IRQ_STUB(32);
+RA_IRQ_STUB(33);
+RA_IRQ_STUB(34);
+RA_IRQ_STUB(35);
+RA_IRQ_STUB(36);
+RA_IRQ_STUB(37);
+RA_IRQ_STUB(38);
+RA_IRQ_STUB(39);
+RA_IRQ_STUB(40);
+RA_IRQ_STUB(41);
+RA_IRQ_STUB(42);
+RA_IRQ_STUB(43);
+RA_IRQ_STUB(44);
+RA_IRQ_STUB(45);
+RA_IRQ_STUB(46);
+RA_IRQ_STUB(47);
+RA_IRQ_STUB(48);
+RA_IRQ_STUB(49);
+RA_IRQ_STUB(50);
+RA_IRQ_STUB(51);
+RA_IRQ_STUB(52);
+RA_IRQ_STUB(53);
+RA_IRQ_STUB(54);
+RA_IRQ_STUB(55);
+RA_IRQ_STUB(56);
+RA_IRQ_STUB(57);
+RA_IRQ_STUB(58);
+RA_IRQ_STUB(59);
+RA_IRQ_STUB(60);
+RA_IRQ_STUB(61);
+RA_IRQ_STUB(62);
+RA_IRQ_STUB(63);
+RA_IRQ_STUB(64);
+RA_IRQ_STUB(65);
+RA_IRQ_STUB(66);
+RA_IRQ_STUB(67);
+RA_IRQ_STUB(68);
+RA_IRQ_STUB(69);
+RA_IRQ_STUB(70);
+RA_IRQ_STUB(71);
+RA_IRQ_STUB(72);
+RA_IRQ_STUB(73);
+RA_IRQ_STUB(74);
+RA_IRQ_STUB(75);
+RA_IRQ_STUB(76);
+RA_IRQ_STUB(77);
+RA_IRQ_STUB(78);
+RA_IRQ_STUB(79);
+RA_IRQ_STUB(80);
+RA_IRQ_STUB(81);
+RA_IRQ_STUB(82);
+RA_IRQ_STUB(83);
+RA_IRQ_STUB(84);
+RA_IRQ_STUB(85);
+RA_IRQ_STUB(86);
+RA_IRQ_STUB(87);
+RA_IRQ_STUB(88);
+RA_IRQ_STUB(89);
+RA_IRQ_STUB(90);
+RA_IRQ_STUB(91);
+RA_IRQ_STUB(92);
+RA_IRQ_STUB(93);
+RA_IRQ_STUB(94);
+RA_IRQ_STUB(95);
+RA_IRQ_STUB(96);
+RA_IRQ_STUB(97);
+RA_IRQ_STUB(98);
+RA_IRQ_STUB(99);
+RA_IRQ_STUB(100);
+RA_IRQ_STUB(101);
+RA_IRQ_STUB(102);
+RA_IRQ_STUB(103);
+RA_IRQ_STUB(104);
+RA_IRQ_STUB(105);
+RA_IRQ_STUB(106);
+RA_IRQ_STUB(107);
+RA_IRQ_STUB(108);
+RA_IRQ_STUB(109);
+RA_IRQ_STUB(110);
+RA_IRQ_STUB(111);
 
 #undef RA_IRQ_STUB
 
@@ -123,42 +213,140 @@ RA_IRQ_STUB(108); RA_IRQ_STUB(109); RA_IRQ_STUB(110); RA_IRQ_STUB(111);
  * and the reset vector from offset 4.
  */
 
-__attribute__((section(".vectors"), used))
-static const exc_handler_t s_vector_table[16U + k_ra_irq_count] = {
+__attribute__((section(".vectors"),
+               used)) static const exc_handler_t s_vector_table[16U + k_ra_irq_count] = {
   /* Core exceptions (slots 0..15). */
-  (exc_handler_t)&_stack_top,  /* 0  Initial main stack pointer. */
-  Reset_Handler,               /* 1  Reset vector.               */
-  NMI_Handler,                 /* 2  NMI.                        */
-  HardFault_Handler,           /* 3  HardFault.                  */
-  MemManage_Handler,           /* 4  MemManage.                  */
-  BusFault_Handler,            /* 5  BusFault.                   */
-  UsageFault_Handler,          /* 6  UsageFault.                 */
-  SecureFault_Handler,         /* 7  SecureFault.                */
-  0,                           /* 8  Reserved.                   */
-  0,                           /* 9  Reserved.                   */
-  0,                           /* 10 Reserved.                   */
-  SVC_Handler,                 /* 11 SVC.                        */
-  DebugMon_Handler,            /* 12 DebugMon.                   */
-  0,                           /* 13 Reserved.                   */
-  PendSV_Handler,              /* 14 PendSV.                     */
-  SysTick_Handler,             /* 15 SysTick.                    */
+  (exc_handler_t)&g_ra_ls_stack_top, /* 0  Initial main stack pointer. */
+  Reset_Handler,                     /* 1  Reset vector.               */
+  NMI_Handler,                       /* 2  NMI.                        */
+  HardFault_Handler,                 /* 3  HardFault.                  */
+  MemManage_Handler,                 /* 4  MemManage.                  */
+  BusFault_Handler,                  /* 5  BusFault.                   */
+  UsageFault_Handler,                /* 6  UsageFault.                 */
+  SecureFault_Handler,               /* 7  SecureFault.                */
+  0,                                 /* 8  Reserved.                   */
+  0,                                 /* 9  Reserved.                   */
+  0,                                 /* 10 Reserved.                   */
+  SVC_Handler,                       /* 11 SVC.                        */
+  DebugMon_Handler,                  /* 12 DebugMon.                   */
+  0,                                 /* 13 Reserved.                   */
+  PendSV_Handler,                    /* 14 PendSV.                     */
+  SysTick_Handler,                   /* 15 SysTick.                    */
 
-  /* Peripheral IRQs 0..111. */
+/* Peripheral IRQs 0..111. */
 #define E(n) IRQ##n##_Handler
-  E(0),   E(1),   E(2),   E(3),   E(4),   E(5),   E(6),   E(7),
-  E(8),   E(9),   E(10),  E(11),  E(12),  E(13),  E(14),  E(15),
-  E(16),  E(17),  E(18),  E(19),  E(20),  E(21),  E(22),  E(23),
-  E(24),  E(25),  E(26),  E(27),  E(28),  E(29),  E(30),  E(31),
-  E(32),  E(33),  E(34),  E(35),  E(36),  E(37),  E(38),  E(39),
-  E(40),  E(41),  E(42),  E(43),  E(44),  E(45),  E(46),  E(47),
-  E(48),  E(49),  E(50),  E(51),  E(52),  E(53),  E(54),  E(55),
-  E(56),  E(57),  E(58),  E(59),  E(60),  E(61),  E(62),  E(63),
-  E(64),  E(65),  E(66),  E(67),  E(68),  E(69),  E(70),  E(71),
-  E(72),  E(73),  E(74),  E(75),  E(76),  E(77),  E(78),  E(79),
-  E(80),  E(81),  E(82),  E(83),  E(84),  E(85),  E(86),  E(87),
-  E(88),  E(89),  E(90),  E(91),  E(92),  E(93),  E(94),  E(95),
-  E(96),  E(97),  E(98),  E(99),  E(100), E(101), E(102), E(103),
-  E(104), E(105), E(106), E(107), E(108), E(109), E(110), E(111),
+  E(0),
+  E(1),
+  E(2),
+  E(3),
+  E(4),
+  E(5),
+  E(6),
+  E(7),
+  E(8),
+  E(9),
+  E(10),
+  E(11),
+  E(12),
+  E(13),
+  E(14),
+  E(15),
+  E(16),
+  E(17),
+  E(18),
+  E(19),
+  E(20),
+  E(21),
+  E(22),
+  E(23),
+  E(24),
+  E(25),
+  E(26),
+  E(27),
+  E(28),
+  E(29),
+  E(30),
+  E(31),
+  E(32),
+  E(33),
+  E(34),
+  E(35),
+  E(36),
+  E(37),
+  E(38),
+  E(39),
+  E(40),
+  E(41),
+  E(42),
+  E(43),
+  E(44),
+  E(45),
+  E(46),
+  E(47),
+  E(48),
+  E(49),
+  E(50),
+  E(51),
+  E(52),
+  E(53),
+  E(54),
+  E(55),
+  E(56),
+  E(57),
+  E(58),
+  E(59),
+  E(60),
+  E(61),
+  E(62),
+  E(63),
+  E(64),
+  E(65),
+  E(66),
+  E(67),
+  E(68),
+  E(69),
+  E(70),
+  E(71),
+  E(72),
+  E(73),
+  E(74),
+  E(75),
+  E(76),
+  E(77),
+  E(78),
+  E(79),
+  E(80),
+  E(81),
+  E(82),
+  E(83),
+  E(84),
+  E(85),
+  E(86),
+  E(87),
+  E(88),
+  E(89),
+  E(90),
+  E(91),
+  E(92),
+  E(93),
+  E(94),
+  E(95),
+  E(96),
+  E(97),
+  E(98),
+  E(99),
+  E(100),
+  E(101),
+  E(102),
+  E(103),
+  E(104),
+  E(105),
+  E(106),
+  E(107),
+  E(108),
+  E(109),
+  E(110),
+  E(111),
 #undef E
 };
 
@@ -167,18 +355,19 @@ static const exc_handler_t s_vector_table[16U + k_ra_irq_count] = {
  * =============================================================================
  */
 
+/* NOLINTBEGIN(clang-analyzer-security.ArrayBound,misc-use-internal-linkage) */
 void Reset_Handler(void)
 {
   /* Copy initialised data from flash/MRAM to SRAM. */
-  uint32_t* src = &_sidata;
-  uint32_t* dst = &_sdata;
-  while (dst < &_edata) {
+  uint32_t* src = &g_ra_ls_sidata;
+  uint32_t* dst = &g_ra_ls_sdata;
+  while (dst < &g_ra_ls_edata) {
     *dst++ = *src++;
   }
 
   /* Zero BSS. */
-  dst = &_sbss;
-  while (dst < &_ebss) {
+  dst = &g_ra_ls_sbss;
+  while (dst < &g_ra_ls_ebss) {
     *dst++ = 0U;
   }
 
@@ -198,8 +387,11 @@ void Reset_Handler(void)
 void Default_Handler(void)
 {
   /* Stop here so an attached debugger can inspect stack / faults. */
+#ifndef RA_SIMULATOR_MODE
   __asm__ volatile("bkpt #0");
   while (1) {
     __asm__ volatile("wfi");
   }
+#endif
 }
+/* NOLINTEND(clang-analyzer-security.ArrayBound,misc-use-internal-linkage) */

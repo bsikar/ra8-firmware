@@ -123,12 +123,13 @@ static inline void internal_itm_puts(const char* s)
  * @brief Emit an unsigned decimal integer over ITM port 0.
  * @param[in] value Value to emit.
  */
+typedef enum : uint8_t {
+  k_ra_u32_max_digits = 10U, /**< Max decimal digits in a uint32_t. */
+  k_ra_decimal_base   = 10U, /**< Decimal radix.                    */
+} ra_log_u32_t;
+
 static inline void internal_itm_put_u32(uint32_t value)
 {
-  /* 10 decimal digits max for uint32_t + null terminator. */
-  enum : uint8_t {
-    k_ra_u32_max_digits = 10U,
-  };
   char    buf[k_ra_u32_max_digits + 1U] = {};
   uint8_t i                             = 0U;
   if (value == 0U) {
@@ -136,8 +137,8 @@ static inline void internal_itm_put_u32(uint32_t value)
     return;
   }
   while (value != 0U && i < k_ra_u32_max_digits) {
-    buf[i++] = (char)('0' + (char)(value % 10U));
-    value /= 10U;
+    buf[i++] = (char)('0' + (char)(value % (uint32_t)k_ra_decimal_base));
+    value /= (uint32_t)k_ra_decimal_base;
   }
   /* Digits were pushed LSB-first; emit MSB-first. */
   while (i > 0U) {
@@ -199,10 +200,8 @@ static void internal_emit_line(const char* level, const char* tag, const char* m
 /**
  * @brief Common tagged-line-with-value emit helper (unsigned).
  */
-static void internal_emit_line_u(const char* level,
-                                 const char* tag,
-                                 const char* msg,
-                                 uint32_t    value)
+static void
+internal_emit_line_u(const char* level, const char* tag, const char* msg, uint32_t value)
 {
   if (!internal_itm_ready()) {
     return;
@@ -224,10 +223,7 @@ static void internal_emit_line_u(const char* level,
 /**
  * @brief Common tagged-line-with-value emit helper (signed).
  */
-static void internal_emit_line_i(const char* level,
-                                 const char* tag,
-                                 const char* msg,
-                                 int32_t     value)
+static void internal_emit_line_i(const char* level, const char* tag, const char* msg, int32_t value)
 {
   if (!internal_itm_ready()) {
     return;
@@ -270,30 +266,26 @@ __attribute__((weak)) void internal_ra_log_debug(const char* tag, const char* me
 
 /* ---- string + value log ------------------------------------------------- */
 
-__attribute__((weak)) void internal_ra_log_error_val(const char* tag,
-                                                     const char* message,
-                                                     uint32_t    value)
+__attribute__((weak)) void
+internal_ra_log_error_val(const char* tag, const char* message, uint32_t value)
 {
   internal_emit_line_u("ERROR", tag, message, value);
 }
 
-__attribute__((weak)) void internal_ra_log_warn_val(const char* tag,
-                                                    const char* message,
-                                                    uint32_t    value)
+__attribute__((weak)) void
+internal_ra_log_warn_val(const char* tag, const char* message, uint32_t value)
 {
   internal_emit_line_u("WARN", tag, message, value);
 }
 
-__attribute__((weak)) void internal_ra_log_info_val(const char* tag,
-                                                    const char* message,
-                                                    uint32_t    value)
+__attribute__((weak)) void
+internal_ra_log_info_val(const char* tag, const char* message, uint32_t value)
 {
   internal_emit_line_u("INFO", tag, message, value);
 }
 
-__attribute__((weak)) void internal_ra_log_debug_val(const char* tag,
-                                                     const char* message,
-                                                     int32_t     value)
+__attribute__((weak)) void
+internal_ra_log_debug_val(const char* tag, const char* message, int32_t value)
 {
   internal_emit_line_i("DEBUG", tag, message, value);
 }
@@ -305,54 +297,101 @@ __attribute__((weak)) void internal_ra_log_debug_val(const char* tag,
 
 #include "ra_err.h"
 
+/* NOLINTNEXTLINE(readability-function-size) -- lookup table by design. */
 const char* ra_err_to_str(ra_err_t err)
 {
   switch (err) {
-    case k_ra_ok:                      return "ok";
-    case k_ra_fail:                    return "fail";
-    case k_ra_err_no_mem:              return "no_mem";
-    case k_ra_err_invalid_arg:         return "invalid_arg";
-    case k_ra_err_invalid_state:       return "invalid_state";
-    case k_ra_err_invalid_size:        return "invalid_size";
-    case k_ra_err_not_found:           return "not_found";
-    case k_ra_err_not_supported:       return "not_supported";
-    case k_ra_err_timeout:             return "timeout";
-    case k_ra_err_busy:                return "busy";
-    case k_ra_err_no_data:             return "no_data";
-    case k_ra_err_would_block:         return "would_block";
-    case k_ra_err_exists:              return "exists";
-    case k_ra_err_empty:               return "empty";
-    case k_ra_err_cancelled:           return "cancelled";
-    case k_ra_err_not_initialized:     return "not_initialized";
-    case k_ra_err_estop:               return "estop";
-    case k_ra_err_hw_init_failed:      return "hw_init_failed";
-    case k_ra_err_hw_not_ready:        return "hw_not_ready";
-    case k_ra_err_hw_timeout:          return "hw_timeout";
-    case k_ra_err_hw_error:            return "hw_error";
-    case k_ra_err_gpio_conflict:       return "gpio_conflict";
-    case k_ra_err_gpio_invalid_port:   return "gpio_invalid_port";
-    case k_ra_err_gpio_invalid_pin:    return "gpio_invalid_pin";
-    case k_ra_err_out_of_range:        return "out_of_range";
-    case k_ra_err_hw_unmapped:         return "hw_unmapped";
-    case k_ra_err_rtos_error:          return "rtos_error";
-    case k_ra_err_rtos_thread_create:  return "rtos_thread_create";
-    case k_ra_err_rtos_semaphore:      return "rtos_semaphore";
-    case k_ra_err_rtos_mutex:          return "rtos_mutex";
-    case k_ra_err_rtos_queue:          return "rtos_queue";
-    case k_ra_err_rtos_timer:          return "rtos_timer";
-    case k_ra_err_comm_error:          return "comm_error";
-    case k_ra_err_spi_error:           return "spi_error";
-    case k_ra_err_uart_error:          return "uart_error";
-    case k_ra_err_i2c_error:           return "i2c_error";
-    case k_ra_err_crc_mismatch:        return "crc_mismatch";
-    case k_ra_err_protocol_error:      return "protocol_error";
-    case k_ra_err_nack:                return "nack";
-    case k_ra_err_conflict:            return "conflict";
-    case k_ra_err_retry_limit:         return "retry_limit";
-    case k_ra_err_validation_failed:   return "validation_failed";
-    case k_ra_err_checksum_mismatch:   return "checksum_mismatch";
-    case k_ra_err_range_check_failed:  return "range_check_failed";
-    case k_ra_err_null_ptr:            return "null_ptr";
-    default:                           return "unknown";
+    case k_ra_ok:
+      return "ok";
+    case k_ra_fail:
+      return "fail";
+    case k_ra_err_no_mem:
+      return "no_mem";
+    case k_ra_err_invalid_arg:
+      return "invalid_arg";
+    case k_ra_err_invalid_state:
+      return "invalid_state";
+    case k_ra_err_invalid_size:
+      return "invalid_size";
+    case k_ra_err_not_found:
+      return "not_found";
+    case k_ra_err_not_supported:
+      return "not_supported";
+    case k_ra_err_timeout:
+      return "timeout";
+    case k_ra_err_busy:
+      return "busy";
+    case k_ra_err_no_data:
+      return "no_data";
+    case k_ra_err_would_block:
+      return "would_block";
+    case k_ra_err_exists:
+      return "exists";
+    case k_ra_err_empty:
+      return "empty";
+    case k_ra_err_cancelled:
+      return "cancelled";
+    case k_ra_err_not_initialized:
+      return "not_initialized";
+    case k_ra_err_estop:
+      return "estop";
+    case k_ra_err_hw_init_failed:
+      return "hw_init_failed";
+    case k_ra_err_hw_not_ready:
+      return "hw_not_ready";
+    case k_ra_err_hw_timeout:
+      return "hw_timeout";
+    case k_ra_err_hw_error:
+      return "hw_error";
+    case k_ra_err_gpio_conflict:
+      return "gpio_conflict";
+    case k_ra_err_gpio_invalid_port:
+      return "gpio_invalid_port";
+    case k_ra_err_gpio_invalid_pin:
+      return "gpio_invalid_pin";
+    case k_ra_err_out_of_range:
+      return "out_of_range";
+    case k_ra_err_hw_unmapped:
+      return "hw_unmapped";
+    case k_ra_err_rtos_error:
+      return "rtos_error";
+    case k_ra_err_rtos_thread_create:
+      return "rtos_thread_create";
+    case k_ra_err_rtos_semaphore:
+      return "rtos_semaphore";
+    case k_ra_err_rtos_mutex:
+      return "rtos_mutex";
+    case k_ra_err_rtos_queue:
+      return "rtos_queue";
+    case k_ra_err_rtos_timer:
+      return "rtos_timer";
+    case k_ra_err_comm_error:
+      return "comm_error";
+    case k_ra_err_spi_error:
+      return "spi_error";
+    case k_ra_err_uart_error:
+      return "uart_error";
+    case k_ra_err_i2c_error:
+      return "i2c_error";
+    case k_ra_err_crc_mismatch:
+      return "crc_mismatch";
+    case k_ra_err_protocol_error:
+      return "protocol_error";
+    case k_ra_err_nack:
+      return "nack";
+    case k_ra_err_conflict:
+      return "conflict";
+    case k_ra_err_retry_limit:
+      return "retry_limit";
+    case k_ra_err_validation_failed:
+      return "validation_failed";
+    case k_ra_err_checksum_mismatch:
+      return "checksum_mismatch";
+    case k_ra_err_range_check_failed:
+      return "range_check_failed";
+    case k_ra_err_null_ptr:
+      return "null_ptr";
+    default:
+      return "unknown";
   }
 }

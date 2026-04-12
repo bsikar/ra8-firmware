@@ -30,23 +30,23 @@ typedef enum : uintptr_t {
  * @brief Polynomial selection values written to CRCCR0.GPS[2:0].
  */
 typedef enum : uint8_t {
-  k_ra_crc_poly_none          = 0U, /**< No calculation.             */
-  k_ra_crc_poly_8_ccitt       = 1U, /**< x^8 + x^2 + x + 1.          */
-  k_ra_crc_poly_8             = 2U, /**< x^8 + x^5 + x^4 + 1.        */
-  k_ra_crc_poly_16_ccitt      = 3U, /**< x^16 + x^12 + x^5 + 1.      */
-  k_ra_crc_poly_16            = 4U, /**< x^16 + x^15 + x^2 + 1.      */
-  k_ra_crc_poly_32_ieee802_3  = 6U, /**< IEEE-802.3 CRC-32.          */
-  k_ra_crc_poly_32c_rev       = 7U, /**< CRC-32C (Castagnoli), rev.  */
+  k_ra_crc_poly_none         = 0U, /**< No calculation.             */
+  k_ra_crc_poly_8_ccitt      = 1U, /**< x^8 + x^2 + x + 1.          */
+  k_ra_crc_poly_8            = 2U, /**< x^8 + x^5 + x^4 + 1.        */
+  k_ra_crc_poly_16_ccitt     = 3U, /**< x^16 + x^12 + x^5 + 1.      */
+  k_ra_crc_poly_16           = 4U, /**< x^16 + x^15 + x^2 + 1.      */
+  k_ra_crc_poly_32_ieee802_3 = 6U, /**< IEEE-802.3 CRC-32.          */
+  k_ra_crc_poly_32c_rev      = 7U, /**< CRC-32C (Castagnoli), rev.  */
 } ra_crc_poly_t;
 
 typedef struct {
-  volatile uint8_t  CRCCR0;    /**< +0x00 Control Register 0.   */
+  volatile uint8_t  CRCCR0; /**< +0x00 Control Register 0.   */
   volatile uint8_t  _r0;
-  volatile uint8_t  CRCCR1;    /**< +0x02 Control Register 1.   */
+  volatile uint8_t  CRCCR1; /**< +0x02 Control Register 1.   */
   volatile uint8_t  _r1;
-  volatile uint32_t CRCDIR;    /**< +0x04 Input Data (word).    */
-  volatile uint32_t CRCDOR;    /**< +0x08 Output Data (word).   */
-  volatile uint32_t CRCSAR;    /**< +0x0C SNOOP Address Reg.    */
+  volatile uint32_t CRCDIR; /**< +0x04 Input Data (word).    */
+  volatile uint32_t CRCDOR; /**< +0x08 Output Data (word).   */
+  volatile uint32_t CRCSAR; /**< +0x0C SNOOP Address Reg.    */
 } r_crc_regs_t;
 
 /** @brief Get pointer to the CRC block. */

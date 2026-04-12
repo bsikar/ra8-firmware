@@ -57,6 +57,9 @@ static inline volatile uint32_t* internal_cpacr(void)
  */
 static void internal_enable_fpu(void)
 {
+#ifdef RA_SIMULATOR_MODE
+  /* Host build has no CPACR. */
+#else
   enum : uint32_t {
     k_ra_cpacr_cp10_cp11_full_access = 0x00F00000UL,
   };
@@ -64,6 +67,7 @@ static void internal_enable_fpu(void)
   *cpacr |= k_ra_cpacr_cp10_cp11_full_access;
   __asm__ volatile("dsb");
   __asm__ volatile("isb");
+#endif
 }
 
 /* =============================================================================

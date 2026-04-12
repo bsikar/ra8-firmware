@@ -40,8 +40,8 @@ typedef enum : uint8_t {
 typedef struct {
   volatile uint8_t  WDTRR; /**< +0x00 Refresh register.  */
   volatile uint8_t  _r0;
-  volatile uint16_t WDTCR; /**< +0x02 Control register.  */
-  volatile uint16_t WDTSR; /**< +0x04 Status register.   */
+  volatile uint16_t WDTCR;  /**< +0x02 Control register.  */
+  volatile uint16_t WDTSR;  /**< +0x04 Status register.   */
   volatile uint8_t  WDTRCR; /**< +0x06 Reset control.    */
 } r_wdt_regs_t;
 
@@ -55,8 +55,8 @@ static inline volatile r_wdt_regs_t* ra_wdt(void)
 static inline void ra_wdt_refresh(void)
 {
   volatile r_wdt_regs_t* w = ra_wdt();
-  w->WDTRR = (uint8_t)k_ra_wdt_refresh_a;
-  w->WDTRR = (uint8_t)k_ra_wdt_refresh_b;
+  w->WDTRR                 = (uint8_t)k_ra_wdt_refresh_a;
+  w->WDTRR                 = (uint8_t)k_ra_wdt_refresh_b;
 }
 
 #ifdef __cplusplus

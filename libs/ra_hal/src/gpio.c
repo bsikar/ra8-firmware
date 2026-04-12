@@ -21,8 +21,6 @@
  * SPDX-License-Identifier: MIT
  */
 
-#include "ra_port_utils.h"
-
 #include <stdint.h>
 
 #include "ra8d2_pfs_regs.h"
@@ -32,6 +30,7 @@
 #include "ra_log.h"
 #include "ra_pin_validator.h"
 #include "ra_port_constants.h"
+#include "ra_port_utils.h"
 
 static const char* s_tag = "GPIO";
 
@@ -75,9 +74,8 @@ ra_err_t ra_gpio_output_init(ra_port_pin_t pin, ra_level_t init_level)
     return k_ra_err_hw_unmapped;
   }
 
-  const uint32_t new_val =
-    (uint32_t)((init_level == k_ra_level_high) ? k_ra_pfs_mask_podr : 0U) |
-    (uint32_t)k_ra_pfs_mask_pdr;
+  const uint32_t new_val = (uint32_t)((init_level == k_ra_level_high) ? k_ra_pfs_mask_podr : 0U) |
+                           (uint32_t)k_ra_pfs_mask_pdr;
 
   ra_pfs_pwpr_unlock();
   *pfs = new_val;
@@ -168,7 +166,7 @@ ra_err_t ra_gpio_toggle(ra_port_pin_t pin)
   if ((podr & bit_mask) != 0U) {
     port_regs->PCNTR3 = bit_mask << (uint32_t)k_ra_pcntr_high_half_shift; /* PORR clear */
   } else {
-    port_regs->PCNTR3 = bit_mask;                                         /* POSR set   */
+    port_regs->PCNTR3 = bit_mask; /* POSR set   */
   }
   return k_ra_ok;
 }

@@ -46,6 +46,7 @@
 extern "C" {
 #endif
 
+#include <stddef.h>
 #include <stdint.h>
 
 #include "ra_bit_constants.h"
@@ -172,8 +173,8 @@ static inline uint8_t ra_mstp_id_bit(ra_mstp_t id)
  */
 static inline void ra_mstp_enable(ra_mstp_t id)
 {
-  const uint8_t     reg  = (uint8_t)ra_mstp_id_reg(id);
-  const uint8_t     bit  = ra_mstp_id_bit(id);
+  const uint8_t      reg  = (uint8_t)ra_mstp_id_reg(id);
+  const uint8_t      bit  = ra_mstp_id_bit(id);
   volatile uint32_t* base = &ra_mstp()->MSTPCRA;
   base[reg] &= ~(1UL << bit);
 }
@@ -187,8 +188,8 @@ static inline void ra_mstp_enable(ra_mstp_t id)
  */
 static inline void ra_mstp_disable(ra_mstp_t id)
 {
-  const uint8_t     reg  = (uint8_t)ra_mstp_id_reg(id);
-  const uint8_t     bit  = ra_mstp_id_bit(id);
+  const uint8_t      reg  = (uint8_t)ra_mstp_id_reg(id);
+  const uint8_t      bit  = ra_mstp_id_bit(id);
   volatile uint32_t* base = &ra_mstp()->MSTPCRA;
   base[reg] |= (1UL << bit);
 }

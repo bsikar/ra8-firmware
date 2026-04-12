@@ -60,10 +60,10 @@ typedef enum : uintptr_t {
 } ra_sci_base_addr_t;
 
 typedef enum : uint16_t {
-  k_ra_sci_channel_count   = 10U,  /**< SCI0..SCI9.                      */
-  k_ra_sci_channel_max     = 9U,   /**< Highest valid channel index.     */
-  k_ra_sci_channel_stride  = 0x100U, /**< Bytes between SCI channels.    */
-  k_ra_sci_reserved_padding_bytes = 3U, /**< Bytes of reserved padding
+  k_ra_sci_channel_count          = 10U,    /**< SCI0..SCI9.                      */
+  k_ra_sci_channel_max            = 9U,     /**< Highest valid channel index.     */
+  k_ra_sci_channel_stride         = 0x100U, /**< Bytes between SCI channels.    */
+  k_ra_sci_reserved_padding_bytes = 3U,     /**< Bytes of reserved padding
                                              after SEMR+SNFR block.      */
 } ra_sci_limits_t;
 
@@ -82,17 +82,17 @@ typedef enum : uint16_t {
  * are added as drivers need them.
  */
 typedef struct {
-  volatile uint8_t  SMR;   /**< +0x00 Serial Mode.       */
-  volatile uint8_t  BRR;   /**< +0x01 Bit Rate.          */
-  volatile uint8_t  SCR;   /**< +0x02 Serial Control.    */
-  volatile uint8_t  TDR;   /**< +0x03 Transmit Data.     */
-  volatile uint8_t  SSR;   /**< +0x04 Serial Status.     */
-  volatile uint8_t  RDR;   /**< +0x05 Receive Data.      */
-  volatile uint8_t  SCMR;  /**< +0x06 Smart Card Mode.   */
-  volatile uint8_t  SEMR;  /**< +0x07 Ext Mode.          */
-  volatile uint8_t  SNFR;  /**< +0x08 Noise Filter.      */
-  volatile uint8_t  _r0[k_ra_sci_reserved_padding_bytes];
-  volatile uint8_t  SPMR;  /**< +0x0C SPI Mode.          */
+  volatile uint8_t SMR;  /**< +0x00 Serial Mode.       */
+  volatile uint8_t BRR;  /**< +0x01 Bit Rate.          */
+  volatile uint8_t SCR;  /**< +0x02 Serial Control.    */
+  volatile uint8_t TDR;  /**< +0x03 Transmit Data.     */
+  volatile uint8_t SSR;  /**< +0x04 Serial Status.     */
+  volatile uint8_t RDR;  /**< +0x05 Receive Data.      */
+  volatile uint8_t SCMR; /**< +0x06 Smart Card Mode.   */
+  volatile uint8_t SEMR; /**< +0x07 Ext Mode.          */
+  volatile uint8_t SNFR; /**< +0x08 Noise Filter.      */
+  volatile uint8_t _r0[k_ra_sci_reserved_padding_bytes];
+  volatile uint8_t SPMR; /**< +0x0C SPI Mode.          */
 } r_sci_regs_t;
 
 /* =============================================================================

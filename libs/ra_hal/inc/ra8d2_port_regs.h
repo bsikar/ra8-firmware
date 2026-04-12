@@ -49,6 +49,7 @@
 extern "C" {
 #endif
 
+#include <stddef.h>
 #include <stdint.h>
 
 #include "ra_bit_constants.h"
@@ -161,35 +162,80 @@ static inline volatile r_port_regs_t* ra_port(ra_port_t port)
 }
 
 /** @brief Get PORT0 registers. */
-static inline volatile r_port_regs_t* ra_port0(void) { return (volatile r_port_regs_t*)k_ra_port0_base_addr; }
+static inline volatile r_port_regs_t* ra_port0(void)
+{
+  return (volatile r_port_regs_t*)k_ra_port0_base_addr;
+}
 /** @brief Get PORT1 registers. */
-static inline volatile r_port_regs_t* ra_port1(void) { return (volatile r_port_regs_t*)k_ra_port1_base_addr; }
+static inline volatile r_port_regs_t* ra_port1(void)
+{
+  return (volatile r_port_regs_t*)k_ra_port1_base_addr;
+}
 /** @brief Get PORT2 registers. */
-static inline volatile r_port_regs_t* ra_port2(void) { return (volatile r_port_regs_t*)k_ra_port2_base_addr; }
+static inline volatile r_port_regs_t* ra_port2(void)
+{
+  return (volatile r_port_regs_t*)k_ra_port2_base_addr;
+}
 /** @brief Get PORT3 registers. */
-static inline volatile r_port_regs_t* ra_port3(void) { return (volatile r_port_regs_t*)k_ra_port3_base_addr; }
+static inline volatile r_port_regs_t* ra_port3(void)
+{
+  return (volatile r_port_regs_t*)k_ra_port3_base_addr;
+}
 /** @brief Get PORT4 registers. */
-static inline volatile r_port_regs_t* ra_port4(void) { return (volatile r_port_regs_t*)k_ra_port4_base_addr; }
+static inline volatile r_port_regs_t* ra_port4(void)
+{
+  return (volatile r_port_regs_t*)k_ra_port4_base_addr;
+}
 /** @brief Get PORT5 registers. */
-static inline volatile r_port_regs_t* ra_port5(void) { return (volatile r_port_regs_t*)k_ra_port5_base_addr; }
+static inline volatile r_port_regs_t* ra_port5(void)
+{
+  return (volatile r_port_regs_t*)k_ra_port5_base_addr;
+}
 /** @brief Get PORT6 registers. */
-static inline volatile r_port_regs_t* ra_port6(void) { return (volatile r_port_regs_t*)k_ra_port6_base_addr; }
+static inline volatile r_port_regs_t* ra_port6(void)
+{
+  return (volatile r_port_regs_t*)k_ra_port6_base_addr;
+}
 /** @brief Get PORT7 registers. */
-static inline volatile r_port_regs_t* ra_port7(void) { return (volatile r_port_regs_t*)k_ra_port7_base_addr; }
+static inline volatile r_port_regs_t* ra_port7(void)
+{
+  return (volatile r_port_regs_t*)k_ra_port7_base_addr;
+}
 /** @brief Get PORT8 registers. */
-static inline volatile r_port_regs_t* ra_port8(void) { return (volatile r_port_regs_t*)k_ra_port8_base_addr; }
+static inline volatile r_port_regs_t* ra_port8(void)
+{
+  return (volatile r_port_regs_t*)k_ra_port8_base_addr;
+}
 /** @brief Get PORT9 registers. */
-static inline volatile r_port_regs_t* ra_port9(void) { return (volatile r_port_regs_t*)k_ra_port9_base_addr; }
+static inline volatile r_port_regs_t* ra_port9(void)
+{
+  return (volatile r_port_regs_t*)k_ra_port9_base_addr;
+}
 /** @brief Get PORT10 registers. */
-static inline volatile r_port_regs_t* ra_port10(void) { return (volatile r_port_regs_t*)k_ra_port10_base_addr; }
+static inline volatile r_port_regs_t* ra_port10(void)
+{
+  return (volatile r_port_regs_t*)k_ra_port10_base_addr;
+}
 /** @brief Get PORT11 registers. */
-static inline volatile r_port_regs_t* ra_port11(void) { return (volatile r_port_regs_t*)k_ra_port11_base_addr; }
+static inline volatile r_port_regs_t* ra_port11(void)
+{
+  return (volatile r_port_regs_t*)k_ra_port11_base_addr;
+}
 /** @brief Get PORT12 registers. */
-static inline volatile r_port_regs_t* ra_port12(void) { return (volatile r_port_regs_t*)k_ra_port12_base_addr; }
+static inline volatile r_port_regs_t* ra_port12(void)
+{
+  return (volatile r_port_regs_t*)k_ra_port12_base_addr;
+}
 /** @brief Get PORT13 registers. */
-static inline volatile r_port_regs_t* ra_port13(void) { return (volatile r_port_regs_t*)k_ra_port13_base_addr; }
+static inline volatile r_port_regs_t* ra_port13(void)
+{
+  return (volatile r_port_regs_t*)k_ra_port13_base_addr;
+}
 /** @brief Get PORT14 registers. */
-static inline volatile r_port_regs_t* ra_port14(void) { return (volatile r_port_regs_t*)k_ra_port14_base_addr; }
+static inline volatile r_port_regs_t* ra_port14(void)
+{
+  return (volatile r_port_regs_t*)k_ra_port14_base_addr;
+}
 
 /* =============================================================================
  * Bit-helper enums for PCNTR1/2/3/4 halves

@@ -36,9 +36,13 @@ MEMORY
     SRAM  (rwx) : ORIGIN = 0x22000000, LENGTH = 2048K
 }
 
-/* Main stack at the top of SRAM. */
-_stack_size = 8K;
-_stack_top  = ORIGIN(SRAM) + LENGTH(SRAM);
+/*
+ * Linker symbols. Named with the g_ra_ls_ prefix so they are NOT in
+ * the ISO C reserved leading-underscore namespace. The boot code in
+ * src/boot/vector_table.c declares them with exactly these names.
+ */
+g_ra_ls_stack_size = 8K;
+g_ra_ls_stack_top  = ORIGIN(SRAM) + LENGTH(SRAM);
 
 SECTIONS
 {
@@ -71,40 +75,40 @@ SECTIONS
 
     .ARM.exidx : ALIGN(4)
     {
-        __exidx_start = .;
+        g_ra_ls_exidx_start = .;
         *(.ARM.exidx* .gnu.linkonce.armexidx.*)
-        __exidx_end = .;
+        g_ra_ls_exidx_end = .;
     } > MRAM
 
-    _etext = .;
+    g_ra_ls_etext = .;
 
     /* ---- Initialised data: loaded from MRAM, lives in SRAM ---- */
     .data : ALIGN(4)
     {
-        _sdata  = .;
+        g_ra_ls_sdata = .;
         *(.data)
         *(.data.*)
-        _edata  = .;
+        g_ra_ls_edata = .;
     } > SRAM AT > MRAM
 
-    _sidata = LOADADDR(.data);
+    g_ra_ls_sidata = LOADADDR(.data);
 
     /* ---- Zero-init data ---- */
     .bss (NOLOAD) : ALIGN(4)
     {
-        _sbss = .;
+        g_ra_ls_sbss = .;
         *(.bss)
         *(.bss.*)
         *(COMMON)
-        _ebss = .;
+        g_ra_ls_ebss = .;
     } > SRAM
 
     /* ---- Heap (not used; keeps linker happy about newlib) ---- */
     .heap (NOLOAD) : ALIGN(8)
     {
-        _sheap = .;
+        g_ra_ls_sheap = .;
         . = . + 0x1000;
-        _eheap = .;
+        g_ra_ls_eheap = .;
     } > SRAM
 
     /* ---- Discarded ---- */

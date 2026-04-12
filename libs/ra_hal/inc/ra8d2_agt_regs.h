@@ -30,17 +30,17 @@ typedef enum : uint16_t {
 } ra_agt_limits_t;
 
 typedef struct {
-  volatile uint16_t AGT;       /**< +0x00 Counter.                */
-  volatile uint16_t AGTCMA;    /**< +0x02 Compare Match A.        */
-  volatile uint16_t AGTCMB;    /**< +0x04 Compare Match B.        */
+  volatile uint16_t AGT;    /**< +0x00 Counter.                */
+  volatile uint16_t AGTCMA; /**< +0x02 Compare Match A.        */
+  volatile uint16_t AGTCMB; /**< +0x04 Compare Match B.        */
   volatile uint16_t _r0;
-  volatile uint8_t  AGTCR;     /**< +0x08 Control.                */
-  volatile uint8_t  AGTMR1;    /**< +0x09 Mode 1.                 */
-  volatile uint8_t  AGTMR2;    /**< +0x0A Mode 2.                 */
-  volatile uint8_t  AGTIOC;    /**< +0x0B I/O Control.            */
-  volatile uint8_t  AGTISR;    /**< +0x0C Event pin select.       */
-  volatile uint8_t  AGTCMSR;   /**< +0x0D Compare select.         */
-  volatile uint8_t  AGTIOSEL;  /**< +0x0E Pin select.             */
+  volatile uint8_t  AGTCR;    /**< +0x08 Control.                */
+  volatile uint8_t  AGTMR1;   /**< +0x09 Mode 1.                 */
+  volatile uint8_t  AGTMR2;   /**< +0x0A Mode 2.                 */
+  volatile uint8_t  AGTIOC;   /**< +0x0B I/O Control.            */
+  volatile uint8_t  AGTISR;   /**< +0x0C Event pin select.       */
+  volatile uint8_t  AGTCMSR;  /**< +0x0D Compare select.         */
+  volatile uint8_t  AGTIOSEL; /**< +0x0E Pin select.             */
 } r_agt_regs_t;
 
 /** @brief Get pointer to AGT channel N. */
@@ -50,7 +50,7 @@ static inline volatile r_agt_regs_t* ra_agt(uint8_t channel)
     return nullptr;
   }
   return (volatile r_agt_regs_t*)(k_ra_agt0_base_addr +
-    ((uintptr_t)channel * (uintptr_t)k_ra_agt_channel_stride));
+                                  ((uintptr_t)channel * (uintptr_t)k_ra_agt_channel_stride));
 }
 
 #ifdef __cplusplus

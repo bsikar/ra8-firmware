@@ -14,6 +14,8 @@
  * SPDX-License-Identifier: MIT
  */
 
+#include "ra_iwdt.h"
+
 #include <stdint.h>
 
 #include "ra8d2_iwdt_regs.h"

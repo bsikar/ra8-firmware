@@ -62,7 +62,7 @@ extern "C" {
  */
 
 typedef enum : uintptr_t {
-  k_ra_pfs_base_addr = 0x40400800UL, /**< PFS array base.                      */
+  k_ra_pfs_base_addr   = 0x40400800UL, /**< PFS array base.                      */
   k_ra_pmisc_base_addr = 0x40400D00UL, /**< PMISC: contains PWPR and PWPRS.    */
 } ra_pfs_addr_t;
 
@@ -136,8 +136,7 @@ static inline volatile uint32_t* ra_pfs_pmn(ra_port_t port, ra_pin_t pin)
   }
 
   /* Each pin is 4 bytes; each port is (k_ra_pin_count * 4) = 64 bytes apart. */
-  const uintptr_t flat_idx =
-    ((uintptr_t)port * (uintptr_t)k_ra_pin_count) + (uintptr_t)pin;
+  const uintptr_t flat_idx = ((uintptr_t)port * (uintptr_t)k_ra_pin_count) + (uintptr_t)pin;
   return (volatile uint32_t*)(k_ra_pfs_base_addr + (flat_idx * sizeof(uint32_t)));
 }
 

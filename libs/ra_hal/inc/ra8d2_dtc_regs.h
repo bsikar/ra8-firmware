@@ -25,12 +25,12 @@ typedef enum : uintptr_t {
 } ra_dtc_addr_t;
 
 typedef struct {
-  volatile uint8_t  DTCCR;     /**< +0x00 Control.        */
+  volatile uint8_t  DTCCR; /**< +0x00 Control.        */
   volatile uint8_t  _r0[3];
-  volatile uint32_t DTCVBR;    /**< +0x04 Vector base.    */
-  volatile uint8_t  DTCST;     /**< +0x08 Start.          */
+  volatile uint32_t DTCVBR; /**< +0x04 Vector base.    */
+  volatile uint8_t  DTCST;  /**< +0x08 Start.          */
   volatile uint8_t  _r1[3];
-  volatile uint16_t DTCSTS;    /**< +0x0C Status.         */
+  volatile uint16_t DTCSTS; /**< +0x0C Status.         */
 } r_dtc_regs_t;
 
 /** @brief Get pointer to the DTC block. */

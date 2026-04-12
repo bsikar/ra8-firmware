@@ -70,13 +70,13 @@ typedef enum : uint8_t {
  * full list; we only expose the values the project uses.
  */
 typedef enum : uint8_t {
-  k_ra_clock_div_1   = 0x0U, /**< Divide by 1.  */
-  k_ra_clock_div_2   = 0x1U, /**< Divide by 2.  */
-  k_ra_clock_div_4   = 0x2U, /**< Divide by 4.  */
-  k_ra_clock_div_8   = 0x3U, /**< Divide by 8.  */
-  k_ra_clock_div_16  = 0x4U, /**< Divide by 16. */
-  k_ra_clock_div_32  = 0x5U, /**< Divide by 32. */
-  k_ra_clock_div_64  = 0x6U, /**< Divide by 64. */
+  k_ra_clock_div_1  = 0x0U, /**< Divide by 1.  */
+  k_ra_clock_div_2  = 0x1U, /**< Divide by 2.  */
+  k_ra_clock_div_4  = 0x2U, /**< Divide by 4.  */
+  k_ra_clock_div_8  = 0x3U, /**< Divide by 8.  */
+  k_ra_clock_div_16 = 0x4U, /**< Divide by 16. */
+  k_ra_clock_div_32 = 0x5U, /**< Divide by 32. */
+  k_ra_clock_div_64 = 0x6U, /**< Divide by 64. */
 } ra_clock_div_t;
 
 /* =============================================================================

@@ -89,8 +89,7 @@ static inline volatile uint8_t* ra_icu_irqcr(uint8_t irq_num)
   if (irq_num >= (uint8_t)k_ra_icu_num_irqs) {
     return nullptr;
   }
-  return (volatile uint8_t*)(k_ra_icu_base_addr + k_ra_icu_off_irqcr0 +
-                             (uintptr_t)irq_num);
+  return (volatile uint8_t*)(k_ra_icu_base_addr + k_ra_icu_off_irqcr0 + (uintptr_t)irq_num);
 }
 
 /* =============================================================================

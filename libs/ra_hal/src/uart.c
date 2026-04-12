@@ -33,8 +33,18 @@
 #include "ra_check.h"
 #include "ra_err.h"
 #include "ra_log.h"
+#include "ra_uart.h"
 
 static const char* s_tag = "UART";
+
+/**
+ * @enum ra_uart_init_val_t
+ * @brief Magic register values used during SCI UART init.
+ */
+typedef enum : uint8_t {
+  /* NOLINTNEXTLINE(readability-magic-numbers) -- HUM-specified default. */
+  k_ra_uart_scmr_default = 0xF2U, /**< Default per HUM; SINV=0, SMIF=0. */
+} ra_uart_init_val_t;
 
 /**
  * @brief Initialise an SCI channel in UART mode.
@@ -52,7 +62,7 @@ static const char* s_tag = "UART";
   /* Disable TX/RX while reprogramming. */
   sci->SCR  = 0U;
   sci->SMR  = 0U; /* 8-N-1, CKS = PCLKB. */
-  sci->SCMR = (uint8_t)0xF2U; /* Default bits per HUM; keep SINV=0, SMIF=0. */
+  sci->SCMR = (uint8_t)k_ra_uart_scmr_default;
   sci->BRR  = brr;
   sci->SEMR = 0U;
 

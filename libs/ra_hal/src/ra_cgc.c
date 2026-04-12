@@ -35,9 +35,13 @@ ra_err_t ra_cgc_init(void)
 
 ra_err_t ra_cgc_use_hoco(void)
 {
-  /* Step 1: start HOCO by clearing HCSTP. HOCO stabilises in ~2 us. */
+  /* Step 1: start HOCO by clearing HCSTP. HOCO stabilises in ~2 us.
+   * clang-analyzer flags the deref of a fixed peripheral address --
+   * that is the whole point of bare-metal register access. */
+  /* NOLINTNEXTLINE(clang-analyzer-core.NullDereference,performance-no-int-to-ptr) */
   volatile uint8_t* hococr = ra_sys_hococr();
-  *hococr                  = (uint8_t)(*hococr & (uint8_t)~(1U << k_ra_hococr_hcstp));
+  /* NOLINTNEXTLINE(clang-analyzer-core.NullDereference) */
+  *hococr = (uint8_t)(*hococr & (uint8_t)~(1U << k_ra_hococr_hcstp));
 
   /* Step 2: wait for HOCO ready. The OSCSF (Oscillation Stabilization
    * Flag) bit lives in OSCSF register at offset 0x03C in the SYSC
@@ -47,7 +51,9 @@ ra_err_t ra_cgc_use_hoco(void)
     k_ra_hoco_spin_cycles = 4000U,
   };
   for (uint32_t i = 0U; i < k_ra_hoco_spin_cycles; i++) {
+#ifndef RA_SIMULATOR_MODE
     __asm__ volatile("nop");
+#endif
   }
 
   /* Step 3: unlock PRCR group 0 (CGC), write SCKSCR, relock. */

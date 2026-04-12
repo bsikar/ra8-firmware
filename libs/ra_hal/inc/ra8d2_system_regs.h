@@ -91,10 +91,10 @@ typedef enum : uint16_t {
  * group bit cleared to relock.
  */
 typedef enum : uint16_t {
-  k_ra_prcr_key      = 0xA500U, /**< Password in upper byte.           */
-  k_ra_prcr_grp0_cgc = 0x0001U, /**< Group 0: CGC + LVD.               */
-  k_ra_prcr_grp1_lpm = 0x0002U, /**< Group 1: Low-power modes.         */
-  k_ra_prcr_grp2_osc = 0x0008U, /**< Group 2: LVD reset-detection.     */
+  k_ra_prcr_key        = 0xA500U, /**< Password in upper byte.           */
+  k_ra_prcr_grp0_cgc   = 0x0001U, /**< Group 0: CGC + LVD.               */
+  k_ra_prcr_grp1_lpm   = 0x0002U, /**< Group 1: Low-power modes.         */
+  k_ra_prcr_grp2_osc   = 0x0008U, /**< Group 2: LVD reset-detection.     */
   k_ra_prcr_unlock_cgc = (uint16_t)(k_ra_prcr_key | k_ra_prcr_grp0_cgc),
   k_ra_prcr_lock_all   = k_ra_prcr_key,
 } ra_prcr_t;
@@ -113,10 +113,10 @@ typedef enum : uint16_t {
  * Cleared by software (write 0 after unlocking PRCR group 0).
  */
 typedef enum : uint8_t {
-  k_ra_rstsr0_bit_porf  = 0U, /**< Power-on reset.            */
-  k_ra_rstsr0_bit_lvd0  = 1U, /**< Voltage-monitor 0 reset.   */
-  k_ra_rstsr0_bit_lvd1  = 2U, /**< Voltage-monitor 1 reset.   */
-  k_ra_rstsr0_bit_lvd2  = 3U, /**< Voltage-monitor 2 reset.   */
+  k_ra_rstsr0_bit_porf = 0U, /**< Power-on reset.            */
+  k_ra_rstsr0_bit_lvd0 = 1U, /**< Voltage-monitor 0 reset.   */
+  k_ra_rstsr0_bit_lvd1 = 2U, /**< Voltage-monitor 1 reset.   */
+  k_ra_rstsr0_bit_lvd2 = 3U, /**< Voltage-monitor 2 reset.   */
 } ra_rstsr0_bit_t;
 
 /**

@@ -38,23 +38,23 @@ typedef enum : uint8_t {
  * @brief Per-channel DMAC register window (partial -- extend on demand).
  */
 typedef struct {
-  volatile uint32_t DMSAR;     /**< +0x00 Source address.           */
-  volatile uint32_t DMDAR;     /**< +0x04 Destination address.      */
-  volatile uint32_t DMCRA;     /**< +0x08 Transfer count.           */
-  volatile uint16_t DMCRB;     /**< +0x0C Block size.               */
+  volatile uint32_t DMSAR; /**< +0x00 Source address.           */
+  volatile uint32_t DMDAR; /**< +0x04 Destination address.      */
+  volatile uint32_t DMCRA; /**< +0x08 Transfer count.           */
+  volatile uint16_t DMCRB; /**< +0x0C Block size.               */
   volatile uint16_t _r0;
-  volatile uint16_t DMTMD;     /**< +0x10 Transfer Mode.            */
+  volatile uint16_t DMTMD; /**< +0x10 Transfer Mode.            */
   volatile uint16_t _r1;
-  volatile uint8_t  DMINT;     /**< +0x14 Interrupt enable.         */
+  volatile uint8_t  DMINT; /**< +0x14 Interrupt enable.         */
   volatile uint8_t  _r2[3];
-  volatile uint16_t DMAMD;     /**< +0x18 Address Mode.             */
+  volatile uint16_t DMAMD; /**< +0x18 Address Mode.             */
   volatile uint16_t _r3;
-  volatile uint32_t DMOFR;     /**< +0x1C Offset.                   */
-  volatile uint8_t  DMCNT;     /**< +0x20 Enable.                   */
+  volatile uint32_t DMOFR; /**< +0x1C Offset.                   */
+  volatile uint8_t  DMCNT; /**< +0x20 Enable.                   */
   volatile uint8_t  _r4[3];
-  volatile uint8_t  DMREQ;     /**< +0x24 Request.                  */
+  volatile uint8_t  DMREQ; /**< +0x24 Request.                  */
   volatile uint8_t  _r5[3];
-  volatile uint8_t  DMSTS;     /**< +0x28 Status.                   */
+  volatile uint8_t  DMSTS; /**< +0x28 Status.                   */
   volatile uint8_t  _r6[3];
 } r_dmac_channel_regs_t;
 
@@ -64,8 +64,9 @@ static inline volatile r_dmac_channel_regs_t* ra_dmac(uint8_t channel)
   if (channel >= k_ra_dmac_channel_count) {
     return nullptr;
   }
-  return (volatile r_dmac_channel_regs_t*)(k_ra_dmac0_base_addr +
-    ((uintptr_t)channel * (uintptr_t)k_ra_dmac_channel_stride));
+  return (
+    volatile r_dmac_channel_regs_t*)(k_ra_dmac0_base_addr +
+                                     ((uintptr_t)channel * (uintptr_t)k_ra_dmac_channel_stride));
 }
 
 #ifdef __cplusplus

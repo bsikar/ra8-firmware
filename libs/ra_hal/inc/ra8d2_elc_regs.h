@@ -56,10 +56,10 @@ typedef enum : uint16_t {
  * list.
  */
 typedef enum : uint16_t {
-  k_ra_elc_event_none          = 0x000U,
-  k_ra_elc_event_icu_irq0      = 0x001U,
-  k_ra_elc_event_icu_irq1      = 0x002U,
-  k_ra_elc_event_icu_irq15     = 0x010U,
+  k_ra_elc_event_none      = 0x000U,
+  k_ra_elc_event_icu_irq0  = 0x001U,
+  k_ra_elc_event_icu_irq1  = 0x002U,
+  k_ra_elc_event_icu_irq15 = 0x010U,
 } ra_elc_event_t;
 
 #ifdef __cplusplus

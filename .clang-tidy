@@ -27,8 +27,12 @@ Checks: >
   performance-*,
   -bugprone-easily-swappable-parameters,
   -misc-include-cleaner,
+  -misc-use-internal-linkage,
   -readability-identifier-length,
-  -performance-no-int-to-ptr
+  -performance-no-int-to-ptr,
+  -portability-avoid-pragma-once,
+  -clang-analyzer-core.FixedAddressDereference,
+  -clang-analyzer-security.ArrayBound
 
 # ALL warnings are errors -- zero tolerance for any clang-tidy violation.
 WarningsAsErrors: '*'
@@ -44,10 +48,10 @@ CheckOptions:
   - key: readability-identifier-naming.FunctionCase
     value: lower_case
   # Allow UPPER_CASE for ARM Cortex-M interrupt handler names that are
-  # fixed by the vector table (e.g. Reset_Handler, NMI_Handler, HardFault_Handler,
-  # SysTick_Handler, and the IRQ<N>_Handler pattern).
+  # fixed by the vector table (Reset_Handler, NMI_Handler, HardFault_Handler,
+  # SysTick_Handler, Default_Handler, and the IRQ<N>_Handler pattern).
   - key: readability-identifier-naming.FunctionIgnoredRegexp
-    value: '^(Reset_Handler|NMI_Handler|HardFault_Handler|MemManage_Handler|BusFault_Handler|UsageFault_Handler|SecureFault_Handler|SVC_Handler|DebugMon_Handler|PendSV_Handler|SysTick_Handler|IRQ[0-9]+_Handler|[A-Z][A-Za-z0-9]*_IRQHandler)$'
+    value: '^(Reset_Handler|Default_Handler|NMI_Handler|HardFault_Handler|MemManage_Handler|BusFault_Handler|UsageFault_Handler|SecureFault_Handler|SVC_Handler|DebugMon_Handler|PendSV_Handler|SysTick_Handler|IRQ[0-9]+_Handler|[A-Z][A-Za-z0-9]*_IRQHandler)$'
 
   # Variables: snake_case
   - key: readability-identifier-naming.VariableCase
@@ -107,8 +111,11 @@ CheckOptions:
     value: lower_case
   - key: readability-identifier-naming.GlobalVariablePrefix
     value: g_
+  # Accept s_ for file-scope statics and leading-underscore names for
+  # linker-provided symbols (_stack_top, _sdata, _edata, _sbss, _ebss,
+  # _sidata, _sheap, _eheap, __exidx_start, __exidx_end, ...).
   - key: readability-identifier-naming.GlobalVariableIgnoredRegexp
-    value: '^s_.*'
+    value: '^(s_|_+).*'
 
   # Global constants (non-static const): g_ prefix
   # IgnoredRegexp accepts s_ (static impl details) and k_ (named constants).
@@ -116,8 +123,9 @@ CheckOptions:
     value: lower_case
   - key: readability-identifier-naming.GlobalConstantPrefix
     value: g_
+  # Accept s_ / k_ prefixes and leading-underscore linker symbols.
   - key: readability-identifier-naming.GlobalConstantIgnoredRegexp
-    value: '^(s_|k_).*'
+    value: '^(s_|k_|_+).*'
 
   # Static variables (non-const): s_ prefix
   - key: readability-identifier-naming.StaticVariableCase

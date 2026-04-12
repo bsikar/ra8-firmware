@@ -15,7 +15,6 @@
 #include "ra_pin_validator.h"
 
 #include <stdint.h>
-#include <string.h>
 
 #include "ra_bit_constants.h"
 #include "ra_check.h"
@@ -67,7 +66,7 @@ static ra_err_t internal_flat_index(ra_port_pin_t pin, uint16_t* out_index)
     return k_ra_err_gpio_invalid_pin;
   }
 
-  *out_index = (uint16_t)((uint16_t)port * (uint16_t)k_ra_pin_count + (uint16_t)idx);
+  *out_index = (uint16_t)(((uint16_t)port * (uint16_t)k_ra_pin_count) + (uint16_t)idx);
   return k_ra_ok;
 }
 
@@ -125,7 +124,9 @@ bool ra_pin_validator_is_claimed(ra_port_pin_t pin)
 
 void ra_pin_validator_reset(void)
 {
-  (void)memset(s_claimed, 0, sizeof(s_claimed));
+  for (uint16_t i = 0U; i < (uint16_t)sizeof(s_claimed); i++) {
+    s_claimed[i] = 0U;
+  }
   for (uint16_t i = 0U; i < (uint16_t)(k_ra_port_count * k_ra_pin_count); i++) {
     s_owner[i] = nullptr;
   }
