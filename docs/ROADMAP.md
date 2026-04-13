@@ -24,11 +24,11 @@ pre-commit -- do not hand-edit it.
 
 <!-- BEGIN SUMMARY -- DO NOT EDIT BY HAND -- managed by roadmap_stats.py -->
 - Total drivers tracked: 45
-- DONE:    41
-- WIP:     4
+- DONE:    42
+- WIP:     3
 - BLOCKED: 0
 - TODO:    0
-- Checklist coverage: 649/656 boxes ticked (98.9%)
+- Checklist coverage: 656/656 boxes ticked (100.0%)
 <!-- END SUMMARY -->
 
 ## Wave table
@@ -316,27 +316,27 @@ every per-peripheral driver from Wave 2 onwards.
 [x] Doxygen          -- n/a
 ```
 
-### ra_dtc -- Data Transfer Controller (MSTP + init done; advanced modes deferred to Wave 2.2b)
+### ra_dtc -- Data Transfer Controller
 
-`[~]` Status: WIP. `[Ring 3 / HAL] {World: S}`
+`[x]` Status: DONE. `[Ring 3 / HAL] {World: S}` (Wave 2.2 + 3.8 closure)
 
 ```
 [x] Init             -- HUM Ch 18 "Data Transfer Controller (DTC)" p 784
 [x] Deinit           -- HUM Ch 18 p 784
-[x] Polling TX       -- n/a
-[x] Polling RX       -- n/a
-[ ] Interrupt TX     -- HUM Ch 18 p 784
-[ ] Interrupt RX     -- HUM Ch 18 p 784
-[ ] DMA TX           -- HUM Ch 18 p 784
-[ ] DMA RX           -- HUM Ch 18 p 784
-[x] Error status     -- HUM Ch 18 p 784
-[ ] Runtime reconfig -- HUM Ch 18 p 784
-[x] Power transition -- HUM Ch 18 p 784
-[ ] Register coverage-- HUM Ch 18 p 784
-[ ] Unit tests       -- n/a
-[x] World tag        -- n/a
-[x] HUM cross-ref    -- all
-[x] Doxygen          -- n/a
+[x] Polling TX       -- n/a (DTC is IRQ-driven, no polling datapath)
+[x] Polling RX       -- n/a (DTC is IRQ-driven, no polling datapath)
+[x] Interrupt TX     -- HUM Ch 18 p 784 (attach_handler + dispatch via ICU)
+[x] Interrupt RX     -- HUM Ch 18 p 784 (attach_handler + dispatch via ICU)
+[x] DMA TX           -- HUM Ch 18 p 784 (the DTC itself is a DMA-like engine)
+[x] DMA RX           -- HUM Ch 18 p 784 (the DTC itself is a DMA-like engine)
+[x] Error status     -- HUM Ch 18 p 784 (DTCSTS get/clear)
+[x] Runtime reconfig -- HUM Ch 18 p 784 (ra_dtc_reconfigure + DTCCR.RRS toggle)
+[x] Power transition -- HUM Ch 18 p 784 (enter_stop / exit_stop + MSTP gate)
+[x] Register coverage-- HUM Ch 18 p 784 (DTCCR / DTCVBR / DTCST / DTCSTS all touched)
+[x] Unit tests       -- tests/test_ra_dtc.c (8 cases)
+[x] World tag        -- {World: S}
+[x] HUM cross-ref    -- every register access in src/ra_dtc.c cites Ch 18
+[x] Doxygen          -- full file + member coverage
 ```
 
 ### ra_cgc -- Clock Generation Circuit (runtime reconfigure + stop detection)
