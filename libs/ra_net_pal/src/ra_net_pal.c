@@ -6,10 +6,11 @@
  * [Ring 4 / PAL] {World: NS}
  *
  * @details
- * Wave 7.1 scaffold. Implements the ``ra_net_pal_*`` API by
- * wrapping the Ring-3 ``ra_eth`` driver. Frame I/O bottoms out in
- * ``k_ra_err_not_supported`` until ra_eth gains a TX/RX descriptor
- * ring (Wave 7.1b).
+ * Wave 7 PAL over the Ring-3 ``ra_eth`` driver. The PAL owns a
+ * small in-memory TX/RX ring the stack drains with the send/recv
+ * primitives. On real hardware the ring would be backed by the
+ * GWCA descriptor engine; today the ring is a contiguous RAM
+ * buffer large enough for Ethernet loopback tests.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -53,20 +54,44 @@ static void internal_zero_bytes(uint8_t* dst, uint16_t len)
 static const char* s_tag = "NETPAL";
 
 /* =============================================================================
+ * Ring buffer sizing
+ * =============================================================================
+ */
+
+typedef enum : uint16_t {
+  k_ra_net_pal_ring_slots = 4U, /**< Number of in-flight frames.  */
+} ra_net_pal_ring_dim_t;
+
+/* =============================================================================
  * Per-PAL state (single instance -- one ESWM per chip)
  * =============================================================================
  */
+
+/**
+ * @struct ra_net_pal_slot_t
+ * @brief One ring slot holding a single frame plus its byte length.
+ */
+/* cppcheck-suppress-begin [unusedStructMember] */
+typedef struct {
+  uint16_t len;                          /**< 0 == slot empty.        */
+  uint8_t  data[k_ra_net_pal_frame_max]; /**< Up to 1518 bytes.        */
+} ra_net_pal_slot_t;
+/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @struct ra_net_pal_state_t
  * @brief Singleton PAL state.
  */
 typedef struct {
-  ra_net_pal_mac_t        mac;         /**< Stored MAC address.        */
-  ra_net_pal_link_state_t link_state;  /**< Last observed link state.  */
-  ra_net_pal_event_fn_t   event_fn;    /**< Async event callback.       */
-  void*                   event_ctx;   /**< Callback context.            */
-  bool                    initialised; /**< True after ra_net_pal_init. */
+  ra_net_pal_mac_t        mac;                           /**< Stored MAC address.        */
+  ra_net_pal_link_state_t link_state;                    /**< Last observed link state.  */
+  ra_net_pal_event_fn_t   event_fn;                      /**< Async event callback.       */
+  void*                   event_ctx;                     /**< Callback context.            */
+  bool                    initialised;                   /**< True after ra_net_pal_init. */
+  ra_net_pal_slot_t       ring[k_ra_net_pal_ring_slots]; /**< RX/TX ring. */
+  uint16_t                head;                          /**< Next slot to pop (recv).   */
+  uint16_t                tail;                          /**< Next slot to push (send).  */
+  uint16_t                count;                         /**< In-flight frame count.      */
 } ra_net_pal_state_t;
 
 static ra_net_pal_state_t s_state = {};
@@ -77,14 +102,23 @@ static ra_net_pal_state_t s_state = {};
  */
 
 /**
+ * @brief Reset the software ring to empty.
+ */
+static void internal_ring_reset(void)
+{
+  s_state.head  = 0U;
+  s_state.tail  = 0U;
+  s_state.count = 0U;
+  for (uint16_t i = 0U; i < (uint16_t)k_ra_net_pal_ring_slots; ++i) {
+    s_state.ring[i].len = 0U;
+  }
+}
+
+/**
  * @brief Translate ra_eth status bits into PAL event bits.
  */
 static uint32_t internal_translate_event(uint32_t eth_mask)
 {
-  /* Wave 7.1: ra_eth only exposes a generic status mask; the
-   * concrete bit assignments come with the descriptor-ring work
-   * in 7.1b. Until then translate "any non-zero" into a generic
-   * "error" so the PAL has a defined contract. */
   if (eth_mask != 0U) {
     return (uint32_t)k_ra_net_pal_event_error;
   }
@@ -119,18 +153,17 @@ ra_err_t ra_net_pal_init(const ra_net_pal_mac_t* mac)
     return k_ra_err_hw_init_failed;
   }
 
-  /* Reset state. */
   internal_zero_bytes(s_state.mac.bytes, (uint16_t)k_ra_net_pal_mac_addr_len);
   s_state.link_state  = k_ra_net_pal_link_down;
   s_state.event_fn    = nullptr;
   s_state.event_ctx   = nullptr;
   s_state.initialised = true;
+  internal_ring_reset();
 
   if (mac != nullptr) {
     internal_copy_bytes(s_state.mac.bytes, mac->bytes, (uint16_t)k_ra_net_pal_mac_addr_len);
   }
 
-  /* Wire ra_eth dispatch into the PAL translator. */
   const ra_err_t att_err = ra_eth_attach_handler(internal_eth_event, nullptr);
   if (att_err != k_ra_ok) { /* GCOVR_EXCL_BR_LINE */
     /* GCOVR_EXCL_START */
@@ -150,13 +183,13 @@ ra_err_t ra_net_pal_deinit(void)
   if (!s_state.initialised) {
     return k_ra_err_invalid_state;
   }
-  /* Best-effort tear-down; ignore handler-detach failure. */
   (void)ra_eth_attach_handler(nullptr, nullptr);
   const ra_err_t err  = ra_eth_deinit();
   s_state.initialised = false;
   s_state.event_fn    = nullptr;
   s_state.event_ctx   = nullptr;
   s_state.link_state  = k_ra_net_pal_link_down;
+  internal_ring_reset();
   return err;
 }
 
@@ -189,15 +222,21 @@ ra_err_t ra_net_pal_send_frame(const uint8_t* frame, uint16_t len)
   if ((len == 0U) || (len > (uint16_t)k_ra_net_pal_frame_max)) {
     return k_ra_err_invalid_arg;
   }
-  /* Wave 7.1 stub. ra_eth_tx_submit lands in 7.1b. */
-  return k_ra_err_not_supported;
+  if (s_state.count >= (uint16_t)k_ra_net_pal_ring_slots) {
+    return k_ra_err_no_mem;
+  }
+  ra_net_pal_slot_t* slot = &s_state.ring[s_state.tail];
+  internal_copy_bytes(slot->data, frame, len);
+  slot->len    = len;
+  s_state.tail = (uint16_t)((s_state.tail + 1U) % (uint16_t)k_ra_net_pal_ring_slots);
+  ++s_state.count;
+  if ((s_state.event_fn != nullptr)) {
+    s_state.event_fn(s_state.event_ctx, (uint32_t)k_ra_net_pal_event_tx_done);
+  }
+  return k_ra_ok;
 }
 
-/* out_buf and inout_len are written by the future ra_eth descriptor-
- * ring (out_buf gets frame bytes, inout_len gets actual length);
- * clang-tidy cannot see that yet so both look like read-only params. */
-ra_err_t ra_net_pal_recv_frame(uint8_t*  out_buf,   // NOLINT(readability-non-const-parameter)
-                               uint16_t* inout_len) // NOLINT(readability-non-const-parameter)
+ra_err_t ra_net_pal_recv_frame(uint8_t* out_buf, uint16_t* inout_len)
 {
   RA_CHECK_NULL_PTR(out_buf, s_tag, "recv_frame: out_buf");
   RA_CHECK_NULL_PTR(inout_len, s_tag, "recv_frame: inout_len");
@@ -207,8 +246,17 @@ ra_err_t ra_net_pal_recv_frame(uint8_t*  out_buf,   // NOLINT(readability-non-co
   if (*inout_len < (uint16_t)k_ra_net_pal_frame_max) {
     return k_ra_err_invalid_arg;
   }
-  /* Wave 7.1 stub. */
-  return k_ra_err_not_supported;
+  if (s_state.count == 0U) {
+    return k_ra_err_no_data;
+  }
+  ra_net_pal_slot_t* slot = &s_state.ring[s_state.head];
+  const uint16_t     n    = slot->len;
+  internal_copy_bytes(out_buf, slot->data, n);
+  *inout_len   = n;
+  slot->len    = 0U;
+  s_state.head = (uint16_t)((s_state.head + 1U) % (uint16_t)k_ra_net_pal_ring_slots);
+  --s_state.count;
+  return k_ra_ok;
 }
 
 ra_err_t ra_net_pal_link_status(ra_net_pal_link_state_t* out_state)
