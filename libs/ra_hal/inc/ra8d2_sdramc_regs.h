@@ -21,7 +21,10 @@ extern "C" {
 #include <stdint.h>
 
 typedef enum : uintptr_t {
-  k_ra_sdramc_base_addr = 0x4003C000UL, /**< SDRAMC control registers. */
+  /* FSP R_BUS_SDRAM is a sub-block inside R_BUS (R_BUS_BASE=0x40003000)
+   * at offset +0xC00, so SDRAMC control registers sit at 0x40003C00.
+   * Our previous 0x4003C000 was a digit transposition. */
+  k_ra_sdramc_base_addr = 0x40003C00UL, /**< R_BUS.SDRAM sub-block.    */
   k_ra_sdram_base_addr  = 0x68000000UL, /**< External SDRAM window.    */
 } ra_sdramc_addr_t;
 

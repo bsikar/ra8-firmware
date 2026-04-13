@@ -38,7 +38,7 @@ extern "C" {
  * @brief Memory-mapped base addresses for ACMPHS.
  */
 typedef enum : uintptr_t {
-  k_ra_acmphs0_base_addr = 0x40324000UL, /**< ACMPHS channel 0 base. */
+  k_ra_acmphs0_base_addr = 0x40236000UL, /**< ACMPHS channel 0 base (FSP R_ACMPHS0_BASE). */
 } ra_acmphs_addr_t;
 
 /**
