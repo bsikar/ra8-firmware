@@ -61,7 +61,7 @@ static const ra_mstp_t s_ulpt_mstp_table[] = {
     /* HUM Ch 25.2.5 "ULPTIOC : ULPT I/O Control Register" p 1196 */
     reg->ULPTIOC = 0U;
     /* HUM Ch 25.2.6 "ULPT : ULPT Counter Register" p 1198 */
-    reg->ULPT = 0U;
+    reg->ULPTCNT = 0U;
   }
   ra_log_info(s_tag, "ulpt_init");
   return k_ra_ok;
@@ -85,7 +85,7 @@ static const ra_mstp_t s_ulpt_mstp_table[] = {
   /* HUM Ch 25.2.4 "ULPTMR3 : ULPT Mode Register 3" p 1195 */
   reg->ULPTMR3 = 0U;
   /* HUM Ch 25.2.6 "ULPT : ULPT Counter Register" p 1198 */
-  reg->ULPT = period;
+  reg->ULPTCNT = period;
   /* HUM Ch 25.2.1 "ULPTCR : ULPT Control Register" p 1190 */
   /* TSTART = 1. */
   reg->ULPTCR = (uint8_t)k_ra_ulpt_mask_tstart;
@@ -136,7 +136,7 @@ ra_err_t ra_ulpt_set_period(uint8_t channel, uint32_t period)
   }
   volatile r_ulpt_regs_t* reg = ra_ulpt(channel);
   RA_CHECK_NULL_PTR(reg, s_tag, "channel mapping failed");
-  reg->ULPT = period;
+  reg->ULPTCNT = period;
   return k_ra_ok;
 }
 
