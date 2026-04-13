@@ -63,6 +63,7 @@ extern "C" {
 #include <stdint.h>
 
 #include "ra_err.h"
+#include "ra_nsc_veneer.h"
 
 /* =============================================================================
  * XSPI (external octa-SPI flash) veneers
@@ -111,7 +112,9 @@ extern "C" {
  *       ``cmse_check_address_range`` call site.
  * @since 0.3.0
  */
-[[nodiscard]] ra_err_t ra_nsc_xspi_read(uint32_t flash_off, uint8_t* ns_dst, uint32_t len);
+[[nodiscard]] RA_NSC_VENEER ra_err_t ra_nsc_xspi_read(uint32_t flash_off,
+                                                      uint8_t* ns_dst,
+                                                      uint32_t len);
 
 /**
  * @brief NSC veneer: query secure-side XSPI status.
@@ -136,7 +139,7 @@ extern "C" {
  *    -- the value is copied through the veneer, not aliased.
  * @since 0.3.0
  */
-[[nodiscard]] ra_err_t ra_nsc_xspi_status(uint8_t instance, uint32_t* out_mask);
+[[nodiscard]] RA_NSC_VENEER ra_err_t ra_nsc_xspi_status(uint8_t instance, uint32_t* out_mask);
 
 /* =============================================================================
  * Ethernet veneers
@@ -168,7 +171,7 @@ extern "C" {
  *    bytes into its own descriptor before the IRQ context fires.
  * @since 0.3.0
  */
-[[nodiscard]] ra_err_t ra_nsc_eth_send(const uint8_t* ns_frame, uint16_t len);
+[[nodiscard]] RA_NSC_VENEER ra_err_t ra_nsc_eth_send(const uint8_t* ns_frame, uint16_t len);
 
 /**
  * @brief NSC veneer: pull the next received frame to NS memory.
@@ -194,7 +197,7 @@ extern "C" {
  *    not aliased.
  * @since 0.3.0
  */
-[[nodiscard]] ra_err_t ra_nsc_eth_recv(uint8_t* ns_buf, uint16_t* inout_len);
+[[nodiscard]] RA_NSC_VENEER ra_err_t ra_nsc_eth_recv(uint8_t* ns_buf, uint16_t* inout_len);
 
 /* =============================================================================
  * Logging veneer
@@ -230,7 +233,7 @@ extern "C" {
  *  - **Denies:** direct ITM stim writes from NS world.
  * @since 0.3.0
  */
-[[nodiscard]] ra_err_t ra_nsc_log_emit(const char* tag, const char* message);
+[[nodiscard]] RA_NSC_VENEER ra_err_t ra_nsc_log_emit(const char* tag, const char* message);
 
 /* =============================================================================
  * Peripheral init veneer (boot-time only)
@@ -269,7 +272,7 @@ extern "C" {
  *    (idempotent fast-path returns k_ra_ok without re-init).
  * @since 0.3.0
  */
-[[nodiscard]] ra_err_t ra_nsc_periph_init(void);
+[[nodiscard]] RA_NSC_VENEER ra_err_t ra_nsc_periph_init(void);
 
 /* =============================================================================
  * Constants surfaced to NS callers

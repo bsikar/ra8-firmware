@@ -157,6 +157,27 @@ SECTIONS
 
     g_ra_ls_etext = .;
 
+    /* ---- TrustZone Non-Secure Callable veneer stubs ----
+     *
+     * `-mcmse` makes gcc emit a `.gnu.sgstubs` output section
+     * containing the secure-gateway veneers. The linker needs an
+     * explicit placement; without one the link aborts even on
+     * builds that have no veneers because gcc cannot prove the
+     * section is empty without resolving every NSC call site.
+     *
+     * We park the section at the end of .text in MRAM with 32-byte
+     * alignment (ARMv8-M veneer alignment requirement). When the
+     * Wave 9.2 SAU programming uses NSC region 3 at 0x10000000,
+     * the linker MEMORY map will need a matching alias region;
+     * for the Wave 9.2 scaffold we keep it inside MRAM so the
+     * single-image build still loads cleanly. */
+    .gnu.sgstubs : ALIGN(32)
+    {
+        g_ra_ls_sgstubs_start = .;
+        *(.gnu.sgstubs*)
+        g_ra_ls_sgstubs_end = .;
+    } > MRAM
+
     /* ---- Option setting regions (fixed flash addresses) ----
      *
      * Every one of these lands at a fixed MRAM address. Values are

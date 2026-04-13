@@ -21,6 +21,7 @@
 #include "ra_err.h"
 #include "ra_log.h"
 #include "ra_nsc.h"
+#include "ra_nsc_veneer.h"
 
 static const char* s_tag = "NSCLOG";
 
@@ -52,11 +53,14 @@ static void internal_safe_strcpy(char* dst, const char* src, uint32_t cap)
   dst[cap - 1U] = '\0';
 }
 
-ra_err_t ra_nsc_log_emit(const char* tag, const char* message)
+RA_NSC_VENEER ra_err_t ra_nsc_log_emit(const char* tag, const char* message)
 {
   RA_CHECK_NULL_PTR((void*)tag, s_tag, "log_emit: tag");
   RA_CHECK_NULL_PTR((void*)message, s_tag, "log_emit: message");
-  /* Wave 9.2 retrofit point: cmse_check_address_range on both pointers. */
+  /* Bound check the cap; cmse_check_address_range only validates
+   * the prefix we are about to copy. */
+  RA_NSC_CHECK_NS_RANGE_R(tag, (uint32_t)k_ra_nsc_log_msg_max_len);
+  RA_NSC_CHECK_NS_RANGE_R(message, (uint32_t)k_ra_nsc_log_msg_max_len);
   internal_safe_strcpy(s_tag_scratch, tag, (uint32_t)k_ra_nsc_log_msg_max_len);
   internal_safe_strcpy(s_msg_scratch, message, (uint32_t)k_ra_nsc_log_msg_max_len);
   ra_log_info(s_tag_scratch, s_msg_scratch);
