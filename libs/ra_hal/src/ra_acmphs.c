@@ -1,6 +1,17 @@
 /**
  * @file ra_acmphs.c
- * @brief High-Speed Analog Comparator (ACMPHS) driver implementation
+ * @brief High-Speed Analog Comparator driver implementation
+ *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
+ * @details
+ * Wave 4 driver for the RA8D2 ACMPHS block (6 channels total;
+ * channels 0..3 have dedicated MSTPD bits, 4..5 share with
+ * ACMPHS0). Exposes per-channel init/deinit/enable, output read,
+ * input selection, status get/clear, async dispatch, and power
+ * transition. Every register access carries a HUM Ch 56
+ * citation.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

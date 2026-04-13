@@ -1,18 +1,17 @@
 /**
  * @file adc.c
- * @brief ADC_B polling driver
+ * @brief 16-bit A/D Converter (ADC16H / ADC_B) driver implementation
+ *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
  *
  * @details
- * Minimum-viable single-channel polling ADC driver using the ADC_B
- * peripheral on the RA8D2. `ra_adc_init()` programmes 14-bit
- * resolution, right-aligned result format, software trigger, and
- * leaves ADCSR.ADST at 0. `ra_adc_read_channel()` enables the given
- * channel, sets ADST=1, busy-waits for ADST to auto-clear, then
- * reads `ADDRxx`.
- *
- * Not covered yet: DMA, group scans, hardware trigger routing,
- * sample-and-hold tuning, comparator mode, PGA. Those extensions
- * grow `ra8d2_adc_b_regs.h` and this file incrementally.
+ * Wave 4 driver for the RA8D2 ADC_B peripheral. Programmes
+ * 14-bit resolution, right-aligned result format, software
+ * trigger, and exposes init / configured-init / deinit / polling
+ * read / runtime resolution change / status / async dispatch /
+ * power transition. Every register access carries a HUM Ch 53
+ * citation.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -43,12 +42,13 @@ typedef enum : uint16_t {
 
 ra_err_t ra_adc_init(void)
 {
-  /* HUM Ch 11.2.9 "MSTPCRD : Module Stop Control Register D", p 449 */
+  /* HUM Ch 11.2.9 "MSTPCRD : Module Stop Control Register D" p 449 */
   const ra_err_t mst_err = ra_mstp_enable(k_ra_mstp_adc16h);
   RA_RETURN_ON_ERROR(mst_err, s_tag, "adc_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
 
-  /* Leave ADST clear and programme the extended control register. */
+  /* HUM Ch 53.2.1 "ADCSR : A/D Control/Status Register" p 3309 */
   *ra_adc_b_adcsr() = (uint16_t)k_ra_adcsr_reset_val;
+  /* HUM Ch 53.2.4 "ADCER : A/D Control Extended Register" p 3315 */
   *ra_adc_b_adcer() = (uint16_t)k_ra_adcer_14bit_right_aligned;
   ra_log_info(s_tag, "adc_init ready");
   return k_ra_ok;
@@ -64,12 +64,13 @@ ra_err_t ra_adc_read_channel(uint8_t channel, uint16_t* out_raw)
     return k_ra_err_out_of_range;
   }
 
-  /* Programme sample time and the channel-select bitmap for ADANSA0
-   * / ADANSA1 so only the requested channel is sampled. */
-  *adsstr             = (uint8_t)k_ra_adsstr_default;
+  /* HUM Ch 53.2.5 "ADSSTRn : A/D Sampling State Register n" p 3317 */
+  *adsstr = (uint8_t)k_ra_adsstr_default;
+  /* HUM Ch 53.2.2 "ADANSA0 : A/D Channel Select Register A0" p 3312 */
   *ra_adc_b_adansa0() = (uint16_t)(1U << (channel & (uint8_t)k_ra_adc_ansa0_channel_mask));
 
-  /* Kick: ADCSR.ADST = 1. */
+  /* HUM Ch 53.2.1 "ADCSR : A/D Control/Status Register" p 3309 */
+  /* ADST = 1 kicks the conversion. */
   volatile uint16_t* adcsr = ra_adc_b_adcsr();
   *adcsr                   = (uint16_t)((uint16_t)*adcsr | (uint16_t)(1U << k_ra_adcsr_bit_adst));
 
@@ -148,7 +149,9 @@ ra_err_t ra_adc_init_configured(const ra_adc_cfg_t* cfg)
   const ra_err_t mst_err = ra_mstp_enable(k_ra_mstp_adc16h);
   RA_RETURN_ON_ERROR(mst_err, s_tag, "adc_init_cfg: mstp enable");
 
-  *ra_adc_b_adcsr()      = internal_cfg_to_adcsr(cfg);
+  /* HUM Ch 53.2.1 "ADCSR : A/D Control/Status Register" p 3309 */
+  *ra_adc_b_adcsr() = internal_cfg_to_adcsr(cfg);
+  /* HUM Ch 53.2.4 "ADCER : A/D Control Extended Register" p 3315 */
   *ra_adc_b_adcer()      = internal_cfg_to_adcer(cfg);
   s_adc_state.configured = true;
   ra_log_info(s_tag, "adc_init_configured ready");
@@ -157,7 +160,9 @@ ra_err_t ra_adc_init_configured(const ra_adc_cfg_t* cfg)
 
 ra_err_t ra_adc_deinit(void)
 {
-  *ra_adc_b_adcsr()      = 0U;
+  /* HUM Ch 53.2.1 "ADCSR : A/D Control/Status Register" p 3309 */
+  *ra_adc_b_adcsr() = 0U;
+  /* HUM Ch 53.2.4 "ADCER : A/D Control Extended Register" p 3315 */
   *ra_adc_b_adcer()      = 0U;
   s_adc_state.fn         = nullptr;
   s_adc_state.ctx        = nullptr;
