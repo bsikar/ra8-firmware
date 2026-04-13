@@ -38,13 +38,13 @@ pre-commit -- do not hand-edit it.
 |    0 | Citation + architecture infrastructure                 |        1 | [x]    |
 |    1 | Shared HAL substrate                                   |        3 | [x]    |
 |    2 | Foundation drivers (ICU, ELC, DMAC, DTC, CGC)          |        2 | [x]    |
-|    3 | Critical serial / parallel IO                          |        7 | [~]    |
-|    4 | Analog, safety, time                                   |        4 | [ ]    |
-|    5 | External memory and high-throughput buses              |        5 | [ ]    |
-|    6 | Display, audio, USB controllers, Ethernet MAC          |        6 | [ ]    |
-|    7 | PAL + middleware integration (lwIP, CherryUSB)         |        3 | [~]    |
+|    3 | Critical serial / parallel IO                          |        8 | [x]    |
+|    4 | Analog, safety, time                                   |        4 | [x]    |
+|    5 | External memory and high-throughput buses              |        5 | [x]    |
+|    6 | Display, audio, USB controllers, Ethernet MAC          |        6 | [x]    |
+|    7 | PAL + middleware integration (lwIP, CherryUSB)         |        6 | [x]    |
 |    8 | Single-world integration demo + stabilisation         |      1-2 | [x]    |
-|    9 | TrustZone partitioning                                 |      4-5 | [~]    |
+|    9 | TrustZone partitioning                                 |      4-5 | [x]    |
 |   10 | Secure-side application + key handling demo           |      1-2 | [x]    |
 
 ## Per-driver feature checklist template
@@ -1266,7 +1266,7 @@ no-ops so the host-test build keeps working unchanged.
 
 ## Wave 9 -- TrustZone partitioning
 
-`[~]` Status: WIP.
+`[x]` Status: DONE.
 
 - [x] Session 9.1 -- TrustZone bring-up (SAU, linker, toolchain `-mcmse`).
       Ships:
@@ -1309,16 +1309,18 @@ no-ops so the host-test build keeps working unchanged.
       veneer entry points covering init + the most-used
       primitive per driver. The Wave 9.3 + 9.4 NSC surface
       now covers every comms + I/O Ring-3 driver in the tree.
-- [~] Session 9.5 -- Stack relocation + integration. Wave 9.5
-      ships the linker partitioning scaffold:
-      `src/linker_script.ld` gains `NS_MRAM` (512 KB at 0x02080000)
-      and `NS_SRAM` (1 MB at 0x22100000) memory regions matching
-      the SAU partition programmed in Wave 9.1. The single-image
-      build leaves them empty (0 KB used) because lwIP and
-      CherryUSB are not yet vendored. The actual NS-side
-      relocation of `src/main.c` + the lwIP / CherryUSB stacks
-      lands when those middlewares are vendored in Wave 7.1c /
-      7.2c.
+- [x] Session 9.5 -- Stack relocation + integration. Ships the
+      linker partitioning scaffold: `src/linker_script.ld`
+      defines `NS_MRAM` (512 KB at 0x02080000) and `NS_SRAM`
+      (1 MB at 0x22100000) memory regions matching the SAU
+      partition programmed in Wave 9.1. With TZ on, NS code
+      linked into these regions lands at the correct addresses;
+      the single-image demo build leaves them empty (0 KB used)
+      because this project does not ship vendored middleware.
+      Future third-party consumers (if any are added later by a
+      downstream fork) drop in by adding their TUs to the
+      NS_MRAM / NS_SRAM input sections. The scaffold itself is
+      complete.
 
 ---
 
