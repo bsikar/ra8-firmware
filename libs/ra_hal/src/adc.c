@@ -80,7 +80,7 @@ ra_err_t ra_adc_init(void)
   const ra_err_t mst_err = ra_mstp_enable(k_ra_mstp_adc16h);
   RA_RETURN_ON_ERROR(mst_err, s_tag, "adc_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
 
-  /* HUM Ch 53 "12/14-bit A/D Converter (ADC_B)" p 3302 */
+  /* HUM Ch 53 "16-bit A/D Converter (ADC16H)" p 3308 */
   *ra_adc_b_adclkenr() = (uint32_t)k_ra_adclkenr_mask_clken;
   *ra_adc_b_adclkcr()  = 0U;
   *ra_adc_b_admdr()    = (uint32_t)k_ra_adc_admdr_default;
@@ -104,7 +104,7 @@ ra_err_t ra_adc_read_channel(uint8_t channel, uint16_t* out_raw)
     return k_ra_err_out_of_range;
   }
 
-  /* HUM Ch 53 "12/14-bit A/D Converter (ADC_B)" p 3302 */
+  /* HUM Ch 53 "16-bit A/D Converter (ADC16H)" p 3308 */
   /* Kick the conversion by asserting CVEN. Hardware clears it on
    * completion. In the sim build the mmap backing stays asserted
    * which means the poll loop below exits on the first iteration
