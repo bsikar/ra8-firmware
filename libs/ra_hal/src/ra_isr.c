@@ -140,7 +140,7 @@ static void internal_ielsr_write(uint16_t slot, ra_elc_event_t event)
 {
   volatile uint32_t* ielsr = ra_icu_ielsr(slot);
   if (ielsr != nullptr) { /* GCOVR_EXCL_BR_LINE -- slot bounds already validated */
-    /* HUM Ch 14.2.x "IELSRn : ICU Event Link Setting Register n", p 524 */
+    /* HUM Ch 14.2 "IELSRn : ICU Event Link Setting Register n", p 524 */
     *ielsr = (uint32_t)event & (uint32_t)k_ra_ielsr_iels_mask;
   }
 }
@@ -281,7 +281,7 @@ void ra_isr_dispatch(uint16_t slot)
    * the IR bit follows the HUM 14.2 "write-one-to-clear" rule. */
   volatile uint32_t* ielsr = ra_icu_ielsr(slot);
   if (ielsr != nullptr) { /* GCOVR_EXCL_BR_LINE -- validated above */
-    /* HUM Ch 14.2.x "IELSRn : ICU Event Link Setting Register n", p 524 */
+    /* HUM Ch 14.2 "IELSRn : ICU Event Link Setting Register n", p 524 */
     *ielsr = *ielsr | ((uint32_t)1U << (uint8_t)k_ra_ielsr_ir_bit);
   }
 
