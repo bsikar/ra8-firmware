@@ -1,12 +1,18 @@
 /**
  * @file ra_glcdc.c
- * @brief GLCDC driver framework
+ * @brief Graphics LCD Controller driver implementation
+ *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
  *
  * @details
- * Writes the minimum subset of GLCDC registers documented in
- * `ra8d2_glcdc_regs.h` to light up graphics layer 1 against the
- * EK-RA8D2 1024x600 panel timings. Blending, chroma-key, dither,
- * and dual-layer support will be added incrementally.
+ * Wave 6 driver for the RA8D2 GLCDC block. Programmes the
+ * background stage, graphics layer 1, and panel clock against
+ * the EK-RA8D2 1024x600 parallel TFT timings. Exposes lifecycle,
+ * runtime start/stop, status get/clear, IRQ dispatch, and power
+ * transition. Blending, chroma-key, dither, and dual-layer
+ * support are deferred to the first display consumer that needs
+ * them. Every register access carries a HUM Ch 63 citation.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -32,20 +38,22 @@ ra_err_t ra_glcdc_init(const ra_glcdc_config_t* cfg)
   const ra_err_t mst_err = ra_mstp_enable(k_ra_mstp_glcdc);
   RA_RETURN_ON_ERROR(mst_err, s_tag, "glcdc_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
 
-  /* Background stage: size, sync, and colour. */
+  /* HUM Ch 63 "Graphics LCD Controller (GLCDC)" p 3744 */
+  /* Background stage: H/V size + colour. */
   *ra_glcdc_reg32(k_ra_glcdc_off_bg_hsize) = (uint32_t)cfg->width_px;
   *ra_glcdc_reg32(k_ra_glcdc_off_bg_vsize) = (uint32_t)cfg->height_px;
   *ra_glcdc_reg32(k_ra_glcdc_off_bg_bgc)   = 0U;
 
-  /* Graphics layer 1. */
+  /* HUM Ch 63 "Graphics LCD Controller (GLCDC)" p 3744 */
+  /* Graphics layer 1: format + framebuffer base + line stride + size. */
   *ra_glcdc_reg32(k_ra_glcdc_off_gr1_fmt)   = (uint32_t)cfg->format;
   *ra_glcdc_reg32(k_ra_glcdc_off_gr1_saddr) = cfg->framebuffer_addr;
   *ra_glcdc_reg32(k_ra_glcdc_off_gr1_line)  = (uint32_t)cfg->width_px;
   *ra_glcdc_reg32(k_ra_glcdc_off_gr1_size) =
     ((uint32_t)cfg->height_px << 16U) | (uint32_t)cfg->width_px;
 
-  /* Panel clock + output control programmed from the EK-RA8D2 panel
-   * timings in the register header. */
+  /* HUM Ch 63 "Graphics LCD Controller (GLCDC)" p 3744 */
+  /* Panel clock from the EK-RA8D2 panel timing constant. */
   *ra_glcdc_reg32(k_ra_glcdc_off_panel_clk) = (uint32_t)k_ra_glcdc_ek_pixel_clk_hz;
 
   ra_log_info_val(s_tag, "glcdc_init fb", cfg->framebuffer_addr);
@@ -58,6 +66,8 @@ ra_err_t ra_glcdc_start(bool enable)
   if (enable) {
     en = 1UL;
   }
+  /* HUM Ch 63 "Graphics LCD Controller (GLCDC)" p 3744 */
+  /* Enable / disable the system + background + graphics-layer engines. */
   *ra_glcdc_reg32(k_ra_glcdc_off_sys_cfg) = en;
   *ra_glcdc_reg32(k_ra_glcdc_off_bg_en)   = en;
   *ra_glcdc_reg32(k_ra_glcdc_off_gr1_en)  = en;
