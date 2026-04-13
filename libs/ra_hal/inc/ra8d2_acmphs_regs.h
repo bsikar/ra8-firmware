@@ -18,8 +18,8 @@
  * |  0x10  | CPIOC    | 8     | Output polarity / pin control        |
  * |  0x14  | CMPFIR   | 8     | Digital filter / noise reject        |
  *
- * TODO: verify against HUM section 33 (ACMPHS) -- offsets taken
- * from FSP `r_acmphs.h` as of 2026-04.
+ * Register offsets tracked against HUM Ch 56 "High-Speed Analog
+ * Comparator (ACMPHS)" p 3508.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

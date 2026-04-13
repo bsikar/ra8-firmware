@@ -1,20 +1,19 @@
 /**
  * @file ra_dma.h
- * @brief Generic DMA transfer substrate (DMAC + DTC backend)
+ * @brief Generic DMA transfer substrate (DMAC engine)
  *
  * @par Tag
  * [Ring 3 / HAL] {World: S}
  *
  * @details
- * Wave 1 substrate. Sits on top of ``ra_dmac`` (and, in a future
- * wave, ``ra_dtc``) and exposes a driver-friendly API that hides
- * the choice of engine, the free-channel allocation, and the
+ * Wave 1 substrate. Sits on top of ``ra_dmac`` and exposes a
+ * driver-friendly API that hides free-channel allocation and
  * completion-interrupt wiring behind a single ``ra_dma_request``
  * call.
  *
- * Drivers from Wave 2 onwards call ``ra_dma_request`` with a
- * descriptor that says "I want bytes moved from A to B when
- * ELC event E fires". The substrate:
+ * Drivers call ``ra_dma_request`` with a descriptor that says
+ * "I want bytes moved from A to B when ELC event E fires". The
+ * substrate:
  *
  *  1. Picks a free DMAC channel (0..7) from an internal pool.
  *  2. Programmes DMSAR / DMDAR / DMCRA / DMTMD / DMAMD on the
@@ -29,10 +28,10 @@
  * unregisters the completion interrupt, and returns the channel
  * to the free pool.
  *
- * Wave 1.3 ships the DMAC backend only. DTC is added in Wave 2.2
- * when the block-transfer workloads land. The public API is
- * stable across that transition; internally, ``ra_dma_request``
- * picks the backend based on a field in the descriptor.
+ * The DTC has its own lifecycle + request model (install a
+ * vector table, enable, let activation events drive transfers);
+ * callers that need DTC semantics use ``ra_dtc_*`` directly
+ * rather than going through this substrate.
  *
  * ## Threading
  *
@@ -59,15 +58,6 @@ extern "C" {
  * Types
  * =============================================================================
  */
-
-/**
- * @enum ra_dma_engine_t
- * @brief Back-end engine a transfer runs on.
- */
-typedef enum : uint8_t {
-  k_ra_dma_engine_dmac = 0U, /**< 8-channel DMAC (general purpose). */
-  k_ra_dma_engine_dtc  = 1U, /**< DTC -- reserved for Wave 2.2.     */
-} ra_dma_engine_t;
 
 /**
  * @enum ra_dma_channel_count_t
@@ -104,8 +94,6 @@ typedef void (*ra_dma_complete_fn_t)(void* ctx);
  * Populate one of these and hand it to ``ra_dma_request()``.
  *
  * Fields:
- *  - ``engine``      : Which backend to run on. Wave 1.3 only
- *                      supports ``k_ra_dma_engine_dmac``.
  *  - ``src_addr``    : Source address (bus-visible).
  *  - ``dst_addr``    : Destination address.
  *  - ``count``       : Number of *elements* to transfer; each
@@ -122,11 +110,9 @@ typedef void (*ra_dma_complete_fn_t)(void* ctx);
  */
 /* cppcheck cannot see tests/ so it flags every ra_dma_request_t
  * field as unused; the fields are read in ra_dma.c and in
- * tests/mocks/ra_sim_dma.c. trigger is reserved for Wave 2.2 ELC
- * trigger routing. */
+ * tests/mocks/ra_sim_dma.c. */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  ra_dma_engine_t      engine;
   uintptr_t            src_addr;
   uintptr_t            dst_addr;
   uint16_t             count;

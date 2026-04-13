@@ -89,11 +89,10 @@ extern "C" {
  * @param[in]  len       Bytes to copy. Must be > 0.
  *
  * @return ``ra_err_t`` error code.
- * @retval k_ra_ok               Bytes copied.
+ * @retval k_ra_ok               Bytes copied from flash.
  * @retval k_ra_err_null_ptr     ``ns_dst`` was NULL.
  * @retval k_ra_err_invalid_arg  ``len`` zero / range out of bounds.
- * @retval k_ra_err_not_supported Underlying ra_xspi flash-read API
- *                                still pending Wave 5.1c.
+ * @retval k_ra_err_timeout      Flash COMSTT poll never cleared.
  *
  * @pre ``ns_dst`` is non-NULL and points into the NS data region.
  * @pre ``ra_xspi_init`` has run on the secure side.
@@ -156,7 +155,7 @@ extern "C" {
  * @retval k_ra_ok                 Frame queued.
  * @retval k_ra_err_null_ptr       ``ns_frame`` NULL.
  * @retval k_ra_err_invalid_arg    Length out of range.
- * @retval k_ra_err_not_supported  ra_eth TX path still in scaffold.
+ * @retval k_ra_err_no_mem         TX ring full.
  *
  * @pre ``ns_frame`` non-NULL and points into NS data region.
  * @pre Length <= ``k_ra_nsc_eth_frame_max``.
@@ -184,7 +183,6 @@ extern "C" {
  * @retval k_ra_err_no_data        No frame ready.
  * @retval k_ra_err_null_ptr       ``ns_buf`` / ``inout_len`` NULL.
  * @retval k_ra_err_invalid_arg    Capacity zero / too small.
- * @retval k_ra_err_not_supported  ra_eth RX path still in scaffold.
  *
  * @pre ``ns_buf`` and ``inout_len`` non-NULL.
  *

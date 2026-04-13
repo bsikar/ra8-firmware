@@ -12,9 +12,9 @@
  * Block base address is `0x400C0000`. Drivers should always go through
  * `ra_sce()` rather than poking raw offsets.
  *
- * TODO: verify against HUM section 54 (SCE9 for RA8D2) -- this header
- * is an intentionally small stub; expand as the first real crypto
- * consumer lands.
+ * Register offsets tracked against HUM Ch 52 "Renesas Secure IP
+ * (RSIP-E50D)" p 3302 -- the RA8D2 SCE block is part of the
+ * RSIP-E50D surface the HUM calls out.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

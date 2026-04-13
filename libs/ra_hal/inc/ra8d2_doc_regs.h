@@ -20,8 +20,8 @@
  * base `0x40354100` (peripheral bus). This header models the full
  * register window needed by `ra_doc.c`.
  *
- * TODO: verify against HUM section 23 (DOC) -- offsets confirmed
- * against FSP `r_doc.h` for RA8 family as of 2026-04.
+ * Register offsets tracked against HUM Ch 57 "Data Operation
+ * Circuit (DOC)" p 3518.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

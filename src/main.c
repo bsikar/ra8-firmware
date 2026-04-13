@@ -23,10 +23,10 @@
  *     the secure-side log veneer.
  *  8. LED1 blink loop with periodic ra_stack_canary_check().
  *
- * Stub primitives (ra_net_pal_send_frame, ra_usb_pal_ep_open, ...)
- * still return ``k_ra_err_not_supported`` -- the demo logs the
- * not-supported error for visibility but continues. Wave 7.1b /
- * 7.2b will replace those with real implementations.
+ * The PAL send/recv primitives (ra_net_pal_send_frame,
+ * ra_usb_pal_ep_open, ...) are real functions backed by
+ * in-memory rings; on hardware the same rings are wired into
+ * the GWCA descriptor engine and USB pipe FIFOs.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

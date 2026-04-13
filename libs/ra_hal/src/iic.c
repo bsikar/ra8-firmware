@@ -385,7 +385,6 @@ ra_err_t ra_iic_write_dma(uint8_t              channel,
   }
   /* HUM Ch 39.2 "ICDRT : I2C Bus Transmit Data Register", p 2367 */
   ra_dma_request_t req = {};
-  req.engine           = k_ra_dma_engine_dmac;
   req.src_addr         = (uintptr_t)data;
   req.dst_addr         = (uintptr_t)&reg->ICDRT;
   req.count            = len;
@@ -416,7 +415,6 @@ ra_err_t ra_iic_read_dma(uint8_t              channel,
   }
   /* HUM Ch 39.2 "ICDRR : I2C Bus Receive Data Register", p 2367 */
   ra_dma_request_t req = {};
-  req.engine           = k_ra_dma_engine_dmac;
   req.src_addr         = (uintptr_t)&reg->ICDRR;
   req.dst_addr         = (uintptr_t)out_buf;
   req.count            = len;

@@ -368,7 +368,6 @@ ra_err_t ra_spi_write_dma(uint8_t              channel,
   /* Byte-wide DMA writes land in the low byte of SPDR; wider-frame
    * streaming is Wave 7. */
   ra_dma_request_t req = {};
-  req.engine           = k_ra_dma_engine_dmac;
   req.src_addr         = (uintptr_t)data;
   req.dst_addr         = (uintptr_t)&reg->SPDR;
   req.count            = len;
@@ -400,7 +399,6 @@ ra_err_t ra_spi_read_dma(uint8_t              channel,
   }
   /* HUM Ch 43.2 "SPDR : SPI Data Register", p 2877 */
   ra_dma_request_t req = {};
-  req.engine           = k_ra_dma_engine_dmac;
   req.src_addr         = (uintptr_t)&reg->SPDR;
   req.dst_addr         = (uintptr_t)out_buf;
   req.count            = len;
