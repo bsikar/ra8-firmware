@@ -34,7 +34,9 @@ def needs_header(path: pathlib.Path) -> bool:
 
 def check(path: pathlib.Path) -> bool:
     try:
-        head = path.read_text(encoding="utf-8", errors="replace")[:2048]
+        # Read the whole file: some file-level Doxygen blocks are long
+        # enough that the copyright line sits past any fixed prefix.
+        head = path.read_text(encoding="utf-8", errors="replace")
     except OSError:
         return False
 

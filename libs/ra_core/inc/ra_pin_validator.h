@@ -63,6 +63,7 @@ extern "C" {
  *
  * @pre `ra_infrastructure_init()` has run.
  * @post On success, the pin is marked as owned by `owner`.
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_pin_validator_claim(ra_port_pin_t pin, const char* owner);
 
@@ -72,6 +73,7 @@ extern "C" {
  * @param[in] pin Packed port/pin identifier.
  *
  * @return `k_ra_ok` on success, `k_ra_err_*` on invalid arguments.
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_pin_validator_release(ra_port_pin_t pin);
 

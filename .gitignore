@@ -33,6 +33,14 @@ docs/doxygen/html/
 docs/doxygen/xml/
 docs/doxygen/latex/
 docs/doxygen/*.log
+doxygen.log
+
+# Per-page PDF splits of the reference manuals (local browsing aid;
+# derived from the committed parent PDFs, 2+ GB if expanded).
+docs/reference/ra8d2-datasheet/
+docs/reference/ra8d2-hardware-user-manual/
+docs/reference/ra8d2-high-temperature-operation/
+docs/reference/ra8d2-technical-brief/
 
 # Renesas / vendor IDE artifacts (NOT used here, guarded in case they show up)
 .metadata/

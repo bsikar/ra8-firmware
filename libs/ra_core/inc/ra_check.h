@@ -69,33 +69,10 @@ extern "C" {
  * =============================================================================
  */
 
-/**
- * @brief Report a fatal error and halt the system.
- *
- * @details
- * Invoked by `RA_ASSERT` and `RA_ERROR_CHECK`. Default implementation
- * lives in `ra_error_handler.c` and:
- *  1. Disables interrupts.
- *  2. Emits a log line tagged `"FATAL"`.
- *  3. Triggers `__BKPT(0)` so an attached SEGGER J-Link halts.
- *  4. Drops into an infinite `__WFI()` loop.
- *
- * @param[in] tag     Component tag (short literal, e.g. `"SCI"`).
- * @param[in] message Human-readable message describing the failure.
- * @param[in] err     Error code classifying the failure
- *                    (`k_ra_ok` is accepted but implies an assertion
- *                    failure rather than a propagated error).
- *
- * @note Declared as taking a raw `uint32_t` for `err` so the macros do
- *       not need to include `ra_err.h` into tight inline contexts where
- *       that would pull in too much. Callers should always pass an
- *       `ra_err_t`.
- *
- * @warning Never returns. Marked `__attribute__((noreturn))` so the
- *          compiler prunes control flow after a call site.
- */
-void internal_ra_fatal_error(const char* tag, const char* message, uint32_t err)
-  __attribute__((noreturn));
+/* internal_ra_fatal_error is declared in ra_error_handler.h. Include
+ * it here so RA_ASSERT / RA_ERROR_CHECK can call it without the caller
+ * having to pull in the other header. */
+#include "ra_error_handler.h"
 
 /* =============================================================================
  * Static assertion -- enforces compile-time invariants
@@ -107,8 +84,8 @@ void internal_ra_fatal_error(const char* tag, const char* message, uint32_t err)
  *
  * @details
  * Uses C23 `static_assert`. Provided so code reads consistently with the
- * runtime `RA_ASSERT` macro and so the pre-commit hook can enforce
- * `static_assert` (not `_Static_assert`, which is a C11 relic).
+ * runtime `RA_ASSERT` macro and so the pre-commit hook can enforce the
+ * C23 spelling instead of the older C11 underscore form.
  *
  * @param cond C-time constant boolean expression.
  * @param msg  String literal describing the invariant.
