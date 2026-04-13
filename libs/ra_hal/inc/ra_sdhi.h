@@ -39,7 +39,7 @@ extern "C" {
  * @typedef ra_sdhi_event_fn_t
  * @brief SDHI event callback.
  */
-typedef void (*ra_sdhi_event_fn_t)(void* ctx, uint8_t instance, uint64_t status_mask);
+typedef void (*ra_sdhi_event_fn_t)(void* ctx, uint8_t instance, uint32_t status_mask);
 
 /**
  * @brief Initialise an SDHI instance.
@@ -84,13 +84,13 @@ ra_sdhi_send_command(uint8_t instance, uint32_t cmd, uint32_t arg, uint32_t* out
  * @brief Read the SD_INFO1 status register.
  * @since 0.2.0
  */
-[[nodiscard]] ra_err_t ra_sdhi_get_status(uint8_t instance, uint64_t* out_mask);
+[[nodiscard]] ra_err_t ra_sdhi_get_status(uint8_t instance, uint32_t* out_mask);
 
 /**
  * @brief Clear SD_INFO1 status bits via write-0-to-clear.
  * @since 0.2.0
  */
-[[nodiscard]] ra_err_t ra_sdhi_clear_status(uint8_t instance, uint64_t mask);
+[[nodiscard]] ra_err_t ra_sdhi_clear_status(uint8_t instance, uint32_t mask);
 
 /**
  * @brief Attach an SDHI event callback (shared across instances).

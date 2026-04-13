@@ -88,20 +88,20 @@ ra_err_t ra_sdhi_send_command(uint8_t   instance,
 
   /* HUM Ch 47 "SD/MMC Host Interface (SDHI)" p 3122 */
   /* Load SD_ARG, then SD_CMD kicks the command out on the bus. */
-  reg->SD_ARG = (uint64_t)arg;
-  reg->SD_CMD = (uint64_t)cmd;
+  reg->SD_ARG = arg;
+  reg->SD_CMD = cmd;
 
   /* Poll SD_INFO1.RSPEND (bit 0) with bounded spin budget. */
   enum : uint32_t { k_ra_sdhi_cmd_spin = 200000U };
   for (uint32_t i = 0U; i < (uint32_t)k_ra_sdhi_cmd_spin; ++i) {
-    if ((reg->SD_INFO1 & 1ULL) != 0ULL) {
+    if ((reg->SD_INFO1 & 1UL) != 0UL) {
       if (out_rsp != nullptr) {
-        out_rsp[0] = (uint32_t)reg->SD_RSP10;
-        out_rsp[1] = (uint32_t)reg->SD_RSP32;
-        out_rsp[2] = (uint32_t)reg->SD_RSP54;
-        out_rsp[3] = (uint32_t)reg->SD_RSP76;
+        out_rsp[0] = reg->SD_RSP10;
+        out_rsp[1] = reg->SD_RSP32;
+        out_rsp[2] = reg->SD_RSP54;
+        out_rsp[3] = reg->SD_RSP76;
       }
-      reg->SD_INFO1 = reg->SD_INFO1 & ~1ULL;
+      reg->SD_INFO1 = reg->SD_INFO1 & ~1UL;
       return k_ra_ok;
     }
   }
@@ -114,11 +114,11 @@ ra_err_t ra_sdhi_set_clock(uint8_t instance, uint32_t divider)
   RA_CHECK_NULL_PTR(reg, s_tag, "instance out of range");
   /* HUM Ch 47 "SD/MMC Host Interface (SDHI)" p 3122 */
   /* SD_CLK_CTRL low byte holds the divider field. */
-  reg->SD_CLK_CTRL = (uint64_t)divider;
+  reg->SD_CLK_CTRL = divider;
   return k_ra_ok;
 }
 
-ra_err_t ra_sdhi_get_status(uint8_t instance, uint64_t* out_mask)
+ra_err_t ra_sdhi_get_status(uint8_t instance, uint32_t* out_mask)
 {
   RA_CHECK_NULL_PTR(out_mask, s_tag, "out_mask must not be nullptr");
   volatile r_sdhi_regs_t* reg = ra_sdhi(instance);
@@ -128,7 +128,7 @@ ra_err_t ra_sdhi_get_status(uint8_t instance, uint64_t* out_mask)
   return k_ra_ok;
 }
 
-ra_err_t ra_sdhi_clear_status(uint8_t instance, uint64_t mask)
+ra_err_t ra_sdhi_clear_status(uint8_t instance, uint32_t mask)
 {
   volatile r_sdhi_regs_t* reg = ra_sdhi(instance);
   RA_CHECK_NULL_PTR(reg, s_tag, "instance out of range");
@@ -150,7 +150,7 @@ void ra_sdhi_dispatch(uint8_t instance)
   if (reg == nullptr) {
     return;
   }
-  const uint64_t           mask = reg->SD_INFO1;
+  const uint32_t           mask = reg->SD_INFO1;
   const ra_sdhi_event_fn_t fn   = s_sdhi_fn;
   void* const              ctx  = s_sdhi_ctx;
   reg->SD_INFO1                 = 0U;
