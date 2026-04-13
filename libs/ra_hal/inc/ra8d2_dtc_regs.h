@@ -24,13 +24,20 @@ typedef enum : uintptr_t {
   k_ra_dtc_base_addr = 0x4000AC00UL,
 } ra_dtc_addr_t;
 
+/* Register layout verified against FSP R_DTC_Type in
+ * R7KA8D2KF_core0.h lines 6585-6732. */
 typedef struct {
-  volatile uint8_t  DTCCR; /**< +0x00 Control.        */
+  volatile uint8_t  DTCCR; /**< +0x00 Control Register.            */
   volatile uint8_t  _r0[3];
-  volatile uint32_t DTCVBR; /**< +0x04 Vector base.    */
-  volatile uint8_t  DTCST;  /**< +0x08 Start.          */
+  volatile uint32_t DTCVBR;   /**< +0x04 Vector Base Register.        */
+  volatile uint8_t  DTCADMOD; /**< +0x08 Address Mode Register.       */
   volatile uint8_t  _r1[3];
-  volatile uint16_t DTCSTS; /**< +0x0C Status.         */
+  volatile uint8_t  DTCST; /**< +0x0C Module Start Register.       */
+  volatile uint8_t  _r2;
+  volatile uint16_t DTCSTS;  /**< +0x0E Status Register.             */
+  volatile uint8_t  DTCCR_S; /**< +0x10 DTCCR for secure region.     */
+  volatile uint8_t  _r3[3];
+  volatile uint32_t DTCVBR_S; /**< +0x14 DTCVBR for secure region.    */
 } r_dtc_regs_t;
 
 /** @brief Get pointer to the DTC block. */
