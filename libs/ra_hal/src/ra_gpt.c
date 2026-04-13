@@ -151,7 +151,7 @@ ra_err_t ra_gpt_init(uint8_t channel, const ra_gpt_cfg_t* cfg)
   reg->GTCR  = internal_gtcr(cfg->mode, cfg->prescaler);
   reg->GTPR  = cfg->period;
   reg->GTPBR = cfg->period;
-  /* HUM Ch 23.2.12 "GTCCRA..F : General PWM Timer Compare Capture Register",
+  /* HUM Ch 22.2.12 "GTCCRA..F : General PWM Timer Compare Capture Register",
      p 968 */
   reg->GTCCR[0] = cfg->duty_a;
   reg->GTCCR[1] = cfg->duty_b;
