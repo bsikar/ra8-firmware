@@ -1,17 +1,17 @@
 /**
  * @file ra_dac_b.c
- * @brief 12-Bit D/A Converter (DAC12) driver implementation
+ * @brief 12-Bit D/A Converter (DAC_B) driver implementation
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}
  *
  * @details
- * Wave 4 driver for the RA8D2 DAC12 peripheral. Programmes both
- * channels (DACR/DADR0/DADR1/DADPR/DAADSCR/DAVREFCR), exposes
- * runtime write + reference-voltage selection + per-channel
- * output enable, and provides the lifecycle/status/dispatch/power
- * transition surface. Every register access carries a HUM Ch 54
- * citation.
+ * Wave 4 driver for the RA8D2 DAC_B peripheral. DAC_B is the RA8
+ * successor to the pre-RA8 DAC12 block: each DAC "channel" is a
+ * separate IP instance with its own DADR + DACR0/1/2 set. DAC_B0
+ * and DAC_B1 live at 0x40233000 and 0x40233100 (stride 0x100).
+ * The driver hides this by keeping a 2-channel public API, with
+ * channel 0 routed to DAC_B0 and channel 1 routed to DAC_B1.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -40,9 +40,6 @@ typedef enum : uint8_t {
 
 /**
  * @brief Clamp a raw value to 12-bit range.
- *
- * @param[in] value Raw input value.
- * @return Value saturated to `[0, k_ra_dac_b_max_value]`.
  */
 static inline uint16_t internal_ra_dac_b_clamp(uint16_t value)
 {
@@ -52,63 +49,61 @@ static inline uint16_t internal_ra_dac_b_clamp(uint16_t value)
   return value;
 }
 
+/**
+ * @brief Enable the DAC_B instance for a logical channel.
+ */
+static void internal_enable_channel(uint8_t channel)
+{
+  volatile r_dac_b_regs_t* reg = ra_dac_b(channel);
+  if (reg == nullptr) {
+    return;
+  }
+  /* HUM Ch 54 "12-Bit D/A Converter (DAC12)" p 3490 -- DACR0.DACEN + DAE. */
+  reg->DACR0 = (uint32_t)k_ra_dacr0_mask_dacen | (uint32_t)k_ra_dacr0_mask_dae;
+}
+
+/**
+ * @brief Disable the DAC_B instance for a logical channel.
+ */
+static void internal_disable_channel(uint8_t channel)
+{
+  volatile r_dac_b_regs_t* reg = ra_dac_b(channel);
+  if (reg == nullptr) {
+    return;
+  }
+  reg->DACR0 = 0U;
+  reg->DADR  = 0U;
+}
+
 [[nodiscard]] ra_err_t ra_dac_b_init(void)
 {
-  /* DAC12 has two independent MSTP bits (D19/D20). The driver
-   * activates both since both channel registers are programmed
-   * by ra_dac_b_init.
+  /* DAC_B0 and DAC_B1 have separate MSTP bits.
    * HUM Ch 11.2.9 "MSTPCRD : Module Stop Control Register D", p 448 */
   ra_err_t mst_err = ra_mstp_enable(k_ra_mstp_dac12_0);
   RA_RETURN_ON_ERROR(mst_err, s_tag, "dac_b_init: mstp dac0");
   mst_err = ra_mstp_enable(k_ra_mstp_dac12_1);
   RA_RETURN_ON_ERROR(mst_err, s_tag, "dac_b_init: mstp dac1");
 
-  volatile r_dac_b_regs_t* reg = ra_dac_b();
-  reg->DACR                    = 0U;
-  reg->DADR0                   = 0U;
-  reg->DADR1                   = 0U;
-  reg->DADPR                   = 0U;
-  reg->DAADSCR                 = 0U;
-  reg->DAVREFCR                = 0U;
+  internal_disable_channel((uint8_t)k_ra_dac_b_channel_0);
+  internal_disable_channel((uint8_t)k_ra_dac_b_channel_1);
   ra_log_info(s_tag, "dac_b_init");
   return k_ra_ok;
 }
 
 [[nodiscard]] ra_err_t ra_dac_b_write(uint8_t channel, uint16_t value)
 {
-  if ((uint16_t)channel >= (uint16_t)k_ra_dac_b_channel_count) {
+  volatile r_dac_b_regs_t* reg = ra_dac_b(channel);
+  if (reg == nullptr) {
     return k_ra_err_invalid_arg;
   }
-  volatile r_dac_b_regs_t* reg     = ra_dac_b();
-  const uint16_t           clamped = internal_ra_dac_b_clamp(value);
-
-  if (channel == (uint8_t)k_ra_dac_b_channel_0) {
-    reg->DADR0 = clamped;
-    reg->DACR =
-      (uint8_t)(reg->DACR | (uint8_t)k_ra_dac_b_mask_dae | (uint8_t)k_ra_dac_b_mask_daoe0);
-  } else {
-    reg->DADR1 = clamped;
-    reg->DACR =
-      (uint8_t)(reg->DACR | (uint8_t)k_ra_dac_b_mask_dae | (uint8_t)k_ra_dac_b_mask_daoe1);
-  }
+  const uint16_t clamped = internal_ra_dac_b_clamp(value);
+  /* HUM Ch 54 "12-Bit D/A Converter (DAC12)" p 3490 */
+  reg->DADR = clamped;
+  /* Make sure the instance is enabled + driving output. */
+  reg->DACR0 = reg->DACR0 | (uint32_t)k_ra_dacr0_mask_dacen | (uint32_t)k_ra_dacr0_mask_dae;
   ra_log_info_val(s_tag, "dac_b_write value", (uint32_t)clamped);
   return k_ra_ok;
 }
-
-/* =============================================================================
- * Wave 4.2 -- full build-out
- * =============================================================================
- */
-
-/**
- * @enum ra_dac_b_bits_t
- * @brief DACR + DAADSCR bit positions.
- */
-typedef enum : uint8_t {
-  k_ra_dac_b_dacr_mask_all =
-    (uint8_t)k_ra_dac_b_mask_dae | (uint8_t)k_ra_dac_b_mask_daoe0 | (uint8_t)k_ra_dac_b_mask_daoe1,
-  k_ra_dac_b_daadst_enable = 0x80U, /**< DAADSCR.DAADST. */
-} ra_dac_b_bits_t;
 
 /**
  * @struct ra_dac_b_state_t
@@ -121,21 +116,6 @@ typedef struct {
 
 static ra_dac_b_state_t s_dac_b_state;
 
-static uint8_t internal_cfg_to_dacr(const ra_dac_b_cfg_t* cfg)
-{
-  uint8_t dacr = 0U;
-  if (cfg->enable_channel0 || cfg->enable_channel1) {
-    dacr |= (uint8_t)k_ra_dac_b_mask_dae;
-  }
-  if (cfg->enable_channel0) {
-    dacr |= (uint8_t)k_ra_dac_b_mask_daoe0;
-  }
-  if (cfg->enable_channel1) {
-    dacr |= (uint8_t)k_ra_dac_b_mask_daoe1;
-  }
-  return dacr;
-}
-
 ra_err_t ra_dac_b_init_configured(const ra_dac_b_cfg_t* cfg)
 {
   RA_CHECK_NULL_PTR((void*)cfg, s_tag, "cfg must not be nullptr");
@@ -145,55 +125,55 @@ ra_err_t ra_dac_b_init_configured(const ra_dac_b_cfg_t* cfg)
   mst_err = ra_mstp_enable(k_ra_mstp_dac12_1);
   RA_RETURN_ON_ERROR(mst_err, s_tag, "dac_b_init_cfg: mstp dac1"); /* GCOVR_EXCL_BR_LINE */
 
-  volatile r_dac_b_regs_t* reg = ra_dac_b();
-  reg->DADR0                   = 0U;
-  reg->DADR1                   = 0U;
-  reg->DADPR                   = 0U;
-  reg->DAVREFCR                = (uint8_t)cfg->vref;
-  if (cfg->sync_with_adc) {
-    reg->DAADSCR = (uint8_t)k_ra_dac_b_daadst_enable;
-  } else {
-    reg->DAADSCR = 0U;
+  internal_disable_channel((uint8_t)k_ra_dac_b_channel_0);
+  internal_disable_channel((uint8_t)k_ra_dac_b_channel_1);
+
+  /* HUM Ch 54 "12-Bit D/A Converter (DAC12)" p 3490 -- DACR2 holds the
+   * reference voltage select + ADC sync bits in the DAC_B topology. */
+  volatile r_dac_b_regs_t* reg0 = ra_dac_b((uint8_t)k_ra_dac_b_channel_0);
+  volatile r_dac_b_regs_t* reg1 = ra_dac_b((uint8_t)k_ra_dac_b_channel_1);
+  reg0->DACR2                   = (uint32_t)cfg->vref;
+  reg1->DACR2                   = (uint32_t)cfg->vref;
+
+  if (cfg->enable_channel0) {
+    internal_enable_channel((uint8_t)k_ra_dac_b_channel_0);
   }
-  reg->DACR = internal_cfg_to_dacr(cfg);
+  if (cfg->enable_channel1) {
+    internal_enable_channel((uint8_t)k_ra_dac_b_channel_1);
+  }
   ra_log_info(s_tag, "dac_b_init_configured");
   return k_ra_ok;
 }
 
 ra_err_t ra_dac_b_deinit(void)
 {
-  volatile r_dac_b_regs_t* reg = ra_dac_b();
-  reg->DACR                    = 0U;
-  reg->DADR0                   = 0U;
-  reg->DADR1                   = 0U;
-  reg->DAVREFCR                = 0U;
-  reg->DAADSCR                 = 0U;
-  s_dac_b_state.fn             = nullptr;
-  s_dac_b_state.ctx            = nullptr;
+  internal_disable_channel((uint8_t)k_ra_dac_b_channel_0);
+  internal_disable_channel((uint8_t)k_ra_dac_b_channel_1);
+  s_dac_b_state.fn  = nullptr;
+  s_dac_b_state.ctx = nullptr;
   (void)ra_mstp_disable(k_ra_mstp_dac12_1);
   return ra_mstp_disable(k_ra_mstp_dac12_0);
 }
 
 ra_err_t ra_dac_b_set_vref(ra_dac_b_vref_t vref)
 {
-  volatile r_dac_b_regs_t* reg = ra_dac_b();
-  reg->DAVREFCR                = (uint8_t)vref;
+  volatile r_dac_b_regs_t* reg0 = ra_dac_b((uint8_t)k_ra_dac_b_channel_0);
+  volatile r_dac_b_regs_t* reg1 = ra_dac_b((uint8_t)k_ra_dac_b_channel_1);
+  reg0->DACR2                   = (uint32_t)vref;
+  reg1->DACR2                   = (uint32_t)vref;
   return k_ra_ok;
 }
 
 ra_err_t ra_dac_b_set_output_enable(uint8_t channel, bool enable)
 {
-  if ((uint16_t)channel >= (uint16_t)k_ra_dac_b_channel_count) {
+  volatile r_dac_b_regs_t* reg = ra_dac_b(channel);
+  if (reg == nullptr) {
     return k_ra_err_invalid_arg;
   }
-  volatile r_dac_b_regs_t* reg = ra_dac_b();
-  const uint8_t mask = (channel == (uint8_t)k_ra_dac_b_channel_0) ? (uint8_t)k_ra_dac_b_mask_daoe0
-                                                                  : (uint8_t)k_ra_dac_b_mask_daoe1;
-
   if (enable) {
-    reg->DACR = (uint8_t)(reg->DACR | (uint8_t)k_ra_dac_b_mask_dae | mask);
+    reg->DACR0 = reg->DACR0 | (uint32_t)k_ra_dacr0_mask_dacen | (uint32_t)k_ra_dacr0_mask_dae;
   } else {
-    reg->DACR = (uint8_t)(reg->DACR & (uint8_t)~mask);
+    reg->DACR0 = reg->DACR0 & ~((uint32_t)k_ra_dacr0_mask_dacen | (uint32_t)k_ra_dacr0_mask_dae);
   }
   return k_ra_ok;
 }
@@ -201,14 +181,27 @@ ra_err_t ra_dac_b_set_output_enable(uint8_t channel, bool enable)
 ra_err_t ra_dac_b_get_status(uint8_t* out_mask)
 {
   RA_CHECK_NULL_PTR(out_mask, s_tag, "out_mask must not be nullptr");
-  *out_mask = (uint8_t)(ra_dac_b()->DACR & (uint8_t)k_ra_dac_b_dacr_mask_all);
+  /* Build a single-byte composite status flag:
+   *   bit 0 -- channel 0 DACEN
+   *   bit 1 -- channel 1 DACEN
+   */
+  uint8_t                  flags = 0U;
+  volatile r_dac_b_regs_t* reg0  = ra_dac_b((uint8_t)k_ra_dac_b_channel_0);
+  volatile r_dac_b_regs_t* reg1  = ra_dac_b((uint8_t)k_ra_dac_b_channel_1);
+  if ((reg0->DACR0 & (uint32_t)k_ra_dacr0_mask_dacen) != 0U) {
+    flags |= 0x1U;
+  }
+  if ((reg1->DACR0 & (uint32_t)k_ra_dacr0_mask_dacen) != 0U) {
+    flags |= 0x2U;
+  }
+  *out_mask = flags;
   return k_ra_ok;
 }
 
 ra_err_t ra_dac_b_clear_status(void)
 {
-  volatile r_dac_b_regs_t* reg = ra_dac_b();
-  reg->DACR                    = (uint8_t)(reg->DACR & (uint8_t)~(uint8_t)k_ra_dac_b_dacr_mask_all);
+  internal_disable_channel((uint8_t)k_ra_dac_b_channel_0);
+  internal_disable_channel((uint8_t)k_ra_dac_b_channel_1);
   return k_ra_ok;
 }
 
@@ -221,8 +214,8 @@ ra_err_t ra_dac_b_attach_handler(ra_dac_b_update_fn_t fn, void* ctx)
 
 ra_err_t ra_dac_b_enter_stop(void)
 {
-  volatile r_dac_b_regs_t* reg = ra_dac_b();
-  reg->DACR                    = 0U;
+  internal_disable_channel((uint8_t)k_ra_dac_b_channel_0);
+  internal_disable_channel((uint8_t)k_ra_dac_b_channel_1);
   (void)ra_mstp_disable(k_ra_mstp_dac12_1);
   return ra_mstp_disable(k_ra_mstp_dac12_0);
 }
