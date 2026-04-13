@@ -53,22 +53,25 @@ typedef enum : uintptr_t {
 } ra_icu_addr_t;
 
 typedef enum : uint16_t {
-  k_ra_icu_num_ielsr = 112U, /**< IELSR slot count on RA8D2 (HUM section 13). */
-  k_ra_icu_num_irqs  = 16U,  /**< IRQ0..IRQ15 external IRQ pins.              */
+  k_ra_icu_num_ielsr = 96U, /**< IELSR slot count on RA8D2 (FSP R_ICU_Type). */
+  k_ra_icu_num_irqs  = 16U, /**< IRQ0..IRQ15 external IRQ pins.              */
 } ra_icu_limits_t;
 
 /* =============================================================================
- * Register offsets
+ * Register offsets (verified against FSP R_ICU_Type in
+ * R7KA8D2KF_core0.h lines 8670-9061)
  * =============================================================================
  */
 
-typedef enum : uint16_t {
-  k_ra_icu_off_irqcr0 = 0x000U, /**< IRQCR0..15 (8 bits each).          */
-  k_ra_icu_off_nmisr  = 0x114U, /**< NMISR: NMI status register (8b).   */
-  k_ra_icu_off_nmier  = 0x120U, /**< NMIER: NMI enable register (8b).   */
-  k_ra_icu_off_nmiclr = 0x130U, /**< NMICLR: NMI status clear (8b).     */
-  k_ra_icu_off_nmicr  = 0x140U, /**< NMICR: NMI pin control (8b).       */
-  k_ra_icu_off_ielsr0 = 0x300U, /**< IELSR0..N (32 bits each).          */
+typedef enum : uint32_t {
+  k_ra_icu_off_irqcra0 = 0x0000U, /**< IRQCRa[0..15] (8 bits each) core0.    */
+  k_ra_icu_off_nmicr   = 0x0010U, /**< NMICR: NMI pin control (8b).          */
+  k_ra_icu_off_irqcrb0 = 0x0014U, /**< IRQCRb[0..15] (8 bits each) core1.    */
+  k_ra_icu_off_intselr = 0x0040U, /**< INTSELR[32] (32 bits each): IRQ core. */
+  k_ra_icu_off_nmier   = 0x6100U, /**< NMIER: NMI enable (32b).              */
+  k_ra_icu_off_nmiclr  = 0x6110U, /**< NMICLR: NMI status clear (32b).       */
+  k_ra_icu_off_nmisr   = 0x6120U, /**< NMISR: NMI status (32b).              */
+  k_ra_icu_off_ielsr0  = 0x6300U, /**< IELSR[0..95] (32 bits each).          */
 } ra_icu_off_t;
 
 /**
@@ -112,22 +115,22 @@ typedef enum : uint8_t {
   k_ra_icu_irqcr_mask_flten   = 0x80U, /**< FLTEN bit 7. */
 } ra_icu_irqcr_mask_t;
 
-/** @brief Get pointer to the 8-bit NMIER register. */
-static inline volatile uint8_t* ra_icu_nmier(void)
+/** @brief Get pointer to the 32-bit NMIER register. */
+static inline volatile uint32_t* ra_icu_nmier(void)
 {
-  return (volatile uint8_t*)(k_ra_icu_base_addr + k_ra_icu_off_nmier);
+  return (volatile uint32_t*)(k_ra_icu_base_addr + k_ra_icu_off_nmier);
 }
 
-/** @brief Get pointer to the 8-bit NMISR register. */
-static inline volatile uint8_t* ra_icu_nmisr(void)
+/** @brief Get pointer to the 32-bit NMISR register. */
+static inline volatile uint32_t* ra_icu_nmisr(void)
 {
-  return (volatile uint8_t*)(k_ra_icu_base_addr + k_ra_icu_off_nmisr);
+  return (volatile uint32_t*)(k_ra_icu_base_addr + k_ra_icu_off_nmisr);
 }
 
-/** @brief Get pointer to the 8-bit NMICLR register. */
-static inline volatile uint8_t* ra_icu_nmiclr(void)
+/** @brief Get pointer to the 32-bit NMICLR register. */
+static inline volatile uint32_t* ra_icu_nmiclr(void)
 {
-  return (volatile uint8_t*)(k_ra_icu_base_addr + k_ra_icu_off_nmiclr);
+  return (volatile uint32_t*)(k_ra_icu_base_addr + k_ra_icu_off_nmiclr);
 }
 
 /** @brief Get pointer to the 8-bit NMICR register. */
@@ -157,7 +160,7 @@ static inline volatile uint8_t* ra_icu_irqcr(uint8_t irq_num)
   if (irq_num >= (uint8_t)k_ra_icu_num_irqs) {
     return nullptr;
   }
-  return (volatile uint8_t*)(k_ra_icu_base_addr + k_ra_icu_off_irqcr0 + (uintptr_t)irq_num);
+  return (volatile uint8_t*)(k_ra_icu_base_addr + k_ra_icu_off_irqcra0 + (uintptr_t)irq_num);
 }
 
 /* =============================================================================

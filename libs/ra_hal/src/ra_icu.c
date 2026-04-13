@@ -44,8 +44,10 @@ typedef enum : uint32_t {
  * @enum ra_icu_clear_val_t
  * @brief Magic values used during ra_icu_init.
  */
-typedef enum : uint8_t {
-  k_ra_icu_nmiclr_all = 0xFFU, /**< NMICLR: write-1-to-clear every status bit. */
+typedef enum : uint32_t {
+  /* FSP R_ICU_NMICLR bits 0..14 + 16..18 + 20 are write-1-to-clear; use
+   * the full 32-bit mask to cover future extensions. */
+  k_ra_icu_nmiclr_all = 0xFFFFFFFFUL,
 } ra_icu_clear_val_t;
 
 /* =============================================================================
@@ -66,11 +68,11 @@ ra_err_t ra_icu_init(void)
   }
 
   /* HUM Ch 14.2.14 "NMIER : NMI Enable Register", p 542 */
-  *ra_icu_nmier() = 0U;
+  *ra_icu_nmier() = 0UL;
 
   /* HUM Ch 14.2.15 "NMICLR : NMI Status Clear Register", p 544 -- write
    * all-ones to clear every latched NMI status bit. */
-  *ra_icu_nmiclr() = (uint8_t)k_ra_icu_nmiclr_all;
+  *ra_icu_nmiclr() = (uint32_t)k_ra_icu_nmiclr_all;
   return k_ra_ok;
 }
 
@@ -122,30 +124,30 @@ ra_err_t ra_icu_read_irqcr(uint8_t irq_num, uint8_t* out_val)
  * =============================================================================
  */
 
-ra_err_t ra_icu_nmi_enable(uint8_t mask)
+ra_err_t ra_icu_nmi_enable(uint32_t mask)
 {
   /* HUM Ch 14.2.14 "NMIER : NMI Enable Register", p 542 */
-  volatile uint8_t* nmier = ra_icu_nmier();
-  *nmier                  = (uint8_t)(*nmier | mask);
+  volatile uint32_t* nmier = ra_icu_nmier();
+  *nmier                   = (*nmier | mask);
   return k_ra_ok;
 }
 
-ra_err_t ra_icu_nmi_disable(uint8_t mask)
+ra_err_t ra_icu_nmi_disable(uint32_t mask)
 {
   /* HUM Ch 14.2.14 "NMIER : NMI Enable Register", p 542 */
-  volatile uint8_t* nmier = ra_icu_nmier();
-  *nmier                  = (uint8_t)(*nmier & (uint8_t)~mask);
+  volatile uint32_t* nmier = ra_icu_nmier();
+  *nmier                   = (*nmier & ~mask);
   return k_ra_ok;
 }
 
-ra_err_t ra_icu_nmi_clear(uint8_t mask)
+ra_err_t ra_icu_nmi_clear(uint32_t mask)
 {
   /* HUM Ch 14.2.15 "NMICLR : NMI Status Clear Register", p 544 */
   *ra_icu_nmiclr() = mask;
   return k_ra_ok;
 }
 
-ra_err_t ra_icu_nmi_status(uint8_t* out_status)
+ra_err_t ra_icu_nmi_status(uint32_t* out_status)
 {
   RA_CHECK_NULL_PTR(out_status, s_tag, "nmi status out");
   *out_status = *ra_icu_nmisr();

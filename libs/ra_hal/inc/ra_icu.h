@@ -172,19 +172,19 @@ typedef struct {
  *       register via ``ra_icu_nmi_disable``.
  * @since 0.2.0
  */
-[[nodiscard]] ra_err_t ra_icu_nmi_enable(uint8_t mask);
+[[nodiscard]] ra_err_t ra_icu_nmi_enable(uint32_t mask);
 
 /**
  * @brief Disable NMI sources by clearing bits in NMIER.
  *
- * @param[in] mask Bit mask to clear in NMIER.
+ * @param[in] mask Bit mask to clear in NMIER (21 bits, FSP R_ICU_NMIER).
  *
  * @return ``k_ra_ok``.
  * @pre IRQs masked or single-threaded init context.
  * @post NMIER has the requested bits clear.
  * @since 0.2.0
  */
-[[nodiscard]] ra_err_t ra_icu_nmi_disable(uint8_t mask);
+[[nodiscard]] ra_err_t ra_icu_nmi_disable(uint32_t mask);
 
 /**
  * @brief Clear pending NMI status flags via NMICLR (HUM 14.2.15 p 544).
@@ -196,19 +196,19 @@ typedef struct {
  * @post The targeted NMISR bits read as 0.
  * @since 0.2.0
  */
-[[nodiscard]] ra_err_t ra_icu_nmi_clear(uint8_t mask);
+[[nodiscard]] ra_err_t ra_icu_nmi_clear(uint32_t mask);
 
 /**
  * @brief Read the current NMISR value.
  *
- * @param[out] out_status NMISR value on success.
+ * @param[out] out_status NMISR value on success (32-bit).
  *
  * @return ``k_ra_ok`` or ``k_ra_err_null_ptr``.
  * @pre ``out_status`` is non-NULL.
  * @post No hardware state is modified.
  * @since 0.2.0
  */
-[[nodiscard]] ra_err_t ra_icu_nmi_status(uint8_t* out_status);
+[[nodiscard]] ra_err_t ra_icu_nmi_status(uint32_t* out_status);
 
 /* =============================================================================
  * Legacy API -- direct NVIC + IELSR access (deprecated)
