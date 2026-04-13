@@ -54,3 +54,41 @@ ra_err_t ra_crc_compute(const uint8_t* data, uint32_t len, uint32_t* out_crc)
   *out_crc = reg->CRCDOR;
   return k_ra_ok;
 }
+
+/* =============================================================================
+ * Wave 4.4 -- full build-out
+ * =============================================================================
+ */
+
+ra_err_t ra_crc_deinit(void)
+{
+  volatile r_crc_regs_t* reg = ra_crc();
+  reg->CRCCR0                = 0U;
+  reg->CRCCR1                = 0U;
+  return ra_mstp_disable(k_ra_mstp_crc);
+}
+
+ra_err_t ra_crc_set_poly(ra_crc_poly_t poly)
+{
+  volatile r_crc_regs_t* reg = ra_crc();
+  reg->CRCCR0                = (uint8_t)poly;
+  return k_ra_ok;
+}
+
+ra_err_t ra_crc_get_status(uint8_t* out_poly)
+{
+  RA_CHECK_NULL_PTR(out_poly, s_tag, "out_poly must not be nullptr");
+  *out_poly = ra_crc()->CRCCR0;
+  return k_ra_ok;
+}
+
+ra_err_t ra_crc_enter_stop(void)
+{
+  ra_crc()->CRCCR0 = 0U;
+  return ra_mstp_disable(k_ra_mstp_crc);
+}
+
+ra_err_t ra_crc_exit_stop(void)
+{
+  return ra_mstp_enable(k_ra_mstp_crc);
+}
