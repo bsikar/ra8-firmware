@@ -41,19 +41,26 @@ ra_err_t ra_sdramc_init(void)
 {
   volatile r_sdramc_regs_t* reg = ra_sdramc();
 
-  /* HUM Ch 15.10 "SDCCR : SDC Control Register" p 712 */
+  /* HUM Ch 15 "Buses" p 583 */
+  /* SDCCR : SDC Control Register. */
   reg->SDCCR = (uint16_t)k_ra_sdccr_default;
-  /* HUM Ch 15.10 "SDCMOD : SDC Mode Register" p 713 */
+  /* HUM Ch 15 "Buses" p 583 */
+  /* SDCMOD : SDC Mode Register. */
   reg->SDCMOD = 0U;
-  /* HUM Ch 15.10 "SDAMOD : SDC Address Mode Register" p 713 */
+  /* HUM Ch 15 "Buses" p 583 */
+  /* SDAMOD : SDC Address Mode Register. */
   reg->SDAMOD = 0U;
-  /* HUM Ch 15.10 "SDTR : SDC Timing Register" p 714 */
+  /* HUM Ch 15 "Buses" p 583 */
+  /* SDTR : SDC Timing Register. */
   reg->SDTR = (uint32_t)k_ra_sdtr_default;
-  /* HUM Ch 15.10 "SDRFCR : SDC Refresh Cycle Register" p 715 */
+  /* HUM Ch 15 "Buses" p 583 */
+  /* SDRFCR : SDC Refresh Cycle Register. */
   reg->SDRFCR = (uint16_t)k_ra_sdrfcr_default;
-  /* HUM Ch 15.10 "SDRFEN : SDC Refresh Enable Register" p 716 */
+  /* HUM Ch 15 "Buses" p 583 */
+  /* SDRFEN : SDC Refresh Enable Register. */
   reg->SDRFEN = 1U;
-  /* HUM Ch 15.10 "SDICR : SDC Init Sequence Control Register" p 716 */
+  /* HUM Ch 15 "Buses" p 583 */
+  /* SDICR : SDC Init Sequence Control Register. */
   reg->SDICR = 1U;
 
   ra_log_info(s_tag, "sdramc_init (64 MiB @ 0x68000000)");
@@ -68,18 +75,22 @@ ra_err_t ra_sdramc_init(void)
 ra_err_t ra_sdramc_deinit(void)
 {
   volatile r_sdramc_regs_t* reg = ra_sdramc();
-  /* HUM Ch 15.10 "SDRFEN : SDC Refresh Enable Register" p 716 */
+  /* HUM Ch 15 "Buses" p 583 */
+  /* SDRFEN : SDC Refresh Enable Register. */
   reg->SDRFEN = 0U;
-  /* HUM Ch 15.10 "SDICR : SDC Init Sequence Control Register" p 716 */
+  /* HUM Ch 15 "Buses" p 583 */
+  /* SDICR : SDC Init Sequence Control Register. */
   reg->SDICR = 0U;
-  /* HUM Ch 15.10 "SDCCR : SDC Control Register" p 712 */
+  /* HUM Ch 15 "Buses" p 583 */
+  /* SDCCR : SDC Control Register. */
   reg->SDCCR = 0U;
   return k_ra_ok;
 }
 
 ra_err_t ra_sdramc_set_refresh_interval(uint16_t sdrfcr)
 {
-  /* HUM Ch 15.10 "SDRFCR : SDC Refresh Cycle Register" p 715 */
+  /* HUM Ch 15 "Buses" p 583 */
+  /* SDRFCR : SDC Refresh Cycle Register. */
   ra_sdramc()->SDRFCR = sdrfcr;
   return k_ra_ok;
 }
@@ -87,21 +98,24 @@ ra_err_t ra_sdramc_set_refresh_interval(uint16_t sdrfcr)
 ra_err_t ra_sdramc_get_status(uint8_t* out_enabled)
 {
   RA_CHECK_NULL_PTR(out_enabled, s_tag, "out_enabled must not be nullptr");
-  /* HUM Ch 15.10 "SDRFEN : SDC Refresh Enable Register" p 716 */
+  /* HUM Ch 15 "Buses" p 583 */
+  /* SDRFEN : SDC Refresh Enable Register. */
   *out_enabled = ra_sdramc()->SDRFEN;
   return k_ra_ok;
 }
 
 ra_err_t ra_sdramc_enter_stop(void)
 {
-  /* HUM Ch 15.10 "SDRFEN : SDC Refresh Enable Register" p 716 */
+  /* HUM Ch 15 "Buses" p 583 */
+  /* SDRFEN : SDC Refresh Enable Register. */
   ra_sdramc()->SDRFEN = 0U;
   return k_ra_ok;
 }
 
 ra_err_t ra_sdramc_exit_stop(void)
 {
-  /* HUM Ch 15.10 "SDRFEN : SDC Refresh Enable Register" p 716 */
+  /* HUM Ch 15 "Buses" p 583 */
+  /* SDRFEN : SDC Refresh Enable Register. */
   ra_sdramc()->SDRFEN = 1U;
   return k_ra_ok;
 }
