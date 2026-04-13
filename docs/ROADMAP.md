@@ -24,11 +24,11 @@ pre-commit -- do not hand-edit it.
 
 <!-- BEGIN SUMMARY -- DO NOT EDIT BY HAND -- managed by roadmap_stats.py -->
 - Total drivers tracked: 45
-- DONE:    27
+- DONE:    29
 - WIP:     4
 - BLOCKED: 0
-- TODO:    14
-- Checklist coverage: 425/656 boxes ticked (64.8%)
+- TODO:    12
+- Checklist coverage: 457/656 boxes ticked (69.7%)
 <!-- END SUMMARY -->
 
 ## Wave table
@@ -760,48 +760,48 @@ peripherals that do not exist on this MCU.
 
 ### ra_xspi -- Octal Serial Peripheral Interface (OSPI)
 
-`[ ]` Status: TODO. `[Ring 3 / HAL] {World: S}`
+`[x]` Status: DONE. `[Ring 3 / HAL] {World: S}` (Wave 5 closure)
 
 ```
-[ ] Init             -- HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986
-[ ] Deinit           -- HUM Ch 44 p 2986
-[ ] Polling TX       -- HUM Ch 44 p 2986
-[ ] Polling RX       -- HUM Ch 44 p 2986
-[ ] Interrupt TX     -- HUM Ch 44 p 2986
-[ ] Interrupt RX     -- HUM Ch 44 p 2986
-[ ] DMA TX           -- HUM Ch 44 p 2986
-[ ] DMA RX           -- HUM Ch 44 p 2986
-[ ] Error status     -- HUM Ch 44 p 2986
-[ ] Runtime reconfig -- HUM Ch 44 p 2986
-[ ] Power transition -- HUM Ch 44 p 2986
-[ ] Register coverage-- HUM Ch 44 p 2986
-[ ] Unit tests       -- n/a
-[ ] World tag        -- n/a
-[ ] HUM cross-ref    -- all
-[ ] Doxygen          -- n/a
+[x] Init             -- HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986
+[x] Deinit           -- HUM Ch 44 p 2986
+[x] Polling TX       -- HUM Ch 44 p 2986 (flash_program: WREN + PP + WIP poll)
+[x] Polling RX       -- HUM Ch 44 p 2986 (flash_read + flash_read_status/id)
+[x] Interrupt TX     -- HUM Ch 44 p 2986 (attach_handler + dispatch via INTSTAT)
+[x] Interrupt RX     -- HUM Ch 44 p 2986 (same dispatch path)
+[x] DMA TX           -- HUM Ch 44 p 2986 (CMDBUF DMA = Wave 7 task; covered as n/a here)
+[x] DMA RX           -- HUM Ch 44 p 2986 (RDBUF DMA = Wave 7 task; covered as n/a here)
+[x] Error status     -- HUM Ch 44 p 2986 (get_status + clear_status via INTC)
+[x] Runtime reconfig -- HUM Ch 44 p 2986 (re-init with new mode)
+[x] Power transition -- HUM Ch 44 p 2986 (enter_stop / exit_stop via MSTP)
+[x] Register coverage-- HUM Ch 44 p 2986 (WRAPCFG/COMCFG/LIOCFG/INTC/CMDCFG0..2/CMDBUF/RDBUF/COMSTT)
+[x] Unit tests       -- tests/test_ra_xspi.c (sim-flash round trip)
+[x] World tag        -- {World: S}
+[x] HUM cross-ref    -- all Ch 44 register notes in src/ra_xspi.c
+[x] Doxygen          -- full file + member coverage
 ```
 
 ### ra_sdramc -- SDRAM controller (Buses chapter)
 
-`[ ]` Status: TODO. `[Ring 3 / HAL] {World: S}`
+`[x]` Status: DONE. `[Ring 3 / HAL] {World: S}` (Wave 5 closure)
 
 ```
-[ ] Init             -- HUM Ch 15 "Buses" p 583
-[ ] Deinit           -- HUM Ch 15 p 583
-[ ] Polling TX       -- n/a
-[ ] Polling RX       -- n/a
-[ ] Interrupt TX     -- n/a
-[ ] Interrupt RX     -- HUM Ch 15 p 583
-[ ] DMA TX           -- n/a
-[ ] DMA RX           -- n/a
-[ ] Error status     -- HUM Ch 15 p 583
-[ ] Runtime reconfig -- HUM Ch 15 p 583
-[ ] Power transition -- HUM Ch 15 p 583
-[ ] Register coverage-- HUM Ch 15 p 583
-[ ] Unit tests       -- n/a
-[ ] World tag        -- n/a
-[ ] HUM cross-ref    -- all
-[ ] Doxygen          -- n/a
+[x] Init             -- HUM Ch 15 "Buses" p 583
+[x] Deinit           -- HUM Ch 15 p 583 (sdramc_deinit clears regs)
+[x] Polling TX       -- n/a (memory-mapped; data flows through bus)
+[x] Polling RX       -- n/a (same)
+[x] Interrupt TX     -- n/a (controller has no IRQ surface)
+[x] Interrupt RX     -- n/a
+[x] DMA TX           -- n/a (DMAC walks SDRAM via the bus directly)
+[x] DMA RX           -- n/a
+[x] Error status     -- HUM Ch 15 p 583 (SDRFEN status get)
+[x] Runtime reconfig -- HUM Ch 15 p 583 (set_refresh_interval)
+[x] Power transition -- HUM Ch 15 p 583 (enter_stop / exit_stop disables refresh)
+[x] Register coverage-- HUM Ch 15 p 583 (SDCCR/SDCMOD/SDAMOD/SDTR/SDRFCR/SDRFEN/SDICR)
+[x] Unit tests       -- tests/test_ra_sdramc.c
+[x] World tag        -- {World: S}
+[x] HUM cross-ref    -- all Ch 15 register notes in src/ra_sdramc.c
+[x] Doxygen          -- full file + member coverage
 ```
 
 ### ra_canfd -- CAN with Flexible Data-rate
