@@ -24,11 +24,11 @@ pre-commit -- do not hand-edit it.
 
 <!-- BEGIN SUMMARY -- DO NOT EDIT BY HAND -- managed by roadmap_stats.py -->
 - Total drivers tracked: 45
-- DONE:    44
-- WIP:     1
+- DONE:    45
+- WIP:     0
 - BLOCKED: 0
 - TODO:    0
-- Checklist coverage: 688/688 boxes ticked (100.0%)
+- Checklist coverage: 704/704 boxes ticked (100.0%)
 <!-- END SUMMARY -->
 
 ## Wave table
@@ -1188,36 +1188,63 @@ implement the full pipe FIFO surface in Ring 3 first.
 
 ### ra_nsc -- NSC veneer scaffold
 
-`[~]` Status: WIP. `[Ring 4 / NSC] {World: NSC}` (Wave 7.3 scaffold landed)
+`[x]` Status: DONE. `[Ring 4 / NSC] {World: NSC}` (Wave 7.3 + 9.2 + 9.3 + 9.4)
 
-Wave 7.3 ships the four veneer files in their pre-cmse form,
-plus the public ``ra_nsc.h`` contract. Each veneer is a plain C
-function today; Wave 9.2 adds
-``__attribute__((cmse_nonsecure_entry))`` and the runtime
-``cmse_check_address_range`` call sites without changing the
-shape.
+Wave 7.3 shipped the first four veneer files plus the public
+``ra_nsc.h`` contract. Wave 9.2 retrofitted every veneer with
+``RA_NSC_VENEER`` (= ``__attribute__((cmse_nonsecure_entry))``)
+and the ``RA_NSC_CHECK_NS_RANGE_R/RW`` macros. Wave 9.3 and 9.4
+expanded the surface to cover every Ring-3 comms + I/O driver.
 
-- `libs/ra_nsc/inc/ra_nsc.h` -- four veneer prototypes and the
-  ``k_ra_nsc_*`` boundary-policy constants.
+- `libs/ra_nsc/inc/ra_nsc.h` -- four core veneer prototypes and
+  the ``k_ra_nsc_*`` boundary-policy constants.
+- `libs/ra_nsc/inc/ra_nsc_comms.h` + `src/ra_nsc_comms.c` -- 10
+  comms veneer entry points (ra_sci / ra_iic / ra_spi / ra_usb).
+- `libs/ra_nsc/inc/ra_nsc_io.h` + `src/ra_nsc_io.c` -- 13 I/O
+  veneer entry points (ra_gpt / ra_adc / ra_dac_b / ra_acmphs /
+  ra_crc / ra_glcdc / ra_pdm / ra_eth).
 - `libs/ra_nsc/src/ra_nsc_xspi.c` -- xspi flash-read + status
-  veneers, both with full validation.
+  veneers, the read path forwarded to ``ra_xspi_flash_read``
+  (Wave 7.4: stub replaced with real flash read).
 - `libs/ra_nsc/src/ra_nsc_eth.c` -- ethernet send / recv
   veneers, delegating to ``ra_net_pal``.
 - `libs/ra_nsc/src/ra_nsc_log.c` -- logging veneer with a
   secure scratch buffer for the (tag, message) copy so the
   secure side never dereferences NS pointers.
+- `libs/ra_nsc/src/ra_nsc_key_vault.c` -- key-vault veneer
+  (read-only KEK export, Wave 8 demo).
 - `libs/ra_nsc/src/ra_nsc_periph_init.c` -- idempotent secure
   substrate bring-up (``ra_mstp_init``, ``ra_pwr_init``,
   ``ra_isr_init``, ``ra_dma_init``).
-- `tests/test_ra_nsc.c` -- 7 cases covering xspi read/status arg
-  validation, eth send/recv arg validation, log_emit happy +
-  null + truncation, periph_init idempotency.
+- `tests/test_ra_nsc.c`, `tests/test_ra_nsc_comms.c`,
+  `tests/test_ra_nsc_io.c`, `tests/test_ra_key_vault.c` --
+  cover every veneer entry point.
+
+```
+[x] Init             -- ra_nsc_periph_init (idempotent substrate)
+[x] Deinit           -- n/a (veneers are stateless dispatchers)
+[x] Polling TX       -- ra_nsc_eth_send / ra_nsc_xspi_read path
+[x] Polling RX       -- ra_nsc_eth_recv / ra_nsc_xspi_status path
+[x] Interrupt TX     -- n/a (dispatch surface belongs to Ring 3)
+[x] Interrupt RX     -- n/a (dispatch surface belongs to Ring 3)
+[x] DMA TX           -- n/a (DMA stays secure-side)
+[x] DMA RX           -- n/a (DMA stays secure-side)
+[x] Error status     -- RA_NSC_CHECK_NS_RANGE_R/RW guards
+[x] Runtime reconfig -- per-veneer args forwarded to Ring 3
+[x] Power transition -- n/a (ra_pwr stays secure-side)
+[x] Register coverage-- n/a (veneers are software-only)
+[x] Unit tests       -- tests/test_ra_nsc*.c (+ key_vault)
+[x] World tag        -- {World: NSC}
+[x] HUM cross-ref    -- forwards to cited Ring-3 drivers
+[x] Doxygen          -- every veneer has @par TrustZone Safety
+```
 
 Each veneer has a ``@par TrustZone Safety:`` doxygen section
 documenting what it validates, what it trusts, and what it
-denies. The Wave 9.2 retrofit points are marked inline with
-``Wave 9.2 retrofit point: cmse_check_address_range(...)``
-comments so the partition session is mechanical.
+denies. With the TrustZone build on, the
+``RA_NSC_CHECK_NS_RANGE_*`` macros expand to real
+``cmse_check_address_range`` calls; with it off they are
+no-ops so the host-test build keeps working unchanged.
 
 ---
 

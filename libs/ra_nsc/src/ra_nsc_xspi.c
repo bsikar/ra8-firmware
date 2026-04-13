@@ -6,9 +6,13 @@
  * [Ring 4 / NSC] {World: NSC}
  *
  * @details
- * Wave 7.3 scaffold. Runs as ordinary code in the single-world
- * build; gains ``__attribute__((cmse_nonsecure_entry))`` and the
- * ``cmse_check_address_range`` call site in Wave 9.2.
+ * Wave 7 veneer over the secure-side ra_xspi driver. Runs as
+ * ordinary code in the single-world build; the
+ * ``RA_NSC_VENEER`` attribute expands to
+ * ``__attribute__((cmse_nonsecure_entry))`` when the TrustZone
+ * build is turned on, and the ``RA_NSC_CHECK_NS_RANGE_RW``
+ * macro becomes a real ``cmse_check_address_range`` at that
+ * point too.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -24,6 +28,10 @@
 
 static const char* s_tag = "NSCXSPI";
 
+typedef enum : uint8_t {
+  k_ra_nsc_xspi_instance = 0U, /**< Only one xspi instance today. */
+} ra_nsc_xspi_instance_t;
+
 RA_NSC_VENEER ra_err_t ra_nsc_xspi_read(uint32_t flash_off,
                                         uint8_t* ns_dst, // NOLINT(readability-non-const-parameter)
                                         uint32_t len)
@@ -33,10 +41,7 @@ RA_NSC_VENEER ra_err_t ra_nsc_xspi_read(uint32_t flash_off,
     return k_ra_err_invalid_arg;
   }
   RA_NSC_CHECK_NS_RANGE_RW(ns_dst, len);
-  (void)flash_off;
-  /* Wave 7.3 stub: ra_xspi exposes init/status/erase/read_id but no
-   * generic flash-read primitive yet; that lands in Wave 5.1c. */
-  return k_ra_err_not_supported;
+  return ra_xspi_flash_read((uint8_t)k_ra_nsc_xspi_instance, flash_off, ns_dst, len);
 }
 
 RA_NSC_VENEER ra_err_t ra_nsc_xspi_status(uint8_t instance, uint32_t* out_mask)
