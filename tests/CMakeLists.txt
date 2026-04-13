@@ -64,11 +64,13 @@ get_filename_component(FW_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/.." ABSOLUTE)
 file(GLOB_RECURSE RA_CORE_SOURCES    CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_core/src/*.c)
 file(GLOB_RECURSE RA_HAL_SOURCES     CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_hal/src/*.c)
 file(GLOB_RECURSE RA_NET_PAL_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_net_pal/src/*.c)
+file(GLOB_RECURSE RA_USB_PAL_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_usb_pal/src/*.c)
 
 add_library(ra_core_hal OBJECT
     ${RA_CORE_SOURCES}
     ${RA_HAL_SOURCES}
     ${RA_NET_PAL_SOURCES}
+    ${RA_USB_PAL_SOURCES}
     ${CMAKE_CURRENT_SOURCE_DIR}/mocks/ra_sim_mmap.c
     ${CMAKE_CURRENT_SOURCE_DIR}/mocks/ra_sim_irq.c
     ${CMAKE_CURRENT_SOURCE_DIR}/mocks/ra_sim_dma.c
@@ -78,6 +80,7 @@ target_include_directories(ra_core_hal PUBLIC
     ${FW_ROOT}/libs/ra_core/inc
     ${FW_ROOT}/libs/ra_hal/inc
     ${FW_ROOT}/libs/ra_net_pal/inc
+    ${FW_ROOT}/libs/ra_usb_pal/inc
     ${FW_ROOT}/src
     ${FW_ROOT}/src/inc
     ${CMAKE_CURRENT_SOURCE_DIR}/mocks
@@ -98,6 +101,7 @@ function(ra_add_test name)
     ${FW_ROOT}/libs/ra_core/inc
     ${FW_ROOT}/libs/ra_hal/inc
     ${FW_ROOT}/libs/ra_net_pal/inc
+    ${FW_ROOT}/libs/ra_usb_pal/inc
     ${CMAKE_CURRENT_SOURCE_DIR}/mocks
   )
   add_test(NAME ${name} COMMAND ${name})
