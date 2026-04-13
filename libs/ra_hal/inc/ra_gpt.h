@@ -37,6 +37,7 @@ extern "C" {
 
 #include <stdint.h>
 
+#include "ra_dma.h"
 #include "ra_err.h"
 
 /* =============================================================================
@@ -260,6 +261,90 @@ typedef void (*ra_gpt_event_fn_t)(void* ctx, uint32_t status_mask);
  * @since 0.2.0
  */
 [[nodiscard]] ra_err_t ra_gpt_exit_stop(uint8_t channel);
+
+/* =============================================================================
+ * DMA TX / RX (Wave 3.7b)
+ * =============================================================================
+ */
+
+/**
+ * @brief Stream a buffer of period values into GPT GTPR via DMA.
+ *
+ * @details
+ * Programmes the ra_dma substrate to copy ``count`` 32-bit period
+ * values from ``periods[]`` into the channel's GTPR register. This
+ * is the "sample streaming" DMA TX path from the Wave 3.5 roadmap
+ * note -- the driver pumps a preloaded period sequence into the
+ * timer without the CPU touching GTPR each tick.
+ *
+ * @param[in]  channel         GPT channel 0..13.
+ * @param[in]  periods         Source array of 32-bit period values.
+ *                             Must outlive the transfer.
+ * @param[in]  count           Number of periods; non-zero.
+ * @param[in]  on_complete     Completion callback. May be NULL.
+ * @param[in]  ctx             Context passed to ``on_complete``.
+ * @param[out] out_dma_channel Allocated DMAC channel on success.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok                 Transfer armed.
+ * @retval k_ra_err_null_ptr       ``periods`` / ``out_dma_channel`` NULL.
+ * @retval k_ra_err_invalid_arg    Channel or ``count`` invalid.
+ * @retval k_ra_err_no_mem         All DMAC channels in use.
+ * @retval k_ra_err_hw_error       ``ra_dma_request`` failed.
+ *
+ * @pre Channel previously initialised via ``ra_gpt_init``.
+ * @pre ``ra_dma_init`` has been called.
+ * @post On success, DMAC channel is armed.
+ *
+ * @note Thread safety: not thread-safe.
+ * @since 0.3.0
+ */
+[[nodiscard]] ra_err_t ra_gpt_write_dma(uint8_t              channel,
+                                        const uint32_t*      periods,
+                                        uint16_t             count,
+                                        ra_dma_complete_fn_t on_complete,
+                                        void*                ctx,
+                                        uint8_t*             out_dma_channel);
+
+/**
+ * @brief Capture a stream of GTCNT values into a buffer via DMA.
+ *
+ * @details
+ * Programmes the ra_dma substrate to copy ``count`` 32-bit counter
+ * snapshots from the channel's GTCNT register into ``out_counts[]``.
+ * This is the "capture streaming" DMA RX path from the Wave 3.5
+ * roadmap note -- the driver samples GTCNT on each ELC trigger and
+ * stores the value, so the host sees the full capture sequence
+ * without ISR overhead.
+ *
+ * @param[in]  channel         GPT channel 0..13.
+ * @param[out] out_counts      Destination counter buffer. Must
+ *                             outlive the transfer.
+ * @param[in]  count           Number of samples; non-zero.
+ * @param[in]  on_complete     Completion callback. May be NULL.
+ * @param[in]  ctx             Context passed to ``on_complete``.
+ * @param[out] out_dma_channel Allocated DMAC channel on success.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok                 Transfer armed.
+ * @retval k_ra_err_null_ptr       ``out_counts`` / ``out_dma_channel`` NULL.
+ * @retval k_ra_err_invalid_arg    Channel or ``count`` invalid.
+ * @retval k_ra_err_no_mem         All DMAC channels in use.
+ * @retval k_ra_err_hw_error       ``ra_dma_request`` failed.
+ *
+ * @pre Channel previously initialised via ``ra_gpt_init``.
+ * @pre ``ra_dma_init`` has been called.
+ * @post On success, DMAC channel is armed.
+ *
+ * @note Thread safety: not thread-safe.
+ * @since 0.3.0
+ */
+[[nodiscard]] ra_err_t ra_gpt_read_dma(uint8_t              channel,
+                                       uint32_t*            out_counts,
+                                       uint16_t             count,
+                                       ra_dma_complete_fn_t on_complete,
+                                       void*                ctx,
+                                       uint8_t*             out_dma_channel);
 
 /* =============================================================================
  * ISR dispatch

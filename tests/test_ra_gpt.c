@@ -7,9 +7,11 @@
  */
 
 #include "ra8d2_gpt_regs.h"
+#include "ra_dma.h"
 #include "ra_err.h"
 #include "ra_gpt.h"
 #include "ra_mstp.h"
+#include "ra_sim_dma.h"
 #include "ra_sim_mmap.h"
 #include "unity_minimal.h"
 
@@ -408,6 +410,106 @@ static void test_gpt_power_transition(void)
   TEST_END("gpt power transition");
 }
 
+static int32_t s_gpt_dma_done = 0;
+
+static void stub_gpt_dma_done(void* ctx)
+{
+  (void)ctx;
+  ++s_gpt_dma_done;
+}
+
+static void test_gpt_write_dma_streams_periods_to_gtpr(void)
+{
+  TEST_BEGIN("ra_gpt_write_dma: periods stream into GTPR");
+  prep_w35();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dma_init());
+  const ra_gpt_cfg_t cfg = make_gpt_cfg();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_gpt_init((uint8_t)k_ra_gpt_test_channel_valid, &cfg));
+
+  const uint32_t periods[] = {0x11111111UL, 0x22222222UL, 0x33333333UL};
+  uint8_t        dch       = 0xFFU;
+  s_gpt_dma_done           = 0;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_gpt_write_dma((uint8_t)k_ra_gpt_test_channel_valid,
+                                           periods,
+                                           (uint16_t)(sizeof(periods) / sizeof(periods[0])),
+                                           stub_gpt_dma_done,
+                                           nullptr,
+                                           &dch));
+  TEST_ASSERT(dch < 8U);
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sim_dma_memcpy(dch));
+  volatile const r_gpt_channel_regs_t* reg = ra_gpt((uint8_t)k_ra_gpt_test_channel_valid);
+  TEST_ASSERT_EQ((int32_t)0x33333333UL, (int32_t)reg->GTPR);
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sim_dma_complete(dch));
+  TEST_ASSERT_EQ(1, s_gpt_dma_done);
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dma_release(dch));
+  TEST_END("ra_gpt_write_dma: periods stream into GTPR");
+}
+
+static void test_gpt_read_dma_captures_gtcnt(void)
+{
+  TEST_BEGIN("ra_gpt_read_dma: GTCNT streams into out_counts");
+  prep_w35();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dma_init());
+  const ra_gpt_cfg_t cfg = make_gpt_cfg();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_gpt_init((uint8_t)k_ra_gpt_test_channel_valid, &cfg));
+
+  volatile r_gpt_channel_regs_t* reg = ra_gpt((uint8_t)k_ra_gpt_test_channel_valid);
+  reg->GTCNT                         = 0xDEADC0DEUL;
+
+  uint32_t out[2] = {0U, 0U};
+  uint8_t  dch    = 0xFFU;
+  s_gpt_dma_done  = 0;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_gpt_read_dma((uint8_t)k_ra_gpt_test_channel_valid,
+                                          out,
+                                          (uint16_t)(sizeof(out) / sizeof(out[0])),
+                                          stub_gpt_dma_done,
+                                          nullptr,
+                                          &dch));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sim_dma_memcpy(dch));
+  TEST_ASSERT_EQ((int32_t)0xDEADC0DEUL, (int32_t)out[0]);
+  TEST_ASSERT_EQ((int32_t)0xDEADC0DEUL, (int32_t)out[1]);
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sim_dma_complete(dch));
+  TEST_ASSERT_EQ(1, s_gpt_dma_done);
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dma_release(dch));
+  TEST_END("ra_gpt_read_dma: GTCNT streams into out_counts");
+}
+
+static void test_gpt_dma_arg_validation(void)
+{
+  TEST_BEGIN("ra_gpt_{write,read}_dma: arg validation");
+  prep_w35();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dma_init());
+  const ra_gpt_cfg_t cfg = make_gpt_cfg();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_gpt_init((uint8_t)k_ra_gpt_test_channel_valid, &cfg));
+
+  uint8_t        dch       = 0U;
+  const uint32_t periods[] = {0x1UL};
+  uint32_t       counts[1] = {0U};
+
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_gpt_write_dma(0U, nullptr, 1U, nullptr, nullptr, &dch));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_gpt_write_dma(0U, periods, 1U, nullptr, nullptr, nullptr));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_gpt_read_dma(0U, nullptr, 1U, nullptr, nullptr, &dch));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_gpt_read_dma(0U, counts, 1U, nullptr, nullptr, nullptr));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_gpt_write_dma(99U, periods, 1U, nullptr, nullptr, &dch));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_gpt_read_dma(99U, counts, 1U, nullptr, nullptr, &dch));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_gpt_write_dma(0U, periods, 0U, nullptr, nullptr, &dch));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_gpt_read_dma(0U, counts, 0U, nullptr, nullptr, &dch));
+  TEST_END("ra_gpt_{write,read}_dma: arg validation");
+}
+
 int32_t main(void)
 {
   test_start_happy();
@@ -434,6 +536,9 @@ int32_t main(void)
   test_gpt_dispatch_no_handler();
   test_gpt_attach_bad_channel();
   test_gpt_power_transition();
+  test_gpt_write_dma_streams_periods_to_gtpr();
+  test_gpt_read_dma_captures_gtcnt();
+  test_gpt_dma_arg_validation();
   (void)fprintf(stderr, "[OK  ] test_ra_gpt.c\n");
   return 0;
 }

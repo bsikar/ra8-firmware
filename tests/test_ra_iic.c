@@ -11,9 +11,11 @@
 #include <sys/time.h>
 
 #include "ra8d2_iic_regs.h"
+#include "ra_dma.h"
 #include "ra_err.h"
 #include "ra_iic.h"
 #include "ra_mstp.h"
+#include "ra_sim_dma.h"
 #include "ra_sim_mmap.h"
 #include "unity_minimal.h"
 
@@ -550,6 +552,95 @@ static void test_iic_power_transition(void)
   TEST_END("ra_iic_enter_stop / exit_stop");
 }
 
+static int32_t s_iic_dma_done = 0;
+
+static void stub_iic_dma_done(void* ctx)
+{
+  (void)ctx;
+  ++s_iic_dma_done;
+}
+
+static void test_iic_write_dma_streams_to_icdrt(void)
+{
+  TEST_BEGIN("ra_iic_write_dma: buffer streams into ICDRT");
+  ra_sim_mmap_reset();
+  (void)ra_mstp_init();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dma_init());
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_iic_init(0U, &k_iic_cfg));
+
+  const uint8_t src[] = {0x11U, 0x22U, 0x33U};
+  uint8_t       dch   = 0xFFU;
+  s_iic_dma_done      = 0;
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_ok,
+    (int32_t)ra_iic_write_dma(0U, src, (uint16_t)sizeof(src), stub_iic_dma_done, nullptr, &dch));
+  TEST_ASSERT(dch < 8U);
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sim_dma_memcpy(dch));
+  volatile const r_iic_regs_t* reg = ra_iic(0U);
+  TEST_ASSERT_EQ((int32_t)0x33U, (int32_t)reg->ICDRT);
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sim_dma_complete(dch));
+  TEST_ASSERT_EQ(1, s_iic_dma_done);
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dma_release(dch));
+  TEST_END("ra_iic_write_dma: buffer streams into ICDRT");
+}
+
+static void test_iic_read_dma_streams_from_icdrr(void)
+{
+  TEST_BEGIN("ra_iic_read_dma: ICDRR streams into buffer");
+  ra_sim_mmap_reset();
+  (void)ra_mstp_init();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dma_init());
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_iic_init(0U, &k_iic_cfg));
+
+  volatile r_iic_regs_t* reg = ra_iic(0U);
+  reg->ICDRR                 = 0x55U;
+
+  uint8_t out[2] = {0U, 0U};
+  uint8_t dch    = 0xFFU;
+  s_iic_dma_done = 0;
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_ok,
+    (int32_t)ra_iic_read_dma(0U, out, (uint16_t)sizeof(out), stub_iic_dma_done, nullptr, &dch));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sim_dma_memcpy(dch));
+  TEST_ASSERT_EQ((int32_t)0x55U, (int32_t)out[0]);
+  TEST_ASSERT_EQ((int32_t)0x55U, (int32_t)out[1]);
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sim_dma_complete(dch));
+  TEST_ASSERT_EQ(1, s_iic_dma_done);
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dma_release(dch));
+  TEST_END("ra_iic_read_dma: ICDRR streams into buffer");
+}
+
+static void test_iic_dma_arg_validation(void)
+{
+  TEST_BEGIN("ra_iic_{write,read}_dma: arg validation");
+  ra_sim_mmap_reset();
+  (void)ra_mstp_init();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dma_init());
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_iic_init(0U, &k_iic_cfg));
+
+  uint8_t       dch    = 0U;
+  const uint8_t src[]  = {0xAAU};
+  uint8_t       dst[1] = {0U};
+
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_iic_write_dma(0U, nullptr, 1U, nullptr, nullptr, &dch));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_iic_write_dma(0U, src, 1U, nullptr, nullptr, nullptr));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_iic_read_dma(0U, nullptr, 1U, nullptr, nullptr, &dch));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_iic_read_dma(0U, dst, 1U, nullptr, nullptr, nullptr));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_iic_write_dma(99U, src, 1U, nullptr, nullptr, &dch));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_iic_read_dma(99U, dst, 1U, nullptr, nullptr, &dch));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_iic_write_dma(0U, src, 0U, nullptr, nullptr, &dch));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_iic_read_dma(0U, dst, 0U, nullptr, nullptr, &dch));
+  TEST_END("ra_iic_{write,read}_dma: arg validation");
+}
+
 int32_t main(void)
 {
   test_controller_init_happy();
@@ -577,6 +668,9 @@ int32_t main(void)
   test_iic_attach_handler();
   test_iic_dispatch_eri();
   test_iic_power_transition();
+  test_iic_write_dma_streams_to_icdrt();
+  test_iic_read_dma_streams_from_icdrr();
+  test_iic_dma_arg_validation();
   (void)fprintf(stderr, "[OK  ] test_ra_iic.c\n");
   return 0;
 }

@@ -16,6 +16,8 @@
 
 #include "ra8d2_spi_regs.h"
 #include "ra_check.h"
+#include "ra_dma.h"
+#include "ra_dmac.h"
 #include "ra_err.h"
 #include "ra_log.h"
 #include "ra_mstp.h"
@@ -343,6 +345,75 @@ ra_err_t ra_spi_exit_stop(uint8_t channel)
   }
   return ra_mstp_enable(s_spi_mstp_table[channel]);
 }
+
+/* ---- DMA TX / RX (Wave 3.7b) ----------------------------------------- */
+
+ra_err_t ra_spi_write_dma(uint8_t              channel,
+                          const uint8_t*       data,
+                          uint16_t             len,
+                          ra_dma_complete_fn_t on_complete,
+                          void*                ctx,
+                          uint8_t*             out_dma_channel)
+{
+  RA_CHECK_NULL_PTR(data, s_tag, "spi_write_dma: data");
+  RA_CHECK_NULL_PTR(out_dma_channel, s_tag, "spi_write_dma: out_dma_channel");
+  if ((channel >= (uint8_t)k_ra_spi_channel_count) || (len == 0U)) {
+    return k_ra_err_invalid_arg;
+  }
+  volatile r_spi_regs_t* reg = ra_spi(channel);
+  if (reg == nullptr) {          /* GCOVR_EXCL_BR_LINE */
+    return k_ra_err_invalid_arg; /* GCOVR_EXCL_LINE */
+  }
+  /* HUM Ch 43.2 "SPDR : SPI Data Register", p 2877 */
+  /* Byte-wide DMA writes land in the low byte of SPDR; wider-frame
+   * streaming is Wave 7. */
+  ra_dma_request_t req = {};
+  req.engine           = k_ra_dma_engine_dmac;
+  req.src_addr         = (uintptr_t)data;
+  req.dst_addr         = (uintptr_t)&reg->SPDR;
+  req.count            = len;
+  req.width            = k_ra_dmac_width_byte;
+  req.src_inc          = true;
+  req.dst_inc          = false;
+  req.trigger          = (ra_elc_event_t)0;
+  req.on_complete      = on_complete;
+  req.ctx              = ctx;
+  return ra_dma_request(&req, out_dma_channel);
+}
+
+/* out_buf is written by the DMAC engine via the dst_addr path. */
+ra_err_t ra_spi_read_dma(uint8_t              channel,
+                         uint8_t*             out_buf, // NOLINT(readability-non-const-parameter)
+                         uint16_t             len,
+                         ra_dma_complete_fn_t on_complete,
+                         void*                ctx,
+                         uint8_t*             out_dma_channel)
+{
+  RA_CHECK_NULL_PTR(out_buf, s_tag, "spi_read_dma: out_buf");
+  RA_CHECK_NULL_PTR(out_dma_channel, s_tag, "spi_read_dma: out_dma_channel");
+  if ((channel >= (uint8_t)k_ra_spi_channel_count) || (len == 0U)) {
+    return k_ra_err_invalid_arg;
+  }
+  volatile r_spi_regs_t* reg = ra_spi(channel);
+  if (reg == nullptr) {          /* GCOVR_EXCL_BR_LINE */
+    return k_ra_err_invalid_arg; /* GCOVR_EXCL_LINE */
+  }
+  /* HUM Ch 43.2 "SPDR : SPI Data Register", p 2877 */
+  ra_dma_request_t req = {};
+  req.engine           = k_ra_dma_engine_dmac;
+  req.src_addr         = (uintptr_t)&reg->SPDR;
+  req.dst_addr         = (uintptr_t)out_buf;
+  req.count            = len;
+  req.width            = k_ra_dmac_width_byte;
+  req.src_inc          = false;
+  req.dst_inc          = true;
+  req.trigger          = (ra_elc_event_t)0;
+  req.on_complete      = on_complete;
+  req.ctx              = ctx;
+  return ra_dma_request(&req, out_dma_channel);
+}
+
+/* ---- ISR dispatch ---------------------------------------------------- */
 
 void ra_spi_dispatch_spti(uint8_t channel)
 {

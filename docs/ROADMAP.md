@@ -28,7 +28,7 @@ pre-commit -- do not hand-edit it.
 - WIP:     1
 - BLOCKED: 0
 - TODO:    27
-- Checklist coverage: 257/656 boxes ticked (39.2%)
+- Checklist coverage: 265/656 boxes ticked (40.4%)
 <!-- END SUMMARY -->
 
 ## Wave table
@@ -368,7 +368,7 @@ every per-peripheral driver from Wave 2 onwards.
 
 ### ra_sci -- Serial Communications Interface
 
-`[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}` (Wave 3.1)
+`[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}` (Wave 3.1 + 3.7b)
 
 ```
 [x] Init             -- HUM Ch 38 "Serial Communications Interface (SCI)" p 2174
@@ -377,13 +377,13 @@ every per-peripheral driver from Wave 2 onwards.
 [x] Polling RX       -- HUM Ch 38 p 2174
 [x] Interrupt TX     -- HUM Ch 38 p 2174
 [x] Interrupt RX     -- HUM Ch 38 p 2174
-[ ] DMA TX           -- HUM Ch 38 p 2174  (deferred to 3.7b)
-[ ] DMA RX           -- HUM Ch 38 p 2174  (deferred to 3.7b)
+[x] DMA TX           -- HUM Ch 38 p 2174  (ra_sci_write_dma -- Wave 3.7b)
+[x] DMA RX           -- HUM Ch 38 p 2174  (ra_sci_read_dma  -- Wave 3.7b)
 [x] Error status     -- HUM Ch 38 p 2174
 [x] Runtime reconfig -- HUM Ch 38 p 2174
 [x] Power transition -- HUM Ch 38 p 2174
 [x] Register coverage-- HUM Ch 38 p 2174
-[x] Unit tests       -- tests/test_ra_sci.c (18 cases)
+[x] Unit tests       -- tests/test_ra_sci.c (21 cases)
 [x] World tag        -- {World: NS}
 [x] HUM cross-ref    -- all Ch 38 register notes in src/ra_sci.c
 [x] Doxygen          -- full file + member coverage
@@ -391,7 +391,7 @@ every per-peripheral driver from Wave 2 onwards.
 
 ### ra_iic -- I2C Bus Interface
 
-`[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}` (Wave 3.2)
+`[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}` (Wave 3.2 + 3.7b)
 
 ```
 [x] Init             -- HUM Ch 39 "I2C Bus Interface (IIC)" p 2367
@@ -400,13 +400,13 @@ every per-peripheral driver from Wave 2 onwards.
 [x] Polling RX       -- HUM Ch 39 p 2367
 [x] Interrupt TX     -- HUM Ch 39 p 2367
 [x] Interrupt RX     -- HUM Ch 39 p 2367
-[ ] DMA TX           -- HUM Ch 39 p 2367  (deferred to 3.7b)
-[ ] DMA RX           -- HUM Ch 39 p 2367  (deferred to 3.7b)
+[x] DMA TX           -- HUM Ch 39 p 2367  (ra_iic_write_dma -- Wave 3.7b)
+[x] DMA RX           -- HUM Ch 39 p 2367  (ra_iic_read_dma  -- Wave 3.7b)
 [x] Error status     -- HUM Ch 39 p 2367
 [x] Runtime reconfig -- HUM Ch 39 p 2367
 [x] Power transition -- HUM Ch 39 p 2367
 [x] Register coverage-- HUM Ch 39 p 2367
-[x] Unit tests       -- tests/test_ra_iic.c (17 cases)
+[x] Unit tests       -- tests/test_ra_iic.c (20 cases)
 [x] World tag        -- {World: NS}
 [x] HUM cross-ref    -- all Ch 39 register notes in src/iic.c
 [x] Doxygen          -- full file + member coverage
@@ -414,7 +414,7 @@ every per-peripheral driver from Wave 2 onwards.
 
 ### ra_spi -- Serial Peripheral Interface
 
-`[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}` (Wave 3.3)
+`[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}` (Wave 3.3 + 3.7b)
 
 ```
 [x] Init             -- HUM Ch 43 "Serial Peripheral Interface (SPI)" p 2877
@@ -423,13 +423,13 @@ every per-peripheral driver from Wave 2 onwards.
 [x] Polling RX       -- HUM Ch 43 p 2877
 [x] Interrupt TX     -- HUM Ch 43 p 2877
 [x] Interrupt RX     -- HUM Ch 43 p 2877
-[ ] DMA TX           -- HUM Ch 43 p 2877  (deferred to 3.7b)
-[ ] DMA RX           -- HUM Ch 43 p 2877  (deferred to 3.7b)
+[x] DMA TX           -- HUM Ch 43 p 2877  (ra_spi_write_dma -- Wave 3.7b)
+[x] DMA RX           -- HUM Ch 43 p 2877  (ra_spi_read_dma  -- Wave 3.7b)
 [x] Error status     -- HUM Ch 43 p 2877
 [x] Runtime reconfig -- HUM Ch 43 p 2877
 [x] Power transition -- HUM Ch 43 p 2877
 [x] Register coverage-- HUM Ch 43 p 2877
-[x] Unit tests       -- tests/test_ra_spi.c (17 cases)
+[x] Unit tests       -- tests/test_ra_spi.c (20 cases)
 [x] World tag        -- {World: NS}
 [x] HUM cross-ref    -- all Ch 43 register notes in src/spi.c
 [x] Doxygen          -- full file + member coverage
@@ -460,7 +460,7 @@ every per-peripheral driver from Wave 2 onwards.
 
 ### ra_gpt -- General PWM Timer (full build-out)
 
-`[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}` (Wave 3.5)
+`[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}` (Wave 3.5 + 3.7b)
 
 ```
 [x] Init             -- HUM Ch 22 "General PWM Timer (GPT)" p 878
@@ -469,13 +469,13 @@ every per-peripheral driver from Wave 2 onwards.
 [x] Polling RX       -- HUM Ch 22 p 878 (counter read == "polling rx")
 [x] Interrupt TX     -- HUM Ch 22 p 878 (ovf/und/ccra/ccrb dispatch)
 [x] Interrupt RX     -- HUM Ch 22 p 878 (ovf/und/ccra/ccrb dispatch)
-[ ] DMA TX           -- HUM Ch 22 p 878  (GTPR/GTCCR DMA mode -- 3.7b)
-[ ] DMA RX           -- HUM Ch 22 p 878  (GTCNT DMA mode     -- 3.7b)
+[x] DMA TX           -- HUM Ch 22 p 878 (ra_gpt_write_dma streams GTPR -- Wave 3.7b)
+[x] DMA RX           -- HUM Ch 22 p 878 (ra_gpt_read_dma  captures GTCNT -- Wave 3.7b)
 [x] Error status     -- HUM Ch 22 p 878 (GTST OVF/UDF/CCRA/CCRB)
 [x] Runtime reconfig -- HUM Ch 22 p 878 (set_period, set_duty)
 [x] Power transition -- HUM Ch 22 p 878
 [x] Register coverage-- HUM Ch 22 p 878
-[x] Unit tests       -- tests/test_ra_gpt.c (23 cases)
+[x] Unit tests       -- tests/test_ra_gpt.c (26 cases)
 [x] World tag        -- {World: NS}
 [x] HUM cross-ref    -- all Ch 22 register notes in src/ra_gpt.c
 [x] Doxygen          -- full file + member coverage
