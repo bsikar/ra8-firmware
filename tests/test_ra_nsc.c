@@ -32,8 +32,9 @@ static void prep(void)
 
 static void test_xspi_read_validates_args(void)
 {
-  TEST_BEGIN("ra_nsc_xspi_read: arg validation");
+  TEST_BEGIN("ra_nsc_xspi_read: arg validation + sim-flash forward");
   prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_xspi_init(0U, k_ra_xspi_lio_1s1s1s));
 
   uint8_t buf[64] = {0U};
   TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_nsc_xspi_read(0U, nullptr, 64U));
@@ -41,9 +42,9 @@ static void test_xspi_read_validates_args(void)
   TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
                  (int32_t)ra_nsc_xspi_read(0U, buf, (uint32_t)k_ra_nsc_xspi_max_read + 1U));
 
-  /* Valid args -> stub returns not_supported. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_supported, (int32_t)ra_nsc_xspi_read(0U, buf, 64U));
-  TEST_END("ra_nsc_xspi_read: arg validation");
+  /* Valid args -> veneer forwards to ra_xspi_flash_read (sim flash). */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_nsc_xspi_read(0U, buf, 64U));
+  TEST_END("ra_nsc_xspi_read: arg validation + sim-flash forward");
 }
 
 static void test_xspi_status_forwards_to_driver(void)
