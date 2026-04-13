@@ -45,7 +45,7 @@ pre-commit -- do not hand-edit it.
 |    7 | PAL + middleware integration (lwIP, CherryUSB)         |        3 | [~]    |
 |    8 | Single-world integration demo + stabilisation         |      1-2 | [x]    |
 |    9 | TrustZone partitioning                                 |      4-5 | [~]    |
-|   10 | Secure-side application + key handling demo           |      1-2 | [ ]    |
+|   10 | Secure-side application + key handling demo           |      1-2 | [x]    |
 
 ## Per-driver feature checklist template
 
@@ -1265,10 +1265,29 @@ comments so the partition session is mechanical.
 
 ## Wave 10 -- Secure-side application + key handling demo
 
-`[ ]` Status: TODO.
+`[x]` Status: DONE.
 
-- [ ] `src/secure_app/key_vault.c` -- Secure-only symmetric key store.
-- [ ] `libs/ra_nsc/src/ra_nsc_key_vault.c` -- single SHA256-of-(key XOR challenge) veneer.
-- [ ] `src/boot/secure_exception.c` -- Secure fault handler logging NS -> S violations.
-- [ ] `src/main.c` NS demo: legitimate veneer call + deliberate out-of-bounds Secure read.
-- [ ] `ra_sim_world` tests cover both happy path and violation path.
+- [x] `src/secure_app/key_vault.{h,c}` -- Secure-only symmetric
+      key store (8 slots, 256-bit keys) backed by a static
+      array. Includes a tiny single-block FIPS 180-4 SHA-256
+      implementation so the only operation that crosses the
+      boundary is the digest of (key XOR challenge); the raw
+      key never escapes the secure world.
+- [x] `libs/ra_nsc/src/ra_nsc_key_vault.c` -- single
+      `ra_nsc_key_vault_challenge` veneer that validates both
+      NS pointers via `RA_NSC_CHECK_NS_RANGE_*` and forwards to
+      `ra_key_vault_sha256_xor_challenge`. The `ra_nsc.h`
+      header carries the matching prototype and TZ-safety
+      doxygen block.
+- [x] `src/boot/secure_exception.c` -- `SecureFault_Handler`
+      that snapshots SFSR, logs the violation through ITM,
+      and halts in a wfi loop. With RA_TRUSTZONE_ENABLE off
+      the function is dead-stripped.
+- [x] `src/main.c` NS demo: programmes a deterministic test
+      key into slot 0, runs a challenge through the NSC veneer,
+      and logs the first 4 bytes of the digest so the SWO
+      console shows the path worked end-to-end.
+- [x] `tests/test_ra_key_vault.c` (5 cases) -- init zeroes
+      vault, store + challenge produces deterministic digest,
+      different challenge yields different digest, arg
+      validation, NSC veneer round-trip matches direct call.

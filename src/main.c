@@ -34,6 +34,7 @@
 
 #include <stdint.h>
 
+#include "key_vault.h"
 #include "ra_cgc.h"
 #include "ra_check.h"
 #include "ra_err.h"
@@ -119,6 +120,49 @@ static void internal_bring_up_pals(void)
 }
 
 /**
+ * @brief Wave 10 secure key vault demo.
+ *
+ * @details
+ * Programmes a deterministic test key into slot 0, runs a
+ * challenge through the NSC veneer, and logs the first 4 bytes
+ * of the digest so the SWO console shows the digest path worked
+ * end-to-end. The raw key never leaves the secure world.
+ */
+static void internal_run_key_vault_demo(void)
+{
+  static const uint8_t k_demo_key[k_ra_key_vault_key_bytes] = {
+    0xCAU, 0xFEU, 0xBAU, 0xBEU, 0xDEU, 0xADU, 0xBEU, 0xEFU, 0x01U, 0x23U, 0x45U,
+    0x67U, 0x89U, 0xABU, 0xCDU, 0xEFU, 0xFEU, 0xDCU, 0xBAU, 0x98U, 0x76U, 0x54U,
+    0x32U, 0x10U, 0x00U, 0x11U, 0x22U, 0x33U, 0x44U, 0x55U, 0x66U, 0x77U,
+  };
+  static const uint8_t k_demo_chal[k_ra_key_vault_chal_bytes] = {
+    0xA0U, 0xA1U, 0xA2U, 0xA3U, 0xA4U, 0xA5U, 0xA6U, 0xA7U, 0xA8U, 0xA9U, 0xAAU,
+    0xABU, 0xACU, 0xADU, 0xAEU, 0xAFU, 0xB0U, 0xB1U, 0xB2U, 0xB3U, 0xB4U, 0xB5U,
+    0xB6U, 0xB7U, 0xB8U, 0xB9U, 0xBAU, 0xBBU, 0xBCU, 0xBDU, 0xBEU, 0xBFU,
+  };
+  static uint8_t s_demo_digest[k_ra_key_vault_digest_bytes];
+
+  ra_err_t err = ra_key_vault_init();
+  if (err != k_ra_ok) {
+    ra_log_error_val(s_tag, "ra_key_vault_init failed", (uint32_t)err);
+    return;
+  }
+  err = ra_key_vault_store(0U, k_demo_key);
+  if (err != k_ra_ok) {
+    ra_log_error_val(s_tag, "key_vault_store failed", (uint32_t)err);
+    return;
+  }
+  err = ra_nsc_key_vault_challenge(0U, k_demo_chal, s_demo_digest);
+  if (err != k_ra_ok) {
+    ra_log_error_val(s_tag, "key_vault_challenge failed", (uint32_t)err);
+    return;
+  }
+  const uint32_t prefix = ((uint32_t)s_demo_digest[0] << 24) | ((uint32_t)s_demo_digest[1] << 16) |
+                          ((uint32_t)s_demo_digest[2] << 8) | (uint32_t)s_demo_digest[3];
+  ra_log_info_val(s_tag, "key vault digest[0..3]", prefix);
+}
+
+/**
  * @brief Main entry.
  *
  * @return Never returns.
@@ -143,6 +187,7 @@ int32_t main(void)
   RA_ERROR_CHECK(err);
 
   internal_bring_up_pals();
+  internal_run_key_vault_demo();
 
   ra_log_info(s_tag, "entering blink loop");
 
