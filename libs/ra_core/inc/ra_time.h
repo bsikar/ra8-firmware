@@ -40,6 +40,7 @@ extern "C" {
  *
  * @note Must be called after `ra_cgc_init()` so the CPU clock is
  *       stable.
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_time_init(uint32_t cpu_hz);
 

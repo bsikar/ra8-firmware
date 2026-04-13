@@ -1,6 +1,12 @@
+#
+# Top-level CMake for ra8d2-firmware (Cortex-M85 cross-build).
+#
+# Copyright (c) 2026 Brighton Sikarskie
+# SPDX-License-Identifier: MIT
+#
+
 cmake_minimum_required(VERSION 3.20)
 
-# Project configuration
 project(ra8d2-firmware
     LANGUAGES C ASM
     VERSION 0.1.0

@@ -21,16 +21,19 @@ extern "C" {
  *
  * @param[in] vector_base Pointer to a caller-supplied DTC vector
  *                        table (16-byte-aligned SRAM region).
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_dtc_init(void* vector_base);
 
 /**
  * @brief Start the DTC module.
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_dtc_enable(void);
 
 /**
  * @brief Stop the DTC module.
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_dtc_disable(void);
 

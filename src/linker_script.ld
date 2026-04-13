@@ -16,12 +16,20 @@
  *   SRAM (ECC)    0x22000000  2 MiB      .data, .bss, main stack, heap
  *   SDRAM         0x68000000  64 MiB     External SDRAM (EK board)
  *
- * The linker script emits the RA boot-ROM option setting regions
- * (OFS0, OFS1, OFS2, OFS3, SAS) at the fixed addresses described in
- * HUM section 4 ("Option Function Select Registers"). Each sits at
- * its canonical offset inside the MRAM window and is filled in by
- * `libs/ra_hal/src/ra_ofs.c` (or by a vendor programming tool).
- * When no value is supplied, the region is left as all-ones (erased).
+ * =====================================================================
+ * WARNING -- OFS addresses below are a best-effort derivation of the
+ * RA8 MRAM option-setting layout. Before flashing to a real board,
+ * confirm against HUM R01UH1065EJ section 4 ("Option Function Select
+ * Registers") that 0x0300_A100 is the correct OFS0 base. If it is not,
+ * override via the build with:
+ *
+ *     -Wl,--defsym=OFS0_ADDR=0xNNNNNNNN
+ *
+ * Getting this wrong cannot brick the chip if the data is all-ones
+ * (the boot ROM interprets 0xFFFFFFFF as "default / permissive"), but
+ * any non-erased value at the wrong address will lead to undefined
+ * behaviour on first boot.
+ * =====================================================================
  *
  * Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -32,6 +40,10 @@ ENTRY(Reset_Handler)
 MEMORY
 {
     MRAM       (rx)  : ORIGIN = 0x02000000, LENGTH = 1024K
+    /* Option Setting / OTP block lives in a dedicated config flash
+     * area outside main MRAM. Sized to cover 0x0300A000..0x0300B000
+     * so every OFS*, SAS, BPS, OTP_* section has a home. */
+    OFS        (r)   : ORIGIN = 0x0300A000, LENGTH = 4K
     DATA_FLASH (rw)  : ORIGIN = 0x27000000, LENGTH = 16K
     ITCM       (rwx) : ORIGIN = 0x00000000, LENGTH = 64K
     DTCM       (rwx) : ORIGIN = 0x20000000, LENGTH = 64K
@@ -44,25 +56,44 @@ MEMORY
  * the ISO C reserved leading-underscore namespace. The boot code in
  * src/boot/vector_table.c declares them with exactly these names.
  */
-g_ra_ls_stack_size = 8K;
-g_ra_ls_heap_size  = 4K;
+g_ra_ls_stack_size = DEFINED(g_ra_ls_stack_size) ? g_ra_ls_stack_size : 8K;
+g_ra_ls_heap_size  = DEFINED(g_ra_ls_heap_size)  ? g_ra_ls_heap_size  : 4K;
 g_ra_ls_stack_top  = ORIGIN(SRAM) + LENGTH(SRAM);
 
 /*
- * Option setting region fixed addresses (HUM section 4).
+ * Option-setting region fixed addresses (HUM section 4).
  *
- * These sit in MRAM at well-known offsets. The boot ROM reads them
- * directly, without going through the Cortex-M85 reset vector. Each
- * section is individually KEEP()-ed so the linker never strips them,
- * even if no .c file references them.
+ * Every entry is PROVIDE()-d so it can be overridden with
+ * `--defsym=OFS0_ADDR=0x...` from the cmake toolchain file or the
+ * top-level build. If you need to change the MRAM base, override all
+ * of these in lock-step.
  */
-OFS0_ADDR     = 0x0300A100;
-OFS1_ADDR     = 0x0300A104;
-OFS2_ADDR     = 0x0300A108;
-OFS3_ADDR     = 0x0300A10C;
-SAS_ADDR      = 0x0300A110;
-OFS1_SEC_ADDR = 0x0300A200;
-OFS1_SEL_ADDR = 0x0300A204;
+PROVIDE(OFS0_ADDR            = 0x0300A100);
+PROVIDE(OFS1_ADDR            = 0x0300A104);
+PROVIDE(OFS2_ADDR            = 0x0300A108);
+PROVIDE(OFS3_ADDR            = 0x0300A10C);
+PROVIDE(SAS_ADDR             = 0x0300A110);
+PROVIDE(OFS1_SEC_ADDR        = 0x0300A200);
+PROVIDE(OFS1_SEL_ADDR        = 0x0300A204);
+PROVIDE(OFS3_SEC_ADDR        = 0x0300A20C);
+PROVIDE(OFS3_SEL_ADDR        = 0x0300A210);
+PROVIDE(BPS_ADDR             = 0x0300A300);
+PROVIDE(BPS_SEC_ADDR         = 0x0300A400);
+PROVIDE(OTP_FSBLCTRL0_ADDR   = 0x0300A500);
+PROVIDE(OTP_FSBLCTRL1_ADDR   = 0x0300A504);
+PROVIDE(OTP_FSBLCTRL2_ADDR   = 0x0300A508);
+PROVIDE(OTP_SAMR_ADDR        = 0x0300A600);
+PROVIDE(OTP_SACC00_ADDR      = 0x0300A700);
+PROVIDE(OTP_SACC10_ADDR      = 0x0300A704);
+PROVIDE(OTP_SACC01_ADDR      = 0x0300A708);
+PROVIDE(OTP_SACC11_ADDR      = 0x0300A70C);
+PROVIDE(OTP_SACC02_ADDR      = 0x0300A710);
+PROVIDE(OTP_SACC12_ADDR      = 0x0300A714);
+PROVIDE(OTP_SACC03_ADDR      = 0x0300A718);
+PROVIDE(OTP_SACC13_ADDR      = 0x0300A71C);
+PROVIDE(OTP_PBPS_ADDR        = 0x0300A800);
+PROVIDE(OTP_PBPS_SEC_ADDR    = 0x0300A804);
+PROVIDE(OTP_ZHUK_ADDR        = 0x0300A900);
 
 SECTIONS
 {
@@ -126,14 +157,40 @@ SECTIONS
 
     g_ra_ls_etext = .;
 
-    /* ---- Option setting regions (fixed flash addresses) ---- */
-    .option_setting_ofs0 OFS0_ADDR : { KEEP(*(.option_setting_ofs0)) } > MRAM
-    .option_setting_ofs1 OFS1_ADDR : { KEEP(*(.option_setting_ofs1)) } > MRAM
-    .option_setting_ofs2 OFS2_ADDR : { KEEP(*(.option_setting_ofs2)) } > MRAM
-    .option_setting_ofs3 OFS3_ADDR : { KEEP(*(.option_setting_ofs3)) } > MRAM
-    .option_setting_sas  SAS_ADDR  : { KEEP(*(.option_setting_sas))  } > MRAM
-    .option_setting_ofs1_sec OFS1_SEC_ADDR : { KEEP(*(.option_setting_ofs1_sec)) } > MRAM
-    .option_setting_ofs1_sel OFS1_SEL_ADDR : { KEEP(*(.option_setting_ofs1_sel)) } > MRAM
+    /* ---- Option setting regions (fixed flash addresses) ----
+     *
+     * Every one of these lands at a fixed MRAM address. Values are
+     * provided by libs/ra_hal/src/ra_ofs.c via BSP_PLACE_IN_SECTION
+     * (which expands to __attribute__((section(".option_setting_*")))).
+     * A project that wants to change any of them just overrides the
+     * matching `BSP_CFG_OPTION_SETTING_*` macro and rebuilds.
+     */
+    .option_setting_ofs0            OFS0_ADDR            : { KEEP(*(.option_setting_ofs0))            } > OFS
+    .option_setting_ofs1            OFS1_ADDR            : { KEEP(*(.option_setting_ofs1))            } > OFS
+    .option_setting_ofs2            OFS2_ADDR            : { KEEP(*(.option_setting_ofs2))            } > OFS
+    .option_setting_ofs3            OFS3_ADDR            : { KEEP(*(.option_setting_ofs3))            } > OFS
+    .option_setting_sas             SAS_ADDR             : { KEEP(*(.option_setting_sas))             } > OFS
+    .option_setting_ofs1_sec        OFS1_SEC_ADDR        : { KEEP(*(.option_setting_ofs1_sec))        } > OFS
+    .option_setting_ofs1_sel        OFS1_SEL_ADDR        : { KEEP(*(.option_setting_ofs1_sel))        } > OFS
+    .option_setting_ofs3_sec        OFS3_SEC_ADDR        : { KEEP(*(.option_setting_ofs3_sec))        } > OFS
+    .option_setting_ofs3_sel        OFS3_SEL_ADDR        : { KEEP(*(.option_setting_ofs3_sel))        } > OFS
+    .option_setting_bps             BPS_ADDR             : { KEEP(*(.option_setting_bps))             } > OFS
+    .option_setting_bps_sec         BPS_SEC_ADDR         : { KEEP(*(.option_setting_bps_sec))         } > OFS
+    .option_setting_otp_fsblctrl0   OTP_FSBLCTRL0_ADDR   : { KEEP(*(.option_setting_otp_fsblctrl0))   } > OFS
+    .option_setting_otp_fsblctrl1   OTP_FSBLCTRL1_ADDR   : { KEEP(*(.option_setting_otp_fsblctrl1))   } > OFS
+    .option_setting_otp_fsblctrl2   OTP_FSBLCTRL2_ADDR   : { KEEP(*(.option_setting_otp_fsblctrl2))   } > OFS
+    .option_setting_otp_samr        OTP_SAMR_ADDR        : { KEEP(*(.option_setting_otp_samr))        } > OFS
+    .option_setting_otp_sacc00      OTP_SACC00_ADDR      : { KEEP(*(.option_setting_otp_sacc00))      } > OFS
+    .option_setting_otp_sacc10      OTP_SACC10_ADDR      : { KEEP(*(.option_setting_otp_sacc10))      } > OFS
+    .option_setting_otp_sacc01      OTP_SACC01_ADDR      : { KEEP(*(.option_setting_otp_sacc01))      } > OFS
+    .option_setting_otp_sacc11      OTP_SACC11_ADDR      : { KEEP(*(.option_setting_otp_sacc11))      } > OFS
+    .option_setting_otp_sacc02      OTP_SACC02_ADDR      : { KEEP(*(.option_setting_otp_sacc02))      } > OFS
+    .option_setting_otp_sacc12      OTP_SACC12_ADDR      : { KEEP(*(.option_setting_otp_sacc12))      } > OFS
+    .option_setting_otp_sacc03      OTP_SACC03_ADDR      : { KEEP(*(.option_setting_otp_sacc03))      } > OFS
+    .option_setting_otp_sacc13      OTP_SACC13_ADDR      : { KEEP(*(.option_setting_otp_sacc13))      } > OFS
+    .option_setting_otp_pbps        OTP_PBPS_ADDR        : { KEEP(*(.option_setting_otp_pbps))        } > OFS
+    .option_setting_otp_pbps_sec    OTP_PBPS_SEC_ADDR    : { KEEP(*(.option_setting_otp_pbps_sec))    } > OFS
+    .option_setting_otp_zhuk        OTP_ZHUK_ADDR        : { KEEP(*(.option_setting_otp_zhuk))        } > OFS
 
     /* ---- Initialised data: loaded from MRAM, lives in SRAM ---- */
     .data : ALIGN(4)
@@ -164,18 +221,18 @@ SECTIONS
         g_ra_ls_eheap = .;
     } > SRAM
 
-    /* ---- Stack canary (fill 32 bytes just below the stack top
-     *      with a known pattern so stack-overflow checks have a
-     *      sentinel to compare against) ---- */
+    /* ---- Stack canary (32 bytes just below the stack top -- filled
+     *      with a known pattern by ra_stack_canary_init() at boot so
+     *      ra_stack_canary_check() has a sentinel to compare against). */
     .stack_canary (NOLOAD) : ALIGN(8)
     {
-        g_ra_ls_stack_canary = .;
+        g_ra_ls_stack_canary_start = .;
         . = . + 32;
+        g_ra_ls_stack_canary_end = .;
     } > SRAM
 
-    /* ---- ITCM / DTCM sections (used when a driver opts in by
-     *      placing hot code / state via
-     *      __attribute__((section(".itcm_text"))) etc.) ---- */
+    /* ---- ITCM / DTCM sections (drivers opt in via
+     *      __attribute__((section(".itcm_text")))). ---- */
     .itcm_text : ALIGN(4)
     {
         g_ra_ls_sitcm = .;

@@ -72,14 +72,18 @@ static inline volatile uint32_t* internal_itm_tenr(void)
 /**
  * @brief Check whether ITM port 0 is enabled and ready to accept bytes.
  * @return `true` if enabled and not full, `false` otherwise.
+ *
+ * @details
+ * Reads TCR, TENR, and the STIM0 FIFO register directly. On the
+ * target these are the real Cortex-M85 ITM registers. On the
+ * `RA_SIMULATOR_MODE` host test build the same virtual addresses are
+ * backed by anonymous RAM via `ra_sim_mmap.c`, so the same logic
+ * produces a well-defined answer: the log backend stays a no-op until
+ * a test pre-seeds the three registers, at which point it will walk
+ * the full emit path.
  */
 static inline bool internal_itm_ready(void)
 {
-#ifdef RA_SIMULATOR_MODE
-  /* Host build: the ITM is not real memory. Logging becomes a no-op
-   * so unit tests do not segfault on the first log call. */
-  return false;
-#else
   const uint32_t tcr  = *internal_itm_tcr();
   const uint32_t tenr = *internal_itm_tenr();
   /* TCR bit 0 = ITMENA. TENR bit 0 = stimulus port 0 enabled. */
@@ -90,7 +94,6 @@ static inline bool internal_itm_ready(void)
     return false;
   }
   return (*internal_itm_stim0() != 0U);
-#endif
 }
 
 /**

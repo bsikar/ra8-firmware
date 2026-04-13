@@ -36,6 +36,20 @@ jobs:
           python3 scripts/utils/check-copyright.py $files
 
   # ---------------------------------------------------------------------------
+  # @since tag enforcement on all public headers
+  # ---------------------------------------------------------------------------
+  since:
+    name: Doxygen @since tags
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Scan
+        run: |
+          set -e
+          files=$(git ls-files 'libs/ra_*/inc/*.h')
+          python3 scripts/utils/check-since-version.py $files
+
+  # ---------------------------------------------------------------------------
   # clang-format (dry-run, Werror)
   # ---------------------------------------------------------------------------
   format:
@@ -86,6 +100,30 @@ jobs:
         run: ctest --test-dir build/tidy --output-on-failure
 
   # ---------------------------------------------------------------------------
+  # Coverage gate (gcovr 90/90)
+  # ---------------------------------------------------------------------------
+  coverage:
+    name: Coverage (gcovr 90/90)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install build tools and gcovr
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build gcc python3-pip
+          python3 -m pip install --user gcovr
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Run coverage gate
+        run: bash scripts/coverage.sh --gate
+      - name: Upload HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-html
+          path: build/coverage/coverage/
+          retention-days: 14
+
+  # ---------------------------------------------------------------------------
   # cppcheck static analysis
   # ---------------------------------------------------------------------------
   cppcheck:
@@ -128,7 +166,6 @@ jobs:
             -G Ninja
       - name: Build
         run: cmake --build build --verbose
-        continue-on-error: true  # drop once the blink main actually links
 
   # ---------------------------------------------------------------------------
   # Doxygen warning gate
@@ -147,5 +184,5 @@ jobs:
           if grep -q "warning:" doxygen.log; then
             echo "Doxygen reported warnings:"
             grep "warning:" doxygen.log
-            exit 0   # TODO: flip to exit 1 once @since pass is complete
+            exit 1
           fi

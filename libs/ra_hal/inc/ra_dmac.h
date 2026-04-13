@@ -30,6 +30,10 @@ typedef enum : uint8_t {
  * @struct ra_dmac_config_t
  * @brief DMAC channel configuration.
  */
+/* cppcheck reads ra_dmac.h without seeing tests/ra_sim_dma.c or the
+ * DMAC register accesses in libs/ra_hal/src/ra_dmac.c, so it flags
+ * every field as unused even though the driver reads all of them. */
+/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uint32_t        src;     /**< Source address.                   */
   uint32_t        dst;     /**< Destination address.              */
@@ -38,14 +42,17 @@ typedef struct {
   bool            src_inc; /**< Increment source address.         */
   bool            dst_inc; /**< Increment destination address.    */
 } ra_dmac_config_t;
+/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @brief Programme and enable a DMAC channel.
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_dmac_start(uint8_t channel, const ra_dmac_config_t* cfg);
 
 /**
  * @brief Disable a DMAC channel.
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_dmac_stop(uint8_t channel);
 
