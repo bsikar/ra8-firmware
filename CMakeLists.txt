@@ -69,6 +69,9 @@ file(GLOB_RECURSE LIB_RA_USB_PAL_SOURCES CONFIGURE_DEPENDS
 file(GLOB_RECURSE LIB_RA_NSC_SOURCES CONFIGURE_DEPENDS
     ${CMAKE_SOURCE_DIR}/libs/ra_nsc/src/*.c
 )
+file(GLOB_RECURSE APP_SECURE_SOURCES CONFIGURE_DEPENDS
+    ${CMAKE_SOURCE_DIR}/src/secure_app/*.c
+)
 
 set(ALL_SOURCES
     ${APP_SOURCES_ROOT}
@@ -78,6 +81,7 @@ set(ALL_SOURCES
     ${LIB_RA_NET_PAL_SOURCES}
     ${LIB_RA_USB_PAL_SOURCES}
     ${LIB_RA_NSC_SOURCES}
+    ${APP_SECURE_SOURCES}
 )
 
 #############################################################################
@@ -87,6 +91,7 @@ set(ALL_SOURCES
 include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${CMAKE_CURRENT_SOURCE_DIR}/src/inc
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/secure_app
     ${CMAKE_CURRENT_SOURCE_DIR}/libs/ra_core/inc
     ${CMAKE_CURRENT_SOURCE_DIR}/libs/ra_hal/inc
     ${CMAKE_CURRENT_SOURCE_DIR}/libs/ra_net_pal/inc
@@ -135,6 +140,7 @@ if(ALL_SOURCES)
     target_include_directories(${PROJECT_NAME}.elf PRIVATE
         ${CMAKE_SOURCE_DIR}/src
         ${CMAKE_SOURCE_DIR}/src/inc
+        ${CMAKE_SOURCE_DIR}/src/secure_app
         ${CMAKE_SOURCE_DIR}/libs/ra_core/inc
         ${CMAKE_SOURCE_DIR}/libs/ra_hal/inc
         ${CMAKE_SOURCE_DIR}/libs/ra_net_pal/inc
