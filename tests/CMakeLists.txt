@@ -48,6 +48,13 @@ add_compile_options(
     -Wno-address-of-packed-member
 )
 
+# Coverage instrumentation -- gcovr / lcov friendly.
+option(RA_COVERAGE "Emit gcov/lcov coverage data" ON)
+if(RA_COVERAGE)
+  add_compile_options(-O0 -g --coverage -fprofile-arcs -ftest-coverage)
+  add_link_options(--coverage -fprofile-arcs -ftest-coverage)
+endif()
+
 # Firmware root (one directory up from tests/).
 get_filename_component(FW_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/.." ABSOLUTE)
 
@@ -60,12 +67,17 @@ file(GLOB_RECURSE RA_HAL_SOURCES  CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_hal/src/*
 add_library(ra_core_hal OBJECT
     ${RA_CORE_SOURCES}
     ${RA_HAL_SOURCES}
+    ${CMAKE_CURRENT_SOURCE_DIR}/mocks/ra_sim_mmap.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/mocks/ra_sim_irq.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/mocks/ra_sim_dma.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/mocks/ra_sim_time.c
 )
 target_include_directories(ra_core_hal PUBLIC
     ${FW_ROOT}/libs/ra_core/inc
     ${FW_ROOT}/libs/ra_hal/inc
     ${FW_ROOT}/src
     ${FW_ROOT}/src/inc
+    ${CMAKE_CURRENT_SOURCE_DIR}/mocks
 )
 
 # Enable ctest so `cmake --build . --target test` and bash helpers work.
@@ -82,14 +94,17 @@ function(ra_add_test name)
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${FW_ROOT}/libs/ra_core/inc
     ${FW_ROOT}/libs/ra_hal/inc
+    ${CMAKE_CURRENT_SOURCE_DIR}/mocks
   )
   add_test(NAME ${name} COMMAND ${name})
 endfunction()
 
-ra_add_test(test_ra_err)
-ra_add_test(test_ra_err_to_str)
-ra_add_test(test_ra_pin_validator)
-ra_add_test(test_ra_time)
-ra_add_test(test_ra_register_guard)
-ra_add_test(test_ra_bit_constants)
-ra_add_test(test_ra_port_constants)
+# Auto-discover every test_*.c file in this directory and register it
+# via ra_add_test(). Dropping a new test_foo.c file is enough -- no
+# manual list edit required. (CONFIGURE_DEPENDS means CMake re-globs
+# on the next build if the directory contents changed.)
+file(GLOB RA_TEST_SOURCES CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/test_*.c)
+foreach(src ${RA_TEST_SOURCES})
+  get_filename_component(name ${src} NAME_WE)
+  ra_add_test(${name})
+endforeach()
