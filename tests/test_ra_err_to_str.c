@@ -39,7 +39,7 @@ static void test_validation_category(void)
   TEST_END("validation category strings");
 }
 
-int main(void)
+int32_t main(void)
 {
   test_hardware_category();
   test_comm_category();

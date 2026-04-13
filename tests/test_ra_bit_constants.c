@@ -40,7 +40,7 @@ static void test_bits_per_type(void)
   TEST_END("bits per integer type");
 }
 
-int main(void)
+int32_t main(void)
 {
   test_bit_positions_monotonic();
   test_byte_masks();

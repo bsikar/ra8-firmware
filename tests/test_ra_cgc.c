@@ -22,7 +22,8 @@ static void test_get_clock_hz_null_out(void)
   TEST_BEGIN("cgc get_clock_hz null out");
   ra_sim_mmap_reset();
 
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, nullptr));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, nullptr));
   TEST_END("cgc get_clock_hz null out");
 }
 
@@ -48,7 +49,7 @@ static void test_get_clock_hz_all_ids(void)
   for (uint8_t i = 0U; i < count; ++i) {
     hz                 = 0U;
     const ra_err_t err = ra_cgc_get_clock_hz(ids[i], &hz);
-    TEST_ASSERT_EQ((int)k_ra_ok, (int)err);
+    TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)err);
     TEST_ASSERT(hz != 0U);
   }
   TEST_END("cgc get_clock_hz all ids");
@@ -60,7 +61,8 @@ static void test_get_clock_hz_out_of_range(void)
   ra_sim_mmap_reset();
 
   uint32_t hz = 0U;
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_cgc_get_clock_hz((ra_clock_id_t)200, &hz));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_cgc_get_clock_hz((ra_clock_id_t)200, &hz));
   TEST_END("cgc get_clock_hz out of range");
 }
 
@@ -75,11 +77,11 @@ static void test_init_happy_with_oscsf_preseed(void)
   *ra_sys_oscsf() = (uint8_t)k_ra_cgc_test_all_oscsf;
 
   const ra_err_t err = ra_cgc_init();
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)err);
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)err);
 
   /* After init the published cpuclk0 should be the target, not MOCO. */
   uint32_t hz = 0U;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &hz));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &hz));
   TEST_ASSERT(hz != 0U);
   TEST_END("cgc init happy (oscsf preseeded)");
 }
@@ -92,7 +94,7 @@ static void test_init_main_osc_timeout(void)
   /* Leave OSCSF zero: the polling loop will burn its budget on
    * the main-oscillator wait and return k_ra_err_hw_timeout. */
   const ra_err_t err = ra_cgc_init();
-  TEST_ASSERT_EQ((int)k_ra_err_hw_timeout, (int)err);
+  TEST_ASSERT_EQ((int32_t)k_ra_err_hw_timeout, (int32_t)err);
   TEST_END("cgc init main-osc timeout");
 }
 
@@ -103,7 +105,7 @@ static void test_use_hoco_happy(void)
 
   *ra_sys_oscsf()    = (uint8_t)k_ra_cgc_test_all_oscsf;
   const ra_err_t err = ra_cgc_use_hoco();
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)err);
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)err);
   TEST_END("cgc use_hoco happy (oscsf preseeded)");
 }
 
@@ -114,17 +116,17 @@ static void test_use_hoco_timeout(void)
 
   /* OSCSF left as zero -> HOCO wait eventually times out. */
   const ra_err_t err = ra_cgc_use_hoco();
-  TEST_ASSERT_EQ((int)k_ra_err_hw_timeout, (int)err);
+  TEST_ASSERT_EQ((int32_t)k_ra_err_hw_timeout, (int32_t)err);
   TEST_END("cgc use_hoco timeout");
 }
 
-static int  s_ostd_count    = 0;
-static int  s_ostd_last_val = 0;
-static void stub_ostd_handler(void* ctx)
+static int32_t s_ostd_count    = 0;
+static int32_t s_ostd_last_val = 0;
+static void    stub_ostd_handler(void* ctx)
 {
   ++s_ostd_count;
   if (ctx != nullptr) {
-    s_ostd_last_val = *(int*)ctx;
+    s_ostd_last_val = *(int32_t*)ctx;
   }
 }
 
@@ -134,15 +136,15 @@ static void test_switch_pll1_target_updates_cpuclk0(void)
   ra_sim_mmap_reset();
 
   *ra_sys_oscsf() = (uint8_t)k_ra_cgc_test_all_oscsf;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_cgc_init());
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_cgc_init());
 
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_cgc_switch_pll1_target(500000000U));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_cgc_switch_pll1_target(500000000U));
   uint32_t hz = 0U;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &hz));
-  TEST_ASSERT_EQ((long long)500000000U, (long long)hz);
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &hz));
+  TEST_ASSERT_EQ((int64_t)500000000U, (int64_t)hz);
 
   /* Rejects zero. */
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_cgc_switch_pll1_target(0U));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_cgc_switch_pll1_target(0U));
   TEST_END("cgc switch_pll1_target: updates cpuclk0 reading");
 }
 
@@ -153,23 +155,25 @@ static void test_stop_detection_arm_and_fire(void)
   s_ostd_count    = 0;
   s_ostd_last_val = 0;
 
-  int ctx_val = 0xCAFE;
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_cgc_enable_stop_detection(nullptr, &ctx_val));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_cgc_enable_stop_detection(stub_ostd_handler, &ctx_val));
+  int32_t ctx_val = 0xCAFE;
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_cgc_enable_stop_detection(nullptr, &ctx_val));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_cgc_enable_stop_detection(stub_ostd_handler, &ctx_val));
 
   /* Fire via the sim helper. */
   ra_cgc_sim_trigger_stop_detection();
-  TEST_ASSERT_EQ((int)1, (int)s_ostd_count);
-  TEST_ASSERT_EQ((int)0xCAFE, (int)s_ostd_last_val);
+  TEST_ASSERT_EQ((int32_t)1, (int32_t)s_ostd_count);
+  TEST_ASSERT_EQ((int32_t)0xCAFE, (int32_t)s_ostd_last_val);
 
   /* Disable and verify the callback no longer fires. */
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_cgc_disable_stop_detection());
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_cgc_disable_stop_detection());
   ra_cgc_sim_trigger_stop_detection();
-  TEST_ASSERT_EQ((int)1, (int)s_ostd_count); /* unchanged */
+  TEST_ASSERT_EQ((int32_t)1, (int32_t)s_ostd_count); /* unchanged */
   TEST_END("cgc stop detection: handler fires via sim trigger");
 }
 
-int main(void)
+int32_t main(void)
 {
   test_get_clock_hz_null_out();
   test_get_clock_hz_all_ids();

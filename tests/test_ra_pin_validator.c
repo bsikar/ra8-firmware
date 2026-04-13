@@ -70,7 +70,7 @@ static void test_invalid_pin_rejected(void)
   TEST_END("invalid pin rejected");
 }
 
-int main(void)
+int32_t main(void)
 {
   test_reset_clears_everything();
   test_claim_then_query();
