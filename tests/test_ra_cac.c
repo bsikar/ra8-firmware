@@ -1,0 +1,177 @@
+/**
+ * @file test_ra_cac.c
+ * @brief Unit tests for ra_cac.c (Clock Accuracy Check)
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
+ */
+
+#include "ra8d2_cac_regs.h"
+#include "ra_cac.h"
+#include "ra_err.h"
+#include "ra_mstp.h"
+#include "ra_sim_mmap.h"
+#include "unity_minimal.h"
+
+typedef enum : uint16_t {
+  k_ra_cac_test_upper    = 0xAAAAU,
+  k_ra_cac_test_lower    = 0x5555U,
+  k_ra_cac_test_captured = 0xBEEFU,
+} ra_cac_test_values_t;
+
+typedef enum : uint8_t {
+  k_ra_cac_test_mendf_bit = 1U, /**< CASTR.MENDF bit. */
+} ra_cac_test_bits_t;
+
+static void test_init_writes_limits(void)
+{
+  TEST_BEGIN("cac init writes limits");
+  ra_sim_mmap_reset();
+
+  const ra_err_t err = ra_cac_init((uint16_t)k_ra_cac_test_upper, (uint16_t)k_ra_cac_test_lower);
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)err);
+
+  volatile r_cac_regs_t* reg = ra_cac();
+  TEST_ASSERT_EQ((int)k_ra_cac_test_upper, (int)reg->CAULVR);
+  TEST_ASSERT_EQ((int)k_ra_cac_test_lower, (int)reg->CALLVR);
+  TEST_ASSERT_EQ(0, (int)reg->CACR0);
+  TEST_ASSERT_EQ(0, (int)reg->CACR1);
+  TEST_ASSERT_EQ(0, (int)reg->CACR2);
+  TEST_END("cac init writes limits");
+}
+
+static void test_measure_null_out_pointer(void)
+{
+  TEST_BEGIN("cac measure null out pointer");
+  ra_sim_mmap_reset();
+
+  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_cac_measure(nullptr));
+  TEST_END("cac measure null out pointer");
+}
+
+static void test_measure_happy_path(void)
+{
+  TEST_BEGIN("cac measure happy path");
+  ra_sim_mmap_reset();
+
+  /* Pre-seed CASTR.MENDF so the poll loop exits immediately, and
+   * pre-seed CACNTBR so the captured value is predictable. */
+  volatile r_cac_regs_t* reg = ra_cac();
+  reg->CASTR                 = (uint8_t)(1U << k_ra_cac_test_mendf_bit);
+  reg->CACNTBR               = (uint16_t)k_ra_cac_test_captured;
+
+  uint16_t       captured = 0U;
+  const ra_err_t err      = ra_cac_measure(&captured);
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)err);
+  TEST_ASSERT_EQ((int)k_ra_cac_test_captured, (int)captured);
+  /* CACR0 should have been cleared by the driver after success. */
+  TEST_ASSERT_EQ(0, (int)reg->CACR0);
+  TEST_END("cac measure happy path");
+}
+
+static void test_measure_timeout(void)
+{
+  TEST_BEGIN("cac measure timeout");
+  ra_sim_mmap_reset();
+
+  /* Leave CASTR.MENDF clear so the poll loop burns its budget
+   * and eventually returns k_ra_err_hw_timeout. */
+  uint16_t       captured = 0U;
+  const ra_err_t err      = ra_cac_measure(&captured);
+  TEST_ASSERT_EQ((int)k_ra_err_hw_timeout, (int)err);
+  TEST_END("cac measure timeout");
+}
+
+/* ---- Wave 4.3 -- full build-out ---- */
+
+static uint32_t s_cac_cb_count;
+static uint8_t  s_cac_cb_last_mask;
+
+static void stub_cac_cb(void* ctx, uint8_t mask)
+{
+  (void)ctx;
+  ++s_cac_cb_count;
+  s_cac_cb_last_mask = mask;
+}
+
+static void prep_w43(void)
+{
+  ra_sim_mmap_reset();
+  (void)ra_mstp_init();
+  s_cac_cb_count     = 0U;
+  s_cac_cb_last_mask = 0U;
+}
+
+static void test_deinit(void)
+{
+  TEST_BEGIN("cac deinit");
+  prep_w43();
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_ok,
+    (int32_t)ra_cac_init((uint16_t)k_ra_cac_test_upper, (uint16_t)k_ra_cac_test_lower));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_cac_deinit());
+  TEST_ASSERT_EQ((int32_t)0, (int32_t)ra_cac()->CACR0);
+  TEST_END("cac deinit");
+}
+
+static void test_status_read_and_clear(void)
+{
+  TEST_BEGIN("cac status read + clear");
+  prep_w43();
+
+  ra_cac()->CASTR = (uint8_t)k_ra_cac_status_mendf | (uint8_t)k_ra_cac_status_ferrf;
+  uint8_t mask    = 0U;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_cac_get_status(&mask));
+  TEST_ASSERT_EQ((int32_t)((uint8_t)k_ra_cac_status_mendf | (uint8_t)k_ra_cac_status_ferrf),
+                 (int32_t)mask);
+
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_cac_clear_status((uint8_t)k_ra_cac_status_mendf));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_cac_get_status(nullptr));
+  TEST_END("cac status read + clear");
+}
+
+static void test_attach_and_dispatch(void)
+{
+  TEST_BEGIN("cac attach + dispatch");
+  prep_w43();
+
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_cac_attach_handler(stub_cac_cb, (void*)(uintptr_t)0xC0U));
+  ra_cac()->CASTR = (uint8_t)k_ra_cac_status_mendf;
+  ra_cac_dispatch();
+  TEST_ASSERT_EQ((int32_t)1, (int32_t)s_cac_cb_count);
+  TEST_ASSERT_EQ((int32_t)k_ra_cac_status_mendf, (int32_t)s_cac_cb_last_mask);
+
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_cac_attach_handler(nullptr, nullptr));
+  ra_cac()->CASTR = (uint8_t)k_ra_cac_status_ovff;
+  ra_cac_dispatch();
+  TEST_ASSERT_EQ((int32_t)1, (int32_t)s_cac_cb_count);
+  TEST_END("cac attach + dispatch");
+}
+
+static void test_power_transition(void)
+{
+  TEST_BEGIN("cac power transition");
+  prep_w43();
+
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_ok,
+    (int32_t)ra_cac_init((uint16_t)k_ra_cac_test_upper, (uint16_t)k_ra_cac_test_lower));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_cac_enter_stop());
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_cac_exit_stop());
+  TEST_END("cac power transition");
+}
+
+int32_t main(void)
+{
+  test_init_writes_limits();
+  test_measure_null_out_pointer();
+  test_measure_happy_path();
+  test_measure_timeout();
+  test_deinit();
+  test_status_read_and_clear();
+  test_attach_and_dispatch();
+  test_power_transition();
+  (void)fprintf(stderr, "[OK  ] test_ra_cac.c\n");
+  return 0;
+}

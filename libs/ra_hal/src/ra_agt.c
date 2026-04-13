@@ -74,3 +74,80 @@ static const ra_mstp_t s_agt_mstp_table[k_ra_agt_mstp_id_count] = {
   reg->AGTCR = 0U;
   return k_ra_ok;
 }
+
+/* =============================================================================
+ * Wave 4.3 -- full build-out
+ * =============================================================================
+ */
+
+static ra_agt_event_fn_t s_agt_fn;
+static void*             s_agt_ctx;
+
+ra_err_t ra_agt_deinit(uint8_t channel)
+{
+  volatile r_agt_regs_t* reg = ra_agt(channel);
+  RA_CHECK_NULL_PTR(reg, s_tag, "channel out of range");
+  reg->AGTCR = 0U;
+  if (channel < (uint8_t)k_ra_agt_mstp_id_count) {
+    return ra_mstp_disable(s_agt_mstp_table[channel]);
+  }
+  return k_ra_ok;
+}
+
+ra_err_t ra_agt_set_reload(uint8_t channel, uint16_t reload)
+{
+  volatile r_agt_regs_t* reg = ra_agt(channel);
+  RA_CHECK_NULL_PTR(reg, s_tag, "channel out of range");
+  reg->AGT = reload;
+  return k_ra_ok;
+}
+
+ra_err_t ra_agt_get_status(uint8_t channel, uint8_t* out_mask)
+{
+  RA_CHECK_NULL_PTR(out_mask, s_tag, "out_mask must not be nullptr");
+  volatile r_agt_regs_t* reg = ra_agt(channel);
+  RA_CHECK_NULL_PTR(reg, s_tag, "channel out of range");
+  *out_mask = reg->AGTCR;
+  return k_ra_ok;
+}
+
+ra_err_t ra_agt_attach_handler(ra_agt_event_fn_t fn, void* ctx)
+{
+  s_agt_fn  = fn;
+  s_agt_ctx = ctx;
+  return k_ra_ok;
+}
+
+void ra_agt_dispatch(uint8_t channel)
+{
+  if (ra_agt(channel) == nullptr) {
+    return;
+  }
+  const ra_agt_event_fn_t fn  = s_agt_fn;
+  void* const             ctx = s_agt_ctx;
+  if (fn != nullptr) {
+    fn(ctx, channel);
+  }
+}
+
+ra_err_t ra_agt_enter_stop(uint8_t channel)
+{
+  volatile r_agt_regs_t* reg = ra_agt(channel);
+  RA_CHECK_NULL_PTR(reg, s_tag, "channel out of range");
+  reg->AGTCR = 0U;
+  if (channel < (uint8_t)k_ra_agt_mstp_id_count) {
+    return ra_mstp_disable(s_agt_mstp_table[channel]);
+  }
+  return k_ra_ok;
+}
+
+ra_err_t ra_agt_exit_stop(uint8_t channel)
+{
+  if (ra_agt(channel) == nullptr) {
+    return k_ra_err_invalid_arg;
+  }
+  if (channel < (uint8_t)k_ra_agt_mstp_id_count) {
+    return ra_mstp_enable(s_agt_mstp_table[channel]);
+  }
+  return k_ra_ok;
+}
