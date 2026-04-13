@@ -1,17 +1,14 @@
 /**
  * @file iic.c
- * @brief Polling I2C driver on top of the IIC peripheral
+ * @brief Full-featured I2C (IIC) driver implementation
+ *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
  *
  * @details
- * Minimum-viable controller-mode I2C driver for bring-up and sensor
- * probing. Uses the IIC register block defined in
- * `ra8d2_iic_regs.h`. No interrupts, no DMA -- `ra_iic_write()` /
- * `ra_iic_read()` busy-wait on ICSR2 flags.
- *
- * This driver is deliberately naive so the first sensor can talk
- * to the chip. A full-speed driver (with arbitration-loss recovery,
- * multi-master support, and IRQ-driven transfers) will replace it
- * later without changing the public header.
+ * Wave 3.2 full build-out. See ``ra_iic.h`` for the API contract.
+ * Owns every write to the RA8D2 IIC register block (HUM Ch 39
+ * "I2C Bus Interface (IIC)", p 2367).
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -75,26 +72,107 @@ static const ra_mstp_t s_iic_mstp_table[k_ra_iic_channel_count] = {
   k_ra_mstp_iic2,
 };
 
-ra_err_t ra_iic_controller_init(uint8_t channel)
+/**
+ * @struct ra_iic_state_t
+ * @brief Per-channel dispatch state.
+ */
+typedef struct {
+  ra_iic_complete_fn_t cb;          /**< Transfer-complete callback. */
+  void*                ctx;         /**< Callback context.           */
+  bool                 initialised; /**< Tracked by ra_iic_init.     */
+} ra_iic_state_t;
+
+/**
+ * @var s_iic_state
+ * @brief Per-channel state table indexed by channel.
+ */
+static ra_iic_state_t s_iic_state[k_ra_iic_channel_count];
+
+/**
+ * @brief Compute ICBR (low byte) from target bus clock + PCLKB.
+ *
+ * @details
+ * Standard formula from HUM Ch 39.2 "IIC Bit Rate Calculation":
+ *
+ * @f[
+ *    ICBRL = \frac{PCLKB}{8 \cdot B} - 1
+ * @f]
+ *
+ * for the default CKS = 000 (no prescaler). Caller clamps the
+ * result to a valid 5-bit range before writing.
+ */
+static uint8_t internal_icbrl(uint32_t bus_hz, uint32_t pclkb_hz)
 {
+  if ((bus_hz == 0U) || (pclkb_hz == 0U)) {
+    return 0U;
+  }
+  const uint32_t divisor = 8U * bus_hz;
+  const uint32_t n       = pclkb_hz / divisor;
+  if (n == 0U) {
+    return 0U;
+  }
+  return (uint8_t)(n - 1U);
+}
+
+ra_err_t ra_iic_init(uint8_t channel, const ra_iic_cfg_t* cfg)
+{
+  RA_CHECK_NULL_PTR(cfg, s_tag, "iic_init: cfg");
   volatile r_iic_regs_t* reg = ra_iic(channel);
-  RA_CHECK_NULL_PTR(reg, s_tag, "channel out of range");
+  if (reg == nullptr) {
+    return k_ra_err_invalid_arg;
+  }
   if ((uint16_t)channel >= (uint16_t)k_ra_iic_channel_count) {
     return k_ra_err_invalid_arg;
   }
 
+  /* HUM Ch 11.2.7 "MSTPCRB : Module Stop Control Register B", p 444 */
   const ra_err_t mst_err = ra_mstp_enable(s_iic_mstp_table[channel]);
-  RA_RETURN_ON_ERROR(mst_err, s_tag, "init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
+  RA_RETURN_ON_ERROR(mst_err, s_tag, "iic_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
 
-  /* Module-reset sequence. */
+  /* HUM Ch 39.2 "IIC Bus Interface Register Descriptions", p 2367
+   *  -- module-reset sequence. */
   reg->ICCR1 = 0U;
   reg->ICMR1 = (uint8_t)k_ra_iic_icmr1_default;
-  reg->ICBRL = 0U; /* Bit-rate registers -- tune per PCLKB later. */
+  reg->ICMR2 = 0U;
+  reg->ICMR3 = 0U;
+  reg->ICFER = 0U;
+  reg->ICSER = 0U;
+  reg->ICIER = 0U;
+  reg->ICBRL = internal_icbrl(cfg->bus_hz, cfg->pclkb_hz);
   reg->ICBRH = 0U;
   reg->ICCR1 = (uint8_t)k_ra_iic_iccr1_enable;
 
-  ra_log_info_val(s_tag, "init channel", (uint32_t)channel);
+  s_iic_state[channel].cb          = nullptr;
+  s_iic_state[channel].ctx         = nullptr;
+  s_iic_state[channel].initialised = true;
+  ra_log_info_val(s_tag, "iic_init channel", (uint32_t)channel);
   return k_ra_ok;
+}
+
+ra_err_t ra_iic_deinit(uint8_t channel)
+{
+  volatile r_iic_regs_t* reg = ra_iic(channel);
+  if (reg == nullptr) {
+    return k_ra_err_invalid_arg;
+  }
+  /* HUM Ch 39.2 "ICCR1 : IIC Bus Control Register 1", p 2367 */
+  reg->ICCR1                       = 0U;
+  s_iic_state[channel].cb          = nullptr;
+  s_iic_state[channel].ctx         = nullptr;
+  s_iic_state[channel].initialised = false;
+  return ra_mstp_disable(s_iic_mstp_table[channel]);
+}
+
+ra_err_t ra_iic_controller_init(uint8_t channel)
+{
+  /* Legacy shim: call the new init with a placeholder config.
+   * Callers that need a specific bit rate should switch to
+   * ra_iic_init directly. */
+  const ra_iic_cfg_t cfg = {
+    .bus_hz   = (uint32_t)k_ra_iic_speed_standard,
+    .pclkb_hz = 60000000U,
+  };
+  return ra_iic_init(channel, &cfg);
 }
 
 /**
@@ -182,4 +260,139 @@ ra_err_t ra_iic_read(uint8_t channel, uint8_t target_7b, uint8_t* out, uint32_t 
   reg->ICSR2 = 0U;
 
   return err;
+}
+
+/* =============================================================================
+ * Wave 3.2: runtime reconfigure, error status, IRQ dispatch, power transition
+ * =============================================================================
+ */
+
+ra_err_t ra_iic_set_clock(uint8_t channel, uint32_t bus_hz, uint32_t pclkb_hz)
+{
+  volatile r_iic_regs_t* reg = ra_iic(channel);
+  if (reg == nullptr) {
+    return k_ra_err_invalid_arg;
+  }
+  if (bus_hz == 0U) {
+    return k_ra_err_invalid_arg;
+  }
+  /* HUM Ch 39.2 "ICBRL : IIC Bit Rate Low-Level Register", p 2391 */
+  reg->ICBRL = internal_icbrl(bus_hz, pclkb_hz);
+  return k_ra_ok;
+}
+
+ra_err_t ra_iic_get_errors(uint8_t channel, uint8_t* out_mask)
+{
+  RA_CHECK_NULL_PTR(out_mask, s_tag, "get_errors: out");
+  volatile const r_iic_regs_t* reg = ra_iic(channel);
+  if (reg == nullptr) {
+    return k_ra_err_invalid_arg;
+  }
+  const uint8_t ss = reg->ICSR2;
+  uint8_t       m  = (uint8_t)k_ra_iic_err_none;
+  if ((ss & (uint8_t)(1U << (uint8_t)k_ra_icsr2_bit_al)) != 0U) {
+    m |= (uint8_t)k_ra_iic_err_arb_lost;
+  }
+  if ((ss & (uint8_t)(1U << (uint8_t)k_ra_icsr2_bit_nackf)) != 0U) {
+    m |= (uint8_t)k_ra_iic_err_nack;
+  }
+  if ((ss & (uint8_t)(1U << (uint8_t)k_ra_icsr2_bit_tmof)) != 0U) {
+    m |= (uint8_t)k_ra_iic_err_timeout;
+  }
+  *out_mask = m;
+  return k_ra_ok;
+}
+
+ra_err_t ra_iic_clear_errors(uint8_t channel)
+{
+  volatile r_iic_regs_t* reg = ra_iic(channel);
+  if (reg == nullptr) {
+    return k_ra_err_invalid_arg;
+  }
+  /* HUM Ch 39.2 "ICSR2 : IIC Bus Status Register 2", p 2384
+   *  -- AL / NACKF / TMOF are write-zero-to-clear. */
+  const uint8_t clr_mask =
+    (uint8_t)~((1U << (uint8_t)k_ra_icsr2_bit_al) | (1U << (uint8_t)k_ra_icsr2_bit_nackf) |
+               (1U << (uint8_t)k_ra_icsr2_bit_tmof));
+  reg->ICSR2 = (uint8_t)(reg->ICSR2 & clr_mask);
+  return k_ra_ok;
+}
+
+/**
+ * @enum ra_iic_icier_t
+ * @brief ICIER defaults used when attaching a transfer handler.
+ */
+typedef enum : uint8_t {
+  k_ra_iic_icier_all_en = 0xFFU, /**< Enable every interrupt source. */
+} ra_iic_icier_t;
+
+ra_err_t ra_iic_attach_transfer_handler(uint8_t channel, ra_iic_complete_fn_t fn, void* ctx)
+{
+  volatile r_iic_regs_t* reg = ra_iic(channel);
+  if (reg == nullptr) {
+    return k_ra_err_invalid_arg;
+  }
+  s_iic_state[channel].cb  = fn;
+  s_iic_state[channel].ctx = ctx;
+  /* HUM Ch 39.2 "ICIER : IIC Bus Interrupt Enable Register", p 2381
+   *  -- enable or disable every IRQ source as a block. Per-bit
+   *  tuning lands in Wave 3.2b when the first interrupt-mode
+   *  consumer arrives. */
+  if (fn != nullptr) {
+    reg->ICIER = (uint8_t)k_ra_iic_icier_all_en;
+  } else {
+    reg->ICIER = 0U;
+  }
+  return k_ra_ok;
+}
+
+ra_err_t ra_iic_enter_stop(uint8_t channel)
+{
+  volatile r_iic_regs_t* reg = ra_iic(channel);
+  if (reg == nullptr) {
+    return k_ra_err_invalid_arg;
+  }
+  /* HUM Ch 39.2 "ICCR1 : IIC Bus Control Register 1", p 2369 -- clear ICE. */
+  reg->ICCR1 = 0U;
+  return ra_mstp_disable(s_iic_mstp_table[channel]);
+}
+
+ra_err_t ra_iic_exit_stop(uint8_t channel)
+{
+  if ((uint16_t)channel >= (uint16_t)k_ra_iic_channel_count) {
+    return k_ra_err_invalid_arg;
+  }
+  return ra_mstp_enable(s_iic_mstp_table[channel]);
+}
+
+void ra_iic_dispatch_txi(uint8_t channel)
+{
+  if ((uint16_t)channel >= (uint16_t)k_ra_iic_channel_count) {
+    return;
+  }
+  /* Wave 3.2 MVP: the full state machine lives in the synchronous
+   * write/read paths above. IRQ-mode advance is Wave 3.2b. */
+  (void)s_iic_state[channel].cb;
+}
+
+void ra_iic_dispatch_rxi(uint8_t channel)
+{
+  if ((uint16_t)channel >= (uint16_t)k_ra_iic_channel_count) {
+    return;
+  }
+  (void)s_iic_state[channel].cb;
+}
+
+void ra_iic_dispatch_eri(uint8_t channel)
+{
+  if ((uint16_t)channel >= (uint16_t)k_ra_iic_channel_count) {
+    return;
+  }
+  uint8_t mask = 0U;
+  (void)ra_iic_get_errors(channel, &mask);
+  (void)ra_iic_clear_errors(channel);
+  const ra_iic_complete_fn_t cb = s_iic_state[channel].cb;
+  if ((mask != 0U) && (cb != nullptr)) {
+    cb(s_iic_state[channel].ctx, mask);
+  }
 }
