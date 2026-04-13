@@ -18,7 +18,7 @@
  * @brief CRC control bit masks used by the tests.
  */
 typedef enum : uint8_t {
-  k_ra_crc_test_swr = (uint8_t)(1U << 7U),
+  k_ra_crc_test_dorclr = (uint8_t)(1U << 7U), /**< CRCCR0.DORCLR. */
 } ra_crc_test_bit_t;
 
 /**
@@ -90,19 +90,20 @@ static void test_init_programs_poly_none(void)
   TEST_END("crc init poly none");
 }
 
-static void test_reset_toggles_crccr1(void)
+static void test_reset_sets_crccr0_dorclr(void)
 {
-  TEST_BEGIN("crc reset toggles crccr1");
+  TEST_BEGIN("crc reset sets CRCCR0.DORCLR");
   ra_sim_mmap_reset();
 
   (void)ra_crc_init(k_ra_crc_poly_8);
   ra_crc_reset();
-  /* After reset, driver writes SWR then 0; the final state is 0. */
+  /* Driver read-modify-writes CRCCR0 with DORCLR (bit 7) set. The sim
+   * register does not auto-clear the bit (sim_mmap is raw memory), so
+   * we should see the GPS bits plus DORCLR in the final value. */
   volatile r_crc_regs_t* reg = ra_crc();
-  TEST_ASSERT_EQ(0, (int)reg->CRCCR1);
-  /* Exercise the SWR constant name to keep it live. */
-  TEST_ASSERT_EQ((int)k_ra_crc_test_swr, (int)(1U << 7U));
-  TEST_END("crc reset toggles crccr1");
+  const uint8_t expected     = (uint8_t)((uint8_t)k_ra_crc_poly_8 | (uint8_t)k_ra_crc_test_dorclr);
+  TEST_ASSERT_EQ((int)expected, (int)reg->CRCCR0);
+  TEST_END("crc reset sets CRCCR0.DORCLR");
 }
 
 static void test_compute_null_data(void)
@@ -236,7 +237,7 @@ int32_t main(void)
   test_init_programs_poly_crc16();
   test_init_programs_poly_crc32();
   test_init_programs_poly_none();
-  test_reset_toggles_crccr1();
+  test_reset_sets_crccr0_dorclr();
   test_compute_null_data();
   test_compute_null_out();
   test_compute_crc8_reads_dor();

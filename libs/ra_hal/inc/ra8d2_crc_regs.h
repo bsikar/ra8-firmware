@@ -39,14 +39,16 @@ typedef enum : uint8_t {
   k_ra_crc_poly_32c_rev      = 7U, /**< CRC-32C (Castagnoli), rev.  */
 } ra_crc_poly_t;
 
+/* Register layout verified against FSP R_CRC_Type in
+ * R7KA8D2KF_core0.h lines 5285-5386. */
 typedef struct {
-  volatile uint8_t  CRCCR0; /**< +0x00 Control Register 0.   */
-  volatile uint8_t  _r0;
-  volatile uint8_t  CRCCR1; /**< +0x02 Control Register 1.   */
-  volatile uint8_t  _r1;
-  volatile uint32_t CRCDIR; /**< +0x04 Input Data (word).    */
-  volatile uint32_t CRCDOR; /**< +0x08 Output Data (word).   */
-  volatile uint32_t CRCSAR; /**< +0x0C SNOOP Address Reg.    */
+  volatile uint8_t  CRCCR0; /**< +0x00 Control Register 0 (GPS/LMS/DORCLR). */
+  volatile uint8_t  CRCCR1; /**< +0x01 Control Register 1 (CRCSWR/CRCSEN). */
+  volatile uint16_t _r0;
+  volatile uint32_t CRCDIR; /**< +0x04 Input Data (word).                   */
+  volatile uint32_t CRCDOR; /**< +0x08 Output Data (word).                  */
+  volatile uint16_t CRCSAR; /**< +0x0C Snoop Address Register (14-bit).     */
+  volatile uint16_t _r1;
 } r_crc_regs_t;
 
 /** @brief Get pointer to the CRC block. */
