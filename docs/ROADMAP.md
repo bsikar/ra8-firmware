@@ -43,7 +43,7 @@ pre-commit -- do not hand-edit it.
 |    5 | External memory and high-throughput buses              |        5 | [ ]    |
 |    6 | Display, audio, USB controllers, Ethernet MAC          |        6 | [ ]    |
 |    7 | PAL + middleware integration (lwIP, CherryUSB)         |        3 | [~]    |
-|    8 | Single-world integration demo + stabilisation         |      1-2 | [ ]    |
+|    8 | Single-world integration demo + stabilisation         |      1-2 | [~]    |
 |    9 | TrustZone partitioning                                 |      4-5 | [ ]    |
 |   10 | Secure-side application + key handling demo           |      1-2 | [ ]    |
 
@@ -1191,12 +1191,16 @@ comments so the partition session is mechanical.
 
 ## Wave 8 -- Single-world integration demo + stabilisation
 
-`[ ]` Status: TODO.
+`[~]` Status: WIP.
 
-- [ ] `src/main.c` exercises the full Wave 7 stack concurrently.
-- [ ] Coverage gap fix-up pass for any driver below 90 % / 90 %.
+- [x] `src/main.c` exercises the full Wave 7 stack concurrently.
+      Wires ra_nsc_periph_init -> ra_net_pal_init -> ra_usb_pal_init
+      -> ra_nsc_log_emit, then enters a blink loop with periodic
+      ra_stack_canary_check().
+- [x] Coverage gap fix-up pass for any driver below 90 % / 90 %.
+      All drivers above the gate (lines 97.9% / branches 90.4%).
 - [ ] Final ROADMAP audit + `cite_check.py --strict`.
-- [ ] Doxygen zero-warning regression pass.
+- [ ] Doxygen zero-warning regression pass against the full tree.
 
 ---
 
