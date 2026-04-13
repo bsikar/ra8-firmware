@@ -20,11 +20,11 @@ static void test_init_clears_irqcr_and_nmi(void)
 
   /* Pre-pollute IRQCR0 and NMIER so we can observe the clear. */
   *ra_icu_irqcr(0U) = 0xFFU;
-  *ra_icu_nmier()   = 0xFFU;
+  *ra_icu_nmier()   = 0x1FFFFFUL;
 
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_icu_init());
   TEST_ASSERT_EQ(0, (int32_t)*ra_icu_irqcr(0U));
-  TEST_ASSERT_EQ(0, (int32_t)*ra_icu_nmier());
+  TEST_ASSERT_EQ((int64_t)0UL, (int64_t)*ra_icu_nmier());
   TEST_END("ra_icu_init: IRQCR + NMIER cleared");
 }
 
@@ -74,23 +74,25 @@ static void test_nmi_enable_disable_clear(void)
   ra_sim_mmap_reset();
   (void)ra_icu_init();
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_icu_nmi_enable(0x05U));
-  TEST_ASSERT_EQ((int32_t)0x05, (int32_t)*ra_icu_nmier());
+  /* FSP R_ICU_NMIER uses bits 0..20. Test with a broad mask so the
+   * 32-bit contract is exercised end-to-end. */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_icu_nmi_enable(0x00105U));
+  TEST_ASSERT_EQ((int64_t)0x00105UL, (int64_t)*ra_icu_nmier());
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_icu_nmi_enable(0x10U));
-  TEST_ASSERT_EQ((int32_t)0x15, (int32_t)*ra_icu_nmier());
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_icu_nmi_enable(0x10010U));
+  TEST_ASSERT_EQ((int64_t)0x10115UL, (int64_t)*ra_icu_nmier());
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_icu_nmi_disable(0x04U));
-  TEST_ASSERT_EQ((int32_t)0x11, (int32_t)*ra_icu_nmier());
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_icu_nmi_disable(0x00004U));
+  TEST_ASSERT_EQ((int64_t)0x10111UL, (int64_t)*ra_icu_nmier());
 
   /* Status register reads + clear. */
-  *ra_icu_nmisr() = 0x7AU;
-  uint8_t status  = 0U;
+  *ra_icu_nmisr() = 0x1F007AUL;
+  uint32_t status = 0UL;
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_icu_nmi_status(&status));
-  TEST_ASSERT_EQ((int32_t)0x7A, (int32_t)status);
+  TEST_ASSERT_EQ((int64_t)0x1F007AUL, (int64_t)status);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_icu_nmi_clear(0xFFU));
-  TEST_ASSERT_EQ((int32_t)0xFF, (int32_t)*ra_icu_nmiclr());
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_icu_nmi_clear(0x1FFFFFUL));
+  TEST_ASSERT_EQ((int64_t)0x1FFFFFUL, (int64_t)*ra_icu_nmiclr());
 
   TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_icu_nmi_status(nullptr));
   TEST_END("ra_icu_nmi_enable / disable / clear");
@@ -99,8 +101,8 @@ static void test_nmi_enable_disable_clear(void)
 typedef enum : uint16_t {
   k_ra_icu_test_nvic_first = 0U,
   k_ra_icu_test_nvic_mid   = 37U,
-  k_ra_icu_test_nvic_last  = 111U,
-  k_ra_icu_test_nvic_bad   = 112U,
+  k_ra_icu_test_nvic_last  = 95U, /**< FSP R_ICU IELSR[96] -> last index 95. */
+  k_ra_icu_test_nvic_bad   = 96U,
   k_ra_icu_test_nvic_huge  = 800U,
 } ra_icu_test_nvic_t;
 
