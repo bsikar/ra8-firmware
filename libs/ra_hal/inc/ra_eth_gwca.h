@@ -27,7 +27,10 @@ extern "C" {
 
 #include "ra_err.h"
 
-/** @typedef ra_eth_gwca_event_fn_t GWCA event callback. */
+/**
+ * @typedef ra_eth_gwca_event_fn_t
+ * @brief GWCA event callback.
+ */
 typedef void (*ra_eth_gwca_event_fn_t)(void* ctx, uint32_t status_mask);
 
 /** @brief Initialise GWCA. @since 0.3.0 */

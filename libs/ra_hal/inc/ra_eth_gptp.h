@@ -27,7 +27,10 @@ extern "C" {
 
 #include "ra_err.h"
 
-/** @typedef ra_eth_gptp_event_fn_t GPTP event callback. */
+/**
+ * @typedef ra_eth_gptp_event_fn_t
+ * @brief GPTP event callback.
+ */
 typedef void (*ra_eth_gptp_event_fn_t)(void* ctx, uint32_t status_mask);
 
 /** @brief Initialise GPTP. @since 0.3.0 */
