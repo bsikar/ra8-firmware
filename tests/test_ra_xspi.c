@@ -45,7 +45,7 @@ static void test_init_inst0_happy(void)
   TEST_ASSERT_NOT_NULL(reg);
   TEST_ASSERT_EQ(0, (int)reg->WRAPCFG);
   TEST_ASSERT_EQ(0, (int)reg->COMCFG);
-  TEST_ASSERT_EQ((int)k_ra_xspi_lio_1s1s1s, (int)reg->LIOCFG);
+  TEST_ASSERT_EQ((int)k_ra_xspi_lio_1s1s1s, (int)reg->LIOCFGCS[0]);
   TEST_END("ra_xspi_init instance 0");
 }
 
@@ -58,7 +58,7 @@ static void test_init_inst1_happy(void)
 
   volatile r_xspi_regs_t* reg = ra_xspi((uint8_t)k_test_xspi_valid_inst1);
   TEST_ASSERT_NOT_NULL(reg);
-  TEST_ASSERT_EQ((int)k_ra_xspi_lio_1s8s8s, (int)reg->LIOCFG);
+  TEST_ASSERT_EQ((int)k_ra_xspi_lio_1s8s8s, (int)reg->LIOCFGCS[0]);
   TEST_END("ra_xspi_init instance 1");
 }
 
@@ -113,7 +113,7 @@ static void test_direct_command_packs_aligned(void)
 
   volatile r_xspi_regs_t* reg = ra_xspi((uint8_t)k_test_xspi_valid_inst0);
   TEST_ASSERT_NOT_NULL(reg);
-  TEST_ASSERT_EQ((int)0x44332211L, (int)reg->CMDBUF[0]);
+  TEST_ASSERT_EQ((int)0x44332211L, (int)reg->CDBUF[0]);
   TEST_END("ra_xspi_direct_command packs 4-byte-aligned payload");
 }
 
@@ -128,8 +128,8 @@ static void test_direct_command_packs_unaligned(void)
 
   volatile r_xspi_regs_t* reg = ra_xspi((uint8_t)k_test_xspi_valid_inst0);
   TEST_ASSERT_NOT_NULL(reg);
-  TEST_ASSERT_EQ((int)0x44332211L, (int)reg->CMDBUF[0]);
-  TEST_ASSERT_EQ((int)0x55L, (int)reg->CMDBUF[1]);
+  TEST_ASSERT_EQ((int)0x44332211L, (int)reg->CDBUF[0]);
+  TEST_ASSERT_EQ((int)0x55L, (int)reg->CDBUF[1]);
   TEST_END("ra_xspi_direct_command flushes trailing partial word");
 }
 
@@ -157,10 +157,10 @@ static void test_direct_command_full_16(void)
 
   volatile r_xspi_regs_t* reg = ra_xspi((uint8_t)k_test_xspi_valid_inst0);
   TEST_ASSERT_NOT_NULL(reg);
-  TEST_ASSERT_EQ((int)0x04030201L, (int)reg->CMDBUF[0]);
-  TEST_ASSERT_EQ((int)0x08070605L, (int)reg->CMDBUF[1]);
-  TEST_ASSERT_EQ((int)0x0C0B0A09L, (int)reg->CMDBUF[2]);
-  TEST_ASSERT_EQ((int)0x100F0E0DL, (int)reg->CMDBUF[3]);
+  TEST_ASSERT_EQ((int)0x04030201L, (int)reg->CDBUF[0]);
+  TEST_ASSERT_EQ((int)0x08070605L, (int)reg->CDBUF[1]);
+  TEST_ASSERT_EQ((int)0x0C0B0A09L, (int)reg->CDBUF[2]);
+  TEST_ASSERT_EQ((int)0x100F0E0DL, (int)reg->CDBUF[3]);
   TEST_END("ra_xspi_direct_command packs 16-byte payload");
 }
 
@@ -511,7 +511,10 @@ static void test_attach_and_dispatch(void)
   TEST_ASSERT_EQ(
     (int32_t)k_ra_ok,
     (int32_t)ra_xspi_attach_handler((uint8_t)k_test_xspi_valid_inst0, stub_xspi_cb, nullptr));
-  ra_xspi((uint8_t)k_test_xspi_valid_inst0)->COMSTT = 0xCAFEBABEUL;
+  /* Dispatch snapshots INTS (command-complete + error flags) and
+   * hands it to the callback -- match that in the host test by
+   * poking the INTS backing word before dispatching. */
+  ra_xspi((uint8_t)k_test_xspi_valid_inst0)->INTS = 0xCAFEBABEUL;
   ra_xspi_dispatch((uint8_t)k_test_xspi_valid_inst0);
   TEST_ASSERT_EQ((int32_t)1, (int32_t)s_xspi_cb_count);
   TEST_ASSERT_EQ((int32_t)0xCAFEBABEUL, (int32_t)s_xspi_cb_last_mask);
