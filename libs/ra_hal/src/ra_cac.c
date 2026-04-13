@@ -56,3 +56,86 @@ ra_err_t ra_cac_measure(uint16_t* out_count)
   }
   return k_ra_err_hw_timeout;
 }
+
+/* =============================================================================
+ * Wave 4.3 -- full build-out
+ * =============================================================================
+ */
+
+/**
+ * @enum ra_cac_bits_w43_t
+ * @brief Wave 4.3 combined mask.
+ */
+typedef enum : uint8_t {
+  k_ra_cac_status_mask_all =
+    (uint8_t)k_ra_cac_status_mendf | (uint8_t)k_ra_cac_status_ovff | (uint8_t)k_ra_cac_status_ferrf,
+} ra_cac_bits_w43_t;
+
+/**
+ * @struct ra_cac_state_t
+ * @brief Driver-wide runtime state.
+ */
+typedef struct {
+  ra_cac_event_fn_t fn;
+  void*             ctx;
+} ra_cac_state_t;
+
+static ra_cac_state_t s_cac_state;
+
+ra_err_t ra_cac_deinit(void)
+{
+  volatile r_cac_regs_t* reg = ra_cac();
+  reg->CACR0                 = 0U;
+  reg->CACR1                 = 0U;
+  reg->CACR2                 = 0U;
+  reg->CAICR                 = 0U;
+  s_cac_state.fn             = nullptr;
+  s_cac_state.ctx            = nullptr;
+  return ra_mstp_disable(k_ra_mstp_cac);
+}
+
+ra_err_t ra_cac_get_status(uint8_t* out_mask)
+{
+  RA_CHECK_NULL_PTR(out_mask, s_tag, "out_mask must not be nullptr");
+  *out_mask = (uint8_t)(ra_cac()->CASTR & (uint8_t)k_ra_cac_status_mask_all);
+  return k_ra_ok;
+}
+
+ra_err_t ra_cac_clear_status(uint8_t mask)
+{
+  volatile r_cac_regs_t* reg = ra_cac();
+  /* HUM Ch 26.2.4 CAICR bit positions (FERRFCL/MENDFCL/OVFFCL) are
+   * offset by 4 from CASTR bits -- write 1 to clear. */
+  reg->CAICR = (uint8_t)(mask & (uint8_t)k_ra_cac_status_mask_all);
+  return k_ra_ok;
+}
+
+ra_err_t ra_cac_attach_handler(ra_cac_event_fn_t fn, void* ctx)
+{
+  s_cac_state.fn  = fn;
+  s_cac_state.ctx = ctx;
+  return k_ra_ok;
+}
+
+void ra_cac_dispatch(void)
+{
+  volatile r_cac_regs_t* reg  = ra_cac();
+  const uint8_t          mask = (uint8_t)(reg->CASTR & (uint8_t)k_ra_cac_status_mask_all);
+  reg->CAICR                  = mask;
+  const ra_cac_event_fn_t fn  = s_cac_state.fn;
+  void* const             ctx = s_cac_state.ctx;
+  if (fn != nullptr) {
+    fn(ctx, mask);
+  }
+}
+
+ra_err_t ra_cac_enter_stop(void)
+{
+  ra_cac()->CACR0 = 0U;
+  return ra_mstp_disable(k_ra_mstp_cac);
+}
+
+ra_err_t ra_cac_exit_stop(void)
+{
+  return ra_mstp_enable(k_ra_mstp_cac);
+}

@@ -105,3 +105,86 @@ ra_err_t ra_rtc_get(ra_rtc_datetime_t* out)
 
   return k_ra_ok;
 }
+
+/* =============================================================================
+ * Wave 4.3 -- full build-out
+ * =============================================================================
+ */
+
+/**
+ * @enum ra_rtc_mask_t
+ * @brief Combined IRQ mask.
+ */
+typedef enum : uint8_t {
+  k_ra_rtc_irq_all =
+    (uint8_t)k_ra_rtc_irq_alarm | (uint8_t)k_ra_rtc_irq_carry | (uint8_t)k_ra_rtc_irq_periodic,
+} ra_rtc_mask_t;
+
+typedef struct {
+  ra_rtc_event_fn_t fn;
+  void*             ctx;
+} ra_rtc_state_t;
+
+static ra_rtc_state_t s_rtc_state;
+
+ra_err_t ra_rtc_deinit(void)
+{
+  volatile r_rtc_regs_t* rtc = ra_rtc();
+  rtc->RCR1                  = 0U;
+  rtc->RCR2                  = 0U;
+  s_rtc_state.fn             = nullptr;
+  s_rtc_state.ctx            = nullptr;
+  return k_ra_ok;
+}
+
+ra_err_t ra_rtc_set_irq_enable(uint8_t mask)
+{
+  volatile r_rtc_regs_t* rtc = ra_rtc();
+  rtc->RCR1                  = (uint8_t)(rtc->RCR1 | (mask & (uint8_t)k_ra_rtc_irq_all));
+  return k_ra_ok;
+}
+
+ra_err_t ra_rtc_get_status(uint8_t* out_mask)
+{
+  RA_CHECK_NULL_PTR(out_mask, s_tag, "out_mask must not be nullptr");
+  *out_mask = (uint8_t)(ra_rtc()->RCR1 & (uint8_t)k_ra_rtc_irq_all);
+  return k_ra_ok;
+}
+
+ra_err_t ra_rtc_clear_status(uint8_t mask)
+{
+  volatile r_rtc_regs_t* rtc = ra_rtc();
+  rtc->RCR1                  = (uint8_t)(rtc->RCR1 & (uint8_t)~(mask & (uint8_t)k_ra_rtc_irq_all));
+  return k_ra_ok;
+}
+
+ra_err_t ra_rtc_attach_handler(ra_rtc_event_fn_t fn, void* ctx)
+{
+  s_rtc_state.fn  = fn;
+  s_rtc_state.ctx = ctx;
+  return k_ra_ok;
+}
+
+void ra_rtc_dispatch(void)
+{
+  const uint8_t           mask = (uint8_t)(ra_rtc()->RCR1 & (uint8_t)k_ra_rtc_irq_all);
+  const ra_rtc_event_fn_t fn   = s_rtc_state.fn;
+  void* const             ctx  = s_rtc_state.ctx;
+  if (fn != nullptr) {
+    fn(ctx, mask);
+  }
+}
+
+ra_err_t ra_rtc_enter_stop(void)
+{
+  volatile r_rtc_regs_t* rtc = ra_rtc();
+  rtc->RCR2                  = (uint8_t)(rtc->RCR2 & (uint8_t)~(1U << k_ra_rcr2_bit_start));
+  return k_ra_ok;
+}
+
+ra_err_t ra_rtc_exit_stop(void)
+{
+  volatile r_rtc_regs_t* rtc = ra_rtc();
+  rtc->RCR2                  = (uint8_t)(rtc->RCR2 | (1U << k_ra_rcr2_bit_start));
+  return k_ra_ok;
+}

@@ -80,3 +80,79 @@ static const ra_mstp_t s_ulpt_mstp_table[] = {
   reg->ULPTCR = 0U;
   return k_ra_ok;
 }
+
+/* =============================================================================
+ * Wave 4.3 -- full build-out
+ * =============================================================================
+ */
+
+static ra_ulpt_event_fn_t s_ulpt_fn;
+static void*              s_ulpt_ctx;
+
+ra_err_t ra_ulpt_deinit(uint8_t channel)
+{
+  if ((uint16_t)channel >= (uint16_t)k_ra_ulpt_channel_count) {
+    return k_ra_err_invalid_arg;
+  }
+  volatile r_ulpt_regs_t* reg = ra_ulpt(channel);
+  RA_CHECK_NULL_PTR(reg, s_tag, "channel mapping failed");
+
+  reg->ULPTCR = 0U;
+  return ra_mstp_disable(s_ulpt_mstp_table[channel]);
+}
+
+ra_err_t ra_ulpt_set_period(uint8_t channel, uint32_t period)
+{
+  if ((uint16_t)channel >= (uint16_t)k_ra_ulpt_channel_count) {
+    return k_ra_err_invalid_arg;
+  }
+  volatile r_ulpt_regs_t* reg = ra_ulpt(channel);
+  RA_CHECK_NULL_PTR(reg, s_tag, "channel mapping failed");
+  reg->ULPT = period;
+  return k_ra_ok;
+}
+
+ra_err_t ra_ulpt_get_status(uint8_t channel, uint8_t* out_mask)
+{
+  RA_CHECK_NULL_PTR(out_mask, s_tag, "out_mask must not be nullptr");
+  if ((uint16_t)channel >= (uint16_t)k_ra_ulpt_channel_count) {
+    return k_ra_err_invalid_arg;
+  }
+  *out_mask = ra_ulpt(channel)->ULPTCR;
+  return k_ra_ok;
+}
+
+ra_err_t ra_ulpt_attach_handler(ra_ulpt_event_fn_t fn, void* ctx)
+{
+  s_ulpt_fn  = fn;
+  s_ulpt_ctx = ctx;
+  return k_ra_ok;
+}
+
+void ra_ulpt_dispatch(uint8_t channel)
+{
+  if ((uint16_t)channel >= (uint16_t)k_ra_ulpt_channel_count) {
+    return;
+  }
+  const ra_ulpt_event_fn_t fn  = s_ulpt_fn;
+  void* const              ctx = s_ulpt_ctx;
+  if (fn != nullptr) {
+    fn(ctx, channel);
+  }
+}
+
+ra_err_t ra_ulpt_enter_stop(uint8_t channel)
+{
+  if ((uint16_t)channel >= (uint16_t)k_ra_ulpt_channel_count) {
+    return k_ra_err_invalid_arg;
+  }
+  return ra_mstp_disable(s_ulpt_mstp_table[channel]);
+}
+
+ra_err_t ra_ulpt_exit_stop(uint8_t channel)
+{
+  if ((uint16_t)channel >= (uint16_t)k_ra_ulpt_channel_count) {
+    return k_ra_err_invalid_arg;
+  }
+  return ra_mstp_enable(s_ulpt_mstp_table[channel]);
+}

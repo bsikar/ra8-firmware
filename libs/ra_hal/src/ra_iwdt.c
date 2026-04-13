@@ -19,10 +19,30 @@
 #include <stdint.h>
 
 #include "ra8d2_iwdt_regs.h"
+#include "ra_check.h"
 #include "ra_err.h"
 #include "ra_log.h"
 
 static const char* s_tag = "IWDT";
+
+/**
+ * @struct ra_iwdt_state_t
+ * @brief Driver-wide runtime state.
+ */
+typedef struct {
+  ra_iwdt_event_fn_t fn;
+  void*              ctx;
+} ra_iwdt_state_t;
+
+static ra_iwdt_state_t s_iwdt_state;
+
+/**
+ * @enum ra_iwdt_mask_t
+ * @brief Combined IWDTSR mask.
+ */
+typedef enum : uint16_t {
+  k_ra_iwdt_status_all = (uint16_t)k_ra_iwdt_status_underflow | (uint16_t)k_ra_iwdt_status_refresh,
+} ra_iwdt_mask_t;
 
 /**
  * @brief Prepare the IWDT driver layer.
@@ -50,4 +70,39 @@ static const char* s_tag = "IWDT";
 void ra_iwdt_refresh_deferred(void)
 {
   ra_iwdt_refresh();
+}
+
+ra_err_t ra_iwdt_get_status(uint16_t* out_mask)
+{
+  RA_CHECK_NULL_PTR(out_mask, s_tag, "out_mask must not be nullptr");
+  *out_mask = (uint16_t)(ra_iwdt()->IWDTSR & (uint16_t)k_ra_iwdt_status_all);
+  return k_ra_ok;
+}
+
+ra_err_t ra_iwdt_clear_status(void)
+{
+  volatile r_iwdt_regs_t* reg = ra_iwdt();
+  /* IWDTSR is write-0-to-clear for the flag bits.
+   * HUM Ch 28.2.2 "IWDTSR : IWDT Status Register" p 1278 */
+  reg->IWDTSR = (uint16_t)(reg->IWDTSR & (uint16_t)~(uint16_t)k_ra_iwdt_status_all);
+  return k_ra_ok;
+}
+
+ra_err_t ra_iwdt_attach_handler(ra_iwdt_event_fn_t fn, void* ctx)
+{
+  s_iwdt_state.fn  = fn;
+  s_iwdt_state.ctx = ctx;
+  return k_ra_ok;
+}
+
+void ra_iwdt_dispatch(void)
+{
+  volatile r_iwdt_regs_t* reg  = ra_iwdt();
+  const uint16_t          mask = (uint16_t)(reg->IWDTSR & (uint16_t)k_ra_iwdt_status_all);
+  reg->IWDTSR                  = (uint16_t)(reg->IWDTSR & (uint16_t)~mask);
+  const ra_iwdt_event_fn_t fn  = s_iwdt_state.fn;
+  void* const              ctx = s_iwdt_state.ctx;
+  if (fn != nullptr) {
+    fn(ctx, mask);
+  }
 }
