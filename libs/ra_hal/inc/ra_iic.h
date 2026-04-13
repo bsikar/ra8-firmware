@@ -39,6 +39,7 @@ extern "C" {
 
 #include <stdint.h>
 
+#include "ra_dma.h"
 #include "ra_err.h"
 
 /* =============================================================================
@@ -245,6 +246,84 @@ ra_iic_attach_transfer_handler(uint8_t channel, ra_iic_complete_fn_t fn, void* c
  * @since 0.2.0
  */
 [[nodiscard]] ra_err_t ra_iic_exit_stop(uint8_t channel);
+
+/* =============================================================================
+ * DMA TX / RX (Wave 3.7b)
+ * =============================================================================
+ */
+
+/**
+ * @brief Kick off a DMA-backed TX transfer on an IIC channel.
+ *
+ * @details
+ * Programmes the ra_dma substrate to copy ``len`` bytes from
+ * ``data[]`` into the channel's ICDRT register as byte elements.
+ * On completion, ``on_complete`` fires from DMAC ISR context.
+ *
+ * @param[in]  channel         IIC channel 0..2.
+ * @param[in]  data            Source buffer. Must outlive the transfer.
+ * @param[in]  len             Number of bytes; non-zero.
+ * @param[in]  on_complete     Completion callback. May be NULL.
+ * @param[in]  ctx             Context passed to ``on_complete``.
+ * @param[out] out_dma_channel Allocated DMAC channel on success.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok                 Transfer armed.
+ * @retval k_ra_err_null_ptr       ``data`` / ``out_dma_channel`` NULL.
+ * @retval k_ra_err_invalid_arg    Channel or ``len`` invalid.
+ * @retval k_ra_err_no_mem         All DMAC channels in use.
+ * @retval k_ra_err_hw_error       ``ra_dma_request`` failed.
+ *
+ * @pre Channel previously initialised via ``ra_iic_init``.
+ * @pre ``ra_dma_init`` has been called.
+ * @post On success, DMAC channel is armed.
+ *
+ * @note Thread safety: not thread-safe.
+ * @see ra_iic_read_dma
+ * @since 0.3.0
+ */
+[[nodiscard]] ra_err_t ra_iic_write_dma(uint8_t              channel,
+                                        const uint8_t*       data,
+                                        uint16_t             len,
+                                        ra_dma_complete_fn_t on_complete,
+                                        void*                ctx,
+                                        uint8_t*             out_dma_channel);
+
+/**
+ * @brief Kick off a DMA-backed RX transfer on an IIC channel.
+ *
+ * @details
+ * Programmes the ra_dma substrate to copy ``len`` bytes from the
+ * channel's ICDRR register into ``out_buf[]`` as byte elements.
+ *
+ * @param[in]  channel         IIC channel 0..2.
+ * @param[out] out_buf         Destination buffer. Must outlive transfer.
+ * @param[in]  len             Number of bytes; non-zero.
+ * @param[in]  on_complete     Completion callback. May be NULL.
+ * @param[in]  ctx             Context passed to ``on_complete``.
+ * @param[out] out_dma_channel Allocated DMAC channel on success.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok                 Transfer armed.
+ * @retval k_ra_err_null_ptr       ``out_buf`` / ``out_dma_channel`` NULL.
+ * @retval k_ra_err_invalid_arg    Channel or ``len`` invalid.
+ * @retval k_ra_err_no_mem         All DMAC channels in use.
+ * @retval k_ra_err_hw_error       ``ra_dma_request`` failed.
+ *
+ * @pre Channel previously initialised via ``ra_iic_init``.
+ * @pre ``ra_dma_init`` has been called.
+ * @post On success, DMAC channel is armed.
+ *
+ * @note Thread safety: not thread-safe.
+ * @see ra_iic_write_dma
+ * @since 0.3.0
+ */
+[[nodiscard]] ra_err_t ra_iic_read_dma(uint8_t              channel,
+                                       uint8_t*             out_buf,
+                                       uint16_t             len,
+                                       ra_dma_complete_fn_t on_complete,
+                                       void*                ctx,
+                                       uint8_t*             out_dma_channel);
 
 /* =============================================================================
  * ISR dispatch (test-callable)

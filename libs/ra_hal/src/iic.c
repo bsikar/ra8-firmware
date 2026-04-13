@@ -18,6 +18,8 @@
 
 #include "ra8d2_iic_regs.h"
 #include "ra_check.h"
+#include "ra_dma.h"
+#include "ra_dmac.h"
 #include "ra_err.h"
 #include "ra_iic.h"
 #include "ra_log.h"
@@ -365,6 +367,69 @@ ra_err_t ra_iic_exit_stop(uint8_t channel)
   }
   return ra_mstp_enable(s_iic_mstp_table[channel]);
 }
+
+/* ---- DMA TX / RX (Wave 3.7b) ----------------------------------------- */
+
+ra_err_t ra_iic_write_dma(uint8_t              channel,
+                          const uint8_t*       data,
+                          uint16_t             len,
+                          ra_dma_complete_fn_t on_complete,
+                          void*                ctx,
+                          uint8_t*             out_dma_channel)
+{
+  RA_CHECK_NULL_PTR(data, s_tag, "iic_write_dma: data");
+  RA_CHECK_NULL_PTR(out_dma_channel, s_tag, "iic_write_dma: out_dma_channel");
+  volatile r_iic_regs_t* reg = ra_iic(channel);
+  if ((reg == nullptr) || ((uint16_t)channel >= (uint16_t)k_ra_iic_channel_count) || (len == 0U)) {
+    return k_ra_err_invalid_arg;
+  }
+  /* HUM Ch 39.2 "ICDRT : I2C Bus Transmit Data Register", p 2367 */
+  ra_dma_request_t req = {};
+  req.engine           = k_ra_dma_engine_dmac;
+  req.src_addr         = (uintptr_t)data;
+  req.dst_addr         = (uintptr_t)&reg->ICDRT;
+  req.count            = len;
+  req.width            = k_ra_dmac_width_byte;
+  req.src_inc          = true;
+  req.dst_inc          = false;
+  req.trigger          = (ra_elc_event_t)0; /* Wave 7 ELC routing. */
+  req.on_complete      = on_complete;
+  req.ctx              = ctx;
+  return ra_dma_request(&req, out_dma_channel);
+}
+
+/* out_buf is written by the DMAC engine via the dst_addr path, not
+ * through the pointer directly, so clang-tidy would otherwise flag
+ * it as a const candidate. */
+ra_err_t ra_iic_read_dma(uint8_t              channel,
+                         uint8_t*             out_buf, // NOLINT(readability-non-const-parameter)
+                         uint16_t             len,
+                         ra_dma_complete_fn_t on_complete,
+                         void*                ctx,
+                         uint8_t*             out_dma_channel)
+{
+  RA_CHECK_NULL_PTR(out_buf, s_tag, "iic_read_dma: out_buf");
+  RA_CHECK_NULL_PTR(out_dma_channel, s_tag, "iic_read_dma: out_dma_channel");
+  volatile r_iic_regs_t* reg = ra_iic(channel);
+  if ((reg == nullptr) || ((uint16_t)channel >= (uint16_t)k_ra_iic_channel_count) || (len == 0U)) {
+    return k_ra_err_invalid_arg;
+  }
+  /* HUM Ch 39.2 "ICDRR : I2C Bus Receive Data Register", p 2367 */
+  ra_dma_request_t req = {};
+  req.engine           = k_ra_dma_engine_dmac;
+  req.src_addr         = (uintptr_t)&reg->ICDRR;
+  req.dst_addr         = (uintptr_t)out_buf;
+  req.count            = len;
+  req.width            = k_ra_dmac_width_byte;
+  req.src_inc          = false;
+  req.dst_inc          = true;
+  req.trigger          = (ra_elc_event_t)0;
+  req.on_complete      = on_complete;
+  req.ctx              = ctx;
+  return ra_dma_request(&req, out_dma_channel);
+}
+
+/* ---- ISR dispatch ---------------------------------------------------- */
 
 void ra_iic_dispatch_txi(uint8_t channel)
 {

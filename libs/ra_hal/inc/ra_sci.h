@@ -19,9 +19,14 @@
  *  - Register-coverage full across the current ``r_sci_regs_t``
  *    window.
  *
- * DMA TX / RX wiring to ``ra_dma`` is scaffolded but the ELC
- * trigger registration is deferred to Wave 3.1b when the first
- * DMA-using consumer lands. The API surface below is stable.
+ * DMA TX / RX land in Wave 3.7b via ``ra_sci_write_dma`` and
+ * ``ra_sci_read_dma``, which programme the ra_dma substrate for a
+ * byte-stream transfer between a host buffer and the SCI TDR/RDR
+ * data registers. ELC trigger routing (one DMAC element per TXI /
+ * RXI event) is handled downstream in Wave 7 once the NSC layer
+ * can annotate the trigger table safely; Wave 3.7b uses the
+ * ``k_ra_elc_event_none`` software-start path which is what the
+ * host-side ra_sim_dma loop simulates.
  *
  * ## Register layout caveat
  *
@@ -53,6 +58,7 @@ extern "C" {
 
 #include <stdint.h>
 
+#include "ra_dma.h"
 #include "ra_err.h"
 
 /* =============================================================================
@@ -361,6 +367,105 @@ typedef bool (*ra_sci_tx_fn_t)(void* ctx, uint8_t* byte);
  * @since 0.2.0
  */
 [[nodiscard]] ra_err_t ra_sci_exit_stop(uint8_t channel);
+
+/* =============================================================================
+ * DMA TX / RX (Wave 3.7b)
+ * =============================================================================
+ */
+
+/**
+ * @brief Kick off a DMA-backed TX transfer.
+ *
+ * @details
+ * Programmes the ra_dma substrate to copy ``len`` bytes from
+ * ``data[]`` into the channel's TDR register as byte elements
+ * (src_inc=true, dst_inc=false). The caller-supplied completion
+ * callback fires from DMAC ISR context on transfer-end. The
+ * allocated DMAC channel is returned in ``*out_dma_channel`` so
+ * the caller can release it via ``ra_dma_release`` once the
+ * transfer is done.
+ *
+ * Uses ``k_ra_elc_event_none`` (software-start). Real hardware
+ * one-element-per-TXI routing is a Wave 7 task alongside the
+ * TrustZone retrofit.
+ *
+ * @param[in]  channel         SCI channel 0..9.
+ * @param[in]  data            Source byte buffer. Must stay
+ *                             live until ``on_complete`` fires.
+ * @param[in]  len             Number of bytes to transfer; must
+ *                             be non-zero.
+ * @param[in]  on_complete     Completion callback. May be NULL.
+ * @param[in]  ctx             Context passed to ``on_complete``.
+ * @param[out] out_dma_channel Allocated DMAC channel on success.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok                 Transfer armed.
+ * @retval k_ra_err_null_ptr       ``data`` or ``out_dma_channel`` NULL.
+ * @retval k_ra_err_invalid_arg    ``channel`` > 9 or ``len`` zero.
+ * @retval k_ra_err_no_mem         All DMAC channels in use.
+ * @retval k_ra_err_hw_error       Underlying ``ra_dma_request`` failed.
+ *
+ * @pre Channel previously initialised via ``ra_sci_init``.
+ * @pre ``ra_dma_init`` has been called.
+ * @pre ``out_dma_channel`` is non-NULL.
+ *
+ * @post On success, the DMAC channel is programmed and armed.
+ * @post ``*out_dma_channel`` holds a valid DMAC channel index.
+ *
+ * @note Thread safety: not thread-safe.
+ * @see ra_sci_read_dma
+ * @see ra_dma_release
+ * @since 0.3.0
+ */
+[[nodiscard]] ra_err_t ra_sci_write_dma(uint8_t              channel,
+                                        const uint8_t*       data,
+                                        uint16_t             len,
+                                        ra_dma_complete_fn_t on_complete,
+                                        void*                ctx,
+                                        uint8_t*             out_dma_channel);
+
+/**
+ * @brief Kick off a DMA-backed RX transfer.
+ *
+ * @details
+ * Programmes the ra_dma substrate to copy ``len`` bytes from the
+ * channel's RDR register into ``out_buf[]`` as byte elements
+ * (src_inc=false, dst_inc=true). Completion callback fires from
+ * DMAC ISR context on transfer-end.
+ *
+ * @param[in]  channel         SCI channel 0..9.
+ * @param[out] out_buf         Destination byte buffer. Must stay
+ *                             live until ``on_complete`` fires.
+ * @param[in]  len             Number of bytes; must be non-zero.
+ * @param[in]  on_complete     Completion callback. May be NULL.
+ * @param[in]  ctx             Context passed to ``on_complete``.
+ * @param[out] out_dma_channel Allocated DMAC channel on success.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok                 Transfer armed.
+ * @retval k_ra_err_null_ptr       ``out_buf`` or ``out_dma_channel`` NULL.
+ * @retval k_ra_err_invalid_arg    ``channel`` > 9 or ``len`` zero.
+ * @retval k_ra_err_no_mem         All DMAC channels in use.
+ * @retval k_ra_err_hw_error       Underlying ``ra_dma_request`` failed.
+ *
+ * @pre Channel previously initialised via ``ra_sci_init``.
+ * @pre ``ra_dma_init`` has been called.
+ * @pre ``out_buf`` and ``out_dma_channel`` are non-NULL.
+ *
+ * @post On success, the DMAC channel is programmed and armed.
+ * @post ``*out_dma_channel`` holds a valid DMAC channel index.
+ *
+ * @note Thread safety: not thread-safe.
+ * @see ra_sci_write_dma
+ * @see ra_dma_release
+ * @since 0.3.0
+ */
+[[nodiscard]] ra_err_t ra_sci_read_dma(uint8_t              channel,
+                                       uint8_t*             out_buf,
+                                       uint16_t             len,
+                                       ra_dma_complete_fn_t on_complete,
+                                       void*                ctx,
+                                       uint8_t*             out_dma_channel);
 
 /* =============================================================================
  * ISR entry points (called from ra_sci_irq.c)

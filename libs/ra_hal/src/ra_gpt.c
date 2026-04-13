@@ -17,6 +17,8 @@
 
 #include "ra8d2_gpt_regs.h"
 #include "ra_check.h"
+#include "ra_dma.h"
+#include "ra_dmac.h"
 #include "ra_err.h"
 #include "ra_log.h"
 #include "ra_mstp.h"
@@ -262,6 +264,76 @@ ra_err_t ra_gpt_exit_stop(uint8_t channel)
   }
   return ra_mstp_enable(s_gpt_mstp_table[channel]);
 }
+
+/* ---- DMA TX / RX (Wave 3.7b) ----------------------------------------- */
+
+ra_err_t ra_gpt_write_dma(uint8_t              channel,
+                          const uint32_t*      periods,
+                          uint16_t             count,
+                          ra_dma_complete_fn_t on_complete,
+                          void*                ctx,
+                          uint8_t*             out_dma_channel)
+{
+  RA_CHECK_NULL_PTR((void*)periods, s_tag, "gpt_write_dma: periods");
+  RA_CHECK_NULL_PTR(out_dma_channel, s_tag, "gpt_write_dma: out_dma_channel");
+  if ((channel >= (uint8_t)k_ra_gpt_channel_count) || (count == 0U)) {
+    return k_ra_err_invalid_arg;
+  }
+  volatile r_gpt_channel_regs_t* reg = ra_gpt(channel);
+  if (reg == nullptr) {          /* GCOVR_EXCL_BR_LINE */
+    return k_ra_err_invalid_arg; /* GCOVR_EXCL_LINE */
+  }
+  /* HUM Ch 22.2 "GTPR : General PWM Timer Cycle Setting Register", p 878 */
+  /* Word-wide DMA writes stream period values into GTPR; dst_inc=false
+   * so every element lands at the same MMIO address. */
+  ra_dma_request_t req = {};
+  req.engine           = k_ra_dma_engine_dmac;
+  req.src_addr         = (uintptr_t)periods;
+  req.dst_addr         = (uintptr_t)&reg->GTPR;
+  req.count            = count;
+  req.width            = k_ra_dmac_width_word;
+  req.src_inc          = true;
+  req.dst_inc          = false;
+  req.trigger          = (ra_elc_event_t)0;
+  req.on_complete      = on_complete;
+  req.ctx              = ctx;
+  return ra_dma_request(&req, out_dma_channel);
+}
+
+/* out_counts is written by the DMAC engine. */
+ra_err_t ra_gpt_read_dma(uint8_t              channel,
+                         uint32_t*            out_counts, // NOLINT(readability-non-const-parameter)
+                         uint16_t             count,
+                         ra_dma_complete_fn_t on_complete,
+                         void*                ctx,
+                         uint8_t*             out_dma_channel)
+{
+  RA_CHECK_NULL_PTR(out_counts, s_tag, "gpt_read_dma: out_counts");
+  RA_CHECK_NULL_PTR(out_dma_channel, s_tag, "gpt_read_dma: out_dma_channel");
+  if ((channel >= (uint8_t)k_ra_gpt_channel_count) || (count == 0U)) {
+    return k_ra_err_invalid_arg;
+  }
+  volatile r_gpt_channel_regs_t* reg = ra_gpt(channel);
+  if (reg == nullptr) {          /* GCOVR_EXCL_BR_LINE */
+    return k_ra_err_invalid_arg; /* GCOVR_EXCL_LINE */
+  }
+  /* HUM Ch 22.2 "GTCNT : General PWM Timer Counter", p 878 */
+  /* Word-wide DMA reads stream GTCNT snapshots into out_counts[]. */
+  ra_dma_request_t req = {};
+  req.engine           = k_ra_dma_engine_dmac;
+  req.src_addr         = (uintptr_t)&reg->GTCNT;
+  req.dst_addr         = (uintptr_t)out_counts;
+  req.count            = count;
+  req.width            = k_ra_dmac_width_word;
+  req.src_inc          = false;
+  req.dst_inc          = true;
+  req.trigger          = (ra_elc_event_t)0;
+  req.on_complete      = on_complete;
+  req.ctx              = ctx;
+  return ra_dma_request(&req, out_dma_channel);
+}
+
+/* ---- ISR dispatch ---------------------------------------------------- */
 
 static void internal_dispatch(uint8_t channel, uint32_t status_mask)
 {

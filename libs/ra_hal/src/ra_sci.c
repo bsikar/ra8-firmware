@@ -20,6 +20,8 @@
 #include "ra8d2_mstp_regs.h"
 #include "ra8d2_sci_regs.h"
 #include "ra_check.h"
+#include "ra_dma.h"
+#include "ra_dmac.h"
 #include "ra_err.h"
 #include "ra_hw_err.h"
 #include "ra_log.h"
@@ -406,6 +408,89 @@ ra_err_t ra_sci_exit_stop(uint8_t channel)
     return k_ra_err_invalid_arg;
   }
   return ra_mstp_enable(s_mstp_table[channel]);
+}
+
+/* ---- DMA TX / RX (Wave 3.7b) ----------------------------------------- */
+
+/**
+ * @brief Build a DMA request descriptor for byte-stream to/from SCI TDR/RDR.
+ */
+static ra_dma_request_t internal_make_dma_request(uintptr_t            src,
+                                                  uintptr_t            dst,
+                                                  uint16_t             len,
+                                                  bool                 src_inc,
+                                                  bool                 dst_inc,
+                                                  ra_dma_complete_fn_t on_complete,
+                                                  void*                ctx)
+{
+  ra_dma_request_t req = {};
+  req.engine           = k_ra_dma_engine_dmac;
+  req.src_addr         = src;
+  req.dst_addr         = dst;
+  req.count            = len;
+  req.width            = k_ra_dmac_width_byte;
+  req.src_inc          = src_inc;
+  req.dst_inc          = dst_inc;
+  /* HUM Ch 19 "Event Link Controller (ELC)" p 817 -- trigger routing is a
+   * Wave 7 task; until then use software-start and drive the first
+   * element from the polling path or rely on ra_sim_dma for host tests. */
+  req.trigger     = (ra_elc_event_t)0;
+  req.on_complete = on_complete;
+  req.ctx         = ctx;
+  return req;
+}
+
+ra_err_t ra_sci_write_dma(uint8_t              channel,
+                          const uint8_t*       data,
+                          uint16_t             len,
+                          ra_dma_complete_fn_t on_complete,
+                          void*                ctx,
+                          uint8_t*             out_dma_channel)
+{
+  RA_CHECK_NULL_PTR(data, s_tag, "write_dma: data");
+  RA_CHECK_NULL_PTR(out_dma_channel, s_tag, "write_dma: out_dma_channel");
+  volatile r_sci_regs_t* reg = internal_reg(channel);
+  if ((reg == nullptr) || (len == 0U)) {
+    return k_ra_err_invalid_arg;
+  }
+  /* HUM Ch 38.2 "TDR : Transmit Data Register", p 2174 -- DMA writes land
+   * here one byte per element. Source increments across data[]. */
+  const ra_dma_request_t req = internal_make_dma_request((uintptr_t)data,
+                                                         (uintptr_t)&reg->TDR,
+                                                         len,
+                                                         /*src_inc=*/true,
+                                                         /*dst_inc=*/false,
+                                                         on_complete,
+                                                         ctx);
+  return ra_dma_request(&req, out_dma_channel);
+}
+
+/* out_buf is written by the DMAC engine via the dst_addr path, not
+ * through the pointer directly, so clang-tidy would otherwise flag
+ * it as a const candidate. */
+ra_err_t ra_sci_read_dma(uint8_t              channel,
+                         uint8_t*             out_buf, // NOLINT(readability-non-const-parameter)
+                         uint16_t             len,
+                         ra_dma_complete_fn_t on_complete,
+                         void*                ctx,
+                         uint8_t*             out_dma_channel)
+{
+  RA_CHECK_NULL_PTR(out_buf, s_tag, "read_dma: out_buf");
+  RA_CHECK_NULL_PTR(out_dma_channel, s_tag, "read_dma: out_dma_channel");
+  volatile r_sci_regs_t* reg = internal_reg(channel);
+  if ((reg == nullptr) || (len == 0U)) {
+    return k_ra_err_invalid_arg;
+  }
+  /* HUM Ch 38.2 "RDR : Receive Data Register", p 2174 -- RDR is read-once
+   * per element, destination increments across out_buf[]. */
+  const ra_dma_request_t req = internal_make_dma_request((uintptr_t)&reg->RDR,
+                                                         (uintptr_t)out_buf,
+                                                         len,
+                                                         /*src_inc=*/false,
+                                                         /*dst_inc=*/true,
+                                                         on_complete,
+                                                         ctx);
+  return ra_dma_request(&req, out_dma_channel);
 }
 
 /* ---- ISR dispatch ----------------------------------------------------- */
