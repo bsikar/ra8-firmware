@@ -1223,11 +1223,15 @@ comments so the partition session is mechanical.
       Decision recorded in trustzone_init.c: single-ELF with the
       veneer section (`.gnu.sgstubs`) carved out by the linker --
       revisit if J-Link flow forces two-ELF emit later.
-- [ ] Session 9.2 -- NSC veneer scaffold goes live + `ra_sim_world`
-      host mock. Wave 7.3 already shipped the scaffold; Wave 9.2
-      adds the `__cmse_nonsecure_entry` annotations + the
-      `cmse_check_address_range` calls at the marked retrofit
-      points.
+- [x] Session 9.2 -- NSC veneer scaffold goes live + `ra_sim_world`
+      host mock. Adds `RA_NSC_VENEER`
+      (= `__attribute__((cmse_nonsecure_entry))`) + the
+      `RA_NSC_CHECK_NS_RANGE_R/RW` macros to every veneer.
+      `tests/mocks/ra_sim_world.{c,h}` give host tests a
+      tag-based equivalent of `cmse_check_address_range`.
+      Linker script grows a `.gnu.sgstubs` placement so the
+      `-mcmse` link no longer aborts on `no address assigned to
+      the veneers output section`.
 - [ ] Session 9.3 -- HAL retrofit -- comms (`ra_sci`, `ra_iic`,
       `ra_spi`, `ra_usb_*`).
 - [ ] Session 9.4 -- HAL retrofit -- I/O (`ra_gpt`, `ra_adc`,

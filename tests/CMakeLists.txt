@@ -77,6 +77,7 @@ add_library(ra_core_hal OBJECT
     ${CMAKE_CURRENT_SOURCE_DIR}/mocks/ra_sim_irq.c
     ${CMAKE_CURRENT_SOURCE_DIR}/mocks/ra_sim_dma.c
     ${CMAKE_CURRENT_SOURCE_DIR}/mocks/ra_sim_time.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/mocks/ra_sim_world.c
 )
 target_include_directories(ra_core_hal PUBLIC
     ${FW_ROOT}/libs/ra_core/inc

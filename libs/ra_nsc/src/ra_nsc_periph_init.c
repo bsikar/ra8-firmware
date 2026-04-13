@@ -25,13 +25,14 @@
 #include "ra_log.h"
 #include "ra_mstp.h"
 #include "ra_nsc.h"
+#include "ra_nsc_veneer.h"
 #include "ra_pwr.h"
 
 static const char* s_tag = "NSCPRH";
 
 static bool s_initialised = false;
 
-ra_err_t ra_nsc_periph_init(void)
+RA_NSC_VENEER ra_err_t ra_nsc_periph_init(void)
 {
   if (s_initialised) {
     return k_ra_ok;
