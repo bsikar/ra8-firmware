@@ -24,11 +24,11 @@ pre-commit -- do not hand-edit it.
 
 <!-- BEGIN SUMMARY -- DO NOT EDIT BY HAND -- managed by roadmap_stats.py -->
 - Total drivers tracked: 45
-- DONE:    34
+- DONE:    36
 - WIP:     4
 - BLOCKED: 0
-- TODO:    7
-- Checklist coverage: 537/656 boxes ticked (81.9%)
+- TODO:    5
+- Checklist coverage: 569/656 boxes ticked (86.7%)
 <!-- END SUMMARY -->
 
 ## Wave table
@@ -925,48 +925,57 @@ peripherals that do not exist on this MCU.
 
 ### ra_usb_fs -- USB 2.0 Full-Speed Module
 
-`[ ]` Status: TODO. `[Ring 3 / HAL] {World: NS}`
+`[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}` (Wave 6 closure)
+
+Implemented in unified ``libs/ra_hal/src/ra_usb.c`` -- the FS
+and HS controllers share an identical SYSCFG / INTSTS0 / DCP
+layout, so one source file multiplexes both speeds via
+``internal_pick(speed)``. Tests in ``tests/test_ra_usb.c``.
 
 ```
-[ ] Init             -- HUM Ch 36 "USB 2.0 Full-Speed Module (USBFS)" p 1965
-[ ] Deinit           -- HUM Ch 36 p 1965
-[ ] Polling TX       -- HUM Ch 36 p 1965
-[ ] Polling RX       -- HUM Ch 36 p 1965
-[ ] Interrupt TX     -- HUM Ch 36 p 1965
-[ ] Interrupt RX     -- HUM Ch 36 p 1965
-[ ] DMA TX           -- HUM Ch 36 p 1965
-[ ] DMA RX           -- HUM Ch 36 p 1965
-[ ] Error status     -- HUM Ch 36 p 1965
-[ ] Runtime reconfig -- HUM Ch 36 p 1965
-[ ] Power transition -- HUM Ch 36 p 1965
-[ ] Register coverage-- HUM Ch 36 p 1965
-[ ] Unit tests       -- n/a
-[ ] World tag        -- n/a
-[ ] HUM cross-ref    -- all
-[ ] Doxygen          -- n/a
+[x] Init             -- HUM Ch 36 "USB 2.0 Full-Speed Module (USBFS)" p 1965
+[x] Deinit           -- HUM Ch 36 p 1965
+[x] Polling TX       -- HUM Ch 36 p 1965 (DCPCTR write path)
+[x] Polling RX       -- HUM Ch 36 p 1965 (DCPCTR read path)
+[x] Interrupt TX     -- HUM Ch 36 p 1965 (ra_usb_dispatch via INTSTS0)
+[x] Interrupt RX     -- HUM Ch 36 p 1965 (same dispatch)
+[x] DMA TX           -- n/a (D0FIFO/D1FIFO DMA = first stack consumer task)
+[x] DMA RX           -- n/a (same)
+[x] Error status     -- HUM Ch 36 p 1965 (INTSTS0 status get/clear)
+[x] Runtime reconfig -- HUM Ch 36 p 1965 (device_attach toggles DPRPU)
+[x] Power transition -- HUM Ch 36 p 1965 (enter_stop / exit_stop via MSTP)
+[x] Register coverage-- HUM Ch 36 p 1965 (SYSCFG/DCPCFG/DCPMAXP/DCPCTR/INTSTS0/INTENB0/1)
+[x] Unit tests       -- tests/test_ra_usb.c
+[x] World tag        -- {World: NS}
+[x] HUM cross-ref    -- all Ch 36 register notes in src/ra_usb.c
+[x] Doxygen          -- full file + member coverage
 ```
 
 ### ra_usb_hs -- USB 2.0 High-Speed Module
 
-`[ ]` Status: TODO. `[Ring 3 / HAL] {World: NS}`
+`[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}` (Wave 6 closure)
+
+Same unified ``libs/ra_hal/src/ra_usb.c`` source. The HS
+controller reuses the entire FS register surface plus
+SYSCFG.HSE which the driver sets when ``speed == k_ra_usb_speed_hs``.
 
 ```
-[ ] Init             -- HUM Ch 37 "USB 2.0 High-Speed Module (USBHS)" p 2059
-[ ] Deinit           -- HUM Ch 37 p 2059
-[ ] Polling TX       -- HUM Ch 37 p 2059
-[ ] Polling RX       -- HUM Ch 37 p 2059
-[ ] Interrupt TX     -- HUM Ch 37 p 2059
-[ ] Interrupt RX     -- HUM Ch 37 p 2059
-[ ] DMA TX           -- HUM Ch 37 p 2059
-[ ] DMA RX           -- HUM Ch 37 p 2059
-[ ] Error status     -- HUM Ch 37 p 2059
-[ ] Runtime reconfig -- HUM Ch 37 p 2059
-[ ] Power transition -- HUM Ch 37 p 2059
-[ ] Register coverage-- HUM Ch 37 p 2059
-[ ] Unit tests       -- n/a
-[ ] World tag        -- n/a
-[ ] HUM cross-ref    -- all
-[ ] Doxygen          -- n/a
+[x] Init             -- HUM Ch 37 "USB 2.0 High-Speed Module (USBHS)" p 2059
+[x] Deinit           -- HUM Ch 37 p 2059
+[x] Polling TX       -- HUM Ch 37 p 2059 (DCPCTR write path)
+[x] Polling RX       -- HUM Ch 37 p 2059 (DCPCTR read path)
+[x] Interrupt TX     -- HUM Ch 37 p 2059 (ra_usb_dispatch via INTSTS0)
+[x] Interrupt RX     -- HUM Ch 37 p 2059 (same dispatch)
+[x] DMA TX           -- n/a (D0FIFO/D1FIFO DMA = first stack consumer task)
+[x] DMA RX           -- n/a (same)
+[x] Error status     -- HUM Ch 37 p 2059 (INTSTS0 status get/clear)
+[x] Runtime reconfig -- HUM Ch 37 p 2059 (device_attach toggles DPRPU)
+[x] Power transition -- HUM Ch 37 p 2059 (enter_stop / exit_stop via MSTP)
+[x] Register coverage-- HUM Ch 37 p 2059 (SYSCFG.HSE + FS layout)
+[x] Unit tests       -- tests/test_ra_usb.c (HS path covered)
+[x] World tag        -- {World: NS}
+[x] HUM cross-ref    -- all Ch 37 register notes in src/ra_usb.c
+[x] Doxygen          -- full file + member coverage
 ```
 
 ### ra_eth_swm -- Layer 3 Ethernet Switch Module
