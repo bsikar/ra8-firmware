@@ -58,6 +58,13 @@ typedef enum : uintptr_t {
   k_ra_scb_dcisw      = 0xE000EF60UL, /**< D-cache Invalidate by Set/Way.      */
   k_ra_fpu_fpccr_addr = 0xE000EF34UL, /**< FPU Context Control Register.       */
   k_ra_nvic_aircr     = 0xE000ED0CUL, /**< Application Interrupt and Reset Ctrl.*/
+  k_ra_mpu_type_addr  = 0xE000ED90UL, /**< MPU Type Register.                  */
+  k_ra_mpu_ctrl_addr  = 0xE000ED94UL, /**< MPU Control Register.               */
+  k_ra_mpu_rnr_addr   = 0xE000ED98UL, /**< MPU Region Number.                  */
+  k_ra_mpu_rbar_addr  = 0xE000ED9CUL, /**< MPU Region Base Address.            */
+  k_ra_mpu_rlar_addr  = 0xE000EDA0UL, /**< MPU Region Limit Address.           */
+  k_ra_mpu_mair0_addr = 0xE000EDC0UL, /**< MPU Attribute Indirection 0.        */
+  k_ra_mpu_mair1_addr = 0xE000EDC4UL, /**< MPU Attribute Indirection 1.        */
 } ra_core_addr_t;
 
 extern uint32_t g_ra_ls_stack_top; /* from vector_table.c / linker. */
@@ -207,6 +214,96 @@ static void internal_set_priority_grouping(void)
   internal_write32(k_ra_nvic_aircr, k_ra_aircr_vectkey | k_ra_aircr_prigroup_4);
 }
 
+/**
+ * @brief Programme and enable the Cortex-M85 core MPU.
+ *
+ * @details
+ * Installs four regions and enables the MPU with PRIVDEFENA so
+ * privileged mode still sees the default memory map for anything
+ * not explicitly covered:
+ *
+ *  - Region 0: MRAM  (0x02000000, 1 MiB) -- read + execute, inner/outer cacheable.
+ *  - Region 1: SRAM  (0x22000000, 2 MiB) -- read + write, no execute.
+ *  - Region 2: SDRAM (0x68000000, 64 MiB) -- read + write, no execute.
+ *  - Region 3: Peripherals (0x40000000, 128 MiB) -- read + write,
+ *              device memory, no execute.
+ *
+ * Attribute indirection table:
+ *  - MAIR0[0] = 0xFF (Normal inner + outer write-back / write-alloc).
+ *  - MAIR0[1] = 0x44 (Normal non-cacheable).
+ *  - MAIR0[2] = 0x04 (Device-nGnRE).
+ *
+ * Region base + limit addresses are encoded per ARMv8-M main-profile
+ * PMSAv8 rules: low 5 bits of RBAR hold `AP[2:0]` / `SH[4:3]` / `XN`,
+ * and RLAR holds the upper bound OR the enable flag in bit 0.
+ */
+/* RBAR attribute-byte encodings (bottom 5 bits of RBAR). */
+enum : uint32_t {
+  k_ra_rbar_attr_ro_x      = 0x02U, /* AP=RO, SH=none, XN=0.                          */
+  k_ra_rbar_attr_rw_xn     = 0x03U, /* AP=RW, SH=none, XN=1.                          */
+  k_ra_rbar_attr_device_rw = 0x23U, /* AP=RW, SH=outer sh, XN=1, MAIR idx = device.   */
+  k_ra_mpu_rlar_enable     = 1UL << 0,
+};
+
+/* Region base and limit addresses. RLAR limits are <region-end> minus
+ * the ARMv8-M 32-byte region quantum, OR-ed with the enable bit at write time. */
+enum : uint32_t {
+  k_ra_mpu_mram_base   = 0x02000000UL, /* 1 MiB MRAM code region.         */
+  k_ra_mpu_mram_limit  = 0x020FFFE0UL,
+  k_ra_mpu_sram_base   = 0x22000000UL, /* 2 MiB ECC SRAM region.          */
+  k_ra_mpu_sram_limit  = 0x221FFFE0UL,
+  k_ra_mpu_sdram_base  = 0x68000000UL, /* 64 MiB external SDRAM.          */
+  k_ra_mpu_sdram_limit = 0x6BFFFFE0UL,
+  k_ra_mpu_peri_base   = 0x40000000UL, /* Peripheral bus window base.     */
+  k_ra_mpu_peri_limit  = 0x47FFFFE0UL,
+};
+
+/**
+ * @brief Program a single MPU region via RNR/RBAR/RLAR.
+ */
+static void internal_mpu_set_region(uint32_t region, uint32_t base_attr, uint32_t limit_enable)
+{
+  internal_write32(k_ra_mpu_rnr_addr, region);
+  internal_write32(k_ra_mpu_rbar_addr, base_attr);
+  internal_write32(k_ra_mpu_rlar_addr, limit_enable);
+}
+
+/**
+ * @brief Programme and enable the Cortex-M85 core MPU.
+ */
+static void internal_mpu_init(void)
+{
+  enum : uint32_t {
+    k_ra_mpu_ctrl_enable     = 1UL << 0,
+    k_ra_mpu_ctrl_privdefena = 1UL << 2,
+    k_ra_mair0_default       = 0x000404FFUL,
+  };
+
+  /* MAIR0: idx 0 = WB/WA, idx 1 = non-cacheable, idx 2 = device-nGnRE. */
+  internal_write32(k_ra_mpu_mair0_addr, k_ra_mair0_default);
+  internal_write32(k_ra_mpu_mair1_addr, 0U);
+
+  internal_mpu_set_region(0U,
+                          (uint32_t)(k_ra_mpu_mram_base | k_ra_rbar_attr_ro_x),
+                          (uint32_t)(k_ra_mpu_mram_limit | k_ra_mpu_rlar_enable));
+  internal_mpu_set_region(1U,
+                          (uint32_t)(k_ra_mpu_sram_base | k_ra_rbar_attr_rw_xn),
+                          (uint32_t)(k_ra_mpu_sram_limit | k_ra_mpu_rlar_enable));
+  internal_mpu_set_region(2U,
+                          (uint32_t)(k_ra_mpu_sdram_base | k_ra_rbar_attr_rw_xn),
+                          (uint32_t)(k_ra_mpu_sdram_limit | k_ra_mpu_rlar_enable));
+  internal_mpu_set_region(3U,
+                          (uint32_t)(k_ra_mpu_peri_base | k_ra_rbar_attr_device_rw),
+                          (uint32_t)(k_ra_mpu_peri_limit | k_ra_mpu_rlar_enable));
+
+  /* Enable MPU with PRIVDEFENA so unclassified privileged accesses
+   * still succeed through the default system memory map. */
+  internal_dsb();
+  internal_write32(k_ra_mpu_ctrl_addr, k_ra_mpu_ctrl_enable | k_ra_mpu_ctrl_privdefena);
+  internal_dsb();
+  internal_isb();
+}
+
 /* =============================================================================
  * Public entry point
  * =============================================================================
@@ -227,4 +324,5 @@ void SystemInit(void)
   internal_enable_dcache();
   internal_enable_branch_predictor();
   internal_set_priority_grouping();
+  internal_mpu_init();
 }

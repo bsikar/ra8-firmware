@@ -120,6 +120,11 @@ typedef void (*ra_dma_complete_fn_t)(void* ctx);
  *                      transfer-end. ``nullptr`` for no callback.
  *  - ``ctx``         : Passed to ``on_complete``.
  */
+/* cppcheck cannot see tests/ so it flags every ra_dma_request_t
+ * field as unused; the fields are read in ra_dma.c and in
+ * tests/mocks/ra_sim_dma.c. trigger is reserved for Wave 2.2 ELC
+ * trigger routing. */
+/* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   ra_dma_engine_t      engine;
   uintptr_t            src_addr;
@@ -132,6 +137,7 @@ typedef struct {
   ra_dma_complete_fn_t on_complete;
   void*                ctx;
 } ra_dma_request_t;
+/* cppcheck-suppress-end [unusedStructMember] */
 
 /* =============================================================================
  * Lifecycle

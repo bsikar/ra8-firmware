@@ -100,8 +100,6 @@ typedef enum : uint8_t {
  * requires no hardware setup beyond this call. A UART backend is
  * provided as an alternative for boards without a J-Link.
  *
- * @return `k_ra_ok` on success, `k_ra_err_hw_init_failed` otherwise.
- *
  * @note Log calls made before `ra_log_init()` runs are dropped
  *       silently -- no buffering.
  */

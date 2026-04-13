@@ -64,16 +64,37 @@ typedef enum : uintptr_t {
  */
 
 typedef enum : uint16_t {
-  k_ra_sys_off_sckdivcr = 0x020U, /**< SCKDIVCR (32-bit). */
-  k_ra_sys_off_sckscr   = 0x026U, /**< SCKSCR   (8-bit).  */
-  k_ra_sys_off_hococr   = 0x036U, /**< HOCOCR   (8-bit).  */
-  k_ra_sys_off_moscwtcr = 0x0A2U, /**< MOSCWTCR (8-bit).  */
-  k_ra_sys_off_pllccr   = 0x0ACU, /**< PLLCCR   (32-bit). */
-  k_ra_sys_off_rstsr1   = 0x0C0U, /**< RSTSR1   (32-bit). */
-  k_ra_sys_off_prcr     = 0x3FAU, /**< PRCR     (16-bit). */
-  k_ra_sys_off_rstsr0   = 0xA40U, /**< RSTSR0   (8-bit).  */
-  k_ra_sys_off_rstsr2   = 0xA44U, /**< RSTSR2   (8-bit).  */
+  k_ra_sys_off_sckdivcr  = 0x020U, /**< SCKDIVCR  (32-bit). */
+  k_ra_sys_off_sckdivcr2 = 0x024U, /**< SCKDIVCR2 (16-bit). */
+  k_ra_sys_off_sckscr    = 0x026U, /**< SCKSCR    (8-bit).  */
+  k_ra_sys_off_pllcr     = 0x02AU, /**< PLLCR     (8-bit).  */
+  k_ra_sys_off_moscr     = 0x032U, /**< MOSCCR    (8-bit).  */
+  k_ra_sys_off_hococr    = 0x036U, /**< HOCOCR    (8-bit).  */
+  k_ra_sys_off_oscsf     = 0x03CU, /**< OSCSF     (8-bit).  */
+  k_ra_sys_off_moscwtcr  = 0x0A2U, /**< MOSCWTCR  (8-bit).  */
+  k_ra_sys_off_pllccr    = 0x0ACU, /**< PLLCCR    (32-bit). */
+  k_ra_sys_off_pllccr2   = 0x0B0U, /**< PLLCCR2 -- fractional divider (32-bit). */
+  k_ra_sys_off_rstsr1    = 0x0C0U, /**< RSTSR1    (32-bit). */
+  k_ra_sys_off_prcr      = 0x3FAU, /**< PRCR      (16-bit). */
+  k_ra_sys_off_rstsr0    = 0xA40U, /**< RSTSR0    (8-bit).  */
+  k_ra_sys_off_rstsr2    = 0xA44U, /**< RSTSR2    (8-bit).  */
 } ra_system_offset_t;
+
+/**
+ * @enum ra_oscsf_bit_t
+ * @brief Oscillation Stabilization Flag bit positions.
+ *
+ * @details
+ * Each bit is set by hardware when the corresponding oscillator has
+ * stabilised. The CGC driver polls these between starting an
+ * oscillator and using it as the system-clock source.
+ */
+typedef enum : uint8_t {
+  k_ra_oscsf_bit_hocosf = 0U, /**< HOCO stabilisation flag.    */
+  k_ra_oscsf_bit_moscsf = 3U, /**< Main oscillator stab flag.  */
+  k_ra_oscsf_bit_pll1sf = 5U, /**< PLL1 stabilisation flag.    */
+  k_ra_oscsf_bit_pll2sf = 6U, /**< PLL2 stabilisation flag.    */
+} ra_oscsf_bit_t;
 
 /* =============================================================================
  * PRCR protection key and group masks
@@ -170,6 +191,30 @@ static inline volatile uint8_t* ra_sys_moscwtcr(void)
 static inline volatile uint32_t* ra_sys_pllccr(void)
 {
   return (volatile uint32_t*)(k_ra_system_base_addr + k_ra_sys_off_pllccr);
+}
+
+/** @brief Get pointer to the 32-bit PLLCCR2 register (fractional divider). */
+static inline volatile uint32_t* ra_sys_pllccr2(void)
+{
+  return (volatile uint32_t*)(k_ra_system_base_addr + k_ra_sys_off_pllccr2);
+}
+
+/** @brief Get pointer to the 8-bit OSCSF (oscillation stabilisation) register. */
+static inline volatile uint8_t* ra_sys_oscsf(void)
+{
+  return (volatile uint8_t*)(k_ra_system_base_addr + k_ra_sys_off_oscsf);
+}
+
+/** @brief Get pointer to the 8-bit PLLCR register (PLL enable/stop). */
+static inline volatile uint8_t* ra_sys_pllcr(void)
+{
+  return (volatile uint8_t*)(k_ra_system_base_addr + k_ra_sys_off_pllcr);
+}
+
+/** @brief Get pointer to the 16-bit SCKDIVCR2 register. */
+static inline volatile uint16_t* ra_sys_sckdivcr2(void)
+{
+  return (volatile uint16_t*)(k_ra_system_base_addr + k_ra_sys_off_sckdivcr2);
 }
 
 /** @brief Get pointer to the 32-bit RSTSR1 register. */

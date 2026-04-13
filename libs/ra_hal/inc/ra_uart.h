@@ -22,6 +22,7 @@ extern "C" {
  * @param[in] channel SCI channel number (0..9).
  * @param[in] brr     Pre-computed BRR register value.
  * @return `ra_err_t` error code.
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_uart_init(uint8_t channel, uint8_t brr);
 
@@ -31,6 +32,7 @@ extern "C" {
  * @param[in] channel SCI channel number.
  * @param[in] byte    Byte to transmit.
  * @return `ra_err_t` error code (`k_ra_err_hw_timeout` on TDRE poll failure).
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_uart_putc(uint8_t channel, uint8_t byte);
 
