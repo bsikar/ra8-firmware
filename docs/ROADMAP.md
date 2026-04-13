@@ -1232,8 +1232,16 @@ comments so the partition session is mechanical.
       Linker script grows a `.gnu.sgstubs` placement so the
       `-mcmse` link no longer aborts on `no address assigned to
       the veneers output section`.
-- [ ] Session 9.3 -- HAL retrofit -- comms (`ra_sci`, `ra_iic`,
-      `ra_spi`, `ra_usb_*`).
+- [x] Session 9.3 -- HAL retrofit -- comms (`ra_sci`, `ra_iic`,
+      `ra_spi`, `ra_usb_*`). Adds `libs/ra_nsc/{inc,src}/ra_nsc_comms.{h,c}`
+      with 10 NSC veneer entry points -- init + the most common
+      transfer primitive per driver. Each veneer validates its
+      cfg / buffer pointer via `RA_NSC_CHECK_NS_RANGE_*` and
+      forwards to the secure-side ra_*_*. Test coverage in
+      `tests/test_ra_nsc_comms.c` (7 cases) confirms the
+      forwarding path on the host build. The remaining IRQ /
+      DMA / dispatch surface is deferred to Wave 9.3b alongside
+      the first NS-world consumer that exercises it.
 - [ ] Session 9.4 -- HAL retrofit -- I/O (`ra_gpt`, `ra_adc`,
       `ra_dac_b`, `ra_acmphs`, `ra_crc`, `ra_glcdc`, `ra_pdm`,
       `ra_eth_*`). MTU/TPU listed in the original plan are N/A
