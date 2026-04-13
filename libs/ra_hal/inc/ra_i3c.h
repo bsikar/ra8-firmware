@@ -55,6 +55,18 @@ typedef void (*ra_i3c_event_fn_t)(void* ctx, uint32_t status_mask);
 [[nodiscard]] ra_err_t ra_i3c_deinit(void);
 
 /**
+ * @brief Programme the active 7-bit master/slave device address.
+ * @since 0.3.0
+ */
+[[nodiscard]] ra_err_t ra_i3c_set_address(uint32_t addr);
+
+/**
+ * @brief Enable / disable bus-master operation via BCTL.BUSE.
+ * @since 0.3.0
+ */
+[[nodiscard]] ra_err_t ra_i3c_bus_enable(bool enable);
+
+/**
  * @brief Read the INST status register.
  * @since 0.2.0
  */
