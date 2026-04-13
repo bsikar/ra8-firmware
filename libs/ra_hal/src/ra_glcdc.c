@@ -63,3 +63,65 @@ ra_err_t ra_glcdc_start(bool enable)
   *ra_glcdc_reg32(k_ra_glcdc_off_gr1_en)  = en;
   return k_ra_ok;
 }
+
+/* =============================================================================
+ * Wave 6.1 -- lifecycle + IRQ + power transition
+ * =============================================================================
+ */
+
+static ra_glcdc_event_fn_t s_glcdc_fn;
+static void*               s_glcdc_ctx;
+
+ra_err_t ra_glcdc_deinit(void)
+{
+  *ra_glcdc_reg32(k_ra_glcdc_off_sys_cfg) = 0U;
+  *ra_glcdc_reg32(k_ra_glcdc_off_bg_en)   = 0U;
+  *ra_glcdc_reg32(k_ra_glcdc_off_gr1_en)  = 0U;
+  s_glcdc_fn                              = nullptr;
+  s_glcdc_ctx                             = nullptr;
+  return ra_mstp_disable(k_ra_mstp_glcdc);
+}
+
+ra_err_t ra_glcdc_get_status(uint32_t* out_mask)
+{
+  RA_CHECK_NULL_PTR(out_mask, s_tag, "out_mask must not be nullptr");
+  *out_mask = *ra_glcdc_reg32(k_ra_glcdc_off_sys_stat);
+  return k_ra_ok;
+}
+
+ra_err_t ra_glcdc_clear_status(uint32_t mask)
+{
+  volatile uint32_t* reg = ra_glcdc_reg32(k_ra_glcdc_off_sys_stat);
+  *reg                   = *reg & ~mask;
+  return k_ra_ok;
+}
+
+ra_err_t ra_glcdc_attach_handler(ra_glcdc_event_fn_t fn, void* ctx)
+{
+  s_glcdc_fn  = fn;
+  s_glcdc_ctx = ctx;
+  return k_ra_ok;
+}
+
+void ra_glcdc_dispatch(void)
+{
+  volatile uint32_t*        reg  = ra_glcdc_reg32(k_ra_glcdc_off_sys_stat);
+  const uint32_t            mask = *reg;
+  const ra_glcdc_event_fn_t fn   = s_glcdc_fn;
+  void* const               ctx  = s_glcdc_ctx;
+  *reg                           = 0U;
+  if (fn != nullptr) {
+    fn(ctx, mask);
+  }
+}
+
+ra_err_t ra_glcdc_enter_stop(void)
+{
+  *ra_glcdc_reg32(k_ra_glcdc_off_sys_cfg) = 0U;
+  return ra_mstp_disable(k_ra_mstp_glcdc);
+}
+
+ra_err_t ra_glcdc_exit_stop(void)
+{
+  return ra_mstp_enable(k_ra_mstp_glcdc);
+}
