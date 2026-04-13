@@ -11,6 +11,7 @@
 #include <stdint.h>
 
 #include "ra8d2_sdramc_regs.h"
+#include "ra_check.h"
 #include "ra_err.h"
 #include "ra_log.h"
 
@@ -38,5 +39,44 @@ ra_err_t ra_sdramc_init(void)
   reg->SDICR  = 1U;
 
   ra_log_info(s_tag, "sdramc_init (64 MiB @ 0x68000000)");
+  return k_ra_ok;
+}
+
+/* =============================================================================
+ * Wave 5.2 -- lifecycle + power
+ * =============================================================================
+ */
+
+ra_err_t ra_sdramc_deinit(void)
+{
+  volatile r_sdramc_regs_t* reg = ra_sdramc();
+  reg->SDRFEN                   = 0U;
+  reg->SDICR                    = 0U;
+  reg->SDCCR                    = 0U;
+  return k_ra_ok;
+}
+
+ra_err_t ra_sdramc_set_refresh_interval(uint16_t sdrfcr)
+{
+  ra_sdramc()->SDRFCR = sdrfcr;
+  return k_ra_ok;
+}
+
+ra_err_t ra_sdramc_get_status(uint8_t* out_enabled)
+{
+  RA_CHECK_NULL_PTR(out_enabled, s_tag, "out_enabled must not be nullptr");
+  *out_enabled = ra_sdramc()->SDRFEN;
+  return k_ra_ok;
+}
+
+ra_err_t ra_sdramc_enter_stop(void)
+{
+  ra_sdramc()->SDRFEN = 0U;
+  return k_ra_ok;
+}
+
+ra_err_t ra_sdramc_exit_stop(void)
+{
+  ra_sdramc()->SDRFEN = 1U;
   return k_ra_ok;
 }
