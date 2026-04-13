@@ -40,6 +40,8 @@
 
 #include <stdint.h>
 
+#include "trustzone_init.h"
+
 /* =============================================================================
  * Core / SCB / NVIC register addresses (direct, no CMSIS dep)
  * =============================================================================
@@ -325,4 +327,7 @@ void SystemInit(void)
   internal_enable_branch_predictor();
   internal_set_priority_grouping();
   internal_mpu_init();
+  /* Wave 9.1 SAU bring-up. No-op unless RA_TRUSTZONE_ENABLE is
+   * defined at compile time. */
+  ra_trustzone_init();
 }
