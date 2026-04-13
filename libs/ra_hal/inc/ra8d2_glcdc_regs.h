@@ -8,23 +8,27 @@
  * parallel-RGB or MIPI-DSI output. The EK-RA8D2's 1024x600 7"
  * parallel TFT connects here via the GLCDC expansion header.
  *
- * ## Block structure
+ * ## Block structure (verified against FSP R_GLCDC_Type in
+ * R7KA8D2KF_core0.h lines 6980-7045)
  *
- * The GLCDC register map is organised as several sub-blocks at
- * different offsets inside the 4 KiB window:
+ *  | Offset   | Block              | Size   | Purpose                     |
+ *  |---------:|--------------------|-------:|-----------------------------|
+ *  | 0x0000   | GR1_CLUT0[256]     | 0x0400 | Graphics 1 CLUT plane 0     |
+ *  | 0x0400   | GR1_CLUT1[256]     | 0x0400 | Graphics 1 CLUT plane 1     |
+ *  | 0x0800   | GR2_CLUT0[256]     | 0x0400 | Graphics 2 CLUT plane 0     |
+ *  | 0x0C00   | GR2_CLUT1[256]     | 0x0400 | Graphics 2 CLUT plane 1     |
+ *  | 0x1000   | BG                 | 0x001C | Background timing + bgc     |
+ *  | 0x1100   | GR[0]              | 0x0100 | Graphics layer 0            |
+ *  | 0x1200   | GR[1]              | 0x0100 | Graphics layer 1            |
+ *  | 0x1300   | GAM[0..2]          | 0x00C0 | Gamma tables (3 channels)   |
+ *  | 0x13C0   | OUT                | 0x0028 | Output control              |
+ *  | 0x1400   | TCON               | 0x002C | Timing controller           |
+ *  | 0x1440   | SYSCNT             | 0x0014 | System control / ints       |
  *
- *  - **Background (BG)** at 0x000: horizontal / vertical timing,
- *    background colour.
- *  - **Graphics 1 (GR1)** at 0x150: base address, frame size,
- *    scaling, alpha, chromakey.
- *  - **Graphics 2 (GR2)** at 0x270: same as GR1 for the second
- *    layer.
- *  - **Output control (OUT)** at 0x390: dither, clipping, serial
- *    mode, phase clock.
- *  - **System control** at 0x420: enable, interrupts, status.
- *
- * This header models the offsets and a handful of the most-touched
- * field enums; a full driver will grow per-block structs.
+ * The previous version of this header placed BG at offset 0x000,
+ * GR1 at 0x150, GR2 at 0x270, OUT at 0x390, SYSCNT at 0x420 --
+ * all of which landed inside GR1/GR2 CLUTs or reserved gaps. Every
+ * `k_ra_glcdc_off_*` has been re-derived against FSP.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -48,38 +52,97 @@ typedef enum : uintptr_t {
 
 /**
  * @enum ra_glcdc_block_off_t
- * @brief GLCDC sub-block offsets within the 4 KiB window.
+ * @brief Absolute register offsets inside the GLCDC window.
+ *
+ * @details
+ * Names mirror FSP's `R_GLCDC_Type` field names so a reader can
+ * cross-reference directly. Offsets are verified byte-for-byte
+ * against FSP's sub-type structs (R_GLCDC_BG_Type, R_GLCDC_GR_Type,
+ * R_GLCDC_OUT_Type, R_GLCDC_TCON_Type, R_GLCDC_SYSCNT_Type).
  */
 typedef enum : uint16_t {
-  k_ra_glcdc_off_bg_en      = 0x000U, /**< BG enable.                   */
-  k_ra_glcdc_off_bg_per     = 0x004U, /**< BG period (H/V).             */
-  k_ra_glcdc_off_bg_sync    = 0x008U, /**< BG sync width.               */
-  k_ra_glcdc_off_bg_vsize   = 0x00CU, /**< BG vertical size.            */
-  k_ra_glcdc_off_bg_hsize   = 0x010U, /**< BG horizontal size.          */
-  k_ra_glcdc_off_bg_bgc     = 0x014U, /**< BG background colour.        */
-  k_ra_glcdc_off_bg_int     = 0x024U, /**< BG interrupt status.         */
-  k_ra_glcdc_off_gr1_en     = 0x150U, /**< GR1 enable.                  */
-  k_ra_glcdc_off_gr1_fmt    = 0x154U, /**< GR1 pixel format.            */
-  k_ra_glcdc_off_gr1_saddr  = 0x158U, /**< GR1 start address (SRAM).    */
-  k_ra_glcdc_off_gr1_line   = 0x15CU, /**< GR1 line length in pixels.   */
-  k_ra_glcdc_off_gr1_size   = 0x160U, /**< GR1 frame size.              */
-  k_ra_glcdc_off_gr2_en     = 0x270U, /**< GR2 enable.                  */
-  k_ra_glcdc_off_gr2_fmt    = 0x274U, /**< GR2 pixel format.            */
-  k_ra_glcdc_off_gr2_saddr  = 0x278U, /**< GR2 start address (SRAM).    */
-  k_ra_glcdc_off_gr2_line   = 0x27CU, /**< GR2 line length in pixels.   */
-  k_ra_glcdc_off_gr2_size   = 0x280U, /**< GR2 frame size.              */
-  k_ra_glcdc_off_out_set    = 0x390U, /**< Output control set.          */
-  k_ra_glcdc_off_out_int    = 0x3A0U, /**< Output interrupt status.     */
-  k_ra_glcdc_off_panel_dtha = 0x3B0U, /**< Panel dither control.      */
-  k_ra_glcdc_off_panel_clk  = 0x3C0U, /**< Panel clock control.        */
-  k_ra_glcdc_off_sys_cfg    = 0x420U, /**< System config (enable).      */
-  k_ra_glcdc_off_sys_stat   = 0x424U, /**< System status.               */
-  k_ra_glcdc_off_sys_intr   = 0x428U, /**< System IRQ enable.           */
+  /* ---- Graphics 1 CLUT planes ------------------------------------------ */
+  k_ra_glcdc_off_gr1_clut0 = 0x0000U, /**< GR1_CLUT0[256] @ 0x0000.          */
+  k_ra_glcdc_off_gr1_clut1 = 0x0400U, /**< GR1_CLUT1[256] @ 0x0400.          */
+  k_ra_glcdc_off_gr2_clut0 = 0x0800U, /**< GR2_CLUT0[256] @ 0x0800.          */
+  k_ra_glcdc_off_gr2_clut1 = 0x0C00U, /**< GR2_CLUT1[256] @ 0x0C00.          */
+
+  /* ---- Background block ------------------------------------------------ */
+  k_ra_glcdc_off_bg_en    = 0x1000U, /**< BG.EN: module enable.               */
+  k_ra_glcdc_off_bg_per   = 0x1004U, /**< BG.PERI: free-running period.       */
+  k_ra_glcdc_off_bg_sync  = 0x1008U, /**< BG.SYNC: sync position.             */
+  k_ra_glcdc_off_bg_vsize = 0x100CU, /**< BG.VSIZE: vertical valid size.      */
+  k_ra_glcdc_off_bg_hsize = 0x1010U, /**< BG.HSIZE: horizontal valid size.    */
+  k_ra_glcdc_off_bg_bgc   = 0x1014U, /**< BG.BGC: background colour.          */
+  k_ra_glcdc_off_bg_mon   = 0x1018U, /**< BG.MON: status monitor.             */
+
+  /* ---- Graphics layer 0 (GR[0]) ---------------------------------------- */
+  k_ra_glcdc_off_gr1_en    = 0x1100U, /**< GR[0].VEN: register update ctrl.   */
+  k_ra_glcdc_off_gr1_flmrd = 0x1104U, /**< GR[0].FLMRD: frame buffer read en. */
+  k_ra_glcdc_off_gr1_flm1  = 0x1108U, /**< GR[0].FLM1: burst mode.             */
+  k_ra_glcdc_off_gr1_saddr = 0x110CU, /**< GR[0].FLM2.BASE: framebuffer addr. */
+  k_ra_glcdc_off_gr1_flm3  = 0x1110U, /**< GR[0].FLM3: line offset bytes.      */
+  k_ra_glcdc_off_gr1_line  = 0x1118U, /**< GR[0].FLM5: datanum + lnnum.        */
+  k_ra_glcdc_off_gr1_fmt   = 0x111CU, /**< GR[0].FLM6.FORMAT: pixel format.    */
+  k_ra_glcdc_off_gr1_ab1   = 0x1120U, /**< GR[0].AB1: alpha blend ctrl 1.      */
+  k_ra_glcdc_off_gr1_size  = 0x1128U, /**< GR[0].AB3: horizontal size + pos.   */
+  k_ra_glcdc_off_gr1_base  = 0x114CU, /**< GR[0].BASE: layer bg colour.        */
+  k_ra_glcdc_off_gr1_mon   = 0x1154U, /**< GR[0].MON: status monitor.          */
+
+  /* ---- Graphics layer 1 (GR[1]) ---------------------------------------- */
+  k_ra_glcdc_off_gr2_en    = 0x1200U, /**< GR[1].VEN.                          */
+  k_ra_glcdc_off_gr2_flmrd = 0x1204U, /**< GR[1].FLMRD.                        */
+  k_ra_glcdc_off_gr2_flm1  = 0x1208U, /**< GR[1].FLM1.                         */
+  k_ra_glcdc_off_gr2_saddr = 0x120CU, /**< GR[1].FLM2.BASE.                    */
+  k_ra_glcdc_off_gr2_flm3  = 0x1210U, /**< GR[1].FLM3.                         */
+  k_ra_glcdc_off_gr2_line  = 0x1218U, /**< GR[1].FLM5.                         */
+  k_ra_glcdc_off_gr2_fmt   = 0x121CU, /**< GR[1].FLM6.FORMAT.                  */
+  k_ra_glcdc_off_gr2_ab1   = 0x1220U, /**< GR[1].AB1.                          */
+  k_ra_glcdc_off_gr2_size  = 0x1228U, /**< GR[1].AB3.                          */
+  k_ra_glcdc_off_gr2_base  = 0x124CU, /**< GR[1].BASE.                         */
+  k_ra_glcdc_off_gr2_mon   = 0x1254U, /**< GR[1].MON.                          */
+
+  /* ---- Gamma correction (GAM[0..2]) ------------------------------------ */
+  k_ra_glcdc_off_gam0 = 0x1300U, /**< GAM[0] block base.                       */
+  k_ra_glcdc_off_gam1 = 0x1340U, /**< GAM[1] block base.                       */
+  k_ra_glcdc_off_gam2 = 0x1380U, /**< GAM[2] block base.                       */
+
+  /* ---- Output control block (OUT) -------------------------------------- */
+  k_ra_glcdc_off_out_vlatch   = 0x13C0U, /**< OUT.VLATCH.                       */
+  k_ra_glcdc_off_out_set      = 0x13C4U, /**< OUT.SET: output interface.        */
+  k_ra_glcdc_off_out_bright1  = 0x13C8U, /**< OUT.BRIGHT1.                       */
+  k_ra_glcdc_off_out_bright2  = 0x13CCU, /**< OUT.BRIGHT2.                       */
+  k_ra_glcdc_off_out_contrast = 0x13D0U, /**< OUT.CONTRAST.                      */
+  k_ra_glcdc_off_panel_dtha   = 0x13D4U, /**< OUT.PDTHA: panel dither.           */
+  k_ra_glcdc_off_out_clkphase = 0x13E4U, /**< OUT.CLKPHASE.                      */
+
+  /* ---- Timing control block (TCON) ------------------------------------- */
+  k_ra_glcdc_off_tcon_tim   = 0x1404U, /**< TCON.TIM: reference timing.         */
+  k_ra_glcdc_off_tcon_stva1 = 0x1408U, /**< TCON.STVA1.                         */
+  k_ra_glcdc_off_tcon_stva2 = 0x140CU, /**< TCON.STVA2.                         */
+  k_ra_glcdc_off_tcon_stvb1 = 0x1410U, /**< TCON.STVB1.                         */
+  k_ra_glcdc_off_tcon_stvb2 = 0x1414U, /**< TCON.STVB2.                         */
+  k_ra_glcdc_off_tcon_stha1 = 0x1418U, /**< TCON.STHA1.                         */
+  k_ra_glcdc_off_tcon_stha2 = 0x141CU, /**< TCON.STHA2.                         */
+  k_ra_glcdc_off_tcon_sthb1 = 0x1420U, /**< TCON.STHB1.                         */
+  k_ra_glcdc_off_tcon_sthb2 = 0x1424U, /**< TCON.STHB2.                         */
+  k_ra_glcdc_off_tcon_de    = 0x1428U, /**< TCON.DE.                            */
+
+  /* ---- System control block (SYSCNT) ----------------------------------- */
+  k_ra_glcdc_off_sys_cfg   = 0x1440U, /**< SYSCNT.DTCTEN (state detection).    */
+  k_ra_glcdc_off_sys_intr  = 0x1444U, /**< SYSCNT.INTEN.                       */
+  k_ra_glcdc_off_sys_clr   = 0x1448U, /**< SYSCNT.STCLR.                       */
+  k_ra_glcdc_off_sys_stat  = 0x144CU, /**< SYSCNT.STMON.                       */
+  k_ra_glcdc_off_panel_clk = 0x1450U, /**< SYSCNT.PANEL_CLK.                   */
 } ra_glcdc_block_off_t;
 
 /**
  * @enum ra_glcdc_pixel_fmt_t
- * @brief Pixel format codes written to `GRnFMT.FORMAT[2:0]`.
+ * @brief Pixel format codes written to `GRn_FLM6.FORMAT[30:28]`.
+ *
+ * @details
+ * Verified against HUM Ch 63 "GLCDC" Table 63.11 "Graphics data
+ * format" and FSP `r_glcdc.h` `glcdc_gr_format_t`.
  */
 typedef enum : uint8_t {
   k_ra_glcdc_fmt_argb8888 = 0x0U, /**< 32-bit ARGB.                 */
