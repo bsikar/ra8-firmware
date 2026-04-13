@@ -164,14 +164,14 @@ internal_solve_timing(uint32_t clock_hz, uint32_t bitrate_bps, ra_canfd_timing_t
  */
 static uint32_t internal_pack_timing(const ra_canfd_timing_t* t)
 {
-  const uint32_t brp_field   = ((t->prescaler - 1U) & (uint32_t)k_ra_cncfg_mask_brp)
-                               << (uint32_t)k_ra_cncfg_shift_brp;
-  const uint32_t tseg1_field = (t->tseg1 & (uint32_t)k_ra_cncfg_mask_tseg1)
-                               << (uint32_t)k_ra_cncfg_shift_tseg1;
-  const uint32_t tseg2_field = (t->tseg2 & (uint32_t)k_ra_cncfg_mask_tseg2)
-                               << (uint32_t)k_ra_cncfg_shift_tseg2;
-  const uint32_t sjw_field   = ((t->sjw - 1U) & (uint32_t)k_ra_cncfg_mask_sjw)
-                               << (uint32_t)k_ra_cncfg_shift_sjw;
+  const uint32_t brp_field   = ((t->prescaler - 1U) & (uint32_t)k_ra_cncfg_mask_nbrp)
+                               << (uint32_t)k_ra_cncfg_shift_nbrp;
+  const uint32_t tseg1_field = (t->tseg1 & (uint32_t)k_ra_cncfg_mask_ntseg1)
+                               << (uint32_t)k_ra_cncfg_shift_ntseg1;
+  const uint32_t tseg2_field = (t->tseg2 & (uint32_t)k_ra_cncfg_mask_ntseg2)
+                               << (uint32_t)k_ra_cncfg_shift_ntseg2;
+  const uint32_t sjw_field   = ((t->sjw - 1U) & (uint32_t)k_ra_cncfg_mask_nsjw)
+                               << (uint32_t)k_ra_cncfg_shift_nsjw;
   return brp_field | tseg1_field | tseg2_field | sjw_field;
 }
 

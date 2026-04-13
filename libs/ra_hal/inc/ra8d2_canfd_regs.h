@@ -154,31 +154,31 @@ typedef enum : uint8_t {
  * Nominal Bit-Rate Config (CFDCNCFG) and Data Bit-Rate Config (CFDCNDCFG)
  * =============================================================================
  *
- * Both registers share the same prescaler/TSEG1/TSEG2/SJW layout, but
- * with different field widths. For the RA8D2 CANFD Lite block the
- * nominal register packs them as:
+ * Verified against FSP R_CANFD_CFDC_NCFG_b in R7KA8D2KF_core0.h
+ * lines 64147-64154. The nominal bit-rate register packs:
  *
- *   BRP   [9:0]   nominal baud-rate prescaler (prescaler - 1)
- *   TSEG1 [15:10] phase-segment 1 (TSEG1 - 1)
- *   TSEG2 [22:16] phase-segment 2 (TSEG2 - 1)
- *   SJW   [26:24] synchronization jump width (SJW - 1)
+ *   NBRP   [9:0]    nominal baud-rate prescaler (prescaler - 1)
+ *   NSJW   [16:10]  7-bit re-sync jump width (SJW - 1)
+ *   NTSEG1 [24:17]  8-bit timing segment 1   (TSEG1 - 1)
+ *   NTSEG2 [31:25]  7-bit timing segment 2   (TSEG2 - 1)
  *
- * The data-phase register has smaller TSEG1/TSEG2 fields appropriate
- * for the faster data-phase clock but the shifts stay the same.
+ * The previous version of this header had TSEG1/TSEG2/SJW at the
+ * wrong shifts and with smaller widths (6/7/3 bits), copied from a
+ * pre-RA8 CAN controller with a different packing.
  */
 
 typedef enum : uint8_t {
-  k_ra_cncfg_shift_brp   = 0U,
-  k_ra_cncfg_shift_tseg1 = 10U,
-  k_ra_cncfg_shift_tseg2 = 16U,
-  k_ra_cncfg_shift_sjw   = 24U,
+  k_ra_cncfg_shift_nbrp   = 0U,
+  k_ra_cncfg_shift_nsjw   = 10U,
+  k_ra_cncfg_shift_ntseg1 = 17U,
+  k_ra_cncfg_shift_ntseg2 = 25U,
 } ra_cncfg_shift_t;
 
 typedef enum : uint32_t {
-  k_ra_cncfg_mask_brp   = 0x3FFUL, /**< [9:0]  10-bit prescaler field. */
-  k_ra_cncfg_mask_tseg1 = 0x3FUL,  /**< [15:10] 6-bit TSEG1 field.     */
-  k_ra_cncfg_mask_tseg2 = 0x7FUL,  /**< [22:16] 7-bit TSEG2 field.     */
-  k_ra_cncfg_mask_sjw   = 0x07UL,  /**< [26:24] 3-bit SJW field.       */
+  k_ra_cncfg_mask_nbrp   = 0x3FFUL, /**< [9:0]   10-bit prescaler field. */
+  k_ra_cncfg_mask_nsjw   = 0x7FUL,  /**< [16:10] 7-bit SJW field.        */
+  k_ra_cncfg_mask_ntseg1 = 0xFFUL,  /**< [24:17] 8-bit TSEG1 field.      */
+  k_ra_cncfg_mask_ntseg2 = 0x7FUL,  /**< [31:25] 7-bit TSEG2 field.      */
 } ra_cncfg_mask_t;
 
 /**
@@ -186,19 +186,20 @@ typedef enum : uint32_t {
  * @brief Prescaler / TSEG / SJW resolution bounds.
  *
  * @details
- * Per HUM "CANFD Lite" the nominal bit-rate register carries a 10-bit
- * prescaler (1..256 usable), 6-bit TSEG1 (2..64), 7-bit TSEG2 (2..64),
- * and 3-bit SJW (1..4). The driver picks a 75% sample point and an
- * SJW of `min(4, TSEG2)` which keeps every resolved value safely in
- * range for both nominal and data phases.
+ * Per FSP / HUM Ch 41 "CANFD Lite" the nominal bit-rate register
+ * carries a 10-bit prescaler (1..1024 usable), 8-bit TSEG1 (2..256),
+ * 7-bit TSEG2 (2..128), and 7-bit SJW (1..128). The driver picks a
+ * 75% sample point and an SJW of ``min(16, TSEG2)`` which keeps
+ * every resolved value safely in range for both nominal and data
+ * phases.
  */
 typedef enum : uint32_t {
-  k_ra_canfd_tq_per_bit    = 20U,  /**< Chosen time quanta per bit.     */
-  k_ra_canfd_sample_num    = 15U,  /**< TSEG1 = 15 tq  -> 75% sample.   */
-  k_ra_canfd_sample_den    = 5U,   /**< TSEG2 = 4  tq  -> 25% balance.  */
-  k_ra_canfd_prescaler_min = 1U,   /**< Smallest valid prescaler value. */
-  k_ra_canfd_prescaler_max = 256U, /**< Largest valid prescaler value.  */
-  k_ra_canfd_sjw_max       = 4U,   /**< SJW cap = min(4, TSEG2).        */
+  k_ra_canfd_tq_per_bit    = 20U,   /**< Chosen time quanta per bit.     */
+  k_ra_canfd_sample_num    = 15U,   /**< TSEG1 = 15 tq  -> 75% sample.   */
+  k_ra_canfd_sample_den    = 5U,    /**< TSEG2 = 4  tq  -> 25% balance.  */
+  k_ra_canfd_prescaler_min = 1U,    /**< Smallest valid prescaler value. */
+  k_ra_canfd_prescaler_max = 1024U, /**< Largest valid prescaler value.  */
+  k_ra_canfd_sjw_max       = 16U,   /**< SJW cap = min(16, TSEG2).       */
 } ra_canfd_bit_timing_limits_t;
 
 /* =============================================================================
