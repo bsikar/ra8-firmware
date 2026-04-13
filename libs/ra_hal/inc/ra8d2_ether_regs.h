@@ -30,6 +30,30 @@ typedef enum : uintptr_t {
   k_ra_gwca0_base_addr = 0x403CE000UL,
 } ra_ether_addr_t;
 
+/**
+ * @struct r_eswm_regs_t
+ * @brief Minimal Ethernet Switch Module (ESWM) register window.
+ *
+ * @details
+ * cppcheck cannot see tests/ so it flags every field as unused;
+ * each member is accessed via ``ra_eswm()`` in
+ * ``libs/ra_hal/src/ra_eth.c``.
+ */
+/* cppcheck-suppress-begin [unusedStructMember] */
+typedef struct {
+  volatile uint32_t ESWM_CTRL; /**< +0x00 Control.              */
+  volatile uint32_t ESWM_STS;  /**< +0x04 Status.               */
+  volatile uint32_t ESWM_IE;   /**< +0x08 Interrupt Enable.     */
+  volatile uint32_t ESWM_ICLR; /**< +0x0C Interrupt Clear.      */
+} r_eswm_regs_t;
+/* cppcheck-suppress-end [unusedStructMember] */
+
+/** @brief Get pointer to the ESWM register block. */
+static inline volatile r_eswm_regs_t* ra_eswm(void)
+{
+  return (volatile r_eswm_regs_t*)k_ra_eswm_base_addr;
+}
+
 #ifdef __cplusplus
 }
 #endif
