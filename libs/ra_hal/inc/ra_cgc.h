@@ -40,6 +40,7 @@ extern "C" {
  *
  * @return Always `k_ra_ok` today. Will return clock-setup errors once
  *         a real PLL routine is wired in.
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_cgc_init(void);
 
@@ -55,6 +56,7 @@ extern "C" {
  * @retval k_ra_ok                Clock switched.
  * @retval k_ra_err_hw_timeout    HOCO failed to report ready within the
  *                                 timeout window.
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_cgc_use_hoco(void);
 
@@ -89,8 +91,123 @@ typedef enum : uint8_t {
  * @param[out] out_hz  On success, current frequency in Hz.
  * @return `k_ra_ok` on success, `k_ra_err_invalid_arg` if `out_hz`
  *         is NULL or `id` is out of range.
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_cgc_get_clock_hz(ra_clock_id_t id, uint32_t* out_hz);
+
+/* =============================================================================
+ * Wave 2.2 -- runtime reconfigure + oscillation-stop interrupt
+ * =============================================================================
+ */
+
+/**
+ * @typedef ra_cgc_ostd_fn_t
+ * @brief Oscillation-stop-detection callback.
+ *
+ * @param[in] ctx User-supplied context registered with the callback.
+ *
+ * @note Invoked from ISR context. Must return quickly. The ISR
+ *       clears the latched OSTDSR flag before the callback runs.
+ */
+typedef void (*ra_cgc_ostd_fn_t)(void* ctx);
+
+/**
+ * @brief Retune PLL1 to a new CPUCLK0 target without a full deinit.
+ *
+ * @details
+ * Walks through the safe transition sequence from HUM Ch 9.2
+ * (p 317):
+ *
+ *  1. Switch SCKSCR to MOCO so the CPU runs on a simple source
+ *     while PLL1 is being reprogrammed.
+ *  2. Stop PLL1 via PLLCR.PLLSTP.
+ *  3. Compute the new PLLCCR / PLLCCR2 integer + fractional
+ *     multipliers from ``new_cpuclk_hz``.
+ *  4. Start PLL1 and wait for OSCSF.PLL1SF.
+ *  5. Switch SCKSCR back to PLL1.
+ *  6. Republish the clock-tree frequencies so subsequent
+ *     ``ra_cgc_get_clock_hz`` calls see the new value.
+ *
+ * @param[in] new_cpuclk_hz Target CPUCLK0 frequency in Hz. Must
+ *                           be a multiple of the crystal divided
+ *                           by 32 (the PLLCCR2 fractional step).
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok                 Clock switched to the new target.
+ * @retval k_ra_err_invalid_arg    ``new_cpuclk_hz`` is 0.
+ * @retval k_ra_err_hw_timeout     PLL lock or MOCO wait timed out.
+ *
+ * @pre ``ra_cgc_init`` has been called (PLL1 is the current source).
+ * @pre IRQs masked or single-threaded init context.
+ *
+ * @post On success, SCKSCR == PLL1 and the reported CPUCLK0
+ *       frequency matches ``new_cpuclk_hz`` to within the PLL2
+ *       fractional resolution.
+ *
+ * @note Thread safety: not thread-safe.
+ * @since 0.2.0
+ */
+[[nodiscard]] ra_err_t ra_cgc_switch_pll1_target(uint32_t new_cpuclk_hz);
+
+/**
+ * @brief Enable oscillation-stop detection on the main crystal.
+ *
+ * @details
+ * Programmes OSTDCR to enable the OST detector and installs a
+ * callback that fires when the OSTDSR flag is set (oscillator
+ * has stopped unexpectedly). The callback runs from the CGC
+ * interrupt handler after the driver clears the latched flag.
+ *
+ * @param[in] handler Callback invoked on oscillation-stop event.
+ *                    Must not be NULL.
+ * @param[in] ctx     Stored context passed to the callback.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok                Detector armed.
+ * @retval k_ra_err_null_ptr      ``handler`` was NULL.
+ *
+ * @pre ``ra_cgc_init`` has been called.
+ * @post OSTDCR.OSTDE is set.
+ * @post Callback will fire on the next detected stop event.
+ *
+ * @note Thread safety: not thread-safe.
+ * @since 0.2.0
+ */
+[[nodiscard]] ra_err_t ra_cgc_enable_stop_detection(ra_cgc_ostd_fn_t handler, void* ctx);
+
+/**
+ * @brief Disable oscillation-stop detection.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok                Detector disabled.
+ *
+ * @pre IRQs masked or single-threaded init context.
+ * @post OSTDCR.OSTDE is clear.
+ * @post Previously-registered callback is cleared.
+ *
+ * @note Thread safety: not thread-safe.
+ * @since 0.2.0
+ */
+[[nodiscard]] ra_err_t ra_cgc_disable_stop_detection(void);
+
+/**
+ * @brief Test helper: invoke the registered OSTD callback.
+ *
+ * @details
+ * Unit tests call this to simulate a CGC oscillation-stop
+ * interrupt firing, verifying that the callback + context are
+ * correctly stored and that OSTDSR is cleared before the
+ * handler runs. Target builds use the real ICU / NVIC path
+ * plumbed through ``ra_isr_dispatch`` instead.
+ *
+ * @pre ``ra_cgc_enable_stop_detection`` has been called.
+ * @post OSTDSR is cleared.
+ * @post The registered callback ran exactly once.
+ *
+ * @note Thread safety: not thread-safe.
+ * @since 0.2.0
+ */
+void ra_cgc_sim_trigger_stop_detection(void);
 
 #ifdef __cplusplus
 }
