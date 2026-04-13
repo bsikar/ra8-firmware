@@ -1,11 +1,18 @@
 /**
  * @file ra_pdm.c
- * @brief Pulse Density Modulation Interface (PDM-IF) driver scaffold
+ * @brief Pulse Density Modulation Interface driver implementation
+ *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
  *
  * @details
- * Wave 6.1 scaffold -- covers lifecycle + status + IRQ + power
- * transition. Full PCM decimation / FIR filter / stereo capture
- * lands with the first audio consumer.
+ * Wave 6 driver for the RA8D2 PDM-IF block. Programmes the
+ * baseline control + IRQ enable registers and exposes
+ * lifecycle + status get/clear + IRQ dispatch + power transition.
+ * Full PCM decimation / FIR filter / stereo capture / DMA stream
+ * is deferred to the first audio consumer because the filter
+ * coefficients depend on the application sample rate. Every
+ * register access carries a HUM Ch 49 citation.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -29,15 +36,16 @@ static void*             s_pdm_ctx;
 
 ra_err_t ra_pdm_init(void)
 {
-  /* HUM Ch 11.2.8 "MSTPCRC : Module Stop Control Register C", p 446 */
+  /* HUM Ch 11.2.8 "MSTPCRC : Module Stop Control Register C" p 446 */
   const ra_err_t mst_err = ra_mstp_enable(k_ra_mstp_pdmif);
   RA_RETURN_ON_ERROR(mst_err, s_tag, "pdm_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
 
   volatile r_pdm_regs_t* reg = ra_pdm();
-  reg->PDM_CTRL              = 0U;
-  reg->PDM_CFG               = 0U;
-  reg->PDM_STAT              = 0U;
-  reg->PDM_IER               = 0U;
+  /* HUM Ch 49 "Pulse Density Modulation Interface (PDM-IF)" p 3190 */
+  reg->PDM_CTRL = 0U;
+  reg->PDM_CFG  = 0U;
+  reg->PDM_STAT = 0U;
+  reg->PDM_IER  = 0U;
   ra_log_info(s_tag, "pdm_init");
   return k_ra_ok;
 }
@@ -45,16 +53,18 @@ ra_err_t ra_pdm_init(void)
 ra_err_t ra_pdm_deinit(void)
 {
   volatile r_pdm_regs_t* reg = ra_pdm();
-  reg->PDM_CTRL              = 0U;
-  reg->PDM_IER               = 0U;
-  s_pdm_fn                   = nullptr;
-  s_pdm_ctx                  = nullptr;
+  /* HUM Ch 49 "Pulse Density Modulation Interface (PDM-IF)" p 3190 */
+  reg->PDM_CTRL = 0U;
+  reg->PDM_IER  = 0U;
+  s_pdm_fn      = nullptr;
+  s_pdm_ctx     = nullptr;
   return ra_mstp_disable(k_ra_mstp_pdmif);
 }
 
 ra_err_t ra_pdm_get_status(uint32_t* out_mask)
 {
   RA_CHECK_NULL_PTR(out_mask, s_tag, "out_mask must not be nullptr");
+  /* HUM Ch 49 "Pulse Density Modulation Interface (PDM-IF)" p 3190 */
   *out_mask = ra_pdm()->PDM_STAT;
   return k_ra_ok;
 }
@@ -62,7 +72,8 @@ ra_err_t ra_pdm_get_status(uint32_t* out_mask)
 ra_err_t ra_pdm_clear_status(uint32_t mask)
 {
   volatile r_pdm_regs_t* reg = ra_pdm();
-  reg->PDM_STAT              = reg->PDM_STAT & ~mask;
+  /* HUM Ch 49 "Pulse Density Modulation Interface (PDM-IF)" p 3190 */
+  reg->PDM_STAT = reg->PDM_STAT & ~mask;
   return k_ra_ok;
 }
 
