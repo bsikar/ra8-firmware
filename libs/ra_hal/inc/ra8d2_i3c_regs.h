@@ -26,7 +26,7 @@ extern "C" {
 #include <stdint.h>
 
 typedef enum : uintptr_t {
-  k_ra_i3c_base_addr = 0x4011F000UL,
+  k_ra_i3c_base_addr = 0x4035F000UL, /**< I3C0 peripheral base (FSP R_I3C0_BASE). */
 } ra_i3c_addr_t;
 
 typedef enum : uint8_t {

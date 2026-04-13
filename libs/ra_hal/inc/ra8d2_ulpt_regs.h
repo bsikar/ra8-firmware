@@ -39,7 +39,7 @@ extern "C" {
  * @brief Memory-mapped base addresses for ULPT.
  */
 typedef enum : uintptr_t {
-  k_ra_ulpt0_base_addr = 0x40041000UL, /**< ULPT channel 0 base. */
+  k_ra_ulpt0_base_addr = 0x40220000UL, /**< ULPT channel 0 base (FSP R_ULPT0_BASE). */
 } ra_ulpt_addr_t;
 
 /**

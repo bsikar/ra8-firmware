@@ -39,7 +39,7 @@ extern "C" {
  * @brief Memory-mapped base address for DAC_B.
  */
 typedef enum : uintptr_t {
-  k_ra_dac_b_base_addr = 0x40334000UL, /**< DAC_B peripheral base. */
+  k_ra_dac_b_base_addr = 0x40233000UL, /**< DAC_B0 peripheral base (FSP R_DAC_B0_BASE). */
 } ra_dac_b_addr_t;
 
 /**

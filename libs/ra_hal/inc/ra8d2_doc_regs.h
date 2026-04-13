@@ -40,7 +40,7 @@ extern "C" {
  * @brief Memory-mapped base address for the DOC block.
  */
 typedef enum : uintptr_t {
-  k_ra_doc_base_addr = 0x40354100UL, /**< DOC peripheral base address. */
+  k_ra_doc_base_addr = 0x40311000UL, /**< DOC peripheral base (FSP R_DOC_B_BASE). */
 } ra_doc_addr_t;
 
 /**
