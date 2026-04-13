@@ -25,9 +25,9 @@ pre-commit -- do not hand-edit it.
 <!-- BEGIN SUMMARY -- DO NOT EDIT BY HAND -- managed by roadmap_stats.py -->
 - Total drivers tracked: 45
 - DONE:    17
-- WIP:     1
+- WIP:     2
 - BLOCKED: 0
-- TODO:    27
+- TODO:    26
 - Checklist coverage: 265/656 boxes ticked (40.4%)
 <!-- END SUMMARY -->
 
@@ -42,7 +42,7 @@ pre-commit -- do not hand-edit it.
 |    4 | Analog, safety, time                                   |        4 | [ ]    |
 |    5 | External memory and high-throughput buses              |        5 | [ ]    |
 |    6 | Display, audio, USB controllers, Ethernet MAC          |        6 | [ ]    |
-|    7 | PAL + middleware integration (lwIP, CherryUSB)         |        3 | [ ]    |
+|    7 | PAL + middleware integration (lwIP, CherryUSB)         |        3 | [~]    |
 |    8 | Single-world integration demo + stabilisation         |      1-2 | [ ]    |
 |    9 | TrustZone partitioning                                 |      4-5 | [ ]    |
 |   10 | Secure-side application + key handling demo           |      1-2 | [ ]    |
@@ -1090,15 +1090,34 @@ peripherals that do not exist on this MCU.
 
 ### ra_net_pal -- lwIP port glue
 
-`[ ]` Status: TODO. `[Ring 4 / PAL] {World: NS}`
+`[~]` Status: WIP. `[Ring 4 / PAL] {World: NS}` (Wave 7.1 scaffold landed)
 
-PAL bringup follows the lwIP `contrib/ports/unix/` shape: a
-single-threaded `sys_arch.c`, an `ethernetif.c` that wraps the
-Ring-3 `ra_eth_*` functions, and a project-facing
-`ra_net_pal_init` API in `libs/ra_net_pal/inc/ra_net_pal.h`. No
-14-checkbox items apply because this is not a peripheral driver;
-the gates are: lwIP DHCP succeeds, ICMP echo reply observable,
-no leaks under sustained TX.
+Wave 7.1 ships the project-facing API surface and a working
+ra_eth wrapper:
+
+- `libs/ra_net_pal/inc/ra_net_pal.h` -- public init/deinit, MAC,
+  link state, send/recv, async event handler.
+- `libs/ra_net_pal/src/ra_net_pal.c` -- wraps `ra_eth_*` for
+  lifecycle + status; translates ra_eth event masks into
+  `k_ra_net_pal_event_*` bits and forwards to the stack handler.
+- `tests/test_ra_net_pal.c` -- 7 cases covering init, MAC round-
+  trip, link state, stub send/recv, arg validation, pre-init
+  guards, and event handler attach/detach.
+
+Frame I/O (`ra_net_pal_send_frame` / `recv_frame`) returns
+`k_ra_err_not_supported` until the Wave 7.1b ra_eth descriptor
+ring lands. The contract is stable so the lwIP `ethernetif.c`
+glue (Wave 7.1c) can be written against the final shape.
+
+Outstanding for Wave 7.1 closure:
+
+- Wave 7.1b -- `ra_eth_tx_submit` / `ra_eth_rx_pop` descriptor
+  ring + cache maintenance; flips `ra_net_pal_send_frame` /
+  `recv_frame` to real implementations.
+- Wave 7.1c -- vendor lwIP, write `sys_arch.c` (single-threaded)
+  and `ethernetif.c` wrapping the PAL.
+- Gates: lwIP DHCP succeeds, ICMP echo reply observable, no leaks
+  under sustained TX (deferred to 7.1c).
 
 ### ra_usb_pal -- CherryUSB usb_dc port glue
 

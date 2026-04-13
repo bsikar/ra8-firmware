@@ -60,12 +60,16 @@ file(GLOB_RECURSE LIB_RA_CORE_SOURCES CONFIGURE_DEPENDS
 file(GLOB_RECURSE LIB_RA_HAL_SOURCES CONFIGURE_DEPENDS
     ${CMAKE_SOURCE_DIR}/libs/ra_hal/src/*.c
 )
+file(GLOB_RECURSE LIB_RA_NET_PAL_SOURCES CONFIGURE_DEPENDS
+    ${CMAKE_SOURCE_DIR}/libs/ra_net_pal/src/*.c
+)
 
 set(ALL_SOURCES
     ${APP_SOURCES_ROOT}
     ${APP_BOOT_SOURCES}
     ${LIB_RA_CORE_SOURCES}
     ${LIB_RA_HAL_SOURCES}
+    ${LIB_RA_NET_PAL_SOURCES}
 )
 
 #############################################################################
@@ -77,6 +81,7 @@ include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/src/inc
     ${CMAKE_CURRENT_SOURCE_DIR}/libs/ra_core/inc
     ${CMAKE_CURRENT_SOURCE_DIR}/libs/ra_hal/inc
+    ${CMAKE_CURRENT_SOURCE_DIR}/libs/ra_net_pal/inc
 )
 
 #############################################################################
@@ -106,6 +111,7 @@ if(ALL_SOURCES)
         ${CMAKE_SOURCE_DIR}/src/inc
         ${CMAKE_SOURCE_DIR}/libs/ra_core/inc
         ${CMAKE_SOURCE_DIR}/libs/ra_hal/inc
+        ${CMAKE_SOURCE_DIR}/libs/ra_net_pal/inc
     )
 
     if(EXISTS ${LINKER_SCRIPT})
