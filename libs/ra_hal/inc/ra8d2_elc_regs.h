@@ -39,10 +39,15 @@ typedef enum : uintptr_t {
 } ra_elc_addr_t;
 
 typedef enum : uint16_t {
-  k_ra_elc_off_elcr    = 0x000U,
-  k_ra_elc_off_elsegr0 = 0x002U,
-  k_ra_elc_off_elsegr1 = 0x004U,
-  k_ra_elc_off_elsr0   = 0x010U, /**< ELSR array base. */
+  k_ra_elc_off_elcr      = 0x000U, /**< ELCR: global enable (8b).          */
+  k_ra_elc_off_elsegr0   = 0x004U, /**< ELSEGR0 (8b, stride 4).            */
+  k_ra_elc_off_elsegr1   = 0x008U, /**< ELSEGR1 (8b, stride 4).            */
+  k_ra_elc_off_elsegr2   = 0x00CU, /**< ELSEGR2 (8b, stride 4).            */
+  k_ra_elc_off_elsegr3   = 0x010U, /**< ELSEGR3 (8b, stride 4).            */
+  k_ra_elc_off_elsr0     = 0x020U, /**< ELSR0..52 (16b, stride 4).         */
+  k_ra_elc_off_elcsara   = 0x100U, /**< ELCSARA: security attribution A.   */
+  k_ra_elc_elsr_stride   = 0x004U, /**< Stride between ELSR slots.         */
+  k_ra_elc_elsegr_stride = 0x004U, /**< Stride between ELSEGR slots.       */
 } ra_elc_off_t;
 
 /**

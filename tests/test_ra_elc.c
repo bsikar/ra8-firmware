@@ -22,8 +22,8 @@ static void prep(void)
 typedef enum : uint8_t {
   k_ra_elc_test_slot_first = 0U,
   k_ra_elc_test_slot_mid   = 10U,
-  k_ra_elc_test_slot_last  = 22U,
-  k_ra_elc_test_slot_bad   = 23U,
+  k_ra_elc_test_slot_last  = 52U, /**< FSP R_ELC has ELSR[0..52]. */
+  k_ra_elc_test_slot_bad   = 53U,
   k_ra_elc_test_slot_huge  = 200U,
   k_ra_elc_test_elcon_bit  = 7U,
 } ra_elc_test_const_t;
@@ -35,8 +35,9 @@ static volatile uint8_t* test_elcr(void)
 
 static volatile uint16_t* test_elsr(uint8_t index)
 {
+  /* FSP R_ELC_ELSR_Type is 4 bytes wide (16-bit data + 16-bit pad). */
   return (volatile uint16_t*)(k_ra_elc_base_addr + k_ra_elc_off_elsr0 +
-                              ((uintptr_t)index * sizeof(uint16_t)));
+                              ((uintptr_t)index * (uintptr_t)k_ra_elc_elsr_stride));
 }
 
 static void test_enable_true(void)
@@ -178,7 +179,8 @@ static void test_software_trigger(void)
     (volatile const uint8_t*)(k_ra_elc_base_addr + k_ra_elc_off_elsegr1);
   TEST_ASSERT_EQ((int32_t)0xA5, (int32_t)*elsegr1);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_elc_software_trigger(2U, 0U));
+  /* Out-of-range group: FSP has ELSEGR0..3 so index 4+ is rejected. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_elc_software_trigger(4U, 0U));
   TEST_END("ra_elc_software_trigger: writes ELSEGR");
 }
 
