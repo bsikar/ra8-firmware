@@ -23,8 +23,41 @@ extern "C" {
  * Runs the documented SDRAM bring-up sequence (precharge all ->
  * mode register write -> refresh enable). Uses EK-RA8D2 board
  * defaults; change the refresh interval for a different panel.
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_sdramc_init(void);
+
+/**
+ * @brief Tear down the SDRAM controller (disable refresh, clear SDICR).
+ * @since 0.2.0
+ */
+[[nodiscard]] ra_err_t ra_sdramc_deinit(void);
+
+/**
+ * @brief Change the SDRAM auto-refresh interval at runtime.
+ * @param[in] sdrfcr New SDRFCR value.
+ * @since 0.2.0
+ */
+[[nodiscard]] ra_err_t ra_sdramc_set_refresh_interval(uint16_t sdrfcr);
+
+/**
+ * @brief Read the refresh-enable bit as a status mask.
+ * @param[out] out_enabled Non-zero when SDRFEN is set.
+ * @since 0.2.0
+ */
+[[nodiscard]] ra_err_t ra_sdramc_get_status(uint8_t* out_enabled);
+
+/**
+ * @brief Disable auto-refresh for deep-sleep entry.
+ * @since 0.2.0
+ */
+[[nodiscard]] ra_err_t ra_sdramc_enter_stop(void);
+
+/**
+ * @brief Re-enable auto-refresh after wake-up.
+ * @since 0.2.0
+ */
+[[nodiscard]] ra_err_t ra_sdramc_exit_stop(void);
 
 #ifdef __cplusplus
 }
