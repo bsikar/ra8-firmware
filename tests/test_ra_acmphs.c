@@ -176,7 +176,8 @@ static void test_channel_init_configured(void)
   TEST_ASSERT((reg->CMPCTL & (uint8_t)k_ra_acmphs_mask_hcen) != 0U);
   TEST_ASSERT_EQ((int32_t)0x01U, (int32_t)reg->CMPSEL0);
   TEST_ASSERT_EQ((int32_t)0x02U, (int32_t)reg->CMPSEL1);
-  TEST_ASSERT(reg->CMPFIR != 0U);
+  /* filter_en now maps to CMPCTL.CDFS[1:0] instead of a separate CMPFIR. */
+  TEST_ASSERT((reg->CMPCTL & (uint8_t)k_ra_acmphs_mask_cdfs) != 0U);
   TEST_END("acmphs channel_init configured");
 }
 
@@ -214,8 +215,9 @@ static void test_channel_init_no_filter_with_invert(void)
                  (int32_t)ra_acmphs_channel_init((uint8_t)k_ra_acmphs_test_ch_first, &cfg));
 
   volatile r_acmphs_regs_t* reg = ra_acmphs((uint8_t)k_ra_acmphs_test_ch_first);
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)reg->CMPFIR);
-  TEST_ASSERT((reg->CMPCTL & (uint8_t)(1U << 3U)) != 0U);
+  /* filter off -> CDFS[1:0] = 0. Invert -> CINV bit 0 set. */
+  TEST_ASSERT((reg->CMPCTL & (uint8_t)k_ra_acmphs_mask_cdfs) == 0U);
+  TEST_ASSERT((reg->CMPCTL & (uint8_t)k_ra_acmphs_mask_cinv) != 0U);
   TEST_END("acmphs channel_init no filter + invert");
 }
 
