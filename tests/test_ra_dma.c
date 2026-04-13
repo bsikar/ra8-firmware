@@ -59,7 +59,6 @@ static void test_request_allocates_channel_zero(void)
   uint8_t dst[4] = {};
 
   const ra_dma_request_t req = {
-    .engine      = k_ra_dma_engine_dmac,
     .src_addr    = (uintptr_t)src,
     .dst_addr    = (uintptr_t)dst,
     .count       = 4U,
@@ -81,24 +80,6 @@ static void test_request_allocates_channel_zero(void)
   TEST_END("ra_dma_request: first allocation gets channel 0");
 }
 
-static void test_request_rejects_bad_engine(void)
-{
-  TEST_BEGIN("ra_dma_request: unsupported engine rejected");
-  reset_state();
-
-  uint8_t                buf[4] = {};
-  const ra_dma_request_t req    = {
-    .engine   = k_ra_dma_engine_dtc, /* Wave 2.2 territory. */
-    .src_addr = (uintptr_t)buf,
-    .dst_addr = (uintptr_t)buf,
-    .count    = 1U,
-    .width    = k_ra_dmac_width_byte,
-  };
-  uint8_t ch = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_supported, (int32_t)ra_dma_request(&req, &ch));
-  TEST_END("ra_dma_request: unsupported engine rejected");
-}
-
 static void test_request_rejects_zero_count(void)
 {
   TEST_BEGIN("ra_dma_request: zero count rejected");
@@ -106,7 +87,6 @@ static void test_request_rejects_zero_count(void)
 
   uint8_t                buf[4] = {};
   const ra_dma_request_t req    = {
-    .engine   = k_ra_dma_engine_dmac,
     .src_addr = (uintptr_t)buf,
     .dst_addr = (uintptr_t)buf,
     .count    = 0U,
@@ -127,7 +107,6 @@ static void test_request_null_ptrs(void)
 
   uint8_t                buf[4] = {};
   const ra_dma_request_t req    = {
-    .engine   = k_ra_dma_engine_dmac,
     .src_addr = (uintptr_t)buf,
     .dst_addr = (uintptr_t)buf,
     .count    = 1U,
@@ -144,7 +123,6 @@ static void test_release_round_trip(void)
 
   uint8_t                buf[8] = {};
   const ra_dma_request_t req    = {
-    .engine   = k_ra_dma_engine_dmac,
     .src_addr = (uintptr_t)buf,
     .dst_addr = (uintptr_t)buf,
     .count    = 4U,
@@ -179,7 +157,6 @@ static void test_channel_exhaustion(void)
 
   uint8_t                buf[4] = {};
   const ra_dma_request_t req    = {
-    .engine   = k_ra_dma_engine_dmac,
     .src_addr = (uintptr_t)buf,
     .dst_addr = (uintptr_t)buf,
     .count    = 1U,
@@ -204,7 +181,6 @@ static void test_sim_dma_memcpy_byte(void)
   uint8_t                src[6] = {0x10, 0x20, 0x30, 0x40, 0x50, 0x60};
   uint8_t                dst[6] = {};
   const ra_dma_request_t req    = {
-    .engine   = k_ra_dma_engine_dmac,
     .src_addr = (uintptr_t)src,
     .dst_addr = (uintptr_t)dst,
     .count    = 6U,
@@ -230,7 +206,6 @@ static void test_sim_dma_memcpy_word(void)
   uint32_t               src[3] = {0xDEADBEEFU, 0xCAFEBABEU, 0x12345678U};
   uint32_t               dst[3] = {};
   const ra_dma_request_t req    = {
-    .engine   = k_ra_dma_engine_dmac,
     .src_addr = (uintptr_t)src,
     .dst_addr = (uintptr_t)dst,
     .count    = 3U,
@@ -256,7 +231,6 @@ static void test_sim_dma_complete_fires_callback(void)
   int32_t                ctx_val = 0xABCD;
   uint8_t                buf[4]  = {};
   const ra_dma_request_t req     = {
-    .engine      = k_ra_dma_engine_dmac,
     .src_addr    = (uintptr_t)buf,
     .dst_addr    = (uintptr_t)buf,
     .count       = 1U,
@@ -284,7 +258,6 @@ static void test_dma_request_without_init_fails(void)
 
   uint8_t                buf[4] = {};
   const ra_dma_request_t req    = {
-    .engine   = k_ra_dma_engine_dmac,
     .src_addr = (uintptr_t)buf,
     .dst_addr = (uintptr_t)buf,
     .count    = 1U,
@@ -319,7 +292,6 @@ int32_t main(void)
 {
   test_init_marks_channels_free();
   test_request_allocates_channel_zero();
-  test_request_rejects_bad_engine();
   test_request_rejects_zero_count();
   test_request_null_ptrs();
   test_release_round_trip();

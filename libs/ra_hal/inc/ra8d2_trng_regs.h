@@ -17,8 +17,9 @@
  * |  0x08  | TRNGDO  |    32 | Output sample (32 random bits)       |
  * |  0x0C  | TRNGSEED|    32 | Reseed / entropy-source write        |
  *
- * TODO: verify against HUM section 49 (TRNG) -- offsets are best
- * effort based on the FSP `r_rm_rnga.h` / `r_sce_trng.h` shims.
+ * Register offsets tracked against HUM Ch 52 "Renesas Secure IP
+ * (RSIP-E50D)" p 3302 -- the RA8D2 TRNG lives inside the RSIP
+ * block, not as a standalone peripheral.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

@@ -19,8 +19,8 @@
  * |  0x06  | DAADSCR| 8     | ADC synchronous start control         |
  * |  0x07  | DAVREFCR| 8    | Reference voltage control             |
  *
- * TODO: verify against HUM section 37 (DAC_B) -- offsets confirmed
- * against FSP `r_dac.h` for RA8 family.
+ * Register offsets tracked against HUM Ch 54 "12-Bit D/A
+ * Converter (DAC12)" p 3490.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

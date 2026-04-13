@@ -287,7 +287,6 @@ ra_err_t ra_gpt_write_dma(uint8_t              channel,
   /* Word-wide DMA writes stream period values into GTPR; dst_inc=false
    * so every element lands at the same MMIO address. */
   ra_dma_request_t req = {};
-  req.engine           = k_ra_dma_engine_dmac;
   req.src_addr         = (uintptr_t)periods;
   req.dst_addr         = (uintptr_t)&reg->GTPR;
   req.count            = count;
@@ -320,7 +319,6 @@ ra_err_t ra_gpt_read_dma(uint8_t              channel,
   /* HUM Ch 22.2 "GTCNT : General PWM Timer Counter", p 878 */
   /* Word-wide DMA reads stream GTCNT snapshots into out_counts[]. */
   ra_dma_request_t req = {};
-  req.engine           = k_ra_dma_engine_dmac;
   req.src_addr         = (uintptr_t)&reg->GTCNT;
   req.dst_addr         = (uintptr_t)out_counts;
   req.count            = count;

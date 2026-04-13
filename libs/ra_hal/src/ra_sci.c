@@ -424,7 +424,6 @@ static ra_dma_request_t internal_make_dma_request(uintptr_t            src,
                                                   void*                ctx)
 {
   ra_dma_request_t req = {};
-  req.engine           = k_ra_dma_engine_dmac;
   req.src_addr         = src;
   req.dst_addr         = dst;
   req.count            = len;

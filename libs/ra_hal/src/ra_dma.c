@@ -6,14 +6,11 @@
  * [Ring 3 / HAL] {World: S}
  *
  * @details
- * Wave 1 substrate. See ``ra_dma.h`` for the API contract. This
- * file owns the channel-allocation table and the completion
- * dispatch table. Per-channel register writes go through
- * ``ra_dmac_start`` / ``ra_dmac_stop``.
- *
- * The Wave 1.3 implementation supports the DMAC backend only;
- * ``ra_dma_engine_dtc`` returns ``k_ra_err_not_supported``. Wave
- * 2.2 extends this file with a DTC case.
+ * See ``ra_dma.h`` for the API contract. This file owns the
+ * channel-allocation table and the completion dispatch table.
+ * Per-channel register writes go through ``ra_dmac_start`` /
+ * ``ra_dmac_stop``. Callers that need the DTC's vector-table
+ * transfer model use ``ra_dtc_*`` directly.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -126,10 +123,6 @@ static void internal_pack_dmac_cfg(const ra_dma_request_t* req, ra_dmac_config_t
  */
 static ra_err_t internal_validate_request(const ra_dma_request_t* req)
 {
-  if (req->engine != k_ra_dma_engine_dmac) {
-    ra_log_error_val(s_tag, "engine not supported", (uint32_t)req->engine);
-    return k_ra_err_not_supported;
-  }
   if (req->count == 0U) {
     return k_ra_err_invalid_arg;
   }

@@ -19,8 +19,8 @@
  * |  0x08  | ULPT    |    32 | Counter / reload                   |
  * |  0x0C  | ULPTCR  |     8 | Control (start / stop / flags)     |
  *
- * TODO: verify against HUM section 28 (ULPT) -- offsets taken from
- * FSP `r_ulpt.h` as of 2026-04.
+ * Register offsets tracked against HUM Ch 25 "Ultra-Low-Power
+ * Timer (ULPT)" p 1187.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
