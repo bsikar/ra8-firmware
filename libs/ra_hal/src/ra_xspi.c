@@ -420,3 +420,94 @@ ra_err_t ra_xspi_flash_read_id(uint8_t instance, uint32_t* out_id)
 #endif
   return k_ra_ok;
 }
+
+/* =============================================================================
+ * Wave 5.1 -- lifecycle + IRQ + power transition
+ * =============================================================================
+ */
+
+/**
+ * @struct ra_xspi_state_t
+ * @brief Per-instance callback state.
+ */
+typedef struct {
+  ra_xspi_event_fn_t fn;
+  void*              ctx;
+} ra_xspi_state_t;
+
+static ra_xspi_state_t s_xspi_state[k_ra_xspi_instance_count];
+
+ra_err_t ra_xspi_deinit(uint8_t instance)
+{
+  volatile r_xspi_regs_t* reg = ra_xspi(instance);
+  RA_CHECK_NULL_PTR(reg, s_tag, "instance out of range");
+
+  reg->LIOCFG = 0U;
+  reg->INTC   = (uint32_t)k_ra_xspi_int_clear_all;
+
+  s_xspi_state[instance].fn  = nullptr;
+  s_xspi_state[instance].ctx = nullptr;
+  return ra_mstp_disable(s_xspi_mstp_table[instance]);
+}
+
+ra_err_t ra_xspi_get_status(uint8_t instance, uint32_t* out_mask)
+{
+  RA_CHECK_NULL_PTR(out_mask, s_tag, "out_mask must not be nullptr");
+  volatile r_xspi_regs_t* reg = ra_xspi(instance);
+  RA_CHECK_NULL_PTR(reg, s_tag, "instance out of range");
+  *out_mask = reg->COMSTT;
+  return k_ra_ok;
+}
+
+ra_err_t ra_xspi_clear_status(uint8_t instance, uint32_t mask)
+{
+  volatile r_xspi_regs_t* reg = ra_xspi(instance);
+  RA_CHECK_NULL_PTR(reg, s_tag, "instance out of range");
+  reg->INTC = mask;
+  return k_ra_ok;
+}
+
+ra_err_t ra_xspi_attach_handler(uint8_t instance, ra_xspi_event_fn_t fn, void* ctx)
+{
+  if (instance >= (uint8_t)k_ra_xspi_instance_count) {
+    return k_ra_err_invalid_arg;
+  }
+  s_xspi_state[instance].fn  = fn;
+  s_xspi_state[instance].ctx = ctx;
+  return k_ra_ok;
+}
+
+void ra_xspi_dispatch(uint8_t instance)
+{
+  if (instance >= (uint8_t)k_ra_xspi_instance_count) {
+    return;
+  }
+  volatile r_xspi_regs_t* reg = ra_xspi(instance);
+  if (reg == nullptr) { /* GCOVR_EXCL_BR_LINE -- instance bounded above */
+    return;             /* GCOVR_EXCL_LINE */
+  }
+  const uint32_t mask = reg->COMSTT;
+  reg->INTC           = (uint32_t)k_ra_xspi_int_clear_all;
+
+  const ra_xspi_event_fn_t fn  = s_xspi_state[instance].fn;
+  void* const              ctx = s_xspi_state[instance].ctx;
+  if (fn != nullptr) {
+    fn(ctx, mask);
+  }
+}
+
+ra_err_t ra_xspi_enter_stop(uint8_t instance)
+{
+  if (instance >= (uint8_t)k_ra_xspi_instance_count) {
+    return k_ra_err_invalid_arg;
+  }
+  return ra_mstp_disable(s_xspi_mstp_table[instance]);
+}
+
+ra_err_t ra_xspi_exit_stop(uint8_t instance)
+{
+  if (instance >= (uint8_t)k_ra_xspi_instance_count) {
+    return k_ra_err_invalid_arg;
+  }
+  return ra_mstp_enable(s_xspi_mstp_table[instance]);
+}
