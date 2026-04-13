@@ -8,8 +8,10 @@
 
 #include "ra8d2_mstp_regs.h"
 #include "ra8d2_spi_regs.h"
+#include "ra_dma.h"
 #include "ra_err.h"
 #include "ra_mstp.h"
+#include "ra_sim_dma.h"
 #include "ra_sim_mmap.h"
 #include "ra_spi.h"
 #include "unity_minimal.h"
@@ -331,6 +333,92 @@ static void test_spi_power(void)
   TEST_END("ra_spi_enter_stop / exit_stop");
 }
 
+static int32_t s_spi_dma_done = 0;
+
+static void stub_spi_dma_done(void* ctx)
+{
+  (void)ctx;
+  ++s_spi_dma_done;
+}
+
+static void test_spi_write_dma_streams_to_spdr(void)
+{
+  TEST_BEGIN("ra_spi_write_dma: buffer streams into SPDR");
+  prep_w33();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dma_init());
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_spi_init(0U, &k_spi_cfg));
+
+  const uint8_t src[] = {0x77U, 0x88U, 0x99U};
+  uint8_t       dch   = 0xFFU;
+  s_spi_dma_done      = 0;
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_ok,
+    (int32_t)ra_spi_write_dma(0U, src, (uint16_t)sizeof(src), stub_spi_dma_done, nullptr, &dch));
+  TEST_ASSERT(dch < 8U);
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sim_dma_memcpy(dch));
+  volatile const r_spi_regs_t* reg = ra_spi(0U);
+  TEST_ASSERT_EQ((int32_t)0x99U, (int32_t)(reg->SPDR & 0xFFU));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sim_dma_complete(dch));
+  TEST_ASSERT_EQ(1, s_spi_dma_done);
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dma_release(dch));
+  TEST_END("ra_spi_write_dma: buffer streams into SPDR");
+}
+
+static void test_spi_read_dma_streams_from_spdr(void)
+{
+  TEST_BEGIN("ra_spi_read_dma: SPDR streams into buffer");
+  prep_w33();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dma_init());
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_spi_init(0U, &k_spi_cfg));
+
+  volatile r_spi_regs_t* reg = ra_spi(0U);
+  reg->SPDR                  = 0x66U;
+
+  uint8_t out[2] = {0U, 0U};
+  uint8_t dch    = 0xFFU;
+  s_spi_dma_done = 0;
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_ok,
+    (int32_t)ra_spi_read_dma(0U, out, (uint16_t)sizeof(out), stub_spi_dma_done, nullptr, &dch));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sim_dma_memcpy(dch));
+  TEST_ASSERT_EQ((int32_t)0x66U, (int32_t)out[0]);
+  TEST_ASSERT_EQ((int32_t)0x66U, (int32_t)out[1]);
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sim_dma_complete(dch));
+  TEST_ASSERT_EQ(1, s_spi_dma_done);
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dma_release(dch));
+  TEST_END("ra_spi_read_dma: SPDR streams into buffer");
+}
+
+static void test_spi_dma_arg_validation(void)
+{
+  TEST_BEGIN("ra_spi_{write,read}_dma: arg validation");
+  prep_w33();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dma_init());
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_spi_init(0U, &k_spi_cfg));
+
+  uint8_t       dch    = 0U;
+  const uint8_t src[]  = {0x12U};
+  uint8_t       dst[1] = {0U};
+
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_spi_write_dma(0U, nullptr, 1U, nullptr, nullptr, &dch));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_spi_write_dma(0U, src, 1U, nullptr, nullptr, nullptr));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_spi_read_dma(0U, nullptr, 1U, nullptr, nullptr, &dch));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_spi_read_dma(0U, dst, 1U, nullptr, nullptr, nullptr));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_spi_write_dma(99U, src, 1U, nullptr, nullptr, &dch));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_spi_read_dma(99U, dst, 1U, nullptr, nullptr, &dch));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_spi_write_dma(0U, src, 0U, nullptr, nullptr, &dch));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_spi_read_dma(0U, dst, 0U, nullptr, nullptr, &dch));
+  TEST_END("ra_spi_{write,read}_dma: arg validation");
+}
+
 int32_t main(void)
 {
   test_master_init_happy_ch0();
@@ -350,6 +438,9 @@ int32_t main(void)
   test_spi_errors();
   test_spi_attach();
   test_spi_power();
+  test_spi_write_dma_streams_to_spdr();
+  test_spi_read_dma_streams_from_spdr();
+  test_spi_dma_arg_validation();
   (void)fprintf(stderr, "[OK  ] test_ra_spi.c\n");
   return 0;
 }

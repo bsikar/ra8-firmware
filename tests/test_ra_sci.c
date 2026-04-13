@@ -9,9 +9,11 @@
 #include <stdint.h>
 
 #include "ra8d2_sci_regs.h"
+#include "ra_dma.h"
 #include "ra_err.h"
 #include "ra_mstp.h"
 #include "ra_sci.h"
+#include "ra_sim_dma.h"
 #include "ra_sim_mmap.h"
 #include "unity_minimal.h"
 
@@ -393,6 +395,106 @@ static void test_eri_dispatch_clears_errors(void)
   TEST_END("ra_sci_dispatch_eri clears SSR flags");
 }
 
+static int32_t s_dma_complete_count = 0;
+
+static void stub_dma_done(void* ctx)
+{
+  (void)ctx;
+  ++s_dma_complete_count;
+}
+
+static void test_write_dma_streams_buffer_to_tdr(void)
+{
+  TEST_BEGIN("ra_sci_write_dma: buffer streams into TDR via DMA");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dma_init());
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_init(0U, &k_cfg));
+
+  const uint8_t src[]  = {0xAAU, 0xBBU, 0xCCU, 0xDDU};
+  uint8_t       dma_ch = 0xFFU;
+  s_dma_complete_count = 0;
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_ok,
+    (int32_t)ra_sci_write_dma(0U, src, (uint16_t)sizeof(src), stub_dma_done, nullptr, &dma_ch));
+  TEST_ASSERT(dma_ch < 8U);
+
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sim_dma_memcpy(dma_ch));
+  volatile const r_sci_regs_t* reg = ra_sci(0U);
+  /* Last byte streamed lands in TDR (dst_inc=false). */
+  TEST_ASSERT_EQ((int32_t)0xDDU, (int32_t)reg->TDR);
+
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sim_dma_complete(dma_ch));
+  TEST_ASSERT_EQ(1, s_dma_complete_count);
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dma_release(dma_ch));
+  TEST_END("ra_sci_write_dma: buffer streams into TDR via DMA");
+}
+
+static void test_read_dma_streams_rdr_to_buffer(void)
+{
+  TEST_BEGIN("ra_sci_read_dma: RDR streams into buffer via DMA");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dma_init());
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_init(0U, &k_cfg));
+
+  volatile r_sci_regs_t* reg = ra_sci(0U);
+  reg->RDR                   = 0x42U;
+
+  uint8_t out[3]       = {0U, 0U, 0U};
+  uint8_t dma_ch       = 0xFFU;
+  s_dma_complete_count = 0;
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_ok,
+    (int32_t)ra_sci_read_dma(0U, out, (uint16_t)sizeof(out), stub_dma_done, nullptr, &dma_ch));
+  TEST_ASSERT(dma_ch < 8U);
+
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sim_dma_memcpy(dma_ch));
+  /* RDR (src_inc=false) was 0x42 throughout, so all destinations match. */
+  TEST_ASSERT_EQ((int32_t)0x42U, (int32_t)out[0]);
+  TEST_ASSERT_EQ((int32_t)0x42U, (int32_t)out[1]);
+  TEST_ASSERT_EQ((int32_t)0x42U, (int32_t)out[2]);
+
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sim_dma_complete(dma_ch));
+  TEST_ASSERT_EQ(1, s_dma_complete_count);
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dma_release(dma_ch));
+  TEST_END("ra_sci_read_dma: RDR streams into buffer via DMA");
+}
+
+static void test_dma_arg_validation(void)
+{
+  TEST_BEGIN("ra_sci_{write,read}_dma: arg validation");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dma_init());
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_init(0U, &k_cfg));
+
+  uint8_t       dma_ch = 0U;
+  const uint8_t src[]  = {0x01U};
+  uint8_t       dst[1] = {0U};
+
+  /* NULL data / out_buf / out_dma_channel. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_sci_write_dma(0U, nullptr, 1U, nullptr, nullptr, &dma_ch));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_sci_write_dma(0U, src, 1U, nullptr, nullptr, nullptr));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_sci_read_dma(0U, nullptr, 1U, nullptr, nullptr, &dma_ch));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_sci_read_dma(0U, dst, 1U, nullptr, nullptr, nullptr));
+
+  /* Bad channel. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_sci_write_dma(99U, src, 1U, nullptr, nullptr, &dma_ch));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_sci_read_dma(99U, dst, 1U, nullptr, nullptr, &dma_ch));
+
+  /* Zero-length transfer. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_sci_write_dma(0U, src, 0U, nullptr, nullptr, &dma_ch));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_sci_read_dma(0U, dst, 0U, nullptr, nullptr, &dma_ch));
+
+  TEST_END("ra_sci_{write,read}_dma: arg validation");
+}
+
 int32_t main(void)
 {
   test_init_sets_scr_enables();
@@ -414,6 +516,9 @@ int32_t main(void)
   test_dispatch_txi_with_no_handler();
   test_dispatch_rxi_with_no_handler();
   test_eri_dispatch_clears_errors();
+  test_write_dma_streams_buffer_to_tdr();
+  test_read_dma_streams_rdr_to_buffer();
+  test_dma_arg_validation();
   (void)fprintf(stderr, "[OK  ] test_ra_sci.c\n");
   return 0;
 }

@@ -118,10 +118,14 @@ configure_build() {
         cmake_stdout="/dev/stdout"
     fi
 
+    # Disable coverage instrumentation so the tidy build does not
+    # leave .gcno files that the parallel coverage build (build/coverage)
+    # would mistakenly merge under gcovr.
     cmake -B "$BUILD_DIR" -S "$tests_dir" \
         -DCMAKE_BUILD_TYPE=Debug \
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
         -DCMAKE_C_FLAGS="-DUNIT_TEST -DRA_SIMULATOR_MODE" \
+        -DRA_COVERAGE=OFF \
         -Wno-dev \
         >"$cmake_stdout"
 
