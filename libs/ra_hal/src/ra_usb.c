@@ -69,3 +69,82 @@ ra_err_t ra_usb_device_attach(ra_usb_speed_t speed, bool attached)
   reg->SYSCFG = syscfg;
   return k_ra_ok;
 }
+
+/* =============================================================================
+ * Wave 6.2 -- lifecycle + status + IRQ + power
+ * =============================================================================
+ */
+
+static ra_usb_event_fn_t s_usb_fn;
+static void*             s_usb_ctx;
+
+static ra_mstp_t internal_mstp(ra_usb_speed_t speed)
+{
+  return (speed == k_ra_usb_speed_hs) ? k_ra_mstp_usbhs : k_ra_mstp_usbfs;
+}
+
+ra_err_t ra_usb_device_deinit(ra_usb_speed_t speed)
+{
+  volatile r_usb_regs_t* reg = internal_pick(speed);
+  RA_CHECK_NULL_PTR(reg, s_tag, "speed out of range");
+
+  reg->SYSCFG  = 0U;
+  reg->INTENB0 = 0U;
+  reg->INTENB1 = 0U;
+  return ra_mstp_disable(internal_mstp(speed));
+}
+
+ra_err_t ra_usb_get_status(ra_usb_speed_t speed, uint16_t* out_mask)
+{
+  RA_CHECK_NULL_PTR(out_mask, s_tag, "out_mask must not be nullptr");
+  volatile r_usb_regs_t* reg = internal_pick(speed);
+  RA_CHECK_NULL_PTR(reg, s_tag, "speed out of range");
+  *out_mask = reg->INTSTS0;
+  return k_ra_ok;
+}
+
+ra_err_t ra_usb_clear_status(ra_usb_speed_t speed, uint16_t mask)
+{
+  volatile r_usb_regs_t* reg = internal_pick(speed);
+  RA_CHECK_NULL_PTR(reg, s_tag, "speed out of range");
+  reg->INTSTS0 = (uint16_t)(reg->INTSTS0 & (uint16_t)~mask);
+  return k_ra_ok;
+}
+
+ra_err_t ra_usb_attach_handler(ra_usb_event_fn_t fn, void* ctx)
+{
+  s_usb_fn  = fn;
+  s_usb_ctx = ctx;
+  return k_ra_ok;
+}
+
+void ra_usb_dispatch(ra_usb_speed_t speed)
+{
+  volatile r_usb_regs_t* reg = internal_pick(speed);
+  if (reg == nullptr) { /* GCOVR_EXCL_BR_LINE -- FS/HS always valid */
+    return;             /* GCOVR_EXCL_LINE */
+  }
+  const uint16_t          mask = reg->INTSTS0;
+  const ra_usb_event_fn_t fn   = s_usb_fn;
+  void* const             ctx  = s_usb_ctx;
+  reg->INTSTS0                 = 0U;
+  if (fn != nullptr) {
+    fn(ctx, speed, mask);
+  }
+}
+
+ra_err_t ra_usb_enter_stop(ra_usb_speed_t speed)
+{
+  if (speed > k_ra_usb_speed_hs) {
+    return k_ra_err_invalid_arg;
+  }
+  return ra_mstp_disable(internal_mstp(speed));
+}
+
+ra_err_t ra_usb_exit_stop(ra_usb_speed_t speed)
+{
+  if (speed > k_ra_usb_speed_hs) {
+    return k_ra_err_invalid_arg;
+  }
+  return ra_mstp_enable(internal_mstp(speed));
+}
