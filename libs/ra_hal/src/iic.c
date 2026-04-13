@@ -352,7 +352,8 @@ ra_err_t ra_iic_enter_stop(uint8_t channel)
   if (reg == nullptr) {
     return k_ra_err_invalid_arg;
   }
-  /* HUM Ch 39.2 "ICCR1 : IIC Bus Control Register 1", p 2369 -- clear ICE. */
+  /* Clear ICE so the controller stops.
+   * HUM Ch 39.2 "ICCR1 : IIC Bus Control Register 1", p 2369 */
   reg->ICCR1 = 0U;
   return ra_mstp_disable(s_iic_mstp_table[channel]);
 }
