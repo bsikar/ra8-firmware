@@ -79,7 +79,6 @@ static ra_err_t internal_reset_channel(uint8_t ch)
   reg->CMPSEL0 = 0U;
   reg->CMPSEL1 = 0U;
   reg->CPIOC   = 0U;
-  reg->CMPFIR  = 0U;
   return k_ra_ok;
 }
 
@@ -132,16 +131,15 @@ static ra_err_t internal_reset_channel(uint8_t ch)
 
 /**
  * @enum ra_acmphs_bits_t
- * @brief CMPCTL field shifts.
+ * @brief CMPCTL field shifts (match FSP R_ACMPHS0_CMPCTL_b).
  */
 typedef enum : uint8_t {
-  k_ra_acmphs_ceg_shift = 1U, /**< CMPCTL.CEG[1:0].        */
-  k_ra_acmphs_cinv_bit  = 3U, /**< CMPCTL.CINV.            */
-  k_ra_acmphs_coe_bit   = 6U, /**< CMPCTL.COE enable out.  */
-  k_ra_acmphs_cif_bit   = 0U, /**< CMPFIR.CFS[1:0] shift.  */
-  k_ra_acmphs_cen_bit   = 7U, /**< CMPFIR.CFEN enable.     */
-  k_ra_acmphs_ctl_mask  = (uint8_t)k_ra_acmphs_mask_hcen | (uint8_t)(3U << 1U) |
-                          (uint8_t)(1U << 3U) | (uint8_t)(1U << 6U),
+  k_ra_acmphs_ceg_shift          = 3U, /**< CMPCTL.CEG[1:0] at [4:3].   */
+  k_ra_acmphs_cdfs_shift         = 5U, /**< CMPCTL.CDFS[1:0] at [6:5].  */
+  k_ra_acmphs_cdfs_enabled_value = 1U, /**< "Any sampling clock" when filter on. */
+  k_ra_acmphs_ctl_mask           = (uint8_t)k_ra_acmphs_mask_hcen | (uint8_t)k_ra_acmphs_mask_ceg |
+                                   (uint8_t)k_ra_acmphs_mask_cinv | (uint8_t)k_ra_acmphs_mask_coe |
+                                   (uint8_t)k_ra_acmphs_mask_cdfs,
 } ra_acmphs_bits_t;
 
 static ra_acmphs_event_fn_t s_acmphs_fn;
@@ -163,16 +161,17 @@ ra_err_t ra_acmphs_channel_init(uint8_t channel, const ra_acmphs_cfg_t* cfg)
 
   reg->CMPSEL0 = cfg->ivpsel;
   reg->CMPSEL1 = cfg->ivrefsel;
-  if (cfg->filter_en) {
-    reg->CMPFIR = (uint8_t)(1U << k_ra_acmphs_cen_bit);
-  } else {
-    reg->CMPFIR = 0U;
-  }
 
+  /* FSP CMPCTL packs the filter select into CDFS[1:0] @ [6:5]. There
+   * is no standalone CMPFIR register on RA8D2; the driver maps its
+   * boolean filter_en into CDFS = 0 (off) or 1 (base sampling). */
   uint8_t ctl = (uint8_t)k_ra_acmphs_mask_hcen;
   ctl |= (uint8_t)((uint8_t)cfg->edge << k_ra_acmphs_ceg_shift);
   if (cfg->invert_out) {
-    ctl |= (uint8_t)(1U << k_ra_acmphs_cinv_bit);
+    ctl |= (uint8_t)k_ra_acmphs_mask_cinv;
+  }
+  if (cfg->filter_en) {
+    ctl |= (uint8_t)((uint8_t)k_ra_acmphs_cdfs_enabled_value << k_ra_acmphs_cdfs_shift);
   }
   reg->CMPCTL = ctl;
   return k_ra_ok;
@@ -189,7 +188,6 @@ ra_err_t ra_acmphs_channel_deinit(uint8_t channel)
   reg->CMPCTL  = 0U;
   reg->CMPSEL0 = 0U;
   reg->CMPSEL1 = 0U;
-  reg->CMPFIR  = 0U;
   if (channel < (uint8_t)k_ra_acmphs_mstp_id_count) {
     (void)ra_mstp_disable(s_acmphs_mstp_table[channel]);
   }
