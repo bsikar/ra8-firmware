@@ -14,6 +14,7 @@
 #include "ra_check.h"
 #include "ra_err.h"
 #include "ra_log.h"
+#include "ra_mstp.h"
 
 static const char* s_tag = "CAC";
 
@@ -24,6 +25,10 @@ typedef enum : uint8_t {
 
 ra_err_t ra_cac_init(uint16_t upper, uint16_t lower)
 {
+  /* HUM Ch 11.2.8 "MSTPCRC : Module Stop Control Register C", p 446 */
+  const ra_err_t mst_err = ra_mstp_enable(k_ra_mstp_cac);
+  RA_RETURN_ON_ERROR(mst_err, s_tag, "cac_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
+
   volatile r_cac_regs_t* reg = ra_cac();
   reg->CACR0                 = 0U;
   reg->CACR1                 = 0U;

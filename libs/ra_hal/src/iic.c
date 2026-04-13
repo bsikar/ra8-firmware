@@ -24,6 +24,7 @@
 #include "ra_err.h"
 #include "ra_iic.h"
 #include "ra_log.h"
+#include "ra_mstp.h"
 
 static const char* s_tag = "IIC";
 
@@ -61,10 +62,29 @@ typedef enum : uint8_t {
   k_ra_iic_icmr1_default = 0x08U, /**< Default 9-bit internal counter. */
 } ra_iic_init_val_t;
 
+/**
+ * @var s_iic_mstp_table
+ * @brief Channel-index -> MSTP id lookup. Indexed by ``channel``.
+ *        Size pinned by ``k_ra_iic_channel_count`` from
+ *        ``ra8d2_iic_regs.h``.
+ */
+static const ra_mstp_t s_iic_mstp_table[k_ra_iic_channel_count] = {
+  /* HUM Ch 11.2.7 "MSTPCRB : Module Stop Control Register B", p 444 */
+  k_ra_mstp_iic0,
+  k_ra_mstp_iic1,
+  k_ra_mstp_iic2,
+};
+
 ra_err_t ra_iic_controller_init(uint8_t channel)
 {
   volatile r_iic_regs_t* reg = ra_iic(channel);
   RA_CHECK_NULL_PTR(reg, s_tag, "channel out of range");
+  if ((uint16_t)channel >= (uint16_t)k_ra_iic_channel_count) {
+    return k_ra_err_invalid_arg;
+  }
+
+  const ra_err_t mst_err = ra_mstp_enable(s_iic_mstp_table[channel]);
+  RA_RETURN_ON_ERROR(mst_err, s_tag, "init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
 
   /* Module-reset sequence. */
   reg->ICCR1 = 0U;

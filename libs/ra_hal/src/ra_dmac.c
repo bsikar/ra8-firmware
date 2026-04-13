@@ -14,6 +14,7 @@
 #include "ra_check.h"
 #include "ra_err.h"
 #include "ra_log.h"
+#include "ra_mstp.h"
 
 static const char* s_tag = "DMAC";
 
@@ -36,6 +37,12 @@ ra_err_t ra_dmac_start(uint8_t channel, const ra_dmac_config_t* cfg)
   if (reg == nullptr) {
     return k_ra_err_out_of_range;
   }
+
+  /* DMAC0 + DTC0 share MSTPA22; the ref count tracks how many
+   * DMAC channels (or the DTC) currently need the bit cleared.
+   * HUM Ch 11.2.6 "MSTPCRA : Module Stop Control Register A", p 443 */
+  const ra_err_t mst_err = ra_mstp_enable(k_ra_mstp_dmac0_dtc0);
+  RA_RETURN_ON_ERROR(mst_err, s_tag, "dmac_start: mstp enable"); /* GCOVR_EXCL_BR_LINE */
 
   reg->DMCNT = 0U;
   reg->DMSAR = cfg->src;
@@ -66,5 +73,6 @@ ra_err_t ra_dmac_stop(uint8_t channel)
     return k_ra_err_out_of_range;
   }
   reg->DMCNT = 0U;
-  return k_ra_ok;
+  /* Drop the matching reference acquired in ra_dmac_start. */
+  return ra_mstp_disable(k_ra_mstp_dmac0_dtc0);
 }

@@ -14,6 +14,7 @@
 #include "ra_check.h"
 #include "ra_err.h"
 #include "ra_log.h"
+#include "ra_mstp.h"
 
 static const char* s_tag = "USB";
 
@@ -26,6 +27,11 @@ ra_err_t ra_usb_device_init(ra_usb_speed_t speed)
 {
   volatile r_usb_regs_t* reg = internal_pick(speed);
   RA_CHECK_NULL_PTR(reg, s_tag, "speed out of range");
+
+  /* HUM Ch 11.2.7 "MSTPCRB : Module Stop Control Register B", p 444 */
+  const ra_mstp_t mstp_id = (speed == k_ra_usb_speed_hs) ? k_ra_mstp_usbhs : k_ra_mstp_usbfs;
+  const ra_err_t  mst_err = ra_mstp_enable(mstp_id);
+  RA_RETURN_ON_ERROR(mst_err, s_tag, "usb_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
 
   /* Enable the module clock + function in device mode. */
   uint16_t syscfg = (uint16_t)(1U << k_ra_syscfg_bit_scke);

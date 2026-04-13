@@ -11,8 +11,10 @@
 #include <stdint.h>
 
 #include "ra8d2_elc_regs.h"
+#include "ra_check.h"
 #include "ra_err.h"
 #include "ra_log.h"
+#include "ra_mstp.h"
 
 static const char* s_tag = "ELC";
 
@@ -34,11 +36,18 @@ static volatile uint16_t* internal_elsr(uint8_t index)
 
 ra_err_t ra_elc_enable(bool enable)
 {
+  if (enable) {
+    /* HUM Ch 11.2.8 "MSTPCRC : Module Stop Control Register C", p 447 */
+    const ra_err_t mst_err = ra_mstp_enable(k_ra_mstp_elc);
+    RA_RETURN_ON_ERROR(mst_err, s_tag, "elc_enable: mstp enable");
+  }
   volatile uint8_t* elcr = internal_elcr();
   if (enable) {
     *elcr = (uint8_t)(1U << k_ra_elcr_elcon);
   } else {
-    *elcr = 0U;
+    *elcr                  = 0U;
+    const ra_err_t mst_err = ra_mstp_disable(k_ra_mstp_elc);
+    RA_RETURN_ON_ERROR(mst_err, s_tag, "elc_enable: mstp disable");
   }
   ra_log_info_val(s_tag, "elc_enable", enable ? 1U : 0U);
   return k_ra_ok;

@@ -20,12 +20,17 @@
 #include "ra_check.h"
 #include "ra_err.h"
 #include "ra_log.h"
+#include "ra_mstp.h"
 
 static const char* s_tag = "GLCDC";
 
 ra_err_t ra_glcdc_init(const ra_glcdc_config_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
+
+  /* HUM Ch 11.2.8 "MSTPCRC : Module Stop Control Register C", p 446 */
+  const ra_err_t mst_err = ra_mstp_enable(k_ra_mstp_glcdc);
+  RA_RETURN_ON_ERROR(mst_err, s_tag, "glcdc_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
 
   /* Background stage: size, sync, and colour. */
   *ra_glcdc_reg32(k_ra_glcdc_off_bg_hsize) = (uint32_t)cfg->width_px;

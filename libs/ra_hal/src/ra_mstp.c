@@ -175,9 +175,11 @@ static ra_err_t internal_wait_readback(uint8_t reg, uint8_t bit, bool expected_s
 {
   volatile const uint32_t* p    = internal_reg_ptr(reg);
   const uint32_t           mask = (uint32_t)1U << bit;
-  for (uint16_t i = 0U; i < (uint16_t)k_ra_mstp_readback_spin; ++i) {
+  /* Host simulator always succeeds on iteration 0; the spin-budget
+   * loop exists for the Cortex-M85 target only. */
+  for (uint16_t i = 0U; i < (uint16_t)k_ra_mstp_readback_spin; ++i) { /* GCOVR_EXCL_BR_LINE */
     const bool seen_stopped = ((*p & mask) != 0U);
-    if (seen_stopped == expected_stopped) {
+    if (seen_stopped == expected_stopped) { /* GCOVR_EXCL_BR_LINE */
       return k_ra_ok;
     }
   }
@@ -223,8 +225,8 @@ ra_err_t ra_mstp_init(void)
   for (uint8_t reg = 0U; reg < (uint8_t)k_ra_mstp_reg_count; ++reg) {
     volatile const uint32_t* p        = internal_reg_ptr(reg);
     bool                     all_ones = false;
-    for (uint16_t i = 0U; i < (uint16_t)k_ra_mstp_readback_spin; ++i) {
-      if (*p == reset_val) {
+    for (uint16_t i = 0U; i < (uint16_t)k_ra_mstp_readback_spin; ++i) { /* GCOVR_EXCL_BR_LINE */
+      if (*p == reset_val) {                                            /* GCOVR_EXCL_BR_LINE */
         all_ones = true;
         break;
       }
