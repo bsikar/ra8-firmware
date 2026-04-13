@@ -24,11 +24,11 @@ pre-commit -- do not hand-edit it.
 
 <!-- BEGIN SUMMARY -- DO NOT EDIT BY HAND -- managed by roadmap_stats.py -->
 - Total drivers tracked: 45
-- DONE:    10
+- DONE:    17
 - WIP:     1
 - BLOCKED: 0
-- TODO:    34
-- Checklist coverage: 169/672 boxes ticked (25.1%)
+- TODO:    27
+- Checklist coverage: 257/656 boxes ticked (39.2%)
 <!-- END SUMMARY -->
 
 ## Wave table
@@ -38,7 +38,7 @@ pre-commit -- do not hand-edit it.
 |    0 | Citation + architecture infrastructure                 |        1 | [x]    |
 |    1 | Shared HAL substrate                                   |        3 | [x]    |
 |    2 | Foundation drivers (ICU, ELC, DMAC, DTC, CGC)          |        2 | [x]    |
-|    3 | Critical serial / parallel IO                          |        7 | [ ]    |
+|    3 | Critical serial / parallel IO                          |        7 | [~]    |
 |    4 | Analog, safety, time                                   |        4 | [ ]    |
 |    5 | External memory and high-throughput buses              |        5 | [ ]    |
 |    6 | Display, audio, USB controllers, Ethernet MAC          |        6 | [ ]    |
@@ -368,167 +368,156 @@ every per-peripheral driver from Wave 2 onwards.
 
 ### ra_sci -- Serial Communications Interface
 
-`[ ]` Status: TODO. `[Ring 3 / HAL] {World: NS}`
+`[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}` (Wave 3.1)
 
 ```
-[ ] Init             -- HUM Ch 38 "Serial Communications Interface (SCI)" p 2174
-[ ] Deinit           -- HUM Ch 38 p 2174
-[ ] Polling TX       -- HUM Ch 38 p 2174
-[ ] Polling RX       -- HUM Ch 38 p 2174
-[ ] Interrupt TX     -- HUM Ch 38 p 2174
-[ ] Interrupt RX     -- HUM Ch 38 p 2174
-[ ] DMA TX           -- HUM Ch 38 p 2174
-[ ] DMA RX           -- HUM Ch 38 p 2174
-[ ] Error status     -- HUM Ch 38 p 2174
-[ ] Runtime reconfig -- HUM Ch 38 p 2174
-[ ] Power transition -- HUM Ch 38 p 2174
-[ ] Register coverage-- HUM Ch 38 p 2174
-[ ] Unit tests       -- n/a
-[ ] World tag        -- n/a
-[ ] HUM cross-ref    -- all
-[ ] Doxygen          -- n/a
+[x] Init             -- HUM Ch 38 "Serial Communications Interface (SCI)" p 2174
+[x] Deinit           -- HUM Ch 38 p 2174
+[x] Polling TX       -- HUM Ch 38 p 2174
+[x] Polling RX       -- HUM Ch 38 p 2174
+[x] Interrupt TX     -- HUM Ch 38 p 2174
+[x] Interrupt RX     -- HUM Ch 38 p 2174
+[ ] DMA TX           -- HUM Ch 38 p 2174  (deferred to 3.7b)
+[ ] DMA RX           -- HUM Ch 38 p 2174  (deferred to 3.7b)
+[x] Error status     -- HUM Ch 38 p 2174
+[x] Runtime reconfig -- HUM Ch 38 p 2174
+[x] Power transition -- HUM Ch 38 p 2174
+[x] Register coverage-- HUM Ch 38 p 2174
+[x] Unit tests       -- tests/test_ra_sci.c (18 cases)
+[x] World tag        -- {World: NS}
+[x] HUM cross-ref    -- all Ch 38 register notes in src/ra_sci.c
+[x] Doxygen          -- full file + member coverage
 ```
 
 ### ra_iic -- I2C Bus Interface
 
-`[ ]` Status: TODO. `[Ring 3 / HAL] {World: NS}`
+`[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}` (Wave 3.2)
 
 ```
-[ ] Init             -- HUM Ch 39 "I2C Bus Interface (IIC)" p 2367
-[ ] Deinit           -- HUM Ch 39 p 2367
-[ ] Polling TX       -- HUM Ch 39 p 2367
-[ ] Polling RX       -- HUM Ch 39 p 2367
-[ ] Interrupt TX     -- HUM Ch 39 p 2367
-[ ] Interrupt RX     -- HUM Ch 39 p 2367
-[ ] DMA TX           -- HUM Ch 39 p 2367
-[ ] DMA RX           -- HUM Ch 39 p 2367
-[ ] Error status     -- HUM Ch 39 p 2367
-[ ] Runtime reconfig -- HUM Ch 39 p 2367
-[ ] Power transition -- HUM Ch 39 p 2367
-[ ] Register coverage-- HUM Ch 39 p 2367
-[ ] Unit tests       -- n/a
-[ ] World tag        -- n/a
-[ ] HUM cross-ref    -- all
-[ ] Doxygen          -- n/a
+[x] Init             -- HUM Ch 39 "I2C Bus Interface (IIC)" p 2367
+[x] Deinit           -- HUM Ch 39 p 2367
+[x] Polling TX       -- HUM Ch 39 p 2367
+[x] Polling RX       -- HUM Ch 39 p 2367
+[x] Interrupt TX     -- HUM Ch 39 p 2367
+[x] Interrupt RX     -- HUM Ch 39 p 2367
+[ ] DMA TX           -- HUM Ch 39 p 2367  (deferred to 3.7b)
+[ ] DMA RX           -- HUM Ch 39 p 2367  (deferred to 3.7b)
+[x] Error status     -- HUM Ch 39 p 2367
+[x] Runtime reconfig -- HUM Ch 39 p 2367
+[x] Power transition -- HUM Ch 39 p 2367
+[x] Register coverage-- HUM Ch 39 p 2367
+[x] Unit tests       -- tests/test_ra_iic.c (17 cases)
+[x] World tag        -- {World: NS}
+[x] HUM cross-ref    -- all Ch 39 register notes in src/iic.c
+[x] Doxygen          -- full file + member coverage
 ```
 
 ### ra_spi -- Serial Peripheral Interface
 
-`[ ]` Status: TODO. `[Ring 3 / HAL] {World: NS}`
+`[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}` (Wave 3.3)
 
 ```
-[ ] Init             -- HUM Ch 43 "Serial Peripheral Interface (SPI)" p 2877
-[ ] Deinit           -- HUM Ch 43 p 2877
-[ ] Polling TX       -- HUM Ch 43 p 2877
-[ ] Polling RX       -- HUM Ch 43 p 2877
-[ ] Interrupt TX     -- HUM Ch 43 p 2877
-[ ] Interrupt RX     -- HUM Ch 43 p 2877
-[ ] DMA TX           -- HUM Ch 43 p 2877
-[ ] DMA RX           -- HUM Ch 43 p 2877
-[ ] Error status     -- HUM Ch 43 p 2877
-[ ] Runtime reconfig -- HUM Ch 43 p 2877
-[ ] Power transition -- HUM Ch 43 p 2877
-[ ] Register coverage-- HUM Ch 43 p 2877
-[ ] Unit tests       -- n/a
-[ ] World tag        -- n/a
-[ ] HUM cross-ref    -- all
-[ ] Doxygen          -- n/a
+[x] Init             -- HUM Ch 43 "Serial Peripheral Interface (SPI)" p 2877
+[x] Deinit           -- HUM Ch 43 p 2877
+[x] Polling TX       -- HUM Ch 43 p 2877
+[x] Polling RX       -- HUM Ch 43 p 2877
+[x] Interrupt TX     -- HUM Ch 43 p 2877
+[x] Interrupt RX     -- HUM Ch 43 p 2877
+[ ] DMA TX           -- HUM Ch 43 p 2877  (deferred to 3.7b)
+[ ] DMA RX           -- HUM Ch 43 p 2877  (deferred to 3.7b)
+[x] Error status     -- HUM Ch 43 p 2877
+[x] Runtime reconfig -- HUM Ch 43 p 2877
+[x] Power transition -- HUM Ch 43 p 2877
+[x] Register coverage-- HUM Ch 43 p 2877
+[x] Unit tests       -- tests/test_ra_spi.c (17 cases)
+[x] World tag        -- {World: NS}
+[x] HUM cross-ref    -- all Ch 43 register notes in src/spi.c
+[x] Doxygen          -- full file + member coverage
 ```
 
 ### ra_gpio -- I/O Ports + ra_gpio_attach_irq
 
-`[ ]` Status: TODO. `[Ring 3 / HAL] {World: NS}`
+`[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}` (Wave 3.4)
 
 ```
-[ ] Init             -- HUM Ch 20 "I/O Ports" p 837
-[ ] Deinit           -- HUM Ch 20 p 837
-[ ] Polling TX       -- HUM Ch 20 p 837
-[ ] Polling RX       -- HUM Ch 20 p 837
-[ ] Interrupt TX     -- HUM Ch 14 "Interrupt Controller Unit (ICU)" p 524
-[ ] Interrupt RX     -- HUM Ch 14 p 524
-[ ] DMA TX           -- n/a
-[ ] DMA RX           -- n/a
-[ ] Error status     -- HUM Ch 20 p 837
-[ ] Runtime reconfig -- HUM Ch 20 p 837
-[ ] Power transition -- HUM Ch 20 p 837
-[ ] Register coverage-- HUM Ch 20 p 837
-[ ] Unit tests       -- n/a
-[ ] World tag        -- n/a
-[ ] HUM cross-ref    -- all
-[ ] Doxygen          -- n/a
+[x] Init             -- HUM Ch 20 "I/O Ports" p 837
+[x] Deinit           -- HUM Ch 20 p 837
+[x] Polling TX       -- HUM Ch 20 p 837
+[x] Polling RX       -- HUM Ch 20 p 837
+[x] Interrupt TX     -- HUM Ch 14 "Interrupt Controller Unit (ICU)" p 524
+[x] Interrupt RX     -- HUM Ch 14 p 524
+[x] DMA TX           -- n/a (GPIO is single-bit, no DMA path)
+[x] DMA RX           -- n/a (GPIO is single-bit, no DMA path)
+[x] Error status     -- HUM Ch 20 p 837
+[x] Runtime reconfig -- HUM Ch 20 p 837
+[x] Power transition -- HUM Ch 20 p 837
+[x] Register coverage-- HUM Ch 20 p 837
+[x] Unit tests       -- tests/test_ra_gpio.c (37 cases)
+[x] World tag        -- {World: NS}
+[x] HUM cross-ref    -- all Ch 20 / Ch 14 notes in src/gpio.c
+[x] Doxygen          -- full file + member coverage
 ```
 
 ### ra_gpt -- General PWM Timer (full build-out)
 
-`[ ]` Status: TODO. `[Ring 3 / HAL] {World: NS}`
+`[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}` (Wave 3.5)
 
 ```
-[ ] Init             -- HUM Ch 22 "General PWM Timer (GPT)" p 878
-[ ] Deinit           -- HUM Ch 22 p 878
-[ ] Polling TX       -- HUM Ch 22 p 878
-[ ] Polling RX       -- HUM Ch 22 p 878
-[ ] Interrupt TX     -- HUM Ch 22 p 878
-[ ] Interrupt RX     -- HUM Ch 22 p 878
-[ ] DMA TX           -- HUM Ch 22 p 878
-[ ] DMA RX           -- HUM Ch 22 p 878
-[ ] Error status     -- HUM Ch 22 p 878
-[ ] Runtime reconfig -- HUM Ch 22 p 878
-[ ] Power transition -- HUM Ch 22 p 878
-[ ] Register coverage-- HUM Ch 22 p 878
-[ ] Unit tests       -- n/a
-[ ] World tag        -- n/a
-[ ] HUM cross-ref    -- all
-[ ] Doxygen          -- n/a
+[x] Init             -- HUM Ch 22 "General PWM Timer (GPT)" p 878
+[x] Deinit           -- HUM Ch 22 p 878
+[x] Polling TX       -- HUM Ch 22 p 878 (counter read == "polling rx")
+[x] Polling RX       -- HUM Ch 22 p 878 (counter read == "polling rx")
+[x] Interrupt TX     -- HUM Ch 22 p 878 (ovf/und/ccra/ccrb dispatch)
+[x] Interrupt RX     -- HUM Ch 22 p 878 (ovf/und/ccra/ccrb dispatch)
+[ ] DMA TX           -- HUM Ch 22 p 878  (GTPR/GTCCR DMA mode -- 3.7b)
+[ ] DMA RX           -- HUM Ch 22 p 878  (GTCNT DMA mode     -- 3.7b)
+[x] Error status     -- HUM Ch 22 p 878 (GTST OVF/UDF/CCRA/CCRB)
+[x] Runtime reconfig -- HUM Ch 22 p 878 (set_period, set_duty)
+[x] Power transition -- HUM Ch 22 p 878
+[x] Register coverage-- HUM Ch 22 p 878
+[x] Unit tests       -- tests/test_ra_gpt.c (23 cases)
+[x] World tag        -- {World: NS}
+[x] HUM cross-ref    -- all Ch 22 register notes in src/ra_gpt.c
+[x] Doxygen          -- full file + member coverage
 ```
 
-### ra_mtu -- Multi-Function Timer Pulse Unit (new)
+### ra_mtu / ra_tpu -- DROPPED: not applicable to RA8D2
 
-`[ ]` Status: TODO. `[Ring 3 / HAL] {World: NS}`
+`[x]` Status: N/A. Wave 3.6 scope correction.
 
-(MTU lives in the GPT family in the RA8D2 register space; cite
-chapter is identified at the start of the session via Read-tool
-verification of HUM Ch 22 region.)
+MTU (Multi-Function Timer Pulse Unit) and TPU (Timer Pulse Unit)
+are **RX-family** peripherals inherited from the
+``star-rx72n-firmware`` plan template. The RA8D2 HUM chapter
+list (docs/reference/CHAPTER_MAP.md) has no MTU or TPU chapter:
+the RA8D2 timer subsystem is GPT + AGT + ULPT + WDT + IWDT +
+POEG, all of which already have their own driver entries.
 
-```
-[ ] Init             -- HUM Ch 22 "General PWM Timer (GPT)" p 878
-[ ] Deinit           -- HUM Ch 22 p 878
-[ ] Polling TX       -- HUM Ch 22 p 878
-[ ] Polling RX       -- HUM Ch 22 p 878
-[ ] Interrupt TX     -- HUM Ch 22 p 878
-[ ] Interrupt RX     -- HUM Ch 22 p 878
-[ ] DMA TX           -- HUM Ch 22 p 878
-[ ] DMA RX           -- HUM Ch 22 p 878
-[ ] Error status     -- HUM Ch 22 p 878
-[ ] Runtime reconfig -- HUM Ch 22 p 878
-[ ] Power transition -- HUM Ch 22 p 878
-[ ] Register coverage-- HUM Ch 22 p 878
-[ ] Unit tests       -- n/a
-[ ] World tag        -- n/a
-[ ] HUM cross-ref    -- all
-[ ] Doxygen          -- n/a
-```
+Wave 3.6 shipped ``ra_poeg`` (below) in the slot originally
+marked ``ra_mtu + ra_tpu``. This keeps Wave 3 timer coverage
+feature-complete on RA8D2 without introducing dead code for
+peripherals that do not exist on this MCU.
 
-### ra_tpu -- Timer Pulse Unit (new)
+### ra_poeg -- Port Output Enable for GPT (new)
 
-`[ ]` Status: TODO. `[Ring 3 / HAL] {World: NS}`
+`[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}` (Wave 3.6)
 
 ```
-[ ] Init             -- HUM Ch 22 "General PWM Timer (GPT)" p 878
-[ ] Deinit           -- HUM Ch 22 p 878
-[ ] Polling TX       -- HUM Ch 22 p 878
-[ ] Polling RX       -- HUM Ch 22 p 878
-[ ] Interrupt TX     -- HUM Ch 22 p 878
-[ ] Interrupt RX     -- HUM Ch 22 p 878
-[ ] DMA TX           -- HUM Ch 22 p 878
-[ ] DMA RX           -- HUM Ch 22 p 878
-[ ] Error status     -- HUM Ch 22 p 878
-[ ] Runtime reconfig -- HUM Ch 22 p 878
-[ ] Power transition -- HUM Ch 22 p 878
-[ ] Register coverage-- HUM Ch 22 p 878
-[ ] Unit tests       -- n/a
-[ ] World tag        -- n/a
-[ ] HUM cross-ref    -- all
-[ ] Doxygen          -- n/a
+[x] Init             -- HUM Ch 21 "Port Output Enable for GPT (POEG)" p 871
+[x] Deinit           -- HUM Ch 21 p 871
+[x] Polling TX       -- n/a (status-only block)
+[x] Polling RX       -- HUM Ch 21 p 871 (POEGG status read)
+[x] Interrupt TX     -- n/a (trigger is the IRQ)
+[x] Interrupt RX     -- HUM Ch 21 p 871 (dispatch handler)
+[x] DMA TX           -- n/a
+[x] DMA RX           -- n/a
+[x] Error status     -- HUM Ch 21 p 871 (PIDF/IOCF/OSTPF/SSF/ST)
+[x] Runtime reconfig -- HUM Ch 21 p 871 (trigger_stop)
+[x] Power transition -- HUM Ch 21 p 871 (enter_stop/exit_stop)
+[x] Register coverage-- HUM Ch 21 p 871
+[x] Unit tests       -- tests/test_ra_poeg.c (13 cases)
+[x] World tag        -- {World: NS}
+[x] HUM cross-ref    -- all Ch 21 register notes in src/ra_poeg.c
+[x] Doxygen          -- full file + member coverage
 ```
 
 ---
