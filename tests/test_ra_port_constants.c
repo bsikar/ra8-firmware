@@ -42,7 +42,7 @@ static void test_port_count_invariants(void)
   TEST_END("port count invariants");
 }
 
-int main(void)
+int32_t main(void)
 {
   test_pin_encoding_matches_led_constants();
   test_ra_pin_macro_roundtrip();

@@ -46,7 +46,7 @@ static void test_ra_err_to_str_unknown(void)
   TEST_END("ra_err_to_str unknown code");
 }
 
-int main(void)
+int32_t main(void)
 {
   test_k_ra_ok_is_zero();
   test_ra_err_is_error();
