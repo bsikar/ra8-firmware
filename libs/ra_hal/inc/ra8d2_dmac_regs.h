@@ -31,31 +31,41 @@ typedef enum : uintptr_t {
 typedef enum : uint8_t {
   k_ra_dmac_channel_count  = 8U,
   k_ra_dmac_channel_stride = 0x40U,
+  k_ra_dmac_tail_padding   = 0x0CU, /**< Bytes after DMBWR up to stride. */
 } ra_dmac_limits_t;
 
 /**
  * @struct r_dmac_channel_regs_t
- * @brief Per-channel DMAC register window (partial -- extend on demand).
+ * @brief Per-channel DMAC register window.
+ *
+ * @details
+ * Layout verified against FSP R_DMAC0_Type in R7KA8D2KF_core0.h
+ * lines 5681-5871. Size = 52 (0x34) bytes per channel, with 12
+ * bytes of tail padding up to the 0x40 channel stride.
  */
 typedef struct {
   volatile uint32_t DMSAR; /**< +0x00 Source address.           */
   volatile uint32_t DMDAR; /**< +0x04 Destination address.      */
-  volatile uint32_t DMCRA; /**< +0x08 Transfer count.           */
-  volatile uint16_t DMCRB; /**< +0x0C Block size.               */
-  volatile uint16_t _r0;
+  volatile uint32_t DMCRA; /**< +0x08 Transfer count (32b).     */
+  volatile uint32_t DMCRB; /**< +0x0C Block transfer count.     */
   volatile uint16_t DMTMD; /**< +0x10 Transfer Mode.            */
-  volatile uint16_t _r1;
-  volatile uint8_t  DMINT; /**< +0x14 Interrupt enable.         */
-  volatile uint8_t  _r2[3];
-  volatile uint16_t DMAMD; /**< +0x18 Address Mode.             */
-  volatile uint16_t _r3;
-  volatile uint32_t DMOFR; /**< +0x1C Offset.                   */
-  volatile uint8_t  DMCNT; /**< +0x20 Enable.                   */
-  volatile uint8_t  _r4[3];
-  volatile uint8_t  DMREQ; /**< +0x24 Request.                  */
-  volatile uint8_t  _r5[3];
-  volatile uint8_t  DMSTS; /**< +0x28 Status.                   */
-  volatile uint8_t  _r6[3];
+  volatile uint8_t  _r0;   /**< +0x12 reserved.                 */
+  volatile uint8_t  DMINT; /**< +0x13 Interrupt Setting.        */
+  volatile uint16_t DMAMD; /**< +0x14 Address Mode.             */
+  volatile uint16_t _r1;   /**< +0x16 reserved.                 */
+  volatile uint32_t DMOFR; /**< +0x18 Offset Register.          */
+  volatile uint8_t  DMCNT; /**< +0x1C Transfer Enable.          */
+  volatile uint8_t  DMREQ; /**< +0x1D Software Start.           */
+  volatile uint8_t  DMSTS; /**< +0x1E Status.                   */
+  volatile uint8_t  _r2;   /**< +0x1F reserved.                 */
+  volatile uint32_t DMSRR; /**< +0x20 Source Reload Address.    */
+  volatile uint32_t DMDRR; /**< +0x24 Dest Reload Address.      */
+  volatile uint32_t DMSBS; /**< +0x28 Source Buffer Size.       */
+  volatile uint32_t DMDBS; /**< +0x2C Dest Buffer Size.         */
+  volatile uint8_t  DMBWR; /**< +0x30 Bufferable Write Enable.  */
+  volatile uint8_t  _r3;   /**< +0x31 reserved.                 */
+  volatile uint16_t _r4;   /**< +0x32 reserved.                 */
+  volatile uint8_t  _r5[k_ra_dmac_tail_padding];
 } r_dmac_channel_regs_t;
 
 /** @brief Get pointer to DMAC channel N. */
