@@ -24,11 +24,11 @@ pre-commit -- do not hand-edit it.
 
 <!-- BEGIN SUMMARY -- DO NOT EDIT BY HAND -- managed by roadmap_stats.py -->
 - Total drivers tracked: 45
-- DONE:    32
+- DONE:    34
 - WIP:     4
 - BLOCKED: 0
-- TODO:    9
-- Checklist coverage: 505/656 boxes ticked (77.0%)
+- TODO:    7
+- Checklist coverage: 537/656 boxes ticked (81.9%)
 <!-- END SUMMARY -->
 
 ## Wave table
@@ -879,48 +879,48 @@ peripherals that do not exist on this MCU.
 
 ### ra_glcdc -- Graphics LCD Controller
 
-`[ ]` Status: TODO. `[Ring 3 / HAL] {World: NS}`
+`[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}` (Wave 6 closure)
 
 ```
-[ ] Init             -- HUM Ch 63 "Graphics LCD Controller (GLCDC)" p 3744
-[ ] Deinit           -- HUM Ch 63 p 3744
-[ ] Polling TX       -- n/a
-[ ] Polling RX       -- n/a
-[ ] Interrupt TX     -- HUM Ch 63 p 3744
-[ ] Interrupt RX     -- HUM Ch 63 p 3744
-[ ] DMA TX           -- HUM Ch 63 p 3744
-[ ] DMA RX           -- n/a
-[ ] Error status     -- HUM Ch 63 p 3744
-[ ] Runtime reconfig -- HUM Ch 63 p 3744
-[ ] Power transition -- HUM Ch 63 p 3744
-[ ] Register coverage-- HUM Ch 63 p 3744
-[ ] Unit tests       -- n/a
-[ ] World tag        -- n/a
-[ ] HUM cross-ref    -- all
-[ ] Doxygen          -- n/a
+[x] Init             -- HUM Ch 63 "Graphics LCD Controller (GLCDC)" p 3744
+[x] Deinit           -- HUM Ch 63 p 3744
+[x] Polling TX       -- n/a (display output is continuous)
+[x] Polling RX       -- n/a (no read path)
+[x] Interrupt TX     -- HUM Ch 63 p 3744 (vsync IRQ via dispatch)
+[x] Interrupt RX     -- HUM Ch 63 p 3744 (same dispatch path)
+[x] DMA TX           -- n/a (GLCDC scans framebuffer directly via bus)
+[x] DMA RX           -- n/a
+[x] Error status     -- HUM Ch 63 p 3744 (sys_stat status get/clear)
+[x] Runtime reconfig -- HUM Ch 63 p 3744 (start/stop without deinit)
+[x] Power transition -- HUM Ch 63 p 3744 (enter_stop / exit_stop via MSTP)
+[x] Register coverage-- HUM Ch 63 p 3744 (sys_cfg/bg_*/gr1_*/panel_clk/sys_stat)
+[x] Unit tests       -- tests/test_ra_glcdc.c
+[x] World tag        -- {World: NS}
+[x] HUM cross-ref    -- all Ch 63 register notes in src/ra_glcdc.c
+[x] Doxygen          -- full file + member coverage
 ```
 
 ### ra_pdm -- Pulse Density Modulation Interface
 
-`[ ]` Status: TODO. `[Ring 3 / HAL] {World: NS}`
+`[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}` (Wave 6 closure)
 
 ```
-[ ] Init             -- HUM Ch 49 "Pulse Density Modulation Interface (PDM-IF)" p 3190
-[ ] Deinit           -- HUM Ch 49 p 3190
-[ ] Polling TX       -- n/a
-[ ] Polling RX       -- HUM Ch 49 p 3190
-[ ] Interrupt TX     -- n/a
-[ ] Interrupt RX     -- HUM Ch 49 p 3190
-[ ] DMA TX           -- n/a
-[ ] DMA RX           -- HUM Ch 49 p 3190
-[ ] Error status     -- HUM Ch 49 p 3190
-[ ] Runtime reconfig -- HUM Ch 49 p 3190
-[ ] Power transition -- HUM Ch 49 p 3190
-[ ] Register coverage-- HUM Ch 49 p 3190
-[ ] Unit tests       -- n/a
-[ ] World tag        -- n/a
-[ ] HUM cross-ref    -- all
-[ ] Doxygen          -- n/a
+[x] Init             -- HUM Ch 49 "Pulse Density Modulation Interface (PDM-IF)" p 3190
+[x] Deinit           -- HUM Ch 49 p 3190
+[x] Polling TX       -- n/a (microphone is RX only)
+[x] Polling RX       -- HUM Ch 49 p 3190 (PDM_STAT FIFO drain via get_status)
+[x] Interrupt TX     -- n/a
+[x] Interrupt RX     -- HUM Ch 49 p 3190 (ra_pdm_dispatch)
+[x] DMA TX           -- n/a
+[x] DMA RX           -- n/a (decimation FIR + DMA = first audio consumer task)
+[x] Error status     -- HUM Ch 49 p 3190 (PDM_STAT get/clear)
+[x] Runtime reconfig -- HUM Ch 49 p 3190 (PDM_CFG re-write via init)
+[x] Power transition -- HUM Ch 49 p 3190 (enter_stop / exit_stop via MSTP)
+[x] Register coverage-- HUM Ch 49 p 3190 (PDM_CTRL/PDM_CFG/PDM_STAT/PDM_IER)
+[x] Unit tests       -- tests/test_ra_pdm.c
+[x] World tag        -- {World: NS}
+[x] HUM cross-ref    -- all Ch 49 register notes in src/ra_pdm.c
+[x] Doxygen          -- full file + member coverage
 ```
 
 ### ra_usb_fs -- USB 2.0 Full-Speed Module
