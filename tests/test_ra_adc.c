@@ -120,6 +120,21 @@ static void test_read_channel_huge(void)
 }
 
 /**
+ * @brief Hits the adc.c branch where ADCHCR[ch] is valid but ADDR[ch]
+ *        is out-of-range (channel 23: FSP has 24 ADCHCR slots but
+ *        only 23 ADDR result slots).
+ */
+static void test_read_channel_hcr_but_no_result(void)
+{
+  TEST_BEGIN("adc read_channel: ch 23 (hcr valid, addr oob)");
+  ra_sim_mmap_reset();
+  uint16_t raw = 0U;
+  /* k_ra_adc_b_max_channels = 24, k_ra_adc_b_result_regs = 23. */
+  TEST_ASSERT_EQ((int)k_ra_err_out_of_range, (int)ra_adc_read_channel(23U, &raw));
+  TEST_END("adc read_channel: ch 23 (hcr valid, addr oob)");
+}
+
+/**
  * @brief Drive a read with the SIGALRM sim helper clearing CVEN
  *        mid-poll to mimic hardware auto-clear.
  */
@@ -341,6 +356,7 @@ int32_t main(void)
   test_read_channel_null_out();
   test_read_channel_out_of_range();
   test_read_channel_huge();
+  test_read_channel_hcr_but_no_result();
   test_read_channel_completes_via_alarm();
   test_read_channel_timeout();
   test_init_configured();
