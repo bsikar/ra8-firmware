@@ -95,6 +95,16 @@ include_directories(
 )
 
 #############################################################################
+# Build options
+#############################################################################
+
+# Wave 9.1 TrustZone bring-up. OFF by default so the single-world
+# build (Wave 0..8) keeps working unchanged. When ON, the SAU is
+# programmed in SystemInit and the toolchain receives -mcmse so
+# the NSC veneers can carry __cmse_nonsecure_entry attributes.
+option(RA_TRUSTZONE_ENABLE "Enable Cortex-M85 TrustZone (-mcmse + SAU)" OFF)
+
+#############################################################################
 # Executable Target
 #############################################################################
 
@@ -111,6 +121,12 @@ if(ALL_SOURCES)
         -fshort-enums
         $<$<COMPILE_LANGUAGE:C>:-Wstack-usage=2200>
     )
+
+    if(RA_TRUSTZONE_ENABLE)
+        target_compile_definitions(${PROJECT_NAME}.elf PRIVATE RA_TRUSTZONE_ENABLE)
+        target_compile_options(${PROJECT_NAME}.elf PRIVATE -mcmse)
+        target_link_options(${PROJECT_NAME}.elf PRIVATE -mcmse)
+    endif()
 
     target_compile_definitions(${PROJECT_NAME}.elf PRIVATE
         # Chip-specific defines will go here once we start coding
