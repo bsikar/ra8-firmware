@@ -36,31 +36,45 @@ typedef enum : uint8_t {
 
 /**
  * @struct r_sdhi_regs_t
- * @brief Minimal SDHI register window (partial).
+ * @brief SDHI register window.
  *
  * @details
- * cppcheck cannot see tests/ so it flags every field as unused;
- * each member is accessed via ``ra_sdhi()`` in
- * ``libs/ra_hal/src/ra_sdhi.c`` once the full command engine
- * lands. Today only SD_INFO1 / SD_INFO2 / mask regs / CLK_CTRL
- * are driven; the other 64-bit registers are reserved for the
- * follow-up block-transfer commit.
+ * Layout verified against FSP R_SDHI0_Type in R7KA8D2KF_core0.h
+ * lines 13170-13570. All registers are 32-bit (the old 64-bit
+ * layout was a copy-paste bug from a different IP block). The
+ * driver touches SD_CMD / SD_ARG / SD_INFO1 / SD_INFO2 /
+ * SD_CLK_CTRL today; the response, timing, and FIFO registers
+ * are documented here for future block-transfer work.
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  volatile uint64_t SD_CMD;        /**< +0x00 Command register (64-bit). */
-  volatile uint64_t SD_ARG;        /**< +0x08 Argument.                  */
-  volatile uint64_t SD_STOP;       /**< +0x10 Stop / block count.        */
-  volatile uint64_t SD_SECCNT;     /**< +0x18 Sector count.              */
-  volatile uint64_t SD_RSP10;      /**< +0x20 Response 0.                */
-  volatile uint64_t SD_RSP32;      /**< +0x28 Response 1.                */
-  volatile uint64_t SD_RSP54;      /**< +0x30 Response 2.                */
-  volatile uint64_t SD_RSP76;      /**< +0x38 Response 3.                */
-  volatile uint64_t SD_INFO1;      /**< +0x40 Info 1 (IRQ status).       */
-  volatile uint64_t SD_INFO2;      /**< +0x48 Info 2 (transfer state).   */
-  volatile uint64_t SD_INFO1_MASK; /**< +0x50 Info 1 mask.            */
-  volatile uint64_t SD_INFO2_MASK; /**< +0x58 Info 2 mask.            */
-  volatile uint64_t SD_CLK_CTRL;   /**< +0x60 Clock control.          */
+  volatile uint32_t SD_CMD; /**< +0x00 Command Type Register.       */
+  volatile uint32_t _r0;
+  volatile uint32_t SD_ARG;        /**< +0x08 Argument (32-bit).           */
+  volatile uint32_t SD_ARG1;       /**< +0x0C Argument 1 (16-bit).         */
+  volatile uint32_t SD_STOP;       /**< +0x10 Stop.                        */
+  volatile uint32_t SD_SECCNT;     /**< +0x14 Block Count.                 */
+  volatile uint32_t SD_RSP10;      /**< +0x18 Response 10.                 */
+  volatile uint32_t SD_RSP1;       /**< +0x1C Response 1.                  */
+  volatile uint32_t SD_RSP32;      /**< +0x20 Response 32.                 */
+  volatile uint32_t SD_RSP3;       /**< +0x24 Response 3.                  */
+  volatile uint32_t SD_RSP54;      /**< +0x28 Response 54.                 */
+  volatile uint32_t SD_RSP5;       /**< +0x2C Response 5.                  */
+  volatile uint32_t SD_RSP76;      /**< +0x30 Response 76.                 */
+  volatile uint32_t SD_RSP7;       /**< +0x34 Response 7.                  */
+  volatile uint32_t SD_INFO1;      /**< +0x38 Interrupt Flag 1.            */
+  volatile uint32_t SD_INFO2;      /**< +0x3C Interrupt Flag 2.            */
+  volatile uint32_t SD_INFO1_MASK; /**< +0x40 Interrupt Mask 1.            */
+  volatile uint32_t SD_INFO2_MASK; /**< +0x44 Interrupt Mask 2.            */
+  volatile uint32_t SD_CLK_CTRL;   /**< +0x48 Clock Control.               */
+  volatile uint32_t SD_SIZE;       /**< +0x4C Transfer Data Length.        */
+  volatile uint32_t SD_OPTION;     /**< +0x50 Access Control Option.       */
+  volatile uint32_t _r1;
+  volatile uint32_t SD_ERR_STS1; /**< +0x58 Error Status 1.              */
+  volatile uint32_t SD_ERR_STS2; /**< +0x5C Error Status 2.              */
+  volatile uint32_t SD_BUF0;     /**< +0x60 Buffer Register.             */
+  volatile uint32_t _r2;
+  volatile uint32_t SDIO_MODE; /**< +0x68 SDIO Mode Control.           */
 } r_sdhi_regs_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 
