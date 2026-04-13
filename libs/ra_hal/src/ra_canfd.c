@@ -354,3 +354,66 @@ ra_err_t ra_canfd_get_error_state(uint8_t channel, uint8_t* tx_err, uint8_t* rx_
   *rx_err = (uint8_t)((erfl >> (uint32_t)k_ra_cnerfl_shift_rec) & (uint32_t)k_ra_cnerfl_mask_rec);
   return k_ra_ok;
 }
+
+/* =============================================================================
+ * Wave 5.3 -- status + IRQ + power transition
+ * =============================================================================
+ */
+
+static ra_canfd_event_fn_t s_canfd_fn;
+static void*               s_canfd_ctx;
+
+ra_err_t ra_canfd_get_status(uint8_t channel, uint32_t* out_mask)
+{
+  RA_CHECK_NULL_PTR(out_mask, s_tag, "out_mask must not be nullptr");
+  volatile r_canfd_channel_regs_t* reg = ra_canfd(channel);
+  RA_CHECK_NULL_PTR(reg, s_tag, "channel out of range");
+  *out_mask = reg->CFDCNSTS;
+  return k_ra_ok;
+}
+
+ra_err_t ra_canfd_clear_status(uint8_t channel, uint32_t mask)
+{
+  volatile r_canfd_channel_regs_t* reg = ra_canfd(channel);
+  RA_CHECK_NULL_PTR(reg, s_tag, "channel out of range");
+  reg->CFDCNERFL = reg->CFDCNERFL & ~mask;
+  return k_ra_ok;
+}
+
+ra_err_t ra_canfd_attach_handler(ra_canfd_event_fn_t fn, void* ctx)
+{
+  s_canfd_fn  = fn;
+  s_canfd_ctx = ctx;
+  return k_ra_ok;
+}
+
+void ra_canfd_dispatch(uint8_t channel)
+{
+  volatile r_canfd_channel_regs_t* reg = ra_canfd(channel);
+  if (reg == nullptr) {
+    return;
+  }
+  const uint32_t            mask = reg->CFDCNERFL;
+  const ra_canfd_event_fn_t fn   = s_canfd_fn;
+  void* const               ctx  = s_canfd_ctx;
+  reg->CFDCNERFL                 = 0U;
+  if (fn != nullptr) {
+    fn(ctx, channel, mask);
+  }
+}
+
+ra_err_t ra_canfd_enter_stop(uint8_t channel)
+{
+  if (channel >= (uint8_t)k_ra_canfd_instance_count) {
+    return k_ra_err_invalid_arg;
+  }
+  return ra_mstp_disable(s_canfd_mstp_table[channel]);
+}
+
+ra_err_t ra_canfd_exit_stop(uint8_t channel)
+{
+  if (channel >= (uint8_t)k_ra_canfd_instance_count) {
+    return k_ra_err_invalid_arg;
+  }
+  return ra_mstp_enable(s_canfd_mstp_table[channel]);
+}
