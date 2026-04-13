@@ -63,10 +63,78 @@ typedef enum : uint16_t {
  */
 
 typedef enum : uint16_t {
-  k_ra_icu_off_irqcr0 = 0x000U, /**< IRQCR0..15 (8 bits each). */
-  k_ra_icu_off_nmier  = 0x120U, /**< NMIER: NMI enable register. */
-  k_ra_icu_off_ielsr0 = 0x300U, /**< IELSR0..N (32 bits each). */
+  k_ra_icu_off_irqcr0 = 0x000U, /**< IRQCR0..15 (8 bits each).          */
+  k_ra_icu_off_nmisr  = 0x114U, /**< NMISR: NMI status register (8b).   */
+  k_ra_icu_off_nmier  = 0x120U, /**< NMIER: NMI enable register (8b).   */
+  k_ra_icu_off_nmiclr = 0x130U, /**< NMICLR: NMI status clear (8b).     */
+  k_ra_icu_off_nmicr  = 0x140U, /**< NMICR: NMI pin control (8b).       */
+  k_ra_icu_off_ielsr0 = 0x300U, /**< IELSR0..N (32 bits each).          */
 } ra_icu_off_t;
+
+/**
+ * @enum ra_icu_irqmd_t
+ * @brief IRQCRi.IRQMD[1:0] detection sense values (HUM 14.2.12 p 535).
+ */
+typedef enum : uint8_t {
+  k_ra_icu_irqmd_falling = 0U, /**< 00: falling edge.        */
+  k_ra_icu_irqmd_rising  = 1U, /**< 01: rising edge.         */
+  k_ra_icu_irqmd_both    = 2U, /**< 10: rising OR falling.   */
+  k_ra_icu_irqmd_low     = 3U, /**< 11: low-level sensitive. */
+} ra_icu_irqmd_t;
+
+/**
+ * @enum ra_icu_fclksel_t
+ * @brief IRQCRi.FCLKSEL[1:0] digital filter sampling clock (HUM 14.2.12 p 535).
+ */
+typedef enum : uint8_t {
+  k_ra_icu_fclksel_pclkb    = 0U, /**< 00: sample every PCLKB cycle.   */
+  k_ra_icu_fclksel_pclkb_8  = 1U, /**< 01: sample once per 8 cycles.    */
+  k_ra_icu_fclksel_pclkb_32 = 2U, /**< 10: sample once per 32 cycles.   */
+  k_ra_icu_fclksel_pclkb_64 = 3U, /**< 11: sample once per 64 cycles.   */
+} ra_icu_fclksel_t;
+
+/**
+ * @enum ra_icu_irqcr_bit_t
+ * @brief IRQCRi bit positions.
+ */
+typedef enum : uint8_t {
+  k_ra_icu_irqcr_bit_fclksel = 4U, /**< FCLKSEL[1:0] at bits 5..4. */
+  k_ra_icu_irqcr_bit_flten   = 7U, /**< FLTEN at bit 7.             */
+} ra_icu_irqcr_bit_t;
+
+/**
+ * @enum ra_icu_irqcr_mask_t
+ * @brief IRQCRi bit masks.
+ */
+typedef enum : uint8_t {
+  k_ra_icu_irqcr_mask_irqmd   = 0x03U, /**< IRQMD[1:0] bits 1..0. */
+  k_ra_icu_irqcr_mask_fclksel = 0x30U, /**< FCLKSEL[1:0] bits 5..4. */
+  k_ra_icu_irqcr_mask_flten   = 0x80U, /**< FLTEN bit 7. */
+} ra_icu_irqcr_mask_t;
+
+/** @brief Get pointer to the 8-bit NMIER register. */
+static inline volatile uint8_t* ra_icu_nmier(void)
+{
+  return (volatile uint8_t*)(k_ra_icu_base_addr + k_ra_icu_off_nmier);
+}
+
+/** @brief Get pointer to the 8-bit NMISR register. */
+static inline volatile uint8_t* ra_icu_nmisr(void)
+{
+  return (volatile uint8_t*)(k_ra_icu_base_addr + k_ra_icu_off_nmisr);
+}
+
+/** @brief Get pointer to the 8-bit NMICLR register. */
+static inline volatile uint8_t* ra_icu_nmiclr(void)
+{
+  return (volatile uint8_t*)(k_ra_icu_base_addr + k_ra_icu_off_nmiclr);
+}
+
+/** @brief Get pointer to the 8-bit NMICR register. */
+static inline volatile uint8_t* ra_icu_nmicr(void)
+{
+  return (volatile uint8_t*)(k_ra_icu_base_addr + k_ra_icu_off_nmicr);
+}
 
 /* =============================================================================
  * Accessors
