@@ -20,10 +20,10 @@ typedef enum : uint8_t {
 } ra_sdhi_test_inst_t;
 
 static uint32_t s_sdhi_cb_count;
-static uint64_t s_sdhi_cb_last_mask;
+static uint32_t s_sdhi_cb_last_mask;
 static uint8_t  s_sdhi_cb_last_inst;
 
-static void stub_sdhi_cb(void* ctx, uint8_t inst, uint64_t mask)
+static void stub_sdhi_cb(void* ctx, uint8_t inst, uint32_t mask)
 {
   (void)ctx;
   ++s_sdhi_cb_count;
@@ -74,15 +74,14 @@ static void test_status_read_and_clear(void)
   TEST_BEGIN("sdhi status read + clear");
   prep();
 
-  ra_sdhi((uint8_t)k_ra_sdhi_test_inst_0)->SD_INFO1 = 0x00000000CAFEBABEULL;
-  uint64_t mask                                     = 0U;
+  ra_sdhi((uint8_t)k_ra_sdhi_test_inst_0)->SD_INFO1 = 0xCAFEBABEUL;
+  uint32_t mask                                     = 0U;
   TEST_ASSERT_EQ((int32_t)k_ra_ok,
                  (int32_t)ra_sdhi_get_status((uint8_t)k_ra_sdhi_test_inst_0, &mask));
-  TEST_ASSERT_EQ((int32_t)0xCAFEBABEU, (int32_t)(mask & 0xFFFFFFFFU));
+  TEST_ASSERT_EQ((int32_t)0xCAFEBABEU, (int32_t)mask);
 
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_sdhi_clear_status((uint8_t)k_ra_sdhi_test_inst_0, 0x00000000000000F0ULL));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_sdhi_clear_status((uint8_t)k_ra_sdhi_test_inst_0, 0x000000F0UL));
   TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
                  (int32_t)ra_sdhi_get_status((uint8_t)k_ra_sdhi_test_inst_0, nullptr));
   TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
@@ -97,10 +96,10 @@ static void test_attach_and_dispatch(void)
 
   TEST_ASSERT_EQ((int32_t)k_ra_ok,
                  (int32_t)ra_sdhi_attach_handler(stub_sdhi_cb, (void*)(uintptr_t)0x5DU));
-  ra_sdhi((uint8_t)k_ra_sdhi_test_inst_1)->SD_INFO1 = 0x00000000DEADBEEFULL;
+  ra_sdhi((uint8_t)k_ra_sdhi_test_inst_1)->SD_INFO1 = 0xDEADBEEFUL;
   ra_sdhi_dispatch((uint8_t)k_ra_sdhi_test_inst_1);
   TEST_ASSERT_EQ((int32_t)1, (int32_t)s_sdhi_cb_count);
-  TEST_ASSERT_EQ((int32_t)0xDEADBEEFU, (int32_t)(s_sdhi_cb_last_mask & 0xFFFFFFFFU));
+  TEST_ASSERT_EQ((int32_t)0xDEADBEEFU, (int32_t)s_sdhi_cb_last_mask);
   TEST_ASSERT_EQ((int32_t)k_ra_sdhi_test_inst_1, (int32_t)s_sdhi_cb_last_inst);
 
   ra_sdhi_dispatch((uint8_t)k_ra_sdhi_test_inst_bad);
