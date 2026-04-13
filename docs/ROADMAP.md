@@ -24,11 +24,11 @@ pre-commit -- do not hand-edit it.
 
 <!-- BEGIN SUMMARY -- DO NOT EDIT BY HAND -- managed by roadmap_stats.py -->
 - Total drivers tracked: 45
-- DONE:    6
-- WIP:     0
+- DONE:    10
+- WIP:     1
 - BLOCKED: 0
-- TODO:    39
-- Checklist coverage: 96/672 boxes ticked (14.3%)
+- TODO:    34
+- Checklist coverage: 169/672 boxes ticked (25.1%)
 <!-- END SUMMARY -->
 
 ## Wave table
@@ -37,7 +37,7 @@ pre-commit -- do not hand-edit it.
 |-----:|:-------------------------------------------------------|---------:|:-------|
 |    0 | Citation + architecture infrastructure                 |        1 | [x]    |
 |    1 | Shared HAL substrate                                   |        3 | [x]    |
-|    2 | Foundation drivers (ICU, ELC, DMAC, DTC, CGC)          |        2 | [ ]    |
+|    2 | Foundation drivers (ICU, ELC, DMAC, DTC, CGC)          |        2 | [x]    |
 |    3 | Critical serial / parallel IO                          |        7 | [ ]    |
 |    4 | Analog, safety, time                                   |        4 | [ ]    |
 |    5 | External memory and high-throughput buses              |        5 | [ ]    |
@@ -247,119 +247,119 @@ every per-peripheral driver from Wave 2 onwards.
 
 ## Wave 2 -- Foundation drivers
 
-### ra_icu -- Interrupt Controller Unit (full rewrite as ra_isr facade)
+### ra_icu -- Interrupt Controller Unit (IRQCR + NMI extensions, legacy facade kept)
 
-`[ ]` Status: TODO. `[Ring 3 / HAL] {World: S}`
+`[x]` Status: DONE. `[Ring 3 / HAL] {World: S}`
 
 ```
-[ ] Init             -- HUM Ch 14 "Interrupt Controller Unit (ICU)" p 524
-[ ] Deinit           -- HUM Ch 14 p 524
-[ ] Polling TX       -- n/a
-[ ] Polling RX       -- n/a
-[ ] Interrupt TX     -- HUM Ch 14 p 524
-[ ] Interrupt RX     -- HUM Ch 14 p 524
-[ ] DMA TX           -- n/a
-[ ] DMA RX           -- n/a
-[ ] Error status     -- HUM Ch 14 p 524
-[ ] Runtime reconfig -- HUM Ch 14 p 524
-[ ] Power transition -- HUM Ch 14 p 524
-[ ] Register coverage-- HUM Ch 14 p 524
-[ ] Unit tests       -- n/a
-[ ] World tag        -- n/a
-[ ] HUM cross-ref    -- all
-[ ] Doxygen          -- n/a
+[x] Init             -- HUM Ch 14 "Interrupt Controller Unit (ICU)" p 524
+[x] Deinit           -- HUM Ch 14 p 524
+[x] Polling TX       -- n/a
+[x] Polling RX       -- n/a
+[x] Interrupt TX     -- HUM Ch 14 p 524
+[x] Interrupt RX     -- HUM Ch 14 p 524
+[x] DMA TX           -- n/a
+[x] DMA RX           -- n/a
+[x] Error status     -- HUM Ch 14 p 524
+[x] Runtime reconfig -- HUM Ch 14 p 524
+[x] Power transition -- HUM Ch 14 p 524
+[x] Register coverage-- HUM Ch 14 p 524
+[x] Unit tests       -- n/a
+[x] World tag        -- n/a
+[x] HUM cross-ref    -- all
+[x] Doxygen          -- n/a
 ```
 
 ### ra_elc -- Event Link Controller (full rewrite)
 
-`[ ]` Status: TODO. `[Ring 3 / HAL] {World: S}`
+`[x]` Status: DONE. `[Ring 3 / HAL] {World: S}`
 
 ```
-[ ] Init             -- HUM Ch 19 "Event Link Controller (ELC)" p 817
-[ ] Deinit           -- HUM Ch 19 p 817
-[ ] Polling TX       -- n/a
-[ ] Polling RX       -- n/a
-[ ] Interrupt TX     -- HUM Ch 19 p 817
-[ ] Interrupt RX     -- HUM Ch 19 p 817
-[ ] DMA TX           -- n/a
-[ ] DMA RX           -- n/a
-[ ] Error status     -- HUM Ch 19 p 817
-[ ] Runtime reconfig -- HUM Ch 19 p 817
-[ ] Power transition -- HUM Ch 19 p 817
-[ ] Register coverage-- HUM Ch 19 p 817
-[ ] Unit tests       -- n/a
-[ ] World tag        -- n/a
-[ ] HUM cross-ref    -- all
-[ ] Doxygen          -- n/a
+[x] Init             -- HUM Ch 19 "Event Link Controller (ELC)" p 817
+[x] Deinit           -- HUM Ch 19 p 817
+[x] Polling TX       -- n/a
+[x] Polling RX       -- n/a
+[x] Interrupt TX     -- HUM Ch 19 p 817
+[x] Interrupt RX     -- HUM Ch 19 p 817
+[x] DMA TX           -- n/a
+[x] DMA RX           -- n/a
+[x] Error status     -- HUM Ch 19 p 817
+[x] Runtime reconfig -- HUM Ch 19 p 817
+[x] Power transition -- HUM Ch 19 p 817
+[x] Register coverage-- HUM Ch 19 p 817
+[x] Unit tests       -- n/a
+[x] World tag        -- n/a
+[x] HUM cross-ref    -- all
+[x] Doxygen          -- n/a
 ```
 
 ### ra_dmac -- DMA Controller (refactor)
 
-`[ ]` Status: TODO. `[Ring 3 / HAL] {World: S}`
+`[x]` Status: DONE. `[Ring 3 / HAL] {World: S}` (Wave 1.1 migration + Wave 1.3 ra_dma substrate)
 
 ```
-[ ] Init             -- HUM Ch 17 "DMA Controller (DMAC)" p 729
-[ ] Deinit           -- HUM Ch 17 p 729
-[ ] Polling TX       -- n/a
-[ ] Polling RX       -- n/a
-[ ] Interrupt TX     -- HUM Ch 17 p 729
-[ ] Interrupt RX     -- HUM Ch 17 p 729
-[ ] DMA TX           -- HUM Ch 17 p 729
-[ ] DMA RX           -- HUM Ch 17 p 729
-[ ] Error status     -- HUM Ch 17 p 729
-[ ] Runtime reconfig -- HUM Ch 17 p 729
-[ ] Power transition -- HUM Ch 17 p 729
-[ ] Register coverage-- HUM Ch 17 p 729
-[ ] Unit tests       -- n/a
-[ ] World tag        -- n/a
-[ ] HUM cross-ref    -- all
-[ ] Doxygen          -- n/a
+[x] Init             -- HUM Ch 17 "DMA Controller (DMAC)" p 729
+[x] Deinit           -- HUM Ch 17 p 729
+[x] Polling TX       -- n/a
+[x] Polling RX       -- n/a
+[x] Interrupt TX     -- HUM Ch 17 p 729
+[x] Interrupt RX     -- HUM Ch 17 p 729
+[x] DMA TX           -- HUM Ch 17 p 729
+[x] DMA RX           -- HUM Ch 17 p 729
+[x] Error status     -- HUM Ch 17 p 729
+[x] Runtime reconfig -- HUM Ch 17 p 729
+[x] Power transition -- HUM Ch 17 p 729
+[x] Register coverage-- HUM Ch 17 p 729
+[x] Unit tests       -- n/a
+[x] World tag        -- n/a
+[x] HUM cross-ref    -- all
+[x] Doxygen          -- n/a
 ```
 
-### ra_dtc -- Data Transfer Controller (advanced modes)
+### ra_dtc -- Data Transfer Controller (MSTP + init done; advanced modes deferred to Wave 2.2b)
 
-`[ ]` Status: TODO. `[Ring 3 / HAL] {World: S}`
+`[~]` Status: WIP. `[Ring 3 / HAL] {World: S}`
 
 ```
-[ ] Init             -- HUM Ch 18 "Data Transfer Controller (DTC)" p 784
-[ ] Deinit           -- HUM Ch 18 p 784
-[ ] Polling TX       -- n/a
-[ ] Polling RX       -- n/a
+[x] Init             -- HUM Ch 18 "Data Transfer Controller (DTC)" p 784
+[x] Deinit           -- HUM Ch 18 p 784
+[x] Polling TX       -- n/a
+[x] Polling RX       -- n/a
 [ ] Interrupt TX     -- HUM Ch 18 p 784
 [ ] Interrupt RX     -- HUM Ch 18 p 784
 [ ] DMA TX           -- HUM Ch 18 p 784
 [ ] DMA RX           -- HUM Ch 18 p 784
-[ ] Error status     -- HUM Ch 18 p 784
+[x] Error status     -- HUM Ch 18 p 784
 [ ] Runtime reconfig -- HUM Ch 18 p 784
-[ ] Power transition -- HUM Ch 18 p 784
+[x] Power transition -- HUM Ch 18 p 784
 [ ] Register coverage-- HUM Ch 18 p 784
 [ ] Unit tests       -- n/a
-[ ] World tag        -- n/a
-[ ] HUM cross-ref    -- all
-[ ] Doxygen          -- n/a
+[x] World tag        -- n/a
+[x] HUM cross-ref    -- all
+[x] Doxygen          -- n/a
 ```
 
-### ra_cgc -- Clock Generation Circuit (runtime reconfigure + interrupt)
+### ra_cgc -- Clock Generation Circuit (runtime reconfigure + stop detection)
 
-`[ ]` Status: TODO. `[Ring 3 / HAL] {World: S}`
+`[x]` Status: DONE. `[Ring 3 / HAL] {World: S}`
 
 ```
-[ ] Init             -- HUM Ch 9 "Clock Generation Circuit" p 317
-[ ] Deinit           -- HUM Ch 9 p 317
-[ ] Polling TX       -- n/a
-[ ] Polling RX       -- n/a
-[ ] Interrupt TX     -- HUM Ch 9 p 317
-[ ] Interrupt RX     -- HUM Ch 9 p 317
-[ ] DMA TX           -- n/a
-[ ] DMA RX           -- n/a
-[ ] Error status     -- HUM Ch 9 p 317
-[ ] Runtime reconfig -- HUM Ch 9 p 317
-[ ] Power transition -- HUM Ch 9 p 317
-[ ] Register coverage-- HUM Ch 9 p 317
-[ ] Unit tests       -- n/a
-[ ] World tag        -- n/a
-[ ] HUM cross-ref    -- all
-[ ] Doxygen          -- n/a
+[x] Init             -- HUM Ch 9 "Clock Generation Circuit" p 317
+[x] Deinit           -- HUM Ch 9 p 317
+[x] Polling TX       -- n/a
+[x] Polling RX       -- n/a
+[x] Interrupt TX     -- HUM Ch 9 p 317
+[x] Interrupt RX     -- HUM Ch 9 p 317
+[x] DMA TX           -- n/a
+[x] DMA RX           -- n/a
+[x] Error status     -- HUM Ch 9 p 317
+[x] Runtime reconfig -- HUM Ch 9 p 317
+[x] Power transition -- HUM Ch 9 p 317
+[x] Register coverage-- HUM Ch 9 p 317
+[x] Unit tests       -- n/a
+[x] World tag        -- n/a
+[x] HUM cross-ref    -- all
+[x] Doxygen          -- n/a
 ```
 
 ---
