@@ -29,23 +29,26 @@ typedef enum : uint16_t {
   k_ra_spi_channel_stride = 0x100U,
 } ra_spi_limits_t;
 
+/* Register layout verified against FSP R_SPI0_Type in
+ * R7KA8D2KF_core0.h lines 13700-13900. */
 typedef struct {
-  volatile uint8_t  SPCR;  /**< +0x00 Control.              */
-  volatile uint8_t  SSLP;  /**< +0x01 Slave Select Polarity. */
-  volatile uint8_t  SPPCR; /**< +0x02 Pin Control.          */
-  volatile uint8_t  SPSR;  /**< +0x03 Status.               */
-  volatile uint32_t SPDR;  /**< +0x04 Data.                 */
-  volatile uint8_t  SPSCR; /**< +0x08 Sequence Control.     */
-  volatile uint8_t  SPSSR; /**< +0x09 Sequence Status.      */
-  volatile uint8_t  SPBR;  /**< +0x0A Bit Rate.             */
-  volatile uint8_t  _r0;
-  volatile uint8_t  SPDCR; /**< +0x0C Data Control.         */
-  volatile uint8_t  SPCKD; /**< +0x0D Clock Delay.          */
-  volatile uint8_t  SSLND; /**< +0x0E SSL Negation Delay.   */
-  volatile uint8_t  SPND;  /**< +0x0F Next-Access Delay.    */
-  volatile uint8_t  SPCR2; /**< +0x10 Control 2.            */
-  volatile uint8_t  _r1[3];
-  volatile uint16_t SPCMD[8]; /**< +0x14..+0x22 Command 0..7.  */
+  volatile uint8_t  SPCR;     /**< +0x00 Control.              */
+  volatile uint8_t  SSLP;     /**< +0x01 Slave Select Polarity. */
+  volatile uint8_t  SPPCR;    /**< +0x02 Pin Control.          */
+  volatile uint8_t  SPSR;     /**< +0x03 Status.               */
+  volatile uint32_t SPDR;     /**< +0x04 Data.                 */
+  volatile uint8_t  SPSCR;    /**< +0x08 Sequence Control.     */
+  volatile uint8_t  SPSSR;    /**< +0x09 Sequence Status.      */
+  volatile uint8_t  SPBR;     /**< +0x0A Bit Rate.             */
+  volatile uint8_t  SPDCR;    /**< +0x0B Data Control.         */
+  volatile uint8_t  SPCKD;    /**< +0x0C Clock Delay.          */
+  volatile uint8_t  SSLND;    /**< +0x0D SSL Negation Delay.   */
+  volatile uint8_t  SPND;     /**< +0x0E Next-Access Delay.    */
+  volatile uint8_t  SPCR2;    /**< +0x0F Control 2.            */
+  volatile uint16_t SPCMD[8]; /**< +0x10..+0x1E Command 0..7.  */
+  volatile uint8_t  SPDCR2;   /**< +0x20 Data Control 2.        */
+  volatile uint8_t  _r0[3];
+  volatile uint32_t SPDCMD; /**< +0x24 Data Command.          */
 } r_spi_regs_t;
 
 /** @brief Get pointer to standard SPI channel N (0..1). */
