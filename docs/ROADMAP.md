@@ -1250,8 +1250,16 @@ comments so the partition session is mechanical.
       veneer entry points covering init + the most-used
       primitive per driver. The Wave 9.3 + 9.4 NSC surface
       now covers every comms + I/O Ring-3 driver in the tree.
-- [ ] Session 9.5 -- Stack relocation + integration (`lwip` +
-      CherryUSB + `src/main.c` move to NS).
+- [~] Session 9.5 -- Stack relocation + integration. Wave 9.5
+      ships the linker partitioning scaffold:
+      `src/linker_script.ld` gains `NS_MRAM` (512 KB at 0x02080000)
+      and `NS_SRAM` (1 MB at 0x22100000) memory regions matching
+      the SAU partition programmed in Wave 9.1. The single-image
+      build leaves them empty (0 KB used) because lwIP and
+      CherryUSB are not yet vendored. The actual NS-side
+      relocation of `src/main.c` + the lwIP / CherryUSB stacks
+      lands when those middlewares are vendored in Wave 7.1c /
+      7.2c.
 
 ---
 
