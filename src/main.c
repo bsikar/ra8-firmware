@@ -61,8 +61,17 @@ static void internal_spin_delay(uint32_t iterations)
  * @brief Main entry.
  *
  * @return Never returns.
+ *
+ * @note ``int32_t`` is the project's fixed-width canonical name for
+ *       ``int`` (see the no-bare-integer-type rule). GCC's
+ *       ``-Wmain-return-type`` warning is pattern-based and rejects
+ *       anything except the literal ``int``; the surrounding pragma
+ *       silences it for this single definition while keeping the
+ *       fixed-width spelling consistent with the rest of the tree.
  */
-int main(void)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmain"
+int32_t main(void)
 {
   ra_infrastructure_init();
 
@@ -86,3 +95,4 @@ int main(void)
   /* Unreachable. */
   return 0;
 }
+#pragma GCC diagnostic pop

@@ -20,6 +20,7 @@
 
 #pragma once
 
+#include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -44,10 +45,10 @@
 /** @brief Assert integer equality. */
 #define TEST_ASSERT_EQ(expected, actual)                                                           \
   do {                                                                                             \
-    const long long _e = (long long)(expected);                                                    \
-    const long long _a = (long long)(actual);                                                      \
+    const int64_t _e = (int64_t)(expected);                                                        \
+    const int64_t _a = (int64_t)(actual);                                                          \
     if (_e != _a) {                                                                                \
-      TEST_FAIL_FMT("expected %lld, got %lld", _e, _a);                                            \
+      TEST_FAIL_FMT("expected %" PRId64 ", got %" PRId64, _e, _a);                                 \
     }                                                                                              \
   } while (0)
 

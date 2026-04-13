@@ -37,12 +37,12 @@ static void test_init_clears_wupen_and_resets_mstp(void)
   *wupen0_ptr() = 0xDEADBEEFU;
   *wupen1_ptr() = 0xCAFEBABEU;
 
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_pwr_init());
-  TEST_ASSERT_EQ((long long)0, (long long)*wupen0_ptr());
-  TEST_ASSERT_EQ((long long)0, (long long)*wupen1_ptr());
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pwr_init());
+  TEST_ASSERT_EQ((int64_t)0, (int64_t)*wupen0_ptr());
+  TEST_ASSERT_EQ((int64_t)0, (int64_t)*wupen1_ptr());
 
   /* MSTP all stopped. */
-  TEST_ASSERT_EQ((long long)0xFFFFFFFFU, (long long)ra_mstp()->MSTPCRA);
+  TEST_ASSERT_EQ((int64_t)0xFFFFFFFFU, (int64_t)ra_mstp()->MSTPCRA);
   TEST_END("ra_pwr_init: WUPEN0/1 cleared, MSTP table reset");
 }
 
@@ -50,17 +50,17 @@ static void test_module_request_release_round_trip(void)
 {
   TEST_BEGIN("ra_pwr_module_request / release: round trip");
   ra_sim_mmap_reset();
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_pwr_init());
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pwr_init());
 
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_pwr_module_request(k_ra_mstp_sci0));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pwr_module_request(k_ra_mstp_sci0));
 
   uint8_t ref = 0U;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_mstp_get_refcount(k_ra_mstp_sci0, &ref));
-  TEST_ASSERT_EQ((long long)1, (long long)ref);
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mstp_get_refcount(k_ra_mstp_sci0, &ref));
+  TEST_ASSERT_EQ((int64_t)1, (int64_t)ref);
 
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_pwr_module_release(k_ra_mstp_sci0));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_mstp_get_refcount(k_ra_mstp_sci0, &ref));
-  TEST_ASSERT_EQ((long long)0, (long long)ref);
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pwr_module_release(k_ra_mstp_sci0));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mstp_get_refcount(k_ra_mstp_sci0, &ref));
+  TEST_ASSERT_EQ((int64_t)0, (int64_t)ref);
 
   TEST_END("ra_pwr_module_request / release: round trip");
 }
@@ -69,20 +69,22 @@ static void test_set_clear_wake_source(void)
 {
   TEST_BEGIN("ra_pwr_set_wake_source / clear_wake_source");
   ra_sim_mmap_reset();
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_pwr_init());
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pwr_init());
 
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_pwr_set_wake_source(k_ra_pwr_wake_irq3));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pwr_set_wake_source(k_ra_pwr_wake_irq3));
   /* IRQ3 is bit 3 in WUPEN0. */
   TEST_ASSERT(((*wupen0_ptr()) & (1U << 3)) != 0U);
 
   bool enabled = false;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_pwr_wake_source_is_enabled(k_ra_pwr_wake_irq3, &enabled));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_pwr_wake_source_is_enabled(k_ra_pwr_wake_irq3, &enabled));
   TEST_ASSERT(enabled);
 
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_pwr_clear_wake_source(k_ra_pwr_wake_irq3));
-  TEST_ASSERT_EQ((long long)0, (long long)((*wupen0_ptr()) & (1U << 3)));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pwr_clear_wake_source(k_ra_pwr_wake_irq3));
+  TEST_ASSERT_EQ((int64_t)0, (int64_t)((*wupen0_ptr()) & (1U << 3)));
 
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_pwr_wake_source_is_enabled(k_ra_pwr_wake_irq3, &enabled));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_pwr_wake_source_is_enabled(k_ra_pwr_wake_irq3, &enabled));
   TEST_ASSERT(!enabled);
 
   TEST_END("ra_pwr_set_wake_source / clear_wake_source");
@@ -92,11 +94,11 @@ static void test_wake_source_wupen1(void)
 {
   TEST_BEGIN("ra_pwr_set_wake_source: WUPEN1 source (AGT0)");
   ra_sim_mmap_reset();
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_pwr_init());
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pwr_init());
 
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_pwr_set_wake_source(k_ra_pwr_wake_agt0));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pwr_set_wake_source(k_ra_pwr_wake_agt0));
   /* AGT0 is bit 0 in WUPEN1. */
-  TEST_ASSERT_EQ((long long)0x1U, (long long)*wupen1_ptr());
+  TEST_ASSERT_EQ((int64_t)0x1U, (int64_t)*wupen1_ptr());
 
   TEST_END("ra_pwr_set_wake_source: WUPEN1 source (AGT0)");
 }
@@ -105,17 +107,18 @@ static void test_wake_source_invalid_id(void)
 {
   TEST_BEGIN("ra_pwr_set_wake_source: invalid id rejected");
   ra_sim_mmap_reset();
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_pwr_init());
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pwr_init());
 
   /* reg=2 -> out of range (only WUPEN0/1 exist). */
   const ra_pwr_wake_t bogus = (ra_pwr_wake_t)((2U << 8) | 0U);
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_pwr_set_wake_source(bogus));
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_pwr_clear_wake_source(bogus));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_pwr_set_wake_source(bogus));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_pwr_clear_wake_source(bogus));
 
   bool enabled = false;
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_pwr_wake_source_is_enabled(bogus, &enabled));
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr,
-                 (int)ra_pwr_wake_source_is_enabled(k_ra_pwr_wake_irq0, nullptr));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_pwr_wake_source_is_enabled(bogus, &enabled));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_pwr_wake_source_is_enabled(k_ra_pwr_wake_irq0, nullptr));
 
   TEST_END("ra_pwr_set_wake_source: invalid id rejected");
 }
@@ -124,7 +127,7 @@ static void test_enter_sleep_is_no_op_on_host(void)
 {
   TEST_BEGIN("ra_pwr_enter_sleep: returns immediately on host");
   ra_sim_mmap_reset();
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_pwr_init());
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pwr_init());
 
   /* On RA_SIMULATOR_MODE this is a no-op so the test simply
    * proves the function compiles and links cleanly. */
@@ -137,12 +140,12 @@ static void test_software_standby_requires_wake_source(void)
 {
   TEST_BEGIN("ra_pwr_enter_software_standby: refuses without wake source");
   ra_sim_mmap_reset();
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_pwr_init());
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pwr_init());
 
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_state, (int)ra_pwr_enter_software_standby());
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_pwr_enter_software_standby());
 
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_pwr_set_wake_source(k_ra_pwr_wake_rtc_alarm));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_pwr_enter_software_standby());
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pwr_set_wake_source(k_ra_pwr_wake_rtc_alarm));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pwr_enter_software_standby());
 
   TEST_END("ra_pwr_enter_software_standby: refuses without wake source");
 }
@@ -151,18 +154,19 @@ static void test_get_clock_hz_forwards_to_cgc(void)
 {
   TEST_BEGIN("ra_pwr_get_clock_hz: forwards to ra_cgc_get_clock_hz");
   ra_sim_mmap_reset();
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_pwr_init());
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pwr_init());
 
   uint32_t hz = 0U;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_pwr_get_clock_hz(k_ra_clock_id_cpuclk0, &hz));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pwr_get_clock_hz(k_ra_clock_id_cpuclk0, &hz));
   TEST_ASSERT(hz != 0U);
 
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_pwr_get_clock_hz(k_ra_clock_id_cpuclk0, nullptr));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_pwr_get_clock_hz(k_ra_clock_id_cpuclk0, nullptr));
 
   TEST_END("ra_pwr_get_clock_hz: forwards to ra_cgc_get_clock_hz");
 }
 
-int main(void)
+int32_t main(void)
 {
   test_init_clears_wupen_and_resets_mstp();
   test_module_request_release_round_trip();

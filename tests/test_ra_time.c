@@ -49,7 +49,7 @@ static void test_now_and_sleep_aliases(void)
   TEST_END("short aliases forward to systick");
 }
 
-int main(void)
+int32_t main(void)
 {
   test_init_rejects_zero_hz();
   test_init_accepts_reasonable_hz();

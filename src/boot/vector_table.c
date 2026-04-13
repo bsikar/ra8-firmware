@@ -48,7 +48,7 @@ extern uint32_t g_ra_ls_ebss;      /**< End of .bss in SRAM.               */
  * =============================================================================
  */
 
-extern int main(void);
+extern int32_t main(void);
 
 /* =============================================================================
  * Handler declarations
