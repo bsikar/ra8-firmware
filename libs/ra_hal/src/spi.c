@@ -131,3 +131,245 @@ ra_err_t ra_spi_xfer8(uint8_t channel, uint8_t tx, uint8_t* rx)
   }
   return k_ra_ok;
 }
+
+/* =============================================================================
+ * Wave 3.3: full-featured API
+ * =============================================================================
+ */
+
+/**
+ * @struct ra_spi_state_t
+ * @brief Per-channel dispatch state.
+ */
+typedef struct {
+  ra_spi_complete_fn_t cb;          /**< Transfer-complete callback. */
+  void*                ctx;         /**< Callback context.           */
+  bool                 initialised; /**< Tracked by ra_spi_init.     */
+} ra_spi_state_t;
+
+/**
+ * @var s_spi_state
+ * @brief Per-channel state table indexed by channel.
+ */
+static ra_spi_state_t s_spi_state[k_ra_spi_channel_count];
+
+/**
+ * @enum ra_spi_brdv_t
+ * @brief SPBR base-clock divider bits used by the SPBR calculation.
+ */
+typedef enum : uint8_t {
+  k_ra_spi_spbr_max = 0xFFU, /**< SPBR is 8-bit unsigned. */
+} ra_spi_brdv_t;
+
+/**
+ * @enum ra_spi_spcmd_bit_t
+ * @brief Bit positions in SPCMDn.
+ */
+typedef enum : uint16_t {
+  k_ra_spi_spcmd_bit_cpha = 0U,  /**< CPHA: phase selection. */
+  k_ra_spi_spcmd_bit_cpol = 1U,  /**< CPOL: polarity.         */
+  k_ra_spi_spcmd_bit_lsbf = 12U, /**< LSB-first.              */
+} ra_spi_spcmd_bit_t;
+
+/**
+ * @brief Compute SPBR for a requested bit-rate.
+ */
+static uint8_t internal_spbr(uint32_t baud_hz, uint32_t pclka_hz)
+{
+  if ((baud_hz == 0U) || (pclka_hz == 0U)) {
+    return 0U;
+  }
+  const uint32_t divisor = 2U * baud_hz;
+  const uint32_t n       = pclka_hz / divisor;
+  if (n == 0U) {
+    return 0U;
+  }
+  const uint32_t result = n - 1U;
+  if (result > (uint32_t)k_ra_spi_spbr_max) {
+    return (uint8_t)k_ra_spi_spbr_max;
+  }
+  return (uint8_t)result;
+}
+
+/**
+ * @brief Build an SPCMD[0] value from a ``ra_spi_cfg_t``.
+ */
+static uint16_t internal_spcmd(const ra_spi_cfg_t* cfg)
+{
+  uint16_t v = (uint16_t)k_ra_spi_spcmd_default;
+  if ((cfg->mode == k_ra_spi_mode_1) || (cfg->mode == k_ra_spi_mode_3)) {
+    v |= (uint16_t)(1U << (uint8_t)k_ra_spi_spcmd_bit_cpha);
+  }
+  if ((cfg->mode == k_ra_spi_mode_2) || (cfg->mode == k_ra_spi_mode_3)) {
+    v |= (uint16_t)(1U << (uint8_t)k_ra_spi_spcmd_bit_cpol);
+  }
+  if (cfg->lsb_first) {
+    v |= (uint16_t)(1U << (uint8_t)k_ra_spi_spcmd_bit_lsbf);
+  }
+  return v;
+}
+
+ra_err_t ra_spi_init(uint8_t channel, const ra_spi_cfg_t* cfg)
+{
+  RA_CHECK_NULL_PTR(cfg, s_tag, "spi_init: cfg");
+  volatile r_spi_regs_t* reg = ra_spi(channel);
+  if (reg == nullptr) {
+    return k_ra_err_invalid_arg;
+  }
+  if (channel >= (uint8_t)k_ra_spi_channel_count) {
+    return k_ra_err_invalid_arg;
+  }
+
+  /* HUM Ch 11.2.7 "MSTPCRB : Module Stop Control Register B", p 444 */
+  const ra_err_t mst_err = ra_mstp_enable(s_spi_mstp_table[channel]);
+  RA_RETURN_ON_ERROR(mst_err, s_tag, "spi_init: mstp"); /* GCOVR_EXCL_BR_LINE */
+
+  /* Disable SPE before reprogramming.
+   * HUM Ch 43.2 "SPCR : SPI Control Register", p 2877 */
+  reg->SPCR     = 0U;
+  reg->SPPCR    = 0U;
+  reg->SPBR     = internal_spbr(cfg->baud_hz, cfg->pclka_hz);
+  reg->SPDCR    = 0U;
+  reg->SPCKD    = 0U;
+  reg->SSLND    = 0U;
+  reg->SPND     = 0U;
+  reg->SPCR2    = 0U;
+  reg->SPCMD[0] = internal_spcmd(cfg);
+  /* Enable SPE + MSTR. */
+  reg->SPCR = (uint8_t)k_ra_spi_spcr_enable;
+
+  s_spi_state[channel].cb          = nullptr;
+  s_spi_state[channel].ctx         = nullptr;
+  s_spi_state[channel].initialised = true;
+  ra_log_info_val(s_tag, "spi_init channel", (uint32_t)channel);
+  return k_ra_ok;
+}
+
+ra_err_t ra_spi_deinit(uint8_t channel)
+{
+  volatile r_spi_regs_t* reg = ra_spi(channel);
+  if (reg == nullptr) {
+    return k_ra_err_invalid_arg;
+  }
+  /* Clear SPE.
+   * HUM Ch 43.2 "SPCR : SPI Control Register", p 2877 */
+  reg->SPCR                        = 0U;
+  s_spi_state[channel].cb          = nullptr;
+  s_spi_state[channel].ctx         = nullptr;
+  s_spi_state[channel].initialised = false;
+  return ra_mstp_disable(s_spi_mstp_table[channel]);
+}
+
+ra_err_t ra_spi_set_clock(uint8_t channel, uint32_t baud_hz, uint32_t pclka_hz)
+{
+  volatile r_spi_regs_t* reg = ra_spi(channel);
+  if (reg == nullptr) {
+    return k_ra_err_invalid_arg;
+  }
+  if (baud_hz == 0U) {
+    return k_ra_err_invalid_arg;
+  }
+  /* HUM Ch 43.2 "SPBR : SPI Bit Rate Register", p 2877 */
+  reg->SPBR = internal_spbr(baud_hz, pclka_hz);
+  return k_ra_ok;
+}
+
+ra_err_t ra_spi_get_errors(uint8_t channel, uint8_t* out_mask)
+{
+  RA_CHECK_NULL_PTR(out_mask, s_tag, "spi get_errors");
+  volatile const r_spi_regs_t* reg = ra_spi(channel);
+  if (reg == nullptr) {
+    return k_ra_err_invalid_arg;
+  }
+  const uint8_t ss = reg->SPSR;
+  uint8_t       m  = (uint8_t)k_ra_spi_err_none;
+  if ((ss & (uint8_t)(1U << (uint8_t)k_ra_spsr_bit_ovrf)) != 0U) {
+    m |= (uint8_t)k_ra_spi_err_overrun;
+  }
+  if ((ss & (uint8_t)(1U << (uint8_t)k_ra_spsr_bit_moderf)) != 0U) {
+    m |= (uint8_t)k_ra_spi_err_mode;
+  }
+  if ((ss & (uint8_t)(1U << (uint8_t)k_ra_spsr_bit_perf)) != 0U) {
+    m |= (uint8_t)k_ra_spi_err_parity;
+  }
+  if ((ss & (uint8_t)(1U << (uint8_t)k_ra_spsr_bit_udrf)) != 0U) {
+    m |= (uint8_t)k_ra_spi_err_underrun;
+  }
+  *out_mask = m;
+  return k_ra_ok;
+}
+
+ra_err_t ra_spi_clear_errors(uint8_t channel)
+{
+  volatile r_spi_regs_t* reg = ra_spi(channel);
+  if (reg == nullptr) {
+    return k_ra_err_invalid_arg;
+  }
+  /* Clear SPSR error flags via write-zero.
+   * HUM Ch 43.2 "SPSR : SPI Status Register", p 2877 */
+  const uint8_t clr_mask =
+    (uint8_t)~((1U << (uint8_t)k_ra_spsr_bit_ovrf) | (1U << (uint8_t)k_ra_spsr_bit_moderf) |
+               (1U << (uint8_t)k_ra_spsr_bit_perf) | (1U << (uint8_t)k_ra_spsr_bit_udrf));
+  reg->SPSR = (uint8_t)(reg->SPSR & clr_mask);
+  return k_ra_ok;
+}
+
+ra_err_t ra_spi_attach_transfer_handler(uint8_t channel, ra_spi_complete_fn_t fn, void* ctx)
+{
+  if (channel >= (uint8_t)k_ra_spi_channel_count) {
+    return k_ra_err_invalid_arg;
+  }
+  s_spi_state[channel].cb  = fn;
+  s_spi_state[channel].ctx = ctx;
+  return k_ra_ok;
+}
+
+ra_err_t ra_spi_enter_stop(uint8_t channel)
+{
+  volatile r_spi_regs_t* reg = ra_spi(channel);
+  if (reg == nullptr) {
+    return k_ra_err_invalid_arg;
+  }
+  /* Clear SPE.
+   * HUM Ch 43.2 "SPCR : SPI Control Register", p 2877 */
+  reg->SPCR = 0U;
+  return ra_mstp_disable(s_spi_mstp_table[channel]);
+}
+
+ra_err_t ra_spi_exit_stop(uint8_t channel)
+{
+  if (channel >= (uint8_t)k_ra_spi_channel_count) {
+    return k_ra_err_invalid_arg;
+  }
+  return ra_mstp_enable(s_spi_mstp_table[channel]);
+}
+
+void ra_spi_dispatch_spti(uint8_t channel)
+{
+  if (channel >= (uint8_t)k_ra_spi_channel_count) {
+    return;
+  }
+  (void)s_spi_state[channel].cb;
+}
+
+void ra_spi_dispatch_spri(uint8_t channel)
+{
+  if (channel >= (uint8_t)k_ra_spi_channel_count) {
+    return;
+  }
+  (void)s_spi_state[channel].cb;
+}
+
+void ra_spi_dispatch_spei(uint8_t channel)
+{
+  if (channel >= (uint8_t)k_ra_spi_channel_count) {
+    return;
+  }
+  uint8_t mask = 0U;
+  (void)ra_spi_get_errors(channel, &mask);
+  (void)ra_spi_clear_errors(channel);
+  const ra_spi_complete_fn_t cb = s_spi_state[channel].cb;
+  if ((mask != 0U) && (cb != nullptr)) {
+    cb(s_spi_state[channel].ctx, mask);
+  }
+}
