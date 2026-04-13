@@ -49,6 +49,20 @@ MEMORY
     DTCM       (rwx) : ORIGIN = 0x20000000, LENGTH = 64K
     SRAM       (rwx) : ORIGIN = 0x22000000, LENGTH = 2048K
     SDRAM      (rwx) : ORIGIN = 0x68000000, LENGTH = 64M
+
+    /* Wave 9.5 Non-Secure partition placeholders. Lower halves of
+     * MRAM and SRAM stay Secure (they hold the HAL + secure data);
+     * the upper halves are exposed to the Wave 9 NS application
+     * (lwIP / CherryUSB / src/main.c after the relocation lands).
+     *
+     * These regions overlap with MRAM / SRAM in the single-image
+     * build because the linker treats them as views of the same
+     * physical bytes; the SAU programmes the bit-28 split at boot
+     * (see src/boot/trustzone_init.c) so the CPU sees them as
+     * Non-Secure aliases. With RA_TRUSTZONE_ENABLE off the linker
+     * is allowed to place sections in either region freely. */
+    NS_MRAM    (rx)  : ORIGIN = 0x02080000, LENGTH = 512K
+    NS_SRAM    (rwx) : ORIGIN = 0x22100000, LENGTH = 1024K
 }
 
 /*
