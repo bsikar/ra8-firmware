@@ -5,19 +5,22 @@
  * @details
  * The Ultra-Low-Power Timer is a 32-bit down-counter that can run on
  * the sub-clock or LOCO in deep-sleep modes. RA8D2 exposes two
- * channels (ULPT0 and ULPT1) at base `0x40041000` with a `0x100`
- * stride per instance.
+ * channels (ULPT0 and ULPT1) at 0x40220000 / 0x40220100 (stride
+ * 0x100) per FSP R_ULPT0_BASE / R_ULPT1_BASE.
  *
- * Per-channel registers (partial):
+ * Per-channel register map (verified against FSP R_ULPT0_Type in
+ * R7KA8D2KF_core0.h lines 30865-31006):
  *
- * | Offset | Name    | Width | Purpose                            |
- * |-------:|---------|------:|------------------------------------|
- * |  0x00  | ULPTMR1 |     8 | Mode 1                             |
- * |  0x01  | ULPTMR2 |     8 | Mode 2                             |
- * |  0x02  | ULPTMR3 |     8 | Mode 3                             |
- * |  0x04  | ULPTIOC |     8 | I/O control                        |
- * |  0x08  | ULPT    |    32 | Counter / reload                   |
- * |  0x0C  | ULPTCR  |     8 | Control (start / stop / flags)     |
+ *   | Offset | Name    | Width | Purpose                         |
+ *   |-------:|---------|------:|---------------------------------|
+ *   |  0x00  | ULPTCNT |  32   | 32-bit counter / reload         |
+ *   |  0x04  | ULPTCMA |  32   | Compare match A                 |
+ *   |  0x08  | ULPTCMB |  32   | Compare match B                 |
+ *   |  0x0C  | ULPTCR  |   8   | Control (start / stop / flags)  |
+ *   |  0x0D  | ULPTMR1 |   8   | Mode register 1                 |
+ *   |  0x0E  | ULPTMR2 |   8   | Mode register 2                 |
+ *   |  0x0F  | ULPTMR3 |   8   | Mode register 3                 |
+ *   |  0x10  | ULPTIOC |   8   | I/O control                     |
  *
  * Register offsets tracked against HUM Ch 25 "Ultra-Low-Power
  * Timer (ULPT)" p 1187.
@@ -39,7 +42,8 @@ extern "C" {
  * @brief Memory-mapped base addresses for ULPT.
  */
 typedef enum : uintptr_t {
-  k_ra_ulpt0_base_addr = 0x40220000UL, /**< ULPT channel 0 base (FSP R_ULPT0_BASE). */
+  k_ra_ulpt0_base_addr = 0x40220000UL, /**< ULPT0 base (FSP R_ULPT0_BASE). */
+  k_ra_ulpt1_base_addr = 0x40220100UL, /**< ULPT1 base (FSP R_ULPT1_BASE). */
 } ra_ulpt_addr_t;
 
 /**
@@ -78,15 +82,14 @@ typedef enum : uint8_t {
  * @brief Per-channel ULPT register window.
  */
 typedef struct {
-  volatile uint8_t  ULPTMR1; /**< +0x00 Mode register 1.                 */
-  volatile uint8_t  ULPTMR2; /**< +0x01 Mode register 2.                 */
-  volatile uint8_t  ULPTMR3; /**< +0x02 Mode register 3.                 */
-  volatile uint8_t  _r0;     /**< Padding.                               */
-  volatile uint8_t  ULPTIOC; /**< +0x04 I/O control.                     */
-  volatile uint8_t  _r1[3];  /**< Padding.                               */
-  volatile uint32_t ULPT;    /**< +0x08 Counter / reload (32-bit).       */
+  volatile uint32_t ULPTCNT; /**< +0x00 Counter / reload (32-bit).      */
+  volatile uint32_t ULPTCMA; /**< +0x04 Compare match A (32-bit).       */
+  volatile uint32_t ULPTCMB; /**< +0x08 Compare match B (32-bit).       */
   volatile uint8_t  ULPTCR;  /**< +0x0C Control register.                */
-  volatile uint8_t  _r2[3];  /**< Padding.                               */
+  volatile uint8_t  ULPTMR1; /**< +0x0D Mode register 1.                 */
+  volatile uint8_t  ULPTMR2; /**< +0x0E Mode register 2.                 */
+  volatile uint8_t  ULPTMR3; /**< +0x0F Mode register 3.                 */
+  volatile uint8_t  ULPTIOC; /**< +0x10 I/O control.                     */
 } r_ulpt_regs_t;
 
 /**

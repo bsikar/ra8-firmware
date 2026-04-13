@@ -58,7 +58,7 @@ static void internal_enable_channel(uint8_t channel)
   if (reg == nullptr) {
     return;
   }
-  /* HUM Ch 54 "12-Bit D/A Converter (DAC12)" p 3490 -- DACR0.DACEN + DAE. */
+  /* HUM Ch 54 "12-Bit D/A Converter (DAC12)" p 3490 */
   reg->DACR0 = (uint32_t)k_ra_dacr0_mask_dacen | (uint32_t)k_ra_dacr0_mask_dae;
 }
 
