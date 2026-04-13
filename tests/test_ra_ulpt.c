@@ -47,7 +47,7 @@ static void test_start_channel_0(void)
                  (int)ra_ulpt_start((uint8_t)k_ra_ulpt_test_ch_0, (uint32_t)k_ra_ulpt_test_period));
 
   volatile r_ulpt_regs_t* reg = ra_ulpt((uint8_t)k_ra_ulpt_test_ch_0);
-  TEST_ASSERT_EQ((int)k_ra_ulpt_test_period, (int)reg->ULPT);
+  TEST_ASSERT_EQ((int)k_ra_ulpt_test_period, (int)reg->ULPTCNT);
   TEST_ASSERT_EQ((int)k_ra_ulpt_mask_tstart, (int)reg->ULPTCR);
   TEST_END("ulpt start channel 0");
 }
@@ -133,7 +133,7 @@ static void test_set_period_and_status(void)
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ulpt_init());
   TEST_ASSERT_EQ((int32_t)k_ra_ok,
                  (int32_t)ra_ulpt_set_period((uint8_t)k_ra_ulpt_test_ch_0, 0x1234U));
-  TEST_ASSERT_EQ((int32_t)0x1234U, (int32_t)ra_ulpt((uint8_t)k_ra_ulpt_test_ch_0)->ULPT);
+  TEST_ASSERT_EQ((int32_t)0x1234U, (int32_t)ra_ulpt((uint8_t)k_ra_ulpt_test_ch_0)->ULPTCNT);
 
   uint8_t mask = 0U;
   TEST_ASSERT_EQ((int32_t)k_ra_ok,
