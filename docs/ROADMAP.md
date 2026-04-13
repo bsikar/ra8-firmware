@@ -25,9 +25,9 @@ pre-commit -- do not hand-edit it.
 <!-- BEGIN SUMMARY -- DO NOT EDIT BY HAND -- managed by roadmap_stats.py -->
 - Total drivers tracked: 45
 - DONE:    17
-- WIP:     2
+- WIP:     3
 - BLOCKED: 0
-- TODO:    26
+- TODO:    25
 - Checklist coverage: 265/656 boxes ticked (40.4%)
 <!-- END SUMMARY -->
 
@@ -1121,13 +1121,38 @@ Outstanding for Wave 7.1 closure:
 
 ### ra_usb_pal -- CherryUSB usb_dc port glue
 
-`[ ]` Status: TODO. `[Ring 4 / PAL] {World: NS}`
+`[~]` Status: WIP. `[Ring 4 / PAL] {World: NS}` (Wave 7.2 scaffold landed)
 
-Two `usb_dc_ra8d2_*.c` files implementing CherryUSB's port API
-on top of `ra_usb_fs` and `ra_usb_hs`. Configuration is centralised
-in `libs/ra_usb_pal/inc/usb_config.h`. Gates: CDC-ACM enumerates,
-HID mouse moves cursor, MSC mounts, no controller stalls under
-sustained transfer.
+Wave 7.2 ships the project-facing API surface and a working
+ra_usb wrapper:
+
+- `libs/ra_usb_pal/inc/ra_usb_pal.h` -- public init/deinit,
+  attach/detach, get_state, ep_open, ep_send, ep_recv, async
+  event handler. FS / HS speed picked at init time.
+- `libs/ra_usb_pal/src/ra_usb_pal.c` -- wraps `ra_usb_*` for
+  lifecycle + state; relays `INTSTS0` masks into PAL-level
+  `k_ra_usb_pal_event_*` bits and forwards to the stack handler.
+- `tests/test_ra_usb_pal.c` -- 10 cases covering init (FS, HS,
+  bad speed), attach/detach state cycling, ep_open arg
+  validation, ep_send/recv stub return + arg validation, event
+  handler attach/detach, ra_usb_dispatch -> PAL relay, pre-init
+  guards.
+
+Endpoint I/O (`ra_usb_pal_ep_open` / `ep_send` / `ep_recv`)
+returns `k_ra_err_not_supported` until the Wave 7.2b ra_usb pipe
+primitives land. The contract is stable so the CherryUSB
+`usb_dc_ra8d2_*.c` glue (Wave 7.2c) can be written against the
+final shape.
+
+Outstanding for Wave 7.2 closure:
+
+- Wave 7.2b -- `ra_usb_pipe_open`, `ra_usb_pipe_send`,
+  `ra_usb_pipe_recv` driver primitives; flips
+  `ra_usb_pal_ep_*` to real implementations.
+- Wave 7.2c -- vendor CherryUSB, write `usb_dc_ra8d2_fs.c` and
+  `usb_dc_ra8d2_hs.c` wrapping the PAL.
+- Gates: CDC-ACM enumerates, HID mouse moves cursor, MSC mounts,
+  no controller stalls under sustained transfer (deferred to 7.2c).
 
 ### ra_nsc -- NSC veneer scaffold
 
