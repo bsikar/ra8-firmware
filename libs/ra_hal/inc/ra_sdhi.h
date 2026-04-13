@@ -50,6 +50,31 @@ typedef void (*ra_sdhi_event_fn_t)(void* ctx, uint8_t instance, uint64_t status_
 [[nodiscard]] ra_err_t ra_sdhi_init(uint8_t instance);
 
 /**
+ * @brief Issue a single SD command and read the 4-word response.
+ *
+ * @details
+ * Wave 5 polling primitive. Loads SD_ARG with ``arg``, writes
+ * ``cmd`` to SD_CMD, polls SD_INFO1.RSPEND for completion, and
+ * copies SD_RSP10/32/54/76 into ``out_rsp[0..3]``. The caller
+ * encodes the SD command index + response type in ``cmd``.
+ *
+ * @param[in]  instance SDHI instance.
+ * @param[in]  cmd      Pre-encoded SD_CMD register value.
+ * @param[in]  arg      32-bit command argument (zero-extended).
+ * @param[out] out_rsp  4-word response buffer; may be NULL if
+ *                      the command type returns no response.
+ * @since 0.3.0
+ */
+[[nodiscard]] ra_err_t
+ra_sdhi_send_command(uint8_t instance, uint32_t cmd, uint32_t arg, uint32_t* out_rsp);
+
+/**
+ * @brief Set the SD bus clock divider (SD_CLK_CTRL).
+ * @since 0.3.0
+ */
+[[nodiscard]] ra_err_t ra_sdhi_set_clock(uint8_t instance, uint32_t divider);
+
+/**
  * @brief Tear down an SDHI instance.
  * @since 0.2.0
  */

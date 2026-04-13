@@ -1,17 +1,21 @@
 /**
  * @file ra_canfd.c
- * @brief CANFD Lite driver -- bit timing, TX, RX, and error state
+ * @brief CAN with Flexible Data-rate driver implementation
+ *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
  *
  * @details
- * Drives `CFDCNCTR.CHMDC` through the documented state transitions
- * (reset -> halt -> operation) per RA8D2 HUM, programmes the nominal
- * (and optional data) bit-timing registers, queues CAN 2.0B / CAN-FD
- * frames into the TX message buffer, pulls received frames from the
- * RX FIFO, and surfaces the TEC/REC error counters.
+ * Wave 5 driver for the RA8D2 CANFD Lite block. Drives
+ * ``CFDCNCTR.CHMDC`` through the documented state transitions
+ * (reset -> halt -> operation), programmes the nominal (and
+ * optional data) bit-timing registers, queues CAN 2.0B / CAN-FD
+ * frames into the TX message buffer, pulls received frames from
+ * the RX FIFO, and surfaces the TEC/REC error counters.
  *
- * The driver only models the minimum register set needed by the
- * first real CAN consumer -- full DMA delivery and the acceptance
- * filter bank land when a concrete application calls for them.
+ * Acceptance filter bank + full DMA delivery land when a concrete
+ * CAN application calls for them. Every register access carries a
+ * HUM Ch 41 "CAN with Flexible Data-rate (CANFD)" citation.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
