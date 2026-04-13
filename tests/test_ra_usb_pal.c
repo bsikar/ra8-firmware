@@ -100,27 +100,45 @@ static void test_ep_open_validates_args(void)
     (int32_t)k_ra_err_invalid_arg,
     (int32_t)ra_usb_pal_ep_open(1U, k_ra_usb_pal_ep_dir_in, k_ra_usb_pal_ep_type_bulk, 0U));
 
-  /* Valid args -> stub returns not_supported. */
+  /* Valid args -> ep_open stores the slot. */
   TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_not_supported,
+    (int32_t)k_ra_ok,
     (int32_t)ra_usb_pal_ep_open(1U, k_ra_usb_pal_ep_dir_in, k_ra_usb_pal_ep_type_bulk, 64U));
   TEST_END("ra_usb_pal_ep_open: arg validation");
 }
 
-static void test_ep_send_recv_stub(void)
+static void test_ep_send_recv_loopback(void)
 {
-  TEST_BEGIN("ra_usb_pal_ep_{send,recv}: stub returns not_supported");
+  TEST_BEGIN("ra_usb_pal_ep_{send,recv}: in-memory loopback round-trip");
   prep();
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pal_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_ok,
+    (int32_t)ra_usb_pal_ep_open(1U, k_ra_usb_pal_ep_dir_in, k_ra_usb_pal_ep_type_bulk, 64U));
 
-  uint8_t  data[16] = {0xAAU};
-  uint8_t  rx[16]   = {0U};
-  uint16_t rx_len   = (uint16_t)sizeof(rx);
+  uint8_t data[16] = {0U};
+  for (uint16_t i = 0U; i < (uint16_t)sizeof(data); ++i) {
+    data[i] = (uint8_t)(0xAAU ^ i);
+  }
+  uint8_t  rx[64] = {0U};
+  uint16_t rx_len = (uint16_t)sizeof(rx);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_supported,
-                 (int32_t)ra_usb_pal_ep_send(1U, data, (uint16_t)sizeof(data)));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_supported, (int32_t)ra_usb_pal_ep_recv(1U, rx, &rx_len));
-  TEST_END("ra_usb_pal_ep_{send,recv}: stub returns not_supported");
+  /* Empty ring -> recv reports no_data. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_no_data, (int32_t)ra_usb_pal_ep_recv(1U, rx, &rx_len));
+
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pal_ep_send(1U, data, (uint16_t)sizeof(data)));
+
+  rx_len = (uint16_t)sizeof(rx);
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pal_ep_recv(1U, rx, &rx_len));
+  TEST_ASSERT_EQ((int32_t)sizeof(data), (int32_t)rx_len);
+  for (uint16_t i = 0U; i < (uint16_t)sizeof(data); ++i) {
+    TEST_ASSERT_EQ((int32_t)data[i], (int32_t)rx[i]);
+  }
+
+  /* Ring empty again. */
+  rx_len = (uint16_t)sizeof(rx);
+  TEST_ASSERT_EQ((int32_t)k_ra_err_no_data, (int32_t)ra_usb_pal_ep_recv(1U, rx, &rx_len));
+  TEST_END("ra_usb_pal_ep_{send,recv}: in-memory loopback round-trip");
 }
 
 static void test_ep_send_recv_arg_validation(void)
@@ -128,6 +146,9 @@ static void test_ep_send_recv_arg_validation(void)
   TEST_BEGIN("ra_usb_pal_ep_{send,recv}: arg validation");
   prep();
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pal_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_ok,
+    (int32_t)ra_usb_pal_ep_open(1U, k_ra_usb_pal_ep_dir_in, k_ra_usb_pal_ep_type_bulk, 64U));
 
   uint8_t  buf[16] = {0U};
   uint16_t len     = (uint16_t)sizeof(buf);
@@ -137,12 +158,16 @@ static void test_ep_send_recv_arg_validation(void)
   TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_usb_pal_ep_send(1U, nullptr, 16U));
   TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
                  (int32_t)ra_usb_pal_ep_send(1U, buf, (uint16_t)(k_ra_usb_pal_xfer_max + 1U)));
+  /* ep_send on an unopened EP returns invalid_state. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_usb_pal_ep_send(2U, buf, 16U));
 
   TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_usb_pal_ep_recv(1U, nullptr, &len));
   TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_usb_pal_ep_recv(1U, buf, nullptr));
   TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_usb_pal_ep_recv(0U, buf, &len));
   uint16_t zero = 0U;
   TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_usb_pal_ep_recv(1U, buf, &zero));
+  /* ep_recv on an unopened EP returns invalid_state. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_usb_pal_ep_recv(2U, buf, &len));
   TEST_END("ra_usb_pal_ep_{send,recv}: arg validation");
 }
 
@@ -227,7 +252,7 @@ int32_t main(void)
   test_init_bad_speed();
   test_attach_detach_cycles_state();
   test_ep_open_validates_args();
-  test_ep_send_recv_stub();
+  test_ep_send_recv_loopback();
   test_ep_send_recv_arg_validation();
   test_event_handler_attach_detach();
   test_dispatch_relays_intsts0();
