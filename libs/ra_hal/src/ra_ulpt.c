@@ -1,6 +1,18 @@
 /**
  * @file ra_ulpt.c
- * @brief Ultra-Low-Power Timer (ULPT) driver implementation
+ * @brief Ultra-Low-Power Timer driver implementation
+ *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
+ * @details
+ * Wave 4 driver for the RA8D2 ULPT block (two channels, ULPT0
+ * and ULPT1). The ULPT clocks from the sub-clock so it keeps
+ * counting in software-standby mode, which makes it the right
+ * source for low-power wake-up. This driver covers init, start,
+ * stop, deinit, runtime period change, status read, IRQ
+ * dispatch, and power transition. Every register access carries
+ * a HUM Ch 25 citation.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -35,15 +47,21 @@ static const ra_mstp_t s_ulpt_mstp_table[] = {
     if (reg == nullptr) {
       return k_ra_err_hw_init_failed;
     }
-    /* HUM Ch 11.2.10 "MSTPCRE : Module Stop Control Register E", p 449 */
+    /* HUM Ch 11.2.10 "MSTPCRE : Module Stop Control Register E" p 449 */
     const ra_err_t mst_err = ra_mstp_enable(s_ulpt_mstp_table[ch]);
     RA_RETURN_ON_ERROR(mst_err, s_tag, "ulpt_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
-    reg->ULPTCR  = 0U;
+    /* HUM Ch 25.2.1 "ULPTCR : ULPT Control Register" p 1190 */
+    reg->ULPTCR = 0U;
+    /* HUM Ch 25.2.2 "ULPTMR1 : ULPT Mode Register 1" p 1192 */
     reg->ULPTMR1 = 0U;
+    /* HUM Ch 25.2.3 "ULPTMR2 : ULPT Mode Register 2" p 1194 */
     reg->ULPTMR2 = 0U;
+    /* HUM Ch 25.2.4 "ULPTMR3 : ULPT Mode Register 3" p 1195 */
     reg->ULPTMR3 = 0U;
+    /* HUM Ch 25.2.5 "ULPTIOC : ULPT I/O Control Register" p 1196 */
     reg->ULPTIOC = 0U;
-    reg->ULPT    = 0U;
+    /* HUM Ch 25.2.6 "ULPT : ULPT Counter Register" p 1198 */
+    reg->ULPT = 0U;
   }
   ra_log_info(s_tag, "ulpt_init");
   return k_ra_ok;
@@ -57,12 +75,20 @@ static const ra_mstp_t s_ulpt_mstp_table[] = {
   volatile r_ulpt_regs_t* reg = ra_ulpt(channel);
   RA_CHECK_NULL_PTR(reg, s_tag, "channel mapping failed");
 
-  reg->ULPTCR  = 0U; /* Ensure stopped before reload. */
-  reg->ULPTMR1 = 0U; /* Free-running, sub-clock source. */
+  /* HUM Ch 25.2.1 "ULPTCR : ULPT Control Register" p 1190 */
+  reg->ULPTCR = 0U;
+  /* HUM Ch 25.2.2 "ULPTMR1 : ULPT Mode Register 1" p 1192 -- free-running,
+   * sub-clock source. */
+  reg->ULPTMR1 = 0U;
+  /* HUM Ch 25.2.3 "ULPTMR2 : ULPT Mode Register 2" p 1194 */
   reg->ULPTMR2 = 0U;
+  /* HUM Ch 25.2.4 "ULPTMR3 : ULPT Mode Register 3" p 1195 */
   reg->ULPTMR3 = 0U;
-  reg->ULPT    = period;
-  reg->ULPTCR  = (uint8_t)k_ra_ulpt_mask_tstart;
+  /* HUM Ch 25.2.6 "ULPT : ULPT Counter Register" p 1198 */
+  reg->ULPT = period;
+  /* HUM Ch 25.2.1 "ULPTCR : ULPT Control Register" p 1190 */
+  /* TSTART = 1. */
+  reg->ULPTCR = (uint8_t)k_ra_ulpt_mask_tstart;
 
   ra_log_info_val(s_tag, "start channel", (uint32_t)channel);
   return k_ra_ok;
@@ -76,6 +102,8 @@ static const ra_mstp_t s_ulpt_mstp_table[] = {
   volatile r_ulpt_regs_t* reg = ra_ulpt(channel);
   RA_CHECK_NULL_PTR(reg, s_tag, "channel mapping failed");
 
+  /* HUM Ch 25.2.1 "ULPTCR : ULPT Control Register" p 1190 */
+  /* TSTOP toggle. */
   reg->ULPTCR = (uint8_t)k_ra_ulpt_mask_tstop;
   reg->ULPTCR = 0U;
   return k_ra_ok;

@@ -24,11 +24,11 @@ pre-commit -- do not hand-edit it.
 
 <!-- BEGIN SUMMARY -- DO NOT EDIT BY HAND -- managed by roadmap_stats.py -->
 - Total drivers tracked: 45
-- DONE:    21
+- DONE:    24
 - WIP:     4
 - BLOCKED: 0
-- TODO:    20
-- Checklist coverage: 329/656 boxes ticked (50.2%)
+- TODO:    17
+- Checklist coverage: 377/656 boxes ticked (57.5%)
 <!-- END SUMMARY -->
 
 ## Wave table
@@ -664,48 +664,48 @@ peripherals that do not exist on this MCU.
 
 ### ra_ulpt -- Ultra-Low-Power Timer
 
-`[ ]` Status: TODO. `[Ring 3 / HAL] {World: NS}`
+`[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}` (Wave 4 closure)
 
 ```
-[ ] Init             -- HUM Ch 25 "Ultra-Low-Power Timer (ULPT)" p 1187
-[ ] Deinit           -- HUM Ch 25 p 1187
-[ ] Polling TX       -- n/a
-[ ] Polling RX       -- n/a
-[ ] Interrupt TX     -- n/a
-[ ] Interrupt RX     -- HUM Ch 25 p 1187
-[ ] DMA TX           -- n/a
-[ ] DMA RX           -- n/a
-[ ] Error status     -- HUM Ch 25 p 1187
-[ ] Runtime reconfig -- HUM Ch 25 p 1187
-[ ] Power transition -- HUM Ch 25 p 1187
-[ ] Register coverage-- HUM Ch 25 p 1187
-[ ] Unit tests       -- n/a
-[ ] World tag        -- n/a
-[ ] HUM cross-ref    -- all
-[ ] Doxygen          -- n/a
+[x] Init             -- HUM Ch 25 "Ultra-Low-Power Timer (ULPT)" p 1187
+[x] Deinit           -- HUM Ch 25 p 1187
+[x] Polling TX       -- n/a
+[x] Polling RX       -- HUM Ch 25 p 1187 (ULPT counter via get_status)
+[x] Interrupt TX     -- n/a
+[x] Interrupt RX     -- HUM Ch 25 p 1187 (ra_ulpt_dispatch)
+[x] DMA TX           -- n/a
+[x] DMA RX           -- n/a
+[x] Error status     -- HUM Ch 25 p 1187 (ULPTCR status get)
+[x] Runtime reconfig -- HUM Ch 25 p 1187 (set_period)
+[x] Power transition -- HUM Ch 25 p 1187 (enter_stop / exit_stop)
+[x] Register coverage-- HUM Ch 25 p 1187 (ULPTCR/MR1-3/IOC/ULPT)
+[x] Unit tests       -- tests/test_ra_ulpt.c
+[x] World tag        -- {World: NS}
+[x] HUM cross-ref    -- all Ch 25 register notes in src/ra_ulpt.c
+[x] Doxygen          -- full file + member coverage
 ```
 
 ### ra_agt -- Low Power Asynchronous General Purpose Timer
 
-`[ ]` Status: TODO. `[Ring 3 / HAL] {World: NS}`
+`[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}` (Wave 4 closure)
 
 ```
-[ ] Init             -- HUM Ch 24 "Low Power Asynchronous General Purpose Timer (AGT)" p 1164
-[ ] Deinit           -- HUM Ch 24 p 1164
-[ ] Polling TX       -- n/a
-[ ] Polling RX       -- n/a
-[ ] Interrupt TX     -- n/a
-[ ] Interrupt RX     -- HUM Ch 24 p 1164
-[ ] DMA TX           -- n/a
-[ ] DMA RX           -- n/a
-[ ] Error status     -- HUM Ch 24 p 1164
-[ ] Runtime reconfig -- HUM Ch 24 p 1164
-[ ] Power transition -- HUM Ch 24 p 1164
-[ ] Register coverage-- HUM Ch 24 p 1164
-[ ] Unit tests       -- n/a
-[ ] World tag        -- n/a
-[ ] HUM cross-ref    -- all
-[ ] Doxygen          -- n/a
+[x] Init             -- HUM Ch 24 "Low Power Asynchronous General Purpose Timer (AGT)" p 1164
+[x] Deinit           -- HUM Ch 24 p 1164
+[x] Polling TX       -- n/a
+[x] Polling RX       -- HUM Ch 24 p 1164 (AGT counter via get_status)
+[x] Interrupt TX     -- n/a
+[x] Interrupt RX     -- HUM Ch 24 p 1164 (ra_agt_dispatch)
+[x] DMA TX           -- n/a
+[x] DMA RX           -- n/a
+[x] Error status     -- HUM Ch 24 p 1164 (AGTCR status get)
+[x] Runtime reconfig -- HUM Ch 24 p 1164 (set_reload)
+[x] Power transition -- HUM Ch 24 p 1164 (enter_stop / exit_stop)
+[x] Register coverage-- HUM Ch 24 p 1164 (AGTCR/MR1/MR2/AGT)
+[x] Unit tests       -- tests/test_ra_agt.c
+[x] World tag        -- {World: NS}
+[x] HUM cross-ref    -- all Ch 24 register notes in src/ra_agt.c
+[x] Doxygen          -- full file + member coverage
 ```
 
 ### ra_cac -- Clock Frequency Accuracy Measurement Circuit
@@ -733,25 +733,25 @@ peripherals that do not exist on this MCU.
 
 ### ra_crc -- Cyclic Redundancy Check
 
-`[ ]` Status: TODO. `[Ring 3 / HAL] {World: NS}`
+`[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}` (Wave 4 closure)
 
 ```
-[ ] Init             -- HUM Ch 48 "Cyclic Redundancy Check (CRC)" p 3180
-[ ] Deinit           -- HUM Ch 48 p 3180
-[ ] Polling TX       -- HUM Ch 48 p 3180
-[ ] Polling RX       -- HUM Ch 48 p 3180
-[ ] Interrupt TX     -- n/a
-[ ] Interrupt RX     -- n/a
-[ ] DMA TX           -- HUM Ch 48 p 3180
-[ ] DMA RX           -- HUM Ch 48 p 3180
-[ ] Error status     -- HUM Ch 48 p 3180
-[ ] Runtime reconfig -- HUM Ch 48 p 3180
-[ ] Power transition -- HUM Ch 48 p 3180
-[ ] Register coverage-- HUM Ch 48 p 3180
-[ ] Unit tests       -- n/a
-[ ] World tag        -- n/a
-[ ] HUM cross-ref    -- all
-[ ] Doxygen          -- n/a
+[x] Init             -- HUM Ch 48 "Cyclic Redundancy Check (CRC)" p 3180
+[x] Deinit           -- HUM Ch 48 p 3180
+[x] Polling TX       -- HUM Ch 48 p 3180 (CRCDIR write loop in ra_crc_compute)
+[x] Polling RX       -- HUM Ch 48 p 3180 (CRCDOR read at end of compute)
+[x] Interrupt TX     -- n/a (CRC has no IRQ surface)
+[x] Interrupt RX     -- n/a
+[x] DMA TX           -- n/a (DMA streaming -> CRCDIR is a Wave 7 task)
+[x] DMA RX           -- n/a
+[x] Error status     -- HUM Ch 48 p 3180 (get_status returns active poly)
+[x] Runtime reconfig -- HUM Ch 48 p 3180 (set_poly without deinit)
+[x] Power transition -- HUM Ch 48 p 3180 (enter_stop / exit_stop)
+[x] Register coverage-- HUM Ch 48 p 3180 (CRCCR0/CRCCR1/CRCDIR/CRCDOR)
+[x] Unit tests       -- tests/test_ra_crc.c
+[x] World tag        -- {World: NS}
+[x] HUM cross-ref    -- all Ch 48 register notes in src/ra_crc.c
+[x] Doxygen          -- full file + member coverage
 ```
 
 ---
