@@ -214,7 +214,8 @@ ra_err_t ra_sci_init(uint8_t channel, const ra_sci_cfg_t* cfg)
   /* HUM Ch 38.2 "SNFR : Noise Filter Setting Register", p 2174 */
   reg->SNFR = 0U;
 
-  /* HUM Ch 38.2 "SCR : Serial Control Register", p 2174 -- enable TE + RE. */
+  /* Enable TE + RE.
+   * HUM Ch 38.2 "SCR : Serial Control Register", p 2174 */
   reg->SCR = (uint8_t)((1U << (uint8_t)k_ra_scr_bit_te) | (1U << (uint8_t)k_ra_scr_bit_re));
 
   s_state[channel].initialised = true;
@@ -300,7 +301,8 @@ ra_err_t ra_sci_attach_rx_handler(uint8_t channel, ra_sci_rx_fn_t fn, void* ctx)
   }
   s_state[channel].rx_fn  = fn;
   s_state[channel].rx_ctx = ctx;
-  /* HUM Ch 38.2 "SCR : Serial Control Register", p 2174 -- toggle RIE. */
+  /* Toggle RIE.
+   * HUM Ch 38.2 "SCR : Serial Control Register", p 2174 */
   if (fn != nullptr) {
     reg->SCR = (uint8_t)(reg->SCR | (uint8_t)(1U << (uint8_t)k_ra_scr_bit_rie));
   } else {
@@ -317,7 +319,8 @@ ra_err_t ra_sci_attach_tx_handler(uint8_t channel, ra_sci_tx_fn_t fn, void* ctx)
   }
   s_state[channel].tx_fn  = fn;
   s_state[channel].tx_ctx = ctx;
-  /* HUM Ch 38.2 "SCR : Serial Control Register", p 2174 -- toggle TIE. */
+  /* Toggle TIE.
+   * HUM Ch 38.2 "SCR : Serial Control Register", p 2174 */
   if (fn != nullptr) {
     reg->SCR = (uint8_t)(reg->SCR | (uint8_t)(1U << (uint8_t)k_ra_scr_bit_tie));
   } else {
