@@ -13,7 +13,7 @@
  *   DATA_FLASH    0x27000000  16 KiB     Data flash (EEPROM emulation)
  *   ITCM          0x00000000  64 KiB     Instruction tightly-coupled mem
  *   DTCM          0x20000000  64 KiB     Data tightly-coupled mem
- *   SRAM (ECC)    0x22000000  2 MiB      .data, .bss, main stack, heap
+ *   SRAM (ECC)    0x22000000  2 MiB      .data, .bss, main stack (no heap)
  *   SDRAM         0x68000000  64 MiB     External SDRAM (EK board)
  *
  * =====================================================================
@@ -71,8 +71,10 @@ MEMORY
  * src/boot/vector_table.c declares them with exactly these names.
  */
 g_ra_ls_stack_size = DEFINED(g_ra_ls_stack_size) ? g_ra_ls_stack_size : 8K;
-g_ra_ls_heap_size  = DEFINED(g_ra_ls_heap_size)  ? g_ra_ls_heap_size  : 4K;
 g_ra_ls_stack_top  = ORIGIN(SRAM) + LENGTH(SRAM);
+/* No heap: NASA Power of 10 Rule 3 -- zero dynamic allocation after
+ * init. _sbrk() in libs/ra_core/src/ra_sbrk_trap.c traps any
+ * accidental malloc() call from newlib. */
 
 /*
  * Option-setting region fixed addresses (HUM section 4).
@@ -248,13 +250,7 @@ SECTIONS
         g_ra_ls_ebss = .;
     } > SRAM
 
-    /* ---- Heap (newlib requires it) ---- */
-    .heap (NOLOAD) : ALIGN(8)
-    {
-        g_ra_ls_sheap = .;
-        . = . + g_ra_ls_heap_size;
-        g_ra_ls_eheap = .;
-    } > SRAM
+    /* No .heap region -- see ra_sbrk_trap.c. */
 
     /* ---- Stack canary (32 bytes just below the stack top -- filled
      *      with a known pattern by ra_stack_canary_init() at boot so
@@ -316,5 +312,5 @@ SECTIONS
  */
 ASSERT(g_ra_ls_etext <= ORIGIN(MRAM) + LENGTH(MRAM),
        "FATAL: MRAM overflow -- .text + .rodata too large")
-ASSERT(g_ra_ls_ebss + g_ra_ls_heap_size + g_ra_ls_stack_size <= g_ra_ls_stack_top,
-       "FATAL: SRAM overflow -- .bss + heap + stack won't fit")
+ASSERT(g_ra_ls_ebss + g_ra_ls_stack_size <= g_ra_ls_stack_top,
+       "FATAL: SRAM overflow -- .bss + stack won't fit")
