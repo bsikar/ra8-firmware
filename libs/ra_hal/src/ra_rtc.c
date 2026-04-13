@@ -1,6 +1,16 @@
 /**
  * @file ra_rtc.c
- * @brief BCD-calendar RTC driver implementation
+ * @brief BCD-calendar Realtime Clock driver implementation
+ *
+ * @par Tag
+ * [Ring 3 / HAL] {World: S}
+ *
+ * @details
+ * Wave 4 build-out of the RA8D2 RTC. Operates in 24-hour
+ * calendar mode, decodes BCD into ``ra_rtc_datetime_t``, and
+ * exposes the alarm / carry / periodic IRQ surface via the
+ * dispatch path. Every register write below carries a HUM Ch 26
+ * citation.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -45,16 +55,20 @@ ra_err_t ra_rtc_init(void)
 {
   volatile r_rtc_regs_t* rtc = ra_rtc();
 
-  /* Stop the counter before touching it (RCR2.START = 0). */
+  /* HUM Ch 26.2.4 "RCR2 : RTC Control Register 2" p 1230 -- stop
+   * the counter before touching anything else. */
   rtc->RCR2 = 0U;
 
-  /* 24-hour mode (RCR2.HR24 = 1), calendar mode (RCR2.CNTMD = 0). */
+  /* HUM Ch 26.2.4 "RCR2 : RTC Control Register 2" p 1230 */
+  /* RCR2.HR24 = 1 selects 24-hour mode; CNTMD = 0 keeps calendar. */
   rtc->RCR2 = (uint8_t)(1U << k_ra_rcr2_bit_hr24);
 
-  /* Disable all IRQs for now. */
+  /* HUM Ch 26.2.3 "RCR1 : RTC Control Register 1" p 1229 */
+  /* Mask every IRQ source until the application opts in. */
   rtc->RCR1 = 0U;
 
-  /* Restart counter. */
+  /* HUM Ch 26.2.4 "RCR2 : RTC Control Register 2" p 1230 */
+  /* START = 1 restarts the counter. */
   rtc->RCR2 = (uint8_t)((1U << k_ra_rcr2_bit_hr24) | (1U << k_ra_rcr2_bit_start));
 
   ra_log_info(s_tag, "rtc_init (24h calendar)");
@@ -70,19 +84,28 @@ ra_err_t ra_rtc_set(const ra_rtc_datetime_t* dt)
 
   volatile r_rtc_regs_t* rtc = ra_rtc();
 
-  /* Stop counter while writing registers. */
+  /* HUM Ch 26.2.4 "RCR2 : RTC Control Register 2" p 1230 */
+  /* Stop counter while writing the calendar registers (START=0). */
   const uint8_t saved = rtc->RCR2;
   rtc->RCR2           = (uint8_t)(saved & (uint8_t)~(1U << k_ra_rcr2_bit_start));
 
+  /* HUM Ch 26.2.5 "RSECCNT : Second Counter" p 1232 */
   rtc->RSECCNT = internal_bin_to_bcd(dt->second);
+  /* HUM Ch 26.2.6 "RMINCNT : Minute Counter" p 1232 */
   rtc->RMINCNT = internal_bin_to_bcd(dt->minute);
-  rtc->RHRCNT  = internal_bin_to_bcd(dt->hour);
-  rtc->RWKCNT  = dt->weekday;
+  /* HUM Ch 26.2.7 "RHRCNT : Hour Counter" p 1233 */
+  rtc->RHRCNT = internal_bin_to_bcd(dt->hour);
+  /* HUM Ch 26.2.8 "RWKCNT : Day-of-Week Counter" p 1234 */
+  rtc->RWKCNT = dt->weekday;
+  /* HUM Ch 26.2.9 "RDAYCNT : Day Counter" p 1234 */
   rtc->RDAYCNT = internal_bin_to_bcd(dt->day);
+  /* HUM Ch 26.2.10 "RMONCNT : Month Counter" p 1235 */
   rtc->RMONCNT = internal_bin_to_bcd(dt->month);
-  rtc->RYRCNT  = (uint16_t)internal_bin_to_bcd((uint8_t)(dt->year - k_ra_rtc_year_base));
+  /* HUM Ch 26.2.11 "RYRCNT : Year Counter" p 1235 */
+  rtc->RYRCNT = (uint16_t)internal_bin_to_bcd((uint8_t)(dt->year - k_ra_rtc_year_base));
 
-  /* Restart counter. */
+  /* HUM Ch 26.2.4 "RCR2 : RTC Control Register 2" p 1230 */
+  /* START = 1 restarts the counter. */
   rtc->RCR2 = (uint8_t)(saved | (1U << k_ra_rcr2_bit_start));
 
   ra_log_info_val(s_tag, "rtc_set year", (uint32_t)dt->year);

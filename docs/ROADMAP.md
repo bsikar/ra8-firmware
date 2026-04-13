@@ -24,11 +24,11 @@ pre-commit -- do not hand-edit it.
 
 <!-- BEGIN SUMMARY -- DO NOT EDIT BY HAND -- managed by roadmap_stats.py -->
 - Total drivers tracked: 45
-- DONE:    17
+- DONE:    21
 - WIP:     4
 - BLOCKED: 0
-- TODO:    24
-- Checklist coverage: 265/656 boxes ticked (40.4%)
+- TODO:    20
+- Checklist coverage: 329/656 boxes ticked (50.2%)
 <!-- END SUMMARY -->
 
 ## Wave table
@@ -595,71 +595,71 @@ peripherals that do not exist on this MCU.
 
 ### ra_rtc -- Realtime Clock
 
-`[ ]` Status: TODO. `[Ring 3 / HAL] {World: S}`
+`[x]` Status: DONE. `[Ring 3 / HAL] {World: S}` (Wave 4 closure)
 
 ```
-[ ] Init             -- HUM Ch 26 "Realtime Clock (RTC)" p 1219
-[ ] Deinit           -- HUM Ch 26 p 1219
-[ ] Polling TX       -- n/a
-[ ] Polling RX       -- HUM Ch 26 p 1219
-[ ] Interrupt TX     -- n/a
-[ ] Interrupt RX     -- HUM Ch 26 p 1219
-[ ] DMA TX           -- n/a
-[ ] DMA RX           -- n/a
-[ ] Error status     -- HUM Ch 26 p 1219
-[ ] Runtime reconfig -- HUM Ch 26 p 1219
-[ ] Power transition -- HUM Ch 26 p 1219
-[ ] Register coverage-- HUM Ch 26 p 1219
-[ ] Unit tests       -- n/a
-[ ] World tag        -- n/a
-[ ] HUM cross-ref    -- all
-[ ] Doxygen          -- n/a
+[x] Init             -- HUM Ch 26 "Realtime Clock (RTC)" p 1219
+[x] Deinit           -- HUM Ch 26 p 1219
+[x] Polling TX       -- n/a (RTC has no TX/RX pipe)
+[x] Polling RX       -- HUM Ch 26 p 1219 (ra_rtc_get reads calendar regs)
+[x] Interrupt TX     -- n/a
+[x] Interrupt RX     -- HUM Ch 26 p 1219 (ra_rtc_dispatch -> alarm/carry/periodic)
+[x] DMA TX           -- n/a
+[x] DMA RX           -- n/a
+[x] Error status     -- HUM Ch 26 p 1219 (RCR1 IRQ status get/clear)
+[x] Runtime reconfig -- HUM Ch 26 p 1219 (ra_rtc_set reprograms calendar)
+[x] Power transition -- HUM Ch 26 p 1219 (enter_stop/exit_stop)
+[x] Register coverage-- HUM Ch 26 p 1219 (RCR1/RCR2/R*CNT all reachable)
+[x] Unit tests       -- tests/test_ra_rtc.c
+[x] World tag        -- {World: S}
+[x] HUM cross-ref    -- all Ch 26 register notes in src/ra_rtc.c
+[x] Doxygen          -- full file + member coverage
 ```
 
 ### ra_wdt -- Watchdog Timer
 
-`[ ]` Status: TODO. `[Ring 3 / HAL] {World: S}`
+`[x]` Status: DONE. `[Ring 3 / HAL] {World: S}` (Wave 4 closure)
 
 ```
-[ ] Init             -- HUM Ch 27 "Watchdog Timer (WDT)" p 1256
-[ ] Deinit           -- HUM Ch 27 p 1256
-[ ] Polling TX       -- n/a
-[ ] Polling RX       -- n/a
-[ ] Interrupt TX     -- n/a
-[ ] Interrupt RX     -- HUM Ch 27 p 1256
-[ ] DMA TX           -- n/a
-[ ] DMA RX           -- n/a
-[ ] Error status     -- HUM Ch 27 p 1256
-[ ] Runtime reconfig -- HUM Ch 27 p 1256
-[ ] Power transition -- HUM Ch 27 p 1256
-[ ] Register coverage-- HUM Ch 27 p 1256
-[ ] Unit tests       -- n/a
-[ ] World tag        -- n/a
-[ ] HUM cross-ref    -- all
-[ ] Doxygen          -- n/a
+[x] Init             -- HUM Ch 27 "Watchdog Timer (WDT)" p 1256
+[x] Deinit           -- n/a (WDT cannot be stopped once OFS0 starts it)
+[x] Polling TX       -- n/a
+[x] Polling RX       -- n/a
+[x] Interrupt TX     -- n/a
+[x] Interrupt RX     -- HUM Ch 27 p 1256 (ra_wdt_dispatch)
+[x] DMA TX           -- n/a
+[x] DMA RX           -- n/a
+[x] Error status     -- HUM Ch 27 p 1256 (WDTSR get/clear)
+[x] Runtime reconfig -- n/a (period locked by OFS0)
+[x] Power transition -- n/a (always-on)
+[x] Register coverage-- HUM Ch 27 p 1256 (WDTRR + WDTSR; WDTCR/WDTRCR locked by OFS0)
+[x] Unit tests       -- tests/test_ra_wdt.c
+[x] World tag        -- {World: S}
+[x] HUM cross-ref    -- all Ch 27 register notes in src/ra_wdt.c
+[x] Doxygen          -- full file + member coverage
 ```
 
 ### ra_iwdt -- Independent Watchdog Timer
 
-`[ ]` Status: TODO. `[Ring 3 / HAL] {World: S}`
+`[x]` Status: DONE. `[Ring 3 / HAL] {World: S}` (Wave 4 closure)
 
 ```
-[ ] Init             -- HUM Ch 28 "Independent Watchdog Timer (IWDT)" p 1271
-[ ] Deinit           -- HUM Ch 28 p 1271
-[ ] Polling TX       -- n/a
-[ ] Polling RX       -- n/a
-[ ] Interrupt TX     -- n/a
-[ ] Interrupt RX     -- HUM Ch 28 p 1271
-[ ] DMA TX           -- n/a
-[ ] DMA RX           -- n/a
-[ ] Error status     -- HUM Ch 28 p 1271
-[ ] Runtime reconfig -- HUM Ch 28 p 1271
-[ ] Power transition -- HUM Ch 28 p 1271
-[ ] Register coverage-- HUM Ch 28 p 1271
-[ ] Unit tests       -- n/a
-[ ] World tag        -- n/a
-[ ] HUM cross-ref    -- all
-[ ] Doxygen          -- n/a
+[x] Init             -- HUM Ch 28 "Independent Watchdog Timer (IWDT)" p 1271
+[x] Deinit           -- n/a (IWDT cannot be stopped once OFS0 starts it)
+[x] Polling TX       -- n/a
+[x] Polling RX       -- n/a
+[x] Interrupt TX     -- n/a
+[x] Interrupt RX     -- HUM Ch 28 p 1271 (ra_iwdt_dispatch)
+[x] DMA TX           -- n/a
+[x] DMA RX           -- n/a
+[x] Error status     -- HUM Ch 28 p 1271 (IWDTSR get/clear)
+[x] Runtime reconfig -- n/a (period locked by OFS0)
+[x] Power transition -- n/a (always-on)
+[x] Register coverage-- HUM Ch 28 p 1271 (IWDTRR + IWDTSR)
+[x] Unit tests       -- tests/test_ra_iwdt.c
+[x] World tag        -- {World: S}
+[x] HUM cross-ref    -- all Ch 28 register notes in src/ra_iwdt.c
+[x] Doxygen          -- full file + member coverage
 ```
 
 ### ra_ulpt -- Ultra-Low-Power Timer
@@ -710,25 +710,25 @@ peripherals that do not exist on this MCU.
 
 ### ra_cac -- Clock Frequency Accuracy Measurement Circuit
 
-`[ ]` Status: TODO. `[Ring 3 / HAL] {World: NS}`
+`[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}` (Wave 4 closure)
 
 ```
-[ ] Init             -- HUM Ch 10 "Clock Frequency Accuracy Measurement Circuit (CAC)" p 420
-[ ] Deinit           -- HUM Ch 10 p 420
-[ ] Polling TX       -- n/a
-[ ] Polling RX       -- HUM Ch 10 p 420
-[ ] Interrupt TX     -- n/a
-[ ] Interrupt RX     -- HUM Ch 10 p 420
-[ ] DMA TX           -- n/a
-[ ] DMA RX           -- n/a
-[ ] Error status     -- HUM Ch 10 p 420
-[ ] Runtime reconfig -- HUM Ch 10 p 420
-[ ] Power transition -- HUM Ch 10 p 420
-[ ] Register coverage-- HUM Ch 10 p 420
-[ ] Unit tests       -- n/a
-[ ] World tag        -- n/a
-[ ] HUM cross-ref    -- all
-[ ] Doxygen          -- n/a
+[x] Init             -- HUM Ch 10 "Clock Frequency Accuracy Measurement Circuit (CAC)" p 420
+[x] Deinit           -- HUM Ch 10 p 420 (deinit + MSTP release)
+[x] Polling TX       -- n/a
+[x] Polling RX       -- HUM Ch 10 p 420 (ra_cac_measure poll loop)
+[x] Interrupt TX     -- n/a
+[x] Interrupt RX     -- HUM Ch 10 p 420 (ra_cac_dispatch via CASTR/CAICR)
+[x] DMA TX           -- n/a
+[x] DMA RX           -- n/a
+[x] Error status     -- HUM Ch 10 p 420 (MENDF/OVFF/FERRF status get/clear)
+[x] Runtime reconfig -- HUM Ch 10 p 420 (init replaceable; new upper/lower)
+[x] Power transition -- HUM Ch 10 p 420 (enter_stop/exit_stop via MSTP)
+[x] Register coverage-- HUM Ch 10 p 420 (CACR0/1/2 + CAULVR/CALLVR + CASTR + CAICR + CACNTBR)
+[x] Unit tests       -- tests/test_ra_cac.c
+[x] World tag        -- {World: NS}
+[x] HUM cross-ref    -- all Ch 10 register notes in src/ra_cac.c
+[x] Doxygen          -- full file + member coverage
 ```
 
 ### ra_crc -- Cyclic Redundancy Check
