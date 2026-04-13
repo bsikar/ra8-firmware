@@ -7,7 +7,7 @@
  *
  * @details
  * Wave 2.1 rewrite. Owns every write to the ELC register block
- * (ELCR, ELSEGR0..1, ELSR0..22) at 0x40201000 (HUM Ch 19, p 817).
+ * (ELCR, ELSEGR0..3, ELSR0..52) at 0x40201000 (HUM Ch 19, p 817).
  *
  * The ELC lets one peripheral's event directly trigger another
  * peripheral's input without CPU involvement. The driver exposes
@@ -25,11 +25,11 @@
  *
  * ## ELSR index range
  *
- * HUM Ch 19.2.3 (p 817) assigns 23 ELSR slots (ELSR0..ELSR22),
- * each a 16-bit register that stores one ELC event number. The
- * mapping of slot to destination peripheral is fixed and lives
- * in HUM Table 19.2; callers learn it from the peripheral
- * datasheets.
+ * HUM Ch 19.2.3 (p 817) / FSP R_ELC_Type assign 53 ELSR slots
+ * (ELSR0..ELSR52), each a 16-bit register at a 4-byte stride that
+ * stores one ELC event number. The mapping of slot to destination
+ * peripheral is fixed and lives in HUM Table 19.2; callers learn
+ * it from the peripheral datasheets.
  *
  * ## Threading
  *
@@ -55,8 +55,8 @@ extern "C" {
  * @brief ELC register-array dimensions.
  */
 typedef enum : uint8_t {
-  k_ra_elc_elsr_count = 23U, /**< ELSR0..ELSR22.         */
-  k_ra_elc_segr_count = 2U,  /**< ELSEGR0, ELSEGR1.      */
+  k_ra_elc_elsr_count = 53U, /**< ELSR0..ELSR52 (FSP R_ELC_Type).       */
+  k_ra_elc_segr_count = 4U,  /**< ELSEGR0..ELSEGR3 (FSP R_ELC_Type).    */
 } ra_elc_dim_t;
 
 /**
@@ -141,11 +141,11 @@ typedef enum : uint8_t {
  * @brief Fire a software event via one of the ELSEGR registers.
  *
  * @details
- * Writes to ELSEGR0 or ELSEGR1 (HUM Ch 19.2.2, p 817) cause the
- * specified event to fire exactly once. Useful for testing
- * event-driven paths without waiting for a real peripheral edge.
+ * Writes to ELSEGR0..3 (HUM Ch 19.2.2, p 817) cause the specified
+ * event to fire exactly once. Useful for testing event-driven
+ * paths without waiting for a real peripheral edge.
  *
- * @param[in] group 0 = ELSEGR0, 1 = ELSEGR1.
+ * @param[in] group 0 = ELSEGR0, 1 = ELSEGR1, 2 = ELSEGR2, 3 = ELSEGR3.
  * @param[in] value Register value to write.
  *
  * @return ``ra_err_t`` error code.

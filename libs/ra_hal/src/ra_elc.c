@@ -47,15 +47,18 @@ static volatile uint8_t* internal_elcr(void)
 
 static volatile uint16_t* internal_elsr(uint8_t index)
 {
+  /* HUM Ch 19 R_ELC_ELSR_Type is a 16-bit ELS field + 16-bit reserved
+   * (4-byte stride) -- we access the 16-bit head of each slot. */
   return (volatile uint16_t*)(k_ra_elc_base_addr + k_ra_elc_off_elsr0 +
-                              ((uintptr_t)index * sizeof(uint16_t)));
+                              ((uintptr_t)index * (uintptr_t)k_ra_elc_elsr_stride));
 }
 
 static volatile uint8_t* internal_elsegr(uint8_t group)
 {
-  const uintptr_t off =
-    (group == 0U) ? (uintptr_t)k_ra_elc_off_elsegr0 : (uintptr_t)k_ra_elc_off_elsegr1;
-  return (volatile uint8_t*)(k_ra_elc_base_addr + off);
+  /* ELSEGR0..3 live at 0x04/0x08/0x0C/0x10 (8-bit reg, 4-byte stride);
+   * the driver today only addresses groups 0 and 1. */
+  return (volatile uint8_t*)(k_ra_elc_base_addr + k_ra_elc_off_elsegr0 +
+                             ((uintptr_t)group * (uintptr_t)k_ra_elc_elsegr_stride));
 }
 
 /* =============================================================================
@@ -78,9 +81,10 @@ ra_err_t ra_elc_init(void)
     *internal_elsr(i) = 0U;
   }
 
-  /* HUM Ch 19.2.2 "ELSEGR0/1 : Event Link Software Event Generation", p 817 */
-  *internal_elsegr(0U) = 0U;
-  *internal_elsegr(1U) = 0U;
+  /* HUM Ch 19.2.2 "ELSEGR0..3 : Event Link Software Event Generation", p 817 */
+  for (uint8_t g = 0U; g < (uint8_t)k_ra_elc_segr_count; ++g) {
+    *internal_elsegr(g) = 0U;
+  }
 
   /* HUM Ch 19.2.1 "ELCR : Event Link Control Register", p 817 */
   *internal_elcr() = (uint8_t)(1U << (uint8_t)k_ra_elcr_bit_elcon);
