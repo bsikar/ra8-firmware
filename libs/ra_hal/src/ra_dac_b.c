@@ -1,6 +1,17 @@
 /**
  * @file ra_dac_b.c
- * @brief 12-bit DAC_B driver implementation
+ * @brief 12-Bit D/A Converter (DAC12) driver implementation
+ *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
+ * @details
+ * Wave 4 driver for the RA8D2 DAC12 peripheral. Programmes both
+ * channels (DACR/DADR0/DADR1/DADPR/DAADSCR/DAVREFCR), exposes
+ * runtime write + reference-voltage selection + per-channel
+ * output enable, and provides the lifecycle/status/dispatch/power
+ * transition surface. Every register access carries a HUM Ch 54
+ * citation.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

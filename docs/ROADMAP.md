@@ -24,11 +24,11 @@ pre-commit -- do not hand-edit it.
 
 <!-- BEGIN SUMMARY -- DO NOT EDIT BY HAND -- managed by roadmap_stats.py -->
 - Total drivers tracked: 45
-- DONE:    24
+- DONE:    27
 - WIP:     4
 - BLOCKED: 0
-- TODO:    17
-- Checklist coverage: 377/656 boxes ticked (57.5%)
+- TODO:    14
+- Checklist coverage: 425/656 boxes ticked (64.8%)
 <!-- END SUMMARY -->
 
 ## Wave table
@@ -526,71 +526,71 @@ peripherals that do not exist on this MCU.
 
 ### ra_adc -- 16-bit A/D Converter (ADC16H)
 
-`[ ]` Status: TODO. `[Ring 3 / HAL] {World: NS}`
+`[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}` (Wave 4 closure)
 
 ```
-[ ] Init             -- HUM Ch 53 "16-bit A/D Converter (ADC16H)" p 3308
-[ ] Deinit           -- HUM Ch 53 p 3308
-[ ] Polling TX       -- n/a
-[ ] Polling RX       -- HUM Ch 53 p 3308
-[ ] Interrupt TX     -- n/a
-[ ] Interrupt RX     -- HUM Ch 53 p 3308
-[ ] DMA TX           -- n/a
-[ ] DMA RX           -- HUM Ch 53 p 3308
-[ ] Error status     -- HUM Ch 53 p 3308
-[ ] Runtime reconfig -- HUM Ch 53 p 3308
-[ ] Power transition -- HUM Ch 53 p 3308
-[ ] Register coverage-- HUM Ch 53 p 3308
-[ ] Unit tests       -- n/a
-[ ] World tag        -- n/a
-[ ] HUM cross-ref    -- all
-[ ] Doxygen          -- n/a
+[x] Init             -- HUM Ch 53 "16-bit A/D Converter (ADC16H)" p 3308
+[x] Deinit           -- HUM Ch 53 p 3308
+[x] Polling TX       -- n/a
+[x] Polling RX       -- HUM Ch 53 p 3308 (ra_adc_read_channel poll loop)
+[x] Interrupt TX     -- n/a
+[x] Interrupt RX     -- HUM Ch 53 p 3308 (ra_adc_dispatch_cnv_end)
+[x] DMA TX           -- n/a
+[x] DMA RX           -- n/a (DMA streaming via ELC = Wave 7 task)
+[x] Error status     -- HUM Ch 53 p 3308 (ADCSR.ADIE/ADST status get/clear)
+[x] Runtime reconfig -- HUM Ch 53 p 3308 (set_resolution + init_configured)
+[x] Power transition -- HUM Ch 53 p 3308 (enter_stop / exit_stop)
+[x] Register coverage-- HUM Ch 53 p 3308 (ADCSR/ADCER/ADANSA0/ADSSTRn/ADDRxx)
+[x] Unit tests       -- tests/test_ra_adc.c
+[x] World tag        -- {World: NS}
+[x] HUM cross-ref    -- all Ch 53 register notes in src/adc.c
+[x] Doxygen          -- full file + member coverage
 ```
 
 ### ra_dac_b -- 12-Bit D/A Converter (DAC12)
 
-`[ ]` Status: TODO. `[Ring 3 / HAL] {World: NS}`
+`[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}` (Wave 4 closure)
 
 ```
-[ ] Init             -- HUM Ch 54 "12-Bit D/A Converter (DAC12)" p 3490
-[ ] Deinit           -- HUM Ch 54 p 3490
-[ ] Polling TX       -- HUM Ch 54 p 3490
-[ ] Polling RX       -- n/a
-[ ] Interrupt TX     -- n/a
-[ ] Interrupt RX     -- n/a
-[ ] DMA TX           -- HUM Ch 54 p 3490
-[ ] DMA RX           -- n/a
-[ ] Error status     -- HUM Ch 54 p 3490
-[ ] Runtime reconfig -- HUM Ch 54 p 3490
-[ ] Power transition -- HUM Ch 54 p 3490
-[ ] Register coverage-- HUM Ch 54 p 3490
-[ ] Unit tests       -- n/a
-[ ] World tag        -- n/a
-[ ] HUM cross-ref    -- all
-[ ] Doxygen          -- n/a
+[x] Init             -- HUM Ch 54 "12-Bit D/A Converter (DAC12)" p 3490
+[x] Deinit           -- HUM Ch 54 p 3490
+[x] Polling TX       -- HUM Ch 54 p 3490 (ra_dac_b_write -> DADR0/1)
+[x] Polling RX       -- n/a (DAC has no read path)
+[x] Interrupt TX     -- n/a
+[x] Interrupt RX     -- n/a
+[x] DMA TX           -- n/a (DMA streaming via ELC = Wave 7 task)
+[x] DMA RX           -- n/a
+[x] Error status     -- HUM Ch 54 p 3490 (DACR status get/clear)
+[x] Runtime reconfig -- HUM Ch 54 p 3490 (set_vref + set_output_enable)
+[x] Power transition -- HUM Ch 54 p 3490 (enter_stop / exit_stop via MSTP)
+[x] Register coverage-- HUM Ch 54 p 3490 (DADR0/DADR1/DACR/DADPR/DAADSCR/DAVREFCR)
+[x] Unit tests       -- tests/test_ra_dac_b.c
+[x] World tag        -- {World: NS}
+[x] HUM cross-ref    -- all Ch 54 register notes in src/ra_dac_b.c
+[x] Doxygen          -- full file + member coverage
 ```
 
 ### ra_acmphs -- High-Speed Analog Comparator
 
-`[ ]` Status: TODO. `[Ring 3 / HAL] {World: NS}`
+`[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}` (Wave 4 closure)
 
 ```
-[ ] Init             -- HUM Ch 56 "High-Speed Analog Comparator (ACMPHS)" p 3508
-[ ] Deinit           -- HUM Ch 56 p 3508
-[ ] Polling TX       -- n/a
-[ ] Polling RX       -- HUM Ch 56 p 3508
-[ ] Interrupt TX     -- n/a
-[ ] Interrupt RX     -- HUM Ch 56 p 3508
-[ ] DMA TX           -- n/a
-[ ] DMA RX           -- n/a
-[ ] Error status     -- HUM Ch 56 p 3508
-[ ] Runtime reconfig -- HUM Ch 56 p 3508
-[ ] Power transition -- HUM Ch 56 p 3508
-[ ] Register coverage-- HUM Ch 56 p 3508
-[ ] Unit tests       -- n/a
-[ ] World tag        -- n/a
-[ ] HUM cross-ref    -- all
-[ ] Doxygen          -- n/a
+[x] Init             -- HUM Ch 56 "High-Speed Analog Comparator (ACMPHS)" p 3508
+[x] Deinit           -- HUM Ch 56 p 3508
+[x] Polling TX       -- n/a
+[x] Polling RX       -- HUM Ch 56 p 3508 (ra_acmphs_read_output -> CMPMON)
+[x] Interrupt TX     -- n/a
+[x] Interrupt RX     -- HUM Ch 56 p 3508 (ra_acmphs_dispatch via CMPCTL)
+[x] DMA TX           -- n/a
+[x] DMA RX           -- n/a
+[x] Error status     -- HUM Ch 56 p 3508 (CMPCTL status get/clear)
+[x] Runtime reconfig -- HUM Ch 56 p 3508 (set_inputs + channel_init)
+[x] Power transition -- HUM Ch 56 p 3508 (enter_stop / exit_stop via MSTP)
+[x] Register coverage-- HUM Ch 56 p 3508 (CMPCTL/CMPSEL/CMPSEL+/CMPMON)
+[x] Unit tests       -- tests/test_ra_acmphs.c
+[x] World tag        -- {World: NS}
+[x] HUM cross-ref    -- all Ch 56 register notes in src/ra_acmphs.c
+[x] Doxygen          -- full file + member coverage
 ```
 
 ### ra_rtc -- Realtime Clock
