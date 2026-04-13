@@ -66,6 +66,9 @@ file(GLOB_RECURSE LIB_RA_NET_PAL_SOURCES CONFIGURE_DEPENDS
 file(GLOB_RECURSE LIB_RA_USB_PAL_SOURCES CONFIGURE_DEPENDS
     ${CMAKE_SOURCE_DIR}/libs/ra_usb_pal/src/*.c
 )
+file(GLOB_RECURSE LIB_RA_NSC_SOURCES CONFIGURE_DEPENDS
+    ${CMAKE_SOURCE_DIR}/libs/ra_nsc/src/*.c
+)
 
 set(ALL_SOURCES
     ${APP_SOURCES_ROOT}
@@ -74,6 +77,7 @@ set(ALL_SOURCES
     ${LIB_RA_HAL_SOURCES}
     ${LIB_RA_NET_PAL_SOURCES}
     ${LIB_RA_USB_PAL_SOURCES}
+    ${LIB_RA_NSC_SOURCES}
 )
 
 #############################################################################
@@ -87,6 +91,7 @@ include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/libs/ra_hal/inc
     ${CMAKE_CURRENT_SOURCE_DIR}/libs/ra_net_pal/inc
     ${CMAKE_CURRENT_SOURCE_DIR}/libs/ra_usb_pal/inc
+    ${CMAKE_CURRENT_SOURCE_DIR}/libs/ra_nsc/inc
 )
 
 #############################################################################
@@ -118,6 +123,7 @@ if(ALL_SOURCES)
         ${CMAKE_SOURCE_DIR}/libs/ra_hal/inc
         ${CMAKE_SOURCE_DIR}/libs/ra_net_pal/inc
         ${CMAKE_SOURCE_DIR}/libs/ra_usb_pal/inc
+        ${CMAKE_SOURCE_DIR}/libs/ra_nsc/inc
     )
 
     if(EXISTS ${LINKER_SCRIPT})

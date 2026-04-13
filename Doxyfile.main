@@ -71,6 +71,7 @@ INPUT                  = README.md \
                          libs/ra_hal \
                          libs/ra_net_pal \
                          libs/ra_usb_pal \
+                         libs/ra_nsc \
                          docs/reference/README.md
 INPUT_ENCODING         = UTF-8
 FILE_PATTERNS          = *.c *.h *.md
@@ -118,7 +119,7 @@ GENERATE_RTF           = NO
 MACRO_EXPANSION        = YES
 EXPAND_ONLY_PREDEF     = NO
 SEARCH_INCLUDES        = YES
-INCLUDE_PATH           = libs/ra_core/inc libs/ra_hal/inc libs/ra_net_pal/inc libs/ra_usb_pal/inc src/inc
+INCLUDE_PATH           = libs/ra_core/inc libs/ra_hal/inc libs/ra_net_pal/inc libs/ra_usb_pal/inc libs/ra_nsc/inc src/inc
 PREDEFINED             = __DOXYGEN__=1 \
                          __attribute__(x)=
 

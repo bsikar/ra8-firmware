@@ -25,9 +25,9 @@ pre-commit -- do not hand-edit it.
 <!-- BEGIN SUMMARY -- DO NOT EDIT BY HAND -- managed by roadmap_stats.py -->
 - Total drivers tracked: 45
 - DONE:    17
-- WIP:     3
+- WIP:     4
 - BLOCKED: 0
-- TODO:    25
+- TODO:    24
 - Checklist coverage: 265/656 boxes ticked (40.4%)
 <!-- END SUMMARY -->
 
@@ -1156,13 +1156,36 @@ Outstanding for Wave 7.2 closure:
 
 ### ra_nsc -- NSC veneer scaffold
 
-`[ ]` Status: TODO. `[Ring 4 / NSC] {World: NSC}`
+`[~]` Status: WIP. `[Ring 4 / NSC] {World: NSC}` (Wave 7.3 scaffold landed)
 
-Wave-9 deliverable, listed here so the location and naming are
-discoverable. Veneer files: `ra_nsc_xspi.c`, `ra_nsc_eth.c`,
-`ra_nsc_log.c`, `ra_nsc_periph_init.c`. Each veneer carries HUM
-citations and a `@par TrustZone Safety:` Doxygen section
-explaining what is validated and why the boundary is safe.
+Wave 7.3 ships the four veneer files in their pre-cmse form,
+plus the public ``ra_nsc.h`` contract. Each veneer is a plain C
+function today; Wave 9.2 adds
+``__attribute__((cmse_nonsecure_entry))`` and the runtime
+``cmse_check_address_range`` call sites without changing the
+shape.
+
+- `libs/ra_nsc/inc/ra_nsc.h` -- four veneer prototypes and the
+  ``k_ra_nsc_*`` boundary-policy constants.
+- `libs/ra_nsc/src/ra_nsc_xspi.c` -- xspi flash-read + status
+  veneers, both with full validation.
+- `libs/ra_nsc/src/ra_nsc_eth.c` -- ethernet send / recv
+  veneers, delegating to ``ra_net_pal``.
+- `libs/ra_nsc/src/ra_nsc_log.c` -- logging veneer with a
+  secure scratch buffer for the (tag, message) copy so the
+  secure side never dereferences NS pointers.
+- `libs/ra_nsc/src/ra_nsc_periph_init.c` -- idempotent secure
+  substrate bring-up (``ra_mstp_init``, ``ra_pwr_init``,
+  ``ra_isr_init``, ``ra_dma_init``).
+- `tests/test_ra_nsc.c` -- 7 cases covering xspi read/status arg
+  validation, eth send/recv arg validation, log_emit happy +
+  null + truncation, periph_init idempotency.
+
+Each veneer has a ``@par TrustZone Safety:`` doxygen section
+documenting what it validates, what it trusts, and what it
+denies. The Wave 9.2 retrofit points are marked inline with
+``Wave 9.2 retrofit point: cmse_check_address_range(...)``
+comments so the partition session is mechanical.
 
 ---
 
