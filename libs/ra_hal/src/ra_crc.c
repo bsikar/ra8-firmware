@@ -14,6 +14,7 @@
 #include "ra_check.h"
 #include "ra_err.h"
 #include "ra_log.h"
+#include "ra_mstp.h"
 
 static const char* s_tag = "CRC";
 
@@ -23,6 +24,10 @@ typedef enum : uint8_t {
 
 ra_err_t ra_crc_init(ra_crc_poly_t poly)
 {
+  /* HUM Ch 11.2.8 "MSTPCRC : Module Stop Control Register C", p 446 */
+  const ra_err_t mst_err = ra_mstp_enable(k_ra_mstp_crc);
+  RA_RETURN_ON_ERROR(mst_err, s_tag, "crc_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
+
   volatile r_crc_regs_t* reg = ra_crc();
   reg->CRCCR0                = (uint8_t)poly;
   reg->CRCCR1                = 0U;

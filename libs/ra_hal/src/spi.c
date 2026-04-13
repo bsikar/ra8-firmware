@@ -18,6 +18,7 @@
 #include "ra_check.h"
 #include "ra_err.h"
 #include "ra_log.h"
+#include "ra_mstp.h"
 #include "ra_spi.h"
 
 static const char* s_tag = "SPI";
@@ -51,10 +52,34 @@ typedef enum : uint16_t {
   k_ra_spi_spcr_enable   = 0x0048U, /**< SPE (bit 6) + MSTR (bit 3). */
 } ra_spi_init_val_t;
 
+/**
+ * @enum ra_spi_channel_count_t
+ * @brief Number of SPI channels addressed by this driver.
+ */
+typedef enum : uint8_t {
+  k_ra_spi_channel_count = 2U,
+} ra_spi_channel_count_t;
+
+/**
+ * @var s_spi_mstp_table
+ * @brief Channel-index -> MSTP id lookup.
+ */
+static const ra_mstp_t s_spi_mstp_table[k_ra_spi_channel_count] = {
+  /* HUM Ch 11.2.7 "MSTPCRB : Module Stop Control Register B", p 444 */
+  k_ra_mstp_spi0,
+  k_ra_mstp_spi1,
+};
+
 ra_err_t ra_spi_master_init(uint8_t channel)
 {
   volatile r_spi_regs_t* reg = ra_spi(channel);
   RA_CHECK_NULL_PTR(reg, s_tag, "channel out of range");
+  if (channel >= (uint8_t)k_ra_spi_channel_count) {
+    return k_ra_err_invalid_arg;
+  }
+
+  const ra_err_t mst_err = ra_mstp_enable(s_spi_mstp_table[channel]);
+  RA_RETURN_ON_ERROR(mst_err, s_tag, "init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
 
   reg->SPCR     = 0U;
   reg->SPPCR    = 0U;

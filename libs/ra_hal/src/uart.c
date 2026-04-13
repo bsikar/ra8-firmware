@@ -33,6 +33,7 @@
 #include "ra_check.h"
 #include "ra_err.h"
 #include "ra_log.h"
+#include "ra_mstp.h"
 #include "ra_uart.h"
 
 static const char* s_tag = "UART";
@@ -47,17 +48,45 @@ typedef enum : uint8_t {
 } ra_uart_init_val_t;
 
 /**
- * @brief Initialise an SCI channel in UART mode.
- *
- * @param[in] channel SCI channel number (0..9).
- * @param[in] brr     Pre-computed BRR value (see formula above).
- *
- * @return `ra_err_t` error code.
+ * @enum ra_uart_channel_count_t
+ * @brief Total number of SCI channels exposed by the RA8D2.
  */
+typedef enum : uint8_t {
+  k_ra_uart_channel_count = 10U,
+} ra_uart_channel_count_t;
+
+/**
+ * @var s_sci_mstp_table
+ * @brief Channel-index -> MSTP id lookup.
+ *
+ * @details
+ * One entry per SCI channel. Used by ``ra_uart_init`` to feed the
+ * ref-counted ``ra_mstp_enable`` call site.
+ */
+static const ra_mstp_t s_sci_mstp_table[k_ra_uart_channel_count] = {
+  /* HUM Ch 11.2.7 "MSTPCRB : Module Stop Control Register B", p 445 */
+  k_ra_mstp_sci0,
+  k_ra_mstp_sci1,
+  k_ra_mstp_sci2,
+  k_ra_mstp_sci3,
+  k_ra_mstp_sci4,
+  k_ra_mstp_sci5,
+  k_ra_mstp_sci6,
+  k_ra_mstp_sci7,
+  k_ra_mstp_sci8,
+  k_ra_mstp_sci9,
+};
+
 [[nodiscard]] ra_err_t ra_uart_init(uint8_t channel, uint8_t brr)
 {
   volatile r_sci_regs_t* sci = ra_sci(channel);
   RA_CHECK_NULL_PTR(sci, s_tag, "channel out of range");
+  if (channel >= (uint8_t)k_ra_uart_channel_count) {
+    return k_ra_err_invalid_arg;
+  }
+
+  const ra_err_t mst_err = ra_mstp_enable(s_sci_mstp_table[channel]);
+  RA_RETURN_ON_ERROR(mst_err, s_tag, "init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
 
   /* Disable TX/RX while reprogramming. */
   sci->SCR  = 0U;
@@ -73,14 +102,6 @@ typedef enum : uint8_t {
   return k_ra_ok;
 }
 
-/**
- * @brief Polling transmit of one byte.
- *
- * @param[in] channel SCI channel number (0..9).
- * @param[in] byte    Byte to send.
- *
- * @return `ra_err_t` error code.
- */
 [[nodiscard]] ra_err_t ra_uart_putc(uint8_t channel, uint8_t byte)
 {
   volatile r_sci_regs_t* sci = ra_sci(channel);

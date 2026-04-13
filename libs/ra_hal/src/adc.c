@@ -25,6 +25,7 @@
 #include "ra_check.h"
 #include "ra_err.h"
 #include "ra_log.h"
+#include "ra_mstp.h"
 
 static const char* s_tag = "ADC";
 
@@ -42,6 +43,10 @@ typedef enum : uint16_t {
 
 ra_err_t ra_adc_init(void)
 {
+  /* HUM Ch 11.2.9 "MSTPCRD : Module Stop Control Register D", p 449 */
+  const ra_err_t mst_err = ra_mstp_enable(k_ra_mstp_adc16h);
+  RA_RETURN_ON_ERROR(mst_err, s_tag, "adc_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
+
   /* Leave ADST clear and programme the extended control register. */
   *ra_adc_b_adcsr() = (uint16_t)k_ra_adcsr_reset_val;
   *ra_adc_b_adcer() = (uint16_t)k_ra_adcer_14bit_right_aligned;
