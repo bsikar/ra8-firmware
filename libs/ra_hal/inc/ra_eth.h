@@ -1,30 +1,25 @@
 /**
  * @file ra_eth.h
- * @brief Ethernet Switch Module (ESWM) unified scaffold driver
+ * @brief Ethernet Switch Module (ESWM) driver
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}
  *
  * @details
- * Wave 6.3 introduces a unified minimal scaffold for the RA8D2
- * ethernet subsystem. This driver owns the ESWM (Ethernet Switch
- * Module) MSTP reference and exposes the lifecycle + status +
- * IRQ + power-transition surface shared by all ethernet blocks.
+ * Wave 6 driver for the RA8D2 Layer-3 ESWM block. The RA8D2
+ * ethernet subsystem is split into five cooperating drivers:
  *
- * The full Wave 6 plan calls for five separate drivers:
+ *  - ra_eth (this file) -- Layer 3 Ethernet Switch Module (ESWM)
+ *  - ra_eth_mfwd        -- Message Forwarding Engine
+ *  - ra_eth_coma        -- Common Agent
+ *  - ra_eth_gwca        -- CPU Agent
+ *  - ra_eth_gptp        -- Generic PTP Timer
  *
- *  - ra_eth_swm   -- Layer 3 Ethernet Switch Module (THIS FILE)
- *  - ra_eth_mfwd  -- Message Forwarding Engine
- *  - ra_eth_coma  -- Common Agent
- *  - ra_eth_gwca  -- CPU Agent
- *  - ra_eth_gptp  -- Generic PTP Timer
- *
- * mfwd / coma / gwca / gptp are deferred to Wave 7 (network stack
- * integration) since they only become useful once a consumer like
- * lwIP or the Ethernet PAL is in place. Only the ESWM block is
- * scaffolded in Wave 6.3 to keep the gate MSTP reference counted
- * and allow early "is the ethernet module even alive" sanity
- * checks in board bring-up.
+ * All five share the ra_mstp gate k_ra_mstp_eswm and follow the
+ * same lifecycle + status + IRQ + power-transition shape. The
+ * descriptor / forwarding-table / timestamp surfaces land with
+ * their first consumer (lwIP / ra_net_pal on the NIC side, a
+ * real PTP stack on the timer side).
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
