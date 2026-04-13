@@ -1,22 +1,30 @@
 /**
  * @file ra_xspi.c
- * @brief xSPI / Octo-SPI driver with SPI NOR flash read / program / erase
+ * @brief Octal Serial Peripheral Interface (OSPI / xSPI) driver
+ *
+ * @par Tag
+ * [Ring 3 / HAL] {World: S}
  *
  * @details
- * Provides a minimal flash-driver surface layered on top of the
- * RA8D2 xSPI controller's direct-command mode. The driver supports:
+ * Wave 5 driver for the RA8D2 OSPI block. Provides a minimal
+ * SPI NOR flash driver layered on top of direct-command mode.
+ * Supported operations:
  *
- *  - `ra_xspi_init()` -- configure LIOCFG, clear interrupts.
- *  - `ra_xspi_direct_command()` -- raw command-buffer poke.
- *  - `ra_xspi_flash_read()` -- 0x03 read + COMSTT poll.
- *  - `ra_xspi_flash_program()` -- 0x06 WREN, 0x02 PP, 0x05 WIP poll.
- *  - `ra_xspi_flash_erase_sector()` -- 0x06 WREN, 0x20 SE, 0x05 WIP poll.
- *  - `ra_xspi_flash_read_status()` -- 0x05.
- *  - `ra_xspi_flash_read_id()` -- 0x9F JEDEC ID.
+ *  - ``ra_xspi_init()`` -- LIOCFG mode + INTC clear.
+ *  - ``ra_xspi_direct_command()`` -- raw command-buffer poke.
+ *  - ``ra_xspi_flash_read()`` -- 0x03 read + COMSTT poll.
+ *  - ``ra_xspi_flash_program()`` -- 0x06 WREN, 0x02 PP, 0x05 WIP poll.
+ *  - ``ra_xspi_flash_erase_sector()`` -- 0x06 WREN, 0x20 SE, 0x05 WIP poll.
+ *  - ``ra_xspi_flash_read_status()`` -- 0x05.
+ *  - ``ra_xspi_flash_read_id()`` -- 0x9F JEDEC ID.
+ *  - ``ra_xspi_deinit / get_status / clear_status / attach_handler /
+ *    enter_stop / exit_stop`` lifecycle + IRQ + power surface.
  *
- * In `RA_SIMULATOR_MODE` every read/program/erase goes through an
- * in-process 4 KiB fake-flash buffer, so unit tests can round-trip
- * data and branch coverage stays high without real hardware.
+ * In ``RA_SIMULATOR_MODE`` every read/program/erase goes through
+ * an in-process 4 KiB fake-flash buffer so unit tests can
+ * round-trip data without real hardware. Every register access
+ * carries a HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)"
+ * citation at the enclosing function entry.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -154,6 +162,8 @@ ra_err_t ra_xspi_init(uint8_t instance, ra_xspi_lio_mode_t mode)
   const ra_err_t mst_err = ra_mstp_enable(s_xspi_mstp_table[instance]);
   RA_RETURN_ON_ERROR(mst_err, s_tag, "xspi_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
 
+  /* HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986 */
+  /* Programme the wrap, common, line-IO mode, and clear pending IRQs. */
   reg->WRAPCFG = 0U;
   reg->COMCFG  = 0U;
   reg->LIOCFG  = (uint32_t)mode;
@@ -219,6 +229,8 @@ static ra_err_t internal_wait_command_done(volatile r_xspi_regs_t* reg)
  */
 static ra_err_t internal_issue_simple_opcode(volatile r_xspi_regs_t* reg, uint8_t opcode)
 {
+  /* HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986 */
+  /* CMDCFG0/1/2 + CMDBUF programme one direct command + opcode. */
   reg->CMDCFG0   = (uint32_t)k_ra_xspi_cmdcfg0_cmd_1byte;
   reg->CMDCFG1   = 0U;
   reg->CMDCFG2   = 0U;
@@ -251,6 +263,8 @@ ra_err_t ra_xspi_flash_read(uint8_t instance, uint32_t flash_addr, uint8_t* buf,
   volatile r_xspi_regs_t* reg = ra_xspi(instance);
   RA_CHECK_NULL_PTR(reg, s_tag, "instance out of range");
 
+  /* HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986 */
+  /* Programme a JEDEC 0x03 read with 3-byte address. */
   reg->CMDCFG0   = (uint32_t)k_ra_xspi_cmdcfg0_cmd_1byte | (uint32_t)k_ra_xspi_cmdcfg0_addr_3byte;
   reg->CMDCFG1   = flash_addr;
   reg->CMDCFG2   = len;
@@ -287,6 +301,8 @@ internal_flash_start_program(volatile r_xspi_regs_t* reg, uint32_t flash_addr, u
   if (wren != k_ra_ok) {
     return wren;
   }
+  /* HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986 */
+  /* Programme a JEDEC 0x02 page-program with 3-byte address. */
   reg->CMDCFG0   = (uint32_t)k_ra_xspi_cmdcfg0_cmd_1byte | (uint32_t)k_ra_xspi_cmdcfg0_addr_3byte;
   reg->CMDCFG1   = flash_addr;
   reg->CMDCFG2   = len;
@@ -361,6 +377,8 @@ ra_err_t ra_xspi_flash_erase_sector(uint8_t instance, uint32_t flash_addr)
     return wren;
   }
 
+  /* HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986 */
+  /* Programme a JEDEC 0x20 sector-erase with 3-byte address. */
   reg->CMDCFG0   = (uint32_t)k_ra_xspi_cmdcfg0_cmd_1byte | (uint32_t)k_ra_xspi_cmdcfg0_addr_3byte;
   reg->CMDCFG1   = flash_addr;
   reg->CMDCFG2   = 0U;
