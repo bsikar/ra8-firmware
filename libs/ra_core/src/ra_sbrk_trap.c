@@ -63,9 +63,13 @@
 // NOLINTBEGIN(bugprone-reserved-identifier,cert-dcl37-c,cert-dcl51-cpp,readability-identifier-naming)
 void* _sbrk(int32_t incr);
 
+/* GCOVR_EXCL_START -- trap function; by design never reached in a
+ * correctly-built firmware image. If coverage suddenly lights up
+ * here, a caller has dragged malloc() into the link. */
 void* _sbrk(int32_t incr)
 {
   (void)incr;
   internal_ra_fatal_error("SBRK", "_sbrk called -- firmware is heap-free", 0U);
 }
+/* GCOVR_EXCL_STOP */
 // NOLINTEND(bugprone-reserved-identifier,cert-dcl37-c,cert-dcl51-cpp,readability-identifier-naming)

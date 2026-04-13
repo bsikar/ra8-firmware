@@ -25,7 +25,10 @@ extern "C" {
 
 #include "ra_err.h"
 
-/** @typedef ra_eth_coma_event_fn_t COMA event callback. */
+/**
+ * @typedef ra_eth_coma_event_fn_t
+ * @brief COMA event callback.
+ */
 typedef void (*ra_eth_coma_event_fn_t)(void* ctx, uint32_t status_mask);
 
 /** @brief Initialise COMA. @since 0.3.0 */
