@@ -71,9 +71,9 @@ typedef enum : uint16_t {
   k_ra_sys_off_moscr     = 0x032U, /**< MOSCCR    (8-bit).  */
   k_ra_sys_off_hococr    = 0x036U, /**< HOCOCR    (8-bit).  */
   k_ra_sys_off_oscsf     = 0x03CU, /**< OSCSF     (8-bit).  */
+  k_ra_sys_off_pllccr2   = 0x04CU, /**< PLLCCR2 -- PLL1 output dividers (16-bit). */
   k_ra_sys_off_moscwtcr  = 0x0A2U, /**< MOSCWTCR  (8-bit).  */
   k_ra_sys_off_pllccr    = 0x0ACU, /**< PLLCCR    (32-bit). */
-  k_ra_sys_off_pllccr2   = 0x0B0U, /**< PLLCCR2 -- fractional divider (32-bit). */
   k_ra_sys_off_rstsr1    = 0x0C0U, /**< RSTSR1    (32-bit). */
   k_ra_sys_off_prcr      = 0x3FAU, /**< PRCR      (16-bit). */
   k_ra_sys_off_rstsr0    = 0xA40U, /**< RSTSR0    (8-bit).  */
@@ -193,10 +193,10 @@ static inline volatile uint32_t* ra_sys_pllccr(void)
   return (volatile uint32_t*)(k_ra_system_base_addr + k_ra_sys_off_pllccr);
 }
 
-/** @brief Get pointer to the 32-bit PLLCCR2 register (fractional divider). */
-static inline volatile uint32_t* ra_sys_pllccr2(void)
+/** @brief Get pointer to the 16-bit PLLCCR2 register (PLL1 output dividers). */
+static inline volatile uint16_t* ra_sys_pllccr2(void)
 {
-  return (volatile uint32_t*)(k_ra_system_base_addr + k_ra_sys_off_pllccr2);
+  return (volatile uint16_t*)(k_ra_system_base_addr + k_ra_sys_off_pllccr2);
 }
 
 /** @brief Get pointer to the 8-bit OSCSF (oscillation stabilisation) register. */

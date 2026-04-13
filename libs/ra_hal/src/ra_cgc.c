@@ -225,8 +225,18 @@ static ra_err_t internal_start_pll1(uint32_t cpu_target_hz)
                           (int_mul << k_ra_pllccr_bit_plmul);
   *ra_sys_pllccr()      = pllccr;
 
-  const uint32_t pllccr2 = (frac << k_ra_pllccr2_bit_plmul_f);
-  *ra_sys_pllccr2()      = pllccr2;
+  /* WARNING: PLLCCR2 layout needs a real bringup pass.
+   *
+   * On RA8D2, FSP R_SYSTEM.PLLCCR2 is a 16-bit output-divider register
+   * with fields PLODIVP[3:0], PLODIVQ[7:4], PLODIVR[11:8]. The old
+   * driver was writing a fractional-multiplier value, which matched a
+   * legacy pre-RA8 layout and was never correct. The fix landing here
+   * only adjusts the offset + width so the write lands on the real
+   * register -- picking sensible PLODIV values is a separate CGC
+   * bring-up task. Until then we leave PLLCCR2 at its reset value
+   * so the PLL default output dividers apply. */
+  (void)frac;
+  (void)ra_sys_pllccr2;
 
   /* Start the PLL (clear PLLSTP). */
   *ra_sys_pllcr() = 0U;
