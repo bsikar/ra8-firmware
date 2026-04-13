@@ -1,11 +1,17 @@
 /**
  * @file ra_agt.c
- * @brief Asynchronous General-Purpose Timer (AGT) driver
+ * @brief Low Power Asynchronous General Purpose Timer driver
+ *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
  *
  * @details
- * Minimal driver that programmes an AGT channel as a free-running
+ * Wave 4 driver for the RA8D2 AGT block (10 channels total; only
+ * AGT0 / AGT1 have dedicated MSTPD bits, the rest share the
+ * sub-clock path). Programmes an AGT channel as a free-running
  * 16-bit down-counter clocked from PCLKB. Used as a coarse tick
- * source on boards where SysTick is not desirable.
+ * source on boards where SysTick is not desirable. Every register
+ * access carries a HUM Ch 24 citation.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -57,11 +63,18 @@ static const ra_mstp_t s_agt_mstp_table[k_ra_agt_mstp_id_count] = {
     RA_RETURN_ON_ERROR(mst_err, s_tag, "agt_start: mstp enable"); /* GCOVR_EXCL_BR_LINE */
   }
 
-  reg->AGTCR  = 0U; /* Stop.                      */
-  reg->AGTMR1 = 0U; /* Timer mode, PCLKB source.  */
+  /* HUM Ch 24.2.1 "AGTCR : AGT Control Register" p 1167 */
+  reg->AGTCR = 0U;
+  /* HUM Ch 24.2.2 "AGTMR1 : AGT Mode Register 1" p 1169 -- timer mode,
+   * PCLKB source. */
+  reg->AGTMR1 = 0U;
+  /* HUM Ch 24.2.3 "AGTMR2 : AGT Mode Register 2" p 1170 */
   reg->AGTMR2 = 0U;
-  reg->AGT    = reload;
-  reg->AGTCR  = 0x01U; /* TSTART.                 */
+  /* HUM Ch 24.2.4 "AGT : AGT Counter" p 1170 */
+  reg->AGT = reload;
+  /* HUM Ch 24.2.1 "AGTCR : AGT Control Register" p 1167 */
+  /* TSTART = 1. */
+  reg->AGTCR = 0x01U;
 
   ra_log_info_val(s_tag, "start channel", (uint32_t)channel);
   return k_ra_ok;
@@ -71,6 +84,7 @@ static const ra_mstp_t s_agt_mstp_table[k_ra_agt_mstp_id_count] = {
 {
   volatile r_agt_regs_t* reg = ra_agt(channel);
   RA_CHECK_NULL_PTR(reg, s_tag, "channel out of range");
+  /* HUM Ch 24.2.1 "AGTCR : AGT Control Register" p 1167 */
   reg->AGTCR = 0U;
   return k_ra_ok;
 }
@@ -87,6 +101,7 @@ ra_err_t ra_agt_deinit(uint8_t channel)
 {
   volatile r_agt_regs_t* reg = ra_agt(channel);
   RA_CHECK_NULL_PTR(reg, s_tag, "channel out of range");
+  /* HUM Ch 24.2.1 "AGTCR : AGT Control Register" p 1167 */
   reg->AGTCR = 0U;
   if (channel < (uint8_t)k_ra_agt_mstp_id_count) {
     return ra_mstp_disable(s_agt_mstp_table[channel]);
@@ -98,6 +113,7 @@ ra_err_t ra_agt_set_reload(uint8_t channel, uint16_t reload)
 {
   volatile r_agt_regs_t* reg = ra_agt(channel);
   RA_CHECK_NULL_PTR(reg, s_tag, "channel out of range");
+  /* HUM Ch 24.2.4 "AGT : AGT Counter" p 1170 */
   reg->AGT = reload;
   return k_ra_ok;
 }
@@ -107,6 +123,7 @@ ra_err_t ra_agt_get_status(uint8_t channel, uint8_t* out_mask)
   RA_CHECK_NULL_PTR(out_mask, s_tag, "out_mask must not be nullptr");
   volatile r_agt_regs_t* reg = ra_agt(channel);
   RA_CHECK_NULL_PTR(reg, s_tag, "channel out of range");
+  /* HUM Ch 24.2.1 "AGTCR : AGT Control Register" p 1167 */
   *out_mask = reg->AGTCR;
   return k_ra_ok;
 }
@@ -134,6 +151,7 @@ ra_err_t ra_agt_enter_stop(uint8_t channel)
 {
   volatile r_agt_regs_t* reg = ra_agt(channel);
   RA_CHECK_NULL_PTR(reg, s_tag, "channel out of range");
+  /* HUM Ch 24.2.1 "AGTCR : AGT Control Register" p 1167 */
   reg->AGTCR = 0U;
   if (channel < (uint8_t)k_ra_agt_mstp_id_count) {
     return ra_mstp_disable(s_agt_mstp_table[channel]);
