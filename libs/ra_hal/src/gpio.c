@@ -28,11 +28,22 @@
 #include "ra_check.h"
 #include "ra_err.h"
 #include "ra_gpio_constants.h"
+#include "ra_icu.h"
+#include "ra_isr.h"
 #include "ra_log.h"
 #include "ra_pin_interface.h"
 #include "ra_pin_validator.h"
 #include "ra_port_constants.h"
 #include "ra_port_utils.h"
+
+/**
+ * @enum ra_gpio_irq_limits_t
+ * @brief Local limits for Wave 3.4 IRQ attach API.
+ */
+typedef enum : uint8_t {
+  k_ra_gpio_irq_num_max    = 15U, /**< External IRQ pins 0..15.     */
+  k_ra_gpio_irq_event_base = 1U,  /**< ELC event for IRQ0.          */
+} ra_gpio_irq_limits_t;
 
 static const char* s_tag = "GPIO";
 
@@ -235,6 +246,85 @@ ra_err_t ra_pfs_route_peripheral(ra_port_pin_t pin, ra_psel_t psel, const char* 
   ra_pfs_pwpr_lock();
 
   ra_log_info_val(s_tag, "peripheral route pin", (uint32_t)pin);
+  return k_ra_ok;
+}
+
+/* =============================================================================
+ * External IRQ attachment (Wave 3.4)
+ * =============================================================================
+ */
+
+static ra_elc_event_t internal_event_for_irq(uint8_t irq_num)
+{
+  return (ra_elc_event_t)((uint16_t)k_ra_gpio_irq_event_base + (uint16_t)irq_num);
+}
+
+ra_err_t ra_gpio_attach_irq(ra_port_pin_t            pin,
+                            uint8_t                  irq_num,
+                            const ra_gpio_irq_cfg_t* cfg,
+                            ra_isr_handler_t         handler,
+                            void*                    ctx)
+{
+  RA_CHECK_NULL_PTR((void*)cfg, s_tag, "cfg must not be nullptr");
+  RA_CHECK_NULL_PTR((void*)handler, s_tag, "handler must not be nullptr");
+  if (irq_num > (uint8_t)k_ra_gpio_irq_num_max) {
+    return k_ra_err_invalid_arg;
+  }
+
+  ra_err_t err = ra_gpio_input_init(pin, cfg->pull);
+  if (err != k_ra_ok) {
+    return err;
+  }
+
+  const ra_icu_irq_cfg_t icu_cfg = {
+    .sense      = cfg->sense,
+    .filter_div = cfg->filter_div,
+    .filter_en  = cfg->filter_en,
+  };
+  err = ra_icu_configure_irq_pin(irq_num, &icu_cfg);
+  if (err != k_ra_ok) {
+    (void)ra_pin_validator_release(pin);
+    return err;
+  }
+
+  const ra_elc_event_t event = internal_event_for_irq(irq_num);
+  err                        = ra_isr_register(event, handler, ctx, cfg->priority, nullptr);
+  if (err != k_ra_ok) {
+    const ra_icu_irq_cfg_t zero_cfg = {
+      .sense      = (ra_icu_irqmd_t)0U,
+      .filter_div = (ra_icu_fclksel_t)0U,
+      .filter_en  = false,
+    };
+    (void)ra_icu_configure_irq_pin(irq_num, &zero_cfg);
+    (void)ra_pin_validator_release(pin);
+    return err;
+  }
+
+  ra_log_info_val(s_tag, "attach irq pin", (uint32_t)pin);
+  return k_ra_ok;
+}
+
+ra_err_t ra_gpio_detach_irq(ra_port_pin_t pin, uint8_t irq_num)
+{
+  if (irq_num > (uint8_t)k_ra_gpio_irq_num_max) {
+    return k_ra_err_invalid_arg;
+  }
+
+  const ra_elc_event_t event = internal_event_for_irq(irq_num);
+  const ra_err_t       err   = ra_isr_unregister(event);
+  if (err != k_ra_ok) {
+    return err;
+  }
+
+  const ra_icu_irq_cfg_t zero_cfg = {
+    .sense      = (ra_icu_irqmd_t)0U,
+    .filter_div = (ra_icu_fclksel_t)0U,
+    .filter_en  = false,
+  };
+  (void)ra_icu_configure_irq_pin(irq_num, &zero_cfg);
+  (void)ra_pin_validator_release(pin);
+
+  ra_log_info_val(s_tag, "detach irq pin", (uint32_t)pin);
   return k_ra_ok;
 }
 
