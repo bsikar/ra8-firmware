@@ -1242,10 +1242,14 @@ comments so the partition session is mechanical.
       forwarding path on the host build. The remaining IRQ /
       DMA / dispatch surface is deferred to Wave 9.3b alongside
       the first NS-world consumer that exercises it.
-- [ ] Session 9.4 -- HAL retrofit -- I/O (`ra_gpt`, `ra_adc`,
+- [x] Session 9.4 -- HAL retrofit -- I/O (`ra_gpt`, `ra_adc`,
       `ra_dac_b`, `ra_acmphs`, `ra_crc`, `ra_glcdc`, `ra_pdm`,
       `ra_eth_*`). MTU/TPU listed in the original plan are N/A
-      on RA8D2 (see Wave 3.6 scope-correction note).
+      on RA8D2 (see Wave 3.6 scope-correction note). Adds
+      `libs/ra_nsc/{inc,src}/ra_nsc_io.{h,c}` with 13 NSC
+      veneer entry points covering init + the most-used
+      primitive per driver. The Wave 9.3 + 9.4 NSC surface
+      now covers every comms + I/O Ring-3 driver in the tree.
 - [ ] Session 9.5 -- Stack relocation + integration (`lwip` +
       CherryUSB + `src/main.c` move to NS).
 
