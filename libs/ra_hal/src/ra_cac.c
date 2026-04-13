@@ -1,6 +1,17 @@
 /**
  * @file ra_cac.c
- * @brief Clock Accuracy Check driver implementation
+ * @brief Clock Frequency Accuracy Measurement Circuit driver
+ *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
+ * @details
+ * Wave 4 driver for the CAC block. The CAC measures one clock
+ * source against another over a configurable time window and
+ * fires a measurement-end / overflow / frequency-error IRQ when
+ * the result is out of bounds. This driver exposes lifecycle,
+ * polled measurement, async event dispatch, and power transition.
+ * Every register write below carries a HUM Ch 10 citation.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -30,11 +41,16 @@ ra_err_t ra_cac_init(uint16_t upper, uint16_t lower)
   RA_RETURN_ON_ERROR(mst_err, s_tag, "cac_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
 
   volatile r_cac_regs_t* reg = ra_cac();
-  reg->CACR0                 = 0U;
-  reg->CACR1                 = 0U;
-  reg->CACR2                 = 0U;
-  reg->CAULVR                = upper;
-  reg->CALLVR                = lower;
+  /* HUM Ch 10.2.1 "CACR0 : CAC Control Register 0" p 421 */
+  reg->CACR0 = 0U;
+  /* HUM Ch 10.2.2 "CACR1 : CAC Control Register 1" p 421 */
+  reg->CACR1 = 0U;
+  /* HUM Ch 10.2.3 "CACR2 : CAC Control Register 2" p 422 */
+  reg->CACR2 = 0U;
+  /* HUM Ch 10.2.6 "CAULVR : CAC Upper Limit Value Register" p 425 */
+  reg->CAULVR = upper;
+  /* HUM Ch 10.2.7 "CALLVR : CAC Lower Limit Value Register" p 425 */
+  reg->CALLVR = lower;
   ra_log_info(s_tag, "cac_init");
   return k_ra_ok;
 }
@@ -44,11 +60,15 @@ ra_err_t ra_cac_measure(uint16_t* out_count)
   RA_CHECK_NULL_PTR(out_count, s_tag, "out_count must not be nullptr");
   volatile r_cac_regs_t* reg = ra_cac();
 
+  /* HUM Ch 10.2.1 "CACR0 : CAC Control Register 0" p 421 -- CFME=1 starts
+   * a measurement; CASTR.MENDF asserts when the window completes. */
   reg->CACR0 = (uint8_t)(1U << k_ra_cacr0_cfme);
 
   enum : uint32_t { k_ra_cac_poll_limit = 200000U };
   for (uint32_t i = 0U; i < k_ra_cac_poll_limit; i++) {
+    /* HUM Ch 10.2.5 "CASTR : CAC Status Register" p 424 */
     if ((reg->CASTR & (uint8_t)(1U << k_ra_castr_mendf)) != 0U) {
+      /* HUM Ch 10.2.4 "CACNTBR : CAC Counter Buffer Register" p 423 */
       *out_count = reg->CACNTBR;
       reg->CACR0 = 0U;
       return k_ra_ok;
