@@ -188,9 +188,11 @@ ra_err_t ra_sci_init(uint8_t channel, const ra_sci_cfg_t* cfg)
 
   /* HUM Ch 11.2.7 "MSTPCRB : Module Stop Control Register B", p 445 */
   const ra_err_t mst_err = ra_mstp_enable(s_mstp_table[channel]);
-  if (mst_err != k_ra_ok) {
+  if (mst_err != k_ra_ok) { /* GCOVR_EXCL_BR_LINE */
+    /* GCOVR_EXCL_START */
     ra_log_error_val(s_tag, "sci_init: mstp enable failed", (uint32_t)mst_err);
     return k_ra_err_hw_init_failed;
+    /* GCOVR_EXCL_STOP */
   }
 
   /* HUM Ch 38.2 "SCR : Serial Control Register", p 2174 -- disable TX/RX

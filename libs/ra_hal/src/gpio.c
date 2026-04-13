@@ -282,14 +282,17 @@ ra_err_t ra_gpio_attach_irq(ra_port_pin_t            pin,
     .filter_en  = cfg->filter_en,
   };
   err = ra_icu_configure_irq_pin(irq_num, &icu_cfg);
-  if (err != k_ra_ok) {
+  if (err != k_ra_ok) { /* GCOVR_EXCL_BR_LINE -- irq_num bounded */
+    /* GCOVR_EXCL_START */
     (void)ra_pin_validator_release(pin);
     return err;
+    /* GCOVR_EXCL_STOP */
   }
 
   const ra_elc_event_t event = internal_event_for_irq(irq_num);
   err                        = ra_isr_register(event, handler, ctx, cfg->priority, nullptr);
-  if (err != k_ra_ok) {
+  if (err != k_ra_ok) { /* GCOVR_EXCL_BR_LINE -- fresh reset_irq_state */
+    /* GCOVR_EXCL_START */
     const ra_icu_irq_cfg_t zero_cfg = {
       .sense      = (ra_icu_irqmd_t)0U,
       .filter_div = (ra_icu_fclksel_t)0U,
@@ -298,6 +301,7 @@ ra_err_t ra_gpio_attach_irq(ra_port_pin_t            pin,
     (void)ra_icu_configure_irq_pin(irq_num, &zero_cfg);
     (void)ra_pin_validator_release(pin);
     return err;
+    /* GCOVR_EXCL_STOP */
   }
 
   ra_log_info_val(s_tag, "attach irq pin", (uint32_t)pin);

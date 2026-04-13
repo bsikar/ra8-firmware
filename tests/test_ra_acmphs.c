@@ -1,0 +1,371 @@
+/**
+ * @file test_ra_acmphs.c
+ * @brief Unit tests for ra_acmphs.c (High-Speed Analog Comparator driver)
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
+ */
+
+#include "ra8d2_acmphs_regs.h"
+#include "ra_acmphs.h"
+#include "ra_err.h"
+#include "ra_mstp.h"
+#include "ra_port_constants.h"
+#include "ra_sim_mmap.h"
+#include "unity_minimal.h"
+
+typedef enum : uint8_t {
+  k_ra_acmphs_test_ch_first = 0U,
+  k_ra_acmphs_test_ch_mid   = 3U,
+  k_ra_acmphs_test_ch_last  = 5U,
+  k_ra_acmphs_test_ch_bad   = 6U,
+  k_ra_acmphs_test_ch_way   = 200U,
+} ra_acmphs_test_ch_t;
+
+static void test_init_happy(void)
+{
+  TEST_BEGIN("acmphs init happy");
+  ra_sim_mmap_reset();
+
+  volatile r_acmphs_regs_t* reg = ra_acmphs((uint8_t)k_ra_acmphs_test_ch_first);
+  TEST_ASSERT_NOT_NULL((void*)reg);
+  reg->CMPCTL = 0xFFU;
+
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_acmphs_init());
+  TEST_ASSERT_EQ(0, (int)reg->CMPCTL);
+  TEST_END("acmphs init happy");
+}
+
+static void test_enable_first_channel(void)
+{
+  TEST_BEGIN("acmphs enable first channel");
+  ra_sim_mmap_reset();
+
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_acmphs_init());
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_acmphs_channel_enable((uint8_t)k_ra_acmphs_test_ch_first));
+  volatile r_acmphs_regs_t* reg = ra_acmphs((uint8_t)k_ra_acmphs_test_ch_first);
+  TEST_ASSERT_EQ((int)k_ra_acmphs_mask_hcen, (int)(reg->CMPCTL & (uint8_t)k_ra_acmphs_mask_hcen));
+  TEST_END("acmphs enable first channel");
+}
+
+static void test_enable_mid_channel(void)
+{
+  TEST_BEGIN("acmphs enable mid channel");
+  ra_sim_mmap_reset();
+
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_acmphs_channel_enable((uint8_t)k_ra_acmphs_test_ch_mid));
+  TEST_END("acmphs enable mid channel");
+}
+
+static void test_enable_last_channel(void)
+{
+  TEST_BEGIN("acmphs enable last channel");
+  ra_sim_mmap_reset();
+
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_acmphs_channel_enable((uint8_t)k_ra_acmphs_test_ch_last));
+  TEST_END("acmphs enable last channel");
+}
+
+static void test_enable_bad_channel(void)
+{
+  TEST_BEGIN("acmphs enable bad channel");
+  ra_sim_mmap_reset();
+
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
+                 (int)ra_acmphs_channel_enable((uint8_t)k_ra_acmphs_test_ch_bad));
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
+                 (int)ra_acmphs_channel_enable((uint8_t)k_ra_acmphs_test_ch_way));
+  TEST_END("acmphs enable bad channel");
+}
+
+static void test_read_output_high(void)
+{
+  TEST_BEGIN("acmphs read output high");
+  ra_sim_mmap_reset();
+
+  volatile r_acmphs_regs_t* reg = ra_acmphs((uint8_t)k_ra_acmphs_test_ch_first);
+  TEST_ASSERT_NOT_NULL((void*)reg);
+  reg->CMPMON = (uint8_t)k_ra_acmphs_mask_hcmon;
+
+  ra_level_t level = k_ra_level_low;
+  TEST_ASSERT_EQ((int)k_ra_ok,
+                 (int)ra_acmphs_read_output((uint8_t)k_ra_acmphs_test_ch_first, &level));
+  TEST_ASSERT_EQ((int)k_ra_level_high, (int)level);
+  TEST_END("acmphs read output high");
+}
+
+static void test_read_output_low(void)
+{
+  TEST_BEGIN("acmphs read output low");
+  ra_sim_mmap_reset();
+
+  ra_level_t level = k_ra_level_high;
+  TEST_ASSERT_EQ((int)k_ra_ok,
+                 (int)ra_acmphs_read_output((uint8_t)k_ra_acmphs_test_ch_first, &level));
+  TEST_ASSERT_EQ((int)k_ra_level_low, (int)level);
+  TEST_END("acmphs read output low");
+}
+
+static void test_read_output_null_out(void)
+{
+  TEST_BEGIN("acmphs read output null");
+  ra_sim_mmap_reset();
+
+  TEST_ASSERT_EQ((int)k_ra_err_null_ptr,
+                 (int)ra_acmphs_read_output((uint8_t)k_ra_acmphs_test_ch_first, nullptr));
+  TEST_END("acmphs read output null");
+}
+
+static void test_read_output_bad_channel(void)
+{
+  TEST_BEGIN("acmphs read output bad channel");
+  ra_sim_mmap_reset();
+
+  ra_level_t level = k_ra_level_low;
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
+                 (int)ra_acmphs_read_output((uint8_t)k_ra_acmphs_test_ch_bad, &level));
+  TEST_END("acmphs read output bad channel");
+}
+
+/* ---------------------------------------------------------------------------
+ * Wave 4.2 -- full build-out
+ * ---------------------------------------------------------------------------
+ */
+
+static uint32_t s_acmphs_cb_count;
+static uint8_t  s_acmphs_cb_last_ch;
+
+static void stub_acmphs_cb(void* ctx, uint8_t ch)
+{
+  (void)ctx;
+  ++s_acmphs_cb_count;
+  s_acmphs_cb_last_ch = ch;
+}
+
+static void prep_w42(void)
+{
+  ra_sim_mmap_reset();
+  (void)ra_mstp_init();
+  s_acmphs_cb_count   = 0U;
+  s_acmphs_cb_last_ch = 0U;
+}
+
+static ra_acmphs_cfg_t make_cfg(void)
+{
+  const ra_acmphs_cfg_t cfg = {
+    .ivpsel     = 0x01U,
+    .ivrefsel   = 0x02U,
+    .edge       = k_ra_acmphs_edge_rise,
+    .filter_en  = true,
+    .invert_out = false,
+  };
+  return cfg;
+}
+
+static void test_channel_init_configured(void)
+{
+  TEST_BEGIN("acmphs channel_init configured");
+  prep_w42();
+
+  const ra_acmphs_cfg_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_acmphs_channel_init((uint8_t)k_ra_acmphs_test_ch_first, &cfg));
+
+  volatile r_acmphs_regs_t* reg = ra_acmphs((uint8_t)k_ra_acmphs_test_ch_first);
+  TEST_ASSERT_NOT_NULL((void*)reg);
+  TEST_ASSERT((reg->CMPCTL & (uint8_t)k_ra_acmphs_mask_hcen) != 0U);
+  TEST_ASSERT_EQ((int32_t)0x01U, (int32_t)reg->CMPSEL0);
+  TEST_ASSERT_EQ((int32_t)0x02U, (int32_t)reg->CMPSEL1);
+  TEST_ASSERT(reg->CMPFIR != 0U);
+  TEST_END("acmphs channel_init configured");
+}
+
+static void test_channel_init_null_cfg(void)
+{
+  TEST_BEGIN("acmphs channel_init null cfg");
+  prep_w42();
+
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_acmphs_channel_init((uint8_t)k_ra_acmphs_test_ch_first, nullptr));
+  TEST_END("acmphs channel_init null cfg");
+}
+
+static void test_channel_init_bad_channel(void)
+{
+  TEST_BEGIN("acmphs channel_init bad channel");
+  prep_w42();
+
+  const ra_acmphs_cfg_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_acmphs_channel_init((uint8_t)k_ra_acmphs_test_ch_bad, &cfg));
+  TEST_END("acmphs channel_init bad channel");
+}
+
+static void test_channel_init_no_filter_with_invert(void)
+{
+  TEST_BEGIN("acmphs channel_init no filter + invert");
+  prep_w42();
+
+  ra_acmphs_cfg_t cfg = make_cfg();
+  cfg.filter_en       = false;
+  cfg.invert_out      = true;
+  cfg.edge            = k_ra_acmphs_edge_fall;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_acmphs_channel_init((uint8_t)k_ra_acmphs_test_ch_first, &cfg));
+
+  volatile r_acmphs_regs_t* reg = ra_acmphs((uint8_t)k_ra_acmphs_test_ch_first);
+  TEST_ASSERT_EQ((int32_t)0, (int32_t)reg->CMPFIR);
+  TEST_ASSERT((reg->CMPCTL & (uint8_t)(1U << 3U)) != 0U);
+  TEST_END("acmphs channel_init no filter + invert");
+}
+
+static void test_channel_init_last_channel_no_mstp(void)
+{
+  TEST_BEGIN("acmphs channel_init last channel (no MSTP)");
+  prep_w42();
+
+  const ra_acmphs_cfg_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_acmphs_channel_init((uint8_t)k_ra_acmphs_test_ch_last, &cfg));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_acmphs_channel_deinit((uint8_t)k_ra_acmphs_test_ch_last));
+  TEST_END("acmphs channel_init last channel (no MSTP)");
+}
+
+static void test_clear_status_bad_channel(void)
+{
+  TEST_BEGIN("acmphs clear_status bad channel");
+  prep_w42();
+
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_acmphs_clear_status((uint8_t)k_ra_acmphs_test_ch_bad));
+  TEST_END("acmphs clear_status bad channel");
+}
+
+static void test_channel_deinit(void)
+{
+  TEST_BEGIN("acmphs channel_deinit");
+  prep_w42();
+
+  const ra_acmphs_cfg_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_acmphs_channel_init((uint8_t)k_ra_acmphs_test_ch_first, &cfg));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_acmphs_channel_deinit((uint8_t)k_ra_acmphs_test_ch_first));
+  volatile r_acmphs_regs_t* reg = ra_acmphs((uint8_t)k_ra_acmphs_test_ch_first);
+  TEST_ASSERT_EQ((int32_t)0, (int32_t)reg->CMPCTL);
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_acmphs_channel_deinit((uint8_t)k_ra_acmphs_test_ch_bad));
+  TEST_END("acmphs channel_deinit");
+}
+
+static void test_set_inputs(void)
+{
+  TEST_BEGIN("acmphs set_inputs");
+  prep_w42();
+
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_acmphs_set_inputs((uint8_t)k_ra_acmphs_test_ch_mid, 0xAAU, 0x55U));
+
+  volatile r_acmphs_regs_t* reg = ra_acmphs((uint8_t)k_ra_acmphs_test_ch_mid);
+  TEST_ASSERT_EQ((int32_t)0xAAU, (int32_t)reg->CMPSEL0);
+  TEST_ASSERT_EQ((int32_t)0x55U, (int32_t)reg->CMPSEL1);
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_acmphs_set_inputs((uint8_t)k_ra_acmphs_test_ch_bad, 0U, 0U));
+  TEST_END("acmphs set_inputs");
+}
+
+static void test_status_read_and_clear(void)
+{
+  TEST_BEGIN("acmphs status read + clear");
+  prep_w42();
+
+  const ra_acmphs_cfg_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_acmphs_channel_init((uint8_t)k_ra_acmphs_test_ch_first, &cfg));
+
+  uint8_t mask = 0U;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_acmphs_get_status((uint8_t)k_ra_acmphs_test_ch_first, &mask));
+  TEST_ASSERT((mask & (uint8_t)k_ra_acmphs_mask_hcen) != 0U);
+
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_acmphs_clear_status((uint8_t)k_ra_acmphs_test_ch_first));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_acmphs_get_status((uint8_t)k_ra_acmphs_test_ch_first, &mask));
+  TEST_ASSERT_EQ((int32_t)0, (int32_t)mask);
+
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_acmphs_get_status((uint8_t)k_ra_acmphs_test_ch_first, nullptr));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_acmphs_get_status((uint8_t)k_ra_acmphs_test_ch_bad, &mask));
+  TEST_END("acmphs status read + clear");
+}
+
+static void test_attach_and_dispatch(void)
+{
+  TEST_BEGIN("acmphs attach + dispatch");
+  prep_w42();
+
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_acmphs_attach_handler(stub_acmphs_cb, (void*)(uintptr_t)0xAABBU));
+
+  ra_acmphs_dispatch((uint8_t)k_ra_acmphs_test_ch_mid);
+  TEST_ASSERT_EQ((int32_t)1, (int32_t)s_acmphs_cb_count);
+  TEST_ASSERT_EQ((int32_t)k_ra_acmphs_test_ch_mid, (int32_t)s_acmphs_cb_last_ch);
+
+  ra_acmphs_dispatch((uint8_t)k_ra_acmphs_test_ch_bad);
+  TEST_ASSERT_EQ((int32_t)1, (int32_t)s_acmphs_cb_count);
+  TEST_END("acmphs attach + dispatch");
+}
+
+static void test_power_transition(void)
+{
+  TEST_BEGIN("acmphs power transition");
+  prep_w42();
+
+  const ra_acmphs_cfg_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_acmphs_channel_init((uint8_t)k_ra_acmphs_test_ch_first, &cfg));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_acmphs_enter_stop((uint8_t)k_ra_acmphs_test_ch_first));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_acmphs_exit_stop((uint8_t)k_ra_acmphs_test_ch_first));
+
+  /* Channels >= 4 have no MSTP id, enter/exit is a no-op and always succeeds. */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_acmphs_enter_stop((uint8_t)k_ra_acmphs_test_ch_last));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_acmphs_exit_stop((uint8_t)k_ra_acmphs_test_ch_last));
+
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_acmphs_enter_stop((uint8_t)k_ra_acmphs_test_ch_bad));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_acmphs_exit_stop((uint8_t)k_ra_acmphs_test_ch_bad));
+  TEST_END("acmphs power transition");
+}
+
+int32_t main(void)
+{
+  test_init_happy();
+  test_enable_first_channel();
+  test_enable_mid_channel();
+  test_enable_last_channel();
+  test_enable_bad_channel();
+  test_read_output_high();
+  test_read_output_low();
+  test_read_output_null_out();
+  test_read_output_bad_channel();
+  test_channel_init_configured();
+  test_channel_init_null_cfg();
+  test_channel_init_bad_channel();
+  test_channel_init_no_filter_with_invert();
+  test_channel_init_last_channel_no_mstp();
+  test_channel_deinit();
+  test_clear_status_bad_channel();
+  test_set_inputs();
+  test_status_read_and_clear();
+  test_attach_and_dispatch();
+  test_power_transition();
+  (void)fprintf(stderr, "[OK  ] test_ra_acmphs.c\n");
+  return 0;
+}
