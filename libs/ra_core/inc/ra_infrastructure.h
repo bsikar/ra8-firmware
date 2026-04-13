@@ -34,6 +34,8 @@
 extern "C" {
 #endif
 
+#include "ra_err.h"
+
 /**
  * @brief Run every piece of infrastructure init that a driver may assume.
  *
@@ -50,6 +52,29 @@ extern "C" {
  *       (no scheduling dependency).
  */
 void ra_infrastructure_init(void);
+
+/**
+ * @brief Verify the SRAM stack canary sentinel pattern.
+ *
+ * @details
+ * Walks the linker-defined ``.stack_canary`` region (32 bytes
+ * just below the stack top) and confirms every word still holds
+ * the seed value written by ``ra_infrastructure_init``. A mismatch
+ * means the main stack has overflowed into the sentinel; callers
+ * typically log a fatal error and reboot.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok                  Sentinel still intact.
+ * @retval k_ra_err_validation_failed One or more words corrupted.
+ *
+ * @pre ``ra_infrastructure_init`` has been called.
+ * @post No state is modified.
+ *
+ * @note Thread safety: safe to call concurrently with everything
+ *       except the linker symbol redefinition path used by tests.
+ * @since 0.3.0
+ */
+[[nodiscard]] ra_err_t ra_stack_canary_check(void);
 
 #ifdef __cplusplus
 }
