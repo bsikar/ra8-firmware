@@ -58,7 +58,7 @@ internal_update_pfs(ra_port_t port, ra_pin_t pin, uint32_t clear_mask, uint32_t 
     return;
   }
   ra_pfs_pwpr_unlock();
-  /* HUM Ch 20.2.x "PmnPFS : Pin Function Select Register", p 837 */
+  /* HUM Ch 20.2 "PmnPFS : Pin Function Select Register", p 837 */
   const uint32_t cur    = *pfs;
   const uint32_t masked = cur & ~clear_mask;
   *pfs                  = masked | set_mask;
