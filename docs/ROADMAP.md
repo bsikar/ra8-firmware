@@ -44,7 +44,7 @@ pre-commit -- do not hand-edit it.
 |    6 | Display, audio, USB controllers, Ethernet MAC          |        6 | [ ]    |
 |    7 | PAL + middleware integration (lwIP, CherryUSB)         |        3 | [~]    |
 |    8 | Single-world integration demo + stabilisation         |      1-2 | [x]    |
-|    9 | TrustZone partitioning                                 |      4-5 | [ ]    |
+|    9 | TrustZone partitioning                                 |      4-5 | [~]    |
 |   10 | Secure-side application + key handling demo           |      1-2 | [ ]    |
 
 ## Per-driver feature checklist template
@@ -1207,13 +1207,35 @@ comments so the partition session is mechanical.
 
 ## Wave 9 -- TrustZone partitioning
 
-`[ ]` Status: TODO.
+`[~]` Status: WIP.
 
-- [ ] Session 9.1 -- TrustZone bring-up (SAU, linker, toolchain `-mcmse`, two-ELF emit decision).
-- [ ] Session 9.2 -- NSC veneer scaffold + `ra_sim_world` host mock.
-- [ ] Session 9.3 -- HAL retrofit -- comms (`ra_sci`, `ra_iic`, `ra_spi`, `ra_usb_*`).
-- [ ] Session 9.4 -- HAL retrofit -- I/O (`ra_gpt`, `ra_mtu`, `ra_tpu`, `ra_adc`, `ra_dac_b`, `ra_acmphs`, `ra_crc`, `ra_glcdc`, `ra_pdm`, `ra_eth_*`).
-- [ ] Session 9.5 -- Stack relocation + integration (`lwip` + CherryUSB + `src/main.c` move to NS).
+- [x] Session 9.1 -- TrustZone bring-up (SAU, linker, toolchain `-mcmse`).
+      Ships:
+      - `src/boot/trustzone_init.{h,c}` -- SAU programmes 4 canonical
+        regions (NS upper MRAM/SRAM/SDRAM + NSC veneer alias) and
+        enables the unit. Default-deny (ALLNS clear).
+      - `SystemInit` calls `ra_trustzone_init()` after the MPU is up.
+      - Top-level `RA_TRUSTZONE_ENABLE` CMake option (OFF by default)
+        enables `-mcmse` + the SAU init code. Single-world build is
+        unchanged when off.
+      - Verified: cross-build with TZ off = 11834 bytes; with TZ on
+        = 12122 bytes. Both link clean.
+      Decision recorded in trustzone_init.c: single-ELF with the
+      veneer section (`.gnu.sgstubs`) carved out by the linker --
+      revisit if J-Link flow forces two-ELF emit later.
+- [ ] Session 9.2 -- NSC veneer scaffold goes live + `ra_sim_world`
+      host mock. Wave 7.3 already shipped the scaffold; Wave 9.2
+      adds the `__cmse_nonsecure_entry` annotations + the
+      `cmse_check_address_range` calls at the marked retrofit
+      points.
+- [ ] Session 9.3 -- HAL retrofit -- comms (`ra_sci`, `ra_iic`,
+      `ra_spi`, `ra_usb_*`).
+- [ ] Session 9.4 -- HAL retrofit -- I/O (`ra_gpt`, `ra_adc`,
+      `ra_dac_b`, `ra_acmphs`, `ra_crc`, `ra_glcdc`, `ra_pdm`,
+      `ra_eth_*`). MTU/TPU listed in the original plan are N/A
+      on RA8D2 (see Wave 3.6 scope-correction note).
+- [ ] Session 9.5 -- Stack relocation + integration (`lwip` +
+      CherryUSB + `src/main.c` move to NS).
 
 ---
 
