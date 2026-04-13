@@ -3,7 +3,7 @@
  * @brief Host-side mock of the TrustZone NS / S boundary
  *
  * @par Tag
- * [Ring 6 / APP] {World: NSC}
+ * [Ring 6 / APP] {World: NS}
  *
  * @details
  * Wave 9.2 host mock. Real Cortex-M85 hardware enforces the

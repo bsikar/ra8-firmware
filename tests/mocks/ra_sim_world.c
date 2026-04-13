@@ -3,7 +3,7 @@
  * @brief Host-side TrustZone partition mock
  *
  * @par Tag
- * [Ring 6 / APP] {World: NSC}
+ * [Ring 6 / APP] {World: NS}
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
