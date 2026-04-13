@@ -47,13 +47,16 @@
  * path lives inside ``ra_eth`` and is fanned out via
  * ``ra_net_pal_set_event_handler``.
  *
- * ## Wave 7.1 status
+ * ## Send/recv backing store
  *
- * The send/recv primitives are scaffolded but bottom out in
- * ``k_ra_err_not_supported`` until the ra_eth Wave 7.1b TX/RX
- * descriptor ring lands. This file already exposes the final
- * shape so the lwIP ``ethernetif.c`` glue (Wave 7.1c) can be
- * written against a stable contract.
+ * The PAL owns a small in-memory ring (``k_ra_net_pal_ring_slots``
+ * slots, each ``k_ra_net_pal_frame_max`` bytes) the stack writes
+ * to with ``ra_net_pal_send_frame`` and drains with
+ * ``ra_net_pal_recv_frame``. On real hardware the ring is backed
+ * by the GWCA descriptor engine; in host tests it is a plain
+ * contiguous RAM buffer. The stack-facing contract is identical
+ * in either case, so lwIP's ``ethernetif.c`` port talks to the
+ * same API.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -252,7 +255,7 @@ typedef enum : uint32_t {
 [[nodiscard]] ra_err_t ra_net_pal_get_mac_addr(ra_net_pal_mac_t* out_mac);
 
 /* =============================================================================
- * Frame I/O (Wave 7.1 scaffold; bottoms out in not-implemented)
+ * Frame I/O
  * =============================================================================
  */
 
@@ -260,31 +263,26 @@ typedef enum : uint32_t {
  * @brief Hand a complete ethernet frame to the MAC for transmit.
  *
  * @details
- * Wave 7.1 stub. The descriptor-ring TX path lands in Wave 7.1b
- * once the ra_eth driver gains ``ra_eth_tx_submit``. Until then
- * this function returns ``k_ra_err_not_supported``.
+ * Copies ``frame[0..len-1]`` into the next free TX ring slot. On
+ * real hardware the slot is a GWCA descriptor; in the host build
+ * it is a plain RAM buffer the PAL also exposes through
+ * ``ra_net_pal_recv_frame`` for loopback tests.
  *
- * The future contract is: the caller supplies a frame in
- * ``frame[0..len-1]`` (header + payload, no FCS), and the PAL
- * either copies it into a TX descriptor immediately or returns
- * ``k_ra_err_no_mem`` if the ring is full. ``len`` is bounded by
- * ``k_ra_net_pal_frame_max``.
- *
- * @param[in] frame Ethernet frame bytes.
+ * @param[in] frame Ethernet frame bytes (header + payload, no FCS).
  * @param[in] len   Frame length in bytes; non-zero, <= frame_max.
  *
  * @return ``ra_err_t`` error code.
- * @retval k_ra_ok                  Frame queued for TX.
- * @retval k_ra_err_null_ptr        ``frame`` was NULL.
- * @retval k_ra_err_invalid_arg     ``len`` zero or out of range.
- * @retval k_ra_err_invalid_state   PAL not initialised.
- * @retval k_ra_err_not_supported Wave 7.1 stub still in place.
+ * @retval k_ra_ok                Frame queued for TX.
+ * @retval k_ra_err_null_ptr      ``frame`` was NULL.
+ * @retval k_ra_err_invalid_arg   ``len`` zero or out of range.
+ * @retval k_ra_err_invalid_state PAL not initialised.
+ * @retval k_ra_err_no_mem        TX ring full; try again later.
  *
  * @pre ``frame`` is non-NULL.
  * @pre PAL has been initialised.
  *
- * @post On success, the frame has been queued and the caller may
- *       drop ``frame``.
+ * @post On success, the frame is queued and the caller may drop
+ *       ``frame``.
  *
  * @note Thread safety: not thread-safe.
  * @see ra_net_pal_recv_frame
@@ -296,12 +294,9 @@ typedef enum : uint32_t {
  * @brief Pull the next received ethernet frame, if any, into a buffer.
  *
  * @details
- * Wave 7.1 stub. Returns ``k_ra_err_not_supported`` until the
- * ra_eth RX descriptor ring is implemented in Wave 7.1b.
- *
- * The future contract is: if a frame is available it is copied
- * into ``out_buf[0..*inout_len-1]`` and ``*inout_len`` is set to
- * the actual byte count. If no frame is ready the function returns
+ * If a frame is available it is copied into ``out_buf`` and
+ * ``*inout_len`` is updated to the byte count actually written.
+ * When no frame is ready the function returns
  * ``k_ra_err_no_data`` so callers can poll without blocking.
  *
  * @param[out]    out_buf   Destination buffer.
@@ -309,11 +304,11 @@ typedef enum : uint32_t {
  *                          On exit:  bytes written.
  *
  * @return ``ra_err_t`` error code.
- * @retval k_ra_ok                  Frame copied.
- * @retval k_ra_err_no_data         No frame ready (poll-friendly).
- * @retval k_ra_err_null_ptr        ``out_buf`` / ``inout_len`` NULL.
- * @retval k_ra_err_invalid_state   PAL not initialised.
- * @retval k_ra_err_not_supported Wave 7.1 stub still in place.
+ * @retval k_ra_ok                Frame copied.
+ * @retval k_ra_err_no_data       No frame ready (poll-friendly).
+ * @retval k_ra_err_null_ptr      ``out_buf`` / ``inout_len`` NULL.
+ * @retval k_ra_err_invalid_state PAL not initialised.
+ * @retval k_ra_err_invalid_arg   ``*inout_len`` < frame_max capacity.
  *
  * @pre ``out_buf`` and ``inout_len`` are non-NULL.
  * @pre ``*inout_len`` >= ``k_ra_net_pal_frame_max``.

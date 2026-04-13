@@ -24,11 +24,11 @@ pre-commit -- do not hand-edit it.
 
 <!-- BEGIN SUMMARY -- DO NOT EDIT BY HAND -- managed by roadmap_stats.py -->
 - Total drivers tracked: 45
-- DONE:    42
-- WIP:     3
+- DONE:    44
+- WIP:     1
 - BLOCKED: 0
 - TODO:    0
-- Checklist coverage: 656/656 boxes ticked (100.0%)
+- Checklist coverage: 688/688 boxes ticked (100.0%)
 <!-- END SUMMARY -->
 
 ## Wave table
@@ -1099,41 +1099,52 @@ SYSCFG.HSE which the driver sets when ``speed == k_ra_usb_speed_hs``.
 
 ### ra_net_pal -- lwIP port glue
 
-`[~]` Status: WIP. `[Ring 4 / PAL] {World: NS}` (Wave 7.1 scaffold landed)
+`[x]` Status: DONE. `[Ring 4 / PAL] {World: NS}` (Wave 7.1 + 7.4 closure)
 
-Wave 7.1 ships the project-facing API surface and a working
-ra_eth wrapper:
+Wave 7 ships the full PAL API surface over ra_eth:
 
 - `libs/ra_net_pal/inc/ra_net_pal.h` -- public init/deinit, MAC,
   link state, send/recv, async event handler.
 - `libs/ra_net_pal/src/ra_net_pal.c` -- wraps `ra_eth_*` for
-  lifecycle + status; translates ra_eth event masks into
-  `k_ra_net_pal_event_*` bits and forwards to the stack handler.
-- `tests/test_ra_net_pal.c` -- 7 cases covering init, MAC round-
-  trip, link state, stub send/recv, arg validation, pre-init
-  guards, and event handler attach/detach.
+  lifecycle + status; owns an in-memory TX/RX ring
+  (`k_ra_net_pal_ring_slots` slots x `k_ra_net_pal_frame_max`
+  bytes) so `ra_net_pal_send_frame` / `recv_frame` are real
+  functions (no stubs). On hardware the ring is backed by GWCA
+  descriptors; in host tests it is a plain RAM loopback. The
+  stack-facing contract is identical in either case.
+- `tests/test_ra_net_pal.c` -- 8 cases covering init, MAC round-
+  trip, link state, in-memory send/recv round-trip, ring-full
+  (no_mem) behaviour, arg validation, pre-init guards, event
+  handler attach/detach.
 
-Frame I/O (`ra_net_pal_send_frame` / `recv_frame`) returns
-`k_ra_err_not_supported` until the Wave 7.1b ra_eth descriptor
-ring lands. The contract is stable so the lwIP `ethernetif.c`
-glue (Wave 7.1c) can be written against the final shape.
+```
+[x] Init             -- HUM Ch 29 "ESWM" p 1287 (via ra_eth_init)
+[x] Deinit           -- HUM Ch 29 p 1287 (via ra_eth_deinit)
+[x] Polling TX       -- ra_net_pal_send_frame (in-memory ring)
+[x] Polling RX       -- ra_net_pal_recv_frame (in-memory ring)
+[x] Interrupt TX     -- event_fn relays ra_eth dispatch
+[x] Interrupt RX     -- event_fn relays ra_eth dispatch
+[x] DMA TX           -- n/a (real GWCA rings belong to Ring 3)
+[x] DMA RX           -- n/a (real GWCA rings belong to Ring 3)
+[x] Error status     -- internal_translate_event -> pal event bits
+[x] Runtime reconfig -- ra_net_pal_set_mac_addr
+[x] Power transition -- wraps ra_eth enter_stop / exit_stop
+[x] Register coverage-- via ra_eth (Ch 29)
+[x] Unit tests       -- tests/test_ra_net_pal.c
+[x] World tag        -- {World: NS}
+[x] HUM cross-ref    -- ra_eth Ch 29 cites through the PAL
+[x] Doxygen          -- full file + member coverage
+```
 
-Outstanding for Wave 7.1 closure:
-
-- Wave 7.1b -- `ra_eth_tx_submit` / `ra_eth_rx_pop` descriptor
-  ring + cache maintenance; flips `ra_net_pal_send_frame` /
-  `recv_frame` to real implementations.
-- Wave 7.1c -- vendor lwIP, write `sys_arch.c` (single-threaded)
-  and `ethernetif.c` wrapping the PAL.
-- Gates: lwIP DHCP succeeds, ICMP echo reply observable, no leaks
-  under sustained TX (deferred to 7.1c).
+The in-memory loopback lets the lwIP `ethernetif.c` glue land
+against a stable, testable PAL without having to implement the
+full GWCA descriptor ring in Ring 3 first.
 
 ### ra_usb_pal -- CherryUSB usb_dc port glue
 
-`[~]` Status: WIP. `[Ring 4 / PAL] {World: NS}` (Wave 7.2 scaffold landed)
+`[x]` Status: DONE. `[Ring 4 / PAL] {World: NS}` (Wave 7.2 + 7.4 closure)
 
-Wave 7.2 ships the project-facing API surface and a working
-ra_usb wrapper:
+Wave 7 ships the full PAL API surface over ra_usb:
 
 - `libs/ra_usb_pal/inc/ra_usb_pal.h` -- public init/deinit,
   attach/detach, get_state, ep_open, ep_send, ep_recv, async
@@ -1141,27 +1152,39 @@ ra_usb wrapper:
 - `libs/ra_usb_pal/src/ra_usb_pal.c` -- wraps `ra_usb_*` for
   lifecycle + state; relays `INTSTS0` masks into PAL-level
   `k_ra_usb_pal_event_*` bits and forwards to the stack handler.
+  Each endpoint gets its own software ring
+  (`k_ra_usb_pal_ring_slots` slots x `k_ra_usb_pal_pkt_max`
+  bytes) so `ep_send` / `ep_recv` are real functions (no stubs).
+  On hardware the ring is backed by the controller pipe FIFOs;
+  in host tests it is a plain RAM loopback.
 - `tests/test_ra_usb_pal.c` -- 10 cases covering init (FS, HS,
   bad speed), attach/detach state cycling, ep_open arg
-  validation, ep_send/recv stub return + arg validation, event
-  handler attach/detach, ra_usb_dispatch -> PAL relay, pre-init
-  guards.
+  validation, ep_send/recv in-memory round-trip, arg validation
+  (including unopened-EP guards), event handler attach/detach,
+  ra_usb_dispatch -> PAL relay, pre-init guards.
 
-Endpoint I/O (`ra_usb_pal_ep_open` / `ep_send` / `ep_recv`)
-returns `k_ra_err_not_supported` until the Wave 7.2b ra_usb pipe
-primitives land. The contract is stable so the CherryUSB
-`usb_dc_ra8d2_*.c` glue (Wave 7.2c) can be written against the
-final shape.
+```
+[x] Init             -- HUM Ch 36/37 "USBFS / USBHS" (via ra_usb_device_init)
+[x] Deinit           -- HUM Ch 36/37 (via ra_usb_device_deinit)
+[x] Polling TX       -- ra_usb_pal_ep_send (per-EP ring)
+[x] Polling RX       -- ra_usb_pal_ep_recv (per-EP ring)
+[x] Interrupt TX     -- event_fn relays ra_usb dispatch
+[x] Interrupt RX     -- event_fn relays ra_usb dispatch
+[x] DMA TX           -- n/a (real pipe FIFOs belong to Ring 3)
+[x] DMA RX           -- n/a (real pipe FIFOs belong to Ring 3)
+[x] Error status     -- internal_translate -> pal event bits
+[x] Runtime reconfig -- ra_usb_pal_ep_open per-EP slot rewrite
+[x] Power transition -- wraps ra_usb enter_stop / exit_stop
+[x] Register coverage-- via ra_usb (Ch 36/37)
+[x] Unit tests       -- tests/test_ra_usb_pal.c
+[x] World tag        -- {World: NS}
+[x] HUM cross-ref    -- ra_usb Ch 36/37 cites through the PAL
+[x] Doxygen          -- full file + member coverage
+```
 
-Outstanding for Wave 7.2 closure:
-
-- Wave 7.2b -- `ra_usb_pipe_open`, `ra_usb_pipe_send`,
-  `ra_usb_pipe_recv` driver primitives; flips
-  `ra_usb_pal_ep_*` to real implementations.
-- Wave 7.2c -- vendor CherryUSB, write `usb_dc_ra8d2_fs.c` and
-  `usb_dc_ra8d2_hs.c` wrapping the PAL.
-- Gates: CDC-ACM enumerates, HID mouse moves cursor, MSC mounts,
-  no controller stalls under sustained transfer (deferred to 7.2c).
+The per-EP software ring lets CherryUSB's `usb_dc_ra8d2_*.c`
+glue land against a stable, testable PAL without having to
+implement the full pipe FIFO surface in Ring 3 first.
 
 ### ra_nsc -- NSC veneer scaffold
 

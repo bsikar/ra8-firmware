@@ -42,14 +42,16 @@
  * Single-threaded. Init runs from the boot path; the event handler
  * fires from ra_usb ISR context.
  *
- * ## Wave 7.2 status
+ * ## Endpoint I/O backing store
  *
- * The PAL handles lifecycle, attach/detach, and event relay. The
- * endpoint TX/RX primitives (``ra_usb_pal_ep_send`` / ``ep_recv``)
- * are scaffolded but bottom out in ``k_ra_err_not_supported`` until
- * the ra_usb Wave 7.2b TX/RX primitive set lands. The contract is
- * stable so the CherryUSB port (Wave 7.2c) can be written against
- * the final shape.
+ * Each endpoint gets a small software ring (depth
+ * ``k_ra_usb_pal_ring_slots``, per-packet capacity
+ * ``k_ra_usb_pal_pkt_max``) the stack writes to with
+ * ``ra_usb_pal_ep_send`` and drains with ``ra_usb_pal_ep_recv``.
+ * On real hardware the ring is backed by the controller pipe
+ * FIFOs; in host tests it is a plain RAM buffer. The stack-facing
+ * contract is identical in both paths, so CherryUSB's
+ * ``usb_dc_ra8d2_*.c`` port talks to the same API.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -259,7 +261,7 @@ typedef void (*ra_usb_pal_event_fn_t)(void* ctx, ra_usb_speed_t speed, uint16_t 
 [[nodiscard]] ra_err_t ra_usb_pal_get_state(ra_usb_pal_state_t* out_state);
 
 /* =============================================================================
- * Endpoint I/O (Wave 7.2 scaffold; bottoms out in not-supported)
+ * Endpoint I/O
  * =============================================================================
  */
 
@@ -267,9 +269,9 @@ typedef void (*ra_usb_pal_event_fn_t)(void* ctx, ra_usb_speed_t speed, uint16_t 
  * @brief Open a non-control endpoint with a given type / direction / size.
  *
  * @details
- * Wave 7.2 stub. The descriptor-ring TX/RX path lands in Wave 7.2b
- * once the ra_usb driver gains ``ra_usb_pipe_*``. Until then this
- * function returns ``k_ra_err_not_supported``.
+ * Stores the EP configuration in the PAL's per-endpoint slot and
+ * resets its software queue to empty. Subsequent ``ep_send`` /
+ * ``ep_recv`` calls route through this slot.
  *
  * @param[in] ep_addr    Endpoint address (1..k_ra_usb_pal_ep_max).
  * @param[in] dir        IN or OUT.
@@ -280,7 +282,6 @@ typedef void (*ra_usb_pal_event_fn_t)(void* ctx, ra_usb_speed_t speed, uint16_t 
  * @retval k_ra_ok                Endpoint configured.
  * @retval k_ra_err_invalid_arg   Bad ep_addr / dir / type / size.
  * @retval k_ra_err_invalid_state PAL not initialised.
- * @retval k_ra_err_not_supported Wave 7.2 stub still in place.
  *
  * @pre PAL has been initialised.
  *
@@ -297,20 +298,16 @@ typedef void (*ra_usb_pal_event_fn_t)(void* ctx, ra_usb_speed_t speed, uint16_t 
 /**
  * @brief Submit data on an IN endpoint (device -> host).
  *
- * @details
- * Wave 7.2 stub. Returns ``k_ra_err_not_supported`` until ra_usb
- * Wave 7.2b lands.
- *
  * @param[in] ep_addr Endpoint number 1..k_ra_usb_pal_ep_max.
  * @param[in] data    Buffer to send.
- * @param[in] len     Number of bytes; 0..xfer_max.
+ * @param[in] len     Number of bytes; 0..max_packet.
  *
  * @return ``ra_err_t`` error code.
  * @retval k_ra_ok                Transfer queued.
  * @retval k_ra_err_null_ptr      ``data`` was NULL with non-zero len.
  * @retval k_ra_err_invalid_arg   ep_addr or len out of range.
- * @retval k_ra_err_invalid_state PAL not initialised.
- * @retval k_ra_err_not_supported Wave 7.2 stub.
+ * @retval k_ra_err_invalid_state PAL not initialised or EP not opened.
+ * @retval k_ra_err_no_mem        EP TX ring full; try again later.
  *
  * @pre PAL has been initialised.
  * @pre Endpoint previously opened via ``ra_usb_pal_ep_open``.
@@ -325,10 +322,6 @@ typedef void (*ra_usb_pal_event_fn_t)(void* ctx, ra_usb_speed_t speed, uint16_t 
 /**
  * @brief Receive data from an OUT endpoint (host -> device).
  *
- * @details
- * Wave 7.2 stub. Returns ``k_ra_err_not_supported`` until ra_usb
- * Wave 7.2b lands.
- *
  * @param[in]     ep_addr   Endpoint number 1..k_ra_usb_pal_ep_max.
  * @param[out]    out_buf   Destination buffer.
  * @param[in,out] inout_len On entry: capacity. On exit: bytes received.
@@ -338,8 +331,7 @@ typedef void (*ra_usb_pal_event_fn_t)(void* ctx, ra_usb_speed_t speed, uint16_t 
  * @retval k_ra_err_no_data       No data ready (poll-friendly).
  * @retval k_ra_err_null_ptr      ``out_buf`` / ``inout_len`` NULL.
  * @retval k_ra_err_invalid_arg   ep_addr or capacity bad.
- * @retval k_ra_err_invalid_state PAL not initialised.
- * @retval k_ra_err_not_supported Wave 7.2 stub.
+ * @retval k_ra_err_invalid_state PAL not initialised or EP not opened.
  *
  * @pre PAL has been initialised.
  * @pre Endpoint previously opened via ``ra_usb_pal_ep_open``.

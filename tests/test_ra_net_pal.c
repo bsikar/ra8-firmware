@@ -79,22 +79,50 @@ static void test_set_get_mac_round_trip(void)
   TEST_END("ra_net_pal_set_mac_addr round trip");
 }
 
-static void test_send_recv_returns_not_supported(void)
+static void test_send_recv_loopback(void)
 {
-  TEST_BEGIN("ra_net_pal_{send,recv}_frame: stub returns not_supported");
+  TEST_BEGIN("ra_net_pal_{send,recv}_frame: in-memory loopback round-trip");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_pal_init(&k_test_mac));
+
+  /* Empty ring -> recv returns no_data. */
+  uint8_t  rx_buf[k_ra_net_pal_frame_max] = {0U};
+  uint16_t rx_len                         = (uint16_t)k_ra_net_pal_frame_max;
+  TEST_ASSERT_EQ((int32_t)k_ra_err_no_data, (int32_t)ra_net_pal_recv_frame(rx_buf, &rx_len));
+
+  /* Push a frame, pop it back out, verify payload + length. */
+  uint8_t frame[64] = {0U};
+  for (uint16_t i = 0U; i < (uint16_t)sizeof(frame); ++i) {
+    frame[i] = (uint8_t)(0xA0U + i);
+  }
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_pal_send_frame(frame, (uint16_t)sizeof(frame)));
+
+  rx_len = (uint16_t)k_ra_net_pal_frame_max;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_pal_recv_frame(rx_buf, &rx_len));
+  TEST_ASSERT_EQ((int32_t)sizeof(frame), (int32_t)rx_len);
+  TEST_ASSERT_EQ(0, memcmp(rx_buf, frame, sizeof(frame)));
+
+  /* Ring is now empty again. */
+  rx_len = (uint16_t)k_ra_net_pal_frame_max;
+  TEST_ASSERT_EQ((int32_t)k_ra_err_no_data, (int32_t)ra_net_pal_recv_frame(rx_buf, &rx_len));
+  TEST_END("ra_net_pal_{send,recv}_frame: in-memory loopback round-trip");
+}
+
+static void test_send_fills_ring(void)
+{
+  TEST_BEGIN("ra_net_pal_send_frame: TX ring full returns no_mem");
   prep();
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_pal_init(&k_test_mac));
 
   uint8_t frame[64] = {0U};
-  /* Real but stubbed: the frame is well-formed but the stack returns
-   * not_supported because the Wave 7.1b descriptor ring isn't here yet. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_supported,
+  /* Ring depth is 4 (k_ra_net_pal_ring_slots); drive it past full. */
+  for (int32_t i = 0; i < 4; ++i) {
+    TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                   (int32_t)ra_net_pal_send_frame(frame, (uint16_t)sizeof(frame)));
+  }
+  TEST_ASSERT_EQ((int32_t)k_ra_err_no_mem,
                  (int32_t)ra_net_pal_send_frame(frame, (uint16_t)sizeof(frame)));
-
-  uint8_t  rx_buf[k_ra_net_pal_frame_max] = {0U};
-  uint16_t rx_len                         = (uint16_t)k_ra_net_pal_frame_max;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_supported, (int32_t)ra_net_pal_recv_frame(rx_buf, &rx_len));
-  TEST_END("ra_net_pal_{send,recv}_frame: stub returns not_supported");
+  TEST_END("ra_net_pal_send_frame: TX ring full returns no_mem");
 }
 
 static void test_send_recv_arg_validation(void)
@@ -179,7 +207,8 @@ int32_t main(void)
   test_init_with_mac();
   test_init_null_mac_keeps_default();
   test_set_get_mac_round_trip();
-  test_send_recv_returns_not_supported();
+  test_send_recv_loopback();
+  test_send_fills_ring();
   test_send_recv_arg_validation();
   test_event_handler_relays_eth_status();
   test_calls_before_init_fail();

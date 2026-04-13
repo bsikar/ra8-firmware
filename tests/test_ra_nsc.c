@@ -82,9 +82,8 @@ static void test_eth_send_validates_args(void)
   TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
                  (int32_t)ra_nsc_eth_send(frame, (uint16_t)(k_ra_nsc_eth_frame_max + 1U)));
 
-  /* Valid args -> ra_net_pal stub returns not_supported. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_supported,
-                 (int32_t)ra_nsc_eth_send(frame, (uint16_t)sizeof(frame)));
+  /* Valid args -> veneer forwards to ra_net_pal, frame is queued. */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_nsc_eth_send(frame, (uint16_t)sizeof(frame)));
   TEST_END("ra_nsc_eth_send: arg validation");
 }
 
@@ -104,8 +103,8 @@ static void test_eth_recv_validates_args(void)
   uint16_t zero = 0U;
   TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_nsc_eth_recv(buf, &zero));
 
-  /* Valid args -> ra_net_pal stub returns not_supported. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_supported, (int32_t)ra_nsc_eth_recv(buf, &len));
+  /* Valid args, empty ring -> veneer forwards no_data from the PAL. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_no_data, (int32_t)ra_nsc_eth_recv(buf, &len));
   TEST_END("ra_nsc_eth_recv: arg validation");
 }
 
