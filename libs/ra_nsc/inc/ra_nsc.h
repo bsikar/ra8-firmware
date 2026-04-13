@@ -275,6 +275,51 @@ extern "C" {
 [[nodiscard]] RA_NSC_VENEER ra_err_t ra_nsc_periph_init(void);
 
 /* =============================================================================
+ * Key vault veneer (Wave 10)
+ * =============================================================================
+ */
+
+/**
+ * @brief NSC veneer: SHA-256(key XOR challenge) for a stored slot.
+ *
+ * @details
+ * The only operation the Non-Secure world can perform on the
+ * secure key vault. The raw key never leaves the secure world;
+ * this veneer copies the challenge into secure scratch, XORs it
+ * with the slot key, hashes the result, and copies the 32-byte
+ * digest back to NS memory. NS callers can then verify the
+ * digest matches their expected value (e.g., for HMAC or PBKDF2
+ * style derivation) without ever seeing the key.
+ *
+ * @param[in]  slot       Vault slot index 0..7.
+ * @param[in]  ns_chal    32-byte challenge in NS memory.
+ * @param[out] ns_digest  32-byte digest buffer in NS memory.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok                 Digest written.
+ * @retval k_ra_err_null_ptr       ``ns_chal`` / ``ns_digest`` NULL.
+ * @retval k_ra_err_invalid_arg    ``slot`` >= 8.
+ *
+ * @pre PAL has been initialised; the secure key vault has been
+ *      programmed with at least one key in the requested slot.
+ *
+ * @post ``ns_digest[0..31]`` holds SHA-256(key XOR challenge).
+ *
+ * @par TrustZone Safety:
+ *  - **Validates:** slot in range; both NS pointers in NS region
+ *    (Wave 9.2 cmse_check); buffer lengths fit 32-byte windows.
+ *  - **Trusts:** the secure key vault's static slot array.
+ *  - **Denies:** raw key access from NS. Only the digest crosses.
+ *
+ * @note Thread safety: not thread-safe; the SHA-256 sponge is
+ *       single-instance.
+ * @since 0.3.0
+ */
+[[nodiscard]] RA_NSC_VENEER ra_err_t ra_nsc_key_vault_challenge(uint16_t       slot,
+                                                                const uint8_t* ns_chal,
+                                                                uint8_t*       ns_digest);
+
+/* =============================================================================
  * Constants surfaced to NS callers
  * =============================================================================
  */
