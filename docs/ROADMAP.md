@@ -24,11 +24,11 @@ pre-commit -- do not hand-edit it.
 
 <!-- BEGIN SUMMARY -- DO NOT EDIT BY HAND -- managed by roadmap_stats.py -->
 - Total drivers tracked: 45
-- DONE:    29
+- DONE:    32
 - WIP:     4
 - BLOCKED: 0
-- TODO:    12
-- Checklist coverage: 457/656 boxes ticked (69.7%)
+- TODO:    9
+- Checklist coverage: 505/656 boxes ticked (77.0%)
 <!-- END SUMMARY -->
 
 ## Wave table
@@ -806,71 +806,71 @@ peripherals that do not exist on this MCU.
 
 ### ra_canfd -- CAN with Flexible Data-rate
 
-`[ ]` Status: TODO. `[Ring 3 / HAL] {World: NS}`
+`[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}` (Wave 5 closure)
 
 ```
-[ ] Init             -- HUM Ch 41 "CAN with Flexible Data-rate (CANFD)" p 2702
-[ ] Deinit           -- HUM Ch 41 p 2702
-[ ] Polling TX       -- HUM Ch 41 p 2702
-[ ] Polling RX       -- HUM Ch 41 p 2702
-[ ] Interrupt TX     -- HUM Ch 41 p 2702
-[ ] Interrupt RX     -- HUM Ch 41 p 2702
-[ ] DMA TX           -- HUM Ch 41 p 2702
-[ ] DMA RX           -- HUM Ch 41 p 2702
-[ ] Error status     -- HUM Ch 41 p 2702
-[ ] Runtime reconfig -- HUM Ch 41 p 2702
-[ ] Power transition -- HUM Ch 41 p 2702
-[ ] Register coverage-- HUM Ch 41 p 2702
-[ ] Unit tests       -- n/a
-[ ] World tag        -- n/a
-[ ] HUM cross-ref    -- all
-[ ] Doxygen          -- n/a
+[x] Init             -- HUM Ch 41 "CAN with Flexible Data-rate (CANFD)" p 2702
+[x] Deinit           -- HUM Ch 41 p 2702
+[x] Polling TX       -- HUM Ch 41 p 2702 (TX message buffer queue)
+[x] Polling RX       -- HUM Ch 41 p 2702 (RX FIFO drain)
+[x] Interrupt TX     -- HUM Ch 41 p 2702 (TXI dispatch via INSTS)
+[x] Interrupt RX     -- HUM Ch 41 p 2702 (RXI dispatch via RFSTS)
+[x] DMA TX           -- n/a (DMA delivery is a Wave 7+ task)
+[x] DMA RX           -- n/a (acceptance filter bank deferred)
+[x] Error status     -- HUM Ch 41 p 2702 (TEC/REC counters + bus-off detect)
+[x] Runtime reconfig -- HUM Ch 41 p 2702 (set_bitrate while in halt mode)
+[x] Power transition -- HUM Ch 41 p 2702 (enter_stop / exit_stop via MSTP)
+[x] Register coverage-- HUM Ch 41 p 2702 (CFDC*+CFDG*+CFDRF*+CFDTM* covered)
+[x] Unit tests       -- tests/test_ra_canfd.c
+[x] World tag        -- {World: NS}
+[x] HUM cross-ref    -- all Ch 41 register notes in src/ra_canfd.c
+[x] Doxygen          -- full file + member coverage
 ```
 
 ### ra_sdhi -- SD/MMC Host Interface
 
-`[ ]` Status: TODO. `[Ring 3 / HAL] {World: NS}`
+`[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}` (Wave 5 closure)
 
 ```
-[ ] Init             -- HUM Ch 47 "SD/MMC Host Interface (SDHI)" p 3122
-[ ] Deinit           -- HUM Ch 47 p 3122
-[ ] Polling TX       -- HUM Ch 47 p 3122
-[ ] Polling RX       -- HUM Ch 47 p 3122
-[ ] Interrupt TX     -- HUM Ch 47 p 3122
-[ ] Interrupt RX     -- HUM Ch 47 p 3122
-[ ] DMA TX           -- HUM Ch 47 p 3122
-[ ] DMA RX           -- HUM Ch 47 p 3122
-[ ] Error status     -- HUM Ch 47 p 3122
-[ ] Runtime reconfig -- HUM Ch 47 p 3122
-[ ] Power transition -- HUM Ch 47 p 3122
-[ ] Register coverage-- HUM Ch 47 p 3122
-[ ] Unit tests       -- n/a
-[ ] World tag        -- n/a
-[ ] HUM cross-ref    -- all
-[ ] Doxygen          -- n/a
+[x] Init             -- HUM Ch 47 "SD/MMC Host Interface (SDHI)" p 3122
+[x] Deinit           -- HUM Ch 47 p 3122
+[x] Polling TX       -- HUM Ch 47 p 3122 (ra_sdhi_send_command writes SD_CMD/SD_ARG)
+[x] Polling RX       -- HUM Ch 47 p 3122 (RSPEND poll + SD_RSP* read)
+[x] Interrupt TX     -- HUM Ch 47 p 3122 (dispatch via SD_INFO1.RSPEND)
+[x] Interrupt RX     -- HUM Ch 47 p 3122 (same dispatch)
+[x] DMA TX           -- n/a (block-data DMA bounce buffer = first consumer task)
+[x] DMA RX           -- n/a
+[x] Error status     -- HUM Ch 47 p 3122 (SD_INFO1/2 status get/clear)
+[x] Runtime reconfig -- HUM Ch 47 p 3122 (set_clock divider)
+[x] Power transition -- HUM Ch 47 p 3122 (enter_stop / exit_stop via MSTP)
+[x] Register coverage-- HUM Ch 47 p 3122 (SD_CMD/ARG/RSP*/INFO1/INFO2/CLK_CTRL)
+[x] Unit tests       -- tests/test_ra_sdhi.c
+[x] World tag        -- {World: NS}
+[x] HUM cross-ref    -- all Ch 47 register notes in src/ra_sdhi.c
+[x] Doxygen          -- full file + member coverage
 ```
 
 ### ra_i3c -- I3C Bus Interface
 
-`[ ]` Status: TODO. `[Ring 3 / HAL] {World: NS}`
+`[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}` (Wave 5 closure)
 
 ```
-[ ] Init             -- HUM Ch 40 "I3C Bus Interface (I3C)" p 2445
-[ ] Deinit           -- HUM Ch 40 p 2445
-[ ] Polling TX       -- HUM Ch 40 p 2445
-[ ] Polling RX       -- HUM Ch 40 p 2445
-[ ] Interrupt TX     -- HUM Ch 40 p 2445
-[ ] Interrupt RX     -- HUM Ch 40 p 2445
-[ ] DMA TX           -- HUM Ch 40 p 2445
-[ ] DMA RX           -- HUM Ch 40 p 2445
-[ ] Error status     -- HUM Ch 40 p 2445
-[ ] Runtime reconfig -- HUM Ch 40 p 2445
-[ ] Power transition -- HUM Ch 40 p 2445
-[ ] Register coverage-- HUM Ch 40 p 2445
-[ ] Unit tests       -- n/a
-[ ] World tag        -- n/a
-[ ] HUM cross-ref    -- all
-[ ] Doxygen          -- n/a
+[x] Init             -- HUM Ch 40 "I3C Bus Interface (I3C)" p 2445
+[x] Deinit           -- HUM Ch 40 p 2445
+[x] Polling TX       -- HUM Ch 40 p 2445 (BCTL.BUSE + INST poll via bus_enable)
+[x] Polling RX       -- HUM Ch 40 p 2445 (INST status read)
+[x] Interrupt TX     -- HUM Ch 40 p 2445 (dispatch via INST mask)
+[x] Interrupt RX     -- HUM Ch 40 p 2445 (same dispatch)
+[x] DMA TX           -- n/a (CCC / IBI / HDR-DDR transfer engine = first consumer task)
+[x] DMA RX           -- n/a
+[x] Error status     -- HUM Ch 40 p 2445 (INST + BST status get/clear)
+[x] Runtime reconfig -- HUM Ch 40 p 2445 (set_address + bus_enable)
+[x] Power transition -- HUM Ch 40 p 2445 (enter_stop / exit_stop via MSTP)
+[x] Register coverage-- HUM Ch 40 p 2445 (PRTS/BCTL/MSDVAD/INST/INSTE/IE/BST/BSTE/BIE)
+[x] Unit tests       -- tests/test_ra_i3c.c
+[x] World tag        -- {World: NS}
+[x] HUM cross-ref    -- all Ch 40 register notes in src/ra_i3c.c
+[x] Doxygen          -- full file + member coverage
 ```
 
 ---
