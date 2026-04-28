@@ -104,13 +104,15 @@ void ra_time_on_tick(void)
 }
 
 /*
- * Optional: override the weak SysTick_Handler installed by
- * vector_table.c. Compilation units that want manual control over
- * the SysTick IRQ can define their own SysTick_Handler and this one
- * will be silently dropped.
+ * Non-weak override of vector_table.c's weak SysTick_Handler -> Default_Handler
+ * alias. The linker prefers a non-weak symbol over a weak one, so any TU that
+ * links ra_time.c automatically gets the tick counter. An application that
+ * wants to drive the ms tick from a different source (e.g. an RTOS tick) can
+ * still override with its own non-weak SysTick_Handler -- the duplicate-symbol
+ * link error is the right failure mode there ("only one heartbeat allowed").
  */
 /* NOLINTNEXTLINE(misc-use-internal-linkage) -- linker symbol for vector table. */
-__attribute__((weak)) void SysTick_Handler(void)
+void SysTick_Handler(void)
 {
   ra_time_on_tick();
 }
