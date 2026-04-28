@@ -18,7 +18,15 @@ static void test_wdt_init_ok(void)
 {
   TEST_BEGIN("ra_wdt_init returns ok");
   ra_sim_mmap_reset();
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_wdt_init());
+  const ra_wdt_cfg_t cfg = {
+    .timeout       = k_ra_wdt_timeout_16384,
+    .clock_div     = k_ra_wdt_clkdiv_8192,
+    .window_start  = k_ra_wdt_window_start_100,
+    .window_end    = k_ra_wdt_window_end_0,
+    .on_expiry     = k_ra_wdt_on_expiry_reset,
+    .stop_in_sleep = k_ra_wdt_sleep_keep_count,
+  };
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_wdt_init(&cfg));
   TEST_END("ra_wdt_init returns ok");
 }
 

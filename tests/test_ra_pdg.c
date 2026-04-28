@@ -53,8 +53,8 @@ static void*    s_pdg_cb_last_ctx;
 
 static void prep(void)
 {
-  ra_sim_mmap_reset;
-  (void)ra_mstp_init;
+  ra_sim_mmap_reset();
+  (void)ra_mstp_init();
   s_pdg_cb_count    = 0U;
   s_pdg_cb_last_ctx = nullptr;
 }
@@ -79,12 +79,12 @@ static void stub_pdg_cb(void* ctx)
 static void test_init_happy(void)
 {
   TEST_BEGIN("pdg init happy");
-  prep;
+  prep();
 
-  const ra_pdg_config_t cfg = make_cfg;
+  const ra_pdg_config_t cfg = make_cfg();
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdg_init(&cfg));
 
-  volatile r_pdg_regs_t* reg = ra_pdg;
+  volatile r_pdg_regs_t* reg = ra_pdg();
   /* DLLEN must be set, DLYRST must be cleared after step 4. */
   TEST_ASSERT((reg->GTDLYCR & (uint16_t)k_ra_pdg_gtdlycr_mask_dllen) != 0U);
   TEST_ASSERT((reg->GTDLYCR & (uint16_t)k_ra_pdg_gtdlycr_mask_dlyrst) == 0U);
@@ -98,7 +98,7 @@ static void test_init_happy(void)
 static void test_init_null_cfg(void)
 {
   TEST_BEGIN("pdg init null cfg");
-  prep;
+  prep();
   TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_pdg_init(nullptr));
   TEST_END("pdg init null cfg");
 }
@@ -106,9 +106,9 @@ static void test_init_null_cfg(void)
 static void test_init_bad_frange(void)
 {
   TEST_BEGIN("pdg init bad frange");
-  prep;
+  prep();
 
-  ra_pdg_config_t cfg = make_cfg;
+  ra_pdg_config_t cfg = make_cfg();
   cfg.frange          = (ra_pdg_frange_t)0x3U; /* 0b11 is "Setting prohibited" */
   TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_pdg_init(&cfg));
   TEST_END("pdg init bad frange");
@@ -117,9 +117,9 @@ static void test_init_bad_frange(void)
 static void test_init_bad_mask(void)
 {
   TEST_BEGIN("pdg init bad channel mask");
-  prep;
+  prep();
 
-  ra_pdg_config_t cfg = make_cfg;
+  ra_pdg_config_t cfg = make_cfg();
   cfg.channel_mask    = (uint8_t)k_ra_pdg_test_mask_bad;
   TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_pdg_init(&cfg));
   TEST_END("pdg init bad channel mask");
@@ -128,15 +128,15 @@ static void test_init_bad_mask(void)
 static void test_init_auto_tune_low_band(void)
 {
   TEST_BEGIN("pdg init auto-tune low band");
-  prep;
+  prep();
 
-  ra_pdg_config_t cfg = make_cfg;
+  ra_pdg_config_t cfg = make_cfg();
   cfg.auto_tune       = 1U;
   cfg.gptclk_hz       = (uint32_t)k_ra_pdg_test_clk_low_band;
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdg_init(&cfg));
 
   /* FRANGE field should be 00b after init. */
-  volatile r_pdg_regs_t* reg = ra_pdg;
+  volatile r_pdg_regs_t* reg = ra_pdg();
   const uint16_t         f   = (uint16_t)((reg->GTDLYCR & (uint16_t)k_ra_pdg_gtdlycr_mask_frange) >>
                                           (uint16_t)k_ra_pdg_gtdlycr_shift_frange);
   TEST_ASSERT_EQ((int32_t)k_ra_pdg_frange_80_160_mhz, (int32_t)f);
@@ -146,14 +146,14 @@ static void test_init_auto_tune_low_band(void)
 static void test_init_auto_tune_high_band(void)
 {
   TEST_BEGIN("pdg init auto-tune high band");
-  prep;
+  prep();
 
-  ra_pdg_config_t cfg = make_cfg;
+  ra_pdg_config_t cfg = make_cfg();
   cfg.auto_tune       = 1U;
   cfg.gptclk_hz       = (uint32_t)k_ra_pdg_test_clk_high_band;
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdg_init(&cfg));
 
-  volatile r_pdg_regs_t* reg = ra_pdg;
+  volatile r_pdg_regs_t* reg = ra_pdg();
   const uint16_t         f   = (uint16_t)((reg->GTDLYCR & (uint16_t)k_ra_pdg_gtdlycr_mask_frange) >>
                                           (uint16_t)k_ra_pdg_gtdlycr_shift_frange);
   TEST_ASSERT_EQ((int32_t)k_ra_pdg_frange_155_300_mhz, (int32_t)f);
@@ -163,9 +163,9 @@ static void test_init_auto_tune_high_band(void)
 static void test_init_auto_tune_zero_hz(void)
 {
   TEST_BEGIN("pdg init auto-tune zero hz");
-  prep;
+  prep();
 
-  ra_pdg_config_t cfg = make_cfg;
+  ra_pdg_config_t cfg = make_cfg();
   cfg.auto_tune       = 1U;
   cfg.gptclk_hz       = 0U;
   TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_pdg_init(&cfg));
@@ -175,9 +175,9 @@ static void test_init_auto_tune_zero_hz(void)
 static void test_init_auto_tune_out_of_range(void)
 {
   TEST_BEGIN("pdg init auto-tune out of range");
-  prep;
+  prep();
 
-  ra_pdg_config_t cfg = make_cfg;
+  ra_pdg_config_t cfg = make_cfg();
   cfg.auto_tune       = 1U;
   cfg.gptclk_hz       = (uint32_t)k_ra_pdg_test_clk_too_low;
   TEST_ASSERT_EQ((int32_t)k_ra_err_out_of_range, (int32_t)ra_pdg_init(&cfg));
@@ -190,9 +190,9 @@ static void test_init_auto_tune_out_of_range(void)
 static void test_set_delay_rising_pin_a(void)
 {
   TEST_BEGIN("pdg set_delay rising pin A");
-  prep;
+  prep();
 
-  const ra_pdg_config_t cfg = make_cfg;
+  const ra_pdg_config_t cfg = make_cfg();
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdg_init(&cfg));
 
   TEST_ASSERT_EQ((int32_t)k_ra_ok,
@@ -201,7 +201,7 @@ static void test_set_delay_rising_pin_a(void)
                                            k_ra_pdg_edge_rising,
                                            (uint8_t)k_ra_pdg_test_code_lo));
 
-  volatile r_pdg_regs_t* reg = ra_pdg;
+  volatile r_pdg_regs_t* reg = ra_pdg();
   TEST_ASSERT_EQ(
     (int32_t)k_ra_pdg_test_code_lo,
     (int32_t)(reg->GTDLYR[(uint8_t)k_ra_pdg_test_ch_first].A & (uint16_t)k_ra_pdg_dly_mask));
@@ -211,9 +211,9 @@ static void test_set_delay_rising_pin_a(void)
 static void test_set_delay_falling_pin_b(void)
 {
   TEST_BEGIN("pdg set_delay falling pin B");
-  prep;
+  prep();
 
-  const ra_pdg_config_t cfg = make_cfg;
+  const ra_pdg_config_t cfg = make_cfg();
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdg_init(&cfg));
 
   TEST_ASSERT_EQ((int32_t)k_ra_ok,
@@ -222,7 +222,7 @@ static void test_set_delay_falling_pin_b(void)
                                            k_ra_pdg_edge_falling,
                                            (uint8_t)k_ra_pdg_test_code_hi));
 
-  volatile r_pdg_regs_t* reg = ra_pdg;
+  volatile r_pdg_regs_t* reg = ra_pdg();
   TEST_ASSERT_EQ(
     (int32_t)k_ra_pdg_test_code_hi,
     (int32_t)(reg->GTDLYF[(uint8_t)k_ra_pdg_test_ch_mid].B & (uint16_t)k_ra_pdg_dly_mask));
@@ -232,7 +232,7 @@ static void test_set_delay_falling_pin_b(void)
 static void test_set_delay_bad_inputs(void)
 {
   TEST_BEGIN("pdg set_delay bad inputs");
-  prep;
+  prep();
   /* Even when cfg has not run, the not_initialized check fires first. */
   TEST_ASSERT_EQ((int32_t)k_ra_err_not_initialized,
                  (int32_t)ra_pdg_set_delay((uint8_t)k_ra_pdg_test_ch_first,
@@ -240,7 +240,7 @@ static void test_set_delay_bad_inputs(void)
                                            k_ra_pdg_edge_rising,
                                            (uint8_t)k_ra_pdg_test_code_lo));
 
-  const ra_pdg_config_t cfg = make_cfg;
+  const ra_pdg_config_t cfg = make_cfg();
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdg_init(&cfg));
 
   TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
@@ -274,9 +274,9 @@ static void test_set_delay_bad_inputs(void)
 static void test_get_delay_round_trip(void)
 {
   TEST_BEGIN("pdg get_delay round-trip");
-  prep;
+  prep();
 
-  const ra_pdg_config_t cfg = make_cfg;
+  const ra_pdg_config_t cfg = make_cfg();
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdg_init(&cfg));
 
   TEST_ASSERT_EQ((int32_t)k_ra_ok,
@@ -308,9 +308,9 @@ static void test_get_delay_round_trip(void)
 static void test_set_delay_batch_happy(void)
 {
   TEST_BEGIN("pdg set_delay batch happy");
-  prep;
+  prep();
 
-  const ra_pdg_config_t cfg = make_cfg;
+  const ra_pdg_config_t cfg = make_cfg();
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdg_init(&cfg));
 
   const ra_pdg_delay_entry_t batch[] = {
@@ -331,7 +331,7 @@ static void test_set_delay_batch_happy(void)
     (int32_t)k_ra_ok,
     (int32_t)ra_pdg_set_delay_batch(batch, (uint8_t)(sizeof(batch) / sizeof(batch[0]))));
 
-  volatile r_pdg_regs_t* reg = ra_pdg;
+  volatile r_pdg_regs_t* reg = ra_pdg();
   TEST_ASSERT_EQ(
     (int32_t)k_ra_pdg_test_code_lo,
     (int32_t)(reg->GTDLYR[(uint8_t)k_ra_pdg_test_ch_first].A & (uint16_t)k_ra_pdg_dly_mask));
@@ -347,10 +347,10 @@ static void test_set_delay_batch_happy(void)
 static void test_set_delay_batch_bad_inputs(void)
 {
   TEST_BEGIN("pdg set_delay batch bad inputs");
-  prep;
+  prep();
   TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_pdg_set_delay_batch(nullptr, 1U));
 
-  const ra_pdg_config_t cfg = make_cfg;
+  const ra_pdg_config_t cfg = make_cfg();
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdg_init(&cfg));
 
   const ra_pdg_delay_entry_t one[] = {
@@ -369,7 +369,7 @@ static void test_set_delay_batch_bad_inputs(void)
 static void test_set_delay_not_initialised(void)
 {
   TEST_BEGIN("pdg set_delay before init");
-  prep;
+  prep();
   TEST_ASSERT_EQ((int32_t)k_ra_err_not_initialized,
                  (int32_t)ra_pdg_set_delay((uint8_t)k_ra_pdg_test_ch_first,
                                            k_ra_pdg_pin_a,
@@ -388,7 +388,7 @@ static void test_set_delay_not_initialised(void)
 static void test_delay_ns_to_code_low_band(void)
 {
   TEST_BEGIN("pdg delay_ns_to_code low band");
-  prep;
+  prep();
 
   /* low band, GTCLK = 100 MHz -> period = 10 ns; one DLY step = 10/128 ns. */
   uint8_t code = 0U;
@@ -420,13 +420,13 @@ static void test_delay_ns_to_code_low_band(void)
 static void test_power_transition(void)
 {
   TEST_BEGIN("pdg power transition");
-  prep;
+  prep();
 
-  const ra_pdg_config_t cfg = make_cfg;
+  const ra_pdg_config_t cfg = make_cfg();
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdg_init(&cfg));
 
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdg_enter_stop((uint8_t)k_ra_pdg_test_ch_first));
-  volatile r_pdg_regs_t* reg = ra_pdg;
+  volatile r_pdg_regs_t* reg = ra_pdg();
   const uint16_t         bit =
     (uint16_t)(1U << ((uint16_t)k_ra_pdg_gtdlycr2_shift_dlyen + (uint16_t)k_ra_pdg_test_ch_first));
   TEST_ASSERT((reg->GTDLYCR2 & bit) != 0U);
@@ -444,17 +444,17 @@ static void test_power_transition(void)
 static void test_channel_bypass_set(void)
 {
   TEST_BEGIN("pdg channel_bypass_set");
-  prep;
+  prep();
   TEST_ASSERT_EQ((int32_t)k_ra_err_not_initialized,
                  (int32_t)ra_pdg_channel_bypass_set((uint8_t)k_ra_pdg_test_ch_first, 1U));
 
-  const ra_pdg_config_t cfg = make_cfg;
+  const ra_pdg_config_t cfg = make_cfg();
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdg_init(&cfg));
 
   /* Force bypass-on (clear DLYBSn) for ch first. */
   TEST_ASSERT_EQ((int32_t)k_ra_ok,
                  (int32_t)ra_pdg_channel_bypass_set((uint8_t)k_ra_pdg_test_ch_first, 0U));
-  volatile r_pdg_regs_t* reg = ra_pdg;
+  volatile r_pdg_regs_t* reg = ra_pdg();
   const uint16_t         bs_bit =
     (uint16_t)(1U << ((uint16_t)k_ra_pdg_gtdlycr2_shift_dlybs + (uint16_t)k_ra_pdg_test_ch_first));
   TEST_ASSERT((reg->GTDLYCR2 & bs_bit) == 0U);
@@ -472,11 +472,11 @@ static void test_channel_bypass_set(void)
 static void test_pin_disable(void)
 {
   TEST_BEGIN("pdg pin_disable");
-  prep;
+  prep();
   TEST_ASSERT_EQ((int32_t)k_ra_err_not_initialized,
                  (int32_t)ra_pdg_pin_disable((uint8_t)k_ra_pdg_test_ch_first, k_ra_pdg_pin_a));
 
-  const ra_pdg_config_t cfg = make_cfg;
+  const ra_pdg_config_t cfg = make_cfg();
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdg_init(&cfg));
 
   /* Pre-load both rising + falling delays for ch_first pin A. */
@@ -518,9 +518,9 @@ static void test_pin_disable(void)
 static void test_status_read_and_clear(void)
 {
   TEST_BEGIN("pdg status read + clear");
-  prep;
+  prep();
 
-  const ra_pdg_config_t cfg = make_cfg;
+  const ra_pdg_config_t cfg = make_cfg();
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdg_init(&cfg));
 
   uint16_t st = 0U;
@@ -528,7 +528,7 @@ static void test_status_read_and_clear(void)
   TEST_ASSERT((st & (uint16_t)k_ra_pdg_status_dll_locked) != 0U);
 
   /* Force DLYRST = 1, then ask the driver to clear it. */
-  volatile r_pdg_regs_t* reg = ra_pdg;
+  volatile r_pdg_regs_t* reg = ra_pdg();
   reg->GTDLYCR               = (uint16_t)(reg->GTDLYCR | (uint16_t)k_ra_pdg_gtdlycr_mask_dlyrst);
   TEST_ASSERT_EQ((int32_t)k_ra_ok,
                  (int32_t)ra_pdg_clear_status((uint16_t)k_ra_pdg_status_in_reset));
@@ -541,9 +541,9 @@ static void test_status_read_and_clear(void)
 static void test_status_full(void)
 {
   TEST_BEGIN("pdg status_full snapshot");
-  prep;
+  prep();
 
-  const ra_pdg_config_t cfg = make_cfg;
+  const ra_pdg_config_t cfg = make_cfg();
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdg_init(&cfg));
 
   /* Drop ch 1 into stop. */
@@ -566,7 +566,7 @@ static void test_status_full(void)
 static void test_pick_frange(void)
 {
   TEST_BEGIN("pdg pick_frange");
-  prep;
+  prep();
 
   ra_pdg_frange_t f = (ra_pdg_frange_t)0xFFU;
   TEST_ASSERT_EQ((int32_t)k_ra_ok,
@@ -595,15 +595,15 @@ static void test_pick_frange(void)
 static void test_set_frange_runtime(void)
 {
   TEST_BEGIN("pdg set_frange runtime switch");
-  prep;
+  prep();
   TEST_ASSERT_EQ((int32_t)k_ra_err_not_initialized,
                  (int32_t)ra_pdg_set_frange(k_ra_pdg_frange_155_300_mhz));
 
-  const ra_pdg_config_t cfg = make_cfg;
+  const ra_pdg_config_t cfg = make_cfg();
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdg_init(&cfg));
 
   /* Capture GTDLYCR2 then run the switch. */
-  volatile r_pdg_regs_t* reg     = ra_pdg;
+  volatile r_pdg_regs_t* reg     = ra_pdg();
   const uint16_t         expect2 = reg->GTDLYCR2;
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdg_set_frange(k_ra_pdg_frange_155_300_mhz));
 
@@ -622,11 +622,11 @@ static void test_set_frange_runtime(void)
 static void test_bind_unbind_gpt_channel(void)
 {
   TEST_BEGIN("pdg bind / unbind gpt channel");
-  prep;
+  prep();
   TEST_ASSERT_EQ((int32_t)k_ra_err_not_initialized,
                  (int32_t)ra_pdg_bind_gpt_channel((uint8_t)k_ra_pdg_test_ch_first));
 
-  const ra_pdg_config_t cfg = make_cfg;
+  const ra_pdg_config_t cfg = make_cfg();
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdg_init(&cfg));
 
   volatile r_gpt_channel_regs_t* gpt = ra_gpt((uint8_t)k_ra_pdg_test_ch_first);
@@ -648,7 +648,7 @@ static void test_bind_unbind_gpt_channel(void)
 static void test_check_constraints(void)
 {
   TEST_BEGIN("pdg check_constraints (HUM Ch 23.4.2)");
-  prep;
+  prep();
 
   /* Saw + Up: forbidden when compare_match >= GTPR - 2. */
   const uint32_t gtpr = 100U;
@@ -703,7 +703,7 @@ static void test_check_constraints(void)
 static void test_required_write_ns(void)
 {
   TEST_BEGIN("pdg required_write_ns (HUM Ch 23.4.3)");
-  prep;
+  prep();
 
   uint32_t ns = 0U;
   TEST_ASSERT_EQ((int32_t)k_ra_ok,
@@ -723,17 +723,17 @@ static void test_required_write_ns(void)
 static void test_attach_and_dispatch(void)
 {
   TEST_BEGIN("pdg attach + dispatch");
-  prep;
+  prep();
 
   TEST_ASSERT_EQ((int32_t)k_ra_ok,
                  (int32_t)ra_pdg_attach_handler(stub_pdg_cb, (void*)(uintptr_t)0xCAFEU));
-  ra_pdg_dispatch;
+  ra_pdg_dispatch();
   TEST_ASSERT_EQ((int32_t)1, (int32_t)s_pdg_cb_count);
   TEST_ASSERT_EQ((int32_t)(uintptr_t)0xCAFEU, (int32_t)(uintptr_t)s_pdg_cb_last_ctx);
 
   /* Detach (NULL handler) -- subsequent dispatch must be a no-op. */
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdg_attach_handler(nullptr, nullptr));
-  ra_pdg_dispatch;
+  ra_pdg_dispatch();
   TEST_ASSERT_EQ((int32_t)1, (int32_t)s_pdg_cb_count);
   TEST_END("pdg attach + dispatch");
 }
@@ -741,9 +741,9 @@ static void test_attach_and_dispatch(void)
 static void test_deinit(void)
 {
   TEST_BEGIN("pdg deinit");
-  prep;
+  prep();
 
-  const ra_pdg_config_t cfg = make_cfg;
+  const ra_pdg_config_t cfg = make_cfg();
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdg_init(&cfg));
 
   /* Dirty a delay register so we can verify it gets wiped. */
@@ -752,9 +752,9 @@ static void test_deinit(void)
                                            k_ra_pdg_pin_a,
                                            k_ra_pdg_edge_rising,
                                            (uint8_t)k_ra_pdg_test_code_hi));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdg_deinit);
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdg_deinit());
 
-  volatile r_pdg_regs_t* reg = ra_pdg;
+  volatile r_pdg_regs_t* reg = ra_pdg();
   TEST_ASSERT((reg->GTDLYCR & (uint16_t)k_ra_pdg_gtdlycr_mask_dllen) == 0U);
   TEST_ASSERT((reg->GTDLYCR & (uint16_t)k_ra_pdg_gtdlycr_mask_dlyrst) != 0U);
   TEST_ASSERT_EQ((int32_t)0, (int32_t)reg->GTDLYCR2);
@@ -765,34 +765,34 @@ static void test_deinit(void)
 
 int32_t main(void)
 {
-  test_init_happy;
-  test_init_null_cfg;
-  test_init_bad_frange;
-  test_init_bad_mask;
-  test_init_auto_tune_low_band;
-  test_init_auto_tune_high_band;
-  test_init_auto_tune_zero_hz;
-  test_init_auto_tune_out_of_range;
-  test_set_delay_rising_pin_a;
-  test_set_delay_falling_pin_b;
-  test_set_delay_bad_inputs;
-  test_get_delay_round_trip;
-  test_set_delay_batch_happy;
-  test_set_delay_batch_bad_inputs;
-  test_set_delay_not_initialised;
-  test_delay_ns_to_code_low_band;
-  test_power_transition;
-  test_channel_bypass_set;
-  test_pin_disable;
-  test_status_read_and_clear;
-  test_status_full;
-  test_pick_frange;
-  test_set_frange_runtime;
-  test_bind_unbind_gpt_channel;
-  test_check_constraints;
-  test_required_write_ns;
-  test_attach_and_dispatch;
-  test_deinit;
+  test_init_happy();
+  test_init_null_cfg();
+  test_init_bad_frange();
+  test_init_bad_mask();
+  test_init_auto_tune_low_band();
+  test_init_auto_tune_high_band();
+  test_init_auto_tune_zero_hz();
+  test_init_auto_tune_out_of_range();
+  test_set_delay_rising_pin_a();
+  test_set_delay_falling_pin_b();
+  test_set_delay_bad_inputs();
+  test_get_delay_round_trip();
+  test_set_delay_batch_happy();
+  test_set_delay_batch_bad_inputs();
+  test_set_delay_not_initialised();
+  test_delay_ns_to_code_low_band();
+  test_power_transition();
+  test_channel_bypass_set();
+  test_pin_disable();
+  test_status_read_and_clear();
+  test_status_full();
+  test_pick_frange();
+  test_set_frange_runtime();
+  test_bind_unbind_gpt_channel();
+  test_check_constraints();
+  test_required_write_ns();
+  test_attach_and_dispatch();
+  test_deinit();
   (void)fprintf(stderr, "[OK ] test_ra_pdg.c\n");
   return 0;
 }

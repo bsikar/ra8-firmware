@@ -49,7 +49,21 @@ set(CMAKE_ASM_FLAGS_RELWITHDEBINFO "-g3")
 # Source Files
 #############################################################################
 
-file(GLOB APP_SOURCES_ROOT CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/src/*.c)
+# Application entry point comes from examples/<EXAMPLE>/. Each example
+# is a standalone main.c that builds against the same boot code, libs,
+# and secure_app substrate. Select with `-DEXAMPLE=<name>`; default is
+# "blink".
+set(EXAMPLE "blink" CACHE STRING "Example app to build (subdir of examples/)")
+set(EXAMPLE_DIR ${CMAKE_SOURCE_DIR}/examples/${EXAMPLE})
+if(NOT EXISTS ${EXAMPLE_DIR}/main.c)
+    message(FATAL_ERROR "Example '${EXAMPLE}' not found at ${EXAMPLE_DIR}/main.c.")
+endif()
+message(STATUS "Example:       ${EXAMPLE} (${EXAMPLE_DIR}/main.c)")
+
+file(GLOB APP_SOURCES_ROOT CONFIGURE_DEPENDS
+    ${CMAKE_SOURCE_DIR}/src/*.c
+    ${EXAMPLE_DIR}/*.c
+)
 file(GLOB_RECURSE APP_BOOT_SOURCES CONFIGURE_DEPENDS
     ${CMAKE_SOURCE_DIR}/src/boot/*.c
     ${CMAKE_SOURCE_DIR}/src/boot/*.S

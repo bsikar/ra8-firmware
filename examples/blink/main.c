@@ -166,7 +166,7 @@ static void ra_systick_stop(void)
  */
 static void ra_systick_wait_ticks(uint32_t ticks)
 {
- ra_systick_stop;
+ ra_systick_stop();
  *ra_reg32(k_ra_systick_rvr) = (ticks - 1U) & (uint32_t)k_ra_systick_rvr_max;
  *ra_reg32(k_ra_systick_cvr) = 0U;
  *ra_reg32(k_ra_systick_csr) = (uint32_t)k_ra_systick_enable
@@ -177,7 +177,7 @@ static void ra_systick_wait_ticks(uint32_t ticks)
  /* wait */
  }
 
- ra_systick_stop;
+ ra_systick_stop();
 }
 
 /**

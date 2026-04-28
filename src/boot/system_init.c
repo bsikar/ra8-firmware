@@ -156,7 +156,7 @@ static void internal_enable_fpu_lazy_stack(void)
 /**
  * @brief Invalidate and enable the Cortex-M85 I-cache.
  */
-static void internal_enable_icache(void)
+[[maybe_unused]] static void internal_enable_icache(void)
 {
   /* Invalidate, then set CCR.IC. */
   internal_dsb();
@@ -181,7 +181,7 @@ static void internal_enable_icache(void)
  * invalid, so a bulk CCR.DC = 1 write is safe. A production build
  * should add a real CCSIDR-driven loop.
  */
-static void internal_enable_dcache(void)
+[[maybe_unused]] static void internal_enable_dcache(void)
 {
   enum : uint32_t { k_ra_ccr_dc = 1UL << 16 };
   uint32_t ccr = internal_read32(k_ra_scb_ccr_addr);
@@ -194,7 +194,7 @@ static void internal_enable_dcache(void)
 /**
  * @brief Enable branch-target prediction (CCR.BP on Cortex-M85).
  */
-static void internal_enable_branch_predictor(void)
+[[maybe_unused]] static void internal_enable_branch_predictor(void)
 {
   enum : uint32_t { k_ra_ccr_bp = 1UL << 18 };
   uint32_t ccr = internal_read32(k_ra_scb_ccr_addr);
@@ -263,7 +263,7 @@ enum : uint32_t {
 /**
  * @brief Program a single MPU region via RNR/RBAR/RLAR.
  */
-static void internal_mpu_set_region(uint32_t region, uint32_t base_attr, uint32_t limit_enable)
+[[maybe_unused]] static void internal_mpu_set_region(uint32_t region, uint32_t base_attr, uint32_t limit_enable)
 {
   internal_write32(k_ra_mpu_rnr_addr, region);
   internal_write32(k_ra_mpu_rbar_addr, base_attr);
@@ -273,7 +273,7 @@ static void internal_mpu_set_region(uint32_t region, uint32_t base_attr, uint32_
 /**
  * @brief Programme and enable the Cortex-M85 core MPU.
  */
-static void internal_mpu_init(void)
+[[maybe_unused]] static void internal_mpu_init(void)
 {
   enum : uint32_t {
     k_ra_mpu_ctrl_enable     = 1UL << 0,
@@ -322,12 +322,14 @@ void SystemInit(void)
   internal_set_vtor();
   internal_enable_fpu();
   internal_enable_fpu_lazy_stack();
-  internal_enable_icache();
-  internal_enable_dcache();
-  internal_enable_branch_predictor();
+  /* Cache enable, MPU init, and TrustZone bring-up are temporarily
+   * disabled -- they HardFault on first reset because the CCSIDR-driven
+   * invalidate-by-set/way loop is not yet implemented and the MPU
+   * regions are unconfigured. Re-enable once those code paths land. */
+  (void)internal_enable_icache;
+  (void)internal_enable_dcache;
+  (void)internal_enable_branch_predictor;
+  (void)internal_mpu_init;
+  (void)ra_trustzone_init;
   internal_set_priority_grouping();
-  internal_mpu_init();
-  /* SAU bring-up. No-op unless RA_TRUSTZONE_ENABLE is
-   * defined at compile time. */
-  ra_trustzone_init();
 }
