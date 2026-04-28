@@ -75,14 +75,14 @@ typedef enum : uintptr_t {
  */
 typedef enum : uint16_t {
   /* --- SYSC: lifecycle + LPSCR ---------------------------------------- */
-  k_ra_lpm_sbycr_off    = 0x00CU, /**< SBYCR    (8b)  -- HUM Ch 11.2.18 p 456. */
-  k_ra_lpm_lpscr_off    = 0xA90U, /**< LPSCR    (8b)  -- HUM Ch 11.2.20 p 457. */
-  k_ra_lpm_sscr1_off    = 0xA98U, /**< SSCR1    (8b)  -- HUM Ch 11.2.19 p 456. */
-  k_ra_lpm_dpsbycr_off  = 0xA00U, /**< DPSBYCR  (8b)  -- HUM Ch 11.2.21 p 458. */
-  k_ra_lpm_opccr_off    = 0x0A0U, /**< OPCCR    (8b)  -- HUM Ch 11.2.11 p 451. */
+  k_ra_lpm_sbycr_off   = 0x00CU, /**< SBYCR    (8b)  -- HUM Ch 11.2.18 p 456. */
+  k_ra_lpm_lpscr_off   = 0xA90U, /**< LPSCR    (8b)  -- HUM Ch 11.2.20 p 457. */
+  k_ra_lpm_sscr1_off   = 0xA98U, /**< SSCR1    (8b)  -- HUM Ch 11.2.19 p 456. */
+  k_ra_lpm_dpsbycr_off = 0xA00U, /**< DPSBYCR  (8b)  -- HUM Ch 11.2.21 p 458. */
+  k_ra_lpm_opccr_off   = 0x0A0U, /**< OPCCR    (8b)  -- HUM Ch 11.2.11 p 451. */
 
   /* --- SYSC: PRCR (16-bit, write-protect key) ------------------------- */
-  k_ra_lpm_prcr_off     = 0x3FAU, /**< PRCR     (16b) -- HUM Ch 11.2.18 p 456. */
+  k_ra_lpm_prcr_off = 0x3FAU, /**< PRCR     (16b) -- HUM Ch 11.2.18 p 456. */
 
   /* --- SYSC: RAM retention ------------------------------------------- */
   k_ra_lpm_pdramscr0_off = 0x140U, /**< PDRAMSCR0 (16b) -- HUM Ch 11.2.16 p 453. */
@@ -94,30 +94,30 @@ typedef enum : uint16_t {
   k_ra_lpm_hocoldocr_off = 0xB0CU, /**< HOCOLDOCR  (8b) -- HUM Ch 11.2.42 p 476. */
 
   /* --- SYSC: deep-standby cancel (DPSIER0..3 / DPSIFR0..3 / DPSIEGR0..2) */
-  k_ra_lpm_dpsier0_off  = 0xA08U, /**< DPSIER0  (8b)  -- HUM Ch 11.2.22 p 459. */
-  k_ra_lpm_dpsier1_off  = 0xA0CU, /**< DPSIER1  (8b)  -- HUM Ch 11.2.23 p 459. */
-  k_ra_lpm_dpsier2_off  = 0xA10U, /**< DPSIER2  (8b)  -- HUM Ch 11.2.24 p 460. */
-  k_ra_lpm_dpsier3_off  = 0xA14U, /**< DPSIER3  (8b)  -- HUM Ch 11.2.25 p 461. */
+  k_ra_lpm_dpsier0_off = 0xA08U, /**< DPSIER0  (8b)  -- HUM Ch 11.2.22 p 459. */
+  k_ra_lpm_dpsier1_off = 0xA0CU, /**< DPSIER1  (8b)  -- HUM Ch 11.2.23 p 459. */
+  k_ra_lpm_dpsier2_off = 0xA10U, /**< DPSIER2  (8b)  -- HUM Ch 11.2.24 p 460. */
+  k_ra_lpm_dpsier3_off = 0xA14U, /**< DPSIER3  (8b)  -- HUM Ch 11.2.25 p 461. */
 
-  k_ra_lpm_dpsifr0_off  = 0xA18U, /**< DPSIFR0  (8b)  -- HUM Ch 11.2.28 p 462. */
-  k_ra_lpm_dpsifr1_off  = 0xA1CU, /**< DPSIFR1  (8b)  -- HUM Ch 11.2.29 p 462. */
-  k_ra_lpm_dpsifr2_off  = 0xA20U, /**< DPSIFR2  (8b)  -- HUM Ch 11.2.30 p 462. */
-  k_ra_lpm_dpsifr3_off  = 0xA24U, /**< DPSIFR3  (8b)  -- HUM Ch 11.2.31 p 462. */
+  k_ra_lpm_dpsifr0_off = 0xA18U, /**< DPSIFR0  (8b)  -- HUM Ch 11.2.28 p 462. */
+  k_ra_lpm_dpsifr1_off = 0xA1CU, /**< DPSIFR1  (8b)  -- HUM Ch 11.2.29 p 462. */
+  k_ra_lpm_dpsifr2_off = 0xA20U, /**< DPSIFR2  (8b)  -- HUM Ch 11.2.30 p 462. */
+  k_ra_lpm_dpsifr3_off = 0xA24U, /**< DPSIFR3  (8b)  -- HUM Ch 11.2.31 p 462. */
 
   k_ra_lpm_dpsiegr0_off = 0xA28U, /**< DPSIEGR0 (8b)  -- HUM Ch 11.2.34 p 463. */
   k_ra_lpm_dpsiegr1_off = 0xA2CU, /**< DPSIEGR1 (8b)  -- HUM Ch 11.2.35 p 463. */
   k_ra_lpm_dpsiegr2_off = 0xA30U, /**< DPSIEGR2 (8b)  -- HUM Ch 11.2.36 p 463. */
 
   /* --- SYSC: per-oscillator stop bits (CGC sub-block, same SYSC base) -- */
-  k_ra_lpm_mosccr_off   = 0x032U, /**< MOSCCR   (8b)  -- HUM Ch 9.2.13 p 343. */
-  k_ra_lpm_hococr_off   = 0x036U, /**< HOCOCR   (8b)  -- HUM Ch 9.2.16 p 345. */
-  k_ra_lpm_mococr_off   = 0x038U, /**< MOCOCR   (8b)  -- HUM Ch 9.2.18 p 346. */
-  k_ra_lpm_lococr_off   = 0x400U, /**< LOCOCR   (8b)  -- HUM Ch 9.2.15 p 344. */
-  k_ra_lpm_sosccr_off   = 0xC00U, /**< SOSCCR   (8b)  -- HUM Ch 9.2.14 p 343. */
+  k_ra_lpm_mosccr_off = 0x032U, /**< MOSCCR   (8b)  -- HUM Ch 9.2.13 p 343. */
+  k_ra_lpm_hococr_off = 0x036U, /**< HOCOCR   (8b)  -- HUM Ch 9.2.16 p 345. */
+  k_ra_lpm_mococr_off = 0x038U, /**< MOCOCR   (8b)  -- HUM Ch 9.2.18 p 346. */
+  k_ra_lpm_lococr_off = 0x400U, /**< LOCOCR   (8b)  -- HUM Ch 9.2.15 p 344. */
+  k_ra_lpm_sosccr_off = 0xC00U, /**< SOSCCR   (8b)  -- HUM Ch 9.2.14 p 343. */
 
   /* --- ICU: WUPEN0/WUPEN1 (32-bit) ----------------------------------- */
-  k_ra_lpm_wupen0_off   = 0x1A0U, /**< WUPEN0   (32b) -- HUM Ch 14.2.19 p 550. */
-  k_ra_lpm_wupen1_off   = 0x1A4U, /**< WUPEN1   (32b) -- HUM Ch 14.2.20 p 552. */
+  k_ra_lpm_wupen0_off = 0x1A0U, /**< WUPEN0   (32b) -- HUM Ch 14.2.19 p 550. */
+  k_ra_lpm_wupen1_off = 0x1A4U, /**< WUPEN1   (32b) -- HUM Ch 14.2.20 p 552. */
 } ra_lpm_off_t;
 
 /* =============================================================================
@@ -152,12 +152,12 @@ typedef enum : uint16_t {
  * domains (LOCO, sub-clock detection, voltage monitors).
  */
 typedef enum : uint8_t {
-  k_ra_sleep_mode_sleep          = 0U,    /**< CPU sleep, peripherals run.       */
-  k_ra_sleep_mode_deep_sleep     = 2U,    /**< CPU deep sleep (SCR.SLEEPDEEP=1). */
-  k_ra_sleep_mode_software_std   = 0x5U,  /**< Software Standby (LPMD=0x5).      */
-  k_ra_sleep_mode_deep_standby_1 = 0x8U,  /**< Deep Standby 1 (LPMD=0x8).        */
-  k_ra_sleep_mode_deep_standby_2 = 0x9U,  /**< Deep Standby 2 (LPMD=0x9).        */
-  k_ra_sleep_mode_deep_standby_3 = 0xAU,  /**< Deep Standby 3 (LPMD=0xA).        */
+  k_ra_sleep_mode_sleep          = 0U,   /**< CPU sleep, peripherals run.       */
+  k_ra_sleep_mode_deep_sleep     = 2U,   /**< CPU deep sleep (SCR.SLEEPDEEP=1). */
+  k_ra_sleep_mode_software_std   = 0x5U, /**< Software Standby (LPMD=0x5).      */
+  k_ra_sleep_mode_deep_standby_1 = 0x8U, /**< Deep Standby 1 (LPMD=0x8).        */
+  k_ra_sleep_mode_deep_standby_2 = 0x9U, /**< Deep Standby 2 (LPMD=0x9).        */
+  k_ra_sleep_mode_deep_standby_3 = 0xAU, /**< Deep Standby 3 (LPMD=0xA).        */
 } ra_sleep_mode_t;
 
 /* =============================================================================
@@ -236,8 +236,8 @@ typedef enum : uint8_t {
  * @brief OPCCR bit fields (HUM Ch 11.2.11 p 451).
  */
 typedef enum : uint8_t {
-  k_ra_lpm_opccr_opcm_mask    = 0x03U, /**< OPCM[1:0] @ bits 1..0 -- power mode. */
-  k_ra_lpm_opccr_opcmtsf_msk  = 0x10U, /**< OPCMTSF @ bit 4 -- mode-transition flag. */
+  k_ra_lpm_opccr_opcm_mask   = 0x03U, /**< OPCM[1:0] @ bits 1..0 -- power mode. */
+  k_ra_lpm_opccr_opcmtsf_msk = 0x10U, /**< OPCMTSF @ bit 4 -- mode-transition flag. */
 } ra_lpm_opccr_bits_t;
 
 /**
@@ -279,6 +279,7 @@ typedef enum : uint16_t {
   k_ra_lpm_pdramscr0_sram2_keep = 0x0F00U, /**< Retain SRAM2 (b11..b8).*/
   k_ra_lpm_pdramscr0_sram3_keep = 0x1000U, /**< Retain SRAM3 (b12).    */
   k_ra_lpm_pdramscr0_all_keep   = 0x1FFFU, /**< Retain all banks.       */
+  k_ra_lpm_pdramscr0_writable   = 0x7FFFU, /**< b14..b0 writable mask.  */
 } ra_lpm_pdramscr0_groups_t;
 
 /**
@@ -383,27 +384,27 @@ typedef enum : uint8_t {
  * writes work for everything else.
  */
 typedef enum : uint32_t {
-  k_ra_lpm_wupen0_irq0     = 1UL << 0,  /**< IRQ0  @ bit 0.  */
-  k_ra_lpm_wupen0_irq1     = 1UL << 1,  /**< IRQ1  @ bit 1.  */
-  k_ra_lpm_wupen0_irq2     = 1UL << 2,  /**< IRQ2  @ bit 2.  */
-  k_ra_lpm_wupen0_irq3     = 1UL << 3,  /**< IRQ3  @ bit 3.  */
-  k_ra_lpm_wupen0_irq4     = 1UL << 4,  /**< IRQ4  @ bit 4.  */
-  k_ra_lpm_wupen0_irq5     = 1UL << 5,  /**< IRQ5  @ bit 5.  */
-  k_ra_lpm_wupen0_irq6     = 1UL << 6,  /**< IRQ6  @ bit 6.  */
-  k_ra_lpm_wupen0_irq7     = 1UL << 7,  /**< IRQ7  @ bit 7.  */
-  k_ra_lpm_wupen0_iwdt     = 1UL << 16, /**< IWDTWUPEN.      */
-  k_ra_lpm_wupen0_pvd1     = 1UL << 18, /**< PVD1WUPEN.      */
-  k_ra_lpm_wupen0_pvd2     = 1UL << 19, /**< PVD2WUPEN.      */
-  k_ra_lpm_wupen0_vbatt    = 1UL << 20, /**< VBATTWUPEN.     */
-  k_ra_lpm_wupen0_rtcalm   = 1UL << 24, /**< RTCALMWUPEN.    */
-  k_ra_lpm_wupen0_rtcprd   = 1UL << 25, /**< RTCPRDWUPEN.    */
-  k_ra_lpm_wupen0_usbhs    = 1UL << 26, /**< USBHSWUPEN.     */
-  k_ra_lpm_wupen0_usbfs    = 1UL << 27, /**< USBFS0WUPEN.    */
-  k_ra_lpm_wupen0_agt1ud   = 1UL << 28, /**< AGT1UDWUPEN.    */
-  k_ra_lpm_wupen0_agt1ca   = 1UL << 29, /**< AGT1CAWUPEN.    */
-  k_ra_lpm_wupen0_agt1cb   = 1UL << 30, /**< AGT1CBWUPEN.    */
-  k_ra_lpm_wupen0_riic0    = 1UL << 31, /**< RIIC0WUPEN.     */
-  k_ra_lpm_wupen0_acmphs0  = k_ra_lpm_wupen0_pvd1, /* legacy alias for PVD1 path */
+  k_ra_lpm_wupen0_irq0    = 1UL << 0,             /**< IRQ0  @ bit 0.  */
+  k_ra_lpm_wupen0_irq1    = 1UL << 1,             /**< IRQ1  @ bit 1.  */
+  k_ra_lpm_wupen0_irq2    = 1UL << 2,             /**< IRQ2  @ bit 2.  */
+  k_ra_lpm_wupen0_irq3    = 1UL << 3,             /**< IRQ3  @ bit 3.  */
+  k_ra_lpm_wupen0_irq4    = 1UL << 4,             /**< IRQ4  @ bit 4.  */
+  k_ra_lpm_wupen0_irq5    = 1UL << 5,             /**< IRQ5  @ bit 5.  */
+  k_ra_lpm_wupen0_irq6    = 1UL << 6,             /**< IRQ6  @ bit 6.  */
+  k_ra_lpm_wupen0_irq7    = 1UL << 7,             /**< IRQ7  @ bit 7.  */
+  k_ra_lpm_wupen0_iwdt    = 1UL << 16,            /**< IWDTWUPEN.      */
+  k_ra_lpm_wupen0_pvd1    = 1UL << 18,            /**< PVD1WUPEN.      */
+  k_ra_lpm_wupen0_pvd2    = 1UL << 19,            /**< PVD2WUPEN.      */
+  k_ra_lpm_wupen0_vbatt   = 1UL << 20,            /**< VBATTWUPEN.     */
+  k_ra_lpm_wupen0_rtcalm  = 1UL << 24,            /**< RTCALMWUPEN.    */
+  k_ra_lpm_wupen0_rtcprd  = 1UL << 25,            /**< RTCPRDWUPEN.    */
+  k_ra_lpm_wupen0_usbhs   = 1UL << 26,            /**< USBHSWUPEN.     */
+  k_ra_lpm_wupen0_usbfs   = 1UL << 27,            /**< USBFS0WUPEN.    */
+  k_ra_lpm_wupen0_agt1ud  = 1UL << 28,            /**< AGT1UDWUPEN.    */
+  k_ra_lpm_wupen0_agt1ca  = 1UL << 29,            /**< AGT1CAWUPEN.    */
+  k_ra_lpm_wupen0_agt1cb  = 1UL << 30,            /**< AGT1CBWUPEN.    */
+  k_ra_lpm_wupen0_riic0   = 1UL << 31,            /**< RIIC0WUPEN.     */
+  k_ra_lpm_wupen0_acmphs0 = k_ra_lpm_wupen0_pvd1, /* legacy alias for PVD1 path */
 } ra_lpm_wupen0_bits_t;
 
 /**

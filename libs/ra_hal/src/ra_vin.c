@@ -449,7 +449,11 @@ static void internal_mc_rmw(uint32_t clear_mask, uint32_t set_bits)
 
 [[nodiscard]] ra_err_t ra_vin_enable_scaling(bool enable)
 {
-  internal_mc_rmw((uint32_t)k_ra_vin_mc_scle, enable ? (uint32_t)k_ra_vin_mc_scle : 0UL);
+  uint32_t scle_bits = 0UL;
+  if (enable) {
+    scle_bits = (uint32_t)k_ra_vin_mc_scle;
+  }
+  internal_mc_rmw((uint32_t)k_ra_vin_mc_scle, scle_bits);
   return k_ra_ok;
 }
 
@@ -480,7 +484,11 @@ static void internal_mc_rmw(uint32_t clear_mask, uint32_t set_bits)
     *ra_vin_reg32(k_ra_vin_off_lutd) = lutd;
   }
   /* HUM Ch 67.2.1 "MC: Main Control Register" p 3975 */
-  internal_mc_rmw((uint32_t)k_ra_vin_mc_lute, enable ? (uint32_t)k_ra_vin_mc_lute : 0UL);
+  uint32_t lute_bits = 0UL;
+  if (enable) {
+    lute_bits = (uint32_t)k_ra_vin_mc_lute;
+  }
+  internal_mc_rmw((uint32_t)k_ra_vin_mc_lute, lute_bits);
   return k_ra_ok;
 }
 
@@ -590,7 +598,10 @@ internal_yc_offsets(uint8_t channel, ra_vin_off_t* off1, ra_vin_off_t* off2, ra_
  * DC[15:14] dithering mode + DC2[24] direction. */
   const uint32_t dc_bits =
     ((uint32_t)mode << (uint8_t)k_ra_vin_mc_shift_dc) & (uint32_t)k_ra_vin_mc_dc;
-  const uint32_t dc2_bits = direction ? (uint32_t)k_ra_vin_mc_dc2 : 0UL;
+  uint32_t dc2_bits = 0UL;
+  if (direction) {
+    dc2_bits = (uint32_t)k_ra_vin_mc_dc2;
+  }
   internal_mc_rmw((uint32_t)k_ra_vin_mc_dc | (uint32_t)k_ra_vin_mc_dc2, dc_bits | dc2_bits);
   return k_ra_ok;
 }

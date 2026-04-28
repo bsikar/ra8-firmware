@@ -327,40 +327,23 @@ static void internal_program_addresses(const ra_ceu_buffers_t* bufs)
   }
 }
 
-ra_err_t ra_ceu_init(const ra_ceu_config_t* cfg)
+/**
+ * @brief Program the CMCYR/CAMOR/CAPWR geometry registers.
+ *
+ * @details
+ * HUM Ch 60.2.4 (CMCYR p 3641), 60.2.5 (CAMOR p 3645) and 60.2.6
+ * (CAPWR p 3646). Falls back to ``width_px`` / ``height_px`` when the
+ * caller leaves ``x_capture_px`` / ``y_capture_lines`` at zero.
+ *
+ * @param[in] cfg Caller-supplied config.
+ *
+ * @pre Module clock ungated, engine idle.
+ * @post Geometry registers reflect ``cfg``.
+ *
+ * @note Internal helper, not thread-safe.
+ */
+static void internal_program_geometry(const ra_ceu_config_t* cfg)
 {
-  RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
-
-  /* Continuous capture is only legal in image-capture mode (HUM Ch
-   * 60.2.2 "Note" on CTNCP). Reject the impossible combination so
-   * callers don't program a doomed sequence. */
-  if ((cfg->capture_mode == k_ra_ceu_capture_continuous) &&
-      (cfg->capture_format != k_ra_ceu_fmt_image_capture)) {
-    return k_ra_err_invalid_arg;
-  }
-
-  /* HUM Ch 11.2.8 "MSTPCRC : Module Stop Control Register C" p 446 */
-  const ra_err_t mst_err = ra_mstp_enable(k_ra_mstp_ceu);
-  RA_RETURN_ON_ERROR(mst_err, s_tag, "ceu_init: mstp enable");
-
-  /* HUM Ch 60.2.23 "CSTSR : Capture Status Register" p 3672 +
-   * HUM Ch 60.2.1 "CAPSR : Capture Start Register" p 3630 -- wait
-   * for any in-flight reset to finish before we touch the engine. */
-  const ra_err_t idle_err = internal_wait_idle();
-  RA_RETURN_ON_ERROR(idle_err, s_tag, "ceu_init: wait idle");
-
-  /* HUM Ch 60.2.10 "CFLCR : Capture Filter Control Register" p 3650 */
-  *ra_ceu_reg32(k_ra_ceu_off_cflcr) = internal_pack_cflcr(cfg);
-
-  /* HUM Ch 60.2.7 "CAIFR : Camera Interface Input Format Register" p 3647 */
-  *ra_ceu_reg32(k_ra_ceu_off_caifr) = internal_pack_caifr(cfg);
-
-  /* HUM Ch 60.2.2 "CAPCR : Capture Control Register" p 3634 */
-  *ra_ceu_reg32(k_ra_ceu_off_capcr) = internal_pack_capcr(cfg);
-
-  /* HUM Ch 60.2.3 "CAMCR : Camera Interface Control Register" p 3636 */
-  *ra_ceu_reg32(k_ra_ceu_off_camcr) = internal_pack_camcr(cfg);
-
   /* HUM Ch 60.2.4 "CMCYR : Camera Interface Cycle Register" p 3641 */
   const uint32_t cmcyr =
     (((uint32_t)cfg->height_px) << k_ra_ceu_cmcyr_shift_vcyl) | (uint32_t)cfg->width_px;
@@ -372,30 +355,101 @@ ra_err_t ra_ceu_init(const ra_ceu_config_t* cfg)
   *ra_ceu_reg32(k_ra_ceu_off_camor) = camor;
 
   /* HUM Ch 60.2.6 "CAPWR : Camera Interface Width Register" p 3646 */
-  const uint16_t hwdth = (cfg->x_capture_px != 0U) ? cfg->x_capture_px : cfg->width_px;
-  const uint16_t vwdth = (cfg->y_capture_lines != 0U) ? cfg->y_capture_lines : cfg->height_px;
+  uint16_t hwdth = cfg->width_px;
+  if (cfg->x_capture_px != 0U) {
+    hwdth = cfg->x_capture_px;
+  }
+  uint16_t vwdth = cfg->height_px;
+  if (cfg->y_capture_lines != 0U) {
+    vwdth = cfg->y_capture_lines;
+  }
   const uint32_t capwr = (((uint32_t)vwdth) << k_ra_ceu_capwr_shift_vwdth) | (uint32_t)hwdth;
   *ra_ceu_reg32(k_ra_ceu_off_capwr) = capwr;
+}
 
+/**
+ * @brief Program filter / format / camera-interface registers.
+ *
+ * @details
+ * HUM Ch 60.2.10 (CFLCR), 60.2.7 (CAIFR), 60.2.2 (CAPCR), 60.2.3
+ * (CAMCR). Pre-geometry phase of ``ra_ceu_init``.
+ *
+ * @param[in] cfg Validated config.
+ *
+ * @pre Module clock ungated, engine idle.
+ * @post Listed registers reflect ``cfg``.
+ *
+ * @note Internal helper, not thread-safe.
+ */
+static void internal_program_format(const ra_ceu_config_t* cfg)
+{
+  *ra_ceu_reg32(k_ra_ceu_off_cflcr) = internal_pack_cflcr(cfg);
+  *ra_ceu_reg32(k_ra_ceu_off_caifr) = internal_pack_caifr(cfg);
+  *ra_ceu_reg32(k_ra_ceu_off_capcr) = internal_pack_capcr(cfg);
+  *ra_ceu_reg32(k_ra_ceu_off_camcr) = internal_pack_camcr(cfg);
+}
+
+/**
+ * @brief Program destination / firewall / output / event registers.
+ *
+ * @details
+ * HUM Ch 60.2.11-60.2.22 pp 3651-3664. Post-geometry phase of
+ * ``ra_ceu_init``.
+ *
+ * @param[in] cfg Validated config.
+ *
+ * @pre Module clock ungated, geometry registers programmed.
+ * @post Listed registers reflect ``cfg``.
+ *
+ * @note Internal helper, not thread-safe.
+ */
+static void internal_program_destination(const ra_ceu_config_t* cfg)
+{
   /* HUM Ch 60.2.11 "CFSZR : Capture Filter Size Clip Register" p 3651 */
   *ra_ceu_reg32(k_ra_ceu_off_cfszr) = internal_pack_cfszr(cfg);
 
   /* HUM Ch 60.2.12 "CDWDR : Capture Destination Width Register" p 3654 */
   *ra_ceu_reg32(k_ra_ceu_off_cdwdr) = (uint32_t)cfg->dst_stride;
 
-  /* HUM Ch 60.2.18 "CFWCR : Firewall Operation Control Register" p 3660
-   * Disabled at open; capture_start arms the window for data-enable
-   * mode using the cached image_area_size. */
+  /* HUM Ch 60.2.18 "CFWCR : Firewall Operation Control Register" p 3660 */
   *ra_ceu_reg32(k_ra_ceu_off_cfwcr) = 0U;
 
   /* HUM Ch 60.2.19 "CLFCR : Capture Low-Pass Filter Control" p 3661 */
-  *ra_ceu_reg32(k_ra_ceu_off_clfcr) = cfg->low_pass_filter ? 1U : 0U;
+  uint32_t clfcr = 0U;
+  if (cfg->low_pass_filter) {
+    clfcr = 1U;
+  }
+  *ra_ceu_reg32(k_ra_ceu_off_clfcr) = clfcr;
 
   /* HUM Ch 60.2.20 "CDOCR : Capture Data Output Control Register" p 3662 */
   *ra_ceu_reg32(k_ra_ceu_off_cdocr) = internal_pack_cdocr(cfg);
 
   /* HUM Ch 60.2.22 "CETCR : Capture Event Flag Clear Register" p 3664 */
   *ra_ceu_reg32(k_ra_ceu_off_cetcr) = 0U;
+}
+
+ra_err_t ra_ceu_init(const ra_ceu_config_t* cfg)
+{
+  RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
+
+  /* Continuous capture is only legal in image-capture mode (HUM Ch
+   * 60.2.2 "Note" on CTNCP). */
+  if ((cfg->capture_mode == k_ra_ceu_capture_continuous) &&
+      (cfg->capture_format != k_ra_ceu_fmt_image_capture)) {
+    return k_ra_err_invalid_arg;
+  }
+
+  /* HUM Ch 11.2.8 "MSTPCRC : Module Stop Control Register C" p 446 */
+  const ra_err_t mst_err = ra_mstp_enable(k_ra_mstp_ceu);
+  RA_RETURN_ON_ERROR(mst_err, s_tag, "ceu_init: mstp enable");
+
+  /* HUM Ch 60.2.23 "CSTSR" p 3672 + HUM Ch 60.2.1 "CAPSR" p 3630 */
+  const ra_err_t idle_err = internal_wait_idle();
+  RA_RETURN_ON_ERROR(idle_err, s_tag, "ceu_init: wait idle");
+
+  internal_program_format(cfg);
+  internal_program_geometry(cfg);
+  internal_program_destination(cfg);
 
   s_ceu_int_enable     = (uint32_t)cfg->interrupts;
   s_ceu_image_area     = cfg->image_area_size;
@@ -622,19 +676,21 @@ ra_err_t ra_ceu_capture_stop(void)
   return k_ra_ok;
 }
 
-ra_err_t ra_ceu_plane_b_program(const ra_ceu_buffers_t* bufs)
+/**
+ * @brief Mirror every 3-plane register from Plane A to Plane B.
+ *
+ * @details
+ * HUM Ch 60.2 Table 60.4 "Register configuration of CEU" p 3629. Used
+ * by ``ra_ceu_plane_b_program`` to build a clean baseline before the
+ * caller's per-bundle overrides are written on top.
+ *
+ * @pre Module clock ungated; engine in plane-pending state.
+ * @post Plane B mirrors Plane A for every register listed below.
+ *
+ * @note Internal helper, not thread-safe.
+ */
+static void internal_plane_b_mirror_from_a(void)
 {
-  if (bufs != nullptr) {
-    const ra_err_t align_err = internal_validate_buffers(bufs);
-    if (align_err != k_ra_ok) {
-      return align_err;
-    }
-  }
-
-  /* HUM Ch 60.2 Table 60.4 "Register configuration of CEU" p 3629 --
-   * mirror every 3-plane register from Plane A to Plane B so the
-   * shadow window is consistent before we install per-bundle
-   * overrides. */
   static const ra_ceu_off_t s_plane_offsets[] = {
     k_ra_ceu_off_camor,
     k_ra_ceu_off_capwr,
@@ -657,47 +713,76 @@ ra_err_t ra_ceu_plane_b_program(const ra_ceu_buffers_t* bufs)
     const uint32_t a = *ra_ceu_reg32_plane(s_plane_offsets[i], k_ra_ceu_plane_a_off);
     *ra_ceu_reg32_plane(s_plane_offsets[i], k_ra_ceu_plane_b_off) = a;
   }
+}
 
-  /* Apply caller overrides on top of the mirror. Plane B holds the
-   * pending geometry/address set; the CEU swaps planes on the next
-   * VD edge once we set CRCNTR.RVS below. */
+/**
+ * @brief Apply caller-supplied buffer overrides to Plane B.
+ *
+ * @details
+ * Each non-null pointer in ``bufs`` overwrites the matching CDxyR /
+ * CDxyR2 register in Plane B. ``bundle_size_bytes`` overrides CBDSR
+ * after rounding to the documented alignment mask.
+ *
+ * @param[in] bufs Caller-supplied buffer set; must not be nullptr.
+ *
+ * @pre ``bufs`` already passed ``internal_validate_buffers``.
+ * @pre Plane B has been mirrored from Plane A.
+ * @post Plane B reflects the overrides; Plane A unchanged.
+ *
+ * @note Internal helper, not thread-safe.
+ */
+static void internal_plane_b_apply_overrides(const ra_ceu_buffers_t* bufs)
+{
+  if (bufs->y_top != nullptr) {
+    *ra_ceu_reg32_plane(k_ra_ceu_off_cdayr, k_ra_ceu_plane_b_off) =
+      (uint32_t)(uintptr_t)bufs->y_top;
+  }
+  if (bufs->c_top != nullptr) {
+    *ra_ceu_reg32_plane(k_ra_ceu_off_cdacr, k_ra_ceu_plane_b_off) =
+      (uint32_t)(uintptr_t)bufs->c_top;
+  }
+  if (bufs->y_bottom != nullptr) {
+    *ra_ceu_reg32_plane(k_ra_ceu_off_cdbyr, k_ra_ceu_plane_b_off) =
+      (uint32_t)(uintptr_t)bufs->y_bottom;
+  }
+  if (bufs->c_bottom != nullptr) {
+    *ra_ceu_reg32_plane(k_ra_ceu_off_cdbcr, k_ra_ceu_plane_b_off) =
+      (uint32_t)(uintptr_t)bufs->c_bottom;
+  }
+  if (bufs->y_top_2 != nullptr) {
+    *ra_ceu_reg32_plane(k_ra_ceu_off_cdayr2, k_ra_ceu_plane_b_off) =
+      (uint32_t)(uintptr_t)bufs->y_top_2;
+  }
+  if (bufs->c_top_2 != nullptr) {
+    *ra_ceu_reg32_plane(k_ra_ceu_off_cdacr2, k_ra_ceu_plane_b_off) =
+      (uint32_t)(uintptr_t)bufs->c_top_2;
+  }
+  if (bufs->y_bottom_2 != nullptr) {
+    *ra_ceu_reg32_plane(k_ra_ceu_off_cdbyr2, k_ra_ceu_plane_b_off) =
+      (uint32_t)(uintptr_t)bufs->y_bottom_2;
+  }
+  if (bufs->c_bottom_2 != nullptr) {
+    *ra_ceu_reg32_plane(k_ra_ceu_off_cdbcr2, k_ra_ceu_plane_b_off) =
+      (uint32_t)(uintptr_t)bufs->c_bottom_2;
+  }
+  if (bufs->bundle_size_bytes != 0U) {
+    *ra_ceu_reg32_plane(k_ra_ceu_off_cbdsr, k_ra_ceu_plane_b_off) =
+      bufs->bundle_size_bytes & ~(uint32_t)k_ra_ceu_bundle_align_mask;
+  }
+}
+
+ra_err_t ra_ceu_plane_b_program(const ra_ceu_buffers_t* bufs)
+{
   if (bufs != nullptr) {
-    if (bufs->y_top != nullptr) {
-      *ra_ceu_reg32_plane(k_ra_ceu_off_cdayr, k_ra_ceu_plane_b_off) =
-        (uint32_t)(uintptr_t)bufs->y_top;
+    const ra_err_t align_err = internal_validate_buffers(bufs);
+    if (align_err != k_ra_ok) {
+      return align_err;
     }
-    if (bufs->c_top != nullptr) {
-      *ra_ceu_reg32_plane(k_ra_ceu_off_cdacr, k_ra_ceu_plane_b_off) =
-        (uint32_t)(uintptr_t)bufs->c_top;
-    }
-    if (bufs->y_bottom != nullptr) {
-      *ra_ceu_reg32_plane(k_ra_ceu_off_cdbyr, k_ra_ceu_plane_b_off) =
-        (uint32_t)(uintptr_t)bufs->y_bottom;
-    }
-    if (bufs->c_bottom != nullptr) {
-      *ra_ceu_reg32_plane(k_ra_ceu_off_cdbcr, k_ra_ceu_plane_b_off) =
-        (uint32_t)(uintptr_t)bufs->c_bottom;
-    }
-    if (bufs->y_top_2 != nullptr) {
-      *ra_ceu_reg32_plane(k_ra_ceu_off_cdayr2, k_ra_ceu_plane_b_off) =
-        (uint32_t)(uintptr_t)bufs->y_top_2;
-    }
-    if (bufs->c_top_2 != nullptr) {
-      *ra_ceu_reg32_plane(k_ra_ceu_off_cdacr2, k_ra_ceu_plane_b_off) =
-        (uint32_t)(uintptr_t)bufs->c_top_2;
-    }
-    if (bufs->y_bottom_2 != nullptr) {
-      *ra_ceu_reg32_plane(k_ra_ceu_off_cdbyr2, k_ra_ceu_plane_b_off) =
-        (uint32_t)(uintptr_t)bufs->y_bottom_2;
-    }
-    if (bufs->c_bottom_2 != nullptr) {
-      *ra_ceu_reg32_plane(k_ra_ceu_off_cdbcr2, k_ra_ceu_plane_b_off) =
-        (uint32_t)(uintptr_t)bufs->c_bottom_2;
-    }
-    if (bufs->bundle_size_bytes != 0U) {
-      *ra_ceu_reg32_plane(k_ra_ceu_off_cbdsr, k_ra_ceu_plane_b_off) =
-        bufs->bundle_size_bytes & ~(uint32_t)k_ra_ceu_bundle_align_mask;
-    }
+  }
+
+  internal_plane_b_mirror_from_a();
+  if (bufs != nullptr) {
+    internal_plane_b_apply_overrides(bufs);
   }
 
   /* HUM Ch 60.2.8 "CRCNTR : CEU Register Control Register" p 3649 --
@@ -758,7 +843,11 @@ ra_err_t ra_ceu_bundle_size_set(uint32_t size_bytes)
 ra_err_t ra_ceu_low_pass_set(bool enable)
 {
   /* HUM Ch 60.2.19 "CLFCR : Capture Low-Pass Filter Control" p 3661 */
-  *ra_ceu_reg32(k_ra_ceu_off_clfcr) = enable ? (uint32_t)k_ra_ceu_clfcr_mask_lpf : 0U;
+  uint32_t value = 0U;
+  if (enable) {
+    value = (uint32_t)k_ra_ceu_clfcr_mask_lpf;
+  }
+  *ra_ceu_reg32(k_ra_ceu_off_clfcr) = value;
   return k_ra_ok;
 }
 

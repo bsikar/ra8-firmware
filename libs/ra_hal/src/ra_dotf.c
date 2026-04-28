@@ -48,6 +48,33 @@ typedef enum : uint8_t {
 } ra_dotf_misc_t;
 
 /**
+ * @enum ra_dotf_bswap_const_t
+ * @brief Byte-extraction masks and shift counts for ``internal_bswap32``.
+ *
+ * @details
+ * REG03 of the OSPI / DOTF FIFO is big-endian; both the host build and
+ * the RA8D2 are little-endian, so we always swap. These named
+ * constants replace the magic numbers flagged by clang-tidy
+ * (readability-magic-numbers) and document each byte position.
+ */
+typedef enum : uint32_t {
+  k_ra_dotf_bswap_byte_mask = 0xFFUL,       /**< Per-byte mask used by all 4 lanes. */
+  k_ra_dotf_bswap_byte0     = 0x000000FFUL, /**< Selects bits  [7:0]  (byte 0). */
+  k_ra_dotf_bswap_byte1     = 0x0000FF00UL, /**< Selects bits [15:8]  (byte 1). */
+  k_ra_dotf_bswap_byte2     = 0x00FF0000UL, /**< Selects bits [23:16] (byte 2). */
+  k_ra_dotf_bswap_byte3     = 0xFF000000UL, /**< Selects bits [31:24] (byte 3). */
+} ra_dotf_bswap_const_t;
+
+/**
+ * @enum ra_dotf_bswap_shift_t
+ * @brief Shift counts used by ``internal_bswap32``.
+ */
+typedef enum : uint8_t {
+  k_ra_dotf_bswap_shift_byte = 8U,  /**< Shift for one-byte slide. */
+  k_ra_dotf_bswap_shift_word = 24U, /**< Shift for byte0 <-> byte3. */
+} ra_dotf_bswap_shift_t;
+
+/**
  * @enum ra_dotf_key_word_count_t
  * @brief Wrapped-key word counts per AES key size.
  *
@@ -194,8 +221,10 @@ static inline uint32_t internal_sca_bits(ra_dotf_sca_level_t level)
  */
 static inline uint32_t internal_bswap32(uint32_t v)
 {
-  return ((v & 0x000000FFUL) << 24) | ((v & 0x0000FF00UL) << 8) | ((v & 0x00FF0000UL) >> 8) |
-         ((v & 0xFF000000UL) >> 24);
+  return ((v & (uint32_t)k_ra_dotf_bswap_byte0) << (uint32_t)k_ra_dotf_bswap_shift_word) |
+         ((v & (uint32_t)k_ra_dotf_bswap_byte1) << (uint32_t)k_ra_dotf_bswap_shift_byte) |
+         ((v & (uint32_t)k_ra_dotf_bswap_byte2) >> (uint32_t)k_ra_dotf_bswap_shift_byte) |
+         ((v & (uint32_t)k_ra_dotf_bswap_byte3) >> (uint32_t)k_ra_dotf_bswap_shift_word);
 }
 
 /**
@@ -494,40 +523,27 @@ static void internal_state_reset(uint8_t channel)
   return k_ra_ok;
 }
 
-[[nodiscard]] ra_err_t ra_dotf_rotate_key(uint8_t                     channel,
-                                          const ra_dotf_key_handle_t* new_handle,
-                                          const uint32_t*             iv_words)
+/**
+ * @brief Re-stage the IV for a rotate-key call.
+ *
+ * @details
+ * If the caller provided ``iv_words`` we cache them and push them
+ * through ``internal_stage_iv``. If the caller passed nullptr but a
+ * previous IV is cached, re-stage that one. Otherwise leave the IV
+ * registers untouched. HUM Ch 45.3 "Register Descriptions" p 3049.
+ *
+ * @param[in,out] st        Channel state slot.
+ * @param[in]     reg       MMIO base for the channel.
+ * @param[in]     iv_words  Optional new IV word array.
+ *
+ * @pre ``st`` and ``reg`` are non-null and refer to the same channel.
+ * @post IV registers reflect the new IV when one was supplied or cached.
+ *
+ * @note Internal helper, not thread-safe.
+ */
+static void
+internal_rotate_iv(ra_dotf_chan_state_t* st, volatile ra_dotf_regs_t* reg, const uint32_t* iv_words)
 {
-  RA_CHECK_NULL_PTR((void*)new_handle, s_tag, "new_handle must not be nullptr");
-  if (!internal_channel_in_range(channel)) {
-    return k_ra_err_invalid_arg;
-  }
-  if (new_handle->valid == 0U) {
-    return k_ra_err_invalid_arg;
-  }
-  if ((new_handle->size != k_ra_dotf_key_size_128) &&
-      (new_handle->size != k_ra_dotf_key_size_192) &&
-      (new_handle->size != k_ra_dotf_key_size_256)) {
-    return k_ra_err_invalid_arg;
-  }
-  ra_dotf_chan_state_t* st = &s_dotf_state[channel];
-  if (st->active_region_id == (uint8_t)k_ra_dotf_no_region) {
-    return k_ra_err_invalid_state;
-  }
-  volatile ra_dotf_regs_t* reg = ra_dotf_regs(channel);
-  RA_CHECK_NULL_PTR((void*)reg, s_tag, "channel mapping failed");
-
-  const uint8_t was_enabled = st->enabled;
-
-  /* Step 1: quiesce the AES core.
-   * HUM Ch 45.3 "Register Descriptions" p 3049 */
-  reg->REG00  = (uint32_t)k_ra_dotf_reg00_disable_value;
-  st->enabled = 0U;
-
-  /* Step 2: replace key + (optionally) IV. */
-  st->key             = *new_handle;
-  st->cached_key_size = new_handle->size;
-  internal_stage_key(reg, new_handle);
   if (iv_words != nullptr) {
     for (uint8_t i = 0U; i < (uint8_t)k_ra_dotf_iv_word_count; ++i) {
       st->iv_cache[i] = iv_words[i];
@@ -539,6 +555,72 @@ static void internal_state_reset(uint8_t channel)
   } else {
     /* No IV ever installed, no IV to re-stage. */
   }
+}
+
+/**
+ * @brief Validate the inputs to ``ra_dotf_rotate_key``.
+ *
+ * @details
+ * Range-checks ``channel`` and the wrapped-key fields, and rejects
+ * calls that try to rotate before any region was activated. The check
+ * for ``new_handle != nullptr`` is the caller's responsibility.
+ *
+ * @param[in] channel    Channel index.
+ * @param[in] new_handle Caller-supplied wrapped key.
+ *
+ * @return ``k_ra_ok`` if all preconditions pass.
+ * @retval k_ra_err_invalid_arg ``channel`` out of range or handle malformed.
+ * @retval k_ra_err_invalid_state ``ra_dotf_install_region`` not yet called.
+ *
+ * @pre ``new_handle`` is non-null.
+ * @post No side effects.
+ *
+ * @note Internal helper, not thread-safe.
+ */
+static ra_err_t internal_validate_rotate_inputs(uint8_t                     channel,
+                                                const ra_dotf_key_handle_t* new_handle)
+{
+  if (!internal_channel_in_range(channel)) {
+    return k_ra_err_invalid_arg;
+  }
+  if (new_handle->valid == 0U) {
+    return k_ra_err_invalid_arg;
+  }
+  if ((new_handle->size != k_ra_dotf_key_size_128) &&
+      (new_handle->size != k_ra_dotf_key_size_192) &&
+      (new_handle->size != k_ra_dotf_key_size_256)) {
+    return k_ra_err_invalid_arg;
+  }
+  if (s_dotf_state[channel].active_region_id == (uint8_t)k_ra_dotf_no_region) {
+    return k_ra_err_invalid_state;
+  }
+  return k_ra_ok;
+}
+
+[[nodiscard]] ra_err_t ra_dotf_rotate_key(uint8_t                     channel,
+                                          const ra_dotf_key_handle_t* new_handle,
+                                          const uint32_t*             iv_words)
+{
+  RA_CHECK_NULL_PTR((void*)new_handle, s_tag, "new_handle must not be nullptr");
+  const ra_err_t val_err = internal_validate_rotate_inputs(channel, new_handle);
+  RA_RETURN_ON_ERROR(val_err, s_tag, "rotate_key: validation failed");
+
+  volatile ra_dotf_regs_t* reg = ra_dotf_regs(channel);
+  RA_CHECK_NULL_PTR((void*)reg, s_tag, "channel mapping failed");
+
+  ra_dotf_chan_state_t* st          = &s_dotf_state[channel];
+  const uint8_t         was_enabled = st->enabled;
+
+  /* Step 1: quiesce the AES core.
+   * HUM Ch 45.3 "Register Descriptions" p 3049 */
+  reg->REG00  = (uint32_t)k_ra_dotf_reg00_disable_value;
+  st->enabled = 0U;
+
+  /* Step 2: replace key + (optionally) IV. */
+  st->key             = *new_handle;
+  st->cached_key_size = new_handle->size;
+  internal_stage_key(reg, new_handle);
+  internal_rotate_iv(st, reg, iv_words);
 
   /* Step 3: re-arm if previously enabled. */
   if (was_enabled != 0U) {

@@ -128,10 +128,11 @@ typedef enum : uint32_t {
  * @brief Channel count + alignment limits.
  */
 typedef enum : uint8_t {
-  k_ra_dotf_channel_count = 2U,  /**< DOTF0 + DOTF1.                               */
-  k_ra_dotf_align_shift   = 12U, /**< CONVAREAST/CONVAREAD value scales by 1<<12. */
-  k_ra_dotf_iv_word_count = 4U,  /**< IV is 128-bit = 4 x 32-bit words.           */
-  k_ra_dotf_max_regions   = 4U,  /**< Max staged regions per channel (driver max).*/
+  k_ra_dotf_channel_count       = 2U,  /**< DOTF0 + DOTF1.                            */
+  k_ra_dotf_align_shift         = 12U, /**< CONVAREAST/CONVAREAD value scales 1<<12. */
+  k_ra_dotf_iv_word_count       = 4U,  /**< IV is 128-bit = 4 x 32-bit words.         */
+  k_ra_dotf_max_regions         = 4U,  /**< Max staged regions per channel.           */
+  k_ra_dotf_rsv_words_convaread = 30U, /**< +0x008..0x07C reserved gap (32-bit words).*/
 } ra_dotf_limits_t;
 
 /**
@@ -214,7 +215,7 @@ typedef enum : uint32_t {
 typedef struct {
   volatile uint32_t CONVAREAST; /**< +0x000 Conversion area start address. */
   volatile uint32_t CONVAREAD;  /**< +0x004 Conversion area end address.   */
-  volatile uint32_t _r0[30];    /**< +0x008..0x07C Reserved (FSP RESERVED).*/
+  volatile uint32_t _r0[k_ra_dotf_rsv_words_convaread]; /**< +0x008..0x07C Reserved (FSP RESERVED).*/
   volatile uint32_t REG00;      /**< +0x080 AES enable / mode select.      */
   volatile uint32_t _r1[2];     /**< +0x084..0x088 Reserved.               */
   volatile uint32_t REG03;      /**< +0x08C AES IV staging window.         */

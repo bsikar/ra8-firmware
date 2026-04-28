@@ -268,10 +268,10 @@ typedef enum : uint32_t {
  * bits"). The default LOCO frequency is 32.768 kHz.
  */
 typedef enum : uint32_t {
-  k_ra_lvd_filter_factor   = 2U,     /**< "2s" multiplier in HUM formula. */
-  k_ra_lvd_filter_extra    = 3U,     /**< "+3" LOCO cycles in HUM formula.*/
+  k_ra_lvd_filter_factor   = 2U,       /**< "2s" multiplier in HUM formula. */
+  k_ra_lvd_filter_extra    = 3U,       /**< "+3" LOCO cycles in HUM formula.*/
   k_ra_lvd_us_per_sec      = 1000000U, /**< Microseconds per second.      */
-  k_ra_lvd_loco_hz_default = 32768U, /**< Nominal RA8D2 LOCO frequency.   */
+  k_ra_lvd_loco_hz_default = 32768U,   /**< Nominal RA8D2 LOCO frequency.   */
 } ra_lvd_filter_const_t;
 
 /**

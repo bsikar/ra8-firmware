@@ -99,8 +99,8 @@ typedef enum : uint8_t {
  * @see HUM Ch 27.1 "Overview" p 1256.
  */
 typedef enum : uint8_t {
-  k_ra_wdt0              = 0U, /**< WDT0 -- Cortex-M85 side. */
-  k_ra_wdt1              = 1U, /**< WDT1 -- Cortex-M33 side. */
+  k_ra_wdt0               = 0U, /**< WDT0 -- Cortex-M85 side. */
+  k_ra_wdt1               = 1U, /**< WDT1 -- Cortex-M33 side. */
   k_ra_wdt_instance_count = 2U, /**< Number of WDT instances on RA8D2. */
 } ra_wdt_instance_t;
 
@@ -236,13 +236,13 @@ typedef enum : uint32_t {
  * positions inside the 32-bit OFSm word.
  */
 typedef enum : uint32_t {
-  k_ra_wdt_ofs_shift_strt    = 17U, /**< OFSm.WDTSTRT shift.    */
-  k_ra_wdt_ofs_shift_tops    = 18U, /**< OFSm.WDTTOPS shift.    */
-  k_ra_wdt_ofs_shift_cks     = 20U, /**< OFSm.WDTCKS shift.     */
-  k_ra_wdt_ofs_shift_rpes    = 24U, /**< OFSm.WDTRPES shift.    */
-  k_ra_wdt_ofs_shift_rpss    = 26U, /**< OFSm.WDTRPSS shift.    */
-  k_ra_wdt_ofs_shift_rstirqs = 28U, /**< OFSm.WDTRSTIRQS shift. */
-  k_ra_wdt_ofs_shift_stpctl  = 30U, /**< OFSm.WDTSTPCTL shift.  */
+  k_ra_wdt_ofs_shift_strt    = 17U,  /**< OFSm.WDTSTRT shift.    */
+  k_ra_wdt_ofs_shift_tops    = 18U,  /**< OFSm.WDTTOPS shift.    */
+  k_ra_wdt_ofs_shift_cks     = 20U,  /**< OFSm.WDTCKS shift.     */
+  k_ra_wdt_ofs_shift_rpes    = 24U,  /**< OFSm.WDTRPES shift.    */
+  k_ra_wdt_ofs_shift_rpss    = 26U,  /**< OFSm.WDTRPSS shift.    */
+  k_ra_wdt_ofs_shift_rstirqs = 28U,  /**< OFSm.WDTRSTIRQS shift. */
+  k_ra_wdt_ofs_shift_stpctl  = 30U,  /**< OFSm.WDTSTPCTL shift.  */
   k_ra_wdt_ofs_mask_strt     = 0x1U, /**< 1-bit field. */
   k_ra_wdt_ofs_mask_tops     = 0x3U, /**< 2-bit field. */
   k_ra_wdt_ofs_mask_cks      = 0xFU, /**< 4-bit field. */

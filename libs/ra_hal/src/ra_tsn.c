@@ -95,7 +95,7 @@ static void internal_busy_wait_us(uint16_t usec)
 {
   for (uint16_t u = 0U; u < usec; ++u) {
     for (uint16_t i = 0U; i < (uint16_t)k_ra_tsn_busy_loops_per_us; ++i) {
-#if !defined(RA_SIMULATOR_MODE)
+#ifndef RA_SIMULATOR_MODE
       __asm__ volatile("nop");
 #endif
     }
@@ -116,9 +116,15 @@ static void internal_busy_wait_us(uint16_t usec)
  */
 static ra_err_t internal_validate_cfg(const ra_tsn_config_t* cfg)
 {
-  const bool high_ok = (cfg->high_ref_degc == k_ra_tsn_cal_temp_high_125) ||
-                       (cfg->high_ref_degc == k_ra_tsn_cal_temp_high_105);
-  const bool low_ok  = (cfg->low_ref_degc == k_ra_tsn_cal_temp_low_n40);
+  bool high_ok = false;
+  if ((cfg->high_ref_degc == k_ra_tsn_cal_temp_high_125) ||
+      (cfg->high_ref_degc == k_ra_tsn_cal_temp_high_105)) {
+    high_ok = true;
+  }
+  bool low_ok = false;
+  if (cfg->low_ref_degc == k_ra_tsn_cal_temp_low_n40) {
+    low_ok = true;
+  }
   if (!high_ok || !low_ok) {
     return k_ra_err_invalid_arg;
   }

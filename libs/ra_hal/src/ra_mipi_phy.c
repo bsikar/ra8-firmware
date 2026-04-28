@@ -182,7 +182,7 @@ static void internal_mipi_phy_mstp_unstop(void)
 /**
  * @brief Spin until ``(reg & mask) == mask`` or the budget runs out.
  */
-static ra_err_t internal_mipi_phy_wait_set(volatile uint32_t* reg, uint32_t mask)
+static ra_err_t internal_mipi_phy_wait_set(volatile const uint32_t* reg, uint32_t mask)
 {
   for (uint32_t i = 0U; i < (uint32_t)k_ra_mipi_phy_spin_budget; ++i) {
     if ((*reg & mask) == mask) {
@@ -1131,23 +1131,27 @@ static uint32_t internal_mipi_phy_compute_freq(const ra_mipi_phy_pll_t* pll, uin
  * =============================================================================
  */
 
-ra_err_t ra_mipi_phy_init(const ra_mipi_phy_config_t* cfg)
+/**
+ * @brief Validate ranges/lane-count for ``ra_mipi_phy_init``.
+ *
+ * @details
+ * Cites HUM Ch 64.2.1 p 3822 (RFREQ range), Ch 64.2.4 p 3825 (ESCDIV
+ * width), Ch 64.1 p 3822 (lane-count support matrix), and Ch 64.2.2
+ * p 3823 (PLL parameter range, master mode only). Also rejects
+ * nullptrs in ``cfg`` and ``cfg->p_timing``.
+ */
+static ra_err_t internal_mipi_phy_validate_init_cfg(const ra_mipi_phy_config_t* cfg)
 {
-  RA_CHECK_NULL_PTR((const void*)cfg, s_tag, "cfg must not be nullptr");
-  RA_CHECK_NULL_PTR((const void*)cfg->p_timing, s_tag, "cfg->p_timing must not be nullptr");
-
-  /* HUM Ch 64.2.1 "DPHYREFCR : D-PHY Reference Clock Setting Register", p 3822 */
+  if (cfg == nullptr || cfg->p_timing == nullptr) {
+    return k_ra_err_null_ptr;
+  }
   if ((cfg->pclka_mhz < (uint8_t)k_ra_mipi_phy_pclka_min_mhz) ||
       (cfg->pclka_mhz > (uint8_t)k_ra_mipi_phy_pclka_max_mhz)) {
     return k_ra_err_invalid_arg;
   }
-
-  /* HUM Ch 64.2.4 "DPHYESCCR : D-PHY Escape Mode Clock Control Register", p 3825 */
   if (cfg->escdiv > (uint8_t)k_ra_mipi_phy_escdiv_max) {
     return k_ra_err_invalid_arg;
   }
-
-  /* HUM Ch 64.1 "Overview" p 3822 */
   if ((cfg->lane_count != k_ra_mipi_phy_lane_count_1) &&
       (cfg->lane_count != k_ra_mipi_phy_lane_count_2)) {
     return ((cfg->lane_count == k_ra_mipi_phy_lane_count_3) ||
@@ -1155,46 +1159,80 @@ ra_err_t ra_mipi_phy_init(const ra_mipi_phy_config_t* cfg)
              ? k_ra_err_not_supported
              : k_ra_err_invalid_arg;
   }
-
   if (cfg->mode == k_ra_mipi_phy_mode_dsi_master) {
-    const ra_err_t pll_err = internal_mipi_phy_validate_pll(&cfg->pll);
-    RA_RETURN_ON_ERROR(pll_err, s_tag, "init: pll out of range");
+    return internal_mipi_phy_validate_pll(&cfg->pll);
   }
+  return k_ra_ok;
+}
 
-  /* Step 1 -- HUM Ch 64.4.2 "Module-Stop Function Setting", p 3838 */
+/**
+ * @brief Apply common init steps 1-5 (mode, refclk, LDO power-up).
+ *
+ * @details
+ * Step 1 (HUM Ch 64.4.2 p 3838) ungates MSTPCRC.
+ * Step 2 (HUM Ch 64.2.14 p 3836) selects master vs slave via DPHYMDC.
+ * Step 3 (HUM Ch 64.2.1 p 3822) programs DPHYREFCR.
+ * Step 4 (HUM Ch 64.2.5 p 3826) sets DPHYPWRCR.PWRSEN.
+ * Step 5 (HUM Ch 64.2.6 p 3826) polls DPHYSFR until PWRSF latches.
+ */
+static ra_err_t internal_mipi_phy_init_power_up(const ra_mipi_phy_config_t* cfg)
+{
   internal_mipi_phy_mstp_unstop();
-
-  /* Step 2 -- HUM Ch 64.2.14 "DPHYMDC : D-PHY Mode Control Register", p 3836 */
   *ra_mipi_phy_reg32(k_ra_mipi_phy_off_mdc) =
     (cfg->mode == k_ra_mipi_phy_mode_dsi_master) ? (uint32_t)k_ra_mipi_phy_mdc_masteren : 0U;
-
-  /* Step 3 -- HUM Ch 64.2.1 "DPHYREFCR : D-PHY Reference Clock Setting Register", p 3822 */
   *ra_mipi_phy_reg32(k_ra_mipi_phy_off_refcr) =
     (uint32_t)cfg->pclka_mhz & (uint32_t)k_ra_mipi_phy_refcr_rfreq_mask;
-
-  /* Step 4 -- HUM Ch 64.2.5 "DPHYPWRCR : D-PHY Power Supplying Control Register", p 3826 */
   *ra_mipi_phy_reg32(k_ra_mipi_phy_off_pwrcr) = (uint32_t)k_ra_mipi_phy_pwrcr_pwrsen;
+  return internal_mipi_phy_wait_set(ra_mipi_phy_reg32(k_ra_mipi_phy_off_sfr),
+                                    (uint32_t)k_ra_mipi_phy_sfr_pwrsf);
+}
 
-  /* Step 5 -- HUM Ch 64.2.6 "DPHYSFR : D-PHY Status Flag Register", p 3826 */
-  const ra_err_t pwr_err = internal_mipi_phy_wait_set(ra_mipi_phy_reg32(k_ra_mipi_phy_off_sfr),
-                                                      (uint32_t)k_ra_mipi_phy_sfr_pwrsf);
+/**
+ * @brief Apply DSI-master-only steps (6-9) of the init sequence.
+ *
+ * @details
+ * Steps come from HUM Ch 64 p 3823-3826: program PLFCR, ESCCR, clear
+ * PLOCR, then poll DPHYSFR until PLLSF latches.
+ */
+static ra_err_t internal_mipi_phy_init_master(const ra_mipi_phy_config_t* cfg)
+{
+  *ra_mipi_phy_reg32(k_ra_mipi_phy_off_plfcr) = internal_mipi_phy_pack_plfcr(&cfg->pll);
+  *ra_mipi_phy_reg32(k_ra_mipi_phy_off_esccr) =
+    (uint32_t)cfg->escdiv & (uint32_t)k_ra_mipi_phy_esccr_escdiv_mask;
+  *ra_mipi_phy_reg32(k_ra_mipi_phy_off_plocr) = 0U;
+  return internal_mipi_phy_wait_set(ra_mipi_phy_reg32(k_ra_mipi_phy_off_sfr),
+                                    (uint32_t)k_ra_mipi_phy_sfr_pllsf);
+}
+
+/**
+ * @brief Latch ``cfg`` knobs into the driver's tracked-state cache.
+ *
+ * @details
+ * None of these settings live in PHY registers; downstream DSI / CSI
+ * drivers consult them after init returns.
+ */
+static void internal_mipi_phy_cache_state(const ra_mipi_phy_config_t* cfg)
+{
+  s_lane_count       = cfg->lane_count;
+  s_lane_enable_mask = (uint8_t)k_ra_mipi_phy_lane_mask_default;
+  s_clk_mode         = cfg->clk_mode;
+  s_eotp             = cfg->eotp;
+  s_last_sfr         = *ra_mipi_phy_reg32(k_ra_mipi_phy_off_sfr);
+}
+
+ra_err_t ra_mipi_phy_init(const ra_mipi_phy_config_t* cfg)
+{
+  const ra_err_t v_err = internal_mipi_phy_validate_init_cfg(cfg);
+  RA_RETURN_ON_ERROR(v_err, s_tag, "init: bad cfg");
+
+  /* Steps 1-5 -- HUM Ch 64.4.2 / 64.2.14 / 64.2.1 / 64.2.5 / 64.2.6 */
+  const ra_err_t pwr_err = internal_mipi_phy_init_power_up(cfg);
   RA_RETURN_ON_ERROR(pwr_err, s_tag, "init: LDO did not stabilise");
 
   if (cfg->mode == k_ra_mipi_phy_mode_dsi_master) {
-    /* Step 6 -- HUM Ch 64.2.2 "DPHYPLFCR : D-PHY PLL Frequency Control Register", p 3823 */
-    *ra_mipi_phy_reg32(k_ra_mipi_phy_off_plfcr) = internal_mipi_phy_pack_plfcr(&cfg->pll);
-
-    /* Step 7 -- HUM Ch 64.2.4 "DPHYESCCR : D-PHY Escape Mode Clock Control Register", p 3825 */
-    *ra_mipi_phy_reg32(k_ra_mipi_phy_off_esccr) =
-      (uint32_t)cfg->escdiv & (uint32_t)k_ra_mipi_phy_esccr_escdiv_mask;
-
-    /* Step 8 -- HUM Ch 64.2.3 "DPHYPLOCR : D-PHY PLL Operation Control Register", p 3824 */
-    *ra_mipi_phy_reg32(k_ra_mipi_phy_off_plocr) = 0U;
-
-    /* Step 9 -- HUM Ch 64.2.6 "DPHYSFR : D-PHY Status Flag Register", p 3826 */
-    const ra_err_t pll_err = internal_mipi_phy_wait_set(ra_mipi_phy_reg32(k_ra_mipi_phy_off_sfr),
-                                                        (uint32_t)k_ra_mipi_phy_sfr_pllsf);
-    RA_RETURN_ON_ERROR(pll_err, s_tag, "init: PLL did not lock");
+    /* Steps 6-9 -- HUM Ch 64.2.2/64.2.4/64.2.3/64.2.6 p 3823-3826 */
+    const ra_err_t m_err = internal_mipi_phy_init_master(cfg);
+    RA_RETURN_ON_ERROR(m_err, s_tag, "init: PLL did not lock");
   }
 
   /* Step 10 -- HUM Ch 64.2.8 "DPHYTIM1 : D-PHY Timing Control Register 1", p 3827 */
@@ -1203,14 +1241,7 @@ ra_err_t ra_mipi_phy_init(const ra_mipi_phy_config_t* cfg)
   /* Step 11 -- HUM Ch 64.2.7 "DPHYOCR : D-PHY Operation Control Register", p 3827 */
   *ra_mipi_phy_reg32(k_ra_mipi_phy_off_ocr) = (uint32_t)k_ra_mipi_phy_ocr_dphyen;
 
-  /* Cache the optional state knobs the driver tracks for the higher
-   * level. None of these are stored in PHY registers; the DSI / CSI
-   * driver consults them after init. */
-  s_lane_count       = cfg->lane_count;
-  s_lane_enable_mask = (uint8_t)k_ra_mipi_phy_lane_mask_default;
-  s_clk_mode         = cfg->clk_mode;
-  s_eotp             = cfg->eotp;
-  s_last_sfr         = *ra_mipi_phy_reg32(k_ra_mipi_phy_off_sfr);
+  internal_mipi_phy_cache_state(cfg);
 
   ra_log_info(s_tag, "mipi_phy_init done");
   return k_ra_ok;

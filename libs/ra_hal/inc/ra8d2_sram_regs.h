@@ -450,6 +450,33 @@ typedef enum : uint32_t {
  */
 
 /**
+ * @enum ra_sram_pad_t
+ * @brief Reserved-byte gap sizes used inside the SRAM control register
+ *        block and CPSCU window.
+ *
+ * @details
+ * Names every padding gap so the struct definitions do not depend on
+ * raw integer literals. Cross-checked against HUM Ch 58.2.
+ */
+typedef enum : uint16_t {
+  k_ra_sram_pad_wtsc_to_cr        = 7U,    /**< +0x09..+0x0F gap (bytes).   */
+  k_ra_sram_pad_cr_sparse_bytes   = 12U,   /**< +0x14..+0x1F sparse SRAMCRn.*/
+  k_ra_sram_pad_eccrgn_sparse     = 12U,   /**< +0x34..+0x3F sparse RGNn.   */
+  k_ra_sram_cpscu_pad_sramsar     = 0x3ECU,/**< +0x014..+0x3FF gap (bytes). */
+  k_ra_sram_cpscu_pad_after_sabar = 0x100U,/**< +0x410..+0x50F gap (bytes). */
+} ra_sram_pad_t;
+
+/**
+ * @enum ra_sram_indexed_t
+ * @brief Stride / base offsets for sparse SRAMCR / SRAMECCRGN slots.
+ */
+typedef enum : uint8_t {
+  k_ra_sram_cr_base_off     = 0x10U, /**< SRAMCR0 byte offset.          */
+  k_ra_sram_eccrgn_base_off = 0x30U, /**< SRAMECCRGN0 byte offset.      */
+  k_ra_sram_sparse_stride   = 4U,    /**< Stride between sparse slots.  */
+} ra_sram_indexed_t;
+
+/**
  * @struct r_sram_regs_t
  * @brief Memory layout of the SRAM control window.
  *
@@ -475,15 +502,15 @@ typedef struct {
   volatile uint16_t SRAMPRCR_NS;                  /**< +0x04 Non-Secure write-protect.    */
   volatile uint16_t _r1;                          /**< +0x06 Padding.                     */
   volatile uint8_t  SRAMWTSC;                     /**< +0x08 Wait-state control.          */
-  volatile uint8_t  _r2[7];                       /**< +0x09..+0x0F Padding.              */
+  volatile uint8_t  _r2[k_ra_sram_pad_wtsc_to_cr]; /**< +0x09..+0x0F Padding.              */
   volatile uint8_t  SRAMCR[k_ra_sram_bank_count]; /**< +0x10..+0x13 (sparse, see _r3).    */
   /* The HUM lays SRAMCRn at +0x10 + 0x04 * n, so we cannot pack them
    * as a contiguous uint8_t array. Model them as one 32-bit word per
    * bank instead -- the public API only writes the low byte. */
-  volatile uint8_t  _r3[12]; /**< +0x14..+0x1F Padding for sparse CR slots. */
+  volatile uint8_t  _r3[k_ra_sram_pad_cr_sparse_bytes]; /**< +0x14..+0x1F Padding for sparse CR slots. */
   volatile uint8_t  _r4[16]; /**< +0x20..+0x2F Reserved.             */
   volatile uint8_t  SRAMECCRGN[k_ra_sram_bank_count]; /**< +0x30..+0x33 (sparse, see _r5).    */
-  volatile uint8_t  _r5[12];   /**< +0x34..+0x3F Padding for sparse RGN slots. */
+  volatile uint8_t  _r5[k_ra_sram_pad_eccrgn_sparse];   /**< +0x34..+0x3F Padding for sparse RGN slots. */
   volatile uint16_t SRAMESR;   /**< +0x40 ECC error status.            */
   volatile uint16_t _r6;       /**< +0x42 Padding.                     */
   volatile uint8_t  _r7[4];    /**< +0x44..+0x47 Reserved.             */
@@ -516,9 +543,9 @@ typedef struct {
 typedef struct {
   volatile uint8_t  _r0[0x010];                      /**< +0x000..+0x00F Reserved.        */
   volatile uint32_t SRAMSAR;                         /**< +0x010 SRAM register security.  */
-  volatile uint8_t  _r1[0x3EC];                      /**< +0x014..+0x3FF Reserved.        */
-  volatile uint32_t SRAMSABAR[k_ra_sram_bank_count]; /**< +0x400..+0x40F Bank boundary.   */
-  volatile uint8_t  _r2[0x100];                      /**< +0x410..+0x50F Reserved.        */
+  volatile uint8_t  _r1[k_ra_sram_cpscu_pad_sramsar];     /**< +0x014..+0x3FF Reserved.        */
+  volatile uint32_t SRAMSABAR[k_ra_sram_bank_count];      /**< +0x400..+0x40F Bank boundary.   */
+  volatile uint8_t  _r2[k_ra_sram_cpscu_pad_after_sabar]; /**< +0x410..+0x50F Reserved.        */
   volatile uint32_t SRAMESAR;                        /**< +0x510 ECC region security.     */
   volatile uint32_t _r3;                             /**< +0x514 Padding to round size.   */
 } r_sram_cpscu_regs_t;
@@ -568,7 +595,8 @@ static inline volatile uint8_t* ra_sram_cr_ptr(volatile r_sram_regs_t* regs, uin
 {
   /* SRAMCRn at +0x10 + 4 * n. */
   uint8_t* base = (uint8_t*)regs;
-  return (volatile uint8_t*)(base + (size_t)0x10U + ((size_t)bank * (size_t)4U));
+  return (volatile uint8_t*)(base + (size_t)k_ra_sram_cr_base_off +
+                             ((size_t)bank * (size_t)k_ra_sram_sparse_stride));
 }
 
 /**
@@ -581,7 +609,8 @@ static inline volatile uint8_t* ra_sram_eccrgn_ptr(volatile r_sram_regs_t* regs,
 {
   /* SRAMECCRGNn at +0x30 + 4 * n. */
   uint8_t* base = (uint8_t*)regs;
-  return (volatile uint8_t*)(base + (size_t)0x30U + ((size_t)bank * (size_t)4U));
+  return (volatile uint8_t*)(base + (size_t)k_ra_sram_eccrgn_base_off +
+                             ((size_t)bank * (size_t)k_ra_sram_sparse_stride));
 }
 
 /**

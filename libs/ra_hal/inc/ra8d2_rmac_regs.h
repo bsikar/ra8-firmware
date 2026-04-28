@@ -48,6 +48,7 @@
 extern "C" {
 #endif
 
+#include <stddef.h>
 #include <stdint.h>
 
 #include "ra8d2_ether_regs.h"
@@ -474,6 +475,32 @@ typedef enum : uint32_t {
 } ra_rmac_mxgmiic_bit_t;
 
 /**
+ * @enum ra_rmac_rsv_words_t
+ * @brief Reserved-word array sizes (in 32-bit words) used inside the
+ *        RMAC per-port register block.
+ *
+ * @details
+ * Names each reserved gap so the struct definition does not depend on
+ * raw integer literals. Cross-checked against HUM Table 33.4.
+ */
+typedef enum : uint8_t {
+  k_ra_rmac_rsv_words_mtim_to_mrgc       = 7U,  /**< +0x0064..0x007C gap.  */
+  k_ra_rmac_rsv_words_mrpfm_to_mpfc      = 20U, /**< +0x00B0..0x00FC gap.  */
+  k_ra_rmac_rsv_words_manm_to_meis       = 24U, /**< +0x01A0..0x01FC gap.  */
+  k_ra_rmac_rsv_words_mmid2_to_mmpftct   = 49U, /**< +0x023C..0x02FC gap.  */
+  k_ra_rmac_rsv_words_mrhcrcec_to_mrgfce = 40U, /**< +0x0368..0x0404 gap.  */
+  k_ra_rmac_rsv_words_mrxbcpl_to_mtgfce  = 43U, /**< +0x045C..0x0504 gap.  */
+} ra_rmac_rsv_words_t;
+
+/**
+ * @enum ra_rmac_size_t
+ * @brief RMAC register window total size (FSP R_RMAC0_Type).
+ */
+typedef enum : uint16_t {
+  k_ra_rmac_window_bytes = 0x530U, /**< Total MMIO window (FSP size).      */
+} ra_rmac_size_t;
+
+/**
  * @struct r_rmac_regs_t
  * @brief Full RMAC per-port register window (HUM Ch 33.3, FSP R_RMAC0_Type).
  *
@@ -501,7 +528,7 @@ typedef struct {
   volatile uint32_t MTATC[2];                            /**< +0x0050..0x0054 TX Auto Tstamp.  */
   volatile uint32_t reserved58[2];                       /**< +0x0058..0x005C Reserved.   */
   volatile uint32_t MTIM;                                /**< +0x0060 TX Interfaces Monitor.   */
-  volatile uint32_t reserved64[7];                       /**< +0x0064..0x007C Reserved.   */
+  volatile uint32_t reserved64[k_ra_rmac_rsv_words_mtim_to_mrgc]; /**< +0x0064..0x007C Reserved.   */
   volatile uint32_t MRGC;                                /**< +0x0080 RX General Cfg.          */
   volatile uint32_t MRMAC0;                              /**< +0x0084 RX MAC Address 0.        */
   volatile uint32_t MRMAC1;                              /**< +0x0088 RX MAC Address 1.        */
@@ -514,7 +541,7 @@ typedef struct {
   volatile uint32_t MTRC;                                /**< +0x00A4 Timestamp RX Cfg.        */
   volatile uint32_t reserveda8;                          /**< +0x00A8 Reserved.              */
   volatile uint32_t MRPFM;                               /**< +0x00AC RX Pause/PFC Monitor.    */
-  volatile uint32_t reservedb0[20];                      /**< +0x00B0..0x00FC Reserved. */
+  volatile uint32_t reservedb0[k_ra_rmac_rsv_words_mrpfm_to_mpfc]; /**< +0x00B0..0x00FC Reserved. */
   volatile uint32_t MPFC[k_ra_rmac_ptp_filter_count];    /**< +0x0100..0x013C */
   volatile uint32_t reserved140[16];                     /**< +0x0140..0x017C Reserved.*/
   volatile uint32_t MLVC;                                /**< +0x0180 Link Verification Cfg.   */
@@ -525,7 +552,7 @@ typedef struct {
   volatile uint32_t MPCH;                                /**< +0x0194 XGMII PCH Cfg.           */
   volatile uint32_t reserved198;                         /**< +0x0198 Reserved.             */
   volatile uint32_t MANM;                                /**< +0x019C Auto-Neg Message.        */
-  volatile uint32_t reserved1a0[24];                     /**< +0x01A0..0x01FC Reserved.*/
+  volatile uint32_t reserved1a0[k_ra_rmac_rsv_words_manm_to_meis]; /**< +0x01A0..0x01FC Reserved.*/
   volatile uint32_t MEIS;                                /**< +0x0200 Error IRQ Status.        */
   volatile uint32_t MEIE;                                /**< +0x0204 Error IRQ Enable.        */
   volatile uint32_t MEID;                                /**< +0x0208 Error IRQ Disable.       */
@@ -541,7 +568,7 @@ typedef struct {
   volatile uint32_t MMIS2;                               /**< +0x0230 Monitor Status 2.        */
   volatile uint32_t MMIE2;                               /**< +0x0234 Monitor Enable 2.        */
   volatile uint32_t MMID2;                               /**< +0x0238 Monitor Disable 2.       */
-  volatile uint32_t reserved23c[49];                     /**< +0x023C..0x02FC Reserved.*/
+  volatile uint32_t reserved23c[k_ra_rmac_rsv_words_mmid2_to_mmpftct]; /**< +0x023C..0x02FC Reserved.*/
   volatile uint32_t MMPFTCT;                             /**< +0x0300 Manual pause TX cnt.     */
   volatile uint32_t MAPFTCT;                             /**< +0x0304 Auto pause TX cnt.       */
   volatile uint32_t MPFRCT;                              /**< +0x0308 Pause frame RX cnt.      */
@@ -555,7 +582,7 @@ typedef struct {
   volatile uint32_t MPCFRCT[k_ra_rmac_pfc_rx_count];     /**< +0x0340..0x035C */
   volatile uint32_t MROVFC;                              /**< +0x0360 RX overflow cnt.         */
   volatile uint32_t MRHCRCEC;                            /**< +0x0364 RX header CRC err cnt.   */
-  volatile uint32_t reserved368[40];                     /**< +0x0368..0x0404 Reserved.*/
+  volatile uint32_t reserved368[k_ra_rmac_rsv_words_mrhcrcec_to_mrgfce]; /**< +0x0368..0x0404 Reserved.*/
   volatile uint32_t MRGFCE;                              /**< +0x0408 RX good E-frame cnt.     */
   volatile uint32_t MRGFCP;                              /**< +0x040C RX good P-frame cnt.     */
   volatile uint32_t MRBFC;                               /**< +0x0410 RX broadcast cnt.        */
@@ -577,7 +604,7 @@ typedef struct {
   volatile uint32_t MRXBCEL;                             /**< +0x0450 RX byte cnt E lower.     */
   volatile uint32_t MRXBCPU;                             /**< +0x0454 RX byte cnt P upper.     */
   volatile uint32_t MRXBCPL;                             /**< +0x0458 RX byte cnt P lower.     */
-  volatile uint32_t reserved45c[43];                     /**< +0x045C..0x0504 Reserved.*/
+  volatile uint32_t reserved45c[k_ra_rmac_rsv_words_mrxbcpl_to_mtgfce]; /**< +0x045C..0x0504 Reserved.*/
   volatile uint32_t MTGFCE;                              /**< +0x0508 TX good E-frame cnt.     */
   volatile uint32_t MTGFCP;                              /**< +0x050C TX good P-frame cnt.     */
   volatile uint32_t MTBFC;                               /**< +0x0510 TX broadcast cnt.        */
@@ -599,7 +626,7 @@ typedef struct {
  * future register addition perturbs the layout, this assertion fires
  * before any test runs.
  */
-static_assert(sizeof(r_rmac_regs_t) == 0x530U,
+static_assert(sizeof(r_rmac_regs_t) == (size_t)k_ra_rmac_window_bytes,
               "r_rmac_regs_t must match FSP R_RMAC0_Type size 0x530");
 
 /**

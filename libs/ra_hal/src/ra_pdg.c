@@ -154,7 +154,7 @@ static void internal_busy_wait_us(uint16_t usec)
 {
   for (uint16_t u = 0U; u < usec; ++u) {
     for (uint16_t i = 0U; i < (uint16_t)k_ra_pdg_busy_loops_per_us; ++i) {
-#if !defined(RA_SIMULATOR_MODE)
+#ifndef RA_SIMULATOR_MODE
       __asm__ volatile("nop");
 #endif
     }
@@ -173,7 +173,7 @@ static void internal_wait_5_gtclk(void)
  * The fastest GTCLK is 300 MHz, so 5 cycles ~= 17 ns; this loop
  * absorbs more than that on any reasonable build. */
   for (uint16_t i = 0U; i < (uint16_t)k_ra_pdg_post_reset_loops; ++i) {
-#if !defined(RA_SIMULATOR_MODE)
+#ifndef RA_SIMULATOR_MODE
     __asm__ volatile("nop");
 #endif
   }
@@ -186,7 +186,13 @@ static void internal_wait_5_gtclk(void)
  */
 static bool internal_frange_ok(ra_pdg_frange_t f)
 {
-  return (f == k_ra_pdg_frange_80_160_mhz) || (f == k_ra_pdg_frange_155_300_mhz);
+  if (f == k_ra_pdg_frange_80_160_mhz) {
+    return true;
+  }
+  if (f == k_ra_pdg_frange_155_300_mhz) {
+    return true;
+  }
+  return false;
 }
 
 /**
@@ -279,27 +285,30 @@ static uint32_t internal_freq_to_period_ns(uint32_t hz)
  * =============================================================================
  */
 
-ra_err_t ra_pdg_init(const ra_pdg_config_t* cfg)
+/**
+ * @brief Run the six-step DLL bring-up sequence from HUM Fig 23.2.
+ *
+ * @details
+ * HUM Ch 23.3.1 "Adjustments to the Timing of Rising and Falling Edges"
+ * p 1159 describes the exact sequence: latch FRANGE, enable DLL, wait
+ * >= 20 us for lock, release DLYRST, wait >= 5 GTCLK cycles, then turn
+ * off bypass for the channels selected by ``cfg->channel_mask``.
+ *
+ * @param[in] cfg        Validated config.
+ * @param[in] frange_use Final FRANGE band (post auto-tune resolution).
+ *
+ * @pre Module clock is ungated (caller has already taken care of MSTP).
+ * @post DLL is locked, requested channels active, others in bypass.
+ *
+ * @note Internal helper, not thread-safe.
+ */
+static void internal_program_dll(const ra_pdg_config_t* cfg, ra_pdg_frange_t frange_use)
 {
-  RA_CHECK_NULL_PTR((void*)cfg, s_tag, "cfg must not be nullptr");
-  const ra_err_t cfg_err = internal_validate_cfg(cfg);
-  RA_RETURN_ON_ERROR(cfg_err, s_tag, "pdg_init: cfg invalid");
-
-  ra_pdg_frange_t frange_use = cfg->frange;
-  if (cfg->auto_tune != 0U) {
-    const ra_err_t band_err = ra_pdg_pick_frange(cfg->gptclk_hz, &frange_use);
-    RA_RETURN_ON_ERROR(band_err, s_tag, "pdg_init: auto-tune failed");
-  }
-
-  /* HUM Ch 11.2.9 "MSTPCRD: Module Stop Control Register D" p 449 */
-  const ra_err_t mst_err = ra_mstp_enable(k_ra_mstp_pdg);
-  RA_RETURN_ON_ERROR(mst_err, s_tag, "pdg_init: mstp enable");
-
   volatile r_pdg_regs_t* reg = ra_pdg();
 
   /* Step 1 of Figure 23.2 (p 1160): DLLEN=0, DLYRST=1, DLYBSn=0,
- * FRANGE=user-supplied band. Performed in one 16-bit write so the
- * intermediate state is never visible. */
+   * FRANGE=user-supplied band. Performed in one 16-bit write so the
+   * intermediate state is never visible. */
   /* HUM Ch 23.2.1 "GTDLYCR: PWM Output Delay Control Register" p 1154 */
   const uint16_t frange_bits =
     (uint16_t)((uint16_t)frange_use << (uint16_t)k_ra_pdg_gtdlycr_shift_frange);
@@ -328,6 +337,25 @@ ra_err_t ra_pdg_init(const ra_pdg_config_t* cfg)
   const uint16_t bypass_off =
     (uint16_t)((uint16_t)cfg->channel_mask << (uint16_t)k_ra_pdg_gtdlycr2_shift_dlybs);
   reg->GTDLYCR2 = bypass_off;
+}
+
+ra_err_t ra_pdg_init(const ra_pdg_config_t* cfg)
+{
+  RA_CHECK_NULL_PTR((void*)cfg, s_tag, "cfg must not be nullptr");
+  const ra_err_t cfg_err = internal_validate_cfg(cfg);
+  RA_RETURN_ON_ERROR(cfg_err, s_tag, "pdg_init: cfg invalid");
+
+  ra_pdg_frange_t frange_use = cfg->frange;
+  if (cfg->auto_tune != 0U) {
+    const ra_err_t band_err = ra_pdg_pick_frange(cfg->gptclk_hz, &frange_use);
+    RA_RETURN_ON_ERROR(band_err, s_tag, "pdg_init: auto-tune failed");
+  }
+
+  /* HUM Ch 11.2.9 "MSTPCRD: Module Stop Control Register D" p 449 */
+  const ra_err_t mst_err = ra_mstp_enable(k_ra_mstp_pdg);
+  RA_RETURN_ON_ERROR(mst_err, s_tag, "pdg_init: mstp enable");
+
+  internal_program_dll(cfg, frange_use);
 
   s_pdg_initialised = true;
   ra_log_info(s_tag, "pdg_init");

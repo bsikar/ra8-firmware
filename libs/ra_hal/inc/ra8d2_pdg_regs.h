@@ -115,6 +115,8 @@ typedef enum : uint8_t {
   k_ra_pdg_pin_count     = 2U,  /**< GTIOCnA + GTIOCnB.                        */
   k_ra_pdg_edge_count    = 2U,  /**< Rising + falling delay slots.             */
   k_ra_pdg_slot_count    = 16U, /**< 4 ch * 2 pin * 2 edge = 16 delay slots.   */
+  k_ra_pdg_off_gtdlyr0   = 0x18U, /**< First GTDLYR offset (rises).            */
+  k_ra_pdg_off_after_cr2 = 0x4U,  /**< End of GTDLYCR2 (start of reserved gap).*/
 } ra_pdg_count_t;
 
 /**
@@ -265,7 +267,7 @@ typedef struct {
 typedef struct {
   volatile uint16_t GTDLYCR;                        /**< +0x000 HUM 23.2.1 p 1154 */
   volatile uint16_t GTDLYCR2;                       /**< +0x002 HUM 23.2.2 p 1155 */
-  volatile uint8_t  reserved_004[0x18U - 0x4U];     /**< +0x004..0x017 reserved.  */
+  volatile uint8_t  reserved_004[k_ra_pdg_off_gtdlyr0 - k_ra_pdg_off_after_cr2]; /**< +0x004..0x017 reserved.  */
   r_pdg_dly_pair_t  GTDLYR[k_ra_pdg_channel_count]; /**< +0x018..0x027 rise.      */
   r_pdg_dly_pair_t  GTDLYF[k_ra_pdg_channel_count]; /**< +0x028..0x037 fall.      */
 } r_pdg_regs_t;

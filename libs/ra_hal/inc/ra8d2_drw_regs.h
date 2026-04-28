@@ -193,12 +193,11 @@ typedef enum : uint32_t {
   k_ra_drw_status_buserrmtxmrl = (1UL << 9U),  /**< Texture/RLE bus error.     */
   k_ra_drw_status_buserrmdl    = (1UL << 10U), /**< Display list bus error.    */
   k_ra_drw_status_busy_mask =
-    (uint32_t)(k_ra_drw_status_busyenum | k_ra_drw_status_busywrite | k_ra_drw_status_dlistactive),
+    (k_ra_drw_status_busyenum | k_ra_drw_status_busywrite | k_ra_drw_status_dlistactive),
   k_ra_drw_status_irq_mask =
-    (uint32_t)(k_ra_drw_status_enumirq | k_ra_drw_status_dlistirq | k_ra_drw_status_busirq),
+    (k_ra_drw_status_enumirq | k_ra_drw_status_dlistirq | k_ra_drw_status_busirq),
   k_ra_drw_status_buserr_mask =
-    (uint32_t)(k_ra_drw_status_buserrmfb | k_ra_drw_status_buserrmtxmrl |
-               k_ra_drw_status_buserrmdl),
+    (k_ra_drw_status_buserrmfb | k_ra_drw_status_buserrmtxmrl | k_ra_drw_status_buserrmdl),
 } ra_drw_status_mask_t;
 
 /* =============================================================================
@@ -225,10 +224,10 @@ typedef enum : uint32_t {
   k_ra_drw_irqctl_dlistirqclr = (1UL << 3U), /**< Clear DLISTIRQ.    */
   k_ra_drw_irqctl_busirqen    = (1UL << 4U), /**< BUSIRQ unmask.     */
   k_ra_drw_irqctl_busirqclr   = (1UL << 5U), /**< Clear BUSIRQ.      */
-  k_ra_drw_irqctl_all_clr = (uint32_t)(k_ra_drw_irqctl_enumirqclr | k_ra_drw_irqctl_dlistirqclr |
-                                       k_ra_drw_irqctl_busirqclr),
+  k_ra_drw_irqctl_all_clr =
+    (k_ra_drw_irqctl_enumirqclr | k_ra_drw_irqctl_dlistirqclr | k_ra_drw_irqctl_busirqclr),
   k_ra_drw_irqctl_all_en =
-    (uint32_t)(k_ra_drw_irqctl_enumirqen | k_ra_drw_irqctl_dlistirqen | k_ra_drw_irqctl_busirqen),
+    (k_ra_drw_irqctl_enumirqen | k_ra_drw_irqctl_dlistirqen | k_ra_drw_irqctl_busirqen),
 } ra_drw_irqctl_mask_t;
 
 /* =============================================================================
@@ -254,8 +253,8 @@ typedef enum : uint32_t {
   k_ra_drw_cachectl_cflushfx  = (1UL << 1U), /**< FB cache flush.        */
   k_ra_drw_cachectl_cenabletx = (1UL << 2U), /**< Texture cache enable.  */
   k_ra_drw_cachectl_cflushtx  = (1UL << 3U), /**< Texture cache flush.   */
-  k_ra_drw_cachectl_all_en = (uint32_t)(k_ra_drw_cachectl_cenablefx | k_ra_drw_cachectl_cenabletx),
-  k_ra_drw_cachectl_all_flush = (uint32_t)(k_ra_drw_cachectl_cflushfx | k_ra_drw_cachectl_cflushtx),
+  k_ra_drw_cachectl_all_en    = (k_ra_drw_cachectl_cenablefx | k_ra_drw_cachectl_cenabletx),
+  k_ra_drw_cachectl_all_flush = (k_ra_drw_cachectl_cflushfx | k_ra_drw_cachectl_cflushtx),
 } ra_drw_cachectl_mask_t;
 
 /* =============================================================================
@@ -358,13 +357,13 @@ typedef enum : uint32_t {
   k_ra_drw_control_unioncd       = (1UL << 21U), /**< Union C,D -> final.  */
   k_ra_drw_control_spanabort     = (1UL << 22U), /**< Convex-shape opt.    */
   k_ra_drw_control_spanstore     = (1UL << 23U), /**< Span-store opt.      */
-  k_ra_drw_control_quad_box      = (uint32_t)(k_ra_drw_control_lim1en | k_ra_drw_control_lim2en |
-                                              k_ra_drw_control_lim3en | k_ra_drw_control_lim4en),
+  k_ra_drw_control_quad_box = (k_ra_drw_control_lim1en | k_ra_drw_control_lim2en |
+                               k_ra_drw_control_lim3en | k_ra_drw_control_lim4en),
   k_ra_drw_control_triangle =
-    (uint32_t)(k_ra_drw_control_lim1en | k_ra_drw_control_lim2en | k_ra_drw_control_lim3en),
+    (k_ra_drw_control_lim1en | k_ra_drw_control_lim2en | k_ra_drw_control_lim3en),
   k_ra_drw_control_line_quad =
-    (uint32_t)(k_ra_drw_control_lim1en | k_ra_drw_control_lim2en | k_ra_drw_control_lim3en |
-               k_ra_drw_control_lim4en | k_ra_drw_control_union12),
+    (k_ra_drw_control_lim1en | k_ra_drw_control_lim2en | k_ra_drw_control_lim3en |
+     k_ra_drw_control_lim4en | k_ra_drw_control_union12),
 } ra_drw_control_mask_t;
 
 /* =============================================================================

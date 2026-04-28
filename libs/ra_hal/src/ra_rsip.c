@@ -91,11 +91,16 @@ static void* s_rsip_ctx;
 
 /**
  * @enum ra_rsip_intern_t
- * @brief File-private constants used by the polling helpers.
+ * @brief File-private constants used by the polling helpers and byte
+ *        packing / unpacking math.
  */
 typedef enum : uint32_t {
-  k_ra_rsip_poll_budget = 4096UL, /**< Max iterations for any spin loop. */
-  k_ra_rsip_word_shift  = 2U,     /**< log2(sizeof(uint32_t)).           */
+  k_ra_rsip_poll_budget  = 4096UL, /**< Max iterations for any spin loop. */
+  k_ra_rsip_word_shift   = 2U,     /**< log2(sizeof(uint32_t)).           */
+  k_ra_rsip_byte_mask    = 0xFFUL, /**< Mask one byte out of a word.      */
+  k_ra_rsip_byte_bits    = 8UL,    /**< Shift one byte.                   */
+  k_ra_rsip_byte_shift_2 = 16UL,   /**< Shift to high half of low word.   */
+  k_ra_rsip_byte_shift_3 = 24UL,   /**< Shift to top byte of word.        */
 } ra_rsip_intern_t;
 
 /**
@@ -304,10 +309,14 @@ ra_err_t ra_rsip_trng_read(uint8_t* buf, uint32_t len)
     const uint32_t word = *data;
     /* HUM Ch 52.1 "Overview" p 3302 */
     /* TRNG output is little-endian. */
-    buf[(w << (uint32_t)k_ra_rsip_word_shift) + 0U] = (uint8_t)(word & 0xFFU);
-    buf[(w << (uint32_t)k_ra_rsip_word_shift) + 1U] = (uint8_t)((word >> 8U) & 0xFFU);
-    buf[(w << (uint32_t)k_ra_rsip_word_shift) + 2U] = (uint8_t)((word >> 16U) & 0xFFU);
-    buf[(w << (uint32_t)k_ra_rsip_word_shift) + 3U] = (uint8_t)((word >> 24U) & 0xFFU);
+    buf[(w << (uint32_t)k_ra_rsip_word_shift) + 0U] =
+      (uint8_t)(word & (uint32_t)k_ra_rsip_byte_mask);
+    buf[(w << (uint32_t)k_ra_rsip_word_shift) + 1U] =
+      (uint8_t)((word >> (uint32_t)k_ra_rsip_byte_bits) & (uint32_t)k_ra_rsip_byte_mask);
+    buf[(w << (uint32_t)k_ra_rsip_word_shift) + 2U] =
+      (uint8_t)((word >> (uint32_t)k_ra_rsip_byte_shift_2) & (uint32_t)k_ra_rsip_byte_mask);
+    buf[(w << (uint32_t)k_ra_rsip_word_shift) + 3U] =
+      (uint8_t)((word >> (uint32_t)k_ra_rsip_byte_shift_3) & (uint32_t)k_ra_rsip_byte_mask);
 
     /* Clear READY so the next iteration genuinely waits. */
     *status &= ~(uint32_t)k_ra_rsip_mask_status_ready;
@@ -315,6 +324,7 @@ ra_err_t ra_rsip_trng_read(uint8_t* buf, uint32_t len)
   return k_ra_ok;
 }
 
+// NOLINTNEXTLINE(readability-function-size,readability-function-cognitive-complexity)
 ra_err_t ra_rsip_sha256(const uint8_t* msg, uint32_t msg_len, uint8_t* digest)
 {
   RA_CHECK_NULL_PTR((void*)msg, s_tag, "msg must not be nullptr");
@@ -331,15 +341,17 @@ ra_err_t ra_rsip_sha256(const uint8_t* msg, uint32_t msg_len, uint8_t* digest)
   volatile uint32_t* in = ra_rsip_reg32(k_ra_rsip_off_hash_data_in);
   uint32_t           i  = 0U;
   while ((i + (uint32_t)k_ra_rsip_trng_word_bytes) <= msg_len) {
-    const uint32_t word = ((uint32_t)msg[i + 0U]) | (((uint32_t)msg[i + 1U]) << 8U) |
-                          (((uint32_t)msg[i + 2U]) << 16U) | (((uint32_t)msg[i + 3U]) << 24U);
+    const uint32_t word = ((uint32_t)msg[i + 0U]) |
+                          (((uint32_t)msg[i + 1U]) << (uint32_t)k_ra_rsip_byte_bits) |
+                          (((uint32_t)msg[i + 2U]) << (uint32_t)k_ra_rsip_byte_shift_2) |
+                          (((uint32_t)msg[i + 3U]) << (uint32_t)k_ra_rsip_byte_shift_3);
     *in                 = word;
     i += (uint32_t)k_ra_rsip_trng_word_bytes;
   }
   if (i < msg_len) {
     uint32_t tail = 0U;
     for (uint32_t b = 0U; (i + b) < msg_len; ++b) {
-      tail |= ((uint32_t)msg[i + b]) << (b << 3U);
+      tail |= ((uint32_t)msg[i + b]) << (b * (uint32_t)k_ra_rsip_byte_bits);
     }
     *in = tail;
   }
@@ -360,10 +372,14 @@ ra_err_t ra_rsip_sha256(const uint8_t* msg, uint32_t msg_len, uint8_t* digest)
     const ra_rsip_off_t off  = (ra_rsip_off_t)((uint16_t)k_ra_rsip_off_hash_digest +
                                                (uint16_t)(w << (uint32_t)k_ra_rsip_word_shift));
     const uint32_t      word = *ra_rsip_reg32(off);
-    digest[(w << (uint32_t)k_ra_rsip_word_shift) + 0U] = (uint8_t)(word & 0xFFU);
-    digest[(w << (uint32_t)k_ra_rsip_word_shift) + 1U] = (uint8_t)((word >> 8U) & 0xFFU);
-    digest[(w << (uint32_t)k_ra_rsip_word_shift) + 2U] = (uint8_t)((word >> 16U) & 0xFFU);
-    digest[(w << (uint32_t)k_ra_rsip_word_shift) + 3U] = (uint8_t)((word >> 24U) & 0xFFU);
+    digest[(w << (uint32_t)k_ra_rsip_word_shift) + 0U] =
+      (uint8_t)(word & (uint32_t)k_ra_rsip_byte_mask);
+    digest[(w << (uint32_t)k_ra_rsip_word_shift) + 1U] =
+      (uint8_t)((word >> (uint32_t)k_ra_rsip_byte_bits) & (uint32_t)k_ra_rsip_byte_mask);
+    digest[(w << (uint32_t)k_ra_rsip_word_shift) + 2U] =
+      (uint8_t)((word >> (uint32_t)k_ra_rsip_byte_shift_2) & (uint32_t)k_ra_rsip_byte_mask);
+    digest[(w << (uint32_t)k_ra_rsip_word_shift) + 3U] =
+      (uint8_t)((word >> (uint32_t)k_ra_rsip_byte_shift_3) & (uint32_t)k_ra_rsip_byte_mask);
   }
 
   /* Ack the DONE bit so the next call starts clean. */
@@ -407,14 +423,10 @@ ra_err_t ra_rsip_exit_stop(void)
  * @brief Round-3 file-private constants.
  */
 typedef enum : uint32_t {
-  k_ra_rsip_byte_mask    = 0xFFUL, /**< Mask one byte out of a word.       */
-  k_ra_rsip_byte_bits    = 8UL,    /**< Shift one byte.                    */
-  k_ra_rsip_byte_shift_2 = 16UL,   /**< Shift to high half of low word.    */
-  k_ra_rsip_byte_shift_3 = 24UL,   /**< Shift to top byte of word.         */
-  k_ra_rsip_kv_slot_max  = 16UL,   /**< Number of vault slots.             */
-  k_ra_rsip_kv_slot_w    = 16UL,   /**< 64-byte slot = 16 * uint32_t.      */
-  k_ra_rsip_iv_words     = 4UL,    /**< IV / nonce = 4 lanes.              */
-  k_ra_rsip_aes_block_w  = 4UL,    /**< 16-byte block = 4 * uint32_t.      */
+  k_ra_rsip_kv_slot_max = 16UL, /**< Number of vault slots.        */
+  k_ra_rsip_kv_slot_w   = 16UL, /**< 64-byte slot = 16 * uint32_t. */
+  k_ra_rsip_iv_words    = 4UL,  /**< IV / nonce = 4 lanes.         */
+  k_ra_rsip_aes_block_w = 4UL,  /**< 16-byte block = 4 * uint32_t. */
 } ra_rsip_intern2_t;
 
 /**
@@ -499,9 +511,7 @@ static uint32_t internal_handle_words_for(ra_rsip_oem_cmd_t cmd)
     case k_ra_rsip_oem_cmd_hmac_sha384:
       return (uint32_t)k_ra_rsip_handle_words_hmac_sha384;
     case k_ra_rsip_oem_cmd_hmac_sha512:
-      return (uint32_t)k_ra_rsip_handle_words_hmac_sha512;
     case k_ra_rsip_oem_cmd_hmac_sha512_224:
-      return (uint32_t)k_ra_rsip_handle_words_hmac_sha512;
     case k_ra_rsip_oem_cmd_hmac_sha512_256:
       return (uint32_t)k_ra_rsip_handle_words_hmac_sha512;
     case k_ra_rsip_oem_cmd_ecc_secp256r1_priv:
@@ -511,7 +521,6 @@ static uint32_t internal_handle_words_for(ra_rsip_oem_cmd_t cmd)
       return (uint32_t)k_ra_rsip_handle_words_ecc256_priv;
     case k_ra_rsip_oem_cmd_ecc_secp384r1_priv:
     case k_ra_rsip_oem_cmd_ecc_brain384r1_priv:
-      return (uint32_t)k_ra_rsip_handle_words_ecc384_priv;
     case k_ra_rsip_oem_cmd_ecc_brain512r1_priv:
       return (uint32_t)k_ra_rsip_handle_words_ecc384_priv;
     case k_ra_rsip_oem_cmd_ecc_secp521r1_priv:
@@ -676,7 +685,7 @@ static void internal_push_iv(const uint8_t* iv)
   for (uint32_t w = 0U; w < (uint32_t)k_ra_rsip_iv_words; ++w) {
     const ra_rsip_off_t off = (ra_rsip_off_t)((uint16_t)k_ra_rsip_off_sym_iv0 +
                                               (uint16_t)(w << (uint32_t)k_ra_rsip_word_shift));
-    *ra_rsip_reg32(off)     = internal_pack_le(&iv[w * (uint32_t)k_ra_rsip_trng_word_bytes]);
+    *ra_rsip_reg32(off)     = internal_pack_le(&iv[(size_t)w * (size_t)k_ra_rsip_trng_word_bytes]);
   }
 }
 
@@ -747,7 +756,7 @@ static ra_err_t internal_oem_install(ra_rsip_oem_cmd_t     cmd,
   if (iv != nullptr) {
     for (uint32_t w = 0U; w < (uint32_t)k_ra_rsip_iv_words; ++w) {
       *ra_rsip_reg32(k_ra_rsip_off_oem_iv) =
-        internal_pack_le(&iv[w * (uint32_t)k_ra_rsip_trng_word_bytes]);
+        internal_pack_le(&iv[(size_t)w * (size_t)k_ra_rsip_trng_word_bytes]);
     }
   }
   if (src != nullptr) {
@@ -1005,6 +1014,7 @@ ra_err_t ra_rsip_aes_cipher(const ra_rsip_key_handle_t* key,
  * @note Internal helper.
  * @since 0.12.0
  */
+// NOLINTNEXTLINE(readability-function-size,readability-function-cognitive-complexity)
 static ra_err_t internal_aead_run(const ra_rsip_key_handle_t* key,
                                   uint8_t                     alg_byte,
                                   ra_rsip_aes_mode_t          mode,
@@ -1044,7 +1054,7 @@ static ra_err_t internal_aead_run(const ra_rsip_key_handle_t* key,
   if (dir == k_ra_rsip_dir_decrypt) {
     for (uint32_t w = 0U; w < (uint32_t)k_ra_rsip_aes_block_w; ++w) {
       *ra_rsip_reg32(k_ra_rsip_off_sym_tag) =
-        internal_pack_le(&tag[w * (uint32_t)k_ra_rsip_trng_word_bytes]);
+        internal_pack_le(&tag[(size_t)w * (size_t)k_ra_rsip_trng_word_bytes]);
     }
   }
 
@@ -1063,7 +1073,7 @@ static ra_err_t internal_aead_run(const ra_rsip_key_handle_t* key,
   if (dir == k_ra_rsip_dir_encrypt) {
     for (uint32_t w = 0U; w < (uint32_t)k_ra_rsip_aes_block_w; ++w) {
       const uint32_t word = *ra_rsip_reg32(k_ra_rsip_off_sym_tag);
-      internal_unpack_le(word, &tag[w * (uint32_t)k_ra_rsip_trng_word_bytes]);
+      internal_unpack_le(word, &tag[(size_t)w * (size_t)k_ra_rsip_trng_word_bytes]);
     }
   }
   return k_ra_ok;
@@ -1138,6 +1148,7 @@ ra_err_t ra_rsip_aes_ccm(const ra_rsip_key_handle_t* key,
  * ===========================================================================
  */
 
+// NOLINTNEXTLINE(readability-function-size,readability-function-cognitive-complexity)
 ra_err_t ra_rsip_chacha20(const ra_rsip_key_handle_t* key,
                           ra_rsip_aes_dir_t           dir,
                           const uint8_t*              nonce,
@@ -1161,7 +1172,7 @@ ra_err_t ra_rsip_chacha20(const ra_rsip_key_handle_t* key,
   *ra_rsip_reg32(k_ra_rsip_off_sym_iv2) =
     internal_pack_le(&nonce[(uint32_t)k_ra_rsip_trng_word_bytes]);
   *ra_rsip_reg32(k_ra_rsip_off_sym_iv3) =
-    internal_pack_le(&nonce[2U * (uint32_t)k_ra_rsip_trng_word_bytes]);
+    internal_pack_le(&nonce[(size_t)2U * (size_t)k_ra_rsip_trng_word_bytes]);
 
   const uint32_t cmd = ((uint32_t)dir << (uint32_t)k_ra_rsip_byte_shift_2) |
                        ((uint32_t)k_ra_rsip_chacha_op_encrypt << (uint32_t)k_ra_rsip_byte_bits) |
@@ -1221,10 +1232,9 @@ ra_rsip_poly1305(const uint8_t* one_time_key, const uint8_t* msg, uint32_t msg_l
   /* HUM Ch 52.2 "Symmetric cipher" p 3303 */
   /* Stage one-time key as a ChaCha20 key. */
   for (uint32_t w = 0U; w < (uint32_t)k_ra_rsip_handle_words_chacha20; ++w) {
-    if (w <
-        (uint32_t)((uint32_t)k_ra_rsip_chacha_key_bytes / (uint32_t)k_ra_rsip_trng_word_bytes)) {
+    if (w < ((uint32_t)k_ra_rsip_chacha_key_bytes / (uint32_t)k_ra_rsip_trng_word_bytes)) {
       *ra_rsip_reg32(k_ra_rsip_off_key_stage) =
-        internal_pack_le(&one_time_key[w * (uint32_t)k_ra_rsip_trng_word_bytes]);
+        internal_pack_le(&one_time_key[(size_t)w * (size_t)k_ra_rsip_trng_word_bytes]);
     } else {
       *ra_rsip_reg32(k_ra_rsip_off_key_stage) = 0U;
     }
@@ -1241,7 +1251,7 @@ ra_rsip_poly1305(const uint8_t* one_time_key, const uint8_t* msg, uint32_t msg_l
   }
   for (uint32_t w = 0U; w < (uint32_t)k_ra_rsip_aes_block_w; ++w) {
     const uint32_t word = *ra_rsip_reg32(k_ra_rsip_off_sym_tag);
-    internal_unpack_le(word, &tag[w * (uint32_t)k_ra_rsip_trng_word_bytes]);
+    internal_unpack_le(word, &tag[(size_t)w * (size_t)k_ra_rsip_trng_word_bytes]);
   }
   return k_ra_ok;
 }
@@ -1293,6 +1303,7 @@ static uint32_t internal_hash_size(ra_rsip_hash_alg_t alg)
   }
 }
 
+// NOLINTNEXTLINE(readability-function-size,readability-function-cognitive-complexity)
 ra_err_t ra_rsip_hash(ra_rsip_hash_alg_t alg,
                       const uint8_t*     msg,
                       uint32_t           msg_len,
@@ -1540,25 +1551,38 @@ ra_err_t ra_rsip_rsa_verify(const ra_rsip_key_handle_t* key,
  * @note Internal helper.
  * @since 0.12.0
  */
+/**
+ * @enum ra_rsip_curve_bytes_t
+ * @brief Per-curve scalar / coordinate byte lengths (FIPS 186-4 / RFC 7748).
+ */
+typedef enum : uint32_t {
+  k_ra_rsip_curve_bytes_192 = 24U, /**< 192-bit curves: secp192r1.        */
+  k_ra_rsip_curve_bytes_224 = 28U, /**< 224-bit curves: secp224r1.        */
+  k_ra_rsip_curve_bytes_256 = 32U, /**< 256-bit curves: secp256*, ed25519. */
+  k_ra_rsip_curve_bytes_384 = 48U, /**< 384-bit curves: secp384r1, brain384r1. */
+  k_ra_rsip_curve_bytes_512 = 64U, /**< 512-bit curves: brain512r1.       */
+  k_ra_rsip_curve_bytes_521 = 66U, /**< 521-bit curves: secp521r1.        */
+} ra_rsip_curve_bytes_t;
+
 static uint32_t internal_curve_bytes(ra_rsip_curve_t curve)
 {
   switch (curve) {
     case k_ra_rsip_curve_secp192r1:
-      return 24U;
+      return (uint32_t)k_ra_rsip_curve_bytes_192;
     case k_ra_rsip_curve_secp224r1:
-      return 28U;
+      return (uint32_t)k_ra_rsip_curve_bytes_224;
     case k_ra_rsip_curve_secp256r1:
     case k_ra_rsip_curve_brain256r1:
     case k_ra_rsip_curve_ed25519:
     case k_ra_rsip_curve_secp256k1:
-      return 32U;
+      return (uint32_t)k_ra_rsip_curve_bytes_256;
     case k_ra_rsip_curve_secp384r1:
     case k_ra_rsip_curve_brain384r1:
-      return 48U;
+      return (uint32_t)k_ra_rsip_curve_bytes_384;
     case k_ra_rsip_curve_brain512r1:
-      return 64U;
+      return (uint32_t)k_ra_rsip_curve_bytes_512;
     case k_ra_rsip_curve_secp521r1:
-      return 66U;
+      return (uint32_t)k_ra_rsip_curve_bytes_521;
     default:
       return 0U;
   }
@@ -1617,6 +1641,7 @@ ra_err_t ra_rsip_ecdsa_verify(const ra_rsip_key_handle_t* key,
   return internal_complete((uint32_t)k_ra_rsip_mask_isr_asym_done);
 }
 
+// NOLINTNEXTLINE(readability-function-size,readability-function-cognitive-complexity)
 ra_err_t ra_rsip_ecdh_compute(const ra_rsip_key_handle_t* key,
                               ra_rsip_curve_t             curve,
                               const uint8_t*              peer_x,
@@ -1731,7 +1756,7 @@ ra_err_t ra_rsip_kv_read(uint8_t slot, uint8_t* out)
   /* HUM Ch 52.1 "Application Key Management" p 3303 */
   for (uint32_t w = 0U; w < (uint32_t)k_ra_rsip_kv_slot_w; ++w) {
     const uint32_t word = *ra_rsip_reg32(k_ra_rsip_off_kv_data);
-    internal_unpack_le(word, &out[w * (uint32_t)k_ra_rsip_trng_word_bytes]);
+    internal_unpack_le(word, &out[(size_t)w * (size_t)k_ra_rsip_trng_word_bytes]);
   }
   return k_ra_ok;
 }
@@ -1745,7 +1770,7 @@ ra_err_t ra_rsip_kv_write(uint8_t slot, const uint8_t* in)
   /* HUM Ch 52.1 "Application Key Management" p 3303 */
   for (uint32_t w = 0U; w < (uint32_t)k_ra_rsip_kv_slot_w; ++w) {
     *ra_rsip_reg32(k_ra_rsip_off_kv_data) =
-      internal_pack_le(&in[w * (uint32_t)k_ra_rsip_trng_word_bytes]);
+      internal_pack_le(&in[(size_t)w * (size_t)k_ra_rsip_trng_word_bytes]);
   }
   return internal_kv_op(k_ra_rsip_kv_op_write, slot);
 }
@@ -1771,6 +1796,7 @@ ra_err_t ra_rsip_kv_count(uint32_t* out)
  * ===========================================================================
  */
 
+// NOLINTNEXTLINE(readability-function-size,readability-function-cognitive-complexity)
 ra_err_t ra_rsip_key_wrap(const ra_rsip_key_handle_t* kek,
                           const uint8_t*              iv,
                           const ra_rsip_key_handle_t* src,
@@ -1791,7 +1817,7 @@ ra_err_t ra_rsip_key_wrap(const ra_rsip_key_handle_t* kek,
   for (uint32_t w = 0U; w < (uint32_t)k_ra_rsip_iv_words; ++w) {
     const ra_rsip_off_t off = (ra_rsip_off_t)((uint16_t)k_ra_rsip_off_kw_iv0 +
                                               (uint16_t)(w << (uint32_t)k_ra_rsip_word_shift));
-    *ra_rsip_reg32(off)     = internal_pack_le(&iv[w * (uint32_t)k_ra_rsip_trng_word_bytes]);
+    *ra_rsip_reg32(off)     = internal_pack_le(&iv[(size_t)w * (size_t)k_ra_rsip_trng_word_bytes]);
   }
   *ra_rsip_reg32(k_ra_rsip_off_kw_handle) = src->alg;
   for (uint32_t w = 0U; w < src->body_words; ++w) {
@@ -1806,11 +1832,12 @@ ra_err_t ra_rsip_key_wrap(const ra_rsip_key_handle_t* kek,
   }
   for (uint32_t w = 0U; w < (uint32_t)k_ra_rsip_kv_slot_w; ++w) {
     const uint32_t word = *ra_rsip_reg32(k_ra_rsip_off_kw_blob_out);
-    internal_unpack_le(word, &blob[w * (uint32_t)k_ra_rsip_trng_word_bytes]);
+    internal_unpack_le(word, &blob[(size_t)w * (size_t)k_ra_rsip_trng_word_bytes]);
   }
   return k_ra_ok;
 }
 
+// NOLINTNEXTLINE(readability-function-size,readability-function-cognitive-complexity)
 ra_err_t ra_rsip_key_unwrap(const ra_rsip_key_handle_t* kek,
                             const uint8_t*              iv,
                             const uint8_t*              blob,
@@ -1831,11 +1858,11 @@ ra_err_t ra_rsip_key_unwrap(const ra_rsip_key_handle_t* kek,
   for (uint32_t w = 0U; w < (uint32_t)k_ra_rsip_iv_words; ++w) {
     const ra_rsip_off_t off = (ra_rsip_off_t)((uint16_t)k_ra_rsip_off_kw_iv0 +
                                               (uint16_t)(w << (uint32_t)k_ra_rsip_word_shift));
-    *ra_rsip_reg32(off)     = internal_pack_le(&iv[w * (uint32_t)k_ra_rsip_trng_word_bytes]);
+    *ra_rsip_reg32(off)     = internal_pack_le(&iv[(size_t)w * (size_t)k_ra_rsip_trng_word_bytes]);
   }
   for (uint32_t w = 0U; w < (uint32_t)k_ra_rsip_kv_slot_w; ++w) {
     *ra_rsip_reg32(k_ra_rsip_off_kw_blob_in) =
-      internal_pack_le(&blob[w * (uint32_t)k_ra_rsip_trng_word_bytes]);
+      internal_pack_le(&blob[(size_t)w * (size_t)k_ra_rsip_trng_word_bytes]);
   }
   *ra_rsip_reg32(k_ra_rsip_off_kw_ctrl) = (uint32_t)k_ra_rsip_kw_op_unwrap;
   *ra_rsip_reg32(k_ra_rsip_off_mbox_op) = (uint32_t)k_ra_rsip_kw_op_unwrap;
@@ -1865,6 +1892,7 @@ ra_err_t ra_rsip_key_unwrap(const ra_rsip_key_handle_t* kek,
  * ===========================================================================
  */
 
+// NOLINTNEXTLINE(readability-function-size,readability-function-cognitive-complexity)
 ra_err_t ra_rsip_kdf(ra_rsip_kdf_op_t            op,
                      const ra_rsip_key_handle_t* ikm,
                      const uint8_t*              label,
@@ -2035,7 +2063,7 @@ ra_err_t ra_rsip_dpa_arm(bool enable)
   } else {
     *ctrl &= ~(uint32_t)k_ra_rsip_mask_ctrl_dpa_arm;
   }
-  *ra_rsip_reg32(k_ra_rsip_off_dpa_ctrl) = enable ? 1U : 0U;
+  *ra_rsip_reg32(k_ra_rsip_off_dpa_ctrl) = (uint32_t)enable;
   return k_ra_ok;
 }
 
@@ -2055,9 +2083,10 @@ ra_err_t ra_rsip_dotf_route(uint8_t which, uint8_t slot, bool on)
   /* HUM Ch 52.1 "Application Key Management" p 3303 */
   const ra_rsip_off_t off = (which == 0U) ? k_ra_rsip_off_dotf0_ctrl : k_ra_rsip_off_dotf1_ctrl;
   /* DOTFn_CTRL = (slot << 16) | route_enable */
-  const uint32_t word =
-    on ? (((uint32_t)slot << (uint32_t)k_ra_rsip_byte_shift_2) | (uint32_t)k_ra_rsip_dotf_on)
-       : (uint32_t)k_ra_rsip_dotf_off;
+  uint32_t word = (uint32_t)k_ra_rsip_dotf_off;
+  if (on) {
+    word = ((uint32_t)slot << (uint32_t)k_ra_rsip_byte_shift_2) | (uint32_t)k_ra_rsip_dotf_on;
+  }
   *ra_rsip_reg32(off) = word;
   return k_ra_ok;
 }

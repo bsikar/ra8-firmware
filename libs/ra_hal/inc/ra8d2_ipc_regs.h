@@ -473,7 +473,7 @@ static inline uint8_t ra_ipc_channel_to_unit(uint8_t channel)
   }
   /* HUM Ch 3.1 "Overview" p 204 -- channels 0/1 belong to IPC0,
    * channels 2/3 belong to IPC1. */
-  return (uint8_t)((uint8_t)channel >> 1U);
+  return (uint8_t)(channel >> 1U);
 }
 
 #ifdef __cplusplus
