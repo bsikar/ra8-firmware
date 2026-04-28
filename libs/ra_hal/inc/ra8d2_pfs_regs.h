@@ -157,10 +157,27 @@ typedef enum : uint8_t {
   k_ra_pwpr_bit_b0wi  = 7U, /**< 1 = PFSWE write blocked, 0 = PFSWE writable.    */
 } ra_pwpr_bit_t;
 
-/** @brief Get pointer to the PWPR register. */
+/** @brief Get pointer to the PWPR register (non-secure write-protect). */
 static inline volatile uint8_t* ra_pfs_pwpr(void)
 {
   return (volatile uint8_t*)(k_ra_pmisc_base_addr + k_ra_pmisc_off_pwpr);
+}
+
+/**
+ * @brief Get pointer to the PWPRS register (Secure write-protect).
+ *
+ * @details
+ * On RA8D2 the Cortex-M85 boots in the Secure world. Until the SAU
+ * partition is programmed, PFS writes gated only by PWPR are silently
+ * dropped because PWPR controls the **non-secure** path. Secure code
+ * must unlock PWPRS as well; both registers share the same bit layout
+ * (B0WI / PFSWE) per HUM Ch 20.2.6 / 20.2.7.
+ *
+ * @since 0.3.0
+ */
+static inline volatile uint8_t* ra_pfs_pwprs(void)
+{
+  return (volatile uint8_t*)(k_ra_pmisc_base_addr + k_ra_pmisc_off_pwprs);
 }
 
 /**
@@ -176,9 +193,15 @@ static inline volatile uint8_t* ra_pfs_pwpr(void)
  */
 static inline void ra_pfs_pwpr_unlock(void)
 {
-  volatile uint8_t* pwpr = ra_pfs_pwpr();
-  *pwpr                  = 0U; /* B0WI=0, PFSWE=0 */
-  *pwpr                  = (uint8_t)(1U << k_ra_pwpr_bit_pfswe);
+  volatile uint8_t* pwpr  = ra_pfs_pwpr();
+  volatile uint8_t* pwprs = ra_pfs_pwprs();
+  /* HUM Ch 20.2.6 "PWPR" / 20.2.7 "PWPRS" -- B0WI must be cleared
+   * before PFSWE can be set. Unlock both NS and Secure paths so PFS
+   * writes land regardless of which world the CPU is in. */
+  *pwpr  = 0U;
+  *pwpr  = (uint8_t)(1U << k_ra_pwpr_bit_pfswe);
+  *pwprs = 0U;
+  *pwprs = (uint8_t)(1U << k_ra_pwpr_bit_pfswe);
 }
 
 /**
@@ -190,9 +213,12 @@ static inline void ra_pfs_pwpr_unlock(void)
  */
 static inline void ra_pfs_pwpr_lock(void)
 {
-  volatile uint8_t* pwpr = ra_pfs_pwpr();
-  *pwpr                  = 0U;
-  *pwpr                  = (uint8_t)(1U << k_ra_pwpr_bit_b0wi);
+  volatile uint8_t* pwpr  = ra_pfs_pwpr();
+  volatile uint8_t* pwprs = ra_pfs_pwprs();
+  *pwpr                   = 0U;
+  *pwpr                   = (uint8_t)(1U << k_ra_pwpr_bit_b0wi);
+  *pwprs                  = 0U;
+  *pwprs                  = (uint8_t)(1U << k_ra_pwpr_bit_b0wi);
 }
 
 #ifdef __cplusplus
