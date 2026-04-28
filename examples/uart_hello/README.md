@@ -7,35 +7,67 @@ EK-RA8D2 bridges SCI8 (TXD8 = PD02, RXD8 = PD03) to a USB CDC
 virtual serial port on the host -- connect a terminal to that port
 and the stream should land without any extra wiring.
 
-## Blocked: needs SCI_B retrofit
+## Status: silent on the wire, blocked on hardware verification
 
-This app builds and links cleanly, and SWD halt-and-read confirms
-the firmware reaches its main loop (`ra_cgc_init`, `ra_sci_init`,
-the `ra_sci_write_polling` call all return `k_ra_ok`). **But no
-bytes appear on the CDC port.**
+The SCI_B retrofit (HUM Ch 38, p 2174+) is in. The driver and pinout
+have been verified bit-by-bit via SWD halt-and-read against FSP's
+`r_sci_b_uart` reference and the Renesas FSP `ek_ra8d2_ep` quickstart:
 
-Root cause: `libs/ra_hal/src/ra_sci.c` targets the legacy SCI
-register layout. The RA8D2 actually uses SCI_B, whose register
-offsets are different (HUM Ch 38 "Serial Communications Interface",
-p 2174 onwards). The unit-test suite passes because the host
-simulator backs MMIO with ordinary RAM -- offsets don't matter for
-read-then-read-back functional tests. On real silicon the byte
-writes land at the wrong addresses and the SCI_B engine never
-shifts anything out.
+- **Channel + pins correct.** EK-RA8D2 v1 User's Manual table 13
+  ("Debug Serial Port Assignment") confirms PD02=TXD, PD03=RXD,
+  bridged to debugger MCU U7's matching pins.
+- **PFS routing correct.** PD02 PFS reads `PMR=1, PSEL=0x04` (SCI8
+  async).
+- **Module-stop cleared.** MSTPCRB[SCI8] reads 0.
+- **Driver writes verified.** `CCR0=0x11 (TE|RE)`,
+  `CCR1=0x30 (SPB2DT|SPB2IO)` (TXD idles HIGH), `CCR2.BRR=0x0F`,
+  `CCR3=0x1200 (LSBF|CHR=8-bit)`, `CSR.TEND=1+TDRE=1` after each
+  write -- chip thinks it shifted bytes out.
+- **CCR1.SPB2 + CCR3.LSBF bugs found and fixed** by direct
+  comparison against FSP's `r_sci_b_uart` -- without those, TXD
+  would idle low (host sees a permanent break) and bytes would
+  ship MSB-first.
 
-The header `libs/ra_hal/inc/ra_sci.h` already flags this at
-line 34.
+What's still wrong: nothing reaches the host CDC port. After also
+hand-poking SCICKCR via SWD to switch SCICLK from reset-default
+MOCO (~8 MHz) to PLL1R/8 (~60 MHz) and resetting the chip, sweep of
+host baud rates (9600 / 19200 / 38400 / 57600 / 115200 / 230400 /
+460800) all returned 0 bytes on `/dev/cu.usbmodem*`.
 
-## Fix path
+`JLinkExe ... VCOM enable` was accepted and the user power-cycled
+the probe; no change.
 
-1. Open HUM Ch 38 (SCI_B) and re-derive
-   `libs/ra_hal/inc/ra8d2_sci_regs.h` against the real layout
-   (RDR / TDR / CCR0..CCR4 / FCR / CFCLR / etc.).
-2. Update `libs/ra_hal/src/ra_sci.c` to use the new field names and
-   programming order (CCR0.RE/TE bits move, the BRR formula
-   changes -- SCI_B uses CCR2.BRR / MDDR / ABCS).
-3. Rerun this app -- the chip-side wiring (channel 8 / PD02 / PD03)
-   is already correct.
+Best remaining hypotheses, in order of likelihood:
+
+1. The J-Link OB virtual COM bridge isn't actually engaging on the
+   J-Link-OB-RA4M2 firmware shipped on this kit, despite the
+   `VCOM enable` command being accepted. Confirmation needs a
+   different probe firmware revision OR an external USB-UART
+   wired to the Pmod headers.
+2. The SCI_B engine's TCLK isn't actually clocking the bit shifter
+   even after the SCICKCR change. The OPERATING-CLOCK-vs-PCLK
+   selector on SCI_B isn't fully understood -- there may be an
+   additional bit (CCR4 or a SoC-level register) that gates TCLK
+   to the shifter. Confirmation needs a logic analyzer on PD02.
+3. A board-level link cut or solder bridge between PD02 and U7 is
+   missing on this specific kit revision. Confirmation needs the
+   schematic and a continuity check.
+
+Until one of those three is in hand, this app stays "builds + links
++ all SWD-visible state correct, line silent."
+
+## What was useful from this trace
+
+- `libs/ra_hal/src/ra_sci.c` is now a real SCI_B driver against the
+  HUM register window, not a placeholder. The FSP-cross-referenced
+  CCR1.SPB2 / CCR3.LSBF bits were genuine bugs.
+- The pinout file in `r7ka8d2kflcac_pinout.txt` now records the
+  correct J-Link OB CDC <-> SCI8 / PD02-PD03 mapping cited from the
+  EK-RA8D2 v1 User's Manual.
+- `examples/uart_hello/main.c` panic-halts on every init failure
+  and uses a hardcoded `pclka_hz = 60_000_000U` derived from a live
+  SCKDIVCR readback (`ra_cgc_get_clock_hz()` reports a different
+  value -- separate CGC-driver bug).
 
 ## Build + flash
 
