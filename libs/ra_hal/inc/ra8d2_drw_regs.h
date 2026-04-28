@@ -357,8 +357,8 @@ typedef enum : uint32_t {
   k_ra_drw_control_unioncd       = (1UL << 21U), /**< Union C,D -> final.  */
   k_ra_drw_control_spanabort     = (1UL << 22U), /**< Convex-shape opt.    */
   k_ra_drw_control_spanstore     = (1UL << 23U), /**< Span-store opt.      */
-  k_ra_drw_control_quad_box = (k_ra_drw_control_lim1en | k_ra_drw_control_lim2en |
-                               k_ra_drw_control_lim3en | k_ra_drw_control_lim4en),
+  k_ra_drw_control_quad_box      = (k_ra_drw_control_lim1en | k_ra_drw_control_lim2en |
+                                    k_ra_drw_control_lim3en | k_ra_drw_control_lim4en),
   k_ra_drw_control_triangle =
     (k_ra_drw_control_lim1en | k_ra_drw_control_lim2en | k_ra_drw_control_lim3en),
   k_ra_drw_control_line_quad =

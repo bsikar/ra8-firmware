@@ -215,10 +215,11 @@ typedef enum : uint32_t {
 typedef struct {
   volatile uint32_t CONVAREAST; /**< +0x000 Conversion area start address. */
   volatile uint32_t CONVAREAD;  /**< +0x004 Conversion area end address.   */
-  volatile uint32_t _r0[k_ra_dotf_rsv_words_convaread]; /**< +0x008..0x07C Reserved (FSP RESERVED).*/
-  volatile uint32_t REG00;      /**< +0x080 AES enable / mode select.      */
-  volatile uint32_t _r1[2];     /**< +0x084..0x088 Reserved.               */
-  volatile uint32_t REG03;      /**< +0x08C AES IV staging window.         */
+  volatile uint32_t
+    _r0[k_ra_dotf_rsv_words_convaread]; /**< +0x008..0x07C Reserved (FSP RESERVED).*/
+  volatile uint32_t REG00;              /**< +0x080 AES enable / mode select.      */
+  volatile uint32_t _r1[2];             /**< +0x084..0x088 Reserved.               */
+  volatile uint32_t REG03;              /**< +0x08C AES IV staging window.         */
 } ra_dotf_regs_t;
 
 /**
