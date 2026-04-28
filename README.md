@@ -29,9 +29,9 @@ against the RA8D2 Hardware User's Manual.
 | Register headers (hand-written) | `libs/ra_hal/inc/ra8d2_*_regs.h` | 58 |
 | NSC veneers (TrustZone bridges) | `libs/ra_nsc/` | 7 modules |
 | Net / USB PALs | `libs/ra_net_pal/`, `libs/ra_usb_pal/` | 2 |
-| Boot / vector table / linker | `src/boot/` | 4 files |
+| Per-app boot files (vector table + SystemInit + linker script) | `<app>/{vector_table,system_init,secure_exception,trustzone_init}.c` + `<app>/linker_script.ld` | each app |
 | Secure-app code | `src/secure_app/` | 2 files |
-| Application examples | `examples/<name>/main.c` | see [examples/](examples/README.md) |
+| Application apps (each standalone) | `<app>/main.c` + per-app boot + linker | `blink/`, `blink_hal/` |
 | Host unit tests | `tests/test_*.c` | 86 |
 
 The HAL covers every peripheral the RA8D2 exposes: the full
@@ -46,23 +46,28 @@ and on. See `docs/ROADMAP.md` for the per-driver status table.
 ## Quick start
 
 ```sh
-make example-blink     # cross-compile examples/blink/main.c
-make flash             # flash via on-board J-Link OB
+make blink             # cross-compile blink/main.c
+make -C blink flash    # flash blink/build/blink.hex via on-board J-Link OB
 ```
+
+`make blink_hal` builds the HAL-based blink demo instead.
 
 The blink demo toggles `P6_00` / `P6_01` / `P6_02` / `P3_03` /
 `P10_07` at 1 Hz so whichever pin actually wires to a board LED on
 your EK-RA8D2 lights up.
 
+Each app is standalone; `cd blink && make` produces the same artifacts
+as `make blink` from the repo root.
+
 ## Make targets
 
 ```
-make build           cross-compile examples/blink (default)
-make example-<name>  cross-compile examples/<name>/main.c
-make examples        list every available example
-make flash           ./scripts/flash.sh against the J-Link OB
-make ozone           open SEGGER Ozone GUI debugger
-make debug           attach gdb via JLinkGDBServer
+make             build the default app (blink)
+make <app>       build a specific app, e.g. `make blink_hal`
+make apps        list every discovered app
+make -C <app> flash    flash that app via scripts/flash.sh
+make -C <app> ozone    open SEGGER Ozone GUI debugger on that app's elf
+make -C <app> debug    attach gdb via JLinkGDBServer on that app's elf
 make test            host-compile + run unit tests (Linux native)
 make test-docker     host-compile + run unit tests in Linux container
                      (use this on macOS where MAP_FIXED is blocked)
@@ -71,20 +76,21 @@ make format          run clang-format in place
 make check           run clang-format --dry-run
 make docs            run doxygen
 make ascii           verify ASCII-only source files
-make size            arm-none-eabi-size on the ELF
-make clean           remove build/ and tests/build/
+make clean           remove every app build dir and tests/build/
 ```
 
 ## Cross-build artifacts
 
-After `make build`, artifacts land in `build/`:
+After `make blink`, artifacts land in `blink/build/`:
 
 ```
-build/ra8d2-firmware.elf    ELF with DWARF symbols (debugger target)
-build/ra8d2-firmware.hex    Intel HEX (for flashers)
-build/ra8d2-firmware.bin    Raw binary (zero-padded; rarely needed)
-build/ra8d2-firmware.map    Linker map
+blink/build/blink.elf    ELF with DWARF symbols (debugger target)
+blink/build/blink.hex    Intel HEX (for flashers)
+blink/build/blink.bin    Raw binary (zero-padded; rarely needed)
+blink/build/blink.map    Linker map
 ```
+
+`blink_hal` produces the equivalent files under `blink_hal/build/`.
 
 ## Flashing
 
@@ -93,21 +99,24 @@ The on-board RA4M2 J-Link OB on the EK-RA8D2 is recognised by
 or from segger.com).
 
 ```sh
-make flash             # uses scripts/flash.sh
+make -C blink flash             # uses scripts/flash.sh blink/build/blink.hex
+make -C blink_hal flash         # ditto for blink_hal
 ```
 
 The script invokes `JLinkExe -device R7KA8D2KF_CPU0 -if SWD -NoGui 1`
-and loads `build/ra8d2-firmware.hex` into MRAM at `0x02000000`.
+and loads the per-app `.hex` into MRAM at `0x02000000`.
 
 ## Debugging
 
 ```sh
-make ozone             # SEGGER Ozone GUI -- best for HardFault triage
-make debug             # gdb attached via JLinkGDBServer
+make -C blink ozone     # SEGGER Ozone GUI -- best for HardFault triage
+make -C blink debug     # gdb attached via JLinkGDBServer
 ```
 
 The Ozone project file is committed at `scripts/ra8d2.jdebug` so
-device + interface + ELF path are version-controlled.
+device + interface + ELF path are version-controlled. The default
+ELF path it loads is `blink/build/blink.elf`; the per-app `make
+ozone` target points the wrapper at the right elf for any other app.
 
 ## Host unit tests
 

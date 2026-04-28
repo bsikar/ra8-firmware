@@ -1,20 +1,25 @@
 #!/usr/bin/env bash
-# ozone.sh -- launch SEGGER Ozone debugger with ra8d2-firmware preloaded.
+# ozone.sh -- launch SEGGER Ozone debugger with a per-app ELF preloaded.
 #
 # Usage:
-#   ./scripts/ozone.sh        or       make ozone
+#   ./scripts/ozone.sh path/to/firmware.elf       # debug a specific elf (preferred)
+#   ./scripts/ozone.sh                            # default: blink/build/blink.elf
+#
+# Per-app Makefiles invoke this with their own .elf path
+# (e.g. `make -C blink_hal ozone` -> `ozone.sh blink_hal/build/blink_hal.elf`).
 #
 # Requires:
 #   - SEGGER Ozone installed (cask: segger-ozone)
 #   - EK-RA8D2 plugged in via USB
-#   - Firmware built (make build) -- ELF at build/ra8d2-firmware.elf
+#   - Firmware built (`make blink` etc.)
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 FW_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 JDEBUG="${SCRIPT_DIR}/ra8d2.jdebug"
-ELF="${FW_DIR}/build/ra8d2-firmware.elf"
+ELF="${1:-${FW_DIR}/blink/build/blink.elf}"
+export RA_OZONE_ELF="${ELF}"
 
 OZONE_BIN=""
 for candidate in \
@@ -36,7 +41,7 @@ fi
 
 if [[ ! -f "${ELF}" ]]; then
   echo "error: ${ELF} not found." >&2
-  echo "  build: make build" >&2
+  echo "  build: make <app>" >&2
   exit 1
 fi
 

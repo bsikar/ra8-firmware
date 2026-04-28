@@ -16,7 +16,10 @@ NC='\033[0m' # No Color
 CHECK_ONLY=false
 VERBOSE=false
 EXTENSIONS=("*.c" "*.h" "*.cpp" "*.hpp")
-DIRECTORIES=("src" "libs" "tests" "examples")
+# Scan every top-level dir except infrastructure / vendor / build trees.
+# The list of excluded dirs matches what the pre-commit linters skip.
+EXCLUDE_DIRS=("build" "docs" "cmake" "scripts" "fsp" "STAR" ".git" "node_modules" ".github" ".devcontainer" ".claude")
+DIRECTORIES=()
 
 # Print usage information
 usage() {
@@ -98,9 +101,32 @@ parse_args() {
     done
 }
 
+# Auto-discover top-level scan dirs. Anything that isn't excluded and
+# isn't a file is treated as a source dir we should walk.
+discover_source_dirs() {
+    local out=()
+    for entry in *; do
+        [ -d "$entry" ] || continue
+        local skip=false
+        for ex in "${EXCLUDE_DIRS[@]}"; do
+            if [ "$entry" = "$ex" ]; then
+                skip=true
+                break
+            fi
+        done
+        [ "$skip" = true ] && continue
+        out+=("$entry")
+    done
+    printf '%s\n' "${out[@]}"
+}
+
 # Find all source files
 find_source_files() {
     local files=()
+
+    if [ "${#DIRECTORIES[@]}" -eq 0 ]; then
+        IFS=$'\n' read -d '' -r -a DIRECTORIES < <(discover_source_dirs && printf '\0')
+    fi
 
     for dir in "${DIRECTORIES[@]}"; do
         if [ ! -d "$dir" ]; then
@@ -207,6 +233,8 @@ main() {
     check_clang_format
     check_clang_format_config
 
+    # Discover top-level source dirs first so the status print can name them.
+    IFS=$'\n' read -d '' -r -a DIRECTORIES < <(discover_source_dirs && printf '\0')
     print_status "Searching for source files in: ${DIRECTORIES[*]}"
     IFS=$'\n' read -d '' -r -a source_files < <(find_source_files && printf '\0')
 

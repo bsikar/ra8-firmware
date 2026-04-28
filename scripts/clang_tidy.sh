@@ -146,7 +146,18 @@ collect_source_files() {
     # cognitive-complexity and function-size thresholds designed for
     # driver code; they should be linted separately with their own
     # rule set if we ever need it.
-    find "$FIRMWARE_DIR/libs" "$FIRMWARE_DIR/src" "$FIRMWARE_DIR/examples" \
+    #
+    # Scope: libs/, src/, plus every top-level app dir (any top-level
+    # dir containing a main.c). Excludes build/_deps/third_party/tests
+    # and the infrastructure dirs (docs, cmake, scripts, fsp, STAR,
+    # .git, node_modules, .github, .devcontainer, .claude).
+    local roots=("$FIRMWARE_DIR/libs" "$FIRMWARE_DIR/src")
+    local entry
+    for entry in "$FIRMWARE_DIR"/*/main.c; do
+        [[ -f "$entry" ]] || continue
+        roots+=("$(dirname "$entry")")
+    done
+    find "${roots[@]}" \
         \( -name '*.c' -o -name '*.h' \) \
         ! -path '*/build/*' \
         ! -path '*/_deps/*' \

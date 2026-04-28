@@ -805,9 +805,10 @@ static void test_sem_try_take_and_release(void)
   TEST_ASSERT_NOT_NULL((void*)sem);
   *sem = 0U;
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ipc_sem_try_take(3U));
-  /* Release */
+  /* Release: HUM Ch 3.2.3 says writing 1 clears LOCK; the sim emulates
+   * that, so post-release LOCK reads back 0 (free). */
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ipc_sem_release(3U));
-  TEST_ASSERT((*sem & (uint32_t)k_ra_ipc_sem_mask_lock) != 0U);
+  TEST_ASSERT((*sem & (uint32_t)k_ra_ipc_sem_mask_lock) == 0U);
   /* Force "already locked" by leaving LOCK = 1 in the backing word. */
   *sem = (uint32_t)k_ra_ipc_sem_mask_lock;
   TEST_ASSERT_EQ((int32_t)k_ra_err_busy, (int32_t)ra_ipc_sem_try_take(3U));

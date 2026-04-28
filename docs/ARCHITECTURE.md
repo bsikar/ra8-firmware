@@ -7,7 +7,7 @@ document -- expand as new subsystems land.
 
 ```
     +----------------------------------------------------+
-    |                application main()                  |   examples/<name>/main.c
+    |                application main()                  |   <app>/main.c
     +----------------------------------------------------+
     |                    drivers                          |   libs/ra_hal/src/
     |        gpio | uart | iic | spi | adc | gpt | agt    |   libs/ra_hal/inc/
@@ -23,8 +23,9 @@ document -- expand as new subsystems land.
     |  error_handler | exception | time | register_guard  |
     |  register_protection | infrastructure               |
     +----------------------------------------------------+
-    |                    boot / SystemInit                |   src/boot/
-    |  vector_table.c | system_init.c | linker_script.ld  |
+    |                    boot / SystemInit                |   <app>/{vector_table,system_init,
+    |  vector_table.c | system_init.c | linker_script.ld  |   secure_exception,trustzone_init}.c
+    |                                                      |   <app>/linker_script.ld
     +----------------------------------------------------+
     |                     hardware                        |   Renesas R7KA8D2KFLCAC
     +----------------------------------------------------+
@@ -36,20 +37,25 @@ dereferences peripheral addresses. Drivers build on top of a
 register header plus the utilities in `ra_core` (error codes,
 pin validator, logging, IRQ-masked critical sections).
 
-## Source-tree layout: `src/` vs `examples/` vs `libs/`
+## Source-tree layout: `<app>/` vs `src/` vs `libs/`
 
 Three distinct roles, often confused:
 
 ```
-src/                 ← the C runtime + boot code (everyone shares it)
-  boot/
-    vector_table.c     112-IRQ Cortex-M85 vector table + Reset_Handler
-    system_init.c      VTOR, FPU enable, priority grouping
-    secure_exception.c Secure-side fault entry
-    trustzone_init.c   SAU bring-up (no-op when RA_TRUSTZONE_ENABLE is OFF)
-  inc/                 Internal headers shared between src/* TUs
+<app>/               ← one standalone application per top-level dir
+  main.c               application entry; the only file that differs run-to-run
+  vector_table.c       per-app 112-IRQ Cortex-M85 vector table + Reset_Handler
+  system_init.c        per-app SystemInit (VTOR, FPU, priority grouping, ...)
+  secure_exception.c   per-app SecureFault handler
+  trustzone_init.c     per-app SAU bring-up (no-op without RA_TRUSTZONE_ENABLE)
+  trustzone_init.h
+  linker_script.ld     per-app memory map; may diverge between apps
+  CMakeLists.txt       per-app cmake target (consumed by top-level + standalone)
+  Makefile             thin wrapper around cmake + scripts/ helpers
+
+src/                 ← shared internals (everyone uses these)
+  inc/                 Internal headers shared between TUs
   secure_app/          Ring 5 secure-side code (key vault, secure veneer table)
-  linker_script.ld     Memory map, .text/.data/.bss/.vectors placement, OFS sections
 
 libs/                ← the standard library (everyone links it)
   ra_core/             err, log, time, pin validator, register guards (no HW deps)
@@ -58,63 +64,67 @@ libs/                ← the standard library (everyone links it)
   ra_net_pal/          Ethernet PAL bridging the HAL to lwIP / similar
   ra_usb_pal/          USB PAL bridging the HAL to CherryUSB / similar
 
-examples/            ← the application (one-file main.c per example)
-  blink/main.c         Raw register-poke blink (~250 lines)
-  blink_hal/main.c     Same blink, built on the HAL (~150 lines)
-  <future>/main.c      Add a new example by dropping a directory here
+blink/, blink_hal/   ← concrete apps that live at the top level today
 ```
 
-### Why every example is tiny
+### Why every app is small
 
-Each `examples/<name>/main.c` only contains the application's `main()`
+Each `<app>/main.c` only contains the application's `main()`
 function. It assumes:
 
-- The vector table exists and is pinned to MRAM (provided by
-  `src/boot/vector_table.c`)
+- The vector table exists and is pinned to MRAM (provided by the
+  app's own `vector_table.c`)
 - `Reset_Handler` ran the `.data` copy + `.bss` zero before `main()`
 - `SystemInit()` set VTOR, the FPU coprocessor enables, and NVIC
-  priority grouping (provided by `src/boot/system_init.c`)
+  priority grouping (provided by the app's own `system_init.c`)
 - The HAL libraries in `libs/` are linked and ready to use
 
 So `blink_hal/main.c` only has to set up its specific peripherals
 (GPIO, SysTick) and run its loop -- everything underneath is
-provided by `src/` and `libs/`.
+provided by the per-app boot files and `libs/`.
 
-### What the CMake glob actually does
+### What the CMake build actually does
 
-Every firmware build is the same shape:
+The top-level `CMakeLists.txt` auto-discovers every top-level dir
+that contains a `main.c` + `CMakeLists.txt` and `add_subdirectory`s
+each of them. The per-app cmake target is the same shape:
 
 ```cmake
-file(GLOB APP_SOURCES_ROOT
-    ${CMAKE_SOURCE_DIR}/src/*.c        # any plain src/*.c (currently none)
-    ${EXAMPLE_DIR}/*.c                 # the chosen example's main.c
+add_executable(<app>.elf
+    ${CMAKE_CURRENT_SOURCE_DIR}/main.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/vector_table.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/system_init.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/secure_exception.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/trustzone_init.c
+    ${LIB_RA_CORE_SOURCES} ${LIB_RA_HAL_SOURCES}
+    ${LIB_RA_NET_PAL_SOURCES} ${LIB_RA_USB_PAL_SOURCES}
+    ${LIB_RA_NSC_SOURCES} ${APP_SECURE_SOURCES}
 )
-file(GLOB_RECURSE APP_BOOT_SOURCES   ${CMAKE_SOURCE_DIR}/src/boot/*.c)
-file(GLOB_RECURSE APP_SECURE_SOURCES ${CMAKE_SOURCE_DIR}/src/secure_app/*.c)
-# ... plus libs/ra_core/, libs/ra_hal/, libs/ra_nsc/, libs/ra_*_pal/
+target_link_options(... -T${CMAKE_CURRENT_SOURCE_DIR}/linker_script.ld ...)
 ```
 
-`-DEXAMPLE=<name>` (defaulting to `blink`) picks which example's
-`main.c` is compiled. Everything else is the same across builds.
+`make <app>` (top-level) and `make` (inside `<app>/`) produce the
+exact same `<app>.elf` / `<app>.hex` / `<app>.bin` artifacts.
 
 ### Mental model: hosted-OS analogy
 
 ```
 hosted Linux/macOS C program        ra8d2-firmware
 ─────────────────────────────       ─────────────────────────
-crt0.o (runtime)                    src/boot/
+crt0.o (runtime)                    <app>/{vector_table,system_init,...}.c
 libc / libm                         libs/
-your code (main.c, ...)             examples/<name>/main.c
+your code (main.c, ...)             <app>/main.c
 ```
 
 On a hosted system you don't *see* `crt0.o` because the toolchain
 ships it. On bare-metal embedded, you have to write it yourself --
-and `src/boot/` is exactly that.
+and the per-app boot files are exactly that. Two apps can carry
+divergent vector tables, divergent linker scripts, etc.; copying
+the boot files in keeps each app self-contained.
 
-Adding a new example never requires editing anything in `src/` or
-`libs/`; just create `examples/foo/main.c` and run
-`make example-foo`. Touching `src/` is a project-wide change to how
-the chip boots, not a per-example concern.
+Adding a new app: drop a top-level directory containing `main.c`,
+the boot files (copy from a sibling app), `linker_script.ld`,
+`CMakeLists.txt`, and `Makefile`. The next `make` re-discovers it.
 
 ## Boot sequence
 
@@ -123,12 +133,12 @@ the chip boots, not a per-example concern.
          |
          v
     +--------------+
-    | Reset_Handler|   src/boot/vector_table.c
+    | Reset_Handler|   <app>/vector_table.c
     +-----+--------+
           | calls
           v
     +--------------+
-    |  SystemInit  |   src/boot/system_init.c
+    |  SystemInit  |   <app>/system_init.c
     |              |
     |  1. disable IRQ
     |  2. VTOR <- g_ra_vector_table_start
@@ -150,7 +160,7 @@ the chip boots, not a per-example concern.
           | jumps
           v
     +--------------+
-    |    main()    |   src/main.c
+    |    main()    |   <app>/main.c
     |              |
     |  ra_infrastructure_init()  <- log backend, pin validator
     |  ra_cgc_init()              <- PLL to CPUCLK0 @ ~1 GHz

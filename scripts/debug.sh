@@ -2,8 +2,11 @@
 # debug.sh -- Attach arm-none-eabi-gdb to a running EK-RA8D2 via J-Link GDB Server.
 #
 # Usage:
-#   ./scripts/debug.sh                     # debug build/ra8d2-firmware.elf
-#   ./scripts/debug.sh path/to/other.elf
+#   ./scripts/debug.sh path/to/firmware.elf       # debug a specific elf (preferred)
+#   ./scripts/debug.sh                            # default: blink/build/blink.elf
+#
+# Per-app Makefiles invoke this with their own .elf path
+# (e.g. `make -C blink_hal debug` -> `debug.sh blink_hal/build/blink_hal.elf`).
 #
 # Starts JLinkGDBServer in the background and then runs gdb against
 # the target. Press Ctrl-D at the gdb prompt to quit; the gdb-server
@@ -22,11 +25,11 @@ GREEN='\033[0;32m'
 RED='\033[0;31m'
 NC='\033[0m'
 
-ELF="${1:-$FW_DIR/build/ra8d2-firmware.elf}"
+ELF="${1:-$FW_DIR/blink/build/blink.elf}"
 
 if [[ ! -f "$ELF" ]]; then
     echo -e "${RED}Error:${NC} $ELF not found"
-    echo "Build first with: ./build.sh"
+    echo "Build first with: 'make blink' (or 'make <app>')"
     exit 1
 fi
 

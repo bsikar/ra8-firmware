@@ -77,10 +77,11 @@ static ra_bkup_config_t make_cfg(void)
   return cfg;
 }
 
-static ra_bkup_tamper_chan_cfg_t make_chan_cfg(bool ie, bool ce, bool ze, ra_bkup_edge_t edge)
+static ra_bkup_tamper_chan_cfg_t
+make_chan_cfg(bool ien, bool ie, bool ce, bool ze, ra_bkup_edge_t edge)
 {
   const ra_bkup_tamper_chan_cfg_t cfg = {
-    .input_enable       = true,
+    .input_enable       = ien,
     .noise_canceller_en = true,
     .edge               = edge,
     .irq_enable         = ie,
@@ -97,9 +98,9 @@ static ra_bkup_tamper_config_t make_tamper_cfg(void)
     .nc_width = k_ra_bkup_nc_width_64hz,
     .channels =
       {
-        make_chan_cfg(true, true, false, k_ra_bkup_edge_falling),
-        make_chan_cfg(true, false, true, k_ra_bkup_edge_rising),
-        make_chan_cfg(false, true, true, k_ra_bkup_edge_falling),
+        make_chan_cfg(true, true, true, false, k_ra_bkup_edge_falling),
+        make_chan_cfg(true, true, false, true, k_ra_bkup_edge_rising),
+        make_chan_cfg(false, false, true, true, k_ra_bkup_edge_falling),
       },
   };
   return cfg;

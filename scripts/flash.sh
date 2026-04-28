@@ -1,9 +1,12 @@
 #!/bin/bash
-# flash.sh -- Flash ra8d2-firmware.hex to an attached EK-RA8D2 via SEGGER J-Link.
+# flash.sh -- Flash an Intel HEX firmware image to an attached EK-RA8D2 via SEGGER J-Link.
 #
 # Usage:
-#   ./scripts/flash.sh                          # flash build/ra8d2-firmware.hex
-#   ./scripts/flash.sh build/other.hex          # flash a specific file
+#   ./scripts/flash.sh path/to/firmware.hex      # flash a specific file (preferred)
+#   ./scripts/flash.sh                           # flash blink/build/blink.hex (the default app)
+#
+# Per-app Makefiles invoke this with their own .hex path
+# (e.g. `make -C blink_hal flash` -> `flash.sh blink_hal/build/blink_hal.hex`).
 #
 # Requires:
 #   - J-Link software package with `JLinkExe` in PATH
@@ -19,11 +22,11 @@ YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m'
 
-HEX="${1:-$FW_DIR/build/ra8d2-firmware.hex}"
+HEX="${1:-$FW_DIR/blink/build/blink.hex}"
 
 if [[ ! -f "$HEX" ]]; then
     echo -e "${RED}Error:${NC} $HEX not found"
-    echo "Build first with: ./build.sh"
+    echo "Build first with: 'make blink' (or 'make <app>')"
     exit 1
 fi
 

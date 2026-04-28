@@ -14,6 +14,10 @@
 #
 #   On Linux this wrapper is unnecessary -- just run `make test`.
 #
+# Container engine: colima on macOS (no Docker Desktop license). The
+# script auto-starts a colima VM if one isn't running. On Linux the
+# colima check is skipped and we use whatever docker daemon is up.
+#
 # Usage:
 #   ./scripts/test-docker.sh           # build + run all tests
 #   ./scripts/test-docker.sh --rebuild # force-rebuild the image
@@ -34,7 +38,28 @@ for arg in "$@"; do
 done
 
 if ! command -v docker >/dev/null 2>&1; then
-    echo "error: docker not on PATH. Install Docker Desktop and try again." >&2
+    echo "error: docker not on PATH." >&2
+    echo "  install: brew install colima docker" >&2
+    exit 1
+fi
+
+# On macOS, prefer colima (no Docker Desktop license required).
+if [[ "$(uname -s)" == "Darwin" ]]; then
+    if ! command -v colima >/dev/null 2>&1; then
+        echo "error: colima not on PATH. Install with: brew install colima" >&2
+        exit 1
+    fi
+    if ! colima status >/dev/null 2>&1; then
+        echo "==> Starting colima VM (4 CPU, 6 GiB)"
+        colima start --cpu 4 --memory 6
+    fi
+fi
+
+if ! docker info >/dev/null 2>&1; then
+    echo "error: docker daemon not reachable." >&2
+    if [[ "$(uname -s)" == "Darwin" ]]; then
+        echo "  try: colima start" >&2
+    fi
     exit 1
 fi
 

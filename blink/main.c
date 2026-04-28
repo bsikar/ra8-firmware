@@ -84,7 +84,8 @@ typedef enum : uint32_t {
  * should be replaced with the actual operating clock.
  */
 typedef enum : uint32_t {
-  k_ra_cpu_hz_at_reset = 8400000U,
+  k_ra_cpu_hz_at_reset  = 8400000U,
+  k_ra_blink_ms_per_sec = 1000U,
 } ra_clock_t;
 
 /**
@@ -211,7 +212,7 @@ static void ra_systick_wait_ticks(uint32_t ticks)
  */
 static void ra_delay_ms(uint32_t ms)
 {
-  uint32_t total = (ms * (uint32_t)k_ra_cpu_hz_at_reset) / 1000U;
+  uint32_t total = (ms * (uint32_t)k_ra_cpu_hz_at_reset) / (uint32_t)k_ra_blink_ms_per_sec;
   while (total > 0U) {
     const uint32_t chunk =
       (total > (uint32_t)k_ra_systick_rvr_max) ? (uint32_t)k_ra_systick_rvr_max : total;

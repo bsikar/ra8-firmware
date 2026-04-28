@@ -51,6 +51,42 @@ REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 
 SOURCE_SUFFIXES = {".c", ".h", ".cpp", ".hpp"}
 
+# Top-level dirs we never lint: infrastructure / vendor / build trees.
+EXCLUDE_TOP_LEVEL = {
+    "build", "docs", "cmake", "scripts", "fsp", "STAR",
+    ".git", "node_modules", ".github", ".devcontainer", ".claude",
+}
+ALWAYS_SCAN_DIRS = ("libs", "src", "tests")
+
+# File names inside an app dir that carry boot-file (Ring 1) semantics.
+# main.c is Ring 6 / Application; everything else next to it (the
+# per-app boot files copied from src/boot/) is treated as Ring 1.
+APP_BOOT_FILES = {
+    "vector_table.c",
+    "system_init.c",
+    "secure_exception.c",
+    "trustzone_init.c",
+    "trustzone_init.h",
+}
+
+
+def discover_app_dirs() -> tuple[str, ...]:
+    """Return every top-level dir that contains main.c + CMakeLists.txt."""
+    out: list[str] = []
+    for entry in sorted(REPO_ROOT.iterdir()):
+        if not entry.is_dir():
+            continue
+        if entry.name in EXCLUDE_TOP_LEVEL:
+            continue
+        if entry.name in ALWAYS_SCAN_DIRS:
+            continue
+        if (entry / "main.c").is_file() and (entry / "CMakeLists.txt").is_file():
+            out.append(entry.name)
+    return tuple(out)
+
+
+APP_DIRS = discover_app_dirs()
+
 # Files that lived in the tree before the world-tag system was
 # introduced (baseline). They are exempt from world-tag
 # enforcement until the wave that retrofits them. As soon as a file
@@ -63,7 +99,6 @@ SOURCE_SUFFIXES = {".c", ".h", ".cpp", ".hpp"}
 # incrementally and the script catches any mismatches.
 LEGACY_RING3_EXEMPT_PREFIXES = (
     "libs/ra_hal/",
-    "src/main.c",
     "tests/",
 )
 
@@ -89,16 +124,21 @@ def file_is_in_ring1_or_ring2(rel_path: str) -> bool:
     """
     if rel_path.startswith("libs/ra_core/"):
         return True
-    if rel_path.startswith("src/boot/"):
+    # Per-app boot files (vector_table.c, system_init.c,
+    # secure_exception.c, trustzone_init.c/h) are Ring 1 by virtue of
+    # the role they play, even though they now live next to main.c.
+    parts = rel_path.split("/", 1)
+    if len(parts) == 2 and parts[0] in APP_DIRS and parts[1] in APP_BOOT_FILES:
         return True
-    if rel_path == "src/linker_script.ld":
+    if rel_path.endswith("/linker_script.ld"):
         return True
     return False
 
 
 def file_is_in_ring3_plus(rel_path: str) -> bool:
     """Anything under libs/ra_hal/, libs/ra_*_pal/, libs/ra_nsc/,
-    libs/third_party/, src/main.c (or src/secure_app/), tests/.
+    libs/third_party/, src/secure_app/, tests/, and per-app main.c
+    (Ring 6 application code).
     """
     if rel_path.startswith("libs/ra_hal/"):
         return True
@@ -110,9 +150,11 @@ def file_is_in_ring3_plus(rel_path: str) -> bool:
         return True
     if rel_path.startswith("src/secure_app/"):
         return True
-    if rel_path == "src/main.c":
-        return True
     if rel_path.startswith("tests/"):
+        return True
+    # Per-app main.c is Ring 6.
+    parts = rel_path.split("/", 1)
+    if len(parts) == 2 and parts[0] in APP_DIRS and parts[1] == "main.c":
         return True
     return False
 
@@ -236,7 +278,8 @@ def main(argv: list[str]) -> int:
     if args.paths:
         targets = [pathlib.Path(p) for p in args.paths]
     else:
-        targets = [REPO_ROOT / d for d in ("libs", "src", "tests")]
+        scan = list(("libs", "src", "tests")) + list(APP_DIRS)
+        targets = [REPO_ROOT / d for d in scan]
 
     findings: list[str] = []
     file_count = 0
