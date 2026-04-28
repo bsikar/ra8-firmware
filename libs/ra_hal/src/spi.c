@@ -30,14 +30,14 @@ static const char* s_tag = "SPI";
  * @brief SPSR status bit positions used by the polling loop.
  */
 typedef enum : uint8_t {
-  k_ra_spsr_bit_ovrf   = 0U, /**< Overrun.              */
-  k_ra_spsr_bit_idlnf  = 1U, /**< Idle flag.            */
-  k_ra_spsr_bit_moderf = 2U, /**< Mode fault.           */
-  k_ra_spsr_bit_perf   = 3U, /**< Parity error.         */
-  k_ra_spsr_bit_udrf   = 4U, /**< Underrun.             */
-  k_ra_spsr_bit_sptef  = 5U, /**< TX buffer empty.      */
-  k_ra_spsr_bit_tend   = 6U, /**< Transmit end.         */
-  k_ra_spsr_bit_sprf   = 7U, /**< RX buffer full.       */
+  k_ra_spsr_bit_ovrf   = 0U, /**< Overrun. */
+  k_ra_spsr_bit_idlnf  = 1U, /**< Idle flag. */
+  k_ra_spsr_bit_moderf = 2U, /**< Mode fault. */
+  k_ra_spsr_bit_perf   = 3U, /**< Parity error. */
+  k_ra_spsr_bit_udrf   = 4U, /**< Underrun. */
+  k_ra_spsr_bit_sptef  = 5U, /**< TX buffer empty. */
+  k_ra_spsr_bit_tend   = 6U, /**< Transmit end. */
+  k_ra_spsr_bit_sprf   = 7U, /**< RX buffer full. */
 } ra_spsr_bit_t;
 
 /**
@@ -135,7 +135,7 @@ ra_err_t ra_spi_xfer8(uint8_t channel, uint8_t tx, uint8_t* rx)
 }
 
 /* =============================================================================
- * Wave 3.3: full-featured API
+ * full-featured API
  * =============================================================================
  */
 
@@ -145,8 +145,8 @@ ra_err_t ra_spi_xfer8(uint8_t channel, uint8_t tx, uint8_t* rx)
  */
 typedef struct {
   ra_spi_complete_fn_t cb;          /**< Transfer-complete callback. */
-  void*                ctx;         /**< Callback context.           */
-  bool                 initialised; /**< Tracked by ra_spi_init.     */
+  void*                ctx;         /**< Callback context. */
+  bool                 initialised; /**< Tracked by ra_spi_init. */
 } ra_spi_state_t;
 
 /**
@@ -169,8 +169,8 @@ typedef enum : uint8_t {
  */
 typedef enum : uint16_t {
   k_ra_spi_spcmd_bit_cpha = 0U,  /**< CPHA: phase selection. */
-  k_ra_spi_spcmd_bit_cpol = 1U,  /**< CPOL: polarity.         */
-  k_ra_spi_spcmd_bit_lsbf = 12U, /**< LSB-first.              */
+  k_ra_spi_spcmd_bit_cpol = 1U,  /**< CPOL: polarity. */
+  k_ra_spi_spcmd_bit_lsbf = 12U, /**< LSB-first. */
 } ra_spi_spcmd_bit_t;
 
 /**
@@ -346,7 +346,7 @@ ra_err_t ra_spi_exit_stop(uint8_t channel)
   return ra_mstp_enable(s_spi_mstp_table[channel]);
 }
 
-/* ---- DMA TX / RX (Wave 3.7b) ----------------------------------------- */
+/* ---- DMA TX / RX ----------------------------------------- */
 
 ra_err_t ra_spi_write_dma(uint8_t              channel,
                           const uint8_t*       data,
@@ -366,7 +366,7 @@ ra_err_t ra_spi_write_dma(uint8_t              channel,
   }
   /* HUM Ch 43.2 "SPDR : SPI Data Register", p 2877 */
   /* Byte-wide DMA writes land in the low byte of SPDR; wider-frame
-   * streaming is Wave 7. */
+   * streaming is . */
   ra_dma_request_t req = {};
   req.src_addr         = (uintptr_t)data;
   req.dst_addr         = (uintptr_t)&reg->SPDR;

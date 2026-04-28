@@ -1,6 +1,6 @@
 /**
  * @file ra_nsc_io.c
- * @brief NSC veneers for the Wave 4-6 I/O drivers
+ * @brief NSC veneers for the -6 I/O drivers
  *
  * @par Tag
  * [Ring 4 / NSC] {World: NSC}

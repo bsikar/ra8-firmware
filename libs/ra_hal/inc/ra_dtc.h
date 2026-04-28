@@ -6,7 +6,7 @@
  * [Ring 3 / HAL] {World: S}
  *
  * @details
- * Wave 3 driver for the RA8D2 DTC block. The DTC is a lighter-weight
+ * driver for the RA8D2 DTC block. The DTC is a lighter-weight
  * alternative to the DMAC for moving small amounts of data in response
  * to peripheral interrupts. It shares the MSTPA22 gate with DMAC0 via
  * ra_mstp's reference counter. The driver owns the DTCCR / DTCVBR /
@@ -37,7 +37,7 @@ typedef void (*ra_dtc_event_fn_t)(void* ctx, uint16_t status);
  * @brief Initialise the DTC and install its vector table base.
  *
  * @param[in] vector_base Pointer to a caller-supplied DTC vector
- *                        table (16-byte-aligned SRAM region).
+ * table (16-byte-aligned SRAM region).
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_dtc_init(void* vector_base);

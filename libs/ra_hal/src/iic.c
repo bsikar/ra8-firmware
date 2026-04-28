@@ -6,7 +6,7 @@
  * [Ring 3 / HAL] {World: NS}
  *
  * @details
- * Wave 3.2 full build-out. See ``ra_iic.h`` for the API contract.
+ * full build-out. See ``ra_iic.h`` for the API contract.
  * Owns every write to the RA8D2 IIC register block (HUM Ch 39
  * "I2C Bus Interface (IIC)", p 2367).
  *
@@ -32,14 +32,14 @@ static const char* s_tag = "IIC";
  * @brief ICSR2 status bit positions referenced by the polling loop.
  */
 typedef enum : uint8_t {
-  k_ra_icsr2_bit_tmof  = 0U, /**< Timeout detection.            */
-  k_ra_icsr2_bit_al    = 1U, /**< Arbitration lost.             */
-  k_ra_icsr2_bit_start = 2U, /**< Start condition detected.     */
-  k_ra_icsr2_bit_stop  = 3U, /**< Stop  condition detected.     */
-  k_ra_icsr2_bit_nackf = 4U, /**< NACK detection.               */
-  k_ra_icsr2_bit_rdrf  = 5U, /**< RX data full.                 */
-  k_ra_icsr2_bit_teof  = 6U, /**< TX end.                        */
-  k_ra_icsr2_bit_tdre  = 7U, /**< TX data empty.                 */
+  k_ra_icsr2_bit_tmof  = 0U, /**< Timeout detection. */
+  k_ra_icsr2_bit_al    = 1U, /**< Arbitration lost. */
+  k_ra_icsr2_bit_start = 2U, /**< Start condition detected. */
+  k_ra_icsr2_bit_stop  = 3U, /**< Stop condition detected. */
+  k_ra_icsr2_bit_nackf = 4U, /**< NACK detection. */
+  k_ra_icsr2_bit_rdrf  = 5U, /**< RX data full. */
+  k_ra_icsr2_bit_teof  = 6U, /**< TX end. */
+  k_ra_icsr2_bit_tdre  = 7U, /**< TX data empty. */
 } ra_iic_icsr2_bit_t;
 
 /**
@@ -47,9 +47,9 @@ typedef enum : uint8_t {
  * @brief ICCR2 control bit positions used by the polling driver.
  */
 typedef enum : uint8_t {
-  k_ra_iccr2_bit_st = 1U, /**< Start trigger.   */
+  k_ra_iccr2_bit_st = 1U, /**< Start trigger. */
   k_ra_iccr2_bit_rs = 2U, /**< Restart trigger. */
-  k_ra_iccr2_bit_sp = 3U, /**< Stop  trigger.   */
+  k_ra_iccr2_bit_sp = 3U, /**< Stop trigger. */
 } ra_iic_iccr2_bit_t;
 
 /**
@@ -64,8 +64,8 @@ typedef enum : uint8_t {
 /**
  * @var s_iic_mstp_table
  * @brief Channel-index -> MSTP id lookup. Indexed by ``channel``.
- *        Size pinned by ``k_ra_iic_channel_count`` from
- *        ``ra8d2_iic_regs.h``.
+ * Size pinned by ``k_ra_iic_channel_count`` from
+ * ``ra8d2_iic_regs.h``.
  */
 static const ra_mstp_t s_iic_mstp_table[k_ra_iic_channel_count] = {
   /* HUM Ch 11.2.7 "MSTPCRB : Module Stop Control Register B", p 444 */
@@ -80,8 +80,8 @@ static const ra_mstp_t s_iic_mstp_table[k_ra_iic_channel_count] = {
  */
 typedef struct {
   ra_iic_complete_fn_t cb;          /**< Transfer-complete callback. */
-  void*                ctx;         /**< Callback context.           */
-  bool                 initialised; /**< Tracked by ra_iic_init.     */
+  void*                ctx;         /**< Callback context. */
+  bool                 initialised; /**< Tracked by ra_iic_init. */
 } ra_iic_state_t;
 
 /**
@@ -97,7 +97,7 @@ static ra_iic_state_t s_iic_state[k_ra_iic_channel_count];
  * Standard formula from HUM Ch 39.2 "IIC Bit Rate Calculation":
  *
  * @f[
- *    ICBRL = \frac{PCLKB}{8 \cdot B} - 1
+ * ICBRL = \frac{PCLKB}{8 \cdot B} - 1
  * @f]
  *
  * for the default CKS = 000 (no prescaler). Caller clamps the
@@ -132,7 +132,7 @@ ra_err_t ra_iic_init(uint8_t channel, const ra_iic_cfg_t* cfg)
   RA_RETURN_ON_ERROR(mst_err, s_tag, "iic_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
 
   /* HUM Ch 39.2 "IIC Bus Interface Register Descriptions", p 2367
-   *  -- module-reset sequence. */
+   * -- module-reset sequence. */
   reg->ICCR1 = 0U;
   reg->ICMR1 = (uint8_t)k_ra_iic_icmr1_default;
   reg->ICMR2 = 0U;
@@ -265,7 +265,7 @@ ra_err_t ra_iic_read(uint8_t channel, uint8_t target_7b, uint8_t* out, uint32_t 
 }
 
 /* =============================================================================
- * Wave 3.2: runtime reconfigure, error status, IRQ dispatch, power transition
+ * runtime reconfigure, error status, IRQ dispatch, power transition
  * =============================================================================
  */
 
@@ -312,7 +312,7 @@ ra_err_t ra_iic_clear_errors(uint8_t channel)
     return k_ra_err_invalid_arg;
   }
   /* HUM Ch 39.2 "ICSR2 : IIC Bus Status Register 2", p 2384
-   *  -- AL / NACKF / TMOF are write-zero-to-clear. */
+   * -- AL / NACKF / TMOF are write-zero-to-clear. */
   const uint8_t clr_mask =
     (uint8_t)~((1U << (uint8_t)k_ra_icsr2_bit_al) | (1U << (uint8_t)k_ra_icsr2_bit_nackf) |
                (1U << (uint8_t)k_ra_icsr2_bit_tmof));
@@ -337,9 +337,9 @@ ra_err_t ra_iic_attach_transfer_handler(uint8_t channel, ra_iic_complete_fn_t fn
   s_iic_state[channel].cb  = fn;
   s_iic_state[channel].ctx = ctx;
   /* HUM Ch 39.2 "ICIER : IIC Bus Interrupt Enable Register", p 2381
-   *  -- enable or disable every IRQ source as a block. Per-bit
-   *  tuning lands in Wave 3.2b when the first interrupt-mode
-   *  consumer arrives. */
+   * -- enable or disable every IRQ source as a block. Per-bit
+   * tuning lands when the first interrupt-mode
+   * consumer arrives. */
   if (fn != nullptr) {
     reg->ICIER = (uint8_t)k_ra_iic_icier_all_en;
   } else {
@@ -368,7 +368,7 @@ ra_err_t ra_iic_exit_stop(uint8_t channel)
   return ra_mstp_enable(s_iic_mstp_table[channel]);
 }
 
-/* ---- DMA TX / RX (Wave 3.7b) ----------------------------------------- */
+/* ---- DMA TX / RX ----------------------------------------- */
 
 ra_err_t ra_iic_write_dma(uint8_t              channel,
                           const uint8_t*       data,
@@ -391,7 +391,7 @@ ra_err_t ra_iic_write_dma(uint8_t              channel,
   req.width            = k_ra_dmac_width_byte;
   req.src_inc          = true;
   req.dst_inc          = false;
-  req.trigger          = (ra_elc_event_t)0; /* Wave 7 ELC routing. */
+  req.trigger          = (ra_elc_event_t)0; /* ELC routing. */
   req.on_complete      = on_complete;
   req.ctx              = ctx;
   return ra_dma_request(&req, out_dma_channel);
@@ -434,8 +434,8 @@ void ra_iic_dispatch_txi(uint8_t channel)
   if ((uint16_t)channel >= (uint16_t)k_ra_iic_channel_count) {
     return;
   }
-  /* Wave 3.2 MVP: the full state machine lives in the synchronous
-   * write/read paths above. IRQ-mode advance is Wave 3.2b. */
+  /* MVP: the full state machine lives in the synchronous
+   * write/read paths above. IRQ-mode advance is . */
   (void)s_iic_state[channel].cb;
 }
 

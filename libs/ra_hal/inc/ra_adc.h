@@ -6,8 +6,8 @@
  * [Ring 3 / HAL] {World: NS}
  *
  * @details
- * Wave 4.1 full build-out of the RA8D2 ADC_B peripheral (14-bit
- * SAR). Extends the Wave 0 polling stub with: descriptor-based
+ * full build-out of the RA8D2 ADC_B peripheral (14-bit
+ * SAR). Extends the polling stub with: descriptor-based
  * init, deinit, runtime resolution reconfigure, status + clear,
  * interrupt-mode attach / dispatch, power transition.
  *
@@ -41,8 +41,8 @@ typedef enum : uint8_t {
  */
 typedef enum : uint8_t {
   k_ra_adc_trig_software = 0U, /**< Software trigger (write ADST). */
-  k_ra_adc_trig_external = 1U, /**< External trigger pin.           */
-  k_ra_adc_trig_elc      = 2U, /**< ELC event routed trigger.       */
+  k_ra_adc_trig_external = 1U, /**< External trigger pin. */
+  k_ra_adc_trig_elc      = 2U, /**< ELC event routed trigger. */
 } ra_adc_trigger_t;
 
 /**
@@ -56,9 +56,9 @@ typedef enum : uint8_t {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  ra_adc_resolution_t resolution;    /**< 12 / 10 / 14 bit.       */
-  ra_adc_trigger_t    trigger;       /**< Trigger source.          */
-  bool                right_aligned; /**< True -> right-align.    */
+  ra_adc_resolution_t resolution;    /**< 12 / 10 / 14 bit. */
+  ra_adc_trigger_t    trigger;       /**< Trigger source. */
+  bool                right_aligned; /**< True -> right-align. */
   bool                scan_mode;     /**< True -> continuous scan. */
 } ra_adc_cfg_t;
 /* cppcheck-suppress-end [unusedStructMember] */
@@ -70,13 +70,13 @@ typedef struct {
 typedef enum : uint16_t {
   k_ra_adc_status_none = 0x0000U,
   k_ra_adc_status_busy = 0x8000U, /**< ADCSR.ADST (conversion in flight). */
-  k_ra_adc_status_ie   = 0x1000U, /**< ADCSR.ADIE.                        */
+  k_ra_adc_status_ie   = 0x1000U, /**< ADCSR.ADIE. */
 } ra_adc_status_mask_t;
 
 /**
  * @typedef ra_adc_complete_fn_t
  * @brief Conversion-complete callback.
- * @param[in] ctx    Caller context.
+ * @param[in] ctx Caller context.
  * @param[in] result Last conversion result (raw ADDRxx).
  */
 typedef void (*ra_adc_complete_fn_t)(void* ctx, uint16_t result);
@@ -102,7 +102,7 @@ typedef void (*ra_adc_complete_fn_t)(void* ctx, uint16_t result);
  * @pre IRQs masked or single-threaded init context.
  * @pre ``ra_mstp_init`` has been called.
  * @post On success ADCSR and ADCER match ``cfg`` and the ADC_B
- *       module is powered on via MSTP.
+ * module is powered on via MSTP.
  *
  * @note Thread safety: not thread-safe.
  * @since 0.2.0
@@ -125,7 +125,7 @@ typedef void (*ra_adc_complete_fn_t)(void* ctx, uint16_t result);
 /**
  * @brief Blocking single-channel sample.
  *
- * @param[in]  channel Analog channel index (0..47 on RA8D2 ADC_B).
+ * @param[in] channel Analog channel index (0..47 on RA8D2 ADC_B).
  * @param[out] out_raw Pointer to receive the 14-bit result right-aligned.
  * @return `ra_err_t` error code.
  * @since 0.1.0
@@ -172,7 +172,7 @@ typedef void (*ra_adc_complete_fn_t)(void* ctx, uint16_t result);
 
 /**
  * @brief Attach a conversion-complete callback.
- * @param[in] fn  Non-NULL callback.
+ * @param[in] fn Non-NULL callback.
  * @param[in] ctx Context passed to the callback.
  * @return ``ra_err_t`` error code.
  * @since 0.2.0

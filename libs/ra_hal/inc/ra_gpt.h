@@ -6,24 +6,24 @@
  * [Ring 3 / HAL] {World: NS}
  *
  * @details
- * Wave 3.5 full build-out of the RA8D2 GPT peripheral. Extends
- * the Wave 0 free-run stub with: descriptor-based init, deinit,
+ * full build-out of the RA8D2 GPT peripheral. Extends
+ * the free-run stub with: descriptor-based init, deinit,
  * runtime period / duty reconfigure, status flags, interrupt
  * attach / dispatch, power transition.
  *
  * API surface:
  *
- *  - ``ra_gpt_init(channel, cfg)``       -- full config + MSTP enable
- *  - ``ra_gpt_deinit(channel)``          -- stop + MSTP release
- *  - ``ra_gpt_start_free_run``           -- Wave 0 legacy shim
- *  - ``ra_gpt_stop``                      -- Wave 0 legacy
- *  - ``ra_gpt_read``                      -- Wave 0 legacy
- *  - ``ra_gpt_set_period``                -- runtime GTPR/GTPBR change
- *  - ``ra_gpt_set_duty``                  -- runtime GTCCR[A/B] change
- *  - ``ra_gpt_get_status / clear_status`` -- GTST overflow/underflow
- *  - ``ra_gpt_attach_handler``            -- IRQ callback
- *  - ``ra_gpt_enter_stop / exit_stop``    -- power transition
- *  - ``ra_gpt_dispatch_ovf / und / ccra / ccrb`` -- ISR entry points
+ * - ``ra_gpt_init(channel, cfg)`` -- full config + MSTP enable
+ * - ``ra_gpt_deinit(channel)`` -- stop + MSTP release
+ * - ``ra_gpt_start_free_run`` -- legacy shim
+ * - ``ra_gpt_stop`` -- legacy
+ * - ``ra_gpt_read`` -- legacy
+ * - ``ra_gpt_set_period`` -- runtime GTPR/GTPBR change
+ * - ``ra_gpt_set_duty`` -- runtime GTCCR[A/B] change
+ * - ``ra_gpt_get_status / clear_status`` -- GTST overflow/underflow
+ * - ``ra_gpt_attach_handler`` -- IRQ callback
+ * - ``ra_gpt_enter_stop / exit_stop`` -- power transition
+ * - ``ra_gpt_dispatch_ovf / und / ccra / ccrb`` -- ISR entry points
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -50,11 +50,11 @@ extern "C" {
  * @brief GPT counter-mode selection (GTCR.MD field).
  */
 typedef enum : uint8_t {
-  k_ra_gpt_mode_saw_pwm       = 0U, /**< Saw-wave PWM (up-count).     */
-  k_ra_gpt_mode_saw_one_shot  = 1U, /**< Saw-wave one-shot.           */
+  k_ra_gpt_mode_saw_pwm       = 0U, /**< Saw-wave PWM (up-count). */
+  k_ra_gpt_mode_saw_one_shot  = 1U, /**< Saw-wave one-shot. */
   k_ra_gpt_mode_triangle_pwm  = 4U, /**< Triangle-wave PWM symmetric. */
-  k_ra_gpt_mode_triangle_pwm2 = 5U, /**< Triangle-wave PWM 1.         */
-  k_ra_gpt_mode_triangle_pwm3 = 6U, /**< Triangle-wave PWM 2.         */
+  k_ra_gpt_mode_triangle_pwm2 = 5U, /**< Triangle-wave PWM 1. */
+  k_ra_gpt_mode_triangle_pwm3 = 6U, /**< Triangle-wave PWM 2. */
 } ra_gpt_mode_t;
 
 /**
@@ -62,12 +62,12 @@ typedef enum : uint8_t {
  * @brief GTCR.TPCS clock prescaler.
  */
 typedef enum : uint8_t {
-  k_ra_gpt_ps_div_1    = 0U, /**< PCLKD / 1.      */
-  k_ra_gpt_ps_div_4    = 1U, /**< PCLKD / 4.      */
-  k_ra_gpt_ps_div_16   = 2U, /**< PCLKD / 16.     */
-  k_ra_gpt_ps_div_64   = 3U, /**< PCLKD / 64.     */
-  k_ra_gpt_ps_div_256  = 4U, /**< PCLKD / 256.    */
-  k_ra_gpt_ps_div_1024 = 5U, /**< PCLKD / 1024.  */
+  k_ra_gpt_ps_div_1    = 0U, /**< PCLKD / 1. */
+  k_ra_gpt_ps_div_4    = 1U, /**< PCLKD / 4. */
+  k_ra_gpt_ps_div_16   = 2U, /**< PCLKD / 16. */
+  k_ra_gpt_ps_div_64   = 3U, /**< PCLKD / 64. */
+  k_ra_gpt_ps_div_256  = 4U, /**< PCLKD / 256. */
+  k_ra_gpt_ps_div_1024 = 5U, /**< PCLKD / 1024. */
 } ra_gpt_prescaler_t;
 
 /**
@@ -81,12 +81,12 @@ typedef enum : uint8_t {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  ra_gpt_mode_t      mode;       /**< Counter mode.                    */
-  ra_gpt_prescaler_t prescaler;  /**< Clock divider.                   */
-  uint32_t           period;     /**< GTPR period.                     */
-  uint32_t           duty_a;     /**< GTCCRA compare/duty (PWM A).    */
-  uint32_t           duty_b;     /**< GTCCRB compare/duty (PWM B).    */
-  bool               auto_start; /**< True -> start after init.       */
+  ra_gpt_mode_t      mode;       /**< Counter mode. */
+  ra_gpt_prescaler_t prescaler;  /**< Clock divider. */
+  uint32_t           period;     /**< GTPR period. */
+  uint32_t           duty_a;     /**< GTCCRA compare/duty (PWM A). */
+  uint32_t           duty_b;     /**< GTCCRB compare/duty (PWM B). */
+  bool               auto_start; /**< True -> start after init. */
 } ra_gpt_cfg_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 
@@ -98,8 +98,8 @@ typedef enum : uint32_t {
   k_ra_gpt_status_none      = 0x00000000UL,
   k_ra_gpt_status_overflow  = 0x00000002UL, /**< GTST.TCFPO. */
   k_ra_gpt_status_underflow = 0x00000001UL, /**< GTST.TCFPU. */
-  k_ra_gpt_status_ccra      = 0x00000010UL, /**< GTST.TCFA.  */
-  k_ra_gpt_status_ccrb      = 0x00000020UL, /**< GTST.TCFB.  */
+  k_ra_gpt_status_ccra      = 0x00000010UL, /**< GTST.TCFA. */
+  k_ra_gpt_status_ccrb      = 0x00000020UL, /**< GTST.TCFB. */
 } ra_gpt_status_mask_t;
 
 /**
@@ -107,15 +107,15 @@ typedef enum : uint32_t {
  * @brief Selector for ``ra_gpt_set_duty``.
  */
 typedef enum : uint8_t {
-  k_ra_gpt_ccr_a = 0U, /**< GTCCRA.    */
-  k_ra_gpt_ccr_b = 1U, /**< GTCCRB.    */
+  k_ra_gpt_ccr_a = 0U, /**< GTCCRA. */
+  k_ra_gpt_ccr_b = 1U, /**< GTCCRB. */
 } ra_gpt_ccr_sel_t;
 
 /**
  * @typedef ra_gpt_event_fn_t
  * @brief GPT IRQ event callback signature.
  *
- * @param[in] ctx         Caller-supplied context.
+ * @param[in] ctx Caller-supplied context.
  * @param[in] status_mask OR of ``k_ra_gpt_status_*`` bits.
  */
 typedef void (*ra_gpt_event_fn_t)(void* ctx, uint32_t status_mask);
@@ -129,13 +129,13 @@ typedef void (*ra_gpt_event_fn_t)(void* ctx, uint32_t status_mask);
  * @brief Initialise a GPT channel with a full config descriptor.
  *
  * @param[in] channel GPT channel (0..13).
- * @param[in] cfg     Non-NULL configuration descriptor.
+ * @param[in] cfg Non-NULL configuration descriptor.
  * @return ``ra_err_t`` error code.
  *
  * @pre IRQs masked or single-threaded init context.
  * @pre ``ra_mstp_init`` has been called.
  * @post On success, GTCR + GTPR + GTCCR are programmed and
- *       (if ``cfg->auto_start``) GTSTR is set.
+ * (if ``cfg->auto_start``) GTSTR is set.
  *
  * @note Thread safety: not thread-safe.
  * @since 0.2.0
@@ -157,12 +157,12 @@ typedef void (*ra_gpt_event_fn_t)(void* ctx, uint32_t status_mask);
  * @brief Configure a GPT channel as a free-running up-counter.
  *
  * @param[in] channel GPT channel (0..13).
- * @param[in] period  Period in timer ticks (write to GTPR).
+ * @param[in] period Period in timer ticks (write to GTPR).
  * @return `ra_err_t` error code.
  *
  * @note The counter runs from PCLKD (or a configurable source) with
- *       no prescaler. The caller is responsible for choosing a
- *       sensible period value given the current PCLKD.
+ * no prescaler. The caller is responsible for choosing a
+ * sensible period value given the current PCLKD.
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_gpt_start_free_run(uint8_t channel, uint32_t period);
@@ -179,8 +179,8 @@ typedef void (*ra_gpt_event_fn_t)(void* ctx, uint32_t status_mask);
 /**
  * @brief Read the current counter value.
  *
- * @param[in]  channel GPT channel (0..13).
- * @param[out] out     Receive counter value.
+ * @param[in] channel GPT channel (0..13).
+ * @param[out] out Receive counter value.
  * @return `ra_err_t` error code.
  * @since 0.1.0
  */
@@ -194,7 +194,7 @@ typedef void (*ra_gpt_event_fn_t)(void* ctx, uint32_t status_mask);
 /**
  * @brief Change the GPT period (GTPR / GTPBR) at runtime.
  * @param[in] channel GPT channel.
- * @param[in] period  New GTPR value.
+ * @param[in] period New GTPR value.
  * @return ``ra_err_t`` error code.
  * @since 0.2.0
  */
@@ -203,8 +203,8 @@ typedef void (*ra_gpt_event_fn_t)(void* ctx, uint32_t status_mask);
 /**
  * @brief Change one compare register (GTCCRA / GTCCRB) at runtime.
  * @param[in] channel GPT channel.
- * @param[in] which   Which compare register.
- * @param[in] value   New compare value.
+ * @param[in] which Which compare register.
+ * @param[in] value New compare value.
  * @return ``ra_err_t`` error code.
  * @since 0.2.0
  */
@@ -217,7 +217,7 @@ typedef void (*ra_gpt_event_fn_t)(void* ctx, uint32_t status_mask);
 
 /**
  * @brief Read GTST overflow / underflow / compare flags.
- * @param[in]  channel  GPT channel.
+ * @param[in] channel GPT channel.
  * @param[out] out_mask OR of ``k_ra_gpt_status_*``.
  * @return ``ra_err_t`` error code.
  * @since 0.2.0
@@ -238,8 +238,8 @@ typedef void (*ra_gpt_event_fn_t)(void* ctx, uint32_t status_mask);
 /**
  * @brief Attach a GPT event callback for a channel.
  * @param[in] channel GPT channel.
- * @param[in] fn      Callback fired on ISR dispatch.
- * @param[in] ctx     Context passed to the callback.
+ * @param[in] fn Callback fired on ISR dispatch.
+ * @param[in] ctx Context passed to the callback.
  * @return ``ra_err_t`` error code.
  * @since 0.2.0
  */
@@ -263,7 +263,7 @@ typedef void (*ra_gpt_event_fn_t)(void* ctx, uint32_t status_mask);
 [[nodiscard]] ra_err_t ra_gpt_exit_stop(uint8_t channel);
 
 /* =============================================================================
- * DMA TX / RX (Wave 3.7b)
+ * DMA TX / RX
  * =============================================================================
  */
 
@@ -273,24 +273,24 @@ typedef void (*ra_gpt_event_fn_t)(void* ctx, uint32_t status_mask);
  * @details
  * Programmes the ra_dma substrate to copy ``count`` 32-bit period
  * values from ``periods[]`` into the channel's GTPR register. This
- * is the "sample streaming" DMA TX path from the Wave 3.5 roadmap
+ * is the "sample streaming" DMA TX path from the roadmap
  * note -- the driver pumps a preloaded period sequence into the
  * timer without the CPU touching GTPR each tick.
  *
- * @param[in]  channel         GPT channel 0..13.
- * @param[in]  periods         Source array of 32-bit period values.
- *                             Must outlive the transfer.
- * @param[in]  count           Number of periods; non-zero.
- * @param[in]  on_complete     Completion callback. May be NULL.
- * @param[in]  ctx             Context passed to ``on_complete``.
+ * @param[in] channel GPT channel 0..13.
+ * @param[in] periods Source array of 32-bit period values.
+ * Must outlive the transfer.
+ * @param[in] count Number of periods; non-zero.
+ * @param[in] on_complete Completion callback. May be NULL.
+ * @param[in] ctx Context passed to ``on_complete``.
  * @param[out] out_dma_channel Allocated DMAC channel on success.
  *
  * @return ``ra_err_t`` error code.
- * @retval k_ra_ok                 Transfer armed.
- * @retval k_ra_err_null_ptr       ``periods`` / ``out_dma_channel`` NULL.
- * @retval k_ra_err_invalid_arg    Channel or ``count`` invalid.
- * @retval k_ra_err_no_mem         All DMAC channels in use.
- * @retval k_ra_err_hw_error       ``ra_dma_request`` failed.
+ * @retval k_ra_ok Transfer armed.
+ * @retval k_ra_err_null_ptr ``periods`` / ``out_dma_channel`` NULL.
+ * @retval k_ra_err_invalid_arg Channel or ``count`` invalid.
+ * @retval k_ra_err_no_mem All DMAC channels in use.
+ * @retval k_ra_err_hw_error ``ra_dma_request`` failed.
  *
  * @pre Channel previously initialised via ``ra_gpt_init``.
  * @pre ``ra_dma_init`` has been called.
@@ -312,25 +312,25 @@ typedef void (*ra_gpt_event_fn_t)(void* ctx, uint32_t status_mask);
  * @details
  * Programmes the ra_dma substrate to copy ``count`` 32-bit counter
  * snapshots from the channel's GTCNT register into ``out_counts[]``.
- * This is the "capture streaming" DMA RX path from the Wave 3.5
+ * This is the "capture streaming" DMA RX path from the
  * roadmap note -- the driver samples GTCNT on each ELC trigger and
  * stores the value, so the host sees the full capture sequence
  * without ISR overhead.
  *
- * @param[in]  channel         GPT channel 0..13.
- * @param[out] out_counts      Destination counter buffer. Must
- *                             outlive the transfer.
- * @param[in]  count           Number of samples; non-zero.
- * @param[in]  on_complete     Completion callback. May be NULL.
- * @param[in]  ctx             Context passed to ``on_complete``.
+ * @param[in] channel GPT channel 0..13.
+ * @param[out] out_counts Destination counter buffer. Must
+ * outlive the transfer.
+ * @param[in] count Number of samples; non-zero.
+ * @param[in] on_complete Completion callback. May be NULL.
+ * @param[in] ctx Context passed to ``on_complete``.
  * @param[out] out_dma_channel Allocated DMAC channel on success.
  *
  * @return ``ra_err_t`` error code.
- * @retval k_ra_ok                 Transfer armed.
- * @retval k_ra_err_null_ptr       ``out_counts`` / ``out_dma_channel`` NULL.
- * @retval k_ra_err_invalid_arg    Channel or ``count`` invalid.
- * @retval k_ra_err_no_mem         All DMAC channels in use.
- * @retval k_ra_err_hw_error       ``ra_dma_request`` failed.
+ * @retval k_ra_ok Transfer armed.
+ * @retval k_ra_err_null_ptr ``out_counts`` / ``out_dma_channel`` NULL.
+ * @retval k_ra_err_invalid_arg Channel or ``count`` invalid.
+ * @retval k_ra_err_no_mem All DMAC channels in use.
+ * @retval k_ra_err_hw_error ``ra_dma_request`` failed.
  *
  * @pre Channel previously initialised via ``ra_gpt_init``.
  * @pre ``ra_dma_init`` has been called.

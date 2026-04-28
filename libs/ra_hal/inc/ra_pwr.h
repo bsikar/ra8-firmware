@@ -6,16 +6,16 @@
  * [Ring 3 / HAL] {World: S}
  *
  * @details
- * Wave 1 substrate. Sits on top of ``ra_mstp`` and ``ra_cgc`` and
+ * substrate. Sits on top of ``ra_mstp`` and ``ra_cgc`` and
  * exposes the small set of helpers every driver checklist needs:
  *
- *  - ``ra_pwr_init()``                          -- bring-up validation
- *  - ``ra_pwr_module_request(id)``              -- ref-counted ungate
- *  - ``ra_pwr_module_release(id)``              -- ref-counted gate
- *  - ``ra_pwr_set_wake_source / clear``         -- WUPEN0/1 management
- *  - ``ra_pwr_enter_sleep()``                   -- WFI for CPU sleep
- *  - ``ra_pwr_enter_software_standby()``        -- WFI for SSTBY
- *  - ``ra_pwr_get_clock_hz()``                  -- forwards to ra_cgc
+ * - ``ra_pwr_init()`` -- bring-up validation
+ * - ``ra_pwr_module_request(id)`` -- ref-counted ungate
+ * - ``ra_pwr_module_release(id)`` -- ref-counted gate
+ * - ``ra_pwr_set_wake_source / clear`` -- WUPEN0/1 management
+ * - ``ra_pwr_enter_sleep()`` -- WFI for CPU sleep
+ * - ``ra_pwr_enter_software_standby()`` -- WFI for SSTBY
+ * - ``ra_pwr_get_clock_hz()`` -- forwards to ra_cgc
  *
  * The 14-checkbox per-driver feature template (see
  * ``docs/ROADMAP.md``) lists "Power transition" as
@@ -30,15 +30,15 @@
  * ``ra_pwr_module_request()`` instead gives the LPM machinery a
  * single chokepoint where it can:
  *
- *  - Validate that the requested module is allowed in the current
- *    power mode (e.g. some peripherals do not survive Software
- *    Standby).
- *  - Track which modules need their clock domain switched on
- *    before the bit can be cleared (e.g. ULPT needs SOSC up first).
- *  - In Wave 9, route the request through the NSC veneer.
+ * - Validate that the requested module is allowed in the current
+ * power mode (e.g. some peripherals do not survive Software
+ * Standby).
+ * - Track which modules need their clock domain switched on
+ * before the bit can be cleared (e.g. ULPT needs SOSC up first).
+ * - In , route the request through the NSC veneer.
  *
- * For now (Wave 1.1) ``ra_pwr_module_request()`` is a thin
- * pass-through plus logging, but every driver from Wave 2 onwards
+ * For now ``ra_pwr_module_request()`` is a thin
+ * pass-through plus logging, but every driver from onwards
  * goes through this layer so the chokepoint exists.
  *
  * ## Wake-up sources
@@ -80,7 +80,7 @@ extern "C" {
  * @brief Which of the two WUPEN registers a wake source lives in.
  */
 typedef enum : uint8_t {
-  k_ra_pwr_wupen_reg_0 = 0U, /**< WUPEN0 (sources 0..31).  */
+  k_ra_pwr_wupen_reg_0 = 0U, /**< WUPEN0 (sources 0..31). */
   k_ra_pwr_wupen_reg_1 = 1U, /**< WUPEN1 (sources 32..63). */
 } ra_pwr_wupen_reg_t;
 
@@ -135,13 +135,13 @@ typedef enum : uint16_t {
  * MSTP ref-count table starts in lockstep with hardware.
  *
  * @return ``ra_err_t`` error code.
- * @retval k_ra_ok                Substrate ready.
- * @retval k_ra_err_hw_timeout    ra_mstp_init() did not see its
- *                                 read-back within budget.
+ * @retval k_ra_ok Substrate ready.
+ * @retval k_ra_err_hw_timeout ra_mstp_init() did not see its
+ * read-back within budget.
  *
  * @pre Caller is in single-threaded init context.
  * @pre Cold reset has just occurred (warm-reset entry is OK too --
- *      the function tolerates either).
+ * the function tolerates either).
  * @post WUPEN0 == 0 and WUPEN1 == 0.
  * @post ra_mstp ref-count table is all zero.
  *
@@ -162,7 +162,7 @@ typedef enum : uint16_t {
  * Forwards to ``ra_mstp_enable(id)`` after logging. Future
  * versions will validate the requested module against the current
  * LPM state and route the request through an NSC veneer in
- * Wave 9.
+ * .
  *
  * @param[in] id Peripheral identifier from ``ra_mstp_t``.
  * @return Result of the underlying ``ra_mstp_enable()``.
@@ -213,9 +213,9 @@ typedef enum : uint16_t {
  *
  * @param[in] source Packed ``ra_pwr_wake_t`` identifier.
  * @return ``ra_err_t`` error code.
- * @retval k_ra_ok                The bit is set.
- * @retval k_ra_err_invalid_arg   ``source`` decodes to an
- *                                 out-of-range register or bit.
+ * @retval k_ra_ok The bit is set.
+ * @retval k_ra_err_invalid_arg ``source`` decodes to an
+ * out-of-range register or bit.
  *
  * @pre IRQs masked or single-threaded init context.
  * @pre ``ra_pwr_init()`` has been called.
@@ -234,9 +234,9 @@ typedef enum : uint16_t {
  *
  * @param[in] source Packed ``ra_pwr_wake_t`` identifier.
  * @return ``ra_err_t`` error code.
- * @retval k_ra_ok                The bit is clear.
- * @retval k_ra_err_invalid_arg   ``source`` decodes to an
- *                                 out-of-range register or bit.
+ * @retval k_ra_ok The bit is clear.
+ * @retval k_ra_err_invalid_arg ``source`` decodes to an
+ * out-of-range register or bit.
  *
  * @pre IRQs masked or single-threaded init context.
  * @pre ``ra_pwr_init()`` has been called.
@@ -254,13 +254,13 @@ typedef enum : uint16_t {
  * Diagnostic accessor used by tests. Returns ``true`` if the
  * source is currently armed.
  *
- * @param[in]  source       Packed ``ra_pwr_wake_t`` identifier.
- * @param[out] out_enabled  ``true`` on success if the bit is set.
+ * @param[in] source Packed ``ra_pwr_wake_t`` identifier.
+ * @param[out] out_enabled ``true`` on success if the bit is set.
  *
  * @return ``ra_err_t`` error code.
- * @retval k_ra_ok                Bit value returned.
- * @retval k_ra_err_null_ptr      ``out_enabled`` was NULL.
- * @retval k_ra_err_invalid_arg   ``source`` decoded out of range.
+ * @retval k_ra_ok Bit value returned.
+ * @retval k_ra_err_null_ptr ``out_enabled`` was NULL.
+ * @retval k_ra_err_invalid_arg ``source`` decoded out of range.
  *
  * @pre ``out_enabled`` is non-NULL.
  * @pre ``source`` is a value from ``ra_pwr_wake_t``.
@@ -290,10 +290,10 @@ typedef enum : uint16_t {
  *
  * @pre IRQs are masked at the level the caller wants to wake on.
  * @pre At least one enabled interrupt source exists, otherwise
- *      the CPU never wakes.
+ * the CPU never wakes.
  *
  * @post On wake, the function returns to the caller. Caller is
- *       responsible for draining whatever woke them.
+ * responsible for draining whatever woke them.
  *
  * @note Thread safety: not thread-safe.
  * @since 0.2.0
@@ -312,13 +312,13 @@ void ra_pwr_enter_sleep(void);
  * On the host this is a no-op.
  *
  * @return ``ra_err_t`` error code.
- * @retval k_ra_ok                Returned cleanly after wake.
+ * @retval k_ra_ok Returned cleanly after wake.
  * @retval k_ra_err_invalid_state Caller failed to arm any wake
- *                                 source first.
+ * source first.
  *
  * @pre At least one wake source is armed in WUPEN0/1.
  * @pre IRQs are configured per HUM 11.6.2.1 (the wake interrupt
- *      must have its IELSRn entry programmed).
+ * must have its IELSRn entry programmed).
  * @post On wake, the function returns to the caller.
  * @post LPMD has been written back to 0 (normal mode).
  *
@@ -340,7 +340,7 @@ void ra_pwr_enter_sleep(void);
  * ``ra_pwr.h`` for module gating do not need to also include
  * ``ra_cgc.h`` just to look up a baud-rate divider.
  *
- * @param[in]  id     Clock identifier.
+ * @param[in] id Clock identifier.
  * @param[out] out_hz On success, current frequency in Hz.
  * @return Result of the underlying ``ra_cgc_get_clock_hz()``.
  *

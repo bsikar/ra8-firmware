@@ -1,0 +1,1276 @@
+/**
+ * @file ra_flash.c
+ * @brief Code-MRAM + Extra-MRAM + Option-Setting driver implementation -- DANGEROUS
+ *
+ * @par Tag
+ * [Ring 3 / HAL] {World: S}
+ *
+ * @details
+ * Implements the full HUM Ch 7 + Ch 59 surface declared in ``ra_flash.h``:
+ *
+ *  - Direct STR programming of code-MRAM through MRCPC0/1 (HUM Ch 59.4.2
+ *    Figure 59.4 p 3548).
+ *  - MACI command sequencer for configuration-set, anti-rollback,
+ *    forced-stop, status-clear (HUM Ch 59.4.4 p 3550 + HUM Ch 7
+ *    p 278..299 for OFS layout).
+ *  - Block-protection writes to MRCBPROT0/1 (HUM Ch 59 p 3604..3605).
+ *  - Start-up area swap via MSUACR (temporary) + configuration-set
+ *    (permanent) (HUM Ch 7 p 278 + HUM Ch 59 p 3593).
+ *  - W-HUK zeroize via MREZC (HUM Ch 59 p 3565).
+ *  - ECC encoder / decoder controls and read-error address capture
+ *    (HUM Ch 59 p 3554..3558 + p 3624).
+ *  - Per-source IRQ enables and a single-callback dispatcher.
+ *  - Full lifecycle: init, deinit, reset, force-stop,
+ *    enter_pe_mode, exit_pe_mode.
+ *  - Update-transfer kick + status (MCTRCNTR / MCTRSTATR / MCTRLSR,
+ *    HUM Ch 59 p 3580).
+ *
+ * Every register access carries a HUM Ch 7 or Ch 59 citation. The
+ * driver does not own any global state beyond the registered IRQ
+ * callback and a one-shot init flag; the controller itself holds
+ * every meaningful state bit.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
+ */
+
+#include "ra_flash.h"
+
+#include <stdint.h>
+#include <string.h>
+
+#include "ra8d2_flash_regs.h"
+#include "ra_check.h"
+#include "ra_err.h"
+#include "ra_log.h"
+
+static const char* s_tag = "FLASH";
+
+/**
+ * @struct ra_flash_runtime_t
+ * @brief File-scope runtime state.
+ *
+ * @details
+ * Cleared at init. Used by the IRQ dispatcher to find the registered
+ * callback and to detect callers that try to use APIs before init.
+ */
+typedef struct {
+  ra_flash_callback_t cb;          /**< Registered IRQ callback (or NULL). */
+  void*               user_ctx;    /**< Caller pointer passed to ``cb``.    */
+  bool                initialised; /**< True after ``ra_flash_init``.       */
+  bool                prefetch_on; /**< Last-known MRCPFB state.            */
+} ra_flash_runtime_t;
+
+static ra_flash_runtime_t s_rt = {};
+
+/**
+ * @enum ra_flash_const_t
+ * @brief Bounds on configuration values + spin limits.
+ *
+ * @details
+ * HUM Ch 59.5.2 p 3551 limits MRCMHZ to 0x0FA (250 MHz). HUM
+ * Ch 59.5.3 p 3552 limits MREMHZ to 0x07D (125 MHz). The MACI
+ * commands take tens of microseconds to milliseconds; the spin
+ * limit below is generous enough for the worst-case
+ * configuration-set (~9 ms) at the slowest clock.
+ */
+typedef enum : uint32_t {
+  k_ra_flash_max_mrcfreq_mhz = 0x000000FAUL, /**< MRCMHZ <= 250.            */
+  k_ra_flash_max_mrefreq_mhz = 0x0000007DUL, /**< MREMHZ <= 125.            */
+  k_ra_flash_busy_spin_limit = 0x00010000UL, /**< Direct-write busy spin.   */
+  k_ra_flash_maci_spin_limit = 0x00100000UL, /**< MACI command spin limit.  */
+  k_ra_flash_pe_spin_limit   = 0x00010000UL, /**< P/E entry spin limit.     */
+  k_ra_flash_zeroize_spin    = 0x00400000UL, /**< W-HUK zeroize spin.       */
+  k_ra_flash_max_list_select = 0x0000000FUL, /**< MCTRLSR.LIST max value.   */
+} ra_flash_const_t;
+
+/**
+ * @enum ra_flash_key_t
+ * @brief KEY-byte shifts and codes that gate writes.
+ *
+ * @details
+ * MRCFREQ requires KEY=0x1E in [31:24] (HUM Ch 59.5.2 p 3551 Note 1).
+ * MREFREQ requires KEY=0xE1 in [31:24] (HUM Ch 59.5.3 p 3552 Note 1).
+ */
+typedef enum : uint32_t {
+  k_ra_flash_freq_key_shift = 24U, /**< KEY[7:0] @ [31:24] in MRCFREQ/MREFREQ. */
+  k_ra_flash_mrcfreq_key    = 0x1EU,
+  k_ra_flash_mrefreq_key    = 0xE1U,
+} ra_flash_key_t;
+
+/* =============================================================================
+ * Internal helpers
+ * =============================================================================
+ */
+
+/**
+ * @brief Wait for MRCPS.PRGBSYC = 0 and ABUFFULL = 0 (buffer ready).
+ *
+ * @param[in] limit Maximum spin iterations.
+ * @return ``k_ra_ok`` if both bits cleared, else ``k_ra_err_hw_timeout``.
+ *
+ * @pre ``limit`` > 0.
+ * @pre Controller is powered.
+ * @post Buffer is observed empty or function returns timeout.
+ */
+static ra_err_t internal_wait_buffer_ready(uint32_t limit)
+{
+  for (uint32_t i = 0U; i < limit; ++i) {
+    /* HUM Ch 59 "MRCPS : Code MRAM Program Status Register" p 3601 */
+    const uint8_t s = *ra_mram_reg8((uint16_t)k_ra_mram_off_mrcps);
+    if (((s & (uint8_t)k_ra_mrcps_mask_prgbsyc) == 0U) &&
+        ((s & (uint8_t)k_ra_mrcps_mask_abuffull) == 0U)) {
+      return k_ra_ok;
+    }
+  }
+  return k_ra_err_hw_timeout;
+}
+
+/**
+ * @brief Wait for MRCPS.ABUFEMP = 1 and PRGBSYC = 0 (commit done).
+ *
+ * @param[in] limit Maximum spin iterations.
+ * @return ``k_ra_ok`` on commit, else ``k_ra_err_hw_timeout``.
+ *
+ * @pre ``limit`` > 0.
+ * @pre Controller is powered.
+ * @post Commit observed or function returns timeout.
+ */
+static ra_err_t internal_wait_commit_done(uint32_t limit)
+{
+  for (uint32_t i = 0U; i < limit; ++i) {
+    /* HUM Ch 59 "MRCPS : Code MRAM Program Status Register" p 3601 */
+    const uint8_t s = *ra_mram_reg8((uint16_t)k_ra_mram_off_mrcps);
+    if (((s & (uint8_t)k_ra_mrcps_mask_abufemp) != 0U) &&
+        ((s & (uint8_t)k_ra_mrcps_mask_prgbsyc) == 0U)) {
+      return k_ra_ok;
+    }
+  }
+  return k_ra_err_hw_timeout;
+}
+
+/**
+ * @brief Spin until MSTATR.MRDY rises or limit elapses.
+ *
+ * @param[in] limit Maximum spin iterations.
+ * @return ``k_ra_ok`` if MRDY observed, else ``k_ra_err_hw_timeout``.
+ *
+ * @pre ``limit`` > 0.
+ * @pre Controller is in P/E mode (MRDY only meaningful then).
+ * @post MRDY observed high or function returns timeout.
+ */
+static ra_err_t internal_wait_mrdy(uint32_t limit)
+{
+  for (uint32_t i = 0U; i < limit; ++i) {
+    /* HUM Ch 59 "MSTATR : Extra MRAM Status Register" p 3578 */
+    const uint32_t s = *ra_mram_reg32((uint16_t)k_ra_mram_off_mstatr);
+    if ((s & (uint32_t)k_ra_mstatr_mask_mrdy) != 0U) {
+      return k_ra_ok;
+    }
+  }
+  return k_ra_err_hw_timeout;
+}
+
+/**
+ * @brief Open or close the per-world program-control gate.
+ *
+ * @param[in] world  ``k_ra_flash_world_ns`` -> MRCPC0; ``_s`` -> MRCPC1.
+ * @param[in] enable ``true`` to enable program; ``false`` to lock.
+ *
+ * @pre None (registers always accessible).
+ * @post Matching MRCPCx register holds the keyed value.
+ */
+static void internal_set_program_gate(ra_flash_world_t world, bool enable)
+{
+  const uint16_t off =
+    (world == k_ra_flash_world_s) ? (uint16_t)k_ra_mram_off_mrcpc1 : (uint16_t)k_ra_mram_off_mrcpc0;
+  uint16_t value;
+  if (world == k_ra_flash_world_s) {
+    value = enable ? (uint16_t)k_ra_mrcpc1_key_enable : (uint16_t)k_ra_mrcpc1_key_disable;
+  } else {
+    value = enable ? (uint16_t)k_ra_mrcpc0_key_enable : (uint16_t)k_ra_mrcpc0_key_disable;
+  }
+  /* HUM Ch 59 "MRCPC0/MRCPC1 : Code MRAM Program Control Register" p 3601 */
+  *ra_mram_reg16(off) = value;
+}
+
+/**
+ * @brief Toggle high-speed program mode (MRPSC.MHSPEN).
+ *
+ * @param[in] enable true => MHSPEN=1.
+ *
+ * @pre None.
+ * @post MRPSC.MHSPEN matches ``enable``.
+ */
+static void internal_set_hsp_mode(bool enable)
+{
+  /* HUM Ch 59 "MRPSC : MRAM Program Speed Control Register" p 3600 */
+  *ra_mram_reg8((uint16_t)k_ra_mram_off_mrpsc) = enable ? (uint8_t)k_ra_mrpsc_mask_mhspen : 0U;
+}
+
+/**
+ * @brief Set MRCPFB.MPFBEN to enable/disable the prefetch buffer.
+ *
+ * @param[in] enable true => prefetch on.
+ *
+ * @pre None.
+ * @post MRCPFB.MPFBEN matches ``enable``.
+ */
+static void internal_set_prefetch(bool enable)
+{
+  /* HUM Ch 59.5.1 "MRCPFB : Code MRAM Pre-Fetch Buffer Enable Register" p 3551 */
+  *ra_mram_reg8((uint16_t)k_ra_mram_off_mrcpfb) = enable ? 1U : 0U;
+  s_rt.prefetch_on                              = enable;
+}
+
+/**
+ * @brief Send a single byte through the MACI command-issuing area.
+ *
+ * @param[in] byte Command byte.
+ *
+ * @pre Controller is in P/E mode.
+ * @post One byte was written to MACI_CMD8.
+ */
+static void internal_maci_cmd8(uint8_t byte)
+{
+  /* HUM Ch 59 "MACI Command-Issuing Area" p 3550 */
+  *ra_mram_cmd8() = byte;
+}
+
+/**
+ * @brief Send a halfword through the MACI command-issuing area.
+ *
+ * @param[in] half 16-bit data.
+ *
+ * @pre Controller is in P/E mode.
+ * @post One halfword was written to MACI_CMD16.
+ */
+static void internal_maci_cmd16(uint16_t half)
+{
+  /* HUM Ch 59 "MACI Command-Issuing Area" p 3550 */
+  *ra_mram_cmd16() = half;
+}
+
+/**
+ * @brief Translate logical ARC id to MCNTSELR field value.
+ *
+ * @param[in] id Logical counter id.
+ * @return MCNTSELR.CNTSEL field value (0 if id is out of range).
+ *
+ * @pre ``id`` < ``k_ra_flash_arc_count`` for a meaningful result.
+ * @post Returned value matches FSP ``mram_counter_to_mcntselr_convert``.
+ */
+static uint8_t internal_arc_to_mcntselr(ra_flash_arc_id_t id)
+{
+  switch (id) {
+    case k_ra_flash_arc_sec:
+      return (uint8_t)k_ra_mcntselr_sec;
+    case k_ra_flash_arc_oembl:
+      return (uint8_t)k_ra_mcntselr_oembl;
+    case k_ra_flash_arc_nsec_0:
+      return (uint8_t)k_ra_mcntselr_nsec_0;
+    case k_ra_flash_arc_nsec_1:
+      return (uint8_t)((uint8_t)k_ra_mcntselr_nsec_0 + 1U);
+    case k_ra_flash_arc_nsec_2:
+      return (uint8_t)((uint8_t)k_ra_mcntselr_nsec_0 + 2U);
+    case k_ra_flash_arc_nsec_3:
+      return (uint8_t)((uint8_t)k_ra_mcntselr_nsec_0 + 3U);
+    default:
+      return 0U;
+  }
+  /* unreachable */
+}
+
+/**
+ * @brief Compute the maximum count for an ARC id.
+ *
+ * @param[in] id Logical counter id.
+ * @return Max bit count.
+ *
+ * @pre ``id`` < ``k_ra_flash_arc_count``.
+ * @post Returned value reflects the ARCCS.ARCNS field for NSEC ids.
+ */
+static uint32_t internal_arc_max_count(ra_flash_arc_id_t id)
+{
+  if (id == k_ra_flash_arc_sec) {
+    return (uint32_t)k_ra_arc_sec_max_bits;
+  }
+  if (id == k_ra_flash_arc_oembl) {
+    return (uint32_t)k_ra_arc_oembl_max_bits;
+  }
+  /* NSEC: read ARCCS.ARCNS to decide single vs multiple. */
+  /* HUM Ch 7.2.21 "ARCCS Anti-Rollback Counter Configuration" p 296 */
+  const uint16_t arccs = *(volatile const uint16_t*)(uintptr_t)k_ra_flash_ofs_arccs_addr;
+  const uint8_t  arcns = (uint8_t)(arccs & (uint16_t)k_ra_arc_arccs_mask);
+  if (arcns == (uint8_t)k_ra_arc_arcns_single) {
+    return (uint32_t)k_ra_arc_nsec_single;
+  }
+  return (uint32_t)k_ra_arc_nsec_multiple;
+}
+
+/**
+ * @brief Pop-count helper for 32-bit words used by the ARC reader.
+ *
+ * @param[in] x Input word.
+ * @return Number of set bits.
+ *
+ * @pre None.
+ * @post Returned value in [0, 32].
+ */
+static uint32_t internal_popcount32(uint32_t x)
+{
+  /* Avoid relying on __builtin_popcount so the simulator host build
+   * does not pick up a different implementation than the firmware
+   * target. NASA Rule 2 -- bounded loop. */
+  uint32_t count = 0U;
+  for (uint32_t i = 0U; i < 32U; ++i) {
+    if ((x & (uint32_t)(1UL << i)) != 0U) {
+      count++;
+    }
+  }
+  return count;
+}
+
+/* =============================================================================
+ * Public API: lifecycle
+ * =============================================================================
+ */
+
+ra_err_t ra_flash_init(const ra_flash_cfg_t* cfg)
+{
+  RA_CHECK_NULL_PTR((const void*)cfg, s_tag, "cfg must not be nullptr");
+  if (cfg->mrcfreq_mhz > (uint16_t)k_ra_flash_max_mrcfreq_mhz) {
+    return k_ra_err_invalid_arg;
+  }
+  if (cfg->mrefreq_mhz > (uint8_t)k_ra_flash_max_mrefreq_mhz) {
+    return k_ra_err_invalid_arg;
+  }
+
+  /* Frequency-down procedure -- HUM Ch 59.4.3 Figure 59.6 p 3550. */
+  internal_set_prefetch(false);
+
+  /* HUM Ch 59.5.2 "MRCFREQ : Code MRAM Frequency Notifications Register" p 3551 */
+  const uint32_t mrcfreq_word =
+    ((uint32_t)k_ra_flash_mrcfreq_key << k_ra_flash_freq_key_shift) | (uint32_t)cfg->mrcfreq_mhz;
+  *ra_mram_reg32((uint16_t)k_ra_mram_off_mrcfreq) = mrcfreq_word;
+
+  /* HUM Ch 59.5.3 "MREFREQ : Extra MRAM Frequency Notifications Register" p 3552 */
+  const uint32_t mrefreq_word =
+    ((uint32_t)k_ra_flash_mrefreq_key << k_ra_flash_freq_key_shift) | (uint32_t)cfg->mrefreq_mhz;
+  *ra_mram_reg32((uint16_t)k_ra_mram_off_mrefreq) = mrefreq_word;
+
+  /* HUM Ch 59 "MRCEECC : Code MRAM ECC Encoder Control" p 3624 */
+  *ra_mram_reg16((uint16_t)k_ra_mram_off_mrceecc) =
+    (uint16_t)((uint16_t)k_ra_mrceecc_key_shift |
+               (cfg->ecc_encoder_enable ? (uint16_t)k_ra_mrceecc_mask_eccen : 0U));
+
+  /* HUM Ch 59 "MRCDECC : Code MRAM ECC Decoder Control" p 3554 */
+  *ra_mram_reg16((uint16_t)k_ra_mram_off_mrcdecc) =
+    (uint16_t)((uint16_t)k_ra_mrcdecc_key_shift |
+               (cfg->ecc_decoder_enable ? (uint16_t)k_ra_mrcdecc_mask_dececen : 0U));
+
+  internal_set_prefetch(cfg->prefetch_en);
+
+  /* Lock both program gates so no stray store can program MRAM. */
+  internal_set_program_gate(k_ra_flash_world_ns, false);
+  internal_set_program_gate(k_ra_flash_world_s, false);
+  internal_set_hsp_mode(false);
+
+  /* Clear sticky errors so the new run starts from a clean state. */
+  /* HUM Ch 59 "MRCPS : Code MRAM Program Status Register" p 3601 */
+  *ra_mram_reg8((uint16_t)k_ra_mram_off_mrcps) = (uint8_t)k_ra_mrcps_mask_errors;
+  /* HUM Ch 59 "MRCRAES : Code MRAM Read Access Error Status" p 3554 */
+  *ra_mram_reg8((uint16_t)k_ra_mram_off_mrcraes) = 0U;
+  /* HUM Ch 59 "MRERAES : Extra MRAM Read Access Error Status" p 3557 */
+  *ra_mram_reg8((uint16_t)k_ra_mram_off_mreraes) = 0U;
+
+  s_rt.initialised = true;
+  s_rt.cb          = nullptr;
+  s_rt.user_ctx    = nullptr;
+
+  ra_log_info_val(s_tag, "flash_init mrcfreq", (uint32_t)cfg->mrcfreq_mhz);
+  return k_ra_ok;
+}
+
+ra_err_t ra_flash_deinit(void)
+{
+  /* Lock everything, clear sticky errors, re-enable prefetch. */
+  internal_set_program_gate(k_ra_flash_world_ns, false);
+  internal_set_program_gate(k_ra_flash_world_s, false);
+  internal_set_hsp_mode(false);
+  /* If we accidentally left P/E mode on, drop back to read mode. */
+  /* HUM Ch 59 "MENTRYR : Extra MRAM Program-Mode Entry" p 3582 */
+  *ra_mram_reg16((uint16_t)k_ra_mram_off_mentryr) = (uint16_t)k_ra_mentryr_read_mode;
+  /* HUM Ch 59 "MRCPS : Code MRAM Program Status Register" p 3601 */
+  *ra_mram_reg8((uint16_t)k_ra_mram_off_mrcps) = (uint8_t)k_ra_mrcps_mask_errors;
+  internal_set_prefetch(true);
+
+  s_rt.initialised = false;
+  s_rt.cb          = nullptr;
+  s_rt.user_ctx    = nullptr;
+  return k_ra_ok;
+}
+
+/* =============================================================================
+ * Public API: status snapshots
+ * =============================================================================
+ */
+
+ra_err_t ra_flash_get_status(uint8_t* out_status)
+{
+  RA_CHECK_NULL_PTR(out_status, s_tag, "out_status must not be nullptr");
+  /* HUM Ch 59 "MRCPS : Code MRAM Program Status Register" p 3601 */
+  *out_status = *ra_mram_reg8((uint16_t)k_ra_mram_off_mrcps);
+  return k_ra_ok;
+}
+
+ra_err_t ra_flash_get_extended_status(ra_flash_status_ext_t* out)
+{
+  RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
+  /* HUM Ch 59 "MRCPS : Code MRAM Program Status Register" p 3601 */
+  out->mrcps = *ra_mram_reg8((uint16_t)k_ra_mram_off_mrcps);
+  /* HUM Ch 59 "MASTAT : Extra MRAM Access Status Register" p 3577 */
+  out->mastat = *ra_mram_reg8((uint16_t)k_ra_mram_off_mastat);
+  /* HUM Ch 59 "MREZS : Extra MRAM Zeroization Status Register" p 3565 */
+  out->mrezs = *ra_mram_reg8((uint16_t)k_ra_mram_off_mrezs);
+  /* HUM Ch 59 "MCMDR : MACI Command Register" p 3589 */
+  out->mcmdr = *ra_mram_reg16((uint16_t)k_ra_mram_off_mcmdr);
+  /* HUM Ch 59 "MSTATR : Extra MRAM Status Register" p 3578 */
+  out->mstatr = *ra_mram_reg32((uint16_t)k_ra_mram_off_mstatr);
+  return k_ra_ok;
+}
+
+ra_err_t ra_flash_clear_status(uint8_t mask)
+{
+  if ((mask & (uint8_t)~(uint8_t)k_ra_mrcps_mask_errors) != 0U) {
+    return k_ra_err_invalid_arg;
+  }
+  /* HUM Ch 59 "MRCPS : Code MRAM Program Status Register" p 3601 -- W1C
+   * for PRGERRC and ECCERRC; other bits are read-only. */
+  *ra_mram_reg8((uint16_t)k_ra_mram_off_mrcps) = mask;
+  return k_ra_ok;
+}
+
+ra_err_t ra_flash_set_rww_disable(bool disable)
+{
+  internal_set_prefetch(!disable);
+  return k_ra_ok;
+}
+
+/* =============================================================================
+ * Public API: direct code-MRAM programming
+ * =============================================================================
+ */
+
+ra_err_t
+ra_flash_write_block(uint32_t mram_addr, const uint8_t* src, uint32_t len, ra_flash_world_t world)
+{
+  RA_CHECK_NULL_PTR((const void*)src, s_tag, "src must not be nullptr");
+  if (len == 0U || len > (uint32_t)k_ra_mram_write_size_bytes) {
+    return k_ra_err_invalid_arg;
+  }
+
+  /* Range-check the destination against the 1 MiB MRAM window. */
+  const uint32_t start = mram_addr;
+  const uint32_t end_excl =
+    (uint32_t)((uint64_t)mram_addr + (uint64_t)len); /* avoids 32-bit overflow */
+  if (start < (uint32_t)k_ra_flash_code_start) {
+    return k_ra_err_invalid_arg;
+  }
+  if (end_excl > (uint32_t)k_ra_flash_code_start + (uint32_t)k_ra_flash_code_size) {
+    return k_ra_err_invalid_arg;
+  }
+
+  /* Reject writes that span a 32-byte page boundary. */
+  const uint32_t page_mask = (uint32_t)k_ra_mram_write_size_bytes - 1U;
+  if ((start & ~page_mask) != ((end_excl - 1U) & ~page_mask)) {
+    return k_ra_err_invalid_arg;
+  }
+
+  /* Step 1: wait for the controller to be idle. */
+  ra_err_t err = internal_wait_buffer_ready((uint32_t)k_ra_flash_busy_spin_limit);
+  RA_RETURN_ON_ERROR(err, s_tag, "flash_write: busy wait");
+
+  /* Step 2: open the program gate, enable HSP, disable prefetch. */
+  internal_set_prefetch(false);
+  internal_set_hsp_mode(true);
+  internal_set_program_gate(world, true);
+
+  /* Step 3: store the bytes into the MRAM data window. */
+  volatile uint8_t* dst = (volatile uint8_t*)(uintptr_t)mram_addr;
+  for (uint32_t i = 0U; i < len; ++i) {
+    dst[i] = src[i];
+  }
+
+  /* Step 4: barrier + keyed flush to commit a partial-page write. */
+  __asm__ volatile("" ::: "memory");
+  /* HUM Ch 59 "MRCFLR : Code MRAM Flush Register" p 3601 */
+  *ra_mram_reg16((uint16_t)k_ra_mram_off_mrcflr) = (uint16_t)k_ra_mrcflr_key_flush;
+
+  /* Step 5: wait for commit. */
+  err = internal_wait_commit_done((uint32_t)k_ra_flash_busy_spin_limit);
+
+  /* Step 6: tear down regardless of err so the gate cannot stay open. */
+  internal_set_program_gate(world, false);
+  internal_set_hsp_mode(false);
+  internal_set_prefetch(true);
+
+  RA_RETURN_ON_ERROR(err, s_tag, "flash_write: commit wait");
+
+  /* Step 7: error check. */
+  /* HUM Ch 59 "MRCPS : Code MRAM Program Status Register" p 3601 */
+  const uint8_t status = *ra_mram_reg8((uint16_t)k_ra_mram_off_mrcps);
+  if ((status & (uint8_t)k_ra_mrcps_mask_errors) != 0U) {
+    *ra_mram_reg8((uint16_t)k_ra_mram_off_mrcps) = (uint8_t)k_ra_mrcps_mask_errors;
+    ra_log_error_val(s_tag, "flash_write: hw error", (uint32_t)status);
+    return k_ra_err_hw_error;
+  }
+  return k_ra_ok;
+}
+
+ra_err_t ra_flash_erase_block(uint32_t mram_addr, ra_flash_world_t world)
+{
+  if ((mram_addr & ((uint32_t)k_ra_mram_block_size_bytes - 1U)) != 0U) {
+    return k_ra_err_invalid_arg;
+  }
+  /* MRAM has no separate erase: erase == program-to-all-ones. */
+  static const uint8_t s_ones[k_ra_mram_block_size_bytes] = {
+    0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU,
+    0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU,
+    0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU,
+  };
+  return ra_flash_write_block(mram_addr, s_ones, (uint32_t)k_ra_mram_block_size_bytes, world);
+}
+
+/* =============================================================================
+ * Public API: block protection
+ * =============================================================================
+ */
+
+ra_err_t ra_flash_block_protect_set(ra_flash_world_t world, bool lock, bool permanent)
+{
+  if (permanent && !lock) {
+    /* Permanent unlock makes no sense -- the fuse is one-shot. */
+    return k_ra_err_invalid_arg;
+  }
+  uint16_t value;
+  if (world == k_ra_flash_world_s) {
+    value = lock ? (uint16_t)k_ra_mrcbprot1_key_lock : (uint16_t)k_ra_mrcbprot1_key_unlock;
+    /* HUM Ch 59 "MRCBPROT1 : Code MRAM Block Protection (S)" p 3605 */
+    *ra_mram_reg16((uint16_t)k_ra_mram_off_mrcbprot1) = value;
+  } else {
+    value = lock ? (uint16_t)k_ra_mrcbprot0_key_lock : (uint16_t)k_ra_mrcbprot0_key_unlock;
+    /* HUM Ch 59 "MRCBPROT0 : Code MRAM Block Protection (NS)" p 3604 */
+    *ra_mram_reg16((uint16_t)k_ra_mram_off_mrcbprot0) = value;
+  }
+  /* The "permanent" flag is conveyed via a configuration-set update of
+   * the OFS region; the per-register write above only takes effect for
+   * this boot. We expose the request for transparency, but defer the
+   * persistent fuse to ``ra_flash_config_set_write`` for callers who
+   * truly want it. The HUM Ch 7 p 278 OFS layout is the trust anchor. */
+  if (permanent) {
+    ra_log_warn(s_tag, "permanent block protect requires config-set");
+  }
+  return k_ra_ok;
+}
+
+/* =============================================================================
+ * Public API: P/E mode transitions
+ * =============================================================================
+ */
+
+ra_err_t ra_flash_enter_pe_mode(void)
+{
+  internal_set_prefetch(false);
+  /* HUM Ch 59 "MENTRYR : Extra MRAM Program-Mode Entry" p 3582 */
+  *ra_mram_reg16((uint16_t)k_ra_mram_off_mentryr) = (uint16_t)k_ra_mentryr_pe_enter;
+
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_flash_pe_spin_limit; ++i) {
+    /* HUM Ch 59 "MENTRYR : Extra MRAM Program-Mode Entry" p 3582 */
+    const uint16_t v = *ra_mram_reg16((uint16_t)k_ra_mram_off_mentryr);
+    if ((v & (uint16_t)k_ra_mentryr_mask_pe_mode) != 0U) {
+      return k_ra_ok;
+    }
+  }
+  return k_ra_err_hw_timeout;
+}
+
+ra_err_t ra_flash_exit_pe_mode(void)
+{
+  /* HUM Ch 59 "MENTRYR : Extra MRAM Program-Mode Entry" p 3582 */
+  *ra_mram_reg16((uint16_t)k_ra_mram_off_mentryr) = (uint16_t)k_ra_mentryr_read_mode;
+
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_flash_pe_spin_limit; ++i) {
+    /* HUM Ch 59 "MENTRYR : Extra MRAM Program-Mode Entry" p 3582 */
+    const uint16_t v = *ra_mram_reg16((uint16_t)k_ra_mram_off_mentryr);
+    if ((v & (uint16_t)k_ra_mentryr_mask_pe_mode) == 0U) {
+      internal_set_prefetch(s_rt.prefetch_on);
+      return k_ra_ok;
+    }
+  }
+  return k_ra_err_hw_timeout;
+}
+
+/* =============================================================================
+ * Public API: forced stop / reset
+ * =============================================================================
+ */
+
+ra_err_t ra_flash_force_stop(void)
+{
+  /* HUM Ch 59 "MACI Command-Issuing Area" p 3550 */
+  internal_maci_cmd8((uint8_t)k_ra_maci_cmd_forced_stop);
+  ra_err_t err = internal_wait_mrdy((uint32_t)k_ra_flash_maci_spin_limit);
+  if (err != k_ra_ok) {
+    return err;
+  }
+
+  /* HUM Ch 59 "MASTAT : Extra MRAM Access Status Register" p 3577 */
+  const uint8_t mastat = *ra_mram_reg8((uint16_t)k_ra_mram_off_mastat);
+  if ((mastat & (uint8_t)k_ra_mastat_mask_cmdlk) != 0U) {
+    return k_ra_err_hw_error;
+  }
+  return k_ra_ok;
+}
+
+ra_err_t ra_flash_reset(void)
+{
+  RA_VALIDATE_INIT(s_rt.initialised, s_tag, "flash_reset before init");
+  ra_err_t err = ra_flash_enter_pe_mode();
+  if (err != k_ra_ok) {
+    return err;
+  }
+  ra_err_t stop_err = ra_flash_force_stop();
+  /* Clear status whether or not the stop succeeded. */
+  /* HUM Ch 59 "MACI Command-Issuing Area" p 3550 */
+  internal_maci_cmd8((uint8_t)k_ra_maci_cmd_status_clear);
+  (void)internal_wait_mrdy((uint32_t)k_ra_flash_maci_spin_limit);
+  ra_err_t exit_err = ra_flash_exit_pe_mode();
+  if (stop_err != k_ra_ok) {
+    return stop_err;
+  }
+  return exit_err;
+}
+
+/* =============================================================================
+ * Public API: start-up area control
+ * =============================================================================
+ */
+
+ra_err_t ra_flash_set_startup_area(ra_flash_startup_t target, bool temporary)
+{
+  if (target > k_ra_flash_startup_btflg) {
+    return k_ra_err_invalid_arg;
+  }
+  ra_err_t err = ra_flash_enter_pe_mode();
+  if (err != k_ra_ok) {
+    return err;
+  }
+
+  if (temporary) {
+    /* HUM Ch 59 "MSUACR : Start-Up Area Control Register" p 3593 */
+    const uint16_t swap_bit = (target == k_ra_flash_startup_alternate)
+                                ? (uint16_t)k_ra_msuacr_swap_alternate
+                                : (uint16_t)k_ra_msuacr_swap_default;
+    *ra_mram_reg16((uint16_t)k_ra_mram_off_msuacr) =
+      (uint16_t)((uint16_t)k_ra_msuacr_key | swap_bit);
+  } else {
+    /* Permanent: configuration-set write to BTFLG. */
+    /* HUM Ch 7 "Option-Setting Memory" p 278 */
+    uint16_t cfg_words[k_ra_mram_config_set_word_count];
+    for (uint32_t i = 0U; i < (uint32_t)k_ra_mram_config_set_word_count; ++i) {
+      cfg_words[i] = 0xFFFFU;
+    }
+    /* BTFLG occupies bit 15 of word index 3 (FSP MRAM_PRV_CONFIG_SET_BTFLG_OFFSET).
+     * 0 selects alternate, 1 selects default (HUM Ch 7 p 278). */
+    const uint16_t btflg_bit = (target == k_ra_flash_startup_default) ? 0x8000U : 0x0000U;
+    /* HUM Ch 7 "OFS SAS region" p 278 */
+    cfg_words[3] = (uint16_t)(btflg_bit | 0x1FFFU);
+    err          = ra_flash_config_set_write((uint32_t)k_ra_msaddr_config_set_startup, cfg_words);
+  }
+
+  ra_err_t exit_err = ra_flash_exit_pe_mode();
+  if (err != k_ra_ok) {
+    return err;
+  }
+  return exit_err;
+}
+
+ra_err_t ra_flash_get_startup_area(uint8_t* out_btflg, uint8_t* out_fspr)
+{
+  RA_CHECK_NULL_PTR(out_btflg, s_tag, "out_btflg must not be nullptr");
+  RA_CHECK_NULL_PTR(out_fspr, s_tag, "out_fspr must not be nullptr");
+  /* HUM Ch 59 "MSUASMON : Start-Up Area Monitor" p 3593 */
+  const uint32_t v = *ra_mram_reg32((uint16_t)k_ra_mram_off_msuasmon);
+  *out_btflg       = (uint8_t)((v & (uint32_t)k_ra_msuasmon_mask_btflg) != 0U);
+  *out_fspr        = (uint8_t)((v & (uint32_t)k_ra_msuasmon_mask_fspr) != 0U);
+  return k_ra_ok;
+}
+
+/* =============================================================================
+ * Public API: configuration-set write (low-level OFS update)
+ * =============================================================================
+ */
+
+ra_err_t ra_flash_config_set_write(uint32_t target_addr, const uint16_t* words)
+{
+  RA_CHECK_NULL_PTR((const void*)words, s_tag, "words must not be nullptr");
+  if (target_addr < (uint32_t)k_ra_flash_extra_start) {
+    return k_ra_err_invalid_arg;
+  }
+  if (target_addr >= (uint32_t)k_ra_flash_extra_start + (uint32_t)k_ra_flash_extra_size) {
+    return k_ra_err_invalid_arg;
+  }
+
+  /* HUM Ch 59 "MSADDR : MACI Command Start Address" p 3573 */
+  *ra_mram_reg32((uint16_t)k_ra_mram_off_msaddr) = target_addr;
+
+  /* Two-byte command opener -- HUM Ch 59 p 3550 + FSP r_mram.c L1511..1521. */
+  internal_maci_cmd8((uint8_t)k_ra_maci_cmd_config_set_1);
+  internal_maci_cmd8((uint8_t)k_ra_maci_cmd_config_set_2);
+
+  /* Eight halfwords payload. */
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_mram_config_set_word_count; ++i) {
+    internal_maci_cmd16(words[i]);
+  }
+  /* Trailer. */
+  internal_maci_cmd8((uint8_t)k_ra_maci_cmd_final);
+
+  ra_err_t err = internal_wait_mrdy((uint32_t)k_ra_flash_maci_spin_limit);
+  if (err != k_ra_ok) {
+    return err;
+  }
+
+  /* HUM Ch 59 "MSTATR : Extra MRAM Status Register" p 3578 */
+  const uint32_t s = *ra_mram_reg32((uint16_t)k_ra_mram_off_mstatr);
+  if ((s & (uint32_t)k_ra_mstatr_mask_any_err) != 0U) {
+    return k_ra_err_hw_error;
+  }
+  return k_ra_ok;
+}
+
+/* =============================================================================
+ * Public API: anti-rollback counters
+ * =============================================================================
+ */
+
+/**
+ * @brief Issue a single MACI counter command (read or increment).
+ *
+ * @param[in] mcntselr MCNTSELR field value.
+ * @param[in] cmd      MACI opcode.
+ * @return ``ra_err_t``.
+ *
+ * @pre Controller already in P/E mode.
+ * @post MRDY observed or function returns timeout/error.
+ */
+static ra_err_t internal_arc_cmd(uint8_t mcntselr, uint8_t cmd)
+{
+  /* HUM Ch 59 "MCNTSELR : MRAM Counter Select Register" p 3576 */
+  *ra_mram_reg8((uint16_t)k_ra_mram_off_mcntselr) =
+    (uint8_t)(mcntselr & (uint8_t)k_ra_mcntselr_mask);
+  internal_maci_cmd8(cmd);
+  internal_maci_cmd8((uint8_t)k_ra_maci_cmd_final);
+  ra_err_t err = internal_wait_mrdy((uint32_t)k_ra_flash_maci_spin_limit);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  /* HUM Ch 59 "MASTAT : Extra MRAM Access Status Register" p 3577 */
+  const uint8_t mastat = *ra_mram_reg8((uint16_t)k_ra_mram_off_mastat);
+  if ((mastat & (uint8_t)k_ra_mastat_mask_cmdlk) != 0U) {
+    return k_ra_err_hw_error;
+  }
+  return k_ra_ok;
+}
+
+/**
+ * @brief Read an ARC counter through whatever path the HUM mandates.
+ *
+ * @param[in]  id        Logical counter id.
+ * @param[out] out_count Population count of the counter bit-vector.
+ * @return ``ra_err_t``.
+ *
+ * @pre Caller is in P/E mode for the OEMBL path; read-mode is fine
+ *      for SEC/NSEC.
+ * @post ``*out_count`` populated on success.
+ */
+static ra_err_t internal_arc_read_locked(ra_flash_arc_id_t id, uint32_t* out_count)
+{
+  uint8_t  mcntselr = internal_arc_to_mcntselr(id);
+  uint32_t count    = 0U;
+
+  if (id == k_ra_flash_arc_oembl) {
+    /* OEMBL needs the MACI read so RSIP-E50D can intercept. */
+    ra_err_t err = internal_arc_cmd(mcntselr, (uint8_t)k_ra_maci_cmd_read_counter);
+    if (err != k_ra_ok) {
+      return err;
+    }
+    /* HUM Ch 59 "MCNTDTR0 : MRAM Counter Data 0" p 3576 */
+    const uint32_t lo = *ra_mram_reg32((uint16_t)k_ra_mram_off_mcntdtr0);
+    /* HUM Ch 59 "MCNTDTR1 : MRAM Counter Data 1" p 3577 */
+    const uint32_t hi = *ra_mram_reg32((uint16_t)k_ra_mram_off_mcntdtr1);
+    count             = internal_popcount32(lo) + internal_popcount32(hi);
+  } else if (id == k_ra_flash_arc_sec) {
+    /* HUM Ch 7.2.22 "ARC_SEC" p 296 */
+    const volatile uint32_t* p = (const volatile uint32_t*)(uintptr_t)k_ra_flash_ofs_arc_sec_addr;
+    /* SEC counter is 8 words. */
+    for (uint32_t w = 0U; w < 8U; ++w) {
+      count += internal_popcount32(p[w]);
+    }
+  } else {
+    /* NSEC family. */
+    /* HUM Ch 7.2.21 "ARCCS" p 296 */
+    const uint16_t arccs = *(volatile const uint16_t*)(uintptr_t)k_ra_flash_ofs_arccs_addr;
+    const uint8_t  arcns = (uint8_t)(arccs & (uint16_t)k_ra_arc_arccs_mask);
+    /* HUM Ch 7.2.23 "ARC_NSEC" p 297 */
+    const volatile uint32_t* base =
+      (const volatile uint32_t*)(uintptr_t)k_ra_flash_ofs_arc_nsec_addr;
+    uint32_t words_per = (arcns == (uint8_t)k_ra_arc_arcns_single) ? 16U : 2U;
+    if (words_per > (uint32_t)k_ra_mram_arc_max_words) {
+      words_per = (uint32_t)k_ra_mram_arc_max_words;
+    }
+    const uint32_t base_idx = (id == k_ra_flash_arc_nsec_0)   ? 0U
+                              : (id == k_ra_flash_arc_nsec_1) ? words_per
+                              : (id == k_ra_flash_arc_nsec_2) ? (words_per * 2U)
+                                                              : (words_per * 3U);
+    for (uint32_t w = 0U; w < words_per; ++w) {
+      count += internal_popcount32(base[base_idx + w]);
+    }
+  }
+
+  *out_count = count;
+  (void)mcntselr; /* used in OEMBL branch only */
+  return k_ra_ok;
+}
+
+ra_err_t ra_flash_arc_increment(ra_flash_arc_id_t counter)
+{
+  if (counter >= k_ra_flash_arc_count) {
+    return k_ra_err_invalid_arg;
+  }
+  RA_VALIDATE_INIT(s_rt.initialised, s_tag, "arc_inc before init");
+
+  ra_err_t err = ra_flash_enter_pe_mode();
+  if (err != k_ra_ok) {
+    return err;
+  }
+
+  uint32_t cur = 0U;
+  err          = internal_arc_read_locked(counter, &cur);
+  if (err != k_ra_ok) {
+    goto out;
+  }
+
+  const uint32_t max = internal_arc_max_count(counter);
+  if (cur + 1U > max) {
+    err = k_ra_err_out_of_range;
+    goto out;
+  }
+
+  err =
+    internal_arc_cmd(internal_arc_to_mcntselr(counter), (uint8_t)k_ra_maci_cmd_increment_counter);
+
+out: {
+  ra_err_t exit_err = ra_flash_exit_pe_mode();
+  if (err == k_ra_ok) {
+    err = exit_err;
+  }
+}
+  return err;
+}
+
+ra_err_t ra_flash_arc_read(ra_flash_arc_id_t counter, uint32_t* out_count)
+{
+  RA_CHECK_NULL_PTR(out_count, s_tag, "out_count must not be nullptr");
+  if (counter >= k_ra_flash_arc_count) {
+    return k_ra_err_invalid_arg;
+  }
+  RA_VALIDATE_INIT(s_rt.initialised, s_tag, "arc_read before init");
+
+  if (counter == k_ra_flash_arc_oembl) {
+    ra_err_t err = ra_flash_enter_pe_mode();
+    if (err != k_ra_ok) {
+      return err;
+    }
+    ra_err_t r        = internal_arc_read_locked(counter, out_count);
+    ra_err_t exit_err = ra_flash_exit_pe_mode();
+    if (r != k_ra_ok) {
+      return r;
+    }
+    return exit_err;
+  }
+  return internal_arc_read_locked(counter, out_count);
+}
+
+/* =============================================================================
+ * Public API: zeroize, MSAR, MSUINITR, ECC controls
+ * =============================================================================
+ */
+
+ra_err_t ra_flash_zeroize_huk(void)
+{
+  RA_VALIDATE_INIT(s_rt.initialised, s_tag, "zeroize before init");
+  /* HUM Ch 59 "MREZC : Extra MRAM Zeroization Control" p 3565 */
+  *ra_mram_reg16((uint16_t)k_ra_mram_off_mrezc) = (uint16_t)k_ra_mrezc_full_zero;
+
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_flash_zeroize_spin; ++i) {
+    /* HUM Ch 59 "MREZS : Extra MRAM Zeroization Status" p 3565 */
+    const uint8_t s = *ra_mram_reg8((uint16_t)k_ra_mram_off_mrezs);
+    if ((s & (uint8_t)k_ra_mrezs_mask_whukexe) == 0U) {
+      return k_ra_ok;
+    }
+  }
+  return k_ra_err_hw_timeout;
+}
+
+ra_err_t ra_flash_set_security_attribution(uint16_t new_msar)
+{
+  /* HUM Ch 59.5.13 "MSAR : MRAM Security Attribution Register" p 3559 */
+  *ra_mram_reg16((uint16_t)k_ra_mram_off_msar) = new_msar;
+  return k_ra_ok;
+}
+
+ra_err_t ra_flash_msuinitr_kick(void)
+{
+  /* HUM Ch 59 "MSUINITR : Extra MRAM Sequencer Set-Up Init" p 3585 */
+  *ra_mram_reg16((uint16_t)k_ra_mram_off_msuinitr) = (uint16_t)k_ra_msuinitr_full_init;
+
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_flash_pe_spin_limit; ++i) {
+    /* HUM Ch 59 "MSUINITR : Extra MRAM Sequencer Set-Up Init" p 3585 */
+    const uint16_t v = *ra_mram_reg16((uint16_t)k_ra_mram_off_msuinitr);
+    if ((v & (uint16_t)k_ra_msuinitr_mask_suinit) == 0U) {
+      return k_ra_ok;
+    }
+  }
+  return k_ra_err_hw_timeout;
+}
+
+ra_err_t ra_flash_set_ecc_encoder_enable(bool enable)
+{
+  /* HUM Ch 59 "MRCEECC : Code MRAM ECC Encoder Control" p 3624 */
+  *ra_mram_reg16((uint16_t)k_ra_mram_off_mrceecc) =
+    (uint16_t)((uint16_t)k_ra_mrceecc_key_shift |
+               (enable ? (uint16_t)k_ra_mrceecc_mask_eccen : 0U));
+  return k_ra_ok;
+}
+
+ra_err_t ra_flash_set_ecc_decoder_enable(bool enable)
+{
+  /* HUM Ch 59 "MRCDECC : Code MRAM ECC Decoder Control" p 3554 */
+  *ra_mram_reg16((uint16_t)k_ra_mram_off_mrcdecc) =
+    (uint16_t)((uint16_t)k_ra_mrcdecc_key_shift |
+               (enable ? (uint16_t)k_ra_mrcdecc_mask_dececen : 0U));
+  return k_ra_ok;
+}
+
+ra_err_t ra_flash_get_ecc_error_addr(uint32_t* out_code_ted,
+                                     uint32_t* out_code_dec,
+                                     uint32_t* out_extra_ted,
+                                     uint32_t* out_extra_dec)
+{
+  RA_CHECK_NULL_PTR(out_code_ted, s_tag, "out_code_ted null");
+  RA_CHECK_NULL_PTR(out_code_dec, s_tag, "out_code_dec null");
+  RA_CHECK_NULL_PTR(out_extra_ted, s_tag, "out_extra_ted null");
+  RA_CHECK_NULL_PTR(out_extra_dec, s_tag, "out_extra_dec null");
+
+  /* HUM Ch 59 "MRCRTEA : Code MRAM TED Error Address" p 3555 */
+  *out_code_ted = *ra_mram_reg32((uint16_t)k_ra_mram_off_mrcrtea);
+  /* HUM Ch 59 "MRCRDEA : Code MRAM DEC Error Address" p 3555 */
+  *out_code_dec = *ra_mram_reg32((uint16_t)k_ra_mram_off_mrcrdea);
+  /* HUM Ch 59 "MRERTEA : Extra MRAM TED Error Address" p 3558 */
+  *out_extra_ted = *ra_mram_reg32((uint16_t)k_ra_mram_off_mrertea);
+  /* HUM Ch 59 "MRERDEA : Extra MRAM DEC Error Address" p 3558 */
+  *out_extra_dec = *ra_mram_reg32((uint16_t)k_ra_mram_off_mrerdea);
+  return k_ra_ok;
+}
+
+ra_err_t ra_flash_get_program_error_addr(uint32_t* out_addr)
+{
+  RA_CHECK_NULL_PTR(out_addr, s_tag, "out_addr must not be nullptr");
+  /* HUM Ch 59 "MRCPEA : Code MRAM Program Error Address" p 3601 */
+  *out_addr = *ra_mram_reg32((uint16_t)k_ra_mram_off_mrcpea);
+  return k_ra_ok;
+}
+
+ra_err_t ra_flash_update_clock_freq(uint16_t mrcfreq_mhz, uint8_t mrefreq_mhz)
+{
+  if (mrcfreq_mhz > (uint16_t)k_ra_flash_max_mrcfreq_mhz) {
+    return k_ra_err_invalid_arg;
+  }
+  if (mrefreq_mhz > (uint8_t)k_ra_flash_max_mrefreq_mhz) {
+    return k_ra_err_invalid_arg;
+  }
+  const bool prefetch_was = s_rt.prefetch_on;
+  internal_set_prefetch(false);
+
+  /* HUM Ch 59.5.2 "MRCFREQ : Code MRAM Frequency Notifications Register" p 3551 */
+  *ra_mram_reg32((uint16_t)k_ra_mram_off_mrcfreq) =
+    ((uint32_t)k_ra_flash_mrcfreq_key << k_ra_flash_freq_key_shift) | (uint32_t)mrcfreq_mhz;
+  /* HUM Ch 59.5.3 "MREFREQ : Extra MRAM Frequency Notifications Register" p 3552 */
+  *ra_mram_reg32((uint16_t)k_ra_mram_off_mrefreq) =
+    ((uint32_t)k_ra_flash_mrefreq_key << k_ra_flash_freq_key_shift) | (uint32_t)mrefreq_mhz;
+
+  internal_set_prefetch(prefetch_was);
+  return k_ra_ok;
+}
+
+/* =============================================================================
+ * Public API: update transfer
+ * =============================================================================
+ */
+
+ra_err_t ra_flash_set_update_transfer(uint8_t list_select)
+{
+  if (list_select > (uint8_t)k_ra_flash_max_list_select) {
+    return k_ra_err_invalid_arg;
+  }
+  /* HUM Ch 59 "MCTRLSR : MRAM Update Transfer List Select" p 3580 */
+  *ra_mram_reg8((uint16_t)k_ra_mram_off_mctrlsr) =
+    (uint8_t)(list_select & (uint8_t)k_ra_mctrlsr_mask_list_sel);
+  /* HUM Ch 59 "MCTRCNTR : MRAM Update Transfer Control" p 3580 */
+  *ra_mram_reg16((uint16_t)k_ra_mram_off_mctrcntr) =
+    (uint16_t)((uint16_t)k_ra_mctrcntr_key | (uint16_t)k_ra_mctrcntr_mask_start);
+  return k_ra_ok;
+}
+
+ra_err_t ra_flash_get_update_status(uint8_t* out_busy, uint8_t* out_done, uint8_t* out_err)
+{
+  RA_CHECK_NULL_PTR(out_busy, s_tag, "out_busy null");
+  RA_CHECK_NULL_PTR(out_done, s_tag, "out_done null");
+  RA_CHECK_NULL_PTR(out_err, s_tag, "out_err null");
+  /* HUM Ch 59 "MCTRSTATR : MRAM Update Transfer Status" p 3580 */
+  const uint16_t v = *ra_mram_reg16((uint16_t)k_ra_mram_off_mctrstatr);
+  *out_busy        = (uint8_t)((v & (uint16_t)k_ra_mctrstatr_mask_busy) != 0U);
+  *out_done        = (uint8_t)((v & (uint16_t)k_ra_mctrstatr_mask_done) != 0U);
+  *out_err         = (uint8_t)((v & (uint16_t)k_ra_mctrstatr_mask_err) != 0U);
+  return k_ra_ok;
+}
+
+/* =============================================================================
+ * Public API: extra-MRAM (data flash) program / erase
+ * =============================================================================
+ */
+
+ra_err_t ra_flash_extra_mram_write(uint32_t mram_addr, const uint8_t* src, uint32_t len)
+{
+  RA_CHECK_NULL_PTR((const void*)src, s_tag, "src must not be nullptr");
+  if (len == 0U || len > (uint32_t)k_ra_mram_write_size_bytes) {
+    return k_ra_err_invalid_arg;
+  }
+  if (mram_addr < (uint32_t)k_ra_flash_extra_start) {
+    return k_ra_err_invalid_arg;
+  }
+  const uint32_t end_excl = (uint32_t)((uint64_t)mram_addr + (uint64_t)len);
+  if (end_excl > (uint32_t)k_ra_flash_extra_start + (uint32_t)k_ra_flash_extra_size) {
+    return k_ra_err_invalid_arg;
+  }
+  const uint32_t page_mask = (uint32_t)k_ra_mram_write_size_bytes - 1U;
+  if ((mram_addr & ~page_mask) != ((end_excl - 1U) & ~page_mask)) {
+    return k_ra_err_invalid_arg;
+  }
+
+  ra_err_t err = ra_flash_enter_pe_mode();
+  if (err != k_ra_ok) {
+    return err;
+  }
+
+  /* HUM Ch 59 "MSADDR : MACI Command Start Address" p 3573 */
+  *ra_mram_reg32((uint16_t)k_ra_mram_off_msaddr) = mram_addr;
+
+  /* The MACI program flow (HUM Ch 59 p 3550) is the same opener as a
+   * configuration set; the difference is in the trailer + payload size.
+   * We re-use the config-set sequence with an 8-halfword chunked write
+   * sized to ``len`` (padded with 0xFFFF). */
+  uint16_t cfg_words[k_ra_mram_config_set_word_count];
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_mram_config_set_word_count; ++i) {
+    const uint32_t base = i * 2U;
+    const uint8_t  lo   = (base < len) ? src[base] : 0xFFU;
+    const uint8_t  hi   = (base + 1U < len) ? src[base + 1U] : 0xFFU;
+    cfg_words[i]        = (uint16_t)((uint16_t)lo | ((uint16_t)hi << 8U));
+  }
+  err = ra_flash_config_set_write(mram_addr, cfg_words);
+
+  ra_err_t exit_err = ra_flash_exit_pe_mode();
+  if (err == k_ra_ok) {
+    err = exit_err;
+  }
+  return err;
+}
+
+ra_err_t ra_flash_extra_mram_erase(uint32_t mram_addr)
+{
+  if ((mram_addr & ((uint32_t)k_ra_mram_block_size_bytes - 1U)) != 0U) {
+    return k_ra_err_invalid_arg;
+  }
+  static const uint8_t s_ones[k_ra_mram_block_size_bytes] = {
+    0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU,
+    0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU,
+    0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU, 0xFFU,
+  };
+  return ra_flash_extra_mram_write(mram_addr, s_ones, (uint32_t)k_ra_mram_block_size_bytes);
+}
+
+/* =============================================================================
+ * Public API: IRQ enables + dispatcher
+ * =============================================================================
+ */
+
+ra_err_t ra_flash_set_irq_enable(ra_flash_irq_src_t src, bool enable)
+{
+  if (src >= k_ra_flash_irq_count) {
+    return k_ra_err_invalid_arg;
+  }
+  switch (src) {
+    case k_ra_flash_irq_code_ecc_ted:
+    case k_ra_flash_irq_code_ecc_dec: {
+      /* HUM Ch 59 "MRCRAEINT : Code MRAM Read Access Error IRQ Enable" p 3554 */
+      uint8_t       v   = *ra_mram_reg8((uint16_t)k_ra_mram_off_mrcraeint);
+      const uint8_t bit = (src == k_ra_flash_irq_code_ecc_ted)
+                            ? (uint8_t)k_ra_mrcraeint_mask_intenbtc
+                            : (uint8_t)k_ra_mrcraeint_mask_intenbdc;
+      v                 = enable ? (uint8_t)(v | bit) : (uint8_t)(v & (uint8_t)~bit);
+      *ra_mram_reg8((uint16_t)k_ra_mram_off_mrcraeint) = v;
+      break;
+    }
+    case k_ra_flash_irq_extra_ecc_ted:
+    case k_ra_flash_irq_extra_ecc_dec: {
+      /* HUM Ch 59 "MRERAINT : Extra MRAM Read Access Error IRQ Enable" p 3557 */
+      uint8_t       v   = *ra_mram_reg8((uint16_t)k_ra_mram_off_mreraint);
+      const uint8_t bit = (src == k_ra_flash_irq_extra_ecc_ted)
+                            ? (uint8_t)k_ra_mrcraeint_mask_intenbtc
+                            : (uint8_t)k_ra_mrcraeint_mask_intenbdc;
+      v                 = enable ? (uint8_t)(v | bit) : (uint8_t)(v & (uint8_t)~bit);
+      *ra_mram_reg8((uint16_t)k_ra_mram_off_mreraint) = v;
+      break;
+    }
+    case k_ra_flash_irq_program_err: {
+      /* HUM Ch 59 "MRCPAEINT : Code MRAM Program Access Error IRQ Enable" p 3601 */
+      const uint8_t v = enable ? (uint8_t)k_ra_mrcpaeint_mask_mrcaeie : 0U;
+      *ra_mram_reg8((uint16_t)k_ra_mram_off_mrcpaeint) = v;
+      break;
+    }
+    case k_ra_flash_irq_extra_err:
+    case k_ra_flash_irq_extra_cmdlk: {
+      /* HUM Ch 59 "MPAEINT : Extra MRAM Access Error IRQ Enable" p 3577 */
+      uint8_t       v   = *ra_mram_reg8((uint16_t)k_ra_mram_off_mpaeint);
+      const uint8_t bit = (src == k_ra_flash_irq_extra_err) ? (uint8_t)k_ra_mpaeint_mask_mreaeie
+                                                            : (uint8_t)k_ra_mpaeint_mask_cmdlkie;
+      v                 = enable ? (uint8_t)(v | bit) : (uint8_t)(v & (uint8_t)~bit);
+      *ra_mram_reg8((uint16_t)k_ra_mram_off_mpaeint) = v;
+      break;
+    }
+    case k_ra_flash_irq_extra_ready: {
+      /* HUM Ch 59 "MRDYIE : Extra MRAM Ready Interrupt Enable" p 3577 */
+      const uint8_t v = enable ? (uint8_t)k_ra_mrdyie_mask_mrdyie : 0U;
+      *ra_mram_reg8((uint16_t)k_ra_mram_off_mrdyie) = v;
+      break;
+    }
+    case k_ra_flash_irq_count: /* fallthrough -- unreachable, validated above. */
+    default:
+      return k_ra_err_invalid_arg;
+  }
+  return k_ra_ok;
+}
+
+ra_err_t ra_flash_callback_set(ra_flash_callback_t cb, void* user_ctx)
+{
+  s_rt.cb       = cb;
+  s_rt.user_ctx = user_ctx;
+  return k_ra_ok;
+}
+
+/**
+ * @brief Deliver one IRQ event to the registered callback.
+ *
+ * @param[in] src         Source identifier.
+ * @param[in] fault_addr  Captured address (0 if N/A).
+ * @param[in] status_word Source register snapshot.
+ *
+ * @pre None (no-op if no callback registered).
+ * @post If a callback is registered, it ran exactly once.
+ */
+static void internal_deliver(ra_flash_irq_src_t src, uint32_t fault_addr, uint32_t status_word)
+{
+  if (s_rt.cb == nullptr) {
+    return;
+  }
+  const ra_flash_isr_event_t ev = {
+    .src         = src,
+    .fault_addr  = fault_addr,
+    .status_word = status_word,
+    .user_ctx    = s_rt.user_ctx,
+  };
+  s_rt.cb(&ev);
+}
+
+uint32_t ra_flash_dispatch_isr(void)
+{
+  uint32_t delivered = 0U;
+
+  /* HUM Ch 59 "MRCRAES : Code MRAM Read Access Error Status" p 3554 */
+  uint8_t mrcraes = *ra_mram_reg8((uint16_t)k_ra_mram_off_mrcraes);
+  if ((mrcraes & (uint8_t)k_ra_mrcraes_mask_tederrc) != 0U) {
+    /* HUM Ch 59 "MRCRTEA : Code MRAM TED Error Address" p 3555 */
+    const uint32_t fa = *ra_mram_reg32((uint16_t)k_ra_mram_off_mrcrtea);
+    internal_deliver(k_ra_flash_irq_code_ecc_ted, fa, (uint32_t)mrcraes);
+    delivered++;
+  }
+  if ((mrcraes & (uint8_t)k_ra_mrcraes_mask_decerrc) != 0U) {
+    /* HUM Ch 59 "MRCRDEA : Code MRAM DEC Error Address" p 3555 */
+    const uint32_t fa = *ra_mram_reg32((uint16_t)k_ra_mram_off_mrcrdea);
+    internal_deliver(k_ra_flash_irq_code_ecc_dec, fa, (uint32_t)mrcraes);
+    delivered++;
+  }
+  /* W1C clear -- write back the bits we just observed. */
+  if (mrcraes != 0U) {
+    *ra_mram_reg8((uint16_t)k_ra_mram_off_mrcraes) = 0U;
+  }
+
+  /* HUM Ch 59 "MRERAES : Extra MRAM Read Access Error Status" p 3557 */
+  uint8_t mreraes = *ra_mram_reg8((uint16_t)k_ra_mram_off_mreraes);
+  if ((mreraes & (uint8_t)k_ra_mrcraes_mask_tederrc) != 0U) {
+    /* HUM Ch 59 "MRERTEA : Extra MRAM TED Error Address" p 3558 */
+    const uint32_t fa = *ra_mram_reg32((uint16_t)k_ra_mram_off_mrertea);
+    internal_deliver(k_ra_flash_irq_extra_ecc_ted, fa, (uint32_t)mreraes);
+    delivered++;
+  }
+  if ((mreraes & (uint8_t)k_ra_mrcraes_mask_decerrc) != 0U) {
+    /* HUM Ch 59 "MRERDEA : Extra MRAM DEC Error Address" p 3558 */
+    const uint32_t fa = *ra_mram_reg32((uint16_t)k_ra_mram_off_mrerdea);
+    internal_deliver(k_ra_flash_irq_extra_ecc_dec, fa, (uint32_t)mreraes);
+    delivered++;
+  }
+  if (mreraes != 0U) {
+    *ra_mram_reg8((uint16_t)k_ra_mram_off_mreraes) = 0U;
+  }
+
+  /* HUM Ch 59 "MRCPS : Code MRAM Program Status Register" p 3601 */
+  const uint8_t mrcps = *ra_mram_reg8((uint16_t)k_ra_mram_off_mrcps);
+  if ((mrcps & (uint8_t)k_ra_mrcps_mask_errors) != 0U) {
+    /* HUM Ch 59 "MRCPEA : Code MRAM Program Error Address" p 3601 */
+    const uint32_t fa = *ra_mram_reg32((uint16_t)k_ra_mram_off_mrcpea);
+    internal_deliver(k_ra_flash_irq_program_err, fa, (uint32_t)mrcps);
+    /* W1C the program error bits. */
+    *ra_mram_reg8((uint16_t)k_ra_mram_off_mrcps) = (uint8_t)k_ra_mrcps_mask_errors;
+    delivered++;
+  }
+
+  /* HUM Ch 59 "MASTAT : Extra MRAM Access Status Register" p 3577 */
+  const uint8_t mastat = *ra_mram_reg8((uint16_t)k_ra_mram_off_mastat);
+  if ((mastat & (uint8_t)k_ra_mastat_mask_mreae) != 0U) {
+    internal_deliver(k_ra_flash_irq_extra_err, 0U, (uint32_t)mastat);
+    delivered++;
+  }
+  if ((mastat & (uint8_t)k_ra_mastat_mask_cmdlk) != 0U) {
+    internal_deliver(k_ra_flash_irq_extra_cmdlk, 0U, (uint32_t)mastat);
+    delivered++;
+  }
+
+  /* HUM Ch 59 "MSTATR : Extra MRAM Status Register" p 3578 */
+  const uint32_t mstatr = *ra_mram_reg32((uint16_t)k_ra_mram_off_mstatr);
+  if ((mstatr & (uint32_t)k_ra_mstatr_mask_mrdy) != 0U) {
+    internal_deliver(k_ra_flash_irq_extra_ready, 0U, mstatr);
+    delivered++;
+  }
+  return delivered;
+}

@@ -27,15 +27,15 @@ This script:
 
 Modes:
 
-    --warn   (default in Wave 0) -- exit 0, print findings
-    --strict (Wave 1 onward)     -- exit 1 on any finding
+    --warn (default) -- exit 0, print findings
+    --strict (onward) -- exit 1 on any finding
 
-In Wave 0 there are no Ring 3+ files yet that carry these tags
+In there are no Ring 3+ files yet that carry these tags
 (the existing 29 driver shells were written before the tag system
-was introduced and will be retrofitted starting in Wave 1). The
+was introduced and will be retrofitted starting). The
 script therefore EXEMPTS the existing pre-Wave-1 source files via
 an allowlist of paths -- those files become non-exempt as the
-relevant Wave 1 / Wave 2 sessions touch them.
+relevant / sessions touch them.
 """
 
 from __future__ import annotations
@@ -52,14 +52,14 @@ REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 SOURCE_SUFFIXES = {".c", ".h", ".cpp", ".hpp"}
 
 # Files that lived in the tree before the world-tag system was
-# introduced (Wave 0 baseline). They are exempt from world-tag
+# introduced (baseline). They are exempt from world-tag
 # enforcement until the wave that retrofits them. As soon as a file
 # under one of these prefixes gains its [Ring N / NAME] +
 # {World: ...} tag pair, it leaves the exemption automatically:
 # the script enforces consistency on any file that already carries
 # at least one of the two tags.
 #
-# Practical effect: Wave 0 starts with 0 findings; Wave 1+ adds tags
+# Practical effect: starts with 0 findings; + adds tags
 # incrementally and the script catches any mismatches.
 LEGACY_RING3_EXEMPT_PREFIXES = (
     "libs/ra_hal/",
@@ -215,12 +215,12 @@ def main(argv: list[str]) -> int:
     parser.add_argument(
         "--warn",
         action="store_true",
-        help="warn-only mode: print findings, exit 0 (Wave 0 default)",
+        help="warn-only mode: print findings, exit 0 (default)",
     )
     parser.add_argument(
         "--strict",
         action="store_true",
-        help="strict mode: exit 1 on any finding (Wave 1+ default)",
+        help="strict mode: exit 1 on any finding ",
     )
     args = parser.parse_args(argv)
 

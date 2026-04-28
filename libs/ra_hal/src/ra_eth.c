@@ -6,7 +6,7 @@
  * [Ring 3 / HAL] {World: NS}
  *
  * @details
- * Wave 6 driver for the RA8D2 Layer-3 ESWM block. Owns the shared
+ * driver for the RA8D2 Layer-3 ESWM block. Owns the shared
  * ethernet MSTP gate (k_ra_mstp_eswm) which is also referenced by
  * the ra_eth_mfwd / ra_eth_coma / ra_eth_gwca / ra_eth_gptp
  * sub-drivers; ra_mstp keeps a reference count so concurrent

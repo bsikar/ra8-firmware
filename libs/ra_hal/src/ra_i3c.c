@@ -6,7 +6,7 @@
  * [Ring 3 / HAL] {World: NS}
  *
  * @details
- * Wave 5 driver for the RA8D2 I3C controller. Programmes the
+ * driver for the RA8D2 I3C controller. Programmes the
  * baseline protocol/bus control register set and exposes the
  * lifecycle + status + IRQ + power-transition surface. The
  * higher-level CCC / IBI / HDR-DDR transfer engines are

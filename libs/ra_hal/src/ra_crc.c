@@ -6,7 +6,7 @@
  * [Ring 3 / HAL] {World: NS}
  *
  * @details
- * Wave 4 driver for the RA8D2 CRC block. The CRC unit accepts
+ * driver for the RA8D2 CRC block. The CRC unit accepts
  * one of seven hard-wired polynomials selected by CRCCR0.GPS,
  * accumulates the running result in CRCDOR as bytes are written
  * to CRCDIR, and can be reset between operations via the
@@ -75,7 +75,7 @@ ra_err_t ra_crc_compute(const uint8_t* data, uint32_t len, uint32_t* out_crc)
 }
 
 /* =============================================================================
- * Wave 4.4 -- full build-out
+ * full build-out
  * =============================================================================
  */
 

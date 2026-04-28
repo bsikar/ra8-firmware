@@ -6,20 +6,20 @@
  * [Ring 3 / HAL] {World: NS}
  *
  * @details
- * Wave 5.5 introduces a minimal I3C driver scaffold covering the
+ * introduces a minimal I3C driver scaffold covering the
  * lifecycle + status + IRQ + power-transition surface. Full CCC
  * (Common Command Code) handling, IBI support, and HDR / DDR
  * modes land with the first consumer.
  *
  * API surface:
  *
- *  - ``ra_i3c_init()``            -- MSTP enable + reset IE/BIE
- *  - ``ra_i3c_deinit()``          -- disable + MSTP release
- *  - ``ra_i3c_get_status``         -- read INST status mask
- *  - ``ra_i3c_clear_status``       -- clear INST bits
- *  - ``ra_i3c_attach_handler``     -- install IRQ callback
- *  - ``ra_i3c_enter_stop / exit_stop`` -- power transition
- *  - ``ra_i3c_dispatch``           -- ISR entry point
+ * - ``ra_i3c_init()`` -- MSTP enable + reset IE/BIE
+ * - ``ra_i3c_deinit()`` -- disable + MSTP release
+ * - ``ra_i3c_get_status`` -- read INST status mask
+ * - ``ra_i3c_clear_status`` -- clear INST bits
+ * - ``ra_i3c_attach_handler`` -- install IRQ callback
+ * - ``ra_i3c_enter_stop / exit_stop`` -- power transition
+ * - ``ra_i3c_dispatch`` -- ISR entry point
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

@@ -6,25 +6,25 @@
  * [Ring 3 / HAL] {World: NS}
  *
  * @details
- * Wave 3.1 full build-out of the SCI peripheral. Replaces the
- * polling-only ``ra_uart`` stub from Wave 0 with a driver that
+ * full build-out of the SCI peripheral. Replaces the
+ * polling-only ``ra_uart`` stub from with a driver that
  * ticks every box on the 14-checkbox template:
  *
- *  - Init / Deinit with a full configuration struct.
- *  - Polling TX / RX.
- *  - Interrupt-driven TX / RX with ring buffers.
- *  - Error-status handling (overrun, framing, parity).
- *  - Runtime baud-rate reconfigure.
- *  - Power-mode enter / exit.
- *  - Register-coverage full across the current ``r_sci_regs_t``
- *    window.
+ * - Init / Deinit with a full configuration struct.
+ * - Polling TX / RX.
+ * - Interrupt-driven TX / RX with ring buffers.
+ * - Error-status handling (overrun, framing, parity).
+ * - Runtime baud-rate reconfigure.
+ * - Power-mode enter / exit.
+ * - Register-coverage full across the current ``r_sci_regs_t``
+ * window.
  *
- * DMA TX / RX land in Wave 3.7b via ``ra_sci_write_dma`` and
+ * DMA TX / RX land via ``ra_sci_write_dma`` and
  * ``ra_sci_read_dma``, which programme the ra_dma substrate for a
  * byte-stream transfer between a host buffer and the SCI TDR/RDR
  * data registers. ELC trigger routing (one DMAC element per TXI /
- * RXI event) is handled downstream in Wave 7 once the NSC layer
- * can annotate the trigger table safely; Wave 3.7b uses the
+ * RXI event) is handled downstream once the NSC layer
+ * can annotate the trigger table safely; uses the
  * ``k_ra_elc_event_none`` software-start path which is what the
  * host-side ra_sim_dma loop simulates.
  *
@@ -36,7 +36,7 @@
  * p 2174 onwards). The layout mismatch is a pre-existing issue
  * that does not affect host unit tests (the simulator backs MMIO
  * with ordinary RAM so any offset works for functional tests)
- * and is tracked as a Wave 3.1b deliverable. The public API in
+ * and is tracked as a deliverable. The public API in
  * this header is layout-agnostic -- drivers call the helpers,
  * not the registers directly.
  *
@@ -105,12 +105,12 @@ typedef enum : uint8_t {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  uint32_t           baud;      /**< Target baud rate in bps.     */
-  ra_sci_data_bits_t data_bits; /**< 7 or 8 data bits.             */
-  ra_sci_parity_t    parity;    /**< Parity mode.                  */
-  ra_sci_stop_bits_t stop_bits; /**< 1 or 2 stop bits.             */
+  uint32_t           baud;      /**< Target baud rate in bps. */
+  ra_sci_data_bits_t data_bits; /**< 7 or 8 data bits. */
+  ra_sci_parity_t    parity;    /**< Parity mode. */
+  ra_sci_stop_bits_t stop_bits; /**< 1 or 2 stop bits. */
   uint32_t           pclk_hz;   /**< PCLKB frequency in Hz (used
-                                      for BRR calculation).         */
+                                      for BRR calculation). */
 } ra_sci_cfg_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 
@@ -121,15 +121,15 @@ typedef struct {
 typedef enum : uint8_t {
   k_ra_sci_err_none    = 0x00U,
   k_ra_sci_err_overrun = 0x01U, /**< ORER set. */
-  k_ra_sci_err_framing = 0x02U, /**< FER set.  */
-  k_ra_sci_err_parity  = 0x04U, /**< PER set.  */
+  k_ra_sci_err_framing = 0x02U, /**< FER set. */
+  k_ra_sci_err_parity  = 0x04U, /**< PER set. */
 } ra_sci_err_mask_t;
 
 /**
  * @typedef ra_sci_rx_fn_t
  * @brief RX interrupt callback signature.
  *
- * @param[in] ctx  Caller-supplied context.
+ * @param[in] ctx Caller-supplied context.
  * @param[in] byte Received byte.
  */
 typedef void (*ra_sci_rx_fn_t)(void* ctx, uint8_t byte);
@@ -138,10 +138,10 @@ typedef void (*ra_sci_rx_fn_t)(void* ctx, uint8_t byte);
  * @typedef ra_sci_tx_fn_t
  * @brief TX-empty interrupt callback signature.
  *
- * @param[in]  ctx   Caller-supplied context.
- * @param[out] byte  Next byte to transmit.
+ * @param[in] ctx Caller-supplied context.
+ * @param[out] byte Next byte to transmit.
  * @return ``true`` if ``*byte`` is valid; ``false`` to disable
- *         TIE (no more data to send).
+ * TIE (no more data to send).
  */
 typedef bool (*ra_sci_tx_fn_t)(void* ctx, uint8_t* byte);
 
@@ -160,19 +160,19 @@ typedef bool (*ra_sci_tx_fn_t)(void* ctx, uint8_t* byte);
  * gated.
  *
  * @param[in] channel SCI channel number (0..9).
- * @param[in] cfg     Configuration descriptor.
+ * @param[in] cfg Configuration descriptor.
  *
  * @return ``ra_err_t`` error code.
- * @retval k_ra_ok                 Channel ready.
- * @retval k_ra_err_null_ptr       ``cfg`` was NULL.
- * @retval k_ra_err_invalid_arg    ``channel`` > 9 or ``cfg`` has
- *                                  bad field values.
+ * @retval k_ra_ok Channel ready.
+ * @retval k_ra_err_null_ptr ``cfg`` was NULL.
+ * @retval k_ra_err_invalid_arg ``channel`` > 9 or ``cfg`` has
+ * bad field values.
  * @retval k_ra_err_hw_init_failed ``ra_mstp_enable`` failed.
  *
  * @pre IRQs masked or single-threaded init context.
  * @pre ``ra_mstp_init`` has been called.
  * @post On success, the channel is clocked, configured, and
- *       ready to TX / RX.
+ * ready to TX / RX.
  *
  * @note Thread safety: not thread-safe.
  * @since 0.2.0
@@ -185,8 +185,8 @@ typedef bool (*ra_sci_tx_fn_t)(void* ctx, uint8_t* byte);
  * @param[in] channel SCI channel number.
  *
  * @return ``ra_err_t`` error code.
- * @retval k_ra_ok                 Channel released.
- * @retval k_ra_err_invalid_arg    ``channel`` > 9.
+ * @retval k_ra_ok Channel released.
+ * @retval k_ra_err_invalid_arg ``channel`` > 9.
  *
  * @pre IRQs masked or single-threaded init context.
  * @pre Caller previously called ``ra_sci_init(channel)``.
@@ -207,14 +207,14 @@ typedef bool (*ra_sci_tx_fn_t)(void* ctx, uint8_t* byte);
  * @brief Poll-send one byte (blocking, bounded by ra_hw_err spin budget).
  *
  * @param[in] channel SCI channel number.
- * @param[in] byte    Byte to transmit.
+ * @param[in] byte Byte to transmit.
  * @return ``k_ra_ok`` / ``k_ra_err_hw_timeout`` / ``k_ra_err_invalid_arg``.
  *
  * @pre Channel previously initialised.
  * @post On success, the byte has been handed to the TX register.
  *
  * @note Thread safety: not thread-safe with respect to IRQ TX on
- *       the same channel.
+ * the same channel.
  * @since 0.2.0
  */
 [[nodiscard]] ra_err_t ra_sci_putc_polling(uint8_t channel, uint8_t byte);
@@ -222,8 +222,8 @@ typedef bool (*ra_sci_tx_fn_t)(void* ctx, uint8_t* byte);
 /**
  * @brief Poll-receive one byte (blocking, bounded spin).
  *
- * @param[in]  channel   SCI channel number.
- * @param[out] out_byte  Received byte on success.
+ * @param[in] channel SCI channel number.
+ * @param[out] out_byte Received byte on success.
  * @return ``k_ra_ok`` / ``k_ra_err_hw_timeout`` / ``k_ra_err_null_ptr``.
  *
  * @pre ``out_byte`` non-NULL.
@@ -239,8 +239,8 @@ typedef bool (*ra_sci_tx_fn_t)(void* ctx, uint8_t* byte);
  * @brief Send ``len`` bytes by polling (convenience wrapper).
  *
  * @param[in] channel SCI channel number.
- * @param[in] data    Byte buffer.
- * @param[in] len     Number of bytes.
+ * @param[in] data Byte buffer.
+ * @param[in] len Number of bytes.
  * @return ``k_ra_ok`` or the first error the inner putc returned.
  *
  * @pre ``data`` non-NULL unless ``len == 0``.
@@ -258,9 +258,9 @@ typedef bool (*ra_sci_tx_fn_t)(void* ctx, uint8_t* byte);
  * @brief Install the RX interrupt callback + context.
  *
  * @param[in] channel SCI channel.
- * @param[in] fn      Callback fired on RDRF interrupt. Must not
- *                     be NULL to enable; pass NULL to detach.
- * @param[in] ctx     Context passed to the callback.
+ * @param[in] fn Callback fired on RDRF interrupt. Must not
+ * be NULL to enable; pass NULL to detach.
+ * @param[in] ctx Context passed to the callback.
  * @return ``k_ra_ok`` / ``k_ra_err_invalid_arg``.
  *
  * @pre Channel previously initialised.
@@ -273,9 +273,9 @@ typedef bool (*ra_sci_tx_fn_t)(void* ctx, uint8_t* byte);
  * @brief Install the TX interrupt callback + context.
  *
  * @param[in] channel SCI channel.
- * @param[in] fn      Callback fired on TDRE interrupt. Return
- *                    true with the next byte or false to disable.
- * @param[in] ctx     Context passed to the callback.
+ * @param[in] fn Callback fired on TDRE interrupt. Return
+ * true with the next byte or false to disable.
+ * @param[in] ctx Context passed to the callback.
  * @return ``k_ra_ok`` / ``k_ra_err_invalid_arg``.
  *
  * @pre Channel previously initialised.
@@ -292,7 +292,7 @@ typedef bool (*ra_sci_tx_fn_t)(void* ctx, uint8_t* byte);
 /**
  * @brief Read the SSR error bits (ORER, FER, PER).
  *
- * @param[in]  channel  SCI channel.
+ * @param[in] channel SCI channel.
  * @param[out] out_mask OR of ``k_ra_sci_err_*`` values.
  * @return ``k_ra_ok`` / ``k_ra_err_null_ptr`` / ``k_ra_err_invalid_arg``.
  *
@@ -323,7 +323,7 @@ typedef bool (*ra_sci_tx_fn_t)(void* ctx, uint8_t* byte);
  * @brief Change the baud rate without tearing down the channel.
  *
  * @param[in] channel SCI channel.
- * @param[in] baud    New target baud rate in bps.
+ * @param[in] baud New target baud rate in bps.
  * @param[in] pclk_hz Current PCLKB frequency in Hz.
  * @return ``k_ra_ok`` / ``k_ra_err_invalid_arg``.
  *
@@ -349,8 +349,8 @@ typedef bool (*ra_sci_tx_fn_t)(void* ctx, uint8_t* byte);
  * @post Channel is MSTP-gated.
  *
  * @warning Callers lose every register setting; pair with
- *          ``ra_sci_exit_stop`` + re-init if reconfiguration is
- *          needed.
+ * ``ra_sci_exit_stop`` + re-init if reconfiguration is
+ * needed.
  * @since 0.2.0
  */
 [[nodiscard]] ra_err_t ra_sci_enter_stop(uint8_t channel);
@@ -363,13 +363,13 @@ typedef bool (*ra_sci_tx_fn_t)(void* ctx, uint8_t* byte);
  *
  * @pre Channel is currently MSTP-gated.
  * @post MSTP bit is cleared; caller must call ``ra_sci_init`` to
- *       restore registers.
+ * restore registers.
  * @since 0.2.0
  */
 [[nodiscard]] ra_err_t ra_sci_exit_stop(uint8_t channel);
 
 /* =============================================================================
- * DMA TX / RX (Wave 3.7b)
+ * DMA TX / RX
  * =============================================================================
  */
 
@@ -386,24 +386,24 @@ typedef bool (*ra_sci_tx_fn_t)(void* ctx, uint8_t* byte);
  * transfer is done.
  *
  * Uses ``k_ra_elc_event_none`` (software-start). Real hardware
- * one-element-per-TXI routing is a Wave 7 task alongside the
+ * one-element-per-TXI routing is a task alongside the
  * TrustZone retrofit.
  *
- * @param[in]  channel         SCI channel 0..9.
- * @param[in]  data            Source byte buffer. Must stay
- *                             live until ``on_complete`` fires.
- * @param[in]  len             Number of bytes to transfer; must
- *                             be non-zero.
- * @param[in]  on_complete     Completion callback. May be NULL.
- * @param[in]  ctx             Context passed to ``on_complete``.
+ * @param[in] channel SCI channel 0..9.
+ * @param[in] data Source byte buffer. Must stay
+ * live until ``on_complete`` fires.
+ * @param[in] len Number of bytes to transfer; must
+ * be non-zero.
+ * @param[in] on_complete Completion callback. May be NULL.
+ * @param[in] ctx Context passed to ``on_complete``.
  * @param[out] out_dma_channel Allocated DMAC channel on success.
  *
  * @return ``ra_err_t`` error code.
- * @retval k_ra_ok                 Transfer armed.
- * @retval k_ra_err_null_ptr       ``data`` or ``out_dma_channel`` NULL.
- * @retval k_ra_err_invalid_arg    ``channel`` > 9 or ``len`` zero.
- * @retval k_ra_err_no_mem         All DMAC channels in use.
- * @retval k_ra_err_hw_error       Underlying ``ra_dma_request`` failed.
+ * @retval k_ra_ok Transfer armed.
+ * @retval k_ra_err_null_ptr ``data`` or ``out_dma_channel`` NULL.
+ * @retval k_ra_err_invalid_arg ``channel`` > 9 or ``len`` zero.
+ * @retval k_ra_err_no_mem All DMAC channels in use.
+ * @retval k_ra_err_hw_error Underlying ``ra_dma_request`` failed.
  *
  * @pre Channel previously initialised via ``ra_sci_init``.
  * @pre ``ra_dma_init`` has been called.
@@ -433,20 +433,20 @@ typedef bool (*ra_sci_tx_fn_t)(void* ctx, uint8_t* byte);
  * (src_inc=false, dst_inc=true). Completion callback fires from
  * DMAC ISR context on transfer-end.
  *
- * @param[in]  channel         SCI channel 0..9.
- * @param[out] out_buf         Destination byte buffer. Must stay
- *                             live until ``on_complete`` fires.
- * @param[in]  len             Number of bytes; must be non-zero.
- * @param[in]  on_complete     Completion callback. May be NULL.
- * @param[in]  ctx             Context passed to ``on_complete``.
+ * @param[in] channel SCI channel 0..9.
+ * @param[out] out_buf Destination byte buffer. Must stay
+ * live until ``on_complete`` fires.
+ * @param[in] len Number of bytes; must be non-zero.
+ * @param[in] on_complete Completion callback. May be NULL.
+ * @param[in] ctx Context passed to ``on_complete``.
  * @param[out] out_dma_channel Allocated DMAC channel on success.
  *
  * @return ``ra_err_t`` error code.
- * @retval k_ra_ok                 Transfer armed.
- * @retval k_ra_err_null_ptr       ``out_buf`` or ``out_dma_channel`` NULL.
- * @retval k_ra_err_invalid_arg    ``channel`` > 9 or ``len`` zero.
- * @retval k_ra_err_no_mem         All DMAC channels in use.
- * @retval k_ra_err_hw_error       Underlying ``ra_dma_request`` failed.
+ * @retval k_ra_ok Transfer armed.
+ * @retval k_ra_err_null_ptr ``out_buf`` or ``out_dma_channel`` NULL.
+ * @retval k_ra_err_invalid_arg ``channel`` > 9 or ``len`` zero.
+ * @retval k_ra_err_no_mem All DMAC channels in use.
+ * @retval k_ra_err_hw_error Underlying ``ra_dma_request`` failed.
  *
  * @pre Channel previously initialised via ``ra_sci_init``.
  * @pre ``ra_dma_init`` has been called.
@@ -479,7 +479,7 @@ typedef bool (*ra_sci_tx_fn_t)(void* ctx, uint8_t* byte);
  *
  * @pre Called from ISR context (or from test helper).
  * @post If the attached TX callback returns true, the next byte
- *       has been written to TDR. Otherwise TIE is cleared.
+ * has been written to TDR. Otherwise TIE is cleared.
  * @since 0.2.0
  */
 void ra_sci_dispatch_txi(uint8_t channel);
@@ -491,14 +491,14 @@ void ra_sci_dispatch_txi(uint8_t channel);
  *
  * @pre Called from ISR context.
  * @post If an RX callback is attached, it has been invoked with
- *       the byte read from RDR.
+ * the byte read from RDR.
  * @since 0.2.0
  */
 void ra_sci_dispatch_rxi(uint8_t channel);
 
 /**
  * @brief ERI dispatch -- clear SSR error flags, invoke optional
- *        error callback (none in Wave 3.1 -- reserved for 3.1b).
+ * error callback (none in reserved for 3.1b).
  *
  * @param[in] channel SCI channel whose ERI fired.
  *

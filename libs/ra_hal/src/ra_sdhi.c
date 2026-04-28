@@ -6,7 +6,7 @@
  * [Ring 3 / HAL] {World: NS}
  *
  * @details
- * Wave 5 driver for the RA8D2 SDHI block. Covers lifecycle +
+ * driver for the RA8D2 SDHI block. Covers lifecycle +
  * status + IRQ + power-transition surface plus the command
  * primitive set: ``ra_sdhi_send_command`` (load SD_ARG + SD_CMD,
  * poll SD_INFO1.RSPEND, copy SD_RSP*) and ``ra_sdhi_set_clock``

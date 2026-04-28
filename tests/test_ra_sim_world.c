@@ -1,6 +1,6 @@
 /**
  * @file test_ra_sim_world.c
- * @brief Unit tests for tests/mocks/ra_sim_world (Wave 9.2)
+ * @brief Unit tests for tests/mocks/ra_sim_world
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -90,6 +90,6 @@ int32_t main(void)
   test_unrelated_secure_region_does_not_block();
   test_zero_length_check_is_false();
   test_region_table_full();
-  (void)fprintf(stderr, "[OK  ] test_ra_sim_world.c\n");
+  (void)fprintf(stderr, "[OK ] test_ra_sim_world.c\n");
   return 0;
 }

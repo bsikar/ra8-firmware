@@ -15,8 +15,8 @@ and verifies that:
 
 Modes:
 
-    --warn   (default in Wave 0) -- exit 0, print findings to stderr.
-    --strict (Wave 2 onward)     -- exit 1 on any finding.
+    --warn (default) -- exit 0, print findings to stderr.
+    --strict (onward) -- exit 1 on any finding.
 
 The script also accepts a list of explicit file arguments. With no
 arguments, it scans the entire libs/, src/, and tests/ trees.
@@ -28,8 +28,8 @@ pdftotext.
 
 Citation format details:
 
-    /* HUM Ch X.Y "..." p NNNN */         single-page form
-    /* HUM Ch X.Y "..." p NNNN-MMMM */    page range form
+    /* HUM Ch X.Y "..." p NNNN */ single-page form
+    /* HUM Ch X.Y "..." p NNNN-MMMM */ page range form
 
 The X chapter number is required; subsection Y is optional in the
 parser (some module-stop-only writes only carry the chapter). The
@@ -59,14 +59,14 @@ SOURCE_SUFFIXES = {".c", ".h", ".cpp", ".hpp"}
 CITE_RE = re.compile(
     r"""
     /\*\s*HUM\s+Ch\s+
-    (?P<chapter>\d{1,2})              # chapter number
-    (?:\.(?P<sub>\d{1,3}(?:\.\d{1,3})*))?  # optional subsection X.Y[.Z...]
+    (?P<chapter>\d{1,2}) # chapter number
+    (?:\.(?P<sub>\d{1,3}(?:\.\d{1,3})*))? # optional subsection X.Y[.Z...]
     \s*
-    "(?P<section>[^"]*)"              # quoted section name
+    "(?P<section>[^"]*)" # quoted section name
     \s*,?\s*
     p\s+
-    (?P<start>\d{1,5})                # start page
-    (?:\s*-\s*(?P<end>\d{1,5}))?      # optional end page
+    (?P<start>\d{1,5}) # start page
+    (?:\s*-\s*(?P<end>\d{1,5}))? # optional end page
     \s*\*/
     """,
     re.VERBOSE,
@@ -199,12 +199,12 @@ def main(argv: list[str]) -> int:
     parser.add_argument(
         "--warn",
         action="store_true",
-        help="warn-only mode: print findings, exit 0 (Wave 0 default)",
+        help="warn-only mode: print findings, exit 0 (default)",
     )
     parser.add_argument(
         "--strict",
         action="store_true",
-        help="strict mode: exit 1 on any finding (Wave 2 onward)",
+        help="strict mode: exit 1 on any finding (onward)",
     )
     parser.add_argument(
         "--chapter-map",

@@ -1,0 +1,1009 @@
+/**
+ * @file ra_lvd.c
+ * @brief Programmable Voltage Detection (PVD / LVD) driver implementation
+ *
+ * @par Tag
+ * [Ring 3 / HAL] {World: S}
+ *
+ * @details
+ * Round-3 driver implementing the **full** PVD surface defined in
+ * `ra_lvd.h`. Every register access carries a HUM Ch 8 citation
+ * (R01UH1065EJ rev 1.30).
+ *
+ * The PVD block has no module-stop bit -- it is part of the always-on
+ * SYSC region -- so this driver does **not** call `ra_mstp_enable`.
+ * Per HUM 8.2.* register notes, every control-register write requires
+ * PRCR.PRC3 = 1; the driver does NOT take the lock itself (callers
+ * must wrap each call), but the host-side simulator mmap has no lock
+ * so unit tests still see writes land.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
+ */
+
+#include "ra_lvd.h"
+
+#include <stdint.h>
+
+#include "ra8d2_lvd_regs.h"
+#include "ra_check.h"
+#include "ra_err.h"
+#include "ra_log.h"
+
+/**
+ * @var s_tag
+ * @brief Logging tag used by every error path in this TU.
+ */
+static const char* s_tag = "LVD";
+
+/* =============================================================================
+ * Channel-map helpers
+ * =============================================================================
+ */
+
+/**
+ * @struct ra_lvd_channel_map_t
+ * @brief Per-channel register-offset bundle.
+ *
+ * @details
+ * Channels 1 and 2 use the m-series offsets and have valid CR1 / SR
+ * registers. Channels 4 and 5 use the n-series offsets and have no
+ * CR1 / SR (the ``has_irq`` flag flips them off). FCR is exposed for
+ * all four channels (HUM 8.2.8 m and 8.2.9 n).
+ */
+typedef struct {
+  ra_lvd_off_t cmpcr;   /**< PVDxCMPCR offset.                        */
+  ra_lvd_off_t cr0;     /**< PVDxCR0 offset.                          */
+  ra_lvd_off_t cr1;     /**< PVDxCR1 (m only; n: same as cr0 stub).   */
+  ra_lvd_off_t sr;      /**< PVDxSR  (m only; n: same as cr0 stub).   */
+  ra_lvd_off_t fcr;     /**< PVDxFCR (RHSEL).                         */
+  bool         has_irq; /**< true for monitor m channels (1, 2).      */
+} ra_lvd_channel_map_t;
+
+/**
+ * @enum ra_lvd_map_idx_t
+ * @brief Indices into ``s_lvd_map``.
+ */
+typedef enum : uint8_t {
+  k_ra_lvd_map_idx_ch1   = 0U, /**< PVD1.       */
+  k_ra_lvd_map_idx_ch2   = 1U, /**< PVD2.       */
+  k_ra_lvd_map_idx_ch4   = 2U, /**< PVD4.       */
+  k_ra_lvd_map_idx_ch5   = 3U, /**< PVD5.       */
+  k_ra_lvd_map_idx_count = 4U, /**< Sentinel.   */
+} ra_lvd_map_idx_t;
+
+/**
+ * @var s_lvd_map
+ * @brief Lookup table from ``ra_lvd_map_idx_t`` to register offsets.
+ *
+ * @note PRIVATE.
+ */
+static const ra_lvd_channel_map_t s_lvd_map[k_ra_lvd_map_idx_count] = {
+  {.cmpcr   = k_ra_lvd_pvd1_cmpcr_off,
+   .cr0     = k_ra_lvd_pvd1_cr0_off,
+   .cr1     = k_ra_lvd_pvd1_cr1_off,
+   .sr      = k_ra_lvd_pvd1_sr_off,
+   .fcr     = k_ra_lvd_pvd1_fcr_off,
+   .has_irq = true},
+  {.cmpcr   = k_ra_lvd_pvd2_cmpcr_off,
+   .cr0     = k_ra_lvd_pvd2_cr0_off,
+   .cr1     = k_ra_lvd_pvd2_cr1_off,
+   .sr      = k_ra_lvd_pvd2_sr_off,
+   .fcr     = k_ra_lvd_pvd2_fcr_off,
+   .has_irq = true},
+  {.cmpcr   = k_ra_lvd_pvd4_cmpcr_off,
+   .cr0     = k_ra_lvd_pvd4_cr0_off,
+   .cr1     = k_ra_lvd_pvd4_cr0_off, /* unused -- n channels have no CR1. */
+   .sr      = k_ra_lvd_pvd4_cr0_off, /* unused -- n channels have no SR.  */
+   .fcr     = k_ra_lvd_pvd4_fcr_off,
+   .has_irq = false},
+  {.cmpcr   = k_ra_lvd_pvd5_cmpcr_off,
+   .cr0     = k_ra_lvd_pvd5_cr0_off,
+   .cr1     = k_ra_lvd_pvd5_cr0_off,
+   .sr      = k_ra_lvd_pvd5_cr0_off,
+   .fcr     = k_ra_lvd_pvd5_fcr_off,
+   .has_irq = false},
+};
+
+/* =============================================================================
+ * Callback storage
+ * =============================================================================
+ */
+
+/**
+ * @var s_lvd_fn
+ * @brief Shared crossing callback (set via `ra_lvd_attach_handler`).
+ */
+static ra_lvd_event_fn_t s_lvd_fn;
+
+/**
+ * @var s_lvd_ctx
+ * @brief Context passed to ``s_lvd_fn``.
+ */
+static void* s_lvd_ctx;
+
+/**
+ * @var s_lvd_chan_fn
+ * @brief Per-channel override callbacks for PVD1 / PVD2.
+ *
+ * @details
+ * Indexed by ``ra_lvd_map_idx_t``; only entries [0] and [1] are used
+ * (the n channels have no IRQ path). When non-null, takes precedence
+ * over ``s_lvd_fn`` in `ra_lvd_dispatch`.
+ */
+static ra_lvd_event_fn_t s_lvd_chan_fn[k_ra_lvd_map_idx_count];
+
+/**
+ * @var s_lvd_chan_ctx
+ * @brief Per-channel callback contexts paired with ``s_lvd_chan_fn``.
+ */
+static void* s_lvd_chan_ctx[k_ra_lvd_map_idx_count];
+
+/* =============================================================================
+ * Internal helpers
+ * =============================================================================
+ */
+
+/**
+ * @brief Translate a public channel id to an index into ``s_lvd_map``.
+ *
+ * @param[in]  channel Public channel id.
+ * @param[out] out_idx On success, the index in [0..3].
+ * @return ``k_ra_ok`` if mapping succeeded, ``k_ra_err_invalid_arg`` otherwise.
+ *
+ * @pre out_idx != nullptr.
+ * @pre channel may be any uint8_t.
+ * @post On success, *out_idx is in [0, k_ra_lvd_map_idx_count).
+ * @post On failure, *out_idx is unchanged.
+ */
+static ra_err_t internal_channel_to_idx(ra_lvd_channel_t channel, uint8_t* out_idx)
+{
+  switch (channel) {
+    case k_ra_lvd_ch1:
+      *out_idx = (uint8_t)k_ra_lvd_map_idx_ch1;
+      return k_ra_ok;
+    case k_ra_lvd_ch2:
+      *out_idx = (uint8_t)k_ra_lvd_map_idx_ch2;
+      return k_ra_ok;
+    case k_ra_lvd_ch4:
+      *out_idx = (uint8_t)k_ra_lvd_map_idx_ch4;
+      return k_ra_ok;
+    case k_ra_lvd_ch5:
+      *out_idx = (uint8_t)k_ra_lvd_map_idx_ch5;
+      return k_ra_ok;
+    default:
+      return k_ra_err_invalid_arg;
+  }
+}
+
+/**
+ * @brief Reject PVDLVL encodings outside the HUM-allowed range.
+ *
+ * @param[in] threshold PVDLVL[4:0] candidate.
+ * @return k_ra_ok if 0x03 <= threshold <= 0x0F, k_ra_err_invalid_arg otherwise.
+ *
+ * @pre threshold is any uint8_t.
+ * @post Hardware state unchanged.
+ */
+static ra_err_t internal_validate_threshold(ra_lvd_pvdlvl_t threshold)
+{
+  if ((uint8_t)threshold < (uint8_t)k_ra_lvd_pvdlvl_min) {
+    return k_ra_err_invalid_arg;
+  }
+  if ((uint8_t)threshold > (uint8_t)k_ra_lvd_pvdlvl_max) {
+    return k_ra_err_invalid_arg;
+  }
+  return k_ra_ok;
+}
+
+/**
+ * @brief Validate FSAMP[1:0] candidate (0..3).
+ *
+ * @param[in] div Divider candidate.
+ * @return k_ra_ok or k_ra_err_invalid_arg.
+ *
+ * @pre None.
+ * @post Hardware state unchanged.
+ */
+static ra_err_t internal_validate_div(ra_lvd_loco_div_t div)
+{
+  if ((uint8_t)div > (uint8_t)k_ra_lvd_loco_div_max) {
+    return k_ra_err_invalid_arg;
+  }
+  return k_ra_ok;
+}
+
+/**
+ * @brief Validate IDTSEL[1:0] candidate (0..2). 0b11 is HUM-prohibited.
+ *
+ * @param[in] edge Edge candidate.
+ * @return k_ra_ok or k_ra_err_invalid_arg.
+ *
+ * @pre None.
+ * @post Hardware state unchanged.
+ */
+static ra_err_t internal_validate_edge(ra_lvd_edge_t edge)
+{
+  /* HUM Ch 8.2.6 "PVDmCR1 : Voltage Monitor m Circuit Control Register" p 307*/
+  if ((uint8_t)edge > (uint8_t)k_ra_lvd_edge_both) {
+    return k_ra_err_invalid_arg;
+  }
+  return k_ra_ok;
+}
+
+/**
+ * @brief Read PVDmCR0.RI for an m channel.
+ *
+ * @param[in] map Channel map entry (must be has_irq=true).
+ * @return Non-zero if RI is set.
+ *
+ * @pre map.has_irq == true.
+ * @post Hardware state unchanged.
+ */
+static uint8_t internal_read_ri(const ra_lvd_channel_map_t* map)
+{
+  /* HUM Ch 8.2.4 "PVDmCR0 : Voltage Monitor m Circuit Control Register 0" p 305*/
+  return (uint8_t)(*ra_lvd_reg8(map->cr0) & (uint8_t)k_ra_lvd_cr0_mask_ri);
+}
+
+/**
+ * @brief Build a PVDnCR0 byte with the chip-mandated bit-6 = 1 / bit-7 = 0
+ *        reserved values.
+ *
+ * @param[in] base CR0 candidate without reserved bits applied.
+ * @return base | bit6 (HUM 8.2.5 p 306 "This bit is read as 1.
+ *         The write value should be 1.").
+ *
+ * @pre None.
+ * @post Hardware state unchanged.
+ */
+static uint8_t internal_n_cr0_with_reserved(uint8_t base)
+{
+  /* HUM Ch 8.2.5 "PVDnCR0 : Voltage Monitor n Circuit Control Register 0" p 306*/
+  return (uint8_t)(base | (uint8_t)k_ra_lvd_cr0_mask_n_bit6);
+}
+
+/**
+ * @brief Build a PVDmCR0 byte with bit3 forced to 1 (HUM-mandated).
+ *
+ * @param[in] base CR0 candidate without bit3 applied.
+ * @return base | bit3 (HUM 8.2.4 p 305 "The write value should be 1.").
+ *
+ * @pre None.
+ * @post Hardware state unchanged.
+ */
+static uint8_t internal_m_cr0_with_reserved(uint8_t base)
+{
+  /* HUM Ch 8.2.4 "PVDmCR0 : Voltage Monitor m Circuit Control Register 0" p 305*/
+  return (uint8_t)(base | (uint8_t)k_ra_lvd_cr0_mask_bit3);
+}
+
+/**
+ * @brief Apply the chip-specific reserved-bit pattern to a CR0 value.
+ *
+ * @param[in] map  Channel map entry.
+ * @param[in] base Pre-reserved CR0 value.
+ * @return base ORed with the channel's mandatory reserved bits.
+ *
+ * @pre None.
+ * @post Hardware state unchanged.
+ */
+static uint8_t internal_cr0_apply_reserved(const ra_lvd_channel_map_t* map, uint8_t base)
+{
+  if (map->has_irq) {
+    return internal_m_cr0_with_reserved(base);
+  }
+  return internal_n_cr0_with_reserved(base);
+}
+
+/**
+ * @brief Read-modify-write helper for PVDmCMPCR / PVDnCMPCR.
+ *
+ * @param[in] off       CMPCR offset.
+ * @param[in] clear_mask Bits to clear before applying ``set_bits``.
+ * @param[in] set_bits   Bits to set after the clear.
+ *
+ * @pre PRCR.PRC3 unlocked.
+ * @post Register reads as ((old & ~clear_mask) | set_bits).
+ */
+[[maybe_unused]] static void
+internal_cmpcr_rmw(ra_lvd_off_t off, uint8_t clear_mask, uint8_t set_bits)
+{
+  /* HUM Ch 8.2.2 "PVDmCMPCR : Voltage Monitor m Comparator Control Register" p 303*/
+  /* HUM Ch 8.2.3 "PVDnCMPCR : Voltage Monitor n Comparator Control Register" p 304*/
+  const uint8_t prev = *ra_lvd_reg8(off);
+  *ra_lvd_reg8(off)  = (uint8_t)((prev & (uint8_t)~clear_mask) | set_bits);
+}
+
+/**
+ * @brief Read-modify-write helper for PVDmCR0 / PVDnCR0 with reserved-bit
+ *        rewrite forced.
+ *
+ * @param[in] map        Channel map.
+ * @param[in] clear_mask Bits to clear.
+ * @param[in] set_bits   Bits to set.
+ *
+ * @pre PRCR.PRC3 unlocked.
+ * @post Register reads as ((old & ~clear_mask) | set_bits | reserved).
+ */
+static void internal_cr0_rmw(const ra_lvd_channel_map_t* map, uint8_t clear_mask, uint8_t set_bits)
+{
+  /* HUM Ch 8.2.4 "PVDmCR0 : Voltage Monitor m Circuit Control Register 0" p 305*/
+  /* HUM Ch 8.2.5 "PVDnCR0 : Voltage Monitor n Circuit Control Register 0" p 306*/
+  const uint8_t prev     = *ra_lvd_reg8(map->cr0);
+  const uint8_t base     = (uint8_t)((prev & (uint8_t)~clear_mask) | set_bits);
+  *ra_lvd_reg8(map->cr0) = internal_cr0_apply_reserved(map, base);
+}
+
+/* =============================================================================
+ * Channel init / deinit -- follows HUM Table 8.4 / Table 8.6
+ * =============================================================================
+ */
+
+/**
+ * @brief Validate the cfg fields that the per-channel init reads.
+ *
+ * @param[in] map Channel map for the requested channel.
+ * @param[in] cfg Caller-supplied configuration.
+ * @return k_ra_ok or one of the *_err_* codes.
+ *
+ * @pre cfg != nullptr.
+ * @post Hardware state unchanged.
+ */
+static ra_err_t internal_validate_cfg(const ra_lvd_channel_map_t* map, const ra_lvd_cfg_t* cfg)
+{
+  ra_err_t err = internal_validate_threshold(cfg->threshold);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  err = internal_validate_div(cfg->filter_div);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  if (map->has_irq) {
+    err = internal_validate_edge(cfg->edge);
+    if (err != k_ra_ok) {
+      return err;
+    }
+  } else {
+    /* HUM Ch 8.2.5 "PVDnCR0 : Voltage Monitor n Circuit Control Register 0" p 306*/
+    /* n channels only have RE -- reject IRQ / NMI responses. */
+    if ((cfg->response == k_ra_lvd_response_interrupt) ||
+        (cfg->response == k_ra_lvd_response_nmi)) {
+      return k_ra_err_not_supported;
+    }
+  }
+  /* HUM Ch 8.2.4 "PVDmCR0 : Voltage Monitor m Circuit Control Register 0" p 306*/
+  /* RN=1 prohibited when RHSEL=1. */
+  if ((cfg->hysteresis == k_ra_lvd_hysteresis_hvd) &&
+      (cfg->negate == k_ra_lvd_negate_after_assert)) {
+    return k_ra_err_invalid_arg;
+  }
+  return k_ra_ok;
+}
+
+ra_err_t ra_lvd_channel_init(ra_lvd_channel_t channel, const ra_lvd_cfg_t* cfg)
+{
+  RA_CHECK_NULL_PTR((void*)cfg, s_tag, "cfg must not be nullptr");
+
+  uint8_t        idx     = 0U;
+  const ra_err_t map_err = internal_channel_to_idx(channel, &idx);
+  RA_RETURN_ON_ERROR(map_err, s_tag, "lvd_init: bad channel");
+
+  const ra_lvd_channel_map_t map     = s_lvd_map[idx];
+  const ra_err_t             cfg_err = internal_validate_cfg(&map, cfg);
+  RA_RETURN_ON_ERROR(cfg_err, s_tag, "lvd_init: bad cfg");
+
+  /* === Step 1 (HUM Table 8.4 / Table 8.6 step 1) === */
+  /* Disable everything first so the rest of the writes are legal. */
+  /* bit3 still forced to 1 on write. */
+  /* HUM Ch 8.2.4 "PVDmCR0 : Voltage Monitor m Circuit Control Register 0" p 305*/
+  *ra_lvd_reg8(map.cr0) = internal_cr0_apply_reserved(&map, 0U);
+  /* drop PVDE so PVDLVL can be written. */
+  /* HUM Ch 8.2.2 "PVDmCMPCR : Voltage Monitor m Comparator Control Register" p 303*/
+  *ra_lvd_reg8(map.cmpcr) = 0U;
+
+  /* === Step 2 (HUM Table 8.4 step 2 / Table 8.6 step 2) === */
+  /* Write PVDLVL[4:0]; PVDE still 0. */
+  /* HUM Ch 8.2.2 "PVDmCMPCR : Voltage Monitor m Comparator Control Register" p 303*/
+  uint8_t cmpcr = (uint8_t)((uint8_t)cfg->threshold & (uint8_t)k_ra_lvd_cmpcr_mask_pvdlvl);
+  *ra_lvd_reg8(map.cmpcr) = cmpcr;
+
+  /* === Step 3 (HUM Table 8.4 step 3 / Table 8.6 step 3) === */
+  /* Programme RHSEL on FCR. */
+  /* HUM Ch 8.2.8 "PVDmFCR : Voltage Monitor m Function Control Register" p 308*/
+  /* HUM Ch 8.2.9 "PVDnFCR : Voltage Monitor n Function Control Register" p 309*/
+  *ra_lvd_reg8(map.fcr) = (uint8_t)((uint8_t)cfg->hysteresis & (uint8_t)k_ra_lvd_fcr_mask_rhsel);
+
+  /* === Step 4 (HUM Table 8.4 step 4 / Table 8.6 step 4) === */
+  /* Re-enable the detector. Caller must wait t_d(E-A) before CMPE. */
+  cmpcr |= (uint8_t)k_ra_lvd_cmpcr_mask_pvde;
+  *ra_lvd_reg8(map.cmpcr) = cmpcr;
+
+  /* === Steps 6-8 (HUM Table 8.4 steps 6-8 / Table 8.6 steps 6-8) === */
+  /* Programme FSAMP first with DFDIS still 1 (HUM 8.2.4 p 305). */
+  /* HUM Ch 8.2.4 "PVDmCR0 : Voltage Monitor m Circuit Control Register 0" p 305*/
+  /* HUM Ch 8.2.5 "PVDnCR0 : Voltage Monitor n Circuit Control Register 0" p 306*/
+  uint8_t cr0 = (uint8_t)((uint8_t)cfg->filter_div << (uint8_t)k_ra_lvd_cr0_shift_fsamp);
+  cr0 &= (uint8_t)k_ra_lvd_cr0_mask_fsamp;
+  cr0 |= (uint8_t)k_ra_lvd_cr0_mask_dfdis; /* DFDIS = 1 while writing FSAMP. */
+  if (map.has_irq) {
+    /* RN setting (HUM 8.2.4 p 305 RN bit). */
+    if (cfg->negate == k_ra_lvd_negate_after_assert) {
+      cr0 |= (uint8_t)k_ra_lvd_cr0_mask_rn;
+    }
+    /* RI setting -- raised only when reset response chosen. */
+    if ((cfg->response == k_ra_lvd_response_reset) ||
+        (cfg->response == k_ra_lvd_response_reset_on_rise)) {
+      cr0 |= (uint8_t)k_ra_lvd_cr0_mask_ri;
+    }
+  }
+  *ra_lvd_reg8(map.cr0) = internal_cr0_apply_reserved(&map, cr0);
+
+  /* Now drop DFDIS to 0 if the caller wants the digital filter on. */
+  if (cfg->filter_en) {
+    cr0 &= (uint8_t)~k_ra_lvd_cr0_mask_dfdis;
+    *ra_lvd_reg8(map.cr0) = internal_cr0_apply_reserved(&map, cr0);
+  }
+
+  /* === Step 7 / 9 (HUM Table 8.4 step 10) -- programme CR1 (m only) === */
+  if (map.has_irq) {
+    /* HUM Ch 8.2.6 "PVDmCR1 : Voltage Monitor m Circuit Control Register" p 307*/
+    uint8_t cr1 = (uint8_t)((uint8_t)cfg->edge & (uint8_t)k_ra_lvd_cr1_mask_idtsel);
+    if (cfg->irq_type == k_ra_lvd_irq_maskable) {
+      cr1 |= (uint8_t)k_ra_lvd_cr1_mask_irqsel;
+    }
+    *ra_lvd_reg8(map.cr1) = cr1;
+
+    /* === Step 11 (HUM Table 8.4) -- write 0 to DET if requested. === */
+    if (cfg->clear_status) {
+      /* HUM Ch 8.2.7 "PVDmSR : Voltage Monitor m Circuit Status Register" p 307*/
+      *ra_lvd_reg8(map.sr) = 0U;
+    }
+  }
+
+  /* === Step 12 (HUM Table 8.4 / Table 8.6 step 9) -- raise RIE / RE. === */
+  if (cfg->irq_enable && (cfg->response != k_ra_lvd_response_none)) {
+    cr0 |= map.has_irq ? (uint8_t)k_ra_lvd_cr0_mask_rie : (uint8_t)k_ra_lvd_cr0_mask_re;
+    *ra_lvd_reg8(map.cr0) = internal_cr0_apply_reserved(&map, cr0);
+  }
+
+  /* === Step 13 (HUM Table 8.4) / step 10 (HUM Table 8.6) -- enable CMPE. */
+  cr0 |= (uint8_t)k_ra_lvd_cr0_mask_cmpe;
+  *ra_lvd_reg8(map.cr0) = internal_cr0_apply_reserved(&map, cr0);
+
+  ra_log_info_val(s_tag, "lvd_init ch", (uint32_t)channel);
+  return k_ra_ok;
+}
+
+ra_err_t ra_lvd_channel_deinit(ra_lvd_channel_t channel)
+{
+  uint8_t        idx     = 0U;
+  const ra_err_t map_err = internal_channel_to_idx(channel, &idx);
+  RA_RETURN_ON_ERROR(map_err, s_tag, "lvd_deinit: bad channel");
+
+  const ra_lvd_channel_map_t map = s_lvd_map[idx];
+
+  /* === HUM Table 8.5 step 1 / Table 8.7 step 1 -- drop CMPE. */
+  internal_cr0_rmw(&map, (uint8_t)k_ra_lvd_cr0_mask_cmpe, 0U);
+
+  /* === HUM Table 8.5 step 3 / Table 8.7 step 3 -- drop RIE / RE. */
+  internal_cr0_rmw(&map,
+                   map.has_irq ? (uint8_t)k_ra_lvd_cr0_mask_rie : (uint8_t)k_ra_lvd_cr0_mask_re,
+                   0U);
+
+  /* === HUM Table 8.5 step 4 / Table 8.7 step 4 -- DFDIS = 1 (filter off). */
+  internal_cr0_rmw(&map, 0U, (uint8_t)k_ra_lvd_cr0_mask_dfdis);
+
+  /* === HUM Table 8.5 step 5 / Table 8.7 step 5 -- drop PVDE. */
+  /* HUM Ch 8.2.2 "PVDmCMPCR" p 303*/
+  *ra_lvd_reg8(map.cmpcr) = 0U;
+
+  /* Cleanly drop the rest of the per-channel state. */
+  *ra_lvd_reg8(map.cr0) = internal_cr0_apply_reserved(&map, 0U);
+  *ra_lvd_reg8(map.fcr) = 0U;
+  if (map.has_irq) {
+    /* HUM Ch 8.2.6 "PVDmCR1 : Voltage Monitor m Circuit Control Register" p 307*/
+    *ra_lvd_reg8(map.cr1) = 0U;
+    /* HUM Ch 8.2.7 "PVDmSR : Voltage Monitor m Circuit Status Register" p 307*/
+    *ra_lvd_reg8(map.sr) = 0U;
+  }
+  return k_ra_ok;
+}
+
+/* =============================================================================
+ * Threshold + edge + kind setters
+ * =============================================================================
+ */
+
+ra_err_t ra_lvd_set_threshold(ra_lvd_channel_t channel, ra_lvd_pvdlvl_t threshold)
+{
+  uint8_t        idx     = 0U;
+  const ra_err_t map_err = internal_channel_to_idx(channel, &idx);
+  RA_RETURN_ON_ERROR(map_err, s_tag, "lvd_set_threshold: bad channel");
+
+  const ra_err_t lvl_err = internal_validate_threshold(threshold);
+  RA_RETURN_ON_ERROR(lvl_err, s_tag, "lvd_set_threshold: bad threshold");
+
+  const ra_lvd_channel_map_t map = s_lvd_map[idx];
+
+  /* HUM Ch 8.2.2 "PVDmCMPCR : Voltage Monitor m Comparator Control Register" p 303*/
+  /* Preserve the PVDE bit, drop it around the PVDLVL write, restore it afterwards. */
+  const uint8_t prev     = *ra_lvd_reg8(map.cmpcr);
+  const uint8_t pvde_was = (uint8_t)(prev & (uint8_t)k_ra_lvd_cmpcr_mask_pvde);
+
+  *ra_lvd_reg8(map.cmpcr) = 0U;
+
+  uint8_t cmpcr = (uint8_t)((uint8_t)threshold & (uint8_t)k_ra_lvd_cmpcr_mask_pvdlvl);
+  cmpcr |= pvde_was;
+  *ra_lvd_reg8(map.cmpcr) = cmpcr;
+  return k_ra_ok;
+}
+
+ra_err_t ra_lvd_set_irq_edge(ra_lvd_channel_t channel, ra_lvd_edge_t edge)
+{
+  uint8_t        idx     = 0U;
+  const ra_err_t map_err = internal_channel_to_idx(channel, &idx);
+  RA_RETURN_ON_ERROR(map_err, s_tag, "lvd_set_irq_edge: bad channel");
+
+  const ra_err_t edge_err = internal_validate_edge(edge);
+  RA_RETURN_ON_ERROR(edge_err, s_tag, "lvd_set_irq_edge: bad edge");
+
+  const ra_lvd_channel_map_t map = s_lvd_map[idx];
+  if (!map.has_irq) {
+    return k_ra_err_not_supported;
+  }
+
+  /* HUM Ch 8.2.6 "PVDmCR1 : Voltage Monitor m Circuit Control Register" p 307*/
+  const uint8_t prev    = *ra_lvd_reg8(map.cr1);
+  const uint8_t next    = (uint8_t)((prev & (uint8_t)~k_ra_lvd_cr1_mask_idtsel) |
+                                    ((uint8_t)edge & (uint8_t)k_ra_lvd_cr1_mask_idtsel));
+  *ra_lvd_reg8(map.cr1) = next;
+  return k_ra_ok;
+}
+
+ra_err_t ra_lvd_set_irq_kind(ra_lvd_channel_t channel, ra_lvd_irq_type_t kind)
+{
+  uint8_t        idx     = 0U;
+  const ra_err_t map_err = internal_channel_to_idx(channel, &idx);
+  RA_RETURN_ON_ERROR(map_err, s_tag, "lvd_set_irq_kind: bad channel");
+
+  const ra_lvd_channel_map_t map = s_lvd_map[idx];
+  if (!map.has_irq) {
+    return k_ra_err_not_supported;
+  }
+
+  /* HUM Ch 8.2.6 "PVDmCR1 : Voltage Monitor m Circuit Control Register" p 307*/
+  const uint8_t prev = *ra_lvd_reg8(map.cr1);
+  uint8_t       next = (uint8_t)(prev & (uint8_t)~k_ra_lvd_cr1_mask_irqsel);
+  if (kind == k_ra_lvd_irq_maskable) {
+    next |= (uint8_t)k_ra_lvd_cr1_mask_irqsel;
+  }
+  *ra_lvd_reg8(map.cr1) = next;
+  return k_ra_ok;
+}
+
+/* =============================================================================
+ * IRQ / reset / CMPE single-bit toggles
+ * =============================================================================
+ */
+
+ra_err_t ra_lvd_enable_irq(ra_lvd_channel_t channel)
+{
+  uint8_t        idx     = 0U;
+  const ra_err_t map_err = internal_channel_to_idx(channel, &idx);
+  RA_RETURN_ON_ERROR(map_err, s_tag, "lvd_enable_irq: bad channel");
+
+  const ra_lvd_channel_map_t map = s_lvd_map[idx];
+  if (!map.has_irq) {
+    return k_ra_err_not_supported;
+  }
+  /* set RIE. */
+  /* HUM Ch 8.2.4 "PVDmCR0 : Voltage Monitor m Circuit Control Register 0" p 305*/
+  internal_cr0_rmw(&map, 0U, (uint8_t)k_ra_lvd_cr0_mask_rie);
+  return k_ra_ok;
+}
+
+ra_err_t ra_lvd_disable_irq(ra_lvd_channel_t channel)
+{
+  uint8_t        idx     = 0U;
+  const ra_err_t map_err = internal_channel_to_idx(channel, &idx);
+  RA_RETURN_ON_ERROR(map_err, s_tag, "lvd_disable_irq: bad channel");
+
+  const ra_lvd_channel_map_t map = s_lvd_map[idx];
+  if (!map.has_irq) {
+    return k_ra_err_not_supported;
+  }
+  /* HUM Ch 8.2.4 "PVDmCR0" p 305 */
+  internal_cr0_rmw(&map, (uint8_t)k_ra_lvd_cr0_mask_rie, 0U);
+  return k_ra_ok;
+}
+
+ra_err_t ra_lvd_enable_reset(ra_lvd_channel_t channel)
+{
+  uint8_t        idx     = 0U;
+  const ra_err_t map_err = internal_channel_to_idx(channel, &idx);
+  RA_RETURN_ON_ERROR(map_err, s_tag, "lvd_enable_reset: bad channel");
+
+  const ra_lvd_channel_map_t map = s_lvd_map[idx];
+  if (map.has_irq) {
+    /* m channel: set RI then RIE. */
+    /* HUM Ch 8.2.4 "PVDmCR0" p 305*/
+    internal_cr0_rmw(&map,
+                     0U,
+                     (uint8_t)((uint8_t)k_ra_lvd_cr0_mask_ri | (uint8_t)k_ra_lvd_cr0_mask_rie));
+  } else {
+    /* n channel: set RE only -- it is the only response option. */
+    /* HUM Ch 8.2.5 "PVDnCR0" p 306*/
+    internal_cr0_rmw(&map, 0U, (uint8_t)k_ra_lvd_cr0_mask_re);
+  }
+  return k_ra_ok;
+}
+
+ra_err_t ra_lvd_disable_reset(ra_lvd_channel_t channel)
+{
+  uint8_t        idx     = 0U;
+  const ra_err_t map_err = internal_channel_to_idx(channel, &idx);
+  RA_RETURN_ON_ERROR(map_err, s_tag, "lvd_disable_reset: bad channel");
+
+  const ra_lvd_channel_map_t map = s_lvd_map[idx];
+  /* HUM Ch 8.2.4 "PVDmCR0" p 305 */
+  internal_cr0_rmw(&map,
+                   map.has_irq ? (uint8_t)k_ra_lvd_cr0_mask_rie : (uint8_t)k_ra_lvd_cr0_mask_re,
+                   0U);
+  return k_ra_ok;
+}
+
+ra_err_t ra_lvd_enable_cmpe(ra_lvd_channel_t channel)
+{
+  uint8_t        idx     = 0U;
+  const ra_err_t map_err = internal_channel_to_idx(channel, &idx);
+  RA_RETURN_ON_ERROR(map_err, s_tag, "lvd_enable_cmpe: bad channel");
+
+  const ra_lvd_channel_map_t map = s_lvd_map[idx];
+  /* HUM Ch 8.2.4 "PVDmCR0" p 305 */
+  internal_cr0_rmw(&map, 0U, (uint8_t)k_ra_lvd_cr0_mask_cmpe);
+  return k_ra_ok;
+}
+
+ra_err_t ra_lvd_disable_cmpe(ra_lvd_channel_t channel)
+{
+  uint8_t        idx     = 0U;
+  const ra_err_t map_err = internal_channel_to_idx(channel, &idx);
+  RA_RETURN_ON_ERROR(map_err, s_tag, "lvd_disable_cmpe: bad channel");
+
+  const ra_lvd_channel_map_t map = s_lvd_map[idx];
+  /* HUM Ch 8.2.4 "PVDmCR0" p 305 */
+  internal_cr0_rmw(&map, (uint8_t)k_ra_lvd_cr0_mask_cmpe, 0U);
+  return k_ra_ok;
+}
+
+/* =============================================================================
+ * Filter + RHSEL + RN runtime updates
+ * =============================================================================
+ */
+
+ra_err_t ra_lvd_set_filter(ra_lvd_channel_t channel, ra_lvd_loco_div_t filter_div, bool filter_en)
+{
+  uint8_t        idx     = 0U;
+  const ra_err_t map_err = internal_channel_to_idx(channel, &idx);
+  RA_RETURN_ON_ERROR(map_err, s_tag, "lvd_set_filter: bad channel");
+
+  const ra_err_t div_err = internal_validate_div(filter_div);
+  RA_RETURN_ON_ERROR(div_err, s_tag, "lvd_set_filter: bad div");
+
+  const ra_lvd_channel_map_t map = s_lvd_map[idx];
+
+  /* HUM Ch 8.2.4 "PVDmCR0" p 305 / HUM Ch 8.2.5 "PVDnCR0" p 306
+   * -- FSAMP can only be modified while DFDIS = 1. */
+  internal_cr0_rmw(&map, 0U, (uint8_t)k_ra_lvd_cr0_mask_dfdis);
+
+  const uint8_t fsamp_bits = (uint8_t)(((uint8_t)filter_div << (uint8_t)k_ra_lvd_cr0_shift_fsamp) &
+                                       (uint8_t)k_ra_lvd_cr0_mask_fsamp);
+  internal_cr0_rmw(&map, (uint8_t)k_ra_lvd_cr0_mask_fsamp, fsamp_bits);
+
+  if (filter_en) {
+    /* Drop DFDIS only after FSAMP has landed. */
+    internal_cr0_rmw(&map, (uint8_t)k_ra_lvd_cr0_mask_dfdis, 0U);
+  }
+  return k_ra_ok;
+}
+
+ra_err_t ra_lvd_set_hysteresis_mode(ra_lvd_channel_t channel, ra_lvd_hysteresis_t hyst)
+{
+  uint8_t        idx     = 0U;
+  const ra_err_t map_err = internal_channel_to_idx(channel, &idx);
+  RA_RETURN_ON_ERROR(map_err, s_tag, "lvd_set_hysteresis_mode: bad channel");
+
+  if ((uint8_t)hyst > (uint8_t)k_ra_lvd_hysteresis_hvd) {
+    return k_ra_err_invalid_arg;
+  }
+
+  const ra_lvd_channel_map_t map = s_lvd_map[idx];
+
+  /* HUM Ch 8.2.8 "PVDmFCR" p 308 last bullet -- "RHSEL must not be set
+   * to 1 when PVDmCR0.RI = 0." Enforce only on m channels (n channels
+   * have no RI bit; their RHSEL is always legal). */
+  if (map.has_irq && (hyst == k_ra_lvd_hysteresis_hvd)) {
+    if (internal_read_ri(&map) == 0U) {
+      return k_ra_err_invalid_state;
+    }
+  }
+
+  /* HUM Ch 8.2.8 / 8.2.9 -- RHSEL can only be modified when every
+   * PVDE is 0; preserve and restore this channel's PVDE. */
+  const uint8_t prev_cmpcr = *ra_lvd_reg8(map.cmpcr);
+  const uint8_t pvde_was   = (uint8_t)(prev_cmpcr & (uint8_t)k_ra_lvd_cmpcr_mask_pvde);
+  *ra_lvd_reg8(map.cmpcr)  = (uint8_t)(prev_cmpcr & (uint8_t)~k_ra_lvd_cmpcr_mask_pvde);
+
+  /* HUM Ch 8.2.8 "PVDmFCR" p 308 */
+  *ra_lvd_reg8(map.fcr) = (uint8_t)((uint8_t)hyst & (uint8_t)k_ra_lvd_fcr_mask_rhsel);
+
+  /* Restore PVDE if it had been set. */
+  *ra_lvd_reg8(map.cmpcr) = (uint8_t)(*ra_lvd_reg8(map.cmpcr) | pvde_was);
+  return k_ra_ok;
+}
+
+ra_err_t ra_lvd_set_negate_mode(ra_lvd_channel_t channel, ra_lvd_negate_t negate)
+{
+  uint8_t        idx     = 0U;
+  const ra_err_t map_err = internal_channel_to_idx(channel, &idx);
+  RA_RETURN_ON_ERROR(map_err, s_tag, "lvd_set_negate_mode: bad channel");
+
+  const ra_lvd_channel_map_t map = s_lvd_map[idx];
+  if (!map.has_irq) {
+    return k_ra_err_not_supported;
+  }
+  if ((uint8_t)negate > (uint8_t)k_ra_lvd_negate_after_assert) {
+    return k_ra_err_invalid_arg;
+  }
+
+  /* HUM Ch 8.2.4 "PVDmCR0" p 306 */
+  /* HUM Ch 8.2.8 "PVDmFCR" p 308 */
+  if (negate == k_ra_lvd_negate_after_assert) {
+    const uint8_t fcr = *ra_lvd_reg8(map.fcr);
+    if ((fcr & (uint8_t)k_ra_lvd_fcr_mask_rhsel) != 0U) {
+      return k_ra_err_invalid_state;
+    }
+  }
+
+  /* HUM Ch 8.2.4 "PVDmCR0" p 305*/
+  internal_cr0_rmw(&map,
+                   (uint8_t)k_ra_lvd_cr0_mask_rn,
+                   (negate == k_ra_lvd_negate_after_assert) ? (uint8_t)k_ra_lvd_cr0_mask_rn : 0U);
+  return k_ra_ok;
+}
+
+/* =============================================================================
+ * Status read / clear
+ * =============================================================================
+ */
+
+ra_err_t ra_lvd_get_status(ra_lvd_channel_t channel, ra_lvd_status_t* out)
+{
+  RA_CHECK_NULL_PTR((void*)out, s_tag, "out must not be nullptr");
+
+  uint8_t        idx     = 0U;
+  const ra_err_t map_err = internal_channel_to_idx(channel, &idx);
+  RA_RETURN_ON_ERROR(map_err, s_tag, "lvd_get_status: bad channel");
+
+  const ra_lvd_channel_map_t map = s_lvd_map[idx];
+  if (!map.has_irq) {
+    return k_ra_err_not_supported;
+  }
+
+  /* HUM Ch 8.2.7 "PVDmSR : Voltage Monitor m Circuit Status Register" p 307*/
+  const uint8_t sr = *ra_lvd_reg8(map.sr);
+  out->crossed     = (sr & (uint8_t)k_ra_lvd_sr_mask_det) != 0U;
+  out->above       = (sr & (uint8_t)k_ra_lvd_sr_mask_mon) != 0U;
+  return k_ra_ok;
+}
+
+ra_err_t ra_lvd_clear_status(ra_lvd_channel_t channel)
+{
+  uint8_t        idx     = 0U;
+  const ra_err_t map_err = internal_channel_to_idx(channel, &idx);
+  RA_RETURN_ON_ERROR(map_err, s_tag, "lvd_clear_status: bad channel");
+
+  const ra_lvd_channel_map_t map = s_lvd_map[idx];
+  if (!map.has_irq) {
+    return k_ra_err_not_supported;
+  }
+
+  /* HUM Ch 8.2.7 "PVDmSR : Voltage Monitor m Circuit Status Register" p 307
+   * Note 1 -- only 0 can be written to DET. MON is preserved by
+   * clearing only the DET bit. */
+  const uint8_t sr     = *ra_lvd_reg8(map.sr);
+  const uint8_t next   = (uint8_t)(sr & (uint8_t)~k_ra_lvd_sr_mask_det);
+  *ra_lvd_reg8(map.sr) = next;
+  return k_ra_ok;
+}
+
+/* =============================================================================
+ * Security attribution + n-channel lock
+ * =============================================================================
+ */
+
+ra_err_t ra_lvd_set_security(uint32_t mask)
+{
+  /* HUM Ch 8.2.1 "PVDSAR : Programmable Voltage Detection Security
+   * Attribution Register" p 302 */
+  if ((mask & (uint32_t)~k_ra_lvd_pvdsar_mask_all) != 0U) {
+    return k_ra_err_invalid_arg;
+  }
+  *ra_lvd_reg32(k_ra_lvd_pvdsar_off) = mask;
+  return k_ra_ok;
+}
+
+ra_err_t ra_lvd_unlock_n_channels(void)
+{
+  /* HUM Ch 8.2.10 "PVDLR : Voltage Monitor Lock Register" p 309*/
+  *ra_lvd_reg8(k_ra_lvd_pvdlr_off) = (uint8_t)k_ra_lvd_pvdlr_value_unlock;
+  return k_ra_ok;
+}
+
+ra_err_t ra_lvd_relock_n_channels(void)
+{
+  /* HUM Ch 8.2.10 "PVDLR : Voltage Monitor Lock Register" p 309 --
+   * "if you write an arbitrary value to the LOCK, the LOCK bit is
+   * fixed to 1." */
+  *ra_lvd_reg8(k_ra_lvd_pvdlr_off) = (uint8_t)k_ra_lvd_pvdlr_value_relock;
+  return k_ra_ok;
+}
+
+/* =============================================================================
+ * ELC + standby helpers
+ * =============================================================================
+ */
+
+ra_err_t ra_lvd_enable_elc_event(ra_lvd_channel_t channel)
+{
+  uint8_t        idx     = 0U;
+  const ra_err_t map_err = internal_channel_to_idx(channel, &idx);
+  RA_RETURN_ON_ERROR(map_err, s_tag, "lvd_enable_elc_event: bad channel");
+
+  const ra_lvd_channel_map_t map = s_lvd_map[idx];
+  if (!map.has_irq) {
+    return k_ra_err_not_supported;
+  }
+
+  /* HUM Ch 8.7 "Event Link Controller (ELC) Output" p 315 -- the event
+   * line tracks the comparator output enable: clear DET first, then
+   * raise CMPE. */
+  /* HUM Ch 8.2.7 "PVDmSR : Voltage Monitor m Circuit Status Register" p 307*/
+  const uint8_t sr     = *ra_lvd_reg8(map.sr);
+  *ra_lvd_reg8(map.sr) = (uint8_t)(sr & (uint8_t)~k_ra_lvd_sr_mask_det);
+  /* HUM Ch 8.2.4 "PVDmCR0" p 305*/
+  internal_cr0_rmw(&map, 0U, (uint8_t)k_ra_lvd_cr0_mask_cmpe);
+  return k_ra_ok;
+}
+
+ra_err_t ra_lvd_disable_elc_event(ra_lvd_channel_t channel)
+{
+  uint8_t        idx     = 0U;
+  const ra_err_t map_err = internal_channel_to_idx(channel, &idx);
+  RA_RETURN_ON_ERROR(map_err, s_tag, "lvd_disable_elc_event: bad channel");
+
+  const ra_lvd_channel_map_t map = s_lvd_map[idx];
+  if (!map.has_irq) {
+    return k_ra_err_not_supported;
+  }
+  /* HUM Ch 8.2.4 "PVDmCR0" p 305 -- clear CMPE so the ELC line goes
+   * inactive (HUM 8.7 p 315). */
+  internal_cr0_rmw(&map, (uint8_t)k_ra_lvd_cr0_mask_cmpe, 0U);
+  return k_ra_ok;
+}
+
+ra_err_t ra_lvd_configure_for_standby(ra_lvd_channel_t channel)
+{
+  uint8_t        idx     = 0U;
+  const ra_err_t map_err = internal_channel_to_idx(channel, &idx);
+  RA_RETURN_ON_ERROR(map_err, s_tag, "lvd_configure_for_standby: bad channel");
+
+  const ra_lvd_channel_map_t map = s_lvd_map[idx];
+
+  /* HUM Ch 8.5(1) "Setting in Software Standby mode" p 311 +
+   * HUM Ch 8.5(2) "Settings in Deep Software Standby mode" p 312 --
+   * disable the digital filter and (for m channels) clear RI + RN. */
+  uint8_t set_bits = (uint8_t)k_ra_lvd_cr0_mask_dfdis;
+  uint8_t clr_bits = 0U;
+  if (map.has_irq) {
+    clr_bits |= (uint8_t)k_ra_lvd_cr0_mask_ri;
+    clr_bits |= (uint8_t)k_ra_lvd_cr0_mask_rn;
+  }
+  /* HUM Ch 8.2.4 "PVDmCR0" p 305*/
+  internal_cr0_rmw(&map, clr_bits, set_bits);
+  return k_ra_ok;
+}
+
+ra_err_t ra_lvd_cancel_deep_standby_path(void)
+{
+  /* HUM Ch 8.2.4 "PVDmCR0" p 305 */
+  for (uint8_t i = 0U; i < (uint8_t)k_ra_lvd_nmi_channel_count; ++i) {
+    internal_cr0_rmw(&s_lvd_map[i], (uint8_t)k_ra_lvd_cr0_mask_ri, 0U);
+  }
+  return k_ra_ok;
+}
+
+/* =============================================================================
+ * Filter timing helper (pure)
+ * =============================================================================
+ */
+
+uint32_t ra_lvd_filter_delay_us(ra_lvd_loco_div_t div, uint32_t loco_hz)
+{
+  /* HUM Table 8.4 step 8 (p 312) / Table 8.6 step 8 (p 315): wait for
+   * "2s + 3 cycles of the LOCO" where s = 2^(div+1). */
+  uint8_t safe_div = (uint8_t)div;
+  if (safe_div > (uint8_t)k_ra_lvd_loco_div_max) {
+    safe_div = (uint8_t)k_ra_lvd_loco_div_max;
+  }
+  const uint32_t s_factor = (uint32_t)1U << (safe_div + 1U);
+  const uint32_t loco_cycles =
+    ((uint32_t)k_ra_lvd_filter_factor * s_factor) + (uint32_t)k_ra_lvd_filter_extra;
+  const uint32_t hz = (loco_hz != 0U) ? loco_hz : (uint32_t)k_ra_lvd_loco_hz_default;
+  /* +1 us round-up matches FSP's r_lvd_filter_delay computation. */
+  return ((loco_cycles * (uint32_t)k_ra_lvd_us_per_sec) / hz) + 1U;
+}
+
+/* =============================================================================
+ * Callback registration + ISR demux
+ * =============================================================================
+ */
+
+ra_err_t ra_lvd_attach_handler(ra_lvd_event_fn_t fn, void* ctx)
+{
+  s_lvd_fn  = fn;
+  s_lvd_ctx = ctx;
+  return k_ra_ok;
+}
+
+ra_err_t ra_lvd_attach_channel_handler(ra_lvd_channel_t channel, ra_lvd_event_fn_t fn, void* ctx)
+{
+  uint8_t        idx     = 0U;
+  const ra_err_t map_err = internal_channel_to_idx(channel, &idx);
+  RA_RETURN_ON_ERROR(map_err, s_tag, "lvd_attach_channel_handler: bad channel");
+
+  const ra_lvd_channel_map_t map = s_lvd_map[idx];
+  if (!map.has_irq) {
+    return k_ra_err_not_supported;
+  }
+  s_lvd_chan_fn[idx]  = fn;
+  s_lvd_chan_ctx[idx] = ctx;
+  return k_ra_ok;
+}
+
+void ra_lvd_dispatch(ra_lvd_channel_t channel)
+{
+  uint8_t        idx     = 0U;
+  const ra_err_t map_err = internal_channel_to_idx(channel, &idx);
+  if (map_err != k_ra_ok) {
+    return;
+  }
+  const ra_lvd_channel_map_t map = s_lvd_map[idx];
+
+  /* Only m channels have a status register / IRQ path. */
+  if (!map.has_irq) {
+    return;
+  }
+
+  /* HUM Ch 8.2.7 "PVDmSR : Voltage Monitor m Circuit Status Register" p 307
+   * -- only fire the callback if a crossing was actually latched. */
+  const uint8_t sr = *ra_lvd_reg8(map.sr);
+  if ((sr & (uint8_t)k_ra_lvd_sr_mask_det) == 0U) {
+    return;
+  }
+
+  /* Per-channel callback wins; otherwise fall back to the shared one. */
+  const ra_lvd_event_fn_t chan_fn  = s_lvd_chan_fn[idx];
+  void* const             chan_ctx = s_lvd_chan_ctx[idx];
+  const ra_lvd_event_fn_t fn       = (chan_fn != nullptr) ? chan_fn : s_lvd_fn;
+  void* const             ctx      = (chan_fn != nullptr) ? chan_ctx : s_lvd_ctx;
+  if (fn != nullptr) {
+    fn(ctx, channel);
+  }
+
+  /* Write 0 to DET so the next crossing can latch (HUM 8.2.7 Note 1 p 307). */
+  const uint8_t cleared = (uint8_t)(*ra_lvd_reg8(map.sr) & (uint8_t)~k_ra_lvd_sr_mask_det);
+  *ra_lvd_reg8(map.sr)  = cleared;
+}

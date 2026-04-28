@@ -6,8 +6,8 @@
  * [Ring 3 / HAL] {World: NS}
  *
  * @details
- * Wave 4.2 full build-out of the RA8D2 ACMPHS block. Extends
- * the Wave 0 enable/read stub with: per-channel descriptor
+ * full build-out of the RA8D2 ACMPHS block. Extends
+ * the enable/read stub with: per-channel descriptor
  * init, deinit, runtime input selection, edge-sensitive IRQ
  * attach / dispatch, filter config, power transition.
  *
@@ -33,9 +33,9 @@ extern "C" {
  */
 typedef enum : uint8_t {
   k_ra_acmphs_edge_none = 0U, /**< Polling only, no edge trigger. */
-  k_ra_acmphs_edge_rise = 1U, /**< Rising edge.                   */
-  k_ra_acmphs_edge_fall = 2U, /**< Falling edge.                  */
-  k_ra_acmphs_edge_both = 3U, /**< Either edge.                   */
+  k_ra_acmphs_edge_rise = 1U, /**< Rising edge. */
+  k_ra_acmphs_edge_fall = 2U, /**< Falling edge. */
+  k_ra_acmphs_edge_both = 3U, /**< Either edge. */
 } ra_acmphs_edge_t;
 
 /**
@@ -51,16 +51,16 @@ typedef enum : uint8_t {
 typedef struct {
   uint8_t          ivpsel;     /**< Plus-input select (CMPSEL0). */
   uint8_t          ivrefsel;   /**< Minus-input select (CMPSEL1). */
-  ra_acmphs_edge_t edge;       /**< Edge detect mode.             */
-  bool             filter_en;  /**< True -> enable filter.        */
-  bool             invert_out; /**< True -> invert output.        */
+  ra_acmphs_edge_t edge;       /**< Edge detect mode. */
+  bool             filter_en;  /**< True -> enable filter. */
+  bool             invert_out; /**< True -> invert output. */
 } ra_acmphs_cfg_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @typedef ra_acmphs_event_fn_t
  * @brief ACMPHS edge event callback.
- * @param[in] ctx     Caller context.
+ * @param[in] ctx Caller context.
  * @param[in] channel Channel that fired the edge.
  */
 typedef void (*ra_acmphs_event_fn_t)(void* ctx, uint8_t channel);
@@ -81,7 +81,7 @@ typedef void (*ra_acmphs_event_fn_t)(void* ctx, uint8_t channel);
  * @brief Initialise one channel with a full config descriptor.
  *
  * @param[in] channel Channel 0..5.
- * @param[in] cfg     Non-NULL configuration descriptor.
+ * @param[in] cfg Non-NULL configuration descriptor.
  * @return ``ra_err_t`` error code.
  *
  * @pre IRQs masked or single-threaded init context.
@@ -114,8 +114,8 @@ typedef void (*ra_acmphs_event_fn_t)(void* ctx, uint8_t channel);
 
 /**
  * @brief Read the live output of a channel.
- * @param[in]  channel Channel index (0..5).
- * @param[out] out     Receives `k_ra_level_high` or `k_ra_level_low`.
+ * @param[in] channel Channel index (0..5).
+ * @param[out] out Receives `k_ra_level_high` or `k_ra_level_low`.
  * @return `ra_err_t` error code.
  * @since 0.1.0
  */
@@ -128,8 +128,8 @@ typedef void (*ra_acmphs_event_fn_t)(void* ctx, uint8_t channel);
 
 /**
  * @brief Change the input selection of one channel at runtime.
- * @param[in] channel  Channel 0..5.
- * @param[in] ivpsel   Plus-input selector.
+ * @param[in] channel Channel 0..5.
+ * @param[in] ivpsel Plus-input selector.
  * @param[in] ivrefsel Minus-input selector.
  * @return ``ra_err_t`` error code.
  * @since 0.2.0
@@ -143,7 +143,7 @@ typedef void (*ra_acmphs_event_fn_t)(void* ctx, uint8_t channel);
 
 /**
  * @brief Read CMPCTL enable / edge bits.
- * @param[in]  channel  Channel 0..5.
+ * @param[in] channel Channel 0..5.
  * @param[out] out_mask CMPCTL value.
  * @return ``ra_err_t`` error code.
  * @since 0.2.0
@@ -163,7 +163,7 @@ typedef void (*ra_acmphs_event_fn_t)(void* ctx, uint8_t channel);
 
 /**
  * @brief Attach an ACMPHS event callback (shared across all channels).
- * @param[in] fn  Callback fired on ISR dispatch.
+ * @param[in] fn Callback fired on ISR dispatch.
  * @param[in] ctx Context forwarded to the callback.
  * @return ``ra_err_t`` error code.
  * @since 0.2.0

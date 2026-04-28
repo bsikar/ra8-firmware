@@ -6,7 +6,7 @@
  * [Ring 3 / HAL] {World: NS}
  *
  * @details
- * Wave 4 driver for the CAC block. The CAC measures one clock
+ * driver for the CAC block. The CAC measures one clock
  * source against another over a configurable time window and
  * fires a measurement-end / overflow / frequency-error IRQ when
  * the result is out of bounds. This driver exposes lifecycle,
@@ -31,7 +31,7 @@ static const char* s_tag = "CAC";
 
 typedef enum : uint8_t {
   k_ra_cacr0_cfme  = 0U, /**< CFME: clock frequency measurement en.*/
-  k_ra_castr_mendf = 1U, /**< Measurement end flag.                */
+  k_ra_castr_mendf = 1U, /**< Measurement end flag. */
 } ra_cac_bit_t;
 
 ra_err_t ra_cac_init(uint16_t upper, uint16_t lower)
@@ -78,13 +78,13 @@ ra_err_t ra_cac_measure(uint16_t* out_count)
 }
 
 /* =============================================================================
- * Wave 4.3 -- full build-out
+ * full build-out
  * =============================================================================
  */
 
 /**
  * @enum ra_cac_bits_w43_t
- * @brief Wave 4.3 combined mask.
+ * @brief combined mask.
  */
 typedef enum : uint8_t {
   k_ra_cac_status_mask_all =

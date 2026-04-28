@@ -11,9 +11,9 @@
  * ## Pattern
  *
  * @code{.c}
- *   ra_err_t err = ra_gpio_output_init(k_ra_pin_led1, k_ra_level_low);
- *   RA_ERROR_CHECK(err);
- *   ra_gpio_write(k_ra_pin_led1, k_ra_level_high);
+ * ra_err_t err = ra_gpio_output_init(k_ra_pin_led1, k_ra_level_low);
+ * RA_ERROR_CHECK(err);
+ * ra_gpio_write(k_ra_pin_led1, k_ra_level_high);
  * @endcode
  *
  * Every helper claims ownership of the pin through
@@ -40,27 +40,27 @@ extern "C" {
 
 /**
  * @brief Configure a pin as a digital output and drive it to an
- *        initial level.
+ * initial level.
  *
- * @param[in] pin         Packed port/pin identifier.
- * @param[in] init_level  Initial output level (`k_ra_level_low` or
- *                        `k_ra_level_high`).
+ * @param[in] pin Packed port/pin identifier.
+ * @param[in] init_level Initial output level (`k_ra_level_low` or
+ * `k_ra_level_high`).
  *
  * @return `ra_err_t` error code.
- * @retval k_ra_ok                    Pin configured and driven.
+ * @retval k_ra_ok Pin configured and driven.
  * @retval k_ra_err_gpio_invalid_port Port out of range.
- * @retval k_ra_err_gpio_invalid_pin  Pin out of range.
- * @retval k_ra_err_gpio_conflict     Pin already owned.
+ * @retval k_ra_err_gpio_invalid_pin Pin out of range.
+ * @retval k_ra_err_gpio_conflict Pin already owned.
  *
  * @pre `ra_infrastructure_init()` has run (pin validator ready).
  * @pre The IOPORT module clock is on (IOPORT is one of the "always on"
- *      blocks, so this is satisfied automatically after reset).
+ * blocks, so this is satisfied automatically after reset).
  * @post On success, the pin is in GPIO-output mode driving `init_level`.
  * @post On success, the pin is owned by this driver (`"GPIO"` tag).
  *
  * @note Not thread-safe: reads / modifies / writes the PFS register
- *       and touches PWPR. Protect with IRQ masking or run during
- *       single-threaded init.
+ * and touches PWPR. Protect with IRQ masking or run during
+ * single-threaded init.
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_gpio_output_init(ra_port_pin_t pin, ra_level_t init_level);
@@ -68,7 +68,7 @@ extern "C" {
 /**
  * @brief Configure a pin as a digital input.
  *
- * @param[in] pin  Packed port/pin identifier.
+ * @param[in] pin Packed port/pin identifier.
  * @param[in] pull `k_ra_pull_none` / `k_ra_pull_up`.
  *
  * @return `ra_err_t` error code (same set as `ra_gpio_output_init()`).
@@ -79,16 +79,16 @@ extern "C" {
 /**
  * @brief Drive a previously-configured output to the given level.
  *
- * @param[in] pin   Packed port/pin identifier.
+ * @param[in] pin Packed port/pin identifier.
  * @param[in] level Target level.
  *
  * @return `ra_err_t` error code.
- * @retval k_ra_ok                    Level driven.
+ * @retval k_ra_ok Level driven.
  * @retval k_ra_err_gpio_invalid_port Port out of range.
- * @retval k_ra_err_gpio_invalid_pin  Pin out of range.
+ * @retval k_ra_err_gpio_invalid_pin Pin out of range.
  *
  * @note Uses the atomic POSR/PORR register so the write is race-free
- *       against concurrent updates to other pins of the same port.
+ * against concurrent updates to other pins of the same port.
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_gpio_write(ra_port_pin_t pin, ra_level_t level);
@@ -105,7 +105,7 @@ extern "C" {
 /**
  * @brief Read a previously-configured input.
  *
- * @param[in]  pin       Packed port/pin identifier.
+ * @param[in] pin Packed port/pin identifier.
  * @param[out] out_level Pointer to receive current level.
  * @return `ra_err_t` error code.
  * @since 0.1.0
@@ -113,7 +113,7 @@ extern "C" {
 [[nodiscard]] ra_err_t ra_gpio_read(ra_port_pin_t pin, ra_level_t* out_level);
 
 /* =============================================================================
- * External IRQ attachment (Wave 3.4)
+ * External IRQ attachment
  * =============================================================================
  */
 
@@ -135,11 +135,11 @@ extern "C" {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  ra_pin_pull_t    pull;       /**< Input pull setting.                */
-  ra_icu_irqmd_t   sense;      /**< Edge / level detection mode.       */
-  ra_icu_fclksel_t filter_div; /**< Digital filter clock divider.      */
-  bool             filter_en;  /**< True -> enable digital filter.     */
-  uint8_t          priority;   /**< NVIC priority 0..15.               */
+  ra_pin_pull_t    pull;       /**< Input pull setting. */
+  ra_icu_irqmd_t   sense;      /**< Edge / level detection mode. */
+  ra_icu_fclksel_t filter_div; /**< Digital filter clock divider. */
+  bool             filter_en;  /**< True -> enable digital filter. */
+  uint8_t          priority;   /**< NVIC priority 0..15. */
 } ra_gpio_irq_cfg_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 
@@ -148,29 +148,29 @@ typedef struct {
  *
  * @details
  * One-call convenience that:
- *  - configures the pin as GPIO input with the requested pull,
- *  - programmes IRQCRi edge / filter fields,
- *  - registers ``handler`` against the matching ICU IRQ event in
- *    the Wave 1.2 ``ra_isr`` table (which also enables the NVIC
- *    line and sets priority).
+ * - configures the pin as GPIO input with the requested pull,
+ * - programmes IRQCRi edge / filter fields,
+ * - registers ``handler`` against the matching ICU IRQ event in
+ * the ``ra_isr`` table (which also enables the NVIC
+ * line and sets priority).
  *
- * @param[in] pin     Packed port/pin identifier for the IRQ input.
+ * @param[in] pin Packed port/pin identifier for the IRQ input.
  * @param[in] irq_num External IRQ pin number 0..15.
- * @param[in] cfg     Non-NULL configuration descriptor.
+ * @param[in] cfg Non-NULL configuration descriptor.
  * @param[in] handler Non-NULL handler invoked on IRQ firing.
- * @param[in] ctx     Opaque context forwarded to the handler.
+ * @param[in] ctx Opaque context forwarded to the handler.
  *
  * @return ``ra_err_t`` error code.
- * @retval k_ra_ok                   Pin, IRQCR, ISR all programmed.
- * @retval k_ra_err_null_ptr         ``cfg`` or ``handler`` was NULL.
- * @retval k_ra_err_invalid_arg      ``irq_num`` out of range.
- * @retval k_ra_err_gpio_invalid_*   Pin port/pin out of range.
- * @retval k_ra_err_exists           IRQ event already registered.
+ * @retval k_ra_ok Pin, IRQCR, ISR all programmed.
+ * @retval k_ra_err_null_ptr ``cfg`` or ``handler`` was NULL.
+ * @retval k_ra_err_invalid_arg ``irq_num`` out of range.
+ * @retval k_ra_err_gpio_invalid_* Pin port/pin out of range.
+ * @retval k_ra_err_exists IRQ event already registered.
  *
  * @pre ``ra_infrastructure_init`` and ``ra_icu_init`` / ``ra_isr_init``
- *      have run.
+ * have run.
  * @post On success the pin is input-configured, IRQCR[irq_num] matches
- *       ``cfg``, and the NVIC line is enabled.
+ * ``cfg``, and the NVIC line is enabled.
  *
  * @note Thread safety: not thread-safe.
  * @since 0.2.0
@@ -189,13 +189,13 @@ typedef struct {
  * zeroes IRQCR[irq_num], and releases the pin claim so another
  * driver can reuse it.
  *
- * @param[in] pin     Packed port/pin identifier previously attached.
+ * @param[in] pin Packed port/pin identifier previously attached.
  * @param[in] irq_num External IRQ number 0..15.
  *
  * @return ``ra_err_t`` error code.
- * @retval k_ra_ok              Pin and IRQ torn down.
+ * @retval k_ra_ok Pin and IRQ torn down.
  * @retval k_ra_err_invalid_arg ``irq_num`` out of range.
- * @retval k_ra_err_not_found   No handler registered for this IRQ.
+ * @retval k_ra_err_not_found No handler registered for this IRQ.
  *
  * @pre ``ra_gpio_attach_irq`` was called for the same ``irq_num``.
  * @post NVIC line disabled, IRQCR == 0, pin validator released.

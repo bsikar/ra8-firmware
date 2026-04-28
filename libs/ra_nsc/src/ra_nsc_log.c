@@ -6,7 +6,7 @@
  * [Ring 4 / NSC] {World: NSC}
  *
  * @details
- * Wave 7.3 scaffold. Forwards the (tag, message) pair to
+ * scaffold. Forwards the (tag, message) pair to
  * ``ra_log_info`` after copying both strings into a small
  * secure-side scratch area to make sure the secure code never
  * dereferences NS pointers directly.

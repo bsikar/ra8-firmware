@@ -1,0 +1,325 @@
+/**
+ * @file ra_tsn.h
+ * @brief On-chip Temperature Sensor (TSN) driver
+ *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
+ * @details
+ * Minimum-viable driver for the RA8D2 on-chip die-temperature
+ * sensor (HUM Ch 55, p 3497-3507). The block is tiny: the only
+ * peripheral-side register is TSCR (TSEN + TSOE bits) plus two
+ * read-only calibration words in MRAM (TSCDR, TSCDR2).
+ *
+ * ## Surface
+ *
+ *  - ``ra_tsn_init()``   -- clear MSTPD22, set TSCR.TSEN, busy-wait
+ *                           the 30 us reference-voltage stabilisation,
+ *                           then set TSCR.TSOE so the sensor output
+ *                           reaches the ADC16H input mux.
+ *  - ``ra_tsn_deinit()`` -- clear TSOE, then TSEN, then re-assert
+ *                           the module-stop bit.
+ *  - ``ra_tsn_read_raw()``         -- accepts a raw 12-bit ADC code
+ *                                     read by the caller from the
+ *                                     ADC and returns it back as an
+ *                                     uint16_t (no driver-side ADC
+ *                                     access, see "Scope" below).
+ *  - ``ra_tsn_convert_to_milli_c()`` -- two-point trim conversion to
+ *                                       degrees Celsius x 1000.
+ *  - ``ra_tsn_get_status()`` / ``ra_tsn_clear_status()`` --
+ *                                       read / clear TSCR enable bits.
+ *  - ``ra_tsn_enter_stop()`` / ``ra_tsn_exit_stop()`` --
+ *                                       MSTPD22 transitions.
+ *
+ * ## Scope
+ *
+ * **This driver does NOT touch the ADC.** HUM Ch 55.3.2 (p 3501)
+ * describes the full conversion procedure: configure the ADC for
+ * the temperature-sensor channel, start a conversion, then read
+ * the result. Callers are responsible for that side of the dance
+ * via ``libs/ra_hal/src/adc.c`` (see ``ra8d2_adc_b_regs.h`` for the
+ * ADC channel-select bits). This driver only owns TSCR and the
+ * calibration math.
+ *
+ * ## Not yet implemented
+ *
+ *  - The TEMPRCR.TSNKEEP path (HUM Ch 6 "Resets") for surviving
+ *    a low-power transition with the sensor still enabled. The
+ *    HUM Ch 55.3.2 procedure mentions this register but it lives
+ *    in the system controller; wiring it in requires the LPM /
+ *    PRCR helpers from ``libs/ra_hal/src/ra_pwr.c``.
+ *  - Abnormal-temperature reset source (Table 55.1 row 4) -- the
+ *    output is a hardwired reset-circuit signal so the driver has
+ *    no register to expose.
+ *  - Single-point conversion (using only TSCDR + the typical slope
+ *    from HUM Ch 69 "Electrical Characteristics"). Two-point trim
+ *    is more accurate so the driver only ships that path.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
+ */
+
+#pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include <stdint.h>
+
+#include "ra8d2_tsn_regs.h"
+#include "ra_err.h"
+
+/**
+ * @struct ra_tsn_config_t
+ * @brief Configuration descriptor for ``ra_tsn_init``.
+ *
+ * @details
+ * - ``high_ref_degc`` selects which calibration temperature was
+ *   used at factory shipment. Pass ``k_ra_tsn_cal_temp_high_125``
+ *   for Tj_max = 125 degC parts and ``k_ra_tsn_cal_temp_high_105``
+ *   for Tj_max = 95 / 105 degC parts (HUM Ch 55.3.1 p 3499-3500).
+ * - ``low_ref_degc`` is always ``k_ra_tsn_cal_temp_low_n40`` for
+ *   the RA8D2 family and is captured here so the conversion math
+ *   stays self-documenting.
+ * - ``stab_us`` is the busy-wait observed after asserting TSCR.TSEN
+ *   before the sensor output is valid. HUM Figure 55.2 (p 3502)
+ *   names this tTSTBL = 30 us; callers may bump the value to
+ *   absorb extra slack on slow boards but must not go below 30.
+ */
+/* cppcheck-suppress-begin [unusedStructMember] */
+typedef struct {
+  ra_tsn_cal_temp_t high_ref_degc; /**< 105 or 125 degC.            */
+  ra_tsn_cal_temp_t low_ref_degc;  /**< Always -40 degC on RA8D2.   */
+  uint16_t          stab_us;       /**< tTSTBL in microseconds.     */
+} ra_tsn_config_t;
+/* cppcheck-suppress-end [unusedStructMember] */
+
+/**
+ * @brief Power on the TSN block and enable its ADC output path.
+ *
+ * @details
+ * Algorithm (HUM Figure 55.2 p 3502 condensed for the case where
+ * TEMPRCR.TSNKEEP is left at its reset value):
+ *
+ *  1. Validate ``cfg`` and the configured stabilisation delay.
+ *  2. Clear MSTPD22 via ``ra_mstp_enable(k_ra_mstp_tsn)``
+ *     (HUM Ch 11.2.9 p 449).
+ *  3. Set TSCR.TSEN = 1 to start the sensor.
+ *  4. Busy-wait ``cfg->stab_us`` microseconds (>= 30 us per the
+ *     HUM tTSTBL spec).
+ *  5. Set TSCR.TSOE = 1 to route the sensor output to the ADC16H
+ *     input mux. The ADC itself is **not** touched here -- driving
+ *     the ADC channel select stays the caller's job (see
+ *     ``libs/ra_hal/src/adc.c`` and the ADC chapter, HUM Ch 53).
+ *
+ * @param[in] cfg Non-null configuration descriptor.
+ *
+ * @return ra_err_t Status code.
+ * @retval k_ra_ok            Sensor enabled and routed to the ADC.
+ * @retval k_ra_err_null_ptr  ``cfg`` was nullptr.
+ * @retval k_ra_err_invalid_arg ``cfg->stab_us`` below the 30 us floor
+ *                              or calibration temperatures invalid.
+ * @retval Other               Forwarded from ``ra_mstp_enable``.
+ *
+ * @pre IRQs masked or single-threaded init context.
+ * @pre ``ra_mstp_init`` has been called.
+ * @pre AVCC0 / VREFH0 are stable (3.3 V).
+ * @post TSCR.TSEN = 1 and TSCR.TSOE = 1.
+ * @post The 30 us reference-voltage stabilisation has elapsed.
+ *
+ * @note Thread safety: not thread-safe; call once during init.
+ * @note The driver does not start an ADC conversion. Callers must
+ *       drive the ADC themselves.
+ *
+ * @par Example:
+ * @code
+ * const ra_tsn_config_t cfg = {
+ *     .high_ref_degc = k_ra_tsn_cal_temp_high_125,
+ *     .low_ref_degc  = k_ra_tsn_cal_temp_low_n40,
+ *     .stab_us       = 30,
+ * };
+ * (void)ra_tsn_init(&cfg);
+ * @endcode
+ *
+ * @see ra_tsn_deinit
+ * @see ra_tsn_read_raw
+ * @see ra_tsn_convert_to_milli_c
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_tsn_init(const ra_tsn_config_t* cfg);
+
+/**
+ * @brief Tear down the TSN block.
+ *
+ * @details
+ * Clears TSCR.TSOE then TSCR.TSEN (HUM Figure 55.2 p 3502 reverse
+ * sequence) and then re-asserts MSTPD22 via ``ra_mstp_disable``.
+ *
+ * @return ra_err_t Status code.
+ * @retval k_ra_ok    Sensor stopped and module-stop reasserted.
+ * @retval Other      Forwarded from ``ra_mstp_disable``.
+ *
+ * @pre Caller has previously called ``ra_tsn_init``.
+ * @pre No outstanding ADC conversion targeting the TSN channel.
+ * @post TSCR.TSEN = 0 and TSCR.TSOE = 0.
+ * @post MSTPD22 is set (block clock-gated).
+ *
+ * @note Thread safety: not thread-safe.
+ * @see ra_tsn_init
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_tsn_deinit(void);
+
+/**
+ * @brief Pass through a raw ADC sample of the TSN channel.
+ *
+ * @details
+ * The TSN block has no result register of its own -- the
+ * conversion code lives in the ADC's data register. The caller
+ * arms the ADC (see ``ra_adc.h`` and ADC chapter HUM Ch 53),
+ * reads the raw 12-bit code, and hands it here. This function
+ * masks the value down to the documented 12-bit width and
+ * returns it via ``out_code``. It exists so that future callers
+ * can be retargeted at a different conversion path (for example
+ * the high-resolution accumulator) without changing their call
+ * sites.
+ *
+ * @param[in]  raw       Raw ADC code as read from the ADC's data
+ *                       register. Only the lower 12 bits are
+ *                       observed (HUM Ch 55.2.2 p 3498-3499:
+ *                       calibration codes are 12-bit, so live
+ *                       samples are too).
+ * @param[out] out_code  Receives the masked 12-bit code.
+ *
+ * @return ra_err_t Status code.
+ * @retval k_ra_ok            Code stored in ``*out_code``.
+ * @retval k_ra_err_null_ptr  ``out_code`` was nullptr.
+ * @retval k_ra_err_invalid_state TSCR.TSEN is 0 (sensor not started).
+ *
+ * @pre ``ra_tsn_init`` has been called.
+ * @pre Caller already obtained the raw ADC code.
+ * @post ``*out_code`` <= 0x0FFF.
+ * @post No registers were written.
+ *
+ * @note Thread safety: not thread-safe.
+ * @see ra_tsn_convert_to_milli_c
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_tsn_read_raw(uint16_t raw, uint16_t* out_code);
+
+/**
+ * @brief Convert a raw 12-bit TSN code to milli-degrees-Celsius.
+ *
+ * @details
+ * Two-point trim conversion (HUM Ch 55.3.1 p 3499-3500):
+ *
+ *   v1_uv  = AVCC_uV * CAL_HI / 4096
+ *   v2_uv  = AVCC_uV * CAL_LO / 4096
+ *   vs_uv  = AVCC_uV * raw    / 4096
+ *   T_mC   = ((vs_uv - v1_uv) * (T1 - T2) * 1000)
+ *            / (v1_uv - v2_uv)
+ *          + T1 * 1000
+ *
+ * Everything stays in 64-bit signed integer arithmetic so the
+ * driver can run on the Cortex-M85 without pulling in libm.
+ *
+ * @param[in]  raw_code  12-bit ADC code from ``ra_tsn_read_raw``.
+ * @param[out] out_milli_c  Temperature in milli-degC (+25000 = 25 degC).
+ *
+ * @return ra_err_t Status code.
+ * @retval k_ra_ok                 Conversion succeeded.
+ * @retval k_ra_err_null_ptr       ``out_milli_c`` was nullptr.
+ * @retval k_ra_err_invalid_state  ``ra_tsn_init`` has not run, or the
+ *                                 calibration words are 0 (would
+ *                                 divide by zero).
+ *
+ * @pre ``ra_tsn_init`` has been called.
+ * @pre ``raw_code`` <= 0x0FFF.
+ * @post ``*out_milli_c`` populated when the call returns k_ra_ok.
+ * @post No peripheral registers were written.
+ *
+ * @note Thread safety: re-entrant -- reads MMIO only.
+ * @see ra_tsn_read_raw
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_tsn_convert_to_milli_c(uint16_t raw_code, int32_t* out_milli_c);
+
+/**
+ * @brief Read TSCR (TSEN + TSOE bits).
+ *
+ * @param[out] out_tscr Receives the current TSCR value (only
+ *                      ``k_ra_tscr_mask_all`` bits are valid).
+ *
+ * @return ra_err_t Status code.
+ * @retval k_ra_ok            ``*out_tscr`` populated.
+ * @retval k_ra_err_null_ptr  ``out_tscr`` was nullptr.
+ *
+ * @pre TSN module-stop is cleared (otherwise the read returns 0).
+ * @pre ``out_tscr`` is non-null.
+ * @post No registers were written.
+ * @post ``*out_tscr`` populated when the call returns k_ra_ok.
+ *
+ * @note Thread safety: re-entrant.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_tsn_get_status(uint8_t* out_tscr);
+
+/**
+ * @brief Clear TSCR (drive both TSEN and TSOE low).
+ *
+ * @return ra_err_t Status code.
+ * @retval k_ra_ok Always.
+ *
+ * @pre TSN module-stop is cleared so the write actually lands.
+ * @pre Caller has accepted that this stops the sensor immediately.
+ * @post TSCR == 0.
+ * @post Sensor output is no longer driven onto the ADC mux.
+ *
+ * @note Thread safety: not thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_tsn_clear_status(void);
+
+/**
+ * @brief Re-assert MSTPD22 to clock-gate the TSN block.
+ *
+ * @return ra_err_t Status code.
+ * @retval k_ra_ok    Module-stop bit asserted.
+ * @retval Other      Forwarded from ``ra_mstp_disable``.
+ *
+ * @pre Caller has stopped any in-flight ADC conversion that
+ *      targets the TSN channel.
+ * @pre ``ra_mstp_init`` has been called.
+ * @post MSTPD22 = 1.
+ * @post Subsequent TSCR reads return 0 until ``ra_tsn_exit_stop``.
+ *
+ * @note Thread safety: not thread-safe.
+ * @see ra_tsn_exit_stop
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_tsn_enter_stop(void);
+
+/**
+ * @brief Clear MSTPD22 to re-power the TSN block.
+ *
+ * @return ra_err_t Status code.
+ * @retval k_ra_ok    Module-stop bit cleared.
+ * @retval Other      Forwarded from ``ra_mstp_enable``.
+ *
+ * @pre ``ra_mstp_init`` has been called.
+ * @pre Caller will re-run the TSEN / tTSTBL / TSOE sequence
+ *      before reading any new conversion.
+ * @post MSTPD22 = 0.
+ * @post TSCR is back to its reset value (0).
+ *
+ * @note Thread safety: not thread-safe.
+ * @see ra_tsn_enter_stop
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_tsn_exit_stop(void);
+
+#ifdef __cplusplus
+}
+#endif

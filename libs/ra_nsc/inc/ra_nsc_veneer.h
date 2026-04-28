@@ -6,7 +6,7 @@
  * [Ring 4 / NSC] {World: NSC}
  *
  * @details
- * Wave 9.2 enables ``__attribute__((cmse_nonsecure_entry))`` on the
+ * enables ``__attribute__((cmse_nonsecure_entry))`` on the
  * NSC veneer functions when the firmware is built with
  * ``-DRA_TRUSTZONE_ENABLE=ON``. In single-world builds the macros
  * compile to nothing, so the same veneer source compiles cleanly

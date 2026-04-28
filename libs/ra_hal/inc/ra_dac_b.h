@@ -6,8 +6,8 @@
  * [Ring 3 / HAL] {World: NS}
  *
  * @details
- * Wave 4.2 full build-out of the RA8D2 DAC_B peripheral.
- * Extends the Wave 0 write stub with: descriptor-based init,
+ * full build-out of the RA8D2 DAC_B peripheral.
+ * Extends the write stub with: descriptor-based init,
  * deinit, runtime reference reconfigure, output-enable controls,
  * interrupt-mode attach / dispatch, power transition.
  *
@@ -31,8 +31,8 @@ extern "C" {
  * @brief Voltage reference source selection (DAVREFCR.REF bits).
  */
 typedef enum : uint8_t {
-  k_ra_dac_b_vref_avcc0    = 0U, /**< AVCC0 / AVSS0 reference.    */
-  k_ra_dac_b_vref_internal = 1U, /**< Internal 1.5V / 2.0V ref.   */
+  k_ra_dac_b_vref_avcc0    = 0U, /**< AVCC0 / AVSS0 reference. */
+  k_ra_dac_b_vref_internal = 1U, /**< Internal 1.5V / 2.0V ref. */
   k_ra_dac_b_vref_external = 2U, /**< External VREFH / VREFL pin. */
 } ra_dac_b_vref_t;
 
@@ -48,16 +48,16 @@ typedef enum : uint8_t {
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   ra_dac_b_vref_t vref;            /**< Reference voltage source. */
-  bool            enable_channel0; /**< Initial DAOE0 state.      */
-  bool            enable_channel1; /**< Initial DAOE1 state.      */
-  bool            sync_with_adc;   /**< DAADST ADC-sync enable.   */
+  bool            enable_channel0; /**< Initial DAOE0 state. */
+  bool            enable_channel1; /**< Initial DAOE1 state. */
+  bool            sync_with_adc;   /**< DAADST ADC-sync enable. */
 } ra_dac_b_cfg_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @typedef ra_dac_b_update_fn_t
  * @brief DAC update (conversion done) event callback.
- * @param[in] ctx     Caller context.
+ * @param[in] ctx Caller context.
  * @param[in] channel Channel that finished updating.
  */
 typedef void (*ra_dac_b_update_fn_t)(void* ctx, uint8_t channel);
@@ -82,7 +82,7 @@ typedef void (*ra_dac_b_update_fn_t)(void* ctx, uint8_t channel);
  * @pre IRQs masked or single-threaded init context.
  * @pre ``ra_mstp_init`` has been called.
  * @post On success DACR matches ``cfg`` and the DAC_B module
- *       is powered on via MSTP.
+ * is powered on via MSTP.
  *
  * @note Thread safety: not thread-safe.
  * @since 0.2.0
@@ -105,7 +105,7 @@ typedef void (*ra_dac_b_update_fn_t)(void* ctx, uint8_t channel);
 /**
  * @brief Programme a DAC channel with a 12-bit code.
  * @param[in] channel 0 or 1.
- * @param[in] value   Raw 12-bit code (clamped to 0..4095).
+ * @param[in] value Raw 12-bit code (clamped to 0..4095).
  * @return `ra_err_t` error code.
  * @since 0.1.0
  */
@@ -127,7 +127,7 @@ typedef void (*ra_dac_b_update_fn_t)(void* ctx, uint8_t channel);
 /**
  * @brief Toggle output-enable for one channel at runtime.
  * @param[in] channel 0 or 1.
- * @param[in] enable  True -> drive the pin; false -> Hi-Z.
+ * @param[in] enable True -> drive the pin; false -> Hi-Z.
  * @return ``ra_err_t`` error code.
  * @since 0.2.0
  */
@@ -160,7 +160,7 @@ typedef void (*ra_dac_b_update_fn_t)(void* ctx, uint8_t channel);
 
 /**
  * @brief Attach a DAC-update callback.
- * @param[in] fn  Callback fired on ISR dispatch.
+ * @param[in] fn Callback fired on ISR dispatch.
  * @param[in] ctx Context forwarded to the callback.
  * @return ``ra_err_t`` error code.
  * @since 0.2.0

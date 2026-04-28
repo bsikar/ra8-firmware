@@ -6,34 +6,34 @@
  * [Ring 5 / SECAPP] {World: S}
  *
  * @details
- * Wave 10 deliverable. Stores up to ``k_ra_key_vault_slots`` 256-bit
+ * deliverable. Stores up to ``k_ra_key_vault_slots`` 256-bit
  * symmetric keys in a Secure-side static array that is unreachable
  * from the Non-Secure world after the SAU partition is enabled.
  *
- * Wave 10 ships the in-memory vault. The hardened storage path
+ * ships the in-memory vault. The hardened storage path
  * (MRAM-backed Secure region or SCE7 hardware key wrap) is a
- * Wave 10b deliverable that depends on the SCE driver gaining
+ * future deliverable that depends on the SCE driver gaining
  * key-injection support.
  *
  * The vault is intentionally minimal:
  *
- *   - ``key_vault_init`` zeroes every slot.
- *   - ``key_vault_store(slot, key)`` copies a 256-bit key into a
- *     slot. Only callable from the secure world (no NSC veneer).
- *   - ``key_vault_sha256_xor_challenge(slot, challenge, out)``
- *     computes ``SHA-256(key XOR challenge)`` and returns the
- *     32-byte digest. This is the only operation the NS world can
- *     reach via the Wave 10 NSC veneer
- *     ``ra_nsc_key_vault_challenge``; the raw key never leaves the
- *     secure world.
+ * - ``key_vault_init`` zeroes every slot.
+ * - ``key_vault_store(slot, key)`` copies a 256-bit key into a
+ * slot. Only callable from the secure world (no NSC veneer).
+ * - ``key_vault_sha256_xor_challenge(slot, challenge, out)``
+ * computes ``SHA-256(key XOR challenge)`` and returns the
+ * 32-byte digest. This is the only operation the NS world can
+ * reach via the NSC veneer
+ * ``ra_nsc_key_vault_challenge``; the raw key never leaves the
+ * secure world.
  *
  * @par TrustZone Safety:
- *  - **Validates:** slot index is in range; output pointer length
- *    matches expected digest size.
- *  - **Trusts:** the SAU partition keeps the static key array
- *    inaccessible from NS. The veneer is the only NS->S path.
- *  - **Denies:** raw key reads from any code path. Only the
- *    SHA-256-of-XOR digest crosses the boundary.
+ * - **Validates:** slot index is in range; output pointer length
+ * matches expected digest size.
+ * - **Trusts:** the SAU partition keeps the static key array
+ * inaccessible from NS. The veneer is the only NS->S path.
+ * - **Denies:** raw key reads from any code path. Only the
+ * SHA-256-of-XOR digest crosses the boundary.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -56,8 +56,8 @@ extern "C" {
 typedef enum : uint16_t {
   k_ra_key_vault_slots        = 8U,  /**< Number of stored keys. */
   k_ra_key_vault_key_bytes    = 32U, /**< 256-bit symmetric key. */
-  k_ra_key_vault_chal_bytes   = 32U, /**< Challenge length.       */
-  k_ra_key_vault_digest_bytes = 32U, /**< SHA-256 output size.    */
+  k_ra_key_vault_chal_bytes   = 32U, /**< Challenge length. */
+  k_ra_key_vault_digest_bytes = 32U, /**< SHA-256 output size. */
 } ra_key_vault_limits_t;
 
 /**
@@ -78,12 +78,12 @@ typedef enum : uint16_t {
  * @brief Programme a 256-bit symmetric key into a vault slot.
  *
  * @param[in] slot Slot index 0..k_ra_key_vault_slots-1.
- * @param[in] key  32-byte symmetric key.
+ * @param[in] key 32-byte symmetric key.
  *
  * @return ``ra_err_t`` error code.
- * @retval k_ra_ok                  Key stored.
- * @retval k_ra_err_invalid_arg     ``slot`` out of range.
- * @retval k_ra_err_null_ptr        ``key`` was NULL.
+ * @retval k_ra_ok Key stored.
+ * @retval k_ra_err_invalid_arg ``slot`` out of range.
+ * @retval k_ra_err_null_ptr ``key`` was NULL.
  *
  * @pre Called from secure world only.
  * @pre ``key`` points to ``k_ra_key_vault_key_bytes`` of secure RAM.
@@ -105,14 +105,14 @@ typedef enum : uint16_t {
  * 32-byte SHA-256 digest of (key XOR challenge), which depends
  * on both the key and the challenge but reveals neither.
  *
- * @param[in]  slot      Slot index 0..k_ra_key_vault_slots-1.
- * @param[in]  challenge 32-byte challenge from the NS caller.
- * @param[out] out       32-byte digest destination.
+ * @param[in] slot Slot index 0..k_ra_key_vault_slots-1.
+ * @param[in] challenge 32-byte challenge from the NS caller.
+ * @param[out] out 32-byte digest destination.
  *
  * @return ``ra_err_t`` error code.
- * @retval k_ra_ok                 Digest computed.
- * @retval k_ra_err_invalid_arg    ``slot`` out of range.
- * @retval k_ra_err_null_ptr       ``challenge`` or ``out`` was NULL.
+ * @retval k_ra_ok Digest computed.
+ * @retval k_ra_err_invalid_arg ``slot`` out of range.
+ * @retval k_ra_err_null_ptr ``challenge`` or ``out`` was NULL.
  *
  * @pre Called from secure world (or via NSC veneer).
  * @pre ``challenge`` and ``out`` point to ``k_ra_key_vault_*_bytes``.
@@ -120,7 +120,7 @@ typedef enum : uint16_t {
  * @post ``out[0..31]`` holds the digest.
  *
  * @note Thread safety: not thread-safe; the SHA-256 sponge is
- *       single-instance.
+ * single-instance.
  * @since 0.3.0
  */
 [[nodiscard]] ra_err_t

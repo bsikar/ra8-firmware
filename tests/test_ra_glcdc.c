@@ -81,7 +81,7 @@ static void test_start_disable(void)
   TEST_END("ra_glcdc_start disables engine");
 }
 
-/* ---- Wave 6.1 -- lifecycle + IRQ + power ---- */
+/* ---- lifecycle + IRQ + power ---- */
 
 static uint32_t s_glcdc_cb_count;
 static uint32_t s_glcdc_cb_last_mask;
@@ -165,6 +165,6 @@ int32_t main(void)
   test_status_read_and_clear();
   test_attach_and_dispatch();
   test_power_transition();
-  (void)fprintf(stderr, "[OK  ] test_ra_glcdc.c\n");
+  (void)fprintf(stderr, "[OK ] test_ra_glcdc.c\n");
   return 0;
 }

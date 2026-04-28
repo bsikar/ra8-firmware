@@ -19,12 +19,12 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
-message(STATUS "Compiler:   ${CMAKE_C_COMPILER}")
+message(STATUS "Compiler: ${CMAKE_C_COMPILER}")
 
 # C Standard - C23 (GNU2x)
 set(CMAKE_C_STANDARD 23)
 set(CMAKE_C_STANDARD_REQUIRED ON)
-set(CMAKE_C_EXTENSIONS ON)  # Enable GNU extensions
+set(CMAKE_C_EXTENSIONS ON) # Enable GNU extensions
 
 # Export compile commands for clangd/tooling
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -34,15 +34,15 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 #############################################################################
 
 # Debug flags: no optimization, full debug info
-set(CMAKE_C_FLAGS_DEBUG   "-O0 -g3 -DDEBUG")
+set(CMAKE_C_FLAGS_DEBUG "-O0 -g3 -DDEBUG")
 set(CMAKE_ASM_FLAGS_DEBUG "-g3")
 
 # Release flags: size-optimized, minimal debug info
-set(CMAKE_C_FLAGS_RELEASE   "-Os -g1 -DNDEBUG")
+set(CMAKE_C_FLAGS_RELEASE "-Os -g1 -DNDEBUG")
 set(CMAKE_ASM_FLAGS_RELEASE "-g1")
 
 # RelWithDebInfo: -Og for a debuggable optimized build
-set(CMAKE_C_FLAGS_RELWITHDEBINFO   "-Og -g3")
+set(CMAKE_C_FLAGS_RELWITHDEBINFO "-Og -g3")
 set(CMAKE_ASM_FLAGS_RELWITHDEBINFO "-g3")
 
 #############################################################################
@@ -103,8 +103,8 @@ include_directories(
 # Build options
 #############################################################################
 
-# Wave 9.1 TrustZone bring-up. OFF by default so the single-world
-# build (Wave 0..8) keeps working unchanged. When ON, the SAU is
+# TrustZone bring-up. OFF by default so the single-world
+# build (..8) keeps working unchanged. When ON, the SAU is
 # programmed in SystemInit and the toolchain receives -mcmse so
 # the NSC veneers can carry __cmse_nonsecure_entry attributes.
 option(RA_TRUSTZONE_ENABLE "Enable Cortex-M85 TrustZone (-mcmse + SAU)" OFF)
@@ -161,9 +161,9 @@ if(ALL_SOURCES)
     # Post-build: Generate .hex and .bin from .elf
     #############################################################################
     add_custom_command(TARGET ${PROJECT_NAME}.elf POST_BUILD
-        COMMAND ${CMAKE_OBJCOPY} -O ihex   $<TARGET_FILE:${PROJECT_NAME}.elf> ${PROJECT_NAME}.hex
+        COMMAND ${CMAKE_OBJCOPY} -O ihex $<TARGET_FILE:${PROJECT_NAME}.elf> ${PROJECT_NAME}.hex
         COMMAND ${CMAKE_OBJCOPY} -O binary $<TARGET_FILE:${PROJECT_NAME}.elf> ${PROJECT_NAME}.bin
-        COMMAND ${CMAKE_SIZE}              $<TARGET_FILE:${PROJECT_NAME}.elf>
+        COMMAND ${CMAKE_SIZE} $<TARGET_FILE:${PROJECT_NAME}.elf>
         COMMENT "Generating ${PROJECT_NAME}.hex / .bin and showing size"
     )
 else()
@@ -184,9 +184,9 @@ enable_testing()
 message(STATUS "====================================")
 message(STATUS "ra8d2-firmware Build Configuration")
 message(STATUS "====================================")
-message(STATUS "Compiler:      ${CMAKE_C_COMPILER}")
-message(STATUS "Build Type:    ${CMAKE_BUILD_TYPE}")
-message(STATUS "C Standard:    C${CMAKE_C_STANDARD} (GNU extensions enabled)")
+message(STATUS "Compiler: ${CMAKE_C_COMPILER}")
+message(STATUS "Build Type: ${CMAKE_BUILD_TYPE}")
+message(STATUS "C Standard: C${CMAKE_C_STANDARD} (GNU extensions enabled)")
 message(STATUS "Linker Script: ${LINKER_SCRIPT}")
-message(STATUS "Source Root:   ${CMAKE_CURRENT_LIST_DIR}")
+message(STATUS "Source Root: ${CMAKE_CURRENT_LIST_DIR}")
 message(STATUS "====================================")

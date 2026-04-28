@@ -10,11 +10,11 @@
  * interrupt firing without actually running on the Cortex-M85.
  * ``ra_sim_irq`` is the minimal helper that lets a test:
  *
- *  1. Build up the ``ra_isr`` dispatch table as usual (register
- *     the handlers through ``ra_isr_register``).
- *  2. Call ``ra_sim_irq_fire(event)`` to look up the registered
- *     slot for ``event`` and invoke ``ra_isr_dispatch(slot)``
- *     directly.
+ * 1. Build up the ``ra_isr`` dispatch table as usual (register
+ * the handlers through ``ra_isr_register``).
+ * 2. Call ``ra_sim_irq_fire(event)`` to look up the registered
+ * slot for ``event`` and invoke ``ra_isr_dispatch(slot)``
+ * directly.
  *
  * That's the entire API. There is no scheduler, no priority, no
  * preemption -- the helper just finds the slot and calls the
@@ -25,13 +25,13 @@
  * ## When to use
  *
  * - Tests for IRQ-driven SCI / SPI / IIC drivers that want to
- *   "drive" an RX-ready interrupt after staging some bytes in
- *   the simulated MMIO.
+ * "drive" an RX-ready interrupt after staging some bytes in
+ * the simulated MMIO.
  * - GPT compare-match tests that want to simulate an edge event.
  * - Any driver that registers a completion callback via
- *   ``ra_isr`` and needs to verify the callback runs.
+ * ``ra_isr`` and needs to verify the callback runs.
  *
- * The Wave 1.3 stub lives here so that Wave 3+ drivers can call
+ * The stub lives here so that + drivers can call
  * it the moment they grow interrupt paths; today only a handful
  * of trivial use-cases exercise it.
  *
@@ -62,14 +62,14 @@ extern "C" {
  * @param[in] event ELC event number.
  *
  * @return ``ra_err_t`` error code.
- * @retval k_ra_ok               Handler invoked.
- * @retval k_ra_err_not_found    ``event`` had no registered slot.
+ * @retval k_ra_ok Handler invoked.
+ * @retval k_ra_err_not_found ``event`` had no registered slot.
  *
  * @pre ``ra_isr_init`` and ``ra_isr_register`` have been called.
  * @pre The test is running under ``RA_SIMULATOR_MODE``.
  *
  * @post On success, the caller's registered handler ran exactly
- *       once.
+ * once.
  *
  * @note Thread safety: test code only, single-threaded.
  * @since 0.2.0

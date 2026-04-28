@@ -6,24 +6,24 @@
  * [Ring 3 / HAL] {World: NS}
  *
  * @details
- * Wave 3.2 full build-out of the RA8D2 IIC peripheral. Replaces
- * the Wave 0 polling-only ``ra_iic_controller_init /
+ * full build-out of the RA8D2 IIC peripheral. Replaces
+ * the polling-only ``ra_iic_controller_init /
  * ra_iic_write / ra_iic_read`` stub with a driver that ticks
  * every checkbox on the 14-checkbox template.
  *
  * API surface:
  *
- *  - ``ra_iic_init(channel, cfg)``      -- full config + MSTP enable
- *  - ``ra_iic_deinit(channel)``          -- release + MSTP disable
- *  - ``ra_iic_write / read``             -- polling transfers (legacy)
- *  - ``ra_iic_set_clock(channel, hz)``   -- runtime bit-rate change
- *  - ``ra_iic_get_errors / clear_errors``-- AL/NACK/TMO status
- *  - ``ra_iic_attach_transfer_handler``  -- interrupt-mode callback
- *  - ``ra_iic_enter_stop / exit_stop``   -- power transition
- *  - ``ra_iic_dispatch_txi / rxi / eri`` -- ISR entry points
+ * - ``ra_iic_init(channel, cfg)`` -- full config + MSTP enable
+ * - ``ra_iic_deinit(channel)`` -- release + MSTP disable
+ * - ``ra_iic_write / read`` -- polling transfers (legacy)
+ * - ``ra_iic_set_clock(channel, hz)`` -- runtime bit-rate change
+ * - ``ra_iic_get_errors / clear_errors``-- AL/NACK/TMO status
+ * - ``ra_iic_attach_transfer_handler`` -- interrupt-mode callback
+ * - ``ra_iic_enter_stop / exit_stop`` -- power transition
+ * - ``ra_iic_dispatch_txi / rxi / eri`` -- ISR entry points
  *
  * The legacy ``ra_iic_controller_init / write / read`` functions
- * from Wave 0 are kept so callers that already use them keep
+ * from are kept so callers that already use them keep
  * compiling; the new descriptor-based ``ra_iic_init`` is the
  * preferred entry point.
  *
@@ -53,8 +53,8 @@ extern "C" {
  */
 typedef enum : uint32_t {
   k_ra_iic_speed_standard  = 100000U,  /**< 100 kHz standard mode. */
-  k_ra_iic_speed_fast      = 400000U,  /**< 400 kHz fast mode.      */
-  k_ra_iic_speed_fast_plus = 1000000U, /**< 1 MHz fast-plus.       */
+  k_ra_iic_speed_fast      = 400000U,  /**< 400 kHz fast mode. */
+  k_ra_iic_speed_fast_plus = 1000000U, /**< 1 MHz fast-plus. */
 } ra_iic_speed_t;
 
 /**
@@ -69,7 +69,7 @@ typedef enum : uint32_t {
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uint32_t bus_hz;   /**< Target I2C clock rate (100/400/1000 kHz). */
-  uint32_t pclkb_hz; /**< Current PCLKB frequency for ICBR calc.    */
+  uint32_t pclkb_hz; /**< Current PCLKB frequency for ICBR calc. */
 } ra_iic_cfg_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 
@@ -79,16 +79,16 @@ typedef struct {
  */
 typedef enum : uint8_t {
   k_ra_iic_err_none     = 0x00U,
-  k_ra_iic_err_arb_lost = 0x01U, /**< ICSR2.AL set.     */
-  k_ra_iic_err_nack     = 0x02U, /**< ICSR2.NACKF set.  */
-  k_ra_iic_err_timeout  = 0x04U, /**< ICSR2.TMOF set.   */
+  k_ra_iic_err_arb_lost = 0x01U, /**< ICSR2.AL set. */
+  k_ra_iic_err_nack     = 0x02U, /**< ICSR2.NACKF set. */
+  k_ra_iic_err_timeout  = 0x04U, /**< ICSR2.TMOF set. */
 } ra_iic_err_mask_t;
 
 /**
  * @typedef ra_iic_complete_fn_t
  * @brief Transfer-complete callback signature.
  *
- * @param[in] ctx      Caller-supplied context.
+ * @param[in] ctx Caller-supplied context.
  * @param[in] err_mask OR of ``k_ra_iic_err_*`` bits; zero on success.
  */
 typedef void (*ra_iic_complete_fn_t)(void* ctx, uint8_t err_mask);
@@ -102,13 +102,13 @@ typedef void (*ra_iic_complete_fn_t)(void* ctx, uint8_t err_mask);
  * @brief Initialise an IIC channel with a full config descriptor.
  *
  * @param[in] channel IIC channel (0..2).
- * @param[in] cfg     Configuration descriptor.
+ * @param[in] cfg Configuration descriptor.
  * @return ``ra_err_t`` error code.
  *
  * @pre IRQs masked or single-threaded init context.
  * @pre ``ra_mstp_init`` has been called.
  * @post On success, ICE is set and the channel is ready to
- *       write / read.
+ * write / read.
  *
  * @note Thread safety: not thread-safe.
  * @since 0.2.0
@@ -142,10 +142,10 @@ typedef void (*ra_iic_complete_fn_t)(void* ctx, uint8_t err_mask);
 /**
  * @brief Blocking write of `len` bytes to a 7-bit target.
  *
- * @param[in] channel    IIC channel number.
- * @param[in] target_7b  7-bit slave address.
- * @param[in] data       Bytes to send.
- * @param[in] len        Number of bytes.
+ * @param[in] channel IIC channel number.
+ * @param[in] target_7b 7-bit slave address.
+ * @param[in] data Bytes to send.
+ * @param[in] len Number of bytes.
  * @return `ra_err_t` error code.
  * @since 0.1.0
  */
@@ -155,10 +155,10 @@ ra_iic_write(uint8_t channel, uint8_t target_7b, const uint8_t* data, uint32_t l
 /**
  * @brief Blocking read of `len` bytes from a 7-bit target.
  *
- * @param[in] channel    IIC channel number.
- * @param[in] target_7b  7-bit slave address.
- * @param[out] out       Receive buffer.
- * @param[in] len        Number of bytes to read.
+ * @param[in] channel IIC channel number.
+ * @param[in] target_7b 7-bit slave address.
+ * @param[out] out Receive buffer.
+ * @param[in] len Number of bytes to read.
  * @return `ra_err_t` error code.
  * @since 0.1.0
  */
@@ -172,8 +172,8 @@ ra_iic_write(uint8_t channel, uint8_t target_7b, const uint8_t* data, uint32_t l
 /**
  * @brief Change the I2C bus clock without tearing down the channel.
  *
- * @param[in] channel  IIC channel.
- * @param[in] bus_hz   New bus clock in Hz.
+ * @param[in] channel IIC channel.
+ * @param[in] bus_hz New bus clock in Hz.
  * @param[in] pclkb_hz Current PCLKB frequency.
  * @return ``k_ra_ok`` / ``k_ra_err_invalid_arg``.
  *
@@ -190,7 +190,7 @@ ra_iic_write(uint8_t channel, uint8_t target_7b, const uint8_t* data, uint32_t l
 
 /**
  * @brief Read the ICSR2 error bits (AL, NACKF, TMOF).
- * @param[in]  channel  IIC channel.
+ * @param[in] channel IIC channel.
  * @param[out] out_mask Bit OR of ``k_ra_iic_err_*``.
  * @return ``k_ra_ok`` / ``k_ra_err_null_ptr`` / ``k_ra_err_invalid_arg``.
  * @since 0.2.0
@@ -214,9 +214,9 @@ ra_iic_write(uint8_t channel, uint8_t target_7b, const uint8_t* data, uint32_t l
  * @brief Attach a transfer-complete callback for a channel.
  *
  * @param[in] channel IIC channel.
- * @param[in] fn      Callback fired on transfer end / error.
- *                     NULL to detach.
- * @param[in] ctx     Context passed to the callback.
+ * @param[in] fn Callback fired on transfer end / error.
+ * NULL to detach.
+ * @param[in] ctx Context passed to the callback.
  * @return ``k_ra_ok`` / ``k_ra_err_invalid_arg``.
  *
  * @pre Channel previously initialised.
@@ -248,7 +248,7 @@ ra_iic_attach_transfer_handler(uint8_t channel, ra_iic_complete_fn_t fn, void* c
 [[nodiscard]] ra_err_t ra_iic_exit_stop(uint8_t channel);
 
 /* =============================================================================
- * DMA TX / RX (Wave 3.7b)
+ * DMA TX / RX
  * =============================================================================
  */
 
@@ -260,19 +260,19 @@ ra_iic_attach_transfer_handler(uint8_t channel, ra_iic_complete_fn_t fn, void* c
  * ``data[]`` into the channel's ICDRT register as byte elements.
  * On completion, ``on_complete`` fires from DMAC ISR context.
  *
- * @param[in]  channel         IIC channel 0..2.
- * @param[in]  data            Source buffer. Must outlive the transfer.
- * @param[in]  len             Number of bytes; non-zero.
- * @param[in]  on_complete     Completion callback. May be NULL.
- * @param[in]  ctx             Context passed to ``on_complete``.
+ * @param[in] channel IIC channel 0..2.
+ * @param[in] data Source buffer. Must outlive the transfer.
+ * @param[in] len Number of bytes; non-zero.
+ * @param[in] on_complete Completion callback. May be NULL.
+ * @param[in] ctx Context passed to ``on_complete``.
  * @param[out] out_dma_channel Allocated DMAC channel on success.
  *
  * @return ``ra_err_t`` error code.
- * @retval k_ra_ok                 Transfer armed.
- * @retval k_ra_err_null_ptr       ``data`` / ``out_dma_channel`` NULL.
- * @retval k_ra_err_invalid_arg    Channel or ``len`` invalid.
- * @retval k_ra_err_no_mem         All DMAC channels in use.
- * @retval k_ra_err_hw_error       ``ra_dma_request`` failed.
+ * @retval k_ra_ok Transfer armed.
+ * @retval k_ra_err_null_ptr ``data`` / ``out_dma_channel`` NULL.
+ * @retval k_ra_err_invalid_arg Channel or ``len`` invalid.
+ * @retval k_ra_err_no_mem All DMAC channels in use.
+ * @retval k_ra_err_hw_error ``ra_dma_request`` failed.
  *
  * @pre Channel previously initialised via ``ra_iic_init``.
  * @pre ``ra_dma_init`` has been called.
@@ -296,19 +296,19 @@ ra_iic_attach_transfer_handler(uint8_t channel, ra_iic_complete_fn_t fn, void* c
  * Programmes the ra_dma substrate to copy ``len`` bytes from the
  * channel's ICDRR register into ``out_buf[]`` as byte elements.
  *
- * @param[in]  channel         IIC channel 0..2.
- * @param[out] out_buf         Destination buffer. Must outlive transfer.
- * @param[in]  len             Number of bytes; non-zero.
- * @param[in]  on_complete     Completion callback. May be NULL.
- * @param[in]  ctx             Context passed to ``on_complete``.
+ * @param[in] channel IIC channel 0..2.
+ * @param[out] out_buf Destination buffer. Must outlive transfer.
+ * @param[in] len Number of bytes; non-zero.
+ * @param[in] on_complete Completion callback. May be NULL.
+ * @param[in] ctx Context passed to ``on_complete``.
  * @param[out] out_dma_channel Allocated DMAC channel on success.
  *
  * @return ``ra_err_t`` error code.
- * @retval k_ra_ok                 Transfer armed.
- * @retval k_ra_err_null_ptr       ``out_buf`` / ``out_dma_channel`` NULL.
- * @retval k_ra_err_invalid_arg    Channel or ``len`` invalid.
- * @retval k_ra_err_no_mem         All DMAC channels in use.
- * @retval k_ra_err_hw_error       ``ra_dma_request`` failed.
+ * @retval k_ra_ok Transfer armed.
+ * @retval k_ra_err_null_ptr ``out_buf`` / ``out_dma_channel`` NULL.
+ * @retval k_ra_err_invalid_arg Channel or ``len`` invalid.
+ * @retval k_ra_err_no_mem All DMAC channels in use.
+ * @retval k_ra_err_hw_error ``ra_dma_request`` failed.
  *
  * @pre Channel previously initialised via ``ra_iic_init``.
  * @pre ``ra_dma_init`` has been called.
