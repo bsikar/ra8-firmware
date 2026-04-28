@@ -56,7 +56,7 @@ void ra_crc_reset(void)
   /* HUM Ch 48.2.1 "CRCCR0 : CRC Control Register 0" p 3181 -- DORCLR
    * is a write-only bit that clears CRCDOR and auto-clears itself. The
    * current GPS/LMS bits are preserved by read-modify-write. */
-  reg->CRCCR0 = (uint8_t)(reg->CRCCR0 | (uint8_t)k_ra_crccr0_dorclr);
+  reg->CRCCR0 = (uint8_t)(reg->CRCCR0 | k_ra_crccr0_dorclr);
 }
 
 ra_err_t ra_crc_compute(const uint8_t* data, uint32_t len, uint32_t* out_crc)

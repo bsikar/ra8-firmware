@@ -287,17 +287,17 @@ internal_mpu_set_region(uint32_t region, uint32_t base_attr, uint32_t limit_enab
   internal_write32(k_ra_mpu_mair1_addr, 0U);
 
   internal_mpu_set_region(0U,
-                          (uint32_t)(k_ra_mpu_mram_base | k_ra_rbar_attr_ro_x),
-                          (uint32_t)(k_ra_mpu_mram_limit | k_ra_mpu_rlar_enable));
+                          (k_ra_mpu_mram_base | k_ra_rbar_attr_ro_x),
+                          (k_ra_mpu_mram_limit | k_ra_mpu_rlar_enable));
   internal_mpu_set_region(1U,
-                          (uint32_t)(k_ra_mpu_sram_base | k_ra_rbar_attr_rw_xn),
-                          (uint32_t)(k_ra_mpu_sram_limit | k_ra_mpu_rlar_enable));
+                          (k_ra_mpu_sram_base | k_ra_rbar_attr_rw_xn),
+                          (k_ra_mpu_sram_limit | k_ra_mpu_rlar_enable));
   internal_mpu_set_region(2U,
-                          (uint32_t)(k_ra_mpu_sdram_base | k_ra_rbar_attr_rw_xn),
-                          (uint32_t)(k_ra_mpu_sdram_limit | k_ra_mpu_rlar_enable));
+                          (k_ra_mpu_sdram_base | k_ra_rbar_attr_rw_xn),
+                          (k_ra_mpu_sdram_limit | k_ra_mpu_rlar_enable));
   internal_mpu_set_region(3U,
-                          (uint32_t)(k_ra_mpu_peri_base | k_ra_rbar_attr_device_rw),
-                          (uint32_t)(k_ra_mpu_peri_limit | k_ra_mpu_rlar_enable));
+                          (k_ra_mpu_peri_base | k_ra_rbar_attr_device_rw),
+                          (k_ra_mpu_peri_limit | k_ra_mpu_rlar_enable));
 
   /* Enable MPU with PRIVDEFENA so unclassified privileged accesses
    * still succeed through the default system memory map. */

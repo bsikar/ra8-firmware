@@ -445,9 +445,9 @@ typedef struct {
  */
 static inline volatile r_etha_regs_t* ra_etha(ra_etha_port_t port)
 {
-  uintptr_t base = (uintptr_t)k_ra_etha0_base_addr;
+  uintptr_t base = k_ra_etha0_base_addr;
   if (port == k_ra_etha_port_1) {
-    base = (uintptr_t)k_ra_etha1_base_addr;
+    base = k_ra_etha1_base_addr;
   }
   return (volatile r_etha_regs_t*)base;
 }

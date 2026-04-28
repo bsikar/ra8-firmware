@@ -70,7 +70,7 @@ static ra_err_t internal_reset_channel(uint8_t ch)
   if (reg == nullptr) {             /* GCOVR_EXCL_BR_LINE -- ch already bounded */
     return k_ra_err_hw_init_failed; /* GCOVR_EXCL_LINE */
   }
-  if (ch < (uint8_t)k_ra_acmphs_mstp_id_count) {
+  if (ch < k_ra_acmphs_mstp_id_count) {
     /* HUM Ch 11.2.9 "MSTPCRD : Module Stop Control Register D", p 449 */
     const ra_err_t mst_err = ra_mstp_enable(s_acmphs_mstp_table[ch]);
     RA_RETURN_ON_ERROR(mst_err, s_tag, "acmphs_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
@@ -94,14 +94,14 @@ static ra_err_t internal_reset_channel(uint8_t ch)
 
 [[nodiscard]] ra_err_t ra_acmphs_channel_enable(uint8_t channel)
 {
-  if ((uint16_t)channel >= (uint16_t)k_ra_acmphs_channel_count) {
+  if ((uint16_t)channel >= k_ra_acmphs_channel_count) {
     return k_ra_err_invalid_arg;
   }
   volatile r_acmphs_regs_t* reg = ra_acmphs(channel);
   RA_CHECK_NULL_PTR(reg, s_tag, "channel mapping failed");
 
   const uint8_t current = reg->CMPCTL;
-  reg->CMPCTL           = (uint8_t)(current | (uint8_t)k_ra_acmphs_mask_hcen);
+  reg->CMPCTL           = (uint8_t)(current | k_ra_acmphs_mask_hcen);
   ra_log_info_val(s_tag, "enable channel", (uint32_t)channel);
   return k_ra_ok;
 }
@@ -109,14 +109,14 @@ static ra_err_t internal_reset_channel(uint8_t ch)
 [[nodiscard]] ra_err_t ra_acmphs_read_output(uint8_t channel, ra_level_t* out)
 {
   RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
-  if ((uint16_t)channel >= (uint16_t)k_ra_acmphs_channel_count) {
+  if ((uint16_t)channel >= k_ra_acmphs_channel_count) {
     return k_ra_err_invalid_arg;
   }
   volatile r_acmphs_regs_t* reg = ra_acmphs(channel);
   RA_CHECK_NULL_PTR(reg, s_tag, "channel mapping failed");
 
   const uint8_t monitor = reg->CMPMON;
-  if ((monitor & (uint8_t)k_ra_acmphs_mask_hcmon) != 0U) {
+  if ((monitor & k_ra_acmphs_mask_hcmon) != 0U) {
     *out = k_ra_level_high;
   } else {
     *out = k_ra_level_low;
@@ -137,9 +137,8 @@ typedef enum : uint8_t {
   k_ra_acmphs_ceg_shift          = 3U, /**< CMPCTL.CEG[1:0] at [4:3]. */
   k_ra_acmphs_cdfs_shift         = 5U, /**< CMPCTL.CDFS[1:0] at [6:5]. */
   k_ra_acmphs_cdfs_enabled_value = 1U, /**< "Any sampling clock" when filter on. */
-  k_ra_acmphs_ctl_mask           = (uint8_t)k_ra_acmphs_mask_hcen | (uint8_t)k_ra_acmphs_mask_ceg |
-                                   (uint8_t)k_ra_acmphs_mask_cinv | (uint8_t)k_ra_acmphs_mask_coe |
-                                   (uint8_t)k_ra_acmphs_mask_cdfs,
+  k_ra_acmphs_ctl_mask = k_ra_acmphs_mask_hcen | k_ra_acmphs_mask_ceg | k_ra_acmphs_mask_cinv |
+                         k_ra_acmphs_mask_coe | k_ra_acmphs_mask_cdfs,
 } ra_acmphs_bits_t;
 
 static ra_acmphs_event_fn_t s_acmphs_fn;
@@ -148,13 +147,13 @@ static void*                s_acmphs_ctx;
 ra_err_t ra_acmphs_channel_init(uint8_t channel, const ra_acmphs_cfg_t* cfg)
 {
   RA_CHECK_NULL_PTR((void*)cfg, s_tag, "cfg must not be nullptr");
-  if ((uint16_t)channel >= (uint16_t)k_ra_acmphs_channel_count) {
+  if ((uint16_t)channel >= k_ra_acmphs_channel_count) {
     return k_ra_err_invalid_arg;
   }
   volatile r_acmphs_regs_t* reg = ra_acmphs(channel);
   RA_CHECK_NULL_PTR(reg, s_tag, "channel mapping failed");
 
-  if (channel < (uint8_t)k_ra_acmphs_mstp_id_count) {
+  if (channel < k_ra_acmphs_mstp_id_count) {
     const ra_err_t mst_err = ra_mstp_enable(s_acmphs_mstp_table[channel]);
     RA_RETURN_ON_ERROR(mst_err, s_tag, "acmphs_init: mstp");
   }
@@ -165,13 +164,13 @@ ra_err_t ra_acmphs_channel_init(uint8_t channel, const ra_acmphs_cfg_t* cfg)
   /* FSP CMPCTL packs the filter select into CDFS[1:0] @ [6:5]. There
    * is no standalone CMPFIR register on RA8D2; the driver maps its
    * boolean filter_en into CDFS = 0 (off) or 1 (base sampling). */
-  uint8_t ctl = (uint8_t)k_ra_acmphs_mask_hcen;
+  uint8_t ctl = k_ra_acmphs_mask_hcen;
   ctl |= (uint8_t)((uint8_t)cfg->edge << k_ra_acmphs_ceg_shift);
   if (cfg->invert_out) {
-    ctl |= (uint8_t)k_ra_acmphs_mask_cinv;
+    ctl |= k_ra_acmphs_mask_cinv;
   }
   if (cfg->filter_en) {
-    ctl |= (uint8_t)((uint8_t)k_ra_acmphs_cdfs_enabled_value << k_ra_acmphs_cdfs_shift);
+    ctl |= (uint8_t)(k_ra_acmphs_cdfs_enabled_value << k_ra_acmphs_cdfs_shift);
   }
   reg->CMPCTL = ctl;
   return k_ra_ok;
@@ -179,7 +178,7 @@ ra_err_t ra_acmphs_channel_init(uint8_t channel, const ra_acmphs_cfg_t* cfg)
 
 ra_err_t ra_acmphs_channel_deinit(uint8_t channel)
 {
-  if ((uint16_t)channel >= (uint16_t)k_ra_acmphs_channel_count) {
+  if ((uint16_t)channel >= k_ra_acmphs_channel_count) {
     return k_ra_err_invalid_arg;
   }
   volatile r_acmphs_regs_t* reg = ra_acmphs(channel);
@@ -188,7 +187,7 @@ ra_err_t ra_acmphs_channel_deinit(uint8_t channel)
   reg->CMPCTL  = 0U;
   reg->CMPSEL0 = 0U;
   reg->CMPSEL1 = 0U;
-  if (channel < (uint8_t)k_ra_acmphs_mstp_id_count) {
+  if (channel < k_ra_acmphs_mstp_id_count) {
     (void)ra_mstp_disable(s_acmphs_mstp_table[channel]);
   }
   return k_ra_ok;
@@ -196,7 +195,7 @@ ra_err_t ra_acmphs_channel_deinit(uint8_t channel)
 
 ra_err_t ra_acmphs_set_inputs(uint8_t channel, uint8_t ivpsel, uint8_t ivrefsel)
 {
-  if ((uint16_t)channel >= (uint16_t)k_ra_acmphs_channel_count) {
+  if ((uint16_t)channel >= k_ra_acmphs_channel_count) {
     return k_ra_err_invalid_arg;
   }
   volatile r_acmphs_regs_t* reg = ra_acmphs(channel);
@@ -210,19 +209,19 @@ ra_err_t ra_acmphs_set_inputs(uint8_t channel, uint8_t ivpsel, uint8_t ivrefsel)
 ra_err_t ra_acmphs_get_status(uint8_t channel, uint8_t* out_mask)
 {
   RA_CHECK_NULL_PTR(out_mask, s_tag, "out_mask must not be nullptr");
-  if ((uint16_t)channel >= (uint16_t)k_ra_acmphs_channel_count) {
+  if ((uint16_t)channel >= k_ra_acmphs_channel_count) {
     return k_ra_err_invalid_arg;
   }
   volatile r_acmphs_regs_t* reg = ra_acmphs(channel);
   RA_CHECK_NULL_PTR(reg, s_tag, "channel mapping failed");
 
-  *out_mask = (uint8_t)(reg->CMPCTL & (uint8_t)k_ra_acmphs_ctl_mask);
+  *out_mask = (uint8_t)(reg->CMPCTL & k_ra_acmphs_ctl_mask);
   return k_ra_ok;
 }
 
 ra_err_t ra_acmphs_clear_status(uint8_t channel)
 {
-  if ((uint16_t)channel >= (uint16_t)k_ra_acmphs_channel_count) {
+  if ((uint16_t)channel >= k_ra_acmphs_channel_count) {
     return k_ra_err_invalid_arg;
   }
   volatile r_acmphs_regs_t* reg = ra_acmphs(channel);
@@ -241,10 +240,10 @@ ra_err_t ra_acmphs_attach_handler(ra_acmphs_event_fn_t fn, void* ctx)
 
 ra_err_t ra_acmphs_enter_stop(uint8_t channel)
 {
-  if ((uint16_t)channel >= (uint16_t)k_ra_acmphs_channel_count) {
+  if ((uint16_t)channel >= k_ra_acmphs_channel_count) {
     return k_ra_err_invalid_arg;
   }
-  if (channel < (uint8_t)k_ra_acmphs_mstp_id_count) {
+  if (channel < k_ra_acmphs_mstp_id_count) {
     return ra_mstp_disable(s_acmphs_mstp_table[channel]);
   }
   return k_ra_ok;
@@ -252,10 +251,10 @@ ra_err_t ra_acmphs_enter_stop(uint8_t channel)
 
 ra_err_t ra_acmphs_exit_stop(uint8_t channel)
 {
-  if ((uint16_t)channel >= (uint16_t)k_ra_acmphs_channel_count) {
+  if ((uint16_t)channel >= k_ra_acmphs_channel_count) {
     return k_ra_err_invalid_arg;
   }
-  if (channel < (uint8_t)k_ra_acmphs_mstp_id_count) {
+  if (channel < k_ra_acmphs_mstp_id_count) {
     return ra_mstp_enable(s_acmphs_mstp_table[channel]);
   }
   return k_ra_ok;
@@ -263,7 +262,7 @@ ra_err_t ra_acmphs_exit_stop(uint8_t channel)
 
 void ra_acmphs_dispatch(uint8_t channel)
 {
-  if ((uint16_t)channel >= (uint16_t)k_ra_acmphs_channel_count) {
+  if ((uint16_t)channel >= k_ra_acmphs_channel_count) {
     return;
   }
   const ra_acmphs_event_fn_t fn  = s_acmphs_fn;

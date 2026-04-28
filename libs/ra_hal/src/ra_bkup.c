@@ -72,7 +72,7 @@ typedef enum : uint16_t {
   k_ra_bkup_no_switch_lvl_raw =
     0x06U, /**< 110b sentinel for VDETLVL "initial value" (HUM 12.3.7.3). */
   k_ra_bkup_status_clear_keep_mask =
-    (uint16_t)((uint8_t)~((uint8_t)k_ra_bkup_vbtbpsr_mask_vbporf)), /**< W0C base for VBPORF. */
+    (uint16_t)((uint8_t)~k_ra_bkup_vbtbpsr_mask_vbporf), /**< W0C base for VBPORF. */
 } ra_bkup_internal_t;
 
 /* =============================================================================
@@ -112,12 +112,12 @@ static ra_err_t internal_validate_cfg(const ra_bkup_config_t* cfg)
  */
 static ra_err_t internal_validate_chan(const ra_bkup_tamper_chan_cfg_t* ch)
 {
-  if (((uint8_t)ch->edge != (uint8_t)k_ra_bkup_edge_falling) &&
-      ((uint8_t)ch->edge != (uint8_t)k_ra_bkup_edge_rising)) {
+  if (((uint8_t)ch->edge != k_ra_bkup_edge_falling) &&
+      ((uint8_t)ch->edge != k_ra_bkup_edge_rising)) {
     return k_ra_err_invalid_arg;
   }
-  if (((uint8_t)ch->capture_src != (uint8_t)k_ra_bkup_capture_src_pin) &&
-      ((uint8_t)ch->capture_src != (uint8_t)k_ra_bkup_capture_src_vbtadf)) {
+  if (((uint8_t)ch->capture_src != k_ra_bkup_capture_src_pin) &&
+      ((uint8_t)ch->capture_src != k_ra_bkup_capture_src_vbtadf)) {
     return k_ra_err_invalid_arg;
   }
   return k_ra_ok;
@@ -183,22 +183,20 @@ static inline void internal_rmw8(volatile uint8_t* reg, uint8_t mask, bool enabl
 
     /* HUM Ch 12.2.12 "VBTBPCR2 : VBATT Battery Power Supply Control Register 2", p 508 */
     /* Program VDETLVL with VDETE = 0 first per the HUM stabilisation note. */
-    *ra_bkup_vbtbpcr2() =
-      (uint8_t)((uint8_t)cfg->vdet_level & (uint8_t)k_ra_bkup_vbtbpcr2_mask_lvl);
+    *ra_bkup_vbtbpcr2() = (uint8_t)((uint8_t)cfg->vdet_level & k_ra_bkup_vbtbpcr2_mask_lvl);
 
     /* HUM Ch 12.2.12 "VBTBPCR2 : VBATT Battery Power Supply Control Register 2", p 508 */
     /* Now set VDETE so VCC drop detection arms. */
-    *ra_bkup_vbtbpcr2() =
-      (uint8_t)(((uint8_t)cfg->vdet_level & (uint8_t)k_ra_bkup_vbtbpcr2_mask_lvl) |
-                (uint8_t)k_ra_bkup_vbtbpcr2_mask_vdete);
+    *ra_bkup_vbtbpcr2() = (uint8_t)(((uint8_t)cfg->vdet_level & k_ra_bkup_vbtbpcr2_mask_lvl) |
+                                    k_ra_bkup_vbtbpcr2_mask_vdete);
   } else {
     /* HUM Ch 12.2.11 "VBTBPCR1 : VBATT Battery Power Supply Control Register 1", p 507 */
-    *ra_bkup_vbtbpcr1() = (uint8_t)k_ra_bkup_vbtbpcr1_mask_bpwswstp;
+    *ra_bkup_vbtbpcr1() = k_ra_bkup_vbtbpcr1_mask_bpwswstp;
   }
 
   /* HUM Ch 12.2.6 "VBTBER : VBATT Backup Enable Register", p 504 */
   if (cfg->enable_backup) {
-    *ra_bkup_vbtber() = (uint8_t)k_ra_bkup_vbtber_mask_vbae;
+    *ra_bkup_vbtber() = k_ra_bkup_vbtber_mask_vbae;
   } else {
     *ra_bkup_vbtber() = 0U;
   }
@@ -222,7 +220,7 @@ static inline void internal_rmw8(volatile uint8_t* reg, uint8_t mask, bool enabl
   *ra_bkup_vbtber() = 0U;
 
   /* HUM Ch 12.2.11 "VBTBPCR1 : VBATT Battery Power Supply Control Register 1", p 507 */
-  *ra_bkup_vbtbpcr1() = (uint8_t)k_ra_bkup_vbtbpcr1_mask_bpwswstp;
+  *ra_bkup_vbtbpcr1() = k_ra_bkup_vbtbpcr1_mask_bpwswstp;
 
   s_initialized = false;
   ra_log_info(s_tag, "bkup_deinit");
@@ -242,7 +240,7 @@ static inline void internal_rmw8(volatile uint8_t* reg, uint8_t mask, bool enabl
   /* HUM Ch 12.2.13 "VBTBPSR : VBATT Battery Power Supply Status Register", p 509 */
   bool vbporm_ok = false;
   for (uint32_t i = 0U; i < timeout_iters; ++i) {
-    if ((*ra_bkup_vbtbpsr() & (uint8_t)k_ra_bkup_vbtbpsr_mask_vbporm) != 0U) {
+    if ((*ra_bkup_vbtbpsr() & k_ra_bkup_vbtbpsr_mask_vbporm) != 0U) {
       vbporm_ok = true;
       break;
     }
@@ -257,14 +255,14 @@ static inline void internal_rmw8(volatile uint8_t* reg, uint8_t mask, bool enabl
 
   /* Cold-start step 3 (12.3.7.1 p 517): programme VDETLVL with VDETE still 0. */
   /* HUM Ch 12.2.12 "VBTBPCR2 : VBATT Battery Power Supply Control Register 2", p 508 */
-  *ra_bkup_vbtbpcr2() = (uint8_t)((uint8_t)level & (uint8_t)k_ra_bkup_vbtbpcr2_mask_lvl);
+  *ra_bkup_vbtbpcr2() = (uint8_t)((uint8_t)level & k_ra_bkup_vbtbpcr2_mask_lvl);
 
   /* Cold-start step 4 (12.3.7.1 p 517): external tDETWT wait -- caller's job. */
 
   /* Cold-start step 5 (12.3.7.1 p 517): arm VDETE. */
   /* HUM Ch 12.2.12 "VBTBPCR2 : VBATT Battery Power Supply Control Register 2", p 508 */
-  *ra_bkup_vbtbpcr2() = (uint8_t)(((uint8_t)level & (uint8_t)k_ra_bkup_vbtbpcr2_mask_lvl) |
-                                  (uint8_t)k_ra_bkup_vbtbpcr2_mask_vdete);
+  *ra_bkup_vbtbpcr2() =
+    (uint8_t)(((uint8_t)level & k_ra_bkup_vbtbpcr2_mask_lvl) | k_ra_bkup_vbtbpcr2_mask_vdete);
 
   /* HUM Ch 12.2.11 "VBTBPCR1 : VBATT Battery Power Supply Control Register 1", p 507 */
   *ra_bkup_vbtbpcr1() = 0U; /* Switch enabled. */
@@ -285,7 +283,7 @@ static inline void internal_rmw8(volatile uint8_t* reg, uint8_t mask, bool enabl
   /* HUM Ch 12.2.13 "VBTBPSR : VBATT Battery Power Supply Status Register", p 509 */
   bool vbporm_ok = false;
   for (uint32_t i = 0U; i < timeout_iters; ++i) {
-    if ((*ra_bkup_vbtbpsr() & (uint8_t)k_ra_bkup_vbtbpsr_mask_vbporm) != 0U) {
+    if ((*ra_bkup_vbtbpsr() & k_ra_bkup_vbtbpsr_mask_vbporm) != 0U) {
       vbporm_ok = true;
       break;
     }
@@ -296,7 +294,7 @@ static inline void internal_rmw8(volatile uint8_t* reg, uint8_t mask, bool enabl
 
   /* Warm-start step 2 (12.3.7.2 p 517): read VBPORF. */
   /* HUM Ch 12.2.13 "VBTBPSR : VBATT Battery Power Supply Status Register", p 509 */
-  *needs_reinit = (*ra_bkup_vbtbpsr() & (uint8_t)k_ra_bkup_vbtbpsr_mask_vbporf) != 0U;
+  *needs_reinit = ((*ra_bkup_vbtbpsr() & k_ra_bkup_vbtbpsr_mask_vbporf) != 0U);
   return k_ra_ok;
 }
 
@@ -308,13 +306,13 @@ static inline void internal_rmw8(volatile uint8_t* reg, uint8_t mask, bool enabl
 
   /* No-switch step 1 (12.3.7.3 p 518): stop the switch. */
   /* HUM Ch 12.2.11 "VBTBPCR1 : VBATT Battery Power Supply Control Register 1", p 507 */
-  *ra_bkup_vbtbpcr1() = (uint8_t)k_ra_bkup_vbtbpcr1_mask_bpwswstp;
+  *ra_bkup_vbtbpcr1() = k_ra_bkup_vbtbpcr1_mask_bpwswstp;
 
   /* No-switch step 2 (12.3.7.3 p 518): wait for VBPORM == 0 (rail tied to VCC). */
   /* HUM Ch 12.2.13 "VBTBPSR : VBATT Battery Power Supply Status Register", p 509 */
   bool vbporm_low = false;
   for (uint32_t i = 0U; i < timeout_iters; ++i) {
-    if ((*ra_bkup_vbtbpsr() & (uint8_t)k_ra_bkup_vbtbpsr_mask_vbporm) == 0U) {
+    if ((*ra_bkup_vbtbpsr() & k_ra_bkup_vbtbpsr_mask_vbporm) == 0U) {
       vbporm_low = true;
       break;
     }
@@ -363,26 +361,26 @@ static inline void internal_rmw8(volatile uint8_t* reg, uint8_t mask, bool enabl
   const uint8_t adsr = *ra_bkup_vbtadsr();
 
   out->raw_vbtbpsr = bpsr;
-  if ((bpsr & (uint8_t)k_ra_bkup_vbtbpsr_mask_swm) != 0U) {
+  if ((bpsr & k_ra_bkup_vbtbpsr_mask_swm) != 0U) {
     out->source = k_ra_bkup_source_vcc;
   } else {
     out->source = k_ra_bkup_source_vbatt;
   }
-  out->vbatt_r_ok   = (bpsr & (uint8_t)k_ra_bkup_vbtbpsr_mask_vbporm) != 0U;
-  out->por_detected = (bpsr & (uint8_t)k_ra_bkup_vbtbpsr_mask_vbporf) != 0U;
-  out->tamper_flags = (uint8_t)(adsr & (uint8_t)k_ra_bkup_vbtadsr_mask_all);
+  out->vbatt_r_ok   = ((bpsr & k_ra_bkup_vbtbpsr_mask_vbporm) != 0U);
+  out->por_detected = ((bpsr & k_ra_bkup_vbtbpsr_mask_vbporf) != 0U);
+  out->tamper_flags = (uint8_t)(adsr & k_ra_bkup_vbtadsr_mask_all);
   return k_ra_ok;
 }
 
 [[nodiscard]] ra_err_t ra_bkup_clear_status(uint8_t mask)
 {
-  if ((mask & (uint8_t)k_ra_bkup_vbtbpsr_mask_vbporf) != 0U) {
+  if ((mask & k_ra_bkup_vbtbpsr_mask_vbporf) != 0U) {
     /* HUM Ch 12.2.13 "VBTBPSR : VBATT Battery Power Supply Status Register", p 509 */
     /* W0C: write 0 to bits we want cleared, 1 to bits to leave alone. */
     const uint8_t live = *ra_bkup_vbtbpsr();
-    *ra_bkup_vbtbpsr() = (uint8_t)(live & (uint8_t)~((uint8_t)k_ra_bkup_vbtbpsr_mask_vbporf));
+    *ra_bkup_vbtbpsr() = (uint8_t)(live & (uint8_t)~k_ra_bkup_vbtbpsr_mask_vbporf);
   }
-  const uint8_t adf_bits = (uint8_t)(mask & (uint8_t)k_ra_bkup_vbtadsr_mask_all);
+  const uint8_t adf_bits = (uint8_t)(mask & k_ra_bkup_vbtadsr_mask_all);
   if (adf_bits != 0U) {
     /* HUM Ch 12.2.14 "VBTADSR : VBATT Tamper Detection Status Register", p 509 */
     const uint8_t live = *ra_bkup_vbtadsr();
@@ -399,7 +397,7 @@ static inline void internal_rmw8(volatile uint8_t* reg, uint8_t mask, bool enabl
 [[nodiscard]] ra_err_t ra_bkup_read_word(uint8_t word_index, uint32_t* out)
 {
   RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
-  if ((uint16_t)word_index >= (uint16_t)k_ra_bkup_word_count) {
+  if ((uint16_t)word_index >= k_ra_bkup_word_count) {
     return k_ra_err_invalid_arg;
   }
   /* HUM Ch 12.2.7 "VBTBKRn : VBATT Backup Register", p 505 */
@@ -411,7 +409,7 @@ static inline void internal_rmw8(volatile uint8_t* reg, uint8_t mask, bool enabl
 
 [[nodiscard]] ra_err_t ra_bkup_write_word(uint8_t word_index, uint32_t value)
 {
-  if ((uint16_t)word_index >= (uint16_t)k_ra_bkup_word_count) {
+  if ((uint16_t)word_index >= k_ra_bkup_word_count) {
     return k_ra_err_invalid_arg;
   }
   /* HUM Ch 12.2.7 "VBTBKRn : VBATT Backup Register", p 505 */
@@ -424,7 +422,7 @@ static inline void internal_rmw8(volatile uint8_t* reg, uint8_t mask, bool enabl
 [[nodiscard]] ra_err_t ra_bkup_read_byte(uint16_t index, uint8_t* out)
 {
   RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
-  if (index >= (uint16_t)k_ra_bkup_reg_count) {
+  if (index >= k_ra_bkup_reg_count) {
     return k_ra_err_invalid_arg;
   }
   /* HUM Ch 12.2.7 "VBTBKRn : VBATT Backup Register", p 505 */
@@ -436,7 +434,7 @@ static inline void internal_rmw8(volatile uint8_t* reg, uint8_t mask, bool enabl
 
 [[nodiscard]] ra_err_t ra_bkup_write_byte(uint16_t index, uint8_t value)
 {
-  if (index >= (uint16_t)k_ra_bkup_reg_count) {
+  if (index >= k_ra_bkup_reg_count) {
     return k_ra_err_invalid_arg;
   }
   /* HUM Ch 12.2.7 "VBTBKRn : VBATT Backup Register", p 505 */
@@ -448,7 +446,7 @@ static inline void internal_rmw8(volatile uint8_t* reg, uint8_t mask, bool enabl
 
 [[nodiscard]] ra_err_t ra_bkup_zero_all(void)
 {
-  for (uint16_t i = 0U; i < (uint16_t)k_ra_bkup_reg_count; ++i) {
+  for (uint16_t i = 0U; i < k_ra_bkup_reg_count; ++i) {
     /* HUM Ch 12.2.7 "VBTBKRn : VBATT Backup Register", p 505 */
     volatile uint8_t* slot = ra_bkup_vbtbkr(i);
     if (slot != nullptr) {
@@ -497,8 +495,8 @@ static uint8_t internal_compose_vbtictlr(const ra_bkup_tamper_config_t* cfg)
   uint8_t ictlr = 0U;
   for (uint8_t i = 0U; i < (uint8_t)k_ra_bkup_chan_count; ++i) {
     if (cfg->channels[i].input_enable) {
-      ictlr = (uint8_t)(ictlr | internal_chan_mask((uint8_t)k_ra_bkup_vbtictlr_mask_vch0inen,
-                                                   (ra_bkup_channel_t)i));
+      ictlr = (uint8_t)(ictlr |
+                        internal_chan_mask(k_ra_bkup_vbtictlr_mask_vch0inen, (ra_bkup_channel_t)i));
     }
   }
   return ictlr;
@@ -519,12 +517,12 @@ static uint8_t internal_compose_vbtictlr2(const ra_bkup_tamper_config_t* cfg)
   uint8_t ictlr2 = 0U;
   for (uint8_t i = 0U; i < (uint8_t)k_ra_bkup_chan_count; ++i) {
     if (cfg->channels[i].noise_canceller_en) {
-      ictlr2 = (uint8_t)(ictlr2 | internal_chan_mask((uint8_t)k_ra_bkup_vbtictlr2_mask_vch0nce,
+      ictlr2 = (uint8_t)(ictlr2 | internal_chan_mask(k_ra_bkup_vbtictlr2_mask_vch0nce,
                                                      (ra_bkup_channel_t)i));
     }
-    if ((uint8_t)cfg->channels[i].edge == (uint8_t)k_ra_bkup_edge_rising) {
-      ictlr2 = (uint8_t)(ictlr2 | internal_chan_mask((uint8_t)k_ra_bkup_vbtictlr2_mask_vch0eg,
-                                                     (ra_bkup_channel_t)i));
+    if ((uint8_t)cfg->channels[i].edge == k_ra_bkup_edge_rising) {
+      ictlr2 = (uint8_t)(ictlr2 |
+                         internal_chan_mask(k_ra_bkup_vbtictlr2_mask_vch0eg, (ra_bkup_channel_t)i));
     }
   }
   return ictlr2;
@@ -545,12 +543,12 @@ static uint8_t internal_compose_vbtadcr1(const ra_bkup_tamper_config_t* cfg)
   uint8_t adcr1 = 0U;
   for (uint8_t i = 0U; i < (uint8_t)k_ra_bkup_chan_count; ++i) {
     if (cfg->channels[i].irq_enable) {
-      adcr1 = (uint8_t)(adcr1 | internal_chan_mask((uint8_t)k_ra_bkup_vbtadcr1_mask_vbtadie0,
-                                                   (ra_bkup_channel_t)i));
+      adcr1 = (uint8_t)(adcr1 |
+                        internal_chan_mask(k_ra_bkup_vbtadcr1_mask_vbtadie0, (ra_bkup_channel_t)i));
     }
     if (cfg->channels[i].clear_backup) {
-      adcr1 = (uint8_t)(adcr1 | internal_chan_mask((uint8_t)k_ra_bkup_vbtadcr1_mask_vbtadce0,
-                                                   (ra_bkup_channel_t)i));
+      adcr1 = (uint8_t)(adcr1 |
+                        internal_chan_mask(k_ra_bkup_vbtadcr1_mask_vbtadce0, (ra_bkup_channel_t)i));
     }
   }
   return adcr1;
@@ -570,9 +568,9 @@ static uint8_t internal_compose_vbtadcr2(const ra_bkup_tamper_config_t* cfg)
 {
   uint8_t adcr2 = 0U;
   for (uint8_t i = 0U; i < (uint8_t)k_ra_bkup_chan_count; ++i) {
-    if ((uint8_t)cfg->channels[i].capture_src == (uint8_t)k_ra_bkup_capture_src_vbtadf) {
-      adcr2 = (uint8_t)(adcr2 | internal_chan_mask((uint8_t)k_ra_bkup_vbtadcr2_mask_vbrtces0,
-                                                   (ra_bkup_channel_t)i));
+    if ((uint8_t)cfg->channels[i].capture_src == k_ra_bkup_capture_src_vbtadf) {
+      adcr2 = (uint8_t)(adcr2 |
+                        internal_chan_mask(k_ra_bkup_vbtadcr2_mask_vbrtces0, (ra_bkup_channel_t)i));
     }
   }
   return adcr2;
@@ -593,8 +591,8 @@ static uint8_t internal_compose_vbtadcr3(const ra_bkup_tamper_config_t* cfg)
   uint8_t adcr3 = 0U;
   for (uint8_t i = 0U; i < (uint8_t)k_ra_bkup_chan_count; ++i) {
     if (cfg->channels[i].zeroize_huk) {
-      adcr3 = (uint8_t)(adcr3 | internal_chan_mask((uint8_t)k_ra_bkup_vbtadcr3_mask_vbtadze0,
-                                                   (ra_bkup_channel_t)i));
+      adcr3 = (uint8_t)(adcr3 |
+                        internal_chan_mask(k_ra_bkup_vbtadcr3_mask_vbtadze0, (ra_bkup_channel_t)i));
     }
   }
   return adcr3;
@@ -626,7 +624,7 @@ static uint8_t internal_compose_vbtadcr3(const ra_bkup_tamper_config_t* cfg)
 
   /* Tamper-init step 3 (12.3.7.4 p 518): VINCW. */
   /* HUM Ch 12.2.18 "VBTNCWCR : VBATT Noise Canceler Width Control Register", p 511 */
-  *ra_bkup_vbtncwcr() = (uint8_t)((uint8_t)cfg->nc_width & (uint8_t)k_ra_bkup_vbtncwcr_mask_vincw);
+  *ra_bkup_vbtncwcr() = (uint8_t)((uint8_t)cfg->nc_width & k_ra_bkup_vbtncwcr_mask_vincw);
 
   /* Tamper-init step 4 (12.3.7.4 p 518): VCHnNCE + VCHnEG. */
   /* HUM Ch 12.2.9 "VBTICTLR2 : VBATT Input Control Register 2", p 506 */
@@ -675,8 +673,8 @@ static uint8_t internal_compose_vbtadcr3(const ra_bkup_tamper_config_t* cfg)
     return k_ra_err_invalid_arg;
   }
   /* HUM Ch 12.2.10 "VBTIMONR : VBATT Input Monitor Register", p 506 */
-  const uint8_t mask = internal_chan_mask((uint8_t)k_ra_bkup_vbtimonr_mask_vch0mon, channel);
-  *high_out          = (*ra_bkup_vbtimonr() & mask) != 0U;
+  const uint8_t mask = internal_chan_mask(k_ra_bkup_vbtimonr_mask_vch0mon, channel);
+  *high_out          = ((*ra_bkup_vbtimonr() & mask) != 0U);
   return k_ra_ok;
 }
 
@@ -686,7 +684,7 @@ static uint8_t internal_compose_vbtadcr3(const ra_bkup_tamper_config_t* cfg)
     return k_ra_err_invalid_arg;
   }
   /* HUM Ch 12.2.8 "VBTICTLR : VBATT Input Control Register", p 505 */
-  const uint8_t mask = internal_chan_mask((uint8_t)k_ra_bkup_vbtictlr_mask_vch0inen, channel);
+  const uint8_t mask = internal_chan_mask(k_ra_bkup_vbtictlr_mask_vch0inen, channel);
   internal_rmw8(ra_bkup_vbtictlr(), mask, enable);
   return k_ra_ok;
 }
@@ -699,7 +697,7 @@ static uint8_t internal_compose_vbtadcr3(const ra_bkup_tamper_config_t* cfg)
 [[nodiscard]] ra_err_t ra_bkup_set_voltage_monitor(bool enable)
 {
   /* HUM Ch 12.2.5 "VBATTMNSELR : Battery Backup Voltage Monitor Function Select Register", p 503 */
-  internal_rmw8(ra_bkup_vbattmnselr(), (uint8_t)k_ra_bkup_vbattmnselr_mask_vbtmnsel, enable);
+  internal_rmw8(ra_bkup_vbattmnselr(), k_ra_bkup_vbattmnselr_mask_vbtmnsel, enable);
   return k_ra_ok;
 }
 
@@ -707,7 +705,7 @@ static uint8_t internal_compose_vbtadcr3(const ra_bkup_tamper_config_t* cfg)
 {
   RA_CHECK_NULL_PTR(enabled_out, s_tag, "enabled_out must not be nullptr");
   /* HUM Ch 12.2.5 "VBATTMNSELR : Battery Backup Voltage Monitor Function Select Register", p 503 */
-  *enabled_out = (*ra_bkup_vbattmnselr() & (uint8_t)k_ra_bkup_vbattmnselr_mask_vbtmnsel) != 0U;
+  *enabled_out = ((*ra_bkup_vbattmnselr() & k_ra_bkup_vbattmnselr_mask_vbtmnsel) != 0U);
   return k_ra_ok;
 }
 
@@ -727,10 +725,10 @@ static uint8_t internal_compose_vbtadcr3(const ra_bkup_tamper_config_t* cfg)
  */
 static ra_err_t internal_validate_boundary(uint16_t addr)
 {
-  if ((addr & (uint16_t)k_ra_bkup_saba_align_mask) != 0U) {
+  if ((addr & k_ra_bkup_saba_align_mask) != 0U) {
     return k_ra_err_invalid_arg;
   }
-  if (addr > (uint16_t)k_ra_bkup_saba_max) {
+  if (addr > k_ra_bkup_saba_max) {
     return k_ra_err_invalid_arg;
   }
   return k_ra_ok;
@@ -748,7 +746,7 @@ static ra_err_t internal_validate_boundary(uint16_t addr)
  */
 static ra_err_t internal_validate_security_cfg(const ra_bkup_security_config_t* cfg)
 {
-  if ((cfg->bbfsar & ~(uint32_t)k_ra_bkup_bbfsar_mask_all) != 0U) {
+  if ((cfg->bbfsar & ~k_ra_bkup_bbfsar_mask_all) != 0U) {
     return k_ra_err_invalid_arg;
   }
   ra_err_t err = internal_validate_boundary(cfg->saba);
@@ -767,7 +765,7 @@ static ra_err_t internal_validate_security_cfg(const ra_bkup_security_config_t* 
   RA_RETURN_ON_ERROR(v_err, s_tag, "security_apply: cfg bad");
 
   /* HUM Ch 12.2.1 "BBFSAR : Battery Backup Function Security Attribute Register", p 500 */
-  *ra_bkup_bbfsar() = (uint32_t)(cfg->bbfsar & (uint32_t)k_ra_bkup_bbfsar_mask_all);
+  *ra_bkup_bbfsar() = (uint32_t)(cfg->bbfsar & k_ra_bkup_bbfsar_mask_all);
   /* HUM Ch 12.2.2 "VBRSABAR : VBATT Backup Register Security Attribute Boundary Address Register", p 502 */
   *ra_bkup_vbrsabar() = cfg->saba;
   /* HUM Ch 12.2.3 "VBRPABARS : VBATT Backup Register Privilege Attribute Boundary Address Register for Secure Region", p 502 */
@@ -781,7 +779,7 @@ static ra_err_t internal_validate_security_cfg(const ra_bkup_security_config_t* 
 {
   RA_CHECK_NULL_PTR((void*)cfg, s_tag, "security cfg must not be nullptr");
   /* HUM Ch 12.2.1 "BBFSAR : Battery Backup Function Security Attribute Register", p 500 */
-  cfg->bbfsar = (uint32_t)(*ra_bkup_bbfsar() & (uint32_t)k_ra_bkup_bbfsar_mask_all);
+  cfg->bbfsar = (uint32_t)(*ra_bkup_bbfsar() & k_ra_bkup_bbfsar_mask_all);
   /* HUM Ch 12.2.2 "VBRSABAR : VBATT Backup Register Security Attribute Boundary Address Register", p 502 */
   cfg->saba = *ra_bkup_vbrsabar();
   /* HUM Ch 12.2.3 "VBRPABARS : VBATT Backup Register Privilege Attribute Boundary Address Register for Secure Region", p 502 */
@@ -813,9 +811,9 @@ static ra_err_t internal_validate_security_cfg(const ra_bkup_security_config_t* 
    * any (VBTADFn AND VBTADIEn) is true. Read both, AND them, and
    * dispatch the masked subset. */
   /* HUM Ch 12.2.14 "VBTADSR : VBATT Tamper Detection Status Register", p 509 */
-  const uint8_t flags = (uint8_t)(*ra_bkup_vbtadsr() & (uint8_t)k_ra_bkup_vbtadsr_mask_all);
+  const uint8_t flags = (uint8_t)(*ra_bkup_vbtadsr() & k_ra_bkup_vbtadsr_mask_all);
   /* HUM Ch 12.2.15 "VBTADCR1 : VBATT Tamper Detection Control Register 1", p 510 */
-  const uint8_t enables = (uint8_t)(*ra_bkup_vbtadcr1() & (uint8_t)k_ra_bkup_vbtadcr1_mask_ie_all);
+  const uint8_t enables = (uint8_t)(*ra_bkup_vbtadcr1() & k_ra_bkup_vbtadcr1_mask_ie_all);
   const uint8_t fired   = (uint8_t)(flags & enables);
 
   if (fired != 0U) {

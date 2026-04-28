@@ -335,12 +335,12 @@ static inline uintptr_t ra_wdt_ofs_addr(ra_wdt_instance_t which)
   /* HUM Ch 7 "Option-Setting Memory" p 278 */
   switch (which) {
     case k_ra_wdt0:
-      return (uintptr_t)k_ra_wdt_ofs0_addr;
+      return k_ra_wdt_ofs0_addr;
     case k_ra_wdt1:
-      return (uintptr_t)k_ra_wdt_ofs3_addr;
+      return k_ra_wdt_ofs3_addr;
     case k_ra_wdt_instance_count:
     default:
-      return (uintptr_t)k_ra_wdt_ofs0_addr;
+      return k_ra_wdt_ofs0_addr;
   }
 }
 
@@ -362,8 +362,8 @@ static inline void ra_wdt_refresh(void)
 {
   /* HUM Ch 27.2.1 "WDTRR : WDT Refresh Register", p 1257 */
   volatile r_wdt_regs_t* w = ra_wdt();
-  w->WDTRR                 = (uint8_t)k_ra_wdt_refresh_a;
-  w->WDTRR                 = (uint8_t)k_ra_wdt_refresh_b;
+  w->WDTRR                 = k_ra_wdt_refresh_a;
+  w->WDTRR                 = k_ra_wdt_refresh_b;
 }
 
 /**
@@ -382,8 +382,8 @@ static inline void ra_wdt_refresh_instance(ra_wdt_instance_t which)
 {
   /* HUM Ch 27.2.1 "WDTRR : WDT Refresh Register", p 1257 */
   volatile r_wdt_regs_t* w = ra_wdt_for(which);
-  w->WDTRR                 = (uint8_t)k_ra_wdt_refresh_a;
-  w->WDTRR                 = (uint8_t)k_ra_wdt_refresh_b;
+  w->WDTRR                 = k_ra_wdt_refresh_a;
+  w->WDTRR                 = k_ra_wdt_refresh_b;
 }
 
 #ifdef __cplusplus

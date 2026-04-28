@@ -283,7 +283,7 @@ static ra_lpm_off_t internal_dpsiegr_offset(ra_lpm_dpsier_idx_t idx)
   /* SBYCR: only OPE is software-writable (HUM Ch 11.2.18 p 456). */
   uint8_t sbycr = 0U;
   if (cfg->opa_bus_keep) {
-    sbycr |= (uint8_t)k_ra_lpm_sbycr_ope_mask;
+    sbycr |= k_ra_lpm_sbycr_ope_mask;
   }
   /* HUM Ch 11.2.18 "SBYCR : Standby Control Register", p 456 */
   *ra_lpm_sysc_reg8(k_ra_lpm_sbycr_off) = sbycr;
@@ -291,7 +291,7 @@ static ra_lpm_off_t internal_dpsiegr_offset(ra_lpm_dpsier_idx_t idx)
   /* DPSBYCR: IOKEEP + DCSSMODE (HUM Ch 11.2.21 p 458). */
   uint8_t dpsbycr = (uint8_t)((uint8_t)cfg->dcdc_softstart << k_ra_lpm_dpsbycr_dcssmode_shift);
   if (cfg->io_port_keep) {
-    dpsbycr |= (uint8_t)k_ra_lpm_dpsbycr_iokeep_mask;
+    dpsbycr |= k_ra_lpm_dpsbycr_iokeep_mask;
   }
   /* HUM Ch 11.2.21 "DPSBYCR : Deep Software Standby Control Register", p 458 */
   *ra_lpm_sysc_reg8(k_ra_lpm_dpsbycr_off) = dpsbycr;
@@ -299,7 +299,7 @@ static ra_lpm_off_t internal_dpsiegr_offset(ra_lpm_dpsier_idx_t idx)
   /* SSCR1: SS2FR + SS2LP (HUM Ch 11.2.19 p 456). */
   uint8_t sscr1 = (uint8_t)((uint8_t)cfg->sscr_low_power << k_ra_lpm_sscr1_ss2lp_shift);
   if (cfg->sscr_fast_return) {
-    sscr1 |= (uint8_t)k_ra_lpm_sscr1_ss2fr_mask;
+    sscr1 |= k_ra_lpm_sscr1_ss2fr_mask;
   }
   /* HUM Ch 11.2.19 "SSCR1 : Software Standby Control Register 1", p 456 */
   *ra_lpm_sysc_reg8(k_ra_lpm_sscr1_off) = sscr1;
@@ -315,9 +315,9 @@ static ra_lpm_off_t internal_dpsiegr_offset(ra_lpm_dpsier_idx_t idx)
 [[nodiscard]] ra_err_t ra_lpm_deinit(void)
 {
   /* HUM Ch 11.2.18 "SBYCR : Standby Control Register", p 456 */
-  *ra_lpm_sysc_reg8(k_ra_lpm_sbycr_off) = (uint8_t)k_ra_lpm_sbycr_reset_val;
+  *ra_lpm_sysc_reg8(k_ra_lpm_sbycr_off) = k_ra_lpm_sbycr_reset_val;
   /* HUM Ch 11.2.21 "DPSBYCR : Deep Software Standby Control Register", p 458 */
-  *ra_lpm_sysc_reg8(k_ra_lpm_dpsbycr_off) = (uint8_t)k_ra_lpm_dpsbycr_reset_val;
+  *ra_lpm_sysc_reg8(k_ra_lpm_dpsbycr_off) = k_ra_lpm_dpsbycr_reset_val;
   /* HUM Ch 11.2.19 "SSCR1 : Software Standby Control Register 1", p 456 */
   *ra_lpm_sysc_reg8(k_ra_lpm_sscr1_off) = 0U;
   /* HUM Ch 11.2.20 "LPSCR : Low Power State Control Register", p 457 */
@@ -354,8 +354,8 @@ static ra_lpm_off_t internal_dpsiegr_offset(ra_lpm_dpsier_idx_t idx)
    * the cross-cut write-protect register that gates SBYCR/DPSBYCR/etc. */
   volatile uint16_t* prcr = ra_lpm_sysc_reg16(k_ra_lpm_prcr_off);
   const uint16_t     cur  = *prcr;
-  const uint16_t     mask = (uint16_t)((cur & 0xFFU) | (uint16_t)k_ra_lpm_prcr_prc1_msk);
-  *prcr                   = (uint16_t)((uint16_t)k_ra_lpm_prcr_key | mask);
+  const uint16_t     mask = (uint16_t)((cur & 0xFFU) | k_ra_lpm_prcr_prc1_msk);
+  *prcr                   = (uint16_t)(k_ra_lpm_prcr_key | mask);
   return k_ra_ok;
 }
 
@@ -364,8 +364,8 @@ static ra_lpm_off_t internal_dpsiegr_offset(ra_lpm_dpsier_idx_t idx)
   /* HUM Ch 11.2.18 "SBYCR : Standby Control Register", p 456 */
   volatile uint16_t* prcr = ra_lpm_sysc_reg16(k_ra_lpm_prcr_off);
   const uint16_t     cur  = *prcr;
-  const uint16_t     mask = (uint16_t)((cur & 0xFFU) & (uint16_t)~(uint16_t)k_ra_lpm_prcr_prc1_msk);
-  *prcr                   = (uint16_t)((uint16_t)k_ra_lpm_prcr_key | mask);
+  const uint16_t     mask = (uint16_t)((cur & 0xFFU) & (uint16_t)~k_ra_lpm_prcr_prc1_msk);
+  *prcr                   = (uint16_t)(k_ra_lpm_prcr_key | mask);
   return k_ra_ok;
 }
 
@@ -422,7 +422,7 @@ static ra_lpm_off_t internal_dpsiegr_offset(ra_lpm_dpsier_idx_t idx)
 
 [[nodiscard]] ra_err_t ra_lpm_arm_dpsier(ra_lpm_dpsier_idx_t idx, uint8_t value)
 {
-  if ((uint8_t)idx >= (uint8_t)k_ra_lpm_dpsier_idx_count) {
+  if ((uint8_t)idx >= k_ra_lpm_dpsier_idx_count) {
     ra_log_error(s_tag, "arm_dpsier: idx out of range");
     return k_ra_err_invalid_arg;
   }
@@ -442,7 +442,7 @@ static ra_lpm_off_t internal_dpsiegr_offset(ra_lpm_dpsier_idx_t idx)
 
 [[nodiscard]] ra_err_t ra_lpm_clear_dpsifr(ra_lpm_dpsier_idx_t idx)
 {
-  if ((uint8_t)idx >= (uint8_t)k_ra_lpm_dpsier_idx_count) {
+  if ((uint8_t)idx >= k_ra_lpm_dpsier_idx_count) {
     ra_log_error(s_tag, "clear_dpsifr: idx out of range");
     return k_ra_err_invalid_arg;
   }
@@ -455,7 +455,7 @@ static ra_lpm_off_t internal_dpsiegr_offset(ra_lpm_dpsier_idx_t idx)
 
 [[nodiscard]] ra_err_t ra_lpm_set_dpsiegr(ra_lpm_dpsier_idx_t idx, uint8_t value)
 {
-  if ((uint8_t)idx >= (uint8_t)k_ra_lpm_dpsier_idx_count) {
+  if ((uint8_t)idx >= k_ra_lpm_dpsier_idx_count) {
     ra_log_error(s_tag, "set_dpsiegr: idx out of range");
     return k_ra_err_invalid_arg;
   }
@@ -477,17 +477,17 @@ ra_lpm_snooze_set_request_sources(bool ulpt0_underflow, bool ulpt1_underflow, bo
   volatile uint32_t* w1 = ra_lpm_icu_reg32(k_ra_lpm_wupen1_off);
   uint32_t           v  = *w1;
   if (ulpt0_underflow) {
-    v |= (uint32_t)k_ra_lpm_wupen1_ulpt0u;
+    v |= k_ra_lpm_wupen1_ulpt0u;
   }
   if (ulpt1_underflow) {
-    v |= (uint32_t)k_ra_lpm_wupen1_ulpt1u;
+    v |= k_ra_lpm_wupen1_ulpt1u;
   }
   *w1 = v;
 
   if (acmphs0) {
     /* HUM Ch 14.2.19 "WUPEN0 : Wake Up Interrupt Enable Register 0", p 550 */
     volatile uint32_t* w0 = ra_lpm_icu_reg32(k_ra_lpm_wupen0_off);
-    *w0                   = *w0 | (uint32_t)k_ra_lpm_wupen0_acmphs0;
+    *w0                   = *w0 | k_ra_lpm_wupen0_acmphs0;
   }
   return k_ra_ok;
 }
@@ -498,16 +498,16 @@ ra_lpm_snooze_set_request_sources(bool ulpt0_underflow, bool ulpt1_underflow, bo
   volatile uint8_t* en = ra_lpm_sysc_reg8(k_ra_lpm_dpsier3_off);
   uint8_t           v  = *en;
   if (ulpt0) {
-    v |= (uint8_t)k_ra_lpm_dpsier3_dulpt0ie_mask;
+    v |= k_ra_lpm_dpsier3_dulpt0ie_mask;
   }
   if (ulpt1) {
-    v |= (uint8_t)k_ra_lpm_dpsier3_dulpt1ie_mask;
+    v |= k_ra_lpm_dpsier3_dulpt1ie_mask;
   }
   if (usbfs) {
-    v |= (uint8_t)k_ra_lpm_dpsier3_dusbfsie_mask;
+    v |= k_ra_lpm_dpsier3_dusbfsie_mask;
   }
   if (usbhs) {
-    v |= (uint8_t)k_ra_lpm_dpsier3_dusbhsie_mask;
+    v |= k_ra_lpm_dpsier3_dusbhsie_mask;
   }
   *en = v;
 
@@ -529,14 +529,14 @@ ra_lpm_snooze_set_request_sources(bool ulpt0_underflow, bool ulpt1_underflow, bo
 
   /* HUM Ch 11.2.16 "PDRAMSCR0 : SRAM Power Domain Standby Control 0", p 453 */
   *ra_lpm_sysc_reg16(k_ra_lpm_pdramscr0_off) =
-    (uint16_t)(cfg->pdramscr0_bits & (uint16_t)k_ra_lpm_pdramscr0_writable);
+    (uint16_t)(cfg->pdramscr0_bits & k_ra_lpm_pdramscr0_writable);
 
   uint8_t pdramscr1 = 0U;
   if (cfg->cpu0_tcm_keep) {
-    pdramscr1 |= (uint8_t)k_ra_lpm_pdramscr1_rkeep0_mask;
+    pdramscr1 |= k_ra_lpm_pdramscr1_rkeep0_mask;
   }
   if (cfg->cpu1_tcm_keep) {
-    pdramscr1 |= (uint8_t)k_ra_lpm_pdramscr1_rkeep1_mask;
+    pdramscr1 |= k_ra_lpm_pdramscr1_rkeep1_mask;
   }
   /* HUM Ch 11.2.17 "PDRAMSCR1 : SRAM Power Domain Standby Control 1", p 455 */
   *ra_lpm_sysc_reg8(k_ra_lpm_pdramscr1_off) = pdramscr1;
@@ -551,24 +551,24 @@ ra_lpm_snooze_set_request_sources(bool ulpt0_underflow, bool ulpt1_underflow, bo
    * writes are only permitted in HSM. */
   /* HUM Ch 11.2.11 "OPCCR : Operating Power Control Register", p 451 */
   const uint8_t opccr = *ra_lpm_sysc_reg8(k_ra_lpm_opccr_off);
-  if (((uint8_t)(opccr & (uint8_t)k_ra_lpm_opccr_opcm_mask)) != 0U) {
+  if (((uint8_t)(opccr & k_ra_lpm_opccr_opcm_mask)) != 0U) {
     ra_log_error(s_tag, "set_ldo: OPCM!=0");
     return k_ra_err_invalid_state;
   }
 
   /* HUM Ch 11.2.1 "LPMSAR : Low Power Mode Security Attribution Register", p 436 */
   volatile uint8_t* pll1 = ra_lpm_sysc_reg8(k_ra_lpm_pll1ldocr_off);
-  *pll1                  = (uint8_t)((*pll1 & (uint8_t)~(uint8_t)k_ra_lpm_ldocr_skeep_mask) |
+  *pll1                  = (uint8_t)((*pll1 & (uint8_t)~k_ra_lpm_ldocr_skeep_mask) |
                                      (uint8_t)((uint8_t)cfg->pll1 << k_ra_lpm_ldocr_skeep_shift));
 
   /* HUM Ch 11.2.1 "LPMSAR : Low Power Mode Security Attribution Register", p 436 */
   volatile uint8_t* pll2 = ra_lpm_sysc_reg8(k_ra_lpm_pll2ldocr_off);
-  *pll2                  = (uint8_t)((*pll2 & (uint8_t)~(uint8_t)k_ra_lpm_ldocr_skeep_mask) |
+  *pll2                  = (uint8_t)((*pll2 & (uint8_t)~k_ra_lpm_ldocr_skeep_mask) |
                                      (uint8_t)((uint8_t)cfg->pll2 << k_ra_lpm_ldocr_skeep_shift));
 
   /* HUM Ch 11.2.1 "LPMSAR : Low Power Mode Security Attribution Register", p 436 */
   volatile uint8_t* hoco = ra_lpm_sysc_reg8(k_ra_lpm_hocoldocr_off);
-  *hoco                  = (uint8_t)((*hoco & (uint8_t)~(uint8_t)k_ra_lpm_ldocr_skeep_mask) |
+  *hoco                  = (uint8_t)((*hoco & (uint8_t)~k_ra_lpm_ldocr_skeep_mask) |
                                      (uint8_t)((uint8_t)cfg->hoco << k_ra_lpm_ldocr_skeep_shift));
   return k_ra_ok;
 }
@@ -580,7 +580,7 @@ ra_lpm_snooze_set_request_sources(bool ulpt0_underflow, bool ulpt1_underflow, bo
 
 [[nodiscard]] ra_err_t ra_lpm_set_clock_stop(ra_lpm_clock_t clock, bool stop)
 {
-  if ((uint8_t)clock >= (uint8_t)k_ra_lpm_clock_count) {
+  if ((uint8_t)clock >= k_ra_lpm_clock_count) {
     ra_log_error(s_tag, "set_clock_stop: bad clock");
     return k_ra_err_invalid_arg;
   }
@@ -589,9 +589,9 @@ ra_lpm_snooze_set_request_sources(bool ulpt0_underflow, bool ulpt1_underflow, bo
    * shutdown matrix (HCSTP/MCSTP/LCSTP/MOSTP/SOSTP). */
   volatile uint8_t* p = ra_lpm_sysc_reg8(internal_clock_offset(clock));
   if (stop) {
-    *p = (uint8_t)(*p | (uint8_t)k_ra_lpm_clock_stop_mask);
+    *p = (uint8_t)(*p | k_ra_lpm_clock_stop_mask);
   } else {
-    *p = (uint8_t)(*p & (uint8_t)~(uint8_t)k_ra_lpm_clock_stop_mask);
+    *p = (uint8_t)(*p & (uint8_t)~k_ra_lpm_clock_stop_mask);
   }
   return k_ra_ok;
 }
@@ -599,13 +599,13 @@ ra_lpm_snooze_set_request_sources(bool ulpt0_underflow, bool ulpt1_underflow, bo
 [[nodiscard]] ra_err_t ra_lpm_get_clock_stop(ra_lpm_clock_t clock, bool* stop)
 {
   RA_CHECK_NULL_PTR((void*)stop, s_tag, "stop must not be nullptr");
-  if ((uint8_t)clock >= (uint8_t)k_ra_lpm_clock_count) {
+  if ((uint8_t)clock >= k_ra_lpm_clock_count) {
     ra_log_error(s_tag, "get_clock_stop: bad clock");
     return k_ra_err_invalid_arg;
   }
   /* HUM Ch 11.2.18 "SBYCR : Standby Control Register", p 456 */
   const uint8_t v = *ra_lpm_sysc_reg8(internal_clock_offset(clock));
-  *stop           = ((uint8_t)(v & (uint8_t)k_ra_lpm_clock_stop_mask) != 0U);
+  *stop           = ((uint8_t)(v & k_ra_lpm_clock_stop_mask) != 0U);
   return k_ra_ok;
 }
 
@@ -630,7 +630,7 @@ ra_lpm_snooze_set_request_sources(bool ulpt0_underflow, bool ulpt1_underflow, bo
   for (uint32_t i = 0U; i < poll_limit; ++i) {
     /* HUM Ch 11.2.11 "OPCCR : Operating Power Control Register", p 451 */
     const uint8_t v = *ra_lpm_sysc_reg8(k_ra_lpm_opccr_off);
-    if (((uint8_t)(v & (uint8_t)k_ra_lpm_opccr_opcmtsf_msk)) == 0U) {
+    if (((uint8_t)(v & k_ra_lpm_opccr_opcmtsf_msk)) == 0U) {
       return k_ra_ok;
     }
   }
@@ -667,7 +667,7 @@ ra_lpm_snooze_set_request_sources(bool ulpt0_underflow, bool ulpt1_underflow, bo
     case k_ra_sleep_mode_deep_standby_2:
     case k_ra_sleep_mode_deep_standby_3:
     default:
-      lpscr_value = (uint8_t)((uint8_t)mode & (uint8_t)k_ra_lpm_lpscr_lpmd_mask);
+      lpscr_value = (uint8_t)((uint8_t)mode & k_ra_lpm_lpscr_lpmd_mask);
       sleepdeep   = true;
       break;
   }

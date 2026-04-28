@@ -127,7 +127,7 @@ typedef enum : uint32_t {
 static ra_err_t internal_wait_bit(ra_rsip_off_t offset, uint32_t mask)
 {
   volatile uint32_t* reg = ra_rsip_reg32(offset);
-  for (uint32_t i = 0U; i < (uint32_t)k_ra_rsip_poll_budget; ++i) {
+  for (uint32_t i = 0U; i < k_ra_rsip_poll_budget; ++i) {
     if ((*reg & mask) == mask) {
       return k_ra_ok;
     }
@@ -164,16 +164,15 @@ static ra_err_t internal_run_bist(void)
 
   /* HUM Ch 52.1 "Overview" p 3302 */
   /* Engine self-test gate. */
-  *ctrl |= (uint32_t)k_ra_rsip_mask_ctrl_bist;
+  *ctrl |= k_ra_rsip_mask_ctrl_bist;
 
   /* On real hardware the access-management circuit asserts BIST_OK
    * after the on-board firmware finishes the self-test. The host
    * test wires this assert here so the spin terminates on the sim
    * mmap; on silicon the OR-write is a no-op. */
-  *status |= (uint32_t)k_ra_rsip_mask_status_bistok;
+  *status |= k_ra_rsip_mask_status_bistok;
 
-  const ra_err_t err =
-    internal_wait_bit(k_ra_rsip_off_status, (uint32_t)k_ra_rsip_mask_status_bistok);
+  const ra_err_t err = internal_wait_bit(k_ra_rsip_off_status, k_ra_rsip_mask_status_bistok);
   if (err != k_ra_ok) {
     return k_ra_err_hw_init_failed;
   }
@@ -182,7 +181,7 @@ static ra_err_t internal_run_bist(void)
   /* BIST is a one-shot trigger; clear it post-pass so CTRL leaves
    * only ENABLE asserted. Leaving BIST=1 would re-arm the self-test
    * sequencer on the next CTRL write on real silicon. */
-  *ctrl &= ~(uint32_t)k_ra_rsip_mask_ctrl_bist;
+  *ctrl &= ~k_ra_rsip_mask_ctrl_bist;
 
   return k_ra_ok;
 }
@@ -199,8 +198,8 @@ ra_err_t ra_rsip_init(const ra_rsip_config_t* cfg)
   /* HUM Ch 52.1 "Overview" p 3302 */
   /* Engine reset + enable mailbox. */
   volatile uint32_t* ctrl = ra_rsip_reg32(k_ra_rsip_off_ctrl);
-  *ctrl                   = (uint32_t)k_ra_rsip_mask_ctrl_reset;
-  *ctrl                   = (uint32_t)k_ra_rsip_mask_ctrl_enable;
+  *ctrl                   = k_ra_rsip_mask_ctrl_reset;
+  *ctrl                   = k_ra_rsip_mask_ctrl_enable;
 
   if (cfg->run_bist) {
     const ra_err_t bist_err = internal_run_bist();
@@ -212,7 +211,7 @@ ra_err_t ra_rsip_init(const ra_rsip_config_t* cfg)
 
   /* HUM Ch 52.1 "Overview" p 3302 */
   /* Ack any pending IRQ bits. */
-  *ra_rsip_reg32(k_ra_rsip_off_isr) = (uint32_t)k_ra_rsip_mask_isr_all;
+  *ra_rsip_reg32(k_ra_rsip_off_isr) = k_ra_rsip_mask_isr_all;
 
   ra_log_info(s_tag, "rsip_init");
   return k_ra_ok;
@@ -226,7 +225,7 @@ ra_err_t ra_rsip_deinit(void)
 
   /* HUM Ch 52.1 "Overview" p 3302 */
   /* Scrub pending IRQ flags. */
-  *ra_rsip_reg32(k_ra_rsip_off_isr) = (uint32_t)k_ra_rsip_mask_isr_all;
+  *ra_rsip_reg32(k_ra_rsip_off_isr) = k_ra_rsip_mask_isr_all;
 
   s_rsip_fn  = nullptr;
   s_rsip_ctx = nullptr;
@@ -246,7 +245,7 @@ ra_err_t ra_rsip_get_status(uint32_t* out)
 
 ra_err_t ra_rsip_clear_status(uint32_t mask)
 {
-  if ((mask & ~(uint32_t)k_ra_rsip_mask_isr_all) != 0U) {
+  if ((mask & ~k_ra_rsip_mask_isr_all) != 0U) {
     return k_ra_err_invalid_arg;
   }
   if (mask == 0U) {
@@ -302,18 +301,18 @@ ra_err_t ra_rsip_trng_read(uint8_t* buf, uint32_t len)
 
   /* HUM Ch 52.1 "Overview" p 3302 */
   /* Arm TRNG control word. */
-  *ra_rsip_reg32(k_ra_rsip_off_rnd_ctrl) = (uint32_t)k_ra_rsip_mask_ctrl_enable;
+  *ra_rsip_reg32(k_ra_rsip_off_rnd_ctrl) = k_ra_rsip_mask_ctrl_enable;
 
-  const uint32_t words = len >> (uint32_t)k_ra_rsip_word_shift;
+  const uint32_t words = len >> k_ra_rsip_word_shift;
   for (uint32_t w = 0U; w < words; ++w) {
     /* On hardware the engine asserts READY when a fresh word is
      * available. The host sim has no producer thread, so we
      * pre-assert and re-assert each iteration to keep the spin
      * deterministic. */
-    *status |= (uint32_t)k_ra_rsip_mask_status_ready;
+    *status |= k_ra_rsip_mask_status_ready;
 
     const ra_err_t wait_err =
-      internal_wait_bit(k_ra_rsip_off_rnd_status, (uint32_t)k_ra_rsip_mask_status_ready);
+      internal_wait_bit(k_ra_rsip_off_rnd_status, k_ra_rsip_mask_status_ready);
     if (wait_err != k_ra_ok) {
       return wait_err;
     }
@@ -321,17 +320,16 @@ ra_err_t ra_rsip_trng_read(uint8_t* buf, uint32_t len)
     const uint32_t word = *data;
     /* HUM Ch 52.1 "Overview" p 3302 */
     /* TRNG output is little-endian. */
-    buf[(w << (uint32_t)k_ra_rsip_word_shift) + 0U] =
-      (uint8_t)(word & (uint32_t)k_ra_rsip_byte_mask);
-    buf[(w << (uint32_t)k_ra_rsip_word_shift) + 1U] =
-      (uint8_t)((word >> (uint32_t)k_ra_rsip_byte_bits) & (uint32_t)k_ra_rsip_byte_mask);
-    buf[(w << (uint32_t)k_ra_rsip_word_shift) + 2U] =
-      (uint8_t)((word >> (uint32_t)k_ra_rsip_byte_shift_2) & (uint32_t)k_ra_rsip_byte_mask);
-    buf[(w << (uint32_t)k_ra_rsip_word_shift) + 3U] =
-      (uint8_t)((word >> (uint32_t)k_ra_rsip_byte_shift_3) & (uint32_t)k_ra_rsip_byte_mask);
+    buf[(w << k_ra_rsip_word_shift) + 0U] = (uint8_t)(word & k_ra_rsip_byte_mask);
+    buf[(w << k_ra_rsip_word_shift) + 1U] =
+      (uint8_t)((word >> k_ra_rsip_byte_bits) & k_ra_rsip_byte_mask);
+    buf[(w << k_ra_rsip_word_shift) + 2U] =
+      (uint8_t)((word >> k_ra_rsip_byte_shift_2) & k_ra_rsip_byte_mask);
+    buf[(w << k_ra_rsip_word_shift) + 3U] =
+      (uint8_t)((word >> k_ra_rsip_byte_shift_3) & k_ra_rsip_byte_mask);
 
     /* Clear READY so the next iteration genuinely waits. */
-    *status &= ~(uint32_t)k_ra_rsip_mask_status_ready;
+    *status &= ~k_ra_rsip_mask_status_ready;
   }
   return k_ra_ok;
 }
@@ -344,7 +342,7 @@ ra_err_t ra_rsip_sha256(const uint8_t* msg, uint32_t msg_len, uint8_t* digest)
 
   /* HUM Ch 52.1 "Overview" p 3302 */
   /* HASH algorithm select. */
-  *ra_rsip_reg32(k_ra_rsip_off_hash_ctrl) = (uint32_t)k_ra_rsip_hash_sha256;
+  *ra_rsip_reg32(k_ra_rsip_off_hash_ctrl) = k_ra_rsip_hash_sha256;
 
   /* HUM Ch 52.2.3 "Hash Generator" p 3306 */
   /* Stream message into HASH input port one 32-bit word at a time.
@@ -354,16 +352,16 @@ ra_err_t ra_rsip_sha256(const uint8_t* msg, uint32_t msg_len, uint8_t* digest)
   uint32_t           i  = 0U;
   while ((i + (uint32_t)k_ra_rsip_trng_word_bytes) <= msg_len) {
     const uint32_t word = ((uint32_t)msg[i + 0U]) |
-                          (((uint32_t)msg[i + 1U]) << (uint32_t)k_ra_rsip_byte_bits) |
-                          (((uint32_t)msg[i + 2U]) << (uint32_t)k_ra_rsip_byte_shift_2) |
-                          (((uint32_t)msg[i + 3U]) << (uint32_t)k_ra_rsip_byte_shift_3);
+                          (((uint32_t)msg[i + 1U]) << k_ra_rsip_byte_bits) |
+                          (((uint32_t)msg[i + 2U]) << k_ra_rsip_byte_shift_2) |
+                          (((uint32_t)msg[i + 3U]) << k_ra_rsip_byte_shift_3);
     *in                 = word;
     i += (uint32_t)k_ra_rsip_trng_word_bytes;
   }
   if (i < msg_len) {
     uint32_t tail = 0U;
     for (uint32_t b = 0U; (i + b) < msg_len; ++b) {
-      tail |= ((uint32_t)msg[i + b]) << (b * (uint32_t)k_ra_rsip_byte_bits);
+      tail |= ((uint32_t)msg[i + b]) << (b * k_ra_rsip_byte_bits);
     }
     *in = tail;
   }
@@ -372,30 +370,31 @@ ra_err_t ra_rsip_sha256(const uint8_t* msg, uint32_t msg_len, uint8_t* digest)
    * absorbs the trailing block + length. The host sim pre-asserts
    * the bit so the wait terminates. */
   volatile uint32_t* hstatus = ra_rsip_reg32(k_ra_rsip_off_hash_status);
-  *hstatus |= (uint32_t)k_ra_rsip_mask_isr_done;
+  *hstatus |= k_ra_rsip_mask_isr_done;
 
-  const ra_err_t wait_err =
-    internal_wait_bit(k_ra_rsip_off_hash_status, (uint32_t)k_ra_rsip_mask_isr_done);
+  const ra_err_t wait_err = internal_wait_bit(k_ra_rsip_off_hash_status, k_ra_rsip_mask_isr_done);
   RA_RETURN_ON_ERROR(wait_err, s_tag, "rsip_sha256: hash done");
 
   /* HUM Ch 52.2.3 "Hash Generator" p 3306 */
   /* Read 8 digest words. */
   for (uint32_t w = 0U; w < (uint32_t)k_ra_rsip_sha256_digest_words; ++w) {
-    const ra_rsip_off_t off  = (ra_rsip_off_t)((uint16_t)k_ra_rsip_off_hash_digest +
-                                               (uint16_t)(w << (uint32_t)k_ra_rsip_word_shift));
-    const uint32_t      word = *ra_rsip_reg32(off);
-    digest[(w << (uint32_t)k_ra_rsip_word_shift) + 0U] =
-      (uint8_t)(word & (uint32_t)k_ra_rsip_byte_mask);
-    digest[(w << (uint32_t)k_ra_rsip_word_shift) + 1U] =
-      (uint8_t)((word >> (uint32_t)k_ra_rsip_byte_bits) & (uint32_t)k_ra_rsip_byte_mask);
-    digest[(w << (uint32_t)k_ra_rsip_word_shift) + 2U] =
-      (uint8_t)((word >> (uint32_t)k_ra_rsip_byte_shift_2) & (uint32_t)k_ra_rsip_byte_mask);
-    digest[(w << (uint32_t)k_ra_rsip_word_shift) + 3U] =
-      (uint8_t)((word >> (uint32_t)k_ra_rsip_byte_shift_3) & (uint32_t)k_ra_rsip_byte_mask);
+    /* Computed digest-word offset is a valid HUM-defined register location,
+     * not a literal enumerator -- the analyzer can't see that. */
+    const ra_rsip_off_t off =
+      (ra_rsip_off_t)( // NOLINT(clang-analyzer-optin.core.EnumCastOutOfRange)
+        k_ra_rsip_off_hash_digest + (uint16_t)(w << k_ra_rsip_word_shift));
+    const uint32_t word                      = *ra_rsip_reg32(off);
+    digest[(w << k_ra_rsip_word_shift) + 0U] = (uint8_t)(word & k_ra_rsip_byte_mask);
+    digest[(w << k_ra_rsip_word_shift) + 1U] =
+      (uint8_t)((word >> k_ra_rsip_byte_bits) & k_ra_rsip_byte_mask);
+    digest[(w << k_ra_rsip_word_shift) + 2U] =
+      (uint8_t)((word >> k_ra_rsip_byte_shift_2) & k_ra_rsip_byte_mask);
+    digest[(w << k_ra_rsip_word_shift) + 3U] =
+      (uint8_t)((word >> k_ra_rsip_byte_shift_3) & k_ra_rsip_byte_mask);
   }
 
   /* Ack the DONE bit so the next call starts clean. */
-  *hstatus &= ~(uint32_t)k_ra_rsip_mask_isr_done;
+  *hstatus &= ~k_ra_rsip_mask_isr_done;
   return k_ra_ok;
 }
 
@@ -415,7 +414,7 @@ ra_err_t ra_rsip_exit_stop(void)
 
   /* HUM Ch 52.1 "Overview" p 3302 */
   /* Engine re-enable then BIST. */
-  *ra_rsip_reg32(k_ra_rsip_off_ctrl) = (uint32_t)k_ra_rsip_mask_ctrl_enable;
+  *ra_rsip_reg32(k_ra_rsip_off_ctrl) = k_ra_rsip_mask_ctrl_enable;
 
   const ra_err_t bist_err = internal_run_bist();
   if (bist_err != k_ra_ok) {
@@ -459,9 +458,9 @@ typedef enum : uint32_t {
  */
 static uint32_t internal_pack_le(const uint8_t* p)
 {
-  return ((uint32_t)p[0]) | (((uint32_t)p[1]) << (uint32_t)k_ra_rsip_byte_bits) |
-         (((uint32_t)p[2]) << (uint32_t)k_ra_rsip_byte_shift_2) |
-         (((uint32_t)p[3]) << (uint32_t)k_ra_rsip_byte_shift_3);
+  return ((uint32_t)p[0]) | (((uint32_t)p[1]) << k_ra_rsip_byte_bits) |
+         (((uint32_t)p[2]) << k_ra_rsip_byte_shift_2) |
+         (((uint32_t)p[3]) << k_ra_rsip_byte_shift_3);
 }
 
 /**
@@ -481,10 +480,10 @@ static uint32_t internal_pack_le(const uint8_t* p)
  */
 static void internal_unpack_le(uint32_t word, uint8_t* p)
 {
-  p[0] = (uint8_t)(word & (uint32_t)k_ra_rsip_byte_mask);
-  p[1] = (uint8_t)((word >> (uint32_t)k_ra_rsip_byte_bits) & (uint32_t)k_ra_rsip_byte_mask);
-  p[2] = (uint8_t)((word >> (uint32_t)k_ra_rsip_byte_shift_2) & (uint32_t)k_ra_rsip_byte_mask);
-  p[3] = (uint8_t)((word >> (uint32_t)k_ra_rsip_byte_shift_3) & (uint32_t)k_ra_rsip_byte_mask);
+  p[0] = (uint8_t)(word & k_ra_rsip_byte_mask);
+  p[1] = (uint8_t)((word >> k_ra_rsip_byte_bits) & k_ra_rsip_byte_mask);
+  p[2] = (uint8_t)((word >> k_ra_rsip_byte_shift_2) & k_ra_rsip_byte_mask);
+  p[3] = (uint8_t)((word >> k_ra_rsip_byte_shift_3) & k_ra_rsip_byte_mask);
 }
 
 /**
@@ -615,20 +614,18 @@ static void internal_push_data(const uint8_t* in, uint32_t len)
   while ((i + (uint32_t)k_ra_rsip_trng_word_bytes) <= len) {
     const uint32_t      word = internal_pack_le(&in[i]);
     const ra_rsip_off_t off =
-      (ra_rsip_off_t)((uint16_t)k_ra_rsip_off_data_in0 +
-                      (uint16_t)((uint32_t)lane << (uint32_t)k_ra_rsip_word_shift));
+      (ra_rsip_off_t)(k_ra_rsip_off_data_in0 + (uint16_t)((uint32_t)lane << k_ra_rsip_word_shift));
     *ra_rsip_reg32(off) = word;
     i += (uint32_t)k_ra_rsip_trng_word_bytes;
-    lane = (uint8_t)((lane + 1U) & ((uint32_t)k_ra_rsip_aes_block_w - 1U));
+    lane = (uint8_t)((lane + 1U) & (k_ra_rsip_aes_block_w - 1U));
   }
   if (i < len) {
     uint32_t tail = 0U;
     for (uint32_t b = 0U; (i + b) < len; ++b) {
-      tail |= ((uint32_t)in[i + b]) << (b * (uint32_t)k_ra_rsip_byte_bits);
+      tail |= ((uint32_t)in[i + b]) << (b * k_ra_rsip_byte_bits);
     }
     const ra_rsip_off_t off =
-      (ra_rsip_off_t)((uint16_t)k_ra_rsip_off_data_in0 +
-                      (uint16_t)((uint32_t)lane << (uint32_t)k_ra_rsip_word_shift));
+      (ra_rsip_off_t)(k_ra_rsip_off_data_in0 + (uint16_t)((uint32_t)lane << k_ra_rsip_word_shift));
     *ra_rsip_reg32(off) = tail;
   }
 }
@@ -655,21 +652,18 @@ static void internal_pull_data(uint8_t* out, uint32_t len)
   uint8_t  lane = 0U;
   while ((i + (uint32_t)k_ra_rsip_trng_word_bytes) <= len) {
     const ra_rsip_off_t off =
-      (ra_rsip_off_t)((uint16_t)k_ra_rsip_off_data_out0 +
-                      (uint16_t)((uint32_t)lane << (uint32_t)k_ra_rsip_word_shift));
+      (ra_rsip_off_t)(k_ra_rsip_off_data_out0 + (uint16_t)((uint32_t)lane << k_ra_rsip_word_shift));
     const uint32_t word = *ra_rsip_reg32(off);
     internal_unpack_le(word, &out[i]);
     i += (uint32_t)k_ra_rsip_trng_word_bytes;
-    lane = (uint8_t)((lane + 1U) & ((uint32_t)k_ra_rsip_aes_block_w - 1U));
+    lane = (uint8_t)((lane + 1U) & (k_ra_rsip_aes_block_w - 1U));
   }
   if (i < len) {
     const ra_rsip_off_t off =
-      (ra_rsip_off_t)((uint16_t)k_ra_rsip_off_data_out0 +
-                      (uint16_t)((uint32_t)lane << (uint32_t)k_ra_rsip_word_shift));
+      (ra_rsip_off_t)(k_ra_rsip_off_data_out0 + (uint16_t)((uint32_t)lane << k_ra_rsip_word_shift));
     const uint32_t word = *ra_rsip_reg32(off);
     for (uint32_t b = 0U; (i + b) < len; ++b) {
-      out[i + b] =
-        (uint8_t)((word >> (b * (uint32_t)k_ra_rsip_byte_bits)) & (uint32_t)k_ra_rsip_byte_mask);
+      out[i + b] = (uint8_t)((word >> (b * k_ra_rsip_byte_bits)) & k_ra_rsip_byte_mask);
     }
   }
 }
@@ -694,10 +688,10 @@ static void internal_push_iv(const uint8_t* iv)
     return;
   }
   /* HUM Ch 52.2 "Symmetric cipher" p 3303 */
-  for (uint32_t w = 0U; w < (uint32_t)k_ra_rsip_iv_words; ++w) {
-    const ra_rsip_off_t off = (ra_rsip_off_t)((uint16_t)k_ra_rsip_off_sym_iv0 +
-                                              (uint16_t)(w << (uint32_t)k_ra_rsip_word_shift));
-    *ra_rsip_reg32(off)     = internal_pack_le(&iv[(size_t)w * (size_t)k_ra_rsip_trng_word_bytes]);
+  for (uint32_t w = 0U; w < k_ra_rsip_iv_words; ++w) {
+    const ra_rsip_off_t off =
+      (ra_rsip_off_t)(k_ra_rsip_off_sym_iv0 + (uint16_t)(w << k_ra_rsip_word_shift));
+    *ra_rsip_reg32(off) = internal_pack_le(&iv[(size_t)w * (size_t)k_ra_rsip_trng_word_bytes]);
   }
 }
 
@@ -766,7 +760,7 @@ static ra_err_t internal_oem_install(ra_rsip_oem_cmd_t     cmd,
   *ra_rsip_reg32(k_ra_rsip_off_oem_arg)  = src_len;
 
   if (iv != nullptr) {
-    for (uint32_t w = 0U; w < (uint32_t)k_ra_rsip_iv_words; ++w) {
+    for (uint32_t w = 0U; w < k_ra_rsip_iv_words; ++w) {
       *ra_rsip_reg32(k_ra_rsip_off_oem_iv) =
         internal_pack_le(&iv[(size_t)w * (size_t)k_ra_rsip_trng_word_bytes]);
     }
@@ -778,7 +772,7 @@ static ra_err_t internal_oem_install(ra_rsip_oem_cmd_t     cmd,
   /* Fire the install command via MBOX. */
   *ra_rsip_reg32(k_ra_rsip_off_mbox_op) = (uint32_t)cmd;
 
-  const ra_err_t err = internal_complete((uint32_t)k_ra_rsip_mask_isr_done);
+  const ra_err_t err = internal_complete(k_ra_rsip_mask_isr_done);
   if (err != k_ra_ok) {
     return err;
   }
@@ -929,14 +923,14 @@ static ra_err_t internal_sym_run(const ra_rsip_key_handle_t* key,
 
   /* HUM Ch 52.2 "Symmetric cipher" p 3303 */
   /* SYM_CTRL = (dir << 16) | (mode << 8) | alg_byte. */
-  const uint32_t cmd = ((uint32_t)dir << (uint32_t)k_ra_rsip_byte_shift_2) |
-                       ((uint32_t)mode << (uint32_t)k_ra_rsip_byte_bits) | (uint32_t)alg_byte;
+  const uint32_t cmd = ((uint32_t)dir << k_ra_rsip_byte_shift_2) |
+                       ((uint32_t)mode << k_ra_rsip_byte_bits) | (uint32_t)alg_byte;
   *ra_rsip_reg32(k_ra_rsip_off_sym_ctrl) = cmd;
 
   internal_push_data(in, len);
   *ra_rsip_reg32(k_ra_rsip_off_mbox_op) = cmd;
 
-  const ra_err_t err = internal_complete((uint32_t)k_ra_rsip_mask_isr_done);
+  const ra_err_t err = internal_complete(k_ra_rsip_mask_isr_done);
   if (err != k_ra_ok) {
     return err;
   }
@@ -963,12 +957,12 @@ static ra_err_t internal_sym_run(const ra_rsip_key_handle_t* key,
 static uint8_t internal_aes_alg_byte(uint32_t alg)
 {
   switch (alg) {
-    case (uint32_t)k_ra_rsip_oem_cmd_aes128:
-      return (uint8_t)k_ra_rsip_sym_alg_aes128;
-    case (uint32_t)k_ra_rsip_oem_cmd_aes192:
-      return (uint8_t)k_ra_rsip_sym_alg_aes192;
-    case (uint32_t)k_ra_rsip_oem_cmd_aes256:
-      return (uint8_t)k_ra_rsip_sym_alg_aes256;
+    case k_ra_rsip_oem_cmd_aes128:
+      return k_ra_rsip_sym_alg_aes128;
+    case k_ra_rsip_oem_cmd_aes192:
+      return k_ra_rsip_sym_alg_aes192;
+    case k_ra_rsip_oem_cmd_aes256:
+      return k_ra_rsip_sym_alg_aes256;
     default:
       return 0U;
   }
@@ -1056,7 +1050,7 @@ static ra_err_t internal_aead_run(const ra_rsip_key_handle_t* key,
     if (i < aad_len) {
       uint32_t tail = 0U;
       for (uint32_t b = 0U; (i + b) < aad_len; ++b) {
-        tail |= ((uint32_t)aad[i + b]) << (b * (uint32_t)k_ra_rsip_byte_bits);
+        tail |= ((uint32_t)aad[i + b]) << (b * k_ra_rsip_byte_bits);
       }
       *ra_rsip_reg32(k_ra_rsip_off_sym_aad_in) = tail;
     }
@@ -1064,26 +1058,26 @@ static ra_err_t internal_aead_run(const ra_rsip_key_handle_t* key,
 
   /* On decrypt, push the supplied tag in for verification. */
   if (dir == k_ra_rsip_dir_decrypt) {
-    for (uint32_t w = 0U; w < (uint32_t)k_ra_rsip_aes_block_w; ++w) {
+    for (uint32_t w = 0U; w < k_ra_rsip_aes_block_w; ++w) {
       *ra_rsip_reg32(k_ra_rsip_off_sym_tag) =
         internal_pack_le(&tag[(size_t)w * (size_t)k_ra_rsip_trng_word_bytes]);
     }
   }
 
-  const uint32_t cmd = ((uint32_t)dir << (uint32_t)k_ra_rsip_byte_shift_2) |
-                       ((uint32_t)mode << (uint32_t)k_ra_rsip_byte_bits) | (uint32_t)alg_byte;
+  const uint32_t cmd = ((uint32_t)dir << k_ra_rsip_byte_shift_2) |
+                       ((uint32_t)mode << k_ra_rsip_byte_bits) | (uint32_t)alg_byte;
   *ra_rsip_reg32(k_ra_rsip_off_sym_ctrl) = cmd;
   internal_push_data(in, in_len);
   *ra_rsip_reg32(k_ra_rsip_off_mbox_op) = cmd;
 
-  const ra_err_t err = internal_complete((uint32_t)k_ra_rsip_mask_isr_done);
+  const ra_err_t err = internal_complete(k_ra_rsip_mask_isr_done);
   if (err != k_ra_ok) {
     return err;
   }
   internal_pull_data(out, in_len);
   /* On encrypt, read the engine-computed tag back. */
   if (dir == k_ra_rsip_dir_encrypt) {
-    for (uint32_t w = 0U; w < (uint32_t)k_ra_rsip_aes_block_w; ++w) {
+    for (uint32_t w = 0U; w < k_ra_rsip_aes_block_w; ++w) {
       const uint32_t word = *ra_rsip_reg32(k_ra_rsip_off_sym_tag);
       internal_unpack_le(word, &tag[(size_t)w * (size_t)k_ra_rsip_trng_word_bytes]);
     }
@@ -1173,7 +1167,7 @@ ra_err_t ra_rsip_chacha20(const ra_rsip_key_handle_t* key,
   RA_CHECK_NULL_PTR((void*)nonce, s_tag, "nonce must not be nullptr");
   RA_CHECK_NULL_PTR((void*)in, s_tag, "in must not be nullptr");
   RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
-  if (key->alg != (uint32_t)k_ra_rsip_oem_cmd_chacha20) {
+  if (key->alg != k_ra_rsip_oem_cmd_chacha20) {
     return k_ra_err_invalid_arg;
   }
   internal_load_handle(key);
@@ -1186,14 +1180,14 @@ ra_err_t ra_rsip_chacha20(const ra_rsip_key_handle_t* key,
   *ra_rsip_reg32(k_ra_rsip_off_sym_iv3) =
     internal_pack_le(&nonce[(size_t)2U * (size_t)k_ra_rsip_trng_word_bytes]);
 
-  const uint32_t cmd = ((uint32_t)dir << (uint32_t)k_ra_rsip_byte_shift_2) |
-                       ((uint32_t)k_ra_rsip_chacha_op_encrypt << (uint32_t)k_ra_rsip_byte_bits) |
-                       (uint32_t)k_ra_rsip_sym_alg_chacha20;
+  const uint32_t cmd                     = ((uint32_t)dir << k_ra_rsip_byte_shift_2) |
+                                           (k_ra_rsip_chacha_op_encrypt << k_ra_rsip_byte_bits) |
+                                           (uint32_t)k_ra_rsip_sym_alg_chacha20;
   *ra_rsip_reg32(k_ra_rsip_off_sym_ctrl) = cmd;
   internal_push_data(in, len);
   *ra_rsip_reg32(k_ra_rsip_off_mbox_op) = cmd;
 
-  const ra_err_t err = internal_complete((uint32_t)k_ra_rsip_mask_isr_done);
+  const ra_err_t err = internal_complete(k_ra_rsip_mask_isr_done);
   if (err != k_ra_ok) {
     return err;
   }
@@ -1216,11 +1210,11 @@ ra_err_t ra_rsip_chacha20_poly1305(const ra_rsip_key_handle_t* key,
   RA_CHECK_NULL_PTR((void*)in, s_tag, "in must not be nullptr");
   RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
   RA_CHECK_NULL_PTR(tag, s_tag, "tag must not be nullptr");
-  if (key->alg != (uint32_t)k_ra_rsip_oem_cmd_chacha20) {
+  if (key->alg != k_ra_rsip_oem_cmd_chacha20) {
     return k_ra_err_invalid_arg;
   }
   return internal_aead_run(key,
-                           (uint8_t)k_ra_rsip_sym_alg_chacha20,
+                           k_ra_rsip_sym_alg_chacha20,
                            k_ra_rsip_aes_mode_gcm,
                            dir,
                            nonce,
@@ -1251,17 +1245,17 @@ ra_rsip_poly1305(const uint8_t* one_time_key, const uint8_t* msg, uint32_t msg_l
       *ra_rsip_reg32(k_ra_rsip_off_key_stage) = 0U;
     }
   }
-  *ra_rsip_reg32(k_ra_rsip_off_sym_ctrl) = (uint32_t)k_ra_rsip_chacha_op_poly1305_mac;
+  *ra_rsip_reg32(k_ra_rsip_off_sym_ctrl) = k_ra_rsip_chacha_op_poly1305_mac;
   if (msg_len > 0U) {
     internal_push_data(msg, msg_len);
   }
-  *ra_rsip_reg32(k_ra_rsip_off_mbox_op) = (uint32_t)k_ra_rsip_chacha_op_poly1305_mac;
+  *ra_rsip_reg32(k_ra_rsip_off_mbox_op) = k_ra_rsip_chacha_op_poly1305_mac;
 
-  const ra_err_t err = internal_complete((uint32_t)k_ra_rsip_mask_isr_done);
+  const ra_err_t err = internal_complete(k_ra_rsip_mask_isr_done);
   if (err != k_ra_ok) {
     return err;
   }
-  for (uint32_t w = 0U; w < (uint32_t)k_ra_rsip_aes_block_w; ++w) {
+  for (uint32_t w = 0U; w < k_ra_rsip_aes_block_w; ++w) {
     const uint32_t word = *ra_rsip_reg32(k_ra_rsip_off_sym_tag);
     internal_unpack_le(word, &tag[(size_t)w * (size_t)k_ra_rsip_trng_word_bytes]);
   }
@@ -1348,7 +1342,7 @@ ra_err_t ra_rsip_hash(ra_rsip_hash_alg_t alg,
     if (i < msg_len) {
       uint32_t tail = 0U;
       for (uint32_t b = 0U; (i + b) < msg_len; ++b) {
-        tail |= ((uint32_t)msg[i + b]) << (b * (uint32_t)k_ra_rsip_byte_bits);
+        tail |= ((uint32_t)msg[i + b]) << (b * k_ra_rsip_byte_bits);
       }
       *in = tail;
     }
@@ -1356,9 +1350,8 @@ ra_err_t ra_rsip_hash(ra_rsip_hash_alg_t alg,
 
   /* Pre-arm + wait for DONE on host sim. */
   volatile uint32_t* hstatus = ra_rsip_reg32(k_ra_rsip_off_hash_status);
-  *hstatus |= (uint32_t)k_ra_rsip_mask_isr_done;
-  const ra_err_t wait_err =
-    internal_wait_bit(k_ra_rsip_off_hash_status, (uint32_t)k_ra_rsip_mask_isr_done);
+  *hstatus |= k_ra_rsip_mask_isr_done;
+  const ra_err_t wait_err = internal_wait_bit(k_ra_rsip_off_hash_status, k_ra_rsip_mask_isr_done);
   RA_RETURN_ON_ERROR(wait_err, s_tag, "rsip_hash: hash done");
 
   /* Read digest_len for SHAKE; algo-natural otherwise. */
@@ -1367,6 +1360,9 @@ ra_err_t ra_rsip_hash(ra_rsip_hash_alg_t alg,
   uint32_t i   = 0U;
   uint32_t off = (uint32_t)k_ra_rsip_off_hash_digest;
   while ((i + (uint32_t)k_ra_rsip_trng_word_bytes) <= to_read) {
+    /* Computed digest-word offset is a valid HUM-defined register location, not
+     * a literal enumerator -- the analyzer can't see that. */
+    // NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange)
     const uint32_t word = *ra_rsip_reg32((ra_rsip_off_t)off);
     internal_unpack_le(word, &digest[i]);
     i += (uint32_t)k_ra_rsip_trng_word_bytes;
@@ -1375,11 +1371,10 @@ ra_err_t ra_rsip_hash(ra_rsip_hash_alg_t alg,
   if (i < to_read) {
     const uint32_t word = *ra_rsip_reg32((ra_rsip_off_t)off);
     for (uint32_t b = 0U; (i + b) < to_read; ++b) {
-      digest[i + b] =
-        (uint8_t)((word >> (b * (uint32_t)k_ra_rsip_byte_bits)) & (uint32_t)k_ra_rsip_byte_mask);
+      digest[i + b] = (uint8_t)((word >> (b * k_ra_rsip_byte_bits)) & k_ra_rsip_byte_mask);
     }
   }
-  *hstatus &= ~(uint32_t)k_ra_rsip_mask_isr_done;
+  *hstatus &= ~k_ra_rsip_mask_isr_done;
   return k_ra_ok;
 }
 
@@ -1397,18 +1392,18 @@ ra_err_t ra_rsip_hmac(const ra_rsip_key_handle_t* key,
   /* Determine the underlying hash size from the install opcode. */
   uint32_t needed = 0U;
   switch (key->alg) {
-    case (uint32_t)k_ra_rsip_oem_cmd_hmac_sha224:
-    case (uint32_t)k_ra_rsip_oem_cmd_hmac_sha512_224:
+    case k_ra_rsip_oem_cmd_hmac_sha224:
+    case k_ra_rsip_oem_cmd_hmac_sha512_224:
       needed = (uint32_t)k_ra_rsip_sha224_digest_bytes;
       break;
-    case (uint32_t)k_ra_rsip_oem_cmd_hmac_sha256:
-    case (uint32_t)k_ra_rsip_oem_cmd_hmac_sha512_256:
+    case k_ra_rsip_oem_cmd_hmac_sha256:
+    case k_ra_rsip_oem_cmd_hmac_sha512_256:
       needed = (uint32_t)k_ra_rsip_sha256_digest_bytes;
       break;
-    case (uint32_t)k_ra_rsip_oem_cmd_hmac_sha384:
+    case k_ra_rsip_oem_cmd_hmac_sha384:
       needed = (uint32_t)k_ra_rsip_sha384_digest_bytes;
       break;
-    case (uint32_t)k_ra_rsip_oem_cmd_hmac_sha512:
+    case k_ra_rsip_oem_cmd_hmac_sha512:
       needed = (uint32_t)k_ra_rsip_sha512_digest_bytes;
       break;
     default:
@@ -1455,7 +1450,7 @@ static void internal_asym_push(ra_rsip_off_t off, const uint8_t* buf, uint32_t l
   if (i < len) {
     uint32_t tail = 0U;
     for (uint32_t b = 0U; (i + b) < len; ++b) {
-      tail |= ((uint32_t)buf[i + b]) << (b * (uint32_t)k_ra_rsip_byte_bits);
+      tail |= ((uint32_t)buf[i + b]) << (b * k_ra_rsip_byte_bits);
     }
     *ra_rsip_reg32(off) = tail;
   }
@@ -1487,8 +1482,7 @@ static void internal_asym_pull(ra_rsip_off_t off, uint8_t* buf, uint32_t len)
   if (i < len) {
     const uint32_t word = *ra_rsip_reg32(off);
     for (uint32_t b = 0U; (i + b) < len; ++b) {
-      buf[i + b] =
-        (uint8_t)((word >> (b * (uint32_t)k_ra_rsip_byte_bits)) & (uint32_t)k_ra_rsip_byte_mask);
+      buf[i + b] = (uint8_t)((word >> (b * k_ra_rsip_byte_bits)) & k_ra_rsip_byte_mask);
     }
   }
 }
@@ -1510,14 +1504,14 @@ ra_err_t ra_rsip_rsa_sign(const ra_rsip_key_handle_t* key,
   /* HUM Ch 52.2.4 "Asymmetric cipher" p 3306 */
   *ra_rsip_reg32(k_ra_rsip_off_asym_rsa_size) = (uint32_t)size;
   internal_asym_push(k_ra_rsip_off_asym_msg_in, digest, digest_len);
-  *ra_rsip_reg32(k_ra_rsip_off_asym_ctrl) = (uint32_t)k_ra_rsip_asym_op_rsa_sign;
-  *ra_rsip_reg32(k_ra_rsip_off_mbox_op)   = (uint32_t)k_ra_rsip_asym_op_rsa_sign;
+  *ra_rsip_reg32(k_ra_rsip_off_asym_ctrl) = k_ra_rsip_asym_op_rsa_sign;
+  *ra_rsip_reg32(k_ra_rsip_off_mbox_op)   = k_ra_rsip_asym_op_rsa_sign;
 
-  const ra_err_t err = internal_complete((uint32_t)k_ra_rsip_mask_isr_asym_done);
+  const ra_err_t err = internal_complete(k_ra_rsip_mask_isr_asym_done);
   if (err != k_ra_ok) {
     return err;
   }
-  const uint32_t sig_len = (uint32_t)size / (uint32_t)k_ra_rsip_byte_bits;
+  const uint32_t sig_len = (uint32_t)size / k_ra_rsip_byte_bits;
   internal_asym_pull(k_ra_rsip_off_asym_sig_out, signature, sig_len);
   return k_ra_ok;
 }
@@ -1539,12 +1533,12 @@ ra_err_t ra_rsip_rsa_verify(const ra_rsip_key_handle_t* key,
   /* HUM Ch 52.2.4 "Asymmetric cipher" p 3306 */
   *ra_rsip_reg32(k_ra_rsip_off_asym_rsa_size) = (uint32_t)size;
   internal_asym_push(k_ra_rsip_off_asym_msg_in, digest, digest_len);
-  const uint32_t sig_len = (uint32_t)size / (uint32_t)k_ra_rsip_byte_bits;
+  const uint32_t sig_len = (uint32_t)size / k_ra_rsip_byte_bits;
   internal_asym_push(k_ra_rsip_off_asym_sig_in, signature, sig_len);
-  *ra_rsip_reg32(k_ra_rsip_off_asym_ctrl) = (uint32_t)k_ra_rsip_asym_op_rsa_verify;
-  *ra_rsip_reg32(k_ra_rsip_off_mbox_op)   = (uint32_t)k_ra_rsip_asym_op_rsa_verify;
+  *ra_rsip_reg32(k_ra_rsip_off_asym_ctrl) = k_ra_rsip_asym_op_rsa_verify;
+  *ra_rsip_reg32(k_ra_rsip_off_mbox_op)   = k_ra_rsip_asym_op_rsa_verify;
 
-  return internal_complete((uint32_t)k_ra_rsip_mask_isr_asym_done);
+  return internal_complete(k_ra_rsip_mask_isr_asym_done);
 }
 
 /**
@@ -1580,21 +1574,21 @@ static uint32_t internal_curve_bytes(ra_rsip_curve_t curve)
 {
   switch (curve) {
     case k_ra_rsip_curve_secp192r1:
-      return (uint32_t)k_ra_rsip_curve_bytes_192;
+      return k_ra_rsip_curve_bytes_192;
     case k_ra_rsip_curve_secp224r1:
-      return (uint32_t)k_ra_rsip_curve_bytes_224;
+      return k_ra_rsip_curve_bytes_224;
     case k_ra_rsip_curve_secp256r1:
     case k_ra_rsip_curve_brain256r1:
     case k_ra_rsip_curve_ed25519:
     case k_ra_rsip_curve_secp256k1:
-      return (uint32_t)k_ra_rsip_curve_bytes_256;
+      return k_ra_rsip_curve_bytes_256;
     case k_ra_rsip_curve_secp384r1:
     case k_ra_rsip_curve_brain384r1:
-      return (uint32_t)k_ra_rsip_curve_bytes_384;
+      return k_ra_rsip_curve_bytes_384;
     case k_ra_rsip_curve_brain512r1:
-      return (uint32_t)k_ra_rsip_curve_bytes_512;
+      return k_ra_rsip_curve_bytes_512;
     case k_ra_rsip_curve_secp521r1:
-      return (uint32_t)k_ra_rsip_curve_bytes_521;
+      return k_ra_rsip_curve_bytes_521;
     default:
       return 0U;
   }
@@ -1617,10 +1611,10 @@ ra_err_t ra_rsip_ecdsa_sign(const ra_rsip_key_handle_t* key,
   /* HUM Ch 52.2.4 "Asymmetric cipher" p 3306 */
   *ra_rsip_reg32(k_ra_rsip_off_asym_curve) = (uint32_t)curve;
   internal_asym_push(k_ra_rsip_off_asym_msg_in, digest, digest_len);
-  *ra_rsip_reg32(k_ra_rsip_off_asym_ctrl) = (uint32_t)k_ra_rsip_asym_op_ecdsa_sign;
-  *ra_rsip_reg32(k_ra_rsip_off_mbox_op)   = (uint32_t)k_ra_rsip_asym_op_ecdsa_sign;
+  *ra_rsip_reg32(k_ra_rsip_off_asym_ctrl) = k_ra_rsip_asym_op_ecdsa_sign;
+  *ra_rsip_reg32(k_ra_rsip_off_mbox_op)   = k_ra_rsip_asym_op_ecdsa_sign;
 
-  const ra_err_t err = internal_complete((uint32_t)k_ra_rsip_mask_isr_asym_done);
+  const ra_err_t err = internal_complete(k_ra_rsip_mask_isr_asym_done);
   if (err != k_ra_ok) {
     return err;
   }
@@ -1647,10 +1641,10 @@ ra_err_t ra_rsip_ecdsa_verify(const ra_rsip_key_handle_t* key,
   *ra_rsip_reg32(k_ra_rsip_off_asym_curve) = (uint32_t)curve;
   internal_asym_push(k_ra_rsip_off_asym_msg_in, digest, digest_len);
   internal_asym_push(k_ra_rsip_off_asym_sig_in, signature, curve_bytes * 2U);
-  *ra_rsip_reg32(k_ra_rsip_off_asym_ctrl) = (uint32_t)k_ra_rsip_asym_op_ecdsa_verify;
-  *ra_rsip_reg32(k_ra_rsip_off_mbox_op)   = (uint32_t)k_ra_rsip_asym_op_ecdsa_verify;
+  *ra_rsip_reg32(k_ra_rsip_off_asym_ctrl) = k_ra_rsip_asym_op_ecdsa_verify;
+  *ra_rsip_reg32(k_ra_rsip_off_mbox_op)   = k_ra_rsip_asym_op_ecdsa_verify;
 
-  return internal_complete((uint32_t)k_ra_rsip_mask_isr_asym_done);
+  return internal_complete(k_ra_rsip_mask_isr_asym_done);
 }
 
 // NOLINTNEXTLINE(readability-function-size,readability-function-cognitive-complexity)
@@ -1673,15 +1667,15 @@ ra_err_t ra_rsip_ecdh_compute(const ra_rsip_key_handle_t* key,
   *ra_rsip_reg32(k_ra_rsip_off_asym_curve) = (uint32_t)curve;
   internal_asym_push(k_ra_rsip_off_asym_pub_x, peer_x, curve_bytes);
   internal_asym_push(k_ra_rsip_off_asym_pub_y, peer_y, curve_bytes);
-  *ra_rsip_reg32(k_ra_rsip_off_asym_ctrl) = (uint32_t)k_ra_rsip_asym_op_ecdh_compute;
-  *ra_rsip_reg32(k_ra_rsip_off_mbox_op)   = (uint32_t)k_ra_rsip_asym_op_ecdh_compute;
+  *ra_rsip_reg32(k_ra_rsip_off_asym_ctrl) = k_ra_rsip_asym_op_ecdh_compute;
+  *ra_rsip_reg32(k_ra_rsip_off_mbox_op)   = k_ra_rsip_asym_op_ecdh_compute;
 
-  const ra_err_t err = internal_complete((uint32_t)k_ra_rsip_mask_isr_asym_done);
+  const ra_err_t err = internal_complete(k_ra_rsip_mask_isr_asym_done);
   if (err != k_ra_ok) {
     return err;
   }
   /* The wrapped shared secret is delivered as an HMAC-SHA-256 handle. */
-  out->alg        = (uint32_t)k_ra_rsip_oem_cmd_hmac_sha256;
+  out->alg        = k_ra_rsip_oem_cmd_hmac_sha256;
   out->body_words = (uint32_t)k_ra_rsip_handle_words_hmac_sha256;
   for (uint32_t w = 0U; w < out->body_words; ++w) {
     out->body[w] = *ra_rsip_reg32(k_ra_rsip_off_asym_shared);
@@ -1752,7 +1746,7 @@ static ra_err_t internal_kv_op(ra_rsip_kv_op_t op, uint8_t slot)
   *ra_rsip_reg32(k_ra_rsip_off_kv_slot) = slot;
   *ra_rsip_reg32(k_ra_rsip_off_kv_ctrl) = (uint32_t)op;
   *ra_rsip_reg32(k_ra_rsip_off_mbox_op) = (uint32_t)op;
-  return internal_complete((uint32_t)k_ra_rsip_mask_isr_kv_done);
+  return internal_complete(k_ra_rsip_mask_isr_kv_done);
 }
 
 #ifdef RA_SIMULATOR_MODE
@@ -1761,7 +1755,7 @@ static ra_err_t internal_kv_op(ra_rsip_kv_op_t op, uint8_t slot)
  * a per-slot shadow so read-after-write tests can verify the round
  * trip without modelling the FIFO inside ra_sim_mmap. */
 static uint8_t s_sim_kv_slots[(uint32_t)k_ra_rsip_kv_slot_count]
-                             [(uint32_t)k_ra_rsip_kv_slot_w * (uint32_t)k_ra_rsip_trng_word_bytes];
+                             [k_ra_rsip_kv_slot_w * (uint32_t)k_ra_rsip_trng_word_bytes];
 #endif
 
 ra_err_t ra_rsip_kv_read(uint8_t slot, uint8_t* out)
@@ -1775,7 +1769,7 @@ ra_err_t ra_rsip_kv_read(uint8_t slot, uint8_t* out)
     return err;
   }
   /* HUM Ch 52.1 "Application Key Management" p 3303 */
-  for (uint32_t w = 0U; w < (uint32_t)k_ra_rsip_kv_slot_w; ++w) {
+  for (uint32_t w = 0U; w < k_ra_rsip_kv_slot_w; ++w) {
     const uint32_t word = *ra_rsip_reg32(k_ra_rsip_off_kv_data);
     internal_unpack_le(word, &out[(size_t)w * (size_t)k_ra_rsip_trng_word_bytes]);
   }
@@ -1783,8 +1777,7 @@ ra_err_t ra_rsip_kv_read(uint8_t slot, uint8_t* out)
   /* Replay from the per-slot shadow so the test sees the bytes that
    * were actually written rather than whatever the FIFO MMIO settled
    * on after 16 overlapping writes. */
-  for (uint32_t i = 0U; i < (uint32_t)k_ra_rsip_kv_slot_w * (uint32_t)k_ra_rsip_trng_word_bytes;
-       ++i) {
+  for (uint32_t i = 0U; i < k_ra_rsip_kv_slot_w * (uint32_t)k_ra_rsip_trng_word_bytes; ++i) {
     out[i] = s_sim_kv_slots[slot][i];
   }
 #endif
@@ -1798,13 +1791,12 @@ ra_err_t ra_rsip_kv_write(uint8_t slot, const uint8_t* in)
     return k_ra_err_invalid_arg;
   }
   /* HUM Ch 52.1 "Application Key Management" p 3303 */
-  for (uint32_t w = 0U; w < (uint32_t)k_ra_rsip_kv_slot_w; ++w) {
+  for (uint32_t w = 0U; w < k_ra_rsip_kv_slot_w; ++w) {
     *ra_rsip_reg32(k_ra_rsip_off_kv_data) =
       internal_pack_le(&in[(size_t)w * (size_t)k_ra_rsip_trng_word_bytes]);
   }
 #ifdef RA_SIMULATOR_MODE
-  for (uint32_t i = 0U; i < (uint32_t)k_ra_rsip_kv_slot_w * (uint32_t)k_ra_rsip_trng_word_bytes;
-       ++i) {
+  for (uint32_t i = 0U; i < k_ra_rsip_kv_slot_w * (uint32_t)k_ra_rsip_trng_word_bytes; ++i) {
     s_sim_kv_slots[slot][i] = in[i];
   }
 #endif
@@ -1850,23 +1842,23 @@ ra_err_t ra_rsip_key_wrap(const ra_rsip_key_handle_t* kek,
   for (uint32_t w = 0U; w < kek->body_words; ++w) {
     *ra_rsip_reg32(k_ra_rsip_off_key_stage) = kek->body[w];
   }
-  for (uint32_t w = 0U; w < (uint32_t)k_ra_rsip_iv_words; ++w) {
-    const ra_rsip_off_t off = (ra_rsip_off_t)((uint16_t)k_ra_rsip_off_kw_iv0 +
-                                              (uint16_t)(w << (uint32_t)k_ra_rsip_word_shift));
-    *ra_rsip_reg32(off)     = internal_pack_le(&iv[(size_t)w * (size_t)k_ra_rsip_trng_word_bytes]);
+  for (uint32_t w = 0U; w < k_ra_rsip_iv_words; ++w) {
+    const ra_rsip_off_t off =
+      (ra_rsip_off_t)(k_ra_rsip_off_kw_iv0 + (uint16_t)(w << k_ra_rsip_word_shift));
+    *ra_rsip_reg32(off) = internal_pack_le(&iv[(size_t)w * (size_t)k_ra_rsip_trng_word_bytes]);
   }
   *ra_rsip_reg32(k_ra_rsip_off_kw_handle) = src->alg;
   for (uint32_t w = 0U; w < src->body_words; ++w) {
     *ra_rsip_reg32(k_ra_rsip_off_kw_blob_in) = src->body[w];
   }
-  *ra_rsip_reg32(k_ra_rsip_off_kw_ctrl) = (uint32_t)k_ra_rsip_kw_op_wrap;
-  *ra_rsip_reg32(k_ra_rsip_off_mbox_op) = (uint32_t)k_ra_rsip_kw_op_wrap;
+  *ra_rsip_reg32(k_ra_rsip_off_kw_ctrl) = k_ra_rsip_kw_op_wrap;
+  *ra_rsip_reg32(k_ra_rsip_off_mbox_op) = k_ra_rsip_kw_op_wrap;
 
-  const ra_err_t err = internal_complete((uint32_t)k_ra_rsip_mask_isr_done);
+  const ra_err_t err = internal_complete(k_ra_rsip_mask_isr_done);
   if (err != k_ra_ok) {
     return err;
   }
-  for (uint32_t w = 0U; w < (uint32_t)k_ra_rsip_kv_slot_w; ++w) {
+  for (uint32_t w = 0U; w < k_ra_rsip_kv_slot_w; ++w) {
     const uint32_t word = *ra_rsip_reg32(k_ra_rsip_off_kw_blob_out);
     internal_unpack_le(word, &blob[(size_t)w * (size_t)k_ra_rsip_trng_word_bytes]);
   }
@@ -1891,19 +1883,19 @@ ra_err_t ra_rsip_key_unwrap(const ra_rsip_key_handle_t* kek,
   for (uint32_t w = 0U; w < kek->body_words; ++w) {
     *ra_rsip_reg32(k_ra_rsip_off_key_stage) = kek->body[w];
   }
-  for (uint32_t w = 0U; w < (uint32_t)k_ra_rsip_iv_words; ++w) {
-    const ra_rsip_off_t off = (ra_rsip_off_t)((uint16_t)k_ra_rsip_off_kw_iv0 +
-                                              (uint16_t)(w << (uint32_t)k_ra_rsip_word_shift));
-    *ra_rsip_reg32(off)     = internal_pack_le(&iv[(size_t)w * (size_t)k_ra_rsip_trng_word_bytes]);
+  for (uint32_t w = 0U; w < k_ra_rsip_iv_words; ++w) {
+    const ra_rsip_off_t off =
+      (ra_rsip_off_t)(k_ra_rsip_off_kw_iv0 + (uint16_t)(w << k_ra_rsip_word_shift));
+    *ra_rsip_reg32(off) = internal_pack_le(&iv[(size_t)w * (size_t)k_ra_rsip_trng_word_bytes]);
   }
-  for (uint32_t w = 0U; w < (uint32_t)k_ra_rsip_kv_slot_w; ++w) {
+  for (uint32_t w = 0U; w < k_ra_rsip_kv_slot_w; ++w) {
     *ra_rsip_reg32(k_ra_rsip_off_kw_blob_in) =
       internal_pack_le(&blob[(size_t)w * (size_t)k_ra_rsip_trng_word_bytes]);
   }
-  *ra_rsip_reg32(k_ra_rsip_off_kw_ctrl) = (uint32_t)k_ra_rsip_kw_op_unwrap;
-  *ra_rsip_reg32(k_ra_rsip_off_mbox_op) = (uint32_t)k_ra_rsip_kw_op_unwrap;
+  *ra_rsip_reg32(k_ra_rsip_off_kw_ctrl) = k_ra_rsip_kw_op_unwrap;
+  *ra_rsip_reg32(k_ra_rsip_off_mbox_op) = k_ra_rsip_kw_op_unwrap;
 
-  const ra_err_t err = internal_complete((uint32_t)k_ra_rsip_mask_isr_done);
+  const ra_err_t err = internal_complete(k_ra_rsip_mask_isr_done);
   if (err != k_ra_ok) {
     return err;
   }
@@ -1972,7 +1964,7 @@ ra_err_t ra_rsip_kdf(ra_rsip_kdf_op_t            op,
     if (i < label_len) {
       uint32_t tail = 0U;
       for (uint32_t b = 0U; (i + b) < label_len; ++b) {
-        tail |= ((uint32_t)label[i + b]) << (b * (uint32_t)k_ra_rsip_byte_bits);
+        tail |= ((uint32_t)label[i + b]) << (b * k_ra_rsip_byte_bits);
       }
       *ra_rsip_reg32(k_ra_rsip_off_kdf_label) = tail;
     }
@@ -1986,14 +1978,14 @@ ra_err_t ra_rsip_kdf(ra_rsip_kdf_op_t            op,
     if (i < salt_len) {
       uint32_t tail = 0U;
       for (uint32_t b = 0U; (i + b) < salt_len; ++b) {
-        tail |= ((uint32_t)salt[i + b]) << (b * (uint32_t)k_ra_rsip_byte_bits);
+        tail |= ((uint32_t)salt[i + b]) << (b * k_ra_rsip_byte_bits);
       }
       *ra_rsip_reg32(k_ra_rsip_off_kdf_salt) = tail;
     }
   }
   *ra_rsip_reg32(k_ra_rsip_off_mbox_op) = (uint32_t)op;
 
-  const ra_err_t err = internal_complete((uint32_t)k_ra_rsip_mask_isr_kdf_done);
+  const ra_err_t err = internal_complete(k_ra_rsip_mask_isr_kdf_done);
   if (err != k_ra_ok) {
     return err;
   }
@@ -2024,7 +2016,7 @@ ra_err_t ra_rsip_life_get(ra_rsip_life_state_t* out)
 
 ra_err_t ra_rsip_life_advance(ra_rsip_life_state_t state)
 {
-  if ((uint32_t)state > (uint32_t)k_ra_rsip_life_rma) {
+  if ((uint32_t)state > k_ra_rsip_life_rma) {
     return k_ra_err_invalid_arg;
   }
   /* HUM Ch 51.1 "Device lifecycle" p 3263 */
@@ -2061,7 +2053,7 @@ ra_err_t ra_rsip_debug_level_set(ra_rsip_debug_level_t level)
 
 ra_err_t ra_rsip_tamper_enable(uint32_t sources)
 {
-  if ((sources & ~(uint32_t)k_ra_rsip_tamper_src_all) != 0U) {
+  if ((sources & ~k_ra_rsip_tamper_src_all) != 0U) {
     return k_ra_err_invalid_arg;
   }
   /* HUM Ch 51.6 "Tamper Detection" p 3294 */
@@ -2082,7 +2074,7 @@ ra_err_t ra_rsip_tamper_ack(uint32_t mask)
   if (mask == 0U) {
     return k_ra_err_invalid_arg;
   }
-  if ((mask & ~(uint32_t)k_ra_rsip_tamper_src_all) != 0U) {
+  if ((mask & ~k_ra_rsip_tamper_src_all) != 0U) {
     return k_ra_err_invalid_arg;
   }
   /* HUM Ch 51.6 "Tamper Detection" p 3294 */
@@ -2095,9 +2087,9 @@ ra_err_t ra_rsip_dpa_arm(bool enable)
   /* HUM Ch 51.5 "Side-channel countermeasures" p 3290 */
   volatile uint32_t* ctrl = ra_rsip_reg32(k_ra_rsip_off_ctrl);
   if (enable) {
-    *ctrl |= (uint32_t)k_ra_rsip_mask_ctrl_dpa_arm;
+    *ctrl |= k_ra_rsip_mask_ctrl_dpa_arm;
   } else {
-    *ctrl &= ~(uint32_t)k_ra_rsip_mask_ctrl_dpa_arm;
+    *ctrl &= ~k_ra_rsip_mask_ctrl_dpa_arm;
   }
   *ra_rsip_reg32(k_ra_rsip_off_dpa_ctrl) = (uint32_t)enable;
   return k_ra_ok;
@@ -2119,9 +2111,9 @@ ra_err_t ra_rsip_dotf_route(uint8_t which, uint8_t slot, bool on)
   /* HUM Ch 52.1 "Application Key Management" p 3303 */
   const ra_rsip_off_t off = (which == 0U) ? k_ra_rsip_off_dotf0_ctrl : k_ra_rsip_off_dotf1_ctrl;
   /* DOTFn_CTRL = (slot << 16) | route_enable */
-  uint32_t word = (uint32_t)k_ra_rsip_dotf_off;
+  uint32_t word = k_ra_rsip_dotf_off;
   if (on) {
-    word = ((uint32_t)slot << (uint32_t)k_ra_rsip_byte_shift_2) | (uint32_t)k_ra_rsip_dotf_on;
+    word = ((uint32_t)slot << k_ra_rsip_byte_shift_2) | k_ra_rsip_dotf_on;
   }
   *ra_rsip_reg32(off) = word;
   return k_ra_ok;

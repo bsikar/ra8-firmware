@@ -200,7 +200,7 @@ typedef struct {
  */
 static inline volatile r_cnecc_regs_t* ra_cnecc(uint8_t instance)
 {
-  if ((uint16_t)instance >= (uint16_t)k_ra_cnecc_instance_count) {
+  if ((uint16_t)instance >= k_ra_cnecc_instance_count) {
     return nullptr;
   }
   const uintptr_t base =

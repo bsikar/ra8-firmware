@@ -69,7 +69,7 @@ ra_err_t ra_dtc_deinit(void)
 ra_err_t ra_dtc_enable(void)
 {
   /* HUM Ch 18 "Data Transfer Controller (DTC)" p 784 */
-  ra_dtc()->DTCST = (uint8_t)k_ra_dtcst_enable;
+  ra_dtc()->DTCST = k_ra_dtcst_enable;
   return k_ra_ok;
 }
 
@@ -87,7 +87,7 @@ ra_err_t ra_dtc_reconfigure(void* vector_base)
   /* HUM Ch 18 "Data Transfer Controller (DTC)" p 784 */
   reg->DTCST  = 0U;
   reg->DTCVBR = (uint32_t)(uintptr_t)vector_base;
-  reg->DTCCR  = (uint8_t)k_ra_dtccr_rrs;
+  reg->DTCCR  = k_ra_dtccr_rrs;
   reg->DTCCR  = 0U;
   return k_ra_ok;
 }

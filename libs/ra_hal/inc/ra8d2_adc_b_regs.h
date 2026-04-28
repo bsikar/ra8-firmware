@@ -158,7 +158,7 @@ static inline volatile uint32_t* ra_adc_b_adintcr(void)
  */
 static inline volatile uint32_t* ra_adc_b_adchcr(uint8_t ch)
 {
-  if (ch >= (uint8_t)k_ra_adc_b_max_channels) {
+  if (ch >= k_ra_adc_b_max_channels) {
     return nullptr;
   }
   return (volatile uint32_t*)(k_ra_adc_b_base_addr + k_ra_adc_b_off_adchcr0 +
@@ -173,7 +173,7 @@ static inline volatile uint32_t* ra_adc_b_adchcr(uint8_t ch)
  */
 static inline volatile uint32_t* ra_adc_b_addr(uint8_t ch)
 {
-  if (ch >= (uint8_t)k_ra_adc_b_result_regs) {
+  if (ch >= k_ra_adc_b_result_regs) {
     return nullptr;
   }
   return (volatile uint32_t*)(k_ra_adc_b_base_addr + k_ra_adc_b_off_addr0 +

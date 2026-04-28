@@ -228,9 +228,9 @@ typedef enum : uint8_t {
  * Mirrors the high two bits of ``WDTSR`` -- see HUM Ch 27.2.3 p 1260.
  */
 typedef enum : uint16_t {
-  k_ra_wdt_status_none      = 0x0000U,                     /**< No flag set. */
-  k_ra_wdt_status_underflow = (uint16_t)k_ra_wdt_sr_undff, /**< UNDFF (bit 14). */
-  k_ra_wdt_status_refresh   = (uint16_t)k_ra_wdt_sr_refef, /**< REFEF (bit 15). */
+  k_ra_wdt_status_none      = 0x0000U,           /**< No flag set. */
+  k_ra_wdt_status_underflow = k_ra_wdt_sr_undff, /**< UNDFF (bit 14). */
+  k_ra_wdt_status_refresh   = k_ra_wdt_sr_refef, /**< REFEF (bit 15). */
 } ra_wdt_status_mask_t;
 
 /**

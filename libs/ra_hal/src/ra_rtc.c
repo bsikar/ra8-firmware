@@ -139,8 +139,7 @@ ra_err_t ra_rtc_get(ra_rtc_datetime_t* out)
  * @brief Combined IRQ mask.
  */
 typedef enum : uint8_t {
-  k_ra_rtc_irq_all =
-    (uint8_t)k_ra_rtc_irq_alarm | (uint8_t)k_ra_rtc_irq_carry | (uint8_t)k_ra_rtc_irq_periodic,
+  k_ra_rtc_irq_all = k_ra_rtc_irq_alarm | k_ra_rtc_irq_carry | k_ra_rtc_irq_periodic,
 } ra_rtc_mask_t;
 
 typedef struct {
@@ -163,21 +162,21 @@ ra_err_t ra_rtc_deinit(void)
 ra_err_t ra_rtc_set_irq_enable(uint8_t mask)
 {
   volatile r_rtc_regs_t* rtc = ra_rtc();
-  rtc->RCR1                  = (uint8_t)(rtc->RCR1 | (mask & (uint8_t)k_ra_rtc_irq_all));
+  rtc->RCR1                  = (uint8_t)(rtc->RCR1 | (mask & k_ra_rtc_irq_all));
   return k_ra_ok;
 }
 
 ra_err_t ra_rtc_get_status(uint8_t* out_mask)
 {
   RA_CHECK_NULL_PTR(out_mask, s_tag, "out_mask must not be nullptr");
-  *out_mask = (uint8_t)(ra_rtc()->RCR1 & (uint8_t)k_ra_rtc_irq_all);
+  *out_mask = (uint8_t)(ra_rtc()->RCR1 & k_ra_rtc_irq_all);
   return k_ra_ok;
 }
 
 ra_err_t ra_rtc_clear_status(uint8_t mask)
 {
   volatile r_rtc_regs_t* rtc = ra_rtc();
-  rtc->RCR1                  = (uint8_t)(rtc->RCR1 & (uint8_t)~(mask & (uint8_t)k_ra_rtc_irq_all));
+  rtc->RCR1                  = (uint8_t)(rtc->RCR1 & (uint8_t)~(mask & k_ra_rtc_irq_all));
   return k_ra_ok;
 }
 
@@ -190,7 +189,7 @@ ra_err_t ra_rtc_attach_handler(ra_rtc_event_fn_t fn, void* ctx)
 
 void ra_rtc_dispatch(void)
 {
-  const uint8_t           mask = (uint8_t)(ra_rtc()->RCR1 & (uint8_t)k_ra_rtc_irq_all);
+  const uint8_t           mask = (uint8_t)(ra_rtc()->RCR1 & k_ra_rtc_irq_all);
   const ra_rtc_event_fn_t fn   = s_rtc_state.fn;
   void* const             ctx  = s_rtc_state.ctx;
   if (fn != nullptr) {

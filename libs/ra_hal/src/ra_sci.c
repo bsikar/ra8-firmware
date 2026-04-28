@@ -113,7 +113,7 @@ static const ra_mstp_t s_mstp_table[k_ra_sci_channel_count_val] = {
  */
 static volatile r_sci_regs_t* internal_reg(uint8_t channel)
 {
-  if (channel > (uint8_t)k_ra_sci_channel_max_index) {
+  if (channel > k_ra_sci_channel_max_index) {
     return nullptr;
   }
   return ra_sci(channel);
@@ -136,7 +136,7 @@ static uint8_t internal_brr(uint32_t pclk_hz, uint32_t baud)
   if ((baud == 0U) || (pclk_hz == 0U)) {
     return 0U;
   }
-  const uint32_t divisor = (uint32_t)k_ra_sci_brr_base * baud;
+  const uint32_t divisor = k_ra_sci_brr_base * baud;
   const uint32_t n       = (pclk_hz / divisor);
   if (n == 0U) {
     return 0U;
@@ -161,16 +161,16 @@ static uint8_t internal_smr(const ra_sci_cfg_t* cfg)
 {
   uint8_t smr = 0U;
   if (cfg->stop_bits == k_ra_sci_stop_2) {
-    smr |= (uint8_t)(1U << (uint8_t)k_ra_sci_smr_bit_stop);
+    smr |= (uint8_t)(1U << k_ra_sci_smr_bit_stop);
   }
   if (cfg->parity != k_ra_sci_parity_none) {
-    smr |= (uint8_t)(1U << (uint8_t)k_ra_sci_smr_bit_pe);
+    smr |= (uint8_t)(1U << k_ra_sci_smr_bit_pe);
     if (cfg->parity == k_ra_sci_parity_odd) {
-      smr |= (uint8_t)(1U << (uint8_t)k_ra_sci_smr_bit_pm);
+      smr |= (uint8_t)(1U << k_ra_sci_smr_bit_pm);
     }
   }
   if (cfg->data_bits == k_ra_sci_data_7) {
-    smr |= (uint8_t)(1U << (uint8_t)k_ra_sci_smr_bit_chr);
+    smr |= (uint8_t)(1U << k_ra_sci_smr_bit_chr);
   }
   return smr;
 }
@@ -206,7 +206,7 @@ ra_err_t ra_sci_init(uint8_t channel, const ra_sci_cfg_t* cfg)
 
   /* HUM Ch 38.2 "SCMR : Smart Card Mode Register", p 2174 -- factory
    * default per HUM Table 38.x (SINV = 0, SMIF = 0, SDIR = 0). */
-  reg->SCMR = (uint8_t)k_ra_sci_scmr_default;
+  reg->SCMR = k_ra_sci_scmr_default;
 
   /* HUM Ch 38.2 "BRR : Bit Rate Register", p 2174 */
   reg->BRR = internal_brr(cfg->pclk_hz, cfg->baud);
@@ -220,7 +220,7 @@ ra_err_t ra_sci_init(uint8_t channel, const ra_sci_cfg_t* cfg)
 
   /* Enable TE + RE.
    * HUM Ch 38.2 "SCR : Serial Control Register", p 2174 */
-  reg->SCR = (uint8_t)((1U << (uint8_t)k_ra_scr_bit_te) | (1U << (uint8_t)k_ra_scr_bit_re));
+  reg->SCR = (uint8_t)((1U << k_ra_scr_bit_te) | (1U << k_ra_scr_bit_re));
 
   s_state[channel].initialised = true;
   ra_log_info_val(s_tag, "sci_init channel", (uint32_t)channel);
@@ -252,9 +252,8 @@ ra_err_t ra_sci_putc_polling(uint8_t channel, uint8_t byte)
   if (reg == nullptr) {
     return k_ra_err_invalid_arg;
   }
-  const ra_err_t werr = ra_hw_wait_flag_set8(&reg->SSR,
-                                             (uint8_t)(1U << (uint8_t)k_ra_ssr_bit_tdre),
-                                             (uint32_t)k_ra_hw_budget_medium);
+  const ra_err_t werr =
+    ra_hw_wait_flag_set8(&reg->SSR, (uint8_t)(1U << k_ra_ssr_bit_tdre), k_ra_hw_budget_medium);
   if (werr != k_ra_ok) {
     return werr;
   }
@@ -270,9 +269,8 @@ ra_err_t ra_sci_getc_polling(uint8_t channel, uint8_t* out_byte)
   if (reg == nullptr) {
     return k_ra_err_invalid_arg;
   }
-  const ra_err_t werr = ra_hw_wait_flag_set8(&reg->SSR,
-                                             (uint8_t)(1U << (uint8_t)k_ra_ssr_bit_rdrf),
-                                             (uint32_t)k_ra_hw_budget_medium);
+  const ra_err_t werr =
+    ra_hw_wait_flag_set8(&reg->SSR, (uint8_t)(1U << k_ra_ssr_bit_rdrf), k_ra_hw_budget_medium);
   if (werr != k_ra_ok) {
     return werr;
   }
@@ -308,9 +306,9 @@ ra_err_t ra_sci_attach_rx_handler(uint8_t channel, ra_sci_rx_fn_t fn, void* ctx)
   /* Toggle RIE.
    * HUM Ch 38.2 "SCR : Serial Control Register", p 2174 */
   if (fn != nullptr) {
-    reg->SCR = (uint8_t)(reg->SCR | (uint8_t)(1U << (uint8_t)k_ra_scr_bit_rie));
+    reg->SCR = (uint8_t)(reg->SCR | (uint8_t)(1U << k_ra_scr_bit_rie));
   } else {
-    reg->SCR = (uint8_t)(reg->SCR & (uint8_t)~(1U << (uint8_t)k_ra_scr_bit_rie));
+    reg->SCR = (uint8_t)(reg->SCR & (uint8_t)~(1U << k_ra_scr_bit_rie));
   }
   return k_ra_ok;
 }
@@ -326,9 +324,9 @@ ra_err_t ra_sci_attach_tx_handler(uint8_t channel, ra_sci_tx_fn_t fn, void* ctx)
   /* Toggle TIE.
    * HUM Ch 38.2 "SCR : Serial Control Register", p 2174 */
   if (fn != nullptr) {
-    reg->SCR = (uint8_t)(reg->SCR | (uint8_t)(1U << (uint8_t)k_ra_scr_bit_tie));
+    reg->SCR = (uint8_t)(reg->SCR | (uint8_t)(1U << k_ra_scr_bit_tie));
   } else {
-    reg->SCR = (uint8_t)(reg->SCR & (uint8_t)~(1U << (uint8_t)k_ra_scr_bit_tie));
+    reg->SCR = (uint8_t)(reg->SCR & (uint8_t)~(1U << k_ra_scr_bit_tie));
   }
   return k_ra_ok;
 }
@@ -342,16 +340,16 @@ ra_err_t ra_sci_get_errors(uint8_t channel, uint8_t* out_mask)
   if (reg == nullptr) {
     return k_ra_err_invalid_arg;
   }
-  uint8_t       mask = (uint8_t)k_ra_sci_err_none;
+  uint8_t       mask = k_ra_sci_err_none;
   const uint8_t ssr  = reg->SSR;
-  if ((ssr & (uint8_t)(1U << (uint8_t)k_ra_ssr_bit_orer)) != 0U) {
-    mask |= (uint8_t)k_ra_sci_err_overrun;
+  if ((ssr & (uint8_t)(1U << k_ra_ssr_bit_orer)) != 0U) {
+    mask |= k_ra_sci_err_overrun;
   }
-  if ((ssr & (uint8_t)(1U << (uint8_t)k_ra_ssr_bit_fer)) != 0U) {
-    mask |= (uint8_t)k_ra_sci_err_framing;
+  if ((ssr & (uint8_t)(1U << k_ra_ssr_bit_fer)) != 0U) {
+    mask |= k_ra_sci_err_framing;
   }
-  if ((ssr & (uint8_t)(1U << (uint8_t)k_ra_ssr_bit_per)) != 0U) {
-    mask |= (uint8_t)k_ra_sci_err_parity;
+  if ((ssr & (uint8_t)(1U << k_ra_ssr_bit_per)) != 0U) {
+    mask |= k_ra_sci_err_parity;
   }
   *out_mask = mask;
   return k_ra_ok;
@@ -366,8 +364,7 @@ ra_err_t ra_sci_clear_errors(uint8_t channel)
   /* HUM Ch 38.2 "SSR : Serial Status Register", p 2174 -- ORER/FER/PER
    * are write-zero-to-clear. */
   const uint8_t clr_mask =
-    (uint8_t)~((1U << (uint8_t)k_ra_ssr_bit_orer) | (1U << (uint8_t)k_ra_ssr_bit_fer) |
-               (1U << (uint8_t)k_ra_ssr_bit_per));
+    (uint8_t)~((1U << k_ra_ssr_bit_orer) | (1U << k_ra_ssr_bit_fer) | (1U << k_ra_ssr_bit_per));
   reg->SSR = (uint8_t)(reg->SSR & clr_mask);
   return k_ra_ok;
 }
@@ -404,7 +401,7 @@ ra_err_t ra_sci_enter_stop(uint8_t channel)
 
 ra_err_t ra_sci_exit_stop(uint8_t channel)
 {
-  if (channel > (uint8_t)k_ra_sci_channel_max_index) {
+  if (channel > k_ra_sci_channel_max_index) {
     return k_ra_err_invalid_arg;
   }
   return ra_mstp_enable(s_mstp_table[channel]);
@@ -496,7 +493,7 @@ ra_err_t ra_sci_read_dma(uint8_t              channel,
 
 void ra_sci_dispatch_txi(uint8_t channel)
 {
-  if (channel > (uint8_t)k_ra_sci_channel_max_index) {
+  if (channel > k_ra_sci_channel_max_index) {
     return;
   }
   volatile r_sci_regs_t* reg = ra_sci(channel);
@@ -506,20 +503,20 @@ void ra_sci_dispatch_txi(uint8_t channel)
   const ra_sci_tx_fn_t cb  = s_state[channel].tx_fn;
   void* const          ctx = s_state[channel].tx_ctx;
   if (cb == nullptr) {
-    reg->SCR = (uint8_t)(reg->SCR & (uint8_t)~(1U << (uint8_t)k_ra_scr_bit_tie));
+    reg->SCR = (uint8_t)(reg->SCR & (uint8_t)~(1U << k_ra_scr_bit_tie));
     return;
   }
   uint8_t byte = 0U;
   if (cb(ctx, &byte)) {
     reg->TDR = byte;
   } else {
-    reg->SCR = (uint8_t)(reg->SCR & (uint8_t)~(1U << (uint8_t)k_ra_scr_bit_tie));
+    reg->SCR = (uint8_t)(reg->SCR & (uint8_t)~(1U << k_ra_scr_bit_tie));
   }
 }
 
 void ra_sci_dispatch_rxi(uint8_t channel)
 {
-  if (channel > (uint8_t)k_ra_sci_channel_max_index) {
+  if (channel > k_ra_sci_channel_max_index) {
     return;
   }
   volatile r_sci_regs_t* reg = ra_sci(channel);
@@ -536,7 +533,7 @@ void ra_sci_dispatch_rxi(uint8_t channel)
 
 void ra_sci_dispatch_eri(uint8_t channel)
 {
-  if (channel > (uint8_t)k_ra_sci_channel_max_index) {
+  if (channel > k_ra_sci_channel_max_index) {
     return;
   }
   (void)ra_sci_clear_errors(channel);

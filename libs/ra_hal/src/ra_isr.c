@@ -88,8 +88,8 @@ static ra_isr_slot_t s_slots[k_ra_isr_slot_count];
  */
 static void internal_nvic_enable(uint16_t n)
 {
-  const uint16_t     word = n / (uint16_t)k_ra_isr_nvic_bits_per_word;
-  const uint16_t     bit  = n % (uint16_t)k_ra_isr_nvic_bits_per_word;
+  const uint16_t     word = n / k_ra_isr_nvic_bits_per_word;
+  const uint16_t     bit  = n % k_ra_isr_nvic_bits_per_word;
   volatile uint32_t* iser =
     (volatile uint32_t*)(k_ra_isr_nvic_iser_base + ((uintptr_t)word * sizeof(uint32_t)));
   *iser = (uint32_t)1UL << bit;
@@ -100,8 +100,8 @@ static void internal_nvic_enable(uint16_t n)
  */
 static void internal_nvic_disable(uint16_t n)
 {
-  const uint16_t     word = n / (uint16_t)k_ra_isr_nvic_bits_per_word;
-  const uint16_t     bit  = n % (uint16_t)k_ra_isr_nvic_bits_per_word;
+  const uint16_t     word = n / k_ra_isr_nvic_bits_per_word;
+  const uint16_t     bit  = n % k_ra_isr_nvic_bits_per_word;
   volatile uint32_t* icer =
     (volatile uint32_t*)(k_ra_isr_nvic_icer_base + ((uintptr_t)word * sizeof(uint32_t)));
   *icer = (uint32_t)1UL << bit;
@@ -112,8 +112,8 @@ static void internal_nvic_disable(uint16_t n)
  */
 static void internal_nvic_clear_pending(uint16_t n)
 {
-  const uint16_t     word = n / (uint16_t)k_ra_isr_nvic_bits_per_word;
-  const uint16_t     bit  = n % (uint16_t)k_ra_isr_nvic_bits_per_word;
+  const uint16_t     word = n / k_ra_isr_nvic_bits_per_word;
+  const uint16_t     bit  = n % k_ra_isr_nvic_bits_per_word;
   volatile uint32_t* icpr =
     (volatile uint32_t*)(k_ra_isr_nvic_icpr_base + ((uintptr_t)word * sizeof(uint32_t)));
   *icpr = (uint32_t)1UL << bit;
@@ -141,7 +141,7 @@ static void internal_ielsr_write(uint16_t slot, ra_elc_event_t event)
   volatile uint32_t* ielsr = ra_icu_ielsr(slot);
   if (ielsr != nullptr) { /* GCOVR_EXCL_BR_LINE -- slot bounds already validated */
     /* HUM Ch 14.2 "IELSRn : ICU Event Link Setting Register n", p 524 */
-    *ielsr = (uint32_t)event & (uint32_t)k_ra_ielsr_iels_mask;
+    *ielsr = (uint32_t)event & k_ra_ielsr_iels_mask;
   }
 }
 
@@ -165,7 +165,7 @@ ra_err_t ra_isr_init(void)
 {
   ra_log_info(s_tag, "ra_isr_init");
 
-  for (uint16_t slot = 0U; slot < (uint16_t)k_ra_isr_slot_count; ++slot) {
+  for (uint16_t slot = 0U; slot < k_ra_isr_slot_count; ++slot) {
     s_slots[slot].handler  = nullptr;
     s_slots[slot].ctx      = nullptr;
     s_slots[slot].event    = (ra_elc_event_t)0U;
@@ -186,12 +186,12 @@ ra_err_t ra_isr_init(void)
  */
 static uint16_t internal_find_event(ra_elc_event_t event)
 {
-  for (uint16_t slot = 0U; slot < (uint16_t)k_ra_isr_slot_count; ++slot) {
+  for (uint16_t slot = 0U; slot < k_ra_isr_slot_count; ++slot) {
     if (s_slots[slot].in_use && s_slots[slot].event == event) {
       return slot;
     }
   }
-  return (uint16_t)k_ra_isr_slot_none;
+  return k_ra_isr_slot_none;
 }
 
 /**
@@ -201,12 +201,12 @@ static uint16_t internal_find_event(ra_elc_event_t event)
  */
 static uint16_t internal_find_free(void)
 {
-  for (uint16_t slot = 0U; slot < (uint16_t)k_ra_isr_slot_count; ++slot) {
+  for (uint16_t slot = 0U; slot < k_ra_isr_slot_count; ++slot) {
     if (!s_slots[slot].in_use) {
       return slot;
     }
   }
-  return (uint16_t)k_ra_isr_slot_none; /* GCOVR_EXCL_LINE -- only hit if 96 slots allocated */
+  return k_ra_isr_slot_none; /* GCOVR_EXCL_LINE -- only hit if 96 slots allocated */
 }
 
 ra_err_t ra_isr_register(ra_elc_event_t   event,
@@ -216,17 +216,17 @@ ra_err_t ra_isr_register(ra_elc_event_t   event,
                          uint16_t*        out_slot)
 {
   RA_CHECK_NULL_PTR((void*)handler, s_tag, "handler must not be NULL");
-  if (priority > (uint8_t)k_ra_isr_prio_max) {
+  if (priority > k_ra_isr_prio_max) {
     return k_ra_err_invalid_arg;
   }
 
   const uint16_t existing = internal_find_event(event);
-  if (existing != (uint16_t)k_ra_isr_slot_none) {
+  if (existing != k_ra_isr_slot_none) {
     return k_ra_err_exists;
   }
 
   const uint16_t slot = internal_find_free();
-  if (slot == (uint16_t)k_ra_isr_slot_none) { /* GCOVR_EXCL_BR_LINE -- 96-slot ceiling */
+  if (slot == k_ra_isr_slot_none) { /* GCOVR_EXCL_BR_LINE -- 96-slot ceiling */
     /* GCOVR_EXCL_START */
     ra_log_error(s_tag, "no free slot");
     return k_ra_err_no_mem;
@@ -253,7 +253,7 @@ ra_err_t ra_isr_register(ra_elc_event_t   event,
 ra_err_t ra_isr_unregister(ra_elc_event_t event)
 {
   const uint16_t slot = internal_find_event(event);
-  if (slot == (uint16_t)k_ra_isr_slot_none) {
+  if (slot == k_ra_isr_slot_none) {
     return k_ra_err_not_found;
   }
 
@@ -271,7 +271,7 @@ ra_err_t ra_isr_unregister(ra_elc_event_t event)
 
 void ra_isr_dispatch(uint16_t slot)
 {
-  if (slot >= (uint16_t)k_ra_isr_slot_count) {
+  if (slot >= k_ra_isr_slot_count) {
     return;
   }
   const ra_isr_handler_t handler = s_slots[slot].handler;
@@ -282,7 +282,7 @@ void ra_isr_dispatch(uint16_t slot)
   volatile uint32_t* ielsr = ra_icu_ielsr(slot);
   if (ielsr != nullptr) { /* GCOVR_EXCL_BR_LINE -- validated above */
     /* HUM Ch 14.2 "IELSRn : ICU Event Link Setting Register n", p 524 */
-    *ielsr = *ielsr | ((uint32_t)1U << (uint8_t)k_ra_ielsr_ir_bit);
+    *ielsr = *ielsr | ((uint32_t)1U << k_ra_ielsr_ir_bit);
   }
 
   if (handler != nullptr) {
@@ -292,11 +292,11 @@ void ra_isr_dispatch(uint16_t slot)
 
 ra_err_t ra_isr_set_priority(ra_elc_event_t event, uint8_t priority)
 {
-  if (priority > (uint8_t)k_ra_isr_prio_max) {
+  if (priority > k_ra_isr_prio_max) {
     return k_ra_err_invalid_arg;
   }
   const uint16_t slot = internal_find_event(event);
-  if (slot == (uint16_t)k_ra_isr_slot_none) {
+  if (slot == k_ra_isr_slot_none) {
     return k_ra_err_not_found;
   }
   s_slots[slot].priority = priority;

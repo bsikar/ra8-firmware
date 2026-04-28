@@ -163,7 +163,7 @@ static const ra_mstp_t s_dotf_mstp_table[k_ra_dotf_channel_count] = {
  */
 static inline bool internal_channel_in_range(uint8_t channel)
 {
-  return ((uint16_t)channel < (uint16_t)k_ra_dotf_channel_count);
+  return (uint16_t)channel < (uint16_t)k_ra_dotf_channel_count;
 }
 
 /**
@@ -171,7 +171,7 @@ static inline bool internal_channel_in_range(uint8_t channel)
  */
 static inline uint32_t internal_window_lo(uint8_t channel)
 {
-  return (channel == 0U) ? (uint32_t)k_ra_dotf0_window_lo : (uint32_t)k_ra_dotf1_window_lo;
+  return (channel == 0U) ? k_ra_dotf0_window_lo : k_ra_dotf1_window_lo;
 }
 
 /**
@@ -179,7 +179,7 @@ static inline uint32_t internal_window_lo(uint8_t channel)
  */
 static inline uint32_t internal_window_hi(uint8_t channel)
 {
-  return (channel == 0U) ? (uint32_t)k_ra_dotf0_window_hi : (uint32_t)k_ra_dotf1_window_hi;
+  return (channel == 0U) ? k_ra_dotf0_window_hi : k_ra_dotf1_window_hi;
 }
 
 /**
@@ -188,12 +188,12 @@ static inline uint32_t internal_window_hi(uint8_t channel)
 static inline uint8_t internal_key_words(ra_dotf_key_size_t size)
 {
   if (size == k_ra_dotf_key_size_192) {
-    return (uint8_t)k_ra_dotf_key_words_192;
+    return k_ra_dotf_key_words_192;
   }
   if (size == k_ra_dotf_key_size_256) {
-    return (uint8_t)k_ra_dotf_key_words_256;
+    return k_ra_dotf_key_words_256;
   }
-  return (uint8_t)k_ra_dotf_key_words_128;
+  return k_ra_dotf_key_words_128;
 }
 
 /**
@@ -202,10 +202,10 @@ static inline uint8_t internal_key_words(ra_dotf_key_size_t size)
 static inline uint32_t internal_sca_bits(ra_dotf_sca_level_t level)
 {
   if (level == k_ra_dotf_sca_max) {
-    return (uint32_t)k_ra_dotf_reg00_sca_en | (uint32_t)k_ra_dotf_reg00_sca_mode;
+    return k_ra_dotf_reg00_sca_en | k_ra_dotf_reg00_sca_mode;
   }
   if (level == k_ra_dotf_sca_standard) {
-    return (uint32_t)k_ra_dotf_reg00_sca_en;
+    return k_ra_dotf_reg00_sca_en;
   }
   return 0U;
 }
@@ -221,10 +221,10 @@ static inline uint32_t internal_sca_bits(ra_dotf_sca_level_t level)
  */
 static inline uint32_t internal_bswap32(uint32_t v)
 {
-  return ((v & (uint32_t)k_ra_dotf_bswap_byte0) << (uint32_t)k_ra_dotf_bswap_shift_word) |
-         ((v & (uint32_t)k_ra_dotf_bswap_byte1) << (uint32_t)k_ra_dotf_bswap_shift_byte) |
-         ((v & (uint32_t)k_ra_dotf_bswap_byte2) >> (uint32_t)k_ra_dotf_bswap_shift_byte) |
-         ((v & (uint32_t)k_ra_dotf_bswap_byte3) >> (uint32_t)k_ra_dotf_bswap_shift_word);
+  return ((v & k_ra_dotf_bswap_byte0) << (uint32_t)k_ra_dotf_bswap_shift_word) |
+         ((v & k_ra_dotf_bswap_byte1) << (uint32_t)k_ra_dotf_bswap_shift_byte) |
+         ((v & k_ra_dotf_bswap_byte2) >> (uint32_t)k_ra_dotf_bswap_shift_byte) |
+         ((v & k_ra_dotf_bswap_byte3) >> (uint32_t)k_ra_dotf_bswap_shift_word);
 }
 
 /**
@@ -232,10 +232,10 @@ static inline uint32_t internal_bswap32(uint32_t v)
  */
 static ra_err_t internal_validate_region(uint8_t channel, const ra_dotf_region_t* region)
 {
-  if ((region->start_addr & (uint32_t)k_ra_dotf_addr_low_mask) != 0U) {
+  if ((region->start_addr & k_ra_dotf_addr_low_mask) != 0U) {
     return k_ra_err_invalid_arg;
   }
-  if ((region->end_addr & (uint32_t)k_ra_dotf_addr_low_mask) != 0U) {
+  if ((region->end_addr & k_ra_dotf_addr_low_mask) != 0U) {
     return k_ra_err_invalid_arg;
   }
   if (region->start_addr > region->end_addr) {
@@ -243,7 +243,7 @@ static ra_err_t internal_validate_region(uint8_t channel, const ra_dotf_region_t
      * CONVAREAED[31:12] is prohibited." */
     return k_ra_err_invalid_arg;
   }
-  if (region->region_id >= (uint8_t)k_ra_dotf_max_regions) {
+  if (region->region_id >= k_ra_dotf_max_regions) {
     return k_ra_err_invalid_arg;
   }
   const uint32_t lo = internal_window_lo(channel);
@@ -261,12 +261,12 @@ static ra_err_t internal_validate_region(uint8_t channel, const ra_dotf_region_t
  */
 static ra_err_t internal_check_overlap(uint8_t channel, const ra_dotf_region_t* region)
 {
-  for (uint8_t other = 0U; other < (uint8_t)k_ra_dotf_channel_count; ++other) {
+  for (uint8_t other = 0U; other < k_ra_dotf_channel_count; ++other) {
     if (other == channel) {
       continue;
     }
     const ra_dotf_chan_state_t* st = &s_dotf_state[other];
-    if (st->active_region_id == (uint8_t)k_ra_dotf_no_region) {
+    if (st->active_region_id == k_ra_dotf_no_region) {
       continue;
     }
     const ra_dotf_region_t* live = &st->regions[st->active_region_id];
@@ -283,11 +283,11 @@ static ra_err_t internal_check_overlap(uint8_t channel, const ra_dotf_region_t* 
  */
 static uint32_t internal_assemble_reg00(const ra_dotf_chan_state_t* st, bool enable)
 {
-  uint32_t v = (uint32_t)k_ra_dotf_reg00_mode_ctr; /* HUM 45.1 mode = CTR. */
-  v |= (uint32_t)st->cached_key_size;              /* Key size bits.       */
-  v |= internal_sca_bits(st->cached_sca);          /* SCA bits.            */
+  uint32_t v = k_ra_dotf_reg00_mode_ctr;  /* HUM 45.1 mode = CTR. */
+  v |= (uint32_t)st->cached_key_size;     /* Key size bits.       */
+  v |= internal_sca_bits(st->cached_sca); /* SCA bits.            */
   if (enable) {
-    v |= (uint32_t)k_ra_dotf_reg00_aes_enable;
+    v |= k_ra_dotf_reg00_aes_enable;
   }
   return v;
 }
@@ -312,7 +312,7 @@ static void internal_stage_key(volatile ra_dotf_regs_t* reg, const ra_dotf_key_h
  */
 static void internal_stage_iv(volatile ra_dotf_regs_t* reg, const uint32_t* iv)
 {
-  for (uint8_t i = 0U; i < (uint8_t)k_ra_dotf_iv_word_count; ++i) {
+  for (uint8_t i = 0U; i < k_ra_dotf_iv_word_count; ++i) {
     /* HUM Ch 45.1 p 3048 -- counter = {IV[127:28], Address[31:4]}.
      * REG03 is the AES IV staging window per HUM Ch 45.3 "Register
      * Descriptions" p 3049. */
@@ -331,7 +331,7 @@ static inline void internal_channel_reset(volatile ra_dotf_regs_t* reg)
   reg->CONVAREAD = 0U;
   /* REG00 holds the AES core enable + mode select.
    * HUM Ch 45.3 "Register Descriptions" p 3049 */
-  reg->REG00 = (uint32_t)k_ra_dotf_reg00_disable_value;
+  reg->REG00 = k_ra_dotf_reg00_disable_value;
 }
 
 /**
@@ -340,21 +340,21 @@ static inline void internal_channel_reset(volatile ra_dotf_regs_t* reg)
 static void internal_state_reset(uint8_t channel)
 {
   ra_dotf_chan_state_t* st = &s_dotf_state[channel];
-  for (uint8_t i = 0U; i < (uint8_t)k_ra_dotf_max_regions; ++i) {
+  for (uint8_t i = 0U; i < k_ra_dotf_max_regions; ++i) {
     st->region_valid[i]       = 0U;
     st->regions[i].start_addr = 0U;
     st->regions[i].end_addr   = 0U;
     st->regions[i].key_index  = 0U;
     st->regions[i].region_id  = 0U;
   }
-  st->active_region_id = (uint8_t)k_ra_dotf_no_region;
+  st->active_region_id = k_ra_dotf_no_region;
   st->key.size         = k_ra_dotf_key_size_128;
   st->key.key_index    = 0U;
   st->key.valid        = 0U;
   for (uint8_t i = 0U; i < 8U; ++i) {
     st->key.words[i] = 0U;
   }
-  for (uint8_t i = 0U; i < (uint8_t)k_ra_dotf_iv_word_count; ++i) {
+  for (uint8_t i = 0U; i < k_ra_dotf_iv_word_count; ++i) {
     st->iv_cache[i] = 0U;
   }
   st->iv_valid        = 0U;
@@ -370,7 +370,7 @@ static void internal_state_reset(uint8_t channel)
 
 [[nodiscard]] ra_err_t ra_dotf_init(void)
 {
-  for (uint8_t ch = 0U; ch < (uint8_t)k_ra_dotf_channel_count; ++ch) {
+  for (uint8_t ch = 0U; ch < k_ra_dotf_channel_count; ++ch) {
     /* DOTF clock gating: shared MSTPB16/17 with the matching XSPI.
      * HUM Ch 45.6.1 "Module-stop Function" p 3050 */
     const ra_err_t mst_err = ra_mstp_enable(s_dotf_mstp_table[ch]);
@@ -391,12 +391,12 @@ static void internal_state_reset(uint8_t channel)
 
 [[nodiscard]] ra_err_t ra_dotf_deinit(void)
 {
-  for (uint8_t ch = 0U; ch < (uint8_t)k_ra_dotf_channel_count; ++ch) {
+  for (uint8_t ch = 0U; ch < k_ra_dotf_channel_count; ++ch) {
     volatile ra_dotf_regs_t* reg = ra_dotf_regs(ch);
     if (reg != nullptr) {
       /* Force bypass on teardown.
        * HUM Ch 45.3 "Register Descriptions" p 3049 */
-      reg->REG00 = (uint32_t)k_ra_dotf_reg00_disable_value;
+      reg->REG00 = k_ra_dotf_reg00_disable_value;
     }
     internal_state_reset(ch);
     /* Gate the shared OSPI/DOTF clock.
@@ -440,7 +440,7 @@ static void internal_state_reset(uint8_t channel)
   if (!internal_channel_in_range(channel)) {
     return k_ra_err_invalid_arg;
   }
-  if (region_id >= (uint8_t)k_ra_dotf_max_regions) {
+  if (region_id >= k_ra_dotf_max_regions) {
     return k_ra_err_invalid_arg;
   }
   ra_dotf_chan_state_t* st = &s_dotf_state[channel];
@@ -455,9 +455,9 @@ static void internal_state_reset(uint8_t channel)
    * conversion in that order to ensure that end address is always
    * higher than start address."
    * HUM Ch 45.3.2 "CONVAREAD : DOTF Conversion Area End Address Register" p 3049 */
-  reg->CONVAREAD = r->end_addr & (uint32_t)k_ra_dotf_addr_mask;
+  reg->CONVAREAD = r->end_addr & k_ra_dotf_addr_mask;
   /* HUM Ch 45.3.1 "CONVAREAST : DOTF Conversion Area Start Address Register" p 3049 */
-  reg->CONVAREAST      = r->start_addr & (uint32_t)k_ra_dotf_addr_mask;
+  reg->CONVAREAST      = r->start_addr & k_ra_dotf_addr_mask;
   st->active_region_id = region_id;
   return k_ra_ok;
 }
@@ -469,7 +469,7 @@ static void internal_state_reset(uint8_t channel)
     return k_ra_err_invalid_arg;
   }
   const ra_dotf_chan_state_t* st = &s_dotf_state[channel];
-  if (st->active_region_id == (uint8_t)k_ra_dotf_no_region) {
+  if (st->active_region_id == k_ra_dotf_no_region) {
     return k_ra_err_invalid_state;
   }
   *region = st->regions[st->active_region_id];
@@ -515,7 +515,7 @@ static void internal_state_reset(uint8_t channel)
   RA_CHECK_NULL_PTR((void*)reg, s_tag, "channel mapping failed");
 
   ra_dotf_chan_state_t* st = &s_dotf_state[channel];
-  for (uint8_t i = 0U; i < (uint8_t)k_ra_dotf_iv_word_count; ++i) {
+  for (uint8_t i = 0U; i < k_ra_dotf_iv_word_count; ++i) {
     st->iv_cache[i] = iv_words[i];
   }
   st->iv_valid = 1U;
@@ -545,7 +545,7 @@ static void
 internal_rotate_iv(ra_dotf_chan_state_t* st, volatile ra_dotf_regs_t* reg, const uint32_t* iv_words)
 {
   if (iv_words != nullptr) {
-    for (uint8_t i = 0U; i < (uint8_t)k_ra_dotf_iv_word_count; ++i) {
+    for (uint8_t i = 0U; i < k_ra_dotf_iv_word_count; ++i) {
       st->iv_cache[i] = iv_words[i];
     }
     st->iv_valid = 1U;
@@ -591,7 +591,7 @@ static ra_err_t internal_validate_rotate_inputs(uint8_t                     chan
       (new_handle->size != k_ra_dotf_key_size_256)) {
     return k_ra_err_invalid_arg;
   }
-  if (s_dotf_state[channel].active_region_id == (uint8_t)k_ra_dotf_no_region) {
+  if (s_dotf_state[channel].active_region_id == k_ra_dotf_no_region) {
     return k_ra_err_invalid_state;
   }
   return k_ra_ok;
@@ -613,7 +613,7 @@ static ra_err_t internal_validate_rotate_inputs(uint8_t                     chan
 
   /* Step 1: quiesce the AES core.
    * HUM Ch 45.3 "Register Descriptions" p 3049 */
-  reg->REG00  = (uint32_t)k_ra_dotf_reg00_disable_value;
+  reg->REG00  = k_ra_dotf_reg00_disable_value;
   st->enabled = 0U;
 
   /* Step 2: replace key + (optionally) IV. */
@@ -666,7 +666,7 @@ static ra_err_t internal_validate_rotate_inputs(uint8_t                     chan
 
   /* Writing 0 to REG00 puts the channel in bypass.
    * HUM Ch 45.3 "Register Descriptions" p 3049 */
-  reg->REG00                    = (uint32_t)k_ra_dotf_reg00_disable_value;
+  reg->REG00                    = k_ra_dotf_reg00_disable_value;
   s_dotf_state[channel].enabled = 0U;
   return k_ra_ok;
 }
@@ -731,11 +731,11 @@ static ra_err_t internal_validate_rotate_inputs(uint8_t                     chan
   /* HUM Ch 45.1 p 3048 ("Supports self-test function").
    * REG00 bit 20 triggers BIST; the bit auto-clears in real silicon.
    * HUM Ch 45.3 "Register Descriptions" p 3049 */
-  reg->REG00    = saved | (uint32_t)k_ra_dotf_reg00_self_test;
+  reg->REG00    = saved | k_ra_dotf_reg00_self_test;
   uint32_t snap = 0U;
-  for (uint8_t i = 0U; i < (uint8_t)k_ra_dotf_self_test_spin; ++i) {
+  for (uint8_t i = 0U; i < k_ra_dotf_self_test_spin; ++i) {
     snap = reg->REG00;
-    if ((snap & (uint32_t)k_ra_dotf_reg00_self_test) == 0U) {
+    if ((snap & k_ra_dotf_reg00_self_test) == 0U) {
       break;
     }
   }
@@ -775,7 +775,7 @@ static ra_err_t internal_validate_rotate_inputs(uint8_t                     chan
 
   /* Clearing REG00 wipes the AES enable + status bits.
    * HUM Ch 45.3 "Register Descriptions" p 3049 */
-  reg->REG00                    = (uint32_t)k_ra_dotf_reg00_disable_value;
+  reg->REG00                    = k_ra_dotf_reg00_disable_value;
   s_dotf_state[channel].enabled = 0U;
   return k_ra_ok;
 }
@@ -811,7 +811,7 @@ void ra_dotf_dispatch(uint8_t channel)
 
 [[nodiscard]] ra_err_t ra_dotf_enter_stop(void)
 {
-  for (uint8_t ch = 0U; ch < (uint8_t)k_ra_dotf_channel_count; ++ch) {
+  for (uint8_t ch = 0U; ch < k_ra_dotf_channel_count; ++ch) {
     /* HUM Ch 45.6.1 "Module-stop Function" p 3050 */
     (void)ra_mstp_disable(s_dotf_mstp_table[ch]);
   }
@@ -820,7 +820,7 @@ void ra_dotf_dispatch(uint8_t channel)
 
 [[nodiscard]] ra_err_t ra_dotf_exit_stop(void)
 {
-  for (uint8_t ch = 0U; ch < (uint8_t)k_ra_dotf_channel_count; ++ch) {
+  for (uint8_t ch = 0U; ch < k_ra_dotf_channel_count; ++ch) {
     /* HUM Ch 45.6.1 "Module-stop Function" p 3050 */
     const ra_err_t mst_err = ra_mstp_enable(s_dotf_mstp_table[ch]);
     RA_RETURN_ON_ERROR(mst_err, s_tag, "exit_stop: mstp enable failed");

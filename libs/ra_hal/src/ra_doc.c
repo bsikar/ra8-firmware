@@ -33,7 +33,7 @@ static inline void internal_ra_doc_set_mode(ra_docr_oms_t mode)
 {
   volatile r_doc_regs_t* reg     = ra_doc();
   const uint8_t          current = reg->DOCR;
-  const uint8_t          cleared = (uint8_t)(current & (uint8_t)~(uint8_t)k_ra_doc_mask_oms);
+  const uint8_t          cleared = (uint8_t)(current & (uint8_t)~k_ra_doc_mask_oms);
   reg->DOCR                      = (uint8_t)(cleared | (uint8_t)mode);
 }
 

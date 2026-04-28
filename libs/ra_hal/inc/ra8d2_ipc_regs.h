@@ -394,7 +394,7 @@ static inline volatile r_ipc_channel_regs_t* ra_ipc_channel(uint8_t channel)
   }
   /* HUM Ch 3.2 "Register Descriptions" p 205 -- channel 0 starts at
    * +0x0C0 with a 0x20 stride between consecutive channels. */
-  const uintptr_t base = (uintptr_t)k_ra_ipc_base_addr + (uintptr_t)k_ra_ipc_offset_ipc0_ch0 +
+  const uintptr_t base = k_ra_ipc_base_addr + (uintptr_t)k_ra_ipc_offset_ipc0_ch0 +
                          ((uintptr_t)channel * (uintptr_t)k_ra_ipc_channel_stride);
   return (volatile r_ipc_channel_regs_t*)base;
 }
@@ -415,7 +415,7 @@ static inline volatile r_ipc_nmi_regs_t* ra_ipc_nmi(uint8_t unit)
   }
   /* HUM Ch 3.2 "Register Descriptions" p 205 -- IPC0NMI at +0x080,
    * IPC1NMI at +0x090 (0x10 stride). */
-  const uintptr_t base = (uintptr_t)k_ra_ipc_base_addr + (uintptr_t)k_ra_ipc_offset_ipc0nmista +
+  const uintptr_t base = k_ra_ipc_base_addr + (uintptr_t)k_ra_ipc_offset_ipc0nmista +
                          ((uintptr_t)unit * (uintptr_t)k_ra_ipc_nmi_stride);
   return (volatile r_ipc_nmi_regs_t*)base;
 }
@@ -454,7 +454,7 @@ static inline volatile uint32_t* ra_ipc_sem(uint8_t sem_id)
   }
   /* HUM Ch 3.2.3 "IPCSEMn" p 210 -- IPCSEM0 at +0x000, each
    * semaphore is a 32-bit word so the stride is 4 bytes. */
-  const uintptr_t base = (uintptr_t)k_ra_ipc_base_addr + ((uintptr_t)sem_id * sizeof(uint32_t));
+  const uintptr_t base = k_ra_ipc_base_addr + ((uintptr_t)sem_id * sizeof(uint32_t));
   return (volatile uint32_t*)base;
 }
 
@@ -469,7 +469,7 @@ static inline volatile uint32_t* ra_ipc_sem(uint8_t sem_id)
 static inline uint8_t ra_ipc_channel_to_unit(uint8_t channel)
 {
   if ((uint16_t)channel >= (uint16_t)k_ra_ipc_channel_count) {
-    return (uint8_t)k_ra_ipc_nmi_unit_count;
+    return k_ra_ipc_nmi_unit_count;
   }
   /* HUM Ch 3.1 "Overview" p 204 -- channels 0/1 belong to IPC0,
    * channels 2/3 belong to IPC1. */

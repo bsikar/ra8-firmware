@@ -94,12 +94,12 @@ static bool s_initialized = false;
  */
 static uint8_t internal_find_free(void)
 {
-  for (uint8_t ch = 0U; ch < (uint8_t)k_ra_dma_channel_count; ++ch) {
+  for (uint8_t ch = 0U; ch < k_ra_dma_channel_count; ++ch) {
     if (!s_channels[ch].in_use) {
       return ch;
     }
   }
-  return (uint8_t)k_ra_dma_channel_none;
+  return k_ra_dma_channel_none;
 }
 
 /**
@@ -126,7 +126,7 @@ static ra_err_t internal_validate_request(const ra_dma_request_t* req)
   if (req->count == 0U) {
     return k_ra_err_invalid_arg;
   }
-  if ((uint8_t)req->width > (uint8_t)k_ra_dmac_width_word) {
+  if ((uint8_t)req->width > k_ra_dmac_width_word) {
     return k_ra_err_invalid_arg;
   }
   return k_ra_ok;
@@ -149,7 +149,7 @@ ra_err_t ra_dma_init(void)
     return k_ra_err_hw_init_failed;
   }
 
-  for (uint8_t ch = 0U; ch < (uint8_t)k_ra_dma_channel_count; ++ch) {
+  for (uint8_t ch = 0U; ch < k_ra_dma_channel_count; ++ch) {
     s_channels[ch].on_complete = nullptr;
     s_channels[ch].ctx         = nullptr;
     s_channels[ch].in_use      = false;
@@ -162,7 +162,7 @@ ra_err_t ra_dma_deinit(void)
 {
   /* Tear down every in-use channel before releasing the MSTP
    * reference so no pending transfer can wedge the DMAC block. */
-  for (uint8_t ch = 0U; ch < (uint8_t)k_ra_dma_channel_count; ++ch) {
+  for (uint8_t ch = 0U; ch < k_ra_dma_channel_count; ++ch) {
     if (s_channels[ch].in_use) {
       /* Ignore dmac_stop errors -- the goal is to get every
        * channel into a safe state before releasing MSTP. */
@@ -196,7 +196,7 @@ ra_err_t ra_dma_request(const ra_dma_request_t* req, uint8_t* out_channel)
   }
 
   const uint8_t ch = internal_find_free();
-  if (ch == (uint8_t)k_ra_dma_channel_none) {
+  if (ch == k_ra_dma_channel_none) {
     ra_log_error(s_tag, "no free channel");
     return k_ra_err_no_mem;
   }
@@ -222,7 +222,7 @@ ra_err_t ra_dma_request(const ra_dma_request_t* req, uint8_t* out_channel)
 
 ra_err_t ra_dma_release(uint8_t channel)
 {
-  if (channel >= (uint8_t)k_ra_dma_channel_count) {
+  if (channel >= k_ra_dma_channel_count) {
     return k_ra_err_invalid_arg;
   }
   if (!s_channels[channel].in_use) {
@@ -246,7 +246,7 @@ ra_err_t ra_dma_release(uint8_t channel)
 #ifdef RA_SIMULATOR_MODE
 const ra_dma_request_t* ra_dma_sim_peek_request(uint8_t channel)
 {
-  if (channel >= (uint8_t)k_ra_dma_channel_count) {
+  if (channel >= k_ra_dma_channel_count) {
     return nullptr;
   }
   if (!s_channels[channel].in_use) {
@@ -259,7 +259,7 @@ const ra_dma_request_t* ra_dma_sim_peek_request(uint8_t channel)
 ra_err_t ra_dma_channel_is_busy(uint8_t channel, bool* out_busy)
 {
   RA_CHECK_NULL_PTR(out_busy, s_tag, "out_busy must not be NULL");
-  if (channel >= (uint8_t)k_ra_dma_channel_count) {
+  if (channel >= k_ra_dma_channel_count) {
     return k_ra_err_invalid_arg;
   }
   *out_busy = s_channels[channel].in_use;
@@ -268,7 +268,7 @@ ra_err_t ra_dma_channel_is_busy(uint8_t channel, bool* out_busy)
 
 void ra_dma_dispatch_complete(uint8_t channel)
 {
-  if (channel >= (uint8_t)k_ra_dma_channel_count) {
+  if (channel >= k_ra_dma_channel_count) {
     return;
   }
   const ra_dma_complete_fn_t cb  = s_channels[channel].on_complete;

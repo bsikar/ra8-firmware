@@ -106,9 +106,9 @@ typedef enum : uint8_t {
  * @brief Default lane-enable bitmap (clock + d0 + d1 all on).
  */
 typedef enum : uint8_t {
-  k_ra_mipi_phy_lane_mask_default = (uint8_t)((1U << (uint8_t)k_ra_mipi_phy_lane_bit_clk) |
-                                              (1U << (uint8_t)k_ra_mipi_phy_lane_bit_d0) |
-                                              (1U << (uint8_t)k_ra_mipi_phy_lane_bit_d1)),
+  k_ra_mipi_phy_lane_mask_default =
+    (uint8_t)((1U << k_ra_mipi_phy_lane_bit_clk) | (1U << k_ra_mipi_phy_lane_bit_d0) |
+              (1U << k_ra_mipi_phy_lane_bit_d1)),
 } ra_mipi_phy_lane_mask_t;
 
 /* =============================================================================
@@ -144,7 +144,7 @@ static ra_mipi_phy_lane_count_t s_lane_count = k_ra_mipi_phy_lane_count_2;
  * @var s_lane_enable_mask
  * @brief Bitmap of enabled lanes (bit 0 = clock, bit N = data lane N-1).
  */
-static uint8_t s_lane_enable_mask = (uint8_t)k_ra_mipi_phy_lane_mask_default;
+static uint8_t s_lane_enable_mask = k_ra_mipi_phy_lane_mask_default;
 
 /**
  * @var s_clk_mode
@@ -198,13 +198,13 @@ static ra_err_t internal_mipi_phy_wait_set(volatile const uint32_t* reg, uint32_
 static uint32_t internal_mipi_phy_pack_plfcr(const ra_mipi_phy_pll_t* pll)
 {
   uint32_t v = 0U;
-  v |= ((uint32_t)pll->idiv & (uint32_t)k_ra_mipi_phy_plfcr_mask_idiv)
+  v |= ((uint32_t)pll->idiv & k_ra_mipi_phy_plfcr_mask_idiv)
        << (uint32_t)k_ra_mipi_phy_plfcr_shift_idiv;
-  v |= ((uint32_t)pll->nfmul & (uint32_t)k_ra_mipi_phy_plfcr_mask_nfmul)
+  v |= ((uint32_t)pll->nfmul & k_ra_mipi_phy_plfcr_mask_nfmul)
        << (uint32_t)k_ra_mipi_phy_plfcr_shift_nfmul;
-  v |= ((uint32_t)pll->pmul & (uint32_t)k_ra_mipi_phy_plfcr_mask_pmul)
+  v |= ((uint32_t)pll->pmul & k_ra_mipi_phy_plfcr_mask_pmul)
        << (uint32_t)k_ra_mipi_phy_plfcr_shift_pmul;
-  v |= ((uint32_t)pll->nmul_int & (uint32_t)k_ra_mipi_phy_plfcr_mask_nmul)
+  v |= ((uint32_t)pll->nmul_int & k_ra_mipi_phy_plfcr_mask_nmul)
        << (uint32_t)k_ra_mipi_phy_plfcr_shift_nmul;
   return v;
 }
@@ -218,8 +218,7 @@ static uint32_t internal_mipi_phy_pack_plfcr(const ra_mipi_phy_pll_t* pll)
  */
 static ra_err_t internal_mipi_phy_validate_pll(const ra_mipi_phy_pll_t* pll)
 {
-  if ((pll->nmul_int < (uint16_t)k_ra_mipi_phy_nmul_min) ||
-      (pll->nmul_int > (uint16_t)k_ra_mipi_phy_nmul_max)) {
+  if ((pll->nmul_int < k_ra_mipi_phy_nmul_min) || (pll->nmul_int > k_ra_mipi_phy_nmul_max)) {
     return k_ra_err_invalid_arg;
   }
   return k_ra_ok;
@@ -231,48 +230,37 @@ static ra_err_t internal_mipi_phy_validate_pll(const ra_mipi_phy_pll_t* pll)
 static void internal_mipi_phy_write_timing(const ra_mipi_phy_timing_t* t)
 {
   /* HUM Ch 64.2.8 "DPHYTIM1 : D-PHY Timing Control Register 1", p 3827 */
-  *ra_mipi_phy_reg32(k_ra_mipi_phy_off_tim1) =
-    (uint32_t)t->tinit & (uint32_t)k_ra_mipi_phy_tim1_tinit_mask;
+  *ra_mipi_phy_reg32(k_ra_mipi_phy_off_tim1) = (uint32_t)t->tinit & k_ra_mipi_phy_tim1_tinit_mask;
 
   /* HUM Ch 64.2.9 "DPHYTIM2 : D-PHY Timing Control Register 2", p 3828 */
   *ra_mipi_phy_reg32(k_ra_mipi_phy_off_tim2) =
-    (((uint32_t)t->tclkmiss & (uint32_t)k_ra_mipi_phy_tim_byte_mask)
+    (((uint32_t)t->tclkmiss & k_ra_mipi_phy_tim_byte_mask)
      << (uint32_t)k_ra_mipi_phy_tim_shift_b2) |
-    (((uint32_t)t->tclksett & (uint32_t)k_ra_mipi_phy_tim_byte_mask)
+    (((uint32_t)t->tclksett & k_ra_mipi_phy_tim_byte_mask)
      << (uint32_t)k_ra_mipi_phy_tim_shift_b1) |
-    (((uint32_t)t->tclkprep & (uint32_t)k_ra_mipi_phy_tim_byte_mask)
-     << (uint32_t)k_ra_mipi_phy_tim_shift_b0);
+    (((uint32_t)t->tclkprep & k_ra_mipi_phy_tim_byte_mask) << (uint32_t)k_ra_mipi_phy_tim_shift_b0);
 
   /* HUM Ch 64.2.10 "DPHYTIM3 : D-PHY Timing Control Register 3", p 3828 */
   *ra_mipi_phy_reg32(k_ra_mipi_phy_off_tim3) =
-    (((uint32_t)t->thssett & (uint32_t)k_ra_mipi_phy_tim_byte_mask)
-     << (uint32_t)k_ra_mipi_phy_tim_shift_b1) |
-    (((uint32_t)t->thsprep & (uint32_t)k_ra_mipi_phy_tim_byte_mask)
-     << (uint32_t)k_ra_mipi_phy_tim_shift_b0);
+    (((uint32_t)t->thssett & k_ra_mipi_phy_tim_byte_mask) << (uint32_t)k_ra_mipi_phy_tim_shift_b1) |
+    (((uint32_t)t->thsprep & k_ra_mipi_phy_tim_byte_mask) << (uint32_t)k_ra_mipi_phy_tim_shift_b0);
 
   /* HUM Ch 64.2.11 "DPHYTIM4 : D-PHY Timing Control Register 4", p 3829 */
   *ra_mipi_phy_reg32(k_ra_mipi_phy_off_tim4) =
-    (((uint32_t)t->tclktrl & (uint32_t)k_ra_mipi_phy_tim_byte_mask)
-     << (uint32_t)k_ra_mipi_phy_tim_shift_b3) |
-    (((uint32_t)t->tclkpost & (uint32_t)k_ra_mipi_phy_tim_byte_mask)
+    (((uint32_t)t->tclktrl & k_ra_mipi_phy_tim_byte_mask) << (uint32_t)k_ra_mipi_phy_tim_shift_b3) |
+    (((uint32_t)t->tclkpost & k_ra_mipi_phy_tim_byte_mask)
      << (uint32_t)k_ra_mipi_phy_tim_shift_b2) |
-    (((uint32_t)t->tclkpre & (uint32_t)k_ra_mipi_phy_tim_byte_mask)
-     << (uint32_t)k_ra_mipi_phy_tim_shift_b1) |
-    (((uint32_t)t->tclkzero & (uint32_t)k_ra_mipi_phy_tim_byte_mask)
-     << (uint32_t)k_ra_mipi_phy_tim_shift_b0);
+    (((uint32_t)t->tclkpre & k_ra_mipi_phy_tim_byte_mask) << (uint32_t)k_ra_mipi_phy_tim_shift_b1) |
+    (((uint32_t)t->tclkzero & k_ra_mipi_phy_tim_byte_mask) << (uint32_t)k_ra_mipi_phy_tim_shift_b0);
 
   /* HUM Ch 64.2.12 "DPHYTIM5 : D-PHY Timing Control Register 5", p 3830 */
   *ra_mipi_phy_reg32(k_ra_mipi_phy_off_tim5) =
-    (((uint32_t)t->thsexit & (uint32_t)k_ra_mipi_phy_tim_byte_mask)
-     << (uint32_t)k_ra_mipi_phy_tim_shift_b2) |
-    (((uint32_t)t->thstrl & (uint32_t)k_ra_mipi_phy_tim_byte_mask)
-     << (uint32_t)k_ra_mipi_phy_tim_shift_b1) |
-    (((uint32_t)t->thszero & (uint32_t)k_ra_mipi_phy_tim_byte_mask)
-     << (uint32_t)k_ra_mipi_phy_tim_shift_b0);
+    (((uint32_t)t->thsexit & k_ra_mipi_phy_tim_byte_mask) << (uint32_t)k_ra_mipi_phy_tim_shift_b2) |
+    (((uint32_t)t->thstrl & k_ra_mipi_phy_tim_byte_mask) << (uint32_t)k_ra_mipi_phy_tim_shift_b1) |
+    (((uint32_t)t->thszero & k_ra_mipi_phy_tim_byte_mask) << (uint32_t)k_ra_mipi_phy_tim_shift_b0);
 
   /* HUM Ch 64.2.13 "DPHYTIM6 : D-PHY Timing Control Register 6", p 3830 */
-  *ra_mipi_phy_reg32(k_ra_mipi_phy_off_tim6) =
-    (uint32_t)t->tlpx & (uint32_t)k_ra_mipi_phy_tim6_tlpx_mask;
+  *ra_mipi_phy_reg32(k_ra_mipi_phy_off_tim6) = (uint32_t)t->tlpx & k_ra_mipi_phy_tim6_tlpx_mask;
 }
 
 /* =============================================================================
@@ -1179,12 +1167,12 @@ static ra_err_t internal_mipi_phy_init_power_up(const ra_mipi_phy_config_t* cfg)
 {
   internal_mipi_phy_mstp_unstop();
   *ra_mipi_phy_reg32(k_ra_mipi_phy_off_mdc) =
-    (cfg->mode == k_ra_mipi_phy_mode_dsi_master) ? (uint32_t)k_ra_mipi_phy_mdc_masteren : 0U;
+    (cfg->mode == k_ra_mipi_phy_mode_dsi_master) ? k_ra_mipi_phy_mdc_masteren : 0U;
   *ra_mipi_phy_reg32(k_ra_mipi_phy_off_refcr) =
-    (uint32_t)cfg->pclka_mhz & (uint32_t)k_ra_mipi_phy_refcr_rfreq_mask;
-  *ra_mipi_phy_reg32(k_ra_mipi_phy_off_pwrcr) = (uint32_t)k_ra_mipi_phy_pwrcr_pwrsen;
+    (uint32_t)cfg->pclka_mhz & k_ra_mipi_phy_refcr_rfreq_mask;
+  *ra_mipi_phy_reg32(k_ra_mipi_phy_off_pwrcr) = k_ra_mipi_phy_pwrcr_pwrsen;
   return internal_mipi_phy_wait_set(ra_mipi_phy_reg32(k_ra_mipi_phy_off_sfr),
-                                    (uint32_t)k_ra_mipi_phy_sfr_pwrsf);
+                                    k_ra_mipi_phy_sfr_pwrsf);
 }
 
 /**
@@ -1198,10 +1186,10 @@ static ra_err_t internal_mipi_phy_init_master(const ra_mipi_phy_config_t* cfg)
 {
   *ra_mipi_phy_reg32(k_ra_mipi_phy_off_plfcr) = internal_mipi_phy_pack_plfcr(&cfg->pll);
   *ra_mipi_phy_reg32(k_ra_mipi_phy_off_esccr) =
-    (uint32_t)cfg->escdiv & (uint32_t)k_ra_mipi_phy_esccr_escdiv_mask;
+    (uint32_t)cfg->escdiv & k_ra_mipi_phy_esccr_escdiv_mask;
   *ra_mipi_phy_reg32(k_ra_mipi_phy_off_plocr) = 0U;
   return internal_mipi_phy_wait_set(ra_mipi_phy_reg32(k_ra_mipi_phy_off_sfr),
-                                    (uint32_t)k_ra_mipi_phy_sfr_pllsf);
+                                    k_ra_mipi_phy_sfr_pllsf);
 }
 
 /**
@@ -1214,7 +1202,7 @@ static ra_err_t internal_mipi_phy_init_master(const ra_mipi_phy_config_t* cfg)
 static void internal_mipi_phy_cache_state(const ra_mipi_phy_config_t* cfg)
 {
   s_lane_count       = cfg->lane_count;
-  s_lane_enable_mask = (uint8_t)k_ra_mipi_phy_lane_mask_default;
+  s_lane_enable_mask = k_ra_mipi_phy_lane_mask_default;
   s_clk_mode         = cfg->clk_mode;
   s_eotp             = cfg->eotp;
   s_last_sfr         = *ra_mipi_phy_reg32(k_ra_mipi_phy_off_sfr);
@@ -1247,7 +1235,7 @@ ra_err_t ra_mipi_phy_init(const ra_mipi_phy_config_t* cfg)
   internal_mipi_phy_write_timing(cfg->p_timing);
 
   /* Step 11 -- HUM Ch 64.2.7 "DPHYOCR : D-PHY Operation Control Register", p 3827 */
-  *ra_mipi_phy_reg32(k_ra_mipi_phy_off_ocr) = (uint32_t)k_ra_mipi_phy_ocr_dphyen;
+  *ra_mipi_phy_reg32(k_ra_mipi_phy_off_ocr) = k_ra_mipi_phy_ocr_dphyen;
 
   internal_mipi_phy_cache_state(cfg);
 
@@ -1261,7 +1249,7 @@ ra_err_t ra_mipi_phy_deinit(void)
   *ra_mipi_phy_reg32(k_ra_mipi_phy_off_ocr) = 0U;
 
   /* Step 2 -- HUM Ch 64.2.3 "DPHYPLOCR : D-PHY PLL Operation Control Register", p 3824 */
-  *ra_mipi_phy_reg32(k_ra_mipi_phy_off_plocr) = (uint32_t)k_ra_mipi_phy_plocr_pllstp;
+  *ra_mipi_phy_reg32(k_ra_mipi_phy_off_plocr) = k_ra_mipi_phy_plocr_pllstp;
 
   /* Step 3 -- HUM Ch 64.2.5 "DPHYPWRCR : D-PHY Power Supplying Control Register", p 3826 */
   *ra_mipi_phy_reg32(k_ra_mipi_phy_off_pwrcr) = 0U;
@@ -1275,7 +1263,7 @@ ra_err_t ra_mipi_phy_reset(void)
   /* HUM Ch 64.2.7 "DPHYOCR : D-PHY Operation Control Register", p 3827 */
   *ra_mipi_phy_reg32(k_ra_mipi_phy_off_ocr) = 0U;
   /* HUM Ch 64.2.3 "DPHYPLOCR : D-PHY PLL Operation Control Register", p 3824 */
-  *ra_mipi_phy_reg32(k_ra_mipi_phy_off_plocr) = (uint32_t)k_ra_mipi_phy_plocr_pllstp;
+  *ra_mipi_phy_reg32(k_ra_mipi_phy_off_plocr) = k_ra_mipi_phy_plocr_pllstp;
   /* HUM Ch 64.2.5 "DPHYPWRCR : D-PHY Power Supplying Control Register", p 3826 */
   *ra_mipi_phy_reg32(k_ra_mipi_phy_off_pwrcr) = 0U;
   /* HUM Ch 64.2.2 "DPHYPLFCR : D-PHY PLL Frequency Control Register", p 3823 */
@@ -1329,20 +1317,20 @@ ra_err_t ra_mipi_phy_clear_status(uint32_t mask)
 bool ra_mipi_phy_is_ldo_stable(void)
 {
   /* HUM Ch 64.2.6 "DPHYSFR : D-PHY Status Flag Register", p 3826 */
-  return (*ra_mipi_phy_reg32(k_ra_mipi_phy_off_sfr) & (uint32_t)k_ra_mipi_phy_sfr_pwrsf) != 0U;
+  return (*ra_mipi_phy_reg32(k_ra_mipi_phy_off_sfr) & k_ra_mipi_phy_sfr_pwrsf) != 0U;
 }
 
 bool ra_mipi_phy_is_pll_locked(void)
 {
   /* HUM Ch 64.2.6 "DPHYSFR : D-PHY Status Flag Register", p 3826 */
-  return (*ra_mipi_phy_reg32(k_ra_mipi_phy_off_sfr) & (uint32_t)k_ra_mipi_phy_sfr_pllsf) != 0U;
+  return (*ra_mipi_phy_reg32(k_ra_mipi_phy_off_sfr) & k_ra_mipi_phy_sfr_pllsf) != 0U;
 }
 
 ra_err_t ra_mipi_phy_wait_ready(void)
 {
   /* HUM Ch 64.2.6 "DPHYSFR : D-PHY Status Flag Register", p 3826 */
   return internal_mipi_phy_wait_set(ra_mipi_phy_reg32(k_ra_mipi_phy_off_sfr),
-                                    (uint32_t)k_ra_mipi_phy_sfr_ready_mask);
+                                    k_ra_mipi_phy_sfr_ready_mask);
 }
 
 ra_err_t ra_mipi_phy_attach_handler(ra_mipi_phy_event_fn_t fn, void* ctx)
@@ -1365,10 +1353,10 @@ void ra_mipi_phy_dispatch(void)
     return;
   }
 
-  const uint32_t pwr_now  = sfr & (uint32_t)k_ra_mipi_phy_sfr_pwrsf;
-  const uint32_t pwr_prev = prev & (uint32_t)k_ra_mipi_phy_sfr_pwrsf;
-  const uint32_t pll_now  = sfr & (uint32_t)k_ra_mipi_phy_sfr_pllsf;
-  const uint32_t pll_prev = prev & (uint32_t)k_ra_mipi_phy_sfr_pllsf;
+  const uint32_t pwr_now  = sfr & k_ra_mipi_phy_sfr_pwrsf;
+  const uint32_t pwr_prev = prev & k_ra_mipi_phy_sfr_pwrsf;
+  const uint32_t pll_now  = sfr & k_ra_mipi_phy_sfr_pllsf;
+  const uint32_t pll_prev = prev & k_ra_mipi_phy_sfr_pllsf;
 
   /* Emit at most one event per dispatch -- power edges take priority
    * over PLL edges, with status_chg as the fallback when nothing
@@ -1402,10 +1390,10 @@ ra_err_t ra_mipi_phy_exit_stop(const ra_mipi_phy_config_t* cfg)
 ra_err_t ra_mipi_phy_ldo_enable(void)
 {
   /* HUM Ch 64.2.5 "DPHYPWRCR : D-PHY Power Supplying Control Register", p 3826 */
-  *ra_mipi_phy_reg32(k_ra_mipi_phy_off_pwrcr) = (uint32_t)k_ra_mipi_phy_pwrcr_pwrsen;
+  *ra_mipi_phy_reg32(k_ra_mipi_phy_off_pwrcr) = k_ra_mipi_phy_pwrcr_pwrsen;
   /* HUM Ch 64.2.6 "DPHYSFR : D-PHY Status Flag Register", p 3826 */
   return internal_mipi_phy_wait_set(ra_mipi_phy_reg32(k_ra_mipi_phy_off_sfr),
-                                    (uint32_t)k_ra_mipi_phy_sfr_pwrsf);
+                                    k_ra_mipi_phy_sfr_pwrsf);
 }
 
 ra_err_t ra_mipi_phy_ldo_disable(void)
@@ -1421,13 +1409,13 @@ ra_err_t ra_mipi_phy_pll_start(void)
   *ra_mipi_phy_reg32(k_ra_mipi_phy_off_plocr) = 0U;
   /* HUM Ch 64.2.6 "DPHYSFR : D-PHY Status Flag Register", p 3826 */
   return internal_mipi_phy_wait_set(ra_mipi_phy_reg32(k_ra_mipi_phy_off_sfr),
-                                    (uint32_t)k_ra_mipi_phy_sfr_pllsf);
+                                    k_ra_mipi_phy_sfr_pllsf);
 }
 
 ra_err_t ra_mipi_phy_pll_stop(void)
 {
   /* HUM Ch 64.2.3 "DPHYPLOCR : D-PHY PLL Operation Control Register", p 3824 */
-  *ra_mipi_phy_reg32(k_ra_mipi_phy_off_plocr) = (uint32_t)k_ra_mipi_phy_plocr_pllstp;
+  *ra_mipi_phy_reg32(k_ra_mipi_phy_off_plocr) = k_ra_mipi_phy_plocr_pllstp;
   return k_ra_ok;
 }
 
@@ -1439,7 +1427,7 @@ ra_err_t ra_mipi_phy_set_lane_speed(const ra_mipi_phy_pll_t* pll)
 
   /* HUM Ch 64.2.2 "DPHYPLFCR : D-PHY PLL Frequency Control Register", p 3824 */
   /* ("DPHYPLFCR must be set while D-PHY PLL operation is stopped".) */
-  *ra_mipi_phy_reg32(k_ra_mipi_phy_off_plocr) = (uint32_t)k_ra_mipi_phy_plocr_pllstp;
+  *ra_mipi_phy_reg32(k_ra_mipi_phy_off_plocr) = k_ra_mipi_phy_plocr_pllstp;
 
   /* HUM Ch 64.2.2 "DPHYPLFCR : D-PHY PLL Frequency Control Register", p 3823 */
   *ra_mipi_phy_reg32(k_ra_mipi_phy_off_plfcr) = internal_mipi_phy_pack_plfcr(pll);
@@ -1449,7 +1437,7 @@ ra_err_t ra_mipi_phy_set_lane_speed(const ra_mipi_phy_pll_t* pll)
 
   /* HUM Ch 64.2.6 "DPHYSFR : D-PHY Status Flag Register", p 3826 */
   return internal_mipi_phy_wait_set(ra_mipi_phy_reg32(k_ra_mipi_phy_off_sfr),
-                                    (uint32_t)k_ra_mipi_phy_sfr_pllsf);
+                                    k_ra_mipi_phy_sfr_pllsf);
 }
 
 ra_err_t ra_mipi_phy_switch_mode(ra_mipi_phy_mode_t mode)
@@ -1461,7 +1449,7 @@ ra_err_t ra_mipi_phy_switch_mode(ra_mipi_phy_mode_t mode)
   *ra_mipi_phy_reg32(k_ra_mipi_phy_off_ocr) = 0U;
   /* HUM Ch 64.2.14 "DPHYMDC : D-PHY Mode Control Register", p 3836 */
   *ra_mipi_phy_reg32(k_ra_mipi_phy_off_mdc) =
-    (mode == k_ra_mipi_phy_mode_dsi_master) ? (uint32_t)k_ra_mipi_phy_mdc_masteren : 0U;
+    (mode == k_ra_mipi_phy_mode_dsi_master) ? k_ra_mipi_phy_mdc_masteren : 0U;
   return k_ra_ok;
 }
 
@@ -1478,9 +1466,9 @@ ra_err_t ra_mipi_phy_set_lane_count(ra_mipi_phy_lane_count_t count)
   /* When the count drops to 1, force lane 1 off so callers don't see
    * a stale "enabled" answer for an inactive lane. */
   if (count == k_ra_mipi_phy_lane_count_1) {
-    s_lane_enable_mask &= (uint8_t)~((uint8_t)1U << (uint8_t)k_ra_mipi_phy_lane_bit_d1);
+    s_lane_enable_mask &= (uint8_t)~((uint8_t)1U << k_ra_mipi_phy_lane_bit_d1);
   } else {
-    s_lane_enable_mask |= (uint8_t)((uint8_t)1U << (uint8_t)k_ra_mipi_phy_lane_bit_d1);
+    s_lane_enable_mask |= (uint8_t)((uint8_t)1U << k_ra_mipi_phy_lane_bit_d1);
   }
   return k_ra_ok;
 }
@@ -1499,13 +1487,13 @@ ra_err_t ra_mipi_phy_set_lane_enable(ra_mipi_phy_lane_id_t lane, bool enable)
   uint8_t bit = 0U;
   switch (lane) {
     case k_ra_mipi_phy_lane_clk:
-      bit = (uint8_t)k_ra_mipi_phy_lane_bit_clk;
+      bit = k_ra_mipi_phy_lane_bit_clk;
       break;
     case k_ra_mipi_phy_lane_d0:
-      bit = (uint8_t)k_ra_mipi_phy_lane_bit_d0;
+      bit = k_ra_mipi_phy_lane_bit_d0;
       break;
     case k_ra_mipi_phy_lane_d1:
-      bit = (uint8_t)k_ra_mipi_phy_lane_bit_d1;
+      bit = k_ra_mipi_phy_lane_bit_d1;
       /* Cannot enable lane 1 when lane_count = 1. */
       if (enable && (s_lane_count == k_ra_mipi_phy_lane_count_1)) {
         return k_ra_err_invalid_arg;
@@ -1527,13 +1515,13 @@ bool ra_mipi_phy_is_lane_enabled(ra_mipi_phy_lane_id_t lane)
   uint8_t bit = 0U;
   switch (lane) {
     case k_ra_mipi_phy_lane_clk:
-      bit = (uint8_t)k_ra_mipi_phy_lane_bit_clk;
+      bit = k_ra_mipi_phy_lane_bit_clk;
       break;
     case k_ra_mipi_phy_lane_d0:
-      bit = (uint8_t)k_ra_mipi_phy_lane_bit_d0;
+      bit = k_ra_mipi_phy_lane_bit_d0;
       break;
     case k_ra_mipi_phy_lane_d1:
-      bit = (uint8_t)k_ra_mipi_phy_lane_bit_d1;
+      bit = k_ra_mipi_phy_lane_bit_d1;
       break;
     default:
       return false;
@@ -1576,8 +1564,7 @@ ra_err_t ra_mipi_phy_set_pclka_freq(uint8_t mhz)
       (mhz > (uint8_t)k_ra_mipi_phy_pclka_max_mhz)) {
     return k_ra_err_invalid_arg;
   }
-  *ra_mipi_phy_reg32(k_ra_mipi_phy_off_refcr) =
-    (uint32_t)mhz & (uint32_t)k_ra_mipi_phy_refcr_rfreq_mask;
+  *ra_mipi_phy_reg32(k_ra_mipi_phy_off_refcr) = (uint32_t)mhz & k_ra_mipi_phy_refcr_rfreq_mask;
   return k_ra_ok;
 }
 
@@ -1588,14 +1575,13 @@ ra_err_t ra_mipi_phy_set_escape_divisor(uint8_t escdiv)
     return k_ra_err_invalid_arg;
   }
   /* HUM Ch 64.2.4 "DPHYESCCR : D-PHY Escape Mode Clock Control Register" p 3825 */
-  *ra_mipi_phy_reg32(k_ra_mipi_phy_off_plocr) = (uint32_t)k_ra_mipi_phy_plocr_pllstp;
-  *ra_mipi_phy_reg32(k_ra_mipi_phy_off_esccr) =
-    (uint32_t)escdiv & (uint32_t)k_ra_mipi_phy_esccr_escdiv_mask;
+  *ra_mipi_phy_reg32(k_ra_mipi_phy_off_plocr) = k_ra_mipi_phy_plocr_pllstp;
+  *ra_mipi_phy_reg32(k_ra_mipi_phy_off_esccr) = (uint32_t)escdiv & k_ra_mipi_phy_esccr_escdiv_mask;
   /* HUM Ch 64.2.3 "DPHYPLOCR : D-PHY PLL Operation Control Register", p 3824 */
   *ra_mipi_phy_reg32(k_ra_mipi_phy_off_plocr) = 0U;
   /* HUM Ch 64.2.6 "DPHYSFR : D-PHY Status Flag Register", p 3826 */
   return internal_mipi_phy_wait_set(ra_mipi_phy_reg32(k_ra_mipi_phy_off_sfr),
-                                    (uint32_t)k_ra_mipi_phy_sfr_pllsf);
+                                    k_ra_mipi_phy_sfr_pllsf);
 }
 
 ra_err_t ra_mipi_phy_select_timing(ra_mipi_phy_mode_t          mode,
@@ -1607,8 +1593,8 @@ ra_err_t ra_mipi_phy_select_timing(ra_mipi_phy_mode_t          mode,
     return k_ra_err_invalid_arg;
   }
   /* HUM Ch 64.1 "Overview" p 3822 */
-  if ((rate_mbps < (uint16_t)k_ra_mipi_phy_line_rate_min_mbps) ||
-      (rate_mbps > (uint16_t)k_ra_mipi_phy_line_rate_max_mbps)) {
+  if ((rate_mbps < k_ra_mipi_phy_line_rate_min_mbps) ||
+      (rate_mbps > k_ra_mipi_phy_line_rate_max_mbps)) {
     return k_ra_err_invalid_arg;
   }
 
@@ -1641,8 +1627,7 @@ ra_err_t ra_mipi_phy_select_timing(ra_mipi_phy_mode_t          mode,
 ra_err_t ra_mipi_phy_validate_pll_band(const ra_mipi_phy_pll_t* pll, uint8_t mosc_mhz)
 {
   RA_CHECK_NULL_PTR((const void*)pll, s_tag, "validate_pll_band: pll must not be nullptr");
-  if ((mosc_mhz < (uint8_t)k_ra_mipi_phy_mosc_min_mhz) ||
-      (mosc_mhz > (uint8_t)k_ra_mipi_phy_mosc_max_mhz)) {
+  if ((mosc_mhz < k_ra_mipi_phy_mosc_min_mhz) || (mosc_mhz > k_ra_mipi_phy_mosc_max_mhz)) {
     /* HUM Ch 64.1 "Overview" p 3822 */
     return k_ra_err_invalid_arg;
   }
@@ -1655,20 +1640,20 @@ ra_err_t ra_mipi_phy_validate_pll_band(const ra_mipi_phy_pll_t* pll, uint8_t mos
   uint16_t       hi    = 0U;
   switch (pll->pmul) {
     case k_ra_mipi_phy_pmul_1:
-      lo = (uint16_t)k_ra_mipi_phy_pll_p1_min;
-      hi = (uint16_t)k_ra_mipi_phy_pll_p1_max;
+      lo = k_ra_mipi_phy_pll_p1_min;
+      hi = k_ra_mipi_phy_pll_p1_max;
       break;
     case k_ra_mipi_phy_pmul_2:
-      lo = (uint16_t)k_ra_mipi_phy_pll_p2_min;
-      hi = (uint16_t)k_ra_mipi_phy_pll_p2_max;
+      lo = k_ra_mipi_phy_pll_p2_min;
+      hi = k_ra_mipi_phy_pll_p2_max;
       break;
     case k_ra_mipi_phy_pmul_4:
-      lo = (uint16_t)k_ra_mipi_phy_pll_p4_min;
-      hi = (uint16_t)k_ra_mipi_phy_pll_p4_max;
+      lo = k_ra_mipi_phy_pll_p4_min;
+      hi = k_ra_mipi_phy_pll_p4_max;
       break;
     case k_ra_mipi_phy_pmul_8:
-      lo = (uint16_t)k_ra_mipi_phy_pll_p8_min;
-      hi = (uint16_t)k_ra_mipi_phy_pll_p8_max;
+      lo = k_ra_mipi_phy_pll_p8_min;
+      hi = k_ra_mipi_phy_pll_p8_max;
       break;
     default:
       return k_ra_err_invalid_arg;

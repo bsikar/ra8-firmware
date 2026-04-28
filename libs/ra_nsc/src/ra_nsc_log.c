@@ -61,8 +61,8 @@ RA_NSC_VENEER ra_err_t ra_nsc_log_emit(const char* tag, const char* message)
    * the prefix we are about to copy. */
   RA_NSC_CHECK_NS_RANGE_R(tag, (uint32_t)k_ra_nsc_log_msg_max_len);
   RA_NSC_CHECK_NS_RANGE_R(message, (uint32_t)k_ra_nsc_log_msg_max_len);
-  internal_safe_strcpy(s_tag_scratch, tag, (uint32_t)k_ra_nsc_log_msg_max_len);
-  internal_safe_strcpy(s_msg_scratch, message, (uint32_t)k_ra_nsc_log_msg_max_len);
+  internal_safe_strcpy(s_tag_scratch, tag, k_ra_nsc_log_msg_max_len);
+  internal_safe_strcpy(s_msg_scratch, message, k_ra_nsc_log_msg_max_len);
   ra_log_info(s_tag_scratch, s_msg_scratch);
   return k_ra_ok;
 }

@@ -99,16 +99,16 @@ static void* s_vreg_ctx;
  */
 static ra_err_t internal_validate_cfg(const ra_vreg_cfg_t* cfg)
 {
-  if ((uint8_t)cfg->mode > (uint8_t)k_ra_vreg_mode_dcdc) {
+  if ((uint8_t)cfg->mode > k_ra_vreg_mode_dcdc) {
     return k_ra_err_invalid_arg;
   }
-  if ((uint8_t)cfg->vccsel > (uint8_t)k_ra_vreg_vccsel_3v0_to_3v6) {
+  if ((uint8_t)cfg->vccsel > k_ra_vreg_vccsel_3v0_to_3v6) {
     return k_ra_err_invalid_arg;
   }
-  if ((uint8_t)cfg->ocp > (uint8_t)k_ra_vreg_ocp_high) {
+  if ((uint8_t)cfg->ocp > k_ra_vreg_ocp_high) {
     return k_ra_err_invalid_arg;
   }
-  if ((uint8_t)cfg->lv_profile > (uint8_t)k_ra_vreg_lv_p1) {
+  if ((uint8_t)cfg->lv_profile > k_ra_vreg_lv_p1) {
     return k_ra_err_invalid_arg;
   }
   return k_ra_ok;
@@ -123,10 +123,10 @@ static ra_err_t internal_validate_cfg(const ra_vreg_cfg_t* cfg)
 static uint8_t internal_lvocr_from_profile(ra_vreg_lv_profile_t profile)
 {
   if (profile == k_ra_vreg_lv_p0) {
-    return (uint8_t)k_ra_vreg_mask_lvo0e;
+    return k_ra_vreg_mask_lvo0e;
   }
   if (profile == k_ra_vreg_lv_p1) {
-    return (uint8_t)k_ra_vreg_mask_lvo1e;
+    return k_ra_vreg_mask_lvo1e;
   }
   return 0U;
 }
@@ -139,11 +139,11 @@ static uint8_t internal_lvocr_from_profile(ra_vreg_lv_profile_t profile)
  */
 static ra_vreg_lv_profile_t internal_profile_from_lvocr(uint8_t lvocr)
 {
-  const uint8_t bits = (uint8_t)(lvocr & (uint8_t)k_ra_vreg_mask_lvo_all);
-  if (bits == (uint8_t)k_ra_vreg_mask_lvo0e) {
+  const uint8_t bits = (uint8_t)(lvocr & k_ra_vreg_mask_lvo_all);
+  if (bits == k_ra_vreg_mask_lvo0e) {
     return k_ra_vreg_lv_p0;
   }
-  if (bits == (uint8_t)k_ra_vreg_mask_lvo1e) {
+  if (bits == k_ra_vreg_mask_lvo1e) {
     return k_ra_vreg_lv_p1;
   }
   return k_ra_vreg_lv_off;
@@ -157,7 +157,7 @@ static ra_vreg_lv_profile_t internal_profile_from_lvocr(uint8_t lvocr)
  */
 static ra_vreg_ocp_t internal_ocp_from_dcdcctl(uint8_t dcdcctl)
 {
-  if ((dcdcctl & (uint8_t)k_ra_vreg_mask_ocpen) == 0U) {
+  if ((dcdcctl & k_ra_vreg_mask_ocpen) == 0U) {
     return k_ra_vreg_ocp_off;
   }
   /* Hardware can only report "OCP enabled"; fall back to the cached
@@ -180,13 +180,13 @@ static uint8_t internal_pack_ldo_dcdcctl(const ra_vreg_cfg_t* cfg)
 {
   uint8_t v = 0U;
   if (cfg->ocp != k_ra_vreg_ocp_off) {
-    v |= (uint8_t)k_ra_vreg_mask_ocpen;
+    v |= k_ra_vreg_mask_ocpen;
   }
   if (cfg->fast_startup) {
-    v |= (uint8_t)k_ra_vreg_mask_fst;
+    v |= k_ra_vreg_mask_fst;
   }
   if (cfg->ldo_boost) {
-    v |= (uint8_t)k_ra_vreg_mask_lcboost;
+    v |= k_ra_vreg_mask_lcboost;
   }
   return v;
 }
@@ -216,34 +216,34 @@ static void internal_dcdc_enable_sequence(bool fast)
 
   /* Step 1: enable IO buffer (STOPZA = 1).
    * HUM Ch 68.2.1 "DCDC Mode" p 4032 */
-  cur |= (uint8_t)k_ra_vreg_mask_stopza;
+  cur |= k_ra_vreg_mask_stopza;
   *ra_vreg_dcdcctl() = cur;
 
   /* Step 2: turn on DCDC Vref (PD = 0).
    * HUM Ch 68.2.1 "DCDC Mode" p 4032 */
-  cur &= (uint8_t)~(uint8_t)k_ra_vreg_mask_pd;
+  cur &= (uint8_t)~k_ra_vreg_mask_pd;
   *ra_vreg_dcdcctl() = cur;
 
   if (fast) {
     /* Fast path: jump straight to the final value with FST asserted.
      * HUM Ch 68.2.1 "DCDC Mode" p 4032 */
-    *ra_vreg_dcdcctl() = (uint8_t)k_ra_vreg_dcdc_step_fast_on;
+    *ra_vreg_dcdcctl() = k_ra_vreg_dcdc_step_fast_on;
   } else {
     /* Step 3: switch Vref to low-power.
      * HUM Ch 68.2.1 "DCDC Mode" p 4032 */
-    *ra_vreg_dcdcctl() = (uint8_t)k_ra_vreg_dcdc_step_lp_vref;
+    *ra_vreg_dcdcctl() = k_ra_vreg_dcdc_step_lp_vref;
     /* Step 4: turn off LDO and turn on DCDC.
      * HUM Ch 68.2.1 "DCDC Mode" p 4032 */
-    *ra_vreg_dcdcctl() = (uint8_t)k_ra_vreg_dcdc_step_dcdc_on;
+    *ra_vreg_dcdcctl() = k_ra_vreg_dcdc_step_dcdc_on;
     /* Step 5: enable DCDC over-current protection.
      * HUM Ch 68.2.1 "DCDC Mode" p 4032 */
-    *ra_vreg_dcdcctl() = (uint8_t)k_ra_vreg_dcdc_step_with_ocp;
+    *ra_vreg_dcdcctl() = k_ra_vreg_dcdc_step_with_ocp;
   }
 
   if (fast) {
-    s_state.dcdcctl = (uint8_t)k_ra_vreg_dcdc_step_fast_on;
+    s_state.dcdcctl = k_ra_vreg_dcdc_step_fast_on;
   } else {
-    s_state.dcdcctl = (uint8_t)k_ra_vreg_dcdc_step_with_ocp;
+    s_state.dcdcctl = k_ra_vreg_dcdc_step_with_ocp;
   }
 }
 
@@ -265,7 +265,7 @@ static void internal_dcdc_disable_sequence(bool keep_lcboost)
    * mode-switch path. */
   uint8_t v = 0U;
   if (keep_lcboost) {
-    v = (uint8_t)k_ra_vreg_mask_lcboost;
+    v = k_ra_vreg_mask_lcboost;
   }
   *ra_vreg_dcdcctl() = v;
 }
@@ -291,7 +291,7 @@ static void internal_dcdc_disable_sequence(bool keep_lcboost)
   /* VCCSEL biases the DCDC for the actual VCC range; program before
    * turning DCDC on.
    * HUM Ch 68.2.1 "DCDC Mode" p 4032 */
-  *ra_vreg_vccsel() = (uint8_t)((uint8_t)cfg->vccsel & (uint8_t)k_ra_vreg_vccsel_mask);
+  *ra_vreg_vccsel() = (uint8_t)((uint8_t)cfg->vccsel & k_ra_vreg_vccsel_mask);
 
   if (cfg->mode == k_ra_vreg_mode_dcdc) {
     /* Use the staged handshake so the chip ends in the documented
@@ -374,7 +374,7 @@ static void internal_dcdc_disable_sequence(bool keep_lcboost)
      * standby/restore cycle keeps the regulator in LDO. */
     uint8_t cached = 0U;
     if (s_state.ldo_boost) {
-      cached = (uint8_t)k_ra_vreg_mask_lcboost;
+      cached = k_ra_vreg_mask_lcboost;
     }
     s_state.dcdcctl = cached;
   }
@@ -383,28 +383,28 @@ static void internal_dcdc_disable_sequence(bool keep_lcboost)
 
 [[nodiscard]] ra_err_t ra_vreg_set_vccsel(ra_vreg_vccsel_t sel)
 {
-  if ((uint8_t)sel > (uint8_t)k_ra_vreg_vccsel_3v0_to_3v6) {
+  if ((uint8_t)sel > k_ra_vreg_vccsel_3v0_to_3v6) {
     return k_ra_err_invalid_arg;
   }
   /* VCCSEL[1:0] biases the DCDC for the supply-voltage window.
    * HUM Ch 68.2.1 "DCDC Mode" p 4032 */
-  *ra_vreg_vccsel() = (uint8_t)((uint8_t)sel & (uint8_t)k_ra_vreg_vccsel_mask);
+  *ra_vreg_vccsel() = (uint8_t)((uint8_t)sel & k_ra_vreg_vccsel_mask);
   s_state.vccsel    = sel;
   return k_ra_ok;
 }
 
 [[nodiscard]] ra_err_t ra_vreg_set_ocp(ra_vreg_ocp_t level)
 {
-  if ((uint8_t)level > (uint8_t)k_ra_vreg_ocp_high) {
+  if ((uint8_t)level > k_ra_vreg_ocp_high) {
     return k_ra_err_invalid_arg;
   }
   /* Read-modify-write DCDCCTL.OCPEN.
    * HUM Ch 68.2.1 "DCDC Mode" p 4032 */
   uint8_t cur = *ra_vreg_dcdcctl();
   if (level == k_ra_vreg_ocp_off) {
-    cur &= (uint8_t)~(uint8_t)k_ra_vreg_mask_ocpen;
+    cur &= (uint8_t)~k_ra_vreg_mask_ocpen;
   } else {
-    cur |= (uint8_t)k_ra_vreg_mask_ocpen;
+    cur |= k_ra_vreg_mask_ocpen;
   }
   *ra_vreg_dcdcctl() = cur;
   s_state.dcdcctl    = cur;
@@ -419,9 +419,9 @@ static void internal_dcdc_disable_sequence(bool keep_lcboost)
    * HUM Ch 68.2.1 "DCDC Mode" p 4032 */
   uint8_t cur = *ra_vreg_dcdcctl();
   if (enable) {
-    cur |= (uint8_t)k_ra_vreg_mask_fst;
+    cur |= k_ra_vreg_mask_fst;
   } else {
-    cur &= (uint8_t)~(uint8_t)k_ra_vreg_mask_fst;
+    cur &= (uint8_t)~k_ra_vreg_mask_fst;
   }
   *ra_vreg_dcdcctl()   = cur;
   s_state.dcdcctl      = cur;
@@ -435,9 +435,9 @@ static void internal_dcdc_disable_sequence(bool keep_lcboost)
    * HUM Ch 68.2.2 "External VDD Mode" p 4033 */
   uint8_t cur = *ra_vreg_dcdcctl();
   if (enable) {
-    cur |= (uint8_t)k_ra_vreg_mask_lcboost;
+    cur |= k_ra_vreg_mask_lcboost;
   } else {
-    cur &= (uint8_t)~(uint8_t)k_ra_vreg_mask_lcboost;
+    cur &= (uint8_t)~k_ra_vreg_mask_lcboost;
   }
   *ra_vreg_dcdcctl() = cur;
   s_state.dcdcctl    = cur;
@@ -447,7 +447,7 @@ static void internal_dcdc_disable_sequence(bool keep_lcboost)
 
 [[nodiscard]] ra_err_t ra_vreg_set_lv_profile(ra_vreg_lv_profile_t profile)
 {
-  if ((uint8_t)profile > (uint8_t)k_ra_vreg_lv_p1) {
+  if ((uint8_t)profile > k_ra_vreg_lv_p1) {
     return k_ra_err_invalid_arg;
   }
   /* LVOCR enforces mutual exclusion of LVO0E / LVO1E in software --
@@ -482,20 +482,19 @@ static void internal_dcdc_disable_sequence(bool keep_lcboost)
   out->dcdcctl = dcdcctl;
   out->vccsel  = vccsel;
   out->lvocr   = lvocr;
-  out->mode =
-    ((dcdcctl & (uint8_t)k_ra_vreg_mask_dcdcon) != 0U) ? k_ra_vreg_mode_dcdc : k_ra_vreg_mode_ldo;
-  out->vccsel_dec       = (ra_vreg_vccsel_t)(vccsel & (uint8_t)k_ra_vreg_vccsel_mask);
+  out->mode = ((dcdcctl & k_ra_vreg_mask_dcdcon) != 0U) ? k_ra_vreg_mode_dcdc : k_ra_vreg_mode_ldo;
+  out->vccsel_dec       = (ra_vreg_vccsel_t)(vccsel & k_ra_vreg_vccsel_mask);
   out->lv_profile       = internal_profile_from_lvocr(lvocr);
   out->ocp              = internal_ocp_from_dcdcctl(dcdcctl);
-  const bool dcdcon_set = ((dcdcctl & (uint8_t)k_ra_vreg_mask_dcdcon) != 0U);
-  const bool pd_clear   = ((dcdcctl & (uint8_t)k_ra_vreg_mask_pd) == 0U);
+  const bool dcdcon_set = (dcdcctl & k_ra_vreg_mask_dcdcon) != 0U;
+  const bool pd_clear   = (dcdcctl & k_ra_vreg_mask_pd) == 0U;
   out->dcdc_ready       = false;
   if (dcdcon_set && pd_clear) {
     out->dcdc_ready = true;
   }
-  out->fast_startup = ((dcdcctl & (uint8_t)k_ra_vreg_mask_fst) != 0U);
-  out->ldo_boost    = ((dcdcctl & (uint8_t)k_ra_vreg_mask_lcboost) != 0U);
-  out->io_buf_on    = ((dcdcctl & (uint8_t)k_ra_vreg_mask_stopza) != 0U);
+  out->fast_startup = ((dcdcctl & k_ra_vreg_mask_fst) != 0U);
+  out->ldo_boost    = ((dcdcctl & k_ra_vreg_mask_lcboost) != 0U);
+  out->io_buf_on    = ((dcdcctl & k_ra_vreg_mask_stopza) != 0U);
   return k_ra_ok;
 }
 
@@ -504,7 +503,7 @@ static void internal_dcdc_disable_sequence(bool keep_lcboost)
   /* Reject any bit outside the documented writable mask -- writing a
    * reserved bit is a programmer error.
    * HUM Ch 68.2.1 "DCDC Mode" p 4032 */
-  if ((mask & (uint8_t)~(uint8_t)k_ra_vreg_mask_dcdcctl_all) != 0U) {
+  if ((mask & (uint8_t)~k_ra_vreg_mask_dcdcctl_all) != 0U) {
     return k_ra_err_invalid_arg;
   }
 
@@ -534,7 +533,7 @@ static void internal_dcdc_disable_sequence(bool keep_lcboost)
 
 [[nodiscard]] ra_err_t ra_vreg_enter_standby(ra_vreg_standby_t variant)
 {
-  if ((uint8_t)variant > (uint8_t)k_ra_vreg_standby_battery_backup) {
+  if ((uint8_t)variant > k_ra_vreg_standby_battery_backup) {
     return k_ra_err_invalid_arg;
   }
   s_state.last_standby = variant;
@@ -559,7 +558,7 @@ static void internal_dcdc_disable_sequence(bool keep_lcboost)
   }
   /* Restore VCCSEL before re-enabling DCDC.
    * HUM Ch 68.2.1 "DCDC Mode" p 4032 */
-  *ra_vreg_vccsel() = (uint8_t)((uint8_t)s_state.vccsel & (uint8_t)k_ra_vreg_vccsel_mask);
+  *ra_vreg_vccsel() = (uint8_t)((uint8_t)s_state.vccsel & k_ra_vreg_vccsel_mask);
   /* Restore the cached DCDCCTL value.
    * HUM Ch 68.2.1 "DCDC Mode" p 4032 */
   *ra_vreg_dcdcctl() = s_state.dcdcctl;

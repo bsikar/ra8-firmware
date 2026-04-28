@@ -489,22 +489,22 @@ __attribute__((naked, noreturn)) void UsageFault_Handler(void)
  * each call to keep the `noreturn` attribute on the handler valid. */
 __attribute__((noreturn)) void HardFault_Handler(void)
 {
-  ra_exception_report(nullptr, (uint32_t)k_ra_vector_hardfault);
+  ra_exception_report(nullptr, k_ra_vector_hardfault);
   __builtin_unreachable();
 }
 __attribute__((noreturn)) void MemManage_Handler(void)
 {
-  ra_exception_report(nullptr, (uint32_t)k_ra_vector_memmanage);
+  ra_exception_report(nullptr, k_ra_vector_memmanage);
   __builtin_unreachable();
 }
 __attribute__((noreturn)) void BusFault_Handler(void)
 {
-  ra_exception_report(nullptr, (uint32_t)k_ra_vector_busfault);
+  ra_exception_report(nullptr, k_ra_vector_busfault);
   __builtin_unreachable();
 }
 __attribute__((noreturn)) void UsageFault_Handler(void)
 {
-  ra_exception_report(nullptr, (uint32_t)k_ra_vector_usagefault);
+  ra_exception_report(nullptr, k_ra_vector_usagefault);
   __builtin_unreachable();
 }
 #endif

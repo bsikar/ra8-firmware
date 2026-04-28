@@ -33,10 +33,10 @@ static const char* s_tag = "MPC";
  */
 static ra_err_t internal_check(ra_port_t port, ra_pin_t pin)
 {
-  if ((uint8_t)port > (uint8_t)k_ra_port_max) {
+  if ((uint8_t)port > k_ra_port_max) {
     return k_ra_err_gpio_invalid_port;
   }
-  if ((uint8_t)pin > (uint8_t)k_ra_pin_max) {
+  if ((uint8_t)pin > k_ra_pin_max) {
     return k_ra_err_gpio_invalid_pin;
   }
   return k_ra_ok;
@@ -92,9 +92,8 @@ ra_err_t ra_mpc_route_peripheral(ra_port_t port, ra_pin_t pin, ra_mpc_psel_t pse
   if (err != k_ra_ok) {
     return err;
   }
-  const uint32_t psel_bits =
-    ((uint32_t)psel << (uint8_t)k_ra_pfs_bit_psel0) & (uint32_t)k_ra_pfs_mask_psel;
-  const uint32_t pmr = (uint32_t)k_ra_pfs_mask_pmr;
+  const uint32_t psel_bits = ((uint32_t)psel << k_ra_pfs_bit_psel0) & k_ra_pfs_mask_psel;
+  const uint32_t pmr       = k_ra_pfs_mask_pmr;
   internal_reset_pfs(port, pin, psel_bits | pmr);
   ra_log_info_val(s_tag, "route", (uint32_t)psel);
   return k_ra_ok;
@@ -106,7 +105,7 @@ ra_err_t ra_mpc_set_gpio(ra_port_t port, ra_pin_t pin, ra_mpc_dir_t dir)
   if (err != k_ra_ok) {
     return err;
   }
-  const uint32_t pdr = (dir == k_ra_mpc_dir_output) ? (uint32_t)k_ra_pfs_mask_pdr : 0U;
+  const uint32_t pdr = (dir == k_ra_mpc_dir_output) ? k_ra_pfs_mask_pdr : 0U;
   internal_reset_pfs(port, pin, pdr);
   return k_ra_ok;
 }
@@ -117,7 +116,7 @@ ra_err_t ra_mpc_set_analog(ra_port_t port, ra_pin_t pin)
   if (err != k_ra_ok) {
     return err;
   }
-  internal_reset_pfs(port, pin, (uint32_t)k_ra_pfs_mask_asel);
+  internal_reset_pfs(port, pin, k_ra_pfs_mask_asel);
   return k_ra_ok;
 }
 
@@ -127,7 +126,7 @@ ra_err_t ra_mpc_set_irq(ra_port_t port, ra_pin_t pin)
   if (err != k_ra_ok) {
     return err;
   }
-  internal_reset_pfs(port, pin, (uint32_t)k_ra_pfs_mask_isel);
+  internal_reset_pfs(port, pin, k_ra_pfs_mask_isel);
   return k_ra_ok;
 }
 
@@ -137,8 +136,8 @@ ra_err_t ra_mpc_set_pull(ra_port_t port, ra_pin_t pin, ra_mpc_pull_t pull)
   if (err != k_ra_ok) {
     return err;
   }
-  const uint32_t set = (pull == k_ra_mpc_pull_up) ? (uint32_t)k_ra_pfs_mask_pcr : 0U;
-  internal_update_pfs(port, pin, (uint32_t)k_ra_pfs_mask_pcr, set);
+  const uint32_t set = (pull == k_ra_mpc_pull_up) ? k_ra_pfs_mask_pcr : 0U;
+  internal_update_pfs(port, pin, k_ra_pfs_mask_pcr, set);
   return k_ra_ok;
 }
 
@@ -150,9 +149,9 @@ ra_err_t ra_mpc_set_open_drain(ra_port_t port, ra_pin_t pin, bool enable)
   }
   uint32_t set = 0U;
   if (enable) {
-    set = (uint32_t)k_ra_pfs_mask_ncodr;
+    set = k_ra_pfs_mask_ncodr;
   }
-  internal_update_pfs(port, pin, (uint32_t)k_ra_pfs_mask_ncodr, set);
+  internal_update_pfs(port, pin, k_ra_pfs_mask_ncodr, set);
   return k_ra_ok;
 }
 

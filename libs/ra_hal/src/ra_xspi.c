@@ -162,10 +162,10 @@ static void internal_fake_flash_copy(uint8_t* dst, const uint8_t* src, uint32_t 
 
 __attribute__((constructor)) static void internal_xspi_sim_init(void)
 {
-  for (uint8_t i = 0U; i < (uint8_t)k_ra_xspi_instance_count; i++) {
+  for (uint8_t i = 0U; i < k_ra_xspi_instance_count; i++) {
     internal_fake_flash_fill(s_fake_flash[i],
                              (uint8_t)k_ra_xspi_fake_flash_erased,
-                             (uint32_t)k_ra_xspi_fake_flash_size);
+                             k_ra_xspi_fake_flash_size);
   }
 }
 #endif /* RA_SIMULATOR_MODE */
@@ -199,7 +199,7 @@ ra_err_t ra_xspi_init(uint8_t instance, ra_xspi_lio_mode_t mode)
   reg->WRAPCFG     = 0U;
   reg->COMCFG      = 0U;
   reg->LIOCFGCS[0] = (uint32_t)mode;
-  reg->INTC        = (uint32_t)k_ra_xspi_ints_mask_all;
+  reg->INTC        = k_ra_xspi_ints_mask_all;
 
   ra_log_info_val(s_tag, "xspi_init inst", (uint32_t)instance);
   return k_ra_ok;
@@ -208,7 +208,7 @@ ra_err_t ra_xspi_init(uint8_t instance, ra_xspi_lio_mode_t mode)
 ra_err_t ra_xspi_direct_command(uint8_t instance, const uint8_t* cmd_buf, uint8_t len)
 {
   RA_CHECK_NULL_PTR(cmd_buf, s_tag, "cmd_buf must not be nullptr");
-  if (len > (uint8_t)k_ra_xspi_cmd_max_bytes) {
+  if (len > k_ra_xspi_cmd_max_bytes) {
     return k_ra_err_invalid_size;
   }
   volatile r_xspi_regs_t* reg = ra_xspi(instance);
@@ -245,8 +245,8 @@ static ra_err_t internal_wait_command_done(volatile r_xspi_regs_t* reg)
   /* On the host there is no hardware -- pretend the command
    * finished: set CMDCMP in INTS and then clear it via INTC to
    * mirror the target flow exactly. */
-  reg->INTS = (uint32_t)k_ra_xspi_ints_mask_cmdcmp;
-  reg->INTC = (uint32_t)k_ra_xspi_ints_mask_cmdcmp;
+  reg->INTS = k_ra_xspi_ints_mask_cmdcmp;
+  reg->INTC = k_ra_xspi_ints_mask_cmdcmp;
   return k_ra_ok;
 #else
   for (uint32_t i = 0U; i < (uint32_t)k_ra_xspi_cmd_spin; i++) {
@@ -267,7 +267,7 @@ static ra_err_t internal_wait_command_done(volatile r_xspi_regs_t* reg)
 static ra_err_t internal_kick_command(volatile r_xspi_regs_t* reg)
 {
   /* HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986 */
-  reg->CDCTL0 = (uint32_t)k_ra_xspi_cdctl0_mask_trreq;
+  reg->CDCTL0 = k_ra_xspi_cdctl0_mask_trreq;
   return internal_wait_command_done(reg);
 }
 
@@ -280,12 +280,12 @@ static ra_err_t internal_issue_simple_opcode(volatile r_xspi_regs_t* reg, uint8_
   /* Populate CDBUF slot 0 with just the opcode, no address and no
    * data length. The manual-command engine knows how many bytes to
    * ship from the CDT sub-field encoding we mirror into CDBUF[0]. */
-  reg->CDBUF[(uint8_t)k_ra_xspi_cdbuf_idx_opcode] = (uint32_t)opcode;
-  reg->CDBUF[(uint8_t)k_ra_xspi_cdbuf_idx_addr]   = 0U;
-  reg->CDBUF[(uint8_t)k_ra_xspi_cdbuf_idx_data0]  = 0U;
-  reg->CDBUF[(uint8_t)k_ra_xspi_cdbuf_idx_data1]  = 0U;
-  reg->CDCTL1                                     = 0U;
-  reg->CDCTL2                                     = 0U;
+  reg->CDBUF[k_ra_xspi_cdbuf_idx_opcode] = (uint32_t)opcode;
+  reg->CDBUF[k_ra_xspi_cdbuf_idx_addr]   = 0U;
+  reg->CDBUF[k_ra_xspi_cdbuf_idx_data0]  = 0U;
+  reg->CDBUF[k_ra_xspi_cdbuf_idx_data1]  = 0U;
+  reg->CDCTL1                            = 0U;
+  reg->CDCTL2                            = 0U;
   return internal_kick_command(reg);
 }
 
@@ -295,10 +295,10 @@ static ra_err_t internal_issue_simple_opcode(volatile r_xspi_regs_t* reg, uint8_
 #ifdef RA_SIMULATOR_MODE
 static ra_err_t internal_sim_range_check(uint32_t flash_addr, uint32_t len)
 {
-  if (flash_addr >= (uint32_t)k_ra_xspi_fake_flash_size) {
+  if (flash_addr >= k_ra_xspi_fake_flash_size) {
     return k_ra_err_invalid_arg;
   }
-  if ((flash_addr + len) > (uint32_t)k_ra_xspi_fake_flash_size) {
+  if ((flash_addr + len) > k_ra_xspi_fake_flash_size) {
     return k_ra_err_invalid_arg;
   }
   return k_ra_ok;
@@ -308,7 +308,7 @@ static ra_err_t internal_sim_range_check(uint32_t flash_addr, uint32_t len)
 ra_err_t ra_xspi_flash_read(uint8_t instance, uint32_t flash_addr, uint8_t* buf, uint32_t len)
 {
   RA_CHECK_NULL_PTR(buf, s_tag, "buf must not be nullptr");
-  if ((len == 0U) || (len > (uint32_t)k_ra_xspi_max_xfer)) {
+  if ((len == 0U) || (len > k_ra_xspi_max_xfer)) {
     return k_ra_err_invalid_arg;
   }
   volatile r_xspi_regs_t* reg = ra_xspi(instance);
@@ -319,9 +319,9 @@ ra_err_t ra_xspi_flash_read(uint8_t instance, uint32_t flash_addr, uint8_t* buf,
    * carries the opcode, CDBUF[1] carries the address, CDCTL1
    * carries the data-length count, and CDCTL0.TRREQ kicks the
    * controller. Read data lands in CDBUF[2..3] when CMDCMP fires. */
-  reg->CDBUF[(uint8_t)k_ra_xspi_cdbuf_idx_opcode] = (uint32_t)k_ra_spi_flash_op_read;
-  reg->CDBUF[(uint8_t)k_ra_xspi_cdbuf_idx_addr]   = flash_addr;
-  reg->CDCTL1                                     = len;
+  reg->CDBUF[k_ra_xspi_cdbuf_idx_opcode] = (uint32_t)k_ra_spi_flash_op_read;
+  reg->CDBUF[k_ra_xspi_cdbuf_idx_addr]   = flash_addr;
+  reg->CDCTL1                            = len;
 
   const ra_err_t wait = internal_kick_command(reg);
   if (wait != k_ra_ok) {
@@ -354,15 +354,15 @@ ra_err_t ra_xspi_flash_read(uint8_t instance, uint32_t flash_addr, uint8_t* buf,
 static ra_err_t
 internal_flash_start_program(volatile r_xspi_regs_t* reg, uint32_t flash_addr, uint32_t len)
 {
-  const ra_err_t wren = internal_issue_simple_opcode(reg, (uint8_t)k_ra_spi_flash_op_write_enable);
+  const ra_err_t wren = internal_issue_simple_opcode(reg, k_ra_spi_flash_op_write_enable);
   if (wren != k_ra_ok) {
     return wren;
   }
   /* HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986 */
   /* Programme a JEDEC 0x02 page-program with 3-byte address. */
-  reg->CDBUF[(uint8_t)k_ra_xspi_cdbuf_idx_opcode] = (uint32_t)k_ra_spi_flash_op_page_program;
-  reg->CDBUF[(uint8_t)k_ra_xspi_cdbuf_idx_addr]   = flash_addr;
-  reg->CDCTL1                                     = len;
+  reg->CDBUF[k_ra_xspi_cdbuf_idx_opcode] = (uint32_t)k_ra_spi_flash_op_page_program;
+  reg->CDBUF[k_ra_xspi_cdbuf_idx_addr]   = flash_addr;
+  reg->CDCTL1                            = len;
   return internal_kick_command(reg);
 }
 
@@ -394,7 +394,7 @@ ra_err_t
 ra_xspi_flash_program(uint8_t instance, uint32_t flash_addr, const uint8_t* data, uint32_t len)
 {
   RA_CHECK_NULL_PTR(data, s_tag, "data must not be nullptr");
-  if ((len == 0U) || (len > (uint32_t)k_ra_xspi_max_xfer)) {
+  if ((len == 0U) || (len > k_ra_xspi_max_xfer)) {
     return k_ra_err_invalid_arg;
   }
   volatile r_xspi_regs_t* reg = ra_xspi(instance);
@@ -441,16 +441,16 @@ ra_err_t ra_xspi_flash_erase_sector(uint8_t instance, uint32_t flash_addr)
   volatile r_xspi_regs_t* reg = ra_xspi(instance);
   RA_CHECK_NULL_PTR(reg, s_tag, "instance out of range");
 
-  const ra_err_t wren = internal_issue_simple_opcode(reg, (uint8_t)k_ra_spi_flash_op_write_enable);
+  const ra_err_t wren = internal_issue_simple_opcode(reg, k_ra_spi_flash_op_write_enable);
   if (wren != k_ra_ok) {
     return wren;
   }
 
   /* HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986 */
   /* Programme a JEDEC 0x20 sector-erase with 3-byte address. */
-  reg->CDBUF[(uint8_t)k_ra_xspi_cdbuf_idx_opcode] = (uint32_t)k_ra_spi_flash_op_erase_sector;
-  reg->CDBUF[(uint8_t)k_ra_xspi_cdbuf_idx_addr]   = flash_addr;
-  reg->CDCTL1                                     = 0U;
+  reg->CDBUF[k_ra_xspi_cdbuf_idx_opcode] = (uint32_t)k_ra_spi_flash_op_erase_sector;
+  reg->CDBUF[k_ra_xspi_cdbuf_idx_addr]   = flash_addr;
+  reg->CDCTL1                            = 0U;
 
   const ra_err_t wait = internal_kick_command(reg);
   if (wait != k_ra_ok) {
@@ -458,13 +458,13 @@ ra_err_t ra_xspi_flash_erase_sector(uint8_t instance, uint32_t flash_addr)
   }
 
 #ifdef RA_SIMULATOR_MODE
-  const uint32_t sector_base = flash_addr & ~((uint32_t)k_ra_xspi_sector_len - 1U);
-  if (sector_base >= (uint32_t)k_ra_xspi_fake_flash_size) {
+  const uint32_t sector_base = flash_addr & ~(k_ra_xspi_sector_len - 1U);
+  if (sector_base >= k_ra_xspi_fake_flash_size) {
     return k_ra_err_invalid_arg;
   }
   internal_fake_flash_fill(&s_fake_flash[instance][sector_base],
                            (uint8_t)k_ra_xspi_fake_flash_erased,
-                           (uint32_t)k_ra_xspi_sector_len);
+                           k_ra_xspi_sector_len);
 #endif
   return internal_poll_wip_clear(instance);
 }
@@ -475,13 +475,13 @@ ra_err_t ra_xspi_flash_read_status(uint8_t instance, uint8_t* out_status)
   volatile r_xspi_regs_t* reg = ra_xspi(instance);
   RA_CHECK_NULL_PTR(reg, s_tag, "instance out of range");
 
-  const ra_err_t e = internal_issue_simple_opcode(reg, (uint8_t)k_ra_spi_flash_op_read_status);
+  const ra_err_t e = internal_issue_simple_opcode(reg, k_ra_spi_flash_op_read_status);
   if (e != k_ra_ok) {
     return e;
   }
 #ifdef RA_SIMULATOR_MODE
   /* Simulator: always report WEL=1, WIP=0 (flash idle and ready). */
-  *out_status = (uint8_t)(1U << (uint8_t)k_ra_flash_status_bit_wel);
+  *out_status = (uint8_t)(1U << k_ra_flash_status_bit_wel);
 #else
   /* HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986 */
   *out_status = (uint8_t)(reg->CDBUF[(uint8_t)k_ra_xspi_cdbuf_idx_data0] & 0xFFUL);
@@ -495,12 +495,12 @@ ra_err_t ra_xspi_flash_read_id(uint8_t instance, uint32_t* out_id)
   volatile r_xspi_regs_t* reg = ra_xspi(instance);
   RA_CHECK_NULL_PTR(reg, s_tag, "instance out of range");
 
-  const ra_err_t e = internal_issue_simple_opcode(reg, (uint8_t)k_ra_spi_flash_op_read_id);
+  const ra_err_t e = internal_issue_simple_opcode(reg, k_ra_spi_flash_op_read_id);
   if (e != k_ra_ok) {
     return e;
   }
 #ifdef RA_SIMULATOR_MODE
-  *out_id = (uint32_t)k_ra_sim_jedec_id;
+  *out_id = k_ra_sim_jedec_id;
 #else
   /* HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986 */
   /* JEDEC 0x9F returns MFR, MEMTYPE, CAPACITY in that byte order.
@@ -537,7 +537,7 @@ ra_err_t ra_xspi_deinit(uint8_t instance)
   /* HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986 */
   reg->LIOCFGCS[0] = 0U;
   reg->INTE        = 0U;
-  reg->INTC        = (uint32_t)k_ra_xspi_ints_mask_all;
+  reg->INTC        = k_ra_xspi_ints_mask_all;
 
   s_xspi_state[instance].fn  = nullptr;
   s_xspi_state[instance].ctx = nullptr;
@@ -565,7 +565,7 @@ ra_err_t ra_xspi_clear_status(uint8_t instance, uint32_t mask)
 
 ra_err_t ra_xspi_attach_handler(uint8_t instance, ra_xspi_event_fn_t fn, void* ctx)
 {
-  if (instance >= (uint8_t)k_ra_xspi_instance_count) {
+  if (instance >= k_ra_xspi_instance_count) {
     return k_ra_err_invalid_arg;
   }
   s_xspi_state[instance].fn  = fn;
@@ -575,7 +575,7 @@ ra_err_t ra_xspi_attach_handler(uint8_t instance, ra_xspi_event_fn_t fn, void* c
 
 void ra_xspi_dispatch(uint8_t instance)
 {
-  if (instance >= (uint8_t)k_ra_xspi_instance_count) {
+  if (instance >= k_ra_xspi_instance_count) {
     return;
   }
   volatile r_xspi_regs_t* reg = ra_xspi(instance);
@@ -587,7 +587,7 @@ void ra_xspi_dispatch(uint8_t instance)
    * then hand the INTS mask off to the user callback so it can
    * decide whether the transfer was successful or errored. */
   const uint32_t mask = reg->INTS;
-  reg->INTC           = (uint32_t)k_ra_xspi_ints_mask_all;
+  reg->INTC           = k_ra_xspi_ints_mask_all;
 
   const ra_xspi_event_fn_t fn  = s_xspi_state[instance].fn;
   void* const              ctx = s_xspi_state[instance].ctx;
@@ -598,7 +598,7 @@ void ra_xspi_dispatch(uint8_t instance)
 
 ra_err_t ra_xspi_enter_stop(uint8_t instance)
 {
-  if (instance >= (uint8_t)k_ra_xspi_instance_count) {
+  if (instance >= k_ra_xspi_instance_count) {
     return k_ra_err_invalid_arg;
   }
   return ra_mstp_disable(s_xspi_mstp_table[instance]);
@@ -606,7 +606,7 @@ ra_err_t ra_xspi_enter_stop(uint8_t instance)
 
 ra_err_t ra_xspi_exit_stop(uint8_t instance)
 {
-  if (instance >= (uint8_t)k_ra_xspi_instance_count) {
+  if (instance >= k_ra_xspi_instance_count) {
     return k_ra_err_invalid_arg;
   }
   return ra_mstp_enable(s_xspi_mstp_table[instance]);

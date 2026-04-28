@@ -132,10 +132,10 @@ static bool internal_pdg_is_initialised(void)
 {
   /* HUM Ch 23.2.1 "GTDLYCR : PWM Output Delay Control Register" p 1154 */
   const uint16_t cr = ra_pdg()->GTDLYCR;
-  if ((cr & (uint16_t)k_ra_pdg_gtdlycr_mask_dllen) == 0U) {
+  if ((cr & k_ra_pdg_gtdlycr_mask_dllen) == 0U) {
     return false;
   }
-  if ((cr & (uint16_t)k_ra_pdg_gtdlycr_mask_dlyrst) != 0U) {
+  if ((cr & k_ra_pdg_gtdlycr_mask_dlyrst) != 0U) {
     return false;
   }
   return true;
@@ -175,7 +175,7 @@ static void* s_pdg_event_ctx;
 static void internal_busy_wait_us(uint16_t usec)
 {
   for (uint16_t u = 0U; u < usec; ++u) {
-    for (uint16_t i = 0U; i < (uint16_t)k_ra_pdg_busy_loops_per_us; ++i) {
+    for (uint16_t i = 0U; i < k_ra_pdg_busy_loops_per_us; ++i) {
 #ifndef RA_SIMULATOR_MODE
       __asm__ volatile("nop");
 #endif
@@ -194,7 +194,7 @@ static void internal_wait_5_gtclk(void)
   /* HUM Ch 23.3.1 "Adjustments to the Timing of Rising and Falling Edges" p 1159
  * The fastest GTCLK is 300 MHz, so 5 cycles ~= 17 ns; this loop
  * absorbs more than that on any reasonable build. */
-  for (uint16_t i = 0U; i < (uint16_t)k_ra_pdg_post_reset_loops; ++i) {
+  for (uint16_t i = 0U; i < k_ra_pdg_post_reset_loops; ++i) {
 #ifndef RA_SIMULATOR_MODE
     __asm__ volatile("nop");
 #endif
@@ -232,15 +232,15 @@ static bool internal_frange_ok(ra_pdg_frange_t f)
  */
 static ra_err_t internal_validate_cfg(const ra_pdg_config_t* cfg)
 {
-  if (((uint16_t)cfg->channel_mask & ~(uint16_t)k_ra_pdg_channel_mask_all) != 0U) {
+  if (((uint16_t)cfg->channel_mask & ~k_ra_pdg_channel_mask_all) != 0U) {
     return k_ra_err_invalid_arg;
   }
   if (cfg->auto_tune != 0U) {
     if (cfg->gptclk_hz == 0U) {
       return k_ra_err_invalid_arg;
     }
-    if ((cfg->gptclk_hz < (uint32_t)k_ra_pdg_freq_low_min_hz) ||
-        (cfg->gptclk_hz > (uint32_t)k_ra_pdg_freq_high_max_hz)) {
+    if ((cfg->gptclk_hz < k_ra_pdg_freq_low_min_hz) ||
+        (cfg->gptclk_hz > k_ra_pdg_freq_high_max_hz)) {
       return k_ra_err_out_of_range;
     }
     return k_ra_ok;
@@ -284,7 +284,7 @@ internal_validate_slot(uint8_t channel, ra_pdg_pin_t pin, ra_pdg_edge_t edge, ui
   if ((edge != k_ra_pdg_edge_rising) && (edge != k_ra_pdg_edge_falling)) {
     return k_ra_err_invalid_arg;
   }
-  if ((uint16_t)code > (uint16_t)k_ra_pdg_dly_max) {
+  if ((uint16_t)code > k_ra_pdg_dly_max) {
     return k_ra_err_invalid_arg;
   }
   return k_ra_ok;
@@ -299,7 +299,7 @@ internal_validate_slot(uint8_t channel, ra_pdg_pin_t pin, ra_pdg_edge_t edge, ui
 static uint32_t internal_freq_to_period_ns(uint32_t hz)
 {
   /* hz > 0 guaranteed by callers. */
-  return (uint32_t)k_ra_pdg_ns_per_sec / hz;
+  return k_ra_pdg_ns_per_sec / hz;
 }
 
 /* =============================================================================
@@ -334,22 +334,22 @@ static void internal_program_dll(const ra_pdg_config_t* cfg, ra_pdg_frange_t fra
   /* HUM Ch 23.2.1 "GTDLYCR: PWM Output Delay Control Register" p 1154 */
   const uint16_t frange_bits =
     (uint16_t)((uint16_t)frange_use << (uint16_t)k_ra_pdg_gtdlycr_shift_frange);
-  reg->GTDLYCR = (uint16_t)((uint16_t)k_ra_pdg_gtdlycr_mask_dlyrst | frange_bits);
+  reg->GTDLYCR = (uint16_t)(k_ra_pdg_gtdlycr_mask_dlyrst | frange_bits);
   /* HUM Ch 23.2.2 "GTDLYCR2: PWM Output Delay Control Register 2" p 1155 */
   reg->GTDLYCR2 = 0U;
 
   /* Step 2: enable the DLL. */
   /* HUM Ch 23.2.1 "GTDLYCR" p 1154 */
-  reg->GTDLYCR = (uint16_t)((uint16_t)k_ra_pdg_gtdlycr_mask_dlyrst |
-                            (uint16_t)k_ra_pdg_gtdlycr_mask_dllen | frange_bits);
+  reg->GTDLYCR =
+    (uint16_t)(k_ra_pdg_gtdlycr_mask_dlyrst | k_ra_pdg_gtdlycr_mask_dllen | frange_bits);
 
   /* Step 3: wait >= 20 us for the DLL to lock. */
   /* HUM Ch 23.3.1 "Adjustments to the Timing of Rising and Falling Edges" p 1159 */
-  internal_busy_wait_us((uint16_t)k_ra_pdg_dll_lock_us);
+  internal_busy_wait_us(k_ra_pdg_dll_lock_us);
 
   /* Step 4: release the PDG from reset. */
   /* HUM Ch 23.2.1 "GTDLYCR" p 1154 */
-  reg->GTDLYCR = (uint16_t)((uint16_t)k_ra_pdg_gtdlycr_mask_dllen | frange_bits);
+  reg->GTDLYCR = (uint16_t)(k_ra_pdg_gtdlycr_mask_dllen | frange_bits);
 
   /* Step 5: wait >= 5 GTCLK cycles. */
   internal_wait_5_gtclk();
@@ -388,13 +388,13 @@ ra_err_t ra_pdg_deinit(void)
   volatile r_pdg_regs_t* reg = ra_pdg();
   /* Park the block: DLLEN=0, DLYRST=1, FRANGE=0. */
   /* HUM Ch 23.2.1 "GTDLYCR" p 1154 */
-  reg->GTDLYCR = (uint16_t)k_ra_pdg_gtdlycr_mask_dlyrst;
+  reg->GTDLYCR = k_ra_pdg_gtdlycr_mask_dlyrst;
   /* HUM Ch 23.2.2 "GTDLYCR2" p 1155 */
   reg->GTDLYCR2 = 0U;
 
   /* Wipe every per-edge delay cell back to the post-reset value of 0. */
   /* HUM Ch 23.2.3 "GTDLYRnA" p 1156 */
-  for (uint8_t ch = 0U; ch < (uint8_t)k_ra_pdg_channel_count; ++ch) {
+  for (uint8_t ch = 0U; ch < k_ra_pdg_channel_count; ++ch) {
     reg->GTDLYR[ch].A = 0U;
     reg->GTDLYR[ch].B = 0U;
     /* HUM Ch 23.2.4 "GTDLYFnA" p 1156 */
@@ -426,7 +426,7 @@ ra_err_t ra_pdg_set_delay(uint8_t channel, ra_pdg_pin_t pin, ra_pdg_edge_t edge,
   /* HUM Ch 23.2.5 "GTDLYRnB: GTIOCnB Rising Output Delay Register" p 1157 */
   /* HUM Ch 23.2.6 "GTDLYFnB: GTIOCnB Falling Output Delay Register" p 1158 */
   volatile uint16_t* cell = internal_dly_cell(channel, pin, edge);
-  *cell                   = (uint16_t)((uint16_t)code & (uint16_t)k_ra_pdg_dly_mask);
+  *cell                   = (uint16_t)((uint16_t)code & k_ra_pdg_dly_mask);
   return k_ra_ok;
 }
 
@@ -439,7 +439,7 @@ ra_err_t ra_pdg_get_delay(uint8_t channel, ra_pdg_pin_t pin, ra_pdg_edge_t edge,
   /* HUM Ch 23.2.3 "GTDLYRnA" p 1156 */
   /* HUM Ch 23.2.5 "GTDLYRnB" p 1157 */
   volatile uint16_t* cell = internal_dly_cell(channel, pin, edge);
-  *out_code               = (uint8_t)(*cell & (uint16_t)k_ra_pdg_dly_mask);
+  *out_code               = (uint8_t)(*cell & k_ra_pdg_dly_mask);
   return k_ra_ok;
 }
 
@@ -449,7 +449,7 @@ ra_err_t ra_pdg_set_delay_batch(const ra_pdg_delay_entry_t* entries, uint8_t cou
   if (!internal_pdg_is_initialised()) {
     return k_ra_err_not_initialized;
   }
-  if ((count == 0U) || (count > (uint8_t)k_ra_pdg_slot_count)) {
+  if ((count == 0U) || (count > k_ra_pdg_slot_count)) {
     return k_ra_err_invalid_arg;
   }
   /* Pre-validate every entry so a partial batch is impossible. */
@@ -467,7 +467,7 @@ ra_err_t ra_pdg_set_delay_batch(const ra_pdg_delay_entry_t* entries, uint8_t cou
   for (uint8_t i = 0U; i < count; ++i) {
     volatile uint16_t* cell =
       internal_dly_cell(entries[i].channel, entries[i].pin, entries[i].edge);
-    *cell = (uint16_t)((uint16_t)entries[i].code & (uint16_t)k_ra_pdg_dly_mask);
+    *cell = (uint16_t)((uint16_t)entries[i].code & k_ra_pdg_dly_mask);
   }
   return k_ra_ok;
 }
@@ -599,11 +599,11 @@ ra_err_t ra_pdg_get_status_full(ra_pdg_status_full_t* out)
   const uint16_t cr2 = reg->GTDLYCR2;
   out->raw_gtdlycr   = cr;
   out->raw_gtdlycr2  = cr2;
-  out->dll_enabled   = (uint8_t)((cr & (uint16_t)k_ra_pdg_gtdlycr_mask_dllen) != 0U);
-  out->in_reset      = (uint8_t)((cr & (uint16_t)k_ra_pdg_gtdlycr_mask_dlyrst) != 0U);
-  out->frange        = (ra_pdg_frange_t)((cr & (uint16_t)k_ra_pdg_gtdlycr_mask_frange) >>
+  out->dll_enabled   = (uint8_t)((cr & k_ra_pdg_gtdlycr_mask_dllen) != 0U);
+  out->in_reset      = (uint8_t)((cr & k_ra_pdg_gtdlycr_mask_dlyrst) != 0U);
+  out->frange        = (ra_pdg_frange_t)((cr & k_ra_pdg_gtdlycr_mask_frange) >>
                                          (uint16_t)k_ra_pdg_gtdlycr_shift_frange);
-  for (uint8_t ch = 0U; ch < (uint8_t)k_ra_pdg_channel_count; ++ch) {
+  for (uint8_t ch = 0U; ch < k_ra_pdg_channel_count; ++ch) {
     const uint16_t bs_bit = (uint16_t)(1U << ((uint16_t)k_ra_pdg_gtdlycr2_shift_dlybs + ch));
     const uint16_t en_bit = (uint16_t)(1U << ((uint16_t)k_ra_pdg_gtdlycr2_shift_dlyen + ch));
     out->per_channel_bypass_off[ch] = (uint8_t)((cr2 & bs_bit) != 0U);
@@ -618,8 +618,8 @@ ra_err_t ra_pdg_clear_status(uint16_t mask)
   /* Clearing DLYRST releases the block. */
   /* HUM Ch 23.2.1 "GTDLYCR: PWM Output Delay Control Register" p 1154 */
   volatile r_pdg_regs_t* reg = ra_pdg();
-  if ((mask & (uint16_t)k_ra_pdg_status_in_reset) != 0U) {
-    reg->GTDLYCR = (uint16_t)(reg->GTDLYCR & (uint16_t)~(uint16_t)k_ra_pdg_gtdlycr_mask_dlyrst);
+  if ((mask & k_ra_pdg_status_in_reset) != 0U) {
+    reg->GTDLYCR = (uint16_t)(reg->GTDLYCR & (uint16_t)~k_ra_pdg_gtdlycr_mask_dlyrst);
   }
   return k_ra_ok;
 }
@@ -651,15 +651,15 @@ ra_err_t ra_pdg_pick_frange(uint32_t gptclk_hz, ra_pdg_frange_t* out)
   if (gptclk_hz == 0U) {
     return k_ra_err_invalid_arg;
   }
-  if (gptclk_hz < (uint32_t)k_ra_pdg_freq_low_min_hz) {
+  if (gptclk_hz < k_ra_pdg_freq_low_min_hz) {
     return k_ra_err_out_of_range;
   }
-  if (gptclk_hz > (uint32_t)k_ra_pdg_freq_high_max_hz) {
+  if (gptclk_hz > k_ra_pdg_freq_high_max_hz) {
     return k_ra_err_out_of_range;
   }
   /* HUM Ch 23.2.1 "GTDLYCR" p 1154 -- prefer the low band in the
  * 155..160 MHz overlap because it gives 1/128 (finer) resolution. */
-  if (gptclk_hz <= (uint32_t)k_ra_pdg_freq_overlap_top) {
+  if (gptclk_hz <= k_ra_pdg_freq_overlap_top) {
     *out = k_ra_pdg_frange_80_160_mhz;
   } else {
     *out = k_ra_pdg_frange_155_300_mhz;
@@ -684,7 +684,7 @@ ra_err_t ra_pdg_set_frange(ra_pdg_frange_t new_frange)
   /* "Set the FRANGE[1:0] bits only when the DLLEN bit is 0." So drop
  * DLLEN and assert DLYRST first. */
   /* HUM Ch 23.2.1 "GTDLYCR: PWM Output Delay Control Register" p 1154 */
-  reg->GTDLYCR = (uint16_t)k_ra_pdg_gtdlycr_mask_dlyrst;
+  reg->GTDLYCR = k_ra_pdg_gtdlycr_mask_dlyrst;
 
   /* Park GTDLYCR2 (Step 1 of Figure 23.2 also sets DLYBSn = 0). */
   /* HUM Ch 23.2.2 "GTDLYCR2" p 1155 */
@@ -694,18 +694,18 @@ ra_err_t ra_pdg_set_frange(ra_pdg_frange_t new_frange)
     (uint16_t)((uint16_t)new_frange << (uint16_t)k_ra_pdg_gtdlycr_shift_frange);
   /* Write FRANGE while DLLEN is still 0. */
   /* HUM Ch 23.2.1 "GTDLYCR" p 1154 */
-  reg->GTDLYCR = (uint16_t)((uint16_t)k_ra_pdg_gtdlycr_mask_dlyrst | frange_bits);
+  reg->GTDLYCR = (uint16_t)(k_ra_pdg_gtdlycr_mask_dlyrst | frange_bits);
 
   /* Re-run Steps 2..5 of HUM Figure 23.2 (p 1160). Enable DLL: */
   /* HUM Ch 23.2.1 "GTDLYCR" p 1154 */
-  reg->GTDLYCR = (uint16_t)((uint16_t)k_ra_pdg_gtdlycr_mask_dlyrst |
-                            (uint16_t)k_ra_pdg_gtdlycr_mask_dllen | frange_bits);
+  reg->GTDLYCR =
+    (uint16_t)(k_ra_pdg_gtdlycr_mask_dlyrst | k_ra_pdg_gtdlycr_mask_dllen | frange_bits);
   /* 20 us DLL lock wait per HUM Figure 23.2. */
   /* HUM Ch 23.3.1 "Adjustments to the Timing of Rising and Falling Edges" p 1159 */
-  internal_busy_wait_us((uint16_t)k_ra_pdg_dll_lock_us);
+  internal_busy_wait_us(k_ra_pdg_dll_lock_us);
   /* Release reset. */
   /* HUM Ch 23.2.1 "GTDLYCR" p 1154 */
-  reg->GTDLYCR = (uint16_t)((uint16_t)k_ra_pdg_gtdlycr_mask_dllen | frange_bits);
+  reg->GTDLYCR = (uint16_t)(k_ra_pdg_gtdlycr_mask_dllen | frange_bits);
   internal_wait_5_gtclk();
 
   /* Restore the per-channel state. */
@@ -733,7 +733,7 @@ ra_err_t ra_pdg_bind_gpt_channel(uint8_t channel)
   if (gpt == nullptr) {
     return k_ra_err_hw_unmapped;
   }
-  gpt->GTWP = (uint32_t)k_ra_pdg_gtwp_unlock;
+  gpt->GTWP = k_ra_pdg_gtwp_unlock;
   /* HUM Ch 23.2.1 "GTDLYCR" p 1154 -- "be sure to read back the value of GTWP
  * before changing GTDLYCR". The dummy read enforces ordering. */
   (void)gpt->GTWP;
@@ -751,7 +751,7 @@ ra_err_t ra_pdg_unbind_gpt_channel(uint8_t channel)
   if (gpt == nullptr) {
     return k_ra_err_hw_unmapped;
   }
-  gpt->GTWP = (uint32_t)k_ra_pdg_gtwp_lock;
+  gpt->GTWP = k_ra_pdg_gtwp_lock;
   (void)gpt->GTWP;
   return k_ra_ok;
 }
@@ -776,24 +776,24 @@ ra_err_t ra_pdg_check_constraints(ra_pdg_wave_mode_t mode,
   if (mode == k_ra_pdg_wave_saw) {
     if (dir == k_ra_pdg_dir_up) {
       /* "Saw-wave Up: GTPR - 2 or above" -- compare_match must be < gtpr - 2. */
-      if (gtpr < (uint32_t)k_ra_pdg_constraint_high_pad) {
+      if (gtpr < k_ra_pdg_constraint_high_pad) {
         /* gtpr is too small to even compute the boundary safely. */
         return k_ra_err_invalid_state;
       }
-      const uint32_t boundary = gtpr - (uint32_t)k_ra_pdg_constraint_high_pad;
+      const uint32_t boundary = gtpr - k_ra_pdg_constraint_high_pad;
       if (compare_match >= boundary) {
         return k_ra_err_invalid_state;
       }
     } else {
       /* "Saw-wave Down: <= 2". */
-      if (compare_match <= (uint32_t)k_ra_pdg_constraint_low_thresh) {
+      if (compare_match <= k_ra_pdg_constraint_low_thresh) {
         return k_ra_err_invalid_state;
       }
     }
   } else {
     /* "Triangle-wave Down: <= 2". Up direction has no constraint per Table 23.4. */
     if (dir == k_ra_pdg_dir_down) {
-      if (compare_match <= (uint32_t)k_ra_pdg_constraint_low_thresh) {
+      if (compare_match <= k_ra_pdg_constraint_low_thresh) {
         return k_ra_err_invalid_state;
       }
     }
@@ -811,7 +811,6 @@ ra_err_t ra_pdg_required_write_ns(uint32_t pclka_hz, uint32_t gptclk_hz, uint32_
  * Write_Interval = Period_of_PCLKA x 6 + Period_of_GPTCLK x 4 */
   const uint32_t per_pclka  = internal_freq_to_period_ns(pclka_hz);
   const uint32_t per_gptclk = internal_freq_to_period_ns(gptclk_hz);
-  *out_ns =
-    (per_pclka * (uint32_t)k_ra_pdg_pclka_mult) + (per_gptclk * (uint32_t)k_ra_pdg_gptclk_mult);
+  *out_ns = (per_pclka * k_ra_pdg_pclka_mult) + (per_gptclk * k_ra_pdg_gptclk_mult);
   return k_ra_ok;
 }

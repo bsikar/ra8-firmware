@@ -108,7 +108,7 @@ static ra_rmac_slot_t s_slots[k_ra_rmac_port_count];
  */
 static inline bool internal_port_ok(ra_rmac_port_t port)
 {
-  return (uint8_t)port < (uint8_t)k_ra_rmac_port_count;
+  return (uint8_t)port < k_ra_rmac_port_count;
 }
 
 /**
@@ -123,9 +123,9 @@ static inline uint32_t
 internal_make_mpic(ra_rmac_pis_t iface, ra_rmac_lsc_t speed, ra_rmac_duplex_t duplex)
 {
   /* HUM Ch 33.4 "MPIC : PHY Interfaces Configuration Register" p 1707 */
-  const uint32_t pis  = ((uint32_t)iface & (uint32_t)k_ra_rmac_mask_mpic_pis)
+  const uint32_t pis  = ((uint32_t)iface & k_ra_rmac_mask_mpic_pis)
                         << (uint32_t)k_ra_rmac_shift_mpic_pis;
-  const uint32_t lsc  = ((uint32_t)speed & (uint32_t)k_ra_rmac_mask_mpic_lsc)
+  const uint32_t lsc  = ((uint32_t)speed & k_ra_rmac_mask_mpic_lsc)
                         << (uint32_t)k_ra_rmac_shift_mpic_lsc;
   const uint32_t pipp = (duplex == k_ra_rmac_duplex_full) ? (1UL << 9U) : 0UL;
   return pis | lsc | pipp;
@@ -140,7 +140,7 @@ internal_make_mpic(ra_rmac_pis_t iface, ra_rmac_lsc_t speed, ra_rmac_duplex_t du
  */
 static ra_err_t internal_mdio_wait(volatile r_rmac_regs_t* reg, uint32_t mask)
 {
-  for (uint32_t i = 0; i < (uint32_t)k_ra_rmac_mdio_poll_budget; ++i) {
+  for (uint32_t i = 0; i < k_ra_rmac_mdio_poll_budget; ++i) {
     /* HUM Ch 33.4 "MMIS1 : MAC Monitoring Interrupt Status Register 1" p 1707 */
     if ((reg->MMIS1 & mask) != 0U) {
       /* HUM Ch 33.4 "MMID1 : MAC Monitoring Interrupt Disable Register 1" p 1707 */
@@ -173,13 +173,13 @@ static void internal_mpsm_issue(volatile r_rmac_regs_t* reg,
                                 bool                    mff)
 {
   /* HUM Ch 33.4.1.1 "MPSM : PHY Station Management Register" p 1707 */
-  const uint32_t pda     = ((uint32_t)pda_5bit & (uint32_t)k_ra_rmac_mask_mpsm_phy_reg)
+  const uint32_t pda     = ((uint32_t)pda_5bit & k_ra_rmac_mask_mpsm_phy_reg)
                            << (uint32_t)k_ra_rmac_shift_mpsm_pda;
-  const uint32_t pra     = ((uint32_t)pra_5bit & (uint32_t)k_ra_rmac_mask_mpsm_phy_reg)
+  const uint32_t pra     = ((uint32_t)pra_5bit & k_ra_rmac_mask_mpsm_phy_reg)
                            << (uint32_t)k_ra_rmac_shift_mpsm_pra;
-  const uint32_t pop     = ((uint32_t)op & (uint32_t)k_ra_rmac_mask_mpsm_op)
+  const uint32_t pop     = ((uint32_t)op & k_ra_rmac_mask_mpsm_op)
                            << (uint32_t)k_ra_rmac_shift_mpsm_pop;
-  const uint32_t prd     = ((uint32_t)prd_16bit & (uint32_t)k_ra_rmac_mask_mpsm_data)
+  const uint32_t prd     = ((uint32_t)prd_16bit & k_ra_rmac_mask_mpsm_data)
                            << (uint32_t)k_ra_rmac_shift_mpsm_prd;
   uint32_t       mff_bit = 0UL;
   if (mff) {
@@ -235,10 +235,10 @@ static void internal_program_mac_config(volatile r_rmac_regs_t* reg, const ra_rm
  */
 static void internal_program_irq_block(volatile r_rmac_regs_t* reg, const ra_rmac_config_t* cfg)
 {
-  reg->MEID  = (uint32_t)k_ra_rmac_mask_all;
-  reg->MMID0 = (uint32_t)k_ra_rmac_mask_all;
-  reg->MMID1 = (uint32_t)k_ra_rmac_mask_all;
-  reg->MMID2 = (uint32_t)k_ra_rmac_mask_all;
+  reg->MEID  = k_ra_rmac_mask_all;
+  reg->MMID0 = k_ra_rmac_mask_all;
+  reg->MMID1 = k_ra_rmac_mask_all;
+  reg->MMID2 = k_ra_rmac_mask_all;
 
   reg->MEIE  = cfg->err_irq_enable;
   reg->MMIE0 = cfg->mon0_irq_enable;
@@ -253,11 +253,11 @@ ra_err_t ra_rmac_init(ra_rmac_port_t port, const ra_rmac_config_t* cfg)
     ra_log_error(s_tag, "rmac_init: port out of range");
     return k_ra_err_invalid_arg;
   }
-  if ((uint8_t)cfg->phy_interface >= (uint8_t)k_ra_rmac_pis_count) {
+  if ((uint8_t)cfg->phy_interface >= k_ra_rmac_pis_count) {
     ra_log_error(s_tag, "rmac_init: phy_interface out of range");
     return k_ra_err_invalid_arg;
   }
-  if ((uint8_t)cfg->link_speed >= (uint8_t)k_ra_rmac_lsc_count) {
+  if ((uint8_t)cfg->link_speed >= k_ra_rmac_lsc_count) {
     ra_log_error(s_tag, "rmac_init: link_speed out of range");
     return k_ra_err_invalid_arg;
   }
@@ -349,16 +349,16 @@ ra_err_t ra_rmac_set_mac_address(ra_rmac_port_t port, const uint8_t mac[k_ra_rma
    * Source: HUM Ch 33.4 "MRMAC0/MRMAC1 : MAC Reception MAC Address
    * Configuration Registers" p 1707, cross-checked against FSP
    * R_RMAC0_Type.MRMAC0_b.MAU and .MRMAC1_b.MAL. */
-  const uint32_t b0 = (uint32_t)mac[k_ra_rmac_mac_byte_0] & (uint32_t)k_ra_rmac_mask_byte;
-  const uint32_t b1 = (uint32_t)mac[k_ra_rmac_mac_byte_1] & (uint32_t)k_ra_rmac_mask_byte;
-  const uint32_t b2 = (uint32_t)mac[k_ra_rmac_mac_byte_2] & (uint32_t)k_ra_rmac_mask_byte;
-  const uint32_t b3 = (uint32_t)mac[k_ra_rmac_mac_byte_3] & (uint32_t)k_ra_rmac_mask_byte;
-  const uint32_t b4 = (uint32_t)mac[k_ra_rmac_mac_byte_4] & (uint32_t)k_ra_rmac_mask_byte;
-  const uint32_t b5 = (uint32_t)mac[k_ra_rmac_mac_byte_5] & (uint32_t)k_ra_rmac_mask_byte;
+  const uint32_t b0 = (uint32_t)mac[k_ra_rmac_mac_byte_0] & k_ra_rmac_mask_byte;
+  const uint32_t b1 = (uint32_t)mac[k_ra_rmac_mac_byte_1] & k_ra_rmac_mask_byte;
+  const uint32_t b2 = (uint32_t)mac[k_ra_rmac_mac_byte_2] & k_ra_rmac_mask_byte;
+  const uint32_t b3 = (uint32_t)mac[k_ra_rmac_mac_byte_3] & k_ra_rmac_mask_byte;
+  const uint32_t b4 = (uint32_t)mac[k_ra_rmac_mac_byte_4] & k_ra_rmac_mask_byte;
+  const uint32_t b5 = (uint32_t)mac[k_ra_rmac_mac_byte_5] & k_ra_rmac_mask_byte;
 
   const uint32_t mrmac0 =
     ((b0 << (uint32_t)k_ra_rmac_shift_high24) | (b1 << (uint32_t)k_ra_rmac_shift_high16)) &
-    (uint32_t)k_ra_rmac_mask_mrmac0_mau;
+    k_ra_rmac_mask_mrmac0_mau;
   const uint32_t mrmac1 =
     (b2 << (uint32_t)k_ra_rmac_shift_byte3) | (b3 << (uint32_t)k_ra_rmac_shift_byte2) |
     (b4 << (uint32_t)k_ra_rmac_shift_byte1) | (b5 << (uint32_t)k_ra_rmac_shift_byte0);
@@ -394,13 +394,13 @@ ra_err_t ra_rmac_set_ptp_filter(ra_rmac_port_t port,
     ra_log_error(s_tag, "set_ptp_filter: port out of range");
     return k_ra_err_invalid_arg;
   }
-  if (index >= (uint8_t)k_ra_rmac_ptp_filter_count) {
+  if (index >= k_ra_rmac_ptp_filter_count) {
     ra_log_error(s_tag, "set_ptp_filter: index out of range");
     return k_ra_err_invalid_arg;
   }
   /* HUM Ch 33.4 "MPFCt : MAC PTP Filtering Register Configuration t" p 1707 */
-  const uint32_t pfbn = (uint32_t)byte_offset & (uint32_t)k_ra_rmac_mask_byte;
-  const uint32_t pfbv = ((uint32_t)value & (uint32_t)k_ra_rmac_mask_byte)
+  const uint32_t pfbn = (uint32_t)byte_offset & k_ra_rmac_mask_byte;
+  const uint32_t pfbv = ((uint32_t)value & k_ra_rmac_mask_byte)
                         << (uint32_t)k_ra_rmac_shift_mpfc_val;
   uint32_t       te   = 0UL;
   if (tef0) {
@@ -426,9 +426,8 @@ ra_rmac_set_frame_size(ra_rmac_port_t port, bool is_pframe, uint16_t min_size, u
   }
   /* HUM Ch 33.4 "MRFSCE / MRFSCP : MAC Reception Frame Size Configuration" p 1707 */
   const uint32_t v =
-    (((uint32_t)max_size & (uint32_t)k_ra_rmac_mask_mrfsc)
-     << (uint32_t)k_ra_rmac_shift_mrfsce_max) |
-    (((uint32_t)min_size & (uint32_t)k_ra_rmac_mask_mrfsc) << (uint32_t)k_ra_rmac_shift_mrfsce_min);
+    (((uint32_t)max_size & k_ra_rmac_mask_mrfsc) << (uint32_t)k_ra_rmac_shift_mrfsce_max) |
+    (((uint32_t)min_size & k_ra_rmac_mask_mrfsc) << (uint32_t)k_ra_rmac_shift_mrfsce_min);
   if (is_pframe) {
     ra_rmac(port)->MRFSCP = v;
   } else {
@@ -446,10 +445,10 @@ ra_err_t ra_rmac_set_vlan_framing(ra_rmac_port_t port, bool disable_pad, bool us
   /* HUM Ch 33.4 "MTFFC : MAC Transmission Frame Format Configuration" p 1707 */
   uint32_t v = 0UL;
   if (disable_pad) {
-    v |= (uint32_t)k_ra_rmac_mtffc_dpad;
+    v |= k_ra_rmac_mtffc_dpad;
   }
   if (use_mcrc) {
-    v |= (uint32_t)k_ra_rmac_mtffc_fcm;
+    v |= k_ra_rmac_mtffc_fcm;
   }
   ra_rmac(port)->MTFFC = v;
   return k_ra_ok;
@@ -466,9 +465,9 @@ ra_err_t ra_rmac_set_pause_frame(ra_rmac_port_t       port,
     return k_ra_err_invalid_arg;
   }
   /* HUM Ch 33.4 "MTPFC : MAC Transmission Pause or PFC Frame Configuration" p 1707 */
-  const uint32_t pt    = ((uint32_t)pause_time & (uint32_t)k_ra_rmac_mask_mtpfc_pt)
+  const uint32_t pt    = ((uint32_t)pause_time & k_ra_rmac_mask_mtpfc_pt)
                          << (uint32_t)k_ra_rmac_shift_mtpfc_pt;
-  const uint32_t pfrt  = ((uint32_t)retry_time & (uint32_t)k_ra_rmac_mask_mtpfc_pfrt)
+  const uint32_t pfrt  = ((uint32_t)retry_time & k_ra_rmac_mask_mtpfc_pfrt)
                          << (uint32_t)k_ra_rmac_shift_mtpfc_pfrt;
   const uint32_t pfrlv = ((uint32_t)retry_level & 0x1FU) << (uint32_t)k_ra_rmac_shift_mtpfc_pfrlv;
   /* HUM Ch 33.4 "MTPFC2 : MAC Transmission Pause or PFC Frame Cfg 2" p 1707 */
@@ -487,13 +486,12 @@ ra_err_t ra_rmac_set_pfc_group(ra_rmac_port_t port, ra_rmac_pfc_group_t group, u
     ra_log_error(s_tag, "set_pfc_group: port out of range");
     return k_ra_err_invalid_arg;
   }
-  if ((uint8_t)group >= (uint8_t)k_ra_rmac_pfc_group_count) {
+  if ((uint8_t)group >= k_ra_rmac_pfc_group_count) {
     ra_log_error(s_tag, "set_pfc_group: group out of range");
     return k_ra_err_invalid_arg;
   }
   /* HUM Ch 33.4 "MTPFC3t : MAC Transmission PFC Frame Configuration 3" p 1707 */
-  ra_rmac(port)->MTPFC3[(uint8_t)group] =
-    (uint32_t)pcp_mask & (uint32_t)k_ra_rmac_mask_pfc_priority;
+  ra_rmac(port)->MTPFC3[(uint8_t)group] = (uint32_t)pcp_mask & k_ra_rmac_mask_pfc_priority;
   return k_ra_ok;
 }
 
@@ -506,7 +504,7 @@ ra_err_t ra_rmac_set_lpi(ra_rmac_port_t port, bool enable)
   /* HUM Ch 33.4 "MEEEC : MAC Energy Efficient Ethernet Configuration" p 1707 */
   uint32_t meeec = 0UL;
   if (enable) {
-    meeec = (uint32_t)k_ra_rmac_meeec_lpitr;
+    meeec = k_ra_rmac_meeec_lpitr;
   }
   ra_rmac(port)->MEEEC = meeec;
   return k_ra_ok;
@@ -522,9 +520,9 @@ ra_err_t ra_rmac_set_magic_packet(ra_rmac_port_t port, bool enable)
   volatile r_rmac_regs_t* reg = ra_rmac(port);
   uint32_t                v   = reg->MRGC;
   if (enable) {
-    v |= (uint32_t)k_ra_rmac_mrgc_mpde;
+    v |= k_ra_rmac_mrgc_mpde;
   } else {
-    v &= ~(uint32_t)k_ra_rmac_mrgc_mpde;
+    v &= ~k_ra_rmac_mrgc_mpde;
   }
   reg->MRGC = v;
   return k_ra_ok;
@@ -539,7 +537,7 @@ ra_err_t ra_rmac_set_loopback(ra_rmac_port_t port, bool enable)
   /* HUM Ch 33.4 "MLBC : MAC Loopback Configuration Register" p 1707 */
   uint32_t mlbc = 0UL;
   if (enable) {
-    mlbc = (uint32_t)k_ra_rmac_mlbc_lbme;
+    mlbc = k_ra_rmac_mlbc_lbme;
   }
   ra_rmac(port)->MLBC = mlbc;
   return k_ra_ok;
@@ -554,11 +552,11 @@ ra_err_t ra_rmac_set_link(ra_rmac_port_t   port,
     ra_log_error(s_tag, "set_link: port out of range");
     return k_ra_err_invalid_arg;
   }
-  if ((uint8_t)iface >= (uint8_t)k_ra_rmac_pis_count) {
+  if ((uint8_t)iface >= k_ra_rmac_pis_count) {
     ra_log_error(s_tag, "set_link: iface out of range");
     return k_ra_err_invalid_arg;
   }
-  if ((uint8_t)speed >= (uint8_t)k_ra_rmac_lsc_count) {
+  if ((uint8_t)speed >= k_ra_rmac_lsc_count) {
     ra_log_error(s_tag, "set_link: speed out of range");
     return k_ra_err_invalid_arg;
   }
@@ -578,14 +576,14 @@ ra_rmac_mdio_c22_read(ra_rmac_port_t port, uint8_t phy_addr, uint8_t reg_addr, u
 
   volatile r_rmac_regs_t* reg = ra_rmac(port);
   internal_mpsm_issue(reg, phy_addr, reg_addr, k_ra_rmac_mdio_op_c22_read, 0U, false);
-  const ra_err_t wait_err = internal_mdio_wait(reg, (uint32_t)k_ra_rmac_mmis1_pracs);
+  const ra_err_t wait_err = internal_mdio_wait(reg, k_ra_rmac_mmis1_pracs);
   if (wait_err != k_ra_ok) {
     ra_log_error(s_tag, "mdio_c22_read: timeout"); /* GCOVR_EXCL_BR_LINE */
     return wait_err;
   }
   /* HUM Ch 33.4.1.1 "MPSM : PHY Station Management Register" p 1707 */
-  *out_value = (uint16_t)((reg->MPSM >> (uint32_t)k_ra_rmac_shift_mpsm_prd) &
-                          (uint32_t)k_ra_rmac_mask_mpsm_data);
+  *out_value =
+    (uint16_t)((reg->MPSM >> (uint32_t)k_ra_rmac_shift_mpsm_prd) & k_ra_rmac_mask_mpsm_data);
   return k_ra_ok;
 }
 
@@ -598,7 +596,7 @@ ra_rmac_mdio_c22_write(ra_rmac_port_t port, uint8_t phy_addr, uint8_t reg_addr, 
   }
   volatile r_rmac_regs_t* reg = ra_rmac(port);
   internal_mpsm_issue(reg, phy_addr, reg_addr, k_ra_rmac_mdio_op_c22_write, value, false);
-  return internal_mdio_wait(reg, (uint32_t)k_ra_rmac_mmis1_pwacs);
+  return internal_mdio_wait(reg, k_ra_rmac_mmis1_pwacs);
 }
 
 ra_err_t ra_rmac_mdio_c45_read(ra_rmac_port_t port,
@@ -616,21 +614,21 @@ ra_err_t ra_rmac_mdio_c45_read(ra_rmac_port_t port,
   volatile r_rmac_regs_t* reg = ra_rmac(port);
   /* C45 step 1: address frame loads the 16-bit MMD register address. */
   internal_mpsm_issue(reg, phy_addr, dev_addr, k_ra_rmac_mdio_op_c45_address, reg_addr, true);
-  ra_err_t err = internal_mdio_wait(reg, (uint32_t)k_ra_rmac_mmis1_paacs);
+  ra_err_t err = internal_mdio_wait(reg, k_ra_rmac_mmis1_paacs);
   if (err != k_ra_ok) {
     ra_log_error(s_tag, "mdio_c45_read: address timeout"); /* GCOVR_EXCL_BR_LINE */
     return err;
   }
   /* C45 step 2: read frame fetches the 16-bit data. */
   internal_mpsm_issue(reg, phy_addr, dev_addr, k_ra_rmac_mdio_op_c45_read, 0U, true);
-  err = internal_mdio_wait(reg, (uint32_t)k_ra_rmac_mmis1_pracs);
+  err = internal_mdio_wait(reg, k_ra_rmac_mmis1_pracs);
   if (err != k_ra_ok) {
     ra_log_error(s_tag, "mdio_c45_read: read timeout"); /* GCOVR_EXCL_BR_LINE */
     return err;
   }
   /* HUM Ch 33.4.1.1 "MPSM : PHY Station Management Register" p 1707 */
-  *out_value = (uint16_t)((reg->MPSM >> (uint32_t)k_ra_rmac_shift_mpsm_prd) &
-                          (uint32_t)k_ra_rmac_mask_mpsm_data);
+  *out_value =
+    (uint16_t)((reg->MPSM >> (uint32_t)k_ra_rmac_shift_mpsm_prd) & k_ra_rmac_mask_mpsm_data);
   return k_ra_ok;
 }
 
@@ -647,13 +645,13 @@ ra_err_t ra_rmac_mdio_c45_write(ra_rmac_port_t port,
   volatile r_rmac_regs_t* reg = ra_rmac(port);
   /* Address frame followed by write frame -- both must complete. */
   internal_mpsm_issue(reg, phy_addr, dev_addr, k_ra_rmac_mdio_op_c45_address, reg_addr, true);
-  ra_err_t err = internal_mdio_wait(reg, (uint32_t)k_ra_rmac_mmis1_paacs);
+  ra_err_t err = internal_mdio_wait(reg, k_ra_rmac_mmis1_paacs);
   if (err != k_ra_ok) {
     ra_log_error(s_tag, "mdio_c45_write: address timeout"); /* GCOVR_EXCL_BR_LINE */
     return err;
   }
   internal_mpsm_issue(reg, phy_addr, dev_addr, k_ra_rmac_mdio_op_c45_write, value, true);
-  return internal_mdio_wait(reg, (uint32_t)k_ra_rmac_mmis1_pwacs);
+  return internal_mdio_wait(reg, k_ra_rmac_mmis1_pwacs);
 }
 
 ra_err_t ra_rmac_get_status(ra_rmac_port_t port, ra_rmac_status_t* out)
@@ -731,11 +729,11 @@ static void internal_snapshot_pause_pfc(volatile r_rmac_regs_t* reg, ra_rmac_sta
   out->pause_rx        = reg->MPFRCT;
   out->false_carrier   = reg->MFCICT;
   out->eee_count       = reg->MEEECT;
-  for (uint8_t i = 0; i < (uint8_t)k_ra_rmac_pfc_group_count; ++i) {
+  for (uint8_t i = 0; i < k_ra_rmac_pfc_group_count; ++i) {
     out->pfc_tx_manual[i] = reg->MMPCFTCT[i];
     out->pfc_tx_auto[i]   = reg->MAPCFTCT[i];
   }
-  for (uint8_t i = 0; i < (uint8_t)k_ra_rmac_pfc_rx_count; ++i) {
+  for (uint8_t i = 0; i < k_ra_rmac_pfc_rx_count; ++i) {
     out->pfc_rx[i] = reg->MPCFRCT[i];
   }
 }

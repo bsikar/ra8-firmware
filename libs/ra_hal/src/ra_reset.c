@@ -133,25 +133,25 @@ static void internal_read_raw(ra_reset_raw_t* out)
  */
 static ra_reset_cause_t internal_decode_rstsr0(uint8_t rstsr0)
 {
-  if ((rstsr0 & (uint8_t)k_ra_reset_rstsr0_porf_msk) != 0U) {
+  if ((rstsr0 & k_ra_reset_rstsr0_porf_msk) != 0U) {
     return k_ra_reset_cause_power_on;
   }
-  if ((rstsr0 & (uint8_t)k_ra_reset_rstsr0_lvd0rf_msk) != 0U) {
+  if ((rstsr0 & k_ra_reset_rstsr0_lvd0rf_msk) != 0U) {
     return k_ra_reset_cause_lvd0;
   }
-  if ((rstsr0 & (uint8_t)k_ra_reset_rstsr0_lvd1rf_msk) != 0U) {
+  if ((rstsr0 & k_ra_reset_rstsr0_lvd1rf_msk) != 0U) {
     return k_ra_reset_cause_lvd1;
   }
-  if ((rstsr0 & (uint8_t)k_ra_reset_rstsr0_lvd2rf_msk) != 0U) {
+  if ((rstsr0 & k_ra_reset_rstsr0_lvd2rf_msk) != 0U) {
     return k_ra_reset_cause_lvd2;
   }
-  if ((rstsr0 & (uint8_t)k_ra_reset_rstsr0_lvd4rf_msk) != 0U) {
+  if ((rstsr0 & k_ra_reset_rstsr0_lvd4rf_msk) != 0U) {
     return k_ra_reset_cause_lvd4;
   }
-  if ((rstsr0 & (uint8_t)k_ra_reset_rstsr0_lvd5rf_msk) != 0U) {
+  if ((rstsr0 & k_ra_reset_rstsr0_lvd5rf_msk) != 0U) {
     return k_ra_reset_cause_lvd5;
   }
-  if ((rstsr0 & (uint8_t)k_ra_reset_rstsr0_dpsrstf_msk) != 0U) {
+  if ((rstsr0 & k_ra_reset_rstsr0_dpsrstf_msk) != 0U) {
     return k_ra_reset_cause_deep_sw_standby;
   }
   return k_ra_reset_cause_unknown;
@@ -175,37 +175,37 @@ static ra_reset_cause_t internal_decode_rstsr0(uint8_t rstsr0)
  */
 static ra_reset_cause_t internal_decode_rstsr1(uint32_t rstsr1)
 {
-  if ((rstsr1 & (uint32_t)k_ra_reset_rstsr1_iwdtrf_msk) != 0U) {
+  if ((rstsr1 & k_ra_reset_rstsr1_iwdtrf_msk) != 0U) {
     return k_ra_reset_cause_iwdt;
   }
-  if ((rstsr1 & (uint32_t)k_ra_reset_rstsr1_wdtrf_msk) != 0U) {
+  if ((rstsr1 & k_ra_reset_rstsr1_wdtrf_msk) != 0U) {
     return k_ra_reset_cause_wdt0;
   }
-  if ((rstsr1 & (uint32_t)k_ra_reset_rstsr1_swrf_msk) != 0U) {
+  if ((rstsr1 & k_ra_reset_rstsr1_swrf_msk) != 0U) {
     return k_ra_reset_cause_software;
   }
-  if ((rstsr1 & (uint32_t)k_ra_reset_rstsr1_clurf_msk) != 0U) {
+  if ((rstsr1 & k_ra_reset_rstsr1_clurf_msk) != 0U) {
     return k_ra_reset_cause_lockup0;
   }
-  if ((rstsr1 & (uint32_t)k_ra_reset_rstsr1_lm0rf_msk) != 0U) {
+  if ((rstsr1 & k_ra_reset_rstsr1_lm0rf_msk) != 0U) {
     return k_ra_reset_cause_local_memory0;
   }
-  if ((rstsr1 & (uint32_t)k_ra_reset_rstsr1_bussrf_msk) != 0U) {
+  if ((rstsr1 & k_ra_reset_rstsr1_bussrf_msk) != 0U) {
     return k_ra_reset_cause_bus_slave_mpu;
   }
-  if ((rstsr1 & (uint32_t)k_ra_reset_rstsr1_cmrf_msk) != 0U) {
+  if ((rstsr1 & k_ra_reset_rstsr1_cmrf_msk) != 0U) {
     return k_ra_reset_cause_common_memory;
   }
-  if ((rstsr1 & (uint32_t)k_ra_reset_rstsr1_wdt1rf_msk) != 0U) {
+  if ((rstsr1 & k_ra_reset_rstsr1_wdt1rf_msk) != 0U) {
     return k_ra_reset_cause_wdt1;
   }
-  if ((rstsr1 & (uint32_t)k_ra_reset_rstsr1_clu1rf_msk) != 0U) {
+  if ((rstsr1 & k_ra_reset_rstsr1_clu1rf_msk) != 0U) {
     return k_ra_reset_cause_lockup1;
   }
-  if ((rstsr1 & (uint32_t)k_ra_reset_rstsr1_lm1rf_msk) != 0U) {
+  if ((rstsr1 & k_ra_reset_rstsr1_lm1rf_msk) != 0U) {
     return k_ra_reset_cause_local_memory1;
   }
-  if ((rstsr1 & (uint32_t)k_ra_reset_rstsr1_nwrf_msk) != 0U) {
+  if ((rstsr1 & k_ra_reset_rstsr1_nwrf_msk) != 0U) {
     return k_ra_reset_cause_network;
   }
   return k_ra_reset_cause_unknown;
@@ -229,13 +229,13 @@ static ra_reset_cause_t internal_decode_rstsr1(uint32_t rstsr1)
  */
 static ra_reset_cause_t internal_decode_rstsr3(uint8_t rstsr3)
 {
-  if ((rstsr3 & (uint8_t)k_ra_reset_rstsr3_cvmrf_msk) != 0U) {
+  if ((rstsr3 & k_ra_reset_rstsr3_cvmrf_msk) != 0U) {
     return k_ra_reset_cause_core_voltage;
   }
-  if ((rstsr3 & (uint8_t)k_ra_reset_rstsr3_ocprf_msk) != 0U) {
+  if ((rstsr3 & k_ra_reset_rstsr3_ocprf_msk) != 0U) {
     return k_ra_reset_cause_overcurrent;
   }
-  if ((rstsr3 & (uint8_t)k_ra_reset_rstsr3_temprf_msk) != 0U) {
+  if ((rstsr3 & k_ra_reset_rstsr3_temprf_msk) != 0U) {
     return k_ra_reset_cause_temperature;
   }
   return k_ra_reset_cause_unknown;
@@ -259,7 +259,7 @@ static ra_reset_cause_t internal_decode(const ra_reset_raw_t* raw)
   }
 
   /* HUM Ch 6.2.4 "RSTSR2 : Reset Status Register 2" p 261 */
-  if ((raw->rstsr2 & (uint8_t)k_ra_reset_rstsr2_cwsf_msk) != 0U) {
+  if ((raw->rstsr2 & k_ra_reset_rstsr2_cwsf_msk) != 0U) {
     return k_ra_reset_cause_warm_start;
   }
 
@@ -338,7 +338,7 @@ ra_err_t ra_reset_clear_cause(uint32_t mask)
 {
   /* HUM Ch 6.2.2 "RSTSR0 : Reset Status Register 0" p 258 */
   /* Note from HUM: only 0 can be written; bit must be read as 1 first. */
-  const uint8_t rstsr0_clear = (uint8_t)(mask & (uint32_t)k_ra_reset_mask_rstsr0_msk);
+  const uint8_t rstsr0_clear = (uint8_t)(mask & k_ra_reset_mask_rstsr0_msk);
   if (rstsr0_clear != 0U) {
     /* HUM Ch 6.2.2 "RSTSR0", p 257 */
     const uint8_t before = *ra_reset_rstsr0();
@@ -348,17 +348,17 @@ ra_err_t ra_reset_clear_cause(uint32_t mask)
   /* HUM Ch 6.2.3 "RSTSR1 : Reset Status Register 1" p 258 */
   /* Same write-0-to-clear semantics as RSTSR0. */
   const uint32_t rstsr1_clear =
-    (mask & (uint32_t)k_ra_reset_mask_rstsr1_window) >> (uint32_t)k_ra_reset_mask_rstsr1_shift;
+    (mask & k_ra_reset_mask_rstsr1_window) >> k_ra_reset_mask_rstsr1_shift;
   if (rstsr1_clear != 0U) {
     /* HUM Ch 6.2.3 "RSTSR1", p 258 */
     const uint32_t before = *ra_reset_rstsr1();
     *ra_reset_rstsr1()    = before & ~rstsr1_clear;
   }
 
-  if ((mask & (uint32_t)k_ra_reset_mask_rstsr2_cwsf) != 0U) {
+  if ((mask & k_ra_reset_mask_rstsr2_cwsf) != 0U) {
     /* HUM Ch 6.2.4 "RSTSR2 : Reset Status Register 2" p 261 */
     /* CWSF is set by writing 1 (Note 2). */
-    *ra_reset_rstsr2() = (uint8_t)k_ra_reset_rstsr2_cwsf_msk;
+    *ra_reset_rstsr2() = k_ra_reset_rstsr2_cwsf_msk;
   }
 
   /* Refresh the cached cause if init was already called -- the next
@@ -387,9 +387,8 @@ void ra_reset_software_reset(void)
    * a single include. */
   ra_log_info(s_tag, "software reset");
 
-  const uint32_t aircr_value =
-    ((uint32_t)k_ra_reset_aircr_vectkey_value << (uint32_t)k_ra_reset_aircr_vectkey_pos) |
-    (uint32_t)k_ra_reset_aircr_sysresetreq_msk;
+  const uint32_t aircr_value = (k_ra_reset_aircr_vectkey_value << k_ra_reset_aircr_vectkey_pos) |
+                               k_ra_reset_aircr_sysresetreq_msk;
 
   /* HUM Ch 6.1 "Overview" p 244 */
   /* Table 6.1 names AIRCR.SYSRESETREQ as the software-reset trigger. */

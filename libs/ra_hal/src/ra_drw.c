@@ -107,7 +107,7 @@ static inline uint32_t internal_pack_writeformat(ra_drw_writeformat_t fmt)
   const uint32_t low  = ((uint32_t)fmt & 0x3UL) << k_ra_drw_control2_writeformat_pos;
   uint32_t       high = 0UL;
   if (((uint32_t)fmt & 0x4UL) != 0UL) {
-    high = (uint32_t)k_ra_drw_control2_writeformat2_bit;
+    high = k_ra_drw_control2_writeformat2_bit;
   }
   return low | high;
 }
@@ -248,7 +248,7 @@ static void internal_program_rect_limiters(const ra_drw_rect_t* rect)
 
   /* HUM Ch 62.2.3 "IRQCTL: Interrupt Control Register", p 3693 */
   /* Clear all pending IRQs and leave them masked. */
-  *ra_drw_reg32(k_ra_drw_off_irqctl) = (uint32_t)k_ra_drw_irqctl_all_clr;
+  *ra_drw_reg32(k_ra_drw_off_irqctl) = k_ra_drw_irqctl_all_clr;
 
   /* HUM Ch 62.2.31 "ORIGIN: Framebuffer Base Address Register", p 3705 */
   *ra_drw_reg32(k_ra_drw_off_origin) = (uint32_t)cfg->framebuffer_addr;
@@ -264,14 +264,14 @@ static void internal_program_rect_limiters(const ra_drw_rect_t* rect)
 
   /* HUM Ch 62.2.4 "CACHECTL: Cache Control Register", p 3694 */
   if (cfg->enable_caches) {
-    *ra_drw_reg32(k_ra_drw_off_cachectl) = (uint32_t)k_ra_drw_cachectl_all_en;
+    *ra_drw_reg32(k_ra_drw_off_cachectl) = k_ra_drw_cachectl_all_en;
   } else {
     *ra_drw_reg32(k_ra_drw_off_cachectl) = 0UL;
   }
 
   /* HUM Ch 62.2.35 "DBWER: DRW Bufferable Write Enable", p 3707 */
   if (cfg->enable_buffered_writes) {
-    *ra_drw_reg32(k_ra_drw_off_dbwer) = (uint32_t)k_ra_drw_dbwer_bwe;
+    *ra_drw_reg32(k_ra_drw_off_dbwer) = k_ra_drw_dbwer_bwe;
   } else {
     *ra_drw_reg32(k_ra_drw_off_dbwer) = 0UL;
   }
@@ -284,7 +284,7 @@ static void internal_program_rect_limiters(const ra_drw_rect_t* rect)
 {
   /* HUM Ch 62.2.3 "IRQCTL: Interrupt Control Register", p 3693 */
   /* Clear and disable every interrupt before dropping the clock. */
-  *ra_drw_reg32(k_ra_drw_off_irqctl) = (uint32_t)k_ra_drw_irqctl_all_clr;
+  *ra_drw_reg32(k_ra_drw_off_irqctl) = k_ra_drw_irqctl_all_clr;
 
   /* HUM Ch 62.2.4 "CACHECTL: Cache Control Register", p 3694 */
   *ra_drw_reg32(k_ra_drw_off_cachectl) = 0UL;
@@ -332,7 +332,7 @@ static void internal_program_rect_limiters(const ra_drw_rect_t* rect)
   /* HUM Ch 62.2.3 "IRQCTL: Interrupt Control Register", p 3693 */
   /* Combine caller's enable bits with an unconditional W1C of every
  * pending flag so we never re-enable while a stale flag is latched. */
-  const uint32_t value               = (enable_mask | (uint32_t)k_ra_drw_irqctl_all_clr);
+  const uint32_t value               = (enable_mask | k_ra_drw_irqctl_all_clr);
   *ra_drw_reg32(k_ra_drw_off_irqctl) = value;
   return k_ra_ok;
 }
@@ -351,7 +351,7 @@ void ra_drw_dispatch(void)
 
   /* HUM Ch 62.2.3 "IRQCTL: Interrupt Control Register", p 3693 */
   /* Acknowledge all pending IRQ flags (write-1-to-clear). */
-  *ra_drw_reg32(k_ra_drw_off_irqctl) = (uint32_t)k_ra_drw_irqctl_all_clr;
+  *ra_drw_reg32(k_ra_drw_off_irqctl) = k_ra_drw_irqctl_all_clr;
 
   const ra_drw_event_fn_t fn  = s_drw_fn;
   void* const             ctx = s_drw_ctx;
@@ -369,7 +369,7 @@ void ra_drw_dispatch(void)
   for (uint32_t i = 0UL; i < poll_budget; ++i) {
     /* HUM Ch 62.2.5 "STATUS: Status Control Register", p 3695 */
     const uint32_t s = *ra_drw_reg32(k_ra_drw_off_status);
-    if ((s & (uint32_t)k_ra_drw_status_busy_mask) == 0UL) {
+    if ((s & k_ra_drw_status_busy_mask) == 0UL) {
       return k_ra_ok;
     }
   }
@@ -387,7 +387,7 @@ void ra_drw_dispatch(void)
   /* HUM Ch 62.2.3 "IRQCTL: Interrupt Control Register", p 3693 */
   /* Quiesce IRQs before removing the clock, otherwise a pending bit
  * could latch and surprise us when we power back up. */
-  *ra_drw_reg32(k_ra_drw_off_irqctl) = (uint32_t)k_ra_drw_irqctl_all_clr;
+  *ra_drw_reg32(k_ra_drw_off_irqctl) = k_ra_drw_irqctl_all_clr;
   return ra_mstp_disable(k_ra_mstp_drw);
 }
 
@@ -399,12 +399,12 @@ void ra_drw_dispatch(void)
 [[nodiscard]] ra_err_t ra_drw_reset(void)
 {
   /* HUM Ch 62.2.3 "IRQCTL: Interrupt Control Register", p 3693 */
-  *ra_drw_reg32(k_ra_drw_off_irqctl) = (uint32_t)k_ra_drw_irqctl_all_clr;
+  *ra_drw_reg32(k_ra_drw_off_irqctl) = k_ra_drw_irqctl_all_clr;
 
   /* HUM Ch 62.2.4 "CACHECTL: Cache Control Register", p 3694 */
   /* Pulse both cache flushes while preserving enable bits. */
   const uint32_t cur_cc                = *ra_drw_reg32(k_ra_drw_off_cachectl);
-  *ra_drw_reg32(k_ra_drw_off_cachectl) = cur_cc | (uint32_t)k_ra_drw_cachectl_all_flush;
+  *ra_drw_reg32(k_ra_drw_off_cachectl) = cur_cc | k_ra_drw_cachectl_all_flush;
 
   /* HUM Ch 62.2.34 "PERFCOUNTk: Performance Counter k", p 3706 */
   *ra_drw_reg32(k_ra_drw_off_perfcount1) = 0UL;
@@ -428,10 +428,10 @@ void ra_drw_dispatch(void)
   const uint32_t cur = *ra_drw_reg32(k_ra_drw_off_cachectl);
   uint32_t       nxt = cur;
   if (flush_fb) {
-    nxt |= (uint32_t)k_ra_drw_cachectl_cflushfx;
+    nxt |= k_ra_drw_cachectl_cflushfx;
   }
   if (flush_texture) {
-    nxt |= (uint32_t)k_ra_drw_cachectl_cflushtx;
+    nxt |= k_ra_drw_cachectl_cflushtx;
   }
   *ra_drw_reg32(k_ra_drw_off_cachectl) = nxt;
   return k_ra_ok;
@@ -465,13 +465,12 @@ void ra_drw_dispatch(void)
 {
   uint32_t set_bits = 0UL;
   if (enable) {
-    set_bits |= (uint32_t)k_ra_drw_control2_patternenable;
+    set_bits |= k_ra_drw_control2_patternenable;
   }
   if (source_from_l5) {
-    set_bits |= (uint32_t)k_ra_drw_control2_patternsourcel5;
+    set_bits |= k_ra_drw_control2_patternsourcel5;
   }
-  const uint32_t clr_mask =
-    (uint32_t)(k_ra_drw_control2_patternenable | k_ra_drw_control2_patternsourcel5);
+  const uint32_t clr_mask = (k_ra_drw_control2_patternenable | k_ra_drw_control2_patternsourcel5);
   (void)internal_control2_rmw(clr_mask, set_bits);
   return k_ra_ok;
 }
@@ -497,34 +496,34 @@ static uint32_t internal_pack_blend_bits(const ra_drw_blend_t* blend)
 {
   uint32_t set_bits = 0UL;
   if (blend->use_alpha_channel) {
-    set_bits |= (uint32_t)k_ra_drw_control2_useacb;
+    set_bits |= k_ra_drw_control2_useacb;
   }
   if (blend->src_factor) {
-    set_bits |= (uint32_t)k_ra_drw_control2_bsf;
+    set_bits |= k_ra_drw_control2_bsf;
   }
   if (blend->dst_factor) {
-    set_bits |= (uint32_t)k_ra_drw_control2_bdf;
+    set_bits |= k_ra_drw_control2_bdf;
   }
   if (blend->src_invert) {
-    set_bits |= (uint32_t)k_ra_drw_control2_bsi;
+    set_bits |= k_ra_drw_control2_bsi;
   }
   if (blend->dst_invert) {
-    set_bits |= (uint32_t)k_ra_drw_control2_bdi;
+    set_bits |= k_ra_drw_control2_bdi;
   }
   if (blend->src_factor_alpha) {
-    set_bits |= (uint32_t)k_ra_drw_control2_bsfa;
+    set_bits |= k_ra_drw_control2_bsfa;
   }
   if (blend->dst_factor_alpha) {
-    set_bits |= (uint32_t)k_ra_drw_control2_bdfa;
+    set_bits |= k_ra_drw_control2_bdfa;
   }
   if (blend->src_invert_alpha) {
-    set_bits |= (uint32_t)k_ra_drw_control2_bsia;
+    set_bits |= k_ra_drw_control2_bsia;
   }
   if (blend->dst_invert_alpha) {
-    set_bits |= (uint32_t)k_ra_drw_control2_bdia;
+    set_bits |= k_ra_drw_control2_bdia;
   }
   if (blend->use_color2_dst) {
-    set_bits |= (uint32_t)k_ra_drw_control2_bc2;
+    set_bits |= k_ra_drw_control2_bc2;
   }
   return set_bits;
 }
@@ -536,16 +535,16 @@ static uint32_t internal_pack_blend_bits(const ra_drw_blend_t* blend)
   /* HUM Ch 62.2.2 "CONTROL2: Surface Control Register", p 3691 */
   const uint32_t set_bits = internal_pack_blend_bits(blend);
   const uint32_t clr_mask =
-    (uint32_t)(k_ra_drw_control2_useacb | k_ra_drw_control2_bsf | k_ra_drw_control2_bdf |
-               k_ra_drw_control2_bsi | k_ra_drw_control2_bdi | k_ra_drw_control2_bsfa |
-               k_ra_drw_control2_bdfa | k_ra_drw_control2_bsia | k_ra_drw_control2_bdia |
-               k_ra_drw_control2_bc2);
+    (k_ra_drw_control2_useacb | k_ra_drw_control2_bsf | k_ra_drw_control2_bdf |
+     k_ra_drw_control2_bsi | k_ra_drw_control2_bdi | k_ra_drw_control2_bsfa |
+     k_ra_drw_control2_bdfa | k_ra_drw_control2_bsia | k_ra_drw_control2_bdia |
+     k_ra_drw_control2_bc2);
   (void)internal_control2_rmw(clr_mask, set_bits);
 
   /* HUM Ch 62.2.7 "COLOR1: Base Color Register", p 3697 */
   /* Update only the alpha byte; preserve RGB to avoid surprise drift. */
   const uint32_t cur_color1          = *ra_drw_reg32(k_ra_drw_off_color1);
-  const uint32_t new_color1          = (cur_color1 & (uint32_t)k_ra_drw_internal_color_alpha_mask) |
+  const uint32_t new_color1          = (cur_color1 & k_ra_drw_internal_color_alpha_mask) |
                                        ((uint32_t)blend->global_alpha << k_ra_drw_color_a_pos);
   *ra_drw_reg32(k_ra_drw_off_color1) = new_color1;
 
@@ -556,13 +555,13 @@ static uint32_t internal_pack_blend_bits(const ra_drw_blend_t* blend)
 {
   /* HUM Ch 62.2.28 "COLKEY: Color Key Register", p 3704 */
   /* Bits 31:24 must be zero per the HUM table. */
-  *ra_drw_reg32(k_ra_drw_off_colkey) = key_rgb & (uint32_t)k_ra_drw_internal_color_alpha_mask;
+  *ra_drw_reg32(k_ra_drw_off_colkey) = key_rgb & k_ra_drw_internal_color_alpha_mask;
 
   uint32_t set_bits = 0UL;
   if (enable) {
-    set_bits = (uint32_t)k_ra_drw_control2_colkeyenable;
+    set_bits = k_ra_drw_control2_colkeyenable;
   }
-  (void)internal_control2_rmw((uint32_t)k_ra_drw_control2_colkeyenable, set_bits);
+  (void)internal_control2_rmw(k_ra_drw_control2_colkeyenable, set_bits);
   return k_ra_ok;
 }
 
@@ -588,31 +587,31 @@ static uint32_t internal_pack_blend_bits(const ra_drw_blend_t* blend)
  */
 static uint32_t internal_pack_texture_bits(const ra_drw_texture_t* tex)
 {
-  uint32_t set_bits = (uint32_t)k_ra_drw_control2_textureenable;
+  uint32_t set_bits = k_ra_drw_control2_textureenable;
   set_bits |= internal_pack_readformat(tex->format);
   if (tex->clamp_x) {
-    set_bits |= (uint32_t)k_ra_drw_control2_textureclampx;
+    set_bits |= k_ra_drw_control2_textureclampx;
   }
   if (tex->clamp_y) {
-    set_bits |= (uint32_t)k_ra_drw_control2_textureclampy;
+    set_bits |= k_ra_drw_control2_textureclampy;
   }
   if (tex->filter_x) {
-    set_bits |= (uint32_t)k_ra_drw_control2_texturefilterx;
+    set_bits |= k_ra_drw_control2_texturefilterx;
   }
   if (tex->filter_y) {
-    set_bits |= (uint32_t)k_ra_drw_control2_texturefiltery;
+    set_bits |= k_ra_drw_control2_texturefiltery;
   }
   if (tex->enable_clut) {
-    set_bits |= (uint32_t)k_ra_drw_control2_clutenable;
+    set_bits |= k_ra_drw_control2_clutenable;
   }
   if (tex->clut_565) {
-    set_bits |= (uint32_t)k_ra_drw_control2_clutformat_565;
+    set_bits |= k_ra_drw_control2_clutformat_565;
   }
   if (tex->enable_color_key) {
-    set_bits |= (uint32_t)k_ra_drw_control2_colkeyenable;
+    set_bits |= k_ra_drw_control2_colkeyenable;
   }
   if (tex->enable_rle) {
-    set_bits |= (uint32_t)k_ra_drw_control2_rleenable;
+    set_bits |= k_ra_drw_control2_rleenable;
   }
   set_bits |= ((uint32_t)tex->rle_pixel_width & 0x3UL) << k_ra_drw_control2_rlepixel_pos;
   return set_bits;
@@ -621,7 +620,7 @@ static uint32_t internal_pack_texture_bits(const ra_drw_texture_t* tex)
 [[nodiscard]] ra_err_t ra_drw_set_texture(const ra_drw_texture_t* tex)
 {
   RA_CHECK_NULL_PTR((void*)tex, s_tag, "tex must not be nullptr");
-  if ((uint16_t)tex->pitch_px > (uint16_t)k_ra_drw_max_texpitch_tx) {
+  if ((uint16_t)tex->pitch_px > k_ra_drw_max_texpitch_tx) {
     return k_ra_err_invalid_arg;
   }
 
@@ -641,18 +640,17 @@ static uint32_t internal_pack_texture_bits(const ra_drw_texture_t* tex)
 
   const uint32_t set_bits = internal_pack_texture_bits(tex);
   const uint32_t clr_mask =
-    (uint32_t)(k_ra_drw_control2_textureenable | k_ra_drw_control2_textureclampx |
-               k_ra_drw_control2_textureclampy | k_ra_drw_control2_texturefilterx |
-               k_ra_drw_control2_texturefiltery | k_ra_drw_control2_clutenable |
-               k_ra_drw_control2_clutformat_565 | k_ra_drw_control2_colkeyenable |
-               k_ra_drw_control2_rleenable | k_ra_drw_control2_rlepixel_mask |
-               k_ra_drw_control2_readformatl_mask | k_ra_drw_control2_readformath_mask);
+    (k_ra_drw_control2_textureenable | k_ra_drw_control2_textureclampx |
+     k_ra_drw_control2_textureclampy | k_ra_drw_control2_texturefilterx |
+     k_ra_drw_control2_texturefiltery | k_ra_drw_control2_clutenable |
+     k_ra_drw_control2_clutformat_565 | k_ra_drw_control2_colkeyenable |
+     k_ra_drw_control2_rleenable | k_ra_drw_control2_rlepixel_mask |
+     k_ra_drw_control2_readformatl_mask | k_ra_drw_control2_readformath_mask);
   (void)internal_control2_rmw(clr_mask, set_bits);
 
   if (tex->enable_color_key) {
     /* HUM Ch 62.2.28 "COLKEY: Color Key Register", p 3704 */
-    *ra_drw_reg32(k_ra_drw_off_colkey) =
-      tex->color_key_rgb & (uint32_t)k_ra_drw_internal_color_alpha_mask;
+    *ra_drw_reg32(k_ra_drw_off_colkey) = tex->color_key_rgb & k_ra_drw_internal_color_alpha_mask;
   }
   return k_ra_ok;
 }
@@ -660,9 +658,8 @@ static uint32_t internal_pack_texture_bits(const ra_drw_texture_t* tex)
 [[nodiscard]] ra_err_t ra_drw_clear_texture(void)
 {
   const uint32_t clr_mask =
-    (uint32_t)(k_ra_drw_control2_textureenable | k_ra_drw_control2_rleenable |
-               k_ra_drw_control2_clutenable | k_ra_drw_control2_colkeyenable |
-               k_ra_drw_control2_rlepixel_mask);
+    (k_ra_drw_control2_textureenable | k_ra_drw_control2_rleenable | k_ra_drw_control2_clutenable |
+     k_ra_drw_control2_colkeyenable | k_ra_drw_control2_rlepixel_mask);
   (void)internal_control2_rmw(clr_mask, 0UL);
   return k_ra_ok;
 }
@@ -698,12 +695,12 @@ ra_drw_load_clut(uint8_t start_index, const uint32_t* entries, uint32_t count)
 [[nodiscard]] ra_err_t ra_drw_fill_rect(const ra_drw_rect_t* rect)
 {
   RA_CHECK_NULL_PTR((void*)rect, s_tag, "rect must not be nullptr");
-  if ((uint16_t)rect->width_px < (uint16_t)k_ra_drw_min_dim_px ||
-      (uint16_t)rect->height_px < (uint16_t)k_ra_drw_min_dim_px) {
+  if ((uint16_t)rect->width_px < k_ra_drw_min_dim_px ||
+      (uint16_t)rect->height_px < k_ra_drw_min_dim_px) {
     return k_ra_err_invalid_arg;
   }
-  if ((uint16_t)rect->width_px > (uint16_t)k_ra_drw_max_width_px ||
-      (uint16_t)rect->height_px > (uint16_t)k_ra_drw_max_height_px) {
+  if ((uint16_t)rect->width_px > k_ra_drw_max_width_px ||
+      (uint16_t)rect->height_px > k_ra_drw_max_height_px) {
     return k_ra_err_invalid_arg;
   }
 
@@ -715,12 +712,11 @@ ra_drw_load_clut(uint8_t start_index, const uint32_t* entries, uint32_t count)
   /* HUM Ch 62.2.4 "CACHECTL: Cache Control Register", p 3694 */
   /* Flush the framebuffer cache so writes from a previous primitive
  * land in memory before this fill consumes the same lines. */
-  *ra_drw_reg32(k_ra_drw_off_cachectl) =
-    (uint32_t)(k_ra_drw_cachectl_all_en | k_ra_drw_cachectl_cflushfx);
+  *ra_drw_reg32(k_ra_drw_off_cachectl) = (k_ra_drw_cachectl_all_en | k_ra_drw_cachectl_cflushfx);
 
   /* HUM Ch 62.2.1 "CONTROL: Geometry Control Register", p 3689 */
   /* Enable limiters 1..4; engine starts on this write. */
-  *ra_drw_reg32(k_ra_drw_off_control) = (uint32_t)k_ra_drw_control_quad_box;
+  *ra_drw_reg32(k_ra_drw_off_control) = k_ra_drw_control_quad_box;
 
   return k_ra_ok;
 }
@@ -728,12 +724,12 @@ ra_drw_load_clut(uint8_t start_index, const uint32_t* entries, uint32_t count)
 [[nodiscard]] ra_err_t ra_drw_blit_textured_rect(const ra_drw_rect_t* rect)
 {
   RA_CHECK_NULL_PTR((void*)rect, s_tag, "rect must not be nullptr");
-  if ((uint16_t)rect->width_px < (uint16_t)k_ra_drw_min_dim_px ||
-      (uint16_t)rect->height_px < (uint16_t)k_ra_drw_min_dim_px) {
+  if ((uint16_t)rect->width_px < k_ra_drw_min_dim_px ||
+      (uint16_t)rect->height_px < k_ra_drw_min_dim_px) {
     return k_ra_err_invalid_arg;
   }
-  if ((uint16_t)rect->width_px > (uint16_t)k_ra_drw_max_width_px ||
-      (uint16_t)rect->height_px > (uint16_t)k_ra_drw_max_height_px) {
+  if ((uint16_t)rect->width_px > k_ra_drw_max_width_px ||
+      (uint16_t)rect->height_px > k_ra_drw_max_height_px) {
     return k_ra_err_invalid_arg;
   }
 
@@ -759,11 +755,10 @@ ra_drw_load_clut(uint8_t start_index, const uint32_t* entries, uint32_t count)
 
   /* HUM Ch 62.2.4 "CACHECTL: Cache Control Register", p 3694 */
   /* Pulse FB + texture cache flush before consuming. */
-  *ra_drw_reg32(k_ra_drw_off_cachectl) =
-    (uint32_t)(k_ra_drw_cachectl_all_en | k_ra_drw_cachectl_all_flush);
+  *ra_drw_reg32(k_ra_drw_off_cachectl) = (k_ra_drw_cachectl_all_en | k_ra_drw_cachectl_all_flush);
 
   /* HUM Ch 62.2.1 "CONTROL: Geometry Control Register", p 3689 */
-  *ra_drw_reg32(k_ra_drw_off_control) = (uint32_t)k_ra_drw_control_quad_box;
+  *ra_drw_reg32(k_ra_drw_off_control) = k_ra_drw_control_quad_box;
   return k_ra_ok;
 }
 
@@ -817,7 +812,7 @@ static void internal_program_line_limiters(const ra_drw_line_t* line)
 [[nodiscard]] ra_err_t ra_drw_draw_line(const ra_drw_line_t* line)
 {
   RA_CHECK_NULL_PTR((void*)line, s_tag, "line must not be nullptr");
-  if (line->width_px == 0U || (uint16_t)line->width_px > (uint16_t)k_ra_drw_max_width_px) {
+  if (line->width_px == 0U || (uint16_t)line->width_px > k_ra_drw_max_width_px) {
     return k_ra_err_invalid_arg;
   }
 
@@ -841,11 +836,10 @@ static void internal_program_line_limiters(const ra_drw_line_t* line)
   internal_program_line_limiters(line);
 
   /* HUM Ch 62.2.4 "CACHECTL: Cache Control Register", p 3694 */
-  *ra_drw_reg32(k_ra_drw_off_cachectl) =
-    (uint32_t)(k_ra_drw_cachectl_all_en | k_ra_drw_cachectl_cflushfx);
+  *ra_drw_reg32(k_ra_drw_off_cachectl) = (k_ra_drw_cachectl_all_en | k_ra_drw_cachectl_cflushfx);
 
   /* HUM Ch 62.2.1 "CONTROL: Geometry Control Register", p 3689 */
-  *ra_drw_reg32(k_ra_drw_off_control) = (uint32_t)k_ra_drw_control_line_quad;
+  *ra_drw_reg32(k_ra_drw_off_control) = k_ra_drw_control_line_quad;
   return k_ra_ok;
 }
 
@@ -899,11 +893,10 @@ static void internal_program_line_limiters(const ra_drw_line_t* line)
   *ra_drw_reg32(k_ra_drw_off_l3yadd) = internal_to_subpixel((int32_t)tri->x2 - (int32_t)tri->x0);
 
   /* HUM Ch 62.2.4 "CACHECTL: Cache Control Register", p 3694 */
-  *ra_drw_reg32(k_ra_drw_off_cachectl) =
-    (uint32_t)(k_ra_drw_cachectl_all_en | k_ra_drw_cachectl_cflushfx);
+  *ra_drw_reg32(k_ra_drw_off_cachectl) = (k_ra_drw_cachectl_all_en | k_ra_drw_cachectl_cflushfx);
 
   /* HUM Ch 62.2.1 "CONTROL: Geometry Control Register", p 3689 */
-  *ra_drw_reg32(k_ra_drw_off_control) = (uint32_t)k_ra_drw_control_triangle;
+  *ra_drw_reg32(k_ra_drw_off_control) = k_ra_drw_control_triangle;
   return k_ra_ok;
 }
 
@@ -925,7 +918,7 @@ static void internal_program_line_limiters(const ra_drw_line_t* line)
   /* Flush both caches so the dlist words written by the CPU are
  * visible to the DRW bus master. */
   const uint32_t cur_cc                = *ra_drw_reg32(k_ra_drw_off_cachectl);
-  *ra_drw_reg32(k_ra_drw_off_cachectl) = cur_cc | (uint32_t)k_ra_drw_cachectl_all_flush;
+  *ra_drw_reg32(k_ra_drw_off_cachectl) = cur_cc | k_ra_drw_cachectl_all_flush;
 
   /* HUM Ch 62.2.32 "DLISTSTART: Display List Start Address Register",
  * p 3705. Writing a new value triggers execution. */
@@ -941,8 +934,8 @@ static void internal_program_line_limiters(const ra_drw_line_t* line)
 [[nodiscard]] ra_err_t ra_drw_perf_arm(ra_drw_perftrigger_t event_ctr1,
                                        ra_drw_perftrigger_t event_ctr2)
 {
-  if ((uint16_t)event_ctr1 > (uint16_t)k_ra_drw_internal_perfev_max ||
-      (uint16_t)event_ctr2 > (uint16_t)k_ra_drw_internal_perfev_max) {
+  if ((uint16_t)event_ctr1 > k_ra_drw_internal_perfev_max ||
+      (uint16_t)event_ctr2 > k_ra_drw_internal_perfev_max) {
     return k_ra_err_invalid_arg;
   }
 

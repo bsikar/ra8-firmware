@@ -166,7 +166,7 @@ int32_t main(void)
 {
   /* Driver init runs with PRIMASK set (SystemInit masks IRQs at boot
    * so partial state isn't accidentally driven by an interrupt). */
-  if (ra_time_init((uint32_t)k_blink_cpu_hz_at_reset) != k_ra_ok) {
+  if (ra_time_init(k_blink_cpu_hz_at_reset) != k_ra_ok) {
     while (1) {
       __asm__ volatile("wfi");
     }
@@ -187,7 +187,7 @@ int32_t main(void)
     if (blink_pins_toggle_all() != k_ra_ok) {
       break;
     }
-    ra_delay_ms((uint32_t)k_blink_half_period_ms);
+    ra_delay_ms(k_blink_half_period_ms);
   }
 
   while (1) {

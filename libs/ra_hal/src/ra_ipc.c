@@ -44,11 +44,10 @@ static const char* s_tag = "IPC";
  */
 typedef enum : uint32_t {
   k_ra_ipc_internal_event_full_mask =
-    (uint32_t)k_ra_ipc_event_irq0 | (uint32_t)k_ra_ipc_event_irq1 | (uint32_t)k_ra_ipc_event_irq2 |
-    (uint32_t)k_ra_ipc_event_irq3 | (uint32_t)k_ra_ipc_event_irq4 | (uint32_t)k_ra_ipc_event_irq5 |
-    (uint32_t)k_ra_ipc_event_irq6 | (uint32_t)k_ra_ipc_event_irq7 |
-    (uint32_t)k_ra_ipc_event_msg_ready | (uint32_t)k_ra_ipc_event_fifo_full |
-    (uint32_t)k_ra_ipc_event_err_empty | (uint32_t)k_ra_ipc_event_err_full,
+    k_ra_ipc_event_irq0 | k_ra_ipc_event_irq1 | k_ra_ipc_event_irq2 | k_ra_ipc_event_irq3 |
+    k_ra_ipc_event_irq4 | k_ra_ipc_event_irq5 | k_ra_ipc_event_irq6 | k_ra_ipc_event_irq7 |
+    k_ra_ipc_event_msg_ready | k_ra_ipc_event_fifo_full | k_ra_ipc_event_err_empty |
+    k_ra_ipc_event_err_full,
 } ra_ipc_internal_const_t;
 
 /**
@@ -105,19 +104,19 @@ static uint32_t internal_ra_ipc_event_to_clr(uint32_t event_mask)
   uint32_t clr = 0U;
   /* HUM Ch 3.2.14 "IPC0CLR0" p 216 -- CLR7..CLR0 share bit positions
    * with IRQ7..IRQ0 in STA. */
-  clr |= (event_mask & (uint32_t)k_ra_ipc_clr_mask_irq_all);
-  if ((event_mask & (uint32_t)k_ra_ipc_event_msg_ready) != 0U) {
+  clr |= (event_mask & k_ra_ipc_clr_mask_irq_all);
+  if ((event_mask & k_ra_ipc_event_msg_ready) != 0U) {
     /* HUM Ch 3.2.14 "RST bit (FIFO Reset)" p 217 -- only way to
      * drop STA.RDY without consuming a word. */
-    clr |= (uint32_t)k_ra_ipc_clr_mask_rst;
+    clr |= k_ra_ipc_clr_mask_rst;
   }
-  if ((event_mask & (uint32_t)k_ra_ipc_event_err_empty) != 0U) {
+  if ((event_mask & k_ra_ipc_event_err_empty) != 0U) {
     /* HUM Ch 3.2.14 "RCLR bit" p 217*/
-    clr |= (uint32_t)k_ra_ipc_clr_mask_rclr;
+    clr |= k_ra_ipc_clr_mask_rclr;
   }
-  if ((event_mask & (uint32_t)k_ra_ipc_event_err_full) != 0U) {
+  if ((event_mask & k_ra_ipc_event_err_full) != 0U) {
     /* HUM Ch 3.2.14 "FCLR bit" p 217*/
-    clr |= (uint32_t)k_ra_ipc_clr_mask_fclr;
+    clr |= k_ra_ipc_clr_mask_fclr;
   }
   return clr;
 }
@@ -157,10 +156,10 @@ static uint16_t internal_ra_ipc_unit_to_event(uint8_t unit)
 {
   /* HUM Ch 18 "Event Link Controller" event-list -- IPC0_* feeds
    * ELC_EVENT_IPC_IRQ0 = 0x05B; IPC1_* feeds 0x05C. */
-  if (unit == (uint8_t)k_ra_ipc_unit_ipc0) {
-    return (uint16_t)k_ra_ipc_elc_event_irq0;
+  if (unit == k_ra_ipc_unit_ipc0) {
+    return k_ra_ipc_elc_event_irq0;
   }
-  return (uint16_t)k_ra_ipc_elc_event_irq1;
+  return k_ra_ipc_elc_event_irq1;
 }
 
 /**
@@ -169,12 +168,12 @@ static uint16_t internal_ra_ipc_unit_to_event(uint8_t unit)
  */
 static void internal_ra_ipc_dispatch_irq_lines(uint8_t channel, uint32_t mask)
 {
-  const uint32_t irq_bits = mask & (uint32_t)k_ra_ipc_event_irq_all;
+  const uint32_t irq_bits = mask & k_ra_ipc_event_irq_all;
   if (irq_bits == 0U) {
     return;
   }
   ra_ipc_channel_state_t* const state = &s_ipc_channels[channel];
-  for (uint8_t i = 0U; i < (uint8_t)k_ra_ipc_irq_event_count; ++i) {
+  for (uint8_t i = 0U; i < k_ra_ipc_irq_event_count; ++i) {
     const uint32_t bit = (uint32_t)1U << (uint32_t)i;
     if ((irq_bits & bit) == 0U) {
       continue;
@@ -195,11 +194,11 @@ static uint32_t internal_ra_ipc_sem_read_take(volatile uint32_t* sem)
   /* HUM Ch 3.2.3 "IPCSEMn" p 210 -- "Set condition: Reading this
    * register". Reading the register sets LOCK to 1; the read result
    * is the value the register held *before* the set. */
-  const uint32_t prev = *sem & (uint32_t)k_ra_ipc_sem_mask_lock;
+  const uint32_t prev = *sem & k_ra_ipc_sem_mask_lock;
 #ifdef RA_SIMULATOR_MODE
   /* The host-test simulator is dumb memory: a plain read has no
    * side effect, so synthesise the read-takes-lock semantics here. */
-  *sem = (uint32_t)k_ra_ipc_sem_mask_lock;
+  *sem = k_ra_ipc_sem_mask_lock;
 #endif
   return prev;
 }
@@ -222,19 +221,18 @@ static uint32_t internal_ra_ipc_sem_read_take(volatile uint32_t* sem)
   if (cfg->reset_fifo) {
     /* HUM Ch 3.2.14 "IPC0CLR0" p 216 -- CLR.RST (bit 16) drops the
      * FIFO and clears STA.RDY/STA.FULL. */
-    reg->CLR = (uint32_t)k_ra_ipc_clr_mask_rst;
+    reg->CLR = k_ra_ipc_clr_mask_rst;
   }
   if (cfg->clear_status) {
     /* HUM Ch 3.2.14 "IPC0CLR0" p 216 -- ack every IRQn and both
      * RERR/FERR error flags so init returns with a clean slate. */
-    reg->CLR = (uint32_t)k_ra_ipc_clr_mask_irq_all | (uint32_t)k_ra_ipc_clr_mask_rclr |
-               (uint32_t)k_ra_ipc_clr_mask_fclr;
+    reg->CLR = k_ra_ipc_clr_mask_irq_all | k_ra_ipc_clr_mask_rclr | k_ra_ipc_clr_mask_fclr;
   }
 
   ra_ipc_channel_state_t* const state = &s_ipc_channels[cfg->channel];
   state->event_mask                   = cfg->event_mask;
   state->active                       = true;
-  for (uint8_t i = 0U; i < (uint8_t)k_ra_ipc_irq_event_count; ++i) {
+  for (uint8_t i = 0U; i < k_ra_ipc_irq_event_count; ++i) {
     state->per_event[i].fn  = nullptr;
     state->per_event[i].ctx = nullptr;
   }
@@ -253,13 +251,13 @@ static uint32_t internal_ra_ipc_sem_read_take(volatile uint32_t* sem)
 
   /* HUM Ch 3.2.14 "IPC0CLR0" p 216 -- clear every event bit then
    * drop the FIFO so the next init starts clean. */
-  reg->CLR = (uint32_t)k_ra_ipc_clr_mask_irq_all | (uint32_t)k_ra_ipc_clr_mask_rst |
-             (uint32_t)k_ra_ipc_clr_mask_rclr | (uint32_t)k_ra_ipc_clr_mask_fclr;
+  reg->CLR = k_ra_ipc_clr_mask_irq_all | k_ra_ipc_clr_mask_rst | k_ra_ipc_clr_mask_rclr |
+             k_ra_ipc_clr_mask_fclr;
 
   ra_ipc_channel_state_t* const state = &s_ipc_channels[channel];
   state->event_mask                   = 0U;
   state->active                       = false;
-  for (uint8_t i = 0U; i < (uint8_t)k_ra_ipc_irq_event_count; ++i) {
+  for (uint8_t i = 0U; i < k_ra_ipc_irq_event_count; ++i) {
     state->per_event[i].fn  = nullptr;
     state->per_event[i].ctx = nullptr;
   }
@@ -274,7 +272,7 @@ static uint32_t internal_ra_ipc_sem_read_take(volatile uint32_t* sem)
   }
   /* HUM Ch 3.2.14 "RST bit (FIFO Reset)" p 217 -- bit 16 drains the
    * FIFO and clears RDY/FULL. */
-  reg->CLR = (uint32_t)k_ra_ipc_clr_mask_rst;
+  reg->CLR = k_ra_ipc_clr_mask_rst;
   return k_ra_ok;
 }
 
@@ -296,7 +294,7 @@ static uint32_t internal_ra_ipc_sem_read_take(volatile uint32_t* sem)
 ra_ipc_channel_for_send(ra_ipc_core_id_t core, uint8_t pair, uint8_t* out_channel)
 {
   RA_CHECK_NULL_PTR(out_channel, s_tag, "out_channel must not be nullptr");
-  if ((uint8_t)core > (uint8_t)k_ra_ipc_core_cpu1) {
+  if ((uint8_t)core > k_ra_ipc_core_cpu1) {
     return k_ra_err_invalid_arg;
   }
   if (pair > 1U) {
@@ -305,7 +303,7 @@ ra_ipc_channel_for_send(ra_ipc_core_id_t core, uint8_t pair, uint8_t* out_channe
   /* HUM Ch 3.1 "Overview" p 204 -- CPU0 sends through IPC1 (channels
    * 2 and 3); CPU1 sends through IPC0 (channels 0 and 1). */
   if (core == k_ra_ipc_core_cpu0) {
-    *out_channel = (uint8_t)((uint8_t)k_ra_ipc_channel_count / 2U) + pair;
+    *out_channel = (uint8_t)(k_ra_ipc_channel_count / 2U) + pair;
   } else {
     *out_channel = pair;
   }
@@ -316,7 +314,7 @@ ra_ipc_channel_for_send(ra_ipc_core_id_t core, uint8_t pair, uint8_t* out_channe
 ra_ipc_channel_for_recv(ra_ipc_core_id_t core, uint8_t pair, uint8_t* out_channel)
 {
   RA_CHECK_NULL_PTR(out_channel, s_tag, "out_channel must not be nullptr");
-  if ((uint8_t)core > (uint8_t)k_ra_ipc_core_cpu1) {
+  if ((uint8_t)core > k_ra_ipc_core_cpu1) {
     return k_ra_err_invalid_arg;
   }
   if (pair > 1U) {
@@ -327,7 +325,7 @@ ra_ipc_channel_for_recv(ra_ipc_core_id_t core, uint8_t pair, uint8_t* out_channe
   if (core == k_ra_ipc_core_cpu0) {
     *out_channel = pair;
   } else {
-    *out_channel = (uint8_t)((uint8_t)k_ra_ipc_channel_count / 2U) + pair;
+    *out_channel = (uint8_t)(k_ra_ipc_channel_count / 2U) + pair;
   }
   return k_ra_ok;
 }
@@ -381,7 +379,7 @@ ra_ipc_channel_for_recv(ra_ipc_core_id_t core, uint8_t pair, uint8_t* out_channe
 
   /* HUM Ch 3.2.10 "IPC0STA0 FULL bit" p 214 -- if the FIFO is full
    * the write to TXD is silently dropped and FERR is set. */
-  if ((reg->STA & (uint32_t)k_ra_ipc_sta_mask_full) != 0U) {
+  if ((reg->STA & k_ra_ipc_sta_mask_full) != 0U) {
     return k_ra_err_busy;
   }
 
@@ -397,8 +395,8 @@ ra_ipc_send_message_retry(uint8_t channel, uint32_t message, uint16_t max_retrie
   if ((uint16_t)channel >= (uint16_t)k_ra_ipc_channel_count) {
     return k_ra_err_invalid_arg;
   }
-  if (max_retries > (uint16_t)k_ra_ipc_retry_max) {
-    max_retries = (uint16_t)k_ra_ipc_retry_max;
+  if (max_retries > k_ra_ipc_retry_max) {
+    max_retries = k_ra_ipc_retry_max;
   }
   volatile r_ipc_channel_regs_t* reg = internal_ra_ipc_get_regs(channel);
   RA_CHECK_NULL_PTR((void*)reg, s_tag, "channel mapping failed");
@@ -407,7 +405,7 @@ ra_ipc_send_message_retry(uint8_t channel, uint32_t message, uint16_t max_retrie
    * case where retries==0 still gets a single attempt. */
   for (uint16_t i = 0U; i <= max_retries; ++i) {
     /* HUM Ch 3.2.10 "FULL bit" p 214*/
-    if ((reg->STA & (uint32_t)k_ra_ipc_sta_mask_full) == 0U) {
+    if ((reg->STA & k_ra_ipc_sta_mask_full) == 0U) {
       /* HUM Ch 3.2.12 "IPC0TXD0" p 215*/
       reg->TXD = message;
       return k_ra_ok;
@@ -415,7 +413,7 @@ ra_ipc_send_message_retry(uint8_t channel, uint32_t message, uint16_t max_retrie
     /* HUM Ch 3.2.14 "FCLR bit" p 217 -- knock down a possible FERR
      * left over from a previous overflow so the dispatcher does not
      * spin forever on a stuck error flag. */
-    reg->CLR = (uint32_t)k_ra_ipc_clr_mask_fclr;
+    reg->CLR = k_ra_ipc_clr_mask_fclr;
   }
   return k_ra_err_hw_timeout;
 }
@@ -440,7 +438,7 @@ ra_ipc_send_burst(uint8_t channel, const uint32_t* data, uint32_t count, uint32_
    * Ch 3.1 p 204). */
   for (uint32_t i = 0U; i < count; ++i) {
     /* HUM Ch 3.2.10 "FULL bit" p 214*/
-    if ((reg->STA & (uint32_t)k_ra_ipc_sta_mask_full) != 0U) {
+    if ((reg->STA & k_ra_ipc_sta_mask_full) != 0U) {
       break;
     }
     /* HUM Ch 3.2.12 "IPC0TXD0" p 215*/
@@ -462,7 +460,7 @@ ra_ipc_send_burst(uint8_t channel, const uint32_t* data, uint32_t count, uint32_
 
   /* HUM Ch 3.2.10 "RDY bit" p 214 -- a read of RXD while RDY=0
    * returns 0 and sets RERR. */
-  if ((reg->STA & (uint32_t)k_ra_ipc_sta_mask_rdy) == 0U) {
+  if ((reg->STA & k_ra_ipc_sta_mask_rdy) == 0U) {
     return k_ra_err_no_data;
   }
   /* HUM Ch 3.2.13 "IPC0RXD0" p 216*/
@@ -477,8 +475,8 @@ ra_ipc_recv_message_retry(uint8_t channel, uint32_t* out_msg, uint16_t max_retri
   if ((uint16_t)channel >= (uint16_t)k_ra_ipc_channel_count) {
     return k_ra_err_invalid_arg;
   }
-  if (max_retries > (uint16_t)k_ra_ipc_retry_max) {
-    max_retries = (uint16_t)k_ra_ipc_retry_max;
+  if (max_retries > k_ra_ipc_retry_max) {
+    max_retries = k_ra_ipc_retry_max;
   }
   volatile r_ipc_channel_regs_t* reg = internal_ra_ipc_get_regs(channel);
   RA_CHECK_NULL_PTR((void*)reg, s_tag, "channel mapping failed");
@@ -486,7 +484,7 @@ ra_ipc_recv_message_retry(uint8_t channel, uint32_t* out_msg, uint16_t max_retri
   /* NASA Rule 2: bounded loop, max_retries clamped above. */
   for (uint16_t i = 0U; i <= max_retries; ++i) {
     /* HUM Ch 3.2.10 "RDY bit" p 214*/
-    if ((reg->STA & (uint32_t)k_ra_ipc_sta_mask_rdy) != 0U) {
+    if ((reg->STA & k_ra_ipc_sta_mask_rdy) != 0U) {
       /* HUM Ch 3.2.13 "IPC0RXD0" p 216*/
       *out_msg = reg->RXD;
       return k_ra_ok;
@@ -494,7 +492,7 @@ ra_ipc_recv_message_retry(uint8_t channel, uint32_t* out_msg, uint16_t max_retri
     /* HUM Ch 3.2.14 "RCLR bit" p 217 -- proactively wipe a stale
      * RERR so the next dispatch loop is not perpetually firing on
      * an old error. */
-    reg->CLR = (uint32_t)k_ra_ipc_clr_mask_rclr;
+    reg->CLR = k_ra_ipc_clr_mask_rclr;
   }
   return k_ra_err_hw_timeout;
 }
@@ -518,7 +516,7 @@ ra_ipc_recv_burst(uint8_t channel, uint32_t* out_data, uint32_t capacity, uint32
    * inner break when STA.RDY drops. */
   for (uint32_t i = 0U; i < capacity; ++i) {
     /* HUM Ch 3.2.10 "RDY bit" p 214*/
-    if ((reg->STA & (uint32_t)k_ra_ipc_sta_mask_rdy) == 0U) {
+    if ((reg->STA & k_ra_ipc_sta_mask_rdy) == 0U) {
       break;
     }
     /* HUM Ch 3.2.13 "IPC0RXD0" p 216*/
@@ -572,7 +570,7 @@ ra_ipc_recv_burst(uint8_t channel, uint32_t* out_data, uint32_t capacity, uint32
   }
   /* HUM Ch 3.2.14 "RCLR bit / FCLR bit" p 217 -- ack both error
    * flags in one CLR write. */
-  reg->CLR = (uint32_t)k_ra_ipc_clr_mask_rclr | (uint32_t)k_ra_ipc_clr_mask_fclr;
+  reg->CLR = k_ra_ipc_clr_mask_rclr | k_ra_ipc_clr_mask_fclr;
   return k_ra_ok;
 }
 
@@ -584,7 +582,7 @@ ra_ipc_recv_burst(uint8_t channel, uint32_t* out_data, uint32_t capacity, uint32
     return k_ra_err_invalid_arg;
   }
   /* HUM Ch 3.2.10 "FULL bit" p 214*/
-  *out_can_send = ((reg->STA & (uint32_t)k_ra_ipc_sta_mask_full) == 0U);
+  *out_can_send = ((reg->STA & k_ra_ipc_sta_mask_full) == 0U);
   return k_ra_ok;
 }
 
@@ -596,7 +594,7 @@ ra_ipc_recv_burst(uint8_t channel, uint32_t* out_data, uint32_t capacity, uint32
     return k_ra_err_invalid_arg;
   }
   /* HUM Ch 3.2.10 "RDY bit" p 214*/
-  *out_has_data = ((reg->STA & (uint32_t)k_ra_ipc_sta_mask_rdy) != 0U);
+  *out_has_data = ((reg->STA & k_ra_ipc_sta_mask_rdy) != 0U);
   return k_ra_ok;
 }
 
@@ -644,7 +642,7 @@ ra_ipc_recv_burst(uint8_t channel, uint32_t* out_data, uint32_t capacity, uint32
                                                   ra_ipc_attr_t*          out_attr)
 {
   RA_CHECK_NULL_PTR(out_attr, s_tag, "out_attr must not be nullptr");
-  if ((uint8_t)group > (uint8_t)k_ra_ipc_sem_group_high) {
+  if ((uint8_t)group > k_ra_ipc_sem_group_high) {
     return k_ra_err_invalid_arg;
   }
   /* HUM Ch 3.2.1 "IPCSAR.SAIPCSEMg" p 205 */
@@ -666,8 +664,8 @@ ra_ipc_can_access(uint8_t channel, ra_ipc_attr_t const* required, bool* out_can_
   if (err != k_ra_ok) {
     return err;
   }
-  const bool secure_match     = (live.secure == required->secure);
-  const bool privileged_match = (live.privileged == required->privileged);
+  const bool secure_match     = live.secure == required->secure;
+  const bool privileged_match = live.privileged == required->privileged;
   *out_can_access             = (bool)(secure_match && privileged_match);
   return k_ra_ok;
 }
@@ -702,8 +700,8 @@ ra_ipc_can_access(uint8_t channel, ra_ipc_attr_t const* required, bool* out_can_
   if (max_spins == 0U) {
     return k_ra_err_invalid_arg;
   }
-  if (max_spins > (uint16_t)k_ra_ipc_sem_take_max) {
-    max_spins = (uint16_t)k_ra_ipc_sem_take_max;
+  if (max_spins > k_ra_ipc_sem_take_max) {
+    max_spins = k_ra_ipc_sem_take_max;
   }
   volatile uint32_t* sem = ra_ipc_sem(sem_id);
   RA_CHECK_NULL_PTR((void*)sem, s_tag, "sem mapping failed");
@@ -727,7 +725,7 @@ ra_ipc_can_access(uint8_t channel, ra_ipc_attr_t const* required, bool* out_can_
   RA_CHECK_NULL_PTR((void*)sem, s_tag, "sem mapping failed");
   /* HUM Ch 3.2.3 "IPCSEMn" p 210 -- "Clear condition: Writing 1 to
    * this bit". */
-  *sem = (uint32_t)k_ra_ipc_sem_mask_lock;
+  *sem = k_ra_ipc_sem_mask_lock;
 #ifdef RA_SIMULATOR_MODE
   /* On real HW, writing 1 clears LOCK to 0. The host-test simulator
    * is dumb memory and just stores the 1; reflect the released state
@@ -759,7 +757,7 @@ ra_ipc_can_access(uint8_t channel, ra_ipc_attr_t const* required, bool* out_can_
      * observe via a non-acquiring read on real silicon (LOCK=0). On
      * the dumb-memory unit-test sim the second write is the one that
      * is actually observable. */
-    *sem = (uint32_t)k_ra_ipc_sem_mask_lock;
+    *sem = k_ra_ipc_sem_mask_lock;
     *sem = 0U;
   }
   return k_ra_ok;
@@ -778,7 +776,7 @@ ra_ipc_can_access(uint8_t channel, ra_ipc_attr_t const* required, bool* out_can_
   }
   /* HUM Ch 3.2.5 "IPC0NMISET" p 211 / Ch 3.2.8 "IPC1NMISET" p 213 --
    * write 1 to SET to assert NMI on the peer. */
-  nmi->NMISET = (uint32_t)k_ra_ipc_nmi_mask_bit;
+  nmi->NMISET = k_ra_ipc_nmi_mask_bit;
   return k_ra_ok;
 }
 
@@ -790,7 +788,7 @@ ra_ipc_can_access(uint8_t channel, ra_ipc_attr_t const* required, bool* out_can_
   }
   /* HUM Ch 3.2.6 "IPC0NMICLR" p 212 / Ch 3.2.9 "IPC1NMICLR" p 213 --
    * write 1 to CLR to drop NMISTA.NMI. */
-  nmi->NMICLR = (uint32_t)k_ra_ipc_nmi_mask_bit;
+  nmi->NMICLR = k_ra_ipc_nmi_mask_bit;
   return k_ra_ok;
 }
 
@@ -802,7 +800,7 @@ ra_ipc_can_access(uint8_t channel, ra_ipc_attr_t const* required, bool* out_can_
     return k_ra_err_invalid_arg;
   }
   /* HUM Ch 3.2.4 "IPC0NMISTA.NMI" p 210 */
-  *out_pending = ((nmi->NMISTA & (uint32_t)k_ra_ipc_nmi_mask_bit) != 0U);
+  *out_pending = ((nmi->NMISTA & k_ra_ipc_nmi_mask_bit) != 0U);
   return k_ra_ok;
 }
 
@@ -822,7 +820,7 @@ void ra_ipc_dispatch_nmi(uint8_t unit)
   /* HUM Ch 3.2.4 "IPC0NMISTA.NMI" p 210 -- snapshot before invoking
    * the callback so a re-entrant SET on the peer side does not
    * confuse our acknowledge. */
-  if ((nmi->NMISTA & (uint32_t)k_ra_ipc_nmi_mask_bit) == 0U) {
+  if ((nmi->NMISTA & k_ra_ipc_nmi_mask_bit) == 0U) {
     return;
   }
   const ra_ipc_nmi_fn_t fn  = s_ipc_nmi_callback;
@@ -832,7 +830,7 @@ void ra_ipc_dispatch_nmi(uint8_t unit)
   }
   /* HUM Ch 3.2.6 "IPC0NMICLR.CLR" p 212 -- ack so the ICU drops the
    * line. */
-  nmi->NMICLR = (uint32_t)k_ra_ipc_nmi_mask_bit;
+  nmi->NMICLR = k_ra_ipc_nmi_mask_bit;
 }
 
 /* =============================================================================
@@ -878,10 +876,10 @@ void ra_ipc_dispatch(uint8_t channel)
    * once so the IRQ/RDY/RERR/FERR bits do not race against the peer. */
   const uint32_t sta        = reg->STA;
   const uint32_t configured = s_ipc_channels[channel].event_mask;
-  const uint32_t fired      = sta & configured & (uint32_t)k_ra_ipc_internal_event_full_mask;
+  const uint32_t fired      = sta & configured & k_ra_ipc_internal_event_full_mask;
 
   uint32_t message = 0U;
-  if ((fired & (uint32_t)k_ra_ipc_event_msg_ready) != 0U) {
+  if ((fired & k_ra_ipc_event_msg_ready) != 0U) {
     /* HUM Ch 3.2.13 "IPC0RXD0" p 216*/
     message = reg->RXD;
   }

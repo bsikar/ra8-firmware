@@ -100,12 +100,12 @@ static uint8_t s_refcount[k_ra_mstp_reg_count][k_ra_mstp_bit_count];
 
 ra_mstp_reg_t ra_mstp_id_reg(ra_mstp_t id)
 {
-  return (ra_mstp_reg_t)(((uint16_t)id >> k_ra_bits_per_byte) & (uint16_t)k_ra_mask_byte);
+  return (ra_mstp_reg_t)(((uint16_t)id >> k_ra_bits_per_byte) & k_ra_mask_byte);
 }
 
 uint8_t ra_mstp_id_bit(ra_mstp_t id)
 {
-  return (uint8_t)((uint16_t)id & (uint16_t)k_ra_mask_byte);
+  return (uint8_t)((uint16_t)id & k_ra_mask_byte);
 }
 
 /* =============================================================================
@@ -126,10 +126,10 @@ static bool internal_decode(ra_mstp_t id, uint8_t* out_reg, uint8_t* out_bit)
 {
   const uint8_t reg = (uint8_t)ra_mstp_id_reg(id);
   const uint8_t bit = ra_mstp_id_bit(id);
-  if (reg >= (uint8_t)k_ra_mstp_reg_count) {
+  if (reg >= k_ra_mstp_reg_count) {
     return false;
   }
-  if (bit >= (uint8_t)k_ra_mstp_bit_count) {
+  if (bit >= k_ra_mstp_bit_count) {
     return false;
   }
   *out_reg = reg;
@@ -177,8 +177,8 @@ static ra_err_t internal_wait_readback(uint8_t reg, uint8_t bit, bool expected_s
   const uint32_t           mask = (uint32_t)1U << bit;
   /* Host simulator always succeeds on iteration 0; the spin-budget
    * loop exists for the Cortex-M85 target only. */
-  for (uint16_t i = 0U; i < (uint16_t)k_ra_mstp_readback_spin; ++i) { /* GCOVR_EXCL_BR_LINE */
-    const bool seen_stopped = ((*p & mask) != 0U);
+  for (uint16_t i = 0U; i < k_ra_mstp_readback_spin; ++i) { /* GCOVR_EXCL_BR_LINE */
+    const bool seen_stopped = (*p & mask) != 0U;
     if (seen_stopped == expected_stopped) { /* GCOVR_EXCL_BR_LINE */
       return k_ra_ok;
     }
@@ -196,8 +196,8 @@ ra_err_t ra_mstp_init(void)
   ra_log_info(s_tag, "ra_mstp_init -- gating all modules");
 
   /* Reset every ref count. */
-  for (uint8_t reg = 0U; reg < (uint8_t)k_ra_mstp_reg_count; ++reg) {
-    for (uint8_t bit = 0U; bit < (uint8_t)k_ra_mstp_bit_count; ++bit) {
+  for (uint8_t reg = 0U; reg < k_ra_mstp_reg_count; ++reg) {
+    for (uint8_t bit = 0U; bit < k_ra_mstp_bit_count; ++bit) {
       s_refcount[reg][bit] = 0U;
     }
   }
@@ -206,7 +206,7 @@ ra_err_t ra_mstp_init(void)
    * pp 443..449 list reserved bits as "These bits are read as 1.
    * The write value should be 1." -- writing the all-stopped pattern
    * satisfies both real bits and reserved bits in one shot. */
-  const uint32_t reset_val = (uint32_t)k_ra_mstp_all_stopped;
+  const uint32_t reset_val = k_ra_mstp_all_stopped;
   /* HUM Ch 11.2.6 "MSTPCRA : Module Stop Control Register A", p 443 */
   *internal_reg_ptr(0U) = reset_val;
   /* HUM Ch 11.2.7 "MSTPCRB : Module Stop Control Register B", p 444 */
@@ -222,11 +222,11 @@ ra_err_t ra_mstp_init(void)
    * registers are always 1, so the all-stopped pattern is the only
    * legal value after a reset-equivalent write. The not-observed
    * branch is target-only (host simulator always succeeds). */
-  for (uint8_t reg = 0U; reg < (uint8_t)k_ra_mstp_reg_count; ++reg) {
+  for (uint8_t reg = 0U; reg < k_ra_mstp_reg_count; ++reg) {
     volatile const uint32_t* p        = internal_reg_ptr(reg);
     bool                     all_ones = false;
-    for (uint16_t i = 0U; i < (uint16_t)k_ra_mstp_readback_spin; ++i) { /* GCOVR_EXCL_BR_LINE */
-      if (*p == reset_val) {                                            /* GCOVR_EXCL_BR_LINE */
+    for (uint16_t i = 0U; i < k_ra_mstp_readback_spin; ++i) { /* GCOVR_EXCL_BR_LINE */
+      if (*p == reset_val) {                                  /* GCOVR_EXCL_BR_LINE */
         all_ones = true;
         break;
       }

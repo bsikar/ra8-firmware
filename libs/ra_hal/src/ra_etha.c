@@ -108,7 +108,7 @@ static ra_etha_slot_t s_slots[k_ra_etha_port_count];
  */
 static inline bool internal_port_ok(ra_etha_port_t port)
 {
-  return (uint8_t)port < (uint8_t)k_ra_etha_port_count;
+  return (uint8_t)port < k_ra_etha_port_count;
 }
 
 /**
@@ -119,7 +119,7 @@ static inline bool internal_port_ok(ra_etha_port_t port)
  */
 static inline bool internal_tc_ok(ra_etha_tc_t tc)
 {
-  return (uint8_t)tc < (uint8_t)k_ra_etha_tc_count;
+  return (uint8_t)tc < k_ra_etha_tc_count;
 }
 
 /**
@@ -130,7 +130,7 @@ static inline bool internal_tc_ok(ra_etha_tc_t tc)
  */
 static inline bool internal_irq_block_ok(ra_etha_irq_class_t block)
 {
-  return (uint8_t)block < (uint8_t)k_ra_etha_irq_class_count;
+  return (uint8_t)block < k_ra_etha_irq_class_count;
 }
 
 ra_err_t ra_etha_init(ra_etha_port_t port, const ra_etha_config_t* cfg)
@@ -148,13 +148,13 @@ ra_err_t ra_etha_init(ra_etha_port_t port, const ra_etha_config_t* cfg)
   volatile r_etha_regs_t* reg = ra_etha(port);
 
   /* HUM Ch 32.3.1.1 "EAMC : Mode Command Register" p 1631 */
-  reg->EAMC = (uint32_t)cfg->initial_mode & (uint32_t)k_ra_etha_mask_opc;
+  reg->EAMC = (uint32_t)cfg->initial_mode & k_ra_etha_mask_opc;
   /* HUM Ch 32.4 "Error Interrupt Sources" p 1685 */
-  reg->EAEID0 = (uint32_t)k_ra_etha_local_all_bits_set;
+  reg->EAEID0 = k_ra_etha_local_all_bits_set;
   /* HUM Ch 32.4 "Error Interrupt Sources" p 1685 */
-  reg->EAEID1 = (uint32_t)k_ra_etha_local_all_bits_set;
+  reg->EAEID1 = k_ra_etha_local_all_bits_set;
   /* HUM Ch 32.4 "Error Interrupt Sources" p 1685 */
-  reg->EAEID2 = (uint32_t)k_ra_etha_local_all_bits_set;
+  reg->EAEID2 = k_ra_etha_local_all_bits_set;
   /* HUM Ch 32.4 "Error Interrupt Sources" p 1685 */
   reg->EAEIE0 = cfg->eaeie0_mask;
   /* HUM Ch 32.4 "Error Interrupt Sources" p 1685 */
@@ -202,7 +202,7 @@ ra_err_t ra_etha_get_status(ra_etha_port_t port, ra_etha_status_t* out)
 
   volatile r_etha_regs_t* reg = ra_etha(port);
   /* HUM Ch 32.3.1.2 "EAMS : Mode Status Register" p 1631 */
-  const uint32_t ops = reg->EAMS & (uint32_t)k_ra_etha_mask_ops;
+  const uint32_t ops = reg->EAMS & k_ra_etha_mask_ops;
   /* HUM Ch 32.4 "Error Interrupt Sources" p 1685 */
   const uint32_t eaeis0 = reg->EAEIS0;
   /* HUM Ch 32.4 "Error Interrupt Sources" p 1685 */
@@ -385,19 +385,18 @@ ra_err_t ra_etha_reset(ra_etha_port_t port)
 
 ra_err_t ra_etha_set_mode(ra_etha_port_t port, ra_etha_opc_t mode)
 {
-  if (!internal_port_ok(port) || (uint32_t)mode > (uint32_t)k_ra_etha_mask_opc) {
+  if (!internal_port_ok(port) || (uint32_t)mode > k_ra_etha_mask_opc) {
     ra_log_error(s_tag, "etha_set_mode: bad arg");
     return k_ra_err_invalid_arg;
   }
   /* HUM Ch 32.3.1.1 "EAMC : Mode Command Register" p 1631 */
-  ra_etha(port)->EAMC = (uint32_t)mode & (uint32_t)k_ra_etha_mask_opc;
+  ra_etha(port)->EAMC = (uint32_t)mode & k_ra_etha_mask_opc;
   return k_ra_ok;
 }
 
 ra_err_t ra_etha_set_queue_arb(ra_etha_port_t port, ra_etha_tc_t tc, uint8_t arb)
 {
-  if (!internal_port_ok(port) || !internal_tc_ok(tc) ||
-      (uint32_t)arb > (uint32_t)k_ra_etha_mask_tdqa) {
+  if (!internal_port_ok(port) || !internal_tc_ok(tc) || (uint32_t)arb > k_ra_etha_mask_tdqa) {
     ra_log_error(s_tag, "etha_set_queue_arb: bad arg");
     return k_ra_err_invalid_arg;
   }
@@ -406,22 +405,20 @@ ra_err_t ra_etha_set_queue_arb(ra_etha_port_t port, ra_etha_tc_t tc, uint8_t arb
   /* HUM Ch 32.3 "EATDQAC : TX Descriptor Queue Arbitration Cfg" p 1633 */
   const uint32_t shift = (uint32_t)((uint8_t)tc * 4U);
   /* HUM Ch 32.3 "EATDQAC : TX Descriptor Queue Arbitration Cfg" p 1633 */
-  const uint32_t mask = (uint32_t)k_ra_etha_mask_tdqa << shift;
+  const uint32_t mask = k_ra_etha_mask_tdqa << shift;
   /* HUM Ch 32.3 "EATDQAC : TX Descriptor Queue Arbitration Cfg" p 1633 */
-  reg->EATDQAC =
-    (reg->EATDQAC & ~mask) | (((uint32_t)arb & (uint32_t)k_ra_etha_mask_tdqa) << shift);
+  reg->EATDQAC = (reg->EATDQAC & ~mask) | (((uint32_t)arb & k_ra_etha_mask_tdqa) << shift);
   return k_ra_ok;
 }
 
 ra_err_t ra_etha_set_queue_depth(ra_etha_port_t port, ra_etha_tc_t tc, uint16_t depth)
 {
-  if (!internal_port_ok(port) || !internal_tc_ok(tc) ||
-      (uint32_t)depth > (uint32_t)k_ra_etha_mask_dqd) {
+  if (!internal_port_ok(port) || !internal_tc_ok(tc) || (uint32_t)depth > k_ra_etha_mask_dqd) {
     ra_log_error(s_tag, "etha_set_queue_depth: bad arg");
     return k_ra_err_invalid_arg;
   }
   /* HUM Ch 32.3 "EATDQDCq : Per-class TX Queue Depth Cfg" p 1641 */
-  ra_etha(port)->EATDQDC[(uint8_t)tc] = (uint32_t)depth & (uint32_t)k_ra_etha_mask_dqd;
+  ra_etha(port)->EATDQDC[(uint8_t)tc] = (uint32_t)depth & k_ra_etha_mask_dqd;
   return k_ra_ok;
 }
 
@@ -437,9 +434,9 @@ ra_etha_get_queue_level(ra_etha_port_t port, ra_etha_tc_t tc, uint16_t* cur_leve
 
   volatile r_etha_regs_t* reg = ra_etha(port);
   /* HUM Ch 32.3 "EATDQMq : Per-class TX Queue Monitor" p 1647 */
-  *cur_level = (uint16_t)(reg->EATDQM[(uint8_t)tc] & (uint32_t)k_ra_etha_mask_dnq);
+  *cur_level = (uint16_t)(reg->EATDQM[(uint8_t)tc] & k_ra_etha_mask_dnq);
   /* HUM Ch 32.3 "EATDQMLMq : Per-class TX Queue Max Level Monitor" p 1650 */
-  *peak = (uint16_t)(reg->EATDQMLM[(uint8_t)tc] & (uint32_t)k_ra_etha_mask_dnq);
+  *peak = (uint16_t)(reg->EATDQMLM[(uint8_t)tc] & k_ra_etha_mask_dnq);
   return k_ra_ok;
 }
 
@@ -451,7 +448,7 @@ ra_etha_set_preemption(ra_etha_port_t port, uint8_t preempt, uint8_t cut_thru, r
     return k_ra_err_invalid_arg;
   }
   /* HUM Ch 32.3 "EATPEC : TX Preemption Configuration" p 1635 */
-  uint32_t v = (uint32_t)preempt & (uint32_t)k_ra_etha_local_byte_mask;
+  uint32_t v = (uint32_t)preempt & k_ra_etha_local_byte_mask;
   if (cut_thru != 0U) {
     v |= (1UL << 8); /* TTQ8 cut-through preemptable */
   }
@@ -468,7 +465,7 @@ ra_err_t ra_etha_set_max_frame_size(ra_etha_port_t port, ra_etha_tc_t tc, uint16
     return k_ra_err_invalid_arg;
   }
   /* HUM Ch 32.3 "EATMFSCq : Per-class TX Max Frame Size Cfg" p 1639 */
-  ra_etha(port)->EATMFSC[(uint8_t)tc] = (uint32_t)max_bytes & (uint32_t)k_ra_etha_mask_mfs;
+  ra_etha(port)->EATMFSC[(uint8_t)tc] = (uint32_t)max_bytes & k_ra_etha_mask_mfs;
   return k_ra_ok;
 }
 
@@ -480,18 +477,18 @@ ra_err_t ra_etha_set_ipv_remap(ra_etha_port_t port, const uint8_t* map)
     return k_ra_err_invalid_arg;
   }
   /* Validate every entry first so we never write a partial value. */
-  for (uint8_t i = 0U; i < (uint8_t)k_ra_etha_tc_count; ++i) {
-    if ((uint32_t)map[i] > (uint32_t)k_ra_etha_mask_ipv) {
+  for (uint8_t i = 0U; i < k_ra_etha_tc_count; ++i) {
+    if ((uint32_t)map[i] > k_ra_etha_mask_ipv) {
       ra_log_error(s_tag, "etha_set_ipv_remap: entry > 7");
       return k_ra_err_invalid_arg;
     }
   }
   /* HUM Ch 32.3 "EAIRC : IPV Remap Configuration" p 1632 */
   uint32_t packed = 0U;
-  for (uint8_t i = 0U; i < (uint8_t)k_ra_etha_tc_count; ++i) {
+  for (uint8_t i = 0U; i < k_ra_etha_tc_count; ++i) {
     /* HUM Ch 32.3 "EAIRC : IPV Remap Configuration" p 1632 */
     const uint32_t shift = (uint32_t)i * 4U;
-    packed |= ((uint32_t)map[i] & (uint32_t)k_ra_etha_mask_ipv) << shift;
+    packed |= ((uint32_t)map[i] & k_ra_etha_mask_ipv) << shift;
   }
   /* HUM Ch 32.3 "EAIRC : IPV Remap Configuration" p 1632 */
   ra_etha(port)->EAIRC = packed;
@@ -522,28 +519,23 @@ ra_err_t ra_etha_set_vlan_tag(ra_etha_port_t            port,
     ra_log_error(s_tag, "etha_set_vlan_tag: port out of range");
     return k_ra_err_invalid_arg;
   }
-  if ((uint32_t)c_tag->vid > (uint32_t)k_ra_etha_mask_vlan_vid ||
-      (uint32_t)s_tag_in->vid > (uint32_t)k_ra_etha_mask_vlan_vid ||
-      (uint32_t)c_tag->pcp > (uint32_t)k_ra_etha_mask_vlan_pcp ||
-      (uint32_t)s_tag_in->pcp > (uint32_t)k_ra_etha_mask_vlan_pcp ||
-      (uint32_t)c_tag->dei > (uint32_t)k_ra_etha_mask_vlan_dei ||
-      (uint32_t)s_tag_in->dei > (uint32_t)k_ra_etha_mask_vlan_dei) {
+  if ((uint32_t)c_tag->vid > k_ra_etha_mask_vlan_vid ||
+      (uint32_t)s_tag_in->vid > k_ra_etha_mask_vlan_vid ||
+      (uint32_t)c_tag->pcp > k_ra_etha_mask_vlan_pcp ||
+      (uint32_t)s_tag_in->pcp > k_ra_etha_mask_vlan_pcp ||
+      (uint32_t)c_tag->dei > k_ra_etha_mask_vlan_dei ||
+      (uint32_t)s_tag_in->dei > k_ra_etha_mask_vlan_dei) {
     ra_log_error(s_tag, "etha_set_vlan_tag: tag fields out of range");
     return k_ra_err_invalid_arg;
   }
 
-  const uint32_t v = (((uint32_t)c_tag->vid & (uint32_t)k_ra_etha_mask_vlan_vid)
-                      << (uint32_t)k_ra_etha_eavtc_ctv_pos) |
-                     (((uint32_t)c_tag->pcp & (uint32_t)k_ra_etha_mask_vlan_pcp)
-                      << (uint32_t)k_ra_etha_eavtc_ctp_pos) |
-                     (((uint32_t)c_tag->dei & (uint32_t)k_ra_etha_mask_vlan_dei)
-                      << (uint32_t)k_ra_etha_eavtc_ctd_pos) |
-                     (((uint32_t)s_tag_in->vid & (uint32_t)k_ra_etha_mask_vlan_vid)
-                      << (uint32_t)k_ra_etha_eavtc_stv_pos) |
-                     (((uint32_t)s_tag_in->pcp & (uint32_t)k_ra_etha_mask_vlan_pcp)
-                      << (uint32_t)k_ra_etha_eavtc_stp_pos) |
-                     (((uint32_t)s_tag_in->dei & (uint32_t)k_ra_etha_mask_vlan_dei)
-                      << (uint32_t)k_ra_etha_eavtc_std_pos);
+  const uint32_t v =
+    (((uint32_t)c_tag->vid & k_ra_etha_mask_vlan_vid) << (uint32_t)k_ra_etha_eavtc_ctv_pos) |
+    (((uint32_t)c_tag->pcp & k_ra_etha_mask_vlan_pcp) << (uint32_t)k_ra_etha_eavtc_ctp_pos) |
+    (((uint32_t)c_tag->dei & k_ra_etha_mask_vlan_dei) << (uint32_t)k_ra_etha_eavtc_ctd_pos) |
+    (((uint32_t)s_tag_in->vid & k_ra_etha_mask_vlan_vid) << (uint32_t)k_ra_etha_eavtc_stv_pos) |
+    (((uint32_t)s_tag_in->pcp & k_ra_etha_mask_vlan_pcp) << (uint32_t)k_ra_etha_eavtc_stp_pos) |
+    (((uint32_t)s_tag_in->dei & k_ra_etha_mask_vlan_dei) << (uint32_t)k_ra_etha_eavtc_std_pos);
   /* HUM Ch 32.3 "EAVTC : VLAN TAG Configuration" p 1655 */
   ra_etha(port)->EAVTC = v;
   return k_ra_ok;
@@ -556,21 +548,21 @@ ra_err_t ra_etha_set_rx_tag_filter(ra_etha_port_t port, uint32_t mask)
     return k_ra_err_invalid_arg;
   }
   /* HUM Ch 32.3 "EARTFC : RX TAG Filtering Configuration" p 1656 */
-  ra_etha(port)->EARTFC = mask & (uint32_t)k_ra_etha_local_9bit_mask;
+  ra_etha(port)->EARTFC = mask & k_ra_etha_local_9bit_mask;
   return k_ra_ok;
 }
 
 ra_err_t ra_etha_configure_cut_through(ra_etha_port_t port, uint16_t qd, uint8_t dqd)
 {
-  if (!internal_port_ok(port) || (uint32_t)dqd > (uint32_t)k_ra_etha_mask_ctdqd) {
+  if (!internal_port_ok(port) || (uint32_t)dqd > k_ra_etha_mask_ctdqd) {
     ra_log_error(s_tag, "etha_configure_cut_through: bad arg");
     return k_ra_err_invalid_arg;
   }
   volatile r_etha_regs_t* reg = ra_etha(port);
   /* HUM Ch 32.3 "EACTQC : Cut-Through Queue Configuration" p 1651 */
-  reg->EACTQC = (uint32_t)qd & (uint32_t)k_ra_etha_mask_ctqd;
+  reg->EACTQC = (uint32_t)qd & k_ra_etha_mask_ctqd;
   /* HUM Ch 32.3 "EACTDQDC : Cut-Through Descriptor Queue Depth" p 1652 */
-  reg->EACTDQDC = (uint32_t)dqd & (uint32_t)k_ra_etha_mask_ctdqd;
+  reg->EACTDQDC = (uint32_t)dqd & k_ra_etha_mask_ctdqd;
   return k_ra_ok;
 }
 
@@ -585,8 +577,7 @@ ra_err_t ra_etha_configure_cbs(ra_etha_port_t             port,
   }
   if (enable != 0U) {
     RA_CHECK_NULL_PTR(param, s_tag, "etha_configure_cbs: param null");
-    if (param->increment > (uint32_t)k_ra_etha_mask_civ ||
-        param->upper_lim > (uint32_t)k_ra_etha_mask_cul) {
+    if (param->increment > k_ra_etha_mask_civ || param->upper_lim > k_ra_etha_mask_cul) {
       ra_log_error(s_tag, "etha_configure_cbs: param range");
       return k_ra_err_invalid_arg;
     }
@@ -595,9 +586,9 @@ ra_err_t ra_etha_configure_cbs(ra_etha_port_t             port,
   volatile r_etha_regs_t* reg = ra_etha(port);
   if (enable != 0U) {
     /* HUM Ch 32.3 "EACAIVCq : CBS Admin Increment Value" p 1660 */
-    reg->EACAIVC[(uint8_t)tc] = param->increment & (uint32_t)k_ra_etha_mask_civ;
+    reg->EACAIVC[(uint8_t)tc] = param->increment & k_ra_etha_mask_civ;
     /* HUM Ch 32.3 "EACAULCq : CBS Admin Upper Limit" p 1661 */
-    reg->EACAULC[(uint8_t)tc] = param->upper_lim & (uint32_t)k_ra_etha_mask_cul;
+    reg->EACAULC[(uint8_t)tc] = param->upper_lim & k_ra_etha_mask_cul;
   }
   /* HUM Ch 32.3 "EACAEC : CBS Admin Enable Configuration" p 1658 */
   const uint32_t bit = 1UL << (uint8_t)tc;
@@ -634,9 +625,9 @@ ra_err_t ra_etha_get_cbs_state(ra_etha_port_t       port,
   /* HUM Ch 32.3 "EACGSM : CBS Gate State Monitoring" p 1666 */
   *gate_open = (uint8_t)((reg->EACGSM & bit) != 0U ? 1U : 0U);
   /* HUM Ch 32.3 "EACOIVMq : CBS Oper Increment Monitor" p 1664 */
-  oper_param->increment = reg->EACOIVM[(uint8_t)tc] & (uint32_t)k_ra_etha_mask_civ;
+  oper_param->increment = reg->EACOIVM[(uint8_t)tc] & k_ra_etha_mask_civ;
   /* HUM Ch 32.3 "EACOULMq : CBS Oper Upper Limit Monitor" p 1665 */
-  oper_param->upper_lim = reg->EACOULM[(uint8_t)tc] & (uint32_t)k_ra_etha_mask_cul;
+  oper_param->upper_lim = reg->EACOULM[(uint8_t)tc] & k_ra_etha_mask_cul;
   return k_ra_ok;
 }
 
@@ -650,7 +641,7 @@ ra_err_t ra_etha_set_tas_schedule(ra_etha_port_t            port,
     ra_log_error(s_tag, "etha_set_tas_schedule: port out of range");
     return k_ra_err_invalid_arg;
   }
-  if (entry_count > (uint16_t)k_ra_etha_local_max_min_frame) {
+  if (entry_count > k_ra_etha_local_max_min_frame) {
     ra_log_error(s_tag, "etha_set_tas_schedule: entry_count > 256");
     return k_ra_err_invalid_arg;
   }
@@ -675,9 +666,9 @@ ra_err_t ra_etha_set_tas_schedule(ra_etha_port_t            port,
   /* HUM Ch 32.3 "EATASGL1 : TAS Gate Learn 1" p 1678 */
   for (uint16_t i = 0U; i < entry_count; ++i) {
     /* HUM Ch 32.3 "EATASGL0 : TAS Gate Learn 0" p 1677 */
-    reg->EATASGL0 = (uint32_t)gate_list[i].gate_state & (uint32_t)k_ra_etha_local_byte_mask;
+    reg->EATASGL0 = (uint32_t)gate_list[i].gate_state & k_ra_etha_local_byte_mask;
     /* HUM Ch 32.3 "EATASGL1 : TAS Gate Learn 1" p 1678 */
-    const uint32_t gl1 = (gate_list[i].time_units & (uint32_t)k_ra_etha_mask_tas_gtl) |
+    const uint32_t gl1 = (gate_list[i].time_units & k_ra_etha_mask_tas_gtl) |
                          (gate_list[i].cut_through != 0U ? (1UL << 28) : 0U);
     /* HUM Ch 32.3 "EATASGL1 : TAS Gate Learn 1" p 1678 */
     reg->EATASGL1 = gl1;
@@ -715,15 +706,15 @@ ra_err_t ra_etha_read_stats(ra_etha_port_t port, ra_etha_stats_t* out)
 
   volatile r_etha_regs_t* reg = ra_etha(port);
   /* HUM Ch 32.3 "EAUSMFSECN : Switch Min Frame Size Err Counter" p 1680 */
-  out->switch_min_frame_err = (uint16_t)(reg->EAUSMFSECN & (uint32_t)k_ra_etha_mask_mfs);
+  out->switch_min_frame_err = (uint16_t)(reg->EAUSMFSECN & k_ra_etha_mask_mfs);
   /* HUM Ch 32.3 "EATFECN : TAG Filtering Error Counter" p 1681 */
-  out->tag_filter_err = (uint16_t)(reg->EATFECN & (uint32_t)k_ra_etha_mask_mfs);
+  out->tag_filter_err = (uint16_t)(reg->EATFECN & k_ra_etha_mask_mfs);
   /* HUM Ch 32.3 "EAFSECN : Frame Size Error Counter" p 1682 */
-  out->frame_size_err = (uint16_t)(reg->EAFSECN & (uint32_t)k_ra_etha_mask_mfs);
+  out->frame_size_err = (uint16_t)(reg->EAFSECN & k_ra_etha_mask_mfs);
   /* HUM Ch 32.3 "EADQOECN : Descriptor Queue Overflow Error Counter" p 1683 */
-  out->queue_overflow_err = (uint16_t)(reg->EADQOECN & (uint32_t)k_ra_etha_mask_mfs);
+  out->queue_overflow_err = (uint16_t)(reg->EADQOECN & k_ra_etha_mask_mfs);
   /* HUM Ch 32.3 "EADQSECN : Descriptor Queue Security Error Counter" p 1684 */
-  out->queue_security_err = (uint16_t)(reg->EADQSECN & (uint32_t)k_ra_etha_mask_mfs);
+  out->queue_security_err = (uint16_t)(reg->EADQSECN & k_ra_etha_mask_mfs);
   return k_ra_ok;
 }
 

@@ -598,13 +598,13 @@ typedef enum : uint32_t {
  */
 typedef enum : uint32_t {
   k_ra_ceu_evt_mask_all_errors =
-    (uint32_t)(k_ra_ceu_evt_igrw | k_ra_ceu_evt_cram_overflow | k_ra_ceu_evt_hd_mismatch |
-               k_ra_ceu_evt_vd_mismatch | k_ra_ceu_evt_vd_error | k_ra_ceu_evt_firewall |
-               k_ra_ceu_evt_hd_missing | k_ra_ceu_evt_vd_missing),
+    (k_ra_ceu_evt_igrw | k_ra_ceu_evt_cram_overflow | k_ra_ceu_evt_hd_mismatch |
+     k_ra_ceu_evt_vd_mismatch | k_ra_ceu_evt_vd_error | k_ra_ceu_evt_firewall |
+     k_ra_ceu_evt_hd_missing | k_ra_ceu_evt_vd_missing),
   k_ra_ceu_evt_mask_all_bundle =
-    (uint32_t)(k_ra_ceu_evt_cpbe1 | k_ra_ceu_evt_cpbe2 | k_ra_ceu_evt_cpbe3 | k_ra_ceu_evt_cpbe4),
-  k_ra_ceu_evt_mask_all_sync = (uint32_t)(k_ra_ceu_evt_hd | k_ra_ceu_evt_vd),
-  k_ra_ceu_evt_mask_all_end  = (uint32_t)(k_ra_ceu_evt_cpe | k_ra_ceu_evt_cfe),
+    (k_ra_ceu_evt_cpbe1 | k_ra_ceu_evt_cpbe2 | k_ra_ceu_evt_cpbe3 | k_ra_ceu_evt_cpbe4),
+  k_ra_ceu_evt_mask_all_sync = (k_ra_ceu_evt_hd | k_ra_ceu_evt_vd),
+  k_ra_ceu_evt_mask_all_end  = (k_ra_ceu_evt_cpe | k_ra_ceu_evt_cfe),
   k_ra_ceu_evt_mask_all      = 0x03F7F713UL,
 } ra_ceu_evt_mask_group_t;
 

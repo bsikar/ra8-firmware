@@ -123,7 +123,7 @@ ra_err_t ra_iic_init(uint8_t channel, const ra_iic_cfg_t* cfg)
   if (reg == nullptr) {
     return k_ra_err_invalid_arg;
   }
-  if ((uint16_t)channel >= (uint16_t)k_ra_iic_channel_count) {
+  if ((uint16_t)channel >= k_ra_iic_channel_count) {
     return k_ra_err_invalid_arg;
   }
 
@@ -134,7 +134,7 @@ ra_err_t ra_iic_init(uint8_t channel, const ra_iic_cfg_t* cfg)
   /* HUM Ch 39.2 "IIC Bus Interface Register Descriptions", p 2367
    * -- module-reset sequence. */
   reg->ICCR1 = 0U;
-  reg->ICMR1 = (uint8_t)k_ra_iic_icmr1_default;
+  reg->ICMR1 = k_ra_iic_icmr1_default;
   reg->ICMR2 = 0U;
   reg->ICMR3 = 0U;
   reg->ICFER = 0U;
@@ -142,7 +142,7 @@ ra_err_t ra_iic_init(uint8_t channel, const ra_iic_cfg_t* cfg)
   reg->ICIER = 0U;
   reg->ICBRL = internal_icbrl(cfg->bus_hz, cfg->pclkb_hz);
   reg->ICBRH = 0U;
-  reg->ICCR1 = (uint8_t)k_ra_iic_iccr1_enable;
+  reg->ICCR1 = k_ra_iic_iccr1_enable;
 
   s_iic_state[channel].cb          = nullptr;
   s_iic_state[channel].ctx         = nullptr;
@@ -171,7 +171,7 @@ ra_err_t ra_iic_controller_init(uint8_t channel)
    * Callers that need a specific bit rate should switch to
    * ra_iic_init directly. */
   const ra_iic_cfg_t cfg = {
-    .bus_hz   = (uint32_t)k_ra_iic_speed_standard,
+    .bus_hz   = k_ra_iic_speed_standard,
     .pclkb_hz = 60000000U,
   };
   return ra_iic_init(channel, &cfg);
@@ -203,7 +203,7 @@ ra_err_t ra_iic_write(uint8_t channel, uint8_t target_7b, const uint8_t* data, u
   reg->ICCR2 = (uint8_t)(1U << k_ra_iccr2_bit_st);
 
   /* Wait for start detect. */
-  ra_err_t err = internal_wait_icsr2(reg, (uint8_t)k_ra_icsr2_bit_start);
+  ra_err_t err = internal_wait_icsr2(reg, k_ra_icsr2_bit_start);
   if (err != k_ra_ok) {
     return err;
   }
@@ -216,7 +216,7 @@ ra_err_t ra_iic_write(uint8_t channel, uint8_t target_7b, const uint8_t* data, u
 
   /* Data. */
   for (uint32_t i = 0U; i < len; i++) {
-    err = internal_wait_icsr2(reg, (uint8_t)k_ra_icsr2_bit_tdre);
+    err = internal_wait_icsr2(reg, k_ra_icsr2_bit_tdre);
     if (err != k_ra_ok) {
       break;
     }
@@ -226,7 +226,7 @@ ra_err_t ra_iic_write(uint8_t channel, uint8_t target_7b, const uint8_t* data, u
   /* Stop. */
   reg->ICSR2 = (uint8_t)~(uint8_t)(1U << k_ra_icsr2_bit_stop);
   reg->ICCR2 = (uint8_t)(1U << k_ra_iccr2_bit_sp);
-  (void)internal_wait_icsr2(reg, (uint8_t)k_ra_icsr2_bit_stop);
+  (void)internal_wait_icsr2(reg, k_ra_icsr2_bit_stop);
   reg->ICSR2 = 0U;
 
   return err;
@@ -240,7 +240,7 @@ ra_err_t ra_iic_read(uint8_t channel, uint8_t target_7b, uint8_t* out, uint32_t 
 
   /* Issue start. */
   reg->ICCR2   = (uint8_t)(1U << k_ra_iccr2_bit_st);
-  ra_err_t err = internal_wait_icsr2(reg, (uint8_t)k_ra_icsr2_bit_start);
+  ra_err_t err = internal_wait_icsr2(reg, k_ra_icsr2_bit_start);
   if (err != k_ra_ok) {
     return err;
   }
@@ -250,7 +250,7 @@ ra_err_t ra_iic_read(uint8_t channel, uint8_t target_7b, uint8_t* out, uint32_t 
   reg->ICDRT = (uint8_t)((uint8_t)(target_7b << 1U) | 1U);
 
   for (uint32_t i = 0U; i < len; i++) {
-    err = internal_wait_icsr2(reg, (uint8_t)k_ra_icsr2_bit_rdrf);
+    err = internal_wait_icsr2(reg, k_ra_icsr2_bit_rdrf);
     if (err != k_ra_ok) {
       break;
     }
@@ -258,7 +258,7 @@ ra_err_t ra_iic_read(uint8_t channel, uint8_t target_7b, uint8_t* out, uint32_t 
   }
 
   reg->ICCR2 = (uint8_t)(1U << k_ra_iccr2_bit_sp);
-  (void)internal_wait_icsr2(reg, (uint8_t)k_ra_icsr2_bit_stop);
+  (void)internal_wait_icsr2(reg, k_ra_icsr2_bit_stop);
   reg->ICSR2 = 0U;
 
   return err;
@@ -291,15 +291,15 @@ ra_err_t ra_iic_get_errors(uint8_t channel, uint8_t* out_mask)
     return k_ra_err_invalid_arg;
   }
   const uint8_t ss = reg->ICSR2;
-  uint8_t       m  = (uint8_t)k_ra_iic_err_none;
-  if ((ss & (uint8_t)(1U << (uint8_t)k_ra_icsr2_bit_al)) != 0U) {
-    m |= (uint8_t)k_ra_iic_err_arb_lost;
+  uint8_t       m  = k_ra_iic_err_none;
+  if ((ss & (uint8_t)(1U << k_ra_icsr2_bit_al)) != 0U) {
+    m |= k_ra_iic_err_arb_lost;
   }
-  if ((ss & (uint8_t)(1U << (uint8_t)k_ra_icsr2_bit_nackf)) != 0U) {
-    m |= (uint8_t)k_ra_iic_err_nack;
+  if ((ss & (uint8_t)(1U << k_ra_icsr2_bit_nackf)) != 0U) {
+    m |= k_ra_iic_err_nack;
   }
-  if ((ss & (uint8_t)(1U << (uint8_t)k_ra_icsr2_bit_tmof)) != 0U) {
-    m |= (uint8_t)k_ra_iic_err_timeout;
+  if ((ss & (uint8_t)(1U << k_ra_icsr2_bit_tmof)) != 0U) {
+    m |= k_ra_iic_err_timeout;
   }
   *out_mask = m;
   return k_ra_ok;
@@ -313,10 +313,9 @@ ra_err_t ra_iic_clear_errors(uint8_t channel)
   }
   /* HUM Ch 39.2 "ICSR2 : IIC Bus Status Register 2", p 2384
    * -- AL / NACKF / TMOF are write-zero-to-clear. */
-  const uint8_t clr_mask =
-    (uint8_t)~((1U << (uint8_t)k_ra_icsr2_bit_al) | (1U << (uint8_t)k_ra_icsr2_bit_nackf) |
-               (1U << (uint8_t)k_ra_icsr2_bit_tmof));
-  reg->ICSR2 = (uint8_t)(reg->ICSR2 & clr_mask);
+  const uint8_t clr_mask = (uint8_t)~((1U << k_ra_icsr2_bit_al) | (1U << k_ra_icsr2_bit_nackf) |
+                                      (1U << k_ra_icsr2_bit_tmof));
+  reg->ICSR2             = (uint8_t)(reg->ICSR2 & clr_mask);
   return k_ra_ok;
 }
 
@@ -341,7 +340,7 @@ ra_err_t ra_iic_attach_transfer_handler(uint8_t channel, ra_iic_complete_fn_t fn
    * tuning lands when the first interrupt-mode
    * consumer arrives. */
   if (fn != nullptr) {
-    reg->ICIER = (uint8_t)k_ra_iic_icier_all_en;
+    reg->ICIER = k_ra_iic_icier_all_en;
   } else {
     reg->ICIER = 0U;
   }
@@ -362,7 +361,7 @@ ra_err_t ra_iic_enter_stop(uint8_t channel)
 
 ra_err_t ra_iic_exit_stop(uint8_t channel)
 {
-  if ((uint16_t)channel >= (uint16_t)k_ra_iic_channel_count) {
+  if ((uint16_t)channel >= k_ra_iic_channel_count) {
     return k_ra_err_invalid_arg;
   }
   return ra_mstp_enable(s_iic_mstp_table[channel]);
@@ -380,7 +379,7 @@ ra_err_t ra_iic_write_dma(uint8_t              channel,
   RA_CHECK_NULL_PTR(data, s_tag, "iic_write_dma: data");
   RA_CHECK_NULL_PTR(out_dma_channel, s_tag, "iic_write_dma: out_dma_channel");
   volatile r_iic_regs_t* reg = ra_iic(channel);
-  if ((reg == nullptr) || ((uint16_t)channel >= (uint16_t)k_ra_iic_channel_count) || (len == 0U)) {
+  if ((reg == nullptr) || ((uint16_t)channel >= k_ra_iic_channel_count) || (len == 0U)) {
     return k_ra_err_invalid_arg;
   }
   /* HUM Ch 39.2 "ICDRT : I2C Bus Transmit Data Register", p 2367 */
@@ -410,7 +409,7 @@ ra_err_t ra_iic_read_dma(uint8_t              channel,
   RA_CHECK_NULL_PTR(out_buf, s_tag, "iic_read_dma: out_buf");
   RA_CHECK_NULL_PTR(out_dma_channel, s_tag, "iic_read_dma: out_dma_channel");
   volatile r_iic_regs_t* reg = ra_iic(channel);
-  if ((reg == nullptr) || ((uint16_t)channel >= (uint16_t)k_ra_iic_channel_count) || (len == 0U)) {
+  if ((reg == nullptr) || ((uint16_t)channel >= k_ra_iic_channel_count) || (len == 0U)) {
     return k_ra_err_invalid_arg;
   }
   /* HUM Ch 39.2 "ICDRR : I2C Bus Receive Data Register", p 2367 */
@@ -431,7 +430,7 @@ ra_err_t ra_iic_read_dma(uint8_t              channel,
 
 void ra_iic_dispatch_txi(uint8_t channel)
 {
-  if ((uint16_t)channel >= (uint16_t)k_ra_iic_channel_count) {
+  if ((uint16_t)channel >= k_ra_iic_channel_count) {
     return;
   }
   /* MVP: the full state machine lives in the synchronous
@@ -441,7 +440,7 @@ void ra_iic_dispatch_txi(uint8_t channel)
 
 void ra_iic_dispatch_rxi(uint8_t channel)
 {
-  if ((uint16_t)channel >= (uint16_t)k_ra_iic_channel_count) {
+  if ((uint16_t)channel >= k_ra_iic_channel_count) {
     return;
   }
   (void)s_iic_state[channel].cb;
@@ -449,7 +448,7 @@ void ra_iic_dispatch_rxi(uint8_t channel)
 
 void ra_iic_dispatch_eri(uint8_t channel)
 {
-  if ((uint16_t)channel >= (uint16_t)k_ra_iic_channel_count) {
+  if ((uint16_t)channel >= k_ra_iic_channel_count) {
     return;
   }
   uint8_t mask = 0U;

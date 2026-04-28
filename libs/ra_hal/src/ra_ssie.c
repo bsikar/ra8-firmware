@@ -83,12 +83,12 @@ static const ra_mstp_t s_ssie_mstp_table[k_ra_ssie_channel_count] = {
  * @brief Per-channel runtime state. Initialised to zero / unused.
  */
 static ra_ssie_runtime_t s_ssie_runtime[k_ra_ssie_channel_count] = {
-  {.tx_dma_channel = (uint8_t)k_ra_ssie_dma_ch_unused,
-   .rx_dma_channel = (uint8_t)k_ra_ssie_dma_ch_unused,
+  {.tx_dma_channel = k_ra_ssie_dma_ch_unused,
+   .rx_dma_channel = k_ra_ssie_dma_ch_unused,
    .initialised    = false,
    .dma_attached   = false},
-  {.tx_dma_channel = (uint8_t)k_ra_ssie_dma_ch_unused,
-   .rx_dma_channel = (uint8_t)k_ra_ssie_dma_ch_unused,
+  {.tx_dma_channel = k_ra_ssie_dma_ch_unused,
+   .rx_dma_channel = k_ra_ssie_dma_ch_unused,
    .initialised    = false,
    .dma_attached   = false},
 };
@@ -117,7 +117,7 @@ static void* s_ssie_ctx;
  */
 static volatile r_ssie_regs_t* internal_ssie_regs(uint8_t channel)
 {
-  if ((uint16_t)channel >= (uint16_t)k_ra_ssie_channel_count) {
+  if ((uint16_t)channel >= k_ra_ssie_channel_count) {
     return nullptr;
   }
   return ra_ssie(channel);
@@ -144,8 +144,8 @@ static bool internal_format_decode(ra_ssie_format_t format,
                                    uint8_t*         out_sdta)
 {
   /* Defaults map to I2S (OMOD=00, FRM=00, PDTA=0, SDTA=0). */
-  *out_omod = (uint8_t)k_ra_ssie_omod_i2s;
-  *out_frm  = (uint8_t)k_ra_ssie_frm_default;
+  *out_omod = k_ra_ssie_omod_i2s;
+  *out_frm  = k_ra_ssie_frm_default;
   *out_pdta = 0U;
   *out_sdta = 0U;
 
@@ -162,20 +162,20 @@ static bool internal_format_decode(ra_ssie_format_t format,
       *out_pdta = 1U;
       return true;
     case k_ra_ssie_format_monaural:
-      *out_omod = (uint8_t)k_ra_ssie_omod_monaural;
-      *out_frm  = (uint8_t)k_ra_ssie_frm_default;
+      *out_omod = k_ra_ssie_omod_monaural;
+      *out_frm  = k_ra_ssie_frm_default;
       return true;
     case k_ra_ssie_format_tdm_4:
-      *out_omod = (uint8_t)k_ra_ssie_omod_tdm;
-      *out_frm  = (uint8_t)k_ra_ssie_frm_alt1;
+      *out_omod = k_ra_ssie_omod_tdm;
+      *out_frm  = k_ra_ssie_frm_alt1;
       return true;
     case k_ra_ssie_format_tdm_6:
-      *out_omod = (uint8_t)k_ra_ssie_omod_tdm;
-      *out_frm  = (uint8_t)k_ra_ssie_frm_alt2;
+      *out_omod = k_ra_ssie_omod_tdm;
+      *out_frm  = k_ra_ssie_frm_alt2;
       return true;
     case k_ra_ssie_format_tdm_8:
-      *out_omod = (uint8_t)k_ra_ssie_omod_tdm;
-      *out_frm  = (uint8_t)k_ra_ssie_frm_alt3;
+      *out_omod = k_ra_ssie_omod_tdm;
+      *out_frm  = k_ra_ssie_frm_alt3;
       return true;
     default:
       return false;
@@ -191,27 +191,27 @@ static bool internal_format_decode(ra_ssie_format_t format,
  */
 static uint8_t internal_decode_event(uint32_t ssisr, uint32_t ssifsr)
 {
-  uint8_t events = (uint8_t)k_ra_ssie_evt_none;
-  if ((ssisr & (uint32_t)k_ra_ssie_mask_iirq) != 0U) {
-    events |= (uint8_t)k_ra_ssie_evt_idle;
+  uint8_t events = k_ra_ssie_evt_none;
+  if ((ssisr & k_ra_ssie_mask_iirq) != 0U) {
+    events |= k_ra_ssie_evt_idle;
   }
-  if ((ssisr & (uint32_t)k_ra_ssie_mask_tuirq) != 0U) {
-    events |= (uint8_t)k_ra_ssie_evt_tx_under;
+  if ((ssisr & k_ra_ssie_mask_tuirq) != 0U) {
+    events |= k_ra_ssie_evt_tx_under;
   }
-  if ((ssisr & (uint32_t)k_ra_ssie_mask_toirq) != 0U) {
-    events |= (uint8_t)k_ra_ssie_evt_tx_over;
+  if ((ssisr & k_ra_ssie_mask_toirq) != 0U) {
+    events |= k_ra_ssie_evt_tx_over;
   }
-  if ((ssisr & (uint32_t)k_ra_ssie_mask_ruirq) != 0U) {
-    events |= (uint8_t)k_ra_ssie_evt_rx_under;
+  if ((ssisr & k_ra_ssie_mask_ruirq) != 0U) {
+    events |= k_ra_ssie_evt_rx_under;
   }
-  if ((ssisr & (uint32_t)k_ra_ssie_mask_roirq) != 0U) {
-    events |= (uint8_t)k_ra_ssie_evt_rx_over;
+  if ((ssisr & k_ra_ssie_mask_roirq) != 0U) {
+    events |= k_ra_ssie_evt_rx_over;
   }
-  if ((ssifsr & (uint32_t)k_ra_ssie_mask_tde) != 0U) {
-    events |= (uint8_t)k_ra_ssie_evt_tx_empty;
+  if ((ssifsr & k_ra_ssie_mask_tde) != 0U) {
+    events |= k_ra_ssie_evt_tx_empty;
   }
-  if ((ssifsr & (uint32_t)k_ra_ssie_mask_rdf) != 0U) {
-    events |= (uint8_t)k_ra_ssie_evt_rx_full;
+  if ((ssifsr & k_ra_ssie_mask_rdf) != 0U) {
+    events |= k_ra_ssie_evt_rx_full;
   }
   return events;
 }
@@ -231,45 +231,43 @@ internal_build_ssicr(const ra_ssie_cfg_t* cfg, uint8_t frm, uint8_t pdta, uint8_
   uint32_t ssicr = 0U;
   /* HUM Ch 46.2.1 "SSICR : Control Register" p 3057 */
   if (cfg->role == k_ra_ssie_role_master) {
-    ssicr |= (uint32_t)k_ra_ssie_mask_mst;
+    ssicr |= k_ra_ssie_mask_mst;
   }
   /* HUM Ch 46.2.1 "SSICR : Control Register" p 3056 */
-  ssicr |=
-    ((uint32_t)cfg->bclk_div << (uint8_t)k_ra_ssie_bit_ckdv0) & (uint32_t)k_ra_ssie_mask_ckdv;
+  ssicr |= ((uint32_t)cfg->bclk_div << k_ra_ssie_bit_ckdv0) & k_ra_ssie_mask_ckdv;
   /* HUM Ch 46.2.1 "SSICR : Control Register" p 3057 */
-  ssicr |=
-    ((uint32_t)cfg->system_word << (uint8_t)k_ra_ssie_bit_swl0) & (uint32_t)k_ra_ssie_mask_swl;
+  ssicr |= ((uint32_t)cfg->system_word << k_ra_ssie_bit_swl0) & k_ra_ssie_mask_swl;
   /* HUM Ch 46.2.1 "SSICR : Control Register" p 3057 */
-  ssicr |= ((uint32_t)cfg->data_word << (uint8_t)k_ra_ssie_bit_dwl0) & (uint32_t)k_ra_ssie_mask_dwl;
+  ssicr |= ((uint32_t)cfg->data_word << k_ra_ssie_bit_dwl0) & k_ra_ssie_mask_dwl;
   /* HUM Ch 46.2.1 "SSICR : Control Register" p 3057 */
-  ssicr |= ((uint32_t)frm << (uint8_t)k_ra_ssie_bit_frm0) & (uint32_t)k_ra_ssie_mask_frm;
+  ssicr |= ((uint32_t)frm << k_ra_ssie_bit_frm0) & k_ra_ssie_mask_frm;
   /* HUM Ch 46.2.1 "SSICR : Control Register" p 3056 */
   if (cfg->long_frame) {
-    ssicr |= (uint32_t)k_ra_ssie_mask_del;
+    ssicr |= k_ra_ssie_mask_del;
   }
   /* HUM Ch 46.2.1 "SSICR : Control Register" p 3056 */
   if (pdta != 0U) {
-    ssicr |= (uint32_t)k_ra_ssie_mask_pdta;
+    ssicr |= k_ra_ssie_mask_pdta;
   }
   /* HUM Ch 46.2.1 "SSICR : Control Register" p 3056 */
   if (sdta != 0U) {
-    ssicr |= (uint32_t)k_ra_ssie_mask_sdta;
+    ssicr |= k_ra_ssie_mask_sdta;
   }
   /* HUM Ch 46.2.1 "SSICR : Control Register" p 3057 */
   if (cfg->spdp_high) {
-    ssicr |= (uint32_t)k_ra_ssie_mask_spdp;
+    ssicr |= k_ra_ssie_mask_spdp;
   }
   /* HUM Ch 46.2.1 "SSICR : Control Register" p 3057 */
   if (cfg->lrckp_low) {
-    ssicr |= (uint32_t)k_ra_ssie_mask_lrckp;
+    ssicr |= k_ra_ssie_mask_lrckp;
   }
   /* HUM Ch 46.2.1 "SSICR : Control Register" p 3057 */
   if (cfg->bckp_rising) {
-    ssicr |= (uint32_t)k_ra_ssie_mask_bckp;
+    ssicr |= k_ra_ssie_mask_bckp;
   }
   /* HUM Ch 46.2.1 "SSICR : Control Register" p 3058 */
   if (cfg->use_gpt_clk) {
-    ssicr |= (uint32_t)k_ra_ssie_mask_cks;
+    ssicr |= k_ra_ssie_mask_cks;
   }
   return ssicr;
 }
@@ -288,7 +286,7 @@ static ra_err_t internal_wait_ssirst_clear(volatile r_ssie_regs_t* reg)
 {
   for (uint8_t i = 0U; i < (uint8_t)k_ra_ssie_reset_poll_max; i++) {
     /* HUM Ch 46.2.3 "SSIFCR : FIFO Control Register" p 3077 */
-    if ((reg->SSIFCR & (uint32_t)k_ra_ssie_mask_ssirst) == 0U) {
+    if ((reg->SSIFCR & k_ra_ssie_mask_ssirst) == 0U) {
       return k_ra_ok;
     }
   }
@@ -302,7 +300,7 @@ static ra_err_t internal_wait_fifo_reset_clear(volatile r_ssie_regs_t* reg)
 {
   for (uint8_t i = 0U; i < (uint8_t)k_ra_ssie_reset_poll_max; i++) {
     /* HUM Ch 46.2.3 "SSIFCR : FIFO Control Register" p 3077 */
-    if ((reg->SSIFCR & (uint32_t)k_ra_ssie_mask_rfrst_tfrst) == 0U) {
+    if ((reg->SSIFCR & k_ra_ssie_mask_rfrst_tfrst) == 0U) {
       return k_ra_ok;
     }
   }
@@ -319,12 +317,12 @@ static ra_err_t internal_wait_fifo_reset_clear(volatile r_ssie_regs_t* reg)
  */
 static uint32_t internal_build_ssiofr(const ra_ssie_cfg_t* cfg, uint8_t omod)
 {
-  uint32_t ssiofr = (uint32_t)omod & (uint32_t)k_ra_ssie_mask_omod;
+  uint32_t ssiofr = (uint32_t)omod & k_ra_ssie_mask_omod;
   if (cfg->lr_continue && cfg->role == k_ra_ssie_role_master) {
-    ssiofr |= (uint32_t)k_ra_ssie_mask_lrcont;
+    ssiofr |= k_ra_ssie_mask_lrcont;
   }
   if (cfg->bck_idle_stop && cfg->role == k_ra_ssie_role_master && !cfg->lr_continue) {
-    ssiofr |= (uint32_t)k_ra_ssie_mask_bckastp;
+    ssiofr |= k_ra_ssie_mask_bckastp;
   }
   return ssiofr;
 }
@@ -338,10 +336,10 @@ static uint32_t internal_build_ssifcr(const ra_ssie_cfg_t* cfg)
 {
   uint32_t ssifcr = 0U;
   if (cfg->byte_swap) {
-    ssifcr |= (uint32_t)k_ra_ssie_mask_bsw;
+    ssifcr |= k_ra_ssie_mask_bsw;
   }
   if (cfg->enable_aucke && cfg->role == k_ra_ssie_role_master) {
-    ssifcr |= (uint32_t)k_ra_ssie_mask_aucke;
+    ssifcr |= k_ra_ssie_mask_aucke;
   }
   return ssifcr;
 }
@@ -353,10 +351,8 @@ static uint32_t internal_build_ssifcr(const ra_ssie_cfg_t* cfg)
  */
 static uint32_t internal_build_ssiscr(uint8_t tx_threshold, uint8_t rx_threshold)
 {
-  const uint32_t scr_tdes =
-    ((uint32_t)tx_threshold << (uint8_t)k_ra_ssie_shift_tdes) & (uint32_t)k_ra_ssie_mask_tdes;
-  const uint32_t scr_rdfs =
-    ((uint32_t)rx_threshold << (uint8_t)k_ra_ssie_shift_rdfs) & (uint32_t)k_ra_ssie_mask_rdfs;
+  const uint32_t scr_tdes = ((uint32_t)tx_threshold << k_ra_ssie_shift_tdes) & k_ra_ssie_mask_tdes;
+  const uint32_t scr_rdfs = ((uint32_t)rx_threshold << k_ra_ssie_shift_rdfs) & k_ra_ssie_mask_rdfs;
   return scr_tdes | scr_rdfs;
 }
 
@@ -369,7 +365,7 @@ static uint32_t internal_build_ssiscr(uint8_t tx_threshold, uint8_t rx_threshold
  */
 static ra_err_t internal_pulse_fifo_reset(volatile r_ssie_regs_t* reg, uint32_t ssifcr_base)
 {
-  reg->SSIFCR = ssifcr_base | (uint32_t)k_ra_ssie_mask_rfrst_tfrst;
+  reg->SSIFCR = ssifcr_base | k_ra_ssie_mask_rfrst_tfrst;
   reg->SSIFCR = ssifcr_base;
   return internal_wait_fifo_reset_clear(reg);
 }
@@ -383,13 +379,13 @@ static ra_err_t internal_pulse_fifo_reset(volatile r_ssie_regs_t* reg, uint32_t 
  */
 static void internal_apply_dir_irq_bits(uint32_t desired_ren_ten, uint32_t* ssicr, uint32_t* ssifcr)
 {
-  if ((desired_ren_ten & (uint32_t)k_ra_ssie_mask_ten) != 0U) {
-    *ssicr |= (uint32_t)k_ra_ssie_mask_tuien;
-    *ssifcr |= (uint32_t)k_ra_ssie_mask_tie;
+  if ((desired_ren_ten & k_ra_ssie_mask_ten) != 0U) {
+    *ssicr |= k_ra_ssie_mask_tuien;
+    *ssifcr |= k_ra_ssie_mask_tie;
   }
-  if ((desired_ren_ten & (uint32_t)k_ra_ssie_mask_ren) != 0U) {
-    *ssicr |= (uint32_t)k_ra_ssie_mask_roien;
-    *ssifcr |= (uint32_t)k_ra_ssie_mask_rie;
+  if ((desired_ren_ten & k_ra_ssie_mask_ren) != 0U) {
+    *ssicr |= k_ra_ssie_mask_roien;
+    *ssifcr |= k_ra_ssie_mask_rie;
   }
 }
 
@@ -411,8 +407,7 @@ static ra_err_t internal_validate_init_cfg(const ra_ssie_cfg_t* cfg,
                                            uint8_t*             out_pdta,
                                            uint8_t*             out_sdta)
 {
-  if (cfg->tx_threshold > (uint8_t)k_ra_ssie_thresh_max ||
-      cfg->rx_threshold > (uint8_t)k_ra_ssie_thresh_max) {
+  if (cfg->tx_threshold > k_ra_ssie_thresh_max || cfg->rx_threshold > k_ra_ssie_thresh_max) {
     return k_ra_err_invalid_arg;
   }
   *out_omod = 0U;
@@ -434,7 +429,7 @@ static ra_err_t internal_validate_init_cfg(const ra_ssie_cfg_t* cfg,
  */
 static ra_err_t internal_pulse_ssi_reset(volatile r_ssie_regs_t* reg)
 {
-  reg->SSIFCR = (uint32_t)k_ra_ssie_mask_ssirst;
+  reg->SSIFCR = k_ra_ssie_mask_ssirst;
   reg->SSIFCR = 0U;
   return internal_wait_ssirst_clear(reg);
 }
@@ -506,9 +501,9 @@ ra_err_t ra_ssie_deinit(uint8_t channel)
     return k_ra_err_invalid_arg;
   }
   /* HUM Ch 46.2.1 "SSICR : Control Register" p 3056 */
-  reg->SSICR = reg->SSICR & ~(uint32_t)k_ra_ssie_mask_ren_ten;
+  reg->SSICR = reg->SSICR & ~k_ra_ssie_mask_ren_ten;
   /* HUM Ch 46.2.3 "SSIFCR : FIFO Control Register" p 3077 */
-  reg->SSIFCR = reg->SSIFCR & ~(uint32_t)k_ra_ssie_mask_aucke;
+  reg->SSIFCR = reg->SSIFCR & ~k_ra_ssie_mask_aucke;
 
   if (s_ssie_runtime[channel].dma_attached) {
     (void)ra_ssie_detach_dma(channel);
@@ -531,7 +526,7 @@ ra_err_t ra_ssie_start(uint8_t channel, ra_ssie_dir_t dir)
    * the SSIE must be idle before REN/TEN may be set. */
   /* HUM Ch 46.2.1 "SSICR : Control Register" p 3056 */
   uint32_t       ssicr           = reg->SSICR;
-  const uint32_t current_ren_ten = ssicr & (uint32_t)k_ra_ssie_mask_ren_ten;
+  const uint32_t current_ren_ten = ssicr & k_ra_ssie_mask_ren_ten;
   const uint32_t desired_ren_ten = (uint32_t)dir;
   if (desired_ren_ten == (current_ren_ten & desired_ren_ten)) {
     return k_ra_ok; /* Already enabled, nothing to do. */
@@ -540,7 +535,7 @@ ra_err_t ra_ssie_start(uint8_t channel, ra_ssie_dir_t dir)
     return k_ra_err_busy;
   }
   /* HUM Ch 46.2.2 "SSISR : Status Register" p 3066 */
-  if ((reg->SSISR & (uint32_t)k_ra_ssie_mask_iirq) == 0U) {
+  if ((reg->SSISR & k_ra_ssie_mask_iirq) == 0U) {
     return k_ra_err_busy;
   }
 
@@ -568,14 +563,14 @@ ra_err_t ra_ssie_stop(uint8_t channel)
   /* HUM Ch 46.6.4 "Halt of Communication" p 3100 */
   /* HUM Ch 46.2.1 "SSICR : Control Register" p 3056 */
   uint32_t ssicr = reg->SSICR;
-  ssicr &= ~(uint32_t)k_ra_ssie_mask_ren_ten;
-  ssicr &= ~(uint32_t)k_ra_ssie_mask_err_ien;
-  ssicr |= (uint32_t)k_ra_ssie_mask_iien;
+  ssicr &= ~k_ra_ssie_mask_ren_ten;
+  ssicr &= ~k_ra_ssie_mask_err_ien;
+  ssicr |= k_ra_ssie_mask_iien;
   reg->SSICR = ssicr;
 
   /* HUM Ch 46.2.3 "SSIFCR : FIFO Control Register" p 3077 */
   uint32_t ssifcr = reg->SSIFCR;
-  ssifcr &= ~(uint32_t)k_ra_ssie_mask_rie_tie;
+  ssifcr &= ~k_ra_ssie_mask_rie_tie;
   reg->SSIFCR = ssifcr;
   return k_ra_ok;
 }
@@ -588,8 +583,8 @@ ra_err_t ra_ssie_start_recovery(uint8_t channel)
   }
 
   /* HUM Ch 46.2.3 "SSIFCR : FIFO Control Register" p 3077 */
-  const uint32_t ssifcr_save = reg->SSIFCR & ~(uint32_t)k_ra_ssie_mask_ssirst;
-  reg->SSIFCR                = ssifcr_save | (uint32_t)k_ra_ssie_mask_ssirst;
+  const uint32_t ssifcr_save = reg->SSIFCR & ~k_ra_ssie_mask_ssirst;
+  reg->SSIFCR                = ssifcr_save | k_ra_ssie_mask_ssirst;
   reg->SSIFCR                = ssifcr_save;
   /* HUM Ch 46.2.3 "SSIFCR : FIFO Control Register" p 3077 */
   const ra_err_t rst_err = internal_wait_ssirst_clear(reg);
@@ -597,7 +592,7 @@ ra_err_t ra_ssie_start_recovery(uint8_t channel)
 
   /* HUM Ch 46.2.2 "SSISR : Status Register" p 3066-3072 */
   const uint32_t ssisr = reg->SSISR;
-  reg->SSISR           = ssisr & ~(uint32_t)k_ra_ssie_mask_err_all;
+  reg->SSISR           = ssisr & ~k_ra_ssie_mask_err_all;
   return k_ra_ok;
 }
 
@@ -610,9 +605,9 @@ ra_err_t ra_ssie_mute(uint8_t channel, bool enable)
   /* HUM Ch 46.2.1 "SSICR : Control Register" p 3056 */
   uint32_t ssicr = reg->SSICR;
   if (enable) {
-    ssicr |= (uint32_t)k_ra_ssie_mask_muen;
+    ssicr |= k_ra_ssie_mask_muen;
   } else {
-    ssicr &= ~(uint32_t)k_ra_ssie_mask_muen;
+    ssicr &= ~k_ra_ssie_mask_muen;
   }
   reg->SSICR = ssicr;
   return k_ra_ok;
@@ -624,8 +619,7 @@ ra_err_t ra_ssie_set_thresholds(uint8_t channel, uint8_t tx_threshold, uint8_t r
   if (reg == nullptr) {
     return k_ra_err_invalid_arg;
   }
-  if (tx_threshold > (uint8_t)k_ra_ssie_thresh_max ||
-      rx_threshold > (uint8_t)k_ra_ssie_thresh_max) {
+  if (tx_threshold > k_ra_ssie_thresh_max || rx_threshold > k_ra_ssie_thresh_max) {
     return k_ra_err_invalid_arg;
   }
   /* HUM Ch 46.2.8 "SSISCR : Status Control Register" p 3094 */
@@ -671,8 +665,7 @@ ra_err_t ra_ssie_write_buffer(uint8_t         channel,
   uint16_t written = 0U;
   for (uint16_t i = 0U; i < samples; i++) {
     /* HUM Ch 46.2.4 "SSIFSR : FIFO Status Register" p 3083 */
-    const uint8_t tdc =
-      (uint8_t)((reg->SSIFSR & (uint32_t)k_ra_ssie_mask_tdc) >> (uint8_t)k_ra_ssie_shift_tdc);
+    const uint8_t tdc = (uint8_t)((reg->SSIFSR & k_ra_ssie_mask_tdc) >> k_ra_ssie_shift_tdc);
     if (tdc >= (uint8_t)k_ra_ssie_fifo_depth) {
       break;
     }
@@ -685,7 +678,7 @@ ra_err_t ra_ssie_write_buffer(uint8_t         channel,
     const uint32_t fsr = reg->SSIFSR;
     (void)fsr;
     /* W1C of TDE keeps the RDF bit (mask_rdf_clear keeps RDF=1). */
-    reg->SSIFSR = (uint32_t)k_ra_ssie_mask_rdf_clear;
+    reg->SSIFSR = k_ra_ssie_mask_rdf_clear;
   }
   *out_written = written;
   return k_ra_ok;
@@ -704,8 +697,7 @@ ra_ssie_read_buffer(uint8_t channel, uint32_t* buffer, uint16_t samples, uint16_
   uint16_t read = 0U;
   for (uint16_t i = 0U; i < samples; i++) {
     /* HUM Ch 46.2.4 "SSIFSR : FIFO Status Register" p 3083 */
-    const uint8_t rdc =
-      (uint8_t)((reg->SSIFSR & (uint32_t)k_ra_ssie_mask_rdc) >> (uint8_t)k_ra_ssie_shift_rdc);
+    const uint8_t rdc = (uint8_t)((reg->SSIFSR & k_ra_ssie_mask_rdc) >> k_ra_ssie_shift_rdc);
     if (rdc == 0U) {
       break;
     }
@@ -718,7 +710,7 @@ ra_ssie_read_buffer(uint8_t channel, uint32_t* buffer, uint16_t samples, uint16_
     const uint32_t fsr = reg->SSIFSR;
     (void)fsr;
     /* W1C of RDF keeps the TDE bit (mask_tde_clear keeps TDE=1). */
-    reg->SSIFSR = (uint32_t)k_ra_ssie_mask_tde_clear;
+    reg->SSIFSR = k_ra_ssie_mask_tde_clear;
   }
   *out_read = read;
   return k_ra_ok;
@@ -737,8 +729,8 @@ ra_ssie_read_buffer(uint8_t channel, uint32_t* buffer, uint16_t samples, uint16_
 static ra_err_t
 internal_validate_dma_cfg(const ra_ssie_dma_cfg_t* dma, bool* want_tx, bool* want_rx)
 {
-  *want_tx = dma->tx_dma_channel < (uint8_t)k_ra_ssie_dma_max_ch;
-  *want_rx = dma->rx_dma_channel < (uint8_t)k_ra_ssie_dma_max_ch;
+  *want_tx = (dma->tx_dma_channel < k_ra_ssie_dma_max_ch);
+  *want_rx = (dma->rx_dma_channel < k_ra_ssie_dma_max_ch);
   if (!*want_tx && !*want_rx) {
     return k_ra_err_invalid_arg;
   }
@@ -803,7 +795,7 @@ internal_start_rx_dma(volatile r_ssie_regs_t* reg, uint8_t channel, const ra_ssi
 static void internal_unwind_tx_dma(uint8_t channel, uint8_t tx_dma_channel)
 {
   (void)ra_dmac_stop(tx_dma_channel);
-  s_ssie_runtime[channel].tx_dma_channel = (uint8_t)k_ra_ssie_dma_ch_unused;
+  s_ssie_runtime[channel].tx_dma_channel = k_ra_ssie_dma_ch_unused;
 }
 
 /**
@@ -858,17 +850,17 @@ ra_err_t ra_ssie_attach_dma(uint8_t channel, const ra_ssie_dma_cfg_t* dma)
 
 ra_err_t ra_ssie_detach_dma(uint8_t channel)
 {
-  if ((uint16_t)channel >= (uint16_t)k_ra_ssie_channel_count) {
+  if ((uint16_t)channel >= k_ra_ssie_channel_count) {
     return k_ra_err_invalid_arg;
   }
   ra_ssie_runtime_t* rt = &s_ssie_runtime[channel];
-  if (rt->tx_dma_channel < (uint8_t)k_ra_ssie_dma_max_ch) {
+  if (rt->tx_dma_channel < k_ra_ssie_dma_max_ch) {
     (void)ra_dmac_stop(rt->tx_dma_channel);
-    rt->tx_dma_channel = (uint8_t)k_ra_ssie_dma_ch_unused;
+    rt->tx_dma_channel = k_ra_ssie_dma_ch_unused;
   }
-  if (rt->rx_dma_channel < (uint8_t)k_ra_ssie_dma_max_ch) {
+  if (rt->rx_dma_channel < k_ra_ssie_dma_max_ch) {
     (void)ra_dmac_stop(rt->rx_dma_channel);
-    rt->rx_dma_channel = (uint8_t)k_ra_ssie_dma_ch_unused;
+    rt->rx_dma_channel = k_ra_ssie_dma_ch_unused;
   }
   rt->dma_attached = false;
   return k_ra_ok;
@@ -886,16 +878,14 @@ ra_err_t ra_ssie_get_status(uint8_t channel, ra_ssie_status_t* out)
   /* HUM Ch 46.2.4 "SSIFSR : FIFO Status Register" p 3083 */
   const uint32_t ssifsr = reg->SSIFSR;
 
-  out->ssisr  = ssisr;
-  out->ssifsr = ssifsr;
-  out->rx_count =
-    (uint8_t)((ssifsr & (uint32_t)k_ra_ssie_mask_rdc) >> (uint8_t)k_ra_ssie_shift_rdc);
-  out->tx_count =
-    (uint8_t)((ssifsr & (uint32_t)k_ra_ssie_mask_tdc) >> (uint8_t)k_ra_ssie_shift_tdc);
-  out->rx_full  = (ssifsr & (uint32_t)k_ra_ssie_mask_rdf) != 0U;
-  out->tx_empty = (ssifsr & (uint32_t)k_ra_ssie_mask_tde) != 0U;
-  out->idle     = (ssisr & (uint32_t)k_ra_ssie_mask_iirq) != 0U;
-  out->error    = (ssisr & (uint32_t)k_ra_ssie_mask_err_all) != 0U;
+  out->ssisr    = ssisr;
+  out->ssifsr   = ssifsr;
+  out->rx_count = (uint8_t)((ssifsr & k_ra_ssie_mask_rdc) >> k_ra_ssie_shift_rdc);
+  out->tx_count = (uint8_t)((ssifsr & k_ra_ssie_mask_tdc) >> k_ra_ssie_shift_tdc);
+  out->rx_full  = ((ssifsr & k_ra_ssie_mask_rdf) != 0U);
+  out->tx_empty = ((ssifsr & k_ra_ssie_mask_tde) != 0U);
+  out->idle     = ((ssisr & k_ra_ssie_mask_iirq) != 0U);
+  out->error    = ((ssisr & k_ra_ssie_mask_err_all) != 0U);
   out->events   = internal_decode_event(ssisr, ssifsr);
   return k_ra_ok;
 }
@@ -907,7 +897,7 @@ ra_err_t ra_ssie_clear_status(uint8_t channel, uint32_t mask)
     return k_ra_err_invalid_arg;
   }
   /* HUM Ch 46.2.2 "SSISR : Status Register" p 3069-3072 */
-  const uint32_t writeable = mask & (uint32_t)k_ra_ssie_mask_err_all;
+  const uint32_t writeable = mask & k_ra_ssie_mask_err_all;
   const uint32_t current   = reg->SSISR;
   reg->SSISR               = current & ~writeable;
   return k_ra_ok;
@@ -920,7 +910,7 @@ ra_err_t ra_ssie_set_irq_enable(uint8_t channel, uint32_t mask, bool enable)
     return k_ra_err_invalid_arg;
   }
   /* HUM Ch 46.2.1 "SSICR : Control Register" p 3057 */
-  const uint32_t apply = mask & (uint32_t)k_ra_ssie_mask_irq_all;
+  const uint32_t apply = mask & k_ra_ssie_mask_irq_all;
   uint32_t       ssicr = reg->SSICR;
   if (enable) {
     ssicr |= apply;
@@ -958,7 +948,7 @@ void ra_ssie_dispatch(uint8_t channel)
 
 ra_err_t ra_ssie_enter_stop(uint8_t channel)
 {
-  if ((uint16_t)channel >= (uint16_t)k_ra_ssie_channel_count) {
+  if ((uint16_t)channel >= k_ra_ssie_channel_count) {
     return k_ra_err_invalid_arg;
   }
   return ra_mstp_disable(s_ssie_mstp_table[channel]);
@@ -966,7 +956,7 @@ ra_err_t ra_ssie_enter_stop(uint8_t channel)
 
 ra_err_t ra_ssie_exit_stop(uint8_t channel)
 {
-  if ((uint16_t)channel >= (uint16_t)k_ra_ssie_channel_count) {
+  if ((uint16_t)channel >= k_ra_ssie_channel_count) {
     return k_ra_err_invalid_arg;
   }
   return ra_mstp_enable(s_ssie_mstp_table[channel]);

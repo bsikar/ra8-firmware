@@ -167,14 +167,14 @@ static uint32_t internal_pack_caifr(const ra_ceu_config_t* cfg)
 static uint32_t internal_pack_cflcr(const ra_ceu_config_t* cfg)
 {
   uint32_t cflcr = 0U;
-  cflcr |= (((uint32_t)cfg->scale.h_fraction) & (uint32_t)k_ra_ceu_cflcr_mask_hfrac)
+  cflcr |= (((uint32_t)cfg->scale.h_fraction) & k_ra_ceu_cflcr_mask_hfrac)
            << k_ra_ceu_cflcr_shift_hfrac;
-  cflcr |= ((((uint32_t)cfg->scale.h_mantissa) << k_ra_ceu_cflcr_shift_hmant) &
-            (uint32_t)k_ra_ceu_cflcr_mask_hmant);
-  cflcr |= ((((uint32_t)cfg->scale.v_fraction) << k_ra_ceu_cflcr_shift_vfrac) &
-            (uint32_t)k_ra_ceu_cflcr_mask_vfrac);
-  cflcr |= ((((uint32_t)cfg->scale.v_mantissa) << k_ra_ceu_cflcr_shift_vmant) &
-            (uint32_t)k_ra_ceu_cflcr_mask_vmant);
+  cflcr |=
+    ((((uint32_t)cfg->scale.h_mantissa) << k_ra_ceu_cflcr_shift_hmant) & k_ra_ceu_cflcr_mask_hmant);
+  cflcr |=
+    ((((uint32_t)cfg->scale.v_fraction) << k_ra_ceu_cflcr_shift_vfrac) & k_ra_ceu_cflcr_mask_vfrac);
+  cflcr |=
+    ((((uint32_t)cfg->scale.v_mantissa) << k_ra_ceu_cflcr_shift_vmant) & k_ra_ceu_cflcr_mask_vmant);
   return cflcr;
 }
 
@@ -185,9 +185,9 @@ static uint32_t internal_pack_cfszr(const ra_ceu_config_t* cfg)
 {
   uint32_t cfszr = 0U;
   cfszr |= (((uint32_t)cfg->scale.h_output_clip) << k_ra_ceu_cfszr_shift_hfclp) &
-           (uint32_t)k_ra_ceu_cfszr_mask_hfclp;
+           k_ra_ceu_cfszr_mask_hfclp;
   cfszr |= (((uint32_t)cfg->scale.v_output_clip) << k_ra_ceu_cfszr_shift_vfclp) &
-           (uint32_t)k_ra_ceu_cfszr_mask_vfclp;
+           k_ra_ceu_cfszr_mask_vfclp;
   return cfszr;
 }
 
@@ -198,18 +198,17 @@ static uint32_t internal_pack_cdocr(const ra_ceu_config_t* cfg)
 {
   uint32_t cdocr = 0U;
   if (cfg->byte_swap.swap_8_bit) {
-    cdocr |= (uint32_t)k_ra_ceu_cdocr_mask_cobs;
+    cdocr |= k_ra_ceu_cdocr_mask_cobs;
   }
   if (cfg->byte_swap.swap_16_bit) {
-    cdocr |= (uint32_t)k_ra_ceu_cdocr_mask_cows;
+    cdocr |= k_ra_ceu_cdocr_mask_cows;
   }
   if (cfg->byte_swap.swap_32_bit) {
-    cdocr |= (uint32_t)k_ra_ceu_cdocr_mask_cols;
+    cdocr |= k_ra_ceu_cdocr_mask_cols;
   }
-  cdocr |= (((uint32_t)cfg->output_format) << k_ra_ceu_cdocr_shift_cds) &
-           (uint32_t)k_ra_ceu_cdocr_mask_cds;
+  cdocr |= (((uint32_t)cfg->output_format) << k_ra_ceu_cdocr_shift_cds) & k_ra_ceu_cdocr_mask_cds;
   if (cfg->bundle_write) {
-    cdocr |= (uint32_t)k_ra_ceu_cdocr_mask_cbe;
+    cdocr |= k_ra_ceu_cdocr_mask_cbe;
   }
   return cdocr;
 }
@@ -252,7 +251,7 @@ static bool internal_is_aligned(const void* ptr)
   if (ptr == nullptr) {
     return true; /* nullptr means "leave register alone" -- caller's choice. */
   }
-  return ((uintptr_t)ptr & (uintptr_t)k_ra_ceu_buffer_align_mask) == 0U;
+  return ((uintptr_t)ptr & k_ra_ceu_buffer_align_mask) == 0U;
 }
 
 /**
@@ -322,8 +321,7 @@ static void internal_program_addresses(const ra_ceu_buffers_t* bufs)
   }
   if (bufs->bundle_size_bytes != 0U) {
     /* HUM Ch 60.2.17 "CBDSR : Capture Bundle Destination Size" p 3660 */
-    *ra_ceu_reg32(k_ra_ceu_off_cbdsr) =
-      bufs->bundle_size_bytes & ~(uint32_t)k_ra_ceu_bundle_align_mask;
+    *ra_ceu_reg32(k_ra_ceu_off_cbdsr) = bufs->bundle_size_bytes & ~k_ra_ceu_bundle_align_mask;
   }
 }
 
@@ -468,7 +466,7 @@ ra_err_t ra_ceu_deinit(void)
   *ra_ceu_reg32(k_ra_ceu_off_ceier) = 0U;
   /* HUM Ch 60.2.1 "CAPSR : Capture Start Register" p 3630 */
   /* Abort any active capture on the way out. */
-  *ra_ceu_reg32(k_ra_ceu_off_capsr) = (uint32_t)k_ra_ceu_capsr_mask_cpkil;
+  *ra_ceu_reg32(k_ra_ceu_off_capsr) = k_ra_ceu_capsr_mask_cpkil;
 
   s_ceu_fn         = nullptr;
   s_ceu_ctx        = nullptr;
@@ -482,7 +480,7 @@ ra_err_t ra_ceu_deinit(void)
 ra_err_t ra_ceu_reset(void)
 {
   /* HUM Ch 60.2.1 "CAPSR : Capture Start Register" p 3630 */
-  *ra_ceu_reg32(k_ra_ceu_off_capsr) = (uint32_t)k_ra_ceu_capsr_mask_cpkil;
+  *ra_ceu_reg32(k_ra_ceu_off_capsr) = k_ra_ceu_capsr_mask_cpkil;
   return internal_wait_idle();
 }
 
@@ -517,13 +515,13 @@ ra_err_t ra_ceu_status_snapshot(ra_ceu_status_t* out)
   out->data_size = *ra_ceu_reg32(k_ra_ceu_off_cdssr);
   /* HUM Ch 60.2.23 "CSTSR : Capture Status Register" p 3672 */
   const uint32_t cstsr = *ra_ceu_reg32(k_ra_ceu_off_cstsr);
-  out->capturing       = ((cstsr & (uint32_t)k_ra_ceu_cstsr_mask_cpton) != 0U);
-  out->top_field       = ((cstsr & (uint32_t)k_ra_ceu_cstsr_mask_cpfld) != 0U);
+  out->capturing       = ((cstsr & k_ra_ceu_cstsr_mask_cpton) != 0U);
+  out->top_field       = ((cstsr & k_ra_ceu_cstsr_mask_cpfld) != 0U);
   out->active_plane =
-    ((cstsr & (uint32_t)k_ra_ceu_cstsr_mask_crst) != 0U) ? k_ra_ceu_plane_b : k_ra_ceu_plane_a;
+    ((cstsr & k_ra_ceu_cstsr_mask_crst) != 0U) ? k_ra_ceu_plane_b : k_ra_ceu_plane_a;
   /* HUM Ch 60.2.1 "CAPSR : Capture Start Register" p 3630 */
   const uint32_t capsr = *ra_ceu_reg32(k_ra_ceu_off_capsr);
-  out->reset_in_flight = ((capsr & (uint32_t)k_ra_ceu_capsr_mask_cpkil) != 0U);
+  out->reset_in_flight = ((capsr & k_ra_ceu_capsr_mask_cpkil) != 0U);
   return k_ra_ok;
 }
 
@@ -572,7 +570,7 @@ void ra_ceu_dispatch(void)
 ra_err_t ra_ceu_enter_stop(void)
 {
   /* HUM Ch 60.2.1 "CAPSR : Capture Start Register" p 3630 */
-  *ra_ceu_reg32(k_ra_ceu_off_capsr) = (uint32_t)k_ra_ceu_capsr_mask_cpkil;
+  *ra_ceu_reg32(k_ra_ceu_off_capsr) = k_ra_ceu_capsr_mask_cpkil;
   /* HUM Ch 11.2.8 "MSTPCRC : Module Stop Control Register C" p 446 */
   return ra_mstp_disable(k_ra_mstp_ceu);
 }
@@ -591,13 +589,13 @@ static ra_err_t internal_arm_capture(const ra_ceu_buffers_t* bufs)
   /* HUM Ch 60.2.23 "CSTSR : Capture Status Register" p 3672 -- a
    * non-zero CPTON means a capture is already running. */
   const uint32_t cstsr = *ra_ceu_reg32(k_ra_ceu_off_cstsr);
-  if ((cstsr & (uint32_t)k_ra_ceu_cstsr_mask_cpton) != 0U) {
+  if ((cstsr & k_ra_ceu_cstsr_mask_cpton) != 0U) {
     return k_ra_err_busy;
   }
   /* HUM Ch 60.2.1 "CAPSR : Capture Start Register" p 3630 -- if a
    * software reset is in flight the engine is not ready. */
   const uint32_t capsr_now = *ra_ceu_reg32(k_ra_ceu_off_capsr);
-  if ((capsr_now & (uint32_t)k_ra_ceu_capsr_mask_cpkil) != 0U) {
+  if ((capsr_now & k_ra_ceu_capsr_mask_cpkil) != 0U) {
     return k_ra_err_busy;
   }
 
@@ -610,7 +608,7 @@ static ra_err_t internal_arm_capture(const ra_ceu_buffers_t* bufs)
     if ((s_ceu_image_area != 0U) && (bufs->y_top != nullptr)) {
       const uint32_t upper = (uint32_t)(uintptr_t)bufs->y_top + s_ceu_image_area - 1U;
       *ra_ceu_reg32(k_ra_ceu_off_cfwcr) =
-        (uint32_t)k_ra_ceu_cfwcr_mask_fwe | (upper & (uint32_t)k_ra_ceu_cfwcr_mask_fwv);
+        k_ra_ceu_cfwcr_mask_fwe | (upper & k_ra_ceu_cfwcr_mask_fwv);
     }
   } else {
     *ra_ceu_reg32(k_ra_ceu_off_cfwcr) = 0U;
@@ -621,7 +619,7 @@ static ra_err_t internal_arm_capture(const ra_ceu_buffers_t* bufs)
 
   /* HUM Ch 60.2.1 "CAPSR : Capture Start Register" p 3630 -- arm the
    * CE bit; capture begins on the next VD edge. */
-  *ra_ceu_reg32(k_ra_ceu_off_capsr) = (uint32_t)k_ra_ceu_capsr_mask_ce;
+  *ra_ceu_reg32(k_ra_ceu_off_capsr) = k_ra_ceu_capsr_mask_ce;
   return k_ra_ok;
 }
 
@@ -631,7 +629,7 @@ ra_err_t ra_ceu_capture_start(uint8_t* buffer)
 
   /* HUM Ch 60.2.13 "CDAYR : Capture Data Y Address Register" p 3656 --
    * lower 3 bits must be zero (8-byte alignment). */
-  if (((uintptr_t)buffer & (uintptr_t)k_ra_ceu_buffer_align_mask) != 0U) {
+  if (((uintptr_t)buffer & k_ra_ceu_buffer_align_mask) != 0U) {
     return k_ra_err_invalid_arg;
   }
 
@@ -675,7 +673,7 @@ ra_err_t ra_ceu_capture_stop(void)
    * runs to completion. */
   volatile uint32_t* reg = ra_ceu_reg32(k_ra_ceu_off_capsr);
   const uint32_t     val = *reg;
-  *reg                   = val & ~(uint32_t)k_ra_ceu_capsr_mask_ce;
+  *reg                   = val & ~k_ra_ceu_capsr_mask_ce;
   return k_ra_ok;
 }
 
@@ -770,7 +768,7 @@ static void internal_plane_b_apply_overrides(const ra_ceu_buffers_t* bufs)
   }
   if (bufs->bundle_size_bytes != 0U) {
     *ra_ceu_reg32_plane(k_ra_ceu_off_cbdsr, k_ra_ceu_plane_b_off) =
-      bufs->bundle_size_bytes & ~(uint32_t)k_ra_ceu_bundle_align_mask;
+      bufs->bundle_size_bytes & ~k_ra_ceu_bundle_align_mask;
   }
 }
 
@@ -790,16 +788,15 @@ ra_err_t ra_ceu_plane_b_program(const ra_ceu_buffers_t* bufs)
 
   /* HUM Ch 60.2.8 "CRCNTR : CEU Register Control Register" p 3649 --
    * enable both planes and arm the VD-synchronised swap. */
-  *ra_ceu_reg32(k_ra_ceu_off_crcntr) = (uint32_t)k_ra_ceu_crcntr_mask_rc |
-                                       (uint32_t)k_ra_ceu_crcntr_mask_rs |
-                                       (uint32_t)k_ra_ceu_crcntr_mask_rvs;
+  *ra_ceu_reg32(k_ra_ceu_off_crcntr) =
+    k_ra_ceu_crcntr_mask_rc | k_ra_ceu_crcntr_mask_rs | k_ra_ceu_crcntr_mask_rvs;
   return k_ra_ok;
 }
 
 ra_err_t ra_ceu_plane_swap_force(void)
 {
   /* HUM Ch 60.2.9 "CRCMPR : CEU Register Forcible Control Register" p 3649 */
-  *ra_ceu_reg32(k_ra_ceu_off_crcmpr) = (uint32_t)k_ra_ceu_crcmpr_mask_ra;
+  *ra_ceu_reg32(k_ra_ceu_off_crcmpr) = k_ra_ceu_crcmpr_mask_ra;
   return k_ra_ok;
 }
 
@@ -807,8 +804,8 @@ ra_err_t ra_ceu_firewall_set(bool enable, uint32_t upper_bound)
 {
   uint32_t cfwcr = 0U;
   if (enable) {
-    cfwcr |= (uint32_t)k_ra_ceu_cfwcr_mask_fwe;
-    cfwcr |= (upper_bound & (uint32_t)k_ra_ceu_cfwcr_mask_fwv);
+    cfwcr |= k_ra_ceu_cfwcr_mask_fwe;
+    cfwcr |= (upper_bound & k_ra_ceu_cfwcr_mask_fwv);
   }
   /* HUM Ch 60.2.18 "CFWCR : Firewall Operation Control Register" p 3661 */
   *ra_ceu_reg32(k_ra_ceu_off_cfwcr) = cfwcr;
@@ -821,16 +818,15 @@ ra_err_t ra_ceu_byte_swap_set(const ra_ceu_byte_swap_t* swap)
   /* HUM Ch 60.2.20 "CDOCR : Capture Data Output Control Register" p 3662 */
   volatile uint32_t* reg     = ra_ceu_reg32(k_ra_ceu_off_cdocr);
   uint32_t           current = *reg;
-  current &= ~((uint32_t)k_ra_ceu_cdocr_mask_cobs | (uint32_t)k_ra_ceu_cdocr_mask_cows |
-               (uint32_t)k_ra_ceu_cdocr_mask_cols);
+  current &= ~(k_ra_ceu_cdocr_mask_cobs | k_ra_ceu_cdocr_mask_cows | k_ra_ceu_cdocr_mask_cols);
   if (swap->swap_8_bit) {
-    current |= (uint32_t)k_ra_ceu_cdocr_mask_cobs;
+    current |= k_ra_ceu_cdocr_mask_cobs;
   }
   if (swap->swap_16_bit) {
-    current |= (uint32_t)k_ra_ceu_cdocr_mask_cows;
+    current |= k_ra_ceu_cdocr_mask_cows;
   }
   if (swap->swap_32_bit) {
-    current |= (uint32_t)k_ra_ceu_cdocr_mask_cols;
+    current |= k_ra_ceu_cdocr_mask_cols;
   }
   *reg = current;
   return k_ra_ok;
@@ -839,7 +835,7 @@ ra_err_t ra_ceu_byte_swap_set(const ra_ceu_byte_swap_t* swap)
 ra_err_t ra_ceu_bundle_size_set(uint32_t size_bytes)
 {
   /* HUM Ch 60.2.17 "CBDSR : Capture Bundle Destination Size" p 3660 */
-  *ra_ceu_reg32(k_ra_ceu_off_cbdsr) = size_bytes & ~(uint32_t)k_ra_ceu_bundle_align_mask;
+  *ra_ceu_reg32(k_ra_ceu_off_cbdsr) = size_bytes & ~k_ra_ceu_bundle_align_mask;
   return k_ra_ok;
 }
 
@@ -848,7 +844,7 @@ ra_err_t ra_ceu_low_pass_set(bool enable)
   /* HUM Ch 60.2.19 "CLFCR : Capture Low-Pass Filter Control" p 3661 */
   uint32_t value = 0U;
   if (enable) {
-    value = (uint32_t)k_ra_ceu_clfcr_mask_lpf;
+    value = k_ra_ceu_clfcr_mask_lpf;
   }
   *ra_ceu_reg32(k_ra_ceu_off_clfcr) = value;
   return k_ra_ok;
@@ -859,9 +855,9 @@ ra_err_t ra_ceu_capture_mode_set(ra_ceu_capture_mode_t mode)
   /* HUM Ch 60.2.2 "CAPCR : Capture Control Register" p 3634 */
   volatile uint32_t* reg     = ra_ceu_reg32(k_ra_ceu_off_capcr);
   uint32_t           current = *reg;
-  current &= ~(uint32_t)k_ra_ceu_capcr_mask_ctncp;
+  current &= ~k_ra_ceu_capcr_mask_ctncp;
   if (mode == k_ra_ceu_capture_continuous) {
-    current |= (uint32_t)k_ra_ceu_capcr_mask_ctncp;
+    current |= k_ra_ceu_capcr_mask_ctncp;
   }
   *reg = current;
   return k_ra_ok;
@@ -872,7 +868,7 @@ ra_err_t ra_ceu_frame_drop_set(uint8_t count)
   /* HUM Ch 60.2.2 "CAPCR : Capture Control Register" p 3634 */
   volatile uint32_t* reg     = ra_ceu_reg32(k_ra_ceu_off_capcr);
   uint32_t           current = *reg;
-  current &= ~(uint32_t)k_ra_ceu_capcr_mask_fdrp;
+  current &= ~k_ra_ceu_capcr_mask_fdrp;
   current |= ((uint32_t)count) << k_ra_ceu_capcr_shift_fdrp;
   *reg = current;
   return k_ra_ok;
@@ -885,7 +881,7 @@ ra_err_t ra_ceu_dma_pump(uint8_t channel, const uint8_t* src, uint8_t* dst, uint
   if (bytes == 0U) {
     return k_ra_err_invalid_arg;
   }
-  if ((bytes & (uint32_t)k_ra_ceu_dma_byte_align_mask) != 0U) {
+  if ((bytes & k_ra_ceu_dma_byte_align_mask) != 0U) {
     return k_ra_err_invalid_arg;
   }
 

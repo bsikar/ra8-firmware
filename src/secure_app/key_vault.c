@@ -181,8 +181,8 @@ static void internal_sha256_32(const uint8_t* in32, uint8_t* out32)
 
 ra_err_t ra_key_vault_init(void)
 {
-  for (uint16_t s = 0U; s < (uint16_t)k_ra_key_vault_slots; ++s) {
-    for (uint16_t i = 0U; i < (uint16_t)k_ra_key_vault_key_bytes; ++i) {
+  for (uint16_t s = 0U; s < k_ra_key_vault_slots; ++s) {
+    for (uint16_t i = 0U; i < k_ra_key_vault_key_bytes; ++i) {
       s_vault[s].key[i] = 0U;
     }
   }
@@ -192,10 +192,10 @@ ra_err_t ra_key_vault_init(void)
 ra_err_t ra_key_vault_store(uint16_t slot, const uint8_t* key)
 {
   RA_CHECK_NULL_PTR((void*)key, s_tag, "store: key");
-  if (slot >= (uint16_t)k_ra_key_vault_slots) {
+  if (slot >= k_ra_key_vault_slots) {
     return k_ra_err_invalid_arg;
   }
-  for (uint16_t i = 0U; i < (uint16_t)k_ra_key_vault_key_bytes; ++i) {
+  for (uint16_t i = 0U; i < k_ra_key_vault_key_bytes; ++i) {
     s_vault[slot].key[i] = key[i];
   }
   return k_ra_ok;
@@ -205,11 +205,11 @@ ra_err_t ra_key_vault_sha256_xor_challenge(uint16_t slot, const uint8_t* challen
 {
   RA_CHECK_NULL_PTR((void*)challenge, s_tag, "challenge: challenge");
   RA_CHECK_NULL_PTR(out, s_tag, "challenge: out");
-  if (slot >= (uint16_t)k_ra_key_vault_slots) {
+  if (slot >= k_ra_key_vault_slots) {
     return k_ra_err_invalid_arg;
   }
   uint8_t scratch[k_ra_key_vault_key_bytes] = {};
-  for (uint16_t i = 0U; i < (uint16_t)k_ra_key_vault_key_bytes; ++i) {
+  for (uint16_t i = 0U; i < k_ra_key_vault_key_bytes; ++i) {
     scratch[i] = (uint8_t)(s_vault[slot].key[i] ^ challenge[i]);
   }
   internal_sha256_32(scratch, out);
@@ -218,7 +218,7 @@ ra_err_t ra_key_vault_sha256_xor_challenge(uint16_t slot, const uint8_t* challen
    * because the function returns immediately after, but that is
    * exactly the secure-erase pattern -- we want the bytes gone
    * before the stack frame is reused. */
-  for (uint16_t i = 0U; i < (uint16_t)k_ra_key_vault_key_bytes; ++i) {
+  for (uint16_t i = 0U; i < k_ra_key_vault_key_bytes; ++i) {
     /* cppcheck-suppress unreadVariable */
     scratch[i] = 0U;
   }

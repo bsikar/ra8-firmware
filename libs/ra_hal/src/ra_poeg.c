@@ -40,9 +40,8 @@ static const ra_mstp_t s_poeg_mstp_table[k_ra_poeg_group_count] = {
  * @brief POEGG status/control bit positions and combined masks.
  */
 typedef enum : uint32_t {
-  k_ra_poeg_status_all = (uint32_t)k_ra_poeg_status_pidf | (uint32_t)k_ra_poeg_status_iocf |
-                         (uint32_t)k_ra_poeg_status_ovrf | (uint32_t)k_ra_poeg_status_ssf |
-                         (uint32_t)k_ra_poeg_status_st,
+  k_ra_poeg_status_all = k_ra_poeg_status_pidf | k_ra_poeg_status_iocf | k_ra_poeg_status_ovrf |
+                         k_ra_poeg_status_ssf | k_ra_poeg_status_st,
 } ra_poeg_bits_t;
 
 /**
@@ -60,16 +59,16 @@ static uint32_t internal_cfg_to_poegg(const ra_poeg_cfg_t* cfg)
 {
   uint32_t v = 0U;
   if (cfg->enable_pin) {
-    v |= (uint32_t)k_ra_poeg_en_pide;
+    v |= k_ra_poeg_en_pide;
   }
   if (cfg->enable_ioc) {
-    v |= (uint32_t)k_ra_poeg_en_iocen;
+    v |= k_ra_poeg_en_iocen;
   }
   if (cfg->enable_osc_stop) {
-    v |= (uint32_t)k_ra_poeg_en_osten;
+    v |= k_ra_poeg_en_osten;
   }
   if (cfg->invert_input) {
-    v |= (uint32_t)k_ra_poeg_en_inv;
+    v |= k_ra_poeg_en_inv;
   }
   return v;
 }
@@ -107,7 +106,7 @@ ra_err_t ra_poeg_trigger_stop(uint8_t group)
   volatile r_poeg_regs_t* reg = ra_poeg(group);
   RA_CHECK_NULL_PTR(reg, s_tag, "group out of range");
 
-  reg->POEGG |= (uint32_t)k_ra_poeg_status_ssf;
+  reg->POEGG |= k_ra_poeg_status_ssf;
   return k_ra_ok;
 }
 
@@ -117,7 +116,7 @@ ra_err_t ra_poeg_get_status(uint8_t group, uint32_t* out_mask)
   volatile r_poeg_regs_t* reg = ra_poeg(group);
   RA_CHECK_NULL_PTR(reg, s_tag, "group out of range");
 
-  *out_mask = reg->POEGG & (uint32_t)k_ra_poeg_status_all;
+  *out_mask = reg->POEGG & k_ra_poeg_status_all;
   return k_ra_ok;
 }
 
@@ -127,7 +126,7 @@ ra_err_t ra_poeg_clear_status(uint8_t group, uint32_t mask)
   RA_CHECK_NULL_PTR(reg, s_tag, "group out of range");
 
   const uint32_t current = reg->POEGG;
-  reg->POEGG             = current & ~(mask & (uint32_t)k_ra_poeg_status_all);
+  reg->POEGG             = current & ~(mask & k_ra_poeg_status_all);
   return k_ra_ok;
 }
 
@@ -165,7 +164,7 @@ void ra_poeg_dispatch(uint8_t group)
   volatile r_poeg_regs_t* reg  = ra_poeg(group);
   uint32_t                mask = 0U;
   if (reg != nullptr) {
-    mask = reg->POEGG & (uint32_t)k_ra_poeg_status_all;
+    mask = reg->POEGG & k_ra_poeg_status_all;
   }
   const ra_poeg_event_fn_t fn  = s_poeg_state[group].fn;
   void* const              ctx = s_poeg_state[group].ctx;

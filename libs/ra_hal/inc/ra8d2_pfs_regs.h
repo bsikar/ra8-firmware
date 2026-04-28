@@ -131,10 +131,10 @@ typedef enum : uint32_t {
  */
 static inline volatile uint32_t* ra_pfs_pmn(ra_port_t port, ra_pin_t pin)
 {
-  if ((uint8_t)port > (uint8_t)k_ra_port_max) {
+  if ((uint8_t)port > k_ra_port_max) {
     return nullptr;
   }
-  if ((uint8_t)pin > (uint8_t)k_ra_pin_max) {
+  if ((uint8_t)pin > k_ra_pin_max) {
     return nullptr;
   }
 

@@ -94,7 +94,7 @@ typedef struct {
  */
 static inline volatile r_dac_b_regs_t* ra_dac_b(uint8_t instance)
 {
-  if ((uint16_t)instance >= (uint16_t)k_ra_dac_b_channel_count) {
+  if ((uint16_t)instance >= k_ra_dac_b_channel_count) {
     return nullptr;
   }
   return (volatile r_dac_b_regs_t*)(k_ra_dac_b0_base_addr +

@@ -57,7 +57,7 @@ static const ra_mstp_t s_agt_mstp_table[k_ra_agt_mstp_id_count] = {
   volatile r_agt_regs_t* reg = ra_agt(channel);
   RA_CHECK_NULL_PTR(reg, s_tag, "channel out of range");
 
-  if (channel < (uint8_t)k_ra_agt_mstp_id_count) {
+  if (channel < k_ra_agt_mstp_id_count) {
     /* HUM Ch 11.2.9 "MSTPCRD : Module Stop Control Register D", p 448 */
     const ra_err_t mst_err = ra_mstp_enable(s_agt_mstp_table[channel]);
     RA_RETURN_ON_ERROR(mst_err, s_tag, "agt_start: mstp enable"); /* GCOVR_EXCL_BR_LINE */
@@ -103,7 +103,7 @@ ra_err_t ra_agt_deinit(uint8_t channel)
   RA_CHECK_NULL_PTR(reg, s_tag, "channel out of range");
   /* HUM Ch 24.2.1 "AGTCR : AGT Control Register" p 1167 */
   reg->AGTCR = 0U;
-  if (channel < (uint8_t)k_ra_agt_mstp_id_count) {
+  if (channel < k_ra_agt_mstp_id_count) {
     return ra_mstp_disable(s_agt_mstp_table[channel]);
   }
   return k_ra_ok;
@@ -153,7 +153,7 @@ ra_err_t ra_agt_enter_stop(uint8_t channel)
   RA_CHECK_NULL_PTR(reg, s_tag, "channel out of range");
   /* HUM Ch 24.2.1 "AGTCR : AGT Control Register" p 1167 */
   reg->AGTCR = 0U;
-  if (channel < (uint8_t)k_ra_agt_mstp_id_count) {
+  if (channel < k_ra_agt_mstp_id_count) {
     return ra_mstp_disable(s_agt_mstp_table[channel]);
   }
   return k_ra_ok;
@@ -164,7 +164,7 @@ ra_err_t ra_agt_exit_stop(uint8_t channel)
   if (ra_agt(channel) == nullptr) {
     return k_ra_err_invalid_arg;
   }
-  if (channel < (uint8_t)k_ra_agt_mstp_id_count) {
+  if (channel < k_ra_agt_mstp_id_count) {
     return ra_mstp_enable(s_agt_mstp_table[channel]);
   }
   return k_ra_ok;
