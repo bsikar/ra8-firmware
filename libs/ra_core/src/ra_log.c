@@ -93,7 +93,7 @@ static inline bool internal_itm_ready(void)
   if ((tenr & 1U) == 0U) {
     return false;
   }
-  return (*internal_itm_stim0() != 0U);
+  return *internal_itm_stim0() != 0U;
 }
 
 /**

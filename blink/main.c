@@ -183,12 +183,12 @@ static void ra_systick_stop(void)
 static void ra_systick_wait_ticks(uint32_t ticks)
 {
   ra_systick_stop();
-  *ra_reg32(k_ra_systick_rvr) = (ticks - 1U) & (uint32_t)k_ra_systick_rvr_max;
+  *ra_reg32(k_ra_systick_rvr) = (ticks - 1U) & k_ra_systick_rvr_max;
   *ra_reg32(k_ra_systick_cvr) = 0U;
-  *ra_reg32(k_ra_systick_csr) = (uint32_t)k_ra_systick_enable | (uint32_t)k_ra_systick_clksource;
+  *ra_reg32(k_ra_systick_csr) = k_ra_systick_enable | k_ra_systick_clksource;
 
   /* Poll COUNTFLAG. Goes 1 on wrap (one-shot), auto-clears on read. */
-  while ((*ra_reg32(k_ra_systick_csr) & (uint32_t)k_ra_systick_countflag) == 0U) {
+  while ((*ra_reg32(k_ra_systick_csr) & k_ra_systick_countflag) == 0U) {
     /* wait */
   }
 
@@ -212,10 +212,9 @@ static void ra_systick_wait_ticks(uint32_t ticks)
  */
 static void ra_delay_ms(uint32_t ms)
 {
-  uint32_t total = (ms * (uint32_t)k_ra_cpu_hz_at_reset) / (uint32_t)k_ra_blink_ms_per_sec;
+  uint32_t total = (ms * k_ra_cpu_hz_at_reset) / k_ra_blink_ms_per_sec;
   while (total > 0U) {
-    const uint32_t chunk =
-      (total > (uint32_t)k_ra_systick_rvr_max) ? (uint32_t)k_ra_systick_rvr_max : total;
+    const uint32_t chunk = (total > k_ra_systick_rvr_max) ? k_ra_systick_rvr_max : total;
     ra_systick_wait_ticks(chunk);
     total -= chunk;
   }
@@ -237,14 +236,14 @@ static void ra_blink_pin_init(uint8_t port, uint8_t bit)
   volatile uint8_t* pwprs = ra_reg8(k_ra_pmisc_pwprs);
 
   *pwpr  = 0x00U;
-  *pwpr  = (uint8_t)k_ra_pwpr_pfswe;
+  *pwpr  = k_ra_pwpr_pfswe;
   *pwprs = 0x00U;
-  *pwprs = (uint8_t)k_ra_pwpr_pfswe;
+  *pwprs = k_ra_pwpr_pfswe;
 
-  *ra_pfs_reg(port, bit) = (uint32_t)k_ra_pfs_pdr_output_low;
+  *ra_pfs_reg(port, bit) = k_ra_pfs_pdr_output_low;
 
-  *pwpr  = (uint8_t)k_ra_pwpr_b0wi;
-  *pwprs = (uint8_t)k_ra_pwpr_b0wi;
+  *pwpr  = k_ra_pwpr_b0wi;
+  *pwprs = k_ra_pwpr_b0wi;
 }
 
 /**
@@ -261,7 +260,7 @@ static void ra_blink_drive_all(uint8_t high)
   uint32_t pdr_mask[k_ra_blink_pin_count]   = {};
   uint32_t port_count                       = 0U;
 
-  for (uint32_t i = 0U; i < (uint32_t)k_ra_blink_pin_count; ++i) {
+  for (uint32_t i = 0U; i < k_ra_blink_pin_count; ++i) {
     const uint8_t port = k_ra_blink_pins[i].port;
     const uint8_t bit  = k_ra_blink_pins[i].bit;
 
@@ -296,7 +295,7 @@ static void ra_blink_drive_all(uint8_t high)
 #pragma GCC diagnostic ignored "-Wmain"
 int32_t main(void)
 {
-  for (uint32_t i = 0U; i < (uint32_t)k_ra_blink_pin_count; ++i) {
+  for (uint32_t i = 0U; i < k_ra_blink_pin_count; ++i) {
     ra_blink_pin_init(k_ra_blink_pins[i].port, k_ra_blink_pins[i].bit);
   }
 
@@ -306,9 +305,9 @@ int32_t main(void)
 
   while (1) {
     ra_blink_drive_all(1U);
-    ra_delay_ms((uint32_t)k_ra_blink_half_period_ms);
+    ra_delay_ms(k_ra_blink_half_period_ms);
     ra_blink_drive_all(0U);
-    ra_delay_ms((uint32_t)k_ra_blink_half_period_ms);
+    ra_delay_ms(k_ra_blink_half_period_ms);
   }
 
   return 0;

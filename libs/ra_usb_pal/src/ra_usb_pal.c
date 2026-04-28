@@ -104,7 +104,7 @@ static void internal_copy_bytes(uint8_t* dst, const uint8_t* src, uint16_t len)
  */
 static void internal_reset_eps(void)
 {
-  for (uint16_t i = 0U; i < (uint16_t)k_ra_usb_pal_ep_table_len; ++i) {
+  for (uint16_t i = 0U; i < k_ra_usb_pal_ep_table_len; ++i) {
     ra_usb_pal_ep_slot_t* slot = &s_state.eps[i];
     slot->opened               = false;
     slot->dir                  = k_ra_usb_pal_ep_dir_out;
@@ -113,7 +113,7 @@ static void internal_reset_eps(void)
     slot->head                 = 0U;
     slot->tail                 = 0U;
     slot->count                = 0U;
-    for (uint16_t j = 0U; j < (uint16_t)k_ra_usb_pal_ring_slots; ++j) {
+    for (uint16_t j = 0U; j < k_ra_usb_pal_ring_slots; ++j) {
       slot->ring[j].len = 0U;
     }
   }
@@ -125,9 +125,9 @@ static void internal_reset_eps(void)
 static uint16_t internal_translate(uint16_t usb_mask)
 {
   if (usb_mask != 0U) {
-    return (uint16_t)k_ra_usb_pal_event_error;
+    return k_ra_usb_pal_event_error;
   }
-  return (uint16_t)k_ra_usb_pal_event_none;
+  return k_ra_usb_pal_event_none;
 }
 
 static void internal_usb_event(void* ctx, ra_usb_speed_t speed, uint16_t status_mask)
@@ -140,7 +140,7 @@ static void internal_usb_event(void* ctx, ra_usb_speed_t speed, uint16_t status_
     return;
   }
   const uint16_t pal_mask = internal_translate(status_mask);
-  if ((s_state.event_fn != nullptr) && (pal_mask != (uint16_t)k_ra_usb_pal_event_none)) {
+  if ((s_state.event_fn != nullptr) && (pal_mask != k_ra_usb_pal_event_none)) {
     s_state.event_fn(s_state.event_ctx, speed, pal_mask);
   }
 }
@@ -242,7 +242,7 @@ ra_err_t ra_usb_pal_ep_open(uint8_t              ep_addr,
     return k_ra_err_invalid_arg;
   }
   if ((type > k_ra_usb_pal_ep_type_intr) || (max_packet == 0U) ||
-      (max_packet > (uint16_t)k_ra_usb_pal_xfer_max)) {
+      (max_packet > k_ra_usb_pal_xfer_max)) {
     return k_ra_err_invalid_arg;
   }
   ra_usb_pal_ep_slot_t* slot = &s_state.eps[ep_addr];
@@ -253,7 +253,7 @@ ra_err_t ra_usb_pal_ep_open(uint8_t              ep_addr,
   slot->head                 = 0U;
   slot->tail                 = 0U;
   slot->count                = 0U;
-  for (uint16_t j = 0U; j < (uint16_t)k_ra_usb_pal_ring_slots; ++j) {
+  for (uint16_t j = 0U; j < k_ra_usb_pal_ring_slots; ++j) {
     slot->ring[j].len = 0U;
   }
   return k_ra_ok;
@@ -267,7 +267,7 @@ ra_err_t ra_usb_pal_ep_send(uint8_t ep_addr, const uint8_t* data, uint16_t len)
   if ((ep_addr == 0U) || (ep_addr > (uint8_t)k_ra_usb_pal_ep_max)) {
     return k_ra_err_invalid_arg;
   }
-  if ((len > (uint16_t)k_ra_usb_pal_xfer_max) || ((data == nullptr) && (len != 0U))) {
+  if ((len > k_ra_usb_pal_xfer_max) || ((data == nullptr) && (len != 0U))) {
     return (data == nullptr) ? k_ra_err_null_ptr : k_ra_err_invalid_arg;
   }
   ra_usb_pal_ep_slot_t* slot = &s_state.eps[ep_addr];
@@ -277,7 +277,7 @@ ra_err_t ra_usb_pal_ep_send(uint8_t ep_addr, const uint8_t* data, uint16_t len)
   if (len > slot->max_packet) {
     return k_ra_err_invalid_arg;
   }
-  if (slot->count >= (uint16_t)k_ra_usb_pal_ring_slots) {
+  if (slot->count >= k_ra_usb_pal_ring_slots) {
     return k_ra_err_no_mem;
   }
   ra_usb_pal_packet_t* pkt = &slot->ring[slot->tail];
@@ -285,10 +285,10 @@ ra_err_t ra_usb_pal_ep_send(uint8_t ep_addr, const uint8_t* data, uint16_t len)
     internal_copy_bytes(pkt->data, data, len);
   }
   pkt->len   = len;
-  slot->tail = (uint16_t)((slot->tail + 1U) % (uint16_t)k_ra_usb_pal_ring_slots);
+  slot->tail = (uint16_t)((slot->tail + 1U) % k_ra_usb_pal_ring_slots);
   ++slot->count;
   if (s_state.event_fn != nullptr) {
-    s_state.event_fn(s_state.event_ctx, s_state.speed, (uint16_t)k_ra_usb_pal_event_ep_in);
+    s_state.event_fn(s_state.event_ctx, s_state.speed, k_ra_usb_pal_event_ep_in);
   }
   return k_ra_ok;
 }
@@ -320,7 +320,7 @@ ra_err_t ra_usb_pal_ep_recv(uint8_t ep_addr, uint8_t* out_buf, uint16_t* inout_l
   }
   *inout_len = n;
   pkt->len   = 0U;
-  slot->head = (uint16_t)((slot->head + 1U) % (uint16_t)k_ra_usb_pal_ring_slots);
+  slot->head = (uint16_t)((slot->head + 1U) % k_ra_usb_pal_ring_slots);
   --slot->count;
   return k_ra_ok;
 }

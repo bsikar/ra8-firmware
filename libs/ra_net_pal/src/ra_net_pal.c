@@ -109,7 +109,7 @@ static void internal_ring_reset(void)
   s_state.head  = 0U;
   s_state.tail  = 0U;
   s_state.count = 0U;
-  for (uint16_t i = 0U; i < (uint16_t)k_ra_net_pal_ring_slots; ++i) {
+  for (uint16_t i = 0U; i < k_ra_net_pal_ring_slots; ++i) {
     s_state.ring[i].len = 0U;
   }
 }
@@ -120,9 +120,9 @@ static void internal_ring_reset(void)
 static uint32_t internal_translate_event(uint32_t eth_mask)
 {
   if (eth_mask != 0U) {
-    return (uint32_t)k_ra_net_pal_event_error;
+    return k_ra_net_pal_event_error;
   }
-  return (uint32_t)k_ra_net_pal_event_none;
+  return k_ra_net_pal_event_none;
 }
 
 /**
@@ -135,7 +135,7 @@ static void internal_eth_event(void* ctx, uint32_t status_mask)
     return;
   }
   const uint32_t pal_mask = internal_translate_event(status_mask);
-  if ((s_state.event_fn != nullptr) && (pal_mask != (uint32_t)k_ra_net_pal_event_none)) {
+  if ((s_state.event_fn != nullptr) && (pal_mask != k_ra_net_pal_event_none)) {
     s_state.event_fn(s_state.event_ctx, pal_mask);
   }
 }
@@ -153,7 +153,7 @@ ra_err_t ra_net_pal_init(const ra_net_pal_mac_t* mac)
     return k_ra_err_hw_init_failed;
   }
 
-  internal_zero_bytes(s_state.mac.bytes, (uint16_t)k_ra_net_pal_mac_addr_len);
+  internal_zero_bytes(s_state.mac.bytes, k_ra_net_pal_mac_addr_len);
   s_state.link_state  = k_ra_net_pal_link_down;
   s_state.event_fn    = nullptr;
   s_state.event_ctx   = nullptr;
@@ -161,7 +161,7 @@ ra_err_t ra_net_pal_init(const ra_net_pal_mac_t* mac)
   internal_ring_reset();
 
   if (mac != nullptr) {
-    internal_copy_bytes(s_state.mac.bytes, mac->bytes, (uint16_t)k_ra_net_pal_mac_addr_len);
+    internal_copy_bytes(s_state.mac.bytes, mac->bytes, k_ra_net_pal_mac_addr_len);
   }
 
   const ra_err_t att_err = ra_eth_attach_handler(internal_eth_event, nullptr);
@@ -199,7 +199,7 @@ ra_err_t ra_net_pal_set_mac_addr(const ra_net_pal_mac_t* mac)
   if (!s_state.initialised) {
     return k_ra_err_invalid_state;
   }
-  internal_copy_bytes(s_state.mac.bytes, mac->bytes, (uint16_t)k_ra_net_pal_mac_addr_len);
+  internal_copy_bytes(s_state.mac.bytes, mac->bytes, k_ra_net_pal_mac_addr_len);
   return k_ra_ok;
 }
 
@@ -209,7 +209,7 @@ ra_err_t ra_net_pal_get_mac_addr(ra_net_pal_mac_t* out_mac)
   if (!s_state.initialised) {
     return k_ra_err_invalid_state;
   }
-  internal_copy_bytes(out_mac->bytes, s_state.mac.bytes, (uint16_t)k_ra_net_pal_mac_addr_len);
+  internal_copy_bytes(out_mac->bytes, s_state.mac.bytes, k_ra_net_pal_mac_addr_len);
   return k_ra_ok;
 }
 
@@ -219,19 +219,19 @@ ra_err_t ra_net_pal_send_frame(const uint8_t* frame, uint16_t len)
   if (!s_state.initialised) {
     return k_ra_err_invalid_state;
   }
-  if ((len == 0U) || (len > (uint16_t)k_ra_net_pal_frame_max)) {
+  if ((len == 0U) || (len > k_ra_net_pal_frame_max)) {
     return k_ra_err_invalid_arg;
   }
-  if (s_state.count >= (uint16_t)k_ra_net_pal_ring_slots) {
+  if (s_state.count >= k_ra_net_pal_ring_slots) {
     return k_ra_err_no_mem;
   }
   ra_net_pal_slot_t* slot = &s_state.ring[s_state.tail];
   internal_copy_bytes(slot->data, frame, len);
   slot->len    = len;
-  s_state.tail = (uint16_t)((s_state.tail + 1U) % (uint16_t)k_ra_net_pal_ring_slots);
+  s_state.tail = (uint16_t)((s_state.tail + 1U) % k_ra_net_pal_ring_slots);
   ++s_state.count;
   if ((s_state.event_fn != nullptr)) {
-    s_state.event_fn(s_state.event_ctx, (uint32_t)k_ra_net_pal_event_tx_done);
+    s_state.event_fn(s_state.event_ctx, k_ra_net_pal_event_tx_done);
   }
   return k_ra_ok;
 }
@@ -243,7 +243,7 @@ ra_err_t ra_net_pal_recv_frame(uint8_t* out_buf, uint16_t* inout_len)
   if (!s_state.initialised) {
     return k_ra_err_invalid_state;
   }
-  if (*inout_len < (uint16_t)k_ra_net_pal_frame_max) {
+  if (*inout_len < k_ra_net_pal_frame_max) {
     return k_ra_err_invalid_arg;
   }
   if (s_state.count == 0U) {
@@ -254,7 +254,7 @@ ra_err_t ra_net_pal_recv_frame(uint8_t* out_buf, uint16_t* inout_len)
   internal_copy_bytes(out_buf, slot->data, n);
   *inout_len   = n;
   slot->len    = 0U;
-  s_state.head = (uint16_t)((s_state.head + 1U) % (uint16_t)k_ra_net_pal_ring_slots);
+  s_state.head = (uint16_t)((s_state.head + 1U) % k_ra_net_pal_ring_slots);
   --s_state.count;
   return k_ra_ok;
 }
