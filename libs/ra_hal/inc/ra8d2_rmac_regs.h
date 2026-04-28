@@ -513,62 +513,64 @@ typedef enum : uint16_t {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  volatile uint32_t MPSM;                                /**< +0x0000 PHY Station Mgmt.        */
-  volatile uint32_t MPIC;                                /**< +0x0004 PHY Interfaces Cfg.      */
-  volatile uint32_t MPIM;                                /**< +0x0008 PHY Monitoring.          */
-  volatile uint32_t reserved0c;                          /**< +0x000C Reserved.              */
-  volatile uint32_t MIOC;                                /**< +0x0010 I/O Configuration.       */
-  volatile uint32_t reserved14[3];                       /**< +0x0014..0x001C Reserved.   */
-  volatile uint32_t MTFFC;                               /**< +0x0020 TX Frame Format Cfg.     */
-  volatile uint32_t MTPFC;                               /**< +0x0024 TX Pause/PFC Frame Cfg.  */
-  volatile uint32_t MTPFC2;                              /**< +0x0028 TX Pause/PFC Frame Cfg2. */
-  volatile uint32_t reserved2c;                          /**< +0x002C Reserved.              */
-  volatile uint32_t MTPFC3[k_ra_rmac_pfc_group_count];   /**< +0x0030..0x0034 */
-  volatile uint32_t reserved38[6];                       /**< +0x0038..0x004C Reserved.   */
-  volatile uint32_t MTATC[2];                            /**< +0x0050..0x0054 TX Auto Tstamp.  */
-  volatile uint32_t reserved58[2];                       /**< +0x0058..0x005C Reserved.   */
-  volatile uint32_t MTIM;                                /**< +0x0060 TX Interfaces Monitor.   */
-  volatile uint32_t reserved64[k_ra_rmac_rsv_words_mtim_to_mrgc]; /**< +0x0064..0x007C Reserved.   */
-  volatile uint32_t MRGC;                                /**< +0x0080 RX General Cfg.          */
-  volatile uint32_t MRMAC0;                              /**< +0x0084 RX MAC Address 0.        */
-  volatile uint32_t MRMAC1;                              /**< +0x0088 RX MAC Address 1.        */
-  volatile uint32_t MRAFC;                               /**< +0x008C RX Address Filter Cfg.   */
-  volatile uint32_t MRSCE;                               /**< +0x0090 RX Storm Cfg E.          */
-  volatile uint32_t MRSCP;                               /**< +0x0094 RX Storm Cfg P.          */
-  volatile uint32_t MRSCC;                               /**< +0x0098 RX Storm Counter Cfg.    */
-  volatile uint32_t MRFSCE;                              /**< +0x009C RX Frame Size Cfg E.     */
-  volatile uint32_t MRFSCP;                              /**< +0x00A0 RX Frame Size Cfg P.     */
-  volatile uint32_t MTRC;                                /**< +0x00A4 Timestamp RX Cfg.        */
-  volatile uint32_t reserveda8;                          /**< +0x00A8 Reserved.              */
-  volatile uint32_t MRPFM;                               /**< +0x00AC RX Pause/PFC Monitor.    */
+  volatile uint32_t MPSM;                              /**< +0x0000 PHY Station Mgmt.        */
+  volatile uint32_t MPIC;                              /**< +0x0004 PHY Interfaces Cfg.      */
+  volatile uint32_t MPIM;                              /**< +0x0008 PHY Monitoring.          */
+  volatile uint32_t reserved0c;                        /**< +0x000C Reserved.              */
+  volatile uint32_t MIOC;                              /**< +0x0010 I/O Configuration.       */
+  volatile uint32_t reserved14[3];                     /**< +0x0014..0x001C Reserved.   */
+  volatile uint32_t MTFFC;                             /**< +0x0020 TX Frame Format Cfg.     */
+  volatile uint32_t MTPFC;                             /**< +0x0024 TX Pause/PFC Frame Cfg.  */
+  volatile uint32_t MTPFC2;                            /**< +0x0028 TX Pause/PFC Frame Cfg2. */
+  volatile uint32_t reserved2c;                        /**< +0x002C Reserved.              */
+  volatile uint32_t MTPFC3[k_ra_rmac_pfc_group_count]; /**< +0x0030..0x0034 */
+  volatile uint32_t reserved38[6];                     /**< +0x0038..0x004C Reserved.   */
+  volatile uint32_t MTATC[2];                          /**< +0x0050..0x0054 TX Auto Tstamp.  */
+  volatile uint32_t reserved58[2];                     /**< +0x0058..0x005C Reserved.   */
+  volatile uint32_t MTIM;                              /**< +0x0060 TX Interfaces Monitor.   */
+  volatile uint32_t
+    reserved64[k_ra_rmac_rsv_words_mtim_to_mrgc]; /**< +0x0064..0x007C Reserved.   */
+  volatile uint32_t MRGC;                         /**< +0x0080 RX General Cfg.          */
+  volatile uint32_t MRMAC0;                       /**< +0x0084 RX MAC Address 0.        */
+  volatile uint32_t MRMAC1;                       /**< +0x0088 RX MAC Address 1.        */
+  volatile uint32_t MRAFC;                        /**< +0x008C RX Address Filter Cfg.   */
+  volatile uint32_t MRSCE;                        /**< +0x0090 RX Storm Cfg E.          */
+  volatile uint32_t MRSCP;                        /**< +0x0094 RX Storm Cfg P.          */
+  volatile uint32_t MRSCC;                        /**< +0x0098 RX Storm Counter Cfg.    */
+  volatile uint32_t MRFSCE;                       /**< +0x009C RX Frame Size Cfg E.     */
+  volatile uint32_t MRFSCP;                       /**< +0x00A0 RX Frame Size Cfg P.     */
+  volatile uint32_t MTRC;                         /**< +0x00A4 Timestamp RX Cfg.        */
+  volatile uint32_t reserveda8;                   /**< +0x00A8 Reserved.              */
+  volatile uint32_t MRPFM;                        /**< +0x00AC RX Pause/PFC Monitor.    */
   volatile uint32_t reservedb0[k_ra_rmac_rsv_words_mrpfm_to_mpfc]; /**< +0x00B0..0x00FC Reserved. */
-  volatile uint32_t MPFC[k_ra_rmac_ptp_filter_count];    /**< +0x0100..0x013C */
-  volatile uint32_t reserved140[16];                     /**< +0x0140..0x017C Reserved.*/
-  volatile uint32_t MLVC;                                /**< +0x0180 Link Verification Cfg.   */
-  volatile uint32_t MEEEC;                               /**< +0x0184 EEE Configuration.       */
-  volatile uint32_t MLBC;                                /**< +0x0188 Loopback Cfg.            */
-  volatile uint32_t reserved18c;                         /**< +0x018C Reserved.             */
-  volatile uint32_t MXGMIIC;                             /**< +0x0190 XGMII Cfg.               */
-  volatile uint32_t MPCH;                                /**< +0x0194 XGMII PCH Cfg.           */
-  volatile uint32_t reserved198;                         /**< +0x0198 Reserved.             */
-  volatile uint32_t MANM;                                /**< +0x019C Auto-Neg Message.        */
+  volatile uint32_t MPFC[k_ra_rmac_ptp_filter_count];              /**< +0x0100..0x013C */
+  volatile uint32_t reserved140[16];                               /**< +0x0140..0x017C Reserved.*/
+  volatile uint32_t MLVC;        /**< +0x0180 Link Verification Cfg.   */
+  volatile uint32_t MEEEC;       /**< +0x0184 EEE Configuration.       */
+  volatile uint32_t MLBC;        /**< +0x0188 Loopback Cfg.            */
+  volatile uint32_t reserved18c; /**< +0x018C Reserved.             */
+  volatile uint32_t MXGMIIC;     /**< +0x0190 XGMII Cfg.               */
+  volatile uint32_t MPCH;        /**< +0x0194 XGMII PCH Cfg.           */
+  volatile uint32_t reserved198; /**< +0x0198 Reserved.             */
+  volatile uint32_t MANM;        /**< +0x019C Auto-Neg Message.        */
   volatile uint32_t reserved1a0[k_ra_rmac_rsv_words_manm_to_meis]; /**< +0x01A0..0x01FC Reserved.*/
-  volatile uint32_t MEIS;                                /**< +0x0200 Error IRQ Status.        */
-  volatile uint32_t MEIE;                                /**< +0x0204 Error IRQ Enable.        */
-  volatile uint32_t MEID;                                /**< +0x0208 Error IRQ Disable.       */
-  volatile uint32_t reserved20c;                         /**< +0x020C Reserved.             */
-  volatile uint32_t MMIS0;                               /**< +0x0210 Monitor Status 0.        */
-  volatile uint32_t MMIE0;                               /**< +0x0214 Monitor Enable 0.        */
-  volatile uint32_t MMID0;                               /**< +0x0218 Monitor Disable 0.       */
-  volatile uint32_t reserved21c;                         /**< +0x021C Reserved.             */
-  volatile uint32_t MMIS1;                               /**< +0x0220 Monitor Status 1.        */
-  volatile uint32_t MMIE1;                               /**< +0x0224 Monitor Enable 1.        */
-  volatile uint32_t MMID1;                               /**< +0x0228 Monitor Disable 1.       */
-  volatile uint32_t reserved22c;                         /**< +0x022C Reserved.             */
-  volatile uint32_t MMIS2;                               /**< +0x0230 Monitor Status 2.        */
-  volatile uint32_t MMIE2;                               /**< +0x0234 Monitor Enable 2.        */
-  volatile uint32_t MMID2;                               /**< +0x0238 Monitor Disable 2.       */
-  volatile uint32_t reserved23c[k_ra_rmac_rsv_words_mmid2_to_mmpftct]; /**< +0x023C..0x02FC Reserved.*/
+  volatile uint32_t MEIS;        /**< +0x0200 Error IRQ Status.        */
+  volatile uint32_t MEIE;        /**< +0x0204 Error IRQ Enable.        */
+  volatile uint32_t MEID;        /**< +0x0208 Error IRQ Disable.       */
+  volatile uint32_t reserved20c; /**< +0x020C Reserved.             */
+  volatile uint32_t MMIS0;       /**< +0x0210 Monitor Status 0.        */
+  volatile uint32_t MMIE0;       /**< +0x0214 Monitor Enable 0.        */
+  volatile uint32_t MMID0;       /**< +0x0218 Monitor Disable 0.       */
+  volatile uint32_t reserved21c; /**< +0x021C Reserved.             */
+  volatile uint32_t MMIS1;       /**< +0x0220 Monitor Status 1.        */
+  volatile uint32_t MMIE1;       /**< +0x0224 Monitor Enable 1.        */
+  volatile uint32_t MMID1;       /**< +0x0228 Monitor Disable 1.       */
+  volatile uint32_t reserved22c; /**< +0x022C Reserved.             */
+  volatile uint32_t MMIS2;       /**< +0x0230 Monitor Status 2.        */
+  volatile uint32_t MMIE2;       /**< +0x0234 Monitor Enable 2.        */
+  volatile uint32_t MMID2;       /**< +0x0238 Monitor Disable 2.       */
+  volatile uint32_t
+    reserved23c[k_ra_rmac_rsv_words_mmid2_to_mmpftct];   /**< +0x023C..0x02FC Reserved.*/
   volatile uint32_t MMPFTCT;                             /**< +0x0300 Manual pause TX cnt.     */
   volatile uint32_t MAPFTCT;                             /**< +0x0304 Auto pause TX cnt.       */
   volatile uint32_t MPFRCT;                              /**< +0x0308 Pause frame RX cnt.      */
@@ -582,7 +584,8 @@ typedef struct {
   volatile uint32_t MPCFRCT[k_ra_rmac_pfc_rx_count];     /**< +0x0340..0x035C */
   volatile uint32_t MROVFC;                              /**< +0x0360 RX overflow cnt.         */
   volatile uint32_t MRHCRCEC;                            /**< +0x0364 RX header CRC err cnt.   */
-  volatile uint32_t reserved368[k_ra_rmac_rsv_words_mrhcrcec_to_mrgfce]; /**< +0x0368..0x0404 Reserved.*/
+  volatile uint32_t
+    reserved368[k_ra_rmac_rsv_words_mrhcrcec_to_mrgfce]; /**< +0x0368..0x0404 Reserved.*/
   volatile uint32_t MRGFCE;                              /**< +0x0408 RX good E-frame cnt.     */
   volatile uint32_t MRGFCP;                              /**< +0x040C RX good P-frame cnt.     */
   volatile uint32_t MRBFC;                               /**< +0x0410 RX broadcast cnt.        */
@@ -604,17 +607,18 @@ typedef struct {
   volatile uint32_t MRXBCEL;                             /**< +0x0450 RX byte cnt E lower.     */
   volatile uint32_t MRXBCPU;                             /**< +0x0454 RX byte cnt P upper.     */
   volatile uint32_t MRXBCPL;                             /**< +0x0458 RX byte cnt P lower.     */
-  volatile uint32_t reserved45c[k_ra_rmac_rsv_words_mrxbcpl_to_mtgfce]; /**< +0x045C..0x0504 Reserved.*/
-  volatile uint32_t MTGFCE;                              /**< +0x0508 TX good E-frame cnt.     */
-  volatile uint32_t MTGFCP;                              /**< +0x050C TX good P-frame cnt.     */
-  volatile uint32_t MTBFC;                               /**< +0x0510 TX broadcast cnt.        */
-  volatile uint32_t MTMFC;                               /**< +0x0514 TX multicast cnt.        */
-  volatile uint32_t MTUFC;                               /**< +0x0518 TX unicast cnt.          */
-  volatile uint32_t MTEFC;                               /**< +0x051C TX error frame cnt.      */
-  volatile uint32_t MTXBCEU;                             /**< +0x0520 TX byte cnt E upper.     */
-  volatile uint32_t MTXBCEL;                             /**< +0x0524 TX byte cnt E lower.     */
-  volatile uint32_t MTXBCPU;                             /**< +0x0528 TX byte cnt P upper.     */
-  volatile uint32_t MTXBCPL;                             /**< +0x052C TX byte cnt P lower.     */
+  volatile uint32_t
+    reserved45c[k_ra_rmac_rsv_words_mrxbcpl_to_mtgfce]; /**< +0x045C..0x0504 Reserved.*/
+  volatile uint32_t MTGFCE;                             /**< +0x0508 TX good E-frame cnt.     */
+  volatile uint32_t MTGFCP;                             /**< +0x050C TX good P-frame cnt.     */
+  volatile uint32_t MTBFC;                              /**< +0x0510 TX broadcast cnt.        */
+  volatile uint32_t MTMFC;                              /**< +0x0514 TX multicast cnt.        */
+  volatile uint32_t MTUFC;                              /**< +0x0518 TX unicast cnt.          */
+  volatile uint32_t MTEFC;                              /**< +0x051C TX error frame cnt.      */
+  volatile uint32_t MTXBCEU;                            /**< +0x0520 TX byte cnt E upper.     */
+  volatile uint32_t MTXBCEL;                            /**< +0x0524 TX byte cnt E lower.     */
+  volatile uint32_t MTXBCPU;                            /**< +0x0528 TX byte cnt P upper.     */
+  volatile uint32_t MTXBCPL;                            /**< +0x052C TX byte cnt P lower.     */
 } r_rmac_regs_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 
