@@ -197,7 +197,7 @@ typedef void (*ra_rmac_event_fn_t)(void*          ctx,
  *
  * @note Per-port; safe to call concurrently for distinct ports.
  * @see ra_rmac_deinit
- * @since Version 0.4.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rmac_init(ra_rmac_port_t port, const ra_rmac_config_t* cfg);
 
@@ -218,7 +218,7 @@ typedef void (*ra_rmac_event_fn_t)(void*          ctx,
  * @note Does NOT drop the shared ESWM MSTP gate; ra_eth_deinit owns
  *       the final reference.
  * @see ra_rmac_init
- * @since Version 0.4.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rmac_deinit(ra_rmac_port_t port);
 
@@ -236,7 +236,7 @@ typedef void (*ra_rmac_event_fn_t)(void*          ctx,
  *
  * @note Pair with ::ra_rmac_exit_stop. Magic-packet WoL stays armed
  *       if MRGC.MPDE was set before this call.
- * @since Version 0.4.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rmac_enter_stop(ra_rmac_port_t port);
 
@@ -253,7 +253,7 @@ typedef void (*ra_rmac_event_fn_t)(void*          ctx,
  * @post Counters reset to zero so the new accounting window starts clean.
  *
  * @see ra_rmac_enter_stop
- * @since Version 0.4.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rmac_exit_stop(ra_rmac_port_t port);
 
@@ -276,7 +276,7 @@ typedef void (*ra_rmac_event_fn_t)(void*          ctx,
  *
  * @note Caller is responsible for switching to/from CONFIG mode via
  *       the ETHA EAMC.OPC field; see ra_etha_init.
- * @since Version 0.4.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rmac_set_mac_address(ra_rmac_port_t port,
                                                const uint8_t  mac[k_ra_rmac_mac_byte_count]);
@@ -296,7 +296,7 @@ typedef void (*ra_rmac_event_fn_t)(void*          ctx,
  *
  * @note Filter writes are CONFIG/OPERATION-mode safe per HUM
  *       Table 33.4 ("MRAFC -- C, O").
- * @since Version 0.4.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rmac_set_rx_filter(ra_rmac_port_t port, ra_rmac_mrafc_t filter);
 
@@ -318,7 +318,7 @@ typedef void (*ra_rmac_event_fn_t)(void*          ctx,
  * @post Subsequent matching frames raise the requested GPTP trigger.
  *
  * @note Pair with ra_eth_gptp to consume the timestamp.
- * @since Version 0.4.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rmac_set_ptp_filter(ra_rmac_port_t port,
                                               uint8_t        index,
@@ -343,7 +343,7 @@ typedef void (*ra_rmac_event_fn_t)(void*          ctx,
  * @post Frames outside the window count toward MRGUEFC / MRBUEFC /
  *       MRGOEFC / MRBOEFC depending on size and FCS validity.
  *
- * @since Version 0.4.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t
 ra_rmac_set_frame_size(ra_rmac_port_t port, bool is_pframe, uint16_t min_size, uint16_t max_size);
@@ -363,7 +363,7 @@ ra_rmac_set_frame_size(ra_rmac_port_t port, bool is_pframe, uint16_t min_size, u
  * @note 802.1Q double-tagging itself is honoured by the chip when both
  *       outer and inner Ethertypes are recognised; this call only
  *       toggles the framing mode that the rest of the pipeline uses.
- * @since Version 0.4.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t
 ra_rmac_set_vlan_framing(ra_rmac_port_t port, bool disable_pad, bool use_mcrc);
@@ -383,7 +383,7 @@ ra_rmac_set_vlan_framing(ra_rmac_port_t port, bool disable_pad, bool use_mcrc);
  * @post MTPFC packed with pause_time + retry_time + retry_level.
  * @post MTPFC2.PFM written from mode.
  *
- * @since Version 0.4.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rmac_set_pause_frame(ra_rmac_port_t       port,
                                                ra_rmac_pause_mode_t mode,
@@ -404,7 +404,7 @@ ra_rmac_set_vlan_framing(ra_rmac_port_t port, bool disable_pad, bool use_mcrc);
  * @pre group < ::k_ra_rmac_pfc_group_count.
  * @post MTPFC3[group] = pcp_mask & 0xFF.
  *
- * @since Version 0.4.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t
 ra_rmac_set_pfc_group(ra_rmac_port_t port, ra_rmac_pfc_group_t group, uint8_t pcp_mask);
@@ -424,7 +424,7 @@ ra_rmac_set_pfc_group(ra_rmac_port_t port, ra_rmac_pfc_group_t group, uint8_t pc
  *       LPIDIS fires at the transition.
  *
  * @see ra_rmac_get_status to observe MPIM.LPIA bit.
- * @since Version 0.4.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rmac_set_lpi(ra_rmac_port_t port, bool enable);
 
@@ -442,7 +442,7 @@ ra_rmac_set_pfc_group(ra_rmac_port_t port, ra_rmac_pfc_group_t group, uint8_t pc
  * @post On magic-packet arrival, MMIS2.MPDIS asserts and the IRQ
  *       handler fires if MMIE2.MPDIE is set.
  *
- * @since Version 0.4.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rmac_set_magic_packet(ra_rmac_port_t port, bool enable);
 
@@ -460,7 +460,7 @@ ra_rmac_set_pfc_group(ra_rmac_port_t port, ra_rmac_pfc_group_t group, uint8_t pc
  *
  * @note Some PHYs also offer line-side loopback configured via
  *       MDIO; this driver only manages the on-chip MAC-side path.
- * @since Version 0.4.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rmac_set_loopback(ra_rmac_port_t port, bool enable);
 
@@ -478,7 +478,7 @@ ra_rmac_set_pfc_group(ra_rmac_port_t port, ra_rmac_pfc_group_t group, uint8_t pc
  * @pre iface, speed, duplex are within their respective enums.
  * @post MPIC.PIS = iface; MPIC.LSC = speed; MPIC.PIPP = duplex.
  *
- * @since Version 0.4.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rmac_set_link(ra_rmac_port_t   port,
                                         ra_rmac_pis_t    iface,
@@ -503,7 +503,7 @@ ra_rmac_set_pfc_group(ra_rmac_port_t port, ra_rmac_pfc_group_t group, uint8_t pc
  * @post MPSM transaction issued; MMIS1.PRACS cleared.
  * @post PHY register snapshot in *out_value when k_ra_ok is returned.
  *
- * @since Version 0.4.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t
 ra_rmac_mdio_c22_read(ra_rmac_port_t port, uint8_t phy_addr, uint8_t reg_addr, uint16_t* out_value);
@@ -522,7 +522,7 @@ ra_rmac_mdio_c22_read(ra_rmac_port_t port, uint8_t phy_addr, uint8_t reg_addr, u
  * @pre MPIC.PSMCS programmed for the chosen MDC clock.
  * @post MPSM transaction issued; MMIS1.PWACS cleared.
  *
- * @since Version 0.4.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t
 ra_rmac_mdio_c22_write(ra_rmac_port_t port, uint8_t phy_addr, uint8_t reg_addr, uint16_t value);
@@ -545,7 +545,7 @@ ra_rmac_mdio_c22_write(ra_rmac_port_t port, uint8_t phy_addr, uint8_t reg_addr, 
  * @pre MPIC.PSMHT configured for Clause-45 hold time.
  * @post Address frame followed by read frame both completed.
  *
- * @since Version 0.4.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rmac_mdio_c45_read(ra_rmac_port_t port,
                                              uint8_t        phy_addr,
@@ -568,7 +568,7 @@ ra_rmac_mdio_c22_write(ra_rmac_port_t port, uint8_t phy_addr, uint8_t reg_addr, 
  * @pre MPIC.PSMHT configured for Clause-45 hold time.
  * @post Address frame followed by write frame both completed.
  *
- * @since Version 0.4.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rmac_mdio_c45_write(ra_rmac_port_t port,
                                               uint8_t        phy_addr,
@@ -592,7 +592,7 @@ ra_rmac_mdio_c22_write(ra_rmac_port_t port, uint8_t phy_addr, uint8_t reg_addr, 
  * @note Reads are non-destructive; status bits are cleared via
  *       ::ra_rmac_clear_status.
  * @see ra_rmac_clear_status
- * @since Version 0.4.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rmac_get_status(ra_rmac_port_t port, ra_rmac_status_t* out);
 
@@ -613,7 +613,7 @@ ra_rmac_mdio_c22_write(ra_rmac_port_t port, uint8_t phy_addr, uint8_t reg_addr, 
  * @post Re-reads of the status registers exclude the cleared bits.
  *
  * @note IRQ-safe; the underlying writes are atomic on Cortex-M85.
- * @since Version 0.4.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rmac_clear_status(ra_rmac_port_t port,
                                             uint32_t       err_mask,
@@ -636,7 +636,7 @@ ra_rmac_mdio_c22_write(ra_rmac_port_t port, uint8_t phy_addr, uint8_t reg_addr, 
  *
  * @note Counters are read-only; clearing happens via deinit/init or
  *       a controlled reset of the ETHA mode.
- * @since Version 0.4.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rmac_read_stats(ra_rmac_port_t port, ra_rmac_stats_t* out);
 
@@ -654,7 +654,7 @@ ra_rmac_mdio_c22_write(ra_rmac_port_t port, uint8_t phy_addr, uint8_t reg_addr, 
  * @post Subsequent calls to ::ra_rmac_dispatch invoke cb.
  *
  * @see ra_rmac_dispatch
- * @since Version 0.4.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t
 ra_rmac_attach_handler(ra_rmac_port_t port, ra_rmac_event_fn_t cb, void* ctx);
@@ -675,7 +675,7 @@ ra_rmac_attach_handler(ra_rmac_port_t port, ra_rmac_event_fn_t cb, void* ctx);
  * @post Callback (if any) has run with the snapshot.
  *
  * @see ra_rmac_attach_handler
- * @since Version 0.4.0
+ * @since 0.1.0
  */
 void ra_rmac_dispatch(ra_rmac_port_t port);
 

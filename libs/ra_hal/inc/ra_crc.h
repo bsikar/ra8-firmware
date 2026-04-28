@@ -49,31 +49,31 @@ void ra_crc_reset(void);
 
 /**
  * @brief Tear down the CRC block (disable + MSTP release).
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_crc_deinit(void);
 
 /**
  * @brief Change the CRC polynomial at runtime without a reset.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_crc_set_poly(ra_crc_poly_t poly);
 
 /**
  * @brief Read the current polynomial selection (CRCCR0.GPS).
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_crc_get_status(uint8_t* out_poly);
 
 /**
  * @brief Put CRC into MSTP-gated stop.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_crc_enter_stop(void);
 
 /**
  * @brief Exit MSTP-gated stop.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_crc_exit_stop(void);
 

@@ -105,7 +105,7 @@ typedef void (*ra_adc_complete_fn_t)(void* ctx, uint16_t result);
  * module is powered on via MSTP.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_adc_init_configured(const ra_adc_cfg_t* cfg);
 
@@ -113,7 +113,7 @@ typedef void (*ra_adc_complete_fn_t)(void* ctx, uint16_t result);
  * @brief Tear down the ADC_B peripheral.
  * @return ``ra_err_t`` error code.
  * @post ADCSR == 0, ADCER == 0, MSTP released.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_adc_deinit(void);
 
@@ -141,7 +141,7 @@ typedef void (*ra_adc_complete_fn_t)(void* ctx, uint16_t result);
  * @brief Change the ADC resolution at runtime.
  * @param[in] resolution New resolution selection.
  * @return ``ra_err_t`` error code.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_adc_set_resolution(ra_adc_resolution_t resolution);
 
@@ -154,14 +154,14 @@ typedef void (*ra_adc_complete_fn_t)(void* ctx, uint16_t result);
  * @brief Read the ADC status bits (ADCSR.ADST / ADIE).
  * @param[out] out_mask OR of ``k_ra_adc_status_*``.
  * @return ``ra_err_t`` error code.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_adc_get_status(uint16_t* out_mask);
 
 /**
  * @brief Clear the ADCSR.ADST busy bit (abort in-flight conversion).
  * @return ``ra_err_t`` error code.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_adc_clear_status(void);
 
@@ -175,7 +175,7 @@ typedef void (*ra_adc_complete_fn_t)(void* ctx, uint16_t result);
  * @param[in] fn Non-NULL callback.
  * @param[in] ctx Context passed to the callback.
  * @return ``ra_err_t`` error code.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_adc_attach_handler(ra_adc_complete_fn_t fn, void* ctx);
 
@@ -186,13 +186,13 @@ typedef void (*ra_adc_complete_fn_t)(void* ctx, uint16_t result);
 
 /**
  * @brief Put ADC_B into MSTP-gated stop.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_adc_enter_stop(void);
 
 /**
  * @brief Exit MSTP-gated stop.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_adc_exit_stop(void);
 
@@ -204,7 +204,7 @@ typedef void (*ra_adc_complete_fn_t)(void* ctx, uint16_t result);
 /**
  * @brief Dispatch conversion-complete -- read result + fire callback.
  * @param[in] channel Channel the interrupt was reported on.
- * @since 0.2.0
+ * @since 0.1.0
  */
 void ra_adc_dispatch_cnv_end(uint8_t channel);
 

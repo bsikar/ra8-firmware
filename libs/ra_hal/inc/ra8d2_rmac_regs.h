@@ -648,7 +648,7 @@ static_assert(sizeof(r_rmac_regs_t) == (size_t)k_ra_rmac_window_bytes,
  * @post Returned pointer is non-null and aligned to 4 bytes.
  *
  * @note Not thread-safe; per-port serialisation is the caller's job.
- * @since Version 0.4.0
+ * @since 0.1.0
  */
 static inline volatile r_rmac_regs_t* ra_rmac(ra_rmac_port_t port)
 {

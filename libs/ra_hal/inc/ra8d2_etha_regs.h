@@ -441,7 +441,7 @@ typedef struct {
  * @post Returned pointer is non-null and aligned to 4 bytes.
  *
  * @note Not thread-safe; per-port serialisation is the caller's job.
- * @since Version 0.4.0
+ * @since 0.1.0
  */
 static inline volatile r_etha_regs_t* ra_etha(ra_etha_port_t port)
 {

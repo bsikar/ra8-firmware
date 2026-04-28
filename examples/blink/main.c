@@ -36,7 +36,7 @@
  * @date 2026-04-28
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
- * @since 0.2.0
+ * @since 0.1.0
  */
 
 #include <stdint.h>

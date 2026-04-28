@@ -59,7 +59,7 @@ typedef enum : uint8_t {
  * @post No regions tagged.
  *
  * @note Test-only.
- * @since 0.3.0
+ * @since 0.1.0
  */
 void ra_sim_world_reset(void);
 
@@ -77,7 +77,7 @@ void ra_sim_world_reset(void);
  * @post Subsequent ``check_ns_range`` queries see the region.
  *
  * @note Test-only.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_sim_world_mark_ns(const void* ptr, uint32_t len);
 
@@ -92,7 +92,7 @@ void ra_sim_world_reset(void);
  * @retval k_ra_err_no_mem Region table full.
  *
  * @note Test-only.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_sim_world_mark_s(const void* ptr, uint32_t len);
 
@@ -106,7 +106,7 @@ void ra_sim_world_reset(void);
  *
  * @note This is the host equivalent of
  * ``cmse_check_address_range(ptr, len, CMSE_NONSECURE)``.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] bool ra_sim_world_check_ns_range(const void* ptr, uint32_t len);
 

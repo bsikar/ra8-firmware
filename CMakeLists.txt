@@ -7,9 +7,15 @@
 
 cmake_minimum_required(VERSION 3.20)
 
+# Project version is owned by the top-level VERSION file so a single
+# `echo 0.2.0 > VERSION` propagates to cmake, the firmware @since tags,
+# and the pre-commit version-consistency check at the same time.
+file(READ "${CMAKE_CURRENT_SOURCE_DIR}/VERSION" RA_PROJECT_VERSION)
+string(STRIP "${RA_PROJECT_VERSION}" RA_PROJECT_VERSION)
+
 project(ra8d2-firmware
     LANGUAGES C ASM
-    VERSION 0.1.0
+    VERSION ${RA_PROJECT_VERSION}
     DESCRIPTION "Bare-metal firmware for Renesas RA8D2 (Cortex-M85) on EK-RA8D2"
 )
 

@@ -227,7 +227,7 @@ typedef void (*ra_dotf_event_fn_t)(void* ctx, uint8_t channel);
  * @note Thread safety: not thread-safe.
  * @see ra_dotf_set_region
  * @see ra_dotf_enable
- * @since 0.11.20
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_dotf_init(void);
 
@@ -242,7 +242,7 @@ typedef void (*ra_dotf_event_fn_t)(void* ctx, uint8_t channel);
  * @warning Will also gate the matching XSPI controller -- callers
  *          must have stopped all XiP traffic first.
  *
- * @since 0.11.20
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_dotf_deinit(void);
 
@@ -291,7 +291,7 @@ typedef void (*ra_dotf_event_fn_t)(void* ctx, uint8_t channel);
  *          to the live region MUST go through ``ra_dotf_disable`` ->
  *          ``ra_dotf_select_region`` -> ``ra_dotf_enable``.
  *
- * @since 0.11.20
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_dotf_set_region(uint8_t channel, const ra_dotf_region_t* region);
 
@@ -322,7 +322,7 @@ typedef void (*ra_dotf_event_fn_t)(void* ctx, uint8_t channel);
  * @post CONVAREAST / CONVAREAD reflect the staged region.
  * @post The "active region" cache for ``channel`` is updated.
  *
- * @since 0.11.20
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_dotf_select_region(uint8_t channel, uint8_t region_id);
 
@@ -344,7 +344,7 @@ typedef void (*ra_dotf_event_fn_t)(void* ctx, uint8_t channel);
  * @post On success ``*region`` holds the live region descriptor.
  * @post Hardware state is unchanged.
  *
- * @since 0.11.20
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_dotf_get_active_region(uint8_t channel, ra_dotf_region_t* region);
 
@@ -383,7 +383,7 @@ typedef void (*ra_dotf_event_fn_t)(void* ctx, uint8_t channel);
  * @warning Do NOT call this while the channel is enabled. Re-keying
  *          a live channel must go through ``ra_dotf_rotate_key``.
  *
- * @since 0.11.20
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_dotf_install_key(uint8_t channel, const ra_dotf_key_handle_t* handle);
 
@@ -425,7 +425,7 @@ typedef void (*ra_dotf_event_fn_t)(void* ctx, uint8_t channel);
  *          instruction fetches away from the encrypted window
  *          (typically by jumping into SRAM) before invoking this.
  *
- * @since 0.11.20
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_dotf_rotate_key(uint8_t                     channel,
                                           const ra_dotf_key_handle_t* new_handle,
@@ -456,7 +456,7 @@ typedef void (*ra_dotf_event_fn_t)(void* ctx, uint8_t channel);
  * @post The IV cache for ``channel`` mirrors the new value.
  * @post REG03 has been written 4 times in big-endian word order.
  *
- * @since 0.11.20
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_dotf_set_iv(uint8_t channel, const uint32_t* iv_words);
 
@@ -489,7 +489,7 @@ typedef void (*ra_dotf_event_fn_t)(void* ctx, uint8_t channel);
  *          ensure no fetches target the encrypted window until the
  *          key is in place.
  *
- * @since 0.11.20
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_dotf_enable(uint8_t channel);
 
@@ -502,7 +502,7 @@ typedef void (*ra_dotf_event_fn_t)(void* ctx, uint8_t channel);
  * @pre ``ra_dotf_init`` has run.
  * @post REG00 reads ``0`` and the conversion area passes through.
  *
- * @since 0.11.20
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_dotf_disable(uint8_t channel);
 
@@ -526,7 +526,7 @@ typedef void (*ra_dotf_event_fn_t)(void* ctx, uint8_t channel);
  * @post REG00 SCA bits reflect ``level``; if the channel was already
  *       enabled, the AES core is updated in place (single REG00 write).
  *
- * @since 0.11.20
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_dotf_set_sca_level(uint8_t channel, ra_dotf_sca_level_t level);
 
@@ -545,7 +545,7 @@ typedef void (*ra_dotf_event_fn_t)(void* ctx, uint8_t channel);
  * @post REG00 key-size bits reflect ``size`` (only if armed).
  * @post Subsequent ``ra_dotf_enable`` calls write the new size.
  *
- * @since 0.11.20
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_dotf_set_key_size(uint8_t channel, ra_dotf_key_size_t size);
 
@@ -575,7 +575,7 @@ typedef void (*ra_dotf_event_fn_t)(void* ctx, uint8_t channel);
  * @post REG00 bit 20 was set at least once.
  * @post On return, REG00 has been restored to its pre-test value.
  *
- * @since 0.11.20
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_dotf_run_self_test(uint8_t channel, uint32_t* out_status);
 
@@ -595,7 +595,7 @@ typedef void (*ra_dotf_event_fn_t)(void* ctx, uint8_t channel);
  * @pre ``channel`` is in range.
  * @post On success, ``*out_mask`` reflects the live REG00 value.
  *
- * @since 0.11.20
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_dotf_get_status(uint8_t channel, uint32_t* out_mask);
 
@@ -608,7 +608,7 @@ typedef void (*ra_dotf_event_fn_t)(void* ctx, uint8_t channel);
  * @pre ``channel`` is in range.
  * @post REG00 reads ``0``.
  *
- * @since 0.11.20
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_dotf_clear_status(uint8_t channel);
 
@@ -634,7 +634,7 @@ typedef void (*ra_dotf_event_fn_t)(void* ctx, uint8_t channel);
  * @pre Called with IRQs masked or before dispatch ever fires.
  * @post Subsequent dispatches will fire ``fn(ctx, channel)``.
  *
- * @since 0.11.20
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_dotf_attach_handler(ra_dotf_event_fn_t fn, void* ctx);
 
@@ -643,7 +643,7 @@ typedef void (*ra_dotf_event_fn_t)(void* ctx, uint8_t channel);
  *
  * @param[in] channel Channel index 0..1 that raised the event. Out of
  *                    range channels are dropped silently.
- * @since 0.11.20
+ * @since 0.1.0
  */
 void ra_dotf_dispatch(uint8_t channel);
 
@@ -660,7 +660,7 @@ void ra_dotf_dispatch(uint8_t channel);
  * @pre All XiP traffic from the matching xSPI is quiesced.
  * @post DOTF MSTP bits are set; AES core is gated.
  *
- * @since 0.11.20
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_dotf_enter_stop(void);
 
@@ -672,7 +672,7 @@ void ra_dotf_dispatch(uint8_t channel);
  * @pre System clocks have been restored.
  * @post DOTF MSTP bits are cleared but channels remain disabled.
  *
- * @since 0.11.20
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_dotf_exit_stop(void);
 

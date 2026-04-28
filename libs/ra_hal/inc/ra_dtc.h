@@ -44,7 +44,7 @@ typedef void (*ra_dtc_event_fn_t)(void* ctx, uint16_t status);
 
 /**
  * @brief Tear down the DTC (clears run bit + drops MSTP ref).
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_dtc_deinit(void);
 
@@ -69,19 +69,19 @@ typedef void (*ra_dtc_event_fn_t)(void* ctx, uint16_t status);
  * reprogramming.
  *
  * @param[in] vector_base New vector table base (16-byte-aligned).
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_dtc_reconfigure(void* vector_base);
 
 /**
  * @brief Read the DTCSTS activation status register.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_dtc_get_status(uint16_t* out_mask);
 
 /**
  * @brief Clear sticky bits in DTCSTS.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_dtc_clear_status(uint16_t mask);
 
@@ -93,25 +93,25 @@ typedef void (*ra_dtc_event_fn_t)(void* ctx, uint16_t status);
  * ICU dispatcher calls ra_dtc_dispatch() which fans them out to
  * the handler stored here.
  *
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_dtc_attach_handler(ra_dtc_event_fn_t fn, void* ctx);
 
 /**
  * @brief Fire the attached activation callback with current DTCSTS.
- * @since 0.3.0
+ * @since 0.1.0
  */
 void ra_dtc_dispatch(void);
 
 /**
  * @brief Put the DTC into MSTP-gated stop.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_dtc_enter_stop(void);
 
 /**
  * @brief Exit MSTP-gated stop and re-arm the engine.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_dtc_exit_stop(void);
 

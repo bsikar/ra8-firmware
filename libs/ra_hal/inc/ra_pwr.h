@@ -146,7 +146,7 @@ typedef enum : uint16_t {
  * @post ra_mstp ref-count table is all zero.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_pwr_init(void);
 
@@ -174,7 +174,7 @@ typedef enum : uint16_t {
  *
  * @note Thread safety: not thread-safe.
  * @see ra_mstp_enable
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_pwr_module_request(ra_mstp_t id);
 
@@ -194,7 +194,7 @@ typedef enum : uint16_t {
  *
  * @note Thread safety: not thread-safe.
  * @see ra_mstp_disable
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_pwr_module_release(ra_mstp_t id);
 
@@ -222,7 +222,7 @@ typedef enum : uint16_t {
  * @post The relevant WUPEN bit is set.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_pwr_set_wake_source(ra_pwr_wake_t source);
 
@@ -243,7 +243,7 @@ typedef enum : uint16_t {
  * @post The relevant WUPEN bit is clear.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_pwr_clear_wake_source(ra_pwr_wake_t source);
 
@@ -267,7 +267,7 @@ typedef enum : uint16_t {
  * @post No hardware state is modified.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_pwr_wake_source_is_enabled(ra_pwr_wake_t source, bool* out_enabled);
 
@@ -296,7 +296,7 @@ typedef enum : uint16_t {
  * responsible for draining whatever woke them.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 void ra_pwr_enter_sleep(void);
 
@@ -323,7 +323,7 @@ void ra_pwr_enter_sleep(void);
  * @post LPMD has been written back to 0 (normal mode).
  *
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_pwr_enter_software_standby(void);
 
@@ -351,7 +351,7 @@ void ra_pwr_enter_sleep(void);
  *
  * @note Thread safety: not thread-safe.
  * @see ra_cgc_get_clock_hz
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_pwr_get_clock_hz(ra_clock_id_t id, uint32_t* out_hz);
 

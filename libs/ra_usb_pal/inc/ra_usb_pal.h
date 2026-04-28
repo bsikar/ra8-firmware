@@ -191,7 +191,7 @@ typedef void (*ra_usb_pal_event_fn_t)(void* ctx, ra_usb_speed_t speed, uint16_t 
  * @note Thread safety: not thread-safe.
  * @see ra_usb_pal_deinit
  * @see ra_usb_pal_attach
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_usb_pal_init(ra_usb_speed_t speed);
 
@@ -211,7 +211,7 @@ typedef void (*ra_usb_pal_event_fn_t)(void* ctx, ra_usb_speed_t speed, uint16_t 
  * @post Subsequent send/recv calls return ``k_ra_err_invalid_state``.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_usb_pal_deinit(void);
 
@@ -235,7 +235,7 @@ typedef void (*ra_usb_pal_event_fn_t)(void* ctx, ra_usb_speed_t speed, uint16_t 
  * or ``detached`` to match.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_usb_pal_attach(bool attached);
 
@@ -256,7 +256,7 @@ typedef void (*ra_usb_pal_event_fn_t)(void* ctx, ra_usb_speed_t speed, uint16_t 
  *
  * @note Thread safety: not thread-safe; the state can be updated
  * from ra_usb ISR context concurrently.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_usb_pal_get_state(ra_usb_pal_state_t* out_state);
 
@@ -288,7 +288,7 @@ typedef void (*ra_usb_pal_event_fn_t)(void* ctx, ra_usb_speed_t speed, uint16_t 
  * @post On success, the endpoint is ready for transfers.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_usb_pal_ep_open(uint8_t              ep_addr,
                                           ra_usb_pal_ep_dir_t  dir,
@@ -315,7 +315,7 @@ typedef void (*ra_usb_pal_event_fn_t)(void* ctx, ra_usb_speed_t speed, uint16_t 
  * @post On success, the data has been queued for TX.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_usb_pal_ep_send(uint8_t ep_addr, const uint8_t* data, uint16_t len);
 
@@ -339,7 +339,7 @@ typedef void (*ra_usb_pal_event_fn_t)(void* ctx, ra_usb_speed_t speed, uint16_t 
  * @post On success, ``*inout_len`` holds the byte count.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_usb_pal_ep_recv(uint8_t ep_addr, uint8_t* out_buf, uint16_t* inout_len);
 
@@ -369,7 +369,7 @@ typedef void (*ra_usb_pal_event_fn_t)(void* ctx, ra_usb_speed_t speed, uint16_t 
  *
  * @note Thread safety: not thread-safe; only call from
  * single-threaded init or with IRQs masked.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_usb_pal_set_event_handler(ra_usb_pal_event_fn_t fn, void* ctx);
 

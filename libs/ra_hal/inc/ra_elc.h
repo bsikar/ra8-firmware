@@ -73,7 +73,7 @@ typedef enum : uint8_t {
  * @post ELCR.ELCON == 1 (controller enabled).
  *
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_elc_init(void);
 
@@ -85,7 +85,7 @@ typedef enum : uint8_t {
  * @post ELCR.ELCON == 0.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_elc_deinit(void);
 
@@ -133,7 +133,7 @@ typedef enum : uint8_t {
  * @post ELSR[elsr_index] == 0.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_elc_unlink(uint8_t elsr_index);
 
@@ -158,7 +158,7 @@ typedef enum : uint8_t {
  * fires once on the next ELC clock edge.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_elc_software_trigger(uint8_t group, uint8_t value);
 
@@ -172,7 +172,7 @@ typedef enum : uint8_t {
  *
  * @pre ``out_enabled`` is non-NULL.
  * @post No hardware state is modified.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_elc_is_enabled(bool* out_enabled);
 

@@ -300,7 +300,7 @@ ra_err_t ra_reset_init(void)
  *       sim-mmap registers.
  *
  * @note Thread safety: not thread-safe; tests are single-threaded.
- * @since 0.12.0
+ * @since 0.1.0
  */
 void ra_reset_test_only_reset_state(void)
 {

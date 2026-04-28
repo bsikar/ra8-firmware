@@ -142,43 +142,43 @@ typedef void (*ra_xspi_event_fn_t)(void* ctx, uint32_t status_mask);
 
 /**
  * @brief Tear down the xSPI instance (disable + MSTP release).
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_xspi_deinit(uint8_t instance);
 
 /**
  * @brief Read the xSPI COMSTT busy/error mask.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_xspi_get_status(uint8_t instance, uint32_t* out_mask);
 
 /**
  * @brief Clear transfer-complete / error bits in INTS via INTC.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_xspi_clear_status(uint8_t instance, uint32_t mask);
 
 /**
  * @brief Attach a completion callback.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_xspi_attach_handler(uint8_t instance, ra_xspi_event_fn_t fn, void* ctx);
 
 /**
  * @brief Dispatch an xSPI event -- snapshot INTS + fire callback.
- * @since 0.2.0
+ * @since 0.1.0
  */
 void ra_xspi_dispatch(uint8_t instance);
 
 /**
  * @brief Put an xSPI instance into MSTP-gated stop.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_xspi_enter_stop(uint8_t instance);
 
 /**
  * @brief Exit MSTP-gated stop.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_xspi_exit_stop(uint8_t instance);
 

@@ -322,7 +322,7 @@ typedef struct {
  *
  * @note Thread safety: not thread-safe per channel.
  * @see ra_ipc_deinit
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_ipc_reset_fifo(uint8_t channel);
 
@@ -343,7 +343,7 @@ typedef struct {
  *
  * @note Thread safety: not thread-safe.
  * @see ra_ipc_init
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_ipc_set_event_mask(uint8_t channel, uint32_t mask);
 
@@ -377,7 +377,7 @@ typedef struct {
  *
  * @note Thread safety: re-entrant (pure computation).
  * @see ra_ipc_channel_for_recv
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t
 ra_ipc_channel_for_send(ra_ipc_core_id_t core, uint8_t pair, uint8_t* out_channel);
@@ -405,7 +405,7 @@ ra_ipc_channel_for_send(ra_ipc_core_id_t core, uint8_t pair, uint8_t* out_channe
  *
  * @note Thread safety: re-entrant (pure computation).
  * @see ra_ipc_channel_for_send
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t
 ra_ipc_channel_for_recv(ra_ipc_core_id_t core, uint8_t pair, uint8_t* out_channel);
@@ -516,7 +516,7 @@ ra_ipc_channel_for_recv(ra_ipc_core_id_t core, uint8_t pair, uint8_t* out_channe
  *
  * @note Thread safety: not thread-safe per channel.
  * @see ra_ipc_send_message
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t
 ra_ipc_send_message_retry(uint8_t channel, uint32_t message, uint16_t max_retries);
@@ -549,7 +549,7 @@ ra_ipc_send_message_retry(uint8_t channel, uint32_t message, uint16_t max_retrie
  *
  * @note Thread safety: not thread-safe per channel.
  * @see ra_ipc_send_message
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t
 ra_ipc_send_burst(uint8_t channel, const uint32_t* data, uint32_t count, uint32_t* out_written);
@@ -608,7 +608,7 @@ ra_ipc_send_burst(uint8_t channel, const uint32_t* data, uint32_t count, uint32_
  *
  * @note Thread safety: not thread-safe per channel.
  * @see ra_ipc_recv_message
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t
 ra_ipc_recv_message_retry(uint8_t channel, uint32_t* out_msg, uint16_t max_retries);
@@ -637,7 +637,7 @@ ra_ipc_recv_message_retry(uint8_t channel, uint32_t* out_msg, uint16_t max_retri
  * @post After the call STA.RDY may still be 1 if the peer kept writing.
  *
  * @note Thread safety: not thread-safe per channel.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t
 ra_ipc_recv_burst(uint8_t channel, uint32_t* out_data, uint32_t capacity, uint32_t* out_read);
@@ -706,7 +706,7 @@ ra_ipc_recv_burst(uint8_t channel, uint32_t* out_data, uint32_t capacity, uint32
  *
  * @note Thread safety: re-entrant per channel.
  * @see ra_ipc_clear_status
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_ipc_clear_errors(uint8_t channel);
 
@@ -727,7 +727,7 @@ ra_ipc_recv_burst(uint8_t channel, uint32_t* out_data, uint32_t capacity, uint32
  * @post ``*out_can_send`` reflects ``!STA.FULL``.
  *
  * @note Thread safety: re-entrant; pure read.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_ipc_can_send(uint8_t channel, bool* out_can_send);
 
@@ -748,7 +748,7 @@ ra_ipc_recv_burst(uint8_t channel, uint32_t* out_data, uint32_t capacity, uint32
  * @post ``*out_has_data`` reflects ``STA.RDY``.
  *
  * @note Thread safety: re-entrant; pure read.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_ipc_has_data(uint8_t channel, bool* out_has_data);
 
@@ -806,7 +806,7 @@ ra_ipc_recv_burst(uint8_t channel, uint32_t* out_data, uint32_t capacity, uint32
  * @post No registers are mutated.
  *
  * @note Thread safety: re-entrant; pure read.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_ipc_get_nmi_attribution(uint8_t unit, ra_ipc_attr_t* out_attr);
 
@@ -831,7 +831,7 @@ ra_ipc_recv_burst(uint8_t channel, uint32_t* out_data, uint32_t capacity, uint32
  * @post No registers are mutated.
  *
  * @note Thread safety: re-entrant; pure read.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_ipc_get_sem_attribution(ra_ipc_sem_attr_group_t group,
                                                   ra_ipc_attr_t*          out_attr);
@@ -861,7 +861,7 @@ ra_ipc_recv_burst(uint8_t channel, uint32_t* out_data, uint32_t capacity, uint32
  * @post No registers are mutated.
  *
  * @note Thread safety: re-entrant; pure read.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t
 ra_ipc_can_access(uint8_t channel, ra_ipc_attr_t const* required, bool* out_can_access);
@@ -894,7 +894,7 @@ ra_ipc_can_access(uint8_t channel, ra_ipc_attr_t const* required, bool* out_can_
  *
  * @note Thread safety: re-entrant across cores -- this is the whole point.
  * @see ra_ipc_sem_release
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_ipc_sem_try_take(uint8_t sem_id);
 
@@ -916,7 +916,7 @@ ra_ipc_can_access(uint8_t channel, ra_ipc_attr_t const* required, bool* out_can_
  *
  * @note Thread safety: re-entrant across cores.
  * @see ra_ipc_sem_try_take
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_ipc_sem_take_timeout(uint8_t sem_id, uint16_t max_spins);
 
@@ -937,7 +937,7 @@ ra_ipc_can_access(uint8_t channel, ra_ipc_attr_t const* required, bool* out_can_
  *
  * @note Thread safety: re-entrant across cores.
  * @see ra_ipc_sem_try_take
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_ipc_sem_release(uint8_t sem_id);
 
@@ -969,7 +969,7 @@ ra_ipc_can_access(uint8_t channel, ra_ipc_attr_t const* required, bool* out_can_
  * @post No interrupt is generated by this call.
  *
  * @note Thread safety: NOT safe under contention -- diagnostic only.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_ipc_sem_is_locked(uint8_t sem_id, bool* out_locked);
 
@@ -1000,7 +1000,7 @@ ra_ipc_can_access(uint8_t channel, ra_ipc_attr_t const* required, bool* out_can_
  *
  * @note Thread safety: re-entrant per unit.
  * @see ra_ipc_nmi_clear
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_ipc_nmi_send(uint8_t unit);
 
@@ -1020,7 +1020,7 @@ ra_ipc_can_access(uint8_t channel, ra_ipc_attr_t const* required, bool* out_can_
  *
  * @note Thread safety: re-entrant per unit.
  * @see ra_ipc_nmi_send
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_ipc_nmi_clear(uint8_t unit);
 
@@ -1042,7 +1042,7 @@ ra_ipc_can_access(uint8_t channel, ra_ipc_attr_t const* required, bool* out_can_
  *
  * @note Thread safety: re-entrant; pure read.
  * @see ra_ipc_nmi_send
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_ipc_nmi_get_status(uint8_t unit, bool* out_pending);
 
@@ -1067,7 +1067,7 @@ ra_ipc_can_access(uint8_t channel, ra_ipc_attr_t const* required, bool* out_can_
  *
  * @note Thread safety: not thread-safe (single slot).
  * @see ra_ipc_dispatch_nmi
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_ipc_attach_nmi_handler(ra_ipc_nmi_fn_t fn, void* ctx);
 
@@ -1090,7 +1090,7 @@ ra_ipc_can_access(uint8_t channel, ra_ipc_attr_t const* required, bool* out_can_
  *
  * @note Thread safety: NMI context.
  * @see ra_ipc_attach_nmi_handler
- * @since 0.2.0
+ * @since 0.1.0
  */
 void ra_ipc_dispatch_nmi(uint8_t unit);
 
@@ -1147,7 +1147,7 @@ void ra_ipc_dispatch_nmi(uint8_t unit);
  *
  * @note Thread safety: not thread-safe (per-line single slot).
  * @see ra_ipc_dispatch
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_ipc_attach_event_handler(uint8_t               channel,
                                                    ra_ipc_irq_event_id_t event_id,
@@ -1209,7 +1209,7 @@ void ra_ipc_dispatch(uint8_t channel);
  *
  * @note Thread safety: not thread-safe.
  * @see ra_ipc_uninstall_isr
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_ipc_install_isr(uint8_t unit, uint8_t priority);
 
@@ -1230,7 +1230,7 @@ void ra_ipc_dispatch(uint8_t channel);
  *
  * @note Thread safety: not thread-safe.
  * @see ra_ipc_install_isr
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_ipc_uninstall_isr(uint8_t unit);
 
@@ -1263,7 +1263,7 @@ void ra_ipc_dispatch(uint8_t channel);
  *
  * @note Thread safety: caller must serialise init across cores.
  * @see ra_ipc_ring_produce
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_ipc_ring_init(ra_ipc_ring_t* ring);
 
@@ -1291,7 +1291,7 @@ void ra_ipc_dispatch(uint8_t channel);
  *
  * @note Thread safety: serialised by the IPCSEM wrapper.
  * @see ra_ipc_ring_consume
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_ipc_ring_produce(ra_ipc_ring_t* ring, uint32_t payload);
 
@@ -1319,7 +1319,7 @@ void ra_ipc_dispatch(uint8_t channel);
  *
  * @note Thread safety: serialised by the IPCSEM wrapper.
  * @see ra_ipc_ring_produce
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_ipc_ring_consume(ra_ipc_ring_t* ring, uint32_t* out_payload);
 
@@ -1339,7 +1339,7 @@ void ra_ipc_dispatch(uint8_t channel);
  * @post ``*out_empty`` reflects head == tail.
  *
  * @note Thread safety: re-entrant; pure read.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_ipc_ring_is_empty(const ra_ipc_ring_t* ring, bool* out_empty);
 
@@ -1359,7 +1359,7 @@ void ra_ipc_dispatch(uint8_t channel);
  * @post ``*out_full`` reflects (head - tail) == capacity.
  *
  * @note Thread safety: re-entrant; pure read.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_ipc_ring_is_full(const ra_ipc_ring_t* ring, bool* out_full);
 

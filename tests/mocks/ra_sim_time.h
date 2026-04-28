@@ -45,7 +45,7 @@ extern "C" {
  * @post ``ra_time_on_tick`` works as normal afterwards.
  *
  * @note Thread safety: test code only, single-threaded.
- * @since 0.2.0
+ * @since 0.1.0
  */
 void ra_sim_time_reset(void);
 
@@ -62,7 +62,7 @@ void ra_sim_time_reset(void);
  * @post ``ra_time_ms`` is increased by ``n`` relative to before.
  *
  * @note Thread safety: test code only, single-threaded.
- * @since 0.2.0
+ * @since 0.1.0
  */
 void ra_sim_time_advance_ms(uint32_t n);
 

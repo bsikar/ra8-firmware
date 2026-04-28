@@ -94,7 +94,7 @@ typedef struct {
  * @post NMISR == 0 (all status bits cleared).
  *
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_icu_init(void);
 
@@ -129,7 +129,7 @@ typedef struct {
  * caller must order the init sequence accordingly.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_icu_configure_irq_pin(uint8_t irq_num, const ra_icu_irq_cfg_t* cfg);
 
@@ -144,7 +144,7 @@ typedef struct {
  *
  * @pre ``out_val`` is non-NULL.
  * @post No hardware state is modified.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_icu_read_irqcr(uint8_t irq_num, uint8_t* out_val);
 
@@ -170,7 +170,7 @@ typedef struct {
  *
  * @note NMIER bits are sticky-set -- to disable, rewrite the
  * register via ``ra_icu_nmi_disable``.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_icu_nmi_enable(uint32_t mask);
 
@@ -182,7 +182,7 @@ typedef struct {
  * @return ``k_ra_ok``.
  * @pre IRQs masked or single-threaded init context.
  * @post NMIER has the requested bits clear.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_icu_nmi_disable(uint32_t mask);
 
@@ -194,7 +194,7 @@ typedef struct {
  * @return ``k_ra_ok``.
  * @pre IRQs masked or single-threaded init context.
  * @post The targeted NMISR bits read as 0.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_icu_nmi_clear(uint32_t mask);
 
@@ -206,7 +206,7 @@ typedef struct {
  * @return ``k_ra_ok`` or ``k_ra_err_null_ptr``.
  * @pre ``out_status`` is non-NULL.
  * @post No hardware state is modified.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_icu_nmi_status(uint32_t* out_status);
 

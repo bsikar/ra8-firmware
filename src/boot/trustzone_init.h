@@ -37,7 +37,7 @@ extern "C" {
  * - **Denies:** any access to the SAU registers from NS world.
  *
  * @note Thread safety: not thread-safe; runs once at boot.
- * @since 0.3.0
+ * @since 0.1.0
  */
 void ra_trustzone_init(void);
 

@@ -75,7 +75,7 @@ extern "C" {
  * @par TrustZone Safety:
  * - Validates the cfg pointer covers ``sizeof(ra_sci_cfg_t)`` of
  * NS-readable memory before forwarding.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] RA_NSC_VENEER ra_err_t ra_nsc_sci_init(uint8_t channel, const ra_sci_cfg_t* cfg);
 
@@ -86,7 +86,7 @@ extern "C" {
  * @param[in] byte Byte to send.
  *
  * @return ``ra_err_t`` error code.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] RA_NSC_VENEER ra_err_t ra_nsc_sci_putc(uint8_t channel, uint8_t byte);
 
@@ -97,7 +97,7 @@ extern "C" {
  * @param[out] out_byte Destination in NS memory.
  *
  * @return ``ra_err_t`` error code.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] RA_NSC_VENEER ra_err_t ra_nsc_sci_getc(uint8_t channel, uint8_t* out_byte);
 
@@ -108,13 +108,13 @@ extern "C" {
 
 /**
  * @brief NSC veneer: bring up an IIC channel.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] RA_NSC_VENEER ra_err_t ra_nsc_iic_init(uint8_t channel, const ra_iic_cfg_t* cfg);
 
 /**
  * @brief NSC veneer: blocking I2C write to a 7-bit target.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] RA_NSC_VENEER ra_err_t ra_nsc_iic_write(uint8_t        channel,
                                                       uint8_t        target_7b,
@@ -123,7 +123,7 @@ extern "C" {
 
 /**
  * @brief NSC veneer: blocking I2C read from a 7-bit target.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] RA_NSC_VENEER ra_err_t ra_nsc_iic_read(uint8_t  channel,
                                                      uint8_t  target_7b,
@@ -137,13 +137,13 @@ extern "C" {
 
 /**
  * @brief NSC veneer: bring up an SPI master channel.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] RA_NSC_VENEER ra_err_t ra_nsc_spi_init(uint8_t channel, const ra_spi_cfg_t* cfg);
 
 /**
  * @brief NSC veneer: full-duplex single-byte SPI exchange.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] RA_NSC_VENEER ra_err_t ra_nsc_spi_xfer8(uint8_t channel, uint8_t tx, uint8_t* rx);
 
@@ -154,13 +154,13 @@ extern "C" {
 
 /**
  * @brief NSC veneer: bring up the USB device controller.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] RA_NSC_VENEER ra_err_t ra_nsc_usb_init(ra_usb_speed_t speed);
 
 /**
  * @brief NSC veneer: raise / drop USB D+ pull-up.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] RA_NSC_VENEER ra_err_t ra_nsc_usb_attach(ra_usb_speed_t speed, bool attached);
 

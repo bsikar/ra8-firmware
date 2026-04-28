@@ -111,7 +111,7 @@ typedef void (*ra_iic_complete_fn_t)(void* ctx, uint8_t err_mask);
  * write / read.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_iic_init(uint8_t channel, const ra_iic_cfg_t* cfg);
 
@@ -120,7 +120,7 @@ typedef void (*ra_iic_complete_fn_t)(void* ctx, uint8_t err_mask);
  * @param[in] channel IIC channel number.
  * @return ``k_ra_ok`` / ``k_ra_err_invalid_arg``.
  * @post ICE is cleared; MSTP reference released.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_iic_deinit(uint8_t channel);
 
@@ -179,7 +179,7 @@ ra_iic_write(uint8_t channel, uint8_t target_7b, const uint8_t* data, uint32_t l
  *
  * @pre Channel previously initialised.
  * @post ICBRL / ICBRH reflect the new divider.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_iic_set_clock(uint8_t channel, uint32_t bus_hz, uint32_t pclkb_hz);
 
@@ -193,7 +193,7 @@ ra_iic_write(uint8_t channel, uint8_t target_7b, const uint8_t* data, uint32_t l
  * @param[in] channel IIC channel.
  * @param[out] out_mask Bit OR of ``k_ra_iic_err_*``.
  * @return ``k_ra_ok`` / ``k_ra_err_null_ptr`` / ``k_ra_err_invalid_arg``.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_iic_get_errors(uint8_t channel, uint8_t* out_mask);
 
@@ -201,7 +201,7 @@ ra_iic_write(uint8_t channel, uint8_t target_7b, const uint8_t* data, uint32_t l
  * @brief Clear the ICSR2 error flags.
  * @param[in] channel IIC channel.
  * @return ``k_ra_ok`` / ``k_ra_err_invalid_arg``.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_iic_clear_errors(uint8_t channel);
 
@@ -221,7 +221,7 @@ ra_iic_write(uint8_t channel, uint8_t target_7b, const uint8_t* data, uint32_t l
  *
  * @pre Channel previously initialised.
  * @post ICIER bits reflect the attach state.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t
 ra_iic_attach_transfer_handler(uint8_t channel, ra_iic_complete_fn_t fn, void* ctx);
@@ -235,7 +235,7 @@ ra_iic_attach_transfer_handler(uint8_t channel, ra_iic_complete_fn_t fn, void* c
  * @brief Put the channel into MSTP-gated stop state.
  * @param[in] channel IIC channel.
  * @return ``k_ra_ok`` / ``k_ra_err_invalid_arg``.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_iic_enter_stop(uint8_t channel);
 
@@ -243,7 +243,7 @@ ra_iic_attach_transfer_handler(uint8_t channel, ra_iic_complete_fn_t fn, void* c
  * @brief Exit MSTP-gated stop state.
  * @param[in] channel IIC channel.
  * @return ``k_ra_ok`` / ``k_ra_err_invalid_arg``.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_iic_exit_stop(uint8_t channel);
 
@@ -280,7 +280,7 @@ ra_iic_attach_transfer_handler(uint8_t channel, ra_iic_complete_fn_t fn, void* c
  *
  * @note Thread safety: not thread-safe.
  * @see ra_iic_read_dma
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_iic_write_dma(uint8_t              channel,
                                         const uint8_t*       data,
@@ -316,7 +316,7 @@ ra_iic_attach_transfer_handler(uint8_t channel, ra_iic_complete_fn_t fn, void* c
  *
  * @note Thread safety: not thread-safe.
  * @see ra_iic_write_dma
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_iic_read_dma(uint8_t              channel,
                                        uint8_t*             out_buf,
@@ -333,21 +333,21 @@ ra_iic_attach_transfer_handler(uint8_t channel, ra_iic_complete_fn_t fn, void* c
 /**
  * @brief Dispatch TXI -- advance TX transfer state machine.
  * @param[in] channel IIC channel.
- * @since 0.2.0
+ * @since 0.1.0
  */
 void ra_iic_dispatch_txi(uint8_t channel);
 
 /**
  * @brief Dispatch RXI -- advance RX transfer state machine.
  * @param[in] channel IIC channel.
- * @since 0.2.0
+ * @since 0.1.0
  */
 void ra_iic_dispatch_rxi(uint8_t channel);
 
 /**
  * @brief Dispatch ERI -- collect + clear error flags, fire callback.
  * @param[in] channel IIC channel.
- * @since 0.2.0
+ * @since 0.1.0
  */
 void ra_iic_dispatch_eri(uint8_t channel);
 

@@ -29,7 +29,7 @@ extern "C" {
  * @post Every byte in the mapped hardware windows reads zero.
  *
  * @note Not thread-safe. Tests are single-threaded.
- * @since Version 0.1.0
+ * @since 0.1.0
  */
 void ra_sim_mmap_reset(void);
 

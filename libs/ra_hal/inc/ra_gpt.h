@@ -138,13 +138,13 @@ typedef void (*ra_gpt_event_fn_t)(void* ctx, uint32_t status_mask);
  * (if ``cfg->auto_start``) GTSTR is set.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_gpt_init(uint8_t channel, const ra_gpt_cfg_t* cfg);
 
 /**
  * @brief Tear down a channel (stop + MSTP release).
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_gpt_deinit(uint8_t channel);
 
@@ -196,7 +196,7 @@ typedef void (*ra_gpt_event_fn_t)(void* ctx, uint32_t status_mask);
  * @param[in] channel GPT channel.
  * @param[in] period New GTPR value.
  * @return ``ra_err_t`` error code.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_gpt_set_period(uint8_t channel, uint32_t period);
 
@@ -206,7 +206,7 @@ typedef void (*ra_gpt_event_fn_t)(void* ctx, uint32_t status_mask);
  * @param[in] which Which compare register.
  * @param[in] value New compare value.
  * @return ``ra_err_t`` error code.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_gpt_set_duty(uint8_t channel, ra_gpt_ccr_sel_t which, uint32_t value);
 
@@ -220,13 +220,13 @@ typedef void (*ra_gpt_event_fn_t)(void* ctx, uint32_t status_mask);
  * @param[in] channel GPT channel.
  * @param[out] out_mask OR of ``k_ra_gpt_status_*``.
  * @return ``ra_err_t`` error code.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_gpt_get_status(uint8_t channel, uint32_t* out_mask);
 
 /**
  * @brief Clear GTST flag bits (write-0 to clear).
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_gpt_clear_status(uint8_t channel, uint32_t mask);
 
@@ -241,7 +241,7 @@ typedef void (*ra_gpt_event_fn_t)(void* ctx, uint32_t status_mask);
  * @param[in] fn Callback fired on ISR dispatch.
  * @param[in] ctx Context passed to the callback.
  * @return ``ra_err_t`` error code.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_gpt_attach_handler(uint8_t channel, ra_gpt_event_fn_t fn, void* ctx);
 
@@ -252,13 +252,13 @@ typedef void (*ra_gpt_event_fn_t)(void* ctx, uint32_t status_mask);
 
 /**
  * @brief Put a channel into MSTP-gated stop.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_gpt_enter_stop(uint8_t channel);
 
 /**
  * @brief Exit MSTP-gated stop.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_gpt_exit_stop(uint8_t channel);
 
@@ -297,7 +297,7 @@ typedef void (*ra_gpt_event_fn_t)(void* ctx, uint32_t status_mask);
  * @post On success, DMAC channel is armed.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_gpt_write_dma(uint8_t              channel,
                                         const uint32_t*      periods,
@@ -337,7 +337,7 @@ typedef void (*ra_gpt_event_fn_t)(void* ctx, uint32_t status_mask);
  * @post On success, DMAC channel is armed.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_gpt_read_dma(uint8_t              channel,
                                        uint32_t*            out_counts,
@@ -354,28 +354,28 @@ typedef void (*ra_gpt_event_fn_t)(void* ctx, uint32_t status_mask);
 /**
  * @brief Dispatch GPT overflow (GTCIV) -- clear + fire callback.
  * @param[in] channel GPT channel.
- * @since 0.2.0
+ * @since 0.1.0
  */
 void ra_gpt_dispatch_ovf(uint8_t channel);
 
 /**
  * @brief Dispatch GPT underflow (GTCIU) -- clear + fire callback.
  * @param[in] channel GPT channel.
- * @since 0.2.0
+ * @since 0.1.0
  */
 void ra_gpt_dispatch_und(uint8_t channel);
 
 /**
  * @brief Dispatch GPT compare-match A (GTCIA) -- clear + fire callback.
  * @param[in] channel GPT channel.
- * @since 0.2.0
+ * @since 0.1.0
  */
 void ra_gpt_dispatch_ccra(uint8_t channel);
 
 /**
  * @brief Dispatch GPT compare-match B (GTCIB) -- clear + fire callback.
  * @param[in] channel GPT channel.
- * @since 0.2.0
+ * @since 0.1.0
  */
 void ra_gpt_dispatch_ccrb(uint8_t channel);
 

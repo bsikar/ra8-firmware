@@ -60,7 +60,7 @@
  * without truncation.
  *
  * @note Static, file-scope.
- * @since 0.11.0
+ * @since 0.1.0
  */
 static const char* s_tag = "RSIP";
 
@@ -75,7 +75,7 @@ static const char* s_tag = "RSIP";
  *
  * @warning Do not modify directly; use ``ra_rsip_attach_handler``.
  * @note Static, file-scope.
- * @since 0.11.0
+ * @since 0.1.0
  */
 static ra_rsip_event_fn_t s_rsip_fn;
 
@@ -85,7 +85,7 @@ static ra_rsip_event_fn_t s_rsip_fn;
  *
  * @warning Do not modify directly; use ``ra_rsip_attach_handler``.
  * @note Static, file-scope.
- * @since 0.11.0
+ * @since 0.1.0
  */
 static void* s_rsip_ctx;
 
@@ -122,7 +122,7 @@ typedef enum : uint32_t {
  * @post On timeout, no caller-visible state is modified.
  *
  * @note Internal helper; not exposed in the public header.
- * @since 0.11.0
+ * @since 0.1.0
  */
 static ra_err_t internal_wait_bit(ra_rsip_off_t offset, uint32_t mask)
 {
@@ -155,7 +155,7 @@ static ra_err_t internal_wait_bit(ra_rsip_off_t offset, uint32_t mask)
  *       caller is expected to deinit.
  *
  * @note Internal helper; not exposed in the public header.
- * @since 0.11.0
+ * @since 0.1.0
  */
 static ra_err_t internal_run_bist(void)
 {
@@ -443,7 +443,7 @@ typedef enum : uint32_t {
  * @post Result is a faithful round trip with ``internal_unpack_le``.
  *
  * @note Internal helper.
- * @since 0.12.0
+ * @since 0.1.0
  */
 static uint32_t internal_pack_le(const uint8_t* p)
 {
@@ -465,7 +465,7 @@ static uint32_t internal_pack_le(const uint8_t* p)
  * @post No other state is modified.
  *
  * @note Internal helper.
- * @since 0.12.0
+ * @since 0.1.0
  */
 static void internal_unpack_le(uint32_t word, uint8_t* p)
 {
@@ -489,7 +489,7 @@ static void internal_unpack_le(uint32_t word, uint8_t* p)
  * @post No state is modified.
  *
  * @note Internal helper.
- * @since 0.12.0
+ * @since 0.1.0
  */
 static uint32_t internal_handle_words_for(ra_rsip_oem_cmd_t cmd)
 {
@@ -556,7 +556,7 @@ static uint32_t internal_handle_words_for(ra_rsip_oem_cmd_t cmd)
  *       error report.
  *
  * @note Internal helper.
- * @since 0.12.0
+ * @since 0.1.0
  */
 static ra_err_t internal_complete(uint32_t done_mask)
 {
@@ -592,7 +592,7 @@ static ra_err_t internal_complete(uint32_t done_mask)
  * @post No engine command word is touched.
  *
  * @note Internal helper used by the cipher / hash / HMAC paths.
- * @since 0.12.0
+ * @since 0.1.0
  */
 static void internal_push_data(const uint8_t* in, uint32_t len)
 {
@@ -634,7 +634,7 @@ static void internal_push_data(const uint8_t* in, uint32_t len)
  * @post No engine command word is touched.
  *
  * @note Internal helper.
- * @since 0.12.0
+ * @since 0.1.0
  */
 static void internal_pull_data(uint8_t* out, uint32_t len)
 {
@@ -674,7 +674,7 @@ static void internal_pull_data(uint8_t* out, uint32_t len)
  * @post No command-word side effect.
  *
  * @note Internal helper.
- * @since 0.12.0
+ * @since 0.1.0
  */
 static void internal_push_iv(const uint8_t* iv)
 {
@@ -702,7 +702,7 @@ static void internal_push_iv(const uint8_t* iv)
  * @post No command word is fired.
  *
  * @note Internal helper.
- * @since 0.12.0
+ * @since 0.1.0
  */
 static void internal_load_handle(const ra_rsip_key_handle_t* handle)
 {
@@ -735,7 +735,7 @@ static void internal_load_handle(const ra_rsip_key_handle_t* handle)
  *       caller MUST NOT use it.
  *
  * @note Internal helper.
- * @since 0.12.0
+ * @since 0.1.0
  */
 static ra_err_t internal_oem_install(ra_rsip_oem_cmd_t     cmd,
                                      const uint8_t*        iv,
@@ -901,7 +901,7 @@ ra_err_t ra_rsip_oem_install(ra_rsip_oem_cmd_t     cmd,
  * @post SYM_STATUS.DONE has been observed and acked.
  *
  * @note Internal helper that drives both the AES and ChaCha20 paths.
- * @since 0.12.0
+ * @since 0.1.0
  */
 static ra_err_t internal_sym_run(const ra_rsip_key_handle_t* key,
                                  uint8_t                     alg_byte,
@@ -946,7 +946,7 @@ static ra_err_t internal_sym_run(const ra_rsip_key_handle_t* key,
  * @post Returned byte is suitable for SYM_CTRL low byte.
  *
  * @note Internal helper.
- * @since 0.12.0
+ * @since 0.1.0
  */
 static uint8_t internal_aes_alg_byte(uint32_t alg)
 {
@@ -1012,7 +1012,7 @@ ra_err_t ra_rsip_aes_cipher(const ra_rsip_key_handle_t* key,
  * @post On decrypt success, the engine has verified the supplied tag.
  *
  * @note Internal helper.
- * @since 0.12.0
+ * @since 0.1.0
  */
 // NOLINTNEXTLINE(readability-function-size,readability-function-cognitive-complexity)
 static ra_err_t internal_aead_run(const ra_rsip_key_handle_t* key,
@@ -1275,7 +1275,7 @@ ra_rsip_poly1305(const uint8_t* one_time_key, const uint8_t* msg, uint32_t msg_l
  * @post Returned size matches FIPS PUB 180-4 / 202.
  *
  * @note Internal helper.
- * @since 0.12.0
+ * @since 0.1.0
  */
 static uint32_t internal_hash_size(ra_rsip_hash_alg_t alg)
 {
@@ -1431,7 +1431,7 @@ ra_err_t ra_rsip_hmac(const ra_rsip_key_handle_t* key,
  * @post No engine command word is touched.
  *
  * @note Internal helper.
- * @since 0.12.0
+ * @since 0.1.0
  */
 static void internal_asym_push(ra_rsip_off_t off, const uint8_t* buf, uint32_t len)
 {
@@ -1463,7 +1463,7 @@ static void internal_asym_push(ra_rsip_off_t off, const uint8_t* buf, uint32_t l
  * @post No engine command word is touched.
  *
  * @note Internal helper.
- * @since 0.12.0
+ * @since 0.1.0
  */
 static void internal_asym_pull(ra_rsip_off_t off, uint8_t* buf, uint32_t len)
 {
@@ -1549,7 +1549,7 @@ ra_err_t ra_rsip_rsa_verify(const ra_rsip_key_handle_t* key,
  * @post Result == FIPS / RFC parameter byte length.
  *
  * @note Internal helper.
- * @since 0.12.0
+ * @since 0.1.0
  */
 /**
  * @enum ra_rsip_curve_bytes_t
@@ -1732,7 +1732,7 @@ ra_err_t ra_rsip_oem_bl_version_lock(void)
  * @post ISR.KV_DONE has been acked.
  *
  * @note Internal helper.
- * @since 0.12.0
+ * @since 0.1.0
  */
 static ra_err_t internal_kv_op(ra_rsip_kv_op_t op, uint8_t slot)
 {

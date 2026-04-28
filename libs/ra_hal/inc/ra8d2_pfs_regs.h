@@ -173,7 +173,7 @@ static inline volatile uint8_t* ra_pfs_pwpr(void)
  * must unlock PWPRS as well; both registers share the same bit layout
  * (B0WI / PFSWE) per HUM Ch 20.2.6 / 20.2.7.
  *
- * @since 0.3.0
+ * @since 0.1.0
  */
 static inline volatile uint8_t* ra_pfs_pwprs(void)
 {

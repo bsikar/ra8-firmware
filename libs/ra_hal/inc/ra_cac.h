@@ -55,43 +55,43 @@ typedef void (*ra_cac_event_fn_t)(void* ctx, uint8_t status_mask);
 
 /**
  * @brief Tear down the CAC (disable + MSTP release).
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_cac_deinit(void);
 
 /**
  * @brief Read the CASTR flag bits.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_cac_get_status(uint8_t* out_mask);
 
 /**
  * @brief Clear the CASTR flag bits via CAICR.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_cac_clear_status(uint8_t mask);
 
 /**
  * @brief Attach a callback for CAC events.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_cac_attach_handler(ra_cac_event_fn_t fn, void* ctx);
 
 /**
  * @brief Dispatch CAC events -- snapshot + fire callback.
- * @since 0.2.0
+ * @since 0.1.0
  */
 void ra_cac_dispatch(void);
 
 /**
  * @brief Put CAC into MSTP-gated stop.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_cac_enter_stop(void);
 
 /**
  * @brief Exit MSTP-gated stop.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_cac_exit_stop(void);
 

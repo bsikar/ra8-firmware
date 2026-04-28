@@ -379,7 +379,7 @@ ra_pdg_get_delay(uint8_t channel, ra_pdg_pin_t pin, ra_pdg_edge_t edge, uint8_t*
  * @post Every entry's delay code is in the corresponding temporary
  * register; it propagates on next overflow.
  *
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_pdg_set_delay_batch(const ra_pdg_delay_entry_t* entries, uint8_t count);
 
@@ -407,7 +407,7 @@ ra_pdg_get_delay(uint8_t channel, ra_pdg_pin_t pin, ra_pdg_edge_t edge, uint8_t*
  * @pre ``out_code`` non-null, gptclk_hz > 0.
  * @post ``*out_code`` <= 0x7F.
  *
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_pdg_delay_ns_to_code(uint32_t        delay_ns,
                                                uint32_t        gptclk_hz,
@@ -467,7 +467,7 @@ ra_pdg_get_delay(uint8_t channel, ra_pdg_pin_t pin, ra_pdg_edge_t edge, uint8_t*
  * @pre PDG ``init`` has run.
  * @post DLYBSn matches ``bypass``.
  *
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_pdg_channel_bypass_set(uint8_t channel, uint8_t bypass);
 
@@ -489,7 +489,7 @@ ra_pdg_get_delay(uint8_t channel, ra_pdg_pin_t pin, ra_pdg_edge_t edge, uint8_t*
  * @pre PDG ``init`` has run.
  * @post Both rising and falling delay cells of the chosen pin = 0.
  *
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_pdg_pin_disable(uint8_t channel, ra_pdg_pin_t pin);
 
@@ -525,7 +525,7 @@ ra_pdg_get_delay(uint8_t channel, ra_pdg_pin_t pin, ra_pdg_edge_t edge, uint8_t*
  * @post Every field in ``*out`` reflects the live registers at call
  * time (DLLEN, DLYRST, FRANGE, DLYBSn, DLYENn).
  *
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_pdg_get_status_full(ra_pdg_status_full_t* out);
 
@@ -606,7 +606,7 @@ void ra_pdg_dispatch(void);
  * @retval k_ra_err_invalid_arg ``gptclk_hz`` is 0.
  * @retval k_ra_err_out_of_range ``gptclk_hz`` outside [80 MHz, 300 MHz].
  *
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_pdg_pick_frange(uint32_t gptclk_hz, ra_pdg_frange_t* out);
 
@@ -636,7 +636,7 @@ void ra_pdg_dispatch(void);
  * @post GTDLYCR.FRANGE == ``new_frange``, DLLEN = 1, DLYRST = 0.
  * @post GTDLYCR2 contents preserved across the call.
  *
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_pdg_set_frange(ra_pdg_frange_t new_frange);
 
@@ -665,7 +665,7 @@ void ra_pdg_dispatch(void);
  * @post GPT32n.GTWP write-protect bits cleared.
  * @post Subsequent ra_pdg_set_delay writes are accepted.
  *
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_pdg_bind_gpt_channel(uint8_t channel);
 
@@ -679,7 +679,7 @@ void ra_pdg_dispatch(void);
  * @pre channel < 4.
  * @post GPT32n.GTWP write-protect re-armed.
  *
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_pdg_unbind_gpt_channel(uint8_t channel);
 
@@ -713,7 +713,7 @@ void ra_pdg_dispatch(void);
  * @pre None.
  * @post No side effects.
  *
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_pdg_check_constraints(ra_pdg_wave_mode_t mode,
                                                 ra_pdg_count_dir_t dir,
@@ -739,7 +739,7 @@ void ra_pdg_dispatch(void);
  * @pre Both clocks > 0; ``out_ns`` non-null.
  * @post ``*out_ns`` >= 0.
  *
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t
 ra_pdg_required_write_ns(uint32_t pclka_hz, uint32_t gptclk_hz, uint32_t* out_ns);

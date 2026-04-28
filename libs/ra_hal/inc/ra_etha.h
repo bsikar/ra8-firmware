@@ -195,7 +195,7 @@ typedef void (*ra_etha_event_fn_t)(void*          ctx,
  *
  * @note Per-port; safe to call concurrently for distinct ports.
  * @see ra_etha_deinit
- * @since Version 0.4.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_etha_init(ra_etha_port_t port, const ra_etha_config_t* cfg);
 
@@ -215,7 +215,7 @@ typedef void (*ra_etha_event_fn_t)(void*          ctx,
  *
  * @note See ra_eth_deinit for the shared MSTP gate.
  * @see ra_etha_init
- * @since Version 0.4.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_etha_deinit(ra_etha_port_t port);
 
@@ -238,7 +238,7 @@ typedef void (*ra_etha_event_fn_t)(void*          ctx,
  * @note Reads are non-destructive; status bits are cleared via
  *::ra_etha_clear_status.
  * @see ra_etha_clear_status
- * @since Version 0.4.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_etha_get_status(ra_etha_port_t port, ra_etha_status_t* out);
 
@@ -260,7 +260,7 @@ typedef void (*ra_etha_event_fn_t)(void*          ctx,
  *
  * @note IRQ-safe; the underlying write is atomic on Cortex-M85.
  * @see ra_etha_get_status
- * @since Version 0.4.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t
 ra_etha_clear_status(ra_etha_port_t port, ra_etha_irq_class_t block, uint32_t mask);
@@ -283,7 +283,7 @@ ra_etha_clear_status(ra_etha_port_t port, ra_etha_irq_class_t block, uint32_t ma
  *
  * @note Hardware uses a separate "set" register so this is atomic.
  * @see ra_etha_disable_irq
- * @since Version 0.4.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t
 ra_etha_enable_irq(ra_etha_port_t port, ra_etha_irq_class_t block, uint32_t mask);
@@ -306,7 +306,7 @@ ra_etha_enable_irq(ra_etha_port_t port, ra_etha_irq_class_t block, uint32_t mask
  *
  * @note Hardware uses a separate "clear" register so this is atomic.
  * @see ra_etha_enable_irq
- * @since Version 0.4.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t
 ra_etha_disable_irq(ra_etha_port_t port, ra_etha_irq_class_t block, uint32_t mask);
@@ -329,7 +329,7 @@ ra_etha_disable_irq(ra_etha_port_t port, ra_etha_irq_class_t block, uint32_t mas
  *
  * @note Not thread-safe; install handlers during init / before IRQ unmask.
  * @see ra_etha_dispatch
- * @since Version 0.4.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t
 ra_etha_attach_handler(ra_etha_port_t port, ra_etha_event_fn_t cb, void* ctx);
@@ -346,7 +346,7 @@ ra_etha_attach_handler(ra_etha_port_t port, ra_etha_event_fn_t cb, void* ctx);
  *
  * @note IRQ-context safe; performs no allocation, no locks.
  * @see ra_etha_attach_handler
- * @since Version 0.4.0
+ * @since 0.1.0
  */
 void ra_etha_dispatch(ra_etha_port_t port);
 
@@ -367,7 +367,7 @@ void ra_etha_dispatch(ra_etha_port_t port);
  *
  * @note The shared ESWM MSTP gate is NOT dropped here.
  * @see ra_etha_exit_stop
- * @since Version 0.4.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_etha_enter_stop(ra_etha_port_t port);
 
@@ -387,7 +387,7 @@ void ra_etha_dispatch(ra_etha_port_t port);
  * once the hardware ack is observed.
  *
  * @see ra_etha_enter_stop
- * @since Version 0.4.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_etha_exit_stop(ra_etha_port_t port);
 
@@ -407,7 +407,7 @@ void ra_etha_dispatch(ra_etha_port_t port);
  *
  * @note Used by error-recovery callers; does not touch the MSTP gate.
  * @see ra_etha_set_mode
- * @since Version 0.4.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_etha_reset(ra_etha_port_t port);
 
@@ -439,7 +439,7 @@ void ra_etha_dispatch(ra_etha_port_t port);
  * DISABLE --> RESET: EAMC.OPC=0
  * @enduml
  * @see ra_etha_get_status
- * @since Version 0.4.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_etha_set_mode(ra_etha_port_t port, ra_etha_opc_t mode);
 
@@ -461,7 +461,7 @@ void ra_etha_dispatch(ra_etha_port_t port);
  *
  * @note Only takes effect after a transition back to OPERATION.
  * @see ra_etha_set_queue_depth
- * @since Version 0.4.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_etha_set_queue_arb(ra_etha_port_t port, ra_etha_tc_t tc, uint8_t arb);
 
@@ -483,7 +483,7 @@ void ra_etha_dispatch(ra_etha_port_t port);
  *
  * @note Backs the per-traffic-class descriptor ring.
  * @see ra_etha_get_queue_level
- * @since Version 0.4.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t
 ra_etha_set_queue_depth(ra_etha_port_t port, ra_etha_tc_t tc, uint16_t depth);
@@ -508,7 +508,7 @@ ra_etha_set_queue_depth(ra_etha_port_t port, ra_etha_tc_t tc, uint16_t depth);
  *
  * @note Read-only; does not clear the high-water mark.
  * @see ra_etha_set_queue_depth
- * @since Version 0.4.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t
 ra_etha_get_queue_level(ra_etha_port_t port, ra_etha_tc_t tc, uint16_t* cur_level, uint16_t* peak);
@@ -532,7 +532,7 @@ ra_etha_get_queue_level(ra_etha_port_t port, ra_etha_tc_t tc, uint16_t* cur_leve
  *
  * @note 802.3br requires both ends to support preamble preemption.
  * @see ra_etha_set_max_frame_size
- * @since Version 0.4.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t
 ra_etha_set_preemption(ra_etha_port_t port, uint8_t preempt, uint8_t cut_thru, ra_etha_afs_t afs);
@@ -555,7 +555,7 @@ ra_etha_set_preemption(ra_etha_port_t port, uint8_t preempt, uint8_t cut_thru, r
  *
  * @note Jumbo frames (>1500) supported up to a 16-bit limit.
  * @see ra_etha_read_stats
- * @since Version 0.4.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t
 ra_etha_set_max_frame_size(ra_etha_port_t port, ra_etha_tc_t tc, uint16_t max_bytes);
@@ -579,7 +579,7 @@ ra_etha_set_max_frame_size(ra_etha_port_t port, ra_etha_tc_t tc, uint16_t max_by
  *
  * @note Used to map 802.1p PCP -> RA8D2 internal traffic class.
  * @see ra_etha_set_queue_arb
- * @since Version 0.4.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_etha_set_ipv_remap(ra_etha_port_t port, const uint8_t* map);
 
@@ -601,7 +601,7 @@ ra_etha_set_max_frame_size(ra_etha_port_t port, ra_etha_tc_t tc, uint16_t max_by
  *
  * @note Tag values to insert come from::ra_etha_set_vlan_tag.
  * @see ra_etha_set_vlan_tag
- * @since Version 0.4.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t
 ra_etha_set_vlan_mode(ra_etha_port_t port, ra_etha_vim_t vim, ra_etha_vem_t vem);
@@ -625,7 +625,7 @@ ra_etha_set_vlan_mode(ra_etha_port_t port, ra_etha_vim_t vim, ra_etha_vem_t vem)
  *
  * @note Only effective when EAVCC.VIM =::k_ra_etha_vim_enabled.
  * @see ra_etha_set_vlan_mode
- * @since Version 0.4.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_etha_set_vlan_tag(ra_etha_port_t            port,
                                             const ra_etha_vlan_tag_t* c_tag,
@@ -649,7 +649,7 @@ ra_etha_set_vlan_mode(ra_etha_port_t port, ra_etha_vim_t vim, ra_etha_vem_t vem)
  * @post Frames matching the active filter survive; others are dropped.
  *
  * @note This is the multicast group filter for tagged traffic.
- * @since Version 0.4.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_etha_set_rx_tag_filter(ra_etha_port_t port, uint32_t mask);
 
@@ -670,7 +670,7 @@ ra_etha_set_vlan_mode(ra_etha_port_t port, ra_etha_vim_t vim, ra_etha_vem_t vem)
  * @post Cut-through path may begin forwarding short frames sooner.
  *
  * @note CTDQD = 0 effectively disables the cut-through path.
- * @since Version 0.4.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_etha_configure_cut_through(ra_etha_port_t port, uint16_t qd, uint8_t dqd);
 
@@ -694,7 +694,7 @@ ra_etha_set_vlan_mode(ra_etha_port_t port, ra_etha_vim_t vim, ra_etha_vem_t vem)
  *
  * @note CBS is the AVB credit shaper (802.1Qav).
  * @see ra_etha_get_cbs_state
- * @since Version 0.4.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_etha_configure_cbs(ra_etha_port_t             port,
                                              ra_etha_tc_t               tc,
@@ -722,7 +722,7 @@ ra_etha_set_vlan_mode(ra_etha_port_t port, ra_etha_vim_t vim, ra_etha_vem_t vem)
  *
  * @note The oper-side mirror lags the admin-side until next CBS update.
  * @see ra_etha_configure_cbs
- * @since Version 0.4.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_etha_get_cbs_state(ra_etha_port_t       port,
                                              ra_etha_tc_t         tc,
@@ -761,7 +761,7 @@ ra_etha_set_vlan_mode(ra_etha_port_t port, ra_etha_vim_t vim, ra_etha_vem_t vem)
  * Active --> Idle: EATASC.TASE=0
  * @enduml
  * @see ra_etha_get_status
- * @since Version 0.4.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_etha_set_tas_schedule(ra_etha_port_t            port,
                                                 const ra_etha_tas_gate_t* gate_list,
@@ -786,7 +786,7 @@ ra_etha_set_vlan_mode(ra_etha_port_t port, ra_etha_vim_t vim, ra_etha_vem_t vem)
  *
  * @note When disabled, all gates are forced open.
  * @see ra_etha_set_tas_schedule
- * @since Version 0.4.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_etha_enable_tas(ra_etha_port_t port, uint8_t enable);
 
@@ -808,7 +808,7 @@ ra_etha_set_vlan_mode(ra_etha_port_t port, ra_etha_vim_t vim, ra_etha_vem_t vem)
  *
  * @note Each counter is 16 bits and saturates rather than wrapping.
  * @see ra_etha_clear_stats
- * @since Version 0.4.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_etha_read_stats(ra_etha_port_t port, ra_etha_stats_t* out);
 
@@ -828,7 +828,7 @@ ra_etha_set_vlan_mode(ra_etha_port_t port, ra_etha_vim_t vim, ra_etha_vem_t vem)
  *
  * @note Provided so applications can reset the MIB at any time.
  * @see ra_etha_read_stats
- * @since Version 0.4.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_etha_clear_stats(ra_etha_port_t port);
 
@@ -848,7 +848,7 @@ ra_etha_set_vlan_mode(ra_etha_port_t port, ra_etha_vim_t vim, ra_etha_vem_t vem)
  * @post Subsequent secure-only register writes are gated per the mask.
  *
  * @note Used to lock the agent to TrustZone-S accesses only.
- * @since Version 0.4.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_etha_set_security(ra_etha_port_t port, uint32_t mask);
 

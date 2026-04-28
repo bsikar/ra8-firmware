@@ -444,7 +444,7 @@ typedef enum : uint32_t {
  *
  * @note Thread safety: pointer arithmetic is reentrant; the caller
  *       must serialize concurrent register writes.
- * @since 0.2.0
+ * @since 0.1.0
  */
 static inline volatile uint8_t* ra_lpm_sysc_reg8(ra_lpm_off_t off)
 {
@@ -466,7 +466,7 @@ static inline volatile uint8_t* ra_lpm_sysc_reg8(ra_lpm_off_t off)
  *
  * @note Thread safety: pointer arithmetic is reentrant; the caller
  *       must serialize concurrent register writes.
- * @since 0.2.0
+ * @since 0.1.0
  */
 static inline volatile uint16_t* ra_lpm_sysc_reg16(ra_lpm_off_t off)
 {
@@ -488,7 +488,7 @@ static inline volatile uint16_t* ra_lpm_sysc_reg16(ra_lpm_off_t off)
  *
  * @note Thread safety: pointer arithmetic is reentrant; the caller
  *       must serialize concurrent register writes.
- * @since 0.2.0
+ * @since 0.1.0
  */
 static inline volatile uint32_t* ra_lpm_icu_reg32(ra_lpm_off_t off)
 {

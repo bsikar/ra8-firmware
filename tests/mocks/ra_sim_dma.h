@@ -75,7 +75,7 @@ extern "C" {
  * @post DMCRA is zeroed (transfer complete).
  *
  * @note Thread safety: test code only, single-threaded.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_sim_dma_memcpy(uint8_t channel);
 
@@ -96,7 +96,7 @@ extern "C" {
  * @post The registered ``on_complete`` callback ran exactly once.
  *
  * @note Thread safety: test code only, single-threaded.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_sim_dma_complete(uint8_t channel);
 

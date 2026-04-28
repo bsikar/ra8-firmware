@@ -422,7 +422,7 @@ typedef void (*ra_mipi_phy_event_fn_t)(void* ctx, ra_mipi_phy_event_t event, uin
  * @note Thread safety: not thread-safe.
  * @see ra_mipi_phy_deinit
  * @see HUM Ch 64.3.1 p 3837 "D-PHY Startup Procedure"
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_mipi_phy_init(const ra_mipi_phy_config_t* cfg);
 
@@ -438,7 +438,7 @@ typedef void (*ra_mipi_phy_event_fn_t)(void* ctx, ra_mipi_phy_event_t event, uin
  * @post ``DPHYOCR.DPHYEN`` and ``DPHYPWRCR.PWRSEN`` both read 0.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_mipi_phy_deinit(void);
 
@@ -459,7 +459,7 @@ typedef void (*ra_mipi_phy_event_fn_t)(void* ctx, ra_mipi_phy_event_t event, uin
  * read their reset values.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_mipi_phy_reset(void);
 
@@ -476,7 +476,7 @@ typedef void (*ra_mipi_phy_event_fn_t)(void* ctx, ra_mipi_phy_event_t event, uin
  * @post On success, DPHYEN reads 1 and PLL is locked.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_mipi_phy_recover_from_error(const ra_mipi_phy_config_t* cfg);
 
@@ -498,7 +498,7 @@ typedef void (*ra_mipi_phy_event_fn_t)(void* ctx, ra_mipi_phy_event_t event, uin
  * @post ``*out_mask`` reflects the live register state.
  *
  * @note Thread safety: read-only access, safe under simple races.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_mipi_phy_get_status(uint32_t* out_mask);
 
@@ -519,7 +519,7 @@ typedef void (*ra_mipi_phy_event_fn_t)(void* ctx, ra_mipi_phy_event_t event, uin
  * @post Hardware state is unchanged.
  *
  * @note Thread safety: trivially safe.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_mipi_phy_clear_status(uint32_t mask);
 
@@ -532,7 +532,7 @@ typedef void (*ra_mipi_phy_event_fn_t)(void* ctx, ra_mipi_phy_event_t event, uin
  * @post Hardware state is unchanged.
  *
  * @note Thread safety: read-only.
- * @since 0.3.0
+ * @since 0.1.0
  */
 bool ra_mipi_phy_is_ldo_stable(void);
 
@@ -545,7 +545,7 @@ bool ra_mipi_phy_is_ldo_stable(void);
  * @post Hardware state is unchanged.
  *
  * @note Thread safety: read-only.
- * @since 0.3.0
+ * @since 0.1.0
  */
 bool ra_mipi_phy_is_pll_locked(void);
 
@@ -558,7 +558,7 @@ bool ra_mipi_phy_is_pll_locked(void);
  * @post DPHYSFR has been read at least once.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_mipi_phy_wait_ready(void);
 
@@ -579,7 +579,7 @@ bool ra_mipi_phy_is_pll_locked(void);
  * @post Subsequent ``ra_mipi_phy_dispatch`` calls see ``fn`` / ``ctx``.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_mipi_phy_attach_handler(ra_mipi_phy_event_fn_t fn, void* ctx);
 
@@ -605,7 +605,7 @@ bool ra_mipi_phy_is_pll_locked(void);
  * @post DPHYSFR has been read once; no register has been written.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.3.0
+ * @since 0.1.0
  */
 void ra_mipi_phy_dispatch(void);
 
@@ -629,7 +629,7 @@ void ra_mipi_phy_dispatch(void);
  * @post LDO is off; the PHY draws no current.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_mipi_phy_enter_stop(void);
 
@@ -646,7 +646,7 @@ void ra_mipi_phy_dispatch(void);
  * @post D-PHY is enabled and the PLL is locked.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_mipi_phy_exit_stop(const ra_mipi_phy_config_t* cfg);
 
@@ -660,7 +660,7 @@ void ra_mipi_phy_dispatch(void);
  * @post DPHYPWRCR.PWRSEN reads 1.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_mipi_phy_ldo_enable(void);
 
@@ -673,7 +673,7 @@ void ra_mipi_phy_dispatch(void);
  * @post DPHYPWRCR.PWRSEN reads 0.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_mipi_phy_ldo_disable(void);
 
@@ -687,7 +687,7 @@ void ra_mipi_phy_dispatch(void);
  * @post DPHYSFR.PLLSF reads 1.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_mipi_phy_pll_start(void);
 
@@ -700,7 +700,7 @@ void ra_mipi_phy_dispatch(void);
  * @post DPHYPLOCR.PLLSTP reads 1.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_mipi_phy_pll_stop(void);
 
@@ -736,7 +736,7 @@ void ra_mipi_phy_dispatch(void);
  * coefficients and DPHYSFR.PLLSF reads 1.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_mipi_phy_set_lane_speed(const ra_mipi_phy_pll_t* pll);
 
@@ -760,7 +760,7 @@ void ra_mipi_phy_dispatch(void);
  * @post DPHYMDC.MASTEREN reflects ``mode``.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_mipi_phy_switch_mode(ra_mipi_phy_mode_t mode);
 
@@ -786,7 +786,7 @@ void ra_mipi_phy_dispatch(void);
  * @post ``ra_mipi_phy_get_lane_count`` returns ``count`` on success.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_mipi_phy_set_lane_count(ra_mipi_phy_lane_count_t count);
 
@@ -820,7 +820,7 @@ ra_mipi_phy_lane_count_t ra_mipi_phy_get_lane_count(void);
  * @post ``ra_mipi_phy_is_lane_enabled`` returns ``enable`` on success.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_mipi_phy_set_lane_enable(ra_mipi_phy_lane_id_t lane, bool enable);
 
@@ -845,7 +845,7 @@ bool ra_mipi_phy_is_lane_enabled(ra_mipi_phy_lane_id_t lane);
  * @post ``ra_mipi_phy_get_clock_mode`` returns ``mode`` on success.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_mipi_phy_set_clock_mode(ra_mipi_phy_clk_mode_t mode);
 
@@ -869,7 +869,7 @@ ra_mipi_phy_clk_mode_t ra_mipi_phy_get_clock_mode(void);
  * @post ``ra_mipi_phy_get_eotp`` returns ``eotp`` on success.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_mipi_phy_set_eotp(ra_mipi_phy_eotp_t eotp);
 
@@ -894,7 +894,7 @@ ra_mipi_phy_eotp_t ra_mipi_phy_get_eotp(void);
  * @post DPHYREFCR.RFREQ equals ``mhz`` on success.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_mipi_phy_set_pclka_freq(uint8_t mhz);
 
@@ -917,7 +917,7 @@ ra_mipi_phy_eotp_t ra_mipi_phy_get_eotp(void);
  * @post DPHYESCCR.ESCDIV equals ``escdiv`` on success.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_mipi_phy_set_escape_divisor(uint8_t escdiv);
 
@@ -946,7 +946,7 @@ ra_mipi_phy_eotp_t ra_mipi_phy_get_eotp(void);
  * @post DPHYTIM1..6 hold the looked-up values.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_mipi_phy_select_timing(ra_mipi_phy_mode_t    mode,
                                                  uint8_t               pclka_mhz,
@@ -976,7 +976,7 @@ ra_mipi_phy_eotp_t ra_mipi_phy_get_eotp(void);
  * @post Hardware state is unchanged.
  *
  * @note Pure function -- safe to call from any context.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_mipi_phy_validate_pll_band(const ra_mipi_phy_pll_t* pll,
                                                      uint8_t                  mosc_mhz);
@@ -1006,7 +1006,7 @@ ra_mipi_phy_eotp_t ra_mipi_phy_get_eotp(void);
  * @post ``*out_mhz`` reflects the formula result (not pinned to band).
  *
  * @note Pure function -- safe from any context.
- * @since 0.4.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t
 ra_mipi_phy_compute_pll_freq(const ra_mipi_phy_pll_t* pll, uint8_t mosc_mhz, uint32_t* out_mhz);
@@ -1037,7 +1037,7 @@ ra_mipi_phy_compute_pll_freq(const ra_mipi_phy_pll_t* pll, uint8_t mosc_mhz, uin
  * @post Hardware state is unchanged.
  *
  * @note Pure lookup -- thread-safe across the lookup table.
- * @since 0.4.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_mipi_phy_lookup_timing(ra_mipi_phy_mode_t    mode,
                                                  uint8_t               pclka_mhz,
@@ -1057,7 +1057,7 @@ ra_mipi_phy_compute_pll_freq(const ra_mipi_phy_pll_t* pll, uint8_t mosc_mhz, uin
  * @post ``*out`` reflects the live DPHYSFR contents at call time.
  *
  * @note Read-only access -- safe under simple races.
- * @since 0.4.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_mipi_phy_get_status_decoded(ra_mipi_phy_status_decoded_t* out);
 
@@ -1102,7 +1102,7 @@ ra_mipi_phy_mode_t ra_mipi_phy_get_active_mode(void);
  * @post ``ra_mipi_phy_get_dual_mode`` returns ``mode`` on success.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.4.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_mipi_phy_set_dual_mode(ra_mipi_phy_dual_mode_t mode);
 
@@ -1148,7 +1148,7 @@ bool ra_mipi_phy_dual_mode_can_acquire(ra_mipi_phy_mode_t requestor);
  * @post DPHYREFCR.RFREQ holds floor(hz / 1_000_000) on success.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.4.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_mipi_phy_set_pclka_freq_hz(uint32_t hz);
 
@@ -1174,7 +1174,7 @@ bool ra_mipi_phy_dual_mode_can_acquire(ra_mipi_phy_mode_t requestor);
  * @post Hardware state is unchanged.
  *
  * @note Pure helper -- safe from any context.
- * @since 0.4.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_mipi_phy_compute_lane_rate_mbps(const ra_mipi_phy_pll_t* pll,
                                                           uint8_t                  mosc_mhz,

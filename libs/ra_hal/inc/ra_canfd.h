@@ -156,37 +156,37 @@ typedef void (*ra_canfd_event_fn_t)(void* ctx, uint8_t channel, uint32_t status_
 
 /**
  * @brief Read the channel status register (CFDCnSTS).
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_canfd_get_status(uint8_t channel, uint32_t* out_mask);
 
 /**
  * @brief Clear error flags in CFDCnERFL.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_canfd_clear_status(uint8_t channel, uint32_t mask);
 
 /**
  * @brief Attach a callback for CANFD events (shared across channels).
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_canfd_attach_handler(ra_canfd_event_fn_t fn, void* ctx);
 
 /**
  * @brief Dispatch a CANFD event for a channel -- snapshot + fire callback.
- * @since 0.2.0
+ * @since 0.1.0
  */
 void ra_canfd_dispatch(uint8_t channel);
 
 /**
  * @brief Put the CANFD channel into MSTP-gated stop.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_canfd_enter_stop(uint8_t channel);
 
 /**
  * @brief Exit MSTP-gated stop.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_canfd_exit_stop(uint8_t channel);
 

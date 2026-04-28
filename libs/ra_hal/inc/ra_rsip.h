@@ -161,7 +161,7 @@ typedef void (*ra_rsip_event_fn_t)(void* ctx, uint32_t isr);
  * @see ra_rsip_deinit
  * @see ra_rsip_trng_read
  *
- * @since 0.11.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rsip_init(const ra_rsip_config_t* cfg);
 
@@ -189,7 +189,7 @@ typedef void (*ra_rsip_event_fn_t)(void* ctx, uint32_t isr);
  *
  * @see ra_rsip_init
  *
- * @since 0.11.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rsip_deinit(void);
 
@@ -218,7 +218,7 @@ typedef void (*ra_rsip_event_fn_t)(void* ctx, uint32_t isr);
  *
  * @see ra_rsip_clear_status
  *
- * @since 0.11.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rsip_get_status(uint32_t* out);
 
@@ -247,7 +247,7 @@ typedef void (*ra_rsip_event_fn_t)(void* ctx, uint32_t isr);
  *
  * @see ra_rsip_attach_handler
  *
- * @since 0.11.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rsip_clear_status(uint32_t mask);
 
@@ -277,7 +277,7 @@ typedef void (*ra_rsip_event_fn_t)(void* ctx, uint32_t isr);
  *
  * @see ra_rsip_dispatch
  *
- * @since 0.11.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rsip_attach_handler(ra_rsip_event_fn_t fn, void* ctx);
 
@@ -302,7 +302,7 @@ typedef void (*ra_rsip_event_fn_t)(void* ctx, uint32_t isr);
  *
  * @see ra_rsip_attach_handler
  *
- * @since 0.11.0
+ * @since 0.1.0
  */
 void ra_rsip_dispatch(void);
 
@@ -347,7 +347,7 @@ void ra_rsip_dispatch(void);
  * (void)ra_rsip_trng_read(seed, sizeof(seed));
  * @endcode
  *
- * @since 0.11.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rsip_trng_read(uint8_t* buf, uint32_t len);
 
@@ -388,7 +388,7 @@ void ra_rsip_dispatch(void);
  * (void)ra_rsip_sha256(buf, len, out);
  * @endcode
  *
- * @since 0.11.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rsip_sha256(const uint8_t* msg, uint32_t msg_len, uint8_t* digest);
 
@@ -420,7 +420,7 @@ void ra_rsip_dispatch(void);
  *
  * @see ra_rsip_exit_stop
  *
- * @since 0.11.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rsip_enter_stop(void);
 
@@ -447,7 +447,7 @@ void ra_rsip_dispatch(void);
  *
  * @see ra_rsip_enter_stop
  *
- * @since 0.11.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rsip_exit_stop(void);
 
@@ -476,7 +476,7 @@ void ra_rsip_dispatch(void);
  * ``ra_rsip_rsa_*_install_*`` etc. and consumed by every
  * cipher / signing / KDF API.
  *
- * @since 0.12.0
+ * @since 0.1.0
  */
 typedef struct {
   uint32_t alg;                                       /**< OEM-cmd algorithm selector. */
@@ -514,7 +514,7 @@ typedef struct {
  *
  * @note Thread safety: not thread-safe.
  * @see ra_rsip_aes192_install_plain
- * @since 0.12.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rsip_aes128_install_plain(const uint8_t* key, ra_rsip_key_handle_t* out);
 
@@ -535,7 +535,7 @@ typedef struct {
  * @post ``out->body_words == k_ra_rsip_handle_words_aes192``.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.12.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rsip_aes192_install_plain(const uint8_t* key, ra_rsip_key_handle_t* out);
 
@@ -556,7 +556,7 @@ typedef struct {
  * @post ``out->body_words == k_ra_rsip_handle_words_aes256``.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.12.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rsip_aes256_install_plain(const uint8_t* key, ra_rsip_key_handle_t* out);
 
@@ -577,7 +577,7 @@ typedef struct {
  * @post ``out->body_words == k_ra_rsip_handle_words_chacha20``.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.12.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rsip_chacha20_install_plain(const uint8_t*        key,
                                                       ra_rsip_key_handle_t* out);
@@ -608,7 +608,7 @@ typedef struct {
  * @post On success ``out->body_words`` matches the algo's handle size.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.12.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rsip_hmac_install_plain(ra_rsip_oem_cmd_t     alg,
                                                   const uint8_t*        key,
@@ -649,7 +649,7 @@ typedef struct {
  * @post On success ``out->body_words`` matches the algo's handle size.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.12.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rsip_oem_install(ra_rsip_oem_cmd_t     cmd,
                                            const uint8_t*        iv,
@@ -695,7 +695,7 @@ typedef struct {
  *
  * @note Thread safety: not thread-safe.
  * @see ra_rsip_aes_gcm
- * @since 0.12.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rsip_aes_cipher(const ra_rsip_key_handle_t* key,
                                           ra_rsip_aes_mode_t          mode,
@@ -743,7 +743,7 @@ typedef struct {
  * @post On decrypt success, ``out[0..in_len-1]`` is plaintext.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.12.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rsip_aes_gcm(const ra_rsip_key_handle_t* key,
                                        ra_rsip_aes_dir_t           dir,
@@ -781,7 +781,7 @@ typedef struct {
  * @post On decrypt success, ``out[0..in_len-1]`` is plaintext.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.12.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rsip_aes_ccm(const ra_rsip_key_handle_t* key,
                                        ra_rsip_aes_dir_t           dir,
@@ -819,7 +819,7 @@ typedef struct {
  * @post On success, ``out[0..len-1]`` holds the transformed bytes.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.12.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rsip_chacha20(const ra_rsip_key_handle_t* key,
                                         ra_rsip_aes_dir_t           dir,
@@ -854,7 +854,7 @@ typedef struct {
  * @post On decrypt success, ``out[0..in_len-1]`` is plaintext.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.12.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rsip_chacha20_poly1305(const ra_rsip_key_handle_t* key,
                                                  ra_rsip_aes_dir_t           dir,
@@ -884,7 +884,7 @@ typedef struct {
  * @post On success, ``tag[0..15]`` is the Poly1305 MAC.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.12.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t
 ra_rsip_poly1305(const uint8_t* one_time_key, const uint8_t* msg, uint32_t msg_len, uint8_t* tag);
@@ -926,7 +926,7 @@ ra_rsip_poly1305(const uint8_t* one_time_key, const uint8_t* msg, uint32_t msg_l
  *
  * @note Thread safety: not thread-safe.
  * @see ra_rsip_sha256
- * @since 0.12.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rsip_hash(ra_rsip_hash_alg_t alg,
                                     const uint8_t*     msg,
@@ -955,7 +955,7 @@ ra_rsip_poly1305(const uint8_t* one_time_key, const uint8_t* msg, uint32_t msg_l
  * @post On success, ``mac[0..N-1]`` is the HMAC.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.12.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rsip_hmac(const ra_rsip_key_handle_t* key,
                                     const uint8_t*              msg,
@@ -988,7 +988,7 @@ ra_rsip_poly1305(const uint8_t* one_time_key, const uint8_t* msg, uint32_t msg_l
  * @post On success, ``signature[0..modulus_bytes-1]`` is the RSA sig.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.12.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rsip_rsa_sign(const ra_rsip_key_handle_t* key,
                                         ra_rsip_rsa_size_t          size,
@@ -1017,7 +1017,7 @@ ra_rsip_poly1305(const uint8_t* one_time_key, const uint8_t* msg, uint32_t msg_l
  * @post On success, the signature has been validated by the engine.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.12.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rsip_rsa_verify(const ra_rsip_key_handle_t* key,
                                           ra_rsip_rsa_size_t          size,
@@ -1046,7 +1046,7 @@ ra_rsip_poly1305(const uint8_t* one_time_key, const uint8_t* msg, uint32_t msg_l
  * @post On success, ``signature`` holds (r || s).
  *
  * @note Thread safety: not thread-safe.
- * @since 0.12.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rsip_ecdsa_sign(const ra_rsip_key_handle_t* key,
                                           ra_rsip_curve_t             curve,
@@ -1077,7 +1077,7 @@ ra_rsip_poly1305(const uint8_t* one_time_key, const uint8_t* msg, uint32_t msg_l
  * @post On success, the engine has validated the signature.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.12.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rsip_ecdsa_verify(const ra_rsip_key_handle_t* key,
                                             ra_rsip_curve_t             curve,
@@ -1111,7 +1111,7 @@ ra_rsip_poly1305(const uint8_t* one_time_key, const uint8_t* msg, uint32_t msg_l
  * @post On success ``out->alg`` matches the curve's HMAC opcode.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.12.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rsip_ecdh_compute(const ra_rsip_key_handle_t* key,
                                             ra_rsip_curve_t             curve,
@@ -1139,7 +1139,7 @@ ra_rsip_poly1305(const uint8_t* one_time_key, const uint8_t* msg, uint32_t msg_l
  * @post No engine state is modified.
  *
  * @note Thread safety: read-only, safe to call concurrently.
- * @since 0.12.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rsip_oem_bl_version_get(uint32_t* out);
 
@@ -1161,7 +1161,7 @@ ra_rsip_poly1305(const uint8_t* one_time_key, const uint8_t* msg, uint32_t msg_l
  * @post Counter value is observable via ``ra_rsip_oem_bl_version_get``.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.12.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rsip_oem_bl_version_increment(void);
 
@@ -1178,7 +1178,7 @@ ra_rsip_poly1305(const uint8_t* one_time_key, const uint8_t* msg, uint32_t msg_l
  * ``k_ra_err_invalid_state``.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.12.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rsip_oem_bl_version_lock(void);
 
@@ -1205,7 +1205,7 @@ ra_rsip_poly1305(const uint8_t* one_time_key, const uint8_t* msg, uint32_t msg_l
  * @post On success, ``out[0..63]`` holds the slot blob.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.12.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rsip_kv_read(uint8_t slot, uint8_t* out);
 
@@ -1227,7 +1227,7 @@ ra_rsip_poly1305(const uint8_t* one_time_key, const uint8_t* msg, uint32_t msg_l
  * @post Populated-slot count incremented if the slot was empty.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.12.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rsip_kv_write(uint8_t slot, const uint8_t* in);
 
@@ -1247,7 +1247,7 @@ ra_rsip_poly1305(const uint8_t* one_time_key, const uint8_t* msg, uint32_t msg_l
  * @post Populated-slot count decremented if the slot was non-empty.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.12.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rsip_kv_erase(uint8_t slot);
 
@@ -1266,7 +1266,7 @@ ra_rsip_poly1305(const uint8_t* one_time_key, const uint8_t* msg, uint32_t msg_l
  * @post No engine state is modified.
  *
  * @note Thread safety: read-only, safe to call concurrently.
- * @since 0.12.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rsip_kv_count(uint32_t* out);
 
@@ -1293,7 +1293,7 @@ ra_rsip_poly1305(const uint8_t* one_time_key, const uint8_t* msg, uint32_t msg_l
  * @post On success, ``blob[0..63]`` is the wrapped blob.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.12.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rsip_key_wrap(const ra_rsip_key_handle_t* kek,
                                         const uint8_t*              iv,
@@ -1319,7 +1319,7 @@ ra_rsip_poly1305(const uint8_t* one_time_key, const uint8_t* msg, uint32_t msg_l
  * @post On success, ``dest`` carries the unwrapped algorithm + body.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.12.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rsip_key_unwrap(const ra_rsip_key_handle_t* kek,
                                           const uint8_t*              iv,
@@ -1364,7 +1364,7 @@ ra_rsip_poly1305(const uint8_t* one_time_key, const uint8_t* msg, uint32_t msg_l
  * @post On success ``out`` carries a wrapped HMAC-SHA-256 handle.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.12.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rsip_kdf(ra_rsip_kdf_op_t            op,
                                    const ra_rsip_key_handle_t* ikm,
@@ -1395,7 +1395,7 @@ ra_rsip_poly1305(const uint8_t* one_time_key, const uint8_t* msg, uint32_t msg_l
  * @post No engine state is modified.
  *
  * @note Thread safety: read-only.
- * @since 0.12.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rsip_life_get(ra_rsip_life_state_t* out);
 
@@ -1420,7 +1420,7 @@ ra_rsip_poly1305(const uint8_t* one_time_key, const uint8_t* msg, uint32_t msg_l
  *
  * @note Thread safety: not thread-safe.
  * @warning Lifecycle transitions are irreversible.
- * @since 0.12.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rsip_life_advance(ra_rsip_life_state_t state);
 
@@ -1439,7 +1439,7 @@ ra_rsip_poly1305(const uint8_t* one_time_key, const uint8_t* msg, uint32_t msg_l
  * @post No engine state is modified.
  *
  * @note Thread safety: read-only.
- * @since 0.12.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rsip_debug_level_get(ra_rsip_debug_level_t* out);
 
@@ -1457,7 +1457,7 @@ ra_rsip_poly1305(const uint8_t* one_time_key, const uint8_t* msg, uint32_t msg_l
  * @post Subsequent ``ra_rsip_debug_level_get`` returns ``level``.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.12.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rsip_debug_level_set(ra_rsip_debug_level_t level);
 
@@ -1481,7 +1481,7 @@ ra_rsip_poly1305(const uint8_t* one_time_key, const uint8_t* msg, uint32_t msg_l
  * @post ``TAMPER_CTRL`` reads as ``sources``.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.12.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rsip_tamper_enable(uint32_t sources);
 
@@ -1500,7 +1500,7 @@ ra_rsip_poly1305(const uint8_t* one_time_key, const uint8_t* msg, uint32_t msg_l
  * @post No engine state is modified.
  *
  * @note Thread safety: read-only.
- * @since 0.12.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rsip_tamper_status(uint32_t* out);
 
@@ -1518,7 +1518,7 @@ ra_rsip_poly1305(const uint8_t* one_time_key, const uint8_t* msg, uint32_t msg_l
  * @post Requested bits read as zero.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.12.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rsip_tamper_ack(uint32_t mask);
 
@@ -1536,7 +1536,7 @@ ra_rsip_poly1305(const uint8_t* one_time_key, const uint8_t* msg, uint32_t msg_l
  * @post Subsequent crypto ops run with countermeasures as requested.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.12.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rsip_dpa_arm(bool enable);
 
@@ -1562,7 +1562,7 @@ ra_rsip_poly1305(const uint8_t* one_time_key, const uint8_t* msg, uint32_t msg_l
  * @post ``DOTFn_CTRL`` reflects the requested route.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.12.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rsip_dotf_route(uint8_t which, uint8_t slot, bool on);
 

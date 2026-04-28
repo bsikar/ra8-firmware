@@ -372,7 +372,7 @@ typedef void (*ra_wdt_event_fn_t)(void* ctx, uint16_t status_mask);
  * @see ra_wdt_refresh_deferred Run-time heartbeat.
  * @see ra_wdt_deinit Counterpart that disables in Sleep.
  *
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_wdt_init(const ra_wdt_cfg_t* cfg);
 
@@ -398,7 +398,7 @@ typedef void (*ra_wdt_event_fn_t)(void* ctx, uint16_t status_mask);
  *
  * @note No-op in auto-start mode -- WDTCSTPR is then read-only-zero.
  *
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_wdt_deinit(void);
 
@@ -444,7 +444,7 @@ void ra_wdt_refresh_deferred(void);
  * @post Targeted WDT's WDTRR holds 0xFF.
  * @post Targeted WDT down-counter is reloaded.
  *
- * @since 0.4.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_wdt_refresh_for(ra_wdt_instance_t which);
 
@@ -472,7 +472,7 @@ void ra_wdt_refresh_deferred(void);
  * @note Thread-safe wrt other readers; concurrent writers must
  * serialise the access.
  *
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_wdt_get_status(uint16_t* out_mask);
 
@@ -497,7 +497,7 @@ void ra_wdt_refresh_deferred(void);
  *
  * @note Not thread-safe.
  *
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_wdt_clear_status(void);
 
@@ -529,7 +529,7 @@ void ra_wdt_refresh_deferred(void);
  *
  * @note Not thread-safe.
  *
- * @since 0.4.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_wdt_clear_status_blocking(uint16_t mask);
 
@@ -552,7 +552,7 @@ void ra_wdt_refresh_deferred(void);
  *
  * @note Read-only; safe to call from any context.
  *
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_wdt_get_counter(uint16_t* out_count);
 
@@ -579,7 +579,7 @@ void ra_wdt_refresh_deferred(void);
  * @post ``*out_cycles`` is one of {1024, 4096, 8192, 16384}.
  * @post No hardware state is touched.
  *
- * @since 0.4.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_wdt_timeout_cycles_get(ra_wdt_timeout_sel_t sel, uint16_t* out_cycles);
 
@@ -600,7 +600,7 @@ void ra_wdt_refresh_deferred(void);
  * @post ``*out_divisor`` is one of {4, 64, 128, 512, 2048, 8192}.
  * @post No hardware state is touched.
  *
- * @since 0.4.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_wdt_pclkb_divisor(ra_wdt_clock_div_t div, uint16_t* out_divisor);
 
@@ -626,7 +626,7 @@ void ra_wdt_refresh_deferred(void);
  * @post ``*out_pclkb_cycles`` <= 134_217_728 (largest table entry).
  * @post No hardware state is touched.
  *
- * @since 0.4.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_wdt_total_pclkb_cycles(ra_wdt_timeout_sel_t sel,
                                                  ra_wdt_clock_div_t   div,
@@ -665,7 +665,7 @@ void ra_wdt_refresh_deferred(void);
  *
  * @see ra_wdt_subscribe Multi-subscriber alternative.
  *
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_wdt_attach_handler(ra_wdt_event_fn_t fn, void* ctx);
 
@@ -707,7 +707,7 @@ void ra_wdt_refresh_deferred(void);
  * once interrupts are unmasked.
  *
  * @see ra_wdt_unsubscribe Inverse operation.
- * @since 0.4.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_wdt_subscribe(ra_wdt_event_fn_t fn, void* ctx, uint8_t* out_slot);
 
@@ -727,7 +727,7 @@ void ra_wdt_refresh_deferred(void);
  * @post Slot reads ``{nullptr, nullptr}``.
  * @post Subsequent dispatches skip the slot.
  *
- * @since 0.4.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_wdt_unsubscribe(uint8_t slot);
 
@@ -742,7 +742,7 @@ void ra_wdt_refresh_deferred(void);
  *
  * @pre None.
  * @post No state is mutated.
- * @since 0.4.0
+ * @since 0.1.0
  */
 uint8_t ra_wdt_subscriber_count(void);
 
@@ -766,7 +766,7 @@ uint8_t ra_wdt_subscriber_count(void);
  * @note Safe to call when no subscriber is registered (becomes a flag
  * clear with no further effect).
  *
- * @since 0.2.0
+ * @since 0.1.0
  */
 void ra_wdt_dispatch(void);
 
@@ -795,7 +795,7 @@ void ra_wdt_dispatch(void);
  * @post NMIER.WDTEN reads 1.
  * @post NMICLR has cleared any stale WDT NMI status.
  *
- * @since 0.4.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_wdt_install_nmi(void);
 
@@ -811,7 +811,7 @@ void ra_wdt_dispatch(void);
  * @post NMIER.WDTEN reads 0.
  * @post Pending WDT NMI status is cleared via NMICLR.
  *
- * @since 0.4.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_wdt_uninstall_nmi(void);
 
@@ -838,7 +838,7 @@ void ra_wdt_dispatch(void);
  *
  * @note Idempotent.
  *
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_wdt_enter_stop(void);
 
@@ -861,7 +861,7 @@ void ra_wdt_dispatch(void);
  *
  * @note Idempotent.
  *
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_wdt_exit_stop(void);
 
@@ -906,7 +906,7 @@ typedef ra_err_t (*ra_wdt_ofs_reader_fn_t)(uintptr_t ofs_addr, uint32_t* out_wor
  * @pre Caller is in single-writer init context.
  * @post Subsequent ``ra_wdt_ofs_get`` calls go through ``reader``.
  *
- * @since 0.4.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_wdt_ofs_reader_set(ra_wdt_ofs_reader_fn_t reader);
 
@@ -941,7 +941,7 @@ typedef ra_err_t (*ra_wdt_ofs_reader_fn_t)(uintptr_t ofs_addr, uint32_t* out_wor
  *
  * @note Read-only; callable from any context.
  *
- * @since 0.4.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_wdt_ofs_get(ra_wdt_instance_t which, ra_wdt_ofs_decoded_t* out);
 

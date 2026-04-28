@@ -132,7 +132,7 @@ typedef enum : uint8_t {
  * @post PWPR is re-locked regardless of success.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_mpc_route_peripheral(ra_port_t port, ra_pin_t pin, ra_mpc_psel_t psel);
 
@@ -152,7 +152,7 @@ typedef enum : uint8_t {
  * @post PMR = 0, PDR = ``dir``, all peripheral select bits cleared.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_mpc_set_gpio(ra_port_t port, ra_pin_t pin, ra_mpc_dir_t dir);
 
@@ -170,7 +170,7 @@ typedef enum : uint8_t {
  * @post PmnPFS: ASEL = 1, PMR = 0, PDR = 0.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_mpc_set_analog(ra_port_t port, ra_pin_t pin);
 
@@ -194,7 +194,7 @@ typedef enum : uint8_t {
  * @post PmnPFS: ISEL = 1, PMR = 0, PDR = 0.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_mpc_set_irq(ra_port_t port, ra_pin_t pin);
 
@@ -215,7 +215,7 @@ typedef enum : uint8_t {
  * untouched.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_mpc_set_pull(ra_port_t port, ra_pin_t pin, ra_mpc_pull_t pull);
 
@@ -235,7 +235,7 @@ typedef enum : uint8_t {
  * @post NCODR reflects the requested state.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_mpc_set_open_drain(ra_port_t port, ra_pin_t pin, bool enable);
 
@@ -256,7 +256,7 @@ typedef enum : uint8_t {
  * @post No hardware state is modified.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_mpc_read_pfs(ra_port_t port, ra_pin_t pin, uint32_t* out_val);
 

@@ -54,7 +54,7 @@
  * @return Never returns.
  *
  * @note Thread safety: irrelevant -- the call never returns.
- * @since 0.3.0
+ * @since 0.1.0
  */
 /* The newlib-nano heap allocator calls ``_sbrk`` by that exact name,
  * so we must use a reserved identifier here. clang-tidy's

@@ -25,7 +25,7 @@
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  *
- * @since Version 0.1.0
+ * @since 0.1.0
  */
 
 #include "ra_cgc.h"
