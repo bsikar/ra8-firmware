@@ -17,6 +17,11 @@ re-scans on the next build.
 
 ## Available examples
 
-- **blink** -- 1 Hz LED toggle on the EK-RA8D2, SysTick-driven, no
-  HAL dependencies. Use as a "is the board alive" smoke test and as
-  the template for new examples.
+| Name | What | Smoke-test depth |
+|---|---|---|
+| [`blink`](blink/) | 1 Hz LED toggle via raw register writes, no HAL deps | "is the chip alive?" |
+| [`blink_hal`](blink_hal/) | Same blink, but built on `ra_gpio_*` + `ra_time_*` | "is the HAL alive?" |
+
+Use `blink` first when bringing up a new board (smallest possible
+failure surface). Use `blink_hal` once `blink` works to verify the
+HAL libraries link and run cleanly.
