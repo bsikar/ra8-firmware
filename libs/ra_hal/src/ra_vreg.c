@@ -257,13 +257,17 @@ static void internal_dcdc_disable_sequence(bool keep_lcboost)
 {
   /* The LDO selection is "everything off" -- optionally with LCBOOST
    * still asserted so the LDO can run at subosc-speed VDD.
-   * HUM Ch 68.2.2 "External VDD Mode" p 4033 */
+   * HUM Ch 68.2.2 "External VDD Mode" p 4033
+   *
+   * NB: do NOT touch s_state.dcdcctl here. enter_standby uses this
+   * helper transiently and relies on the cached value to restore on
+   * exit; set_mode(LDO) updates the cache itself for the permanent
+   * mode-switch path. */
   uint8_t v = 0U;
   if (keep_lcboost) {
     v = (uint8_t)k_ra_vreg_mask_lcboost;
   }
   *ra_vreg_dcdcctl() = v;
-  s_state.dcdcctl    = v;
 }
 
 /* =============================================================================
@@ -366,6 +370,13 @@ static void internal_dcdc_disable_sequence(bool keep_lcboost)
     internal_dcdc_enable_sequence(s_state.fast_startup);
   } else {
     internal_dcdc_disable_sequence(s_state.ldo_boost);
+    /* Permanent mode switch: cache the LDO selection so a subsequent
+     * standby/restore cycle keeps the regulator in LDO. */
+    uint8_t cached = 0U;
+    if (s_state.ldo_boost) {
+      cached = (uint8_t)k_ra_vreg_mask_lcboost;
+    }
+    s_state.dcdcctl = cached;
   }
   return k_ra_ok;
 }

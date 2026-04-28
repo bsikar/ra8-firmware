@@ -819,10 +819,20 @@ ra_err_t ra_flash_get_startup_area(uint8_t* out_btflg, uint8_t* out_fspr)
 ra_err_t ra_flash_config_set_write(uint32_t target_addr, const uint16_t* words)
 {
   RA_CHECK_NULL_PTR((const void*)words, s_tag, "words must not be nullptr");
-  if (target_addr < (uint32_t)k_ra_flash_extra_start) {
-    return k_ra_err_invalid_arg;
-  }
-  if (target_addr >= (uint32_t)k_ra_flash_extra_start + (uint32_t)k_ra_flash_extra_size) {
+  /* The MACI ``config_set`` opener / 8-halfword payload / 0xD0 trailer is
+   * shared between two flows:
+   *   - OFS programming  (HUM Ch 7 "Option-Setting Memory"  p 278) targets
+   *     halfwords inside the OFS window at 0x02C9F000.
+   *   - Extra-MRAM write (HUM Ch 59 "MACI Command Sequence" p 3550) reuses
+   *     the same opener with MSADDR pointing into extra-MRAM at 0x27000000.
+   * Accept both ranges; reject everything else. */
+  const uint32_t ofs_end   = (uint32_t)k_ra_flash_ofs_start + (uint32_t)k_ra_flash_ofs_size;
+  const uint32_t extra_end = (uint32_t)k_ra_flash_extra_start + (uint32_t)k_ra_flash_extra_size;
+  const bool     in_ofs =
+    (bool)((target_addr >= (uint32_t)k_ra_flash_ofs_start) && (target_addr < ofs_end));
+  const bool in_extra =
+    (bool)((target_addr >= (uint32_t)k_ra_flash_extra_start) && (target_addr < extra_end));
+  if (!in_ofs && !in_extra) {
     return k_ra_err_invalid_arg;
   }
 
@@ -1065,6 +1075,13 @@ ra_err_t ra_flash_msuinitr_kick(void)
 {
   /* HUM Ch 59 "MSUINITR : Extra MRAM Sequencer Set-Up Init" p 3585 */
   *ra_mram_reg16((uint16_t)k_ra_mram_off_msuinitr) = (uint16_t)k_ra_msuinitr_full_init;
+#ifdef RA_SIMULATOR_MODE
+  /* On real HW the sequencer auto-clears SUINIT once the init
+   * completes. The host-test simulator is dumb memory, so reflect
+   * that here so the poll below exits on its first iteration. */
+  *ra_mram_reg16((uint16_t)k_ra_mram_off_msuinitr) =
+    (uint16_t)((uint16_t)k_ra_msuinitr_full_init & ~(uint16_t)k_ra_msuinitr_mask_suinit);
+#endif
 
   for (uint32_t i = 0U; i < (uint32_t)k_ra_flash_pe_spin_limit; ++i) {
     /* HUM Ch 59 "MSUINITR : Extra MRAM Sequencer Set-Up Init" p 3585 */
@@ -1476,6 +1493,11 @@ uint32_t ra_flash_dispatch_isr(void)
     internal_deliver(k_ra_flash_irq_program_err, fa, (uint32_t)mrcps);
     /* W1C the program error bits. */
     *ra_mram_reg8((uint16_t)k_ra_mram_off_mrcps) = (uint8_t)k_ra_mrcps_mask_errors;
+#ifdef RA_SIMULATOR_MODE
+    /* The host-test sim is dumb memory: emulate the W1C clear so the
+     * post-dispatch state matches real HW. */
+    *ra_mram_reg8((uint16_t)k_ra_mram_off_mrcps) &= (uint8_t)~(uint8_t)k_ra_mrcps_mask_errors;
+#endif
     delivered++;
   }
 

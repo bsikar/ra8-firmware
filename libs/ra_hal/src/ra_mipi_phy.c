@@ -1233,6 +1233,14 @@ ra_err_t ra_mipi_phy_init(const ra_mipi_phy_config_t* cfg)
     /* Steps 6-9 -- HUM Ch 64.2.2/64.2.4/64.2.3/64.2.6 p 3823-3826 */
     const ra_err_t m_err = internal_mipi_phy_init_master(cfg);
     RA_RETURN_ON_ERROR(m_err, s_tag, "init: PLL did not lock");
+  } else {
+    /* CSI slave mode: the PHY is a receiver, so the master-side PLL
+     * controls (PLFCR / ESCCR / PLOCR) are unused by this block. Make
+     * sure they hold their reset value (0) regardless of any prior
+     * master-mode state -- HUM Ch 64.2.2/64.2.3/64.2.4 p 3823-3825. */
+    *ra_mipi_phy_reg32(k_ra_mipi_phy_off_plfcr) = 0U;
+    *ra_mipi_phy_reg32(k_ra_mipi_phy_off_esccr) = 0U;
+    *ra_mipi_phy_reg32(k_ra_mipi_phy_off_plocr) = 0U;
   }
 
   /* Step 10 -- HUM Ch 64.2.8 "DPHYTIM1 : D-PHY Timing Control Register 1", p 3827 */
@@ -1361,25 +1369,20 @@ void ra_mipi_phy_dispatch(void)
   const uint32_t pwr_prev = prev & (uint32_t)k_ra_mipi_phy_sfr_pwrsf;
   const uint32_t pll_now  = sfr & (uint32_t)k_ra_mipi_phy_sfr_pllsf;
   const uint32_t pll_prev = prev & (uint32_t)k_ra_mipi_phy_sfr_pllsf;
-  bool           emitted  = false;
 
+  /* Emit at most one event per dispatch -- power edges take priority
+   * over PLL edges, with status_chg as the fallback when nothing
+   * transitioned. Multiple emits per call would over-count callers
+   * that key off the cb count. */
   if ((pwr_now != 0U) && (pwr_prev == 0U)) {
     fn(ctx, k_ra_mipi_phy_event_ldo_ready, sfr);
-    emitted = true;
   } else if ((pwr_now == 0U) && (pwr_prev != 0U)) {
     fn(ctx, k_ra_mipi_phy_event_ldo_lost, sfr);
-    emitted = true;
-  }
-
-  if ((pll_now != 0U) && (pll_prev == 0U)) {
+  } else if ((pll_now != 0U) && (pll_prev == 0U)) {
     fn(ctx, k_ra_mipi_phy_event_pll_locked, sfr);
-    emitted = true;
   } else if ((pll_now == 0U) && (pll_prev != 0U)) {
     fn(ctx, k_ra_mipi_phy_event_pll_lost, sfr);
-    emitted = true;
-  }
-
-  if (!emitted) {
+  } else {
     fn(ctx, k_ra_mipi_phy_event_status_chg, sfr);
   }
 }

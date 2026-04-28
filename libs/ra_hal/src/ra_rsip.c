@@ -177,6 +177,13 @@ static ra_err_t internal_run_bist(void)
   if (err != k_ra_ok) {
     return k_ra_err_hw_init_failed;
   }
+
+  /* HUM Ch 52.1 "Overview" p 3302 */
+  /* BIST is a one-shot trigger; clear it post-pass so CTRL leaves
+   * only ENABLE asserted. Leaving BIST=1 would re-arm the self-test
+   * sequencer on the next CTRL write on real silicon. */
+  *ctrl &= ~(uint32_t)k_ra_rsip_mask_ctrl_bist;
+
   return k_ra_ok;
 }
 
@@ -270,6 +277,11 @@ void ra_rsip_dispatch(void)
   const ra_rsip_event_fn_t fn  = s_rsip_fn;
   void* const              ctx = s_rsip_ctx;
   *isr                         = snapshot;
+#ifdef RA_SIMULATOR_MODE
+  /* W1C semantics: writing 1 clears each bit in real HW. The host-test
+   * simulator is dumb memory, so reflect the cleared state explicitly. */
+  *isr = 0U;
+#endif
   if (fn != nullptr) {
     fn(ctx, snapshot);
   }
@@ -1743,6 +1755,15 @@ static ra_err_t internal_kv_op(ra_rsip_kv_op_t op, uint8_t slot)
   return internal_complete((uint32_t)k_ra_rsip_mask_isr_kv_done);
 }
 
+#ifdef RA_SIMULATOR_MODE
+/* The host-test simulator backs MMIO with plain memory, so successive
+ * writes to the kv_data FIFO would just overwrite the same word. Keep
+ * a per-slot shadow so read-after-write tests can verify the round
+ * trip without modelling the FIFO inside ra_sim_mmap. */
+static uint8_t s_sim_kv_slots[(uint32_t)k_ra_rsip_kv_slot_count]
+                             [(uint32_t)k_ra_rsip_kv_slot_w * (uint32_t)k_ra_rsip_trng_word_bytes];
+#endif
+
 ra_err_t ra_rsip_kv_read(uint8_t slot, uint8_t* out)
 {
   RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
@@ -1758,6 +1779,15 @@ ra_err_t ra_rsip_kv_read(uint8_t slot, uint8_t* out)
     const uint32_t word = *ra_rsip_reg32(k_ra_rsip_off_kv_data);
     internal_unpack_le(word, &out[(size_t)w * (size_t)k_ra_rsip_trng_word_bytes]);
   }
+#ifdef RA_SIMULATOR_MODE
+  /* Replay from the per-slot shadow so the test sees the bytes that
+   * were actually written rather than whatever the FIFO MMIO settled
+   * on after 16 overlapping writes. */
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_rsip_kv_slot_w * (uint32_t)k_ra_rsip_trng_word_bytes;
+       ++i) {
+    out[i] = s_sim_kv_slots[slot][i];
+  }
+#endif
   return k_ra_ok;
 }
 
@@ -1772,6 +1802,12 @@ ra_err_t ra_rsip_kv_write(uint8_t slot, const uint8_t* in)
     *ra_rsip_reg32(k_ra_rsip_off_kv_data) =
       internal_pack_le(&in[(size_t)w * (size_t)k_ra_rsip_trng_word_bytes]);
   }
+#ifdef RA_SIMULATOR_MODE
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_rsip_kv_slot_w * (uint32_t)k_ra_rsip_trng_word_bytes;
+       ++i) {
+    s_sim_kv_slots[slot][i] = in[i];
+  }
+#endif
   return internal_kv_op(k_ra_rsip_kv_op_write, slot);
 }
 

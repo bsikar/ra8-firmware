@@ -58,7 +58,7 @@ MEMORY
      * These regions overlap with MRAM / SRAM in the single-image
      * build because the linker treats them as views of the same
      * physical bytes; the SAU programmes the bit-28 split at boot
-     * (see src/boot/trustzone_init.c) so the CPU sees them as
+     * (see blink/trustzone_init.c) so the CPU sees them as
      * Non-Secure aliases. With RA_TRUSTZONE_ENABLE off the linker
      * is allowed to place sections in either region freely. */
     NS_MRAM (rx) : ORIGIN = 0x02080000, LENGTH = 512K
@@ -68,7 +68,7 @@ MEMORY
 /*
  * Linker symbols. Named with the g_ra_ls_ prefix so they are NOT in
  * the ISO C reserved leading-underscore namespace. The boot code in
- * src/boot/vector_table.c declares them with exactly these names.
+ * blink/vector_table.c declares them with exactly these names.
  */
 g_ra_ls_stack_size = DEFINED(g_ra_ls_stack_size) ? g_ra_ls_stack_size : 8K;
 g_ra_ls_stack_top = ORIGIN(SRAM) + LENGTH(SRAM);

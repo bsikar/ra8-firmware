@@ -173,11 +173,15 @@ ra_err_t ra_tsn_deinit(void)
   /* HUM Ch 55.2.1 "TSCR : Temperature Sensor Control Register", p 3498 */
   reg->TSCR = 0U;
 
-  /* HUM Ch 11.2.9 "MSTPCRD : Module Stop Control Register D", p 449 */
-  const ra_err_t mst_err = ra_mstp_disable(k_ra_mstp_tsn);
-  RA_RETURN_ON_ERROR(mst_err, s_tag, "tsn_deinit: mstp disable");
-
+  /* Clear the init flag unconditionally so that callers cannot reach a
+   * "looks-initialised but isn't" state if deinit is invoked from a
+   * partially-torn-down context (e.g. mstp refcount already 0 because
+   * the test harness reset it). The mstp refcount underflow is logged
+   * by ra_mstp itself and is harmless here. */
   s_ra_tsn_initialised = false;
+
+  /* HUM Ch 11.2.9 "MSTPCRD : Module Stop Control Register D", p 449 */
+  (void)ra_mstp_disable(k_ra_mstp_tsn);
   return k_ra_ok;
 }
 

@@ -158,6 +158,34 @@ static uint8_t* s_pending_rx_buffer;
 static uint16_t s_pending_rx_len;
 
 /**
+ * @var s_initialized
+ * @brief Software latch tracking whether the driver currently owns the
+ *        MIPI-DSI module-stop reference count.
+ *
+ * @details
+ * Set true at the tail of ``ra_mipi_dsi_init()`` once the MSTPC bit has
+ * been ungated, and cleared at the tail of ``ra_mipi_dsi_deinit()``
+ * once the bit has been gated. ``ra_mipi_dsi_enter_stop()`` clears it
+ * (because it gives the MSTPC reference back) and
+ * ``ra_mipi_dsi_exit_stop()`` re-sets it. The flag exists so that
+ * ``deinit()`` is idempotent: calling it on an already-de-initialised
+ * driver returns ``k_ra_ok`` instead of letting ``ra_mstp_disable()``
+ * underflow its reference count and surface
+ * ``k_ra_err_invalid_state``. HUM Ch 11.2.8 "MSTPCRC : Module Stop
+ * Control Register C", p 446 only describes the gate bit; the
+ * reference-count discipline is a software invariant maintained by
+ * ``libs/ra_hal/src/ra_mstp.c``.
+ *
+ * @note Mutated only from ``init`` / ``deinit`` / ``enter_stop`` /
+ *       ``exit_stop``; not thread-safe.
+ * @warning Bypassing these entry points (e.g. by calling
+ *          ``ra_mstp_*`` directly) will desynchronise this latch from
+ *          the actual MSTPC state.
+ * @since 0.1.0
+ */
+static bool s_initialized;
+
+/**
  * @enum ra_mipi_dsi_internal_t
  * @brief Numeric constants used by the implementation that don't
  *        belong in the public header.
@@ -563,6 +591,7 @@ static void internal_program_timeouts(const ra_mipi_dsi_config_t* cfg)
   s_dsi_ctx             = nullptr;
   s_pending_rx_buffer   = nullptr;
   s_pending_rx_len      = 0U;
+  s_initialized         = true;
 
   ra_log_info(s_tag, "mipi_dsi_init done");
   return k_ra_ok;
@@ -570,6 +599,13 @@ static void internal_program_timeouts(const ra_mipi_dsi_config_t* cfg)
 
 [[nodiscard]] ra_err_t ra_mipi_dsi_deinit(void)
 {
+  /* Idempotent: a second deinit (or a deinit on a never-initialised
+   * driver) must succeed without underflowing the MSTPC refcount.
+   * HUM Ch 11.2.8 "MSTPCRC : Module Stop Control Register C", p 446. */
+  if (!s_initialized) {
+    return k_ra_ok;
+  }
+
   volatile r_mipi_dsi_regs_t* reg = ra_mipi_dsi();
   /* HUM Ch 65.2 "RSTCR : Reset Control Register", p 3853 */
   reg->RSTCR = (uint32_t)k_ra_mipi_dsi_rstcr_swrst;
@@ -583,19 +619,40 @@ static void internal_program_timeouts(const ra_mipi_dsi_config_t* cfg)
   s_pending_rx_len      = 0U;
 
   /* HUM Ch 11.2.8 "MSTPCRC : Module Stop Control Register C", p 446 */
-  return ra_mstp_disable(k_ra_mstp_mipi_dsi);
+  const ra_err_t err = ra_mstp_disable(k_ra_mstp_mipi_dsi);
+  if (err == k_ra_ok) {
+    s_initialized = false;
+  }
+  return err;
 }
 
 [[nodiscard]] ra_err_t ra_mipi_dsi_enter_stop(void)
 {
-  /* HUM Ch 11.2.8 "MSTPCRC : Module Stop Control Register C", p 446 */
-  return ra_mstp_disable(k_ra_mstp_mipi_dsi);
+  /* HUM Ch 11.2.8 "MSTPCRC : Module Stop Control Register C", p 446.
+   * Releases the MSTPC reference taken in ``init``; the matching
+   * ``exit_stop`` re-acquires it. */
+  if (!s_initialized) {
+    return k_ra_err_invalid_state;
+  }
+  const ra_err_t err = ra_mstp_disable(k_ra_mstp_mipi_dsi);
+  if (err == k_ra_ok) {
+    s_initialized = false;
+  }
+  return err;
 }
 
 [[nodiscard]] ra_err_t ra_mipi_dsi_exit_stop(void)
 {
-  /* HUM Ch 11.2.8 "MSTPCRC : Module Stop Control Register C", p 446 */
-  return ra_mstp_enable(k_ra_mstp_mipi_dsi);
+  /* HUM Ch 11.2.8 "MSTPCRC : Module Stop Control Register C", p 446.
+   * Re-acquires the MSTPC reference released by ``enter_stop``. */
+  if (s_initialized) {
+    return k_ra_err_invalid_state;
+  }
+  const ra_err_t err = ra_mstp_enable(k_ra_mstp_mipi_dsi);
+  if (err == k_ra_ok) {
+    s_initialized = true;
+  }
+  return err;
 }
 
 [[nodiscard]] ra_err_t ra_mipi_dsi_soft_reset(void)

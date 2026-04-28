@@ -53,8 +53,39 @@ from typing import Iterable
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 CHAPTER_MAP_PATH = REPO_ROOT / "docs" / "reference" / "CHAPTER_MAP.md"
 
-DEFAULT_SCAN_DIRS = ("libs", "src", "tests", "examples")
+# Top-level dirs we never lint: infrastructure / vendor / build trees.
+EXCLUDE_TOP_LEVEL = {
+    "build", "docs", "cmake", "scripts", "fsp", "STAR",
+    ".git", "node_modules", ".github", ".devcontainer", ".claude",
+}
+# `libs/`, `src/`, and `tests/` are always sources of truth. Per-app
+# top-level dirs (anything containing main.c + CMakeLists.txt) are
+# discovered dynamically below.
+ALWAYS_SCAN_DIRS = ("libs", "src", "tests")
 SOURCE_SUFFIXES = {".c", ".h", ".cpp", ".hpp"}
+
+
+def discover_scan_dirs() -> tuple[str, ...]:
+    """Return (`libs`, `src`, `tests`) plus every top-level app dir.
+
+    An "app dir" is any top-level directory that contains both
+    `main.c` and `CMakeLists.txt` (the per-app shape introduced when
+    `examples/` was retired).
+    """
+    out = list(ALWAYS_SCAN_DIRS)
+    for entry in sorted(REPO_ROOT.iterdir()):
+        if not entry.is_dir():
+            continue
+        if entry.name in EXCLUDE_TOP_LEVEL:
+            continue
+        if entry.name in ALWAYS_SCAN_DIRS:
+            continue
+        if (entry / "main.c").is_file() and (entry / "CMakeLists.txt").is_file():
+            out.append(entry.name)
+    return tuple(out)
+
+
+DEFAULT_SCAN_DIRS = discover_scan_dirs()
 
 CITE_RE = re.compile(
     r"""
