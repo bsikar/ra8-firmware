@@ -107,10 +107,18 @@ mkdir -p "$BUILD_DIR"
 echo -e "${YELLOW}Configuring CMake (${BUILD_TYPE} mode)...${NC}"
 cd "$BUILD_DIR"
 
+# EXAMPLE env var picks the application entry point (subdir of examples/).
+# Defaults to "blink" via the top-level CMakeLists.txt.
+example_arg=()
+if [[ -n "${EXAMPLE:-}" ]]; then
+    example_arg+=(-DEXAMPLE="${EXAMPLE}")
+fi
+
 cmake \
     -DCMAKE_BUILD_TYPE="$BUILD_TYPE" \
     -DCMAKE_TOOLCHAIN_FILE="${SCRIPT_DIR}/cmake/toolchain-ra8d2.cmake" \
     -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+    "${example_arg[@]}" \
     ..
 
 echo -e "${GREEN}[PASS] Configuration complete${NC}"
