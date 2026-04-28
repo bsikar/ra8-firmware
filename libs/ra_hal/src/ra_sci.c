@@ -177,8 +177,18 @@ static uint32_t internal_ccr3(const ra_sci_cfg_t* cfg)
   /* LSBF = 1 (LSB-first) is the UART standard wire order. SCI_B's
    * reset state is MSB-first; without this bit the host receives
    * each byte bit-reversed (e.g. 'h' = 0x68 transmits as 0x16). FSP
-   * r_sci_b_uart sets LSBF unconditionally for async configs. */
-  uint32_t ccr3 = (1U << k_ra_sci_ccr3_bit_lsbf);
+   * r_sci_b_uart sets LSBF unconditionally for async configs.
+   *
+   * BPEN = 1 (Synchronizer Bypass Enable) is required when the bus
+   * clock (PCLK) is also used as the operation clock (TCLK) -- which
+   * is what we're doing in async mode with the on-chip baud-rate
+   * generator on the synchronized clock. Without BPEN the SCI's
+   * shift state machine waits forever for an independent SCICLK
+   * edge that never arrives, and the chip looks alive at the
+   * register level (TDR latches, CCR0.TE=1) but never advances --
+   * CSR.TDRE and CSR.TEND stay 0 indefinitely. HUM Ch 38.2.8 p 2207
+   * "BPEN bit" is the authoritative source. */
+  uint32_t ccr3 = (1U << k_ra_sci_ccr3_bit_lsbf) | (1U << k_ra_sci_ccr3_bit_bpen);
 
   /* MOD = 000 (Asynchronous) -- already 0. */
 
