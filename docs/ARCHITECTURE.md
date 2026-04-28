@@ -7,7 +7,7 @@ document -- expand as new subsystems land.
 
 ```
     +----------------------------------------------------+
-    |                application main()                  |   src/main.c
+    |                application main()                  |   examples/<name>/main.c
     +----------------------------------------------------+
     |                    drivers                          |   libs/ra_hal/src/
     |        gpio | uart | iic | spi | adc | gpt | agt    |   libs/ra_hal/inc/
@@ -35,6 +35,86 @@ target with the same flags. `ra_hal` is the only layer that
 dereferences peripheral addresses. Drivers build on top of a
 register header plus the utilities in `ra_core` (error codes,
 pin validator, logging, IRQ-masked critical sections).
+
+## Source-tree layout: `src/` vs `examples/` vs `libs/`
+
+Three distinct roles, often confused:
+
+```
+src/                 ← the C runtime + boot code (everyone shares it)
+  boot/
+    vector_table.c     112-IRQ Cortex-M85 vector table + Reset_Handler
+    system_init.c      VTOR, FPU enable, priority grouping
+    secure_exception.c Secure-side fault entry
+    trustzone_init.c   SAU bring-up (no-op when RA_TRUSTZONE_ENABLE is OFF)
+  inc/                 Internal headers shared between src/* TUs
+  secure_app/          Ring 5 secure-side code (key vault, secure veneer table)
+  linker_script.ld     Memory map, .text/.data/.bss/.vectors placement, OFS sections
+
+libs/                ← the standard library (everyone links it)
+  ra_core/             err, log, time, pin validator, register guards (no HW deps)
+  ra_hal/              every peripheral driver + register header
+  ra_nsc/              TrustZone Non-Secure-Callable veneers
+  ra_net_pal/          Ethernet PAL bridging the HAL to lwIP / similar
+  ra_usb_pal/          USB PAL bridging the HAL to CherryUSB / similar
+
+examples/            ← the application (one-file main.c per example)
+  blink/main.c         Raw register-poke blink (~250 lines)
+  blink_hal/main.c     Same blink, built on the HAL (~150 lines)
+  <future>/main.c      Add a new example by dropping a directory here
+```
+
+### Why every example is tiny
+
+Each `examples/<name>/main.c` only contains the application's `main()`
+function. It assumes:
+
+- The vector table exists and is pinned to MRAM (provided by
+  `src/boot/vector_table.c`)
+- `Reset_Handler` ran the `.data` copy + `.bss` zero before `main()`
+- `SystemInit()` set VTOR, the FPU coprocessor enables, and NVIC
+  priority grouping (provided by `src/boot/system_init.c`)
+- The HAL libraries in `libs/` are linked and ready to use
+
+So `blink_hal/main.c` only has to set up its specific peripherals
+(GPIO, SysTick) and run its loop -- everything underneath is
+provided by `src/` and `libs/`.
+
+### What the CMake glob actually does
+
+Every firmware build is the same shape:
+
+```cmake
+file(GLOB APP_SOURCES_ROOT
+    ${CMAKE_SOURCE_DIR}/src/*.c        # any plain src/*.c (currently none)
+    ${EXAMPLE_DIR}/*.c                 # the chosen example's main.c
+)
+file(GLOB_RECURSE APP_BOOT_SOURCES   ${CMAKE_SOURCE_DIR}/src/boot/*.c)
+file(GLOB_RECURSE APP_SECURE_SOURCES ${CMAKE_SOURCE_DIR}/src/secure_app/*.c)
+# ... plus libs/ra_core/, libs/ra_hal/, libs/ra_nsc/, libs/ra_*_pal/
+```
+
+`-DEXAMPLE=<name>` (defaulting to `blink`) picks which example's
+`main.c` is compiled. Everything else is the same across builds.
+
+### Mental model: hosted-OS analogy
+
+```
+hosted Linux/macOS C program        ra8d2-firmware
+─────────────────────────────       ─────────────────────────
+crt0.o (runtime)                    src/boot/
+libc / libm                         libs/
+your code (main.c, ...)             examples/<name>/main.c
+```
+
+On a hosted system you don't *see* `crt0.o` because the toolchain
+ships it. On bare-metal embedded, you have to write it yourself --
+and `src/boot/` is exactly that.
+
+Adding a new example never requires editing anything in `src/` or
+`libs/`; just create `examples/foo/main.c` and run
+`make example-foo`. Touching `src/` is a project-wide change to how
+the chip boots, not a per-example concern.
 
 ## Boot sequence
 
