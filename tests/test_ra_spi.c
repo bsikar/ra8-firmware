@@ -23,7 +23,7 @@
 typedef enum : uint8_t {
   k_ra_spi_test_ch_zero = 0U,
   k_ra_spi_test_ch_one  = 1U,
-  k_ra_spi_test_ch_oor  = 2U, /**< Only SPI0..SPI1 are modelled.      */
+  k_ra_spi_test_ch_oor  = 2U, /**< Only SPI0..SPI1 are modelled. */
   k_ra_spi_test_ch_huge = 200U,
 } ra_spi_test_ch_t;
 
@@ -34,8 +34,8 @@ typedef enum : uint8_t {
 typedef enum : uint8_t {
   k_ra_spi_test_tx_byte  = 0xA5U,
   k_ra_spi_test_rx_byte  = 0x5AU,
-  k_ra_spi_test_sptef    = (uint8_t)(1U << 5U), /**< SPSR.SPTEF = bit 5.  */
-  k_ra_spi_test_sprf     = (uint8_t)(1U << 7U), /**< SPSR.SPRF  = bit 7.  */
+  k_ra_spi_test_sptef    = (uint8_t)(1U << 5U), /**< SPSR.SPTEF = bit 5. */
+  k_ra_spi_test_sprf     = (uint8_t)(1U << 7U), /**< SPSR.SPRF = bit 7. */
   k_ra_spi_test_both     = (uint8_t)((1U << 5U) | (1U << 7U)),
   k_ra_spi_test_spcr_en  = 0x48U, /**< k_ra_spi_spcr_enable. */
   k_ra_spi_test_spbr_def = 0x0FU, /**< k_ra_spi_spbr_default.*/
@@ -168,7 +168,7 @@ static void test_xfer8_bad_channel(void)
 }
 
 /* =============================================================================
- * Wave 3.3: new API tests
+ * new API tests
  * =============================================================================
  */
 
@@ -441,6 +441,6 @@ int32_t main(void)
   test_spi_write_dma_streams_to_spdr();
   test_spi_read_dma_streams_from_spdr();
   test_spi_dma_arg_validation();
-  (void)fprintf(stderr, "[OK  ] test_ra_spi.c\n");
+  (void)fprintf(stderr, "[OK ] test_ra_spi.c\n");
   return 0;
 }

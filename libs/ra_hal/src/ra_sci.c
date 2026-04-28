@@ -6,7 +6,7 @@
  * [Ring 3 / HAL] {World: NS}
  *
  * @details
- * Wave 3.1 replacement for the Wave 0 ``uart.c`` stub. See
+ * replacement for the ``uart.c`` stub. See
  * ``ra_sci.h`` for the public API contract.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -39,9 +39,9 @@ static const char* s_tag = "SCI";
  * @brief File-local bounds + magic register values.
  */
 typedef enum : uint8_t {
-  k_ra_sci_channel_max_index = 9U,    /**< SCI0..SCI9.                  */
-  k_ra_sci_channel_count_val = 10U,   /**< Total channels tracked.      */
-  k_ra_sci_scmr_default      = 0xF2U, /**< SCMR reset value per HUM.    */
+  k_ra_sci_channel_max_index = 9U,    /**< SCI0..SCI9. */
+  k_ra_sci_channel_count_val = 10U,   /**< Total channels tracked. */
+  k_ra_sci_scmr_default      = 0xF2U, /**< SCMR reset value per HUM. */
 } ra_sci_limits_inner_t;
 
 /**
@@ -50,9 +50,9 @@ typedef enum : uint8_t {
  */
 typedef enum : uint8_t {
   k_ra_sci_smr_bit_stop = 3U, /**< STOP bit = 1 means 2 stop bits. */
-  k_ra_sci_smr_bit_pm   = 4U, /**< PM  = 1 means odd parity.       */
-  k_ra_sci_smr_bit_pe   = 5U, /**< PE  = 1 means parity enabled.   */
-  k_ra_sci_smr_bit_chr  = 6U, /**< CHR = 1 means 7-bit data.       */
+  k_ra_sci_smr_bit_pm   = 4U, /**< PM = 1 means odd parity. */
+  k_ra_sci_smr_bit_pe   = 5U, /**< PE = 1 means parity enabled. */
+  k_ra_sci_smr_bit_chr  = 6U, /**< CHR = 1 means 7-bit data. */
 } ra_sci_smr_bit_t;
 
 /**
@@ -60,7 +60,7 @@ typedef enum : uint8_t {
  * @brief Constants used in the BRR calculation (HUM Ch 38.2).
  */
 typedef enum : uint32_t {
-  k_ra_sci_brr_base = 64U, /**< 64x base-clock divider.          */
+  k_ra_sci_brr_base = 64U, /**< 64x base-clock divider. */
 } ra_sci_brr_const_t;
 
 /* =============================================================================
@@ -74,10 +74,10 @@ typedef enum : uint32_t {
  */
 typedef struct {
   ra_sci_rx_fn_t rx_fn;       /**< Attached RX handler, NULL if none. */
-  void*          rx_ctx;      /**< RX handler context.                */
+  void*          rx_ctx;      /**< RX handler context. */
   ra_sci_tx_fn_t tx_fn;       /**< Attached TX handler, NULL if none. */
-  void*          tx_ctx;      /**< TX handler context.                */
-  bool           initialised; /**< True after ra_sci_init.       */
+  void*          tx_ctx;      /**< TX handler context. */
+  bool           initialised; /**< True after ra_sci_init. */
 } ra_sci_state_t;
 
 /**
@@ -126,7 +126,7 @@ static volatile r_sci_regs_t* internal_reg(uint8_t channel)
  * HUM Ch 38 gives the formula:
  *
  * @f[
- *    BRR = \frac{PCLKB}{64 \cdot B} - 1
+ * BRR = \frac{PCLKB}{64 \cdot B} - 1
  * @f]
  *
  * for the default CKS = 0, ABCSE = 0, BGDM = 0 path.
@@ -149,13 +149,13 @@ static uint8_t internal_brr(uint32_t pclk_hz, uint32_t baud)
  *
  * @details
  * Bit map (from HUM Ch 38.2 "SMR"):
- *   [1:0] CKS  -- clock source select (always PCLKB in this driver)
- *   [2]   MP   -- multi-processor (0 = disabled)
- *   [3]   STOP -- 0 = 1 stop bit, 1 = 2 stop bits
- *   [4]   PM   -- 0 = even, 1 = odd
- *   [5]   PE   -- 0 = no parity, 1 = parity
- *   [6]   CHR  -- 0 = 8-bit, 1 = 7-bit
- *   [7]   CM   -- 0 = async, 1 = clock-sync
+ * [1:0] CKS -- clock source select (always PCLKB in this driver)
+ * [2] MP -- multi-processor (0 = disabled)
+ * [3] STOP -- 0 = 1 stop bit, 1 = 2 stop bits
+ * [4] PM -- 0 = even, 1 = odd
+ * [5] PE -- 0 = no parity, 1 = parity
+ * [6] CHR -- 0 = 8-bit, 1 = 7-bit
+ * [7] CM -- 0 = async, 1 = clock-sync
  */
 static uint8_t internal_smr(const ra_sci_cfg_t* cfg)
 {
@@ -410,7 +410,7 @@ ra_err_t ra_sci_exit_stop(uint8_t channel)
   return ra_mstp_enable(s_mstp_table[channel]);
 }
 
-/* ---- DMA TX / RX (Wave 3.7b) ----------------------------------------- */
+/* ---- DMA TX / RX ----------------------------------------- */
 
 /**
  * @brief Build a DMA request descriptor for byte-stream to/from SCI TDR/RDR.
@@ -431,7 +431,7 @@ static ra_dma_request_t internal_make_dma_request(uintptr_t            src,
   req.src_inc          = src_inc;
   req.dst_inc          = dst_inc;
   /* HUM Ch 19 "Event Link Controller (ELC)" p 817 -- trigger routing is a
-   * Wave 7 task; until then use software-start and drive the first
+   * task; until then use software-start and drive the first
    * element from the polling path or rely on ra_sim_dma for host tests. */
   req.trigger     = (ra_elc_event_t)0;
   req.on_complete = on_complete;

@@ -6,31 +6,31 @@
  * [Ring 3 / HAL] {World: S}
  *
  * @details
- * Wave 5 driver for the RA8D2 OSPI block. Provides a minimal
+ * driver for the RA8D2 OSPI block. Provides a minimal
  * SPI NOR flash driver layered on top of the xSPI manual-command
  * engine (``CDCTL0`` + ``CDBUF[]`` + ``INTS.CMDCMP``).
  *
  * Supported operations:
  *
- *  - ``ra_xspi_init()`` -- select a protocol mode + clear pending IRQs.
- *  - ``ra_xspi_direct_command()`` -- raw CDBUF poke.
- *  - ``ra_xspi_flash_read()`` -- 0x03 read + CMDCMP poll.
- *  - ``ra_xspi_flash_program()`` -- 0x06 WREN, 0x02 PP, 0x05 WIP poll.
- *  - ``ra_xspi_flash_erase_sector()`` -- 0x06 WREN, 0x20 SE, 0x05 WIP poll.
- *  - ``ra_xspi_flash_read_status()`` -- 0x05.
- *  - ``ra_xspi_flash_read_id()`` -- 0x9F JEDEC ID.
- *  - ``ra_xspi_deinit / get_status / clear_status / attach_handler /
- *    enter_stop / exit_stop`` lifecycle + IRQ + power surface.
+ * - ``ra_xspi_init()`` -- select a protocol mode + clear pending IRQs.
+ * - ``ra_xspi_direct_command()`` -- raw CDBUF poke.
+ * - ``ra_xspi_flash_read()`` -- 0x03 read + CMDCMP poll.
+ * - ``ra_xspi_flash_program()`` -- 0x06 WREN, 0x02 PP, 0x05 WIP poll.
+ * - ``ra_xspi_flash_erase_sector()`` -- 0x06 WREN, 0x20 SE, 0x05 WIP poll.
+ * - ``ra_xspi_flash_read_status()`` -- 0x05.
+ * - ``ra_xspi_flash_read_id()`` -- 0x9F JEDEC ID.
+ * - ``ra_xspi_deinit / get_status / clear_status / attach_handler /
+ * enter_stop / exit_stop`` lifecycle + IRQ + power surface.
  *
  * ## CDBUF convention used by this driver
  *
  * Each ``CDBUF`` slot is 4 x 32-bit words wide. This driver writes
  * exclusively to slot 0 and encodes a manual transfer as:
  *
- *  - ``CDBUF[0]`` -- opcode byte in the low 8 bits.
- *  - ``CDBUF[1]`` -- flash address (3- or 4-byte).
- *  - ``CDBUF[2]`` -- write-data low word (bytes 0..3).
- *  - ``CDBUF[3]`` -- write-data high word (bytes 4..7).
+ * - ``CDBUF[0]`` -- opcode byte in the low 8 bits.
+ * - ``CDBUF[1]`` -- flash address (3- or 4-byte).
+ * - ``CDBUF[2]`` -- write-data low word (bytes 0..3).
+ * - ``CDBUF[3]`` -- write-data high word (bytes 4..7).
  *
  * Read responses (status, JEDEC ID, flash-read bytes) land in
  * ``CDBUF[2]`` / ``CDBUF[3]`` after the controller clears TRREQ.
@@ -65,7 +65,7 @@ static const char* s_tag = "XSPI";
  * @brief Byte-count limits on raw direct-command buffers.
  */
 typedef enum : uint8_t {
-  k_ra_xspi_cmd_max_bytes = 16U, /**< A CDBUF slot holds 16 bytes.            */
+  k_ra_xspi_cmd_max_bytes = 16U, /**< A CDBUF slot holds 16 bytes. */
 } ra_xspi_cmd_limits_t;
 
 /**
@@ -73,12 +73,12 @@ typedef enum : uint8_t {
  * @brief Standard JEDEC NOR-flash command opcodes used by this driver.
  */
 typedef enum : uint8_t {
-  k_ra_spi_flash_op_write_enable = 0x06U, /**< 0x06 WREN.             */
-  k_ra_spi_flash_op_page_program = 0x02U, /**< 0x02 page program.     */
-  k_ra_spi_flash_op_read_status  = 0x05U, /**< 0x05 read status reg.  */
-  k_ra_spi_flash_op_read_id      = 0x9FU, /**< 0x9F JEDEC ID read.    */
-  k_ra_spi_flash_op_read         = 0x03U, /**< 0x03 normal read.      */
-  k_ra_spi_flash_op_erase_sector = 0x20U, /**< 0x20 sector erase.     */
+  k_ra_spi_flash_op_write_enable = 0x06U, /**< 0x06 WREN. */
+  k_ra_spi_flash_op_page_program = 0x02U, /**< 0x02 page program. */
+  k_ra_spi_flash_op_read_status  = 0x05U, /**< 0x05 read status reg. */
+  k_ra_spi_flash_op_read_id      = 0x9FU, /**< 0x9F JEDEC ID read. */
+  k_ra_spi_flash_op_read         = 0x03U, /**< 0x03 normal read. */
+  k_ra_spi_flash_op_erase_sector = 0x20U, /**< 0x20 sector erase. */
 } ra_spi_flash_op_t;
 
 /**
@@ -86,8 +86,8 @@ typedef enum : uint8_t {
  * @brief Bit positions in the SPI flash Status Register.
  */
 typedef enum : uint8_t {
-  k_ra_flash_status_bit_wip = 0U, /**< Write-In-Progress (busy).    */
-  k_ra_flash_status_bit_wel = 1U, /**< Write Enable Latch.          */
+  k_ra_flash_status_bit_wip = 0U, /**< Write-In-Progress (busy). */
+  k_ra_flash_status_bit_wel = 1U, /**< Write Enable Latch. */
 } ra_flash_status_bit_t;
 
 /**
@@ -95,8 +95,8 @@ typedef enum : uint8_t {
  * @brief Bounded spin budgets for host + target builds.
  */
 typedef enum : uint32_t {
-  k_ra_xspi_cmd_spin            = 64U,      /**< CMDCMP poll budget.           */
-  k_ra_flash_program_timeout_us = 1000000U, /**< Max 1 s for a program op.     */
+  k_ra_xspi_cmd_spin            = 64U,      /**< CMDCMP poll budget. */
+  k_ra_flash_program_timeout_us = 1000000U, /**< Max 1 s for a program op. */
 } ra_xspi_timeouts_t;
 
 /**
@@ -109,10 +109,10 @@ typedef enum : uint32_t {
  * ``ra_xspi_flash_read_id()``. Tests assert on this exact value.
  */
 typedef enum : uint32_t {
-  k_ra_sim_jedec_manufacturer = 0xC2U,      /**< Macronix manufacturer ID.    */
-  k_ra_sim_jedec_memory_type  = 0x20U,      /**< MX25 family.                 */
-  k_ra_sim_jedec_capacity     = 0x1AU,      /**< 512 Mbit.                    */
-  k_ra_sim_jedec_id           = 0xC2201AUL, /**< Packed JEDEC ID word.        */
+  k_ra_sim_jedec_manufacturer = 0xC2U,      /**< Macronix manufacturer ID. */
+  k_ra_sim_jedec_memory_type  = 0x20U,      /**< MX25 family. */
+  k_ra_sim_jedec_capacity     = 0x1AU,      /**< 512 Mbit. */
+  k_ra_sim_jedec_id           = 0xC2201AUL, /**< Packed JEDEC ID word. */
 } ra_xspi_jedec_t;
 
 /**
@@ -120,8 +120,8 @@ typedef enum : uint32_t {
  * @brief Constants used by the RA_SIMULATOR_MODE fake-flash backing store.
  */
 typedef enum : uint32_t {
-  k_ra_xspi_fake_flash_erased = 0xFFU, /**< Erased-flash pattern.            */
-  k_ra_xspi_fake_flash_size   = 4096U, /**< Fake-flash backing size.         */
+  k_ra_xspi_fake_flash_erased = 0xFFU, /**< Erased-flash pattern. */
+  k_ra_xspi_fake_flash_size   = 4096U, /**< Fake-flash backing size. */
 } ra_xspi_fake_flash_vals_t;
 
 /**
@@ -129,10 +129,10 @@ typedef enum : uint32_t {
  * @brief Word indices into CDBUF slot 0 used by this driver.
  */
 typedef enum : uint8_t {
-  k_ra_xspi_cdbuf_idx_opcode = 0U, /**< CDBUF[0] holds the opcode byte.      */
-  k_ra_xspi_cdbuf_idx_addr   = 1U, /**< CDBUF[1] holds the flash address.    */
-  k_ra_xspi_cdbuf_idx_data0  = 2U, /**< CDBUF[2] holds data bytes 0..3.      */
-  k_ra_xspi_cdbuf_idx_data1  = 3U, /**< CDBUF[3] holds data bytes 4..7.      */
+  k_ra_xspi_cdbuf_idx_opcode = 0U, /**< CDBUF[0] holds the opcode byte. */
+  k_ra_xspi_cdbuf_idx_addr   = 1U, /**< CDBUF[1] holds the flash address. */
+  k_ra_xspi_cdbuf_idx_data0  = 2U, /**< CDBUF[2] holds data bytes 0..3. */
+  k_ra_xspi_cdbuf_idx_data1  = 3U, /**< CDBUF[3] holds data bytes 4..7. */
 } ra_xspi_cdbuf_idx_t;
 
 #ifdef RA_SIMULATOR_MODE
@@ -173,8 +173,8 @@ __attribute__((constructor)) static void internal_xspi_sim_init(void)
 /**
  * @var s_xspi_mstp_table
  * @brief Instance-index -> MSTP id lookup. OSPI0 and OSPI1 each
- *        have their own MSTPB bit (16/17) per HUM Ch 11.2.7 p 444.
- *        Each bit also covers the matching DOTF channel.
+ * have their own MSTPB bit (16/17) per HUM Ch 11.2.7 p 444.
+ * Each bit also covers the matching DOTF channel.
  */
 static const ra_mstp_t s_xspi_mstp_table[] = {
   k_ra_mstp_ospi0,
@@ -513,7 +513,7 @@ ra_err_t ra_xspi_flash_read_id(uint8_t instance, uint32_t* out_id)
 }
 
 /* =============================================================================
- * Wave 5.1 -- lifecycle + IRQ + power transition
+ * lifecycle + IRQ + power transition
  * =============================================================================
  */
 
@@ -522,8 +522,8 @@ ra_err_t ra_xspi_flash_read_id(uint8_t instance, uint32_t* out_id)
  * @brief Per-instance callback state.
  */
 typedef struct {
-  ra_xspi_event_fn_t fn;  /**< User-supplied completion callback.    */
-  void*              ctx; /**< Opaque context pointer for ``fn``.    */
+  ra_xspi_event_fn_t fn;  /**< User-supplied completion callback. */
+  void*              ctx; /**< Opaque context pointer for ``fn``. */
 } ra_xspi_state_t;
 
 /** @brief Per-instance callback state (s_ prefix for file-static). */

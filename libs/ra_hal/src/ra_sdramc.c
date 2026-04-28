@@ -6,7 +6,7 @@
  * [Ring 3 / HAL] {World: S}
  *
  * @details
- * Wave 5 driver for the RA8D2 SDRAM controller block (lives
+ * driver for the RA8D2 SDRAM controller block (lives
  * under the Buses chapter, HUM Ch 15). Programmes the timing,
  * mode, refresh, and address decode registers for the on-board
  * 64 MiB SDRAM at 0x68000000. Exposes init/deinit, runtime
@@ -30,7 +30,7 @@ static const char* s_tag = "SDRAM";
 
 typedef enum : uint16_t {
   k_ra_sdccr_default  = 0x0011U, /**< 16-bit data bus, CAS=2 -- HUM default. */
-  k_ra_sdrfcr_default = 0x002BU, /**< Refresh interval for 64 MiB part.      */
+  k_ra_sdrfcr_default = 0x002BU, /**< Refresh interval for 64 MiB part. */
 } ra_sdramc_defaults_t;
 
 typedef enum : uint32_t {
@@ -68,7 +68,7 @@ ra_err_t ra_sdramc_init(void)
 }
 
 /* =============================================================================
- * Wave 5.2 -- lifecycle + power
+ * lifecycle + power
  * =============================================================================
  */
 

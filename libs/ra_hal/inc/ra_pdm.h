@@ -6,20 +6,20 @@
  * [Ring 3 / HAL] {World: NS}
  *
  * @details
- * Wave 6.1 introduces a minimal PDM-IF driver scaffold covering
+ * introduces a minimal PDM-IF driver scaffold covering
  * the lifecycle + status + IRQ + power-transition surface. Full
  * PCM decimation / FIR filter / stereo capture land with the
  * first audio consumer.
  *
  * API surface:
  *
- *  - ``ra_pdm_init``                -- MSTP enable + clear regs
- *  - ``ra_pdm_deinit``              -- disable + MSTP release
- *  - ``ra_pdm_get_status``           -- PDM_STAT mask
- *  - ``ra_pdm_clear_status``         -- clear PDM_STAT bits
- *  - ``ra_pdm_attach_handler``       -- install IRQ callback
- *  - ``ra_pdm_enter_stop / exit_stop`` -- power transition
- *  - ``ra_pdm_dispatch``             -- ISR entry point
+ * - ``ra_pdm_init`` -- MSTP enable + clear regs
+ * - ``ra_pdm_deinit`` -- disable + MSTP release
+ * - ``ra_pdm_get_status`` -- PDM_STAT mask
+ * - ``ra_pdm_clear_status`` -- clear PDM_STAT bits
+ * - ``ra_pdm_attach_handler`` -- install IRQ callback
+ * - ``ra_pdm_enter_stop / exit_stop`` -- power transition
+ * - ``ra_pdm_dispatch`` -- ISR entry point
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

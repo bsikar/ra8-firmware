@@ -6,7 +6,7 @@
  * [Ring 3 / HAL] {World: NS}
  *
  * @details
- * Wave 6 driver for the RA8D2 COMA block. Shares the ESWM MSTP
+ * driver for the RA8D2 COMA block. Shares the ESWM MSTP
  * gate with the rest of the ethernet subsystem. Every register
  * access carries a HUM Ch 31 citation.
  *

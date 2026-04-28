@@ -6,21 +6,21 @@
  * [Ring 3 / HAL] {World: S}
  *
  * @details
- * Wave 1 substrate module that owns every write to the Cortex-M
+ * substrate module that owns every write to the Cortex-M
  * NVIC and every write to the RA8D2 ICU's IELSR registers. Drivers
  * that need an interrupt register an ``(event, handler)`` pair
  * with ``ra_isr_register()`` and the substrate:
  *
- *  1. Allocates a free IELSR slot from an internal pool.
- *  2. Stores the caller's handler + context in a dispatch table.
- *  3. Writes the event number into the IELSR slot so the ICU
- *     maps the event to the matching NVIC line.
- *  4. Sets the NVIC priority and enables the NVIC line.
+ * 1. Allocates a free IELSR slot from an internal pool.
+ * 2. Stores the caller's handler + context in a dispatch table.
+ * 3. Writes the event number into the IELSR slot so the ICU
+ * maps the event to the matching NVIC line.
+ * 4. Sets the NVIC priority and enables the NVIC line.
  *
- * At runtime, the Wave 1 vector-table entry for each IELSR slot
+ * At runtime, the vector-table entry for each IELSR slot
  * calls ``ra_isr_dispatch(slot)`` which looks up the stored
  * handler and invokes it with its stored context. This is the
- * mechanism every Wave 2+ driver uses for interrupt delivery.
+ * mechanism every + driver uses for interrupt delivery.
  *
  * ## Why centralise IELSR allocation?
  *
@@ -29,13 +29,13 @@
  * IELSR slots will collide. Putting one module in charge of the
  * free-list means:
  *
- *  - Driver code says only "I want an interrupt for SCI0 RXI" --
- *    it never picks an NVIC line number directly.
- *  - The sequencing (write IELSR, clear pending, enable NVIC) is
- *    in one place so the fencing and memory-barrier rules from
- *    HUM Ch 14 are centrally enforced.
- *  - Wave 9's NSC veneer surface is ``ra_isr_*``, not the 20+
- *    per-driver files that need interrupts.
+ * - Driver code says only "I want an interrupt for SCI0 RXI" --
+ * it never picks an NVIC line number directly.
+ * - The sequencing (write IELSR, clear pending, enable NVIC) is
+ * in one place so the fencing and memory-barrier rules from
+ * HUM Ch 14 are centrally enforced.
+ * - 's NSC veneer surface is ``ra_isr_*``, not the 20+
+ * per-driver files that need interrupts.
  *
  * ## ELC event numbers
  *
@@ -82,7 +82,7 @@ extern "C" {
  * @details
  * RA8D2 ICU exposes 112 IELSR slots (see
  * ``ra8d2_icu_regs.h::k_ra_icu_num_ielsr``). This module tracks the
- * full 112-slot table; the Wave 1.2 substrate handles allocation
+ * full 112-slot table; the substrate handles allocation
  * and the legacy ``ra_icu`` facade owns direct slot access for
  * pre-Wave-1 callers.
  */
@@ -100,8 +100,8 @@ typedef enum : uint16_t {
  * range is 0..15 (lower = higher priority).
  */
 typedef enum : uint8_t {
-  k_ra_isr_prio_max     = 15U, /**< Lowest priority.  */
-  k_ra_isr_prio_default = 8U,  /**< Middle priority.  */
+  k_ra_isr_prio_max     = 15U, /**< Lowest priority. */
+  k_ra_isr_prio_default = 8U,  /**< Middle priority. */
 } ra_isr_prio_t;
 
 /**
@@ -117,10 +117,10 @@ typedef enum : uint16_t {
  * @brief Driver-supplied callback invoked on interrupt entry.
  *
  * @param[in] ctx User-supplied context pointer recorded at
- *                registration time.
+ * registration time.
  *
  * @note Called from handler mode on the Cortex-M85. Must return
- *       quickly and must not take any ra_mstp / ra_pwr locks.
+ * quickly and must not take any ra_mstp / ra_pwr locks.
  */
 typedef void (*ra_isr_handler_t)(void* ctx);
 
@@ -138,7 +138,7 @@ typedef void (*ra_isr_handler_t)(void* ctx);
  * call every ``ra_isr_register`` starts from a clean table.
  *
  * @return ``ra_err_t`` error code.
- * @retval k_ra_ok                Table cleared.
+ * @retval k_ra_ok Table cleared.
  *
  * @pre Caller is in single-threaded init context.
  * @post IELSR0..IELSR95 all zero.
@@ -169,31 +169,31 @@ typedef void (*ra_isr_handler_t)(void* ctx);
  * interrupt will fire; the slot number is useful for unregistration
  * and for diagnostic dumps.
  *
- * @param[in]  event     ELC event number from ``ra_elc_event_t``.
- * @param[in]  handler   Callback invoked on interrupt entry.
- *                       Must not be NULL.
- * @param[in]  ctx       Caller-supplied context handed to the
- *                       handler on every invocation. May be NULL.
- * @param[in]  priority  NVIC priority 0..k_ra_isr_prio_max.
- * @param[out] out_slot  Slot number on success. May be NULL if
- *                       the caller does not need it.
+ * @param[in] event ELC event number from ``ra_elc_event_t``.
+ * @param[in] handler Callback invoked on interrupt entry.
+ * Must not be NULL.
+ * @param[in] ctx Caller-supplied context handed to the
+ * handler on every invocation. May be NULL.
+ * @param[in] priority NVIC priority 0..k_ra_isr_prio_max.
+ * @param[out] out_slot Slot number on success. May be NULL if
+ * the caller does not need it.
  *
  * @return ``ra_err_t`` error code.
- * @retval k_ra_ok               Slot allocated, IELSR written,
- *                                NVIC line enabled.
- * @retval k_ra_err_null_ptr     ``handler`` was NULL.
- * @retval k_ra_err_invalid_arg  ``priority`` out of range.
- * @retval k_ra_err_no_mem       No free IELSR slot.
- * @retval k_ra_err_exists       ``event`` is already mapped by a
- *                                previous registration.
+ * @retval k_ra_ok Slot allocated, IELSR written,
+ * NVIC line enabled.
+ * @retval k_ra_err_null_ptr ``handler`` was NULL.
+ * @retval k_ra_err_invalid_arg ``priority`` out of range.
+ * @retval k_ra_err_no_mem No free IELSR slot.
+ * @retval k_ra_err_exists ``event`` is already mapped by a
+ * previous registration.
  *
  * @pre IRQs masked or single-threaded init context.
  * @pre ``ra_isr_init()`` has been called.
  *
  * @post On success, a single NVIC line is enabled with the given
- *       priority and its IELSR entry matches ``event``.
+ * priority and its IELSR entry matches ``event``.
  * @post Subsequent firings of ``event`` invoke ``handler(ctx)``
- *       via the vector-table trampoline.
+ * via the vector-table trampoline.
  *
  * @note Thread safety: not thread-safe.
  * @see ra_isr_unregister
@@ -211,8 +211,8 @@ typedef void (*ra_isr_handler_t)(void* ctx);
  * @param[in] event ELC event number to tear down.
  *
  * @return ``ra_err_t`` error code.
- * @retval k_ra_ok                Slot released.
- * @retval k_ra_err_not_found     ``event`` was not registered.
+ * @retval k_ra_ok Slot released.
+ * @retval k_ra_err_not_found ``event`` was not registered.
  *
  * @pre IRQs masked or single-threaded init context.
  * @post NVIC line for the slot is disabled.
@@ -250,8 +250,8 @@ typedef void (*ra_isr_handler_t)(void* ctx);
  * @post Dispatch-table handler was invoked exactly once.
  *
  * @note Thread safety: re-entrant in the sense that the handler
- *       itself may enable nested interrupts; the dispatcher does
- *       not take any locks.
+ * itself may enable nested interrupts; the dispatcher does
+ * not take any locks.
  * @since 0.2.0
  */
 void ra_isr_dispatch(uint16_t slot);
@@ -264,12 +264,12 @@ void ra_isr_dispatch(uint16_t slot);
 /**
  * @brief Change the NVIC priority of a registered slot.
  *
- * @param[in] event    ELC event number that was previously registered.
+ * @param[in] event ELC event number that was previously registered.
  * @param[in] priority New priority 0..k_ra_isr_prio_max.
  * @return ``ra_err_t`` error code.
- * @retval k_ra_ok                Priority updated.
- * @retval k_ra_err_not_found     ``event`` not registered.
- * @retval k_ra_err_invalid_arg   ``priority`` out of range.
+ * @retval k_ra_ok Priority updated.
+ * @retval k_ra_err_not_found ``event`` not registered.
+ * @retval k_ra_err_invalid_arg ``priority`` out of range.
  *
  * @pre IRQs masked.
  * @post NVIC IPR byte for the slot reflects the new priority.
@@ -285,9 +285,9 @@ void ra_isr_dispatch(uint16_t slot);
  * state. Returns ``k_ra_isr_slot_none`` via ``*out_slot`` if the
  * event is not registered.
  *
- * @param[in]  event     ELC event number.
- * @param[out] out_slot  Slot number on success, or
- *                        ``k_ra_isr_slot_none`` if unregistered.
+ * @param[in] event ELC event number.
+ * @param[out] out_slot Slot number on success, or
+ * ``k_ra_isr_slot_none`` if unregistered.
  * @return ``k_ra_ok`` or ``k_ra_err_null_ptr``.
  *
  * @pre ``out_slot`` is non-NULL.

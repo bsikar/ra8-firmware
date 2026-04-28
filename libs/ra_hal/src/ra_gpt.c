@@ -28,9 +28,9 @@ static const char* s_tag = "GPT";
 /**
  * @var s_gpt_mstp_table
  * @brief Channel-index -> MSTP id lookup. GPT4..GPT9 share a single
- *        bit (MSTPE27); the other channels each have their own.
- *        Sized by ``k_ra_gpt_channel_count`` from ``ra8d2_gpt_regs.h``.
- *        HUM Ch 11.2.10 "MSTPCRE", p 449..450.
+ * bit (MSTPE27); the other channels each have their own.
+ * Sized by ``k_ra_gpt_channel_count`` from ``ra8d2_gpt_regs.h``.
+ * HUM Ch 11.2.10 "MSTPCRE", p 449..450.
  */
 static const ra_mstp_t s_gpt_mstp_table[k_ra_gpt_channel_count] = {
   k_ra_mstp_gpt0,
@@ -63,12 +63,12 @@ typedef enum : uint32_t {
  * @brief GTCR / GTSTR / GTSTP bit positions.
  */
 typedef enum : uint32_t {
-  k_ra_gpt_gtcr_cst_set    = 0x00000001UL, /**< GTCR.CST start.       */
-  k_ra_gpt_gtcr_md_shift   = 16U,          /**< GTCR.MD bit0.        */
-  k_ra_gpt_gtcr_tpcs_shift = 24U,          /**< GTCR.TPCS bit0.      */
-  k_ra_gpt_gtstr_start     = 0x00000001UL, /**< GTSTR.CSTRT0 write.  */
-  k_ra_gpt_gtstp_stop      = 0x00000001UL, /**< GTSTP.CSTOP0 write.  */
-  k_ra_gpt_gtst_mask       = 0x00000033UL, /**< OVF|UDF|CCRA|CCRB.   */
+  k_ra_gpt_gtcr_cst_set    = 0x00000001UL, /**< GTCR.CST start. */
+  k_ra_gpt_gtcr_md_shift   = 16U,          /**< GTCR.MD bit0. */
+  k_ra_gpt_gtcr_tpcs_shift = 24U,          /**< GTCR.TPCS bit0. */
+  k_ra_gpt_gtstr_start     = 0x00000001UL, /**< GTSTR.CSTRT0 write. */
+  k_ra_gpt_gtstp_stop      = 0x00000001UL, /**< GTSTP.CSTOP0 write. */
+  k_ra_gpt_gtst_mask       = 0x00000033UL, /**< OVF|UDF|CCRA|CCRB. */
 } ra_gpt_bits_t;
 
 /**
@@ -76,8 +76,8 @@ typedef enum : uint32_t {
  * @brief Per-channel runtime state (callback, configured flag).
  */
 typedef struct {
-  ra_gpt_event_fn_t fn;         /**< Registered callback.   */
-  void*             ctx;        /**< Callback context.      */
+  ra_gpt_event_fn_t fn;         /**< Registered callback. */
+  void*             ctx;        /**< Callback context. */
   bool              configured; /**< True after ra_gpt_init. */
 } ra_gpt_state_t;
 
@@ -134,7 +134,7 @@ ra_err_t ra_gpt_read(uint8_t channel, uint32_t* out)
 }
 
 /* =============================================================================
- * Wave 3.5 -- full build-out
+ * full build-out
  * =============================================================================
  */
 
@@ -265,7 +265,7 @@ ra_err_t ra_gpt_exit_stop(uint8_t channel)
   return ra_mstp_enable(s_gpt_mstp_table[channel]);
 }
 
-/* ---- DMA TX / RX (Wave 3.7b) ----------------------------------------- */
+/* ---- DMA TX / RX ----------------------------------------- */
 
 ra_err_t ra_gpt_write_dma(uint8_t              channel,
                           const uint32_t*      periods,

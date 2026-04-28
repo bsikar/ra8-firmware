@@ -6,7 +6,7 @@
  * [Ring 3 / HAL] {World: NS}
  *
  * @details
- * Wave 5 driver for the RA8D2 CANFD Lite block. Drives
+ * driver for the RA8D2 CANFD Lite block. Drives
  * ``CFDCNCTR.CHMDC`` through the documented state transitions
  * (reset -> halt -> operation), programmes the nominal (and
  * optional data) bit-timing registers, queues CAN 2.0B / CAN-FD
@@ -40,8 +40,8 @@ static const char* s_tag = "CANFD";
  */
 typedef enum : uint32_t {
   k_ra_canfd_spin         = 200000U, /**< Bounded poll budget in iterations. */
-  k_ra_canfd_tq_search_lo = 8U,      /**< Smallest time-quanta count tried.  */
-  k_ra_canfd_tq_search_hi = 25U,     /**< Largest time-quanta count tried.   */
+  k_ra_canfd_tq_search_lo = 8U,      /**< Smallest time-quanta count tried. */
+  k_ra_canfd_tq_search_hi = 25U,     /**< Largest time-quanta count tried. */
 } ra_canfd_internal_t;
 
 /**
@@ -49,8 +49,8 @@ typedef enum : uint32_t {
  * @brief Bit-shift values for extracting little-endian u32 bytes.
  */
 typedef enum : uint8_t {
-  k_ra_byte_shift_0 = 0U,  /**< Byte 0 is bits [7:0].   */
-  k_ra_byte_shift_1 = 8U,  /**< Byte 1 is bits [15:8].  */
+  k_ra_byte_shift_0 = 0U,  /**< Byte 0 is bits [7:0]. */
+  k_ra_byte_shift_1 = 8U,  /**< Byte 1 is bits [15:8]. */
   k_ra_byte_shift_2 = 16U, /**< Byte 2 is bits [23:16]. */
   k_ra_byte_shift_3 = 24U, /**< Byte 3 is bits [31:24]. */
 } ra_canfd_byte_shift_t;
@@ -71,7 +71,7 @@ static ra_err_t internal_wait_mode(volatile r_canfd_channel_regs_t* reg, uint8_t
 /**
  * @var s_canfd_mstp_table
  * @brief Channel-index -> MSTP id lookup. CANFD0/1 have separate
- *        MSTPC bits C27/C26 per HUM Ch 11.2.8 p 447.
+ * MSTPC bits C27/C26 per HUM Ch 11.2.8 p 447.
  */
 static const ra_mstp_t s_canfd_mstp_table[] = {
   k_ra_mstp_canfd0,
@@ -120,9 +120,9 @@ ra_err_t ra_canfd_deinit(uint8_t channel)
  */
 typedef struct {
   uint32_t prescaler; /**< Prescaler integer (pre-subtract-1). */
-  uint32_t tseg1;     /**< Phase segment 1 (pre-subtract-1).   */
-  uint32_t tseg2;     /**< Phase segment 2 (pre-subtract-1).   */
-  uint32_t sjw;       /**< Sync jump width (pre-subtract-1).   */
+  uint32_t tseg1;     /**< Phase segment 1 (pre-subtract-1). */
+  uint32_t tseg2;     /**< Phase segment 2 (pre-subtract-1). */
+  uint32_t sjw;       /**< Sync jump width (pre-subtract-1). */
 } ra_canfd_timing_t;
 
 /**
@@ -231,7 +231,7 @@ static ra_err_t internal_validate_frame(const ra_canfd_frame_t* frame)
 
 /**
  * @brief Copy the frame's data bytes into `CFDTMDF[0..15]` as little-endian
- *        u32 words. Unused words are zeroed.
+ * u32 words. Unused words are zeroed.
  */
 static void internal_write_tx_data(volatile r_canfd_channel_regs_t* reg,
                                    const ra_canfd_frame_t*          frame)
@@ -360,7 +360,7 @@ ra_err_t ra_canfd_get_error_state(uint8_t channel, uint8_t* tx_err, uint8_t* rx_
 }
 
 /* =============================================================================
- * Wave 5.3 -- status + IRQ + power transition
+ * status + IRQ + power transition
  * =============================================================================
  */
 

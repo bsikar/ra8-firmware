@@ -100,7 +100,7 @@ static void test_attach_hs(void)
   TEST_END("ra_usb_device_attach HS branch");
 }
 
-/* ---- Wave 6.2 -- lifecycle + status + IRQ + power ---- */
+/* ---- lifecycle + status + IRQ + power ---- */
 
 static uint32_t s_usb_cb_count;
 static uint16_t s_usb_cb_last_mask;
@@ -205,6 +205,6 @@ int32_t main(void)
   test_attach_and_dispatch();
   test_power_transition();
   test_hs_paths();
-  (void)fprintf(stderr, "[OK  ] test_ra_usb.c\n");
+  (void)fprintf(stderr, "[OK ] test_ra_usb.c\n");
   return 0;
 }

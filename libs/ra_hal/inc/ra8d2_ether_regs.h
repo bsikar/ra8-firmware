@@ -41,10 +41,10 @@ typedef enum : uintptr_t {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  volatile uint32_t ESWM_CTRL; /**< +0x00 Control.              */
-  volatile uint32_t ESWM_STS;  /**< +0x04 Status.               */
-  volatile uint32_t ESWM_IE;   /**< +0x08 Interrupt Enable.     */
-  volatile uint32_t ESWM_ICLR; /**< +0x0C Interrupt Clear.      */
+  volatile uint32_t ESWM_CTRL; /**< +0x00 Control. */
+  volatile uint32_t ESWM_STS;  /**< +0x04 Status. */
+  volatile uint32_t ESWM_IE;   /**< +0x08 Interrupt Enable. */
+  volatile uint32_t ESWM_ICLR; /**< +0x0C Interrupt Clear. */
 } r_eswm_regs_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 
@@ -67,10 +67,10 @@ static inline volatile r_eswm_regs_t* ra_eswm(void)
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  volatile uint32_t MFWD_CTRL; /**< +0x00 Forwarding Control.   */
-  volatile uint32_t MFWD_STS;  /**< +0x04 Status.               */
-  volatile uint32_t MFWD_IE;   /**< +0x08 Interrupt Enable.     */
-  volatile uint32_t MFWD_ICLR; /**< +0x0C Interrupt Clear.      */
+  volatile uint32_t MFWD_CTRL; /**< +0x00 Forwarding Control. */
+  volatile uint32_t MFWD_STS;  /**< +0x04 Status. */
+  volatile uint32_t MFWD_IE;   /**< +0x08 Interrupt Enable. */
+  volatile uint32_t MFWD_ICLR; /**< +0x0C Interrupt Clear. */
 } r_mfwd_regs_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 
@@ -92,9 +92,9 @@ static inline volatile r_mfwd_regs_t* ra_mfwd(void)
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   volatile uint32_t COMA_CTRL; /**< +0x00 Common Agent Control. */
-  volatile uint32_t COMA_STS;  /**< +0x04 Status.               */
-  volatile uint32_t COMA_IE;   /**< +0x08 Interrupt Enable.     */
-  volatile uint32_t COMA_ICLR; /**< +0x0C Interrupt Clear.      */
+  volatile uint32_t COMA_STS;  /**< +0x04 Status. */
+  volatile uint32_t COMA_IE;   /**< +0x08 Interrupt Enable. */
+  volatile uint32_t COMA_ICLR; /**< +0x0C Interrupt Clear. */
 } r_coma_regs_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 
@@ -114,15 +114,15 @@ static inline volatile r_coma_regs_t* ra_coma(void)
  * @details
  * GWCA is the bridge between MFWD/COMA and CPU memory; it owns
  * the per-channel descriptor rings the host uses for TX/RX
- * staging. The Wave 7+ NIC consumer programmes the descriptor
+ * staging. The + NIC consumer programmes the descriptor
  * rings; this scaffold just covers the lifecycle + IRQ surface.
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  volatile uint32_t GWCA_CTRL; /**< +0x00 CPU Agent Control.    */
-  volatile uint32_t GWCA_STS;  /**< +0x04 Status.               */
-  volatile uint32_t GWCA_IE;   /**< +0x08 Interrupt Enable.     */
-  volatile uint32_t GWCA_ICLR; /**< +0x0C Interrupt Clear.      */
+  volatile uint32_t GWCA_CTRL; /**< +0x00 CPU Agent Control. */
+  volatile uint32_t GWCA_STS;  /**< +0x04 Status. */
+  volatile uint32_t GWCA_IE;   /**< +0x08 Interrupt Enable. */
+  volatile uint32_t GWCA_ICLR; /**< +0x0C Interrupt Clear. */
 } r_gwca_regs_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 
@@ -145,10 +145,10 @@ static inline volatile r_gwca_regs_t* ra_gwca(void)
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  volatile uint32_t GPTP_CTRL; /**< +0x00 PTP Timer Control.    */
-  volatile uint32_t GPTP_STS;  /**< +0x04 Status.               */
-  volatile uint32_t GPTP_IE;   /**< +0x08 Interrupt Enable.     */
-  volatile uint32_t GPTP_ICLR; /**< +0x0C Interrupt Clear.      */
+  volatile uint32_t GPTP_CTRL; /**< +0x00 PTP Timer Control. */
+  volatile uint32_t GPTP_STS;  /**< +0x04 Status. */
+  volatile uint32_t GPTP_IE;   /**< +0x08 Interrupt Enable. */
+  volatile uint32_t GPTP_ICLR; /**< +0x0C Interrupt Clear. */
 } r_gptp_regs_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 

@@ -6,7 +6,7 @@
  * [Ring 3 / HAL] {World: NS}
  *
  * @details
- * Wave 6 driver for the RA8D2 GWCA block. Every register access
+ * driver for the RA8D2 GWCA block. Every register access
  * carries a HUM Ch 34 citation.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie

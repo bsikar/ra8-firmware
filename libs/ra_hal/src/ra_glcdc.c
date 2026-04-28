@@ -6,7 +6,7 @@
  * [Ring 3 / HAL] {World: NS}
  *
  * @details
- * Wave 6 driver for the RA8D2 GLCDC block. Programmes the
+ * driver for the RA8D2 GLCDC block. Programmes the
  * background stage, graphics layer 1, and panel clock against
  * the EK-RA8D2 1024x600 parallel TFT timings. Exposes lifecycle,
  * runtime start/stop, status get/clear, IRQ dispatch, and power
@@ -75,7 +75,7 @@ ra_err_t ra_glcdc_start(bool enable)
 }
 
 /* =============================================================================
- * Wave 6.1 -- lifecycle + IRQ + power transition
+ * lifecycle + IRQ + power transition
  * =============================================================================
  */
 

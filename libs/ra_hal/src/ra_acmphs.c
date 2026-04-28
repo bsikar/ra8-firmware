@@ -6,7 +6,7 @@
  * [Ring 3 / HAL] {World: NS}
  *
  * @details
- * Wave 4 driver for the RA8D2 ACMPHS block (6 channels total;
+ * driver for the RA8D2 ACMPHS block (6 channels total;
  * channels 0..3 have dedicated MSTPD bits, 4..5 share with
  * ACMPHS0). Exposes per-channel init/deinit/enable, output read,
  * input selection, status get/clear, async dispatch, and power
@@ -61,7 +61,7 @@ static const ra_mstp_t s_acmphs_mstp_table[k_ra_acmphs_mstp_id_count] = {
  * @brief Reset one ACMPHS channel's control + selector registers.
  *
  * @param[in] ch Channel index already validated against
- *               ``k_ra_acmphs_channel_count``.
+ * ``k_ra_acmphs_channel_count``.
  * @return ``k_ra_ok`` or the first error from ra_mstp / NULL mapping.
  */
 static ra_err_t internal_reset_channel(uint8_t ch)
@@ -125,7 +125,7 @@ static ra_err_t internal_reset_channel(uint8_t ch)
 }
 
 /* =============================================================================
- * Wave 4.2 -- full build-out
+ * full build-out
  * =============================================================================
  */
 
@@ -134,8 +134,8 @@ static ra_err_t internal_reset_channel(uint8_t ch)
  * @brief CMPCTL field shifts (match FSP R_ACMPHS0_CMPCTL_b).
  */
 typedef enum : uint8_t {
-  k_ra_acmphs_ceg_shift          = 3U, /**< CMPCTL.CEG[1:0] at [4:3].   */
-  k_ra_acmphs_cdfs_shift         = 5U, /**< CMPCTL.CDFS[1:0] at [6:5].  */
+  k_ra_acmphs_ceg_shift          = 3U, /**< CMPCTL.CEG[1:0] at [4:3]. */
+  k_ra_acmphs_cdfs_shift         = 5U, /**< CMPCTL.CDFS[1:0] at [6:5]. */
   k_ra_acmphs_cdfs_enabled_value = 1U, /**< "Any sampling clock" when filter on. */
   k_ra_acmphs_ctl_mask           = (uint8_t)k_ra_acmphs_mask_hcen | (uint8_t)k_ra_acmphs_mask_ceg |
                                    (uint8_t)k_ra_acmphs_mask_cinv | (uint8_t)k_ra_acmphs_mask_coe |

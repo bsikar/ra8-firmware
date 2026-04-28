@@ -6,18 +6,18 @@
  * [Ring 3 / HAL] {World: S}
  *
  * @details
- * Wave 1 substrate. See ``ra_pwr.h`` for the API contract.
- * Implementation depth on Wave 1.1 is intentionally minimal:
+ * substrate. See ``ra_pwr.h`` for the API contract.
+ * Implementation depth on is intentionally minimal:
  *
- *  - Module request / release forward straight to ra_mstp.
- *  - Wake-source toggling reads / modifies / writes WUPEN0 or
- *    WUPEN1 directly. The full WUPEN field map will be added in
- *    Wave 4 (RTC, ULPT, AGT bring-up).
- *  - ``ra_pwr_enter_sleep()`` issues a single WFI on the target
- *    and is a no-op in ``RA_SIMULATOR_MODE``.
- *  - ``ra_pwr_enter_software_standby()`` validates that at least
- *    one wake source is armed, then sets LPMD and SLEEPDEEP and
- *    issues WFI. The WFI is host-no-op so unit tests do not stall.
+ * - Module request / release forward straight to ra_mstp.
+ * - Wake-source toggling reads / modifies / writes WUPEN0 or
+ * WUPEN1 directly. The full WUPEN field map will be added in
+ * (RTC, ULPT, AGT bring-up).
+ * - ``ra_pwr_enter_sleep()`` issues a single WFI on the target
+ * and is a no-op in ``RA_SIMULATOR_MODE``.
+ * - ``ra_pwr_enter_software_standby()`` validates that at least
+ * one wake source is armed, then sets LPMD and SLEEPDEEP and
+ * issues WFI. The WFI is host-no-op so unit tests do not stall.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -48,8 +48,8 @@ static const char* s_tag = "PWR";
  * @brief WUPEN address-decode bounds.
  */
 typedef enum : uint8_t {
-  k_ra_pwr_wupen_count = 2U,  /**< WUPEN0 + WUPEN1.        */
-  k_ra_pwr_wupen_bits  = 32U, /**< 32 bits per register.  */
+  k_ra_pwr_wupen_count = 2U,  /**< WUPEN0 + WUPEN1. */
+  k_ra_pwr_wupen_bits  = 32U, /**< 32 bits per register. */
 } ra_pwr_dim_t;
 
 /* =============================================================================
@@ -76,9 +76,9 @@ static volatile uint32_t* internal_wupen_ptr(uint8_t reg)
 /**
  * @brief Decode and validate a packed wake source.
  *
- * @param[in]  source   Packed identifier.
- * @param[out] out_reg  Register index 0 or 1.
- * @param[out] out_bit  Bit position 0..31.
+ * @param[in] source Packed identifier.
+ * @param[out] out_reg Register index 0 or 1.
+ * @param[out] out_bit Bit position 0..31.
  * @return ``true`` on valid decode.
  */
 static bool internal_decode_wake(ra_pwr_wake_t source, uint8_t* out_reg, uint8_t* out_bit)
@@ -206,7 +206,7 @@ ra_err_t ra_pwr_enter_software_standby(void)
   }
 
   /* The full LPMD + SLEEPDEEP + SBYCR sequence is implemented in
-   * Wave 4 along with the RTC alarm bring-up. For Wave 1.1 the
+   * along with the RTC alarm bring-up. For the
    * helper just issues WFI; the chip stays in normal sleep until
    * the wake source fires. This keeps the host build a no-op and
    * lets driver code that calls this function compile and link

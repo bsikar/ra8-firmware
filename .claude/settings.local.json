@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(printf '\\\\n# Uncommitted continuation plan - see docs/WAVE_CONTINUATION_PLAN.md\\\\ndocs/WAVE_CONTINUATION_PLAN.md\\\\n')",
+      "Bash(git check-ignore:*)"
+    ]
+  }
+}

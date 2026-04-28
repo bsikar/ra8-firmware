@@ -6,7 +6,7 @@
  * [Ring 3 / HAL] {World: NS}
  *
  * @details
- * Wave 6 driver for the RA8D2 USB peripherals. Both speeds
+ * driver for the RA8D2 USB peripherals. Both speeds
  * (USBFS at 0x40250000, USBHS at 0x40351000) share the same
  * SYSCFG / INTSTS0 / INTENB0 / INTENB1 / DCPCFG / DCPMAXP /
  * DCPCTR register layout, so the driver multiplexes them via a
@@ -100,7 +100,7 @@ ra_err_t ra_usb_device_attach(ra_usb_speed_t speed, bool attached)
 }
 
 /* =============================================================================
- * Wave 6.2 -- lifecycle + status + IRQ + power
+ * lifecycle + status + IRQ + power
  * =============================================================================
  */
 

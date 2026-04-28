@@ -6,7 +6,7 @@
  * [Ring 6 / APP] {World: NS}
  *
  * @details
- * Wave 9.2 host mock. Real Cortex-M85 hardware enforces the
+ * host mock. Real Cortex-M85 hardware enforces the
  * Secure / Non-Secure split via the SAU; the host test build
  * has no such partition. ``ra_sim_world`` lets a test pretend
  * the partition exists by tagging address ranges as Secure or
@@ -70,8 +70,8 @@ void ra_sim_world_reset(void);
  * @param[in] len Region length in bytes.
  *
  * @return ``ra_err_t`` error code.
- * @retval k_ra_ok                Region tagged.
- * @retval k_ra_err_no_mem        Region table full.
+ * @retval k_ra_ok Region tagged.
+ * @retval k_ra_err_no_mem Region table full.
  *
  * @pre Test is running under host build.
  * @post Subsequent ``check_ns_range`` queries see the region.
@@ -88,8 +88,8 @@ void ra_sim_world_reset(void);
  * @param[in] len Region length in bytes.
  *
  * @return ``ra_err_t`` error code.
- * @retval k_ra_ok                Region tagged.
- * @retval k_ra_err_no_mem        Region table full.
+ * @retval k_ra_ok Region tagged.
+ * @retval k_ra_err_no_mem Region table full.
  *
  * @note Test-only.
  * @since 0.3.0
@@ -102,10 +102,10 @@ void ra_sim_world_reset(void);
  * @param[in] ptr Address to check.
  * @param[in] len Range length.
  * @return ``true`` if every byte is in an NS-tagged region,
- *         ``false`` otherwise (Secure overlap or untagged).
+ * ``false`` otherwise (Secure overlap or untagged).
  *
  * @note This is the host equivalent of
- *       ``cmse_check_address_range(ptr, len, CMSE_NONSECURE)``.
+ * ``cmse_check_address_range(ptr, len, CMSE_NONSECURE)``.
  * @since 0.3.0
  */
 [[nodiscard]] bool ra_sim_world_check_ns_range(const void* ptr, uint32_t len);

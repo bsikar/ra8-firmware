@@ -1,0 +1,747 @@
+/**
+ * @file ra_dotf.c
+ * @brief Decryption On The Fly (DOTF) HAL driver implementation
+ *
+ * @par Tag
+ * [Ring 3 / HAL] {World: S}
+ *
+ * @details
+ * Full HUM Ch 45 (p 3048..3050) coverage of the RA8D2 DOTF block.
+ * Layered on top of the OSPI MSTP gating; every register access
+ * carries a HUM Ch 45 citation. See ``ra_dotf.h`` for the public
+ * surface.
+ *
+ * Driver-side state:
+ *
+ *  - per-channel staging table of up to ``k_ra_dotf_max_regions``
+ *    region descriptors (multi-region support);
+ *  - per-channel cache of the active region id (or "none");
+ *  - per-channel REG00 cache (key size, SCA level, enable bit) so
+ *    that ``ra_dotf_set_sca_level`` / ``ra_dotf_set_key_size`` can
+ *    update the live AES core in a single REG00 write;
+ *  - per-channel bound key handle (RSIP-key-injection wiring);
+ *  - per-channel IV cache so ``ra_dotf_rotate_key`` can re-stage the
+ *    same IV without forcing the caller to remember it;
+ *  - shared callback slot for IRQ glue.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
+ */
+
+#include "ra_dotf.h"
+
+#include <stdint.h>
+
+#include "ra8d2_dotf_regs.h"
+#include "ra_check.h"
+#include "ra_err.h"
+#include "ra_log.h"
+#include "ra_mstp.h"
+
+/**
+ * @enum ra_dotf_misc_t
+ * @brief Internal small constants (no magic numbers).
+ */
+typedef enum : uint8_t {
+  k_ra_dotf_no_region      = 0xFFU, /**< Sentinel for "no region active". */
+  k_ra_dotf_self_test_spin = 8U,    /**< Bounded poll budget for self-test bit. */
+} ra_dotf_misc_t;
+
+/**
+ * @enum ra_dotf_key_word_count_t
+ * @brief Wrapped-key word counts per AES key size.
+ *
+ * @details
+ * The wrapped-key payload bytes are a vendor-defined RSIP envelope;
+ * the FSP reference uses ``HW_SCE_AES{128,192,256}_KEY_INDEX_WORD_SIZE``
+ * for the ratio. RA8D2 uses 4-word / 6-word / 8-word envelopes for
+ * the 128 / 192 / 256-bit keys respectively when staged through the
+ * ``OutputKeyForDotf`` paths (``r_ospi_b.c:1756``).
+ */
+typedef enum : uint8_t {
+  k_ra_dotf_key_words_128 = 4U,
+  k_ra_dotf_key_words_192 = 6U,
+  k_ra_dotf_key_words_256 = 8U,
+} ra_dotf_key_word_count_t;
+
+/**
+ * @struct ra_dotf_chan_state_t
+ * @brief Per-channel software state.
+ */
+typedef struct {
+  ra_dotf_region_t     regions[k_ra_dotf_max_regions];
+  uint8_t              region_valid[k_ra_dotf_max_regions]; /**< 1 if slot armed. */
+  uint8_t              active_region_id; /**< or k_ra_dotf_no_region.            */
+  ra_dotf_key_handle_t key;
+  uint32_t             iv_cache[k_ra_dotf_iv_word_count];
+  uint8_t              iv_valid;
+  ra_dotf_key_size_t   cached_key_size;
+  ra_dotf_sca_level_t  cached_sca;
+  uint8_t              enabled;
+} ra_dotf_chan_state_t;
+
+/**
+ * @var s_tag
+ * @brief Logging tag for ra_log_* calls.
+ */
+static const char* s_tag = "DOTF";
+
+/**
+ * @var s_dotf_fn
+ * @brief Active fault / event callback. ``nullptr`` means "no callback".
+ *
+ * @warning Do not modify directly; use ``ra_dotf_attach_handler``.
+ */
+static ra_dotf_event_fn_t s_dotf_fn;
+
+/**
+ * @var s_dotf_ctx
+ * @brief Caller-supplied context handed to ``s_dotf_fn``.
+ */
+static void* s_dotf_ctx;
+
+/**
+ * @var s_dotf_state
+ * @brief Per-channel state table.
+ */
+static ra_dotf_chan_state_t s_dotf_state[k_ra_dotf_channel_count];
+
+/**
+ * @var s_dotf_mstp_table
+ * @brief Channel-index -> MSTP id lookup.
+ *
+ * @details
+ * DOTF0 + XSPI0 share ``MSTPB16``; DOTF1 + XSPI1 share ``MSTPB17``
+ * (HUM Ch 11.2.7 MSTPCRB description references both peripherals).
+ * The MSTP wrapper enums in ``ra8d2_mstp_regs.h`` already encode this
+ * as ``k_ra_mstp_ospi0`` / ``k_ra_mstp_ospi1`` -- the comments call
+ * them out as "OSPI0+DOTF0" / "OSPI1+DOTF1" so we just reuse them
+ * here rather than minting DOTF-specific aliases.
+ */
+static const ra_mstp_t s_dotf_mstp_table[k_ra_dotf_channel_count] = {
+  k_ra_mstp_ospi0,
+  k_ra_mstp_ospi1,
+};
+
+/* =============================================================================
+ * Internal helpers
+ * =============================================================================
+ */
+
+/**
+ * @brief Bound-check a channel index.
+ *
+ * @param[in] channel Caller-provided channel value.
+ * @return ``true`` if ``channel`` is in [0, k_ra_dotf_channel_count).
+ */
+static inline bool internal_channel_in_range(uint8_t channel)
+{
+  return ((uint16_t)channel < (uint16_t)k_ra_dotf_channel_count);
+}
+
+/**
+ * @brief XSPI window low bound for a given DOTF channel.
+ */
+static inline uint32_t internal_window_lo(uint8_t channel)
+{
+  return (channel == 0U) ? (uint32_t)k_ra_dotf0_window_lo : (uint32_t)k_ra_dotf1_window_lo;
+}
+
+/**
+ * @brief XSPI window high bound for a given DOTF channel.
+ */
+static inline uint32_t internal_window_hi(uint8_t channel)
+{
+  return (channel == 0U) ? (uint32_t)k_ra_dotf0_window_hi : (uint32_t)k_ra_dotf1_window_hi;
+}
+
+/**
+ * @brief Word count for a given AES key size.
+ */
+static inline uint8_t internal_key_words(ra_dotf_key_size_t size)
+{
+  if (size == k_ra_dotf_key_size_192) {
+    return (uint8_t)k_ra_dotf_key_words_192;
+  }
+  if (size == k_ra_dotf_key_size_256) {
+    return (uint8_t)k_ra_dotf_key_words_256;
+  }
+  return (uint8_t)k_ra_dotf_key_words_128;
+}
+
+/**
+ * @brief Map an SCA level enum into REG00 SCA bits.
+ */
+static inline uint32_t internal_sca_bits(ra_dotf_sca_level_t level)
+{
+  if (level == k_ra_dotf_sca_max) {
+    return (uint32_t)k_ra_dotf_reg00_sca_en | (uint32_t)k_ra_dotf_reg00_sca_mode;
+  }
+  if (level == k_ra_dotf_sca_standard) {
+    return (uint32_t)k_ra_dotf_reg00_sca_en;
+  }
+  return 0U;
+}
+
+/**
+ * @brief Big-endian byte-swap of a 32-bit word.
+ *
+ * @details
+ * REG03 is a big-endian FIFO per the FSP reference (``r_ospi_b.c``
+ * uses ``bswap_32big`` / ``change_endian_long``). The host build
+ * runs little-endian and the target Cortex-M85 also runs little-
+ * endian, so an explicit byte-swap is required either way.
+ */
+static inline uint32_t internal_bswap32(uint32_t v)
+{
+  return ((v & 0x000000FFUL) << 24) | ((v & 0x0000FF00UL) << 8) | ((v & 0x00FF0000UL) >> 8) |
+         ((v & 0xFF000000UL) >> 24);
+}
+
+/**
+ * @brief Validate region range / alignment / window.
+ */
+static ra_err_t internal_validate_region(uint8_t channel, const ra_dotf_region_t* region)
+{
+  if ((region->start_addr & (uint32_t)k_ra_dotf_addr_low_mask) != 0U) {
+    return k_ra_err_invalid_arg;
+  }
+  if ((region->end_addr & (uint32_t)k_ra_dotf_addr_low_mask) != 0U) {
+    return k_ra_err_invalid_arg;
+  }
+  if (region->start_addr > region->end_addr) {
+    /* HUM Ch 45.3.1 p 3049: "Setting CONVAREAST[31:12] >
+     * CONVAREAED[31:12] is prohibited." */
+    return k_ra_err_invalid_arg;
+  }
+  if (region->region_id >= (uint8_t)k_ra_dotf_max_regions) {
+    return k_ra_err_invalid_arg;
+  }
+  const uint32_t lo = internal_window_lo(channel);
+  const uint32_t hi = internal_window_hi(channel);
+  if ((region->start_addr < lo) || (region->end_addr > hi)) {
+    /* HUM Ch 45.3 p 3049 ("Image of decryption area setting"):
+     * conversion area must lie inside the matching XSPI window. */
+    return k_ra_err_invalid_arg;
+  }
+  return k_ra_ok;
+}
+
+/**
+ * @brief Reject a region that overlaps the live region of the OTHER channel.
+ */
+static ra_err_t internal_check_overlap(uint8_t channel, const ra_dotf_region_t* region)
+{
+  for (uint8_t other = 0U; other < (uint8_t)k_ra_dotf_channel_count; ++other) {
+    if (other == channel) {
+      continue;
+    }
+    const ra_dotf_chan_state_t* st = &s_dotf_state[other];
+    if (st->active_region_id == (uint8_t)k_ra_dotf_no_region) {
+      continue;
+    }
+    const ra_dotf_region_t* live = &st->regions[st->active_region_id];
+    /* Ranges overlap if: start_a <= end_b && start_b <= end_a. */
+    if ((region->start_addr <= live->end_addr) && (live->start_addr <= region->end_addr)) {
+      return k_ra_err_conflict;
+    }
+  }
+  return k_ra_ok;
+}
+
+/**
+ * @brief Assemble the REG00 word for the channel's cached state.
+ */
+static uint32_t internal_assemble_reg00(const ra_dotf_chan_state_t* st, bool enable)
+{
+  uint32_t v = (uint32_t)k_ra_dotf_reg00_mode_ctr; /* HUM 45.1 mode = CTR. */
+  v |= (uint32_t)st->cached_key_size;              /* Key size bits.       */
+  v |= internal_sca_bits(st->cached_sca);          /* SCA bits.            */
+  if (enable) {
+    v |= (uint32_t)k_ra_dotf_reg00_aes_enable;
+  }
+  return v;
+}
+
+/**
+ * @brief Stage a wrapped-key payload into REG03.
+ */
+static void internal_stage_key(volatile ra_dotf_regs_t* reg, const ra_dotf_key_handle_t* h)
+{
+  const uint8_t words = internal_key_words(h->size);
+  for (uint8_t i = 0U; i < words; ++i) {
+    /* HUM Ch 45.3 "Register Descriptions" p 3049: REG03 is the AES
+     * IV staging window; the FSP reference re-uses it for wrapped-key
+     * delivery via the OutputKeyForDotf adaptor. Big-endian per
+     * ``r_ospi_b.c:1654``. */
+    reg->REG03 = internal_bswap32(h->words[i]);
+  }
+}
+
+/**
+ * @brief Stage 4 IV words into REG03 in big-endian order.
+ */
+static void internal_stage_iv(volatile ra_dotf_regs_t* reg, const uint32_t* iv)
+{
+  for (uint8_t i = 0U; i < (uint8_t)k_ra_dotf_iv_word_count; ++i) {
+    /* HUM Ch 45.1 p 3048 -- counter = {IV[127:28], Address[31:4]}.
+     * REG03 is the AES IV staging window per HUM Ch 45.3 "Register
+     * Descriptions" p 3049. */
+    reg->REG03 = internal_bswap32(iv[i]);
+  }
+}
+
+/**
+ * @brief Reset one channel's hardware to power-on state.
+ */
+static inline void internal_channel_reset(volatile ra_dotf_regs_t* reg)
+{
+  /* HUM Ch 45.3.1 "CONVAREAST : DOTF Conversion Area Start Address Register" p 3049 */
+  reg->CONVAREAST = 0U;
+  /* HUM Ch 45.3.2 "CONVAREAD : DOTF Conversion Area End Address Register" p 3049 */
+  reg->CONVAREAD = 0U;
+  /* REG00 holds the AES core enable + mode select.
+   * HUM Ch 45.3 "Register Descriptions" p 3049 */
+  reg->REG00 = (uint32_t)k_ra_dotf_reg00_disable_value;
+}
+
+/**
+ * @brief Wipe all software state for one channel.
+ */
+static void internal_state_reset(uint8_t channel)
+{
+  ra_dotf_chan_state_t* st = &s_dotf_state[channel];
+  for (uint8_t i = 0U; i < (uint8_t)k_ra_dotf_max_regions; ++i) {
+    st->region_valid[i]       = 0U;
+    st->regions[i].start_addr = 0U;
+    st->regions[i].end_addr   = 0U;
+    st->regions[i].key_index  = 0U;
+    st->regions[i].region_id  = 0U;
+  }
+  st->active_region_id = (uint8_t)k_ra_dotf_no_region;
+  st->key.size         = k_ra_dotf_key_size_128;
+  st->key.key_index    = 0U;
+  st->key.valid        = 0U;
+  for (uint8_t i = 0U; i < 8U; ++i) {
+    st->key.words[i] = 0U;
+  }
+  for (uint8_t i = 0U; i < (uint8_t)k_ra_dotf_iv_word_count; ++i) {
+    st->iv_cache[i] = 0U;
+  }
+  st->iv_valid        = 0U;
+  st->cached_key_size = k_ra_dotf_key_size_128;
+  st->cached_sca      = k_ra_dotf_sca_standard;
+  st->enabled         = 0U;
+}
+
+/* =============================================================================
+ * Lifecycle
+ * =============================================================================
+ */
+
+[[nodiscard]] ra_err_t ra_dotf_init(void)
+{
+  for (uint8_t ch = 0U; ch < (uint8_t)k_ra_dotf_channel_count; ++ch) {
+    /* DOTF clock gating: shared MSTPB16/17 with the matching XSPI.
+     * HUM Ch 45.6.1 "Module-stop Function" p 3050 */
+    const ra_err_t mst_err = ra_mstp_enable(s_dotf_mstp_table[ch]);
+    RA_RETURN_ON_ERROR(mst_err, s_tag, "dotf_init: mstp enable failed");
+
+    volatile ra_dotf_regs_t* reg = ra_dotf_regs(ch);
+    if (reg == nullptr) {             /* GCOVR_EXCL_BR_LINE -- ch already bounded */
+      return k_ra_err_hw_init_failed; /* GCOVR_EXCL_LINE                          */
+    }
+    internal_channel_reset(reg);
+    internal_state_reset(ch);
+  }
+  s_dotf_fn  = nullptr;
+  s_dotf_ctx = nullptr;
+  ra_log_info(s_tag, "dotf_init");
+  return k_ra_ok;
+}
+
+[[nodiscard]] ra_err_t ra_dotf_deinit(void)
+{
+  for (uint8_t ch = 0U; ch < (uint8_t)k_ra_dotf_channel_count; ++ch) {
+    volatile ra_dotf_regs_t* reg = ra_dotf_regs(ch);
+    if (reg != nullptr) {
+      /* Force bypass on teardown.
+       * HUM Ch 45.3 "Register Descriptions" p 3049 */
+      reg->REG00 = (uint32_t)k_ra_dotf_reg00_disable_value;
+    }
+    internal_state_reset(ch);
+    /* Gate the shared OSPI/DOTF clock.
+     * HUM Ch 45.6.1 "Module-stop Function" p 3050 */
+    (void)ra_mstp_disable(s_dotf_mstp_table[ch]);
+  }
+  s_dotf_fn  = nullptr;
+  s_dotf_ctx = nullptr;
+  return k_ra_ok;
+}
+
+/* =============================================================================
+ * Region staging
+ * =============================================================================
+ */
+
+[[nodiscard]] ra_err_t ra_dotf_set_region(uint8_t channel, const ra_dotf_region_t* region)
+{
+  RA_CHECK_NULL_PTR((void*)region, s_tag, "region must not be nullptr");
+  if (!internal_channel_in_range(channel)) {
+    return k_ra_err_invalid_arg;
+  }
+  const ra_err_t verr = internal_validate_region(channel, region);
+  if (verr != k_ra_ok) {
+    return verr;
+  }
+  const ra_err_t cerr = internal_check_overlap(channel, region);
+  if (cerr != k_ra_ok) {
+    ra_log_warn_val(s_tag, "set_region overlaps other channel", (uint32_t)channel);
+    return cerr;
+  }
+  ra_dotf_chan_state_t* st            = &s_dotf_state[channel];
+  st->regions[region->region_id]      = *region;
+  st->region_valid[region->region_id] = 1U;
+  ra_log_info_val(s_tag, "set_region staged channel", (uint32_t)channel);
+  return k_ra_ok;
+}
+
+[[nodiscard]] ra_err_t ra_dotf_select_region(uint8_t channel, uint8_t region_id)
+{
+  if (!internal_channel_in_range(channel)) {
+    return k_ra_err_invalid_arg;
+  }
+  if (region_id >= (uint8_t)k_ra_dotf_max_regions) {
+    return k_ra_err_invalid_arg;
+  }
+  ra_dotf_chan_state_t* st = &s_dotf_state[channel];
+  if (st->region_valid[region_id] == 0U) {
+    return k_ra_err_invalid_state;
+  }
+  volatile ra_dotf_regs_t* reg = ra_dotf_regs(channel);
+  RA_CHECK_NULL_PTR((void*)reg, s_tag, "channel mapping failed");
+
+  const ra_dotf_region_t* r = &st->regions[region_id];
+  /* FSP r_ospi_b.c:1660 "Set the end and start area for DOTF
+   * conversion in that order to ensure that end address is always
+   * higher than start address."
+   * HUM Ch 45.3.2 "CONVAREAD : DOTF Conversion Area End Address Register" p 3049 */
+  reg->CONVAREAD = r->end_addr & (uint32_t)k_ra_dotf_addr_mask;
+  /* HUM Ch 45.3.1 "CONVAREAST : DOTF Conversion Area Start Address Register" p 3049 */
+  reg->CONVAREAST      = r->start_addr & (uint32_t)k_ra_dotf_addr_mask;
+  st->active_region_id = region_id;
+  return k_ra_ok;
+}
+
+[[nodiscard]] ra_err_t ra_dotf_get_active_region(uint8_t channel, ra_dotf_region_t* region)
+{
+  RA_CHECK_NULL_PTR((void*)region, s_tag, "region must not be nullptr");
+  if (!internal_channel_in_range(channel)) {
+    return k_ra_err_invalid_arg;
+  }
+  const ra_dotf_chan_state_t* st = &s_dotf_state[channel];
+  if (st->active_region_id == (uint8_t)k_ra_dotf_no_region) {
+    return k_ra_err_invalid_state;
+  }
+  *region = st->regions[st->active_region_id];
+  return k_ra_ok;
+}
+
+/* =============================================================================
+ * Key + IV staging
+ * =============================================================================
+ */
+
+[[nodiscard]] ra_err_t ra_dotf_install_key(uint8_t channel, const ra_dotf_key_handle_t* handle)
+{
+  RA_CHECK_NULL_PTR((void*)handle, s_tag, "handle must not be nullptr");
+  if (!internal_channel_in_range(channel)) {
+    return k_ra_err_invalid_arg;
+  }
+  if (handle->valid == 0U) {
+    return k_ra_err_invalid_arg;
+  }
+  if ((handle->size != k_ra_dotf_key_size_128) && (handle->size != k_ra_dotf_key_size_192) &&
+      (handle->size != k_ra_dotf_key_size_256)) {
+    return k_ra_err_invalid_arg;
+  }
+  volatile ra_dotf_regs_t* reg = ra_dotf_regs(channel);
+  RA_CHECK_NULL_PTR((void*)reg, s_tag, "channel mapping failed");
+
+  ra_dotf_chan_state_t* st = &s_dotf_state[channel];
+  st->key                  = *handle;
+  st->cached_key_size      = handle->size;
+  internal_stage_key(reg, handle);
+  ra_log_info_val(s_tag, "install_key channel", (uint32_t)channel);
+  return k_ra_ok;
+}
+
+[[nodiscard]] ra_err_t ra_dotf_set_iv(uint8_t channel, const uint32_t* iv_words)
+{
+  RA_CHECK_NULL_PTR((void*)iv_words, s_tag, "iv_words must not be nullptr");
+  if (!internal_channel_in_range(channel)) {
+    return k_ra_err_invalid_arg;
+  }
+  volatile ra_dotf_regs_t* reg = ra_dotf_regs(channel);
+  RA_CHECK_NULL_PTR((void*)reg, s_tag, "channel mapping failed");
+
+  ra_dotf_chan_state_t* st = &s_dotf_state[channel];
+  for (uint8_t i = 0U; i < (uint8_t)k_ra_dotf_iv_word_count; ++i) {
+    st->iv_cache[i] = iv_words[i];
+  }
+  st->iv_valid = 1U;
+  internal_stage_iv(reg, iv_words);
+  return k_ra_ok;
+}
+
+[[nodiscard]] ra_err_t ra_dotf_rotate_key(uint8_t                     channel,
+                                          const ra_dotf_key_handle_t* new_handle,
+                                          const uint32_t*             iv_words)
+{
+  RA_CHECK_NULL_PTR((void*)new_handle, s_tag, "new_handle must not be nullptr");
+  if (!internal_channel_in_range(channel)) {
+    return k_ra_err_invalid_arg;
+  }
+  if (new_handle->valid == 0U) {
+    return k_ra_err_invalid_arg;
+  }
+  if ((new_handle->size != k_ra_dotf_key_size_128) &&
+      (new_handle->size != k_ra_dotf_key_size_192) &&
+      (new_handle->size != k_ra_dotf_key_size_256)) {
+    return k_ra_err_invalid_arg;
+  }
+  ra_dotf_chan_state_t* st = &s_dotf_state[channel];
+  if (st->active_region_id == (uint8_t)k_ra_dotf_no_region) {
+    return k_ra_err_invalid_state;
+  }
+  volatile ra_dotf_regs_t* reg = ra_dotf_regs(channel);
+  RA_CHECK_NULL_PTR((void*)reg, s_tag, "channel mapping failed");
+
+  const uint8_t was_enabled = st->enabled;
+
+  /* Step 1: quiesce the AES core.
+   * HUM Ch 45.3 "Register Descriptions" p 3049 */
+  reg->REG00  = (uint32_t)k_ra_dotf_reg00_disable_value;
+  st->enabled = 0U;
+
+  /* Step 2: replace key + (optionally) IV. */
+  st->key             = *new_handle;
+  st->cached_key_size = new_handle->size;
+  internal_stage_key(reg, new_handle);
+  if (iv_words != nullptr) {
+    for (uint8_t i = 0U; i < (uint8_t)k_ra_dotf_iv_word_count; ++i) {
+      st->iv_cache[i] = iv_words[i];
+    }
+    st->iv_valid = 1U;
+    internal_stage_iv(reg, iv_words);
+  } else if (st->iv_valid != 0U) {
+    internal_stage_iv(reg, st->iv_cache);
+  } else {
+    /* No IV ever installed, no IV to re-stage. */
+  }
+
+  /* Step 3: re-arm if previously enabled. */
+  if (was_enabled != 0U) {
+    /* HUM Ch 45.3 "Register Descriptions" p 3049 */
+    reg->REG00  = internal_assemble_reg00(st, true);
+    st->enabled = 1U;
+  }
+  ra_log_info_val(s_tag, "rotate_key channel", (uint32_t)channel);
+  return k_ra_ok;
+}
+
+/* =============================================================================
+ * Enable / disable
+ * =============================================================================
+ */
+
+[[nodiscard]] ra_err_t ra_dotf_enable(uint8_t channel)
+{
+  if (!internal_channel_in_range(channel)) {
+    return k_ra_err_invalid_arg;
+  }
+  volatile ra_dotf_regs_t* reg = ra_dotf_regs(channel);
+  RA_CHECK_NULL_PTR((void*)reg, s_tag, "channel mapping failed");
+
+  ra_dotf_chan_state_t* st = &s_dotf_state[channel];
+  /* REG00 enables AES; pattern is (mode=CTR | key_size | sca | enable).
+   * The reset-default ``0x2200_0000`` matches mode=CTR + key_size=128
+   * with SCA off; the cached state may override every field.
+   * HUM Ch 45.3 "Register Descriptions" p 3049 */
+  reg->REG00  = internal_assemble_reg00(st, true);
+  st->enabled = 1U;
+  ra_log_info_val(s_tag, "enable channel", (uint32_t)channel);
+  return k_ra_ok;
+}
+
+[[nodiscard]] ra_err_t ra_dotf_disable(uint8_t channel)
+{
+  if (!internal_channel_in_range(channel)) {
+    return k_ra_err_invalid_arg;
+  }
+  volatile ra_dotf_regs_t* reg = ra_dotf_regs(channel);
+  RA_CHECK_NULL_PTR((void*)reg, s_tag, "channel mapping failed");
+
+  /* Writing 0 to REG00 puts the channel in bypass.
+   * HUM Ch 45.3 "Register Descriptions" p 3049 */
+  reg->REG00                    = (uint32_t)k_ra_dotf_reg00_disable_value;
+  s_dotf_state[channel].enabled = 0U;
+  return k_ra_ok;
+}
+
+/* =============================================================================
+ * REG00 sub-field tuning
+ * =============================================================================
+ */
+
+[[nodiscard]] ra_err_t ra_dotf_set_sca_level(uint8_t channel, ra_dotf_sca_level_t level)
+{
+  if (!internal_channel_in_range(channel)) {
+    return k_ra_err_invalid_arg;
+  }
+  if ((level != k_ra_dotf_sca_off) && (level != k_ra_dotf_sca_standard) &&
+      (level != k_ra_dotf_sca_max)) {
+    return k_ra_err_invalid_arg;
+  }
+  ra_dotf_chan_state_t* st = &s_dotf_state[channel];
+  st->cached_sca           = level;
+  if (st->enabled != 0U) {
+    volatile ra_dotf_regs_t* reg = ra_dotf_regs(channel);
+    RA_CHECK_NULL_PTR((void*)reg, s_tag, "channel mapping failed");
+    /* HUM Ch 45.3 "Register Descriptions" p 3049 */
+    reg->REG00 = internal_assemble_reg00(st, true);
+  }
+  return k_ra_ok;
+}
+
+[[nodiscard]] ra_err_t ra_dotf_set_key_size(uint8_t channel, ra_dotf_key_size_t size)
+{
+  if (!internal_channel_in_range(channel)) {
+    return k_ra_err_invalid_arg;
+  }
+  if ((size != k_ra_dotf_key_size_128) && (size != k_ra_dotf_key_size_192) &&
+      (size != k_ra_dotf_key_size_256)) {
+    return k_ra_err_invalid_arg;
+  }
+  ra_dotf_chan_state_t* st = &s_dotf_state[channel];
+  st->cached_key_size      = size;
+  if (st->enabled != 0U) {
+    volatile ra_dotf_regs_t* reg = ra_dotf_regs(channel);
+    RA_CHECK_NULL_PTR((void*)reg, s_tag, "channel mapping failed");
+    /* HUM Ch 45.3 "Register Descriptions" p 3049 */
+    reg->REG00 = internal_assemble_reg00(st, true);
+  }
+  return k_ra_ok;
+}
+
+[[nodiscard]] ra_err_t ra_dotf_run_self_test(uint8_t channel, uint32_t* out_status)
+{
+  RA_CHECK_NULL_PTR((void*)out_status, s_tag, "out_status must not be nullptr");
+  if (!internal_channel_in_range(channel)) {
+    return k_ra_err_invalid_arg;
+  }
+  volatile ra_dotf_regs_t* reg = ra_dotf_regs(channel);
+  RA_CHECK_NULL_PTR((void*)reg, s_tag, "channel mapping failed");
+
+  /* Save current REG00 so the function is observably side-effect-free
+   * once the self-test completes. */
+  const uint32_t saved = reg->REG00;
+  /* HUM Ch 45.1 p 3048 ("Supports self-test function").
+   * REG00 bit 20 triggers BIST; the bit auto-clears in real silicon.
+   * HUM Ch 45.3 "Register Descriptions" p 3049 */
+  reg->REG00    = saved | (uint32_t)k_ra_dotf_reg00_self_test;
+  uint32_t snap = 0U;
+  for (uint8_t i = 0U; i < (uint8_t)k_ra_dotf_self_test_spin; ++i) {
+    snap = reg->REG00;
+    if ((snap & (uint32_t)k_ra_dotf_reg00_self_test) == 0U) {
+      break;
+    }
+  }
+  *out_status = snap;
+  /* HUM Ch 45.3 "Register Descriptions" p 3049 */
+  reg->REG00 = saved;
+  return k_ra_ok;
+}
+
+/* =============================================================================
+ * Status
+ * =============================================================================
+ */
+
+[[nodiscard]] ra_err_t ra_dotf_get_status(uint8_t channel, uint32_t* out_mask)
+{
+  RA_CHECK_NULL_PTR((void*)out_mask, s_tag, "out_mask must not be nullptr");
+  if (!internal_channel_in_range(channel)) {
+    return k_ra_err_invalid_arg;
+  }
+  volatile ra_dotf_regs_t* reg = ra_dotf_regs(channel);
+  RA_CHECK_NULL_PTR((void*)reg, s_tag, "channel mapping failed");
+
+  /* Raw REG00 read for diagnostics.
+   * HUM Ch 45.3 "Register Descriptions" p 3049 */
+  *out_mask = reg->REG00;
+  return k_ra_ok;
+}
+
+[[nodiscard]] ra_err_t ra_dotf_clear_status(uint8_t channel)
+{
+  if (!internal_channel_in_range(channel)) {
+    return k_ra_err_invalid_arg;
+  }
+  volatile ra_dotf_regs_t* reg = ra_dotf_regs(channel);
+  RA_CHECK_NULL_PTR((void*)reg, s_tag, "channel mapping failed");
+
+  /* Clearing REG00 wipes the AES enable + status bits.
+   * HUM Ch 45.3 "Register Descriptions" p 3049 */
+  reg->REG00                    = (uint32_t)k_ra_dotf_reg00_disable_value;
+  s_dotf_state[channel].enabled = 0U;
+  return k_ra_ok;
+}
+
+/* =============================================================================
+ * IRQ glue
+ * =============================================================================
+ */
+
+[[nodiscard]] ra_err_t ra_dotf_attach_handler(ra_dotf_event_fn_t fn, void* ctx)
+{
+  s_dotf_fn  = fn;
+  s_dotf_ctx = ctx;
+  return k_ra_ok;
+}
+
+void ra_dotf_dispatch(uint8_t channel)
+{
+  if (!internal_channel_in_range(channel)) {
+    return;
+  }
+  const ra_dotf_event_fn_t fn  = s_dotf_fn;
+  void* const              ctx = s_dotf_ctx;
+  if (fn != nullptr) {
+    fn(ctx, channel);
+  }
+}
+
+/* =============================================================================
+ * Power
+ * =============================================================================
+ */
+
+[[nodiscard]] ra_err_t ra_dotf_enter_stop(void)
+{
+  for (uint8_t ch = 0U; ch < (uint8_t)k_ra_dotf_channel_count; ++ch) {
+    /* HUM Ch 45.6.1 "Module-stop Function" p 3050 */
+    (void)ra_mstp_disable(s_dotf_mstp_table[ch]);
+  }
+  return k_ra_ok;
+}
+
+[[nodiscard]] ra_err_t ra_dotf_exit_stop(void)
+{
+  for (uint8_t ch = 0U; ch < (uint8_t)k_ra_dotf_channel_count; ++ch) {
+    /* HUM Ch 45.6.1 "Module-stop Function" p 3050 */
+    const ra_err_t mst_err = ra_mstp_enable(s_dotf_mstp_table[ch]);
+    RA_RETURN_ON_ERROR(mst_err, s_tag, "exit_stop: mstp enable failed");
+  }
+  return k_ra_ok;
+}

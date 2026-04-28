@@ -1,12 +1,12 @@
 /**
  * @file ra_nsc_comms.c
- * @brief NSC veneers for the Wave 3 communications drivers
+ * @brief NSC veneers for the communications drivers
  *
  * @par Tag
  * [Ring 4 / NSC] {World: NSC}
  *
  * @details
- * Wave 9.3 retrofit. Each veneer validates pointer arguments
+ * retrofit. Each veneer validates pointer arguments
  * (under TrustZone) then forwards to the secure-side Ring-3
  * driver primitive.
  *

@@ -6,7 +6,7 @@
  * [Ring 3 / HAL] {World: S}
  *
  * @details
- * Public API of the Wave 1 substrate module that owns every
+ * Public API of the substrate module that owns every
  * write to the RA8D2 ``MSTPCRA..MSTPCRE`` registers (HUM Ch 11,
  * sections 11.2.6..11.2.10, pages 443..450).
  *
@@ -20,15 +20,15 @@
  * Why a ref count when each peripheral is normally owned by one
  * driver? Two cases that the wave plan needs:
  *
- *  1. **Shared MSTP bits**: ``MSTPA22`` covers both DMAC0 and DTC0
- *     (HUM 11.2.6 Note 1). The DMAC and DTC drivers will both
- *     request that bit, and we cannot disable it until both have
- *     released.
- *  2. **Wake-up coordination**: in Wave 9 the secure-side LPM
- *     handler walks every requested module to figure out what
- *     should still be running across a software-standby trip.
- *     A ref count is the simplest way to remember "is anyone
- *     still using this module?".
+ * 1. **Shared MSTP bits**: ``MSTPA22`` covers both DMAC0 and DTC0
+ * (HUM 11.2.6 Note 1). The DMAC and DTC drivers will both
+ * request that bit, and we cannot disable it until both have
+ * released.
+ * 2. **Wake-up coordination**: the secure-side LPM
+ * handler walks every requested module to figure out what
+ * should still be running across a software-standby trip.
+ * A ref count is the simplest way to remember "is anyone
+ * still using this module?".
  *
  * The bit-twiddling itself respects HUM 11.2.6 Note 2:
  * "When changing the value of this bit, only execute subsequent
@@ -75,27 +75,27 @@ extern "C" {
  *
  * @details
  * After a cold reset every MSTP bit is ``1`` (peripheral stopped) and
- * every ref-count is ``0``. After a warm reset or a Wave 9 NS->S
+ * every ref-count is ``0``. After a warm reset or a NS->S
  * transition, the table may be out of sync with hardware and the
  * caller wants to start clean.
  *
  * Calling this function:
  *
- *  1. Sets every ref count back to ``0``.
- *  2. Writes ``0xFFFFFFFF`` to every MSTPCR (everything stopped).
- *  3. Reads each register back to confirm the write took effect.
+ * 1. Sets every ref count back to ``0``.
+ * 2. Writes ``0xFFFFFFFF`` to every MSTPCR (everything stopped).
+ * 3. Reads each register back to confirm the write took effect.
  *
  * After ``ra_mstp_init()`` returns, every subsequent
  * ``ra_mstp_enable()`` is the first request for that module.
  *
  * @return ``ra_err_t`` error code.
- * @retval k_ra_ok                Refcount table reset and hardware
- *                                 confirmed all-stopped.
- * @retval k_ra_err_hw_timeout    Read-back loop did not observe the
- *                                 expected value within budget.
+ * @retval k_ra_ok Refcount table reset and hardware
+ * confirmed all-stopped.
+ * @retval k_ra_err_hw_timeout Read-back loop did not observe the
+ * expected value within budget.
  *
  * @pre Caller holds single-threaded init context (no concurrent
- *      driver init in progress).
+ * driver init in progress).
  * @pre IRQs masked while this function runs.
  *
  * @post Every ra_mstp_t id reports ref-count 0.
@@ -127,38 +127,38 @@ extern "C" {
  *
  * Algorithm:
  *
- *  1. Validate ``id``: register index must be 0..4, bit must be 0..31.
- *  2. Increment ref count.
- *  3. If ref count was 0 before increment:
- *     a. Read MSTPCRx, clear the target bit, write back.
- *     b. Poll the same bit until it reads as 0 or the polling
- *        budget expires.
- *  4. Return.
+ * 1. Validate ``id``: register index must be 0..4, bit must be 0..31.
+ * 2. Increment ref count.
+ * 3. If ref count was 0 before increment:
+ * a. Read MSTPCRx, clear the target bit, write back.
+ * b. Poll the same bit until it reads as 0 or the polling
+ * budget expires.
+ * 4. Return.
  *
  * @param[in] id Peripheral identifier from ``ra_mstp_t``.
  *
  * @return ``ra_err_t`` error code.
- * @retval k_ra_ok                Ungated successfully (or already on).
- * @retval k_ra_err_invalid_arg   ``id`` decodes to an out-of-range
- *                                 register or bit position.
- * @retval k_ra_err_hw_timeout    Bit did not read back as cleared
- *                                 within the spin budget.
+ * @retval k_ra_ok Ungated successfully (or already on).
+ * @retval k_ra_err_invalid_arg ``id`` decodes to an out-of-range
+ * register or bit position.
+ * @retval k_ra_err_hw_timeout Bit did not read back as cleared
+ * within the spin budget.
  *
  * @pre IRQs masked or single-threaded init context.
  * @pre ``ra_mstp_init()`` has run (or this is the first request
- *      against a fresh ref-count table).
+ * against a fresh ref-count table).
  *
  * @post On success, the peripheral is clocked and the ref count for
- *       ``id`` is at least 1.
+ * ``id`` is at least 1.
  * @post HUM 11.2.6 Note 2 read-back has been observed.
  *
  * @note Thread safety: not thread-safe.
  * @note For shared bits (DMAC + DTC, OSPI + DOTF, ...) every user
- *       must call this function for the count to balance correctly.
+ * must call this function for the count to balance correctly.
  *
  * @code{.c}
  * if (ra_mstp_enable(k_ra_mstp_sci0) != k_ra_ok) {
- *     return k_ra_err_hw_init_failed;
+ * return k_ra_err_hw_init_failed;
  * }
  * @endcode
  *
@@ -187,15 +187,15 @@ extern "C" {
  * @param[in] id Peripheral identifier from ``ra_mstp_t``.
  *
  * @return ``ra_err_t`` error code.
- * @retval k_ra_ok                Gated successfully (or still in use
- *                                 by another caller).
- * @retval k_ra_err_invalid_arg   ``id`` decodes to an out-of-range
- *                                 register or bit position.
+ * @retval k_ra_ok Gated successfully (or still in use
+ * by another caller).
+ * @retval k_ra_err_invalid_arg ``id`` decodes to an out-of-range
+ * register or bit position.
  * @retval k_ra_err_invalid_state Refcount was already 0 -- caller
- *                                 disabled a peripheral they had
- *                                 not enabled.
- * @retval k_ra_err_hw_timeout    Bit did not read back as set within
- *                                 the spin budget.
+ * disabled a peripheral they had
+ * not enabled.
+ * @retval k_ra_err_hw_timeout Bit did not read back as set within
+ * the spin budget.
  *
  * @pre IRQs masked or single-threaded init context.
  * @pre Caller previously called ``ra_mstp_enable(id)``.
@@ -204,10 +204,10 @@ extern "C" {
  * @post If ref count reached 0, the peripheral is gated.
  *
  * @warning HUM 11.2.6 Note 1: when releasing ``k_ra_mstp_dmac0_dtc0``
- *          or ``k_ra_mstp_dmac1_dtc1`` (the shared DMAC/DTC bits),
- *          the caller must first stop every channel of both DMAC and
- *          DTC. ra_mstp does not enforce this; the substrate driver
- *          ``libs/ra_hal/src/ra_dma.c`` (Wave 1.3) is responsible.
+ * or ``k_ra_mstp_dmac1_dtc1`` (the shared DMAC/DTC bits),
+ * the caller must first stop every channel of both DMAC and
+ * DTC. ra_mstp does not enforce this; the substrate driver
+ * ``libs/ra_hal/src/ra_dma.c`` is responsible.
  *
  * @note Thread safety: not thread-safe.
  *
@@ -227,14 +227,14 @@ extern "C" {
  * not appear on hot paths -- production code should not need to
  * branch on the ref count.
  *
- * @param[in]  id      Peripheral identifier from ``ra_mstp_t``.
+ * @param[in] id Peripheral identifier from ``ra_mstp_t``.
  * @param[out] out_ref On success, the current ref count value.
  *
  * @return ``ra_err_t`` error code.
- * @retval k_ra_ok                Ref count returned in ``*out_ref``.
- * @retval k_ra_err_null_ptr      ``out_ref`` was nullptr.
- * @retval k_ra_err_invalid_arg   ``id`` decodes to an out-of-range
- *                                 register or bit position.
+ * @retval k_ra_ok Ref count returned in ``*out_ref``.
+ * @retval k_ra_err_null_ptr ``out_ref`` was nullptr.
+ * @retval k_ra_err_invalid_arg ``id`` decodes to an out-of-range
+ * register or bit position.
  *
  * @pre ``out_ref`` is non-NULL.
  * @pre ``id`` is a value from ``ra_mstp_t``.
@@ -257,13 +257,13 @@ extern "C" {
  * own state via ``ra_mstp_get_refcount()`` or simply call
  * ``ra_mstp_enable()`` again.
  *
- * @param[in]  id           Peripheral identifier from ``ra_mstp_t``.
- * @param[out] out_stopped  On success, ``true`` if the bit is set.
+ * @param[in] id Peripheral identifier from ``ra_mstp_t``.
+ * @param[out] out_stopped On success, ``true`` if the bit is set.
  *
  * @return ``ra_err_t`` error code.
- * @retval k_ra_ok                Bit value returned in ``*out_stopped``.
- * @retval k_ra_err_null_ptr      ``out_stopped`` was nullptr.
- * @retval k_ra_err_invalid_arg   ``id`` is out of range.
+ * @retval k_ra_ok Bit value returned in ``*out_stopped``.
+ * @retval k_ra_err_null_ptr ``out_stopped`` was nullptr.
+ * @retval k_ra_err_invalid_arg ``id`` is out of range.
  *
  * @pre ``out_stopped`` is non-NULL.
  * @pre ``id`` is a value from ``ra_mstp_t``.

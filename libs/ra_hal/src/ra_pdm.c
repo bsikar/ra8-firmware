@@ -6,7 +6,7 @@
  * [Ring 3 / HAL] {World: NS}
  *
  * @details
- * Wave 6 driver for the RA8D2 PDM-IF block. Programmes the
+ * driver for the RA8D2 PDM-IF block. Programmes the
  * baseline control + IRQ enable registers and exposes
  * lifecycle + status get/clear + IRQ dispatch + power transition.
  * Full PCM decimation / FIR filter / stereo capture / DMA stream

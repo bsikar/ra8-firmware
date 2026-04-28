@@ -3,7 +3,7 @@
  * @brief Port Output Enable for GPT (POEG) driver implementation
  *
  * @details
- * Wave 3.6 new driver. See ``libs/ra_hal/inc/ra_poeg.h`` for the
+ * new driver. See ``libs/ra_hal/inc/ra_poeg.h`` for the
  * public surface and HUM Ch 21 "Port Output Enable for GPT
  * (POEG)" (p 871..877) for register semantics.
  *

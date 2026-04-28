@@ -16,7 +16,7 @@ extern "C" {
 #endif
 
 /**
- * @brief Programme + enable the SAU per the Wave 9.1 partition.
+ * @brief Programme + enable the SAU per the partition.
  *
  * @details
  * Called from ``SystemInit`` after the cache + MPU are up but
@@ -26,15 +26,15 @@ extern "C" {
  *
  * @pre Called once from ``SystemInit``.
  * @pre Called from secure world only (the SAU registers live at
- *      ``0xE000EDD0`` which is not reachable from NS).
+ * ``0xE000EDD0`` which is not reachable from NS).
  *
  * @post On success, SAU_CTRL.ENABLE is set and the four canonical
- *       regions cover NS MRAM / SRAM / SDRAM + the NSC veneer alias.
+ * regions cover NS MRAM / SRAM / SDRAM + the NSC veneer alias.
  *
  * @par TrustZone Safety:
- *  - **Validates:** SAU_TYPE.SREGION >= 4 before programming.
- *  - **Trusts:** boot ROM left SAU disabled and IDAU at reset state.
- *  - **Denies:** any access to the SAU registers from NS world.
+ * - **Validates:** SAU_TYPE.SREGION >= 4 before programming.
+ * - **Trusts:** boot ROM left SAU disabled and IDAU at reset state.
+ * - **Denies:** any access to the SAU registers from NS world.
  *
  * @note Thread safety: not thread-safe; runs once at boot.
  * @since 0.3.0

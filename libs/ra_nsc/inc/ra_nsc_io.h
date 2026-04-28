@@ -1,24 +1,24 @@
 /**
  * @file ra_nsc_io.h
- * @brief NSC veneers for the Wave 4-6 I/O drivers
+ * @brief NSC veneers for the -6 I/O drivers
  *
  * @par Tag
  * [Ring 4 / NSC] {World: NSC}
  *
  * @details
- * Wave 9.4 retrofit veneers for the analog / safety / display /
+ * retrofit veneers for the analog / safety / display /
  * audio / ethernet drivers (ra_gpt, ra_adc, ra_dac_b, ra_acmphs,
  * ra_crc, ra_glcdc, ra_pdm, ra_eth). Each veneer is a Non-Secure
  * Callable entry point that validates pointer arguments and
  * forwards to the secure-side Ring-3 driver.
  *
- * MTU/TPU listed in the original Wave 9.4 plan are **not present**
- * on the RA8D2 (see the Wave 3.6 scope-correction note in the
+ * MTU/TPU listed in the original plan are **not present**
+ * on the RA8D2 (see the scope-correction note in the
  * roadmap) so they have no veneers here.
  *
- * Wave 9.4 ships init + the most-used primitive per driver. The
+ * ships init + the most-used primitive per driver. The
  * remaining surface is straightforward to add by following the
- * same pattern; deferred to Wave 9.4b alongside the first NS
+ * same pattern; deferred to alongside the first NS
  * consumer.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie

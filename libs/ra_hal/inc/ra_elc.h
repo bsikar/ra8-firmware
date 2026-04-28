@@ -6,22 +6,22 @@
  * [Ring 3 / HAL] {World: S}
  *
  * @details
- * Wave 2.1 rewrite. Owns every write to the ELC register block
+ * rewrite. Owns every write to the ELC register block
  * (ELCR, ELSEGR0..3, ELSR0..52) at 0x40201000 (HUM Ch 19, p 817).
  *
  * The ELC lets one peripheral's event directly trigger another
  * peripheral's input without CPU involvement. The driver exposes
  * four operation-named helpers:
  *
- *  - ``ra_elc_init``              -- reset ELSR array, enable ELC.
- *  - ``ra_elc_deinit``            -- disable ELC globally.
- *  - ``ra_elc_link``              -- route event -> ELSR slot.
- *  - ``ra_elc_unlink``            -- clear one ELSR slot.
- *  - ``ra_elc_software_trigger``  -- ELSEGR write fires a software event.
- *  - ``ra_elc_is_enabled``        -- diagnostic accessor.
+ * - ``ra_elc_init`` -- reset ELSR array, enable ELC.
+ * - ``ra_elc_deinit`` -- disable ELC globally.
+ * - ``ra_elc_link`` -- route event -> ELSR slot.
+ * - ``ra_elc_unlink`` -- clear one ELSR slot.
+ * - ``ra_elc_software_trigger`` -- ELSEGR write fires a software event.
+ * - ``ra_elc_is_enabled`` -- diagnostic accessor.
  *
  * Drivers call these helpers; they never touch the ELC registers
- * directly. The Wave 9 NSC veneer surface is ``ra_elc_*``.
+ * directly. The NSC veneer surface is ``ra_elc_*``.
  *
  * ## ELSR index range
  *
@@ -55,8 +55,8 @@ extern "C" {
  * @brief ELC register-array dimensions.
  */
 typedef enum : uint8_t {
-  k_ra_elc_elsr_count = 53U, /**< ELSR0..ELSR52 (FSP R_ELC_Type).       */
-  k_ra_elc_segr_count = 4U,  /**< ELSEGR0..ELSEGR3 (FSP R_ELC_Type).    */
+  k_ra_elc_elsr_count = 53U, /**< ELSR0..ELSR52 (FSP R_ELC_Type). */
+  k_ra_elc_segr_count = 4U,  /**< ELSEGR0..ELSEGR3 (FSP R_ELC_Type). */
 } ra_elc_dim_t;
 
 /**
@@ -103,14 +103,14 @@ typedef enum : uint8_t {
 
 /**
  * @brief Route an ELC event to an ELSR slot so the destination
- *        peripheral triggers on it.
+ * peripheral triggers on it.
  *
  * @param[in] elsr_index Slot number 0..k_ra_elc_elsr_count - 1.
- * @param[in] event      ELC event number from ``ra_elc_event_t``.
+ * @param[in] event ELC event number from ``ra_elc_event_t``.
  *
  * @return ``ra_err_t`` error code.
- * @retval k_ra_ok                 Slot programmed.
- * @retval k_ra_err_out_of_range   ``elsr_index`` out of range.
+ * @retval k_ra_ok Slot programmed.
+ * @retval k_ra_err_out_of_range ``elsr_index`` out of range.
  *
  * @pre IRQs masked or single-threaded init context.
  * @post ELSR[elsr_index] holds ``event``.
@@ -126,8 +126,8 @@ typedef enum : uint8_t {
  * @param[in] elsr_index Slot number 0..k_ra_elc_elsr_count - 1.
  *
  * @return ``ra_err_t`` error code.
- * @retval k_ra_ok                 Slot cleared.
- * @retval k_ra_err_out_of_range   ``elsr_index`` out of range.
+ * @retval k_ra_ok Slot cleared.
+ * @retval k_ra_err_out_of_range ``elsr_index`` out of range.
  *
  * @pre IRQs masked or single-threaded init context.
  * @post ELSR[elsr_index] == 0.
@@ -149,13 +149,13 @@ typedef enum : uint8_t {
  * @param[in] value Register value to write.
  *
  * @return ``ra_err_t`` error code.
- * @retval k_ra_ok                 Write completed.
- * @retval k_ra_err_invalid_arg    ``group`` out of range.
+ * @retval k_ra_ok Write completed.
+ * @retval k_ra_err_invalid_arg ``group`` out of range.
  *
  * @pre IRQs masked or single-threaded init context.
  * @pre ELC is enabled via ``ra_elc_init``.
  * @post ELSEGR[group] latched the requested value; the event
- *       fires once on the next ELC clock edge.
+ * fires once on the next ELC clock edge.
  *
  * @note Thread safety: not thread-safe.
  * @since 0.2.0
@@ -167,8 +167,8 @@ typedef enum : uint8_t {
  *
  * @param[out] out_enabled On success, ``true`` if ELCON is set.
  * @return ``ra_err_t`` error code.
- * @retval k_ra_ok                 Value returned.
- * @retval k_ra_err_null_ptr       ``out_enabled`` was NULL.
+ * @retval k_ra_ok Value returned.
+ * @retval k_ra_err_null_ptr ``out_enabled`` was NULL.
  *
  * @pre ``out_enabled`` is non-NULL.
  * @post No hardware state is modified.

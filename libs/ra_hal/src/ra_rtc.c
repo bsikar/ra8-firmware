@@ -6,7 +6,7 @@
  * [Ring 3 / HAL] {World: S}
  *
  * @details
- * Wave 4 build-out of the RA8D2 RTC. Operates in 24-hour
+ * build-out of the RA8D2 RTC. Operates in 24-hour
  * calendar mode, decodes BCD into ``ra_rtc_datetime_t``, and
  * exposes the alarm / carry / periodic IRQ surface via the
  * dispatch path. Every register write below carries a HUM Ch 26
@@ -130,7 +130,7 @@ ra_err_t ra_rtc_get(ra_rtc_datetime_t* out)
 }
 
 /* =============================================================================
- * Wave 4.3 -- full build-out
+ * full build-out
  * =============================================================================
  */
 

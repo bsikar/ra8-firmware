@@ -6,14 +6,14 @@
  * [Ring 3 / HAL] {World: NS}
  *
  * @details
- * Wave 6 driver for the RA8D2 Layer-3 ESWM block. The RA8D2
+ * driver for the RA8D2 Layer-3 ESWM block. The RA8D2
  * ethernet subsystem is split into five cooperating drivers:
  *
- *  - ra_eth (this file) -- Layer 3 Ethernet Switch Module (ESWM)
- *  - ra_eth_mfwd        -- Message Forwarding Engine
- *  - ra_eth_coma        -- Common Agent
- *  - ra_eth_gwca        -- CPU Agent
- *  - ra_eth_gptp        -- Generic PTP Timer
+ * - ra_eth (this file) -- Layer 3 Ethernet Switch Module (ESWM)
+ * - ra_eth_mfwd -- Message Forwarding Engine
+ * - ra_eth_coma -- Common Agent
+ * - ra_eth_gwca -- CPU Agent
+ * - ra_eth_gptp -- Generic PTP Timer
  *
  * All five share the ra_mstp gate k_ra_mstp_eswm and follow the
  * same lifecycle + status + IRQ + power-transition shape. The

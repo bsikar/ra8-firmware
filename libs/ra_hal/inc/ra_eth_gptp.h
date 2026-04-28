@@ -6,7 +6,7 @@
  * [Ring 3 / HAL] {World: NS}
  *
  * @details
- * Wave 6 driver for the RA8D2 GPTP block. GPTP is the IEEE-1588
+ * driver for the RA8D2 GPTP block. GPTP is the IEEE-1588
  * hardware timestamp counter shared by the GMAC ports for
  * boundary-clock and ordinary-clock applications. This driver
  * covers lifecycle + status + IRQ + power transition; the

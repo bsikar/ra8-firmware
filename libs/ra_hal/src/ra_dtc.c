@@ -6,7 +6,7 @@
  * [Ring 3 / HAL] {World: S}
  *
  * @details
- * Wave 3 driver for the RA8D2 DTC block. Every register access
+ * driver for the RA8D2 DTC block. Every register access
  * carries a HUM Ch 18 citation. Shares MSTPA22 with DMAC0 via
  * ra_mstp's reference counter.
  *
@@ -27,7 +27,7 @@
 static const char* s_tag = "DTC";
 
 typedef enum : uint8_t {
-  k_ra_dtcst_enable = 1U,       /**< DTCST.DTCST (bit 0).        */
+  k_ra_dtcst_enable = 1U,       /**< DTCST.DTCST (bit 0). */
   k_ra_dtccr_rrs    = 1U << 4U, /**< DTCCR.RRS (read-skip en). */
 } ra_dtc_bit_t;
 

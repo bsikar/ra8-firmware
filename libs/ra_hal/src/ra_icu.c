@@ -6,7 +6,7 @@
  * [Ring 3 / HAL] {World: S}
  *
  * @details
- * Wave 2.1 rewrite. Adds IRQCRi + NMI programming while keeping
+ * rewrite. Adds IRQCRi + NMI programming while keeping
  * the pre-Wave-2 legacy API (``ra_icu_route`` / ``ra_icu_nvic_*``)
  * available for the existing demo main.c and test_ra_icu.c suite.
  *
@@ -30,9 +30,9 @@ static const char* s_tag = "ICU";
  * =============================================================================
  */
 typedef enum : uintptr_t {
-  k_ra_nvic_iser_base = 0xE000E100UL, /**< Interrupt Set-Enable.  */
+  k_ra_nvic_iser_base = 0xE000E100UL, /**< Interrupt Set-Enable. */
   k_ra_nvic_icer_base = 0xE000E180UL, /**< Interrupt Clear-Enable.*/
-  k_ra_nvic_ipr_base  = 0xE000E400UL, /**< Priority byte array.   */
+  k_ra_nvic_ipr_base  = 0xE000E400UL, /**< Priority byte array. */
 } ra_nvic_addr_t;
 
 typedef enum : uint32_t {
@@ -51,7 +51,7 @@ typedef enum : uint32_t {
 } ra_icu_clear_val_t;
 
 /* =============================================================================
- * Wave 2.1: initialisation
+ * initialisation
  * =============================================================================
  */
 
@@ -77,7 +77,7 @@ ra_err_t ra_icu_init(void)
 }
 
 /* =============================================================================
- * Wave 2.1: external IRQ pin programming
+ * external IRQ pin programming
  * =============================================================================
  */
 
@@ -120,7 +120,7 @@ ra_err_t ra_icu_read_irqcr(uint8_t irq_num, uint8_t* out_val)
 }
 
 /* =============================================================================
- * Wave 2.1: NMI management
+ * NMI management
  * =============================================================================
  */
 

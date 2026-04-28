@@ -6,7 +6,7 @@
  * [Ring 3 / HAL] {World: S}
  *
  * @details
- * Wave 1 substrate. Owns every write to the ICU IELSR slot array
+ * substrate. Owns every write to the ICU IELSR slot array
  * and to the Cortex-M85 NVIC ISER / ICER / IPR windows. See
  * ``ra_isr.h`` for the API contract.
  *
@@ -36,10 +36,10 @@ static const char* s_tag = "ISR";
  * target-specific peripheral driver.
  */
 typedef enum : uintptr_t {
-  k_ra_isr_nvic_iser_base = 0xE000E100UL, /**< ISER base: enables.  */
+  k_ra_isr_nvic_iser_base = 0xE000E100UL, /**< ISER base: enables. */
   k_ra_isr_nvic_icer_base = 0xE000E180UL, /**< ICER base: disables. */
   k_ra_isr_nvic_icpr_base = 0xE000E280UL, /**< ICPR base: clear pending. */
-  k_ra_isr_nvic_ipr_base  = 0xE000E400UL, /**< IPR  base: priority bytes. */
+  k_ra_isr_nvic_ipr_base  = 0xE000E400UL, /**< IPR base: priority bytes. */
 } ra_isr_nvic_t;
 
 /**
@@ -48,7 +48,7 @@ typedef enum : uintptr_t {
  */
 typedef enum : uint16_t {
   k_ra_isr_nvic_bits_per_word = 32U, /**< 32 bits per ISER/ICER entry. */
-  k_ra_isr_nvic_prio_shift    = 4U,  /**< Upper 4 priority bits used.  */
+  k_ra_isr_nvic_prio_shift    = 4U,  /**< Upper 4 priority bits used. */
 } ra_isr_nvic_layout_t;
 
 /**
@@ -57,10 +57,10 @@ typedef enum : uint16_t {
  */
 typedef struct {
   ra_isr_handler_t handler;  /**< Driver callback, NULL if free. */
-  void*            ctx;      /**< Context passed to handler.     */
-  ra_elc_event_t   event;    /**< Event mapped to this slot.     */
-  uint8_t          priority; /**< Last-set NVIC priority.       */
-  bool             in_use;   /**< True when allocated.           */
+  void*            ctx;      /**< Context passed to handler. */
+  ra_elc_event_t   event;    /**< Event mapped to this slot. */
+  uint8_t          priority; /**< Last-set NVIC priority. */
+  bool             in_use;   /**< True when allocated. */
 } ra_isr_slot_t;
 
 /**

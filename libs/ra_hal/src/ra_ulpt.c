@@ -6,7 +6,7 @@
  * [Ring 3 / HAL] {World: NS}
  *
  * @details
- * Wave 4 driver for the RA8D2 ULPT block (two channels, ULPT0
+ * driver for the RA8D2 ULPT block (two channels, ULPT0
  * and ULPT1). The ULPT clocks from the sub-clock so it keeps
  * counting in software-standby mode, which makes it the right
  * source for low-power wake-up. This driver covers init, start,
@@ -33,7 +33,7 @@ static const char* s_tag = "ULPT";
 /**
  * @var s_ulpt_mstp_table
  * @brief Channel-index -> MSTP id lookup. ULPT0/1 share MSTPCRE
- *        bits E9/E8 per HUM Ch 11.2.10 p 449.
+ * bits E9/E8 per HUM Ch 11.2.10 p 449.
  */
 static const ra_mstp_t s_ulpt_mstp_table[] = {
   k_ra_mstp_ulpt0,
@@ -110,7 +110,7 @@ static const ra_mstp_t s_ulpt_mstp_table[] = {
 }
 
 /* =============================================================================
- * Wave 4.3 -- full build-out
+ * full build-out
  * =============================================================================
  */
 

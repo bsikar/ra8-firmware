@@ -1,0 +1,801 @@
+/**
+ * @file ra_ssie.c
+ * @brief Serial Sound Interface Enhanced (SSIE / I2S) driver implementation
+ *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
+ * @details
+ * Full-coverage implementation of HUM Ch 46 "Serial Sound Interface
+ * Enhanced (SSIE)" pages 3051-3121. Every documented register field
+ * is reachable, every operating mode (I2S, left/right justified,
+ * monaural, TDM 4/6/8) is selectable through the ``ra_ssie_format_t``
+ * enum, every IRQ source (TXI/RXI/IDLE/error) is dispatched through
+ * a unified callback, and DMAC channels are pumped through a thin
+ * adapter over ``ra_dmac``.
+ *
+ * Every register access carries a HUM Ch 46 citation against
+ * ``r01uh1065ej0130-ra8d2.pdf``. FSP ``r_ssi.c`` was used as a
+ * reference for the start/stop sequence and SSIFCR poll loop only;
+ * no source code was copied from the FSP tree.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
+ */
+
+#include "ra_ssie.h"
+
+#include <stdint.h>
+
+#include "ra8d2_mstp_regs.h"
+#include "ra8d2_ssie_regs.h"
+#include "ra_check.h"
+#include "ra_dmac.h"
+#include "ra_err.h"
+#include "ra_log.h"
+#include "ra_mstp.h"
+
+/**
+ * @var s_tag
+ * @brief Logger tag for ra_log_* messages produced by this driver.
+ *
+ * @note Module-private; never modified at runtime.
+ */
+static const char* s_tag = "SSIE";
+
+/**
+ * @enum ra_ssie_internal_const_t
+ * @brief Internal magic-number constants promoted to typed enums.
+ */
+typedef enum : uint8_t {
+  k_ra_ssie_dma_ch_unused = 0xFFU, /**< Sentinel: no DMA channel.    */
+  k_ra_ssie_dma_max_ch    = 8U,    /**< DMAC channel count (0..7).   */
+  k_ra_ssie_thresh_max    = 0x1FU, /**< Max SSISCR threshold value.  */
+} ra_ssie_internal_const_t;
+
+/**
+ * @struct ra_ssie_runtime_t
+ * @brief Per-channel runtime bookkeeping.
+ */
+typedef struct {
+  uint8_t tx_dma_channel; /**< DMAC channel pumping TX (or unused). */
+  uint8_t rx_dma_channel; /**< DMAC channel pumping RX (or unused). */
+  bool    initialised;    /**< true after ra_ssie_init succeeded.   */
+  bool    dma_attached;   /**< true after ra_ssie_attach_dma.       */
+} ra_ssie_runtime_t;
+
+/**
+ * @var s_ssie_mstp_table
+ * @brief Channel-index -> MSTP id lookup.
+ *
+ * @details
+ * SSIE0 sits on MSTPC8 and SSIE1 on MSTPC7 per HUM Ch 11.2.8
+ * "MSTPCRC : Module Stop Control Register C", p 446. The two
+ * enum values were already declared in ``ra8d2_mstp_regs.h``.
+ */
+static const ra_mstp_t s_ssie_mstp_table[k_ra_ssie_channel_count] = {
+  k_ra_mstp_ssie0,
+  k_ra_mstp_ssie1,
+};
+
+/**
+ * @var s_ssie_runtime
+ * @brief Per-channel runtime state. Initialised to zero / unused.
+ */
+static ra_ssie_runtime_t s_ssie_runtime[k_ra_ssie_channel_count] = {
+  {.tx_dma_channel = (uint8_t)k_ra_ssie_dma_ch_unused,
+   .rx_dma_channel = (uint8_t)k_ra_ssie_dma_ch_unused,
+   .initialised    = false,
+   .dma_attached   = false},
+  {.tx_dma_channel = (uint8_t)k_ra_ssie_dma_ch_unused,
+   .rx_dma_channel = (uint8_t)k_ra_ssie_dma_ch_unused,
+   .initialised    = false,
+   .dma_attached   = false},
+};
+
+/**
+ * @var s_ssie_fn
+ * @brief Globally registered SSIE event callback (one slot, shared).
+ *
+ * @note Modified only via ``ra_ssie_attach_handler``.
+ */
+static ra_ssie_event_fn_t s_ssie_fn;
+
+/**
+ * @var s_ssie_ctx
+ * @brief Opaque context delivered to ``s_ssie_fn`` on dispatch.
+ *
+ * @note Modified only via ``ra_ssie_attach_handler``.
+ */
+static void* s_ssie_ctx;
+
+/**
+ * @brief Validate channel index and return its register block.
+ *
+ * @param[in] channel Channel index supplied by the caller.
+ * @return Volatile pointer or ``nullptr`` on failure.
+ */
+static volatile r_ssie_regs_t* internal_ssie_regs(uint8_t channel)
+{
+  if ((uint16_t)channel >= (uint16_t)k_ra_ssie_channel_count) {
+    return nullptr;
+  }
+  return ra_ssie(channel);
+}
+
+/**
+ * @brief Translate a public format enum to OMOD + FRM register fields.
+ *
+ * @param[in]  format    Public format enum.
+ * @param[out] out_omod  Receives SSIOFR.OMOD encoding (0..2).
+ * @param[out] out_frm   Receives SSICR.FRM encoding (0..3).
+ * @param[out] out_pdta  Receives PDTA polarity (right justify uses 1).
+ * @param[out] out_sdta  Receives SDTA polarity (left justify uses 0).
+ *
+ * @return true on a recognised enum value, false otherwise.
+ *
+ * @details See HUM Ch 46.2.1 FRM table p 3057 and HUM Ch 46.2.7
+ * OMOD table p 3091.
+ */
+static bool internal_format_decode(ra_ssie_format_t format,
+                                   uint8_t*         out_omod,
+                                   uint8_t*         out_frm,
+                                   uint8_t*         out_pdta,
+                                   uint8_t*         out_sdta)
+{
+  /* Defaults map to I2S (OMOD=00, FRM=00, PDTA=0, SDTA=0). */
+  *out_omod = (uint8_t)k_ra_ssie_omod_i2s;
+  *out_frm  = (uint8_t)k_ra_ssie_frm_default;
+  *out_pdta = 0U;
+  *out_sdta = 0U;
+
+  switch (format) {
+    case k_ra_ssie_format_i2s:
+      return true;
+    case k_ra_ssie_format_left_just:
+      /* Left-justified maps to OMOD=I2S with SDTA=0 (already default).
+       * Shown in HUM Ch 46.3.1 "Stereo Format" Figures, p 3094-3096. */
+      return true;
+    case k_ra_ssie_format_right_just:
+      /* Right-justified maps to OMOD=I2S with PDTA=1 (right-justify
+       * placement) per HUM Ch 46.2.1 "PDTA" p 3056. */
+      *out_pdta = 1U;
+      return true;
+    case k_ra_ssie_format_monaural:
+      *out_omod = (uint8_t)k_ra_ssie_omod_monaural;
+      *out_frm  = (uint8_t)k_ra_ssie_frm_default;
+      return true;
+    case k_ra_ssie_format_tdm_4:
+      *out_omod = (uint8_t)k_ra_ssie_omod_tdm;
+      *out_frm  = (uint8_t)k_ra_ssie_frm_alt1;
+      return true;
+    case k_ra_ssie_format_tdm_6:
+      *out_omod = (uint8_t)k_ra_ssie_omod_tdm;
+      *out_frm  = (uint8_t)k_ra_ssie_frm_alt2;
+      return true;
+    case k_ra_ssie_format_tdm_8:
+      *out_omod = (uint8_t)k_ra_ssie_omod_tdm;
+      *out_frm  = (uint8_t)k_ra_ssie_frm_alt3;
+      return true;
+    default:
+      return false;
+  }
+}
+
+/**
+ * @brief Decode SSISR/SSIFSR into a ``ra_ssie_event_t`` bitmap.
+ *
+ * @param[in] ssisr  Raw SSISR snapshot (HUM Ch 46.2.2 p 3066).
+ * @param[in] ssifsr Raw SSIFSR snapshot (HUM Ch 46.2.4 p 3083).
+ * @return Bitmap of ``ra_ssie_event_t`` flags.
+ */
+static uint8_t internal_decode_event(uint32_t ssisr, uint32_t ssifsr)
+{
+  uint8_t events = (uint8_t)k_ra_ssie_evt_none;
+  if ((ssisr & (uint32_t)k_ra_ssie_mask_iirq) != 0U) {
+    events |= (uint8_t)k_ra_ssie_evt_idle;
+  }
+  if ((ssisr & (uint32_t)k_ra_ssie_mask_tuirq) != 0U) {
+    events |= (uint8_t)k_ra_ssie_evt_tx_under;
+  }
+  if ((ssisr & (uint32_t)k_ra_ssie_mask_toirq) != 0U) {
+    events |= (uint8_t)k_ra_ssie_evt_tx_over;
+  }
+  if ((ssisr & (uint32_t)k_ra_ssie_mask_ruirq) != 0U) {
+    events |= (uint8_t)k_ra_ssie_evt_rx_under;
+  }
+  if ((ssisr & (uint32_t)k_ra_ssie_mask_roirq) != 0U) {
+    events |= (uint8_t)k_ra_ssie_evt_rx_over;
+  }
+  if ((ssifsr & (uint32_t)k_ra_ssie_mask_tde) != 0U) {
+    events |= (uint8_t)k_ra_ssie_evt_tx_empty;
+  }
+  if ((ssifsr & (uint32_t)k_ra_ssie_mask_rdf) != 0U) {
+    events |= (uint8_t)k_ra_ssie_evt_rx_full;
+  }
+  return events;
+}
+
+/**
+ * @brief Build the SSICR value from a config descriptor.
+ *
+ * @details
+ * Packs role / divider / data + system word lengths into a 32-bit
+ * register image. TEN/REN are intentionally left clear so the
+ * caller can prime the TX FIFO before starting communication
+ * (HUM Ch 46.6.2 "Transmission" p 3098).
+ */
+static uint32_t
+internal_build_ssicr(const ra_ssie_cfg_t* cfg, uint8_t frm, uint8_t pdta, uint8_t sdta)
+{
+  uint32_t ssicr = 0U;
+  /* HUM Ch 46.2.1 "SSICR : Control Register" p 3057 */
+  if (cfg->role == k_ra_ssie_role_master) {
+    ssicr |= (uint32_t)k_ra_ssie_mask_mst;
+  }
+  /* HUM Ch 46.2.1 "SSICR : Control Register" p 3056 */
+  ssicr |=
+    ((uint32_t)cfg->bclk_div << (uint8_t)k_ra_ssie_bit_ckdv0) & (uint32_t)k_ra_ssie_mask_ckdv;
+  /* HUM Ch 46.2.1 "SSICR : Control Register" p 3057 */
+  ssicr |=
+    ((uint32_t)cfg->system_word << (uint8_t)k_ra_ssie_bit_swl0) & (uint32_t)k_ra_ssie_mask_swl;
+  /* HUM Ch 46.2.1 "SSICR : Control Register" p 3057 */
+  ssicr |= ((uint32_t)cfg->data_word << (uint8_t)k_ra_ssie_bit_dwl0) & (uint32_t)k_ra_ssie_mask_dwl;
+  /* HUM Ch 46.2.1 "SSICR : Control Register" p 3057 */
+  ssicr |= ((uint32_t)frm << (uint8_t)k_ra_ssie_bit_frm0) & (uint32_t)k_ra_ssie_mask_frm;
+  /* HUM Ch 46.2.1 "SSICR : Control Register" p 3056 */
+  if (cfg->long_frame) {
+    ssicr |= (uint32_t)k_ra_ssie_mask_del;
+  }
+  /* HUM Ch 46.2.1 "SSICR : Control Register" p 3056 */
+  if (pdta != 0U) {
+    ssicr |= (uint32_t)k_ra_ssie_mask_pdta;
+  }
+  /* HUM Ch 46.2.1 "SSICR : Control Register" p 3056 */
+  if (sdta != 0U) {
+    ssicr |= (uint32_t)k_ra_ssie_mask_sdta;
+  }
+  /* HUM Ch 46.2.1 "SSICR : Control Register" p 3057 */
+  if (cfg->spdp_high) {
+    ssicr |= (uint32_t)k_ra_ssie_mask_spdp;
+  }
+  /* HUM Ch 46.2.1 "SSICR : Control Register" p 3057 */
+  if (cfg->lrckp_low) {
+    ssicr |= (uint32_t)k_ra_ssie_mask_lrckp;
+  }
+  /* HUM Ch 46.2.1 "SSICR : Control Register" p 3057 */
+  if (cfg->bckp_rising) {
+    ssicr |= (uint32_t)k_ra_ssie_mask_bckp;
+  }
+  /* HUM Ch 46.2.1 "SSICR : Control Register" p 3058 */
+  if (cfg->use_gpt_clk) {
+    ssicr |= (uint32_t)k_ra_ssie_mask_cks;
+  }
+  return ssicr;
+}
+
+/**
+ * @brief Bounded poll on SSIFCR until SSIRST clears.
+ *
+ * @return ``k_ra_ok`` if SSIRST self-cleared, otherwise
+ *         ``k_ra_err_hw_timeout``.
+ *
+ * @details See HUM Ch 46.2.3 "SSIRST" description, p 3077-3078.
+ * In simulator/host mode the bit clears immediately after we
+ * write 0; in production a few PCLK cycles are required.
+ */
+static ra_err_t internal_wait_ssirst_clear(volatile r_ssie_regs_t* reg)
+{
+  for (uint8_t i = 0U; i < (uint8_t)k_ra_ssie_reset_poll_max; i++) {
+    /* HUM Ch 46.2.3 "SSIFCR : FIFO Control Register" p 3077 */
+    if ((reg->SSIFCR & (uint32_t)k_ra_ssie_mask_ssirst) == 0U) {
+      return k_ra_ok;
+    }
+  }
+  return k_ra_err_hw_timeout;
+}
+
+/**
+ * @brief Bounded poll on SSIFCR until both FIFO reset bits clear.
+ */
+static ra_err_t internal_wait_fifo_reset_clear(volatile r_ssie_regs_t* reg)
+{
+  for (uint8_t i = 0U; i < (uint8_t)k_ra_ssie_reset_poll_max; i++) {
+    /* HUM Ch 46.2.3 "SSIFCR : FIFO Control Register" p 3077 */
+    if ((reg->SSIFCR & (uint32_t)k_ra_ssie_mask_rfrst_tfrst) == 0U) {
+      return k_ra_ok;
+    }
+  }
+  return k_ra_err_hw_timeout;
+}
+
+ra_err_t ra_ssie_init(uint8_t channel, const ra_ssie_cfg_t* cfg)
+{
+  RA_CHECK_NULL_PTR((void*)cfg, s_tag, "cfg must not be nullptr");
+  volatile r_ssie_regs_t* reg = internal_ssie_regs(channel);
+  if (reg == nullptr) {
+    return k_ra_err_invalid_arg;
+  }
+  if (cfg->tx_threshold > (uint8_t)k_ra_ssie_thresh_max ||
+      cfg->rx_threshold > (uint8_t)k_ra_ssie_thresh_max) {
+    return k_ra_err_invalid_arg;
+  }
+
+  uint8_t omod = 0U;
+  uint8_t frm  = 0U;
+  uint8_t pdta = 0U;
+  uint8_t sdta = 0U;
+  if (!internal_format_decode(cfg->format, &omod, &frm, &pdta, &sdta)) {
+    return k_ra_err_invalid_arg;
+  }
+
+  /* HUM Ch 11.2.8 "MSTPCRC : Module Stop Control Register C" p 446 */
+  const ra_err_t mst_err = ra_mstp_enable(s_ssie_mstp_table[channel]);
+  RA_RETURN_ON_ERROR(mst_err, s_tag, "ssie_init: mstp enable");
+
+  /* HUM Ch 46.2.3 "SSIFCR : FIFO Control Register" p 3077 */
+  reg->SSIFCR = (uint32_t)k_ra_ssie_mask_ssirst;
+  reg->SSIFCR = 0U;
+  /* HUM Ch 46.2.3 "SSIFCR : FIFO Control Register" p 3077 */
+  const ra_err_t rst_err = internal_wait_ssirst_clear(reg);
+  RA_RETURN_ON_ERROR(rst_err, s_tag, "ssie_init: SSIRST stuck");
+
+  /* HUM Ch 46.2.1 "SSICR : Control Register" p 3056 */
+  reg->SSICR = internal_build_ssicr(cfg, frm, pdta, sdta);
+
+  /* HUM Ch 46.2.7 "SSIOFR : Audio Format Register" p 3091 */
+  uint32_t ssiofr = (uint32_t)omod & (uint32_t)k_ra_ssie_mask_omod;
+  if (cfg->lr_continue && cfg->role == k_ra_ssie_role_master) {
+    ssiofr |= (uint32_t)k_ra_ssie_mask_lrcont;
+  }
+  if (cfg->bck_idle_stop && cfg->role == k_ra_ssie_role_master && !cfg->lr_continue) {
+    /* HUM Ch 46.2.7 Note 2 p 3091: BCKASTP and LRCONT must not be
+     * set together. Honour LRCONT preference and silently drop the
+     * BCKASTP request when both are requested. */
+    ssiofr |= (uint32_t)k_ra_ssie_mask_bckastp;
+  }
+  reg->SSIOFR = ssiofr;
+
+  /* HUM Ch 46.2.8 "SSISCR : Status Control Register" p 3094 */
+  const uint32_t scr_tdes =
+    ((uint32_t)cfg->tx_threshold << (uint8_t)k_ra_ssie_shift_tdes) & (uint32_t)k_ra_ssie_mask_tdes;
+  const uint32_t scr_rdfs =
+    ((uint32_t)cfg->rx_threshold << (uint8_t)k_ra_ssie_shift_rdfs) & (uint32_t)k_ra_ssie_mask_rdfs;
+  reg->SSISCR = scr_tdes | scr_rdfs;
+
+  /* HUM Ch 46.2.3 "SSIFCR : FIFO Control Register" p 3077 */
+  uint32_t ssifcr = 0U;
+  if (cfg->byte_swap) {
+    ssifcr |= (uint32_t)k_ra_ssie_mask_bsw;
+  }
+  if (cfg->enable_aucke && cfg->role == k_ra_ssie_role_master) {
+    ssifcr |= (uint32_t)k_ra_ssie_mask_aucke;
+  }
+  reg->SSIFCR = ssifcr;
+
+  s_ssie_runtime[channel].initialised  = true;
+  s_ssie_runtime[channel].dma_attached = false;
+  ra_log_info_val(s_tag, "ssie_init channel", (uint32_t)channel);
+  return k_ra_ok;
+}
+
+ra_err_t ra_ssie_deinit(uint8_t channel)
+{
+  volatile r_ssie_regs_t* reg = internal_ssie_regs(channel);
+  if (reg == nullptr) {
+    return k_ra_err_invalid_arg;
+  }
+  /* HUM Ch 46.2.1 "SSICR : Control Register" p 3056 */
+  reg->SSICR = reg->SSICR & ~(uint32_t)k_ra_ssie_mask_ren_ten;
+  /* HUM Ch 46.2.3 "SSIFCR : FIFO Control Register" p 3077 */
+  reg->SSIFCR = reg->SSIFCR & ~(uint32_t)k_ra_ssie_mask_aucke;
+
+  if (s_ssie_runtime[channel].dma_attached) {
+    (void)ra_ssie_detach_dma(channel);
+  }
+  s_ssie_runtime[channel].initialised = false;
+  return ra_mstp_disable(s_ssie_mstp_table[channel]);
+}
+
+ra_err_t ra_ssie_start(uint8_t channel, ra_ssie_dir_t dir)
+{
+  if (dir != k_ra_ssie_dir_rx && dir != k_ra_ssie_dir_tx && dir != k_ra_ssie_dir_tx_rx) {
+    return k_ra_err_invalid_arg;
+  }
+  volatile r_ssie_regs_t* reg = internal_ssie_regs(channel);
+  if (reg == nullptr) {
+    return k_ra_err_invalid_arg;
+  }
+
+  /* HUM Ch 46.6.2 "Transmission" p 3098 / 46.6.3 "Reception" p 3099:
+   * the SSIE must be idle before REN/TEN may be set. */
+  /* HUM Ch 46.2.1 "SSICR : Control Register" p 3056 */
+  uint32_t       ssicr           = reg->SSICR;
+  const uint32_t current_ren_ten = ssicr & (uint32_t)k_ra_ssie_mask_ren_ten;
+  const uint32_t desired_ren_ten = (uint32_t)dir;
+  if (desired_ren_ten == (current_ren_ten & desired_ren_ten)) {
+    return k_ra_ok; /* Already enabled, nothing to do. */
+  }
+  if (current_ren_ten != 0U) {
+    return k_ra_err_busy;
+  }
+  /* HUM Ch 46.2.2 "SSISR : Status Register" p 3066 */
+  if ((reg->SSISR & (uint32_t)k_ra_ssie_mask_iirq) == 0U) {
+    return k_ra_err_busy;
+  }
+
+  /* HUM Ch 46.2.3 "SSIFCR : FIFO Control Register" p 3077 */
+  uint32_t       ssifcr  = reg->SSIFCR;
+  const uint32_t fifo_rs = ssifcr | (uint32_t)k_ra_ssie_mask_rfrst_tfrst;
+  reg->SSIFCR            = fifo_rs;
+  reg->SSIFCR            = ssifcr;
+  /* HUM Ch 46.2.3 "SSIFCR : FIFO Control Register" p 3077 */
+  const ra_err_t rst_err = internal_wait_fifo_reset_clear(reg);
+  RA_RETURN_ON_ERROR(rst_err, s_tag, "ssie_start: FIFO reset stuck");
+
+  if ((desired_ren_ten & (uint32_t)k_ra_ssie_mask_ten) != 0U) {
+    /* HUM Ch 46.2.1 "SSICR : Control Register" p 3057 */
+    ssicr |= (uint32_t)k_ra_ssie_mask_tuien;
+    /* HUM Ch 46.2.3 "SSIFCR : FIFO Control Register" p 3077 */
+    ssifcr |= (uint32_t)k_ra_ssie_mask_tie;
+  }
+  if ((desired_ren_ten & (uint32_t)k_ra_ssie_mask_ren) != 0U) {
+    /* HUM Ch 46.2.1 "SSICR : Control Register" p 3057 */
+    ssicr |= (uint32_t)k_ra_ssie_mask_roien;
+    /* HUM Ch 46.2.3 "SSIFCR : FIFO Control Register" p 3077 */
+    ssifcr |= (uint32_t)k_ra_ssie_mask_rie;
+  }
+
+  reg->SSIFCR = ssifcr;
+  /* HUM Ch 46.2.1 "SSICR : Control Register" p 3056 */
+  reg->SSICR = ssicr | desired_ren_ten;
+  return k_ra_ok;
+}
+
+ra_err_t ra_ssie_stop(uint8_t channel)
+{
+  volatile r_ssie_regs_t* reg = internal_ssie_regs(channel);
+  if (reg == nullptr) {
+    return k_ra_err_invalid_arg;
+  }
+
+  /* HUM Ch 46.6.4 "Halt of Communication" p 3100 */
+  /* HUM Ch 46.2.1 "SSICR : Control Register" p 3056 */
+  uint32_t ssicr = reg->SSICR;
+  ssicr &= ~(uint32_t)k_ra_ssie_mask_ren_ten;
+  ssicr &= ~(uint32_t)k_ra_ssie_mask_err_ien;
+  ssicr |= (uint32_t)k_ra_ssie_mask_iien;
+  reg->SSICR = ssicr;
+
+  /* HUM Ch 46.2.3 "SSIFCR : FIFO Control Register" p 3077 */
+  uint32_t ssifcr = reg->SSIFCR;
+  ssifcr &= ~(uint32_t)k_ra_ssie_mask_rie_tie;
+  reg->SSIFCR = ssifcr;
+  return k_ra_ok;
+}
+
+ra_err_t ra_ssie_start_recovery(uint8_t channel)
+{
+  volatile r_ssie_regs_t* reg = internal_ssie_regs(channel);
+  if (reg == nullptr) {
+    return k_ra_err_invalid_arg;
+  }
+
+  /* HUM Ch 46.2.3 "SSIFCR : FIFO Control Register" p 3077 */
+  const uint32_t ssifcr_save = reg->SSIFCR & ~(uint32_t)k_ra_ssie_mask_ssirst;
+  reg->SSIFCR                = ssifcr_save | (uint32_t)k_ra_ssie_mask_ssirst;
+  reg->SSIFCR                = ssifcr_save;
+  /* HUM Ch 46.2.3 "SSIFCR : FIFO Control Register" p 3077 */
+  const ra_err_t rst_err = internal_wait_ssirst_clear(reg);
+  RA_RETURN_ON_ERROR(rst_err, s_tag, "ssie_recover: SSIRST stuck");
+
+  /* HUM Ch 46.2.2 "SSISR : Status Register" p 3066-3072 */
+  const uint32_t ssisr = reg->SSISR;
+  reg->SSISR           = ssisr & ~(uint32_t)k_ra_ssie_mask_err_all;
+  return k_ra_ok;
+}
+
+ra_err_t ra_ssie_mute(uint8_t channel, bool enable)
+{
+  volatile r_ssie_regs_t* reg = internal_ssie_regs(channel);
+  if (reg == nullptr) {
+    return k_ra_err_invalid_arg;
+  }
+  /* HUM Ch 46.2.1 "SSICR : Control Register" p 3056 */
+  uint32_t ssicr = reg->SSICR;
+  if (enable) {
+    ssicr |= (uint32_t)k_ra_ssie_mask_muen;
+  } else {
+    ssicr &= ~(uint32_t)k_ra_ssie_mask_muen;
+  }
+  reg->SSICR = ssicr;
+  return k_ra_ok;
+}
+
+ra_err_t ra_ssie_set_thresholds(uint8_t channel, uint8_t tx_threshold, uint8_t rx_threshold)
+{
+  volatile r_ssie_regs_t* reg = internal_ssie_regs(channel);
+  if (reg == nullptr) {
+    return k_ra_err_invalid_arg;
+  }
+  if (tx_threshold > (uint8_t)k_ra_ssie_thresh_max ||
+      rx_threshold > (uint8_t)k_ra_ssie_thresh_max) {
+    return k_ra_err_invalid_arg;
+  }
+  /* HUM Ch 46.2.8 "SSISCR : Status Control Register" p 3094 */
+  const uint32_t scr_tdes =
+    ((uint32_t)tx_threshold << (uint8_t)k_ra_ssie_shift_tdes) & (uint32_t)k_ra_ssie_mask_tdes;
+  const uint32_t scr_rdfs =
+    ((uint32_t)rx_threshold << (uint8_t)k_ra_ssie_shift_rdfs) & (uint32_t)k_ra_ssie_mask_rdfs;
+  reg->SSISCR = scr_tdes | scr_rdfs;
+  return k_ra_ok;
+}
+
+ra_err_t ra_ssie_write_sample(uint8_t channel, uint32_t sample)
+{
+  volatile r_ssie_regs_t* reg = internal_ssie_regs(channel);
+  if (reg == nullptr) {
+    return k_ra_err_invalid_arg;
+  }
+  /* HUM Ch 46.2.5 "SSIFTDR : Transmit FIFO Data Register" p 3088 */
+  reg->SSIFTDR = sample;
+  return k_ra_ok;
+}
+
+ra_err_t ra_ssie_read_sample(uint8_t channel, uint32_t* out)
+{
+  RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
+  volatile r_ssie_regs_t* reg = internal_ssie_regs(channel);
+  if (reg == nullptr) {
+    return k_ra_err_invalid_arg;
+  }
+  /* HUM Ch 46.2.6 "SSIFRDR : Receive FIFO Data Register" p 3089 */
+  *out = reg->SSIFRDR;
+  return k_ra_ok;
+}
+
+ra_err_t ra_ssie_write_buffer(uint8_t         channel,
+                              const uint32_t* buffer,
+                              uint16_t        samples,
+                              uint16_t*       out_written)
+{
+  RA_CHECK_NULL_PTR((void*)buffer, s_tag, "buffer must not be nullptr");
+  RA_CHECK_NULL_PTR(out_written, s_tag, "out_written must not be nullptr");
+  volatile r_ssie_regs_t* reg = internal_ssie_regs(channel);
+  if (reg == nullptr) {
+    return k_ra_err_invalid_arg;
+  }
+
+  uint16_t written = 0U;
+  for (uint16_t i = 0U; i < samples; i++) {
+    /* HUM Ch 46.2.4 "SSIFSR : FIFO Status Register" p 3083 */
+    const uint8_t tdc =
+      (uint8_t)((reg->SSIFSR & (uint32_t)k_ra_ssie_mask_tdc) >> (uint8_t)k_ra_ssie_shift_tdc);
+    if (tdc >= (uint8_t)k_ra_ssie_fifo_depth) {
+      break;
+    }
+    /* HUM Ch 46.2.5 "SSIFTDR : Transmit FIFO Data Register" p 3088 */
+    reg->SSIFTDR = buffer[i];
+    written++;
+  }
+  if (written > 0U) {
+    /* HUM Ch 46.2.4 "SSIFSR : FIFO Status Register" p 3083 */
+    const uint32_t fsr = reg->SSIFSR;
+    (void)fsr;
+    /* W1C of TDE keeps the RDF bit (mask_rdf_clear keeps RDF=1). */
+    reg->SSIFSR = (uint32_t)k_ra_ssie_mask_rdf_clear;
+  }
+  *out_written = written;
+  return k_ra_ok;
+}
+
+ra_err_t
+ra_ssie_read_buffer(uint8_t channel, uint32_t* buffer, uint16_t samples, uint16_t* out_read)
+{
+  RA_CHECK_NULL_PTR(buffer, s_tag, "buffer must not be nullptr");
+  RA_CHECK_NULL_PTR(out_read, s_tag, "out_read must not be nullptr");
+  volatile r_ssie_regs_t* reg = internal_ssie_regs(channel);
+  if (reg == nullptr) {
+    return k_ra_err_invalid_arg;
+  }
+
+  uint16_t read = 0U;
+  for (uint16_t i = 0U; i < samples; i++) {
+    /* HUM Ch 46.2.4 "SSIFSR : FIFO Status Register" p 3083 */
+    const uint8_t rdc =
+      (uint8_t)((reg->SSIFSR & (uint32_t)k_ra_ssie_mask_rdc) >> (uint8_t)k_ra_ssie_shift_rdc);
+    if (rdc == 0U) {
+      break;
+    }
+    /* HUM Ch 46.2.6 "SSIFRDR : Receive FIFO Data Register" p 3089 */
+    buffer[i] = reg->SSIFRDR;
+    read++;
+  }
+  if (read > 0U) {
+    /* HUM Ch 46.2.4 "SSIFSR : FIFO Status Register" p 3083 */
+    const uint32_t fsr = reg->SSIFSR;
+    (void)fsr;
+    /* W1C of RDF keeps the TDE bit (mask_tde_clear keeps TDE=1). */
+    reg->SSIFSR = (uint32_t)k_ra_ssie_mask_tde_clear;
+  }
+  *out_read = read;
+  return k_ra_ok;
+}
+
+ra_err_t ra_ssie_attach_dma(uint8_t channel, const ra_ssie_dma_cfg_t* dma)
+{
+  RA_CHECK_NULL_PTR((void*)dma, s_tag, "dma must not be nullptr");
+  volatile r_ssie_regs_t* reg = internal_ssie_regs(channel);
+  if (reg == nullptr) {
+    return k_ra_err_invalid_arg;
+  }
+
+  const bool want_tx = dma->tx_dma_channel < (uint8_t)k_ra_ssie_dma_max_ch;
+  const bool want_rx = dma->rx_dma_channel < (uint8_t)k_ra_ssie_dma_max_ch;
+  if (!want_tx && !want_rx) {
+    return k_ra_err_invalid_arg;
+  }
+  if (want_tx) {
+    if (dma->tx_buffer == nullptr || dma->tx_samples == 0U) {
+      return k_ra_err_invalid_arg;
+    }
+  }
+  if (want_rx) {
+    if (dma->rx_buffer == nullptr || dma->rx_samples == 0U) {
+      return k_ra_err_invalid_arg;
+    }
+  }
+
+  if (want_tx) {
+    /* HUM Ch 46.4.1 "Operation in DMAC Transfer" p 3104 */
+    const ra_dmac_config_t tx_cfg = {
+      .src     = (uint32_t)(uintptr_t)dma->tx_buffer,
+      .dst     = (uint32_t)(uintptr_t)&reg->SSIFTDR,
+      .count   = dma->tx_samples,
+      .width   = k_ra_dmac_width_word,
+      .src_inc = true,
+      .dst_inc = false,
+    };
+    const ra_err_t tx_err = ra_dmac_start(dma->tx_dma_channel, &tx_cfg);
+    RA_RETURN_ON_ERROR(tx_err, s_tag, "ssie_attach_dma: tx start");
+    s_ssie_runtime[channel].tx_dma_channel = dma->tx_dma_channel;
+  }
+  if (want_rx) {
+    /* HUM Ch 46.4.1 "Operation in DMAC Transfer" p 3104 */
+    const ra_dmac_config_t rx_cfg = {
+      .src     = (uint32_t)(uintptr_t)&reg->SSIFRDR,
+      .dst     = (uint32_t)(uintptr_t)dma->rx_buffer,
+      .count   = dma->rx_samples,
+      .width   = k_ra_dmac_width_word,
+      .src_inc = false,
+      .dst_inc = true,
+    };
+    const ra_err_t rx_err = ra_dmac_start(dma->rx_dma_channel, &rx_cfg);
+    if (rx_err != k_ra_ok) {
+      if (want_tx) {
+        (void)ra_dmac_stop(dma->tx_dma_channel);
+        s_ssie_runtime[channel].tx_dma_channel = (uint8_t)k_ra_ssie_dma_ch_unused;
+      }
+      return rx_err;
+    }
+    s_ssie_runtime[channel].rx_dma_channel = dma->rx_dma_channel;
+  }
+  s_ssie_runtime[channel].dma_attached = true;
+  return k_ra_ok;
+}
+
+ra_err_t ra_ssie_detach_dma(uint8_t channel)
+{
+  if ((uint16_t)channel >= (uint16_t)k_ra_ssie_channel_count) {
+    return k_ra_err_invalid_arg;
+  }
+  ra_ssie_runtime_t* rt = &s_ssie_runtime[channel];
+  if (rt->tx_dma_channel < (uint8_t)k_ra_ssie_dma_max_ch) {
+    (void)ra_dmac_stop(rt->tx_dma_channel);
+    rt->tx_dma_channel = (uint8_t)k_ra_ssie_dma_ch_unused;
+  }
+  if (rt->rx_dma_channel < (uint8_t)k_ra_ssie_dma_max_ch) {
+    (void)ra_dmac_stop(rt->rx_dma_channel);
+    rt->rx_dma_channel = (uint8_t)k_ra_ssie_dma_ch_unused;
+  }
+  rt->dma_attached = false;
+  return k_ra_ok;
+}
+
+ra_err_t ra_ssie_get_status(uint8_t channel, ra_ssie_status_t* out)
+{
+  RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
+  volatile r_ssie_regs_t* reg = internal_ssie_regs(channel);
+  if (reg == nullptr) {
+    return k_ra_err_invalid_arg;
+  }
+  /* HUM Ch 46.2.2 "SSISR : Status Register" p 3066 */
+  const uint32_t ssisr = reg->SSISR;
+  /* HUM Ch 46.2.4 "SSIFSR : FIFO Status Register" p 3083 */
+  const uint32_t ssifsr = reg->SSIFSR;
+
+  out->ssisr  = ssisr;
+  out->ssifsr = ssifsr;
+  out->rx_count =
+    (uint8_t)((ssifsr & (uint32_t)k_ra_ssie_mask_rdc) >> (uint8_t)k_ra_ssie_shift_rdc);
+  out->tx_count =
+    (uint8_t)((ssifsr & (uint32_t)k_ra_ssie_mask_tdc) >> (uint8_t)k_ra_ssie_shift_tdc);
+  out->rx_full  = (ssifsr & (uint32_t)k_ra_ssie_mask_rdf) != 0U;
+  out->tx_empty = (ssifsr & (uint32_t)k_ra_ssie_mask_tde) != 0U;
+  out->idle     = (ssisr & (uint32_t)k_ra_ssie_mask_iirq) != 0U;
+  out->error    = (ssisr & (uint32_t)k_ra_ssie_mask_err_all) != 0U;
+  out->events   = internal_decode_event(ssisr, ssifsr);
+  return k_ra_ok;
+}
+
+ra_err_t ra_ssie_clear_status(uint8_t channel, uint32_t mask)
+{
+  volatile r_ssie_regs_t* reg = internal_ssie_regs(channel);
+  if (reg == nullptr) {
+    return k_ra_err_invalid_arg;
+  }
+  /* HUM Ch 46.2.2 "SSISR : Status Register" p 3069-3072 */
+  const uint32_t writeable = mask & (uint32_t)k_ra_ssie_mask_err_all;
+  const uint32_t current   = reg->SSISR;
+  reg->SSISR               = current & ~writeable;
+  return k_ra_ok;
+}
+
+ra_err_t ra_ssie_set_irq_enable(uint8_t channel, uint32_t mask, bool enable)
+{
+  volatile r_ssie_regs_t* reg = internal_ssie_regs(channel);
+  if (reg == nullptr) {
+    return k_ra_err_invalid_arg;
+  }
+  /* HUM Ch 46.2.1 "SSICR : Control Register" p 3057 */
+  const uint32_t apply = mask & (uint32_t)k_ra_ssie_mask_irq_all;
+  uint32_t       ssicr = reg->SSICR;
+  if (enable) {
+    ssicr |= apply;
+  } else {
+    ssicr &= ~apply;
+  }
+  reg->SSICR = ssicr;
+  return k_ra_ok;
+}
+
+ra_err_t ra_ssie_attach_handler(ra_ssie_event_fn_t fn, void* ctx)
+{
+  s_ssie_fn  = fn;
+  s_ssie_ctx = ctx;
+  return k_ra_ok;
+}
+
+void ra_ssie_dispatch(uint8_t channel)
+{
+  volatile r_ssie_regs_t* reg = internal_ssie_regs(channel);
+  if (reg == nullptr) {
+    return;
+  }
+  /* HUM Ch 46.2.2 "SSISR : Status Register" p 3066 */
+  const uint32_t ssisr = reg->SSISR;
+  /* HUM Ch 46.2.4 "SSIFSR : FIFO Status Register" p 3083 */
+  const uint32_t           ssifsr = reg->SSIFSR;
+  const uint8_t            events = internal_decode_event(ssisr, ssifsr);
+  const ra_ssie_event_fn_t fn     = s_ssie_fn;
+  void* const              ctx    = s_ssie_ctx;
+  if (fn != nullptr) {
+    fn(ctx, channel, events, ssisr);
+  }
+}
+
+ra_err_t ra_ssie_enter_stop(uint8_t channel)
+{
+  if ((uint16_t)channel >= (uint16_t)k_ra_ssie_channel_count) {
+    return k_ra_err_invalid_arg;
+  }
+  return ra_mstp_disable(s_ssie_mstp_table[channel]);
+}
+
+ra_err_t ra_ssie_exit_stop(uint8_t channel)
+{
+  if ((uint16_t)channel >= (uint16_t)k_ra_ssie_channel_count) {
+    return k_ra_err_invalid_arg;
+  }
+  return ra_mstp_enable(s_ssie_mstp_table[channel]);
+}

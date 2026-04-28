@@ -6,7 +6,7 @@
  * [Ring 3 / HAL] {World: NS}
  *
  * @details
- * Wave 6 driver for the RA8D2 GWCA block. GWCA is the bridge
+ * driver for the RA8D2 GWCA block. GWCA is the bridge
  * between MFWD/COMA and CPU memory; it owns the per-channel
  * descriptor rings the host uses for TX/RX staging. This driver
  * covers lifecycle + status + IRQ + power transition; the

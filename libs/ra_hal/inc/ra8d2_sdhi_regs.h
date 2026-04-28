@@ -4,7 +4,7 @@
  *
  * @details
  * Two SDHI instances at `0x40252000` (SDHI0) and `0x40252400`
- * (SDHI1). Wave 5.4 introduces a minimal register window covering
+ * (SDHI1). introduces a minimal register window covering
  * command issue, response, status, and interrupt mask -- enough to
  * bring up the driver lifecycle + IRQ path without a full SD card
  * command engine.
@@ -48,33 +48,33 @@ typedef enum : uint8_t {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  volatile uint32_t SD_CMD; /**< +0x00 Command Type Register.       */
+  volatile uint32_t SD_CMD; /**< +0x00 Command Type Register. */
   volatile uint32_t _r0;
-  volatile uint32_t SD_ARG;        /**< +0x08 Argument (32-bit).           */
-  volatile uint32_t SD_ARG1;       /**< +0x0C Argument 1 (16-bit).         */
-  volatile uint32_t SD_STOP;       /**< +0x10 Stop.                        */
-  volatile uint32_t SD_SECCNT;     /**< +0x14 Block Count.                 */
-  volatile uint32_t SD_RSP10;      /**< +0x18 Response 10.                 */
-  volatile uint32_t SD_RSP1;       /**< +0x1C Response 1.                  */
-  volatile uint32_t SD_RSP32;      /**< +0x20 Response 32.                 */
-  volatile uint32_t SD_RSP3;       /**< +0x24 Response 3.                  */
-  volatile uint32_t SD_RSP54;      /**< +0x28 Response 54.                 */
-  volatile uint32_t SD_RSP5;       /**< +0x2C Response 5.                  */
-  volatile uint32_t SD_RSP76;      /**< +0x30 Response 76.                 */
-  volatile uint32_t SD_RSP7;       /**< +0x34 Response 7.                  */
-  volatile uint32_t SD_INFO1;      /**< +0x38 Interrupt Flag 1.            */
-  volatile uint32_t SD_INFO2;      /**< +0x3C Interrupt Flag 2.            */
-  volatile uint32_t SD_INFO1_MASK; /**< +0x40 Interrupt Mask 1.            */
-  volatile uint32_t SD_INFO2_MASK; /**< +0x44 Interrupt Mask 2.            */
-  volatile uint32_t SD_CLK_CTRL;   /**< +0x48 Clock Control.               */
-  volatile uint32_t SD_SIZE;       /**< +0x4C Transfer Data Length.        */
-  volatile uint32_t SD_OPTION;     /**< +0x50 Access Control Option.       */
+  volatile uint32_t SD_ARG;        /**< +0x08 Argument (32-bit). */
+  volatile uint32_t SD_ARG1;       /**< +0x0C Argument 1 (16-bit). */
+  volatile uint32_t SD_STOP;       /**< +0x10 Stop. */
+  volatile uint32_t SD_SECCNT;     /**< +0x14 Block Count. */
+  volatile uint32_t SD_RSP10;      /**< +0x18 Response 10. */
+  volatile uint32_t SD_RSP1;       /**< +0x1C Response 1. */
+  volatile uint32_t SD_RSP32;      /**< +0x20 Response 32. */
+  volatile uint32_t SD_RSP3;       /**< +0x24 Response 3. */
+  volatile uint32_t SD_RSP54;      /**< +0x28 Response 54. */
+  volatile uint32_t SD_RSP5;       /**< +0x2C Response 5. */
+  volatile uint32_t SD_RSP76;      /**< +0x30 Response 76. */
+  volatile uint32_t SD_RSP7;       /**< +0x34 Response 7. */
+  volatile uint32_t SD_INFO1;      /**< +0x38 Interrupt Flag 1. */
+  volatile uint32_t SD_INFO2;      /**< +0x3C Interrupt Flag 2. */
+  volatile uint32_t SD_INFO1_MASK; /**< +0x40 Interrupt Mask 1. */
+  volatile uint32_t SD_INFO2_MASK; /**< +0x44 Interrupt Mask 2. */
+  volatile uint32_t SD_CLK_CTRL;   /**< +0x48 Clock Control. */
+  volatile uint32_t SD_SIZE;       /**< +0x4C Transfer Data Length. */
+  volatile uint32_t SD_OPTION;     /**< +0x50 Access Control Option. */
   volatile uint32_t _r1;
-  volatile uint32_t SD_ERR_STS1; /**< +0x58 Error Status 1.              */
-  volatile uint32_t SD_ERR_STS2; /**< +0x5C Error Status 2.              */
-  volatile uint32_t SD_BUF0;     /**< +0x60 Buffer Register.             */
+  volatile uint32_t SD_ERR_STS1; /**< +0x58 Error Status 1. */
+  volatile uint32_t SD_ERR_STS2; /**< +0x5C Error Status 2. */
+  volatile uint32_t SD_BUF0;     /**< +0x60 Buffer Register. */
   volatile uint32_t _r2;
-  volatile uint32_t SDIO_MODE; /**< +0x68 SDIO Mode Control.           */
+  volatile uint32_t SDIO_MODE; /**< +0x68 SDIO Mode Control. */
 } r_sdhi_regs_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 

@@ -6,7 +6,7 @@
  * [Ring 3 / HAL] {World: S}
  *
  * @details
- * Wave 2.1 rewrite. See ``ra_elc.h`` for the API contract. This
+ * rewrite. See ``ra_elc.h`` for the API contract. This
  * file owns every write to the ELC register block (HUM Ch 19,
  * pages 817..836).
  *

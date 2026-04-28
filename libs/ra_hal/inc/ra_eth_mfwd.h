@@ -6,7 +6,7 @@
  * [Ring 3 / HAL] {World: NS}
  *
  * @details
- * Wave 6 driver for the RA8D2 MFWD block. The MFWD sits between
+ * driver for the RA8D2 MFWD block. The MFWD sits between
  * the GMAC ports and the CPU Agent (GWCA), making per-frame
  * forwarding decisions (port-to-port, port-to-host, multicast).
  * This driver covers lifecycle + status + IRQ + power transition;

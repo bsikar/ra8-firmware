@@ -38,18 +38,18 @@
 
 /**
  * @enum ra_gpio_irq_limits_t
- * @brief Local limits for Wave 3.4 IRQ attach API.
+ * @brief Local limits for IRQ attach API.
  */
 typedef enum : uint8_t {
-  k_ra_gpio_irq_num_max    = 15U, /**< External IRQ pins 0..15.     */
-  k_ra_gpio_irq_event_base = 1U,  /**< ELC event for IRQ0.          */
+  k_ra_gpio_irq_num_max    = 15U, /**< External IRQ pins 0..15. */
+  k_ra_gpio_irq_event_base = 1U,  /**< ELC event for IRQ0. */
 } ra_gpio_irq_limits_t;
 
 static const char* s_tag = "GPIO";
 
 /**
  * @brief Claim the pin in the validator and return the port / pin
- *        indices if the claim succeeded.
+ * indices if the claim succeeded.
  */
 static ra_err_t internal_claim(ra_port_pin_t pin, ra_port_t* out_port, ra_pin_t* out_pin)
 {
@@ -179,7 +179,7 @@ ra_err_t ra_gpio_toggle(ra_port_pin_t pin)
   if ((podr & bit_mask) != 0U) {
     port_regs->PCNTR3 = bit_mask << (uint32_t)k_ra_pcntr_high_half_shift; /* PORR clear */
   } else {
-    port_regs->PCNTR3 = bit_mask; /* POSR set   */
+    port_regs->PCNTR3 = bit_mask; /* POSR set */
   }
   return k_ra_ok;
 }
@@ -250,7 +250,7 @@ ra_err_t ra_pfs_route_peripheral(ra_port_pin_t pin, ra_psel_t psel, const char* 
 }
 
 /* =============================================================================
- * External IRQ attachment (Wave 3.4)
+ * External IRQ attachment
  * =============================================================================
  */
 

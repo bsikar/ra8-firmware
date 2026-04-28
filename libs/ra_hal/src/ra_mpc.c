@@ -6,7 +6,7 @@
  * [Ring 3 / HAL] {World: S}
  *
  * @details
- * Wave 1 substrate. Owns every write to ``PmnPFS`` and the
+ * substrate. Owns every write to ``PmnPFS`` and the
  * accompanying PWPR unlock/lock sequence. See ``ra_mpc.h`` for
  * the API contract.
  *
@@ -29,7 +29,7 @@ static const char* s_tag = "MPC";
  * @brief Bounds-check a ``(port, pin)`` pair.
  *
  * @return ``k_ra_ok`` if both indices are in range, otherwise the
- *         appropriate ``k_ra_err_gpio_*`` code.
+ * appropriate ``k_ra_err_gpio_*`` code.
  */
 static ra_err_t internal_check(ra_port_t port, ra_pin_t pin)
 {

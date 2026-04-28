@@ -30,16 +30,16 @@ extern "C" {
  * Returning `k_ra_ok` lets `main()` keep the pattern:
  *
  * @code{.c}
- *   ra_infrastructure_init();
- *   RA_ERROR_CHECK(ra_cgc_init());
- *   // ... drivers ...
+ * ra_infrastructure_init();
+ * RA_ERROR_CHECK(ra_cgc_init());
+ * // ... drivers ...
  * @endcode
  *
  * which will automatically start using the real implementation once
  * this function is filled out.
  *
  * @return Always `k_ra_ok` today. Will return clock-setup errors once
- *         a real PLL routine is wired in.
+ * a real PLL routine is wired in.
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_cgc_init(void);
@@ -53,9 +53,9 @@ extern "C" {
  * the SCKSCR write.
  *
  * @return `ra_err_t` error code.
- * @retval k_ra_ok                Clock switched.
- * @retval k_ra_err_hw_timeout    HOCO failed to report ready within the
- *                                 timeout window.
+ * @retval k_ra_ok Clock switched.
+ * @retval k_ra_err_hw_timeout HOCO failed to report ready within the
+ * timeout window.
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_cgc_use_hoco(void);
@@ -65,16 +65,16 @@ extern "C" {
  * @brief Identifiers for the clock-tree frequencies queryable at runtime.
  */
 typedef enum : uint8_t {
-  k_ra_clock_id_cpuclk0 = 0U, /**< Cortex-M85 CPUCLK0.         */
-  k_ra_clock_id_cpuclk1 = 1U, /**< Cortex-M33 CPUCLK1.         */
-  k_ra_clock_id_iclk    = 2U, /**< System ICLK.                */
-  k_ra_clock_id_pclka   = 3U, /**< PCLKA.                      */
-  k_ra_clock_id_pclkb   = 4U, /**< PCLKB.                      */
-  k_ra_clock_id_pclkc   = 5U, /**< PCLKC.                      */
-  k_ra_clock_id_pclkd   = 6U, /**< PCLKD.                      */
-  k_ra_clock_id_pclke   = 7U, /**< PCLKE.                      */
+  k_ra_clock_id_cpuclk0 = 0U, /**< Cortex-M85 CPUCLK0. */
+  k_ra_clock_id_cpuclk1 = 1U, /**< Cortex-M33 CPUCLK1. */
+  k_ra_clock_id_iclk    = 2U, /**< System ICLK. */
+  k_ra_clock_id_pclka   = 3U, /**< PCLKA. */
+  k_ra_clock_id_pclkb   = 4U, /**< PCLKB. */
+  k_ra_clock_id_pclkc   = 5U, /**< PCLKC. */
+  k_ra_clock_id_pclkd   = 6U, /**< PCLKD. */
+  k_ra_clock_id_pclke   = 7U, /**< PCLKE. */
   k_ra_clock_id_fclk    = 8U, /**< Flash/MRAM interface clock. */
-  k_ra_clock_id_mriclk  = 9U, /**< MRAM bus clock.             */
+  k_ra_clock_id_mriclk  = 9U, /**< MRAM bus clock. */
 } ra_clock_id_t;
 
 /**
@@ -87,16 +87,16 @@ typedef enum : uint8_t {
  * should always go through this function rather than hard-coding
  * values from `ra_time_constants.h`.
  *
- * @param[in]  id      Clock identifier.
- * @param[out] out_hz  On success, current frequency in Hz.
+ * @param[in] id Clock identifier.
+ * @param[out] out_hz On success, current frequency in Hz.
  * @return `k_ra_ok` on success, `k_ra_err_invalid_arg` if `out_hz`
- *         is NULL or `id` is out of range.
+ * is NULL or `id` is out of range.
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_cgc_get_clock_hz(ra_clock_id_t id, uint32_t* out_hz);
 
 /* =============================================================================
- * Wave 2.2 -- runtime reconfigure + oscillation-stop interrupt
+ * runtime reconfigure + oscillation-stop interrupt
  * =============================================================================
  */
 
@@ -107,7 +107,7 @@ typedef enum : uint8_t {
  * @param[in] ctx User-supplied context registered with the callback.
  *
  * @note Invoked from ISR context. Must return quickly. The ISR
- *       clears the latched OSTDSR flag before the callback runs.
+ * clears the latched OSTDSR flag before the callback runs.
  */
 typedef void (*ra_cgc_ostd_fn_t)(void* ctx);
 
@@ -118,31 +118,31 @@ typedef void (*ra_cgc_ostd_fn_t)(void* ctx);
  * Walks through the safe transition sequence from HUM Ch 9.2
  * (p 317):
  *
- *  1. Switch SCKSCR to MOCO so the CPU runs on a simple source
- *     while PLL1 is being reprogrammed.
- *  2. Stop PLL1 via PLLCR.PLLSTP.
- *  3. Compute the new PLLCCR / PLLCCR2 integer + fractional
- *     multipliers from ``new_cpuclk_hz``.
- *  4. Start PLL1 and wait for OSCSF.PLL1SF.
- *  5. Switch SCKSCR back to PLL1.
- *  6. Republish the clock-tree frequencies so subsequent
- *     ``ra_cgc_get_clock_hz`` calls see the new value.
+ * 1. Switch SCKSCR to MOCO so the CPU runs on a simple source
+ * while PLL1 is being reprogrammed.
+ * 2. Stop PLL1 via PLLCR.PLLSTP.
+ * 3. Compute the new PLLCCR / PLLCCR2 integer + fractional
+ * multipliers from ``new_cpuclk_hz``.
+ * 4. Start PLL1 and wait for OSCSF.PLL1SF.
+ * 5. Switch SCKSCR back to PLL1.
+ * 6. Republish the clock-tree frequencies so subsequent
+ * ``ra_cgc_get_clock_hz`` calls see the new value.
  *
  * @param[in] new_cpuclk_hz Target CPUCLK0 frequency in Hz. Must
- *                           be a multiple of the crystal divided
- *                           by 32 (the PLLCCR2 fractional step).
+ * be a multiple of the crystal divided
+ * by 32 (the PLLCCR2 fractional step).
  *
  * @return ``ra_err_t`` error code.
- * @retval k_ra_ok                 Clock switched to the new target.
- * @retval k_ra_err_invalid_arg    ``new_cpuclk_hz`` is 0.
- * @retval k_ra_err_hw_timeout     PLL lock or MOCO wait timed out.
+ * @retval k_ra_ok Clock switched to the new target.
+ * @retval k_ra_err_invalid_arg ``new_cpuclk_hz`` is 0.
+ * @retval k_ra_err_hw_timeout PLL lock or MOCO wait timed out.
  *
  * @pre ``ra_cgc_init`` has been called (PLL1 is the current source).
  * @pre IRQs masked or single-threaded init context.
  *
  * @post On success, SCKSCR == PLL1 and the reported CPUCLK0
- *       frequency matches ``new_cpuclk_hz`` to within the PLL2
- *       fractional resolution.
+ * frequency matches ``new_cpuclk_hz`` to within the PLL2
+ * fractional resolution.
  *
  * @note Thread safety: not thread-safe.
  * @since 0.2.0
@@ -159,12 +159,12 @@ typedef void (*ra_cgc_ostd_fn_t)(void* ctx);
  * interrupt handler after the driver clears the latched flag.
  *
  * @param[in] handler Callback invoked on oscillation-stop event.
- *                    Must not be NULL.
- * @param[in] ctx     Stored context passed to the callback.
+ * Must not be NULL.
+ * @param[in] ctx Stored context passed to the callback.
  *
  * @return ``ra_err_t`` error code.
- * @retval k_ra_ok                Detector armed.
- * @retval k_ra_err_null_ptr      ``handler`` was NULL.
+ * @retval k_ra_ok Detector armed.
+ * @retval k_ra_err_null_ptr ``handler`` was NULL.
  *
  * @pre ``ra_cgc_init`` has been called.
  * @post OSTDCR.OSTDE is set.
@@ -179,7 +179,7 @@ typedef void (*ra_cgc_ostd_fn_t)(void* ctx);
  * @brief Disable oscillation-stop detection.
  *
  * @return ``ra_err_t`` error code.
- * @retval k_ra_ok                Detector disabled.
+ * @retval k_ra_ok Detector disabled.
  *
  * @pre IRQs masked or single-threaded init context.
  * @post OSTDCR.OSTDE is clear.

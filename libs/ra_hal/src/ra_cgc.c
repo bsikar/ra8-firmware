@@ -6,18 +6,18 @@
  * Brings the RA8D2 clock tree from reset defaults (MOCO, 8 MHz) up
  * to the project target:
  *
- *  1. Start the 24 MHz main crystal and wait for MOSCSF via
- *     OSCSF.
- *  2. Programme PLL1 through PLLCCR + PLLCCR2 for a fractional
- *     multiplier that lands precisely on CPUCLK0 = 1 GHz (instead
- *     of the integer-rounded 984 MHz).
- *  3. Wait for PLL1 lock via OSCSF.PLL1SF.
- *  4. Programme SCKDIVCR + SCKDIVCR2 for the full divider tree.
- *  5. Switch SCKSCR to PLL1.
- *  6. Publish the new frequencies via `s_clock_hz[]` so drivers
- *     can query them with `ra_cgc_get_clock_hz()`.
- *  7. (Optional) run CAC to confirm the PLL output is within
- *     tolerance before returning success.
+ * 1. Start the 24 MHz main crystal and wait for MOSCSF via
+ * OSCSF.
+ * 2. Programme PLL1 through PLLCCR + PLLCCR2 for a fractional
+ * multiplier that lands precisely on CPUCLK0 = 1 GHz (instead
+ * of the integer-rounded 984 MHz).
+ * 3. Wait for PLL1 lock via OSCSF.PLL1SF.
+ * 4. Programme SCKDIVCR + SCKDIVCR2 for the full divider tree.
+ * 5. Switch SCKSCR to PLL1.
+ * 6. Publish the new frequencies via `s_clock_hz[]` so drivers
+ * can query them with `ra_cgc_get_clock_hz()`.
+ * 7. (Optional) run CAC to confirm the PLL output is within
+ * tolerance before returning success.
  *
  * Every protected-register write goes through `RA_PROTECTED_WRITE`
  * so the PRCR re-lock always happens, even on early return paths.
@@ -102,9 +102,9 @@ typedef enum : uint32_t {
  * @brief PLLCCR field shifts (RA8D2 HUM 10.2.x).
  */
 typedef enum : uint8_t {
-  k_ra_pllccr_bit_plsrcsel = 0U, /**< PLL source select.             */
-  k_ra_pllccr_bit_plidiv   = 2U, /**< PLL input divider code.        */
-  k_ra_pllccr_bit_plmul    = 8U, /**< PLL integer multiplier.        */
+  k_ra_pllccr_bit_plsrcsel = 0U, /**< PLL source select. */
+  k_ra_pllccr_bit_plidiv   = 2U, /**< PLL input divider code. */
+  k_ra_pllccr_bit_plmul    = 8U, /**< PLL integer multiplier. */
   k_ra_pllccr2_bit_plmul_f = 0U, /**< PLLCCR2 fractional multiplier. */
 } ra_pllccr_bit_t;
 
@@ -132,17 +132,17 @@ static ra_err_t internal_wait_oscsf(uint8_t bit)
  * @details
  * Written as a single 32-bit store so the prescaler switch is atomic.
  * With PLL1 at 1 GHz we pick:
- *   ICK   /4 -> 250 MHz
- *   PCKA  /8 -> 125 MHz
- *   PCKB /16 -> 62.5 MHz
- *   PCKC  /8 -> 125 MHz
- *   PCKD  /8 -> 125 MHz
- *   PCKE  /4 -> 250 MHz
- *   FCK  /16 -> 62.5 MHz
- *   BCK   /8 -> 125 MHz
- *   CPUCLK0 /1 -> 1 GHz (Cortex-M85 full speed)
- *   CPUCLK1 /4 -> 250 MHz (Cortex-M33)
- *   MRICLK  /4 -> 250 MHz
+ * ICK /4 -> 250 MHz
+ * PCKA /8 -> 125 MHz
+ * PCKB /16 -> 62.5 MHz
+ * PCKC /8 -> 125 MHz
+ * PCKD /8 -> 125 MHz
+ * PCKE /4 -> 250 MHz
+ * FCK /16 -> 62.5 MHz
+ * BCK /8 -> 125 MHz
+ * CPUCLK0 /1 -> 1 GHz (Cortex-M85 full speed)
+ * CPUCLK1 /4 -> 250 MHz (Cortex-M33)
+ * MRICLK /4 -> 250 MHz
  */
 static void internal_programme_dividers(void)
 {
@@ -194,9 +194,9 @@ static ra_err_t internal_start_main_osc(void)
  * step). Combined, they realise a 41+2/3 multiplier for the
  * 24 MHz -> 1000 MHz target:
  *
- *   integer mul  = 41          -> base = 984 MHz
- *   fractional   = 21 (21/32)  -> +15.75 MHz
- *   total        = ~999.75 MHz
+ * integer mul = 41 -> base = 984 MHz
+ * fractional = 21 (21/32) -> +15.75 MHz
+ * total = ~999.75 MHz
  *
  * Close enough to 1 GHz for CPUCLK0; CAC will flag any drift.
  */
@@ -292,7 +292,7 @@ ra_err_t ra_cgc_use_hoco(void)
 }
 
 /* =============================================================================
- * Wave 2.2 -- runtime reconfigure + stop detection
+ * runtime reconfigure + stop detection
  * =============================================================================
  */
 
@@ -358,10 +358,10 @@ ra_err_t ra_cgc_enable_stop_detection(ra_cgc_ostd_fn_t handler, void* ctx)
   s_ostd_ctx     = ctx;
   s_ostd_enabled = true;
   /* HUM Ch 9.2.23 "OSTDCR : Oscillation Stop Detection Control Register", p 346
-   *  -- target programming deferred until the first real NMI wiring
-   *  lands in Wave 9. On host (simulator) the enable-flag is tracked
-   *  purely in software and the test helper fires the stored
-   *  callback directly. */
+   * -- target programming deferred until the first real NMI wiring
+   * lands. On host (simulator) the enable-flag is tracked
+   * purely in software and the test helper fires the stored
+   * callback directly. */
   ra_log_info(s_tag, "stop detection armed");
   return k_ra_ok;
 }

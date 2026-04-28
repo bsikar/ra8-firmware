@@ -6,50 +6,50 @@
  * [Ring 1 / Boot] {World: S}
  *
  * @details
- * Wave 9.1 scaffold for the secure / non-secure address-space split.
+ * scaffold for the secure / non-secure address-space split.
  * Programs the SAU with four canonical regions and enables it. Called
  * from ``SystemInit`` after the cache + MPU are up but before any
  * non-secure code can run.
  *
  * The function is gated behind the ``RA_TRUSTZONE_ENABLE`` build
- * symbol so the single-world build (the Wave 0..8 default) does not
+ * symbol so the single-world build (the ..8 default) does not
  * pay any code-size cost. When the symbol is undefined,
  * ``ra_trustzone_init`` is an empty inline.
  *
- * ## Partition layout (Wave 9.1 scaffold)
+ * ## Partition layout (scaffold)
  *
  * The RA8D2 IDAU defines bit 28 of the address as the security
  * attribute by default (S = bit 28 clear, NS = bit 28 set). The
- * SAU overlays additional rules. The Wave 9.1 partition is:
+ * SAU overlays additional rules. The partition is:
  *
- * | Region | Range                       | Attribute           |
+ * | Region | Range | Attribute |
  * |-------:|:----------------------------|:--------------------|
- * |      0 | 0x02080000..0x020FFFFF      | NS (upper MRAM)     |
- * |      1 | 0x22100000..0x221FFFFF      | NS (upper SRAM)     |
- * |      2 | 0x6A000000..0x6BFFFFFF      | NS (upper SDRAM)    |
- * |      3 | 0x10000000..0x100FFFFF      | NSC veneer alias    |
+ * | 0 | 0x02080000..0x020FFFFF | NS (upper MRAM) |
+ * | 1 | 0x22100000..0x221FFFFF | NS (upper SRAM) |
+ * | 2 | 0x6A000000..0x6BFFFFFF | NS (upper SDRAM) |
+ * | 3 | 0x10000000..0x100FFFFF | NSC veneer alias |
  *
  * - Lower MRAM (0x02000000..0x0207FFFF) stays secure -- holds the
- *   secure world image.
+ * secure world image.
  * - Lower SRAM (0x22000000..0x220FFFFF) stays secure -- holds the
- *   secure-world data + key vault.
+ * secure-world data + key vault.
  * - Upper MRAM / SRAM / SDRAM are exposed to the NS world for
- *   the application.
+ * the application.
  * - The NSC veneer page lives in a 1 MB alias the linker maps via
- *   the ``.gnu.sgstubs`` section.
+ * the ``.gnu.sgstubs`` section.
  *
  * These addresses are illustrative -- the actual partition lands
- * in Wave 9.5 once the linker script grows the matching memory
+ * once the linker script grows the matching memory
  * regions and the veneer section is wired up.
  *
  * @par TrustZone Safety:
- *  - **Validates:** SAU_TYPE.SREGION reports >= 4 regions before
- *    programming any of them (chip family safety check).
- *  - **Trusts:** the Boot ROM left the SAU disabled and the IDAU
- *    in its reset state.
- *  - **Denies:** any access from NS code to the registers programmed
- *    here -- the entire SAU register window lives in the secure
- *    region by definition.
+ * - **Validates:** SAU_TYPE.SREGION reports >= 4 regions before
+ * programming any of them (chip family safety check).
+ * - **Trusts:** the Boot ROM left the SAU disabled and the IDAU
+ * in its reset state.
+ * - **Denies:** any access from NS code to the registers programmed
+ * here -- the entire SAU register window lives in the secure
+ * region by definition.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -67,12 +67,12 @@
  */
 
 typedef enum : uintptr_t {
-  k_ra_sau_ctrl_addr = 0xE000EDD0UL, /**< SAU_CTRL Control Register.    */
-  k_ra_sau_type_addr = 0xE000EDD4UL, /**< SAU_TYPE Type Register.       */
-  k_ra_sau_rnr_addr  = 0xE000EDD8UL, /**< SAU_RNR Region Number.        */
+  k_ra_sau_ctrl_addr = 0xE000EDD0UL, /**< SAU_CTRL Control Register. */
+  k_ra_sau_type_addr = 0xE000EDD4UL, /**< SAU_TYPE Type Register. */
+  k_ra_sau_rnr_addr  = 0xE000EDD8UL, /**< SAU_RNR Region Number. */
   k_ra_sau_rbar_addr = 0xE000EDDCUL, /**< SAU_RBAR Region Base Address. */
   k_ra_sau_rlar_addr = 0xE000EDE0UL, /**< SAU_RLAR Region Limit + bits. */
-  k_ra_sfsr_addr     = 0xE000EDE4UL, /**< SecureFault Status Register.  */
+  k_ra_sfsr_addr     = 0xE000EDE4UL, /**< SecureFault Status Register. */
 } ra_tz_sau_addr_t;
 
 /**
@@ -80,8 +80,8 @@ typedef enum : uintptr_t {
  * @brief SAU_CTRL bit positions.
  */
 typedef enum : uint32_t {
-  k_ra_sau_ctrl_enable = 1UL << 0, /**< ENABLE: master SAU enable.        */
-  k_ra_sau_ctrl_allns  = 1UL << 1, /**< ALLNS: default-NS unprogrammed.  */
+  k_ra_sau_ctrl_enable = 1UL << 0, /**< ENABLE: master SAU enable. */
+  k_ra_sau_ctrl_allns  = 1UL << 1, /**< ALLNS: default-NS unprogrammed. */
 } ra_tz_sau_ctrl_bit_t;
 
 /**
@@ -89,13 +89,13 @@ typedef enum : uint32_t {
  * @brief SAU_RLAR bit positions.
  */
 typedef enum : uint32_t {
-  k_ra_sau_rlar_enable = 1UL << 0, /**< ENABLE: region active.           */
+  k_ra_sau_rlar_enable = 1UL << 0, /**< ENABLE: region active. */
   k_ra_sau_rlar_nsc    = 1UL << 1, /**< NSC: region is Non-Secure Callable. */
 } ra_tz_sau_rlar_bit_t;
 
 /**
  * @enum ra_tz_partition_t
- * @brief Wave 9.1 canonical region addresses.
+ * @brief canonical region addresses.
  *
  * @details
  * SAU regions are 32-byte aligned per ARMv8-M; RLAR holds the
@@ -141,8 +141,8 @@ static uint32_t internal_read32(uintptr_t addr)
  * @brief Programme one SAU region via RNR/RBAR/RLAR.
  *
  * @param[in] region Region number 0..(SAU_TYPE.SREGION - 1).
- * @param[in] base   Start address (32-byte aligned).
- * @param[in] limit  Upper bound minus 32 (32-byte aligned).
+ * @param[in] base Start address (32-byte aligned).
+ * @param[in] limit Upper bound minus 32 (32-byte aligned).
  * @param[in] is_nsc ``true`` to mark the region as NSC.
  */
 static void internal_sau_set_region(uint32_t region, uint32_t base, uint32_t limit, bool is_nsc)
@@ -195,7 +195,7 @@ void ra_trustzone_init(void)
                           (uint32_t)k_ra_tz_ns_sdram_limit,
                           /*is_nsc=*/false);
 
-  /* Region 3: NSC veneer alias (Wave 9.2 will place .gnu.sgstubs
+  /* Region 3: NSC veneer alias ( will place .gnu.sgstubs
    * here via the linker script). */
   internal_sau_set_region(3U,
                           (uint32_t)k_ra_tz_nsc_veneer_base,

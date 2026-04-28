@@ -6,7 +6,7 @@
  * [Ring 3 / HAL] {World: NS}
  *
  * @details
- * Wave 6 driver for the RA8D2 COMA block. COMA is the management
+ * driver for the RA8D2 COMA block. COMA is the management
  * agent that owns bus arbitration counters + shared per-port
  * descriptor fences. This driver covers lifecycle + status + IRQ
  * + power transition.

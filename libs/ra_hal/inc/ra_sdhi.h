@@ -6,20 +6,20 @@
  * [Ring 3 / HAL] {World: NS}
  *
  * @details
- * Wave 5.4 introduces a minimal SDHI driver scaffold covering the
+ * introduces a minimal SDHI driver scaffold covering the
  * lifecycle + status + IRQ + power-transition surface. Block-level
  * SD card command engine, DMA transfers, and 4-bit / 8-bit wide-bus
  * switching land with the first consumer.
  *
  * API surface:
  *
- *  - ``ra_sdhi_init(instance)``        -- MSTP enable + clear IRQ masks
- *  - ``ra_sdhi_deinit(instance)``      -- disable + MSTP release
- *  - ``ra_sdhi_get_status``             -- SD_INFO1/INFO2 mask
- *  - ``ra_sdhi_clear_status``           -- clear SD_INFO1/INFO2 bits
- *  - ``ra_sdhi_attach_handler``         -- install IRQ callback
- *  - ``ra_sdhi_enter_stop / exit_stop`` -- power transition
- *  - ``ra_sdhi_dispatch``               -- ISR entry point
+ * - ``ra_sdhi_init(instance)`` -- MSTP enable + clear IRQ masks
+ * - ``ra_sdhi_deinit(instance)`` -- disable + MSTP release
+ * - ``ra_sdhi_get_status`` -- SD_INFO1/INFO2 mask
+ * - ``ra_sdhi_clear_status`` -- clear SD_INFO1/INFO2 bits
+ * - ``ra_sdhi_attach_handler`` -- install IRQ callback
+ * - ``ra_sdhi_enter_stop / exit_stop`` -- power transition
+ * - ``ra_sdhi_dispatch`` -- ISR entry point
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -53,16 +53,16 @@ typedef void (*ra_sdhi_event_fn_t)(void* ctx, uint8_t instance, uint32_t status_
  * @brief Issue a single SD command and read the 4-word response.
  *
  * @details
- * Wave 5 polling primitive. Loads SD_ARG with ``arg``, writes
+ * polling primitive. Loads SD_ARG with ``arg``, writes
  * ``cmd`` to SD_CMD, polls SD_INFO1.RSPEND for completion, and
  * copies SD_RSP10/32/54/76 into ``out_rsp[0..3]``. The caller
  * encodes the SD command index + response type in ``cmd``.
  *
- * @param[in]  instance SDHI instance.
- * @param[in]  cmd      Pre-encoded SD_CMD register value.
- * @param[in]  arg      32-bit command argument (zero-extended).
- * @param[out] out_rsp  4-word response buffer; may be NULL if
- *                      the command type returns no response.
+ * @param[in] instance SDHI instance.
+ * @param[in] cmd Pre-encoded SD_CMD register value.
+ * @param[in] arg 32-bit command argument (zero-extended).
+ * @param[out] out_rsp 4-word response buffer; may be NULL if
+ * the command type returns no response.
  * @since 0.3.0
  */
 [[nodiscard]] ra_err_t

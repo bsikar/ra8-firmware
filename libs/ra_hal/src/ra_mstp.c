@@ -6,7 +6,7 @@
  * [Ring 3 / HAL] {World: S}
  *
  * @details
- * Wave 1 substrate. Wraps the RA8D2 ``MSTPCRA..MSTPCRE`` registers
+ * substrate. Wraps the RA8D2 ``MSTPCRA..MSTPCRE`` registers
  * (HUM Ch 11.2.6..10, p 443..450) behind a small ref-counted API
  * so two unrelated drivers can both depend on the same MSTP bit
  * (DMAC + DTC, OSPI + DOTF, SSIE0/SSIE1, ...) without trampling
@@ -41,8 +41,8 @@ static const char* s_tag = "MSTP";
  * @brief Dimensions of the ref-count table.
  */
 typedef enum : uint8_t {
-  k_ra_mstp_reg_count = 5U,  /**< MSTPCRA..MSTPCRE.                          */
-  k_ra_mstp_bit_count = 32U, /**< 32 bits per register.                      */
+  k_ra_mstp_reg_count = 5U,  /**< MSTPCRA..MSTPCRE. */
+  k_ra_mstp_bit_count = 32U, /**< 32 bits per register. */
 } ra_mstp_dim_t;
 
 /**
@@ -116,9 +116,9 @@ uint8_t ra_mstp_id_bit(ra_mstp_t id)
 /**
  * @brief Decode an ``ra_mstp_t`` id and validate its bit position.
  *
- * @param[in]  id       Packed id from the ``ra_mstp_t`` enum.
- * @param[out] out_reg  Register index 0..4 on success.
- * @param[out] out_bit  Bit position 0..31 on success.
+ * @param[in] id Packed id from the ``ra_mstp_t`` enum.
+ * @param[out] out_reg Register index 0..4 on success.
+ * @param[out] out_bit Bit position 0..31 on success.
  *
  * @return ``true`` if both fields decode to in-range values.
  */
@@ -154,22 +154,22 @@ static volatile uint32_t* internal_reg_ptr(uint8_t reg)
 /**
  * @brief Read-back protocol from HUM 11.2.6 Note 2.
  *
- * @param[in] reg              MSTPCR register index 0..4.
- * @param[in] bit              Bit position 0..31.
+ * @param[in] reg MSTPCR register index 0..4.
+ * @param[in] bit Bit position 0..31.
  * @param[in] expected_stopped True if the bit must read back as 1.
  *
  * @return ``k_ra_ok`` on observation, ``k_ra_err_hw_timeout`` on
- *         spin-budget exhaustion.
+ * spin-budget exhaustion.
  *
  * @note The host simulator backs MMIO with ordinary RAM, so the
- *       modify-write always reads back as expected on the next
- *       loop iteration. The timeout return is therefore unreachable
- *       on the host build and excluded from host coverage; it is
- *       reachable on the Cortex-M85 target if the SYSC bus is
- *       wedged or the MSTP block is power-gated. The exclusion
- *       only suppresses the host coverage gate -- the line still
- *       compiles, executes on the target, and is part of the
- *       NASA Power-of-10 Rule 2 statically-bounded loop budget.
+ * modify-write always reads back as expected on the next
+ * loop iteration. The timeout return is therefore unreachable
+ * on the host build and excluded from host coverage; it is
+ * reachable on the Cortex-M85 target if the SYSC bus is
+ * wedged or the MSTP block is power-gated. The exclusion
+ * only suppresses the host coverage gate -- the line still
+ * compiles, executes on the target, and is part of the
+ * NASA Power-of-10 Rule 2 statically-bounded loop budget.
  */
 static ra_err_t internal_wait_readback(uint8_t reg, uint8_t bit, bool expected_stopped)
 {
@@ -264,7 +264,7 @@ ra_err_t ra_mstp_enable(ra_mstp_t id)
   }
 
   /* HUM Ch 11.2.6 "MSTPCRA : Module Stop Control Register A", p 443
-   *  -- bit clear == ungate the peripheral. */
+   * -- bit clear == ungate the peripheral. */
   volatile uint32_t* p    = internal_reg_ptr(reg);
   const uint32_t     mask = (uint32_t)1U << bit;
   *p                      = *p & ~mask;
@@ -304,7 +304,7 @@ ra_err_t ra_mstp_disable(ra_mstp_t id)
   }
 
   /* HUM Ch 11.2.6 "MSTPCRA : Module Stop Control Register A", p 443
-   *  -- bit set == gate the peripheral. */
+   * -- bit set == gate the peripheral. */
   volatile uint32_t* p    = internal_reg_ptr(reg);
   const uint32_t     mask = (uint32_t)1U << bit;
   *p                      = *p | mask;

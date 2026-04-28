@@ -6,7 +6,7 @@
  * [Ring 4 / NSC] {World: NSC}
  *
  * @details
- * Wave 10 deliverable. Wraps ``ra_key_vault_sha256_xor_challenge``
+ * deliverable. Wraps ``ra_key_vault_sha256_xor_challenge``
  * for Non-Secure callers. The raw key never leaves the secure
  * world; only the 32-byte SHA-256 digest crosses the boundary.
  *

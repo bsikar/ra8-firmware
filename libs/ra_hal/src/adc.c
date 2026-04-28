@@ -6,7 +6,7 @@
  * [Ring 3 / HAL] {World: NS}
  *
  * @details
- * Wave 4 driver for the RA8D2 ADC_B peripheral. Unlike the pre-RA8
+ * driver for the RA8D2 ADC_B peripheral. Unlike the pre-RA8
  * ADC16H which had a single ADCSR / ADCER pair, FSP R_ADC_B0
  * spreads conversion configuration across ADCLKENR, ADCLKCR,
  * ADMDR, ADINTCR, and per-channel ADCHCR[0..23]. Results land in
@@ -32,10 +32,10 @@ static const char* s_tag = "ADC";
 
 typedef enum : uint32_t {
   k_ra_adc_admdr_default     = 0x00000000UL, /**< Single-shot, software trigger. */
-  k_ra_adc_admdr_scan_bit    = 0x00000002UL, /**< ADSCANMD scan-mode bit.        */
-  k_ra_adc_admdr_trigext_bit = 0x00000001UL, /**< ADTRGMD external-trigger bit.   */
-  k_ra_adc_poll_limit        = 200000UL,     /**< ADCHCR busy-poll budget.        */
-  k_ra_adc_result_mask       = 0x0000FFFFUL, /**< Low 16 bits of ADDR slot.       */
+  k_ra_adc_admdr_scan_bit    = 0x00000002UL, /**< ADSCANMD scan-mode bit. */
+  k_ra_adc_admdr_trigext_bit = 0x00000001UL, /**< ADTRGMD external-trigger bit. */
+  k_ra_adc_poll_limit        = 200000UL,     /**< ADCHCR busy-poll budget. */
+  k_ra_adc_result_mask       = 0x0000FFFFUL, /**< Low 16 bits of ADDR slot. */
 } ra_adc_const_t;
 
 /**

@@ -53,7 +53,7 @@ static void test_init_idempotent(void)
   TEST_END("ra_sdramc_init is idempotent");
 }
 
-/* ---- Wave 5.2 -- lifecycle + power ---- */
+/* ---- lifecycle + power ---- */
 
 static void test_deinit(void)
 {
@@ -110,6 +110,6 @@ int32_t main(void)
   test_set_refresh_interval();
   test_get_status();
   test_power_transition();
-  (void)fprintf(stderr, "[OK  ] test_ra_sdramc.c\n");
+  (void)fprintf(stderr, "[OK ] test_ra_sdramc.c\n");
   return 0;
 }

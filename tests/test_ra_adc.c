@@ -3,7 +3,7 @@
  * @brief Unit tests for adc.c (ADC_B polling driver)
  *
  * @details
- * The Wave 11 audit rewrote the driver to use the real RA8D2 ADC_B
+ * The audit rewrote the driver to use the real RA8D2 ADC_B
  * register layout (ADCLKENR / ADMDR / ADCHCR[24] / ADDR[23]).
  * These tests verify the driver touches the right registers and
  * that the simulator-backed mmap window responds correctly.
@@ -121,8 +121,8 @@ static void test_read_channel_huge(void)
 
 /**
  * @brief Hits the adc.c branch where ADCHCR[ch] is valid but ADDR[ch]
- *        is out-of-range (channel 23: FSP has 24 ADCHCR slots but
- *        only 23 ADDR result slots).
+ * is out-of-range (channel 23: FSP has 24 ADCHCR slots but
+ * only 23 ADDR result slots).
  */
 static void test_read_channel_hcr_but_no_result(void)
 {
@@ -136,7 +136,7 @@ static void test_read_channel_hcr_but_no_result(void)
 
 /**
  * @brief Drive a read with the SIGALRM sim helper clearing CVEN
- *        mid-poll to mimic hardware auto-clear.
+ * mid-poll to mimic hardware auto-clear.
  */
 static void test_read_channel_completes_via_alarm(void)
 {
@@ -157,7 +157,7 @@ static void test_read_channel_completes_via_alarm(void)
 
 /**
  * @brief Without the alarm the driver bounded-polls then reports
- *        k_ra_err_hw_timeout.
+ * k_ra_err_hw_timeout.
  */
 static void test_read_channel_timeout(void)
 {
@@ -370,6 +370,6 @@ int32_t main(void)
   test_attach_and_dispatch();
   test_dispatch_no_handler();
   test_power_transition();
-  (void)fprintf(stderr, "[OK  ] test_ra_adc.c\n");
+  (void)fprintf(stderr, "[OK ] test_ra_adc.c\n");
   return 0;
 }

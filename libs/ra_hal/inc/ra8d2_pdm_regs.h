@@ -3,7 +3,7 @@
  * @brief PDM (Pulse Density Modulation) microphone interface register layout
  *
  * @details
- * Single PDM-IF instance at 0x40256000. Wave 6.1 introduces a
+ * Single PDM-IF instance at 0x40256000. introduces a
  * minimal register window covering lifecycle, status, and
  * interrupt enable; full PCM decimation / FIR filter setup land
  * with the first audio driver.
@@ -35,11 +35,11 @@ typedef enum : uintptr_t {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  volatile uint32_t PDM_CTRL; /**< +0x00 Control.        */
-  volatile uint32_t PDM_CFG;  /**< +0x04 Configuration.  */
-  volatile uint32_t PDM_STAT; /**< +0x08 Status.         */
+  volatile uint32_t PDM_CTRL; /**< +0x00 Control. */
+  volatile uint32_t PDM_CFG;  /**< +0x04 Configuration. */
+  volatile uint32_t PDM_STAT; /**< +0x08 Status. */
   volatile uint32_t PDM_IER;  /**< +0x0C Interrupt enbl. */
-  volatile uint32_t PDM_DATA; /**< +0x10 PCM data out.   */
+  volatile uint32_t PDM_DATA; /**< +0x10 PCM data out. */
 } r_pdm_regs_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 

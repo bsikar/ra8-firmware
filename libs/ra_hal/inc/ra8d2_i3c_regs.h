@@ -3,7 +3,7 @@
  * @brief I3C Bus Interface register layout for the Renesas RA8D2
  *
  * @details
- * Single I3C instance at `0x4011F000`. Wave 5.5 introduces a minimal
+ * Single I3C instance at `0x4011F000`. introduces a minimal
  * register window covering the bit-transfer engine, device-address
  * table, and basic interrupt / status registers -- enough to bring
  * up the driver lifecycle + IRQ path without a full I3C command
@@ -47,19 +47,19 @@ typedef enum : uint8_t {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  volatile uint32_t PRTS;   /**< +0x00 Protocol Selection.        */
-  volatile uint32_t BCTL;   /**< +0x04 Bus Control.               */
-  volatile uint32_t MSDVAD; /**< +0x08 Master/Slave Device Addr.  */
+  volatile uint32_t PRTS;   /**< +0x00 Protocol Selection. */
+  volatile uint32_t BCTL;   /**< +0x04 Bus Control. */
+  volatile uint32_t MSDVAD; /**< +0x08 Master/Slave Device Addr. */
   volatile uint32_t _r0[k_ra_i3c_pad0_word_count];
-  volatile uint32_t RSTCTL; /**< +0x20 Reset Control.             */
+  volatile uint32_t RSTCTL; /**< +0x20 Reset Control. */
   volatile uint32_t _r1[k_ra_i3c_pad1_word_count];
-  volatile uint32_t INST;  /**< +0x30 Interrupt Status.          */
-  volatile uint32_t INSTE; /**< +0x34 Interrupt Status Enable.   */
-  volatile uint32_t IE;    /**< +0x38 Interrupt Enable.          */
+  volatile uint32_t INST;  /**< +0x30 Interrupt Status. */
+  volatile uint32_t INSTE; /**< +0x34 Interrupt Status Enable. */
+  volatile uint32_t IE;    /**< +0x38 Interrupt Enable. */
   volatile uint32_t _r2;
-  volatile uint32_t BST;  /**< +0x40 Bus Status.                */
-  volatile uint32_t BSTE; /**< +0x44 Bus Status Enable.         */
-  volatile uint32_t BIE;  /**< +0x48 Bus Interrupt Enable.      */
+  volatile uint32_t BST;  /**< +0x40 Bus Status. */
+  volatile uint32_t BSTE; /**< +0x44 Bus Status Enable. */
+  volatile uint32_t BIE;  /**< +0x48 Bus Interrupt Enable. */
 } r_i3c_regs_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 

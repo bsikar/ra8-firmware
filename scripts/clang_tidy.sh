@@ -87,7 +87,9 @@ find_clang_tidy() {
     for candidate in "${candidates[@]}"; do
         if command -v "$candidate" &>/dev/null; then
             local version
-            version=$("$candidate" --version 2>&1 | sed -n 's/.*version \([0-9]\+\).*/\1/p' | head -1)
+            # Use -E (POSIX-extended) so the same script works under BSD sed
+            # (macOS) and GNU sed (Linux). BSD sed does not support `\+`.
+            version=$("$candidate" --version 2>&1 | sed -nE 's/.*version ([0-9]+).*/\1/p' | head -1)
             if [[ -n "$version" && "$version" -ge 16 ]]; then
                 echo "$candidate"
                 return 0

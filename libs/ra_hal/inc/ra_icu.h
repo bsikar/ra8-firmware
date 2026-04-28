@@ -6,22 +6,22 @@
  * [Ring 3 / HAL] {World: S}
  *
  * @details
- * Wave 2.1 rewrite. The low-level IELSR event allocator moved
- * to ``ra_isr`` in Wave 1.2; ``ra_icu`` now owns the remaining
+ * rewrite. The low-level IELSR event allocator moved
+ * to ``ra_isr``; ``ra_icu`` now owns the remaining
  * ICU functionality:
  *
- *  - ``ra_icu_init()`` resets IRQCR0..15, disables every NMI
- *    source, clears any pending NMI status flags.
- *  - ``ra_icu_configure_irq_pin(num, cfg)`` programs one of the
- *    16 external IRQ pins (IRQCRi): edge sensitivity, digital
- *    filter clock divider, filter enable.
- *  - ``ra_icu_nmi_enable(sources)`` / ``ra_icu_nmi_disable`` /
- *    ``ra_icu_nmi_clear`` manage the NMI sources mapped through
- *    NMIER / NMICR / NMICLR (HUM Ch 14.2.14..15).
- *  - The ``ra_icu_route`` / ``ra_icu_nvic_*`` legacy functions
- *    remain as thin wrappers around direct register access for
- *    backward compatibility with pre-Wave-2 demo main.c code.
- *    They are documented as @deprecated.
+ * - ``ra_icu_init()`` resets IRQCR0..15, disables every NMI
+ * source, clears any pending NMI status flags.
+ * - ``ra_icu_configure_irq_pin(num, cfg)`` programs one of the
+ * 16 external IRQ pins (IRQCRi): edge sensitivity, digital
+ * filter clock divider, filter enable.
+ * - ``ra_icu_nmi_enable(sources)`` / ``ra_icu_nmi_disable`` /
+ * ``ra_icu_nmi_clear`` manage the NMI sources mapped through
+ * NMIER / NMICR / NMICLR (HUM Ch 14.2.14..15).
+ * - The ``ra_icu_route`` / ``ra_icu_nvic_*`` legacy functions
+ * remain as thin wrappers around direct register access for
+ * backward compatibility with pre-Wave-2 demo main.c code.
+ * They are documented as @deprecated.
  *
  * All register writes go through ``ra_icu_irqcr`` / ``ra_icu_nmier``
  * accessors from ``ra8d2_icu_regs.h`` (HUM Ch 14 p 524).
@@ -66,9 +66,9 @@ extern "C" {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  ra_icu_irqmd_t   sense;      /**< Edge / level detection mode.     */
-  ra_icu_fclksel_t filter_div; /**< Filter sampling clock divider.  */
-  bool             filter_en;  /**< True = enable digital filter.   */
+  ra_icu_irqmd_t   sense;      /**< Edge / level detection mode. */
+  ra_icu_fclksel_t filter_div; /**< Filter sampling clock divider. */
+  bool             filter_en;  /**< True = enable digital filter. */
 } ra_icu_irq_cfg_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 
@@ -111,22 +111,22 @@ typedef struct {
  * fields per HUM 14.2.12 (p 535). Reserved bits in IRQCRi are
  * always written 0 (the HUM says "should be 0" for the read-zero
  * bits). The driver does NOT touch IELSR or enable the NVIC
- * line -- that is the Wave 1 ``ra_isr_register`` responsibility.
+ * line -- that is the ``ra_isr_register`` responsibility.
  *
  * @param[in] irq_num IRQ pin number 0..15.
- * @param[in] cfg     Configuration descriptor.
+ * @param[in] cfg Configuration descriptor.
  *
  * @return ``ra_err_t`` error code.
- * @retval k_ra_ok                 Register programmed.
- * @retval k_ra_err_invalid_arg    ``irq_num`` out of range.
- * @retval k_ra_err_null_ptr       ``cfg`` was NULL.
+ * @retval k_ra_ok Register programmed.
+ * @retval k_ra_err_invalid_arg ``irq_num`` out of range.
+ * @retval k_ra_err_null_ptr ``cfg`` was NULL.
  *
  * @pre IRQs masked or single-threaded init context.
  * @post IRQCR[irq_num] reflects the requested config.
  *
  * @note Per HUM 14.2.12, IRQCRi may only be rewritten while the
- *       matching IELSRn register is 0 (no event routed) -- the
- *       caller must order the init sequence accordingly.
+ * matching IELSRn register is 0 (no event routed) -- the
+ * caller must order the init sequence accordingly.
  *
  * @note Thread safety: not thread-safe.
  * @since 0.2.0
@@ -136,11 +136,11 @@ typedef struct {
 /**
  * @brief Read the raw 8-bit IRQCRi value.
  *
- * @param[in]  irq_num Pin 0..15.
+ * @param[in] irq_num Pin 0..15.
  * @param[out] out_val On success, the current register value.
  *
  * @return ``k_ra_ok`` on success, ``k_ra_err_invalid_arg`` on
- *         out-of-range pin, or ``k_ra_err_null_ptr``.
+ * out-of-range pin, or ``k_ra_err_null_ptr``.
  *
  * @pre ``out_val`` is non-NULL.
  * @post No hardware state is modified.
@@ -169,7 +169,7 @@ typedef struct {
  * @post NMIER has the requested bits set.
  *
  * @note NMIER bits are sticky-set -- to disable, rewrite the
- *       register via ``ra_icu_nmi_disable``.
+ * register via ``ra_icu_nmi_disable``.
  * @since 0.2.0
  */
 [[nodiscard]] ra_err_t ra_icu_nmi_enable(uint32_t mask);
@@ -223,10 +223,10 @@ typedef struct {
  * test_ra_icu.c suite keep compiling.
  *
  * @param[in] nvic_index IELSR slot index 0..111.
- * @param[in] event      ELC event number.
+ * @param[in] event ELC event number.
  * @return ``ra_err_t`` error code.
- * @retval k_ra_ok                 Slot programmed.
- * @retval k_ra_err_out_of_range   ``nvic_index`` out of range.
+ * @retval k_ra_ok Slot programmed.
+ * @retval k_ra_err_out_of_range ``nvic_index`` out of range.
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_icu_route(uint16_t nvic_index, ra_elc_event_t event);

@@ -52,8 +52,8 @@ page numbers in this manual revision.
 | 33 | Ethernet MAC (RMAC) | 1703 | 1786 |
 | 34 | Ethernet CPU Agent (GWCA) | 1787 | 1924 |
 | 35 | Ethernet Generic PTP Timer (GPTP) | 1925 | 1964 |
-| 36 | USB 2.0 Full-Speed Module (USBFS)  | 1965 | 2058 |
-| 37 | USB 2.0 High-Speed Module (USBHS)  | 2059 | 2173 |
+| 36 | USB 2.0 Full-Speed Module (USBFS) | 1965 | 2058 |
+| 37 | USB 2.0 High-Speed Module (USBHS) | 2059 | 2173 |
 | 38 | Serial Communications Interface (SCI) | 2174 | 2366 |
 | 39 | I2C Bus Interface (IIC) | 2367 | 2444 |
 | 40 | I3C Bus Interface (I3C) | 2445 | 2701 |
@@ -89,13 +89,13 @@ page numbers in this manual revision.
 
 ## Security / TrustZone reference index
 
-The TrustZone partitioning work in Wave 9 leans on the following
+The TrustZone partitioning work leans on the following
 HUM chapters. Each entry is hand-verified against the rendered TOC
 pages and the chapter body via the Read tool, not just pdftotext.
 
 - **SAU / IDAU and Armv8-M security extension**
     - Ch 2 "CPU", subsection 2.3 "Implementation Options" -- declares Armv8-M Security Extension and the Cortex-M85 PMSAv8 / Secure MPU layout.
-    - Ch 16 "Memory Protection Unit (MPU)" -- Secure MPU (MPU_S) and Non-Secure MPU (MPU_NS) region rules; this is where Wave 9.1 `system_init.c` writes its SAU regions in tandem with the CPU's PMSAv8.
+    - Ch 16 "Memory Protection Unit (MPU)" -- Secure MPU (MPU_S) and Non-Secure MPU (MPU_NS) region rules; this is where `system_init.c` writes its SAU regions in tandem with the CPU's PMSAv8.
 - **Per-peripheral security attribution registers**
     - Ch 6 "Resets", register 6.2.1 `RSTSAR` (Reset Security Attribution Register).
     - Ch 8 "Programmable Voltage Detection (PVD)", register 8.2.1 `PVDSAR`.
@@ -109,8 +109,8 @@ pages and the chapter body via the Read tool, not just pdftotext.
     - Ch 7 "Option-Setting Memory" -- FSBL secure boot path, anti-rollback counters, OEM root-key hashes; the boot trust anchor for the Secure world.
 - **NSC veneer placement**
     - Ch 2 "CPU", subsection 2.3 "Implementation Options" and the Armv8-M security extension references therein -- the SG / BXNS / BLXNS instruction set used by `libs/ra_nsc/`'s veneers.
-    - Ch 16 "Memory Protection Unit (MPU)" -- the `.gnu.sgstubs` linker section must land in a region the Secure MPU marks as Secure-execute-only and Non-Secure-callable; Wave 9.1 wires this up.
+    - Ch 16 "Memory Protection Unit (MPU)" -- the `.gnu.sgstubs` linker section must land in a region the Secure MPU marks as Secure-execute-only and Non-Secure-callable; wires this up.
 - **Security feature overview (cross-cutting)**
     - Ch 51 "Security Features" -- top-level security feature index; pointer to RSIP, secure debug, lifecycle.
-    - Ch 52 "Renesas Secure IP (RSIP-E50D)" -- key vault, AES, SHA, TRNG -- Wave 10 `key_vault.c` lives behind these.
+    - Ch 52 "Renesas Secure IP (RSIP-E50D)" -- key vault, AES, SHA, TRNG -- `key_vault.c` lives behind these.
 

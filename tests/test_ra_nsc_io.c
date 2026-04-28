@@ -1,6 +1,6 @@
 /**
  * @file test_ra_nsc_io.c
- * @brief Unit tests for libs/ra_nsc/src/ra_nsc_io.c (Wave 9.4)
+ * @brief Unit tests for libs/ra_nsc/src/ra_nsc_io.c
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -96,6 +96,6 @@ int32_t main(void)
   test_adc_dac_acmphs_init_forwards();
   test_crc_init_compute();
   test_glcdc_pdm_eth_init();
-  (void)fprintf(stderr, "[OK  ] test_ra_nsc_io.c\n");
+  (void)fprintf(stderr, "[OK ] test_ra_nsc_io.c\n");
   return 0;
 }

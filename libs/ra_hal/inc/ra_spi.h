@@ -6,23 +6,23 @@
  * [Ring 3 / HAL] {World: NS}
  *
  * @details
- * Wave 3.3 full build-out of the RA8D2 SPI master peripheral.
- * Extends the Wave 0 polling stub with: descriptor-based init,
+ * full build-out of the RA8D2 SPI master peripheral.
+ * Extends the polling stub with: descriptor-based init,
  * deinit, runtime bit-rate reconfigure, error status + clear,
  * interrupt-mode attach / dispatch, power transition.
  *
  * API surface:
  *
- *  - ``ra_spi_init(channel, cfg)``      -- full config + MSTP enable
- *  - ``ra_spi_deinit(channel)``         -- SPE clear + MSTP release
- *  - ``ra_spi_master_init``              -- Wave 0 legacy shim
- *  - ``ra_spi_xfer8``                    -- Wave 0 legacy polling xfer
- *  - ``ra_spi_write / read``             -- polling array xfer
- *  - ``ra_spi_set_clock``                -- runtime SPBR change
- *  - ``ra_spi_get_errors / clear_errors``-- overrun/mode/parity/underrun
- *  - ``ra_spi_attach_transfer_handler``  -- IRQ callback
- *  - ``ra_spi_enter_stop / exit_stop``   -- power transition
- *  - ``ra_spi_dispatch_spti / sprti / speri`` -- ISR entry points
+ * - ``ra_spi_init(channel, cfg)`` -- full config + MSTP enable
+ * - ``ra_spi_deinit(channel)`` -- SPE clear + MSTP release
+ * - ``ra_spi_master_init`` -- legacy shim
+ * - ``ra_spi_xfer8`` -- legacy polling xfer
+ * - ``ra_spi_write / read`` -- polling array xfer
+ * - ``ra_spi_set_clock`` -- runtime SPBR change
+ * - ``ra_spi_get_errors / clear_errors``-- overrun/mode/parity/underrun
+ * - ``ra_spi_attach_transfer_handler`` -- IRQ callback
+ * - ``ra_spi_enter_stop / exit_stop`` -- power transition
+ * - ``ra_spi_dispatch_spti / sprti / speri`` -- ISR entry points
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -66,10 +66,10 @@ typedef enum : uint8_t {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  uint32_t      baud_hz;   /**< Target SPI clock in Hz.               */
-  uint32_t      pclka_hz;  /**< Current PCLKA in Hz (for SPBR calc).  */
-  ra_spi_mode_t mode;      /**< CPOL / CPHA combination.              */
-  bool          lsb_first; /**< True for LSB-first transfers.         */
+  uint32_t      baud_hz;   /**< Target SPI clock in Hz. */
+  uint32_t      pclka_hz;  /**< Current PCLKA in Hz (for SPBR calc). */
+  ra_spi_mode_t mode;      /**< CPOL / CPHA combination. */
+  bool          lsb_first; /**< True for LSB-first transfers. */
 } ra_spi_cfg_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 
@@ -79,17 +79,17 @@ typedef struct {
  */
 typedef enum : uint8_t {
   k_ra_spi_err_none     = 0x00U,
-  k_ra_spi_err_overrun  = 0x01U, /**< SPSR.OVRF set.    */
-  k_ra_spi_err_mode     = 0x02U, /**< SPSR.MODERF set.  */
-  k_ra_spi_err_parity   = 0x04U, /**< SPSR.PERF set.    */
-  k_ra_spi_err_underrun = 0x08U, /**< SPSR.UDRF set.    */
+  k_ra_spi_err_overrun  = 0x01U, /**< SPSR.OVRF set. */
+  k_ra_spi_err_mode     = 0x02U, /**< SPSR.MODERF set. */
+  k_ra_spi_err_parity   = 0x04U, /**< SPSR.PERF set. */
+  k_ra_spi_err_underrun = 0x08U, /**< SPSR.UDRF set. */
 } ra_spi_err_mask_t;
 
 /**
  * @typedef ra_spi_complete_fn_t
  * @brief Transfer-complete callback signature.
  *
- * @param[in] ctx      Caller-supplied context.
+ * @param[in] ctx Caller-supplied context.
  * @param[in] err_mask OR of ``k_ra_spi_err_*`` bits; zero on success.
  */
 typedef void (*ra_spi_complete_fn_t)(void* ctx, uint8_t err_mask);
@@ -103,7 +103,7 @@ typedef void (*ra_spi_complete_fn_t)(void* ctx, uint8_t err_mask);
  * @brief Initialise an SPI channel with a full config descriptor.
  *
  * @param[in] channel SPI channel (0 or 1).
- * @param[in] cfg     Configuration descriptor.
+ * @param[in] cfg Configuration descriptor.
  * @return ``ra_err_t`` error code.
  *
  * @pre IRQs masked or single-threaded init context.
@@ -140,9 +140,9 @@ typedef void (*ra_spi_complete_fn_t)(void* ctx, uint8_t err_mask);
 /**
  * @brief Full-duplex 8-bit exchange.
  *
- * @param[in]  channel SPI channel (0 or 1).
- * @param[in]  tx      Byte to transmit.
- * @param[out] rx      Pointer to receive the shifted-in byte (may be NULL).
+ * @param[in] channel SPI channel (0 or 1).
+ * @param[in] tx Byte to transmit.
+ * @param[out] rx Pointer to receive the shifted-in byte (may be NULL).
  * @return `ra_err_t` error code.
  * @since 0.1.0
  */
@@ -156,8 +156,8 @@ typedef void (*ra_spi_complete_fn_t)(void* ctx, uint8_t err_mask);
 /**
  * @brief Change the SPI clock without tearing down the channel.
  *
- * @param[in] channel  SPI channel.
- * @param[in] baud_hz  Target bit-rate in Hz.
+ * @param[in] channel SPI channel.
+ * @param[in] baud_hz Target bit-rate in Hz.
  * @param[in] pclka_hz Current PCLKA frequency.
  * @return ``ra_err_t`` error code.
  * @since 0.2.0
@@ -172,7 +172,7 @@ typedef void (*ra_spi_complete_fn_t)(void* ctx, uint8_t err_mask);
 /**
  * @brief Read the SPSR error bits (OVRF, MODERF, PERF, UDRF).
  *
- * @param[in]  channel  SPI channel.
+ * @param[in] channel SPI channel.
  * @param[out] out_mask OR of ``k_ra_spi_err_*``.
  * @return ``ra_err_t`` error code.
  * @since 0.2.0
@@ -196,8 +196,8 @@ typedef void (*ra_spi_complete_fn_t)(void* ctx, uint8_t err_mask);
  * @brief Attach a transfer-complete callback for a channel.
  *
  * @param[in] channel SPI channel.
- * @param[in] fn      Callback fired on transfer end / error.
- * @param[in] ctx     Context passed to the callback.
+ * @param[in] fn Callback fired on transfer end / error.
+ * @param[in] ctx Context passed to the callback.
  * @return ``ra_err_t`` error code.
  * @since 0.2.0
  */
@@ -222,7 +222,7 @@ ra_spi_attach_transfer_handler(uint8_t channel, ra_spi_complete_fn_t fn, void* c
 [[nodiscard]] ra_err_t ra_spi_exit_stop(uint8_t channel);
 
 /* =============================================================================
- * DMA TX / RX (Wave 3.7b)
+ * DMA TX / RX
  * =============================================================================
  */
 
@@ -235,19 +235,19 @@ ra_spi_attach_transfer_handler(uint8_t channel, ra_spi_complete_fn_t fn, void* c
  * be configured for 8-bit frames via the cfg passed to
  * ``ra_spi_init``; wider-frame DMA streaming is a future wave.
  *
- * @param[in]  channel         SPI channel.
- * @param[in]  data            Source buffer. Must outlive transfer.
- * @param[in]  len             Number of bytes; non-zero.
- * @param[in]  on_complete     Completion callback. May be NULL.
- * @param[in]  ctx             Context passed to ``on_complete``.
+ * @param[in] channel SPI channel.
+ * @param[in] data Source buffer. Must outlive transfer.
+ * @param[in] len Number of bytes; non-zero.
+ * @param[in] on_complete Completion callback. May be NULL.
+ * @param[in] ctx Context passed to ``on_complete``.
  * @param[out] out_dma_channel Allocated DMAC channel on success.
  *
  * @return ``ra_err_t`` error code.
- * @retval k_ra_ok                 Transfer armed.
- * @retval k_ra_err_null_ptr       ``data`` / ``out_dma_channel`` NULL.
- * @retval k_ra_err_invalid_arg    Channel or ``len`` invalid.
- * @retval k_ra_err_no_mem         All DMAC channels in use.
- * @retval k_ra_err_hw_error       ``ra_dma_request`` failed.
+ * @retval k_ra_ok Transfer armed.
+ * @retval k_ra_err_null_ptr ``data`` / ``out_dma_channel`` NULL.
+ * @retval k_ra_err_invalid_arg Channel or ``len`` invalid.
+ * @retval k_ra_err_no_mem All DMAC channels in use.
+ * @retval k_ra_err_hw_error ``ra_dma_request`` failed.
  *
  * @pre Channel previously initialised with 8-bit frames.
  * @pre ``ra_dma_init`` has been called.
@@ -270,19 +270,19 @@ ra_spi_attach_transfer_handler(uint8_t channel, ra_spi_complete_fn_t fn, void* c
  * Programmes the ra_dma substrate to copy ``len`` bytes from the
  * channel's SPDR register into ``out_buf[]``.
  *
- * @param[in]  channel         SPI channel.
- * @param[out] out_buf         Destination buffer. Must outlive transfer.
- * @param[in]  len             Number of bytes; non-zero.
- * @param[in]  on_complete     Completion callback. May be NULL.
- * @param[in]  ctx             Context passed to ``on_complete``.
+ * @param[in] channel SPI channel.
+ * @param[out] out_buf Destination buffer. Must outlive transfer.
+ * @param[in] len Number of bytes; non-zero.
+ * @param[in] on_complete Completion callback. May be NULL.
+ * @param[in] ctx Context passed to ``on_complete``.
  * @param[out] out_dma_channel Allocated DMAC channel on success.
  *
  * @return ``ra_err_t`` error code.
- * @retval k_ra_ok                 Transfer armed.
- * @retval k_ra_err_null_ptr       ``out_buf`` / ``out_dma_channel`` NULL.
- * @retval k_ra_err_invalid_arg    Channel or ``len`` invalid.
- * @retval k_ra_err_no_mem         All DMAC channels in use.
- * @retval k_ra_err_hw_error       ``ra_dma_request`` failed.
+ * @retval k_ra_ok Transfer armed.
+ * @retval k_ra_err_null_ptr ``out_buf`` / ``out_dma_channel`` NULL.
+ * @retval k_ra_err_invalid_arg Channel or ``len`` invalid.
+ * @retval k_ra_err_no_mem All DMAC channels in use.
+ * @retval k_ra_err_hw_error ``ra_dma_request`` failed.
  *
  * @pre Channel previously initialised with 8-bit frames.
  * @pre ``ra_dma_init`` has been called.

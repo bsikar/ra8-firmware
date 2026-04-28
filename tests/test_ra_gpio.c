@@ -25,11 +25,11 @@
  * @brief Identifiers used by the GPIO test cases.
  */
 typedef enum : uint16_t {
-  k_ra_gpio_test_pin_valid_low  = 0x0000U, /**< Port 0, pin 0.           */
-  k_ra_gpio_test_pin_valid_high = 0x0E0FU, /**< Port 14, pin 15.         */
-  k_ra_gpio_test_pin_alt        = 0x0102U, /**< Port 1, pin 2.           */
-  k_ra_gpio_test_pin_bad_port   = 0x0F00U, /**< Port 15 (out of range).  */
-  k_ra_gpio_test_pin_bad_pin    = 0x0010U, /**< Port 0, pin 16 (OOR).    */
+  k_ra_gpio_test_pin_valid_low  = 0x0000U, /**< Port 0, pin 0. */
+  k_ra_gpio_test_pin_valid_high = 0x0E0FU, /**< Port 14, pin 15. */
+  k_ra_gpio_test_pin_alt        = 0x0102U, /**< Port 1, pin 2. */
+  k_ra_gpio_test_pin_bad_port   = 0x0F00U, /**< Port 15 (out of range). */
+  k_ra_gpio_test_pin_bad_pin    = 0x0010U, /**< Port 0, pin 16 (OOR). */
 } ra_gpio_test_ids_t;
 
 /* Forward declaration of the concrete DI vtable. */
@@ -405,7 +405,7 @@ static void test_route_peripheral_conflict(void)
 
 /* ---------------------------------------------------------------------------
  * DI vtable thunks
- * ---------------------------------------------------------------------------
+ * 
  */
 
 static void test_vtable_output_init_and_write(void)
@@ -439,15 +439,15 @@ static void test_vtable_read_and_toggle(void)
 }
 
 /* ---------------------------------------------------------------------------
- * Wave 3.4 -- external IRQ attach / detach
- * ---------------------------------------------------------------------------
+ * external IRQ attach / detach
+ * 
  */
 
 typedef enum : uint8_t {
   k_ra_gpio_test_irq_num        = 3U,  /**< IRQ3 used by attach tests. */
-  k_ra_gpio_test_irq_bad_num    = 16U, /**< Out-of-range IRQ number.   */
-  k_ra_gpio_test_irq_prio       = 5U,  /**< NVIC priority for tests.   */
-  k_ra_gpio_test_expected_event = 4U,  /**< ICU IRQ3 ELC event.      */
+  k_ra_gpio_test_irq_bad_num    = 16U, /**< Out-of-range IRQ number. */
+  k_ra_gpio_test_irq_prio       = 5U,  /**< NVIC priority for tests. */
+  k_ra_gpio_test_expected_event = 4U,  /**< ICU IRQ3 ELC event. */
 } ra_gpio_test_irq_ids_t;
 
 static uint32_t s_irq_fire_count;
@@ -646,6 +646,6 @@ int32_t main(void)
   test_gpio_detach_irq_happy();
   test_gpio_detach_irq_bad_num();
   test_gpio_detach_irq_not_attached();
-  (void)fprintf(stderr, "[OK  ] test_ra_gpio.c\n");
+  (void)fprintf(stderr, "[OK ] test_ra_gpio.c\n");
   return 0;
 }

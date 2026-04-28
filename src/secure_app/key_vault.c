@@ -6,15 +6,15 @@
  * [Ring 5 / SECAPP] {World: S}
  *
  * @details
- * Wave 10 implementation. Stores 8 symmetric keys in a static
+ * implementation. Stores 8 symmetric keys in a static
  * array that lives in the secure SRAM partition. Provides three
  * operations:
  *
- *   - ``ra_key_vault_init``  zero every slot.
- *   - ``ra_key_vault_store`` copy a 32-byte key into a slot.
- *   - ``ra_key_vault_sha256_xor_challenge`` compute
- *     SHA-256(key XOR challenge) -- the only operation the
- *     NS world can reach via the Wave 10 NSC veneer.
+ * - ``ra_key_vault_init`` zero every slot.
+ * - ``ra_key_vault_store`` copy a 32-byte key into a slot.
+ * - ``ra_key_vault_sha256_xor_challenge`` compute
+ * SHA-256(key XOR challenge) -- the only operation the
+ * NS world can reach via the NSC veneer.
  *
  * The SHA-256 implementation is a small fixed-iteration sponge
  * baked into this file -- no external libraries, no heap. It is

@@ -6,7 +6,7 @@
  * [Ring 3 / HAL] {World: NS}
  *
  * @details
- * Wave 4 driver for the RA8D2 DAC_B peripheral. DAC_B is the RA8
+ * driver for the RA8D2 DAC_B peripheral. DAC_B is the RA8
  * successor to the pre-RA8 DAC12 block: each DAC "channel" is a
  * separate IP instance with its own DADR + DACR0/1/2 set. DAC_B0
  * and DAC_B1 live at 0x40233000 and 0x40233100 (stride 0x100).
@@ -182,8 +182,8 @@ ra_err_t ra_dac_b_get_status(uint8_t* out_mask)
 {
   RA_CHECK_NULL_PTR(out_mask, s_tag, "out_mask must not be nullptr");
   /* Build a single-byte composite status flag:
-   *   bit 0 -- channel 0 DACEN
-   *   bit 1 -- channel 1 DACEN
+   * bit 0 -- channel 0 DACEN
+   * bit 1 -- channel 1 DACEN
    */
   uint8_t                  flags = 0U;
   volatile r_dac_b_regs_t* reg0  = ra_dac_b((uint8_t)k_ra_dac_b_channel_0);

@@ -6,7 +6,7 @@
  * [Ring 3 / HAL] {World: NS}
  *
  * @details
- * Wave 4 driver for the RA8D2 AGT block (10 channels total; only
+ * driver for the RA8D2 AGT block (10 channels total; only
  * AGT0 / AGT1 have dedicated MSTPD bits, the rest share the
  * sub-clock path). Programmes an AGT channel as a free-running
  * 16-bit down-counter clocked from PCLKB. Used as a coarse tick
@@ -90,7 +90,7 @@ static const ra_mstp_t s_agt_mstp_table[k_ra_agt_mstp_id_count] = {
 }
 
 /* =============================================================================
- * Wave 4.3 -- full build-out
+ * full build-out
  * =============================================================================
  */
 
