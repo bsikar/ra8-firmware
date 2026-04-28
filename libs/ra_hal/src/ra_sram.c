@@ -99,10 +99,10 @@ static const ra_mstp_t s_sram_mstp_table[k_ra_sram_bank_count] = {
  * @brief Bank-index -> data-window offset (HUM Ch 58.1 Table 58.1, p 3527).
  */
 static const uint32_t s_sram_data_off_table[k_ra_sram_bank_count] = {
-  (uint32_t)k_ra_sram_bank0_data_off,
-  (uint32_t)k_ra_sram_bank1_data_off,
-  (uint32_t)k_ra_sram_bank2_data_off,
-  (uint32_t)k_ra_sram_bank3_data_off,
+  k_ra_sram_bank0_data_off,
+  k_ra_sram_bank1_data_off,
+  k_ra_sram_bank2_data_off,
+  k_ra_sram_bank3_data_off,
 };
 
 /**
@@ -110,10 +110,10 @@ static const uint32_t s_sram_data_off_table[k_ra_sram_bank_count] = {
  * @brief Bank-index -> ECC syndrome window offset (HUM Ch 58.1, p 3527).
  */
 static const uint32_t s_sram_ecc_off_table[k_ra_sram_bank_count] = {
-  (uint32_t)k_ra_sram_ecc_bank0_off,
-  (uint32_t)k_ra_sram_ecc_bank1_off,
-  (uint32_t)k_ra_sram_ecc_bank2_off,
-  (uint32_t)k_ra_sram_ecc_bank3_off,
+  k_ra_sram_ecc_bank0_off,
+  k_ra_sram_ecc_bank1_off,
+  k_ra_sram_ecc_bank2_off,
+  k_ra_sram_ecc_bank3_off,
 };
 
 /* =============================================================================
@@ -160,15 +160,14 @@ static void* s_on_error_bank_ctx[k_ra_sram_bank_count] = {
  */
 static ra_err_t internal_validate_bank_cfg(const ra_sram_bank_cfg_t* cfg, uint8_t bank)
 {
-  if ((uint8_t)cfg->ecc_mode > (uint8_t)k_ra_sram_eccmod_max) {
+  if ((uint8_t)cfg->ecc_mode > k_ra_sram_eccmod_max) {
     return k_ra_err_invalid_arg;
   }
-  if ((uint8_t)cfg->on_error > (uint8_t)k_ra_sram_on_error_max) {
+  if ((uint8_t)cfg->on_error > k_ra_sram_on_error_max) {
     return k_ra_err_invalid_arg;
   }
-  const uint8_t max_rgn = (bank == (uint8_t)k_ra_sram_bank_max_idx)
-                            ? (uint8_t)k_ra_sram_eccrgn_max3
-                            : (uint8_t)k_ra_sram_eccrgn_max012;
+  const uint8_t max_rgn =
+    (bank == k_ra_sram_bank_max_idx) ? k_ra_sram_eccrgn_max3 : k_ra_sram_eccrgn_max012;
   if ((uint8_t)cfg->eccrgn > max_rgn) {
     return k_ra_err_invalid_arg;
   }
@@ -184,21 +183,21 @@ static ra_err_t internal_validate_bank_cfg(const ra_sram_bank_cfg_t* cfg, uint8_
  */
 static uint8_t internal_encode_cr(const ra_sram_bank_cfg_t* cfg)
 {
-  uint8_t eccmod_field = (uint8_t)k_ra_sram_eccmod_disabled;
+  uint8_t eccmod_field = k_ra_sram_eccmod_disabled;
   if (cfg->ecc_mode == k_ra_sram_ecc_no_check) {
-    eccmod_field = (uint8_t)k_ra_sram_eccmod_no_check;
+    eccmod_field = k_ra_sram_eccmod_no_check;
   } else if (cfg->ecc_mode == k_ra_sram_ecc_with_chk) {
-    eccmod_field = (uint8_t)k_ra_sram_eccmod_with_chk;
+    eccmod_field = k_ra_sram_eccmod_with_chk;
   } else {
-    eccmod_field = (uint8_t)k_ra_sram_eccmod_disabled;
+    eccmod_field = k_ra_sram_eccmod_disabled;
   }
 
   uint8_t value = eccmod_field;
   if (cfg->on_error == k_ra_sram_on_error_reset) {
-    value |= (uint8_t)k_ra_sram_cr_mask_oad;
+    value |= k_ra_sram_cr_mask_oad;
   }
   if (cfg->enable_1bit_latch) {
-    value |= (uint8_t)k_ra_sram_cr_mask_e1stsen;
+    value |= k_ra_sram_cr_mask_e1stsen;
   }
   return value;
 }
@@ -218,7 +217,7 @@ static void internal_write_cr_locked(uint8_t bank, uint8_t value)
 
   /* HUM Ch 58.2.4 "SRAMPRCR_S : SRAM Protection Control Register
    * for Secure", p 3530 -- write 0xA501 to enable PR=1. */
-  regs->SRAMPRCR_S = (uint16_t)k_ra_sram_prcr_unlock;
+  regs->SRAMPRCR_S = k_ra_sram_prcr_unlock;
 
   /* HUM Ch 58.2.7 "SRAMCRn : SRAM Control Register n For ECC RAM",
    * p 3532 -- per-bank SRAMCR layout (OAD / ECCMOD / E1STSEN). */
@@ -226,7 +225,7 @@ static void internal_write_cr_locked(uint8_t bank, uint8_t value)
 
   /* Re-lock with PR=0.
    * HUM Ch 58.2.4 "SRAMPRCR_S", p 3530 */
-  regs->SRAMPRCR_S = (uint16_t)k_ra_sram_prcr_lock;
+  regs->SRAMPRCR_S = k_ra_sram_prcr_lock;
 }
 
 /**
@@ -241,14 +240,14 @@ static void internal_write_eccrgn_locked(uint8_t bank, uint8_t value)
   volatile r_sram_regs_t* regs = ra_sram_regs();
 
   /* HUM Ch 58.2.4 "SRAMPRCR_S", p 3530 */
-  regs->SRAMPRCR_S = (uint16_t)k_ra_sram_prcr_unlock;
+  regs->SRAMPRCR_S = k_ra_sram_prcr_unlock;
 
   /* HUM Ch 58.2.8 "SRAMECCRGN0 : SRAM ECC Region Control Register 0",
    * p 3533 (and 58.2.9..58.2.11 for banks 1..3). */
-  *ra_sram_eccrgn_ptr(regs, bank) = (uint8_t)(value & (uint8_t)k_ra_sram_eccrgn_field_msk);
+  *ra_sram_eccrgn_ptr(regs, bank) = (uint8_t)(value & k_ra_sram_eccrgn_field_msk);
 
   /* HUM Ch 58.2.4 "SRAMPRCR_S", p 3530 */
-  regs->SRAMPRCR_S = (uint16_t)k_ra_sram_prcr_lock;
+  regs->SRAMPRCR_S = k_ra_sram_prcr_lock;
 }
 
 /**
@@ -259,14 +258,14 @@ static void internal_write_wtsc_locked(uint8_t value)
   volatile r_sram_regs_t* regs = ra_sram_regs();
 
   /* HUM Ch 58.2.4 "SRAMPRCR_S", p 3530 */
-  regs->SRAMPRCR_S = (uint16_t)k_ra_sram_prcr_unlock;
+  regs->SRAMPRCR_S = k_ra_sram_prcr_unlock;
 
   /* HUM Ch 58.2.6 "SRAMWTSC : SRAM Wait State Control Register",
    * p 3531. */
-  regs->SRAMWTSC = (uint8_t)(value & (uint8_t)k_ra_sram_wtsc_msk);
+  regs->SRAMWTSC = (uint8_t)(value & k_ra_sram_wtsc_msk);
 
   /* HUM Ch 58.2.4 "SRAMPRCR_S", p 3530 */
-  regs->SRAMPRCR_S = (uint16_t)k_ra_sram_prcr_lock;
+  regs->SRAMPRCR_S = k_ra_sram_prcr_lock;
 }
 
 /**
@@ -282,7 +281,7 @@ static void internal_decode_esr(uint16_t raw, uint8_t* one_bit_mask, uint8_t* tw
 {
   uint8_t one = 0U;
   uint8_t two = 0U;
-  for (uint8_t bank = 0U; bank < (uint8_t)k_ra_sram_bank_count; ++bank) {
+  for (uint8_t bank = 0U; bank < k_ra_sram_bank_count; ++bank) {
     const uint16_t one_bit_pos = (uint16_t)((uint16_t)2U * (uint16_t)bank);
     const uint16_t two_bit_pos = (uint16_t)(one_bit_pos + 1U);
     if ((raw & (uint16_t)((uint16_t)1U << one_bit_pos)) != 0U) {
@@ -305,7 +304,7 @@ static uintptr_t internal_ear_to_abs_addr(uint32_t ear)
   if (ear == 0U) {
     return (uintptr_t)0U;
   }
-  return ((uintptr_t)k_ra_sram_data_base_addr) + (uintptr_t)ear;
+  return k_ra_sram_data_base_addr + (uintptr_t)ear;
 }
 
 /**
@@ -321,13 +320,13 @@ static uintptr_t internal_ear_to_abs_addr(uint32_t ear)
 static void internal_apply_security(const ra_sram_security_cfg_t* sec)
 {
   uint32_t sar = 0U;
-  for (uint8_t bank = 0U; bank < (uint8_t)k_ra_sram_bank_count; ++bank) {
+  for (uint8_t bank = 0U; bank < k_ra_sram_bank_count; ++bank) {
     if (sec->bank_ns[bank]) {
-      sar |= ((uint32_t)k_ra_sram_sar_bit_sa0) << bank;
+      sar |= k_ra_sram_sar_bit_sa0 << bank;
     }
   }
   if (sec->wtsc_ns) {
-    sar |= (uint32_t)k_ra_sram_sar_bit_wtsa;
+    sar |= k_ra_sram_sar_bit_wtsa;
   }
 
   volatile r_sram_cpscu_regs_t* cpscu = ra_sram_cpscu_regs();
@@ -340,15 +339,15 @@ static void internal_apply_security(const ra_sram_security_cfg_t* sec)
    * Register", p 3529 -- ECC region NS bit. */
   uint32_t esar = 0U;
   if (sec->ecc_region_ns) {
-    esar = (uint32_t)k_ra_sram_esar_bit_esa;
+    esar = k_ra_sram_esar_bit_esa;
   }
   cpscu->SRAMESAR = esar;
 
-  for (uint8_t bank = 0U; bank < (uint8_t)k_ra_sram_bank_count; ++bank) {
+  for (uint8_t bank = 0U; bank < k_ra_sram_bank_count; ++bank) {
     /* HUM Ch 58.2.1 "SRAMSABARn : SRAM Security Attribute Boundary
      * Address Register", p 3527 -- boundary value, low 13 bits forced
      * to zero (4 KB aligned). */
-    cpscu->SRAMSABAR[bank] = sec->boundary_offset[bank] & ~(uint32_t)k_ra_sram_sabar_align_mask;
+    cpscu->SRAMSABAR[bank] = sec->boundary_offset[bank] & ~k_ra_sram_sabar_align_mask;
   }
 }
 
@@ -366,7 +365,7 @@ static void internal_zero_fill_bank(uint8_t bank)
   volatile uint64_t* const dst   = ra_sram_bank_data_ptr(bank);
   const uint32_t           words = bytes >> (uint32_t)k_ra_sram_ecc_word_shift;
   for (uint32_t i = 0U; i < words; ++i) {
-    dst[i] = (uint64_t)k_ra_sram_zero_init_word;
+    dst[i] = k_ra_sram_zero_init_word;
   }
 }
 
@@ -386,14 +385,14 @@ static void internal_zero_fill_bank(uint8_t bank)
 static void internal_zero_init_with_no_check(uint8_t bank)
 {
   /* Step 1: enable ECC encode without checking. */
-  internal_write_cr_locked(bank, (uint8_t)k_ra_sram_eccmod_no_check);
+  internal_write_cr_locked(bank, k_ra_sram_eccmod_no_check);
 
   /* Step 2: deterministic 64-bit zero fill of the data window. */
   internal_zero_fill_bank(bank);
 
   /* Step 3: leave the bank with ECC fully disabled so the caller can
    * pick the final mode safely. */
-  internal_write_cr_locked(bank, (uint8_t)k_ra_sram_eccmod_disabled);
+  internal_write_cr_locked(bank, k_ra_sram_eccmod_disabled);
 }
 
 /* =============================================================================
@@ -421,11 +420,11 @@ static void internal_zero_init_with_no_check(uint8_t bank)
  */
 static ra_err_t internal_validate_and_ungate(const ra_sram_config_t* cfg)
 {
-  for (uint8_t bank = 0U; bank < (uint8_t)k_ra_sram_bank_count; ++bank) {
+  for (uint8_t bank = 0U; bank < k_ra_sram_bank_count; ++bank) {
     const ra_err_t verr = internal_validate_bank_cfg(&cfg->banks[bank], bank);
     RA_RETURN_ON_ERROR(verr, s_tag, "ra_sram_init: bad bank cfg");
   }
-  for (uint8_t bank = 0U; bank < (uint8_t)k_ra_sram_bank_count; ++bank) {
+  for (uint8_t bank = 0U; bank < k_ra_sram_bank_count; ++bank) {
     const ra_err_t merr = ra_mstp_enable(s_sram_mstp_table[bank]);
     RA_RETURN_ON_ERROR(merr, s_tag, "ra_sram_init: mstp enable");
   }
@@ -449,12 +448,12 @@ static ra_err_t internal_validate_and_ungate(const ra_sram_config_t* cfg)
  */
 static void internal_apply_per_bank(const ra_sram_config_t* cfg)
 {
-  for (uint8_t bank = 0U; bank < (uint8_t)k_ra_sram_bank_count; ++bank) {
+  for (uint8_t bank = 0U; bank < k_ra_sram_bank_count; ++bank) {
     if (cfg->banks[bank].zero_init) {
       internal_zero_init_with_no_check(bank);
     }
   }
-  for (uint8_t bank = 0U; bank < (uint8_t)k_ra_sram_bank_count; ++bank) {
+  for (uint8_t bank = 0U; bank < k_ra_sram_bank_count; ++bank) {
     internal_write_eccrgn_locked(bank, (uint8_t)cfg->banks[bank].eccrgn);
     const uint8_t cr_value = internal_encode_cr(&cfg->banks[bank]);
     internal_write_cr_locked(bank, cr_value);
@@ -475,7 +474,7 @@ static void internal_apply_per_bank(const ra_sram_config_t* cfg)
   /* Wait state. HUM 58.2.6 p 3531. */
   uint8_t wtsc_init = 0U;
   if (cfg->wait_state) {
-    wtsc_init = (uint8_t)k_ra_sram_wtsc_wten;
+    wtsc_init = k_ra_sram_wtsc_wten;
   }
   internal_write_wtsc_locked(wtsc_init);
 
@@ -483,7 +482,7 @@ static void internal_apply_per_bank(const ra_sram_config_t* cfg)
 
   /* Clear any stale error flags. HUM 58.2.13 p 3536. */
   volatile r_sram_regs_t* regs = ra_sram_regs();
-  regs->SRAMESCLR              = (uint16_t)k_ra_sram_err_all_mask;
+  regs->SRAMESCLR              = k_ra_sram_err_all_mask;
 
   s_initialized = true;
   ra_log_info(s_tag, "ra_sram_init done");
@@ -494,21 +493,21 @@ static void internal_apply_per_bank(const ra_sram_config_t* cfg)
 {
   /* Disable ECC + clear OAD on every bank before clock-gating, so a
    * spurious bus error during teardown does not latch a fault. */
-  for (uint8_t bank = 0U; bank < (uint8_t)k_ra_sram_bank_count; ++bank) {
+  for (uint8_t bank = 0U; bank < k_ra_sram_bank_count; ++bank) {
     internal_write_cr_locked(bank, 0U);
-    internal_write_eccrgn_locked(bank, (uint8_t)k_ra_sram_eccrgn_off);
+    internal_write_eccrgn_locked(bank, k_ra_sram_eccrgn_off);
   }
   internal_write_wtsc_locked(0U);
 
   /* HUM Ch 58.3.1 "Module Stop Function", p 3538 -- re-gate the
    * clock for every bank (HUM 11.2.6 MSTPCRA p 443). */
-  for (uint8_t bank = 0U; bank < (uint8_t)k_ra_sram_bank_count; ++bank) {
+  for (uint8_t bank = 0U; bank < k_ra_sram_bank_count; ++bank) {
     (void)ra_mstp_disable(s_sram_mstp_table[bank]);
   }
 
   s_on_error     = nullptr;
   s_on_error_ctx = nullptr;
-  for (uint8_t bank = 0U; bank < (uint8_t)k_ra_sram_bank_count; ++bank) {
+  for (uint8_t bank = 0U; bank < k_ra_sram_bank_count; ++bank) {
     s_on_error_bank[bank]     = nullptr;
     s_on_error_bank_ctx[bank] = nullptr;
   }
@@ -559,9 +558,8 @@ static void internal_apply_per_bank(const ra_sram_config_t* cfg)
   if ((uint16_t)bank >= (uint16_t)k_ra_sram_bank_count) {
     return k_ra_err_invalid_arg;
   }
-  const uint8_t max_rgn = (bank == (uint8_t)k_ra_sram_bank_max_idx)
-                            ? (uint8_t)k_ra_sram_eccrgn_max3
-                            : (uint8_t)k_ra_sram_eccrgn_max012;
+  const uint8_t max_rgn =
+    (bank == k_ra_sram_bank_max_idx) ? k_ra_sram_eccrgn_max3 : k_ra_sram_eccrgn_max012;
   if ((uint8_t)region > max_rgn) {
     return k_ra_err_invalid_arg;
   }
@@ -573,7 +571,7 @@ static void internal_apply_per_bank(const ra_sram_config_t* cfg)
 {
   uint8_t wtsc = 0U;
   if (enable) {
-    wtsc = (uint8_t)k_ra_sram_wtsc_wten;
+    wtsc = k_ra_sram_wtsc_wten;
   }
   internal_write_wtsc_locked(wtsc);
   return k_ra_ok;
@@ -589,7 +587,7 @@ static void internal_apply_per_bank(const ra_sram_config_t* cfg)
   const uint32_t threshold = iclk_max_hz >> 1U;
   uint8_t        wtsc      = 0U;
   if (iclk_hz > threshold) {
-    wtsc = (uint8_t)k_ra_sram_wtsc_wten;
+    wtsc = k_ra_sram_wtsc_wten;
   }
   internal_write_wtsc_locked(wtsc);
   return k_ra_ok;
@@ -616,7 +614,7 @@ static void internal_apply_per_bank(const ra_sram_config_t* cfg)
    * For ECC RAM", p 3537 -- m=0 is the 1-bit slot, m=1 is the
    * 2-bit slot. Stored as an offset; this driver presents the
    * absolute Secure address to callers. */
-  for (uint8_t bank = 0U; bank < (uint8_t)k_ra_sram_bank_count; ++bank) {
+  for (uint8_t bank = 0U; bank < k_ra_sram_bank_count; ++bank) {
     out->addr_1bit[bank] = internal_ear_to_abs_addr(regs->SRAMEAR[bank][0]);
     out->addr_2bit[bank] = internal_ear_to_abs_addr(regs->SRAMEAR[bank][1]);
   }
@@ -625,7 +623,7 @@ static void internal_apply_per_bank(const ra_sram_config_t* cfg)
 
 [[nodiscard]] ra_err_t ra_sram_clear_status(uint16_t esr_mask)
 {
-  if ((esr_mask & (uint16_t)~(uint16_t)k_ra_sram_err_all_mask) != 0U) {
+  if ((esr_mask & (uint16_t)~k_ra_sram_err_all_mask) != 0U) {
     return k_ra_err_invalid_arg;
   }
   volatile r_sram_regs_t* regs = ra_sram_regs();
@@ -640,7 +638,7 @@ static void internal_apply_per_bank(const ra_sram_config_t* cfg)
   if ((uint16_t)bank >= (uint16_t)k_ra_sram_bank_count) {
     return k_ra_err_invalid_arg;
   }
-  if (slot > (uint8_t)k_ra_sram_ear_slot_max) {
+  if (slot > k_ra_sram_ear_slot_max) {
     return k_ra_err_invalid_arg;
   }
   /* The EAR is auto-cleared by writing 1 to the corresponding
@@ -690,17 +688,17 @@ static void internal_apply_per_bank(const ra_sram_config_t* cfg)
  */
 static void internal_self_test_inject(uint8_t bank, volatile uint64_t* data, bool inject_two_bit)
 {
-  internal_write_cr_locked(bank, (uint8_t)k_ra_sram_cr_self_test_phase_bypass);
+  internal_write_cr_locked(bank, k_ra_sram_cr_self_test_phase_bypass);
 
-  uint8_t inject_mask = (uint8_t)k_ra_sram_self_test_flip_1bit;
+  uint8_t inject_mask = k_ra_sram_self_test_flip_1bit;
   if (inject_two_bit) {
-    inject_mask = (uint8_t)k_ra_sram_self_test_flip_2bit;
+    inject_mask = k_ra_sram_self_test_flip_2bit;
   }
   const uint64_t syndrome  = *data;
   const uint64_t corrupted = syndrome ^ (uint64_t)inject_mask;
   *data                    = corrupted;
 
-  internal_write_cr_locked(bank, (uint8_t)k_ra_sram_cr_self_test_phase_verify);
+  internal_write_cr_locked(bank, k_ra_sram_cr_self_test_phase_verify);
 }
 
 #ifdef RA_SIMULATOR_MODE
@@ -724,9 +722,9 @@ static void internal_self_test_inject(uint8_t bank, volatile uint64_t* data, boo
 static void internal_simulator_force_latch(uint8_t bank, bool inject_two_bit, uint32_t probe_offset)
 {
   volatile r_sram_regs_t* regs = ra_sram_regs();
-  uint8_t                 slot = (uint8_t)k_ra_sram_ear_slot_1bit;
+  uint8_t                 slot = k_ra_sram_ear_slot_1bit;
   if (inject_two_bit) {
-    slot = (uint8_t)k_ra_sram_ear_slot_2bit;
+    slot = k_ra_sram_ear_slot_2bit;
   }
   const uint16_t esr_bit =
     (uint16_t)((uint16_t)1U << (uint16_t)(((uint16_t)2U * (uint16_t)bank) + (uint16_t)slot));
@@ -757,8 +755,8 @@ ra_sram_self_test(uint8_t bank, uint32_t probe_offset, bool inject_two_bit, bool
     (volatile uint64_t*)((uint8_t*)ra_sram_bank_data_ptr(bank) + probe_offset);
 
   /* Step 1: seed the line under ECC encode-only (HUM Ch 58.3.4 p 3539). */
-  internal_write_cr_locked(bank, (uint8_t)k_ra_sram_cr_self_test_phase_write);
-  *data = (uint64_t)k_ra_sram_zero_init_word;
+  internal_write_cr_locked(bank, k_ra_sram_cr_self_test_phase_write);
+  *data = k_ra_sram_zero_init_word;
 
   /* Steps 2-3: bypass-read, inject, then arm verify. */
   internal_self_test_inject(bank, data, inject_two_bit);
@@ -793,9 +791,9 @@ ra_sram_self_test(uint8_t bank, uint32_t probe_offset, bool inject_two_bit, bool
     return k_ra_err_invalid_arg;
   }
   out->bank      = bank;
-  out->data_base = (uintptr_t)k_ra_sram_data_base_addr + (uintptr_t)s_sram_data_off_table[bank];
+  out->data_base = k_ra_sram_data_base_addr + (uintptr_t)s_sram_data_off_table[bank];
   out->data_size = ra_sram_bank_size_bytes(bank);
-  out->ecc_base  = (uintptr_t)k_ra_sram_data_base_addr + (uintptr_t)s_sram_ecc_off_table[bank];
+  out->ecc_base  = k_ra_sram_data_base_addr + (uintptr_t)s_sram_ecc_off_table[bank];
   out->ecc_size  = ra_sram_bank_ecc_size_bytes(bank);
   return k_ra_ok;
 }
@@ -807,7 +805,7 @@ ra_sram_self_test(uint8_t bank, uint32_t probe_offset, bool inject_two_bit, bool
 
 [[nodiscard]] ra_err_t ra_sram_set_security(uint32_t sa_mask)
 {
-  if ((sa_mask & ~(uint32_t)k_ra_sram_sar_writable) != 0U) {
+  if ((sa_mask & ~k_ra_sram_sar_writable) != 0U) {
     return k_ra_err_invalid_arg;
   }
   volatile r_sram_cpscu_regs_t* cpscu = ra_sram_cpscu_regs();
@@ -824,7 +822,7 @@ ra_sram_self_test(uint8_t bank, uint32_t probe_offset, bool inject_two_bit, bool
    * Register", p 3529. */
   uint32_t value = 0U;
   if (non_secure) {
-    value = (uint32_t)k_ra_sram_esar_bit_esa;
+    value = k_ra_sram_esar_bit_esa;
   }
   cpscu->SRAMESAR = value;
   return k_ra_ok;
@@ -835,7 +833,7 @@ ra_sram_self_test(uint8_t bank, uint32_t probe_offset, bool inject_two_bit, bool
   if ((uint16_t)bank >= (uint16_t)k_ra_sram_bank_count) {
     return k_ra_err_invalid_arg;
   }
-  if ((offset & (uint32_t)k_ra_sram_sabar_align_mask) != 0U) {
+  if ((offset & k_ra_sram_sabar_align_mask) != 0U) {
     return k_ra_err_invalid_arg;
   }
   volatile r_sram_cpscu_regs_t* cpscu = ra_sram_cpscu_regs();
@@ -900,7 +898,7 @@ uint16_t ra_sram_dispatch_from_esr(ra_sram_status_t* out_status)
   }
 
   uint16_t fired = 0U;
-  for (uint8_t bank = 0U; bank < (uint8_t)k_ra_sram_bank_count; ++bank) {
+  for (uint8_t bank = 0U; bank < k_ra_sram_bank_count; ++bank) {
     const uint16_t one_bit_pos = (uint16_t)((uint16_t)2U * (uint16_t)bank);
     const uint16_t two_bit_pos = (uint16_t)(one_bit_pos + 1U);
     const uint16_t one_bit_msk = (uint16_t)((uint16_t)1U << one_bit_pos);

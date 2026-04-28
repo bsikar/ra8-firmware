@@ -54,7 +54,7 @@ ra_err_t ra_glcdc_init(const ra_glcdc_config_t* cfg)
 
   /* HUM Ch 63 "Graphics LCD Controller (GLCDC)" p 3744 */
   /* Panel clock from the EK-RA8D2 panel timing constant. */
-  *ra_glcdc_reg32(k_ra_glcdc_off_panel_clk) = (uint32_t)k_ra_glcdc_ek_pixel_clk_hz;
+  *ra_glcdc_reg32(k_ra_glcdc_off_panel_clk) = k_ra_glcdc_ek_pixel_clk_hz;
 
   ra_log_info_val(s_tag, "glcdc_init fb", cfg->framebuffer_addr);
   return k_ra_ok;

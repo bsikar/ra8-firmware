@@ -258,13 +258,13 @@ static inline volatile uint8_t* ra_sys_rstsr2(void)
  */
 static inline void ra_sys_prcr_unlock_cgc(void)
 {
-  *ra_sys_prcr() = (uint16_t)k_ra_prcr_unlock_cgc;
+  *ra_sys_prcr() = k_ra_prcr_unlock_cgc;
 }
 
 /** @brief Re-lock every protection group (write password with all group bits clear). */
 static inline void ra_sys_prcr_lock_all(void)
 {
-  *ra_sys_prcr() = (uint16_t)k_ra_prcr_lock_all;
+  *ra_sys_prcr() = k_ra_prcr_lock_all;
 }
 
 #ifdef __cplusplus

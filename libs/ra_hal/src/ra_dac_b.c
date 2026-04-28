@@ -44,7 +44,7 @@ typedef enum : uint8_t {
 static inline uint16_t internal_ra_dac_b_clamp(uint16_t value)
 {
   if ((uint32_t)value > (uint32_t)k_ra_dac_b_max_value) {
-    return (uint16_t)k_ra_dac_b_max_value;
+    return k_ra_dac_b_max_value;
   }
   return value;
 }
@@ -59,7 +59,7 @@ static void internal_enable_channel(uint8_t channel)
     return;
   }
   /* HUM Ch 54 "12-Bit D/A Converter (DAC12)" p 3490 */
-  reg->DACR0 = (uint32_t)k_ra_dacr0_mask_dacen | (uint32_t)k_ra_dacr0_mask_dae;
+  reg->DACR0 = k_ra_dacr0_mask_dacen | k_ra_dacr0_mask_dae;
 }
 
 /**
@@ -84,8 +84,8 @@ static void internal_disable_channel(uint8_t channel)
   mst_err = ra_mstp_enable(k_ra_mstp_dac12_1);
   RA_RETURN_ON_ERROR(mst_err, s_tag, "dac_b_init: mstp dac1");
 
-  internal_disable_channel((uint8_t)k_ra_dac_b_channel_0);
-  internal_disable_channel((uint8_t)k_ra_dac_b_channel_1);
+  internal_disable_channel(k_ra_dac_b_channel_0);
+  internal_disable_channel(k_ra_dac_b_channel_1);
   ra_log_info(s_tag, "dac_b_init");
   return k_ra_ok;
 }
@@ -100,7 +100,7 @@ static void internal_disable_channel(uint8_t channel)
   /* HUM Ch 54 "12-Bit D/A Converter (DAC12)" p 3490 */
   reg->DADR = clamped;
   /* Make sure the instance is enabled + driving output. */
-  reg->DACR0 = reg->DACR0 | (uint32_t)k_ra_dacr0_mask_dacen | (uint32_t)k_ra_dacr0_mask_dae;
+  reg->DACR0 = reg->DACR0 | k_ra_dacr0_mask_dacen | k_ra_dacr0_mask_dae;
   ra_log_info_val(s_tag, "dac_b_write value", (uint32_t)clamped);
   return k_ra_ok;
 }
@@ -125,21 +125,21 @@ ra_err_t ra_dac_b_init_configured(const ra_dac_b_cfg_t* cfg)
   mst_err = ra_mstp_enable(k_ra_mstp_dac12_1);
   RA_RETURN_ON_ERROR(mst_err, s_tag, "dac_b_init_cfg: mstp dac1"); /* GCOVR_EXCL_BR_LINE */
 
-  internal_disable_channel((uint8_t)k_ra_dac_b_channel_0);
-  internal_disable_channel((uint8_t)k_ra_dac_b_channel_1);
+  internal_disable_channel(k_ra_dac_b_channel_0);
+  internal_disable_channel(k_ra_dac_b_channel_1);
 
   /* HUM Ch 54 "12-Bit D/A Converter (DAC12)" p 3490 -- DACR2 holds the
    * reference voltage select + ADC sync bits in the DAC_B topology. */
-  volatile r_dac_b_regs_t* reg0 = ra_dac_b((uint8_t)k_ra_dac_b_channel_0);
-  volatile r_dac_b_regs_t* reg1 = ra_dac_b((uint8_t)k_ra_dac_b_channel_1);
+  volatile r_dac_b_regs_t* reg0 = ra_dac_b(k_ra_dac_b_channel_0);
+  volatile r_dac_b_regs_t* reg1 = ra_dac_b(k_ra_dac_b_channel_1);
   reg0->DACR2                   = (uint32_t)cfg->vref;
   reg1->DACR2                   = (uint32_t)cfg->vref;
 
   if (cfg->enable_channel0) {
-    internal_enable_channel((uint8_t)k_ra_dac_b_channel_0);
+    internal_enable_channel(k_ra_dac_b_channel_0);
   }
   if (cfg->enable_channel1) {
-    internal_enable_channel((uint8_t)k_ra_dac_b_channel_1);
+    internal_enable_channel(k_ra_dac_b_channel_1);
   }
   ra_log_info(s_tag, "dac_b_init_configured");
   return k_ra_ok;
@@ -147,8 +147,8 @@ ra_err_t ra_dac_b_init_configured(const ra_dac_b_cfg_t* cfg)
 
 ra_err_t ra_dac_b_deinit(void)
 {
-  internal_disable_channel((uint8_t)k_ra_dac_b_channel_0);
-  internal_disable_channel((uint8_t)k_ra_dac_b_channel_1);
+  internal_disable_channel(k_ra_dac_b_channel_0);
+  internal_disable_channel(k_ra_dac_b_channel_1);
   s_dac_b_state.fn  = nullptr;
   s_dac_b_state.ctx = nullptr;
   (void)ra_mstp_disable(k_ra_mstp_dac12_1);
@@ -157,8 +157,8 @@ ra_err_t ra_dac_b_deinit(void)
 
 ra_err_t ra_dac_b_set_vref(ra_dac_b_vref_t vref)
 {
-  volatile r_dac_b_regs_t* reg0 = ra_dac_b((uint8_t)k_ra_dac_b_channel_0);
-  volatile r_dac_b_regs_t* reg1 = ra_dac_b((uint8_t)k_ra_dac_b_channel_1);
+  volatile r_dac_b_regs_t* reg0 = ra_dac_b(k_ra_dac_b_channel_0);
+  volatile r_dac_b_regs_t* reg1 = ra_dac_b(k_ra_dac_b_channel_1);
   reg0->DACR2                   = (uint32_t)vref;
   reg1->DACR2                   = (uint32_t)vref;
   return k_ra_ok;
@@ -171,9 +171,9 @@ ra_err_t ra_dac_b_set_output_enable(uint8_t channel, bool enable)
     return k_ra_err_invalid_arg;
   }
   if (enable) {
-    reg->DACR0 = reg->DACR0 | (uint32_t)k_ra_dacr0_mask_dacen | (uint32_t)k_ra_dacr0_mask_dae;
+    reg->DACR0 = reg->DACR0 | k_ra_dacr0_mask_dacen | k_ra_dacr0_mask_dae;
   } else {
-    reg->DACR0 = reg->DACR0 & ~((uint32_t)k_ra_dacr0_mask_dacen | (uint32_t)k_ra_dacr0_mask_dae);
+    reg->DACR0 = reg->DACR0 & ~(k_ra_dacr0_mask_dacen | k_ra_dacr0_mask_dae);
   }
   return k_ra_ok;
 }
@@ -186,12 +186,12 @@ ra_err_t ra_dac_b_get_status(uint8_t* out_mask)
    * bit 1 -- channel 1 DACEN
    */
   uint8_t                  flags = 0U;
-  volatile r_dac_b_regs_t* reg0  = ra_dac_b((uint8_t)k_ra_dac_b_channel_0);
-  volatile r_dac_b_regs_t* reg1  = ra_dac_b((uint8_t)k_ra_dac_b_channel_1);
-  if ((reg0->DACR0 & (uint32_t)k_ra_dacr0_mask_dacen) != 0U) {
+  volatile r_dac_b_regs_t* reg0  = ra_dac_b(k_ra_dac_b_channel_0);
+  volatile r_dac_b_regs_t* reg1  = ra_dac_b(k_ra_dac_b_channel_1);
+  if ((reg0->DACR0 & k_ra_dacr0_mask_dacen) != 0U) {
     flags |= 0x1U;
   }
-  if ((reg1->DACR0 & (uint32_t)k_ra_dacr0_mask_dacen) != 0U) {
+  if ((reg1->DACR0 & k_ra_dacr0_mask_dacen) != 0U) {
     flags |= 0x2U;
   }
   *out_mask = flags;
@@ -200,8 +200,8 @@ ra_err_t ra_dac_b_get_status(uint8_t* out_mask)
 
 ra_err_t ra_dac_b_clear_status(void)
 {
-  internal_disable_channel((uint8_t)k_ra_dac_b_channel_0);
-  internal_disable_channel((uint8_t)k_ra_dac_b_channel_1);
+  internal_disable_channel(k_ra_dac_b_channel_0);
+  internal_disable_channel(k_ra_dac_b_channel_1);
   return k_ra_ok;
 }
 
@@ -214,8 +214,8 @@ ra_err_t ra_dac_b_attach_handler(ra_dac_b_update_fn_t fn, void* ctx)
 
 ra_err_t ra_dac_b_enter_stop(void)
 {
-  internal_disable_channel((uint8_t)k_ra_dac_b_channel_0);
-  internal_disable_channel((uint8_t)k_ra_dac_b_channel_1);
+  internal_disable_channel(k_ra_dac_b_channel_0);
+  internal_disable_channel(k_ra_dac_b_channel_1);
   (void)ra_mstp_disable(k_ra_mstp_dac12_1);
   return ra_mstp_disable(k_ra_mstp_dac12_0);
 }
@@ -229,7 +229,7 @@ ra_err_t ra_dac_b_exit_stop(void)
 
 void ra_dac_b_dispatch_update(uint8_t channel)
 {
-  if ((uint16_t)channel >= (uint16_t)k_ra_dac_b_channel_count) {
+  if ((uint16_t)channel >= k_ra_dac_b_channel_count) {
     return;
   }
   const ra_dac_b_update_fn_t fn  = s_dac_b_state.fn;

@@ -37,11 +37,11 @@ RA_NSC_VENEER ra_err_t ra_nsc_xspi_read(uint32_t flash_off,
                                         uint32_t len)
 {
   RA_CHECK_NULL_PTR(ns_dst, s_tag, "xspi_read: ns_dst");
-  if ((len == 0U) || (len > (uint32_t)k_ra_nsc_xspi_max_read)) {
+  if ((len == 0U) || (len > k_ra_nsc_xspi_max_read)) {
     return k_ra_err_invalid_arg;
   }
   RA_NSC_CHECK_NS_RANGE_RW(ns_dst, len);
-  return ra_xspi_flash_read((uint8_t)k_ra_nsc_xspi_instance, flash_off, ns_dst, len);
+  return ra_xspi_flash_read(k_ra_nsc_xspi_instance, flash_off, ns_dst, len);
 }
 
 RA_NSC_VENEER ra_err_t ra_nsc_xspi_status(uint8_t instance, uint32_t* out_mask)

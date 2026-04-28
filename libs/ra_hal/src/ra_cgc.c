@@ -49,30 +49,30 @@ typedef enum : uint8_t {
 /* Current clock-tree frequencies. Reset default is MOCO (~8 MHz);
  * `ra_cgc_init()` updates them to the PLL1-derived targets. */
 static uint32_t s_clock_hz[k_ra_cgc_clock_count] = {
-  [k_ra_clock_id_cpuclk0] = (uint32_t)k_ra_moco_hz,
-  [k_ra_clock_id_cpuclk1] = (uint32_t)k_ra_moco_hz,
-  [k_ra_clock_id_iclk]    = (uint32_t)k_ra_moco_hz,
-  [k_ra_clock_id_pclka]   = (uint32_t)k_ra_moco_hz,
-  [k_ra_clock_id_pclkb]   = (uint32_t)k_ra_moco_hz,
-  [k_ra_clock_id_pclkc]   = (uint32_t)k_ra_moco_hz,
-  [k_ra_clock_id_pclkd]   = (uint32_t)k_ra_moco_hz,
-  [k_ra_clock_id_pclke]   = (uint32_t)k_ra_moco_hz,
-  [k_ra_clock_id_fclk]    = (uint32_t)k_ra_moco_hz,
-  [k_ra_clock_id_mriclk]  = (uint32_t)k_ra_moco_hz,
+  [k_ra_clock_id_cpuclk0] = k_ra_moco_hz,
+  [k_ra_clock_id_cpuclk1] = k_ra_moco_hz,
+  [k_ra_clock_id_iclk]    = k_ra_moco_hz,
+  [k_ra_clock_id_pclka]   = k_ra_moco_hz,
+  [k_ra_clock_id_pclkb]   = k_ra_moco_hz,
+  [k_ra_clock_id_pclkc]   = k_ra_moco_hz,
+  [k_ra_clock_id_pclkd]   = k_ra_moco_hz,
+  [k_ra_clock_id_pclke]   = k_ra_moco_hz,
+  [k_ra_clock_id_fclk]    = k_ra_moco_hz,
+  [k_ra_clock_id_mriclk]  = k_ra_moco_hz,
 };
 
 static void internal_publish_clocks(void)
 {
-  s_clock_hz[k_ra_clock_id_cpuclk0] = (uint32_t)k_ra_cpuclk0_hz;
-  s_clock_hz[k_ra_clock_id_cpuclk1] = (uint32_t)k_ra_cpuclk1_hz;
-  s_clock_hz[k_ra_clock_id_iclk]    = (uint32_t)k_ra_iclk_hz;
-  s_clock_hz[k_ra_clock_id_pclka]   = (uint32_t)k_ra_pclka_hz;
-  s_clock_hz[k_ra_clock_id_pclkb]   = (uint32_t)k_ra_pclkb_hz;
-  s_clock_hz[k_ra_clock_id_pclkc]   = (uint32_t)k_ra_pclkc_hz;
-  s_clock_hz[k_ra_clock_id_pclkd]   = (uint32_t)k_ra_pclkd_hz;
-  s_clock_hz[k_ra_clock_id_pclke]   = (uint32_t)k_ra_pclke_hz;
-  s_clock_hz[k_ra_clock_id_fclk]    = (uint32_t)k_ra_fclk_hz;
-  s_clock_hz[k_ra_clock_id_mriclk]  = (uint32_t)k_ra_mriclk_hz;
+  s_clock_hz[k_ra_clock_id_cpuclk0] = k_ra_cpuclk0_hz;
+  s_clock_hz[k_ra_clock_id_cpuclk1] = k_ra_cpuclk1_hz;
+  s_clock_hz[k_ra_clock_id_iclk]    = k_ra_iclk_hz;
+  s_clock_hz[k_ra_clock_id_pclka]   = k_ra_pclka_hz;
+  s_clock_hz[k_ra_clock_id_pclkb]   = k_ra_pclkb_hz;
+  s_clock_hz[k_ra_clock_id_pclkc]   = k_ra_pclkc_hz;
+  s_clock_hz[k_ra_clock_id_pclkd]   = k_ra_pclkd_hz;
+  s_clock_hz[k_ra_clock_id_pclke]   = k_ra_pclke_hz;
+  s_clock_hz[k_ra_clock_id_fclk]    = k_ra_fclk_hz;
+  s_clock_hz[k_ra_clock_id_mriclk]  = k_ra_mriclk_hz;
 }
 
 ra_err_t ra_cgc_get_clock_hz(ra_clock_id_t id, uint32_t* out_hz)
@@ -174,13 +174,13 @@ static void internal_programme_dividers(void)
  */
 static ra_err_t internal_start_main_osc(void)
 {
-  *ra_sys_moscwtcr() = (uint8_t)k_ra_moscwtcr_2_to_16_cycles;
+  *ra_sys_moscwtcr() = k_ra_moscwtcr_2_to_16_cycles;
 
   /* Clear MOSCCR.MOSTP to start the osc (bit 0). */
   volatile uint8_t* moscr = (volatile uint8_t*)(k_ra_system_base_addr + k_ra_sys_off_moscr);
   *moscr                  = (uint8_t)(*moscr & (uint8_t)~1U);
 
-  return internal_wait_oscsf((uint8_t)k_ra_oscsf_bit_moscsf);
+  return internal_wait_oscsf(k_ra_oscsf_bit_moscsf);
 }
 
 /**
@@ -210,7 +210,7 @@ static ra_err_t internal_start_pll1(uint32_t cpu_target_hz)
   *ra_sys_pllcr() = (uint8_t)(1U << k_ra_pllcr_bit_pllstp);
 
   /* Integer part of the multiplier. */
-  const uint32_t xtal     = (uint32_t)k_ra_xtal_hz;
+  const uint32_t xtal     = k_ra_xtal_hz;
   const uint32_t int_mul  = cpu_target_hz / xtal;
   const uint32_t residual = cpu_target_hz % xtal;
 
@@ -218,7 +218,7 @@ static ra_err_t internal_start_pll1(uint32_t cpu_target_hz)
   enum : uint32_t {
     k_ra_pllccr2_frac_steps = 32U,
   };
-  const uint32_t frac = (residual * (uint32_t)k_ra_pllccr2_frac_steps) / xtal;
+  const uint32_t frac = (residual * k_ra_pllccr2_frac_steps) / xtal;
 
   const uint32_t pllccr = ((uint32_t)k_ra_plsrcsel_main << k_ra_pllccr_bit_plsrcsel) |
                           ((uint32_t)0U << k_ra_pllccr_bit_plidiv) |
@@ -241,7 +241,7 @@ static ra_err_t internal_start_pll1(uint32_t cpu_target_hz)
   /* Start the PLL (clear PLLSTP). */
   *ra_sys_pllcr() = 0U;
 
-  return internal_wait_oscsf((uint8_t)k_ra_oscsf_bit_pll1sf);
+  return internal_wait_oscsf(k_ra_oscsf_bit_pll1sf);
 }
 
 ra_err_t ra_cgc_init(void)
@@ -254,11 +254,11 @@ ra_err_t ra_cgc_init(void)
   {
     err = internal_start_main_osc();
     if (err == k_ra_ok) {
-      err = internal_start_pll1((uint32_t)k_ra_cpuclk0_hz);
+      err = internal_start_pll1(k_ra_cpuclk0_hz);
     }
     if (err == k_ra_ok) {
       internal_programme_dividers();
-      *ra_sys_sckscr() = (uint8_t)k_ra_cksel_pll1;
+      *ra_sys_sckscr() = k_ra_cksel_pll1;
     }
   }
 
@@ -277,14 +277,14 @@ ra_err_t ra_cgc_use_hoco(void)
   volatile uint8_t* hococr = ra_sys_hococr();
   *hococr                  = (uint8_t)(*hococr & (uint8_t)~(1U << k_ra_hococr_hcstp));
 
-  const ra_err_t err = internal_wait_oscsf((uint8_t)k_ra_oscsf_bit_hocosf);
+  const ra_err_t err = internal_wait_oscsf(k_ra_oscsf_bit_hocosf);
   if (err != k_ra_ok) {
     return err;
   }
 
   RA_PROTECTED_WRITE(k_ra_prcr_unlock_cgc)
   {
-    *ra_sys_sckscr() = (uint8_t)k_ra_cksel_hoco;
+    *ra_sys_sckscr() = k_ra_cksel_hoco;
   }
 
   ra_log_info(s_tag, "switched to HOCO");
@@ -325,7 +325,7 @@ ra_err_t ra_cgc_switch_pll1_target(uint32_t new_cpuclk_hz)
    * from PLL1 while we reprogramme it. */
   RA_PROTECTED_WRITE(k_ra_prcr_unlock_cgc)
   {
-    *ra_sys_sckscr() = (uint8_t)k_ra_cksel_moco;
+    *ra_sys_sckscr() = k_ra_cksel_moco;
   }
 
   /* Step 2: reprogramme PLL1 with the new multiplier pair. */
@@ -342,7 +342,7 @@ ra_err_t ra_cgc_switch_pll1_target(uint32_t new_cpuclk_hz)
    * republish the clock tree. */
   RA_PROTECTED_WRITE(k_ra_prcr_unlock_cgc)
   {
-    *ra_sys_sckscr() = (uint8_t)k_ra_cksel_pll1;
+    *ra_sys_sckscr() = k_ra_cksel_pll1;
   }
   internal_publish_clocks();
   s_clock_hz[k_ra_clock_id_cpuclk0] = new_cpuclk_hz;

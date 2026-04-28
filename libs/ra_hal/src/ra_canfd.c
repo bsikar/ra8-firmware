@@ -60,7 +60,7 @@ typedef enum : uint8_t {
  */
 static ra_err_t internal_wait_mode(volatile r_canfd_channel_regs_t* reg, uint8_t status_bit)
 {
-  for (uint32_t i = 0U; i < (uint32_t)k_ra_canfd_spin; i++) {
+  for (uint32_t i = 0U; i < k_ra_canfd_spin; i++) {
     if ((reg->CFDCNSTS & (uint32_t)(1UL << status_bit)) != 0U) {
       return k_ra_ok;
     }
@@ -91,15 +91,15 @@ ra_err_t ra_canfd_init(uint8_t channel)
 
   /* Ensure we are in reset. */
   reg->CFDCNCTR = (uint32_t)k_ra_chmdc_reset;
-  (void)internal_wait_mode(reg, (uint8_t)k_ra_cnsts_bit_crstst);
+  (void)internal_wait_mode(reg, k_ra_cnsts_bit_crstst);
 
   /* Move to halt. */
   reg->CFDCNCTR = (uint32_t)k_ra_chmdc_halt;
-  (void)internal_wait_mode(reg, (uint8_t)k_ra_cnsts_bit_chltst);
+  (void)internal_wait_mode(reg, k_ra_cnsts_bit_chltst);
 
   /* Move to operation. */
   reg->CFDCNCTR = (uint32_t)k_ra_chmdc_operation;
-  (void)internal_wait_mode(reg, (uint8_t)k_ra_cnsts_bit_crstst);
+  (void)internal_wait_mode(reg, k_ra_cnsts_bit_crstst);
 
   ra_log_info_val(s_tag, "canfd_init ch", (uint32_t)channel);
   return k_ra_ok;
@@ -134,26 +134,23 @@ internal_solve_timing(uint32_t clock_hz, uint32_t bitrate_bps, ra_canfd_timing_t
   if ((bitrate_bps == 0U) || (clock_hz == 0U)) {
     return k_ra_err_invalid_arg;
   }
-  for (uint32_t tq = (uint32_t)k_ra_canfd_tq_search_hi; tq >= (uint32_t)k_ra_canfd_tq_search_lo;
-       tq--) {
+  for (uint32_t tq = k_ra_canfd_tq_search_hi; tq >= k_ra_canfd_tq_search_lo; tq--) {
     const uint32_t denom = bitrate_bps * tq;
     if ((clock_hz % denom) != 0U) {
       continue;
     }
     const uint32_t prescaler = clock_hz / denom;
-    if ((prescaler < (uint32_t)k_ra_canfd_prescaler_min) ||
-        (prescaler > (uint32_t)k_ra_canfd_prescaler_max)) {
+    if ((prescaler < k_ra_canfd_prescaler_min) || (prescaler > k_ra_canfd_prescaler_max)) {
       continue;
     }
     /* 75% sample point: TSEG1 = 3*(tq-1)/4, TSEG2 = tq - 1 - TSEG1. */
     const uint32_t tseg1 = ((tq - 1U) * 3U) / 4U;
     const uint32_t tseg2 = (tq - 1U) - tseg1;
-    const uint32_t sjw =
-      (tseg2 < (uint32_t)k_ra_canfd_sjw_max) ? tseg2 : (uint32_t)k_ra_canfd_sjw_max;
-    out->prescaler = prescaler;
-    out->tseg1     = tseg1;
-    out->tseg2     = tseg2;
-    out->sjw       = sjw;
+    const uint32_t sjw   = (tseg2 < k_ra_canfd_sjw_max) ? tseg2 : k_ra_canfd_sjw_max;
+    out->prescaler       = prescaler;
+    out->tseg1           = tseg1;
+    out->tseg2           = tseg2;
+    out->sjw             = sjw;
     return k_ra_ok;
   }
   return k_ra_err_invalid_arg;
@@ -164,13 +161,13 @@ internal_solve_timing(uint32_t clock_hz, uint32_t bitrate_bps, ra_canfd_timing_t
  */
 static uint32_t internal_pack_timing(const ra_canfd_timing_t* t)
 {
-  const uint32_t brp_field   = ((t->prescaler - 1U) & (uint32_t)k_ra_cncfg_mask_nbrp)
+  const uint32_t brp_field   = ((t->prescaler - 1U) & k_ra_cncfg_mask_nbrp)
                                << (uint32_t)k_ra_cncfg_shift_nbrp;
-  const uint32_t tseg1_field = (t->tseg1 & (uint32_t)k_ra_cncfg_mask_ntseg1)
+  const uint32_t tseg1_field = (t->tseg1 & k_ra_cncfg_mask_ntseg1)
                                << (uint32_t)k_ra_cncfg_shift_ntseg1;
-  const uint32_t tseg2_field = (t->tseg2 & (uint32_t)k_ra_cncfg_mask_ntseg2)
+  const uint32_t tseg2_field = (t->tseg2 & k_ra_cncfg_mask_ntseg2)
                                << (uint32_t)k_ra_cncfg_shift_ntseg2;
-  const uint32_t sjw_field   = ((t->sjw - 1U) & (uint32_t)k_ra_cncfg_mask_nsjw)
+  const uint32_t sjw_field   = ((t->sjw - 1U) & k_ra_cncfg_mask_nsjw)
                                << (uint32_t)k_ra_cncfg_shift_nsjw;
   return brp_field | tseg1_field | tseg2_field | sjw_field;
 }
@@ -211,15 +208,15 @@ ra_err_t ra_canfd_set_bitrate(uint8_t channel, uint32_t bitrate_bps, uint32_t da
  */
 static ra_err_t internal_validate_frame(const ra_canfd_frame_t* frame)
 {
-  if (frame->dlc > (uint8_t)k_ra_canfd_dlc_max) {
+  if (frame->dlc > k_ra_canfd_dlc_max) {
     return k_ra_err_invalid_arg;
   }
   if (frame->is_extended == 0U) {
-    if ((frame->id & ~(uint32_t)k_ra_canfd_id_std_mask) != 0U) {
+    if ((frame->id & ~k_ra_canfd_id_std_mask) != 0U) {
       return k_ra_err_invalid_arg;
     }
   } else {
-    if ((frame->id & ~(uint32_t)k_ra_canfd_id_ext_mask) != 0U) {
+    if ((frame->id & ~k_ra_canfd_id_ext_mask) != 0U) {
       return k_ra_err_invalid_arg;
     }
   }
@@ -236,7 +233,7 @@ static ra_err_t internal_validate_frame(const ra_canfd_frame_t* frame)
 static void internal_write_tx_data(volatile r_canfd_channel_regs_t* reg,
                                    const ra_canfd_frame_t*          frame)
 {
-  for (uint8_t w = 0U; w < (uint8_t)k_ra_canfd_df_word_count; w++) {
+  for (uint8_t w = 0U; w < k_ra_canfd_df_word_count; w++) {
     const uint8_t b0 = frame->data[(w * 4U) + 0U];
     const uint8_t b1 = frame->data[(w * 4U) + 1U];
     const uint8_t b2 = frame->data[(w * 4U) + 2U];
@@ -253,10 +250,9 @@ static void internal_write_tx_data(volatile r_canfd_channel_regs_t* reg,
  */
 static uint32_t internal_tx_id(const ra_canfd_frame_t* frame)
 {
-  const uint32_t masked = (frame->is_extended != 0U)
-                            ? (frame->id & (uint32_t)k_ra_canfd_id_ext_mask)
-                            : (frame->id & (uint32_t)k_ra_canfd_id_std_mask);
-  return (frame->is_extended != 0U) ? (masked | (uint32_t)k_ra_canfd_id_ide) : masked;
+  const uint32_t masked = (frame->is_extended != 0U) ? (frame->id & k_ra_canfd_id_ext_mask)
+                                                     : (frame->id & k_ra_canfd_id_std_mask);
+  return (frame->is_extended != 0U) ? (masked | k_ra_canfd_id_ide) : masked;
 }
 
 /**
@@ -266,10 +262,10 @@ static uint32_t internal_tx_fdsts(const ra_canfd_frame_t* frame)
 {
   uint32_t w = 0U;
   if (frame->is_fd != 0U) {
-    w |= (uint32_t)k_ra_canfd_fd_fdf;
+    w |= k_ra_canfd_fd_fdf;
   }
   if (frame->is_brs != 0U) {
-    w |= (uint32_t)k_ra_canfd_fd_brs;
+    w |= k_ra_canfd_fd_brs;
   }
   return w;
 }
@@ -286,13 +282,13 @@ ra_err_t ra_canfd_transmit(uint8_t channel, const ra_canfd_frame_t* frame)
   }
 
   reg->CFDTMID    = internal_tx_id(frame);
-  reg->CFDTMPTR   = ((uint32_t)frame->dlc & (uint32_t)k_ra_canfd_ptr_mask_dlc)
+  reg->CFDTMPTR   = ((uint32_t)frame->dlc & k_ra_canfd_ptr_mask_dlc)
                     << (uint32_t)k_ra_canfd_ptr_shift_dlc;
   reg->CFDTMFDSTS = internal_tx_fdsts(frame);
 
   internal_write_tx_data(reg, frame);
 
-  reg->CFDTMC = (uint32_t)k_ra_canfd_tmc_txreq;
+  reg->CFDTMC = k_ra_canfd_tmc_txreq;
   return k_ra_ok;
 }
 
@@ -301,7 +297,7 @@ ra_err_t ra_canfd_transmit(uint8_t channel, const ra_canfd_frame_t* frame)
  */
 static void internal_read_rx_data(volatile r_canfd_channel_regs_t* reg, ra_canfd_frame_t* out)
 {
-  for (uint8_t w = 0U; w < (uint8_t)k_ra_canfd_df_word_count; w++) {
+  for (uint8_t w = 0U; w < k_ra_canfd_df_word_count; w++) {
     const uint32_t word      = reg->CFDRFDF[w];
     out->data[(w * 4U) + 0U] = (uint8_t)(word >> (uint32_t)k_ra_byte_shift_0);
     out->data[(w * 4U) + 1U] = (uint8_t)(word >> (uint32_t)k_ra_byte_shift_1);
@@ -318,14 +314,13 @@ static void internal_decode_rx_header(uint32_t          id_word,
                                       uint32_t          fdsts_word,
                                       ra_canfd_frame_t* out)
 {
-  const uint8_t is_ext = ((id_word & (uint32_t)k_ra_canfd_id_ide) != 0U) ? 1U : 0U;
+  const uint8_t is_ext = ((id_word & k_ra_canfd_id_ide) != 0U) ? 1U : 0U;
   out->is_extended     = is_ext;
-  out->id              = (is_ext != 0U) ? (id_word & (uint32_t)k_ra_canfd_id_ext_mask)
-                                        : (id_word & (uint32_t)k_ra_canfd_id_std_mask);
-  out->dlc =
-    (uint8_t)((ptr_word >> (uint32_t)k_ra_canfd_ptr_shift_dlc) & (uint32_t)k_ra_canfd_ptr_mask_dlc);
-  out->is_fd  = ((fdsts_word & (uint32_t)k_ra_canfd_fd_fdf) != 0U) ? 1U : 0U;
-  out->is_brs = ((fdsts_word & (uint32_t)k_ra_canfd_fd_brs) != 0U) ? 1U : 0U;
+  out->id =
+    (is_ext != 0U) ? (id_word & k_ra_canfd_id_ext_mask) : (id_word & k_ra_canfd_id_std_mask);
+  out->dlc = (uint8_t)((ptr_word >> (uint32_t)k_ra_canfd_ptr_shift_dlc) & k_ra_canfd_ptr_mask_dlc);
+  out->is_fd  = ((fdsts_word & k_ra_canfd_fd_fdf) != 0U) ? 1U : 0U;
+  out->is_brs = ((fdsts_word & k_ra_canfd_fd_brs) != 0U) ? 1U : 0U;
 }
 
 ra_err_t ra_canfd_receive(uint8_t channel, ra_canfd_frame_t* out_frame)
@@ -334,7 +329,7 @@ ra_err_t ra_canfd_receive(uint8_t channel, ra_canfd_frame_t* out_frame)
   RA_CHECK_NULL_PTR(reg, s_tag, "channel out of range");
   RA_CHECK_NULL_PTR(out_frame, s_tag, "out_frame must not be nullptr");
 
-  if ((reg->CFDRFSTS & (uint32_t)k_ra_rfsts_bit_empty) != 0U) {
+  if ((reg->CFDRFSTS & k_ra_rfsts_bit_empty) != 0U) {
     return k_ra_err_no_data;
   }
 
@@ -342,7 +337,7 @@ ra_err_t ra_canfd_receive(uint8_t channel, ra_canfd_frame_t* out_frame)
   internal_read_rx_data(reg, out_frame);
 
   /* Acknowledge / pop the frame. */
-  reg->CFDRFPCTR = (uint32_t)k_ra_rfpctr_value_ack;
+  reg->CFDRFPCTR = k_ra_rfpctr_value_ack;
   return k_ra_ok;
 }
 
@@ -354,8 +349,8 @@ ra_err_t ra_canfd_get_error_state(uint8_t channel, uint8_t* tx_err, uint8_t* rx_
   RA_CHECK_NULL_PTR(rx_err, s_tag, "rx_err must not be nullptr");
 
   const uint32_t erfl = reg->CFDCNERFL;
-  *tx_err = (uint8_t)((erfl >> (uint32_t)k_ra_cnerfl_shift_tec) & (uint32_t)k_ra_cnerfl_mask_tec);
-  *rx_err = (uint8_t)((erfl >> (uint32_t)k_ra_cnerfl_shift_rec) & (uint32_t)k_ra_cnerfl_mask_rec);
+  *tx_err             = (uint8_t)((erfl >> (uint32_t)k_ra_cnerfl_shift_tec) & k_ra_cnerfl_mask_tec);
+  *rx_err             = (uint8_t)((erfl >> (uint32_t)k_ra_cnerfl_shift_rec) & k_ra_cnerfl_mask_rec);
   return k_ra_ok;
 }
 
@@ -408,7 +403,7 @@ void ra_canfd_dispatch(uint8_t channel)
 
 ra_err_t ra_canfd_enter_stop(uint8_t channel)
 {
-  if (channel >= (uint8_t)k_ra_canfd_instance_count) {
+  if (channel >= k_ra_canfd_instance_count) {
     return k_ra_err_invalid_arg;
   }
   return ra_mstp_disable(s_canfd_mstp_table[channel]);
@@ -416,7 +411,7 @@ ra_err_t ra_canfd_enter_stop(uint8_t channel)
 
 ra_err_t ra_canfd_exit_stop(uint8_t channel)
 {
-  if (channel >= (uint8_t)k_ra_canfd_instance_count) {
+  if (channel >= k_ra_canfd_instance_count) {
     return k_ra_err_invalid_arg;
   }
   return ra_mstp_enable(s_canfd_mstp_table[channel]);

@@ -652,9 +652,9 @@ static_assert(sizeof(r_rmac_regs_t) == (size_t)k_ra_rmac_window_bytes,
  */
 static inline volatile r_rmac_regs_t* ra_rmac(ra_rmac_port_t port)
 {
-  uintptr_t base = (uintptr_t)k_ra_rmac0_base_addr;
+  uintptr_t base = k_ra_rmac0_base_addr;
   if (port == k_ra_rmac_port_1) {
-    base = (uintptr_t)k_ra_rmac1_base_addr;
+    base = k_ra_rmac1_base_addr;
   }
   return (volatile r_rmac_regs_t*)base;
 }

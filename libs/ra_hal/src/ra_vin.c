@@ -115,15 +115,15 @@ typedef enum : uint8_t {
  * Indexed via the channel parameter to `ra_vin_set_rgb_to_yc`.
  */
 typedef enum : uint16_t {
-  k_ra_vin_yc_y_set1  = (uint16_t)k_ra_vin_off_yccr1,
-  k_ra_vin_yc_y_set2  = (uint16_t)k_ra_vin_off_yccr2,
-  k_ra_vin_yc_y_set3  = (uint16_t)k_ra_vin_off_yccr3,
-  k_ra_vin_yc_cb_set1 = (uint16_t)k_ra_vin_off_cbccr1,
-  k_ra_vin_yc_cb_set2 = (uint16_t)k_ra_vin_off_cbccr2,
-  k_ra_vin_yc_cb_set3 = (uint16_t)k_ra_vin_off_cbccr3,
-  k_ra_vin_yc_cr_set1 = (uint16_t)k_ra_vin_off_crccr1,
-  k_ra_vin_yc_cr_set2 = (uint16_t)k_ra_vin_off_crccr2,
-  k_ra_vin_yc_cr_set3 = (uint16_t)k_ra_vin_off_crccr3,
+  k_ra_vin_yc_y_set1  = k_ra_vin_off_yccr1,
+  k_ra_vin_yc_y_set2  = k_ra_vin_off_yccr2,
+  k_ra_vin_yc_y_set3  = k_ra_vin_off_yccr3,
+  k_ra_vin_yc_cb_set1 = k_ra_vin_off_cbccr1,
+  k_ra_vin_yc_cb_set2 = k_ra_vin_off_cbccr2,
+  k_ra_vin_yc_cb_set3 = k_ra_vin_off_cbccr3,
+  k_ra_vin_yc_cr_set1 = k_ra_vin_off_crccr1,
+  k_ra_vin_yc_cr_set2 = k_ra_vin_off_crccr2,
+  k_ra_vin_yc_cr_set3 = k_ra_vin_off_crccr3,
 } ra_vin_chan_offsets_t;
 
 /**
@@ -146,18 +146,17 @@ static uint32_t internal_compose_mc(const ra_vin_config_t* cfg)
   /* HUM Ch 67.2.1 "MC: Main Control Register" p 3975 */
   uint32_t mc = 0UL;
   if (cfg->bypass_csc) {
-    mc |= (uint32_t)k_ra_vin_mc_bps;
+    mc |= k_ra_vin_mc_bps;
   }
   if (cfg->big_endian) {
-    mc |= (uint32_t)k_ra_vin_mc_en;
+    mc |= k_ra_vin_mc_en;
   }
   /* IM[4:3] -- interlace mode. */
-  mc |= ((uint32_t)cfg->interlace_mode << (uint8_t)k_ra_vin_mc_shift_im) & (uint32_t)k_ra_vin_mc_im;
+  mc |= ((uint32_t)cfg->interlace_mode << k_ra_vin_mc_shift_im) & k_ra_vin_mc_im;
   /* INF[18:16] -- input format. */
-  mc |= ((uint32_t)cfg->input_fmt << (uint8_t)k_ra_vin_mc_shift_inf) & (uint32_t)k_ra_vin_mc_inf;
+  mc |= ((uint32_t)cfg->input_fmt << k_ra_vin_mc_shift_inf) & k_ra_vin_mc_inf;
   /* CLP[29:28] -- pixel data clipping. */
-  mc |=
-    ((uint32_t)cfg->pixel_clip_mode << (uint8_t)k_ra_vin_mc_shift_clp) & (uint32_t)k_ra_vin_mc_clp;
+  mc |= ((uint32_t)cfg->pixel_clip_mode << k_ra_vin_mc_shift_clp) & k_ra_vin_mc_clp;
   return mc;
 }
 
@@ -178,8 +177,8 @@ static void internal_pulse_st(uint32_t mc_now)
   /* HUM Ch 67.2.1 "MC: Main Control Register" p 3975
  * Pulse MC.ST = 1 then absorb >= 10 ICLK by reading MC back. */
   volatile uint32_t* mc_reg = ra_vin_reg32(k_ra_vin_off_mc);
-  *mc_reg                   = mc_now | (uint32_t)k_ra_vin_mc_st;
-  for (uint8_t i = 0U; i < (uint8_t)k_ra_vin_st_settle_reads; ++i) {
+  *mc_reg                   = mc_now | k_ra_vin_mc_st;
+  for (uint8_t i = 0U; i < k_ra_vin_st_settle_reads; ++i) {
     (void)*mc_reg;
   }
 }
@@ -210,10 +209,10 @@ static void internal_mc_rmw(uint32_t clear_mask, uint32_t set_bits)
   if (cfg->image_stride_px == 0U) {
     return k_ra_err_invalid_arg;
   }
-  if (cfg->interlace_mode > (uint8_t)k_ra_vin_max_im) {
+  if (cfg->interlace_mode > k_ra_vin_max_im) {
     return k_ra_err_invalid_arg;
   }
-  if (cfg->pixel_clip_mode > (uint8_t)k_ra_vin_max_clp) {
+  if (cfg->pixel_clip_mode > k_ra_vin_max_clp) {
     return k_ra_err_invalid_arg;
   }
 
@@ -244,7 +243,7 @@ static void internal_mc_rmw(uint32_t clear_mask, uint32_t set_bits)
   *ra_vin_reg32(k_ra_vin_off_si) = (uint32_t)cfg->scanline_compare;
   /* HUM Ch 67.2.16 "INTS: Interrupt Status Register" p 3989
  * Clear all latched W1C bits left over from a previous run. */
-  *ra_vin_reg32(k_ra_vin_off_ints) = (uint32_t)k_ra_vin_int_w1c_mask;
+  *ra_vin_reg32(k_ra_vin_off_ints) = k_ra_vin_int_w1c_mask;
 
   ra_log_info_val(s_tag, "vin_init mb1", cfg->framebuffer_addr_1);
   return k_ra_ok;
@@ -259,7 +258,7 @@ static void internal_mc_rmw(uint32_t clear_mask, uint32_t set_bits)
   /* HUM Ch 67.2.15 "IE: Interrupt Enable Register" p 3987 */
   *ra_vin_reg32(k_ra_vin_off_ie) = 0UL;
   /* HUM Ch 67.2.16 "INTS: Interrupt Status Register" p 3989 */
-  *ra_vin_reg32(k_ra_vin_off_ints) = (uint32_t)k_ra_vin_int_w1c_mask;
+  *ra_vin_reg32(k_ra_vin_off_ints) = k_ra_vin_int_w1c_mask;
 
   s_vin_fn  = nullptr;
   s_vin_ctx = nullptr;
@@ -273,7 +272,7 @@ static void internal_mc_rmw(uint32_t clear_mask, uint32_t set_bits)
   /* HUM Ch 67.2.1 "MC: Main Control Register" p 3975
  * Clear ME first so the ST pulse re-initialises a stopped pipeline. */
   volatile uint32_t* mc_reg = ra_vin_reg32(k_ra_vin_off_mc);
-  const uint32_t     mc_now = *mc_reg & ~(uint32_t)k_ra_vin_mc_me;
+  const uint32_t     mc_now = *mc_reg & ~k_ra_vin_mc_me;
   *mc_reg                   = mc_now;
   internal_pulse_st(mc_now);
   ra_log_info(s_tag, "vin_reset");
@@ -293,8 +292,7 @@ static void internal_mc_rmw(uint32_t clear_mask, uint32_t set_bits)
 
   const uint32_t mc_now = *mc_reg;
   const uint32_t fc_now = *fc_reg;
-  if (((mc_now & (uint32_t)k_ra_vin_mc_me) != 0UL) ||
-      ((fc_now & (uint32_t)k_ra_vin_fc_cc) != 0UL)) {
+  if (((mc_now & k_ra_vin_mc_me) != 0UL) || ((fc_now & k_ra_vin_fc_cc) != 0UL)) {
     return k_ra_err_invalid_state;
   }
 
@@ -303,11 +301,11 @@ static void internal_mc_rmw(uint32_t clear_mask, uint32_t set_bits)
 
   /* HUM Ch 67.2.1 "MC: Main Control Register" p 3975
  * Set ME = 1 (and re-clear ST -- it is write-only). */
-  *mc_reg = mc_now | (uint32_t)k_ra_vin_mc_me;
+  *mc_reg = mc_now | k_ra_vin_mc_me;
 
   if ((mode == k_ra_vin_capture_continuous) || (mode == k_ra_vin_capture_continuous_field_skip)) {
     /* HUM Ch 67.2.3 "FC: Frame Capture Register" p 3979 */
-    *fc_reg = (uint32_t)k_ra_vin_fc_cc;
+    *fc_reg = k_ra_vin_fc_cc;
   }
 
   ra_log_info_val(s_tag, "vin_capture_start mode", (uint32_t)mode);
@@ -322,25 +320,25 @@ static void internal_mc_rmw(uint32_t clear_mask, uint32_t set_bits)
   volatile uint32_t* fc_reg = ra_vin_reg32(k_ra_vin_off_fc);
 
   const uint32_t mc_now = *mc_reg;
-  if ((mc_now & (uint32_t)k_ra_vin_mc_me) == 0UL) {
+  if ((mc_now & k_ra_vin_mc_me) == 0UL) {
     return k_ra_err_invalid_state;
   }
 
   /* HUM Ch 67.2.3 "FC: Frame Capture Register" p 3979 */
   *fc_reg = 0UL;
   /* HUM Ch 67.2.1 "MC: Main Control Register" p 3975 */
-  *mc_reg = mc_now & ~(uint32_t)k_ra_vin_mc_me;
+  *mc_reg = mc_now & ~k_ra_vin_mc_me;
 
   /* HUM Ch 67.2.18 "MTCSTOP: AXI Transfer Stop Control Register" p 3991
  * Force any outstanding AXI writes to drain so the caller can safely
  * recycle the frame buffer once OUTSTAND reaches 0. */
   volatile uint32_t* mtc_reg = ra_vin_reg32(k_ra_vin_off_mtcstop);
-  *mtc_reg                   = (uint32_t)k_ra_vin_mtcstop_req;
+  *mtc_reg                   = k_ra_vin_mtcstop_req;
 
   /* Bounded poll for OUTSTAND -> 0 (NASA Rule 2). */
   ra_err_t err = k_ra_err_hw_timeout;
-  for (uint16_t i = 0U; i < (uint16_t)k_ra_vin_stop_drain_max; ++i) {
-    if ((*mtc_reg & (uint32_t)k_ra_vin_mtcstop_outstand) == 0UL) {
+  for (uint16_t i = 0U; i < k_ra_vin_stop_drain_max; ++i) {
+    if ((*mtc_reg & k_ra_vin_mtcstop_outstand) == 0UL) {
       err = k_ra_ok;
       break;
     }
@@ -357,7 +355,7 @@ static void internal_mc_rmw(uint32_t clear_mask, uint32_t set_bits)
   }
   if ((((uint32_t)window->line_end | (uint32_t)window->line_start | (uint32_t)window->pixel_end |
         (uint32_t)window->pixel_start) &
-       ~(uint32_t)k_ra_vin_preclip_mask) != 0UL) {
+       ~k_ra_vin_preclip_mask) != 0UL) {
     return k_ra_err_invalid_arg;
   }
   /* HUM Ch 67.2.4 "SLPRC: Pre-Clip Start Line Register" p 3980 */
@@ -376,19 +374,15 @@ static void internal_mc_rmw(uint32_t clear_mask, uint32_t set_bits)
   RA_CHECK_NULL_PTR((void*)scale, s_tag, "scale must not be nullptr");
   if ((scale->v_mantissa > (uint8_t)k_ra_vin_uds_max_mant) ||
       (scale->h_mantissa > (uint8_t)k_ra_vin_uds_max_mant) ||
-      (scale->v_fraction > (uint16_t)k_ra_vin_uds_max_frac) ||
-      (scale->h_fraction > (uint16_t)k_ra_vin_uds_max_frac)) {
+      (scale->v_fraction > k_ra_vin_uds_max_frac) || (scale->h_fraction > k_ra_vin_uds_max_frac)) {
     return k_ra_err_invalid_arg;
   }
   /* HUM Ch 67.2.22 "UDS_SCALE: Scaling Factor Register" p 3997 */
-  uint32_t v = ((uint32_t)scale->v_fraction << (uint8_t)k_ra_vin_uds_scale_shift_vfrac) &
-               (uint32_t)k_ra_vin_uds_scale_vfrac;
-  v |= ((uint32_t)scale->v_mantissa << (uint8_t)k_ra_vin_uds_scale_shift_vmant) &
-       (uint32_t)k_ra_vin_uds_scale_vmant;
-  v |= ((uint32_t)scale->h_fraction << (uint8_t)k_ra_vin_uds_scale_shift_hfrac) &
-       (uint32_t)k_ra_vin_uds_scale_hfrac;
-  v |= ((uint32_t)scale->h_mantissa << (uint8_t)k_ra_vin_uds_scale_shift_hmant) &
-       (uint32_t)k_ra_vin_uds_scale_hmant;
+  uint32_t v =
+    ((uint32_t)scale->v_fraction << k_ra_vin_uds_scale_shift_vfrac) & k_ra_vin_uds_scale_vfrac;
+  v |= ((uint32_t)scale->v_mantissa << k_ra_vin_uds_scale_shift_vmant) & k_ra_vin_uds_scale_vmant;
+  v |= ((uint32_t)scale->h_fraction << k_ra_vin_uds_scale_shift_hfrac) & k_ra_vin_uds_scale_hfrac;
+  v |= ((uint32_t)scale->h_mantissa << k_ra_vin_uds_scale_shift_hmant) & k_ra_vin_uds_scale_hmant;
   *ra_vin_reg32(k_ra_vin_off_uds_scale) = v;
   return k_ra_ok;
 }
@@ -399,23 +393,20 @@ static void internal_mc_rmw(uint32_t clear_mask, uint32_t set_bits)
     return k_ra_err_invalid_arg;
   }
   /* HUM Ch 67.2.23 "UDS_PASS_BWIDTH: Passband Register" p 3998 */
-  uint32_t v =
-    ((uint32_t)v_bwidth << (uint8_t)k_ra_vin_uds_bwidth_shift_v) & (uint32_t)k_ra_vin_uds_bwidth_v;
-  v |=
-    ((uint32_t)h_bwidth << (uint8_t)k_ra_vin_uds_bwidth_shift_h) & (uint32_t)k_ra_vin_uds_bwidth_h;
+  uint32_t v = ((uint32_t)v_bwidth << k_ra_vin_uds_bwidth_shift_v) & k_ra_vin_uds_bwidth_v;
+  v |= ((uint32_t)h_bwidth << k_ra_vin_uds_bwidth_shift_h) & k_ra_vin_uds_bwidth_h;
   *ra_vin_reg32(k_ra_vin_off_uds_pass_bwidth) = v;
   return k_ra_ok;
 }
 
 [[nodiscard]] ra_err_t ra_vin_set_uds_clip(uint16_t v_size, uint16_t h_size)
 {
-  if ((v_size > (uint16_t)k_ra_vin_uds_max_clip) || (h_size > (uint16_t)k_ra_vin_uds_max_clip)) {
+  if ((v_size > k_ra_vin_uds_max_clip) || (h_size > k_ra_vin_uds_max_clip)) {
     return k_ra_err_invalid_arg;
   }
   /* HUM Ch 67.2.24 "UDS_CLIP_SIZE: Output Size Clipping Register" p 3999 */
-  uint32_t v =
-    ((uint32_t)v_size << (uint8_t)k_ra_vin_uds_clip_shift_v) & (uint32_t)k_ra_vin_uds_clip_v;
-  v |= ((uint32_t)h_size << (uint8_t)k_ra_vin_uds_clip_shift_h) & (uint32_t)k_ra_vin_uds_clip_h;
+  uint32_t v = ((uint32_t)v_size << k_ra_vin_uds_clip_shift_v) & k_ra_vin_uds_clip_v;
+  v |= ((uint32_t)h_size << k_ra_vin_uds_clip_shift_h) & k_ra_vin_uds_clip_h;
   *ra_vin_reg32(k_ra_vin_off_uds_clip_size) = v;
   return k_ra_ok;
 }
@@ -426,22 +417,22 @@ static void internal_mc_rmw(uint32_t clear_mask, uint32_t set_bits)
   /* HUM Ch 67.2.21 "UDS_CTRL: Scaling Control Register" p 3996 */
   uint32_t v = 0UL;
   if (ctrl->b_cb_nearest) {
-    v |= (uint32_t)k_ra_vin_uds_ctrl_ne_bcb;
+    v |= k_ra_vin_uds_ctrl_ne_bcb;
   }
   if (ctrl->g_y_nearest) {
-    v |= (uint32_t)k_ra_vin_uds_ctrl_ne_gy;
+    v |= k_ra_vin_uds_ctrl_ne_gy;
   }
   if (ctrl->r_cr_nearest) {
-    v |= (uint32_t)k_ra_vin_uds_ctrl_ne_rcr;
+    v |= k_ra_vin_uds_ctrl_ne_rcr;
   }
   if (ctrl->multitap) {
-    v |= (uint32_t)k_ra_vin_uds_ctrl_bc;
+    v |= k_ra_vin_uds_ctrl_bc;
   }
   if (ctrl->advanced_bl) {
-    v |= (uint32_t)k_ra_vin_uds_ctrl_bladv;
+    v |= k_ra_vin_uds_ctrl_bladv;
   }
   if (ctrl->advanced_amd) {
-    v |= (uint32_t)k_ra_vin_uds_ctrl_amd;
+    v |= k_ra_vin_uds_ctrl_amd;
   }
   *ra_vin_reg32(k_ra_vin_off_uds_ctrl) = v;
   return k_ra_ok;
@@ -451,9 +442,9 @@ static void internal_mc_rmw(uint32_t clear_mask, uint32_t set_bits)
 {
   uint32_t scle_bits = 0UL;
   if (enable) {
-    scle_bits = (uint32_t)k_ra_vin_mc_scle;
+    scle_bits = k_ra_vin_mc_scle;
   }
-  internal_mc_rmw((uint32_t)k_ra_vin_mc_scle, scle_bits);
+  internal_mc_rmw(k_ra_vin_mc_scle, scle_bits);
   return k_ra_ok;
 }
 
@@ -466,29 +457,25 @@ static void internal_mc_rmw(uint32_t clear_mask, uint32_t set_bits)
   const uint8_t* cb = (cb_table != nullptr) ? cb_table : y_table;
   const uint8_t* cr = (cr_table != nullptr) ? cr_table : y_table;
 
-  for (uint16_t i = 0U; i < (uint16_t)k_ra_vin_lut_entries; ++i) {
+  for (uint16_t i = 0U; i < k_ra_vin_lut_entries; ++i) {
     /* HUM Ch 67.2.25 "LUTP: Look Up Table Pointer Register" p 4000 */
-    uint32_t lutp =
-      ((uint32_t)i << (uint8_t)k_ra_vin_lutp_shift_ltypr) & (uint32_t)k_ra_vin_lutp_ltypr;
-    lutp |= ((uint32_t)i << (uint8_t)k_ra_vin_lutp_shift_ltcbpr) & (uint32_t)k_ra_vin_lutp_ltcbpr;
-    lutp |= ((uint32_t)i << (uint8_t)k_ra_vin_lutp_shift_ltcrpr) & (uint32_t)k_ra_vin_lutp_ltcrpr;
+    uint32_t lutp = ((uint32_t)i << k_ra_vin_lutp_shift_ltypr) & k_ra_vin_lutp_ltypr;
+    lutp |= ((uint32_t)i << k_ra_vin_lutp_shift_ltcbpr) & k_ra_vin_lutp_ltcbpr;
+    lutp |= ((uint32_t)i << k_ra_vin_lutp_shift_ltcrpr) & k_ra_vin_lutp_ltcrpr;
     *ra_vin_reg32(k_ra_vin_off_lutp) = lutp;
 
     /* HUM Ch 67.2.26 "LUTD: Look Up Table Data Register" p 4001 */
-    uint32_t lutd =
-      ((uint32_t)y_table[i] << (uint8_t)k_ra_vin_lutd_shift_ltydt) & (uint32_t)k_ra_vin_lutd_ltydt;
-    lutd |=
-      ((uint32_t)cb[i] << (uint8_t)k_ra_vin_lutd_shift_ltcbdt) & (uint32_t)k_ra_vin_lutd_ltcbdt;
-    lutd |=
-      ((uint32_t)cr[i] << (uint8_t)k_ra_vin_lutd_shift_ltcrdt) & (uint32_t)k_ra_vin_lutd_ltcrdt;
+    uint32_t lutd = ((uint32_t)y_table[i] << k_ra_vin_lutd_shift_ltydt) & k_ra_vin_lutd_ltydt;
+    lutd |= ((uint32_t)cb[i] << k_ra_vin_lutd_shift_ltcbdt) & k_ra_vin_lutd_ltcbdt;
+    lutd |= ((uint32_t)cr[i] << k_ra_vin_lutd_shift_ltcrdt) & k_ra_vin_lutd_ltcrdt;
     *ra_vin_reg32(k_ra_vin_off_lutd) = lutd;
   }
   /* HUM Ch 67.2.1 "MC: Main Control Register" p 3975 */
   uint32_t lute_bits = 0UL;
   if (enable) {
-    lute_bits = (uint32_t)k_ra_vin_mc_lute;
+    lute_bits = k_ra_vin_mc_lute;
   }
-  internal_mc_rmw((uint32_t)k_ra_vin_mc_lute, lute_bits);
+  internal_mc_rmw(k_ra_vin_mc_lute, lute_bits);
   return k_ra_ok;
 }
 
@@ -496,28 +483,25 @@ static void internal_mc_rmw(uint32_t clear_mask, uint32_t set_bits)
 {
   RA_CHECK_NULL_PTR((void*)coeffs, s_tag, "coeffs must not be nullptr");
   /* HUM Ch 67.2.36 "CSCE1" p 4011 */
-  uint32_t csce1 = (uint32_t)coeffs->y_multiplier & (uint32_t)k_ra_vin_csce1_ymul2;
+  uint32_t csce1 = (uint32_t)coeffs->y_multiplier & k_ra_vin_csce1_ymul2;
   if (coeffs->enable_round) {
-    csce1 |= (uint32_t)k_ra_vin_csce1_round;
+    csce1 |= k_ra_vin_csce1_round;
   }
   *ra_vin_reg32(k_ra_vin_off_csce1) = csce1;
 
   /* HUM Ch 67.2.37 "CSCE2" p 4012 */
-  uint32_t csce2 = (uint32_t)coeffs->cbcr_sub & (uint32_t)k_ra_vin_csce2_csub2;
-  csce2 |= ((uint32_t)coeffs->y_sub << (uint8_t)k_ra_vin_csce2_shift_ysub2) &
-           (uint32_t)k_ra_vin_csce2_ysub2;
+  uint32_t csce2 = (uint32_t)coeffs->cbcr_sub & k_ra_vin_csce2_csub2;
+  csce2 |= ((uint32_t)coeffs->y_sub << k_ra_vin_csce2_shift_ysub2) & k_ra_vin_csce2_ysub2;
   *ra_vin_reg32(k_ra_vin_off_csce2) = csce2;
 
   /* HUM Ch 67.2.38 "CSCE3" p 4013 */
-  uint32_t csce3 = (uint32_t)coeffs->cr_mul_lo & (uint32_t)k_ra_vin_csce_mul_lo;
-  csce3 |= ((uint32_t)coeffs->cr_mul_hi << (uint8_t)k_ra_vin_csce_shift_mul_hi) &
-           (uint32_t)k_ra_vin_csce_mul_hi;
+  uint32_t csce3 = (uint32_t)coeffs->cr_mul_lo & k_ra_vin_csce_mul_lo;
+  csce3 |= ((uint32_t)coeffs->cr_mul_hi << k_ra_vin_csce_shift_mul_hi) & k_ra_vin_csce_mul_hi;
   *ra_vin_reg32(k_ra_vin_off_csce3) = csce3;
 
   /* HUM Ch 67.2.39 "CSCE4" p 4014 */
-  uint32_t csce4 = (uint32_t)coeffs->cb_mul_lo & (uint32_t)k_ra_vin_csce_mul_lo;
-  csce4 |= ((uint32_t)coeffs->cb_mul_hi << (uint8_t)k_ra_vin_csce_shift_mul_hi) &
-           (uint32_t)k_ra_vin_csce_mul_hi;
+  uint32_t csce4 = (uint32_t)coeffs->cb_mul_lo & k_ra_vin_csce_mul_lo;
+  csce4 |= ((uint32_t)coeffs->cb_mul_hi << k_ra_vin_csce_shift_mul_hi) & k_ra_vin_csce_mul_hi;
   *ra_vin_reg32(k_ra_vin_off_csce4) = csce4;
   return k_ra_ok;
 }
@@ -559,10 +543,10 @@ internal_yc_offsets(uint8_t channel, ra_vin_off_t* off1, ra_vin_off_t* off2, ra_
 [[nodiscard]] ra_err_t ra_vin_set_rgb_to_yc(uint8_t channel, const ra_vin_rgb_to_yc_chan_t* row)
 {
   RA_CHECK_NULL_PTR((void*)row, s_tag, "row must not be nullptr");
-  if (channel > (uint8_t)k_ra_vin_yc_chan_max) {
+  if (channel > k_ra_vin_yc_chan_max) {
     return k_ra_err_invalid_arg;
   }
-  if (row->shift_down > (uint8_t)k_ra_vin_max_lsft) {
+  if (row->shift_down > k_ra_vin_max_lsft) {
     return k_ra_err_invalid_arg;
   }
   ra_vin_off_t off1 = k_ra_vin_off_yccr1;
@@ -571,87 +555,81 @@ internal_yc_offsets(uint8_t channel, ra_vin_off_t* off1, ra_vin_off_t* off2, ra_
   internal_yc_offsets(channel, &off1, &off2, &off3);
 
   /* HUM Ch 67.2.27 "YCCR1: RGB-to-Y Coefficient R" p 4002-4010 */
-  *ra_vin_reg32(off1) = (uint32_t)row->r_coeff & (uint32_t)k_ra_vin_yc1_rp;
+  *ra_vin_reg32(off1) = (uint32_t)row->r_coeff & k_ra_vin_yc1_rp;
 
   /* HUM Ch 67.2.28 "YCCR2: RGB-to-Y Coefficient G+B" p 4003-4010 */
-  uint32_t s2 = (uint32_t)row->g_coeff & (uint32_t)k_ra_vin_yc2_gp;
-  s2 |= ((uint32_t)row->b_coeff << (uint8_t)k_ra_vin_yccr_shift_bp) & (uint32_t)k_ra_vin_yc2_bp;
+  uint32_t s2 = (uint32_t)row->g_coeff & k_ra_vin_yc2_gp;
+  s2 |= ((uint32_t)row->b_coeff << k_ra_vin_yccr_shift_bp) & k_ra_vin_yc2_bp;
   *ra_vin_reg32(off2) = s2;
 
   /* HUM Ch 67.2.29 "YCCR3: RGB-to-Y Normalization" p 4004-4011 */
-  uint32_t s3 = (uint32_t)row->add_offset & (uint32_t)k_ra_vin_yc3_ap;
+  uint32_t s3 = (uint32_t)row->add_offset & k_ra_vin_yc3_ap;
   if (row->enable_hen) {
-    s3 |= (uint32_t)k_ra_vin_yc3_hen;
+    s3 |= k_ra_vin_yc3_hen;
   }
-  s3 |=
-    ((uint32_t)row->shift_down << (uint8_t)k_ra_vin_yccr_shift_sft) & (uint32_t)k_ra_vin_yc3_sft;
+  s3 |= ((uint32_t)row->shift_down << k_ra_vin_yccr_shift_sft) & k_ra_vin_yc3_sft;
   *ra_vin_reg32(off3) = s3;
   return k_ra_ok;
 }
 
 [[nodiscard]] ra_err_t ra_vin_set_dithering(uint8_t mode, bool direction)
 {
-  if (mode > (uint8_t)k_ra_vin_max_dc) {
+  if (mode > k_ra_vin_max_dc) {
     return k_ra_err_invalid_arg;
   }
   /* HUM Ch 67.2.1 "MC: Main Control Register" p 3975
  * DC[15:14] dithering mode + DC2[24] direction. */
-  const uint32_t dc_bits =
-    ((uint32_t)mode << (uint8_t)k_ra_vin_mc_shift_dc) & (uint32_t)k_ra_vin_mc_dc;
-  uint32_t dc2_bits = 0UL;
+  const uint32_t dc_bits  = ((uint32_t)mode << k_ra_vin_mc_shift_dc) & k_ra_vin_mc_dc;
+  uint32_t       dc2_bits = 0UL;
   if (direction) {
-    dc2_bits = (uint32_t)k_ra_vin_mc_dc2;
+    dc2_bits = k_ra_vin_mc_dc2;
   }
-  internal_mc_rmw((uint32_t)k_ra_vin_mc_dc | (uint32_t)k_ra_vin_mc_dc2, dc_bits | dc2_bits);
+  internal_mc_rmw(k_ra_vin_mc_dc | k_ra_vin_mc_dc2, dc_bits | dc2_bits);
   return k_ra_ok;
 }
 
 [[nodiscard]] ra_err_t ra_vin_set_yuv444_mode(uint8_t mode)
 {
-  if (mode > (uint8_t)k_ra_vin_max_yuv444) {
+  if (mode > k_ra_vin_max_yuv444) {
     return k_ra_err_invalid_arg;
   }
   /* HUM Ch 67.2.1 "MC: Main Control Register" p 3975 */
-  internal_mc_rmw((uint32_t)k_ra_vin_mc_yuv444, (mode != 0U) ? (uint32_t)k_ra_vin_mc_yuv444 : 0UL);
+  internal_mc_rmw(k_ra_vin_mc_yuv444, (mode != 0U) ? k_ra_vin_mc_yuv444 : 0UL);
   return k_ra_ok;
 }
 
 [[nodiscard]] ra_err_t ra_vin_set_interlace_mode(uint8_t mode)
 {
-  if (mode > (uint8_t)k_ra_vin_max_im) {
+  if (mode > k_ra_vin_max_im) {
     return k_ra_err_invalid_arg;
   }
   /* HUM Ch 67.2.1 "MC: Main Control Register" p 3975 */
-  internal_mc_rmw((uint32_t)k_ra_vin_mc_im,
-                  ((uint32_t)mode << (uint8_t)k_ra_vin_mc_shift_im) & (uint32_t)k_ra_vin_mc_im);
+  internal_mc_rmw(k_ra_vin_mc_im, ((uint32_t)mode << k_ra_vin_mc_shift_im) & k_ra_vin_mc_im);
   return k_ra_ok;
 }
 
 [[nodiscard]] ra_err_t ra_vin_set_data_mode(const ra_vin_data_mode_t* mode)
 {
   RA_CHECK_NULL_PTR((void*)mode, s_tag, "mode must not be nullptr");
-  if ((mode->conv_mode > (uint8_t)k_ra_vin_max_dtmd) ||
-      (mode->y_mode > (uint8_t)k_ra_vin_max_ymode)) {
+  if ((mode->conv_mode > k_ra_vin_max_dtmd) || (mode->y_mode > k_ra_vin_max_ymode)) {
     return k_ra_err_invalid_arg;
   }
   /* HUM Ch 67.2.19 "DMR: Data Mode Register" p 3992 */
-  uint32_t v =
-    ((uint32_t)mode->conv_mode << (uint8_t)k_ra_vin_dmr_shift_dtmd) & (uint32_t)k_ra_vin_dmr_dtmd;
+  uint32_t v = ((uint32_t)mode->conv_mode << k_ra_vin_dmr_shift_dtmd) & k_ra_vin_dmr_dtmd;
   if (mode->alpha_bit) {
-    v |= (uint32_t)k_ra_vin_dmr_abit;
+    v |= k_ra_vin_dmr_abit;
   }
   if (mode->byte_swap) {
-    v |= (uint32_t)k_ra_vin_dmr_bpsm;
+    v |= k_ra_vin_dmr_bpsm;
   }
   if (mode->extend_rgb) {
-    v |= (uint32_t)k_ra_vin_dmr_exrgb;
+    v |= k_ra_vin_dmr_exrgb;
   }
   if (mode->yc_through) {
-    v |= (uint32_t)k_ra_vin_dmr_yc_thr;
+    v |= k_ra_vin_dmr_yc_thr;
   }
-  v |= ((uint32_t)mode->y_mode << (uint8_t)k_ra_vin_dmr_shift_ymode) & (uint32_t)k_ra_vin_dmr_ymode;
-  v |= ((uint32_t)mode->alpha_byte << (uint8_t)k_ra_vin_dmr_shift_a8bit) &
-       (uint32_t)k_ra_vin_dmr_a8bit;
+  v |= ((uint32_t)mode->y_mode << k_ra_vin_dmr_shift_ymode) & k_ra_vin_dmr_ymode;
+  v |= ((uint32_t)mode->alpha_byte << k_ra_vin_dmr_shift_a8bit) & k_ra_vin_dmr_a8bit;
   *ra_vin_reg32(k_ra_vin_off_dmr) = v;
   return k_ra_ok;
 }
@@ -659,17 +637,15 @@ internal_yc_offsets(uint8_t channel, ra_vin_off_t* off1, ra_vin_off_t* off2, ra_
 [[nodiscard]] ra_err_t ra_vin_set_csi_input(const ra_vin_csi_input_t* input)
 {
   RA_CHECK_NULL_PTR((void*)input, s_tag, "input must not be nullptr");
-  if ((input->virtual_channel > (uint8_t)k_ra_vin_max_vc_sel) ||
-      (input->data_type > (uint8_t)k_ra_vin_max_dt)) {
+  if ((input->virtual_channel > k_ra_vin_max_vc_sel) || (input->data_type > k_ra_vin_max_dt)) {
     return k_ra_err_invalid_arg;
   }
   /* HUM Ch 67.2.8 "CSI_IFMD: CSI2 Interface Mode Register" p 3982 */
-  uint32_t v = ((uint32_t)input->virtual_channel << (uint8_t)k_ra_vin_csi_ifmd_shift_vc_sel) &
-               (uint32_t)k_ra_vin_csi_ifmd_vc_sel;
-  v |= ((uint32_t)input->data_type << (uint8_t)k_ra_vin_csi_ifmd_shift_dt) &
-       (uint32_t)k_ra_vin_csi_ifmd_dt;
+  uint32_t v =
+    ((uint32_t)input->virtual_channel << k_ra_vin_csi_ifmd_shift_vc_sel) & k_ra_vin_csi_ifmd_vc_sel;
+  v |= ((uint32_t)input->data_type << k_ra_vin_csi_ifmd_shift_dt) & k_ra_vin_csi_ifmd_dt;
   if (input->zero_extend) {
-    v |= (uint32_t)k_ra_vin_csi_ifmd_des0;
+    v |= k_ra_vin_csi_ifmd_des0;
   }
   *ra_vin_reg32(k_ra_vin_off_csi_ifmd) = v;
   return k_ra_ok;
@@ -678,19 +654,19 @@ internal_yc_offsets(uint8_t channel, ra_vin_off_t* off1, ra_vin_off_t* off2, ra_
 [[nodiscard]] ra_err_t ra_vin_set_field_detect(const ra_vin_field_detect_t* detect)
 {
   RA_CHECK_NULL_PTR((void*)detect, s_tag, "detect must not be nullptr");
-  if (detect->even_field_num > (uint8_t)k_ra_vin_max_field_no) {
+  if (detect->even_field_num > k_ra_vin_max_field_no) {
     return k_ra_err_invalid_arg;
   }
   /* HUM Ch 67.2.9 "CSIFLD: Field Detection Control Register" p 3983 */
   uint32_t v = 0UL;
   if (detect->enable) {
-    v |= (uint32_t)k_ra_vin_csifld_fld_en;
+    v |= k_ra_vin_csifld_fld_en;
   }
   if (detect->even_field_sel) {
-    v |= (uint32_t)k_ra_vin_csifld_fld_sel;
+    v |= k_ra_vin_csifld_fld_sel;
   }
   if (detect->even_field_num != 0U) {
-    v |= (uint32_t)k_ra_vin_csifld_fld_num;
+    v |= k_ra_vin_csifld_fld_num;
   }
   *ra_vin_reg32(k_ra_vin_off_csifld) = v;
   return k_ra_ok;
@@ -701,9 +677,8 @@ internal_yc_offsets(uint8_t channel, ra_vin_off_t* off1, ra_vin_off_t* off2, ra_
   if ((mb1 == 0U) && (mb2 == 0U) && (mb3 == 0U)) {
     return k_ra_err_invalid_arg;
   }
-  if (((mb1 & (uint32_t)k_ra_vin_mb_align_mask) != 0UL) ||
-      ((mb2 & (uint32_t)k_ra_vin_mb_align_mask) != 0UL) ||
-      ((mb3 & (uint32_t)k_ra_vin_mb_align_mask) != 0UL)) {
+  if (((mb1 & k_ra_vin_mb_align_mask) != 0UL) || ((mb2 & k_ra_vin_mb_align_mask) != 0UL) ||
+      ((mb3 & k_ra_vin_mb_align_mask) != 0UL)) {
     return k_ra_err_invalid_arg;
   }
   if (mb1 != 0U) {
@@ -723,7 +698,7 @@ internal_yc_offsets(uint8_t channel, ra_vin_off_t* off1, ra_vin_off_t* off2, ra_
 
 [[nodiscard]] ra_err_t ra_vin_set_uv_offset(uint32_t uv_addr)
 {
-  if ((uv_addr & (uint32_t)k_ra_vin_mb_align_mask) != 0UL) {
+  if ((uv_addr & k_ra_vin_mb_align_mask) != 0UL) {
     return k_ra_err_invalid_arg;
   }
   /* HUM Ch 67.2.20 "UVAOF: UV Address Offset Register" p 3994 */
@@ -744,7 +719,7 @@ internal_yc_offsets(uint8_t channel, ra_vin_off_t* off1, ra_vin_off_t* off2, ra_
   /* HUM Ch 67.2.16 "INTS: Interrupt Status Register" p 3989
  * Only FOS / ARES / FIS2 are W1C; gate other bits to avoid
  * accidentally toggling state bits the hardware owns. */
-  const uint32_t w1c               = mask & (uint32_t)k_ra_vin_int_w1c_mask;
+  const uint32_t w1c               = mask & k_ra_vin_int_w1c_mask;
   *ra_vin_reg32(k_ra_vin_off_ints) = w1c;
   return k_ra_ok;
 }
@@ -753,15 +728,13 @@ internal_yc_offsets(uint8_t channel, ra_vin_off_t* off1, ra_vin_off_t* off2, ra_
 {
   RA_CHECK_NULL_PTR((void*)out_status, s_tag, "out_status must not be nullptr");
   /* HUM Ch 67.2.2 "MS: Module Status Register" p 3978 */
-  const uint32_t v           = *ra_vin_reg32(k_ra_vin_off_ms);
-  out_status->capture_active = (v & (uint32_t)k_ra_vin_ms_ca) != 0UL;
-  out_status->active_video   = (v & (uint32_t)k_ra_vin_ms_av) != 0UL;
-  out_status->even_field     = (v & (uint32_t)k_ra_vin_ms_fs) != 0UL;
-  out_status->frame_buffer_id =
-    (uint8_t)((v & (uint32_t)k_ra_vin_ms_fbs) >> (uint8_t)k_ra_vin_ms_shift_fbs);
-  out_status->memory_active = (v & (uint32_t)k_ra_vin_ms_ma) != 0UL;
-  out_status->latest_frame_buffer =
-    (uint8_t)((v & (uint32_t)k_ra_vin_ms_fms) >> (uint8_t)k_ra_vin_ms_shift_fms);
+  const uint32_t v                = *ra_vin_reg32(k_ra_vin_off_ms);
+  out_status->capture_active      = ((v & k_ra_vin_ms_ca) != 0UL);
+  out_status->active_video        = ((v & k_ra_vin_ms_av) != 0UL);
+  out_status->even_field          = ((v & k_ra_vin_ms_fs) != 0UL);
+  out_status->frame_buffer_id     = (uint8_t)((v & k_ra_vin_ms_fbs) >> k_ra_vin_ms_shift_fbs);
+  out_status->memory_active       = ((v & k_ra_vin_ms_ma) != 0UL);
+  out_status->latest_frame_buffer = (uint8_t)((v & k_ra_vin_ms_fms) >> k_ra_vin_ms_shift_fms);
   return k_ra_ok;
 }
 
@@ -769,7 +742,7 @@ internal_yc_offsets(uint8_t channel, ra_vin_off_t* off1, ra_vin_off_t* off2, ra_
 {
   RA_CHECK_NULL_PTR((void*)out_count, s_tag, "out_count must not be nullptr");
   /* HUM Ch 67.2.14 "LC: Line Count Register" p 3987 */
-  *out_count = (uint16_t)(*ra_vin_reg32(k_ra_vin_off_lc) & (uint32_t)k_ra_vin_lc_mask);
+  *out_count = (uint16_t)(*ra_vin_reg32(k_ra_vin_off_lc) & k_ra_vin_lc_mask);
   return k_ra_ok;
 }
 
@@ -778,7 +751,7 @@ internal_yc_offsets(uint8_t channel, ra_vin_off_t* off1, ra_vin_off_t* off2, ra_
   RA_CHECK_NULL_PTR((void*)out_id, s_tag, "out_id must not be nullptr");
   /* HUM Ch 67.2.2 "MS: Module Status Register" p 3978 */
   const uint32_t v = *ra_vin_reg32(k_ra_vin_off_ms);
-  *out_id          = (uint8_t)((v & (uint32_t)k_ra_vin_ms_fbs) >> (uint8_t)k_ra_vin_ms_shift_fbs);
+  *out_id          = (uint8_t)((v & k_ra_vin_ms_fbs) >> k_ra_vin_ms_shift_fbs);
   return k_ra_ok;
 }
 
@@ -820,14 +793,14 @@ void ra_vin_dispatch(void)
 
   /* HUM Ch 67.2.16 "INTS: Interrupt Status Register" p 3989
  * Acknowledge the W1C subset (FOS / ARES / FIS2). */
-  *reg = mask & (uint32_t)k_ra_vin_int_w1c_mask;
+  *reg = mask & k_ra_vin_int_w1c_mask;
 }
 
 [[nodiscard]] ra_err_t ra_vin_enter_stop(void)
 {
   /* HUM Ch 67.2.1 "MC: Main Control Register" p 3975 */
   volatile uint32_t* mc_reg = ra_vin_reg32(k_ra_vin_off_mc);
-  *mc_reg                   = *mc_reg & ~(uint32_t)k_ra_vin_mc_me;
+  *mc_reg                   = *mc_reg & ~k_ra_vin_mc_me;
   /* HUM Ch 67.2.3 "FC: Frame Capture Register" p 3979 */
   *ra_vin_reg32(k_ra_vin_off_fc) = 0UL;
 

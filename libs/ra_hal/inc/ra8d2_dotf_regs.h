@@ -234,8 +234,7 @@ static inline volatile ra_dotf_regs_t* ra_dotf_regs(uint8_t channel)
   if ((uint16_t)channel >= (uint16_t)k_ra_dotf_channel_count) {
     return nullptr;
   }
-  return (volatile ra_dotf_regs_t*)(k_ra_dotf0_base_addr +
-                                    ((uintptr_t)channel * (uintptr_t)k_ra_dotf_stride));
+  return (volatile ra_dotf_regs_t*)(k_ra_dotf0_base_addr + ((uintptr_t)channel * k_ra_dotf_stride));
 }
 
 #ifdef __cplusplus

@@ -156,10 +156,10 @@ static void* s_mipi_csi_gst_ctx;
  */
 static ra_err_t internal_wait_reset_idle(void)
 {
-  for (uint16_t i = 0U; i < (uint16_t)k_ra_mipi_csi_reset_spin_max; ++i) {
+  for (uint16_t i = 0U; i < k_ra_mipi_csi_reset_spin_max; ++i) {
     /* HUM Ch 66.3.6 "RTST : Reset Status Register" p 3939 */
     const uint32_t rtst = *ra_mipi_csi_reg32(k_ra_mipi_csi_off_rtst);
-    if ((rtst & (uint32_t)k_ra_mipi_csi_rtst_vsrsts_mask) == 0UL) {
+    if ((rtst & k_ra_mipi_csi_rtst_vsrsts_mask) == 0UL) {
       return k_ra_ok;
     }
   }
@@ -179,24 +179,24 @@ static ra_err_t internal_wait_reset_idle(void)
  */
 static uint32_t internal_encode_mct0(const ra_mipi_csi_config_t* cfg)
 {
-  uint32_t mct0 = (uint32_t)cfg->lanes & (uint32_t)k_ra_mipi_csi_mct0_vdln_mask;
+  uint32_t mct0 = (uint32_t)cfg->lanes & k_ra_mipi_csi_mct0_vdln_mask;
   if (cfg->generic_rule) {
-    mct0 |= (uint32_t)k_ra_mipi_csi_mct0_grmd_mask;
+    mct0 |= k_ra_mipi_csi_mct0_grmd_mask;
   }
   if (cfg->eccv13) {
-    mct0 |= (uint32_t)k_ra_mipi_csi_mct0_eccv13_mask;
+    mct0 |= k_ra_mipi_csi_mct0_eccv13_mask;
   }
   if (cfg->lfsren) {
-    mct0 |= (uint32_t)k_ra_mipi_csi_mct0_lfsren_mask;
+    mct0 |= k_ra_mipi_csi_mct0_lfsren_mask;
   }
   if (cfg->zlmd) {
-    mct0 |= (uint32_t)k_ra_mipi_csi_mct0_zlmd_mask;
+    mct0 |= k_ra_mipi_csi_mct0_zlmd_mask;
   }
   if (cfg->edmd) {
-    mct0 |= (uint32_t)k_ra_mipi_csi_mct0_edmd_mask;
+    mct0 |= k_ra_mipi_csi_mct0_edmd_mask;
   }
   if (cfg->rvmd) {
-    mct0 |= (uint32_t)k_ra_mipi_csi_mct0_rvmd_mask;
+    mct0 |= k_ra_mipi_csi_mct0_rvmd_mask;
   }
   return mct0;
 }
@@ -215,7 +215,7 @@ static ra_err_t internal_reject_if_running(void)
 {
   /* HUM Ch 66.3.4 "MCT3 : Module Control Register 3" p 3938 */
   const uint32_t cur = *ra_mipi_csi_reg32(k_ra_mipi_csi_off_mct3);
-  if ((cur & (uint32_t)k_ra_mipi_csi_mct3_rxen_mask) != 0UL) {
+  if ((cur & k_ra_mipi_csi_mct3_rxen_mask) != 0UL) {
     return k_ra_err_invalid_state;
   }
   return k_ra_ok;
@@ -250,17 +250,17 @@ static ra_err_t internal_validate_cfg(const ra_mipi_csi_config_t* cfg)
   if ((cfg->lanes != k_ra_mipi_csi_lanes_1) && (cfg->lanes != k_ra_mipi_csi_lanes_2)) {
     return k_ra_err_invalid_arg;
   }
-  if ((uint8_t)cfg->vlsien > (uint8_t)k_ra_mipi_csi_vlsien_x4) {
+  if ((uint8_t)cfg->vlsien > k_ra_mipi_csi_vlsien_x4) {
     return k_ra_err_invalid_arg;
   }
-  if (((uint32_t)cfg->epd_long_spacer & ~(uint32_t)k_ra_mipi_csi_epct_slp_mask) != 0UL) {
+  if (((uint32_t)cfg->epd_long_spacer & ~k_ra_mipi_csi_epct_slp_mask) != 0UL) {
     return k_ra_err_invalid_arg;
   }
   if (((uint32_t)cfg->epd_short_spacer &
-       ~((uint32_t)k_ra_mipi_csi_epct_ssp_mask >> (uint32_t)k_ra_mipi_csi_epct_ssp_shift)) != 0UL) {
+       ~(k_ra_mipi_csi_epct_ssp_mask >> k_ra_mipi_csi_epct_ssp_shift)) != 0UL) {
     return k_ra_err_invalid_arg;
   }
-  if ((uint32_t)cfg->short_threshold > (uint32_t)k_ra_mipi_csi_gsct_shth_max) {
+  if ((uint32_t)cfg->short_threshold > k_ra_mipi_csi_gsct_shth_max) {
     return k_ra_err_invalid_arg;
   }
   return k_ra_ok;
@@ -288,31 +288,31 @@ static void internal_program_receiver(const ra_mipi_csi_config_t* cfg)
 
   /* HUM Ch 66.3.3 "MCT2 : Module Control Register 2" p 3937
    * Pack FRRSKW @ [24:16] | FRRCLK @ [8:0]. */
-  const uint32_t mct2 = (((uint32_t)cfg->frrskw & ((uint32_t)k_ra_mipi_csi_mct2_frrskw_mask >>
-                                                   (uint32_t)k_ra_mipi_csi_mct2_frrskw_shift))
-                         << (uint32_t)k_ra_mipi_csi_mct2_frrskw_shift) |
-                        ((uint32_t)cfg->frrclk & (uint32_t)k_ra_mipi_csi_mct2_frrclk_mask);
+  const uint32_t mct2 =
+    (((uint32_t)cfg->frrskw & (k_ra_mipi_csi_mct2_frrskw_mask >> k_ra_mipi_csi_mct2_frrskw_shift))
+     << k_ra_mipi_csi_mct2_frrskw_shift) |
+    ((uint32_t)cfg->frrclk & k_ra_mipi_csi_mct2_frrclk_mask);
   *ra_mipi_csi_reg32(k_ra_mipi_csi_off_mct2) = mct2;
 
   /* HUM Ch 66.3.7 "EPCT : EPD Option Control Register" p 3939 */
-  uint32_t epct = ((uint32_t)cfg->epd_long_spacer & (uint32_t)k_ra_mipi_csi_epct_slp_mask) |
-                  (((uint32_t)cfg->epd_short_spacer & ((uint32_t)k_ra_mipi_csi_epct_ssp_mask >>
-                                                       (uint32_t)k_ra_mipi_csi_epct_ssp_shift))
-                   << (uint32_t)k_ra_mipi_csi_epct_ssp_shift);
+  uint32_t epct = ((uint32_t)cfg->epd_long_spacer & k_ra_mipi_csi_epct_slp_mask) |
+                  (((uint32_t)cfg->epd_short_spacer &
+                    (k_ra_mipi_csi_epct_ssp_mask >> k_ra_mipi_csi_epct_ssp_shift))
+                   << k_ra_mipi_csi_epct_ssp_shift);
   if (cfg->epd_option_2) {
-    epct |= (uint32_t)k_ra_mipi_csi_epct_epdop_mask;
+    epct |= k_ra_mipi_csi_epct_epdop_mask;
   }
   if (cfg->epd_enable) {
-    epct |= (uint32_t)k_ra_mipi_csi_epct_epden_mask;
+    epct |= k_ra_mipi_csi_epct_epden_mask;
   }
   *ra_mipi_csi_reg32(k_ra_mipi_csi_off_epct) = epct;
 
   /* HUM Ch 66.3.8 "EMCT : EPD Misc Option Control Register" p 3941
    * VLSIEN[5:4] + EOTPEN[6]. */
-  uint32_t emct = ((uint32_t)cfg->vlsien << (uint32_t)k_ra_mipi_csi_emct_vlsien_shift) &
-                  (uint32_t)k_ra_mipi_csi_emct_vlsien_mask;
+  uint32_t emct =
+    ((uint32_t)cfg->vlsien << k_ra_mipi_csi_emct_vlsien_shift) & k_ra_mipi_csi_emct_vlsien_mask;
   if (cfg->eotp_enable) {
-    emct |= (uint32_t)k_ra_mipi_csi_emct_eotpen_mask;
+    emct |= k_ra_mipi_csi_emct_eotpen_mask;
   }
   *ra_mipi_csi_reg32(k_ra_mipi_csi_off_emct) = emct;
 
@@ -323,9 +323,9 @@ static void internal_program_receiver(const ra_mipi_csi_config_t* cfg)
 
   /* HUM Ch 66.3.24 "GSCT : Generic Short Packet Control" p 3957
    * SHTH[6:0] + GFIF[16]. */
-  uint32_t gsct = ((uint32_t)cfg->short_threshold & (uint32_t)k_ra_mipi_csi_gsct_shth_mask);
+  uint32_t gsct = ((uint32_t)cfg->short_threshold & k_ra_mipi_csi_gsct_shth_mask);
   if (cfg->short_store_enable) {
-    gsct |= (uint32_t)k_ra_mipi_csi_gsct_gfif_mask;
+    gsct |= k_ra_mipi_csi_gsct_gfif_mask;
   }
   *ra_mipi_csi_reg32(k_ra_mipi_csi_off_gsct) = gsct;
 }
@@ -399,7 +399,7 @@ ra_err_t ra_mipi_csi_deinit(void)
 
   /* HUM Ch 66.3.5 "RTCT : Reset Control Register" p 3938
    * Pulse the video-pixel software reset to drain any residual state. */
-  *ra_mipi_csi_reg32(k_ra_mipi_csi_off_rtct) = (uint32_t)k_ra_mipi_csi_rtct_vsrst_mask;
+  *ra_mipi_csi_reg32(k_ra_mipi_csi_off_rtct) = k_ra_mipi_csi_rtct_vsrst_mask;
 
   /* HUM Ch 66.3.14 "RXIE : Receive Interrupt Enable Register" p 3946 */
   *ra_mipi_csi_reg32(k_ra_mipi_csi_off_rxie) = 0UL;
@@ -438,7 +438,7 @@ ra_err_t ra_mipi_csi_deinit(void)
 ra_err_t ra_mipi_csi_reset(void)
 {
   /* HUM Ch 66.3.5 "RTCT : Reset Control Register" p 3938 */
-  *ra_mipi_csi_reg32(k_ra_mipi_csi_off_rtct) = (uint32_t)k_ra_mipi_csi_rtct_vsrst_mask;
+  *ra_mipi_csi_reg32(k_ra_mipi_csi_off_rtct) = k_ra_mipi_csi_rtct_vsrst_mask;
   /* HUM Ch 66.3.6 "RTST : Reset Status Register" p 3939 */
   return internal_wait_reset_idle();
 }
@@ -453,7 +453,7 @@ ra_err_t ra_mipi_csi_start_receive(void)
   const ra_err_t state_err = internal_reject_if_running();
   RA_RETURN_ON_ERROR(state_err, s_tag, "mipi_csi start: already running");
   /* HUM Ch 66.3.4 "MCT3 : Module Control Register 3" p 3938 */
-  *ra_mipi_csi_reg32(k_ra_mipi_csi_off_mct3) = (uint32_t)k_ra_mipi_csi_mct3_rxen_mask;
+  *ra_mipi_csi_reg32(k_ra_mipi_csi_off_mct3) = k_ra_mipi_csi_mct3_rxen_mask;
   ra_log_info(s_tag, "mipi_csi start_receive");
   return k_ra_ok;
 }
@@ -463,7 +463,7 @@ ra_err_t ra_mipi_csi_stop_receive(void)
   /* HUM Ch 66.3.4 "MCT3 : Module Control Register 3" p 3938 */
   *ra_mipi_csi_reg32(k_ra_mipi_csi_off_mct3) = 0UL;
   /* HUM Ch 66.3.5 "RTCT : Reset Control Register" p 3938 */
-  *ra_mipi_csi_reg32(k_ra_mipi_csi_off_rtct) = (uint32_t)k_ra_mipi_csi_rtct_vsrst_mask;
+  *ra_mipi_csi_reg32(k_ra_mipi_csi_off_rtct) = k_ra_mipi_csi_rtct_vsrst_mask;
   ra_log_info(s_tag, "mipi_csi stop_receive");
   return k_ra_ok;
 }
@@ -510,11 +510,9 @@ ra_err_t ra_mipi_csi_get_module_info(ra_mipi_csi_module_info_t* out)
   /* HUM Ch 66.3.1 "MCG : Module Configuration Register" p 3936 */
   const uint32_t mcg = *ra_mipi_csi_reg32(k_ra_mipi_csi_off_mcg);
   out->raw           = mcg;
-  out->version       = (uint8_t)(mcg & (uint32_t)k_ra_mipi_csi_mcg_ver_mask);
-  out->lanes_max     = (uint8_t)((mcg & (uint32_t)k_ra_mipi_csi_mcg_sdln_mask) >>
-                                 (uint32_t)k_ra_mipi_csi_mcg_sdln_shift);
-  out->fifo_stages   = (uint8_t)((mcg & (uint32_t)k_ra_mipi_csi_mcg_gsnm_mask) >>
-                                 (uint32_t)k_ra_mipi_csi_mcg_gsnm_shift);
+  out->version       = (uint8_t)(mcg & k_ra_mipi_csi_mcg_ver_mask);
+  out->lanes_max   = (uint8_t)((mcg & k_ra_mipi_csi_mcg_sdln_mask) >> k_ra_mipi_csi_mcg_sdln_shift);
+  out->fifo_stages = (uint8_t)((mcg & k_ra_mipi_csi_mcg_gsnm_mask) >> k_ra_mipi_csi_mcg_gsnm_shift);
   return k_ra_ok;
 }
 
@@ -544,12 +542,12 @@ ra_err_t ra_mipi_csi_set_ecc_mode(bool eccv13, bool lfsren)
 
   /* HUM Ch 66.3.2 "MCT0 : Module Control Register 0" p 3936 */
   uint32_t mct0 = *ra_mipi_csi_reg32(k_ra_mipi_csi_off_mct0);
-  mct0 &= ~((uint32_t)k_ra_mipi_csi_mct0_eccv13_mask | (uint32_t)k_ra_mipi_csi_mct0_lfsren_mask);
+  mct0 &= ~(k_ra_mipi_csi_mct0_eccv13_mask | k_ra_mipi_csi_mct0_lfsren_mask);
   if (eccv13) {
-    mct0 |= (uint32_t)k_ra_mipi_csi_mct0_eccv13_mask;
+    mct0 |= k_ra_mipi_csi_mct0_eccv13_mask;
   }
   if (lfsren) {
-    mct0 |= (uint32_t)k_ra_mipi_csi_mct0_lfsren_mask;
+    mct0 |= k_ra_mipi_csi_mct0_lfsren_mask;
   }
   *ra_mipi_csi_reg32(k_ra_mipi_csi_off_mct0) = mct0;
   return k_ra_ok;
@@ -562,16 +560,16 @@ ra_err_t ra_mipi_csi_set_frame_error_mode(bool zlmd, bool edmd, bool rvmd)
 
   /* HUM Ch 66.3.2 "MCT0 : Module Control Register 0" p 3936 */
   uint32_t mct0 = *ra_mipi_csi_reg32(k_ra_mipi_csi_off_mct0);
-  mct0 &= ~((uint32_t)k_ra_mipi_csi_mct0_zlmd_mask | (uint32_t)k_ra_mipi_csi_mct0_edmd_mask |
-            (uint32_t)k_ra_mipi_csi_mct0_rvmd_mask);
+  mct0 &=
+    ~(k_ra_mipi_csi_mct0_zlmd_mask | k_ra_mipi_csi_mct0_edmd_mask | k_ra_mipi_csi_mct0_rvmd_mask);
   if (zlmd) {
-    mct0 |= (uint32_t)k_ra_mipi_csi_mct0_zlmd_mask;
+    mct0 |= k_ra_mipi_csi_mct0_zlmd_mask;
   }
   if (edmd) {
-    mct0 |= (uint32_t)k_ra_mipi_csi_mct0_edmd_mask;
+    mct0 |= k_ra_mipi_csi_mct0_edmd_mask;
   }
   if (rvmd) {
-    mct0 |= (uint32_t)k_ra_mipi_csi_mct0_rvmd_mask;
+    mct0 |= k_ra_mipi_csi_mct0_rvmd_mask;
   }
   *ra_mipi_csi_reg32(k_ra_mipi_csi_off_mct0) = mct0;
   return k_ra_ok;
@@ -585,11 +583,11 @@ ra_err_t ra_mipi_csi_set_frame_error_mode(bool zlmd, bool edmd, bool rvmd)
 ra_err_t
 ra_mipi_csi_set_epd(bool enable, bool option_2, uint16_t long_spacer, uint16_t short_spacer)
 {
-  if (((uint32_t)long_spacer & ~(uint32_t)k_ra_mipi_csi_epct_slp_mask) != 0UL) {
+  if (((uint32_t)long_spacer & ~k_ra_mipi_csi_epct_slp_mask) != 0UL) {
     return k_ra_err_invalid_arg;
   }
-  if (((uint32_t)short_spacer &
-       ~((uint32_t)k_ra_mipi_csi_epct_ssp_mask >> (uint32_t)k_ra_mipi_csi_epct_ssp_shift)) != 0UL) {
+  if (((uint32_t)short_spacer & ~(k_ra_mipi_csi_epct_ssp_mask >> k_ra_mipi_csi_epct_ssp_shift)) !=
+      0UL) {
     return k_ra_err_invalid_arg;
   }
 
@@ -597,15 +595,15 @@ ra_mipi_csi_set_epd(bool enable, bool option_2, uint16_t long_spacer, uint16_t s
   RA_RETURN_ON_ERROR(state_err, s_tag, "set_epd: rxen set");
 
   /* HUM Ch 66.3.7 "EPCT : EPD Option Control Register" p 3939 */
-  uint32_t epct = ((uint32_t)long_spacer & (uint32_t)k_ra_mipi_csi_epct_slp_mask) |
-                  (((uint32_t)short_spacer & ((uint32_t)k_ra_mipi_csi_epct_ssp_mask >>
-                                              (uint32_t)k_ra_mipi_csi_epct_ssp_shift))
-                   << (uint32_t)k_ra_mipi_csi_epct_ssp_shift);
+  uint32_t epct =
+    ((uint32_t)long_spacer & k_ra_mipi_csi_epct_slp_mask) |
+    (((uint32_t)short_spacer & (k_ra_mipi_csi_epct_ssp_mask >> k_ra_mipi_csi_epct_ssp_shift))
+     << k_ra_mipi_csi_epct_ssp_shift);
   if (option_2) {
-    epct |= (uint32_t)k_ra_mipi_csi_epct_epdop_mask;
+    epct |= k_ra_mipi_csi_epct_epdop_mask;
   }
   if (enable) {
-    epct |= (uint32_t)k_ra_mipi_csi_epct_epden_mask;
+    epct |= k_ra_mipi_csi_epct_epden_mask;
   }
   *ra_mipi_csi_reg32(k_ra_mipi_csi_off_epct) = epct;
   return k_ra_ok;
@@ -613,7 +611,7 @@ ra_mipi_csi_set_epd(bool enable, bool option_2, uint16_t long_spacer, uint16_t s
 
 ra_err_t ra_mipi_csi_set_lrte(ra_mipi_csi_vlsien_t vlsien, bool eotp_enable)
 {
-  if ((uint8_t)vlsien > (uint8_t)k_ra_mipi_csi_vlsien_x4) {
+  if ((uint8_t)vlsien > k_ra_mipi_csi_vlsien_x4) {
     return k_ra_err_invalid_arg;
   }
   const ra_err_t state_err = internal_reject_if_running();
@@ -621,11 +619,10 @@ ra_err_t ra_mipi_csi_set_lrte(ra_mipi_csi_vlsien_t vlsien, bool eotp_enable)
 
   /* HUM Ch 66.3.8 "EMCT : EPD Misc Option Control Register" p 3941 */
   uint32_t emct = *ra_mipi_csi_reg32(k_ra_mipi_csi_off_emct);
-  emct &= ~((uint32_t)k_ra_mipi_csi_emct_vlsien_mask | (uint32_t)k_ra_mipi_csi_emct_eotpen_mask);
-  emct |= ((uint32_t)vlsien << (uint32_t)k_ra_mipi_csi_emct_vlsien_shift) &
-          (uint32_t)k_ra_mipi_csi_emct_vlsien_mask;
+  emct &= ~(k_ra_mipi_csi_emct_vlsien_mask | k_ra_mipi_csi_emct_eotpen_mask);
+  emct |= ((uint32_t)vlsien << k_ra_mipi_csi_emct_vlsien_shift) & k_ra_mipi_csi_emct_vlsien_mask;
   if (eotp_enable) {
-    emct |= (uint32_t)k_ra_mipi_csi_emct_eotpen_mask;
+    emct |= k_ra_mipi_csi_emct_eotpen_mask;
   }
   *ra_mipi_csi_reg32(k_ra_mipi_csi_off_emct) = emct;
   return k_ra_ok;
@@ -655,7 +652,7 @@ ra_err_t ra_mipi_csi_dl_clear_status(uint8_t lane, uint32_t mask)
   }
   /* HUM Ch 66.3.16 "DLSC(N) : Data Lane N Status Clear" p 3947 */
   const ra_mipi_csi_off_t off = ra_mipi_csi_dl_off(k_ra_mipi_csi_off_dlsc0, lane);
-  *ra_mipi_csi_reg32(off)     = mask & (uint32_t)k_ra_mipi_csi_dlsc_all_mask;
+  *ra_mipi_csi_reg32(off)     = mask & k_ra_mipi_csi_dlsc_all_mask;
   return k_ra_ok;
 }
 
@@ -726,14 +723,14 @@ ra_err_t ra_mipi_csi_pm_clear_status(uint32_t mask)
 {
   /* HUM Ch 66.3.22 "PMSC : Power Management Status Clear" p 3955
    * Only [7:0] are W1C; hardware drops other bits. */
-  *ra_mipi_csi_reg32(k_ra_mipi_csi_off_pmsc) = mask & (uint32_t)k_ra_mipi_csi_pmsc_all_mask;
+  *ra_mipi_csi_reg32(k_ra_mipi_csi_off_pmsc) = mask & k_ra_mipi_csi_pmsc_all_mask;
   return k_ra_ok;
 }
 
 ra_err_t ra_mipi_csi_pm_set_irq_enable(uint32_t mask)
 {
   /* HUM Ch 66.3.23 "PMIE : Power Management Interrupt Enable" p 3956 */
-  *ra_mipi_csi_reg32(k_ra_mipi_csi_off_pmie) = mask & (uint32_t)k_ra_mipi_csi_pmie_all_mask;
+  *ra_mipi_csi_reg32(k_ra_mipi_csi_off_pmie) = mask & k_ra_mipi_csi_pmie_all_mask;
   return k_ra_ok;
 }
 
@@ -744,13 +741,13 @@ ra_err_t ra_mipi_csi_pm_set_irq_enable(uint32_t mask)
 
 ra_err_t ra_mipi_csi_short_packet_configure(uint8_t threshold, bool store_enable)
 {
-  if ((uint32_t)threshold > (uint32_t)k_ra_mipi_csi_gsct_shth_max) {
+  if ((uint32_t)threshold > k_ra_mipi_csi_gsct_shth_max) {
     return k_ra_err_invalid_arg;
   }
   /* HUM Ch 66.3.24 "GSCT : Generic Short Packet Control" p 3957 */
-  uint32_t gsct = ((uint32_t)threshold & (uint32_t)k_ra_mipi_csi_gsct_shth_mask);
+  uint32_t gsct = ((uint32_t)threshold & k_ra_mipi_csi_gsct_shth_mask);
   if (store_enable) {
-    gsct |= (uint32_t)k_ra_mipi_csi_gsct_gfif_mask;
+    gsct |= k_ra_mipi_csi_gsct_gfif_mask;
   }
   *ra_mipi_csi_reg32(k_ra_mipi_csi_off_gsct) = gsct;
   return k_ra_ok;
@@ -759,7 +756,7 @@ ra_err_t ra_mipi_csi_short_packet_configure(uint8_t threshold, bool store_enable
 ra_err_t ra_mipi_csi_short_packet_set_irq_enable(uint32_t mask)
 {
   /* HUM Ch 66.3.27 "GSIE : Generic Short Packet Interrupt Enable" p 3958 */
-  *ra_mipi_csi_reg32(k_ra_mipi_csi_off_gsie) = mask & (uint32_t)k_ra_mipi_csi_gsie_all_mask;
+  *ra_mipi_csi_reg32(k_ra_mipi_csi_off_gsie) = mask & k_ra_mipi_csi_gsie_all_mask;
   return k_ra_ok;
 }
 
@@ -775,7 +772,7 @@ ra_err_t ra_mipi_csi_short_packet_clear_status(uint32_t mask)
 {
   /* HUM Ch 66.3.26 "GSSC : Generic Short Packet Status Clear" p 3958
    * Only GOVC (bit 4) is W1C; hardware drops other bits. */
-  *ra_mipi_csi_reg32(k_ra_mipi_csi_off_gssc) = mask & (uint32_t)k_ra_mipi_csi_gssc_govc_mask;
+  *ra_mipi_csi_reg32(k_ra_mipi_csi_off_gssc) = mask & k_ra_mipi_csi_gssc_govc_mask;
   return k_ra_ok;
 }
 
@@ -785,24 +782,21 @@ ra_err_t ra_mipi_csi_read_short_packet(ra_mipi_csi_short_packet_t* out)
   /* HUM Ch 66.3.25 "GSST : Generic Short Packet Status" p 3957
    * PNUM[15:8] reports queued packet count. */
   const uint32_t gsst = *ra_mipi_csi_reg32(k_ra_mipi_csi_off_gsst);
-  const uint32_t pnum =
-    (gsst & (uint32_t)k_ra_mipi_csi_gsst_pnum_mask) >> (uint32_t)k_ra_mipi_csi_gsst_pnum_shift;
+  const uint32_t pnum = (gsst & k_ra_mipi_csi_gsst_pnum_mask) >> k_ra_mipi_csi_gsst_pnum_shift;
   if (pnum == 0UL) {
     return k_ra_err_empty;
   }
   /* HUM Ch 66.3.29 "GSIU : Generic Short Packet Information Update" p 3960
    * FINC advances the read pointer before we sample GSHT. */
-  *ra_mipi_csi_reg32(k_ra_mipi_csi_off_gsiu) = (uint32_t)k_ra_mipi_csi_gsiu_finc_mask;
+  *ra_mipi_csi_reg32(k_ra_mipi_csi_off_gsiu) = k_ra_mipi_csi_gsiu_finc_mask;
 
   /* HUM Ch 66.3.28 "GSHT : Generic Short Packet Header" p 3959 */
   const uint32_t gsht = *ra_mipi_csi_reg32(k_ra_mipi_csi_off_gsht);
   out->raw            = gsht;
-  out->payload        = (uint16_t)((gsht & (uint32_t)k_ra_mipi_csi_gsht_spdt_mask) >>
-                                   (uint32_t)k_ra_mipi_csi_gsht_spdt_shift);
-  out->data_type      = (uint8_t)((gsht & (uint32_t)k_ra_mipi_csi_gsht_dtyp_mask) >>
-                                  (uint32_t)k_ra_mipi_csi_gsht_dtyp_shift);
-  out->vc             = (uint8_t)((gsht & (uint32_t)k_ra_mipi_csi_gsht_spvc_mask) >>
-                                  (uint32_t)k_ra_mipi_csi_gsht_spvc_shift);
+  out->payload = (uint16_t)((gsht & k_ra_mipi_csi_gsht_spdt_mask) >> k_ra_mipi_csi_gsht_spdt_shift);
+  out->data_type =
+    (uint8_t)((gsht & k_ra_mipi_csi_gsht_dtyp_mask) >> k_ra_mipi_csi_gsht_dtyp_shift);
+  out->vc = (uint8_t)((gsht & k_ra_mipi_csi_gsht_spvc_mask) >> k_ra_mipi_csi_gsht_spvc_shift);
   return k_ra_ok;
 }
 
@@ -811,13 +805,13 @@ ra_err_t ra_mipi_csi_short_packet_clear_fifo(void)
   /* HUM Ch 66.3.29 "GSIU : Generic Short Packet Information Update" p 3960
    * Drive GFCLR = 1 to request the clear, wait for GSST.GCD = 1, then
    * release GFCLR by writing 0. */
-  *ra_mipi_csi_reg32(k_ra_mipi_csi_off_gsiu) = (uint32_t)k_ra_mipi_csi_gsiu_gfclr_mask;
+  *ra_mipi_csi_reg32(k_ra_mipi_csi_off_gsiu) = k_ra_mipi_csi_gsiu_gfclr_mask;
 
   ra_err_t err = k_ra_err_hw_timeout;
-  for (uint16_t i = 0U; i < (uint16_t)k_ra_mipi_csi_gfclr_spin_max; ++i) {
+  for (uint16_t i = 0U; i < k_ra_mipi_csi_gfclr_spin_max; ++i) {
     /* HUM Ch 66.3.25 "GSST : Generic Short Packet Status" p 3957 */
     const uint32_t gsst = *ra_mipi_csi_reg32(k_ra_mipi_csi_off_gsst);
-    if ((gsst & (uint32_t)k_ra_mipi_csi_gsst_gcd_mask) != 0UL) {
+    if ((gsst & k_ra_mipi_csi_gsst_gcd_mask) != 0UL) {
       err = k_ra_ok;
       break;
     }
@@ -831,7 +825,7 @@ ra_err_t ra_mipi_csi_short_packet_clear_fifo(void)
 ra_err_t ra_mipi_csi_short_packet_re_enable_store(void)
 {
   /* HUM Ch 66.3.29 "GSIU : Generic Short Packet Information Update" p 3960 */
-  *ra_mipi_csi_reg32(k_ra_mipi_csi_off_gsiu) = (uint32_t)k_ra_mipi_csi_gsiu_gfen_mask;
+  *ra_mipi_csi_reg32(k_ra_mipi_csi_off_gsiu) = k_ra_mipi_csi_gsiu_gfen_mask;
   return k_ra_ok;
 }
 
@@ -881,7 +875,7 @@ void ra_mipi_csi_dispatch(void)
   const uint32_t rxst = *ra_mipi_csi_reg32(k_ra_mipi_csi_off_rxst);
   /* HUM Ch 66.3.13 "RXSC : Receive Status Clear Register" p 3945
    * Clear sticky RACTDET so the next edge can be observed. */
-  *ra_mipi_csi_reg32(k_ra_mipi_csi_off_rxsc) = rxst & (uint32_t)k_ra_mipi_csi_rxsc_ractdetc_mask;
+  *ra_mipi_csi_reg32(k_ra_mipi_csi_off_rxsc) = rxst & k_ra_mipi_csi_rxsc_ractdetc_mask;
 
   const ra_mipi_csi_event_fn_t fn  = s_mipi_csi_fn;
   void* const                  ctx = s_mipi_csi_ctx;
@@ -901,8 +895,8 @@ void ra_mipi_csi_dispatch_dl(void)
 
   /* HUM Ch 66.3.16 "DLSC(N) : Data Lane N Status Clear" p 3947
    * ULP bit (24) is RO; mask it out before W1C. */
-  *ra_mipi_csi_reg32(k_ra_mipi_csi_off_dlsc0) = dlst0 & (uint32_t)k_ra_mipi_csi_dlsc_all_mask;
-  *ra_mipi_csi_reg32(k_ra_mipi_csi_off_dlsc1) = dlst1 & (uint32_t)k_ra_mipi_csi_dlsc_all_mask;
+  *ra_mipi_csi_reg32(k_ra_mipi_csi_off_dlsc0) = dlst0 & k_ra_mipi_csi_dlsc_all_mask;
+  *ra_mipi_csi_reg32(k_ra_mipi_csi_off_dlsc1) = dlst1 & k_ra_mipi_csi_dlsc_all_mask;
 
   const ra_mipi_csi_dl_event_fn_t fn  = s_mipi_csi_dl_fn;
   void* const                     ctx = s_mipi_csi_dl_ctx;
@@ -910,10 +904,10 @@ void ra_mipi_csi_dispatch_dl(void)
     return;
   }
 
-  if ((mist & (uint32_t)k_ra_mipi_csi_mist_dl0s_mask) != 0UL) {
+  if ((mist & k_ra_mipi_csi_mist_dl0s_mask) != 0UL) {
     fn(ctx, 0U, dlst0);
   }
-  if ((mist & (uint32_t)k_ra_mipi_csi_mist_dl1s_mask) != 0UL) {
+  if ((mist & k_ra_mipi_csi_mist_dl1s_mask) != 0UL) {
     fn(ctx, 1U, dlst1);
   }
 }
@@ -921,9 +915,8 @@ void ra_mipi_csi_dispatch_dl(void)
 void ra_mipi_csi_dispatch_vc(void)
 {
   /* HUM Ch 66.3.9 "MIST : Module Interrupt Status" p 3941 */
-  const uint32_t mist = *ra_mipi_csi_reg32(k_ra_mipi_csi_off_mist);
-  const uint32_t vc_flags =
-    (mist & (uint32_t)k_ra_mipi_csi_mist_vc_mask) >> (uint32_t)k_ra_mipi_csi_mist_vc_shift;
+  const uint32_t mist     = *ra_mipi_csi_reg32(k_ra_mipi_csi_off_mist);
+  const uint32_t vc_flags = (mist & k_ra_mipi_csi_mist_vc_mask) >> k_ra_mipi_csi_mist_vc_shift;
 
   const ra_mipi_csi_vc_event_fn_t fn  = s_mipi_csi_vc_fn;
   void* const                     ctx = s_mipi_csi_vc_ctx;
@@ -939,12 +932,12 @@ void ra_mipi_csi_dispatch_vc(void)
     const uint32_t          vcst    = *ra_mipi_csi_reg32(st_off);
 
     /* HUM Ch 66.3.19 "VCSC(M) : Virtual Channel M Status Clear" p 3951 */
-    *ra_mipi_csi_reg32(clr_off) = vcst & (uint32_t)k_ra_mipi_csi_vcsc_per_vc_mask;
+    *ra_mipi_csi_reg32(clr_off) = vcst & k_ra_mipi_csi_vcsc_per_vc_mask;
 
     /* MLF + ECD apply to every VC because the offending packet's VC
      * cannot be determined. Surface them once at the end. */
-    generic_errors |= vcst & (uint32_t)k_ra_mipi_csi_vcst_generic_err_mask;
-    const uint32_t vc_specific = vcst & ~(uint32_t)k_ra_mipi_csi_vcst_generic_err_mask;
+    generic_errors |= vcst & k_ra_mipi_csi_vcst_generic_err_mask;
+    const uint32_t vc_specific = vcst & ~k_ra_mipi_csi_vcst_generic_err_mask;
 
     if (fn != nullptr) {
       fn(ctx, vc, vc_specific);
@@ -962,7 +955,7 @@ void ra_mipi_csi_dispatch_pm(void)
   const uint32_t pmst = *ra_mipi_csi_reg32(k_ra_mipi_csi_off_pmst);
   /* HUM Ch 66.3.22 "PMSC : Power Management Status Clear" p 3955
    * Only [7:0] are W1C; the upper state bits are RO. */
-  *ra_mipi_csi_reg32(k_ra_mipi_csi_off_pmsc) = pmst & (uint32_t)k_ra_mipi_csi_pmst_w1c_mask;
+  *ra_mipi_csi_reg32(k_ra_mipi_csi_off_pmsc) = pmst & k_ra_mipi_csi_pmst_w1c_mask;
 
   const ra_mipi_csi_pm_event_fn_t fn  = s_mipi_csi_pm_fn;
   void* const                     ctx = s_mipi_csi_pm_ctx;
@@ -977,7 +970,7 @@ void ra_mipi_csi_dispatch_short_packet(void)
   const uint32_t gsst = *ra_mipi_csi_reg32(k_ra_mipi_csi_off_gsst);
   /* HUM Ch 66.3.26 "GSSC : Generic Short Packet Status Clear" p 3958
    * Clear GOV so the next overflow can be observed. */
-  *ra_mipi_csi_reg32(k_ra_mipi_csi_off_gssc) = gsst & (uint32_t)k_ra_mipi_csi_gssc_govc_mask;
+  *ra_mipi_csi_reg32(k_ra_mipi_csi_off_gssc) = gsst & k_ra_mipi_csi_gssc_govc_mask;
 
   const ra_mipi_csi_short_event_fn_t fn  = s_mipi_csi_gst_fn;
   void* const                        ctx = s_mipi_csi_gst_ctx;

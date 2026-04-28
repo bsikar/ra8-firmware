@@ -109,7 +109,7 @@ typedef struct {
 /** @brief Get pointer to CANFD channel N (0..1). */
 static inline volatile r_canfd_channel_regs_t* ra_canfd(uint8_t channel)
 {
-  if (channel >= (uint8_t)k_ra_canfd_instance_count) {
+  if (channel >= k_ra_canfd_instance_count) {
     return nullptr;
   }
   const uintptr_t base = (channel == 0U) ? k_ra_canfd0_base_addr : k_ra_canfd1_base_addr;

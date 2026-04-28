@@ -17,6 +17,38 @@
 # Or via script:
 #   bash scripts/clang_tidy.sh --check
 
+#
+# Disabled checks (each line carries the rationale for why it is off):
+#
+#  -bugprone-easily-swappable-parameters
+#      Every `(uint8_t port, uint8_t pin)` register accessor would trip
+#      this. Type-level disambiguation isn't worth the API churn.
+#  -misc-include-cleaner
+#      Too aggressive about transitive embedded headers (e.g. `stdint.h`
+#      coming through `ra_check.h`).
+#  -misc-use-internal-linkage
+#      Flags symbols that are externally referenced by the linker
+#      script (vector table, _sbrk, etc.) as if they should be `static`.
+#  -readability-identifier-length
+#      Clashes with short hardware-register names (`r`, `n`, `i` loop
+#      counters and CMSIS-style two-letter aliases).
+#  -performance-no-int-to-ptr
+#      Every MMIO accessor *is* an int-to-pointer cast: `(volatile T*)0x40080000`.
+#  -portability-avoid-pragma-once
+#      Project mandates `#pragma once` (CLAUDE.md "Header Guards").
+#  -clang-analyzer-core.FixedAddressDereference
+#      Dereferencing fixed MMIO addresses is the whole point of the HAL.
+#  -clang-analyzer-security.ArrayBound
+#      False positives on register-struct member access (the analyzer
+#      has no model for `R_PORT0_Type` and friends).
+#  -readability-implicit-bool-conversion
+#      Buggy interaction with C in clang-tidy 18: relational operators
+#      like `==`, `!=`, `<` produce `int` in C (per C standard) rather
+#      than `bool`, so the check fires on idiomatic `return x != y;`
+#      bodies and its auto-fixer wraps them in `(x != y) != 0`, which
+#      is identical noise. Disable rather than litter the tree with
+#      `(bool)` casts.
+#
 Checks: >
   cert-*,
   bugprone-*,
@@ -32,14 +64,17 @@ Checks: >
   -performance-no-int-to-ptr,
   -portability-avoid-pragma-once,
   -clang-analyzer-core.FixedAddressDereference,
-  -clang-analyzer-security.ArrayBound
+  -clang-analyzer-security.ArrayBound,
+  -readability-implicit-bool-conversion
 
 # ALL warnings are errors -- zero tolerance for any clang-tidy violation.
 WarningsAsErrors: '*'
 
 # Only report diagnostics for project-authored headers; suppress noise from
-# any vendor or generated headers.
-HeaderFilterRegex: '^(?!.*(_deps|tests/mocks|build/|ra8d2_.*_regs)).*\.(h|hpp)$'
+# CMake-fetched deps and generated build trees. Our register headers
+# (ra8d2_*_regs.h) and host-test mocks (tests/mocks/) are in-house code
+# and ARE linted.
+HeaderFilterRegex: '^(?!.*(_deps|build/)).*\.(h|hpp)$'
 
 CheckOptions:
   # --- readability-identifier-naming (CLAUDE.md naming conventions) ---

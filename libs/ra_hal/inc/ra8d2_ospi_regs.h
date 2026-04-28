@@ -186,11 +186,10 @@ static_assert(sizeof(r_xspi_regs_t) == (uint32_t)k_ra_xspi_regs_size,
  */
 static inline volatile r_xspi_regs_t* ra_xspi(uint8_t instance)
 {
-  if (instance >= (uint8_t)k_ra_xspi_instance_count) {
+  if (instance >= k_ra_xspi_instance_count) {
     return nullptr;
   }
-  return (volatile r_xspi_regs_t*)(k_ra_xspi0_base_addr +
-                                   ((uintptr_t)instance * (uintptr_t)k_ra_xspi_stride));
+  return (volatile r_xspi_regs_t*)(k_ra_xspi0_base_addr + ((uintptr_t)instance * k_ra_xspi_stride));
 }
 
 /**

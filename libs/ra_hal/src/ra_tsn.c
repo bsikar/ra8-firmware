@@ -61,13 +61,13 @@ static bool s_ra_tsn_initialised;
  *          ``ra_tsn_convert_to_milli_c`` can run without a config
  *          pointer. Defaults to 125 until init has run.
  */
-static int16_t s_ra_tsn_high_ref_degc = (int16_t)k_ra_tsn_cal_temp_high_125;
+static int16_t s_ra_tsn_high_ref_degc = k_ra_tsn_cal_temp_high_125;
 
 /**
  * @var s_ra_tsn_low_ref_degc
  * @brief Cached low-side calibration temperature (always -40).
  */
-static int16_t s_ra_tsn_low_ref_degc = (int16_t)k_ra_tsn_cal_temp_low_n40;
+static int16_t s_ra_tsn_low_ref_degc = k_ra_tsn_cal_temp_low_n40;
 
 /**
  * @brief Coarse software busy-wait used during init.
@@ -94,7 +94,7 @@ static int16_t s_ra_tsn_low_ref_degc = (int16_t)k_ra_tsn_cal_temp_low_n40;
 static void internal_busy_wait_us(uint16_t usec)
 {
   for (uint16_t u = 0U; u < usec; ++u) {
-    for (uint16_t i = 0U; i < (uint16_t)k_ra_tsn_busy_loops_per_us; ++i) {
+    for (uint16_t i = 0U; i < k_ra_tsn_busy_loops_per_us; ++i) {
 #ifndef RA_SIMULATOR_MODE
       __asm__ volatile("nop");
 #endif
@@ -128,7 +128,7 @@ static ra_err_t internal_validate_cfg(const ra_tsn_config_t* cfg)
   if (!high_ok || !low_ok) {
     return k_ra_err_invalid_arg;
   }
-  if (cfg->stab_us < (uint16_t)k_ra_tsn_min_stab_us) {
+  if (cfg->stab_us < k_ra_tsn_min_stab_us) {
     return k_ra_err_invalid_arg;
   }
   return k_ra_ok;
@@ -146,14 +146,14 @@ ra_err_t ra_tsn_init(const ra_tsn_config_t* cfg)
 
   /* HUM Ch 55.2.1 "TSCR : Temperature Sensor Control Register", p 3498 */
   volatile r_tsn_ctrl_regs_t* reg = ra_tsn();
-  reg->TSCR                       = (uint8_t)k_ra_tscr_mask_tsen;
+  reg->TSCR                       = k_ra_tscr_mask_tsen;
 
   /* HUM Ch 55.3.2 "Procedures for Measuring Temperature Sensor", p 3502
    * (tTSTBL = 30 us per Figure 55.2 -- wait before enabling output). */
   internal_busy_wait_us(cfg->stab_us);
 
   /* HUM Ch 55.2.1 "TSCR : Temperature Sensor Control Register", p 3498 */
-  reg->TSCR = (uint8_t)((uint8_t)k_ra_tscr_mask_tsen | (uint8_t)k_ra_tscr_mask_tsoe);
+  reg->TSCR = (uint8_t)(k_ra_tscr_mask_tsen | k_ra_tscr_mask_tsoe);
 
   s_ra_tsn_high_ref_degc = (int16_t)cfg->high_ref_degc;
   s_ra_tsn_low_ref_degc  = (int16_t)cfg->low_ref_degc;
@@ -169,7 +169,7 @@ ra_err_t ra_tsn_deinit(void)
   volatile r_tsn_ctrl_regs_t* reg = ra_tsn();
   /* HUM Ch 55.3.2 "Procedures for Measuring Temperature Sensor", p 3502
    * (clear TSOE first, then TSEN). */
-  reg->TSCR = (uint8_t)k_ra_tscr_mask_tsen;
+  reg->TSCR = k_ra_tscr_mask_tsen;
   /* HUM Ch 55.2.1 "TSCR : Temperature Sensor Control Register", p 3498 */
   reg->TSCR = 0U;
 
@@ -193,7 +193,7 @@ ra_err_t ra_tsn_read_raw(uint16_t raw, uint16_t* out_code)
   }
   /* HUM Ch 55.2.2 "TSCDR : Temperature Sensor Calibration Data Register",
    * p 3498-3499 -- live samples share the 12-bit code width. */
-  *out_code = (uint16_t)(raw & (uint16_t)k_ra_tscdr_data_mask);
+  *out_code = (uint16_t)(raw & k_ra_tscdr_data_mask);
   return k_ra_ok;
 }
 
@@ -237,7 +237,7 @@ ra_err_t ra_tsn_get_status(uint8_t* out_tscr)
   RA_CHECK_NULL_PTR(out_tscr, s_tag, "out_tscr must not be nullptr");
   /* HUM Ch 55.2.1 "TSCR : Temperature Sensor Control Register", p 3498 */
   volatile r_tsn_ctrl_regs_t* reg = ra_tsn();
-  *out_tscr                       = (uint8_t)(reg->TSCR & (uint8_t)k_ra_tscr_mask_all);
+  *out_tscr                       = (uint8_t)(reg->TSCR & k_ra_tscr_mask_all);
   return k_ra_ok;
 }
 

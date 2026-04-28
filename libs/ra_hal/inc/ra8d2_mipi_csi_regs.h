@@ -662,7 +662,10 @@ static inline volatile uint32_t* ra_mipi_csi_reg32(ra_mipi_csi_off_t off)
  */
 static inline ra_mipi_csi_off_t ra_mipi_csi_vc_off(ra_mipi_csi_off_t base, uint8_t vc)
 {
-  return (ra_mipi_csi_off_t)((uint16_t)base + ((uint16_t)vc * (uint16_t)k_ra_mipi_csi_vc_stride));
+  /* Computed stride offset is a valid HUM-defined VC register location, not a
+   * literal enumerator -- the analyzer can't see that. */
+  // NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange)
+  return (ra_mipi_csi_off_t)((uint16_t)base + ((uint16_t)vc * k_ra_mipi_csi_vc_stride));
 }
 
 /**
@@ -678,7 +681,7 @@ static inline ra_mipi_csi_off_t ra_mipi_csi_vc_off(ra_mipi_csi_off_t base, uint8
  */
 static inline ra_mipi_csi_off_t ra_mipi_csi_dl_off(ra_mipi_csi_off_t base, uint8_t lane)
 {
-  return (ra_mipi_csi_off_t)((uint16_t)base + ((uint16_t)lane * (uint16_t)k_ra_mipi_csi_dl_stride));
+  return (ra_mipi_csi_off_t)((uint16_t)base + ((uint16_t)lane * k_ra_mipi_csi_dl_stride));
 }
 
 #ifdef __cplusplus

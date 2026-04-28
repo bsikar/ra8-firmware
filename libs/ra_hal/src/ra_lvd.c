@@ -160,16 +160,16 @@ static ra_err_t internal_channel_to_idx(ra_lvd_channel_t channel, uint8_t* out_i
 {
   switch (channel) {
     case k_ra_lvd_ch1:
-      *out_idx = (uint8_t)k_ra_lvd_map_idx_ch1;
+      *out_idx = k_ra_lvd_map_idx_ch1;
       return k_ra_ok;
     case k_ra_lvd_ch2:
-      *out_idx = (uint8_t)k_ra_lvd_map_idx_ch2;
+      *out_idx = k_ra_lvd_map_idx_ch2;
       return k_ra_ok;
     case k_ra_lvd_ch4:
-      *out_idx = (uint8_t)k_ra_lvd_map_idx_ch4;
+      *out_idx = k_ra_lvd_map_idx_ch4;
       return k_ra_ok;
     case k_ra_lvd_ch5:
-      *out_idx = (uint8_t)k_ra_lvd_map_idx_ch5;
+      *out_idx = k_ra_lvd_map_idx_ch5;
       return k_ra_ok;
     default:
       return k_ra_err_invalid_arg;
@@ -187,10 +187,10 @@ static ra_err_t internal_channel_to_idx(ra_lvd_channel_t channel, uint8_t* out_i
  */
 static ra_err_t internal_validate_threshold(ra_lvd_pvdlvl_t threshold)
 {
-  if ((uint8_t)threshold < (uint8_t)k_ra_lvd_pvdlvl_min) {
+  if ((uint8_t)threshold < k_ra_lvd_pvdlvl_min) {
     return k_ra_err_invalid_arg;
   }
-  if ((uint8_t)threshold > (uint8_t)k_ra_lvd_pvdlvl_max) {
+  if ((uint8_t)threshold > k_ra_lvd_pvdlvl_max) {
     return k_ra_err_invalid_arg;
   }
   return k_ra_ok;
@@ -207,7 +207,7 @@ static ra_err_t internal_validate_threshold(ra_lvd_pvdlvl_t threshold)
  */
 static ra_err_t internal_validate_div(ra_lvd_loco_div_t div)
 {
-  if ((uint8_t)div > (uint8_t)k_ra_lvd_loco_div_max) {
+  if ((uint8_t)div > k_ra_lvd_loco_div_max) {
     return k_ra_err_invalid_arg;
   }
   return k_ra_ok;
@@ -225,7 +225,7 @@ static ra_err_t internal_validate_div(ra_lvd_loco_div_t div)
 static ra_err_t internal_validate_edge(ra_lvd_edge_t edge)
 {
   /* HUM Ch 8.2.6 "PVDmCR1 : Voltage Monitor m Circuit Control Register" p 307*/
-  if ((uint8_t)edge > (uint8_t)k_ra_lvd_edge_both) {
+  if ((uint8_t)edge > k_ra_lvd_edge_both) {
     return k_ra_err_invalid_arg;
   }
   return k_ra_ok;
@@ -243,7 +243,7 @@ static ra_err_t internal_validate_edge(ra_lvd_edge_t edge)
 static uint8_t internal_read_ri(const ra_lvd_channel_map_t* map)
 {
   /* HUM Ch 8.2.4 "PVDmCR0 : Voltage Monitor m Circuit Control Register 0" p 305*/
-  return (uint8_t)(*ra_lvd_reg8(map->cr0) & (uint8_t)k_ra_lvd_cr0_mask_ri);
+  return (uint8_t)(*ra_lvd_reg8(map->cr0) & k_ra_lvd_cr0_mask_ri);
 }
 
 /**
@@ -260,7 +260,7 @@ static uint8_t internal_read_ri(const ra_lvd_channel_map_t* map)
 static uint8_t internal_n_cr0_with_reserved(uint8_t base)
 {
   /* HUM Ch 8.2.5 "PVDnCR0 : Voltage Monitor n Circuit Control Register 0" p 306*/
-  return (uint8_t)(base | (uint8_t)k_ra_lvd_cr0_mask_n_bit6);
+  return (uint8_t)(base | k_ra_lvd_cr0_mask_n_bit6);
 }
 
 /**
@@ -275,7 +275,7 @@ static uint8_t internal_n_cr0_with_reserved(uint8_t base)
 static uint8_t internal_m_cr0_with_reserved(uint8_t base)
 {
   /* HUM Ch 8.2.4 "PVDmCR0 : Voltage Monitor m Circuit Control Register 0" p 305*/
-  return (uint8_t)(base | (uint8_t)k_ra_lvd_cr0_mask_bit3);
+  return (uint8_t)(base | k_ra_lvd_cr0_mask_bit3);
 }
 
 /**
@@ -402,16 +402,16 @@ static ra_err_t internal_validate_cfg(const ra_lvd_channel_map_t* map, const ra_
  */
 static uint8_t internal_compose_cr0(const ra_lvd_channel_map_t* map, const ra_lvd_cfg_t* cfg)
 {
-  uint8_t cr0 = (uint8_t)((uint8_t)cfg->filter_div << (uint8_t)k_ra_lvd_cr0_shift_fsamp);
-  cr0 &= (uint8_t)k_ra_lvd_cr0_mask_fsamp;
-  cr0 |= (uint8_t)k_ra_lvd_cr0_mask_dfdis; /* DFDIS = 1 while writing FSAMP. */
+  uint8_t cr0 = (uint8_t)((uint8_t)cfg->filter_div << k_ra_lvd_cr0_shift_fsamp);
+  cr0 &= k_ra_lvd_cr0_mask_fsamp;
+  cr0 |= k_ra_lvd_cr0_mask_dfdis; /* DFDIS = 1 while writing FSAMP. */
   if (map->has_irq) {
     if (cfg->negate == k_ra_lvd_negate_after_assert) {
-      cr0 |= (uint8_t)k_ra_lvd_cr0_mask_rn;
+      cr0 |= k_ra_lvd_cr0_mask_rn;
     }
     if ((cfg->response == k_ra_lvd_response_reset) ||
         (cfg->response == k_ra_lvd_response_reset_on_rise)) {
-      cr0 |= (uint8_t)k_ra_lvd_cr0_mask_ri;
+      cr0 |= k_ra_lvd_cr0_mask_ri;
     }
   }
   return cr0;
@@ -435,9 +435,9 @@ static uint8_t internal_compose_cr0(const ra_lvd_channel_map_t* map, const ra_lv
 static void internal_program_cr1(const ra_lvd_channel_map_t* map, const ra_lvd_cfg_t* cfg)
 {
   /* HUM Ch 8.2.6 "PVDmCR1 : Voltage Monitor m Circuit Control Register" p 307*/
-  uint8_t cr1 = (uint8_t)((uint8_t)cfg->edge & (uint8_t)k_ra_lvd_cr1_mask_idtsel);
+  uint8_t cr1 = (uint8_t)((uint8_t)cfg->edge & k_ra_lvd_cr1_mask_idtsel);
   if (cfg->irq_type == k_ra_lvd_irq_maskable) {
-    cr1 |= (uint8_t)k_ra_lvd_cr1_mask_irqsel;
+    cr1 |= k_ra_lvd_cr1_mask_irqsel;
   }
   *ra_lvd_reg8(map->cr1) = cr1;
 
@@ -469,14 +469,14 @@ static void internal_lvd_program_cmpcr(const ra_lvd_channel_map_t* map, const ra
   *ra_lvd_reg8(map->cmpcr) = 0U;
 
   /* Step 2: PVDLVL with PVDE = 0 */
-  uint8_t cmpcr = (uint8_t)((uint8_t)cfg->threshold & (uint8_t)k_ra_lvd_cmpcr_mask_pvdlvl);
+  uint8_t cmpcr            = (uint8_t)((uint8_t)cfg->threshold & k_ra_lvd_cmpcr_mask_pvdlvl);
   *ra_lvd_reg8(map->cmpcr) = cmpcr;
 
   /* Step 3: HUM Ch 8.2.8 / 8.2.9 -- RHSEL on FCR */
-  *ra_lvd_reg8(map->fcr) = (uint8_t)((uint8_t)cfg->hysteresis & (uint8_t)k_ra_lvd_fcr_mask_rhsel);
+  *ra_lvd_reg8(map->fcr) = (uint8_t)((uint8_t)cfg->hysteresis & k_ra_lvd_fcr_mask_rhsel);
 
   /* Step 4: re-assert PVDE */
-  cmpcr |= (uint8_t)k_ra_lvd_cmpcr_mask_pvde;
+  cmpcr |= k_ra_lvd_cmpcr_mask_pvde;
   *ra_lvd_reg8(map->cmpcr) = cmpcr;
 }
 
@@ -512,14 +512,14 @@ static void internal_lvd_program_cr0_chain(const ra_lvd_channel_map_t* map, cons
 
   if (cfg->irq_enable && (cfg->response != k_ra_lvd_response_none)) {
     if (map->has_irq) {
-      cr0 |= (uint8_t)k_ra_lvd_cr0_mask_rie;
+      cr0 |= k_ra_lvd_cr0_mask_rie;
     } else {
-      cr0 |= (uint8_t)k_ra_lvd_cr0_mask_re;
+      cr0 |= k_ra_lvd_cr0_mask_re;
     }
     *ra_lvd_reg8(map->cr0) = internal_cr0_apply_reserved(map, cr0);
   }
 
-  cr0 |= (uint8_t)k_ra_lvd_cr0_mask_cmpe;
+  cr0 |= k_ra_lvd_cr0_mask_cmpe;
   *ra_lvd_reg8(map->cr0) = internal_cr0_apply_reserved(map, cr0);
 }
 
@@ -551,17 +551,17 @@ ra_err_t ra_lvd_channel_deinit(ra_lvd_channel_t channel)
   const ra_lvd_channel_map_t map = s_lvd_map[idx];
 
   /* === HUM Table 8.5 step 1 / Table 8.7 step 1 -- drop CMPE. */
-  internal_cr0_rmw(&map, (uint8_t)k_ra_lvd_cr0_mask_cmpe, 0U);
+  internal_cr0_rmw(&map, k_ra_lvd_cr0_mask_cmpe, 0U);
 
   /* === HUM Table 8.5 step 3 / Table 8.7 step 3 -- drop RIE / RE. */
-  uint8_t enable_bit = (uint8_t)k_ra_lvd_cr0_mask_re;
+  uint8_t enable_bit = k_ra_lvd_cr0_mask_re;
   if (map.has_irq) {
-    enable_bit = (uint8_t)k_ra_lvd_cr0_mask_rie;
+    enable_bit = k_ra_lvd_cr0_mask_rie;
   }
   internal_cr0_rmw(&map, enable_bit, 0U);
 
   /* === HUM Table 8.5 step 4 / Table 8.7 step 4 -- DFDIS = 1 (filter off). */
-  internal_cr0_rmw(&map, 0U, (uint8_t)k_ra_lvd_cr0_mask_dfdis);
+  internal_cr0_rmw(&map, 0U, k_ra_lvd_cr0_mask_dfdis);
 
   /* === HUM Table 8.5 step 5 / Table 8.7 step 5 -- drop PVDE. */
   /* HUM Ch 8.2.2 "PVDmCMPCR" p 303*/
@@ -598,11 +598,11 @@ ra_err_t ra_lvd_set_threshold(ra_lvd_channel_t channel, ra_lvd_pvdlvl_t threshol
   /* HUM Ch 8.2.2 "PVDmCMPCR : Voltage Monitor m Comparator Control Register" p 303*/
   /* Preserve the PVDE bit, drop it around the PVDLVL write, restore it afterwards. */
   const uint8_t prev     = *ra_lvd_reg8(map.cmpcr);
-  const uint8_t pvde_was = (uint8_t)(prev & (uint8_t)k_ra_lvd_cmpcr_mask_pvde);
+  const uint8_t pvde_was = (uint8_t)(prev & k_ra_lvd_cmpcr_mask_pvde);
 
   *ra_lvd_reg8(map.cmpcr) = 0U;
 
-  uint8_t cmpcr = (uint8_t)((uint8_t)threshold & (uint8_t)k_ra_lvd_cmpcr_mask_pvdlvl);
+  uint8_t cmpcr = (uint8_t)((uint8_t)threshold & k_ra_lvd_cmpcr_mask_pvdlvl);
   cmpcr |= pvde_was;
   *ra_lvd_reg8(map.cmpcr) = cmpcr;
   return k_ra_ok;
@@ -625,7 +625,7 @@ ra_err_t ra_lvd_set_irq_edge(ra_lvd_channel_t channel, ra_lvd_edge_t edge)
   /* HUM Ch 8.2.6 "PVDmCR1 : Voltage Monitor m Circuit Control Register" p 307*/
   const uint8_t prev    = *ra_lvd_reg8(map.cr1);
   const uint8_t next    = (uint8_t)((prev & (uint8_t)~k_ra_lvd_cr1_mask_idtsel) |
-                                    ((uint8_t)edge & (uint8_t)k_ra_lvd_cr1_mask_idtsel));
+                                    ((uint8_t)edge & k_ra_lvd_cr1_mask_idtsel));
   *ra_lvd_reg8(map.cr1) = next;
   return k_ra_ok;
 }
@@ -645,7 +645,7 @@ ra_err_t ra_lvd_set_irq_kind(ra_lvd_channel_t channel, ra_lvd_irq_type_t kind)
   const uint8_t prev = *ra_lvd_reg8(map.cr1);
   uint8_t       next = (uint8_t)(prev & (uint8_t)~k_ra_lvd_cr1_mask_irqsel);
   if (kind == k_ra_lvd_irq_maskable) {
-    next |= (uint8_t)k_ra_lvd_cr1_mask_irqsel;
+    next |= k_ra_lvd_cr1_mask_irqsel;
   }
   *ra_lvd_reg8(map.cr1) = next;
   return k_ra_ok;
@@ -668,7 +668,7 @@ ra_err_t ra_lvd_enable_irq(ra_lvd_channel_t channel)
   }
   /* set RIE. */
   /* HUM Ch 8.2.4 "PVDmCR0 : Voltage Monitor m Circuit Control Register 0" p 305*/
-  internal_cr0_rmw(&map, 0U, (uint8_t)k_ra_lvd_cr0_mask_rie);
+  internal_cr0_rmw(&map, 0U, k_ra_lvd_cr0_mask_rie);
   return k_ra_ok;
 }
 
@@ -683,7 +683,7 @@ ra_err_t ra_lvd_disable_irq(ra_lvd_channel_t channel)
     return k_ra_err_not_supported;
   }
   /* HUM Ch 8.2.4 "PVDmCR0" p 305 */
-  internal_cr0_rmw(&map, (uint8_t)k_ra_lvd_cr0_mask_rie, 0U);
+  internal_cr0_rmw(&map, k_ra_lvd_cr0_mask_rie, 0U);
   return k_ra_ok;
 }
 
@@ -697,13 +697,11 @@ ra_err_t ra_lvd_enable_reset(ra_lvd_channel_t channel)
   if (map.has_irq) {
     /* m channel: set RI then RIE. */
     /* HUM Ch 8.2.4 "PVDmCR0" p 305*/
-    internal_cr0_rmw(&map,
-                     0U,
-                     (uint8_t)((uint8_t)k_ra_lvd_cr0_mask_ri | (uint8_t)k_ra_lvd_cr0_mask_rie));
+    internal_cr0_rmw(&map, 0U, (uint8_t)(k_ra_lvd_cr0_mask_ri | k_ra_lvd_cr0_mask_rie));
   } else {
     /* n channel: set RE only -- it is the only response option. */
     /* HUM Ch 8.2.5 "PVDnCR0" p 306*/
-    internal_cr0_rmw(&map, 0U, (uint8_t)k_ra_lvd_cr0_mask_re);
+    internal_cr0_rmw(&map, 0U, k_ra_lvd_cr0_mask_re);
   }
   return k_ra_ok;
 }
@@ -716,9 +714,9 @@ ra_err_t ra_lvd_disable_reset(ra_lvd_channel_t channel)
 
   const ra_lvd_channel_map_t map = s_lvd_map[idx];
   /* HUM Ch 8.2.4 "PVDmCR0" p 305 */
-  uint8_t enable_bit = (uint8_t)k_ra_lvd_cr0_mask_re;
+  uint8_t enable_bit = k_ra_lvd_cr0_mask_re;
   if (map.has_irq) {
-    enable_bit = (uint8_t)k_ra_lvd_cr0_mask_rie;
+    enable_bit = k_ra_lvd_cr0_mask_rie;
   }
   internal_cr0_rmw(&map, enable_bit, 0U);
   return k_ra_ok;
@@ -732,7 +730,7 @@ ra_err_t ra_lvd_enable_cmpe(ra_lvd_channel_t channel)
 
   const ra_lvd_channel_map_t map = s_lvd_map[idx];
   /* HUM Ch 8.2.4 "PVDmCR0" p 305 */
-  internal_cr0_rmw(&map, 0U, (uint8_t)k_ra_lvd_cr0_mask_cmpe);
+  internal_cr0_rmw(&map, 0U, k_ra_lvd_cr0_mask_cmpe);
   return k_ra_ok;
 }
 
@@ -744,7 +742,7 @@ ra_err_t ra_lvd_disable_cmpe(ra_lvd_channel_t channel)
 
   const ra_lvd_channel_map_t map = s_lvd_map[idx];
   /* HUM Ch 8.2.4 "PVDmCR0" p 305 */
-  internal_cr0_rmw(&map, (uint8_t)k_ra_lvd_cr0_mask_cmpe, 0U);
+  internal_cr0_rmw(&map, k_ra_lvd_cr0_mask_cmpe, 0U);
   return k_ra_ok;
 }
 
@@ -766,15 +764,15 @@ ra_err_t ra_lvd_set_filter(ra_lvd_channel_t channel, ra_lvd_loco_div_t filter_di
 
   /* HUM Ch 8.2.4 "PVDmCR0" p 305 / HUM Ch 8.2.5 "PVDnCR0" p 306
    * -- FSAMP can only be modified while DFDIS = 1. */
-  internal_cr0_rmw(&map, 0U, (uint8_t)k_ra_lvd_cr0_mask_dfdis);
+  internal_cr0_rmw(&map, 0U, k_ra_lvd_cr0_mask_dfdis);
 
-  const uint8_t fsamp_bits = (uint8_t)(((uint8_t)filter_div << (uint8_t)k_ra_lvd_cr0_shift_fsamp) &
-                                       (uint8_t)k_ra_lvd_cr0_mask_fsamp);
-  internal_cr0_rmw(&map, (uint8_t)k_ra_lvd_cr0_mask_fsamp, fsamp_bits);
+  const uint8_t fsamp_bits =
+    (uint8_t)(((uint8_t)filter_div << k_ra_lvd_cr0_shift_fsamp) & k_ra_lvd_cr0_mask_fsamp);
+  internal_cr0_rmw(&map, k_ra_lvd_cr0_mask_fsamp, fsamp_bits);
 
   if (filter_en) {
     /* Drop DFDIS only after FSAMP has landed. */
-    internal_cr0_rmw(&map, (uint8_t)k_ra_lvd_cr0_mask_dfdis, 0U);
+    internal_cr0_rmw(&map, k_ra_lvd_cr0_mask_dfdis, 0U);
   }
   return k_ra_ok;
 }
@@ -785,7 +783,7 @@ ra_err_t ra_lvd_set_hysteresis_mode(ra_lvd_channel_t channel, ra_lvd_hysteresis_
   const ra_err_t map_err = internal_channel_to_idx(channel, &idx);
   RA_RETURN_ON_ERROR(map_err, s_tag, "lvd_set_hysteresis_mode: bad channel");
 
-  if ((uint8_t)hyst > (uint8_t)k_ra_lvd_hysteresis_hvd) {
+  if ((uint8_t)hyst > k_ra_lvd_hysteresis_hvd) {
     return k_ra_err_invalid_arg;
   }
 
@@ -803,11 +801,11 @@ ra_err_t ra_lvd_set_hysteresis_mode(ra_lvd_channel_t channel, ra_lvd_hysteresis_
   /* HUM Ch 8.2.8 / 8.2.9 -- RHSEL can only be modified when every
    * PVDE is 0; preserve and restore this channel's PVDE. */
   const uint8_t prev_cmpcr = *ra_lvd_reg8(map.cmpcr);
-  const uint8_t pvde_was   = (uint8_t)(prev_cmpcr & (uint8_t)k_ra_lvd_cmpcr_mask_pvde);
+  const uint8_t pvde_was   = (uint8_t)(prev_cmpcr & k_ra_lvd_cmpcr_mask_pvde);
   *ra_lvd_reg8(map.cmpcr)  = (uint8_t)(prev_cmpcr & (uint8_t)~k_ra_lvd_cmpcr_mask_pvde);
 
   /* HUM Ch 8.2.8 "PVDmFCR" p 308 */
-  *ra_lvd_reg8(map.fcr) = (uint8_t)((uint8_t)hyst & (uint8_t)k_ra_lvd_fcr_mask_rhsel);
+  *ra_lvd_reg8(map.fcr) = (uint8_t)((uint8_t)hyst & k_ra_lvd_fcr_mask_rhsel);
 
   /* Restore PVDE if it had been set. */
   *ra_lvd_reg8(map.cmpcr) = (uint8_t)(*ra_lvd_reg8(map.cmpcr) | pvde_was);
@@ -824,7 +822,7 @@ ra_err_t ra_lvd_set_negate_mode(ra_lvd_channel_t channel, ra_lvd_negate_t negate
   if (!map.has_irq) {
     return k_ra_err_not_supported;
   }
-  if ((uint8_t)negate > (uint8_t)k_ra_lvd_negate_after_assert) {
+  if ((uint8_t)negate > k_ra_lvd_negate_after_assert) {
     return k_ra_err_invalid_arg;
   }
 
@@ -832,15 +830,15 @@ ra_err_t ra_lvd_set_negate_mode(ra_lvd_channel_t channel, ra_lvd_negate_t negate
   /* HUM Ch 8.2.8 "PVDmFCR" p 308 */
   if (negate == k_ra_lvd_negate_after_assert) {
     const uint8_t fcr = *ra_lvd_reg8(map.fcr);
-    if ((fcr & (uint8_t)k_ra_lvd_fcr_mask_rhsel) != 0U) {
+    if ((fcr & k_ra_lvd_fcr_mask_rhsel) != 0U) {
       return k_ra_err_invalid_state;
     }
   }
 
   /* HUM Ch 8.2.4 "PVDmCR0" p 305*/
   internal_cr0_rmw(&map,
-                   (uint8_t)k_ra_lvd_cr0_mask_rn,
-                   (negate == k_ra_lvd_negate_after_assert) ? (uint8_t)k_ra_lvd_cr0_mask_rn : 0U);
+                   k_ra_lvd_cr0_mask_rn,
+                   (negate == k_ra_lvd_negate_after_assert) ? k_ra_lvd_cr0_mask_rn : 0U);
   return k_ra_ok;
 }
 
@@ -864,8 +862,8 @@ ra_err_t ra_lvd_get_status(ra_lvd_channel_t channel, ra_lvd_status_t* out)
 
   /* HUM Ch 8.2.7 "PVDmSR : Voltage Monitor m Circuit Status Register" p 307*/
   const uint8_t sr = *ra_lvd_reg8(map.sr);
-  out->crossed     = (sr & (uint8_t)k_ra_lvd_sr_mask_det) != 0U;
-  out->above       = (sr & (uint8_t)k_ra_lvd_sr_mask_mon) != 0U;
+  out->crossed     = ((sr & k_ra_lvd_sr_mask_det) != 0U);
+  out->above       = ((sr & k_ra_lvd_sr_mask_mon) != 0U);
   return k_ra_ok;
 }
 
@@ -898,7 +896,7 @@ ra_err_t ra_lvd_set_security(uint32_t mask)
 {
   /* HUM Ch 8.2.1 "PVDSAR : Programmable Voltage Detection Security
    * Attribution Register" p 302 */
-  if ((mask & ~(uint32_t)k_ra_lvd_pvdsar_mask_all) != 0U) {
+  if ((mask & ~k_ra_lvd_pvdsar_mask_all) != 0U) {
     return k_ra_err_invalid_arg;
   }
   *ra_lvd_reg32(k_ra_lvd_pvdsar_off) = mask;
@@ -908,7 +906,7 @@ ra_err_t ra_lvd_set_security(uint32_t mask)
 ra_err_t ra_lvd_unlock_n_channels(void)
 {
   /* HUM Ch 8.2.10 "PVDLR : Voltage Monitor Lock Register" p 309*/
-  *ra_lvd_reg8(k_ra_lvd_pvdlr_off) = (uint8_t)k_ra_lvd_pvdlr_value_unlock;
+  *ra_lvd_reg8(k_ra_lvd_pvdlr_off) = k_ra_lvd_pvdlr_value_unlock;
   return k_ra_ok;
 }
 
@@ -917,7 +915,7 @@ ra_err_t ra_lvd_relock_n_channels(void)
   /* HUM Ch 8.2.10 "PVDLR : Voltage Monitor Lock Register" p 309 --
    * "if you write an arbitrary value to the LOCK, the LOCK bit is
    * fixed to 1." */
-  *ra_lvd_reg8(k_ra_lvd_pvdlr_off) = (uint8_t)k_ra_lvd_pvdlr_value_relock;
+  *ra_lvd_reg8(k_ra_lvd_pvdlr_off) = k_ra_lvd_pvdlr_value_relock;
   return k_ra_ok;
 }
 
@@ -944,7 +942,7 @@ ra_err_t ra_lvd_enable_elc_event(ra_lvd_channel_t channel)
   const uint8_t sr     = *ra_lvd_reg8(map.sr);
   *ra_lvd_reg8(map.sr) = (uint8_t)(sr & (uint8_t)~k_ra_lvd_sr_mask_det);
   /* HUM Ch 8.2.4 "PVDmCR0" p 305*/
-  internal_cr0_rmw(&map, 0U, (uint8_t)k_ra_lvd_cr0_mask_cmpe);
+  internal_cr0_rmw(&map, 0U, k_ra_lvd_cr0_mask_cmpe);
   return k_ra_ok;
 }
 
@@ -960,7 +958,7 @@ ra_err_t ra_lvd_disable_elc_event(ra_lvd_channel_t channel)
   }
   /* HUM Ch 8.2.4 "PVDmCR0" p 305 -- clear CMPE so the ELC line goes
    * inactive (HUM 8.7 p 315). */
-  internal_cr0_rmw(&map, (uint8_t)k_ra_lvd_cr0_mask_cmpe, 0U);
+  internal_cr0_rmw(&map, k_ra_lvd_cr0_mask_cmpe, 0U);
   return k_ra_ok;
 }
 
@@ -975,11 +973,11 @@ ra_err_t ra_lvd_configure_for_standby(ra_lvd_channel_t channel)
   /* HUM Ch 8.5(1) "Setting in Software Standby mode" p 311 +
    * HUM Ch 8.5(2) "Settings in Deep Software Standby mode" p 312 --
    * disable the digital filter and (for m channels) clear RI + RN. */
-  uint8_t set_bits = (uint8_t)k_ra_lvd_cr0_mask_dfdis;
+  uint8_t set_bits = k_ra_lvd_cr0_mask_dfdis;
   uint8_t clr_bits = 0U;
   if (map.has_irq) {
-    clr_bits |= (uint8_t)k_ra_lvd_cr0_mask_ri;
-    clr_bits |= (uint8_t)k_ra_lvd_cr0_mask_rn;
+    clr_bits |= k_ra_lvd_cr0_mask_ri;
+    clr_bits |= k_ra_lvd_cr0_mask_rn;
   }
   /* HUM Ch 8.2.4 "PVDmCR0" p 305*/
   internal_cr0_rmw(&map, clr_bits, set_bits);
@@ -989,8 +987,8 @@ ra_err_t ra_lvd_configure_for_standby(ra_lvd_channel_t channel)
 ra_err_t ra_lvd_cancel_deep_standby_path(void)
 {
   /* HUM Ch 8.2.4 "PVDmCR0" p 305 */
-  for (uint8_t i = 0U; i < (uint8_t)k_ra_lvd_nmi_channel_count; ++i) {
-    internal_cr0_rmw(&s_lvd_map[i], (uint8_t)k_ra_lvd_cr0_mask_ri, 0U);
+  for (uint8_t i = 0U; i < k_ra_lvd_nmi_channel_count; ++i) {
+    internal_cr0_rmw(&s_lvd_map[i], k_ra_lvd_cr0_mask_ri, 0U);
   }
   return k_ra_ok;
 }
@@ -1005,15 +1003,14 @@ uint32_t ra_lvd_filter_delay_us(ra_lvd_loco_div_t div, uint32_t loco_hz)
   /* HUM Table 8.4 step 8 (p 312) / Table 8.6 step 8 (p 315): wait for
    * "2s + 3 cycles of the LOCO" where s = 2^(div+1). */
   uint8_t safe_div = (uint8_t)div;
-  if (safe_div > (uint8_t)k_ra_lvd_loco_div_max) {
-    safe_div = (uint8_t)k_ra_lvd_loco_div_max;
+  if (safe_div > k_ra_lvd_loco_div_max) {
+    safe_div = k_ra_lvd_loco_div_max;
   }
-  const uint32_t s_factor = (uint32_t)1U << (safe_div + 1U);
-  const uint32_t loco_cycles =
-    ((uint32_t)k_ra_lvd_filter_factor * s_factor) + (uint32_t)k_ra_lvd_filter_extra;
-  const uint32_t hz = (loco_hz != 0U) ? loco_hz : (uint32_t)k_ra_lvd_loco_hz_default;
+  const uint32_t s_factor    = (uint32_t)1U << (safe_div + 1U);
+  const uint32_t loco_cycles = (k_ra_lvd_filter_factor * s_factor) + k_ra_lvd_filter_extra;
+  const uint32_t hz          = (loco_hz != 0U) ? loco_hz : k_ra_lvd_loco_hz_default;
   /* +1 us round-up matches FSP's r_lvd_filter_delay computation. */
-  return ((loco_cycles * (uint32_t)k_ra_lvd_us_per_sec) / hz) + 1U;
+  return ((loco_cycles * k_ra_lvd_us_per_sec) / hz) + 1U;
 }
 
 /* =============================================================================
@@ -1060,7 +1057,7 @@ void ra_lvd_dispatch(ra_lvd_channel_t channel)
   /* HUM Ch 8.2.7 "PVDmSR : Voltage Monitor m Circuit Status Register" p 307
    * -- only fire the callback if a crossing was actually latched. */
   const uint8_t sr = *ra_lvd_reg8(map.sr);
-  if ((sr & (uint8_t)k_ra_lvd_sr_mask_det) == 0U) {
+  if ((sr & k_ra_lvd_sr_mask_det) == 0U) {
     return;
   }
 

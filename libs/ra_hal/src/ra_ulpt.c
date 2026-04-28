@@ -69,7 +69,7 @@ static const ra_mstp_t s_ulpt_mstp_table[] = {
 
 [[nodiscard]] ra_err_t ra_ulpt_start(uint8_t channel, uint32_t period)
 {
-  if ((uint16_t)channel >= (uint16_t)k_ra_ulpt_channel_count) {
+  if ((uint16_t)channel >= k_ra_ulpt_channel_count) {
     return k_ra_err_invalid_arg;
   }
   volatile r_ulpt_regs_t* reg = ra_ulpt(channel);
@@ -88,7 +88,7 @@ static const ra_mstp_t s_ulpt_mstp_table[] = {
   reg->ULPTCNT = period;
   /* HUM Ch 25.2.1 "ULPTCR : ULPT Control Register" p 1190 */
   /* TSTART = 1. */
-  reg->ULPTCR = (uint8_t)k_ra_ulpt_mask_tstart;
+  reg->ULPTCR = k_ra_ulpt_mask_tstart;
 
   ra_log_info_val(s_tag, "start channel", (uint32_t)channel);
   return k_ra_ok;
@@ -96,7 +96,7 @@ static const ra_mstp_t s_ulpt_mstp_table[] = {
 
 [[nodiscard]] ra_err_t ra_ulpt_stop(uint8_t channel)
 {
-  if ((uint16_t)channel >= (uint16_t)k_ra_ulpt_channel_count) {
+  if ((uint16_t)channel >= k_ra_ulpt_channel_count) {
     return k_ra_err_invalid_arg;
   }
   volatile r_ulpt_regs_t* reg = ra_ulpt(channel);
@@ -104,7 +104,7 @@ static const ra_mstp_t s_ulpt_mstp_table[] = {
 
   /* HUM Ch 25.2.1 "ULPTCR : ULPT Control Register" p 1190 */
   /* TSTOP toggle. */
-  reg->ULPTCR = (uint8_t)k_ra_ulpt_mask_tstop;
+  reg->ULPTCR = k_ra_ulpt_mask_tstop;
   reg->ULPTCR = 0U;
   return k_ra_ok;
 }
@@ -119,7 +119,7 @@ static void*              s_ulpt_ctx;
 
 ra_err_t ra_ulpt_deinit(uint8_t channel)
 {
-  if ((uint16_t)channel >= (uint16_t)k_ra_ulpt_channel_count) {
+  if ((uint16_t)channel >= k_ra_ulpt_channel_count) {
     return k_ra_err_invalid_arg;
   }
   volatile r_ulpt_regs_t* reg = ra_ulpt(channel);
@@ -131,7 +131,7 @@ ra_err_t ra_ulpt_deinit(uint8_t channel)
 
 ra_err_t ra_ulpt_set_period(uint8_t channel, uint32_t period)
 {
-  if ((uint16_t)channel >= (uint16_t)k_ra_ulpt_channel_count) {
+  if ((uint16_t)channel >= k_ra_ulpt_channel_count) {
     return k_ra_err_invalid_arg;
   }
   volatile r_ulpt_regs_t* reg = ra_ulpt(channel);
@@ -143,7 +143,7 @@ ra_err_t ra_ulpt_set_period(uint8_t channel, uint32_t period)
 ra_err_t ra_ulpt_get_status(uint8_t channel, uint8_t* out_mask)
 {
   RA_CHECK_NULL_PTR(out_mask, s_tag, "out_mask must not be nullptr");
-  if ((uint16_t)channel >= (uint16_t)k_ra_ulpt_channel_count) {
+  if ((uint16_t)channel >= k_ra_ulpt_channel_count) {
     return k_ra_err_invalid_arg;
   }
   *out_mask = ra_ulpt(channel)->ULPTCR;
@@ -159,7 +159,7 @@ ra_err_t ra_ulpt_attach_handler(ra_ulpt_event_fn_t fn, void* ctx)
 
 void ra_ulpt_dispatch(uint8_t channel)
 {
-  if ((uint16_t)channel >= (uint16_t)k_ra_ulpt_channel_count) {
+  if ((uint16_t)channel >= k_ra_ulpt_channel_count) {
     return;
   }
   const ra_ulpt_event_fn_t fn  = s_ulpt_fn;
@@ -171,7 +171,7 @@ void ra_ulpt_dispatch(uint8_t channel)
 
 ra_err_t ra_ulpt_enter_stop(uint8_t channel)
 {
-  if ((uint16_t)channel >= (uint16_t)k_ra_ulpt_channel_count) {
+  if ((uint16_t)channel >= k_ra_ulpt_channel_count) {
     return k_ra_err_invalid_arg;
   }
   return ra_mstp_disable(s_ulpt_mstp_table[channel]);
@@ -179,7 +179,7 @@ ra_err_t ra_ulpt_enter_stop(uint8_t channel)
 
 ra_err_t ra_ulpt_exit_stop(uint8_t channel)
 {
-  if ((uint16_t)channel >= (uint16_t)k_ra_ulpt_channel_count) {
+  if ((uint16_t)channel >= k_ra_ulpt_channel_count) {
     return k_ra_err_invalid_arg;
   }
   return ra_mstp_enable(s_ulpt_mstp_table[channel]);

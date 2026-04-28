@@ -104,7 +104,7 @@ static bool internal_is_known_instruction(ra_bscan_instr_t instr)
    * (BYPASS path selected by the TAP controller on reset). */
   s_bscan_state.initialised      = true;
   s_bscan_state.last_instruction = k_ra_bscan_instr_bypass;
-  s_bscan_state.expected_idcode  = (uint32_t)k_ra_bscan_jtidr_reset;
+  s_bscan_state.expected_idcode  = k_ra_bscan_jtidr_reset;
   ra_log_info(s_tag, "bscan init");
   return k_ra_ok;
 }
@@ -148,7 +148,7 @@ static bool internal_is_known_instruction(ra_bscan_instr_t instr)
 
 [[nodiscard]] ra_err_t ra_bscan_clear_status(uint32_t mask)
 {
-  if (mask != (uint32_t)k_ra_bscan_clear_mask_none) {
+  if (mask != k_ra_bscan_clear_mask_none) {
     return k_ra_err_invalid_arg;
   }
   if (!s_bscan_state.initialised) {

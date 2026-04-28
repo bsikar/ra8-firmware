@@ -77,17 +77,17 @@ ra_err_t ra_elc_init(void)
   /* Clear every ELSR slot before flipping ELCON so stale routes
    * don't fire spuriously.
    * HUM Ch 19.2.3 "ELSRn : Event Link Setting Register n", p 817 */
-  for (uint8_t i = 0U; i < (uint8_t)k_ra_elc_elsr_count; ++i) {
+  for (uint8_t i = 0U; i < k_ra_elc_elsr_count; ++i) {
     *internal_elsr(i) = 0U;
   }
 
   /* HUM Ch 19.2.2 "ELSEGR0..3 : Event Link Software Event Generation", p 817 */
-  for (uint8_t g = 0U; g < (uint8_t)k_ra_elc_segr_count; ++g) {
+  for (uint8_t g = 0U; g < k_ra_elc_segr_count; ++g) {
     *internal_elsegr(g) = 0U;
   }
 
   /* HUM Ch 19.2.1 "ELCR : Event Link Control Register", p 817 */
-  *internal_elcr() = (uint8_t)(1U << (uint8_t)k_ra_elcr_bit_elcon);
+  *internal_elcr() = (uint8_t)(1U << k_ra_elcr_bit_elcon);
   return k_ra_ok;
 }
 
@@ -108,7 +108,7 @@ ra_err_t ra_elc_enable(bool enable)
   /* HUM Ch 19.2.1 "ELCR : Event Link Control Register", p 817 */
   volatile uint8_t* elcr = internal_elcr();
   if (enable) {
-    *elcr = (uint8_t)(1U << (uint8_t)k_ra_elcr_bit_elcon);
+    *elcr = (uint8_t)(1U << k_ra_elcr_bit_elcon);
   } else {
     *elcr                  = 0U;
     const ra_err_t mst_err = ra_mstp_disable(k_ra_mstp_elc);
@@ -120,7 +120,7 @@ ra_err_t ra_elc_enable(bool enable)
 
 ra_err_t ra_elc_link(uint8_t elsr_index, ra_elc_event_t event)
 {
-  if (elsr_index >= (uint8_t)k_ra_elc_elsr_count) {
+  if (elsr_index >= k_ra_elc_elsr_count) {
     return k_ra_err_out_of_range;
   }
   /* HUM Ch 19.2.3 "ELSRn : Event Link Setting Register n", p 817 */
@@ -130,7 +130,7 @@ ra_err_t ra_elc_link(uint8_t elsr_index, ra_elc_event_t event)
 
 ra_err_t ra_elc_unlink(uint8_t elsr_index)
 {
-  if (elsr_index >= (uint8_t)k_ra_elc_elsr_count) {
+  if (elsr_index >= k_ra_elc_elsr_count) {
     return k_ra_err_out_of_range;
   }
   /* HUM Ch 19.2.3 "ELSRn : Event Link Setting Register n", p 817 */
@@ -140,7 +140,7 @@ ra_err_t ra_elc_unlink(uint8_t elsr_index)
 
 ra_err_t ra_elc_software_trigger(uint8_t group, uint8_t value)
 {
-  if (group >= (uint8_t)k_ra_elc_segr_count) {
+  if (group >= k_ra_elc_segr_count) {
     return k_ra_err_invalid_arg;
   }
   /* HUM Ch 19.2.2 "ELSEGRn : Event Link Software Event Generation", p 817 */
@@ -152,6 +152,6 @@ ra_err_t ra_elc_is_enabled(bool* out_enabled)
 {
   RA_CHECK_NULL_PTR(out_enabled, s_tag, "is_enabled out");
   const uint8_t val = *internal_elcr();
-  *out_enabled      = ((val & (uint8_t)(1U << (uint8_t)k_ra_elcr_bit_elcon)) != 0U);
+  *out_enabled      = ((val & (uint8_t)(1U << k_ra_elcr_bit_elcon)) != 0U);
   return k_ra_ok;
 }

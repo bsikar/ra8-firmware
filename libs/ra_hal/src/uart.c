@@ -81,7 +81,7 @@ static const ra_mstp_t s_sci_mstp_table[k_ra_uart_channel_count] = {
 {
   volatile r_sci_regs_t* sci = ra_sci(channel);
   RA_CHECK_NULL_PTR(sci, s_tag, "channel out of range");
-  if (channel >= (uint8_t)k_ra_uart_channel_count) {
+  if (channel >= k_ra_uart_channel_count) {
     return k_ra_err_invalid_arg;
   }
 
@@ -91,7 +91,7 @@ static const ra_mstp_t s_sci_mstp_table[k_ra_uart_channel_count] = {
   /* Disable TX/RX while reprogramming. */
   sci->SCR  = 0U;
   sci->SMR  = 0U; /* 8-N-1, CKS = PCLKB. */
-  sci->SCMR = (uint8_t)k_ra_uart_scmr_default;
+  sci->SCMR = k_ra_uart_scmr_default;
   sci->BRR  = brr;
   sci->SEMR = 0U;
 

@@ -367,7 +367,7 @@ static inline volatile uint16_t* ra_bkup_vbrpabarns(void)
  */
 static inline volatile uint8_t* ra_bkup_vbtbkr(uint16_t index)
 {
-  if (index >= (uint16_t)k_ra_bkup_reg_count) {
+  if (index >= k_ra_bkup_reg_count) {
     return nullptr;
   }
   return (volatile uint8_t*)(k_ra_bkup_base_addr + (uintptr_t)k_ra_bkup_off_vbtbkr0 +
@@ -384,7 +384,7 @@ static inline volatile uint8_t* ra_bkup_vbtbkr(uint16_t index)
  */
 static inline volatile uint32_t* ra_bkup_vbtbkr_word(uint8_t word_index)
 {
-  if ((uint16_t)word_index >= (uint16_t)k_ra_bkup_word_count) {
+  if ((uint16_t)word_index >= k_ra_bkup_word_count) {
     return nullptr;
   }
   return (volatile uint32_t*)(k_ra_bkup_base_addr + (uintptr_t)k_ra_bkup_off_vbtbkr0 +

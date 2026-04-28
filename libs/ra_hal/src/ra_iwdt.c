@@ -44,7 +44,7 @@ static ra_iwdt_state_t s_iwdt_state;
  * @brief Combined IWDTSR mask.
  */
 typedef enum : uint16_t {
-  k_ra_iwdt_status_all = (uint16_t)k_ra_iwdt_status_underflow | (uint16_t)k_ra_iwdt_status_refresh,
+  k_ra_iwdt_status_all = k_ra_iwdt_status_underflow | k_ra_iwdt_status_refresh,
 } ra_iwdt_mask_t;
 
 /**
@@ -82,7 +82,7 @@ ra_err_t ra_iwdt_get_status(uint16_t* out_mask)
 {
   RA_CHECK_NULL_PTR(out_mask, s_tag, "out_mask must not be nullptr");
   /* HUM Ch 28.2.2 "IWDTSR : IWDT Status Register" p 1278 */
-  *out_mask = (uint16_t)(ra_iwdt()->IWDTSR & (uint16_t)k_ra_iwdt_status_all);
+  *out_mask = (uint16_t)(ra_iwdt()->IWDTSR & k_ra_iwdt_status_all);
   return k_ra_ok;
 }
 
@@ -91,7 +91,7 @@ ra_err_t ra_iwdt_clear_status(void)
   volatile r_iwdt_regs_t* reg = ra_iwdt();
   /* IWDTSR is write-0-to-clear for the flag bits.
    * HUM Ch 28.2.2 "IWDTSR : IWDT Status Register" p 1278 */
-  reg->IWDTSR = (uint16_t)(reg->IWDTSR & (uint16_t)~(uint16_t)k_ra_iwdt_status_all);
+  reg->IWDTSR = (uint16_t)(reg->IWDTSR & (uint16_t)~k_ra_iwdt_status_all);
   return k_ra_ok;
 }
 
@@ -106,7 +106,7 @@ void ra_iwdt_dispatch(void)
 {
   volatile r_iwdt_regs_t* reg = ra_iwdt();
   /* HUM Ch 28.2.2 "IWDTSR : IWDT Status Register" p 1278 */
-  const uint16_t mask          = (uint16_t)(reg->IWDTSR & (uint16_t)k_ra_iwdt_status_all);
+  const uint16_t mask          = (uint16_t)(reg->IWDTSR & k_ra_iwdt_status_all);
   reg->IWDTSR                  = (uint16_t)(reg->IWDTSR & (uint16_t)~mask);
   const ra_iwdt_event_fn_t fn  = s_iwdt_state.fn;
   void* const              ctx = s_iwdt_state.ctx;

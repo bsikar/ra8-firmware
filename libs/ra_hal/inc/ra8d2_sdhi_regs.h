@@ -81,11 +81,10 @@ typedef struct {
 /** @brief Get pointer to SDHI instance N (0 or 1). */
 static inline volatile r_sdhi_regs_t* ra_sdhi(uint8_t instance)
 {
-  if (instance >= (uint8_t)k_ra_sdhi_instance_count) {
+  if (instance >= k_ra_sdhi_instance_count) {
     return nullptr;
   }
-  return (volatile r_sdhi_regs_t*)(k_ra_sdhi0_base_addr +
-                                   ((uintptr_t)instance * (uintptr_t)k_ra_sdhi_stride));
+  return (volatile r_sdhi_regs_t*)(k_ra_sdhi0_base_addr + ((uintptr_t)instance * k_ra_sdhi_stride));
 }
 
 #ifdef __cplusplus

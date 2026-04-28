@@ -275,8 +275,7 @@ typedef enum : uint32_t {
  */
 static inline volatile uint8_t* ra_reset_rstsr0(void)
 {
-  return (volatile uint8_t*)((uintptr_t)k_ra_reset_sysc_base_addr +
-                             (uintptr_t)k_ra_reset_off_rstsr0);
+  return (volatile uint8_t*)(k_ra_reset_sysc_base_addr + (uintptr_t)k_ra_reset_off_rstsr0);
 }
 
 /**
@@ -285,8 +284,7 @@ static inline volatile uint8_t* ra_reset_rstsr0(void)
  */
 static inline volatile uint32_t* ra_reset_rstsr1(void)
 {
-  return (volatile uint32_t*)((uintptr_t)k_ra_reset_sysc_base_addr +
-                              (uintptr_t)k_ra_reset_off_rstsr1);
+  return (volatile uint32_t*)(k_ra_reset_sysc_base_addr + (uintptr_t)k_ra_reset_off_rstsr1);
 }
 
 /**
@@ -295,8 +293,7 @@ static inline volatile uint32_t* ra_reset_rstsr1(void)
  */
 static inline volatile uint8_t* ra_reset_rstsr2(void)
 {
-  return (volatile uint8_t*)((uintptr_t)k_ra_reset_sysc_base_addr +
-                             (uintptr_t)k_ra_reset_off_rstsr2);
+  return (volatile uint8_t*)(k_ra_reset_sysc_base_addr + (uintptr_t)k_ra_reset_off_rstsr2);
 }
 
 /**
@@ -305,8 +302,7 @@ static inline volatile uint8_t* ra_reset_rstsr2(void)
  */
 static inline volatile uint8_t* ra_reset_rstsr3(void)
 {
-  return (volatile uint8_t*)((uintptr_t)k_ra_reset_sysc_base_addr +
-                             (uintptr_t)k_ra_reset_off_rstsr3);
+  return (volatile uint8_t*)(k_ra_reset_sysc_base_addr + (uintptr_t)k_ra_reset_off_rstsr3);
 }
 
 /**
@@ -315,8 +311,7 @@ static inline volatile uint8_t* ra_reset_rstsr3(void)
  */
 static inline volatile uint32_t* ra_reset_rstsar(void)
 {
-  return (volatile uint32_t*)((uintptr_t)k_ra_reset_sysc_base_addr +
-                              (uintptr_t)k_ra_reset_off_rstsar);
+  return (volatile uint32_t*)(k_ra_reset_sysc_base_addr + (uintptr_t)k_ra_reset_off_rstsar);
 }
 
 /**
@@ -325,7 +320,7 @@ static inline volatile uint32_t* ra_reset_rstsar(void)
  */
 static inline volatile uint32_t* ra_reset_aircr(void)
 {
-  return (volatile uint32_t*)(uintptr_t)k_ra_reset_scb_aircr_addr;
+  return (volatile uint32_t*)k_ra_reset_scb_aircr_addr;
 }
 
 #ifdef __cplusplus

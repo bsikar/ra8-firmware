@@ -638,7 +638,7 @@ static inline volatile uint64_t* ra_sram_bank_data_ptr(uint8_t bank)
  */
 static inline uint32_t ra_sram_bank_size_bytes(uint8_t bank)
 {
-  return (bank == 3U) ? (uint32_t)k_ra_sram_bank3_size : (uint32_t)k_ra_sram_bank012_size;
+  return (bank == 3U) ? k_ra_sram_bank3_size : k_ra_sram_bank012_size;
 }
 
 /**
@@ -649,7 +649,7 @@ static inline uint32_t ra_sram_bank_size_bytes(uint8_t bank)
  */
 static inline uint32_t ra_sram_bank_ecc_size_bytes(uint8_t bank)
 {
-  return (bank == 3U) ? (uint32_t)k_ra_sram_ecc_bank3_sz : (uint32_t)k_ra_sram_ecc_bank012_sz;
+  return (bank == 3U) ? k_ra_sram_ecc_bank3_sz : k_ra_sram_ecc_bank012_sz;
 }
 
 #ifdef __cplusplus

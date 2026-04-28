@@ -148,7 +148,7 @@ static ra_wdt_ofs_reader_fn_t s_ofs_reader = internal_default_ofs_reader;
  * @brief Union of the two WDTSR top-flag bits the driver cares about.
  */
 typedef enum : uint16_t {
-  k_ra_wdt_status_all = (uint16_t)k_ra_wdt_status_underflow | (uint16_t)k_ra_wdt_status_refresh,
+  k_ra_wdt_status_all = k_ra_wdt_status_underflow | k_ra_wdt_status_refresh,
 } ra_wdt_status_combined_t;
 
 /* =============================================================================
@@ -213,16 +213,16 @@ static bool internal_timeout_sel_is_valid(ra_wdt_timeout_sel_t sel)
 static uint16_t internal_pack_wdtcr(const ra_wdt_cfg_t* cfg)
 {
   /* HUM Ch 27.2.2 "WDTCR : WDT Control Register", p 1258 */
-  const uint16_t tops = (uint16_t)((uint16_t)cfg->timeout & (uint16_t)k_ra_wdt_mask_tops);
-  const uint16_t cks  = (uint16_t)((uint16_t)cfg->clock_div & (uint16_t)k_ra_wdt_mask_cks);
-  const uint16_t rpes = (uint16_t)((uint16_t)cfg->window_end & (uint16_t)k_ra_wdt_mask_rpes);
-  const uint16_t rpss = (uint16_t)((uint16_t)cfg->window_start & (uint16_t)k_ra_wdt_mask_rpss);
+  const uint16_t tops = (uint16_t)((uint16_t)cfg->timeout & k_ra_wdt_mask_tops);
+  const uint16_t cks  = (uint16_t)((uint16_t)cfg->clock_div & k_ra_wdt_mask_cks);
+  const uint16_t rpes = (uint16_t)((uint16_t)cfg->window_end & k_ra_wdt_mask_rpes);
+  const uint16_t rpss = (uint16_t)((uint16_t)cfg->window_start & k_ra_wdt_mask_rpss);
 
   uint16_t word = 0U;
-  word |= (uint16_t)(tops << (uint16_t)k_ra_wdt_shift_tops);
-  word |= (uint16_t)(cks << (uint16_t)k_ra_wdt_shift_cks);
-  word |= (uint16_t)(rpes << (uint16_t)k_ra_wdt_shift_rpes);
-  word |= (uint16_t)(rpss << (uint16_t)k_ra_wdt_shift_rpss);
+  word |= (uint16_t)(tops << k_ra_wdt_shift_tops);
+  word |= (uint16_t)(cks << k_ra_wdt_shift_cks);
+  word |= (uint16_t)(rpes << k_ra_wdt_shift_rpes);
+  word |= (uint16_t)(rpss << k_ra_wdt_shift_rpss);
   return word;
 }
 
@@ -231,7 +231,7 @@ static uint16_t internal_pack_wdtcr(const ra_wdt_cfg_t* cfg)
  */
 static void internal_subs_clear_all(void)
 {
-  for (uint8_t i = 0U; i < (uint8_t)k_ra_wdt_max_subs; ++i) {
+  for (uint8_t i = 0U; i < k_ra_wdt_max_subs; ++i) {
     s_wdt_subs[i].fn  = nullptr;
     s_wdt_subs[i].ctx = nullptr;
   }
@@ -261,14 +261,12 @@ static void internal_subs_clear_all(void)
   /* HUM Ch 27.2.4 "WDTRCR : WDT Reset Control Register", p 1262 --
    * RSTIRQS selects internal reset (1) vs NMI / IRQ (0) on
    * underflow or refresh-error. */
-  reg->WDTRCR =
-    (uint8_t)((cfg->on_expiry == k_ra_wdt_on_expiry_reset) ? (uint8_t)k_ra_wdt_rcr_rstirqs : 0U);
+  reg->WDTRCR = (uint8_t)((cfg->on_expiry == k_ra_wdt_on_expiry_reset) ? k_ra_wdt_rcr_rstirqs : 0U);
 
   /* HUM Ch 27.2.5 "WDTCSTPR : WDT Count Stop Control Register",
    * p 1262 -- SLCSTP halts the counter on Sleep / Deep Sleep. */
   reg->WDTCSTPR =
-    (uint8_t)((cfg->stop_in_sleep == k_ra_wdt_sleep_stop_count) ? (uint8_t)k_ra_wdt_cstpr_slcstp
-                                                                : 0U);
+    (uint8_t)((cfg->stop_in_sleep == k_ra_wdt_sleep_stop_count) ? k_ra_wdt_cstpr_slcstp : 0U);
 
   /* HUM Ch 27.2.1 "WDTRR : WDT Refresh Register", p 1257 -- the
    * 0x00 / 0xFF unlock sequence is what arms the down-counter in
@@ -286,7 +284,7 @@ static void internal_subs_clear_all(void)
    * p 1262 -- the strongest "off" the driver can request is to halt
    * the counter while the CPU is asleep. The peripheral itself
    * cannot be disarmed once started. */
-  reg->WDTCSTPR = (uint8_t)k_ra_wdt_cstpr_slcstp;
+  reg->WDTCSTPR = k_ra_wdt_cstpr_slcstp;
   internal_subs_clear_all();
   ra_log_info(s_tag, "wdt_deinit (sleep-stop set)");
   return k_ra_ok;
@@ -305,7 +303,7 @@ void ra_wdt_refresh_deferred(void)
 
 [[nodiscard]] ra_err_t ra_wdt_refresh_for(ra_wdt_instance_t which)
 {
-  if ((uint8_t)which >= (uint8_t)k_ra_wdt_instance_count) {
+  if ((uint8_t)which >= k_ra_wdt_instance_count) {
     return k_ra_err_invalid_arg;
   }
   /* HUM Ch 27.2.1 "WDTRR : WDT Refresh Register", p 1257 */
@@ -322,7 +320,7 @@ void ra_wdt_refresh_deferred(void)
 {
   RA_CHECK_NULL_PTR(out_mask, s_tag, "out_mask must not be nullptr");
   /* HUM Ch 27.2.3 "WDTSR : WDT Status Register", p 1260 */
-  *out_mask = (uint16_t)(ra_wdt()->WDTSR & (uint16_t)k_ra_wdt_status_all);
+  *out_mask = (uint16_t)(ra_wdt()->WDTSR & k_ra_wdt_status_all);
   return k_ra_ok;
 }
 
@@ -332,16 +330,16 @@ void ra_wdt_refresh_deferred(void)
   /* HUM Ch 27.2.3 "WDTSR : WDT Status Register", p 1260 -- UNDFF /
    * REFEF are write-0-to-clear; writing 1 has no effect. We mask
    * out the flag bits and write the result back. */
-  reg->WDTSR = (uint16_t)(reg->WDTSR & (uint16_t)~(uint16_t)k_ra_wdt_status_all);
+  reg->WDTSR = (uint16_t)(reg->WDTSR & (uint16_t)~k_ra_wdt_status_all);
   return k_ra_ok;
 }
 
 [[nodiscard]] ra_err_t ra_wdt_clear_status_blocking(uint16_t mask)
 {
-  if ((mask & ~(uint16_t)k_ra_wdt_status_all) != 0U) {
+  if ((mask & ~k_ra_wdt_status_all) != 0U) {
     return k_ra_err_invalid_arg;
   }
-  if (mask == (uint16_t)k_ra_wdt_status_none) {
+  if (mask == k_ra_wdt_status_none) {
     return k_ra_ok;
   }
 
@@ -352,7 +350,7 @@ void ra_wdt_refresh_deferred(void)
    * into WDTSR, then poll until the targeted bits read 0. The
    * (N + 1) PCLKB cycle latency is bounded by the divider; we
    * cap our polls at k_ra_wdt_clear_max_polls (16384). */
-  for (uint32_t poll = 0U; poll < (uint32_t)k_ra_wdt_clear_max_polls; ++poll) {
+  for (uint32_t poll = 0U; poll < k_ra_wdt_clear_max_polls; ++poll) {
     /* Build a write value in which only the bits NOT in `mask`
      * remain set; those are the bits we want to leave untouched.
      * Bits inside `mask` are written 0 to clear. */
@@ -373,7 +371,7 @@ void ra_wdt_refresh_deferred(void)
   RA_CHECK_NULL_PTR(out_count, s_tag, "out_count must not be nullptr");
   /* HUM Ch 27.2.3 "WDTSR : WDT Status Register", p 1260 -- the live
    * down-counter occupies CNTVAL[13:0]. */
-  *out_count = (uint16_t)(ra_wdt()->WDTSR & (uint16_t)k_ra_wdt_sr_cnt_mask);
+  *out_count = (uint16_t)(ra_wdt()->WDTSR & k_ra_wdt_sr_cnt_mask);
   return k_ra_ok;
 }
 
@@ -388,16 +386,16 @@ void ra_wdt_refresh_deferred(void)
   /* HUM Ch 27.2.2 "WDTCR" p 1259 */
   switch (sel) {
     case k_ra_wdt_timeout_1024:
-      *out_cycles = (uint16_t)k_ra_wdt_cycles_1024;
+      *out_cycles = k_ra_wdt_cycles_1024;
       return k_ra_ok;
     case k_ra_wdt_timeout_4096:
-      *out_cycles = (uint16_t)k_ra_wdt_cycles_4096;
+      *out_cycles = k_ra_wdt_cycles_4096;
       return k_ra_ok;
     case k_ra_wdt_timeout_8192:
-      *out_cycles = (uint16_t)k_ra_wdt_cycles_8192;
+      *out_cycles = k_ra_wdt_cycles_8192;
       return k_ra_ok;
     case k_ra_wdt_timeout_16384:
-      *out_cycles = (uint16_t)k_ra_wdt_cycles_16384;
+      *out_cycles = k_ra_wdt_cycles_16384;
       return k_ra_ok;
     default:
       return k_ra_err_invalid_arg;
@@ -410,22 +408,22 @@ void ra_wdt_refresh_deferred(void)
   /* HUM Ch 27.2.2 "WDTCR" p 1258 */
   switch (div) {
     case k_ra_wdt_clkdiv_4:
-      *out_divisor = (uint16_t)k_ra_wdt_div_value_4;
+      *out_divisor = k_ra_wdt_div_value_4;
       return k_ra_ok;
     case k_ra_wdt_clkdiv_64:
-      *out_divisor = (uint16_t)k_ra_wdt_div_value_64;
+      *out_divisor = k_ra_wdt_div_value_64;
       return k_ra_ok;
     case k_ra_wdt_clkdiv_128:
-      *out_divisor = (uint16_t)k_ra_wdt_div_value_128;
+      *out_divisor = k_ra_wdt_div_value_128;
       return k_ra_ok;
     case k_ra_wdt_clkdiv_512:
-      *out_divisor = (uint16_t)k_ra_wdt_div_value_512;
+      *out_divisor = k_ra_wdt_div_value_512;
       return k_ra_ok;
     case k_ra_wdt_clkdiv_2048:
-      *out_divisor = (uint16_t)k_ra_wdt_div_value_2048;
+      *out_divisor = k_ra_wdt_div_value_2048;
       return k_ra_ok;
     case k_ra_wdt_clkdiv_8192:
-      *out_divisor = (uint16_t)k_ra_wdt_div_value_8192;
+      *out_divisor = k_ra_wdt_div_value_8192;
       return k_ra_ok;
     default:
       return k_ra_err_invalid_arg;
@@ -464,8 +462,8 @@ void ra_wdt_refresh_deferred(void)
   /* The legacy attach API maps to the reserved slot 0 -- that way
    * both APIs share the same dispatch table without stomping each
    * other. ``fn == nullptr`` clears the slot. */
-  s_wdt_subs[(uint8_t)k_ra_wdt_legacy_slot].fn  = fn;
-  s_wdt_subs[(uint8_t)k_ra_wdt_legacy_slot].ctx = ctx;
+  s_wdt_subs[k_ra_wdt_legacy_slot].fn  = fn;
+  s_wdt_subs[k_ra_wdt_legacy_slot].ctx = ctx;
   return k_ra_ok;
 }
 
@@ -475,7 +473,7 @@ void ra_wdt_refresh_deferred(void)
 
   /* Walk the table starting at the first non-legacy slot; slot 0 is
    * reserved for ``ra_wdt_attach_handler``. */
-  for (uint8_t i = 1U; i < (uint8_t)k_ra_wdt_max_subs; ++i) {
+  for (uint8_t i = 1U; i < k_ra_wdt_max_subs; ++i) {
     if (s_wdt_subs[i].fn == nullptr) {
       s_wdt_subs[i].fn  = fn;
       s_wdt_subs[i].ctx = ctx;
@@ -492,7 +490,7 @@ void ra_wdt_refresh_deferred(void)
 
 [[nodiscard]] ra_err_t ra_wdt_unsubscribe(uint8_t slot)
 {
-  if (slot >= (uint8_t)k_ra_wdt_max_subs) {
+  if (slot >= k_ra_wdt_max_subs) {
     return k_ra_err_invalid_arg;
   }
   if (s_wdt_subs[slot].fn == nullptr) {
@@ -506,7 +504,7 @@ void ra_wdt_refresh_deferred(void)
 uint8_t ra_wdt_subscriber_count(void)
 {
   uint8_t count = 0U;
-  for (uint8_t i = 0U; i < (uint8_t)k_ra_wdt_max_subs; ++i) {
+  for (uint8_t i = 0U; i < k_ra_wdt_max_subs; ++i) {
     if (s_wdt_subs[i].fn != nullptr) {
       ++count;
     }
@@ -520,10 +518,10 @@ void ra_wdt_dispatch(void)
   /* HUM Ch 27.2.3 "WDTSR : WDT Status Register", p 1260 -- snapshot
    * the flags before clearing, then hand the latched mask to every
    * registered subscriber. */
-  const uint16_t mask = (uint16_t)(reg->WDTSR & (uint16_t)k_ra_wdt_status_all);
+  const uint16_t mask = (uint16_t)(reg->WDTSR & k_ra_wdt_status_all);
   reg->WDTSR          = (uint16_t)(reg->WDTSR & (uint16_t)~mask);
 
-  for (uint8_t i = 0U; i < (uint8_t)k_ra_wdt_max_subs; ++i) {
+  for (uint8_t i = 0U; i < k_ra_wdt_max_subs; ++i) {
     const ra_wdt_event_fn_t fn  = s_wdt_subs[i].fn;
     void* const             ctx = s_wdt_subs[i].ctx;
     if (fn != nullptr) {
@@ -542,24 +540,24 @@ void ra_wdt_dispatch(void)
   /* HUM Ch 14.2.15 "NMICLR" p 544 -- W1C any stale WDT NMI status
    * before unmasking the source so we don't immediately fire on a
    * pre-existing latched flag. */
-  const ra_err_t e_clr = ra_icu_nmi_clear((uint32_t)k_ra_wdt_nmier_wdten_mask);
+  const ra_err_t e_clr = ra_icu_nmi_clear(k_ra_wdt_nmier_wdten_mask);
   if (e_clr != k_ra_ok) {
     return e_clr;
   }
   /* HUM Ch 14.2.14 "NMIER" p 542 -- WDTEN bit 1 (0x2) routes the
    * WDT0 underflow / refresh-error to the Cortex-M85 NMI line. */
-  return ra_icu_nmi_enable((uint32_t)k_ra_wdt_nmier_wdten_mask);
+  return ra_icu_nmi_enable(k_ra_wdt_nmier_wdten_mask);
 }
 
 [[nodiscard]] ra_err_t ra_wdt_uninstall_nmi(void)
 {
   /* HUM Ch 14.2.14 "NMIER" p 542 */
-  const ra_err_t e_dis = ra_icu_nmi_disable((uint32_t)k_ra_wdt_nmier_wdten_mask);
+  const ra_err_t e_dis = ra_icu_nmi_disable(k_ra_wdt_nmier_wdten_mask);
   if (e_dis != k_ra_ok) {
     return e_dis;
   }
   /* HUM Ch 14.2.15 "NMICLR" p 544 */
-  return ra_icu_nmi_clear((uint32_t)k_ra_wdt_nmier_wdten_mask);
+  return ra_icu_nmi_clear(k_ra_wdt_nmier_wdten_mask);
 }
 
 /* =============================================================================
@@ -572,7 +570,7 @@ void ra_wdt_dispatch(void)
   volatile r_wdt_regs_t* reg = ra_wdt();
   /* HUM Ch 27.2.5 "WDTCSTPR : WDT Count Stop Control Register",
    * p 1262 -- set SLCSTP to halt the counter on Sleep entry. */
-  reg->WDTCSTPR = (uint8_t)k_ra_wdt_cstpr_slcstp;
+  reg->WDTCSTPR = k_ra_wdt_cstpr_slcstp;
   return k_ra_ok;
 }
 
@@ -599,7 +597,7 @@ void ra_wdt_dispatch(void)
 [[nodiscard]] ra_err_t ra_wdt_ofs_get(ra_wdt_instance_t which, ra_wdt_ofs_decoded_t* out)
 {
   RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
-  if ((uint8_t)which >= (uint8_t)k_ra_wdt_instance_count) {
+  if ((uint8_t)which >= k_ra_wdt_instance_count) {
     return k_ra_err_invalid_arg;
   }
 
@@ -617,20 +615,14 @@ void ra_wdt_dispatch(void)
     return e;
   }
 
-  const uint8_t strt =
-    (uint8_t)((ofsm >> (uint32_t)k_ra_wdt_ofs_shift_strt) & (uint32_t)k_ra_wdt_ofs_mask_strt);
-  const uint8_t tops =
-    (uint8_t)((ofsm >> (uint32_t)k_ra_wdt_ofs_shift_tops) & (uint32_t)k_ra_wdt_ofs_mask_tops);
-  const uint8_t cks =
-    (uint8_t)((ofsm >> (uint32_t)k_ra_wdt_ofs_shift_cks) & (uint32_t)k_ra_wdt_ofs_mask_cks);
-  const uint8_t rpes =
-    (uint8_t)((ofsm >> (uint32_t)k_ra_wdt_ofs_shift_rpes) & (uint32_t)k_ra_wdt_ofs_mask_rpes);
-  const uint8_t rpss =
-    (uint8_t)((ofsm >> (uint32_t)k_ra_wdt_ofs_shift_rpss) & (uint32_t)k_ra_wdt_ofs_mask_rpss);
+  const uint8_t strt = (uint8_t)((ofsm >> k_ra_wdt_ofs_shift_strt) & k_ra_wdt_ofs_mask_strt);
+  const uint8_t tops = (uint8_t)((ofsm >> k_ra_wdt_ofs_shift_tops) & k_ra_wdt_ofs_mask_tops);
+  const uint8_t cks  = (uint8_t)((ofsm >> k_ra_wdt_ofs_shift_cks) & k_ra_wdt_ofs_mask_cks);
+  const uint8_t rpes = (uint8_t)((ofsm >> k_ra_wdt_ofs_shift_rpes) & k_ra_wdt_ofs_mask_rpes);
+  const uint8_t rpss = (uint8_t)((ofsm >> k_ra_wdt_ofs_shift_rpss) & k_ra_wdt_ofs_mask_rpss);
   const uint8_t rstirqs =
-    (uint8_t)((ofsm >> (uint32_t)k_ra_wdt_ofs_shift_rstirqs) & (uint32_t)k_ra_wdt_ofs_mask_rstirqs);
-  const uint8_t stpctl =
-    (uint8_t)((ofsm >> (uint32_t)k_ra_wdt_ofs_shift_stpctl) & (uint32_t)k_ra_wdt_ofs_mask_stpctl);
+    (uint8_t)((ofsm >> k_ra_wdt_ofs_shift_rstirqs) & k_ra_wdt_ofs_mask_rstirqs);
+  const uint8_t stpctl = (uint8_t)((ofsm >> k_ra_wdt_ofs_shift_stpctl) & k_ra_wdt_ofs_mask_stpctl);
 
   out->cfg.timeout       = (ra_wdt_timeout_sel_t)tops;
   out->cfg.clock_div     = (ra_wdt_clock_div_t)cks;

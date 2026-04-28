@@ -108,9 +108,9 @@ extern "C" {
  * into the assembled REG00 word.
  */
 typedef enum : uint32_t {
-  k_ra_dotf_key_size_128 = (uint32_t)k_ra_dotf_reg00_key_size_128, /**< 128-bit AES.*/
-  k_ra_dotf_key_size_192 = (uint32_t)k_ra_dotf_reg00_key_size_192, /**< 192-bit AES.*/
-  k_ra_dotf_key_size_256 = (uint32_t)k_ra_dotf_reg00_key_size_256, /**< 256-bit AES.*/
+  k_ra_dotf_key_size_128 = k_ra_dotf_reg00_key_size_128, /**< 128-bit AES.*/
+  k_ra_dotf_key_size_192 = k_ra_dotf_reg00_key_size_192, /**< 192-bit AES.*/
+  k_ra_dotf_key_size_256 = k_ra_dotf_reg00_key_size_256, /**< 256-bit AES.*/
 } ra_dotf_key_size_t;
 
 /**

@@ -85,8 +85,7 @@ static ra_gpt_state_t s_gpt_state[k_ra_gpt_channel_count];
 
 static uint32_t internal_gtcr(ra_gpt_mode_t mode, ra_gpt_prescaler_t ps)
 {
-  return ((uint32_t)mode << (uint32_t)k_ra_gpt_gtcr_md_shift) |
-         ((uint32_t)ps << (uint32_t)k_ra_gpt_gtcr_tpcs_shift);
+  return ((uint32_t)mode << k_ra_gpt_gtcr_md_shift) | ((uint32_t)ps << k_ra_gpt_gtcr_tpcs_shift);
 }
 
 ra_err_t ra_gpt_start_free_run(uint8_t channel, uint32_t period)
@@ -100,13 +99,13 @@ ra_err_t ra_gpt_start_free_run(uint8_t channel, uint32_t period)
   const ra_err_t mst_err = ra_mstp_enable(s_gpt_mstp_table[channel]);
   RA_RETURN_ON_ERROR(mst_err, s_tag, "gpt_start: mstp enable"); /* GCOVR_EXCL_BR_LINE */
 
-  reg->GTWP  = (uint32_t)k_ra_gtwp_key_unlock;
+  reg->GTWP  = k_ra_gtwp_key_unlock;
   reg->GTSTP = 1UL;          /* Stop if running. */
   reg->GTCR  = 0x00000001UL; /* Saw-wave PWM mode. */
   reg->GTPR  = period;
   reg->GTCNT = 0U;
   reg->GTSTR = 1UL; /* Start. */
-  reg->GTWP  = (uint32_t)k_ra_gtwp_key_lock;
+  reg->GTWP  = k_ra_gtwp_key_lock;
 
   ra_log_info_val(s_tag, "start channel", (uint32_t)channel);
   return k_ra_ok;
@@ -117,9 +116,9 @@ ra_err_t ra_gpt_stop(uint8_t channel)
   volatile r_gpt_channel_regs_t* reg = ra_gpt(channel);
   RA_CHECK_NULL_PTR(reg, s_tag, "channel out of range");
 
-  reg->GTWP  = (uint32_t)k_ra_gtwp_key_unlock;
+  reg->GTWP  = k_ra_gtwp_key_unlock;
   reg->GTSTP = 1UL;
-  reg->GTWP  = (uint32_t)k_ra_gtwp_key_lock;
+  reg->GTWP  = k_ra_gtwp_key_lock;
   return k_ra_ok;
 }
 
@@ -148,8 +147,8 @@ ra_err_t ra_gpt_init(uint8_t channel, const ra_gpt_cfg_t* cfg)
   const ra_err_t mst_err = ra_mstp_enable(s_gpt_mstp_table[channel]);
   RA_RETURN_ON_ERROR(mst_err, s_tag, "gpt_init: mstp enable");
 
-  reg->GTWP  = (uint32_t)k_ra_gtwp_key_unlock;
-  reg->GTSTP = (uint32_t)k_ra_gpt_gtstp_stop;
+  reg->GTWP  = k_ra_gtwp_key_unlock;
+  reg->GTSTP = k_ra_gpt_gtstp_stop;
   reg->GTCR  = internal_gtcr(cfg->mode, cfg->prescaler);
   reg->GTPR  = cfg->period;
   reg->GTPBR = cfg->period;
@@ -159,10 +158,10 @@ ra_err_t ra_gpt_init(uint8_t channel, const ra_gpt_cfg_t* cfg)
   reg->GTCCR[1] = cfg->duty_b;
   reg->GTCNT    = 0U;
   if (cfg->auto_start) {
-    reg->GTCR |= (uint32_t)k_ra_gpt_gtcr_cst_set;
-    reg->GTSTR = (uint32_t)k_ra_gpt_gtstr_start;
+    reg->GTCR |= k_ra_gpt_gtcr_cst_set;
+    reg->GTSTR = k_ra_gpt_gtstr_start;
   }
-  reg->GTWP = (uint32_t)k_ra_gtwp_key_lock;
+  reg->GTWP = k_ra_gtwp_key_lock;
 
   s_gpt_state[channel].configured = true;
   ra_log_info_val(s_tag, "init channel", (uint32_t)channel);
@@ -174,10 +173,10 @@ ra_err_t ra_gpt_deinit(uint8_t channel)
   volatile r_gpt_channel_regs_t* reg = ra_gpt(channel);
   RA_CHECK_NULL_PTR(reg, s_tag, "channel out of range");
 
-  reg->GTWP  = (uint32_t)k_ra_gtwp_key_unlock;
-  reg->GTSTP = (uint32_t)k_ra_gpt_gtstp_stop;
+  reg->GTWP  = k_ra_gtwp_key_unlock;
+  reg->GTSTP = k_ra_gpt_gtstp_stop;
   reg->GTCR  = 0U;
-  reg->GTWP  = (uint32_t)k_ra_gtwp_key_lock;
+  reg->GTWP  = k_ra_gtwp_key_lock;
 
   s_gpt_state[channel].fn         = nullptr;
   s_gpt_state[channel].ctx        = nullptr;
@@ -191,10 +190,10 @@ ra_err_t ra_gpt_set_period(uint8_t channel, uint32_t period)
   volatile r_gpt_channel_regs_t* reg = ra_gpt(channel);
   RA_CHECK_NULL_PTR(reg, s_tag, "channel out of range");
 
-  reg->GTWP  = (uint32_t)k_ra_gtwp_key_unlock;
+  reg->GTWP  = k_ra_gtwp_key_unlock;
   reg->GTPR  = period;
   reg->GTPBR = period;
-  reg->GTWP  = (uint32_t)k_ra_gtwp_key_lock;
+  reg->GTWP  = k_ra_gtwp_key_lock;
   return k_ra_ok;
 }
 
@@ -202,13 +201,13 @@ ra_err_t ra_gpt_set_duty(uint8_t channel, ra_gpt_ccr_sel_t which, uint32_t value
 {
   volatile r_gpt_channel_regs_t* reg = ra_gpt(channel);
   RA_CHECK_NULL_PTR(reg, s_tag, "channel out of range");
-  if ((uint8_t)which > (uint8_t)k_ra_gpt_ccr_b) {
+  if ((uint8_t)which > k_ra_gpt_ccr_b) {
     return k_ra_err_invalid_arg;
   }
 
-  reg->GTWP                  = (uint32_t)k_ra_gtwp_key_unlock;
+  reg->GTWP                  = k_ra_gtwp_key_unlock;
   reg->GTCCR[(uint8_t)which] = value;
-  reg->GTWP                  = (uint32_t)k_ra_gtwp_key_lock;
+  reg->GTWP                  = k_ra_gtwp_key_lock;
   return k_ra_ok;
 }
 
@@ -218,7 +217,7 @@ ra_err_t ra_gpt_get_status(uint8_t channel, uint32_t* out_mask)
   volatile r_gpt_channel_regs_t* reg = ra_gpt(channel);
   RA_CHECK_NULL_PTR(reg, s_tag, "channel out of range");
 
-  *out_mask = reg->GTST & (uint32_t)k_ra_gpt_gtst_mask;
+  *out_mask = reg->GTST & k_ra_gpt_gtst_mask;
   return k_ra_ok;
 }
 
@@ -229,7 +228,7 @@ ra_err_t ra_gpt_clear_status(uint8_t channel, uint32_t mask)
 
   /* GTST bits are cleared by writing the current value with target bits zero. */
   const uint32_t current = reg->GTST;
-  reg->GTST              = current & ~(mask & (uint32_t)k_ra_gpt_gtst_mask);
+  reg->GTST              = current & ~(mask & k_ra_gpt_gtst_mask);
   return k_ra_ok;
 }
 
@@ -250,9 +249,9 @@ ra_err_t ra_gpt_enter_stop(uint8_t channel)
   }
   volatile r_gpt_channel_regs_t* reg = ra_gpt(channel);
   if (reg != nullptr) {
-    reg->GTWP  = (uint32_t)k_ra_gtwp_key_unlock;
-    reg->GTSTP = (uint32_t)k_ra_gpt_gtstp_stop;
-    reg->GTWP  = (uint32_t)k_ra_gtwp_key_lock;
+    reg->GTWP  = k_ra_gtwp_key_unlock;
+    reg->GTSTP = k_ra_gpt_gtstp_stop;
+    reg->GTWP  = k_ra_gtwp_key_lock;
   }
   return ra_mstp_disable(s_gpt_mstp_table[channel]);
 }
@@ -352,20 +351,20 @@ static void internal_dispatch(uint8_t channel, uint32_t status_mask)
 
 void ra_gpt_dispatch_ovf(uint8_t channel)
 {
-  internal_dispatch(channel, (uint32_t)k_ra_gpt_status_overflow);
+  internal_dispatch(channel, k_ra_gpt_status_overflow);
 }
 
 void ra_gpt_dispatch_und(uint8_t channel)
 {
-  internal_dispatch(channel, (uint32_t)k_ra_gpt_status_underflow);
+  internal_dispatch(channel, k_ra_gpt_status_underflow);
 }
 
 void ra_gpt_dispatch_ccra(uint8_t channel)
 {
-  internal_dispatch(channel, (uint32_t)k_ra_gpt_status_ccra);
+  internal_dispatch(channel, k_ra_gpt_status_ccra);
 }
 
 void ra_gpt_dispatch_ccrb(uint8_t channel)
 {
-  internal_dispatch(channel, (uint32_t)k_ra_gpt_status_ccrb);
+  internal_dispatch(channel, k_ra_gpt_status_ccrb);
 }

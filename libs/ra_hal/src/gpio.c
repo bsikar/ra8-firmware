@@ -55,10 +55,10 @@ static ra_err_t internal_claim(ra_port_pin_t pin, ra_port_t* out_port, ra_pin_t*
 {
   const ra_port_t p = RA_PIN_PORT(pin);
   const ra_pin_t  b = RA_PIN_PIN(pin);
-  if ((uint8_t)p > (uint8_t)k_ra_port_max) {
+  if ((uint8_t)p > k_ra_port_max) {
     return k_ra_err_gpio_invalid_port;
   }
-  if ((uint8_t)b > (uint8_t)k_ra_pin_max) {
+  if ((uint8_t)b > k_ra_pin_max) {
     return k_ra_err_gpio_invalid_pin;
   }
   const ra_err_t err = ra_pin_validator_claim(pin, s_tag);
@@ -87,8 +87,8 @@ ra_err_t ra_gpio_output_init(ra_port_pin_t pin, ra_level_t init_level)
     return k_ra_err_hw_unmapped;
   }
 
-  const uint32_t new_val = (uint32_t)((init_level == k_ra_level_high) ? k_ra_pfs_mask_podr : 0U) |
-                           (uint32_t)k_ra_pfs_mask_pdr;
+  const uint32_t new_val =
+    (uint32_t)((init_level == k_ra_level_high) ? k_ra_pfs_mask_podr : 0U) | k_ra_pfs_mask_pdr;
 
   ra_pfs_pwpr_unlock();
   *pfs = new_val;
@@ -117,7 +117,7 @@ ra_err_t ra_gpio_input_init(ra_port_pin_t pin, ra_pin_pull_t pull)
   /* PMR=0 (GPIO), PDR=0 (input), PCR according to pull. */
   uint32_t new_val = 0U;
   if (pull == k_ra_pull_up) {
-    new_val |= (uint32_t)k_ra_pfs_mask_pcr;
+    new_val |= k_ra_pfs_mask_pcr;
   }
 
   ra_pfs_pwpr_unlock();
@@ -132,10 +132,10 @@ ra_err_t ra_gpio_write(ra_port_pin_t pin, ra_level_t level)
 {
   const ra_port_t port = RA_PIN_PORT(pin);
   const ra_pin_t  bit  = RA_PIN_PIN(pin);
-  if ((uint8_t)port > (uint8_t)k_ra_port_max) {
+  if ((uint8_t)port > k_ra_port_max) {
     return k_ra_err_gpio_invalid_port;
   }
-  if ((uint8_t)bit > (uint8_t)k_ra_pin_max) {
+  if ((uint8_t)bit > k_ra_pin_max) {
     return k_ra_err_gpio_invalid_pin;
   }
 
@@ -160,10 +160,10 @@ ra_err_t ra_gpio_toggle(ra_port_pin_t pin)
 {
   const ra_port_t port = RA_PIN_PORT(pin);
   const ra_pin_t  bit  = RA_PIN_PIN(pin);
-  if ((uint8_t)port > (uint8_t)k_ra_port_max) {
+  if ((uint8_t)port > k_ra_port_max) {
     return k_ra_err_gpio_invalid_port;
   }
-  if ((uint8_t)bit > (uint8_t)k_ra_pin_max) {
+  if ((uint8_t)bit > k_ra_pin_max) {
     return k_ra_err_gpio_invalid_pin;
   }
 
@@ -189,10 +189,10 @@ ra_err_t ra_gpio_read(ra_port_pin_t pin, ra_level_t* out_level)
   RA_CHECK_NULL_PTR(out_level, s_tag, "out_level must not be nullptr");
   const ra_port_t port = RA_PIN_PORT(pin);
   const ra_pin_t  bit  = RA_PIN_PIN(pin);
-  if ((uint8_t)port > (uint8_t)k_ra_port_max) {
+  if ((uint8_t)port > k_ra_port_max) {
     return k_ra_err_gpio_invalid_port;
   }
-  if ((uint8_t)bit > (uint8_t)k_ra_pin_max) {
+  if ((uint8_t)bit > k_ra_pin_max) {
     return k_ra_err_gpio_invalid_pin;
   }
 
@@ -218,10 +218,10 @@ ra_err_t ra_pfs_route_peripheral(ra_port_pin_t pin, ra_psel_t psel, const char* 
 
   const ra_port_t port = RA_PIN_PORT(pin);
   const ra_pin_t  bit  = RA_PIN_PIN(pin);
-  if ((uint8_t)port > (uint8_t)k_ra_port_max) {
+  if ((uint8_t)port > k_ra_port_max) {
     return k_ra_err_gpio_invalid_port;
   }
-  if ((uint8_t)bit > (uint8_t)k_ra_pin_max) {
+  if ((uint8_t)bit > k_ra_pin_max) {
     return k_ra_err_gpio_invalid_pin;
   }
 
@@ -238,8 +238,7 @@ ra_err_t ra_pfs_route_peripheral(ra_port_pin_t pin, ra_psel_t psel, const char* 
   }
 
   /* PMR=1 (peripheral), PSEL=requested code, everything else reset. */
-  const uint32_t new_val =
-    (uint32_t)k_ra_pfs_mask_pmr | (((uint32_t)psel) << (uint32_t)k_ra_pfs_bit_psel0);
+  const uint32_t new_val = k_ra_pfs_mask_pmr | (((uint32_t)psel) << (uint32_t)k_ra_pfs_bit_psel0);
 
   ra_pfs_pwpr_unlock();
   *pfs = new_val;
@@ -267,7 +266,7 @@ ra_err_t ra_gpio_attach_irq(ra_port_pin_t            pin,
 {
   RA_CHECK_NULL_PTR((void*)cfg, s_tag, "cfg must not be nullptr");
   RA_CHECK_NULL_PTR((void*)handler, s_tag, "handler must not be nullptr");
-  if (irq_num > (uint8_t)k_ra_gpio_irq_num_max) {
+  if (irq_num > k_ra_gpio_irq_num_max) {
     return k_ra_err_invalid_arg;
   }
 
@@ -310,7 +309,7 @@ ra_err_t ra_gpio_attach_irq(ra_port_pin_t            pin,
 
 ra_err_t ra_gpio_detach_irq(ra_port_pin_t pin, uint8_t irq_num)
 {
-  if (irq_num > (uint8_t)k_ra_gpio_irq_num_max) {
+  if (irq_num > k_ra_gpio_irq_num_max) {
     return k_ra_err_invalid_arg;
   }
 

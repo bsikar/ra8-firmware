@@ -282,7 +282,7 @@ typedef struct {
  */
 static inline volatile r_ssie_regs_t* ra_ssie(uint8_t channel)
 {
-  if ((uint16_t)channel >= (uint16_t)k_ra_ssie_channel_count) {
+  if ((uint16_t)channel >= k_ra_ssie_channel_count) {
     return nullptr;
   }
   return (volatile r_ssie_regs_t*)(k_ra_ssie0_base_addr +

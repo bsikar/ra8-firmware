@@ -196,9 +196,8 @@ static bool s_initialized;
  */
 typedef enum : uint32_t {
   k_ra_mipi_dsi_clear_all = 0xFFFFFFFFUL, /**< RW1C all-ones write mask. */
-  k_ra_mipi_dsi_isr_all   = (uint32_t)k_ra_mipi_dsi_isr_sq0 | (uint32_t)k_ra_mipi_dsi_isr_sq1 |
-                            (uint32_t)k_ra_mipi_dsi_isr_vm | (uint32_t)k_ra_mipi_dsi_isr_rcv |
-                            (uint32_t)k_ra_mipi_dsi_isr_ferr | (uint32_t)k_ra_mipi_dsi_isr_ppi,
+  k_ra_mipi_dsi_isr_all   = k_ra_mipi_dsi_isr_sq0 | k_ra_mipi_dsi_isr_sq1 | k_ra_mipi_dsi_isr_vm |
+                            k_ra_mipi_dsi_isr_rcv | k_ra_mipi_dsi_isr_ferr | k_ra_mipi_dsi_isr_ppi,
   k_ra_mipi_dsi_byte_mask = 0xFFUL, /**< 8-bit byte field.        */
   k_ra_mipi_dsi_vc_mask   = 0x3UL,  /**< 2-bit virtual-channel.   */
   k_ra_mipi_dsi_dt_mask   = 0x3FUL, /**< 6-bit DSI Data Type.     */
@@ -260,17 +259,17 @@ static void internal_ra_mipi_dsi_clear_all_status(void)
 {
   volatile r_mipi_dsi_regs_t* reg = ra_mipi_dsi();
   /* HUM Ch 65.2 "SQCH0SCR : Sequence Channel 0 Status Clear", p 3934 */
-  reg->SQCH0SCR = (uint32_t)k_ra_mipi_dsi_sqch_clear_all;
+  reg->SQCH0SCR = k_ra_mipi_dsi_sqch_clear_all;
   /* HUM Ch 65.2 "SQCH1SCR : Sequence Channel 1 Status Clear", p 3934 */
-  reg->SQCH1SCR = (uint32_t)k_ra_mipi_dsi_sqch_clear_all;
+  reg->SQCH1SCR = k_ra_mipi_dsi_sqch_clear_all;
   /* HUM Ch 65.2 "VMSCR : Video Mode Status Clear", p 3893 */
-  reg->VMSCR = (uint32_t)k_ra_mipi_dsi_vmsr_clear_all;
+  reg->VMSCR = k_ra_mipi_dsi_vmsr_clear_all;
   /* HUM Ch 65.2 "RXSCR : Receive Status Clear", p 3870 */
-  reg->RXSCR = (uint32_t)k_ra_mipi_dsi_rxsr_clear_all;
+  reg->RXSCR = k_ra_mipi_dsi_rxsr_clear_all;
   /* HUM Ch 65.2 "FERRSCR : Fatal Error Status Clear", p 3884 */
-  reg->FERRSCR = (uint32_t)k_ra_mipi_dsi_ferrsr_clear_all;
+  reg->FERRSCR = k_ra_mipi_dsi_ferrsr_clear_all;
   /* HUM Ch 65.2 "PLSCR : PHY Lane Status Clear", p 3889 */
-  reg->PLSCR = (uint32_t)k_ra_mipi_dsi_plsr_clear_all;
+  reg->PLSCR = k_ra_mipi_dsi_plsr_clear_all;
 }
 
 /**
@@ -281,9 +280,9 @@ static void internal_ra_mipi_dsi_clear_all_status(void)
  */
 static uint32_t internal_ra_mipi_dsi_make_txsetr(const ra_mipi_dsi_config_t* cfg)
 {
-  uint32_t v = (uint32_t)k_ra_mipi_dsi_txset_clen | (uint32_t)k_ra_mipi_dsi_txset_dlen;
+  uint32_t v = k_ra_mipi_dsi_txset_clen | k_ra_mipi_dsi_txset_dlen;
   if (cfg->lane_count == k_ra_mipi_dsi_lanes_2) {
-    v |= (uint32_t)k_ra_mipi_dsi_txset_lane2;
+    v |= k_ra_mipi_dsi_txset_lane2;
   }
   return v;
 }
@@ -296,21 +295,21 @@ static uint32_t internal_ra_mipi_dsi_make_txsetr(const ra_mipi_dsi_config_t* cfg
  */
 static uint32_t internal_ra_mipi_dsi_make_dsisetr(const ra_mipi_dsi_config_t* cfg)
 {
-  uint32_t v = ((uint32_t)cfg->max_return_packet_size & (uint32_t)k_ra_mipi_dsi_dsisetr_mrpsz_mask);
+  uint32_t v = ((uint32_t)cfg->max_return_packet_size & k_ra_mipi_dsi_dsisetr_mrpsz_mask);
   if (cfg->ecc_check_enable) {
-    v |= (uint32_t)k_ra_mipi_dsi_dsisetr_eccen;
+    v |= k_ra_mipi_dsi_dsisetr_eccen;
   }
   if (cfg->eotp_enable) {
-    v |= (uint32_t)k_ra_mipi_dsi_dsisetr_eotpen;
+    v |= k_ra_mipi_dsi_dsisetr_eotpen;
   }
   if (cfg->scramble_enable) {
-    v |= (uint32_t)k_ra_mipi_dsi_dsisetr_scren;
+    v |= k_ra_mipi_dsi_dsisetr_scren;
   }
   if (cfg->tearing_detect_enable) {
-    v |= (uint32_t)k_ra_mipi_dsi_dsisetr_extemd;
+    v |= k_ra_mipi_dsi_dsisetr_extemd;
   }
   v |= (((uint32_t)cfg->crc_check_vc_mask) << (uint32_t)k_dsisetr_vc_crc_shift) &
-       (uint32_t)k_ra_mipi_dsi_dsisetr_vc_crc_mask;
+       k_ra_mipi_dsi_dsisetr_vc_crc_mask;
   return v;
 }
 
@@ -327,10 +326,10 @@ static uint32_t internal_ra_mipi_dsi_make_dsc_a(const ra_mipi_dsi_command_t* cmd
   /* Long packets put the word count in DATA0/DATA1; short packets put
    * the first two parameter bytes there. */
   const uint8_t low_nibble = (uint8_t)((uint32_t)cmd->cmd_id & 0x0FU);
-  const bool    is_long    = (low_nibble > 0x08U);
+  const bool    is_long    = low_nibble > 0x08U;
   if (is_long) {
-    data0 = (uint8_t)(cmd->tx_len & (uint32_t)k_ra_mipi_dsi_byte_mask);
-    data1 = (uint8_t)((cmd->tx_len >> (uint32_t)k_shift_8) & (uint32_t)k_ra_mipi_dsi_byte_mask);
+    data0 = (uint8_t)(cmd->tx_len & k_ra_mipi_dsi_byte_mask);
+    data1 = (uint8_t)((cmd->tx_len >> (uint32_t)k_shift_8) & k_ra_mipi_dsi_byte_mask);
   } else {
     if ((cmd->p_tx_buffer != nullptr) && (cmd->tx_len > 0U)) {
       data0 = cmd->p_tx_buffer[0];
@@ -341,22 +340,19 @@ static uint32_t internal_ra_mipi_dsi_make_dsc_a(const ra_mipi_dsi_command_t* cmd
   }
 
   /* HUM Ch 65.2 "SQCH0DSC0AR : Sequence Channel 0 Descriptor 0 Setting A", p 3925 */
-  uint32_t v = (((uint32_t)data0 & (uint32_t)k_ra_mipi_dsi_byte_mask)
-                << (uint32_t)k_ra_mipi_dsi_dsc0a_shift_data0) |
-               (((uint32_t)data1 & (uint32_t)k_ra_mipi_dsi_byte_mask)
-                << (uint32_t)k_ra_mipi_dsi_dsc0a_shift_data1) |
-               (((uint32_t)cmd->cmd_id & (uint32_t)k_ra_mipi_dsi_dt_mask)
-                << (uint32_t)k_ra_mipi_dsi_dsc0a_shift_dt) |
-               (((uint32_t)cmd->virtual_channel & (uint32_t)k_ra_mipi_dsi_vc_mask)
-                << (uint32_t)k_ra_mipi_dsi_dsc0a_shift_vc);
+  uint32_t v =
+    (((uint32_t)data0 & k_ra_mipi_dsi_byte_mask) << (uint32_t)k_ra_mipi_dsi_dsc0a_shift_data0) |
+    (((uint32_t)data1 & k_ra_mipi_dsi_byte_mask) << (uint32_t)k_ra_mipi_dsi_dsc0a_shift_data1) |
+    (((uint32_t)cmd->cmd_id & k_ra_mipi_dsi_dt_mask) << (uint32_t)k_ra_mipi_dsi_dsc0a_shift_dt) |
+    (((uint32_t)cmd->virtual_channel & k_ra_mipi_dsi_vc_mask)
+     << (uint32_t)k_ra_mipi_dsi_dsc0a_shift_vc);
   if (is_long) {
     v |= (1UL << (uint32_t)k_ra_mipi_dsi_dsc0a_shift_fmt);
   }
   if (cmd->low_power) {
     v |= (1UL << (uint32_t)k_ra_mipi_dsi_dsc0a_shift_spd);
   }
-  v |= (((uint32_t)cmd->bta & (uint32_t)k_ra_mipi_dsi_bta_mask)
-        << (uint32_t)k_ra_mipi_dsi_dsc0a_shift_bta);
+  v |= (((uint32_t)cmd->bta & k_ra_mipi_dsi_bta_mask) << (uint32_t)k_ra_mipi_dsi_dsc0a_shift_bta);
   return v;
 }
 
@@ -368,11 +364,11 @@ static uint32_t internal_ra_mipi_dsi_make_dsc_a(const ra_mipi_dsi_command_t* cmd
  */
 static uint32_t internal_ra_mipi_dsi_make_dsc_c(const ra_mipi_dsi_command_t* cmd)
 {
-  uint32_t v = (uint32_t)k_ra_mipi_dsi_dsc0c_finact;
+  uint32_t v = k_ra_mipi_dsi_dsc0c_finact;
   if (cmd->aux_operation) {
-    v |= (uint32_t)k_ra_mipi_dsi_dsc0c_auxop;
-    v |= (((uint32_t)cmd->action_code) << (uint32_t)k_ra_mipi_dsi_dsc0c_actcode_shift) &
-         (uint32_t)k_ra_mipi_dsi_dsc0c_actcode_mask;
+    v |= k_ra_mipi_dsi_dsc0c_auxop;
+    v |= (((uint32_t)cmd->action_code) << k_ra_mipi_dsi_dsc0c_actcode_shift) &
+         k_ra_mipi_dsi_dsc0c_actcode_mask;
   }
   return v;
 }
@@ -387,7 +383,7 @@ static void internal_ra_mipi_dsi_stage_payload(const uint8_t* data, uint16_t len
 {
   volatile r_mipi_dsi_regs_t* reg      = ra_mipi_dsi();
   uint32_t                    words[4] = {0U, 0U, 0U, 0U};
-  const uint16_t              cap      = (uint16_t)k_ra_mipi_dsi_payload_max;
+  const uint16_t              cap      = k_ra_mipi_dsi_payload_max;
   const uint16_t              eff      = (len < cap) ? len : cap;
   for (uint16_t i = 0U; i < eff; ++i) {
     const uint16_t word_idx = (uint16_t)(i / 4U);
@@ -417,10 +413,10 @@ static void internal_ra_mipi_dsi_stage_payload(const uint8_t* data, uint16_t len
 static void internal_ra_mipi_dsi_pulse_start(uint8_t channel)
 {
   volatile r_mipi_dsi_regs_t* reg = ra_mipi_dsi();
-  const uint32_t ch0_word         = (uint32_t)k_ra_mipi_dsi_sqch_chsel |
-                                    ((channel == 0U) ? (uint32_t)k_ra_mipi_dsi_sqch_start : 0U);
-  const uint32_t ch1_word         = (uint32_t)k_ra_mipi_dsi_sqch_chsel |
-                                    ((channel == 1U) ? (uint32_t)k_ra_mipi_dsi_sqch_start : 0U);
+  const uint32_t              ch0_word =
+    k_ra_mipi_dsi_sqch_chsel | ((channel == 0U) ? k_ra_mipi_dsi_sqch_start : 0U);
+  const uint32_t ch1_word =
+    k_ra_mipi_dsi_sqch_chsel | ((channel == 1U) ? k_ra_mipi_dsi_sqch_start : 0U);
   /* HUM Ch 65.2 "SQCH0SET0R : Sequence Channel 0 Setting 0", p 3920 */
   reg->SQCH0SET0R = ch0_word;
   /* HUM Ch 65.2 "SQCH1SET0R : Sequence Channel 1 Setting 0", p 3922 */
@@ -435,21 +431,21 @@ static void internal_ra_mipi_dsi_pulse_start(uint8_t channel)
  */
 static void internal_ra_mipi_dsi_decode_rx(uint32_t raw, ra_mipi_dsi_rx_result_t* out_result)
 {
-  out_result->data[0] = (uint8_t)(raw & (uint32_t)k_ra_mipi_dsi_rxrss_data0_mask);
+  out_result->data[0] = (uint8_t)(raw & k_ra_mipi_dsi_rxrss_data0_mask);
   out_result->data[1] =
-    (uint8_t)((raw & (uint32_t)k_ra_mipi_dsi_rxrss_data1_mask) >> (uint32_t)k_rxrss_data1_shift);
+    (uint8_t)((raw & k_ra_mipi_dsi_rxrss_data1_mask) >> (uint32_t)k_rxrss_data1_shift);
   out_result->cmd_id =
-    (ra_mipi_dsi_dt_t)((raw & (uint32_t)k_ra_mipi_dsi_rxrss_dt_mask) >> (uint32_t)k_rxrss_dt_shift);
+    (ra_mipi_dsi_dt_t)((raw & k_ra_mipi_dsi_rxrss_dt_mask) >> (uint32_t)k_rxrss_dt_shift);
   out_result->virtual_channel =
-    (ra_mipi_dsi_vc_t)((raw & (uint32_t)k_ra_mipi_dsi_rxrss_vc_mask) >> (uint32_t)k_rxrss_vc_shift);
-  out_result->long_packet          = ((raw & (uint32_t)k_ra_mipi_dsi_rxrss_fmt) != 0U);
-  out_result->rx_success           = ((raw & (uint32_t)k_ra_mipi_dsi_rxrss_rxsuc) != 0U);
-  out_result->rx_fatal_error       = ((raw & (uint32_t)k_ra_mipi_dsi_rxrss_rxferr) != 0U);
-  out_result->rx_fail              = ((raw & (uint32_t)k_ra_mipi_dsi_rxrss_rxfail) != 0U);
-  out_result->rx_packet_data_fail  = ((raw & (uint32_t)k_ra_mipi_dsi_rxrss_rxpfail) != 0U);
-  out_result->rx_correctable_error = ((raw & (uint32_t)k_ra_mipi_dsi_rxrss_rxcerr) != 0U);
-  out_result->rx_ack_and_error     = ((raw & (uint32_t)k_ra_mipi_dsi_rxrss_rxake) != 0U);
-  out_result->info_overwritten     = ((raw & (uint32_t)k_ra_mipi_dsi_rxrss_infoow) != 0U);
+    (ra_mipi_dsi_vc_t)((raw & k_ra_mipi_dsi_rxrss_vc_mask) >> (uint32_t)k_rxrss_vc_shift);
+  out_result->long_packet          = ((raw & k_ra_mipi_dsi_rxrss_fmt) != 0U);
+  out_result->rx_success           = ((raw & k_ra_mipi_dsi_rxrss_rxsuc) != 0U);
+  out_result->rx_fatal_error       = ((raw & k_ra_mipi_dsi_rxrss_rxferr) != 0U);
+  out_result->rx_fail              = ((raw & k_ra_mipi_dsi_rxrss_rxfail) != 0U);
+  out_result->rx_packet_data_fail  = ((raw & k_ra_mipi_dsi_rxrss_rxpfail) != 0U);
+  out_result->rx_correctable_error = ((raw & k_ra_mipi_dsi_rxrss_rxcerr) != 0U);
+  out_result->rx_ack_and_error     = ((raw & k_ra_mipi_dsi_rxrss_rxake) != 0U);
+  out_result->info_overwritten     = ((raw & k_ra_mipi_dsi_rxrss_infoow) != 0U);
 }
 
 /**
@@ -465,7 +461,7 @@ static void internal_ra_mipi_dsi_decode_rx(uint32_t raw, ra_mipi_dsi_rx_result_t
 static ra_err_t
 internal_ra_mipi_dsi_wait_eq(volatile const uint32_t* reg, uint32_t mask, uint32_t expect)
 {
-  for (uint32_t i = 0U; i < (uint32_t)k_ra_mipi_dsi_busy_loop_max; ++i) {
+  for (uint32_t i = 0U; i < k_ra_mipi_dsi_busy_loop_max; ++i) {
     if ((*reg & mask) == expect) {
       return k_ra_ok;
     }
@@ -522,7 +518,7 @@ static void internal_program_link(const ra_mipi_dsi_config_t* cfg)
   volatile r_mipi_dsi_regs_t* reg = ra_mipi_dsi();
 
   /* HUM Ch 65.2 "RSTCR" p 3853: pulse SWRST. */
-  reg->RSTCR = (uint32_t)k_ra_mipi_dsi_rstcr_swrst;
+  reg->RSTCR = k_ra_mipi_dsi_rstcr_swrst;
   reg->RSTCR = 0U;
 
   /* HUM Ch 65.2 "TXSETR" p 3845 / "ULPSSETR" p 3849 / "DSISETR" p 3855 */
@@ -532,17 +528,15 @@ static void internal_program_link(const ra_mipi_dsi_config_t* cfg)
 
   /* HUM Ch 65.2 "CLSTPTSETR" p 3886 */
   reg->CLSTPTSETR =
-    ((((uint32_t)cfg->timing.clock_stop_time) << (uint32_t)k_ra_mipi_dsi_clstpt_clkstpt_shift) &
-     (uint32_t)k_ra_mipi_dsi_clstpt_clkstpt_mask) |
-    ((((uint32_t)cfg->timing.clock_beforehand_time)
-      << (uint32_t)k_ra_mipi_dsi_clstpt_clkbfht_shift) &
-     (uint32_t)k_ra_mipi_dsi_clstpt_clkbfht_mask) |
-    ((((uint32_t)cfg->timing.clock_keep_time) << (uint32_t)k_ra_mipi_dsi_clstpt_clkkpt_shift) &
-     (uint32_t)k_ra_mipi_dsi_clstpt_clkkpt_mask);
+    ((((uint32_t)cfg->timing.clock_stop_time) << k_ra_mipi_dsi_clstpt_clkstpt_shift) &
+     k_ra_mipi_dsi_clstpt_clkstpt_mask) |
+    ((((uint32_t)cfg->timing.clock_beforehand_time) << k_ra_mipi_dsi_clstpt_clkbfht_shift) &
+     k_ra_mipi_dsi_clstpt_clkbfht_mask) |
+    ((((uint32_t)cfg->timing.clock_keep_time) << k_ra_mipi_dsi_clstpt_clkkpt_shift) &
+     k_ra_mipi_dsi_clstpt_clkkpt_mask);
 
   /* HUM Ch 65.2 "LPTRNSTSETR" p 3887 */
-  reg->LPTRNSTSETR =
-    ((uint32_t)cfg->timing.go_lp_and_back) & (uint32_t)k_ra_mipi_dsi_lptrnst_golpbkt_mask;
+  reg->LPTRNSTSETR = ((uint32_t)cfg->timing.go_lp_and_back) & k_ra_mipi_dsi_lptrnst_golpbkt_mask;
 }
 
 /**
@@ -608,7 +602,7 @@ static void internal_program_timeouts(const ra_mipi_dsi_config_t* cfg)
 
   volatile r_mipi_dsi_regs_t* reg = ra_mipi_dsi();
   /* HUM Ch 65.2 "RSTCR : Reset Control Register", p 3853 */
-  reg->RSTCR = (uint32_t)k_ra_mipi_dsi_rstcr_swrst;
+  reg->RSTCR = k_ra_mipi_dsi_rstcr_swrst;
 
   s_dsi_fn              = nullptr;
   s_dsi_ctx             = nullptr;
@@ -659,7 +653,7 @@ static void internal_program_timeouts(const ra_mipi_dsi_config_t* cfg)
 {
   volatile r_mipi_dsi_regs_t* reg = ra_mipi_dsi();
   /* HUM Ch 65.2 "RSTCR : Reset Control Register", p 3853 */
-  reg->RSTCR = (uint32_t)k_ra_mipi_dsi_rstcr_swrst;
+  reg->RSTCR = k_ra_mipi_dsi_rstcr_swrst;
   /* HUM Ch 65.2 "RSTCR : Reset Control Register", p 3853 */
   reg->RSTCR = 0U;
   return k_ra_ok;
@@ -673,16 +667,16 @@ static void internal_program_timeouts(const ra_mipi_dsi_config_t* cfg)
 [[nodiscard]] ra_err_t ra_mipi_dsi_hs_clock_start(void)
 {
   volatile r_mipi_dsi_regs_t* reg   = ra_mipi_dsi();
-  uint32_t                    hsclk = (uint32_t)k_ra_mipi_dsi_hsclk_start;
+  uint32_t                    hsclk = k_ra_mipi_dsi_hsclk_start;
   if (s_continuous_clock) {
-    hsclk |= (uint32_t)k_ra_mipi_dsi_hsclk_continuous;
+    hsclk |= k_ra_mipi_dsi_hsclk_continuous;
   }
   /* HUM Ch 65.2 "HSCLKSETR : HS Clock Setting Register", p 3848 */
   reg->HSCLKSETR = hsclk;
   /* HUM Ch 65.2 "PLSR : PHY Lane Status Register", p 3888 */
   return internal_ra_mipi_dsi_wait_eq(&reg->PLSR,
-                                      (uint32_t)k_ra_mipi_dsi_plsr_cllp2hs,
-                                      (uint32_t)k_ra_mipi_dsi_plsr_cllp2hs);
+                                      k_ra_mipi_dsi_plsr_cllp2hs,
+                                      k_ra_mipi_dsi_plsr_cllp2hs);
 }
 
 [[nodiscard]] ra_err_t ra_mipi_dsi_hs_clock_stop(void)
@@ -692,8 +686,8 @@ static void internal_program_timeouts(const ra_mipi_dsi_config_t* cfg)
   reg->HSCLKSETR = 0U;
   /* HUM Ch 65.2 "PLSR : PHY Lane Status Register", p 3888 */
   return internal_ra_mipi_dsi_wait_eq(&reg->PLSR,
-                                      (uint32_t)k_ra_mipi_dsi_plsr_clhs2lp,
-                                      (uint32_t)k_ra_mipi_dsi_plsr_clhs2lp);
+                                      k_ra_mipi_dsi_plsr_clhs2lp,
+                                      k_ra_mipi_dsi_plsr_clhs2lp);
 }
 
 /* =============================================================================
@@ -724,15 +718,15 @@ static ra_err_t internal_check_link_state(const ra_mipi_dsi_command_t* cmd)
 {
   volatile r_mipi_dsi_regs_t* reg  = ra_mipi_dsi();
   const uint32_t              link = reg->LINKSR;
-  if (cmd->low_power && ((link & (uint32_t)k_ra_mipi_dsi_link_vrun) != 0U)) {
+  if (cmd->low_power && ((link & k_ra_mipi_dsi_link_vrun) != 0U)) {
     ra_log_error(s_tag, "send_command: LP not allowed during video mode");
     return k_ra_err_invalid_state;
   }
-  if ((link & ((uint32_t)k_ra_mipi_dsi_link_sq0run | (uint32_t)k_ra_mipi_dsi_link_sq1run)) != 0U) {
+  if ((link & (k_ra_mipi_dsi_link_sq0run | k_ra_mipi_dsi_link_sq1run)) != 0U) {
     ra_log_error(s_tag, "send_command: sequence busy");
     return k_ra_err_busy;
   }
-  if (cmd->aux_operation && ((link & (uint32_t)k_ra_mipi_dsi_link_vrun) != 0U)) {
+  if (cmd->aux_operation && ((link & k_ra_mipi_dsi_link_vrun) != 0U)) {
     return k_ra_err_invalid_state;
   }
   return k_ra_ok;
@@ -757,7 +751,7 @@ static void internal_program_descriptor(volatile r_mipi_dsi_descriptor_t* dsc,
                                         const ra_mipi_dsi_command_t*      cmd)
 {
   dsc->A                   = internal_ra_mipi_dsi_make_dsc_a(cmd);
-  dsc->B                   = (uint32_t)k_ra_mipi_dsi_dsc0b_dtsel_seqrm;
+  dsc->B                   = k_ra_mipi_dsi_dsc0b_dtsel_seqrm;
   dsc->C                   = internal_ra_mipi_dsi_make_dsc_c(cmd);
   const uintptr_t buf_addr = (cmd->bta == k_ra_mipi_dsi_bta_read) || (cmd->p_rx_buffer != nullptr)
                                ? (uintptr_t)cmd->p_rx_buffer
@@ -791,7 +785,7 @@ static void internal_send_stage_and_pulse(const ra_mipi_dsi_command_t* cmd)
     channel = 0U;
   }
   const uint8_t low_nibble = (uint8_t)((uint32_t)cmd->cmd_id & 0x0FU);
-  const bool    is_long    = (low_nibble > 0x08U);
+  const bool    is_long    = low_nibble > 0x08U;
 
   if (is_long && (cmd->tx_len > 0U)) {
     internal_ra_mipi_dsi_stage_payload(cmd->p_tx_buffer, cmd->tx_len);
@@ -816,7 +810,7 @@ static void internal_send_stage_and_pulse(const ra_mipi_dsi_command_t* cmd)
 
   if (cmd->p_rx_buffer != nullptr) {
     s_pending_rx_buffer = cmd->p_rx_buffer;
-    s_pending_rx_len    = (uint16_t)k_ra_mipi_dsi_payload_max;
+    s_pending_rx_len    = k_ra_mipi_dsi_payload_max;
   }
 
   return k_ra_ok;
@@ -903,22 +897,22 @@ static void internal_send_stage_and_pulse(const ra_mipi_dsi_command_t* cmd)
 
 [[nodiscard]] ra_err_t ra_mipi_dsi_ulps_enter(uint8_t lanes)
 {
-  if (lanes == (uint8_t)k_ra_mipi_dsi_lane_none) {
+  if (lanes == k_ra_mipi_dsi_lane_none) {
     return k_ra_err_invalid_arg;
   }
   /* Continuous clock mode forbids clock-lane ULPS -- HUM Ch 65 lists
    * this constraint and FSP enforces the same precondition. */
-  if (((lanes & (uint8_t)k_ra_mipi_dsi_lane_clock) != 0U) && s_continuous_clock) {
+  if (((lanes & k_ra_mipi_dsi_lane_clock) != 0U) && s_continuous_clock) {
     ra_log_error(s_tag, "ulps_enter: clock lane + continuous mode rejected");
     return k_ra_err_invalid_arg;
   }
   uint32_t ulpscr = 0U;
-  if (((lanes & (uint8_t)k_ra_mipi_dsi_lane_data) != 0U) && !s_data_lanes_in_ulps) {
-    ulpscr |= (uint32_t)k_ra_mipi_dsi_ulpscr_dlent;
+  if (((lanes & k_ra_mipi_dsi_lane_data) != 0U) && !s_data_lanes_in_ulps) {
+    ulpscr |= k_ra_mipi_dsi_ulpscr_dlent;
     s_data_lanes_in_ulps = true;
   }
-  if (((lanes & (uint8_t)k_ra_mipi_dsi_lane_clock) != 0U) && !s_clock_lanes_in_ulps) {
-    ulpscr |= (uint32_t)k_ra_mipi_dsi_ulpscr_clent;
+  if (((lanes & k_ra_mipi_dsi_lane_clock) != 0U) && !s_clock_lanes_in_ulps) {
+    ulpscr |= k_ra_mipi_dsi_ulpscr_clent;
     s_clock_lanes_in_ulps = true;
   }
   /* HUM Ch 65.2 "ULPSCR : ULPS Control Register", p 3851 */
@@ -928,16 +922,16 @@ static void internal_send_stage_and_pulse(const ra_mipi_dsi_command_t* cmd)
 
 [[nodiscard]] ra_err_t ra_mipi_dsi_ulps_exit(uint8_t lanes)
 {
-  if (lanes == (uint8_t)k_ra_mipi_dsi_lane_none) {
+  if (lanes == k_ra_mipi_dsi_lane_none) {
     return k_ra_err_invalid_arg;
   }
   uint32_t ulpscr = 0U;
-  if (((lanes & (uint8_t)k_ra_mipi_dsi_lane_data) != 0U) && s_data_lanes_in_ulps) {
-    ulpscr |= (uint32_t)k_ra_mipi_dsi_ulpscr_dlexit;
+  if (((lanes & k_ra_mipi_dsi_lane_data) != 0U) && s_data_lanes_in_ulps) {
+    ulpscr |= k_ra_mipi_dsi_ulpscr_dlexit;
     s_data_lanes_in_ulps = false;
   }
-  if (((lanes & (uint8_t)k_ra_mipi_dsi_lane_clock) != 0U) && s_clock_lanes_in_ulps) {
-    ulpscr |= (uint32_t)k_ra_mipi_dsi_ulpscr_clexit;
+  if (((lanes & k_ra_mipi_dsi_lane_clock) != 0U) && s_clock_lanes_in_ulps) {
+    ulpscr |= k_ra_mipi_dsi_ulpscr_clexit;
     s_clock_lanes_in_ulps = false;
   }
   /* HUM Ch 65.2 "ULPSCR : ULPS Control Register", p 3851 */
@@ -960,47 +954,47 @@ static void internal_send_stage_and_pulse(const ra_mipi_dsi_command_t* cmd)
   volatile r_mipi_dsi_regs_t* reg = ra_mipi_dsi();
 
   /* HUM Ch 65.2 "VMSET1R : Video Mode Setting 1", p 3892 */
-  reg->VMSET1R = (((uint32_t)vcfg->video_mode_delay) << (uint32_t)k_ra_mipi_dsi_vmset1_dly_shift) &
-                 (uint32_t)k_ra_mipi_dsi_vmset1_dly_mask;
+  reg->VMSET1R = (((uint32_t)vcfg->video_mode_delay) << k_ra_mipi_dsi_vmset1_dly_shift) &
+                 k_ra_mipi_dsi_vmset1_dly_mask;
 
   /* HUM Ch 65.2 "VMPPSETR : Video Mode Pixel Packet Setting", p 3895 */
-  uint32_t vmpp = (((uint32_t)vcfg->pixel_format) << (uint32_t)k_ra_mipi_dsi_vmpp_dt_shift) &
-                  (uint32_t)k_ra_mipi_dsi_vmpp_dt_mask;
-  vmpp |= (((uint32_t)vcfg->virtual_channel) << (uint32_t)k_ra_mipi_dsi_vmpp_vc_shift) &
-          (uint32_t)k_ra_mipi_dsi_vmpp_vc_mask;
+  uint32_t vmpp =
+    (((uint32_t)vcfg->pixel_format) << k_ra_mipi_dsi_vmpp_dt_shift) & k_ra_mipi_dsi_vmpp_dt_mask;
+  vmpp |=
+    (((uint32_t)vcfg->virtual_channel) << k_ra_mipi_dsi_vmpp_vc_shift) & k_ra_mipi_dsi_vmpp_vc_mask;
   if (vcfg->sync_pulse) {
-    vmpp |= (uint32_t)k_ra_mipi_dsi_vmpp_txesync;
+    vmpp |= k_ra_mipi_dsi_vmpp_txesync;
   }
   reg->VMPPSETR = vmpp;
 
   /* HUM Ch 65.2 "VMVSSETR : Video Mode Vertical Sync Setting", p 3897 */
-  uint32_t vmvs = (((uint32_t)vcfg->vertical_sync_lines) & (uint32_t)k_ra_mipi_dsi_vmvs_vsa_mask);
-  vmvs |= (((uint32_t)vcfg->vertical_active_lines) << (uint32_t)k_ra_mipi_dsi_vmvs_vact_shift) &
-          (uint32_t)k_ra_mipi_dsi_vmvs_vact_mask;
+  uint32_t vmvs = (((uint32_t)vcfg->vertical_sync_lines) & k_ra_mipi_dsi_vmvs_vsa_mask);
+  vmvs |= (((uint32_t)vcfg->vertical_active_lines) << k_ra_mipi_dsi_vmvs_vact_shift) &
+          k_ra_mipi_dsi_vmvs_vact_mask;
   if (vcfg->vsync_active_high) {
-    vmvs |= (uint32_t)k_ra_mipi_dsi_vmvs_vspol;
+    vmvs |= k_ra_mipi_dsi_vmvs_vspol;
   }
   reg->VMVSSETR = vmvs;
 
   /* HUM Ch 65.2 "VMVPSETR : Video Mode Vertical Porch Setting", p 3898 */
-  uint32_t vmvp = ((uint32_t)vcfg->vertical_back_porch) & (uint32_t)k_ra_mipi_dsi_vmvp_vbp_mask;
-  vmvp |= (((uint32_t)vcfg->vertical_front_porch) << (uint32_t)k_ra_mipi_dsi_vmvp_vfp_shift) &
-          (uint32_t)k_ra_mipi_dsi_vmvp_vfp_mask;
+  uint32_t vmvp = ((uint32_t)vcfg->vertical_back_porch) & k_ra_mipi_dsi_vmvp_vbp_mask;
+  vmvp |= (((uint32_t)vcfg->vertical_front_porch) << k_ra_mipi_dsi_vmvp_vfp_shift) &
+          k_ra_mipi_dsi_vmvp_vfp_mask;
   reg->VMVPSETR = vmvp;
 
   /* HUM Ch 65.2 "VMHSSETR : Video Mode Horizontal Sync Setting", p 3899 */
-  uint32_t vmhs = ((uint32_t)vcfg->horizontal_sync_lines) & (uint32_t)k_ra_mipi_dsi_vmhs_hsa_mask;
-  vmhs |= (((uint32_t)vcfg->horizontal_active_pixels) << (uint32_t)k_ra_mipi_dsi_vmhs_hact_shift) &
-          (uint32_t)k_ra_mipi_dsi_vmhs_hact_mask;
+  uint32_t vmhs = ((uint32_t)vcfg->horizontal_sync_lines) & k_ra_mipi_dsi_vmhs_hsa_mask;
+  vmhs |= (((uint32_t)vcfg->horizontal_active_pixels) << k_ra_mipi_dsi_vmhs_hact_shift) &
+          k_ra_mipi_dsi_vmhs_hact_mask;
   if (vcfg->hsync_active_high) {
-    vmhs |= (uint32_t)k_ra_mipi_dsi_vmhs_hspol;
+    vmhs |= k_ra_mipi_dsi_vmhs_hspol;
   }
   reg->VMHSSETR = vmhs;
 
   /* HUM Ch 65.2 "VMHPSETR : Video Mode Horizontal Porch Setting", p 3900 */
-  uint32_t vmhp = ((uint32_t)vcfg->horizontal_back_porch) & (uint32_t)k_ra_mipi_dsi_vmhp_hbp_mask;
-  vmhp |= (((uint32_t)vcfg->horizontal_front_porch) << (uint32_t)k_ra_mipi_dsi_vmhp_hfp_shift) &
-          (uint32_t)k_ra_mipi_dsi_vmhp_hfp_mask;
+  uint32_t vmhp = ((uint32_t)vcfg->horizontal_back_porch) & k_ra_mipi_dsi_vmhp_hbp_mask;
+  vmhp |= (((uint32_t)vcfg->horizontal_front_porch) << k_ra_mipi_dsi_vmhp_hfp_shift) &
+          k_ra_mipi_dsi_vmhp_hfp_mask;
   reg->VMHPSETR = vmhp;
 
   return k_ra_ok;
@@ -1010,36 +1004,35 @@ static void internal_send_stage_and_pulse(const ra_mipi_dsi_command_t* cmd)
 {
   RA_CHECK_NULL_PTR(vcfg, s_tag, "vcfg must not be nullptr");
   volatile r_mipi_dsi_regs_t* reg   = ra_mipi_dsi();
-  uint32_t                    vmset = (uint32_t)k_ra_mipi_dsi_vmset0_vstart;
+  uint32_t                    vmset = k_ra_mipi_dsi_vmset0_vstart;
   if (vcfg->hsa_no_lp) {
-    vmset |= (uint32_t)k_ra_mipi_dsi_vmset0_hsanolp;
+    vmset |= k_ra_mipi_dsi_vmset0_hsanolp;
   }
   if (vcfg->hbp_no_lp) {
-    vmset |= (uint32_t)k_ra_mipi_dsi_vmset0_hbpnolp;
+    vmset |= k_ra_mipi_dsi_vmset0_hbpnolp;
   }
   if (vcfg->hfp_no_lp) {
-    vmset |= (uint32_t)k_ra_mipi_dsi_vmset0_hfpnolp;
+    vmset |= k_ra_mipi_dsi_vmset0_hfpnolp;
   }
   /* HUM Ch 65.2 "VMSET0R : Video Mode Setting 0", p 3891 */
   reg->VMSET0R = vmset;
   /* HUM Ch 65.2 "VMSR : Video Mode Status Register", p 3893 */
   return internal_ra_mipi_dsi_wait_eq(&reg->VMSR,
-                                      (uint32_t)k_ra_mipi_dsi_vmsr_virdy,
-                                      (uint32_t)k_ra_mipi_dsi_vmsr_virdy);
+                                      k_ra_mipi_dsi_vmsr_virdy,
+                                      k_ra_mipi_dsi_vmsr_virdy);
 }
 
 [[nodiscard]] ra_err_t ra_mipi_dsi_video_stop(void)
 {
   volatile r_mipi_dsi_regs_t* reg = ra_mipi_dsi();
   /* HUM Ch 65.2 "VMSET0R : Video Mode Setting 0", p 3891 */
-  reg->VMSET0R = (uint32_t)k_ra_mipi_dsi_vmset0_vstop;
+  reg->VMSET0R = k_ra_mipi_dsi_vmset0_vstop;
   /* HUM Ch 65.2 "VMSR : Video Mode Status Register", p 3893 */
-  const ra_err_t err = internal_ra_mipi_dsi_wait_eq(&reg->VMSR,
-                                                    (uint32_t)k_ra_mipi_dsi_vmsr_stop,
-                                                    (uint32_t)k_ra_mipi_dsi_vmsr_stop);
+  const ra_err_t err =
+    internal_ra_mipi_dsi_wait_eq(&reg->VMSR, k_ra_mipi_dsi_vmsr_stop, k_ra_mipi_dsi_vmsr_stop);
   if (err == k_ra_ok) {
     /* HUM Ch 65.2 "VMSCR : Video Mode Status Clear", p 3893 */
-    reg->VMSCR = (uint32_t)k_ra_mipi_dsi_vmsr_clear_all;
+    reg->VMSCR = k_ra_mipi_dsi_vmsr_clear_all;
   }
   return err;
 }
@@ -1062,40 +1055,40 @@ static void internal_send_stage_and_pulse(const ra_mipi_dsi_command_t* cmd)
   RA_CHECK_NULL_PTR(out_status, s_tag, "out_status must not be nullptr");
   /* HUM Ch 65.2 "LINKSR : Link Status Register", p 3842 */
   const uint32_t v                 = ra_mipi_dsi()->LINKSR;
-  out_status->sequence_ch0_running = ((v & (uint32_t)k_ra_mipi_dsi_link_sq0run) != 0U);
-  out_status->sequence_ch1_running = ((v & (uint32_t)k_ra_mipi_dsi_link_sq1run) != 0U);
-  out_status->video_running        = ((v & (uint32_t)k_ra_mipi_dsi_link_vrun) != 0U);
-  out_status->hs_busy              = ((v & (uint32_t)k_ra_mipi_dsi_link_hsbusy) != 0U);
-  out_status->lp_busy              = ((v & (uint32_t)k_ra_mipi_dsi_link_lpbusy) != 0U);
+  out_status->sequence_ch0_running = ((v & k_ra_mipi_dsi_link_sq0run) != 0U);
+  out_status->sequence_ch1_running = ((v & k_ra_mipi_dsi_link_sq1run) != 0U);
+  out_status->video_running        = ((v & k_ra_mipi_dsi_link_vrun) != 0U);
+  out_status->hs_busy              = ((v & k_ra_mipi_dsi_link_hsbusy) != 0U);
+  out_status->lp_busy              = ((v & k_ra_mipi_dsi_link_lpbusy) != 0U);
   return k_ra_ok;
 }
 
 [[nodiscard]] ra_err_t ra_mipi_dsi_clear_status(uint32_t mask)
 {
   volatile r_mipi_dsi_regs_t* reg = ra_mipi_dsi();
-  if ((mask & (uint32_t)k_ra_mipi_dsi_isr_sq0) != 0U) {
+  if ((mask & k_ra_mipi_dsi_isr_sq0) != 0U) {
     /* HUM Ch 65.2 "SQCH0SCR : Sequence Channel 0 Status Clear", p 3934 */
-    reg->SQCH0SCR = (uint32_t)k_ra_mipi_dsi_sqch_clear_all;
+    reg->SQCH0SCR = k_ra_mipi_dsi_sqch_clear_all;
   }
-  if ((mask & (uint32_t)k_ra_mipi_dsi_isr_sq1) != 0U) {
+  if ((mask & k_ra_mipi_dsi_isr_sq1) != 0U) {
     /* HUM Ch 65.2 "SQCH1SCR : Sequence Channel 1 Status Clear", p 3934 */
-    reg->SQCH1SCR = (uint32_t)k_ra_mipi_dsi_sqch_clear_all;
+    reg->SQCH1SCR = k_ra_mipi_dsi_sqch_clear_all;
   }
-  if ((mask & (uint32_t)k_ra_mipi_dsi_isr_vm) != 0U) {
+  if ((mask & k_ra_mipi_dsi_isr_vm) != 0U) {
     /* HUM Ch 65.2 "VMSCR : Video Mode Status Clear", p 3893 */
-    reg->VMSCR = (uint32_t)k_ra_mipi_dsi_vmsr_clear_all;
+    reg->VMSCR = k_ra_mipi_dsi_vmsr_clear_all;
   }
-  if ((mask & (uint32_t)k_ra_mipi_dsi_isr_rcv) != 0U) {
+  if ((mask & k_ra_mipi_dsi_isr_rcv) != 0U) {
     /* HUM Ch 65.2 "RXSCR : Receive Status Clear", p 3870 */
-    reg->RXSCR = (uint32_t)k_ra_mipi_dsi_rxsr_clear_all;
+    reg->RXSCR = k_ra_mipi_dsi_rxsr_clear_all;
   }
-  if ((mask & (uint32_t)k_ra_mipi_dsi_isr_ferr) != 0U) {
+  if ((mask & k_ra_mipi_dsi_isr_ferr) != 0U) {
     /* HUM Ch 65.2 "FERRSCR : Fatal Error Status Clear", p 3884 */
-    reg->FERRSCR = (uint32_t)k_ra_mipi_dsi_ferrsr_clear_all;
+    reg->FERRSCR = k_ra_mipi_dsi_ferrsr_clear_all;
   }
-  if ((mask & (uint32_t)k_ra_mipi_dsi_isr_ppi) != 0U) {
+  if ((mask & k_ra_mipi_dsi_isr_ppi) != 0U) {
     /* HUM Ch 65.2 "PLSCR : PHY Lane Status Clear", p 3889 */
-    reg->PLSCR = (uint32_t)k_ra_mipi_dsi_plsr_clear_all;
+    reg->PLSCR = k_ra_mipi_dsi_plsr_clear_all;
   }
   return k_ra_ok;
 }
@@ -1106,10 +1099,10 @@ static void internal_send_stage_and_pulse(const ra_mipi_dsi_command_t* cmd)
   volatile r_mipi_dsi_regs_t* reg = ra_mipi_dsi();
   /* HUM Ch 65.2 "AKEPACMSR : Ack/Error Report Accumulated Status", p 3877 */
   const uint32_t v      = reg->AKEPACMSR;
-  out_err->error_report = (uint16_t)(v & (uint32_t)k_ra_mipi_dsi_akep_erep_mask);
+  out_err->error_report = (uint16_t)(v & k_ra_mipi_dsi_akep_erep_mask);
   out_err->virtual_channel =
-    (ra_mipi_dsi_vc_t)(((v & (uint32_t)k_ra_mipi_dsi_akep_vc_mask) >> (uint32_t)k_akep_vc_shift) &
-                       (uint32_t)k_ra_mipi_dsi_vc_mask);
+    (ra_mipi_dsi_vc_t)(((v & k_ra_mipi_dsi_akep_vc_mask) >> (uint32_t)k_akep_vc_shift) &
+                       k_ra_mipi_dsi_vc_mask);
   /* HUM Ch 65.2 "AKEPSCR : Ack/Error Report Status Clear", p 3878 */
   reg->AKEPSCR = v;
   return k_ra_ok;
@@ -1160,13 +1153,13 @@ ra_mipi_dsi_rx_payload_read(uint8_t* dest, uint16_t max_len, uint16_t* out_len)
   volatile r_mipi_dsi_regs_t* reg = ra_mipi_dsi();
   /* HUM Ch 65.2 "RXPPD0R..RXPPD3R : Receive Packet Payload 0..3", p 3879 */
   const uint32_t words[4] = {reg->RXPPD0R, reg->RXPPD1R, reg->RXPPD2R, reg->RXPPD3R};
-  const uint16_t cap      = (uint16_t)k_ra_mipi_dsi_payload_max;
+  const uint16_t cap      = k_ra_mipi_dsi_payload_max;
   const uint16_t eff      = (max_len < cap) ? max_len : cap;
   for (uint16_t i = 0U; i < eff; ++i) {
     const uint16_t word_idx = (uint16_t)(i / 4U);
     const uint16_t byte_idx = (uint16_t)(i % 4U);
-    dest[i]                 = (uint8_t)((words[word_idx] >> (byte_idx * (uint32_t)k_shift_8)) &
-                                        (uint32_t)k_ra_mipi_dsi_byte_mask);
+    dest[i] =
+      (uint8_t)((words[word_idx] >> (byte_idx * (uint32_t)k_shift_8)) & k_ra_mipi_dsi_byte_mask);
   }
   *out_len = eff;
   return k_ra_ok;
@@ -1177,7 +1170,7 @@ ra_mipi_dsi_rx_payload_read(uint8_t* dest, uint16_t max_len, uint16_t* out_len)
   RA_CHECK_NULL_PTR(out_pending, s_tag, "out_pending must not be nullptr");
   /* HUM Ch 65.2 "RXSR : Receive Status Register", p 3868 */
   const uint32_t v       = ra_mipi_dsi()->RXSR;
-  const uint32_t te_mask = (uint32_t)k_ra_mipi_dsi_rxsr_rxte | (uint32_t)k_ra_mipi_dsi_rxsr_extedet;
+  const uint32_t te_mask = k_ra_mipi_dsi_rxsr_rxte | k_ra_mipi_dsi_rxsr_extedet;
   *out_pending           = ((v & te_mask) != 0U);
   return k_ra_ok;
 }
@@ -1185,7 +1178,7 @@ ra_mipi_dsi_rx_payload_read(uint8_t* dest, uint16_t max_len, uint16_t* out_len)
 [[nodiscard]] ra_err_t ra_mipi_dsi_te_event_clear(void)
 {
   /* HUM Ch 65.2 "RXSCR : Receive Status Clear", p 3870 */
-  ra_mipi_dsi()->RXSCR = (uint32_t)k_ra_mipi_dsi_rxsr_rxte | (uint32_t)k_ra_mipi_dsi_rxsr_extedet;
+  ra_mipi_dsi()->RXSCR = k_ra_mipi_dsi_rxsr_rxte | k_ra_mipi_dsi_rxsr_extedet;
   return k_ra_ok;
 }
 
@@ -1262,7 +1255,7 @@ void ra_mipi_dsi_dispatch_seq0(void)
   /* HUM Ch 65.2 "SQCH0SR : Sequence Channel 0 Status Register", p 3933 */
   const uint32_t bits = reg->SQCH0SR;
   /* HUM Ch 65.2 "SQCH0SCR : Sequence Channel 0 Status Clear", p 3934 */
-  reg->SQCH0SCR = bits & (uint32_t)k_ra_mipi_dsi_sqch_clear_all;
+  reg->SQCH0SCR = bits & k_ra_mipi_dsi_sqch_clear_all;
   internal_ra_mipi_dsi_call_user(k_ra_mipi_dsi_event_seq0, bits);
 }
 
@@ -1272,7 +1265,7 @@ void ra_mipi_dsi_dispatch_seq1(void)
   /* HUM Ch 65.2 "SQCH1SR : Sequence Channel 1 Status Register", p 3933 */
   const uint32_t bits = reg->SQCH1SR;
   /* HUM Ch 65.2 "SQCH1SCR : Sequence Channel 1 Status Clear", p 3934 */
-  reg->SQCH1SCR = bits & (uint32_t)k_ra_mipi_dsi_sqch_clear_all;
+  reg->SQCH1SCR = bits & k_ra_mipi_dsi_sqch_clear_all;
   internal_ra_mipi_dsi_call_user(k_ra_mipi_dsi_event_seq1, bits);
 }
 
@@ -1282,12 +1275,11 @@ void ra_mipi_dsi_dispatch_video(void)
   /* HUM Ch 65.2 "VMSR : Video Mode Status Register", p 3893 */
   const uint32_t bits = reg->VMSR;
   /* HUM Ch 65.2 "VMSCR : Video Mode Status Clear", p 3893 */
-  reg->VMSCR = bits & (uint32_t)k_ra_mipi_dsi_vmsr_clear_all;
+  reg->VMSCR = bits & k_ra_mipi_dsi_vmsr_clear_all;
   /* If buffer over/underflow, FSP recommends a soft reset; mirror that. */
-  if ((bits & ((uint32_t)k_ra_mipi_dsi_vmsr_vbufovf | (uint32_t)k_ra_mipi_dsi_vmsr_vbufudf)) !=
-      0U) {
+  if ((bits & (k_ra_mipi_dsi_vmsr_vbufovf | k_ra_mipi_dsi_vmsr_vbufudf)) != 0U) {
     /* HUM Ch 65.2 "RSTCR : Reset Control Register", p 3853 */
-    reg->RSTCR = (uint32_t)k_ra_mipi_dsi_rstcr_swrst;
+    reg->RSTCR = k_ra_mipi_dsi_rstcr_swrst;
     /* HUM Ch 65.2 "RSTCR : Reset Control Register", p 3853 */
     reg->RSTCR = 0U;
   }
@@ -1300,9 +1292,9 @@ void ra_mipi_dsi_dispatch_receive(void)
   /* HUM Ch 65.2 "RXSR : Receive Status Register", p 3868 */
   const uint32_t bits = reg->RXSR;
   /* HUM Ch 65.2 "RXSCR : Receive Status Clear", p 3870 */
-  reg->RXSCR = bits & (uint32_t)k_ra_mipi_dsi_rxsr_clear_all;
+  reg->RXSCR = bits & k_ra_mipi_dsi_rxsr_clear_all;
   /* If a response packet arrived, copy RXPPD into the pending buffer. */
-  if ((bits & (uint32_t)k_ra_mipi_dsi_rxsr_rxresp) != 0U) {
+  if ((bits & k_ra_mipi_dsi_rxsr_rxresp) != 0U) {
     if ((s_pending_rx_buffer != nullptr) && (s_pending_rx_len > 0U)) {
       uint16_t got = 0U;
       (void)ra_mipi_dsi_rx_payload_read(s_pending_rx_buffer, s_pending_rx_len, &got);
@@ -1311,7 +1303,7 @@ void ra_mipi_dsi_dispatch_receive(void)
     }
   }
   /* HUM Ch 65.2 "RXRINFOOWSCR : Receive Result Info-Overwrite Clear", p 3879 */
-  reg->RXRINFOOWSCR = (uint32_t)k_ra_mipi_dsi_rxrinfoow_sl0;
+  reg->RXRINFOOWSCR = k_ra_mipi_dsi_rxrinfoow_sl0;
   internal_ra_mipi_dsi_call_user(k_ra_mipi_dsi_event_receive, bits);
 }
 
@@ -1321,7 +1313,7 @@ void ra_mipi_dsi_dispatch_fatal(void)
   /* HUM Ch 65.2 "FERRSR : Fatal Error Status Register", p 3882 */
   const uint32_t bits = reg->FERRSR;
   /* HUM Ch 65.2 "FERRSCR : Fatal Error Status Clear", p 3884 */
-  reg->FERRSCR = bits & (uint32_t)k_ra_mipi_dsi_ferrsr_clear_all;
+  reg->FERRSCR = bits & k_ra_mipi_dsi_ferrsr_clear_all;
   internal_ra_mipi_dsi_call_user(k_ra_mipi_dsi_event_fatal, bits);
 }
 
@@ -1331,7 +1323,7 @@ void ra_mipi_dsi_dispatch_phy(void)
   /* HUM Ch 65.2 "PLSR : PHY Lane Status Register", p 3888 */
   const uint32_t bits = reg->PLSR;
   /* HUM Ch 65.2 "PLSCR : PHY Lane Status Clear", p 3889 */
-  reg->PLSCR = bits & (uint32_t)k_ra_mipi_dsi_plsr_clear_all;
+  reg->PLSCR = bits & k_ra_mipi_dsi_plsr_clear_all;
   internal_ra_mipi_dsi_call_user(k_ra_mipi_dsi_event_phy, bits);
 }
 
@@ -1339,27 +1331,27 @@ void ra_mipi_dsi_dispatch(void)
 {
   /* HUM Ch 65.2 "ISR : Interrupt Status Register", p 3840 */
   const uint32_t snapshot = ra_mipi_dsi()->ISR;
-  if ((snapshot & (uint32_t)k_ra_mipi_dsi_isr_sq0) != 0U) {
+  if ((snapshot & k_ra_mipi_dsi_isr_sq0) != 0U) {
     ra_mipi_dsi_dispatch_seq0();
   }
-  if ((snapshot & (uint32_t)k_ra_mipi_dsi_isr_sq1) != 0U) {
+  if ((snapshot & k_ra_mipi_dsi_isr_sq1) != 0U) {
     ra_mipi_dsi_dispatch_seq1();
   }
-  if ((snapshot & (uint32_t)k_ra_mipi_dsi_isr_vm) != 0U) {
+  if ((snapshot & k_ra_mipi_dsi_isr_vm) != 0U) {
     ra_mipi_dsi_dispatch_video();
   }
-  if ((snapshot & (uint32_t)k_ra_mipi_dsi_isr_rcv) != 0U) {
+  if ((snapshot & k_ra_mipi_dsi_isr_rcv) != 0U) {
     ra_mipi_dsi_dispatch_receive();
   }
-  if ((snapshot & (uint32_t)k_ra_mipi_dsi_isr_ferr) != 0U) {
+  if ((snapshot & k_ra_mipi_dsi_isr_ferr) != 0U) {
     ra_mipi_dsi_dispatch_fatal();
   }
-  if ((snapshot & (uint32_t)k_ra_mipi_dsi_isr_ppi) != 0U) {
+  if ((snapshot & k_ra_mipi_dsi_isr_ppi) != 0U) {
     ra_mipi_dsi_dispatch_phy();
   }
   /* If nothing was set, still call user with mask=0 so the legacy
    * "always invoke" contract from the previous revision is preserved. */
-  if ((snapshot & (uint32_t)k_ra_mipi_dsi_isr_all) == 0U) {
+  if ((snapshot & k_ra_mipi_dsi_isr_all) == 0U) {
     internal_ra_mipi_dsi_call_user(k_ra_mipi_dsi_event_phy, 0U);
   }
 }

@@ -194,7 +194,7 @@ static ra_err_t internal_apply_instance(uint8_t instance, const ra_cnecc_instanc
    * Step 1: clear any latched 1-bit / 2-bit / overflow / address
    * flags before turning judgment on, so we start from a clean
    * slate (HUM 42.2.1 p 2870 ECER1C/ECER2C clearing notes). */
-  reg->EC710CTL = (uint32_t)k_ra_cnecc_mask_clear_all;
+  reg->EC710CTL = k_ra_cnecc_mask_clear_all;
 
   /* HUM Ch 42.2.1 "EC710CTL : ECC Control Register", p 2868
    * Step 2: program IRQ enables + correction permission. The
@@ -202,22 +202,22 @@ static ra_err_t internal_apply_instance(uint8_t instance, const ra_cnecc_instanc
    * caller's "correct_1bit = true" maps to bit cleared. */
   uint32_t ctl = 0U;
   if (cfg->irq_1bit) {
-    ctl |= (uint32_t)k_ra_cnecc_mask_ec1edic;
+    ctl |= k_ra_cnecc_mask_ec1edic;
   }
   if (cfg->irq_2bit) {
-    ctl |= (uint32_t)k_ra_cnecc_mask_ec2edic;
+    ctl |= k_ra_cnecc_mask_ec2edic;
   }
   if (!cfg->correct_1bit) {
-    ctl |= (uint32_t)k_ra_cnecc_mask_ec1ecp;
+    ctl |= k_ra_cnecc_mask_ec1ecp;
   }
 
   /* HUM Ch 42.2.1 "EC710CTL : ECC Control Register" EMCA notes,
    * p 2870: writes to ``ECERVF`` are ignored unless ``EMCA[1:0]``
    * is ``01b`` in the same write. Combine the unlock pattern with
    * the ECERVF bit (or omit it for "configured but not running"). */
-  ctl |= (uint32_t)k_ra_cnecc_mask_emca_unlock;
+  ctl |= k_ra_cnecc_mask_emca_unlock;
   if (cfg->enable) {
-    ctl |= (uint32_t)k_ra_cnecc_mask_ecervf;
+    ctl |= k_ra_cnecc_mask_ecervf;
   }
 
   /* HUM Ch 42.2.1 "EC710CTL : ECC Control Register", p 2868 */
@@ -227,7 +227,7 @@ static ra_err_t internal_apply_instance(uint8_t instance, const ra_cnecc_instanc
    * register defaults to 0 anyway, but a previous test run could
    * have left ECTMCE set (HUM Ch 42.2.2 "EC710TMC : ECC Test Mode
    * Control Register", p 2871). */
-  reg->EC710TMC = (uint16_t)k_ra_cnecc_mask_test_disable;
+  reg->EC710TMC = k_ra_cnecc_mask_test_disable;
 
   s_cnecc_one_bit_count[instance]  = 0U;
   s_cnecc_two_bit_count[instance]  = 0U;
@@ -269,15 +269,15 @@ static void internal_ctl_rmw(volatile r_cnecc_regs_t* reg, uint32_t new_bits, ui
   /* Drop status / W1C bits (we never want to accidentally clear them
    * on a config rewrite -- callers go through ra_cnecc_clear_status
    * for that). */
-  live &= (uint32_t)k_ra_cnecc_mask_ctl_writable;
+  live &= k_ra_cnecc_mask_ctl_writable;
   /* Drop the W1C clear bits -- they read 0 but writing 1 latches a
    * clear; we want this RMW to be neutral on the status flags. */
-  live &= ~((uint32_t)k_ra_cnecc_mask_ecer1c | (uint32_t)k_ra_cnecc_mask_ecer2c);
+  live &= ~(k_ra_cnecc_mask_ecer1c | k_ra_cnecc_mask_ecer2c);
   /* Replace just the requested bits. */
   live = ((live & ~mask) | (new_bits & mask));
   /* Always re-assert the EMCA = 01b unlock pattern (HUM 42.2.1 p 2870
    * EMCA notes). */
-  live = ((live & ~(uint32_t)k_ra_cnecc_mask_emca) | (uint32_t)k_ra_cnecc_mask_emca_unlock);
+  live = ((live & ~k_ra_cnecc_mask_emca) | k_ra_cnecc_mask_emca_unlock);
   /* HUM Ch 42.2.1 "EC710CTL : ECC Control Register", p 2868 */
   reg->EC710CTL = live;
 }
@@ -309,11 +309,11 @@ static void internal_ctl_rmw(volatile r_cnecc_regs_t* reg, uint32_t new_bits, ui
     if (reg != nullptr) {
       /* HUM Ch 42.2.2 "EC710TMC : ECC Test Mode Control Register", p 2871
        * Always leave test mode off when tearing down. */
-      reg->EC710TMC = (uint16_t)k_ra_cnecc_mask_test_disable;
+      reg->EC710TMC = k_ra_cnecc_mask_test_disable;
       /* HUM Ch 42.2.1 "EC710CTL : ECC Control Register" EMCA notes,
        * p 2870: clearing ``ECERVF`` also requires the EMCA = 01b
        * unlock pattern in the same write. */
-      reg->EC710CTL = (uint32_t)k_ra_cnecc_mask_emca_unlock;
+      reg->EC710CTL = k_ra_cnecc_mask_emca_unlock;
     }
     /* HUM Ch 11.2.8 "MSTPCRC : Module Stop Control Register C", p 447 */
     (void)ra_mstp_disable(s_cnecc_mstp_table[i]);
@@ -327,25 +327,25 @@ static void internal_ctl_rmw(volatile r_cnecc_regs_t* reg, uint32_t new_bits, ui
 
 [[nodiscard]] ra_err_t ra_cnecc_enable_instance(uint8_t instance)
 {
-  if ((uint16_t)instance >= (uint16_t)k_ra_cnecc_instance_count) {
+  if ((uint16_t)instance >= k_ra_cnecc_instance_count) {
     return k_ra_err_invalid_arg;
   }
   volatile r_cnecc_regs_t* reg = ra_cnecc(instance);
   RA_CHECK_NULL_PTR((void*)reg, s_tag, "instance mapping failed");
   /* HUM Ch 42.2.1 "EC710CTL : ECC Control Register", p 2870 */
-  internal_ctl_rmw(reg, (uint32_t)k_ra_cnecc_mask_ecervf, (uint32_t)k_ra_cnecc_mask_ecervf);
+  internal_ctl_rmw(reg, k_ra_cnecc_mask_ecervf, k_ra_cnecc_mask_ecervf);
   return k_ra_ok;
 }
 
 [[nodiscard]] ra_err_t ra_cnecc_disable_instance(uint8_t instance)
 {
-  if ((uint16_t)instance >= (uint16_t)k_ra_cnecc_instance_count) {
+  if ((uint16_t)instance >= k_ra_cnecc_instance_count) {
     return k_ra_err_invalid_arg;
   }
   volatile r_cnecc_regs_t* reg = ra_cnecc(instance);
   RA_CHECK_NULL_PTR((void*)reg, s_tag, "instance mapping failed");
   /* HUM Ch 42.2.1 "EC710CTL : ECC Control Register", p 2870 */
-  internal_ctl_rmw(reg, 0U, (uint32_t)k_ra_cnecc_mask_ecervf);
+  internal_ctl_rmw(reg, 0U, k_ra_cnecc_mask_ecervf);
   return k_ra_ok;
 }
 
@@ -358,9 +358,9 @@ static void internal_ctl_rmw(volatile r_cnecc_regs_t* reg, uint32_t new_bits, ui
     }
     /* HUM Ch 42.5.1 "Enter Software Standby Mode", p 2876
      * Step 1: clear ECC error flags + address. */
-    reg->EC710CTL = (uint32_t)k_ra_cnecc_mask_clear_all;
+    reg->EC710CTL = k_ra_cnecc_mask_clear_all;
     /* Step 2: clear ECERVF (with EMCA unlock). */
-    reg->EC710CTL = (uint32_t)k_ra_cnecc_mask_emca_unlock;
+    reg->EC710CTL = k_ra_cnecc_mask_emca_unlock;
   }
   return k_ra_ok;
 }
@@ -381,20 +381,20 @@ static void internal_ctl_rmw(volatile r_cnecc_regs_t* reg, uint32_t new_bits, ui
 
 [[nodiscard]] ra_err_t ra_cnecc_set_irq_enables(uint8_t instance, bool irq_1bit, bool irq_2bit)
 {
-  if ((uint16_t)instance >= (uint16_t)k_ra_cnecc_instance_count) {
+  if ((uint16_t)instance >= k_ra_cnecc_instance_count) {
     return k_ra_err_invalid_arg;
   }
   volatile r_cnecc_regs_t* reg = ra_cnecc(instance);
   RA_CHECK_NULL_PTR((void*)reg, s_tag, "instance mapping failed");
   uint32_t set_bits = 0U;
   if (irq_1bit) {
-    set_bits |= (uint32_t)k_ra_cnecc_mask_ec1edic;
+    set_bits |= k_ra_cnecc_mask_ec1edic;
   }
   if (irq_2bit) {
-    set_bits |= (uint32_t)k_ra_cnecc_mask_ec2edic;
+    set_bits |= k_ra_cnecc_mask_ec2edic;
   }
   /* HUM Ch 42.2.1 "EC710CTL : ECC Control Register", p 2870 */
-  internal_ctl_rmw(reg, set_bits, (uint32_t)k_ra_cnecc_mask_irq_all);
+  internal_ctl_rmw(reg, set_bits, k_ra_cnecc_mask_irq_all);
   /* Refresh cached cfg so a later exit_standby preserves the change. */
   s_cnecc_cached_cfg.instances[instance].irq_1bit = irq_1bit;
   s_cnecc_cached_cfg.instances[instance].irq_2bit = irq_2bit;
@@ -403,7 +403,7 @@ static void internal_ctl_rmw(volatile r_cnecc_regs_t* reg, uint32_t new_bits, ui
 
 [[nodiscard]] ra_err_t ra_cnecc_set_correction_permission(uint8_t instance, bool correct_1bit)
 {
-  if ((uint16_t)instance >= (uint16_t)k_ra_cnecc_instance_count) {
+  if ((uint16_t)instance >= k_ra_cnecc_instance_count) {
     return k_ra_err_invalid_arg;
   }
   volatile r_cnecc_regs_t* reg = ra_cnecc(instance);
@@ -411,11 +411,11 @@ static void internal_ctl_rmw(volatile r_cnecc_regs_t* reg, uint32_t new_bits, ui
   /* EC1ECP semantics are inverted: bit set means "correction NOT
    * executed" per HUM Ch 42.2.1 "EC710CTL : ECC Control Register"
    * EC1ECP, p 2870. */
-  uint32_t set_bits = (uint32_t)k_ra_cnecc_mask_ec1ecp;
+  uint32_t set_bits = k_ra_cnecc_mask_ec1ecp;
   if (correct_1bit) {
     set_bits = 0U;
   }
-  internal_ctl_rmw(reg, set_bits, (uint32_t)k_ra_cnecc_mask_ec1ecp);
+  internal_ctl_rmw(reg, set_bits, k_ra_cnecc_mask_ec1ecp);
   s_cnecc_cached_cfg.instances[instance].correct_1bit = correct_1bit;
   return k_ra_ok;
 }
@@ -423,7 +423,7 @@ static void internal_ctl_rmw(volatile r_cnecc_regs_t* reg, uint32_t new_bits, ui
 [[nodiscard]] ra_err_t ra_cnecc_get_status(uint8_t instance, ra_cnecc_status_t* out)
 {
   RA_CHECK_NULL_PTR((void*)out, s_tag, "out must not be nullptr");
-  if ((uint16_t)instance >= (uint16_t)k_ra_cnecc_instance_count) {
+  if ((uint16_t)instance >= k_ra_cnecc_instance_count) {
     return k_ra_err_invalid_arg;
   }
   volatile r_cnecc_regs_t* reg = ra_cnecc(instance);
@@ -442,18 +442,18 @@ static void internal_ctl_rmw(volatile r_cnecc_regs_t* reg, uint32_t new_bits, ui
   out->one_bit_count   = s_cnecc_one_bit_count[instance];
   out->two_bit_count   = s_cnecc_two_bit_count[instance];
   out->overflow_count  = s_cnecc_overflow_count[instance];
-  out->last_addr       = (uint16_t)(ead & (uint32_t)k_ra_cnecc_mask_ecead);
-  out->err_present     = (ctl & (uint32_t)k_ra_cnecc_mask_ecemf) != 0U;
-  out->err_1bit        = (ctl & (uint32_t)k_ra_cnecc_mask_ecer1f) != 0U;
-  out->err_2bit        = (ctl & (uint32_t)k_ra_cnecc_mask_ecer2f) != 0U;
-  out->overflow        = (ctl & (uint32_t)k_ra_cnecc_mask_ecovff) != 0U;
-  out->addr_is_1bit    = (ctl & (uint32_t)k_ra_cnecc_mask_ecsedf0) != 0U;
-  out->addr_is_2bit    = (ctl & (uint32_t)k_ra_cnecc_mask_ecdedf0) != 0U;
-  out->judgment_active = (ctl & (uint32_t)k_ra_cnecc_mask_ecervf) != 0U;
-  out->correct_enabled = (ctl & (uint32_t)k_ra_cnecc_mask_ec1ecp) == 0U;
-  out->irq1_enabled    = (ctl & (uint32_t)k_ra_cnecc_mask_ec1edic) != 0U;
-  out->irq2_enabled    = (ctl & (uint32_t)k_ra_cnecc_mask_ec2edic) != 0U;
-  out->test_mode       = (tmc & (uint16_t)k_ra_cnecc_mask_ectmce) != 0U;
+  out->last_addr       = (uint16_t)(ead & k_ra_cnecc_mask_ecead);
+  out->err_present     = ((ctl & k_ra_cnecc_mask_ecemf) != 0U);
+  out->err_1bit        = ((ctl & k_ra_cnecc_mask_ecer1f) != 0U);
+  out->err_2bit        = ((ctl & k_ra_cnecc_mask_ecer2f) != 0U);
+  out->overflow        = ((ctl & k_ra_cnecc_mask_ecovff) != 0U);
+  out->addr_is_1bit    = ((ctl & k_ra_cnecc_mask_ecsedf0) != 0U);
+  out->addr_is_2bit    = ((ctl & k_ra_cnecc_mask_ecdedf0) != 0U);
+  out->judgment_active = ((ctl & k_ra_cnecc_mask_ecervf) != 0U);
+  out->correct_enabled = ((ctl & k_ra_cnecc_mask_ec1ecp) == 0U);
+  out->irq1_enabled    = ((ctl & k_ra_cnecc_mask_ec1edic) != 0U);
+  out->irq2_enabled    = ((ctl & k_ra_cnecc_mask_ec2edic) != 0U);
+  out->test_mode       = ((tmc & k_ra_cnecc_mask_ectmce) != 0U);
   out->reserved1       = false;
   return k_ra_ok;
 }
@@ -461,7 +461,7 @@ static void internal_ctl_rmw(volatile r_cnecc_regs_t* reg, uint32_t new_bits, ui
 [[nodiscard]] ra_err_t ra_cnecc_get_counters(uint8_t instance, ra_cnecc_counters_t* out)
 {
   RA_CHECK_NULL_PTR((void*)out, s_tag, "out must not be nullptr");
-  if ((uint16_t)instance >= (uint16_t)k_ra_cnecc_instance_count) {
+  if ((uint16_t)instance >= k_ra_cnecc_instance_count) {
     return k_ra_err_invalid_arg;
   }
   out->one_bit_count  = s_cnecc_one_bit_count[instance];
@@ -472,7 +472,7 @@ static void internal_ctl_rmw(volatile r_cnecc_regs_t* reg, uint32_t new_bits, ui
 
 [[nodiscard]] ra_err_t ra_cnecc_reset_counters(uint8_t instance)
 {
-  if ((uint16_t)instance >= (uint16_t)k_ra_cnecc_instance_count) {
+  if ((uint16_t)instance >= k_ra_cnecc_instance_count) {
     return k_ra_err_invalid_arg;
   }
   s_cnecc_one_bit_count[instance]  = 0U;
@@ -488,7 +488,7 @@ static void internal_ctl_rmw(volatile r_cnecc_regs_t* reg, uint32_t new_bits, ui
 
 [[nodiscard]] ra_err_t ra_cnecc_set_counter_mirror(uint8_t instance, ra_cnecc_counters_t* mirror)
 {
-  if ((uint16_t)instance >= (uint16_t)k_ra_cnecc_instance_count) {
+  if ((uint16_t)instance >= k_ra_cnecc_instance_count) {
     return k_ra_err_invalid_arg;
   }
   s_cnecc_bbr_mirror[instance] = mirror;
@@ -504,7 +504,7 @@ static void internal_ctl_rmw(volatile r_cnecc_regs_t* reg, uint32_t new_bits, ui
 
 [[nodiscard]] ra_err_t ra_cnecc_clear_status(uint8_t instance)
 {
-  if ((uint16_t)instance >= (uint16_t)k_ra_cnecc_instance_count) {
+  if ((uint16_t)instance >= k_ra_cnecc_instance_count) {
     return k_ra_err_invalid_arg;
   }
   volatile r_cnecc_regs_t* reg = ra_cnecc(instance);
@@ -514,14 +514,14 @@ static void internal_ctl_rmw(volatile r_cnecc_regs_t* reg, uint32_t new_bits, ui
    * p 2870: write-1 to both bits clears ECER1F, ECER2F, ECOVFF,
    * ECSEDF0 and ECDEDF0 in one shot, and resets EC710EAD0
    * (HUM 42.2.4 p 2873 "reset by clearing the status flag"). */
-  reg->EC710CTL = (uint32_t)k_ra_cnecc_mask_clear_all;
+  reg->EC710CTL = k_ra_cnecc_mask_clear_all;
   return k_ra_ok;
 }
 
 [[nodiscard]] ra_err_t ra_cnecc_inject_fault(uint8_t instance, const ra_cnecc_inject_t* req)
 {
   RA_CHECK_NULL_PTR((void*)req, s_tag, "req must not be nullptr");
-  if ((uint16_t)instance >= (uint16_t)k_ra_cnecc_instance_count) {
+  if ((uint16_t)instance >= k_ra_cnecc_instance_count) {
     return k_ra_err_invalid_arg;
   }
   volatile r_cnecc_regs_t* reg = ra_cnecc(instance);
@@ -534,7 +534,7 @@ static void internal_ctl_rmw(volatile r_cnecc_regs_t* reg, uint32_t new_bits, ui
 
   /* Step 1: disable test mode (also clears ECDCS per HUM Ch 42.2.2
    * "EC710TMC : ECC Test Mode Control Register" ECDCS notes, p 2872). */
-  reg->EC710TMC = (uint16_t)k_ra_cnecc_mask_test_disable;
+  reg->EC710TMC = k_ra_cnecc_mask_test_disable;
 
   /* Step 2: write the substitute value into EC710TED. The caller is
    * responsible for picking a value that differs by 1 or 2 bits
@@ -546,38 +546,38 @@ static void internal_ctl_rmw(volatile r_cnecc_regs_t* reg, uint32_t new_bits, ui
   (void)req->one_bit_flip; /* Tracked for caller bookkeeping. */
 
   /* Step 3: enable test mode (ETMA unlock + ECTMCE). */
-  reg->EC710TMC = (uint16_t)k_ra_cnecc_mask_test_enable;
+  reg->EC710TMC = k_ra_cnecc_mask_test_enable;
 
   /* Step 4: select EC710TED as decoder input (sets ECDCS in addition
    * to ECTMCE). After the next MBRAM read the decoder will see the
    * substitute value and either ECER1F or ECER2F will latch
    * depending on the Hamming distance the caller chose. */
-  reg->EC710TMC = (uint16_t)k_ra_cnecc_mask_test_subst;
+  reg->EC710TMC = k_ra_cnecc_mask_test_subst;
   return k_ra_ok;
 }
 
 [[nodiscard]] ra_err_t ra_cnecc_test_mode_disable(uint8_t instance)
 {
-  if ((uint16_t)instance >= (uint16_t)k_ra_cnecc_instance_count) {
+  if ((uint16_t)instance >= k_ra_cnecc_instance_count) {
     return k_ra_err_invalid_arg;
   }
   volatile r_cnecc_regs_t* reg = ra_cnecc(instance);
   RA_CHECK_NULL_PTR((void*)reg, s_tag, "instance mapping failed");
   /* HUM Ch 42.2.2 "EC710TMC : ECC Test Mode Control Register", p 2871 */
-  reg->EC710TMC = (uint16_t)k_ra_cnecc_mask_test_disable;
+  reg->EC710TMC = k_ra_cnecc_mask_test_disable;
   return k_ra_ok;
 }
 
 [[nodiscard]] ra_err_t ra_cnecc_test_mode_active(uint8_t instance, bool* out)
 {
   RA_CHECK_NULL_PTR((void*)out, s_tag, "out must not be nullptr");
-  if ((uint16_t)instance >= (uint16_t)k_ra_cnecc_instance_count) {
+  if ((uint16_t)instance >= k_ra_cnecc_instance_count) {
     return k_ra_err_invalid_arg;
   }
   volatile r_cnecc_regs_t* reg = ra_cnecc(instance);
   RA_CHECK_NULL_PTR((void*)reg, s_tag, "instance mapping failed");
   /* HUM Ch 42.2.2 "EC710TMC : ECC Test Mode Control Register", p 2872 */
-  *out = (reg->EC710TMC & (uint16_t)k_ra_cnecc_mask_ectmce) != 0U;
+  *out = ((reg->EC710TMC & k_ra_cnecc_mask_ectmce) != 0U);
   return k_ra_ok;
 }
 
@@ -591,7 +591,7 @@ static void internal_ctl_rmw(volatile r_cnecc_regs_t* reg, uint32_t new_bits, ui
 
 [[nodiscard]] ra_err_t ra_cnecc_attach_isr(uint8_t priority)
 {
-  if (priority > (uint8_t)k_ra_isr_prio_max) {
+  if (priority > k_ra_isr_prio_max) {
     return k_ra_err_invalid_arg;
   }
   for (uint8_t i = 0U; i < (uint8_t)k_ra_cnecc_instance_count; ++i) {
@@ -627,7 +627,7 @@ static void internal_ctl_rmw(volatile r_cnecc_regs_t* reg, uint32_t new_bits, ui
 void ra_cnecc_isr_handler(void* ctx)
 {
   const uint8_t instance = (uint8_t)((uintptr_t)ctx & (uintptr_t)k_ra_cnecc_isr_ctx_inst_mask);
-  if ((uint16_t)instance >= (uint16_t)k_ra_cnecc_instance_count) {
+  if ((uint16_t)instance >= k_ra_cnecc_instance_count) {
     return; /* GCOVR_EXCL_LINE -- attach packs a valid index. */
   }
   volatile r_cnecc_regs_t* reg = ra_cnecc(instance);
@@ -642,11 +642,11 @@ void ra_cnecc_isr_handler(void* ctx)
    *   - Clear ECC error flag (ECER1C = 1, ECER2C = 1). */
   const uint32_t ctl  = reg->EC710CTL;
   const uint32_t ead  = reg->EC710EAD0;
-  const uint16_t addr = (uint16_t)(ead & (uint32_t)k_ra_cnecc_mask_ecead);
+  const uint16_t addr = (uint16_t)(ead & k_ra_cnecc_mask_ecead);
 
-  const bool one_bit  = (ctl & (uint32_t)k_ra_cnecc_mask_ecer1f) != 0U;
-  const bool two_bit  = (ctl & (uint32_t)k_ra_cnecc_mask_ecer2f) != 0U;
-  const bool overflow = (ctl & (uint32_t)k_ra_cnecc_mask_ecovff) != 0U;
+  const bool one_bit  = (ctl & k_ra_cnecc_mask_ecer1f) != 0U;
+  const bool two_bit  = (ctl & k_ra_cnecc_mask_ecer2f) != 0U;
+  const bool overflow = (ctl & k_ra_cnecc_mask_ecovff) != 0U;
 
   /* Dispatch each kind separately so the host callback sees one
    * event per latched bit. 2-bit faults take priority for the
@@ -663,12 +663,12 @@ void ra_cnecc_isr_handler(void* ctx)
   }
 
   /* HUM Ch 42.3.1 "ECC Function Setting", p 2874 */
-  reg->EC710CTL = (uint32_t)k_ra_cnecc_mask_clear_all;
+  reg->EC710CTL = k_ra_cnecc_mask_clear_all;
 }
 
 void ra_cnecc_dispatch(uint8_t instance, bool is_2bit, uint16_t err_addr)
 {
-  if ((uint16_t)instance >= (uint16_t)k_ra_cnecc_instance_count) {
+  if ((uint16_t)instance >= k_ra_cnecc_instance_count) {
     return;
   }
   if (is_2bit) {
@@ -691,7 +691,7 @@ void ra_cnecc_dispatch(uint8_t instance, bool is_2bit, uint16_t err_addr)
 
 void ra_cnecc_dispatch_overflow(uint8_t instance)
 {
-  if ((uint16_t)instance >= (uint16_t)k_ra_cnecc_instance_count) {
+  if ((uint16_t)instance >= k_ra_cnecc_instance_count) {
     return;
   }
   ++s_cnecc_overflow_count[instance];

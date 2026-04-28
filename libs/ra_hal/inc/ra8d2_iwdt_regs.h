@@ -68,8 +68,8 @@ static inline volatile r_iwdt_regs_t* ra_iwdt(void)
 static inline void ra_iwdt_refresh(void)
 {
   volatile r_iwdt_regs_t* w = ra_iwdt();
-  w->IWDTRR                 = (uint8_t)k_ra_iwdt_refresh_a;
-  w->IWDTRR                 = (uint8_t)k_ra_iwdt_refresh_b;
+  w->IWDTRR                 = k_ra_iwdt_refresh_a;
+  w->IWDTRR                 = k_ra_iwdt_refresh_b;
 }
 
 #ifdef __cplusplus

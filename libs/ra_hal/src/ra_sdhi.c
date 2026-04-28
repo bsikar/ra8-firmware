@@ -93,7 +93,7 @@ ra_err_t ra_sdhi_send_command(uint8_t   instance,
 
   /* Poll SD_INFO1.RSPEND (bit 0) with bounded spin budget. */
   enum : uint32_t { k_ra_sdhi_cmd_spin = 200000U };
-  for (uint32_t i = 0U; i < (uint32_t)k_ra_sdhi_cmd_spin; ++i) {
+  for (uint32_t i = 0U; i < k_ra_sdhi_cmd_spin; ++i) {
     if ((reg->SD_INFO1 & 1UL) != 0UL) {
       if (out_rsp != nullptr) {
         out_rsp[0] = reg->SD_RSP10;
@@ -161,7 +161,7 @@ void ra_sdhi_dispatch(uint8_t instance)
 
 ra_err_t ra_sdhi_enter_stop(uint8_t instance)
 {
-  if (instance >= (uint8_t)k_ra_sdhi_instance_count) {
+  if (instance >= k_ra_sdhi_instance_count) {
     return k_ra_err_invalid_arg;
   }
   return ra_mstp_disable(s_sdhi_mstp_table[instance]);
@@ -169,7 +169,7 @@ ra_err_t ra_sdhi_enter_stop(uint8_t instance)
 
 ra_err_t ra_sdhi_exit_stop(uint8_t instance)
 {
-  if (instance >= (uint8_t)k_ra_sdhi_instance_count) {
+  if (instance >= k_ra_sdhi_instance_count) {
     return k_ra_err_invalid_arg;
   }
   return ra_mstp_enable(s_sdhi_mstp_table[instance]);

@@ -76,7 +76,7 @@ ra_err_t ra_spi_master_init(uint8_t channel)
 {
   volatile r_spi_regs_t* reg = ra_spi(channel);
   RA_CHECK_NULL_PTR(reg, s_tag, "channel out of range");
-  if (channel >= (uint8_t)k_ra_spi_channel_count) {
+  if (channel >= k_ra_spi_channel_count) {
     return k_ra_err_invalid_arg;
   }
 
@@ -91,7 +91,7 @@ ra_err_t ra_spi_master_init(uint8_t channel)
   reg->SSLND    = 0U;
   reg->SPND     = 0U;
   reg->SPCR2    = 0U;
-  reg->SPCMD[0] = (uint16_t)k_ra_spi_spcmd_default;
+  reg->SPCMD[0] = k_ra_spi_spcmd_default;
   reg->SPCR     = (uint8_t)k_ra_spi_spcr_enable;
 
   ra_log_info_val(s_tag, "init channel", (uint32_t)channel);
@@ -117,13 +117,13 @@ ra_err_t ra_spi_xfer8(uint8_t channel, uint8_t tx, uint8_t* rx)
   volatile r_spi_regs_t* reg = ra_spi(channel);
   RA_CHECK_NULL_PTR(reg, s_tag, "channel out of range");
 
-  ra_err_t err = internal_wait_spsr(reg, (uint8_t)k_ra_spsr_bit_sptef);
+  ra_err_t err = internal_wait_spsr(reg, k_ra_spsr_bit_sptef);
   if (err != k_ra_ok) {
     return err;
   }
   reg->SPDR = (uint32_t)tx;
 
-  err = internal_wait_spsr(reg, (uint8_t)k_ra_spsr_bit_sprf);
+  err = internal_wait_spsr(reg, k_ra_spsr_bit_sprf);
   if (err != k_ra_ok) {
     return err;
   }
@@ -188,7 +188,7 @@ static uint8_t internal_spbr(uint32_t baud_hz, uint32_t pclka_hz)
   }
   const uint32_t result = n - 1U;
   if (result > (uint32_t)k_ra_spi_spbr_max) {
-    return (uint8_t)k_ra_spi_spbr_max;
+    return k_ra_spi_spbr_max;
   }
   return (uint8_t)result;
 }
@@ -198,7 +198,7 @@ static uint8_t internal_spbr(uint32_t baud_hz, uint32_t pclka_hz)
  */
 static uint16_t internal_spcmd(const ra_spi_cfg_t* cfg)
 {
-  uint16_t v = (uint16_t)k_ra_spi_spcmd_default;
+  uint16_t v = k_ra_spi_spcmd_default;
   if ((cfg->mode == k_ra_spi_mode_1) || (cfg->mode == k_ra_spi_mode_3)) {
     v |= (uint16_t)(1U << (uint8_t)k_ra_spi_spcmd_bit_cpha);
   }
@@ -218,7 +218,7 @@ ra_err_t ra_spi_init(uint8_t channel, const ra_spi_cfg_t* cfg)
   if (reg == nullptr) {
     return k_ra_err_invalid_arg;
   }
-  if (channel >= (uint8_t)k_ra_spi_channel_count) {
+  if (channel >= k_ra_spi_channel_count) {
     return k_ra_err_invalid_arg;
   }
 
@@ -284,18 +284,18 @@ ra_err_t ra_spi_get_errors(uint8_t channel, uint8_t* out_mask)
     return k_ra_err_invalid_arg;
   }
   const uint8_t ss = reg->SPSR;
-  uint8_t       m  = (uint8_t)k_ra_spi_err_none;
-  if ((ss & (uint8_t)(1U << (uint8_t)k_ra_spsr_bit_ovrf)) != 0U) {
-    m |= (uint8_t)k_ra_spi_err_overrun;
+  uint8_t       m  = k_ra_spi_err_none;
+  if ((ss & (uint8_t)(1U << k_ra_spsr_bit_ovrf)) != 0U) {
+    m |= k_ra_spi_err_overrun;
   }
-  if ((ss & (uint8_t)(1U << (uint8_t)k_ra_spsr_bit_moderf)) != 0U) {
-    m |= (uint8_t)k_ra_spi_err_mode;
+  if ((ss & (uint8_t)(1U << k_ra_spsr_bit_moderf)) != 0U) {
+    m |= k_ra_spi_err_mode;
   }
-  if ((ss & (uint8_t)(1U << (uint8_t)k_ra_spsr_bit_perf)) != 0U) {
-    m |= (uint8_t)k_ra_spi_err_parity;
+  if ((ss & (uint8_t)(1U << k_ra_spsr_bit_perf)) != 0U) {
+    m |= k_ra_spi_err_parity;
   }
-  if ((ss & (uint8_t)(1U << (uint8_t)k_ra_spsr_bit_udrf)) != 0U) {
-    m |= (uint8_t)k_ra_spi_err_underrun;
+  if ((ss & (uint8_t)(1U << k_ra_spsr_bit_udrf)) != 0U) {
+    m |= k_ra_spi_err_underrun;
   }
   *out_mask = m;
   return k_ra_ok;
@@ -309,16 +309,15 @@ ra_err_t ra_spi_clear_errors(uint8_t channel)
   }
   /* Clear SPSR error flags via write-zero.
    * HUM Ch 43.2 "SPSR : SPI Status Register", p 2877 */
-  const uint8_t clr_mask =
-    (uint8_t)~((1U << (uint8_t)k_ra_spsr_bit_ovrf) | (1U << (uint8_t)k_ra_spsr_bit_moderf) |
-               (1U << (uint8_t)k_ra_spsr_bit_perf) | (1U << (uint8_t)k_ra_spsr_bit_udrf));
-  reg->SPSR = (uint8_t)(reg->SPSR & clr_mask);
+  const uint8_t clr_mask = (uint8_t)~((1U << k_ra_spsr_bit_ovrf) | (1U << k_ra_spsr_bit_moderf) |
+                                      (1U << k_ra_spsr_bit_perf) | (1U << k_ra_spsr_bit_udrf));
+  reg->SPSR              = (uint8_t)(reg->SPSR & clr_mask);
   return k_ra_ok;
 }
 
 ra_err_t ra_spi_attach_transfer_handler(uint8_t channel, ra_spi_complete_fn_t fn, void* ctx)
 {
-  if (channel >= (uint8_t)k_ra_spi_channel_count) {
+  if (channel >= k_ra_spi_channel_count) {
     return k_ra_err_invalid_arg;
   }
   s_spi_state[channel].cb  = fn;
@@ -340,7 +339,7 @@ ra_err_t ra_spi_enter_stop(uint8_t channel)
 
 ra_err_t ra_spi_exit_stop(uint8_t channel)
 {
-  if (channel >= (uint8_t)k_ra_spi_channel_count) {
+  if (channel >= k_ra_spi_channel_count) {
     return k_ra_err_invalid_arg;
   }
   return ra_mstp_enable(s_spi_mstp_table[channel]);
@@ -357,7 +356,7 @@ ra_err_t ra_spi_write_dma(uint8_t              channel,
 {
   RA_CHECK_NULL_PTR(data, s_tag, "spi_write_dma: data");
   RA_CHECK_NULL_PTR(out_dma_channel, s_tag, "spi_write_dma: out_dma_channel");
-  if ((channel >= (uint8_t)k_ra_spi_channel_count) || (len == 0U)) {
+  if ((channel >= k_ra_spi_channel_count) || (len == 0U)) {
     return k_ra_err_invalid_arg;
   }
   volatile r_spi_regs_t* reg = ra_spi(channel);
@@ -390,7 +389,7 @@ ra_err_t ra_spi_read_dma(uint8_t              channel,
 {
   RA_CHECK_NULL_PTR(out_buf, s_tag, "spi_read_dma: out_buf");
   RA_CHECK_NULL_PTR(out_dma_channel, s_tag, "spi_read_dma: out_dma_channel");
-  if ((channel >= (uint8_t)k_ra_spi_channel_count) || (len == 0U)) {
+  if ((channel >= k_ra_spi_channel_count) || (len == 0U)) {
     return k_ra_err_invalid_arg;
   }
   volatile r_spi_regs_t* reg = ra_spi(channel);
@@ -415,7 +414,7 @@ ra_err_t ra_spi_read_dma(uint8_t              channel,
 
 void ra_spi_dispatch_spti(uint8_t channel)
 {
-  if (channel >= (uint8_t)k_ra_spi_channel_count) {
+  if (channel >= k_ra_spi_channel_count) {
     return;
   }
   (void)s_spi_state[channel].cb;
@@ -423,7 +422,7 @@ void ra_spi_dispatch_spti(uint8_t channel)
 
 void ra_spi_dispatch_spri(uint8_t channel)
 {
-  if (channel >= (uint8_t)k_ra_spi_channel_count) {
+  if (channel >= k_ra_spi_channel_count) {
     return;
   }
   (void)s_spi_state[channel].cb;
@@ -431,7 +430,7 @@ void ra_spi_dispatch_spri(uint8_t channel)
 
 void ra_spi_dispatch_spei(uint8_t channel)
 {
-  if (channel >= (uint8_t)k_ra_spi_channel_count) {
+  if (channel >= k_ra_spi_channel_count) {
     return;
   }
   uint8_t mask = 0U;

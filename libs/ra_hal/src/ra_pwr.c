@@ -66,7 +66,7 @@ typedef enum : uint8_t {
  */
 static volatile uint32_t* internal_wupen_ptr(uint8_t reg)
 {
-  const uintptr_t base = (uintptr_t)k_ra_system_base_addr;
+  const uintptr_t base = k_ra_system_base_addr;
   if (reg == 0U) {
     return (volatile uint32_t*)(base + (uintptr_t)k_ra_lpm_wupen0_off);
   }
@@ -85,10 +85,10 @@ static bool internal_decode_wake(ra_pwr_wake_t source, uint8_t* out_reg, uint8_t
 {
   const uint8_t reg = (uint8_t)(((uint16_t)source >> 8) & 0xFFU);
   const uint8_t bit = (uint8_t)((uint16_t)source & 0xFFU);
-  if (reg >= (uint8_t)k_ra_pwr_wupen_count) {
+  if (reg >= k_ra_pwr_wupen_count) {
     return false;
   }
-  if (bit >= (uint8_t)k_ra_pwr_wupen_bits) {
+  if (bit >= k_ra_pwr_wupen_bits) {
     return false;
   }
   *out_reg = reg;

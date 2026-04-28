@@ -72,7 +72,7 @@ ra_err_t ra_icu_init(void)
 
   /* HUM Ch 14.2.15 "NMICLR : NMI Status Clear Register", p 544 -- write
    * all-ones to clear every latched NMI status bit. */
-  *ra_icu_nmiclr() = (uint32_t)k_ra_icu_nmiclr_all;
+  *ra_icu_nmiclr() = k_ra_icu_nmiclr_all;
   return k_ra_ok;
 }
 
@@ -92,12 +92,12 @@ ra_err_t ra_icu_configure_irq_pin(uint8_t irq_num, const ra_icu_irq_cfg_t* cfg)
     return k_ra_err_invalid_arg;
   }
 
-  const uint8_t irqmd = ((uint8_t)cfg->sense & (uint8_t)k_ra_icu_irqcr_mask_irqmd);
-  const uint8_t fclk = (uint8_t)(((uint8_t)cfg->filter_div << (uint8_t)k_ra_icu_irqcr_bit_fclksel) &
-                                 (uint8_t)k_ra_icu_irqcr_mask_fclksel);
-  uint8_t       val  = (uint8_t)(irqmd | fclk);
+  const uint8_t irqmd = ((uint8_t)cfg->sense & k_ra_icu_irqcr_mask_irqmd);
+  const uint8_t fclk  = (uint8_t)(((uint8_t)cfg->filter_div << k_ra_icu_irqcr_bit_fclksel) &
+                                  k_ra_icu_irqcr_mask_fclksel);
+  uint8_t       val   = (uint8_t)(irqmd | fclk);
   if (cfg->filter_en) {
-    val |= (uint8_t)k_ra_icu_irqcr_mask_flten;
+    val |= k_ra_icu_irqcr_mask_flten;
   }
   /* HUM Ch 14.2.12 "IRQCRi : IRQ Control Register", p 535 */
   *irqcr = val;

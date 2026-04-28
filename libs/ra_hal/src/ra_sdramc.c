@@ -43,7 +43,7 @@ ra_err_t ra_sdramc_init(void)
 
   /* HUM Ch 15 "Buses" p 583 */
   /* SDCCR : SDC Control Register. */
-  reg->SDCCR = (uint16_t)k_ra_sdccr_default;
+  reg->SDCCR = k_ra_sdccr_default;
   /* HUM Ch 15 "Buses" p 583 */
   /* SDCMOD : SDC Mode Register. */
   reg->SDCMOD = 0U;
@@ -52,10 +52,10 @@ ra_err_t ra_sdramc_init(void)
   reg->SDAMOD = 0U;
   /* HUM Ch 15 "Buses" p 583 */
   /* SDTR : SDC Timing Register. */
-  reg->SDTR = (uint32_t)k_ra_sdtr_default;
+  reg->SDTR = k_ra_sdtr_default;
   /* HUM Ch 15 "Buses" p 583 */
   /* SDRFCR : SDC Refresh Cycle Register. */
-  reg->SDRFCR = (uint16_t)k_ra_sdrfcr_default;
+  reg->SDRFCR = k_ra_sdrfcr_default;
   /* HUM Ch 15 "Buses" p 583 */
   /* SDRFEN : SDC Refresh Enable Register. */
   reg->SDRFEN = 1U;

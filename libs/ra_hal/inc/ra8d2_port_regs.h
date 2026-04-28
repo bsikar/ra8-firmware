@@ -153,11 +153,10 @@ static_assert(sizeof(r_port_regs_t) == (size_t)k_ra_port_regs_bytes,
  */
 static inline volatile r_port_regs_t* ra_port(ra_port_t port)
 {
-  if ((uint8_t)port > (uint8_t)k_ra_port_max) {
+  if ((uint8_t)port > k_ra_port_max) {
     return nullptr;
   }
-  const uintptr_t addr =
-    (uintptr_t)k_ra_port0_base_addr + ((uintptr_t)port * (uintptr_t)k_ra_port_stride);
+  const uintptr_t addr = k_ra_port0_base_addr + ((uintptr_t)port * k_ra_port_stride);
   return (volatile r_port_regs_t*)addr;
 }
 

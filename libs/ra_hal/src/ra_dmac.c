@@ -60,7 +60,7 @@ ra_err_t ra_dmac_start(uint8_t channel, const ra_dmac_config_t* cfg)
   }
   reg->DMAMD = dmamd;
 
-  reg->DMCNT = (uint8_t)k_ra_dmcnt_enable;
+  reg->DMCNT = k_ra_dmcnt_enable;
 
   ra_log_info_val(s_tag, "dmac_start ch", (uint32_t)channel);
   return k_ra_ok;
