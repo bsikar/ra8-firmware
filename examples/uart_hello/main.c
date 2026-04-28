@@ -1,27 +1,44 @@
 /**
  * @file main.c
- * @brief UART "hello world" smoke test for EK-RA8D2 (SCI0 @ 115200)
+ * @brief UART "hello world" smoke test for EK-RA8D2 (SCI8 @ 115200)
  *
  * @par Tag
  * [Ring 6 / APP] {World: S}
  *
+ * @par BLOCKED on SCI_B retrofit
+ * The J-Link OB CDC channel on the EK-RA8D2 board bridges to **SCI8
+ * on PD02 (TX) / PD03 (RX)** -- which is an SCI_B instance, not the
+ * legacy SCI variant. `libs/ra_hal/src/ra_sci.c` currently writes to
+ * the legacy SCI register layout (see `ra_sci.h:34`); it builds and
+ * unit-tests pass because the host simulator backs MMIO with ordinary
+ * RAM, but on real silicon the byte writes land at the wrong
+ * register offsets and nothing comes out of the CDC port. A
+ * verified flash-and-readback of this app under SWD shows the
+ * firmware running its main loop correctly -- the print is happening
+ * at the C level, the bytes just aren't reaching the line.
+ *
+ * To make this app actually print, `ra8d2_sci_regs.h` and
+ * `ra_sci.c` need to be re-derived against the SCI_B register
+ * layout in HUM Ch 38 ("Serial Communications Interface", p 2174
+ * onwards).
+ *
  * @details
  * Brings the chip up on HOCO + PLL via ``ra_cgc_init()``, configures
- * SCI0 TXD0=P1_01 / RXD0=P1_02 in async mode at 115200 8N1, and
+ * SCI8 TXD8=PD_02 / RXD8=PD_03 in async mode at 115200 8N1, and
  * prints ``"hello, ra8d2!\r\n"`` once a second while toggling LED1
  * as a heartbeat. The CDC channel of the on-board J-Link OB on the
- * EK-RA8D2 surfaces SCI0 as a virtual serial port on the host, so
- * connecting a terminal at 115200 8N1 to that port should show the
- * stream.
+ * EK-RA8D2 surfaces these pins as a virtual serial port on the host,
+ * so once the SCI_B retrofit lands, connecting a terminal at
+ * 115200 8N1 to that port should show the stream.
  *
  * Sequence:
  *   1. ``ra_cgc_init()`` -- HOCO + PLL up, CPUCLK0 / PCLKB at their
  *      rated rates. Required for an accurate baud-rate divisor.
  *   2. ``ra_cgc_get_clock_hz(k_ra_clock_id_pclkb, &pclkb_hz)`` --
  *      the SCI BRR is computed against PCLKB.
- *   3. ``ra_pfs_route_peripheral()`` for P1_01 and P1_02 to put
+ *   3. ``ra_pfs_route_peripheral()`` for PD_02 and PD_03 to put
  *      them in SCI async mode (PSEL = ``k_ra_psel_sci_async``).
- *   4. ``ra_sci_init(0, &cfg)`` -- 115200 8N1, no parity, one stop.
+ *   4. ``ra_sci_init(8, &cfg)`` -- 115200 8N1, no parity, one stop.
  *   5. ``ra_time_init(cpuclk0_hz)`` for the heartbeat delay.
  *   6. ``ra_gpio_output_init(k_ra_pin_led1, low)`` for the visual
  *      heartbeat.
@@ -61,14 +78,14 @@
 typedef enum : uint32_t {
   k_uart_hello_baud        = 115200U,
   k_uart_hello_period_ms   = 1000U,
-  k_uart_hello_sci_channel = 0U,
+  k_uart_hello_sci_channel = 8U,
 } uart_hello_config_t;
 
-/** @brief Pinout for the on-board J-Link OB CDC channel (SCI0). */
-static const ra_port_pin_t k_uart_hello_pin_txd0 =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_1 << 8) | (uint16_t)k_ra_pin_1);
-static const ra_port_pin_t k_uart_hello_pin_rxd0 =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_1 << 8) | (uint16_t)k_ra_pin_2);
+/** @brief Pinout for the on-board J-Link OB CDC channel (SCI8 / PD02 + PD03). */
+static const ra_port_pin_t k_uart_hello_pin_txd =
+  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_2);
+static const ra_port_pin_t k_uart_hello_pin_rxd =
+  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
 
 /** @brief Greeting string sent every period. Must remain ASCII. */
 static const uint8_t k_uart_hello_greeting[] = "hello, ra8d2!\r\n";
@@ -90,7 +107,7 @@ static void uart_hello_panic_halt(void)
 }
 
 /**
- * @brief Route P1_01 / P1_02 to SCI0 TXD / RXD via the PFS PSEL field.
+ * @brief Route PD_02 / PD_03 to SCI8 TXD / RXD via the PFS PSEL field.
  *
  * @return Error code from the first failing route call, or k_ra_ok.
  *
@@ -102,18 +119,18 @@ static void uart_hello_panic_halt(void)
  * @pre IOPORT module is reachable.
  * @pre Caller is single-threaded init context.
  *
- * @post On success P1_01 and P1_02 are in SCI-async (PSEL=0x04) mode.
+ * @post On success PD_02 and PD_03 are in SCI-async (PSEL=0x04) mode.
  *
  * @since 0.1.0
  */
 [[nodiscard]] static ra_err_t uart_hello_pins_init(void)
 {
   ra_err_t err =
-    ra_pfs_route_peripheral(k_uart_hello_pin_txd0, k_ra_psel_sci_async, "uart_hello.txd0");
+    ra_pfs_route_peripheral(k_uart_hello_pin_txd, k_ra_psel_sci_async, "uart_hello.txd8");
   if (err != k_ra_ok) {
     return err;
   }
-  return ra_pfs_route_peripheral(k_uart_hello_pin_rxd0, k_ra_psel_sci_async, "uart_hello.rxd0");
+  return ra_pfs_route_peripheral(k_uart_hello_pin_rxd, k_ra_psel_sci_async, "uart_hello.rxd8");
 }
 
 /**
