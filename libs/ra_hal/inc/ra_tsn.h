@@ -95,9 +95,9 @@ extern "C" {
  * @see ra_tsn_config_t::low_ref_degc
  */
 typedef enum : int16_t {
-  k_ra_tsn_cal_temp_high_125 = 125,  /**< 125 degC Tj_max parts.  */
-  k_ra_tsn_cal_temp_high_105 = 105,  /**< 95 / 105 degC parts.    */
-  k_ra_tsn_cal_temp_low_n40  = -40,  /**< Always -40 degC on RA8D2. */
+  k_ra_tsn_cal_temp_high_125 = 125, /**< 125 degC Tj_max parts.  */
+  k_ra_tsn_cal_temp_high_105 = 105, /**< 95 / 105 degC parts.    */
+  k_ra_tsn_cal_temp_low_n40  = -40, /**< Always -40 degC on RA8D2. */
 } ra_tsn_cal_temp_t;
 
 /**

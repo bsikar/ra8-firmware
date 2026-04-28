@@ -159,7 +159,11 @@ static inline uint8_t internal_chan_mask(uint8_t base_mask, ra_bkup_channel_t ch
 static inline void internal_rmw8(volatile uint8_t* reg, uint8_t mask, bool enable)
 {
   const uint8_t live = *reg;
-  *reg               = enable ? (uint8_t)(live | mask) : (uint8_t)(live & (uint8_t)~mask);
+  if (enable) {
+    *reg = (uint8_t)(live | mask);
+  } else {
+    *reg = (uint8_t)(live & (uint8_t)~mask);
+  }
 }
 
 /* =============================================================================
@@ -201,7 +205,7 @@ static inline void internal_rmw8(volatile uint8_t* reg, uint8_t mask, bool enabl
 
   /* HUM Ch 12.2.13 "VBTBPSR : VBATT Battery Power Supply Status Register", p 509 */
   *ra_bkup_vbtbpsr() =
-    (uint8_t)(k_ra_bkup_status_clear_keep_mask); /* W0C: clear VBPORF, leave others. */
+    (uint8_t)k_ra_bkup_status_clear_keep_mask; /* W0C: clear VBPORF, leave others. */
 
   /* HUM Ch 12.2.14 "VBTADSR : VBATT Tamper Detection Status Register", p 509 */
   *ra_bkup_vbtadsr() = 0U;
@@ -459,16 +463,151 @@ static inline void internal_rmw8(volatile uint8_t* reg, uint8_t mask, bool enabl
  * =============================================================================
  */
 
+/**
+ * @brief Validate every channel descriptor in a tamper config.
+ *
+ * @param[in] cfg Caller-supplied, null-checked tamper config.
+ * @return ``k_ra_ok`` if every channel passes ``internal_validate_chan``.
+ *
+ * @pre cfg != nullptr.
+ * @pre cfg->channels has ``k_ra_bkup_chan_count`` entries.
+ * @post No side effects.
+ */
+static ra_err_t internal_validate_tamper_channels(const ra_bkup_tamper_config_t* cfg)
+{
+  for (uint8_t i = 0U; i < (uint8_t)k_ra_bkup_chan_count; ++i) {
+    const ra_err_t err = internal_validate_chan(&cfg->channels[i]);
+    RA_RETURN_ON_ERROR(err, s_tag, "tamper_init: channel cfg out of range");
+  }
+  return k_ra_ok;
+}
+
+/**
+ * @brief Compose the VBTICTLR (VCHnINEN) byte from per-channel flags.
+ *
+ * @param[in] cfg Tamper config holding the per-channel ``input_enable`` flags.
+ * @return Composed VBTICTLR value.
+ *
+ * @pre cfg != nullptr.
+ * @pre cfg->channels has ``k_ra_bkup_chan_count`` entries.
+ * @post Returned mask only sets VCHnINEN bits.
+ */
+static uint8_t internal_compose_vbtictlr(const ra_bkup_tamper_config_t* cfg)
+{
+  uint8_t ictlr = 0U;
+  for (uint8_t i = 0U; i < (uint8_t)k_ra_bkup_chan_count; ++i) {
+    if (cfg->channels[i].input_enable) {
+      ictlr = (uint8_t)(ictlr | internal_chan_mask((uint8_t)k_ra_bkup_vbtictlr_mask_vch0inen,
+                                                   (ra_bkup_channel_t)i));
+    }
+  }
+  return ictlr;
+}
+
+/**
+ * @brief Compose the VBTICTLR2 (VCHnNCE + VCHnEG) byte from per-channel flags.
+ *
+ * @param[in] cfg Tamper config holding noise-canceller and edge fields.
+ * @return Composed VBTICTLR2 value.
+ *
+ * @pre cfg != nullptr.
+ * @pre cfg->channels has ``k_ra_bkup_chan_count`` entries.
+ * @post Returned mask only sets VCHnNCE/VCHnEG bits.
+ */
+static uint8_t internal_compose_vbtictlr2(const ra_bkup_tamper_config_t* cfg)
+{
+  uint8_t ictlr2 = 0U;
+  for (uint8_t i = 0U; i < (uint8_t)k_ra_bkup_chan_count; ++i) {
+    if (cfg->channels[i].noise_canceller_en) {
+      ictlr2 = (uint8_t)(ictlr2 | internal_chan_mask((uint8_t)k_ra_bkup_vbtictlr2_mask_vch0nce,
+                                                     (ra_bkup_channel_t)i));
+    }
+    if ((uint8_t)cfg->channels[i].edge == (uint8_t)k_ra_bkup_edge_rising) {
+      ictlr2 = (uint8_t)(ictlr2 | internal_chan_mask((uint8_t)k_ra_bkup_vbtictlr2_mask_vch0eg,
+                                                     (ra_bkup_channel_t)i));
+    }
+  }
+  return ictlr2;
+}
+
+/**
+ * @brief Compose the VBTADCR1 (IRQ-enable + clear-backup) byte.
+ *
+ * @param[in] cfg Tamper config holding ``irq_enable`` / ``clear_backup`` flags.
+ * @return Composed VBTADCR1 value.
+ *
+ * @pre cfg != nullptr.
+ * @pre cfg->channels has ``k_ra_bkup_chan_count`` entries.
+ * @post Returned mask only sets VBTADIE0/VBTADCE0 family bits.
+ */
+static uint8_t internal_compose_vbtadcr1(const ra_bkup_tamper_config_t* cfg)
+{
+  uint8_t adcr1 = 0U;
+  for (uint8_t i = 0U; i < (uint8_t)k_ra_bkup_chan_count; ++i) {
+    if (cfg->channels[i].irq_enable) {
+      adcr1 = (uint8_t)(adcr1 | internal_chan_mask((uint8_t)k_ra_bkup_vbtadcr1_mask_vbtadie0,
+                                                   (ra_bkup_channel_t)i));
+    }
+    if (cfg->channels[i].clear_backup) {
+      adcr1 = (uint8_t)(adcr1 | internal_chan_mask((uint8_t)k_ra_bkup_vbtadcr1_mask_vbtadce0,
+                                                   (ra_bkup_channel_t)i));
+    }
+  }
+  return adcr1;
+}
+
+/**
+ * @brief Compose the VBTADCR2 (capture-source) byte.
+ *
+ * @param[in] cfg Tamper config holding ``capture_src``.
+ * @return Composed VBTADCR2 value.
+ *
+ * @pre cfg != nullptr.
+ * @pre cfg->channels has ``k_ra_bkup_chan_count`` entries.
+ * @post Returned mask only sets VBRTCES0 family bits.
+ */
+static uint8_t internal_compose_vbtadcr2(const ra_bkup_tamper_config_t* cfg)
+{
+  uint8_t adcr2 = 0U;
+  for (uint8_t i = 0U; i < (uint8_t)k_ra_bkup_chan_count; ++i) {
+    if ((uint8_t)cfg->channels[i].capture_src == (uint8_t)k_ra_bkup_capture_src_vbtadf) {
+      adcr2 = (uint8_t)(adcr2 | internal_chan_mask((uint8_t)k_ra_bkup_vbtadcr2_mask_vbrtces0,
+                                                   (ra_bkup_channel_t)i));
+    }
+  }
+  return adcr2;
+}
+
+/**
+ * @brief Compose the VBTADCR3 (HUK-zeroize) byte.
+ *
+ * @param[in] cfg Tamper config holding ``zeroize_huk``.
+ * @return Composed VBTADCR3 value.
+ *
+ * @pre cfg != nullptr.
+ * @pre cfg->channels has ``k_ra_bkup_chan_count`` entries.
+ * @post Returned mask only sets VBTADZE0 family bits.
+ */
+static uint8_t internal_compose_vbtadcr3(const ra_bkup_tamper_config_t* cfg)
+{
+  uint8_t adcr3 = 0U;
+  for (uint8_t i = 0U; i < (uint8_t)k_ra_bkup_chan_count; ++i) {
+    if (cfg->channels[i].zeroize_huk) {
+      adcr3 = (uint8_t)(adcr3 | internal_chan_mask((uint8_t)k_ra_bkup_vbtadcr3_mask_vbtadze0,
+                                                   (ra_bkup_channel_t)i));
+    }
+  }
+  return adcr3;
+}
+
 [[nodiscard]] ra_err_t ra_bkup_tamper_init(const ra_bkup_tamper_config_t* cfg)
 {
   RA_CHECK_NULL_PTR((void*)cfg, s_tag, "tamper cfg must not be nullptr");
   if ((uint16_t)cfg->nc_width > k_ra_bkup_max_nc_width) {
     return k_ra_err_invalid_arg;
   }
-  for (uint8_t i = 0U; i < (uint8_t)k_ra_bkup_chan_count; ++i) {
-    const ra_err_t err = internal_validate_chan(&cfg->channels[i]);
-    RA_RETURN_ON_ERROR(err, s_tag, "tamper_init: channel cfg out of range");
-  }
+  const ra_err_t v_err = internal_validate_tamper_channels(cfg);
+  RA_RETURN_ON_ERROR(v_err, s_tag, "tamper_init: channel cfg out of range");
 
   /* HUM Ch 12.3.5 p 516 + Ch 12.3.7.4 step 0: disable VCHnNCE / VBTADCRn
    * before changing VINCW. */
@@ -483,14 +622,7 @@ static inline void internal_rmw8(volatile uint8_t* reg, uint8_t mask, bool enabl
 
   /* Tamper-init step 1 (12.3.7.4 p 518): VCHnINEN. */
   /* HUM Ch 12.2.8 "VBTICTLR : VBATT Input Control Register", p 505 */
-  uint8_t ictlr = 0U;
-  for (uint8_t i = 0U; i < (uint8_t)k_ra_bkup_chan_count; ++i) {
-    if (cfg->channels[i].input_enable) {
-      ictlr = (uint8_t)(ictlr | internal_chan_mask((uint8_t)k_ra_bkup_vbtictlr_mask_vch0inen,
-                                                   (ra_bkup_channel_t)i));
-    }
-  }
-  *ra_bkup_vbtictlr() = ictlr;
+  *ra_bkup_vbtictlr() = internal_compose_vbtictlr(cfg);
 
   /* Tamper-init step 3 (12.3.7.4 p 518): VINCW. */
   /* HUM Ch 12.2.18 "VBTNCWCR : VBATT Noise Canceler Width Control Register", p 511 */
@@ -498,18 +630,7 @@ static inline void internal_rmw8(volatile uint8_t* reg, uint8_t mask, bool enabl
 
   /* Tamper-init step 4 (12.3.7.4 p 518): VCHnNCE + VCHnEG. */
   /* HUM Ch 12.2.9 "VBTICTLR2 : VBATT Input Control Register 2", p 506 */
-  uint8_t ictlr2 = 0U;
-  for (uint8_t i = 0U; i < (uint8_t)k_ra_bkup_chan_count; ++i) {
-    if (cfg->channels[i].noise_canceller_en) {
-      ictlr2 = (uint8_t)(ictlr2 | internal_chan_mask((uint8_t)k_ra_bkup_vbtictlr2_mask_vch0nce,
-                                                     (ra_bkup_channel_t)i));
-    }
-    if ((uint8_t)cfg->channels[i].edge == (uint8_t)k_ra_bkup_edge_rising) {
-      ictlr2 = (uint8_t)(ictlr2 | internal_chan_mask((uint8_t)k_ra_bkup_vbtictlr2_mask_vch0eg,
-                                                     (ra_bkup_channel_t)i));
-    }
-  }
-  *ra_bkup_vbtictlr2() = ictlr2;
+  *ra_bkup_vbtictlr2() = internal_compose_vbtictlr2(cfg);
 
   /* HUM Ch 12.3.7.4 step 7: dummy-read + W0C VBTADFn (pseudo-edge from
    * the edge-control register write may have set them). */
@@ -517,42 +638,13 @@ static inline void internal_rmw8(volatile uint8_t* reg, uint8_t mask, bool enabl
   (void)*ra_bkup_vbtadsr();
   *ra_bkup_vbtadsr() = 0U;
 
-  /* Tamper-init step 8 (12.3.7.4 p 518): VBTADCR1 (IRQ + clear). */
+  /* Tamper-init step 8 (12.3.7.4 p 518): VBTADCR1/2/3. */
   /* HUM Ch 12.2.15 "VBTADCR1 : VBATT Tamper Detection Control Register 1", p 510 */
-  uint8_t adcr1 = 0U;
-  for (uint8_t i = 0U; i < (uint8_t)k_ra_bkup_chan_count; ++i) {
-    if (cfg->channels[i].irq_enable) {
-      adcr1 = (uint8_t)(adcr1 | internal_chan_mask((uint8_t)k_ra_bkup_vbtadcr1_mask_vbtadie0,
-                                                   (ra_bkup_channel_t)i));
-    }
-    if (cfg->channels[i].clear_backup) {
-      adcr1 = (uint8_t)(adcr1 | internal_chan_mask((uint8_t)k_ra_bkup_vbtadcr1_mask_vbtadce0,
-                                                   (ra_bkup_channel_t)i));
-    }
-  }
-  *ra_bkup_vbtadcr1() = adcr1;
-
-  /* Tamper-init step 8 (12.3.7.4 p 518): VBTADCR2 (capture source). */
+  *ra_bkup_vbtadcr1() = internal_compose_vbtadcr1(cfg);
   /* HUM Ch 12.2.16 "VBTADCR2 : VBATT Tamper Detection Control Register 2", p 511 */
-  uint8_t adcr2 = 0U;
-  for (uint8_t i = 0U; i < (uint8_t)k_ra_bkup_chan_count; ++i) {
-    if ((uint8_t)cfg->channels[i].capture_src == (uint8_t)k_ra_bkup_capture_src_vbtadf) {
-      adcr2 = (uint8_t)(adcr2 | internal_chan_mask((uint8_t)k_ra_bkup_vbtadcr2_mask_vbrtces0,
-                                                   (ra_bkup_channel_t)i));
-    }
-  }
-  *ra_bkup_vbtadcr2() = adcr2;
-
-  /* Tamper-init step 8 (12.3.7.4 p 518): VBTADCR3 (HUK zeroize). */
+  *ra_bkup_vbtadcr2() = internal_compose_vbtadcr2(cfg);
   /* HUM Ch 12.2.17 "VBTADCR3 : VBATT Tamper Detection Control Register 3", p 511 */
-  uint8_t adcr3 = 0U;
-  for (uint8_t i = 0U; i < (uint8_t)k_ra_bkup_chan_count; ++i) {
-    if (cfg->channels[i].zeroize_huk) {
-      adcr3 = (uint8_t)(adcr3 | internal_chan_mask((uint8_t)k_ra_bkup_vbtadcr3_mask_vbtadze0,
-                                                   (ra_bkup_channel_t)i));
-    }
-  }
-  *ra_bkup_vbtadcr3() = adcr3;
+  *ra_bkup_vbtadcr3() = internal_compose_vbtadcr3(cfg);
 
   s_initialized = true;
   ra_log_info(s_tag, "bkup_tamper_init");
@@ -644,9 +736,18 @@ static ra_err_t internal_validate_boundary(uint16_t addr)
   return k_ra_ok;
 }
 
-[[nodiscard]] ra_err_t ra_bkup_security_apply(const ra_bkup_security_config_t* cfg)
+/**
+ * @brief Validate every field of an ``ra_bkup_security_config_t``.
+ *
+ * @param[in] cfg Caller-supplied, null-checked security config.
+ * @return ``k_ra_ok`` if every field is in range.
+ *
+ * @pre cfg != nullptr.
+ * @pre cfg->bbfsar / cfg->saba / cfg->pabas / cfg->pabans are populated.
+ * @post No side effects.
+ */
+static ra_err_t internal_validate_security_cfg(const ra_bkup_security_config_t* cfg)
 {
-  RA_CHECK_NULL_PTR((void*)cfg, s_tag, "security cfg must not be nullptr");
   if ((cfg->bbfsar & ~(uint32_t)k_ra_bkup_bbfsar_mask_all) != 0U) {
     return k_ra_err_invalid_arg;
   }
@@ -656,6 +757,14 @@ static ra_err_t internal_validate_boundary(uint16_t addr)
   RA_RETURN_ON_ERROR(err, s_tag, "security_apply: pabas bad");
   err = internal_validate_boundary(cfg->pabans);
   RA_RETURN_ON_ERROR(err, s_tag, "security_apply: pabans bad");
+  return k_ra_ok;
+}
+
+[[nodiscard]] ra_err_t ra_bkup_security_apply(const ra_bkup_security_config_t* cfg)
+{
+  RA_CHECK_NULL_PTR((void*)cfg, s_tag, "security cfg must not be nullptr");
+  const ra_err_t v_err = internal_validate_security_cfg(cfg);
+  RA_RETURN_ON_ERROR(v_err, s_tag, "security_apply: cfg bad");
 
   /* HUM Ch 12.2.1 "BBFSAR : Battery Backup Function Security Attribute Register", p 500 */
   *ra_bkup_bbfsar() = (uint32_t)(cfg->bbfsar & (uint32_t)k_ra_bkup_bbfsar_mask_all);

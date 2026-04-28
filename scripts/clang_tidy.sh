@@ -183,6 +183,19 @@ run_clang_tidy() {
 
     print_status "Running $clang_tidy on ${#files[@]} file(s)..."
 
+    # On macOS the Homebrew-installed clang/clang-tidy ships its own resource
+    # directory but does NOT bundle the C standard library headers (string.h,
+    # stddef.h, etc.). Those live in the Command Line Tools SDK. Without an
+    # explicit -isystem the lint reports spurious "string.h file not found"
+    # errors. Resolve the SDK once here so every file gets the same flag.
+    local extra_sdk_arg=()
+    if [[ "$(uname -s)" == "Darwin" ]]; then
+        local macos_sdk
+        if macos_sdk="$(xcrun --show-sdk-path 2>/dev/null)" && [[ -d "$macos_sdk/usr/include" ]]; then
+            extra_sdk_arg=(--extra-arg="-isystem" --extra-arg="$macos_sdk/usr/include")
+        fi
+    fi
+
     set +e
     "$clang_tidy" \
         --config-file="$config_file" \
@@ -190,6 +203,7 @@ run_clang_tidy() {
         --extra-arg="-std=c2x" \
         --extra-arg="-DUNIT_TEST" \
         --extra-arg="-DRA_SIMULATOR_MODE" \
+        "${extra_sdk_arg[@]}" \
         ${fix_flag:+"$fix_flag"} \
         "${files[@]}" 2>&1
     exit_code=$?

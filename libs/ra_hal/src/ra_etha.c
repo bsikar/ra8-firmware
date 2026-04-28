@@ -63,6 +63,29 @@
 static const char* s_tag = "ETHA";
 
 /**
+ * @enum ra_etha_local_mask_t
+ * @brief Local mask helpers used inside this driver.
+ *
+ * @details
+ * Names the wide bit-clear / single-byte / 9-bit-field literal masks
+ * used by the ETHA driver. Keeps the source file free of bare magic
+ * numbers so clang-tidy is happy.
+ */
+typedef enum : uint32_t {
+  k_ra_etha_local_all_bits_set = 0xFFFFFFFFUL, /**< W1C-all helper.     */
+  k_ra_etha_local_byte_mask    = 0xFFU,        /**< 8-bit field mask.   */
+  k_ra_etha_local_9bit_mask    = 0x1FFUL,      /**< 9-bit field mask.   */
+} ra_etha_local_mask_t;
+
+/**
+ * @enum ra_etha_local_size_t
+ * @brief Driver-local size constants.
+ */
+typedef enum : uint16_t {
+  k_ra_etha_local_max_min_frame = 256U, /**< Max minimum-frame ceiling.  */
+} ra_etha_local_size_t;
+
+/**
  * @struct ra_etha_slot_t
  * @brief Per-port runtime state.
  */
@@ -127,11 +150,11 @@ ra_err_t ra_etha_init(ra_etha_port_t port, const ra_etha_config_t* cfg)
   /* HUM Ch 32.3.1.1 "EAMC : Mode Command Register" p 1631 */
   reg->EAMC = (uint32_t)cfg->initial_mode & (uint32_t)k_ra_etha_mask_opc;
   /* HUM Ch 32.4 "Error Interrupt Sources" p 1685 */
-  reg->EAEID0 = 0xFFFFFFFFUL;
+  reg->EAEID0 = (uint32_t)k_ra_etha_local_all_bits_set;
   /* HUM Ch 32.4 "Error Interrupt Sources" p 1685 */
-  reg->EAEID1 = 0xFFFFFFFFUL;
+  reg->EAEID1 = (uint32_t)k_ra_etha_local_all_bits_set;
   /* HUM Ch 32.4 "Error Interrupt Sources" p 1685 */
-  reg->EAEID2 = 0xFFFFFFFFUL;
+  reg->EAEID2 = (uint32_t)k_ra_etha_local_all_bits_set;
   /* HUM Ch 32.4 "Error Interrupt Sources" p 1685 */
   reg->EAEIE0 = cfg->eaeie0_mask;
   /* HUM Ch 32.4 "Error Interrupt Sources" p 1685 */
@@ -428,7 +451,7 @@ ra_etha_set_preemption(ra_etha_port_t port, uint8_t preempt, uint8_t cut_thru, r
     return k_ra_err_invalid_arg;
   }
   /* HUM Ch 32.3 "EATPEC : TX Preemption Configuration" p 1635 */
-  uint32_t v = (uint32_t)preempt & 0xFFU;
+  uint32_t v = (uint32_t)preempt & (uint32_t)k_ra_etha_local_byte_mask;
   if (cut_thru != 0U) {
     v |= (1UL << 8); /* TTQ8 cut-through preemptable */
   }
@@ -533,7 +556,7 @@ ra_err_t ra_etha_set_rx_tag_filter(ra_etha_port_t port, uint32_t mask)
     return k_ra_err_invalid_arg;
   }
   /* HUM Ch 32.3 "EARTFC : RX TAG Filtering Configuration" p 1656 */
-  ra_etha(port)->EARTFC = mask & 0x000001FFUL;
+  ra_etha(port)->EARTFC = mask & (uint32_t)k_ra_etha_local_9bit_mask;
   return k_ra_ok;
 }
 
@@ -627,7 +650,7 @@ ra_err_t ra_etha_set_tas_schedule(ra_etha_port_t            port,
     ra_log_error(s_tag, "etha_set_tas_schedule: port out of range");
     return k_ra_err_invalid_arg;
   }
-  if (entry_count > 256U) {
+  if (entry_count > (uint16_t)k_ra_etha_local_max_min_frame) {
     ra_log_error(s_tag, "etha_set_tas_schedule: entry_count > 256");
     return k_ra_err_invalid_arg;
   }
@@ -637,9 +660,9 @@ ra_err_t ra_etha_set_tas_schedule(ra_etha_port_t            port,
 
   volatile r_etha_regs_t* reg = ra_etha(port);
   /* HUM Ch 32.3 "EATASCSTC0 : TAS Cycle Start Time Cfg lo" p 1672 */
-  reg->EATASCSTC0 = (uint32_t)(start_time & 0xFFFFFFFFUL);
+  reg->EATASCSTC0 = (uint32_t)(start_time & (uint64_t)k_ra_etha_local_all_bits_set);
   /* HUM Ch 32.3 "EATASCSTC1 : TAS Cycle Start Time Cfg hi" p 1673 */
-  reg->EATASCSTC1 = (uint32_t)((start_time >> 32U) & 0xFFFFFFFFUL);
+  reg->EATASCSTC1 = (uint32_t)((start_time >> 32U) & (uint64_t)k_ra_etha_local_all_bits_set);
   /* HUM Ch 32.3 "EATASCTC : TAS Cycle Time Configuration" p 1675 */
   reg->EATASCTC = cycle_units;
 
@@ -652,7 +675,7 @@ ra_err_t ra_etha_set_tas_schedule(ra_etha_port_t            port,
   /* HUM Ch 32.3 "EATASGL1 : TAS Gate Learn 1" p 1678 */
   for (uint16_t i = 0U; i < entry_count; ++i) {
     /* HUM Ch 32.3 "EATASGL0 : TAS Gate Learn 0" p 1677 */
-    reg->EATASGL0 = (uint32_t)gate_list[i].gate_state & 0xFFU;
+    reg->EATASGL0 = (uint32_t)gate_list[i].gate_state & (uint32_t)k_ra_etha_local_byte_mask;
     /* HUM Ch 32.3 "EATASGL1 : TAS Gate Learn 1" p 1678 */
     const uint32_t gl1 = (gate_list[i].time_units & (uint32_t)k_ra_etha_mask_tas_gtl) |
                          (gate_list[i].cut_through != 0U ? (1UL << 28) : 0U);

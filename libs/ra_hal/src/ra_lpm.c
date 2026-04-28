@@ -528,7 +528,8 @@ ra_lpm_snooze_set_request_sources(bool ulpt0_underflow, bool ulpt1_underflow, bo
   RA_CHECK_NULL_PTR((const void*)cfg, s_tag, "ram retention cfg null");
 
   /* HUM Ch 11.2.16 "PDRAMSCR0 : SRAM Power Domain Standby Control 0", p 453 */
-  *ra_lpm_sysc_reg16(k_ra_lpm_pdramscr0_off) = (uint16_t)(cfg->pdramscr0_bits & (uint16_t)0x7FFFU);
+  *ra_lpm_sysc_reg16(k_ra_lpm_pdramscr0_off) =
+    (uint16_t)(cfg->pdramscr0_bits & (uint16_t)k_ra_lpm_pdramscr0_writable);
 
   uint8_t pdramscr1 = 0U;
   if (cfg->cpu0_tcm_keep) {

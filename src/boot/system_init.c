@@ -263,7 +263,8 @@ enum : uint32_t {
 /**
  * @brief Program a single MPU region via RNR/RBAR/RLAR.
  */
-[[maybe_unused]] static void internal_mpu_set_region(uint32_t region, uint32_t base_attr, uint32_t limit_enable)
+[[maybe_unused]] static void
+internal_mpu_set_region(uint32_t region, uint32_t base_attr, uint32_t limit_enable)
 {
   internal_write32(k_ra_mpu_rnr_addr, region);
   internal_write32(k_ra_mpu_rbar_addr, base_attr);

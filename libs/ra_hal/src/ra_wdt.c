@@ -189,8 +189,19 @@ static bool internal_clock_div_is_valid(ra_wdt_clock_div_t div)
 static bool internal_timeout_sel_is_valid(ra_wdt_timeout_sel_t sel)
 {
   /* HUM Ch 27.2.2 "WDTCR" p 1259 */
-  return (sel == k_ra_wdt_timeout_1024) || (sel == k_ra_wdt_timeout_4096) ||
-         (sel == k_ra_wdt_timeout_8192) || (sel == k_ra_wdt_timeout_16384);
+  bool ok = false;
+  switch (sel) {
+    case k_ra_wdt_timeout_1024:
+    case k_ra_wdt_timeout_4096:
+    case k_ra_wdt_timeout_8192:
+    case k_ra_wdt_timeout_16384:
+      ok = true;
+      break;
+    default:
+      ok = false;
+      break;
+  }
+  return ok;
 }
 
 /**

@@ -476,12 +476,25 @@ void ra_drw_dispatch(void)
   return k_ra_ok;
 }
 
-[[nodiscard]] ra_err_t ra_drw_set_blend(const ra_drw_blend_t* blend)
+/**
+ * @brief Pack ``ra_drw_blend_t`` into a CONTROL2 set-bit slab.
+ *
+ * @details
+ * HUM Ch 62.2.2 "CONTROL2: Surface Control Register" p 3691. Each
+ * field of ``blend`` maps to a single CONTROL2 bit; this helper just
+ * collects them so ``ra_drw_set_blend`` stays under the
+ * function-size threshold.
+ *
+ * @param[in] blend Caller-supplied blend descriptor.
+ * @return CONTROL2 set-bit slab.
+ *
+ * @pre ``blend`` is non-null.
+ * @post No side effects.
+ *
+ * @note Internal helper, not thread-safe.
+ */
+static uint32_t internal_pack_blend_bits(const ra_drw_blend_t* blend)
 {
-  RA_CHECK_NULL_PTR((void*)blend, s_tag, "blend must not be nullptr");
-
-  /* HUM Ch 62.2.2 "CONTROL2: Surface Control Register", p 3691 */
-  /* Compose the blend bit slab. */
   uint32_t set_bits = 0UL;
   if (blend->use_alpha_channel) {
     set_bits |= (uint32_t)k_ra_drw_control2_useacb;
@@ -513,7 +526,15 @@ void ra_drw_dispatch(void)
   if (blend->use_color2_dst) {
     set_bits |= (uint32_t)k_ra_drw_control2_bc2;
   }
+  return set_bits;
+}
 
+[[nodiscard]] ra_err_t ra_drw_set_blend(const ra_drw_blend_t* blend)
+{
+  RA_CHECK_NULL_PTR((void*)blend, s_tag, "blend must not be nullptr");
+
+  /* HUM Ch 62.2.2 "CONTROL2: Surface Control Register", p 3691 */
+  const uint32_t set_bits = internal_pack_blend_bits(blend);
   const uint32_t clr_mask =
     (uint32_t)(k_ra_drw_control2_useacb | k_ra_drw_control2_bsf | k_ra_drw_control2_bdf |
                k_ra_drw_control2_bsi | k_ra_drw_control2_bdi | k_ra_drw_control2_bsfa |
@@ -537,7 +558,10 @@ void ra_drw_dispatch(void)
   /* Bits 31:24 must be zero per the HUM table. */
   *ra_drw_reg32(k_ra_drw_off_colkey) = key_rgb & (uint32_t)k_ra_drw_internal_color_alpha_mask;
 
-  const uint32_t set_bits = enable ? (uint32_t)k_ra_drw_control2_colkeyenable : 0UL;
+  uint32_t set_bits = 0UL;
+  if (enable) {
+    set_bits = (uint32_t)k_ra_drw_control2_colkeyenable;
+  }
   (void)internal_control2_rmw((uint32_t)k_ra_drw_control2_colkeyenable, set_bits);
   return k_ra_ok;
 }
@@ -547,28 +571,23 @@ void ra_drw_dispatch(void)
  * =============================================================================
  */
 
-[[nodiscard]] ra_err_t ra_drw_set_texture(const ra_drw_texture_t* tex)
+/**
+ * @brief Pack ``ra_drw_texture_t`` into a CONTROL2 set-bit slab.
+ *
+ * @details
+ * HUM Ch 62.2.2 "CONTROL2: Surface Control Register" p 3691, including
+ * format, clamp/filter, CLUT, color-key and RLE bits.
+ *
+ * @param[in] tex Caller-supplied texture descriptor.
+ * @return CONTROL2 set-bit slab.
+ *
+ * @pre ``tex`` is non-null.
+ * @post No side effects.
+ *
+ * @note Internal helper, not thread-safe.
+ */
+static uint32_t internal_pack_texture_bits(const ra_drw_texture_t* tex)
 {
-  RA_CHECK_NULL_PTR((void*)tex, s_tag, "tex must not be nullptr");
-  if ((uint16_t)tex->pitch_px > (uint16_t)k_ra_drw_max_texpitch_tx) {
-    return k_ra_err_invalid_arg;
-  }
-
-  /* HUM Ch 62.2.17 "TEXORIGIN: Texture Base Address Register", p 3700 */
-  *ra_drw_reg32(k_ra_drw_off_texorigin) = (uint32_t)tex->base_addr;
-
-  /* HUM Ch 62.2.15 "TEXPITCH: Texels Per Texture Line Register", p 3700 */
-  *ra_drw_reg32(k_ra_drw_off_texpitch) = (uint32_t)tex->pitch_px;
-
-  /* HUM Ch 62.2.16 "TEXMASK: Texture U/V Mask Register", p 3700.
- * U mask in [15:0], V mask in [31:16]. */
-  *ra_drw_reg32(k_ra_drw_off_texmask) = ((uint32_t)tex->v_mask << 16U) | (uint32_t)tex->u_mask;
-
-  /* HUM Ch 62.2.27 "TEXCLOFFSET: CLUT Offset Register", p 3704 */
-  *ra_drw_reg32(k_ra_drw_off_texcloffset) =
-    (uint32_t)tex->clut_offset & (uint32_t)k_ra_drw_internal_byte_mask;
-
-  /* Compose CONTROL2 texture bits. */
   uint32_t set_bits = (uint32_t)k_ra_drw_control2_textureenable;
   set_bits |= internal_pack_readformat(tex->format);
   if (tex->clamp_x) {
@@ -596,7 +615,31 @@ void ra_drw_dispatch(void)
     set_bits |= (uint32_t)k_ra_drw_control2_rleenable;
   }
   set_bits |= ((uint32_t)tex->rle_pixel_width & 0x3UL) << k_ra_drw_control2_rlepixel_pos;
+  return set_bits;
+}
 
+[[nodiscard]] ra_err_t ra_drw_set_texture(const ra_drw_texture_t* tex)
+{
+  RA_CHECK_NULL_PTR((void*)tex, s_tag, "tex must not be nullptr");
+  if ((uint16_t)tex->pitch_px > (uint16_t)k_ra_drw_max_texpitch_tx) {
+    return k_ra_err_invalid_arg;
+  }
+
+  /* HUM Ch 62.2.17 "TEXORIGIN: Texture Base Address Register", p 3700 */
+  *ra_drw_reg32(k_ra_drw_off_texorigin) = (uint32_t)tex->base_addr;
+
+  /* HUM Ch 62.2.15 "TEXPITCH: Texels Per Texture Line Register", p 3700 */
+  *ra_drw_reg32(k_ra_drw_off_texpitch) = (uint32_t)tex->pitch_px;
+
+  /* HUM Ch 62.2.16 "TEXMASK: Texture U/V Mask Register", p 3700.
+ * U mask in [15:0], V mask in [31:16]. */
+  *ra_drw_reg32(k_ra_drw_off_texmask) = ((uint32_t)tex->v_mask << 16U) | (uint32_t)tex->u_mask;
+
+  /* HUM Ch 62.2.27 "TEXCLOFFSET: CLUT Offset Register", p 3704 */
+  *ra_drw_reg32(k_ra_drw_off_texcloffset) =
+    (uint32_t)tex->clut_offset & (uint32_t)k_ra_drw_internal_byte_mask;
+
+  const uint32_t set_bits = internal_pack_texture_bits(tex);
   const uint32_t clr_mask =
     (uint32_t)(k_ra_drw_control2_textureenable | k_ra_drw_control2_textureclampx |
                k_ra_drw_control2_textureclampy | k_ra_drw_control2_texturefilterx |
@@ -724,36 +767,23 @@ ra_drw_load_clut(uint8_t start_index, const uint32_t* entries, uint32_t count)
   return k_ra_ok;
 }
 
-[[nodiscard]] ra_err_t ra_drw_draw_line(const ra_drw_line_t* line)
+/**
+ * @brief Program L1..L4 START/XADD/YADD for a stroked line.
+ *
+ * @details
+ * HUM Ch 62.2.10-62.2.12 (LnSTART/LnXADD/LnYADD pp 3698-3699). The
+ * line is encoded as four perpendicular limiters per HUM Ch 62.4.4
+ * "Lines" p 3725.
+ *
+ * @param[in] line Validated line descriptor.
+ *
+ * @pre ``line`` is non-null.
+ * @post Limiter registers reflect the line stroke envelope.
+ *
+ * @note Internal helper, not thread-safe.
+ */
+static void internal_program_line_limiters(const ra_drw_line_t* line)
 {
-  RA_CHECK_NULL_PTR((void*)line, s_tag, "line must not be nullptr");
-  if (line->width_px == 0U || (uint16_t)line->width_px > (uint16_t)k_ra_drw_max_width_px) {
-    return k_ra_err_invalid_arg;
-  }
-
-  /* HUM Ch 62.2.7 "COLOR1: Base Color Register", p 3697 */
-  *ra_drw_reg32(k_ra_drw_off_color1) = line->color_argb8888;
-
-  /* Compute the bounding box of the stroke for SIZE: a simple
- * over-estimate using axis-aligned span + width. The DRW only
- * uses SIZE as an enumeration upper bound, not for clipping
- * the stroke itself. HUM Ch 62.2.29 p 3704. */
-  const int32_t  min_x  = (line->x0 < line->x1) ? line->x0 : line->x1;
-  const int32_t  max_x  = (line->x0 > line->x1) ? line->x0 : line->x1;
-  const int32_t  min_y  = (line->y0 < line->y1) ? line->y0 : line->y1;
-  const int32_t  max_y  = (line->y0 > line->y1) ? line->y0 : line->y1;
-  const uint32_t span_x = (uint32_t)(max_x - min_x) + (uint32_t)line->width_px;
-  const uint32_t span_y = (uint32_t)(max_y - min_y) + (uint32_t)line->width_px;
-
-  /* HUM Ch 62.2.29 "SIZE: Bounding Box Dimension Register", p 3704 */
-  *ra_drw_reg32(k_ra_drw_off_size) = (span_y << k_ra_drw_size_height_pos) | span_x;
-
-  /* HUM Ch 62.4.4 "Lines" p 3725: 4 perpendicular limiters bound the
- * stroke. A full Bresenham/AA solver is out of HAL scope -- the
- * application typically uses ra_drw_run_dlist for finished AA
- * strokes. The HAL programmes the simplest valid encoding so the
- * caller can verify the geometry path; the four limiters bound the
- * axis-aligned stroke envelope. */
   const int32_t dx  = line->x1 - line->x0;
   const int32_t dy  = line->y1 - line->y0;
   const int32_t adx = internal_iabs(dx);
@@ -778,11 +808,37 @@ ra_drw_load_clut(uint8_t start_index, const uint32_t* entries, uint32_t count)
   *ra_drw_reg32(k_ra_drw_off_l4yadd) = internal_to_subpixel(-adx);
 
   /* HUM Ch 62.2.13 "L1BAND/L2BAND: Limiter Band Width Register", p 3699.
- * Band width = stroke width in sub-pixels for L1 and L2. */
-  *ra_drw_reg32(k_ra_drw_off_l1band) =
-    (uint32_t)((uint32_t)line->width_px * (uint32_t)k_ra_drw_subpixel_unit);
-  *ra_drw_reg32(k_ra_drw_off_l2band) =
-    (uint32_t)((uint32_t)line->width_px * (uint32_t)k_ra_drw_subpixel_unit);
+   * Band width = stroke width in sub-pixels for L1 and L2. */
+  const uint32_t band                = (uint32_t)line->width_px * (uint32_t)k_ra_drw_subpixel_unit;
+  *ra_drw_reg32(k_ra_drw_off_l1band) = band;
+  *ra_drw_reg32(k_ra_drw_off_l2band) = band;
+}
+
+[[nodiscard]] ra_err_t ra_drw_draw_line(const ra_drw_line_t* line)
+{
+  RA_CHECK_NULL_PTR((void*)line, s_tag, "line must not be nullptr");
+  if (line->width_px == 0U || (uint16_t)line->width_px > (uint16_t)k_ra_drw_max_width_px) {
+    return k_ra_err_invalid_arg;
+  }
+
+  /* HUM Ch 62.2.7 "COLOR1: Base Color Register", p 3697 */
+  *ra_drw_reg32(k_ra_drw_off_color1) = line->color_argb8888;
+
+  /* Compute the bounding box of the stroke for SIZE: a simple
+   * over-estimate using axis-aligned span + width. The DRW only uses
+   * SIZE as an enumeration upper bound, not for clipping the stroke
+   * itself. HUM Ch 62.2.29 p 3704. */
+  const int32_t  min_x  = (line->x0 < line->x1) ? line->x0 : line->x1;
+  const int32_t  max_x  = (line->x0 > line->x1) ? line->x0 : line->x1;
+  const int32_t  min_y  = (line->y0 < line->y1) ? line->y0 : line->y1;
+  const int32_t  max_y  = (line->y0 > line->y1) ? line->y0 : line->y1;
+  const uint32_t span_x = (uint32_t)(max_x - min_x) + (uint32_t)line->width_px;
+  const uint32_t span_y = (uint32_t)(max_y - min_y) + (uint32_t)line->width_px;
+
+  /* HUM Ch 62.2.29 "SIZE: Bounding Box Dimension Register", p 3704 */
+  *ra_drw_reg32(k_ra_drw_off_size) = (span_y << k_ra_drw_size_height_pos) | span_x;
+
+  internal_program_line_limiters(line);
 
   /* HUM Ch 62.2.4 "CACHECTL: Cache Control Register", p 3694 */
   *ra_drw_reg32(k_ra_drw_off_cachectl) =

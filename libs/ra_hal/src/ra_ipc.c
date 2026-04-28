@@ -146,15 +146,21 @@ static volatile r_ipc_nmi_regs_t* internal_ra_ipc_get_nmi(uint8_t unit)
 
 /**
  * @brief Read the ELC event id matching one IPC unit.
+ *
+ * @details
+ * Returns the raw 16-bit event-list index. Callers must convert to
+ * ``ra_elc_event_t`` via ``uint16_t`` at the boundary -- the enum's
+ * declared list does not yet enumerate the IPC IRQ event numbers
+ * (0x05B / 0x05C) and the static analyzer flags a direct cast.
  */
-static ra_elc_event_t internal_ra_ipc_unit_to_event(uint8_t unit)
+static uint16_t internal_ra_ipc_unit_to_event(uint8_t unit)
 {
   /* HUM Ch 18 "Event Link Controller" event-list -- IPC0_* feeds
    * ELC_EVENT_IPC_IRQ0 = 0x05B; IPC1_* feeds 0x05C. */
   if (unit == (uint8_t)k_ra_ipc_unit_ipc0) {
-    return (ra_elc_event_t)k_ra_ipc_elc_event_irq0;
+    return (uint16_t)k_ra_ipc_elc_event_irq0;
   }
-  return (ra_elc_event_t)k_ra_ipc_elc_event_irq1;
+  return (uint16_t)k_ra_ipc_elc_event_irq1;
 }
 
 /**
@@ -184,7 +190,7 @@ static void internal_ra_ipc_dispatch_irq_lines(uint8_t channel, uint32_t mask)
  * @brief Test-and-set on IPCSEMn -- a 32-bit read takes the lock and
  *        returns the previous LOCK value.
  */
-static uint32_t internal_ra_ipc_sem_read_take(volatile uint32_t* sem)
+static uint32_t internal_ra_ipc_sem_read_take(const volatile uint32_t* sem)
 {
   /* HUM Ch 3.2.3 "IPCSEMn" p 210 -- "Set condition: Reading this
    * register". Reading the register sets LOCK to 1; the read result
@@ -654,7 +660,9 @@ ra_ipc_can_access(uint8_t channel, ra_ipc_attr_t const* required, bool* out_can_
   if (err != k_ra_ok) {
     return err;
   }
-  *out_can_access = (live.secure == required->secure) && (live.privileged == required->privileged);
+  const bool secure_match     = (live.secure == required->secure);
+  const bool privileged_match = (live.privileged == required->privileged);
+  *out_can_access             = (bool)(secure_match && privileged_match);
   return k_ra_ok;
 }
 
@@ -906,7 +914,14 @@ static void internal_ra_ipc_isr(void* ctx)
   if (s_ipc_isr_state[unit].installed) {
     return k_ra_err_exists;
   }
-  const ra_elc_event_t event = internal_ra_ipc_unit_to_event(unit);
+  const uint16_t event_raw = internal_ra_ipc_unit_to_event(unit);
+  /* The IPC IRQ event values (0x05B / 0x05C, HUM Ch 18) are not yet
+   * enumerated in ``ra_elc_event_t``; cast through ``uint16_t`` is
+   * value-preserving since the enum's underlying type is ``uint16_t``.
+   * The analyzer's enumerator-list check is suppressed for this
+   * boundary cross only. */
+  /* NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange) */
+  const ra_elc_event_t event = (ra_elc_event_t)event_raw;
   /* HUM Ch 18 "Event Link Controller" event-list -- IPC IRQs route
    * through the ICU like every other peripheral; ra_isr_register
    * picks an IELSR slot, writes the event, sets priority and enables
@@ -928,7 +943,10 @@ static void internal_ra_ipc_isr(void* ctx)
   if (!s_ipc_isr_state[unit].installed) {
     return k_ra_err_not_found;
   }
-  const ra_elc_event_t event = internal_ra_ipc_unit_to_event(unit);
+  const uint16_t event_raw = internal_ra_ipc_unit_to_event(unit);
+  /* See ra_ipc_install_isr() for the rationale on this NOLINT. */
+  /* NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange) */
+  const ra_elc_event_t event = (ra_elc_event_t)event_raw;
   const ra_err_t       err   = ra_isr_unregister(event);
   if (err != k_ra_ok) {
     return err; /* GCOVR_EXCL_LINE */
@@ -942,12 +960,19 @@ static void internal_ra_ipc_isr(void* ctx)
  * =============================================================================
  */
 
-[[nodiscard]] ra_err_t ra_ipc_ring_init(ra_ipc_ring_t* ring)
+/**
+ * @brief Validate the scalar fields of an ``ra_ipc_ring_t`` descriptor.
+ *
+ * @param[in] ring Caller-supplied, null-checked ring descriptor.
+ * @return ``k_ra_ok`` if every field is in range, else
+ *         ``k_ra_err_invalid_arg``.
+ *
+ * @pre ring != nullptr.
+ * @pre ring->slots / head / tail are non-null.
+ * @post No side effects.
+ */
+static ra_err_t internal_ra_ipc_ring_validate(const ra_ipc_ring_t* ring)
 {
-  RA_CHECK_NULL_PTR(ring, s_tag, "ring must not be nullptr");
-  RA_CHECK_NULL_PTR((void*)ring->slots, s_tag, "ring slots must not be nullptr");
-  RA_CHECK_NULL_PTR((void*)ring->head, s_tag, "ring head must not be nullptr");
-  RA_CHECK_NULL_PTR((void*)ring->tail, s_tag, "ring tail must not be nullptr");
   if (ring->capacity == 0U) {
     return k_ra_err_invalid_arg;
   }
@@ -963,6 +988,19 @@ static void internal_ra_ipc_isr(void* ctx)
   }
   if ((uint16_t)ring->notify_id >= (uint16_t)k_ra_ipc_irq_event_count) {
     return k_ra_err_invalid_arg;
+  }
+  return k_ra_ok;
+}
+
+[[nodiscard]] ra_err_t ra_ipc_ring_init(ra_ipc_ring_t* ring)
+{
+  RA_CHECK_NULL_PTR(ring, s_tag, "ring must not be nullptr");
+  RA_CHECK_NULL_PTR((void*)ring->slots, s_tag, "ring slots must not be nullptr");
+  RA_CHECK_NULL_PTR((void*)ring->head, s_tag, "ring head must not be nullptr");
+  RA_CHECK_NULL_PTR((void*)ring->tail, s_tag, "ring tail must not be nullptr");
+  const ra_err_t err = internal_ra_ipc_ring_validate(ring);
+  if (err != k_ra_ok) {
+    return err;
   }
   *ring->head = 0U;
   *ring->tail = 0U;

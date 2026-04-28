@@ -296,6 +296,28 @@ typedef enum : uint8_t {
 } ra_etha_afs_t;
 
 /**
+ * @enum ra_etha_rsv_words_t
+ * @brief Reserved-word array sizes (in 32-bit words) used inside the
+ *        ETHA per-port register block.
+ *
+ * @details
+ * Names each reserved gap so the struct definition does not depend
+ * on raw integer literals. Cross-checked against HUM Ch 32 register
+ * offset table.
+ */
+typedef enum : uint8_t {
+  k_ra_etha_rsv_words_eatpec_to_eatmfsc = 7U,  /**< +0x0024..0x003F gap.   */
+  k_ra_etha_rsv_words_eartfc_to_eacaec  = 49U, /**< +0x013C..0x01FF gap.   */
+  k_ra_etha_rsv_words_eacoem_to_eacoivm = 7U,  /**< +0x0264..0x027F gap.   */
+  k_ra_etha_rsv_words_eacgsm_to_eatasc  = 15U, /**< +0x02C4..0x02FF gap.   */
+  k_ra_etha_rsv_words_eatasctenc_gap    = 7U,  /**< +0x0344..0x035F gap.   */
+  k_ra_etha_rsv_words_eatasctenm_gap    = 7U,  /**< +0x0384..0x039F gap.   */
+  k_ra_etha_rsv_words_eatassm_to_eausm  = 5U,  /**< +0x03EC..0x03FF gap.   */
+  k_ra_etha_rsv_words_eadqsecn_to_eaeis = 59U, /**< +0x0414..0x04FF gap.   */
+  k_ra_etha_rsv_words_eaeid2_to_eascr   = 21U, /**< +0x052C..0x057F gap.   */
+} ra_etha_rsv_words_t;
+
+/**
  * @struct r_etha_regs_t
  * @brief Full ETHA per-port register window (HUM Ch 32, FSP R_ETHA0_Type).
  *
@@ -319,7 +341,7 @@ typedef struct {
   volatile uint32_t EATDQC;          /**< +0x0018 TX desc queue control.         */
   volatile uint32_t EATDQAC;         /**< +0x001C TX desc queue arbitration.     */
   volatile uint32_t EATPEC;          /**< +0x0020 TX preemption config (802.3br).*/
-  volatile uint32_t reserved24[7];   /**< +0x0024..0x003F Reserved.              */
+  volatile uint32_t reserved24[k_ra_etha_rsv_words_eatpec_to_eatmfsc]; /**< +0x0024..0x003F Reserved.              */
   volatile uint32_t EATMFSC[8];      /**< +0x0040..0x005F Per-class max frame.   */
   volatile uint32_t EATDQDC[8];      /**< +0x0060..0x007F Per-class queue depth. */
   volatile uint32_t EATDQM[8];       /**< +0x0080..0x009F Per-class queue mon.   */
@@ -333,27 +355,27 @@ typedef struct {
   volatile uint32_t EAVCC;           /**< +0x0130 VLAN control configuration.    */
   volatile uint32_t EAVTC;           /**< +0x0134 VLAN tag (C+S) configuration.  */
   volatile uint32_t EARTFC;          /**< +0x0138 RX tag filter configuration.   */
-  volatile uint32_t reserved13C[49]; /**< +0x013C..0x01FF Reserved.             */
+  volatile uint32_t reserved13C[k_ra_etha_rsv_words_eartfc_to_eacaec]; /**< +0x013C..0x01FF Reserved.             */
   volatile uint32_t EACAEC;          /**< +0x0200 CBS admin enable.              */
   volatile uint32_t EACC;            /**< +0x0204 CBS configuration.             */
   volatile uint32_t reserved208[6];  /**< +0x0208..0x021F Reserved.              */
   volatile uint32_t EACAIVC[8];      /**< +0x0220..0x023F CBS admin increment.   */
   volatile uint32_t EACAULC[8];      /**< +0x0240..0x025F CBS admin upper limit. */
   volatile uint32_t EACOEM;          /**< +0x0260 CBS oper enable monitor.       */
-  volatile uint32_t reserved264[7];  /**< +0x0264..0x027F Reserved.              */
+  volatile uint32_t reserved264[k_ra_etha_rsv_words_eacoem_to_eacoivm]; /**< +0x0264..0x027F Reserved.              */
   volatile uint32_t EACOIVM[8];      /**< +0x0280..0x029F CBS oper increment mon.*/
   volatile uint32_t EACOULM[8];      /**< +0x02A0..0x02BF CBS oper upper limit.  */
   volatile uint32_t EACGSM;          /**< +0x02C0 CBS gate state monitor.        */
-  volatile uint32_t reserved2C4[15]; /**< +0x02C4..0x02FF Reserved.             */
+  volatile uint32_t reserved2C4[k_ra_etha_rsv_words_eacgsm_to_eatasc]; /**< +0x02C4..0x02FF Reserved.             */
   volatile uint32_t EATASC;          /**< +0x0300 TAS configuration.             */
   volatile uint32_t EATASIGSC;       /**< +0x0304 TAS initial gate state cfg.    */
   volatile uint32_t reserved308[6];  /**< +0x0308..0x031F Reserved.              */
   volatile uint32_t EATASENC[8];     /**< +0x0320..0x033F TAS entry-number cfg.  */
   volatile uint32_t EATASCTENC;      /**< +0x0340 TAS cut-through entry cfg.     */
-  volatile uint32_t reserved344[7];  /**< +0x0344..0x035F Reserved.              */
+  volatile uint32_t reserved344[k_ra_etha_rsv_words_eatasctenc_gap]; /**< +0x0344..0x035F Reserved.              */
   volatile uint32_t EATASENM[8];     /**< +0x0360..0x037F TAS entry-number mon.  */
   volatile uint32_t EATASCTENM;      /**< +0x0380 TAS cut-through entry mon.     */
-  volatile uint32_t reserved384[7];  /**< +0x0384..0x039F Reserved.              */
+  volatile uint32_t reserved384[k_ra_etha_rsv_words_eatasctenm_gap]; /**< +0x0384..0x039F Reserved.              */
   volatile uint32_t EATASCSTC0;      /**< +0x03A0 TAS cycle start time cfg lo.   */
   volatile uint32_t EATASCSTC1;      /**< +0x03A4 TAS cycle start time cfg hi.   */
   volatile uint32_t EATASCSTM0;      /**< +0x03A8 TAS cycle start time mon lo.   */
@@ -371,13 +393,13 @@ typedef struct {
   volatile uint32_t EATASHCC;        /**< +0x03E0 TAS hardware calibration cfg.  */
   volatile uint32_t EATASRIRM;       /**< +0x03E4 TAS RAM-init register monitor. */
   volatile uint32_t EATASSM;         /**< +0x03E8 TAS status monitor.            */
-  volatile uint32_t reserved3EC[5];  /**< +0x03EC..0x03FF Reserved.              */
+  volatile uint32_t reserved3EC[k_ra_etha_rsv_words_eatassm_to_eausm]; /**< +0x03EC..0x03FF Reserved.              */
   volatile uint32_t EAUSMFSECN;      /**< +0x0400 Switch min frame size err cnt. */
   volatile uint32_t EATFECN;         /**< +0x0404 Tag filter error counter.      */
   volatile uint32_t EAFSECN;         /**< +0x0408 Frame size error counter.      */
   volatile uint32_t EADQOECN;        /**< +0x040C Queue overflow error counter.  */
   volatile uint32_t EADQSECN;        /**< +0x0410 Queue security error counter.  */
-  volatile uint32_t reserved414[59]; /**< +0x0414..0x04FF Reserved.             */
+  volatile uint32_t reserved414[k_ra_etha_rsv_words_eadqsecn_to_eaeis]; /**< +0x0414..0x04FF Reserved.             */
   volatile uint32_t EAEIS0;          /**< +0x0500 Error interrupt status 0.      */
   volatile uint32_t EAEIE0;          /**< +0x0504 Error interrupt enable 0.      */
   volatile uint32_t EAEID0;          /**< +0x0508 Error interrupt disable 0.     */
@@ -389,7 +411,7 @@ typedef struct {
   volatile uint32_t EAEIS2;          /**< +0x0520 Error interrupt status 2.      */
   volatile uint32_t EAEIE2;          /**< +0x0524 Error interrupt enable 2.      */
   volatile uint32_t EAEID2;          /**< +0x0528 Error interrupt disable 2.     */
-  volatile uint32_t reserved52C[21]; /**< +0x052C..0x057F Reserved.             */
+  volatile uint32_t reserved52C[k_ra_etha_rsv_words_eaeid2_to_eascr]; /**< +0x052C..0x057F Reserved.             */
   volatile uint32_t EASCR;           /**< +0x0580 Security configuration.        */
 } r_etha_regs_t;
 /* cppcheck-suppress-end [unusedStructMember] */

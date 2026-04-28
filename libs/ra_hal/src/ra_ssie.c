@@ -151,10 +151,10 @@ static bool internal_format_decode(ra_ssie_format_t format,
 
   switch (format) {
     case k_ra_ssie_format_i2s:
-      return true;
     case k_ra_ssie_format_left_just:
-      /* Left-justified maps to OMOD=I2S with SDTA=0 (already default).
-       * Shown in HUM Ch 46.3.1 "Stereo Format" Figures, p 3094-3096. */
+      /* I2S and left-justified both map to OMOD=I2S with SDTA=0
+       * (already default). Shown in HUM Ch 46.3.1 "Stereo Format"
+       * Figures, p 3094-3096. */
       return true;
     case k_ra_ssie_format_right_just:
       /* Right-justified maps to OMOD=I2S with PDTA=1 (right-justify
@@ -309,61 +309,33 @@ static ra_err_t internal_wait_fifo_reset_clear(volatile r_ssie_regs_t* reg)
   return k_ra_err_hw_timeout;
 }
 
-ra_err_t ra_ssie_init(uint8_t channel, const ra_ssie_cfg_t* cfg)
+/**
+ * @brief Pack SSIOFR (audio format register) value from cfg + decoded OMOD.
+ *
+ * @details
+ * Honours the HUM Ch 46.2.7 Note 2 p 3091 constraint that BCKASTP and
+ * LRCONT must not be set together: LRCONT wins, BCKASTP is silently
+ * dropped when both are requested.
+ */
+static uint32_t internal_build_ssiofr(const ra_ssie_cfg_t* cfg, uint8_t omod)
 {
-  RA_CHECK_NULL_PTR((void*)cfg, s_tag, "cfg must not be nullptr");
-  volatile r_ssie_regs_t* reg = internal_ssie_regs(channel);
-  if (reg == nullptr) {
-    return k_ra_err_invalid_arg;
-  }
-  if (cfg->tx_threshold > (uint8_t)k_ra_ssie_thresh_max ||
-      cfg->rx_threshold > (uint8_t)k_ra_ssie_thresh_max) {
-    return k_ra_err_invalid_arg;
-  }
-
-  uint8_t omod = 0U;
-  uint8_t frm  = 0U;
-  uint8_t pdta = 0U;
-  uint8_t sdta = 0U;
-  if (!internal_format_decode(cfg->format, &omod, &frm, &pdta, &sdta)) {
-    return k_ra_err_invalid_arg;
-  }
-
-  /* HUM Ch 11.2.8 "MSTPCRC : Module Stop Control Register C" p 446 */
-  const ra_err_t mst_err = ra_mstp_enable(s_ssie_mstp_table[channel]);
-  RA_RETURN_ON_ERROR(mst_err, s_tag, "ssie_init: mstp enable");
-
-  /* HUM Ch 46.2.3 "SSIFCR : FIFO Control Register" p 3077 */
-  reg->SSIFCR = (uint32_t)k_ra_ssie_mask_ssirst;
-  reg->SSIFCR = 0U;
-  /* HUM Ch 46.2.3 "SSIFCR : FIFO Control Register" p 3077 */
-  const ra_err_t rst_err = internal_wait_ssirst_clear(reg);
-  RA_RETURN_ON_ERROR(rst_err, s_tag, "ssie_init: SSIRST stuck");
-
-  /* HUM Ch 46.2.1 "SSICR : Control Register" p 3056 */
-  reg->SSICR = internal_build_ssicr(cfg, frm, pdta, sdta);
-
-  /* HUM Ch 46.2.7 "SSIOFR : Audio Format Register" p 3091 */
   uint32_t ssiofr = (uint32_t)omod & (uint32_t)k_ra_ssie_mask_omod;
   if (cfg->lr_continue && cfg->role == k_ra_ssie_role_master) {
     ssiofr |= (uint32_t)k_ra_ssie_mask_lrcont;
   }
   if (cfg->bck_idle_stop && cfg->role == k_ra_ssie_role_master && !cfg->lr_continue) {
-    /* HUM Ch 46.2.7 Note 2 p 3091: BCKASTP and LRCONT must not be
-     * set together. Honour LRCONT preference and silently drop the
-     * BCKASTP request when both are requested. */
     ssiofr |= (uint32_t)k_ra_ssie_mask_bckastp;
   }
-  reg->SSIOFR = ssiofr;
+  return ssiofr;
+}
 
-  /* HUM Ch 46.2.8 "SSISCR : Status Control Register" p 3094 */
-  const uint32_t scr_tdes =
-    ((uint32_t)cfg->tx_threshold << (uint8_t)k_ra_ssie_shift_tdes) & (uint32_t)k_ra_ssie_mask_tdes;
-  const uint32_t scr_rdfs =
-    ((uint32_t)cfg->rx_threshold << (uint8_t)k_ra_ssie_shift_rdfs) & (uint32_t)k_ra_ssie_mask_rdfs;
-  reg->SSISCR = scr_tdes | scr_rdfs;
-
-  /* HUM Ch 46.2.3 "SSIFCR : FIFO Control Register" p 3077 */
+/**
+ * @brief Pack SSIFCR (FIFO control register) value from cfg.
+ *
+ * @details See HUM Ch 46.2.3 "SSIFCR : FIFO Control Register" p 3077.
+ */
+static uint32_t internal_build_ssifcr(const ra_ssie_cfg_t* cfg)
+{
   uint32_t ssifcr = 0U;
   if (cfg->byte_swap) {
     ssifcr |= (uint32_t)k_ra_ssie_mask_bsw;
@@ -371,7 +343,155 @@ ra_err_t ra_ssie_init(uint8_t channel, const ra_ssie_cfg_t* cfg)
   if (cfg->enable_aucke && cfg->role == k_ra_ssie_role_master) {
     ssifcr |= (uint32_t)k_ra_ssie_mask_aucke;
   }
-  reg->SSIFCR = ssifcr;
+  return ssifcr;
+}
+
+/**
+ * @brief Pack SSISCR (status control register) value from TX/RX thresholds.
+ *
+ * @details See HUM Ch 46.2.8 "SSISCR : Status Control Register" p 3094.
+ */
+static uint32_t internal_build_ssiscr(uint8_t tx_threshold, uint8_t rx_threshold)
+{
+  const uint32_t scr_tdes =
+    ((uint32_t)tx_threshold << (uint8_t)k_ra_ssie_shift_tdes) & (uint32_t)k_ra_ssie_mask_tdes;
+  const uint32_t scr_rdfs =
+    ((uint32_t)rx_threshold << (uint8_t)k_ra_ssie_shift_rdfs) & (uint32_t)k_ra_ssie_mask_rdfs;
+  return scr_tdes | scr_rdfs;
+}
+
+/**
+ * @brief Pulse RFRST/TFRST high then low and wait for both bits to clear.
+ *
+ * @details
+ * HUM Ch 46.2.3 "SSIFCR : FIFO Control Register" p 3077. ``ssifcr_base``
+ * is the desired post-reset SSIFCR image (RFRST/TFRST clear).
+ */
+static ra_err_t internal_pulse_fifo_reset(volatile r_ssie_regs_t* reg, uint32_t ssifcr_base)
+{
+  reg->SSIFCR = ssifcr_base | (uint32_t)k_ra_ssie_mask_rfrst_tfrst;
+  reg->SSIFCR = ssifcr_base;
+  return internal_wait_fifo_reset_clear(reg);
+}
+
+/**
+ * @brief Apply per-direction IRQ-enable bits to in-progress SSICR/SSIFCR.
+ *
+ * @details
+ * Sets TUIEN+TIE for TX-enabled directions and ROIEN+RIE for RX-enabled
+ * directions per HUM Ch 46.2.1 p 3057 and HUM Ch 46.2.3 p 3077.
+ */
+static void internal_apply_dir_irq_bits(uint32_t desired_ren_ten, uint32_t* ssicr, uint32_t* ssifcr)
+{
+  if ((desired_ren_ten & (uint32_t)k_ra_ssie_mask_ten) != 0U) {
+    *ssicr |= (uint32_t)k_ra_ssie_mask_tuien;
+    *ssifcr |= (uint32_t)k_ra_ssie_mask_tie;
+  }
+  if ((desired_ren_ten & (uint32_t)k_ra_ssie_mask_ren) != 0U) {
+    *ssicr |= (uint32_t)k_ra_ssie_mask_roien;
+    *ssifcr |= (uint32_t)k_ra_ssie_mask_rie;
+  }
+}
+
+/**
+ * @brief Format-decode wrapper that validates ranges before delegation.
+ *
+ * @param[in]  cfg     Caller's SSIE config.
+ * @param[out] out_omod SSIOFR.OMOD encoding (0..2).
+ * @param[out] out_frm  SSICR.FRM encoding (0..3).
+ * @param[out] out_pdta Right-justify polarity bit.
+ * @param[out] out_sdta Left-justify polarity bit.
+ *
+ * @return ``k_ra_ok`` on success, ``k_ra_err_invalid_arg`` if thresholds
+ *         are out of range or the format enum is unrecognised.
+ */
+static ra_err_t internal_validate_init_cfg(const ra_ssie_cfg_t* cfg,
+                                           uint8_t*             out_omod,
+                                           uint8_t*             out_frm,
+                                           uint8_t*             out_pdta,
+                                           uint8_t*             out_sdta)
+{
+  if (cfg->tx_threshold > (uint8_t)k_ra_ssie_thresh_max ||
+      cfg->rx_threshold > (uint8_t)k_ra_ssie_thresh_max) {
+    return k_ra_err_invalid_arg;
+  }
+  *out_omod = 0U;
+  *out_frm  = 0U;
+  *out_pdta = 0U;
+  *out_sdta = 0U;
+  if (!internal_format_decode(cfg->format, out_omod, out_frm, out_pdta, out_sdta)) {
+    return k_ra_err_invalid_arg;
+  }
+  return k_ra_ok;
+}
+
+/**
+ * @brief Drive the soft-reset sequence required before SSICR writes.
+ *
+ * @details
+ * Pulses SSIRST high then low, then polls SSIFCR until SSIRST clears.
+ * HUM Ch 46.2.3 "SSIFCR : FIFO Control Register" p 3077.
+ */
+static ra_err_t internal_pulse_ssi_reset(volatile r_ssie_regs_t* reg)
+{
+  reg->SSIFCR = (uint32_t)k_ra_ssie_mask_ssirst;
+  reg->SSIFCR = 0U;
+  return internal_wait_ssirst_clear(reg);
+}
+
+/**
+ * @brief Power up the SSIE block: enable MSTP then drive SSIRST low.
+ *
+ * @details
+ * Combines the two HUM-required pre-config steps so ``ra_ssie_init``
+ * stays under the per-function statement budget. HUM Ch 11.2.8 p 446
+ * for MSTPCRC, HUM Ch 46.2.3 p 3077 for the reset pulse.
+ */
+static ra_err_t internal_ssie_power_up(uint8_t channel, volatile r_ssie_regs_t* reg)
+{
+  const ra_err_t mst_err = ra_mstp_enable(s_ssie_mstp_table[channel]);
+  RA_RETURN_ON_ERROR(mst_err, s_tag, "ssie_init: mstp enable");
+  const ra_err_t rst_err = internal_pulse_ssi_reset(reg);
+  RA_RETURN_ON_ERROR(rst_err, s_tag, "ssie_init: SSIRST stuck");
+  return k_ra_ok;
+}
+
+/**
+ * @brief Stamp SSICR/SSIOFR/SSISCR/SSIFCR for a freshly reset SSIE block.
+ */
+static void internal_apply_init_regs(volatile r_ssie_regs_t* reg,
+                                     const ra_ssie_cfg_t*    cfg,
+                                     uint8_t                 frm,
+                                     uint8_t                 pdta,
+                                     uint8_t                 sdta,
+                                     uint8_t                 omod)
+{
+  reg->SSICR  = internal_build_ssicr(cfg, frm, pdta, sdta);
+  reg->SSIOFR = internal_build_ssiofr(cfg, omod);
+  reg->SSISCR = internal_build_ssiscr(cfg->tx_threshold, cfg->rx_threshold);
+  reg->SSIFCR = internal_build_ssifcr(cfg);
+}
+
+ra_err_t ra_ssie_init(uint8_t channel, const ra_ssie_cfg_t* cfg)
+{
+  RA_CHECK_NULL_PTR((void*)cfg, s_tag, "cfg must not be nullptr");
+  volatile r_ssie_regs_t* reg = internal_ssie_regs(channel);
+  if (reg == nullptr) {
+    return k_ra_err_invalid_arg;
+  }
+
+  uint8_t        omod  = 0U;
+  uint8_t        frm   = 0U;
+  uint8_t        pdta  = 0U;
+  uint8_t        sdta  = 0U;
+  const ra_err_t v_err = internal_validate_init_cfg(cfg, &omod, &frm, &pdta, &sdta);
+  RA_RETURN_ON_ERROR(v_err, s_tag, "ssie_init: bad cfg");
+
+  /* HUM Ch 11.2.8 p 446 (MSTPCRC) + HUM Ch 46.2.3 p 3077 (SSIRST). */
+  const ra_err_t pwr_err = internal_ssie_power_up(channel, reg);
+  RA_RETURN_ON_ERROR(pwr_err, s_tag, "ssie_init: power up");
+
+  internal_apply_init_regs(reg, cfg, frm, pdta, sdta, omod);
 
   s_ssie_runtime[channel].initialised  = true;
   s_ssie_runtime[channel].dma_attached = false;
@@ -426,25 +546,11 @@ ra_err_t ra_ssie_start(uint8_t channel, ra_ssie_dir_t dir)
 
   /* HUM Ch 46.2.3 "SSIFCR : FIFO Control Register" p 3077 */
   uint32_t       ssifcr  = reg->SSIFCR;
-  const uint32_t fifo_rs = ssifcr | (uint32_t)k_ra_ssie_mask_rfrst_tfrst;
-  reg->SSIFCR            = fifo_rs;
-  reg->SSIFCR            = ssifcr;
-  /* HUM Ch 46.2.3 "SSIFCR : FIFO Control Register" p 3077 */
-  const ra_err_t rst_err = internal_wait_fifo_reset_clear(reg);
+  const ra_err_t rst_err = internal_pulse_fifo_reset(reg, ssifcr);
   RA_RETURN_ON_ERROR(rst_err, s_tag, "ssie_start: FIFO reset stuck");
 
-  if ((desired_ren_ten & (uint32_t)k_ra_ssie_mask_ten) != 0U) {
-    /* HUM Ch 46.2.1 "SSICR : Control Register" p 3057 */
-    ssicr |= (uint32_t)k_ra_ssie_mask_tuien;
-    /* HUM Ch 46.2.3 "SSIFCR : FIFO Control Register" p 3077 */
-    ssifcr |= (uint32_t)k_ra_ssie_mask_tie;
-  }
-  if ((desired_ren_ten & (uint32_t)k_ra_ssie_mask_ren) != 0U) {
-    /* HUM Ch 46.2.1 "SSICR : Control Register" p 3057 */
-    ssicr |= (uint32_t)k_ra_ssie_mask_roien;
-    /* HUM Ch 46.2.3 "SSIFCR : FIFO Control Register" p 3077 */
-    ssifcr |= (uint32_t)k_ra_ssie_mask_rie;
-  }
+  /* HUM Ch 46.2.1 "SSICR" p 3057 / HUM Ch 46.2.3 "SSIFCR" p 3077 */
+  internal_apply_dir_irq_bits(desired_ren_ten, &ssicr, &ssifcr);
 
   reg->SSIFCR = ssifcr;
   /* HUM Ch 46.2.1 "SSICR : Control Register" p 3056 */
@@ -523,11 +629,7 @@ ra_err_t ra_ssie_set_thresholds(uint8_t channel, uint8_t tx_threshold, uint8_t r
     return k_ra_err_invalid_arg;
   }
   /* HUM Ch 46.2.8 "SSISCR : Status Control Register" p 3094 */
-  const uint32_t scr_tdes =
-    ((uint32_t)tx_threshold << (uint8_t)k_ra_ssie_shift_tdes) & (uint32_t)k_ra_ssie_mask_tdes;
-  const uint32_t scr_rdfs =
-    ((uint32_t)rx_threshold << (uint8_t)k_ra_ssie_shift_rdfs) & (uint32_t)k_ra_ssie_mask_rdfs;
-  reg->SSISCR = scr_tdes | scr_rdfs;
+  reg->SSISCR = internal_build_ssiscr(tx_threshold, rx_threshold);
   return k_ra_ok;
 }
 
@@ -622,6 +724,118 @@ ra_ssie_read_buffer(uint8_t channel, uint32_t* buffer, uint16_t samples, uint16_
   return k_ra_ok;
 }
 
+/**
+ * @brief Validate the DMA-attach descriptor against TX/RX intent.
+ *
+ * @param[in]  dma     Caller's DMA config.
+ * @param[out] want_tx Set to true when caller requests a TX DMA channel.
+ * @param[out] want_rx Set to true when caller requests an RX DMA channel.
+ *
+ * @return ``k_ra_ok`` if the descriptor is consistent, else
+ *         ``k_ra_err_invalid_arg``.
+ */
+static ra_err_t
+internal_validate_dma_cfg(const ra_ssie_dma_cfg_t* dma, bool* want_tx, bool* want_rx)
+{
+  *want_tx = dma->tx_dma_channel < (uint8_t)k_ra_ssie_dma_max_ch;
+  *want_rx = dma->rx_dma_channel < (uint8_t)k_ra_ssie_dma_max_ch;
+  if (!*want_tx && !*want_rx) {
+    return k_ra_err_invalid_arg;
+  }
+  if (*want_tx && (dma->tx_buffer == nullptr || dma->tx_samples == 0U)) {
+    return k_ra_err_invalid_arg;
+  }
+  if (*want_rx && (dma->rx_buffer == nullptr || dma->rx_samples == 0U)) {
+    return k_ra_err_invalid_arg;
+  }
+  return k_ra_ok;
+}
+
+/**
+ * @brief Kick off the TX DMAC for an SSIE channel.
+ *
+ * @details See HUM Ch 46.4.1 "Operation in DMAC Transfer" p 3104.
+ */
+static ra_err_t
+internal_start_tx_dma(volatile r_ssie_regs_t* reg, uint8_t channel, const ra_ssie_dma_cfg_t* dma)
+{
+  const ra_dmac_config_t tx_cfg = {
+    .src     = (uint32_t)(uintptr_t)dma->tx_buffer,
+    .dst     = (uint32_t)(uintptr_t)&reg->SSIFTDR,
+    .count   = dma->tx_samples,
+    .width   = k_ra_dmac_width_word,
+    .src_inc = true,
+    .dst_inc = false,
+  };
+  const ra_err_t tx_err = ra_dmac_start(dma->tx_dma_channel, &tx_cfg);
+  if (tx_err == k_ra_ok) {
+    s_ssie_runtime[channel].tx_dma_channel = dma->tx_dma_channel;
+  }
+  return tx_err;
+}
+
+/**
+ * @brief Kick off the RX DMAC for an SSIE channel.
+ *
+ * @details See HUM Ch 46.4.1 "Operation in DMAC Transfer" p 3104.
+ */
+static ra_err_t
+internal_start_rx_dma(volatile r_ssie_regs_t* reg, uint8_t channel, const ra_ssie_dma_cfg_t* dma)
+{
+  const ra_dmac_config_t rx_cfg = {
+    .src     = (uint32_t)(uintptr_t)&reg->SSIFRDR,
+    .dst     = (uint32_t)(uintptr_t)dma->rx_buffer,
+    .count   = dma->rx_samples,
+    .width   = k_ra_dmac_width_word,
+    .src_inc = false,
+    .dst_inc = true,
+  };
+  const ra_err_t rx_err = ra_dmac_start(dma->rx_dma_channel, &rx_cfg);
+  if (rx_err == k_ra_ok) {
+    s_ssie_runtime[channel].rx_dma_channel = dma->rx_dma_channel;
+  }
+  return rx_err;
+}
+
+/**
+ * @brief Roll back a TX DMAC start when the RX side fails.
+ */
+static void internal_unwind_tx_dma(uint8_t channel, uint8_t tx_dma_channel)
+{
+  (void)ra_dmac_stop(tx_dma_channel);
+  s_ssie_runtime[channel].tx_dma_channel = (uint8_t)k_ra_ssie_dma_ch_unused;
+}
+
+/**
+ * @brief Run the per-direction DMA setup (TX then RX) with rollback.
+ *
+ * @details
+ * Encapsulates the body of ``ra_ssie_attach_dma`` once validation has
+ * already chosen ``want_tx`` / ``want_rx``. On RX failure, the TX side
+ * (if started) is unwound through ``internal_unwind_tx_dma``.
+ */
+static ra_err_t internal_attach_dma_dirs(volatile r_ssie_regs_t*  reg,
+                                         uint8_t                  channel,
+                                         const ra_ssie_dma_cfg_t* dma,
+                                         bool                     want_tx,
+                                         bool                     want_rx)
+{
+  if (want_tx) {
+    const ra_err_t tx_err = internal_start_tx_dma(reg, channel, dma);
+    RA_RETURN_ON_ERROR(tx_err, s_tag, "ssie_attach_dma: tx start");
+  }
+  if (want_rx) {
+    const ra_err_t rx_err = internal_start_rx_dma(reg, channel, dma);
+    if (rx_err != k_ra_ok) {
+      if (want_tx) {
+        internal_unwind_tx_dma(channel, dma->tx_dma_channel);
+      }
+      return rx_err;
+    }
+  }
+  return k_ra_ok;
+}
+
 ra_err_t ra_ssie_attach_dma(uint8_t channel, const ra_ssie_dma_cfg_t* dma)
 {
   RA_CHECK_NULL_PTR((void*)dma, s_tag, "dma must not be nullptr");
@@ -630,56 +844,14 @@ ra_err_t ra_ssie_attach_dma(uint8_t channel, const ra_ssie_dma_cfg_t* dma)
     return k_ra_err_invalid_arg;
   }
 
-  const bool want_tx = dma->tx_dma_channel < (uint8_t)k_ra_ssie_dma_max_ch;
-  const bool want_rx = dma->rx_dma_channel < (uint8_t)k_ra_ssie_dma_max_ch;
-  if (!want_tx && !want_rx) {
-    return k_ra_err_invalid_arg;
-  }
-  if (want_tx) {
-    if (dma->tx_buffer == nullptr || dma->tx_samples == 0U) {
-      return k_ra_err_invalid_arg;
-    }
-  }
-  if (want_rx) {
-    if (dma->rx_buffer == nullptr || dma->rx_samples == 0U) {
-      return k_ra_err_invalid_arg;
-    }
-  }
+  bool           want_tx = false;
+  bool           want_rx = false;
+  const ra_err_t v_err   = internal_validate_dma_cfg(dma, &want_tx, &want_rx);
+  RA_RETURN_ON_ERROR(v_err, s_tag, "ssie_attach_dma: bad cfg");
 
-  if (want_tx) {
-    /* HUM Ch 46.4.1 "Operation in DMAC Transfer" p 3104 */
-    const ra_dmac_config_t tx_cfg = {
-      .src     = (uint32_t)(uintptr_t)dma->tx_buffer,
-      .dst     = (uint32_t)(uintptr_t)&reg->SSIFTDR,
-      .count   = dma->tx_samples,
-      .width   = k_ra_dmac_width_word,
-      .src_inc = true,
-      .dst_inc = false,
-    };
-    const ra_err_t tx_err = ra_dmac_start(dma->tx_dma_channel, &tx_cfg);
-    RA_RETURN_ON_ERROR(tx_err, s_tag, "ssie_attach_dma: tx start");
-    s_ssie_runtime[channel].tx_dma_channel = dma->tx_dma_channel;
-  }
-  if (want_rx) {
-    /* HUM Ch 46.4.1 "Operation in DMAC Transfer" p 3104 */
-    const ra_dmac_config_t rx_cfg = {
-      .src     = (uint32_t)(uintptr_t)&reg->SSIFRDR,
-      .dst     = (uint32_t)(uintptr_t)dma->rx_buffer,
-      .count   = dma->rx_samples,
-      .width   = k_ra_dmac_width_word,
-      .src_inc = false,
-      .dst_inc = true,
-    };
-    const ra_err_t rx_err = ra_dmac_start(dma->rx_dma_channel, &rx_cfg);
-    if (rx_err != k_ra_ok) {
-      if (want_tx) {
-        (void)ra_dmac_stop(dma->tx_dma_channel);
-        s_ssie_runtime[channel].tx_dma_channel = (uint8_t)k_ra_ssie_dma_ch_unused;
-      }
-      return rx_err;
-    }
-    s_ssie_runtime[channel].rx_dma_channel = dma->rx_dma_channel;
-  }
+  const ra_err_t d_err = internal_attach_dma_dirs(reg, channel, dma, want_tx, want_rx);
+  RA_RETURN_ON_ERROR(d_err, s_tag, "ssie_attach_dma: dir start");
+
   s_ssie_runtime[channel].dma_attached = true;
   return k_ra_ok;
 }

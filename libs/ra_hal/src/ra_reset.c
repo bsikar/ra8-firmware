@@ -114,75 +114,148 @@ static void internal_read_raw(ra_reset_raw_t* out)
  * @param[in] raw  Raw register snapshot.
  * @return Decoded cause.
  */
-static ra_reset_cause_t internal_decode(const ra_reset_raw_t* raw)
+/**
+ * @brief Decode the RSTSR0 byte.
+ *
+ * @details
+ * HUM Ch 6.2.2 "RSTSR0 : Reset Status Register 0" p 257. Returns the
+ * highest-priority active flag, or ``k_ra_reset_cause_unknown`` if no
+ * RSTSR0 flag is set.
+ *
+ * @param[in] rstsr0 Raw RSTSR0 byte snapshot.
+ * @return Mapped reset cause for RSTSR0 flags, or
+ *         ``k_ra_reset_cause_unknown`` when no flag is set.
+ *
+ * @pre ``rstsr0`` reflects the snapshot taken on entry to ``ra_reset_init``.
+ * @post Returned value is one of the documented enumerator values.
+ *
+ * @note Internal helper, not thread-safe.
+ */
+static ra_reset_cause_t internal_decode_rstsr0(uint8_t rstsr0)
 {
-  /* HUM Ch 6.2.2 "RSTSR0 : Reset Status Register 0" p 257 */
-  if ((raw->rstsr0 & (uint8_t)k_ra_reset_rstsr0_porf_msk) != 0U) {
+  if ((rstsr0 & (uint8_t)k_ra_reset_rstsr0_porf_msk) != 0U) {
     return k_ra_reset_cause_power_on;
   }
-  if ((raw->rstsr0 & (uint8_t)k_ra_reset_rstsr0_lvd0rf_msk) != 0U) {
+  if ((rstsr0 & (uint8_t)k_ra_reset_rstsr0_lvd0rf_msk) != 0U) {
     return k_ra_reset_cause_lvd0;
   }
-  if ((raw->rstsr0 & (uint8_t)k_ra_reset_rstsr0_lvd1rf_msk) != 0U) {
+  if ((rstsr0 & (uint8_t)k_ra_reset_rstsr0_lvd1rf_msk) != 0U) {
     return k_ra_reset_cause_lvd1;
   }
-  if ((raw->rstsr0 & (uint8_t)k_ra_reset_rstsr0_lvd2rf_msk) != 0U) {
+  if ((rstsr0 & (uint8_t)k_ra_reset_rstsr0_lvd2rf_msk) != 0U) {
     return k_ra_reset_cause_lvd2;
   }
-  if ((raw->rstsr0 & (uint8_t)k_ra_reset_rstsr0_lvd4rf_msk) != 0U) {
+  if ((rstsr0 & (uint8_t)k_ra_reset_rstsr0_lvd4rf_msk) != 0U) {
     return k_ra_reset_cause_lvd4;
   }
-  if ((raw->rstsr0 & (uint8_t)k_ra_reset_rstsr0_lvd5rf_msk) != 0U) {
+  if ((rstsr0 & (uint8_t)k_ra_reset_rstsr0_lvd5rf_msk) != 0U) {
     return k_ra_reset_cause_lvd5;
   }
-  if ((raw->rstsr0 & (uint8_t)k_ra_reset_rstsr0_dpsrstf_msk) != 0U) {
+  if ((rstsr0 & (uint8_t)k_ra_reset_rstsr0_dpsrstf_msk) != 0U) {
     return k_ra_reset_cause_deep_sw_standby;
   }
+  return k_ra_reset_cause_unknown;
+}
 
-  /* HUM Ch 6.2.5 "RSTSR3 : Reset Status Register 3" p 261 */
-  if ((raw->rstsr3 & (uint8_t)k_ra_reset_rstsr3_cvmrf_msk) != 0U) {
-    return k_ra_reset_cause_core_voltage;
-  }
-  if ((raw->rstsr3 & (uint8_t)k_ra_reset_rstsr3_ocprf_msk) != 0U) {
-    return k_ra_reset_cause_overcurrent;
-  }
-  if ((raw->rstsr3 & (uint8_t)k_ra_reset_rstsr3_temprf_msk) != 0U) {
-    return k_ra_reset_cause_temperature;
-  }
-
-  /* HUM Ch 6.2.3 "RSTSR1 : Reset Status Register 1" p 258 */
-  if ((raw->rstsr1 & (uint32_t)k_ra_reset_rstsr1_iwdtrf_msk) != 0U) {
+/**
+ * @brief Decode the RSTSR1 word.
+ *
+ * @details
+ * HUM Ch 6.2.3 "RSTSR1 : Reset Status Register 1" p 258. Higher-priority
+ * causes appear first.
+ *
+ * @param[in] rstsr1 Raw RSTSR1 word snapshot.
+ * @return Mapped reset cause for RSTSR1 flags, or
+ *         ``k_ra_reset_cause_unknown`` when no flag is set.
+ *
+ * @pre ``rstsr1`` reflects the snapshot taken on entry to ``ra_reset_init``.
+ * @post Returned value is one of the documented enumerator values.
+ *
+ * @note Internal helper, not thread-safe.
+ */
+static ra_reset_cause_t internal_decode_rstsr1(uint32_t rstsr1)
+{
+  if ((rstsr1 & (uint32_t)k_ra_reset_rstsr1_iwdtrf_msk) != 0U) {
     return k_ra_reset_cause_iwdt;
   }
-  if ((raw->rstsr1 & (uint32_t)k_ra_reset_rstsr1_wdtrf_msk) != 0U) {
+  if ((rstsr1 & (uint32_t)k_ra_reset_rstsr1_wdtrf_msk) != 0U) {
     return k_ra_reset_cause_wdt0;
   }
-  if ((raw->rstsr1 & (uint32_t)k_ra_reset_rstsr1_swrf_msk) != 0U) {
+  if ((rstsr1 & (uint32_t)k_ra_reset_rstsr1_swrf_msk) != 0U) {
     return k_ra_reset_cause_software;
   }
-  if ((raw->rstsr1 & (uint32_t)k_ra_reset_rstsr1_clurf_msk) != 0U) {
+  if ((rstsr1 & (uint32_t)k_ra_reset_rstsr1_clurf_msk) != 0U) {
     return k_ra_reset_cause_lockup0;
   }
-  if ((raw->rstsr1 & (uint32_t)k_ra_reset_rstsr1_lm0rf_msk) != 0U) {
+  if ((rstsr1 & (uint32_t)k_ra_reset_rstsr1_lm0rf_msk) != 0U) {
     return k_ra_reset_cause_local_memory0;
   }
-  if ((raw->rstsr1 & (uint32_t)k_ra_reset_rstsr1_bussrf_msk) != 0U) {
+  if ((rstsr1 & (uint32_t)k_ra_reset_rstsr1_bussrf_msk) != 0U) {
     return k_ra_reset_cause_bus_slave_mpu;
   }
-  if ((raw->rstsr1 & (uint32_t)k_ra_reset_rstsr1_cmrf_msk) != 0U) {
+  if ((rstsr1 & (uint32_t)k_ra_reset_rstsr1_cmrf_msk) != 0U) {
     return k_ra_reset_cause_common_memory;
   }
-  if ((raw->rstsr1 & (uint32_t)k_ra_reset_rstsr1_wdt1rf_msk) != 0U) {
+  if ((rstsr1 & (uint32_t)k_ra_reset_rstsr1_wdt1rf_msk) != 0U) {
     return k_ra_reset_cause_wdt1;
   }
-  if ((raw->rstsr1 & (uint32_t)k_ra_reset_rstsr1_clu1rf_msk) != 0U) {
+  if ((rstsr1 & (uint32_t)k_ra_reset_rstsr1_clu1rf_msk) != 0U) {
     return k_ra_reset_cause_lockup1;
   }
-  if ((raw->rstsr1 & (uint32_t)k_ra_reset_rstsr1_lm1rf_msk) != 0U) {
+  if ((rstsr1 & (uint32_t)k_ra_reset_rstsr1_lm1rf_msk) != 0U) {
     return k_ra_reset_cause_local_memory1;
   }
-  if ((raw->rstsr1 & (uint32_t)k_ra_reset_rstsr1_nwrf_msk) != 0U) {
+  if ((rstsr1 & (uint32_t)k_ra_reset_rstsr1_nwrf_msk) != 0U) {
     return k_ra_reset_cause_network;
+  }
+  return k_ra_reset_cause_unknown;
+}
+
+/**
+ * @brief Decode the RSTSR3 byte.
+ *
+ * @details
+ * HUM Ch 6.2.5 "RSTSR3 : Reset Status Register 3" p 261. Higher-priority
+ * causes appear first.
+ *
+ * @param[in] rstsr3 Raw RSTSR3 byte snapshot.
+ * @return Mapped reset cause for RSTSR3 flags, or
+ *         ``k_ra_reset_cause_unknown`` when no flag is set.
+ *
+ * @pre ``rstsr3`` reflects the snapshot taken on entry to ``ra_reset_init``.
+ * @post Returned value is one of the documented enumerator values.
+ *
+ * @note Internal helper, not thread-safe.
+ */
+static ra_reset_cause_t internal_decode_rstsr3(uint8_t rstsr3)
+{
+  if ((rstsr3 & (uint8_t)k_ra_reset_rstsr3_cvmrf_msk) != 0U) {
+    return k_ra_reset_cause_core_voltage;
+  }
+  if ((rstsr3 & (uint8_t)k_ra_reset_rstsr3_ocprf_msk) != 0U) {
+    return k_ra_reset_cause_overcurrent;
+  }
+  if ((rstsr3 & (uint8_t)k_ra_reset_rstsr3_temprf_msk) != 0U) {
+    return k_ra_reset_cause_temperature;
+  }
+  return k_ra_reset_cause_unknown;
+}
+
+static ra_reset_cause_t internal_decode(const ra_reset_raw_t* raw)
+{
+  ra_reset_cause_t cause = internal_decode_rstsr0(raw->rstsr0);
+  if (cause != k_ra_reset_cause_unknown) {
+    return cause;
+  }
+
+  cause = internal_decode_rstsr3(raw->rstsr3);
+  if (cause != k_ra_reset_cause_unknown) {
+    return cause;
+  }
+
+  cause = internal_decode_rstsr1(raw->rstsr1);
+  if (cause != k_ra_reset_cause_unknown) {
+    return cause;
   }
 
   /* HUM Ch 6.2.4 "RSTSR2 : Reset Status Register 2" p 261 */

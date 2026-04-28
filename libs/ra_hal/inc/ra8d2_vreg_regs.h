@@ -125,7 +125,7 @@ typedef enum : uint8_t {
   k_ra_vreg_mask_lcboost     = 0x20U,            /**< Bit 5. */
   k_ra_vreg_mask_fst         = 0x40U,            /**< Bit 6. */
   k_ra_vreg_mask_pd          = 0x80U,            /**< Bit 7. */
-  k_ra_vreg_mask_dcdcctl_all = (uint8_t)(0xF3U), /**< Union of all writable bits (0,1,4,5,6,7). */
+  k_ra_vreg_mask_dcdcctl_all = (uint8_t)0xF3U, /**< Union of all writable bits (0,1,4,5,6,7). */
 } ra_vreg_dcdcctl_mask_t;
 
 /**

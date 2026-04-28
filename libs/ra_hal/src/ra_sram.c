@@ -305,7 +305,7 @@ static uintptr_t internal_ear_to_abs_addr(uint32_t ear)
   if (ear == 0U) {
     return (uintptr_t)0U;
   }
-  return (uintptr_t)(((uintptr_t)k_ra_sram_data_base_addr) + (uintptr_t)ear);
+  return ((uintptr_t)k_ra_sram_data_base_addr) + (uintptr_t)ear;
 }
 
 /**
@@ -338,14 +338,17 @@ static void internal_apply_security(const ra_sram_security_cfg_t* sec)
 
   /* HUM Ch 58.2.3 "SRAMESAR : SRAM ECC region Security Attribute
    * Register", p 3529 -- ECC region NS bit. */
-  cpscu->SRAMESAR = sec->ecc_region_ns ? (uint32_t)k_ra_sram_esar_bit_esa : 0U;
+  uint32_t esar = 0U;
+  if (sec->ecc_region_ns) {
+    esar = (uint32_t)k_ra_sram_esar_bit_esa;
+  }
+  cpscu->SRAMESAR = esar;
 
   for (uint8_t bank = 0U; bank < (uint8_t)k_ra_sram_bank_count; ++bank) {
     /* HUM Ch 58.2.1 "SRAMSABARn : SRAM Security Attribute Boundary
      * Address Register", p 3527 -- boundary value, low 13 bits forced
      * to zero (4 KB aligned). */
-    cpscu->SRAMSABAR[bank] =
-      sec->boundary_offset[bank] & (uint32_t)~(uint32_t)k_ra_sram_sabar_align_mask;
+    cpscu->SRAMSABAR[bank] = sec->boundary_offset[bank] & ~(uint32_t)k_ra_sram_sabar_align_mask;
   }
 }
 
@@ -398,57 +401,89 @@ static void internal_zero_init_with_no_check(uint8_t bank)
  * =============================================================================
  */
 
-[[nodiscard]] ra_err_t ra_sram_init(const ra_sram_config_t* cfg)
+/**
+ * @brief Validate every bank cfg and ungate the corresponding MSTP bits.
+ *
+ * @details
+ * HUM Ch 58.3.1 "Module Stop Function" p 3538 + HUM Ch 11.2.6 MSTPCRA
+ * p 443. Run as a single pass so a half-applied config never leaks
+ * past the init boundary.
+ *
+ * @param[in] cfg Caller-supplied init config.
+ *
+ * @return ``k_ra_ok`` if every bank was validated and ungated.
+ *
+ * @pre ``cfg`` is non-null.
+ * @post All four SRAM banks are clock-ungated on success; on failure
+ *       the caller must clean up.
+ *
+ * @note Internal helper, not thread-safe.
+ */
+static ra_err_t internal_validate_and_ungate(const ra_sram_config_t* cfg)
 {
-  RA_CHECK_NULL_PTR((const void*)cfg, s_tag, "cfg must not be nullptr");
-
-  /* Validate every bank up-front so a half-applied config never
-   * leaks past the init boundary. */
   for (uint8_t bank = 0U; bank < (uint8_t)k_ra_sram_bank_count; ++bank) {
     const ra_err_t verr = internal_validate_bank_cfg(&cfg->banks[bank], bank);
     RA_RETURN_ON_ERROR(verr, s_tag, "ra_sram_init: bad bank cfg");
   }
-
-  /* HUM Ch 58.3.1 "Module Stop Function", p 3538 -- ungate clock
-   * for every bank we are about to touch. (HUM 11.2.6 MSTPCRA
-   * p 443 owns the actual MSTPA0..MSTPA3 bits.) */
   for (uint8_t bank = 0U; bank < (uint8_t)k_ra_sram_bank_count; ++bank) {
     const ra_err_t merr = ra_mstp_enable(s_sram_mstp_table[bank]);
     RA_RETURN_ON_ERROR(merr, s_tag, "ra_sram_init: mstp enable");
   }
+  return k_ra_ok;
+}
 
-  /* Optional: TrustZone attribution (HUM Ch 58.2.1..58.2.3 p 3527-3530). */
-  if (cfg->apply_security) {
-    internal_apply_security(&cfg->security);
-  }
-
-  /* Wait state. The driver always writes WTSC so the post-reset value
-   * is overwritten with a known one (HUM 58.2.6 p 3531). */
-  internal_write_wtsc_locked(cfg->wait_state ? (uint8_t)k_ra_sram_wtsc_wten : 0U);
-
-  /* Optional zero-init pass per bank (HUM 58.3.2 p 3538). Run before
-   * we apply the final SRAMCRn so a `with_chk` mode never sees an
-   * uninitialised line. */
+/**
+ * @brief Apply the per-bank zero-init + ECC mode programming pass.
+ *
+ * @details
+ * HUM Ch 58.3.2 p 3538 (zero-init) + HUM Ch 58.2.10 / 58.2.5 (ECC
+ * region size + SRAMCRn final mode). Run as one helper so the
+ * top-level init stays small.
+ *
+ * @param[in] cfg Validated init config.
+ *
+ * @pre Module clock ungated for every bank.
+ * @post Each bank's eccrgn + SRAMCRn matches ``cfg``.
+ *
+ * @note Internal helper, not thread-safe.
+ */
+static void internal_apply_per_bank(const ra_sram_config_t* cfg)
+{
   for (uint8_t bank = 0U; bank < (uint8_t)k_ra_sram_bank_count; ++bank) {
     if (cfg->banks[bank].zero_init) {
       internal_zero_init_with_no_check(bank);
     }
   }
-
-  /* Apply per-bank ECC region size and final SRAMCRn under PRCR. */
   for (uint8_t bank = 0U; bank < (uint8_t)k_ra_sram_bank_count; ++bank) {
     internal_write_eccrgn_locked(bank, (uint8_t)cfg->banks[bank].eccrgn);
     const uint8_t cr_value = internal_encode_cr(&cfg->banks[bank]);
     internal_write_cr_locked(bank, cr_value);
   }
+}
 
-  /* Clear any stale error flags so the first real ECC event is
-   * unambiguous. SRAMESCLR is not PRCR-protected (HUM 58.2.13
-   * p 3536 -- only S-TYPE-4, no SRAMPRCR mention). */
+[[nodiscard]] ra_err_t ra_sram_init(const ra_sram_config_t* cfg)
+{
+  RA_CHECK_NULL_PTR((const void*)cfg, s_tag, "cfg must not be nullptr");
+
+  const ra_err_t v_err = internal_validate_and_ungate(cfg);
+  RA_RETURN_ON_ERROR(v_err, s_tag, "ra_sram_init: validate/ungate");
+
+  if (cfg->apply_security) {
+    internal_apply_security(&cfg->security);
+  }
+
+  /* Wait state. HUM 58.2.6 p 3531. */
+  uint8_t wtsc_init = 0U;
+  if (cfg->wait_state) {
+    wtsc_init = (uint8_t)k_ra_sram_wtsc_wten;
+  }
+  internal_write_wtsc_locked(wtsc_init);
+
+  internal_apply_per_bank(cfg);
+
+  /* Clear any stale error flags. HUM 58.2.13 p 3536. */
   volatile r_sram_regs_t* regs = ra_sram_regs();
-  /* HUM Ch 58.2.13 "SRAMESCLR : SRAM Error Status Clear Register
-   * For ECC RAM", p 3536 -- writing 1 clears the matching ERR bit. */
-  regs->SRAMESCLR = (uint16_t)k_ra_sram_err_all_mask;
+  regs->SRAMESCLR              = (uint16_t)k_ra_sram_err_all_mask;
 
   s_initialized = true;
   ra_log_info(s_tag, "ra_sram_init done");
@@ -536,7 +571,11 @@ static void internal_zero_init_with_no_check(uint8_t bank)
 
 [[nodiscard]] ra_err_t ra_sram_set_wait_state(bool enable)
 {
-  internal_write_wtsc_locked(enable ? (uint8_t)k_ra_sram_wtsc_wten : 0U);
+  uint8_t wtsc = 0U;
+  if (enable) {
+    wtsc = (uint8_t)k_ra_sram_wtsc_wten;
+  }
+  internal_write_wtsc_locked(wtsc);
   return k_ra_ok;
 }
 
@@ -548,8 +587,11 @@ static void internal_zero_init_with_no_check(uint8_t bank)
   /* HUM Ch 58.3.7 "Wait State", p 3540: WTEN must be 1 when the
    * current ICLK exceeds half the maximum, otherwise it stays 0. */
   const uint32_t threshold = iclk_max_hz >> 1U;
-  const bool     need_wait = (iclk_hz > threshold);
-  internal_write_wtsc_locked(need_wait ? (uint8_t)k_ra_sram_wtsc_wten : 0U);
+  uint8_t        wtsc      = 0U;
+  if (iclk_hz > threshold) {
+    wtsc = (uint8_t)k_ra_sram_wtsc_wten;
+  }
+  internal_write_wtsc_locked(wtsc);
   return k_ra_ok;
 }
 
@@ -604,7 +646,7 @@ static void internal_zero_init_with_no_check(uint8_t bank)
   /* The EAR is auto-cleared by writing 1 to the corresponding
    * SRAMESCLR bit. HUM Ch 58.2.14 p 3537 -- "These bits are cleared
    * by clearing 1-bit/2-bit ECC error from SRAMESCLR." */
-  const uint16_t          bit_pos = (uint16_t)((uint16_t)2U * (uint16_t)bank + (uint16_t)slot);
+  const uint16_t          bit_pos = (uint16_t)(((uint16_t)2U * (uint16_t)bank) + (uint16_t)slot);
   const uint16_t          mask    = (uint16_t)((uint16_t)1U << bit_pos);
   volatile r_sram_regs_t* regs    = ra_sram_regs();
   /* HUM Ch 58.2.13 "SRAMESCLR : SRAM Error Status Clear Register
@@ -627,6 +669,72 @@ static void internal_zero_init_with_no_check(uint8_t bank)
   return k_ra_ok;
 }
 
+/**
+ * @brief Inject a 1- or 2-bit fault on a probed ECC line.
+ *
+ * @details
+ * Steps 2 and 3 of the HUM Ch 58.3.4 self-test flowchart, p 3539.
+ * Writes through SRAMCRn = 0x80 (bypass) so the read returns the raw
+ * syndrome, XORs in the requested fault mask, then arms the
+ * "ECC+check" mode so the next normal read triggers the latch.
+ *
+ * @param[in]  bank          Bank index that owns ``data``.
+ * @param[in,out] data       Pointer to the probed 64-bit ECC line.
+ * @param[in]  inject_two_bit ``true`` to inject a 2-bit fault.
+ *
+ * @pre ``data`` was seeded by step 1 of the flowchart.
+ * @post Bypass mode left active long enough to corrupt the syndrome,
+ *       then re-armed for verification.
+ *
+ * @note Internal helper, not thread-safe.
+ */
+static void internal_self_test_inject(uint8_t bank, volatile uint64_t* data, bool inject_two_bit)
+{
+  internal_write_cr_locked(bank, (uint8_t)k_ra_sram_cr_self_test_phase_bypass);
+
+  uint8_t inject_mask = (uint8_t)k_ra_sram_self_test_flip_1bit;
+  if (inject_two_bit) {
+    inject_mask = (uint8_t)k_ra_sram_self_test_flip_2bit;
+  }
+  const uint64_t syndrome  = *data;
+  const uint64_t corrupted = syndrome ^ (uint64_t)inject_mask;
+  *data                    = corrupted;
+
+  internal_write_cr_locked(bank, (uint8_t)k_ra_sram_cr_self_test_phase_verify);
+}
+
+#ifdef RA_SIMULATOR_MODE
+/**
+ * @brief Forge an SRAMESR latch on the host build.
+ *
+ * @details
+ * The host has no ECC engine, so the self-test path needs us to fake
+ * the latch a real chip would set. Mirrors HUM Ch 58.2.12 p 3535
+ * SRAMESR semantics for the chosen bank/slot.
+ *
+ * @param[in] bank           Bank under test.
+ * @param[in] inject_two_bit ``true`` if a 2-bit fault was injected.
+ * @param[in] probe_offset   Byte offset within the bank's data window.
+ *
+ * @pre ``bank`` is in range and ``probe_offset`` is 8-byte aligned.
+ * @post SRAMESR has the matching error flag set; SRAMEAR populated.
+ *
+ * @note Host-only helper, not thread-safe.
+ */
+static void internal_simulator_force_latch(uint8_t bank, bool inject_two_bit, uint32_t probe_offset)
+{
+  volatile r_sram_regs_t* regs = ra_sram_regs();
+  uint8_t                 slot = (uint8_t)k_ra_sram_ear_slot_1bit;
+  if (inject_two_bit) {
+    slot = (uint8_t)k_ra_sram_ear_slot_2bit;
+  }
+  const uint16_t esr_bit =
+    (uint16_t)((uint16_t)1U << (uint16_t)(((uint16_t)2U * (uint16_t)bank) + (uint16_t)slot));
+  regs->SRAMESR             = (uint16_t)(regs->SRAMESR | esr_bit);
+  regs->SRAMEAR[bank][slot] = (uint32_t)(s_sram_data_off_table[bank] + probe_offset);
+}
+#endif
+
 [[nodiscard]] ra_err_t
 ra_sram_self_test(uint8_t bank, uint32_t probe_offset, bool inject_two_bit, bool* out_caught)
 {
@@ -648,55 +756,31 @@ ra_sram_self_test(uint8_t bank, uint32_t probe_offset, bool inject_two_bit, bool
   volatile uint64_t* const data =
     (volatile uint64_t*)((uint8_t*)ra_sram_bank_data_ptr(bank) + probe_offset);
 
-  /* Step 1 of HUM Ch 58.3.4 flowchart, p 3539: SRAMCRn = 0x08
-   * (ECC + no-check, bypass off). Write seed data so the syndrome
-   * is well-defined. */
+  /* Step 1: seed the line under ECC encode-only (HUM Ch 58.3.4 p 3539). */
   internal_write_cr_locked(bank, (uint8_t)k_ra_sram_cr_self_test_phase_write);
   *data = (uint64_t)k_ra_sram_zero_init_word;
 
-  /* Step 2 of the flowchart: SRAMCRn = 0x80 (ECC off, bypass on).
-   * Read returns the raw 8-bit syndrome in the low byte. */
-  internal_write_cr_locked(bank, (uint8_t)k_ra_sram_cr_self_test_phase_bypass);
-
-  /* Read back the syndrome (low 8 bits) and inject a 1- or 2-bit
-   * fault by XOR-ing with the chosen mask. */
-  const uint8_t  inject_mask = inject_two_bit ? (uint8_t)k_ra_sram_self_test_flip_2bit
-                                              : (uint8_t)k_ra_sram_self_test_flip_1bit;
-  const uint64_t syndrome    = *data;
-  const uint64_t corrupted   = syndrome ^ (uint64_t)inject_mask;
-  *data                      = corrupted;
-
-  /* Step 3 of the flowchart: SRAMCRn = 0x1C (ECC + check + 1-bit
-   * latch, bypass off). The next read is what triggers SRAMESR. */
-  internal_write_cr_locked(bank, (uint8_t)k_ra_sram_cr_self_test_phase_verify);
+  /* Steps 2-3: bypass-read, inject, then arm verify. */
+  internal_self_test_inject(bank, data, inject_two_bit);
 
   /* Read the line. On real silicon this triggers the ECC engine; on
-   * the host simulator it just returns the corrupted value, which
-   * is fine -- we simulate the latch below. */
+   * the host build the simulator helper below forges the latch. */
   volatile uint64_t scratch = *data;
   (void)scratch;
 
 #ifdef RA_SIMULATOR_MODE
-  /* The host build has no ECC engine. Forge the SRAMESR latch so
-   * the test path that inspects it via ra_sram_get_status sees the
-   * expected flag. The SRAMEAR offset is the probe_offset. */
-  volatile r_sram_regs_t* regs = ra_sram_regs();
-  const uint8_t           slot =
-    inject_two_bit ? (uint8_t)k_ra_sram_ear_slot_2bit : (uint8_t)k_ra_sram_ear_slot_1bit;
-  const uint16_t esr_bit =
-    (uint16_t)((uint16_t)1U << (uint16_t)((uint16_t)2U * (uint16_t)bank + (uint16_t)slot));
-  regs->SRAMESR             = (uint16_t)(regs->SRAMESR | esr_bit);
-  regs->SRAMEAR[bank][slot] = (uint32_t)(s_sram_data_off_table[bank] + probe_offset);
+  internal_simulator_force_latch(bank, inject_two_bit, probe_offset);
 #endif
 
-  /* Step 4 of the flowchart: confirm SRAMESR latched the expected
-   * flag. We read SRAMESR rather than the cached status to avoid an
-   * unnecessary status struct copy on this path. */
+  /* Step 4: confirm SRAMESR latched the expected flag. */
   volatile r_sram_regs_t* check_regs = ra_sram_regs();
   const uint16_t          esr        = check_regs->SRAMESR;
-  const uint16_t          want_bit =
-    (uint16_t)((uint16_t)1U << (uint16_t)((uint16_t)2U * (uint16_t)bank +
-                                          (uint16_t)(inject_two_bit ? 1U : 0U)));
+  uint16_t                slot_bit   = 0U;
+  if (inject_two_bit) {
+    slot_bit = 1U;
+  }
+  const uint16_t want_bit =
+    (uint16_t)((uint16_t)1U << (uint16_t)(((uint16_t)2U * (uint16_t)bank) + slot_bit));
   *out_caught = ((esr & want_bit) != 0U);
 
   return k_ra_ok;
@@ -738,7 +822,11 @@ ra_sram_self_test(uint8_t bank, uint32_t probe_offset, bool inject_two_bit, bool
   volatile r_sram_cpscu_regs_t* cpscu = ra_sram_cpscu_regs();
   /* HUM Ch 58.2.3 "SRAMESAR : SRAM ECC region Security Attribute
    * Register", p 3529. */
-  cpscu->SRAMESAR = non_secure ? (uint32_t)k_ra_sram_esar_bit_esa : 0U;
+  uint32_t value = 0U;
+  if (non_secure) {
+    value = (uint32_t)k_ra_sram_esar_bit_esa;
+  }
+  cpscu->SRAMESAR = value;
   return k_ra_ok;
 }
 

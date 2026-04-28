@@ -54,15 +54,15 @@ extern "C" {
  */
 typedef enum : uintptr_t {
   /* HUM Ch 59.1 "Address Map" p 3543 */
-  k_ra_flash_code_start = 0x02000000UL, /**< Start of code MRAM region.        */
-  k_ra_flash_code_size  = 0x00100000UL, /**< 1 MiB of code MRAM.               */
+  k_ra_flash_code_start  = 0x02000000UL, /**< Start of code MRAM region.        */
+  k_ra_flash_code_size   = 0x00100000UL, /**< 1 MiB of code MRAM.               */
   k_ra_flash_extra_start = 0x27000000UL, /**< Start of extra MRAM (data flash). */
   k_ra_flash_extra_size  = 0x00003000UL, /**< 12 KiB of extra MRAM.            */
 
   /* HUM Ch 7.2.21 "ARCCS Anti-Rollback Counter Configuration" p 296 */
-  k_ra_flash_ofs_arccs_addr    = 0x02E17932UL,
+  k_ra_flash_ofs_arccs_addr = 0x02E17932UL,
   /* HUM Ch 7.2.22 "ARC_SEC" p 296 */
-  k_ra_flash_ofs_arc_sec_addr  = 0x02F27E00UL,
+  k_ra_flash_ofs_arc_sec_addr = 0x02F27E00UL,
   /* HUM Ch 7.2.23 "ARC_NSEC" p 297 */
   k_ra_flash_ofs_arc_nsec_addr = 0x02F27E08UL,
 } ra_flash_map_t;
@@ -100,87 +100,87 @@ typedef enum : uintptr_t {
  */
 typedef enum : uint16_t {
   /* HUM Ch 59.5.1 "MRCPFB : Code MRAM Pre-Fetch Buffer Enable Register" p 3551 */
-  k_ra_mram_off_mrcpfb    = 0x0000U,
+  k_ra_mram_off_mrcpfb = 0x0000U,
   /* HUM Ch 59.5.2 "MRCFREQ : Code MRAM Frequency Notifications Register" p 3551 */
-  k_ra_mram_off_mrcfreq   = 0x0004U,
+  k_ra_mram_off_mrcfreq = 0x0004U,
   /* HUM Ch 59.5.3 "MREFREQ : Extra MRAM Frequency Notifications Register" p 3552 */
-  k_ra_mram_off_mrefreq   = 0x0008U,
+  k_ra_mram_off_mrefreq = 0x0008U,
   /* HUM Ch 59.5.4 "MRCDECC : Code MRAM ECC Decoder Control Register" p 3554 */
-  k_ra_mram_off_mrcdecc   = 0x0010U,
+  k_ra_mram_off_mrcdecc = 0x0010U,
   /* HUM Ch 59.5.5 "MRCRAEINT : Code MRAM Read Access Error Interrupt Enable" p 3554 */
   k_ra_mram_off_mrcraeint = 0x0014U,
   /* HUM Ch 59.5.6 "MRCRAES : Code MRAM Read Access Error Status Register" p 3554 */
-  k_ra_mram_off_mrcraes   = 0x0018U,
+  k_ra_mram_off_mrcraes = 0x0018U,
   /* HUM Ch 59.5.7 "MRCRTEA : Code MRAM TED Error Address Register" p 3555 */
-  k_ra_mram_off_mrcrtea   = 0x001CU,
+  k_ra_mram_off_mrcrtea = 0x001CU,
   /* HUM Ch 59.5.8 "MRCRDEA : Code MRAM DEC Error Address Register" p 3555 */
-  k_ra_mram_off_mrcrdea   = 0x0020U,
+  k_ra_mram_off_mrcrdea = 0x0020U,
   /* HUM Ch 59.5.9 "MRERAINT : Extra MRAM Read Access Error Interrupt Enable" p 3557 */
-  k_ra_mram_off_mreraint  = 0x0034U,
+  k_ra_mram_off_mreraint = 0x0034U,
   /* HUM Ch 59.5.10 "MRERAES : Extra MRAM Read Access Error Status Register" p 3557 */
-  k_ra_mram_off_mreraes   = 0x0038U,
+  k_ra_mram_off_mreraes = 0x0038U,
   /* HUM Ch 59.5.11 "MRERTEA : Extra MRAM TED Error Address Register" p 3558 */
-  k_ra_mram_off_mrertea   = 0x003CU,
+  k_ra_mram_off_mrertea = 0x003CU,
   /* HUM Ch 59.5.12 "MRERDEA : Extra MRAM DEC Error Address Register" p 3558 */
-  k_ra_mram_off_mrerdea   = 0x0040U,
+  k_ra_mram_off_mrerdea = 0x0040U,
   /* HUM Ch 59.5.13 "MSAR : MRAM Security Attribution Register" p 3559 */
-  k_ra_mram_off_msar      = 0x0100U,
+  k_ra_mram_off_msar = 0x0100U,
   /* HUM Ch 59.5.14 "MREZS : Extra MRAM Zeroization Status Register" p 3565 */
-  k_ra_mram_off_mrezs     = 0x0400U,
+  k_ra_mram_off_mrezs = 0x0400U,
   /* HUM Ch 59.5.15 "MREZC : Extra MRAM Zeroization Control Register" p 3565 */
-  k_ra_mram_off_mrezc     = 0x0404U,
+  k_ra_mram_off_mrezc = 0x0404U,
   /* HUM Ch 59.5.16 "MASTAT : Extra MRAM Access Status Register" p 3577 */
-  k_ra_mram_off_mastat    = 0x2010U,
+  k_ra_mram_off_mastat = 0x2010U,
   /* HUM Ch 59.5.17 "MPAEINT : Extra MRAM Access Error Interrupt Enable" p 3577 */
-  k_ra_mram_off_mpaeint   = 0x2014U,
+  k_ra_mram_off_mpaeint = 0x2014U,
   /* HUM Ch 59.5.18 "MRDYIE : Extra MRAM Ready Interrupt Enable Register" p 3577 */
-  k_ra_mram_off_mrdyie    = 0x2018U,
+  k_ra_mram_off_mrdyie = 0x2018U,
   /* HUM Ch 59.5.19 "MSADDR : MACI Command Start Address Register" p 3573 */
-  k_ra_mram_off_msaddr    = 0x2030U,
+  k_ra_mram_off_msaddr = 0x2030U,
   /* HUM Ch 59.5.20 "MCNTSELR : MRAM Counter Select Register" p 3576 */
-  k_ra_mram_off_mcntselr  = 0x2048U,
+  k_ra_mram_off_mcntselr = 0x2048U,
   /* HUM Ch 59.5.21 "MCNTDTR0 : MRAM Counter Data Register 0" p 3576 */
-  k_ra_mram_off_mcntdtr0  = 0x204CU,
+  k_ra_mram_off_mcntdtr0 = 0x204CU,
   /* HUM Ch 59.5.22 "MCNTDTR1 : MRAM Counter Data Register 1" p 3577 */
-  k_ra_mram_off_mcntdtr1  = 0x2050U,
+  k_ra_mram_off_mcntdtr1 = 0x2050U,
   /* HUM Ch 59.5.23 "MCTRCNTR : MRAM Configuration Update Transfer Control" p 3580 */
-  k_ra_mram_off_mctrcntr  = 0x2060U,
+  k_ra_mram_off_mctrcntr = 0x2060U,
   /* HUM Ch 59.5.24 "MCTRLSR : MRAM Configuration Update Transfer List Select" p 3580 */
-  k_ra_mram_off_mctrlsr   = 0x2064U,
+  k_ra_mram_off_mctrlsr = 0x2064U,
   /* HUM Ch 59.5.25 "MCTRSTATR : MRAM Configuration Update Transfer Status" p 3580 */
   k_ra_mram_off_mctrstatr = 0x206CU,
   /* HUM Ch 59.5.26 "MSTATR : Extra MRAM Status Register" p 3578 */
-  k_ra_mram_off_mstatr    = 0x2080U,
+  k_ra_mram_off_mstatr = 0x2080U,
   /* HUM Ch 59.5.27 "MENTRYR : Extra MRAM Program Mode Entry Register" p 3582 */
-  k_ra_mram_off_mentryr   = 0x2084U,
+  k_ra_mram_off_mentryr = 0x2084U,
   /* HUM Ch 59.5.28 "MSUINITR : Extra MRAM Sequencer Set-Up Initialization" p 3585 */
-  k_ra_mram_off_msuinitr  = 0x208CU,
+  k_ra_mram_off_msuinitr = 0x208CU,
   /* HUM Ch 59.5.29 "MCMDR : MACI Command Register" p 3589 */
-  k_ra_mram_off_mcmdr     = 0x20A0U,
+  k_ra_mram_off_mcmdr = 0x20A0U,
   /* HUM Ch 59.5.30 "MSUASMON : MRAM Start-Up Area Select Monitor Register" p 3593 */
-  k_ra_mram_off_msuasmon  = 0x20DCU,
+  k_ra_mram_off_msuasmon = 0x20DCU,
   /* HUM Ch 59.5.31 "MSUACR : MRAM Start-Up Area Control Register" p 3593 */
-  k_ra_mram_off_msuacr    = 0x20E8U,
+  k_ra_mram_off_msuacr = 0x20E8U,
   /* HUM Ch 59.5.32 "MRPSC : MRAM Program Speed Control Register" p 3600 */
-  k_ra_mram_off_mrpsc     = 0x2800U,
+  k_ra_mram_off_mrpsc = 0x2800U,
   /* HUM Ch 59.5.33 "MRCPC0 : Code MRAM Program Control Register" p 3601 */
-  k_ra_mram_off_mrcpc0    = 0x3000U,
+  k_ra_mram_off_mrcpc0 = 0x3000U,
   /* HUM Ch 59.5.34 "MRCPC1 : Code MRAM Program Control for Secure Register" p 3601 */
-  k_ra_mram_off_mrcpc1    = 0x3004U,
+  k_ra_mram_off_mrcpc1 = 0x3004U,
   /* HUM Ch 59.5.35 "MRCBPROT0 : Code MRAM Block Protection Register" p 3604 */
   k_ra_mram_off_mrcbprot0 = 0x3008U,
   /* HUM Ch 59.5.36 "MRCBPROT1 : Code MRAM Block Protection for Secure Register" p 3605 */
   k_ra_mram_off_mrcbprot1 = 0x300CU,
   /* HUM Ch 59.5.37 "MRCPS : Code MRAM Program Status Register" p 3601 */
-  k_ra_mram_off_mrcps     = 0x3010U,
+  k_ra_mram_off_mrcps = 0x3010U,
   /* HUM Ch 59.5.38 "MRCPAEINT : Code MRAM Program Access Error Interrupt Enable" p 3601 */
   k_ra_mram_off_mrcpaeint = 0x3014U,
   /* HUM Ch 59.5.39 "MRCPEA : Code MRAM Program Error Address Register" p 3601 */
-  k_ra_mram_off_mrcpea    = 0x3018U,
+  k_ra_mram_off_mrcpea = 0x3018U,
   /* HUM Ch 59.5.40 "MRCFLR : Code MRAM Flush Register" p 3601 */
-  k_ra_mram_off_mrcflr    = 0x3030U,
+  k_ra_mram_off_mrcflr = 0x3030U,
   /* HUM Ch 59.5.41 "MRCEECC : Code MRAM ECC Encoder Control Register" p 3624 */
-  k_ra_mram_off_mrceecc   = 0x3804U,
+  k_ra_mram_off_mrceecc = 0x3804U,
 } ra_mram_off_t;
 
 /* =============================================================================
@@ -342,9 +342,9 @@ typedef enum : uint16_t {
  */
 typedef enum : uint16_t {
   /* HUM Ch 59 "MENTRYR : Extra MRAM Program-Mode Entry" p 3582 */
-  k_ra_mentryr_pe_enter      = 0xAA80U, /**< KEY=0xAA, MENTRY=1.      */
-  k_ra_mentryr_read_mode     = 0xAA00U, /**< KEY=0xAA, MENTRY=0.      */
-  k_ra_mentryr_mask_pe_mode  = 0x0080U, /**< MENTRY status bit.       */
+  k_ra_mentryr_pe_enter     = 0xAA80U, /**< KEY=0xAA, MENTRY=1.      */
+  k_ra_mentryr_read_mode    = 0xAA00U, /**< KEY=0xAA, MENTRY=0.      */
+  k_ra_mentryr_mask_pe_mode = 0x0080U, /**< MENTRY status bit.       */
 } ra_mentryr_t;
 
 /**
@@ -357,9 +357,9 @@ typedef enum : uint16_t {
  */
 typedef enum : uint16_t {
   /* HUM Ch 59 "MSUACR : Start-Up Area Control Register" p 3593 */
-  k_ra_msuacr_key             = 0x6600U,
-  k_ra_msuacr_swap_default    = 0x0000U,
-  k_ra_msuacr_swap_alternate  = 0x0001U,
+  k_ra_msuacr_key            = 0x6600U,
+  k_ra_msuacr_swap_default   = 0x0000U,
+  k_ra_msuacr_swap_alternate = 0x0001U,
 } ra_msuacr_t;
 
 /**
@@ -378,8 +378,8 @@ typedef enum : uint32_t {
  */
 typedef enum : uint16_t {
   /* HUM Ch 59 "MSUINITR : Extra MRAM Sequencer Set-Up Init" p 3585 */
-  k_ra_msuinitr_full_init    = 0xAA01U, /**< KEY=0xAA, SUINIT=1.    */
-  k_ra_msuinitr_mask_suinit  = 0x0001U, /**< SUINIT status bit.     */
+  k_ra_msuinitr_full_init   = 0xAA01U, /**< KEY=0xAA, SUINIT=1.    */
+  k_ra_msuinitr_mask_suinit = 0x0001U, /**< SUINIT status bit.     */
 } ra_msuinitr_t;
 
 /* =============================================================================
@@ -413,7 +413,7 @@ typedef enum : uint32_t {
   k_ra_mstatr_mask_secerr    = 0x00200000UL, /**< Security error.           */
   k_ra_mstatr_mask_ilgcomerr = 0x00800000UL, /**< Illegal command error.    */
   /* Aggregate of all error bits used by the driver to gate command success. */
-  k_ra_mstatr_mask_any_err   = 0x009850A0UL, /**< Composite error mask.     */
+  k_ra_mstatr_mask_any_err = 0x009850A0UL, /**< Composite error mask.     */
 } ra_mstatr_mask_t;
 
 /* =============================================================================
@@ -550,10 +550,10 @@ typedef enum : uint16_t {
  */
 typedef enum : uint8_t {
   /* HUM Ch 59 "MCNTSELR : MRAM Counter Select Register" p 3576 */
-  k_ra_mcntselr_sec     = 1U, /**< ARC_SEC.                         */
-  k_ra_mcntselr_oembl   = 2U, /**< ARC_OEMBL (OEM bootloader).      */
-  k_ra_mcntselr_nsec_0  = 4U, /**< ARC_NSEC index 0; +1/+2/+3 follow. */
-  k_ra_mcntselr_mask    = 0x07U, /**< CNTSEL[2:0].                  */
+  k_ra_mcntselr_sec    = 1U,    /**< ARC_SEC.                         */
+  k_ra_mcntselr_oembl  = 2U,    /**< ARC_OEMBL (OEM bootloader).      */
+  k_ra_mcntselr_nsec_0 = 4U,    /**< ARC_NSEC index 0; +1/+2/+3 follow. */
+  k_ra_mcntselr_mask   = 0x07U, /**< CNTSEL[2:0].                  */
 } ra_mcntselr_t;
 
 /**
@@ -567,17 +567,17 @@ typedef enum : uint8_t {
  */
 typedef enum : uint32_t {
   /* HUM Ch 7.2.22 "ARC_SEC" p 296 */
-  k_ra_arc_sec_max_bits   = 64UL,
+  k_ra_arc_sec_max_bits = 64UL,
   /* HUM Ch 7.2.21 "ARCCS OEMBL counter" p 296 */
   k_ra_arc_oembl_max_bits = 64UL,
   /* HUM Ch 7.2.21 "ARCCS NSEC single-counter mode" p 296 */
-  k_ra_arc_nsec_single    = 256UL,
+  k_ra_arc_nsec_single = 256UL,
   /* HUM Ch 7.2.21 "ARCCS NSEC multi-counter mode" p 296 */
-  k_ra_arc_nsec_multiple  = 64UL,
+  k_ra_arc_nsec_multiple = 64UL,
   /* HUM Ch 7.2.21 "ARCCS ARCNS field mask" p 296 */
-  k_ra_arc_arccs_mask     = 0x03UL,
+  k_ra_arc_arccs_mask = 0x03UL,
   /* HUM Ch 7.2.21 "ARCCS ARCNS=1 selects single big counter" p 296 */
-  k_ra_arc_arcns_single   = 1UL,
+  k_ra_arc_arcns_single = 1UL,
 } ra_arc_limits_t;
 
 /* =============================================================================
@@ -596,13 +596,13 @@ typedef enum : uint32_t {
  */
 typedef enum : uint8_t {
   /* HUM Ch 59 "MACI Command-Issuing Area" p 3550 */
-  k_ra_maci_cmd_status_clear       = 0x50U,
-  k_ra_maci_cmd_forced_stop        = 0xB3U,
-  k_ra_maci_cmd_config_set_1       = 0x40U,
-  k_ra_maci_cmd_config_set_2       = 0x08U,
-  k_ra_maci_cmd_increment_counter  = 0x35U,
-  k_ra_maci_cmd_read_counter       = 0x39U,
-  k_ra_maci_cmd_final              = 0xD0U,
+  k_ra_maci_cmd_status_clear      = 0x50U,
+  k_ra_maci_cmd_forced_stop       = 0xB3U,
+  k_ra_maci_cmd_config_set_1      = 0x40U,
+  k_ra_maci_cmd_config_set_2      = 0x08U,
+  k_ra_maci_cmd_increment_counter = 0x35U,
+  k_ra_maci_cmd_read_counter      = 0x39U,
+  k_ra_maci_cmd_final             = 0xD0U,
 } ra_maci_cmd_t;
 
 /**
@@ -617,7 +617,7 @@ typedef enum : uint32_t {
   /* HUM Ch 7 "Option-Setting Memory" p 278 */
   k_ra_msaddr_config_set_startup = 0x02C9F070UL,
   /* HUM Ch 7 "OFS SAS region" p 278 */
-  k_ra_msaddr_ofs_sas            = 0x02C9F074UL,
+  k_ra_msaddr_ofs_sas = 0x02C9F074UL,
 } ra_msaddr_t;
 
 /* =============================================================================
@@ -631,13 +631,13 @@ typedef enum : uint32_t {
  */
 typedef enum : uint32_t {
   /* HUM Ch 59.4.2 "Code MRAM programming" p 3548 */
-  k_ra_mram_write_size_bytes      = 32UL, /**< Minimum programmable unit.   */
+  k_ra_mram_write_size_bytes = 32UL, /**< Minimum programmable unit.   */
   /* HUM Ch 59.4.2 "Block layout" p 3548 */
-  k_ra_mram_block_size_bytes      = 32UL, /**< One programmable block.      */
+  k_ra_mram_block_size_bytes = 32UL, /**< One programmable block.      */
   /* HUM Ch 59 "Configuration-set MACI sequence" p 3550 */
-  k_ra_mram_config_set_word_count = 8UL,  /**< 8 halfwords per MACI write.  */
+  k_ra_mram_config_set_word_count = 8UL, /**< 8 halfwords per MACI write.  */
   /* HUM Ch 7.2.23 "ARC_NSEC layout" p 297 */
-  k_ra_mram_arc_max_words         = 16UL, /**< Max 32-bit words per ARC.    */
+  k_ra_mram_arc_max_words = 16UL, /**< Max 32-bit words per ARC.    */
 } ra_mram_data_const_t;
 
 /* =============================================================================

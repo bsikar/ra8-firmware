@@ -240,8 +240,11 @@ static void internal_dcdc_enable_sequence(bool fast)
     *ra_vreg_dcdcctl() = (uint8_t)k_ra_vreg_dcdc_step_with_ocp;
   }
 
-  s_state.dcdcctl =
-    fast ? (uint8_t)k_ra_vreg_dcdc_step_fast_on : (uint8_t)k_ra_vreg_dcdc_step_with_ocp;
+  if (fast) {
+    s_state.dcdcctl = (uint8_t)k_ra_vreg_dcdc_step_fast_on;
+  } else {
+    s_state.dcdcctl = (uint8_t)k_ra_vreg_dcdc_step_with_ocp;
+  }
 }
 
 /**
@@ -255,7 +258,10 @@ static void internal_dcdc_disable_sequence(bool keep_lcboost)
   /* The LDO selection is "everything off" -- optionally with LCBOOST
    * still asserted so the LDO can run at subosc-speed VDD.
    * HUM Ch 68.2.2 "External VDD Mode" p 4033 */
-  const uint8_t v    = keep_lcboost ? (uint8_t)k_ra_vreg_mask_lcboost : 0U;
+  uint8_t v = 0U;
+  if (keep_lcboost) {
+    v = (uint8_t)k_ra_vreg_mask_lcboost;
+  }
   *ra_vreg_dcdcctl() = v;
   s_state.dcdcctl    = v;
 }
@@ -467,11 +473,15 @@ static void internal_dcdc_disable_sequence(bool keep_lcboost)
   out->lvocr   = lvocr;
   out->mode =
     ((dcdcctl & (uint8_t)k_ra_vreg_mask_dcdcon) != 0U) ? k_ra_vreg_mode_dcdc : k_ra_vreg_mode_ldo;
-  out->vccsel_dec   = (ra_vreg_vccsel_t)(vccsel & (uint8_t)k_ra_vreg_vccsel_mask);
-  out->lv_profile   = internal_profile_from_lvocr(lvocr);
-  out->ocp          = internal_ocp_from_dcdcctl(dcdcctl);
-  out->dcdc_ready   = ((dcdcctl & (uint8_t)k_ra_vreg_mask_dcdcon) != 0U) &&
-                      ((dcdcctl & (uint8_t)k_ra_vreg_mask_pd) == 0U);
+  out->vccsel_dec       = (ra_vreg_vccsel_t)(vccsel & (uint8_t)k_ra_vreg_vccsel_mask);
+  out->lv_profile       = internal_profile_from_lvocr(lvocr);
+  out->ocp              = internal_ocp_from_dcdcctl(dcdcctl);
+  const bool dcdcon_set = ((dcdcctl & (uint8_t)k_ra_vreg_mask_dcdcon) != 0U);
+  const bool pd_clear   = ((dcdcctl & (uint8_t)k_ra_vreg_mask_pd) == 0U);
+  out->dcdc_ready       = false;
+  if (dcdcon_set && pd_clear) {
+    out->dcdc_ready = true;
+  }
   out->fast_startup = ((dcdcctl & (uint8_t)k_ra_vreg_mask_fst) != 0U);
   out->ldo_boost    = ((dcdcctl & (uint8_t)k_ra_vreg_mask_lcboost) != 0U);
   out->io_buf_on    = ((dcdcctl & (uint8_t)k_ra_vreg_mask_stopza) != 0U);
@@ -491,7 +501,7 @@ static void internal_dcdc_disable_sequence(bool keep_lcboost)
    * without touching the rest.
    * HUM Ch 68.2.1 "DCDC Mode" p 4032 */
   const uint8_t cur  = *ra_vreg_dcdcctl();
-  const uint8_t next = (uint8_t)(cur & (uint8_t)~(uint8_t)mask);
+  const uint8_t next = (uint8_t)(cur & (uint8_t)~mask);
   *ra_vreg_dcdcctl() = next;
   s_state.dcdcctl    = next;
   return k_ra_ok;

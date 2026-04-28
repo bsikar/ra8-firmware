@@ -473,6 +473,75 @@ static ra_err_t internal_ra_mipi_dsi_validate_cmd(const ra_mipi_dsi_command_t* c
  * =============================================================================
  */
 
+/**
+ * @brief Pulse the RSTCR software reset and program the steady-state
+ *        link-level registers.
+ *
+ * @details
+ * HUM Ch 65.2 "RSTCR" p 3853 plus the TXSETR / ULPSSETR / DSISETR /
+ * CLSTPTSETR / LPTRNSTSETR cluster (pp 3845-3887). Split out so
+ * ``ra_mipi_dsi_init`` stays under the function-size threshold.
+ *
+ * @param[in] cfg Validated config.
+ *
+ * @pre Module clock ungated.
+ * @post Listed registers reflect ``cfg``; SWRST cleared.
+ *
+ * @note Internal helper, not thread-safe.
+ */
+static void internal_program_link(const ra_mipi_dsi_config_t* cfg)
+{
+  volatile r_mipi_dsi_regs_t* reg = ra_mipi_dsi();
+
+  /* HUM Ch 65.2 "RSTCR" p 3853: pulse SWRST. */
+  reg->RSTCR = (uint32_t)k_ra_mipi_dsi_rstcr_swrst;
+  reg->RSTCR = 0U;
+
+  /* HUM Ch 65.2 "TXSETR" p 3845 / "ULPSSETR" p 3849 / "DSISETR" p 3855 */
+  reg->TXSETR   = internal_ra_mipi_dsi_make_txsetr(cfg);
+  reg->ULPSSETR = (uint32_t)cfg->ulps_wakeup_period << (uint32_t)k_ulpssetr_wkup_shift;
+  reg->DSISETR  = internal_ra_mipi_dsi_make_dsisetr(cfg);
+
+  /* HUM Ch 65.2 "CLSTPTSETR" p 3886 */
+  reg->CLSTPTSETR =
+    ((((uint32_t)cfg->timing.clock_stop_time) << (uint32_t)k_ra_mipi_dsi_clstpt_clkstpt_shift) &
+     (uint32_t)k_ra_mipi_dsi_clstpt_clkstpt_mask) |
+    ((((uint32_t)cfg->timing.clock_beforehand_time)
+      << (uint32_t)k_ra_mipi_dsi_clstpt_clkbfht_shift) &
+     (uint32_t)k_ra_mipi_dsi_clstpt_clkbfht_mask) |
+    ((((uint32_t)cfg->timing.clock_keep_time) << (uint32_t)k_ra_mipi_dsi_clstpt_clkkpt_shift) &
+     (uint32_t)k_ra_mipi_dsi_clstpt_clkkpt_mask);
+
+  /* HUM Ch 65.2 "LPTRNSTSETR" p 3887 */
+  reg->LPTRNSTSETR =
+    ((uint32_t)cfg->timing.go_lp_and_back) & (uint32_t)k_ra_mipi_dsi_lptrnst_golpbkt_mask;
+}
+
+/**
+ * @brief Program the peripheral-response and transmit-side timeouts.
+ *
+ * @details
+ * HUM Ch 65.2 PRESPTOBTASETR / PRESPTOLPSETR / PRESPTOHSSETR /
+ * HSTXTOSETR / LRXHTOSETR / TATOSETR pp 3873-3881.
+ *
+ * @param[in] cfg Validated config.
+ *
+ * @pre Module clock ungated.
+ * @post Listed timeout registers reflect ``cfg``.
+ *
+ * @note Internal helper, not thread-safe.
+ */
+static void internal_program_timeouts(const ra_mipi_dsi_config_t* cfg)
+{
+  volatile r_mipi_dsi_regs_t* reg = ra_mipi_dsi();
+  reg->PRESPTOBTASETR             = cfg->timeouts.bta_timeout;
+  reg->PRESPTOLPSETR              = cfg->timeouts.lp_rw_timeout;
+  reg->PRESPTOHSSETR              = cfg->timeouts.hs_rw_timeout;
+  reg->HSTXTOSETR                 = cfg->timeouts.hs_tx_timeout;
+  reg->LRXHTOSETR                 = cfg->timeouts.lp_rx_host_timeout;
+  reg->TATOSETR                   = cfg->timeouts.turnaround_timeout;
+}
+
 [[nodiscard]] ra_err_t ra_mipi_dsi_init(const ra_mipi_dsi_config_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
@@ -483,51 +552,8 @@ static ra_err_t internal_ra_mipi_dsi_validate_cmd(const ra_mipi_dsi_command_t* c
   const ra_err_t mst_err = ra_mstp_enable(k_ra_mstp_mipi_dsi);
   RA_RETURN_ON_ERROR(mst_err, s_tag, "mipi_dsi_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
 
-  volatile r_mipi_dsi_regs_t* reg = ra_mipi_dsi();
-
-  /* HUM Ch 65.2 "RSTCR : Reset Control Register", p 3853 */
-  /* Step 1 of "Software Reset" sequence: assert SWRST. */
-  reg->RSTCR = (uint32_t)k_ra_mipi_dsi_rstcr_swrst;
-  /* HUM Ch 65.2 "RSTCR : Reset Control Register", p 3853 */
-  /* Step 2: de-assert. (No wait: we re-write right away to clear it.) */
-  reg->RSTCR = 0U;
-
-  /* HUM Ch 65.2 "TXSETR : Transfer Setting Register", p 3845 */
-  reg->TXSETR = internal_ra_mipi_dsi_make_txsetr(cfg);
-
-  /* HUM Ch 65.2 "ULPSSETR : ULPS Setting Register", p 3849 */
-  reg->ULPSSETR = (uint32_t)cfg->ulps_wakeup_period << (uint32_t)k_ulpssetr_wkup_shift;
-
-  /* HUM Ch 65.2 "DSISETR : DSI Setting Register", p 3855 */
-  reg->DSISETR = internal_ra_mipi_dsi_make_dsisetr(cfg);
-
-  /* HUM Ch 65.2 "CLSTPTSETR : Clock Lane Stop / Beforehand / Keep Setting", p 3886 */
-  reg->CLSTPTSETR =
-    ((((uint32_t)cfg->timing.clock_stop_time) << (uint32_t)k_ra_mipi_dsi_clstpt_clkstpt_shift) &
-     (uint32_t)k_ra_mipi_dsi_clstpt_clkstpt_mask) |
-    ((((uint32_t)cfg->timing.clock_beforehand_time)
-      << (uint32_t)k_ra_mipi_dsi_clstpt_clkbfht_shift) &
-     (uint32_t)k_ra_mipi_dsi_clstpt_clkbfht_mask) |
-    ((((uint32_t)cfg->timing.clock_keep_time) << (uint32_t)k_ra_mipi_dsi_clstpt_clkkpt_shift) &
-     (uint32_t)k_ra_mipi_dsi_clstpt_clkkpt_mask);
-
-  /* HUM Ch 65.2 "LPTRNSTSETR : LP Transition Time Setting", p 3887 */
-  reg->LPTRNSTSETR =
-    ((uint32_t)cfg->timing.go_lp_and_back) & (uint32_t)k_ra_mipi_dsi_lptrnst_golpbkt_mask;
-
-  /* HUM Ch 65.2 "PRESPTOBTASETR : Peripheral Response Timeout (BTA)", p 3873 */
-  reg->PRESPTOBTASETR = cfg->timeouts.bta_timeout;
-  /* HUM Ch 65.2 "PRESPTOLPSETR : Peripheral Response Timeout (LP)", p 3874 */
-  reg->PRESPTOLPSETR = cfg->timeouts.lp_rw_timeout;
-  /* HUM Ch 65.2 "PRESPTOHSSETR : Peripheral Response Timeout (HS)", p 3875 */
-  reg->PRESPTOHSSETR = cfg->timeouts.hs_rw_timeout;
-  /* HUM Ch 65.2 "HSTXTOSETR : HS Tx Timeout Setting", p 3879 */
-  reg->HSTXTOSETR = cfg->timeouts.hs_tx_timeout;
-  /* HUM Ch 65.2 "LRXHTOSETR : LP-Rx Host Processor Timeout Setting", p 3880 */
-  reg->LRXHTOSETR = cfg->timeouts.lp_rx_host_timeout;
-  /* HUM Ch 65.2 "TATOSETR : Turnaround Acknowledge Timeout Setting", p 3881 */
-  reg->TATOSETR = cfg->timeouts.turnaround_timeout;
-
+  internal_program_link(cfg);
+  internal_program_timeouts(cfg);
   internal_ra_mipi_dsi_clear_all_status();
 
   s_continuous_clock    = (cfg->clock_mode == k_ra_mipi_dsi_clock_continuous);
@@ -618,17 +644,29 @@ static ra_err_t internal_ra_mipi_dsi_validate_cmd(const ra_mipi_dsi_command_t* c
  * =============================================================================
  */
 
-[[nodiscard]] ra_err_t ra_mipi_dsi_send_command(const ra_mipi_dsi_command_t* cmd)
+/**
+ * @brief Run the LINKSR-based pre-condition checks for ``send_command``.
+ *
+ * @details
+ * HUM Ch 65.2 "LINKSR : Link Status Register" p 3842. Rejects LP /
+ * AUX commands while video mode is running and refuses to interleave
+ * with a busy sequence channel.
+ *
+ * @param[in] cmd Validated command descriptor.
+ *
+ * @return ``k_ra_ok`` if the link permits the command.
+ * @retval k_ra_err_invalid_state LP/AUX requested during video mode.
+ * @retval k_ra_err_busy A sequence channel is mid-transfer.
+ *
+ * @pre ``cmd`` is non-null.
+ * @post No side effects.
+ *
+ * @note Internal helper, not thread-safe.
+ */
+static ra_err_t internal_check_link_state(const ra_mipi_dsi_command_t* cmd)
 {
-  RA_CHECK_NULL_PTR(cmd, s_tag, "cmd must not be nullptr");
-  const ra_err_t v_err = internal_ra_mipi_dsi_validate_cmd(cmd);
-  RA_RETURN_ON_ERROR(v_err, s_tag, "send_command: validate"); /* GCOVR_EXCL_BR_LINE */
-
-  volatile r_mipi_dsi_regs_t* reg = ra_mipi_dsi();
-
-  /* HUM Ch 65.2 "LINKSR : Link Status Register", p 3842 */
-  const uint32_t link = reg->LINKSR;
-  /* LP requested while video mode is running -> reject. */
+  volatile r_mipi_dsi_regs_t* reg  = ra_mipi_dsi();
+  const uint32_t              link = reg->LINKSR;
   if (cmd->low_power && ((link & (uint32_t)k_ra_mipi_dsi_link_vrun) != 0U)) {
     ra_log_error(s_tag, "send_command: LP not allowed during video mode");
     return k_ra_err_invalid_state;
@@ -637,43 +675,88 @@ static ra_err_t internal_ra_mipi_dsi_validate_cmd(const ra_mipi_dsi_command_t* c
     ra_log_error(s_tag, "send_command: sequence busy");
     return k_ra_err_busy;
   }
-
-  /* AUX op while video mode is running is also illegal -- mirror FSP. */
   if (cmd->aux_operation && ((link & (uint32_t)k_ra_mipi_dsi_link_vrun) != 0U)) {
     return k_ra_err_invalid_state;
   }
+  return k_ra_ok;
+}
 
-  const uint8_t channel    = cmd->low_power ? 0U : 1U;
+/**
+ * @brief Fill the four descriptor words for a sequence-channel command.
+ *
+ * @details
+ * HUM Ch 65.2 SQCH0/1DSC0AR..DR pp 3925-3930. Word D points at either
+ * the rx or the tx buffer depending on the BTA direction.
+ *
+ * @param[in,out] dsc  Descriptor base for the chosen channel.
+ * @param[in]     cmd  Validated command descriptor.
+ *
+ * @pre ``dsc`` and ``cmd`` are non-null.
+ * @post Descriptor words A..D reflect ``cmd``.
+ *
+ * @note Internal helper, not thread-safe.
+ */
+static void internal_program_descriptor(volatile r_mipi_dsi_descriptor_t* dsc,
+                                        const ra_mipi_dsi_command_t*      cmd)
+{
+  dsc->A                   = internal_ra_mipi_dsi_make_dsc_a(cmd);
+  dsc->B                   = (uint32_t)k_ra_mipi_dsi_dsc0b_dtsel_seqrm;
+  dsc->C                   = internal_ra_mipi_dsi_make_dsc_c(cmd);
+  const uintptr_t buf_addr = (cmd->bta == k_ra_mipi_dsi_bta_read) || (cmd->p_rx_buffer != nullptr)
+                               ? (uintptr_t)cmd->p_rx_buffer
+                               : (uintptr_t)cmd->p_tx_buffer;
+  dsc->D                   = (uint32_t)buf_addr;
+}
+
+/**
+ * @brief Stage payload + descriptor for ``ra_mipi_dsi_send_command``.
+ *
+ * @details
+ * For long packets (data-type low nibble > 0x08) we stage the first
+ * 16 bytes through TXPPD and let the descriptor's word D point at the
+ * caller buffer for the remainder. Sequence channel 0 carries LP
+ * commands; channel 1 carries HS commands.
+ *
+ * @param[in] cmd Validated command descriptor.
+ *
+ * @pre Link-state check passed.
+ * @post Sequence-channel descriptor + payload window programmed and
+ *       the matching channel pulsed.
+ *
+ * @note Internal helper, not thread-safe.
+ */
+static void internal_send_stage_and_pulse(const ra_mipi_dsi_command_t* cmd)
+{
+  volatile r_mipi_dsi_regs_t* reg = ra_mipi_dsi();
+
+  uint8_t channel = 1U;
+  if (cmd->low_power) {
+    channel = 0U;
+  }
   const uint8_t low_nibble = (uint8_t)((uint32_t)cmd->cmd_id & 0x0FU);
   const bool    is_long    = (low_nibble > 0x08U);
 
-  /* Stage payload for long packets. Anything > 16 bytes still pulses
-   * the first 16 here -- the DTSEL=TXPPD path supports up to 16 bytes;
-   * larger payloads point DTSEL=seq RAM at the buffer via word D. */
   if (is_long && (cmd->tx_len > 0U)) {
     internal_ra_mipi_dsi_stage_payload(cmd->p_tx_buffer, cmd->tx_len);
   }
 
   volatile r_mipi_dsi_descriptor_t* dsc = (channel == 0U) ? &reg->SQCH0DSC[0] : &reg->SQCH1DSC[0];
-
-  /* HUM Ch 65.2 "SQCH0DSC0AR : Sequence Channel 0 Descriptor 0 Setting A", p 3925 */
-  dsc->A = internal_ra_mipi_dsi_make_dsc_a(cmd);
-  /* HUM Ch 65.2 "SQCH0DSC0BR : Sequence Channel 0 Descriptor 0 Setting B", p 3927 */
-  dsc->B = (uint32_t)k_ra_mipi_dsi_dsc0b_dtsel_seqrm;
-  /* HUM Ch 65.2 "SQCH0DSC0CR : Sequence Channel 0 Descriptor 0 Setting C", p 3928 */
-  dsc->C = internal_ra_mipi_dsi_make_dsc_c(cmd);
-  /* HUM Ch 65.2 "SQCH0DSC0DR : Sequence Channel 0 Descriptor 0 Setting D", p 3930 */
-  /* For BTA-with-read, the address points at the rx buffer; otherwise
-   * at the tx buffer (for payloads larger than the 16-byte TXPPD). */
-  const uintptr_t buf_addr = (cmd->bta == k_ra_mipi_dsi_bta_read) || (cmd->p_rx_buffer != nullptr)
-                               ? (uintptr_t)cmd->p_rx_buffer
-                               : (uintptr_t)cmd->p_tx_buffer;
-  dsc->D                   = (uint32_t)buf_addr;
+  internal_program_descriptor(dsc, cmd);
 
   internal_ra_mipi_dsi_pulse_start(channel);
+}
 
-  /* If caller supplied an rx buffer, remember it so the rx ISR can
-   * copy RXPPD payload into it. */
+[[nodiscard]] ra_err_t ra_mipi_dsi_send_command(const ra_mipi_dsi_command_t* cmd)
+{
+  RA_CHECK_NULL_PTR(cmd, s_tag, "cmd must not be nullptr");
+  const ra_err_t v_err = internal_ra_mipi_dsi_validate_cmd(cmd);
+  RA_RETURN_ON_ERROR(v_err, s_tag, "send_command: validate"); /* GCOVR_EXCL_BR_LINE */
+
+  const ra_err_t link_err = internal_check_link_state(cmd);
+  RA_RETURN_ON_ERROR(link_err, s_tag, "send_command: link state"); /* GCOVR_EXCL_BR_LINE */
+
+  internal_send_stage_and_pulse(cmd);
+
   if (cmd->p_rx_buffer != nullptr) {
     s_pending_rx_buffer = cmd->p_rx_buffer;
     s_pending_rx_len    = (uint16_t)k_ra_mipi_dsi_payload_max;

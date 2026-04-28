@@ -948,10 +948,10 @@ ra_mipi_phy_eotp_t ra_mipi_phy_get_eotp(void);
  * @note Thread safety: not thread-safe.
  * @since 0.3.0
  */
-[[nodiscard]] ra_err_t ra_mipi_phy_select_timing(ra_mipi_phy_mode_t          mode,
-                                                 uint8_t                     pclka_mhz,
-                                                 uint16_t                    rate_mbps,
-                                                 ra_mipi_phy_timing_t* const out_timing);
+[[nodiscard]] ra_err_t ra_mipi_phy_select_timing(ra_mipi_phy_mode_t    mode,
+                                                 uint8_t               pclka_mhz,
+                                                 uint16_t              rate_mbps,
+                                                 ra_mipi_phy_timing_t* out_timing);
 
 /**
  * @brief Validate a PLL coefficient block against HUM 64.2.2 p 3823-3824.
@@ -1039,10 +1039,10 @@ ra_mipi_phy_compute_pll_freq(const ra_mipi_phy_pll_t* pll, uint8_t mosc_mhz, uin
  * @note Pure lookup -- thread-safe across the lookup table.
  * @since 0.4.0
  */
-[[nodiscard]] ra_err_t ra_mipi_phy_lookup_timing(ra_mipi_phy_mode_t          mode,
-                                                 uint8_t                     pclka_mhz,
-                                                 uint16_t                    rate_mbps,
-                                                 ra_mipi_phy_timing_t* const out_timing);
+[[nodiscard]] ra_err_t ra_mipi_phy_lookup_timing(ra_mipi_phy_mode_t    mode,
+                                                 uint8_t               pclka_mhz,
+                                                 uint16_t              rate_mbps,
+                                                 ra_mipi_phy_timing_t* out_timing);
 
 /**
  * @brief Read DPHYSFR and decode it into a ``ra_mipi_phy_status_decoded_t``.

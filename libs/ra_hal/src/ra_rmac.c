@@ -66,6 +66,24 @@ typedef enum : uint32_t {
 } ra_rmac_internal_t;
 
 /**
+ * @enum ra_rmac_bit_pos_t
+ * @brief Bit positions for register fields not covered by the
+ *        register-header enum file.
+ *
+ * @details
+ * HUM Ch 33.4 "MPFC", "MTPFC", "MTPFC2" p 1707. The header file
+ * exposes the data-byte mask/shift but leaves these single-bit / wide
+ * field positions inline in the driver. Naming them avoids
+ * readability-magic-numbers warnings and documents intent.
+ */
+typedef enum : uint8_t {
+  k_ra_rmac_shift_mpfc_te0    = 16U, /**< MPFC.TEF0 (PTP table entry 0 enable). */
+  k_ra_rmac_shift_mpfc_te1    = 17U, /**< MPFC.TEF1 (PTP table entry 1 enable). */
+  k_ra_rmac_shift_mtpfc_pfrlv = 27U, /**< MTPFC.PFRLV[31:27] retry-level field. */
+  k_ra_rmac_shift_mtpfc2_pfm  = 26U, /**< MTPFC2.PFM (1 = PFC frame, 0 = pause). */
+} ra_rmac_bit_pos_t;
+
+/**
  * @struct ra_rmac_slot_t
  * @brief Per-port runtime state.
  */
@@ -136,33 +154,96 @@ static ra_err_t internal_mdio_wait(volatile r_rmac_regs_t* reg, uint32_t mask)
 /**
  * @brief Issue a raw MPSM transaction.
  *
- * @param[in] reg     RMAC register window.
- * @param[in] phy_addr 5-bit PHY address.
- * @param[in] reg_addr 5-bit register / device address.
+ * @param[in] reg      RMAC register window.
+ * @param[in] pda_5bit 5-bit PDA field (PHY address for C22; same for C45).
+ * @param[in] pra_5bit 5-bit PRA field (register address for C22; device
+ *                     address for C45 -- the on-the-wire MMD selector).
  * @param[in] op       MPSM.POP encoding.
- * @param[in] data     16-bit data payload (ignored on read).
+ * @param[in] prd_16bit 16-bit PRD payload (ignored on read; for C45 this
+ *                     carries the 16-bit register address on the
+ *                     ``c45_address`` op and the data word on
+ *                     ``c45_write``).
  * @param[in] mff      MPSM.MFF (0 for C22, 1 for C45).
  */
 static void internal_mpsm_issue(volatile r_rmac_regs_t* reg,
-                                uint8_t                 phy_addr,
-                                uint8_t                 reg_addr,
+                                uint8_t                 pda_5bit,
+                                uint8_t                 pra_5bit,
                                 ra_rmac_mdio_op_t       op,
-                                uint16_t                data,
+                                uint16_t                prd_16bit,
                                 bool                    mff)
 {
   /* HUM Ch 33.4.1.1 "MPSM : PHY Station Management Register" p 1707 */
-  const uint32_t pda     = ((uint32_t)phy_addr & (uint32_t)k_ra_rmac_mask_mpsm_phy_reg)
+  const uint32_t pda     = ((uint32_t)pda_5bit & (uint32_t)k_ra_rmac_mask_mpsm_phy_reg)
                            << (uint32_t)k_ra_rmac_shift_mpsm_pda;
-  const uint32_t pra     = ((uint32_t)reg_addr & (uint32_t)k_ra_rmac_mask_mpsm_phy_reg)
+  const uint32_t pra     = ((uint32_t)pra_5bit & (uint32_t)k_ra_rmac_mask_mpsm_phy_reg)
                            << (uint32_t)k_ra_rmac_shift_mpsm_pra;
   const uint32_t pop     = ((uint32_t)op & (uint32_t)k_ra_rmac_mask_mpsm_op)
                            << (uint32_t)k_ra_rmac_shift_mpsm_pop;
-  const uint32_t prd     = ((uint32_t)data & (uint32_t)k_ra_rmac_mask_mpsm_data)
+  const uint32_t prd     = ((uint32_t)prd_16bit & (uint32_t)k_ra_rmac_mask_mpsm_data)
                            << (uint32_t)k_ra_rmac_shift_mpsm_prd;
-  const uint32_t mff_bit = mff ? (1UL << 2U) : 0UL;
+  uint32_t       mff_bit = 0UL;
+  if (mff) {
+    mff_bit = (1UL << 2U);
+  }
   /* PSME = bit 0 -- starts the transaction. */
   /* HUM Ch 33.4.1.1 "MPSM : PHY Station Management Register" p 1707 */
   reg->MPSM = pda | pra | pop | prd | mff_bit | 1UL;
+}
+
+/**
+ * @brief Reset every per-MAC config register to its post-init baseline.
+ *
+ * @details
+ * HUM Ch 33.4 "MIOC ... MEEEC" p 1707. Splits ``ra_rmac_init`` so it
+ * stays under the function-size threshold.
+ *
+ * @param[in,out] reg RMAC register window.
+ * @param[in]     cfg Validated init config.
+ *
+ * @pre Module clock ungated.
+ * @post All listed registers reflect ``cfg``.
+ *
+ * @note Internal helper, not thread-safe.
+ */
+static void internal_program_mac_config(volatile r_rmac_regs_t* reg, const ra_rmac_config_t* cfg)
+{
+  reg->MIOC   = 0U;
+  reg->MTFFC  = 0U;
+  reg->MRMAC0 = 0U;
+  reg->MRMAC1 = 0U;
+  reg->MRGC   = 0U;
+  reg->MRAFC  = (uint32_t)cfg->rx_filter;
+  reg->MLBC   = 0U;
+  reg->MEEEC  = 0U;
+  reg->MPIC   = internal_make_mpic(cfg->phy_interface, cfg->link_speed, cfg->duplex);
+}
+
+/**
+ * @brief Reset/disable every IRQ status + enable register.
+ *
+ * @details
+ * HUM Ch 33.4 "MEID/MMID0..2" p 1706 -- write 1 to clear, then load
+ * the caller's enable masks into MEIE / MMIE0..2.
+ *
+ * @param[in,out] reg RMAC register window.
+ * @param[in]     cfg Validated init config.
+ *
+ * @pre Module clock ungated.
+ * @post Status bits cleared, enable masks programmed.
+ *
+ * @note Internal helper, not thread-safe.
+ */
+static void internal_program_irq_block(volatile r_rmac_regs_t* reg, const ra_rmac_config_t* cfg)
+{
+  reg->MEID  = (uint32_t)k_ra_rmac_mask_all;
+  reg->MMID0 = (uint32_t)k_ra_rmac_mask_all;
+  reg->MMID1 = (uint32_t)k_ra_rmac_mask_all;
+  reg->MMID2 = (uint32_t)k_ra_rmac_mask_all;
+
+  reg->MEIE  = cfg->err_irq_enable;
+  reg->MMIE0 = cfg->mon0_irq_enable;
+  reg->MMIE1 = cfg->mon1_irq_enable;
+  reg->MMIE2 = cfg->mon2_irq_enable;
 }
 
 ra_err_t ra_rmac_init(ra_rmac_port_t port, const ra_rmac_config_t* cfg)
@@ -186,46 +267,8 @@ ra_err_t ra_rmac_init(ra_rmac_port_t port, const ra_rmac_config_t* cfg)
   RA_RETURN_ON_ERROR(mst_err, s_tag, "rmac_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
 
   volatile r_rmac_regs_t* reg = ra_rmac(port);
-
-  /* HUM Ch 33.4 "MIOC : RMAC IO Configuration Register" p 1707 */
-  reg->MIOC = 0U;
-  /* HUM Ch 33.4 "MTFFC : MAC Transmission Frame Format Configuration Register" p 1707 */
-  reg->MTFFC = 0U;
-  /* HUM Ch 33.4 "MRMAC0 : MAC Reception MAC Address Configuration Register 0" p 1707 */
-  reg->MRMAC0 = 0U;
-  /* HUM Ch 33.4 "MRMAC1 : MAC Reception MAC Address Configuration Register 1" p 1707 */
-  reg->MRMAC1 = 0U;
-  /* HUM Ch 33.4 "MRGC : MAC Reception General Configuration Register" p 1707 */
-  reg->MRGC = 0U;
-  /* HUM Ch 33.4 "MRAFC : MAC Reception Address Filter Configuration Register" p 1707 */
-  reg->MRAFC = (uint32_t)cfg->rx_filter;
-  /* HUM Ch 33.4 "MLBC : MAC Loopback Configuration Register" p 1707 */
-  reg->MLBC = 0U;
-  /* HUM Ch 33.4 "MEEEC : MAC Energy Efficient Ethernet Configuration Register" p 1707 */
-  reg->MEEEC = 0U;
-  /* HUM Ch 33.4 "MPIC : PHY Interfaces Configuration Register" p 1707 */
-  reg->MPIC = internal_make_mpic(cfg->phy_interface, cfg->link_speed, cfg->duplex);
-
-  /* Clear any latched IRQ state. Status bits are R/W1C; writing
-   * the same value back to the matching MEID / MMID register clears
-   * them per HUM Ch 33.4 "Error Interrupt Disable Register" p 1706. */
-  /* HUM Ch 33.4 "MEID : MAC Error Interrupt Disable Register" p 1706 */
-  reg->MEID = (uint32_t)k_ra_rmac_mask_all;
-  /* HUM Ch 33.4 "MMID0 : MAC Monitoring Interrupt Disable Register 0" p 1706 */
-  reg->MMID0 = (uint32_t)k_ra_rmac_mask_all;
-  /* HUM Ch 33.4 "MMID1 : MAC Monitoring Interrupt Disable Register 1" p 1706 */
-  reg->MMID1 = (uint32_t)k_ra_rmac_mask_all;
-  /* HUM Ch 33.4 "MMID2 : MAC Monitoring Interrupt Disable Register 2" p 1706 */
-  reg->MMID2 = (uint32_t)k_ra_rmac_mask_all;
-
-  /* HUM Ch 33.4 "MEIE : MAC Error Interrupt Enable Register" p 1706 */
-  reg->MEIE = cfg->err_irq_enable;
-  /* HUM Ch 33.4 "MMIE0 : MAC Monitoring Interrupt Enable Register 0" p 1706 */
-  reg->MMIE0 = cfg->mon0_irq_enable;
-  /* HUM Ch 33.4 "MMIE1 : MAC Monitoring Interrupt Enable Register 1" p 1706 */
-  reg->MMIE1 = cfg->mon1_irq_enable;
-  /* HUM Ch 33.4 "MMIE2 : MAC Monitoring Interrupt Enable Register 2" p 1706 */
-  reg->MMIE2 = cfg->mon2_irq_enable;
+  internal_program_mac_config(reg, cfg);
+  internal_program_irq_block(reg, cfg);
 
   s_slots[(uint8_t)port].cb            = nullptr;
   s_slots[(uint8_t)port].ctx           = nullptr;
@@ -356,10 +399,16 @@ ra_err_t ra_rmac_set_ptp_filter(ra_rmac_port_t port,
     return k_ra_err_invalid_arg;
   }
   /* HUM Ch 33.4 "MPFCt : MAC PTP Filtering Register Configuration t" p 1707 */
-  const uint32_t pfbn        = (uint32_t)byte_offset & (uint32_t)k_ra_rmac_mask_byte;
-  const uint32_t pfbv        = ((uint32_t)value & (uint32_t)k_ra_rmac_mask_byte)
-                               << (uint32_t)k_ra_rmac_shift_mpfc_val;
-  const uint32_t te          = (tef0 ? (1UL << 16U) : 0UL) | (tef1 ? (1UL << 17U) : 0UL);
+  const uint32_t pfbn = (uint32_t)byte_offset & (uint32_t)k_ra_rmac_mask_byte;
+  const uint32_t pfbv = ((uint32_t)value & (uint32_t)k_ra_rmac_mask_byte)
+                        << (uint32_t)k_ra_rmac_shift_mpfc_val;
+  uint32_t       te   = 0UL;
+  if (tef0) {
+    te |= (1UL << (uint32_t)k_ra_rmac_shift_mpfc_te0);
+  }
+  if (tef1) {
+    te |= (1UL << (uint32_t)k_ra_rmac_shift_mpfc_te1);
+  }
   ra_rmac(port)->MPFC[index] = pfbn | pfbv | te;
   return k_ra_ok;
 }
@@ -395,8 +444,13 @@ ra_err_t ra_rmac_set_vlan_framing(ra_rmac_port_t port, bool disable_pad, bool us
     return k_ra_err_invalid_arg;
   }
   /* HUM Ch 33.4 "MTFFC : MAC Transmission Frame Format Configuration" p 1707 */
-  const uint32_t v     = (disable_pad ? (uint32_t)k_ra_rmac_mtffc_dpad : 0UL) |
-                         (use_mcrc ? (uint32_t)k_ra_rmac_mtffc_fcm : 0UL);
+  uint32_t v = 0UL;
+  if (disable_pad) {
+    v |= (uint32_t)k_ra_rmac_mtffc_dpad;
+  }
+  if (use_mcrc) {
+    v |= (uint32_t)k_ra_rmac_mtffc_fcm;
+  }
   ra_rmac(port)->MTFFC = v;
   return k_ra_ok;
 }
@@ -416,9 +470,12 @@ ra_err_t ra_rmac_set_pause_frame(ra_rmac_port_t       port,
                          << (uint32_t)k_ra_rmac_shift_mtpfc_pt;
   const uint32_t pfrt  = ((uint32_t)retry_time & (uint32_t)k_ra_rmac_mask_mtpfc_pfrt)
                          << (uint32_t)k_ra_rmac_shift_mtpfc_pfrt;
-  const uint32_t pfrlv = ((uint32_t)retry_level & 0x1FU) << 27U;
+  const uint32_t pfrlv = ((uint32_t)retry_level & 0x1FU) << (uint32_t)k_ra_rmac_shift_mtpfc_pfrlv;
   /* HUM Ch 33.4 "MTPFC2 : MAC Transmission Pause or PFC Frame Cfg 2" p 1707 */
-  const uint32_t pfm    = (mode == k_ra_rmac_pause_mode_pfc) ? (1UL << 26U) : 0UL;
+  uint32_t pfm = 0UL;
+  if (mode == k_ra_rmac_pause_mode_pfc) {
+    pfm = (1UL << (uint32_t)k_ra_rmac_shift_mtpfc2_pfm);
+  }
   ra_rmac(port)->MTPFC  = pt | pfrt | pfrlv;
   ra_rmac(port)->MTPFC2 = pfm;
   return k_ra_ok;
@@ -447,7 +504,11 @@ ra_err_t ra_rmac_set_lpi(ra_rmac_port_t port, bool enable)
     return k_ra_err_invalid_arg;
   }
   /* HUM Ch 33.4 "MEEEC : MAC Energy Efficient Ethernet Configuration" p 1707 */
-  ra_rmac(port)->MEEEC = enable ? (uint32_t)k_ra_rmac_meeec_lpitr : 0UL;
+  uint32_t meeec = 0UL;
+  if (enable) {
+    meeec = (uint32_t)k_ra_rmac_meeec_lpitr;
+  }
+  ra_rmac(port)->MEEEC = meeec;
   return k_ra_ok;
 }
 
@@ -476,7 +537,11 @@ ra_err_t ra_rmac_set_loopback(ra_rmac_port_t port, bool enable)
     return k_ra_err_invalid_arg;
   }
   /* HUM Ch 33.4 "MLBC : MAC Loopback Configuration Register" p 1707 */
-  ra_rmac(port)->MLBC = enable ? (uint32_t)k_ra_rmac_mlbc_lbme : 0UL;
+  uint32_t mlbc = 0UL;
+  if (enable) {
+    mlbc = (uint32_t)k_ra_rmac_mlbc_lbme;
+  }
+  ra_rmac(port)->MLBC = mlbc;
   return k_ra_ok;
 }
 
@@ -652,6 +717,82 @@ ra_err_t ra_rmac_clear_status(ra_rmac_port_t port,
   return k_ra_ok;
 }
 
+/**
+ * @brief Snapshot the pause / PFC / EEE counters into ``out``.
+ *
+ * @details
+ * HUM Ch 33.4 MMPFTCT / MAPFTCT / MPFRCT / MFCICT / MEEECT and the
+ * MMPCFTCT / MAPCFTCT / MPCFRCT counter banks (p 1706).
+ */
+static void internal_snapshot_pause_pfc(volatile r_rmac_regs_t* reg, ra_rmac_stats_t* out)
+{
+  out->pause_tx_manual = reg->MMPFTCT;
+  out->pause_tx_auto   = reg->MAPFTCT;
+  out->pause_rx        = reg->MPFRCT;
+  out->false_carrier   = reg->MFCICT;
+  out->eee_count       = reg->MEEECT;
+  for (uint8_t i = 0; i < (uint8_t)k_ra_rmac_pfc_group_count; ++i) {
+    out->pfc_tx_manual[i] = reg->MMPCFTCT[i];
+    out->pfc_tx_auto[i]   = reg->MAPCFTCT[i];
+  }
+  for (uint8_t i = 0; i < (uint8_t)k_ra_rmac_pfc_rx_count; ++i) {
+    out->pfc_rx[i] = reg->MPCFRCT[i];
+  }
+}
+
+/**
+ * @brief Snapshot the receive counters into ``out``.
+ *
+ * @details
+ * HUM Ch 33.4 MROVFC ... MRXBCPL p 1706.
+ */
+static void internal_snapshot_rx(volatile r_rmac_regs_t* reg, ra_rmac_stats_t* out)
+{
+  out->rx_overflow        = reg->MROVFC;
+  out->rx_hdr_crc_err     = reg->MRHCRCEC;
+  out->rx_good_e          = reg->MRGFCE;
+  out->rx_good_p          = reg->MRGFCP;
+  out->rx_broadcast       = reg->MRBFC;
+  out->rx_multicast       = reg->MRMFC;
+  out->rx_unicast         = reg->MRUFC;
+  out->rx_phy_err         = reg->MRPEFC;
+  out->rx_nibble_err      = reg->MRNEFC;
+  out->rx_fcs_err         = reg->MRFMEFC;
+  out->rx_final_frag_miss = reg->MRFFMEFC;
+  out->rx_c_frag_err      = reg->MRCFCEFC;
+  out->rx_frag_count_err  = reg->MRFCEFC;
+  out->rx_filter_rejected = reg->MRRCFEFC;
+  out->rx_total           = reg->MRFC;
+  out->rx_good_undersize  = reg->MRGUEFC;
+  out->rx_bad_undersize   = reg->MRBUEFC;
+  out->rx_good_oversize   = reg->MRGOEFC;
+  out->rx_bad_oversize    = reg->MRBOEFC;
+  out->rx_bytes_e_upper   = reg->MRXBCEU;
+  out->rx_bytes_e_lower   = reg->MRXBCEL;
+  out->rx_bytes_p_upper   = reg->MRXBCPU;
+  out->rx_bytes_p_lower   = reg->MRXBCPL;
+}
+
+/**
+ * @brief Snapshot the transmit counters into ``out``.
+ *
+ * @details
+ * HUM Ch 33.4 MTGFCE ... MTXBCPL p 1706.
+ */
+static void internal_snapshot_tx(volatile r_rmac_regs_t* reg, ra_rmac_stats_t* out)
+{
+  out->tx_good_e        = reg->MTGFCE;
+  out->tx_good_p        = reg->MTGFCP;
+  out->tx_broadcast     = reg->MTBFC;
+  out->tx_multicast     = reg->MTMFC;
+  out->tx_unicast       = reg->MTUFC;
+  out->tx_error         = reg->MTEFC;
+  out->tx_bytes_e_upper = reg->MTXBCEU;
+  out->tx_bytes_e_lower = reg->MTXBCEL;
+  out->tx_bytes_p_upper = reg->MTXBCPU;
+  out->tx_bytes_p_lower = reg->MTXBCPL;
+}
+
 ra_err_t ra_rmac_read_stats(ra_rmac_port_t port, ra_rmac_stats_t* out)
 {
   RA_CHECK_NULL_PTR(out, s_tag, "read_stats: out must not be nullptr");
@@ -661,92 +802,9 @@ ra_err_t ra_rmac_read_stats(ra_rmac_port_t port, ra_rmac_stats_t* out)
   }
 
   volatile r_rmac_regs_t* reg = ra_rmac(port);
-  /* HUM Ch 33.4 "MMPFTCT : Manual Pause Frame Transmit Counter" p 1706 */
-  out->pause_tx_manual = reg->MMPFTCT;
-  /* HUM Ch 33.4 "MAPFTCT : Automatic Pause Frame Transmit Counter" p 1706 */
-  out->pause_tx_auto = reg->MAPFTCT;
-  /* HUM Ch 33.4 "MPFRCT : Pause Frame Receive Counter" p 1706 */
-  out->pause_rx = reg->MPFRCT;
-  /* HUM Ch 33.4 "MFCICT : False Carrier Indication Counter" p 1706 */
-  out->false_carrier = reg->MFCICT;
-  /* HUM Ch 33.4 "MEEECT : Energy Efficient Ethernet Counter" p 1706 */
-  out->eee_count = reg->MEEECT;
-  for (uint8_t i = 0; i < (uint8_t)k_ra_rmac_pfc_group_count; ++i) {
-    /* HUM Ch 33.4 "MMPCFTCTt : Manual PFC Frame TX Counter" p 1706 */
-    out->pfc_tx_manual[i] = reg->MMPCFTCT[i];
-    /* HUM Ch 33.4 "MAPCFTCTt : Automatic PFC Frame TX Counter" p 1706 */
-    out->pfc_tx_auto[i] = reg->MAPCFTCT[i];
-  }
-  for (uint8_t i = 0; i < (uint8_t)k_ra_rmac_pfc_rx_count; ++i) {
-    /* HUM Ch 33.4 "MPCFRCTt : PFC Frame RX Counter" p 1706 */
-    out->pfc_rx[i] = reg->MPCFRCT[i];
-  }
-  /* HUM Ch 33.4 "MROVFC : Receive Overflow Counter" p 1706 */
-  out->rx_overflow = reg->MROVFC;
-  /* HUM Ch 33.4 "MRHCRCEC : Reception Header CRC Error Counter" p 1706 */
-  out->rx_hdr_crc_err = reg->MRHCRCEC;
-  /* HUM Ch 33.4 "MRGFCE : Received Good Frame Counter E-Frames" p 1706 */
-  out->rx_good_e = reg->MRGFCE;
-  /* HUM Ch 33.4 "MRGFCP : Received Good Frame Counter P-Frames" p 1706 */
-  out->rx_good_p = reg->MRGFCP;
-  /* HUM Ch 33.4 "MRBFC : Received Good Broadcast Frame Counter" p 1706 */
-  out->rx_broadcast = reg->MRBFC;
-  /* HUM Ch 33.4 "MRMFC : Received Good Multicast Frame Counter" p 1706 */
-  out->rx_multicast = reg->MRMFC;
-  /* HUM Ch 33.4 "MRUFC : Received Good Unicast Frame Counter" p 1706 */
-  out->rx_unicast = reg->MRUFC;
-  /* HUM Ch 33.4 "MRPEFC : Received PHY Error Frame Count" p 1706 */
-  out->rx_phy_err = reg->MRPEFC;
-  /* HUM Ch 33.4 "MRNEFC : Received Nibble Error Frame Count" p 1706 */
-  out->rx_nibble_err = reg->MRNEFC;
-  /* HUM Ch 33.4 "MRFMEFC : Received FCS/mCRC Error Frame Count" p 1706 */
-  out->rx_fcs_err = reg->MRFMEFC;
-  /* HUM Ch 33.4 "MRFFMEFC : Received Final Fragment Missing Error" p 1706 */
-  out->rx_final_frag_miss = reg->MRFFMEFC;
-  /* HUM Ch 33.4 "MRCFCEFC : Received C-Fragment Count Error" p 1706 */
-  out->rx_c_frag_err = reg->MRCFCEFC;
-  /* HUM Ch 33.4 "MRFCEFC : Received Fragment Count Error" p 1706 */
-  out->rx_frag_count_err = reg->MRFCEFC;
-  /* HUM Ch 33.4 "MRRCFEFC : Received RMAC Filter Error Frame Count" p 1706 */
-  out->rx_filter_rejected = reg->MRRCFEFC;
-  /* HUM Ch 33.4 "MRFC : Received Frame Count" p 1706 */
-  out->rx_total = reg->MRFC;
-  /* HUM Ch 33.4 "MRGUEFC : Received Good Undersize Error Frame Count" p 1706 */
-  out->rx_good_undersize = reg->MRGUEFC;
-  /* HUM Ch 33.4 "MRBUEFC : Received Bad Undersize Error Frame Count" p 1706 */
-  out->rx_bad_undersize = reg->MRBUEFC;
-  /* HUM Ch 33.4 "MRGOEFC : Received Good Oversize Error Frame Count" p 1706 */
-  out->rx_good_oversize = reg->MRGOEFC;
-  /* HUM Ch 33.4 "MRBOEFC : Received Bad Oversize Error Frame Count" p 1706 */
-  out->rx_bad_oversize = reg->MRBOEFC;
-  /* HUM Ch 33.4 "MRXBCEU : Received Byte Counter E-Frames Upper" p 1706 */
-  out->rx_bytes_e_upper = reg->MRXBCEU;
-  /* HUM Ch 33.4 "MRXBCEL : Received Byte Counter E-Frames Lower" p 1706 */
-  out->rx_bytes_e_lower = reg->MRXBCEL;
-  /* HUM Ch 33.4 "MRXBCPU : Received Byte Counter P-Frames Upper" p 1706 */
-  out->rx_bytes_p_upper = reg->MRXBCPU;
-  /* HUM Ch 33.4 "MRXBCPL : Received Byte Counter P-Frames Lower" p 1706 */
-  out->rx_bytes_p_lower = reg->MRXBCPL;
-  /* HUM Ch 33.4 "MTGFCE : Transmitted Good Frame Counter E-Frames" p 1706 */
-  out->tx_good_e = reg->MTGFCE;
-  /* HUM Ch 33.4 "MTGFCP : Transmitted Good Frame Counter P-Frames" p 1706 */
-  out->tx_good_p = reg->MTGFCP;
-  /* HUM Ch 33.4 "MTBFC : Transmitted Broadcast Frame Counter" p 1706 */
-  out->tx_broadcast = reg->MTBFC;
-  /* HUM Ch 33.4 "MTMFC : Transmitted Multicast Frame Counter" p 1706 */
-  out->tx_multicast = reg->MTMFC;
-  /* HUM Ch 33.4 "MTUFC : Transmitted Unicast Frame Counter" p 1706 */
-  out->tx_unicast = reg->MTUFC;
-  /* HUM Ch 33.4 "MTEFC : Transmitted Error Frame Counter" p 1706 */
-  out->tx_error = reg->MTEFC;
-  /* HUM Ch 33.4 "MTXBCEU : Transmitted Byte Counter E-Frames Upper" p 1706 */
-  out->tx_bytes_e_upper = reg->MTXBCEU;
-  /* HUM Ch 33.4 "MTXBCEL : Transmitted Byte Counter E-Frames Lower" p 1706 */
-  out->tx_bytes_e_lower = reg->MTXBCEL;
-  /* HUM Ch 33.4 "MTXBCPU : Transmitted Byte Counter P-Frames Upper" p 1706 */
-  out->tx_bytes_p_upper = reg->MTXBCPU;
-  /* HUM Ch 33.4 "MTXBCPL : Transmitted Byte Counter P-Frames Lower" p 1706 */
-  out->tx_bytes_p_lower = reg->MTXBCPL;
+  internal_snapshot_pause_pfc(reg, out);
+  internal_snapshot_rx(reg, out);
+  internal_snapshot_tx(reg, out);
   return k_ra_ok;
 }
 

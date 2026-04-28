@@ -272,13 +272,12 @@ static void internal_ctl_rmw(volatile r_cnecc_regs_t* reg, uint32_t new_bits, ui
   live &= (uint32_t)k_ra_cnecc_mask_ctl_writable;
   /* Drop the W1C clear bits -- they read 0 but writing 1 latches a
    * clear; we want this RMW to be neutral on the status flags. */
-  live &= (uint32_t)~((uint32_t)k_ra_cnecc_mask_ecer1c | (uint32_t)k_ra_cnecc_mask_ecer2c);
+  live &= ~((uint32_t)k_ra_cnecc_mask_ecer1c | (uint32_t)k_ra_cnecc_mask_ecer2c);
   /* Replace just the requested bits. */
-  live = (uint32_t)((live & ~mask) | (new_bits & mask));
+  live = ((live & ~mask) | (new_bits & mask));
   /* Always re-assert the EMCA = 01b unlock pattern (HUM 42.2.1 p 2870
    * EMCA notes). */
-  live =
-    (uint32_t)((live & ~(uint32_t)k_ra_cnecc_mask_emca) | (uint32_t)k_ra_cnecc_mask_emca_unlock);
+  live = ((live & ~(uint32_t)k_ra_cnecc_mask_emca) | (uint32_t)k_ra_cnecc_mask_emca_unlock);
   /* HUM Ch 42.2.1 "EC710CTL : ECC Control Register", p 2868 */
   reg->EC710CTL = live;
 }
@@ -412,7 +411,10 @@ static void internal_ctl_rmw(volatile r_cnecc_regs_t* reg, uint32_t new_bits, ui
   /* EC1ECP semantics are inverted: bit set means "correction NOT
    * executed" per HUM Ch 42.2.1 "EC710CTL : ECC Control Register"
    * EC1ECP, p 2870. */
-  const uint32_t set_bits = correct_1bit ? 0U : (uint32_t)k_ra_cnecc_mask_ec1ecp;
+  uint32_t set_bits = (uint32_t)k_ra_cnecc_mask_ec1ecp;
+  if (correct_1bit) {
+    set_bits = 0U;
+  }
   internal_ctl_rmw(reg, set_bits, (uint32_t)k_ra_cnecc_mask_ec1ecp);
   s_cnecc_cached_cfg.instances[instance].correct_1bit = correct_1bit;
   return k_ra_ok;

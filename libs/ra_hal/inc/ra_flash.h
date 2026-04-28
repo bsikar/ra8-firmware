@@ -132,15 +132,15 @@ typedef enum : uint8_t {
  * @brief Source identifier for unified flash IRQ dispatcher.
  */
 typedef enum : uint8_t {
-  k_ra_flash_irq_code_ecc_ted   = 0U, /**< Code MRAM 1-bit ECC TED. */
-  k_ra_flash_irq_code_ecc_dec   = 1U, /**< Code MRAM 2-bit ECC DEC. */
-  k_ra_flash_irq_extra_ecc_ted  = 2U, /**< Extra MRAM 1-bit ECC TED. */
-  k_ra_flash_irq_extra_ecc_dec  = 3U, /**< Extra MRAM 2-bit ECC DEC. */
-  k_ra_flash_irq_program_err    = 4U, /**< Code MRAM program/erase error. */
-  k_ra_flash_irq_extra_err      = 5U, /**< Extra MRAM access error. */
-  k_ra_flash_irq_extra_cmdlk    = 6U, /**< Extra MRAM command-lock. */
-  k_ra_flash_irq_extra_ready    = 7U, /**< Extra MRAM ready. */
-  k_ra_flash_irq_count          = 8U, /**< Sentinel: number of sources. */
+  k_ra_flash_irq_code_ecc_ted  = 0U, /**< Code MRAM 1-bit ECC TED. */
+  k_ra_flash_irq_code_ecc_dec  = 1U, /**< Code MRAM 2-bit ECC DEC. */
+  k_ra_flash_irq_extra_ecc_ted = 2U, /**< Extra MRAM 1-bit ECC TED. */
+  k_ra_flash_irq_extra_ecc_dec = 3U, /**< Extra MRAM 2-bit ECC DEC. */
+  k_ra_flash_irq_program_err   = 4U, /**< Code MRAM program/erase error. */
+  k_ra_flash_irq_extra_err     = 5U, /**< Extra MRAM access error. */
+  k_ra_flash_irq_extra_cmdlk   = 6U, /**< Extra MRAM command-lock. */
+  k_ra_flash_irq_extra_ready   = 7U, /**< Extra MRAM ready. */
+  k_ra_flash_irq_count         = 8U, /**< Sentinel: number of sources. */
 } ra_flash_irq_src_t;
 
 /**

@@ -226,9 +226,27 @@ static ra_err_t internal_reject_if_running(void)
  * =============================================================================
  */
 
-ra_err_t ra_mipi_csi_init(const ra_mipi_csi_config_t* cfg)
+/**
+ * @brief Validate ``cfg`` field ranges before any register writes.
+ *
+ * @details
+ * Catches lane count, VLSIEN, EPD spacer, and short-packet threshold
+ * out-of-range values described in HUM Ch 66 "MIPI Camera Serial
+ * Interface" pp 3935-3958.
+ *
+ * @param[in] cfg Caller-provided config snapshot.
+ *
+ * @return ``k_ra_ok`` on success, ``k_ra_err_invalid_arg`` otherwise.
+ * @retval k_ra_ok All fields in range.
+ * @retval k_ra_err_invalid_arg At least one field is out of the documented range.
+ *
+ * @pre ``cfg`` is non-NULL (caller has already done the NULL check).
+ * @post No register writes occur on failure.
+ *
+ * @note Internal helper, not thread-safe.
+ */
+static ra_err_t internal_validate_cfg(const ra_mipi_csi_config_t* cfg)
 {
-  RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
   if ((cfg->lanes != k_ra_mipi_csi_lanes_1) && (cfg->lanes != k_ra_mipi_csi_lanes_2)) {
     return k_ra_err_invalid_arg;
   }
@@ -245,20 +263,25 @@ ra_err_t ra_mipi_csi_init(const ra_mipi_csi_config_t* cfg)
   if ((uint32_t)cfg->short_threshold > (uint32_t)k_ra_mipi_csi_gsct_shth_max) {
     return k_ra_err_invalid_arg;
   }
+  return k_ra_ok;
+}
 
-  /* HUM Ch 11.2.8 "MSTPCRC : Module Stop Control Register C", p 446 */
-  const ra_err_t mst_err = ra_mstp_enable(k_ra_mstp_mipi_csi);
-  RA_RETURN_ON_ERROR(mst_err, s_tag, "mipi_csi_init: mstp enable");
-
-  /* HUM Ch 66.3.4 "MCT3 : Module Control Register 3" p 3938
-   * Ensure RXEN = 0 before re-configuring the receiver. */
-  *ra_mipi_csi_reg32(k_ra_mipi_csi_off_mct3) = 0UL;
-
-  /* HUM Ch 66.3.6 "RTST : Reset Status Register" p 3939
-   * Wait for any in-flight software reset to drain. */
-  const ra_err_t rst_err = internal_wait_reset_idle();
-  RA_RETURN_ON_ERROR(rst_err, s_tag, "mipi_csi_init: vsrsts spin");
-
+/**
+ * @brief Program the MCT/EPCT/EMCT/DTEL/DTEH/GSCT receiver block.
+ *
+ * @details
+ * HUM Ch 66.3.2-66.3.24 pp 3936-3957. Writes module-control registers,
+ * EPD options, data-type enables, and the generic short-packet control.
+ *
+ * @param[in] cfg Caller-provided config snapshot.
+ *
+ * @pre Receiver was disabled (RXEN = 0) and any pending soft reset drained.
+ * @post All listed registers reflect ``cfg``.
+ *
+ * @note Internal helper, not thread-safe.
+ */
+static void internal_program_receiver(const ra_mipi_csi_config_t* cfg)
+{
   /* HUM Ch 66.3.2 "MCT0 : Module Control Register 0" p 3936
    * VDLN + GRMD + ECCV13 + LFSREN + ZLMD + EDMD + RVMD. */
   *ra_mipi_csi_reg32(k_ra_mipi_csi_off_mct0) = internal_encode_mct0(cfg);
@@ -305,7 +328,24 @@ ra_err_t ra_mipi_csi_init(const ra_mipi_csi_config_t* cfg)
     gsct |= (uint32_t)k_ra_mipi_csi_gsct_gfif_mask;
   }
   *ra_mipi_csi_reg32(k_ra_mipi_csi_off_gsct) = gsct;
+}
 
+/**
+ * @brief Program the receiver interrupt-enable mask block.
+ *
+ * @details
+ * HUM Ch 66.3.14-66.3.27 pp 3946-3958. Writes RXIE, DLIE0/1, VCIE(M),
+ * PMIE, and GSIE in one pass.
+ *
+ * @param[in] cfg Caller-provided config snapshot.
+ *
+ * @pre Receiver was disabled (RXEN = 0).
+ * @post All interrupt-enable registers reflect ``cfg``.
+ *
+ * @note Internal helper, not thread-safe.
+ */
+static void internal_program_irq_masks(const ra_mipi_csi_config_t* cfg)
+{
   /* HUM Ch 66.3.14 "RXIE : Receive Interrupt Enable Register" p 3946 */
   *ra_mipi_csi_reg32(k_ra_mipi_csi_off_rxie) = cfg->rx_irq_mask;
 
@@ -324,6 +364,29 @@ ra_err_t ra_mipi_csi_init(const ra_mipi_csi_config_t* cfg)
 
   /* HUM Ch 66.3.27 "GSIE : Generic Short Packet Interrupt Enable" p 3958 */
   *ra_mipi_csi_reg32(k_ra_mipi_csi_off_gsie) = cfg->short_irq_mask;
+}
+
+ra_err_t ra_mipi_csi_init(const ra_mipi_csi_config_t* cfg)
+{
+  RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
+  const ra_err_t cfg_err = internal_validate_cfg(cfg);
+  RA_RETURN_ON_ERROR(cfg_err, s_tag, "mipi_csi_init: cfg out of range");
+
+  /* HUM Ch 11.2.8 "MSTPCRC : Module Stop Control Register C", p 446 */
+  const ra_err_t mst_err = ra_mstp_enable(k_ra_mstp_mipi_csi);
+  RA_RETURN_ON_ERROR(mst_err, s_tag, "mipi_csi_init: mstp enable");
+
+  /* HUM Ch 66.3.4 "MCT3 : Module Control Register 3" p 3938
+   * Ensure RXEN = 0 before re-configuring the receiver. */
+  *ra_mipi_csi_reg32(k_ra_mipi_csi_off_mct3) = 0UL;
+
+  /* HUM Ch 66.3.6 "RTST : Reset Status Register" p 3939
+   * Wait for any in-flight software reset to drain. */
+  const ra_err_t rst_err = internal_wait_reset_idle();
+  RA_RETURN_ON_ERROR(rst_err, s_tag, "mipi_csi_init: vsrsts spin");
+
+  internal_program_receiver(cfg);
+  internal_program_irq_masks(cfg);
 
   ra_log_info_val(s_tag, "mipi_csi_init lanes", (uint32_t)cfg->lanes);
   return k_ra_ok;
