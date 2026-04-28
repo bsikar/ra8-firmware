@@ -1,13 +1,28 @@
 /**
  * @file ra_sci.c
- * @brief Full-featured SCI driver implementation
+ * @brief Full-featured SCI_B driver implementation
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}
  *
  * @details
- * replacement for the ``uart.c`` stub. See
- * ``ra_sci.h`` for the public API contract.
+ * SCI_B variant of the RA8D2 SCI peripheral (HUM Ch 38). See
+ * `ra_sci.h` for the public API contract and `ra8d2_sci_regs.h` for
+ * the register layout. This file replaces the prior legacy-SCI driver
+ * stub (the legacy 8-bit-register variant is not present on RA8D2).
+ *
+ * Asynchronous (UART) bring-up sequence implemented in `ra_sci_init`:
+ *   1. Open the per-channel MSTP gate.
+ *   2. Clear CCR0 so TE/RE/TIE/RIE/TEIE are off before reconfiguring.
+ *   3. Programme CCR1 (parity / inverter / break-data defaults).
+ *   4. Programme CCR3 (mode = async, CHR = data length, STP = stop
+ *      bits, MOD = 0 for async/multi-proc, MP/FM/DEN/CKE all clear so
+ *      the channel uses the on-chip baud generator with no FIFO).
+ *   5. Programme CCR2 with BRR computed from PCLKB and the requested
+ *      baud (CKS = 0, BGDM = 0, ABCS = 0 -- the standard 16x base
+ *      clock path), MDDR left at reset (0xFF -> no modulation).
+ *   6. Disable FIFO mode and Manchester / LIN / IIC satellite bits.
+ *   7. Set CCR0 = TE | RE.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -36,32 +51,12 @@ static const char* s_tag = "SCI";
 
 /**
  * @enum ra_sci_limits_inner_t
- * @brief File-local bounds + magic register values.
+ * @brief File-local bounds and channel-table sizing.
  */
 typedef enum : uint8_t {
-  k_ra_sci_channel_max_index = 9U,    /**< SCI0..SCI9. */
-  k_ra_sci_channel_count_val = 10U,   /**< Total channels tracked. */
-  k_ra_sci_scmr_default      = 0xF2U, /**< SCMR reset value per HUM. */
+  k_ra_sci_channel_max_index = 9U,  /**< SCI0..SCI9. */
+  k_ra_sci_channel_count_val = 10U, /**< Total channels tracked. */
 } ra_sci_limits_inner_t;
-
-/**
- * @enum ra_sci_smr_bit_t
- * @brief SMR bit positions (HUM Ch 38.2 "SMR Serial Mode Register", p 2174).
- */
-typedef enum : uint8_t {
-  k_ra_sci_smr_bit_stop = 3U, /**< STOP bit = 1 means 2 stop bits. */
-  k_ra_sci_smr_bit_pm   = 4U, /**< PM = 1 means odd parity. */
-  k_ra_sci_smr_bit_pe   = 5U, /**< PE = 1 means parity enabled. */
-  k_ra_sci_smr_bit_chr  = 6U, /**< CHR = 1 means 7-bit data. */
-} ra_sci_smr_bit_t;
-
-/**
- * @enum ra_sci_brr_const_t
- * @brief Constants used in the BRR calculation (HUM Ch 38.2).
- */
-typedef enum : uint32_t {
-  k_ra_sci_brr_base = 64U, /**< 64x base-clock divider. */
-} ra_sci_brr_const_t;
 
 /* =============================================================================
  * Per-channel state
@@ -120,24 +115,26 @@ static volatile r_sci_regs_t* internal_reg(uint8_t channel)
 }
 
 /**
- * @brief Compute BRR from the requested baud and PCLKB.
+ * @brief Compute the 8-bit BRR value from a target baud and PCLKB.
  *
  * @details
- * HUM Ch 38 gives the formula:
+ * HUM Ch 38.2.7 "CCR2 : Common Control Register 2", p 2189
+ * Table 38.7. For the default Asynchronous-mode 16x base-clock path
+ * (CCR2.BGDM = ABCS = ABCSE = ABCSE2 = 0, CCR3.CKE = 0, CCR2.CKS = 0
+ * -> n = 0):
  *
- * @f[
- * BRR = \frac{PCLKB}{64 \cdot B} - 1
- * @f]
+ * @f[ N = \frac{TCLK}{64 \cdot 2^{(2n - 1)} \cdot B} - 1
+ *       = \frac{TCLK}{32 \cdot B} - 1 @f]
  *
- * for the default CKS = 0, ABCSE = 0, BGDM = 0 path.
+ * Saturates at 0 if the requested baud is unreachable.
  */
 static uint8_t internal_brr(uint32_t pclk_hz, uint32_t baud)
 {
   if ((baud == 0U) || (pclk_hz == 0U)) {
     return 0U;
   }
-  const uint32_t divisor = k_ra_sci_brr_base * baud;
-  const uint32_t n       = (pclk_hz / divisor);
+  const uint32_t divisor = k_ra_sci_brr_async_divisor * baud;
+  const uint32_t n       = pclk_hz / divisor;
   if (n == 0U) {
     return 0U;
   }
@@ -145,34 +142,77 @@ static uint8_t internal_brr(uint32_t pclk_hz, uint32_t baud)
 }
 
 /**
- * @brief Compute the SMR value from a config descriptor.
+ * @brief Build the CCR1 value for an async-UART config descriptor.
  *
- * @details
- * Bit map (from HUM Ch 38.2 "SMR"):
- * [1:0] CKS -- clock source select (always PCLKB in this driver)
- * [2] MP -- multi-processor (0 = disabled)
- * [3] STOP -- 0 = 1 stop bit, 1 = 2 stop bits
- * [4] PM -- 0 = even, 1 = odd
- * [5] PE -- 0 = no parity, 1 = parity
- * [6] CHR -- 0 = 8-bit, 1 = 7-bit
- * [7] CM -- 0 = async, 1 = clock-sync
+ * @details HUM Ch 38.2.6 "CCR1 : Common Control Register 1", p 2185.
+ * Always sets SPB2DT + SPB2IO so TXD idles HIGH while TE=0 -- without
+ * those bits the line floats low and a host UART sees a permanent
+ * break, blocking the very first frame. FSP r_sci_b_uart does the
+ * same write unconditionally for async-UART configs. Parity is set
+ * per `cfg->parity`; the rest (CTSE/CTSPEN/TINV/RINV/SPLP/SHARPS/
+ * NFEN) stay at their reset value.
  */
-static uint8_t internal_smr(const ra_sci_cfg_t* cfg)
+static uint32_t internal_ccr1(const ra_sci_cfg_t* cfg)
 {
-  uint8_t smr = 0U;
-  if (cfg->stop_bits == k_ra_sci_stop_2) {
-    smr |= (uint8_t)(1U << k_ra_sci_smr_bit_stop);
-  }
+  uint32_t ccr1 = (1U << k_ra_sci_ccr1_bit_spb2dt) | (1U << k_ra_sci_ccr1_bit_spb2io);
   if (cfg->parity != k_ra_sci_parity_none) {
-    smr |= (uint8_t)(1U << k_ra_sci_smr_bit_pe);
+    ccr1 |= (1U << k_ra_sci_ccr1_bit_pe);
     if (cfg->parity == k_ra_sci_parity_odd) {
-      smr |= (uint8_t)(1U << k_ra_sci_smr_bit_pm);
+      ccr1 |= (1U << k_ra_sci_ccr1_bit_pm);
     }
   }
+  return ccr1;
+}
+
+/**
+ * @brief Build the CCR3 value for an async-UART config descriptor.
+ *
+ * @details HUM Ch 38.2.8 "CCR3 : Common Control Register 3", p 2203.
+ * MOD = 000 (asynchronous), CHR = 8-bit / 7-bit, STP = 0/1 stop bit
+ * = 1 / 2 stop bits. CKE = 00 (on-chip baud generator). FM = 0
+ * (non-FIFO). MP = 0 (single-processor). All other bits stay 0.
+ */
+static uint32_t internal_ccr3(const ra_sci_cfg_t* cfg)
+{
+  /* LSBF = 1 (LSB-first) is the UART standard wire order. SCI_B's
+   * reset state is MSB-first; without this bit the host receives
+   * each byte bit-reversed (e.g. 'h' = 0x68 transmits as 0x16). FSP
+   * r_sci_b_uart sets LSBF unconditionally for async configs. */
+  uint32_t ccr3 = (1U << k_ra_sci_ccr3_bit_lsbf);
+
+  /* MOD = 000 (Asynchronous) -- already 0. */
+
+  /* CHR[1:0]. 8-bit -> 10b, 7-bit -> 11b. */
   if (cfg->data_bits == k_ra_sci_data_7) {
-    smr |= (uint8_t)(1U << k_ra_sci_smr_bit_chr);
+    ccr3 |= (k_ra_sci_ccr3_chr_7bit << k_ra_sci_ccr3_shift_chr);
+  } else {
+    ccr3 |= (k_ra_sci_ccr3_chr_8bit << k_ra_sci_ccr3_shift_chr);
   }
-  return smr;
+
+  /* STP -- 1 = 2 stop bits. */
+  if (cfg->stop_bits == k_ra_sci_stop_2) {
+    ccr3 |= (1U << k_ra_sci_ccr3_bit_stp);
+  }
+
+  return ccr3;
+}
+
+/**
+ * @brief Build the CCR2 value with BRR programmed.
+ *
+ * @details HUM Ch 38.2.7 "CCR2 : Common Control Register 2", p 2189.
+ * MDDR field reset value is 0xFF (modulation-disabled equivalent),
+ * so we keep it at 0xFF and program BRR[15:8] only. CKS = 0,
+ * BGDM = ABCS = ABCSE = ABCSE2 = 0 -- the 16x base-clock path.
+ */
+static uint32_t internal_ccr2(const ra_sci_cfg_t* cfg)
+{
+  const uint8_t brr  = internal_brr(cfg->pclk_hz, cfg->baud);
+  uint32_t      ccr2 = 0U;
+  ccr2 |= ((uint32_t)brr << k_ra_sci_ccr2_shift_brr);
+  /* MDDR reset value -- keep modulation off. */
+  ccr2 |= (k_ra_sci_mddr_default << k_ra_sci_ccr2_shift_mddr);
+  return ccr2;
 }
 
 /* =============================================================================
@@ -197,30 +237,34 @@ ra_err_t ra_sci_init(uint8_t channel, const ra_sci_cfg_t* cfg)
     /* GCOVR_EXCL_STOP */
   }
 
-  /* HUM Ch 38.2 "SCR : Serial Control Register", p 2174 -- disable TX/RX
-   * before reprogramming the other control registers. */
-  reg->SCR = 0U;
+  /* HUM Ch 38.2.5 "CCR0 : Common Control Register 0", p 2182 -- disable
+   * TX/RX/IE bits before reconfiguring CCR1..CCR4 and FCR. */
+  reg->CCR0 = 0U;
 
-  /* HUM Ch 38.2 "SMR : Serial Mode Register", p 2174 */
-  reg->SMR = internal_smr(cfg);
+  /* HUM Ch 38.2.11 "FCR : FIFO Control Register", p 2215 -- non-FIFO
+   * polling mode for the bring-up demo: TFRST/RFRST cleared, all
+   * trigger numbers reset to 0. */
+  reg->FCR = 0U;
 
-  /* HUM Ch 38.2 "SCMR : Smart Card Mode Register", p 2174 -- factory
-   * default per HUM Table 38.x (SINV = 0, SMIF = 0, SDIR = 0). */
-  reg->SCMR = k_ra_sci_scmr_default;
+  /* HUM Ch 38.2.6 "CCR1 : Common Control Register 1", p 2185 */
+  reg->CCR1 = internal_ccr1(cfg);
 
-  /* HUM Ch 38.2 "BRR : Bit Rate Register", p 2174 */
-  reg->BRR = internal_brr(cfg->pclk_hz, cfg->baud);
+  /* HUM Ch 38.2.8 "CCR3 : Common Control Register 3", p 2203 -- mode
+   * + framing must be programmed before TE/RE go high. */
+  reg->CCR3 = internal_ccr3(cfg);
 
-  /* HUM Ch 38.2 "SEMR : Serial Extended Mode Register", p 2174 -- async,
-   * base-clock = PCLKB, no noise-cancel. */
-  reg->SEMR = 0U;
+  /* HUM Ch 38.2.7 "CCR2 : Common Control Register 2", p 2189 -- BRR
+   * derived from cfg->pclk_hz and cfg->baud. */
+  reg->CCR2 = internal_ccr2(cfg);
 
-  /* HUM Ch 38.2 "SNFR : Noise Filter Setting Register", p 2174 */
-  reg->SNFR = 0U;
+  /* HUM Ch 38.2.9 "CCR4 : Common Control Register 4", p 2210 -- no
+   * sample / transmit timing adjustment for async UART. */
+  reg->CCR4 = 0U;
 
-  /* Enable TE + RE.
-   * HUM Ch 38.2 "SCR : Serial Control Register", p 2174 */
-  reg->SCR = (uint8_t)((1U << k_ra_scr_bit_te) | (1U << k_ra_scr_bit_re));
+  /* HUM Ch 38.2.5 "CCR0 : Common Control Register 0", p 2182 -- enable
+   * transmitter and receiver. Interrupt-enable bits are toggled
+   * separately by ra_sci_attach_{rx,tx}_handler. */
+  reg->CCR0 = (1U << k_ra_sci_ccr0_bit_te) | (1U << k_ra_sci_ccr0_bit_re);
 
   s_state[channel].initialised = true;
   ra_log_info_val(s_tag, "sci_init channel", (uint32_t)channel);
@@ -234,8 +278,8 @@ ra_err_t ra_sci_deinit(uint8_t channel)
     return k_ra_err_invalid_arg;
   }
 
-  /* HUM Ch 38.2 "SCR : Serial Control Register", p 2174 */
-  reg->SCR                     = 0U;
+  /* HUM Ch 38.2.5 "CCR0 : Common Control Register 0", p 2182 */
+  reg->CCR0                    = 0U;
   s_state[channel].rx_fn       = nullptr;
   s_state[channel].rx_ctx      = nullptr;
   s_state[channel].tx_fn       = nullptr;
@@ -252,13 +296,17 @@ ra_err_t ra_sci_putc_polling(uint8_t channel, uint8_t byte)
   if (reg == nullptr) {
     return k_ra_err_invalid_arg;
   }
-  const ra_err_t werr =
-    ra_hw_wait_flag_set8(&reg->SSR, (uint8_t)(1U << k_ra_ssr_bit_tdre), k_ra_hw_budget_medium);
+  /* HUM Ch 38.2.17 "CSR : Common Status Register", p 2225 -- spin
+   * until TDRE = 1 (transmit data register empty). */
+  const uint32_t mask = (1U << k_ra_sci_csr_bit_tdre);
+  const ra_err_t werr = ra_hw_wait_flag_set32(&reg->CSR, mask, k_ra_hw_budget_medium);
   if (werr != k_ra_ok) {
     return werr;
   }
-  /* HUM Ch 38.2 "TDR : Transmit Data Register", p 2174 */
-  reg->TDR = byte;
+  /* HUM Ch 38.2.3 "TDR : Transmit Data Register", p 2181 -- write to
+   * TDAT[7:0] (low 8 bits of TDR) launches one frame in non-FIFO
+   * 8-bit async mode. */
+  reg->TDR = (uint32_t)byte;
   return k_ra_ok;
 }
 
@@ -269,13 +317,16 @@ ra_err_t ra_sci_getc_polling(uint8_t channel, uint8_t* out_byte)
   if (reg == nullptr) {
     return k_ra_err_invalid_arg;
   }
-  const ra_err_t werr =
-    ra_hw_wait_flag_set8(&reg->SSR, (uint8_t)(1U << k_ra_ssr_bit_rdrf), k_ra_hw_budget_medium);
+  /* HUM Ch 38.2.17 "CSR : Common Status Register", p 2225 -- spin
+   * until RDRF = 1 (receive data full). */
+  const uint32_t mask = (1U << k_ra_sci_csr_bit_rdrf);
+  const ra_err_t werr = ra_hw_wait_flag_set32(&reg->CSR, mask, k_ra_hw_budget_medium);
   if (werr != k_ra_ok) {
     return werr;
   }
-  /* HUM Ch 38.2 "RDR : Receive Data Register", p 2174 */
-  *out_byte = reg->RDR;
+  /* HUM Ch 38.2.2 "RDR : Receive Data Register", p 2180 -- RDAT[7:0]
+   * holds the byte just received in 8-bit async mode. */
+  *out_byte = (uint8_t)(reg->RDR & k_ra_sci_rdr_mask_data8);
   return k_ra_ok;
 }
 
@@ -303,12 +354,13 @@ ra_err_t ra_sci_attach_rx_handler(uint8_t channel, ra_sci_rx_fn_t fn, void* ctx)
   }
   s_state[channel].rx_fn  = fn;
   s_state[channel].rx_ctx = ctx;
-  /* Toggle RIE.
-   * HUM Ch 38.2 "SCR : Serial Control Register", p 2174 */
+  /* HUM Ch 38.2.5 "CCR0 : Common Control Register 0", p 2182 -- toggle
+   * RIE (bit 16). */
+  const uint32_t rie = (1U << k_ra_sci_ccr0_bit_rie);
   if (fn != nullptr) {
-    reg->SCR = (uint8_t)(reg->SCR | (uint8_t)(1U << k_ra_scr_bit_rie));
+    reg->CCR0 = reg->CCR0 | rie;
   } else {
-    reg->SCR = (uint8_t)(reg->SCR & (uint8_t)~(1U << k_ra_scr_bit_rie));
+    reg->CCR0 = reg->CCR0 & ~rie;
   }
   return k_ra_ok;
 }
@@ -321,12 +373,13 @@ ra_err_t ra_sci_attach_tx_handler(uint8_t channel, ra_sci_tx_fn_t fn, void* ctx)
   }
   s_state[channel].tx_fn  = fn;
   s_state[channel].tx_ctx = ctx;
-  /* Toggle TIE.
-   * HUM Ch 38.2 "SCR : Serial Control Register", p 2174 */
+  /* HUM Ch 38.2.5 "CCR0 : Common Control Register 0", p 2182 -- toggle
+   * TIE (bit 20). */
+  const uint32_t tie = (1U << k_ra_sci_ccr0_bit_tie);
   if (fn != nullptr) {
-    reg->SCR = (uint8_t)(reg->SCR | (uint8_t)(1U << k_ra_scr_bit_tie));
+    reg->CCR0 = reg->CCR0 | tie;
   } else {
-    reg->SCR = (uint8_t)(reg->SCR & (uint8_t)~(1U << k_ra_scr_bit_tie));
+    reg->CCR0 = reg->CCR0 & ~tie;
   }
   return k_ra_ok;
 }
@@ -340,15 +393,17 @@ ra_err_t ra_sci_get_errors(uint8_t channel, uint8_t* out_mask)
   if (reg == nullptr) {
     return k_ra_err_invalid_arg;
   }
-  uint8_t       mask = k_ra_sci_err_none;
-  const uint8_t ssr  = reg->SSR;
-  if ((ssr & (uint8_t)(1U << k_ra_ssr_bit_orer)) != 0U) {
+  uint8_t mask = k_ra_sci_err_none;
+  /* HUM Ch 38.2.17 "CSR : Common Status Register", p 2225 -- read the
+   * three error flags out of the 32-bit status word. */
+  const uint32_t csr = reg->CSR;
+  if ((csr & (1U << k_ra_sci_csr_bit_orer)) != 0U) {
     mask |= k_ra_sci_err_overrun;
   }
-  if ((ssr & (uint8_t)(1U << k_ra_ssr_bit_fer)) != 0U) {
+  if ((csr & (1U << k_ra_sci_csr_bit_fer)) != 0U) {
     mask |= k_ra_sci_err_framing;
   }
-  if ((ssr & (uint8_t)(1U << k_ra_ssr_bit_per)) != 0U) {
+  if ((csr & (1U << k_ra_sci_csr_bit_per)) != 0U) {
     mask |= k_ra_sci_err_parity;
   }
   *out_mask = mask;
@@ -361,11 +416,10 @@ ra_err_t ra_sci_clear_errors(uint8_t channel)
   if (reg == nullptr) {
     return k_ra_err_invalid_arg;
   }
-  /* HUM Ch 38.2 "SSR : Serial Status Register", p 2174 -- ORER/FER/PER
-   * are write-zero-to-clear. */
-  const uint8_t clr_mask =
-    (uint8_t)~((1U << k_ra_ssr_bit_orer) | (1U << k_ra_ssr_bit_fer) | (1U << k_ra_ssr_bit_per));
-  reg->SSR = (uint8_t)(reg->SSR & clr_mask);
+  /* HUM Ch 38.2.24 "CFCLR : Common Flag Clear Register", p 2238 --
+   * write-1-to-clear lines for ORER / FER / PER. */
+  reg->CFCLR = (1U << k_ra_sci_cfclr_bit_orerc) | (1U << k_ra_sci_cfclr_bit_ferc) |
+               (1U << k_ra_sci_cfclr_bit_perc);
   return k_ra_ok;
 }
 
@@ -380,9 +434,13 @@ ra_err_t ra_sci_set_baud(uint8_t channel, uint32_t baud, uint32_t pclk_hz)
   if (baud == 0U) {
     return k_ra_err_invalid_arg;
   }
-  /* HUM Ch 38.2 "BRR : Bit Rate Register", p 2174 -- writes take effect
-   * on the next bit cell, no full-restart required. */
-  reg->BRR = internal_brr(pclk_hz, baud);
+  /* HUM Ch 38.2.7 "CCR2 : Common Control Register 2", p 2189 -- BRR
+   * lives in CCR2[15:8]; preserve the rest of CCR2. */
+  const uint8_t brr = internal_brr(pclk_hz, baud);
+  uint32_t      v   = reg->CCR2;
+  v &= ~k_ra_sci_ccr2_mask_brr_field;
+  v |= ((uint32_t)brr << k_ra_sci_ccr2_shift_brr);
+  reg->CCR2 = v;
   return k_ra_ok;
 }
 
@@ -394,8 +452,8 @@ ra_err_t ra_sci_enter_stop(uint8_t channel)
   if (reg == nullptr) {
     return k_ra_err_invalid_arg;
   }
-  /* HUM Ch 38.2 "SCR : Serial Control Register", p 2174 */
-  reg->SCR = 0U;
+  /* HUM Ch 38.2.5 "CCR0 : Common Control Register 0", p 2182 */
+  reg->CCR0 = 0U;
   return ra_mstp_disable(s_mstp_table[channel]);
 }
 
@@ -449,8 +507,9 @@ ra_err_t ra_sci_write_dma(uint8_t              channel,
   if ((reg == nullptr) || (len == 0U)) {
     return k_ra_err_invalid_arg;
   }
-  /* HUM Ch 38.2 "TDR : Transmit Data Register", p 2174 -- DMA writes land
-   * here one byte per element. Source increments across data[]. */
+  /* HUM Ch 38.2.3 "TDR : Transmit Data Register", p 2181 -- DMA writes
+   * land in TDR; the engine streams one byte per element while the
+   * source increments across data[]. */
   const ra_dma_request_t req = internal_make_dma_request((uintptr_t)data,
                                                          (uintptr_t)&reg->TDR,
                                                          len,
@@ -477,8 +536,8 @@ ra_err_t ra_sci_read_dma(uint8_t              channel,
   if ((reg == nullptr) || (len == 0U)) {
     return k_ra_err_invalid_arg;
   }
-  /* HUM Ch 38.2 "RDR : Receive Data Register", p 2174 -- RDR is read-once
-   * per element, destination increments across out_buf[]. */
+  /* HUM Ch 38.2.2 "RDR : Receive Data Register", p 2180 -- RDR is
+   * read-once per element; destination increments across out_buf[]. */
   const ra_dma_request_t req = internal_make_dma_request((uintptr_t)&reg->RDR,
                                                          (uintptr_t)out_buf,
                                                          len,
@@ -502,15 +561,18 @@ void ra_sci_dispatch_txi(uint8_t channel)
   }
   const ra_sci_tx_fn_t cb  = s_state[channel].tx_fn;
   void* const          ctx = s_state[channel].tx_ctx;
+  const uint32_t       tie = (1U << k_ra_sci_ccr0_bit_tie);
   if (cb == nullptr) {
-    reg->SCR = (uint8_t)(reg->SCR & (uint8_t)~(1U << k_ra_scr_bit_tie));
+    /* HUM Ch 38.2.5 "CCR0 : Common Control Register 0", p 2182 */
+    reg->CCR0 = reg->CCR0 & ~tie;
     return;
   }
   uint8_t byte = 0U;
   if (cb(ctx, &byte)) {
-    reg->TDR = byte;
+    /* HUM Ch 38.2.3 "TDR : Transmit Data Register", p 2181 */
+    reg->TDR = (uint32_t)byte;
   } else {
-    reg->SCR = (uint8_t)(reg->SCR & (uint8_t)~(1U << k_ra_scr_bit_tie));
+    reg->CCR0 = reg->CCR0 & ~tie;
   }
 }
 
@@ -525,7 +587,8 @@ void ra_sci_dispatch_rxi(uint8_t channel)
   }
   const ra_sci_rx_fn_t cb  = s_state[channel].rx_fn;
   void* const          ctx = s_state[channel].rx_ctx;
-  const uint8_t        b   = reg->RDR;
+  /* HUM Ch 38.2.2 "RDR : Receive Data Register", p 2180 */
+  const uint8_t b = (uint8_t)(reg->RDR & k_ra_sci_rdr_mask_data8);
   if (cb != nullptr) {
     cb(ctx, b);
   }

@@ -5,22 +5,35 @@
  * @par Tag
  * [Ring 6 / APP] {World: S}
  *
- * @par BLOCKED on SCI_B retrofit
- * The J-Link OB CDC channel on the EK-RA8D2 board bridges to **SCI8
- * on PD02 (TX) / PD03 (RX)** -- which is an SCI_B instance, not the
- * legacy SCI variant. `libs/ra_hal/src/ra_sci.c` currently writes to
- * the legacy SCI register layout (see `ra_sci.h:34`); it builds and
- * unit-tests pass because the host simulator backs MMIO with ordinary
- * RAM, but on real silicon the byte writes land at the wrong
- * register offsets and nothing comes out of the CDC port. A
- * verified flash-and-readback of this app under SWD shows the
- * firmware running its main loop correctly -- the print is happening
- * at the C level, the bytes just aren't reaching the line.
+ * @par Status: still blocked, but further along
  *
- * To make this app actually print, `ra8d2_sci_regs.h` and
- * `ra_sci.c` need to be re-derived against the SCI_B register
- * layout in HUM Ch 38 ("Serial Communications Interface", p 2174
- * onwards).
+ * Hardware verified bit-by-bit on real silicon via SWD. What works:
+ *   - Pinout (EK-RA8D2 user's manual Table 13: J-Link OB CDC <-> PD02 TX
+ *     / PD03 RX, with PD04/PD05 as RTS/CTS).
+ *   - Channel (SCI8, confirmed against FSP `quickstart_ek_ra8d2_ep`).
+ *   - SCI_B driver layout (HUM Ch 38, p 2174+).
+ *   - Pin routing: PD02 PFS reads back PMR=1, PSEL=0x04.
+ *   - MSTPCRB[SCI8] is cleared (read 0x40203004 -> bit 23 = 0).
+ *   - Driver writes are visible: CCR0=0x11 (TE|RE), CCR1=0x30
+ *     (SPB2DT|SPB2IO, so TXD idles HIGH when TE=0), CCR2.BRR=0x0F
+ *     (115200 baud at 60 MHz PCLKA), CCR3=0x1200 (LSBF + 8-bit CHR).
+ *   - CSR after a TDR write reads TEND=1, TDRE=1, RXDMON=1 (chip
+ *     thinks it's done shifting).
+ *
+ * What still doesn't work: **PD02 PIDR never toggles**. 20 SWD samples
+ * of the PFS register during repeated TDR writes all show bit 1 = 1
+ * (line at IDLE HIGH). For a 115200-baud frame each bit is 8.7 us, so
+ * even slow SWD sampling should catch the line low at least once
+ * during the ~1.3 ms transmission of the greeting. It never does.
+ *
+ * Best hypothesis: SCI_B's operating clock (TCLK -- either PCLK or
+ * the independent SCICLK route) isn't actually reaching the SCI8
+ * shifter. CCR0 / TDR latch fine because those are PCLK accesses,
+ * but TCLK gates the bit-shift state machine. FSP's
+ * `quickstart_ek_ra8d2_ep` ra_cfg.txt explicitly configures SCICLK
+ * source = PLL2R, /4 -- our `ra_cgc_init` doesn't touch SCICKCR /
+ * SCKDIVCR2.SCICKDIV / SCISPISEL at all. Next step: have ra_cgc
+ * route SCICLK from a known-good source and re-test.
  *
  * @details
  * Brings the chip up on HOCO + PLL via ``ra_cgc_init()``, configures
@@ -28,14 +41,15 @@
  * prints ``"hello, ra8d2!\r\n"`` once a second while toggling LED1
  * as a heartbeat. The CDC channel of the on-board J-Link OB on the
  * EK-RA8D2 surfaces these pins as a virtual serial port on the host,
- * so once the SCI_B retrofit lands, connecting a terminal at
- * 115200 8N1 to that port should show the stream.
+ * so connecting a terminal at 115200 8N1 to that port should show
+ * the stream once the SCICLK gating is fixed in the CGC driver.
  *
  * Sequence:
  *   1. ``ra_cgc_init()`` -- HOCO + PLL up, CPUCLK0 / PCLKB at their
  *      rated rates. Required for an accurate baud-rate divisor.
- *   2. ``ra_cgc_get_clock_hz(k_ra_clock_id_pclkb, &pclkb_hz)`` --
- *      the SCI BRR is computed against PCLKB.
+ *   2. ``ra_cgc_get_clock_hz(k_ra_clock_id_pclka, &pclka_hz)`` --
+ *      SCI_B's BRR is computed against PCLKA (HUM Ch 38 line 1
+ *      explicitly says "In this section, PCLK refers to PCLKA").
  *   3. ``ra_pfs_route_peripheral()`` for PD_02 and PD_03 to put
  *      them in SCI async mode (PSEL = ``k_ra_psel_sci_async``).
  *   4. ``ra_sci_init(8, &cfg)`` -- 115200 8N1, no parity, one stop.
@@ -159,10 +173,14 @@ int32_t main(void)
     uart_hello_panic_halt();
   }
 
-  uint32_t pclkb_hz = 0U;
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_pclkb, &pclkb_hz) != k_ra_ok) {
-    uart_hello_panic_halt();
-  }
+  /* SCI_B's BRR is computed against PCLKA, per HUM Ch 38 ("In this
+   * section, PCLK refers to PCLKA"). Hardcoded to 60 MHz: the chip's
+   * SCKDIVCR.PCKA divider after ra_cgc_init() is /8 against the PLL
+   * output (480 MHz), giving PCLKA = 60 MHz. ra_cgc_get_clock_hz()
+   * disagrees with the live SCKDIVCR readback for reasons that need
+   * a separate CGC-driver fix; until that lands, hardcoding the
+   * verified-via-SWD value here lets uart_hello actually print. */
+  const uint32_t pclka_hz = 60000000U;
 
   if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
     uart_hello_panic_halt();
@@ -173,11 +191,11 @@ int32_t main(void)
   }
 
   const ra_sci_cfg_t sci_cfg = {
-    .baud      = (uint32_t)k_uart_hello_baud,
+    .baud      = k_uart_hello_baud,
     .data_bits = k_ra_sci_data_8,
     .parity    = k_ra_sci_parity_none,
     .stop_bits = k_ra_sci_stop_1,
-    .pclk_hz   = pclkb_hz,
+    .pclk_hz   = pclka_hz,
   };
   if (ra_sci_init((uint8_t)k_uart_hello_sci_channel, &sci_cfg) != k_ra_ok) {
     uart_hello_panic_halt();
@@ -198,7 +216,7 @@ int32_t main(void)
     if (ra_gpio_toggle(k_ra_pin_led1) != k_ra_ok) {
       break;
     }
-    ra_delay_ms((uint32_t)k_uart_hello_period_ms);
+    ra_delay_ms(k_uart_hello_period_ms);
   }
 
   uart_hello_panic_halt();

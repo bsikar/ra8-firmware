@@ -1,27 +1,26 @@
 /**
  * @file uart.c
- * @brief SCI-based UART polling driver for bring-up debug
+ * @brief SCI_B-based UART polling driver for bring-up debug
  *
  * @details
- * Minimal polling UART driver on top of the SCI peripheral register
+ * Minimal polling UART driver on top of the SCI_B peripheral register
  * layer. Intended as a backup log sink for boards without a J-Link
  * (ITM won't drain) or for early-boot messages before ITM is live.
  *
  * Uses standard 8-N-1 framing. Baud rate calculation uses the formula
- * from HUM section 28.2.8:
+ * from HUM Ch 38.2.7 "CCR2 : Common Control Register 2", p 2189
+ * Table 38.7 with CKS = 0 and the 16x base clock:
  *
  * @f[
- *     BRR = (PCLKB / (64 \cdot 2^{(2n-1)} \cdot B)) - 1
+ *     BRR = (PCLKB / (32 \cdot B)) - 1
  * @f]
  *
- * where `n` is SMR.CKS[1:0] and `B` is the target baud. For a typical
- * bring-up baud of 115200 @ PCLKB = 60 MHz with n = 0:
+ * For a typical bring-up baud of 115200 @ PCLKB = 60 MHz:
  *
- *     BRR = (60_000_000 / (64 * 0.5 * 115200)) - 1 = 15.28  -> 15
+ *     BRR = (60_000_000 / (32 * 115200)) - 1 = 15.28 -> 15
  *
  * The driver here assumes the caller has already configured pin
- * routing (PFS PSEL = 0b00100 for most SCI variants) and powered
- * the SCI module up via MSTP.
+ * routing and powered the SCI module up via MSTP.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -39,15 +38,6 @@
 static const char* s_tag = "UART";
 
 /**
- * @enum ra_uart_init_val_t
- * @brief Magic register values used during SCI UART init.
- */
-typedef enum : uint8_t {
-  /* NOLINTNEXTLINE(readability-magic-numbers) -- HUM-specified default. */
-  k_ra_uart_scmr_default = 0xF2U, /**< Default per HUM; SINV=0, SMIF=0. */
-} ra_uart_init_val_t;
-
-/**
  * @enum ra_uart_channel_count_t
  * @brief Total number of SCI channels exposed by the RA8D2.
  */
@@ -58,10 +48,6 @@ typedef enum : uint8_t {
 /**
  * @var s_sci_mstp_table
  * @brief Channel-index -> MSTP id lookup.
- *
- * @details
- * One entry per SCI channel. Used by ``ra_uart_init`` to feed the
- * ref-counted ``ra_mstp_enable`` call site.
  */
 static const ra_mstp_t s_sci_mstp_table[k_ra_uart_channel_count] = {
   /* HUM Ch 11.2.7 "MSTPCRB : Module Stop Control Register B", p 445 */
@@ -88,15 +74,33 @@ static const ra_mstp_t s_sci_mstp_table[k_ra_uart_channel_count] = {
   const ra_err_t mst_err = ra_mstp_enable(s_sci_mstp_table[channel]);
   RA_RETURN_ON_ERROR(mst_err, s_tag, "init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
 
-  /* Disable TX/RX while reprogramming. */
-  sci->SCR  = 0U;
-  sci->SMR  = 0U; /* 8-N-1, CKS = PCLKB. */
-  sci->SCMR = k_ra_uart_scmr_default;
-  sci->BRR  = brr;
-  sci->SEMR = 0U;
+  /* HUM Ch 38.2.5 "CCR0 : Common Control Register 0", p 2182 -- disable
+   * TX/RX while reprogramming the rest of the channel. */
+  sci->CCR0 = 0U;
 
-  /* Enable TE + RE. */
-  sci->SCR = (uint8_t)((1U << k_ra_scr_bit_te) | (1U << k_ra_scr_bit_re));
+  /* HUM Ch 38.2.6 "CCR1 : Common Control Register 1", p 2185 -- 8-N-1
+   * means parity off, no inversion. */
+  sci->CCR1 = 0U;
+
+  /* HUM Ch 38.2.8 "CCR3 : Common Control Register 3", p 2203 -- async
+   * mode, 8-bit data (CHR = 10b), 1 stop bit, no FIFO. */
+  sci->CCR3 = (k_ra_sci_ccr3_chr_8bit << k_ra_sci_ccr3_shift_chr);
+
+  /* HUM Ch 38.2.7 "CCR2 : Common Control Register 2", p 2189 -- BRR in
+   * bits [15:8], MDDR (modulation duty) parked at the reset value
+   * so bit-rate modulation stays disabled. */
+  sci->CCR2 = ((uint32_t)brr << k_ra_sci_ccr2_shift_brr) |
+              (k_ra_sci_mddr_default << k_ra_sci_ccr2_shift_mddr);
+
+  /* HUM Ch 38.2.9 "CCR4 : Common Control Register 4", p 2210 */
+  sci->CCR4 = 0U;
+
+  /* HUM Ch 38.2.11 "FCR : FIFO Control Register", p 2215 */
+  sci->FCR = 0U;
+
+  /* HUM Ch 38.2.5 "CCR0 : Common Control Register 0", p 2182 -- enable
+   * TE + RE. */
+  sci->CCR0 = (1U << k_ra_sci_ccr0_bit_te) | (1U << k_ra_sci_ccr0_bit_re);
 
   ra_log_info_val(s_tag, "init channel", (uint32_t)channel);
   return k_ra_ok;
@@ -107,11 +111,14 @@ static const ra_mstp_t s_sci_mstp_table[k_ra_uart_channel_count] = {
   volatile r_sci_regs_t* sci = ra_sci(channel);
   RA_CHECK_NULL_PTR(sci, s_tag, "channel out of range");
 
-  /* Wait for TDRE (TX data register empty). */
+  /* HUM Ch 38.2.17 "CSR : Common Status Register", p 2225 -- spin
+   * until TDRE = 1 (transmit data register empty). */
   enum : uint32_t { k_ra_uart_spin_limit = 1000000U };
+  const uint32_t tdre = (1U << k_ra_sci_csr_bit_tdre);
   for (uint32_t i = 0U; i < k_ra_uart_spin_limit; i++) {
-    if ((sci->SSR & (uint8_t)(1U << k_ra_ssr_bit_tdre)) != 0U) {
-      sci->TDR = byte;
+    if ((sci->CSR & tdre) != 0U) {
+      /* HUM Ch 38.2.3 "TDR : Transmit Data Register", p 2181 */
+      sci->TDR = (uint32_t)byte;
       return k_ra_ok;
     }
   }
