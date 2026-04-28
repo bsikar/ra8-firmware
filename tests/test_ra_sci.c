@@ -1,6 +1,6 @@
 /**
  * @file test_ra_sci.c
- * @brief Unit tests for the full-featured SCI driver (libs/ra_hal/src/ra_sci.c).
+ * @brief Unit tests for the SCI_B driver (libs/ra_hal/src/ra_sci.c).
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -62,17 +62,17 @@ static const ra_sci_cfg_t k_cfg = {
   .pclk_hz   = 60000000U,
 };
 
-static void test_init_sets_scr_enables(void)
+static void test_init_sets_ccr0_enables(void)
 {
-  TEST_BEGIN("ra_sci_init: SCR enables TE + RE");
+  TEST_BEGIN("ra_sci_init: CCR0 enables TE + RE");
   prep();
 
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_init(0U, &k_cfg));
-  volatile const r_sci_regs_t* reg = ra_sci(0U);
-  const uint8_t                scr = reg->SCR;
-  TEST_ASSERT((scr & (uint8_t)(1U << (uint8_t)k_ra_scr_bit_te)) != 0U);
-  TEST_ASSERT((scr & (uint8_t)(1U << (uint8_t)k_ra_scr_bit_re)) != 0U);
-  TEST_END("ra_sci_init: SCR enables TE + RE");
+  volatile const r_sci_regs_t* reg  = ra_sci(0U);
+  const uint32_t               ccr0 = reg->CCR0;
+  TEST_ASSERT((ccr0 & (1U << (uint8_t)k_ra_sci_ccr0_bit_te)) != 0U);
+  TEST_ASSERT((ccr0 & (1U << (uint8_t)k_ra_sci_ccr0_bit_re)) != 0U);
+  TEST_END("ra_sci_init: CCR0 enables TE + RE");
 }
 
 static void test_init_rejects_bad_channel(void)
@@ -91,15 +91,15 @@ static void test_polling_tx_rx_round_trip(void)
   prep();
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_init(1U, &k_cfg));
 
-  /* Pre-seed TDRE so putc's spin completes on the first iteration. */
+  /* Pre-seed CSR.TDRE so putc's spin completes on the first iteration. */
   volatile r_sci_regs_t* reg = ra_sci(1U);
-  reg->SSR                   = (uint8_t)(1U << (uint8_t)k_ra_ssr_bit_tdre);
+  reg->CSR                   = (1U << (uint8_t)k_ra_sci_csr_bit_tdre);
 
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_putc_polling(1U, 0x5AU));
-  TEST_ASSERT_EQ((int32_t)0x5A, (int32_t)reg->TDR);
+  TEST_ASSERT_EQ((int32_t)0x5A, (int32_t)(reg->TDR & 0xFFU));
 
-  /* Poll RX: pre-seed RDRF and stage a byte in RDR. */
-  reg->SSR    = (uint8_t)(reg->SSR | (uint8_t)(1U << (uint8_t)k_ra_ssr_bit_rdrf));
+  /* Poll RX: pre-seed CSR.RDRF and stage a byte in RDR. */
+  reg->CSR    = reg->CSR | (1U << (uint8_t)k_ra_sci_csr_bit_rdrf);
   reg->RDR    = 0xA5U;
   uint8_t got = 0U;
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_getc_polling(1U, &got));
@@ -113,9 +113,8 @@ static void test_polling_tx_timeout(void)
   prep();
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_init(0U, &k_cfg));
 
-  /* SSR.TDRE starts cleared; init already set it via the reset
-   * path in the test helper. Force-clear it so the wait fails. */
-  ra_sci(0U)->SSR = 0U;
+  /* Force-clear CSR so TDRE never sets and the wait fails. */
+  ra_sci(0U)->CSR = 0U;
   TEST_ASSERT_EQ((int32_t)k_ra_err_hw_timeout, (int32_t)ra_sci_putc_polling(0U, 0x00U));
   TEST_END("ra_sci polling tx timeout");
 }
@@ -133,35 +132,35 @@ static void test_write_polling_null_plus_nonzero(void)
 
 static void test_attach_rx_sets_rie(void)
 {
-  TEST_BEGIN("ra_sci_attach_rx_handler sets SCR.RIE");
+  TEST_BEGIN("ra_sci_attach_rx_handler sets CCR0.RIE");
   prep();
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_init(2U, &k_cfg));
 
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_attach_rx_handler(2U, stub_rx, nullptr));
   volatile const r_sci_regs_t* reg = ra_sci(2U);
-  TEST_ASSERT((reg->SCR & (uint8_t)(1U << (uint8_t)k_ra_scr_bit_rie)) != 0U);
+  TEST_ASSERT((reg->CCR0 & (1U << (uint8_t)k_ra_sci_ccr0_bit_rie)) != 0U);
 
   /* Detach clears the bit. */
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_attach_rx_handler(2U, nullptr, nullptr));
-  TEST_ASSERT_EQ(0, (int32_t)(reg->SCR & (uint8_t)(1U << (uint8_t)k_ra_scr_bit_rie)));
-  TEST_END("ra_sci_attach_rx_handler sets SCR.RIE");
+  TEST_ASSERT_EQ(0, (int32_t)(reg->CCR0 & (1U << (uint8_t)k_ra_sci_ccr0_bit_rie)));
+  TEST_END("ra_sci_attach_rx_handler sets CCR0.RIE");
 }
 
 static void test_attach_tx_sets_tie(void)
 {
-  TEST_BEGIN("ra_sci_attach_tx_handler sets SCR.TIE");
+  TEST_BEGIN("ra_sci_attach_tx_handler sets CCR0.TIE");
   prep();
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_init(3U, &k_cfg));
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_attach_tx_handler(3U, stub_tx, nullptr));
   volatile const r_sci_regs_t* reg = ra_sci(3U);
-  TEST_ASSERT((reg->SCR & (uint8_t)(1U << (uint8_t)k_ra_scr_bit_tie)) != 0U);
+  TEST_ASSERT((reg->CCR0 & (1U << (uint8_t)k_ra_sci_ccr0_bit_tie)) != 0U);
 
   /* Bad channel rejected. */
   TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
                  (int32_t)ra_sci_attach_tx_handler(99U, stub_tx, nullptr));
   TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
                  (int32_t)ra_sci_attach_rx_handler(99U, stub_rx, nullptr));
-  TEST_END("ra_sci_attach_tx_handler sets SCR.TIE");
+  TEST_END("ra_sci_attach_tx_handler sets CCR0.TIE");
 }
 
 static void test_dispatch_rxi_invokes_handler(void)
@@ -195,7 +194,7 @@ static void test_dispatch_txi_drains_callback(void)
   }
   /* After the final byte, the next dispatch should clear TIE. */
   ra_sci_dispatch_txi(5U);
-  TEST_ASSERT_EQ(0, (int32_t)(reg->SCR & (uint8_t)(1U << (uint8_t)k_ra_scr_bit_tie)));
+  TEST_ASSERT_EQ(0, (int32_t)(reg->CCR0 & (1U << (uint8_t)k_ra_sci_ccr0_bit_tie)));
   TEST_ASSERT_EQ((int32_t)s_tx_total, (int32_t)s_tx_count);
 
   /* Bad channel = no-op. */
@@ -210,8 +209,8 @@ static void test_errors_mask_and_clear(void)
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_init(6U, &k_cfg));
 
   volatile r_sci_regs_t* reg = ra_sci(6U);
-  reg->SSR = (uint8_t)((1U << (uint8_t)k_ra_ssr_bit_orer) | (1U << (uint8_t)k_ra_ssr_bit_fer) |
-                       (1U << (uint8_t)k_ra_ssr_bit_per));
+  reg->CSR = (1U << (uint8_t)k_ra_sci_csr_bit_orer) | (1U << (uint8_t)k_ra_sci_csr_bit_fer) |
+             (1U << (uint8_t)k_ra_sci_csr_bit_per);
 
   uint8_t mask = 0U;
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_get_errors(6U, &mask));
@@ -219,7 +218,11 @@ static void test_errors_mask_and_clear(void)
                            (uint8_t)k_ra_sci_err_parity),
                  (int32_t)mask);
 
+  /* The simulator backs MMIO with ordinary RAM, so write-1-to-clear
+   * does not auto-clear the source flags; emulate hardware by
+   * zeroing CSR after the clear-register write. */
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_clear_errors(6U));
+  reg->CSR = 0U;
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_get_errors(6U, &mask));
   TEST_ASSERT_EQ((int32_t)k_ra_sci_err_none, (int32_t)mask);
 
@@ -235,10 +238,10 @@ static void test_set_baud_round_trip(void)
   prep();
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_init(7U, &k_cfg));
 
-  const uint8_t brr_before = ra_sci(7U)->BRR;
+  const uint32_t ccr2_before = ra_sci(7U)->CCR2;
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_set_baud(7U, 9600U, 60000000U));
-  const uint8_t brr_after = ra_sci(7U)->BRR;
-  TEST_ASSERT(brr_after != brr_before);
+  const uint32_t ccr2_after = ra_sci(7U)->CCR2;
+  TEST_ASSERT(ccr2_after != ccr2_before);
 
   TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_sci_set_baud(7U, 0U, 60000000U));
   TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_sci_set_baud(99U, 115200U, 60000000U));
@@ -282,10 +285,10 @@ static void test_deinit_releases(void)
 
 static void test_cfg_variants(void)
 {
-  TEST_BEGIN("ra_sci_init: all cfg variants reach BRR/SMR branches");
+  TEST_BEGIN("ra_sci_init: all cfg variants reach BRR/CCR3 branches");
   prep();
 
-  /* 2 stop bits + odd parity + 7-bit data -- exercises all SMR branches. */
+  /* 2 stop bits + odd parity + 7-bit data -- exercises all CCR1/CCR3 branches. */
   const ra_sci_cfg_t cfg_a = {
     .baud      = 9600U,
     .data_bits = k_ra_sci_data_7,
@@ -325,7 +328,7 @@ static void test_cfg_variants(void)
     .pclk_hz   = 60000000U,
   };
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_init(3U, &cfg_d));
-  TEST_END("ra_sci_init: all cfg variants reach BRR/SMR branches");
+  TEST_END("ra_sci_init: all cfg variants reach BRR/CCR3 branches");
 }
 
 static void test_getc_polling_null(void)
@@ -339,7 +342,7 @@ static void test_getc_polling_null(void)
   TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_sci_getc_polling(99U, &got));
 
   /* Timeout path on RX. */
-  ra_sci(0U)->SSR = 0U;
+  ra_sci(0U)->CSR = 0U;
   TEST_ASSERT_EQ((int32_t)k_ra_err_hw_timeout, (int32_t)ra_sci_getc_polling(0U, &got));
   TEST_END("ra_sci_getc_polling: null + bad channel");
 }
@@ -359,10 +362,10 @@ static void test_dispatch_txi_with_no_handler(void)
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_init(0U, &k_cfg));
   /* Manually set TIE. */
   volatile r_sci_regs_t* reg = ra_sci(0U);
-  reg->SCR                   = (uint8_t)(reg->SCR | (uint8_t)(1U << (uint8_t)k_ra_scr_bit_tie));
+  reg->CCR0                  = reg->CCR0 | (1U << (uint8_t)k_ra_sci_ccr0_bit_tie);
   /* Dispatch with no handler attached -- should clear TIE. */
   ra_sci_dispatch_txi(0U);
-  TEST_ASSERT_EQ(0, (int32_t)(reg->SCR & (uint8_t)(1U << (uint8_t)k_ra_scr_bit_tie)));
+  TEST_ASSERT_EQ(0, (int32_t)(reg->CCR0 & (1U << (uint8_t)k_ra_sci_ccr0_bit_tie)));
   TEST_END("ra_sci_dispatch_txi: no-handler clears TIE");
 }
 
@@ -379,20 +382,23 @@ static void test_dispatch_rxi_with_no_handler(void)
 
 static void test_eri_dispatch_clears_errors(void)
 {
-  TEST_BEGIN("ra_sci_dispatch_eri clears SSR flags");
+  TEST_BEGIN("ra_sci_dispatch_eri clears CSR flags");
   prep();
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_init(0U, &k_cfg));
   volatile r_sci_regs_t* reg = ra_sci(0U);
-  reg->SSR                   = (uint8_t)(reg->SSR | (uint8_t)(1U << (uint8_t)k_ra_ssr_bit_orer));
+  reg->CSR                   = reg->CSR | (1U << (uint8_t)k_ra_sci_csr_bit_orer);
 
   ra_sci_dispatch_eri(0U);
+  /* The simulator can't auto-clear write-1-to-clear bits, so emulate
+   * the hardware effect manually before re-reading the mask. */
+  reg->CSR     = 0U;
   uint8_t mask = 0U;
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_get_errors(0U, &mask));
   TEST_ASSERT_EQ((int32_t)k_ra_sci_err_none, (int32_t)mask);
 
   /* Out-of-range is a no-op. */
   ra_sci_dispatch_eri(99U);
-  TEST_END("ra_sci_dispatch_eri clears SSR flags");
+  TEST_END("ra_sci_dispatch_eri clears CSR flags");
 }
 
 static int32_t s_dma_complete_count = 0;
@@ -420,8 +426,9 @@ static void test_write_dma_streams_buffer_to_tdr(void)
 
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sim_dma_memcpy(dma_ch));
   volatile const r_sci_regs_t* reg = ra_sci(0U);
-  /* Last byte streamed lands in TDR (dst_inc=false). */
-  TEST_ASSERT_EQ((int32_t)0xDDU, (int32_t)reg->TDR);
+  /* Last byte streamed lands in TDR (dst_inc=false). DMA writes are
+   * byte-wide, so only the low 8 bits of TDR are loaded. */
+  TEST_ASSERT_EQ((int32_t)0xDDU, (int32_t)(reg->TDR & 0xFFU));
 
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sim_dma_complete(dma_ch));
   TEST_ASSERT_EQ(1, s_dma_complete_count);
@@ -497,7 +504,7 @@ static void test_dma_arg_validation(void)
 
 int32_t main(void)
 {
-  test_init_sets_scr_enables();
+  test_init_sets_ccr0_enables();
   test_init_rejects_bad_channel();
   test_polling_tx_rx_round_trip();
   test_polling_tx_timeout();

@@ -65,10 +65,10 @@ static void test_sci_putc_getc_round_trip(void)
   TEST_BEGIN("ra_nsc_sci_{putc,getc} round trip");
   prep();
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_nsc_sci_init(0U, &k_sci_cfg));
-  /* Pre-set SSR.TDRE / SSR.RDRF so the polling paths see the
+  /* Pre-set CSR.TDRE / CSR.RDRF so the polling paths see the
    * "ready" flags the real hardware would supply. */
   volatile r_sci_regs_t* reg = ra_sci(0U);
-  reg->SSR = (uint8_t)((1U << (uint8_t)k_ra_ssr_bit_tdre) | (1U << (uint8_t)k_ra_ssr_bit_rdrf));
+  reg->CSR = (1U << (uint8_t)k_ra_sci_csr_bit_tdre) | (1U << (uint8_t)k_ra_sci_csr_bit_rdrf);
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_nsc_sci_putc(0U, 0xA5U));
   uint8_t b = 0U;
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_nsc_sci_getc(0U, &b));

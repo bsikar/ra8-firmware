@@ -34,7 +34,12 @@ typedef enum : uint32_t {
   k_ra_adc_admdr_default     = 0x00000000UL, /**< Single-shot, software trigger. */
   k_ra_adc_admdr_scan_bit    = 0x00000002UL, /**< ADSCANMD scan-mode bit. */
   k_ra_adc_admdr_trigext_bit = 0x00000001UL, /**< ADTRGMD external-trigger bit. */
-  k_ra_adc_poll_limit        = 200000UL,     /**< ADCHCR busy-poll budget. */
+  k_ra_adc_poll_limit        = 2000000UL,    /**< ADCHCR busy-poll budget. The host
+                                                  test fires a 100 us SIGALRM to clear
+                                                  CVEN; budget must outlast scheduler
+                                                  jitter. 2M spins on a 1 GHz CPU is
+                                                  ~2 ms wall clock -- a sane ADC
+                                                  conversion timeout on real silicon. */
   k_ra_adc_result_mask       = 0x0000FFFFUL, /**< Low 16 bits of ADDR slot. */
 } ra_adc_const_t;
 

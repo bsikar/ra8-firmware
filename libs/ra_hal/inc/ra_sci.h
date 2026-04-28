@@ -28,17 +28,13 @@
  * ``k_ra_elc_event_none`` software-start path which is what the
  * host-side ra_sim_dma loop simulates.
  *
- * ## Register layout caveat
+ * ## Register layout
  *
- * The existing ``ra8d2_sci_regs.h`` header models the legacy
- * SCI variant. The RA8D2 actually uses SCI_B, whose register
- * offsets differ (see HUM Ch 38 "Serial Communications Interface",
- * p 2174 onwards). The layout mismatch is a pre-existing issue
- * that does not affect host unit tests (the simulator backs MMIO
- * with ordinary RAM so any offset works for functional tests)
- * and is tracked as a deliverable. The public API in
- * this header is layout-agnostic -- drivers call the helpers,
- * not the registers directly.
+ * The driver targets the **SCI_B** variant of the SCI peripheral
+ * (HUM Ch 38 "Serial Communications Interface", p 2174 onwards) --
+ * 32-bit registers throughout, with CCR0..CCR4 / FCR / CSR / CFCLR
+ * replacing the legacy 8-bit SMR / SCR / SSR / SCMR. See
+ * ``ra8d2_sci_regs.h`` for the full layout.
  *
  * ## Threading
  *
@@ -154,10 +150,10 @@ typedef bool (*ra_sci_tx_fn_t)(void* ctx, uint8_t* byte);
  * @brief Initialise an SCI channel using the descriptor.
  *
  * @details
- * Ungates the channel through ``ra_mstp_enable``, programs SMR /
- * SCMR / BRR / SEMR / SCR registers from ``cfg``, then enables
- * TE + RE. Errors before the final enable step leave the channel
- * gated.
+ * Ungates the channel through ``ra_mstp_enable``, programs CCR1 /
+ * CCR2 (BRR + MDDR) / CCR3 (mode + framing) / CCR4 / FCR registers
+ * from ``cfg``, then enables CCR0.TE + CCR0.RE. Errors before the
+ * final enable step leave the channel gated.
  *
  * @param[in] channel SCI channel number (0..9).
  * @param[in] cfg Configuration descriptor.
