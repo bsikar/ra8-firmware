@@ -47,7 +47,7 @@ typedef enum : uint32_t {
  * @brief Number of times the test stub callback has fired.
  *
  * @warning Reset by ``prep`` before every test that uses it.
- * @since 0.11.0
+ * @since 0.1.0
  */
 static uint32_t s_test_isr_count;
 
@@ -55,7 +55,7 @@ static uint32_t s_test_isr_count;
  * @var s_test_isr_last
  * @brief Most-recent ISR snapshot the stub callback received.
  *
- * @since 0.11.0
+ * @since 0.1.0
  */
 static uint32_t s_test_isr_last;
 
@@ -64,7 +64,7 @@ static uint32_t s_test_isr_last;
  *
  * @param[in] ctx Caller context (unused).
  * @param[in] isr Snapshot from ``ra_rsip_dispatch``.
- * @since 0.11.0
+ * @since 0.1.0
  */
 static void stub_rsip_cb(void* ctx, uint32_t isr)
 {
@@ -75,7 +75,7 @@ static void stub_rsip_cb(void* ctx, uint32_t isr)
 
 /**
  * @brief Reset the world before each test.
- * @since 0.11.0
+ * @since 0.1.0
  */
 static void prep(void)
 {
@@ -345,7 +345,7 @@ static void test_power_transition(void)
 
 /**
  * @brief Initialise the engine for a sub-test that needs ENABLE asserted.
- * @since 0.12.0
+ * @since 0.1.0
  */
 static void prep_running(void)
 {

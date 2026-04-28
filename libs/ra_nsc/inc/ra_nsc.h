@@ -109,7 +109,7 @@ extern "C" {
  * @note stub. The retrofit just adds the
  * ``__attribute__((cmse_nonsecure_entry))`` and the
  * ``cmse_check_address_range`` call site.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] RA_NSC_VENEER ra_err_t ra_nsc_xspi_read(uint32_t flash_off,
                                                       uint8_t* ns_dst,
@@ -136,7 +136,7 @@ extern "C" {
  * - **Trusts:** secure-side ra_xspi_get_status.
  * - **Denies:** any reachability to the actual status register
  * -- the value is copied through the veneer, not aliased.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] RA_NSC_VENEER ra_err_t ra_nsc_xspi_status(uint8_t instance, uint32_t* out_mask);
 
@@ -168,7 +168,7 @@ extern "C" {
  * - **Trusts:** ESWM driver descriptor management.
  * - **Denies:** raw pointer pass-through -- the secure side copies
  * bytes into its own descriptor before the IRQ context fires.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] RA_NSC_VENEER ra_err_t ra_nsc_eth_send(const uint8_t* ns_frame, uint16_t len);
 
@@ -193,7 +193,7 @@ extern "C" {
  * - **Trusts:** ESWM RX descriptor management.
  * - **Denies:** secure-side scratch leakage -- bytes are copied,
  * not aliased.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] RA_NSC_VENEER ra_err_t ra_nsc_eth_recv(uint8_t* ns_buf, uint16_t* inout_len);
 
@@ -229,7 +229,7 @@ extern "C" {
  * capped by the scratch buffer size.
  * - **Trusts:** secure ra_log driver.
  * - **Denies:** direct ITM stim writes from NS world.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] RA_NSC_VENEER ra_err_t ra_nsc_log_emit(const char* tag, const char* message);
 
@@ -268,7 +268,7 @@ extern "C" {
  * - **Trusts:** the boot ROM has already configured the SAU.
  * - **Denies:** repeat invocation past the first success
  * (idempotent fast-path returns k_ra_ok without re-init).
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] RA_NSC_VENEER ra_err_t ra_nsc_periph_init(void);
 
@@ -311,7 +311,7 @@ extern "C" {
  *
  * @note Thread safety: not thread-safe; the SHA-256 sponge is
  * single-instance.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] RA_NSC_VENEER ra_err_t ra_nsc_key_vault_challenge(uint16_t       slot,
                                                                 const uint8_t* ns_chal,

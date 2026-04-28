@@ -37,7 +37,7 @@ CLANG_FORMAT ?= clang-format
 DOXYGEN      ?= doxygen
 ARM_SIZE     ?= arm-none-eabi-size
 
-.PHONY: help build clean format check tidy test test-docker ctest docs flash ozone debug size ascii all examples
+.PHONY: help build clean format check tidy test test-docker ctest docs flash ozone debug size ascii version all examples
 
 help:
 	@echo "ra8d2-firmware make targets:"
@@ -59,6 +59,7 @@ help:
 	@echo "  debug       scripts/debug.sh"
 	@echo "  size        arm-none-eabi-size on the ELF"
 	@echo "  ascii       fix-encoding.py --check"
+	@echo "  version     verify @since tags match the VERSION file"
 
 build:
 	./build.sh
@@ -127,6 +128,10 @@ size:
 	$(ARM_SIZE) -B $(ELF)
 
 ascii:
-	python3 scripts/utils/fix-encoding.py --check src libs tests
+	python3 scripts/utils/fix-encoding.py --check src libs tests examples
+
+version:
+	@echo "project VERSION: $$(cat VERSION)"
+	@python3 scripts/utils/check-since-version.py --all
 
 all: format tidy test build

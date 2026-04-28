@@ -177,7 +177,7 @@ typedef enum : uint32_t {
  *
  * @note Thread safety: not thread-safe.
  * @see ra_net_pal_deinit
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_net_pal_init(const ra_net_pal_mac_t* mac);
 
@@ -200,7 +200,7 @@ typedef enum : uint32_t {
  *
  * @note Thread safety: not thread-safe.
  * @see ra_net_pal_init
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_net_pal_deinit(void);
 
@@ -230,7 +230,7 @@ typedef enum : uint32_t {
  * @post Subsequent ``ra_net_pal_get_mac_addr`` returns ``mac``.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_net_pal_set_mac_addr(const ra_net_pal_mac_t* mac);
 
@@ -250,7 +250,7 @@ typedef enum : uint32_t {
  * @post No PAL state is modified.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_net_pal_get_mac_addr(ra_net_pal_mac_t* out_mac);
 
@@ -286,7 +286,7 @@ typedef enum : uint32_t {
  *
  * @note Thread safety: not thread-safe.
  * @see ra_net_pal_recv_frame
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_net_pal_send_frame(const uint8_t* frame, uint16_t len);
 
@@ -318,7 +318,7 @@ typedef enum : uint32_t {
  *
  * @note Thread safety: not thread-safe.
  * @see ra_net_pal_send_frame
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_net_pal_recv_frame(uint8_t* out_buf, uint16_t* inout_len);
 
@@ -344,7 +344,7 @@ typedef enum : uint32_t {
  *
  * @note Thread safety: not thread-safe with respect to the event
  * handler which can update link state from ISR context.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_net_pal_link_status(ra_net_pal_link_state_t* out_state);
 
@@ -374,7 +374,7 @@ typedef enum : uint32_t {
  *
  * @note Thread safety: not thread-safe; only call from
  * single-threaded init or with IRQs masked.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_net_pal_set_event_handler(ra_net_pal_event_fn_t fn, void* ctx);
 
