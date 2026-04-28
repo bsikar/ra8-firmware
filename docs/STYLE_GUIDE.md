@@ -1,0 +1,398 @@
+# ra8d2-firmware style guide
+
+Authoritative reference for source-code conventions in this repository.
+Code review and the pre-commit hook expect everything below; CLAUDE.md
+restates the most-violated rules but **this file is the source of truth**.
+
+## Table of contents
+
+1. [File-header Doxygen block](#file-header-doxygen-block)
+2. [Function documentation](#function-documentation)
+3. [Naming](#naming)
+4. [Types and constants (C23)](#types-and-constants-c23)
+5. [Header guards](#header-guards)
+6. [Hardware register access](#hardware-register-access)
+7. [HUM citations](#hum-citations)
+8. [SOLID principles for C](#solid-principles-for-c)
+9. [NASA Power of 10](#nasa-power-of-10)
+10. [Backward compatibility (there is none)](#backward-compatibility-there-is-none)
+11. [Character encoding](#character-encoding)
+12. [Ring and World tagging](#ring-and-world-tagging)
+
+## File-header Doxygen block
+
+Every `.c` and `.h` opens with the same Doxygen comment block. Order
+matters (the cite_check / world_tag scripts grep on it):
+
+```c
+/**
+ * @file ra_glcdc.c
+ * @brief Graphics LCD Controller driver implementation
+ *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
+ * @details
+ * One paragraph summary of what the file does, what hardware it
+ * touches, and what other files it depends on. Reference the
+ * relevant HUM chapter so readers know where to look.
+ *
+ * @par Register protection sequencing
+ * (Optional named @par sections for tricky details that don't fit
+ * inline as comments. STAR uses these heavily for PRCR sequencing.)
+ *
+ * @author Brighton Sikarskie
+ * @date 2026-04-21
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
+ * @since 0.1.0
+ */
+```
+
+The mandatory tags are:
+
+| Tag | Required | Notes |
+|---|---|---|
+| `@file` | Yes | Filename only, not the path. |
+| `@brief` | Yes | One sentence, ends without a period. |
+| `@par Tag` | Yes for Ring 3+ | See [Ring and World tagging](#ring-and-world-tagging). |
+| `@details` | Yes | Multi-paragraph explanation. |
+| Named `@par <Name>` | Optional | Use for PRCR sequencing, IRQ wiring, state machines, anything subtle. |
+| `@author` | Yes | Single name or organisation. |
+| `@date` | Recommended | ISO 8601 (YYYY-MM-DD). |
+| `@copyright` + SPDX | Yes | `Copyright (c) YEAR <author>` then `SPDX-License-Identifier: MIT`. |
+| `@since` | Yes | Semantic version the file first appeared at. |
+
+## Function documentation
+
+Every function -- public or static -- gets a full Doxygen block. The
+required tags are:
+
+```c
+/**
+ * @brief Configure an RA8D2 PORT pin as a digital output
+ *
+ * @details
+ * Multi-paragraph explanation. Include the algorithm steps if the
+ * function is non-trivial. Mention thread safety, ISR safety, and
+ * any external invariants the caller has to maintain.
+ *
+ * @param[in] port Port identifier (k_ra_port_0 .. k_ra_port_11)
+ * @param[in] pin  Pin index within the port (0..15)
+ * @param[in] init_level Initial output level
+ *
+ * @return ra_err_t Error code
+ * @retval k_ra_ok Success, pin configured and driven to init_level
+ * @retval k_ra_err_invalid_arg port or pin out of range
+ *
+ * @pre Power to the IOPORT module is on (MSTPCRB cleared for IOPORT)
+ * @pre Caller holds the pin validator lock
+ *
+ * @post Pin is driven to init_level
+ * @post PFS register locked after write
+ *
+ * @note Not thread-safe; caller must provide synchronization
+ * @warning PFS writes without unlocking PWPR are silently dropped
+ *
+ * @par Example
+ * @code
+ *   ra_gpio_output_init(k_ra_port_1, 7, k_ra_level_high);
+ * @endcode
+ *
+ * @see ra_gpio_write
+ * @since 0.1.0
+ */
+ra_err_t ra_gpio_output_init(ra_port_t port, uint8_t pin, ra_level_t init_level);
+```
+
+Minimums per CLAUDE.md and the pre-commit hook:
+
+- `@brief`, `@details`, `@param` for every parameter, `@return`
+- At least 2 `@pre` and 2 `@post` (NASA Power of 10 Rule 5)
+- `@retval` for every distinct return value
+- `@note` mentioning thread safety
+- `@since` semantic version
+- `@see` cross-references to related functions
+
+`@param` direction tags are mandatory: `@param[in]`, `@param[out]`,
+`@param[in,out]`. Plain `@param` without the direction is rejected.
+
+## Naming
+
+| Identifier kind | Convention | Example |
+|---|---|---|
+| Functions | `snake_case` | `ra_gpio_output_init` |
+| Public types | `snake_case_t` | `ra_port_pin_t` |
+| Private types | `snake_case_t` | `ra_drv_state_t` |
+| Macros / `#define` | `SCREAMING_SNAKE` | `RA_RETURN_ON_ERROR` |
+| Enum values | `k_<scope>_<name>` | `k_ra_ok`, `k_ra_pin_led1` |
+| Static functions | `internal_<verb>` | `internal_validate_freq` |
+| Private (file-local) functions | `priv_<verb>` | `priv_unlock_pwpr` |
+| Static variables | `s_<name>` | `s_tag` |
+| Global variables (avoid) | `g_<name>` | `g_ra_vector_table_start` |
+| Linker symbols | `g_ra_ls_<name>` | `g_ra_ls_stack_top` |
+
+The `g_ra_ls_` prefix on linker symbols is mandatory: it keeps them
+out of the leading-underscore reserved namespace that ISO C and
+`cert-dcl37-c` reject.
+
+## Types and constants (C23)
+
+The project targets **C23 with GNU extensions** (`-std=gnu23`). Use
+the modern features:
+
+```c
+// Always: typed enums with explicit underlying type.
+typedef enum : uint8_t {
+  k_ra_state_idle      = 0,
+  k_ra_state_busy      = 1,
+  k_ra_state_error     = 2,
+} ra_state_t;
+
+// Always: static_assert (C23 keyword), not _Static_assert.
+static_assert(sizeof(ra_state_t) == 1, "tightly-packed enum");
+
+// Always: zero-init with empty braces.
+ra_drv_state_t s = {};
+
+// Never: stdbool.h. `bool`, `true`, `false` are C23 keywords.
+// Never: _Static_assert. Use static_assert.
+// Never: = {0} zero-init. Use = {}.
+// Never: untyped enums. Always pick the underlying type.
+```
+
+Underlying-type choice:
+
+- `uint8_t` -- values 0..255 (states, indices, small constants)
+- `uint16_t` -- 256..65535 (timeouts in ms, medium constants)
+- `uint32_t` -- > 65535 (large constants, bit masks)
+- `uintptr_t` -- hardware register base addresses (mandatory)
+- `int8_t`/`int16_t`/`int32_t`/`int64_t` -- signed values
+
+`uintptr_t` for register bases is non-negotiable: on the 32-bit
+RA8D2 target it's `uint32_t`, on the 64-bit x86_64 unit-test host
+it's `uint64_t`. Using `uint32_t` for an address silently truncates
+on the test host and produces wrong pointer casts.
+
+Magic numbers are forbidden -- every literal becomes a typed enum:
+
+```c
+// CORRECT
+typedef enum : uint8_t {
+  k_idx_high_byte = 0,
+  k_shift_byte    = 8,
+  k_mask_byte     = 0xFF,
+} byte_layout_t;
+
+buf[k_idx_high_byte] = (uint8_t)((val >> k_shift_byte) & k_mask_byte);
+
+// WRONG
+buf[0] = (uint8_t)((val >> 8) & 0xFF);  // What is 0? 8? 0xFF?
+```
+
+## Header guards
+
+Use `#pragma once`. Traditional `#ifndef`/`#define`/`#endif` guards
+are rejected by code review.
+
+```c
+/* file header doxygen block */
+
+#pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/* declarations */
+
+#ifdef __cplusplus
+}
+#endif
+```
+
+## Hardware register access
+
+Use **inline accessor functions**, never macro-style register pointers:
+
+```c
+// CORRECT
+typedef enum : uintptr_t {
+  k_ra_glcdc_base_addr = 0x40340000UL,
+} ra_glcdc_addr_t;
+
+static inline volatile r_glcdc_regs_t* ra_glcdc(void)
+{
+  return (volatile r_glcdc_regs_t*)k_ra_glcdc_base_addr;
+}
+
+// Usage
+ra_glcdc()->BG_PERI = 0x12345678U;
+
+// WRONG
+#define GLCDC_BASE ((volatile r_glcdc_regs_t*)0x40340000UL)
+GLCDC_BASE->BG_PERI = 0x12345678U;
+```
+
+The inline-accessor approach lets the host `RA_SIMULATOR_MODE` build
+intercept register writes by linking a different `ra_glcdc()` body.
+Macros foreclose that.
+
+## HUM citations
+
+Every register read or write -- whether through an accessor or a raw
+volatile pointer -- carries a comment immediately above citing the
+RA8D2 Hardware User's Manual:
+
+```c
+/* HUM Ch 11.2.8 "MSTPCRC : Module Stop Control Register C" p 446 */
+*ra_mstp_reg32(k_ra_mstpcrc_off) &= ~(1U << k_ra_mstpc_glcdc_bit);
+```
+
+The format is:
+
+```
+/* HUM Ch X.Y "Section name" p NNNN */
+/* HUM Ch X.Y "Section name", p NNNN */          (comma OK)
+/* HUM Ch X.Y "Section name" p NNNN-MMMM */      (page range)
+```
+
+`scripts/utils/cite_check.py` walks every `.c` / `.h` and verifies
+that each cite's chapter exists in `docs/reference/CHAPTER_MAP.md`
+and the page falls within the chapter's range.
+
+## SOLID principles for C
+
+The same SOLID principles that apply to OO carry over to procedural C
+with small adaptations. Each point also references the
+analogous structure in the STAR project for cross-pollination.
+
+### Single Responsibility (S)
+
+- **One module = one purpose.** `ra_pid` would handle ONLY PID
+  arithmetic -- no motor control, no hardware. STAR's `rx_pid`
+  follows the same rule.
+- **One function = one action.** `ra_pid_compute` does math;
+  `ra_pid_reset` clears state. They do not share an entry point.
+- **Separation of concerns.** Configuration (`ra_pid_config_t`) is a
+  separate type from runtime state (`ra_pid_handle_t`). The handle
+  carries the cfg by value at init time so subsequent edits to the
+  cfg struct don't ghost-update running PIDs.
+
+### Open/Closed (O)
+
+- **Extensible without modification.** Drivers configure via a
+  `_config_t` struct passed to `_init`. Adding a new feature gates
+  on a new field in the struct, not a new entry point.
+- **Runtime tuning.** `_set_*` setters allow updates without
+  recompilation. STAR's `rx_pid_set_gains` is the canonical example.
+- **Avoid hardcoded values.** All limits live in the config:
+  `output_min`, `output_max`, `integral_min`, `integral_max`.
+
+### Liskov Substitution (L)
+
+- **Implementations are interchangeable.** A bus manager accepts any
+  bus type (I2C/SPI/1-Wire) through the same vtable shape.
+- **Mocks substitute real implementations.** Tests use
+  `mock_ra_bus_iic` in place of real hardware -- the HAL's mock vs.
+  prod selection is at link time, not source time.
+- **Consistent error handling.** All drivers return `ra_err_t` with
+  the same semantics. A caller can write a generic error handler
+  that handles every driver uniformly.
+
+### Interface Segregation (I)
+
+- **Small, focused interfaces.** A bus interface splits into
+  `read()`, `write()`, `configure()` -- not a single fat
+  `do_anything(verb, args)` entry point.
+- **Separate read / write paths.** Half-duplex consumers don't pay
+  for full-duplex code.
+
+### Dependency Inversion (D)
+
+- **High-level modules depend on abstractions, not implementations.**
+  ```c
+  typedef struct {
+    ra_err_t (*read)(void* ctx, uint8_t* data, uint32_t len);
+    ra_err_t (*write)(void* ctx, const uint8_t* data, uint32_t len);
+    void* ctx;
+  } bus_interface_t;
+  ```
+- **Function pointers for late binding.** This is the project's
+  intentional deviation from NASA Power of 10 Rule 9 -- the
+  testability win is worth the relaxed pointer-discipline rule.
+- **Inject mocks via the same interface.** Test code links a mock
+  vtable; production code links the real one.
+
+## NASA Power of 10
+
+Safety-critical embedded conventions, per JPL "The Power of 10:
+Rules for Developing Safety-Critical Code". The project follows
+all 10 with a single intentional deviation:
+
+| # | Rule | This project |
+|---:|---|---|
+| 1 | Simplify control flow -- no `goto`, `setjmp`, recursion. | Compliant. |
+| 2 | All loops have fixed upper bounds. | Compliant; main loops are `while(1)` with watchdog refresh, exempt by convention. |
+| 3 | No dynamic memory after init. | Compliant. Zero `malloc`/`free` in firmware. `_sbrk` traps any accidental use. |
+| 4 | Functions ~60 lines max. | Compliant. clang-tidy `LineThreshold = 60` enforces. NOLINT only for legitimately linear HUM-spec init paths. |
+| 5 | Two assertions per function. | Compliant. Use `RA_CHECK_NULL_PTR` for preconditions, output bounds checks for postconditions. |
+| 6 | Smallest scope. | Compliant. File-scope vars are `static`; loop counters live in the `for`-statement. |
+| 7 | Check all return values. | Compliant. `RA_RETURN_ON_ERROR` macro propagates; `(void)` casts mark explicit ignores. |
+| 8 | Limit preprocessor use. | Compliant. C23 typed enums replace `#define` for constants; macros only for duplicated code, conditional compilation, build flags. |
+| 9 | Restrict pointer use. | **Intentional deviation.** Function pointers are allowed for Dependency Inversion. |
+| 10 | Compile clean with max warnings. | Compliant. `-Wall -Wextra -Werror -fshort-enums`; CI fails on any warning. |
+
+## Backward compatibility (there is none)
+
+This is a personal project with **zero backward-compatibility
+requirements**. There will never be public releases or versioned APIs.
+
+**Forbidden** (rejected in code review):
+
+- Function aliases: `#define old_name new_name`
+- Deprecation macros: `__attribute__((deprecated))`
+- Wrapper functions for "compatibility"
+- Comments like `// TODO: remove old API after migration`
+- Keeping unused code "just in case"
+
+**Required**:
+
+- Update ALL call sites in the same commit when changing APIs.
+- Delete old code immediately. No staged rollouts.
+- Rename types, functions, fields freely to improve clarity.
+- Main branch must build successfully.
+
+## Character encoding
+
+All source files **must be pure 7-bit ASCII** (Unicode 0x00..0x7F).
+Applies to every `.c`, `.h`, `.cpp`, `.hpp`, `.cmake`, `.md`, `.yml`,
+`.sh`, `.py` file -- including comments, documentation, and string
+literals.
+
+Rationale: multi-byte UTF-8 breaks downstream toolchains -- static
+analysers, MISRA checkers, code-coverage tools, Windows IDEs, and
+the embedded debugger console.
+
+`scripts/git/pre-commit` rejects any commit containing non-ASCII in
+source files.
+
+## Ring and World tagging
+
+See [`docs/RING_AND_WORLD.md`](RING_AND_WORLD.md) for the full
+explanation. Short version: every Ring 3+ file gets a tag that
+declares its architectural ring and which TrustZone world it expects
+to run in:
+
+```c
+/**
+ * @file ra_glcdc.c
+ * @brief Graphics LCD Controller driver
+ *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ * ...
+ */
+```
+
+`scripts/utils/check_world_tags.py` enforces it at commit time.

@@ -6,25 +6,37 @@
  * [Ring 6 / APP] {World: S}
  *
  * @details
- * Drives the EK-RA8D2 user LED candidates (P6_00, P6_01, P6_02, P3_03,
- * P10_07) at a clean ~1 Hz cycle using the Cortex-M85 SysTick timer
- * for delay -- no busy-wait. The chip boots on LOCO (~32 kHz) until
- * CGC is brought up, so SysTick reload is sized for that clock.
+ * Drives the EK-RA8D2 user-LED candidate pins (P6_00, P6_01, P6_02,
+ * P3_03, P10_07) at a clean 1 Hz cycle (500 ms on, 500 ms off) using
+ * the Cortex-M85 SysTick timer for delay -- no busy-wait. The chip
+ * boots on MOCO at ~8.4 MHz (measured via DWT.CYCCNT) until the CGC
+ * brings HOCO + PLL up; SysTick reload is sized for that clock.
  *
- * SysTick programming sequence (HUM Ch 2 "CPU" / Armv8-M reference):
- * 1. Disable SysTick (clear CSR).
- * 2. Write reload value (RVR) in [0, 0xFFFFFF].
- * 3. Clear current value (CVR).
- * 4. Enable with CSR.ENABLE | CSR.CLKSOURCE (CPU clock, no IRQ).
- * 5. Poll CSR.COUNTFLAG (16) -- it goes 1 once after wrap, auto-clears
- * on read.
+ * @par SysTick programming sequence
+ * Per Armv8-M Architecture Reference Manual section B11.1:
+ *   1. Disable SysTick (clear SYST_CSR).
+ *   2. Write reload value (SYST_RVR) in [0, 0xFFFFFF].
+ *   3. Clear current value (SYST_CVR).
+ *   4. Enable with CSR.ENABLE | CSR.CLKSOURCE (CPU clock, no IRQ).
+ *   5. Poll CSR.COUNTFLAG (bit 16) -- goes 1 once after wrap,
+ *      auto-clears on read.
  *
- * Pin programming uses the existing PFS unlock dance documented in
- * libs/ra_hal/inc/ra8d2_pfs_regs.h. We write PWPRS (Secure variant)
- * because the Cortex-M85 boots in the Secure world on RA8D2.
+ * @par Pin programming
+ * Uses the existing PFS unlock dance documented in
+ * libs/ra_hal/inc/ra8d2_pfs_regs.h. We write PWPRS (the Secure
+ * variant) because the Cortex-M85 boots in the Secure world on
+ * RA8D2 and SystemInit currently leaves the SAU partition disabled.
  *
+ * @par Architectural ring
+ * See docs/RING_AND_WORLD.md for what `[Ring 6 / APP] {World: S}`
+ * means. Short version: this file is application-layer code that
+ * runs in the Secure world.
+ *
+ * @author Brighton Sikarskie
+ * @date 2026-04-28
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
+ * @since 0.2.0
  */
 
 #include <stdint.h>
