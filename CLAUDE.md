@@ -2,6 +2,13 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+> **For human readers:** the authoritative style guide is
+> [`docs/STYLE_GUIDE.md`](docs/STYLE_GUIDE.md) and the architectural-ring +
+> TrustZone-world tagging system is documented in
+> [`docs/RING_AND_WORLD.md`](docs/RING_AND_WORLD.md). This file restates the
+> most-violated rules in a form an AI assistant can act on, but the
+> human-facing docs are the source of truth.
+
 ## Project Overview
 
 **ra8d2-firmware** -- Bare-metal firmware for the Renesas RA8D2 MCU group, targeting the EK-RA8D2 evaluation kit (Renesas part number 968-K7EKA8D2S01001BE). This is a personal, in-house project by Brighton Sikarskie for exploring the RA8D2 chip.
