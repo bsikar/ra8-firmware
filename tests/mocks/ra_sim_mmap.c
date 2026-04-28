@@ -115,9 +115,9 @@ __attribute__((constructor)) static void ra_sim_mmap_install(void)
                                         0);
     if (p == MAP_FAILED || (uintptr_t)p != region.base) {
       (void)fprintf(stderr,
-                    "ra_sim_mmap: failed to map 0x%lx..0x%lx\n",
-                    (uint64_t)region.base,
-                    (uint64_t)(region.base + region.size));
+                    "ra_sim_mmap: failed to map 0x%llx..0x%llx\n",
+                    (unsigned long long)region.base,
+                    (unsigned long long)(region.base + region.size));
       abort();
     }
     (void)memset(p, 0, region.size);

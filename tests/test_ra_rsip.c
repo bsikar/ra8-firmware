@@ -79,8 +79,8 @@ static void stub_rsip_cb(void* ctx, uint32_t isr)
  */
 static void prep(void)
 {
-  ra_sim_mmap_reset;
-  (void)ra_mstp_init;
+  ra_sim_mmap_reset();
+  (void)ra_mstp_init();
   s_test_isr_count = 0U;
   s_test_isr_last  = 0U;
 }
@@ -91,7 +91,7 @@ static void prep(void)
 static void test_init_happy(void)
 {
   TEST_BEGIN("rsip init happy");
-  prep;
+  prep();
 
   const ra_rsip_config_t cfg = {.run_bist = true};
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rsip_init(&cfg));
@@ -111,7 +111,7 @@ static void test_init_happy(void)
 static void test_init_skip_bist(void)
 {
   TEST_BEGIN("rsip init skip bist");
-  prep;
+  prep();
 
   const ra_rsip_config_t cfg = {.run_bist = false};
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rsip_init(&cfg));
@@ -130,7 +130,7 @@ static void test_init_skip_bist(void)
 static void test_init_null_cfg(void)
 {
   TEST_BEGIN("rsip init null cfg");
-  prep;
+  prep();
 
   TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_rsip_init(nullptr));
 
@@ -143,11 +143,11 @@ static void test_init_null_cfg(void)
 static void test_deinit(void)
 {
   TEST_BEGIN("rsip deinit");
-  prep;
+  prep();
 
   const ra_rsip_config_t cfg = {.run_bist = true};
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rsip_init(&cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rsip_deinit);
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rsip_deinit());
   TEST_ASSERT_EQ((int32_t)0, (int32_t)*ra_rsip_reg32(k_ra_rsip_off_ctrl));
 
   TEST_END("rsip deinit");
@@ -159,7 +159,7 @@ static void test_deinit(void)
 static void test_trng_read(void)
 {
   TEST_BEGIN("rsip trng read 32");
-  prep;
+  prep();
 
   const ra_rsip_config_t cfg = {.run_bist = true};
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rsip_init(&cfg));
@@ -186,7 +186,7 @@ static void test_trng_read(void)
 static void test_trng_arg_check(void)
 {
   TEST_BEGIN("rsip trng arg check");
-  prep;
+  prep();
 
   uint8_t buf[8] = {};
   TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
@@ -204,7 +204,7 @@ static void test_trng_arg_check(void)
 static void test_sha256_happy(void)
 {
   TEST_BEGIN("rsip sha256 happy");
-  prep;
+  prep();
 
   const ra_rsip_config_t cfg = {.run_bist = true};
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rsip_init(&cfg));
@@ -237,7 +237,7 @@ static void test_sha256_happy(void)
 static void test_sha256_partial_tail(void)
 {
   TEST_BEGIN("rsip sha256 partial tail");
-  prep;
+  prep();
 
   const ra_rsip_config_t cfg = {.run_bist = false};
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rsip_init(&cfg));
@@ -255,7 +255,7 @@ static void test_sha256_partial_tail(void)
 static void test_sha256_null(void)
 {
   TEST_BEGIN("rsip sha256 null");
-  prep;
+  prep();
 
   uint8_t out[32] = {};
   TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_rsip_sha256(nullptr, 4U, out));
@@ -271,7 +271,7 @@ static void test_sha256_null(void)
 static void test_status_clear(void)
 {
   TEST_BEGIN("rsip status clear");
-  prep;
+  prep();
 
   /* Pre-populate ISR with one valid and one ignored bit. */
   *ra_rsip_reg32(k_ra_rsip_off_isr) = (uint32_t)k_ra_rsip_mask_isr_done;
@@ -296,25 +296,25 @@ static void test_status_clear(void)
 static void test_attach_dispatch(void)
 {
   TEST_BEGIN("rsip attach dispatch");
-  prep;
+  prep();
 
   TEST_ASSERT_EQ((int32_t)k_ra_ok,
                  (int32_t)ra_rsip_attach_handler(stub_rsip_cb, (void*)(uintptr_t)0xDEADU));
 
   /* Pre-arm an ISR bit, then dispatch and confirm the cb fired. */
   *ra_rsip_reg32(k_ra_rsip_off_isr) = (uint32_t)k_ra_rsip_mask_isr_rnd;
-  ra_rsip_dispatch;
+  ra_rsip_dispatch();
   TEST_ASSERT_EQ((int32_t)1, (int32_t)s_test_isr_count);
   TEST_ASSERT_EQ((int32_t)k_ra_rsip_mask_isr_rnd, (int32_t)s_test_isr_last);
 
   /* Empty ISR -> dispatch is a no-op. */
-  ra_rsip_dispatch;
+  ra_rsip_dispatch();
   TEST_ASSERT_EQ((int32_t)1, (int32_t)s_test_isr_count);
 
   /* Detach -> next dispatch does not invoke the cb. */
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rsip_attach_handler(nullptr, nullptr));
   *ra_rsip_reg32(k_ra_rsip_off_isr) = (uint32_t)k_ra_rsip_mask_isr_done;
-  ra_rsip_dispatch;
+  ra_rsip_dispatch();
   TEST_ASSERT_EQ((int32_t)1, (int32_t)s_test_isr_count);
 
   TEST_END("rsip attach dispatch");
@@ -326,13 +326,13 @@ static void test_attach_dispatch(void)
 static void test_power_transition(void)
 {
   TEST_BEGIN("rsip power transition");
-  prep;
+  prep();
 
   const ra_rsip_config_t cfg = {.run_bist = true};
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rsip_init(&cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rsip_enter_stop);
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rsip_enter_stop());
   TEST_ASSERT_EQ((int32_t)0, (int32_t)*ra_rsip_reg32(k_ra_rsip_off_ctrl));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rsip_exit_stop);
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rsip_exit_stop());
   TEST_ASSERT_EQ((int32_t)k_ra_rsip_mask_ctrl_enable, (int32_t)*ra_rsip_reg32(k_ra_rsip_off_ctrl));
 
   TEST_END("rsip power transition");
@@ -349,7 +349,7 @@ static void test_power_transition(void)
  */
 static void prep_running(void)
 {
-  prep;
+  prep();
   const ra_rsip_config_t cfg = {.run_bist = true};
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rsip_init(&cfg));
 }
@@ -365,7 +365,7 @@ static void prep_running(void)
 static void test_install_aes128_plain(void)
 {
   TEST_BEGIN("rsip aes128 install plain");
-  prep_running;
+  prep_running();
 
   const uint8_t        key[16] = {0x00U,
                                   0x11U,
@@ -401,7 +401,7 @@ static void test_install_aes128_plain(void)
 static void test_install_aes_192_256(void)
 {
   TEST_BEGIN("rsip aes192/256 install plain");
-  prep_running;
+  prep_running();
 
   const uint8_t        k192[24] = {};
   const uint8_t        k256[32] = {};
@@ -422,7 +422,7 @@ static void test_install_aes_192_256(void)
 static void test_install_chacha20_hmac(void)
 {
   TEST_BEGIN("rsip chacha20 + hmac install plain");
-  prep_running;
+  prep_running();
 
   const uint8_t        key[32] = {};
   ra_rsip_key_handle_t out     = {};
@@ -450,7 +450,7 @@ static void test_install_chacha20_hmac(void)
 static void test_install_oem(void)
 {
   TEST_BEGIN("rsip oem install");
-  prep_running;
+  prep_running();
 
   const uint8_t        iv[16]   = {};
   const uint8_t        blob[32] = {};
@@ -484,7 +484,7 @@ static void test_install_oem(void)
 static void test_aes_cipher_ecb(void)
 {
   TEST_BEGIN("rsip aes128 ecb cipher");
-  prep_running;
+  prep_running();
 
   const uint8_t        key[16] = {};
   ra_rsip_key_handle_t handle  = {};
@@ -538,7 +538,7 @@ static void test_aes_cipher_ecb(void)
 static void test_aes_cipher_ctr(void)
 {
   TEST_BEGIN("rsip aes128 ctr cipher");
-  prep_running;
+  prep_running();
 
   const uint8_t        key[16] = {};
   ra_rsip_key_handle_t handle  = {};
@@ -565,7 +565,7 @@ static void test_aes_cipher_ctr(void)
 static void test_aes_gcm(void)
 {
   TEST_BEGIN("rsip aes gcm");
-  prep_running;
+  prep_running();
 
   const uint8_t        key[16] = {};
   ra_rsip_key_handle_t handle  = {};
@@ -618,7 +618,7 @@ static void test_aes_gcm(void)
 static void test_aes_ccm(void)
 {
   TEST_BEGIN("rsip aes ccm");
-  prep_running;
+  prep_running();
 
   const uint8_t        key[16] = {};
   ra_rsip_key_handle_t handle  = {};
@@ -647,7 +647,7 @@ static void test_aes_ccm(void)
 static void test_chacha20_stream(void)
 {
   TEST_BEGIN("rsip chacha20 stream");
-  prep_running;
+  prep_running();
 
   const uint8_t        key[32] = {};
   ra_rsip_key_handle_t handle  = {};
@@ -676,7 +676,7 @@ static void test_chacha20_stream(void)
 static void test_chacha20_poly1305(void)
 {
   TEST_BEGIN("rsip chacha20-poly1305 + poly1305");
-  prep_running;
+  prep_running();
 
   const uint8_t        key[32] = {};
   ra_rsip_key_handle_t handle  = {};
@@ -719,7 +719,7 @@ static void test_chacha20_poly1305(void)
 static void test_hash_family(void)
 {
   TEST_BEGIN("rsip hash family");
-  prep_running;
+  prep_running();
 
   const uint8_t msg[3]      = {'a', 'b', 'c'};
   uint8_t       d_512[64]   = {};
@@ -753,7 +753,7 @@ static void test_hash_family(void)
 static void test_hmac(void)
 {
   TEST_BEGIN("rsip hmac");
-  prep_running;
+  prep_running();
 
   const uint8_t        key[32] = {};
   ra_rsip_key_handle_t handle  = {};
@@ -790,7 +790,7 @@ static void test_hmac(void)
 static void test_rsa_sign_verify(void)
 {
   TEST_BEGIN("rsip rsa sign+verify");
-  prep_running;
+  prep_running();
 
   ra_rsip_key_handle_t key        = {.alg        = (uint32_t)k_ra_rsip_oem_cmd_rsa2048_priv,
                                      .body_words = (uint32_t)k_ra_rsip_handle_words_rsa2048_priv};
@@ -817,7 +817,7 @@ static void test_rsa_sign_verify(void)
 static void test_ecc(void)
 {
   TEST_BEGIN("rsip ecdsa + ecdh");
-  prep_running;
+  prep_running();
 
   ra_rsip_key_handle_t key        = {.alg        = (uint32_t)k_ra_rsip_oem_cmd_ecc_secp256r1_priv,
                                      .body_words = (uint32_t)k_ra_rsip_handle_words_ecc256_priv};
@@ -852,18 +852,18 @@ static void test_ecc(void)
 static void test_oem_bl_version(void)
 {
   TEST_BEGIN("rsip oem bl version");
-  prep_running;
+  prep_running();
 
   uint32_t v0 = 0xFFU;
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rsip_oem_bl_version_get(&v0));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rsip_oem_bl_version_increment);
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rsip_oem_bl_version_increment());
   uint32_t v1 = 0U;
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rsip_oem_bl_version_get(&v1));
   TEST_ASSERT_EQ((int32_t)(v0 + 1U), (int32_t)v1);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rsip_oem_bl_version_lock);
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_rsip_oem_bl_version_increment);
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rsip_oem_bl_version_lock());
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_rsip_oem_bl_version_increment());
 
   TEST_END("rsip oem bl version");
 }
@@ -879,7 +879,7 @@ static void test_oem_bl_version(void)
 static void test_kv(void)
 {
   TEST_BEGIN("rsip kv read/write/erase/count");
-  prep_running;
+  prep_running();
 
   uint8_t blob[64];
   for (uint32_t i = 0U; i < sizeof(blob); ++i) {
@@ -914,7 +914,7 @@ static void test_kv(void)
 static void test_key_wrap_unwrap(void)
 {
   TEST_BEGIN("rsip key wrap/unwrap");
-  prep_running;
+  prep_running();
 
   const uint8_t        kek_bytes[16] = {};
   ra_rsip_key_handle_t kek           = {};
@@ -951,7 +951,7 @@ static void test_key_wrap_unwrap(void)
 static void test_kdf(void)
 {
   TEST_BEGIN("rsip kdf");
-  prep_running;
+  prep_running();
 
   const uint8_t        key[32] = {};
   ra_rsip_key_handle_t ikm     = {};
@@ -1016,7 +1016,7 @@ static void test_kdf(void)
 static void test_life(void)
 {
   TEST_BEGIN("rsip life");
-  prep_running;
+  prep_running();
 
   ra_rsip_life_state_t st = k_ra_rsip_life_cm;
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rsip_life_get(&st));
@@ -1042,7 +1042,7 @@ static void test_life(void)
 static void test_debug_level(void)
 {
   TEST_BEGIN("rsip debug level");
-  prep_running;
+  prep_running();
 
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rsip_debug_level_set(k_ra_rsip_debug_al1));
   ra_rsip_debug_level_t out = k_ra_rsip_debug_al0;
@@ -1062,7 +1062,7 @@ static void test_debug_level(void)
 static void test_tamper(void)
 {
   TEST_BEGIN("rsip tamper + dpa");
-  prep_running;
+  prep_running();
 
   TEST_ASSERT_EQ((int32_t)k_ra_ok,
                  (int32_t)ra_rsip_tamper_enable((uint32_t)k_ra_rsip_tamper_src_ext0 |
@@ -1091,7 +1091,7 @@ static void test_tamper(void)
 static void test_dotf_route(void)
 {
   TEST_BEGIN("rsip dotf route");
-  prep_running;
+  prep_running();
 
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rsip_dotf_route(0U, 5U, true));
   TEST_ASSERT(((*ra_rsip_reg32(k_ra_rsip_off_dotf0_ctrl)) & (uint32_t)k_ra_rsip_dotf_on) != 0U);
@@ -1106,43 +1106,41 @@ static void test_dotf_route(void)
 
 int32_t main(void)
 {
-  test_init_happy;
-  test_init_skip_bist;
-  test_init_null_cfg;
-  test_deinit;
-  test_trng_read;
-  test_trng_arg_check;
-  test_sha256_happy;
-  test_sha256_partial_tail;
-  test_sha256_null;
-  test_status_clear;
-  test_attach_dispatch;
-  test_power_transition;
-
+  test_init_happy();
+  test_init_skip_bist();
+  test_init_null_cfg();
+  test_deinit();
+  test_trng_read();
+  test_trng_arg_check();
+  test_sha256_happy();
+  test_sha256_partial_tail();
+  test_sha256_null();
+  test_status_clear();
+  test_attach_dispatch();
+  test_power_transition();
   /* Round-3 tests. */
-  test_install_aes128_plain;
-  test_install_aes_192_256;
-  test_install_chacha20_hmac;
-  test_install_oem;
-  test_aes_cipher_ecb;
-  test_aes_cipher_ctr;
-  test_aes_gcm;
-  test_aes_ccm;
-  test_chacha20_stream;
-  test_chacha20_poly1305;
-  test_hash_family;
-  test_hmac;
-  test_rsa_sign_verify;
-  test_ecc;
-  test_oem_bl_version;
-  test_kv;
-  test_key_wrap_unwrap;
-  test_kdf;
-  test_life;
-  test_debug_level;
-  test_tamper;
-  test_dotf_route;
-
+  test_install_aes128_plain();
+  test_install_aes_192_256();
+  test_install_chacha20_hmac();
+  test_install_oem();
+  test_aes_cipher_ecb();
+  test_aes_cipher_ctr();
+  test_aes_gcm();
+  test_aes_ccm();
+  test_chacha20_stream();
+  test_chacha20_poly1305();
+  test_hash_family();
+  test_hmac();
+  test_rsa_sign_verify();
+  test_ecc();
+  test_oem_bl_version();
+  test_kv();
+  test_key_wrap_unwrap();
+  test_kdf();
+  test_life();
+  test_debug_level();
+  test_tamper();
+  test_dotf_route();
   (void)fprintf(stderr, "[OK ] test_ra_rsip.c\n");
   return 0;
 }

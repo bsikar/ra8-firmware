@@ -39,7 +39,7 @@ TMP_SCRIPT=$(mktemp)
 trap 'rm -f "$TMP_SCRIPT"' EXIT
 
 cat > "$TMP_SCRIPT" <<EOF
-device R7KA8D2KF
+device R7KA8D2KF_CPU0
 si 1
 speed 4000
 connect
@@ -51,6 +51,6 @@ g
 q
 EOF
 
-JLinkExe -commanderscript "$TMP_SCRIPT"
+JLinkExe -NoGui 1 -commanderscript "$TMP_SCRIPT"
 
 echo -e "${GREEN}[DONE]${NC} Flashed $HEX"
