@@ -93,6 +93,134 @@ extern "C" {
 #include "ra_err.h"
 
 /**
+ * @enum ra_wdt_clock_div_t
+ * @brief Legal CKS[3:0] encodings for WDTCR.
+ *
+ * @details
+ * Only six of the sixteen 4-bit CKS encodings are usable -- HUM
+ * Ch 27.2.2 p 1258 marks the rest as "Setting prohibited". Each
+ * value is the raw bit pattern that must land in WDTCR.CKS, so the
+ * driver can ``& k_ra_wdt_mask_cks`` and ``<< k_ra_wdt_shift_cks``
+ * straight from this enum.
+ *
+ * @see HUM Ch 27.2.2 "WDTCR : WDT Control Register", p 1258.
+ */
+typedef enum : uint8_t {
+  k_ra_wdt_clkdiv_4    = 0x1U, /**< PCLKB / 4.    */
+  k_ra_wdt_clkdiv_64   = 0x4U, /**< PCLKB / 64.   */
+  k_ra_wdt_clkdiv_128  = 0xFU, /**< PCLKB / 128.  */
+  k_ra_wdt_clkdiv_512  = 0x6U, /**< PCLKB / 512.  */
+  k_ra_wdt_clkdiv_2048 = 0x7U, /**< PCLKB / 2048. */
+  k_ra_wdt_clkdiv_8192 = 0x8U, /**< PCLKB / 8192. */
+} ra_wdt_clock_div_t;
+
+/**
+ * @enum ra_wdt_timeout_sel_t
+ * @brief Legal TOPS[1:0] encodings for WDTCR.
+ *
+ * @details
+ * Selects the WDT timeout in counter cycles before the divider is
+ * applied. Decode with ``ra_wdt_timeout_cycles_get`` to recover the
+ * numeric cycle count, or with ``ra_wdt_total_pclkb_cycles`` to fold
+ * in the CKS divider.
+ *
+ * @see HUM Ch 27.2.2 Table 27.2 p 1259.
+ */
+typedef enum : uint8_t {
+  k_ra_wdt_timeout_1024  = 0x0U, /**< 1024 cycles.  */
+  k_ra_wdt_timeout_4096  = 0x1U, /**< 4096 cycles.  */
+  k_ra_wdt_timeout_8192  = 0x2U, /**< 8192 cycles.  */
+  k_ra_wdt_timeout_16384 = 0x3U, /**< 16384 cycles. */
+} ra_wdt_timeout_sel_t;
+
+/**
+ * @enum ra_wdt_window_start_t
+ * @brief Legal RPSS[1:0] encodings (refresh-permitted window start).
+ *
+ * @details
+ * Selects the *upper* bound of the refresh-permitted window, expressed
+ * as a percentage of the full timeout. ``window_start_100`` disables
+ * the upper bound. HUM Ch 27.2.2 p 1259.
+ */
+typedef enum : uint8_t {
+  k_ra_wdt_window_start_25  = 0x0U, /**< 25 %.   */
+  k_ra_wdt_window_start_50  = 0x1U, /**< 50 %.   */
+  k_ra_wdt_window_start_75  = 0x2U, /**< 75 %.   */
+  k_ra_wdt_window_start_100 = 0x3U, /**< 100 % (no upper bound). */
+} ra_wdt_window_start_t;
+
+/**
+ * @enum ra_wdt_window_end_t
+ * @brief Legal RPES[1:0] encodings (refresh-permitted window end).
+ *
+ * @details
+ * Selects the *lower* bound of the refresh-permitted window, expressed
+ * as a percentage of the full timeout. ``window_end_0`` disables the
+ * lower bound. HUM Ch 27.2.2 p 1259.
+ *
+ * @invariant ``window_end`` < ``window_start`` -- silicon forces
+ *            ``window_end = 0%`` if the constraint is violated.
+ */
+typedef enum : uint8_t {
+  k_ra_wdt_window_end_75 = 0x0U, /**< 75 %. */
+  k_ra_wdt_window_end_50 = 0x1U, /**< 50 %. */
+  k_ra_wdt_window_end_25 = 0x2U, /**< 25 %. */
+  k_ra_wdt_window_end_0  = 0x3U, /**< 0 % (no lower bound). */
+} ra_wdt_window_end_t;
+
+/**
+ * @enum ra_wdt_reset_ctrl_t
+ * @brief WDTRCR.RSTIRQS encoding -- reset vs NMI on expiry.
+ *
+ * @details
+ * Determines what the WDT does when it underflows or sees a
+ * refresh-error. ``on_expiry_nmi`` routes the event through
+ * ICU.NMIER (HUM Ch 14.2.14 p 542) where ``ra_wdt_install_nmi``
+ * picks it up; ``on_expiry_reset`` triggers an internal reset.
+ *
+ * @see HUM Ch 27.2.4 "WDTRCR" p 1262.
+ */
+typedef enum : uint8_t {
+  k_ra_wdt_on_expiry_nmi   = 0U, /**< RSTIRQS=0 -- route to NMI / IRQ. */
+  k_ra_wdt_on_expiry_reset = 1U, /**< RSTIRQS=1 -- internal reset.     */
+} ra_wdt_reset_ctrl_t;
+
+/**
+ * @enum ra_wdt_stop_ctrl_t
+ * @brief WDTCSTPR.SLCSTP encoding -- counter behaviour in Sleep.
+ *
+ * @details
+ * ``sleep_keep_count`` keeps the counter ticking through Sleep / Deep
+ * Sleep so the WDT can still fire if the wake event is missed.
+ * ``sleep_stop_count`` halts the counter on Sleep entry, useful for
+ * battery / low-power operation.
+ *
+ * @see HUM Ch 27.2.5 "WDTCSTPR" p 1262.
+ */
+typedef enum : uint8_t {
+  k_ra_wdt_sleep_keep_count = 0U, /**< SLCSTP=0 -- counter runs in Sleep.  */
+  k_ra_wdt_sleep_stop_count = 1U, /**< SLCSTP=1 -- counter halts in Sleep. */
+} ra_wdt_stop_ctrl_t;
+
+/**
+ * @enum ra_wdt_ofs_strt_t
+ * @brief OFSm.WDTnSTRT encoding -- auto vs register start mode.
+ *
+ * @details
+ * The boot ROM latches this bit out of the OFS0 (WDT0) or OFS3 (WDT1)
+ * option-setting word at reset. ``auto`` means WDTCR / WDTRCR /
+ * WDTCSTPR are all sourced from OFSm; ``register_start`` means they
+ * are programmable via the runtime registers exactly once after
+ * reset.
+ *
+ * @see HUM Ch 27.3.1 p 1263.
+ */
+typedef enum : uint8_t {
+  k_ra_wdt_ofs_strt_auto     = 0U, /**< Auto-start (OFSm-driven).      */
+  k_ra_wdt_ofs_strt_register = 1U, /**< Register-start (runtime config). */
+} ra_wdt_ofs_strt_t;
+
+/**
  * @enum ra_wdt_status_mask_t
  * @brief WDTSR top-bit status flags.
  *

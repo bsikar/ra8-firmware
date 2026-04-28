@@ -235,7 +235,7 @@ static volatile uint16_t* internal_dly_cell(uint8_t channel, ra_pdg_pin_t pin, r
 {
   /* HUM Ch 23.2.3 "GTDLYRnA: GTIOCnA Rising Output Delay Register" p 1156 */
   /* HUM Ch 23.2.6 "GTDLYFnB: GTIOCnB Falling Output Delay Register" p 1158 */
-  volatile r_pdg_regs_t*     reg = ra_pdg;
+  volatile r_pdg_regs_t*     reg = ra_pdg();
   volatile r_pdg_dly_pair_t* base =
     (edge == k_ra_pdg_edge_rising) ? &reg->GTDLYR[channel] : &reg->GTDLYF[channel];
   return (pin == k_ra_pdg_pin_a) ? &base->A : &base->B;
@@ -295,7 +295,7 @@ ra_err_t ra_pdg_init(const ra_pdg_config_t* cfg)
   const ra_err_t mst_err = ra_mstp_enable(k_ra_mstp_pdg);
   RA_RETURN_ON_ERROR(mst_err, s_tag, "pdg_init: mstp enable");
 
-  volatile r_pdg_regs_t* reg = ra_pdg;
+  volatile r_pdg_regs_t* reg = ra_pdg();
 
   /* Step 1 of Figure 23.2 (p 1160): DLLEN=0, DLYRST=1, DLYBSn=0,
  * FRANGE=user-supplied band. Performed in one 16-bit write so the
@@ -321,7 +321,7 @@ ra_err_t ra_pdg_init(const ra_pdg_config_t* cfg)
   reg->GTDLYCR = (uint16_t)((uint16_t)k_ra_pdg_gtdlycr_mask_dllen | frange_bits);
 
   /* Step 5: wait >= 5 GTCLK cycles. */
-  internal_wait_5_gtclk;
+  internal_wait_5_gtclk();
 
   /* Step 6: turn off bypass for the channels actually in use. */
   /* HUM Ch 23.2.2 "GTDLYCR2" p 1155 */
@@ -336,7 +336,7 @@ ra_err_t ra_pdg_init(const ra_pdg_config_t* cfg)
 
 ra_err_t ra_pdg_deinit(void)
 {
-  volatile r_pdg_regs_t* reg = ra_pdg;
+  volatile r_pdg_regs_t* reg = ra_pdg();
   /* Park the block: DLLEN=0, DLYRST=1, FRANGE=0. */
   /* HUM Ch 23.2.1 "GTDLYCR" p 1154 */
   reg->GTDLYCR = (uint16_t)k_ra_pdg_gtdlycr_mask_dlyrst;
@@ -465,7 +465,7 @@ ra_err_t ra_pdg_exit_stop(uint8_t channel)
   }
   /* HUM Ch 23.2.2 "GTDLYCR2: PWM Output Delay Control Register 2" p 1155
  * (DLYENn polarity is inverted: 0 = enabled, 1 = disabled). */
-  volatile r_pdg_regs_t* reg = ra_pdg;
+  volatile r_pdg_regs_t* reg = ra_pdg();
   const uint16_t         bit =
     (uint16_t)(1U << ((uint16_t)k_ra_pdg_gtdlycr2_shift_dlyen + (uint16_t)channel));
   reg->GTDLYCR2 = (uint16_t)(reg->GTDLYCR2 & (uint16_t)~bit);
@@ -478,7 +478,7 @@ ra_err_t ra_pdg_enter_stop(uint8_t channel)
     return k_ra_err_invalid_arg;
   }
   /* HUM Ch 23.2.2 "GTDLYCR2" p 1155 */
-  volatile r_pdg_regs_t* reg = ra_pdg;
+  volatile r_pdg_regs_t* reg = ra_pdg();
   const uint16_t         bit =
     (uint16_t)(1U << ((uint16_t)k_ra_pdg_gtdlycr2_shift_dlyen + (uint16_t)channel));
   reg->GTDLYCR2 = (uint16_t)(reg->GTDLYCR2 | bit);
@@ -495,7 +495,7 @@ ra_err_t ra_pdg_channel_bypass_set(uint8_t channel, uint8_t bypass)
   }
   /* DLYBSn = 1 means delay applied (bypass off). */
   /* HUM Ch 23.2.2 "GTDLYCR2: PWM Output Delay Control Register 2" p 1155 */
-  volatile r_pdg_regs_t* reg = ra_pdg;
+  volatile r_pdg_regs_t* reg = ra_pdg();
   const uint16_t         bit =
     (uint16_t)(1U << ((uint16_t)k_ra_pdg_gtdlycr2_shift_dlybs + (uint16_t)channel));
   if (bypass != 0U) {
@@ -536,7 +536,7 @@ ra_err_t ra_pdg_get_status(uint16_t* out)
 {
   RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
   /* HUM Ch 23.2.1 "GTDLYCR" p 1154 */
-  volatile r_pdg_regs_t* reg = ra_pdg;
+  volatile r_pdg_regs_t* reg = ra_pdg();
   *out                       = reg->GTDLYCR;
   return k_ra_ok;
 }
@@ -545,7 +545,7 @@ ra_err_t ra_pdg_get_status_full(ra_pdg_status_full_t* out)
 {
   RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
   /* HUM Ch 23.2.1 "GTDLYCR" p 1154 */
-  volatile r_pdg_regs_t* reg = ra_pdg;
+  volatile r_pdg_regs_t* reg = ra_pdg();
   const uint16_t         cr  = reg->GTDLYCR;
   /* HUM Ch 23.2.2 "GTDLYCR2" p 1155 */
   const uint16_t cr2 = reg->GTDLYCR2;
@@ -569,7 +569,7 @@ ra_err_t ra_pdg_clear_status(uint16_t mask)
 {
   /* Clearing DLYRST releases the block. */
   /* HUM Ch 23.2.1 "GTDLYCR: PWM Output Delay Control Register" p 1154 */
-  volatile r_pdg_regs_t* reg = ra_pdg;
+  volatile r_pdg_regs_t* reg = ra_pdg();
   if ((mask & (uint16_t)k_ra_pdg_status_in_reset) != 0U) {
     reg->GTDLYCR = (uint16_t)(reg->GTDLYCR & (uint16_t)~(uint16_t)k_ra_pdg_gtdlycr_mask_dlyrst);
   }
@@ -628,7 +628,7 @@ ra_err_t ra_pdg_set_frange(ra_pdg_frange_t new_frange)
     return k_ra_err_invalid_arg;
   }
 
-  volatile r_pdg_regs_t* reg = ra_pdg;
+  volatile r_pdg_regs_t* reg = ra_pdg();
   /* Preserve the per-channel state across the FRANGE switch. */
   /* HUM Ch 23.2.2 "GTDLYCR2: PWM Output Delay Control Register 2" p 1155 */
   const uint16_t saved_cr2 = reg->GTDLYCR2;
@@ -658,7 +658,7 @@ ra_err_t ra_pdg_set_frange(ra_pdg_frange_t new_frange)
   /* Release reset. */
   /* HUM Ch 23.2.1 "GTDLYCR" p 1154 */
   reg->GTDLYCR = (uint16_t)((uint16_t)k_ra_pdg_gtdlycr_mask_dllen | frange_bits);
-  internal_wait_5_gtclk;
+  internal_wait_5_gtclk();
 
   /* Restore the per-channel state. */
   /* HUM Ch 23.2.2 "GTDLYCR2" p 1155 */

@@ -125,7 +125,11 @@
  * script pins each section to a fixed MRAM address.
  */
 
+#if defined(UNIT_TEST) || defined(RA_SIMULATOR_MODE) || defined(__APPLE__)
+#define RA_SECTION(name) __attribute__((used))
+#else
 #define RA_SECTION(name) __attribute__((used, section(name)))
+#endif
 
 /* NOLINTBEGIN(readability-magic-numbers) -- OFS default is 0xFFFFFFFF. */
 

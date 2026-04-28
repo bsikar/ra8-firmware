@@ -71,6 +71,36 @@ extern "C" {
 #include "ra_err.h"
 
 /**
+ * @enum ra_tsn_cal_temp_t
+ * @brief Factory calibration reference temperatures (degC).
+ *
+ * @details
+ * The RA8D2 family is shipped in three trim variants; the high-side
+ * reference is either 105 degC (95 / 105 degC Tj_max parts) or
+ * 125 degC (125 degC Tj_max parts), and the low-side reference is
+ * always -40 degC. The calibration code observed at each reference
+ * is programmed into ``TSCDR`` / ``TSCDR2`` at the factory
+ * (HUM Ch 55.3.1 "Calculating the Temperature from the Output
+ * Voltage of the Temperature Sensor", p 3499-3500).
+ *
+ * The numeric value of each enumerator is the temperature itself in
+ * signed degC -- callers can cast directly to ``int16_t`` for the
+ * conversion math without a lookup table.
+ *
+ * @invariant Only the three enumerators below are accepted by
+ *            ``ra_tsn_init``. Any other value is rejected with
+ *            ``k_ra_err_invalid_arg``.
+ *
+ * @see ra_tsn_config_t::high_ref_degc
+ * @see ra_tsn_config_t::low_ref_degc
+ */
+typedef enum : int16_t {
+  k_ra_tsn_cal_temp_high_125 = 125,  /**< 125 degC Tj_max parts.  */
+  k_ra_tsn_cal_temp_high_105 = 105,  /**< 95 / 105 degC parts.    */
+  k_ra_tsn_cal_temp_low_n40  = -40,  /**< Always -40 degC on RA8D2. */
+} ra_tsn_cal_temp_t;
+
+/**
  * @struct ra_tsn_config_t
  * @brief Configuration descriptor for ``ra_tsn_init``.
  *

@@ -68,13 +68,29 @@ void UsageFault_Handler(void);
 /* Core exceptions (Cortex-M85). HardFault / MemManage / BusFault /
  * UsageFault each get a dedicated naked trampoline below which
  * forwards to ra_exception_report(). The rest are weak-aliased to
- * Default_Handler and may be overridden by application code. */
+ * Default_Handler and may be overridden by application code.
+ *
+ * Mach-O (macOS host) does not support `__attribute__((alias(...)))`.
+ * On the host syntax-check / unit-test build we drop the alias and
+ * keep only `weak`; the host build never branches through these
+ * symbols (the firmware vector table is not exercised on the test
+ * host), so we just need them to exist for the `&` references in
+ * `g_ra_vector_table_start` to be well-formed. */
+#ifndef __APPLE__
 void NMI_Handler(void) __attribute__((weak, alias("Default_Handler")));
 void SecureFault_Handler(void) __attribute__((weak, alias("Default_Handler")));
 void SVC_Handler(void) __attribute__((weak, alias("Default_Handler")));
 void DebugMon_Handler(void) __attribute__((weak, alias("Default_Handler")));
 void PendSV_Handler(void) __attribute__((weak, alias("Default_Handler")));
 void SysTick_Handler(void) __attribute__((weak, alias("Default_Handler")));
+#else
+void NMI_Handler(void) __attribute__((weak));
+void SecureFault_Handler(void) __attribute__((weak));
+void SVC_Handler(void) __attribute__((weak));
+void DebugMon_Handler(void) __attribute__((weak));
+void PendSV_Handler(void) __attribute__((weak));
+void SysTick_Handler(void) __attribute__((weak));
+#endif
 
 /* =============================================================================
  * Peripheral IRQ handlers
@@ -89,7 +105,14 @@ enum : uint16_t {
   k_ra_irq_count = 112U,
 };
 
+/* Mach-O does not support `alias`; on Apple hosts we keep only
+ * `weak` so the symbols exist but are not aliased. The host build
+ * never invokes these vectors. */
+#ifndef __APPLE__
 #define RA_IRQ_STUB(n) void IRQ##n##_Handler(void) __attribute__((weak, alias("Default_Handler")))
+#else
+#define RA_IRQ_STUB(n) void IRQ##n##_Handler(void) __attribute__((weak))
+#endif
 
 RA_IRQ_STUB(0);
 RA_IRQ_STUB(1);
@@ -215,7 +238,15 @@ RA_IRQ_STUB(111);
  * and the reset vector from offset 4.
  */
 
+/* Mach-O `section()` requires a `"segment,section"` form, but on the
+ * host syntax-check / unit-test build we only need this array to
+ * exist as a normal global -- the host never reads it from a fixed
+ * vector address. So drop the section pinning on Apple hosts. */
+#ifndef __APPLE__
 __attribute__((section(".vectors"), used))
+#else
+__attribute__((used))
+#endif
 const exc_handler_t g_ra_vector_table_start[16U + k_ra_irq_count] = {
   /* Core exceptions (slots 0..15). */
   (exc_handler_t)&g_ra_ls_stack_top, /* 0  Initial main stack pointer. */

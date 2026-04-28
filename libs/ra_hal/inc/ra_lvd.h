@@ -178,6 +178,85 @@ typedef enum : uint8_t {
 } ra_lvd_hysteresis_t;
 
 /**
+ * @enum ra_lvd_pvdlvl_t
+ * @brief PVDLVL[4:0] threshold encoding for PVDmCMPCR / PVDnCMPCR.
+ *
+ * @details
+ * The legal range is 0x03..0x0F per HUM Ch 8.2.2 p 303 (Table 8.2).
+ * Encodings 0x00..0x02 and 0x10..0x1F are reserved / prohibited; the
+ * driver rejects any value outside
+ * `k_ra_lvd_pvdlvl_min..k_ra_lvd_pvdlvl_max`. Each named entry maps
+ * to a nominal Vdetm voltage; values verified against FSP
+ * `lvd_threshold_t` for RA8D2 in `bsp/mcu/ra8d2/bsp_override.h`.
+ *
+ * @since 0.1.0
+ */
+typedef enum : uint8_t {
+  k_ra_lvd_pvdlvl_min   = 0x03U, /**< Lowest legal threshold encoding.  */
+  k_ra_lvd_pvdlvl_3_86v = 0x03U, /**< 3.86 V.                            */
+  k_ra_lvd_pvdlvl_3_14v = 0x04U, /**< 3.14 V.                            */
+  k_ra_lvd_pvdlvl_3_10v = 0x05U, /**< 3.10 V.                            */
+  k_ra_lvd_pvdlvl_3_08v = 0x06U, /**< 3.08 V.                            */
+  k_ra_lvd_pvdlvl_2_85v = 0x07U, /**< 2.85 V.                            */
+  k_ra_lvd_pvdlvl_2_83v = 0x08U, /**< 2.83 V.                            */
+  k_ra_lvd_pvdlvl_2_80v = 0x09U, /**< 2.80 V.                            */
+  k_ra_lvd_pvdlvl_2_62v = 0x0AU, /**< 2.62 V.                            */
+  k_ra_lvd_pvdlvl_2_33v = 0x0BU, /**< 2.33 V.                            */
+  k_ra_lvd_pvdlvl_1_90v = 0x0CU, /**< 1.90 V.                            */
+  k_ra_lvd_pvdlvl_1_86v = 0x0DU, /**< 1.86 V.                            */
+  k_ra_lvd_pvdlvl_1_74v = 0x0EU, /**< 1.74 V.                            */
+  k_ra_lvd_pvdlvl_1_71v = 0x0FU, /**< 1.71 V.                            */
+  k_ra_lvd_pvdlvl_max   = 0x0FU, /**< Highest legal threshold encoding. */
+} ra_lvd_pvdlvl_t;
+
+/**
+ * @enum ra_lvd_loco_div_t
+ * @brief PVDmCR0.FSAMP[1:0] / PVDnCR0.FSAMP[1:0] sampling-clock divider.
+ *
+ * @details
+ * Selects the LOCO divider feeding the digital filter. HUM Ch 8.2.4 p 305
+ * "FSAMP[1:0] bits" documents 0..3 as the only legal range. The
+ * encoding matches FSP `lvd_sample_clock_t`:
+ *
+ *   - 0 = LOCO / 2  (fastest, highest power).
+ *   - 1 = LOCO / 4.
+ *   - 2 = LOCO / 8.
+ *   - 3 = LOCO / 16 (slowest, lowest power).
+ *
+ * The "2s + 3 LOCO cycles" stabilisation delay computed by
+ * `ra_lvd_filter_delay_us` uses ``s = 2^(div+1)`` -- so div=0 implies
+ * s=2 (LOCO/2), div=3 implies s=16 (LOCO/16).
+ *
+ * @since 0.1.0
+ */
+typedef enum : uint8_t {
+  k_ra_lvd_loco_div_2   = 0U, /**< LOCO / 2  (fastest, highest power). */
+  k_ra_lvd_loco_div_4   = 1U, /**< LOCO / 4.                            */
+  k_ra_lvd_loco_div_8   = 2U, /**< LOCO / 8.                            */
+  k_ra_lvd_loco_div_16  = 3U, /**< LOCO / 16 (slowest, lowest power).  */
+  k_ra_lvd_loco_div_max = 3U, /**< Highest legal value (sentinel).     */
+} ra_lvd_loco_div_t;
+
+/**
+ * @enum ra_lvd_channel_t
+ * @brief Voltage-monitor channel selector.
+ *
+ * @details
+ * The RA8D2 PVD block defines four monitor channels: PVD1 / PVD2 are
+ * the "m" series (NMI-capable, full feature set), PVD4 / PVD5 are the
+ * "n" series (reset-only, no IRQ). Channels 0 and 3 are not exposed
+ * on this part. See HUM Ch 8.1 Table 8.1 p 300.
+ *
+ * @since 0.1.0
+ */
+typedef enum : uint8_t {
+  k_ra_lvd_ch1 = 1U, /**< PVD1 (m series, NMI-capable).      */
+  k_ra_lvd_ch2 = 2U, /**< PVD2 (m series, NMI-capable).      */
+  k_ra_lvd_ch4 = 4U, /**< PVD4 (n series, reset-only).       */
+  k_ra_lvd_ch5 = 5U, /**< PVD5 (n series, reset-only).       */
+} ra_lvd_channel_t;
+
+/**
  * @struct ra_lvd_cfg_t
  * @brief Configuration descriptor for ``ra_lvd_channel_init``.
  *

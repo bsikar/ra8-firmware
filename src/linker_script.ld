@@ -47,7 +47,7 @@ MEMORY
     DATA_FLASH (rw) : ORIGIN = 0x27000000, LENGTH = 16K
     ITCM (rwx) : ORIGIN = 0x00000000, LENGTH = 64K
     DTCM (rwx) : ORIGIN = 0x20000000, LENGTH = 64K
-    SRAM (rwx) : ORIGIN = 0x22000000, LENGTH = 2048K
+    SRAM (rwx) : ORIGIN = 0x22000000, LENGTH = 1024K
     SDRAM (rwx) : ORIGIN = 0x68000000, LENGTH = 64M
 
     /* Non-Secure partition placeholders. Lower halves of

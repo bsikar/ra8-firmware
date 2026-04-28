@@ -113,6 +113,12 @@ function(ra_add_test name)
     ${FW_ROOT}/src/secure_app
     ${CMAKE_CURRENT_SOURCE_DIR}/mocks
   )
+  if(APPLE)
+    target_link_options(${name} PRIVATE
+      "-Wl,-pagezero_size,0x4000"
+      "-Wl,-segalign,0x4000"
+    )
+  endif()
   add_test(NAME ${name} COMMAND ${name})
 endfunction()
 

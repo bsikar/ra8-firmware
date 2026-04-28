@@ -128,6 +128,46 @@ typedef enum : uint8_t {
 } ra_flash_world_t;
 
 /**
+ * @enum ra_flash_irq_src_t
+ * @brief Source identifier for unified flash IRQ dispatcher.
+ */
+typedef enum : uint8_t {
+  k_ra_flash_irq_code_ecc_ted   = 0U, /**< Code MRAM 1-bit ECC TED. */
+  k_ra_flash_irq_code_ecc_dec   = 1U, /**< Code MRAM 2-bit ECC DEC. */
+  k_ra_flash_irq_extra_ecc_ted  = 2U, /**< Extra MRAM 1-bit ECC TED. */
+  k_ra_flash_irq_extra_ecc_dec  = 3U, /**< Extra MRAM 2-bit ECC DEC. */
+  k_ra_flash_irq_program_err    = 4U, /**< Code MRAM program/erase error. */
+  k_ra_flash_irq_extra_err      = 5U, /**< Extra MRAM access error. */
+  k_ra_flash_irq_extra_cmdlk    = 6U, /**< Extra MRAM command-lock. */
+  k_ra_flash_irq_extra_ready    = 7U, /**< Extra MRAM ready. */
+  k_ra_flash_irq_count          = 8U, /**< Sentinel: number of sources. */
+} ra_flash_irq_src_t;
+
+/**
+ * @enum ra_flash_startup_t
+ * @brief Boot-area selection for ::ra_flash_set_startup_area.
+ */
+typedef enum : uint8_t {
+  k_ra_flash_startup_default   = 0U, /**< Default startup area (BTFLG=1). */
+  k_ra_flash_startup_alternate = 1U, /**< Alternate startup area (BTFLG=0). */
+  k_ra_flash_startup_btflg     = 2U, /**< Validation sentinel. */
+} ra_flash_startup_t;
+
+/**
+ * @enum ra_flash_arc_id_t
+ * @brief Anti-rollback counter identifier.
+ */
+typedef enum : uint8_t {
+  k_ra_flash_arc_sec    = 0U, /**< Secure ARC. */
+  k_ra_flash_arc_oembl  = 1U, /**< OEM bootloader ARC. */
+  k_ra_flash_arc_nsec_0 = 2U, /**< Non-secure ARC #0. */
+  k_ra_flash_arc_nsec_1 = 3U, /**< Non-secure ARC #1. */
+  k_ra_flash_arc_nsec_2 = 4U, /**< Non-secure ARC #2. */
+  k_ra_flash_arc_nsec_3 = 5U, /**< Non-secure ARC #3. */
+  k_ra_flash_arc_count  = 6U, /**< Sentinel. */
+} ra_flash_arc_id_t;
+
+/**
  * @struct ra_flash_cfg_t
  * @brief Initialisation descriptor for ``ra_flash_init``.
  *
