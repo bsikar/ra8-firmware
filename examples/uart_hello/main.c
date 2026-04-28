@@ -1,6 +1,6 @@
 /**
  * @file main.c
- * @brief UART "hello world" smoke test for EK-RA8D2 (SCI8 @ 115200)
+ * @brief UART "hello world" smoke test for EK-RA8D2 (SCI8 @ 38400)
  *
  * @par Tag
  * [Ring 6 / APP] {World: S}
@@ -37,11 +37,11 @@
  *
  * @details
  * Brings the chip up on HOCO + PLL via ``ra_cgc_init()``, configures
- * SCI8 TXD8=PD_02 / RXD8=PD_03 in async mode at 115200 8N1, and
+ * SCI8 TXD8=PD_02 / RXD8=PD_03 in async mode at 38400 8N1, and
  * prints ``"hello, ra8d2!\r\n"`` once a second while toggling LED1
  * as a heartbeat. The CDC channel of the on-board J-Link OB on the
  * EK-RA8D2 surfaces these pins as a virtual serial port on the host,
- * so connecting a terminal at 115200 8N1 to that port should show
+ * so connecting a terminal at 38400 8N1 to that port should show
  * the stream once the SCICLK gating is fixed in the CGC driver.
  *
  * Sequence:
@@ -52,13 +52,13 @@
  *      explicitly says "In this section, PCLK refers to PCLKA").
  *   3. ``ra_pfs_route_peripheral()`` for PD_02 and PD_03 to put
  *      them in SCI async mode (PSEL = ``k_ra_psel_sci_async``).
- *   4. ``ra_sci_init(8, &cfg)`` -- 115200 8N1, no parity, one stop.
+ *   4. ``ra_sci_init(8, &cfg)`` -- 38400 8N1, no parity, one stop.
  *   5. ``ra_time_init(cpuclk0_hz)`` for the heartbeat delay.
  *   6. ``ra_gpio_output_init(k_ra_pin_led1, low)`` for the visual
  *      heartbeat.
  *   7. Loop: write the greeting, toggle LED1, sleep 1 s.
  *
- * Verification: open the J-Link OB CDC port at 115200 8N1 (e.g.
+ * Verification: open the J-Link OB CDC port at 38400 8N1 (e.g.
  * ``screen /dev/cu.usbmodem<...> 115200`` on macOS or
  * ``minicom -D /dev/ttyACM0 -b 115200`` on Linux). You should see
  * one greeting line per second and LED1 toggling in lock-step.
@@ -79,19 +79,84 @@
 
 #include <stdint.h>
 
+#include "ra8d2_system_regs.h"
 #include "ra_cgc.h"
 #include "ra_err.h"
 #include "ra_gpio_constants.h"
 #include "ra_isr.h"
 #include "ra_port_constants.h"
 #include "ra_port_utils.h"
+#include "ra_register_protection.h"
 #include "ra_sci.h"
 #include "ra_time.h"
 
+/**
+ * @brief Hand-route SCICLK = PLL1R / 8 so SCI_B's TCLK has a real edge
+ *        source.
+ *
+ * @details
+ * The on-chip CGC driver doesn't currently program SCICKCR /
+ * SCICKDIVCR -- they're left at reset defaults (SCICLK = MOCO with
+ * /1 divider). The SCI_B engine's bit-shift state machine is
+ * clocked from SCICLK (with the PCLK synchronizer bypassed via
+ * CCR3.BPEN = 1), so without a real SCICLK route the engine never
+ * advances even though every register write looks correct.
+ *
+ * Procedure follows HUM 9.2.54 verbatim:
+ *  1. Unlock PRCR.PRC0 (CGC group).
+ *  2. Set SCICKCR.SCICKSREQ = 1; poll until SCICKSRDY = 1.
+ *  3. Programme SCICKDIVCR + SCICKCR.SCICKSEL with the new source.
+ *  4. Clear SCICKCR.SCICKSREQ; poll until SCICKSRDY = 0.
+ *  5. Re-lock PRCR.
+ *
+ * Choices: SCICKSEL = 8 (PLL1R) and SCICKDIV = 4 (/8). PLL1 is the
+ * system clock per SCKSCR=5 readback, so PLL1R is guaranteed to be
+ * running by the time we get here. Final SCICLK rate depends on
+ * PLL1R's tap, but is in the ~30-60 MHz ballpark -- enough for
+ * 115200 baud with the BRR our driver writes.
+ *
+ * @since 0.1.0
+ */
+typedef enum : uint16_t {
+  k_uart_hello_sci_off_dvcr = 0x054U,
+  k_uart_hello_sci_off_ckcr = 0x055U,
+} uart_hello_scickcr_off_t;
+
+typedef enum : uint8_t {
+  k_uart_hello_scickcr_sel_pll1r = 0x08U,
+  k_uart_hello_scickcr_sreq_set  = (1U << 6),
+  k_uart_hello_scickcr_srdy_mask = (1U << 7),
+  k_uart_hello_scickdivcr_div8   = 0x04U,
+} uart_hello_scickcr_bit_t;
+
+static void uart_hello_route_sciclk(void)
+{
+  volatile uint8_t* divcr = (volatile uint8_t*)(k_ra_system_base_addr + k_uart_hello_sci_off_dvcr);
+  volatile uint8_t* ckcr  = (volatile uint8_t*)(k_ra_system_base_addr + k_uart_hello_sci_off_ckcr);
+
+  RA_PROTECTED_WRITE(k_ra_prcr_unlock_cgc)
+  {
+    /* HUM 9.2.54 step 3: request switch. Keep current SEL value while
+     * SREQ is asserted. */
+    *ckcr = (uint8_t)(*ckcr | k_uart_hello_scickcr_sreq_set);
+    while ((*ckcr & k_uart_hello_scickcr_srdy_mask) == 0U) {
+      /* HUM 9.2.54 step 4: spin until SCICLK is gated and re-routable. */
+    }
+    /* HUM 9.2.54 step 5: programme divider + source while SREQ=1. */
+    *divcr = k_uart_hello_scickdivcr_div8;
+    *ckcr  = (uint8_t)(k_uart_hello_scickcr_sel_pll1r | k_uart_hello_scickcr_sreq_set);
+    /* HUM 9.2.54 step 6: clear SREQ to start the new clock. */
+    *ckcr = k_uart_hello_scickcr_sel_pll1r;
+    while ((*ckcr & k_uart_hello_scickcr_srdy_mask) != 0U) {
+      /* HUM 9.2.54 step 7: spin until the new SCICLK is stable. */
+    }
+  }
+}
+
 /** @brief Compile-time settings for the demo. */
 typedef enum : uint32_t {
-  k_uart_hello_baud        = 115200U,
-  k_uart_hello_period_ms   = 1000U,
+  k_uart_hello_baud        = 38400U,
+  k_uart_hello_period_ms   = 100U,
   k_uart_hello_sci_channel = 8U,
 } uart_hello_config_t;
 
@@ -162,30 +227,36 @@ static void uart_hello_panic_halt(void)
  */
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmain"
-int32_t main(void)
+/**
+ * @brief Bring CGC + SysTick + SCI8 + LED1 up. Panic-halts on any fail.
+ *
+ * @details
+ * Hardcoded `pclka_hz = 20 MHz` is the empirically-verified PCLKA
+ * post-`ra_cgc_init()` (PLL1 currently lands at ~160 MHz, /8 = 20 MHz).
+ * Once the CGC driver brings PLL1 up to the rated 480-1000 MHz, this
+ * constant moves up and the example can switch back to 115200 baud.
+ *
+ * @since 0.1.0
+ */
+static void uart_hello_setup_or_halt(void)
 {
+  uint32_t       cpuclk0_hz = 0U;
+  const uint32_t pclka_hz   = 20000000U;
+
   if (ra_cgc_init() != k_ra_ok) {
     uart_hello_panic_halt();
   }
-
-  uint32_t cpuclk0_hz = 0U;
+  /* Route SCICLK = PLL1R / 8 -- the SCI_B engine clocks its bit shifter
+   * from SCICLK (CCR3.BPEN bypasses the PCLK<->SCICLK synchronizer but
+   * doesn't change the source). Without this SCICLK is at reset default
+   * MOCO ~8 MHz and the engine produces garbled output. */
+  uart_hello_route_sciclk();
   if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
     uart_hello_panic_halt();
   }
-
-  /* SCI_B's BRR is computed against PCLKA, per HUM Ch 38 ("In this
-   * section, PCLK refers to PCLKA"). Hardcoded to 60 MHz: the chip's
-   * SCKDIVCR.PCKA divider after ra_cgc_init() is /8 against the PLL
-   * output (480 MHz), giving PCLKA = 60 MHz. ra_cgc_get_clock_hz()
-   * disagrees with the live SCKDIVCR readback for reasons that need
-   * a separate CGC-driver fix; until that lands, hardcoding the
-   * verified-via-SWD value here lets uart_hello actually print. */
-  const uint32_t pclka_hz = 60000000U;
-
   if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
     uart_hello_panic_halt();
   }
-
   if (uart_hello_pins_init() != k_ra_ok) {
     uart_hello_panic_halt();
   }
@@ -200,13 +271,20 @@ int32_t main(void)
   if (ra_sci_init((uint8_t)k_uart_hello_sci_channel, &sci_cfg) != k_ra_ok) {
     uart_hello_panic_halt();
   }
-
   if (ra_gpio_output_init(k_ra_pin_led1, k_ra_level_low) != k_ra_ok) {
     uart_hello_panic_halt();
   }
+}
+
+int32_t main(void)
+{
+  uart_hello_setup_or_halt();
 
   ra_isr_globals_enable();
 
+  /* Continuous TX -- no per-greeting sleep -- so a SWD halt has a much
+   * higher chance of catching mid-shift, and any working CDC bridge
+   * sees a steady stream instead of one greeting per second. */
   while (1) {
     if (ra_sci_write_polling((uint8_t)k_uart_hello_sci_channel,
                              k_uart_hello_greeting,
@@ -216,7 +294,11 @@ int32_t main(void)
     if (ra_gpio_toggle(k_ra_pin_led1) != k_ra_ok) {
       break;
     }
-    ra_delay_ms(k_uart_hello_period_ms);
+    /* No per-cycle sleep -- continuous TX. The chip's CDC bridge
+     * appears to drop bytes on slow paced traffic; sustained flow
+     * makes the host see clean output. The LED toggles within the
+     * write loop so it still pulses (very fast, but visible). */
+    /* ra_delay_ms(k_uart_hello_period_ms); */
   }
 
   uart_hello_panic_halt();
