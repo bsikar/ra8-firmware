@@ -35,6 +35,7 @@ extern "C" {
 
 #include "ra8d2_icu_regs.h"
 #include "ra_err.h"
+#include "ra_gpio_constants.h"
 #include "ra_isr.h"
 #include "ra_port_constants.h"
 
@@ -111,6 +112,47 @@ extern "C" {
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_gpio_read(ra_port_pin_t pin, ra_level_t* out_level);
+
+/**
+ * @brief Route a pin to a non-IRQ peripheral function via PFS.PSEL.
+ *
+ * @details
+ * Claims the pin through the validator, unlocks PWPR, writes
+ * `PMR=1` plus the requested PSEL code into the pin's PFS register,
+ * relocks PWPR, and logs the routing. Use for SCI / IIC / SPI /
+ * GPT / xSPI / GLCDC / etc. -- any peripheral whose pin selection
+ * is encoded in the PFS PSEL field. External IRQ inputs go through
+ * `ra_gpio_attach_irq` instead, which combines the PFS write with
+ * the ICU + NVIC configuration in one call.
+ *
+ * @param[in] pin   Packed port/pin identifier (see `RA_PIN(...)`).
+ * @param[in] psel  PFS PSEL code (`ra_psel_t` from
+ *                  `ra_gpio_constants.h`).
+ * @param[in] owner Non-NULL static string used for the validator
+ *                  ownership log.
+ *
+ * @return `ra_err_t` error code.
+ * @retval k_ra_ok                 Pin is now in peripheral mode.
+ * @retval k_ra_err_null_ptr       `owner` was nullptr.
+ * @retval k_ra_err_gpio_invalid_port  Port index out of range.
+ * @retval k_ra_err_gpio_invalid_pin   Pin index out of range.
+ * @retval k_ra_err_gpio_conflict      Pin is already claimed by
+ *                                     another owner.
+ * @retval k_ra_err_hw_unmapped        Pin has no PFS mapping
+ *                                     (host-test sim only).
+ *
+ * @pre IOPORT module is reachable.
+ * @pre Caller is single-threaded init context.
+ *
+ * @post On success the pin's PFS holds `PMR=1 | (psel << PSEL0)`.
+ * @post On success the pin is claimed by `owner`.
+ *
+ * @note Not thread-safe; intended for boot.
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t
+ra_pfs_route_peripheral(ra_port_pin_t pin, ra_psel_t psel, const char* owner);
 
 /* =============================================================================
  * External IRQ attachment

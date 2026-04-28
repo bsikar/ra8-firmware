@@ -91,8 +91,13 @@ ra_err_t ra_sdhi_send_command(uint8_t   instance,
   reg->SD_ARG = arg;
   reg->SD_CMD = cmd;
 
-  /* Poll SD_INFO1.RSPEND (bit 0) with bounded spin budget. */
-  enum : uint32_t { k_ra_sdhi_cmd_spin = 200000U };
+  /* Poll SD_INFO1.RSPEND (bit 0) with bounded spin budget. The host
+   * test fires a 100 us SIGALRM to set the bit asynchronously; the
+   * budget must be large enough that the loop is still spinning when
+   * the signal lands under macOS / Linux scheduler jitter. 2M spins
+   * on a 1 GHz CPU is still only ~2 ms of wall clock -- a sane SDHI
+   * command-response timeout on real silicon. */
+  enum : uint32_t { k_ra_sdhi_cmd_spin = 2000000U };
   for (uint32_t i = 0U; i < k_ra_sdhi_cmd_spin; ++i) {
     if ((reg->SD_INFO1 & 1UL) != 0UL) {
       if (out_rsp != nullptr) {
