@@ -45,8 +45,7 @@ RA_NSC_VENEER ra_err_t ra_nsc_sci_putc(uint8_t channel, uint8_t byte)
   return ra_sci_putc_polling(channel, byte);
 }
 
-RA_NSC_VENEER ra_err_t ra_nsc_sci_getc(uint8_t  channel,
-                                       uint8_t* out_byte) // NOLINT(readability-non-const-parameter)
+RA_NSC_VENEER ra_err_t ra_nsc_sci_getc(uint8_t channel, uint8_t* out_byte)
 {
   RA_CHECK_NULL_PTR(out_byte, s_tag, "sci_getc: out_byte");
   RA_NSC_CHECK_NS_RANGE_RW(out_byte, sizeof(*out_byte));
@@ -77,7 +76,7 @@ RA_NSC_VENEER ra_err_t ra_nsc_iic_write(uint8_t        channel,
 
 RA_NSC_VENEER ra_err_t ra_nsc_iic_read(uint8_t  channel,
                                        uint8_t  target_7b,
-                                       uint8_t* out_buf, // NOLINT(readability-non-const-parameter)
+                                       uint8_t* out_buf,
                                        uint32_t len)
 {
   RA_CHECK_NULL_PTR(out_buf, s_tag, "iic_read: out_buf");
@@ -97,9 +96,7 @@ RA_NSC_VENEER ra_err_t ra_nsc_spi_init(uint8_t channel, const ra_spi_cfg_t* cfg)
   return ra_spi_init(channel, cfg);
 }
 
-RA_NSC_VENEER ra_err_t ra_nsc_spi_xfer8(uint8_t  channel,
-                                        uint8_t  tx,
-                                        uint8_t* rx) // NOLINT(readability-non-const-parameter)
+RA_NSC_VENEER ra_err_t ra_nsc_spi_xfer8(uint8_t channel, uint8_t tx, uint8_t* rx)
 {
   /* rx is allowed to be NULL (the legacy ra_spi_xfer8 contract). */
   if (rx != nullptr) {

@@ -186,6 +186,91 @@ static ra_err_t internal_run_bist(void)
   return k_ra_ok;
 }
 
+/* Forward declarations: round-3 helpers defined further down are reused
+ * by the round-1 ``ra_rsip_sha256`` entry point above the round-3 block. */
+static uint32_t internal_pack_le(const uint8_t* p);
+static void     internal_unpack_le(uint32_t word, uint8_t* p);
+static void     internal_push_bytes_to_port(ra_rsip_off_t off, const uint8_t* in, uint32_t len);
+
+/**
+ * @brief Stream the SHA-256 message body into the HASH input port.
+ *
+ * @param[in] msg     Source bytes (>= ``msg_len``); never NULL here.
+ * @param[in] msg_len Total bytes to absorb.
+ *
+ * @pre ``msg`` is non-NULL.
+ * @pre ``HASH_CTRL`` has been programmed with the algorithm selector.
+ *
+ * @post The HASH input port has observed ``ceil(msg_len / 4)`` writes.
+ * @post No DONE poll has run yet.
+ *
+ * @note Internal helper; thin wrapper around ``internal_push_bytes_to_port``.
+ * @since 0.1.0
+ */
+static void internal_sha256_push_msg(const uint8_t* msg, uint32_t msg_len)
+{
+  /* HUM Ch 52.2.3 "Hash Generator" p 3306 */
+  /* Stream message into HASH input port one 32-bit word at a time.
+   * The HAL handles partial trailing bytes by zero-extending into
+   * a single word. */
+  internal_push_bytes_to_port(k_ra_rsip_off_hash_data_in, msg, msg_len);
+}
+
+/**
+ * @brief Wait for the HASH engine to raise DONE after the trailing block.
+ *
+ * @return ``k_ra_ok`` once DONE was observed, or ``k_ra_err_hw_timeout``.
+ *
+ * @pre The message body has already been pushed.
+ * @pre ``HASH_STATUS.DONE`` is the only completion bit examined.
+ *
+ * @post On ``k_ra_ok``, ``HASH_STATUS.DONE`` was observed set.
+ * @post On timeout, no caller-visible state is modified.
+ *
+ * @note Internal helper.
+ * @since 0.1.0
+ */
+static ra_err_t internal_hash_wait_done(void)
+{
+  /* On hardware the engine raises HASH_STATUS.DONE once it
+   * absorbs the trailing block + length. The host sim pre-asserts
+   * the bit so the wait terminates. */
+  volatile uint32_t* hstatus = ra_rsip_reg32(k_ra_rsip_off_hash_status);
+  *hstatus |= k_ra_rsip_mask_isr_done;
+  return internal_wait_bit(k_ra_rsip_off_hash_status, k_ra_rsip_mask_isr_done);
+}
+
+/**
+ * @brief Read 8 SHA-256 digest words and ack the DONE bit.
+ *
+ * @param[out] digest 32-byte destination; never NULL here.
+ *
+ * @pre ``digest`` is non-NULL.
+ * @pre ``internal_hash_wait_done`` has just returned ``k_ra_ok``.
+ *
+ * @post ``digest[0..31]`` reflects the engine output (little-endian).
+ * @post ``HASH_STATUS.DONE`` has been cleared so the next call is clean.
+ *
+ * @note Internal helper.
+ * @since 0.1.0
+ */
+static void internal_sha256_pull_digest(uint8_t* digest)
+{
+  /* HUM Ch 52.2.3 "Hash Generator" p 3306 */
+  /* Read 8 digest words. */
+  for (uint32_t w = 0U; w < (uint32_t)k_ra_rsip_sha256_digest_words; ++w) {
+    /* Computed digest-word offset is a valid HUM-defined register location,
+     * not a literal enumerator -- the analyzer can't see that. */
+    const ra_rsip_off_t off =
+      (ra_rsip_off_t)( // NOLINT(clang-analyzer-optin.core.EnumCastOutOfRange)
+        k_ra_rsip_off_hash_digest + (uint16_t)(w << k_ra_rsip_word_shift));
+    const uint32_t word = *ra_rsip_reg32(off);
+    internal_unpack_le(word, &digest[w << k_ra_rsip_word_shift]);
+  }
+  /* Ack the DONE bit so the next call starts clean. */
+  *ra_rsip_reg32(k_ra_rsip_off_hash_status) &= ~k_ra_rsip_mask_isr_done;
+}
+
 ra_err_t ra_rsip_init(const ra_rsip_config_t* cfg)
 {
   RA_CHECK_NULL_PTR((void*)cfg, s_tag, "cfg must not be nullptr");
@@ -334,7 +419,6 @@ ra_err_t ra_rsip_trng_read(uint8_t* buf, uint32_t len)
   return k_ra_ok;
 }
 
-// NOLINTNEXTLINE(readability-function-size,readability-function-cognitive-complexity)
 ra_err_t ra_rsip_sha256(const uint8_t* msg, uint32_t msg_len, uint8_t* digest)
 {
   RA_CHECK_NULL_PTR((void*)msg, s_tag, "msg must not be nullptr");
@@ -344,57 +428,12 @@ ra_err_t ra_rsip_sha256(const uint8_t* msg, uint32_t msg_len, uint8_t* digest)
   /* HASH algorithm select. */
   *ra_rsip_reg32(k_ra_rsip_off_hash_ctrl) = k_ra_rsip_hash_sha256;
 
-  /* HUM Ch 52.2.3 "Hash Generator" p 3306 */
-  /* Stream message into HASH input port one 32-bit word at a time.
-   * The HAL handles partial trailing bytes by zero-extending into
-   * a single word. */
-  volatile uint32_t* in = ra_rsip_reg32(k_ra_rsip_off_hash_data_in);
-  uint32_t           i  = 0U;
-  while ((i + (uint32_t)k_ra_rsip_trng_word_bytes) <= msg_len) {
-    const uint32_t word = ((uint32_t)msg[i + 0U]) |
-                          (((uint32_t)msg[i + 1U]) << k_ra_rsip_byte_bits) |
-                          (((uint32_t)msg[i + 2U]) << k_ra_rsip_byte_shift_2) |
-                          (((uint32_t)msg[i + 3U]) << k_ra_rsip_byte_shift_3);
-    *in                 = word;
-    i += (uint32_t)k_ra_rsip_trng_word_bytes;
-  }
-  if (i < msg_len) {
-    uint32_t tail = 0U;
-    for (uint32_t b = 0U; (i + b) < msg_len; ++b) {
-      tail |= ((uint32_t)msg[i + b]) << (b * k_ra_rsip_byte_bits);
-    }
-    *in = tail;
-  }
+  internal_sha256_push_msg(msg, msg_len);
 
-  /* On hardware the engine raises HASH_STATUS.DONE once it
-   * absorbs the trailing block + length. The host sim pre-asserts
-   * the bit so the wait terminates. */
-  volatile uint32_t* hstatus = ra_rsip_reg32(k_ra_rsip_off_hash_status);
-  *hstatus |= k_ra_rsip_mask_isr_done;
-
-  const ra_err_t wait_err = internal_wait_bit(k_ra_rsip_off_hash_status, k_ra_rsip_mask_isr_done);
+  const ra_err_t wait_err = internal_hash_wait_done();
   RA_RETURN_ON_ERROR(wait_err, s_tag, "rsip_sha256: hash done");
 
-  /* HUM Ch 52.2.3 "Hash Generator" p 3306 */
-  /* Read 8 digest words. */
-  for (uint32_t w = 0U; w < (uint32_t)k_ra_rsip_sha256_digest_words; ++w) {
-    /* Computed digest-word offset is a valid HUM-defined register location,
-     * not a literal enumerator -- the analyzer can't see that. */
-    const ra_rsip_off_t off =
-      (ra_rsip_off_t)( // NOLINT(clang-analyzer-optin.core.EnumCastOutOfRange)
-        k_ra_rsip_off_hash_digest + (uint16_t)(w << k_ra_rsip_word_shift));
-    const uint32_t word                      = *ra_rsip_reg32(off);
-    digest[(w << k_ra_rsip_word_shift) + 0U] = (uint8_t)(word & k_ra_rsip_byte_mask);
-    digest[(w << k_ra_rsip_word_shift) + 1U] =
-      (uint8_t)((word >> k_ra_rsip_byte_bits) & k_ra_rsip_byte_mask);
-    digest[(w << k_ra_rsip_word_shift) + 2U] =
-      (uint8_t)((word >> k_ra_rsip_byte_shift_2) & k_ra_rsip_byte_mask);
-    digest[(w << k_ra_rsip_word_shift) + 3U] =
-      (uint8_t)((word >> k_ra_rsip_byte_shift_3) & k_ra_rsip_byte_mask);
-  }
-
-  /* Ack the DONE bit so the next call starts clean. */
-  *hstatus &= ~k_ra_rsip_mask_isr_done;
+  internal_sha256_pull_digest(digest);
   return k_ra_ok;
 }
 
@@ -591,6 +630,46 @@ static ra_err_t internal_complete(uint32_t done_mask)
 }
 
 /**
+ * @brief Stream a variable-length byte buffer into a single fixed MMIO port.
+ *
+ * @details
+ * Many RSIP sub-engines (HASH, KDF label / salt, AEAD AAD) accept their
+ * input through a single 32-bit register that latches one little-endian
+ * word per write. This helper packs whole 32-bit words via
+ * ``internal_pack_le`` and zero-pads any trailing 1 .. 3 bytes into a
+ * final partial word so the caller never has to repeat that code shape.
+ *
+ * @param[in] off Register offset of the input port.
+ * @param[in] in  Buffer (>= ``len`` bytes); may be NULL only if ``len`` is 0.
+ * @param[in] len Bytes to push (may be zero, in which case this is a no-op).
+ *
+ * @pre ``off`` is a valid ``ra_rsip_off_t`` mapping to a write-only FIFO.
+ * @pre Either ``len`` is zero or ``in`` is non-NULL.
+ *
+ * @post The engine has observed ``ceil(len / 4)`` word writes to ``off``.
+ * @post No command-word side effect.
+ *
+ * @note Internal helper.
+ * @since 0.1.0
+ */
+static void internal_push_bytes_to_port(ra_rsip_off_t off, const uint8_t* in, uint32_t len)
+{
+  volatile uint32_t* port = ra_rsip_reg32(off);
+  uint32_t           i    = 0U;
+  while ((i + (uint32_t)k_ra_rsip_trng_word_bytes) <= len) {
+    *port = internal_pack_le(&in[i]);
+    i += (uint32_t)k_ra_rsip_trng_word_bytes;
+  }
+  if (i < len) {
+    uint32_t tail = 0U;
+    for (uint32_t b = 0U; (i + b) < len; ++b) {
+      tail |= ((uint32_t)in[i + b]) << (b * k_ra_rsip_byte_bits);
+    }
+    *port = tail;
+  }
+}
+
+/**
  * @brief Stream ``len`` bytes into the data input window.
  *
  * @param[in] in  Buffer to push (>= ``len`` bytes); never NULL.
@@ -669,6 +748,38 @@ static void internal_pull_data(uint8_t* out, uint32_t len)
 }
 
 /**
+ * @brief Push a 16-byte IV / nonce into 4 consecutive 32-bit lanes.
+ *
+ * @details
+ * The RSIP exposes IV / nonce input as 4 consecutive 32-bit registers
+ * starting at ``base``. The symmetric-cipher path uses ``SYM_IV0`` and
+ * the key-wrap path uses ``KW_IV0``; both share the layout, so this
+ * helper takes the base offset rather than baking it in.
+ *
+ * @param[in] base First lane offset (``SYM_IV0`` or ``KW_IV0``).
+ * @param[in] iv   16 source bytes; never NULL here.
+ *
+ * @pre ``iv`` is non-NULL.
+ * @pre ``base`` is the lane-0 offset of a 4-lane IV window.
+ *
+ * @post Lanes 0..3 reflect the supplied IV in little-endian order.
+ * @post No command-word side effect.
+ *
+ * @note Internal helper.
+ * @since 0.1.0
+ */
+static void internal_push_iv_lanes(ra_rsip_off_t base, const uint8_t* iv)
+{
+  for (uint32_t w = 0U; w < k_ra_rsip_iv_words; ++w) {
+    /* Computed lane offset is a HUM-defined register, not an enumerator. */
+    const ra_rsip_off_t off =
+      (ra_rsip_off_t)( // NOLINT(clang-analyzer-optin.core.EnumCastOutOfRange)
+        (uint32_t)base + (uint16_t)(w << k_ra_rsip_word_shift));
+    *ra_rsip_reg32(off) = internal_pack_le(&iv[(size_t)w * (size_t)k_ra_rsip_trng_word_bytes]);
+  }
+}
+
+/**
  * @brief Push a 16-byte IV / nonce into the SYM_IV0..3 lanes.
  *
  * @param[in] iv 16 bytes; may be NULL (lanes left untouched).
@@ -688,10 +799,61 @@ static void internal_push_iv(const uint8_t* iv)
     return;
   }
   /* HUM Ch 52.2 "Symmetric cipher" p 3303 */
-  for (uint32_t w = 0U; w < k_ra_rsip_iv_words; ++w) {
-    const ra_rsip_off_t off =
-      (ra_rsip_off_t)(k_ra_rsip_off_sym_iv0 + (uint16_t)(w << k_ra_rsip_word_shift));
-    *ra_rsip_reg32(off) = internal_pack_le(&iv[(size_t)w * (size_t)k_ra_rsip_trng_word_bytes]);
+  internal_push_iv_lanes(k_ra_rsip_off_sym_iv0, iv);
+}
+
+/**
+ * @brief Zero-fill the unused tail of a key-handle body buffer.
+ *
+ * @details
+ * Several engine paths return a wrapped body shorter than the
+ * maximum body capacity. To avoid leaking stale stack contents into
+ * the structure, callers always pad ``body[words .. max-1]`` with
+ * zeros. Centralised here.
+ *
+ * @param[in,out] handle Handle whose ``body[]`` tail is wiped.
+ * @param[in]     words  Number of words already populated.
+ *
+ * @pre ``handle`` is non-NULL.
+ * @pre ``words`` <= ``k_ra_rsip_handle_words_rsa4096_priv``.
+ *
+ * @post ``handle->body[w] == 0`` for all ``w`` in [``words``, max).
+ * @post No other field is modified.
+ *
+ * @note Internal helper.
+ * @since 0.1.0
+ */
+static void internal_zero_handle_tail(ra_rsip_key_handle_t* handle, uint32_t words)
+{
+  for (uint32_t w = words; w < (uint32_t)k_ra_rsip_handle_words_rsa4096_priv; ++w) {
+    handle->body[w] = 0U;
+  }
+}
+
+/**
+ * @brief Stream a wrapped key body into the staging port.
+ *
+ * @details
+ * KEK loading for the wrap / unwrap engine and IKM loading for the
+ * KDF engine both push ``handle->body_words`` words into the same
+ * staging port. This helper centralises that loop.
+ *
+ * @param[in] handle Source handle; never NULL here.
+ *
+ * @pre ``handle`` is non-NULL.
+ * @pre ``handle->body_words`` <= length of ``handle->body``.
+ *
+ * @post ``KEY_STAGE`` has observed ``handle->body_words`` writes.
+ * @post Caller is expected to have already published ``handle->alg``
+ *       to the appropriate algorithm-selector register.
+ *
+ * @note Internal helper.
+ * @since 0.1.0
+ */
+static void internal_push_handle_body(const ra_rsip_key_handle_t* handle)
+{
+  for (uint32_t w = 0U; w < handle->body_words; ++w) {
+    *ra_rsip_reg32(k_ra_rsip_off_key_stage) = handle->body[w];
   }
 }
 
@@ -717,9 +879,7 @@ static void internal_load_handle(const ra_rsip_key_handle_t* handle)
   }
   /* HUM Ch 52.1 "Application Key Management" p 3303 */
   *ra_rsip_reg32(k_ra_rsip_off_sym_keyh) = handle->alg;
-  for (uint32_t w = 0U; w < handle->body_words; ++w) {
-    *ra_rsip_reg32(k_ra_rsip_off_key_stage) = handle->body[w];
-  }
+  internal_push_handle_body(handle);
 }
 
 /**
@@ -1020,7 +1180,50 @@ ra_err_t ra_rsip_aes_cipher(const ra_rsip_key_handle_t* key,
  * @note Internal helper.
  * @since 0.1.0
  */
-// NOLINTNEXTLINE(readability-function-size,readability-function-cognitive-complexity)
+/**
+ * @brief Push 16 tag bytes through the SYM_TAG port (decrypt path).
+ *
+ * @param[in] tag 16-byte authenticator supplied by the caller.
+ *
+ * @pre ``tag`` is non-NULL.
+ * @pre Engine has just been programmed with the AEAD selector.
+ *
+ * @post ``SYM_TAG`` has observed 4 word writes.
+ * @post Engine is primed for verification on completion.
+ *
+ * @note Internal helper.
+ * @since 0.1.0
+ */
+static void internal_aead_push_tag(const uint8_t* tag)
+{
+  for (uint32_t w = 0U; w < k_ra_rsip_aes_block_w; ++w) {
+    *ra_rsip_reg32(k_ra_rsip_off_sym_tag) =
+      internal_pack_le(&tag[(size_t)w * (size_t)k_ra_rsip_trng_word_bytes]);
+  }
+}
+
+/**
+ * @brief Pull 16 tag bytes from the SYM_TAG port (encrypt path).
+ *
+ * @param[out] tag 16-byte destination.
+ *
+ * @pre ``tag`` is non-NULL.
+ * @pre ``internal_complete`` has just returned ``k_ra_ok``.
+ *
+ * @post ``tag[0..15]`` reflects the engine-computed authenticator.
+ * @post No command-word side effect.
+ *
+ * @note Internal helper.
+ * @since 0.1.0
+ */
+static void internal_aead_pull_tag(uint8_t* tag)
+{
+  for (uint32_t w = 0U; w < k_ra_rsip_aes_block_w; ++w) {
+    const uint32_t word = *ra_rsip_reg32(k_ra_rsip_off_sym_tag);
+    internal_unpack_le(word, &tag[(size_t)w * (size_t)k_ra_rsip_trng_word_bytes]);
+  }
+}
+
 static ra_err_t internal_aead_run(const ra_rsip_key_handle_t* key,
                                   uint8_t                     alg_byte,
                                   ra_rsip_aes_mode_t          mode,
@@ -1042,26 +1245,12 @@ static ra_err_t internal_aead_run(const ra_rsip_key_handle_t* key,
 
   if ((aad != nullptr) && (aad_len > 0U)) {
     /* Push AAD bytes one word at a time through the AAD lane. */
-    uint32_t i = 0U;
-    while ((i + (uint32_t)k_ra_rsip_trng_word_bytes) <= aad_len) {
-      *ra_rsip_reg32(k_ra_rsip_off_sym_aad_in) = internal_pack_le(&aad[i]);
-      i += (uint32_t)k_ra_rsip_trng_word_bytes;
-    }
-    if (i < aad_len) {
-      uint32_t tail = 0U;
-      for (uint32_t b = 0U; (i + b) < aad_len; ++b) {
-        tail |= ((uint32_t)aad[i + b]) << (b * k_ra_rsip_byte_bits);
-      }
-      *ra_rsip_reg32(k_ra_rsip_off_sym_aad_in) = tail;
-    }
+    internal_push_bytes_to_port(k_ra_rsip_off_sym_aad_in, aad, aad_len);
   }
 
   /* On decrypt, push the supplied tag in for verification. */
   if (dir == k_ra_rsip_dir_decrypt) {
-    for (uint32_t w = 0U; w < k_ra_rsip_aes_block_w; ++w) {
-      *ra_rsip_reg32(k_ra_rsip_off_sym_tag) =
-        internal_pack_le(&tag[(size_t)w * (size_t)k_ra_rsip_trng_word_bytes]);
-    }
+    internal_aead_push_tag(tag);
   }
 
   const uint32_t cmd = ((uint32_t)dir << k_ra_rsip_byte_shift_2) |
@@ -1077,10 +1266,7 @@ static ra_err_t internal_aead_run(const ra_rsip_key_handle_t* key,
   internal_pull_data(out, in_len);
   /* On encrypt, read the engine-computed tag back. */
   if (dir == k_ra_rsip_dir_encrypt) {
-    for (uint32_t w = 0U; w < k_ra_rsip_aes_block_w; ++w) {
-      const uint32_t word = *ra_rsip_reg32(k_ra_rsip_off_sym_tag);
-      internal_unpack_le(word, &tag[(size_t)w * (size_t)k_ra_rsip_trng_word_bytes]);
-    }
+    internal_aead_pull_tag(tag);
   }
   return k_ra_ok;
 }
@@ -1154,7 +1340,33 @@ ra_err_t ra_rsip_aes_ccm(const ra_rsip_key_handle_t* key,
  * ===========================================================================
  */
 
-// NOLINTNEXTLINE(readability-function-size,readability-function-cognitive-complexity)
+/**
+ * @brief Stage the ChaCha20-style 16-byte IV (counter || 12-byte nonce).
+ *
+ * @param[in] counter Initial block counter (lane 0).
+ * @param[in] nonce   12-byte nonce (lanes 1..3).
+ *
+ * @pre ``nonce`` is non-NULL.
+ * @pre Caller has already loaded the key handle.
+ *
+ * @post ``SYM_IV0..3`` reflect the counter and nonce.
+ * @post No command-word side effect.
+ *
+ * @note Internal helper.
+ * @since 0.1.0
+ */
+static void internal_chacha20_push_iv(uint32_t counter, const uint8_t* nonce)
+{
+  /* HUM Ch 52.2 "Symmetric cipher" p 3303 */
+  /* ChaCha20 IV layout: counter || 12-byte nonce. */
+  *ra_rsip_reg32(k_ra_rsip_off_sym_iv0) = counter;
+  *ra_rsip_reg32(k_ra_rsip_off_sym_iv1) = internal_pack_le(&nonce[0]);
+  *ra_rsip_reg32(k_ra_rsip_off_sym_iv2) =
+    internal_pack_le(&nonce[(uint32_t)k_ra_rsip_trng_word_bytes]);
+  *ra_rsip_reg32(k_ra_rsip_off_sym_iv3) =
+    internal_pack_le(&nonce[(size_t)2U * (size_t)k_ra_rsip_trng_word_bytes]);
+}
+
 ra_err_t ra_rsip_chacha20(const ra_rsip_key_handle_t* key,
                           ra_rsip_aes_dir_t           dir,
                           const uint8_t*              nonce,
@@ -1171,14 +1383,7 @@ ra_err_t ra_rsip_chacha20(const ra_rsip_key_handle_t* key,
     return k_ra_err_invalid_arg;
   }
   internal_load_handle(key);
-  /* HUM Ch 52.2 "Symmetric cipher" p 3303 */
-  /* ChaCha20 IV layout: counter || 12-byte nonce. */
-  *ra_rsip_reg32(k_ra_rsip_off_sym_iv0) = counter;
-  *ra_rsip_reg32(k_ra_rsip_off_sym_iv1) = internal_pack_le(&nonce[0]);
-  *ra_rsip_reg32(k_ra_rsip_off_sym_iv2) =
-    internal_pack_le(&nonce[(uint32_t)k_ra_rsip_trng_word_bytes]);
-  *ra_rsip_reg32(k_ra_rsip_off_sym_iv3) =
-    internal_pack_le(&nonce[(size_t)2U * (size_t)k_ra_rsip_trng_word_bytes]);
+  internal_chacha20_push_iv(counter, nonce);
 
   const uint32_t cmd                     = ((uint32_t)dir << k_ra_rsip_byte_shift_2) |
                                            (k_ra_rsip_chacha_op_encrypt << k_ra_rsip_byte_bits) |
@@ -1309,54 +1514,64 @@ static uint32_t internal_hash_size(ra_rsip_hash_alg_t alg)
   }
 }
 
-// NOLINTNEXTLINE(readability-function-size,readability-function-cognitive-complexity)
-ra_err_t ra_rsip_hash(ra_rsip_hash_alg_t alg,
-                      const uint8_t*     msg,
-                      uint32_t           msg_len,
-                      uint8_t*           digest,
-                      uint32_t           digest_len)
+/**
+ * @brief Validate the hash + digest length arguments before any MMIO.
+ *
+ * @param[in]  alg        Hash algorithm.
+ * @param[in]  msg        Message body or NULL when ``msg_len`` is 0.
+ * @param[in]  msg_len    Message length in bytes.
+ * @param[in]  digest_len Caller-supplied digest buffer length.
+ * @param[out] needed     Receives the algorithm-natural digest length on
+ *                        ``k_ra_ok``.
+ *
+ * @return ``ra_err_t``.
+ *
+ * @pre ``needed`` is non-NULL.
+ *
+ * @post On success, ``*needed`` is the digest length to read.
+ * @post No engine state is touched on any error path.
+ *
+ * @note Internal helper.
+ * @since 0.1.0
+ */
+static ra_err_t internal_hash_validate(ra_rsip_hash_alg_t alg,
+                                       const uint8_t*     msg,
+                                       uint32_t           msg_len,
+                                       uint32_t           digest_len,
+                                       uint32_t*          needed)
 {
-  RA_CHECK_NULL_PTR(digest, s_tag, "digest must not be nullptr");
   if ((msg == nullptr) && (msg_len != 0U)) {
     return k_ra_err_null_ptr;
   }
-  const uint32_t needed = internal_hash_size(alg);
-  if (needed == 0U) {
+  const uint32_t n = internal_hash_size(alg);
+  if (n == 0U) {
     return k_ra_err_invalid_arg;
   }
-  if ((alg != k_ra_rsip_hash_shake128) && (alg != k_ra_rsip_hash_shake256) &&
-      (digest_len < needed)) {
+  if ((alg != k_ra_rsip_hash_shake128) && (alg != k_ra_rsip_hash_shake256) && (digest_len < n)) {
     return k_ra_err_invalid_arg;
   }
+  *needed = n;
+  return k_ra_ok;
+}
 
+/**
+ * @brief Read a variable-length digest from the HASH_DIGEST window.
+ *
+ * @param[out] digest  Destination (>= ``to_read`` bytes).
+ * @param[in]  to_read Bytes to read.
+ *
+ * @pre ``digest`` is non-NULL.
+ * @pre ``internal_hash_wait_done`` has just returned ``k_ra_ok``.
+ *
+ * @post ``digest[0..to_read-1]`` reflect the engine output.
+ * @post ``HASH_STATUS.DONE`` has been cleared.
+ *
+ * @note Internal helper.
+ * @since 0.1.0
+ */
+static void internal_hash_pull_digest(uint8_t* digest, uint32_t to_read)
+{
   /* HUM Ch 52.2.3 "Hash Generator" p 3306 */
-  *ra_rsip_reg32(k_ra_rsip_off_hash_ctrl) = (uint32_t)alg;
-
-  if (msg_len > 0U) {
-    volatile uint32_t* in = ra_rsip_reg32(k_ra_rsip_off_hash_data_in);
-    uint32_t           i  = 0U;
-    while ((i + (uint32_t)k_ra_rsip_trng_word_bytes) <= msg_len) {
-      *in = internal_pack_le(&msg[i]);
-      i += (uint32_t)k_ra_rsip_trng_word_bytes;
-    }
-    if (i < msg_len) {
-      uint32_t tail = 0U;
-      for (uint32_t b = 0U; (i + b) < msg_len; ++b) {
-        tail |= ((uint32_t)msg[i + b]) << (b * k_ra_rsip_byte_bits);
-      }
-      *in = tail;
-    }
-  }
-
-  /* Pre-arm + wait for DONE on host sim. */
-  volatile uint32_t* hstatus = ra_rsip_reg32(k_ra_rsip_off_hash_status);
-  *hstatus |= k_ra_rsip_mask_isr_done;
-  const ra_err_t wait_err = internal_wait_bit(k_ra_rsip_off_hash_status, k_ra_rsip_mask_isr_done);
-  RA_RETURN_ON_ERROR(wait_err, s_tag, "rsip_hash: hash done");
-
-  /* Read digest_len for SHAKE; algo-natural otherwise. */
-  const uint32_t to_read =
-    ((alg == k_ra_rsip_hash_shake128) || (alg == k_ra_rsip_hash_shake256)) ? digest_len : needed;
   uint32_t i   = 0U;
   uint32_t off = (uint32_t)k_ra_rsip_off_hash_digest;
   while ((i + (uint32_t)k_ra_rsip_trng_word_bytes) <= to_read) {
@@ -1369,12 +1584,41 @@ ra_err_t ra_rsip_hash(ra_rsip_hash_alg_t alg,
     off += (uint32_t)k_ra_rsip_trng_word_bytes;
   }
   if (i < to_read) {
+    // NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange)
     const uint32_t word = *ra_rsip_reg32((ra_rsip_off_t)off);
     for (uint32_t b = 0U; (i + b) < to_read; ++b) {
       digest[i + b] = (uint8_t)((word >> (b * k_ra_rsip_byte_bits)) & k_ra_rsip_byte_mask);
     }
   }
-  *hstatus &= ~k_ra_rsip_mask_isr_done;
+  *ra_rsip_reg32(k_ra_rsip_off_hash_status) &= ~k_ra_rsip_mask_isr_done;
+}
+
+ra_err_t ra_rsip_hash(ra_rsip_hash_alg_t alg,
+                      const uint8_t*     msg,
+                      uint32_t           msg_len,
+                      uint8_t*           digest,
+                      uint32_t           digest_len)
+{
+  RA_CHECK_NULL_PTR(digest, s_tag, "digest must not be nullptr");
+  uint32_t       needed = 0U;
+  const ra_err_t v_err  = internal_hash_validate(alg, msg, msg_len, digest_len, &needed);
+  RA_RETURN_ON_ERROR(v_err, s_tag, "rsip_hash: validate");
+
+  /* HUM Ch 52.2.3 "Hash Generator" p 3306 */
+  *ra_rsip_reg32(k_ra_rsip_off_hash_ctrl) = (uint32_t)alg;
+
+  if (msg_len > 0U) {
+    internal_push_bytes_to_port(k_ra_rsip_off_hash_data_in, msg, msg_len);
+  }
+
+  /* Pre-arm + wait for DONE on host sim. */
+  const ra_err_t wait_err = internal_hash_wait_done();
+  RA_RETURN_ON_ERROR(wait_err, s_tag, "rsip_hash: hash done");
+
+  /* Read digest_len for SHAKE; algo-natural otherwise. */
+  const uint32_t to_read =
+    ((alg == k_ra_rsip_hash_shake128) || (alg == k_ra_rsip_hash_shake256)) ? digest_len : needed;
+  internal_hash_pull_digest(digest, to_read);
   return k_ra_ok;
 }
 
@@ -1647,7 +1891,37 @@ ra_err_t ra_rsip_ecdsa_verify(const ra_rsip_key_handle_t* key,
   return internal_complete(k_ra_rsip_mask_isr_asym_done);
 }
 
-// NOLINTNEXTLINE(readability-function-size,readability-function-cognitive-complexity)
+/**
+ * @brief Pull the ECDH shared-secret handle out of the engine.
+ *
+ * @details
+ * The RSIP delivers the wrapped shared secret as an HMAC-SHA-256
+ * handle: 1 algorithm word + N body words read from
+ * ``ASYM_SHARED``. The unused tail of ``out->body[]`` is zero-padded
+ * to avoid leaking stack contents.
+ *
+ * @param[out] out Destination handle.
+ *
+ * @pre ``out`` is non-NULL.
+ * @pre ``internal_complete`` has just returned ``k_ra_ok``.
+ *
+ * @post ``out->alg`` and ``out->body_words`` reflect HMAC-SHA-256.
+ * @post ``out->body[]`` has been fully populated and tail-zeroed.
+ *
+ * @note Internal helper.
+ * @since 0.1.0
+ */
+static void internal_ecdh_pull_shared(ra_rsip_key_handle_t* out)
+{
+  /* The wrapped shared secret is delivered as an HMAC-SHA-256 handle. */
+  out->alg        = k_ra_rsip_oem_cmd_hmac_sha256;
+  out->body_words = (uint32_t)k_ra_rsip_handle_words_hmac_sha256;
+  for (uint32_t w = 0U; w < out->body_words; ++w) {
+    out->body[w] = *ra_rsip_reg32(k_ra_rsip_off_asym_shared);
+  }
+  internal_zero_handle_tail(out, out->body_words);
+}
+
 ra_err_t ra_rsip_ecdh_compute(const ra_rsip_key_handle_t* key,
                               ra_rsip_curve_t             curve,
                               const uint8_t*              peer_x,
@@ -1674,15 +1948,7 @@ ra_err_t ra_rsip_ecdh_compute(const ra_rsip_key_handle_t* key,
   if (err != k_ra_ok) {
     return err;
   }
-  /* The wrapped shared secret is delivered as an HMAC-SHA-256 handle. */
-  out->alg        = k_ra_rsip_oem_cmd_hmac_sha256;
-  out->body_words = (uint32_t)k_ra_rsip_handle_words_hmac_sha256;
-  for (uint32_t w = 0U; w < out->body_words; ++w) {
-    out->body[w] = *ra_rsip_reg32(k_ra_rsip_off_asym_shared);
-  }
-  for (uint32_t w = out->body_words; w < (uint32_t)k_ra_rsip_handle_words_rsa4096_priv; ++w) {
-    out->body[w] = 0U;
-  }
+  internal_ecdh_pull_shared(out);
   return k_ra_ok;
 }
 
@@ -1824,7 +2090,77 @@ ra_err_t ra_rsip_kv_count(uint32_t* out)
  * ===========================================================================
  */
 
-// NOLINTNEXTLINE(readability-function-size,readability-function-cognitive-complexity)
+/**
+ * @brief Stage the wrap engine's KEK selector, body, and IV.
+ *
+ * @details
+ * Both wrap and unwrap start by publishing the KEK algorithm to
+ * ``KW_KEK``, streaming the KEK body into the staging port, and
+ * loading the 16-byte IV into ``KW_IV0..3``. Centralised here.
+ *
+ * @param[in] kek KEK handle.
+ * @param[in] iv  16-byte IV.
+ *
+ * @pre ``kek`` and ``iv`` are non-NULL.
+ *
+ * @post ``KW_KEK`` carries ``kek->alg``.
+ * @post ``KEY_STAGE`` has observed ``kek->body_words`` writes.
+ * @post ``KW_IV0..3`` reflect ``iv``.
+ *
+ * @note Internal helper.
+ * @since 0.1.0
+ */
+static void internal_kw_stage_kek(const ra_rsip_key_handle_t* kek, const uint8_t* iv)
+{
+  /* HUM Ch 52.1 "Application Key Management" p 3303 */
+  *ra_rsip_reg32(k_ra_rsip_off_kw_kek) = kek->alg;
+  internal_push_handle_body(kek);
+  internal_push_iv_lanes(k_ra_rsip_off_kw_iv0, iv);
+}
+
+/**
+ * @brief Stream the wrap-engine output blob (16 words) into a byte buffer.
+ *
+ * @param[out] blob 64-byte destination.
+ *
+ * @pre ``blob`` is non-NULL.
+ * @pre ``internal_complete`` has just returned ``k_ra_ok``.
+ *
+ * @post ``blob[0..63]`` reflects the engine output (little-endian).
+ *
+ * @note Internal helper.
+ * @since 0.1.0
+ */
+static void internal_kw_pull_blob(uint8_t* blob)
+{
+  for (uint32_t w = 0U; w < k_ra_rsip_kv_slot_w; ++w) {
+    const uint32_t word = *ra_rsip_reg32(k_ra_rsip_off_kw_blob_out);
+    internal_unpack_le(word, &blob[(size_t)w * (size_t)k_ra_rsip_trng_word_bytes]);
+  }
+}
+
+/**
+ * @brief Push the source-handle body into the wrap-engine input FIFO.
+ *
+ * @param[in] src Source handle to wrap.
+ *
+ * @pre ``src`` is non-NULL.
+ * @pre ``internal_kw_stage_kek`` has just been called.
+ *
+ * @post ``KW_HANDLE`` carries ``src->alg``.
+ * @post ``KW_BLOB_IN`` has observed ``src->body_words`` writes.
+ *
+ * @note Internal helper.
+ * @since 0.1.0
+ */
+static void internal_kw_push_src(const ra_rsip_key_handle_t* src)
+{
+  *ra_rsip_reg32(k_ra_rsip_off_kw_handle) = src->alg;
+  for (uint32_t w = 0U; w < src->body_words; ++w) {
+    *ra_rsip_reg32(k_ra_rsip_off_kw_blob_in) = src->body[w];
+  }
+}
+
 ra_err_t ra_rsip_key_wrap(const ra_rsip_key_handle_t* kek,
                           const uint8_t*              iv,
                           const ra_rsip_key_handle_t* src,
@@ -1837,20 +2173,9 @@ ra_err_t ra_rsip_key_wrap(const ra_rsip_key_handle_t* kek,
   if (internal_aes_alg_byte(kek->alg) == 0U) {
     return k_ra_err_invalid_arg;
   }
+  internal_kw_stage_kek(kek, iv);
   /* HUM Ch 52.1 "Application Key Management" p 3303 */
-  *ra_rsip_reg32(k_ra_rsip_off_kw_kek) = kek->alg;
-  for (uint32_t w = 0U; w < kek->body_words; ++w) {
-    *ra_rsip_reg32(k_ra_rsip_off_key_stage) = kek->body[w];
-  }
-  for (uint32_t w = 0U; w < k_ra_rsip_iv_words; ++w) {
-    const ra_rsip_off_t off =
-      (ra_rsip_off_t)(k_ra_rsip_off_kw_iv0 + (uint16_t)(w << k_ra_rsip_word_shift));
-    *ra_rsip_reg32(off) = internal_pack_le(&iv[(size_t)w * (size_t)k_ra_rsip_trng_word_bytes]);
-  }
-  *ra_rsip_reg32(k_ra_rsip_off_kw_handle) = src->alg;
-  for (uint32_t w = 0U; w < src->body_words; ++w) {
-    *ra_rsip_reg32(k_ra_rsip_off_kw_blob_in) = src->body[w];
-  }
+  internal_kw_push_src(src);
   *ra_rsip_reg32(k_ra_rsip_off_kw_ctrl) = k_ra_rsip_kw_op_wrap;
   *ra_rsip_reg32(k_ra_rsip_off_mbox_op) = k_ra_rsip_kw_op_wrap;
 
@@ -1858,14 +2183,44 @@ ra_err_t ra_rsip_key_wrap(const ra_rsip_key_handle_t* kek,
   if (err != k_ra_ok) {
     return err;
   }
-  for (uint32_t w = 0U; w < k_ra_rsip_kv_slot_w; ++w) {
-    const uint32_t word = *ra_rsip_reg32(k_ra_rsip_off_kw_blob_out);
-    internal_unpack_le(word, &blob[(size_t)w * (size_t)k_ra_rsip_trng_word_bytes]);
-  }
+  internal_kw_pull_blob(blob);
   return k_ra_ok;
 }
 
-// NOLINTNEXTLINE(readability-function-size,readability-function-cognitive-complexity)
+/**
+ * @brief Pull the unwrapped algorithm + body into a destination handle.
+ *
+ * @param[out] dest Destination handle.
+ *
+ * @return ``ra_err_t``.
+ * @retval k_ra_ok           Body fully populated.
+ * @retval k_ra_err_hw_error The engine returned an unknown algorithm.
+ *
+ * @pre ``dest`` is non-NULL.
+ * @pre ``internal_complete`` has just returned ``k_ra_ok``.
+ *
+ * @post On success, ``dest`` is fully populated and tail-zeroed.
+ * @post On failure, ``dest`` is partially written and unsafe to use.
+ *
+ * @note Internal helper.
+ * @since 0.1.0
+ */
+static ra_err_t internal_kw_pull_handle(ra_rsip_key_handle_t* dest)
+{
+  /* Pull the unwrapped algorithm + body out. */
+  dest->alg            = *ra_rsip_reg32(k_ra_rsip_off_kw_handle);
+  const uint32_t words = internal_handle_words_for((ra_rsip_oem_cmd_t)dest->alg);
+  if (words == 0U) {
+    return k_ra_err_hw_error;
+  }
+  dest->body_words = words;
+  for (uint32_t w = 0U; w < words; ++w) {
+    dest->body[w] = *ra_rsip_reg32(k_ra_rsip_off_kw_blob_out);
+  }
+  internal_zero_handle_tail(dest, words);
+  return k_ra_ok;
+}
+
 ra_err_t ra_rsip_key_unwrap(const ra_rsip_key_handle_t* kek,
                             const uint8_t*              iv,
                             const uint8_t*              blob,
@@ -1878,16 +2233,8 @@ ra_err_t ra_rsip_key_unwrap(const ra_rsip_key_handle_t* kek,
   if (internal_aes_alg_byte(kek->alg) == 0U) {
     return k_ra_err_invalid_arg;
   }
+  internal_kw_stage_kek(kek, iv);
   /* HUM Ch 52.1 "Application Key Management" p 3303 */
-  *ra_rsip_reg32(k_ra_rsip_off_kw_kek) = kek->alg;
-  for (uint32_t w = 0U; w < kek->body_words; ++w) {
-    *ra_rsip_reg32(k_ra_rsip_off_key_stage) = kek->body[w];
-  }
-  for (uint32_t w = 0U; w < k_ra_rsip_iv_words; ++w) {
-    const ra_rsip_off_t off =
-      (ra_rsip_off_t)(k_ra_rsip_off_kw_iv0 + (uint16_t)(w << k_ra_rsip_word_shift));
-    *ra_rsip_reg32(off) = internal_pack_le(&iv[(size_t)w * (size_t)k_ra_rsip_trng_word_bytes]);
-  }
   for (uint32_t w = 0U; w < k_ra_rsip_kv_slot_w; ++w) {
     *ra_rsip_reg32(k_ra_rsip_off_kw_blob_in) =
       internal_pack_le(&blob[(size_t)w * (size_t)k_ra_rsip_trng_word_bytes]);
@@ -1899,20 +2246,7 @@ ra_err_t ra_rsip_key_unwrap(const ra_rsip_key_handle_t* kek,
   if (err != k_ra_ok) {
     return err;
   }
-  /* Pull the unwrapped algorithm + body out. */
-  dest->alg            = *ra_rsip_reg32(k_ra_rsip_off_kw_handle);
-  const uint32_t words = internal_handle_words_for((ra_rsip_oem_cmd_t)dest->alg);
-  if (words == 0U) {
-    return k_ra_err_hw_error;
-  }
-  dest->body_words = words;
-  for (uint32_t w = 0U; w < words; ++w) {
-    dest->body[w] = *ra_rsip_reg32(k_ra_rsip_off_kw_blob_out);
-  }
-  for (uint32_t w = words; w < (uint32_t)k_ra_rsip_handle_words_rsa4096_priv; ++w) {
-    dest->body[w] = 0U;
-  }
-  return k_ra_ok;
+  return internal_kw_pull_handle(dest);
 }
 
 /* ===========================================================================
@@ -1920,17 +2254,34 @@ ra_err_t ra_rsip_key_unwrap(const ra_rsip_key_handle_t* kek,
  * ===========================================================================
  */
 
-// NOLINTNEXTLINE(readability-function-size,readability-function-cognitive-complexity)
-ra_err_t ra_rsip_kdf(ra_rsip_kdf_op_t            op,
-                     const ra_rsip_key_handle_t* ikm,
-                     const uint8_t*              label,
-                     uint32_t                    label_len,
-                     const uint8_t*              salt,
-                     uint32_t                    salt_len,
-                     uint32_t                    out_len,
-                     ra_rsip_key_handle_t*       out)
+/**
+ * @brief Validate the KDF arguments before any MMIO is touched.
+ *
+ * @param[in] op        KDF operation selector.
+ * @param[in] ikm       Optional IKM handle (required for HKDF modes).
+ * @param[in] label     Optional label.
+ * @param[in] label_len Label length.
+ * @param[in] salt      Optional salt.
+ * @param[in] salt_len  Salt length.
+ * @param[in] out_len   Caller-requested output length.
+ *
+ * @return ``ra_err_t``.
+ *
+ * @pre None.
+ *
+ * @post No state is modified on any error path.
+ *
+ * @note Internal helper.
+ * @since 0.1.0
+ */
+static ra_err_t internal_kdf_validate(ra_rsip_kdf_op_t            op,
+                                      const ra_rsip_key_handle_t* ikm,
+                                      const uint8_t*              label,
+                                      uint32_t                    label_len,
+                                      const uint8_t*              salt,
+                                      uint32_t                    salt_len,
+                                      uint32_t                    out_len)
 {
-  RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
   if ((label == nullptr) && (label_len != 0U)) {
     return k_ra_err_null_ptr;
   }
@@ -1946,58 +2297,96 @@ ra_err_t ra_rsip_kdf(ra_rsip_kdf_op_t            op,
       (ikm == nullptr)) {
     return k_ra_err_null_ptr;
   }
+  return k_ra_ok;
+}
+
+/**
+ * @brief Stage the KDF inputs (op + length + optional IKM + label + salt).
+ *
+ * @param[in] op        KDF operation selector.
+ * @param[in] ikm       Optional IKM handle.
+ * @param[in] label     Optional label bytes.
+ * @param[in] label_len Label length.
+ * @param[in] salt      Optional salt bytes.
+ * @param[in] salt_len  Salt length.
+ * @param[in] out_len   Output length.
+ *
+ * @pre Validation has already succeeded.
+ *
+ * @post Engine is primed; caller must still fire ``MBOX_OP``.
+ *
+ * @note Internal helper.
+ * @since 0.1.0
+ */
+static void internal_kdf_stage(ra_rsip_kdf_op_t            op,
+                               const ra_rsip_key_handle_t* ikm,
+                               const uint8_t*              label,
+                               uint32_t                    label_len,
+                               const uint8_t*              salt,
+                               uint32_t                    salt_len,
+                               uint32_t                    out_len)
+{
   /* HUM Ch 52.1 "KDF" p 3303 */
   *ra_rsip_reg32(k_ra_rsip_off_kdf_ctrl) = (uint32_t)op;
   *ra_rsip_reg32(k_ra_rsip_off_kdf_len)  = out_len;
   if (ikm != nullptr) {
     *ra_rsip_reg32(k_ra_rsip_off_kdf_ikm) = ikm->alg;
-    for (uint32_t w = 0U; w < ikm->body_words; ++w) {
-      *ra_rsip_reg32(k_ra_rsip_off_key_stage) = ikm->body[w];
-    }
+    internal_push_handle_body(ikm);
   }
   if (label_len > 0U) {
-    uint32_t i = 0U;
-    while ((i + (uint32_t)k_ra_rsip_trng_word_bytes) <= label_len) {
-      *ra_rsip_reg32(k_ra_rsip_off_kdf_label) = internal_pack_le(&label[i]);
-      i += (uint32_t)k_ra_rsip_trng_word_bytes;
-    }
-    if (i < label_len) {
-      uint32_t tail = 0U;
-      for (uint32_t b = 0U; (i + b) < label_len; ++b) {
-        tail |= ((uint32_t)label[i + b]) << (b * k_ra_rsip_byte_bits);
-      }
-      *ra_rsip_reg32(k_ra_rsip_off_kdf_label) = tail;
-    }
+    internal_push_bytes_to_port(k_ra_rsip_off_kdf_label, label, label_len);
   }
   if (salt_len > 0U) {
-    uint32_t i = 0U;
-    while ((i + (uint32_t)k_ra_rsip_trng_word_bytes) <= salt_len) {
-      *ra_rsip_reg32(k_ra_rsip_off_kdf_salt) = internal_pack_le(&salt[i]);
-      i += (uint32_t)k_ra_rsip_trng_word_bytes;
-    }
-    if (i < salt_len) {
-      uint32_t tail = 0U;
-      for (uint32_t b = 0U; (i + b) < salt_len; ++b) {
-        tail |= ((uint32_t)salt[i + b]) << (b * k_ra_rsip_byte_bits);
-      }
-      *ra_rsip_reg32(k_ra_rsip_off_kdf_salt) = tail;
-    }
+    internal_push_bytes_to_port(k_ra_rsip_off_kdf_salt, salt, salt_len);
   }
-  *ra_rsip_reg32(k_ra_rsip_off_mbox_op) = (uint32_t)op;
+}
 
-  const ra_err_t err = internal_complete(k_ra_rsip_mask_isr_kdf_done);
-  if (err != k_ra_ok) {
-    return err;
-  }
+/**
+ * @brief Pull the wrapped derived-key handle out of the KDF engine.
+ *
+ * @param[out] out Destination handle.
+ *
+ * @pre ``out`` is non-NULL.
+ * @pre ``internal_complete`` has just returned ``k_ra_ok``.
+ *
+ * @post ``out->alg`` and ``out->body[]`` reflect the engine output.
+ * @post ``out->body[]`` tail is zero-filled.
+ *
+ * @note Internal helper.
+ * @since 0.1.0
+ */
+static void internal_kdf_pull_handle(ra_rsip_key_handle_t* out)
+{
   /* Wrapped derived key delivered through KDF_OUT. */
   out->alg        = *ra_rsip_reg32(k_ra_rsip_off_kdf_out);
   out->body_words = (uint32_t)k_ra_rsip_handle_words_hmac_sha256;
   for (uint32_t w = 0U; w < out->body_words; ++w) {
     out->body[w] = *ra_rsip_reg32(k_ra_rsip_off_kdf_out);
   }
-  for (uint32_t w = out->body_words; w < (uint32_t)k_ra_rsip_handle_words_rsa4096_priv; ++w) {
-    out->body[w] = 0U;
+  internal_zero_handle_tail(out, out->body_words);
+}
+
+ra_err_t ra_rsip_kdf(ra_rsip_kdf_op_t            op,
+                     const ra_rsip_key_handle_t* ikm,
+                     const uint8_t*              label,
+                     uint32_t                    label_len,
+                     const uint8_t*              salt,
+                     uint32_t                    salt_len,
+                     uint32_t                    out_len,
+                     ra_rsip_key_handle_t*       out)
+{
+  RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
+  const ra_err_t v_err = internal_kdf_validate(op, ikm, label, label_len, salt, salt_len, out_len);
+  RA_RETURN_ON_ERROR(v_err, s_tag, "rsip_kdf: validate");
+
+  internal_kdf_stage(op, ikm, label, label_len, salt, salt_len, out_len);
+  *ra_rsip_reg32(k_ra_rsip_off_mbox_op) = (uint32_t)op;
+
+  const ra_err_t err = internal_complete(k_ra_rsip_mask_isr_kdf_done);
+  if (err != k_ra_ok) {
+    return err;
   }
+  internal_kdf_pull_handle(out);
   return k_ra_ok;
 }
 
