@@ -32,9 +32,7 @@ typedef enum : uint8_t {
   k_ra_nsc_xspi_instance = 0U, /**< Only one xspi instance today. */
 } ra_nsc_xspi_instance_t;
 
-RA_NSC_VENEER ra_err_t ra_nsc_xspi_read(uint32_t flash_off,
-                                        uint8_t* ns_dst, // NOLINT(readability-non-const-parameter)
-                                        uint32_t len)
+RA_NSC_VENEER ra_err_t ra_nsc_xspi_read(uint32_t flash_off, uint8_t* ns_dst, uint32_t len)
 {
   RA_CHECK_NULL_PTR(ns_dst, s_tag, "xspi_read: ns_dst");
   if ((len == 0U) || (len > k_ra_nsc_xspi_max_read)) {

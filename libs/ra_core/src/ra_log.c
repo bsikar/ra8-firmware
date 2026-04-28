@@ -306,101 +306,113 @@ internal_ra_log_debug_val(const char* tag, const char* message, int32_t value)
 
 #include "ra_err.h"
 
-/* NOLINTNEXTLINE(readability-function-size) -- lookup table by design. */
+/**
+ * @struct ra_err_name_entry_t
+ * @brief Single (code, name) pair in the ra_err_to_str() lookup table.
+ *
+ * @details
+ * The error codes are sparse (0, 0x101..0x10F, 0x201..0x209, 0x301..0x306,
+ * 0x401..0x409, 0x501..0x504), so a directly indexed array would waste
+ * ~1.2 KB of flash. A linear-scan {code, name} table keeps the table size
+ * proportional to the number of codes (~44 entries).
+ *
+ * @invariant Every entry's `name` is a NUL-terminated string literal in
+ *            .rodata (no dynamic strings).
+ *
+ * @since 0.1.0
+ */
+typedef struct {
+  ra_err_t    code; /**< Error code value from `ra_err_t`. */
+  const char* name; /**< Short ASCII name for the code (no spaces). */
+} ra_err_name_entry_t;
+
+/**
+ * @var s_ra_err_names
+ * @brief Lookup table backing ra_err_to_str().
+ *
+ * @details
+ * One row per `k_ra_err_*` value defined in `ra_err.h`. The table lives
+ * in `.rodata` (static const) and is scanned linearly by ra_err_to_str().
+ * Adding a new error code is a one-line addition here -- no switch arm
+ * to update.
+ *
+ * @note The table order is informational only; ra_err_to_str() does
+ *       linear search so any order works. Keeping it in the same order
+ *       as `ra_err_t` makes diff review easier.
+ *
+ * @warning When a new code is added to `ra_err_t`, this table MUST be
+ *          extended in the same commit. The unit test
+ *          `tests/test_ra_log.c` walks every code so a missing entry
+ *          fails CI.
+ *
+ * @since 0.1.0
+ */
+static const ra_err_name_entry_t s_ra_err_names[] = {
+  {k_ra_ok, "ok"},
+  {k_ra_fail, "fail"},
+  {k_ra_err_no_mem, "no_mem"},
+  {k_ra_err_invalid_arg, "invalid_arg"},
+  {k_ra_err_invalid_state, "invalid_state"},
+  {k_ra_err_invalid_size, "invalid_size"},
+  {k_ra_err_not_found, "not_found"},
+  {k_ra_err_not_supported, "not_supported"},
+  {k_ra_err_timeout, "timeout"},
+  {k_ra_err_busy, "busy"},
+  {k_ra_err_no_data, "no_data"},
+  {k_ra_err_would_block, "would_block"},
+  {k_ra_err_exists, "exists"},
+  {k_ra_err_empty, "empty"},
+  {k_ra_err_cancelled, "cancelled"},
+  {k_ra_err_not_initialized, "not_initialized"},
+  {k_ra_err_estop, "estop"},
+  {k_ra_err_hw_init_failed, "hw_init_failed"},
+  {k_ra_err_hw_not_ready, "hw_not_ready"},
+  {k_ra_err_hw_timeout, "hw_timeout"},
+  {k_ra_err_hw_error, "hw_error"},
+  {k_ra_err_gpio_conflict, "gpio_conflict"},
+  {k_ra_err_gpio_invalid_port, "gpio_invalid_port"},
+  {k_ra_err_gpio_invalid_pin, "gpio_invalid_pin"},
+  {k_ra_err_out_of_range, "out_of_range"},
+  {k_ra_err_hw_unmapped, "hw_unmapped"},
+  {k_ra_err_rtos_error, "rtos_error"},
+  {k_ra_err_rtos_thread_create, "rtos_thread_create"},
+  {k_ra_err_rtos_semaphore, "rtos_semaphore"},
+  {k_ra_err_rtos_mutex, "rtos_mutex"},
+  {k_ra_err_rtos_queue, "rtos_queue"},
+  {k_ra_err_rtos_timer, "rtos_timer"},
+  {k_ra_err_comm_error, "comm_error"},
+  {k_ra_err_spi_error, "spi_error"},
+  {k_ra_err_uart_error, "uart_error"},
+  {k_ra_err_i2c_error, "i2c_error"},
+  {k_ra_err_crc_mismatch, "crc_mismatch"},
+  {k_ra_err_protocol_error, "protocol_error"},
+  {k_ra_err_nack, "nack"},
+  {k_ra_err_conflict, "conflict"},
+  {k_ra_err_retry_limit, "retry_limit"},
+  {k_ra_err_validation_failed, "validation_failed"},
+  {k_ra_err_checksum_mismatch, "checksum_mismatch"},
+  {k_ra_err_range_check_failed, "range_check_failed"},
+  {k_ra_err_null_ptr, "null_ptr"},
+};
+
+/**
+ * @var k_ra_err_names_count
+ * @brief Number of entries in s_ra_err_names.
+ *
+ * @details Computed at compile time from `sizeof` so the table and
+ *          loop bound stay in sync.
+ *
+ * @since 0.1.0
+ */
+static const uint32_t k_ra_err_names_count =
+  (uint32_t)(sizeof(s_ra_err_names) / sizeof(s_ra_err_names[0]));
+
 const char* ra_err_to_str(ra_err_t err)
 {
-  switch (err) {
-    case k_ra_ok:
-      return "ok";
-    case k_ra_fail:
-      return "fail";
-    case k_ra_err_no_mem:
-      return "no_mem";
-    case k_ra_err_invalid_arg:
-      return "invalid_arg";
-    case k_ra_err_invalid_state:
-      return "invalid_state";
-    case k_ra_err_invalid_size:
-      return "invalid_size";
-    case k_ra_err_not_found:
-      return "not_found";
-    case k_ra_err_not_supported:
-      return "not_supported";
-    case k_ra_err_timeout:
-      return "timeout";
-    case k_ra_err_busy:
-      return "busy";
-    case k_ra_err_no_data:
-      return "no_data";
-    case k_ra_err_would_block:
-      return "would_block";
-    case k_ra_err_exists:
-      return "exists";
-    case k_ra_err_empty:
-      return "empty";
-    case k_ra_err_cancelled:
-      return "cancelled";
-    case k_ra_err_not_initialized:
-      return "not_initialized";
-    case k_ra_err_estop:
-      return "estop";
-    case k_ra_err_hw_init_failed:
-      return "hw_init_failed";
-    case k_ra_err_hw_not_ready:
-      return "hw_not_ready";
-    case k_ra_err_hw_timeout:
-      return "hw_timeout";
-    case k_ra_err_hw_error:
-      return "hw_error";
-    case k_ra_err_gpio_conflict:
-      return "gpio_conflict";
-    case k_ra_err_gpio_invalid_port:
-      return "gpio_invalid_port";
-    case k_ra_err_gpio_invalid_pin:
-      return "gpio_invalid_pin";
-    case k_ra_err_out_of_range:
-      return "out_of_range";
-    case k_ra_err_hw_unmapped:
-      return "hw_unmapped";
-    case k_ra_err_rtos_error:
-      return "rtos_error";
-    case k_ra_err_rtos_thread_create:
-      return "rtos_thread_create";
-    case k_ra_err_rtos_semaphore:
-      return "rtos_semaphore";
-    case k_ra_err_rtos_mutex:
-      return "rtos_mutex";
-    case k_ra_err_rtos_queue:
-      return "rtos_queue";
-    case k_ra_err_rtos_timer:
-      return "rtos_timer";
-    case k_ra_err_comm_error:
-      return "comm_error";
-    case k_ra_err_spi_error:
-      return "spi_error";
-    case k_ra_err_uart_error:
-      return "uart_error";
-    case k_ra_err_i2c_error:
-      return "i2c_error";
-    case k_ra_err_crc_mismatch:
-      return "crc_mismatch";
-    case k_ra_err_protocol_error:
-      return "protocol_error";
-    case k_ra_err_nack:
-      return "nack";
-    case k_ra_err_conflict:
-      return "conflict";
-    case k_ra_err_retry_limit:
-      return "retry_limit";
-    case k_ra_err_validation_failed:
-      return "validation_failed";
-    case k_ra_err_checksum_mismatch:
-      return "checksum_mismatch";
-    case k_ra_err_range_check_failed:
-      return "range_check_failed";
-    case k_ra_err_null_ptr:
-      return "null_ptr";
-    default:
-      return "unknown";
+  for (uint32_t i = 0; i < k_ra_err_names_count; i++) {
+    if (s_ra_err_names[i].code == err) {
+      return s_ra_err_names[i].name;
+    }
   }
+  return "unknown";
 }
