@@ -52,15 +52,11 @@ REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 SOURCE_SUFFIXES = {".c", ".h", ".cpp", ".hpp"}
 
 # Top-level dirs we never lint: infrastructure / vendor / build trees.
-EXCLUDE_TOP_LEVEL = {
-    "build", "docs", "cmake", "scripts", "fsp", "STAR",
-    ".git", "node_modules", ".github", ".devcontainer", ".claude",
-}
 ALWAYS_SCAN_DIRS = ("libs", "src", "tests")
 
 # File names inside an app dir that carry boot-file (Ring 1) semantics.
 # main.c is Ring 6 / Application; everything else next to it (the
-# per-app boot files copied from src/boot/) is treated as Ring 1.
+# per-app boot files) is treated as Ring 1.
 APP_BOOT_FILES = {
     "vector_table.c",
     "system_init.c",
@@ -71,17 +67,17 @@ APP_BOOT_FILES = {
 
 
 def discover_app_dirs() -> tuple[str, ...]:
-    """Return every top-level dir that contains main.c + CMakeLists.txt."""
+    """Return every examples/<app>/ relative path that has main.c +
+    CMakeLists.txt."""
     out: list[str] = []
-    for entry in sorted(REPO_ROOT.iterdir()):
+    examples_root = REPO_ROOT / "examples"
+    if not examples_root.is_dir():
+        return tuple()
+    for entry in sorted(examples_root.iterdir()):
         if not entry.is_dir():
             continue
-        if entry.name in EXCLUDE_TOP_LEVEL:
-            continue
-        if entry.name in ALWAYS_SCAN_DIRS:
-            continue
         if (entry / "main.c").is_file() and (entry / "CMakeLists.txt").is_file():
-            out.append(entry.name)
+            out.append(f"examples/{entry.name}")
     return tuple(out)
 
 
@@ -126,10 +122,13 @@ def file_is_in_ring1_or_ring2(rel_path: str) -> bool:
         return True
     # Per-app boot files (vector_table.c, system_init.c,
     # secure_exception.c, trustzone_init.c/h) are Ring 1 by virtue of
-    # the role they play, even though they now live next to main.c.
-    parts = rel_path.split("/", 1)
-    if len(parts) == 2 and parts[0] in APP_DIRS and parts[1] in APP_BOOT_FILES:
-        return True
+    # the role they play, even though they live next to main.c.
+    for app_dir in APP_DIRS:
+        prefix = app_dir + "/"
+        if rel_path.startswith(prefix):
+            tail = rel_path[len(prefix):]
+            if tail in APP_BOOT_FILES:
+                return True
     if rel_path.endswith("/linker_script.ld"):
         return True
     return False
@@ -153,9 +152,9 @@ def file_is_in_ring3_plus(rel_path: str) -> bool:
     if rel_path.startswith("tests/"):
         return True
     # Per-app main.c is Ring 6.
-    parts = rel_path.split("/", 1)
-    if len(parts) == 2 and parts[0] in APP_DIRS and parts[1] == "main.c":
-        return True
+    for app_dir in APP_DIRS:
+        if rel_path == f"{app_dir}/main.c":
+            return True
     return False
 
 

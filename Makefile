@@ -40,8 +40,10 @@ ARM_SIZE     ?= arm-none-eabi-size
 # Default app -- override on the command line, e.g. `make RA_DEFAULT_APP=blink_hal`.
 RA_DEFAULT_APP ?= blink
 
-# Auto-discover apps: any top-level dir containing main.c + CMakeLists.txt.
-RA_APPS := $(sort $(patsubst $(ROOT)/%/main.c,%,$(wildcard $(ROOT)/*/main.c)))
+# Auto-discover apps: every examples/<name>/ dir with main.c + CMakeLists.txt.
+# RA_APPS holds the bare names (e.g. "blink"); the per-app dir lives at
+# $(ROOT)/examples/$(app).
+RA_APPS := $(sort $(patsubst $(ROOT)/examples/%/main.c,%,$(wildcard $(ROOT)/examples/*/main.c)))
 
 # We forward each <app> name to the app's own Makefile, so reserve the names
 # below from being shadowed by .PHONY targets.
@@ -69,18 +71,18 @@ default: $(RA_DEFAULT_APP)
 apps:
 	@echo "Available apps:"
 	@for app in $(RA_APPS); do \
-		first_brief=$$(grep -m1 "@brief" $(ROOT)/$$app/main.c 2>/dev/null | sed 's/.*@brief //'); \
+		first_brief=$$(grep -m1 "@brief" $(ROOT)/examples/$$app/main.c 2>/dev/null | sed 's/.*@brief //'); \
 		printf "  %-15s %s\n" "$$app" "$$first_brief"; \
 	done
 
 # Forward `make <app>` to the per-app Makefile so the top-level shorthand
-# and `cd <app> && make` produce the exact same artifacts.
+# and `cd examples/<app> && make` produce the exact same artifacts.
 $(RA_APPS):
-	$(MAKE) -C $(ROOT)/$@ build
+	$(MAKE) -C $(ROOT)/examples/$@ build
 
 clean:
 	@for app in $(RA_APPS); do \
-		$(MAKE) -C $(ROOT)/$$app clean; \
+		$(MAKE) -C $(ROOT)/examples/$$app clean; \
 	done
 	rm -rf $(TESTS_BUILD)
 

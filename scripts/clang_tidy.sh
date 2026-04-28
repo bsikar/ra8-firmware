@@ -147,13 +147,13 @@ collect_source_files() {
     # driver code; they should be linted separately with their own
     # rule set if we ever need it.
     #
-    # Scope: libs/, src/, plus every top-level app dir (any top-level
-    # dir containing a main.c). Excludes build/_deps/third_party/tests
-    # and the infrastructure dirs (docs, cmake, scripts, fsp, STAR,
-    # .git, node_modules, .github, .devcontainer, .claude).
+    # Scope: libs/, src/, plus every examples/<app>/ dir with main.c.
+    # Excludes build/_deps/third_party/tests and the infrastructure
+    # dirs (docs, cmake, scripts, fsp, STAR, .git, node_modules,
+    # .github, .devcontainer, .claude).
     local roots=("$FIRMWARE_DIR/libs" "$FIRMWARE_DIR/src")
     local entry
-    for entry in "$FIRMWARE_DIR"/*/main.c; do
+    for entry in "$FIRMWARE_DIR"/examples/*/main.c; do
         [[ -f "$entry" ]] || continue
         roots+=("$(dirname "$entry")")
     done
@@ -207,9 +207,12 @@ run_clang_tidy() {
         fi
     fi
 
+    # Note: no --config-file. We let clang-tidy auto-discover .clang-tidy
+    # by walking up from each source file. That picks up the project-root
+    # config AND per-directory overrides (e.g. examples/.clang-tidy and
+    # libs/ra_nsc/src/.clang-tidy), which --config-file would suppress.
     set +e
     "$clang_tidy" \
-        --config-file="$config_file" \
         -p="$BUILD_DIR" \
         --extra-arg="-std=c2x" \
         --extra-arg="-DUNIT_TEST" \

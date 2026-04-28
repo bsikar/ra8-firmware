@@ -101,22 +101,19 @@ parse_args() {
     done
 }
 
-# Auto-discover top-level scan dirs. Anything that isn't excluded and
-# isn't a file is treated as a source dir we should walk.
+# Auto-discover scan dirs: libs/, src/, tests/, plus every
+# examples/<app>/ directory. The recursive find inside each dir picks
+# up nested sources.
 discover_source_dirs() {
     local out=()
-    for entry in *; do
-        [ -d "$entry" ] || continue
-        local skip=false
-        for ex in "${EXCLUDE_DIRS[@]}"; do
-            if [ "$entry" = "$ex" ]; then
-                skip=true
-                break
-            fi
-        done
-        [ "$skip" = true ] && continue
-        out+=("$entry")
+    for entry in libs src tests; do
+        [ -d "$entry" ] && out+=("$entry")
     done
+    if [ -d examples ]; then
+        for app in examples/*; do
+            [ -d "$app" ] && out+=("$app")
+        done
+    fi
     printf '%s\n' "${out[@]}"
 }
 
