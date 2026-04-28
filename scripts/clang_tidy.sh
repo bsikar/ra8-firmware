@@ -146,7 +146,7 @@ collect_source_files() {
     # cognitive-complexity and function-size thresholds designed for
     # driver code; they should be linted separately with their own
     # rule set if we ever need it.
-    find "$FIRMWARE_DIR/libs" "$FIRMWARE_DIR/src" \
+    find "$FIRMWARE_DIR/libs" "$FIRMWARE_DIR/src" "$FIRMWARE_DIR/examples" \
         \( -name '*.c' -o -name '*.h' \) \
         ! -path '*/build/*' \
         ! -path '*/_deps/*' \

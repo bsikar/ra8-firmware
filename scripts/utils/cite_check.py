@@ -53,7 +53,7 @@ from typing import Iterable
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 CHAPTER_MAP_PATH = REPO_ROOT / "docs" / "reference" / "CHAPTER_MAP.md"
 
-DEFAULT_SCAN_DIRS = ("libs", "src", "tests")
+DEFAULT_SCAN_DIRS = ("libs", "src", "tests", "examples")
 SOURCE_SUFFIXES = {".c", ".h", ".cpp", ".hpp"}
 
 CITE_RE = re.compile(
