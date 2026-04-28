@@ -35,9 +35,7 @@ RA_NSC_VENEER ra_err_t ra_nsc_eth_send(const uint8_t* ns_frame, uint16_t len)
   return ra_net_pal_send_frame(ns_frame, len);
 }
 
-RA_NSC_VENEER ra_err_t
-ra_nsc_eth_recv(uint8_t*  ns_buf,    // NOLINT(readability-non-const-parameter)
-                uint16_t* inout_len) // NOLINT(readability-non-const-parameter)
+RA_NSC_VENEER ra_err_t ra_nsc_eth_recv(uint8_t* ns_buf, uint16_t* inout_len)
 {
   RA_CHECK_NULL_PTR(ns_buf, s_tag, "eth_recv: ns_buf");
   RA_CHECK_NULL_PTR(inout_len, s_tag, "eth_recv: inout_len");

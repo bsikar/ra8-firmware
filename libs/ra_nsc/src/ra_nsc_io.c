@@ -34,8 +34,7 @@ RA_NSC_VENEER ra_err_t ra_nsc_gpt_init(uint8_t channel, const ra_gpt_cfg_t* cfg)
   return ra_gpt_init(channel, cfg);
 }
 
-RA_NSC_VENEER ra_err_t ra_nsc_gpt_read(uint8_t   channel,
-                                       uint32_t* out) // NOLINT(readability-non-const-parameter)
+RA_NSC_VENEER ra_err_t ra_nsc_gpt_read(uint8_t channel, uint32_t* out)
 {
   RA_CHECK_NULL_PTR(out, s_tag, "gpt_read: out");
   RA_NSC_CHECK_NS_RANGE_RW(out, sizeof(*out));
@@ -47,9 +46,7 @@ RA_NSC_VENEER ra_err_t ra_nsc_adc_init(void)
   return ra_adc_init();
 }
 
-RA_NSC_VENEER ra_err_t
-ra_nsc_adc_read_channel(uint8_t   channel,
-                        uint16_t* out_raw) // NOLINT(readability-non-const-parameter)
+RA_NSC_VENEER ra_err_t ra_nsc_adc_read_channel(uint8_t channel, uint16_t* out_raw)
 {
   RA_CHECK_NULL_PTR(out_raw, s_tag, "adc_read: out_raw");
   RA_NSC_CHECK_NS_RANGE_RW(out_raw, sizeof(*out_raw));
@@ -71,9 +68,7 @@ RA_NSC_VENEER ra_err_t ra_nsc_acmphs_init(void)
   return ra_acmphs_init();
 }
 
-RA_NSC_VENEER ra_err_t
-ra_nsc_acmphs_read_output(uint8_t     channel,
-                          ra_level_t* out) // NOLINT(readability-non-const-parameter)
+RA_NSC_VENEER ra_err_t ra_nsc_acmphs_read_output(uint8_t channel, ra_level_t* out)
 {
   RA_CHECK_NULL_PTR(out, s_tag, "acmphs_read: out");
   RA_NSC_CHECK_NS_RANGE_RW(out, sizeof(*out));
@@ -85,10 +80,7 @@ RA_NSC_VENEER ra_err_t ra_nsc_crc_init(ra_crc_poly_t poly)
   return ra_crc_init(poly);
 }
 
-RA_NSC_VENEER ra_err_t
-ra_nsc_crc_compute(const uint8_t* data,
-                   uint32_t       len,
-                   uint32_t*      out_crc) // NOLINT(readability-non-const-parameter)
+RA_NSC_VENEER ra_err_t ra_nsc_crc_compute(const uint8_t* data, uint32_t len, uint32_t* out_crc)
 {
   RA_CHECK_NULL_PTR((void*)data, s_tag, "crc_compute: data");
   RA_CHECK_NULL_PTR(out_crc, s_tag, "crc_compute: out_crc");
