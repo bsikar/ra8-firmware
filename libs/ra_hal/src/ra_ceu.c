@@ -552,12 +552,15 @@ ra_err_t ra_ceu_attach_handler(ra_ceu_event_fn_t fn, void* ctx)
 
 void ra_ceu_dispatch(void)
 {
-  /* HUM Ch 60.2.22 "CETCR : Capture Event Flag Clear Register" p 3664 */
+  /* HUM Ch 60.2.22 "CETCR : Capture Event Flag Clear Register" p 3664
+   * CETCR bits clear when 0 is written; preserve bits not observed by
+   * re-reading and writing back `current & ~pending`. Writing a 1 to a
+   * CETCR bit leaves that flag asserted, so the prior observed bits
+   * become 0 and any newly-asserted-during-dispatch bits stay set. */
   volatile uint32_t* reg     = ra_ceu_reg32(k_ra_ceu_off_cetcr);
   const uint32_t     pending = *reg;
-  /* Clear every observed bit (write-0-to-clear). Bits we did not see
-   * are left alone in case they were asserted between read and write. */
-  *reg = ~pending;
+  const uint32_t     current = *reg;
+  *reg                       = current & ~pending;
 
   const ra_ceu_event_fn_t fn  = s_ceu_fn;
   void* const             ctx = s_ceu_ctx;

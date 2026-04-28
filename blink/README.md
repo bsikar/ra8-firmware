@@ -1,6 +1,10 @@
 # blink
 
-Minimum-viable LED-blink smoke test for the EK-RA8D2.
+Minimum-viable LED-blink smoke test for the EK-RA8D2. Standalone app
+in its own top-level directory: `blink/main.c` plus its own
+`vector_table.c`, `system_init.c`, `secure_exception.c`,
+`trustzone_init.c`, `linker_script.ld`, `Makefile`, and
+`CMakeLists.txt`.
 
 ## What it does
 
@@ -13,41 +17,34 @@ the Cortex-M85 SysTick timer for delay -- no busy-wait.
 From the repo root:
 
 ```sh
-make example-blink     # cross-compile this example
-make flash             # flash via on-board J-Link OB
+make blink             # cross-compile this app -> blink/build/blink.elf
+make -C blink flash    # flash via on-board J-Link OB
 ```
 
-`make build` is an alias that defaults to this example, so you can
-also just run:
+Or standalone, from inside `blink/`:
 
 ```sh
-make build
-make flash
+cd blink/
+make                   # configure + build -> blink/build/blink.{elf,hex,bin}
+make flash             # flash blink/build/blink.hex
+make clean             # rm -rf blink/build
 ```
 
-To pick a different example explicitly without `make`:
+Or directly via cmake (e.g. for a `Release` build):
 
 ```sh
-EXAMPLE=blink ./build.sh
-./scripts/flash.sh
-```
-
-Or directly via cmake:
-
-```sh
-cmake -S . -B build \
+cmake -S blink -B blink/build \
       -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-ra8d2.cmake \
-      -DEXAMPLE=blink \
       -DCMAKE_BUILD_TYPE=Release
-cmake --build build
-./scripts/flash.sh
+cmake --build blink/build
+bash scripts/flash.sh blink/build/blink.hex
 ```
 
 ## Debugging
 
 ```sh
-make ozone             # open SEGGER Ozone GUI debugger
-make debug             # attach gdb via JLinkGDBServer
+make -C blink ozone    # open SEGGER Ozone GUI debugger on blink.elf
+make -C blink debug    # attach gdb via JLinkGDBServer on blink.elf
 ```
 
 ## Notes

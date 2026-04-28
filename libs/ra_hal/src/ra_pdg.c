@@ -111,13 +111,35 @@ typedef enum : uint32_t {
 } ra_pdg_unit_t;
 
 /**
- * @var s_pdg_initialised
- * @brief Tracks whether ``ra_pdg_init`` has run successfully.
+ * @brief Probe live PDG registers to decide whether ``ra_pdg_init``
+ * has run successfully.
  *
- * @note Read by ``ra_pdg_set_delay`` so it can refuse work before
- * the DLL is locked.
+ * @details
+ * The PDG block is "initialised" when ``ra_pdg_init`` has driven the
+ * DLL into the locked / running state, i.e. GTDLYCR.DLLEN == 1 and
+ * GTDLYCR.DLYRST == 0 (HUM Ch 23.2.1 p 1154). Reading the register
+ * directly avoids stale-static-flag bugs across host-test resets that
+ * wipe the simulated MMIO without touching driver-side TU statics.
+ *
+ * @return ``true`` when DLLEN is asserted and DLYRST is cleared.
+ *
+ * @pre Module clock is reachable (caller did not unmap the PDG region).
+ * @post No side effects.
+ *
+ * @note Re-entrant; reads two MMIO bits and derives a Boolean.
  */
-static bool s_pdg_initialised;
+static bool internal_pdg_is_initialised(void)
+{
+  /* HUM Ch 23.2.1 "GTDLYCR : PWM Output Delay Control Register" p 1154 */
+  const uint16_t cr = ra_pdg()->GTDLYCR;
+  if ((cr & (uint16_t)k_ra_pdg_gtdlycr_mask_dllen) == 0U) {
+    return false;
+  }
+  if ((cr & (uint16_t)k_ra_pdg_gtdlycr_mask_dlyrst) != 0U) {
+    return false;
+  }
+  return true;
+}
 
 /**
  * @var s_pdg_event_fn
@@ -357,7 +379,6 @@ ra_err_t ra_pdg_init(const ra_pdg_config_t* cfg)
 
   internal_program_dll(cfg, frange_use);
 
-  s_pdg_initialised = true;
   ra_log_info(s_tag, "pdg_init");
   return k_ra_ok;
 }
@@ -384,7 +405,6 @@ ra_err_t ra_pdg_deinit(void)
   /* PDG bit MSTPD6, see HUM Ch 23.4.1 p 1162. */
   /* HUM Ch 11.2.9 "MSTPCRD: Module Stop Control Register D" p 449 */
   (void)ra_mstp_disable(k_ra_mstp_pdg);
-  s_pdg_initialised = false;
   return k_ra_ok;
 }
 
@@ -395,7 +415,7 @@ ra_err_t ra_pdg_deinit(void)
 
 ra_err_t ra_pdg_set_delay(uint8_t channel, ra_pdg_pin_t pin, ra_pdg_edge_t edge, uint8_t code)
 {
-  if (!s_pdg_initialised) {
+  if (!internal_pdg_is_initialised()) {
     return k_ra_err_not_initialized;
   }
   const ra_err_t v = internal_validate_slot(channel, pin, edge, code);
@@ -426,7 +446,7 @@ ra_err_t ra_pdg_get_delay(uint8_t channel, ra_pdg_pin_t pin, ra_pdg_edge_t edge,
 ra_err_t ra_pdg_set_delay_batch(const ra_pdg_delay_entry_t* entries, uint8_t count)
 {
   RA_CHECK_NULL_PTR((void*)entries, s_tag, "entries must not be nullptr");
-  if (!s_pdg_initialised) {
+  if (!internal_pdg_is_initialised()) {
     return k_ra_err_not_initialized;
   }
   if ((count == 0U) || (count > (uint8_t)k_ra_pdg_slot_count)) {
@@ -515,7 +535,7 @@ ra_err_t ra_pdg_enter_stop(uint8_t channel)
 
 ra_err_t ra_pdg_channel_bypass_set(uint8_t channel, uint8_t bypass)
 {
-  if (!s_pdg_initialised) {
+  if (!internal_pdg_is_initialised()) {
     return k_ra_err_not_initialized;
   }
   if ((uint16_t)channel >= (uint16_t)k_ra_pdg_channel_count) {
@@ -536,7 +556,7 @@ ra_err_t ra_pdg_channel_bypass_set(uint8_t channel, uint8_t bypass)
 
 ra_err_t ra_pdg_pin_disable(uint8_t channel, ra_pdg_pin_t pin)
 {
-  if (!s_pdg_initialised) {
+  if (!internal_pdg_is_initialised()) {
     return k_ra_err_not_initialized;
   }
   if ((uint16_t)channel >= (uint16_t)k_ra_pdg_channel_count) {
@@ -649,7 +669,7 @@ ra_err_t ra_pdg_pick_frange(uint32_t gptclk_hz, ra_pdg_frange_t* out)
 
 ra_err_t ra_pdg_set_frange(ra_pdg_frange_t new_frange)
 {
-  if (!s_pdg_initialised) {
+  if (!internal_pdg_is_initialised()) {
     return k_ra_err_not_initialized;
   }
   if (!internal_frange_ok(new_frange)) {
@@ -701,7 +721,7 @@ ra_err_t ra_pdg_set_frange(ra_pdg_frange_t new_frange)
 
 ra_err_t ra_pdg_bind_gpt_channel(uint8_t channel)
 {
-  if (!s_pdg_initialised) {
+  if (!internal_pdg_is_initialised()) {
     return k_ra_err_not_initialized;
   }
   if ((uint16_t)channel >= (uint16_t)k_ra_pdg_channel_count) {

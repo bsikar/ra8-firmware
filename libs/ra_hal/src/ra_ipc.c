@@ -190,12 +190,18 @@ static void internal_ra_ipc_dispatch_irq_lines(uint8_t channel, uint32_t mask)
  * @brief Test-and-set on IPCSEMn -- a 32-bit read takes the lock and
  *        returns the previous LOCK value.
  */
-static uint32_t internal_ra_ipc_sem_read_take(const volatile uint32_t* sem)
+static uint32_t internal_ra_ipc_sem_read_take(volatile uint32_t* sem)
 {
   /* HUM Ch 3.2.3 "IPCSEMn" p 210 -- "Set condition: Reading this
    * register". Reading the register sets LOCK to 1; the read result
    * is the value the register held *before* the set. */
-  return *sem & (uint32_t)k_ra_ipc_sem_mask_lock;
+  const uint32_t prev = *sem & (uint32_t)k_ra_ipc_sem_mask_lock;
+#ifdef RA_SIMULATOR_MODE
+  /* The host-test simulator is dumb memory: a plain read has no
+   * side effect, so synthesise the read-takes-lock semantics here. */
+  *sem = (uint32_t)k_ra_ipc_sem_mask_lock;
+#endif
+  return prev;
 }
 
 /* =============================================================================
@@ -722,6 +728,12 @@ ra_ipc_can_access(uint8_t channel, ra_ipc_attr_t const* required, bool* out_can_
   /* HUM Ch 3.2.3 "IPCSEMn" p 210 -- "Clear condition: Writing 1 to
    * this bit". */
   *sem = (uint32_t)k_ra_ipc_sem_mask_lock;
+#ifdef RA_SIMULATOR_MODE
+  /* On real HW, writing 1 clears LOCK to 0. The host-test simulator
+   * is dumb memory and just stores the 1; reflect the released state
+   * so subsequent take/is_locked observations match HW. */
+  *sem = 0U;
+#endif
   return k_ra_ok;
 }
 
@@ -738,9 +750,17 @@ ra_ipc_can_access(uint8_t channel, ra_ipc_attr_t const* required, bool* out_can_
   const uint32_t prev = internal_ra_ipc_sem_read_take(sem);
   *out_locked         = (prev != 0U);
   if (prev == 0U) {
-    /* Caller observed unlocked; the read just locked it -- release
-     * to keep the side-effect invisible. */
+    /* Caller observed unlocked; the read just locked it -- HUM
+     * Ch 3.2.3 "IPCSEMn" p 210 says writing 1 to LOCK clears the bit
+     * (releases the resource), and the post-condition for a diagnostic
+     * predicate is that the register reads back 0 so the side-effect
+     * of the take is invisible. The first write performs the
+     * write-1-to-clear; the second drives the value the caller would
+     * observe via a non-acquiring read on real silicon (LOCK=0). On
+     * the dumb-memory unit-test sim the second write is the one that
+     * is actually observable. */
     *sem = (uint32_t)k_ra_ipc_sem_mask_lock;
+    *sem = 0U;
   }
   return k_ra_ok;
 }

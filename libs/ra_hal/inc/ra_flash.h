@@ -667,12 +667,14 @@ ra_flash_block_protect_set(ra_flash_world_t world, bool lock, bool permanent);
  * @return ``ra_err_t`` error code.
  * @retval k_ra_ok Write completed.
  * @retval k_ra_err_null_ptr ``words`` was NULL.
- * @retval k_ra_err_invalid_arg ``target_addr`` outside extra-MRAM.
+ * @retval k_ra_err_invalid_arg ``target_addr`` outside the OFS window.
  * @retval k_ra_err_hw_error MSTATR reported an error.
  * @retval k_ra_err_hw_timeout MACI never returned MRDY.
  *
  * @pre ``words`` non-null and points to 8 valid halfwords.
- * @pre ``target_addr`` lies inside extra-MRAM (HUM Ch 7 p 278).
+ * @pre ``target_addr`` lies inside the OFS window
+ *      ``[k_ra_flash_ofs_start, k_ra_flash_ofs_start + k_ra_flash_ofs_size)``
+ *      (HUM Ch 7 "Option-Setting Memory" p 278).
  * @post On success, the OFS region holds the new values.
  * @post Controller back in read mode.
  *

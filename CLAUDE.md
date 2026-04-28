@@ -559,23 +559,47 @@ The project follows NASA/JPL Power of 10 rules for safety-critical embedded code
 
 ## Repository Layout
 
+Each application lives in its own top-level directory and is fully
+self-contained: its own `main.c`, boot files, linker script,
+`Makefile`, and `CMakeLists.txt`. There is no shared `src/boot/` /
+`src/linker_script.ld`; future divergence between apps (different
+vector tables, different memory layouts) is an explicit design goal.
+
 ```
 ra8d2-firmware/
-  CMakeLists.txt               Top-level CMake (C23, Cortex-M85, -Wall -Wextra -Werror)
+  CMakeLists.txt               Top-level CMake -- auto-discovers <app>/ dirs
+  Makefile                     Top-level shorthand: `make <app>` / `make apps`
   cmake/
     toolchain-ra8d2.cmake      arm-none-eabi cross-compile settings
-  src/                         Application sources (main, boot, init, tasks if any)
+  blink/                       Standalone app: raw-register LED blink
+    main.c                     Application entry
+    vector_table.c             Per-app vector table + Reset_Handler
+    system_init.c              Per-app SystemInit
+    secure_exception.c         Per-app SecureFault handler
+    trustzone_init.{c,h}       Per-app SAU bring-up
+    linker_script.ld           Per-app memory map (may diverge from sibling apps)
+    CMakeLists.txt             Per-app cmake target
+    Makefile                   Per-app `make` (configure + build via cmake)
+    README.md
+  blink_hal/                   Same shape as blink/, HAL-based variant
+  src/                         Shared internals (no boot code, no main)
+    inc/                       Internal headers shared between TUs
+    secure_app/                Ring 5 secure-side substrate (key vault)
   libs/                        Hand-written libraries
     ra_core/                   ra_err, ra_check, ra_log, ra_assert, ...
     ra_hal/                    Peripheral drivers + register header files
-    ra_bus/                    Bus-manager abstraction (if/when needed)
-    ...
+    ra_nsc/                    TrustZone NSC veneers
+    ra_net_pal/, ra_usb_pal/   Platform abstraction layers
   tests/                       Host-side unit tests (standard gcc/clang, not cross-compiled)
   scripts/
-    format_code.sh             clang-format wrapper
-    clang_tidy.sh              clang-tidy wrapper
+    flash.sh                   Takes a .hex path argument; per-app Makefiles call it
+    ozone.sh                   Takes an .elf path argument
+    debug.sh                   Takes an .elf path argument
+    format_code.sh             clang-format wrapper (auto-discovers app dirs)
+    clang_tidy.sh              clang-tidy wrapper (auto-discovers app dirs)
     git/
       pre-commit               Pre-commit hook (ASCII, format, tidy, C23 patterns)
+    utils/                     check-since-version, cite_check, check_world_tags, ...
   docs/
     reference/                 Committed datasheets and manuals (PDFs)
   .github/workflows/           CI
@@ -590,6 +614,22 @@ ra8d2-firmware/
   CLAUDE.md                    This file
   README.md
 ```
+
+### Adding a new application
+
+Create a new top-level directory `<newapp>/` containing:
+
+1. `main.c` -- the application entry.
+2. The five per-app boot files copied from a sibling app
+   (`vector_table.c`, `system_init.c`, `secure_exception.c`,
+   `trustzone_init.c`, `trustzone_init.h`). Update each `@file` to
+   the new path.
+3. `linker_script.ld` (also copied; may diverge later).
+4. `CMakeLists.txt` and `Makefile` (copy from a sibling and update
+   the `RA_APP_NAME` / `APP` variable).
+
+The next `make` from the repo root re-discovers it -- no changes
+needed to the top-level `CMakeLists.txt` or top-level `Makefile`.
 
 ## Key Reference Documents
 

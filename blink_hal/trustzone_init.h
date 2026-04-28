@@ -1,5 +1,5 @@
 /**
- * @file trustzone_init.h
+ * @file blink_hal/trustzone_init.h
  * @brief Cortex-M85 TrustZone-M SAU bring-up entry point
  *
  * @par Tag

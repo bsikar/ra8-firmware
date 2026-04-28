@@ -44,8 +44,8 @@ typedef enum : uint32_t {
   k_test_addr_in_mram    = 0x02000020UL, /**< Page-aligned valid offset.  */
   k_test_addr_misaligned = 0x02000005UL, /**< Mid-page address.           */
   k_test_addr_above_mram = 0x02100000UL, /**< Past the 1 MiB end.         */
-  k_test_addr_extra_in   = 0x02C9F040UL, /**< Inside extra-MRAM window.   */
-  k_test_addr_extra_bad  = 0x03100000UL, /**< Past extra-MRAM end.        */
+  k_test_addr_extra_in   = 0x02C9F040UL, /**< Inside OFS config_set window. */
+  k_test_addr_extra_bad  = 0x03100000UL, /**< Past extra-MRAM end.          */
 } ra_flash_test_addr_t;
 
 static ra_flash_cfg_t make_cfg(void)
@@ -447,6 +447,10 @@ static void test_arc_argument_validation(void)
 {
   TEST_BEGIN("flash arc validation");
   ra_sim_mmap_reset();
+  /* sim_mmap_reset only clears simulated MMIO; the driver's TU-static
+   * init flag leaks across tests, so explicitly deinit before testing
+   * the not_initialized paths. */
+  (void)ra_flash_deinit();
 
   uint32_t out = 0U;
   TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_flash_arc_read(k_ra_flash_arc_sec, nullptr));

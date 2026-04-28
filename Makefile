@@ -1,24 +1,26 @@
 #
 # Top-level Makefile for ra8d2-firmware.
 #
-# Thin wrapper around cmake + the scripts/ helpers so everyday
-# commands are short. All real work lives in CMakeLists.txt +
-# tests/CMakeLists.txt + scripts/ -- this file does not run the
-# compiler directly.
+# Each application lives in its own top-level directory with its own
+# main.c, boot files (vector_table.c, system_init.c,
+# secure_exception.c, trustzone_init.c), linker_script.ld, Makefile,
+# and CMakeLists.txt. This top-level Makefile auto-discovers them
+# (any top-level dir containing a main.c is an app) and forwards
+# `make <app>` to that app's per-app Makefile.
 #
 # Common targets:
 #
-#   make build     -- cross-compile the firmware (./build.sh)
-#   make clean     -- remove build/ and tests/build/
-#   make format    -- run clang-format --in-place on the whole tree
-#   make check     -- run clang-format --dry-run (no changes)
-#   make tidy      -- run clang-tidy against the whole tree
-#   make test      -- build + run the host unit tests
-#   make docs      -- run doxygen against Doxyfile.main
-#   make flash     -- ./scripts/flash.sh against a J-Link
-#   make debug     -- ./scripts/debug.sh attach via gdb
-#   make size      -- dump arm-none-eabi-size output for the ELF
-#   make ascii     -- scan for non-ASCII characters
+#   make            -- build the default app ($(RA_DEFAULT_APP))
+#   make <app>      -- build a specific app, e.g. `make blink_hal`
+#   make apps       -- list every discovered app
+#   make clean      -- remove every app build dir and tests/build
+#   make format     -- run clang-format --in-place on the whole tree
+#   make check      -- run clang-format --dry-run (no changes)
+#   make tidy       -- run clang-tidy against the whole tree
+#   make test       -- build + run the host unit tests
+#   make docs       -- run doxygen against Doxyfile.main
+#   make ascii      -- scan for non-ASCII characters
+#   make version    -- verify @since tags match the VERSION file
 #
 # Copyright (c) 2026 Brighton Sikarskie
 # SPDX-License-Identifier: MIT
@@ -27,67 +29,60 @@
 SHELL := /bin/bash
 
 ROOT         := $(abspath .)
-BUILD_DIR    := $(ROOT)/build
 TESTS_DIR    := $(ROOT)/tests
 TESTS_BUILD  := $(ROOT)/build/tidy
-ELF          := $(BUILD_DIR)/ra8d2-firmware.elf
 
 CMAKE        ?= cmake
 CLANG_FORMAT ?= clang-format
 DOXYGEN      ?= doxygen
 ARM_SIZE     ?= arm-none-eabi-size
 
-.PHONY: help build clean format check tidy test test-docker ctest docs flash ozone debug size ascii version all examples
+# Default app -- override on the command line, e.g. `make RA_DEFAULT_APP=blink_hal`.
+RA_DEFAULT_APP ?= blink
+
+# Auto-discover apps: any top-level dir containing main.c + CMakeLists.txt.
+RA_APPS := $(sort $(patsubst $(ROOT)/%/main.c,%,$(wildcard $(ROOT)/*/main.c)))
+
+# We forward each <app> name to the app's own Makefile, so reserve the names
+# below from being shadowed by .PHONY targets.
+.PHONY: help apps default clean format check tidy test test-docker ctest docs ascii version all $(RA_APPS)
 
 help:
 	@echo "ra8d2-firmware make targets:"
-	@echo "  build           cross-compile examples/blink (default) via ./build.sh"
-	@echo "  example-<name>  cross-compile examples/<name>/main.c"
-	@echo "                  e.g. 'make example-blink'"
-	@echo "  examples        list every available example"
-	@echo "  clean       remove build/ and tests/build/"
-	@echo "  format      run clang-format in place"
-	@echo "  check       run clang-format --dry-run"
-	@echo "  tidy        run clang-tidy"
-	@echo "  test        host-compile + run unit tests (Linux native)"
-	@echo "  test-docker host-compile + run unit tests in Linux container"
-	@echo "              (use this on macOS where MAP_FIXED is blocked)"
-	@echo "  ctest       rerun just ctest (assumes already built)"
-	@echo "  docs        run doxygen"
-	@echo "  flash       scripts/flash.sh"
-	@echo "  ozone       scripts/ozone.sh -- open SEGGER Ozone GUI debugger"
-	@echo "  debug       scripts/debug.sh"
-	@echo "  size        arm-none-eabi-size on the ELF"
-	@echo "  ascii       fix-encoding.py --check"
-	@echo "  version     verify @since tags match the VERSION file"
+	@echo "  make           build the default app ($(RA_DEFAULT_APP))"
+	@echo "  make <app>     build a specific app -- one of: $(RA_APPS)"
+	@echo "  make apps      list every discovered app"
+	@echo "  make clean     remove every app build dir and tests/build"
+	@echo "  make format    run clang-format in place"
+	@echo "  make check     run clang-format --dry-run"
+	@echo "  make tidy      run clang-tidy"
+	@echo "  make test      host-compile + run unit tests (Linux native)"
+	@echo "  make test-docker host-compile + run unit tests in Linux container"
+	@echo "  make ctest     rerun just ctest (assumes already built)"
+	@echo "  make docs      run doxygen"
+	@echo "  make ascii     fix-encoding.py --check"
+	@echo "  make version   verify @since tags match the VERSION file"
 
-build:
-	./build.sh
+# `make` with no arg builds the default app.
+default: $(RA_DEFAULT_APP)
 
-# `make example-<name>` -- build a specific example.
-# The pattern target wipes any previous build dir so the EXAMPLE
-# selector takes effect even if a different example was last built.
-example-%:
-	@if [ ! -f $(ROOT)/examples/$*/main.c ]; then \
-		echo "error: examples/$*/main.c not found" >&2; \
-		echo "" >&2; \
-		echo "available examples:" >&2; \
-		ls -1 $(ROOT)/examples 2>/dev/null | sed 's/^/  /' >&2; \
-		exit 1; \
-	fi
-	rm -rf $(BUILD_DIR)
-	EXAMPLE=$* ./build.sh
-
-examples:
-	@echo "Available examples:"
-	@for d in $(ROOT)/examples/*/; do \
-		name=$$(basename $$d); \
-		first_brief=$$(grep -m1 "@brief" $$d/main.c 2>/dev/null | sed 's/.*@brief //'); \
-		printf "  %-15s %s\n" "$$name" "$$first_brief"; \
+apps:
+	@echo "Available apps:"
+	@for app in $(RA_APPS); do \
+		first_brief=$$(grep -m1 "@brief" $(ROOT)/$$app/main.c 2>/dev/null | sed 's/.*@brief //'); \
+		printf "  %-15s %s\n" "$$app" "$$first_brief"; \
 	done
 
+# Forward `make <app>` to the per-app Makefile so the top-level shorthand
+# and `cd <app> && make` produce the exact same artifacts.
+$(RA_APPS):
+	$(MAKE) -C $(ROOT)/$@ build
+
 clean:
-	rm -rf $(BUILD_DIR) $(TESTS_BUILD)
+	@for app in $(RA_APPS); do \
+		$(MAKE) -C $(ROOT)/$$app clean; \
+	done
+	rm -rf $(TESTS_BUILD)
 
 format:
 	bash scripts/format_code.sh
@@ -113,25 +108,13 @@ ctest:
 docs:
 	$(DOXYGEN) Doxyfile.main
 
-flash:
-	bash scripts/flash.sh
-
-ozone:
-	bash scripts/ozone.sh
-
-debug:
-	bash scripts/debug.sh
-
-size:
-	@test -f $(ELF) || { echo "No $(ELF) -- run 'make build' first"; exit 1; }
-	$(ARM_SIZE) -A -x $(ELF)
-	$(ARM_SIZE) -B $(ELF)
-
 ascii:
-	python3 scripts/utils/fix-encoding.py --check src libs tests examples
+	@for dir in src libs tests $(RA_APPS); do \
+		python3 scripts/utils/fix-encoding.py --check "$$dir" || exit 1; \
+	done
 
 version:
 	@echo "project VERSION: $$(cat VERSION)"
 	@python3 scripts/utils/check-since-version.py --all
 
-all: format tidy test build
+all: format tidy test default

@@ -1,5 +1,5 @@
 /**
- * @file secure_exception.c
+ * @file blink/secure_exception.c
  * @brief Secure-side fault handler for NS -> S violations
  *
  * @par Tag

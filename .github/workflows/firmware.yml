@@ -19,7 +19,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Scan
-        run: python3 scripts/utils/fix-encoding.py --check src libs tests
+        run: |
+          set -e
+          # Auto-discover top-level app dirs (any top-level dir with main.c).
+          apps=()
+          for d in */; do
+            d="${d%/}"
+            case "$d" in
+              build|docs|cmake|scripts|fsp|STAR|node_modules|.github|.devcontainer|.claude) continue ;;
+            esac
+            [ -f "$d/main.c" ] && apps+=("$d")
+          done
+          for dir in src libs tests "${apps[@]}"; do
+            python3 scripts/utils/fix-encoding.py --check "$dir"
+          done
 
   # ---------------------------------------------------------------------------
   # Copyright header check
@@ -135,12 +148,21 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y cppcheck
       - name: Run cppcheck
         run: |
+          set -e
+          apps=()
+          for d in */; do
+            d="${d%/}"
+            case "$d" in
+              build|docs|cmake|scripts|fsp|STAR|node_modules|.github|.devcontainer|.claude) continue ;;
+            esac
+            [ -f "$d/main.c" ] && apps+=("$d")
+          done
           cppcheck --enable=warning,style,performance,portability \
                    --error-exitcode=1 \
                    --suppressions-list=.cppcheck-suppressions \
                    --inline-suppr \
                    --std=c23 \
-                   src libs
+                   src libs "${apps[@]}"
 
   # ---------------------------------------------------------------------------
   # Cross-compile with arm-none-eabi-gcc

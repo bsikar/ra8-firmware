@@ -1,9 +1,13 @@
 # blink_hal
 
 LED-blink demo built on the project's HAL libraries (`libs/ra_hal/` +
-`libs/ra_core/`). Same observable behaviour as `examples/blink/` --
+`libs/ra_core/`). Same observable behaviour as `blink/` --
 1 Hz toggle on the EK-RA8D2 user-LED candidates -- but using
-`ra_gpio_*` and `ra_time_*` instead of raw register pokes.
+`ra_gpio_*` and `ra_time_*` instead of raw register pokes. Standalone
+app in its own top-level directory: `blink_hal/main.c` plus its own
+`vector_table.c`, `system_init.c`, `secure_exception.c`,
+`trustzone_init.c`, `linker_script.ld`, `Makefile`, and
+`CMakeLists.txt`.
 
 ## Why two blink demos?
 
@@ -22,9 +26,20 @@ run cleanly.
 
 ## Build + flash
 
+From the repo root:
+
 ```sh
-make example-blink_hal     # cross-compile
-make flash                 # flash via on-board J-Link OB
+make blink_hal             # cross-compile -> blink_hal/build/blink_hal.elf
+make -C blink_hal flash    # flash via on-board J-Link OB
+```
+
+Or standalone, from inside `blink_hal/`:
+
+```sh
+cd blink_hal/
+make                       # configure + build
+make flash                 # flash blink_hal/build/blink_hal.hex
+make clean                 # rm -rf blink_hal/build
 ```
 
 ## What it touches
@@ -35,7 +50,7 @@ make flash                 # flash via on-board J-Link OB
 - **`libs/ra_core/src/ra_pin_validator.c`** -- pulled in transitively
   to claim each LED pin so the HAL refuses double-assignment.
 
-The HAL stack adds ~24 KB of .text vs. the raw `blink` example (91 KB
+The HAL stack adds ~24 KB of .text vs. the raw `blink` app (91 KB
 total .elf vs. 67 KB), most of which is the pin validator's static
 table + log helpers + assertion strings.
 
@@ -49,5 +64,5 @@ table + log helpers + assertion strings.
   possible while still proving the HAL works.
 - TrustZone / SAU programming.
 
-When those subsystems are ready to flip on, this example is the
+When those subsystems are ready to flip on, this app is the
 canonical place to add them one at a time.

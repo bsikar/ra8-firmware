@@ -46,7 +46,30 @@ import sys
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 VERSION_FILE = REPO_ROOT / "VERSION"
 
-SCAN_DIRS = ("libs", "src", "tests", "examples")
+# Top-level dirs we never lint: infrastructure / vendor / build trees.
+EXCLUDE_TOP_LEVEL = {
+    "build", "docs", "cmake", "scripts", "fsp", "STAR",
+    ".git", "node_modules", ".github", ".devcontainer", ".claude",
+}
+ALWAYS_SCAN_DIRS = ("libs", "src", "tests")
+
+
+def _discover_scan_dirs() -> tuple[str, ...]:
+    """Return libs/src/tests + every top-level app dir."""
+    out = list(ALWAYS_SCAN_DIRS)
+    for entry in sorted(REPO_ROOT.iterdir()):
+        if not entry.is_dir():
+            continue
+        if entry.name in EXCLUDE_TOP_LEVEL:
+            continue
+        if entry.name in ALWAYS_SCAN_DIRS:
+            continue
+        if (entry / "main.c").is_file() and (entry / "CMakeLists.txt").is_file():
+            out.append(entry.name)
+    return tuple(out)
+
+
+SCAN_DIRS = _discover_scan_dirs()
 SOURCE_SUFFIXES = {".c", ".h", ".cpp", ".hpp"}
 
 PUBLIC_DECL = re.compile(

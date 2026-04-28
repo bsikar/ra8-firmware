@@ -59,6 +59,13 @@ typedef enum : uintptr_t {
   k_ra_flash_extra_start = 0x27000000UL, /**< Start of extra MRAM (data flash). */
   k_ra_flash_extra_size  = 0x00003000UL, /**< 12 KiB of extra MRAM.            */
 
+  /* HUM Ch 7 "Option-Setting Memory" p 278 -- the config_set MACI command
+   * targets halfwords inside this OFS window (BTFLG/BTSIZE at 0x02C9F070,
+   * SAS at 0x02C9F074, etc.). FSP r_mram.c uses MSADDR values inside this
+   * 4 KiB block as the only legal config_set destinations. */
+  k_ra_flash_ofs_start = 0x02C9F000UL, /**< Start of OFS config_set window.   */
+  k_ra_flash_ofs_size  = 0x00001000UL, /**< 4 KiB OFS block.                  */
+
   /* HUM Ch 7.2.21 "ARCCS Anti-Rollback Counter Configuration" p 296 */
   k_ra_flash_ofs_arccs_addr = 0x02E17932UL,
   /* HUM Ch 7.2.22 "ARC_SEC" p 296 */
