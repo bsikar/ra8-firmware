@@ -1,6 +1,6 @@
 /**
  * @file test_ra_uart.c
- * @brief Unit tests for uart.c (SCI-based polling UART)
+ * @brief Unit tests for uart.c (SCI_B-based polling UART)
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -20,7 +20,7 @@ typedef enum : uint8_t {
   k_ra_uart_test_ch_first  = 0U,
   k_ra_uart_test_ch_middle = 5U,
   k_ra_uart_test_ch_last   = 9U,
-  k_ra_uart_test_ch_oor    = 10U, /**< Out of range (SCI only goes 0..9).  */
+  k_ra_uart_test_ch_oor    = 10U, /**< Out of range (SCI only goes 0..9). */
   k_ra_uart_test_ch_huge   = 250U,
 } ra_uart_test_ch_t;
 
@@ -29,11 +29,8 @@ typedef enum : uint8_t {
  * @brief Sample BRR / data values used in the tests.
  */
 typedef enum : uint8_t {
-  k_ra_uart_test_brr_val     = 0x2AU,
-  k_ra_uart_test_byte        = 0x55U,
-  k_ra_uart_test_tdre_mask   = 0x80U, /**< SSR.TDRE = bit 7.                 */
-  k_ra_uart_test_scr_enabled = (uint8_t)((1U << 4) | (1U << 5)), /**< TE|RE. */
-  k_ra_uart_test_scmr_expect = 0xF2U,
+  k_ra_uart_test_brr_val = 0x2AU,
+  k_ra_uart_test_byte    = 0x55U,
 } ra_uart_test_val_t;
 
 static void test_init_happy_first_channel(void)
@@ -47,11 +44,21 @@ static void test_init_happy_first_channel(void)
 
   volatile r_sci_regs_t* reg = ra_sci((uint8_t)k_ra_uart_test_ch_first);
   TEST_ASSERT_NOT_NULL((void*)reg);
-  TEST_ASSERT_EQ((int)k_ra_uart_test_scr_enabled, (int)reg->SCR);
-  TEST_ASSERT_EQ(0, (int)reg->SMR);
-  TEST_ASSERT_EQ((int)k_ra_uart_test_scmr_expect, (int)reg->SCMR);
-  TEST_ASSERT_EQ((int)k_ra_uart_test_brr_val, (int)reg->BRR);
-  TEST_ASSERT_EQ(0, (int)reg->SEMR);
+  /* CCR0 = TE | RE bits, all other bits zero. */
+  const uint32_t expected_ccr0 =
+    (1U << (uint8_t)k_ra_sci_ccr0_bit_te) | (1U << (uint8_t)k_ra_sci_ccr0_bit_re);
+  TEST_ASSERT_EQ((int)expected_ccr0, (int)reg->CCR0);
+  /* CCR1 = 0 means parity off, no inversion -- 8-N-1 path. */
+  TEST_ASSERT_EQ(0, (int)reg->CCR1);
+  /* CCR3 carries the 8-bit CHR encoding shifted into the field. */
+  const uint32_t expected_ccr3 =
+    ((uint32_t)k_ra_sci_ccr3_chr_8bit << (uint8_t)k_ra_sci_ccr3_shift_chr);
+  TEST_ASSERT_EQ((int)expected_ccr3, (int)reg->CCR3);
+  /* CCR2 carries BRR<<8 | MDDR<<24. */
+  const uint32_t expected_ccr2 =
+    ((uint32_t)k_ra_uart_test_brr_val << (uint8_t)k_ra_sci_ccr2_shift_brr) |
+    ((uint32_t)0xFFU << (uint8_t)k_ra_sci_ccr2_shift_mddr);
+  TEST_ASSERT_EQ((int)expected_ccr2, (int)reg->CCR2);
   TEST_END("uart init first channel");
 }
 
@@ -102,14 +109,14 @@ static void test_putc_happy(void)
   TEST_BEGIN("uart putc happy");
   ra_sim_mmap_reset();
 
-  /* Pre-arm TDRE so the first poll succeeds immediately. */
+  /* Pre-arm CSR.TDRE so the first poll succeeds immediately. */
   volatile r_sci_regs_t* reg = ra_sci((uint8_t)k_ra_uart_test_ch_first);
   TEST_ASSERT_NOT_NULL((void*)reg);
-  reg->SSR = (uint8_t)k_ra_uart_test_tdre_mask;
+  reg->CSR = (1U << (uint8_t)k_ra_sci_csr_bit_tdre);
 
   TEST_ASSERT_EQ((int)k_ra_ok,
                  (int)ra_uart_putc((uint8_t)k_ra_uart_test_ch_first, (uint8_t)k_ra_uart_test_byte));
-  TEST_ASSERT_EQ((int)k_ra_uart_test_byte, (int)reg->TDR);
+  TEST_ASSERT_EQ((int)k_ra_uart_test_byte, (int)(reg->TDR & 0xFFU));
   TEST_END("uart putc happy");
 }
 
@@ -118,7 +125,7 @@ static void test_putc_timeout(void)
   TEST_BEGIN("uart putc timeout");
   ra_sim_mmap_reset();
 
-  /* SSR is zero -> TDRE never sets -> expect hw_timeout. */
+  /* CSR is zero -> TDRE never sets -> expect hw_timeout. */
   TEST_ASSERT_EQ((int)k_ra_err_hw_timeout,
                  (int)ra_uart_putc((uint8_t)k_ra_uart_test_ch_first, (uint8_t)k_ra_uart_test_byte));
   TEST_END("uart putc timeout");
@@ -141,7 +148,7 @@ static void test_putc_last_channel(void)
 
   volatile r_sci_regs_t* reg = ra_sci((uint8_t)k_ra_uart_test_ch_last);
   TEST_ASSERT_NOT_NULL((void*)reg);
-  reg->SSR = (uint8_t)k_ra_uart_test_tdre_mask;
+  reg->CSR = (1U << (uint8_t)k_ra_sci_csr_bit_tdre);
 
   TEST_ASSERT_EQ((int)k_ra_ok,
                  (int)ra_uart_putc((uint8_t)k_ra_uart_test_ch_last, (uint8_t)k_ra_uart_test_byte));
