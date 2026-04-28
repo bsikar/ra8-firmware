@@ -37,22 +37,25 @@ CLANG_FORMAT ?= clang-format
 DOXYGEN      ?= doxygen
 ARM_SIZE     ?= arm-none-eabi-size
 
-.PHONY: help build clean format check tidy test ctest docs flash debug size ascii all
+.PHONY: help build clean format check tidy test test-docker ctest docs flash ozone debug size ascii all
 
 help:
 	@echo "ra8d2-firmware make targets:"
-	@echo "  build    cross-compile via ./build.sh"
-	@echo "  clean    remove build/ and tests/build/"
-	@echo "  format   run clang-format in place"
-	@echo "  check    run clang-format --dry-run"
-	@echo "  tidy     run clang-tidy"
-	@echo "  test     host-compile + run unit tests"
-	@echo "  ctest    rerun just ctest (assumes already built)"
-	@echo "  docs     run doxygen"
-	@echo "  flash    scripts/flash.sh"
-	@echo "  debug    scripts/debug.sh"
-	@echo "  size     arm-none-eabi-size on the ELF"
-	@echo "  ascii    fix-encoding.py --check"
+	@echo "  build       cross-compile via ./build.sh"
+	@echo "  clean       remove build/ and tests/build/"
+	@echo "  format      run clang-format in place"
+	@echo "  check       run clang-format --dry-run"
+	@echo "  tidy        run clang-tidy"
+	@echo "  test        host-compile + run unit tests (Linux native)"
+	@echo "  test-docker host-compile + run unit tests in Linux container"
+	@echo "              (use this on macOS where MAP_FIXED is blocked)"
+	@echo "  ctest       rerun just ctest (assumes already built)"
+	@echo "  docs        run doxygen"
+	@echo "  flash       scripts/flash.sh"
+	@echo "  ozone       scripts/ozone.sh -- open SEGGER Ozone GUI debugger"
+	@echo "  debug       scripts/debug.sh"
+	@echo "  size        arm-none-eabi-size on the ELF"
+	@echo "  ascii       fix-encoding.py --check"
 
 build:
 	./build.sh
@@ -69,6 +72,9 @@ check:
 tidy:
 	bash scripts/clang_tidy.sh --check
 
+test-docker:
+	bash scripts/test-docker.sh
+
 test:
 	$(CMAKE) -B $(TESTS_BUILD) -S $(TESTS_DIR) \
 		-DCMAKE_EXPORT_COMPILE_COMMANDS=ON -Wno-dev
@@ -83,6 +89,9 @@ docs:
 
 flash:
 	bash scripts/flash.sh
+
+ozone:
+	bash scripts/ozone.sh
 
 debug:
 	bash scripts/debug.sh
