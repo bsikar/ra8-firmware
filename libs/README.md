@@ -18,15 +18,16 @@ Code may depend on anything **lower** in the table; never on
 anything higher. Concretely:
 
 ```
-<app>/main.c             -->  ra_hal  -->  (ra8d2_*_regs.h)
+examples/<app>/main.c             -->  ra_hal  -->  (ra8d2_*_regs.h)
                             \-->  ra_core
                             \-->  ra_net_pal / ra_usb_pal / ra_nsc
 ra_hal                     -->  ra_core
 ra_core                     -->  (nothing in libs/)
 ```
 
-(`<app>` is any top-level directory containing a `main.c`, e.g.
-`blink/`, `blink_hal/` -- see the repo-root [README](../README.md).)
+(`<app>` is any directory under `examples/` containing a `main.c`,
+e.g. `examples/blink/`, `examples/blink_hal/` -- see the repo-root
+[README](../README.md).)
 
 `ra_core` exists specifically so `ra_hal` drivers can rely on
 common primitives (error codes, logging, time) without having a

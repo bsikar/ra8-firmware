@@ -7,7 +7,7 @@ document -- expand as new subsystems land.
 
 ```
     +----------------------------------------------------+
-    |                application main()                  |   <app>/main.c
+    |                application main()                  |   examples/<app>/main.c
     +----------------------------------------------------+
     |                    drivers                          |   libs/ra_hal/src/
     |        gpio | uart | iic | spi | adc | gpt | agt    |   libs/ra_hal/inc/
@@ -23,9 +23,9 @@ document -- expand as new subsystems land.
     |  error_handler | exception | time | register_guard  |
     |  register_protection | infrastructure               |
     +----------------------------------------------------+
-    |                    boot / SystemInit                |   <app>/{vector_table,system_init,
+    |                    boot / SystemInit                |   examples/<app>/{vector_table,system_init,
     |  vector_table.c | system_init.c | linker_script.ld  |   secure_exception,trustzone_init}.c
-    |                                                      |   <app>/linker_script.ld
+    |                                                      |   examples/<app>/linker_script.ld
     +----------------------------------------------------+
     |                     hardware                        |   Renesas R7KA8D2KFLCAC
     +----------------------------------------------------+
@@ -37,12 +37,12 @@ dereferences peripheral addresses. Drivers build on top of a
 register header plus the utilities in `ra_core` (error codes,
 pin validator, logging, IRQ-masked critical sections).
 
-## Source-tree layout: `<app>/` vs `src/` vs `libs/`
+## Source-tree layout: `examples/<app>/` vs `src/` vs `libs/`
 
 Three distinct roles, often confused:
 
 ```
-<app>/               ← one standalone application per top-level dir
+examples/<app>/      ← one standalone example application per dir
   main.c               application entry; the only file that differs run-to-run
   vector_table.c       per-app 112-IRQ Cortex-M85 vector table + Reset_Handler
   system_init.c        per-app SystemInit (VTOR, FPU, priority grouping, ...)
@@ -64,12 +64,12 @@ libs/                ← the standard library (everyone links it)
   ra_net_pal/          Ethernet PAL bridging the HAL to lwIP / similar
   ra_usb_pal/          USB PAL bridging the HAL to CherryUSB / similar
 
-blink/, blink_hal/   ← concrete apps that live at the top level today
+examples/blink/, examples/blink_hal/   ← concrete apps shipped today
 ```
 
 ### Why every app is small
 
-Each `<app>/main.c` only contains the application's `main()`
+Each `examples/<app>/main.c` only contains the application's `main()`
 function. It assumes:
 
 - The vector table exists and is pinned to MRAM (provided by the
@@ -79,15 +79,15 @@ function. It assumes:
   priority grouping (provided by the app's own `system_init.c`)
 - The HAL libraries in `libs/` are linked and ready to use
 
-So `blink_hal/main.c` only has to set up its specific peripherals
+So `examples/blink_hal/main.c` only has to set up its specific peripherals
 (GPIO, SysTick) and run its loop -- everything underneath is
 provided by the per-app boot files and `libs/`.
 
 ### What the CMake build actually does
 
-The top-level `CMakeLists.txt` auto-discovers every top-level dir
-that contains a `main.c` + `CMakeLists.txt` and `add_subdirectory`s
-each of them. The per-app cmake target is the same shape:
+The top-level `CMakeLists.txt` auto-discovers every directory under
+`examples/` that contains a `main.c` + `CMakeLists.txt` and
+`add_subdirectory`s each of them. The per-app cmake target is the same shape:
 
 ```cmake
 add_executable(<app>.elf
@@ -103,17 +103,18 @@ add_executable(<app>.elf
 target_link_options(... -T${CMAKE_CURRENT_SOURCE_DIR}/linker_script.ld ...)
 ```
 
-`make <app>` (top-level) and `make` (inside `<app>/`) produce the
-exact same `<app>.elf` / `<app>.hex` / `<app>.bin` artifacts.
+`make <app>` (top-level) and `make` (inside `examples/<app>/`)
+produce the exact same `<app>.elf` / `<app>.hex` / `<app>.bin`
+artifacts.
 
 ### Mental model: hosted-OS analogy
 
 ```
 hosted Linux/macOS C program        ra8d2-firmware
 ─────────────────────────────       ─────────────────────────
-crt0.o (runtime)                    <app>/{vector_table,system_init,...}.c
+crt0.o (runtime)                    examples/<app>/{vector_table,system_init,...}.c
 libc / libm                         libs/
-your code (main.c, ...)             <app>/main.c
+your code (main.c, ...)             examples/<app>/main.c
 ```
 
 On a hosted system you don't *see* `crt0.o` because the toolchain
@@ -122,9 +123,10 @@ and the per-app boot files are exactly that. Two apps can carry
 divergent vector tables, divergent linker scripts, etc.; copying
 the boot files in keeps each app self-contained.
 
-Adding a new app: drop a top-level directory containing `main.c`,
-the boot files (copy from a sibling app), `linker_script.ld`,
-`CMakeLists.txt`, and `Makefile`. The next `make` re-discovers it.
+Adding a new app: drop a directory under `examples/` containing
+`main.c`, the boot files (copy from a sibling app),
+`linker_script.ld`, `CMakeLists.txt`, and `Makefile`. The next
+`make` re-discovers it.
 
 ## Boot sequence
 
@@ -160,7 +162,7 @@ the boot files (copy from a sibling app), `linker_script.ld`,
           | jumps
           v
     +--------------+
-    |    main()    |   <app>/main.c
+    |    main()    |   examples/<app>/main.c
     |              |
     |  ra_infrastructure_init()  <- log backend, pin validator
     |  ra_cgc_init()              <- PLL to CPUCLK0 @ ~1 GHz

@@ -46,26 +46,19 @@ import sys
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 VERSION_FILE = REPO_ROOT / "VERSION"
 
-# Top-level dirs we never lint: infrastructure / vendor / build trees.
-EXCLUDE_TOP_LEVEL = {
-    "build", "docs", "cmake", "scripts", "fsp", "STAR",
-    ".git", "node_modules", ".github", ".devcontainer", ".claude",
-}
 ALWAYS_SCAN_DIRS = ("libs", "src", "tests")
 
 
 def _discover_scan_dirs() -> tuple[str, ...]:
-    """Return libs/src/tests + every top-level app dir."""
+    """Return libs/src/tests + every examples/<app>/ dir."""
     out = list(ALWAYS_SCAN_DIRS)
-    for entry in sorted(REPO_ROOT.iterdir()):
-        if not entry.is_dir():
-            continue
-        if entry.name in EXCLUDE_TOP_LEVEL:
-            continue
-        if entry.name in ALWAYS_SCAN_DIRS:
-            continue
-        if (entry / "main.c").is_file() and (entry / "CMakeLists.txt").is_file():
-            out.append(entry.name)
+    examples_root = REPO_ROOT / "examples"
+    if examples_root.is_dir():
+        for entry in sorted(examples_root.iterdir()):
+            if not entry.is_dir():
+                continue
+            if (entry / "main.c").is_file() and (entry / "CMakeLists.txt").is_file():
+                out.append(f"examples/{entry.name}")
     return tuple(out)
 
 

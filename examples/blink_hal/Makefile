@@ -2,11 +2,11 @@
 # Per-app Makefile for the `blink_hal` firmware.
 #
 # Standalone use:
-#   cd blink_hal/
-#   make             # configure + build -> blink_hal/build/blink_hal.elf
+#   cd examples/blink_hal/
+#   make             # configure + build -> examples/blink_hal/build/blink_hal.elf
 #   make flash       # JLinkExe load via scripts/flash.sh
 #   make ozone       # SEGGER Ozone GUI debugger
-#   make clean       # rm -rf blink_hal/build
+#   make clean       # rm -rf examples/blink_hal/build
 #
 # This file is a thin wrapper around the per-app CMakeLists.txt and
 # the shared scripts/ helpers in the repo root.
@@ -18,7 +18,7 @@
 SHELL     := /bin/bash
 
 APP        := blink_hal
-ROOT       := $(abspath $(CURDIR)/..)
+ROOT       := $(abspath $(CURDIR)/../..)
 HERE       := $(CURDIR)
 BUILD_DIR  := $(HERE)/build
 ELF        := $(BUILD_DIR)/$(APP).elf

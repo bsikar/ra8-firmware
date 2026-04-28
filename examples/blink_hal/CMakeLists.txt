@@ -1,14 +1,15 @@
 #
-# Per-app CMake for the `blink` firmware.
+# Per-app CMake for the `blink_hal` firmware.
 #
 # Usable two ways:
-#   1. Standalone, from inside `blink/`:
+#   1. Standalone, from inside `blink_hal/`:
 #        cmake -S . -B build \
-#              -DCMAKE_TOOLCHAIN_FILE=../cmake/toolchain-ra8d2.cmake
+#              -DCMAKE_TOOLCHAIN_FILE=../../cmake/toolchain-ra8d2.cmake
 #        cmake --build build
-#   2. Pulled in by the top-level CMakeLists.txt via add_subdirectory(blink).
+#   2. Pulled in by the top-level CMakeLists.txt via add_subdirectory(examples/blink_hal).
 #
-# Either path produces blink.elf / blink.hex / blink.bin in the build dir.
+# Either path produces blink_hal.elf / blink_hal.hex / blink_hal.bin in the
+# build dir.
 #
 # Copyright (c) 2026 Brighton Sikarskie
 # SPDX-License-Identifier: MIT
@@ -26,17 +27,15 @@ if(NOT _ra_has_parent)
 endif()
 
 if(RA_APP_STANDALONE)
-    # Top-level project mode: replicate just enough of the repo-root cmake
-    # to build this single app.
-    get_filename_component(RA_REPO_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/.." ABSOLUTE)
+    get_filename_component(RA_REPO_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUTE)
 
     file(READ "${RA_REPO_ROOT}/VERSION" RA_PROJECT_VERSION)
     string(STRIP "${RA_PROJECT_VERSION}" RA_PROJECT_VERSION)
 
-    project(blink
+    project(blink_hal
         LANGUAGES C ASM
         VERSION ${RA_PROJECT_VERSION}
-        DESCRIPTION "Bare-metal blink firmware for RA8D2"
+        DESCRIPTION "HAL-based blink firmware for RA8D2"
     )
 
     if(NOT CMAKE_BUILD_TYPE)
@@ -57,17 +56,15 @@ if(RA_APP_STANDALONE)
 
     option(RA_TRUSTZONE_ENABLE "Enable Cortex-M85 TrustZone (-mcmse + SAU)" OFF)
 else()
-    # Embedded mode: parent already set toolchain, std, build type.
-    get_filename_component(RA_REPO_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/.." ABSOLUTE)
+    get_filename_component(RA_REPO_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUTE)
 endif()
 
 #############################################################################
 # Sources
 #############################################################################
 
-set(RA_APP_NAME blink)
+set(RA_APP_NAME blink_hal)
 
-# Per-app sources: main + boot + linker script live next to this file.
 set(APP_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/main.c
     ${CMAKE_CURRENT_SOURCE_DIR}/vector_table.c
@@ -76,7 +73,6 @@ set(APP_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/trustzone_init.c
 )
 
-# Shared library + secure-app sources from the repo root.
 file(GLOB_RECURSE LIB_RA_CORE_SOURCES   CONFIGURE_DEPENDS ${RA_REPO_ROOT}/libs/ra_core/src/*.c)
 file(GLOB_RECURSE LIB_RA_HAL_SOURCES    CONFIGURE_DEPENDS ${RA_REPO_ROOT}/libs/ra_hal/src/*.c)
 file(GLOB_RECURSE LIB_RA_NET_PAL_SOURCES CONFIGURE_DEPENDS ${RA_REPO_ROOT}/libs/ra_net_pal/src/*.c)
@@ -131,7 +127,6 @@ target_link_options(${RA_APP_NAME}.elf PRIVATE
     -Wl,--Map=${RA_APP_NAME}.map
 )
 
-# Re-link if the linker script changes.
 set_target_properties(${RA_APP_NAME}.elf PROPERTIES LINK_DEPENDS ${LINKER_SCRIPT})
 
 #############################################################################

@@ -3,10 +3,10 @@
 #
 # Usage:
 #   ./scripts/ozone.sh path/to/firmware.elf       # debug a specific elf (preferred)
-#   ./scripts/ozone.sh                            # default: blink/build/blink.elf
+#   ./scripts/ozone.sh                            # default: examples/blink/build/blink.elf
 #
 # Per-app Makefiles invoke this with their own .elf path
-# (e.g. `make -C blink_hal ozone` -> `ozone.sh blink_hal/build/blink_hal.elf`).
+# (e.g. `make -C examples/blink_hal ozone` -> `ozone.sh examples/blink_hal/build/blink_hal.elf`).
 #
 # Requires:
 #   - SEGGER Ozone installed (cask: segger-ozone)
@@ -18,7 +18,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 FW_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 JDEBUG="${SCRIPT_DIR}/ra8d2.jdebug"
-ELF="${1:-${FW_DIR}/blink/build/blink.elf}"
+ELF="${1:-${FW_DIR}/examples/blink/build/blink.elf}"
 export RA_OZONE_ELF="${ELF}"
 
 OZONE_BIN=""

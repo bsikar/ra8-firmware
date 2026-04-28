@@ -21,15 +21,14 @@ jobs:
       - name: Scan
         run: |
           set -e
-          # Auto-discover top-level app dirs (any top-level dir with main.c).
+          # Auto-discover example app dirs (examples/<app> with main.c).
           apps=()
-          for d in */; do
-            d="${d%/}"
-            case "$d" in
-              build|docs|cmake|scripts|fsp|STAR|node_modules|.github|.devcontainer|.claude) continue ;;
-            esac
-            [ -f "$d/main.c" ] && apps+=("$d")
-          done
+          if [ -d examples ]; then
+            for d in examples/*/; do
+              d="${d%/}"
+              [ -f "$d/main.c" ] && apps+=("$d")
+            done
+          fi
           for dir in src libs tests "${apps[@]}"; do
             python3 scripts/utils/fix-encoding.py --check "$dir"
           done
@@ -150,13 +149,12 @@ jobs:
         run: |
           set -e
           apps=()
-          for d in */; do
-            d="${d%/}"
-            case "$d" in
-              build|docs|cmake|scripts|fsp|STAR|node_modules|.github|.devcontainer|.claude) continue ;;
-            esac
-            [ -f "$d/main.c" ] && apps+=("$d")
-          done
+          if [ -d examples ]; then
+            for d in examples/*/; do
+              d="${d%/}"
+              [ -f "$d/main.c" ] && apps+=("$d")
+            done
+          fi
           cppcheck --enable=warning,style,performance,portability \
                    --error-exitcode=1 \
                    --suppressions-list=.cppcheck-suppressions \

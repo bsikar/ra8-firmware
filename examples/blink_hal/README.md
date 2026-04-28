@@ -4,10 +4,9 @@ LED-blink demo built on the project's HAL libraries (`libs/ra_hal/` +
 `libs/ra_core/`). Same observable behaviour as `blink/` --
 1 Hz toggle on the EK-RA8D2 user-LED candidates -- but using
 `ra_gpio_*` and `ra_time_*` instead of raw register pokes. Standalone
-app in its own top-level directory: `blink_hal/main.c` plus its own
-`vector_table.c`, `system_init.c`, `secure_exception.c`,
-`trustzone_init.c`, `linker_script.ld`, `Makefile`, and
-`CMakeLists.txt`.
+example app: `examples/blink_hal/main.c` plus its own `vector_table.c`,
+`system_init.c`, `secure_exception.c`, `trustzone_init.c`,
+`linker_script.ld`, `Makefile`, and `CMakeLists.txt`.
 
 ## Why two blink demos?
 
@@ -29,17 +28,17 @@ run cleanly.
 From the repo root:
 
 ```sh
-make blink_hal             # cross-compile -> blink_hal/build/blink_hal.elf
-make -C blink_hal flash    # flash via on-board J-Link OB
+make blink_hal                       # cross-compile -> examples/blink_hal/build/blink_hal.elf
+make -C examples/blink_hal flash     # flash via on-board J-Link OB
 ```
 
-Or standalone, from inside `blink_hal/`:
+Or standalone, from inside `examples/blink_hal/`:
 
 ```sh
-cd blink_hal/
+cd examples/blink_hal/
 make                       # configure + build
-make flash                 # flash blink_hal/build/blink_hal.hex
-make clean                 # rm -rf blink_hal/build
+make flash                 # flash build/blink_hal.hex
+make clean                 # rm -rf build
 ```
 
 ## What it touches

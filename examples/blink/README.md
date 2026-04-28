@@ -1,10 +1,9 @@
 # blink
 
-Minimum-viable LED-blink smoke test for the EK-RA8D2. Standalone app
-in its own top-level directory: `blink/main.c` plus its own
-`vector_table.c`, `system_init.c`, `secure_exception.c`,
-`trustzone_init.c`, `linker_script.ld`, `Makefile`, and
-`CMakeLists.txt`.
+Minimum-viable LED-blink smoke test for the EK-RA8D2. Standalone
+example app: `examples/blink/main.c` plus its own `vector_table.c`,
+`system_init.c`, `secure_exception.c`, `trustzone_init.c`,
+`linker_script.ld`, `Makefile`, and `CMakeLists.txt`.
 
 ## What it does
 
@@ -17,34 +16,34 @@ the Cortex-M85 SysTick timer for delay -- no busy-wait.
 From the repo root:
 
 ```sh
-make blink             # cross-compile this app -> blink/build/blink.elf
-make -C blink flash    # flash via on-board J-Link OB
+make blink                       # cross-compile -> examples/blink/build/blink.elf
+make -C examples/blink flash     # flash via on-board J-Link OB
 ```
 
-Or standalone, from inside `blink/`:
+Or standalone, from inside `examples/blink/`:
 
 ```sh
-cd blink/
-make                   # configure + build -> blink/build/blink.{elf,hex,bin}
-make flash             # flash blink/build/blink.hex
-make clean             # rm -rf blink/build
+cd examples/blink/
+make                   # configure + build -> build/blink.{elf,hex,bin}
+make flash             # flash build/blink.hex
+make clean             # rm -rf build
 ```
 
 Or directly via cmake (e.g. for a `Release` build):
 
 ```sh
-cmake -S blink -B blink/build \
+cmake -S examples/blink -B examples/blink/build \
       -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-ra8d2.cmake \
       -DCMAKE_BUILD_TYPE=Release
-cmake --build blink/build
-bash scripts/flash.sh blink/build/blink.hex
+cmake --build examples/blink/build
+bash scripts/flash.sh examples/blink/build/blink.hex
 ```
 
 ## Debugging
 
 ```sh
-make -C blink ozone    # open SEGGER Ozone GUI debugger on blink.elf
-make -C blink debug    # attach gdb via JLinkGDBServer on blink.elf
+make -C examples/blink ozone    # open SEGGER Ozone GUI debugger on blink.elf
+make -C examples/blink debug    # attach gdb via JLinkGDBServer on blink.elf
 ```
 
 ## Notes
