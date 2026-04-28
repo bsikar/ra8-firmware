@@ -310,3 +310,19 @@ ra_err_t ra_isr_lookup_slot(ra_elc_event_t event, uint16_t* out_slot)
   *out_slot = internal_find_event(event);
   return k_ra_ok;
 }
+
+void ra_isr_globals_enable(void)
+{
+  /* PRIMASK clear -- maskable IRQs may now dispatch. */
+#ifndef RA_SIMULATOR_MODE
+  __asm__ volatile("cpsie i" ::: "memory");
+#endif
+}
+
+void ra_isr_globals_disable(void)
+{
+  /* PRIMASK set -- subsequent maskable IRQs pend until re-enabled. */
+#ifndef RA_SIMULATOR_MODE
+  __asm__ volatile("cpsid i" ::: "memory");
+#endif
+}

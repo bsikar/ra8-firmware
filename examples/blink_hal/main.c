@@ -45,6 +45,7 @@
 #include <stdint.h>
 
 #include "ra_err.h"
+#include "ra_isr.h"
 #include "ra_port_constants.h"
 #include "ra_port_utils.h"
 #include "ra_time.h"
@@ -163,6 +164,8 @@ typedef enum : uint32_t {
 #pragma GCC diagnostic ignored "-Wmain"
 int32_t main(void)
 {
+  /* Driver init runs with PRIMASK set (SystemInit masks IRQs at boot
+   * so partial state isn't accidentally driven by an interrupt). */
   if (ra_time_init((uint32_t)k_blink_cpu_hz_at_reset) != k_ra_ok) {
     while (1) {
       __asm__ volatile("wfi");
@@ -174,6 +177,11 @@ int32_t main(void)
       __asm__ volatile("wfi");
     }
   }
+
+  /* Drivers are ready -- drop the global mask so SysTick_Handler
+   * (and any other ISRs we register later) can dispatch. From here
+   * on, IRQs run normally during the main loop. */
+  ra_isr_globals_enable();
 
   while (1) {
     if (blink_pins_toggle_all() != k_ra_ok) {

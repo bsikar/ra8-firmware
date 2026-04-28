@@ -296,6 +296,52 @@ void ra_isr_dispatch(uint16_t slot);
  */
 [[nodiscard]] ra_err_t ra_isr_lookup_slot(ra_elc_event_t event, uint16_t* out_slot);
 
+/**
+ * @brief Globally enable maskable interrupts (PRIMASK = 0).
+ *
+ * @details
+ * The Cortex-M85 boots with PRIMASK clear, but ``SystemInit`` masks
+ * IRQs with ``cpsid i`` to give the application a quiet boot window
+ * for driver setup. Once every IRQ source has been registered via
+ * ``ra_isr_register`` and the application is ready to start servicing
+ * interrupts, call this to drop the global mask. Standard CMSIS
+ * convention is "mask at boot, unmask once main() has finished
+ * deterministic init".
+ *
+ * @pre Every IRQ source the application uses has been wired up.
+ * @pre Every shared data structure that ISRs touch is initialised.
+ * @post PRIMASK is clear; pending NVIC interrupts will dispatch.
+ *
+ * @note Symmetric counterpart of ``ra_isr_globals_disable``. Calling
+ *       ``ra_isr_globals_enable`` while PRIMASK is already clear is a
+ *       safe no-op.
+ *
+ * @since 0.3.0
+ */
+void ra_isr_globals_enable(void);
+
+/**
+ * @brief Globally mask maskable interrupts (PRIMASK = 1).
+ *
+ * @details
+ * Companion to ``ra_isr_globals_enable``. Used by the application
+ * around critical sections where an ISR firing mid-update would
+ * corrupt shared state (the per-driver ``ra_register_guard.h``
+ * helpers wrap this for short scopes; this function exists for
+ * application-level sequencing during shutdown / reset).
+ *
+ * @pre None.
+ * @post PRIMASK is set; subsequent NVIC interrupts will pend until
+ *       PRIMASK is cleared again.
+ *
+ * @note Faults still fire (NMI / HardFault are not maskable via
+ *       PRIMASK). Use FAULTMASK if you need that, but the project
+ *       does not expose a wrapper for it.
+ *
+ * @since 0.3.0
+ */
+void ra_isr_globals_disable(void);
+
 #ifdef __cplusplus
 }
 #endif

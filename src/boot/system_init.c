@@ -319,7 +319,11 @@ internal_mpu_set_region(uint32_t region, uint32_t base_attr, uint32_t limit_enab
 /* NOLINTNEXTLINE(readability-identifier-naming) -- CMSIS-mandated name. */
 void SystemInit(void)
 {
+  /* Mask global IRQs so the application gets a deterministic init
+   * window. main() must call ``ra_isr_globals_enable`` once every
+   * driver / handler is wired up before any IRQ source can fire. */
   internal_disable_irq();
+
   internal_set_vtor();
   internal_enable_fpu();
   internal_enable_fpu_lazy_stack();
