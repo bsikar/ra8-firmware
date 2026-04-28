@@ -6,7 +6,7 @@
  * [Ring 4 / NSC] {World: NSC}
  *
  * @details
- * Wave 7 veneer over the secure-side ra_xspi driver. Runs as
+ * veneer over the secure-side ra_xspi driver. Runs as
  * ordinary code in the single-world build; the
  * ``RA_NSC_VENEER`` attribute expands to
  * ``__attribute__((cmse_nonsecure_entry))`` when the TrustZone

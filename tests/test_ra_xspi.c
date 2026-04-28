@@ -452,7 +452,7 @@ static void test_flash_read_id_bad_instance(void)
   TEST_END("ra_xspi_flash_read_id rejects bad instance");
 }
 
-/* ---- Wave 5.1 -- full build-out ---- */
+/* ---- full build-out ---- */
 
 static uint32_t s_xspi_cb_count;
 static uint32_t s_xspi_cb_last_mask;
@@ -580,6 +580,6 @@ int32_t main(void)
   test_power_transition();
   test_flash_read_id_null();
   test_flash_read_id_bad_instance();
-  (void)fprintf(stderr, "[OK  ] test_ra_xspi.c\n");
+  (void)fprintf(stderr, "[OK ] test_ra_xspi.c\n");
   return 0;
 }

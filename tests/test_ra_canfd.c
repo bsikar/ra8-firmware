@@ -448,7 +448,7 @@ static void test_get_error_state_bad_channel(void)
   TEST_END("canfd get_error_state rejects bad channel");
 }
 
-/* ---- Wave 5.3 -- status + IRQ + power ---- */
+/* ---- status + IRQ + power ---- */
 
 static uint32_t s_canfd_cb_count;
 static uint32_t s_canfd_cb_last_mask;
@@ -569,6 +569,6 @@ int32_t main(void)
   test_clear_status();
   test_attach_and_dispatch();
   test_power_transition();
-  (void)fprintf(stderr, "[OK  ] test_ra_canfd.c\n");
+  (void)fprintf(stderr, "[OK ] test_ra_canfd.c\n");
   return 0;
 }

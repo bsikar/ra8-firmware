@@ -6,17 +6,17 @@
  * [Ring 4 / PAL] {World: NS}
  *
  * @details
- * Wave 7.1 scaffold for the ethernet PAL. The PAL sits between the
+ * scaffold for the ethernet PAL. The PAL sits between the
  * Ring-3 ``ra_eth_*`` driver and any higher-level network stack
  * (lwIP today, possibly TCPDirect or a custom stack later).
  *
  * Responsibilities:
  *
- *  - Own the MAC address.
- *  - Translate ra_eth_t error codes into stack-friendly status.
- *  - Provide a single send/receive primitive a stack can call.
- *  - Track link state and surface it to the stack.
- *  - Hide the MSTP / clock-gate dance behind ``ra_net_pal_init``.
+ * - Own the MAC address.
+ * - Translate ra_eth_t error codes into stack-friendly status.
+ * - Provide a single send/receive primitive a stack can call.
+ * - Track link state and surface it to the stack.
+ * - Hide the MSTP / clock-gate dance behind ``ra_net_pal_init``.
  *
  * The PAL is intentionally stack-agnostic. lwIP's ``ethernetif.c``
  * port (added in a later wave) will wrap this API; no lwIP types
@@ -25,19 +25,19 @@
  *
  * ## Layering
  *
- *  +------------------------+   ra_net_pal_send_frame
- *  | network stack (lwIP)  |   ra_net_pal_recv_frame
- *  +-----------+------------+   ra_net_pal_link_status
- *              |
- *              v
- *  +------------------------+
- *  | ra_net_pal (this file) |   wraps Ring-3 ra_eth_*
- *  +-----------+------------+
- *              |
- *              v
- *  +------------------------+
- *  | ra_eth (Ring 3 / HAL) |
- *  +------------------------+
+ * +------------------------+ ra_net_pal_send_frame
+ * | network stack (lwIP) | ra_net_pal_recv_frame
+ * +-----------+------------+ ra_net_pal_link_status
+ * |
+ * v
+ * +------------------------+
+ * | ra_net_pal (this file) | wraps Ring-3 ra_eth_*
+ * +-----------+------------+
+ * |
+ * v
+ * +------------------------+
+ * | ra_eth (Ring 3 / HAL) |
+ * +------------------------+
  *
  * ## Threading
  *
@@ -87,9 +87,9 @@ extern "C" {
  * the descriptor ring can route 1518-byte frames without truncation.
  */
 typedef enum : uint16_t {
-  k_ra_net_pal_mac_addr_len = 6U,    /**< 48-bit Ethernet MAC.        */
-  k_ra_net_pal_mtu          = 1500U, /**< Standard payload size.       */
-  k_ra_net_pal_frame_max    = 1518U, /**< MTU + header + FCS.         */
+  k_ra_net_pal_mac_addr_len = 6U,    /**< 48-bit Ethernet MAC. */
+  k_ra_net_pal_mtu          = 1500U, /**< Standard payload size. */
+  k_ra_net_pal_frame_max    = 1518U, /**< MTU + header + FCS. */
 } ra_net_pal_limits_t;
 
 /**
@@ -98,7 +98,7 @@ typedef enum : uint16_t {
  */
 typedef enum : uint8_t {
   k_ra_net_pal_link_down = 0U, /**< Cable unplugged or PHY not up. */
-  k_ra_net_pal_link_up   = 1U, /**< Link up at any speed/duplex.   */
+  k_ra_net_pal_link_up   = 1U, /**< Link up at any speed/duplex. */
 } ra_net_pal_link_state_t;
 
 /* =============================================================================
@@ -127,11 +127,11 @@ typedef struct {
  * @typedef ra_net_pal_event_fn_t
  * @brief Async event callback shape (link change, RX ready, error).
  *
- * @param[in] ctx        Caller-supplied context.
+ * @param[in] ctx Caller-supplied context.
  * @param[in] event_mask OR of ``k_ra_net_pal_event_*`` bits.
  *
  * @note Invoked from ra_eth ISR context. Must return quickly and
- *       must not call back into ra_net_pal_init / deinit.
+ * must not call back into ra_net_pal_init / deinit.
  */
 typedef void (*ra_net_pal_event_fn_t)(void* ctx, uint32_t event_mask);
 
@@ -141,11 +141,11 @@ typedef void (*ra_net_pal_event_fn_t)(void* ctx, uint32_t event_mask);
  */
 typedef enum : uint32_t {
   k_ra_net_pal_event_none      = 0x00U,
-  k_ra_net_pal_event_link_up   = 0x01U, /**< Link came up.              */
-  k_ra_net_pal_event_link_down = 0x02U, /**< Link went down.            */
-  k_ra_net_pal_event_rx_ready  = 0x04U, /**< RX descriptor has data.   */
-  k_ra_net_pal_event_tx_done   = 0x08U, /**< TX descriptor freed.      */
-  k_ra_net_pal_event_error     = 0x10U, /**< MAC reported a fault.     */
+  k_ra_net_pal_event_link_up   = 0x01U, /**< Link came up. */
+  k_ra_net_pal_event_link_down = 0x02U, /**< Link went down. */
+  k_ra_net_pal_event_rx_ready  = 0x04U, /**< RX descriptor has data. */
+  k_ra_net_pal_event_tx_done   = 0x08U, /**< TX descriptor freed. */
+  k_ra_net_pal_event_error     = 0x10U, /**< MAC reported a fault. */
 } ra_net_pal_event_t;
 
 /* =============================================================================
@@ -163,17 +163,17 @@ typedef enum : uint32_t {
  * internal state machine to "link down, no event handler".
  *
  * @param[in] mac MAC address to programme. May be NULL to keep
- *                whatever the underlying ESWM block already has.
+ * whatever the underlying ESWM block already has.
  *
  * @return ``ra_err_t`` error code.
- * @retval k_ra_ok                  PAL ready, link state = down.
- * @retval k_ra_err_hw_init_failed  Underlying ``ra_eth_init`` failed.
+ * @retval k_ra_ok PAL ready, link state = down.
+ * @retval k_ra_err_hw_init_failed Underlying ``ra_eth_init`` failed.
  *
  * @pre ``ra_mstp_init`` and ``ra_pwr_init`` have been called.
  * @pre IRQs masked or single-threaded init context.
  *
  * @post On success, the PAL is ready and ``ra_net_pal_link_status``
- *       returns ``k_ra_net_pal_link_down``.
+ * returns ``k_ra_net_pal_link_down``.
  *
  * @note Thread safety: not thread-safe.
  * @see ra_net_pal_deinit
@@ -190,7 +190,7 @@ typedef enum : uint32_t {
  * reference.
  *
  * @return ``ra_err_t`` error code.
- * @retval k_ra_ok                PAL released.
+ * @retval k_ra_ok PAL released.
  * @retval k_ra_err_invalid_state PAL was never initialised.
  *
  * @pre IRQs masked or single-threaded shutdown context.
@@ -220,8 +220,8 @@ typedef enum : uint32_t {
  * @param[in] mac Non-NULL MAC descriptor.
  *
  * @return ``ra_err_t`` error code.
- * @retval k_ra_ok                MAC stored.
- * @retval k_ra_err_null_ptr      ``mac`` was NULL.
+ * @retval k_ra_ok MAC stored.
+ * @retval k_ra_err_null_ptr ``mac`` was NULL.
  * @retval k_ra_err_invalid_state ``ra_net_pal_init`` not called yet.
  *
  * @pre ``mac`` is non-NULL.
@@ -240,8 +240,8 @@ typedef enum : uint32_t {
  * @param[out] out_mac Receives the MAC.
  *
  * @return ``ra_err_t`` error code.
- * @retval k_ra_ok                MAC copied.
- * @retval k_ra_err_null_ptr      ``out_mac`` was NULL.
+ * @retval k_ra_ok MAC copied.
+ * @retval k_ra_err_null_ptr ``out_mac`` was NULL.
  * @retval k_ra_err_invalid_state PAL not initialised.
  *
  * @pre ``out_mac`` is non-NULL.
@@ -269,20 +269,20 @@ typedef enum : uint32_t {
  * ``ra_net_pal_recv_frame`` for loopback tests.
  *
  * @param[in] frame Ethernet frame bytes (header + payload, no FCS).
- * @param[in] len   Frame length in bytes; non-zero, <= frame_max.
+ * @param[in] len Frame length in bytes; non-zero, <= frame_max.
  *
  * @return ``ra_err_t`` error code.
- * @retval k_ra_ok                Frame queued for TX.
- * @retval k_ra_err_null_ptr      ``frame`` was NULL.
- * @retval k_ra_err_invalid_arg   ``len`` zero or out of range.
+ * @retval k_ra_ok Frame queued for TX.
+ * @retval k_ra_err_null_ptr ``frame`` was NULL.
+ * @retval k_ra_err_invalid_arg ``len`` zero or out of range.
  * @retval k_ra_err_invalid_state PAL not initialised.
- * @retval k_ra_err_no_mem        TX ring full; try again later.
+ * @retval k_ra_err_no_mem TX ring full; try again later.
  *
  * @pre ``frame`` is non-NULL.
  * @pre PAL has been initialised.
  *
  * @post On success, the frame is queued and the caller may drop
- *       ``frame``.
+ * ``frame``.
  *
  * @note Thread safety: not thread-safe.
  * @see ra_net_pal_recv_frame
@@ -299,16 +299,16 @@ typedef enum : uint32_t {
  * When no frame is ready the function returns
  * ``k_ra_err_no_data`` so callers can poll without blocking.
  *
- * @param[out]    out_buf   Destination buffer.
+ * @param[out] out_buf Destination buffer.
  * @param[in,out] inout_len On entry: capacity of ``out_buf``.
- *                          On exit:  bytes written.
+ * On exit: bytes written.
  *
  * @return ``ra_err_t`` error code.
- * @retval k_ra_ok                Frame copied.
- * @retval k_ra_err_no_data       No frame ready (poll-friendly).
- * @retval k_ra_err_null_ptr      ``out_buf`` / ``inout_len`` NULL.
+ * @retval k_ra_ok Frame copied.
+ * @retval k_ra_err_no_data No frame ready (poll-friendly).
+ * @retval k_ra_err_null_ptr ``out_buf`` / ``inout_len`` NULL.
  * @retval k_ra_err_invalid_state PAL not initialised.
- * @retval k_ra_err_invalid_arg   ``*inout_len`` < frame_max capacity.
+ * @retval k_ra_err_invalid_arg ``*inout_len`` < frame_max capacity.
  *
  * @pre ``out_buf`` and ``inout_len`` are non-NULL.
  * @pre ``*inout_len`` >= ``k_ra_net_pal_frame_max``.
@@ -333,8 +333,8 @@ typedef enum : uint32_t {
  * @param[out] out_state Receives link up/down.
  *
  * @return ``ra_err_t`` error code.
- * @retval k_ra_ok                Link state copied.
- * @retval k_ra_err_null_ptr      ``out_state`` was NULL.
+ * @retval k_ra_ok Link state copied.
+ * @retval k_ra_err_null_ptr ``out_state`` was NULL.
  * @retval k_ra_err_invalid_state PAL not initialised.
  *
  * @pre ``out_state`` is non-NULL.
@@ -343,7 +343,7 @@ typedef enum : uint32_t {
  * @post No PAL state is modified.
  *
  * @note Thread safety: not thread-safe with respect to the event
- *       handler which can update link state from ISR context.
+ * handler which can update link state from ISR context.
  * @since 0.3.0
  */
 [[nodiscard]] ra_err_t ra_net_pal_link_status(ra_net_pal_link_state_t* out_state);
@@ -361,11 +361,11 @@ typedef enum : uint32_t {
  * ra_eth ISR events into this callback after translating them
  * into the PAL-level ``k_ra_net_pal_event_*`` bit set.
  *
- * @param[in] fn  Callback. Pass NULL to detach.
+ * @param[in] fn Callback. Pass NULL to detach.
  * @param[in] ctx Context passed to the callback.
  *
  * @return ``ra_err_t`` error code.
- * @retval k_ra_ok                Handler installed (or detached).
+ * @retval k_ra_ok Handler installed (or detached).
  * @retval k_ra_err_invalid_state PAL not initialised.
  *
  * @pre PAL has been initialised.
@@ -373,7 +373,7 @@ typedef enum : uint32_t {
  * @post Subsequent ra_eth events are routed through ``fn``.
  *
  * @note Thread safety: not thread-safe; only call from
- *       single-threaded init or with IRQs masked.
+ * single-threaded init or with IRQs masked.
  * @since 0.3.0
  */
 [[nodiscard]] ra_err_t ra_net_pal_set_event_handler(ra_net_pal_event_fn_t fn, void* ctx);

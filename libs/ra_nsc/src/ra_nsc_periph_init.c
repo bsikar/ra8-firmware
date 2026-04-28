@@ -6,9 +6,9 @@
  * [Ring 4 / NSC] {World: NSC}
  *
  * @details
- * Wave 7.3 scaffold. Runs the substrate init dance that the NS
+ * scaffold. Runs the substrate init dance that the NS
  * world cannot do because the MSTP / CGC / ICU register windows
- * live in the secure region after Wave 9 partitioning.
+ * live in the secure region partitioning.
  *
  * The function is idempotent: callers can fire it more than once
  * and get ``k_ra_ok`` for every call after the first.

@@ -1,6 +1,6 @@
 /**
  * @file test_ra_usb_pal.c
- * @brief Unit tests for libs/ra_usb_pal (Wave 7.2)
+ * @brief Unit tests for libs/ra_usb_pal
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -257,6 +257,6 @@ int32_t main(void)
   test_event_handler_attach_detach();
   test_dispatch_relays_intsts0();
   test_calls_before_init_fail();
-  (void)fprintf(stderr, "[OK  ] test_ra_usb_pal.c\n");
+  (void)fprintf(stderr, "[OK ] test_ra_usb_pal.c\n");
   return 0;
 }

@@ -1,6 +1,6 @@
 /**
  * @file test_ra_net_pal.c
- * @brief Unit tests for libs/ra_net_pal (Wave 7.1)
+ * @brief Unit tests for libs/ra_net_pal
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -212,6 +212,6 @@ int32_t main(void)
   test_send_recv_arg_validation();
   test_event_handler_relays_eth_status();
   test_calls_before_init_fail();
-  (void)fprintf(stderr, "[OK  ] test_ra_net_pal.c\n");
+  (void)fprintf(stderr, "[OK ] test_ra_net_pal.c\n");
   return 0;
 }

@@ -138,8 +138,8 @@ static void test_read_bad_channel(void)
 }
 
 /* ---------------------------------------------------------------------------
- * Wave 3.5 -- full build-out
- * ---------------------------------------------------------------------------
+ * full build-out
+ * 
  */
 
 typedef enum : uint32_t {
@@ -539,6 +539,6 @@ int32_t main(void)
   test_gpt_write_dma_streams_periods_to_gtpr();
   test_gpt_read_dma_captures_gtcnt();
   test_gpt_dma_arg_validation();
-  (void)fprintf(stderr, "[OK  ] test_ra_gpt.c\n");
+  (void)fprintf(stderr, "[OK ] test_ra_gpt.c\n");
   return 0;
 }

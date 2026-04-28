@@ -56,8 +56,8 @@ raw_path = sys.argv[1]
 out_path = sys.argv[2]
 
 # Top-level chapter headings look like:
-#   "1. Overview ............ 69"
-#   "53. 16-bit A/D Converter (ADC16H) ........ 3308"
+# "1. Overview ............ 69"
+# "53. 16-bit A/D Converter (ADC16H) ........ 3308"
 # Leading whitespace is allowed because pdftotext preserves layout.
 top_re = re.compile(r"^\s*(\d{1,2})\.\s+([^\.]+?)\s+\.{2,}\s*(\d{1,5})\s*$")
 
@@ -137,30 +137,30 @@ for i, (num, title, start) in enumerate(rows):
 md.append("")
 md.append("## Security / TrustZone reference index")
 md.append("")
-md.append("The TrustZone partitioning work in Wave 9 leans on the following")
+md.append("The TrustZone partitioning work leans on the following")
 md.append("HUM chapters. Each entry is hand-verified against the rendered TOC")
 md.append("pages and the chapter body via the Read tool, not just pdftotext.")
 md.append("")
 md.append("- **SAU / IDAU and Armv8-M security extension**")
-md.append("    - Ch 2 \"CPU\", subsection 2.3 \"Implementation Options\" -- declares Armv8-M Security Extension and the Cortex-M85 PMSAv8 / Secure MPU layout.")
-md.append("    - Ch 16 \"Memory Protection Unit (MPU)\" -- Secure MPU (MPU_S) and Non-Secure MPU (MPU_NS) region rules; this is where Wave 9.1 `system_init.c` writes its SAU regions in tandem with the CPU's PMSAv8.")
+md.append(" - Ch 2 \"CPU\", subsection 2.3 \"Implementation Options\" -- declares Armv8-M Security Extension and the Cortex-M85 PMSAv8 / Secure MPU layout.")
+md.append(" - Ch 16 \"Memory Protection Unit (MPU)\" -- Secure MPU (MPU_S) and Non-Secure MPU (MPU_NS) region rules; this is where `system_init.c` writes its SAU regions in tandem with the CPU's PMSAv8.")
 md.append("- **Per-peripheral security attribution registers**")
-md.append("    - Ch 6 \"Resets\", register 6.2.1 `RSTSAR` (Reset Security Attribution Register).")
-md.append("    - Ch 8 \"Programmable Voltage Detection (PVD)\", register 8.2.1 `PVDSAR`.")
-md.append("    - Ch 9 \"Clock Generation Circuit\", register 9.2.1 `CGFSAR` (Clock Generation Function Security Attribute Register).")
-md.append("    - Ch 3 \"Inter-Processor Communication (IPC)\", registers 3.2.1 `IPCSAR` / 3.2.2 `IPCPAR`.")
-md.append("    - Each peripheral chapter (SCI, IIC, SPI, GPT, ADC, CRC, USB, ETH, GLCDC, ...) carries its own `xxxSAR` register near the head of its register description block; cite_check picks these up by chapter rather than by exhaustive listing.")
+md.append(" - Ch 6 \"Resets\", register 6.2.1 `RSTSAR` (Reset Security Attribution Register).")
+md.append(" - Ch 8 \"Programmable Voltage Detection (PVD)\", register 8.2.1 `PVDSAR`.")
+md.append(" - Ch 9 \"Clock Generation Circuit\", register 9.2.1 `CGFSAR` (Clock Generation Function Security Attribute Register).")
+md.append(" - Ch 3 \"Inter-Processor Communication (IPC)\", registers 3.2.1 `IPCSAR` / 3.2.2 `IPCPAR`.")
+md.append(" - Each peripheral chapter (SCI, IIC, SPI, GPT, ADC, CRC, USB, ETH, GLCDC, ...) carries its own `xxxSAR` register near the head of its register description block; cite_check picks these up by chapter rather than by exhaustive listing.")
 md.append("- **Memory map and address-space partitioning**")
-md.append("    - Ch 5 \"Address Space\", subsections 5.1 \"Address Space\", 5.2 \"External Address Space\", 5.3 \"Peripheral I/O Register Address Space\" -- the canonical Secure / Non-Secure address split lives here.")
-md.append("    - Ch 15 \"Buses\" -- bus master security attribution and the bus-side filters that back the per-peripheral SAR registers.")
-md.append("    - Ch 58 \"SRAM\" and Ch 59 \"MRAM\" -- the Secure / Non-Secure halves of MRAM and the SRAM-0 / SRAM-1 split that the linker script consumes.")
-md.append("    - Ch 7 \"Option-Setting Memory\" -- FSBL secure boot path, anti-rollback counters, OEM root-key hashes; the boot trust anchor for the Secure world.")
+md.append(" - Ch 5 \"Address Space\", subsections 5.1 \"Address Space\", 5.2 \"External Address Space\", 5.3 \"Peripheral I/O Register Address Space\" -- the canonical Secure / Non-Secure address split lives here.")
+md.append(" - Ch 15 \"Buses\" -- bus master security attribution and the bus-side filters that back the per-peripheral SAR registers.")
+md.append(" - Ch 58 \"SRAM\" and Ch 59 \"MRAM\" -- the Secure / Non-Secure halves of MRAM and the SRAM-0 / SRAM-1 split that the linker script consumes.")
+md.append(" - Ch 7 \"Option-Setting Memory\" -- FSBL secure boot path, anti-rollback counters, OEM root-key hashes; the boot trust anchor for the Secure world.")
 md.append("- **NSC veneer placement**")
-md.append("    - Ch 2 \"CPU\", subsection 2.3 \"Implementation Options\" and the Armv8-M security extension references therein -- the SG / BXNS / BLXNS instruction set used by `libs/ra_nsc/`'s veneers.")
-md.append("    - Ch 16 \"Memory Protection Unit (MPU)\" -- the `.gnu.sgstubs` linker section must land in a region the Secure MPU marks as Secure-execute-only and Non-Secure-callable; Wave 9.1 wires this up.")
+md.append(" - Ch 2 \"CPU\", subsection 2.3 \"Implementation Options\" and the Armv8-M security extension references therein -- the SG / BXNS / BLXNS instruction set used by `libs/ra_nsc/`'s veneers.")
+md.append(" - Ch 16 \"Memory Protection Unit (MPU)\" -- the `.gnu.sgstubs` linker section must land in a region the Secure MPU marks as Secure-execute-only and Non-Secure-callable; wires this up.")
 md.append("- **Security feature overview (cross-cutting)**")
-md.append("    - Ch 51 \"Security Features\" -- top-level security feature index; pointer to RSIP, secure debug, lifecycle.")
-md.append("    - Ch 52 \"Renesas Secure IP (RSIP-E50D)\" -- key vault, AES, SHA, TRNG -- Wave 10 `key_vault.c` lives behind these.")
+md.append(" - Ch 51 \"Security Features\" -- top-level security feature index; pointer to RSIP, secure debug, lifecycle.")
+md.append(" - Ch 52 \"Renesas Secure IP (RSIP-E50D)\" -- key vault, AES, SHA, TRNG -- `key_vault.c` lives behind these.")
 md.append("")
 
 with open(dst, "w", encoding="utf-8") as out:

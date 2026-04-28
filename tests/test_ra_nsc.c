@@ -1,6 +1,6 @@
 /**
  * @file test_ra_nsc.c
- * @brief Unit tests for libs/ra_nsc (Wave 7.3 NSC veneer scaffold)
+ * @brief Unit tests for libs/ra_nsc (NSC veneer scaffold)
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -162,6 +162,6 @@ int32_t main(void)
   test_log_emit_happy();
   test_log_emit_null();
   test_periph_init_idempotent();
-  (void)fprintf(stderr, "[OK  ] test_ra_nsc.c\n");
+  (void)fprintf(stderr, "[OK ] test_ra_nsc.c\n");
   return 0;
 }

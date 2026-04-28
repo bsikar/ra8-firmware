@@ -49,7 +49,7 @@ static void test_repeated_refresh_is_safe(void)
   TEST_END("ra_iwdt_refresh_deferred multiple calls");
 }
 
-/* ---- Wave 4.3 -- full build-out ---- */
+/* ---- full build-out ---- */
 
 static uint32_t s_iwdt_cb_count;
 static uint16_t s_iwdt_cb_last_mask;
@@ -115,6 +115,6 @@ int32_t main(void)
   test_get_status();
   test_clear_status();
   test_attach_and_dispatch();
-  (void)fprintf(stderr, "[OK  ] test_ra_iwdt.c\n");
+  (void)fprintf(stderr, "[OK ] test_ra_iwdt.c\n");
   return 0;
 }

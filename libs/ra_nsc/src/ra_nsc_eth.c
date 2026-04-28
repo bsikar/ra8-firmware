@@ -6,8 +6,8 @@
  * [Ring 4 / NSC] {World: NSC}
  *
  * @details
- * Wave 7.3 scaffold. The veneers delegate to ``ra_net_pal``
- * which, in turn, delegates to ``ra_eth``. Wave 9.2 adds
+ * scaffold. The veneers delegate to ``ra_net_pal``
+ * which, in turn, delegates to ``ra_eth``. adds
  * ``__attribute__((cmse_nonsecure_entry))`` and runtime address
  * checks via ``cmse_check_address_range``.
  *

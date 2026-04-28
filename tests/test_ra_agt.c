@@ -113,7 +113,7 @@ static void test_stop_bad_channel(void)
   TEST_END("agt stop bad channel");
 }
 
-/* ---- Wave 4.3 -- full build-out ---- */
+/* ---- full build-out ---- */
 
 static uint32_t s_agt_cb_count;
 static uint8_t  s_agt_cb_last_ch;
@@ -223,6 +223,6 @@ int32_t main(void)
   test_attach_and_dispatch();
   test_power_transition();
   test_no_mstp_channel_power();
-  (void)fprintf(stderr, "[OK  ] test_ra_agt.c\n");
+  (void)fprintf(stderr, "[OK ] test_ra_agt.c\n");
   return 0;
 }

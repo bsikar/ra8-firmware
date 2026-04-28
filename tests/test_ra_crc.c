@@ -34,7 +34,7 @@ static const uint8_t s_payload[4] = {0x01U, 0x02U, 0x03U, 0x04U};
 
 /**
  * @brief Drive CRCDOR with a known value and verify `ra_crc_compute()`
- *        returns it through the out pointer.
+ * returns it through the out pointer.
  */
 static uint32_t compute_with_preseeded_result(ra_crc_poly_t poly, uint32_t preset)
 {
@@ -179,7 +179,7 @@ static void test_compute_zero_length(void)
   TEST_END("crc compute zero length");
 }
 
-/* ---- Wave 4.4 -- full build-out ---- */
+/* ---- full build-out ---- */
 
 static void prep_w44(void)
 {
@@ -248,6 +248,6 @@ int32_t main(void)
   test_set_poly();
   test_get_status();
   test_power_transition();
-  (void)fprintf(stderr, "[OK  ] test_ra_crc.c\n");
+  (void)fprintf(stderr, "[OK ] test_ra_crc.c\n");
   return 0;
 }

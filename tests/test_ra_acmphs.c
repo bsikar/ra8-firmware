@@ -128,8 +128,8 @@ static void test_read_output_bad_channel(void)
 }
 
 /* ---------------------------------------------------------------------------
- * Wave 4.2 -- full build-out
- * ---------------------------------------------------------------------------
+ * full build-out
+ * 
  */
 
 static uint32_t s_acmphs_cb_count;
@@ -368,6 +368,6 @@ int32_t main(void)
   test_status_read_and_clear();
   test_attach_and_dispatch();
   test_power_transition();
-  (void)fprintf(stderr, "[OK  ] test_ra_acmphs.c\n");
+  (void)fprintf(stderr, "[OK ] test_ra_acmphs.c\n");
   return 0;
 }

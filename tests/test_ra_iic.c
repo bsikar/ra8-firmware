@@ -124,9 +124,9 @@ static void test_controller_init_happy(void)
   TEST_ASSERT_NOT_NULL((void*)reg);
   TEST_ASSERT_EQ((int)k_ra_iic_test_iccr1_enable, (int)reg->ICCR1);
   TEST_ASSERT_EQ((int)k_ra_iic_test_icmr1_default, (int)reg->ICMR1);
-  /* Wave 3.2 changes: controller_init now uses 100 kHz default + PCLKB
+  /* changes: controller_init now uses 100 kHz default + PCLKB
    * 60 MHz which produces a non-zero ICBRL. The legacy "should be 0"
-   * assertion was tied to the Wave 0 stub that wrote zeros. */
+   * assertion was tied to the stub that wrote zeros. */
   TEST_ASSERT(reg->ICBRL != 0U);
   TEST_ASSERT_EQ(0, (int)reg->ICBRH);
   TEST_END("iic controller_init happy");
@@ -158,7 +158,7 @@ static void test_controller_init_bad_channel(void)
 
 /**
  * @brief Pre-arm ICSR2 so start / tdre / stop flags all read as set,
- *        letting the polling helpers fall through immediately.
+ * letting the polling helpers fall through immediately.
  */
 static void prime_icsr2_all(uint8_t channel)
 {
@@ -389,7 +389,7 @@ static void test_read_after_start_clear(void)
 }
 
 /* =============================================================================
- * Wave 3.2: new API tests
+ * new API tests
  * =============================================================================
  */
 
@@ -671,6 +671,6 @@ int32_t main(void)
   test_iic_write_dma_streams_to_icdrt();
   test_iic_read_dma_streams_from_icdrr();
   test_iic_dma_arg_validation();
-  (void)fprintf(stderr, "[OK  ] test_ra_iic.c\n");
+  (void)fprintf(stderr, "[OK ] test_ra_iic.c\n");
   return 0;
 }

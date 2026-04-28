@@ -82,7 +82,7 @@ static void test_measure_timeout(void)
   TEST_END("cac measure timeout");
 }
 
-/* ---- Wave 4.3 -- full build-out ---- */
+/* ---- full build-out ---- */
 
 static uint32_t s_cac_cb_count;
 static uint8_t  s_cac_cb_last_mask;
@@ -172,6 +172,6 @@ int32_t main(void)
   test_status_read_and_clear();
   test_attach_and_dispatch();
   test_power_transition();
-  (void)fprintf(stderr, "[OK  ] test_ra_cac.c\n");
+  (void)fprintf(stderr, "[OK ] test_ra_cac.c\n");
   return 0;
 }

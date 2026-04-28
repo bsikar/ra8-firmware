@@ -1,6 +1,6 @@
 /**
  * @file test_ra_nsc_comms.c
- * @brief Unit tests for libs/ra_nsc/src/ra_nsc_comms.c (Wave 9.3)
+ * @brief Unit tests for libs/ra_nsc/src/ra_nsc_comms.c
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -154,6 +154,6 @@ int32_t main(void)
   test_iic_write_read_null();
   test_spi_init_and_xfer();
   test_usb_init_and_attach();
-  (void)fprintf(stderr, "[OK  ] test_ra_nsc_comms.c\n");
+  (void)fprintf(stderr, "[OK ] test_ra_nsc_comms.c\n");
   return 0;
 }

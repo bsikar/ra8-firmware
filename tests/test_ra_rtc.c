@@ -159,7 +159,7 @@ static void test_bcd_zero(void)
   TEST_END("ra_rtc BCD 0 minimum");
 }
 
-/* ---- Wave 4.3 -- full build-out ---- */
+/* ---- full build-out ---- */
 
 static uint32_t s_rtc_cb_count;
 static uint8_t  s_rtc_cb_last_mask;
@@ -247,6 +247,6 @@ int32_t main(void)
   test_irq_enable_and_status();
   test_attach_and_dispatch();
   test_power_transition();
-  (void)fprintf(stderr, "[OK  ] test_ra_rtc.c\n");
+  (void)fprintf(stderr, "[OK ] test_ra_rtc.c\n");
   return 0;
 }

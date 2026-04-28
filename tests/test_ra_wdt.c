@@ -48,7 +48,7 @@ static void test_wdt_refresh_many(void)
   TEST_END("ra_wdt_refresh_deferred is safe to loop");
 }
 
-/* ---- Wave 4.3 -- full build-out ---- */
+/* ---- full build-out ---- */
 
 static uint32_t s_wdt_cb_count;
 static uint16_t s_wdt_cb_last_mask;
@@ -113,6 +113,6 @@ int32_t main(void)
   test_wdt_get_status();
   test_wdt_clear_status();
   test_wdt_attach_and_dispatch();
-  (void)fprintf(stderr, "[OK  ] test_ra_wdt.c\n");
+  (void)fprintf(stderr, "[OK ] test_ra_wdt.c\n");
   return 0;
 }

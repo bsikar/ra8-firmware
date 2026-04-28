@@ -95,7 +95,7 @@ static void test_stop_bad_channel(void)
   TEST_END("ulpt stop bad channel");
 }
 
-/* ---- Wave 4.3 -- full build-out ---- */
+/* ---- full build-out ---- */
 
 static uint32_t s_ulpt_cb_count;
 static uint8_t  s_ulpt_cb_last_ch;
@@ -187,6 +187,6 @@ int32_t main(void)
   test_set_period_and_status();
   test_attach_and_dispatch();
   test_power_transition();
-  (void)fprintf(stderr, "[OK  ] test_ra_ulpt.c\n");
+  (void)fprintf(stderr, "[OK ] test_ra_ulpt.c\n");
   return 0;
 }

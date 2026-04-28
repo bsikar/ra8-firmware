@@ -1,6 +1,6 @@
 /**
  * @file test_ra_key_vault.c
- * @brief Unit tests for the secure key vault + NSC veneer (Wave 10)
+ * @brief Unit tests for the secure key vault + NSC veneer
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -123,6 +123,6 @@ int32_t main(void)
   test_different_challenge_different_digest();
   test_arg_validation();
   test_nsc_veneer_forwards();
-  (void)fprintf(stderr, "[OK  ] test_ra_key_vault.c\n");
+  (void)fprintf(stderr, "[OK ] test_ra_key_vault.c\n");
   return 0;
 }
