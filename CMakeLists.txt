@@ -1,15 +1,15 @@
 #
 # Top-level CMake for ra8d2-firmware (Cortex-M85 cross-build).
 #
-# Each top-level directory containing a `main.c` is treated as a
-# standalone application -- its own boot files, linker script, and
-# CMakeLists.txt. The top-level project pulls them all in via
+# Every directory under `examples/` containing a `main.c` is treated
+# as a standalone application -- its own boot files, linker script,
+# and CMakeLists.txt. The top-level project pulls them all in via
 # add_subdirectory() so a single `cmake --build build` builds every
 # app in one shot.
 #
-# Per-app `make` from inside `<app>/` is the intended day-to-day
-# entry point; this top-level cmake exists so CI can build everything
-# with one configure step.
+# Per-app `make` from inside `examples/<app>/` is the intended
+# day-to-day entry point; this top-level cmake exists so CI can build
+# everything with one configure step.
 #
 # Copyright (c) 2026 Brighton Sikarskie
 # SPDX-License-Identifier: MIT
@@ -76,13 +76,13 @@ option(RA_TRUSTZONE_ENABLE "Enable Cortex-M85 TrustZone (-mcmse + SAU)" OFF)
 set(RA_DEFAULT_APP "blink" CACHE STRING "Default app target alias")
 
 #############################################################################
-# Auto-discover apps: any top-level dir containing main.c is an app
+# Auto-discover apps: every examples/<name>/ dir with main.c is an app
 #############################################################################
 
 set(RA_APPS "")
-file(GLOB _ra_top_entries RELATIVE ${CMAKE_SOURCE_DIR} ${CMAKE_SOURCE_DIR}/*)
-foreach(entry ${_ra_top_entries})
-    set(full ${CMAKE_SOURCE_DIR}/${entry})
+file(GLOB _ra_example_entries RELATIVE ${CMAKE_SOURCE_DIR}/examples ${CMAKE_SOURCE_DIR}/examples/*)
+foreach(entry ${_ra_example_entries})
+    set(full ${CMAKE_SOURCE_DIR}/examples/${entry})
     if(IS_DIRECTORY ${full}
        AND EXISTS ${full}/main.c
        AND EXISTS ${full}/CMakeLists.txt)
@@ -93,13 +93,13 @@ endforeach()
 list(SORT RA_APPS)
 
 if(NOT RA_APPS)
-    message(FATAL_ERROR "No apps discovered (looking for top-level dirs with main.c + CMakeLists.txt).")
+    message(FATAL_ERROR "No apps discovered (looking under examples/ for dirs with main.c + CMakeLists.txt).")
 endif()
 
 message(STATUS "Discovered apps: ${RA_APPS}")
 
 foreach(app ${RA_APPS})
-    add_subdirectory(${app})
+    add_subdirectory(examples/${app})
 endforeach()
 
 # Convenience alias `firmware` that maps to the default app's elf.

@@ -559,29 +559,30 @@ The project follows NASA/JPL Power of 10 rules for safety-critical embedded code
 
 ## Repository Layout
 
-Each application lives in its own top-level directory and is fully
-self-contained: its own `main.c`, boot files, linker script,
+Each application lives in its own directory under `examples/` and is
+fully self-contained: its own `main.c`, boot files, linker script,
 `Makefile`, and `CMakeLists.txt`. There is no shared `src/boot/` /
 `src/linker_script.ld`; future divergence between apps (different
 vector tables, different memory layouts) is an explicit design goal.
 
 ```
 ra8d2-firmware/
-  CMakeLists.txt               Top-level CMake -- auto-discovers <app>/ dirs
+  CMakeLists.txt               Top-level CMake -- auto-discovers examples/<app>/ dirs
   Makefile                     Top-level shorthand: `make <app>` / `make apps`
   cmake/
     toolchain-ra8d2.cmake      arm-none-eabi cross-compile settings
-  blink/                       Standalone app: raw-register LED blink
-    main.c                     Application entry
-    vector_table.c             Per-app vector table + Reset_Handler
-    system_init.c              Per-app SystemInit
-    secure_exception.c         Per-app SecureFault handler
-    trustzone_init.{c,h}       Per-app SAU bring-up
-    linker_script.ld           Per-app memory map (may diverge from sibling apps)
-    CMakeLists.txt             Per-app cmake target
-    Makefile                   Per-app `make` (configure + build via cmake)
-    README.md
-  blink_hal/                   Same shape as blink/, HAL-based variant
+  examples/
+    blink/                     Standalone app: raw-register LED blink
+      main.c                   Application entry
+      vector_table.c           Per-app vector table + Reset_Handler
+      system_init.c            Per-app SystemInit
+      secure_exception.c       Per-app SecureFault handler
+      trustzone_init.{c,h}     Per-app SAU bring-up
+      linker_script.ld         Per-app memory map (may diverge from sibling apps)
+      CMakeLists.txt           Per-app cmake target
+      Makefile                 Per-app `make` (configure + build via cmake)
+      README.md
+    blink_hal/                 Same shape as blink/, HAL-based variant
   src/                         Shared internals (no boot code, no main)
     inc/                       Internal headers shared between TUs
     secure_app/                Ring 5 secure-side substrate (key vault)
@@ -617,7 +618,7 @@ ra8d2-firmware/
 
 ### Adding a new application
 
-Create a new top-level directory `<newapp>/` containing:
+Create a new directory `examples/<newapp>/` containing:
 
 1. `main.c` -- the application entry.
 2. The five per-app boot files copied from a sibling app

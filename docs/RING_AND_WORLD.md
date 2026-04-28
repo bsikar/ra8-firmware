@@ -28,13 +28,13 @@ services.
 
 | Ring | Layer | Where it lives | What it does |
 |---:|---|---|---|
-| **0** | BSP | `<app>/{vector_table,system_init,secure_exception,trustzone_init}.c` + `<app>/linker_script.ld` | Vector table, SystemInit, linker script. CPU-state setup before C runtime is live. Each app carries its own copy so two apps may diverge (different vector tables, different memory layouts). |
+| **0** | BSP | `examples/<app>/{vector_table,system_init,secure_exception,trustzone_init}.c` + `examples/<app>/linker_script.ld` | Vector table, SystemInit, linker script. CPU-state setup before C runtime is live. Each app carries its own copy so two apps may diverge (different vector tables, different memory layouts). |
 | **1** | Core fundamentals | `libs/ra_core/` | Pure-C utilities with no hardware dependencies (err codes, log, time, pin validator, register-protection helpers). Compiles identically on host and target. |
 | **2** | Register layer | `libs/ra_hal/inc/ra8d2_*_regs.h` | Hand-written register layouts derived from the HUM. No code paths -- just typed enums + accessor inline functions. |
 | **3** | HAL drivers | `libs/ra_hal/src/ra_*.c` | Hardware Abstraction Layer. Programmes peripherals via Ring-2 register headers. The vast majority of driver code lives here. |
 | **4** | NSC veneers | `libs/ra_nsc/` | TrustZone Non-Secure-Callable veneers. Bridges between `{World: S}` and `{World: NS}` -- the only place where `__attribute__((cmse_nonsecure_entry))` is allowed. |
 | **5** | Secure app | `src/secure_app/` | Secure-side application code (key vault, secure-boot trust anchor). Sits above the HAL but below the NS-callable veneer surface. |
-| **6** | Application | `<app>/main.c` (e.g. `blink/`, `blink_hal/`), test mocks | The firmware "user code" -- whatever drives the HAL to do something useful. The blink demo, board-bringup smoke tests, and unit-test harnesses all live at Ring 6. |
+| **6** | Application | `examples/<app>/main.c` (e.g. `examples/blink/`, `examples/blink_hal/`), test mocks | The firmware "user code" -- whatever drives the HAL to do something useful. The blink demo, board-bringup smoke tests, and unit-test harnesses all live at Ring 6. |
 
 The numbering doesn't have to be contiguous; it's a coordinate system,
 not a rule book. A Ring 3 driver can include Ring 1 / Ring 2 headers
@@ -53,7 +53,7 @@ The tag declares the world a file *expects to run in*:
 
 | Tag | Meaning | Where allowed |
 |---|---|---|
-| `{World: S}` | Runs in the Secure world. Has full access to all peripherals and memory. Cannot be called directly from NS code -- only via NSC veneers. | `libs/ra_hal/`, `libs/ra_*_pal/` (when serving the secure side), `src/secure_app/`, per-app boot files (`<app>/{vector_table,system_init,...}.c`), secure-side apps. |
+| `{World: S}` | Runs in the Secure world. Has full access to all peripherals and memory. Cannot be called directly from NS code -- only via NSC veneers. | `libs/ra_hal/`, `libs/ra_*_pal/` (when serving the secure side), `src/secure_app/`, per-app boot files (`examples/<app>/{vector_table,system_init,...}.c`), secure-side apps. |
 | `{World: NS}` | Runs in the Non-Secure world. Reaches into Secure code only through `__cmse_nonsecure_entry` veneers in `libs/ra_nsc/`. | `libs/ra_hal/` driver TUs that the SAU partition keeps NS, NS-side apps. |
 | `{World: NSC}` | Non-Secure-Callable veneer code. The bridge between worlds. The `.gnu.sgstubs` section lands here at link time. | **Only** under `libs/ra_nsc/`. |
 | `{World: MIXED}` | A file that legitimately straddles both worlds (rare -- typically a header consumed by both sides). | Header files only, sparingly. |
@@ -116,7 +116,7 @@ Carries `cmse_nonsecure_entry` attributes; lives under `libs/ra_nsc/`
 so the linker can place it in `.gnu.sgstubs`.
 
 ```c
-/* blink/main.c */
+/* examples/blink/main.c */
 /**
  * @file main.c
  * @brief Blink-LED smoke test
@@ -147,7 +147,7 @@ before the diff has a chance to hide the mistake.
 ## Adding a new file
 
 When you add a `.c` or `.h` under `libs/ra_hal/`, `libs/ra_*_pal/`,
-`libs/ra_nsc/`, `src/secure_app/`, or a per-app dir (`<app>/`):
+`libs/ra_nsc/`, `src/secure_app/`, or a per-app dir (`examples/<app>/`):
 
 1. Pick the ring it belongs to using the table above.
 2. Pick the world it runs in (almost always `S` for Ring 3 drivers

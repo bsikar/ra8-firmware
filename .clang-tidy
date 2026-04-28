@@ -33,6 +33,20 @@
 #      Every MMIO accessor *is* an int-to-pointer cast:
 #      `(volatile T*)0x40080000`. Fundamental to bare-metal register
 #      access; cannot be eliminated without abandoning the HAL pattern.
+#  -portability-avoid-pragma-once             (clang-tidy v22)
+#      The project mandates `#pragma once` (CLAUDE.md "Header Guards").
+#      v18 doesn't fire this on our headers; v22 does. Disable so the
+#      Homebrew/macOS pre-commit run agrees with CI.
+#  -clang-analyzer-core.FixedAddressDereference  (clang-tidy v22)
+#      Dereferencing fixed MMIO addresses is the whole point of the
+#      HAL. v18 doesn't surface this on our register access patterns;
+#      v22 does, throughout libs/ra_hal/, libs/ra_core/, and the
+#      per-app boot files. Disable globally.
+#  -misc-use-internal-linkage                  (clang-tidy v22)
+#      Flags vector-table entries (Reset_Handler, Default_Handler,
+#      SystemInit, _sbrk, IRQ handlers) as if they should be `static`,
+#      breaking the linker's external resolution. v18 doesn't fire on
+#      these; v22 does. Disable globally.
 #  -readability-identifier-length             (21 violations after
 #                                              relaxing thresholds)
 #      The remaining short names are comparator `(a, b)` parameters and
@@ -56,8 +70,11 @@ Checks: >
   portability-*,
   performance-*,
   -bugprone-easily-swappable-parameters,
+  -clang-analyzer-core.FixedAddressDereference,
   -misc-include-cleaner,
+  -misc-use-internal-linkage,
   -performance-no-int-to-ptr,
+  -portability-avoid-pragma-once,
   -readability-identifier-length,
   -readability-implicit-bool-conversion
 

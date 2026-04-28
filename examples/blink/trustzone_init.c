@@ -1,5 +1,5 @@
 /**
- * @file blink_hal/trustzone_init.c
+ * @file examples/blink/trustzone_init.c
  * @brief Cortex-M85 TrustZone-M Security Attribution Unit (SAU) bring-up
  *
  * @par Tag
