@@ -102,7 +102,7 @@ extern "C" {
  * @post Every MSTPCR register reads back as ``0xFFFFFFFF``.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_mstp_init(void);
 
@@ -165,7 +165,7 @@ extern "C" {
  * @see ra_mstp_disable
  * @see ra_mstp_get_refcount
  *
- * @since 0.2.0
+ * @since 0.1.0
  *
  * @par NASA Power of 10 Compliance:
  * - Rule 5: 2 preconditions, 2 postconditions
@@ -214,7 +214,7 @@ extern "C" {
  * @see ra_mstp_enable
  * @see ra_mstp_get_refcount
  *
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_mstp_disable(ra_mstp_t id);
 
@@ -243,7 +243,7 @@ extern "C" {
  * @post No hardware state is modified.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_mstp_get_refcount(ra_mstp_t id, uint8_t* out_ref);
 
@@ -272,7 +272,7 @@ extern "C" {
  * @post No hardware state is modified.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_mstp_is_stopped(ra_mstp_t id, bool* out_stopped);
 

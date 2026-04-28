@@ -145,7 +145,7 @@ typedef void (*ra_cgc_ostd_fn_t)(void* ctx);
  * fractional resolution.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_cgc_switch_pll1_target(uint32_t new_cpuclk_hz);
 
@@ -171,7 +171,7 @@ typedef void (*ra_cgc_ostd_fn_t)(void* ctx);
  * @post Callback will fire on the next detected stop event.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_cgc_enable_stop_detection(ra_cgc_ostd_fn_t handler, void* ctx);
 
@@ -186,7 +186,7 @@ typedef void (*ra_cgc_ostd_fn_t)(void* ctx);
  * @post Previously-registered callback is cleared.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_cgc_disable_stop_detection(void);
 
@@ -205,7 +205,7 @@ typedef void (*ra_cgc_ostd_fn_t)(void* ctx);
  * @post The registered callback ran exactly once.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 void ra_cgc_sim_trigger_stop_detection(void);
 

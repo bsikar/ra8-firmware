@@ -114,7 +114,7 @@ typedef void (*ra_poeg_event_fn_t)(void* ctx, uint32_t status_mask);
  * @post POEGG bits match ``cfg`` and the MSTP reference is held.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_poeg_init(uint8_t group, const ra_poeg_cfg_t* cfg);
 
@@ -123,7 +123,7 @@ typedef void (*ra_poeg_event_fn_t)(void* ctx, uint32_t status_mask);
  * @param[in] group POEG group 0..3.
  * @return ``ra_err_t`` error code.
  * @post POEGG == 0, MSTP released.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_poeg_deinit(uint8_t group);
 
@@ -140,7 +140,7 @@ typedef void (*ra_poeg_event_fn_t)(void* ctx, uint32_t status_mask);
  * @post POEGG.ST is set and GPT outputs for this group are in
  * high-impedance until ``ra_poeg_clear_status`` is called
  * with ``k_ra_poeg_status_ssf``.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_poeg_trigger_stop(uint8_t group);
 
@@ -154,7 +154,7 @@ typedef void (*ra_poeg_event_fn_t)(void* ctx, uint32_t status_mask);
  * @param[in] group POEG group.
  * @param[out] out_mask OR of ``k_ra_poeg_status_*``.
  * @return ``ra_err_t`` error code.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_poeg_get_status(uint8_t group, uint32_t* out_mask);
 
@@ -163,7 +163,7 @@ typedef void (*ra_poeg_event_fn_t)(void* ctx, uint32_t status_mask);
  * @param[in] group POEG group.
  * @param[in] mask Mask of flags to clear.
  * @return ``ra_err_t`` error code.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_poeg_clear_status(uint8_t group, uint32_t mask);
 
@@ -178,7 +178,7 @@ typedef void (*ra_poeg_event_fn_t)(void* ctx, uint32_t status_mask);
  * @param[in] fn Callback fired on ISR dispatch.
  * @param[in] ctx Context passed to callback.
  * @return ``ra_err_t`` error code.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_poeg_attach_handler(uint8_t group, ra_poeg_event_fn_t fn, void* ctx);
 
@@ -189,13 +189,13 @@ typedef void (*ra_poeg_event_fn_t)(void* ctx, uint32_t status_mask);
 
 /**
  * @brief Put a group into MSTP-gated stop.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_poeg_enter_stop(uint8_t group);
 
 /**
  * @brief Exit MSTP-gated stop.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_poeg_exit_stop(uint8_t group);
 
@@ -207,7 +207,7 @@ typedef void (*ra_poeg_event_fn_t)(void* ctx, uint32_t status_mask);
 /**
  * @brief Dispatch POEG event -- snapshot status + fire callback.
  * @param[in] group POEG group 0..3.
- * @since 0.2.0
+ * @since 0.1.0
  */
 void ra_poeg_dispatch(uint8_t group);
 

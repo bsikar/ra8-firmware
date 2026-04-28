@@ -331,7 +331,7 @@ typedef void (*ra_ssie_event_fn_t)(void* ctx, uint8_t channel, uint8_t events, u
  * @note Thread safety: not thread-safe.
  * @see ra_ssie_deinit
  * @see ra_ssie_start
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_ssie_init(uint8_t channel, const ra_ssie_cfg_t* cfg);
 
@@ -349,7 +349,7 @@ typedef void (*ra_ssie_event_fn_t)(void* ctx, uint8_t channel, uint8_t events, u
  *
  * @note Thread safety: not thread-safe.
  * @see ra_ssie_init
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_ssie_deinit(uint8_t channel);
 
@@ -384,7 +384,7 @@ typedef void (*ra_ssie_event_fn_t)(void* ctx, uint8_t channel, uint8_t events, u
  *
  * @note Thread safety: not thread-safe.
  * @see ra_ssie_stop
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_ssie_start(uint8_t channel, ra_ssie_dir_t dir);
 
@@ -408,7 +408,7 @@ typedef void (*ra_ssie_event_fn_t)(void* ctx, uint8_t channel, uint8_t events, u
  * @post IIEN bit set so the next IIRQ fires the callback.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_ssie_stop(uint8_t channel);
 
@@ -433,7 +433,7 @@ typedef void (*ra_ssie_event_fn_t)(void* ctx, uint8_t channel, uint8_t events, u
  * @post SSICR retains its mode bits (only TEN/REN are touched).
  *
  * @note Thread safety: not thread-safe.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_ssie_start_recovery(uint8_t channel);
 
@@ -457,7 +457,7 @@ typedef void (*ra_ssie_event_fn_t)(void* ctx, uint8_t channel, uint8_t events, u
  * @post No other SSICR field touched.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_ssie_mute(uint8_t channel, bool enable);
 
@@ -479,7 +479,7 @@ typedef void (*ra_ssie_event_fn_t)(void* ctx, uint8_t channel, uint8_t events, u
  * @post Other SSISCR bits zero (reserved).
  *
  * @note Thread safety: not thread-safe.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t
 ra_ssie_set_thresholds(uint8_t channel, uint8_t tx_threshold, uint8_t rx_threshold);
@@ -513,7 +513,7 @@ ra_ssie_set_thresholds(uint8_t channel, uint8_t tx_threshold, uint8_t rx_thresho
  *
  * @note Thread safety: not thread-safe.
  * @see ra_ssie_read_sample
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_ssie_write_sample(uint8_t channel, uint32_t sample);
 
@@ -536,7 +536,7 @@ ra_ssie_set_thresholds(uint8_t channel, uint8_t tx_threshold, uint8_t rx_thresho
  *
  * @note Thread safety: not thread-safe.
  * @see ra_ssie_write_sample
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_ssie_read_sample(uint8_t channel, uint32_t* out);
 
@@ -564,7 +564,7 @@ ra_ssie_set_thresholds(uint8_t channel, uint8_t tx_threshold, uint8_t rx_thresho
  * @post SSIFSR.TDE cleared if any sample was written.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_ssie_write_buffer(uint8_t         channel,
                                             const uint32_t* buffer,
@@ -591,7 +591,7 @@ ra_ssie_set_thresholds(uint8_t channel, uint8_t tx_threshold, uint8_t rx_thresho
  * @post SSIFSR.RDF cleared if any sample was read.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t
 ra_ssie_read_buffer(uint8_t channel, uint32_t* buffer, uint16_t samples, uint16_t* out_read);
@@ -631,7 +631,7 @@ ra_ssie_read_buffer(uint8_t channel, uint32_t* buffer, uint16_t samples, uint16_
  *
  * @note Thread safety: not thread-safe.
  * @see ra_ssie_detach_dma
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_ssie_attach_dma(uint8_t channel, const ra_ssie_dma_cfg_t* dma);
 
@@ -650,7 +650,7 @@ ra_ssie_read_buffer(uint8_t channel, uint32_t* buffer, uint16_t samples, uint16_
  * @post Internal DMA bookkeeping cleared.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_ssie_detach_dma(uint8_t channel);
 
@@ -677,7 +677,7 @@ ra_ssie_read_buffer(uint8_t channel, uint32_t* buffer, uint16_t samples, uint16_
  * @post No registers are modified.
  *
  * @note Thread safety: safe to call from IRQ context.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_ssie_get_status(uint8_t channel, ra_ssie_status_t* out);
 
@@ -704,7 +704,7 @@ ra_ssie_read_buffer(uint8_t channel, uint32_t* buffer, uint16_t samples, uint16_
  * @post Other SSISR bits unchanged.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_ssie_clear_status(uint8_t channel, uint32_t mask);
 
@@ -729,7 +729,7 @@ ra_ssie_read_buffer(uint8_t channel, uint32_t* buffer, uint16_t samples, uint16_
  * @post Previous handler is replaced.
  *
  * @note Thread safety: not thread-safe (writes two static pointers).
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_ssie_attach_handler(ra_ssie_event_fn_t fn, void* ctx);
 
@@ -745,7 +745,7 @@ ra_ssie_read_buffer(uint8_t channel, uint32_t* buffer, uint16_t samples, uint16_
  * @post No SSISR flags are auto-cleared (caller's responsibility).
  *
  * @note Thread safety: callable from IRQ context.
- * @since 0.2.0
+ * @since 0.1.0
  */
 void ra_ssie_dispatch(uint8_t channel);
 
@@ -773,7 +773,7 @@ void ra_ssie_dispatch(uint8_t channel);
  * @post Other SSICR fields untouched.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_ssie_set_irq_enable(uint8_t channel, uint32_t mask, bool enable);
 
@@ -795,7 +795,7 @@ void ra_ssie_dispatch(uint8_t channel);
  * @post SSICR / SSIOFR contents persist (registers retain values).
  *
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_ssie_enter_stop(uint8_t channel);
 
@@ -812,7 +812,7 @@ void ra_ssie_dispatch(uint8_t channel);
  * @post No SSICR / SSIOFR fields reprogrammed by this call.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_ssie_exit_stop(uint8_t channel);
 

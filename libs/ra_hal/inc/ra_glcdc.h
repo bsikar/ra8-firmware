@@ -56,43 +56,43 @@ typedef void (*ra_glcdc_event_fn_t)(void* ctx, uint32_t status_mask);
 
 /**
  * @brief Tear down GLCDC (stop + MSTP release).
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_glcdc_deinit(void);
 
 /**
  * @brief Read GLCDC status register (VSYNC/HSYNC/underflow).
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_glcdc_get_status(uint32_t* out_mask);
 
 /**
  * @brief Clear GLCDC status flags.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_glcdc_clear_status(uint32_t mask);
 
 /**
  * @brief Attach a GLCDC event callback.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_glcdc_attach_handler(ra_glcdc_event_fn_t fn, void* ctx);
 
 /**
  * @brief Dispatch a GLCDC event -- snapshot + fire callback.
- * @since 0.2.0
+ * @since 0.1.0
  */
 void ra_glcdc_dispatch(void);
 
 /**
  * @brief Put GLCDC into MSTP-gated stop.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_glcdc_enter_stop(void);
 
 /**
  * @brief Exit MSTP-gated stop.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_glcdc_exit_stop(void);
 

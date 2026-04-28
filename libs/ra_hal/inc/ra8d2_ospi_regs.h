@@ -134,7 +134,7 @@ typedef enum : uint32_t {
  *
  * @see k_ra_xspi0_base_addr XSPI0 base address.
  * @see ra_xspi()            Pointer accessor.
- * @since 0.2.0
+ * @since 0.1.0
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {

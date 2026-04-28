@@ -716,7 +716,7 @@ static inline volatile uint32_t* ra_ceu_reg32(ra_ceu_off_t offset)
  *       outside the 3-plane subset behave as ordinary RAM on host
  *       tests via `ra_sim_mmap`.
  *
- * @since 0.2.0
+ * @since 0.1.0
  */
 static inline volatile uint32_t* ra_ceu_reg32_plane(ra_ceu_off_t offset, ra_ceu_plane_off_t plane)
 {

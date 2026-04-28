@@ -356,7 +356,7 @@ typedef void (*ra_lvd_event_fn_t)(void* ctx, ra_lvd_channel_t channel);
  *
  * @note Thread safety: not thread-safe.
  * @see ra_lvd_channel_deinit
- * @since 0.11.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_lvd_channel_init(ra_lvd_channel_t channel, const ra_lvd_cfg_t* cfg);
 
@@ -382,7 +382,7 @@ typedef void (*ra_lvd_event_fn_t)(void* ctx, ra_lvd_channel_t channel);
  * @post Pending DET flag (if any) is cleared.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.11.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_lvd_channel_deinit(ra_lvd_channel_t channel);
 
@@ -413,7 +413,7 @@ typedef void (*ra_lvd_event_fn_t)(void* ctx, ra_lvd_channel_t channel);
  *       on entry.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.11.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_lvd_set_threshold(ra_lvd_channel_t channel, ra_lvd_pvdlvl_t threshold);
 
@@ -440,7 +440,7 @@ typedef void (*ra_lvd_event_fn_t)(void* ctx, ra_lvd_channel_t channel);
  *       callback (after `ra_lvd_dispatch` runs).
  *
  * @note Thread safety: not thread-safe.
- * @since 0.11.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_lvd_enable_irq(ra_lvd_channel_t channel);
 
@@ -456,7 +456,7 @@ typedef void (*ra_lvd_event_fn_t)(void* ctx, ra_lvd_channel_t channel);
  * @post Comparator stays enabled -- DET / MON still update.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.11.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_lvd_disable_irq(ra_lvd_channel_t channel);
 
@@ -477,7 +477,7 @@ typedef void (*ra_lvd_event_fn_t)(void* ctx, ra_lvd_channel_t channel);
  *       channels (HUM 8.2.4 p 305 RI bit note).
  *
  * @note Thread safety: not thread-safe.
- * @since 0.11.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_lvd_enable_reset(ra_lvd_channel_t channel);
 
@@ -495,7 +495,7 @@ typedef void (*ra_lvd_event_fn_t)(void* ctx, ra_lvd_channel_t channel);
  *       `ra_lvd_cancel_deep_standby_path`.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.11.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_lvd_disable_reset(ra_lvd_channel_t channel);
 
@@ -519,7 +519,7 @@ typedef void (*ra_lvd_event_fn_t)(void* ctx, ra_lvd_channel_t channel);
  * @post DET / MON flags become valid two PCLKB cycles later.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.11.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_lvd_enable_cmpe(ra_lvd_channel_t channel);
 
@@ -535,7 +535,7 @@ typedef void (*ra_lvd_event_fn_t)(void* ctx, ra_lvd_channel_t channel);
  * @post DET / MON flags freeze at their last value (HUM 8.2.7 p 308).
  *
  * @note Thread safety: not thread-safe.
- * @since 0.11.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_lvd_disable_cmpe(ra_lvd_channel_t channel);
 
@@ -566,7 +566,7 @@ typedef void (*ra_lvd_event_fn_t)(void* ctx, ra_lvd_channel_t channel);
  * @post DFDIS reflects !``filter_en``.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.11.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t
 ra_lvd_set_filter(ra_lvd_channel_t channel, ra_lvd_loco_div_t filter_div, bool filter_en);
@@ -596,7 +596,7 @@ ra_lvd_set_filter(ra_lvd_channel_t channel, ra_lvd_loco_div_t filter_div, bool f
  * @post PVDE is restored to whatever value it had on entry.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.11.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_lvd_set_hysteresis_mode(ra_lvd_channel_t    channel,
                                                   ra_lvd_hysteresis_t hyst);
@@ -626,7 +626,7 @@ ra_lvd_set_filter(ra_lvd_channel_t channel, ra_lvd_loco_div_t filter_div, bool f
  * @post Other CR0 fields are unchanged.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.11.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_lvd_set_negate_mode(ra_lvd_channel_t channel, ra_lvd_negate_t negate);
 
@@ -644,7 +644,7 @@ ra_lvd_set_filter(ra_lvd_channel_t channel, ra_lvd_loco_div_t filter_div, bool f
  * @post IRQSEL is preserved.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.11.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_lvd_set_irq_edge(ra_lvd_channel_t channel, ra_lvd_edge_t edge);
 
@@ -662,7 +662,7 @@ ra_lvd_set_filter(ra_lvd_channel_t channel, ra_lvd_loco_div_t filter_div, bool f
  * @post IDTSEL preserved.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.11.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_lvd_set_irq_kind(ra_lvd_channel_t channel, ra_lvd_irq_type_t kind);
 
@@ -695,7 +695,7 @@ ra_lvd_set_filter(ra_lvd_channel_t channel, ra_lvd_loco_div_t filter_div, bool f
  *       / PVDmSR succeeds for any channel whose NONSECx bit is now 1.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.11.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_lvd_set_security(uint32_t mask);
 
@@ -723,7 +723,7 @@ ra_lvd_set_filter(ra_lvd_channel_t channel, ra_lvd_loco_div_t filter_div, bool f
  * @post Re-locking is a one-shot: any subsequent ``relock`` is permanent.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.11.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_lvd_unlock_n_channels(void);
 
@@ -744,7 +744,7 @@ ra_lvd_set_filter(ra_lvd_channel_t channel, ra_lvd_loco_div_t filter_div, bool f
  * @post No further unlock is possible until POR / RES / PVD0 reset.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.11.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_lvd_relock_n_channels(void);
 
@@ -773,7 +773,7 @@ ra_lvd_set_filter(ra_lvd_channel_t channel, ra_lvd_loco_div_t filter_div, bool f
  *
  * @note Thread safety: read-only, but caller should serialise with
  *       ``ra_lvd_clear_status`` to avoid losing a crossing.
- * @since 0.11.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_lvd_get_status(ra_lvd_channel_t channel, ra_lvd_status_t* out);
 
@@ -798,7 +798,7 @@ ra_lvd_set_filter(ra_lvd_channel_t channel, ra_lvd_loco_div_t filter_div, bool f
  * @post PVDmSR.MON is left untouched.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.11.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_lvd_clear_status(ra_lvd_channel_t channel);
 
@@ -829,7 +829,7 @@ ra_lvd_set_filter(ra_lvd_channel_t channel, ra_lvd_loco_div_t filter_div, bool f
  * @post No NVIC bits are touched (event path is independent of IRQ enable).
  *
  * @note Thread safety: not thread-safe.
- * @since 0.11.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_lvd_enable_elc_event(ra_lvd_channel_t channel);
 
@@ -850,7 +850,7 @@ ra_lvd_set_filter(ra_lvd_channel_t channel, ra_lvd_loco_div_t filter_div, bool f
  * @post Detector remains powered (PVDE / RIE preserved).
  *
  * @note Thread safety: not thread-safe.
- * @since 0.11.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_lvd_disable_elc_event(ra_lvd_channel_t channel);
 
@@ -877,7 +877,7 @@ ra_lvd_set_filter(ra_lvd_channel_t channel, ra_lvd_loco_div_t filter_div, bool f
  * @post On m channels, RI = 0 and RN = 0.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.11.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_lvd_configure_for_standby(ra_lvd_channel_t channel);
 
@@ -900,7 +900,7 @@ ra_lvd_set_filter(ra_lvd_channel_t channel, ra_lvd_loco_div_t filter_div, bool f
  * @post All other CR0 fields preserved.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.11.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_lvd_cancel_deep_standby_path(void);
 
@@ -932,7 +932,7 @@ ra_lvd_set_filter(ra_lvd_channel_t channel, ra_lvd_loco_div_t filter_div, bool f
  * @post Function is pure -- no hardware access.
  *
  * @note Thread safety: pure function, MT-safe.
- * @since 0.11.0
+ * @since 0.1.0
  */
 [[nodiscard]] uint32_t ra_lvd_filter_delay_us(ra_lvd_loco_div_t div, uint32_t loco_hz);
 
@@ -956,7 +956,7 @@ ra_lvd_set_filter(ra_lvd_channel_t channel, ra_lvd_loco_div_t filter_div, bool f
  * @post Old callback is no longer invoked.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.11.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_lvd_attach_handler(ra_lvd_event_fn_t fn, void* ctx);
 
@@ -981,7 +981,7 @@ ra_lvd_set_filter(ra_lvd_channel_t channel, ra_lvd_loco_div_t filter_div, bool f
  * @post Shared callback is unchanged.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.11.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t
 ra_lvd_attach_channel_handler(ra_lvd_channel_t channel, ra_lvd_event_fn_t fn, void* ctx);
@@ -1002,7 +1002,7 @@ ra_lvd_attach_channel_handler(ra_lvd_channel_t channel, ra_lvd_event_fn_t fn, vo
  * @post PVDmSR.DET is 0 on return.
  *
  * @note Thread safety: ISR-context only.
- * @since 0.11.0
+ * @since 0.1.0
  */
 void ra_lvd_dispatch(ra_lvd_channel_t channel);
 

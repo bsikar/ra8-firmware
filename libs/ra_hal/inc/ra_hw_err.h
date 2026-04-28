@@ -126,7 +126,7 @@ typedef enum : uint32_t {
  *
  * @note Inline. Thread safety: not thread-safe (the caller must
  * hold whatever lock the register requires).
- * @since 0.2.0
+ * @since 0.1.0
  *
  * @par NASA Power of 10 Compliance:
  * - Rule 2: ``budget`` is a fixed upper bound, supplied by the caller.
@@ -165,7 +165,7 @@ ra_hw_wait_flag_set8(volatile const uint8_t* reg, uint8_t mask, uint32_t budget)
  * @post On success, the most recent read returned ``mask`` clear.
  *
  * @note Inline. Not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 static inline ra_err_t
 ra_hw_wait_flag_clear8(volatile const uint8_t* reg, uint8_t mask, uint32_t budget)
@@ -202,7 +202,7 @@ ra_hw_wait_flag_clear8(volatile const uint8_t* reg, uint8_t mask, uint32_t budge
  * @post On success, the latest read returned the mask set.
  *
  * @note Inline. Not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 static inline ra_err_t
 ra_hw_wait_flag_set32(volatile const uint32_t* reg, uint32_t mask, uint32_t budget)
@@ -233,7 +233,7 @@ ra_hw_wait_flag_set32(volatile const uint32_t* reg, uint32_t mask, uint32_t budg
  * @post On success, the latest read returned the mask clear.
  *
  * @note Inline. Not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 static inline ra_err_t
 ra_hw_wait_flag_clear32(volatile const uint32_t* reg, uint32_t mask, uint32_t budget)

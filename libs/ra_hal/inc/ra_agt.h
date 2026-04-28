@@ -44,43 +44,43 @@ typedef void (*ra_agt_event_fn_t)(void* ctx, uint8_t channel);
 
 /**
  * @brief Tear down one AGT channel.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_agt_deinit(uint8_t channel);
 
 /**
  * @brief Change the AGT reload value at runtime.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_agt_set_reload(uint8_t channel, uint16_t reload);
 
 /**
  * @brief Read the AGTCR status register.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_agt_get_status(uint8_t channel, uint8_t* out_mask);
 
 /**
  * @brief Attach an AGT event callback (shared across channels).
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_agt_attach_handler(ra_agt_event_fn_t fn, void* ctx);
 
 /**
  * @brief Dispatch an AGT event -- fire callback.
- * @since 0.2.0
+ * @since 0.1.0
  */
 void ra_agt_dispatch(uint8_t channel);
 
 /**
  * @brief Put one channel into MSTP-gated stop.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_agt_enter_stop(uint8_t channel);
 
 /**
  * @brief Exit MSTP-gated stop.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_agt_exit_stop(uint8_t channel);
 

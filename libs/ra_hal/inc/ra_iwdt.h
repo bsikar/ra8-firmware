@@ -59,14 +59,14 @@ void ra_iwdt_refresh_deferred(void);
  * @brief Read the IWDTSR status bits.
  * @param[out] out_mask Receives OR of ``k_ra_iwdt_status_*``.
  * @return ``ra_err_t`` error code.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_iwdt_get_status(uint16_t* out_mask);
 
 /**
  * @brief Clear the underflow / refresh-error flags via IWDTSR write.
  * @return ``ra_err_t`` error code.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_iwdt_clear_status(void);
 
@@ -75,13 +75,13 @@ void ra_iwdt_refresh_deferred(void);
  * @param[in] fn Callback fired on dispatch.
  * @param[in] ctx Context forwarded to the callback.
  * @return ``ra_err_t`` error code.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_iwdt_attach_handler(ra_iwdt_event_fn_t fn, void* ctx);
 
 /**
  * @brief Dispatch an IWDT NMI event -- snapshot status + fire callback.
- * @since 0.2.0
+ * @since 0.1.0
  */
 void ra_iwdt_dispatch(void);
 

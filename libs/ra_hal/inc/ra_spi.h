@@ -111,7 +111,7 @@ typedef void (*ra_spi_complete_fn_t)(void* ctx, uint8_t err_mask);
  * @post On success, SPE is set and the channel is ready to xfer.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_spi_init(uint8_t channel, const ra_spi_cfg_t* cfg);
 
@@ -120,7 +120,7 @@ typedef void (*ra_spi_complete_fn_t)(void* ctx, uint8_t err_mask);
  * @param[in] channel SPI channel.
  * @return ``k_ra_ok`` / ``k_ra_err_invalid_arg``.
  * @post SPE is cleared; MSTP reference released.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_spi_deinit(uint8_t channel);
 
@@ -160,7 +160,7 @@ typedef void (*ra_spi_complete_fn_t)(void* ctx, uint8_t err_mask);
  * @param[in] baud_hz Target bit-rate in Hz.
  * @param[in] pclka_hz Current PCLKA frequency.
  * @return ``ra_err_t`` error code.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_spi_set_clock(uint8_t channel, uint32_t baud_hz, uint32_t pclka_hz);
 
@@ -175,7 +175,7 @@ typedef void (*ra_spi_complete_fn_t)(void* ctx, uint8_t err_mask);
  * @param[in] channel SPI channel.
  * @param[out] out_mask OR of ``k_ra_spi_err_*``.
  * @return ``ra_err_t`` error code.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_spi_get_errors(uint8_t channel, uint8_t* out_mask);
 
@@ -183,7 +183,7 @@ typedef void (*ra_spi_complete_fn_t)(void* ctx, uint8_t err_mask);
  * @brief Clear the SPSR error flags.
  * @param[in] channel SPI channel.
  * @return ``ra_err_t`` error code.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_spi_clear_errors(uint8_t channel);
 
@@ -199,7 +199,7 @@ typedef void (*ra_spi_complete_fn_t)(void* ctx, uint8_t err_mask);
  * @param[in] fn Callback fired on transfer end / error.
  * @param[in] ctx Context passed to the callback.
  * @return ``ra_err_t`` error code.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t
 ra_spi_attach_transfer_handler(uint8_t channel, ra_spi_complete_fn_t fn, void* ctx);
@@ -211,13 +211,13 @@ ra_spi_attach_transfer_handler(uint8_t channel, ra_spi_complete_fn_t fn, void* c
 
 /**
  * @brief Put the channel into MSTP-gated stop state.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_spi_enter_stop(uint8_t channel);
 
 /**
  * @brief Exit MSTP-gated stop state.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_spi_exit_stop(uint8_t channel);
 
@@ -254,7 +254,7 @@ ra_spi_attach_transfer_handler(uint8_t channel, ra_spi_complete_fn_t fn, void* c
  * @post On success, DMAC channel is armed.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_spi_write_dma(uint8_t              channel,
                                         const uint8_t*       data,
@@ -289,7 +289,7 @@ ra_spi_attach_transfer_handler(uint8_t channel, ra_spi_complete_fn_t fn, void* c
  * @post On success, DMAC channel is armed.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_spi_read_dma(uint8_t              channel,
                                        uint8_t*             out_buf,
@@ -306,21 +306,21 @@ ra_spi_attach_transfer_handler(uint8_t channel, ra_spi_complete_fn_t fn, void* c
 /**
  * @brief Dispatch SPTI -- advance TX state.
  * @param[in] channel SPI channel.
- * @since 0.2.0
+ * @since 0.1.0
  */
 void ra_spi_dispatch_spti(uint8_t channel);
 
 /**
  * @brief Dispatch SPRI -- advance RX state.
  * @param[in] channel SPI channel.
- * @since 0.2.0
+ * @since 0.1.0
  */
 void ra_spi_dispatch_spri(uint8_t channel);
 
 /**
  * @brief Dispatch SPEI -- collect + clear errors, fire callback.
  * @param[in] channel SPI channel.
- * @since 0.2.0
+ * @since 0.1.0
  */
 void ra_spi_dispatch_spei(uint8_t channel);
 

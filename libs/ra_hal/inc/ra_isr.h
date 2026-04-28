@@ -146,7 +146,7 @@ typedef void (*ra_isr_handler_t)(void* ctx);
  * @post Every dispatch-table entry is (NULL handler, NULL ctx).
  *
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_isr_init(void);
 
@@ -197,7 +197,7 @@ typedef void (*ra_isr_handler_t)(void* ctx);
  *
  * @note Thread safety: not thread-safe.
  * @see ra_isr_unregister
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_isr_register(ra_elc_event_t   event,
                                        ra_isr_handler_t handler,
@@ -220,7 +220,7 @@ typedef void (*ra_isr_handler_t)(void* ctx);
  * @post Dispatch-table entry for the slot is (NULL, NULL).
  *
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_isr_unregister(ra_elc_event_t event);
 
@@ -252,7 +252,7 @@ typedef void (*ra_isr_handler_t)(void* ctx);
  * @note Thread safety: re-entrant in the sense that the handler
  * itself may enable nested interrupts; the dispatcher does
  * not take any locks.
- * @since 0.2.0
+ * @since 0.1.0
  */
 void ra_isr_dispatch(uint16_t slot);
 
@@ -273,7 +273,7 @@ void ra_isr_dispatch(uint16_t slot);
  *
  * @pre IRQs masked.
  * @post NVIC IPR byte for the slot reflects the new priority.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_isr_set_priority(ra_elc_event_t event, uint8_t priority);
 
@@ -292,7 +292,7 @@ void ra_isr_dispatch(uint16_t slot);
  *
  * @pre ``out_slot`` is non-NULL.
  * @post No hardware state is modified.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_isr_lookup_slot(ra_elc_event_t event, uint16_t* out_slot);
 
@@ -316,7 +316,7 @@ void ra_isr_dispatch(uint16_t slot);
  *       ``ra_isr_globals_enable`` while PRIMASK is already clear is a
  *       safe no-op.
  *
- * @since 0.3.0
+ * @since 0.1.0
  */
 void ra_isr_globals_enable(void);
 
@@ -338,7 +338,7 @@ void ra_isr_globals_enable(void);
  *       PRIMASK). Use FAULTMASK if you need that, but the project
  *       does not expose a wrapper for it.
  *
- * @since 0.3.0
+ * @since 0.1.0
  */
 void ra_isr_globals_disable(void);
 

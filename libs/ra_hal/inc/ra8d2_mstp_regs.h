@@ -222,7 +222,7 @@ typedef enum : uint16_t {
  * line counts to a single defining translation unit. The body
  * is in ``libs/ra_hal/src/ra_mstp.c``.
  *
- * @since 0.2.0
+ * @since 0.1.0
  */
 ra_mstp_reg_t ra_mstp_id_reg(ra_mstp_t id);
 
@@ -234,7 +234,7 @@ ra_mstp_reg_t ra_mstp_id_reg(ra_mstp_t id);
  * @details
  * Defined in ``libs/ra_hal/src/ra_mstp.c``.
  *
- * @since 0.2.0
+ * @since 0.1.0
  */
 uint8_t ra_mstp_id_bit(ra_mstp_t id);
 

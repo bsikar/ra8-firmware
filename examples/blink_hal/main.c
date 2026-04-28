@@ -39,7 +39,7 @@
  * @date 2026-04-28
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
- * @since 0.2.0
+ * @since 0.1.0
  */
 
 #include <stdint.h>
@@ -97,7 +97,7 @@ typedef enum : uint32_t {
  *
  * @note Not thread-safe; call once from boot.
  *
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] static ra_err_t blink_pins_init(void)
 {
@@ -131,7 +131,7 @@ typedef enum : uint32_t {
  *
  * @note Not thread-safe; intended for the main blink loop only.
  *
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] static ra_err_t blink_pins_toggle_all(void)
 {
@@ -158,7 +158,7 @@ typedef enum : uint32_t {
  * @post On clean entry into the blink loop, the function never returns.
  * @post On any HAL init failure, the function halts in `__WFI`.
  *
- * @since 0.2.0
+ * @since 0.1.0
  */
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmain"

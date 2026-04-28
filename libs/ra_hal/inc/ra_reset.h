@@ -169,7 +169,7 @@ typedef struct {
  *       boot context.
  * @see ra_reset_get_cause
  * @see ra_reset_get_raw
- * @since 0.12.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_reset_init(void);
 
@@ -206,7 +206,7 @@ typedef struct {
  * @note Thread safety: read-only; safe to call from any context.
  * @see ra_reset_get_raw
  * @see ra_reset_clear_cause
- * @since 0.12.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_reset_get_cause(ra_reset_cause_t* out);
 
@@ -229,7 +229,7 @@ typedef struct {
  * @post No hardware state is modified.
  *
  * @note Thread safety: read-only.
- * @since 0.12.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_reset_get_raw(ra_reset_raw_t* out);
 
@@ -273,7 +273,7 @@ typedef struct {
  * @warning After this call ``ra_reset_get_cause`` will reflect the
  *          remaining (unclearned) flags or ``k_ra_reset_cause_unknown``.
  * @see ra_reset_init  Snapshot the cause **before** calling clear.
- * @since 0.12.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_reset_clear_cause(uint32_t mask);
 
@@ -305,7 +305,7 @@ typedef struct {
  * @post No hardware state is modified.
  *
  * @note Thread safety: read-only.
- * @since 0.12.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_reset_get_attribution(uint32_t* out);
 
@@ -354,7 +354,7 @@ typedef struct {
  *          might continue driving lines after the CPU resets.
  * @see HUM Ch 6.1 Table 6.1 p 244 ("Software reset / Source / Register
  *      setting (use the software reset bit AIRCR.SYSRESETREQ)")
- * @since 0.12.0
+ * @since 0.1.0
  */
 void ra_reset_software_reset(void);
 

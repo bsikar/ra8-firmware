@@ -504,7 +504,7 @@ typedef void (*ra_ceu_event_fn_t)(void* ctx, uint32_t event_mask);
  * @post CAPSR.CPKIL == 0.
  *
  * @note Bounded spin of `k_ra_ceu_reset_spin` iterations.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_ceu_reset(void);
 
@@ -574,7 +574,7 @@ typedef void (*ra_ceu_event_fn_t)(void* ctx, uint32_t event_mask);
  * @post `out->data_size` mirrors CDSSR.
  *
  * @note Thread-safe (read-only).
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_ceu_status_snapshot(ra_ceu_status_t* out);
 
@@ -597,7 +597,7 @@ typedef void (*ra_ceu_event_fn_t)(void* ctx, uint32_t event_mask);
  * @post `*out_bytes` == CDSSR.
  *
  * @note Thread-safe (read-only).
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_ceu_data_size_get(uint32_t* out_bytes);
 
@@ -616,7 +616,7 @@ typedef void (*ra_ceu_event_fn_t)(void* ctx, uint32_t event_mask);
  *       the new mask.
  *
  * @note Not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_ceu_interrupts_set(uint32_t mask);
 
@@ -764,7 +764,7 @@ void ra_ceu_dispatch(void);
  * @post CAPSR.CE == 1.
  *
  * @note Not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_ceu_capture_start_ex(const ra_ceu_buffers_t* bufs);
 
@@ -785,7 +785,7 @@ void ra_ceu_dispatch(void);
  * @post CSTSR.CPTON will go to 0 once the in-flight frame ends.
  *
  * @note Not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_ceu_capture_stop(void);
 
@@ -816,7 +816,7 @@ void ra_ceu_dispatch(void);
  * @post CRCNTR.RVS == 1 (swap armed for next VD).
  *
  * @note Not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_ceu_plane_b_program(const ra_ceu_buffers_t* bufs);
 
@@ -834,7 +834,7 @@ void ra_ceu_dispatch(void);
  * @post CRCMPR.RA == 1 momentarily; the bit self-clears.
  *
  * @note Not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_ceu_plane_swap_force(void);
 
@@ -858,7 +858,7 @@ void ra_ceu_dispatch(void);
  * @post CFWCR == (`enable`?FWE:0) | (`upper_bound` & FWV mask).
  *
  * @note Not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_ceu_firewall_set(bool enable, uint32_t upper_bound);
 
@@ -877,7 +877,7 @@ void ra_ceu_dispatch(void);
  * @post CDOCR.COWS == `swap->swap_16_bit`.
  *
  * @note Not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_ceu_byte_swap_set(const ra_ceu_byte_swap_t* swap);
 
@@ -899,7 +899,7 @@ void ra_ceu_dispatch(void);
  * @post CBDSR == `size_bytes & ~7`.
  *
  * @note Not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_ceu_bundle_size_set(uint32_t size_bytes);
 
@@ -915,7 +915,7 @@ void ra_ceu_dispatch(void);
  * @post CLFCR.LPF == `enable`.
  *
  * @note Not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_ceu_low_pass_set(bool enable);
 
@@ -931,7 +931,7 @@ void ra_ceu_dispatch(void);
  * @post CAPCR.CTNCP reflects `mode`.
  *
  * @note Not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_ceu_capture_mode_set(ra_ceu_capture_mode_t mode);
 
@@ -947,7 +947,7 @@ void ra_ceu_dispatch(void);
  * @post CAPCR.FDRP == count.
  *
  * @note Not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_ceu_frame_drop_set(uint8_t count);
 
@@ -984,7 +984,7 @@ void ra_ceu_dispatch(void);
  *
  * @note Wraps `ra_dmac_start` -- the channel becomes unavailable
  *       to other consumers until the transfer completes.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t
 ra_ceu_dma_pump(uint8_t channel, const uint8_t* src, uint8_t* dst, uint32_t bytes);

@@ -72,7 +72,7 @@ void ra_infrastructure_init(void);
  *
  * @note Thread safety: safe to call concurrently with everything
  *       except the linker symbol redefinition path used by tests.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_stack_canary_check(void);
 

@@ -304,7 +304,7 @@ typedef enum : uint8_t {
  * @post Hardware state unchanged.
  *
  * @note Thread safety: pure pointer cast, MT-safe.
- * @since 0.11.0
+ * @since 0.1.0
  */
 static inline volatile uint8_t* ra_lvd_reg8(ra_lvd_off_t off)
 {
@@ -326,7 +326,7 @@ static inline volatile uint8_t* ra_lvd_reg8(ra_lvd_off_t off)
  * @post Hardware state unchanged.
  *
  * @note Thread safety: pure pointer cast, MT-safe.
- * @since 0.11.0
+ * @since 0.1.0
  */
 static inline volatile uint32_t* ra_lvd_reg32(ra_lvd_off_t off)
 {

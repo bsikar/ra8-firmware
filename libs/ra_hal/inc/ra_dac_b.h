@@ -85,7 +85,7 @@ typedef void (*ra_dac_b_update_fn_t)(void* ctx, uint8_t channel);
  * is powered on via MSTP.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_dac_b_init_configured(const ra_dac_b_cfg_t* cfg);
 
@@ -93,7 +93,7 @@ typedef void (*ra_dac_b_update_fn_t)(void* ctx, uint8_t channel);
  * @brief Tear down the DAC_B peripheral.
  * @return ``ra_err_t`` error code.
  * @post DACR == 0, MSTP released.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_dac_b_deinit(void);
 
@@ -120,7 +120,7 @@ typedef void (*ra_dac_b_update_fn_t)(void* ctx, uint8_t channel);
  * @brief Change the DAC voltage reference at runtime.
  * @param[in] vref New reference source.
  * @return ``ra_err_t`` error code.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_dac_b_set_vref(ra_dac_b_vref_t vref);
 
@@ -129,7 +129,7 @@ typedef void (*ra_dac_b_update_fn_t)(void* ctx, uint8_t channel);
  * @param[in] channel 0 or 1.
  * @param[in] enable True -> drive the pin; false -> Hi-Z.
  * @return ``ra_err_t`` error code.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_dac_b_set_output_enable(uint8_t channel, bool enable);
 
@@ -142,14 +142,14 @@ typedef void (*ra_dac_b_update_fn_t)(void* ctx, uint8_t channel);
  * @brief Read the DACR output-enable / DAE mask.
  * @param[out] out_mask DACR value masked to the control bits.
  * @return ``ra_err_t`` error code.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_dac_b_get_status(uint8_t* out_mask);
 
 /**
  * @brief Clear DAE + DAOE bits (disable DAC outputs).
  * @return ``ra_err_t`` error code.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_dac_b_clear_status(void);
 
@@ -163,7 +163,7 @@ typedef void (*ra_dac_b_update_fn_t)(void* ctx, uint8_t channel);
  * @param[in] fn Callback fired on ISR dispatch.
  * @param[in] ctx Context forwarded to the callback.
  * @return ``ra_err_t`` error code.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_dac_b_attach_handler(ra_dac_b_update_fn_t fn, void* ctx);
 
@@ -174,13 +174,13 @@ typedef void (*ra_dac_b_update_fn_t)(void* ctx, uint8_t channel);
 
 /**
  * @brief Put DAC_B into MSTP-gated stop.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_dac_b_enter_stop(void);
 
 /**
  * @brief Exit MSTP-gated stop.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_dac_b_exit_stop(void);
 
@@ -192,7 +192,7 @@ typedef void (*ra_dac_b_update_fn_t)(void* ctx, uint8_t channel);
 /**
  * @brief Dispatch a DAC-update event -- fire the registered callback.
  * @param[in] channel Channel that completed an update.
- * @since 0.2.0
+ * @since 0.1.0
  */
 void ra_dac_b_dispatch_update(uint8_t channel);
 

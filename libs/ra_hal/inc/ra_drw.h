@@ -268,7 +268,7 @@ typedef void (*ra_drw_event_fn_t)(void* ctx, uint32_t status_mask);
  * @see ra_drw_deinit
  * @see ra_drw_fill_rect
  *
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_drw_init(const ra_drw_config_t* cfg);
 
@@ -288,7 +288,7 @@ typedef void (*ra_drw_event_fn_t)(void* ctx, uint32_t status_mask);
  *
  * @note Not thread-safe.
  * @see ra_drw_init
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_drw_deinit(void);
 
@@ -315,7 +315,7 @@ typedef void (*ra_drw_event_fn_t)(void* ctx, uint32_t status_mask);
  * @post No side effects on the DRW block (read is non-destructive).
  *
  * @note Thread-safe with respect to other read-only callers.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_drw_get_status(uint32_t* out_mask);
 
@@ -334,7 +334,7 @@ typedef void (*ra_drw_event_fn_t)(void* ctx, uint32_t status_mask);
  * @post ``*out`` carries the alias-of-CONTROL2 HWREVISION value.
  * @post No DRW side effects.
  *
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_drw_get_hwrevision(uint32_t* out);
 
@@ -361,7 +361,7 @@ typedef void (*ra_drw_event_fn_t)(void* ctx, uint32_t status_mask);
  * @post No state outside DRW is touched.
  *
  * @note Thread-safe; the write is a single 32-bit store.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_drw_clear_status(uint32_t mask);
 
@@ -387,7 +387,7 @@ typedef void (*ra_drw_event_fn_t)(void* ctx, uint32_t status_mask);
  * @post IRQCTL.{ENUM,DLIST,BUS}IRQEN match ``enable_mask``.
  * @post All pending IRQ flags have been cleared.
  *
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_drw_set_irq_enables(uint32_t enable_mask);
 
@@ -410,7 +410,7 @@ typedef void (*ra_drw_event_fn_t)(void* ctx, uint32_t status_mask);
  *
  * @note Not interrupt-safe; install once at init.
  * @see ra_drw_dispatch
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_drw_attach_handler(ra_drw_event_fn_t fn, void* ctx);
 
@@ -430,7 +430,7 @@ typedef void (*ra_drw_event_fn_t)(void* ctx, uint32_t status_mask);
  *
  * @note Safe in IRQ context.
  * @see ra_drw_attach_handler
- * @since 0.2.0
+ * @since 0.1.0
  */
 void ra_drw_dispatch(void);
 
@@ -452,7 +452,7 @@ void ra_drw_dispatch(void);
  * @post On success, all of BUSYENUM / BUSYWRITE / DLISTACTIVE are 0.
  * @post On timeout, no register state is changed.
  *
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_drw_wait_idle(uint32_t poll_budget);
 
@@ -476,7 +476,7 @@ void ra_drw_dispatch(void);
  *
  * @note Not thread-safe.
  * @see ra_drw_exit_stop
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_drw_enter_stop(void);
 
@@ -495,7 +495,7 @@ void ra_drw_dispatch(void);
  *
  * @note Not thread-safe.
  * @see ra_drw_enter_stop
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_drw_exit_stop(void);
 
@@ -509,7 +509,7 @@ void ra_drw_dispatch(void);
  * @post All IRQ flags ack'd; PERFCOUNT1/2 zeroed.
  * @post CACHECTL flush bits pulsed.
  *
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_drw_reset(void);
 
@@ -532,7 +532,7 @@ void ra_drw_dispatch(void);
  * @post Selected cache(s) are flushed; enable bits are preserved.
  * @post No effect on geometry / blend state.
  *
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_drw_cache_flush(bool flush_fb, bool flush_texture);
 
@@ -555,7 +555,7 @@ void ra_drw_dispatch(void);
  * @post COLOR1 = grad->color1_argb8888.
  * @post COLOR2 = grad->color2_argb8888.
  *
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_drw_set_gradient(const ra_drw_gradient_t* grad);
 
@@ -571,7 +571,7 @@ void ra_drw_dispatch(void);
  * @post PATTERN[7:0] = pattern_byte; upper bits zeroed (HUM W=0).
  * @post No effect on geometry / blend state.
  *
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_drw_set_pattern(uint8_t pattern_byte);
 
@@ -589,7 +589,7 @@ void ra_drw_dispatch(void);
  * fields preserved.
  * @post No effect on COLOR1/COLOR2.
  *
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_drw_set_pattern_enable(bool enable, bool source_from_l5);
 
@@ -610,7 +610,7 @@ void ra_drw_dispatch(void);
  * channels are NOT touched -- caller controls the RGB triple via
  * ``ra_drw_set_gradient`` first).
  *
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_drw_set_blend(const ra_drw_blend_t* blend);
 
@@ -628,7 +628,7 @@ void ra_drw_dispatch(void);
  * @post COLKEY = key_rgb (alpha cleared per HUM W=0 rule).
  * @post CONTROL2.COLKEYENABLE matches ``enable``.
  *
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_drw_set_color_key(uint32_t key_rgb, bool enable);
 
@@ -656,7 +656,7 @@ void ra_drw_dispatch(void);
  * TEXTUREFILTERX,TEXTUREFILTERY,READFORMAT,RLEENABLE,
  * CLUTENABLE,CLUTFORMAT,COLKEYENABLE,RLEPIXELWIDTH} updated.
  *
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_drw_set_texture(const ra_drw_texture_t* tex);
 
@@ -670,7 +670,7 @@ void ra_drw_dispatch(void);
  * @post CONTROL2.{TEXTUREENABLE,RLEENABLE,CLUTENABLE,COLKEYENABLE} = 0.
  * @post Other CONTROL2 fields preserved.
  *
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_drw_clear_texture(void);
 
@@ -697,7 +697,7 @@ void ra_drw_dispatch(void);
  * @post All requested CLUT slots have been written.
  * @post TEXCLADDR points one past the last written index (auto-inc).
  *
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t
 ra_drw_load_clut(uint8_t start_index, const uint32_t* entries, uint32_t count);
@@ -731,7 +731,7 @@ ra_drw_load_clut(uint8_t start_index, const uint32_t* entries, uint32_t count);
  * @note Not thread-safe with respect to other DRW operations.
  *
  * @see ra_drw_get_status
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_drw_fill_rect(const ra_drw_rect_t* rect);
 
@@ -756,7 +756,7 @@ ra_drw_load_clut(uint8_t start_index, const uint32_t* entries, uint32_t count);
  * @post DRW engine has accepted the textured rectangle.
  * @post CACHECTL pulsed to flush stale FB lines before consumption.
  *
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_drw_blit_textured_rect(const ra_drw_rect_t* rect);
 
@@ -780,7 +780,7 @@ ra_drw_load_clut(uint8_t start_index, const uint32_t* entries, uint32_t count);
  * @post DRW engine has accepted the line; STATUS may be busy.
  * @post COLOR1 holds line->color_argb8888.
  *
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_drw_draw_line(const ra_drw_line_t* line);
 
@@ -802,7 +802,7 @@ ra_drw_load_clut(uint8_t start_index, const uint32_t* entries, uint32_t count);
  * @post DRW engine has accepted the triangle.
  * @post COLOR1 holds tri->color_argb8888.
  *
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_drw_draw_triangle(const ra_drw_triangle_t* tri);
 
@@ -833,7 +833,7 @@ ra_drw_load_clut(uint8_t start_index, const uint32_t* entries, uint32_t count);
  * @post DLISTSTART = dlist_addr; engine begins fetching.
  * @post On completion the DLISTIRQ flag will be raised in STATUS.
  *
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_drw_run_dlist(const uint32_t* dlist_addr);
 
@@ -860,7 +860,7 @@ ra_drw_load_clut(uint8_t start_index, const uint32_t* entries, uint32_t count);
  * @post Counters begin incrementing on the next clock matching the
  * selected event.
  *
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_drw_perf_arm(ra_drw_perftrigger_t event_ctr1,
                                        ra_drw_perftrigger_t event_ctr2);
@@ -881,7 +881,7 @@ ra_drw_load_clut(uint8_t start_index, const uint32_t* entries, uint32_t count);
  * @post ``*out`` holds the snapshot.
  * @post No DRW side effects.
  *
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_drw_perf_read(ra_drw_perfcounter_id_t id, uint32_t* out);
 
@@ -899,7 +899,7 @@ ra_drw_load_clut(uint8_t start_index, const uint32_t* entries, uint32_t count);
  * @post PERFCOUNTid = 0.
  * @post No effect on the other counter.
  *
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_drw_perf_reset(ra_drw_perfcounter_id_t id);
 

@@ -151,7 +151,7 @@ typedef struct {
  * @post DMAC bus clock is on.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_dma_init(void);
 
@@ -171,7 +171,7 @@ typedef struct {
  * @post DMAC MSTP reference decremented.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_dma_deinit(void);
 
@@ -207,7 +207,7 @@ typedef struct {
  *
  * @note Thread safety: not thread-safe.
  * @see ra_dma_release
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_dma_request(const ra_dma_request_t* req, uint8_t* out_channel);
 
@@ -229,7 +229,7 @@ typedef struct {
  * @post Any registered completion handler is unregistered.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_dma_release(uint8_t channel);
 
@@ -252,7 +252,7 @@ typedef struct {
  * @post No hardware state is modified.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_dma_channel_is_busy(uint8_t channel, bool* out_busy);
 
@@ -276,7 +276,7 @@ typedef struct {
  * @post No state is modified.
  *
  * @note Test-only; not declared on the target build.
- * @since 0.2.0
+ * @since 0.1.0
  */
 const ra_dma_request_t* ra_dma_sim_peek_request(uint8_t channel);
 #endif
@@ -300,7 +300,7 @@ const ra_dma_request_t* ra_dma_sim_peek_request(uint8_t channel);
  * @note Thread safety: re-entrant in the sense that the handler
  * itself may enable nested interrupts; the dispatcher does
  * not take any locks.
- * @since 0.2.0
+ * @since 0.1.0
  */
 void ra_dma_dispatch_complete(uint8_t channel);
 

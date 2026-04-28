@@ -70,7 +70,7 @@ typedef enum : uint16_t {
  * @post Every slot reads as all-zeros.
  *
  * @note Thread safety: secure-world only, single-threaded init.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_key_vault_init(void);
 
@@ -91,7 +91,7 @@ typedef enum : uint16_t {
  * @post The slot contains the key.
  *
  * @note Thread safety: secure-world only.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_key_vault_store(uint16_t slot, const uint8_t* key);
 
@@ -121,7 +121,7 @@ typedef enum : uint16_t {
  *
  * @note Thread safety: not thread-safe; the SHA-256 sponge is
  * single-instance.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t
 ra_key_vault_sha256_xor_challenge(uint16_t slot, const uint8_t* challenge, uint8_t* out);

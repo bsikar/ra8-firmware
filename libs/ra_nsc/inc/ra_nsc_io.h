@@ -51,13 +51,13 @@ extern "C" {
 
 /**
  * @brief NSC veneer: bring up a GPT channel.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] RA_NSC_VENEER ra_err_t ra_nsc_gpt_init(uint8_t channel, const ra_gpt_cfg_t* cfg);
 
 /**
  * @brief NSC veneer: read the current GPT counter value.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] RA_NSC_VENEER ra_err_t ra_nsc_gpt_read(uint8_t channel, uint32_t* out);
 
@@ -68,13 +68,13 @@ extern "C" {
 
 /**
  * @brief NSC veneer: bring up the ADC.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] RA_NSC_VENEER ra_err_t ra_nsc_adc_init(void);
 
 /**
  * @brief NSC veneer: read one ADC channel sample.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] RA_NSC_VENEER ra_err_t ra_nsc_adc_read_channel(uint8_t channel, uint16_t* out_raw);
 
@@ -85,13 +85,13 @@ extern "C" {
 
 /**
  * @brief NSC veneer: bring up the DAC.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] RA_NSC_VENEER ra_err_t ra_nsc_dac_b_init(void);
 
 /**
  * @brief NSC veneer: write a 12-bit value to a DAC channel.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] RA_NSC_VENEER ra_err_t ra_nsc_dac_b_write(uint8_t channel, uint16_t value);
 
@@ -102,13 +102,13 @@ extern "C" {
 
 /**
  * @brief NSC veneer: bring up the high-speed analog comparator block.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] RA_NSC_VENEER ra_err_t ra_nsc_acmphs_init(void);
 
 /**
  * @brief NSC veneer: read a comparator output level.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] RA_NSC_VENEER ra_err_t ra_nsc_acmphs_read_output(uint8_t channel, ra_level_t* out);
 
@@ -119,13 +119,13 @@ extern "C" {
 
 /**
  * @brief NSC veneer: bring up the CRC unit with a polynomial.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] RA_NSC_VENEER ra_err_t ra_nsc_crc_init(ra_crc_poly_t poly);
 
 /**
  * @brief NSC veneer: compute CRC over a buffer.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] RA_NSC_VENEER ra_err_t ra_nsc_crc_compute(const uint8_t* data,
                                                         uint32_t       len,
@@ -138,7 +138,7 @@ extern "C" {
 
 /**
  * @brief NSC veneer: bring up the graphics LCD controller.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] RA_NSC_VENEER ra_err_t ra_nsc_glcdc_init(const ra_glcdc_config_t* cfg);
 
@@ -149,7 +149,7 @@ extern "C" {
 
 /**
  * @brief NSC veneer: bring up the PDM microphone interface.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] RA_NSC_VENEER ra_err_t ra_nsc_pdm_init(void);
 
@@ -160,7 +160,7 @@ extern "C" {
 
 /**
  * @brief NSC veneer: bring up the ethernet switch module.
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] RA_NSC_VENEER ra_err_t ra_nsc_eth_init(void);
 

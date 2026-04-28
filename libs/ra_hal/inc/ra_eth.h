@@ -43,49 +43,49 @@ typedef void (*ra_eth_event_fn_t)(void* ctx, uint32_t status_mask);
 
 /**
  * @brief Initialise the ESWM block (MSTP enable + reset regs).
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_eth_init(void);
 
 /**
  * @brief Tear down the ESWM block.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_eth_deinit(void);
 
 /**
  * @brief Read the ESWM_STS status register.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_eth_get_status(uint32_t* out_mask);
 
 /**
  * @brief Clear bits in ESWM_STS via ESWM_ICLR.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_eth_clear_status(uint32_t mask);
 
 /**
  * @brief Attach a shared event callback for ethernet events.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_eth_attach_handler(ra_eth_event_fn_t fn, void* ctx);
 
 /**
  * @brief Dispatch an ESWM event -- snapshot + fire callback.
- * @since 0.2.0
+ * @since 0.1.0
  */
 void ra_eth_dispatch(void);
 
 /**
  * @brief Put the ethernet switch into MSTP-gated stop.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_eth_enter_stop(void);
 
 /**
  * @brief Exit MSTP-gated stop.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_eth_exit_stop(void);
 

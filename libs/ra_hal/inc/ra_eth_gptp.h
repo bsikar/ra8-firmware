@@ -33,28 +33,28 @@ extern "C" {
  */
 typedef void (*ra_eth_gptp_event_fn_t)(void* ctx, uint32_t status_mask);
 
-/** @brief Initialise GPTP. @since 0.3.0 */
+/** @brief Initialise GPTP. @since 0.1.0 */
 [[nodiscard]] ra_err_t ra_eth_gptp_init(void);
 
-/** @brief Tear down GPTP. @since 0.3.0 */
+/** @brief Tear down GPTP. @since 0.1.0 */
 [[nodiscard]] ra_err_t ra_eth_gptp_deinit(void);
 
-/** @brief Read GPTP_STS. @since 0.3.0 */
+/** @brief Read GPTP_STS. @since 0.1.0 */
 [[nodiscard]] ra_err_t ra_eth_gptp_get_status(uint32_t* out_mask);
 
-/** @brief Clear GPTP_STS bits. @since 0.3.0 */
+/** @brief Clear GPTP_STS bits. @since 0.1.0 */
 [[nodiscard]] ra_err_t ra_eth_gptp_clear_status(uint32_t mask);
 
-/** @brief Attach the shared event handler. @since 0.3.0 */
+/** @brief Attach the shared event handler. @since 0.1.0 */
 [[nodiscard]] ra_err_t ra_eth_gptp_attach_handler(ra_eth_gptp_event_fn_t fn, void* ctx);
 
-/** @brief Dispatch a GPTP event. @since 0.3.0 */
+/** @brief Dispatch a GPTP event. @since 0.1.0 */
 void ra_eth_gptp_dispatch(void);
 
-/** @brief Put GPTP into MSTP-gated stop. @since 0.3.0 */
+/** @brief Put GPTP into MSTP-gated stop. @since 0.1.0 */
 [[nodiscard]] ra_err_t ra_eth_gptp_enter_stop(void);
 
-/** @brief Exit MSTP-gated stop. @since 0.3.0 */
+/** @brief Exit MSTP-gated stop. @since 0.1.0 */
 [[nodiscard]] ra_err_t ra_eth_gptp_exit_stop(void);
 
 #ifdef __cplusplus

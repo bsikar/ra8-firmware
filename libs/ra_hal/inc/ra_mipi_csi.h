@@ -243,7 +243,7 @@ typedef struct {
  * @see ra_mipi_csi_start_receive
  * @see ra_mipi_csi_deinit
  *
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_mipi_csi_init(const ra_mipi_csi_config_t* cfg);
 
@@ -287,7 +287,7 @@ typedef struct {
  * @post Video-pixel pipeline is empty.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_mipi_csi_reset(void);
 
@@ -393,7 +393,7 @@ typedef struct {
  * @post RXIE = mask.
  * @post Subsequent matching events trigger the receive IRQ vector.
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_mipi_csi_set_rx_irq_enable(uint32_t mask);
 
@@ -408,7 +408,7 @@ typedef struct {
  * @post *out_mask holds MIST.
  * @post No hardware state is modified.
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_mipi_csi_get_module_irq_status(uint32_t* out_mask);
 
@@ -427,7 +427,7 @@ typedef struct {
  * @post No hardware state is modified.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_mipi_csi_get_module_info(ra_mipi_csi_module_info_t* out);
 
@@ -458,7 +458,7 @@ typedef struct {
  * @post Receiver accepts only the selected data types.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_mipi_csi_set_data_type_filter(uint32_t low_mask, uint32_t high_mask);
 
@@ -483,7 +483,7 @@ typedef struct {
  * @post Other MCT0 bits are preserved.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_mipi_csi_set_ecc_mode(bool eccv13, bool lfsren);
 
@@ -504,7 +504,7 @@ typedef struct {
  * @post Other MCT0 bits are preserved.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_mipi_csi_set_frame_error_mode(bool zlmd, bool edmd, bool rvmd);
 
@@ -532,7 +532,7 @@ typedef struct {
  * @post Subsequent transmissions honour the new spacer values.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t
 ra_mipi_csi_set_epd(bool enable, bool option_2, uint16_t long_spacer, uint16_t short_spacer);
@@ -554,7 +554,7 @@ ra_mipi_csi_set_epd(bool enable, bool option_2, uint16_t long_spacer, uint16_t s
  * @post Other EMCT bits are preserved.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_mipi_csi_set_lrte(ra_mipi_csi_vlsien_t vlsien, bool eotp_enable);
 
@@ -576,7 +576,7 @@ ra_mipi_csi_set_epd(bool enable, bool option_2, uint16_t long_spacer, uint16_t s
  * @post *out_mask holds the DLST(N) value.
  * @post No hardware state is modified.
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_mipi_csi_dl_get_status(uint8_t lane, uint32_t* out_mask);
 
@@ -592,7 +592,7 @@ ra_mipi_csi_set_epd(bool enable, bool option_2, uint16_t long_spacer, uint16_t s
  * @post DLSC(N) has been written.
  * @post Targeted DLST(N) bits will eventually deassert.
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_mipi_csi_dl_clear_status(uint8_t lane, uint32_t mask);
 
@@ -608,7 +608,7 @@ ra_mipi_csi_set_epd(bool enable, bool option_2, uint16_t long_spacer, uint16_t s
  * @post DLIE(N) = mask.
  * @post Subsequent matching DL events trigger the DL IRQ vector.
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_mipi_csi_dl_set_irq_enable(uint8_t lane, uint32_t mask);
 
@@ -630,7 +630,7 @@ ra_mipi_csi_set_epd(bool enable, bool option_2, uint16_t long_spacer, uint16_t s
  * @post *out_mask holds the VCST(M) value.
  * @post No hardware state is modified.
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_mipi_csi_vc_get_status(uint8_t vc, uint32_t* out_mask);
 
@@ -646,7 +646,7 @@ ra_mipi_csi_set_epd(bool enable, bool option_2, uint16_t long_spacer, uint16_t s
  * @post VCSC(M) has been written.
  * @post Targeted VCST(M) bits will eventually deassert.
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_mipi_csi_vc_clear_status(uint8_t vc, uint32_t mask);
 
@@ -662,7 +662,7 @@ ra_mipi_csi_set_epd(bool enable, bool option_2, uint16_t long_spacer, uint16_t s
  * @post VCIE(M) = mask.
  * @post Subsequent matching VC events trigger the VC IRQ vector.
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_mipi_csi_vc_set_irq_enable(uint8_t vc, uint32_t mask);
 
@@ -682,7 +682,7 @@ ra_mipi_csi_set_epd(bool enable, bool option_2, uint16_t long_spacer, uint16_t s
  * @post *out_mask holds the PMST value.
  * @post No hardware state is modified.
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_mipi_csi_pm_get_status(uint32_t* out_mask);
 
@@ -696,7 +696,7 @@ ra_mipi_csi_set_epd(bool enable, bool option_2, uint16_t long_spacer, uint16_t s
  * @post PMSC has been written.
  * @post Targeted PMST bits will eventually deassert.
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_mipi_csi_pm_clear_status(uint32_t mask);
 
@@ -710,7 +710,7 @@ ra_mipi_csi_set_epd(bool enable, bool option_2, uint16_t long_spacer, uint16_t s
  * @post PMIE = mask.
  * @post Subsequent matching PM events trigger the PM IRQ vector.
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_mipi_csi_pm_set_irq_enable(uint32_t mask);
 
@@ -736,7 +736,7 @@ ra_mipi_csi_set_epd(bool enable, bool option_2, uint16_t long_spacer, uint16_t s
  * @post GSCT.GFIF = store_enable.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_mipi_csi_short_packet_configure(uint8_t threshold, bool store_enable);
 
@@ -750,7 +750,7 @@ ra_mipi_csi_set_epd(bool enable, bool option_2, uint16_t long_spacer, uint16_t s
  * @post GSIE = mask.
  * @post Subsequent matching GST events trigger the GST IRQ vector.
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_mipi_csi_short_packet_set_irq_enable(uint32_t mask);
 
@@ -765,7 +765,7 @@ ra_mipi_csi_set_epd(bool enable, bool option_2, uint16_t long_spacer, uint16_t s
  * @post *out_mask holds the GSST value.
  * @post No hardware state is modified.
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_mipi_csi_short_packet_get_status(uint32_t* out_mask);
 
@@ -779,7 +779,7 @@ ra_mipi_csi_set_epd(bool enable, bool option_2, uint16_t long_spacer, uint16_t s
  * @post GSSC has been written.
  * @post GSST.GOV will eventually deassert.
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_mipi_csi_short_packet_clear_status(uint32_t mask);
 
@@ -805,7 +805,7 @@ ra_mipi_csi_set_epd(bool enable, bool option_2, uint16_t long_spacer, uint16_t s
  * @post GSST.PNUM is decremented by 1 on success.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_mipi_csi_read_short_packet(ra_mipi_csi_short_packet_t* out);
 
@@ -826,7 +826,7 @@ ra_mipi_csi_set_epd(bool enable, bool option_2, uint16_t long_spacer, uint16_t s
  * @post GSIU.GFCLR is back to 0.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_mipi_csi_short_packet_clear_fifo(void);
 
@@ -842,7 +842,7 @@ ra_mipi_csi_set_epd(bool enable, bool option_2, uint16_t long_spacer, uint16_t s
  * @post Hardware will resume queuing packets.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_mipi_csi_short_packet_re_enable_store(void);
 
@@ -881,7 +881,7 @@ ra_mipi_csi_set_epd(bool enable, bool option_2, uint16_t long_spacer, uint16_t s
  * @post ``ra_mipi_csi_dispatch_dl`` will invoke ``fn`` for matching lanes.
  * @post No hardware state is modified.
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_mipi_csi_attach_dl_handler(ra_mipi_csi_dl_event_fn_t fn, void* ctx);
 
@@ -896,7 +896,7 @@ ra_mipi_csi_set_epd(bool enable, bool option_2, uint16_t long_spacer, uint16_t s
  * @post ``ra_mipi_csi_dispatch_vc`` will invoke ``fn`` per VC + once for generic.
  * @post No hardware state is modified.
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_mipi_csi_attach_vc_handler(ra_mipi_csi_vc_event_fn_t fn, void* ctx);
 
@@ -911,7 +911,7 @@ ra_mipi_csi_set_epd(bool enable, bool option_2, uint16_t long_spacer, uint16_t s
  * @post ``ra_mipi_csi_dispatch_pm`` will invoke ``fn`` until detached.
  * @post No hardware state is modified.
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_mipi_csi_attach_pm_handler(ra_mipi_csi_pm_event_fn_t fn, void* ctx);
 
@@ -926,7 +926,7 @@ ra_mipi_csi_set_epd(bool enable, bool option_2, uint16_t long_spacer, uint16_t s
  * @post ``ra_mipi_csi_dispatch_short_packet`` will invoke ``fn`` until detached.
  * @post No hardware state is modified.
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_mipi_csi_attach_short_packet_handler(ra_mipi_csi_short_event_fn_t fn,
                                                                void*                        ctx);
@@ -964,7 +964,7 @@ void ra_mipi_csi_dispatch(void);
  * @post Handler ran once per lane that flagged in MIST.
  *
  * @note Thread safety: ISR-only.
- * @since 0.2.0
+ * @since 0.1.0
  */
 void ra_mipi_csi_dispatch_dl(void);
 
@@ -983,7 +983,7 @@ void ra_mipi_csi_dispatch_dl(void);
  * @post Handler ran once per VC plus once for the generic-error summary.
  *
  * @note Thread safety: ISR-only.
- * @since 0.2.0
+ * @since 0.1.0
  */
 void ra_mipi_csi_dispatch_vc(void);
 
@@ -1000,7 +1000,7 @@ void ra_mipi_csi_dispatch_vc(void);
  * @post Handler ran once with the PMST snapshot.
  *
  * @note Thread safety: ISR-only.
- * @since 0.2.0
+ * @since 0.1.0
  */
 void ra_mipi_csi_dispatch_pm(void);
 
@@ -1018,7 +1018,7 @@ void ra_mipi_csi_dispatch_pm(void);
  * @post Handler ran once with the GSST snapshot.
  *
  * @note Thread safety: ISR-only.
- * @since 0.2.0
+ * @since 0.1.0
  */
 void ra_mipi_csi_dispatch_short_packet(void);
 

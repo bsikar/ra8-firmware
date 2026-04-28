@@ -347,7 +347,7 @@ typedef void (*ra_flash_callback_t)(const ra_flash_isr_event_t* ev);
  * @post ``*out`` reflects the registers at the moment of the call.
  *
  * @note Thread-safe: pure reads; not atomic across registers.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_flash_get_extended_status(ra_flash_status_ext_t* out);
 
@@ -527,7 +527,7 @@ ra_flash_write_block(uint32_t mram_addr, const uint8_t* src, uint32_t len, ra_fl
  * will not clear the fuse.
  *
  * @see ra_flash_write_block
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t
 ra_flash_block_protect_set(ra_flash_world_t world, bool lock, bool permanent);
@@ -562,7 +562,7 @@ ra_flash_block_protect_set(ra_flash_world_t world, bool lock, bool permanent);
  * state. Reflash via SWD if the device cannot boot.
  *
  * @see ra_flash_get_startup_area
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_flash_set_startup_area(ra_flash_startup_t target, bool temporary);
 
@@ -586,7 +586,7 @@ ra_flash_block_protect_set(ra_flash_world_t world, bool lock, bool permanent);
  * @post ``*out_btflg`` and ``*out_fspr`` populated from MSUASMON.
  *
  * @note Thread-safe: read-only.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_flash_get_startup_area(uint8_t* out_btflg, uint8_t* out_fspr);
 
@@ -618,7 +618,7 @@ ra_flash_block_protect_set(ra_flash_world_t world, bool lock, bool permanent);
  * @warning Counter increments are non-volatile and irreversible.
  *
  * @see ra_flash_arc_read
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_flash_arc_increment(ra_flash_arc_id_t counter);
 
@@ -647,7 +647,7 @@ ra_flash_block_protect_set(ra_flash_world_t world, bool lock, bool permanent);
  *
  * @note Thread-safe: no.
  * @see ra_flash_arc_increment
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_flash_arc_read(ra_flash_arc_id_t counter, uint32_t* out_count);
 
@@ -680,7 +680,7 @@ ra_flash_block_protect_set(ra_flash_world_t world, bool lock, bool permanent);
  * @warning OFS overwrites are persistent and may brick the part.
  *
  * @see ra_flash_set_startup_area
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_flash_config_set_write(uint32_t target_addr, const uint16_t* words);
 
@@ -705,7 +705,7 @@ ra_flash_block_protect_set(ra_flash_world_t world, bool lock, bool permanent);
  * @warning Permanent destruction of the W-HUK. Do not call unless
  * policy explicitly requires it.
  *
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_flash_zeroize_huk(void);
 
@@ -729,7 +729,7 @@ ra_flash_block_protect_set(ra_flash_world_t world, bool lock, bool permanent);
  * @post MASTAT.CMDLK == 0 on success.
  *
  * @note Thread-safe: no.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_flash_force_stop(void);
 
@@ -751,7 +751,7 @@ ra_flash_block_protect_set(ra_flash_world_t world, bool lock, bool permanent);
  * @post Controller back in read mode.
  *
  * @note Thread-safe: no.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_flash_reset(void);
 
@@ -777,7 +777,7 @@ ra_flash_block_protect_set(ra_flash_world_t world, bool lock, bool permanent);
  * @note Thread-safe: no.
  * @warning Demoting a register set to non-secure exposes it to NS code.
  *
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_flash_set_security_attribution(uint16_t new_msar);
 
@@ -804,7 +804,7 @@ ra_flash_block_protect_set(ra_flash_world_t world, bool lock, bool permanent);
  * @post Matching enable bit set / cleared.
  *
  * @note Thread-safe: no.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_flash_set_irq_enable(ra_flash_irq_src_t src, bool enable);
 
@@ -828,7 +828,7 @@ ra_flash_block_protect_set(ra_flash_world_t world, bool lock, bool permanent);
  *
  * @note Thread-safe: no -- caller must serialise vs ``dispatch_isr``.
  * @see ra_flash_dispatch_isr
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_flash_callback_set(ra_flash_callback_t cb, void* user_ctx);
 
@@ -852,7 +852,7 @@ ra_flash_block_protect_set(ra_flash_world_t world, bool lock, bool permanent);
  *
  * @note Thread-safe: no, IRQ-context only.
  * @see ra_flash_callback_set
- * @since 0.2.0
+ * @since 0.1.0
  */
 uint32_t ra_flash_dispatch_isr(void);
 
@@ -868,7 +868,7 @@ uint32_t ra_flash_dispatch_isr(void);
  * @post MRCEECC.ECCEN matches ``enable``.
  *
  * @note Thread-safe: no.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_flash_set_ecc_encoder_enable(bool enable);
 
@@ -884,7 +884,7 @@ uint32_t ra_flash_dispatch_isr(void);
  * @post MRCDECC.DECECEN matches ``enable``.
  *
  * @note Thread-safe: no.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_flash_set_ecc_decoder_enable(bool enable);
 
@@ -910,7 +910,7 @@ uint32_t ra_flash_dispatch_isr(void);
  * @post All four ``*out_*`` locations updated.
  *
  * @note Thread-safe: read-only.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_flash_get_ecc_error_addr(uint32_t* out_code_ted,
                                                    uint32_t* out_code_dec,
@@ -931,7 +931,7 @@ uint32_t ra_flash_dispatch_isr(void);
  * @post ``*out_addr`` populated from MRCPEA.
  *
  * @note Thread-safe: read-only.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_flash_get_program_error_addr(uint32_t* out_addr);
 
@@ -955,7 +955,7 @@ uint32_t ra_flash_dispatch_isr(void);
  * @post MRCPFB restored to its prior state.
  *
  * @note Thread-safe: no.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_flash_update_clock_freq(uint16_t mrcfreq_mhz, uint8_t mrefreq_mhz);
 
@@ -976,7 +976,7 @@ uint32_t ra_flash_dispatch_isr(void);
  * @post MSUINITR.SUINIT reads back 0.
  *
  * @note Thread-safe: no.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_flash_msuinitr_kick(void);
 
@@ -999,7 +999,7 @@ uint32_t ra_flash_dispatch_isr(void);
  * @post MCTRSTATR.BUSY likely 1 immediately after the call.
  *
  * @note Thread-safe: no.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_flash_set_update_transfer(uint8_t list_select);
 
@@ -1018,7 +1018,7 @@ uint32_t ra_flash_dispatch_isr(void);
  * @post All three ``*out_*`` locations updated.
  *
  * @note Thread-safe: read-only.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t
 ra_flash_get_update_status(uint8_t* out_busy, uint8_t* out_done, uint8_t* out_err);
@@ -1052,7 +1052,7 @@ ra_flash_get_update_status(uint8_t* out_busy, uint8_t* out_done, uint8_t* out_er
  * @note Thread-safe: no.
  * @warning Same brick warnings as ``ra_flash_write_block``.
  * @see ra_flash_extra_mram_erase
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t
 ra_flash_extra_mram_write(uint32_t mram_addr, const uint8_t* src, uint32_t len);
@@ -1080,7 +1080,7 @@ ra_flash_extra_mram_write(uint32_t mram_addr, const uint8_t* src, uint32_t len);
  * @note Thread-safe: no.
  * @warning Brick warnings apply.
  * @see ra_flash_extra_mram_write
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_flash_extra_mram_erase(uint32_t mram_addr);
 
@@ -1101,7 +1101,7 @@ ra_flash_extra_mram_write(uint32_t mram_addr, const uint8_t* src, uint32_t len);
  *
  * @note Thread-safe: no.
  * @see ra_flash_exit_pe_mode
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_flash_enter_pe_mode(void);
 
@@ -1122,7 +1122,7 @@ ra_flash_extra_mram_write(uint32_t mram_addr, const uint8_t* src, uint32_t len);
  *
  * @note Thread-safe: no.
  * @see ra_flash_enter_pe_mode
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_flash_exit_pe_mode(void);
 

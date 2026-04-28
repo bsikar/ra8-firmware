@@ -178,7 +178,7 @@ typedef enum : uint8_t {
  *
  * @note Thread safety: not thread-safe.
  * @see ra_lpm_deinit, ra_lpm_enter_sleep
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_lpm_init(const ra_lpm_config_t* cfg);
 
@@ -202,7 +202,7 @@ typedef enum : uint8_t {
  * @post WUPEN0 == 0 and WUPEN1 == 0.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_lpm_deinit(void);
 
@@ -231,7 +231,7 @@ typedef enum : uint8_t {
  * @note Thread safety: not thread-safe; the unlock/relock pair
  *       must be wrapped in the caller's critical section.
  * @see ra_lpm_prcr_relock
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_lpm_prcr_unlock(void);
 
@@ -249,7 +249,7 @@ typedef enum : uint8_t {
  *
  * @note Thread safety: not thread-safe.
  * @see ra_lpm_prcr_unlock
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_lpm_prcr_relock(void);
 
@@ -280,7 +280,7 @@ typedef enum : uint8_t {
  * @post No other LPM register has been modified.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_lpm_set_wakeup_sources(uint32_t wupen0, uint32_t wupen1);
 
@@ -300,7 +300,7 @@ typedef enum : uint8_t {
  *
  * @note Thread safety: not thread-safe.
  * @see ra_lpm_clear_wupen0_bits
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_lpm_arm_wupen0_bits(uint32_t bits);
 
@@ -320,7 +320,7 @@ typedef enum : uint8_t {
  * @post No other LPM register has been modified.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_lpm_clear_wupen0_bits(uint32_t bits);
 
@@ -340,7 +340,7 @@ typedef enum : uint8_t {
  *
  * @note Thread safety: not thread-safe.
  * @see ra_lpm_clear_wupen1_bits
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_lpm_arm_wupen1_bits(uint32_t bits);
 
@@ -360,7 +360,7 @@ typedef enum : uint8_t {
  * @post No other LPM register has been modified.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_lpm_clear_wupen1_bits(uint32_t bits);
 
@@ -387,7 +387,7 @@ typedef enum : uint8_t {
  *
  * @note Thread safety: not thread-safe.
  * @see ra_lpm_clear_dpsifr, ra_lpm_set_dpsiegr
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_lpm_arm_dpsier(ra_lpm_dpsier_idx_t idx, uint8_t value);
 
@@ -408,7 +408,7 @@ typedef enum : uint8_t {
  * @post No other DPSI* register has been modified.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_lpm_clear_dpsifr(ra_lpm_dpsier_idx_t idx);
 
@@ -429,7 +429,7 @@ typedef enum : uint8_t {
  * @post No other LPM register has been modified.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_lpm_set_dpsiegr(ra_lpm_dpsier_idx_t idx, uint8_t value);
 
@@ -466,7 +466,7 @@ typedef enum : uint8_t {
  *
  * @note Thread safety: not thread-safe.
  * @see ra_lpm_snooze_set_end_sources
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t
 ra_lpm_snooze_set_request_sources(bool ulpt0_underflow, bool ulpt1_underflow, bool acmphs0);
@@ -496,7 +496,7 @@ ra_lpm_snooze_set_request_sources(bool ulpt0_underflow, bool ulpt1_underflow, bo
  * @post DPSIFR3 cleared to ensure no stale flag carries over.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t
 ra_lpm_snooze_set_end_sources(bool ulpt0, bool ulpt1, bool usbfs, bool usbhs);
@@ -522,7 +522,7 @@ ra_lpm_snooze_set_end_sources(bool ulpt0, bool ulpt1, bool usbfs, bool usbhs);
  * @post PDRAMSCR1 mirrors ``cpu0_tcm_keep`` and ``cpu1_tcm_keep``.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_lpm_set_ram_retention(const ra_lpm_ram_retention_t* cfg);
 
@@ -544,7 +544,7 @@ ra_lpm_snooze_set_end_sources(bool ulpt0, bool ulpt1, bool usbfs, bool usbhs);
  * @post Other bits in *LDOCR are preserved.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_lpm_set_ldo_standby(const ra_lpm_ldo_cfg_t* cfg);
 
@@ -570,7 +570,7 @@ ra_lpm_snooze_set_end_sources(bool ulpt0, bool ulpt1, bool usbfs, bool usbhs);
  * @post No other oscillator has been modified.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_lpm_set_clock_stop(ra_lpm_clock_t clock, bool stop);
 
@@ -592,7 +592,7 @@ ra_lpm_snooze_set_end_sources(bool ulpt0, bool ulpt1, bool usbfs, bool usbhs);
  * @post No register has been modified.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_lpm_get_clock_stop(ra_lpm_clock_t clock, bool* stop);
 
@@ -618,7 +618,7 @@ ra_lpm_snooze_set_end_sources(bool ulpt0, bool ulpt1, bool usbfs, bool usbhs);
  * @post No register has been modified.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_lpm_get_opccr(uint8_t* opccr);
 
@@ -638,7 +638,7 @@ ra_lpm_snooze_set_end_sources(bool ulpt0, bool ulpt1, bool usbfs, bool usbhs);
  * @post No register has been modified by this call.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_lpm_wait_for_opccr(uint32_t poll_limit);
 
@@ -691,7 +691,7 @@ ra_lpm_snooze_set_end_sources(bool ulpt0, bool ulpt1, bool usbfs, bool usbhs);
  *          still observable via the sim mmap.
  *
  * @see ra_lpm_set_wakeup_sources, ra_lpm_arm_dpsier
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_lpm_enter_sleep(ra_sleep_mode_t mode);
 
@@ -708,7 +708,7 @@ ra_lpm_snooze_set_end_sources(bool ulpt0, bool ulpt1, bool usbfs, bool usbhs);
  * @post SCR.SLEEPDEEP set before WFI.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_lpm_enter_deep_standby(void);
 
@@ -747,7 +747,7 @@ ra_lpm_snooze_set_end_sources(bool ulpt0, bool ulpt1, bool usbfs, bool usbhs);
  * @post No register has been modified.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_lpm_get_status(uint32_t* out);
 
@@ -772,7 +772,7 @@ ra_lpm_snooze_set_end_sources(bool ulpt0, bool ulpt1, bool usbfs, bool usbhs);
  * @post No register has been modified.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_lpm_get_exit_cause(uint64_t* out);
 
@@ -795,7 +795,7 @@ ra_lpm_snooze_set_end_sources(bool ulpt0, bool ulpt1, bool usbfs, bool usbhs);
  * @post No register has been modified.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t
 ra_lpm_get_dpsi_state(uint8_t enables[4], uint8_t flags[4], uint8_t edges[3]);

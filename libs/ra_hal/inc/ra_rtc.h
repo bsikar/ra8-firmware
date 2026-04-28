@@ -81,49 +81,49 @@ typedef void (*ra_rtc_event_fn_t)(void* ctx, uint8_t status_mask);
 
 /**
  * @brief Tear down the RTC (stop counter + disable IRQs).
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rtc_deinit(void);
 
 /**
  * @brief Enable one or more RTC IRQ sources via RCR1.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rtc_set_irq_enable(uint8_t mask);
 
 /**
  * @brief Read RCR1 IRQ enable bits.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rtc_get_status(uint8_t* out_mask);
 
 /**
  * @brief Clear RCR1 IRQ enable bits.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rtc_clear_status(uint8_t mask);
 
 /**
  * @brief Attach a callback for the RTC alarm / periodic event.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rtc_attach_handler(ra_rtc_event_fn_t fn, void* ctx);
 
 /**
  * @brief Dispatch an RTC event -- snapshot RCR1 + fire callback.
- * @since 0.2.0
+ * @since 0.1.0
  */
 void ra_rtc_dispatch(void);
 
 /**
  * @brief Stop the RTC counter for low-power mode.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rtc_enter_stop(void);
 
 /**
  * @brief Restart the RTC counter from stop.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rtc_exit_stop(void);
 

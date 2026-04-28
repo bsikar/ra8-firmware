@@ -173,7 +173,7 @@ typedef struct {
  * ``cfg``, and the NVIC line is enabled.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_gpio_attach_irq(ra_port_pin_t            pin,
                                           uint8_t                  irq_num,
@@ -201,7 +201,7 @@ typedef struct {
  * @post NVIC line disabled, IRQCR == 0, pin validator released.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_gpio_detach_irq(ra_port_pin_t pin, uint8_t irq_num);
 

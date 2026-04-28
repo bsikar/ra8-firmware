@@ -175,7 +175,7 @@ typedef bool (*ra_sci_tx_fn_t)(void* ctx, uint8_t* byte);
  * ready to TX / RX.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_sci_init(uint8_t channel, const ra_sci_cfg_t* cfg);
 
@@ -194,7 +194,7 @@ typedef bool (*ra_sci_tx_fn_t)(void* ctx, uint8_t* byte);
  * @post TX/RX disabled; MSTP reference for the channel decremented.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_sci_deinit(uint8_t channel);
 
@@ -215,7 +215,7 @@ typedef bool (*ra_sci_tx_fn_t)(void* ctx, uint8_t* byte);
  *
  * @note Thread safety: not thread-safe with respect to IRQ TX on
  * the same channel.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_sci_putc_polling(uint8_t channel, uint8_t byte);
 
@@ -231,7 +231,7 @@ typedef bool (*ra_sci_tx_fn_t)(void* ctx, uint8_t* byte);
  * @post On success, one byte was drained from RDR.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_sci_getc_polling(uint8_t channel, uint8_t* out_byte);
 
@@ -245,7 +245,7 @@ typedef bool (*ra_sci_tx_fn_t)(void* ctx, uint8_t* byte);
  *
  * @pre ``data`` non-NULL unless ``len == 0``.
  * @post On success, every byte has been handed to TDR.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_sci_write_polling(uint8_t channel, const uint8_t* data, uint32_t len);
 
@@ -265,7 +265,7 @@ typedef bool (*ra_sci_tx_fn_t)(void* ctx, uint8_t* byte);
  *
  * @pre Channel previously initialised.
  * @post On success, SCR.RIE is set (if ``fn`` non-NULL).
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_sci_attach_rx_handler(uint8_t channel, ra_sci_rx_fn_t fn, void* ctx);
 
@@ -280,7 +280,7 @@ typedef bool (*ra_sci_tx_fn_t)(void* ctx, uint8_t* byte);
  *
  * @pre Channel previously initialised.
  * @post On success, SCR.TIE is set (if ``fn`` non-NULL).
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_sci_attach_tx_handler(uint8_t channel, ra_sci_tx_fn_t fn, void* ctx);
 
@@ -298,7 +298,7 @@ typedef bool (*ra_sci_tx_fn_t)(void* ctx, uint8_t* byte);
  *
  * @pre ``out_mask`` non-NULL.
  * @post No hardware state is modified.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_sci_get_errors(uint8_t channel, uint8_t* out_mask);
 
@@ -310,7 +310,7 @@ typedef bool (*ra_sci_tx_fn_t)(void* ctx, uint8_t* byte);
  *
  * @pre IRQs masked or single-threaded init context.
  * @post ORER, FER, PER read back as 0.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_sci_clear_errors(uint8_t channel);
 
@@ -330,7 +330,7 @@ typedef bool (*ra_sci_tx_fn_t)(void* ctx, uint8_t* byte);
  * @pre Channel initialised.
  * @pre IRQs masked or single-threaded context.
  * @post BRR reflects the new divider.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_sci_set_baud(uint8_t channel, uint32_t baud, uint32_t pclk_hz);
 
@@ -351,7 +351,7 @@ typedef bool (*ra_sci_tx_fn_t)(void* ctx, uint8_t* byte);
  * @warning Callers lose every register setting; pair with
  * ``ra_sci_exit_stop`` + re-init if reconfiguration is
  * needed.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_sci_enter_stop(uint8_t channel);
 
@@ -364,7 +364,7 @@ typedef bool (*ra_sci_tx_fn_t)(void* ctx, uint8_t* byte);
  * @pre Channel is currently MSTP-gated.
  * @post MSTP bit is cleared; caller must call ``ra_sci_init`` to
  * restore registers.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_sci_exit_stop(uint8_t channel);
 
@@ -415,7 +415,7 @@ typedef bool (*ra_sci_tx_fn_t)(void* ctx, uint8_t* byte);
  * @note Thread safety: not thread-safe.
  * @see ra_sci_read_dma
  * @see ra_dma_release
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_sci_write_dma(uint8_t              channel,
                                         const uint8_t*       data,
@@ -458,7 +458,7 @@ typedef bool (*ra_sci_tx_fn_t)(void* ctx, uint8_t* byte);
  * @note Thread safety: not thread-safe.
  * @see ra_sci_write_dma
  * @see ra_dma_release
- * @since 0.3.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_sci_read_dma(uint8_t              channel,
                                        uint8_t*             out_buf,
@@ -480,7 +480,7 @@ typedef bool (*ra_sci_tx_fn_t)(void* ctx, uint8_t* byte);
  * @pre Called from ISR context (or from test helper).
  * @post If the attached TX callback returns true, the next byte
  * has been written to TDR. Otherwise TIE is cleared.
- * @since 0.2.0
+ * @since 0.1.0
  */
 void ra_sci_dispatch_txi(uint8_t channel);
 
@@ -492,7 +492,7 @@ void ra_sci_dispatch_txi(uint8_t channel);
  * @pre Called from ISR context.
  * @post If an RX callback is attached, it has been invoked with
  * the byte read from RDR.
- * @since 0.2.0
+ * @since 0.1.0
  */
 void ra_sci_dispatch_rxi(uint8_t channel);
 
@@ -504,7 +504,7 @@ void ra_sci_dispatch_rxi(uint8_t channel);
  *
  * @pre Called from ISR context.
  * @post SSR error bits are cleared.
- * @since 0.2.0
+ * @since 0.1.0
  */
 void ra_sci_dispatch_eri(uint8_t channel);
 

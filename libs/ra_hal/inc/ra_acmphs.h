@@ -89,13 +89,13 @@ typedef void (*ra_acmphs_event_fn_t)(void* ctx, uint8_t channel);
  * @post CMPCTL / CMPSEL0 / CMPSEL1 / CMPFIR reflect ``cfg``.
  *
  * @note Thread safety: not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_acmphs_channel_init(uint8_t channel, const ra_acmphs_cfg_t* cfg);
 
 /**
  * @brief Tear down one channel (disable + clear CMPCTL).
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_acmphs_channel_deinit(uint8_t channel);
 
@@ -132,7 +132,7 @@ typedef void (*ra_acmphs_event_fn_t)(void* ctx, uint8_t channel);
  * @param[in] ivpsel Plus-input selector.
  * @param[in] ivrefsel Minus-input selector.
  * @return ``ra_err_t`` error code.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_acmphs_set_inputs(uint8_t channel, uint8_t ivpsel, uint8_t ivrefsel);
 
@@ -146,13 +146,13 @@ typedef void (*ra_acmphs_event_fn_t)(void* ctx, uint8_t channel);
  * @param[in] channel Channel 0..5.
  * @param[out] out_mask CMPCTL value.
  * @return ``ra_err_t`` error code.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_acmphs_get_status(uint8_t channel, uint8_t* out_mask);
 
 /**
  * @brief Clear CMPCTL (disable + edge mode off) for one channel.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_acmphs_clear_status(uint8_t channel);
 
@@ -166,7 +166,7 @@ typedef void (*ra_acmphs_event_fn_t)(void* ctx, uint8_t channel);
  * @param[in] fn Callback fired on ISR dispatch.
  * @param[in] ctx Context forwarded to the callback.
  * @return ``ra_err_t`` error code.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_acmphs_attach_handler(ra_acmphs_event_fn_t fn, void* ctx);
 
@@ -177,13 +177,13 @@ typedef void (*ra_acmphs_event_fn_t)(void* ctx, uint8_t channel);
 
 /**
  * @brief Put one channel into MSTP-gated stop.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_acmphs_enter_stop(uint8_t channel);
 
 /**
  * @brief Exit MSTP-gated stop for one channel.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_acmphs_exit_stop(uint8_t channel);
 
@@ -195,7 +195,7 @@ typedef void (*ra_acmphs_event_fn_t)(void* ctx, uint8_t channel);
 /**
  * @brief Dispatch an ACMPHS edge event -- fire the registered callback.
  * @param[in] channel Channel 0..5 that fired the edge.
- * @since 0.2.0
+ * @since 0.1.0
  */
 void ra_acmphs_dispatch(uint8_t channel);
 

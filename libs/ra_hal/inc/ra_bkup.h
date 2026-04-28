@@ -288,7 +288,7 @@ typedef void (*ra_bkup_event_fn_t)(void* ctx, uint8_t tamper_flags);
  *
  * @see ra_bkup_deinit
  * @see ra_bkup_cold_start_init
- * @since 0.11.20
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_bkup_init(const ra_bkup_config_t* cfg);
 
@@ -313,7 +313,7 @@ typedef void (*ra_bkup_event_fn_t)(void* ctx, uint8_t tamper_flags);
  * @note Not thread-safe.
  *
  * @see ra_bkup_init
- * @since 0.11.20
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_bkup_deinit(void);
 
@@ -354,7 +354,7 @@ typedef void (*ra_bkup_event_fn_t)(void* ctx, uint8_t tamper_flags);
  *
  * @see ra_bkup_warm_start_check
  * @see ra_bkup_no_switch_init
- * @since 0.11.20
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_bkup_cold_start_init(ra_bkup_vdet_level_t level, uint32_t timeout_iters);
 
@@ -386,7 +386,7 @@ typedef void (*ra_bkup_event_fn_t)(void* ctx, uint8_t tamper_flags);
  * @note Pure status read; safe to call from cold reset path.
  *
  * @see ra_bkup_cold_start_init
- * @since 0.11.20
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_bkup_warm_start_check(bool* needs_reinit, uint32_t timeout_iters);
 
@@ -414,7 +414,7 @@ typedef void (*ra_bkup_event_fn_t)(void* ctx, uint8_t tamper_flags);
  * @post VBTICTLR / VBTICTLR2 / VBTADSR / VBTADCR1 / VBTADCR2 == 0.
  *
  * @see ra_bkup_cold_start_init
- * @since 0.11.20
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_bkup_no_switch_init(uint32_t timeout_iters);
 
@@ -441,7 +441,7 @@ typedef void (*ra_bkup_event_fn_t)(void* ctx, uint8_t tamper_flags);
  *       writes provided the register is naturally aligned (it is).
  *
  * @see ra_bkup_clear_status
- * @since 0.11.20
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_bkup_get_status(ra_bkup_status_t* out);
 
@@ -465,7 +465,7 @@ typedef void (*ra_bkup_event_fn_t)(void* ctx, uint8_t tamper_flags);
  * @post Bits of VBTADSR present in ``mask`` cleared.
  *
  * @note Not thread-safe.
- * @since 0.11.20
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_bkup_clear_status(uint8_t mask);
 
@@ -492,7 +492,7 @@ typedef void (*ra_bkup_event_fn_t)(void* ctx, uint8_t tamper_flags);
  * @note Thread safety: read-only.
  *
  * @see ra_bkup_write_word
- * @since 0.11.20
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_bkup_read_word(uint8_t word_index, uint32_t* out);
 
@@ -513,7 +513,7 @@ typedef void (*ra_bkup_event_fn_t)(void* ctx, uint8_t tamper_flags);
  * @note Not thread-safe.
  *
  * @see ra_bkup_read_word
- * @since 0.11.20
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_bkup_write_word(uint8_t word_index, uint32_t value);
 
@@ -533,7 +533,7 @@ typedef void (*ra_bkup_event_fn_t)(void* ctx, uint8_t tamper_flags);
  * @post ``*out`` matches the live byte.
  *
  * @see ra_bkup_write_byte
- * @since 0.11.20
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_bkup_read_byte(uint16_t index, uint8_t* out);
 
@@ -551,7 +551,7 @@ typedef void (*ra_bkup_event_fn_t)(void* ctx, uint8_t tamper_flags);
  * @post VBTBKRn[index] == ``value``.
  *
  * @see ra_bkup_read_byte
- * @since 0.11.20
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_bkup_write_byte(uint16_t index, uint8_t value);
 
@@ -570,7 +570,7 @@ typedef void (*ra_bkup_event_fn_t)(void* ctx, uint8_t tamper_flags);
  * @pre IRQs masked.
  * @post Every VBTBKRn[0..127] == 0.
  *
- * @since 0.11.20
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_bkup_zero_all(void);
 
@@ -606,7 +606,7 @@ typedef void (*ra_bkup_event_fn_t)(void* ctx, uint8_t tamper_flags);
  * @post VBTADSR cleared after the dummy-read step.
  *
  * @see ra_bkup_tamper_disable
- * @since 0.11.20
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_bkup_tamper_init(const ra_bkup_tamper_config_t* cfg);
 
@@ -627,7 +627,7 @@ typedef void (*ra_bkup_event_fn_t)(void* ctx, uint8_t tamper_flags);
  * @post VBTICTLR / VBTICTLR2 / VBTADCR1 / VBTADCR2 / VBTADCR3 == 0.
  * @post VBTADSR.VBTADF[2:0] cleared.
  *
- * @since 0.11.20
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_bkup_tamper_disable(void);
 
@@ -646,7 +646,7 @@ typedef void (*ra_bkup_event_fn_t)(void* ctx, uint8_t tamper_flags);
  *      meaningful (HUM Ch 12.2.10 p 506 -- otherwise reads as 0).
  * @post ``*high_out`` matches the live VCHnMON bit.
  *
- * @since 0.11.20
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_bkup_read_input(ra_bkup_channel_t channel, bool* high_out);
 
@@ -663,7 +663,7 @@ typedef void (*ra_bkup_event_fn_t)(void* ctx, uint8_t tamper_flags);
  * @pre PRCR unlocked.
  * @post Bit ``channel`` of VBTICTLR matches ``enable``.
  *
- * @since 0.11.20
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_bkup_set_input_enable(ra_bkup_channel_t channel, bool enable);
 
@@ -692,7 +692,7 @@ typedef void (*ra_bkup_event_fn_t)(void* ctx, uint8_t tamper_flags);
  * @post VBATTMNSELR.VBTMNSEL == ``enable``.
  *
  * @see ra_bkup_get_voltage_monitor_enabled
- * @since 0.11.20
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_bkup_set_voltage_monitor(bool enable);
 
@@ -708,7 +708,7 @@ typedef void (*ra_bkup_event_fn_t)(void* ctx, uint8_t tamper_flags);
  * @pre ``enabled_out`` writable.
  * @post ``*enabled_out`` matches the register bit.
  *
- * @since 0.11.20
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_bkup_get_voltage_monitor_enabled(bool* enabled_out);
 
@@ -742,7 +742,7 @@ typedef void (*ra_bkup_event_fn_t)(void* ctx, uint8_t tamper_flags);
  * @post VBRSABAR / VBRPABARS / VBRPABARNS reflect ``cfg``.
  *
  * @see ra_bkup_security_get
- * @since 0.11.20
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_bkup_security_apply(const ra_bkup_security_config_t* cfg);
 
@@ -758,7 +758,7 @@ typedef void (*ra_bkup_event_fn_t)(void* ctx, uint8_t tamper_flags);
  * @pre ``cfg`` writable.
  * @post ``cfg`` mirrors the live registers.
  *
- * @since 0.11.20
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_bkup_security_get(ra_bkup_security_config_t* cfg);
 
@@ -789,7 +789,7 @@ typedef void (*ra_bkup_event_fn_t)(void* ctx, uint8_t tamper_flags);
  *
  * @note Thread safety: callback storage is plain pointer assignment,
  *       not atomic.
- * @since 0.11.20
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_bkup_attach_handler(ra_bkup_event_fn_t fn, void* ctx);
 
@@ -810,7 +810,7 @@ typedef void (*ra_bkup_event_fn_t)(void* ctx, uint8_t tamper_flags);
  * @post Flagged-and-armed VBTADFn bits are W0Ced.
  * @post Callback invoked exactly once with the dispatched mask.
  *
- * @since 0.11.20
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_bkup_isr_handle(void);
 
@@ -825,7 +825,7 @@ typedef void (*ra_bkup_event_fn_t)(void* ctx, uint8_t tamper_flags);
  * @post No state change in this driver.
  *
  * @note Thread safety: not re-entrant; call from one ISR context only.
- * @since 0.11.20
+ * @since 0.1.0
  */
 void ra_bkup_dispatch(uint8_t tamper_flags);
 
