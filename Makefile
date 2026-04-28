@@ -37,11 +37,14 @@ CLANG_FORMAT ?= clang-format
 DOXYGEN      ?= doxygen
 ARM_SIZE     ?= arm-none-eabi-size
 
-.PHONY: help build clean format check tidy test test-docker ctest docs flash ozone debug size ascii all
+.PHONY: help build clean format check tidy test test-docker ctest docs flash ozone debug size ascii all examples
 
 help:
 	@echo "ra8d2-firmware make targets:"
-	@echo "  build       cross-compile via ./build.sh"
+	@echo "  build           cross-compile examples/blink (default) via ./build.sh"
+	@echo "  example-<name>  cross-compile examples/<name>/main.c"
+	@echo "                  e.g. 'make example-blink'"
+	@echo "  examples        list every available example"
 	@echo "  clean       remove build/ and tests/build/"
 	@echo "  format      run clang-format in place"
 	@echo "  check       run clang-format --dry-run"
@@ -59,6 +62,28 @@ help:
 
 build:
 	./build.sh
+
+# `make example-<name>` -- build a specific example.
+# The pattern target wipes any previous build dir so the EXAMPLE
+# selector takes effect even if a different example was last built.
+example-%:
+	@if [ ! -f $(ROOT)/examples/$*/main.c ]; then \
+		echo "error: examples/$*/main.c not found" >&2; \
+		echo "" >&2; \
+		echo "available examples:" >&2; \
+		ls -1 $(ROOT)/examples 2>/dev/null | sed 's/^/  /' >&2; \
+		exit 1; \
+	fi
+	rm -rf $(BUILD_DIR)
+	EXAMPLE=$* ./build.sh
+
+examples:
+	@echo "Available examples:"
+	@for d in $(ROOT)/examples/*/; do \
+		name=$$(basename $$d); \
+		first_brief=$$(grep -m1 "@brief" $$d/main.c 2>/dev/null | sed 's/.*@brief //'); \
+		printf "  %-15s %s\n" "$$name" "$$first_brief"; \
+	done
 
 clean:
 	rm -rf $(BUILD_DIR) $(TESTS_BUILD)

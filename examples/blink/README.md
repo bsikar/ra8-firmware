@@ -13,22 +13,46 @@ the Cortex-M85 SysTick timer for delay -- no busy-wait.
 From the repo root:
 
 ```sh
-make build               # cross-compiles examples/blink/main.c
-make flash               # flashes via on-board J-Link OB
+make example-blink     # cross-compile this example
+make flash             # flash via on-board J-Link OB
 ```
 
-Or pick the example explicitly:
+`make build` is an alias that defaults to this example, so you can
+also just run:
 
 ```sh
-cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-ra8d2.cmake \
-                    -DEXAMPLE=blink -DCMAKE_BUILD_TYPE=Release
+make build
+make flash
+```
+
+To pick a different example explicitly without `make`:
+
+```sh
+EXAMPLE=blink ./build.sh
+./scripts/flash.sh
+```
+
+Or directly via cmake:
+
+```sh
+cmake -S . -B build \
+      -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-ra8d2.cmake \
+      -DEXAMPLE=blink \
+      -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 ./scripts/flash.sh
 ```
 
+## Debugging
+
+```sh
+make ozone             # open SEGGER Ozone GUI debugger
+make debug             # attach gdb via JLinkGDBServer
+```
+
 ## Notes
 
-- The chip boots on MOCO at ~8.4 MHz (measured via DWT.CYCCNT, lines
+- The chip boots on MOCO at ~8.4 MHz (measured via `DWT.CYCCNT`, lines
   up with the RA-family MOCO nominal 8 MHz spec). `k_ra_cpu_hz_at_reset`
   in `main.c` reflects this. After CGC bring-up brings HOCO + PLL up
   to 1 GHz, the constant should be replaced with the actual operating
@@ -39,3 +63,9 @@ cmake --build build
 - The linker stack is in SRAM-0 only (1 MiB). SRAM-1 (the second 1 MiB
   bank) needs explicit MSTPCR + SRAMSAR programming before it's
   accessible.
+- Only `P6_00`, `P3_03`, and `P10_07` are coded in
+  `libs/ra_core/inc/ra_port_constants.h` as the canonical EK-RA8D2
+  LED pins; the demo also drives `P6_01` and `P6_02` because the
+  EK-RA family commonly uses three LEDs on consecutive port-6 pins.
+  Confirm against the EK-RA8D2 schematic before relying on a
+  specific pin in production code.
