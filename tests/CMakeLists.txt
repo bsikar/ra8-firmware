@@ -64,6 +64,7 @@ get_filename_component(FW_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/.." ABSOLUTE)
 file(GLOB_RECURSE RA_CORE_SOURCES    CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_core/src/*.c)
 file(GLOB_RECURSE RA_HAL_SOURCES     CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_hal/src/*.c)
 file(GLOB_RECURSE RA_NET_PAL_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_net_pal/src/*.c)
+file(GLOB_RECURSE RA_NET_SOURCES     CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_net/src/*.c)
 file(GLOB_RECURSE RA_USB_PAL_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_usb_pal/src/*.c)
 file(GLOB_RECURSE RA_NSC_SOURCES     CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_nsc/src/*.c)
 file(GLOB_RECURSE RA_SECURE_APP_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/src/secure_app/*.c)
@@ -72,6 +73,7 @@ add_library(ra_core_hal OBJECT
     ${RA_CORE_SOURCES}
     ${RA_HAL_SOURCES}
     ${RA_NET_PAL_SOURCES}
+    ${RA_NET_SOURCES}
     ${RA_USB_PAL_SOURCES}
     ${RA_NSC_SOURCES}
     ${RA_SECURE_APP_SOURCES}
@@ -85,6 +87,7 @@ target_include_directories(ra_core_hal PUBLIC
     ${FW_ROOT}/libs/ra_core/inc
     ${FW_ROOT}/libs/ra_hal/inc
     ${FW_ROOT}/libs/ra_net_pal/inc
+    ${FW_ROOT}/libs/ra_net/inc
     ${FW_ROOT}/libs/ra_usb_pal/inc
     ${FW_ROOT}/libs/ra_nsc/inc
     ${FW_ROOT}/src
@@ -108,6 +111,7 @@ function(ra_add_test name)
     ${FW_ROOT}/libs/ra_core/inc
     ${FW_ROOT}/libs/ra_hal/inc
     ${FW_ROOT}/libs/ra_net_pal/inc
+    ${FW_ROOT}/libs/ra_net/inc
     ${FW_ROOT}/libs/ra_usb_pal/inc
     ${FW_ROOT}/libs/ra_nsc/inc
     ${FW_ROOT}/src/secure_app
