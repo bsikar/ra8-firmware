@@ -6,22 +6,22 @@
  * [Ring 3 / HAL] {World: S}
  *
  * @details
- * rewrite. The low-level IELSR event allocator moved
- * to ``ra_isr``; ``ra_icu`` now owns the remaining
- * ICU functionality:
+ * The low-level IELSR event allocator moved to ``ra_isr``;
+ * ``ra_icu`` now owns the remaining ICU functionality:
  *
- * - ``ra_icu_init()`` resets IRQCR0..15, disables every NMI
- * source, clears any pending NMI status flags.
+ * - ``ra_icu_init()`` resets IRQCRa[0..15] + IRQCRb[0..15] (32 channels
+ * total on RA8D2, cross-checked against FSP R_ICU_Type), disables
+ * every NMI source, clears pending NMI status flags, and clears
+ * WUPEN0/WUPEN1 so no source can wake the core unexpectedly.
  * - ``ra_icu_configure_irq_pin(num, cfg)`` programs one of the
- * 16 external IRQ pins (IRQCRi): edge sensitivity, digital
+ * 32 external IRQ channels (IRQCRi): edge sensitivity, digital
  * filter clock divider, filter enable.
  * - ``ra_icu_nmi_enable(sources)`` / ``ra_icu_nmi_disable`` /
  * ``ra_icu_nmi_clear`` manage the NMI sources mapped through
- * NMIER / NMICR / NMICLR (HUM Ch 14.2.14..15).
+ * NMIER / NMICR / NMICLR (HUM Ch 14 p 524..582).
  * - The ``ra_icu_route`` / ``ra_icu_nvic_*`` legacy functions
  * remain as thin wrappers around direct register access for
- * backward compatibility with pre-Wave-2 demo main.c code.
- * They are documented as @deprecated.
+ * pre-Wave-2 demo main.c code.
  *
  * All register writes go through ``ra_icu_irqcr`` / ``ra_icu_nmier``
  * accessors from ``ra8d2_icu_regs.h`` (HUM Ch 14 p 524).
@@ -81,17 +81,19 @@ typedef struct {
  * @brief Reset every ICU-owned register to its post-reset state.
  *
  * @details
- * Writes 0 to IRQCR0..15, NMIER, NMICR and clears every NMISR
- * status bit via NMICLR. Does NOT touch IELSR -- those slots
- * belong to ``ra_isr``. Call this from early init before any
+ * Writes 0 to IRQCRa[0..15] and IRQCRb[0..15] (all 32 RA8D2 IRQ
+ * channels), NMIER, and WUPEN0/WUPEN1, then clears every NMISR
+ * status bit via NMICLR.  Does NOT touch IELSR -- those slots
+ * belong to ``ra_isr``.  Call this from early init before any
  * driver registers an IRQ pin.
  *
  * @return ``k_ra_ok``.
  *
  * @pre Caller holds single-threaded init context.
- * @post IRQCR0..15 == 0.
+ * @post IRQCRa[0..15] and IRQCRb[0..15] all read as 0.
  * @post NMIER == 0.
  * @post NMISR == 0 (all status bits cleared).
+ * @post WUPEN0 == 0 and WUPEN1 == 0.
  *
  * @note Thread safety: not thread-safe.
  * @since 0.1.0
@@ -113,7 +115,7 @@ typedef struct {
  * bits). The driver does NOT touch IELSR or enable the NVIC
  * line -- that is the ``ra_isr_register`` responsibility.
  *
- * @param[in] irq_num IRQ pin number 0..15.
+ * @param[in] irq_num IRQ channel 0..31 (IRQCRa for 0..15, IRQCRb for 16..31).
  * @param[in] cfg Configuration descriptor.
  *
  * @return ``ra_err_t`` error code.
@@ -136,7 +138,7 @@ typedef struct {
 /**
  * @brief Read the raw 8-bit IRQCRi value.
  *
- * @param[in] irq_num Pin 0..15.
+ * @param[in] irq_num Pin 0..31.
  * @param[out] out_val On success, the current register value.
  *
  * @return ``k_ra_ok`` on success, ``k_ra_err_invalid_arg`` on

@@ -53,8 +53,11 @@ typedef enum : uintptr_t {
 } ra_icu_addr_t;
 
 typedef enum : uint16_t {
-  k_ra_icu_num_ielsr = 96U, /**< IELSR slot count on RA8D2 (FSP R_ICU_Type). */
-  k_ra_icu_num_irqs  = 16U, /**< IRQ0..IRQ15 external IRQ pins.              */
+  k_ra_icu_num_ielsr     = 96U, /**< IELSR slot count on RA8D2 (FSP R_ICU_Type). */
+  k_ra_icu_num_irqs      = 32U, /**< IRQ0..IRQ31, RA8D2 has 32 IRQ channels.    */
+  k_ra_icu_irqcra_count  = 16U, /**< IRQCRa[16] holds channels 0..15.           */
+  k_ra_icu_irqcrb_first  = 16U, /**< First IRQ channel served by IRQCRb.        */
+  k_ra_icu_irqcrb_offset = 4U,  /**< Byte gap between IRQCRa[15] and IRQCRb[0]. */
 } ra_icu_limits_t;
 
 /* =============================================================================
@@ -64,14 +67,18 @@ typedef enum : uint16_t {
  */
 
 typedef enum : uint32_t {
-  k_ra_icu_off_irqcra0 = 0x0000U, /**< IRQCRa[0..15] (8 bits each) core0.    */
-  k_ra_icu_off_nmicr   = 0x0010U, /**< NMICR: NMI pin control (8b).          */
-  k_ra_icu_off_irqcrb0 = 0x0014U, /**< IRQCRb[0..15] (8 bits each) core1.    */
-  k_ra_icu_off_intselr = 0x0040U, /**< INTSELR[32] (32 bits each): IRQ core. */
-  k_ra_icu_off_nmier   = 0x6100U, /**< NMIER: NMI enable (32b).              */
-  k_ra_icu_off_nmiclr  = 0x6110U, /**< NMICLR: NMI status clear (32b).       */
-  k_ra_icu_off_nmisr   = 0x6120U, /**< NMISR: NMI status (32b).              */
-  k_ra_icu_off_ielsr0  = 0x6300U, /**< IELSR[0..95] (32 bits each).          */
+  k_ra_icu_off_irqcra0 = 0x0000U, /**< IRQCRa[0..15] (8 bits each), ch 0..15.  */
+  k_ra_icu_off_nmicr   = 0x0010U, /**< NMICR: NMI pin control (8b).            */
+  k_ra_icu_off_irqcrb0 = 0x0014U, /**< IRQCRb[0..15] (8 bits each), ch 16..31. */
+  k_ra_icu_off_intselr = 0x0040U, /**< INTSELR[32] (32 bits each): IRQ core.   */
+  k_ra_icu_off_nmier   = 0x6100U, /**< NMIER: NMI enable (32b).                */
+  k_ra_icu_off_nmiclr  = 0x6110U, /**< NMICLR: NMI status clear (32b).         */
+  k_ra_icu_off_nmisr   = 0x6120U, /**< NMISR: NMI status (32b).                */
+  k_ra_icu_off_wupen0  = 0x61A0U, /**< WUPEN0: wake-up enable register 0.      */
+  k_ra_icu_off_wupen1  = 0x61A4U, /**< WUPEN1: wake-up enable register 1.      */
+  k_ra_icu_off_dslpwup = 0x6210U, /**< DSLPWUPIRQEN[3]: deep-sleep IRQ enable. */
+  k_ra_icu_off_delsr0  = 0x6280U, /**< DELSR[8]: DMAC event link select.       */
+  k_ra_icu_off_ielsr0  = 0x6300U, /**< IELSR[0..95] (32 bits each).            */
 } ra_icu_off_t;
 
 /**
@@ -139,6 +146,55 @@ static inline volatile uint8_t* ra_icu_nmicr(void)
   return (volatile uint8_t*)(k_ra_icu_base_addr + k_ra_icu_off_nmicr);
 }
 
+/**
+ * @brief Get pointer to the 32-bit WUPEN0 register.
+ *
+ * @details
+ * WUPEN0 holds 16 IRQWUPENn bits (channels 0..15) at [15:0] and 16
+ * peripheral WUPENn bits at [31:16].  HUM Ch 14 "WUPEN : Wake Up
+ * Interrupt Enable Register 0", p 524..582.
+ */
+static inline volatile uint32_t* ra_icu_wupen0(void)
+{
+  return (volatile uint32_t*)(k_ra_icu_base_addr + k_ra_icu_off_wupen0);
+}
+
+/**
+ * @brief Get pointer to the 32-bit WUPEN1 register.
+ *
+ * @details
+ * WUPEN1 holds 16 peripheral WUPEN16..31 bits at [15:0] and 16
+ * IRQWUPEN16..31 bits at [31:16].  HUM Ch 14 "WUPEN : Wake Up
+ * Interrupt Enable Register 1", p 524..582.
+ */
+static inline volatile uint32_t* ra_icu_wupen1(void)
+{
+  return (volatile uint32_t*)(k_ra_icu_base_addr + k_ra_icu_off_wupen1);
+}
+
+/**
+ * @brief Get pointer to DELSR[index], the DMAC Event Link Setting Register.
+ *
+ * @details
+ * DELSR has 8 entries, each a 32-bit register with DELS at [9:0] and
+ * IR at [16].  HUM Ch 14 "DELSRn : DMAC Event Link Setting Register
+ * n", p 524..582.
+ *
+ * @param[in] index DELSR slot 0..7.
+ * @return Pointer to the slot, or ``nullptr`` on out-of-range.
+ */
+static inline volatile uint32_t* ra_icu_delsr(uint8_t index)
+{
+  enum : uint8_t {
+    k_ra_icu_num_delsr = 8U,
+  };
+  if (index >= k_ra_icu_num_delsr) {
+    return nullptr;
+  }
+  return (volatile uint32_t*)(k_ra_icu_base_addr + k_ra_icu_off_delsr0 +
+                              ((uintptr_t)index * sizeof(uint32_t)));
+}
+
 /* =============================================================================
  * Accessors
  * =============================================================================
@@ -154,13 +210,37 @@ static inline volatile uint32_t* ra_icu_ielsr(uint16_t index)
                               ((uintptr_t)index * sizeof(uint32_t)));
 }
 
-/** @brief Get pointer to one of the IRQCR registers (0..15). */
+/**
+ * @brief Get pointer to the IRQCRi register for IRQ channel ``irq_num``.
+ *
+ * @details
+ * RA8D2 has 32 external IRQ channels split across two 16-deep arrays:
+ *   - IRQCRa[0..15] at offsets 0x00..0x0F (channels 0..15).
+ *   - IRQCRb[0..15] at offsets 0x14..0x23 (channels 16..31), separated
+ *     from IRQCRa by NMICR (1 B) + 3 reserved bytes -- a 4-byte gap.
+ *
+ * Mirrors the FSP ``ICU_IRQCR_CH(c)`` macro: for c in 16..31 the byte
+ * offset is ``c + 4`` from IRQCRa[0] which lands inside IRQCRb after
+ * the 4-byte NMICR/reserved gap.
+ *
+ * HUM Ch 14.2.12 "IRQCRi : IRQ Control Register", p 535
+ *
+ * @param[in] irq_num IRQ channel 0..31.
+ * @return Volatile pointer to the IRQCR byte, or ``nullptr`` if out of range.
+ */
 static inline volatile uint8_t* ra_icu_irqcr(uint8_t irq_num)
 {
   if (irq_num >= (uint8_t)k_ra_icu_num_irqs) {
     return nullptr;
   }
-  return (volatile uint8_t*)(k_ra_icu_base_addr + k_ra_icu_off_irqcra0 + (uintptr_t)irq_num);
+  /* HUM Ch 14.2.12 "IRQCRi : IRQ Control Register", p 535: IRQCRa
+   * occupies bytes 0..15, NMICR + reserved fill 16..19, IRQCRb starts
+   * at 20.  Match FSP ICU_IRQCR_CH(c) = c + ((c >> 4) << 2). */
+  const uintptr_t gap_bytes = ((uintptr_t)irq_num >= (uintptr_t)k_ra_icu_irqcrb_first)
+                                ? (uintptr_t)k_ra_icu_irqcrb_offset
+                                : (uintptr_t)0U;
+  return (volatile uint8_t*)(k_ra_icu_base_addr + k_ra_icu_off_irqcra0 + (uintptr_t)irq_num +
+                             gap_bytes);
 }
 
 /* =============================================================================
@@ -171,16 +251,27 @@ static inline volatile uint8_t* ra_icu_irqcr(uint8_t irq_num)
 /**
  * @enum ra_ielsr_bit_t
  * @brief Bit positions in an IELSR register.
+ *
+ * @details
+ * Cross-checked against FSP ``R_ICU_Type::IELSR_b[96]`` in
+ * ``R7KA8D2KF_core0.h``: ``IELS`` is a 10-bit field at [9:0],
+ * ``IR`` (interrupt status flag, RW1C) at [16], ``DTCE`` at [24].
+ * HUM Ch 14.2.10 "IELSRn : ICU Event Link Setting Register n",
+ * p 524.
  */
 typedef enum : uint8_t {
-  k_ra_ielsr_iels_shift = 0U,  /**< Event select (ELC event number) [8:0]. */
-  k_ra_ielsr_ds_bit     = 16U, /**< DTC start (pseudo-field).              */
-  k_ra_ielsr_dtce_bit   = 24U, /**< DTC enable on event.                   */
-  k_ra_ielsr_ir_bit     = 16U, /**< Interrupt status flag (RW1C).          */
+  k_ra_ielsr_iels_shift = 0U,  /**< IELS event-select shift, bits [9:0]. */
+  k_ra_ielsr_ir_bit     = 16U, /**< IR interrupt status flag (RW1C).     */
+  k_ra_ielsr_dtce_bit   = 24U, /**< DTCE: DTC activation enable.         */
 } ra_ielsr_bit_t;
 
 typedef enum : uint32_t {
-  k_ra_ielsr_iels_mask = 0x000001FFUL, /**< 9 bits. */
+  /* HUM Ch 14.2.10 "IELSRn : ICU Event Link Setting Register n", p 524:
+   * IELS occupies bits [9:0] -- 10-bit field, mask 0x3FF.  RA8 has
+   * hundreds of ELC event sources so the FSP layout uses 10 bits. */
+  k_ra_ielsr_iels_mask = 0x000003FFUL, /**< IELS field mask (10 bits).  */
+  k_ra_ielsr_ir_mask   = 0x00010000UL, /**< IR bit mask (RW1C).         */
+  k_ra_ielsr_dtce_mask = 0x01000000UL, /**< DTCE bit mask.              */
 } ra_ielsr_mask_t;
 
 #ifdef __cplusplus
