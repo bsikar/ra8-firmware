@@ -130,8 +130,15 @@ typedef enum : uint32_t {
 /**
  * @enum ra_ssisr_mask_t
  * @brief SSISR status flags (HUM Ch 46.2.2, p 3066-3067).
+ *
+ * @details
+ * IDST is the live idle-status flag at bit 0 (FSP
+ * ``R_SSI0_SSISR_b.IDST``). It is read-only and reflects the SSIE
+ * core state machine, not an interrupt latch; the latched IIRQ at
+ * bit 25 is what fires the idle interrupt.
  */
 typedef enum : uint32_t {
+  k_ra_ssie_mask_idst    = 0x00000001UL, /**< IDST live idle flag (RO).   */
   k_ra_ssie_mask_iirq    = 0x02000000UL, /**< IIRQ idle-mode flag (RO).   */
   k_ra_ssie_mask_roirq   = 0x04000000UL, /**< ROIRQ receive overflow.     */
   k_ra_ssie_mask_ruirq   = 0x08000000UL, /**< RUIRQ receive underflow.    */
@@ -144,18 +151,37 @@ typedef enum : uint32_t {
 /**
  * @enum ra_ssifcr_mask_t
  * @brief SSIFCR FIFO control bits (HUM Ch 46.2.3, p 3077).
+ *
+ * @details
+ * RTRG[5:4] and TTRG[7:6] are the FIFO request trigger thresholds
+ * used to drive RXI/TXI to the DMAC/DTC; see HUM Table 46.5 and
+ * FSP ``R_SSI0_SSIFCR_b.RTRG`` / ``TTRG`` field definitions.
  */
 typedef enum : uint32_t {
-  k_ra_ssie_mask_rfrst       = 0x00000001UL, /**< RFRST receive FIFO reset.  */
-  k_ra_ssie_mask_tfrst       = 0x00000002UL, /**< TFRST transmit FIFO reset. */
-  k_ra_ssie_mask_rfrst_tfrst = 0x00000003UL, /**< Both FIFO reset bits.      */
-  k_ra_ssie_mask_rie         = 0x00000004UL, /**< RIE receive full IRQ.      */
-  k_ra_ssie_mask_tie         = 0x00000008UL, /**< TIE transmit empty IRQ.    */
-  k_ra_ssie_mask_rie_tie     = 0x0000000CUL, /**< RIE | TIE.                 */
-  k_ra_ssie_mask_bsw         = 0x00000800UL, /**< BSW byte-swap enable.      */
-  k_ra_ssie_mask_ssirst      = 0x00010000UL, /**< SSIRST software reset.     */
-  k_ra_ssie_mask_aucke       = 0x80000000UL, /**< AUCKE AUDIO_MCK enable.    */
+  k_ra_ssie_mask_rfrst       = 0x00000001UL, /**< RFRST receive FIFO reset.   */
+  k_ra_ssie_mask_tfrst       = 0x00000002UL, /**< TFRST transmit FIFO reset.  */
+  k_ra_ssie_mask_rfrst_tfrst = 0x00000003UL, /**< Both FIFO reset bits.       */
+  k_ra_ssie_mask_rie         = 0x00000004UL, /**< RIE receive full IRQ.       */
+  k_ra_ssie_mask_tie         = 0x00000008UL, /**< TIE transmit empty IRQ.     */
+  k_ra_ssie_mask_rie_tie     = 0x0000000CUL, /**< RIE | TIE.                  */
+  k_ra_ssie_mask_rtrg        = 0x00000030UL, /**< RTRG[1:0] @ [5:4].          */
+  k_ra_ssie_mask_ttrg        = 0x000000C0UL, /**< TTRG[1:0] @ [7:6].          */
+  k_ra_ssie_mask_bsw         = 0x00000800UL, /**< BSW byte-swap enable.       */
+  k_ra_ssie_mask_ssirst      = 0x00010000UL, /**< SSIRST software reset.      */
+  k_ra_ssie_mask_aucke       = 0x80000000UL, /**< AUCKE AUDIO_MCK enable.     */
 } ra_ssifcr_mask_t;
+
+/**
+ * @enum ra_ssifcr_shift_t
+ * @brief SSIFCR field bit positions for RTRG / TTRG.
+ *
+ * @details See HUM Ch 46.2.3 "SSIFCR : FIFO Control Register" p 3077
+ * and FSP ``R_SSI0_SSIFCR_b.RTRG`` / ``TTRG`` (BSP header).
+ */
+typedef enum : uint8_t {
+  k_ra_ssie_shift_rtrg = 4U, /**< RTRG[1:0] starts at bit 4. */
+  k_ra_ssie_shift_ttrg = 6U, /**< TTRG[1:0] starts at bit 6. */
+} ra_ssifcr_shift_t;
 
 /**
  * @enum ra_ssifsr_mask_t
