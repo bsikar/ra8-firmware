@@ -981,6 +981,202 @@ void ra_mipi_dsi_dispatch_fatal(void);
  *  @since 0.1.0 */
 void ra_mipi_dsi_dispatch_phy(void);
 
+/* =============================================================================
+ * Sweep 6 convenience surfaces
+ * =============================================================================
+ */
+
+/**
+ * @struct ra_mipi_dsi_video_timing_t
+ * @brief Compact video-mode timing block (HSA/HBP/HACT/HFP + VSA/VBP/VACT/VFP).
+ *
+ * @details
+ * Lighter-weight cousin of ::ra_mipi_dsi_video_cfg_t for callers that just
+ * need to load timing numbers and accept the driver defaults for sync
+ * polarity, pixel format (RGB888) and HSA/HBP/HFP-no-LP behaviour.
+ * Maps onto VMVSSETR / VMVPSETR / VMHSSETR / VMHPSETR per HUM Ch 65
+ * "MIPI DSI Host" pp 3839-3934.
+ *
+ * @invariant All eight counts fit into the bit widths of their target
+ *            registers (sync = 12 bits, porch = 13 bits, active = 15 bits).
+ *
+ * @code
+ * const ra_mipi_dsi_video_timing_t t = {
+ *   .horizontal_sync   = 12,  .horizontal_back_porch = 64,
+ *   .horizontal_active = 1024, .horizontal_front_porch = 32,
+ *   .vertical_sync     = 4,   .vertical_back_porch    = 8,
+ *   .vertical_active   = 600, .vertical_front_porch   = 6,
+ * };
+ * (void)ra_mipi_dsi_set_video_timing(&t);
+ * @endcode
+ *
+ * @see ra_mipi_dsi_video_cfg_t for the full (polarity-aware) struct.
+ *
+ * @since 0.1.0
+ */
+/* cppcheck-suppress-begin [unusedStructMember] */
+typedef struct {
+  uint16_t horizontal_sync;        /**< HSA pixel count -> VMHSSETR.HSA.  */
+  uint16_t horizontal_back_porch;  /**< HBP pixel count -> VMHPSETR.HBP.  */
+  uint16_t horizontal_active;      /**< HACT pixel count -> VMHSSETR.HACT.*/
+  uint16_t horizontal_front_porch; /**< HFP pixel count -> VMHPSETR.HFP.  */
+  uint16_t vertical_sync;          /**< VSA line count  -> VMVSSETR.VSA.  */
+  uint16_t vertical_back_porch;    /**< VBP line count  -> VMVPSETR.VBP.  */
+  uint16_t vertical_active;        /**< VACT line count -> VMVSSETR.VACT. */
+  uint16_t vertical_front_porch;   /**< VFP line count  -> VMVPSETR.VFP.  */
+} ra_mipi_dsi_video_timing_t;
+/* cppcheck-suppress-end [unusedStructMember] */
+
+/**
+ * @brief Load only the HSA/HBP/HACT/HFP/VSA/VBP/VACT/VFP video-timing
+ *        registers from a compact descriptor.
+ *
+ * @details
+ * Wraps ::ra_mipi_dsi_video_configure with sensible defaults
+ * (RGB888 pixel format on VC0, sync-pulse mode off, HSA/HBP/HFP-no-LP
+ * all set so the link stays HS through blanking). The remaining
+ * VMSET1R / VMPPSETR fields keep their power-on defaults.
+ *
+ * @param[in] timing Compact timing descriptor.
+ *
+ * @return ::ra_err_t outcome.
+ * @retval k_ra_ok               Timing registers loaded.
+ * @retval k_ra_err_null_ptr     `timing == nullptr`.
+ * @retval k_ra_err_invalid_arg  A field is wider than the target register.
+ *
+ * @pre Driver initialised.
+ * @pre `timing` is non-NULL.
+ * @post Video-mode timing registers reflect the new values.
+ * @post Other VM* registers preserve their power-on defaults.
+ *
+ * @note Not thread-safe. Call from single-threaded init or with IRQs masked.
+ * @see ra_mipi_dsi_video_configure -- full-feature surface.
+ * @see ra_mipi_dsi_video_start
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_mipi_dsi_set_video_timing(const ra_mipi_dsi_video_timing_t* timing);
+
+/**
+ * @brief Send a DSI command-mode short packet on VC0 (LP escape).
+ *
+ * @details
+ * Convenience surface around ::ra_mipi_dsi_send_short_packet that
+ * matches the FSP "command short" signature: a Data Type plus a
+ * 2-byte parameter array. Always sent on virtual channel 0 in low
+ * power escape mode. HUM Ch 65 "Command-mode short packet" p 3839+.
+ *
+ * @param[in] dt     One of the `k_ra_mipi_dsi_dt_*_short_*` constants.
+ * @param[in] params 2-element array carrying parameter 0 / 1.
+ *
+ * @return ::ra_err_t outcome.
+ * @retval k_ra_ok                Packet queued.
+ * @retval k_ra_err_null_ptr      `params == nullptr`.
+ * @retval k_ra_err_busy          Sequence engine still running.
+ * @retval k_ra_err_invalid_state Video mode running (LP rejected).
+ *
+ * @pre Driver initialised.
+ * @pre `params` is non-NULL.
+ * @post Sequence channel 0 descriptor 0 carries the assembled header.
+ * @post `SQCH0SET0R` pulsed with START.
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_mipi_dsi_send_command_short(ra_mipi_dsi_dt_t dt, const uint8_t params[2]);
+
+/**
+ * @brief Send a DSI command-mode long packet on VC0 (HS path).
+ *
+ * @details
+ * Convenience surface around ::ra_mipi_dsi_send_long_packet -- always
+ * uses VC0 and the high-speed sequence channel 1, which is what every
+ * command-mode panel programming sequence wants. Use the lower-level
+ * helper if you need LP routing or a non-zero VC. HUM Ch 65 "Long
+ * packet write" p 3839+.
+ *
+ * @param[in] dt      `k_ra_mipi_dsi_dt_gen_long_write` or
+ *                    `k_ra_mipi_dsi_dt_dcs_long_write`.
+ * @param[in] payload Payload bytes (`len` bytes long).
+ * @param[in] len     Payload length in bytes (max 1024 in HS mode).
+ *
+ * @return ::ra_err_t outcome.
+ * @retval k_ra_ok               Packet queued, START asserted.
+ * @retval k_ra_err_null_ptr     `payload == nullptr` and `len > 0`.
+ * @retval k_ra_err_invalid_arg  `len > 1024`.
+ * @retval k_ra_err_busy         Sequence engine running.
+ *
+ * @pre Driver initialised.
+ * @pre Either `len == 0` or `payload` valid.
+ * @post Descriptor 0 of channel 1 carries the long-packet header.
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t
+ra_mipi_dsi_send_command_long(ra_mipi_dsi_dt_t dt, const uint8_t* payload, uint16_t len);
+
+/**
+ * @brief Drive the entire link (clock + data lanes) into ULPS.
+ *
+ * @details
+ * Convenience equivalent to ``ra_mipi_dsi_ulps_enter(k_ra_mipi_dsi_lane_all)``.
+ * Honours the same continuous-clock-mode guard as the underlying call.
+ *
+ * @return ::ra_err_t outcome.
+ * @retval k_ra_ok              Both lanes pulsed into ULPS.
+ * @retval k_ra_err_invalid_arg Continuous-clock mode active and clock
+ *                              lane requested -- HW prohibits it.
+ *
+ * @pre Driver initialised, HS clock currently running.
+ * @pre Continuous-clock mode is OFF.
+ * @post ULPSCR.CLENT and DLENT have been pulsed.
+ * @post Subsequent `ra_mipi_dsi_send_*` is rejected until ::ra_mipi_dsi_exit_ulps.
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_mipi_dsi_enter_ulps(void);
+
+/**
+ * @brief Wake the entire link out of ULPS.
+ *
+ * @details
+ * Convenience equivalent to ``ra_mipi_dsi_ulps_exit(k_ra_mipi_dsi_lane_all)``.
+ *
+ * @return ::ra_err_t outcome.
+ * @retval k_ra_ok Both lanes woken.
+ *
+ * @pre At least one of the lanes was previously placed in ULPS.
+ * @pre Driver initialised.
+ * @post ULPSCR.CLEXIT and DLEXIT pulsed.
+ * @post Link is ready for HS / LP traffic again once the wake-up
+ *       sequence completes.
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_mipi_dsi_exit_ulps(void);
+
+/**
+ * @brief Snapshot the link state (running flags + busy flags + accumulated
+ *        ack/error report) into a single struct.
+ *
+ * @details
+ * Convenience around ::ra_mipi_dsi_link_status_get -- some callers want
+ * the more direct "get_link_status" name from the FSP surface.
+ *
+ * @param[out] out Decoded link status.
+ *
+ * @return ::ra_err_t outcome.
+ * @retval k_ra_ok           Status returned.
+ * @retval k_ra_err_null_ptr `out == nullptr`.
+ *
+ * @pre `out` non-NULL.
+ * @pre Driver initialised.
+ * @post `*out` reflects the current LINKSR snapshot.
+ * @post No registers mutated.
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_mipi_dsi_get_link_status(ra_mipi_dsi_link_status_t* out);
+
 #ifdef __cplusplus
 }
 #endif

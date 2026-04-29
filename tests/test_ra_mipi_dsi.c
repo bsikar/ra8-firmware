@@ -853,6 +853,188 @@ static void test_power_transition(void)
   TEST_END("mipi_dsi power transition");
 }
 
+/* ===========================================================================
+ * Sweep 6: video timing, command-mode short/long, ULPS shorthand,
+ * link-status snapshot. NULL-arg coverage included.
+ * ===========================================================================
+ */
+
+static ra_mipi_dsi_video_timing_t make_timing(void)
+{
+  const ra_mipi_dsi_video_timing_t t = {
+    .horizontal_sync        = (uint16_t)k_test_video_hsa,
+    .horizontal_back_porch  = (uint16_t)k_test_video_hbp,
+    .horizontal_active      = (uint16_t)k_test_video_h_act,
+    .horizontal_front_porch = (uint16_t)k_test_video_hfp,
+    .vertical_sync          = (uint16_t)k_test_video_vsa,
+    .vertical_back_porch    = (uint16_t)k_test_video_vbp,
+    .vertical_active        = (uint16_t)k_test_video_v_act,
+    .vertical_front_porch   = (uint16_t)k_test_video_vfp,
+  };
+  return t;
+}
+
+static void test_set_video_timing(void)
+{
+  TEST_BEGIN("mipi_dsi set_video_timing programmes VM* timing block");
+  prep();
+
+  const ra_mipi_dsi_config_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_mipi_dsi_init(&cfg));
+
+  const ra_mipi_dsi_video_timing_t t = make_timing();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_mipi_dsi_set_video_timing(&t));
+
+  volatile r_mipi_dsi_regs_t* reg = ra_mipi_dsi();
+  TEST_ASSERT_EQ((int)k_test_video_vsa, (int)(reg->VMVSSETR & 0xFFFU));
+  TEST_ASSERT_EQ((int)k_test_video_v_act, (int)((reg->VMVSSETR >> 16) & 0x7FFFU));
+  TEST_ASSERT_EQ((int)k_test_video_vbp, (int)(reg->VMVPSETR & 0x1FFFU));
+  TEST_ASSERT_EQ((int)k_test_video_vfp, (int)((reg->VMVPSETR >> 16) & 0x1FFFU));
+  TEST_ASSERT_EQ((int)k_test_video_hsa, (int)(reg->VMHSSETR & 0xFFFU));
+  TEST_ASSERT_EQ((int)k_test_video_h_act, (int)((reg->VMHSSETR >> 16) & 0x7FFFU));
+  TEST_ASSERT_EQ((int)k_test_video_hbp, (int)(reg->VMHPSETR & 0x1FFFU));
+  TEST_ASSERT_EQ((int)k_test_video_hfp, (int)((reg->VMHPSETR >> 16) & 0x1FFFU));
+
+  /* Default-fill: pixel format is RGB888 on VC0. */
+  TEST_ASSERT_EQ((int)k_ra_mipi_dsi_dt_pixel_rgb888, (int)((reg->VMPPSETR >> 16) & 0x3FU));
+
+  TEST_END("mipi_dsi set_video_timing programmes VM* timing block");
+}
+
+static void test_set_video_timing_null(void)
+{
+  TEST_BEGIN("mipi_dsi set_video_timing rejects nullptr");
+  prep();
+  const ra_mipi_dsi_config_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_mipi_dsi_init(&cfg));
+  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_mipi_dsi_set_video_timing(nullptr));
+
+  /* Field overflow rejected. */
+  ra_mipi_dsi_video_timing_t bad = make_timing();
+  bad.horizontal_active          = (uint16_t)0xFFFFU; /* > 15 bits. */
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_mipi_dsi_set_video_timing(&bad));
+  TEST_END("mipi_dsi set_video_timing rejects nullptr");
+}
+
+static void test_send_command_short(void)
+{
+  TEST_BEGIN("mipi_dsi send_command_short stages on VC0/LP");
+  prep();
+  const ra_mipi_dsi_config_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_mipi_dsi_init(&cfg));
+
+  const uint8_t params[2] = {(uint8_t)k_test_param0, (uint8_t)k_test_param1};
+  TEST_ASSERT_EQ((int)k_ra_ok,
+                 (int)ra_mipi_dsi_send_command_short(k_ra_mipi_dsi_dt_dcs_short_write_1, params));
+
+  /* Sequence channel 0 (LP) is exercised -- SQCH0SET0R START asserted. */
+  volatile r_mipi_dsi_regs_t* reg = ra_mipi_dsi();
+  TEST_ASSERT(((reg->SQCH0SET0R & (uint32_t)k_ra_mipi_dsi_sqch_start) != 0U));
+
+  /* NULL-arg rejection. */
+  TEST_ASSERT_EQ((int)k_ra_err_null_ptr,
+                 (int)ra_mipi_dsi_send_command_short(k_ra_mipi_dsi_dt_dcs_short_write_1, nullptr));
+  TEST_END("mipi_dsi send_command_short stages on VC0/LP");
+}
+
+static void test_send_command_long(void)
+{
+  TEST_BEGIN("mipi_dsi send_command_long stages on VC0/HS");
+  prep();
+  const ra_mipi_dsi_config_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_mipi_dsi_init(&cfg));
+
+  const uint8_t payload[4] = {0x01U, 0x02U, 0x03U, 0x04U};
+  TEST_ASSERT_EQ((int)k_ra_ok,
+                 (int)ra_mipi_dsi_send_command_long(k_ra_mipi_dsi_dt_dcs_long_write,
+                                                    payload,
+                                                    (uint16_t)sizeof(payload)));
+
+  /* Sequence channel 1 (HS) carries the long packet. */
+  volatile r_mipi_dsi_regs_t* reg = ra_mipi_dsi();
+  TEST_ASSERT(((reg->SQCH1SET0R & (uint32_t)k_ra_mipi_dsi_sqch_start) != 0U));
+
+  /* len > 0 with NULL payload rejected. */
+  TEST_ASSERT_EQ((int)k_ra_err_null_ptr,
+                 (int)ra_mipi_dsi_send_command_long(k_ra_mipi_dsi_dt_dcs_long_write, nullptr, 1U));
+
+  /* len == 0 with NULL payload is OK (zero-length). */
+  TEST_ASSERT_EQ((int)k_ra_ok,
+                 (int)ra_mipi_dsi_send_command_long(k_ra_mipi_dsi_dt_null_packet, nullptr, 0U));
+  TEST_END("mipi_dsi send_command_long stages on VC0/HS");
+}
+
+static void test_enter_exit_ulps(void)
+{
+  TEST_BEGIN("mipi_dsi enter_ulps / exit_ulps cover both lanes");
+  prep();
+  /* Non-continuous so clock-lane ULPS is permitted. */
+  const ra_mipi_dsi_config_t cfg = make_cfg_non_continuous();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_mipi_dsi_init(&cfg));
+
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_mipi_dsi_enter_ulps());
+  volatile r_mipi_dsi_regs_t* reg = ra_mipi_dsi();
+  TEST_ASSERT(((reg->ULPSCR & (uint32_t)k_ra_mipi_dsi_ulpscr_dlent) != 0U));
+  TEST_ASSERT(((reg->ULPSCR & (uint32_t)k_ra_mipi_dsi_ulpscr_clent) != 0U));
+
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_mipi_dsi_exit_ulps());
+  TEST_ASSERT(((reg->ULPSCR & (uint32_t)k_ra_mipi_dsi_ulpscr_dlexit) != 0U));
+  TEST_ASSERT(((reg->ULPSCR & (uint32_t)k_ra_mipi_dsi_ulpscr_clexit) != 0U));
+  TEST_END("mipi_dsi enter_ulps / exit_ulps cover both lanes");
+}
+
+static void test_enter_ulps_continuous_rejected(void)
+{
+  TEST_BEGIN("mipi_dsi enter_ulps blocked under continuous-clock mode");
+  prep();
+  const ra_mipi_dsi_config_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_mipi_dsi_init(&cfg));
+  /* lane_all includes the clock lane -> rejected in continuous mode. */
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_mipi_dsi_enter_ulps());
+  TEST_END("mipi_dsi enter_ulps blocked under continuous-clock mode");
+}
+
+static void test_get_link_status(void)
+{
+  TEST_BEGIN("mipi_dsi get_link_status decodes LINKSR");
+  prep();
+  const ra_mipi_dsi_config_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_mipi_dsi_init(&cfg));
+
+  volatile r_mipi_dsi_regs_t* reg = ra_mipi_dsi();
+  reg->LINKSR = (uint32_t)k_ra_mipi_dsi_link_vrun | (uint32_t)k_ra_mipi_dsi_link_hsbusy;
+
+  ra_mipi_dsi_link_status_t st = {};
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_mipi_dsi_get_link_status(&st));
+  TEST_ASSERT(st.video_running);
+  TEST_ASSERT(st.hs_busy);
+  TEST_ASSERT(!st.lp_busy);
+
+  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_mipi_dsi_get_link_status(nullptr));
+  TEST_END("mipi_dsi get_link_status decodes LINKSR");
+}
+
+static void test_set_video_timing_overflow_each_field(void)
+{
+  TEST_BEGIN("mipi_dsi set_video_timing rejects every field overflow");
+  prep();
+  const ra_mipi_dsi_config_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_mipi_dsi_init(&cfg));
+
+  ra_mipi_dsi_video_timing_t t = make_timing();
+  t.vertical_sync              = (uint16_t)0xFFFFU;
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_mipi_dsi_set_video_timing(&t));
+
+  t                       = make_timing();
+  t.horizontal_back_porch = (uint16_t)0xFFFFU;
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_mipi_dsi_set_video_timing(&t));
+
+  t                 = make_timing();
+  t.vertical_active = (uint16_t)0xFFFFU;
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_mipi_dsi_set_video_timing(&t));
+  TEST_END("mipi_dsi set_video_timing rejects every field overflow");
+}
+
 int32_t main(void)
 {
   test_init_happy();
@@ -885,6 +1067,14 @@ int32_t main(void)
   test_irq_enable();
   test_soft_reset();
   test_power_transition();
+  test_set_video_timing();
+  test_set_video_timing_null();
+  test_set_video_timing_overflow_each_field();
+  test_send_command_short();
+  test_send_command_long();
+  test_enter_exit_ulps();
+  test_enter_ulps_continuous_rejected();
+  test_get_link_status();
   (void)fprintf(stderr, "[OK  ] test_ra_mipi_dsi.c\n");
   return 0;
 }

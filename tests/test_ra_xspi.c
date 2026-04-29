@@ -543,6 +543,103 @@ static void test_power_transition(void)
   TEST_END("xspi power transition");
 }
 
+/* =============================================================================
+ * Sweep 6 extensions: XIP toggle, DTR, DQS calibration, suspend / resume
+ * =============================================================================
+ */
+
+static void test_xip_set_mode_enable_then_disable(void)
+{
+  TEST_BEGIN("xspi set_xip_mode enable+disable");
+  prep_w51();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_xspi_init((uint8_t)k_test_xspi_valid_inst0, k_ra_xspi_lio_1s8s8s));
+
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_xspi_set_xip_mode((uint8_t)k_test_xspi_valid_inst0, true, 0xEBU, 3U));
+  volatile r_xspi_regs_t* reg = ra_xspi((uint8_t)k_test_xspi_valid_inst0);
+  TEST_ASSERT_EQ((int32_t)k_ra_xspi_bmctl0_read_only, (int32_t)reg->BMCTL0);
+  TEST_ASSERT_EQ((int32_t)k_ra_xspi_cmctlch_xipen_mask, (int32_t)reg->CMCTLCH[0]);
+  TEST_ASSERT_EQ((int32_t)k_ra_xspi_cmctlch_xipen_mask, (int32_t)reg->CMCTLCH[1]);
+
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_xspi_set_xip_mode((uint8_t)k_test_xspi_valid_inst0, false, 0xEBU, 3U));
+  TEST_ASSERT_EQ((int32_t)0, (int32_t)reg->CMCTLCH[0]);
+  TEST_ASSERT_EQ((int32_t)0, (int32_t)reg->CMCTLCH[1]);
+  TEST_ASSERT_EQ((int32_t)k_ra_xspi_bmctl0_read_write, (int32_t)reg->BMCTL0);
+  TEST_END("xspi set_xip_mode enable+disable");
+}
+
+static void test_xip_set_mode_invalid_args(void)
+{
+  TEST_BEGIN("xspi set_xip_mode rejects bad args");
+  prep_w51();
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_xspi_set_xip_mode((uint8_t)k_test_xspi_bad_instance, true, 0xEBU, 3U));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_xspi_set_xip_mode((uint8_t)k_test_xspi_valid_inst0, true, 0xEBU, 5U));
+  TEST_END("xspi set_xip_mode rejects bad args");
+}
+
+static void test_set_dtr_mode(void)
+{
+  TEST_BEGIN("xspi set_dtr_mode toggles DDREN");
+  prep_w51();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_xspi_init((uint8_t)k_test_xspi_valid_inst0, k_ra_xspi_lio_8d8d8d));
+
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_xspi_set_dtr_mode((uint8_t)k_test_xspi_valid_inst0, true));
+  volatile r_xspi_regs_t* reg = ra_xspi((uint8_t)k_test_xspi_valid_inst0);
+  TEST_ASSERT_EQ((int32_t)k_ra_xspi_liocfgcs_mask_ddren,
+                 (int32_t)(reg->LIOCFGCS[0] & k_ra_xspi_liocfgcs_mask_ddren));
+
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_xspi_set_dtr_mode((uint8_t)k_test_xspi_valid_inst0, false));
+  TEST_ASSERT_EQ((int32_t)0, (int32_t)(reg->LIOCFGCS[0] & k_ra_xspi_liocfgcs_mask_ddren));
+
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_xspi_set_dtr_mode((uint8_t)k_test_xspi_bad_instance, true));
+  TEST_END("xspi set_dtr_mode toggles DDREN");
+}
+
+static void test_calibrate_dqs(void)
+{
+  TEST_BEGIN("xspi calibrate_dqs (sim) succeeds");
+  prep_w51();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_xspi_init((uint8_t)k_test_xspi_valid_inst0, k_ra_xspi_lio_8d8d8d));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_xspi_calibrate_dqs((uint8_t)k_test_xspi_valid_inst0));
+  volatile r_xspi_regs_t* reg = ra_xspi((uint8_t)k_test_xspi_valid_inst0);
+  TEST_ASSERT_EQ((int32_t)0, (int32_t)(reg->CCCTLCS[0] & k_ra_xspi_ccctl0_mask_caen));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_xspi_calibrate_dqs((uint8_t)k_test_xspi_bad_instance));
+  TEST_END("xspi calibrate_dqs (sim) succeeds");
+}
+
+static void test_suspend_resume(void)
+{
+  TEST_BEGIN("xspi suspend + resume");
+  prep_w51();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_xspi_init((uint8_t)k_test_xspi_valid_inst0, k_ra_xspi_lio_1s1s1s));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_xspi_suspend((uint8_t)k_test_xspi_valid_inst0));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_xspi_resume((uint8_t)k_test_xspi_valid_inst0));
+  TEST_END("xspi suspend + resume");
+}
+
+static void test_suspend_resume_null(void)
+{
+  TEST_BEGIN("xspi suspend / resume reject bad instance");
+  prep_w51();
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_xspi_suspend((uint8_t)k_test_xspi_bad_instance));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_xspi_resume((uint8_t)k_test_xspi_bad_instance));
+  TEST_END("xspi suspend / resume reject bad instance");
+}
+
 int32_t main(void)
 {
   test_init_inst0_happy();
@@ -580,6 +677,12 @@ int32_t main(void)
   test_power_transition();
   test_flash_read_id_null();
   test_flash_read_id_bad_instance();
+  test_xip_set_mode_enable_then_disable();
+  test_xip_set_mode_invalid_args();
+  test_set_dtr_mode();
+  test_calibrate_dqs();
+  test_suspend_resume();
+  test_suspend_resume_null();
   (void)fprintf(stderr, "[OK ] test_ra_xspi.c\n");
   return 0;
 }

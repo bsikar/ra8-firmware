@@ -279,3 +279,118 @@ ra_err_t ra_dmac_stop(uint8_t channel)
   /* Drop the matching MSTP reference acquired in ra_dmac_start. */
   return ra_mstp_disable(k_ra_mstp_dmac0_dtc0);
 }
+
+/* =============================================================================
+ * Sweep 6 extensions: repeat / block start helpers, address-mode, callbacks
+ * =============================================================================
+ */
+
+/**
+ * @struct ra_dmac_cb_slot_t
+ * @brief Per-channel callback slot pair (full-complete + half-complete).
+ *
+ * @details
+ * Holds the function pointer + opaque context registered through
+ * ``ra_dmac_attach_callback()`` (DTIE path) and
+ * ``ra_dmac_attach_half_complete_handler()`` (RPTIE path).
+ */
+typedef struct {
+  ra_dmac_callback_fn_t full_fn;  /**< DMINT.DTIE  user handler.  */
+  void*                 full_ctx; /**< Context for ``full_fn``.   */
+  ra_dmac_callback_fn_t half_fn;  /**< DMINT.RPTIE user handler.  */
+  void*                 half_ctx; /**< Context for ``half_fn``.   */
+} ra_dmac_cb_slot_t;
+
+/** @brief One slot per DMAC0 channel. */
+static ra_dmac_cb_slot_t s_dmac_cb_slots[k_ra_dmac_channel_count];
+
+/**
+ * @brief Force ``cfg->mode`` then delegate to the validated start path.
+ */
+static ra_err_t
+internal_start_with_mode(uint8_t channel, const ra_dmac_config_t* cfg, ra_dmac_mode_t forced_mode)
+{
+  RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
+  ra_dmac_config_t local = *cfg;
+  local.mode             = forced_mode;
+  return ra_dmac_start(channel, &local);
+}
+
+ra_err_t ra_dmac_start_repeat(uint8_t channel, const ra_dmac_config_t* cfg)
+{
+  return internal_start_with_mode(channel, cfg, k_ra_dmac_mode_repeat);
+}
+
+ra_err_t ra_dmac_start_block(uint8_t channel, const ra_dmac_config_t* cfg)
+{
+  RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
+  if (cfg->block_count == 0U) {
+    return k_ra_err_invalid_arg;
+  }
+  return internal_start_with_mode(channel, cfg, k_ra_dmac_mode_block);
+}
+
+ra_err_t ra_dmac_set_address_mode(uint8_t             channel,
+                                  ra_dmac_addr_mode_t src_mode,
+                                  ra_dmac_addr_mode_t dest_mode)
+{
+  if ((src_mode > k_ra_dmac_addr_decrement) || (dest_mode > k_ra_dmac_addr_decrement)) {
+    return k_ra_err_invalid_arg;
+  }
+  volatile r_dmac_channel_regs_t* reg = ra_dmac(channel);
+  if (reg == nullptr) {
+    return k_ra_err_out_of_range;
+  }
+  /* HUM 17.2.12 DMAMD p 741 -- preserve DARA/SARA/DADR/SADR fields and
+   * only rewrite the SM/DM 2-bit slots. */
+  uint16_t v = reg->DMAMD;
+  v &= (uint16_t)~(k_ra_dmamd_sm_mask | k_ra_dmamd_dm_mask);
+  v |= (uint16_t)((uint16_t)src_mode << k_ra_dmamd_sm_pos);
+  v |= (uint16_t)((uint16_t)dest_mode << k_ra_dmamd_dm_pos);
+  reg->DMAMD = v;
+  return k_ra_ok;
+}
+
+ra_err_t ra_dmac_attach_half_complete_handler(uint8_t channel, ra_dmac_callback_fn_t fn, void* ctx)
+{
+  if (channel >= k_ra_dmac_channel_count) {
+    return k_ra_err_out_of_range;
+  }
+  s_dmac_cb_slots[channel].half_fn  = fn;
+  s_dmac_cb_slots[channel].half_ctx = ctx;
+  return k_ra_ok;
+}
+
+ra_err_t ra_dmac_attach_callback(uint8_t channel, ra_dmac_callback_fn_t fn, void* ctx)
+{
+  if (channel >= k_ra_dmac_channel_count) {
+    return k_ra_err_out_of_range;
+  }
+  s_dmac_cb_slots[channel].full_fn  = fn;
+  s_dmac_cb_slots[channel].full_ctx = ctx;
+  return k_ra_ok;
+}
+
+void ra_dmac_dispatch(uint8_t channel)
+{
+  if (channel >= k_ra_dmac_channel_count) {
+    return;
+  }
+  const ra_dmac_callback_fn_t fn  = s_dmac_cb_slots[channel].full_fn;
+  void* const                 ctx = s_dmac_cb_slots[channel].full_ctx;
+  if (fn != nullptr) {
+    fn(ctx);
+  }
+}
+
+void ra_dmac_dispatch_half(uint8_t channel)
+{
+  if (channel >= k_ra_dmac_channel_count) {
+    return;
+  }
+  const ra_dmac_callback_fn_t fn  = s_dmac_cb_slots[channel].half_fn;
+  void* const                 ctx = s_dmac_cb_slots[channel].half_ctx;
+  if (fn != nullptr) {
+    fn(ctx);
+  }
+}

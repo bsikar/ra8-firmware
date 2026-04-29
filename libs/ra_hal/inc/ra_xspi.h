@@ -231,6 +231,127 @@ void ra_xspi_dispatch(uint8_t instance);
  */
 [[nodiscard]] ra_err_t ra_xspi_xip_exit(uint8_t instance);
 
+/**
+ * @brief Enable or disable memory-mapped (XIP) read mode.
+ *
+ * @details
+ * Programs the ``CMCFGCS[0]`` read-command slot with the supplied
+ * opcode + address-byte width, mirrors FSP ``r_ospi_b_xip(true/false)``
+ * by toggling the per-channel ``CMCTLCH.XIPEN`` bits, and arms the
+ * read-only system-bus mapping via ``BMCTL0``. The matching ``write``
+ * command is left at zero because XiP windows are read-only by design.
+ * Cite: HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986.
+ *
+ * @param[in] instance   xSPI instance (0 or 1).
+ * @param[in] enable     true to enable XIP, false to tear it down.
+ * @param[in] read_cmd   JEDEC read opcode (e.g. 0xEB / 0xEE / 0x0B).
+ * @param[in] addr_bytes Address byte count (3 or 4).
+ *
+ * @return `k_ra_ok` on success.
+ * @return `k_ra_err_null_ptr` if `instance` is out of range.
+ * @return `k_ra_err_invalid_arg` if `addr_bytes` is neither 3 nor 4.
+ *
+ * @pre Driver has been initialised via `ra_xspi_init()`.
+ * @post On enable: ``CMCFGCS`` slot 0 carries (read_cmd, addr_bytes)
+ *       and ``CMCTLCH[0/1].XIPEN`` is set.
+ * @post On disable: ``CMCTLCH[0/1].XIPEN`` is cleared and
+ *       ``BMCTL0 == k_ra_xspi_bmctl0_read_write``.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t
+ra_xspi_set_xip_mode(uint8_t instance, bool enable, uint8_t read_cmd, uint8_t addr_bytes);
+
+/**
+ * @brief Enable or disable double-data-rate (DDR / DTR) link mode.
+ *
+ * @details
+ * Sets / clears ``LIOCFGCS[0].DDREN`` (HUM Ch 44 p 2986). Callers
+ * must already have selected an appropriate protocol mode (typically
+ * ``k_ra_xspi_lio_8d8d8d``) via ``ra_xspi_init()``.
+ *
+ * @param[in] instance xSPI instance (0 or 1).
+ * @param[in] enable   true: DDR; false: SDR.
+ *
+ * @return `k_ra_ok` on success.
+ * @return `k_ra_err_null_ptr` if `instance` is out of range.
+ *
+ * @pre Driver is open.
+ * @post ``LIOCFGCS[0]`` reflects the requested DDREN state.
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_xspi_set_dtr_mode(uint8_t instance, bool enable);
+
+/**
+ * @brief Run the data-strobe (DQS) calibration sequence.
+ *
+ * @details
+ * Project-native equivalent of FSP ``R_OSPI_B_AutoCalibrate`` for
+ * slave 0. Programmes the ``CCCTLCS[0..7]`` calibration descriptor
+ * with FSP-derived defaults, sets ``CAEN`` to start the controller's
+ * automatic phase-scan state machine, then polls until the controller
+ * clears ``CAEN`` itself or the bounded spin budget expires. On
+ * success the controller updates ``WRAPCFG.DSSFTCS0`` with the
+ * winning sample-shift code. Cite: HUM Ch 44 p 2986.
+ *
+ * @param[in] instance xSPI instance (0 or 1).
+ *
+ * @return `k_ra_ok` on success.
+ * @return `k_ra_err_null_ptr` if `instance` is out of range.
+ * @return `k_ra_err_hw_timeout` if calibration never completes.
+ *
+ * @pre Driver was initialised in an OPI / 8D mode.
+ * @post ``CCCTL0.CAEN`` is 0.
+ * @post On host builds the calibration step is a no-op that returns
+ *       ``k_ra_ok`` (no real DQS line to phase-scan).
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_xspi_calibrate_dqs(uint8_t instance);
+
+/**
+ * @brief Suspend a long-running flash erase / program operation.
+ *
+ * @details
+ * Issues the JEDEC suspend opcode (``0x75``) via the manual-command
+ * engine, polls ``CMDCMP``, and lets the SPI device pause its
+ * in-flight erase or program so that interactive reads can be served.
+ * Cite: HUM Ch 44 p 2986.
+ *
+ * @param[in] instance xSPI instance (0 or 1).
+ *
+ * @return `k_ra_ok` on success.
+ * @return `k_ra_err_null_ptr` if `instance` is out of range.
+ * @return `k_ra_err_hw_timeout` if CMDCMP never asserts.
+ *
+ * @pre Driver is open.
+ * @post Flash device is in suspended state; ``ra_xspi_resume()`` is
+ *       required before further write traffic.
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_xspi_suspend(uint8_t instance);
+
+/**
+ * @brief Resume a previously suspended erase / program.
+ *
+ * @details
+ * Issues the JEDEC resume opcode (``0x7A``) via the manual-command
+ * engine and polls ``CMDCMP`` for completion. Pairs 1:1 with
+ * ``ra_xspi_suspend()``.
+ *
+ * @param[in] instance xSPI instance (0 or 1).
+ *
+ * @return `k_ra_ok` on success.
+ * @return `k_ra_err_null_ptr` if `instance` is out of range.
+ * @return `k_ra_err_hw_timeout` if CMDCMP never asserts.
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_xspi_resume(uint8_t instance);
+
 #ifdef __cplusplus
 }
 #endif

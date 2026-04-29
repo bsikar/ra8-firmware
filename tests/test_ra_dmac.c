@@ -150,6 +150,209 @@ static void test_stop_bad_channel(void)
   TEST_END("dmac stop bad channel");
 }
 
+/* =============================================================================
+ * Sweep 6 extensions: repeat / block / address-mode / callbacks
+ * =============================================================================
+ */
+
+static uint32_t s_dmac_full_count;
+static uint32_t s_dmac_half_count;
+static void*    s_dmac_last_ctx;
+
+static void stub_dmac_full_cb(void* ctx)
+{
+  ++s_dmac_full_count;
+  s_dmac_last_ctx = ctx;
+}
+
+static void stub_dmac_half_cb(void* ctx)
+{
+  ++s_dmac_half_count;
+  s_dmac_last_ctx = ctx;
+}
+
+static void prep_dmac_ext(void)
+{
+  ra_sim_mmap_reset();
+  s_dmac_full_count = 0U;
+  s_dmac_half_count = 0U;
+  s_dmac_last_ctx   = nullptr;
+  /* Clear any stale callback slots from a prior test. */
+  (void)ra_dmac_attach_callback((uint8_t)k_ra_dmac_test_channel_valid, nullptr, nullptr);
+  (void)ra_dmac_attach_half_complete_handler((uint8_t)k_ra_dmac_test_channel_valid,
+                                             nullptr,
+                                             nullptr);
+}
+
+static void test_start_repeat_mode(void)
+{
+  TEST_BEGIN("dmac start_repeat sets MD=01b");
+  prep_dmac_ext();
+
+  const ra_dmac_config_t cfg = {
+    .src         = (uint32_t)k_ra_dmac_test_src,
+    .dst         = (uint32_t)k_ra_dmac_test_dst,
+    .count       = (uint16_t)k_ra_dmac_test_count,
+    .width       = k_ra_dmac_width_word,
+    .src_inc     = true,
+    .dst_inc     = true,
+    .repeat_area = k_ra_dmac_repeat_area_dest,
+  };
+  TEST_ASSERT_EQ((int)k_ra_ok,
+                 (int)ra_dmac_start_repeat((uint8_t)k_ra_dmac_test_channel_valid, &cfg));
+
+  volatile r_dmac_channel_regs_t* reg = ra_dmac((uint8_t)k_ra_dmac_test_channel_valid);
+  TEST_ASSERT_NOT_NULL((void*)reg);
+  const uint16_t md = (uint16_t)((reg->DMTMD & k_ra_dmtmd_md_mask) >> k_ra_dmtmd_md_pos);
+  TEST_ASSERT_EQ((int)k_ra_dmtmd_md_repeat, (int)md);
+  TEST_END("dmac start_repeat sets MD=01b");
+}
+
+static void test_start_repeat_null(void)
+{
+  TEST_BEGIN("dmac start_repeat null cfg");
+  prep_dmac_ext();
+  TEST_ASSERT_EQ((int)k_ra_err_null_ptr,
+                 (int)ra_dmac_start_repeat((uint8_t)k_ra_dmac_test_channel_valid, nullptr));
+  TEST_END("dmac start_repeat null cfg");
+}
+
+static void test_start_block_mode(void)
+{
+  TEST_BEGIN("dmac start_block sets MD=10b and DMCRB");
+  prep_dmac_ext();
+
+  const ra_dmac_config_t cfg = {
+    .src         = (uint32_t)k_ra_dmac_test_src,
+    .dst         = (uint32_t)k_ra_dmac_test_dst,
+    .count       = (uint16_t)k_ra_dmac_test_count,
+    .width       = k_ra_dmac_width_word,
+    .src_inc     = true,
+    .dst_inc     = true,
+    .block_count = 4U,
+    .repeat_area = k_ra_dmac_repeat_area_src,
+  };
+  TEST_ASSERT_EQ((int)k_ra_ok,
+                 (int)ra_dmac_start_block((uint8_t)k_ra_dmac_test_channel_valid, &cfg));
+
+  volatile r_dmac_channel_regs_t* reg = ra_dmac((uint8_t)k_ra_dmac_test_channel_valid);
+  TEST_ASSERT_NOT_NULL((void*)reg);
+  const uint16_t md = (uint16_t)((reg->DMTMD & k_ra_dmtmd_md_mask) >> k_ra_dmtmd_md_pos);
+  TEST_ASSERT_EQ((int)k_ra_dmtmd_md_block, (int)md);
+  TEST_ASSERT_EQ(4, (int)reg->DMCRB);
+  TEST_END("dmac start_block sets MD=10b and DMCRB");
+}
+
+static void test_start_block_zero_count(void)
+{
+  TEST_BEGIN("dmac start_block rejects block_count=0");
+  prep_dmac_ext();
+  const ra_dmac_config_t cfg = {
+    .src   = (uint32_t)k_ra_dmac_test_src,
+    .dst   = (uint32_t)k_ra_dmac_test_dst,
+    .count = (uint16_t)k_ra_dmac_test_count,
+    .width = k_ra_dmac_width_word,
+  };
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
+                 (int)ra_dmac_start_block((uint8_t)k_ra_dmac_test_channel_valid, &cfg));
+  TEST_END("dmac start_block rejects block_count=0");
+}
+
+static void test_set_address_mode_happy(void)
+{
+  TEST_BEGIN("dmac set_address_mode writes SM/DM");
+  prep_dmac_ext();
+
+  const ra_dmac_config_t cfg = {
+    .src     = (uint32_t)k_ra_dmac_test_src,
+    .dst     = (uint32_t)k_ra_dmac_test_dst,
+    .count   = (uint16_t)k_ra_dmac_test_count,
+    .width   = k_ra_dmac_width_word,
+    .src_inc = true,
+    .dst_inc = true,
+  };
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_dmac_start((uint8_t)k_ra_dmac_test_channel_valid, &cfg));
+  TEST_ASSERT_EQ((int)k_ra_ok,
+                 (int)ra_dmac_set_address_mode((uint8_t)k_ra_dmac_test_channel_valid,
+                                               k_ra_dmac_addr_decrement,
+                                               k_ra_dmac_addr_offset));
+
+  volatile r_dmac_channel_regs_t* reg = ra_dmac((uint8_t)k_ra_dmac_test_channel_valid);
+  const uint16_t sm = (uint16_t)((reg->DMAMD & k_ra_dmamd_sm_mask) >> k_ra_dmamd_sm_pos);
+  const uint16_t dm = (uint16_t)((reg->DMAMD & k_ra_dmamd_dm_mask) >> k_ra_dmamd_dm_pos);
+  TEST_ASSERT_EQ((int)k_ra_dmac_addr_decrement, (int)sm);
+  TEST_ASSERT_EQ((int)k_ra_dmac_addr_offset, (int)dm);
+  TEST_END("dmac set_address_mode writes SM/DM");
+}
+
+static void test_set_address_mode_invalid(void)
+{
+  TEST_BEGIN("dmac set_address_mode rejects invalid args");
+  prep_dmac_ext();
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
+                 (int)ra_dmac_set_address_mode((uint8_t)k_ra_dmac_test_channel_valid,
+                                               (ra_dmac_addr_mode_t)0x77U,
+                                               k_ra_dmac_addr_fixed));
+  TEST_ASSERT_EQ((int)k_ra_err_out_of_range,
+                 (int)ra_dmac_set_address_mode((uint8_t)k_ra_dmac_test_channel_bad,
+                                               k_ra_dmac_addr_fixed,
+                                               k_ra_dmac_addr_fixed));
+  TEST_END("dmac set_address_mode rejects invalid args");
+}
+
+static void test_attach_half_complete_handler(void)
+{
+  TEST_BEGIN("dmac half-complete handler dispatches");
+  prep_dmac_ext();
+  int sentinel = 7;
+  TEST_ASSERT_EQ((int)k_ra_ok,
+                 (int)ra_dmac_attach_half_complete_handler((uint8_t)k_ra_dmac_test_channel_valid,
+                                                           stub_dmac_half_cb,
+                                                           &sentinel));
+  ra_dmac_dispatch_half((uint8_t)k_ra_dmac_test_channel_valid);
+  TEST_ASSERT_EQ(1, (int)s_dmac_half_count);
+  TEST_ASSERT_EQ((void*)&sentinel, s_dmac_last_ctx);
+
+  /* Out-of-range channel must early-exit. */
+  ra_dmac_dispatch_half((uint8_t)k_ra_dmac_test_channel_bad);
+  TEST_ASSERT_EQ(1, (int)s_dmac_half_count);
+
+  TEST_ASSERT_EQ((int)k_ra_err_out_of_range,
+                 (int)ra_dmac_attach_half_complete_handler((uint8_t)k_ra_dmac_test_channel_bad,
+                                                           stub_dmac_half_cb,
+                                                           nullptr));
+  TEST_END("dmac half-complete handler dispatches");
+}
+
+static void test_attach_per_channel_callback(void)
+{
+  TEST_BEGIN("dmac per-channel callback dispatches");
+  prep_dmac_ext();
+  int sentinel = 0xABCD;
+  TEST_ASSERT_EQ((int)k_ra_ok,
+                 (int)ra_dmac_attach_callback((uint8_t)k_ra_dmac_test_channel_valid,
+                                              stub_dmac_full_cb,
+                                              &sentinel));
+  ra_dmac_dispatch((uint8_t)k_ra_dmac_test_channel_valid);
+  TEST_ASSERT_EQ(1, (int)s_dmac_full_count);
+  TEST_ASSERT_EQ((void*)&sentinel, s_dmac_last_ctx);
+
+  ra_dmac_dispatch((uint8_t)k_ra_dmac_test_channel_bad);
+  TEST_ASSERT_EQ(1, (int)s_dmac_full_count);
+
+  TEST_ASSERT_EQ(
+    (int)k_ra_err_out_of_range,
+    (int)ra_dmac_attach_callback((uint8_t)k_ra_dmac_test_channel_bad, stub_dmac_full_cb, nullptr));
+
+  /* Clearing the slot must silence further dispatches. */
+  TEST_ASSERT_EQ(
+    (int)k_ra_ok,
+    (int)ra_dmac_attach_callback((uint8_t)k_ra_dmac_test_channel_valid, nullptr, nullptr));
+  ra_dmac_dispatch((uint8_t)k_ra_dmac_test_channel_valid);
+  TEST_ASSERT_EQ(1, (int)s_dmac_full_count);
+  TEST_END("dmac per-channel callback dispatches");
+}
+
 int32_t main(void)
 {
   test_start_null_cfg();
@@ -160,6 +363,14 @@ int32_t main(void)
   test_start_neither_inc();
   test_stop_happy();
   test_stop_bad_channel();
+  test_start_repeat_mode();
+  test_start_repeat_null();
+  test_start_block_mode();
+  test_start_block_zero_count();
+  test_set_address_mode_happy();
+  test_set_address_mode_invalid();
+  test_attach_half_complete_handler();
+  test_attach_per_channel_callback();
   (void)fprintf(stderr, "[OK  ] test_ra_dmac.c\n");
   return 0;
 }

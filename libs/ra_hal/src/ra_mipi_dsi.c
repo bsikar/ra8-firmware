@@ -1355,3 +1355,99 @@ void ra_mipi_dsi_dispatch(void)
     internal_ra_mipi_dsi_call_user(k_ra_mipi_dsi_event_phy, 0U);
   }
 }
+
+/* =============================================================================
+ * Sweep 6 convenience surfaces
+ * =============================================================================
+ */
+
+/**
+ * @enum ra_mipi_dsi_timing_limits_t
+ * @brief Per-field bit-width caps for ::ra_mipi_dsi_video_timing_t.
+ *
+ * @details
+ * HUM Ch 65.2 register fields impose these maxima:
+ * VSA/HSA = 12 bits, V/HBP + V/HFP = 13 bits, V/HACT = 15 bits.
+ * Used by ::ra_mipi_dsi_set_video_timing to range-check inputs.
+ */
+typedef enum : uint16_t {
+  k_ra_mipi_dsi_timing_max_sync   = 0x0FFFU, /**< 12-bit field.  */
+  k_ra_mipi_dsi_timing_max_porch  = 0x1FFFU, /**< 13-bit field.  */
+  k_ra_mipi_dsi_timing_max_active = 0x7FFFU, /**< 15-bit field.  */
+} ra_mipi_dsi_timing_limits_t;
+
+[[nodiscard]] ra_err_t ra_mipi_dsi_set_video_timing(const ra_mipi_dsi_video_timing_t* timing)
+{
+  RA_CHECK_NULL_PTR(timing, s_tag, "timing must not be nullptr");
+
+  /* Range-check every field against its register-width limit. */
+  if ((timing->horizontal_sync > k_ra_mipi_dsi_timing_max_sync) ||
+      (timing->vertical_sync > k_ra_mipi_dsi_timing_max_sync)) {
+    return k_ra_err_invalid_arg;
+  }
+  if ((timing->horizontal_back_porch > k_ra_mipi_dsi_timing_max_porch) ||
+      (timing->horizontal_front_porch > k_ra_mipi_dsi_timing_max_porch) ||
+      (timing->vertical_back_porch > k_ra_mipi_dsi_timing_max_porch) ||
+      (timing->vertical_front_porch > k_ra_mipi_dsi_timing_max_porch)) {
+    return k_ra_err_invalid_arg;
+  }
+  if ((timing->horizontal_active > k_ra_mipi_dsi_timing_max_active) ||
+      (timing->vertical_active > k_ra_mipi_dsi_timing_max_active)) {
+    return k_ra_err_invalid_arg;
+  }
+
+  /* Build a full video config with sensible defaults: RGB888 on VC0,
+   * sync-pulse off, blanking stays HS so the panel does not drop the
+   * link between lines. */
+  const ra_mipi_dsi_video_cfg_t v = {
+    .pixel_format             = k_ra_mipi_dsi_dt_pixel_rgb888,
+    .virtual_channel          = k_ra_mipi_dsi_vc0,
+    .sync_pulse               = false,
+    .hsa_no_lp                = true,
+    .hbp_no_lp                = true,
+    .hfp_no_lp                = true,
+    .vsync_active_high        = true,
+    .hsync_active_high        = true,
+    .vertical_sync_lines      = timing->vertical_sync,
+    .vertical_active_lines    = timing->vertical_active,
+    .vertical_back_porch      = timing->vertical_back_porch,
+    .vertical_front_porch     = timing->vertical_front_porch,
+    .horizontal_sync_lines    = timing->horizontal_sync,
+    .horizontal_active_pixels = timing->horizontal_active,
+    .horizontal_back_porch    = timing->horizontal_back_porch,
+    .horizontal_front_porch   = timing->horizontal_front_porch,
+    .video_mode_delay         = 0U,
+  };
+  return ra_mipi_dsi_video_configure(&v);
+}
+
+[[nodiscard]] ra_err_t ra_mipi_dsi_send_command_short(ra_mipi_dsi_dt_t dt, const uint8_t params[2])
+{
+  RA_CHECK_NULL_PTR(params, s_tag, "params must not be nullptr");
+  return ra_mipi_dsi_send_short_packet(dt, k_ra_mipi_dsi_vc0, params[0], params[1]);
+}
+
+[[nodiscard]] ra_err_t
+ra_mipi_dsi_send_command_long(ra_mipi_dsi_dt_t dt, const uint8_t* payload, uint16_t len)
+{
+  if ((len > 0U) && (payload == nullptr)) {
+    return k_ra_err_null_ptr;
+  }
+  /* HS path on VC0 -- command-mode panels always want this routing. */
+  return ra_mipi_dsi_send_long_packet(dt, k_ra_mipi_dsi_vc0, payload, len, false);
+}
+
+[[nodiscard]] ra_err_t ra_mipi_dsi_enter_ulps(void)
+{
+  return ra_mipi_dsi_ulps_enter(k_ra_mipi_dsi_lane_all);
+}
+
+[[nodiscard]] ra_err_t ra_mipi_dsi_exit_ulps(void)
+{
+  return ra_mipi_dsi_ulps_exit(k_ra_mipi_dsi_lane_all);
+}
+
+[[nodiscard]] ra_err_t ra_mipi_dsi_get_link_status(ra_mipi_dsi_link_status_t* out)
+{
+  return ra_mipi_dsi_link_status_get(out);
+}

@@ -1023,6 +1023,146 @@ void ra_mipi_csi_dispatch_pm(void);
 void ra_mipi_csi_dispatch_short_packet(void);
 
 /* =============================================================================
+ * Sweep 6 -- per-VC framing helpers + error reporting
+ * =============================================================================
+ */
+
+/**
+ * @enum ra_mipi_csi_data_format_t
+ * @brief Per-virtual-channel payload format used by ::ra_mipi_csi_set_data_format.
+ *
+ * @details
+ * Maps onto the CSI-2 data-type byte (HUM Ch 66.3.10 "DTEL" p 3943
+ * and 66.3.11 "DTEH" p 3944). Selecting a format on a VC sets the
+ * matching bit in DTEL/DTEH so the receiver accepts that format
+ * within the CSI-2 packet header.  Selecting ``k_ra_mipi_csi_format_off``
+ * removes the contribution that VC made, allowing graceful narrowing.
+ */
+typedef enum : uint8_t {
+  k_ra_mipi_csi_format_off       = 0U,    /**< Disable -- accept nothing for VC.   */
+  k_ra_mipi_csi_format_yuv422_8  = 0x1EU, /**< CSI-2 DT 0x1E -- YUV 4:2:2 8-bit.   */
+  k_ra_mipi_csi_format_yuv422_10 = 0x1FU, /**< CSI-2 DT 0x1F -- YUV 4:2:2 10-bit.  */
+  k_ra_mipi_csi_format_rgb888    = 0x24U, /**< CSI-2 DT 0x24 -- RGB888.            */
+  k_ra_mipi_csi_format_raw8      = 0x2AU, /**< CSI-2 DT 0x2A -- RAW8.              */
+  k_ra_mipi_csi_format_raw10     = 0x2BU, /**< CSI-2 DT 0x2B -- RAW10 (FSP-only).  */
+  k_ra_mipi_csi_format_yuv420    = 0x18U, /**< CSI-2 DT 0x18 -- YUV 4:2:0 8-bit.   */
+} ra_mipi_csi_data_format_t;
+
+/**
+ * @struct ra_mipi_csi_error_report_t
+ * @brief One ECC / CRC error notification from the receiver.
+ *
+ * @details
+ * Decoded from VCST(M) (HUM Ch 66.3.18 p 3949) -- the same bits the
+ * VC dispatcher already surfaces, but reshaped so callers do not have
+ * to re-decode them. ``vc == 0xFF`` is used for the catch-all "MLF/ECD"
+ * flags which apply to every channel.
+ */
+/* cppcheck-suppress-begin [unusedStructMember] */
+typedef struct {
+  uint8_t  vc;                /**< Virtual channel that reported, or 0xFF.   */
+  bool     ecc_corrected;     /**< VCST.ECC -- 1-bit ECC corrected.          */
+  bool     ecc_two_bit_error; /**< VCST.ECD -- 2-bit ECC error.              */
+  bool     crc_error;         /**< VCST.CRC -- payload CRC mismatch.         */
+  uint32_t raw_vcst;          /**< Original VCST snapshot (bits as decoded). */
+} ra_mipi_csi_error_report_t;
+/* cppcheck-suppress-end [unusedStructMember] */
+
+/**
+ * @typedef ra_mipi_csi_error_fn_t
+ * @brief Callback invoked when the receiver reports an ECC or CRC error.
+ * @param[in] ctx    Caller context registered with ::ra_mipi_csi_attach_error_handler.
+ * @param[in] report Decoded error descriptor (only valid for the call).
+ */
+typedef void (*ra_mipi_csi_error_fn_t)(void* ctx, const ra_mipi_csi_error_report_t* report);
+
+/**
+ * @brief Filter which CSI-2 virtual channels the receiver will surface.
+ *
+ * @details
+ * Each bit i of ``vc_mask`` enables VCi (i = 0..15). The driver
+ * disables VCIE on every channel whose bit is clear (so spurious
+ * traffic does not raise IRQs) and restores the previous IRQ mask on
+ * channels that are re-enabled. HUM Ch 66.3.20 "VCIE(M)" p 3952.
+ *
+ * @param[in] vc_mask Bitmap of accepted virtual channels (bit 0 = VC0).
+ *
+ * @return ::ra_err_t outcome.
+ * @retval k_ra_ok               VCIE updated for every channel.
+ * @retval k_ra_err_invalid_arg  ``vc_mask == 0`` (would silence the receiver).
+ *
+ * @pre ``ra_mipi_csi_init`` has succeeded.
+ * @pre Caller is in single-threaded init / reconfigure context.
+ * @post VCIE for every selected VC is non-zero (default mask restored).
+ * @post VCIE for every unselected VC is zero.
+ *
+ * @note Not thread-safe.
+ * @see ra_mipi_csi_set_data_format
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_mipi_csi_set_virtual_channels(uint16_t vc_mask);
+
+/**
+ * @brief Select the CSI-2 payload format the receiver should accept on a
+ *        specific virtual channel.
+ *
+ * @details
+ * The hardware filter (DTEL/DTEH) is global across virtual channels --
+ * selecting a format on one VC therefore enables the matching DT bit
+ * for the entire receiver. The driver records the per-VC selection in
+ * a software shadow so a subsequent call with
+ * ``k_ra_mipi_csi_format_off`` can re-compute the union and clear the
+ * DT bit if no other VC still wants it. HUM Ch 66.3.10/66.3.11
+ * pp 3943-3944.
+ *
+ * @param[in] vc     Virtual channel index (0..15).
+ * @param[in] format Payload format to accept (or ``_off`` to disable).
+ *
+ * @return ::ra_err_t outcome.
+ * @retval k_ra_ok                Filter updated.
+ * @retval k_ra_err_invalid_arg   ``vc > 15`` or unknown format value.
+ *
+ * @pre ``ra_mipi_csi_init`` has succeeded.
+ * @pre ``vc`` is in 0..15.
+ * @post DTEL/DTEH reflect the union of all per-VC selections.
+ * @post Future calls to ::ra_mipi_csi_set_data_type_filter override
+ *       these contributions with explicit masks.
+ *
+ * @note Not thread-safe.
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_mipi_csi_set_data_format(uint8_t vc, ra_mipi_csi_data_format_t format);
+
+/**
+ * @brief Register a callback invoked on ECC / CRC error reports.
+ *
+ * @details
+ * The CSI VC dispatcher already surfaces VCST contents. This helper
+ * filters those events down to the ECC + CRC error subset and
+ * decodes them into a ::ra_mipi_csi_error_report_t for the caller.
+ * Pass ``fn = nullptr`` to detach.
+ *
+ * @param[in] fn  Callback to invoke (or NULL to detach).
+ * @param[in] ctx Caller-owned context forwarded to ``fn``.
+ *
+ * @return ::ra_err_t outcome.
+ * @retval k_ra_ok Always.
+ *
+ * @pre Caller's ``fn`` is ISR-safe.
+ * @pre Caller owns the ``ctx`` lifetime for as long as ``fn`` is attached.
+ * @post Subsequent ``ra_mipi_csi_dispatch_vc`` calls forward ECC/CRC
+ *       errors to ``fn`` in addition to the VC callback.
+ * @post Detaching with NULL silently swallows further errors.
+ *
+ * @note ISR-safe.
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_mipi_csi_attach_error_handler(ra_mipi_csi_error_fn_t fn, void* ctx);
+
+/* =============================================================================
  * Power transition
  * =============================================================================
  */

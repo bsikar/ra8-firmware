@@ -184,6 +184,205 @@ typedef struct {
  */
 [[nodiscard]] ra_err_t ra_dmac_stop(uint8_t channel);
 
+/**
+ * @enum ra_dmac_addr_mode_t
+ * @brief Per-side address-update mode (DMAMD.SM / DMAMD.DM).
+ *
+ * @details
+ * Mirrors HUM 17.2.12 p 741. ``fixed`` keeps the DMSAR / DMDAR pointer
+ * static across transfers; ``increment`` advances the pointer by the
+ * transfer width; ``decrement`` walks backwards; ``offset`` adds the
+ * value in DMOFR after each transfer.
+ */
+typedef enum : uint8_t {
+  k_ra_dmac_addr_fixed     = 0U, /**< 00b: address fixed.        */
+  k_ra_dmac_addr_offset    = 1U, /**< 01b: offset addition.      */
+  k_ra_dmac_addr_increment = 2U, /**< 10b: increment.            */
+  k_ra_dmac_addr_decrement = 3U, /**< 11b: decrement.            */
+} ra_dmac_addr_mode_t;
+
+/**
+ * @typedef ra_dmac_callback_fn_t
+ * @brief Per-channel DMAC completion / half-complete callback signature.
+ *
+ * @details
+ * Invoked from the matching DMAC ISR (or by the host test simulator
+ * via ``ra_dmac_dispatch()``). ``ctx`` is the user-supplied opaque
+ * pointer registered alongside the function.
+ */
+typedef void (*ra_dmac_callback_fn_t)(void* ctx);
+
+/**
+ * @brief Programme a DMAC channel in repeat-area transfer mode.
+ *
+ * @details
+ * Convenience wrapper that forces ``cfg->mode = k_ra_dmac_mode_repeat``
+ * before delegating to ``ra_dmac_start()``. In repeat mode the
+ * controller automatically rewinds either DMSAR or DMDAR (per
+ * ``cfg->repeat_area``) every ``cfg->count`` transfers, so ring
+ * buffers and double-buffered framebuffers can be expressed without
+ * software intervention. HUM 17.2.10 p 738 (DMTMD.MD = 01b).
+ *
+ * @param[in] channel DMAC0 channel index 0..7.
+ * @param[in] cfg     Transfer descriptor; ``mode`` is ignored.
+ *
+ * @return `ra_err_t` error code.
+ * @retval k_ra_ok                Channel armed in repeat mode.
+ * @retval k_ra_err_null_ptr      `cfg` is NULL.
+ * @retval k_ra_err_out_of_range  `channel` >= 8.
+ * @retval k_ra_err_invalid_arg   `cfg->width` invalid.
+ *
+ * @pre `ra_mstp_init()` has been called.
+ * @pre ``cfg->repeat_area`` selects either source or destination side.
+ *
+ * @post Channel is enabled and waiting for its trigger.
+ * @post DMTMD.MD reads as 01b (repeat).
+ *
+ * @note Not thread-safe.
+ * @see ra_dmac_start
+ * @see ra_dmac_start_block
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_dmac_start_repeat(uint8_t channel, const ra_dmac_config_t* cfg);
+
+/**
+ * @brief Programme a DMAC channel in block-transfer mode.
+ *
+ * @details
+ * Convenience wrapper that forces ``cfg->mode = k_ra_dmac_mode_block``
+ * before delegating to ``ra_dmac_start()``. The controller transfers
+ * ``cfg->count`` elements per trigger and then rewinds the repeat
+ * side; ``cfg->block_count`` blocks are processed before the channel
+ * is automatically disabled. HUM 17.2.10 p 738 (DMTMD.MD = 10b) and
+ * HUM 17.2.9 (DMCRB block count).
+ *
+ * @param[in] channel DMAC0 channel index 0..7.
+ * @param[in] cfg     Transfer descriptor; ``mode`` is ignored.
+ *
+ * @return `ra_err_t` error code.
+ * @retval k_ra_ok                Channel armed in block mode.
+ * @retval k_ra_err_null_ptr      `cfg` is NULL.
+ * @retval k_ra_err_out_of_range  `channel` >= 8.
+ * @retval k_ra_err_invalid_arg   `cfg->block_count` is zero.
+ *
+ * @pre `ra_mstp_init()` has been called.
+ * @pre ``cfg->block_count`` is non-zero.
+ *
+ * @post Channel is enabled and waiting for its trigger.
+ * @post DMCRB carries ``cfg->block_count``.
+ *
+ * @note Not thread-safe.
+ * @see ra_dmac_start
+ * @see ra_dmac_start_repeat
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_dmac_start_block(uint8_t channel, const ra_dmac_config_t* cfg);
+
+/**
+ * @brief Override the DMAMD.SM / DMAMD.DM address-update modes.
+ *
+ * @details
+ * Lets callers pick from the full 4-mode menu (fixed / offset /
+ * increment / decrement) per HUM 17.2.12 p 741. The base
+ * ``ra_dmac_config_t`` only models fixed vs increment, so this entry
+ * point is required when offset-addition or decrement is needed
+ * (e.g. byte-reversed copy, ring-walk with stride).
+ *
+ * @param[in] channel   DMAC0 channel index 0..7.
+ * @param[in] src_mode  New ``DMAMD.SM`` value.
+ * @param[in] dest_mode New ``DMAMD.DM`` value.
+ *
+ * @return `ra_err_t` error code.
+ * @retval k_ra_ok                DMAMD updated.
+ * @retval k_ra_err_out_of_range  `channel` >= 8.
+ * @retval k_ra_err_invalid_arg   Either mode > k_ra_dmac_addr_decrement.
+ *
+ * @pre `ra_dmac_start()` (or sibling) was called for `channel`.
+ * @pre Channel is currently disabled (DMCNT.DTE = 0) before reprogramming.
+ *
+ * @post DMAMD.SM and DMAMD.DM reflect the requested codes.
+ * @post All other DMAMD bits are preserved.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_dmac_set_address_mode(uint8_t             channel,
+                                                ra_dmac_addr_mode_t src_mode,
+                                                ra_dmac_addr_mode_t dest_mode);
+
+/**
+ * @brief Attach a half-block IRQ callback to a DMAC channel.
+ *
+ * @details
+ * Registers ``fn`` as the user-side handler invoked when DMINT.RPTIE
+ * fires (repeat-size end -- HUM 17.2.11 p 739). The driver enables
+ * RPTIE in the DMAC ISR plumbing so the half-complete callback fires
+ * once per ``cfg->count`` transfers, independent of ``DTIE``.
+ *
+ * @param[in] channel DMAC0 channel index 0..7.
+ * @param[in] fn      Callback function (NULL clears the slot).
+ * @param[in] ctx     Opaque pointer passed to ``fn``.
+ *
+ * @return `ra_err_t` error code.
+ * @retval k_ra_ok                Slot updated.
+ * @retval k_ra_err_out_of_range  `channel` >= 8.
+ *
+ * @pre `ra_dmac_start_*()` was called for `channel`.
+ * @post ``ra_dmac_dispatch_half(channel)`` invokes ``fn(ctx)``.
+ *
+ * @note Not thread-safe; pair with IRQ masking.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t
+ra_dmac_attach_half_complete_handler(uint8_t channel, ra_dmac_callback_fn_t fn, void* ctx);
+
+/**
+ * @brief Attach a transfer-end IRQ callback to a DMAC channel.
+ *
+ * @details
+ * Registers a per-channel completion callback. The driver fires it
+ * whenever ``ra_dmac_dispatch(channel)`` is called by the matching
+ * DMAC ISR (or, in host-test mode, by the test harness). Replaces any
+ * earlier global callback that the substrate may have used.
+ *
+ * @param[in] channel DMAC0 channel index 0..7.
+ * @param[in] fn      Callback function (NULL clears the slot).
+ * @param[in] ctx     Opaque pointer passed to ``fn``.
+ *
+ * @return `ra_err_t` error code.
+ * @retval k_ra_ok                Slot updated.
+ * @retval k_ra_err_out_of_range  `channel` >= 8.
+ *
+ * @pre `ra_mstp_init()` has been called.
+ * @post ``ra_dmac_dispatch(channel)`` invokes ``fn(ctx)``.
+ *
+ * @note Not thread-safe; pair with IRQ masking.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t
+ra_dmac_attach_callback(uint8_t channel, ra_dmac_callback_fn_t fn, void* ctx);
+
+/**
+ * @brief Fire the per-channel completion callback (DMINT.DTIE path).
+ *
+ * @details
+ * Test / ISR helper; consumes the slot installed by
+ * ``ra_dmac_attach_callback()``. Silently returns if no callback is
+ * registered or the channel is out of range.
+ *
+ * @param[in] channel DMAC0 channel index 0..7.
+ * @since 0.1.0
+ */
+void ra_dmac_dispatch(uint8_t channel);
+
+/**
+ * @brief Fire the per-channel half-complete callback (DMINT.RPTIE path).
+ *
+ * @param[in] channel DMAC0 channel index 0..7.
+ * @since 0.1.0
+ */
+void ra_dmac_dispatch_half(uint8_t channel);
+
 #ifdef __cplusplus
 }
 #endif

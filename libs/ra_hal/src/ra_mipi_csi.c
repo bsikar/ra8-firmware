@@ -138,6 +138,39 @@ static ra_mipi_csi_short_event_fn_t s_mipi_csi_gst_fn;
  */
 static void* s_mipi_csi_gst_ctx;
 
+/**
+ * @var s_mipi_csi_err_fn
+ * @brief Callback invoked from ``dispatch_vc`` when an ECC/CRC error
+ *        is decoded out of a VCST snapshot.
+ * @note File-scope; updated only by
+ *       ``ra_mipi_csi_attach_error_handler``.
+ */
+static ra_mipi_csi_error_fn_t s_mipi_csi_err_fn;
+
+/**
+ * @var s_mipi_csi_err_ctx
+ * @brief Caller context forwarded to the error callback.
+ * @note File-scope; updated only by
+ *       ``ra_mipi_csi_attach_error_handler``.
+ */
+static void* s_mipi_csi_err_ctx;
+
+/**
+ * @var s_mipi_csi_vc_format
+ * @brief Software shadow of the per-VC payload format selection
+ *        published by ``ra_mipi_csi_set_data_format``.
+ * @note Indexed by VC id (0..15). 0 means "no format selected".
+ */
+static uint8_t s_mipi_csi_vc_format[k_ra_mipi_csi_vc_count];
+
+/**
+ * @var s_mipi_csi_vcie_saved
+ * @brief Snapshot of VCIE(M) at the time the last
+ *        ``ra_mipi_csi_set_virtual_channels`` call masked it off.
+ *        Restored when the channel is re-enabled.
+ */
+static uint32_t s_mipi_csi_vcie_saved[k_ra_mipi_csi_vc_count];
+
 /* =============================================================================
  * Helpers
  * =============================================================================
@@ -942,6 +975,24 @@ void ra_mipi_csi_dispatch_vc(void)
     if (fn != nullptr) {
       fn(ctx, vc, vc_specific);
     }
+
+    /* Surface ECC + CRC errors to the dedicated error handler if any
+     * are set in this VC's snapshot. HUM Ch 66.3.18 p 3949. */
+    const ra_mipi_csi_error_fn_t err_fn = s_mipi_csi_err_fn;
+    if (err_fn != nullptr) {
+      const uint32_t err_bits = vcst & (k_ra_mipi_csi_vcst_ecc_mask | k_ra_mipi_csi_vcst_ecd_mask |
+                                        k_ra_mipi_csi_vcst_crc_mask);
+      if (err_bits != 0UL) {
+        const ra_mipi_csi_error_report_t report = {
+          .vc                = vc,
+          .ecc_corrected     = ((vcst & k_ra_mipi_csi_vcst_ecc_mask) != 0UL),
+          .ecc_two_bit_error = ((vcst & k_ra_mipi_csi_vcst_ecd_mask) != 0UL),
+          .crc_error         = ((vcst & k_ra_mipi_csi_vcst_crc_mask) != 0UL),
+          .raw_vcst          = vcst,
+        };
+        err_fn(s_mipi_csi_err_ctx, &report);
+      }
+    }
   }
 
   if (fn != nullptr) {
@@ -977,6 +1028,138 @@ void ra_mipi_csi_dispatch_short_packet(void)
   if (fn != nullptr) {
     fn(ctx, gsst);
   }
+}
+
+/* =============================================================================
+ * Sweep 6: per-VC framing helpers + error reporting
+ * =============================================================================
+ */
+
+/**
+ * @brief Translate a public ::ra_mipi_csi_data_format_t to its DT bit.
+ *
+ * @param[in]  format Public format selector.
+ * @param[out] is_high True if the bit lives in DTEH, false for DTEL.
+ * @param[out] bit    OR-mask to set/clear in the corresponding register.
+ *
+ * @return ::ra_err_t outcome (k_ra_ok / k_ra_err_invalid_arg).
+ *
+ * @pre is_high and bit non-NULL.
+ * @post On success, *is_high and *bit are set.
+ */
+static ra_err_t
+internal_format_to_bit(ra_mipi_csi_data_format_t format, bool* is_high, uint32_t* bit)
+{
+  switch (format) {
+    case k_ra_mipi_csi_format_off: {
+      *is_high = false;
+      *bit     = 0UL;
+      return k_ra_ok;
+    }
+    case k_ra_mipi_csi_format_yuv422_8: {
+      *is_high = false;
+      *bit     = k_ra_mipi_csi_dtel_yuv422_8_mask;
+      return k_ra_ok;
+    }
+    case k_ra_mipi_csi_format_yuv422_10: {
+      *is_high = false;
+      *bit     = k_ra_mipi_csi_dtel_yuv422_10_mask;
+      return k_ra_ok;
+    }
+    case k_ra_mipi_csi_format_rgb888: {
+      *is_high = true;
+      *bit     = k_ra_mipi_csi_dteh_rgb888_mask;
+      return k_ra_ok;
+    }
+    case k_ra_mipi_csi_format_raw8: {
+      *is_high = true;
+      *bit     = k_ra_mipi_csi_dteh_raw8_mask;
+      return k_ra_ok;
+    }
+    case k_ra_mipi_csi_format_raw10:
+    case k_ra_mipi_csi_format_yuv420:
+    default: {
+      /* RAW10 / YUV420 are not exposed by RA8D2 DTEL/DTEH. */
+      return k_ra_err_invalid_arg;
+    }
+  }
+}
+
+/**
+ * @brief Recompute DTEL/DTEH from the per-VC format shadow.
+ */
+static void internal_recompute_dt_filter(void)
+{
+  uint32_t low  = 0UL;
+  uint32_t high = 0UL;
+  for (uint8_t vc = 0U; vc < (uint8_t)k_ra_mipi_csi_vc_count; ++vc) {
+    bool                            is_high = false;
+    uint32_t                        bit     = 0UL;
+    const ra_mipi_csi_data_format_t fmt     = (ra_mipi_csi_data_format_t)s_mipi_csi_vc_format[vc];
+    /* Unknown shadow values would have been rejected by setter -- safe. */
+    (void)internal_format_to_bit(fmt, &is_high, &bit);
+    if (is_high) {
+      high |= bit;
+    } else {
+      low |= bit;
+    }
+  }
+  /* HUM Ch 66.3.10 "DTEL : Receive Data Type Enable Low" p 3943 */
+  *ra_mipi_csi_reg32(k_ra_mipi_csi_off_dtel) = low;
+  /* HUM Ch 66.3.11 "DTEH : Receive Data Type Enable High" p 3944 */
+  *ra_mipi_csi_reg32(k_ra_mipi_csi_off_dteh) = high;
+}
+
+ra_err_t ra_mipi_csi_set_virtual_channels(uint16_t vc_mask)
+{
+  if (vc_mask == 0U) {
+    ra_log_error(s_tag, "set_virtual_channels: empty mask rejected");
+    return k_ra_err_invalid_arg;
+  }
+  for (uint8_t vc = 0U; vc < (uint8_t)k_ra_mipi_csi_vc_count; ++vc) {
+    /* HUM Ch 66.3.20 "VCIE(M) : Virtual Channel M Interrupt Enable" p 3952 */
+    const ra_mipi_csi_off_t off  = ra_mipi_csi_vc_off(k_ra_mipi_csi_off_vcie0, vc);
+    const bool              keep = ((vc_mask & ((uint16_t)1U << vc)) != 0U);
+    if (keep) {
+      /* If we previously masked this VC off, restore the saved enable.
+       * Otherwise leave whatever the caller has currently programmed.  */
+      const uint32_t saved = s_mipi_csi_vcie_saved[vc];
+      if (saved != 0UL) {
+        *ra_mipi_csi_reg32(off)   = saved;
+        s_mipi_csi_vcie_saved[vc] = 0UL;
+      }
+    } else {
+      const uint32_t cur = *ra_mipi_csi_reg32(off);
+      if (cur != 0UL) {
+        s_mipi_csi_vcie_saved[vc] = cur;
+      }
+      *ra_mipi_csi_reg32(off) = 0UL;
+    }
+  }
+  return k_ra_ok;
+}
+
+ra_err_t ra_mipi_csi_set_data_format(uint8_t vc, ra_mipi_csi_data_format_t format)
+{
+  if (vc >= (uint8_t)k_ra_mipi_csi_vc_count) {
+    return k_ra_err_invalid_arg;
+  }
+  bool           is_high = false;
+  uint32_t       bit     = 0UL;
+  const ra_err_t lookup  = internal_format_to_bit(format, &is_high, &bit);
+  if (lookup != k_ra_ok) {
+    return lookup;
+  }
+  s_mipi_csi_vc_format[vc] = (uint8_t)format;
+  internal_recompute_dt_filter();
+  return k_ra_ok;
+}
+
+ra_err_t ra_mipi_csi_attach_error_handler(ra_mipi_csi_error_fn_t fn, void* ctx)
+{
+  s_mipi_csi_err_fn  = fn;
+  s_mipi_csi_err_ctx = ctx;
+  return k_ra_ok;
 }
 
 /* =============================================================================
