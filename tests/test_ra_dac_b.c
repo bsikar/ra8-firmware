@@ -52,13 +52,16 @@ static void test_write_channel_0(void)
   ra_sim_mmap_reset();
 
   TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_dac_b_init());
+  /* Pre-arm channel 0 (FSP order: Open clears DACR0; Start sets DACEN). */
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_dac_b_set_output_enable(0U, true));
   TEST_ASSERT_EQ((int)k_ra_ok,
                  (int)ra_dac_b_write((uint8_t)k_ra_dac_b_test_ch_0, (uint16_t)k_ra_dac_b_test_mid));
 
   volatile r_dac_b_regs_t* reg = ra_dac_b((uint8_t)k_ra_dac_b_test_ch_0);
   TEST_ASSERT_EQ((int)k_ra_dac_b_test_mid, (int)reg->DADR);
+  /* FSP write writes ONLY DADR; it never touches DACR0. */
   TEST_ASSERT((reg->DACR0 & (uint32_t)k_ra_dacr0_mask_dacen) != 0U);
-  TEST_ASSERT((reg->DACR0 & (uint32_t)k_ra_dacr0_mask_dae) != 0U);
+  TEST_ASSERT((reg->DACR0 & (uint32_t)k_ra_dacr0_mask_dae) == 0U);
   TEST_END("dac_b write channel 0");
 }
 
@@ -68,6 +71,7 @@ static void test_write_channel_1(void)
   ra_sim_mmap_reset();
 
   TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_dac_b_init());
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_dac_b_set_output_enable(1U, true));
   TEST_ASSERT_EQ((int)k_ra_ok,
                  (int)ra_dac_b_write((uint8_t)k_ra_dac_b_test_ch_1, (uint16_t)k_ra_dac_b_test_mid));
 
@@ -125,24 +129,38 @@ static void prep_w42(void)
 
 static void test_init_configured(void)
 {
-  TEST_BEGIN("dac_b init configured: both channels, vref set");
+  TEST_BEGIN("dac_b init configured: both channels, vref low (OFSSEL=1)");
   prep_w42();
 
   const ra_dac_b_cfg_t cfg = {
-    .vref            = k_ra_dac_b_vref_internal,
-    .enable_channel0 = true,
-    .enable_channel1 = true,
-    .sync_with_adc   = true,
+    .vref                    = k_ra_dac_b_vref_low,
+    .data_format             = k_ra_dac_b_format_left,
+    .internal_output_enabled = true,
+    .enable_channel0         = true,
+    .enable_channel1         = true,
   };
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dac_b_init_configured(&cfg));
 
   volatile r_dac_b_regs_t* reg0 = ra_dac_b((uint8_t)k_ra_dac_b_test_ch_0);
   volatile r_dac_b_regs_t* reg1 = ra_dac_b((uint8_t)k_ra_dac_b_test_ch_1);
-  TEST_ASSERT_EQ((int32_t)k_ra_dac_b_vref_internal, (int32_t)reg0->DACR2);
-  TEST_ASSERT_EQ((int32_t)k_ra_dac_b_vref_internal, (int32_t)reg1->DACR2);
+
+  /* OFSSEL is bit 8 of DACR2 -- writing vref_low (1) shifts to 0x100. */
+  TEST_ASSERT_EQ((int32_t)k_ra_dacr2_mask_ofssel,
+                 (int32_t)(reg0->DACR2 & (uint32_t)k_ra_dacr2_mask_ofssel));
+  TEST_ASSERT_EQ((int32_t)k_ra_dacr2_mask_ofssel,
+                 (int32_t)(reg1->DACR2 & (uint32_t)k_ra_dacr2_mask_ofssel));
+  /* DPSEL is bit 16 of DACR1 -- writing format_left (1) shifts to 0x10000. */
+  TEST_ASSERT_EQ((int32_t)k_ra_dacr1_mask_dpsel,
+                 (int32_t)(reg0->DACR1 & (uint32_t)k_ra_dacr1_mask_dpsel));
+  TEST_ASSERT_EQ((int32_t)k_ra_dacr1_mask_dpsel,
+                 (int32_t)(reg1->DACR1 & (uint32_t)k_ra_dacr1_mask_dpsel));
+  /* internal_output_enabled=true means DAOUTDIS bit must be CLEAR. */
+  TEST_ASSERT((reg0->DACR0 & (uint32_t)k_ra_dacr0_mask_daoutdis) == 0U);
+  TEST_ASSERT((reg1->DACR0 & (uint32_t)k_ra_dacr0_mask_daoutdis) == 0U);
+  /* Both channels enabled. */
   TEST_ASSERT((reg0->DACR0 & (uint32_t)k_ra_dacr0_mask_dacen) != 0U);
   TEST_ASSERT((reg1->DACR0 & (uint32_t)k_ra_dacr0_mask_dacen) != 0U);
-  TEST_END("dac_b init configured: both channels, vref set");
+  TEST_END("dac_b init configured: both channels, vref low (OFSSEL=1)");
 }
 
 static void test_init_null(void)
@@ -160,15 +178,19 @@ static void test_deinit(void)
   prep_w42();
 
   const ra_dac_b_cfg_t cfg = {
-    .vref            = k_ra_dac_b_vref_avcc0,
-    .enable_channel0 = true,
-    .enable_channel1 = false,
-    .sync_with_adc   = false,
+    .vref                    = k_ra_dac_b_vref_normal,
+    .data_format             = k_ra_dac_b_format_right,
+    .internal_output_enabled = true,
+    .enable_channel0         = true,
+    .enable_channel1         = false,
   };
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dac_b_init_configured(&cfg));
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dac_b_deinit());
+  /* FSP R_DAC_B_Close: DACR0 = DAOUTDIS_Msk (Hi-Z output, DACEN cleared). */
   volatile r_dac_b_regs_t* reg0 = ra_dac_b((uint8_t)k_ra_dac_b_test_ch_0);
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)reg0->DACR0);
+  volatile r_dac_b_regs_t* reg1 = ra_dac_b((uint8_t)k_ra_dac_b_test_ch_1);
+  TEST_ASSERT_EQ((int32_t)k_ra_dacr0_mask_daoutdis, (int32_t)reg0->DACR0);
+  TEST_ASSERT_EQ((int32_t)k_ra_dacr0_mask_daoutdis, (int32_t)reg1->DACR0);
   TEST_END("dac_b deinit");
 }
 
@@ -177,11 +199,18 @@ static void test_set_vref(void)
   TEST_BEGIN("dac_b set_vref");
   prep_w42();
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dac_b_set_vref(k_ra_dac_b_vref_external));
-  TEST_ASSERT_EQ((int32_t)k_ra_dac_b_vref_external,
-                 (int32_t)ra_dac_b((uint8_t)k_ra_dac_b_test_ch_0)->DACR2);
-  TEST_ASSERT_EQ((int32_t)k_ra_dac_b_vref_external,
-                 (int32_t)ra_dac_b((uint8_t)k_ra_dac_b_test_ch_1)->DACR2);
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dac_b_set_vref(k_ra_dac_b_vref_low));
+  /* OFSSEL bit must be set after set_vref(low). */
+  TEST_ASSERT((ra_dac_b((uint8_t)k_ra_dac_b_test_ch_0)->DACR2 & (uint32_t)k_ra_dacr2_mask_ofssel) !=
+              0U);
+  TEST_ASSERT((ra_dac_b((uint8_t)k_ra_dac_b_test_ch_1)->DACR2 & (uint32_t)k_ra_dacr2_mask_ofssel) !=
+              0U);
+
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dac_b_set_vref(k_ra_dac_b_vref_normal));
+  TEST_ASSERT((ra_dac_b((uint8_t)k_ra_dac_b_test_ch_0)->DACR2 & (uint32_t)k_ra_dacr2_mask_ofssel) ==
+              0U);
+  TEST_ASSERT((ra_dac_b((uint8_t)k_ra_dac_b_test_ch_1)->DACR2 & (uint32_t)k_ra_dacr2_mask_ofssel) ==
+              0U);
   TEST_END("dac_b set_vref");
 }
 
@@ -207,21 +236,25 @@ static void test_output_enable_toggle(void)
 
 static void test_init_configured_both_disabled(void)
 {
-  TEST_BEGIN("dac_b init both channels disabled");
+  TEST_BEGIN("dac_b init both channels disabled, external output");
   prep_w42();
 
   const ra_dac_b_cfg_t cfg = {
-    .vref            = k_ra_dac_b_vref_avcc0,
-    .enable_channel0 = false,
-    .enable_channel1 = false,
-    .sync_with_adc   = false,
+    .vref                    = k_ra_dac_b_vref_normal,
+    .data_format             = k_ra_dac_b_format_right,
+    .internal_output_enabled = false,
+    .enable_channel0         = false,
+    .enable_channel1         = false,
   };
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dac_b_init_configured(&cfg));
   volatile r_dac_b_regs_t* reg0 = ra_dac_b((uint8_t)k_ra_dac_b_test_ch_0);
   volatile r_dac_b_regs_t* reg1 = ra_dac_b((uint8_t)k_ra_dac_b_test_ch_1);
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)reg0->DACR0);
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)reg1->DACR0);
-  TEST_END("dac_b init both channels disabled");
+  /* internal_output_enabled=false -> DAOUTDIS bit set, DACEN clear. */
+  TEST_ASSERT((reg0->DACR0 & (uint32_t)k_ra_dacr0_mask_daoutdis) != 0U);
+  TEST_ASSERT((reg1->DACR0 & (uint32_t)k_ra_dacr0_mask_daoutdis) != 0U);
+  TEST_ASSERT((reg0->DACR0 & (uint32_t)k_ra_dacr0_mask_dacen) == 0U);
+  TEST_ASSERT((reg1->DACR0 & (uint32_t)k_ra_dacr0_mask_dacen) == 0U);
+  TEST_END("dac_b init both channels disabled, external output");
 }
 
 static void test_status_read_and_clear(void)
