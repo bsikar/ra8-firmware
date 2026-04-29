@@ -14,14 +14,16 @@
  * MSDVAD, RSTCTL, PRSST), the internal-error interrupt block
  * (INST, INSTE, INIE, INSTFC), the IBI / arbitration controls
  * (IBINCTL, BFCTL, SVCTL), the timing-and-rate group (REFCKCTL,
- * STDBR, EXTBR, BFRECDT, BAVLCDT, BIDLCDT), and the line-control
+ * STDBR, EXTBR, BFRECDT, BAVLCDT, BIDLCDT), the line-control
  * + bus-status block (OUTCTL, INCTL, TMOCTL, WUCTL, ACKCTL,
- * SCSTRCTL, SCSTLCTL, BST, BSTE, BIE, BSTFC).  The TX/RX FIFO
- * port registers (NCMDQP, NRSPQP, NTDTBP0, NIBIQP, NRSQP,
- * HCMDQP, HRSPQP, HTDTBP) and the device-address-table (DATBASn /
- * extended) blocks are intentionally omitted because the higher-
- * level CCC / IBI / HDR-DDR command engine has not been written
- * yet -- it lands with the first card-stack consumer.
+ * SCSTRCTL, SCSTLCTL), the FIFO port group used by the CCC
+ * engine (NCMDQP, NRSPQP, NTDTBP0, NIBIQP, NRSQP), and the
+ * Normal Transfer Status register (NTST).  Members beyond NTST
+ * (HCMDQP, HRSPQP, HTDTBP, NQTHCTL, NTBTHCTL0, NRQTHCTL,
+ * HQTHCTL, HTBTHCTL, BST, BSTE, BIE, BSTFC, NTSTE, NTIE, HTST,
+ * BCST, SVST, DATBASn ...) are intentionally omitted because no
+ * driver code touches them yet -- they land with the first
+ * HDR-DDR / slave-mode / sync-timing consumer.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -71,6 +73,21 @@ typedef enum : uint8_t {
   k_ra_i3c_pad_after_tmoctl  = 1U, /**< RESERVED7     after TMOCTL. */
   k_ra_i3c_pad_after_wuctl   = 1U, /**< RESERVED8     after WUCTL. */
   k_ra_i3c_pad_after_scstr   = 2U, /**< RESERVED9[2]  after SCSTRCTL. */
+  /* From SCSTLCTL+1 (0x0B4) through CNDCTL+RESERVED13 ending at 0x14F is
+   * 0x9C bytes = 39 words.  Covers SVTDLG0, STCTL, ATCTL, ATTRG, ATCCNTE,
+   * CNDCTL and the surrounding RESERVED10..RESERVED13 padding.  None of
+   * these registers are touched by the current driver -- the higher-
+   * level slave-mode + sync-timing card-stack consumer can carve them
+   * out of the gap when it lands. */
+  k_ra_i3c_pad_after_scstlctl = 39U, /**< Reserved words 0x0B4..0x14F before NCMDQP. */
+  /* The 0x158..0x17B gap is 8 reserved words (RESERVED14[8]) before NIBIQP. */
+  k_ra_i3c_pad_after_ntdtbp0 = 8U, /**< RESERVED14[8] after NTDTBP0. */
+  /* IBI-status-queue port immediately follows NIBIQP -> NRSQP at 0x180. */
+  /* From NRSQP+1 (0x184) up to NTST at 0x1E0 is 0x5C bytes = 23 words.
+   * Covers HCMDQP, HRSPQP, HTDTBP, NQTHCTL, NTBTHCTL0, NRQTHCTL,
+   * HQTHCTL, HTBTHCTL, BST, BSTE, BIE, BSTFC and intervening
+   * reserved padding -- none touched by the current driver. */
+  k_ra_i3c_pad_after_nrsqp = 23U, /**< Reserved words 0x184..0x1DF before NTST. */
 } ra_i3c_limits_t;
 
 /**
@@ -78,11 +95,11 @@ typedef enum : uint8_t {
  * @brief Partial RA8D2 I3C0 register window.
  *
  * @details
- * Mirrors the FSP ``R_I3C0_Type`` layout up through BSTFC at
- * offset 0x1DC.  See HUM Ch 40 "I3C Bus Interface (I3C)" pp
+ * Mirrors the FSP ``R_I3C0_Type`` layout up through NTST at
+ * offset 0x1E0.  See HUM Ch 40 "I3C Bus Interface (I3C)" pp
  * 2445-2701 for the field-level descriptions.  Members beyond
- * that offset (NTST, HTST, BCST, SVST, DATBASn ...) are not
- * declared because no driver code touches them yet.
+ * that offset (NTSTE, NTIE, HTST, BCST, SVST, DATBASn ...) are
+ * not declared because no driver code touches them yet.
  *
  * cppcheck cannot see the unit-test consumers that read every
  * field, so the unused-field warning is suppressed with a
@@ -103,7 +120,8 @@ typedef struct {
   volatile uint32_t INSTE;  /**< +0x034 Internal Status Enable Register. */
   volatile uint32_t INIE;   /**< +0x038 Internal Interrupt Enable Register. */
   volatile uint32_t INSTFC; /**< +0x03C Internal Status Force Register. */
-  volatile uint32_t DVCT;   /**< +0x040 Device Characteristic Table Register. */
+  volatile uint32_t _r_instfc[k_ra_i3c_pad_after_instfc];
+  volatile uint32_t DVCT; /**< +0x044 Device Characteristic Table Register. */
   volatile uint32_t _r_dvct[k_ra_i3c_pad_after_dvct];
   volatile uint32_t IBINCTL; /**< +0x058 IBI Notify Control Register. */
   volatile uint32_t _r_ibinctl[k_ra_i3c_pad_after_ibinctl];
@@ -126,6 +144,15 @@ typedef struct {
   volatile uint32_t SCSTRCTL; /**< +0x0A4 SCL Stretch Control Register. */
   volatile uint32_t _r_scstr[k_ra_i3c_pad_after_scstr];
   volatile uint32_t SCSTLCTL; /**< +0x0B0 SCL Stalling Control Register. */
+  volatile uint32_t _r_scstlctl[k_ra_i3c_pad_after_scstlctl];
+  volatile uint32_t NCMDQP;  /**< +0x150 Normal Command Queue Port Register. */
+  volatile uint32_t NRSPQP;  /**< +0x154 Normal Response Queue Port Register. */
+  volatile uint32_t NTDTBP0; /**< +0x158 Normal Transfer Data Buffer Port Register 0. */
+  volatile uint32_t _r_ntdtbp0[k_ra_i3c_pad_after_ntdtbp0]; /**< 0x15C..0x17B reserved gap. */
+  volatile uint32_t NIBIQP; /**< +0x17C Normal IBI Queue Port Register. */
+  volatile uint32_t NRSQP;  /**< +0x180 Normal Receive Status Queue Port Register. */
+  volatile uint32_t _r_nrsqp[k_ra_i3c_pad_after_nrsqp]; /**< 0x184..0x1DF reserved gap. */
+  volatile uint32_t NTST; /**< +0x1E0 Normal Transfer Status Register. */
 } r_i3c_regs_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 
@@ -183,6 +210,178 @@ typedef enum : uint32_t {
 typedef enum : uint32_t {
   k_ra_i3c_inst_inef_mask = 0x00000400UL, /**< Internal Error Flag bit 10. */
 } ra_i3c_inst_bits_t;
+
+/**
+ * @typedef ra_i3c_ccc_opcode_t
+ * @brief MIPI I3C v1.0 Common Command Code (CCC) opcodes.
+ *
+ * @details
+ * Broadcast CCCs occupy 0x00..0x7F and are addressed to 0x7E (the
+ * I3C broadcast address).  Direct CCCs occupy 0x80..0xFE and target
+ * a specific dynamic address after the CCC is issued.  See HUM
+ * Ch 40 "I3C Bus Interface (I3C)" pp 2445-2701 and the MIPI I3C
+ * specification "Common Command Codes" table.
+ */
+typedef enum : uint8_t {
+  k_ra_i3c_ccc_b_enec      = 0x00U, /**< Broadcast Enable Slave Events. */
+  k_ra_i3c_ccc_b_disec     = 0x01U, /**< Broadcast Disable Slave Events. */
+  k_ra_i3c_ccc_b_entas0    = 0x02U, /**< Broadcast Enter Activity State 0. */
+  k_ra_i3c_ccc_b_entas1    = 0x03U, /**< Broadcast Enter Activity State 1. */
+  k_ra_i3c_ccc_b_entas2    = 0x04U, /**< Broadcast Enter Activity State 2. */
+  k_ra_i3c_ccc_b_entas3    = 0x05U, /**< Broadcast Enter Activity State 3. */
+  k_ra_i3c_ccc_b_rstdaa    = 0x06U, /**< Broadcast Reset Dynamic Address Assignment. */
+  k_ra_i3c_ccc_b_entdaa    = 0x07U, /**< Broadcast Enter Dynamic Address Assignment. */
+  k_ra_i3c_ccc_b_rstact    = 0x2AU, /**< Broadcast Slave Reset Action. */
+  k_ra_i3c_ccc_d_enec      = 0x80U, /**< Direct Enable Slave Events. */
+  k_ra_i3c_ccc_d_disec     = 0x81U, /**< Direct Disable Slave Events. */
+  k_ra_i3c_ccc_d_entas0    = 0x82U, /**< Direct Enter Activity State 0. */
+  k_ra_i3c_ccc_d_entas1    = 0x83U, /**< Direct Enter Activity State 1. */
+  k_ra_i3c_ccc_d_entas2    = 0x84U, /**< Direct Enter Activity State 2. */
+  k_ra_i3c_ccc_d_entas3    = 0x85U, /**< Direct Enter Activity State 3. */
+  k_ra_i3c_ccc_d_setdasa   = 0x87U, /**< Direct Set Dynamic Address from Static Address. */
+  k_ra_i3c_ccc_d_getmwl    = 0x8BU, /**< Direct Get Max Write Length. */
+  k_ra_i3c_ccc_d_getmrl    = 0x8CU, /**< Direct Get Max Read Length. */
+  k_ra_i3c_ccc_d_getpid    = 0x8DU, /**< Direct Get Provisional ID. */
+  k_ra_i3c_ccc_d_getbcr    = 0x8EU, /**< Direct Get Bus Characteristic Register. */
+  k_ra_i3c_ccc_d_getdcr    = 0x8FU, /**< Direct Get Device Characteristic Register. */
+  k_ra_i3c_ccc_d_getstatus = 0x90U, /**< Direct Get Device Status. */
+  k_ra_i3c_ccc_d_getxtime  = 0x99U, /**< Direct Get Exchange Timing Information. */
+  k_ra_i3c_ccc_d_rstact    = 0x9AU, /**< Direct Reset Slave Action. */
+  k_ra_i3c_ccc_direct_mask = 0x80U, /**< Bit set in direct CCC opcodes. */
+} ra_i3c_ccc_opcode_t;
+
+/**
+ * @typedef ra_i3c_cmd_desc_bits_t
+ * @brief NCMDQP command-descriptor field positions (FSP I3C_CMD_DESC_*).
+ *
+ * @details
+ * The command queue accepts two 32-bit words per descriptor; this
+ * enum names every shift/mask used to assemble the first word, and
+ * the second-word XFER_LENGTH field for non-immediate transfers.
+ * See HUM Ch 40 "Command Descriptor" pp 2445-2701.
+ */
+typedef enum : uint32_t {
+  k_ra_i3c_cmd_attr_shift        = 0U,
+  k_ra_i3c_cmd_attr_xfer         = 0U,  /**< Regular transfer attribute. */
+  k_ra_i3c_cmd_attr_immed        = 1U,  /**< Immediate-data transfer attribute. */
+  k_ra_i3c_cmd_attr_addr_assgn   = 2U,  /**< Address-assignment attribute. */
+  k_ra_i3c_cmd_tid_shift         = 3U,  /**< Transaction ID position. */
+  k_ra_i3c_cmd_code_shift        = 7U,  /**< CCC opcode position. */
+  k_ra_i3c_cmd_dev_index_shift   = 16U, /**< Device-table index. */
+  k_ra_i3c_cmd_cp_shift          = 15U, /**< Command Present (CCC) flag. */
+  k_ra_i3c_cmd_xfer_mode_shift   = 26U,
+  k_ra_i3c_cmd_addr_count_shift  = 26U, /**< ENTDAA device count. */
+  k_ra_i3c_cmd_rnw_shift         = 29U, /**< Read-not-Write direction bit. */
+  k_ra_i3c_cmd_roc_shift         = 30U, /**< Response-on-Completion. */
+  k_ra_i3c_cmd_toc_shift         = 31U, /**< Terminate-on-Completion (STOP). */
+  k_ra_i3c_cmd_immed_bytes_shift = 23U, /**< Immediate byte count [24:23]. */
+  k_ra_i3c_cmd_xfer_length_shift = 16U, /**< Transfer length [31:16]. */
+  k_ra_i3c_cmd_xfer_length_max   = 0xFFFFUL,
+} ra_i3c_cmd_desc_bits_t;
+
+/**
+ * @typedef ra_i3c_ntst_bits_t
+ * @brief NTST (Normal Transfer Status) flag positions.
+ */
+typedef enum : uint32_t {
+  k_ra_i3c_ntst_tdbef0_mask  = 0x00000001UL, /**< Tx Buffer Empty bit 0. */
+  k_ra_i3c_ntst_rdbff0_mask  = 0x00000002UL, /**< Rx Buffer Full bit 1. */
+  k_ra_i3c_ntst_ibiqeff_mask = 0x00000004UL, /**< IBI Queue Empty/Full bit 2. */
+  k_ra_i3c_ntst_cmdqef_mask  = 0x00000008UL, /**< Cmd Queue Empty bit 3. */
+  k_ra_i3c_ntst_rspqff_mask  = 0x00000010UL, /**< Rsp Queue Full bit 4. */
+  k_ra_i3c_ntst_rsqff_mask   = 0x00100000UL, /**< Rx Status Queue Full bit 20. */
+} ra_i3c_ntst_bits_t;
+
+/**
+ * @typedef ra_i3c_ibi_status_bits_t
+ * @brief IBI status descriptor field positions (FSP I3C_IBI_STATUS_DESC_*).
+ *
+ * @details
+ * The first word read from NIBIQP is an IBI status descriptor
+ * carrying length, IBI ID, error flags, and the IBI/HJ/MR type
+ * encoded by IBI_ST.  See HUM Ch 40 "IBI Status Descriptor".
+ */
+typedef enum : uint32_t {
+  k_ra_i3c_ibi_status_length_shift = 0U,
+  k_ra_i3c_ibi_status_length_mask  = 0x000000FFUL,
+  k_ra_i3c_ibi_status_id_shift     = 8U,
+  k_ra_i3c_ibi_status_id_mask      = 0x0000FF00UL,
+  k_ra_i3c_ibi_status_last_shift   = 24U,
+  k_ra_i3c_ibi_status_ibi_st_mask  = 0x80000000UL, /**< IBI status type bit 31. */
+} ra_i3c_ibi_status_bits_t;
+
+/**
+ * @typedef ra_i3c_misc_t
+ * @brief Miscellaneous protocol limits.
+ */
+typedef enum : uint32_t {
+  k_ra_i3c_max_targets           = 8U,    /**< Cap on ENTDAA device-table size. */
+  k_ra_i3c_pid_bytes             = 6U,    /**< 48-bit Provisional ID. */
+  k_ra_i3c_setdasa_payload_bytes = 1U,    /**< SETDASA carries one address byte. */
+  k_ra_i3c_immediate_max_bytes   = 4U,    /**< Immediate-data transfer cap. */
+  k_ra_i3c_addr_mask             = 0x7FU, /**< 7-bit dynamic address mask. */
+} ra_i3c_misc_t;
+
+/**
+ * @typedef ra_i3c_byte_t
+ * @brief Byte-pack helpers used to assemble / disassemble 32-bit FIFO words.
+ */
+typedef enum : uint32_t {
+  k_ra_i3c_byte_mask            = 0xFFU, /**< Mask covering one byte. */
+  k_ra_i3c_byte_shift           = 8U,    /**< Bits per byte. */
+  k_ra_i3c_shift_b1             = 8U,    /**< Shift for byte 1 in a word. */
+  k_ra_i3c_shift_b2             = 16U,   /**< Shift for byte 2 in a word. */
+  k_ra_i3c_shift_b3             = 24U,   /**< Shift for byte 3 in a word. */
+  k_ra_i3c_addr_shift_in_ibi_id = 1U,    /**< IBI ID = (addr << 1) | RnW. */
+  k_ra_i3c_word_size            = 4U,    /**< Bytes per FIFO word. */
+} ra_i3c_byte_t;
+
+#include <assert.h>
+#include <stddef.h>
+
+/**
+ * @typedef ra_i3c_offset_t
+ * @brief FSP-canonical byte offsets used by the layout asserts below.
+ */
+typedef enum : uint16_t {
+  k_ra_i3c_off_bctl     = 0x014U,
+  k_ra_i3c_off_msdvad   = 0x018U,
+  k_ra_i3c_off_rstctl   = 0x020U,
+  k_ra_i3c_off_inst     = 0x030U,
+  k_ra_i3c_off_dvct     = 0x044U,
+  k_ra_i3c_off_ibinctl  = 0x058U,
+  k_ra_i3c_off_bfctl    = 0x060U,
+  k_ra_i3c_off_refckctl = 0x070U,
+  k_ra_i3c_off_ackctl   = 0x0A0U,
+  k_ra_i3c_off_scstlctl = 0x0B0U,
+  k_ra_i3c_off_ncmdqp   = 0x150U,
+  k_ra_i3c_off_nrspqp   = 0x154U,
+  k_ra_i3c_off_ntdtbp0  = 0x158U,
+  k_ra_i3c_off_nibiqp   = 0x17CU,
+  k_ra_i3c_off_nrsqp    = 0x180U,
+  k_ra_i3c_off_ntst     = 0x1E0U,
+} ra_i3c_offset_t;
+
+/* Compile-time guards: every register that the I3C driver reads or
+ * writes must sit at the FSP-canonical offset.  The constants on the
+ * RHS come from the RA8D2 CMSIS device header
+ * ``R7KA8D2KF_core0.h::R_I3C0_Type``. */
+static_assert(offsetof(r_i3c_regs_t, INST) == (size_t)k_ra_i3c_off_inst, "INST offset");
+static_assert(offsetof(r_i3c_regs_t, MSDVAD) == (size_t)k_ra_i3c_off_msdvad, "MSDVAD offset");
+static_assert(offsetof(r_i3c_regs_t, BCTL) == (size_t)k_ra_i3c_off_bctl, "BCTL offset");
+static_assert(offsetof(r_i3c_regs_t, RSTCTL) == (size_t)k_ra_i3c_off_rstctl, "RSTCTL offset");
+static_assert(offsetof(r_i3c_regs_t, DVCT) == (size_t)k_ra_i3c_off_dvct, "DVCT offset");
+static_assert(offsetof(r_i3c_regs_t, IBINCTL) == (size_t)k_ra_i3c_off_ibinctl, "IBINCTL offset");
+static_assert(offsetof(r_i3c_regs_t, BFCTL) == (size_t)k_ra_i3c_off_bfctl, "BFCTL offset");
+static_assert(offsetof(r_i3c_regs_t, REFCKCTL) == (size_t)k_ra_i3c_off_refckctl, "REFCKCTL offset");
+static_assert(offsetof(r_i3c_regs_t, ACKCTL) == (size_t)k_ra_i3c_off_ackctl, "ACKCTL offset");
+static_assert(offsetof(r_i3c_regs_t, SCSTLCTL) == (size_t)k_ra_i3c_off_scstlctl, "SCSTLCTL offset");
+static_assert(offsetof(r_i3c_regs_t, NCMDQP) == (size_t)k_ra_i3c_off_ncmdqp, "NCMDQP offset");
+static_assert(offsetof(r_i3c_regs_t, NRSPQP) == (size_t)k_ra_i3c_off_nrspqp, "NRSPQP offset");
+static_assert(offsetof(r_i3c_regs_t, NTDTBP0) == (size_t)k_ra_i3c_off_ntdtbp0, "NTDTBP0 offset");
+static_assert(offsetof(r_i3c_regs_t, NIBIQP) == (size_t)k_ra_i3c_off_nibiqp, "NIBIQP offset");
+static_assert(offsetof(r_i3c_regs_t, NRSQP) == (size_t)k_ra_i3c_off_nrsqp, "NRSQP offset");
+static_assert(offsetof(r_i3c_regs_t, NTST) == (size_t)k_ra_i3c_off_ntst, "NTST offset");
 
 /**
  * @brief Get pointer to I3C0.

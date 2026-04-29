@@ -79,6 +79,89 @@ typedef enum : uint32_t {
 } ra_gpt_bits_t;
 
 /**
+ * @enum ra_gpt_gtior_bits_t
+ * @brief GTIOR field positions and masks.
+ *
+ * @details
+ * From the RA8D2 device CMSIS header for R_GPT0_GTIOR (mirrored
+ * from HUM Ch 22.2.13 "GTIOR : General PWM Timer I/O Control
+ * Register", p 942..946):
+ * - GTIOA[4:0]  bits  0..4
+ * - OADFLT      bit   6
+ * - OAE         bit   8
+ * - OADF[1:0]   bits  9..10
+ * - GTIOB[4:0]  bits 16..20
+ * - OBDFLT      bit  22
+ * - OBE         bit  24
+ * - OBDF[1:0]   bits 25..26
+ *
+ * The two GTIO sub-field encodings used by the polarity helper come
+ * from HUM Table 22.18 (GTIOA[4:0] / GTIOB[4:0] settings):
+ * - 0x9 -> "low at compare match, high at cycle end"
+ *          == active-high PWM
+ * - 0x6 -> "high at compare match, low at cycle end"
+ *          == active-low  PWM
+ */
+typedef enum : uint32_t {
+  k_ra_gpt_gtioa_mask       = 0x0000001FUL,
+  k_ra_gpt_gtioa_shift      = 0U,
+  k_ra_gpt_oadflt_mask      = 0x00000040UL,
+  k_ra_gpt_oadflt_shift     = 6U,
+  k_ra_gpt_oae_mask         = 0x00000100UL,
+  k_ra_gpt_oadf_mask        = 0x00000600UL,
+  k_ra_gpt_oadf_shift       = 9U,
+  k_ra_gpt_gtiob_mask       = 0x001F0000UL,
+  k_ra_gpt_gtiob_shift      = 16U,
+  k_ra_gpt_obdflt_mask      = 0x00400000UL,
+  k_ra_gpt_obdflt_shift     = 22U,
+  k_ra_gpt_obe_mask         = 0x01000000UL,
+  k_ra_gpt_obdf_mask        = 0x06000000UL,
+  k_ra_gpt_obdf_shift       = 25U,
+  k_ra_gpt_gtio_active_high = 0x9UL,
+  k_ra_gpt_gtio_active_low  = 0x6UL,
+} ra_gpt_gtior_bits_t;
+
+/**
+ * @enum ra_gpt_buffer_bits_t
+ * @brief GTBER bits and GTDTCR bits used by the runtime PWM API.
+ *
+ * @details
+ * GTBER layout from RA8D2 CMSIS R_GPT0_GTBER (HUM Ch 22.2.17,
+ * p 965..968): CCRA at bits 16..17, CCRB at bits 18..19. Setting
+ * the lower bit of each pair to 1 selects single-buffer (GTCCRC ->
+ * GTCCRA / GTCCRE -> GTCCRB) reload at cycle end.
+ *
+ * GTDTCR.TDE is bit 0 (HUM Ch 22.2.27 "GTDTCR", p 998..999).
+ *
+ * The ``compare_c`` / ``compare_e`` indices are GTCCR[2] and
+ * GTCCR[3] respectively per HUM Ch 22.2.20.
+ */
+typedef enum : uint32_t {
+  k_ra_gpt_gtber_ccra_single = 0x00010000UL,
+  k_ra_gpt_gtber_ccrb_single = 0x00040000UL,
+  k_ra_gpt_gtdtcr_tde        = 0x00000001UL,
+  k_ra_gpt_gtcr_cst_mask     = 0x00000001UL,
+} ra_gpt_buffer_bits_t;
+
+/**
+ * @enum ra_gpt_ccr_idx_t
+ * @brief Index positions inside GTCCR[6] used by the buffer-based
+ * duty cycle setter.
+ *
+ * @details
+ * Mirrors FSP ``GPT_PRV_GTCCRA..F`` from
+ * ``fsp/ra/fsp/src/r_gpt/r_gpt.c``. The shadow buffer that feeds
+ * GTCCRA on the next reload is GTCCRC; the shadow buffer for
+ * GTCCRB is GTCCRE.
+ */
+typedef enum : uint8_t {
+  k_ra_gpt_ccr_idx_a = 0U,
+  k_ra_gpt_ccr_idx_b = 1U,
+  k_ra_gpt_ccr_idx_c = 2U,
+  k_ra_gpt_ccr_idx_e = 3U,
+} ra_gpt_ccr_idx_t;
+
+/**
  * @struct ra_gpt_state_t
  * @brief Per-channel runtime state (callback, configured flag).
  */
@@ -336,6 +419,276 @@ ra_err_t ra_gpt_read_dma(uint8_t              channel,
   req.on_complete      = on_complete;
   req.ctx              = ctx;
   return ra_dma_request(&req, out_dma_channel);
+}
+
+/* =============================================================================
+ * Sweep 3 Task 2 -- runtime PWM duty / period / counter / dead-time / 3-phase
+ * Mirrors FSP r_gpt + r_gpt_three_phase.
+ * =============================================================================
+ */
+
+ra_err_t ra_gpt_period_set(uint8_t channel, uint32_t period_counts)
+{
+  volatile r_gpt_channel_regs_t* reg = ra_gpt(channel);
+  RA_CHECK_NULL_PTR(reg, s_tag, "channel out of range");
+
+  reg->GTWP  = k_ra_gtwp_key_unlock;
+  reg->GTPBR = period_counts;
+  /* Per FSP R_GPT_PeriodSet: if the counter is currently stopped,
+     the new period is also written into the live register so the
+     next start has the correct GTPR. */
+  if ((reg->GTCR & k_ra_gpt_gtcr_cst_mask) == 0U) {
+    reg->GTPR  = period_counts;
+    reg->GTCNT = 0U;
+  }
+  reg->GTWP = k_ra_gtwp_key_lock;
+  return k_ra_ok;
+}
+
+ra_err_t ra_gpt_duty_cycle_set(uint8_t channel, ra_gpt_pwm_pin_t pin, uint32_t compare_counts)
+{
+  if (pin > k_ra_gpt_pin_b) {
+    return k_ra_err_invalid_arg;
+  }
+  volatile r_gpt_channel_regs_t* reg = ra_gpt(channel);
+  RA_CHECK_NULL_PTR(reg, s_tag, "channel out of range");
+
+  /* HUM Ch 22.2.20 "GTCCRA..F" p 982 + Ch 22.2.17 "GTBER" p 965:
+     write compare into GTCCRC (shadow for A) or GTCCRE (shadow for
+     B), then assert the matching GTBER buffer-enable bit so the
+     next cycle-end reloads GTCCRA / GTCCRB. */
+  reg->GTWP = k_ra_gtwp_key_unlock;
+  if (pin == k_ra_gpt_pin_a) {
+    reg->GTCCR[k_ra_gpt_ccr_idx_c] = compare_counts;
+    reg->GTBER |= k_ra_gpt_gtber_ccra_single;
+  } else {
+    reg->GTCCR[k_ra_gpt_ccr_idx_e] = compare_counts;
+    reg->GTBER |= k_ra_gpt_gtber_ccrb_single;
+  }
+  reg->GTWP = k_ra_gtwp_key_lock;
+  return k_ra_ok;
+}
+
+ra_err_t ra_gpt_counter_set(uint8_t channel, uint32_t value)
+{
+  volatile r_gpt_channel_regs_t* reg = ra_gpt(channel);
+  RA_CHECK_NULL_PTR(reg, s_tag, "channel out of range");
+  /* FSP R_GPT_CounterSet rejects writes while the timer is running. */
+  if ((reg->GTCR & k_ra_gpt_gtcr_cst_mask) != 0U) {
+    return k_ra_err_invalid_state;
+  }
+
+  reg->GTWP  = k_ra_gtwp_key_unlock;
+  reg->GTCNT = value;
+  reg->GTWP  = k_ra_gtwp_key_lock;
+  return k_ra_ok;
+}
+
+/**
+ * @brief Build the GTIO[A/B] sub-field encoding for the requested polarity.
+ * @param[in] polarity Active-high or active-low.
+ * @return 5-bit GTIO field value (0x9 active-high, 0x6 active-low).
+ */
+static uint32_t internal_gtio_pattern(ra_gpt_pwm_polarity_t polarity)
+{
+  if (polarity == k_ra_gpt_pol_active_low) {
+    return k_ra_gpt_gtio_active_low;
+  }
+  return k_ra_gpt_gtio_active_high;
+}
+
+ra_err_t
+ra_gpt_pwm_pin_configure(uint8_t channel, ra_gpt_pwm_pin_t pin, const ra_gpt_pwm_pin_cfg_t* cfg)
+{
+  RA_CHECK_NULL_PTR((void*)cfg, s_tag, "cfg must not be nullptr");
+  if (pin > k_ra_gpt_pin_b) {
+    return k_ra_err_invalid_arg;
+  }
+  volatile r_gpt_channel_regs_t* reg = ra_gpt(channel);
+  RA_CHECK_NULL_PTR(reg, s_tag, "channel out of range");
+
+  const uint32_t pattern = internal_gtio_pattern(cfg->polarity);
+  reg->GTWP              = k_ra_gtwp_key_unlock;
+  uint32_t gtior         = reg->GTIOR;
+
+  if (pin == k_ra_gpt_pin_a) {
+    /* Clear and re-pack the A-side fields only -- preserve B-side. */
+    gtior &= ~(k_ra_gpt_gtioa_mask | k_ra_gpt_oadflt_mask | k_ra_gpt_oae_mask | k_ra_gpt_oadf_mask);
+    gtior |= (pattern & k_ra_gpt_gtioa_mask) << k_ra_gpt_gtioa_shift;
+    gtior |= ((uint32_t)cfg->stop_level << k_ra_gpt_oadflt_shift) & k_ra_gpt_oadflt_mask;
+    if (cfg->output_enable) {
+      gtior |= k_ra_gpt_oae_mask;
+    }
+    gtior |= ((uint32_t)cfg->disable_on_fault << k_ra_gpt_oadf_shift) & k_ra_gpt_oadf_mask;
+  } else {
+    gtior &= ~(k_ra_gpt_gtiob_mask | k_ra_gpt_obdflt_mask | k_ra_gpt_obe_mask | k_ra_gpt_obdf_mask);
+    gtior |= (pattern & (k_ra_gpt_gtiob_mask >> k_ra_gpt_gtiob_shift)) << k_ra_gpt_gtiob_shift;
+    gtior |= ((uint32_t)cfg->stop_level << k_ra_gpt_obdflt_shift) & k_ra_gpt_obdflt_mask;
+    if (cfg->output_enable) {
+      gtior |= k_ra_gpt_obe_mask;
+    }
+    gtior |= ((uint32_t)cfg->disable_on_fault << k_ra_gpt_obdf_shift) & k_ra_gpt_obdf_mask;
+  }
+  reg->GTIOR = gtior;
+  reg->GTWP  = k_ra_gtwp_key_lock;
+  return k_ra_ok;
+}
+
+ra_err_t ra_gpt_dead_time_set(uint8_t channel, uint32_t rising_dt, uint32_t falling_dt)
+{
+  volatile r_gpt_channel_regs_t* reg = ra_gpt(channel);
+  RA_CHECK_NULL_PTR(reg, s_tag, "channel out of range");
+
+  reg->GTWP   = k_ra_gtwp_key_unlock;
+  reg->GTDVU  = rising_dt;
+  reg->GTDVD  = falling_dt;
+  reg->GTDTCR = ((rising_dt != 0U) || (falling_dt != 0U)) ? k_ra_gpt_gtdtcr_tde : 0U;
+  reg->GTWP   = k_ra_gtwp_key_lock;
+  return k_ra_ok;
+}
+
+/* ---- Three-phase synchronized PWM ----------------------------------- */
+
+/**
+ * @struct ra_gpt_three_phase_state_t
+ * @brief Driver-internal three-phase tracking state.
+ *
+ * @details
+ * Holds the U/V/W channel ids recorded at ``ra_gpt_three_phase_open``
+ * time so that ``set_duty`` and ``close`` know which channels to
+ * operate on without re-reading caller config.
+ */
+typedef struct {
+  uint8_t  channels[k_ra_gpt_three_phase_count]; /**< Channel ids. */
+  uint32_t channel_mask;                         /**< OR of (1<<ch) bits. */
+  bool     open;                                 /**< Open flag. */
+} ra_gpt_three_phase_state_t;
+
+static ra_gpt_three_phase_state_t s_three_phase;
+
+/**
+ * @brief Bring up the three GPT submodules and build the start mask.
+ * @param[in] cfg Three-phase configuration descriptor.
+ * @param[out] out_mask Combined channel-bit mask on success.
+ * @return ``k_ra_ok`` or the first failing channel's error code.
+ */
+static ra_err_t internal_three_phase_init_subs(const ra_gpt_three_phase_cfg_t* cfg,
+                                               uint32_t*                       out_mask)
+{
+  const uint32_t initial_duties[k_ra_gpt_three_phase_count] = {
+    cfg->initial_duty_u,
+    cfg->initial_duty_v,
+    cfg->initial_duty_w,
+  };
+  uint32_t mask = 0U;
+  for (uint8_t i = 0U; i < k_ra_gpt_three_phase_count; ++i) {
+    const ra_gpt_cfg_t per_ch_cfg = {
+      .mode       = cfg->mode,
+      .prescaler  = cfg->prescaler,
+      .period     = cfg->period_counts,
+      .duty_a     = initial_duties[i],
+      .duty_b     = initial_duties[i],
+      .auto_start = false,
+    };
+    const ra_err_t err = ra_gpt_init(cfg->channels[i], &per_ch_cfg);
+    if (err != k_ra_ok) {                      /* GCOVR_EXCL_BR_LINE */
+      for (uint8_t j = 0U; j < i; ++j) {       /* GCOVR_EXCL_LINE */
+        (void)ra_gpt_deinit(cfg->channels[j]); /* GCOVR_EXCL_LINE */
+      } /* GCOVR_EXCL_LINE */
+      return err; /* GCOVR_EXCL_LINE */
+    }
+    mask |= (1UL << cfg->channels[i]);
+    s_three_phase.channels[i] = cfg->channels[i];
+  }
+  *out_mask = mask;
+  return k_ra_ok;
+}
+
+ra_err_t ra_gpt_three_phase_open(const ra_gpt_three_phase_cfg_t* cfg)
+{
+  RA_CHECK_NULL_PTR((void*)cfg, s_tag, "three_phase cfg must not be nullptr");
+  if (s_three_phase.open) {
+    return k_ra_err_invalid_state;
+  }
+  for (uint8_t i = 0U; i < k_ra_gpt_three_phase_count; ++i) {
+    if (cfg->channels[i] >= (uint8_t)k_ra_gpt_channel_count) {
+      return k_ra_err_invalid_arg;
+    }
+  }
+
+  uint32_t       mask = 0U;
+  const ra_err_t err  = internal_three_phase_init_subs(cfg, &mask);
+  if (err != k_ra_ok) { /* GCOVR_EXCL_BR_LINE */
+    return err;         /* GCOVR_EXCL_LINE */
+  }
+
+  /* Synchronous start: a single GTSTR write to the U-channel slot
+     with all three CSTRTn bits set kicks all three counters on the
+     same PCLKD edge. HUM Ch 22.2.2 "GTSTR" p 901. */
+  volatile r_gpt_channel_regs_t* u_reg = ra_gpt(cfg->channels[0]);
+  if (u_reg != nullptr) {
+    u_reg->GTWP  = k_ra_gtwp_key_unlock;
+    u_reg->GTSTR = mask;
+    u_reg->GTWP  = k_ra_gtwp_key_lock;
+  }
+
+  s_three_phase.channel_mask = mask;
+  s_three_phase.open         = true;
+  ra_log_info_val(s_tag, "three_phase open mask", mask);
+  return k_ra_ok;
+}
+
+ra_err_t ra_gpt_three_phase_set_duty(uint32_t u_duty, uint32_t v_duty, uint32_t w_duty)
+{
+  if (!s_three_phase.open) {
+    return k_ra_err_invalid_state;
+  }
+  const uint32_t duties[k_ra_gpt_three_phase_count] = {u_duty, v_duty, w_duty};
+
+  /* Range check against the shared GTPR (read once from U). */
+  volatile r_gpt_channel_regs_t* u_reg = ra_gpt(s_three_phase.channels[0]);
+  if (u_reg == nullptr) {          /* GCOVR_EXCL_BR_LINE */
+    return k_ra_err_invalid_state; /* GCOVR_EXCL_LINE */
+  }
+  const uint32_t period = u_reg->GTPR;
+  for (uint8_t i = 0U; i < k_ra_gpt_three_phase_count; ++i) {
+    if (duties[i] > period) {
+      return k_ra_err_invalid_arg;
+    }
+  }
+
+  for (uint8_t i = 0U; i < k_ra_gpt_three_phase_count; ++i) {
+    volatile r_gpt_channel_regs_t* reg = ra_gpt(s_three_phase.channels[i]);
+    if (reg == nullptr) {            /* GCOVR_EXCL_BR_LINE */
+      return k_ra_err_invalid_state; /* GCOVR_EXCL_LINE */
+    }
+    reg->GTWP                      = k_ra_gtwp_key_unlock;
+    reg->GTCCR[k_ra_gpt_ccr_idx_c] = duties[i];
+    reg->GTCCR[k_ra_gpt_ccr_idx_e] = duties[i];
+    reg->GTBER |= k_ra_gpt_gtber_ccra_single | k_ra_gpt_gtber_ccrb_single;
+    reg->GTWP = k_ra_gtwp_key_lock;
+  }
+  return k_ra_ok;
+}
+
+ra_err_t ra_gpt_three_phase_close(void)
+{
+  if (!s_three_phase.open) {
+    return k_ra_err_invalid_state;
+  }
+  /* Synchronous stop: single GTSTP write covers all three channels. */
+  volatile r_gpt_channel_regs_t* u_reg = ra_gpt(s_three_phase.channels[0]);
+  if (u_reg != nullptr) {
+    u_reg->GTWP  = k_ra_gtwp_key_unlock;
+    u_reg->GTSTP = s_three_phase.channel_mask;
+    u_reg->GTWP  = k_ra_gtwp_key_lock;
+  }
+  for (uint8_t i = 0U; i < k_ra_gpt_three_phase_count; ++i) {
+    (void)ra_gpt_deinit(s_three_phase.channels[i]);
+  }
+  s_three_phase.channel_mask = 0U;
+  s_three_phase.open         = false;
+  return k_ra_ok;
 }
 
 /* ---- ISR dispatch ---------------------------------------------------- */

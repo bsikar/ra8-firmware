@@ -68,6 +68,20 @@ typedef enum : uint8_t {
 } ra_adc_default_group_t;
 
 /**
+ * @struct ra_adc_group_cache_t
+ * @brief Per-scan-group channel-list cache.
+ *
+ * @details
+ * ``ra_adc_configure_scan_group`` stores the channel list here so that
+ * ``ra_adc_read_group_results`` can stream the matching ADDR slots
+ * back without re-walking ADCHCR. Indexed by scan-group number.
+ */
+typedef struct {
+  uint8_t num_channels;                               /**< 0 means group unconfigured. */
+  uint8_t channels[k_ra_adc_scan_group_max_channels]; /**< Physical channel list. */
+} ra_adc_group_cache_t;
+
+/**
  * @struct ra_adc_state_t
  * @brief Driver-wide runtime state.
  */
@@ -76,6 +90,7 @@ typedef struct {
   void*                ctx;        /**< Callback context. */
   ra_adc_resolution_t  resolution; /**< Last-applied resolution selection. */
   bool                 configured; /**< True after first successful init. */
+  ra_adc_group_cache_t groups[k_ra_adc_b_scan_groups]; /**< Per-group channel cache. */
 } ra_adc_state_t;
 
 static ra_adc_state_t s_adc_state;
@@ -204,6 +219,10 @@ ra_err_t ra_adc_init(void)
 
   internal_zero_channel_table();
 
+  for (uint8_t g = 0U; g < k_ra_adc_b_scan_groups; ++g) {
+    s_adc_state.groups[g].num_channels = 0U;
+  }
+
   s_adc_state.resolution = k_ra_adc_res_14bit;
   s_adc_state.configured = true;
   ra_log_info(s_tag, "adc_init ready");
@@ -262,6 +281,10 @@ ra_err_t ra_adc_init_configured(const ra_adc_cfg_t* cfg)
 
   internal_zero_channel_table();
 
+  for (uint8_t g = 0U; g < k_ra_adc_b_scan_groups; ++g) {
+    s_adc_state.groups[g].num_channels = 0U;
+  }
+
   s_adc_state.resolution = cfg->resolution;
   s_adc_state.configured = true;
   ra_log_info(s_tag, "adc_init_configured ready");
@@ -275,10 +298,16 @@ ra_err_t ra_adc_deinit(void)
   *ra_adc_b_admdr()      = 0U;
   *ra_adc_b_adsger()     = 0U;
   *ra_adc_b_adintcr()    = 0U;
+  *ra_adc_b_adtrgenr()   = 0U;
+  *ra_adc_b_adcmpenr()   = 0U;
+  *ra_adc_b_adcmpintcr() = 0U;
   *ra_adc_b_adclkenr()   = 0U;
   s_adc_state.fn         = nullptr;
   s_adc_state.ctx        = nullptr;
   s_adc_state.configured = false;
+  for (uint8_t g = 0U; g < k_ra_adc_b_scan_groups; ++g) {
+    s_adc_state.groups[g].num_channels = 0U;
+  }
   return ra_mstp_disable(k_ra_mstp_adc16h);
 }
 
@@ -359,4 +388,272 @@ void ra_adc_dispatch_cnv_end(uint8_t channel)
   if (fn != nullptr) {
     fn(ctx, result);
   }
+}
+
+/* =============================================================================
+ * Scan-group / trigger / window-comparator / oversampling
+ * ----------------------------------------------------------------------------
+ * The following functions bring the ADC_B driver to FSP r_adc_b parity for
+ * scan-group orchestration. Implementation mirrors
+ *   /opt/fsp/ra/fsp/src/r_adc_b/r_adc_b.c::R_ADC_B_ScanCfg
+ *   /opt/fsp/ra/fsp/src/r_adc_b/r_adc_b.c::R_ADC_B_ScanStart
+ *   /opt/fsp/ra/fsp/src/r_adc_b/r_adc_b.c::R_ADC_B_ScanStop
+ *   /opt/fsp/ra/fsp/src/r_adc_b/r_adc_b.c::R_ADC_B_Read
+ *   /opt/fsp/ra/fsp/src/r_adc_b/r_adc_b.c::R_ADC_B_WindowCfg
+ * =============================================================================
+ */
+
+/**
+ * @brief Validate a scan-group configuration descriptor.
+ *
+ * @param[in] group Scan-group index.
+ * @param[in] cfg   Non-NULL configuration descriptor.
+ * @return ``k_ra_ok`` on pass, otherwise an error code.
+ */
+static ra_err_t internal_validate_group_cfg(uint8_t group, const ra_adc_scan_group_cfg_t* cfg)
+{
+  if (group >= k_ra_adc_b_scan_groups) {
+    return k_ra_err_out_of_range;
+  }
+  if ((cfg->num_channels == 0U) || (cfg->num_channels > k_ra_adc_scan_group_max_channels)) {
+    return k_ra_err_out_of_range;
+  }
+  for (uint8_t i = 0U; i < cfg->num_channels; ++i) {
+    if (cfg->channels[i] >= k_ra_adc_b_max_channels) {
+      return k_ra_err_out_of_range;
+    }
+  }
+  return k_ra_ok;
+}
+
+/**
+ * @brief Translate the public oversampling enum into ADDOPCRB AVEMD/ADC.
+ *
+ * @param[in]  mode      Public oversampling selector.
+ * @param[out] out_avemd AVEMD field value (00 = off, 10 = average).
+ * @param[out] out_adc   ADC averaging-times code.
+ * @return ``k_ra_ok`` on success, ``k_ra_err_invalid_arg`` for unknown modes.
+ */
+static ra_err_t
+internal_oversample_encode(ra_adc_oversample_t mode, uint32_t* out_avemd, uint32_t* out_adc)
+{
+  switch (mode) {
+    case k_ra_adc_oversample_off:
+      *out_avemd = (uint32_t)k_ra_avemd_off;
+      *out_adc   = (uint32_t)k_ra_adc_avg_1x;
+      return k_ra_ok;
+    case k_ra_adc_oversample_4x:
+      *out_avemd = (uint32_t)k_ra_avemd_average;
+      *out_adc   = (uint32_t)k_ra_adc_avg_4x;
+      return k_ra_ok;
+    case k_ra_adc_oversample_16x:
+      *out_avemd = (uint32_t)k_ra_avemd_average;
+      *out_adc   = (uint32_t)k_ra_adc_avg_16x;
+      return k_ra_ok;
+    case k_ra_adc_oversample_64x:
+      *out_avemd = (uint32_t)k_ra_avemd_average;
+      *out_adc   = (uint32_t)k_ra_adc_avg_64x;
+      return k_ra_ok;
+    default:
+      return k_ra_err_invalid_arg;
+  }
+}
+
+/**
+ * @brief Walk the channel list and program ADCHCR[ch] = (SGSEL, CNVCS).
+ *
+ * @param[in] group Scan-group index (already validated).
+ * @param[in] cfg   Validated configuration descriptor.
+ * @return ``k_ra_ok`` or ``k_ra_err_out_of_range`` if any ADCHCR slot is
+ *         unmapped (defensive -- channels were already range-checked).
+ */
+static ra_err_t internal_program_group_channels(uint8_t group, const ra_adc_scan_group_cfg_t* cfg)
+{
+  /* HUM Ch 53 "16-bit A/D Converter (ADC16H)" p 3308 */
+  for (uint8_t i = 0U; i < cfg->num_channels; ++i) {
+    const uint8_t      ch  = cfg->channels[i];
+    volatile uint32_t* reg = ra_adc_b_adchcr(ch);
+    if (reg == nullptr) {
+      return k_ra_err_out_of_range;
+    }
+    const uint32_t cnvcs =
+      ((uint32_t)ch << (uint32_t)k_ra_adchcr_bit_cnvcs) & k_ra_adchcr_mask_cnvcs;
+    const uint32_t sgsel =
+      ((uint32_t)group << (uint32_t)k_ra_adchcr_bit_sgsel) & k_ra_adchcr_mask_sgsel;
+    *reg = (cnvcs | sgsel);
+  }
+  return k_ra_ok;
+}
+
+/**
+ * @brief Cache a group's channel list into ``s_adc_state.groups``.
+ */
+static void internal_cache_group_channels(uint8_t group, const ra_adc_scan_group_cfg_t* cfg)
+{
+  s_adc_state.groups[group].num_channels = cfg->num_channels;
+  for (uint8_t i = 0U; i < cfg->num_channels; ++i) {
+    s_adc_state.groups[group].channels[i] = cfg->channels[i];
+  }
+}
+
+/**
+ * @brief Apply the per-group enable bit (ADSGER) and trigger source (ADTRGENR).
+ */
+static void internal_apply_group_enable(uint8_t group, ra_adc_trigger_src_t trigger)
+{
+  const uint32_t group_bit = (uint32_t)(1UL << (uint32_t)group);
+  /* HUM Ch 53 "16-bit A/D Converter (ADC16H)" p 3308 */
+  *ra_adc_b_adsger() |= group_bit;
+  if (trigger == k_ra_adc_trig_src_software) {
+    *ra_adc_b_adtrgenr() &= ~group_bit;
+  } else {
+    *ra_adc_b_adtrgenr() |= group_bit;
+  }
+}
+
+ra_err_t ra_adc_configure_scan_group(uint8_t group, const ra_adc_scan_group_cfg_t* cfg)
+{
+  RA_CHECK_NULL_PTR((void*)cfg, s_tag, "cfg must not be nullptr");
+
+  const ra_err_t v_err = internal_validate_group_cfg(group, cfg);
+  RA_RETURN_ON_ERROR(v_err, s_tag, "configure_scan_group: validation");
+
+  const ra_err_t prog_err = internal_program_group_channels(group, cfg);
+  RA_RETURN_ON_ERROR(prog_err, s_tag, "configure_scan_group: program channels");
+
+  internal_cache_group_channels(group, cfg);
+  internal_apply_group_enable(group, cfg->trigger);
+
+  (void)cfg->priority; /* Cached for future scan_group_priority register. */
+  return k_ra_ok;
+}
+
+ra_err_t ra_adc_start_group(uint8_t group)
+{
+  volatile uint32_t* adstr = ra_adc_b_adstr(group);
+  if (adstr == nullptr) {
+    return k_ra_err_out_of_range;
+  }
+  /* HUM Ch 53 "16-bit A/D Converter (ADC16H)" p 3308 */
+  *adstr = k_ra_adstr_mask_adst;
+  return k_ra_ok;
+}
+
+ra_err_t ra_adc_stop_group(uint8_t group)
+{
+  volatile uint32_t* adstr = ra_adc_b_adstr(group);
+  if (adstr == nullptr) {
+    return k_ra_err_out_of_range;
+  }
+  /* HUM Ch 53 "16-bit A/D Converter (ADC16H)" p 3308 */
+  *adstr              = 0U;
+  *ra_adc_b_adstopr() = k_ra_adstopr_mask_adstop0 | k_ra_adstopr_mask_adstop1;
+  return k_ra_ok;
+}
+
+ra_err_t ra_adc_read_group_results(uint8_t group, uint16_t* out_buf, uint8_t* out_count)
+{
+  RA_CHECK_NULL_PTR(out_buf, s_tag, "out_buf must not be nullptr");
+  RA_CHECK_NULL_PTR(out_count, s_tag, "out_count must not be nullptr");
+  *out_count = 0U;
+
+  if (group >= k_ra_adc_b_scan_groups) {
+    return k_ra_err_out_of_range;
+  }
+  const ra_adc_group_cache_t* cache = &s_adc_state.groups[group];
+  if (cache->num_channels == 0U) {
+    return k_ra_err_out_of_range;
+  }
+
+  /* HUM Ch 53 "16-bit A/D Converter (ADC16H)" p 3308 */
+  for (uint8_t i = 0U; i < cache->num_channels; ++i) {
+    volatile uint32_t* addr = ra_adc_b_addr(cache->channels[i]);
+    if (addr == nullptr) {
+      return k_ra_err_out_of_range;
+    }
+    out_buf[i] = (uint16_t)(*addr & k_ra_addr_mask_data);
+  }
+  *out_count = cache->num_channels;
+  return k_ra_ok;
+}
+
+ra_err_t ra_adc_set_continuous_scan(uint8_t group, bool enable)
+{
+  if (group >= k_ra_adc_b_scan_groups) {
+    return k_ra_err_out_of_range;
+  }
+  /* HUM Ch 53 "16-bit A/D Converter (ADC16H)" p 3308 */
+  /* ADMDR.ADMD0 holds the unit-level mode; we map continuous-scan to
+   * the matching code. The group argument is held for forward
+   * compatibility with a per-group mode register. */
+  const uint32_t mdr_now = *ra_adc_b_admdr() & ~k_ra_admdr_mask_admd0;
+  const uint32_t code =
+    enable ? (uint32_t)k_ra_admdr_mode_continuous : (uint32_t)k_ra_admdr_mode_one_cycle;
+  const uint32_t admd0 = (code << (uint32_t)k_ra_admdr_bit_admd0) & k_ra_admdr_mask_admd0;
+  *ra_adc_b_admdr()    = mdr_now | admd0;
+  return k_ra_ok;
+}
+
+ra_err_t ra_adc_set_compare_window(uint8_t channel, uint16_t low, uint16_t high)
+{
+  if (channel >= k_ra_adc_b_cmp_tables) {
+    return k_ra_err_out_of_range;
+  }
+  if (high < low) {
+    return k_ra_err_invalid_arg;
+  }
+  volatile uint32_t* tbl = ra_adc_b_adcmptbr(channel);
+  if (tbl == nullptr) {
+    return k_ra_err_out_of_range;
+  }
+  /* HUM Ch 53 "16-bit A/D Converter (ADC16H)" p 3308 */
+  /* Pack (low,high) into a single 32-bit ADCMPTBRn slot. */
+  *tbl = ((uint32_t)low << (uint32_t)k_ra_adcmptbr_bit_low) |
+         ((uint32_t)high << (uint32_t)k_ra_adcmptbr_bit_high);
+
+  /* CMPMDn -> "inside-window" mode. ADCMPMDR0 carries CMPMD0..3,
+   * ADCMPMDR1 carries CMPMD4..7. Each field is 2 bits at byte stride. */
+  const uint8_t      which = (channel < k_ra_adcmpmd_per_reg) ? 0U : 1U;
+  volatile uint32_t* mdr   = ra_adc_b_adcmpmdr(which);
+  if (mdr != nullptr) {
+    const uint8_t  local_idx = (uint8_t)(channel % k_ra_adcmpmd_per_reg);
+    const uint8_t  shift     = (uint8_t)(local_idx * k_ra_adcmpmd_field_step);
+    const uint32_t mask      = ((uint32_t)0x3UL) << shift;
+    const uint32_t code      = ((uint32_t)k_ra_adcmpmd_inside) << shift;
+    *mdr                     = (*mdr & ~mask) | code;
+  }
+
+  /* ADCMPENR.CMPENn is the master enable for table N. */
+  const uint32_t enable_bit = (uint32_t)(1UL << channel);
+  *ra_adc_b_adcmpenr() |= enable_bit;
+
+  /* Per-channel CMPTBLEm in ADDOPCRB enables table N for this channel. */
+  volatile uint32_t* opcrb = ra_adc_b_addopcrb(channel);
+  if (opcrb != nullptr) {
+    const uint32_t cmptble_bit =
+      ((uint32_t)(1UL << channel) << (uint32_t)k_ra_addopcrb_bit_cmptblem) &
+      k_ra_addopcrb_mask_cmptblem;
+    *opcrb = (*opcrb & ~k_ra_addopcrb_mask_cmptblem) | (cmptble_bit & k_ra_addopcrb_mask_cmptblem);
+  }
+  return k_ra_ok;
+}
+
+ra_err_t ra_adc_set_oversampling(uint8_t channel, ra_adc_oversample_t mode)
+{
+  uint32_t       avemd   = 0U;
+  uint32_t       adc     = 0U;
+  const ra_err_t enc_err = internal_oversample_encode(mode, &avemd, &adc);
+  RA_RETURN_ON_ERROR(enc_err, s_tag, "set_oversampling: invalid mode");
+
+  volatile uint32_t* opcrb = ra_adc_b_addopcrb(channel);
+  if (opcrb == nullptr) {
+    return k_ra_err_out_of_range;
+  }
+  /* HUM Ch 53 "16-bit A/D Converter (ADC16H)" p 3308 */
+  const uint32_t avemd_field =
+    (avemd << (uint32_t)k_ra_addopcrb_bit_avemd) & k_ra_addopcrb_mask_avemd;
+  const uint32_t adc_field = (adc << (uint32_t)k_ra_addopcrb_bit_adc) & k_ra_addopcrb_mask_adc;
+  const uint32_t cleared   = *opcrb & ~(k_ra_addopcrb_mask_avemd | k_ra_addopcrb_mask_adc);
+  *opcrb                   = cleared | avemd_field | adc_field;
+  return k_ra_ok;
 }

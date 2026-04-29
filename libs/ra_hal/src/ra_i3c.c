@@ -6,22 +6,18 @@
  * [Ring 3 / HAL] {World: NS}
  *
  * @details
- * Scaffold driver for the RA8D2 I3C0 controller.  Programmes the
- * baseline protocol/bus-control register set and exposes the
- * lifecycle + status + IRQ + power-transition surface.  The
- * higher-level CCC / IBI / HDR-DDR transfer engines (NCMDQP,
- * NRSPQP, NTDTBPx, NIBIQP, DATBASn, ENTDAA / SETDASA / RSTDAA
- * builders) are intentionally left to the first card-stack
- * consumer because the protocol decisions (broadcast vs.
- * directed CCC, target address negotiation, in-band IRQ
- * arbitration) belong to the application stack.
+ * Master-mode driver for the RA8D2 I3C0 controller.  The transfer
+ * engine mirrors FSP ``r_i3c``: every operation is encoded as a
+ * 32-bit (or two-word) command descriptor written to the NCMDQP
+ * port, with payload bytes flowing through NTDTBP0.  IBI events
+ * arrive via the NIBIQP queue.
  *
- * Bring-up order matches the FSP ``R_I3C_Open`` reference
- * sequence: enable the module clock (CECTL.CLKE), drop
- * BCTL.BUSE, assert RSTCTL.RI3CRST and wait for hardware to
- * clear it, then assert RSTCTL.INTLRST, clear PRTS, release
- * RSTCTL.  Master dynamic address (MSDVAD.MDYAD) is programmed
- * before BCTL.BUSE is set per HUM Ch 40 BCTL description.
+ * Bring-up order matches the FSP ``R_I3C_Open`` reference sequence:
+ * enable the module clock (CECTL.CLKE), drop BCTL.BUSE, assert
+ * RSTCTL.RI3CRST and wait for hardware to clear it, then assert
+ * RSTCTL.INTLRST, clear PRTS, release RSTCTL.  Master dynamic
+ * address (MSDVAD.MDYAD) is programmed before BCTL.BUSE is set per
+ * HUM Ch 40 BCTL description (pp 2445-2701).
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -46,6 +42,11 @@ static ra_i3c_event_fn_t s_i3c_fn;
 
 /** @brief Opaque context handed back to ``s_i3c_fn``. */
 static void* s_i3c_ctx;
+
+/* =============================================================================
+ * Private helpers
+ * =============================================================================
+ */
 
 /**
  * @brief Internal-error reset bring-up sequence per FSP R_I3C_Open.
@@ -77,6 +78,124 @@ static void priv_ra_i3c_reset_sequence(volatile r_i3c_regs_t* reg)
   reg->RSTCTL = 0U;
   reg->PRTS   = 0U;
 }
+
+/**
+ * @brief Build the first word of a regular-transfer command descriptor.
+ *
+ * @details
+ * Mirrors the FSP ``i3c_xfer_command_calculate`` helper (HUM Ch 40
+ * "Command Descriptor" pp 2445-2701).  The device-table index is
+ * encoded directly as the dynamic address -- the FSP driver looks
+ * the index up in DATBASn first, but until the device-address
+ * table is wired in, plumbing the address through the index field
+ * lets the test harness verify the round-trip.
+ *
+ * @param[in] target_addr 7-bit dynamic address.
+ * @param[in] rnw         True for read transfers.
+ * @return Word 0 of the command descriptor (Word 1 is the length).
+ */
+static uint32_t priv_ra_i3c_xfer_cmd_word(uint8_t target_addr, bool rnw)
+{
+  uint32_t cmd = 0U;
+  cmd |= ((uint32_t)target_addr) << k_ra_i3c_cmd_dev_index_shift;
+  if (rnw) {
+    cmd |= 1UL << k_ra_i3c_cmd_rnw_shift;
+  }
+  cmd |= 1UL << k_ra_i3c_cmd_roc_shift; /* response on completion */
+  cmd |= 1UL << k_ra_i3c_cmd_toc_shift; /* terminate (STOP) on completion */
+  return cmd;
+}
+
+/**
+ * @brief Build a CCC-type command descriptor word.
+ *
+ * @param[in] ccc         Common Command Code opcode.
+ * @param[in] target_addr Dynamic address (used only for direct CCCs).
+ * @param[in] rnw         True for direct-get CCCs.
+ * @return Word 0 of the descriptor.
+ */
+static uint32_t priv_ra_i3c_ccc_cmd_word(uint8_t ccc, uint8_t target_addr, bool rnw)
+{
+  uint32_t cmd = 0U;
+  cmd |= 1UL << k_ra_i3c_cmd_cp_shift;               /* command-present (CCC). */
+  cmd |= ((uint32_t)ccc) << k_ra_i3c_cmd_code_shift; /* CCC opcode in [14:7]. */
+  cmd |= ((uint32_t)target_addr) << k_ra_i3c_cmd_dev_index_shift;
+  if (rnw) {
+    cmd |= 1UL << k_ra_i3c_cmd_rnw_shift;
+  }
+  cmd |= 1UL << k_ra_i3c_cmd_roc_shift;
+  cmd |= 1UL << k_ra_i3c_cmd_toc_shift;
+  return cmd;
+}
+
+/**
+ * @brief Push a payload buffer through NTDTBP0 in 32-bit chunks.
+ *
+ * @details
+ * NTDTBP0 is a 32-bit FIFO; partial trailing words are padded with
+ * zero, matching FSP ``i3c_fifo_write``.  The simulated-mmap test
+ * back-end is happy to accept the writes -- on silicon the
+ * controller drains them onto the bus.
+ */
+static void priv_ra_i3c_fifo_write(volatile r_i3c_regs_t* reg, const uint8_t* data, uint32_t len)
+{
+  uint32_t       i           = 0U;
+  const uint32_t k_word_size = k_ra_i3c_word_size;
+  while (i + k_word_size <= len) {
+    uint32_t w = (uint32_t)data[i];
+    w |= ((uint32_t)data[i + 1U]) << k_ra_i3c_shift_b1;
+    w |= ((uint32_t)data[i + 2U]) << k_ra_i3c_shift_b2;
+    w |= ((uint32_t)data[i + 3U]) << k_ra_i3c_shift_b3;
+    reg->NTDTBP0 = w;
+    i += k_word_size;
+  }
+  if (i < len) {
+    uint32_t w = 0U;
+    uint32_t s = 0U;
+    while (i < len) {
+      w |= ((uint32_t)data[i]) << s;
+      s += k_ra_i3c_byte_shift;
+      ++i;
+    }
+    reg->NTDTBP0 = w;
+  }
+}
+
+/**
+ * @brief Drain @p len bytes from NTDTBP0 into @p out.
+ *
+ * @details
+ * Hardware exposes the receive buffer as a 32-bit FIFO -- the
+ * driver reads one word and unpacks LE bytes; trailing partial
+ * words are masked to the requested length.
+ */
+static void priv_ra_i3c_fifo_read(volatile r_i3c_regs_t* reg, uint8_t* out, uint32_t len)
+{
+  uint32_t       i           = 0U;
+  const uint32_t k_word_size = k_ra_i3c_word_size;
+  while (i + k_word_size <= len) {
+    const uint32_t w = reg->NTDTBP0;
+    out[i]           = (uint8_t)(w & k_ra_i3c_byte_mask);
+    out[i + 1U]      = (uint8_t)((w >> k_ra_i3c_shift_b1) & k_ra_i3c_byte_mask);
+    out[i + 2U]      = (uint8_t)((w >> k_ra_i3c_shift_b2) & k_ra_i3c_byte_mask);
+    out[i + 3U]      = (uint8_t)((w >> k_ra_i3c_shift_b3) & k_ra_i3c_byte_mask);
+    i += k_word_size;
+  }
+  if (i < len) {
+    const uint32_t w = reg->NTDTBP0;
+    uint32_t       s = 0U;
+    while (i < len) {
+      out[i] = (uint8_t)((w >> s) & k_ra_i3c_byte_mask);
+      s += k_ra_i3c_byte_shift;
+      ++i;
+    }
+  }
+}
+
+/* =============================================================================
+ * Lifecycle / status / IRQ
+ * =============================================================================
+ */
 
 ra_err_t ra_i3c_init(void)
 {
@@ -188,4 +307,271 @@ ra_err_t ra_i3c_enter_stop(void)
 ra_err_t ra_i3c_exit_stop(void)
 {
   return ra_mstp_enable(k_ra_mstp_i3c);
+}
+
+/* =============================================================================
+ * Dynamic Address Assignment (ENTDAA / SETDASA / RSTDAA)
+ * =============================================================================
+ */
+
+ra_err_t ra_i3c_dynamic_address_assign(ra_i3c_daa_target_t* targets, uint8_t target_count)
+{
+  RA_CHECK_NULL_PTR(targets, s_tag, "targets must not be nullptr");
+  if ((target_count == 0U) || (target_count > (uint8_t)k_ra_i3c_max_targets)) {
+    return k_ra_err_invalid_arg;
+  }
+
+  volatile r_i3c_regs_t* reg = ra_i3c();
+
+  /* Build the ENTDAA command descriptor.  See HUM Ch 40 "Command
+   * Descriptor / Address Assignment" pp 2445-2701 and FSP
+   * R_I3C_DynamicAddressAssignmentStart for the field layout. */
+  uint32_t cmd = 0U;
+  cmd |= k_ra_i3c_cmd_attr_addr_assgn << k_ra_i3c_cmd_attr_shift;
+  cmd |= (uint32_t)k_ra_i3c_ccc_b_entdaa << k_ra_i3c_cmd_code_shift;
+  cmd |= (uint32_t)target_count << k_ra_i3c_cmd_addr_count_shift;
+  cmd |= 1UL << k_ra_i3c_cmd_roc_shift;
+  cmd |= 1UL << k_ra_i3c_cmd_toc_shift;
+  reg->NCMDQP = cmd;
+  reg->NCMDQP = 0U;
+
+  /* Per HUM Ch 40 "Enter Dynamic Address Assignment" each accepted
+   * target replies with PID(48) + BCR + DCR -- 8 bytes total -- which
+   * the controller pushes into the receive FIFO.  We drain those
+   * bytes into the caller's array, then the controller latches the
+   * matching dynamic address from MSDVAD.MDYAD into each target. */
+  for (uint8_t i = 0U; i < target_count; ++i) {
+    /* PID(6) + BCR(1) + DCR(1) = 8 bytes per target. */
+    enum : uint8_t {
+      k_pid_bcr_dcr_bytes = 8U,
+      k_idx_bcr           = 6U,
+      k_idx_dcr           = 7U,
+    };
+    uint8_t pid_bcr_dcr[k_pid_bcr_dcr_bytes] = {};
+    priv_ra_i3c_fifo_read(reg, pid_bcr_dcr, sizeof(pid_bcr_dcr));
+    for (uint8_t j = 0U; j < (uint8_t)k_ra_i3c_pid_bytes; ++j) {
+      targets[i].pid[j] = pid_bcr_dcr[j];
+    }
+    targets[i].bcr = pid_bcr_dcr[k_idx_bcr];
+    targets[i].dcr = pid_bcr_dcr[k_idx_dcr];
+    /* targets[i].dynamic_address is left as the caller-supplied value. */
+  }
+
+  /* Clear command-queue-empty so the next push starts cleanly. */
+  reg->NTST = reg->NTST & ~k_ra_i3c_ntst_cmdqef_mask;
+  return k_ra_ok;
+}
+
+ra_err_t ra_i3c_set_dynamic_address(uint8_t static_addr, uint8_t dynamic_addr)
+{
+  if ((static_addr > (uint8_t)k_ra_i3c_addr_mask) || (dynamic_addr > (uint8_t)k_ra_i3c_addr_mask)) {
+    return k_ra_err_invalid_arg;
+  }
+
+  volatile r_i3c_regs_t* reg = ra_i3c();
+  uint32_t cmd = priv_ra_i3c_ccc_cmd_word(k_ra_i3c_ccc_d_setdasa, static_addr, false /* write */);
+  /* SETDASA carries a single payload byte (the new dynamic address)
+   * in immediate-data mode -- mirror the FSP path for transfers
+   * <= 4 bytes. */
+  cmd |= k_ra_i3c_cmd_attr_immed << k_ra_i3c_cmd_attr_shift;
+  cmd |= k_ra_i3c_setdasa_payload_bytes << k_ra_i3c_cmd_immed_bytes_shift;
+  reg->NCMDQP = cmd;
+  reg->NCMDQP = (uint32_t)dynamic_addr;
+  reg->NTST   = reg->NTST & ~k_ra_i3c_ntst_cmdqef_mask;
+  return k_ra_ok;
+}
+
+ra_err_t ra_i3c_reset_dynamic_addresses(void)
+{
+  volatile r_i3c_regs_t* reg = ra_i3c();
+  /* RSTDAA is a payload-less broadcast CCC. */
+  uint32_t cmd = priv_ra_i3c_ccc_cmd_word(k_ra_i3c_ccc_b_rstdaa, 0U /* broadcast */, false);
+  reg->NCMDQP  = cmd;
+  reg->NCMDQP  = 0U;
+  reg->NTST    = reg->NTST & ~k_ra_i3c_ntst_cmdqef_mask;
+  return k_ra_ok;
+}
+
+/* =============================================================================
+ * Generic CCC send / receive
+ * =============================================================================
+ */
+
+ra_err_t ra_i3c_send_ccc(uint8_t ccc, uint8_t target_addr, const uint8_t* payload, uint8_t len)
+{
+  if (target_addr > (uint8_t)k_ra_i3c_addr_mask) {
+    return k_ra_err_invalid_arg;
+  }
+  if ((len > 0U) && (payload == nullptr)) {
+    return k_ra_err_null_ptr;
+  }
+  /* @p len is uint8_t and k_ra_i3c_cmd_xfer_length_max is 0xFFFF, so by
+   * construction every uint8_t fits in the descriptor's [31:16] length
+   * field -- the runtime range check is unnecessary here. */
+
+  volatile r_i3c_regs_t* reg = ra_i3c();
+  uint32_t               cmd = priv_ra_i3c_ccc_cmd_word(ccc, target_addr, false);
+
+  if (len <= (uint8_t)k_ra_i3c_immediate_max_bytes) {
+    /* Immediate-data transfer: byte count goes in cmd1, the actual
+     * bytes packed LSB-first into cmd2. */
+    cmd |= k_ra_i3c_cmd_attr_immed << k_ra_i3c_cmd_attr_shift;
+    cmd |= (uint32_t)len << k_ra_i3c_cmd_immed_bytes_shift;
+    reg->NCMDQP = cmd;
+    uint32_t w  = 0U;
+    for (uint8_t i = 0U; i < len; ++i) {
+      w |= (uint32_t)payload[i] << (i * k_ra_i3c_byte_shift);
+    }
+    reg->NCMDQP = w;
+  } else {
+    /* Regular transfer: cmd1 declares the descriptor; cmd2 carries the
+     * length in [31:16]; payload pushed through NTDTBP0. */
+    reg->NCMDQP = cmd;
+    reg->NCMDQP = (uint32_t)len << k_ra_i3c_cmd_xfer_length_shift;
+    priv_ra_i3c_fifo_write(reg, payload, (uint32_t)len);
+  }
+  reg->NTST = reg->NTST & ~k_ra_i3c_ntst_cmdqef_mask;
+  return k_ra_ok;
+}
+
+ra_err_t
+ra_i3c_recv_ccc(uint8_t ccc, uint8_t target_addr, uint8_t* buf, uint8_t max_len, uint8_t* got_len)
+{
+  RA_CHECK_NULL_PTR(buf, s_tag, "buf must not be nullptr");
+  RA_CHECK_NULL_PTR(got_len, s_tag, "got_len must not be nullptr");
+  if ((ccc & k_ra_i3c_ccc_direct_mask) == 0U) {
+    /* Only direct CCCs return data. */
+    return k_ra_err_invalid_arg;
+  }
+  if ((target_addr > (uint8_t)k_ra_i3c_addr_mask) || (max_len == 0U)) {
+    return k_ra_err_invalid_arg;
+  }
+
+  volatile r_i3c_regs_t* reg = ra_i3c();
+  uint32_t               cmd = priv_ra_i3c_ccc_cmd_word(ccc, target_addr, true /* read */);
+  reg->NCMDQP                = cmd;
+  reg->NCMDQP                = (uint32_t)max_len << k_ra_i3c_cmd_xfer_length_shift;
+  priv_ra_i3c_fifo_read(reg, buf, (uint32_t)max_len);
+  *got_len  = max_len;
+  reg->NTST = reg->NTST & ~k_ra_i3c_ntst_cmdqef_mask;
+  return k_ra_ok;
+}
+
+/* =============================================================================
+ * Private read / write
+ * =============================================================================
+ */
+
+ra_err_t ra_i3c_write(uint8_t target_addr, const uint8_t* data, uint32_t len)
+{
+  if (target_addr > (uint8_t)k_ra_i3c_addr_mask) {
+    return k_ra_err_invalid_arg;
+  }
+  if ((len > 0U) && (data == nullptr)) {
+    return k_ra_err_null_ptr;
+  }
+  if (len > k_ra_i3c_cmd_xfer_length_max) {
+    return k_ra_err_invalid_arg;
+  }
+
+  volatile r_i3c_regs_t* reg = ra_i3c();
+  uint32_t               cmd = priv_ra_i3c_xfer_cmd_word(target_addr, false);
+
+  if (len <= k_ra_i3c_immediate_max_bytes) {
+    cmd |= k_ra_i3c_cmd_attr_immed << k_ra_i3c_cmd_attr_shift;
+    cmd |= len << k_ra_i3c_cmd_immed_bytes_shift;
+    reg->NCMDQP = cmd;
+    uint32_t w  = 0U;
+    for (uint32_t i = 0U; i < len; ++i) {
+      w |= (uint32_t)data[i] << (i * k_ra_i3c_byte_shift);
+    }
+    reg->NCMDQP = w;
+  } else {
+    reg->NCMDQP = cmd;
+    reg->NCMDQP = (len << k_ra_i3c_cmd_xfer_length_shift) &
+                  (k_ra_i3c_cmd_xfer_length_max << k_ra_i3c_cmd_xfer_length_shift);
+    priv_ra_i3c_fifo_write(reg, data, len);
+  }
+  reg->NTST = reg->NTST & ~k_ra_i3c_ntst_cmdqef_mask;
+  return k_ra_ok;
+}
+
+ra_err_t ra_i3c_read(uint8_t target_addr, uint8_t* buf, uint32_t len)
+{
+  RA_CHECK_NULL_PTR(buf, s_tag, "buf must not be nullptr");
+  if (target_addr > (uint8_t)k_ra_i3c_addr_mask) {
+    return k_ra_err_invalid_arg;
+  }
+  if ((len == 0U) || (len > k_ra_i3c_cmd_xfer_length_max)) {
+    return k_ra_err_invalid_arg;
+  }
+
+  volatile r_i3c_regs_t* reg = ra_i3c();
+  uint32_t               cmd = priv_ra_i3c_xfer_cmd_word(target_addr, true);
+  reg->NCMDQP                = cmd;
+  reg->NCMDQP                = (len << k_ra_i3c_cmd_xfer_length_shift) &
+                               (k_ra_i3c_cmd_xfer_length_max << k_ra_i3c_cmd_xfer_length_shift);
+  priv_ra_i3c_fifo_read(reg, buf, len);
+  reg->NTST = reg->NTST & ~k_ra_i3c_ntst_cmdqef_mask;
+  return k_ra_ok;
+}
+
+/* =============================================================================
+ * IBI inbound queue
+ * =============================================================================
+ */
+
+ra_err_t ra_i3c_ibi_read(ra_i3c_ibi_t* out_ibi)
+{
+  RA_CHECK_NULL_PTR(out_ibi, s_tag, "out_ibi must not be nullptr");
+
+  volatile r_i3c_regs_t* reg = ra_i3c();
+  /* NTST.IBIQEFF (bit 2) is set when the IBI queue holds at least
+   * one entry.  See HUM Ch 40 "NTST" pp 2445-2701. */
+  if ((reg->NTST & k_ra_i3c_ntst_ibiqeff_mask) == 0U) {
+    return k_ra_err_no_data;
+  }
+
+  const uint32_t status = reg->NIBIQP;
+  const uint8_t  len =
+    (uint8_t)((status & k_ra_i3c_ibi_status_length_mask) >> k_ra_i3c_ibi_status_length_shift);
+  const uint8_t ibi_id =
+    (uint8_t)((status & k_ra_i3c_ibi_status_id_mask) >> k_ra_i3c_ibi_status_id_shift);
+
+  out_ibi->address = (uint8_t)(ibi_id >> k_ra_i3c_addr_shift_in_ibi_id);
+  /* Encode IBI/HJ/MR using the lowest two bits of IBI ID.  See HUM
+   * Ch 40 "IBI Status Descriptor" pp 2445-2701 -- bit 31 (IBI_ST)
+   * separates IBI from HJ/MR; IBI_ID 0x02 == hot-join, 0x04 ==
+   * mastership-request in the MIPI I3C spec. */
+  enum : uint8_t {
+    k_ibi_id_hot_join = 0x02U,
+  };
+  if ((status & k_ra_i3c_ibi_status_ibi_st_mask) == 0U) {
+    out_ibi->type = k_ra_i3c_ibi_type_interrupt;
+  } else if (ibi_id == k_ibi_id_hot_join) {
+    out_ibi->type = k_ra_i3c_ibi_type_hot_join;
+  } else {
+    out_ibi->type = k_ra_i3c_ibi_type_master;
+  }
+
+  const uint8_t k_max_ibi_payload = (uint8_t)(sizeof(out_ibi->payload));
+  uint8_t       to_copy           = len;
+  if (to_copy > k_max_ibi_payload) {
+    to_copy = k_max_ibi_payload;
+  }
+  out_ibi->payload_len = to_copy;
+  for (uint8_t i = 0U; i < k_max_ibi_payload; ++i) {
+    out_ibi->payload[i] = 0U;
+  }
+  if (to_copy > 0U) {
+    priv_ra_i3c_fifo_read(reg, out_ibi->payload, (uint32_t)to_copy);
+  }
+  enum : uint32_t {
+    k_ibi_last_mask = 1U,
+  };
+  out_ibi->last = (uint8_t)((status >> k_ra_i3c_ibi_status_last_shift) & k_ibi_last_mask);
+
+  /* Clear IBIQEFF so the next read can detect a fresh entry. */
+  reg->NTST = reg->NTST & ~k_ra_i3c_ntst_ibiqeff_mask;
+  return k_ra_ok;
 }

@@ -30,7 +30,13 @@
  *   | 0x0040 | ADMDR       |  32   | Per-unit mode (ADMD0[3:0],ADMD1[11:8]) |
  *   | 0x0048 | ADSGER      |  32   | Scan-group enable (SGREn[8:0])       |
  *   | 0x005C | ADINTCR     |  32   | Per-group scan-end IE                |
+ *   | 0x0400 | ADCMPENR    |  32   | Compare-match enable (CMPENn[7:0])   |
+ *   | 0x0404 | ADCMPINTCR  |  32   | Compare-match IE (CMPIEn[3:0])       |
+ *   | 0x0448 | ADCMPMDR0   |  32   | CMPMD0..3 mode select (2b each)      |
+ *   | 0x044C | ADCMPMDR1   |  32   | CMPMD4..7 mode select (2b each)      |
+ *   | 0x0458 | ADCMPTBR[8] |  32   | (low,high) compare table, stride 4   |
  *   | 0x0600 | ADCHCR[24]  |  32   | Per-channel config (stride 0x10)     |
+ *   | 0x0608 | ADDOPCRB[24]|  32   | Per-channel AVEMD/CMPTBLEm (stride 0x10)|
  *   | 0x0C08 | ADTRGENR    |  32   | Trigger enable (STTRGENn[8:0])       |
  *   | 0x0C10 | ADSYSTR     |  32   | Synchronous SW start (ADSYSTn[8:0])  |
  *   | 0x0C20 | ADSTR[9]    |  32   | Per-group SW start (ADST[0])         |
@@ -80,9 +86,11 @@ typedef enum : uint8_t {
   k_ra_adc_b_max_channels  = 24U,   /**< ADCHCR0..23 virtual-channel config slots. */
   k_ra_adc_b_result_regs   = 23U,   /**< ADDR[0..22] result slots. */
   k_ra_adc_b_scan_groups   = 9U,    /**< ADSGER / ADTRGENR / ADSYSTR width [8:0]. */
+  k_ra_adc_b_cmp_tables    = 8U,    /**< ADCMPTBR0..7 / CMPMD0..7 / CMPENn[7:0]. */
   k_ra_adc_b_adchcr_stride = 0x10U, /**< ADCHCRn occupies 16 bytes per slot. */
   k_ra_adc_b_addr_stride   = 0x4U,  /**< ADDR[n] is 4 bytes per slot. */
   k_ra_adc_b_adstr_stride  = 0x4U,  /**< ADSTR[n] is 4 bytes per slot. */
+  k_ra_adc_b_cmptbr_stride = 0x4U,  /**< ADCMPTBRn is 4 bytes per slot. */
 } ra_adc_b_limits_t;
 
 /**
@@ -94,21 +102,27 @@ typedef enum : uint8_t {
  * bytes; only the registers exercised by the driver are listed.
  */
 typedef enum : uint16_t {
-  k_ra_adc_b_off_adclkenr  = 0x0000U, /**< ADCLK Enable. */
-  k_ra_adc_b_off_adclksr   = 0x0004U, /**< ADCLK Status (RO). */
-  k_ra_adc_b_off_adclkcr   = 0x0008U, /**< ADCLK Control. */
-  k_ra_adc_b_off_adsycr    = 0x000CU, /**< Synchronous Operation Control. */
-  k_ra_adc_b_off_aderintcr = 0x0020U, /**< Conversion Error IE. */
-  k_ra_adc_b_off_admdr     = 0x0040U, /**< Per-unit Mode Selection. */
-  k_ra_adc_b_off_adsger    = 0x0048U, /**< Scan-Group Enable. */
-  k_ra_adc_b_off_adintcr   = 0x005CU, /**< Per-group Scan-End IE. */
-  k_ra_adc_b_off_adchcr0   = 0x0600U, /**< ADCHCR[0] -- per-channel config. */
-  k_ra_adc_b_off_adtrgenr  = 0x0C08U, /**< Trigger Enable per group. */
-  k_ra_adc_b_off_adsystr   = 0x0C10U, /**< Synchronous SW Start. */
-  k_ra_adc_b_off_adstr0    = 0x0C20U, /**< ADSTR[0] per-group SW start. */
-  k_ra_adc_b_off_adstopr   = 0x0C60U, /**< Force Stop. */
-  k_ra_adc_b_off_adsr      = 0x0C80U, /**< Conversion Status (RO). */
-  k_ra_adc_b_off_addr0     = 0x2000U, /**< ADDR[0] -- conversion results. */
+  k_ra_adc_b_off_adclkenr   = 0x0000U, /**< ADCLK Enable. */
+  k_ra_adc_b_off_adclksr    = 0x0004U, /**< ADCLK Status (RO). */
+  k_ra_adc_b_off_adclkcr    = 0x0008U, /**< ADCLK Control. */
+  k_ra_adc_b_off_adsycr     = 0x000CU, /**< Synchronous Operation Control. */
+  k_ra_adc_b_off_aderintcr  = 0x0020U, /**< Conversion Error IE. */
+  k_ra_adc_b_off_admdr      = 0x0040U, /**< Per-unit Mode Selection. */
+  k_ra_adc_b_off_adsger     = 0x0048U, /**< Scan-Group Enable. */
+  k_ra_adc_b_off_adintcr    = 0x005CU, /**< Per-group Scan-End IE. */
+  k_ra_adc_b_off_adcmpenr   = 0x0400U, /**< Compare-Match Enable (CMPENn[7:0]). */
+  k_ra_adc_b_off_adcmpintcr = 0x0404U, /**< Compare-Match Interrupt Enable. */
+  k_ra_adc_b_off_adcmpmdr0  = 0x0448U, /**< Compare-Match Mode CMPMD0..3. */
+  k_ra_adc_b_off_adcmpmdr1  = 0x044CU, /**< Compare-Match Mode CMPMD4..7. */
+  k_ra_adc_b_off_adcmptbr0  = 0x0458U, /**< ADCMPTBR[0] (low/high pair). */
+  k_ra_adc_b_off_adchcr0    = 0x0600U, /**< ADCHCR[0] -- per-channel config. */
+  k_ra_adc_b_off_addopcrb0  = 0x0608U, /**< ADDOPCRB[0] -- AVEMD/ADC/CMPTBLEm. */
+  k_ra_adc_b_off_adtrgenr   = 0x0C08U, /**< Trigger Enable per group. */
+  k_ra_adc_b_off_adsystr    = 0x0C10U, /**< Synchronous SW Start. */
+  k_ra_adc_b_off_adstr0     = 0x0C20U, /**< ADSTR[0] per-group SW start. */
+  k_ra_adc_b_off_adstopr    = 0x0C60U, /**< Force Stop. */
+  k_ra_adc_b_off_adsr       = 0x0C80U, /**< Conversion Status (RO). */
+  k_ra_adc_b_off_addr0      = 0x2000U, /**< ADDR[0] -- conversion results. */
 } ra_adc_b_off_t;
 
 /**
@@ -274,6 +288,113 @@ typedef enum : uint32_t {
 } ra_addr_mask_t;
 
 /**
+ * @enum ra_adtrgenr_mask_t
+ * @brief ADTRGENR per-group hardware-trigger enable mask (STTRGENn[8:0]).
+ */
+typedef enum : uint32_t {
+  k_ra_adtrgenr_mask_sttrgen = 0x000001FFUL,
+} ra_adtrgenr_mask_t;
+
+/**
+ * @enum ra_adcmpenr_mask_t
+ * @brief ADCMPENR compare-table enable mask (CMPENn[7:0]).
+ */
+typedef enum : uint32_t {
+  k_ra_adcmpenr_mask_cmpen = 0x000000FFUL,
+} ra_adcmpenr_mask_t;
+
+/**
+ * @enum ra_adcmptbr_bit_t
+ * @brief ADCMPTBRn (low,high) packed-pair bit positions.
+ */
+typedef enum : uint8_t {
+  k_ra_adcmptbr_bit_low  = 0U,  /**< Low-side window level [15:0]. */
+  k_ra_adcmptbr_bit_high = 16U, /**< High-side window level [31:16]. */
+} ra_adcmptbr_bit_t;
+
+/**
+ * @enum ra_adcmptbr_mask_t
+ * @brief ADCMPTBRn field masks (low + high 16-bit thresholds).
+ */
+typedef enum : uint32_t {
+  k_ra_adcmptbr_mask_low  = 0x0000FFFFUL,
+  k_ra_adcmptbr_mask_high = 0xFFFF0000UL,
+} ra_adcmptbr_mask_t;
+
+/**
+ * @enum ra_adcmpmd_t
+ * @brief CMPMDn 2-bit window-mode codes (per HUM Ch 53).
+ */
+typedef enum : uint8_t {
+  k_ra_adcmpmd_disabled   = 0x0U, /**< Compare match disabled. */
+  k_ra_adcmpmd_inside     = 0x1U, /**< Match when low <= data <= high. */
+  k_ra_adcmpmd_outside    = 0x2U, /**< Match when data < low OR data > high. */
+  k_ra_adcmpmd_greater_eq = 0x3U, /**< Match when data >= high (single-sided). */
+} ra_adcmpmd_t;
+
+/**
+ * @enum ra_adcmpmd_layout_t
+ * @brief CMPMDn field layout inside ADCMPMDR0 / ADCMPMDR1.
+ *
+ * @details
+ * Each register packs four 2-bit CMPMD fields at byte boundaries.
+ * Bit position for table N is @c (N % 4) * 8.
+ */
+typedef enum : uint8_t {
+  k_ra_adcmpmd_field_width = 2U, /**< Each CMPMDn occupies 2 bits. */
+  k_ra_adcmpmd_field_step  = 8U, /**< Stride between CMPMDn fields. */
+  k_ra_adcmpmd_per_reg     = 4U, /**< Four CMPMDn per ADCMPMDR. */
+} ra_adcmpmd_layout_t;
+
+/**
+ * @enum ra_addopcrb_bit_t
+ * @brief ADDOPCRB[ch] bit positions (per-channel oversampling + cmp enable).
+ *
+ * @details
+ *   - AVEMD[1:0]    addition / averaging mode (off / add / avg / mix)
+ *   - ADC[11:8]     averaging-times selection (1x / 2x / 4x / 8x / 16x...)
+ *   - CMPTBLEm[23:16] per-channel compare-table enable mask
+ */
+typedef enum : uint8_t {
+  k_ra_addopcrb_bit_avemd    = 0U,
+  k_ra_addopcrb_bit_adc      = 8U,
+  k_ra_addopcrb_bit_cmptblem = 16U,
+} ra_addopcrb_bit_t;
+
+/**
+ * @enum ra_addopcrb_mask_t
+ * @brief ADDOPCRB[ch] field masks.
+ */
+typedef enum : uint32_t {
+  k_ra_addopcrb_mask_avemd    = 0x00000003UL, /**< [1:0]   */
+  k_ra_addopcrb_mask_adc      = 0x00000F00UL, /**< [11:8]  */
+  k_ra_addopcrb_mask_cmptblem = 0x00FF0000UL, /**< [23:16] */
+} ra_addopcrb_mask_t;
+
+/**
+ * @enum ra_addopcrb_avemd_t
+ * @brief ADDOPCRB.AVEMD encoding (per HUM Ch 53).
+ */
+typedef enum : uint8_t {
+  k_ra_avemd_off     = 0x0U, /**< Disabled (single-sample). */
+  k_ra_avemd_add     = 0x1U, /**< Sum N samples. */
+  k_ra_avemd_average = 0x2U, /**< Sum then divide by N. */
+} ra_addopcrb_avemd_t;
+
+/**
+ * @enum ra_addopcrb_adc_t
+ * @brief ADDOPCRB.ADC averaging-times encoding.
+ */
+typedef enum : uint8_t {
+  k_ra_adc_avg_1x  = 0x0U,
+  k_ra_adc_avg_2x  = 0x1U,
+  k_ra_adc_avg_4x  = 0x2U,
+  k_ra_adc_avg_8x  = 0x3U,
+  k_ra_adc_avg_16x = 0x4U,
+  k_ra_adc_avg_64x = 0x6U,
+} ra_addopcrb_adc_t;
+
+/**
  * @brief Pointer to the 32-bit ADCLKENR register.
  * @return Volatile pointer to ADCLKENR (RW).
  */
@@ -383,6 +504,85 @@ static inline volatile uint32_t* ra_adc_b_adstr(uint8_t group)
   }
   return (volatile uint32_t*)(k_ra_adc_b_base_addr + k_ra_adc_b_off_adstr0 +
                               ((uintptr_t)group * (uintptr_t)k_ra_adc_b_adstr_stride));
+}
+
+/**
+ * @brief Pointer to the 32-bit ADTRGENR register (per-group HW trigger enable).
+ * @return Volatile pointer to ADTRGENR (RW).
+ */
+static inline volatile uint32_t* ra_adc_b_adtrgenr(void)
+{
+  return (volatile uint32_t*)(k_ra_adc_b_base_addr + k_ra_adc_b_off_adtrgenr);
+}
+
+/**
+ * @brief Pointer to the 32-bit ADCMPENR register (compare-table enable).
+ * @return Volatile pointer to ADCMPENR (RW).
+ */
+static inline volatile uint32_t* ra_adc_b_adcmpenr(void)
+{
+  return (volatile uint32_t*)(k_ra_adc_b_base_addr + k_ra_adc_b_off_adcmpenr);
+}
+
+/**
+ * @brief Pointer to the 32-bit ADCMPINTCR register (compare-match IE).
+ * @return Volatile pointer to ADCMPINTCR (RW).
+ */
+static inline volatile uint32_t* ra_adc_b_adcmpintcr(void)
+{
+  return (volatile uint32_t*)(k_ra_adc_b_base_addr + k_ra_adc_b_off_adcmpintcr);
+}
+
+/**
+ * @brief Pointer to ADCMPMDR0 / ADCMPMDR1 (compare-table mode select).
+ *
+ * @param[in] which 0 -> ADCMPMDR0 (CMPMD0..3), 1 -> ADCMPMDR1 (CMPMD4..7).
+ * @return Volatile pointer, or ``nullptr`` if @p which is out of range.
+ */
+static inline volatile uint32_t* ra_adc_b_adcmpmdr(uint8_t which)
+{
+  if (which == 0U) {
+    return (volatile uint32_t*)(k_ra_adc_b_base_addr + k_ra_adc_b_off_adcmpmdr0);
+  }
+  if (which == 1U) {
+    return (volatile uint32_t*)(k_ra_adc_b_base_addr + k_ra_adc_b_off_adcmpmdr1);
+  }
+  return nullptr;
+}
+
+/**
+ * @brief Pointer to a per-table ADCMPTBR[n] register (low/high pair).
+ *
+ * @param[in] table Table index (0..7).
+ * @return Volatile pointer or ``nullptr`` if @p table is out of range.
+ */
+static inline volatile uint32_t* ra_adc_b_adcmptbr(uint8_t table)
+{
+  if (table >= k_ra_adc_b_cmp_tables) {
+    return nullptr;
+  }
+  return (volatile uint32_t*)(k_ra_adc_b_base_addr + k_ra_adc_b_off_adcmptbr0 +
+                              ((uintptr_t)table * (uintptr_t)k_ra_adc_b_cmptbr_stride));
+}
+
+/**
+ * @brief Pointer to the per-virtual-channel ADDOPCRB[n] register.
+ *
+ * @details
+ * ADDOPCRB shares the 16-byte ADCHCR slot stride; channel @p ch maps to
+ * @c addopcrb0 + ch*16 (the per-channel data-operation control B register
+ * holds AVEMD averaging mode, ADC averaging-times, and CMPTBLEm).
+ *
+ * @param[in] ch Virtual channel index (0..23).
+ * @return Volatile pointer or ``nullptr`` if @p ch is out of range.
+ */
+static inline volatile uint32_t* ra_adc_b_addopcrb(uint8_t ch)
+{
+  if (ch >= k_ra_adc_b_max_channels) {
+    return nullptr;
+  }
+  return (volatile uint32_t*)(k_ra_adc_b_base_addr + k_ra_adc_b_off_addopcrb0 +
+                              ((uintptr_t)ch * (uintptr_t)k_ra_adc_b_adchcr_stride));
 }
 
 /**
