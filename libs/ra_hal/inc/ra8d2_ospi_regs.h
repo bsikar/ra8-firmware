@@ -197,18 +197,157 @@ static inline volatile r_xspi_regs_t* ra_xspi(uint8_t instance)
  * @brief Protocol mode values written to ``LIOCFGCS[n].PRTMD``.
  *
  * @details
- * The RA8D2 xSPI supports 1S-1S-1S SPI, 1S-4S-4S quad, 1S-8S-8S
- * octal, and 8D-8D-8D DDR octal modes. These enum values match the
- * FSP ``spi_flash_protocol_t`` encoding so downstream bring-up can
- * share constants.
+ * ``PRTMD`` is a 10-bit field per FSP ``R_XSPI0_LIOCFGCS_b.PRTMD``
+ * (HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986),
+ * so this enum is widened to ``uint16_t`` to fit the full 10-bit
+ * range required by 8D/4S protocol encodings (e.g.
+ * ``SPI_FLASH_PROTOCOL_8D_8D_8D = 0x3FF``). The convenience names
+ * preserved here are the simple-driver bring-up shortcuts; raw
+ * 10-bit FSP-style protocol words can also be cast in directly.
+ */
+typedef enum : uint16_t {
+  k_ra_xspi_lio_1s1s1s = 0x000U, /**< 1S-1S-1S extended SPI.              */
+  k_ra_xspi_lio_1s2s2s = 0x048U, /**< 1S-2S-2S dual IO.                   */
+  k_ra_xspi_lio_1s4s4s = 0x090U, /**< 1S-4S-4S quad IO.                   */
+  k_ra_xspi_lio_1s8s8s = 0x110U, /**< 1S-8S-8S octal IO.                  */
+  k_ra_xspi_lio_8d8d8d = 0x3FFU, /**< 8D-8D-8D octal DDR (OPI).           */
+} ra_xspi_lio_mode_t;
+
+/**
+ * @enum ra_xspi_liocfgcs_pos_t
+ * @brief Bit positions in ``LIOCFGCS[n]`` (link I/O config per slave).
+ *
+ * @details
+ * Mirrors FSP ``R_XSPI0_LIOCFGCS_b`` field positions so the driver
+ * encodes protocol + latency bits at the correct offsets when
+ * programming a link-IO mode.
  */
 typedef enum : uint8_t {
-  k_ra_xspi_lio_1s1s1s = 0U, /**< Single-bit command/address/data (SPI). */
-  k_ra_xspi_lio_1s2s2s = 1U, /**< Dual IO.                                */
-  k_ra_xspi_lio_1s4s4s = 2U, /**< Quad IO.                                */
-  k_ra_xspi_lio_1s8s8s = 3U, /**< Octal IO.                               */
-  k_ra_xspi_lio_8d8d8d = 4U, /**< Octal DDR (OPI).                        */
-} ra_xspi_lio_mode_t;
+  k_ra_xspi_liocfgcs_pos_prtmd  = 0U,  /**< PRTMD[9..0] protocol mode.    */
+  k_ra_xspi_liocfgcs_pos_latemd = 10U, /**< LATEMD[10] latency mode.      */
+} ra_xspi_liocfgcs_pos_t;
+
+/**
+ * @enum ra_xspi_cdbuf_slot_word_t
+ * @brief Per-slot word indices inside one ``CDBUF`` slot (4 u32 each).
+ *
+ * @details
+ * Each manual-command slot in ``CDBUF`` is 16 bytes laid out as four
+ * 32-bit words: CDT (type / opcode), CDA (address), CDD0 (data0..3),
+ * CDD1 (data4..7). FSP names these ``CDBUF[n].CDT/CDA/CDD0/CDD1``.
+ * The flat ``CDBUF[16]`` array in ``r_xspi_regs_t`` indexes these as
+ * ``slot * 4 + word``.
+ */
+typedef enum : uint8_t {
+  k_ra_xspi_cdbuf_word_cdt       = 0U, /**< +0x00 CDT  -- cmd/size/type word.   */
+  k_ra_xspi_cdbuf_word_cda       = 1U, /**< +0x04 CDA  -- address word.         */
+  k_ra_xspi_cdbuf_word_cdd0      = 2U, /**< +0x08 CDD0 -- data bytes 0..3.      */
+  k_ra_xspi_cdbuf_word_cdd1      = 3U, /**< +0x0C CDD1 -- data bytes 4..7.      */
+  k_ra_xspi_cdbuf_words_per_slot = 4U, /**< Each CDBUF slot is 4 u32 wide.*/
+} ra_xspi_cdbuf_slot_word_t;
+
+/**
+ * @enum ra_xspi_cdt_pos_t
+ * @brief Bit positions inside the ``CDBUF[n].CDT`` (Command Type) word.
+ *
+ * @details
+ * Mirrors FSP ``R_XSPI0_CDBUF_CDT_*`` positions per HUM Ch 44 p 2986.
+ * The Command Manual engine reads CMDSIZE/ADDSIZE/DATASIZE/LATE/TRTYPE
+ * out of CDT to drive the SPI bus phases; the actual JEDEC opcode
+ * goes in the high half (``CMD`` at bits [31..16]).
+ */
+typedef enum : uint8_t {
+  k_ra_xspi_cdt_pos_cmdsize  = 0U,  /**< CMDSIZE[1..0]  command bytes.    */
+  k_ra_xspi_cdt_pos_addsize  = 2U,  /**< ADDSIZE[4..2]  address bytes.    */
+  k_ra_xspi_cdt_pos_datasize = 5U,  /**< DATASIZE[8..5] data bytes.       */
+  k_ra_xspi_cdt_pos_late     = 9U,  /**< LATE[13..9]    latency cycles.   */
+  k_ra_xspi_cdt_pos_trtype   = 15U, /**< TRTYPE[15]     0=read 1=write.   */
+  k_ra_xspi_cdt_pos_cmd      = 16U, /**< CMD[31..16]    JEDEC opcode.     */
+} ra_xspi_cdt_pos_t;
+
+/**
+ * @enum ra_xspi_cdt_addsize_t
+ * @brief Encoded address-byte counts for ``CDT.ADDSIZE``.
+ */
+typedef enum : uint8_t {
+  k_ra_xspi_cdt_addsize_0 = 0U, /**< No address phase (e.g. WREN, RDID).  */
+  k_ra_xspi_cdt_addsize_3 = 3U, /**< 3-byte address (24-bit JEDEC).       */
+  k_ra_xspi_cdt_addsize_4 = 4U, /**< 4-byte address (32-bit JEDEC).       */
+} ra_xspi_cdt_addsize_t;
+
+/**
+ * @enum ra_xspi_cdt_field_mask_t
+ * @brief Width-limited masks for the sub-fields packed into ``CDT``.
+ *
+ * @details
+ * Each mask covers exactly the bit-count of its target field per the
+ * FSP CMSIS bit-field layout (HUM Ch 44 p 2986): CMDSIZE is 2 bits,
+ * ADDSIZE is 3 bits, DATASIZE is 4 bits, TRTYPE is 1 bit. The masks
+ * exist so the CDT-encoder can clamp caller-provided values without
+ * relying on raw hexadecimal magic numbers.
+ */
+typedef enum : uint32_t {
+  k_ra_xspi_cdt_mask_cmdsize  = 0x3UL, /**< CMDSIZE field is 2 bits.       */
+  k_ra_xspi_cdt_mask_addsize  = 0x7UL, /**< ADDSIZE field is 3 bits.       */
+  k_ra_xspi_cdt_mask_datasize = 0xFUL, /**< DATASIZE field is 4 bits.      */
+  k_ra_xspi_cdt_mask_trtype   = 0x1UL, /**< TRTYPE field is 1 bit.         */
+} ra_xspi_cdt_field_mask_t;
+
+/**
+ * @enum ra_xspi_cdt_cmdsize_t
+ * @brief Encoded command-byte counts for ``CDT.CMDSIZE``.
+ */
+typedef enum : uint8_t {
+  k_ra_xspi_cdt_cmdsize_0 = 0U, /**< No command byte (rare).              */
+  k_ra_xspi_cdt_cmdsize_1 = 1U, /**< 1-byte command (standard SPI).       */
+  k_ra_xspi_cdt_cmdsize_2 = 2U, /**< 2-byte command (DDR / OPI).          */
+} ra_xspi_cdt_cmdsize_t;
+
+/**
+ * @enum ra_xspi_cdt_trtype_t
+ * @brief ``CDT.TRTYPE`` direction selector.
+ */
+typedef enum : uint8_t {
+  k_ra_xspi_cdt_trtype_read  = 0U, /**< Read transaction (host samples). */
+  k_ra_xspi_cdt_trtype_write = 1U, /**< Write transaction (host drives). */
+} ra_xspi_cdt_trtype_t;
+
+/**
+ * @enum ra_xspi_bmctl0_t
+ * @brief Pre-shifted masks for ``BMCTL0`` (system-bus access enable).
+ *
+ * @details
+ * ``BMCTL0`` enables AHB read/write traffic from each system-bus
+ * channel to each slave. Two bits per (channel, slave) pair: 01 =
+ * read-only, 10 = write-only, 11 = read/write. FSP names the
+ * conventional patterns ``READ_ONLY=0x55`` / ``READ_WRITE=0xFF``.
+ */
+typedef enum : uint32_t {
+  k_ra_xspi_bmctl0_disabled   = 0x00UL, /**< All AHB access disabled.     */
+  k_ra_xspi_bmctl0_read_only  = 0x55UL, /**< 01 per pair: read-only.      */
+  k_ra_xspi_bmctl0_write_only = 0xAAUL, /**< 10 per pair: write-only.     */
+  k_ra_xspi_bmctl0_read_write = 0xFFUL, /**< 11 per pair: read/write.     */
+} ra_xspi_bmctl0_t;
+
+/**
+ * @enum ra_xspi_bmctl1_t
+ * @brief Pre-shifted control masks for ``BMCTL1`` (write-only).
+ */
+typedef enum : uint32_t {
+  k_ra_xspi_bmctl1_pbufclr_mask = 0x03UL << 10U, /**< Clear prefetch ch0+ch1.*/
+  k_ra_xspi_bmctl1_mwrpush_mask = 0x03UL << 8U,  /**< Push combine ch0+ch1.  */
+} ra_xspi_bmctl1_t;
+
+/**
+ * @enum ra_xspi_cmctlch_t
+ * @brief Pre-shifted bit masks for ``CMCTLCH[n]`` (XiP control).
+ */
+typedef enum : uint32_t {
+  k_ra_xspi_cmctlch_xipen_pos     = 16U,        /**< XIPEN bit position.    */
+  k_ra_xspi_cmctlch_xipen_mask    = 1UL << 16U, /**< XIPEN[16] enable.      */
+  k_ra_xspi_cmctlch_xipencode_pos = 0U,         /**< XIPENCODE[7..0] enter. */
+  k_ra_xspi_cmctlch_xipexcode_pos = 8U,         /**< XIPEXCODE[15..8] exit. */
+} ra_xspi_cmctlch_t;
 
 /**
  * @enum ra_xspi_cdctl0_bit_t

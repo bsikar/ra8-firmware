@@ -127,13 +127,27 @@ typedef enum : uint32_t {
 /**
  * @enum ra_xspi_cdbuf_idx_t
  * @brief Word indices into CDBUF slot 0 used by this driver.
+ *
+ * @details
+ * FSP names these ``CDBUF[0].CDT``, ``CDBUF[0].CDA``,
+ * ``CDBUF[0].CDD0``, ``CDBUF[0].CDD1`` (HUM Ch 44 p 2986). The
+ * flat ``r_xspi_regs_t::CDBUF[16]`` array indexes them as
+ * ``slot * 4 + word``. This driver only uses slot 0.
  */
 typedef enum : uint8_t {
-  k_ra_xspi_cdbuf_idx_opcode = 0U, /**< CDBUF[0] holds the opcode byte. */
-  k_ra_xspi_cdbuf_idx_addr   = 1U, /**< CDBUF[1] holds the flash address. */
-  k_ra_xspi_cdbuf_idx_data0  = 2U, /**< CDBUF[2] holds data bytes 0..3. */
-  k_ra_xspi_cdbuf_idx_data1  = 3U, /**< CDBUF[3] holds data bytes 4..7. */
+  k_ra_xspi_cdbuf_idx_cdt   = 0U, /**< CDBUF[0] CDT  -- type/opcode word.   */
+  k_ra_xspi_cdbuf_idx_addr  = 1U, /**< CDBUF[1] CDA  -- flash address.      */
+  k_ra_xspi_cdbuf_idx_data0 = 2U, /**< CDBUF[2] CDD0 -- data bytes 0..3.    */
+  k_ra_xspi_cdbuf_idx_data1 = 3U, /**< CDBUF[3] CDD1 -- data bytes 4..7.    */
 } ra_xspi_cdbuf_idx_t;
+
+/**
+ * @enum ra_xspi_cdt_limits_t
+ * @brief Per-transaction byte-size limits encodable in ``CDT``.
+ */
+typedef enum : uint8_t {
+  k_ra_xspi_cdt_max_data_bytes = 8U, /**< CDD0 + CDD1 = 8 bytes per slot. */
+} ra_xspi_cdt_limits_t;
 
 #ifdef RA_SIMULATOR_MODE
 /* One fake-flash window per instance. Tests can poke this directly
@@ -236,6 +250,29 @@ ra_err_t ra_xspi_direct_command(uint8_t instance, const uint8_t* cmd_buf, uint8_
 }
 
 /**
+ * @brief Encode a manual-command CDT word (opcode + size/type fields).
+ *
+ * @details
+ * Mirrors FSP ``r_ospi_b_direct_transfer`` (line ~1311 of
+ * ``r_ospi_b.c``): builds the ``CDBUF[0].CDT`` word from
+ * CMDSIZE/ADDSIZE/DATASIZE/TRTYPE plus the JEDEC opcode at bits
+ * [31..16]. Latency is fixed at zero for the simple JEDEC opcodes
+ * this driver issues. HUM Ch 44 p 2986.
+ */
+static uint32_t internal_make_cdt(uint8_t opcode,
+                                  uint8_t cmd_bytes,
+                                  uint8_t addr_bytes,
+                                  uint8_t data_bytes,
+                                  uint8_t is_write)
+{
+  return (((uint32_t)cmd_bytes & k_ra_xspi_cdt_mask_cmdsize) << k_ra_xspi_cdt_pos_cmdsize) |
+         (((uint32_t)addr_bytes & k_ra_xspi_cdt_mask_addsize) << k_ra_xspi_cdt_pos_addsize) |
+         (((uint32_t)data_bytes & k_ra_xspi_cdt_mask_datasize) << k_ra_xspi_cdt_pos_datasize) |
+         (((uint32_t)is_write & k_ra_xspi_cdt_mask_trtype) << k_ra_xspi_cdt_pos_trtype) |
+         (((uint32_t)opcode) << k_ra_xspi_cdt_pos_cmd);
+}
+
+/**
  * @brief Bounded CMDCMP poll (with simulator-mode fast exit).
  */
 static ra_err_t internal_wait_command_done(volatile r_xspi_regs_t* reg)
@@ -253,7 +290,9 @@ static ra_err_t internal_wait_command_done(volatile r_xspi_regs_t* reg)
     const uint32_t s = reg->INTS;
     if ((s & (uint32_t)k_ra_xspi_ints_mask_cmdcmp) != 0U) {
       /* HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986 */
-      reg->INTC = (uint32_t)k_ra_xspi_ints_mask_cmdcmp;
+      /* FSP r_ospi_b_direct_transfer clears every pending status
+       * bit at the end of a manual command via ``INTC = INTS``. */
+      reg->INTC = reg->INTS;
       return k_ra_ok;
     }
   }
@@ -263,30 +302,64 @@ static ra_err_t internal_wait_command_done(volatile r_xspi_regs_t* reg)
 
 /**
  * @brief Kick a prepared manual-command transfer by raising TRREQ.
+ *
+ * @details
+ * FSP ``r_ospi_b_direct_transfer`` waits for any prior in-flight
+ * TRREQ to self-clear before pushing a new request, then sets
+ * TRREQ=1 and waits for it to self-clear again. We mirror the
+ * FSP "self-clear" semantics by polling ``INTS.CMDCMP``.
  */
 static ra_err_t internal_kick_command(volatile r_xspi_regs_t* reg)
 {
   /* HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986 */
-  reg->CDCTL0 = k_ra_xspi_cdctl0_mask_trreq;
+  reg->CDCTL0 |= k_ra_xspi_cdctl0_mask_trreq;
   return internal_wait_command_done(reg);
 }
 
 /**
- * @brief Drop a single 1-byte opcode into CDBUF slot 0 and kick off a xfer.
+ * @brief Build CDBUF[0] for a 1-byte opcode with no address / no data.
  */
 static ra_err_t internal_issue_simple_opcode(volatile r_xspi_regs_t* reg, uint8_t opcode)
 {
   /* HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986 */
-  /* Populate CDBUF slot 0 with just the opcode, no address and no
-   * data length. The manual-command engine knows how many bytes to
-   * ship from the CDT sub-field encoding we mirror into CDBUF[0]. */
-  reg->CDBUF[k_ra_xspi_cdbuf_idx_opcode] = (uint32_t)opcode;
-  reg->CDBUF[k_ra_xspi_cdbuf_idx_addr]   = 0U;
-  reg->CDBUF[k_ra_xspi_cdbuf_idx_data0]  = 0U;
-  reg->CDBUF[k_ra_xspi_cdbuf_idx_data1]  = 0U;
-  reg->CDCTL1                            = 0U;
-  reg->CDCTL2                            = 0U;
+  /* Populate CDBUF slot 0 per FSP ``r_ospi_b_direct_transfer``:
+   * CDT carries opcode + size encoding, CDA/CDD0/CDD1 are zeroed
+   * because there is no address phase and no payload. CDCTL1/CDCTL2
+   * are periodic-mode fields (PEREXP / PERMSK in FSP) -- leave
+   * them at zero for one-shot manual commands. */
+  reg->CDBUF[k_ra_xspi_cdbuf_idx_cdt]   = internal_make_cdt(opcode,
+                                                            k_ra_xspi_cdt_cmdsize_1,
+                                                            k_ra_xspi_cdt_addsize_0,
+                                                            0U,
+                                                            k_ra_xspi_cdt_trtype_read);
+  reg->CDBUF[k_ra_xspi_cdbuf_idx_addr]  = 0U;
+  reg->CDBUF[k_ra_xspi_cdbuf_idx_data0] = 0U;
+  reg->CDBUF[k_ra_xspi_cdbuf_idx_data1] = 0U;
   return internal_kick_command(reg);
+}
+
+/**
+ * @brief Build CDBUF[0] for a single CDD0/CDD1 chunk of an opcode + addr.
+ *
+ * @details
+ * Used by the read path (TRTYPE=read) and by the program path
+ * (TRTYPE=write) to programme the per-chunk header. Address phase
+ * is fixed at 3 bytes for the JEDEC opcodes in use; ``data_bytes``
+ * is 0..8 (one slot's worth). FSP equivalent: the body of
+ * ``r_ospi_b_direct_transfer`` that builds ``cdtbuf0``.
+ */
+static void internal_build_chunk_header(volatile r_xspi_regs_t* reg,
+                                        uint8_t                 opcode,
+                                        uint32_t                addr,
+                                        uint8_t                 data_bytes,
+                                        uint8_t                 is_write)
+{
+  reg->CDBUF[k_ra_xspi_cdbuf_idx_cdt]  = internal_make_cdt(opcode,
+                                                           k_ra_xspi_cdt_cmdsize_1,
+                                                           k_ra_xspi_cdt_addsize_3,
+                                                           data_bytes,
+                                                           is_write);
+  reg->CDBUF[k_ra_xspi_cdbuf_idx_addr] = addr;
 }
 
 /**
@@ -315,13 +388,20 @@ ra_err_t ra_xspi_flash_read(uint8_t instance, uint32_t flash_addr, uint8_t* buf,
   RA_CHECK_NULL_PTR(reg, s_tag, "instance out of range");
 
   /* HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986 */
-  /* Programme a JEDEC 0x03 read with 3-byte address. CDBUF[0]
-   * carries the opcode, CDBUF[1] carries the address, CDCTL1
-   * carries the data-length count, and CDCTL0.TRREQ kicks the
-   * controller. Read data lands in CDBUF[2..3] when CMDCMP fires. */
-  reg->CDBUF[k_ra_xspi_cdbuf_idx_opcode] = (uint32_t)k_ra_spi_flash_op_read;
-  reg->CDBUF[k_ra_xspi_cdbuf_idx_addr]   = flash_addr;
-  reg->CDCTL1                            = len;
+  /* Programme a JEDEC 0x03 read with 3-byte address. The data byte
+   * count travels in CDT.DATASIZE (FSP encoding) so the controller
+   * knows how many bytes to clock onto CDD0/CDD1. ``len`` is
+   * clamped to 8 here because each manual-command slot only carries
+   * 8 bytes; the higher-level caller handles chunking for arbitrary
+   * lengths in future work (currently bounded by k_ra_xspi_max_xfer
+   * via the simulator path). */
+  const uint8_t chunk =
+    (len > (uint32_t)k_ra_xspi_cdt_max_data_bytes) ? k_ra_xspi_cdt_max_data_bytes : (uint8_t)len;
+  internal_build_chunk_header(reg,
+                              k_ra_spi_flash_op_read,
+                              flash_addr,
+                              chunk,
+                              k_ra_xspi_cdt_trtype_read);
 
   const ra_err_t wait = internal_kick_command(reg);
   if (wait != k_ra_ok) {
@@ -359,10 +439,17 @@ internal_flash_start_program(volatile r_xspi_regs_t* reg, uint32_t flash_addr, u
     return wren;
   }
   /* HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986 */
-  /* Programme a JEDEC 0x02 page-program with 3-byte address. */
-  reg->CDBUF[k_ra_xspi_cdbuf_idx_opcode] = (uint32_t)k_ra_spi_flash_op_page_program;
-  reg->CDBUF[k_ra_xspi_cdbuf_idx_addr]   = flash_addr;
-  reg->CDCTL1                            = len;
+  /* Programme a JEDEC 0x02 page-program with 3-byte address. The
+   * outgoing byte count is encoded in CDT.DATASIZE (FSP semantics);
+   * leaving the periodic-mode CDCTL1/CDCTL2 PEREXP/PERMSK fields
+   * untouched. */
+  const uint8_t chunk =
+    (len > (uint32_t)k_ra_xspi_cdt_max_data_bytes) ? k_ra_xspi_cdt_max_data_bytes : (uint8_t)len;
+  internal_build_chunk_header(reg,
+                              k_ra_spi_flash_op_page_program,
+                              flash_addr,
+                              chunk,
+                              k_ra_xspi_cdt_trtype_write);
   return internal_kick_command(reg);
 }
 
@@ -447,10 +534,13 @@ ra_err_t ra_xspi_flash_erase_sector(uint8_t instance, uint32_t flash_addr)
   }
 
   /* HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986 */
-  /* Programme a JEDEC 0x20 sector-erase with 3-byte address. */
-  reg->CDBUF[k_ra_xspi_cdbuf_idx_opcode] = (uint32_t)k_ra_spi_flash_op_erase_sector;
-  reg->CDBUF[k_ra_xspi_cdbuf_idx_addr]   = flash_addr;
-  reg->CDCTL1                            = 0U;
+  /* Programme a JEDEC 0x20 sector-erase with 3-byte address.
+   * Erase has no payload, so DATASIZE=0 and TRTYPE=write. */
+  internal_build_chunk_header(reg,
+                              k_ra_spi_flash_op_erase_sector,
+                              flash_addr,
+                              0U,
+                              k_ra_xspi_cdt_trtype_write);
 
   const ra_err_t wait = internal_kick_command(reg);
   if (wait != k_ra_ok) {
@@ -610,4 +700,41 @@ ra_err_t ra_xspi_exit_stop(uint8_t instance)
     return k_ra_err_invalid_arg;
   }
   return ra_mstp_enable(s_xspi_mstp_table[instance]);
+}
+
+ra_err_t ra_xspi_xip_enter(uint8_t instance, uint8_t enter_code, uint8_t exit_code)
+{
+  volatile r_xspi_regs_t* reg = ra_xspi(instance);
+  RA_CHECK_NULL_PTR(reg, s_tag, "instance out of range");
+
+  /* HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986 */
+  /* FSP r_ospi_b_xip(true) flow:
+   *   1. Stage XIP enter/exit codes in CMCTLCH for both channels.
+   *   2. Map the slave window read-only via BMCTL0 = 0x55.
+   *   3. Set CMCTLCH.XIPEN to arm execute-in-place.
+   * The first read on the memory-mapped window then transmits the
+   * enter code. We omit the bus-bridge prefetch dance because the
+   * driver does not enable prefetch by default. */
+  const uint32_t code_word = ((uint32_t)enter_code << k_ra_xspi_cmctlch_xipencode_pos) |
+                             ((uint32_t)exit_code << k_ra_xspi_cmctlch_xipexcode_pos);
+
+  reg->BMCTL0     = k_ra_xspi_bmctl0_read_only;
+  reg->CMCTLCH[0] = code_word | k_ra_xspi_cmctlch_xipen_mask;
+  reg->CMCTLCH[1] = code_word | k_ra_xspi_cmctlch_xipen_mask;
+  return k_ra_ok;
+}
+
+ra_err_t ra_xspi_xip_exit(uint8_t instance)
+{
+  volatile r_xspi_regs_t* reg = ra_xspi(instance);
+  RA_CHECK_NULL_PTR(reg, s_tag, "instance out of range");
+
+  /* HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986 */
+  /* FSP r_ospi_b_xip(false) flow: clear XIPEN, drop the codes,
+   * and put BMCTL0 back to read/write so direct-command transfers
+   * are no longer blocked by the memory-mapped path. */
+  reg->CMCTLCH[0] = 0U;
+  reg->CMCTLCH[1] = 0U;
+  reg->BMCTL0     = k_ra_xspi_bmctl0_read_write;
+  return k_ra_ok;
 }

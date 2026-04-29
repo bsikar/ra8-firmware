@@ -1,6 +1,33 @@
 /**
  * @file ra_dmac.c
- * @brief DMAC driver implementation
+ * @brief DMAC0 channel driver implementation
+ *
+ * @par Tag
+ * [Ring 3 / HAL] {World: S}
+ *
+ * @details
+ * FSP-aligned DMAC0 channel programming. The mapping from FSP's
+ * `r_dmac_config_transfer_info` (`r_dmac.c` lines 551-682) is:
+ *
+ *  - DMTMD.SZ   <- cfg->width        (HUM 17.2.10 p 738)
+ *  - DMTMD.MD   <- cfg->mode         (HUM 17.2.10 p 738)
+ *  - DMTMD.DTS  <- cfg->repeat_area  (HUM 17.2.10 p 738)
+ *  - DMTMD.DCTG <- 0 (software request -- ELC trigger lives in DELSR)
+ *  - DMAMD.SM   <- cfg->src_inc ? 10b : 00b (HUM 17.2.12 p 741)
+ *  - DMAMD.DM   <- cfg->dst_inc ? 10b : 00b
+ *  - DMINT.DTIE <- cfg->enable_dtie  (HUM 17.2.11 p 739)
+ *  - DMAST.DMST <- 1 (HUM 17.2.20 p 749 -- shared activation gate)
+ *  - DMCNT.DTE  <- 1 (HUM 17.2.14 p 743)
+ *
+ * Intentional gaps versus FSP:
+ *  - No `DELSR` programming -- ELC routing is owned by the higher-
+ *    level `ra_dma` substrate / individual driver wrappers.
+ *  - No `DMSRR / DMDRR / DMSBS / DMDBS` programming -- repeat-block
+ *    mode is selectable via `cfg->mode` but the repeat-area buffers
+ *    must be zero-extended by the caller (config struct is the
+ *    minimum the project uses today).
+ *  - No `DMOFR` (offset-addition mode) -- always written 0.
+ *  - No 64-bit transfer width.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -18,49 +45,224 @@
 
 static const char* s_tag = "DMAC";
 
-typedef enum : uint16_t {
-  k_ra_dmtmd_sz_shift   = 8U,  /**< DMTMD.SZ[9:8] transfer size. */
-  k_ra_dmamd_sm_shift   = 14U, /**< DMAMD.SM[15:14] src inc.     */
-  k_ra_dmamd_dm_shift   = 6U,  /**< DMAMD.DM[7:6] dst inc.       */
-  k_ra_dmamd_inc_addr   = 2U,  /**< Incrementing address.        */
-  k_ra_dmamd_fixed_addr = 0U,  /**< Fixed address.               */
-} ra_dmac_mode_t;
+/* =============================================================================
+ * Local helpers
+ * =============================================================================
+ */
 
-typedef enum : uint8_t {
-  k_ra_dmcnt_enable = 1U, /**< DMCNT bit 0: channel enable. */
-} ra_dmcnt_bit_t;
+/**
+ * @brief Translate `cfg->width` -> `DMTMD.SZ` 2-bit code.
+ */
+static inline uint16_t internal_sz_code(ra_dmac_width_t width)
+{
+  switch (width) {
+    case k_ra_dmac_width_byte:
+      return k_ra_dmtmd_sz_byte;
+    case k_ra_dmac_width_half:
+      return k_ra_dmtmd_sz_half;
+    case k_ra_dmac_width_word:
+      return k_ra_dmtmd_sz_word;
+    default:
+      return k_ra_dmtmd_sz_byte;
+  }
+}
+
+/**
+ * @brief Translate `cfg->mode` -> `DMTMD.MD` 2-bit code.
+ */
+static inline uint16_t internal_md_code(ra_dmac_mode_t mode)
+{
+  switch (mode) {
+    case k_ra_dmac_mode_normal:
+      return k_ra_dmtmd_md_normal;
+    case k_ra_dmac_mode_repeat:
+      return k_ra_dmtmd_md_repeat;
+    case k_ra_dmac_mode_block:
+      return k_ra_dmtmd_md_block;
+    case k_ra_dmac_mode_repeat_block:
+      return k_ra_dmtmd_md_repeat_block;
+    default:
+      return k_ra_dmtmd_md_normal;
+  }
+}
+
+/**
+ * @brief Translate `cfg->repeat_area` -> `DMTMD.DTS` 2-bit code.
+ *
+ * @details
+ * In normal and repeat-block mode the field is forced to "none"
+ * (HUM 17.2.10 p 738 -- "In normal or repeat-block transfer mode,
+ * setting these bits is invalid").
+ */
+static inline uint16_t internal_dts_code(ra_dmac_mode_t mode, ra_dmac_repeat_area_t area)
+{
+  if (mode == k_ra_dmac_mode_normal || mode == k_ra_dmac_mode_repeat_block) {
+    return k_ra_dmtmd_dts_none;
+  }
+  switch (area) {
+    case k_ra_dmac_repeat_area_dest:
+      return k_ra_dmtmd_dts_dest_repeat;
+    case k_ra_dmac_repeat_area_src:
+      return k_ra_dmtmd_dts_src_repeat;
+    case k_ra_dmac_repeat_area_none:
+    default:
+      return k_ra_dmtmd_dts_none;
+  }
+}
+
+/**
+ * @brief Compose the `DMAMD` register value from the increment flags.
+ *
+ * @details
+ * Incrementing -> `SM/DM = 10b`; clear -> `00b` (fixed). HUM 17.2.12
+ * p 741. Offset-addition (`01b`) and decrement (`11b`) are not
+ * exposed by `ra_dmac_config_t` today.
+ */
+static inline uint16_t internal_dmamd_value(bool src_inc, bool dst_inc)
+{
+  uint16_t v = 0U;
+  if (src_inc) {
+    v |= (uint16_t)(k_ra_dmamd_addr_increment << k_ra_dmamd_sm_pos);
+  }
+  if (dst_inc) {
+    v |= (uint16_t)(k_ra_dmamd_addr_increment << k_ra_dmamd_dm_pos);
+  }
+  return v;
+}
+
+/**
+ * @brief Compose the `DMTMD` register value.
+ *
+ * @details
+ * DCTG is left at 00b (software request); ELC routing is the
+ * substrate's job via DELSR. SZ / MD / DTS are positioned per HUM.
+ */
+static inline uint16_t internal_dmtmd_value(const ra_dmac_config_t* cfg)
+{
+  uint16_t v = 0U;
+  v |= (uint16_t)(internal_sz_code(cfg->width) << k_ra_dmtmd_sz_pos);
+  v |= (uint16_t)(internal_md_code(cfg->mode) << k_ra_dmtmd_md_pos);
+  v |= (uint16_t)(internal_dts_code(cfg->mode, cfg->repeat_area) << k_ra_dmtmd_dts_pos);
+  return v;
+}
+
+/**
+ * @brief Compose the `DMINT` register value.
+ *
+ * @details
+ * Mirrors FSP's "if callback configured, enable DTIE; if irq_each
+ * and not repeat-block, also enable RPTIE | ESIE" rule
+ * (`r_dmac.c` lines 607-622). HUM 17.2.11 p 739.
+ */
+static inline uint8_t internal_dmint_value(const ra_dmac_config_t* cfg)
+{
+  uint8_t v = 0U;
+  if (cfg->enable_dtie) {
+    v |= k_ra_dmint_dtie_mask;
+  }
+  if (cfg->irq_each && cfg->mode != k_ra_dmac_mode_repeat_block) {
+    v |= (uint8_t)(k_ra_dmint_rptie_mask | k_ra_dmint_esie_mask);
+  }
+  return v;
+}
+
+/**
+ * @brief Compose the `DMCRA` register value.
+ *
+ * @details
+ * Low half is the running count; the FSP repeat / block / repeat-
+ * block path also copies the same value into the high reload field
+ * (`r_dmac.c` line 582). HUM 17.2.8.
+ */
+static inline uint32_t internal_dmcra_value(const ra_dmac_config_t* cfg)
+{
+  uint32_t v = (uint32_t)cfg->count;
+  if (cfg->mode != k_ra_dmac_mode_normal) {
+    v |= ((uint32_t)cfg->count << k_ra_dmcra_high_pos);
+    v &= (k_ra_dmcra_high_mask | k_ra_dmcra_low_mask);
+  }
+  return v;
+}
+
+/**
+ * @brief Validate a `cfg` descriptor before touching hardware.
+ */
+static inline ra_err_t internal_validate_cfg(const ra_dmac_config_t* cfg)
+{
+  if (cfg->width > k_ra_dmac_width_word) {
+    return k_ra_err_invalid_arg;
+  }
+  if (cfg->mode > k_ra_dmac_mode_repeat_block) {
+    return k_ra_err_invalid_arg;
+  }
+  return k_ra_ok;
+}
+
+/**
+ * @brief Programme every per-channel register from `cfg`.
+ *
+ * @details
+ * Steps 2-6 of the start sequence; the global activation gate and
+ * the channel-enable bit are flipped by the caller after this
+ * helper returns so the function-size budget stays under the
+ * NASA-Rule-4 / clang-tidy threshold.
+ */
+static inline void internal_program_channel(volatile r_dmac_channel_regs_t* reg,
+                                            const ra_dmac_config_t*         cfg)
+{
+  /* HUM 17.2.14 DMCNT, p 743 -- clear DTE before reprogramming. */
+  reg->DMCNT = 0U;
+  /* HUM 17.2.10 DMTMD, p 738. */
+  reg->DMTMD = internal_dmtmd_value(cfg);
+  /* HUM 17.2.12 DMAMD, p 741. */
+  reg->DMAMD = internal_dmamd_value(cfg->src_inc, cfg->dst_inc);
+  /* HUM 17.2.4 DMSAR p 734, 17.2.6 DMDAR p 735. */
+  reg->DMSAR = cfg->src;
+  reg->DMDAR = cfg->dst;
+  /* HUM 17.2.8 DMCRA. */
+  reg->DMCRA = internal_dmcra_value(cfg);
+  /* HUM 17.2.9 DMCRB -- only meaningful in non-normal modes. */
+  reg->DMCRB = (cfg->mode == k_ra_dmac_mode_normal) ? 0U : (uint32_t)cfg->block_count;
+  /* HUM 17.2.13 DMOFR p 743 -- offset-addition not exposed. */
+  reg->DMOFR = 0U;
+  /* HUM 17.2.11 DMINT p 739. */
+  reg->DMINT = internal_dmint_value(cfg);
+}
+
+/* =============================================================================
+ * Public API
+ * =============================================================================
+ */
 
 ra_err_t ra_dmac_start(uint8_t channel, const ra_dmac_config_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
+  const ra_err_t verr = internal_validate_cfg(cfg);
+  if (verr != k_ra_ok) {
+    return verr;
+  }
+
   volatile r_dmac_channel_regs_t* reg = ra_dmac(channel);
   if (reg == nullptr) {
     return k_ra_err_out_of_range;
   }
 
-  /* DMAC0 + DTC0 share MSTPA22; the ref count tracks how many
-   * DMAC channels (or the DTC) currently need the bit cleared.
-   * HUM Ch 11.2.6 "MSTPCRA : Module Stop Control Register A", p 443 */
+  /* DMAC0 + DTC0 share MSTPA22; the ref count tracks how many DMAC
+   * channels (or the DTC) currently need the bit cleared.
+   * HUM Ch 11.2.6 "MSTPCRA : Module Stop Control Register A", p 443. */
   const ra_err_t mst_err = ra_mstp_enable(k_ra_mstp_dmac0_dtc0);
   RA_RETURN_ON_ERROR(mst_err, s_tag, "dmac_start: mstp enable"); /* GCOVR_EXCL_BR_LINE */
 
-  reg->DMCNT = 0U;
-  reg->DMSAR = cfg->src;
-  reg->DMDAR = cfg->dst;
-  reg->DMCRA = (uint32_t)cfg->count;
+  internal_program_channel(reg, cfg);
 
-  reg->DMTMD = (uint16_t)((uint16_t)cfg->width << k_ra_dmtmd_sz_shift);
+  /* HUM 17.2.20 DMAST p 749 -- the shared activation gate must be
+   * set before any per-channel DTE write takes effect. FSP does the
+   * same in `R_DMAC_Open` (`r_dmac.c` line 178). Idempotent: leaving
+   * it set across multiple channels is the documented behaviour. */
+  ra_dma_shared()->DMAST = k_ra_dmast_dmst_mask;
 
-  uint16_t dmamd = 0U;
-  if (cfg->src_inc) {
-    dmamd |= (uint16_t)(k_ra_dmamd_inc_addr << k_ra_dmamd_sm_shift);
-  }
-  if (cfg->dst_inc) {
-    dmamd |= (uint16_t)(k_ra_dmamd_inc_addr << k_ra_dmamd_dm_shift);
-  }
-  reg->DMAMD = dmamd;
-
-  reg->DMCNT = k_ra_dmcnt_enable;
+  /* HUM 17.2.14 DMCNT p 743 -- arm the channel. */
+  reg->DMCNT = k_ra_dmcnt_dte_mask;
 
   ra_log_info_val(s_tag, "dmac_start ch", (uint32_t)channel);
   return k_ra_ok;
@@ -72,7 +274,8 @@ ra_err_t ra_dmac_stop(uint8_t channel)
   if (reg == nullptr) {
     return k_ra_err_out_of_range;
   }
+  /* HUM 17.2.14 DMCNT p 743. */
   reg->DMCNT = 0U;
-  /* Drop the matching reference acquired in ra_dmac_start. */
+  /* Drop the matching MSTP reference acquired in ra_dmac_start. */
   return ra_mstp_disable(k_ra_mstp_dmac0_dtc0);
 }
