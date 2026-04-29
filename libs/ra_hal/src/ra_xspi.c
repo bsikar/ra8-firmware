@@ -738,3 +738,124 @@ ra_err_t ra_xspi_xip_exit(uint8_t instance)
   reg->BMCTL0     = k_ra_xspi_bmctl0_read_write;
   return k_ra_ok;
 }
+
+/* =============================================================================
+ * Sweep 6 extensions: XIP mode select, DTR, DQS calibration, suspend/resume
+ * =============================================================================
+ */
+
+/**
+ * @enum ra_xspi_jedec_extra_t
+ * @brief Extra JEDEC opcodes used by suspend/resume control.
+ */
+typedef enum : uint8_t {
+  k_ra_spi_flash_op_suspend = 0x75U, /**< 0x75 erase/program suspend. */
+  k_ra_spi_flash_op_resume  = 0x7AU, /**< 0x7A erase/program resume.  */
+} ra_xspi_jedec_extra_t;
+
+/**
+ * @enum ra_xspi_addr_bytes_t
+ * @brief Allowed address-byte widths for ``ra_xspi_set_xip_mode``.
+ */
+typedef enum : uint8_t {
+  k_ra_xspi_addr_bytes_3 = 3U, /**< 24-bit JEDEC address. */
+  k_ra_xspi_addr_bytes_4 = 4U, /**< 32-bit JEDEC address. */
+} ra_xspi_addr_bytes_t;
+
+/**
+ * @enum ra_xspi_calib_spin_t
+ * @brief Bounded spin budget for the auto-calibration handshake.
+ */
+typedef enum : uint32_t {
+  k_ra_xspi_calib_spin = 1024U, /**< CCCTL0.CAEN poll budget. */
+} ra_xspi_calib_spin_t;
+
+ra_err_t ra_xspi_set_xip_mode(uint8_t instance, bool enable, uint8_t read_cmd, uint8_t addr_bytes)
+{
+  volatile r_xspi_regs_t* reg = ra_xspi(instance);
+  RA_CHECK_NULL_PTR(reg, s_tag, "instance out of range");
+  if ((addr_bytes != k_ra_xspi_addr_bytes_3) && (addr_bytes != k_ra_xspi_addr_bytes_4)) {
+    return k_ra_err_invalid_arg;
+  }
+
+  /* HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986 */
+  /* CMCFGCS slot 0 = (mode, read-cmd-word, write-cmd-word, addr-word).
+   * For XIP we only need read + addr; write opcode stays zero. */
+  const uint8_t base                                   = 0U; /* slot 0 base index */
+  reg->CMCFGCS[base + k_ra_xspi_cmcfgcs_word_read_cmd] = (uint32_t)read_cmd
+                                                         << k_ra_xspi_cmcfgcs_pos_cmd;
+  reg->CMCFGCS[base + k_ra_xspi_cmcfgcs_word_addr]     = (uint32_t)addr_bytes
+                                                         << k_ra_xspi_cmcfgcs_pos_addr_size;
+
+  if (enable) {
+    /* Mirror FSP r_ospi_b_xip(true): map read-only and arm XIPEN. */
+    reg->BMCTL0     = k_ra_xspi_bmctl0_read_only;
+    reg->CMCTLCH[0] = k_ra_xspi_cmctlch_xipen_mask;
+    reg->CMCTLCH[1] = k_ra_xspi_cmctlch_xipen_mask;
+  } else {
+    /* FSP r_ospi_b_xip(false): clear XIPEN and re-open the bus. */
+    reg->CMCTLCH[0] = 0U;
+    reg->CMCTLCH[1] = 0U;
+    reg->BMCTL0     = k_ra_xspi_bmctl0_read_write;
+  }
+  return k_ra_ok;
+}
+
+ra_err_t ra_xspi_set_dtr_mode(uint8_t instance, bool enable)
+{
+  volatile r_xspi_regs_t* reg = ra_xspi(instance);
+  RA_CHECK_NULL_PTR(reg, s_tag, "instance out of range");
+
+  /* HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986 */
+  uint32_t v = reg->LIOCFGCS[0];
+  if (enable) {
+    v |= k_ra_xspi_liocfgcs_mask_ddren;
+  } else {
+    v &= ~k_ra_xspi_liocfgcs_mask_ddren;
+  }
+  reg->LIOCFGCS[0] = v;
+  return k_ra_ok;
+}
+
+ra_err_t ra_xspi_calibrate_dqs(uint8_t instance)
+{
+  volatile r_xspi_regs_t* reg = ra_xspi(instance);
+  RA_CHECK_NULL_PTR(reg, s_tag, "instance out of range");
+
+#ifdef RA_SIMULATOR_MODE
+  /* HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986 */
+  /* No real DQS line on the host. Walk through the FSP-style
+   * register sequence so test cases can assert on the final state,
+   * but auto-clear CAEN immediately to model a successful run. */
+  reg->CCCTLCS[0] = k_ra_xspi_ccctl0_mask_caen;
+  reg->CCCTLCS[0] = 0U;
+  return k_ra_ok;
+#else
+  /* HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986 */
+  /* Mirror FSP R_OSPI_B_AutoCalibrate: arm CAEN and wait for the
+   * controller to clear it once the phase-scan completes. The full
+   * preamble-pattern + CARDCMD descriptor is owned by board-level
+   * code in higher-level callers. */
+  reg->CCCTLCS[0] |= k_ra_xspi_ccctl0_mask_caen;
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_xspi_calib_spin; i++) {
+    if ((reg->CCCTLCS[0] & k_ra_xspi_ccctl0_mask_caen) == 0U) {
+      return k_ra_ok;
+    }
+  }
+  return k_ra_err_hw_timeout;
+#endif
+}
+
+ra_err_t ra_xspi_suspend(uint8_t instance)
+{
+  volatile r_xspi_regs_t* reg = ra_xspi(instance);
+  RA_CHECK_NULL_PTR(reg, s_tag, "instance out of range");
+  return internal_issue_simple_opcode(reg, k_ra_spi_flash_op_suspend);
+}
+
+ra_err_t ra_xspi_resume(uint8_t instance)
+{
+  volatile r_xspi_regs_t* reg = ra_xspi(instance);
+  RA_CHECK_NULL_PTR(reg, s_tag, "instance out of range");
+  return internal_issue_simple_opcode(reg, k_ra_spi_flash_op_resume);
+}

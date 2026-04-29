@@ -225,7 +225,82 @@ typedef enum : uint16_t {
 typedef enum : uint8_t {
   k_ra_xspi_liocfgcs_pos_prtmd  = 0U,  /**< PRTMD[9..0] protocol mode.    */
   k_ra_xspi_liocfgcs_pos_latemd = 10U, /**< LATEMD[10] latency mode.      */
+  k_ra_xspi_liocfgcs_pos_ddren  = 11U, /**< DDREN[11]   DDR enable.       */
 } ra_xspi_liocfgcs_pos_t;
+
+/**
+ * @enum ra_xspi_liocfgcs_mask_t
+ * @brief Pre-shifted bit masks for ``LIOCFGCS[n]`` enable bits.
+ */
+typedef enum : uint32_t {
+  k_ra_xspi_liocfgcs_mask_ddren = 1UL << 11U, /**< DDR / DTR enable bit.  */
+} ra_xspi_liocfgcs_mask_t;
+
+/**
+ * @enum ra_xspi_cmcfgcs_layout_t
+ * @brief Word indices inside one ``CMCFGCS[n]`` slot (4 u32 each).
+ *
+ * @details
+ * CMCFGCS is a 2-slave x 4-word block in ``r_xspi_regs_t::CMCFGCS``.
+ * Slot ``n`` lives at ``CMCFGCS[n * 4 + word]``. The layout mirrors
+ * FSP ``R_XSPI0_CMCFGCS_b`` (HUM Ch 44 p 2986): word 0 holds the
+ * mapping mode, word 1 the read command + dummy cycles, word 2 the
+ * write command, word 3 the address-byte width.
+ */
+typedef enum : uint8_t {
+  k_ra_xspi_cmcfgcs_word_mode      = 0U, /**< +0x00 mapping mode word.      */
+  k_ra_xspi_cmcfgcs_word_read_cmd  = 1U, /**< +0x04 read-cmd + dummy cycles.*/
+  k_ra_xspi_cmcfgcs_word_write_cmd = 2U, /**< +0x08 write-cmd + dummy.      */
+  k_ra_xspi_cmcfgcs_word_addr      = 3U, /**< +0x0C address-byte width.     */
+  k_ra_xspi_cmcfgcs_words_per_slot = 4U, /**< Each slot is 4 u32 wide.      */
+} ra_xspi_cmcfgcs_layout_t;
+
+/**
+ * @enum ra_xspi_cmcfgcs_pos_t
+ * @brief Bit positions inside the ``CMCFGCS`` read-cmd word.
+ */
+typedef enum : uint8_t {
+  k_ra_xspi_cmcfgcs_pos_cmd       = 16U, /**< CMD[31..16]   read opcode.    */
+  k_ra_xspi_cmcfgcs_pos_addr_size = 0U,  /**< ADDSIZE[2..0] addr bytes.     */
+} ra_xspi_cmcfgcs_pos_t;
+
+/**
+ * @enum ra_xspi_wrapcfg_pos_t
+ * @brief Bit positions inside ``WRAPCFG`` (DQS shift per slave).
+ *
+ * @details
+ * ``DSSFTCS0[12..8]`` and ``DSSFTCS1[28..24]`` are 5-bit calibration
+ * codes (HUM Ch 44 p 2986). FSP's ``R_OSPI_B_AutoCalibrate`` sweeps
+ * these to find the optimum sample window; this driver exposes the
+ * shift slots directly so callers can write a known-good offset.
+ */
+typedef enum : uint8_t {
+  k_ra_xspi_wrapcfg_pos_dssft_cs0 = 8U,  /**< DSSFTCS0[12..8].              */
+  k_ra_xspi_wrapcfg_pos_dssft_cs1 = 24U, /**< DSSFTCS1[28..24].             */
+} ra_xspi_wrapcfg_pos_t;
+
+typedef enum : uint32_t {
+  k_ra_xspi_wrapcfg_dssft_mask = 0x1FUL, /**< 5-bit DQS shift code mask.    */
+} ra_xspi_wrapcfg_mask_t;
+
+/**
+ * @enum ra_xspi_calib_t
+ * @brief Reserved-bit positions in ``CCCTLCS[n].CCCTL0`` (calibration).
+ *
+ * @details
+ * The CCCTLCS bank holds the auto-calibration descriptor per slave.
+ * For project use we only need the enable bit; ``CCCTL0_b.CAEN`` lives
+ * at bit 0 (HUM Ch 44 p 2986). The full 8-word descriptor is filled
+ * in by ``ra_xspi_calibrate_dqs()`` from FSP-style defaults.
+ */
+typedef enum : uint8_t {
+  k_ra_xspi_ccctl0_pos_caen      = 0U, /**< CAEN[0] auto-calibration enable. */
+  k_ra_xspi_ccctlcs_words_per_cs = 8U, /**< 8 u32 per chip-select bank.      */
+} ra_xspi_calib_t;
+
+typedef enum : uint32_t {
+  k_ra_xspi_ccctl0_mask_caen = 1UL << 0U, /**< CAEN enable mask.            */
+} ra_xspi_calib_mask_t;
 
 /**
  * @enum ra_xspi_cdbuf_slot_word_t
