@@ -702,6 +702,195 @@ static void test_callback_set_idempotent(void)
 }
 
 /* ---------------------------------------------------------------------------
+ * FSP r_mram parity surface
+ * ------------------------------------------------------------------------ */
+
+static void test_open_close_aliases(void)
+{
+  TEST_BEGIN("flash open/close aliases");
+  ra_sim_mmap_reset();
+  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_flash_open(nullptr));
+  const ra_flash_cfg_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_flash_open(&cfg));
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_flash_close());
+  TEST_END("flash open/close aliases");
+}
+
+static void test_set_window_paths(void)
+{
+  TEST_BEGIN("flash set_window paths");
+  ra_sim_mmap_reset();
+  /* 0/0 disables. */
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_flash_set_window(0U, 0U));
+  /* low >= high is rejected. */
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_flash_set_window(0x100U, 0x100U));
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_flash_set_window(0x200U, 0x100U));
+  /* Valid window accepted. */
+  TEST_ASSERT_EQ((int)k_ra_ok,
+                 (int)ra_flash_set_window((uintptr_t)k_ra_flash_code_start,
+                                          (uintptr_t)k_ra_flash_code_start + 0x100U));
+  /* Reset for following tests. */
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_flash_set_window(0U, 0U));
+  TEST_END("flash set_window paths");
+}
+
+static void test_erase_validation(void)
+{
+  TEST_BEGIN("flash erase validation");
+  ra_sim_mmap_reset();
+  (void)ra_flash_deinit();
+  /* Without init, should fail with not_initialized. */
+  TEST_ASSERT_EQ((int)k_ra_err_not_initialized,
+                 (int)ra_flash_erase((uintptr_t)k_test_addr_in_mram, 1U));
+  const ra_flash_cfg_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_flash_init(&cfg));
+  /* Zero blocks rejected. */
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
+                 (int)ra_flash_erase((uintptr_t)k_test_addr_in_mram, 0U));
+  /* Misaligned address rejected. */
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
+                 (int)ra_flash_erase((uintptr_t)k_test_addr_misaligned, 1U));
+  /* Below window rejected. */
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
+                 (int)ra_flash_erase((uintptr_t)k_test_addr_below_mram, 1U));
+  /* Range exceeding window rejected. */
+  TEST_ASSERT_EQ(
+    (int)k_ra_err_invalid_arg,
+    (int)ra_flash_erase((uintptr_t)k_ra_flash_code_start + (uintptr_t)k_ra_flash_code_size, 1U));
+  /* Window-blocked rejected. */
+  TEST_ASSERT_EQ((int)k_ra_ok,
+                 (int)ra_flash_set_window((uintptr_t)k_ra_flash_code_start,
+                                          (uintptr_t)k_ra_flash_code_start + 0x40U));
+  TEST_ASSERT_EQ((int)k_ra_err_out_of_range,
+                 (int)ra_flash_erase((uintptr_t)k_ra_flash_code_start + 0x40U, 1U));
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_flash_set_window(0U, 0U));
+  TEST_END("flash erase validation");
+}
+
+static void test_write_validation_and_chunking(void)
+{
+  TEST_BEGIN("flash write validation");
+  ra_sim_mmap_reset();
+  const ra_flash_cfg_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_flash_init(&cfg));
+  const uint8_t buf[64] = {};
+  /* NULL src */
+  TEST_ASSERT_EQ((int)k_ra_err_null_ptr,
+                 (int)ra_flash_write((uintptr_t)k_test_addr_in_mram, nullptr, 32U));
+  /* len = 0 */
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
+                 (int)ra_flash_write((uintptr_t)k_test_addr_in_mram, buf, 0U));
+  /* len not multiple of 32 */
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
+                 (int)ra_flash_write((uintptr_t)k_test_addr_in_mram, buf, 33U));
+  /* misaligned address */
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
+                 (int)ra_flash_write((uintptr_t)k_test_addr_misaligned, buf, 32U));
+  /* out of window */
+  TEST_ASSERT_EQ(
+    (int)k_ra_err_invalid_arg,
+    (int)ra_flash_write((uintptr_t)k_ra_flash_code_start + (uintptr_t)k_ra_flash_code_size,
+                        buf,
+                        32U));
+  /* Soft window block */
+  TEST_ASSERT_EQ((int)k_ra_ok,
+                 (int)ra_flash_set_window((uintptr_t)k_ra_flash_code_start,
+                                          (uintptr_t)k_ra_flash_code_start + 0x20U));
+  TEST_ASSERT_EQ((int)k_ra_err_out_of_range,
+                 (int)ra_flash_write((uintptr_t)k_ra_flash_code_start + 0x40U, buf, 32U));
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_flash_set_window(0U, 0U));
+  TEST_END("flash write validation");
+}
+
+static void test_blank_check_paths(void)
+{
+  TEST_BEGIN("flash blank_check paths");
+  ra_sim_mmap_reset();
+  const ra_flash_cfg_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_flash_init(&cfg));
+
+  bool blank = false;
+  /* NULL out rejected. */
+  TEST_ASSERT_EQ((int)k_ra_err_null_ptr,
+                 (int)ra_flash_blank_check((uintptr_t)k_ra_flash_code_start, 1U, nullptr));
+  /* len = 0 rejected. */
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
+                 (int)ra_flash_blank_check((uintptr_t)k_ra_flash_code_start, 0U, &blank));
+  /* Outside both windows rejected. */
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
+                 (int)ra_flash_blank_check((uintptr_t)0x10000000UL, 4U, &blank));
+
+  /* Blank region: stage 16 bytes of 0xFF inside the OFS sim window. */
+  volatile uint8_t* ofs_ptr = (volatile uint8_t*)(uintptr_t)k_test_addr_extra_in;
+  for (uint32_t i = 0U; i < 16U; ++i) {
+    ofs_ptr[i] = 0xFFU;
+  }
+  blank = false;
+  TEST_ASSERT_EQ((int)k_ra_ok,
+                 (int)ra_flash_blank_check((uintptr_t)k_test_addr_extra_in, 16U, &blank));
+  TEST_ASSERT_EQ((int)1, (int)blank);
+
+  /* Dirty region: poke a non-erase byte. */
+  ofs_ptr[8] = 0x00U;
+  blank      = true;
+  TEST_ASSERT_EQ((int)k_ra_ok,
+                 (int)ra_flash_blank_check((uintptr_t)k_test_addr_extra_in, 16U, &blank));
+  TEST_ASSERT_EQ((int)0, (int)blank);
+  TEST_END("flash blank_check paths");
+}
+
+static void test_status_decoder(void)
+{
+  TEST_BEGIN("flash status decoder");
+  ra_sim_mmap_reset();
+  const ra_flash_cfg_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_flash_init(&cfg));
+
+  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_flash_status(nullptr));
+
+  /* Stage every flag and verify decode. */
+  *ra_mram_reg8((uint16_t)k_ra_mram_off_mrcps) =
+    (uint8_t)(k_ra_mrcps_mask_prgbsyc | k_ra_mrcps_mask_prgerrc | k_ra_mrcps_mask_eccerrc);
+  *ra_mram_reg8((uint16_t)k_ra_mram_off_mastat) = (uint8_t)k_ra_mastat_mask_cmdlk;
+  *ra_mram_reg32((uint16_t)k_ra_mram_off_mstatr) =
+    (uint32_t)(k_ra_mstatr_mask_oterr | k_ra_mstatr_mask_ilgcomerr);
+  /* MRCBPROT0 low bit cleared => sector protected. */
+  *ra_mram_reg16((uint16_t)k_ra_mram_off_mrcbprot0) = (uint16_t)k_ra_mrcbprot0_key_lock;
+  *ra_mram_reg16((uint16_t)k_ra_mram_off_mrcbprot1) = (uint16_t)k_ra_mrcbprot1_key_unlock;
+
+  ra_flash_status_t s = {};
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_flash_status(&s));
+  TEST_ASSERT_EQ((int)1, (int)s.programming_busy);
+  TEST_ASSERT_EQ((int)1, (int)s.erase_busy);
+  TEST_ASSERT_EQ((int)1, (int)s.illegal_command);
+  TEST_ASSERT_EQ((int)1, (int)s.voltage_error);
+  TEST_ASSERT_EQ((int)1, (int)s.sector_protected);
+  TEST_ASSERT_EQ((int)1, (int)s.program_error);
+  TEST_ASSERT_EQ((int)1, (int)s.ecc_error);
+  TEST_END("flash status decoder");
+}
+
+static void test_status_clean(void)
+{
+  TEST_BEGIN("flash status clean");
+  ra_sim_mmap_reset();
+  const ra_flash_cfg_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_flash_init(&cfg));
+
+  /* MRCBPROT bits set so sector_protected is false. */
+  *ra_mram_reg16((uint16_t)k_ra_mram_off_mrcbprot0) = (uint16_t)k_ra_mrcbprot0_key_unlock;
+  *ra_mram_reg16((uint16_t)k_ra_mram_off_mrcbprot1) = (uint16_t)k_ra_mrcbprot1_key_unlock;
+
+  ra_flash_status_t s = {};
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_flash_status(&s));
+  TEST_ASSERT_EQ((int)0, (int)s.programming_busy);
+  TEST_ASSERT_EQ((int)0, (int)s.illegal_command);
+  TEST_ASSERT_EQ((int)0, (int)s.voltage_error);
+  TEST_ASSERT_EQ((int)0, (int)s.sector_protected);
+  TEST_END("flash status clean");
+}
+
+/* ---------------------------------------------------------------------------
  * Main
  * ------------------------------------------------------------------------ */
 
@@ -750,6 +939,14 @@ int32_t main(void)
   test_set_irq_enable();
   test_callback_set_and_dispatch();
   test_callback_set_idempotent();
+
+  test_open_close_aliases();
+  test_set_window_paths();
+  test_erase_validation();
+  test_write_validation_and_chunking();
+  test_blank_check_paths();
+  test_status_decoder();
+  test_status_clean();
 
   (void)fprintf(stderr, "[OK  ] test_ra_flash.c\n");
   return 0;

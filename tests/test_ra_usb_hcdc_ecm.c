@@ -1,0 +1,339 @@
+/**
+ * @file test_ra_usb_hcdc_ecm.c
+ * @brief Unit tests for the native USB host-side CDC-ECM (Ethernet
+ *        over USB) class layer
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
+ */
+
+#include <stdint.h>
+#include <string.h>
+
+#include "ra8d2_usb_regs.h"
+#include "ra_err.h"
+#include "ra_mstp.h"
+#include "ra_sim_mmap.h"
+#include "ra_usb.h"
+#include "ra_usb_hcdc_ecm.h"
+#include "unity_minimal.h"
+
+typedef enum : uint8_t {
+  k_test_hcdc_ecm_max_steps = 24U, /**< Loop bound for stepping through enum. */
+} test_hcdc_ecm_lim_t;
+
+static uint32_t                 s_attach_count;
+static ra_usb_hcdc_ecm_device_t s_attach_last_device;
+static void*                    s_attach_last_ctx;
+static const uintptr_t          k_test_hcdc_ecm_ctx_token = 0xFEEDFACEU;
+
+static void prep(void)
+{
+  ra_sim_mmap_reset();
+  (void)ra_mstp_init();
+  (void)ra_usb_hcdc_ecm_close();
+  s_attach_count       = 0U;
+  s_attach_last_device = (ra_usb_hcdc_ecm_device_t){};
+  s_attach_last_ctx    = nullptr;
+}
+
+static void stub_on_attach(void* ctx, const ra_usb_hcdc_ecm_device_t* device)
+{
+  ++s_attach_count;
+  s_attach_last_ctx    = ctx;
+  s_attach_last_device = *device;
+}
+
+static void walk_to_attach(void)
+{
+  for (uint8_t i = 0U; i < k_test_hcdc_ecm_max_steps; ++i) {
+    if (s_attach_count != 0U) {
+      break;
+    }
+    /* Clear DCPCTR.SUREQ in the simulated regs so subsequent SETUP
+     * requests don't trip the busy guard. */
+    ra_usb_fs()->DCPCTR = 0U;
+    TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hcdc_ecm_step());
+  }
+}
+
+/* ---- Lifecycle ---- */
+
+static void test_init_close_fs_returns_ok(void)
+{
+  TEST_BEGIN("ra_usb_hcdc_ecm_init FS / close round-trips ok");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hcdc_ecm_init(k_ra_usb_speed_fs));
+
+  /* Host-mode SYSCFG should have DCFM and DRPD set, not DPRPU. */
+  volatile r_usb_regs_t* reg   = ra_usb_fs();
+  const uint16_t         dcfm  = (uint16_t)(1U << k_ra_syscfg_bit_dcfm);
+  const uint16_t         drpd  = (uint16_t)(1U << k_ra_syscfg_bit_drpd);
+  const uint16_t         dprpu = (uint16_t)(1U << k_ra_syscfg_bit_dprpu);
+  TEST_ASSERT((reg->SYSCFG & dcfm) != 0U);
+  TEST_ASSERT((reg->SYSCFG & drpd) != 0U);
+  TEST_ASSERT_EQ(0, (int)(reg->SYSCFG & dprpu));
+
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hcdc_ecm_close());
+  TEST_END("ra_usb_hcdc_ecm_init FS / close round-trips ok");
+}
+
+static void test_init_hs_returns_ok(void)
+{
+  TEST_BEGIN("ra_usb_hcdc_ecm_init HS sets HSE");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hcdc_ecm_init(k_ra_usb_speed_hs));
+  volatile r_usb_regs_t* reg = ra_usb_hs();
+  const uint16_t         hse = (uint16_t)(1U << k_ra_syscfg_bit_hse);
+  TEST_ASSERT((reg->SYSCFG & hse) != 0U);
+  TEST_END("ra_usb_hcdc_ecm_init HS sets HSE");
+}
+
+static void test_init_bad_speed(void)
+{
+  TEST_BEGIN("ra_usb_hcdc_ecm_init rejects bogus speed");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_usb_hcdc_ecm_init((ra_usb_speed_t)9U));
+  TEST_END("ra_usb_hcdc_ecm_init rejects bogus speed");
+}
+
+static void test_close_without_init(void)
+{
+  TEST_BEGIN("ra_usb_hcdc_ecm_close before init returns invalid_state");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_usb_hcdc_ecm_close());
+  TEST_END("ra_usb_hcdc_ecm_close before init returns invalid_state");
+}
+
+/* ---- Attach callback fires once after a simulated descriptor walk ---- */
+
+static void test_attach_callback_fires_once(void)
+{
+  TEST_BEGIN("attach callback fires once after the enum step machine completes");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hcdc_ecm_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_ok,
+    (int32_t)ra_usb_hcdc_ecm_attach_callback(stub_on_attach, (void*)k_test_hcdc_ecm_ctx_token));
+  walk_to_attach();
+
+  TEST_ASSERT_EQ((int32_t)1U, (int32_t)s_attach_count);
+  TEST_ASSERT_EQ((int32_t)k_test_hcdc_ecm_ctx_token, (int32_t)(uintptr_t)s_attach_last_ctx);
+  TEST_ASSERT_EQ((int32_t)1U, (int32_t)s_attach_last_device.bulk_in_ep);
+  TEST_ASSERT_EQ((int32_t)2U, (int32_t)s_attach_last_device.bulk_out_ep);
+  TEST_ASSERT_EQ((int32_t)3U, (int32_t)s_attach_last_device.intr_in_ep);
+  TEST_ASSERT_EQ((int32_t)1U, (int32_t)s_attach_last_device.device_address);
+  TEST_END("attach callback fires once after the enum step machine completes");
+}
+
+/* ---- send / recv null-arg rejection ---- */
+
+static void test_send_null_arg_rejection(void)
+{
+  TEST_BEGIN("ra_usb_hcdc_ecm_send_frame rejects null+len and oversized frames");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hcdc_ecm_init(k_ra_usb_speed_fs));
+
+  /* Pre-attach: any send returns invalid_state. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_usb_hcdc_ecm_send_frame(nullptr, 0U));
+
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_usb_hcdc_ecm_attach_callback(stub_on_attach, nullptr));
+  walk_to_attach();
+  TEST_ASSERT_EQ((int32_t)1U, (int32_t)s_attach_count);
+
+  /* Post-attach: null+non-zero len rejected. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_usb_hcdc_ecm_send_frame(nullptr, 8U));
+  /* Oversized frame (> 1514) rejected. */
+  uint8_t dummy = 0U;
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_usb_hcdc_ecm_send_frame(&dummy, 1600U));
+  TEST_END("ra_usb_hcdc_ecm_send_frame rejects null+len and oversized frames");
+}
+
+static void test_recv_null_arg_rejection(void)
+{
+  TEST_BEGIN("ra_usb_hcdc_ecm_recv_frame rejects null buf / null got_len / zero max_len");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hcdc_ecm_init(k_ra_usb_speed_fs));
+
+  uint8_t  buf[8] = {};
+  uint16_t got    = 0U;
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_usb_hcdc_ecm_recv_frame(nullptr, sizeof(buf), &got));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_usb_hcdc_ecm_recv_frame(buf, sizeof(buf), nullptr));
+
+  /* Pre-attach with valid pointers should still fail with invalid_state. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state,
+                 (int32_t)ra_usb_hcdc_ecm_recv_frame(buf, sizeof(buf), &got));
+
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_usb_hcdc_ecm_attach_callback(stub_on_attach, nullptr));
+  walk_to_attach();
+
+  /* Zero max_len now hits invalid_arg. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_usb_hcdc_ecm_recv_frame(buf, 0U, &got));
+  TEST_END("ra_usb_hcdc_ecm_recv_frame rejects null buf / null got_len / zero max_len");
+}
+
+/* ---- set_packet_filter null + class-request envelope ---- */
+
+static void test_set_packet_filter_class_envelope(void)
+{
+  TEST_BEGIN("ra_usb_hcdc_ecm_set_packet_filter formats class-iface-out SETUP");
+  prep();
+
+  /* Pre-init: invalid_state. */
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_invalid_state,
+    (int32_t)ra_usb_hcdc_ecm_set_packet_filter((uint16_t)k_ra_hcdc_ecm_filter_broadcast));
+
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hcdc_ecm_init(k_ra_usb_speed_fs));
+
+  /* Pre-attach: invalid_state. */
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_invalid_state,
+    (int32_t)ra_usb_hcdc_ecm_set_packet_filter((uint16_t)k_ra_hcdc_ecm_filter_broadcast));
+
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_usb_hcdc_ecm_attach_callback(stub_on_attach, nullptr));
+  walk_to_attach();
+
+  /* Out-of-range bits rejected. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_usb_hcdc_ecm_set_packet_filter(0x8000U));
+
+  /* Valid call -- envelope check: bmRequestType=0x21, bRequest=0x43. */
+  ra_usb_fs()->DCPCTR = 0U;
+  const uint16_t mask =
+    (uint16_t)((uint16_t)k_ra_hcdc_ecm_filter_directed | (uint16_t)k_ra_hcdc_ecm_filter_broadcast);
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hcdc_ecm_set_packet_filter(mask));
+
+  /* USBREQ holds (bRequest << 8) | bmRequestType. 0x43 << 8 | 0x21 = 0x4321. */
+  TEST_ASSERT_EQ((int32_t)0x4321U, (int32_t)ra_usb_fs()->USBREQ);
+  TEST_ASSERT_EQ((int32_t)mask, (int32_t)ra_usb_fs()->USBVAL);
+  TEST_ASSERT_EQ((int32_t)0U, (int32_t)ra_usb_fs()->USBLENG);
+  TEST_END("ra_usb_hcdc_ecm_set_packet_filter formats class-iface-out SETUP");
+}
+
+/* ---- get_link_status null + class-request envelope ---- */
+
+static void test_get_link_status(void)
+{
+  TEST_BEGIN("ra_usb_hcdc_ecm_get_link_status validates and queues GET_ETHERNET_STATISTIC");
+  prep();
+  ra_usb_hcdc_ecm_link_t link = k_ra_hcdc_ecm_link_up;
+
+  /* Pre-init: NULL gets caught first. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_usb_hcdc_ecm_get_link_status(nullptr));
+
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hcdc_ecm_init(k_ra_usb_speed_fs));
+
+  /* Pre-attach: invalid_state. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_usb_hcdc_ecm_get_link_status(&link));
+
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_usb_hcdc_ecm_attach_callback(stub_on_attach, nullptr));
+  walk_to_attach();
+
+  /* Valid call. USBREQ = (0x44 << 8) | 0xA1 = 0x44A1. */
+  ra_usb_fs()->DCPCTR = 0U;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hcdc_ecm_get_link_status(&link));
+  TEST_ASSERT_EQ((int32_t)0x44A1U, (int32_t)ra_usb_fs()->USBREQ);
+  TEST_ASSERT_EQ((int32_t)1U, (int32_t)ra_usb_fs()->USBLENG);
+  /* Default cached link is "down" until a NetworkConnection notification lands. */
+  TEST_ASSERT_EQ((int32_t)k_ra_hcdc_ecm_link_down, (int32_t)link);
+  TEST_END("ra_usb_hcdc_ecm_get_link_status validates and queues GET_ETHERNET_STATISTIC");
+}
+
+/* ---- MAC parse from iMACAddress ASCII hex ---- */
+
+static void test_parse_mac_address(void)
+{
+  TEST_BEGIN("ra_usb_hcdc_ecm_parse_mac decodes 12 ASCII hex chars to 6 bytes");
+  uint8_t mac[6] = {};
+
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_usb_hcdc_ecm_parse_mac(nullptr, mac));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_usb_hcdc_ecm_parse_mac("001122334455", nullptr));
+
+  /* All-zero MAC. */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hcdc_ecm_parse_mac("000000000000", mac));
+  for (uint8_t i = 0U; i < 6U; ++i) {
+    TEST_ASSERT_EQ((int32_t)0, (int32_t)mac[i]);
+  }
+
+  /* Mixed-case digits. */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hcdc_ecm_parse_mac("0123456789aB", mac));
+  TEST_ASSERT_EQ((int32_t)0x01, (int32_t)mac[0]);
+  TEST_ASSERT_EQ((int32_t)0x23, (int32_t)mac[1]);
+  TEST_ASSERT_EQ((int32_t)0x45, (int32_t)mac[2]);
+  TEST_ASSERT_EQ((int32_t)0x67, (int32_t)mac[3]);
+  TEST_ASSERT_EQ((int32_t)0x89, (int32_t)mac[4]);
+  TEST_ASSERT_EQ((int32_t)0xAB, (int32_t)mac[5]);
+
+  /* Bogus character. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_usb_hcdc_ecm_parse_mac("00112233ZZ55", mac));
+
+  TEST_END("ra_usb_hcdc_ecm_parse_mac decodes 12 ASCII hex chars to 6 bytes");
+}
+
+/* ---- Pre-init guards ---- */
+
+static void test_pre_init_guards(void)
+{
+  TEST_BEGIN("attach_callback / step / send / recv / filter / link reject pre-init");
+  prep();
+
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state,
+                 (int32_t)ra_usb_hcdc_ecm_attach_callback(stub_on_attach, nullptr));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_usb_hcdc_ecm_step());
+
+  uint8_t  buf[4] = {};
+  uint16_t got    = 0U;
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state,
+                 (int32_t)ra_usb_hcdc_ecm_send_frame(buf, sizeof(buf)));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state,
+                 (int32_t)ra_usb_hcdc_ecm_recv_frame(buf, sizeof(buf), &got));
+
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_invalid_state,
+    (int32_t)ra_usb_hcdc_ecm_set_packet_filter((uint16_t)k_ra_hcdc_ecm_filter_broadcast));
+
+  ra_usb_hcdc_ecm_link_t link = k_ra_hcdc_ecm_link_up;
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_usb_hcdc_ecm_get_link_status(&link));
+  TEST_END("attach_callback / step / send / recv / filter / link reject pre-init");
+}
+
+/* ---- Filter mask covers documented bits ---- */
+
+static void test_filter_mask_bits(void)
+{
+  TEST_BEGIN("filter mask enum bits match USB CDC ECM 1.20 sec 6.2.4");
+  TEST_ASSERT_EQ((int32_t)0x01, (int32_t)k_ra_hcdc_ecm_filter_promiscuous);
+  TEST_ASSERT_EQ((int32_t)0x02, (int32_t)k_ra_hcdc_ecm_filter_all_multicast);
+  TEST_ASSERT_EQ((int32_t)0x04, (int32_t)k_ra_hcdc_ecm_filter_directed);
+  TEST_ASSERT_EQ((int32_t)0x08, (int32_t)k_ra_hcdc_ecm_filter_broadcast);
+  TEST_ASSERT_EQ((int32_t)0x10, (int32_t)k_ra_hcdc_ecm_filter_multicast);
+  TEST_ASSERT_EQ((int32_t)0x1F, (int32_t)k_ra_hcdc_ecm_filter_all);
+  TEST_END("filter mask enum bits match USB CDC ECM 1.20 sec 6.2.4");
+}
+
+int32_t main(void)
+{
+  test_init_close_fs_returns_ok();
+  test_init_hs_returns_ok();
+  test_init_bad_speed();
+  test_close_without_init();
+  test_attach_callback_fires_once();
+  test_send_null_arg_rejection();
+  test_recv_null_arg_rejection();
+  test_set_packet_filter_class_envelope();
+  test_get_link_status();
+  test_parse_mac_address();
+  test_pre_init_guards();
+  test_filter_mask_bits();
+  (void)fprintf(stderr, "[OK ] test_ra_usb_hcdc_ecm.c\n");
+  return 0;
+}
