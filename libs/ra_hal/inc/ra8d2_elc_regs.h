@@ -4,23 +4,35 @@
  *
  * @details
  * The ELC lets one peripheral's event directly trigger another
- * peripheral's input without CPU involvement. The RA8D2 has 500+
- * defined ELC events (see the full enumeration list below) which
- * are identical to those in FSP's `bsp_elc.h`.
+ * peripheral's input without CPU involvement. Register layout
+ * cross-verified against FSP `R_ELC_Type` in
+ * `R7KA8D2KF_core0.h` (size 0x11C, base 0x40201000).
  *
- * Register map (at `0x40201000`):
+ * Register map (at `0x40201000`, HUM Ch 19, p 817..836):
  *
- * | Offset | Name    | Width | Purpose                              |
- * |-------:|---------|------:|--------------------------------------|
- * | 0x00   | ELCR    | 8     | Event Link Control Register          |
- * | 0x02   | ELSEGR0 | 8     | Event Link Software Event Gen 0      |
- * | 0x04   | ELSEGR1 | 8     | Event Link Software Event Gen 1      |
- * | 0x10   | ELSRn   | 16    | Event Link Setting Register n (n = 0..22) |
+ * | Offset | Name      | Width | Purpose                                           |
+ * |-------:|-----------|------:|---------------------------------------------------|
+ * | 0x000  | ELCR      |    8  | Event Link Control Register (ELCON bit 7)         |
+ * | 0x004  | ELSEGR[0] |    8  | Software Event Gen 0 (3-byte stride padding)      |
+ * | 0x008  | ELSEGR[1] |    8  | Software Event Gen 1                              |
+ * | 0x00C  | ELSEGR[2] |    8  | Software Event Gen 2                              |
+ * | 0x010  | ELSEGR[3] |    8  | Software Event Gen 3                              |
+ * | 0x020  | ELSR[n]   |   16  | Event Link Setting Register n (n = 0..52)         |
+ * | 0x100  | ELCSARA   |   32  | Security attribution (ELCR + ELSEGR0..3 bits)     |
+ * | 0x104  | ELCSARB   |   32  | Security attribution for ELSR0..31                |
+ * | 0x108  | ELCSARC   |   32  | Security attribution for ELSR32..52               |
+ * | 0x110  | ELCPARA   |   32  | Privilege attribution (ELCR + ELSEGR0..3)         |
+ * | 0x114  | ELCPARB   |   32  | Privilege attribution for ELSR0..31               |
+ * | 0x118  | ELCPARC   |   32  | Privilege attribution for ELSR32..52               |
  *
- * @note This header exposes the base + offsets only. The full 500+
- *       event enum is in the RA8D2 HUM section 18 and the FSP
- *       `bsp_elc.h`. Copy in the entries we actually wire up rather
- *       than the whole list.
+ * The ELS field inside ELSR.HA is 10 bits (mask 0x3FF), so a
+ * `uint16_t` fits any valid event number.
+ *
+ * @note This header exposes the base + offsets only. The full
+ *       device-specific event enum lives in
+ *       `fsp/ra/fsp/src/bsp/mcu/ra8d2/bsp_elc.h`. Copy in the
+ *       entries the firmware actually wires up rather than the
+ *       whole list.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -38,35 +50,77 @@ typedef enum : uintptr_t {
   k_ra_elc_base_addr = 0x40201000UL,
 } ra_elc_addr_t;
 
+/**
+ * @enum ra_elc_off_t
+ * @brief Byte offsets within the ELC register block at
+ * ``k_ra_elc_base_addr``.
+ *
+ * @details Cross-verified against FSP `R_ELC_Type` in
+ * `R7KA8D2KF_core0.h` (HUM Ch 19, p 817..836).
+ */
 typedef enum : uint16_t {
-  k_ra_elc_off_elcr      = 0x000U, /**< ELCR: global enable (8b).          */
-  k_ra_elc_off_elsegr0   = 0x004U, /**< ELSEGR0 (8b, stride 4).            */
-  k_ra_elc_off_elsegr1   = 0x008U, /**< ELSEGR1 (8b, stride 4).            */
-  k_ra_elc_off_elsegr2   = 0x00CU, /**< ELSEGR2 (8b, stride 4).            */
-  k_ra_elc_off_elsegr3   = 0x010U, /**< ELSEGR3 (8b, stride 4).            */
-  k_ra_elc_off_elsr0     = 0x020U, /**< ELSR0..52 (16b, stride 4).         */
-  k_ra_elc_off_elcsara   = 0x100U, /**< ELCSARA: security attribution A.   */
-  k_ra_elc_elsr_stride   = 0x004U, /**< Stride between ELSR slots.         */
-  k_ra_elc_elsegr_stride = 0x004U, /**< Stride between ELSEGR slots.       */
+  k_ra_elc_off_elcr      = 0x000U, /**< ELCR: global enable bit ELCON @ bit 7 (8b). */
+  k_ra_elc_off_elsegr0   = 0x004U, /**< ELSEGR[0]: software event gen 0 (8b, stride 4). */
+  k_ra_elc_off_elsegr1   = 0x008U, /**< ELSEGR[1]: software event gen 1 (8b, stride 4). */
+  k_ra_elc_off_elsegr2   = 0x00CU, /**< ELSEGR[2]: software event gen 2 (8b, stride 4). */
+  k_ra_elc_off_elsegr3   = 0x010U, /**< ELSEGR[3]: software event gen 3 (8b, stride 4). */
+  k_ra_elc_off_elsr0     = 0x020U, /**< ELSR[0]: first link slot, ELSR0..ELSR52 (16b, stride 4). */
+  k_ra_elc_off_elcsara   = 0x100U, /**< ELCSARA: security attribution (ELCR + ELSEGR). */
+  k_ra_elc_off_elcsarb   = 0x104U, /**< ELCSARB: security attribution for ELSR0..31. */
+  k_ra_elc_off_elcsarc   = 0x108U, /**< ELCSARC: security attribution for ELSR32..52. */
+  k_ra_elc_elsr_stride   = 0x004U, /**< Stride between ELSR slots.       */
+  k_ra_elc_elsegr_stride = 0x004U, /**< Stride between ELSEGR slots.     */
 } ra_elc_off_t;
+
+/**
+ * @enum ra_elc_elsegr_step_t
+ * @brief 3-step write-protect unlock sequence required by ELSEGRn.
+ *
+ * @details
+ * Per HUM Ch 19.2.2 "ELSEGRn : Event Link Software Event
+ * Generation Register n", p 817 (and FSP `r_elc.c`
+ * `ELC_ELSEGRN_STEP1..3`), a software event is generated by writing
+ * three values in sequence to clear WI, set WE, then set SEG. Any
+ * other value pattern is silently dropped by the hardware.
+ */
+typedef enum : uint8_t {
+  k_ra_elc_elsegr_step_unlock  = 0x00U, /**< WI=0, WE=0, SEG=0 -- clear write-disable. */
+  k_ra_elc_elsegr_step_arm     = 0x40U, /**< WI=0, WE=1, SEG=0 -- arm SEG bit for write. */
+  k_ra_elc_elsegr_step_trigger = 0x41U, /**< WI=0, WE=1, SEG=1 -- fire software event. */
+} ra_elc_elsegr_step_t;
+
+/**
+ * @enum ra_elc_elcr_bit_t
+ * @brief Bit positions inside the ELCR register.
+ *
+ * @details HUM Ch 19.2.1 "ELCR : Event Link Control Register", p 817.
+ */
+typedef enum : uint8_t {
+  k_ra_elcr_bit_elcon = 7U, /**< ELCR.ELCON -- global enable. */
+} ra_elc_elcr_bit_t;
 
 /**
  * @enum ra_elc_event_t
  * @brief Partial list of ELC events (populate as drivers need them).
  *
  * @details
- * Values taken from the RA8D2 Hardware User's Manual section 18.
- * Only the entries the firmware actually wires up live here; see the
- * manual (or `fsp/ra/fsp/src/bsp/mcu/ra8d2/bsp_elc.h`) for the full
- * list.
+ * Values taken from the RA8D2 Hardware User's Manual Ch 19 (HUM
+ * Table 19.2 "Event signal table") and verified against FSP
+ * `bsp_elc.h` for `ra8d2`. Only the entries the firmware actually
+ * wires up live here; see the manual (or
+ * `fsp/ra/fsp/src/bsp/mcu/ra8d2/bsp_elc.h`) for the full list.
+ *
+ * @note The ELS field inside ELSR.HA is 10 bits wide
+ *       (`R_ELC_ELSR_HA_ELS_Msk = 0x3FF`), so legal event numbers
+ *       are 0..1023; `uint16_t` is the smallest type that fits.
  */
 typedef enum : uint16_t {
-  k_ra_elc_event_none          = 0x000U,
-  k_ra_elc_event_icu_irq0      = 0x001U,
-  k_ra_elc_event_icu_irq1      = 0x002U,
-  k_ra_elc_event_icu_irq15     = 0x010U,
-  k_ra_elc_event_can0_mram_eri = 0x100U,
-  k_ra_elc_event_can1_mram_eri = 0x101U,
+  k_ra_elc_event_none          = 0x000U, /**< Link disabled (HUM Ch 19.2.3 ELS=0). */
+  k_ra_elc_event_icu_irq0      = 0x001U, /**< External pin interrupt 0. */
+  k_ra_elc_event_icu_irq1      = 0x002U, /**< External pin interrupt 1. */
+  k_ra_elc_event_icu_irq15     = 0x010U, /**< External pin interrupt 15. */
+  k_ra_elc_event_can0_mram_eri = 0x100U, /**< CAN0 MRAM error. */
+  k_ra_elc_event_can1_mram_eri = 0x101U, /**< CAN1 MRAM error. */
 } ra_elc_event_t;
 
 #ifdef __cplusplus

@@ -6,18 +6,21 @@
  * [Ring 3 / HAL] {World: S}
  *
  * @details
- * rewrite. Owns every write to the ELC register block
- * (ELCR, ELSEGR0..3, ELSR0..52) at 0x40201000 (HUM Ch 19, p 817).
+ * Owns every write to the ELC register block (ELCR, ELSEGR0..3,
+ * ELSR0..52, ELCSAR{A,B,C}, ELCPAR{A,B,C}) at 0x40201000
+ * (HUM Ch 19, p 817..836). Layout cross-verified against FSP
+ * `R_ELC_Type` in `R7KA8D2KF_core0.h`.
  *
  * The ELC lets one peripheral's event directly trigger another
  * peripheral's input without CPU involvement. The driver exposes
- * four operation-named helpers:
+ * the following operation-named helpers:
  *
  * - ``ra_elc_init`` -- reset ELSR array, enable ELC.
  * - ``ra_elc_deinit`` -- disable ELC globally.
  * - ``ra_elc_link`` -- route event -> ELSR slot.
  * - ``ra_elc_unlink`` -- clear one ELSR slot.
- * - ``ra_elc_software_trigger`` -- ELSEGR write fires a software event.
+ * - ``ra_elc_software_trigger`` -- fire a software event using the
+ *   3-step ELSEGR unlock-and-set sequence (HUM Ch 19.2.2).
  * - ``ra_elc_is_enabled`` -- diagnostic accessor.
  *
  * Drivers call these helpers; they never touch the ELC registers
@@ -25,11 +28,11 @@
  *
  * ## ELSR index range
  *
- * HUM Ch 19.2.3 (p 817) / FSP R_ELC_Type assign 53 ELSR slots
+ * HUM Ch 19.2.3 (p 817) / FSP `R_ELC_Type` assign 53 ELSR slots
  * (ELSR0..ELSR52), each a 16-bit register at a 4-byte stride that
- * stores one ELC event number. The mapping of slot to destination
- * peripheral is fixed and lives in HUM Table 19.2; callers learn
- * it from the peripheral datasheets.
+ * stores one ELC event number (the ELS field is 10 bits wide). The
+ * mapping of slot to destination peripheral is fixed and lives in
+ * HUM Table 19.2; callers learn it from the peripheral datasheets.
  *
  * ## Threading
  *
@@ -63,13 +66,14 @@ typedef enum : uint8_t {
  * @brief Reset the ELC register block and enable the controller.
  *
  * @details
- * Clears every ELSR slot, clears ELSEGR0/1, then sets
- * ``ELCR.ELCON = 1`` so the hardware routes events. Replaces the
- * pre-Wave-2 ``ra_elc_enable(true)`` call in demo main.c.
+ * Powers the ELC module via MSTPCRC, clears every ELSR slot
+ * (ELSR0..ELSR52), clears ELSEGR0..3, then sets
+ * ``ELCR.ELCON = 1`` so the hardware routes events.
  *
  * @return ``k_ra_ok``.
  * @pre Caller is in single-threaded init context.
- * @post ELSR0..ELSR22 == 0.
+ * @pre IRQs masked or single-threaded init context.
+ * @post ELSR0..ELSR52 == 0.
  * @post ELCR.ELCON == 1 (controller enabled).
  *
  * @note Thread safety: not thread-safe.
@@ -78,28 +82,18 @@ typedef enum : uint8_t {
 [[nodiscard]] ra_err_t ra_elc_init(void);
 
 /**
- * @brief Disable the ELC globally (ELCR.ELCON = 0).
+ * @brief Disable the ELC globally (ELCR.ELCON = 0) and stop the module.
  *
  * @return ``k_ra_ok``.
  * @pre IRQs masked or single-threaded init context.
+ * @pre ``ra_elc_init`` was called previously.
  * @post ELCR.ELCON == 0.
+ * @post MSTPCRC ELC bit is set (module stopped).
  *
  * @note Thread safety: not thread-safe.
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_elc_deinit(void);
-
-/**
- * @brief Enable or disable the ELC globally (legacy wrapper).
- *
- * @deprecated Prefer ``ra_elc_init`` / ``ra_elc_deinit``.
- * Preserved for backward compatibility.
- *
- * @param[in] enable ``true`` sets ELCR.ELCON, ``false`` clears it.
- * @return ``k_ra_ok``.
- * @since 0.1.0
- */
-[[nodiscard]] ra_err_t ra_elc_enable(bool enable);
 
 /**
  * @brief Route an ELC event to an ELSR slot so the destination
@@ -138,29 +132,36 @@ typedef enum : uint8_t {
 [[nodiscard]] ra_err_t ra_elc_unlink(uint8_t elsr_index);
 
 /**
- * @brief Fire a software event via one of the ELSEGR registers.
+ * @brief Fire a software event via one of the ELSEGRn registers.
  *
  * @details
- * Writes to ELSEGR0..3 (HUM Ch 19.2.2, p 817) cause the specified
- * event to fire exactly once. Useful for testing event-driven
- * paths without waiting for a real peripheral edge.
+ * Per HUM Ch 19.2.2 "ELSEGRn : Event Link Software Event Generation
+ * Register n" (p 817) and FSP `R_ELC_SoftwareEventGenerate`, the
+ * SEG bit is write-protected by WI/WE and must be set with a
+ * three-step sequence:
  *
- * @param[in] group 0 = ELSEGR0, 1 = ELSEGR1, 2 = ELSEGR2, 3 = ELSEGR3.
- * @param[in] value Register value to write.
+ * 1. Write 0x00 (``k_ra_elc_elsegr_step_unlock``) -- clear WI.
+ * 2. Write 0x40 (``k_ra_elc_elsegr_step_arm``)    -- set WE, SEG=0.
+ * 3. Write 0x41 (``k_ra_elc_elsegr_step_trigger``) -- set SEG=1.
+ *
+ * The hardware fires the event exactly once. Useful for testing
+ * event-driven paths without waiting for a real peripheral edge.
+ *
+ * @param[in] event_index Software event 0..3 (selects ELSEGR0..3).
  *
  * @return ``ra_err_t`` error code.
- * @retval k_ra_ok Write completed.
- * @retval k_ra_err_invalid_arg ``group`` out of range.
+ * @retval k_ra_ok Three-step sequence written.
+ * @retval k_ra_err_invalid_arg ``event_index`` out of range.
  *
  * @pre IRQs masked or single-threaded init context.
  * @pre ELC is enabled via ``ra_elc_init``.
- * @post ELSEGR[group] latched the requested value; the event
- * fires once on the next ELC clock edge.
+ * @post ELSEGR[event_index] holds 0x41 after the call returns;
+ * the event fires once on the next ELC clock edge.
  *
  * @note Thread safety: not thread-safe.
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t ra_elc_software_trigger(uint8_t group, uint8_t value);
+[[nodiscard]] ra_err_t ra_elc_software_trigger(uint8_t event_index);
 
 /**
  * @brief Read ELCR.ELCON to verify the global enable state.
