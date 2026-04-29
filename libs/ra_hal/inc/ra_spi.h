@@ -56,6 +56,28 @@ typedef enum : uint8_t {
 } ra_spi_mode_t;
 
 /**
+ * @enum ra_spi_bit_width_t
+ * @brief Per-frame bit width for multi-byte transfers.
+ *
+ * @details
+ * Mirrors the subset of FSP ``spi_bit_width_t`` that this driver
+ * supports. The enum value is the raw SPCMDn.SPB encoding written
+ * into the SPI_B command register (HUM Ch 43.2.7 "SPCMDm" p 2893):
+ * SPB[4:0] = N - 1 where N is the frame width in bits, so 8-bit
+ * frames program SPB = 0b00111, 16-bit frames program SPB = 0b01111,
+ * and 32-bit frames program SPB = 0b11111. Matching the FSP enum
+ * value lets the value flow straight into SPCMDn.SPB without a
+ * lookup table.
+ *
+ * @see r_spi_b_bit_width_config in FSP ``r_spi_b.c``.
+ */
+typedef enum : uint8_t {
+  k_ra_spi_width_8  = 7U,  /**<  8-bit frame -> SPCMDn.SPB = 0b00111. */
+  k_ra_spi_width_16 = 15U, /**< 16-bit frame -> SPCMDn.SPB = 0b01111. */
+  k_ra_spi_width_32 = 31U, /**< 32-bit frame -> SPCMDn.SPB = 0b11111. */
+} ra_spi_bit_width_t;
+
+/**
  * @struct ra_spi_cfg_t
  * @brief Configuration descriptor for ``ra_spi_init``.
  *
@@ -147,6 +169,125 @@ typedef void (*ra_spi_complete_fn_t)(void* ctx, uint8_t err_mask);
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_spi_xfer8(uint8_t channel, uint8_t tx, uint8_t* rx);
+
+/* =============================================================================
+ * Multi-byte / multi-width polling transfers (FSP r_spi_b parity)
+ * =============================================================================
+ */
+
+/**
+ * @brief Multi-frame TX-only polling transfer.
+ *
+ * @details
+ * Mirrors FSP ``R_SPI_B_Write`` (delegates to
+ * ``r_spi_b_write_read_common`` with ``p_dest = NULL``). For each of
+ * ``len`` units the driver:
+ *  1. Waits for SPSR.SPTEF (TX buffer empty).
+ *  2. Writes one unit (1, 2, or 4 bytes from ``tx``) to SPDR.
+ *  3. Waits for SPSR.SPRF (RX buffer full).
+ *  4. Reads SPDR and discards the result.
+ *
+ * Polling is bounded so the driver cannot spin forever on a stuck
+ * bus (NASA P10 Rule 2). Default timeout budget tracks
+ * ``k_ra_timeout_default_ms``.
+ *
+ * @param[in] channel SPI channel (0 or 1).
+ * @param[in] tx Source buffer (``len`` units of ``bit_width``); must be non-NULL.
+ * @param[in] len Number of units to transfer; ``0`` is a no-op success.
+ * @param[in] bit_width Per-frame width: 8, 16, or 32 bits.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok Transfer completed.
+ * @retval k_ra_err_null_ptr ``tx`` is NULL with ``len > 0``.
+ * @retval k_ra_err_invalid_arg Channel or ``bit_width`` invalid.
+ * @retval k_ra_err_hw_timeout SPSR.SPTEF / SPSR.SPRF never asserted.
+ *
+ * @pre Channel previously initialised via ``ra_spi_init``.
+ * @pre Caller-supplied buffer alignment matches ``bit_width`` (16 / 32 bit
+ *      access requires properly aligned pointers).
+ * @post On success, every requested unit has shifted out on COPI and
+ *       SPSR.SPRF / SPSR.SPTEF have been cleared via SPSRC.
+ *
+ * @note Thread safety: not thread-safe.
+ * @since 0.1.0
+ *
+ * @see ra_spi_read
+ * @see ra_spi_write_read
+ */
+[[nodiscard]] ra_err_t
+ra_spi_write(uint8_t channel, const void* tx, uint32_t len, ra_spi_bit_width_t bit_width);
+
+/**
+ * @brief Multi-frame RX-only polling transfer.
+ *
+ * @details
+ * Mirrors FSP ``R_SPI_B_Read`` (delegates to
+ * ``r_spi_b_write_read_common`` with ``p_src = NULL``). For each of
+ * ``len`` units the driver writes a dummy ``0xFF`` / ``0xFFFF`` /
+ * ``0xFFFFFFFF`` to SPDR (matching common SD-card / SPI-flash idle
+ * patterns) and then captures one unit into ``rx``.
+ *
+ * @param[in] channel SPI channel (0 or 1).
+ * @param[out] rx Destination buffer (``len`` units of ``bit_width``); non-NULL.
+ * @param[in] len Number of units to receive; ``0`` is a no-op success.
+ * @param[in] bit_width Per-frame width: 8, 16, or 32 bits.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok Transfer completed.
+ * @retval k_ra_err_null_ptr ``rx`` is NULL with ``len > 0``.
+ * @retval k_ra_err_invalid_arg Channel or ``bit_width`` invalid.
+ * @retval k_ra_err_hw_timeout Polling SPSR flag never asserted.
+ *
+ * @pre Channel previously initialised via ``ra_spi_init``.
+ * @pre Caller-supplied buffer alignment matches ``bit_width``.
+ * @post On success, ``rx[0..len-1]`` contains the bytes / words shifted
+ *       in on CIPO during ``len`` dummy clock cycles.
+ *
+ * @note Thread safety: not thread-safe.
+ * @since 0.1.0
+ *
+ * @see ra_spi_write
+ * @see ra_spi_write_read
+ */
+[[nodiscard]] ra_err_t
+ra_spi_read(uint8_t channel, void* rx, uint32_t len, ra_spi_bit_width_t bit_width);
+
+/**
+ * @brief Multi-frame full-duplex polling transfer.
+ *
+ * @details
+ * Mirrors FSP ``R_SPI_B_WriteRead`` (delegates to
+ * ``r_spi_b_write_read_common`` with both buffers non-NULL). Per
+ * unit: wait SPTEF -> push ``tx[i]`` into SPDR -> wait SPRF ->
+ * read SPDR into ``rx[i]``. ``tx`` and ``rx`` may be the same
+ * buffer (in-place exchange).
+ *
+ * @param[in] channel SPI channel (0 or 1).
+ * @param[in] tx Source buffer (``len`` units of ``bit_width``); non-NULL.
+ * @param[out] rx Destination buffer (``len`` units of ``bit_width``); non-NULL.
+ * @param[in] len Number of units to exchange; ``0`` is a no-op success.
+ * @param[in] bit_width Per-frame width: 8, 16, or 32 bits.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok Transfer completed.
+ * @retval k_ra_err_null_ptr ``tx`` or ``rx`` is NULL with ``len > 0``.
+ * @retval k_ra_err_invalid_arg Channel or ``bit_width`` invalid.
+ * @retval k_ra_err_hw_timeout Polling SPSR flag never asserted.
+ *
+ * @pre Channel previously initialised via ``ra_spi_init``.
+ * @post On success, every unit has been exchanged in both directions.
+ *
+ * @note Thread safety: not thread-safe.
+ * @since 0.1.0
+ *
+ * @see ra_spi_write
+ * @see ra_spi_read
+ */
+[[nodiscard]] ra_err_t ra_spi_write_read(uint8_t            channel,
+                                         const void*        tx,
+                                         void*              rx,
+                                         uint32_t           len,
+                                         ra_spi_bit_width_t bit_width);
 
 /* =============================================================================
  * Runtime reconfigure

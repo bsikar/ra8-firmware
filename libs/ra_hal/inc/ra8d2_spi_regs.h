@@ -237,13 +237,16 @@ typedef enum : uint32_t {
  * @brief SPB[4:0] data-length encodings used by the driver.
  *
  * @details
- * HUM Ch 43.2.7 lists the full SPB encoding table. Values not used
- * by the bring-up driver are not exposed here.
+ * HUM Ch 43.2.7 lists the full SPB encoding table -- SPB = (N-1)
+ * for an ``N``-bit frame width. Mirrored against FSP
+ * ``spi_bit_width_t`` so the same numeric value can flow from the
+ * public driver enum straight into the SPCMDn.SPB field. Values
+ * not used by the bring-up driver are not exposed here.
  */
 typedef enum : uint8_t {
-  k_ra_spcmd_spb_8bit  = 0x07U, /**< 0b00111 -> 8-bit frame.   */
+  k_ra_spcmd_spb_8bit  = 0x07U, /**< 0b00111 ->  8-bit frame.  */
   k_ra_spcmd_spb_16bit = 0x0FU, /**< 0b01111 -> 16-bit frame.  */
-  k_ra_spcmd_spb_32bit = 0x03U, /**< 0b00011 -> 32-bit frame.  */
+  k_ra_spcmd_spb_32bit = 0x1FU, /**< 0b11111 -> 32-bit frame.  */
 } ra_spcmd_spb_t;
 
 /**

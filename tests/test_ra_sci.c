@@ -502,6 +502,243 @@ static void test_dma_arg_validation(void)
   TEST_END("ra_sci_{write,read}_dma: arg validation");
 }
 
+/* =====================================================================
+ * Async byte-stream TX / RX (FSP r_sci_b_uart parity)
+ * ===================================================================== */
+
+enum : uint32_t {
+  k_test_async_len = 16U, /**< Async TX/RX exercise length. */
+};
+
+static int32_t s_async_tx_cb_count = 0;
+
+static bool stub_async_tx_visibility(void* ctx, uint8_t* byte)
+{
+  (void)ctx;
+  (void)byte;
+  ++s_async_tx_cb_count;
+  return true;
+}
+
+static void test_async_write_drains_buffer(void)
+{
+  TEST_BEGIN("ra_sci_write: 16-byte async TX drains via TXI");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_init(0U, &k_cfg));
+
+  s_async_tx_cb_count = 0;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_sci_attach_tx_handler(0U, stub_async_tx_visibility, nullptr));
+
+  uint8_t payload[k_test_async_len];
+  for (uint32_t i = 0U; i < k_test_async_len; ++i) {
+    payload[i] = (uint8_t)(0x40U + i);
+  }
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_write(0U, payload, k_test_async_len));
+
+  volatile r_sci_regs_t* reg = ra_sci(0U);
+  TEST_ASSERT((reg->CCR0 & (1U << (uint8_t)k_ra_sci_ccr0_bit_tie)) != 0U);
+
+  for (uint32_t i = 0U; i < k_test_async_len; ++i) {
+    ra_sci_dispatch_txi(0U);
+    TEST_ASSERT_EQ((int32_t)payload[i], (int32_t)(reg->TDR & 0xFFU));
+  }
+  /* All bytes pushed -- TIE auto-cleared. */
+  TEST_ASSERT_EQ(0, (int32_t)(reg->CCR0 & (1U << (uint8_t)k_ra_sci_ccr0_bit_tie)));
+  TEST_ASSERT_EQ((int32_t)k_test_async_len, (int32_t)s_async_tx_cb_count);
+
+  /* Re-arming the same channel works again now that TX state is idle. */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_write(0U, payload, k_test_async_len));
+  TEST_END("ra_sci_write: 16-byte async TX drains via TXI");
+}
+
+static void test_async_read_fills_buffer(void)
+{
+  TEST_BEGIN("ra_sci_read: 16-byte async RX captures via RXI");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_init(1U, &k_cfg));
+
+  uint8_t buf[k_test_async_len];
+  for (uint32_t i = 0U; i < k_test_async_len; ++i) {
+    buf[i] = 0U;
+  }
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_read(1U, buf, k_test_async_len));
+
+  volatile r_sci_regs_t* reg = ra_sci(1U);
+  TEST_ASSERT((reg->CCR0 & (1U << (uint8_t)k_ra_sci_ccr0_bit_rie)) != 0U);
+
+  /* Simulate 16 RX-not-empty interrupts, each pre-loading RDR. */
+  for (uint32_t i = 0U; i < k_test_async_len; ++i) {
+    reg->RDR = (uint32_t)(0x80U + i);
+    ra_sci_dispatch_rxi(1U);
+  }
+  /* All bytes captured -- RIE auto-cleared. */
+  TEST_ASSERT_EQ(0, (int32_t)(reg->CCR0 & (1U << (uint8_t)k_ra_sci_ccr0_bit_rie)));
+  for (uint32_t i = 0U; i < k_test_async_len; ++i) {
+    TEST_ASSERT_EQ((int32_t)(0x80U + i), (int32_t)buf[i]);
+  }
+  TEST_END("ra_sci_read: 16-byte async RX captures via RXI");
+}
+
+static void test_async_abort_tx(void)
+{
+  TEST_BEGIN("ra_sci_abort: TX direction disarms TIE mid-stream");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_init(2U, &k_cfg));
+
+  uint8_t payload[k_test_async_len];
+  for (uint32_t i = 0U; i < k_test_async_len; ++i) {
+    payload[i] = (uint8_t)i;
+  }
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_write(2U, payload, k_test_async_len));
+
+  /* Fire 8 of 16 dispatches, then abort. */
+  for (uint32_t i = 0U; i < 8U; ++i) {
+    ra_sci_dispatch_txi(2U);
+  }
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_abort(2U, k_ra_sci_dir_tx));
+
+  volatile const r_sci_regs_t* reg = ra_sci(2U);
+  TEST_ASSERT_EQ(0, (int32_t)(reg->CCR0 & (1U << (uint8_t)k_ra_sci_ccr0_bit_tie)));
+
+  /* After abort the channel is idle again and a new write can start. */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_write(2U, payload, k_test_async_len));
+  TEST_END("ra_sci_abort: TX direction disarms TIE mid-stream");
+}
+
+static void test_async_read_stop_reports_remaining(void)
+{
+  TEST_BEGIN("ra_sci_read_stop: returns bytes still pending");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_init(3U, &k_cfg));
+
+  uint8_t buf[k_test_async_len];
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_read(3U, buf, k_test_async_len));
+
+  volatile r_sci_regs_t* reg = ra_sci(3U);
+  for (uint32_t i = 0U; i < 4U; ++i) {
+    reg->RDR = (uint32_t)i;
+    ra_sci_dispatch_rxi(3U);
+  }
+
+  uint32_t remaining = 0U;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_read_stop(3U, &remaining));
+  TEST_ASSERT_EQ((int32_t)(k_test_async_len - 4U), (int32_t)remaining);
+  TEST_ASSERT_EQ(0, (int32_t)(reg->CCR0 & (1U << (uint8_t)k_ra_sci_ccr0_bit_rie)));
+
+  /* read_stop with no active RX reports zero, not an error. */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_read_stop(3U, &remaining));
+  TEST_ASSERT_EQ(0, (int32_t)remaining);
+  TEST_END("ra_sci_read_stop: returns bytes still pending");
+}
+
+static void test_baud_calculate_115200_at_60mhz(void)
+{
+  TEST_BEGIN("ra_sci_baud_calculate: 115200 @ 60 MHz within 2 percent");
+  prep();
+
+  uint16_t brr     = 0U;
+  uint8_t  clk_div = 0U;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_sci_baud_calculate(115200U, 60000000U, &brr, &clk_div));
+  /* HUM Ch 38.2.7: with n = 0 (CKS = 0), divisor = 32, so
+   *   BRR = 60_000_000 / (32 * 115200) - 1 = 16 - 1 = 15.
+   * Effective baud = 60_000_000 / (32 * (15+1)) = 117187.5 bps. */
+  TEST_ASSERT_EQ((int32_t)15U, (int32_t)brr);
+  TEST_ASSERT_EQ((int32_t)0U, (int32_t)clk_div);
+
+  /* Verify the baud-rate error is < 2 percent. */
+  const uint32_t divisor   = 32U * (1U << (2U * (uint32_t)clk_div));
+  const uint32_t effective = 60000000U / (divisor * ((uint32_t)brr + 1U));
+  uint32_t       err_x_100 = (effective > 115200U) ? (effective - 115200U) : (115200U - effective);
+  err_x_100                = (err_x_100 * 100U) / 115200U;
+  TEST_ASSERT(err_x_100 < 2U);
+
+  /* Slow baud forces a higher CKS divider. 1200 baud at 60 MHz needs
+   * BRR ~= 1561 with n = 0 (overflows) so the loop must climb to a
+   * larger divisor. */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_sci_baud_calculate(1200U, 60000000U, &brr, &clk_div));
+  TEST_ASSERT(clk_div > 0U);
+
+  /* Unreachable baud rejected. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_sci_baud_calculate(0xFFFFFFFFU, 1000U, &brr, &clk_div));
+
+  /* NULL-arg rejection. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_sci_baud_calculate(115200U, 60000000U, nullptr, &clk_div));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_sci_baud_calculate(115200U, 60000000U, &brr, nullptr));
+
+  /* Zero arguments. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_sci_baud_calculate(0U, 60000000U, &brr, &clk_div));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_sci_baud_calculate(115200U, 0U, &brr, &clk_div));
+  TEST_END("ra_sci_baud_calculate: 115200 @ 60 MHz within 2 percent");
+}
+
+static void test_receive_suspend_resume(void)
+{
+  TEST_BEGIN("ra_sci_receive_suspend / resume toggles CCR0.RE");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_init(4U, &k_cfg));
+
+  volatile r_sci_regs_t* reg = ra_sci(4U);
+  TEST_ASSERT((reg->CCR0 & (1U << (uint8_t)k_ra_sci_ccr0_bit_re)) != 0U);
+
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_receive_suspend(4U));
+  TEST_ASSERT_EQ(0, (int32_t)(reg->CCR0 & (1U << (uint8_t)k_ra_sci_ccr0_bit_re)));
+
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_receive_resume(4U));
+  TEST_ASSERT((reg->CCR0 & (1U << (uint8_t)k_ra_sci_ccr0_bit_re)) != 0U);
+
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_sci_receive_suspend(99U));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_sci_receive_resume(99U));
+  TEST_END("ra_sci_receive_suspend / resume toggles CCR0.RE");
+}
+
+static void test_async_null_arg_rejection(void)
+{
+  TEST_BEGIN("ra_sci async API: NULL + bad-channel rejection");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_init(5U, &k_cfg));
+
+  uint8_t buf[1] = {0U};
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_sci_write(5U, nullptr, 1U));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_sci_read(5U, nullptr, 1U));
+
+  /* Zero-length is always ok. */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_write(5U, nullptr, 0U));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_read(5U, nullptr, 0U));
+
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_sci_write(99U, buf, 1U));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_sci_read(99U, buf, 1U));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_sci_abort(99U, k_ra_sci_dir_both));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_sci_abort(5U, (ra_sci_dir_t)0xFFU));
+
+  uint32_t remaining = 0U;
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_sci_read_stop(5U, nullptr));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_sci_read_stop(99U, &remaining));
+
+  /* Busy rejection: re-arming a TX while one is in flight returns busy. */
+  uint8_t pl[k_test_async_len];
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_write(5U, pl, k_test_async_len));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_busy, (int32_t)ra_sci_write(5U, pl, k_test_async_len));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_abort(5U, k_ra_sci_dir_tx));
+
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_read(5U, buf, 1U));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_busy, (int32_t)ra_sci_read(5U, buf, 1U));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_abort(5U, k_ra_sci_dir_rx));
+
+  /* Calling write/read on an uninitialised channel is rejected. */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_deinit(5U));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_sci_write(5U, pl, 1U));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_sci_read(5U, buf, 1U));
+  TEST_END("ra_sci async API: NULL + bad-channel rejection");
+}
+
 int32_t main(void)
 {
   test_init_sets_ccr0_enables();
@@ -526,6 +763,13 @@ int32_t main(void)
   test_write_dma_streams_buffer_to_tdr();
   test_read_dma_streams_rdr_to_buffer();
   test_dma_arg_validation();
+  test_async_write_drains_buffer();
+  test_async_read_fills_buffer();
+  test_async_abort_tx();
+  test_async_read_stop_reports_remaining();
+  test_baud_calculate_115200_at_60mhz();
+  test_receive_suspend_resume();
+  test_async_null_arg_rejection();
   (void)fprintf(stderr, "[OK  ] test_ra_sci.c\n");
   return 0;
 }

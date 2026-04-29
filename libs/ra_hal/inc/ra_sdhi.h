@@ -116,6 +116,115 @@ void ra_sdhi_dispatch(uint8_t instance);
  */
 [[nodiscard]] ra_err_t ra_sdhi_exit_stop(uint8_t instance);
 
+/**
+ * @brief Read one or more 512-byte SD blocks via the SD_BUF0 FIFO.
+ *
+ * @details
+ * Polled (PIO-style) block-read primitive. Mirrors FSP
+ * ``R_SDHI_Read`` -> ``r_sdhi_read_write_common`` (file
+ * ``r_sdhi.c``, lines 450..490 and 1383..1405) without the DMA/DTC
+ * machinery: the driver loads SD_SECCNT / SD_SIZE, kicks the
+ * READ_SINGLE_BLOCK (CMD17) or READ_MULTIPLE_BLOCK (CMD18) command,
+ * waits for SD_INFO1.RSPEND, then drains 512 bytes per block from
+ * SD_BUF0 in 4-byte words while polling SD_INFO2.BRE.
+ *
+ * Algorithm:
+ *  1. Validate ``buf`` non-NULL and ``block_count > 0``
+ *  2. Write SD_STOP = SECCNT_ENABLE (multi-block only)
+ *  3. Write SD_SECCNT = ``block_count``
+ *  4. Write SD_SIZE = 512 (block size)
+ *  5. Write SD_ARG = ``lba`` (sector address)
+ *  6. Write SD_CMD = CMD17 (single) or CMD18 (multi)
+ *  7. Poll SD_INFO1.RSPEND for command-response complete
+ *  8. For each of ``block_count * 128`` words: poll SD_INFO2.BRE,
+ *     copy SD_BUF0 -> ``buf``
+ *  9. For multi-block: issue CMD12 STOP_TRANSMISSION
+ *  10. Clear SD_INFO1 / SD_INFO2 flags
+ *
+ * @param[in] instance SDHI instance (0 or 1).
+ * @param[in] lba Logical block address (sector number).
+ * @param[out] buf Destination buffer; must hold at least
+ *                 ``block_count * 512`` bytes.
+ * @param[in] block_count Number of 512-byte blocks to read; must be > 0.
+ *
+ * @retval k_ra_ok Success.
+ * @retval k_ra_err_null_ptr ``buf`` was NULL or ``instance`` invalid.
+ * @retval k_ra_err_invalid_arg ``block_count`` was 0.
+ * @retval k_ra_err_hw_timeout RSPEND or BRE poll exceeded the spin budget.
+ *
+ * @pre Card has been initialised through CMD0..ACMD41 + CMD2/3/7 by the consumer.
+ * @pre ``ra_sdhi_init`` has been called for ``instance``.
+ * @post On success ``buf[0..block_count*512]`` holds card data.
+ * @post SD_INFO1.RSPEND and SD_INFO2 BRE bits are cleared.
+ *
+ * @note Blocking, polled implementation; not safe to call from an ISR.
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t
+ra_sdhi_read_block(uint8_t instance, uint32_t lba, uint8_t* buf, uint32_t block_count);
+
+/**
+ * @brief Write one or more 512-byte SD blocks via the SD_BUF0 FIFO.
+ *
+ * @details
+ * Polled (PIO-style) block-write primitive. Mirrors FSP
+ * ``R_SDHI_Write`` -> ``r_sdhi_read_write_common`` (file
+ * ``r_sdhi.c``, lines 509..554 and 1383..1405) without the DMA/DTC
+ * machinery: the driver loads SD_SECCNT / SD_SIZE, kicks the
+ * WRITE_SINGLE_BLOCK (CMD24) or WRITE_MULTIPLE_BLOCK (CMD25)
+ * command, waits for SD_INFO1.RSPEND, then pushes 512 bytes per
+ * block into SD_BUF0 in 4-byte words while polling SD_INFO2.BWE.
+ *
+ * @param[in] instance SDHI instance (0 or 1).
+ * @param[in] lba Logical block address (sector number).
+ * @param[in] buf Source buffer; must hold at least
+ *                ``block_count * 512`` bytes.
+ * @param[in] block_count Number of 512-byte blocks to write; must be > 0.
+ *
+ * @retval k_ra_ok Success.
+ * @retval k_ra_err_null_ptr ``buf`` was NULL or ``instance`` invalid.
+ * @retval k_ra_err_invalid_arg ``block_count`` was 0.
+ * @retval k_ra_err_hw_timeout RSPEND or BWE poll exceeded the spin budget.
+ *
+ * @pre Card has been initialised through CMD0..ACMD41 + CMD2/3/7 by the consumer.
+ * @pre Card is not write-protected (caller responsibility).
+ * @post On success the requested block range has been pushed into the SDHI FIFO.
+ * @post For multi-block writes a CMD12 STOP_TRANSMISSION has been issued.
+ *
+ * @note Blocking, polled implementation; not safe to call from an ISR.
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t
+ra_sdhi_write_block(uint8_t instance, uint32_t lba, const uint8_t* buf, uint32_t block_count);
+
+/**
+ * @brief Enable or disable DMAC-driven SDHI transfers.
+ *
+ * @details
+ * Toggles SD_DMAEN.DMAEN and the SD_INFO2_MASK BREM/BWEM bits in
+ * lock-step the way FSP r_sdhi_transfer_read / r_sdhi_transfer_write
+ * do. With DMA enabled the polled BRE / BWE wait in the read/write
+ * helpers above must be replaced by an external transfer primitive
+ * that targets SD_BUF0; this function is the toggle point.
+ *
+ * @param[in] instance SDHI instance.
+ * @param[in] enable Non-zero to enable DMA, 0 to fall back to PIO.
+ *
+ * @retval k_ra_ok Success.
+ * @retval k_ra_err_null_ptr ``instance`` invalid.
+ *
+ * @pre ``ra_sdhi_init`` has been called for ``instance``.
+ * @post SD_DMAEN reflects ``enable``.
+ *
+ * @note The DMAC channel itself must be wired up by the caller via
+ *       ``ra_dmac`` before any transfer is started.
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_sdhi_attach_dma(uint8_t instance, uint8_t enable);
+
 #ifdef __cplusplus
 }
 #endif

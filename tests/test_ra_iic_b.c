@@ -8,6 +8,11 @@
  * driver expects them (BST.STCNDDF, BST.SPCNDDF, NTST.TDBEF0,
  * NTST.RDBFF0, BST.TENDF) so the wait loops fall through immediately.
  *
+ * BCST.BFREF is also pre-armed (= bus free) ahead of every transfer
+ * test so the new bus-busy gate (mirrors FSP
+ * ``iic_b_master_run_hw_master`` BFREF check) does not falsely
+ * reject the transaction.
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
@@ -31,6 +36,7 @@ typedef enum : uint8_t {
   k_ra_iic_b_test_target  = 0x50U,
   k_ra_iic_b_test_byte_a  = 0xA5U,
   k_ra_iic_b_test_byte_b  = 0x5AU,
+  k_ra_iic_b_test_byte_c  = 0x33U,
   k_ra_iic_b_test_rx_byte = 0xC3U,
 } ra_iic_b_test_addr_t;
 
@@ -53,6 +59,15 @@ typedef enum : uint32_t {
   k_ra_iic_b_test_long_len   = 1000000U,
 } ra_iic_b_test_wait_t;
 
+/**
+ * @enum ra_iic_b_test_addr_byte_t
+ * @brief Pre-shifted address bytes for write / read transactions.
+ */
+typedef enum : uint8_t {
+  k_ra_iic_b_test_addr_w = (uint8_t)(k_ra_iic_b_test_target << 1U),       /**< 0xA0. */
+  k_ra_iic_b_test_addr_r = (uint8_t)((k_ra_iic_b_test_target << 1U) | 1U) /**< 0xA1. */
+} ra_iic_b_test_addr_byte_t;
+
 static const uint8_t s_payload[2] = {
   (uint8_t)k_ra_iic_b_test_byte_a,
   (uint8_t)k_ra_iic_b_test_byte_b,
@@ -67,13 +82,15 @@ static const ra_iic_b_cfg_t k_iic_b_cfg = {
 
 /**
  * @brief Pre-arm NTST so the driver's address + data wait loops fall
- *        through immediately. The driver's clear_bst step does not
- *        touch NTST, so a one-shot pre-prime survives the transfer.
+ *        through immediately, and BCST.BFREF so the bus-busy gate
+ *        passes. The driver's clear_bst step does not touch NTST,
+ *        so a one-shot pre-prime survives the transfer.
  */
 static void prime_ntst(uint8_t channel)
 {
   volatile r_iic_b_regs_t* reg = ra_iic_b(channel);
   reg->NTST = (uint32_t)k_ra_iic_b_msk_ntst_tdbef0 | (uint32_t)k_ra_iic_b_msk_ntst_rdbff0;
+  reg->BCST = (uint32_t)k_ra_iic_b_msk_bcst_bfref;
 }
 
 /**
@@ -153,16 +170,20 @@ static void test_set_clock_updates(void)
 
 static void test_write_happy(void)
 {
-  TEST_BEGIN("ra_iic_b_write: 2-byte payload completes");
+  TEST_BEGIN("ra_iic_b_write: 2-byte payload, START + STOP pulsed");
   prep();
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_iic_b_init(0U, &k_iic_b_cfg));
   prime_ntst(0U);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_iic_b_write(0U, (uint8_t)k_ra_iic_b_test_target, s_payload, 2U));
-  /* Final byte should land in NTDTBP0. */
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_ok,
+    (int32_t)ra_iic_b_write(0U, (uint8_t)k_ra_iic_b_test_target, s_payload, 2U, false));
+  /* Final byte should land in NTDTBP0; CNDCTL last write should be the
+   * STOP request (mirrors what the bus would observe after the
+   * transaction). */
   volatile const r_iic_b_regs_t* reg = ra_iic_b(0U);
   TEST_ASSERT_EQ((int32_t)k_ra_iic_b_test_byte_b, (int32_t)(reg->NTDTBP0 & 0xFFU));
-  TEST_END("ra_iic_b_write: 2-byte payload completes");
+  TEST_ASSERT_EQ((int32_t)(uint32_t)k_ra_iic_b_msk_cndctl_spcnd, (int32_t)reg->CNDCTL);
+  TEST_END("ra_iic_b_write: 2-byte payload, START + STOP pulsed");
 }
 
 static void test_write_zero_length(void)
@@ -171,8 +192,9 @@ static void test_write_zero_length(void)
   prep();
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_iic_b_init(0U, &k_iic_b_cfg));
   prime_ntst(0U);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_iic_b_write(0U, (uint8_t)k_ra_iic_b_test_target, s_payload, 0U));
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_ok,
+    (int32_t)ra_iic_b_write(0U, (uint8_t)k_ra_iic_b_test_target, s_payload, 0U, false));
   TEST_END("ra_iic_b_write: zero-length is a probe");
 }
 
@@ -182,7 +204,7 @@ static void test_write_null_data(void)
   prep();
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_iic_b_init(0U, &k_iic_b_cfg));
   TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_iic_b_write(0U, (uint8_t)k_ra_iic_b_test_target, nullptr, 1U));
+                 (int32_t)ra_iic_b_write(0U, (uint8_t)k_ra_iic_b_test_target, nullptr, 1U, false));
   TEST_END("ra_iic_b_write: null data rejected");
 }
 
@@ -194,25 +216,130 @@ static void test_write_bad_channel(void)
                  (int32_t)ra_iic_b_write((uint8_t)k_ra_iic_b_test_ch_oor,
                                          (uint8_t)k_ra_iic_b_test_target,
                                          s_payload,
-                                         1U));
+                                         1U,
+                                         false));
   TEST_END("ra_iic_b_write: channel out of range");
 }
 
 static void test_write_timeout_on_start(void)
 {
-  TEST_BEGIN("ra_iic_b_write: STCNDDF never sets => timeout");
+  TEST_BEGIN("ra_iic_b_write: TDBEF0 never sets => timeout");
   prep();
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_iic_b_init(0U, &k_iic_b_cfg));
-  /* Don't prime status -- BST stays zero. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_hw_timeout,
-                 (int32_t)ra_iic_b_write(0U, (uint8_t)k_ra_iic_b_test_target, s_payload, 1U));
-  TEST_END("ra_iic_b_write: STCNDDF never sets => timeout");
+  /* Mark the bus free so the busy gate passes, but leave NTST cleared
+   * so the address-byte send loop times out. */
+  ra_iic_b(0U)->BCST = (uint32_t)k_ra_iic_b_msk_bcst_bfref;
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_hw_timeout,
+    (int32_t)ra_iic_b_write(0U, (uint8_t)k_ra_iic_b_test_target, s_payload, 1U, false));
+  TEST_END("ra_iic_b_write: TDBEF0 never sets => timeout");
 }
 
-/* NACK-on-write coverage is exercised via ra_iic_b_dispatch_eri
- * (the ERI path is what surfaces NACKDF in real hardware, since the
- * synchronous write helper's clear_bst step zeros the flag at the
- * start of every call). See test_dispatch_eri_fires_callback. */
+static void test_write_busy_rejection(void)
+{
+  TEST_BEGIN("ra_iic_b_write: BCST.BFREF=0 => k_ra_err_busy");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_iic_b_init(0U, &k_iic_b_cfg));
+  /* BFREF clear == bus busy. NTST primed so the call would otherwise
+   * proceed -- the busy gate must fire first. */
+  ra_iic_b(0U)->NTST = (uint32_t)k_ra_iic_b_msk_ntst_tdbef0 | (uint32_t)k_ra_iic_b_msk_ntst_rdbff0;
+  ra_iic_b(0U)->BCST = 0U;
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_busy,
+    (int32_t)ra_iic_b_write(0U, (uint8_t)k_ra_iic_b_test_target, s_payload, 1U, false));
+  TEST_END("ra_iic_b_write: BCST.BFREF=0 => k_ra_err_busy");
+}
+
+/* Channel that the SIGALRM handlers operate on. Shared by the
+ * mid-transfer NACK injector below and the long-buffer break helpers
+ * further down. */
+static uint8_t s_alarm_channel = 0U;
+
+/* Alarm handler used by the NACK-detection test to inject NACKDF
+ * after the driver's start-of-transaction clear_bst step has run. The
+ * setitimer interval is short enough that the alarm fires while the
+ * driver is still spinning in the post-address NTST wait loop. */
+static volatile bool s_inject_nack = false;
+
+static void sigalarm_handler_nack(int sig)
+{
+  (void)sig;
+  if (s_inject_nack) {
+    volatile r_iic_b_regs_t* reg = ra_iic_b(s_alarm_channel);
+    if (reg != nullptr) {
+      reg->BST = (uint32_t)k_ra_iic_b_msk_bst_nackdf;
+      /* Also clear NTST so the spin loop falls through to the
+       * post-data status check that observes NACKDF. */
+      reg->NTST = 0U;
+    }
+  }
+}
+
+static void arm_nack_alarm(uint8_t channel)
+{
+  s_alarm_channel = channel;
+  s_inject_nack   = true;
+  struct sigaction sa;
+  sa.sa_handler = sigalarm_handler_nack;
+  sigemptyset(&sa.sa_mask);
+  sa.sa_flags = 0;
+  (void)sigaction(SIGALRM, &sa, nullptr);
+  struct itimerval timer;
+  timer.it_value.tv_sec     = 0;
+  timer.it_value.tv_usec    = (long)k_ra_iic_b_test_alarm_usec;
+  timer.it_interval.tv_sec  = 0;
+  timer.it_interval.tv_usec = (long)k_ra_iic_b_test_alarm_usec;
+  (void)setitimer(ITIMER_REAL, &timer, nullptr);
+}
+
+static void disarm_nack_alarm(void)
+{
+  s_inject_nack          = false;
+  struct itimerval timer = {};
+  (void)setitimer(ITIMER_REAL, &timer, nullptr);
+  struct sigaction sa;
+  sa.sa_handler = SIG_DFL;
+  sigemptyset(&sa.sa_mask);
+  sa.sa_flags = 0;
+  (void)sigaction(SIGALRM, &sa, nullptr);
+}
+
+static void test_write_nack_returns_nack_and_stops(void)
+{
+  TEST_BEGIN("ra_iic_b_write: NACKDF latched mid-transfer => k_ra_err_nack + STOP");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_iic_b_init(0U, &k_iic_b_cfg));
+  prime_ntst(0U);
+  /* Use SIGALRM to inject NACKDF mid-transfer: the driver's
+   * start-of-transaction clear_bst would otherwise wipe a pre-armed
+   * value. The alarm fires while the driver is in the long payload
+   * spin loop, mirroring how the real hardware would latch NACKDF
+   * asynchronously when the slave declines. */
+  arm_nack_alarm(0U);
+  const ra_err_t err = ra_iic_b_write(0U,
+                                      (uint8_t)k_ra_iic_b_test_target,
+                                      s_long_buffer,
+                                      (uint32_t)k_ra_iic_b_test_long_len,
+                                      false);
+  disarm_nack_alarm();
+  TEST_ASSERT_EQ((int32_t)k_ra_err_nack, (int32_t)err);
+  /* CNDCTL last write should be STOP. */
+  TEST_ASSERT_EQ((int32_t)(uint32_t)k_ra_iic_b_msk_cndctl_spcnd, (int32_t)ra_iic_b(0U)->CNDCTL);
+  TEST_END("ra_iic_b_write: NACKDF latched mid-transfer => k_ra_err_nack + STOP");
+}
+
+static void test_write_restart_holds_bus(void)
+{
+  TEST_BEGIN("ra_iic_b_write: restart=true holds bus, no STOP issued");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_iic_b_init(0U, &k_iic_b_cfg));
+  prime_ntst(0U);
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_iic_b_write(0U, (uint8_t)k_ra_iic_b_test_target, s_payload, 1U, true));
+  /* CNDCTL last write should be START (no subsequent STOP). */
+  TEST_ASSERT_EQ((int32_t)(uint32_t)k_ra_iic_b_msk_cndctl_stcnd, (int32_t)ra_iic_b(0U)->CNDCTL);
+  TEST_END("ra_iic_b_write: restart=true holds bus, no STOP issued");
+}
 
 /* =============================================================================
  * Polling read
@@ -221,20 +348,24 @@ static void test_write_timeout_on_start(void)
 
 static void test_read_happy(void)
 {
-  TEST_BEGIN("ra_iic_b_read: 2-byte read returns ok and ACKCTL restored");
+  TEST_BEGIN("ra_iic_b_read: 2-byte read returns ok, ACKBT set on last byte");
   prep();
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_iic_b_init(0U, &k_iic_b_cfg));
   prime_ntst(0U);
   uint8_t buf[2] = {0U, 0U};
   TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_iic_b_read(0U, (uint8_t)k_ra_iic_b_test_target, buf, 2U));
+                 (int32_t)ra_iic_b_read(0U, (uint8_t)k_ra_iic_b_test_target, buf, 2U, false));
   /* Real-bus byte exchange cannot be modelled by the host substrate
    * (NTDTBP0 is one register, not a FIFO that holds the address byte
-   * separately from rx data). The contract this test guards is just
-   * that the read sequence completes and that ACK gets restored to
-   * "ack everything" so the next transfer starts in a clean state. */
+   * separately from rx data). What we DO observe:
+   *   1. ACKCTL was set to (ACKTWP | ACKT) somewhere in the flow to
+   *      arm the NACK on the last byte; the driver then restores it
+   *      to plain ACKTWP. The "restored to plain ACKTWP" final state
+   *      is the ABI we lock in.
+   *   2. CNDCTL last write is STOP. */
   TEST_ASSERT_EQ((int32_t)(uint32_t)k_ra_iic_b_msk_ackctl_acktwp, (int32_t)(ra_iic_b(0U)->ACKCTL));
-  TEST_END("ra_iic_b_read: 2-byte read returns ok and ACKCTL restored");
+  TEST_ASSERT_EQ((int32_t)(uint32_t)k_ra_iic_b_msk_cndctl_spcnd, (int32_t)ra_iic_b(0U)->CNDCTL);
+  TEST_END("ra_iic_b_read: 2-byte read returns ok, ACKBT set on last byte");
 }
 
 static void test_read_zero_length_rejected(void)
@@ -244,18 +375,18 @@ static void test_read_zero_length_rejected(void)
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_iic_b_init(0U, &k_iic_b_cfg));
   uint8_t buf = 0U;
   TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_iic_b_read(0U, (uint8_t)k_ra_iic_b_test_target, &buf, 0U));
+                 (int32_t)ra_iic_b_read(0U, (uint8_t)k_ra_iic_b_test_target, &buf, 0U, false));
   TEST_END("ra_iic_b_read: len==0 rejected");
 }
 
 static void test_read_null_out(void)
 {
-  TEST_BEGIN("ra_iic_b_read: null out rejected");
+  TEST_BEGIN("ra_iic_b_read: null buf rejected");
   prep();
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_iic_b_init(0U, &k_iic_b_cfg));
   TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_iic_b_read(0U, (uint8_t)k_ra_iic_b_test_target, nullptr, 1U));
-  TEST_END("ra_iic_b_read: null out rejected");
+                 (int32_t)ra_iic_b_read(0U, (uint8_t)k_ra_iic_b_test_target, nullptr, 1U, false));
+  TEST_END("ra_iic_b_read: null buf rejected");
 }
 
 static void test_read_bad_channel(void)
@@ -267,27 +398,134 @@ static void test_read_bad_channel(void)
                  (int32_t)ra_iic_b_read((uint8_t)k_ra_iic_b_test_ch_oor,
                                         (uint8_t)k_ra_iic_b_test_target,
                                         &buf,
-                                        1U));
+                                        1U,
+                                        false));
   TEST_END("ra_iic_b_read: channel out of range");
 }
 
 static void test_read_timeout_on_start(void)
 {
-  TEST_BEGIN("ra_iic_b_read: STCNDDF never sets => timeout");
+  TEST_BEGIN("ra_iic_b_read: TDBEF0 never sets => timeout");
   prep();
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_iic_b_init(0U, &k_iic_b_cfg));
-  uint8_t buf = 0U;
+  ra_iic_b(0U)->BCST = (uint32_t)k_ra_iic_b_msk_bcst_bfref;
+  uint8_t buf        = 0U;
   TEST_ASSERT_EQ((int32_t)k_ra_err_hw_timeout,
-                 (int32_t)ra_iic_b_read(0U, (uint8_t)k_ra_iic_b_test_target, &buf, 1U));
-  TEST_END("ra_iic_b_read: STCNDDF never sets => timeout");
+                 (int32_t)ra_iic_b_read(0U, (uint8_t)k_ra_iic_b_test_target, &buf, 1U, false));
+  TEST_END("ra_iic_b_read: TDBEF0 never sets => timeout");
+}
+
+static void test_read_busy_rejection(void)
+{
+  TEST_BEGIN("ra_iic_b_read: BCST.BFREF=0 => k_ra_err_busy");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_iic_b_init(0U, &k_iic_b_cfg));
+  ra_iic_b(0U)->NTST = (uint32_t)k_ra_iic_b_msk_ntst_tdbef0 | (uint32_t)k_ra_iic_b_msk_ntst_rdbff0;
+  ra_iic_b(0U)->BCST = 0U;
+  uint8_t buf        = 0U;
+  TEST_ASSERT_EQ((int32_t)k_ra_err_busy,
+                 (int32_t)ra_iic_b_read(0U, (uint8_t)k_ra_iic_b_test_target, &buf, 1U, false));
+  TEST_END("ra_iic_b_read: BCST.BFREF=0 => k_ra_err_busy");
+}
+
+/* =============================================================================
+ * Combined transfer
+ * =============================================================================
+ */
+
+static void test_transfer_happy(void)
+{
+  TEST_BEGIN("ra_iic_b_transfer: write-then-RESTART-then-read");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_iic_b_init(0U, &k_iic_b_cfg));
+  prime_ntst(0U);
+  uint8_t       rx     = 0U;
+  const uint8_t tx[1U] = {(uint8_t)k_ra_iic_b_test_byte_c};
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_iic_b_transfer(0U, (uint8_t)k_ra_iic_b_test_target, tx, 1U, &rx, 1U));
+  /* CNDCTL last write should be STOP -- the read phase always closes
+   * the bus regardless of the prior write phase having held it. */
+  TEST_ASSERT_EQ((int32_t)(uint32_t)k_ra_iic_b_msk_cndctl_spcnd, (int32_t)ra_iic_b(0U)->CNDCTL);
+  TEST_END("ra_iic_b_transfer: write-then-RESTART-then-read");
+}
+
+static void test_transfer_null_args_rejected(void)
+{
+  TEST_BEGIN("ra_iic_b_transfer: null buffers / zero lens rejected");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_iic_b_init(0U, &k_iic_b_cfg));
+  uint8_t rx = 0U;
+
+  /* Both lens zero -> invalid_arg. */
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_invalid_arg,
+    (int32_t)ra_iic_b_transfer(0U, (uint8_t)k_ra_iic_b_test_target, nullptr, 0U, nullptr, 0U));
+  /* tx_len > 0 with NULL tx -> null_ptr. */
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_null_ptr,
+    (int32_t)ra_iic_b_transfer(0U, (uint8_t)k_ra_iic_b_test_target, nullptr, 1U, &rx, 1U));
+  /* rx_len > 0 with NULL rx -> null_ptr. */
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_null_ptr,
+    (int32_t)ra_iic_b_transfer(0U, (uint8_t)k_ra_iic_b_test_target, s_payload, 1U, nullptr, 1U));
+  /* Out-of-range channel -> null_ptr (matches the rest of the API). */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_iic_b_transfer((uint8_t)k_ra_iic_b_test_ch_oor,
+                                            (uint8_t)k_ra_iic_b_test_target,
+                                            s_payload,
+                                            1U,
+                                            &rx,
+                                            1U));
+  TEST_END("ra_iic_b_transfer: null buffers / zero lens rejected");
+}
+
+static void test_transfer_busy_rejection(void)
+{
+  TEST_BEGIN("ra_iic_b_transfer: bus-busy => k_ra_err_busy");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_iic_b_init(0U, &k_iic_b_cfg));
+  ra_iic_b(0U)->NTST = (uint32_t)k_ra_iic_b_msk_ntst_tdbef0 | (uint32_t)k_ra_iic_b_msk_ntst_rdbff0;
+  ra_iic_b(0U)->BCST = 0U;
+  uint8_t rx         = 0U;
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_busy,
+    (int32_t)ra_iic_b_transfer(0U, (uint8_t)k_ra_iic_b_test_target, s_payload, 1U, &rx, 1U));
+  TEST_END("ra_iic_b_transfer: bus-busy => k_ra_err_busy");
+}
+
+/* =============================================================================
+ * Abort
+ * =============================================================================
+ */
+
+static void test_abort_resets_channel(void)
+{
+  TEST_BEGIN("ra_iic_b_abort: BIE/NTIE masked, STOP issued, BST cleared");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_iic_b_init(0U, &k_iic_b_cfg));
+  /* Pretend a transfer is in progress: BIE/NTIE non-zero, BST has
+   * latched flags. */
+  ra_iic_b(0U)->BIE  = (uint32_t)k_ra_iic_b_msk_bie_nackdie;
+  ra_iic_b(0U)->NTIE = (uint32_t)k_ra_iic_b_msk_ntie_tdbeie0;
+  ra_iic_b(0U)->BST  = (uint32_t)k_ra_iic_b_msk_bst_nackdf | (uint32_t)k_ra_iic_b_msk_bst_alf;
+
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_iic_b_abort(0U));
+  TEST_ASSERT_EQ(0, (int32_t)ra_iic_b(0U)->BIE);
+  TEST_ASSERT_EQ(0, (int32_t)ra_iic_b(0U)->NTIE);
+  TEST_ASSERT_EQ((int32_t)(uint32_t)k_ra_iic_b_msk_cndctl_spcnd, (int32_t)ra_iic_b(0U)->CNDCTL);
+  /* NACK / AL flags should be W0C-cleared. */
+  TEST_ASSERT((ra_iic_b(0U)->BST & (uint32_t)k_ra_iic_b_msk_bst_nackdf) == 0U);
+  TEST_ASSERT((ra_iic_b(0U)->BST & (uint32_t)k_ra_iic_b_msk_bst_alf) == 0U);
+
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_iic_b_abort((uint8_t)k_ra_iic_b_test_ch_oor));
+  TEST_END("ra_iic_b_abort: BIE/NTIE masked, STOP issued, BST cleared");
 }
 
 /* =============================================================================
  * Long-buffer breaks via SIGALRM clobber.
  * =============================================================================
  */
-
-static uint8_t s_alarm_channel = 0U;
 
 static void sigalarm_handler_iic(int sig)
 {
@@ -336,7 +574,8 @@ static void test_write_long_break(void)
   const ra_err_t err = ra_iic_b_write(0U,
                                       (uint8_t)k_ra_iic_b_test_target,
                                       s_long_buffer,
-                                      (uint32_t)k_ra_iic_b_test_long_len);
+                                      (uint32_t)k_ra_iic_b_test_long_len,
+                                      false);
   disarm_alarm();
   TEST_ASSERT_EQ((int32_t)k_ra_err_hw_timeout, (int32_t)err);
   TEST_END("ra_iic_b_write: long buffer breaks on cleared NTST");
@@ -352,7 +591,8 @@ static void test_read_long_break(void)
   const ra_err_t err = ra_iic_b_read(0U,
                                      (uint8_t)k_ra_iic_b_test_target,
                                      s_long_buffer,
-                                     (uint32_t)k_ra_iic_b_test_long_len);
+                                     (uint32_t)k_ra_iic_b_test_long_len,
+                                     false);
   disarm_alarm();
   TEST_ASSERT_EQ((int32_t)k_ra_err_hw_timeout, (int32_t)err);
   TEST_END("ra_iic_b_read: long buffer breaks on cleared NTST");
@@ -511,11 +751,19 @@ int32_t main(void)
   test_write_null_data();
   test_write_bad_channel();
   test_write_timeout_on_start();
+  test_write_busy_rejection();
+  test_write_nack_returns_nack_and_stops();
+  test_write_restart_holds_bus();
   test_read_happy();
   test_read_zero_length_rejected();
   test_read_null_out();
   test_read_bad_channel();
   test_read_timeout_on_start();
+  test_read_busy_rejection();
+  test_transfer_happy();
+  test_transfer_null_args_rejected();
+  test_transfer_busy_rejection();
+  test_abort_resets_channel();
   test_write_long_break();
   test_read_long_break();
   test_scan_no_response();
