@@ -150,13 +150,28 @@ typedef enum : uint32_t {
  *
  * @details
  * HUM Ch 64.2.1 "DPHYREFCR : D-PHY Reference Clock Setting Register"
- * p 3822: RFREQ[7:0] holds floor(PCLKA[MHz]) directly. Range
- * 0x27 (40 MHz) .. 0x7C (125 MHz). PCLKA must be >= 40 MHz to use
- * MIPI DSI.
+ * p 3822 documents the encoding as a strict ``RFREQ = pclka_mhz - 1``
+ * mapping: ``0x27 = 40 MHz``, ``0x28 = 41 MHz``, ..., ``0x7C = 125 MHz``.
+ * PCLKA must be >= 40 MHz to use MIPI DSI. Driver code MUST subtract
+ * one before writing -- this matches FSP ``r_mipi_phy.c`` which writes
+ * ``(pclka_hz / 1MHz) - 1``.
  */
 typedef enum : uint32_t {
   k_ra_mipi_phy_refcr_rfreq_mask = 0xFFU, /**< RFREQ[7:0] field. */
 } ra_mipi_phy_refcr_mask_t;
+
+/**
+ * @enum ra_mipi_phy_refcr_bias_t
+ * @brief Software-side bias used when encoding DPHYREFCR.RFREQ.
+ *
+ * @details
+ * HUM Ch 64.2.1 p 3822: hardware encoding subtracts one from the
+ * frequency in MHz before storing it in RFREQ[7:0]. Use this constant
+ * everywhere the driver converts ``pclka_mhz`` to a register value.
+ */
+typedef enum : uint8_t {
+  k_ra_mipi_phy_refcr_rfreq_bias = 1U, /**< RFREQ encodes (MHz - 1). */
+} ra_mipi_phy_refcr_bias_t;
 
 /**
  * @enum ra_mipi_phy_esccr_mask_t

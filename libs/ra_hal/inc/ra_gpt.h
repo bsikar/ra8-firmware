@@ -93,13 +93,18 @@ typedef struct {
 /**
  * @enum ra_gpt_status_mask_t
  * @brief Bit mask of GPT status flags (GTST register subset).
+ *
+ * @details
+ * Bit positions match the GTST register in HUM Ch 22.2.16
+ * "GTST : General PWM Timer Status Register", p 962..964:
+ * TCFA = bit 0, TCFB = bit 1, TCFPO = bit 6, TCFPU = bit 7.
  */
 typedef enum : uint32_t {
   k_ra_gpt_status_none      = 0x00000000UL,
-  k_ra_gpt_status_overflow  = 0x00000002UL, /**< GTST.TCFPO. */
-  k_ra_gpt_status_underflow = 0x00000001UL, /**< GTST.TCFPU. */
-  k_ra_gpt_status_ccra      = 0x00000010UL, /**< GTST.TCFA. */
-  k_ra_gpt_status_ccrb      = 0x00000020UL, /**< GTST.TCFB. */
+  k_ra_gpt_status_ccra      = 0x00000001UL, /**< GTST.TCFA  (bit 0). */
+  k_ra_gpt_status_ccrb      = 0x00000002UL, /**< GTST.TCFB  (bit 1). */
+  k_ra_gpt_status_overflow  = 0x00000040UL, /**< GTST.TCFPO (bit 6). */
+  k_ra_gpt_status_underflow = 0x00000080UL, /**< GTST.TCFPU (bit 7). */
 } ra_gpt_status_mask_t;
 
 /**

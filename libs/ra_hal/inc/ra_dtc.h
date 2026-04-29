@@ -6,12 +6,23 @@
  * [Ring 3 / HAL] {World: S}
  *
  * @details
- * driver for the RA8D2 DTC block. The DTC is a lighter-weight
+ * Driver for the RA8D2 DTC block. The DTC is a lighter-weight
  * alternative to the DMAC for moving small amounts of data in response
  * to peripheral interrupts. It shares the MSTPA22 gate with DMAC0 via
  * ra_mstp's reference counter. The driver owns the DTCCR / DTCVBR /
  * DTCST / DTCSTS surface and exposes a shared activation-callback
  * slot that the ICU dispatcher forwards DTC completion events into.
+ *
+ * FSP transfer-API mapping (see `r_dtc.c`):
+ *  - `R_DTC_Open`        -> @ref ra_dtc_init (programme DTCVBR + MSTP)
+ *  - `R_DTC_Close`       -> @ref ra_dtc_deinit
+ *  - `R_DTC_Enable`      -> @ref ra_dtc_enable
+ *  - `R_DTC_Disable`     -> @ref ra_dtc_disable
+ *  - `R_DTC_Reconfigure` -> @ref ra_dtc_reconfigure
+ *  - `R_DTC_CallbackSet` -> @ref ra_dtc_attach_handler
+ *  - `R_DTC_Reset`, `_InfoGet`: call sites edit the TI table directly.
+ *  - `R_DTC_Reload`, `_SoftwareStart`, `_SoftwareStop`: not supported
+ *    (matches FSP `FSP_ERR_UNSUPPORTED`).
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -25,6 +36,7 @@ extern "C" {
 
 #include <stdint.h>
 
+#include "ra8d2_dtc_regs.h"
 #include "ra_err.h"
 
 /**
