@@ -1,6 +1,13 @@
 /**
  * @file test_ra_canfd.c
- * @brief Unit tests for ra_canfd.c (CANFD Lite driver framework)
+ * @brief Unit tests for ra_canfd.c (RA8D2 CANFD driver)
+ *
+ * @details
+ * Tests assert against the FSP-aligned register layout in
+ * `ra8d2_canfd_regs.h` -- per-channel `CFDC[0].NCFG/CTR/STS/ERFL`,
+ * `CFDC2[0].DCFG`, `CFDRF[0]` for RX FIFO 0, `CFDTM[0]` for TX MB 0,
+ * `CFDTMC[0]` byte transmit-request register, and `CFDRFSTS[0]` /
+ * `CFDRFPCTR[0]` for FIFO status.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -31,9 +38,10 @@ typedef enum : uint32_t {
   k_ra_test_std_id           = 0x123U,
   k_ra_test_oversized_std_id = 0x800U,
   k_ra_test_invalid_ext_id   = 0x40000000U,
-  k_ra_test_erfl_encoded     = 0xAA550000U,
-  k_ra_test_expected_tec     = 0x55U,
-  k_ra_test_expected_rec     = 0xAAU,
+  /* TEC = 0x55 in [31:24], REC = 0xAA in [23:16] of CFDC[0].STS. */
+  k_ra_test_sts_encoded  = 0x55AA0000U,
+  k_ra_test_expected_tec = 0x55U,
+  k_ra_test_expected_rec = 0xAAU,
 } ra_canfd_test_vals_t;
 
 static void test_init_channel0_happy(void)
@@ -41,13 +49,16 @@ static void test_init_channel0_happy(void)
   TEST_BEGIN("canfd init channel 0 happy");
   ra_sim_mmap_reset();
 
-  volatile r_canfd_channel_regs_t* reg = ra_canfd((uint8_t)k_ra_canfd_test_channel_0);
+  volatile r_canfd_t* reg = ra_canfd((uint8_t)k_ra_canfd_test_channel_0);
   TEST_ASSERT_NOT_NULL((void*)reg);
-  reg->CFDCNSTS = 0xFFFFFFFFUL;
+  /* Pre-set status so the channel-mode wait loops fire. */
+  reg->CFDC[0].STS = 0xFFFFFFFFUL;
+  reg->CFDGSTS     = 0xFFFFFFFFUL;
 
   const ra_err_t err = ra_canfd_init((uint8_t)k_ra_canfd_test_channel_0);
   TEST_ASSERT_EQ((int)k_ra_ok, (int)err);
-  TEST_ASSERT_EQ((int)k_ra_chmdc_operation, (int)reg->CFDCNCTR);
+  /* Final mode latched into CTR.CHMDC[1:0] = 0 (operation). */
+  TEST_ASSERT_EQ((int)k_ra_chmdc_operation, (int)(reg->CFDC[0].CTR & k_ra_cnctr_mask_chmdc));
   TEST_END("canfd init channel 0 happy");
 }
 
@@ -66,9 +77,9 @@ static void test_init_channel1(void)
   TEST_BEGIN("canfd init channel 1");
   ra_sim_mmap_reset();
 
-  volatile r_canfd_channel_regs_t* reg = ra_canfd((uint8_t)k_ra_canfd_test_channel_1);
+  volatile r_canfd_t* reg = ra_canfd((uint8_t)k_ra_canfd_test_channel_1);
   TEST_ASSERT_NOT_NULL((void*)reg);
-  reg->CFDCNSTS      = 0xFFFFFFFFUL;
+  reg->CFDC[0].STS   = 0xFFFFFFFFUL;
   const ra_err_t err = ra_canfd_init((uint8_t)k_ra_canfd_test_channel_1);
   TEST_ASSERT_EQ((int)k_ra_ok, (int)err);
   TEST_END("canfd init channel 1");
@@ -91,8 +102,8 @@ static void test_deinit_happy(void)
   const ra_err_t err = ra_canfd_deinit((uint8_t)k_ra_canfd_test_channel_0);
   TEST_ASSERT_EQ((int)k_ra_ok, (int)err);
 
-  volatile r_canfd_channel_regs_t* reg = ra_canfd((uint8_t)k_ra_canfd_test_channel_0);
-  TEST_ASSERT_EQ((int)k_ra_chmdc_reset, (int)reg->CFDCNCTR);
+  volatile r_canfd_t* reg = ra_canfd((uint8_t)k_ra_canfd_test_channel_0);
+  TEST_ASSERT_EQ((int)k_ra_chmdc_reset, (int)(reg->CFDC[0].CTR & k_ra_cnctr_mask_chmdc));
   TEST_END("canfd deinit happy");
 }
 
@@ -115,8 +126,8 @@ static void test_set_bitrate_500k_happy(void)
     ra_canfd_set_bitrate((uint8_t)k_ra_canfd_test_channel_0, (uint32_t)k_ra_test_bitrate_500k, 0U);
   TEST_ASSERT_EQ((int)k_ra_ok, (int)err);
 
-  volatile r_canfd_channel_regs_t* reg = ra_canfd((uint8_t)k_ra_canfd_test_channel_0);
-  TEST_ASSERT(reg->CFDCNCFG != 0U);
+  volatile r_canfd_t* reg = ra_canfd((uint8_t)k_ra_canfd_test_channel_0);
+  TEST_ASSERT(reg->CFDC[0].NCFG != 0U);
   TEST_END("canfd set_bitrate 500k happy");
 }
 
@@ -130,9 +141,9 @@ static void test_set_bitrate_250k_with_fd(void)
                                             (uint32_t)k_ra_test_bitrate_1m);
   TEST_ASSERT_EQ((int)k_ra_ok, (int)err);
 
-  volatile r_canfd_channel_regs_t* reg = ra_canfd((uint8_t)k_ra_canfd_test_channel_0);
-  TEST_ASSERT(reg->CFDCNCFG != 0U);
-  TEST_ASSERT(reg->CFDCNDCFG != 0U);
+  volatile r_canfd_t* reg = ra_canfd((uint8_t)k_ra_canfd_test_channel_0);
+  TEST_ASSERT(reg->CFDC[0].NCFG != 0U);
+  TEST_ASSERT(reg->CFDC2[0].DCFG != 0U);
   TEST_END("canfd set_bitrate 250k nominal + 1M data");
 }
 
@@ -162,15 +173,15 @@ static void test_set_bitrate_invalid_resolve(void)
 
 static void test_set_bitrate_prescaler_too_big(void)
 {
-  TEST_BEGIN("canfd set_bitrate rejects rate needing prescaler > 256");
+  TEST_BEGIN("canfd set_bitrate rejects rate needing prescaler > 1024");
   ra_sim_mmap_reset();
 
   /* 1 bps with 8 MHz PCLKA requires a prescaler of ~1 million, well
-   * outside the 1..256 window, so the solver exhausts every tq and
-   * returns invalid_arg. */
+   * outside the 1..1024 nominal window, so the solver exhausts every
+   * tq and returns invalid_arg. */
   TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
                  (int)ra_canfd_set_bitrate((uint8_t)k_ra_canfd_test_channel_0, 1U, 0U));
-  TEST_END("canfd set_bitrate rejects rate needing prescaler > 256");
+  TEST_END("canfd set_bitrate rejects rate needing prescaler > 1024");
 }
 
 static void test_set_bitrate_bad_data_rate(void)
@@ -217,9 +228,13 @@ static void test_transmit_standard_frame_happy(void)
   const ra_err_t err = ra_canfd_transmit((uint8_t)k_ra_canfd_test_channel_0, &frame);
   TEST_ASSERT_EQ((int)k_ra_ok, (int)err);
 
-  volatile r_canfd_channel_regs_t* reg = ra_canfd((uint8_t)k_ra_canfd_test_channel_0);
-  TEST_ASSERT_EQ((int)k_ra_test_std_id, (int)reg->CFDTMID);
-  TEST_ASSERT_EQ((int)1, (int)reg->CFDTMC);
+  volatile r_canfd_t* reg = ra_canfd((uint8_t)k_ra_canfd_test_channel_0);
+  TEST_ASSERT_EQ((int)k_ra_test_std_id, (int)reg->CFDTM[0].ID);
+  /* CFDTMC[0] is a single byte; TMTR = bit 0 -> value 1. */
+  TEST_ASSERT_EQ((int)k_ra_canfd_tmc_txreq, (int)reg->CFDTMC[0]);
+  /* Payload bytes land directly in CFDTM[0].DF[]. */
+  TEST_ASSERT_EQ(1, (int)reg->CFDTM[0].DF[0]);
+  TEST_ASSERT_EQ(8, (int)reg->CFDTM[0].DF[7]);
   TEST_END("canfd transmit standard frame happy");
 }
 
@@ -238,10 +253,10 @@ static void test_transmit_extended_fd_frame(void)
   const ra_err_t err = ra_canfd_transmit((uint8_t)k_ra_canfd_test_channel_1, &frame);
   TEST_ASSERT_EQ((int)k_ra_ok, (int)err);
 
-  volatile r_canfd_channel_regs_t* reg = ra_canfd((uint8_t)k_ra_canfd_test_channel_1);
-  TEST_ASSERT((reg->CFDTMID & k_ra_canfd_id_ide) != 0U);
-  TEST_ASSERT((reg->CFDTMFDSTS & k_ra_canfd_fd_fdf) != 0U);
-  TEST_ASSERT((reg->CFDTMFDSTS & k_ra_canfd_fd_brs) != 0U);
+  volatile r_canfd_t* reg = ra_canfd((uint8_t)k_ra_canfd_test_channel_1);
+  TEST_ASSERT((reg->CFDTM[0].ID & k_ra_canfd_id_ide) != 0U);
+  TEST_ASSERT((reg->CFDTM[0].FDCTR & k_ra_canfd_fd_fdf) != 0U);
+  TEST_ASSERT((reg->CFDTM[0].FDCTR & k_ra_canfd_fd_brs) != 0U);
   TEST_END("canfd transmit extended CAN-FD frame");
 }
 
@@ -318,8 +333,8 @@ static void test_receive_empty_fifo(void)
   ra_sim_mmap_reset();
 
   /* Seed RFEMP so the driver reads empty. */
-  volatile r_canfd_channel_regs_t* reg = ra_canfd((uint8_t)k_ra_canfd_test_channel_0);
-  reg->CFDRFSTS                        = (uint32_t)k_ra_rfsts_bit_empty;
+  volatile r_canfd_t* reg = ra_canfd((uint8_t)k_ra_canfd_test_channel_0);
+  reg->CFDRFSTS[0]        = (uint32_t)k_ra_rfsts_bit_empty;
 
   ra_canfd_frame_t out = {};
   TEST_ASSERT_EQ((int)k_ra_err_no_data,
@@ -332,12 +347,15 @@ static void test_receive_standard_frame(void)
   TEST_BEGIN("canfd receive decodes standard frame");
   ra_sim_mmap_reset();
 
-  volatile r_canfd_channel_regs_t* reg = ra_canfd((uint8_t)k_ra_canfd_test_channel_0);
-  reg->CFDRFSTS                        = 0U; /* not empty */
-  reg->CFDRFID                         = (uint32_t)k_ra_test_std_id;
-  reg->CFDRFPTR                        = (uint32_t)(8UL << 28U); /* DLC = 8 */
-  reg->CFDRFFDSTS                      = 0U;
-  reg->CFDRFDF[0]                      = 0x44332211U;
+  volatile r_canfd_t* reg = ra_canfd((uint8_t)k_ra_canfd_test_channel_0);
+  reg->CFDRFSTS[0]        = 0U; /* not empty */
+  reg->CFDRF[0].ID        = (uint32_t)k_ra_test_std_id;
+  reg->CFDRF[0].PTR       = (uint32_t)(8UL << 28U); /* DLC = 8 */
+  reg->CFDRF[0].FDSTS     = 0U;
+  reg->CFDRF[0].DF[0]     = 0x11U;
+  reg->CFDRF[0].DF[1]     = 0x22U;
+  reg->CFDRF[0].DF[2]     = 0x33U;
+  reg->CFDRF[0].DF[3]     = 0x44U;
 
   ra_canfd_frame_t out = {};
   const ra_err_t   err = ra_canfd_receive((uint8_t)k_ra_canfd_test_channel_0, &out);
@@ -357,11 +375,11 @@ static void test_receive_extended_fd_frame(void)
   TEST_BEGIN("canfd receive decodes extended FD frame");
   ra_sim_mmap_reset();
 
-  volatile r_canfd_channel_regs_t* reg = ra_canfd((uint8_t)k_ra_canfd_test_channel_1);
-  reg->CFDRFSTS                        = 0U;
-  reg->CFDRFID                         = (uint32_t)k_ra_test_ext_id | (uint32_t)k_ra_canfd_id_ide;
-  reg->CFDRFPTR                        = (uint32_t)(15UL << 28U);
-  reg->CFDRFFDSTS                      = (uint32_t)k_ra_canfd_fd_fdf | (uint32_t)k_ra_canfd_fd_brs;
+  volatile r_canfd_t* reg = ra_canfd((uint8_t)k_ra_canfd_test_channel_1);
+  reg->CFDRFSTS[0]        = 0U;
+  reg->CFDRF[0].ID        = (uint32_t)k_ra_test_ext_id | (uint32_t)k_ra_canfd_id_ide;
+  reg->CFDRF[0].PTR       = (uint32_t)(15UL << 28U);
+  reg->CFDRF[0].FDSTS     = (uint32_t)k_ra_canfd_fd_fdf | (uint32_t)k_ra_canfd_fd_brs;
 
   ra_canfd_frame_t out = {};
   const ra_err_t   err = ra_canfd_receive((uint8_t)k_ra_canfd_test_channel_1, &out);
@@ -398,8 +416,9 @@ static void test_get_error_state_happy(void)
   TEST_BEGIN("canfd get_error_state happy");
   ra_sim_mmap_reset();
 
-  volatile r_canfd_channel_regs_t* reg = ra_canfd((uint8_t)k_ra_canfd_test_channel_0);
-  reg->CFDCNERFL                       = (uint32_t)k_ra_test_erfl_encoded;
+  /* TEC[31:24] = 0x55, REC[23:16] = 0xAA in CFDC[0].STS. */
+  volatile r_canfd_t* reg = ra_canfd((uint8_t)k_ra_canfd_test_channel_0);
+  reg->CFDC[0].STS        = (uint32_t)k_ra_test_sts_encoded;
 
   uint8_t        tx_err = 0U;
   uint8_t        rx_err = 0U;
@@ -474,8 +493,8 @@ static void test_get_status(void)
 {
   TEST_BEGIN("canfd get_status");
   prep_w53();
-  ra_canfd((uint8_t)k_ra_canfd_test_channel_0)->CFDCNSTS = 0xDEADBEEFU;
-  uint32_t mask                                          = 0U;
+  ra_canfd((uint8_t)k_ra_canfd_test_channel_0)->CFDC[0].STS = 0xDEADBEEFU;
+  uint32_t mask                                             = 0U;
   TEST_ASSERT_EQ((int32_t)k_ra_ok,
                  (int32_t)ra_canfd_get_status((uint8_t)k_ra_canfd_test_channel_0, &mask));
   TEST_ASSERT_EQ((int32_t)0xDEADBEEFU, (int32_t)mask);
@@ -490,11 +509,11 @@ static void test_clear_status(void)
 {
   TEST_BEGIN("canfd clear_status");
   prep_w53();
-  ra_canfd((uint8_t)k_ra_canfd_test_channel_0)->CFDCNERFL = 0xFFFFFFFFU;
+  ra_canfd((uint8_t)k_ra_canfd_test_channel_0)->CFDC[0].ERFL = 0xFFFFFFFFU;
   TEST_ASSERT_EQ((int32_t)k_ra_ok,
                  (int32_t)ra_canfd_clear_status((uint8_t)k_ra_canfd_test_channel_0, 0x0000FF00U));
   TEST_ASSERT_EQ((int32_t)0xFFFF00FFU,
-                 (int32_t)ra_canfd((uint8_t)k_ra_canfd_test_channel_0)->CFDCNERFL);
+                 (int32_t)ra_canfd((uint8_t)k_ra_canfd_test_channel_0)->CFDC[0].ERFL);
   TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
                  (int32_t)ra_canfd_clear_status((uint8_t)k_ra_canfd_test_channel_bad, 0U));
   TEST_END("canfd clear_status");
@@ -507,7 +526,7 @@ static void test_attach_and_dispatch(void)
 
   TEST_ASSERT_EQ((int32_t)k_ra_ok,
                  (int32_t)ra_canfd_attach_handler(stub_canfd_cb, (void*)(uintptr_t)0xABU));
-  ra_canfd((uint8_t)k_ra_canfd_test_channel_1)->CFDCNERFL = 0xCAFEU;
+  ra_canfd((uint8_t)k_ra_canfd_test_channel_1)->CFDC[0].ERFL = 0xCAFEU;
   ra_canfd_dispatch((uint8_t)k_ra_canfd_test_channel_1);
   TEST_ASSERT_EQ((int32_t)1, (int32_t)s_canfd_cb_count);
   TEST_ASSERT_EQ((int32_t)0xCAFEU, (int32_t)s_canfd_cb_last_mask);

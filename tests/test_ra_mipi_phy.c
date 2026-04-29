@@ -155,9 +155,11 @@ static void test_init_happy_dsi_master(void)
   TEST_ASSERT_EQ((int32_t)k_ra_mipi_phy_mdc_masteren,
                  (int32_t)*ra_mipi_phy_reg32(k_ra_mipi_phy_off_mdc));
 
-  /* DPHYREFCR should hold the PCLKA frequency in MHz. */
-  TEST_ASSERT_EQ((int32_t)k_test_mipi_phy_pclka_mhz,
-                 (int32_t)*ra_mipi_phy_reg32(k_ra_mipi_phy_off_refcr));
+  /* DPHYREFCR.RFREQ encodes (MHz - 1) per HUM Ch 64.2.1 p 3822
+   * (matches FSP r_mipi_phy.c which writes ``(pclka_hz / 1MHz) - 1``). */
+  TEST_ASSERT_EQ(
+    (int32_t)((uint32_t)k_test_mipi_phy_pclka_mhz - (uint32_t)k_ra_mipi_phy_refcr_rfreq_bias),
+    (int32_t)*ra_mipi_phy_reg32(k_ra_mipi_phy_off_refcr));
 
   /* DPHYPWRCR.PWRSEN should be set. */
   TEST_ASSERT_EQ((int32_t)k_ra_mipi_phy_pwrcr_pwrsen,
@@ -691,7 +693,9 @@ static void test_set_pclka_freq(void)
   prep_fixture();
 
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mipi_phy_set_pclka_freq(80U));
-  TEST_ASSERT_EQ((int32_t)80, (int32_t)*ra_mipi_phy_reg32(k_ra_mipi_phy_off_refcr));
+  /* RFREQ encodes (MHz - 1); 80 MHz -> 0x4F. HUM Ch 64.2.1 p 3822. */
+  TEST_ASSERT_EQ((int32_t)(80U - (uint32_t)k_ra_mipi_phy_refcr_rfreq_bias),
+                 (int32_t)*ra_mipi_phy_reg32(k_ra_mipi_phy_off_refcr));
 
   TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_mipi_phy_set_pclka_freq(39U));
   TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_mipi_phy_set_pclka_freq(126U));
