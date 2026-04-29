@@ -1,0 +1,547 @@
+/**
+ * @file test_ra_usb_composite.c
+ * @brief Unit tests for the native USB device-side composite-class
+ *        layer
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
+ */
+
+#include <stdint.h>
+#include <string.h>
+
+#include "ra_err.h"
+#include "ra_mstp.h"
+#include "ra_sim_mmap.h"
+#include "ra_usb.h"
+#include "ra_usb_composite.h"
+#include "unity_minimal.h"
+
+typedef enum : uint8_t {
+  k_test_comp_cdc_first = 0U, /**< CDC starts at IF0.  */
+  k_test_comp_cdc_count = 2U, /**< CDC owns IF0 + IF1. */
+  k_test_comp_hid_first = 2U, /**< HID at IF2.         */
+  k_test_comp_hid_count = 1U,
+  k_test_comp_msc_first = 3U, /**< MSC at IF3.         */
+  k_test_comp_msc_count = 1U,
+} test_comp_layout_t;
+
+typedef enum : uint8_t {
+  k_test_comp_bm_class_to_if    = 0x21U, /**< Class, OUT, interface.  */
+  k_test_comp_bm_class_to_if_in = 0xA1U, /**< Class, IN,  interface.  */
+  k_test_comp_bm_std_to_dev     = 0x00U, /**< Standard, OUT, device.  */
+  k_test_comp_bm_std_to_dev_in  = 0x80U, /**< Standard, IN,  device.  */
+  k_test_comp_std_set_address   = 0x05U,
+  k_test_comp_std_get_status    = 0x00U,
+} test_comp_setup_t;
+
+typedef enum : uint8_t {
+  k_test_comp_handler_self = (uint8_t)k_ra_usb_composite_max_classes,
+} test_comp_handler_t;
+
+/* ---- Stub class layers ---- */
+
+typedef struct {
+  uint32_t init_calls;
+  uint32_t setup_calls;
+  uint32_t close_calls;
+  uint16_t last_w_index;
+  uint8_t  last_b_request;
+} test_class_state_t;
+
+static test_class_state_t s_cdc_state;
+static test_class_state_t s_hid_state;
+static test_class_state_t s_msc_state;
+
+static ra_err_t cdc_init(void* ctx)
+{
+  (void)ctx;
+  s_cdc_state.init_calls++;
+  return k_ra_ok;
+}
+
+static ra_err_t cdc_setup(void* ctx, const ra_usb_setup_t* setup)
+{
+  (void)ctx;
+  s_cdc_state.setup_calls++;
+  s_cdc_state.last_w_index   = setup->w_index;
+  s_cdc_state.last_b_request = setup->b_request;
+  return k_ra_ok;
+}
+
+static ra_err_t cdc_close(void* ctx)
+{
+  (void)ctx;
+  s_cdc_state.close_calls++;
+  return k_ra_ok;
+}
+
+static ra_err_t hid_init(void* ctx)
+{
+  (void)ctx;
+  s_hid_state.init_calls++;
+  return k_ra_ok;
+}
+
+static ra_err_t hid_setup(void* ctx, const ra_usb_setup_t* setup)
+{
+  (void)ctx;
+  s_hid_state.setup_calls++;
+  s_hid_state.last_w_index   = setup->w_index;
+  s_hid_state.last_b_request = setup->b_request;
+  return k_ra_ok;
+}
+
+static ra_err_t hid_close(void* ctx)
+{
+  (void)ctx;
+  s_hid_state.close_calls++;
+  return k_ra_ok;
+}
+
+static ra_err_t msc_init(void* ctx)
+{
+  (void)ctx;
+  s_msc_state.init_calls++;
+  return k_ra_ok;
+}
+
+static ra_err_t msc_setup(void* ctx, const ra_usb_setup_t* setup)
+{
+  (void)ctx;
+  s_msc_state.setup_calls++;
+  s_msc_state.last_w_index   = setup->w_index;
+  s_msc_state.last_b_request = setup->b_request;
+  return k_ra_ok;
+}
+
+static ra_err_t msc_close(void* ctx)
+{
+  (void)ctx;
+  s_msc_state.close_calls++;
+  return k_ra_ok;
+}
+
+static const ra_usb_composite_class_t s_cdc_layer = {
+  .interface_number_first = (uint8_t)k_test_comp_cdc_first,
+  .interface_number_count = (uint8_t)k_test_comp_cdc_count,
+  .init                   = cdc_init,
+  .handle_setup           = cdc_setup,
+  .close                  = cdc_close,
+  .ctx                    = nullptr,
+};
+
+static const ra_usb_composite_class_t s_hid_layer = {
+  .interface_number_first = (uint8_t)k_test_comp_hid_first,
+  .interface_number_count = (uint8_t)k_test_comp_hid_count,
+  .init                   = hid_init,
+  .handle_setup           = hid_setup,
+  .close                  = hid_close,
+  .ctx                    = nullptr,
+};
+
+static const ra_usb_composite_class_t s_msc_layer = {
+  .interface_number_first = (uint8_t)k_test_comp_msc_first,
+  .interface_number_count = (uint8_t)k_test_comp_msc_count,
+  .init                   = msc_init,
+  .handle_setup           = msc_setup,
+  .close                  = msc_close,
+  .ctx                    = nullptr,
+};
+
+/* Caller-owned descriptor blobs. The composite layer just caches the
+ * pointers; the on-wire bytes are not validated. */
+static const uint8_t s_test_device_desc[18] = {
+  18U,   /* bLength.                  */
+  0x01U, /* bDescriptorType = DEVICE. */
+  0x00U,
+  0x02U, /* bcdUSB = 2.00.            */
+  (uint8_t)k_ra_usb_composite_class_misc,
+  (uint8_t)k_ra_usb_composite_subclass_common,
+  (uint8_t)k_ra_usb_composite_protocol_iad,
+  64U, /* bMaxPacketSize0.            */
+  /* idVendor / idProduct / bcdDevice / iManufacturer / iProduct /
+   * iSerialNumber / bNumConfigurations -- not validated by the
+   * composite layer; left as zeros. */
+};
+
+static const uint8_t s_test_config_desc[9] = {
+  9U,    /* bLength.                          */
+  0x02U, /* bDescriptorType = CONFIGURATION.  */
+  0x00U,
+  0x00U, /* wTotalLength.                     */
+  0x04U, /* bNumInterfaces (CDC=2 + HID + MSC). */
+  0x01U, /* bConfigurationValue.              */
+  0x00U, /* iConfiguration.                   */
+  0x80U, /* bmAttributes.                     */
+  50U,   /* bMaxPower.                        */
+};
+
+static void prep(void)
+{
+  ra_sim_mmap_reset();
+  (void)ra_mstp_init();
+  (void)ra_usb_composite_close();
+  s_cdc_state = (test_class_state_t){};
+  s_hid_state = (test_class_state_t){};
+  s_msc_state = (test_class_state_t){};
+}
+
+/* ---- Tests ---- */
+
+static void test_init_fs_returns_ok(void)
+{
+  TEST_BEGIN("ra_usb_composite_init FS returns k_ra_ok");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_composite_init(k_ra_usb_speed_fs));
+  TEST_END("ra_usb_composite_init FS returns k_ra_ok");
+}
+
+static void test_init_hs_returns_ok(void)
+{
+  TEST_BEGIN("ra_usb_composite_init HS returns k_ra_ok");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_composite_init(k_ra_usb_speed_hs));
+  TEST_END("ra_usb_composite_init HS returns k_ra_ok");
+}
+
+static void test_init_bad_speed(void)
+{
+  TEST_BEGIN("ra_usb_composite_init rejects bogus speed");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_usb_composite_init((ra_usb_speed_t)9U));
+  TEST_END("ra_usb_composite_init rejects bogus speed");
+}
+
+static void test_close_without_init(void)
+{
+  TEST_BEGIN("ra_usb_composite_close before init returns invalid_state");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_usb_composite_close());
+  TEST_END("ra_usb_composite_close before init returns invalid_state");
+}
+
+static void test_pre_init_guards(void)
+{
+  TEST_BEGIN("register_class / set_descriptors / step / dispatch reject pre-init");
+  prep();
+
+  uint8_t        count = 0U;
+  uint8_t        who   = 0U;
+  ra_usb_setup_t setup = {};
+  const uint8_t* p     = nullptr;
+
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state,
+                 (int32_t)ra_usb_composite_register_class(&s_cdc_layer));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state,
+                 (int32_t)ra_usb_composite_set_descriptors(s_test_device_desc, s_test_config_desc));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_usb_composite_step());
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state,
+                 (int32_t)ra_usb_composite_dispatch_setup(&setup, &who));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state,
+                 (int32_t)ra_usb_composite_get_class_count(&count));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state,
+                 (int32_t)ra_usb_composite_get_device_descriptor(&p));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state,
+                 (int32_t)ra_usb_composite_get_config_descriptor(&p));
+
+  TEST_END("register_class / set_descriptors / step / dispatch reject pre-init");
+}
+
+static void test_register_class_happy_path(void)
+{
+  TEST_BEGIN("register_class accepts CDC + HID + MSC, calls each init once");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_composite_init(k_ra_usb_speed_fs));
+
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_composite_register_class(&s_cdc_layer));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_composite_register_class(&s_hid_layer));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_composite_register_class(&s_msc_layer));
+
+  TEST_ASSERT_EQ((int32_t)1U, (int32_t)s_cdc_state.init_calls);
+  TEST_ASSERT_EQ((int32_t)1U, (int32_t)s_hid_state.init_calls);
+  TEST_ASSERT_EQ((int32_t)1U, (int32_t)s_msc_state.init_calls);
+
+  uint8_t count = 0U;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_composite_get_class_count(&count));
+  TEST_ASSERT_EQ((int32_t)3U, (int32_t)count);
+
+  TEST_END("register_class accepts CDC + HID + MSC, calls each init once");
+}
+
+static void test_register_class_collision_rejected(void)
+{
+  TEST_BEGIN("register_class rejects overlapping IF range with k_ra_err_exists");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_composite_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_composite_register_class(&s_cdc_layer));
+
+  /* Build a HID-shaped layer that re-claims IF1 (already owned by CDC). */
+  ra_usb_composite_class_t bad_layer = s_hid_layer;
+  bad_layer.interface_number_first   = 1U; /* overlaps CDC's IF1. */
+  bad_layer.interface_number_count   = 1U;
+  TEST_ASSERT_EQ((int32_t)k_ra_err_exists, (int32_t)ra_usb_composite_register_class(&bad_layer));
+
+  /* Same first-IF as CDC, different count: still overlaps. */
+  bad_layer.interface_number_first = (uint8_t)k_test_comp_cdc_first;
+  bad_layer.interface_number_count = 1U;
+  TEST_ASSERT_EQ((int32_t)k_ra_err_exists, (int32_t)ra_usb_composite_register_class(&bad_layer));
+
+  TEST_END("register_class rejects overlapping IF range with k_ra_err_exists");
+}
+
+static void test_register_class_null_validation(void)
+{
+  TEST_BEGIN("register_class rejects NULL struct + NULL callbacks");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_composite_init(k_ra_usb_speed_fs));
+
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_usb_composite_register_class(nullptr));
+
+  ra_usb_composite_class_t bad = s_cdc_layer;
+  bad.init                     = nullptr;
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_usb_composite_register_class(&bad));
+
+  bad              = s_cdc_layer;
+  bad.handle_setup = nullptr;
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_usb_composite_register_class(&bad));
+
+  bad       = s_cdc_layer;
+  bad.close = nullptr;
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_usb_composite_register_class(&bad));
+
+  bad                        = s_cdc_layer;
+  bad.interface_number_count = 0U;
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_usb_composite_register_class(&bad));
+
+  bad                        = s_cdc_layer;
+  bad.interface_number_first = (uint8_t)k_ra_usb_composite_max_ifs;
+  bad.interface_number_count = 1U;
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_usb_composite_register_class(&bad));
+
+  TEST_END("register_class rejects NULL struct + NULL callbacks");
+}
+
+static void test_register_class_full(void)
+{
+  TEST_BEGIN("register_class returns k_ra_err_no_mem when table is full");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_composite_init(k_ra_usb_speed_fs));
+
+  /* Fill the registry with k_ra_usb_composite_max_classes layers,
+   * each on its own IF slot. */
+  ra_usb_composite_class_t layer = s_hid_layer;
+  for (uint8_t i = 0U; i < (uint8_t)k_ra_usb_composite_max_classes; ++i) {
+    layer.interface_number_first = i;
+    layer.interface_number_count = 1U;
+    TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_composite_register_class(&layer));
+  }
+
+  layer.interface_number_first = (uint8_t)k_ra_usb_composite_max_classes;
+  layer.interface_number_count = 1U;
+  TEST_ASSERT_EQ((int32_t)k_ra_err_no_mem, (int32_t)ra_usb_composite_register_class(&layer));
+
+  TEST_END("register_class returns k_ra_err_no_mem when table is full");
+}
+
+static void test_set_descriptors_with_iad(void)
+{
+  TEST_BEGIN("set_descriptors caches IAD-bearing config descriptor pointers");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_composite_init(k_ra_usb_speed_fs));
+
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_usb_composite_set_descriptors(s_test_device_desc, s_test_config_desc));
+
+  const uint8_t* dev = nullptr;
+  const uint8_t* cfg = nullptr;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_composite_get_device_descriptor(&dev));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_composite_get_config_descriptor(&cfg));
+  TEST_ASSERT(dev == s_test_device_desc);
+  TEST_ASSERT(cfg == s_test_config_desc);
+
+  /* Sanity-check the IAD identifiers we documented in the header. */
+  TEST_ASSERT_EQ((int32_t)k_ra_usb_composite_class_misc, (int32_t)dev[4]);
+  TEST_ASSERT_EQ((int32_t)k_ra_usb_composite_subclass_common, (int32_t)dev[5]);
+  TEST_ASSERT_EQ((int32_t)k_ra_usb_composite_protocol_iad, (int32_t)dev[6]);
+
+  TEST_END("set_descriptors caches IAD-bearing config descriptor pointers");
+}
+
+static void test_set_descriptors_null_rejection(void)
+{
+  TEST_BEGIN("set_descriptors rejects NULL pointers");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_composite_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_usb_composite_set_descriptors(nullptr, s_test_config_desc));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_usb_composite_set_descriptors(s_test_device_desc, nullptr));
+  TEST_END("set_descriptors rejects NULL pointers");
+}
+
+static void test_dispatch_routes_class_request_to_owner(void)
+{
+  TEST_BEGIN("dispatch_setup routes class request by wIndex to owning class");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_composite_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_composite_register_class(&s_cdc_layer));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_composite_register_class(&s_hid_layer));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_composite_register_class(&s_msc_layer));
+
+  /* Class request with wIndex = 0 -> CDC (owns IF0..IF1). */
+  ra_usb_setup_t setup = {
+    .bm_request_type = (uint8_t)k_test_comp_bm_class_to_if,
+    .b_request       = 0x22U,
+    .w_value         = 0U,
+    .w_index         = 0U,
+    .w_length        = 0U,
+  };
+  uint8_t handler = (uint8_t)k_test_comp_handler_self;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_composite_dispatch_setup(&setup, &handler));
+  TEST_ASSERT_EQ((int32_t)0U, (int32_t)handler);
+  TEST_ASSERT_EQ((int32_t)1U, (int32_t)s_cdc_state.setup_calls);
+  TEST_ASSERT_EQ((int32_t)0U, (int32_t)s_hid_state.setup_calls);
+  TEST_ASSERT_EQ((int32_t)0U, (int32_t)s_msc_state.setup_calls);
+
+  /* wIndex = 1 -> still CDC (range covers IF0..IF1). */
+  setup.w_index = 1U;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_composite_dispatch_setup(&setup, &handler));
+  TEST_ASSERT_EQ((int32_t)0U, (int32_t)handler);
+  TEST_ASSERT_EQ((int32_t)2U, (int32_t)s_cdc_state.setup_calls);
+
+  /* wIndex = 2 -> HID (single IF). */
+  setup.w_index = 2U;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_composite_dispatch_setup(&setup, &handler));
+  TEST_ASSERT_EQ((int32_t)1U, (int32_t)handler);
+  TEST_ASSERT_EQ((int32_t)1U, (int32_t)s_hid_state.setup_calls);
+
+  /* wIndex = 3 -> MSC. */
+  setup.w_index = 3U;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_composite_dispatch_setup(&setup, &handler));
+  TEST_ASSERT_EQ((int32_t)2U, (int32_t)handler);
+  TEST_ASSERT_EQ((int32_t)1U, (int32_t)s_msc_state.setup_calls);
+
+  /* wIndex outside any class range -> not_found, no class fired. */
+  setup.w_index = 9U;
+  TEST_ASSERT_EQ((int32_t)k_ra_err_not_found,
+                 (int32_t)ra_usb_composite_dispatch_setup(&setup, &handler));
+  TEST_ASSERT_EQ((int32_t)2U, (int32_t)s_cdc_state.setup_calls);
+  TEST_ASSERT_EQ((int32_t)1U, (int32_t)s_hid_state.setup_calls);
+  TEST_ASSERT_EQ((int32_t)1U, (int32_t)s_msc_state.setup_calls);
+
+  TEST_END("dispatch_setup routes class request by wIndex to owning class");
+}
+
+static void test_dispatch_handles_standard_request_internally(void)
+{
+  TEST_BEGIN("dispatch_setup answers standard SET_ADDRESS without firing any class");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_composite_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_composite_register_class(&s_cdc_layer));
+
+  ra_usb_setup_t setup = {
+    .bm_request_type = (uint8_t)k_test_comp_bm_std_to_dev,
+    .b_request       = (uint8_t)k_test_comp_std_set_address,
+    .w_value         = 7U,
+    .w_index         = 0U,
+    .w_length        = 0U,
+  };
+  uint8_t handler = 0U;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_composite_dispatch_setup(&setup, &handler));
+  TEST_ASSERT_EQ((int32_t)k_test_comp_handler_self, (int32_t)handler);
+  TEST_ASSERT_EQ((int32_t)0U, (int32_t)s_cdc_state.setup_calls);
+
+  /* Standard GET_STATUS also handled internally. */
+  setup.bm_request_type = (uint8_t)k_test_comp_bm_std_to_dev_in;
+  setup.b_request       = (uint8_t)k_test_comp_std_get_status;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_composite_dispatch_setup(&setup, &handler));
+  TEST_ASSERT_EQ((int32_t)k_test_comp_handler_self, (int32_t)handler);
+  TEST_ASSERT_EQ((int32_t)0U, (int32_t)s_cdc_state.setup_calls);
+
+  TEST_END("dispatch_setup answers standard SET_ADDRESS without firing any class");
+}
+
+static void test_dispatch_null_arg_rejection(void)
+{
+  TEST_BEGIN("dispatch_setup rejects NULL arguments");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_composite_init(k_ra_usb_speed_fs));
+
+  ra_usb_setup_t setup   = {};
+  uint8_t        handler = 0U;
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_usb_composite_dispatch_setup(nullptr, &handler));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_usb_composite_dispatch_setup(&setup, nullptr));
+  TEST_END("dispatch_setup rejects NULL arguments");
+}
+
+static void test_get_count_null_rejection(void)
+{
+  TEST_BEGIN("get_class_count / get_*_descriptor reject NULL output");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_composite_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_usb_composite_get_class_count(nullptr));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_usb_composite_get_device_descriptor(nullptr));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_usb_composite_get_config_descriptor(nullptr));
+  TEST_END("get_class_count / get_*_descriptor reject NULL output");
+}
+
+static void test_step_loops_without_error(void)
+{
+  TEST_BEGIN("step pumps state machine without tripping a state guard");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_composite_init(k_ra_usb_speed_fs));
+  for (uint8_t i = 0U; i < 12U; ++i) {
+    TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_composite_step());
+  }
+  TEST_END("step pumps state machine without tripping a state guard");
+}
+
+static void test_close_invokes_each_class_close(void)
+{
+  TEST_BEGIN("close walks registered classes and calls each close hook");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_composite_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_composite_register_class(&s_cdc_layer));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_composite_register_class(&s_hid_layer));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_composite_register_class(&s_msc_layer));
+
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_composite_close());
+  TEST_ASSERT_EQ((int32_t)1U, (int32_t)s_cdc_state.close_calls);
+  TEST_ASSERT_EQ((int32_t)1U, (int32_t)s_hid_state.close_calls);
+  TEST_ASSERT_EQ((int32_t)1U, (int32_t)s_msc_state.close_calls);
+
+  /* Subsequent calls are pre-init guarded again. */
+  uint8_t count = 0U;
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state,
+                 (int32_t)ra_usb_composite_get_class_count(&count));
+
+  TEST_END("close walks registered classes and calls each close hook");
+}
+
+int32_t main(void)
+{
+  test_init_fs_returns_ok();
+  test_init_hs_returns_ok();
+  test_init_bad_speed();
+  test_close_without_init();
+  test_pre_init_guards();
+  test_register_class_happy_path();
+  test_register_class_collision_rejected();
+  test_register_class_null_validation();
+  test_register_class_full();
+  test_set_descriptors_with_iad();
+  test_set_descriptors_null_rejection();
+  test_dispatch_routes_class_request_to_owner();
+  test_dispatch_handles_standard_request_internally();
+  test_dispatch_null_arg_rejection();
+  test_get_count_null_rejection();
+  test_step_loops_without_error();
+  test_close_invokes_each_class_close();
+  (void)fprintf(stderr, "[OK ] test_ra_usb_composite.c\n");
+  return 0;
+}
