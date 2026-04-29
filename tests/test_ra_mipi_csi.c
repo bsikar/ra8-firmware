@@ -995,6 +995,198 @@ static void test_deinit(void)
   TEST_END("mipi_csi deinit");
 }
 
+/* ===========================================================================
+ * Sweep 6: virtual-channel filter, per-VC data-format selection, error
+ * handler. NULL-arg coverage included.
+ * ===========================================================================
+ */
+
+typedef enum : uint32_t {
+  k_ra_mipi_csi_test_vc_keep_mask = 0x0005U,  /**< Keep VC0 + VC2.       */
+  k_ra_mipi_csi_test_vc_seed      = 0xABCDUL, /**< Pre-seeded VCIE val. */
+  k_ra_mipi_csi_test_err_marker   = 0xDEC0DE0U,
+  k_ra_mipi_csi_test_err_ctx_val  = 0xCAFEU,
+} ra_mipi_csi_sw6_const_t;
+
+static uint32_t                   s_err_calls;
+static ra_mipi_csi_error_report_t s_err_last;
+static void*                      s_err_last_ctx;
+
+static void stub_err_cb(void* ctx, const ra_mipi_csi_error_report_t* report)
+{
+  ++s_err_calls;
+  s_err_last_ctx = ctx;
+  if (report != nullptr) {
+    s_err_last = *report;
+  }
+}
+
+static void test_set_virtual_channels(void)
+{
+  TEST_BEGIN("mipi_csi set_virtual_channels masks unselected VCIE");
+  prep();
+  const ra_mipi_csi_config_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mipi_csi_init(&cfg));
+
+  /* Seed VCIE for every channel so we can confirm the masking. */
+  for (uint8_t vc = 0U; vc < 16U; ++vc) {
+    const ra_mipi_csi_off_t off = ra_mipi_csi_vc_off(k_ra_mipi_csi_off_vcie0, vc);
+    *ra_mipi_csi_reg32(off)     = (uint32_t)k_ra_mipi_csi_test_vc_seed;
+  }
+
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_ok,
+    (int32_t)ra_mipi_csi_set_virtual_channels((uint16_t)k_ra_mipi_csi_test_vc_keep_mask));
+
+  /* VC0 + VC2 retain (saved was zero, so default mask was restored). */
+  TEST_ASSERT_EQ((int32_t)k_ra_mipi_csi_test_vc_seed,
+                 (int32_t)*ra_mipi_csi_reg32(ra_mipi_csi_vc_off(k_ra_mipi_csi_off_vcie0, 0U)));
+  /* VC1, VC3..VC15 zeroed. */
+  TEST_ASSERT_EQ((int32_t)0,
+                 (int32_t)*ra_mipi_csi_reg32(ra_mipi_csi_vc_off(k_ra_mipi_csi_off_vcie0, 1U)));
+  TEST_ASSERT_EQ((int32_t)0,
+                 (int32_t)*ra_mipi_csi_reg32(ra_mipi_csi_vc_off(k_ra_mipi_csi_off_vcie0, 5U)));
+
+  /* Re-enabling VC1 restores the saved value. */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mipi_csi_set_virtual_channels((uint16_t)0xFFFFU));
+  TEST_ASSERT_EQ((int32_t)k_ra_mipi_csi_test_vc_seed,
+                 (int32_t)*ra_mipi_csi_reg32(ra_mipi_csi_vc_off(k_ra_mipi_csi_off_vcie0, 1U)));
+  TEST_END("mipi_csi set_virtual_channels masks unselected VCIE");
+}
+
+static void test_set_virtual_channels_empty_mask(void)
+{
+  TEST_BEGIN("mipi_csi set_virtual_channels rejects empty mask");
+  prep();
+  const ra_mipi_csi_config_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mipi_csi_init(&cfg));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_mipi_csi_set_virtual_channels(0U));
+  TEST_END("mipi_csi set_virtual_channels rejects empty mask");
+}
+
+static void test_set_data_format_per_vc(void)
+{
+  TEST_BEGIN("mipi_csi set_data_format programs DTEL/DTEH per VC");
+  prep();
+  const ra_mipi_csi_config_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mipi_csi_init(&cfg));
+
+  /* VC0 -> RGB888 (DTEH bit). */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_mipi_csi_set_data_format(0U, k_ra_mipi_csi_format_rgb888));
+  TEST_ASSERT_EQ((int32_t)k_ra_mipi_csi_dteh_rgb888_mask,
+                 (int32_t)*ra_mipi_csi_reg32(k_ra_mipi_csi_off_dteh));
+  TEST_ASSERT_EQ((int32_t)0, (int32_t)*ra_mipi_csi_reg32(k_ra_mipi_csi_off_dtel));
+
+  /* VC1 -> YUV422_8 (DTEL bit). DTEH stays set. */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_mipi_csi_set_data_format(1U, k_ra_mipi_csi_format_yuv422_8));
+  TEST_ASSERT_EQ((int32_t)k_ra_mipi_csi_dtel_yuv422_8_mask,
+                 (int32_t)*ra_mipi_csi_reg32(k_ra_mipi_csi_off_dtel));
+  TEST_ASSERT_EQ((int32_t)k_ra_mipi_csi_dteh_rgb888_mask,
+                 (int32_t)*ra_mipi_csi_reg32(k_ra_mipi_csi_off_dteh));
+
+  /* Disable VC0 -- DTEH clears. */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_mipi_csi_set_data_format(0U, k_ra_mipi_csi_format_off));
+  TEST_ASSERT_EQ((int32_t)0, (int32_t)*ra_mipi_csi_reg32(k_ra_mipi_csi_off_dteh));
+  TEST_ASSERT_EQ((int32_t)k_ra_mipi_csi_dtel_yuv422_8_mask,
+                 (int32_t)*ra_mipi_csi_reg32(k_ra_mipi_csi_off_dtel));
+  TEST_END("mipi_csi set_data_format programs DTEL/DTEH per VC");
+}
+
+static void test_set_data_format_bad_args(void)
+{
+  TEST_BEGIN("mipi_csi set_data_format rejects bad inputs");
+  prep();
+  const ra_mipi_csi_config_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mipi_csi_init(&cfg));
+
+  /* VC out of range. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_mipi_csi_set_data_format(16U, k_ra_mipi_csi_format_rgb888));
+
+  /* Format unsupported on RA8D2 DTEL/DTEH (RAW10). */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_mipi_csi_set_data_format(0U, k_ra_mipi_csi_format_raw10));
+  TEST_END("mipi_csi set_data_format rejects bad inputs");
+}
+
+static void test_attach_error_handler(void)
+{
+  TEST_BEGIN("mipi_csi attach_error_handler decodes ECC/CRC reports");
+  prep();
+  const ra_mipi_csi_config_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mipi_csi_init(&cfg));
+
+  s_err_calls           = 0U;
+  s_err_last_ctx        = nullptr;
+  void* const ctx_token = (void*)(uintptr_t)k_ra_mipi_csi_test_err_ctx_val;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_mipi_csi_attach_error_handler(stub_err_cb, ctx_token));
+
+  /* Drive a CRC + ECC-corrected event on VC0 via VCST seeding + MIST set.
+   * MIST.VC[31:16] -- bit 16 = VC0 source flag. */
+  *ra_mipi_csi_reg32(k_ra_mipi_csi_off_mist) =
+    (uint32_t)((uint32_t)1U << (uint32_t)k_ra_mipi_csi_mist_vc_shift);
+  const ra_mipi_csi_off_t st_off = ra_mipi_csi_vc_off(k_ra_mipi_csi_off_vcst0, 0U);
+  *ra_mipi_csi_reg32(st_off) =
+    (uint32_t)k_ra_mipi_csi_vcst_crc_mask | (uint32_t)k_ra_mipi_csi_vcst_ecc_mask;
+
+  ra_mipi_csi_dispatch_vc();
+  TEST_ASSERT_EQ((int32_t)1, (int32_t)s_err_calls);
+  TEST_ASSERT(s_err_last_ctx == ctx_token);
+  TEST_ASSERT(s_err_last.crc_error);
+  TEST_ASSERT(s_err_last.ecc_corrected);
+  TEST_ASSERT(!s_err_last.ecc_two_bit_error);
+  TEST_ASSERT_EQ((int32_t)0, (int32_t)s_err_last.vc);
+
+  /* Detach -- subsequent dispatches must be silent. */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mipi_csi_attach_error_handler(nullptr, nullptr));
+  *ra_mipi_csi_reg32(k_ra_mipi_csi_off_mist) =
+    (uint32_t)((uint32_t)1U << (uint32_t)k_ra_mipi_csi_mist_vc_shift);
+  *ra_mipi_csi_reg32(st_off) = (uint32_t)k_ra_mipi_csi_vcst_crc_mask;
+  ra_mipi_csi_dispatch_vc();
+  TEST_ASSERT_EQ((int32_t)1, (int32_t)s_err_calls);
+  TEST_END("mipi_csi attach_error_handler decodes ECC/CRC reports");
+}
+
+static void test_error_handler_no_errors_silent(void)
+{
+  TEST_BEGIN("mipi_csi error handler silent on non-error VCST snapshot");
+  prep();
+  const ra_mipi_csi_config_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mipi_csi_init(&cfg));
+
+  s_err_calls = 0U;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mipi_csi_attach_error_handler(stub_err_cb, nullptr));
+
+  /* Seed a frame-start event (not an error). */
+  *ra_mipi_csi_reg32(k_ra_mipi_csi_off_mist) =
+    (uint32_t)((uint32_t)1U << (uint32_t)k_ra_mipi_csi_mist_vc_shift);
+  const ra_mipi_csi_off_t st_off = ra_mipi_csi_vc_off(k_ra_mipi_csi_off_vcst0, 0U);
+  *ra_mipi_csi_reg32(st_off)     = (uint32_t)k_ra_mipi_csi_vcst_fsr_mask;
+  ra_mipi_csi_dispatch_vc();
+  TEST_ASSERT_EQ((int32_t)0, (int32_t)s_err_calls);
+  TEST_END("mipi_csi error handler silent on non-error VCST snapshot");
+}
+
+static void test_attach_error_handler_null_safe(void)
+{
+  TEST_BEGIN("mipi_csi attach_error_handler accepts NULL detach");
+  prep();
+  const ra_mipi_csi_config_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mipi_csi_init(&cfg));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mipi_csi_attach_error_handler(nullptr, nullptr));
+  /* Dispatch with no handler is a no-op. */
+  *ra_mipi_csi_reg32(k_ra_mipi_csi_off_mist) =
+    (uint32_t)((uint32_t)1U << (uint32_t)k_ra_mipi_csi_mist_vc_shift);
+  const ra_mipi_csi_off_t st_off = ra_mipi_csi_vc_off(k_ra_mipi_csi_off_vcst0, 0U);
+  *ra_mipi_csi_reg32(st_off)     = (uint32_t)k_ra_mipi_csi_vcst_crc_mask;
+  ra_mipi_csi_dispatch_vc();
+  TEST_END("mipi_csi attach_error_handler accepts NULL detach");
+}
+
 int32_t main(void)
 {
   test_init_happy();
@@ -1031,6 +1223,13 @@ int32_t main(void)
   test_dispatch_short_packet();
   test_power_transition();
   test_deinit();
+  test_set_virtual_channels();
+  test_set_virtual_channels_empty_mask();
+  test_set_data_format_per_vc();
+  test_set_data_format_bad_args();
+  test_attach_error_handler();
+  test_error_handler_no_errors_silent();
+  test_attach_error_handler_null_safe();
   (void)fprintf(stderr, "[OK  ] test_ra_mipi_csi.c\n");
   return 0;
 }
