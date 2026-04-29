@@ -961,10 +961,13 @@ static ra_err_t internal_arc_read_locked(ra_flash_arc_id_t id, uint32_t* out_cou
     const uint32_t hi = *ra_mram_reg32(k_ra_mram_off_mcntdtr1);
     count             = internal_popcount32(lo) + internal_popcount32(hi);
   } else if (id == k_ra_flash_arc_sec) {
-    /* HUM Ch 7.2.22 "ARC_SEC" p 296 */
-    const volatile uint32_t* p = (const volatile uint32_t*)k_ra_flash_ofs_arc_sec_addr;
-    /* SEC counter is 8 words. */
-    for (uint32_t w = 0U; w < 8U; ++w) {
+    /* HUM Ch 7.2.22 "ARC_SEC" p 296: ARC_SEC is a 64-bit unary counter, i.e.
+     * 2 x uint32_t words. FSP r_mram.c L1196 derives the same count via
+     * BSP_FEATURE_FLASH_ARC_SEC_MAX_COUNT (64) >> 5. The previous loop walked
+     * 8 words, which over-counted into adjacent OFS state. */
+    const volatile uint32_t* p         = (const volatile uint32_t*)k_ra_flash_ofs_arc_sec_addr;
+    const uint32_t           sec_words = k_ra_arc_sec_max_bits >> 5U;
+    for (uint32_t w = 0U; w < sec_words; ++w) {
       count += internal_popcount32(p[w]);
     }
   } else {
@@ -988,26 +991,26 @@ ra_err_t ra_flash_arc_increment(ra_flash_arc_id_t counter)
     return err;
   }
 
+  /* NASA Power-of-10 Rule 1 forbids goto, so the read-bound-check-increment
+   * sequence is expressed as a short-circuit chain: each step runs only if
+   * the previous one returned k_ra_ok, and the unconditional exit-PE step
+   * replaces the prior goto-out label.
+   * HUM Ch 59.4.4 "MACI Increment Counter" p 3550. */
   uint32_t cur = 0U;
   err          = internal_arc_read_locked(counter, &cur);
-  if (err != k_ra_ok) {
-    goto out;
+  if (err == k_ra_ok) {
+    const uint32_t max = internal_arc_max_count(counter);
+    if (cur + 1U > max) {
+      err = k_ra_err_out_of_range;
+    } else {
+      err = internal_arc_cmd(internal_arc_to_mcntselr(counter), k_ra_maci_cmd_increment_counter);
+    }
   }
 
-  const uint32_t max = internal_arc_max_count(counter);
-  if (cur + 1U > max) {
-    err = k_ra_err_out_of_range;
-    goto out;
-  }
-
-  err = internal_arc_cmd(internal_arc_to_mcntselr(counter), k_ra_maci_cmd_increment_counter);
-
-out: {
-  ra_err_t exit_err = ra_flash_exit_pe_mode();
+  const ra_err_t exit_err = ra_flash_exit_pe_mode();
   if (err == k_ra_ok) {
     err = exit_err;
   }
-}
   return err;
 }
 

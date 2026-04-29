@@ -28,29 +28,50 @@ extern "C" {
 
 /**
  * @enum ra_dac_b_vref_t
- * @brief Voltage reference source selection (DAVREFCR.REF bits).
+ * @brief VREFH operating-mode selection (DACR2.OFSSEL bit 8).
+ *
+ * @details
+ * Mirrors FSP `dac_b_vrefh_t`: only two values are supported by the
+ * RA8D2 DAC_B IP. NORMAL is used when VREFH >= 2.7 V; LOW is used
+ * when VREFH < 2.7 V. The driver writes this value left-shifted to
+ * DACR2 bit 8 (OFSSEL).
  */
 typedef enum : uint8_t {
-  k_ra_dac_b_vref_avcc0    = 0U, /**< AVCC0 / AVSS0 reference. */
-  k_ra_dac_b_vref_internal = 1U, /**< Internal 1.5V / 2.0V ref. */
-  k_ra_dac_b_vref_external = 2U, /**< External VREFH / VREFL pin. */
+  k_ra_dac_b_vref_normal = 0U, /**< OFSSEL=0: VREFH >= 2.7V (default). */
+  k_ra_dac_b_vref_low    = 1U, /**< OFSSEL=1: VREFH < 2.7V.            */
 } ra_dac_b_vref_t;
+
+/**
+ * @enum ra_dac_b_data_format_t
+ * @brief Data placement selection (DACR1.DPSEL bit 16).
+ *
+ * @details
+ * Mirrors the FSP `dac_data_format_t` semantics for DAC_B: 0 selects
+ * right-justified 12-bit data in the 16-bit DADR; 1 selects
+ * left-justified 12-bit data.
+ */
+typedef enum : uint8_t {
+  k_ra_dac_b_format_right = 0U, /**< DPSEL=0: right-justified (default). */
+  k_ra_dac_b_format_left  = 1U, /**< DPSEL=1: left-justified.            */
+} ra_dac_b_data_format_t;
 
 /**
  * @struct ra_dac_b_cfg_t
  * @brief Configuration descriptor for ``ra_dac_b_init_configured``.
  *
  * @details
- * cppcheck cannot see tests/ so it flags every field as unused;
- * each member is read in ``ra_dac_b_init_configured`` in
+ * Mirrors FSP `dac_b_extended_cfg_t` plus the per-channel enable
+ * flags. cppcheck cannot see tests/ so it flags every field as
+ * unused; each member is read in ``ra_dac_b_init_configured`` in
  * ``libs/ra_hal/src/ra_dac_b.c``.
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  ra_dac_b_vref_t vref;            /**< Reference voltage source. */
-  bool            enable_channel0; /**< Initial DAOE0 state. */
-  bool            enable_channel1; /**< Initial DAOE1 state. */
-  bool            sync_with_adc;   /**< DAADST ADC-sync enable. */
+  ra_dac_b_vref_t        vref;                    /**< VREFH range (DACR2.OFSSEL). */
+  ra_dac_b_data_format_t data_format;             /**< Data placement (DACR1.DPSEL). */
+  bool                   internal_output_enabled; /**< Drive internal route (clears DAOUTDIS). */
+  bool                   enable_channel0;         /**< Initial DACEN0 state. */
+  bool                   enable_channel1;         /**< Initial DACEN1 state. */
 } ra_dac_b_cfg_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 

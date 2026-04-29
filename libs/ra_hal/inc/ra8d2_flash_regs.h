@@ -419,8 +419,12 @@ typedef enum : uint32_t {
   k_ra_mstatr_mask_oterr     = 0x00100000UL, /**< Other error.              */
   k_ra_mstatr_mask_secerr    = 0x00200000UL, /**< Security error.           */
   k_ra_mstatr_mask_ilgcomerr = 0x00800000UL, /**< Illegal command error.    */
-  /* Aggregate of all error bits used by the driver to gate command success. */
-  k_ra_mstatr_mask_any_err = 0x009850A0UL, /**< Composite error mask.     */
+  /* Aggregate of all error bits used by the driver to gate command success.
+   * HUM Ch 59.5.26 "MSTATR" p 3578 lists CFGSETERR(5)=0x20, PRGERR(12)=0x1000,
+   * ILGLERR(14)=0x4000, TZFERR(19)=0x80000, OTERR(20)=0x100000,
+   * SECERR(21)=0x200000, ILGCOMERR(23)=0x800000. OR of all seven = 0x00B85020.
+   * The previous 0x009850A0 dropped SECERR and added a stray bit 7. */
+  k_ra_mstatr_mask_any_err = 0x00B85020UL, /**< Composite error mask.     */
 } ra_mstatr_mask_t;
 
 /* =============================================================================

@@ -10,17 +10,19 @@
  * DADR0/DADR1 registers and a shared DACR control byte).
  *
  * Per-instance register map, verified against FSP R_DAC_B0_Type
- * (R7KA8D2KF_core0.h lines 5396+):
+ * (R7KA8D2KF_core0.h around line 5396):
  *
- *   | Offset | Name   | Width | Purpose                              |
- *   |-------:|--------|------:|--------------------------------------|
- *   |  0x00  | DADR   |  16   | Converted data (12-bit value)        |
- *   |  0x04  | DACR0  |  32   | Control 0 (DACEN, DAE, DAOUTDIS)     |
- *   |  0x08  | DACR1  |  32   | Control 1 (DPSEL data placement)     |
- *   |  0x0C  | DACR2  |  32   | Control 2 (reference / adc sync)     |
+ *   | Offset | Name   | Width | Bit fields                         |
+ *   |-------:|--------|------:|------------------------------------|
+ *   |  0x00  | DADR   |  16   | DADR[15:0] 12-bit data             |
+ *   |  0x02  | (rsvd) |  16   | RESERVED (must read as 0)          |
+ *   |  0x04  | DACR0  |  32   | DACEN[0], DAE[15], DAOUTDIS[31]    |
+ *   |  0x08  | DACR1  |  32   | DPSEL[16] (data placement)         |
+ *   |  0x0C  | DACR2  |  32   | OFSSEL[8] (DAC-HM operating mode)  |
  *
- * Register offsets tracked against HUM Ch 54 "12-Bit D/A
- * Converter (DAC12)" p 3490.
+ * Register offsets and bit positions tracked against HUM Ch 54
+ * "12-Bit D/A Converter (DAC12)" p 3490..3496 and against FSP
+ * `R_DAC_B0_DACR{0,1,2}_*_Msk` constants.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -39,8 +41,8 @@ extern "C" {
  * @brief Memory-mapped base addresses for DAC_B0 / DAC_B1.
  */
 typedef enum : uintptr_t {
-  k_ra_dac_b0_base_addr = 0x40233000UL, /**< FSP R_DAC_B0_BASE.         */
-  k_ra_dac_b1_base_addr = 0x40233100UL, /**< FSP R_DAC_B1_BASE (stride 0x100). */
+  k_ra_dac_b0_base_addr = 0x40233000UL, /**< FSP R_DAC_B0_BASE.                 */
+  k_ra_dac_b1_base_addr = 0x40233100UL, /**< FSP R_DAC_B1_BASE (stride 0x100).  */
 } ra_dac_b_addr_t;
 
 /**
@@ -56,9 +58,13 @@ typedef enum : uint16_t {
 /**
  * @enum ra_dacr0_bit_t
  * @brief DACR0 bit positions (per-channel control register 0).
+ *
+ * @details
+ * Verified against FSP `R_DAC_B0_DACR0_*_Pos` -- see HUM Ch 54
+ * "12-Bit D/A Converter (DAC12)" p 3490..3496.
  */
 typedef enum : uint8_t {
-  k_ra_dacr0_bit_dacen    = 0U,  /**< DACEN: channel enable.        */
+  k_ra_dacr0_bit_dacen    = 0U,  /**< DACEN: channel enable.         */
   k_ra_dacr0_bit_dae      = 15U, /**< DAE: batch conversion control. */
   k_ra_dacr0_bit_daoutdis = 31U, /**< DAOUTDIS: output disable.      */
 } ra_dacr0_bit_t;
@@ -66,23 +72,71 @@ typedef enum : uint8_t {
 /**
  * @enum ra_dacr0_mask_t
  * @brief DACR0 bit masks.
+ *
+ * @details
+ * Mirror FSP `R_DAC_B0_DACR0_*_Msk`.
  */
 typedef enum : uint32_t {
-  k_ra_dacr0_mask_dacen    = 0x00000001UL,
-  k_ra_dacr0_mask_dae      = 0x00008000UL,
-  k_ra_dacr0_mask_daoutdis = 0x80000000UL,
+  k_ra_dacr0_mask_dacen    = 0x00000001UL, /**< Mirror of FSP DACEN_Msk.    */
+  k_ra_dacr0_mask_dae      = 0x00008000UL, /**< Mirror of FSP DAE_Msk.      */
+  k_ra_dacr0_mask_daoutdis = 0x80000000UL, /**< Mirror of FSP DAOUTDIS_Msk. */
 } ra_dacr0_mask_t;
+
+/**
+ * @enum ra_dacr1_bit_t
+ * @brief DACR1 bit positions (data placement).
+ *
+ * @details
+ * DPSEL selects right- (0) vs left-justified (1) 12-bit data in the
+ * 16-bit DADR field. Verified against FSP `R_DAC_B0_DACR1_DPSEL_Pos`.
+ */
+typedef enum : uint8_t {
+  k_ra_dacr1_bit_dpsel = 16U, /**< DPSEL: data placement select. */
+} ra_dacr1_bit_t;
+
+/**
+ * @enum ra_dacr1_mask_t
+ * @brief DACR1 bit masks.
+ */
+typedef enum : uint32_t {
+  k_ra_dacr1_mask_dpsel = 0x00010000UL, /**< Mirror of FSP DPSEL_Msk. */
+} ra_dacr1_mask_t;
+
+/**
+ * @enum ra_dacr2_bit_t
+ * @brief DACR2 bit positions (DAC-HM operating-voltage mode).
+ *
+ * @details
+ * OFSSEL selects the high-voltage reference range. FSP exposes only
+ * two values: NORMAL (>= 2.7V, OFSSEL = 0) and LOW (< 2.7V, OFSSEL = 1).
+ * Verified against FSP `R_DAC_B0_DACR2_OFSSEL_Pos`.
+ */
+typedef enum : uint8_t {
+  k_ra_dacr2_bit_ofssel = 8U, /**< OFSSEL: VREFH range select. */
+} ra_dacr2_bit_t;
+
+/**
+ * @enum ra_dacr2_mask_t
+ * @brief DACR2 bit masks.
+ */
+typedef enum : uint32_t {
+  k_ra_dacr2_mask_ofssel = 0x00000100UL, /**< Mirror of FSP OFSSEL_Msk. */
+} ra_dacr2_mask_t;
 
 /**
  * @struct r_dac_b_regs_t
  * @brief Per-instance DAC_B register window.
+ *
+ * @details
+ * Layout matches FSP `R_DAC_B0_Type` (size 0x10, including the
+ * 16-bit reserved gap between DADR and DACR0).
  */
 typedef struct {
-  volatile uint16_t DADR; /**< +0x00 12-bit data value (low 12 bits). */
-  volatile uint16_t _r0;
-  volatile uint32_t DACR0; /**< +0x04 Control 0.                     */
-  volatile uint32_t DACR1; /**< +0x08 Control 1 (data placement).    */
-  volatile uint32_t DACR2; /**< +0x0C Control 2 (ref / ADC sync).    */
+  volatile uint16_t DADR;          /**< +0x00 12-bit data value (low 12 bits). */
+  volatile uint16_t reserved_dadr; /**< +0x02 RESERVED (FSP field).   */
+  volatile uint32_t DACR0;         /**< +0x04 Control 0 (DACEN/DAE/DAOUTDIS). */
+  volatile uint32_t DACR1;         /**< +0x08 Control 1 (DPSEL bit 16).        */
+  volatile uint32_t DACR2;         /**< +0x0C Control 2 (OFSSEL bit 8).        */
 } r_dac_b_regs_t;
 
 /**
