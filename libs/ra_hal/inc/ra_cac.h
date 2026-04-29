@@ -38,13 +38,24 @@ extern "C" {
 
 /**
  * @enum ra_cac_status_mask_t
- * @brief CASTR status bits.
+ * @brief CASTR status-flag bit masks (HUM Ch 10.2.5 "CASTR" p 424).
+ *
+ * @details
+ * CASTR layout (cross-verified against FSP `R_CAC_Type.CASTR_b` and CMSIS
+ * `R_CAC_CASTR_*_Pos` in `R7KA8D2KF_core0.h`):
+ *  - bit 0 = FERRF (Frequency Error Flag)
+ *  - bit 1 = MENDF (Measurement End Flag)
+ *  - bit 2 = OVFF  (Counter Overflow Flag)
+ *
+ * To clear a flag, write 1 to the matching `*CL` bit in CAICR shifted up
+ * by `k_ra_cac_castr_to_caicr_shift` (= 4): FERRFCL=bit4, MENDFCL=bit5,
+ * OVFFCL=bit6 (HUM Ch 10.2.4 "CAICR" p 423).
  */
 typedef enum : uint8_t {
   k_ra_cac_status_none  = 0x00U,
-  k_ra_cac_status_mendf = 0x02U, /**< Measurement end flag.      */
-  k_ra_cac_status_ovff  = 0x04U, /**< Counter overflow.           */
-  k_ra_cac_status_ferrf = 0x08U, /**< Frequency error.            */
+  k_ra_cac_status_ferrf = 0x01U, /**< Frequency error  (CASTR bit 0). */
+  k_ra_cac_status_mendf = 0x02U, /**< Measurement end  (CASTR bit 1). */
+  k_ra_cac_status_ovff  = 0x04U, /**< Counter overflow (CASTR bit 2). */
 } ra_cac_status_mask_t;
 
 /**
