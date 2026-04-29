@@ -280,3 +280,256 @@ ra_err_t ra_sdhi_exit_stop(uint8_t instance)
   }
   return ra_mstp_enable(s_sdhi_mstp_table[instance]);
 }
+
+/**
+ * @brief Bounded spin budget for the per-word BRE / BWE poll.
+ *
+ * @details
+ * One iteration of the FIFO-drain loop polls SD_INFO2.BRE (or BWE)
+ * before each 4-byte access. On real hardware the flag asserts
+ * within microseconds; the budget is sized so the loop tolerates a
+ * 1ms scheduler glitch (roughly 1 GHz / 1 us = 1M spins) before
+ * returning ``k_ra_err_hw_timeout``.
+ */
+typedef enum : uint32_t {
+  k_ra_sdhi_fifo_spin = 1000000U,
+} ra_sdhi_fifo_timing_t;
+
+/**
+ * @brief Byte / shift constants for the 32-bit FIFO word splitter.
+ *
+ * @details
+ * ``SD_BUF0`` is a 32-bit register; the polled drain reassembles
+ * each word into four little-endian bytes in the destination
+ * buffer. These constants name the per-byte mask and shift
+ * amounts so the loop body avoids inline magic numbers.
+ */
+typedef enum : uint32_t {
+  k_ra_sdhi_byte_mask = 0xFFU, /**< low-byte select mask */
+  k_ra_sdhi_shift_b1  = 8U,    /**< bits 15..8  -> byte 1 */
+  k_ra_sdhi_shift_b2  = 16U,   /**< bits 23..16 -> byte 2 */
+  k_ra_sdhi_shift_b3  = 24U,   /**< bits 31..24 -> byte 3 */
+} ra_sdhi_byte_split_t;
+
+/**
+ * @brief Issue a data-transfer command and wait for RSPEND.
+ *
+ * @details
+ * Loads SD_ARG with ``arg``, writes ``cmd`` (bare command index,
+ * 0..63) to SD_CMD, then polls SD_INFO1.RSPEND with the existing
+ * ``k_ra_sdhi_cmd_spin`` budget. The hardware infers the data-phase
+ * direction from the command index for CMD17/18/24/25, so the caller
+ * does not need to pre-encode response-type or data-direction bits.
+ * Mirrors the FSP r_sdhi_command_send_no_wait() prologue at
+ * r_sdhi.c:1127 minus the IRQ-mask bookkeeping that the polled API
+ * does not need.
+ *
+ * @param[in] reg SDHI register window pointer.
+ * @param[in] cmd Bare SD command index (e.g. ::k_ra_sdhi_cmd_read_single_block).
+ * @param[in] arg 32-bit command argument.
+ *
+ * @return ``k_ra_ok`` on RSPEND, ``k_ra_err_hw_timeout`` otherwise.
+ */
+// NOLINTNEXTLINE(readability-non-const-parameter)
+static ra_err_t internal_sdhi_send(volatile r_sdhi_regs_t* reg, uint32_t cmd, uint32_t arg)
+{
+  /* HUM Ch 47.2.2 "SD_ARG : SD Command Argument" p 3128 */
+  /* HUM Ch 47.2.1 "SD_CMD : Command Type Register"  p 3125 */
+  reg->SD_ARG = arg;
+  reg->SD_CMD = cmd;
+
+  /* HUM Ch 47.2.15 "SD_INFO1 : SD Card Interrupt Flag Register 1" p 3140 */
+  for (uint32_t i = 0U; i < k_ra_sdhi_cmd_spin; ++i) {
+    if ((reg->SD_INFO1 & k_ra_sdhi_info1_rspend_mask) != 0U) {
+      reg->SD_INFO1 = reg->SD_INFO1 & ~k_ra_sdhi_info1_rspend_mask;
+      return k_ra_ok;
+    }
+  }
+  return k_ra_err_hw_timeout;
+}
+
+/**
+ * @brief Common data-phase setup shared by read_block / write_block.
+ *
+ * @details
+ * Mirrors FSP ``r_sdhi_read_write_common`` (r_sdhi.c:1383). For
+ * multi-block transfers, SD_STOP.SEC must be set so the IP stops the
+ * data phase after SD_SECCNT blocks; for single-block transfers
+ * SD_STOP must be cleared. SD_SIZE is always 512 bytes for SD card
+ * sector access.
+ */
+// NOLINTNEXTLINE(readability-non-const-parameter)
+static void internal_sdhi_setup_xfer(volatile r_sdhi_regs_t* reg, uint32_t block_count)
+{
+  /* HUM Ch 47.2.4 "SD_STOP : Data Stop Register"     p 3130 */
+  /* HUM Ch 47.2.6 "SD_SECCNT : Block Count Register" p 3133 */
+  if (block_count > 1U) {
+    reg->SD_STOP   = k_ra_sdhi_stop_seccnt_en;
+    reg->SD_SECCNT = block_count;
+  } else {
+    reg->SD_STOP = 0U;
+  }
+
+  /* HUM Ch 47.2.19 "SD_SIZE : Transfer Data Length Register" p 3147 */
+  reg->SD_SIZE = k_ra_sdhi_block_bytes;
+}
+
+/**
+ * @brief Drain ``words`` 32-bit FIFO words from SD_BUF0 into ``buf``.
+ *
+ * @details
+ * Polls SD_INFO2.BRE before each 4-byte read, returning
+ * ``k_ra_err_hw_timeout`` if the BRE flag never asserts inside the
+ * ``k_ra_sdhi_fifo_spin`` budget. The split into a helper keeps
+ * ::ra_sdhi_read_block under the NASA Rule 4 (60 statements) limit.
+ */
+// NOLINTNEXTLINE(readability-non-const-parameter)
+static ra_err_t internal_sdhi_drain(volatile r_sdhi_regs_t* reg, uint8_t* buf, uint32_t words)
+{
+  uint8_t* cursor = buf;
+  for (uint32_t w = 0U; w < words; ++w) {
+    uint32_t spin = 0U;
+    for (; spin < k_ra_sdhi_fifo_spin; ++spin) {
+      if ((reg->SD_INFO2 & k_ra_sdhi_info2_bre_mask) != 0U) {
+        break;
+      }
+    }
+    if (spin >= k_ra_sdhi_fifo_spin) {
+      return k_ra_err_hw_timeout;
+    }
+    const uint32_t word = reg->SD_BUF0;
+    cursor[0]           = (uint8_t)(word & k_ra_sdhi_byte_mask);
+    cursor[1]           = (uint8_t)((word >> k_ra_sdhi_shift_b1) & k_ra_sdhi_byte_mask);
+    cursor[2]           = (uint8_t)((word >> k_ra_sdhi_shift_b2) & k_ra_sdhi_byte_mask);
+    cursor[3]           = (uint8_t)((word >> k_ra_sdhi_shift_b3) & k_ra_sdhi_byte_mask);
+    cursor += k_ra_sdhi_fifo_word_bytes;
+  }
+  return k_ra_ok;
+}
+
+/**
+ * @brief Push ``words`` 32-bit FIFO words from ``buf`` into SD_BUF0.
+ *
+ * @details
+ * Polls SD_INFO2.BWE before each 4-byte write, returning
+ * ``k_ra_err_hw_timeout`` if the BWE flag never asserts inside the
+ * ``k_ra_sdhi_fifo_spin`` budget. Mirror image of
+ * ::internal_sdhi_drain, also factored out to keep
+ * ::ra_sdhi_write_block under the NASA Rule 4 limit.
+ */
+// NOLINTNEXTLINE(readability-non-const-parameter)
+static ra_err_t internal_sdhi_fill(volatile r_sdhi_regs_t* reg, const uint8_t* buf, uint32_t words)
+{
+  const uint8_t* cursor = buf;
+  for (uint32_t w = 0U; w < words; ++w) {
+    uint32_t spin = 0U;
+    for (; spin < k_ra_sdhi_fifo_spin; ++spin) {
+      if ((reg->SD_INFO2 & k_ra_sdhi_info2_bwe_mask) != 0U) {
+        break;
+      }
+    }
+    if (spin >= k_ra_sdhi_fifo_spin) {
+      return k_ra_err_hw_timeout;
+    }
+    const uint32_t word = (uint32_t)cursor[0] | ((uint32_t)cursor[1] << k_ra_sdhi_shift_b1) |
+                          ((uint32_t)cursor[2] << k_ra_sdhi_shift_b2) |
+                          ((uint32_t)cursor[3] << k_ra_sdhi_shift_b3);
+    reg->SD_BUF0        = word;
+    cursor += k_ra_sdhi_fifo_word_bytes;
+  }
+  return k_ra_ok;
+}
+
+/**
+ * @brief Tear down the data phase: optional CMD12 + flag cleanup.
+ *
+ * @details
+ * Issues CMD12 STOP_TRANSMISSION when ``block_count > 1`` to close
+ * the open-ended multi-block transfer the way FSP does at
+ * r_sdhi.c:1095, then zeroes SD_INFO1 / SD_INFO2 so the next caller
+ * sees a clean slate. Factored out so the public read/write helpers
+ * stay under the NASA Rule 4 statement limit.
+ */
+// NOLINTNEXTLINE(readability-non-const-parameter)
+static ra_err_t internal_sdhi_finish_xfer(volatile r_sdhi_regs_t* reg, uint32_t block_count)
+{
+  if (block_count > 1U) {
+    /* HUM Ch 47.2.1 "SD_CMD : Command Type Register" p 3125 */
+    const ra_err_t stop_err =
+      internal_sdhi_send(reg, (uint32_t)k_ra_sdhi_cmd_stop_transmission, 0U);
+    RA_RETURN_ON_ERROR(stop_err, s_tag, "block_xfer: CMD12 timeout");
+  }
+  reg->SD_INFO1 = 0U;
+  reg->SD_INFO2 = 0U;
+  return k_ra_ok;
+}
+
+ra_err_t ra_sdhi_read_block(uint8_t instance, uint32_t lba, uint8_t* buf, uint32_t block_count)
+{
+  RA_CHECK_NULL_PTR(buf, s_tag, "read_block: buf must not be nullptr");
+  if (block_count == 0U) {
+    return k_ra_err_invalid_arg;
+  }
+  volatile r_sdhi_regs_t* reg = ra_sdhi(instance);
+  RA_CHECK_NULL_PTR(reg, s_tag, "read_block: instance out of range");
+
+  internal_sdhi_setup_xfer(reg, block_count);
+
+  const uint32_t cmd     = (block_count > 1U) ? (uint32_t)k_ra_sdhi_cmd_read_multi_block
+                                              : (uint32_t)k_ra_sdhi_cmd_read_single_block;
+  const ra_err_t cmd_err = internal_sdhi_send(reg, cmd, lba);
+  RA_RETURN_ON_ERROR(cmd_err, s_tag, "read_block: RSPEND timeout");
+
+  /* HUM Ch 47.2.21 "SD_BUF0 : SD Buffer Register" p 3150 */
+  const uint32_t total_words = block_count * k_ra_sdhi_words_per_block;
+  const ra_err_t drain_err   = internal_sdhi_drain(reg, buf, total_words);
+  RA_RETURN_ON_ERROR(drain_err, s_tag, "read_block: BRE timeout");
+
+  return internal_sdhi_finish_xfer(reg, block_count);
+}
+
+ra_err_t
+ra_sdhi_write_block(uint8_t instance, uint32_t lba, const uint8_t* buf, uint32_t block_count)
+{
+  RA_CHECK_NULL_PTR(buf, s_tag, "write_block: buf must not be nullptr");
+  if (block_count == 0U) {
+    return k_ra_err_invalid_arg;
+  }
+  volatile r_sdhi_regs_t* reg = ra_sdhi(instance);
+  RA_CHECK_NULL_PTR(reg, s_tag, "write_block: instance out of range");
+
+  internal_sdhi_setup_xfer(reg, block_count);
+
+  const uint32_t cmd     = (block_count > 1U) ? (uint32_t)k_ra_sdhi_cmd_write_multi_block
+                                              : (uint32_t)k_ra_sdhi_cmd_write_single_block;
+  const ra_err_t cmd_err = internal_sdhi_send(reg, cmd, lba);
+  RA_RETURN_ON_ERROR(cmd_err, s_tag, "write_block: RSPEND timeout");
+
+  /* HUM Ch 47.2.21 "SD_BUF0 : SD Buffer Register" p 3150 */
+  const uint32_t total_words = block_count * k_ra_sdhi_words_per_block;
+  const ra_err_t fill_err    = internal_sdhi_fill(reg, buf, total_words);
+  RA_RETURN_ON_ERROR(fill_err, s_tag, "write_block: BWE timeout");
+
+  return internal_sdhi_finish_xfer(reg, block_count);
+}
+
+ra_err_t ra_sdhi_attach_dma(uint8_t instance, uint8_t enable)
+{
+  volatile r_sdhi_regs_t* reg = ra_sdhi(instance);
+  RA_CHECK_NULL_PTR(reg, s_tag, "attach_dma: instance out of range");
+
+  /* HUM Ch 47.2.30 "SD_DMAEN : DMA Mode Enable Register"  p 3172 */
+  /* HUM Ch 47.2.17 "SD_INFO2_MASK : SD Card Interrupt Mask 2" p 3144 */
+  /* FSP r_sdhi_transfer_read / r_sdhi_transfer_write set the BREM
+   * and BWEM mask bits whenever DMAEN is asserted, so that the
+   * DMA-driven path does not race with the polled BRE / BWE wait
+   * the PIO path uses. Mirror that pairing here. */
+  if (enable != 0U) {
+    reg->SD_INFO2_MASK |= k_ra_sdhi_info2_brem_bwem;
+    reg->SD_DMAEN = k_ra_sdhi_dmaen_set;
+  } else {
+    reg->SD_DMAEN = 0U;
+    reg->SD_INFO2_MASK &= ~k_ra_sdhi_info2_brem_bwem;
+  }
+  return k_ra_ok;
+}

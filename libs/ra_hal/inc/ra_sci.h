@@ -141,6 +141,19 @@ typedef void (*ra_sci_rx_fn_t)(void* ctx, uint8_t byte);
  */
 typedef bool (*ra_sci_tx_fn_t)(void* ctx, uint8_t* byte);
 
+/**
+ * @enum ra_sci_dir_t
+ * @brief Direction selector for ``ra_sci_abort``.
+ *
+ * @details Mirrors FSP's `uart_dir_t` (TX=1, RX=2, BOTH=3) so callers
+ * can use one bitmask to abort either direction or both at once.
+ */
+typedef enum : uint8_t {
+  k_ra_sci_dir_tx   = 0x01U, /**< Cancel an in-flight TX. */
+  k_ra_sci_dir_rx   = 0x02U, /**< Cancel an in-flight RX. */
+  k_ra_sci_dir_both = 0x03U, /**< Cancel both directions. */
+} ra_sci_dir_t;
+
 /* =============================================================================
  * Lifecycle
  * =============================================================================
@@ -363,6 +376,229 @@ typedef bool (*ra_sci_tx_fn_t)(void* ctx, uint8_t* byte);
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_sci_exit_stop(uint8_t channel);
+
+/* =============================================================================
+ * Async byte-stream TX / RX (FSP r_sci_b_uart Read/Write parity)
+ * =============================================================================
+ */
+
+/**
+ * @brief Arm an interrupt-driven TX of ``len`` bytes from ``data``.
+ *
+ * @details
+ * Mirrors FSP `R_SCI_B_UART_Write` (r_sci_b_uart.c:557): installs an
+ * internal byte-counting state machine on the channel, sets CCR0.TIE,
+ * and returns immediately. Each subsequent TXI then shifts one byte
+ * out of TDR and decrements the remaining count; when the count reaches
+ * zero, TIE is cleared automatically. If a user TX callback was
+ * previously attached via ``ra_sci_attach_tx_handler``, it is still
+ * invoked once per byte (with ``*byte`` already populated from
+ * ``data[i]``) so existing flow-control hooks keep working.
+ *
+ * @param[in] channel SCI channel (0..9).
+ * @param[in] data Source buffer; must stay live until the
+ * transfer drains or is aborted.
+ * @param[in] len Number of bytes to send. Zero is a no-op.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok Transfer armed.
+ * @retval k_ra_err_null_ptr ``data`` is NULL with ``len`` > 0.
+ * @retval k_ra_err_invalid_arg ``channel`` > 9 or channel not
+ * initialised.
+ * @retval k_ra_err_busy A previous async TX is still draining.
+ *
+ * @pre Channel previously initialised via ``ra_sci_init``.
+ * @pre ``data`` non-NULL when ``len`` > 0.
+ * @post On success, CCR0.TIE = 1 and the per-channel TX state holds
+ * ``data`` / ``len``.
+ *
+ * @note Thread safety: not thread-safe; ISR contention is the caller's
+ * responsibility.
+ * @see ra_sci_abort
+ * @see ra_sci_dispatch_txi
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_sci_write(uint8_t channel, const uint8_t* data, uint32_t len);
+
+/**
+ * @brief Arm an interrupt-driven RX of ``len`` bytes into ``buf``.
+ *
+ * @details
+ * Mirrors FSP `R_SCI_B_UART_Read` (r_sci_b_uart.c:496): installs an
+ * internal byte-counting RX state machine, sets CCR0.RIE, and returns
+ * immediately. Each subsequent RXI copies the byte from RDR into
+ * ``buf[index++]`` and decrements ``remaining``. When ``remaining``
+ * reaches zero, RIE is cleared automatically. A previously-attached
+ * user RX callback is still invoked per byte.
+ *
+ * @param[in] channel SCI channel (0..9).
+ * @param[out] buf Destination buffer; must stay live until the
+ * transfer drains or ``ra_sci_read_stop`` is called.
+ * @param[in] len Number of bytes to receive. Zero is a no-op.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok Transfer armed.
+ * @retval k_ra_err_null_ptr ``buf`` is NULL with ``len`` > 0.
+ * @retval k_ra_err_invalid_arg ``channel`` > 9 or channel not
+ * initialised.
+ * @retval k_ra_err_busy A previous async RX is still draining.
+ *
+ * @pre Channel previously initialised via ``ra_sci_init``.
+ * @pre ``buf`` non-NULL when ``len`` > 0.
+ * @post On success, CCR0.RIE = 1 and the per-channel RX state holds
+ * ``buf`` / ``len`` / ``index = 0``.
+ *
+ * @note Thread safety: not thread-safe.
+ * @see ra_sci_read_stop
+ * @see ra_sci_abort
+ * @see ra_sci_dispatch_rxi
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_sci_read(uint8_t channel, uint8_t* buf, uint32_t len);
+
+/**
+ * @brief Cancel an in-flight async TX or RX.
+ *
+ * @details
+ * Mirrors FSP `R_SCI_B_UART_Abort` (r_sci_b_uart.c:789). When
+ * ``direction`` includes ``k_ra_sci_dir_tx``, CCR0.TIE / CCR0.TEIE are
+ * cleared and the per-channel TX state is zeroed. When ``direction``
+ * includes ``k_ra_sci_dir_rx``, CCR0.RIE is cleared and the per-channel
+ * RX state is zeroed. ``k_ra_sci_dir_both`` aborts both. CCR0.TE / RE
+ * are left alone -- callers may still poll or arm a fresh transfer.
+ *
+ * @param[in] channel SCI channel (0..9).
+ * @param[in] direction TX, RX, or both.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok Direction(s) aborted.
+ * @retval k_ra_err_invalid_arg ``channel`` > 9 or ``direction`` is not
+ * one of the three defined values.
+ *
+ * @pre Channel previously initialised.
+ * @post The selected direction(s) have ``IE`` bits cleared and the
+ * matching per-channel byte counter is zero.
+ *
+ * @note Thread safety: not thread-safe.
+ * @see ra_sci_write
+ * @see ra_sci_read
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_sci_abort(uint8_t channel, ra_sci_dir_t direction);
+
+/**
+ * @brief Stop an in-flight RX and report how many bytes were not
+ * yet consumed.
+ *
+ * @details
+ * Mirrors FSP `R_SCI_B_UART_ReadStop` (r_sci_b_uart.c:877). Clears
+ * the per-channel RX byte counter, then writes the value that was
+ * just cleared into ``*remaining`` so the caller knows how much of
+ * the original ``len`` is still pending. Disarms RIE.
+ *
+ * @param[in] channel SCI channel (0..9).
+ * @param[out] remaining Bytes still pending at stop time. Set to 0
+ * if no RX was active.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok RX state cleared, ``*remaining`` updated.
+ * @retval k_ra_err_null_ptr ``remaining`` is NULL.
+ * @retval k_ra_err_invalid_arg ``channel`` > 9.
+ *
+ * @pre ``remaining`` is non-NULL.
+ * @pre Channel previously initialised.
+ * @post CCR0.RIE = 0 and the per-channel RX state is zeroed.
+ *
+ * @note Thread safety: not thread-safe.
+ * @see ra_sci_read
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_sci_read_stop(uint8_t channel, uint32_t* remaining);
+
+/**
+ * @brief Pure-math conversion from a target baud rate to BRR + clock
+ * divider settings.
+ *
+ * @details
+ * Mirrors FSP `R_SCI_B_UART_BaudCalculate` (r_sci_b_uart.c:931) for
+ * the simple non-modulated 16x base-clock path. Implements the
+ * formula from HUM Ch 38.2.7 "CCR2 : Common Control Register 2",
+ * p 2189 Table 38.7:
+ *
+ *   N = TCLK / (64 * 2^(2n - 1) * B) - 1
+ *
+ * with n = ``*clk_div_out`` chosen as the smallest CKS divider for
+ * which BRR fits in 8 bits. ``*brr_out`` receives the 8-bit BRR.
+ * Pure math only -- this routine does not touch any hardware
+ * register. Use ``ra_sci_set_baud`` to apply the result.
+ *
+ * @param[in] baud Target baud rate in bps; must be > 0.
+ * @param[in] pclk_hz PCLKB frequency in Hz; must be > 0.
+ * @param[out] brr_out Computed BRR value (0..255).
+ * @param[out] clk_div_out Computed CKS divider exponent (0..3).
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok BRR computed within hardware reach.
+ * @retval k_ra_err_null_ptr ``brr_out`` or ``clk_div_out`` is NULL.
+ * @retval k_ra_err_invalid_arg ``baud`` or ``pclk_hz`` is zero, or
+ * the requested baud cannot be reached
+ * with any CKS divider (BRR > 255).
+ *
+ * @pre ``brr_out`` and ``clk_div_out`` are non-NULL.
+ * @post On success, the pair (``*brr_out``, ``*clk_div_out``) yields
+ * an effective baud whose error vs. ``baud`` is < 5 percent for
+ * standard 9.6k/19.2k/57.6k/115.2k targets at typical PCLKB rates.
+ *
+ * @note Thread safety: pure function; safe to call concurrently.
+ * @see ra_sci_set_baud
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t
+ra_sci_baud_calculate(uint32_t baud, uint32_t pclk_hz, uint16_t* brr_out, uint8_t* clk_div_out);
+
+/**
+ * @brief Suspend reception by clearing CCR0.RE.
+ *
+ * @details
+ * Mirrors FSP `R_SCI_B_UART_ReceiveSuspend` (r_sci_b_uart.c:1078)
+ * but with a real implementation: FSP returns
+ * ``FSP_ERR_UNSUPPORTED`` for SCI_B because the hardware does not
+ * have a dedicated "RX-suspend" bit. We approximate it by dropping
+ * CCR0.RE -- the receive shift register stops sampling RXD and
+ * RXI is silenced. ``ra_sci_receive_resume`` re-asserts RE.
+ *
+ * @param[in] channel SCI channel (0..9).
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok RX paused (CCR0.RE = 0).
+ * @retval k_ra_err_invalid_arg ``channel`` > 9.
+ *
+ * @pre Channel previously initialised.
+ * @post CCR0.RE = 0; bytes already in RDR remain readable.
+ *
+ * @note Thread safety: not thread-safe.
+ * @see ra_sci_receive_resume
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_sci_receive_suspend(uint8_t channel);
+
+/**
+ * @brief Resume reception by setting CCR0.RE.
+ *
+ * @param[in] channel SCI channel (0..9).
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok RX re-armed (CCR0.RE = 1).
+ * @retval k_ra_err_invalid_arg ``channel`` > 9.
+ *
+ * @pre Channel previously initialised.
+ * @post CCR0.RE = 1.
+ *
+ * @note Thread safety: not thread-safe.
+ * @see ra_sci_receive_suspend
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_sci_receive_resume(uint8_t channel);
 
 /* =============================================================================
  * DMA TX / RX

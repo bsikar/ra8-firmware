@@ -13,6 +13,29 @@
  * fast path, no IBI / HDR support, just enough to exchange bytes
  * with a 7-bit-addressed slave.
  *
+ * The state machine implemented here is a synchronous reduction of
+ * FSP's interrupt-driven flow:
+ *
+ * @verbatim
+ * Write (restart = false):
+ *     IDLE --START--> ADDR_TX --TDBEF0--> DATA_TX --STOP--> IDLE
+ *
+ * Write (restart = true):
+ *     IDLE --START--> ADDR_TX --TDBEF0--> DATA_TX --hold--> (caller chains)
+ *
+ * Read (restart = false):
+ *     IDLE --START--> ADDR_TX --RDBFF0--> DATA_RX --NACK on last
+ *     byte--> STOP --> IDLE
+ *
+ * Read (restart = true):
+ *     IDLE --START--> ADDR_TX --RDBFF0--> DATA_RX --NACK on last
+ *     byte--> hold --> (caller chains)
+ *
+ * Combined transfer:
+ *     IDLE --START--> ADDR_TX --TDBEF0--> DATA_TX --RESTART-->
+ *     ADDR_TX(read) --RDBFF0--> DATA_RX --NACK on last byte--> STOP --> IDLE
+ * @endverbatim
+ *
  * Owns every write to the I3C register block. See HUM Ch 40
  * "I3C Bus Interface (I3C)", p 2445-2701.
  *
@@ -42,10 +65,14 @@ typedef enum : uint32_t {
    * worst-case stall under ~5ms at 250MHz with the load/branch pair
    * the compiler emits for the wait helpers. */
   k_ra_iic_b_poll_limit = 200000U,
-  /** R/W bit on the address byte (1 = read). */
-  k_ra_iic_b_addr_rw_pos = 0U,
   /** Shift count to convert a 7-bit address into the on-the-wire byte. */
   k_ra_iic_b_addr_shift = 1U,
+  /** R/W bit value for a write transaction (0 in LSB). */
+  k_ra_iic_b_addr_rw_write = 0U,
+  /** R/W bit value for a read transaction  (1 in LSB). */
+  k_ra_iic_b_addr_rw_read = 1U,
+  /** 8-bit byte mask for narrowing 32-bit reads from NTDTBP0. */
+  k_ra_iic_b_byte_mask = 0xFFU,
 } ra_iic_b_internal_t;
 
 /**
@@ -53,10 +80,15 @@ typedef enum : uint32_t {
  * @brief Per-channel dispatch state.
  */
 typedef struct {
-  ra_iic_b_complete_fn_t cb;          /**< Callback or NULL. */
-  void*                  ctx;         /**< Callback context. */
+  ra_iic_b_complete_fn_t cb;          /**< Callback or NULL.            */
+  void*                  ctx;         /**< Callback context.            */
   bool                   initialised; /**< Tracks ``ra_iic_b_init`` /
-                                         ``ra_iic_b_deinit``. */
+                                         ``ra_iic_b_deinit``.           */
+  bool                   bus_held;    /**< True when the previous
+                                         transaction returned with
+                                         ``restart=true`` and the next
+                                         call must inject a RESTART
+                                         instead of a fresh START.      */
 } ra_iic_b_state_t;
 
 /**
@@ -174,6 +206,21 @@ static void internal_iic_b_start(volatile r_iic_b_regs_t* reg)
 }
 
 /**
+ * @brief Issue a repeated-START (Sr) condition.
+ *
+ * @details
+ * HUM Ch 40.2.27 "CNDCTL : Condition Control Register" p 2473 -- Sr
+ * differs from S in that it is gated by the prior transfer not having
+ * issued STOP. The polling driver achieves that by leaving STOP off
+ * when the caller passes ``restart=true`` to write/read.
+ */
+static void internal_iic_b_restart(volatile r_iic_b_regs_t* reg)
+{
+  /* HUM Ch 40.2.27 "CNDCTL : Condition Control Register" p 2473 */
+  reg->CNDCTL = k_ra_iic_b_msk_cndctl_srcnd;
+}
+
+/**
  * @brief Issue a STOP condition.
  *
  * @details
@@ -230,16 +277,37 @@ static ra_err_t internal_iic_b_send_address(volatile r_iic_b_regs_t* reg, uint8_
 
 /**
  * @brief Map the latched BST error bits to a high-level status code.
+ *
+ * @details
+ * NACK and arbitration-loss carry distinct codes so a caller can
+ * distinguish "slave declined" from "another master won the bus".
  */
 static ra_err_t internal_iic_b_status_from_bst(uint32_t bst)
 {
-  if ((bst & (k_ra_iic_b_msk_bst_alf | k_ra_iic_b_msk_bst_nackdf)) != 0U) {
+  if ((bst & k_ra_iic_b_msk_bst_nackdf) != 0U) {
+    return k_ra_err_nack;
+  }
+  if ((bst & k_ra_iic_b_msk_bst_alf) != 0U) {
     return k_ra_err_hw_error;
   }
   if ((bst & k_ra_iic_b_msk_bst_todf) != 0U) {
     return k_ra_err_hw_timeout;
   }
   return k_ra_ok;
+}
+
+/**
+ * @brief True when the bus is free as reported by BCST.BFREF.
+ *
+ * @details
+ * HUM Ch 40.2.41 "BCST : Bus Condition Status Register" p 2491:
+ * ``BFREF`` is 1 when the bus is in the free state. FSP gates new
+ * master transactions on this flag (see ``iic_b_master_run_hw_master``
+ * around the ``IIC_B_MASTER_HW_WAIT_BUS_FREE`` block).
+ */
+static bool internal_iic_b_bus_free(volatile const r_iic_b_regs_t* reg)
+{
+  return (reg->BCST & k_ra_iic_b_msk_bcst_bfref) != 0U;
 }
 
 /* =============================================================================
@@ -313,6 +381,7 @@ ra_err_t ra_iic_b_init(uint8_t channel, const ra_iic_b_cfg_t* cfg)
   s_iic_b_state[channel].cb          = nullptr;
   s_iic_b_state[channel].ctx         = nullptr;
   s_iic_b_state[channel].initialised = true;
+  s_iic_b_state[channel].bus_held    = false;
 
   ra_log_info_val(s_tag, "iic_b_init channel", (uint32_t)channel);
   return k_ra_ok;
@@ -332,6 +401,7 @@ ra_err_t ra_iic_b_deinit(uint8_t channel)
   s_iic_b_state[channel].cb          = nullptr;
   s_iic_b_state[channel].ctx         = nullptr;
   s_iic_b_state[channel].initialised = false;
+  s_iic_b_state[channel].bus_held    = false;
   return ra_mstp_disable(k_ra_mstp_i3c);
 }
 
@@ -356,43 +426,108 @@ ra_err_t ra_iic_b_set_clock(uint8_t channel, uint32_t bus_hz, uint32_t pclka_hz)
  * =============================================================================
  */
 
-ra_err_t ra_iic_b_write(uint8_t channel, uint8_t target_7b, const uint8_t* data, uint32_t len)
+/**
+ * @brief Issue START or RESTART based on whether the bus is currently
+ *        held by a previous ``restart=true`` call.
+ */
+static void internal_iic_b_open_phase(volatile r_iic_b_regs_t* reg, bool bus_held)
 {
-  volatile r_iic_b_regs_t* reg = ra_iic_b(channel);
-  RA_CHECK_NULL_PTR(reg, s_tag, "iic_b_write: channel");
-  RA_CHECK_NULL_PTR(data, s_tag, "iic_b_write: data");
-
-  internal_iic_b_clear_bst(reg);
-  internal_iic_b_start(reg);
-
-  /* The address slot uses the same TDBEF0 gate as the data slots --
-   * no separate STCNDDF wait per FSP TXI flow. */
-  const uint8_t address_byte = (uint8_t)((uint32_t)target_7b << k_ra_iic_b_addr_shift);
-  ra_err_t      err          = internal_iic_b_send_address(reg, address_byte);
-  if (err != k_ra_ok) {
-    internal_iic_b_stop(reg);
-    return err;
+  if (bus_held) {
+    internal_iic_b_restart(reg);
+  } else {
+    internal_iic_b_start(reg);
   }
+}
 
+/**
+ * @brief Push ``len`` bytes from ``data`` into NTDTBP0.
+ *
+ * @details
+ * TX-side counterpart to ``internal_iic_b_drain_rx``. Each iteration
+ * waits for TDBEF0 then writes one byte; bails out early on NACK
+ * mid-payload (FSP TXI ERI fast-path).
+ */
+static ra_err_t
+internal_iic_b_drain_tx(volatile r_iic_b_regs_t* reg, const uint8_t* data, uint32_t len)
+{
+  ra_err_t err = k_ra_ok;
   for (uint32_t i = 0U; i < len; i++) {
     err = internal_iic_b_wait_ntst(reg, k_ra_iic_b_msk_ntst_tdbef0);
     if (err != k_ra_ok) {
       break;
     }
+    if ((reg->BST & k_ra_iic_b_msk_bst_nackdf) != 0U) {
+      break;
+    }
     /* HUM Ch 40.2.30 "NTDTBP0 : Normal Transfer Data Buffer Port 0" p 2476 */
     reg->NTDTBP0 = (uint32_t)data[i];
   }
+  return err;
+}
 
-  /* Note: FSP's TXI/TEI ISR pair waits for TENDF before issuing STOP.
-   * In the synchronous polling driver the last NTDTBP0 write has
-   * already drained into the bus FIFO; we issue STOP unconditionally
-   * and let internal_iic_b_status_from_bst surface any latched error
-   * (NACK / arbitration loss / timeout). */
-  internal_iic_b_stop(reg);
-  if (err == k_ra_ok) {
-    err = internal_iic_b_status_from_bst(reg->BST);
+/**
+ * @brief Decide STOP vs hold and update channel state accordingly.
+ *
+ * @details
+ * Common tail of write/read: if the data phase failed or the caller
+ * did not request restart, issue STOP and clear ``bus_held``. Otherwise
+ * leave the bus held for the next chained call.
+ */
+static void
+internal_iic_b_finalize(volatile r_iic_b_regs_t* reg, uint8_t channel, ra_err_t err, bool restart)
+{
+  if ((err != k_ra_ok) || !restart) {
+    internal_iic_b_stop(reg);
+    s_iic_b_state[channel].bus_held = false;
+  } else {
+    s_iic_b_state[channel].bus_held = true;
   }
   internal_iic_b_clear_bst(reg);
+}
+
+/**
+ * @brief Bus-busy gate: rejects new transactions while BCST.BFREF is
+ *        clear, unless the channel is in a held-bus restart state.
+ */
+static ra_err_t internal_iic_b_busy_gate(volatile const r_iic_b_regs_t* reg, bool bus_held)
+{
+  if (bus_held) {
+    return k_ra_ok;
+  }
+  return internal_iic_b_bus_free(reg) ? k_ra_ok : k_ra_err_busy;
+}
+
+ra_err_t
+ra_iic_b_write(uint8_t channel, uint8_t target_7b, const uint8_t* data, uint32_t len, bool restart)
+{
+  volatile r_iic_b_regs_t* reg = ra_iic_b(channel);
+  RA_CHECK_NULL_PTR(reg, s_tag, "iic_b_write: channel");
+  RA_CHECK_NULL_PTR(data, s_tag, "iic_b_write: data");
+
+  const bool     bus_held  = s_iic_b_state[channel].bus_held;
+  const ra_err_t busy_gate = internal_iic_b_busy_gate(reg, bus_held);
+  if (busy_gate != k_ra_ok) {
+    return busy_gate;
+  }
+
+  internal_iic_b_clear_bst(reg);
+  internal_iic_b_open_phase(reg, bus_held);
+
+  const uint8_t address_byte =
+    (uint8_t)(((uint32_t)target_7b << k_ra_iic_b_addr_shift) | k_ra_iic_b_addr_rw_write);
+  ra_err_t err = internal_iic_b_send_address(reg, address_byte);
+  if (err != k_ra_ok) {
+    internal_iic_b_stop(reg);
+    s_iic_b_state[channel].bus_held = false;
+    return err;
+  }
+
+  err                    = internal_iic_b_drain_tx(reg, data, len);
+  const ra_err_t bst_err = internal_iic_b_status_from_bst(reg->BST);
+  if (bst_err != k_ra_ok) {
+    err = bst_err;
+  }
+  internal_iic_b_finalize(reg, channel, err, restart);
   return err;
 }
 
@@ -412,9 +547,6 @@ ra_err_t ra_iic_b_write(uint8_t channel, uint8_t target_7b, const uint8_t* data,
  */
 static ra_err_t internal_iic_b_drain_rx(volatile r_iic_b_regs_t* reg, uint8_t* out, uint32_t len)
 {
-  enum : uint32_t {
-    k_ra_iic_b_byte_mask = 0xFFU,
-  };
   ra_err_t err = k_ra_ok;
   for (uint32_t i = 0U; i < len; i++) {
     if (i == (len - 1U)) {
@@ -431,46 +563,130 @@ static ra_err_t internal_iic_b_drain_rx(volatile r_iic_b_regs_t* reg, uint8_t* o
   return err;
 }
 
-ra_err_t ra_iic_b_read(uint8_t channel, uint8_t target_7b, uint8_t* out, uint32_t len)
+/**
+ * @brief Run the data phase of an RX transaction (dummy-read + drain).
+ *
+ * @details
+ * Mirrors FSP rxi_master(): the first RDBFF0 fires before NTDTBP0
+ * holds real payload, so the first read is dropped to clock the first
+ * data byte into the buffer. ACKCTL is then restored to its default
+ * (ACK every byte) for the next transaction.
+ */
+static ra_err_t internal_iic_b_rx_phase(volatile r_iic_b_regs_t* reg, uint8_t* buf, uint32_t len)
+{
+  ra_err_t err = internal_iic_b_wait_ntst(reg, k_ra_iic_b_msk_ntst_rdbff0);
+  if (err == k_ra_ok) {
+    (void)reg->NTDTBP0;
+    err = internal_iic_b_drain_rx(reg, buf, len);
+  }
+  reg->ACKCTL = k_ra_iic_b_msk_ackctl_acktwp;
+  return err;
+}
+
+ra_err_t ra_iic_b_read(uint8_t channel, uint8_t target_7b, uint8_t* buf, uint32_t len, bool restart)
 {
   volatile r_iic_b_regs_t* reg = ra_iic_b(channel);
   RA_CHECK_NULL_PTR(reg, s_tag, "iic_b_read: channel");
-  RA_CHECK_NULL_PTR(out, s_tag, "iic_b_read: out");
+  RA_CHECK_NULL_PTR(buf, s_tag, "iic_b_read: buf");
   if (len == 0U) {
     return k_ra_err_invalid_arg;
   }
 
-  internal_iic_b_clear_bst(reg);
-  internal_iic_b_start(reg);
+  const bool     bus_held  = s_iic_b_state[channel].bus_held;
+  const ra_err_t busy_gate = internal_iic_b_busy_gate(reg, bus_held);
+  if (busy_gate != k_ra_ok) {
+    return busy_gate;
+  }
 
-  enum : uint32_t {
-    k_ra_iic_b_addr_read_bit = 1U,
-  };
+  internal_iic_b_clear_bst(reg);
+  internal_iic_b_open_phase(reg, bus_held);
+
   const uint8_t address_byte =
-    (uint8_t)(((uint32_t)target_7b << k_ra_iic_b_addr_shift) | k_ra_iic_b_addr_read_bit);
+    (uint8_t)(((uint32_t)target_7b << k_ra_iic_b_addr_shift) | k_ra_iic_b_addr_rw_read);
   ra_err_t err = internal_iic_b_send_address(reg, address_byte);
   if (err != k_ra_ok) {
     internal_iic_b_stop(reg);
+    s_iic_b_state[channel].bus_held = false;
     return err;
   }
 
-  /* Dummy read: per FSP rxi_master() the first RDBFF0 fires before
-   * NTDTBP0 holds real data; reading once clocks the first byte in. */
-  err = internal_iic_b_wait_ntst(reg, k_ra_iic_b_msk_ntst_rdbff0);
-  if (err == k_ra_ok) {
-    (void)reg->NTDTBP0;
-    err = internal_iic_b_drain_rx(reg, out, len);
+  err                    = internal_iic_b_rx_phase(reg, buf, len);
+  const ra_err_t bst_err = internal_iic_b_status_from_bst(reg->BST);
+  if (bst_err != k_ra_ok) {
+    err = bst_err;
+  }
+  internal_iic_b_finalize(reg, channel, err, restart);
+  return err;
+}
+
+/* =============================================================================
+ * Combined transfer -- write-then-RESTART-then-read.
+ * =============================================================================
+ */
+
+ra_err_t ra_iic_b_transfer(uint8_t        channel,
+                           uint8_t        target_7b,
+                           const uint8_t* tx,
+                           uint32_t       tx_len,
+                           uint8_t*       rx,
+                           uint32_t       rx_len)
+{
+  if (ra_iic_b(channel) == nullptr) {
+    return k_ra_err_null_ptr;
+  }
+  if ((tx_len == 0U) && (rx_len == 0U)) {
+    return k_ra_err_invalid_arg;
+  }
+  if ((tx_len != 0U) && (tx == nullptr)) {
+    return k_ra_err_null_ptr;
+  }
+  if ((rx_len != 0U) && (rx == nullptr)) {
+    return k_ra_err_null_ptr;
   }
 
-  /* Restore ACK = 0 for the next transaction. */
-  reg->ACKCTL = k_ra_iic_b_msk_ackctl_acktwp;
+  /* Phase 1: write (hold the bus for the upcoming read).
+   * Skipped entirely when tx_len == 0 -- this degenerates the call
+   * into a plain read, matching FSP's expectation that a zero-byte
+   * tx phase means "no register-pointer update needed". */
+  if (tx_len != 0U) {
+    const ra_err_t w_err =
+      ra_iic_b_write(channel, target_7b, tx, tx_len, /*restart=*/(rx_len != 0U));
+    if (w_err != k_ra_ok) {
+      return w_err;
+    }
+  }
+
+  /* Phase 2: read (close the bus normally). */
+  if (rx_len != 0U) {
+    const ra_err_t r_err = ra_iic_b_read(channel, target_7b, rx, rx_len, /*restart=*/false);
+    if (r_err != k_ra_ok) {
+      return r_err;
+    }
+  }
+  return k_ra_ok;
+}
+
+/* =============================================================================
+ * Abort -- cancel an in-flight transaction.
+ * =============================================================================
+ */
+
+ra_err_t ra_iic_b_abort(uint8_t channel)
+{
+  volatile r_iic_b_regs_t* reg = ra_iic_b(channel);
+  if (reg == nullptr) {
+    return k_ra_err_invalid_arg;
+  }
+  /* Mask interrupts before tearing down (mirrors FSP
+   * iic_b_master_abort_seq_master).
+   * HUM Ch 40.2.33 "BIE", p 2484 / Ch 40.2.36 "NTIE" p 2488. */
+  reg->BIE  = 0U;
+  reg->NTIE = 0U;
 
   internal_iic_b_stop(reg);
-  if (err == k_ra_ok) {
-    err = internal_iic_b_status_from_bst(reg->BST);
-  }
   internal_iic_b_clear_bst(reg);
-  return err;
+  s_iic_b_state[channel].bus_held = false;
+  return k_ra_ok;
 }
 
 /* =============================================================================
@@ -488,8 +704,9 @@ ra_err_t ra_iic_b_scan(uint8_t channel, uint8_t target_7b, bool* out_acked)
   internal_iic_b_clear_bst(reg);
   internal_iic_b_start(reg);
 
-  const uint8_t address_byte = (uint8_t)((uint32_t)target_7b << k_ra_iic_b_addr_shift);
-  ra_err_t      err          = internal_iic_b_send_address(reg, address_byte);
+  const uint8_t address_byte =
+    (uint8_t)(((uint32_t)target_7b << k_ra_iic_b_addr_shift) | k_ra_iic_b_addr_rw_write);
+  ra_err_t err = internal_iic_b_send_address(reg, address_byte);
   if (err != k_ra_ok) {
     internal_iic_b_stop(reg);
     return err;
@@ -592,6 +809,8 @@ void ra_iic_b_dispatch_eri(uint8_t channel)
 /* =============================================================================
  * Legacy NSC entry points -- thin pass-throughs that keep the
  * Ring-4 NSC veneer surface in libs/ra_nsc compiling unchanged.
+ * The shims always issue STOP (restart = false) -- chained / repeated-
+ * START sequences must use the Ring-3 ra_iic_b_* APIs directly.
  * =============================================================================
  */
 
@@ -602,10 +821,10 @@ ra_err_t ra_iic_init(uint8_t channel, const ra_iic_cfg_t* cfg)
 
 ra_err_t ra_iic_write(uint8_t channel, uint8_t target_7b, const uint8_t* data, uint32_t len)
 {
-  return ra_iic_b_write(channel, target_7b, data, len);
+  return ra_iic_b_write(channel, target_7b, data, len, /*restart=*/false);
 }
 
 ra_err_t ra_iic_read(uint8_t channel, uint8_t target_7b, uint8_t* out, uint32_t len)
 {
-  return ra_iic_b_read(channel, target_7b, out, len);
+  return ra_iic_b_read(channel, target_7b, out, len, /*restart=*/false);
 }

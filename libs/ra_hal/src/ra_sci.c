@@ -98,6 +98,15 @@ typedef enum : uint8_t {
 /**
  * @struct ra_sci_state_t
  * @brief Per-channel dispatch state.
+ *
+ * @details
+ * Holds both the user-attached callback and the byte-stream state that
+ * backs ``ra_sci_write`` / ``ra_sci_read``. The byte-stream fields
+ * (``tx_buf`` / ``tx_len`` / ``tx_idx`` / ``rx_buf`` / ``rx_len`` /
+ * ``rx_idx``) describe the in-flight async transfer: ``tx_idx`` and
+ * ``rx_idx`` advance from 0 toward the matching ``*_len`` as TXI / RXI
+ * fire. A direction is "idle" when its ``*_len`` is zero; that is the
+ * sentinel checked by ``ra_sci_abort`` and ``ra_sci_read_stop``.
  */
 typedef struct {
   ra_sci_rx_fn_t rx_fn;       /**< Attached RX handler, NULL if none. */
@@ -105,6 +114,14 @@ typedef struct {
   ra_sci_tx_fn_t tx_fn;       /**< Attached TX handler, NULL if none. */
   void*          tx_ctx;      /**< TX handler context. */
   bool           initialised; /**< True after ra_sci_init. */
+  /* Async TX state (ra_sci_write). */
+  const uint8_t* tx_buf; /**< Source buffer, NULL when idle. */
+  uint32_t       tx_len; /**< Total bytes requested. 0 = idle. */
+  uint32_t       tx_idx; /**< Next byte index to push. */
+  /* Async RX state (ra_sci_read). */
+  uint8_t* rx_buf; /**< Destination buffer, NULL when idle. */
+  uint32_t rx_len; /**< Total bytes requested. 0 = idle. */
+  uint32_t rx_idx; /**< Next byte index to write. */
 } ra_sci_state_t;
 
 /**
@@ -370,6 +387,12 @@ ra_err_t ra_sci_init(uint8_t channel, const ra_sci_cfg_t* cfg)
   reg->CCR0 = (1U << k_ra_sci_ccr0_bit_te) | (1U << k_ra_sci_ccr0_bit_re);
 
   s_state[channel].initialised = true;
+  s_state[channel].tx_buf      = nullptr;
+  s_state[channel].tx_len      = 0U;
+  s_state[channel].tx_idx      = 0U;
+  s_state[channel].rx_buf      = nullptr;
+  s_state[channel].rx_len      = 0U;
+  s_state[channel].rx_idx      = 0U;
   ra_log_info_val(s_tag, "sci_init channel", (uint32_t)channel);
   return k_ra_ok;
 }
@@ -388,6 +411,12 @@ ra_err_t ra_sci_deinit(uint8_t channel)
   s_state[channel].tx_fn       = nullptr;
   s_state[channel].tx_ctx      = nullptr;
   s_state[channel].initialised = false;
+  s_state[channel].tx_buf      = nullptr;
+  s_state[channel].tx_len      = 0U;
+  s_state[channel].tx_idx      = 0U;
+  s_state[channel].rx_buf      = nullptr;
+  s_state[channel].rx_len      = 0U;
+  s_state[channel].rx_idx      = 0U;
   return ra_mstp_disable(s_mstp_table[channel]);
 }
 
@@ -581,6 +610,195 @@ ra_err_t ra_sci_exit_stop(uint8_t channel)
   return ra_mstp_enable(s_mstp_table[channel]);
 }
 
+/* ---- Async byte-stream TX / RX (FSP Read/Write parity) --------------- */
+
+/**
+ * @enum ra_sci_baud_calc_const_t
+ * @brief Constants used by ``ra_sci_baud_calculate``.
+ *
+ * @details
+ * HUM Ch 38.2.7 "CCR2 : Common Control Register 2", p 2189 Table 38.7:
+ * the 16x base-clock formula divides PCLKB by ``32 * 2^(2n)`` where
+ * ``n`` is the CKS divider (0..3). With ``n = 0`` the divisor is 32;
+ * with ``n = 1`` it is 128; with ``n = 2`` it is 512; with ``n = 3``
+ * it is 2048. ``k_ra_sci_baud_brr_max`` is the 8-bit ceiling for BRR.
+ */
+typedef enum : uint16_t {
+  k_ra_sci_baud_brr_max    = 255U, /**< BRR is 8 bits wide. */
+  k_ra_sci_baud_cks_max    = 3U,   /**< CKS field is 2 bits. */
+  k_ra_sci_baud_div_step   = 4U,   /**< Multiplier per CKS step. */
+  k_ra_sci_baud_n0_divisor = 32U,  /**< 32 * 2^(2*0). */
+} ra_sci_baud_calc_const_t;
+
+ra_err_t
+ra_sci_baud_calculate(uint32_t baud, uint32_t pclk_hz, uint16_t* brr_out, uint8_t* clk_div_out)
+{
+  RA_CHECK_NULL_PTR(brr_out, s_tag, "baud_calc: brr_out");
+  RA_CHECK_NULL_PTR(clk_div_out, s_tag, "baud_calc: clk_div_out");
+  if ((baud == 0U) || (pclk_hz == 0U)) {
+    return k_ra_err_invalid_arg;
+  }
+
+  /* HUM Ch 38.2.7 "CCR2 : Common Control Register 2", p 2189 -- walk
+   * CKS = 0..3 and pick the smallest divider that yields a BRR <= 255.
+   * Mirrors the FSP `R_SCI_B_UART_BaudCalculate` outer loop
+   * (r_sci_b_uart.c:962) but without the bit-rate-modulation pass
+   * since the project always programs BRME=0. */
+  uint32_t divisor = (uint32_t)k_ra_sci_baud_n0_divisor;
+  for (uint8_t n = 0U; n <= (uint8_t)k_ra_sci_baud_cks_max; ++n) {
+    const uint32_t denom = divisor * baud;
+    if (denom == 0U) {             /* GCOVR_EXCL_BR_LINE -- baud * divisor cannot
+                          overflow to zero for legal inputs. */
+      return k_ra_err_invalid_arg; /* GCOVR_EXCL_LINE */
+    }
+    const uint32_t quotient = pclk_hz / denom;
+    if (quotient > 0U) {
+      const uint32_t candidate = quotient - 1U;
+      if (candidate <= (uint32_t)k_ra_sci_baud_brr_max) {
+        *brr_out     = (uint16_t)candidate;
+        *clk_div_out = n;
+        return k_ra_ok;
+      }
+    }
+    divisor *= (uint32_t)k_ra_sci_baud_div_step;
+  }
+  return k_ra_err_invalid_arg;
+}
+
+ra_err_t ra_sci_write(uint8_t channel, const uint8_t* data, uint32_t len)
+{
+  if ((data == nullptr) && (len != 0U)) {
+    return k_ra_err_null_ptr;
+  }
+  volatile r_sci_regs_t* reg = internal_reg(channel);
+  if (reg == nullptr) {
+    return k_ra_err_invalid_arg;
+  }
+  if (!s_state[channel].initialised) {
+    return k_ra_err_invalid_arg;
+  }
+  if (s_state[channel].tx_len != 0U) {
+    return k_ra_err_busy;
+  }
+  if (len == 0U) {
+    return k_ra_ok;
+  }
+  s_state[channel].tx_buf = data;
+  s_state[channel].tx_len = len;
+  s_state[channel].tx_idx = 0U;
+  /* HUM Ch 38.2.5 "CCR0 : Common Control Register 0", p 2182 -- arm
+   * TIE so the next TDRE event fires the dispatcher. Mirrors FSP
+   * r_sci_b_uart.c:616 which sets TE | TIE in a single store. */
+  reg->CCR0 = reg->CCR0 | (1U << k_ra_sci_ccr0_bit_tie);
+  return k_ra_ok;
+}
+
+ra_err_t ra_sci_read(uint8_t channel, uint8_t* buf, uint32_t len)
+{
+  if ((buf == nullptr) && (len != 0U)) {
+    return k_ra_err_null_ptr;
+  }
+  volatile r_sci_regs_t* reg = internal_reg(channel);
+  if (reg == nullptr) {
+    return k_ra_err_invalid_arg;
+  }
+  if (!s_state[channel].initialised) {
+    return k_ra_err_invalid_arg;
+  }
+  if (s_state[channel].rx_len != 0U) {
+    return k_ra_err_busy;
+  }
+  if (len == 0U) {
+    return k_ra_ok;
+  }
+  s_state[channel].rx_buf = buf;
+  s_state[channel].rx_len = len;
+  s_state[channel].rx_idx = 0U;
+  /* HUM Ch 38.2.5 "CCR0 : Common Control Register 0", p 2182 -- arm
+   * RIE so the next RDRF event fires the dispatcher. Mirrors FSP
+   * r_sci_b_uart.c:528 which stashes p_rx_dest / rx_dest_bytes for
+   * use by `rxi_isr`. */
+  reg->CCR0 = reg->CCR0 | (1U << k_ra_sci_ccr0_bit_rie);
+  return k_ra_ok;
+}
+
+ra_err_t ra_sci_abort(uint8_t channel, ra_sci_dir_t direction)
+{
+  volatile r_sci_regs_t* reg = internal_reg(channel);
+  if (reg == nullptr) {
+    return k_ra_err_invalid_arg;
+  }
+  if ((direction != k_ra_sci_dir_tx) && (direction != k_ra_sci_dir_rx) &&
+      (direction != k_ra_sci_dir_both)) {
+    return k_ra_err_invalid_arg;
+  }
+  /* HUM Ch 38.2.5 "CCR0 : Common Control Register 0", p 2182 */
+  if ((direction & k_ra_sci_dir_tx) != 0U) {
+    const uint32_t tie_teie = (1U << k_ra_sci_ccr0_bit_tie) | (1U << k_ra_sci_ccr0_bit_teie);
+    reg->CCR0               = reg->CCR0 & ~tie_teie;
+    s_state[channel].tx_buf = nullptr;
+    s_state[channel].tx_len = 0U;
+    s_state[channel].tx_idx = 0U;
+  }
+  if ((direction & k_ra_sci_dir_rx) != 0U) {
+    const uint32_t rie      = (1U << k_ra_sci_ccr0_bit_rie);
+    reg->CCR0               = reg->CCR0 & ~rie;
+    s_state[channel].rx_buf = nullptr;
+    s_state[channel].rx_len = 0U;
+    s_state[channel].rx_idx = 0U;
+  }
+  return k_ra_ok;
+}
+
+ra_err_t ra_sci_read_stop(uint8_t channel, uint32_t* remaining)
+{
+  RA_CHECK_NULL_PTR(remaining, s_tag, "read_stop: remaining");
+  volatile r_sci_regs_t* reg = internal_reg(channel);
+  if (reg == nullptr) {
+    return k_ra_err_invalid_arg;
+  }
+  /* Mirror FSP `R_SCI_B_UART_ReadStop` r_sci_b_uart.c:887: stash the
+   * pre-stop count, zero state, then disarm RIE. */
+  const uint32_t pending  = (s_state[channel].rx_len > s_state[channel].rx_idx)
+                              ? (s_state[channel].rx_len - s_state[channel].rx_idx)
+                              : 0U;
+  *remaining              = pending;
+  s_state[channel].rx_buf = nullptr;
+  s_state[channel].rx_len = 0U;
+  s_state[channel].rx_idx = 0U;
+  /* HUM Ch 38.2.5 "CCR0 : Common Control Register 0", p 2182 */
+  const uint32_t rie = (1U << k_ra_sci_ccr0_bit_rie);
+  reg->CCR0          = reg->CCR0 & ~rie;
+  return k_ra_ok;
+}
+
+ra_err_t ra_sci_receive_suspend(uint8_t channel)
+{
+  volatile r_sci_regs_t* reg = internal_reg(channel);
+  if (reg == nullptr) {
+    return k_ra_err_invalid_arg;
+  }
+  /* HUM Ch 38.2.5 "CCR0 : Common Control Register 0", p 2182 -- drop
+   * RE to silence the RX shift register. FSP returns UNSUPPORTED here;
+   * we approximate the feature by toggling CCR0.RE so RXI stops firing
+   * and the FIFO/RDR stops accepting fresh frames. */
+  const uint32_t re = (1U << k_ra_sci_ccr0_bit_re);
+  reg->CCR0         = reg->CCR0 & ~re;
+  return k_ra_ok;
+}
+
+ra_err_t ra_sci_receive_resume(uint8_t channel)
+{
+  volatile r_sci_regs_t* reg = internal_reg(channel);
+  if (reg == nullptr) {
+    return k_ra_err_invalid_arg;
+  }
+  /* HUM Ch 38.2.5 "CCR0 : Common Control Register 0", p 2182 */
+  const uint32_t re = (1U << k_ra_sci_ccr0_bit_re);
+  reg->CCR0         = reg->CCR0 | re;
+  return k_ra_ok;
+}
+
 /* ---- DMA TX / RX ----------------------------------------- */
 
 /**
@@ -678,6 +896,35 @@ void ra_sci_dispatch_txi(uint8_t channel)
   const ra_sci_tx_fn_t cb  = s_state[channel].tx_fn;
   void* const          ctx = s_state[channel].tx_ctx;
   const uint32_t       tie = (1U << k_ra_sci_ccr0_bit_tie);
+
+  /* Async byte-stream path (ra_sci_write). Mirrors FSP r_sci_b_uart
+   * `txi_isr` (r_sci_b_uart.c:1480) which decrements `tx_src_bytes`
+   * each TXI and clears TIE when the count hits zero. */
+  if (s_state[channel].tx_len > 0U) {
+    if (s_state[channel].tx_idx < s_state[channel].tx_len) {
+      const uint8_t byte = s_state[channel].tx_buf[s_state[channel].tx_idx];
+      s_state[channel].tx_idx += 1U;
+      /* HUM Ch 38.2.3 "TDR : Transmit Data Register", p 2181 */
+      reg->TDR = (uint32_t)byte;
+      /* Fire user-attached TX visibility callback per byte; its
+       * boolean return is ignored here because the async path owns
+       * the byte-stream now. */
+      if (cb != nullptr) {
+        uint8_t echo = byte;
+        (void)cb(ctx, &echo);
+      }
+    }
+    if (s_state[channel].tx_idx >= s_state[channel].tx_len) {
+      /* HUM Ch 38.2.5 "CCR0 : Common Control Register 0", p 2182 */
+      reg->CCR0               = reg->CCR0 & ~tie;
+      s_state[channel].tx_buf = nullptr;
+      s_state[channel].tx_len = 0U;
+      s_state[channel].tx_idx = 0U;
+    }
+    return;
+  }
+
+  /* Legacy callback-only path (ra_sci_attach_tx_handler). */
   if (cb == nullptr) {
     /* HUM Ch 38.2.5 "CCR0 : Common Control Register 0", p 2182 */
     reg->CCR0 = reg->CCR0 & ~tie;
@@ -705,6 +952,27 @@ void ra_sci_dispatch_rxi(uint8_t channel)
   void* const          ctx = s_state[channel].rx_ctx;
   /* HUM Ch 38.2.2 "RDR : Receive Data Register", p 2180 */
   const uint8_t b = (uint8_t)(reg->RDR & k_ra_sci_rdr_mask_data8);
+
+  /* Async byte-stream path (ra_sci_read). Mirrors FSP r_sci_b_uart
+   * `rxi_isr` which appends each byte into `p_rx_dest` until
+   * `rx_dest_bytes` is satisfied, then signals UART_EVENT_RX_COMPLETE. */
+  if (s_state[channel].rx_len > 0U) {
+    if (s_state[channel].rx_idx < s_state[channel].rx_len) {
+      s_state[channel].rx_buf[s_state[channel].rx_idx] = b;
+      s_state[channel].rx_idx += 1U;
+    }
+    if (s_state[channel].rx_idx >= s_state[channel].rx_len) {
+      const uint32_t rie = (1U << k_ra_sci_ccr0_bit_rie);
+      /* HUM Ch 38.2.5 "CCR0 : Common Control Register 0", p 2182 */
+      reg->CCR0               = reg->CCR0 & ~rie;
+      s_state[channel].rx_buf = nullptr;
+      s_state[channel].rx_len = 0U;
+      s_state[channel].rx_idx = 0U;
+    }
+  }
+
+  /* Legacy attach path: still fires per byte even when an async RX is
+   * in flight, so existing flow-control hooks keep working. */
   if (cb != nullptr) {
     cb(ctx, b);
   }

@@ -12,19 +12,31 @@
  * ``IIC_B`` -- it replaces the legacy IIC block that older RA parts
  * carried.
  *
- * The public surface is intentionally small for the first pass:
+ * The public surface mirrors FSP ``r_iic_b_master`` minus DTC:
  *
  * - ``ra_iic_b_init``           configure + MSTP enable
  * - ``ra_iic_b_deinit``         disable + MSTP release
- * - ``ra_iic_b_write``          polling write to a 7-bit target
- * - ``ra_iic_b_read``           polling read from a 7-bit target
+ * - ``ra_iic_b_set_clock``      retune SCL without tearing down
+ * - ``ra_iic_b_write``          polling write to a 7-bit target,
+ *                               with optional repeated-START suppression
+ *                               of the trailing STOP
+ * - ``ra_iic_b_read``           polling read from a 7-bit target,
+ *                               with optional repeated-START suppression
+ *                               of the trailing STOP
+ * - ``ra_iic_b_transfer``       combined write-then-RESTART-then-read
+ *                               (the typical "address a register, read
+ *                               its contents" pattern)
+ * - ``ra_iic_b_abort``          cancel an in-flight transaction and
+ *                               return the channel to idle
  * - ``ra_iic_b_scan``           probe a 7-bit target without payload
  * - ``ra_iic_b_attach_handler`` register completion / error callback
+ * - ``ra_iic_b_get_errors`` / ``ra_iic_b_clear_errors``
  *
- * NSC veneer wrappers (``ra_iic_init`` / ``ra_iic_write`` /
- * ``ra_iic_read``) are kept as thin pass-throughs so that the existing
- * cross-world communications surface in ``libs/ra_nsc`` keeps
- * compiling without churn during the retrofit.
+ * The Ring-4 NSC veneers in ``libs/ra_nsc/src/ra_nsc_comms.c`` forward
+ * to ``ra_iic_init`` / ``ra_iic_write`` / ``ra_iic_read`` here -- those
+ * names are kept as thin pass-throughs so the cross-world surface keeps
+ * compiling without churn during the retrofit. The pass-throughs use
+ * ``restart = false`` (a single, self-contained transaction).
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -166,51 +178,83 @@ typedef void (*ra_iic_b_complete_fn_t)(void* ctx, uint8_t err_mask);
  *
  * @details
  * Mirrors FSP's ``R_IIC_B_MASTER_Write`` flow without the DTC fast
- * path: issue START, send ``(target_7b<<1)|W``, push payload bytes
- * into ``NTDTBP0`` waiting for ``NTST.TDBEF0`` between each one,
- * wait for ``BST.TENDF`` after the last byte, then issue STOP.
+ * path:
+ *
+ * 1. Reject the call if the bus is busy (BCST.BFREF == 0).
+ * 2. Issue a START condition.
+ * 3. Send ``(target_7b << 1) | 0`` as the address byte.
+ * 4. Push each payload byte into NTDTBP0 once NTST.TDBEF0 sets.
+ * 5. If ``restart == false`` issue a STOP; otherwise leave the bus
+ *    held and return -- the caller is expected to follow this call
+ *    immediately with another ``ra_iic_b_write`` / ``ra_iic_b_read``
+ *    that will inject a repeated-START rather than a fresh START.
+ *
+ * State machine:
+ * ``IDLE -> ADDR_TX -> DATA_TX -> { STOP | hold for RESTART } -> IDLE``.
+ *
+ * On NACK or arbitration loss the transaction is aborted (STOP issued
+ * unconditionally) and the matching error code is returned.
  *
  * @param[in] channel   Channel index.
  * @param[in] target_7b 7-bit slave address.
  * @param[in] data      Buffer to send (must be non-NULL even when
  *                      ``len`` is zero).
  * @param[in] len       Byte count.
+ * @param[in] restart   When ``true``, suppress the trailing STOP and
+ *                      keep the bus held so the next call (typically a
+ *                      read) issues a repeated-START. When ``false``,
+ *                      STOP is issued and the bus is released.
  *
  * @return ``ra_err_t``.
- * @retval k_ra_ok              Transfer succeeded; STOP issued.
+ * @retval k_ra_ok              Transfer succeeded.
  * @retval k_ra_err_null_ptr    ``data`` is NULL or channel invalid.
- * @retval k_ra_err_hw_timeout  START / TDBEF0 / TENDF poll timed out.
- * @retval k_ra_err_hw_error    NACK / arbitration-lost detected.
+ * @retval k_ra_err_busy        Bus busy at entry (BCST.BFREF clear).
+ * @retval k_ra_err_hw_timeout  TDBEF0 / TENDF poll timed out.
+ * @retval k_ra_err_nack        Slave NACKed; STOP was issued.
+ * @retval k_ra_err_hw_error    Arbitration lost; STOP was issued.
  *
  * @pre Channel previously initialised.
- * @post BST status flags cleared; channel ready for the next API call.
+ * @post On ``k_ra_ok`` and ``restart == false``: STOP issued, bus free.
+ * @post On ``k_ra_ok`` and ``restart == true``: bus held by master;
+ *       next call must be on the same channel/target.
  *
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t
-ra_iic_b_write(uint8_t channel, uint8_t target_7b, const uint8_t* data, uint32_t len);
+ra_iic_b_write(uint8_t channel, uint8_t target_7b, const uint8_t* data, uint32_t len, bool restart);
 
 /**
  * @brief Polling read of ``len`` bytes from a 7-bit target.
  *
  * @details
- * Mirrors FSP's ``R_IIC_B_MASTER_Read`` minus DTC: issue START, send
- * ``(target_7b<<1)|R``, dummy-read ``NTDTBP0`` to clock the first
- * byte, then loop reading ``NTDTBP0`` after each ``NTST.RDBFF0``.
- * On the last byte set ``ACKCTL.ACKT`` (with ACKTWP) so the master
- * NACKs and the slave releases the bus, then issue STOP.
+ * Mirrors FSP's ``R_IIC_B_MASTER_Read`` minus DTC:
+ *
+ * 1. Reject the call if the bus is busy (BCST.BFREF == 0) AND no
+ *    repeated-START is in progress (i.e. caller did not hold the bus
+ *    via a prior ``ra_iic_b_write(..., restart=true)``).
+ * 2. Issue a START (or RESTART when the bus is already held).
+ * 3. Send ``(target_7b << 1) | 1`` as the address byte.
+ * 4. Drain ``len`` bytes from NTDTBP0; ACK every byte except the
+ *    last, which is NACKed via ACKCTL.ACKT (paired with ACKTWP).
+ * 5. Issue a STOP unless ``restart == true``.
+ *
+ * State machine:
+ * ``IDLE -> ADDR_TX -> DATA_RX -> { STOP | hold for RESTART } -> IDLE``.
  *
  * @param[in]  channel   Channel index.
  * @param[in]  target_7b 7-bit slave address.
- * @param[out] out       Destination buffer (non-NULL).
+ * @param[out] buf       Destination buffer (non-NULL).
  * @param[in]  len       Byte count (non-zero).
+ * @param[in]  restart   When ``true``, suppress the trailing STOP.
  *
  * @return ``ra_err_t``.
- * @retval k_ra_ok              Transfer succeeded; STOP issued.
- * @retval k_ra_err_null_ptr    ``out`` is NULL or channel invalid.
+ * @retval k_ra_ok              Transfer succeeded.
+ * @retval k_ra_err_null_ptr    ``buf`` is NULL or channel invalid.
  * @retval k_ra_err_invalid_arg ``len`` is zero.
- * @retval k_ra_err_hw_timeout  Bus / data-buffer poll timed out.
- * @retval k_ra_err_hw_error    NACK / arbitration-lost detected.
+ * @retval k_ra_err_busy        Bus busy at entry.
+ * @retval k_ra_err_hw_timeout  RDBFF0 / TENDF poll timed out.
+ * @retval k_ra_err_nack        Slave NACKed the address byte.
+ * @retval k_ra_err_hw_error    Arbitration lost.
  *
  * @pre Channel previously initialised.
  * @post BST status flags cleared.
@@ -218,7 +262,80 @@ ra_iic_b_write(uint8_t channel, uint8_t target_7b, const uint8_t* data, uint32_t
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t
-ra_iic_b_read(uint8_t channel, uint8_t target_7b, uint8_t* out, uint32_t len);
+ra_iic_b_read(uint8_t channel, uint8_t target_7b, uint8_t* buf, uint32_t len, bool restart);
+
+/**
+ * @brief Combined write-then-RESTART-then-read in a single bus
+ *        transaction.
+ *
+ * @details
+ * Convenience wrapper for the most common I2C pattern: write a
+ * register address, then read its contents back from the same target.
+ * Internally invokes ``ra_iic_b_write(..., restart=true)`` followed by
+ * ``ra_iic_b_read(..., restart=false)``. State machine:
+ *
+ * ``IDLE -> ADDR_TX -> DATA_TX -> RESTART -> ADDR_TX(read) -> DATA_RX -> STOP -> IDLE``
+ *
+ * If either ``tx_len`` or ``rx_len`` is zero the corresponding phase
+ * is skipped (e.g. ``tx_len = 0`` degenerates to a plain read).
+ *
+ * @param[in]  channel   Channel index.
+ * @param[in]  target_7b 7-bit slave address.
+ * @param[in]  tx        Bytes to send first (e.g. register address).
+ *                       May be NULL only when ``tx_len == 0``.
+ * @param[in]  tx_len    Number of bytes to send.
+ * @param[out] rx        Destination buffer for the read phase.
+ *                       May be NULL only when ``rx_len == 0``.
+ * @param[in]  rx_len    Number of bytes to read.
+ *
+ * @return ``ra_err_t``.
+ * @retval k_ra_ok              Transfer succeeded; STOP issued.
+ * @retval k_ra_err_null_ptr    ``tx``/``rx`` NULL with non-zero len, or
+ *                              channel invalid.
+ * @retval k_ra_err_invalid_arg Both ``tx_len`` and ``rx_len`` are zero.
+ * @retval k_ra_err_busy        Bus busy at entry.
+ * @retval k_ra_err_nack        Slave NACKed.
+ * @retval k_ra_err_hw_timeout  Poll timed out.
+ *
+ * @pre Channel previously initialised.
+ * @post Bus is released regardless of outcome.
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_iic_b_transfer(uint8_t        channel,
+                                         uint8_t        target_7b,
+                                         const uint8_t* tx,
+                                         uint32_t       tx_len,
+                                         uint8_t*       rx,
+                                         uint32_t       rx_len);
+
+/**
+ * @brief Cancel any in-flight transaction and return the channel to
+ *        idle.
+ *
+ * @details
+ * Mirrors FSP's ``R_IIC_B_MASTER_Abort`` / ``iic_b_master_abort_seq_master``
+ * for the polling driver. Steps:
+ *
+ * 1. Mask BIE / NTIE so a pending interrupt cannot fire mid-tear-down.
+ * 2. Issue STOP (unconditional). The hardware will eventually drive
+ *    SPCNDDF; the polling helpers don't gate on it because no further
+ *    bus traffic is expected from this channel until the next
+ *    ``ra_iic_b_write`` / ``_read`` clears BST again.
+ * 3. Clear all latched bus-status flags.
+ *
+ * @param[in] channel Channel index.
+ *
+ * @return ``ra_err_t``.
+ * @retval k_ra_ok              Abort issued.
+ * @retval k_ra_err_invalid_arg Channel out of range.
+ *
+ * @pre Channel previously initialised.
+ * @post Channel is idle; BST flags cleared.
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_iic_b_abort(uint8_t channel);
 
 /**
  * @brief Probe whether a 7-bit address ACKs.
@@ -324,7 +441,10 @@ void ra_iic_b_dispatch_eri(uint8_t channel);
  * The Ring 4 NSC veneers (``ra_nsc_iic_init`` etc.) call ``ra_iic_init``
  * / ``ra_iic_write`` / ``ra_iic_read`` directly. We keep those names
  * one-to-one with the IIC_B implementations so the cross-world
- * surface does not have to be re-wired in the same diff.
+ * surface does not have to be re-wired in the same diff. The legacy
+ * shims always issue STOP (``restart == false``) -- a multi-segment
+ * transaction in NS code must call ``ra_nsc_iic_*`` once per segment
+ * or land its own veneer that takes the ``restart`` flag.
  */
 
 /** @brief Type alias used by the NSC veneer surface. */
@@ -342,7 +462,8 @@ typedef ra_iic_b_cfg_t ra_iic_cfg_t;
 [[nodiscard]] ra_err_t ra_iic_init(uint8_t channel, const ra_iic_cfg_t* cfg);
 
 /**
- * @brief NSC pass-through: forwards to ``ra_iic_b_write``.
+ * @brief NSC pass-through: forwards to ``ra_iic_b_write`` with
+ *        ``restart = false``.
  *
  * @param[in] channel   Channel index.
  * @param[in] target_7b 7-bit slave address.
@@ -356,7 +477,8 @@ typedef ra_iic_b_cfg_t ra_iic_cfg_t;
 ra_iic_write(uint8_t channel, uint8_t target_7b, const uint8_t* data, uint32_t len);
 
 /**
- * @brief NSC pass-through: forwards to ``ra_iic_b_read``.
+ * @brief NSC pass-through: forwards to ``ra_iic_b_read`` with
+ *        ``restart = false``.
  *
  * @param[in]  channel   Channel index.
  * @param[in]  target_7b 7-bit slave address.

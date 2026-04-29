@@ -147,6 +147,46 @@ extern "C" {
  */
 [[nodiscard]] RA_NSC_VENEER ra_err_t ra_nsc_spi_xfer8(uint8_t channel, uint8_t tx, uint8_t* rx);
 
+/**
+ * @brief NSC veneer: multi-frame TX-only polling SPI write.
+ *
+ * @par TrustZone Safety:
+ * - Validates ``tx`` covers ``len * sizeof(unit)`` bytes of NS-readable
+ *   memory before forwarding.
+ * @since 0.1.0
+ */
+[[nodiscard]] RA_NSC_VENEER ra_err_t ra_nsc_spi_write(uint8_t            channel,
+                                                      const void*        tx,
+                                                      uint32_t           len,
+                                                      ra_spi_bit_width_t bit_width);
+
+/**
+ * @brief NSC veneer: multi-frame RX-only polling SPI read.
+ *
+ * @par TrustZone Safety:
+ * - Validates ``rx`` covers ``len * sizeof(unit)`` bytes of NS-writable
+ *   memory before forwarding.
+ * @since 0.1.0
+ */
+[[nodiscard]] RA_NSC_VENEER ra_err_t ra_nsc_spi_read(uint8_t            channel,
+                                                     void*              rx,
+                                                     uint32_t           len,
+                                                     ra_spi_bit_width_t bit_width);
+
+/**
+ * @brief NSC veneer: multi-frame full-duplex polling SPI exchange.
+ *
+ * @par TrustZone Safety:
+ * - Validates both buffer ranges are NS-accessible for the requested
+ *   direction before forwarding.
+ * @since 0.1.0
+ */
+[[nodiscard]] RA_NSC_VENEER ra_err_t ra_nsc_spi_write_read(uint8_t            channel,
+                                                           const void*        tx,
+                                                           void*              rx,
+                                                           uint32_t           len,
+                                                           ra_spi_bit_width_t bit_width);
+
 /* =============================================================================
  * USB veneers
  * =============================================================================
