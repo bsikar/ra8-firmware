@@ -374,6 +374,276 @@ static void test_power_transition(void)
   TEST_END("adc power transition");
 }
 
+/* ---------------------------------------------------------------------------
+ * Sweep 3 Task 1: scan-group + ELC trigger + window comparator + oversample
+ * --------------------------------------------------------------------------- */
+
+typedef enum : uint8_t {
+  k_ra_adc_test_group_one  = 1U,
+  k_ra_adc_test_group_oor  = 9U,
+  k_ra_adc_test_group_huge = 200U,
+  k_ra_adc_test_cmp_table  = 3U,
+  k_ra_adc_test_cmp_oor    = 8U,
+} ra_adc_test_group_t;
+
+typedef enum : uint16_t {
+  k_ra_adc_test_window_low  = 0x0100U,
+  k_ra_adc_test_window_high = 0x0FFFU,
+} ra_adc_test_window_t;
+
+typedef enum : uint32_t {
+  k_ra_adc_test_admd0_disabled = 0x00000000UL,
+} ra_adc_test_admd_t;
+
+static ra_adc_scan_group_cfg_t make_scan_cfg(void)
+{
+  ra_adc_scan_group_cfg_t cfg = {};
+  cfg.num_channels            = 3U;
+  cfg.channels[0]             = 4U;
+  cfg.channels[1]             = 5U;
+  cfg.channels[2]             = 6U;
+  cfg.trigger                 = k_ra_adc_trig_src_software;
+  cfg.priority                = k_ra_adc_priority_high;
+  return cfg;
+}
+
+static void test_configure_scan_group_happy(void)
+{
+  TEST_BEGIN("adc scan-group: configure happy");
+  ra_sim_mmap_reset();
+
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_adc_init());
+  const ra_adc_scan_group_cfg_t cfg = make_scan_cfg();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_adc_configure_scan_group(k_ra_adc_test_group_one, &cfg));
+
+  /* ADSGER must have group-1 bit set in addition to the default group-0 bit. */
+  const uint32_t expected = (1UL << k_ra_adc_test_group_one) | 1UL;
+  TEST_ASSERT((*ra_adc_b_adsger() & expected) == expected);
+
+  /* Each listed ADCHCR slot must encode SGSEL == 1 and CNVCS == ch. */
+  for (uint8_t i = 0U; i < cfg.num_channels; ++i) {
+    const uint32_t chcr = *ra_adc_b_adchcr(cfg.channels[i]);
+    const uint32_t sg   = (chcr & k_ra_adchcr_mask_sgsel) >> (uint32_t)k_ra_adchcr_bit_sgsel;
+    const uint32_t cs   = (chcr & k_ra_adchcr_mask_cnvcs) >> (uint32_t)k_ra_adchcr_bit_cnvcs;
+    TEST_ASSERT_EQ((int32_t)k_ra_adc_test_group_one, (int32_t)sg);
+    TEST_ASSERT_EQ((int32_t)cfg.channels[i], (int32_t)cs);
+  }
+  /* Software trigger -> ADTRGENR group-1 bit is clear. */
+  TEST_ASSERT((*ra_adc_b_adtrgenr() & (1UL << k_ra_adc_test_group_one)) == 0U);
+  TEST_END("adc scan-group: configure happy");
+}
+
+static void test_configure_scan_group_elc_trigger(void)
+{
+  TEST_BEGIN("adc scan-group: ELC trigger arms ADTRGENR");
+  ra_sim_mmap_reset();
+
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_adc_init());
+  ra_adc_scan_group_cfg_t cfg = make_scan_cfg();
+  cfg.trigger                 = k_ra_adc_trig_src_elc;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_adc_configure_scan_group(k_ra_adc_test_group_one, &cfg));
+  TEST_ASSERT((*ra_adc_b_adtrgenr() & (1UL << k_ra_adc_test_group_one)) != 0U);
+  TEST_END("adc scan-group: ELC trigger arms ADTRGENR");
+}
+
+static void test_configure_scan_group_rejects_null(void)
+{
+  TEST_BEGIN("adc scan-group: null cfg");
+  ra_sim_mmap_reset();
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_adc_configure_scan_group(0U, nullptr));
+  TEST_END("adc scan-group: null cfg");
+}
+
+static void test_configure_scan_group_rejects_oor(void)
+{
+  TEST_BEGIN("adc scan-group: out-of-range group/channels");
+  ra_sim_mmap_reset();
+  const ra_adc_scan_group_cfg_t cfg = make_scan_cfg();
+  TEST_ASSERT_EQ((int32_t)k_ra_err_out_of_range,
+                 (int32_t)ra_adc_configure_scan_group(k_ra_adc_test_group_oor, &cfg));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_out_of_range,
+                 (int32_t)ra_adc_configure_scan_group(k_ra_adc_test_group_huge, &cfg));
+
+  ra_adc_scan_group_cfg_t bad_cfg = make_scan_cfg();
+  bad_cfg.num_channels            = 0U;
+  TEST_ASSERT_EQ((int32_t)k_ra_err_out_of_range,
+                 (int32_t)ra_adc_configure_scan_group(0U, &bad_cfg));
+
+  bad_cfg             = make_scan_cfg();
+  bad_cfg.channels[0] = (uint8_t)k_ra_adc_b_max_channels; /* OOR. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_out_of_range,
+                 (int32_t)ra_adc_configure_scan_group(0U, &bad_cfg));
+  TEST_END("adc scan-group: out-of-range group/channels");
+}
+
+static void test_start_stop_group(void)
+{
+  TEST_BEGIN("adc scan-group: start/stop sets ADSTR");
+  ra_sim_mmap_reset();
+
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_adc_init());
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_adc_start_group(k_ra_adc_test_group_one));
+  TEST_ASSERT((*ra_adc_b_adstr(k_ra_adc_test_group_one) & k_ra_adstr_mask_adst) != 0U);
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_adc_stop_group(k_ra_adc_test_group_one));
+  TEST_ASSERT((*ra_adc_b_adstr(k_ra_adc_test_group_one) & k_ra_adstr_mask_adst) == 0U);
+  TEST_ASSERT((*ra_adc_b_adstopr() & (k_ra_adstopr_mask_adstop0 | k_ra_adstopr_mask_adstop1)) !=
+              0U);
+
+  /* Out-of-range groups are rejected on both entry points. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_out_of_range,
+                 (int32_t)ra_adc_start_group(k_ra_adc_test_group_oor));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_out_of_range,
+                 (int32_t)ra_adc_stop_group(k_ra_adc_test_group_huge));
+  TEST_END("adc scan-group: start/stop sets ADSTR");
+}
+
+static void test_read_group_results_happy(void)
+{
+  TEST_BEGIN("adc scan-group: read multi-channel results");
+  ra_sim_mmap_reset();
+
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_adc_init());
+  const ra_adc_scan_group_cfg_t cfg = make_scan_cfg();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_adc_configure_scan_group(k_ra_adc_test_group_one, &cfg));
+
+  /* Pre-load distinct ADDR slots so we can verify ordering. */
+  *ra_adc_b_addr(cfg.channels[0]) = 0x0111U;
+  *ra_adc_b_addr(cfg.channels[1]) = 0x0222U;
+  *ra_adc_b_addr(cfg.channels[2]) = 0x0333U;
+
+  uint16_t buf[8] = {};
+  uint8_t  count  = 0U;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_adc_read_group_results(k_ra_adc_test_group_one, buf, &count));
+  TEST_ASSERT_EQ((int32_t)cfg.num_channels, (int32_t)count);
+  TEST_ASSERT_EQ((int32_t)0x0111, (int32_t)buf[0]);
+  TEST_ASSERT_EQ((int32_t)0x0222, (int32_t)buf[1]);
+  TEST_ASSERT_EQ((int32_t)0x0333, (int32_t)buf[2]);
+  TEST_END("adc scan-group: read multi-channel results");
+}
+
+static void test_read_group_results_rejects(void)
+{
+  TEST_BEGIN("adc scan-group: read rejects null/oor/unconfigured");
+  ra_sim_mmap_reset();
+
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_adc_init());
+  uint16_t buf   = 0U;
+  uint8_t  count = 0U;
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_adc_read_group_results(0U, nullptr, &count));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_adc_read_group_results(0U, &buf, nullptr));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_out_of_range,
+                 (int32_t)ra_adc_read_group_results(k_ra_adc_test_group_oor, &buf, &count));
+  /* Group 1 is unconfigured at this point. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_out_of_range,
+                 (int32_t)ra_adc_read_group_results(k_ra_adc_test_group_one, &buf, &count));
+  TEST_END("adc scan-group: read rejects null/oor/unconfigured");
+}
+
+static void test_continuous_scan(void)
+{
+  TEST_BEGIN("adc scan-group: continuous-scan toggles ADMDR");
+  ra_sim_mmap_reset();
+
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_adc_init());
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_adc_set_continuous_scan(k_ra_adc_test_group_one, true));
+  TEST_ASSERT_EQ((int32_t)k_ra_adc_test_admd0_continuous,
+                 (int32_t)(*ra_adc_b_admdr() & k_ra_admdr_mask_admd0));
+
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_adc_set_continuous_scan(k_ra_adc_test_group_one, false));
+  TEST_ASSERT_EQ((int32_t)k_ra_adc_test_admd0_one_cycle,
+                 (int32_t)(*ra_adc_b_admdr() & k_ra_admdr_mask_admd0));
+
+  TEST_ASSERT_EQ((int32_t)k_ra_err_out_of_range,
+                 (int32_t)ra_adc_set_continuous_scan(k_ra_adc_test_group_oor, true));
+  TEST_END("adc scan-group: continuous-scan toggles ADMDR");
+}
+
+static void test_compare_window_happy(void)
+{
+  TEST_BEGIN("adc compare-window: programs ADCMPTBR/MDR/ENR");
+  ra_sim_mmap_reset();
+
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_adc_init());
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_adc_set_compare_window(k_ra_adc_test_cmp_table,
+                                                    k_ra_adc_test_window_low,
+                                                    k_ra_adc_test_window_high));
+
+  const uint32_t tbl  = *ra_adc_b_adcmptbr(k_ra_adc_test_cmp_table);
+  const uint32_t low  = (tbl & k_ra_adcmptbr_mask_low) >> (uint32_t)k_ra_adcmptbr_bit_low;
+  const uint32_t high = (tbl & k_ra_adcmptbr_mask_high) >> (uint32_t)k_ra_adcmptbr_bit_high;
+  TEST_ASSERT_EQ((int32_t)k_ra_adc_test_window_low, (int32_t)low);
+  TEST_ASSERT_EQ((int32_t)k_ra_adc_test_window_high, (int32_t)high);
+  TEST_ASSERT((*ra_adc_b_adcmpenr() & (1UL << k_ra_adc_test_cmp_table)) != 0U);
+
+  /* CMPMD field for table 3 lives in ADCMPMDR0 at bit (3 * 8) = 24. */
+  const uint32_t mdr0  = *ra_adc_b_adcmpmdr(0U);
+  const uint32_t shift = (uint32_t)k_ra_adc_test_cmp_table * (uint32_t)k_ra_adcmpmd_field_step;
+  TEST_ASSERT_EQ((int32_t)k_ra_adcmpmd_inside, (int32_t)((mdr0 >> shift) & 0x3UL));
+
+  /* Per-channel ADDOPCRB CMPTBLEm bit is set for our table. */
+  const uint32_t opcrb = *ra_adc_b_addopcrb(k_ra_adc_test_cmp_table);
+  TEST_ASSERT((opcrb & k_ra_addopcrb_mask_cmptblem) != 0U);
+  TEST_END("adc compare-window: programs ADCMPTBR/MDR/ENR");
+}
+
+static void test_compare_window_rejects(void)
+{
+  TEST_BEGIN("adc compare-window: rejects high<low and oor table");
+  ra_sim_mmap_reset();
+
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_invalid_arg,
+    (int32_t)ra_adc_set_compare_window(0U, k_ra_adc_test_window_high, k_ra_adc_test_window_low));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_out_of_range,
+                 (int32_t)ra_adc_set_compare_window(k_ra_adc_test_cmp_oor,
+                                                    k_ra_adc_test_window_low,
+                                                    k_ra_adc_test_window_high));
+  TEST_END("adc compare-window: rejects high<low and oor table");
+}
+
+static void test_oversampling_encoding(void)
+{
+  TEST_BEGIN("adc oversampling: AVEMD/ADC encoding");
+  ra_sim_mmap_reset();
+
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_adc_init());
+
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_adc_set_oversampling(k_ra_adc_test_ch_valid, k_ra_adc_oversample_16x));
+  const uint32_t opcrb = *ra_adc_b_addopcrb(k_ra_adc_test_ch_valid);
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_avemd_average,
+    (int32_t)((opcrb & k_ra_addopcrb_mask_avemd) >> (uint32_t)k_ra_addopcrb_bit_avemd));
+  TEST_ASSERT_EQ((int32_t)k_ra_adc_avg_16x,
+                 (int32_t)((opcrb & k_ra_addopcrb_mask_adc) >> (uint32_t)k_ra_addopcrb_bit_adc));
+
+  /* Switching back to off must clear AVEMD. */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_adc_set_oversampling(k_ra_adc_test_ch_valid, k_ra_adc_oversample_off));
+  const uint32_t opcrb_after = *ra_adc_b_addopcrb(k_ra_adc_test_ch_valid);
+  TEST_ASSERT_EQ((int32_t)k_ra_avemd_off, (int32_t)(opcrb_after & k_ra_addopcrb_mask_avemd));
+  TEST_END("adc oversampling: AVEMD/ADC encoding");
+}
+
+static void test_oversampling_rejects(void)
+{
+  TEST_BEGIN("adc oversampling: rejects bad mode and oor channel");
+  ra_sim_mmap_reset();
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_adc_set_oversampling(0U, (ra_adc_oversample_t)0xFFU));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_out_of_range,
+                 (int32_t)ra_adc_set_oversampling(k_ra_adc_test_ch_oor, k_ra_adc_oversample_4x));
+  TEST_END("adc oversampling: rejects bad mode and oor channel");
+}
+
 int32_t main(void)
 {
   test_init_happy();
@@ -394,6 +664,18 @@ int32_t main(void)
   test_attach_and_dispatch();
   test_dispatch_no_handler();
   test_power_transition();
+  test_configure_scan_group_happy();
+  test_configure_scan_group_elc_trigger();
+  test_configure_scan_group_rejects_null();
+  test_configure_scan_group_rejects_oor();
+  test_start_stop_group();
+  test_read_group_results_happy();
+  test_read_group_results_rejects();
+  test_continuous_scan();
+  test_compare_window_happy();
+  test_compare_window_rejects();
+  test_oversampling_encoding();
+  test_oversampling_rejects();
   (void)fprintf(stderr, "[OK ] test_ra_adc.c\n");
   return 0;
 }
