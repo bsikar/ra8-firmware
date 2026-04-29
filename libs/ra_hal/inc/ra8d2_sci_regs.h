@@ -400,6 +400,65 @@ typedef enum : uint8_t {
   k_ra_sci_cfclr_bit_rdrfc = 31U, /**< Clear CSR.RDRF. */
 } ra_sci_cfclr_bit_t;
 
+/**
+ * @enum ra_sci_cfclr_default_t
+ * @brief CFCLR "clear-all" default mask.
+ *
+ * @details HUM Ch 38.2.24 "CFCLR : Common Flag Clear Register",
+ * p 2238. Writing 1 to every defined W1C bit (ERSC, DCMFC, DPERC,
+ * DFERC, ORERC, MFFC, PERC, FERC, TDREC, RDRFC) clears the matching
+ * CSR latches in a single store. The decomposed mask is:
+ *
+ * | Bit | Name  | Value      |
+ * |----:|-------|-----------:|
+ * |   4 | ERSC  | 0x00000010 |
+ * |  16 | DCMFC | 0x00010000 |
+ * |  17 | DPERC | 0x00020000 |
+ * |  18 | DFERC | 0x00040000 |
+ * |  24 | ORERC | 0x01000000 |
+ * |  26 | MFFC  | 0x04000000 |
+ * |  27 | PERC  | 0x08000000 |
+ * |  28 | FERC  | 0x10000000 |
+ * |  29 | TDREC | 0x20000000 |
+ * |  31 | RDRFC | 0x80000000 |
+ *
+ * Sum = 0x9D070010, matching FSP `r_sci_b_uart.c:71`
+ * `SCI_B_UART_CFCLR_CLEAR_ALL_MASK`.
+ */
+typedef enum : uint32_t {
+  k_ra_sci_cfclr_default = 0x9D070010U, /**< Clear every W1C bit at once. */
+} ra_sci_cfclr_default_t;
+
+/* =============================================================================
+ * FFCLR -- FIFO Flag Clear Register
+ * =============================================================================
+ */
+
+/**
+ * @enum ra_sci_ffclr_bit_t
+ * @brief Bit positions in FFCLR.
+ *
+ * @details HUM Ch 38.2.26 "FFCLR : FIFO Flag Clear Register",
+ * p 2239. Only DRC (bit 0) is defined; writing 1 clears the FIFO
+ * data-ready (DR) latch in FRSR. Other bits read as 0.
+ */
+typedef enum : uint8_t {
+  k_ra_sci_ffclr_bit_drc = 0U, /**< Clear FRSR.DR. */
+} ra_sci_ffclr_bit_t;
+
+/**
+ * @enum ra_sci_ffclr_default_t
+ * @brief FFCLR "clear-all" default mask.
+ *
+ * @details HUM Ch 38.2.26 "FFCLR : FIFO Flag Clear Register",
+ * p 2239. The only defined W1C bit is DRC (bit 0); a write of
+ * 0x00000001 mirrors FSP `r_sci_b_uart.c:76`
+ * `SCI_B_UART_FFCLR_CLEAR_ALL_MASK`.
+ */
+typedef enum : uint32_t {
+  k_ra_sci_ffclr_default = 0x00000001U, /**< Clear FRSR.DR latch. */
+} ra_sci_ffclr_default_t;
+
 /* =============================================================================
  * RDR / TDR field masks
  * =============================================================================

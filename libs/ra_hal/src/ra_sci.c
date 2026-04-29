@@ -22,7 +22,39 @@
  *      baud (CKS = 0, BGDM = 0, ABCS = 0 -- the standard 16x base
  *      clock path), MDDR left at reset (0xFF -> no modulation).
  *   6. Disable FIFO mode and Manchester / LIN / IIC satellite bits.
- *   7. Set CCR0 = TE | RE.
+ *   7. Clear every CSR / FFCLR latch left over from a prior boot
+ *      (mirrors FSP `R_SCI_B_UART_Open` lines 375 & 378).
+ *   8. Set CCR0 = TE | RE.
+ *
+ * @par Intentional FSP Gaps
+ * The driver follows the FSP `r_sci_b_uart` reference closely but
+ * deliberately omits four steps that do not apply to our usage:
+ *
+ *   - **`r_sci_b_uart.c:343,350` (CCR0 IDSEL pre-seed).** FSP pre-loads
+ *     CCR0 with the IDSEL bit when the multi-processor bit is being
+ *     turned on. IDSEL is only meaningful when CCR3.MP=1; this driver
+ *     never enables multi-processor mode (see `internal_ccr3` -- MOD
+ *     stays 000 / async and MP stays 0), so the bit is dead and we
+ *     skip the extra write.
+ *   - **`r_sci_b_uart.c:1344` (`r_sci_b_uart_synchronization_delay_cfg`).**
+ *     The FSP delay loop accounts for the synchronizer hop between
+ *     SCICLK and PCLK when those clocks are sourced independently.
+ *     In our async-UART configuration the on-chip baud generator is
+ *     fed from PCLKB (CCR3.CKE = 00, CCR3.BPEN = 1 -- see
+ *     `internal_ccr3`), so SCICLK and PCLK are the same edge and FSP's
+ *     own delay-count formula evaluates to zero. The wait is a no-op
+ *     for us and is intentionally not ported.
+ *   - **`r_sci_b_uart.c:1323` (`SCI_B_UART_FCR_DEFAULT_VALUE = 0x1F1F0000`).**
+ *     FSP seeds FCR with RTRG=31 / TTRG=31 even when FIFO mode is
+ *     off. RTRG/TTRG are dead bits when CCR3.FM=0 (HUM Ch 38.2.11
+ *     p 2215, "valid only when FM = 1"); we keep `FCR = 0` here since
+ *     we never enable FIFO mode.
+ *   - **`r_sci_b_uart.c:437-440` (Close clears CCR3.FM before TE drop).**
+ *     FSP's Close path explicitly toggles FM off because there is a
+ *     documented hang where TE -> 0 with FM=1 leaves CSR.TEND stuck
+ *     at 0 and the peripheral wedged. Since this driver never sets
+ *     FM=1, the workaround is unnecessary and `ra_sci_deinit` writes
+ *     CCR0=0 directly.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -208,6 +240,61 @@ static uint32_t internal_ccr3(const ra_sci_cfg_t* cfg)
 }
 
 /**
+ * @brief Clear every stale CSR / FFCLR latch on a freshly-opened channel.
+ *
+ * @details
+ * Mirrors FSP `r_sci_b_uart.c:375` (`p_ctrl->p_reg->CFCLR =
+ * SCI_B_UART_CFCLR_DEFAULT`) and `r_sci_b_uart.c:378`
+ * (`p_ctrl->p_reg->FFCLR = SCI_B_UART_FFCLR_DEFAULT`). Both clear
+ * registers are write-1-to-clear: writing the "all bits" mask drops
+ * every defined latch in a single store while leaving the reserved
+ * bits at 0. Without this step, residual flags from a prior boot
+ * (e.g. ORER set by a stray RX framing error) would surface as a
+ * spurious error the moment we re-enable RIE/TIE.
+ */
+static void internal_clear_csr_flags(volatile r_sci_regs_t* reg)
+{
+  /* HUM Ch 38.2.24 "CFCLR : Common Flag Clear Register", p 2238 --
+   * one write clears ERS / DCMF / DPER / DFER / ORER / MFF / PER /
+   * FER / TDRE / RDRF in CSR. */
+  reg->CFCLR = k_ra_sci_cfclr_default;
+
+  /* HUM Ch 38.2.26 "FFCLR : FIFO Flag Clear Register", p 2239 --
+   * clears FRSR.DR (the only defined W1C bit). */
+  reg->FFCLR = k_ra_sci_ffclr_default;
+}
+
+/**
+ * @brief Spin until CSR.TEND = 1 or the bounded budget runs out.
+ *
+ * @details
+ * Mirrors FSP `r_sci_b_uart.c:576` and `:809`
+ * (`FSP_HARDWARE_REGISTER_WAIT(p_ctrl->p_reg->CSR_b.TEND, 1U)`). TDRE
+ * (transmit data register empty) is asserted as soon as TDR is
+ * latched into the shift register, but the bits are not yet on the
+ * wire. TEND additionally waits for the shift register to drain. We
+ * use a bounded medium-budget spin so the call returns in finite
+ * time even if the line is wedged.
+ *
+ * On the host (`RA_SIMULATOR_MODE`) the simulator does not model the
+ * shift-register drain -- `*reg` would never see TEND assert -- so we
+ * short-circuit and return success.
+ */
+static ra_err_t internal_wait_tx_end(volatile r_sci_regs_t* reg)
+{
+#ifdef RA_SIMULATOR_MODE
+  (void)reg;
+  return k_ra_ok;
+#else
+  /* HUM Ch 38.2.17 "CSR : Common Status Register", p 2225 -- TEND
+   * (bit 30) goes high when both the data register and the shift
+   * register are empty. */
+  const uint32_t mask = (1U << k_ra_sci_csr_bit_tend);
+  return ra_hw_wait_flag_set32(&reg->CSR, mask, k_ra_hw_budget_medium);
+#endif
+}
+
+/**
  * @brief Build the CCR2 value with BRR programmed.
  *
  * @details HUM Ch 38.2.7 "CCR2 : Common Control Register 2", p 2189.
@@ -270,6 +357,12 @@ ra_err_t ra_sci_init(uint8_t channel, const ra_sci_cfg_t* cfg)
   /* HUM Ch 38.2.9 "CCR4 : Common Control Register 4", p 2210 -- no
    * sample / transmit timing adjustment for async UART. */
   reg->CCR4 = 0U;
+
+  /* HUM Ch 38.2.24 "CFCLR : Common Flag Clear Register", p 2238 +
+   * HUM Ch 38.2.26 "FFCLR : FIFO Flag Clear Register", p 2239 -- drop
+   * any latches inherited from a previous boot before TX/RX go live.
+   * Mirrors FSP r_sci_b_uart.c:375,378. */
+  internal_clear_csr_flags(reg);
 
   /* HUM Ch 38.2.5 "CCR0 : Common Control Register 0", p 2182 -- enable
    * transmitter and receiver. Interrupt-enable bits are toggled
@@ -345,11 +438,24 @@ ra_err_t ra_sci_write_polling(uint8_t channel, const uint8_t* data, uint32_t len
   if ((data == nullptr) && (len != 0U)) {
     return k_ra_err_null_ptr;
   }
+  volatile r_sci_regs_t* reg = internal_reg(channel);
+  if (reg == nullptr) {
+    return k_ra_err_invalid_arg;
+  }
   for (uint32_t i = 0U; i < len; ++i) {
     const ra_err_t err = ra_sci_putc_polling(channel, data[i]);
     if (err != k_ra_ok) {
       return err;
     }
+  }
+  /* HUM Ch 38.2.17 "CSR : Common Status Register", p 2225 -- TDRE
+   * goes high as soon as TDR latches into the shifter, but the byte
+   * may still be on the wire. Wait for TEND so the call only returns
+   * after the last frame is fully transmitted. Mirrors FSP
+   * r_sci_b_uart.c:576 (`R_SCI_B_UART_Close` blocks on TEND for the
+   * same reason before dropping TE). */
+  if (len != 0U) {
+    return internal_wait_tx_end(reg);
   }
   return k_ra_ok;
 }

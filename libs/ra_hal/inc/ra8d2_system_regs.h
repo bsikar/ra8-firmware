@@ -64,21 +64,56 @@ typedef enum : uintptr_t {
  */
 
 typedef enum : uint16_t {
-  k_ra_sys_off_sckdivcr  = 0x020U, /**< SCKDIVCR  (32-bit). */
-  k_ra_sys_off_sckdivcr2 = 0x024U, /**< SCKDIVCR2 (16-bit). */
-  k_ra_sys_off_sckscr    = 0x026U, /**< SCKSCR    (8-bit).  */
-  k_ra_sys_off_pllcr     = 0x02AU, /**< PLLCR     (8-bit).  */
-  k_ra_sys_off_moscr     = 0x032U, /**< MOSCCR    (8-bit).  */
-  k_ra_sys_off_hococr    = 0x036U, /**< HOCOCR    (8-bit).  */
-  k_ra_sys_off_oscsf     = 0x03CU, /**< OSCSF     (8-bit).  */
-  k_ra_sys_off_pllccr2   = 0x04CU, /**< PLLCCR2 -- PLL1 output dividers (16-bit). */
-  k_ra_sys_off_moscwtcr  = 0x0A2U, /**< MOSCWTCR  (8-bit).  */
-  k_ra_sys_off_pllccr    = 0x0ACU, /**< PLLCCR    (32-bit). */
-  k_ra_sys_off_rstsr1    = 0x0C0U, /**< RSTSR1    (32-bit). */
-  k_ra_sys_off_prcr      = 0x3FAU, /**< PRCR      (16-bit). */
-  k_ra_sys_off_rstsr0    = 0xA40U, /**< RSTSR0    (8-bit).  */
-  k_ra_sys_off_rstsr2    = 0xA44U, /**< RSTSR2    (8-bit).  */
+  k_ra_sys_off_vscr       = 0x014U, /**< VSCR voltage scaling control (32-bit). */
+  k_ra_sys_off_sckdivcr   = 0x020U, /**< SCKDIVCR  (32-bit). */
+  k_ra_sys_off_sckdivcr2  = 0x024U, /**< SCKDIVCR2 (16-bit). */
+  k_ra_sys_off_sckscr     = 0x026U, /**< SCKSCR    (8-bit).  */
+  k_ra_sys_off_pllcr      = 0x02AU, /**< PLLCR     (8-bit).  */
+  k_ra_sys_off_moscr      = 0x032U, /**< MOSCCR    (8-bit).  */
+  k_ra_sys_off_hococr     = 0x036U, /**< HOCOCR    (8-bit).  */
+  k_ra_sys_off_oscsf      = 0x03CU, /**< OSCSF     (8-bit).  */
+  k_ra_sys_off_pllccr2    = 0x04CU, /**< PLLCCR2 -- PLL1 output dividers (16-bit). */
+  k_ra_sys_off_scickdivcr = 0x054U, /**< SCICKDIVCR (8-bit). */
+  k_ra_sys_off_scickcr    = 0x055U, /**< SCICKCR    (8-bit). */
+  k_ra_sys_off_moscwtcr   = 0x0A2U, /**< MOSCWTCR  (8-bit).  */
+  k_ra_sys_off_pllccr     = 0x0ACU, /**< PLLCCR    (32-bit). */
+  k_ra_sys_off_rstsr1     = 0x0C0U, /**< RSTSR1    (32-bit). */
+  k_ra_sys_off_prcr       = 0x3FAU, /**< PRCR      (16-bit). */
+  k_ra_sys_off_rstsr0     = 0xA40U, /**< RSTSR0    (8-bit).  */
+  k_ra_sys_off_rstsr2     = 0xA44U, /**< RSTSR2    (8-bit).  */
 } ra_system_offset_t;
+
+/**
+ * @enum ra_vscr_bit_t
+ * @brief Bit masks in VSCR (Voltage Scaling Control Register).
+ *
+ * @details
+ * On RA8 Gen2 silicon, software must drop the core to the
+ * "not high voltage" range (`VSCM = 1`) before lifting PLL1 above its
+ * default rate, then poll `VSCMTSF` until the transition completes
+ * (FSP `bsp_clocks.c:2538-2539`, FSP CMSIS device header
+ * `R7KA8D2KF_core0.h:70196,70198`).
+ *
+ * Bit positions inside the 32-bit register:
+ *   - VSCM     = bit 0 (write 1 to enter not-high-voltage mode)
+ *   - VSCMTSF  = bit 4 (read-only, set while transition is in flight)
+ */
+typedef enum : uint32_t {
+  k_ra_vscr_bit_vscm    = (1UL << 0U), /**< VSCM bit mask (write 1 = not-high-V). */
+  k_ra_vscr_bit_vscmtsf = (1UL << 4U), /**< VSCMTSF transition-in-flight mask.    */
+} ra_vscr_bit_t;
+
+/**
+ * @enum ra_moscr_bit_t
+ * @brief Bit masks in MOSCCR (Main Clock Oscillator Control Register).
+ *
+ * @details
+ * MOSTP at bit 0: write 0 to start the main oscillator, 1 to stop it
+ * (HUM Ch 9.2.13).
+ */
+typedef enum : uint8_t {
+  k_ra_moscr_mostp_mask = (1U << 0U), /**< MOSTP -- 0 starts XTAL, 1 stops it. */
+} ra_moscr_bit_t;
 
 /**
  * @enum ra_oscsf_bit_t
@@ -163,10 +198,28 @@ typedef enum : uint8_t {
  * header under 200 lines.
  */
 
+/** @brief Get pointer to the 32-bit VSCR register (voltage scaling control). */
+static inline volatile uint32_t* ra_sys_vscr(void)
+{
+  return (volatile uint32_t*)(k_ra_system_base_addr + k_ra_sys_off_vscr);
+}
+
 /** @brief Get pointer to the 32-bit SCKDIVCR register. */
 static inline volatile uint32_t* ra_sys_sckdivcr(void)
 {
   return (volatile uint32_t*)(k_ra_system_base_addr + k_ra_sys_off_sckdivcr);
+}
+
+/** @brief Get pointer to the 8-bit SCICKDIVCR register (SCICLK divider). */
+static inline volatile uint8_t* ra_sys_scickdivcr(void)
+{
+  return (volatile uint8_t*)(k_ra_system_base_addr + k_ra_sys_off_scickdivcr);
+}
+
+/** @brief Get pointer to the 8-bit SCICKCR register (SCICLK source select). */
+static inline volatile uint8_t* ra_sys_scickcr(void)
+{
+  return (volatile uint8_t*)(k_ra_system_base_addr + k_ra_sys_off_scickcr);
 }
 
 /** @brief Get pointer to the 8-bit SCKSCR register. */
