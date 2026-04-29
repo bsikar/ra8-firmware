@@ -66,6 +66,8 @@ file(GLOB_RECURSE RA_HAL_SOURCES     CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_hal/sr
 file(GLOB_RECURSE RA_NET_PAL_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_net_pal/src/*.c)
 file(GLOB_RECURSE RA_NET_SOURCES     CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_net/src/*.c)
 file(GLOB_RECURSE RA_USB_PAL_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_usb_pal/src/*.c)
+file(GLOB_RECURSE RA_FS_SOURCES      CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_fs/src/*.c)
+file(GLOB_RECURSE RA_GFX_SOURCES     CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_gfx/src/*.c)
 file(GLOB_RECURSE RA_NSC_SOURCES     CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_nsc/src/*.c)
 file(GLOB_RECURSE RA_SECURE_APP_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/src/secure_app/*.c)
 
@@ -75,6 +77,8 @@ add_library(ra_core_hal OBJECT
     ${RA_NET_PAL_SOURCES}
     ${RA_NET_SOURCES}
     ${RA_USB_PAL_SOURCES}
+    ${RA_FS_SOURCES}
+    ${RA_GFX_SOURCES}
     ${RA_NSC_SOURCES}
     ${RA_SECURE_APP_SOURCES}
     ${CMAKE_CURRENT_SOURCE_DIR}/mocks/ra_sim_mmap.c
@@ -89,6 +93,9 @@ target_include_directories(ra_core_hal PUBLIC
     ${FW_ROOT}/libs/ra_net_pal/inc
     ${FW_ROOT}/libs/ra_net/inc
     ${FW_ROOT}/libs/ra_usb_pal/inc
+    ${FW_ROOT}/libs/ra_fs/inc
+    ${FW_ROOT}/libs/ra_gfx/inc
+    ${FW_ROOT}/libs/ra_tls/inc
     ${FW_ROOT}/libs/ra_nsc/inc
     ${FW_ROOT}/src
     ${FW_ROOT}/src/inc
@@ -113,6 +120,9 @@ function(ra_add_test name)
     ${FW_ROOT}/libs/ra_net_pal/inc
     ${FW_ROOT}/libs/ra_net/inc
     ${FW_ROOT}/libs/ra_usb_pal/inc
+    ${FW_ROOT}/libs/ra_fs/inc
+    ${FW_ROOT}/libs/ra_gfx/inc
+    ${FW_ROOT}/libs/ra_tls/inc
     ${FW_ROOT}/libs/ra_nsc/inc
     ${FW_ROOT}/src/secure_app
     ${CMAKE_CURRENT_SOURCE_DIR}/mocks

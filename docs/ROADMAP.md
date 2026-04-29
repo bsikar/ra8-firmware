@@ -8,6 +8,28 @@ PR descriptions, separate `STATUS.md` files). If you find yourself
 copying status out of here, the answer is to refer back to here
 instead.
 
+## Cross-verify sweep log (sweeps 1-8)
+
+After the 14-checkbox waves closed at the cross-verify-loop entry
+point (commit `f2c3203`), eight feature-completion sweeps landed on
+top. Each sweep is documented in its commit message; this is the
+one-line summary so the roadmap is self-contained.
+
+| Sweep | Commit | Title |
+|------:|:-------|:------|
+| 1 | `3f97975` | IIC, SDHI, SPI, SCI from scaffold to FSP-grade |
+| 2 | `4cde2a2` | Ethernet TX/RX rings, USB device HID/MSC, GLCDC layer-2 |
+| 3 | `798b019` | ADC scan groups, GPT PWM/3-phase, I3C CCC, USB composite |
+| 4 | `6fd856c` | Flash erase/write/blank-check, USB host CDC-ECM, USB Type-C |
+| 5 | `171901a` | NEW drivers: CTSU touch, PDC camera bridge, SCE crypto |
+| 6 | `3ff1a8d` | DMAC/OSPI feature gaps, MIPI video timing, PTP IEEE 1588 |
+| 7 | `09abe38` | Six new hardware-flashable example apps |
+| 8 | `5e154b9` | BLE scaffold, USB host audio, software JPEG, ra_net stack |
+
+For the at-a-glance driver-vs-FSP-parity matrix see
+`docs/DRIVER_STATUS.md`. For the residual gap list see
+`docs/MISSING.md`.
+
 Status markers:
 
 - `[ ]` TODO -- not started
