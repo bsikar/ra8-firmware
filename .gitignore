@@ -89,3 +89,4 @@ venv/
 # Local environment
 .env
 .env.local
+.claude/
