@@ -6,12 +6,17 @@
  * [Ring 3 / HAL] {World: NS}
  *
  * @details
- * driver for the RA8D2 DAC_B peripheral. DAC_B is the RA8
- * successor to the pre-RA8 DAC12 block: each DAC "channel" is a
- * separate IP instance with its own DADR + DACR0/1/2 set. DAC_B0
- * and DAC_B1 live at 0x40233000 and 0x40233100 (stride 0x100).
- * The driver hides this by keeping a 2-channel public API, with
- * channel 0 routed to DAC_B0 and channel 1 routed to DAC_B1.
+ * Driver for the RA8D2 DAC_B peripheral. DAC_B is the RA8 successor
+ * to the pre-RA8 DAC12 block: each DAC "channel" is a separate IP
+ * instance with its own DADR + DACR0/1/2 set. DAC_B0 and DAC_B1
+ * live at 0x40233000 and 0x40233100 (stride 0x100). The driver
+ * hides this by keeping a 2-channel public API, with channel 0
+ * routed to DAC_B0 and channel 1 routed to DAC_B1.
+ *
+ * Cross-verified against FSP r_dac_b.c (R_DAC_B_Open / Write /
+ * Start / Stop / Close paths). The bit layout used here mirrors
+ * FSP `R_DAC_B0_DACR{0,1,2}_*_Msk` exactly. See HUM Ch 54 "12-Bit
+ * D/A Converter (DAC12)" p 3490..3496.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -50,20 +55,16 @@ static inline uint16_t internal_ra_dac_b_clamp(uint16_t value)
 }
 
 /**
- * @brief Enable the DAC_B instance for a logical channel.
- */
-static void internal_enable_channel(uint8_t channel)
-{
-  volatile r_dac_b_regs_t* reg = ra_dac_b(channel);
-  if (reg == nullptr) {
-    return;
-  }
-  /* HUM Ch 54 "12-Bit D/A Converter (DAC12)" p 3490 */
-  reg->DACR0 = k_ra_dacr0_mask_dacen | k_ra_dacr0_mask_dae;
-}
-
-/**
- * @brief Disable the DAC_B instance for a logical channel.
+ * @brief Stop a channel and put DACR0 in the FSP "open" baseline.
+ *
+ * @details
+ * Mirrors `p_ctrl->p_reg->DACR0 &= ~(DACEN | DAOUTDIS | DAE)` from
+ * FSP R_DAC_B_Open. Because we always come in here from a fresh
+ * power-on (MSTP just released), an unconditional zero is
+ * equivalent and avoids a read-modify-write hazard on a
+ * just-clocked register block.
+ *
+ * Citation: HUM Ch 54 "12-Bit D/A Converter (DAC12)" p 3490.
  */
 static void internal_disable_channel(uint8_t channel)
 {
@@ -71,8 +72,40 @@ static void internal_disable_channel(uint8_t channel)
   if (reg == nullptr) {
     return;
   }
+  /* HUM Ch 54 "12-Bit D/A Converter (DAC12)" p 3490 */
   reg->DACR0 = 0U;
   reg->DADR  = 0U;
+}
+
+/**
+ * @brief Set DACEN=1 on a channel (FSP R_DAC_B_Start equivalent).
+ *
+ * @details
+ * Pure read-modify-write of bit 0 of DACR0; preserves DAE and
+ * DAOUTDIS so callers can configure those in DACR0 *before*
+ * starting conversion.
+ */
+static void internal_start_channel(uint8_t channel)
+{
+  volatile r_dac_b_regs_t* reg = ra_dac_b(channel);
+  if (reg == nullptr) {
+    return;
+  }
+  /* HUM Ch 54 "12-Bit D/A Converter (DAC12)" p 3490 */
+  reg->DACR0 = reg->DACR0 | k_ra_dacr0_mask_dacen;
+}
+
+/**
+ * @brief Clear DACEN on a channel (FSP R_DAC_B_Stop equivalent).
+ */
+static void internal_stop_channel(uint8_t channel)
+{
+  volatile r_dac_b_regs_t* reg = ra_dac_b(channel);
+  if (reg == nullptr) {
+    return;
+  }
+  /* HUM Ch 54 "12-Bit D/A Converter (DAC12)" p 3490 */
+  reg->DACR0 = reg->DACR0 & ~k_ra_dacr0_mask_dacen;
 }
 
 [[nodiscard]] ra_err_t ra_dac_b_init(void)
@@ -97,10 +130,10 @@ static void internal_disable_channel(uint8_t channel)
     return k_ra_err_invalid_arg;
   }
   const uint16_t clamped = internal_ra_dac_b_clamp(value);
-  /* HUM Ch 54 "12-Bit D/A Converter (DAC12)" p 3490 */
+  /* HUM Ch 54 "12-Bit D/A Converter (DAC12)" p 3490 -- FSP R_DAC_B_Write
+   * is a single 16-bit store to DADR; DACEN is asserted via
+   * ra_dac_b_set_output_enable() / ra_dac_b_init_configured(), NOT here. */
   reg->DADR = clamped;
-  /* Make sure the instance is enabled + driving output. */
-  reg->DACR0 = reg->DACR0 | k_ra_dacr0_mask_dacen | k_ra_dacr0_mask_dae;
   ra_log_info_val(s_tag, "dac_b_write value", (uint32_t)clamped);
   return k_ra_ok;
 }
@@ -116,6 +149,30 @@ typedef struct {
 
 static ra_dac_b_state_t s_dac_b_state;
 
+/**
+ * @brief Apply ``cfg`` to one DAC_B instance (FSP R_DAC_B_Open body).
+ */
+static void internal_apply_cfg(uint8_t channel, const ra_dac_b_cfg_t* cfg)
+{
+  volatile r_dac_b_regs_t* reg = ra_dac_b(channel);
+  if (reg == nullptr) {
+    return;
+  }
+  /* HUM Ch 54 "12-Bit D/A Converter (DAC12)" p 3490..3496 -- mirror
+   * FSP R_DAC_B_Open: clear DACR0, set DACR1.DPSEL, DACR2.OFSSEL,
+   * zero DADR, then drive the DAOUTDIS bit per the descriptor. */
+  reg->DACR0 = 0U;
+  reg->DACR1 = ((uint32_t)cfg->data_format) << (uint32_t)k_ra_dacr1_bit_dpsel;
+  reg->DACR2 = ((uint32_t)cfg->vref) << (uint32_t)k_ra_dacr2_bit_ofssel;
+  reg->DADR  = 0U;
+  /* internal_output_enabled == true clears DAOUTDIS (route to pin);
+   * false sets DAOUTDIS (Hi-Z). FSP encodes the same way: it writes
+   * the boolean directly into the 1-bit DAOUTDIS field. */
+  if (!cfg->internal_output_enabled) {
+    reg->DACR0 = reg->DACR0 | k_ra_dacr0_mask_daoutdis;
+  }
+}
+
 ra_err_t ra_dac_b_init_configured(const ra_dac_b_cfg_t* cfg)
 {
   RA_CHECK_NULL_PTR((void*)cfg, s_tag, "cfg must not be nullptr");
@@ -125,21 +182,14 @@ ra_err_t ra_dac_b_init_configured(const ra_dac_b_cfg_t* cfg)
   mst_err = ra_mstp_enable(k_ra_mstp_dac12_1);
   RA_RETURN_ON_ERROR(mst_err, s_tag, "dac_b_init_cfg: mstp dac1"); /* GCOVR_EXCL_BR_LINE */
 
-  internal_disable_channel(k_ra_dac_b_channel_0);
-  internal_disable_channel(k_ra_dac_b_channel_1);
-
-  /* HUM Ch 54 "12-Bit D/A Converter (DAC12)" p 3490 -- DACR2 holds the
-   * reference voltage select + ADC sync bits in the DAC_B topology. */
-  volatile r_dac_b_regs_t* reg0 = ra_dac_b(k_ra_dac_b_channel_0);
-  volatile r_dac_b_regs_t* reg1 = ra_dac_b(k_ra_dac_b_channel_1);
-  reg0->DACR2                   = (uint32_t)cfg->vref;
-  reg1->DACR2                   = (uint32_t)cfg->vref;
+  internal_apply_cfg(k_ra_dac_b_channel_0, cfg);
+  internal_apply_cfg(k_ra_dac_b_channel_1, cfg);
 
   if (cfg->enable_channel0) {
-    internal_enable_channel(k_ra_dac_b_channel_0);
+    internal_start_channel(k_ra_dac_b_channel_0);
   }
   if (cfg->enable_channel1) {
-    internal_enable_channel(k_ra_dac_b_channel_1);
+    internal_start_channel(k_ra_dac_b_channel_1);
   }
   ra_log_info(s_tag, "dac_b_init_configured");
   return k_ra_ok;
@@ -147,8 +197,19 @@ ra_err_t ra_dac_b_init_configured(const ra_dac_b_cfg_t* cfg)
 
 ra_err_t ra_dac_b_deinit(void)
 {
-  internal_disable_channel(k_ra_dac_b_channel_0);
-  internal_disable_channel(k_ra_dac_b_channel_1);
+  /* HUM Ch 54 "12-Bit D/A Converter (DAC12)" p 3490 -- FSP R_DAC_B_Close
+   * writes DACR0 = DAOUTDIS_Msk to fully disable output, operation,
+   * and coupled operation. We then release MSTP. */
+  volatile r_dac_b_regs_t* reg0 = ra_dac_b(k_ra_dac_b_channel_0);
+  volatile r_dac_b_regs_t* reg1 = ra_dac_b(k_ra_dac_b_channel_1);
+  if (reg0 != nullptr) {
+    reg0->DACR0 = k_ra_dacr0_mask_daoutdis;
+    reg0->DADR  = 0U;
+  }
+  if (reg1 != nullptr) {
+    reg1->DACR0 = k_ra_dacr0_mask_daoutdis;
+    reg1->DADR  = 0U;
+  }
   s_dac_b_state.fn  = nullptr;
   s_dac_b_state.ctx = nullptr;
   (void)ra_mstp_disable(k_ra_mstp_dac12_1);
@@ -157,10 +218,13 @@ ra_err_t ra_dac_b_deinit(void)
 
 ra_err_t ra_dac_b_set_vref(ra_dac_b_vref_t vref)
 {
-  volatile r_dac_b_regs_t* reg0 = ra_dac_b(k_ra_dac_b_channel_0);
-  volatile r_dac_b_regs_t* reg1 = ra_dac_b(k_ra_dac_b_channel_1);
-  reg0->DACR2                   = (uint32_t)vref;
-  reg1->DACR2                   = (uint32_t)vref;
+  /* HUM Ch 54 "12-Bit D/A Converter (DAC12)" p 3490 -- DACR2.OFSSEL is
+   * a single bit at position 8; preserve all other bits. */
+  volatile r_dac_b_regs_t* reg0    = ra_dac_b(k_ra_dac_b_channel_0);
+  volatile r_dac_b_regs_t* reg1    = ra_dac_b(k_ra_dac_b_channel_1);
+  const uint32_t           shifted = ((uint32_t)vref) << (uint32_t)k_ra_dacr2_bit_ofssel;
+  reg0->DACR2 = (reg0->DACR2 & ~k_ra_dacr2_mask_ofssel) | (shifted & k_ra_dacr2_mask_ofssel);
+  reg1->DACR2 = (reg1->DACR2 & ~k_ra_dacr2_mask_ofssel) | (shifted & k_ra_dacr2_mask_ofssel);
   return k_ra_ok;
 }
 
@@ -170,10 +234,13 @@ ra_err_t ra_dac_b_set_output_enable(uint8_t channel, bool enable)
   if (reg == nullptr) {
     return k_ra_err_invalid_arg;
   }
+  /* HUM Ch 54 "12-Bit D/A Converter (DAC12)" p 3490 -- FSP toggles
+   * DACEN (bit 0) only; DAE (batch mode) and DAOUTDIS are managed
+   * separately. */
   if (enable) {
-    reg->DACR0 = reg->DACR0 | k_ra_dacr0_mask_dacen | k_ra_dacr0_mask_dae;
+    reg->DACR0 = reg->DACR0 | k_ra_dacr0_mask_dacen;
   } else {
-    reg->DACR0 = reg->DACR0 & ~(k_ra_dacr0_mask_dacen | k_ra_dacr0_mask_dae);
+    reg->DACR0 = reg->DACR0 & ~k_ra_dacr0_mask_dacen;
   }
   return k_ra_ok;
 }
@@ -200,8 +267,8 @@ ra_err_t ra_dac_b_get_status(uint8_t* out_mask)
 
 ra_err_t ra_dac_b_clear_status(void)
 {
-  internal_disable_channel(k_ra_dac_b_channel_0);
-  internal_disable_channel(k_ra_dac_b_channel_1);
+  internal_stop_channel(k_ra_dac_b_channel_0);
+  internal_stop_channel(k_ra_dac_b_channel_1);
   return k_ra_ok;
 }
 
