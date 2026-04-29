@@ -453,6 +453,191 @@ static void test_spi_dma_arg_validation(void)
   TEST_END("ra_spi_{write,read}_dma: arg validation");
 }
 
+/* =============================================================================
+ * Multi-byte / multi-width polling transfers
+ * =============================================================================
+ */
+
+/**
+ * @enum ra_spi_test_multi_t
+ * @brief Constants used by the multi-byte transfer tests.
+ */
+typedef enum : uint32_t {
+  k_ra_spi_test_buf16  = 16U, /**< 16-byte buffer for 8-bit transfers.   */
+  k_ra_spi_test_buf8   = 8U,  /**< 8-element buffer for 16-bit tests.    */
+  k_ra_spi_test_buf4   = 4U,  /**< 4-element buffer for 32-bit tests.    */
+  k_ra_spi_test_seed8  = 0x10UL,
+  k_ra_spi_test_seed16 = 0xC100UL,
+  k_ra_spi_test_seed32 = 0xCAFE0000UL,
+} ra_spi_test_multi_t;
+
+/**
+ * @brief Pre-arm SPSR with both polling flags asserted.
+ *
+ * @details
+ * On the host mock SPSR is plain RAM and SPSRC writes do not auto-clear
+ * the SPSR mirror, so a single arming covers every iteration of the
+ * polling loop -- matching the existing xfer8 test pattern.
+ */
+static void prep_spsr_both(uint8_t channel)
+{
+  volatile r_spi_regs_t* reg = ra_spi(channel);
+  reg->SPSR                  = k_ra_spi_test_both;
+}
+
+static void test_spi_write_8bit_runs_loop(void)
+{
+  TEST_BEGIN("ra_spi_write: 8-bit, 16-byte payload");
+  prep_w33();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_spi_init(0U, &k_spi_cfg));
+  prep_spsr_both(0U);
+
+  uint8_t tx[k_ra_spi_test_buf16];
+  for (uint32_t i = 0U; i < k_ra_spi_test_buf16; i++) {
+    tx[i] = (uint8_t)(k_ra_spi_test_seed8 + i);
+  }
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_spi_write(0U, tx, k_ra_spi_test_buf16, k_ra_spi_width_8));
+  /* The mock retains the last byte written into SPDR. */
+  volatile const r_spi_regs_t* reg = ra_spi(0U);
+  TEST_ASSERT_EQ((int32_t)tx[k_ra_spi_test_buf16 - 1U], (int32_t)(reg->SPDR & 0xFFU));
+  TEST_END("ra_spi_write: 8-bit, 16-byte payload");
+}
+
+static void test_spi_read_8bit_runs_loop(void)
+{
+  TEST_BEGIN("ra_spi_read: 8-bit, 16-byte payload");
+  prep_w33();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_spi_init(0U, &k_spi_cfg));
+  prep_spsr_both(0U);
+
+  /* Pre-load SPDR with a known pattern; on the mock, read returns the
+   * most-recently-written value, so the dummy 0xFF write before each
+   * pop overwrites the seeded value. We instead validate that the
+   * driver consumes ``len`` units (each rx slot ends up holding the
+   * driver's dummy 0xFF) and that no SPSR error is raised. */
+  uint8_t rx[k_ra_spi_test_buf16];
+  for (uint32_t i = 0U; i < k_ra_spi_test_buf16; i++) {
+    rx[i] = 0U;
+  }
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_spi_read(0U, rx, k_ra_spi_test_buf16, k_ra_spi_width_8));
+  for (uint32_t i = 0U; i < k_ra_spi_test_buf16; i++) {
+    TEST_ASSERT_EQ((int32_t)0xFFU, (int32_t)rx[i]);
+  }
+  TEST_END("ra_spi_read: 8-bit, 16-byte payload");
+}
+
+static void test_spi_write_read_16bit(void)
+{
+  TEST_BEGIN("ra_spi_write_read: 16-bit, 8-word full-duplex");
+  prep_w33();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_spi_init(0U, &k_spi_cfg));
+  prep_spsr_both(0U);
+
+  uint16_t tx[k_ra_spi_test_buf8];
+  uint16_t rx[k_ra_spi_test_buf8];
+  for (uint32_t i = 0U; i < k_ra_spi_test_buf8; i++) {
+    tx[i] = (uint16_t)(k_ra_spi_test_seed16 + i);
+    rx[i] = 0U;
+  }
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_spi_write_read(0U, tx, rx, k_ra_spi_test_buf8, k_ra_spi_width_16));
+  /* Mock echoes TX -> RX through SPDR, so each rx[i] equals tx[i]. */
+  for (uint32_t i = 0U; i < k_ra_spi_test_buf8; i++) {
+    TEST_ASSERT_EQ((int32_t)tx[i], (int32_t)rx[i]);
+  }
+  /* SPCMD0.SPB now encodes 16-bit. */
+  volatile const r_spi_regs_t* reg = ra_spi(0U);
+  const uint32_t spb_field         = (reg->SPCMD[0] & k_ra_spcmd_mask_spb) >> k_ra_spcmd_bit_spb_lo;
+  TEST_ASSERT_EQ((int32_t)k_ra_spcmd_spb_16bit, (int32_t)spb_field);
+  TEST_END("ra_spi_write_read: 16-bit, 8-word full-duplex");
+}
+
+static void test_spi_write_read_32bit(void)
+{
+  TEST_BEGIN("ra_spi_write_read: 32-bit, 4-word full-duplex");
+  prep_w33();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_spi_init(0U, &k_spi_cfg));
+  prep_spsr_both(0U);
+
+  uint32_t tx[k_ra_spi_test_buf4];
+  uint32_t rx[k_ra_spi_test_buf4];
+  for (uint32_t i = 0U; i < k_ra_spi_test_buf4; i++) {
+    tx[i] = k_ra_spi_test_seed32 + i;
+    rx[i] = 0U;
+  }
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_spi_write_read(0U, tx, rx, k_ra_spi_test_buf4, k_ra_spi_width_32));
+  for (uint32_t i = 0U; i < k_ra_spi_test_buf4; i++) {
+    TEST_ASSERT_EQ((int32_t)tx[i], (int32_t)rx[i]);
+  }
+  volatile const r_spi_regs_t* reg = ra_spi(0U);
+  const uint32_t spb_field         = (reg->SPCMD[0] & k_ra_spcmd_mask_spb) >> k_ra_spcmd_bit_spb_lo;
+  TEST_ASSERT_EQ((int32_t)k_ra_spcmd_spb_32bit, (int32_t)spb_field);
+  TEST_END("ra_spi_write_read: 32-bit, 4-word full-duplex");
+}
+
+static void test_spi_multi_null_args(void)
+{
+  TEST_BEGIN("ra_spi_{write,read,write_read}: NULL-arg rejection");
+  prep_w33();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_spi_init(0U, &k_spi_cfg));
+  uint8_t buf[1] = {0U};
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_spi_write(0U, nullptr, 1U, k_ra_spi_width_8));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_spi_read(0U, nullptr, 1U, k_ra_spi_width_8));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_spi_write_read(0U, nullptr, buf, 1U, k_ra_spi_width_8));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_spi_write_read(0U, buf, nullptr, 1U, k_ra_spi_width_8));
+  TEST_END("ra_spi_{write,read,write_read}: NULL-arg rejection");
+}
+
+static void test_spi_multi_zero_len(void)
+{
+  TEST_BEGIN("ra_spi_{write,read,write_read}: len==0 is no-op success");
+  prep_w33();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_spi_init(0U, &k_spi_cfg));
+  /* SPSR is zero, so any actual polling would hit k_ra_err_hw_timeout.
+   * len==0 must never touch SPSR or SPDR -> we expect k_ra_ok. */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_spi_write(0U, nullptr, 0U, k_ra_spi_width_8));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_spi_read(0U, nullptr, 0U, k_ra_spi_width_8));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_spi_write_read(0U, nullptr, nullptr, 0U, k_ra_spi_width_8));
+  TEST_END("ra_spi_{write,read,write_read}: len==0 is no-op success");
+}
+
+static void test_spi_multi_bad_width(void)
+{
+  TEST_BEGIN("ra_spi_{write,read,write_read}: invalid bit_width rejected");
+  prep_w33();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_spi_init(0U, &k_spi_cfg));
+  uint8_t buf[1] = {0U};
+  /* 0xAA is not in {7, 15, 31}. */
+  const ra_spi_bit_width_t bogus = (ra_spi_bit_width_t)0xAAU;
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_spi_write(0U, buf, 1U, bogus));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_spi_read(0U, buf, 1U, bogus));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_spi_write_read(0U, buf, buf, 1U, bogus));
+  TEST_END("ra_spi_{write,read,write_read}: invalid bit_width rejected");
+}
+
+static void test_spi_multi_bad_channel(void)
+{
+  TEST_BEGIN("ra_spi_{write,read,write_read}: invalid channel rejected");
+  prep_w33();
+  uint8_t buf[1] = {0U};
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_spi_write(9U, buf, 1U, k_ra_spi_width_8));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_spi_read(9U, buf, 1U, k_ra_spi_width_8));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_spi_write_read(9U, buf, buf, 1U, k_ra_spi_width_8));
+  TEST_END("ra_spi_{write,read,write_read}: invalid channel rejected");
+}
+
 int32_t main(void)
 {
   test_master_init_happy_ch0();
@@ -475,6 +660,14 @@ int32_t main(void)
   test_spi_write_dma_streams_to_spdr();
   test_spi_read_dma_streams_from_spdr();
   test_spi_dma_arg_validation();
+  test_spi_write_8bit_runs_loop();
+  test_spi_read_8bit_runs_loop();
+  test_spi_write_read_16bit();
+  test_spi_write_read_32bit();
+  test_spi_multi_null_args();
+  test_spi_multi_zero_len();
+  test_spi_multi_bad_width();
+  test_spi_multi_bad_channel();
   (void)fprintf(stderr, "[OK ] test_ra_spi.c\n");
   return 0;
 }
