@@ -20,7 +20,7 @@
 
 #include "ra_check.h"
 #include "ra_err.h"
-#include "ra_iic.h"
+#include "ra_iic_b.h"
 #include "ra_nsc_veneer.h"
 #include "ra_sci.h"
 #include "ra_spi.h"

@@ -1,6 +1,12 @@
 /**
  * @file test_ra_spi.c
- * @brief Unit tests for spi.c (polling SPI master driver)
+ * @brief Unit tests for the SPI_B master driver (``ra_spi_b.c``)
+ *
+ * @details
+ * Validates the SPI_B-flavoured public ``ra_spi`` API against the
+ * 32-bit SPI_B register file in ``ra8d2_spi_regs.h``. All bit
+ * positions referenced here come from FSP ``R_SPI_B0_Type`` and
+ * HUM Ch 43 (p 2877-2985).
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -29,36 +35,57 @@ typedef enum : uint8_t {
 
 /**
  * @enum ra_spi_test_val_t
- * @brief Sample bytes and masks used by the SPI tests.
+ * @brief Sample bytes used by the SPI tests.
  */
-typedef enum : uint8_t {
-  k_ra_spi_test_tx_byte  = 0xA5U,
-  k_ra_spi_test_rx_byte  = 0x5AU,
-  k_ra_spi_test_sptef    = (uint8_t)(1U << 5U), /**< SPSR.SPTEF = bit 5. */
-  k_ra_spi_test_sprf     = (uint8_t)(1U << 7U), /**< SPSR.SPRF = bit 7. */
-  k_ra_spi_test_both     = (uint8_t)((1U << 5U) | (1U << 7U)),
-  k_ra_spi_test_spcr_en  = 0x48U, /**< k_ra_spi_spcr_enable. */
-  k_ra_spi_test_spbr_def = 0x0FU, /**< k_ra_spi_spbr_default.*/
+typedef enum : uint32_t {
+  k_ra_spi_test_tx_byte = 0xA5U,
 } ra_spi_test_val_t;
+
+/**
+ * @enum ra_spi_test_spsr_t
+ * @brief SPSR pre-armed flag combinations used by the polling tests.
+ *
+ * @details
+ * SPI_B SPSR places SPTEF at bit 29 and SPRF at bit 31
+ * (HUM Ch 43.2.9 p 2898). Keep these mirrored in the test so the
+ * register-mock pre-condition matches what the driver polls for.
+ */
+typedef enum : uint32_t {
+  k_ra_spi_test_sptef = 0x20000000UL,                /**< SPSR.SPTEF (bit 29). */
+  k_ra_spi_test_sprf  = 0x80000000UL,                /**< SPSR.SPRF  (bit 31). */
+  k_ra_spi_test_both  = 0x20000000UL | 0x80000000UL, /**< SPTEF | SPRF.        */
+} ra_spi_test_spsr_t;
+
+/**
+ * @enum ra_spi_test_spcr_t
+ * @brief Expected SPCR layout after init (master mode, SPE asserted).
+ *
+ * @details
+ * SPCR.SPE = bit 0 (mask 0x00000001), SPCR.SCKASE = bit 12
+ * (mask 0x00001000), SPCR.MSTR = bit 30 (mask 0x40000000).
+ * The driver drives SPCR = SPE | SCKASE | MSTR.
+ */
+typedef enum : uint32_t {
+  k_ra_spi_test_spcr_en = 0x40001001UL,
+} ra_spi_test_spcr_t;
 
 static void test_master_init_happy_ch0(void)
 {
   TEST_BEGIN("spi master_init ch0");
   ra_sim_mmap_reset();
 
-  const ra_err_t err = ra_spi_master_init((uint8_t)k_ra_spi_test_ch_zero);
+  const ra_err_t err = ra_spi_master_init(k_ra_spi_test_ch_zero);
   TEST_ASSERT_EQ((int)k_ra_ok, (int)err);
 
-  volatile r_spi_regs_t* reg = ra_spi((uint8_t)k_ra_spi_test_ch_zero);
+  volatile r_spi_regs_t* reg = ra_spi(k_ra_spi_test_ch_zero);
   TEST_ASSERT_NOT_NULL((void*)reg);
   TEST_ASSERT_EQ((int)k_ra_spi_test_spcr_en, (int)reg->SPCR);
-  TEST_ASSERT_EQ((int)k_ra_spi_test_spbr_def, (int)reg->SPBR);
-  TEST_ASSERT_EQ(0, (int)reg->SPPCR);
-  TEST_ASSERT_EQ(0, (int)reg->SPDCR);
-  TEST_ASSERT_EQ(0, (int)reg->SPCKD);
-  TEST_ASSERT_EQ(0, (int)reg->SSLND);
-  TEST_ASSERT_EQ(0, (int)reg->SPND);
+  /* SPCR3.SPBR field is non-zero after init at default 1.9 MHz / 125 MHz. */
+  TEST_ASSERT((reg->SPCR3 & k_ra_spcr3_mask_spbr) != 0U);
   TEST_ASSERT_EQ(0, (int)reg->SPCR2);
+  TEST_ASSERT_EQ(0, (int)reg->SPDECR);
+  TEST_ASSERT_EQ(0, (int)reg->SPDCR);
+  TEST_ASSERT_EQ(0, (int)reg->SPDCR2);
   TEST_END("spi master_init ch0");
 }
 
@@ -67,7 +94,7 @@ static void test_master_init_happy_ch1(void)
   TEST_BEGIN("spi master_init ch1");
   ra_sim_mmap_reset();
 
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_spi_master_init((uint8_t)k_ra_spi_test_ch_one));
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_spi_master_init(k_ra_spi_test_ch_one));
   TEST_END("spi master_init ch1");
 }
 
@@ -76,7 +103,7 @@ static void test_master_init_bad_channel(void)
   TEST_BEGIN("spi master_init bad channel");
   ra_sim_mmap_reset();
 
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_spi_master_init((uint8_t)k_ra_spi_test_ch_oor));
+  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_spi_master_init(k_ra_spi_test_ch_oor));
   TEST_END("spi master_init bad channel");
 }
 
@@ -85,7 +112,7 @@ static void test_master_init_huge_channel(void)
   TEST_BEGIN("spi master_init huge channel");
   ra_sim_mmap_reset();
 
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_spi_master_init((uint8_t)k_ra_spi_test_ch_huge));
+  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_spi_master_init(k_ra_spi_test_ch_huge));
   TEST_END("spi master_init huge channel");
 }
 
@@ -94,19 +121,17 @@ static void test_xfer8_happy_with_rx(void)
   TEST_BEGIN("spi xfer8 happy with rx");
   ra_sim_mmap_reset();
 
-  volatile r_spi_regs_t* reg = ra_spi((uint8_t)k_ra_spi_test_ch_zero);
+  volatile r_spi_regs_t* reg = ra_spi(k_ra_spi_test_ch_zero);
   TEST_ASSERT_NOT_NULL((void*)reg);
-  /* Pre-arm SPTEF and SPRF so both polling loops pass immediately. */
-  reg->SPSR = (uint8_t)k_ra_spi_test_both;
+  /* Pre-arm SPTEF + SPRF so both polling loops pass immediately. */
+  reg->SPSR = k_ra_spi_test_both;
 
   /* On the host mock, SPDR is just ordinary RAM -- the driver writes
    * TX into SPDR and later reads SPDR as RX, so the "received" byte
-   * echoes the transmitted byte. Verifying we get our TX back proves
-   * the full xfer sequence executed. */
+   * echoes the transmitted byte. */
   uint8_t rx = 0U;
-  TEST_ASSERT_EQ(
-    (int)k_ra_ok,
-    (int)ra_spi_xfer8((uint8_t)k_ra_spi_test_ch_zero, (uint8_t)k_ra_spi_test_tx_byte, &rx));
+  TEST_ASSERT_EQ((int)k_ra_ok,
+                 (int)ra_spi_xfer8(k_ra_spi_test_ch_zero, (uint8_t)k_ra_spi_test_tx_byte, &rx));
   TEST_ASSERT_EQ((int)k_ra_spi_test_tx_byte, (int)rx);
   TEST_END("spi xfer8 happy with rx");
 }
@@ -116,13 +141,12 @@ static void test_xfer8_happy_null_rx(void)
   TEST_BEGIN("spi xfer8 happy null rx");
   ra_sim_mmap_reset();
 
-  volatile r_spi_regs_t* reg = ra_spi((uint8_t)k_ra_spi_test_ch_one);
+  volatile r_spi_regs_t* reg = ra_spi(k_ra_spi_test_ch_one);
   TEST_ASSERT_NOT_NULL((void*)reg);
-  reg->SPSR = (uint8_t)k_ra_spi_test_both;
+  reg->SPSR = k_ra_spi_test_both;
 
-  TEST_ASSERT_EQ(
-    (int)k_ra_ok,
-    (int)ra_spi_xfer8((uint8_t)k_ra_spi_test_ch_one, (uint8_t)k_ra_spi_test_tx_byte, nullptr));
+  TEST_ASSERT_EQ((int)k_ra_ok,
+                 (int)ra_spi_xfer8(k_ra_spi_test_ch_one, (uint8_t)k_ra_spi_test_tx_byte, nullptr));
   TEST_END("spi xfer8 happy null rx");
 }
 
@@ -132,9 +156,8 @@ static void test_xfer8_timeout_sptef(void)
   ra_sim_mmap_reset();
 
   /* SPSR = 0 -> SPTEF never sets -> first wait times out. */
-  TEST_ASSERT_EQ(
-    (int)k_ra_err_hw_timeout,
-    (int)ra_spi_xfer8((uint8_t)k_ra_spi_test_ch_zero, (uint8_t)k_ra_spi_test_tx_byte, nullptr));
+  TEST_ASSERT_EQ((int)k_ra_err_hw_timeout,
+                 (int)ra_spi_xfer8(k_ra_spi_test_ch_zero, (uint8_t)k_ra_spi_test_tx_byte, nullptr));
   TEST_END("spi xfer8 timeout sptef");
 }
 
@@ -143,15 +166,14 @@ static void test_xfer8_timeout_sprf(void)
   TEST_BEGIN("spi xfer8 timeout sprf");
   ra_sim_mmap_reset();
 
-  volatile r_spi_regs_t* reg = ra_spi((uint8_t)k_ra_spi_test_ch_zero);
+  volatile r_spi_regs_t* reg = ra_spi(k_ra_spi_test_ch_zero);
   TEST_ASSERT_NOT_NULL((void*)reg);
   /* Only SPTEF is asserted -> second wait (SPRF) times out. */
-  reg->SPSR = (uint8_t)k_ra_spi_test_sptef;
+  reg->SPSR = k_ra_spi_test_sptef;
 
   uint8_t rx = 0xFFU;
-  TEST_ASSERT_EQ(
-    (int)k_ra_err_hw_timeout,
-    (int)ra_spi_xfer8((uint8_t)k_ra_spi_test_ch_zero, (uint8_t)k_ra_spi_test_tx_byte, &rx));
+  TEST_ASSERT_EQ((int)k_ra_err_hw_timeout,
+                 (int)ra_spi_xfer8(k_ra_spi_test_ch_zero, (uint8_t)k_ra_spi_test_tx_byte, &rx));
   TEST_END("spi xfer8 timeout sprf");
 }
 
@@ -161,14 +183,13 @@ static void test_xfer8_bad_channel(void)
   ra_sim_mmap_reset();
 
   uint8_t rx = 0U;
-  TEST_ASSERT_EQ(
-    (int)k_ra_err_null_ptr,
-    (int)ra_spi_xfer8((uint8_t)k_ra_spi_test_ch_oor, (uint8_t)k_ra_spi_test_tx_byte, &rx));
+  TEST_ASSERT_EQ((int)k_ra_err_null_ptr,
+                 (int)ra_spi_xfer8(k_ra_spi_test_ch_oor, (uint8_t)k_ra_spi_test_tx_byte, &rx));
   TEST_END("spi xfer8 bad channel");
 }
 
 /* =============================================================================
- * new API tests
+ * Configured init / deinit / runtime / dispatch
  * =============================================================================
  */
 
@@ -202,8 +223,14 @@ static void test_spi_init_configured(void)
   prep_w33();
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_spi_init(0U, &k_spi_cfg));
   volatile const r_spi_regs_t* reg = ra_spi(0U);
-  TEST_ASSERT(reg->SPCR != 0U);
-  TEST_ASSERT(reg->SPBR != 0U);
+  /* SPCR carries SPE | SCKASE | MSTR. */
+  TEST_ASSERT((reg->SPCR & k_ra_spcr_mask_spe) != 0U);
+  TEST_ASSERT((reg->SPCR & k_ra_spcr_mask_mstr) != 0U);
+  /* SPCR3.SPBR is non-zero. */
+  TEST_ASSERT((reg->SPCR3 & k_ra_spcr3_mask_spbr) != 0U);
+  /* SPCMD0.SPB encodes 8-bit frame in [20:16]. */
+  const uint32_t spb_field = (reg->SPCMD[0] & k_ra_spcmd_mask_spb) >> k_ra_spcmd_bit_spb_lo;
+  TEST_ASSERT_EQ((int32_t)k_ra_spcmd_spb_8bit, (int32_t)spb_field);
   TEST_END("ra_spi_init: SPCR.SPE set");
 }
 
@@ -215,16 +242,16 @@ static void test_spi_init_mode_variants(void)
 
   cfg.mode = k_ra_spi_mode_1;
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_spi_init(0U, &cfg));
-  TEST_ASSERT((ra_spi(0U)->SPCMD[0] & (uint16_t)1U) != 0U);
+  TEST_ASSERT((ra_spi(0U)->SPCMD[0] & k_ra_spcmd_mask_cpha) != 0U);
 
   cfg.mode = k_ra_spi_mode_2;
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_spi_init(1U, &cfg));
-  TEST_ASSERT((ra_spi(1U)->SPCMD[0] & (uint16_t)(1U << 1U)) != 0U);
+  TEST_ASSERT((ra_spi(1U)->SPCMD[0] & k_ra_spcmd_mask_cpol) != 0U);
 
   cfg.mode      = k_ra_spi_mode_3;
   cfg.lsb_first = true;
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_spi_init(0U, &cfg));
-  TEST_ASSERT((ra_spi(0U)->SPCMD[0] & (uint16_t)(1U << 12U)) != 0U);
+  TEST_ASSERT((ra_spi(0U)->SPCMD[0] & k_ra_spcmd_mask_lsbf) != 0U);
   TEST_END("ra_spi_init: mode 1/2/3 programme SPCMD bits");
 }
 
@@ -252,16 +279,17 @@ static void test_spi_deinit(void)
 
 static void test_spi_set_clock(void)
 {
-  TEST_BEGIN("ra_spi_set_clock: updates SPBR");
+  TEST_BEGIN("ra_spi_set_clock: updates SPCR3.SPBR");
   prep_w33();
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_spi_init(0U, &k_spi_cfg));
-  const uint8_t before = ra_spi(0U)->SPBR;
+  const uint32_t before_spbr = ra_spi(0U)->SPCR3 & k_ra_spcr3_mask_spbr;
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_spi_set_clock(0U, 500000U, 120000000U));
-  TEST_ASSERT(ra_spi(0U)->SPBR != before);
+  const uint32_t after_spbr = ra_spi(0U)->SPCR3 & k_ra_spcr3_mask_spbr;
+  TEST_ASSERT(after_spbr != before_spbr);
   TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_spi_set_clock(0U, 0U, 120000000U));
   TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
                  (int32_t)ra_spi_set_clock(9U, 1000000U, 120000000U));
-  TEST_END("ra_spi_set_clock: updates SPBR");
+  TEST_END("ra_spi_set_clock: updates SPCR3.SPBR");
 }
 
 static void test_spi_errors(void)
@@ -270,14 +298,20 @@ static void test_spi_errors(void)
   prep_w33();
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_spi_init(0U, &k_spi_cfg));
   volatile r_spi_regs_t* reg = ra_spi(0U);
-  reg->SPSR                  = (uint8_t)((1U << 0U) | (1U << 2U) | (1U << 3U) | (1U << 4U));
+  /* Pre-arm SPSR with all four error flags asserted (OVRF/MODF/PERF/UDRF). */
+  reg->SPSR = k_ra_spsr_mask_errs;
 
   uint8_t mask = 0U;
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_spi_get_errors(0U, &mask));
-  TEST_ASSERT_EQ((int32_t)((uint8_t)k_ra_spi_err_overrun | (uint8_t)k_ra_spi_err_mode |
-                           (uint8_t)k_ra_spi_err_parity | (uint8_t)k_ra_spi_err_underrun),
+  TEST_ASSERT_EQ((int32_t)(k_ra_spi_err_overrun | k_ra_spi_err_mode | k_ra_spi_err_parity |
+                           k_ra_spi_err_underrun),
                  (int32_t)mask);
+
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_spi_clear_errors(0U));
+  /* Drivers cleared via SPSRC; the host mock backs both SPSR and SPSRC
+   * with ordinary RAM so we manually clear SPSR to mirror the HW
+   * write-1-clears behaviour for the get_errors readback. */
+  reg->SPSR = 0U;
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_spi_get_errors(0U, &mask));
   TEST_ASSERT_EQ((int32_t)k_ra_spi_err_none, (int32_t)mask);
 
@@ -295,11 +329,11 @@ static void test_spi_attach(void)
   TEST_ASSERT_EQ((int32_t)k_ra_ok,
                  (int32_t)ra_spi_attach_transfer_handler(0U, stub_spi_cb, nullptr));
 
-  /* Fake an overrun flag and fire ERI. */
-  ra_spi(0U)->SPSR = (uint8_t)(1U << 0U);
+  /* Fake an overrun flag (SPSR.OVRF, bit 24) and fire ERI. */
+  ra_spi(0U)->SPSR = k_ra_spsr_mask_ovrf;
   ra_spi_dispatch_spei(0U);
   TEST_ASSERT_EQ((int32_t)1, (int32_t)s_spi_cb_count);
-  TEST_ASSERT_EQ((int32_t)(uint8_t)k_ra_spi_err_overrun, (int32_t)s_spi_cb_err);
+  TEST_ASSERT_EQ((int32_t)k_ra_spi_err_overrun, (int32_t)s_spi_cb_err);
 
   /* Zero-mask dispatch is a no-op. */
   ra_spi(0U)->SPSR = 0U;

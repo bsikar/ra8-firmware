@@ -11,7 +11,7 @@
 #include "ra8d2_sci_regs.h"
 #include "ra8d2_spi_regs.h"
 #include "ra_err.h"
-#include "ra_iic.h"
+#include "ra_iic_b.h"
 #include "ra_mstp.h"
 #include "ra_nsc_comms.h"
 #include "ra_sci.h"
@@ -36,7 +36,7 @@ static const ra_sci_cfg_t k_sci_cfg = {
 
 static const ra_iic_cfg_t k_iic_cfg = {
   .bus_hz   = 100000U,
-  .pclkb_hz = 60000000U,
+  .pclka_hz = 60000000U,
 };
 
 /* =============================================================================
@@ -119,12 +119,13 @@ static void test_spi_init_and_xfer(void)
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_nsc_spi_init(0U, &cfg));
   TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_nsc_spi_init(0U, nullptr));
 
-  /* Pre-set SPSR.SPTEF + SPRF so the polling xfer sees ready flags. */
+  /* Pre-set SPSR.SPTEF + SPRF so the polling xfer sees ready flags.
+   * SPI_B keeps both flags in SPSR's high half (bits 29 + 31). */
   volatile r_spi_regs_t* sreg = ra_spi(0U);
-  sreg->SPSR                  = (uint8_t)((1U << 5U) | (1U << 7U));
+  sreg->SPSR                  = k_ra_spsr_mask_sptef | k_ra_spsr_mask_sprf;
   uint8_t rx                  = 0U;
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_nsc_spi_xfer8(0U, 0xCAU, &rx));
-  sreg->SPSR = (uint8_t)((1U << 5U) | (1U << 7U));
+  sreg->SPSR = k_ra_spsr_mask_sptef | k_ra_spsr_mask_sprf;
   /* NULL rx is legal for the legacy ra_spi_xfer8 contract. */
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_nsc_spi_xfer8(0U, 0xCAU, nullptr));
   TEST_END("ra_nsc_spi_init + xfer8");
