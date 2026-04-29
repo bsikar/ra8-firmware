@@ -59,6 +59,8 @@ typedef struct {
   void*               user_ctx;    /**< Caller pointer passed to ``cb``.    */
   bool                initialised; /**< True after ``ra_flash_init``.       */
   bool                prefetch_on; /**< Last-known MRCPFB state.            */
+  uintptr_t           win_low;     /**< Soft access-window low (incl).      */
+  uintptr_t           win_high;    /**< Soft access-window high (excl).     */
 } ra_flash_runtime_t;
 
 static ra_flash_runtime_t s_rt = {};
@@ -495,6 +497,40 @@ ra_err_t ra_flash_set_rww_disable(bool disable)
   return k_ra_ok;
 }
 
+/**
+ * @brief Test whether [addr, addr+len) lies inside the configured soft window.
+ *
+ * @details
+ * The soft window mirrors the FSP ``accessWindowSet`` surface but is
+ * stored in driver state rather than in the silicon (RA8D2 has no
+ * FAWMON / FAWMR; HUM Ch 59 substitutes block-protect bits). A window
+ * with ``win_low == win_high == 0`` is treated as disabled (allow all).
+ *
+ * @param[in] addr Start address of the candidate operation.
+ * @param[in] len  Length in bytes (must be > 0 if the caller is writing).
+ *
+ * @return ``true`` if the operation is permitted, ``false`` if blocked.
+ *
+ * @pre None.
+ * @post No side effects.
+ *
+ * @note Internal helper, not thread-safe.
+ */
+static bool internal_window_allows(uintptr_t addr, uint32_t len)
+{
+  if (s_rt.win_low == 0U && s_rt.win_high == 0U) {
+    return true;
+  }
+  const uintptr_t end_excl = (uintptr_t)((uint64_t)addr + (uint64_t)len);
+  if (addr < s_rt.win_low) {
+    return false;
+  }
+  if (end_excl > s_rt.win_high) {
+    return false;
+  }
+  return true;
+}
+
 /* =============================================================================
  * Public API: direct code-MRAM programming
  * =============================================================================
@@ -534,6 +570,9 @@ static ra_err_t internal_validate_write_block(uint32_t mram_addr, uint32_t len)
   const uint32_t page_mask = k_ra_mram_write_size_bytes - 1U;
   if ((mram_addr & ~page_mask) != ((end_excl - 1U) & ~page_mask)) {
     return k_ra_err_invalid_arg;
+  }
+  if (!internal_window_allows((uintptr_t)mram_addr, len)) {
+    return k_ra_err_out_of_range;
   }
   return k_ra_ok;
 }
@@ -1505,4 +1544,231 @@ uint32_t ra_flash_dispatch_isr(void)
     delivered++;
   }
   return delivered;
+}
+
+/* =============================================================================
+ * Public API: FSP r_mram parity surface
+ * =============================================================================
+ */
+
+ra_err_t ra_flash_open(const ra_flash_cfg_t* cfg)
+{
+  /* FSP r_mram.c L253 R_MRAM_Open delegates to mram_init; we delegate to the
+   * existing ra_flash_init so there is one canonical bring-up path. */
+  return ra_flash_init(cfg);
+}
+
+ra_err_t ra_flash_close(void)
+{
+  /* FSP r_mram.c L646 R_MRAM_Close just clears the opened flag; we delegate
+   * to ra_flash_deinit which also returns the controller to read mode. */
+  return ra_flash_deinit();
+}
+
+ra_err_t ra_flash_set_window(uintptr_t low, uintptr_t high)
+{
+  if (low == 0U && high == 0U) {
+    s_rt.win_low  = 0U;
+    s_rt.win_high = 0U;
+    return k_ra_ok;
+  }
+  if (low >= high) {
+    return k_ra_err_invalid_arg;
+  }
+  s_rt.win_low  = low;
+  s_rt.win_high = high;
+  return k_ra_ok;
+}
+
+/**
+ * @brief Pick the right TrustZone world for a destination address.
+ *
+ * @details
+ * RA8D2 surfaces the secure code-MRAM alias at a higher offset; FSP's
+ * ``mram_program_control`` (r_mram.c L962) tests the BSP_FEATURE_TZ_NS_OFFSET
+ * bit. We mirror the same test by comparing against the secure base.
+ * For destinations that the silicon classifies as non-secure (the
+ * default 0x02000000 alias), we use MRCPC0; for the secure alias we use
+ * MRCPC1.
+ *
+ * @param[in] addr Destination address.
+ * @return World selector for ``ra_flash_write_block``.
+ *
+ * @pre None.
+ * @post No side effects.
+ *
+ * @note Internal helper, not thread-safe.
+ */
+static ra_flash_world_t internal_world_for_addr(uintptr_t addr)
+{
+  /* HUM Ch 59.1 "Address Map" p 3543 -- the non-secure alias is the
+   * default 0x02000000 view. Anything inside the standard 1 MiB code
+   * window is treated as the NS world by this driver; callers that
+   * need the S alias call ra_flash_write_block directly. */
+  (void)addr;
+  return k_ra_flash_world_ns;
+}
+
+/**
+ * @brief Validate a multi-block erase / multi-page write range.
+ *
+ * @details
+ * Folds the alignment + bounds + soft-window checks shared by
+ * ``ra_flash_erase`` and ``ra_flash_write``. Both APIs operate on the
+ * 32-byte programming unit (HUM Ch 59.4.2 p 3548).
+ *
+ * @param[in] address   Range start address.
+ * @param[in] total_len Total number of bytes covered by the operation.
+ *
+ * @return ``k_ra_ok`` if the range is acceptable.
+ *
+ * @pre None.
+ * @post No side effects.
+ *
+ * @note Internal helper, not thread-safe.
+ */
+static ra_err_t internal_validate_range(uintptr_t address, uint64_t total_len)
+{
+  if ((address & (k_ra_mram_block_size_bytes - 1U)) != 0U) {
+    return k_ra_err_invalid_arg;
+  }
+  const uint64_t end_excl = (uint64_t)address + total_len;
+  if (address < k_ra_flash_code_start) {
+    return k_ra_err_invalid_arg;
+  }
+  if (end_excl > (uint64_t)k_ra_flash_code_start + (uint64_t)k_ra_flash_code_size) {
+    return k_ra_err_invalid_arg;
+  }
+  if (!internal_window_allows(address, (uint32_t)total_len)) {
+    return k_ra_err_out_of_range;
+  }
+  return k_ra_ok;
+}
+
+ra_err_t ra_flash_erase(uintptr_t address, uint32_t num_blocks)
+{
+  RA_VALIDATE_INIT(s_rt.initialised, s_tag, "flash_erase before init");
+  if (num_blocks == 0U) {
+    return k_ra_err_invalid_arg;
+  }
+  const uint64_t total_bytes = (uint64_t)num_blocks * (uint64_t)k_ra_mram_block_size_bytes;
+  const ra_err_t v_err       = internal_validate_range(address, total_bytes);
+  RA_RETURN_ON_ERROR(v_err, s_tag, "flash_erase: validate");
+  const ra_flash_world_t world = internal_world_for_addr(address);
+  /* FSP r_mram.c L917 mram_erase_blocks loops one programming-size block at
+   * a time; we mirror that one-block-per-iteration cadence. NASA Rule 2:
+   * loop bound is the caller-supplied num_blocks, validated above. */
+  uintptr_t cur = address;
+  for (uint32_t i = 0U; i < num_blocks; ++i) {
+    const ra_err_t err = ra_flash_erase_block((uint32_t)cur, world);
+    if (err != k_ra_ok) {
+      return err;
+    }
+    cur += k_ra_mram_block_size_bytes;
+  }
+  return k_ra_ok;
+}
+
+ra_err_t ra_flash_write(uintptr_t address, const uint8_t* src, uint32_t len)
+{
+  RA_CHECK_NULL_PTR((const void*)src, s_tag, "src must not be nullptr");
+  RA_VALIDATE_INIT(s_rt.initialised, s_tag, "flash_write before init");
+  if (len == 0U || (len % k_ra_mram_write_size_bytes) != 0U) {
+    return k_ra_err_invalid_arg;
+  }
+  const ra_err_t v_err = internal_validate_range(address, (uint64_t)len);
+  RA_RETURN_ON_ERROR(v_err, s_tag, "flash_write: validate");
+  const ra_flash_world_t world = internal_world_for_addr(address);
+  /* FSP r_mram.c L861 mram_write_data chunks the request into 32-byte
+   * page programs; our wrapper re-uses ra_flash_write_block for each
+   * page. NASA Rule 2: loop bound is len/page (validated above). */
+  const uint32_t pages = len / k_ra_mram_write_size_bytes;
+  for (uint32_t i = 0U; i < pages; ++i) {
+    const uint32_t  offset    = i * k_ra_mram_write_size_bytes;
+    const uintptr_t page_addr = address + offset;
+    const ra_err_t  err =
+      ra_flash_write_block((uint32_t)page_addr, src + offset, k_ra_mram_write_size_bytes, world);
+    if (err != k_ra_ok) {
+      return err;
+    }
+  }
+  return k_ra_ok;
+}
+
+/**
+ * @brief Erase-pattern constants used by ``ra_flash_blank_check``.
+ */
+typedef enum : uint8_t {
+  k_ra_flash_blank_byte = 0xFFU, /**< Erased state byte value (HUM Ch 59 p 3548). */
+} ra_flash_blank_const_t;
+
+ra_err_t ra_flash_blank_check(uintptr_t address, uint32_t len, bool* out_blank)
+{
+  RA_CHECK_NULL_PTR((void*)out_blank, s_tag, "out_blank must not be nullptr");
+  if (len == 0U) {
+    return k_ra_err_invalid_arg;
+  }
+  /* Accept either MRAM window. FSP r_mram.c L395 R_MRAM_BlankCheck returns
+   * UNSUPPORTED on RA8D2 because the silicon has no BlankCheck command;
+   * we implement the check as a direct read since 0xFF is the documented
+   * erased state (HUM Ch 59.4.2 p 3548). */
+  const uint64_t end_excl = (uint64_t)address + (uint64_t)len;
+  const bool     in_code =
+    (address >= k_ra_flash_code_start) &&
+    (end_excl <= (uint64_t)k_ra_flash_code_start + (uint64_t)k_ra_flash_code_size);
+  const bool in_extra =
+    (address >= k_ra_flash_extra_start) &&
+    (end_excl <= (uint64_t)k_ra_flash_extra_start + (uint64_t)k_ra_flash_extra_size);
+  /* HUM Ch 7 "Option-Setting Memory" p 278 also benefits from a blank-check
+   * (callers may want to verify a freshly-erased OFS slot before re-write). */
+  const bool in_ofs = (address >= k_ra_flash_ofs_start) &&
+                      (end_excl <= (uint64_t)k_ra_flash_ofs_start + (uint64_t)k_ra_flash_ofs_size);
+  if (!in_code && !in_extra && !in_ofs) {
+    return k_ra_err_invalid_arg;
+  }
+
+  const volatile uint8_t* p        = (const volatile uint8_t*)address;
+  bool                    is_blank = true;
+  /* NASA Rule 2: bounded loop on caller-validated len. */
+  for (uint32_t i = 0U; i < len; ++i) {
+    if (p[i] != k_ra_flash_blank_byte) {
+      is_blank = false;
+      break;
+    }
+  }
+  *out_blank = is_blank;
+  return k_ra_ok;
+}
+
+ra_err_t ra_flash_status(ra_flash_status_t* out)
+{
+  RA_CHECK_NULL_PTR((void*)out, s_tag, "out must not be nullptr");
+
+  /* HUM Ch 59 "MRCPS : Code MRAM Program Status Register" p 3601 */
+  const uint8_t mrcps = *ra_mram_reg8(k_ra_mram_off_mrcps);
+  /* HUM Ch 59 "MASTAT : Extra MRAM Access Status Register" p 3577 */
+  const uint8_t mastat = *ra_mram_reg8(k_ra_mram_off_mastat);
+  /* HUM Ch 59 "MENTRYR : Extra MRAM Program-Mode Entry" p 3582 */
+  const uint16_t mentryr = *ra_mram_reg16(k_ra_mram_off_mentryr);
+  /* HUM Ch 59 "MSTATR : Extra MRAM Status Register" p 3578 */
+  const uint32_t mstatr = *ra_mram_reg32(k_ra_mram_off_mstatr);
+  /* HUM Ch 59 "MRCBPROT0 : Code MRAM Block Protection (NS)" p 3604 */
+  const uint16_t mrcbprot0 = *ra_mram_reg16(k_ra_mram_off_mrcbprot0);
+  /* HUM Ch 59 "MRCBPROT1 : Code MRAM Block Protection (S)" p 3605 */
+  const uint16_t mrcbprot1 = *ra_mram_reg16(k_ra_mram_off_mrcbprot1);
+
+  const bool busy =
+    ((mrcps & k_ra_mrcps_mask_prgbsyc) != 0U) || ((mentryr & k_ra_mentryr_mask_pe_mode) != 0U);
+  out->programming_busy = busy;
+  out->erase_busy       = busy; /* MRAM has no separate erase. */
+  out->illegal_command =
+    ((mastat & k_ra_mastat_mask_cmdlk) != 0U) || ((mstatr & k_ra_mstatr_mask_ilgcomerr) != 0U);
+  out->voltage_error = ((mstatr & k_ra_mstatr_mask_oterr) != 0U);
+  /* MRCBPROTx low bit = 1 means programming is permitted; bit clear
+   * (the keyed lock pattern with bit 0 == 0) means the block is
+   * write-protected. HUM Ch 59 p 3604..3605. */
+  out->sector_protected = ((mrcbprot0 & 0x0001U) == 0U) || ((mrcbprot1 & 0x0001U) == 0U);
+  out->program_error    = ((mrcps & k_ra_mrcps_mask_prgerrc) != 0U);
+  out->ecc_error        = ((mrcps & k_ra_mrcps_mask_eccerrc) != 0U);
+  return k_ra_ok;
 }

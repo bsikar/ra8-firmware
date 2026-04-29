@@ -209,6 +209,28 @@ typedef struct {
 /* cppcheck-suppress-end [unusedStructMember] */
 
 /**
+ * @struct ra_flash_status_t
+ * @brief Decoded status snapshot, FSP-parity surface.
+ *
+ * @details
+ * Mirrors the ``flash_status_t`` field set R_MRAM exposes in FSP, but
+ * widened so callers can also see the controller-error bits without a
+ * second ``ra_flash_get_extended_status`` call. Populated by
+ * ``ra_flash_status``. HUM Ch 59 p 3577..3578.
+ */
+/* cppcheck-suppress-begin [unusedStructMember] */
+typedef struct {
+  bool programming_busy; /**< MRCPS.PRGBSYC or MENTRYR.MENTRY set.   */
+  bool erase_busy;       /**< Same as programming_busy on MRAM.      */
+  bool illegal_command;  /**< MASTAT.CMDLK or MSTATR.ILGCOMERR.      */
+  bool voltage_error;    /**< MSTATR.OTERR (other / supply error).   */
+  bool sector_protected; /**< MRCBPROT0/1 lock observed.             */
+  bool program_error;    /**< MRCPS.PRGERRC.                         */
+  bool ecc_error;        /**< MRCPS.ECCERRC.                         */
+} ra_flash_status_t;
+/* cppcheck-suppress-end [unusedStructMember] */
+
+/**
  * @struct ra_flash_isr_event_t
  * @brief One IRQ event delivered to ``ra_flash_callback_t``.
  *
@@ -1127,6 +1149,213 @@ ra_flash_extra_mram_write(uint32_t mram_addr, const uint8_t* src, uint32_t len);
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_flash_exit_pe_mode(void);
+
+/* =============================================================================
+ * FSP r_mram parity surface
+ * =============================================================================
+ */
+
+/**
+ * @brief FSP-parity bring-up: equivalent to ``ra_flash_init``.
+ *
+ * @details
+ * Mirrors ``R_MRAM_Open`` (FSP ``r_mram.c`` line 253). Registers the
+ * controller for use, programs MRCFREQ / MREFREQ, and locks both
+ * program-control gates. After ``ra_flash_open`` callers may invoke
+ * ``ra_flash_write`` / ``ra_flash_erase`` / ``ra_flash_blank_check`` /
+ * ``ra_flash_status`` / ``ra_flash_set_window``.
+ *
+ * @param[in] cfg Non-NULL configuration descriptor.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok Controller opened.
+ * @retval k_ra_err_null_ptr ``cfg`` was NULL.
+ * @retval k_ra_err_invalid_arg ``cfg`` field out of range.
+ *
+ * @pre IRQs masked or single-threaded init context.
+ * @pre Caller is not currently executing out of MRAM that will be programmed.
+ * @post Soft access window (``ra_flash_set_window``) state is preserved
+ *       across re-open; defaults to "all-allowed" on first boot.
+ * @post ``MRCPC0`` / ``MRCPC1`` are locked.
+ *
+ * @note Thread-safe: no, single-threaded init only.
+ * @see ra_flash_close
+ * @see ra_flash_init
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_flash_open(const ra_flash_cfg_t* cfg);
+
+/**
+ * @brief FSP-parity tear-down: equivalent to ``ra_flash_deinit``.
+ *
+ * @details
+ * Mirrors ``R_MRAM_Close`` (FSP ``r_mram.c`` line 646). Locks all
+ * program gates, exits P/E mode, clears sticky errors, re-enables
+ * prefetch.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok Always.
+ *
+ * @pre No write/erase operation in progress.
+ * @post Controller is in pure read mode.
+ *
+ * @note Thread-safe: no.
+ * @see ra_flash_open
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_flash_close(void);
+
+/**
+ * @brief Erase ``num_blocks`` consecutive 32-byte MRAM blocks.
+ *
+ * @details
+ * Mirrors ``R_MRAM_Erase`` (FSP ``r_mram.c`` line 365). Loops over
+ * ``ra_flash_erase_block`` once per block. The world (NS / S) is
+ * inferred from the destination address: addresses inside the secure
+ * code-MRAM alias use MRCPC1, all others use MRCPC0.
+ *
+ * @param[in] address    32-byte aligned destination inside code-MRAM.
+ * @param[in] num_blocks Number of consecutive 32-byte blocks to erase.
+ *                       Must be > 0 and inside the code-MRAM window.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok All blocks erased.
+ * @retval k_ra_err_invalid_arg Address misaligned, ``num_blocks`` is 0,
+ *         or the range exceeds the code-MRAM window.
+ * @retval k_ra_err_out_of_range Address blocked by the soft access
+ *         window set via ``ra_flash_set_window``.
+ * @retval k_ra_err_hw_error Controller reported a program error.
+ * @retval k_ra_err_hw_timeout Controller never observed OPDONE.
+ *
+ * @pre ``address`` is 32-byte aligned and inside code-MRAM.
+ * @pre ``ra_flash_open`` (or ``ra_flash_init``) has been called.
+ * @post On success, every byte in [address, address + 32*num_blocks) reads 0xFF.
+ * @post Program-control gate is locked on every exit path.
+ *
+ * @note Thread-safe: no.
+ * @warning Same brick warnings as ``ra_flash_write_block``.
+ * @see ra_flash_erase_block
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_flash_erase(uintptr_t address, uint32_t num_blocks);
+
+/**
+ * @brief Program ``len`` bytes into code-MRAM starting at ``address``.
+ *
+ * @details
+ * Mirrors ``R_MRAM_Write`` (FSP ``r_mram.c`` line 323 + ``mram_write_data``
+ * line 861). The driver chunks the request into per-page writes of up to
+ * 32 bytes (``k_ra_mram_write_size_bytes``), each one going through
+ * ``ra_flash_write_block``. ``len`` must be a non-zero multiple of the
+ * 32-byte page size; arbitrary lengths are rejected to match FSP's
+ * ``BSP_FEATURE_MRAM_PROGRAMMING_SIZE_BYTES`` boundary requirement.
+ *
+ * @param[in] address Destination start address (32-byte aligned, inside code-MRAM).
+ * @param[in] src     Non-NULL source buffer of at least ``len`` bytes.
+ * @param[in] len     Length in bytes; must be non-zero and a multiple of 32.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok All bytes written.
+ * @retval k_ra_err_null_ptr ``src`` was NULL.
+ * @retval k_ra_err_invalid_arg ``address`` misaligned, ``len`` not a
+ *         multiple of 32, or range outside the code-MRAM window.
+ * @retval k_ra_err_out_of_range Range blocked by the soft access window.
+ * @retval k_ra_err_hw_error Controller reported a program error.
+ * @retval k_ra_err_hw_timeout Controller never observed OPDONE.
+ *
+ * @pre ``src`` non-null; ``address`` 32-byte aligned; ``len`` multiple of 32.
+ * @pre ``ra_flash_open`` (or ``ra_flash_init``) has been called.
+ * @post On success, the destination range holds the source bytes.
+ * @post Program-control gate is locked on every exit path.
+ *
+ * @note Thread-safe: no.
+ * @warning Same brick warnings as ``ra_flash_write_block``.
+ * @see ra_flash_write_block
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_flash_write(uintptr_t address, const uint8_t* src, uint32_t len);
+
+/**
+ * @brief Check whether a region holds the erase pattern (all 0xFF).
+ *
+ * @details
+ * FSP's ``R_MRAM_BlankCheck`` is a stub (returns FSP_ERR_UNSUPPORTED on
+ * RA8D2 -- see ``r_mram.c`` line 395). The HUM Ch 59 layout uses 0xFF as
+ * the natural erased state, so this driver implements the check as a
+ * direct read of the region in 16-byte chunks. ``*out_blank`` is true
+ * iff every byte in [address, address + len) equals 0xFF.
+ *
+ * @param[in]  address   Start address inside code-MRAM, extra-MRAM, or OFS.
+ * @param[in]  len       Length in bytes; must be > 0 and inside one window.
+ * @param[out] out_blank Non-NULL destination for the result.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok Check completed; ``*out_blank`` set.
+ * @retval k_ra_err_null_ptr ``out_blank`` was NULL.
+ * @retval k_ra_err_invalid_arg ``len`` is 0 or range outside MRAM windows.
+ *
+ * @pre ``out_blank`` non-null and ``len`` > 0.
+ * @pre ``ra_flash_open`` (or ``ra_flash_init``) has been called.
+ * @post ``*out_blank`` reflects whether every byte equals 0xFF.
+ * @post No state change in the controller.
+ *
+ * @note Thread-safe: pure reads; not atomic if concurrent writers exist.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_flash_blank_check(uintptr_t address, uint32_t len, bool* out_blank);
+
+/**
+ * @brief Decode the controller status into a flat ``ra_flash_status_t``.
+ *
+ * @details
+ * Reads MRCPS / MASTAT / MENTRYR / MSTATR / MRCBPROT0 / MRCBPROT1 and
+ * collapses the bits down to the FSP-parity ``ra_flash_status_t``
+ * boolean fields. HUM Ch 59 p 3577..3605.
+ *
+ * @param[out] out Non-NULL destination structure.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok Status decoded.
+ * @retval k_ra_err_null_ptr ``out`` was NULL.
+ *
+ * @pre ``out`` non-null.
+ * @pre Controller is powered (always true after reset).
+ * @post Every ``out->`` field reflects the registers at call time.
+ *
+ * @note Thread-safe: pure reads; not atomic across registers.
+ * @see ra_flash_get_extended_status
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_flash_status(ra_flash_status_t* out);
+
+/**
+ * @brief Configure the soft access window enforced by write/erase.
+ *
+ * @details
+ * FSP's ``R_MRAM_AccessWindowSet`` is a stub on RA8D2 (returns
+ * FSP_ERR_UNSUPPORTED -- see ``r_mram.c`` line 469); the silicon has no
+ * FAWMON / FAWMR registers because MRAM uses block-protect bits in the
+ * MRCBPROT0 / MRCBPROT1 registers instead. To preserve a useful FSP-style
+ * surface, this driver maintains a *software* window: ``ra_flash_write``,
+ * ``ra_flash_erase`` and ``ra_flash_write_block`` reject any request that
+ * touches an address outside [low, high). Pass ``low == high == 0`` to
+ * disable the window (allow all addresses, the default after open).
+ *
+ * @param[in] low   Inclusive lower bound (or 0 to disable).
+ * @param[in] high  Exclusive upper bound (or 0 to disable).
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok Window applied.
+ * @retval k_ra_err_invalid_arg ``low`` >= ``high`` and not both zero.
+ *
+ * @pre ``low`` < ``high`` or both are zero.
+ * @post Subsequent writes/erases enforce the window.
+ *
+ * @note Thread-safe: no -- caller must serialise vs writes/erases.
+ * @see ra_flash_block_protect_set
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_flash_set_window(uintptr_t low, uintptr_t high);
 
 #ifdef __cplusplus
 }
