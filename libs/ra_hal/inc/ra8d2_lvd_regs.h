@@ -93,7 +93,10 @@ typedef enum : uintptr_t {
  *   - PVD4FCR   @ SYSC + 0xB2C (HUM 8.2.9 p 309)
  *   - PVD5FCR   @ SYSC + 0xB30
  *   - PVDLR     @ SYSC + 0xB34 (HUM 8.2.10 p 309)
- *   - PVDSAR    @ CPSCU + 0x4F8 (HUM 8.2.1 p 302)
+ *   - PVDSAR    @ CPSCU + 0x3CC (HUM 8.2.1 p 302; FSP `R_CPSCU_Type.LVDSAR`
+ *     in R7KA8D2KF_core0.h confirms 0x3CC, not 0x4F8 -- the prior 0x4F8
+ *     value was wrong and has been corrected as part of the FSP cross-
+ *     verification round.)
  */
 typedef enum : uintptr_t {
   /* PVD1 -- m series. */
@@ -118,7 +121,8 @@ typedef enum : uintptr_t {
   k_ra_lvd_pvd5_fcr_off   = 0x4001EB30UL, /**< PVD5FCR.   HUM 8.2.9 p 309 */
   /* Lock + security registers. */
   k_ra_lvd_pvdlr_off  = 0x4001EB34UL, /**< PVDLR. HUM 8.2.10 p 309 */
-  k_ra_lvd_pvdsar_off = 0x400084F8UL, /**< PVDSAR. HUM 8.2.1 p 302  */
+  k_ra_lvd_pvdsar_off = 0x400083CCUL, /**< PVDSAR. HUM 8.2.1 p 302
+                                       *   (FSP R_CPSCU_Type.LVDSAR @ 0x3CC). */
 } ra_lvd_off_t;
 
 /**

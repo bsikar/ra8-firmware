@@ -6,6 +6,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+#include <stddef.h>
 #include <stdint.h>
 
 #include "ra8d2_iwdt_regs.h"
@@ -22,6 +23,25 @@ static void test_init_returns_ok(void)
   TEST_END("ra_iwdt_init returns ok");
 }
 
+static void test_register_layout_matches_fsp(void)
+{
+  TEST_BEGIN("r_iwdt_regs_t offsets match FSP R_IWDT_Type");
+  /* FSP R7KA8D2KF_core0.h R_IWDT_Type:
+   *   IWDTRR    @ 0x00 (uint8_t)
+   *   IWDTCR    @ 0x02 (uint16_t)
+   *   IWDTSR    @ 0x04 (uint16_t)
+   *   IWDTRCR   @ 0x06 (uint8_t)
+   *   IWDTCSTPR @ 0x08 (uint8_t)
+   *   total size 0x0C. */
+  TEST_ASSERT_EQ((int)0x00, (int)offsetof(r_iwdt_regs_t, IWDTRR));
+  TEST_ASSERT_EQ((int)0x02, (int)offsetof(r_iwdt_regs_t, IWDTCR));
+  TEST_ASSERT_EQ((int)0x04, (int)offsetof(r_iwdt_regs_t, IWDTSR));
+  TEST_ASSERT_EQ((int)0x06, (int)offsetof(r_iwdt_regs_t, IWDTRCR));
+  TEST_ASSERT_EQ((int)0x08, (int)offsetof(r_iwdt_regs_t, IWDTCSTPR));
+  TEST_ASSERT_EQ((int)0x0C, (int)sizeof(r_iwdt_regs_t));
+  TEST_END("r_iwdt_regs_t offsets match FSP R_IWDT_Type");
+}
+
 static void test_refresh_writes_sequence(void)
 {
   TEST_BEGIN("ra_iwdt_refresh_deferred writes 0x00,0xFF to IWDTRR");
@@ -31,7 +51,8 @@ static void test_refresh_writes_sequence(void)
   reg->IWDTRR                 = 0x5AU;
 
   /* The deferred refresh writes the second byte last. After it returns
-   * IWDTRR should hold 0xFF. */
+   * IWDTRR should hold 0xFF. Per HUM Ch 28.2.1 a single write does NOT
+   * refresh; FSP r_iwdt_refresh writes 0x00 then 0xFF in sequence. */
   ra_iwdt_refresh_deferred();
   TEST_ASSERT_EQ((int)k_ra_iwdt_refresh_b, (int)reg->IWDTRR);
 
@@ -76,6 +97,36 @@ static void test_get_status(void)
   TEST_END("iwdt get_status");
 }
 
+static void test_get_status_masks_cntval(void)
+{
+  TEST_BEGIN("iwdt get_status masks out CNTVAL[13:0]");
+  ra_sim_mmap_reset();
+  /* IWDTSR has CNTVAL in bits 13:0 and the flag bits 15:14. Verify
+   * ra_iwdt_get_status returns ONLY the flag bits even when CNTVAL is
+   * non-zero. Mirrors FSP IWDT_PRV_STATUS_START_BIT semantics. */
+  ra_iwdt()->IWDTSR = (uint16_t)0x1234U | (uint16_t)k_ra_iwdt_status_underflow;
+
+  uint16_t mask = 0U;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_iwdt_get_status(&mask));
+  TEST_ASSERT_EQ((int32_t)k_ra_iwdt_status_underflow, (int32_t)mask);
+  TEST_END("iwdt get_status masks out CNTVAL[13:0]");
+}
+
+static void test_get_counter(void)
+{
+  TEST_BEGIN("iwdt get_counter mirrors FSP R_IWDT_CounterGet");
+  ra_sim_mmap_reset();
+  /* CNTVAL = 0x1234, plus a stray UNDFF flag at bit 14. Counter
+   * readout must return 0x1234 (bits 13:0) only. */
+  ra_iwdt()->IWDTSR = (uint16_t)0x1234U | (uint16_t)k_ra_iwdt_status_underflow;
+
+  uint16_t cnt = 0U;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_iwdt_get_counter(&cnt));
+  TEST_ASSERT_EQ((int32_t)0x1234, (int32_t)cnt);
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_iwdt_get_counter(nullptr));
+  TEST_END("iwdt get_counter mirrors FSP R_IWDT_CounterGet");
+}
+
 static void test_clear_status(void)
 {
   TEST_BEGIN("iwdt clear_status");
@@ -110,9 +161,12 @@ static void test_attach_and_dispatch(void)
 int32_t main(void)
 {
   test_init_returns_ok();
+  test_register_layout_matches_fsp();
   test_refresh_writes_sequence();
   test_repeated_refresh_is_safe();
   test_get_status();
+  test_get_status_masks_cntval();
+  test_get_counter();
   test_clear_status();
   test_attach_and_dispatch();
   (void)fprintf(stderr, "[OK ] test_ra_iwdt.c\n");
