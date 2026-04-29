@@ -115,27 +115,113 @@ typedef enum : uint8_t {
 } ra_cksel_t;
 
 /* =============================================================================
- * PLLCCR (PLL1 Clock Control Register)
+ * PLLCCR (PLL1 Clock Control Register) -- RA8D2 layout
  * =============================================================================
  *
- * On RA8D2, PLL1 multiplies the main crystal up to ~1 GHz internally.
- * Field layout (HUM section 10.2.x):
- *   [0]     PLSRCSEL  -- PLL input source (0 = Main, 1 = HOCO)
- *   [7:2]   PLIDIV    -- input divider (0..n)
- *   [13:8]  PLLMUL    -- multiplier code
+ * Cited from FSP CMSIS device header `R7KA8D2KF_core0.h:70470-70478` and
+ * FSP `bsp_clocks.c:328-339`:
+ *   - PLIDIV   [1:0]  -- input divider code
+ *                       (0=/1, 1=/2, 2=/3, 3=/4, ... ratio = code+1 for /1../6)
+ *   - PLSRCSEL [4]    -- PLL input source (0 = Main / XTAL, 1 = HOCO)
+ *   - PLLMULNF [7:6]  -- fractional multiplier in 0.25 steps
+ *   - PLLMUL   [16:8] -- integer multiplier (9 bits, 1..511)
  *
- * Detailed bit layout varies between RA8 variants; confirm against
- * HUM R01UH1065EJ when we actually bring up the PLL.
+ * Composite multiplier = PLLMUL + (PLLMULNF / 4). FSP packs the value
+ * as `(integer_mul * 4 + fraction_quarters) << 6`, which puts the
+ * integer part in [16:8] and the fraction in [7:6] simultaneously.
+ *
+ * For the EK-RA8D2 quickstart target (XTAL=24 MHz, /3 in, x250.00,
+ * P=/2, Q=/6, R=/5): PLLCCR = 0xFA02.
  */
 
 /**
+ * @enum ra_pllccr_shift_t
+ * @brief Field shifts inside the 32-bit PLLCCR.
+ */
+typedef enum : uint8_t {
+  k_ra_pllccr_shift_plidiv   = 0U, /**< PLIDIV   field starts at bit 0.  */
+  k_ra_pllccr_shift_plsrcsel = 4U, /**< PLSRCSEL field is bit 4.         */
+  k_ra_pllccr_shift_quarters = 6U, /**< (mul * 4) goes here.             */
+} ra_pllccr_shift_t;
+
+/**
+ * @enum ra_pllccr_mask_t
+ * @brief Bitfield masks (post-shift) inside PLLCCR.
+ */
+typedef enum : uint32_t {
+  k_ra_pllccr_mask_plidiv   = 0x00000003UL, /**< PLIDIV   2-bit field.   */
+  k_ra_pllccr_mask_quarters = 0x000007FFUL, /**< 11-bit (mul*4) field.   */
+} ra_pllccr_mask_t;
+
+/**
+ * @enum ra_plidiv_t
+ * @brief PLL input divider codes for PLIDIV[1:0] in PLLCCR.
+ *
+ * @details
+ * Quickstart EK-RA8D2 picks /3 (code 2). Code = ratio - 1 for the
+ * supported ratios 1, 2, 3.
+ */
+typedef enum : uint8_t {
+  k_ra_plidiv_div1 = 0U, /**< PLL input divide by 1. */
+  k_ra_plidiv_div2 = 1U, /**< PLL input divide by 2. */
+  k_ra_plidiv_div3 = 2U, /**< PLL input divide by 3. */
+} ra_plidiv_t;
+
+/**
  * @enum ra_plsrcsel_t
- * @brief PLL1 input source selection.
+ * @brief PLL1 input source selection (PLLCCR.PLSRCSEL, bit 4).
  */
 typedef enum : uint8_t {
   k_ra_plsrcsel_main = 0U, /**< Main-oscillator input (default on EK board). */
   k_ra_plsrcsel_hoco = 1U, /**< HOCO input (useful for XTAL-less boards).    */
 } ra_plsrcsel_t;
+
+/* =============================================================================
+ * PLLCCR2 (PLL1 Output Divider Register) -- RA8D2 layout
+ * =============================================================================
+ *
+ * Cited from FSP CMSIS device header `R7KA8D2KF_core0.h:70298-70303` and
+ * FSP `bsp_clocks.c:332-339`:
+ *   - PLODIVP [3:0]   -- PLL1P output divider code
+ *   - PLODIVQ [7:4]   -- PLL1Q output divider code
+ *   - PLODIVR [11:8]  -- PLL1R output divider code
+ *
+ * Code-to-ratio map matches FSP `BSP_CLOCKS_PLL_DIV_*`:
+ *   /1=0, /2=1, /3=2, /4=3, /5=4, /6=5, /8=7, /9=8, /16=15.
+ * For ratios 1..6 the code is `ratio - 1`; /7 is not supported.
+ *
+ * Quickstart EK-RA8D2: P=/2 (1), Q=/6 (5), R=/5 (4) -> PLLCCR2 = 0x451.
+ */
+
+/**
+ * @enum ra_pllccr2_shift_t
+ * @brief Field shifts inside the 16-bit PLLCCR2.
+ */
+typedef enum : uint8_t {
+  k_ra_pllccr2_shift_plodivp = 0U, /**< PLODIVP field starts at bit 0. */
+  k_ra_pllccr2_shift_plodivq = 4U, /**< PLODIVQ field starts at bit 4. */
+  k_ra_pllccr2_shift_plodivr = 8U, /**< PLODIVR field starts at bit 8. */
+} ra_pllccr2_shift_t;
+
+/**
+ * @enum ra_plodiv_t
+ * @brief PLL output divider codes for PLODIVP/Q/R fields in PLLCCR2.
+ *
+ * @details
+ * Encoded as `ratio - 1` for ratios 1..6, plus discrete codes for
+ * /8, /9, /16. The quickstart EK-RA8D2 uses /2 for P, /6 for Q, /5 for R.
+ */
+typedef enum : uint8_t {
+  k_ra_plodiv_div1  = 0U,  /**< PLL output divide by 1.  */
+  k_ra_plodiv_div2  = 1U,  /**< PLL output divide by 2.  */
+  k_ra_plodiv_div3  = 2U,  /**< PLL output divide by 3.  */
+  k_ra_plodiv_div4  = 3U,  /**< PLL output divide by 4.  */
+  k_ra_plodiv_div5  = 4U,  /**< PLL output divide by 5.  */
+  k_ra_plodiv_div6  = 5U,  /**< PLL output divide by 6.  */
+  k_ra_plodiv_div8  = 7U,  /**< PLL output divide by 8.  */
+  k_ra_plodiv_div9  = 8U,  /**< PLL output divide by 9.  */
+  k_ra_plodiv_div16 = 15U, /**< PLL output divide by 16. */
+} ra_plodiv_t;
 
 /* =============================================================================
  * HOCOCR / MOSCWTCR bit fields
