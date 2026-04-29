@@ -13,14 +13,15 @@
 #include "ra_sim_mmap.h"
 #include "unity_minimal.h"
 
-typedef enum : uint8_t {
-  k_ra_dtc_test_dtcst_enable = 1U,
-} ra_dtc_test_bits_t;
-
 typedef enum : uintptr_t {
   k_ra_dtc_test_vector_addr  = 0x22000400UL, /**< Arbitrary SRAM-region pointer. */
   k_ra_dtc_test_vector_addr2 = 0x22000800UL, /**< Secondary reconfig target.     */
 } ra_dtc_test_addr_t;
+
+/* Compile-time check: the regs block matches FSP R_DTC_Type
+ * (size = 0x30 / 48 bytes per RA8D2 CMSIS R_DTC_Type). */
+static_assert(sizeof(r_dtc_regs_t) == 0x30U, "r_dtc_regs_t must be 48 bytes (FSP R_DTC_Type)");
+static_assert(sizeof(r_dtc_xfer_info_t) == 16U, "r_dtc_xfer_info_t must be 16 bytes (HUM 18.2)");
 
 static uint32_t s_dtc_cb_count;
 static uint16_t s_dtc_cb_last_mask;
@@ -71,7 +72,7 @@ static void test_enable_then_disable(void)
 
   TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_dtc_enable());
   volatile r_dtc_regs_t* reg = ra_dtc();
-  TEST_ASSERT_EQ((int)k_ra_dtc_test_dtcst_enable, (int)reg->DTCST);
+  TEST_ASSERT_EQ((int)k_ra_dtcst_dtcst_msk, (int)reg->DTCST);
 
   TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_dtc_disable());
   TEST_ASSERT_EQ(0, (int)reg->DTCST);
@@ -101,6 +102,8 @@ static void test_reconfigure(void)
   volatile r_dtc_regs_t* reg = ra_dtc();
   TEST_ASSERT_EQ((int)k_ra_dtc_test_vector_addr2, (int)reg->DTCVBR);
   TEST_ASSERT_EQ(0, (int)reg->DTCST);
+  /* FSP-aligned: reconfigure leaves DTCCR with RRS enabled (0x18). */
+  TEST_ASSERT_EQ((int)k_ra_dtccr_rrs_enable, (int)reg->DTCCR);
   TEST_END("dtc reconfigure");
 }
 

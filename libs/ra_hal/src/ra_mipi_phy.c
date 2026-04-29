@@ -1168,8 +1168,11 @@ static ra_err_t internal_mipi_phy_init_power_up(const ra_mipi_phy_config_t* cfg)
   internal_mipi_phy_mstp_unstop();
   *ra_mipi_phy_reg32(k_ra_mipi_phy_off_mdc) =
     (cfg->mode == k_ra_mipi_phy_mode_dsi_master) ? k_ra_mipi_phy_mdc_masteren : 0U;
+  /* HUM Ch 64.2.1 p 3822: RFREQ encodes (MHz - 1). FSP r_mipi_phy.c
+   * mirrors this with ``(pclka_hz / 1MHz) - 1``. */
   *ra_mipi_phy_reg32(k_ra_mipi_phy_off_refcr) =
-    (uint32_t)cfg->pclka_mhz & k_ra_mipi_phy_refcr_rfreq_mask;
+    ((uint32_t)cfg->pclka_mhz - (uint32_t)k_ra_mipi_phy_refcr_rfreq_bias) &
+    k_ra_mipi_phy_refcr_rfreq_mask;
   *ra_mipi_phy_reg32(k_ra_mipi_phy_off_pwrcr) = k_ra_mipi_phy_pwrcr_pwrsen;
   return internal_mipi_phy_wait_set(ra_mipi_phy_reg32(k_ra_mipi_phy_off_sfr),
                                     k_ra_mipi_phy_sfr_pwrsf);
@@ -1559,12 +1562,15 @@ ra_mipi_phy_eotp_t ra_mipi_phy_get_eotp(void)
 
 ra_err_t ra_mipi_phy_set_pclka_freq(uint8_t mhz)
 {
-  /* HUM Ch 64.2.1 "DPHYREFCR : D-PHY Reference Clock Setting Register", p 3822 */
+  /* HUM Ch 64.2.1 "DPHYREFCR : D-PHY Reference Clock Setting Register", p 3822
+   * RFREQ encodes (MHz - 1); see ``k_ra_mipi_phy_refcr_rfreq_bias``. FSP
+   * r_mipi_phy.c uses the same -1 encoding. */
   if ((mhz < (uint8_t)k_ra_mipi_phy_pclka_min_mhz) ||
       (mhz > (uint8_t)k_ra_mipi_phy_pclka_max_mhz)) {
     return k_ra_err_invalid_arg;
   }
-  *ra_mipi_phy_reg32(k_ra_mipi_phy_off_refcr) = (uint32_t)mhz & k_ra_mipi_phy_refcr_rfreq_mask;
+  *ra_mipi_phy_reg32(k_ra_mipi_phy_off_refcr) =
+    ((uint32_t)mhz - (uint32_t)k_ra_mipi_phy_refcr_rfreq_bias) & k_ra_mipi_phy_refcr_rfreq_mask;
   return k_ra_ok;
 }
 

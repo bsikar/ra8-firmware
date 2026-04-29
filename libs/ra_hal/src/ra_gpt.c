@@ -60,15 +60,22 @@ typedef enum : uint32_t {
 
 /**
  * @enum ra_gpt_bits_t
- * @brief GTCR / GTSTR / GTSTP bit positions.
+ * @brief GTCR / GTSTR / GTSTP / GTST bit positions.
+ *
+ * @details
+ * Per HUM Ch 22.2.5 "GTCR : General PWM Timer Control Register",
+ * p 904..906: CST = bit 0, MD = bits 16..19, TPCS = bits 23..26.
+ * GTST flag layout from HUM Ch 22.2.16 "GTST : General PWM Timer
+ * Status Register", p 962..964: TCFA = bit 0, TCFB = bit 1,
+ * TCFPO = bit 6, TCFPU = bit 7.
  */
 typedef enum : uint32_t {
   k_ra_gpt_gtcr_cst_set    = 0x00000001UL, /**< GTCR.CST start. */
   k_ra_gpt_gtcr_md_shift   = 16U,          /**< GTCR.MD bit0. */
-  k_ra_gpt_gtcr_tpcs_shift = 24U,          /**< GTCR.TPCS bit0. */
+  k_ra_gpt_gtcr_tpcs_shift = 23U,          /**< GTCR.TPCS bit0. */
   k_ra_gpt_gtstr_start     = 0x00000001UL, /**< GTSTR.CSTRT0 write. */
   k_ra_gpt_gtstp_stop      = 0x00000001UL, /**< GTSTP.CSTOP0 write. */
-  k_ra_gpt_gtst_mask       = 0x00000033UL, /**< OVF|UDF|CCRA|CCRB. */
+  k_ra_gpt_gtst_mask       = 0x000000C3UL, /**< TCFPU|TCFPO|TCFB|TCFA. */
 } ra_gpt_bits_t;
 
 /**
@@ -152,8 +159,9 @@ ra_err_t ra_gpt_init(uint8_t channel, const ra_gpt_cfg_t* cfg)
   reg->GTCR  = internal_gtcr(cfg->mode, cfg->prescaler);
   reg->GTPR  = cfg->period;
   reg->GTPBR = cfg->period;
-  /* HUM Ch 22.2.12 "GTCCRA..F : General PWM Timer Compare Capture Register",
-     p 968 */
+  /* GTCCRA / GTCCRB are PWM compare values for GTIOCnA / GTIOCnB
+     outputs in saw-wave PWM mode. */
+  /* HUM Ch 22.2.20 "GTCCRA..F : General PWM Timer Compare Capture Register" p 982 */
   reg->GTCCR[0] = cfg->duty_a;
   reg->GTCCR[1] = cfg->duty_b;
   reg->GTCNT    = 0U;
@@ -282,9 +290,9 @@ ra_err_t ra_gpt_write_dma(uint8_t              channel,
   if (reg == nullptr) {          /* GCOVR_EXCL_BR_LINE */
     return k_ra_err_invalid_arg; /* GCOVR_EXCL_LINE */
   }
-  /* HUM Ch 22.2 "GTPR : General PWM Timer Cycle Setting Register", p 878 */
-  /* Word-wide DMA writes stream period values into GTPR; dst_inc=false
-   * so every element lands at the same MMIO address. */
+  /* Word-wide DMA writes stream period values into GTPR;
+     dst_inc=false so every element lands at the same MMIO address. */
+  /* HUM Ch 22.2.21 "GTPR : General PWM Timer Cycle Setting Register" p 985 */
   ra_dma_request_t req = {};
   req.src_addr         = (uintptr_t)periods;
   req.dst_addr         = (uintptr_t)&reg->GTPR;
@@ -315,8 +323,8 @@ ra_err_t ra_gpt_read_dma(uint8_t              channel,
   if (reg == nullptr) {          /* GCOVR_EXCL_BR_LINE */
     return k_ra_err_invalid_arg; /* GCOVR_EXCL_LINE */
   }
-  /* HUM Ch 22.2 "GTCNT : General PWM Timer Counter", p 878 */
   /* Word-wide DMA reads stream GTCNT snapshots into out_counts[]. */
+  /* HUM Ch 22.2.19 "GTCNT : General PWM Timer Counter" p 980 */
   ra_dma_request_t req = {};
   req.src_addr         = (uintptr_t)&reg->GTCNT;
   req.dst_addr         = (uintptr_t)out_counts;
