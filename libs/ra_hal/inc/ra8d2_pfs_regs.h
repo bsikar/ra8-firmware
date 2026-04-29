@@ -184,12 +184,23 @@ static inline volatile uint8_t* ra_pfs_pwprs(void)
  * @brief Unlock PFS writes.
  *
  * @details
- * Sequence from HUM section 20.x:
- *  1. Clear `B0WI` (bit 7) -- allows PFSWE to be written.
- *  2. Set `PFSWE` (bit 6) -- allows subsequent PmnPFS writes.
+ * Sequence from HUM section 20.2.6 (PWPR) and 20.2.7 (PWPRS):
+ *  1. Write 0          -- clears `B0WI` (bit 7), allowing PFSWE to be written.
+ *  2. Write `1<<PFSWE` -- sets `PFSWE` (bit 6), allowing PmnPFS writes.
  *
  * Must be called *once* before a burst of PmnPFS writes, then
  * balanced with `ra_pfs_pwpr_lock()`.
+ *
+ * @note We touch both PWPR (NS) and PWPRS (S) unconditionally, even
+ *       though FSP only writes the one matching the current TrustZone
+ *       build mode. Per HUM Ch 20.2.6 / 20.2.7 the chip silently
+ *       ignores writes to whichever side does not own the port (the
+ *       `R_PMISC->PMSAR[]` bit decides), so writing both is harmless.
+ *       PMSAR resets to "all ports owned by Secure" on RA8D2, which
+ *       matches what we currently want; we do not programme PMSAR.
+ *       If a future bring-up needs NS ports it must (a) write the
+ *       relevant PMSAR bit Secure-side and (b) the matching PFSWE
+ *       write will then take effect through the NS path.
  */
 static inline void ra_pfs_pwpr_unlock(void)
 {

@@ -94,7 +94,27 @@ ra_err_t ra_mpc_route_peripheral(ra_port_t port, ra_pin_t pin, ra_mpc_psel_t pse
   }
   const uint32_t psel_bits = ((uint32_t)psel << k_ra_pfs_bit_psel0) & k_ra_pfs_mask_psel;
   const uint32_t pmr       = k_ra_pfs_mask_pmr;
-  internal_reset_pfs(port, pin, psel_bits | pmr);
+
+  /* HUM Ch 20.2.4 "Notes on the PmnPFS Register Setting" p 859 -- PMR
+   * must be cleared before a new PSEL is programmed. Three-step write:
+   *   1. PMR := 0           (return pin to GPIO mode)
+   *   2. PFS := new PSEL    (programme function while PMR is still 0)
+   *   3. PFS := PSEL | PMR  (hand pin to the peripheral)
+   * Single combined write is what FSP r_ioport_pfs_write avoids; doing
+   * it would let the pin briefly drive whatever the *previous* PSEL
+   * decoded to with PMR already 1.
+   * @note PMSAR resets to all-Secure on RA8D2; we hold the unlock
+   *       across the whole sequence so no extra PWPR write storms. */
+  volatile uint32_t* pfs = ra_pfs_pmn(port, pin);
+  if (pfs == nullptr) { /* GCOVR_EXCL_BR_LINE -- bounds already validated */
+    return k_ra_err_gpio_invalid_pin;
+  }
+  ra_pfs_pwpr_unlock();
+  *pfs = 0U;              /* HUM Ch 20.2.4 p 859 step 1: PMR = 0. */
+  *pfs = psel_bits;       /* HUM Ch 20.2.4 p 859 step 2: PSEL, PMR=0. */
+  *pfs = psel_bits | pmr; /* HUM Ch 20.2.4 p 859 step 3: PSEL | PMR=1. */
+  ra_pfs_pwpr_lock();
+
   ra_log_info_val(s_tag, "route", (uint32_t)psel);
   return k_ra_ok;
 }
