@@ -182,6 +182,55 @@ void ra_xspi_dispatch(uint8_t instance);
  */
 [[nodiscard]] ra_err_t ra_xspi_exit_stop(uint8_t instance);
 
+/**
+ * @brief Enable XIP (execute-in-place) memory-mapped read mode.
+ *
+ * @details
+ * Programs ``CMCTLCH[0/1]`` with the supplied XiP enter/exit codes,
+ * sets ``BMCTL0 = 0x55`` to map the slave window read-only on the
+ * system bus, and arms ``CMCTLCH.XIPEN``. Tracks FSP
+ * ``R_OSPI_B_XipEnter`` / ``r_ospi_b_xip(true)``. Cite: HUM Ch 44
+ * "Octal Serial Peripheral Interface (OSPI)" p 2986.
+ *
+ * @param[in] instance    xSPI instance (0 or 1).
+ * @param[in] enter_code  Vendor-specific XIP enter byte (e.g. 0xA5).
+ * @param[in] exit_code   Vendor-specific XIP exit byte (e.g. 0x5A).
+ *
+ * @return `k_ra_ok` on success.
+ * @return `k_ra_err_null_ptr` if `instance` is out of range.
+ *
+ * @pre Driver has been initialised via `ra_xspi_init()`.
+ * @pre A read command set has been programmed in `CMCFGCS[n]`.
+ * @post `BMCTL0` reads as `k_ra_xspi_bmctl0_read_only`.
+ * @post `CMCTLCH[0/1].XIPEN` is set.
+ *
+ * @note Not thread-safe; call from a single bring-up context.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_xspi_xip_enter(uint8_t instance, uint8_t enter_code, uint8_t exit_code);
+
+/**
+ * @brief Disable XIP mode and restore command-only access.
+ *
+ * @details
+ * Clears ``CMCTLCH[0/1].XIPEN`` and zeroes out the XIP enter/exit
+ * codes, then resets ``BMCTL0`` so further direct-command transfers
+ * are not blocked by an active memory-mapped path. Tracks FSP
+ * ``R_OSPI_B_XipExit`` / ``r_ospi_b_xip(false)``.
+ *
+ * @param[in] instance xSPI instance (0 or 1).
+ *
+ * @return `k_ra_ok` on success.
+ * @return `k_ra_err_null_ptr` if `instance` is out of range.
+ *
+ * @pre Driver is open and previously entered XIP via `ra_xspi_xip_enter()`.
+ * @post `CMCTLCH[0/1] == 0` and XIPEN is cleared.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_xspi_xip_exit(uint8_t instance);
+
 #ifdef __cplusplus
 }
 #endif
