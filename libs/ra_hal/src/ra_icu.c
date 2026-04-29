@@ -48,6 +48,9 @@ typedef enum : uint32_t {
   /* FSP R_ICU_NMICLR bits 0..14 + 16..18 + 20 are write-1-to-clear; use
    * the full 32-bit mask to cover future extensions. */
   k_ra_icu_nmiclr_all = 0xFFFFFFFFUL,
+  /* FSP R_ICU_WUPEN0 / WUPEN1 are RW, reset value 0; clearing every
+   * bit puts the wake-up matrix back to its post-reset state. */
+  k_ra_icu_wupen_clear = 0x00000000UL,
 } ra_icu_clear_val_t;
 
 /* =============================================================================
@@ -73,6 +76,11 @@ ra_err_t ra_icu_init(void)
   /* HUM Ch 14.2.15 "NMICLR : NMI Status Clear Register", p 544 -- write
    * all-ones to clear every latched NMI status bit. */
   *ra_icu_nmiclr() = k_ra_icu_nmiclr_all;
+
+  /* HUM Ch 14 "WUPEN0/WUPEN1 : Wake Up Interrupt Enable Register",
+   * p 524..582 -- clear so no source can wake the core unexpectedly. */
+  *ra_icu_wupen0() = k_ra_icu_wupen_clear;
+  *ra_icu_wupen1() = k_ra_icu_wupen_clear;
   return k_ra_ok;
 }
 
