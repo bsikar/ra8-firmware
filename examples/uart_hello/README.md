@@ -9,18 +9,18 @@ any extra wiring.
 
 ## Status: working
 
-After flashing, open the J-Link OB CDC port at **38400 8N1**:
+After flashing, open the J-Link OB CDC port at **115200 8N1**:
 
 ```sh
 # macOS
-stty -f /dev/cu.usbmodem* 38400 cs8 -cstopb -parenb -ixon -ixoff raw
+stty -f /dev/cu.usbmodem* 115200 cs8 -cstopb -parenb -ixon -ixoff raw
 # Use a tool that opens RDWR (not RDONLY) -- some macOS CDC bridges
 # don't pass data unless DTR is asserted, which sysopen O_RDWR
 # triggers automatically:
 perl -e 'use Fcntl; sysopen(my $f, "/dev/cu.usbmodem...", O_RDWR) or die $!;
          while (sysread($f, my $b, 1024)) { print $b }'
 # or picocom / screen / cu
-picocom -b 38400 /dev/cu.usbmodem...
+picocom -b 115200 /dev/cu.usbmodem...
 ```
 
 You should see one line per second:
@@ -34,20 +34,27 @@ hello, ra8d2!
 
 LED1 (P6_00) toggles in lock-step with each line.
 
-## Why 38400 (and not 115200)?
+## Clock tree
 
-The chip is configured for `BRR=15` against PCLKA, which gives a
-nominal `baud = PCLKA / (32 * 16) = PCLKA / 512`. Working backward
-from the empirically-verified 38400 wire rate, **PCLKA is
-approximately 20 MHz** on this board.
+`ra_cgc_init()` brings up the FSP-quickstart clock tree:
 
-That's lower than the rated peripheral clock, because
-`ra_cgc_init()` currently brings PLL1 up at ~160 MHz (with
-SCKDIVCR's PCKA=/8 giving 20 MHz) rather than the rated 480 MHz /
-1 GHz the part can do. Tightening the CGC driver's PLL setup is
-deferred to its own pass; once PLL1 is at 480+ MHz, change
-`k_uart_hello_baud` back to 115200 and the example will print at
-the conventional rate.
+| Clock     | Source              | Rate        |
+|-----------|---------------------|-------------|
+| XTAL      | EK-RA8D2 24 MHz     | 24 MHz      |
+| PLL1P     | XTAL / 3 * 250 / 2  | 1 GHz       |
+| PLL1Q     | XTAL / 3 * 250 / 6  | ~333 MHz    |
+| PLL1R     | XTAL / 3 * 250 / 5  | 400 MHz     |
+| CPUCLK0   | PLL1P / 1           | 1 GHz       |
+| CPUCLK1   | PLL1P / 4           | 250 MHz     |
+| ICLK      | PLL1P / 4           | 250 MHz     |
+| PCLKA     | PLL1P / 8           | 125 MHz     |
+| PCLKB     | PLL1P / 16          | 62.5 MHz    |
+| MRICLK    | PLL1P / 4           | 250 MHz     |
+| SCICLK    | PLL1R / 4           | 100 MHz     |
+
+`ra_sci_init` reads `PCLKA = 125 MHz` from `ra_cgc_get_clock_hz` and
+programs `BRR = 33` for 115200 baud, giving an actual wire rate of
+114890 baud (0.27 % off, well within UART tolerance).
 
 ## Findings worth keeping
 
@@ -104,12 +111,15 @@ make clean
 
 ## What the firmware does
 
-1. `ra_cgc_init()` brings up HOCO + PLL1 (currently at ~160 MHz).
+1. `ra_cgc_init()` brings up XTAL + PLL1 (CPUCLK0 = 1 GHz, PCLKA =
+   125 MHz, SCICLK = PLL1R / 4). Includes MRMS PFB flush, VSCR
+   voltage scaling, MRMS wait-state programming, and SCICLK
+   routing -- no per-app workarounds required.
 2. `ra_pfs_route_peripheral()` puts PD02 / PD03 in SCI8 async mode
    (PSEL = `k_ra_psel_sci_async` = 0x04).
 3. `ra_sci_init(8, ...)` programs CCR0/1/2/3 with the bits in the
-   table above. `pclka_hz` is hardcoded to 20 MHz to match the
-   actual chip state.
+   table above. `pclk_hz` comes from `ra_cgc_get_clock_hz` so the
+   BRR calculator never goes stale.
 4. `ra_time_init()` sets up SysTick for `ra_delay_ms`.
 5. `ra_gpio_output_init(k_ra_pin_led1, low)` for the heartbeat.
 6. Loop: write the greeting, toggle LED1, sleep 1 s.
@@ -132,4 +142,10 @@ mem8  0x4001E054 1    # SCICKDIVCR
 mem8  0x4001E055 1    # SCICKCR (SCICLK source select)
 mem32 0x4001E020 1    # SCKDIVCR (peripheral clock dividers)
 mem8  0x4001E026 1    # SCKSCR (system clock source: 0=HOCO,1=MOCO,5=PLL1)
+mem32 0x4001E0AC 1    # PLLCCR  -- expected 0xFA02
+mem16 0x4001E04C 1    # PLLCCR2 -- expected 0x0451
+mem32 0x4013C000 1    # MRCPFB  -- expected 0x01 (PFB on)
+mem32 0x4013C004 1    # MRCFREQ -- expected 0xFA  (250 MHz, key stripped)
+mem32 0x4013C008 1    # MREFREQ -- expected 0x7D  (125 MHz, key stripped)
+mem32 0x4001E014 1    # VSCR    -- expected bit 0 set (VSCM=1)
 ```
