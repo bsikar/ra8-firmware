@@ -18,7 +18,8 @@
  * @brief CRC control bit masks used by the tests.
  */
 typedef enum : uint8_t {
-  k_ra_crc_test_dorclr = (uint8_t)(1U << 7U), /**< CRCCR0.DORCLR. */
+  k_ra_crc_test_dorclr   = (uint8_t)(1U << 7U), /**< CRCCR0.DORCLR. */
+  k_ra_crc_test_gps_mask = 0x07U,               /**< CRCCR0.GPS[2:0]. */
 } ra_crc_test_bit_t;
 
 /**
@@ -34,7 +35,7 @@ static const uint8_t s_payload[4] = {0x01U, 0x02U, 0x03U, 0x04U};
 
 /**
  * @brief Drive CRCDOR with a known value and verify `ra_crc_compute()`
- * returns it through the out pointer.
+ *        returns it through the out pointer.
  */
 static uint32_t compute_with_preseeded_result(ra_crc_poly_t poly, uint32_t preset)
 {
@@ -54,7 +55,9 @@ static void test_init_programs_poly_crc8(void)
 
   TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_crc_init(k_ra_crc_poly_8));
   volatile r_crc_regs_t* reg = ra_crc();
-  TEST_ASSERT_EQ((int)k_ra_crc_poly_8, (int)reg->CRCCR0);
+  /* Init writes GPS|DORCLR; mask off DORCLR before checking GPS. */
+  TEST_ASSERT_EQ((int)k_ra_crc_poly_8, (int)(reg->CRCCR0 & (uint8_t)k_ra_crc_test_gps_mask));
+  TEST_ASSERT_EQ((int)k_ra_crc_test_dorclr, (int)(reg->CRCCR0 & (uint8_t)k_ra_crc_test_dorclr));
   TEST_ASSERT_EQ(0, (int)reg->CRCCR1);
   TEST_END("crc init programs poly crc8");
 }
@@ -66,7 +69,7 @@ static void test_init_programs_poly_crc16(void)
 
   TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_crc_init(k_ra_crc_poly_16));
   volatile r_crc_regs_t* reg = ra_crc();
-  TEST_ASSERT_EQ((int)k_ra_crc_poly_16, (int)reg->CRCCR0);
+  TEST_ASSERT_EQ((int)k_ra_crc_poly_16, (int)(reg->CRCCR0 & (uint8_t)k_ra_crc_test_gps_mask));
   TEST_END("crc init programs poly crc16");
 }
 
@@ -77,7 +80,8 @@ static void test_init_programs_poly_crc32(void)
 
   TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_crc_init(k_ra_crc_poly_32_ieee802_3));
   volatile r_crc_regs_t* reg = ra_crc();
-  TEST_ASSERT_EQ((int)k_ra_crc_poly_32_ieee802_3, (int)reg->CRCCR0);
+  TEST_ASSERT_EQ((int)k_ra_crc_poly_32_ieee802_3,
+                 (int)(reg->CRCCR0 & (uint8_t)k_ra_crc_test_gps_mask));
   TEST_END("crc init programs poly crc32");
 }
 
@@ -88,6 +92,18 @@ static void test_init_programs_poly_none(void)
 
   TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_crc_init(k_ra_crc_poly_none));
   TEST_END("crc init poly none");
+}
+
+static void test_init_pulses_dorclr(void)
+{
+  TEST_BEGIN("crc init pulses DORCLR");
+  ra_sim_mmap_reset();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_crc_init(k_ra_crc_poly_16_ccitt));
+  volatile r_crc_regs_t* reg = ra_crc();
+  /* DORCLR bit (0x80) should be set alongside GPS=3. */
+  TEST_ASSERT_EQ((int)k_ra_crc_test_dorclr, (int)(reg->CRCCR0 & (uint8_t)k_ra_crc_test_dorclr));
+  TEST_ASSERT_EQ((int)k_ra_crc_poly_16_ccitt, (int)(reg->CRCCR0 & (uint8_t)k_ra_crc_test_gps_mask));
+  TEST_END("crc init pulses DORCLR");
 }
 
 static void test_reset_sets_crccr0_dorclr(void)
@@ -133,11 +149,13 @@ static void test_compute_crc8_reads_dor(void)
   ra_sim_mmap_reset();
 
   const uint32_t got =
-    compute_with_preseeded_result(k_ra_crc_poly_8_ccitt, (uint32_t)k_ra_crc_test_marker);
+    compute_with_preseeded_result(k_ra_crc_poly_8, (uint32_t)k_ra_crc_test_marker);
   TEST_ASSERT_EQ((int)k_ra_crc_test_marker, (int)got);
-  /* All four input bytes should have been written to CRCDIR (last one wins). */
+  /* CRC-8 path uses CRCDIR_BY (8-bit alias) -- last byte should be at
+   * the byte register. The sim_mmap union exposes the same address
+   * via reg->CRCDIR (low byte equals last write). */
   volatile r_crc_regs_t* reg = ra_crc();
-  TEST_ASSERT_EQ((int)s_payload[3], (int)reg->CRCDIR);
+  TEST_ASSERT_EQ((int)s_payload[3], (int)reg->CRCDIR_BY);
   TEST_END("crc compute crc8 reads dor");
 }
 
@@ -160,6 +178,11 @@ static void test_compute_crc32_reads_dor(void)
   const uint32_t marker = 0xA5A5A5A5UL;
   const uint32_t got    = compute_with_preseeded_result(k_ra_crc_poly_32c_rev, marker);
   TEST_ASSERT_EQ((int)marker, (int)got);
+  /* 32-bit poly path packs 4 input bytes into a single CRCDIR write. */
+  volatile r_crc_regs_t* reg    = ra_crc();
+  const uint32_t         packed = (uint32_t)s_payload[0] | ((uint32_t)s_payload[1] << 8U) |
+                                  ((uint32_t)s_payload[2] << 16U) | ((uint32_t)s_payload[3] << 24U);
+  TEST_ASSERT_EQ((int)packed, (int)reg->CRCDIR);
   TEST_END("crc compute crc32 reads dor");
 }
 
@@ -203,7 +226,9 @@ static void test_set_poly(void)
   prep_w44();
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_crc_init(k_ra_crc_poly_8));
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_crc_set_poly(k_ra_crc_poly_16_ccitt));
-  TEST_ASSERT_EQ((int32_t)k_ra_crc_poly_16_ccitt, (int32_t)ra_crc()->CRCCR0);
+  /* set_poly also pulses DORCLR; mask off bit 7 before comparing GPS. */
+  TEST_ASSERT_EQ((int32_t)k_ra_crc_poly_16_ccitt,
+                 (int32_t)(ra_crc()->CRCCR0 & (uint8_t)k_ra_crc_test_gps_mask));
   TEST_END("crc set_poly");
 }
 
@@ -215,7 +240,9 @@ static void test_get_status(void)
 
   uint8_t mask = 0U;
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_crc_get_status(&mask));
-  TEST_ASSERT_EQ((int32_t)k_ra_crc_poly_32c_rev, (int32_t)mask);
+  /* get_status returns the full CRCCR0 byte (GPS|LMS|DORCLR). Mask
+   * off the DORCLR bit before comparing the polynomial. */
+  TEST_ASSERT_EQ((int32_t)k_ra_crc_poly_32c_rev, (int32_t)(mask & (uint8_t)k_ra_crc_test_gps_mask));
   TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_crc_get_status(nullptr));
   TEST_END("crc get_status");
 }
@@ -237,6 +264,7 @@ int32_t main(void)
   test_init_programs_poly_crc16();
   test_init_programs_poly_crc32();
   test_init_programs_poly_none();
+  test_init_pulses_dorclr();
   test_reset_sets_crccr0_dorclr();
   test_compute_null_data();
   test_compute_null_out();

@@ -25,7 +25,7 @@ typedef enum : uint8_t {
   k_ra_elc_test_slot_last  = 52U, /**< FSP R_ELC has ELSR[0..52]. */
   k_ra_elc_test_slot_bad   = 53U,
   k_ra_elc_test_slot_huge  = 200U,
-  k_ra_elc_test_elcon_bit  = 7U,
+  k_ra_elc_test_seg_bad    = 4U, /**< RA8D2 has ELSEGR[0..3]. */
 } ra_elc_test_const_t;
 
 static volatile uint8_t* test_elcr(void)
@@ -40,26 +40,10 @@ static volatile uint16_t* test_elsr(uint8_t index)
                               ((uintptr_t)index * (uintptr_t)k_ra_elc_elsr_stride));
 }
 
-static void test_enable_true(void)
+static volatile uint8_t* test_elsegr(uint8_t group)
 {
-  TEST_BEGIN("elc enable true");
-  prep();
-
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_elc_enable(true));
-  TEST_ASSERT_EQ((int32_t)(1U << k_ra_elc_test_elcon_bit), (int32_t)*test_elcr());
-  TEST_END("elc enable true");
-}
-
-static void test_enable_false(void)
-{
-  TEST_BEGIN("elc enable false");
-  prep();
-
-  /* Enable first so we can observe the clear. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_elc_enable(true));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_elc_enable(false));
-  TEST_ASSERT_EQ(0, (int32_t)*test_elcr());
-  TEST_END("elc enable false");
+  return (volatile uint8_t*)(k_ra_elc_base_addr + k_ra_elc_off_elsegr0 +
+                             ((uintptr_t)group * (uintptr_t)k_ra_elc_elsegr_stride));
 }
 
 static void test_link_first_slot(void)
@@ -125,7 +109,7 @@ static void test_init_enables_controller(void)
   *test_elsr(0U) = 0x123U;
 
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_elc_init());
-  TEST_ASSERT_EQ((int32_t)(1U << k_ra_elc_test_elcon_bit), (int32_t)*test_elcr());
+  TEST_ASSERT_EQ((int32_t)(1U << k_ra_elcr_bit_elcon), (int32_t)*test_elcr());
   TEST_ASSERT_EQ(0, (int32_t)*test_elsr(0U));
 
   bool enabled = false;
@@ -166,22 +150,22 @@ static void test_unlink_clears_slot(void)
 
 static void test_software_trigger(void)
 {
-  TEST_BEGIN("ra_elc_software_trigger: writes ELSEGR");
+  TEST_BEGIN("ra_elc_software_trigger: 3-step sequence latches 0x41");
   prep();
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_elc_software_trigger(0U, 0x5AU));
-  volatile const uint8_t* elsegr0 =
-    (volatile const uint8_t*)(k_ra_elc_base_addr + k_ra_elc_off_elsegr0);
-  TEST_ASSERT_EQ((int32_t)0x5A, (int32_t)*elsegr0);
+  /* After the documented HUM Ch 19.2.2 sequence
+   * (0x00 -> 0x40 -> 0x41) the last byte the driver wrote (which is
+   * what the simulator memory observes) is the trigger value 0x41. */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_elc_software_trigger(0U));
+  TEST_ASSERT_EQ((int32_t)k_ra_elc_elsegr_step_trigger, (int32_t)*test_elsegr(0U));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_elc_software_trigger(1U, 0xA5U));
-  volatile const uint8_t* elsegr1 =
-    (volatile const uint8_t*)(k_ra_elc_base_addr + k_ra_elc_off_elsegr1);
-  TEST_ASSERT_EQ((int32_t)0xA5, (int32_t)*elsegr1);
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_elc_software_trigger(3U));
+  TEST_ASSERT_EQ((int32_t)k_ra_elc_elsegr_step_trigger, (int32_t)*test_elsegr(3U));
 
-  /* Out-of-range group: FSP has ELSEGR0..3 so index 4+ is rejected. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_elc_software_trigger(4U, 0U));
-  TEST_END("ra_elc_software_trigger: writes ELSEGR");
+  /* Out-of-range index: FSP has ELSEGR0..3 so index 4+ is rejected. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_elc_software_trigger((uint8_t)k_ra_elc_test_seg_bad));
+  TEST_END("ra_elc_software_trigger: 3-step sequence latches 0x41");
 }
 
 static void test_is_enabled_null_out(void)
@@ -194,8 +178,6 @@ static void test_is_enabled_null_out(void)
 
 int32_t main(void)
 {
-  test_enable_true();
-  test_enable_false();
   test_link_first_slot();
   test_link_mid_slot();
   test_link_last_slot();
