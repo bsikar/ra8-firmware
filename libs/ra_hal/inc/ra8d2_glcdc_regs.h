@@ -77,30 +77,46 @@ typedef enum : uint16_t {
   k_ra_glcdc_off_bg_mon   = 0x1018U, /**< BG.MON: status monitor.             */
 
   /* ---- Graphics layer 0 (GR[0]) ---------------------------------------- */
-  k_ra_glcdc_off_gr1_en    = 0x1100U, /**< GR[0].VEN: register update ctrl.   */
-  k_ra_glcdc_off_gr1_flmrd = 0x1104U, /**< GR[0].FLMRD: frame buffer read en. */
-  k_ra_glcdc_off_gr1_flm1  = 0x1108U, /**< GR[0].FLM1: burst mode.             */
-  k_ra_glcdc_off_gr1_saddr = 0x110CU, /**< GR[0].FLM2.BASE: framebuffer addr. */
-  k_ra_glcdc_off_gr1_flm3  = 0x1110U, /**< GR[0].FLM3: line offset bytes.      */
-  k_ra_glcdc_off_gr1_line  = 0x1118U, /**< GR[0].FLM5: datanum + lnnum.        */
-  k_ra_glcdc_off_gr1_fmt   = 0x111CU, /**< GR[0].FLM6.FORMAT: pixel format.    */
-  k_ra_glcdc_off_gr1_ab1   = 0x1120U, /**< GR[0].AB1: alpha blend ctrl 1.      */
-  k_ra_glcdc_off_gr1_size  = 0x1128U, /**< GR[0].AB3: horizontal size + pos.   */
-  k_ra_glcdc_off_gr1_base  = 0x114CU, /**< GR[0].BASE: layer bg colour.        */
-  k_ra_glcdc_off_gr1_mon   = 0x1154U, /**< GR[0].MON: status monitor.          */
+  k_ra_glcdc_off_gr1_en      = 0x1100U, /**< GR[0].VEN: register update ctrl.   */
+  k_ra_glcdc_off_gr1_flmrd   = 0x1104U, /**< GR[0].FLMRD: frame buffer read en. */
+  k_ra_glcdc_off_gr1_flm1    = 0x1108U, /**< GR[0].FLM1: burst mode.            */
+  k_ra_glcdc_off_gr1_saddr   = 0x110CU, /**< GR[0].FLM2.BASE: framebuffer addr. */
+  k_ra_glcdc_off_gr1_flm3    = 0x1110U, /**< GR[0].FLM3: line offset bytes.     */
+  k_ra_glcdc_off_gr1_line    = 0x1118U, /**< GR[0].FLM5: datanum + lnnum.       */
+  k_ra_glcdc_off_gr1_fmt     = 0x111CU, /**< GR[0].FLM6.FORMAT: pixel format.   */
+  k_ra_glcdc_off_gr1_ab1     = 0x1120U, /**< GR[0].AB1: alpha blend ctrl 1.     */
+  k_ra_glcdc_off_gr1_ab2     = 0x1124U, /**< GR[0].AB2: graphics V size + pos.  */
+  k_ra_glcdc_off_gr1_size    = 0x1128U, /**< GR[0].AB3: graphics H size + pos.  */
+  k_ra_glcdc_off_gr1_ab4     = 0x112CU, /**< GR[0].AB4: alpha rect V size+pos.  */
+  k_ra_glcdc_off_gr1_ab5     = 0x1130U, /**< GR[0].AB5: alpha rect H size+pos.  */
+  k_ra_glcdc_off_gr1_ab6     = 0x1134U, /**< GR[0].AB6: fade rate / coef.       */
+  k_ra_glcdc_off_gr1_ab7     = 0x1138U, /**< GR[0].AB7: chroma-key on, def alf. */
+  k_ra_glcdc_off_gr1_ab8     = 0x113CU, /**< GR[0].AB8: chroma-key key colour.  */
+  k_ra_glcdc_off_gr1_ab9     = 0x1140U, /**< GR[0].AB9: chroma-key replace col. */
+  k_ra_glcdc_off_gr1_base    = 0x114CU, /**< GR[0].BASE: layer bg colour.       */
+  k_ra_glcdc_off_gr1_clutint = 0x1150U, /**< GR[0].CLUTINT: CLUT swap + line.   */
+  k_ra_glcdc_off_gr1_mon     = 0x1154U, /**< GR[0].MON: status monitor.         */
 
   /* ---- Graphics layer 1 (GR[1]) ---------------------------------------- */
-  k_ra_glcdc_off_gr2_en    = 0x1200U, /**< GR[1].VEN.                          */
-  k_ra_glcdc_off_gr2_flmrd = 0x1204U, /**< GR[1].FLMRD.                        */
-  k_ra_glcdc_off_gr2_flm1  = 0x1208U, /**< GR[1].FLM1.                         */
-  k_ra_glcdc_off_gr2_saddr = 0x120CU, /**< GR[1].FLM2.BASE.                    */
-  k_ra_glcdc_off_gr2_flm3  = 0x1210U, /**< GR[1].FLM3.                         */
-  k_ra_glcdc_off_gr2_line  = 0x1218U, /**< GR[1].FLM5.                         */
-  k_ra_glcdc_off_gr2_fmt   = 0x121CU, /**< GR[1].FLM6.FORMAT.                  */
-  k_ra_glcdc_off_gr2_ab1   = 0x1220U, /**< GR[1].AB1.                          */
-  k_ra_glcdc_off_gr2_size  = 0x1228U, /**< GR[1].AB3.                          */
-  k_ra_glcdc_off_gr2_base  = 0x124CU, /**< GR[1].BASE.                         */
-  k_ra_glcdc_off_gr2_mon   = 0x1254U, /**< GR[1].MON.                          */
+  k_ra_glcdc_off_gr2_en      = 0x1200U, /**< GR[1].VEN.                         */
+  k_ra_glcdc_off_gr2_flmrd   = 0x1204U, /**< GR[1].FLMRD.                       */
+  k_ra_glcdc_off_gr2_flm1    = 0x1208U, /**< GR[1].FLM1.                        */
+  k_ra_glcdc_off_gr2_saddr   = 0x120CU, /**< GR[1].FLM2.BASE.                   */
+  k_ra_glcdc_off_gr2_flm3    = 0x1210U, /**< GR[1].FLM3.                        */
+  k_ra_glcdc_off_gr2_line    = 0x1218U, /**< GR[1].FLM5.                        */
+  k_ra_glcdc_off_gr2_fmt     = 0x121CU, /**< GR[1].FLM6.FORMAT.                 */
+  k_ra_glcdc_off_gr2_ab1     = 0x1220U, /**< GR[1].AB1.                         */
+  k_ra_glcdc_off_gr2_ab2     = 0x1224U, /**< GR[1].AB2: graphics V size + pos.  */
+  k_ra_glcdc_off_gr2_size    = 0x1228U, /**< GR[1].AB3: graphics H size + pos.  */
+  k_ra_glcdc_off_gr2_ab4     = 0x122CU, /**< GR[1].AB4: alpha rect V size+pos.  */
+  k_ra_glcdc_off_gr2_ab5     = 0x1230U, /**< GR[1].AB5: alpha rect H size+pos.  */
+  k_ra_glcdc_off_gr2_ab6     = 0x1234U, /**< GR[1].AB6: fade rate / coef.       */
+  k_ra_glcdc_off_gr2_ab7     = 0x1238U, /**< GR[1].AB7: chroma-key on, def alf. */
+  k_ra_glcdc_off_gr2_ab8     = 0x123CU, /**< GR[1].AB8: chroma-key key colour.  */
+  k_ra_glcdc_off_gr2_ab9     = 0x1240U, /**< GR[1].AB9: chroma-key replace col. */
+  k_ra_glcdc_off_gr2_base    = 0x124CU, /**< GR[1].BASE.                        */
+  k_ra_glcdc_off_gr2_clutint = 0x1250U, /**< GR[1].CLUTINT.                     */
+  k_ra_glcdc_off_gr2_mon     = 0x1254U, /**< GR[1].MON.                         */
 
   /* ---- Gamma correction (GAM[0..2]) ------------------------------------ */
   k_ra_glcdc_off_gam0 = 0x1300U, /**< GAM[0] block base.                       */

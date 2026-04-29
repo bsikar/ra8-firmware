@@ -1,6 +1,6 @@
 /**
  * @file ra_glcdc.h
- * @brief Graphics LCD Controller driver (framework)
+ * @brief Graphics LCD Controller driver (two-layer with alpha blending)
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -34,6 +34,50 @@ typedef struct {
   ra_glcdc_pixel_fmt_t format;           /**< Pixel format code.     */
 } ra_glcdc_config_t;
 /* cppcheck-suppress-end [unusedStructMember] */
+
+/**
+ * @struct ra_glcdc_layer2_cfg_t
+ * @brief Configuration for the background-image (Graphics 2) layer.
+ *
+ * @details
+ * Graphics 2 is the lower layer in the GLCDC blender; Graphics 1
+ * (the UI overlay configured by ``ra_glcdc_init``) is composited
+ * over the top of it. Layer 2 has its own framebuffer base, format,
+ * line stride, on-panel position, on-panel size, and a constant
+ * alpha that gates alpha-blending of the lower layer.
+ */
+/* cppcheck-suppress-begin [unusedStructMember] */
+typedef struct {
+  uint32_t             framebuffer_addr;  /**< Layer-2 framebuffer base address.        */
+  uint32_t             line_stride_bytes; /**< Bytes between successive scan lines.     */
+  uint16_t             width_px;          /**< Layer-2 image width  (pixels).           */
+  uint16_t             height_px;         /**< Layer-2 image height (lines).            */
+  uint16_t             pos_x;             /**< Top-left X within the panel viewport.    */
+  uint16_t             pos_y;             /**< Top-left Y within the panel viewport.    */
+  ra_glcdc_pixel_fmt_t format;            /**< Pixel format code (FLM6.FORMAT).         */
+  uint8_t              alpha;             /**< Constant alpha 0..255 (AB7.ARCDEF).      */
+} ra_glcdc_layer2_cfg_t;
+/* cppcheck-suppress-end [unusedStructMember] */
+
+/**
+ * @enum ra_glcdc_blend_mode_t
+ * @brief Compositing mode between Graphics 1 and Graphics 2.
+ */
+typedef enum : uint8_t {
+  k_ra_blend_overwrite = 0U, /**< Layer 1 fully covers layer 2 (DISPSEL=01).      */
+  k_ra_blend_normal    = 1U, /**< Layer 1 over layer 2, no alpha (DISPSEL=10).    */
+  k_ra_blend_alpha     = 2U, /**< Per-pixel + global alpha blend (DISPSEL=10+AR). */
+} ra_glcdc_blend_mode_t;
+
+/**
+ * @enum ra_glcdc_dither_mode_t
+ * @brief Output-stage dithering mode for 24bpp -> 18/16bpp panels.
+ */
+typedef enum : uint8_t {
+  k_ra_dither_off      = 0U, /**< No dithering (PDTHA.SEL=0).                     */
+  k_ra_dither_truncate = 1U, /**< Round/truncate (PDTHA.SEL=2).                   */
+  k_ra_dither_2x2      = 2U, /**< 2x2 ordered dither (PDTHA.SEL=3).               */
+} ra_glcdc_dither_mode_t;
 
 /**
  * @brief Initialise GLCDC with the EK-RA8D2 1024x600 timings and the
@@ -95,6 +139,155 @@ void ra_glcdc_dispatch(void);
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_glcdc_exit_stop(void);
+
+/**
+ * @brief Configure the Graphics 2 (background-image) layer.
+ *
+ * @details
+ * Programmes the per-layer GR2 register block (FLM2/FLM3/FLM5/FLM6/
+ * AB1..AB7) so the layer is read from ``cfg->framebuffer_addr``,
+ * placed at ``(cfg->pos_x, cfg->pos_y)`` inside the panel viewport
+ * with size ``(cfg->width_px, cfg->height_px)``, and treated as the
+ * lower layer in the blender. The constant alpha is loaded into
+ * AB7.ARCDEF and gated by AB1.ARCON when the active blend mode is
+ * ``k_ra_blend_alpha``.
+ *
+ * @param[in] cfg Layer configuration. Must be non-NULL.
+ * @return ra_err_t
+ * @retval k_ra_ok            Layer 2 programmed successfully.
+ * @retval k_ra_err_null_ptr  ``cfg`` was NULL.
+ *
+ * @pre  GLCDC has been opened via ``ra_glcdc_init``.
+ * @pre  ``cfg->framebuffer_addr`` is valid for the chosen pixel format.
+ * @post GR2_FLM2 == ``cfg->framebuffer_addr``.
+ * @post GR2 layer is enabled for read (FLMRD.RENB = 1).
+ *
+ * @note Not thread-safe; caller serialises register access.
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_glcdc_set_layer2(const ra_glcdc_layer2_cfg_t* cfg);
+
+/**
+ * @brief Set the layer-1-over-layer-2 blend mode and global alpha.
+ *
+ * @details
+ * Writes layer-1 AB1.DISPSEL / AB1.ARCON and AB7.ARCDEF to select
+ * "overwrite", "normal" (top opaque over bottom), or "alpha" (top
+ * blended over bottom using per-pixel alpha multiplied by the global
+ * alpha argument).
+ *
+ * @param[in] mode         Compositing mode.
+ * @param[in] global_alpha 0..255 constant alpha applied in
+ *                         ``k_ra_blend_alpha`` mode (AB7.ARCDEF).
+ * @return ra_err_t
+ * @retval k_ra_ok               Blend programmed successfully.
+ * @retval k_ra_err_invalid_arg  ``mode`` was out of range.
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_glcdc_set_blend(ra_glcdc_blend_mode_t mode, uint8_t global_alpha);
+
+/**
+ * @brief Set the panel-wide background colour shown where neither
+ *        layer covers a pixel.
+ *
+ * @details
+ * Writes ``argb`` to BG.BGC. The alpha byte is ignored by hardware
+ * but preserved in the register for symmetry with the layer-base
+ * colour registers.
+ *
+ * @param[in] argb 0xAARRGGBB packed colour.
+ * @return ra_err_t
+ * @retval k_ra_ok Always.
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_glcdc_set_background_color(uint32_t argb);
+
+/**
+ * @brief Update a CLUT plane double-buffered, optionally swapping
+ *        on the next vsync.
+ *
+ * @details
+ * GLCDC keeps two CLUT planes per layer (CLUT0/CLUT1) selected by
+ * GR[layer].CLUTINT.SEL. This function writes ``entries`` 32-bit
+ * ARGB entries into the inactive plane, then either:
+ *   - leaves SEL alone (``swap_now == false``): the new table sits
+ *     ready for a future swap, mirroring FSP's ``R_GLCDC_ClutEdit``
+ *     "shadow" pattern, or
+ *   - flips SEL (``swap_now == true``): the hardware will switch to
+ *     the freshly-written table at the next vertical sync, mirroring
+ *     FSP's ``R_GLCDC_ColorPaletteUpdate``.
+ *
+ * @param[in] layer    0 = Graphics 1, 1 = Graphics 2.
+ * @param[in] clut     Source array of ARGB8888 entries.
+ * @param[in] entries  Number of entries to copy (1..256).
+ * @param[in] swap_now true to flip CLUTINT.SEL after the write.
+ * @return ra_err_t
+ * @retval k_ra_ok               Programmed successfully.
+ * @retval k_ra_err_null_ptr     ``clut`` was NULL.
+ * @retval k_ra_err_invalid_arg  ``layer >= 2`` or ``entries`` out of range.
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_glcdc_set_clut_double_buffered(uint8_t         layer,
+                                                         const uint32_t* clut,
+                                                         uint32_t        entries,
+                                                         bool            swap_now);
+
+/**
+ * @brief Programme the output dithering mode (PDTHA.SEL).
+ *
+ * @details
+ * Selects the dithering algorithm applied when the 24bpp internal
+ * pipeline drives a narrower (18bpp / 16bpp) panel.
+ *
+ * @param[in] mode Dither mode.
+ * @return ra_err_t
+ * @retval k_ra_ok               Dither register written.
+ * @retval k_ra_err_invalid_arg  ``mode`` was out of range.
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_glcdc_set_dithering(ra_glcdc_dither_mode_t mode);
+
+/**
+ * @brief Programme per-channel output brightness.
+ *
+ * @details
+ * Writes ``g`` to BRIGHT1.BRTG and packs ``b``/``r`` into
+ * BRIGHT2.BRTB/BRTR. The values are 8-bit offsets that are added to
+ * the 10-bit channel (the low bits of the 10-bit BRTx field are
+ * left as 0 -- callers wanting the full range supply pre-scaled
+ * numbers in the 0..255 portion).
+ *
+ * @param[in] r Red brightness offset (0..255).
+ * @param[in] g Green brightness offset (0..255).
+ * @param[in] b Blue brightness offset (0..255).
+ * @return ra_err_t
+ * @retval k_ra_ok Always.
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_glcdc_set_brightness(uint8_t r, uint8_t g, uint8_t b);
+
+/**
+ * @brief Programme per-channel output contrast gain.
+ *
+ * @details
+ * Writes the three 8-bit gains into CONTRAST.CONTG/CONTB/CONTR.
+ * 0x80 == x1.000 gain (FSP convention).
+ *
+ * @param[in] r Red contrast gain   (0..255, 0x80 = 1.0).
+ * @param[in] g Green contrast gain (0..255, 0x80 = 1.0).
+ * @param[in] b Blue contrast gain  (0..255, 0x80 = 1.0).
+ * @return ra_err_t
+ * @retval k_ra_ok Always.
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_glcdc_set_contrast(uint8_t r, uint8_t g, uint8_t b);
 
 #ifdef __cplusplus
 }
