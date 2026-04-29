@@ -1,28 +1,28 @@
 /**
  * @file ra_spi.h
- * @brief Full-featured SPI master driver
+ * @brief SPI_B master driver (RA8D2 Type-B SPI peripheral)
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}
  *
  * @details
- * full build-out of the RA8D2 SPI master peripheral.
- * Extends the polling stub with: descriptor-based init,
- * deinit, runtime bit-rate reconfigure, error status + clear,
- * interrupt-mode attach / dispatch, power transition.
+ * Public API for the SPI_B master driver. Implementation lives in
+ * ``libs/ra_hal/src/ra_spi_b.c`` and mirrors FSP ``r_spi_b`` in
+ * polling-mode master flow. The earlier register layout (legacy
+ * 8/16-bit SPI block) was replaced wholesale on RA8D2 -- see
+ * ``ra8d2_spi_regs.h`` for the SPI_B register file.
  *
  * API surface:
  *
  * - ``ra_spi_init(channel, cfg)`` -- full config + MSTP enable
  * - ``ra_spi_deinit(channel)`` -- SPE clear + MSTP release
- * - ``ra_spi_master_init`` -- legacy shim
- * - ``ra_spi_xfer8`` -- legacy polling xfer
- * - ``ra_spi_write / read`` -- polling array xfer
+ * - ``ra_spi_master_init`` -- defaults init (mode 0, PCLKA = 125 MHz)
+ * - ``ra_spi_xfer8`` -- single-byte full-duplex polling xfer
  * - ``ra_spi_set_clock`` -- runtime SPBR change
  * - ``ra_spi_get_errors / clear_errors``-- overrun/mode/parity/underrun
  * - ``ra_spi_attach_transfer_handler`` -- IRQ callback
  * - ``ra_spi_enter_stop / exit_stop`` -- power transition
- * - ``ra_spi_dispatch_spti / sprti / speri`` -- ISR entry points
+ * - ``ra_spi_dispatch_spti / spri / spei`` -- ISR entry points
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -62,7 +62,7 @@ typedef enum : uint8_t {
  * @details
  * cppcheck cannot see tests/ so it flags every field as unused;
  * each member is read in ``ra_spi_init`` in
- * ``libs/ra_hal/src/spi.c``.
+ * ``libs/ra_hal/src/ra_spi_b.c``.
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
