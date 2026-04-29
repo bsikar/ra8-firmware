@@ -1,6 +1,26 @@
 /**
  * @file ra_usb.h
- * @brief USB controller driver (framework)
+ * @brief Native USB device-mode controller driver public API
+ *
+ * @details
+ * Hand-written, FSP-equivalent device-mode driver for the two USB
+ * controllers on the Renesas RA8D2 (USBFS @ 0x40250000, USBHS @
+ * 0x40351000). Mirrors the device-side flow of FSP's
+ * `r_usb_basic` / `r_usb_pdriver.c` but compiled as part of this
+ * tree, with no Renesas FSP, CherryUSB, or TinyUSB binaries pulled
+ * in. The class-layer split lives in `ra_usb_cdc.{h,c}`.
+ *
+ * ## Surface
+ *
+ * - **Lifecycle** -- `ra_usb_device_init` / `_deinit`, plus the
+ *   power helpers `ra_usb_enter_stop` / `_exit_stop`.
+ * - **Bus** -- `ra_usb_device_attach` (raises D+ pull-up).
+ * - **State** -- `ra_usb_get_device_state`, `ra_usb_set_address`.
+ * - **Endpoints** -- `ra_usb_configure_endpoint`, `ra_usb_queue_in`,
+ *   `ra_usb_queue_out`, `ra_usb_stall_endpoint`.
+ * - **Control transfers** -- `ra_usb_read_setup`,
+ *   `ra_usb_control_response`.
+ * - **IRQ delivery** -- `ra_usb_attach_handler` + `ra_usb_dispatch`.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -16,71 +36,516 @@ extern "C" {
 
 #include "ra_err.h"
 
+/* =============================================================================
+ * Public types
+ * =============================================================================
+ */
+
 /**
  * @enum ra_usb_speed_t
- * @brief Which controller to talk to.
+ * @brief Selects which controller instance the call targets.
  */
 typedef enum : uint8_t {
-  k_ra_usb_speed_fs = 0U, /**< Full-Speed controller at 0x40250000. */
-  k_ra_usb_speed_hs = 1U, /**< High-Speed controller at 0x40351000. */
+  k_ra_usb_speed_fs = 0U, /**< Full-Speed controller (USBFS @ 0x40250000). */
+  k_ra_usb_speed_hs = 1U, /**< High-Speed controller (USBHS @ 0x40351000). */
 } ra_usb_speed_t;
 
 /**
- * @brief Initialise USB in device mode with D+ pull-up disabled.
+ * @enum ra_usb_dev_state_t
+ * @brief Decoded `INTSTS0.DVSQ[2:0]` device-state values.
+ *
+ * @details Stable enum used by the public surface. Internal masks
+ * still live in `ra8d2_usb_regs.h::ra_usb_dvsq_t`.
+ */
+typedef enum : uint8_t {
+  k_ra_usb_dev_state_powered    = 0U, /**< Powered, no reset yet. */
+  k_ra_usb_dev_state_default    = 1U, /**< Default (post reset).  */
+  k_ra_usb_dev_state_address    = 2U, /**< Address assigned.      */
+  k_ra_usb_dev_state_configured = 3U, /**< Configured.            */
+  k_ra_usb_dev_state_suspended  = 4U, /**< Suspended.             */
+} ra_usb_dev_state_t;
+
+/**
+ * @enum ra_usb_ep_dir_t
+ * @brief Endpoint direction.
+ */
+typedef enum : uint8_t {
+  k_ra_usb_ep_dir_out = 0U, /**< Host -> device. */
+  k_ra_usb_ep_dir_in  = 1U, /**< Device -> host. */
+} ra_usb_ep_dir_t;
+
+/**
+ * @enum ra_usb_ep_type_t
+ * @brief Transfer type for a non-control endpoint.
+ */
+typedef enum : uint8_t {
+  k_ra_usb_ep_type_bulk = 0U, /**< Bulk transfer.       */
+  k_ra_usb_ep_type_intr = 1U, /**< Interrupt transfer.  */
+  k_ra_usb_ep_type_iso  = 2U, /**< Isochronous transfer.*/
+} ra_usb_ep_type_t;
+
+/**
+ * @struct ra_usb_setup_t
+ * @brief Decoded 8-byte USB SETUP packet.
+ *
+ * @details Mirrors USB 2.0 chapter 9 layout. Populated by
+ * `ra_usb_read_setup` from the controller's USBREQ / USBVAL /
+ * USBINDX / USBLENG mirror registers.
+ */
+typedef struct {
+  uint8_t  bm_request_type; /**< Request direction / type / recipient. */
+  uint8_t  b_request;       /**< bRequest code.                        */
+  uint16_t w_value;         /**< wValue.                               */
+  uint16_t w_index;         /**< wIndex.                               */
+  uint16_t w_length;        /**< wLength.                              */
+} ra_usb_setup_t;
+
+/**
+ * @typedef ra_usb_event_fn_t
+ * @brief USB event callback signature.
+ *
+ * @param[in] ctx Caller-supplied context.
+ * @param[in] speed Which controller fired.
+ * @param[in] status_mask Snapshot of `INTSTS0` at dispatch time.
+ *
+ * @note Invoked from the dispatch site (typically ISR context).
+ */
+typedef void (*ra_usb_event_fn_t)(void* ctx, ra_usb_speed_t speed, uint16_t status_mask);
+
+/* =============================================================================
+ * Lifecycle
+ * =============================================================================
+ */
+
+/**
+ * @brief Bring up a USB controller in device mode.
+ *
+ * @details
+ * Mirrors FSP's `hw_usb_pmodule_init` for the chosen instance:
+ *
+ *  1. Releases the controller's MSTP gate.
+ *  2. Drives `SYSCFG.SCKE` high and waits until the clock is stable.
+ *  3. Clears `SYSCFG.DRPD` (host pull-down) and sets `SYSCFG.USBE`.
+ *  4. Sets `SYSCFG.HSE` for the HS instance only.
+ *  5. Programs the C/D0/D1 FIFOSEL access width to 16-bit.
+ *  6. Loads the default control pipe (DCP) max-packet size to 64.
+ *  7. Enables the device-mode interrupt set
+ *     (BEMPE | BRDYE | NRDYE | DVSE | CTRE | VBSE).
+ *
+ * D+ pull-up stays off; the caller raises it via
+ * `ra_usb_device_attach` once descriptors are wired up.
+ *
+ * @param[in] speed Which controller to bring up.
+ *
+ * @return `ra_err_t` error code.
+ * @retval k_ra_ok Controller ready, D+ pull-up off.
+ * @retval k_ra_err_invalid_arg `speed` out of range.
+ * @retval k_ra_err_hw_init_failed MSTP release failed.
+ *
+ * @pre Caller holds single-threaded init context (or IRQs masked).
+ * @pre `ra_mstp_init` and `ra_pwr_init` have run.
+ *
+ * @post Controller is clocked, D+ pull-up off, IRQs unmasked at
+ * controller level (NVIC line still owned by `ra_irq`).
+ * @post `ra_usb_get_device_state` returns
+ * `k_ra_usb_dev_state_powered`.
+ *
+ * @note Not thread-safe.
+ * @see ra_usb_device_attach
+ * @see ra_usb_device_deinit
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_usb_device_init(ra_usb_speed_t speed);
 
 /**
- * @brief Enable / disable the D+ pull-up (advertises attach to host).
- * @since 0.1.0
- */
-[[nodiscard]] ra_err_t ra_usb_device_attach(ra_usb_speed_t speed, bool attached);
-
-/**
- * @typedef ra_usb_event_fn_t
- * @brief USB event callback.
- */
-typedef void (*ra_usb_event_fn_t)(void* ctx, ra_usb_speed_t speed, uint16_t status_mask);
-
-/**
- * @brief Tear down a USB controller.
+ * @brief Tear down a USB controller and drop its MSTP reference.
+ *
+ * @param[in] speed Which controller to release.
+ *
+ * @return `ra_err_t` error code.
+ * @retval k_ra_ok Controller released.
+ * @retval k_ra_err_invalid_arg `speed` out of range.
+ *
+ * @pre Single-threaded shutdown context.
+ *
+ * @post `SYSCFG`, `INTENB0`, `INTENB1` all zero.
+ * @post Controller MSTP-gated.
+ *
+ * @note Not thread-safe.
+ * @see ra_usb_device_init
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_usb_device_deinit(ra_usb_speed_t speed);
 
 /**
- * @brief Read INTSTS0 mask for a controller.
+ * @brief Raise / drop the D+ pull-up to advertise the device to the host.
+ *
+ * @param[in] speed Which controller.
+ * @param[in] attached `true` to assert pull-up, `false` to drop.
+ *
+ * @return `ra_err_t` error code.
+ * @retval k_ra_ok Pull-up state updated.
+ * @retval k_ra_err_invalid_arg `speed` out of range.
+ *
+ * @pre `ra_usb_device_init` has been called for this `speed`.
+ *
+ * @post On success, `SYSCFG.DPRPU` matches `attached`.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_usb_device_attach(ra_usb_speed_t speed, bool attached);
+
+/* =============================================================================
+ * Status / state
+ * =============================================================================
+ */
+
+/**
+ * @brief Read raw `INTSTS0` snapshot.
+ *
+ * @param[in] speed Which controller.
+ * @param[out] out_mask Receives the current `INTSTS0`.
+ *
+ * @return `ra_err_t` error code.
+ * @retval k_ra_ok Mask returned.
+ * @retval k_ra_err_invalid_arg `speed` out of range.
+ * @retval k_ra_err_null_ptr `out_mask` was NULL.
+ *
+ * @pre `out_mask` non-NULL.
+ *
+ * @post No controller state mutated.
+ *
+ * @note Not thread-safe.
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_usb_get_status(ra_usb_speed_t speed, uint16_t* out_mask);
 
 /**
- * @brief Clear INTSTS0 bits.
+ * @brief Clear bits in `INTSTS0`.
+ *
+ * @param[in] speed Which controller.
+ * @param[in] mask Bits to clear.
+ *
+ * @return `ra_err_t` error code.
+ * @retval k_ra_ok Bits cleared.
+ * @retval k_ra_err_invalid_arg `speed` out of range.
+ *
+ * @pre None.
+ *
+ * @post `INTSTS0 & mask == 0`.
+ *
+ * @note Not thread-safe.
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_usb_clear_status(ra_usb_speed_t speed, uint16_t mask);
 
 /**
- * @brief Attach a USB event callback (shared across FS/HS).
+ * @brief Read the decoded device state from `INTSTS0.DVSQ[2:0]`.
+ *
+ * @param[in] speed Which controller.
+ * @param[out] out_state Receives the decoded state.
+ *
+ * @return `ra_err_t` error code.
+ * @retval k_ra_ok State read.
+ * @retval k_ra_err_invalid_arg `speed` out of range.
+ * @retval k_ra_err_null_ptr `out_state` was NULL.
+ *
+ * @pre `out_state` non-NULL.
+ *
+ * @post No controller state mutated.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_usb_get_device_state(ra_usb_speed_t speed, ra_usb_dev_state_t* out_state);
+
+/**
+ * @brief Program the device USB address into `USBADDR`.
+ *
+ * @details
+ * Called by the chapter-9 stack after a successful SET_ADDRESS
+ * SETUP completion. The controller answers SET_ADDRESS automatically
+ * before the status stage; this helper only stores the address so
+ * the host's subsequent IN tokens land on the right device.
+ *
+ * @param[in] speed Which controller.
+ * @param[in] address USB address (0..127).
+ *
+ * @return `ra_err_t` error code.
+ * @retval k_ra_ok Address written.
+ * @retval k_ra_err_invalid_arg `speed` out of range or address > 127.
+ *
+ * @pre Bus is in default state (post reset, pre SET_ADDRESS).
+ *
+ * @post `USBADDR.USBADDR[6:0] == address`.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_usb_set_address(ra_usb_speed_t speed, uint8_t address);
+
+/* =============================================================================
+ * Endpoints
+ * =============================================================================
+ */
+
+/**
+ * @brief Configure a non-control PIPE for IN or OUT bulk / interrupt /
+ * iso transfers.
+ *
+ * @details
+ * Programs `PIPESEL`, `PIPECFG`, `PIPEMAXP`, `PIPECTR[n]` for
+ * `pipe_num`. Mirrors FSP's `usb_cstd_pipe_table` writes condensed
+ * for the device-mode case. The pipe is left with PID = NAK so the
+ * stack can queue data with `ra_usb_queue_in` /
+ * `ra_usb_queue_out` before transitioning to BUF.
+ *
+ * @param[in] speed Which controller.
+ * @param[in] pipe_num PIPE number 1..9.
+ * @param[in] ep_addr Endpoint address (USB EP number, 1..15).
+ * @param[in] dir Endpoint direction.
+ * @param[in] type Endpoint type.
+ * @param[in] max_packet Maximum packet size.
+ *
+ * @return `ra_err_t` error code.
+ * @retval k_ra_ok Pipe configured.
+ * @retval k_ra_err_invalid_arg Pipe / EP / dir / type / size invalid.
+ *
+ * @pre `ra_usb_device_init` ran for this `speed`.
+ *
+ * @post Pipe responds NAK, software toggle cleared.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_usb_configure_endpoint(ra_usb_speed_t   speed,
+                                                 uint8_t          pipe_num,
+                                                 uint8_t          ep_addr,
+                                                 ra_usb_ep_dir_t  dir,
+                                                 ra_usb_ep_type_t type,
+                                                 uint16_t         max_packet);
+
+/**
+ * @brief Stall a configured endpoint.
+ *
+ * @param[in] speed Which controller.
+ * @param[in] pipe_num PIPE number 0..9 (0 = DCP).
+ *
+ * @return `ra_err_t` error code.
+ * @retval k_ra_ok PID set to STALL.
+ * @retval k_ra_err_invalid_arg Pipe out of range.
+ *
+ * @pre `ra_usb_device_init` ran for this `speed`.
+ *
+ * @post Pipe responds STALL until the stack clears the halt.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_usb_stall_endpoint(ra_usb_speed_t speed, uint8_t pipe_num);
+
+/**
+ * @brief Queue an IN transfer (device -> host) on `pipe_num`.
+ *
+ * @details
+ * Selects `pipe_num` on `CFIFOSEL`, waits for `FRDY`, writes
+ * `data[0..len-1]` 16-bit-aligned, asserts `BVAL`, and switches the
+ * pipe PID to BUF so the controller hands the buffer to the SIE on
+ * the next IN token. Short / zero-length packets are handled
+ * naturally because `BVAL` is asserted regardless of length.
+ *
+ * @param[in] speed Which controller.
+ * @param[in] pipe_num PIPE number 1..9.
+ * @param[in] data Buffer to transmit (NULL allowed iff len == 0).
+ * @param[in] len Transmit byte count, 0..max_packet of the pipe.
+ *
+ * @return `ra_err_t` error code.
+ * @retval k_ra_ok Transfer queued.
+ * @retval k_ra_err_invalid_arg Pipe / len / data combination invalid.
+ * @retval k_ra_err_hw_timeout `FRDY` never asserted.
+ *
+ * @pre Pipe previously configured via
+ * `ra_usb_configure_endpoint(..., dir = IN, ...)`.
+ *
+ * @post Pipe PID set to BUF.
+ * @post `BVAL` asserted on the FIFO port.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t
+ra_usb_queue_in(ra_usb_speed_t speed, uint8_t pipe_num, const uint8_t* data, uint16_t len);
+
+/**
+ * @brief Drain an OUT transfer (host -> device) from `pipe_num`.
+ *
+ * @details
+ * Counterpart to `ra_usb_queue_in`. Selects `pipe_num`, waits for
+ * `FRDY`, reads up to `*inout_len` bytes from the FIFO, asserts
+ * `BCLR` to release the buffer, and re-arms the pipe PID to BUF so
+ * the next OUT token is acknowledged.
+ *
+ * @param[in] speed Which controller.
+ * @param[in] pipe_num PIPE number 1..9.
+ * @param[out] out_buf Receive buffer.
+ * @param[in,out] inout_len On entry: capacity. On exit: bytes read.
+ *
+ * @return `ra_err_t` error code.
+ * @retval k_ra_ok Bytes read.
+ * @retval k_ra_err_no_data Buffer was empty.
+ * @retval k_ra_err_invalid_arg Pipe / pointers invalid.
+ * @retval k_ra_err_hw_timeout `FRDY` never asserted.
+ *
+ * @pre Pipe previously configured for OUT.
+ * @pre `out_buf`, `inout_len` non-NULL, `*inout_len > 0`.
+ *
+ * @post Pipe PID set to BUF.
+ * @post `*inout_len` reflects actual byte count delivered.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t
+ra_usb_queue_out(ra_usb_speed_t speed, uint8_t pipe_num, uint8_t* out_buf, uint16_t* inout_len);
+
+/* =============================================================================
+ * Control transfers (EP0 / DCP)
+ * =============================================================================
+ */
+
+/**
+ * @brief Snapshot the current SETUP packet from the controller.
+ *
+ * @details
+ * Reads the four mirror registers `USBREQ`, `USBVAL`, `USBINDX`,
+ * `USBLENG` and clears `INTSTS0.VALID`. The mirrors are valid only
+ * while `INTSTS0.VALID == 1`; the stack must call this from the
+ * `CTRT` ISR path before re-enabling further SETUP capture.
+ *
+ * @param[in] speed Which controller.
+ * @param[out] out_setup Decoded 8-byte SETUP packet.
+ *
+ * @return `ra_err_t` error code.
+ * @retval k_ra_ok SETUP captured.
+ * @retval k_ra_err_invalid_arg `speed` out of range.
+ * @retval k_ra_err_null_ptr `out_setup` was NULL.
+ * @retval k_ra_err_no_data `INTSTS0.VALID` was clear.
+ *
+ * @pre `out_setup` non-NULL.
+ *
+ * @post `INTSTS0.VALID` cleared on success.
+ *
+ * @note Call from `CTRT`-handling ISR only.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_usb_read_setup(ra_usb_speed_t speed, ra_usb_setup_t* out_setup);
+
+/**
+ * @brief Issue a control-transfer status response on EP0.
+ *
+ * @details
+ * Wraps the `DCPCTR.PID` + `DCPCTR.CCPL` dance documented in HUM
+ * Ch 36.2.21. Pass `accept = true` to drive ACK / move to the status
+ * stage; `accept = false` issues STALL on EP0.
+ *
+ * @param[in] speed Which controller.
+ * @param[in] accept `true` for ACK, `false` for STALL.
+ *
+ * @return `ra_err_t` error code.
+ * @retval k_ra_ok Response written.
+ * @retval k_ra_err_invalid_arg `speed` out of range.
+ *
+ * @pre `ra_usb_device_init` ran for this `speed`.
+ *
+ * @post DCPCTR PID set accordingly; CCPL pulsed on accept.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_usb_control_response(ra_usb_speed_t speed, bool accept);
+
+/* =============================================================================
+ * IRQ delivery
+ * =============================================================================
+ */
+
+/**
+ * @brief Install (or detach) the shared USB event handler.
+ *
+ * @param[in] fn Callback. NULL detaches.
+ * @param[in] ctx Context passed to `fn`.
+ *
+ * @return `ra_err_t` error code.
+ * @retval k_ra_ok Handler installed.
+ *
+ * @pre None.
+ *
+ * @post Subsequent `ra_usb_dispatch` calls route through `fn`.
+ *
+ * @note Not thread-safe.
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_usb_attach_handler(ra_usb_event_fn_t fn, void* ctx);
 
 /**
- * @brief Dispatch a USB event -- snapshot + fire callback.
+ * @brief Snapshot `INTSTS0` and fire the installed event handler.
+ *
+ * @details
+ * Reads `INTSTS0`, clears it, and invokes the registered callback
+ * with the snapshot. Designed to be called from the controller's
+ * NVIC ISR (USBFS_INT or USBHS_INT).
+ *
+ * @param[in] speed Which controller fired.
+ *
+ * @pre None.
+ *
+ * @post `INTSTS0` zeroed.
+ *
+ * @note Re-entrant only across instances; not within a single
+ * controller.
  * @since 0.1.0
  */
 void ra_usb_dispatch(ra_usb_speed_t speed);
 
+/* =============================================================================
+ * Power
+ * =============================================================================
+ */
+
 /**
- * @brief Put the USB controller into MSTP-gated stop.
+ * @brief Drop the controller's MSTP gate without touching SYSCFG.
+ *
+ * @param[in] speed Which controller.
+ *
+ * @return `ra_err_t` error code.
+ * @retval k_ra_ok MSTP gate set.
+ * @retval k_ra_err_invalid_arg `speed` out of range.
+ *
+ * @pre None.
+ *
+ * @post Controller is power-gated; register access is undefined.
+ *
+ * @note Not thread-safe.
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_usb_enter_stop(ra_usb_speed_t speed);
 
 /**
- * @brief Exit MSTP-gated stop.
+ * @brief Re-enable the controller's MSTP gate (counterpart to
+ * `ra_usb_enter_stop`).
+ *
+ * @param[in] speed Which controller.
+ *
+ * @return `ra_err_t` error code.
+ * @retval k_ra_ok MSTP gate cleared.
+ * @retval k_ra_err_invalid_arg `speed` out of range.
+ *
+ * @pre None.
+ *
+ * @post Controller registers are accessible.
+ *
+ * @note Not thread-safe.
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_usb_exit_stop(ra_usb_speed_t speed);
