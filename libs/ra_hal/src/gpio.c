@@ -237,11 +237,23 @@ ra_err_t ra_pfs_route_peripheral(ra_port_pin_t pin, ra_psel_t psel, const char* 
     return k_ra_err_hw_unmapped;
   }
 
-  /* PMR=1 (peripheral), PSEL=requested code, everything else reset. */
-  const uint32_t new_val = k_ra_pfs_mask_pmr | (((uint32_t)psel) << (uint32_t)k_ra_pfs_bit_psel0);
+  /* HUM Ch 20.2.4 "Notes on the PmnPFS Register Setting" p 859 -- PMR
+   * MUST be cleared before specifying a new PSEL, otherwise the pin can
+   * glitch through whatever the previous peripheral function happened
+   * to be while the new PSEL is decoded. The correct sequence is:
+   *   1. PMR := 0    (force GPIO mode)
+   *   2. PFS := PSEL only, PMR still 0  (programme the new function)
+   *   3. PFS := PSEL | PMR=1            (hand the pin to the peripheral)
+   * @note PMSAR defaults to all-Secure on RA8D2 reset, so writing PWPR
+   *       (NS) and PWPRS (S) unconditionally is harmless: the chip
+   *       silently drops whichever side does not own the port. */
+  const uint32_t psel_only = (((uint32_t)psel) << (uint32_t)k_ra_pfs_bit_psel0);
+  const uint32_t new_val   = k_ra_pfs_mask_pmr | psel_only;
 
   ra_pfs_pwpr_unlock();
-  *pfs = new_val;
+  *pfs = 0U;        /* HUM Ch 20.2.4 p 859 step 1: PMR = 0. */
+  *pfs = psel_only; /* HUM Ch 20.2.4 p 859 step 2: PSEL with PMR=0. */
+  *pfs = new_val;   /* HUM Ch 20.2.4 p 859 step 3: PSEL | PMR=1. */
   ra_pfs_pwpr_lock();
 
   ra_log_info_val(s_tag, "peripheral route pin", (uint32_t)pin);
