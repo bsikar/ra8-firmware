@@ -1,12 +1,19 @@
 /**
  * @file test_ra_adc.c
- * @brief Unit tests for adc.c (ADC_B polling driver)
+ * @brief Unit tests for adc.c (ADC_B polling driver, FSP-verified layout)
  *
  * @details
- * The audit rewrote the driver to use the real RA8D2 ADC_B
- * register layout (ADCLKENR / ADMDR / ADCHCR[24] / ADDR[23]).
- * These tests verify the driver touches the right registers and
- * that the simulator-backed mmap window responds correctly.
+ * The ADC_B driver was re-derived against FSP ``R_ADC_B0_Type``
+ * (R7KA8D2KF_core0.h lines 20460-24938) which corrected the
+ * register layout away from the imaginary CVEN / RESSEL / ADTRGMD /
+ * ADSCANMD / ADBUSY bit map. These tests verify:
+ *   - ADCLKENR is set after init
+ *   - ADMDR encodes ADMD0 unit mode (resolution / scan)
+ *   - ADSGER enables the default scan group (group 0)
+ *   - ``ra_adc_read_channel`` programmes ADCHCRn and kicks ADSTR[0]
+ *   - The driver polls ADSR.ADACT0 and reads ADDR[ch].DATA on success
+ *   - Out-of-range channels and the ADCHCR-valid-but-ADDR-OOB
+ *     boundary (channel 23) return ``k_ra_err_out_of_range``
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -22,22 +29,21 @@
 #include "ra_sim_mmap.h"
 #include "unity_minimal.h"
 
-static uint8_t s_alarm_ch;
+/* ---------------------------------------------------------------------------
+ * Sim helpers
+ * --------------------------------------------------------------------------- */
 
 static void sigalarm_handler(int sig)
 {
   (void)sig;
-  /* Mimic hardware: clear CVEN on the in-flight channel so the driver's
-   * busy-wait can exit. */
-  volatile uint32_t* chcr = ra_adc_b_adchcr(s_alarm_ch);
-  if (chcr != nullptr) {
-    *chcr = *chcr & ~(uint32_t)k_ra_adchcr_mask_cven;
-  }
+  /* Mimic hardware: clear ADSR.ADACT0 so the driver's busy-wait can exit. */
+  *ra_adc_b_adsr() = *ra_adc_b_adsr() & ~k_ra_adsr_mask_adact0;
 }
 
-static void arm_cven_clear_alarm(uint8_t ch)
+static void arm_adact_clear_alarm(void)
 {
-  s_alarm_ch = ch;
+  /* Pre-set ADACT0 high so the loop spins at least once. */
+  *ra_adc_b_adsr() = k_ra_adsr_mask_adact0;
   struct sigaction sa;
   sa.sa_handler = sigalarm_handler;
   sigemptyset(&sa.sa_mask);
@@ -62,6 +68,10 @@ static void disarm_alarm(void)
   (void)sigaction(SIGALRM, &sa, nullptr);
 }
 
+/* ---------------------------------------------------------------------------
+ * Test fixtures
+ * --------------------------------------------------------------------------- */
+
 typedef enum : uint8_t {
   k_ra_adc_test_ch_zero  = 0U,
   k_ra_adc_test_ch_valid = 5U,
@@ -75,15 +85,29 @@ typedef enum : uint16_t {
   k_ra_adc_test_result_b = 0x0BEEU,
 } ra_adc_test_val_t;
 
+typedef enum : uint32_t {
+  k_ra_adc_test_default_group_mask = 0x00000001UL, /**< ADSGER bit for group 0. */
+  k_ra_adc_test_admd0_one_cycle    = 0x00000001UL, /**< Expected ADMDR.ADMD0 value. */
+  k_ra_adc_test_admd0_continuous   = 0x00000002UL,
+} ra_adc_test_const_t;
+
+/* ---------------------------------------------------------------------------
+ * Tests
+ * --------------------------------------------------------------------------- */
+
 static void test_init_happy(void)
 {
   TEST_BEGIN("adc init happy");
   ra_sim_mmap_reset();
 
   TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_adc_init());
-  TEST_ASSERT((*ra_adc_b_adclkenr() & (uint32_t)k_ra_adclkenr_mask_clken) != 0U);
-  /* Default ADMDR is zero (single-shot, software trigger). */
-  TEST_ASSERT_EQ((int)0, (int)*ra_adc_b_admdr());
+  TEST_ASSERT((*ra_adc_b_adclkenr() & k_ra_adclkenr_mask_clken) != 0U);
+  /* ADMDR carries the one-cycle mode for ADC0. */
+  TEST_ASSERT_EQ((int)k_ra_adc_test_admd0_one_cycle,
+                 (int)(*ra_adc_b_admdr() & k_ra_admdr_mask_admd0));
+  /* ADSGER enables the default scan group. */
+  TEST_ASSERT_EQ((int)k_ra_adc_test_default_group_mask,
+                 (int)(*ra_adc_b_adsger() & k_ra_adsger_mask_sgren));
   TEST_END("adc init happy");
 }
 
@@ -92,8 +116,7 @@ static void test_read_channel_null_out(void)
   TEST_BEGIN("adc read_channel null out");
   ra_sim_mmap_reset();
 
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr,
-                 (int)ra_adc_read_channel((uint8_t)k_ra_adc_test_ch_zero, nullptr));
+  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_adc_read_channel(k_ra_adc_test_ch_zero, nullptr));
   TEST_END("adc read_channel null out");
 }
 
@@ -103,8 +126,7 @@ static void test_read_channel_out_of_range(void)
   ra_sim_mmap_reset();
 
   uint16_t raw = 0U;
-  TEST_ASSERT_EQ((int)k_ra_err_out_of_range,
-                 (int)ra_adc_read_channel((uint8_t)k_ra_adc_test_ch_oor, &raw));
+  TEST_ASSERT_EQ((int)k_ra_err_out_of_range, (int)ra_adc_read_channel(k_ra_adc_test_ch_oor, &raw));
   TEST_END("adc read_channel out of range");
 }
 
@@ -114,15 +136,14 @@ static void test_read_channel_huge(void)
   ra_sim_mmap_reset();
 
   uint16_t raw = 0U;
-  TEST_ASSERT_EQ((int)k_ra_err_out_of_range,
-                 (int)ra_adc_read_channel((uint8_t)k_ra_adc_test_ch_huge, &raw));
+  TEST_ASSERT_EQ((int)k_ra_err_out_of_range, (int)ra_adc_read_channel(k_ra_adc_test_ch_huge, &raw));
   TEST_END("adc read_channel huge ch");
 }
 
 /**
  * @brief Hits the adc.c branch where ADCHCR[ch] is valid but ADDR[ch]
- * is out-of-range (channel 23: FSP has 24 ADCHCR slots but
- * only 23 ADDR result slots).
+ *        is out-of-range (channel 23: FSP has 24 ADCHCR slots but
+ *        only 23 ADDR result slots).
  */
 static void test_read_channel_hcr_but_no_result(void)
 {
@@ -135,37 +156,43 @@ static void test_read_channel_hcr_but_no_result(void)
 }
 
 /**
- * @brief Drive a read with the SIGALRM sim helper clearing CVEN
- * mid-poll to mimic hardware auto-clear.
+ * @brief Drive a read with the SIGALRM sim helper clearing ADACT0
+ *        mid-poll to mimic hardware auto-clear.
  */
 static void test_read_channel_completes_via_alarm(void)
 {
-  TEST_BEGIN("adc read_channel: CVEN auto-clear (sim alarm)");
+  TEST_BEGIN("adc read_channel: ADACT0 auto-clear (sim alarm)");
   ra_sim_mmap_reset();
 
-  *ra_adc_b_addr((uint8_t)k_ra_adc_test_ch_zero) = (uint32_t)k_ra_adc_test_result_a;
+  *ra_adc_b_addr(k_ra_adc_test_ch_zero) = (uint32_t)k_ra_adc_test_result_a;
 
-  arm_cven_clear_alarm((uint8_t)k_ra_adc_test_ch_zero);
+  arm_adact_clear_alarm();
   uint16_t       raw = 0U;
-  const ra_err_t err = ra_adc_read_channel((uint8_t)k_ra_adc_test_ch_zero, &raw);
+  const ra_err_t err = ra_adc_read_channel(k_ra_adc_test_ch_zero, &raw);
   disarm_alarm();
 
   TEST_ASSERT_EQ((int)k_ra_ok, (int)err);
   TEST_ASSERT_EQ((int)k_ra_adc_test_result_a, (int)raw);
-  TEST_END("adc read_channel: CVEN auto-clear (sim alarm)");
+  /* ADCHCRn[0] should now have CNVCS == 0 (channel 0 mapped onto itself). */
+  const uint32_t chcr = *ra_adc_b_adchcr(k_ra_adc_test_ch_zero);
+  TEST_ASSERT_EQ(0, (int)((chcr & k_ra_adchcr_mask_cnvcs) >> (uint32_t)k_ra_adchcr_bit_cnvcs));
+  TEST_END("adc read_channel: ADACT0 auto-clear (sim alarm)");
 }
 
 /**
  * @brief Without the alarm the driver bounded-polls then reports
- * k_ra_err_hw_timeout.
+ *        k_ra_err_hw_timeout.
  */
 static void test_read_channel_timeout(void)
 {
   TEST_BEGIN("adc read_channel: poll timeout");
   ra_sim_mmap_reset();
 
+  /* Force ADACT0 stuck high so the busy poll never exits. */
+  *ra_adc_b_adsr() = k_ra_adsr_mask_adact0;
+
   uint16_t       raw = 0xBEEFU;
-  const ra_err_t err = ra_adc_read_channel((uint8_t)k_ra_adc_test_ch_valid, &raw);
+  const ra_err_t err = ra_adc_read_channel(k_ra_adc_test_ch_valid, &raw);
   TEST_ASSERT_EQ((int)k_ra_err_hw_timeout, (int)err);
   TEST_ASSERT_EQ(0, (int)raw);
   TEST_END("adc read_channel: poll timeout");
@@ -190,12 +217,12 @@ static void test_init_configured(void)
   const ra_adc_cfg_t cfg = make_cfg();
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_adc_init_configured(&cfg));
 
-  /* Every ADCHCR slot should now have RESSEL programmed to 14-bit. */
-  for (uint8_t ch = 0U; ch < (uint8_t)k_ra_adc_b_max_channels; ++ch) {
-    volatile uint32_t* chcr = ra_adc_b_adchcr(ch);
-    const uint32_t     ressel =
-      (*chcr & (uint32_t)k_ra_adchcr_mask_ressel) >> (uint32_t)k_ra_adchcr_bit_ressel0;
-    TEST_ASSERT_EQ((int32_t)k_ra_adc_res_14bit, (int32_t)ressel);
+  /* ADMDR.ADMD0 must encode one-cycle mode (single-shot). */
+  TEST_ASSERT_EQ((int32_t)k_ra_adc_test_admd0_one_cycle,
+                 (int32_t)(*ra_adc_b_admdr() & k_ra_admdr_mask_admd0));
+  /* All 24 ADCHCR slots should have been zeroed. */
+  for (uint8_t ch = 0U; ch < k_ra_adc_b_max_channels; ++ch) {
+    TEST_ASSERT_EQ(0, (int32_t)*ra_adc_b_adchcr(ch));
   }
   TEST_END("adc init configured: 14b right-aligned");
 }
@@ -209,21 +236,18 @@ static void test_init_configured_null(void)
   TEST_END("adc init configured null");
 }
 
-static void test_init_configured_scan_and_ext(void)
+static void test_init_configured_scan(void)
 {
-  TEST_BEGIN("adc init configured scan/ext");
+  TEST_BEGIN("adc init configured: scan mode");
   ra_sim_mmap_reset();
 
   ra_adc_cfg_t cfg = make_cfg();
   cfg.scan_mode    = true;
-  cfg.trigger      = k_ra_adc_trig_elc;
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_adc_init_configured(&cfg));
-  /* ADMDR bit 0 (ADTRGMD) set for external/ELC trigger, bit 1 (ADSCANMD)
-   * set for scan mode. */
-  const uint32_t admdr = *ra_adc_b_admdr();
-  TEST_ASSERT((admdr & (uint32_t)k_ra_admdr_mask_adtrgmd) != 0U);
-  TEST_ASSERT((admdr & (uint32_t)k_ra_admdr_mask_adscanmd) != 0U);
-  TEST_END("adc init configured scan/ext");
+  /* ADMDR.ADMD0 must encode the continuous-scan mode code. */
+  TEST_ASSERT_EQ((int32_t)k_ra_adc_test_admd0_continuous,
+                 (int32_t)(*ra_adc_b_admdr() & k_ra_admdr_mask_admd0));
+  TEST_END("adc init configured: scan mode");
 }
 
 static void test_deinit(void)
@@ -235,26 +259,25 @@ static void test_deinit(void)
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_adc_init_configured(&cfg));
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_adc_deinit());
   TEST_ASSERT_EQ((int32_t)0, (int32_t)*ra_adc_b_admdr());
+  TEST_ASSERT_EQ((int32_t)0, (int32_t)*ra_adc_b_adsger());
   TEST_ASSERT_EQ((int32_t)0, (int32_t)*ra_adc_b_adclkenr());
   TEST_END("adc deinit");
 }
 
 static void test_set_resolution(void)
 {
-  TEST_BEGIN("adc set_resolution applies to all channels");
+  TEST_BEGIN("adc set_resolution updates ADMD0");
   ra_sim_mmap_reset();
 
   const ra_adc_cfg_t cfg = make_cfg();
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_adc_init_configured(&cfg));
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_adc_set_resolution(k_ra_adc_res_12bit));
 
-  for (uint8_t ch = 0U; ch < (uint8_t)k_ra_adc_b_max_channels; ++ch) {
-    volatile uint32_t* chcr = ra_adc_b_adchcr(ch);
-    const uint32_t     ressel =
-      (*chcr & (uint32_t)k_ra_adchcr_mask_ressel) >> (uint32_t)k_ra_adchcr_bit_ressel0;
-    TEST_ASSERT_EQ((int32_t)k_ra_adc_res_12bit, (int32_t)ressel);
-  }
-  TEST_END("adc set_resolution applies to all channels");
+  /* ADMD0 should still hold the one-cycle code (every public resolution
+   * selector currently maps to one-cycle). */
+  TEST_ASSERT_EQ((int32_t)k_ra_adc_test_admd0_one_cycle,
+                 (int32_t)(*ra_adc_b_admdr() & k_ra_admdr_mask_admd0));
+  TEST_END("adc set_resolution updates ADMD0");
 }
 
 static void test_set_resolution_bad(void)
@@ -272,17 +295,18 @@ static void test_status_read_and_clear(void)
   TEST_BEGIN("adc status read + clear");
   ra_sim_mmap_reset();
 
-  *ra_adc_b_admdr()   = (uint32_t)k_ra_admdr_mask_adbusy;
+  /* Pre-set ADSR.ADACT0 (busy) and ADINTCR.ADIE0 (IE) to assert. */
+  *ra_adc_b_adsr()    = k_ra_adsr_mask_adact0;
   *ra_adc_b_adintcr() = 1UL;
 
   uint16_t mask = 0U;
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_adc_get_status(&mask));
-  TEST_ASSERT((mask & (uint16_t)k_ra_adc_status_busy) != 0U);
-  TEST_ASSERT((mask & (uint16_t)k_ra_adc_status_ie) != 0U);
+  TEST_ASSERT((mask & k_ra_adc_status_busy) != 0U);
+  TEST_ASSERT((mask & k_ra_adc_status_ie) != 0U);
 
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_adc_clear_status());
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_adc_get_status(&mask));
-  TEST_ASSERT((mask & (uint16_t)k_ra_adc_status_busy) == 0U);
+  TEST_ASSERT((mask & k_ra_adc_status_busy) == 0U);
   TEST_END("adc status read + clear");
 }
 
@@ -316,10 +340,10 @@ static void test_attach_and_dispatch(void)
   TEST_ASSERT_EQ((int32_t)k_ra_ok,
                  (int32_t)ra_adc_attach_handler(stub_adc_cb, (void*)(uintptr_t)0xA5A5U));
 
-  volatile uint32_t* addr = ra_adc_b_addr((uint8_t)k_ra_adc_test_ch_valid);
+  volatile uint32_t* addr = ra_adc_b_addr(k_ra_adc_test_ch_valid);
   *addr                   = (uint32_t)k_ra_adc_test_result_a;
 
-  ra_adc_dispatch_cnv_end((uint8_t)k_ra_adc_test_ch_valid);
+  ra_adc_dispatch_cnv_end(k_ra_adc_test_ch_valid);
   TEST_ASSERT_EQ((int32_t)1, (int32_t)s_adc_cb_count);
   TEST_ASSERT_EQ((int32_t)k_ra_adc_test_result_a, (int32_t)s_adc_cb_last_result);
   TEST_END("adc attach + dispatch");
@@ -332,8 +356,8 @@ static void test_dispatch_no_handler(void)
   s_adc_cb_count = 0U;
 
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_adc_attach_handler(nullptr, nullptr));
-  ra_adc_dispatch_cnv_end((uint8_t)k_ra_adc_test_ch_valid);
-  ra_adc_dispatch_cnv_end((uint8_t)k_ra_adc_test_ch_oor);
+  ra_adc_dispatch_cnv_end(k_ra_adc_test_ch_valid);
+  ra_adc_dispatch_cnv_end(k_ra_adc_test_ch_oor);
   TEST_ASSERT_EQ((int32_t)0, (int32_t)s_adc_cb_count);
   TEST_END("adc dispatch no handler");
 }
@@ -361,7 +385,7 @@ int32_t main(void)
   test_read_channel_timeout();
   test_init_configured();
   test_init_configured_null();
-  test_init_configured_scan_and_ext();
+  test_init_configured_scan();
   test_deinit();
   test_set_resolution();
   test_set_resolution_bad();

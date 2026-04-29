@@ -15,17 +15,54 @@
 
 static void test_init_clears_irqcr_and_nmi(void)
 {
-  TEST_BEGIN("ra_icu_init: IRQCR + NMIER cleared");
+  TEST_BEGIN("ra_icu_init: IRQCR + NMIER + WUPEN cleared");
   ra_sim_mmap_reset();
 
-  /* Pre-pollute IRQCR0 and NMIER so we can observe the clear. */
-  *ra_icu_irqcr(0U) = 0xFFU;
-  *ra_icu_nmier()   = 0x1FFFFFUL;
+  /* Pre-pollute IRQCR0, IRQCR16 (IRQCRb[0]), NMIER, WUPEN0, WUPEN1 so
+   * we can observe the clear. */
+  *ra_icu_irqcr(0U)  = 0xFFU;
+  *ra_icu_irqcr(16U) = 0xFFU;
+  *ra_icu_nmier()    = 0x1FFFFFUL;
+  *ra_icu_wupen0()   = 0xCAFEBABEUL;
+  *ra_icu_wupen1()   = 0xDEADBEEFUL;
 
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_icu_init());
   TEST_ASSERT_EQ(0, (int32_t)*ra_icu_irqcr(0U));
+  TEST_ASSERT_EQ(0, (int32_t)*ra_icu_irqcr(16U));
   TEST_ASSERT_EQ((int64_t)0UL, (int64_t)*ra_icu_nmier());
-  TEST_END("ra_icu_init: IRQCR + NMIER cleared");
+  TEST_ASSERT_EQ((int64_t)0UL, (int64_t)*ra_icu_wupen0());
+  TEST_ASSERT_EQ((int64_t)0UL, (int64_t)*ra_icu_wupen1());
+  TEST_END("ra_icu_init: IRQCR + NMIER + WUPEN cleared");
+}
+
+static void test_ielsr_mask_is_10_bits(void)
+{
+  TEST_BEGIN("ielsr IELS mask is 10 bits (FSP cross-check)");
+  /* RA8D2 FSP R_ICU_Type IELSR_b shows IELS : 10 at [9:0].  Make sure
+   * our mask includes bit 9. */
+  TEST_ASSERT_EQ((int32_t)0x3FF, (int32_t)k_ra_ielsr_iels_mask);
+  TEST_END("ielsr IELS mask is 10 bits (FSP cross-check)");
+}
+
+static void test_configure_irq_pin_irqcrb(void)
+{
+  TEST_BEGIN("ra_icu_configure_irq_pin: IRQCRb channel 20");
+  ra_sim_mmap_reset();
+  (void)ra_icu_init();
+
+  const ra_icu_irq_cfg_t cfg = {
+    .sense      = k_ra_icu_irqmd_both,
+    .filter_div = k_ra_icu_fclksel_pclkb_64,
+    .filter_en  = true,
+  };
+  /* Channel 20 (IRQCRb[4]) lives at base + 0x14 + 4 = base + 0x18. */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_icu_configure_irq_pin(20U, &cfg));
+
+  uint8_t val = 0U;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_icu_read_irqcr(20U, &val));
+  /* Expected: IRQMD=10 (both), FCLKSEL=11 (PCLKB/64) at bit 4, FLTEN=1 at bit 7. */
+  TEST_ASSERT_EQ((int32_t)((2U << 0) | (3U << 4) | (1U << 7)), (int32_t)val);
+  TEST_END("ra_icu_configure_irq_pin: IRQCRb channel 20");
 }
 
 static void test_configure_irq_pin(void)
@@ -60,11 +97,12 @@ static void test_configure_irq_pin_bad_inputs(void)
     .filter_en  = false,
   };
   TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_icu_configure_irq_pin(0U, nullptr));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_icu_configure_irq_pin(20U, &cfg));
+  /* 33 is past the 32-channel RA8D2 limit (FSP BSP_FEATURE_ICU_IRQ_CHANNELS_MASK == 0xFFFFFFFF). */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_icu_configure_irq_pin(33U, &cfg));
 
   uint8_t val = 0U;
   TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_icu_read_irqcr(0U, nullptr));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_icu_read_irqcr(20U, &val));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_icu_read_irqcr(33U, &val));
   TEST_END("ra_icu_configure_irq_pin: bad inputs rejected");
 }
 
@@ -254,7 +292,9 @@ int32_t main(void)
   test_init_clears_irqcr_and_nmi();
   test_configure_irq_pin();
   test_configure_irq_pin_bad_inputs();
+  test_configure_irq_pin_irqcrb();
   test_nmi_enable_disable_clear();
+  test_ielsr_mask_is_10_bits();
   (void)fprintf(stderr, "[OK  ] test_ra_icu.c\n");
   return 0;
 }
