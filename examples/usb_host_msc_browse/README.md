@@ -1,0 +1,83 @@
+# usb_host_msc_browse
+
+Native USB **host-mode** MSC (Mass Storage Class) browser for the
+EK-RA8D2. Plug a USB thumb drive into the board's USB-HS Type-C jack
+(J7), and the firmware enumerates it, runs a SCSI INQUIRY ->
+READ_CAPACITY(10) -> READ(10) sequence on LBA 0, and dumps the first
+64 bytes of the device's MBR over the J-Link OB CDC virtual COM port.
+
+This is the hardware-test counterpart to the host-side MSC class
+layer in `libs/ra_hal/src/ra_usb_hmsc.c`.
+
+## What you need
+
+- **EK-RA8D2** with the on-board J-Link OB powered up via the J10
+  Type-C cable (J10 also powers the board).
+- **A USB Type-C cable** for J7.
+- **A USB mass-storage device** (thumb drive, USB SSD enclosure, ...).
+  It must enumerate as `class=0x08 / subclass=0x06 / protocol=0x50`
+  (Bulk-Only Transport SCSI) -- the overwhelming majority of consumer
+  thumb drives qualify.
+- **A serial terminal** (picocom / screen / minicom) to read the
+  J-Link OB CDC log channel at 115200 8N1.
+
+## Test recipe
+
+1. Build + flash:
+
+   ```sh
+   make usb_host_msc_browse
+   make -C examples/usb_host_msc_browse flash
+   ```
+
+2. Open the J-Link OB CDC port at 115200 8N1:
+
+   ```sh
+   # macOS:
+   picocom -b 115200 /dev/cu.usbmodem<serial>
+   # Linux:
+   picocom -b 115200 /dev/ttyACM0
+   ```
+
+   You should see:
+
+   ```
+   ra8d2 host: ready, plug a USB drive into J7
+   ```
+
+3. Plug a USB thumb drive into J7. After enumeration finishes
+   (typically 100 - 500 ms) the firmware prints:
+
+   ```
+   ra8d2 host: device attached vid=0xXXXX pid=0xXXXX max-lun=0
+   ra8d2 host: INQUIRY vendor="..." product="..." rev="..."
+   ra8d2 host: capacity blocks=N block_size=512
+   ra8d2 host: MBR sector 0 first 64 bytes:
+   EB 58 90 4D 53 44 4F 53 35 2E 30 00 02 08 20 00
+   02 00 00 00 00 F8 00 00 3F 00 FF 00 00 00 00 00
+   ...
+   ```
+
+   `LED1` (P6_00) lights solid on attach. `LED2` (P3_03) blinks once
+   per SCSI op (3 blinks total: INQUIRY, READ_CAPACITY, READ(10)).
+
+   The sequence runs once per attach. To rerun: replug the drive and
+   reset the EVM.
+
+## Pinout
+
+| Net               | Pin     | PFS PSEL                | Notes                     |
+|-------------------|---------|-------------------------|---------------------------|
+| SCI8 TXD8 (log)   | PD_02   | k_ra_psel_sci_async (4) | Same as `uart_hello`.     |
+| SCI8 RXD8 (log)   | PD_03   | k_ra_psel_sci_async (4) | Same as `uart_hello`.     |
+| USBHS_VBUS sense  | P4_08   | 0x14 (USBHS)            | Only PFS-muxed HS pin.    |
+| USBHSDP / USBHSDM | dedi.   | none                    | Hardwired HS PHY balls.   |
+| LED1 (attach)     | P6_00   | k_ra_psel_gpio (0)      | Lights solid on attach.   |
+| LED2 (SCSI op)    | P3_03   | k_ra_psel_gpio (0)      | Blinks per SCSI op.       |
+
+## Build + flash
+
+```sh
+make usb_host_msc_browse                     # cross-compile
+make -C examples/usb_host_msc_browse flash   # flash via J-Link OB
+```
