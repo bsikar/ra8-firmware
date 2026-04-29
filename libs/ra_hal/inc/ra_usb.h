@@ -1,19 +1,24 @@
 /**
  * @file ra_usb.h
- * @brief Native USB device-mode controller driver public API
+ * @brief Native USB controller driver public API (device + host modes)
  *
  * @details
- * Hand-written, FSP-equivalent device-mode driver for the two USB
- * controllers on the Renesas RA8D2 (USBFS @ 0x40250000, USBHS @
- * 0x40351000). Mirrors the device-side flow of FSP's
- * `r_usb_basic` / `r_usb_pdriver.c` but compiled as part of this
- * tree, with no Renesas FSP, CherryUSB, or TinyUSB binaries pulled
- * in. The class-layer split lives in `ra_usb_cdc.{h,c}`.
+ * Hand-written, FSP-equivalent driver for the two USB controllers on
+ * the Renesas RA8D2 (USBFS @ 0x40250000, USBHS @ 0x40351000). Mirrors
+ * the bring-up flow of FSP's `r_usb_basic` /
+ * `r_usb_pdriver.c` (device) and `r_usb_hreg_access.c` (host) but
+ * compiled as part of this tree, with no Renesas FSP, CherryUSB, or
+ * TinyUSB binaries pulled in. The class-layer splits live in
+ * `ra_usb_cdc.{h,c}` (device-side CDC ACM) and `ra_usb_hcdc.{h,c}`
+ * (host-side CDC ACM).
  *
  * ## Surface
  *
- * - **Lifecycle** -- `ra_usb_device_init` / `_deinit`, plus the
- *   power helpers `ra_usb_enter_stop` / `_exit_stop`.
+ * - **Device-mode lifecycle** -- `ra_usb_device_init` / `_deinit`,
+ *   plus power helpers `ra_usb_enter_stop` / `_exit_stop`.
+ * - **Host-mode lifecycle** -- `ra_usb_host_init` / `_deinit`,
+ *   `ra_usb_host_bus_reset`, `ra_usb_host_set_uact`,
+ *   `ra_usb_host_setup_request`.
  * - **Bus** -- `ra_usb_device_attach` (raises D+ pull-up).
  * - **State** -- `ra_usb_get_device_state`, `ra_usb_set_address`.
  * - **Endpoints** -- `ra_usb_configure_endpoint`, `ra_usb_queue_in`,
@@ -549,6 +554,155 @@ void ra_usb_dispatch(ra_usb_speed_t speed);
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_usb_exit_stop(ra_usb_speed_t speed);
+
+/* =============================================================================
+ * Host-mode bring-up (peer of the device-mode lifecycle above)
+ * =============================================================================
+ */
+
+/**
+ * @brief Bring up a USB controller in HOST mode.
+ *
+ * @details
+ * Mirrors FSP's `hw_usb_hmodule_init`
+ * (`r_usb_basic/src/hw/r_usb_hreg_access.c:735`). Bring-up sequence:
+ *
+ *  1. Drop the controller's MSTP gate.
+ *  2. Drive `SYSCFG.SCKE` and wait for the clock to be stable.
+ *  3. Set `SYSCFG.DCFM = 1` (host) and `SYSCFG.DRPD = 1` (D+/D-
+ *     pull-down so the bus floats low when no device is attached).
+ *  4. Clear `SYSCFG.DPRPU` (device pull-up has no meaning in host mode).
+ *  5. Set `SYSCFG.HSE` for the HS instance only.
+ *  6. Set `SYSCFG.USBE`.
+ *  7. Configure the DCP (default control pipe) for host control
+ *     transfers with a 64-byte max packet.
+ *
+ * Bus is left idle (UACT = 0). Use `ra_usb_host_set_uact(true)` to
+ * start SOF generation once a device has been detected on
+ * `SYSSTS0.LNST`.
+ *
+ * @param[in] speed Which controller (FS or HS).
+ *
+ * @return `ra_err_t` error code.
+ * @retval k_ra_ok Controller in host mode, bus floating.
+ * @retval k_ra_err_invalid_arg `speed` out of range.
+ * @retval k_ra_err_hw_init_failed MSTP enable failed.
+ *
+ * @pre Single-threaded init context.
+ * @pre `ra_mstp_init` and `ra_pwr_init` already ran.
+ *
+ * @post `SYSCFG.DCFM = 1`, `SYSCFG.DRPD = 1`, `SYSCFG.USBE = 1`.
+ * @post `DVSTCTR0.UACT = 0` (bus idle, no SOF).
+ *
+ * @note Not thread-safe.
+ * @see ra_usb_host_set_uact
+ * @see ra_usb_host_bus_reset
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_usb_host_init(ra_usb_speed_t speed);
+
+/**
+ * @brief Tear down a host-mode controller and drop its MSTP reference.
+ *
+ * @param[in] speed Which controller.
+ *
+ * @return `ra_err_t` error code.
+ * @retval k_ra_ok Controller released.
+ * @retval k_ra_err_invalid_arg `speed` out of range.
+ *
+ * @pre Single-threaded shutdown context.
+ *
+ * @post `SYSCFG = 0`, `DVSTCTR0 = 0`, MSTP gated.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_usb_host_deinit(ra_usb_speed_t speed);
+
+/**
+ * @brief Drive (or release) the bus reset line.
+ *
+ * @details
+ * Sets / clears `DVSTCTR0.USBRST`. While reset is asserted, `UACT`
+ * is forced low (no SOF). The caller is expected to hold reset for
+ * at least the USB-spec-required 10 ms before deasserting and then
+ * re-enabling SOF generation via `ra_usb_host_set_uact(true)`.
+ *
+ * Mirrors FSP's `usb_hstd_bus_reset` SET phase
+ * (`r_usb_hreg_abs.c:525`).
+ *
+ * @param[in] speed Which controller.
+ * @param[in] assert_reset `true` to drive USBRST, `false` to release.
+ *
+ * @return `ra_err_t` error code.
+ * @retval k_ra_ok Reset line updated.
+ * @retval k_ra_err_invalid_arg `speed` out of range.
+ *
+ * @pre `ra_usb_host_init` ran for this `speed`.
+ *
+ * @post `DVSTCTR0.USBRST` matches `assert_reset`.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_usb_host_bus_reset(ra_usb_speed_t speed, bool assert_reset);
+
+/**
+ * @brief Enable / disable SOF (Start-of-Frame) generation on the bus.
+ *
+ * @details
+ * Toggles `DVSTCTR0.UACT`. With UACT = 1 the controller starts
+ * generating SOF tokens at the spec-required cadence (1 ms FS / 125
+ * us HS). UACT = 0 leaves the bus idle.
+ *
+ * @param[in] speed Which controller.
+ * @param[in] enable `true` to enable SOF generation, `false` to halt.
+ *
+ * @return `ra_err_t` error code.
+ * @retval k_ra_ok UACT updated.
+ * @retval k_ra_err_invalid_arg `speed` out of range.
+ *
+ * @pre `ra_usb_host_init` ran for this `speed`.
+ *
+ * @post `DVSTCTR0.UACT` matches `enable`.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_usb_host_set_uact(ra_usb_speed_t speed, bool enable);
+
+/**
+ * @brief Issue a SETUP packet through the DCP (host -> peripheral).
+ *
+ * @details
+ * Programs `USBREQ`, `USBVAL`, `USBINDX`, `USBLENG` from `setup` and
+ * sets `DCPCTR.SUREQ` so the controller transmits an 8-byte SETUP
+ * stage on the next bus frame. The data and status stages are
+ * driven by `ra_usb_queue_in` / `ra_usb_queue_out` on the DCP, plus
+ * subsequent `DCPCTR.PID` / `DCPCTR.CCPL` writes via
+ * `ra_usb_control_response`. This wraps FSP's
+ * `usb_hstd_setup_command` low-level path.
+ *
+ * @param[in] speed Which controller.
+ * @param[in] setup The 8-byte SETUP packet to transmit.
+ *
+ * @return `ra_err_t` error code.
+ * @retval k_ra_ok SETUP queued; controller will transmit on next frame.
+ * @retval k_ra_err_invalid_arg `speed` out of range.
+ * @retval k_ra_err_null_ptr `setup` was NULL.
+ * @retval k_ra_err_busy `DCPCTR.SUREQ` was still asserted from a
+ *                       prior request.
+ *
+ * @pre `ra_usb_host_init` ran for this `speed`.
+ * @pre `setup` non-NULL.
+ *
+ * @post `USBREQ`, `USBVAL`, `USBINDX`, `USBLENG` all loaded.
+ * @post `DCPCTR.SUREQ = 1` until the controller clears it.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_usb_host_setup_request(ra_usb_speed_t speed, const ra_usb_setup_t* setup);
 
 #ifdef __cplusplus
 }

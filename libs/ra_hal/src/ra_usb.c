@@ -1,24 +1,29 @@
 /**
  * @file ra_usb.c
- * @brief Native USB device-mode controller driver implementation
+ * @brief Native USB controller driver implementation (device + host)
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}
  *
  * @details
- * Hand-written device-side driver for the two RA8D2 USB controllers
+ * Hand-written driver for the two RA8D2 USB controllers
  * (USBFS @ 0x40250000 -- HUM Ch 36, USBHS @ 0x40351000 -- HUM Ch 37).
  * The two instances share the FSP "USB2_B" register layout so this
  * file multiplexes them via a `ra_usb_speed_t` argument and an
  * `internal_pick(speed)` helper. No FSP, CherryUSB, or TinyUSB
  * source ships in this tree -- this file is the native peripheral
  * driver, modelled on FSP's `r_usb_pdriver.c` /
- * `r_usb_preg_access.c` / `r_usb_preg_abs.c` device-mode flow.
+ * `r_usb_preg_access.c` / `r_usb_preg_abs.c` (device) and
+ * `r_usb_hreg_access.c` / `r_usb_hreg_abs.c` (host) flow.
  *
  * Mapping vs FSP (FSP function -> our entry point):
  *
  *  - `hw_usb_pmodule_init`          -> `ra_usb_device_init`
+ *  - `hw_usb_hmodule_init`          -> `ra_usb_host_init`
  *  - `hw_usb_pclear_dprpu/_pset_dprpu` -> `ra_usb_device_attach`
+ *  - `hw_usb_set_uact / _clear_uact`-> `ra_usb_host_set_uact`
+ *  - `usb_hstd_bus_reset` (set/clr) -> `ra_usb_host_bus_reset`
+ *  - `usb_hstd_setup_command`       -> `ra_usb_host_setup_request`
  *  - `usb_pstd_save_request`        -> `ra_usb_read_setup`
  *  - `hw_usb_pcontrol_dcpctr_pid` + `hw_usb_pset_ccpl` ->
  *    `ra_usb_control_response`
@@ -36,8 +41,10 @@
  *    against the next iteration.
  *  - DMA glue (`r_usb_dma.c`) -- this driver runs in CPU-FIFO mode
  *    only.
- *  - Host-mode + OTG paths (`r_usb_hdriver.c`) -- intentionally not
- *    ported.
+ *  - OTG / role-swap paths (`r_usb_hdriver.c`) -- not ported. Host
+ *    and device modes are independently selected at init time.
+ *  - USB hubs -- the host-side starter targets a single attached
+ *    device. Hub class enumeration is out of scope.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -656,4 +663,173 @@ ra_err_t ra_usb_exit_stop(ra_usb_speed_t speed)
     return k_ra_err_invalid_arg;
   }
   return ra_mstp_enable(internal_mstp(speed));
+}
+
+/* =============================================================================
+ * Host-mode bring-up (peer of the device-mode lifecycle above)
+ *
+ * Mirrors FSP's `r_usb_basic/src/hw/r_usb_hreg_access.c` host bits.
+ * Device and host share the same register block; the only mode-bit
+ * differences live inside SYSCFG (DCFM/DRPD vs DPRPU) and DVSTCTR0
+ * (UACT / USBRST, host-only).
+ * =============================================================================
+ */
+
+/**
+ * @enum ra_usb_dvstctr_bit_t
+ * @brief DVSTCTR0 host-mode bit positions (HUM Ch 36.2.5 "DVSTCTR0").
+ *
+ * @details Sourced from CMSIS `R_USB_FS0_DVSTCTR0_*_Pos` in
+ * `R7KA8D2KF_core0.h` (lines 71382-71389) and confirmed for the HS
+ * instance (`R_USB_HS0_DVSTCTR0_*_Pos`, lines 75228-75235).
+ */
+typedef enum : uint8_t {
+  k_ra_dvstctr_bit_uact   = 4U, /**< Bus enable (host SOF generation). */
+  k_ra_dvstctr_bit_resume = 5U, /**< Resume signal output (host).      */
+  k_ra_dvstctr_bit_usbrst = 6U, /**< Bus reset signal (host).          */
+  k_ra_dvstctr_bit_rwupe  = 7U, /**< Remote-wake detect enable (host). */
+} ra_usb_dvstctr_bit_t;
+
+/**
+ * @brief Build the host-mode SYSCFG word.
+ *
+ * @details Sets SCKE | DCFM | DRPD | USBE; adds HSE for the HS
+ * instance. DPRPU is intentionally not set (device-mode pull-up).
+ */
+static uint16_t internal_host_syscfg_word(ra_usb_speed_t speed)
+{
+  uint16_t syscfg = (uint16_t)(1U << k_ra_syscfg_bit_scke);
+  syscfg          = (uint16_t)(syscfg | (uint16_t)(1U << k_ra_syscfg_bit_dcfm));
+  syscfg          = (uint16_t)(syscfg | (uint16_t)(1U << k_ra_syscfg_bit_drpd));
+  syscfg          = (uint16_t)(syscfg | (uint16_t)(1U << k_ra_syscfg_bit_usbe));
+  if (speed == k_ra_usb_speed_hs) {
+    syscfg = (uint16_t)(syscfg | (uint16_t)(1U << k_ra_syscfg_bit_hse));
+  }
+  return syscfg;
+}
+
+ra_err_t ra_usb_host_init(ra_usb_speed_t speed)
+{
+  volatile r_usb_regs_t* reg = internal_pick(speed);
+  if (reg == nullptr) {
+    return k_ra_err_invalid_arg;
+  }
+
+  /* HUM Ch 11.2.7 "MSTPCRB : Module Stop Control Register B", p 444 */
+  const ra_err_t mst_err = ra_mstp_enable(internal_mstp(speed));
+  RA_RETURN_ON_ERROR(mst_err, s_tag, "host_init: mstp enable");
+
+  /* HUM Ch 36.2.1 "SYSCFG : System Configuration Control Register", p 1966 */
+  /* HUM Ch 37.2.1 "SYSCFG : System Configuration Control Register", p 2060 */
+  reg->SYSCFG = internal_host_syscfg_word(speed);
+
+  /* HUM Ch 36.2.5 "DVSTCTR0 : Device State Control Register 0", p 1971 */
+  reg->DVSTCTR0 = 0U;
+
+  /* HUM Ch 36.2.7 "CFIFOSEL : CFIFO Port Select Register", p 1976 */
+  reg->CFIFOSEL  = k_ra_fifosel_mbw_16;
+  reg->D0FIFOSEL = k_ra_fifosel_mbw_16;
+  reg->D1FIFOSEL = k_ra_fifosel_mbw_16;
+
+  /* HUM Ch 36.2.20 "DCPMAXP : DCP Max Packet Size Register", p 1990 */
+  reg->DCPCFG  = 0U;
+  reg->DCPMAXP = k_ra_usb_dcp_max_packet;
+  reg->DCPCTR  = 0U;
+
+  /* HUM Ch 36.2.16 "USBADDR : USB Address Register", p 1988 -- target
+   * device address for the host's outgoing tokens. Default to 0
+   * (newly-attached devices respond at address 0). */
+  reg->USBADDR = 0U;
+
+  /* HUM Ch 36.2.10 "INTENB0 : Interrupt Enable Register 0", p 1980 */
+  /* Host needs the same interrupt set as device for transfer
+   * completion + bus events. */
+  reg->INTENB0 = (uint16_t)((1U << k_ra_int0_bit_bemp) | (1U << k_ra_int0_bit_brdy) |
+                            (1U << k_ra_int0_bit_nrdy) | (1U << k_ra_int0_bit_ctrt) |
+                            (1U << k_ra_int0_bit_dvst) | (1U << k_ra_int0_bit_vbse));
+  reg->INTENB1 = 0U;
+  reg->BRDYENB = 0U;
+  reg->NRDYENB = 0U;
+  reg->BEMPENB = 0U;
+
+  ra_log_info_val(s_tag, "usb host init speed", (uint32_t)speed);
+  return k_ra_ok;
+}
+
+ra_err_t ra_usb_host_deinit(ra_usb_speed_t speed)
+{
+  volatile r_usb_regs_t* reg = internal_pick(speed);
+  if (reg == nullptr) {
+    return k_ra_err_invalid_arg;
+  }
+  /* HUM Ch 36.2.5 "DVSTCTR0 : Device State Control Register 0", p 1971 */
+  reg->DVSTCTR0 = 0U;
+  reg->INTENB0  = 0U;
+  reg->INTENB1  = 0U;
+  reg->BRDYENB  = 0U;
+  reg->NRDYENB  = 0U;
+  reg->BEMPENB  = 0U;
+  reg->SYSCFG   = 0U;
+  return ra_mstp_disable(internal_mstp(speed));
+}
+
+ra_err_t ra_usb_host_bus_reset(ra_usb_speed_t speed, bool assert_reset)
+{
+  volatile r_usb_regs_t* reg = internal_pick(speed);
+  if (reg == nullptr) {
+    return k_ra_err_invalid_arg;
+  }
+  /* HUM Ch 36.2.5 "DVSTCTR0 : Device State Control Register 0", p 1971 */
+  const uint16_t rst_bit  = (uint16_t)(1U << k_ra_dvstctr_bit_usbrst);
+  const uint16_t uact_bit = (uint16_t)(1U << k_ra_dvstctr_bit_uact);
+  if (assert_reset) {
+    /* USBRST=1 forces UACT low; FSP atomically sets RST + clears UACT. */
+    internal_rmw16(&reg->DVSTCTR0, rst_bit, uact_bit);
+  } else {
+    internal_rmw16(&reg->DVSTCTR0, 0U, rst_bit);
+  }
+  return k_ra_ok;
+}
+
+ra_err_t ra_usb_host_set_uact(ra_usb_speed_t speed, bool enable)
+{
+  volatile r_usb_regs_t* reg = internal_pick(speed);
+  if (reg == nullptr) {
+    return k_ra_err_invalid_arg;
+  }
+  /* HUM Ch 36.2.5 "DVSTCTR0 : Device State Control Register 0", p 1971 */
+  const uint16_t uact_bit = (uint16_t)(1U << k_ra_dvstctr_bit_uact);
+  if (enable) {
+    internal_rmw16(&reg->DVSTCTR0, uact_bit, 0U);
+  } else {
+    internal_rmw16(&reg->DVSTCTR0, 0U, uact_bit);
+  }
+  return k_ra_ok;
+}
+
+ra_err_t ra_usb_host_setup_request(ra_usb_speed_t speed, const ra_usb_setup_t* setup)
+{
+  RA_CHECK_NULL_PTR(setup, s_tag, "host_setup_request: setup");
+  volatile r_usb_regs_t* reg = internal_pick(speed);
+  if (reg == nullptr) {
+    return k_ra_err_invalid_arg;
+  }
+  /* HUM Ch 36.2.21 "DCPCTR : DCP Control Register", p 1991 -- guard
+   * against a still-pending request. */
+  const uint16_t sureq_bit = (uint16_t)(1U << k_ra_dcpctr_bit_sureq);
+  if ((reg->DCPCTR & sureq_bit) != 0U) {
+    return k_ra_err_busy;
+  }
+
+  /* HUM Ch 36.2.17 "USBREQ : USB Request Type Register", p 1989 */
+  const uint16_t req = (uint16_t)((uint16_t)setup->bm_request_type |
+                                  (uint16_t)((uint16_t)setup->b_request << k_ra_usb_byte_bits));
+  reg->USBREQ        = req;
+  reg->USBVAL        = setup->w_value;
+  reg->USBINDX       = setup->w_index;
+  reg->USBLENG       = setup->w_length;
+
+  /* SUREQ tells the SIE to issue the SETUP token on the next frame. */
+  internal_rmw16(&reg->DCPCTR, sureq_bit, 0U);
+  return k_ra_ok;
 }

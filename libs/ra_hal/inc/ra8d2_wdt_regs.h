@@ -20,11 +20,13 @@
  * | 0x00   | WDTRR   | 8     | RW | Refresh register        |
  * | 0x02   | WDTCR   | 16    | RW | Control register        |
  * | 0x04   | WDTSR   | 16    | R  | Status register         |
- * | 0x08   | WDTRCR  | 8     | RW | Reset control           |
- * | 0x0C   | WDTCSTPR| 8     | RW | Count Stop control      |
+ * | 0x06   | WDTRCR  | 8     | RW | Reset control           |
+ * | 0x08   | WDTCSTPR| 8     | RW | Count Stop control      |
  *
  * All citations point at the RA8D2 Hardware User's Manual
  * (R01UH1065EJ), chapter 27 "Watchdog Timer (WDT)" pages 1256-1270.
+ * The block is 12 bytes (0x0C) total -- matches FSP ``R_WDT_Type``
+ * in R7KA8D2KF_core0.h.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -50,9 +52,12 @@ extern "C" {
  * @see HUM Ch 27.1.2 "Block Diagram" p 1256.
  */
 typedef enum : uintptr_t {
+  /* HUM Ch 27.1 + FSP R7KA8D2KF_core0.h R_WDT_BASE = 0x40202600,
+   * R_WDT1_BASE = 0x40202700. The two instances are 0x100 apart,
+   * NOT 0x10000 as an earlier version of this header claimed. */
   k_ra_wdt_base_addr  = 0x40202600UL, /**< WDT0 base (M85 side). */
   k_ra_wdt0_base_addr = 0x40202600UL, /**< Alias for WDT0.       */
-  k_ra_wdt1_base_addr = 0x40212600UL, /**< WDT1 base (M33 side). */
+  k_ra_wdt1_base_addr = 0x40202700UL, /**< WDT1 base (M33 side). */
 } ra_wdt_addr_t;
 
 /**
@@ -257,22 +262,24 @@ typedef enum : uint32_t {
  * @brief Memory-mapped layout of one WDT instance.
  *
  * @details
- * The RA8D2 WDT block is 16 bytes wide. Reserved padding is named
- * ``_rN`` so the layout is unambiguous to a debugger.
+ * The RA8D2 WDT block is 12 bytes (0x0C) wide -- matches the FSP
+ * ``R_WDT_Type`` in R7KA8D2KF_core0.h exactly. Reserved padding is
+ * named ``_rN`` so the layout is unambiguous to a debugger.
  *
  * @see HUM Ch 27.2 "Register Descriptions" p 1256 (table) and the
  *      individual subsections for each register.
  */
 typedef struct {
-  volatile uint8_t  WDTRR;    /**< +0x00 Refresh register.       */
-  volatile uint8_t  _r0;      /**< +0x01 Reserved.               */
-  volatile uint16_t WDTCR;    /**< +0x02 Control register.       */
-  volatile uint16_t WDTSR;    /**< +0x04 Status register.        */
-  volatile uint8_t  _r1[2];   /**< +0x06 Reserved.               */
-  volatile uint8_t  WDTRCR;   /**< +0x08 Reset control register. */
-  volatile uint8_t  _r2[3];   /**< +0x09 Reserved.               */
-  volatile uint8_t  WDTCSTPR; /**< +0x0C Count-stop control.     */
-  volatile uint8_t  _r3[3];   /**< +0x0D Reserved.               */
+  /* HUM Ch 27.2 "Register Descriptions" p 1256 + FSP R_WDT_Type */
+  volatile uint8_t  WDTRR;    /**< +0x00 Refresh register.        */
+  volatile uint8_t  _r0;      /**< +0x01 Reserved.                */
+  volatile uint16_t WDTCR;    /**< +0x02 Control register.        */
+  volatile uint16_t WDTSR;    /**< +0x04 Status register.         */
+  volatile uint8_t  WDTRCR;   /**< +0x06 Reset control register.  */
+  volatile uint8_t  _r1;      /**< +0x07 Reserved.                */
+  volatile uint8_t  WDTCSTPR; /**< +0x08 Count-stop control.      */
+  volatile uint8_t  _r2;      /**< +0x09 Reserved.                */
+  volatile uint16_t _r3;      /**< +0x0A Reserved (pads to 0x0C). */
 } r_wdt_regs_t;
 
 /**
