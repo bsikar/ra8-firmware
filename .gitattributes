@@ -33,3 +33,4 @@ Makefile       text eol=lf
 *.elf binary
 *.bin binary
 *.hex binary
+libs/third_party/** -text
