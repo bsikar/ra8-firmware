@@ -1,0 +1,201 @@
+/**
+ * @file test_ra_ether_phy.c
+ * @brief Unit tests for ra_ether_phy.c (generic MDIO PHY driver)
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
+ */
+
+#include <stdint.h>
+#include <string.h>
+
+#include "ra_err.h"
+#include "ra_ether_phy.h"
+#include "ra_sim_mmap.h"
+#include "unity_minimal.h"
+
+typedef enum : uint8_t {
+  k_test_phy_addr      = 1U,
+  k_test_reg_count     = 32U,
+  k_test_phy_addr_high = 31U,
+} test_ephy_const_t;
+
+typedef struct {
+  uint16_t regs[k_test_reg_count];
+  uint16_t reset_reads_remaining;
+  uint8_t  fail_next_read;
+  uint8_t  fail_next_write;
+} test_io_state_t;
+
+static test_io_state_t s_io = {};
+
+static ra_err_t bus_read(void* ctx, uint8_t phy, uint8_t reg, uint16_t* out)
+{
+  (void)phy;
+  test_io_state_t* st = (test_io_state_t*)ctx;
+  if (st->fail_next_read != 0U) {
+    st->fail_next_read = 0U;
+    return k_ra_err_hw_error;
+  }
+  if (reg >= k_test_reg_count) {
+    return k_ra_err_invalid_arg;
+  }
+  /* Auto-clear BMCR.RESET after a couple polls. */
+  if (reg == 0U) {
+    if (st->reset_reads_remaining > 0U) {
+      st->reset_reads_remaining = (uint16_t)(st->reset_reads_remaining - 1U);
+    } else {
+      st->regs[0] = (uint16_t)(st->regs[0] & (uint16_t)~0x8000U);
+    }
+  }
+  *out = st->regs[reg];
+  return k_ra_ok;
+}
+
+static ra_err_t bus_write(void* ctx, uint8_t phy, uint8_t reg, uint16_t data)
+{
+  (void)phy;
+  test_io_state_t* st = (test_io_state_t*)ctx;
+  if (st->fail_next_write != 0U) {
+    st->fail_next_write = 0U;
+    return k_ra_err_hw_error;
+  }
+  if (reg >= k_test_reg_count) {
+    return k_ra_err_invalid_arg;
+  }
+  st->regs[reg] = data;
+  return k_ra_ok;
+}
+
+static void prep(void)
+{
+  ra_sim_mmap_reset();
+  (void)ra_ether_phy_close();
+  (void)memset(&s_io, 0, sizeof(s_io));
+  s_io.reset_reads_remaining = 1U; /* clears on second poll */
+}
+
+static ra_ether_phy_cfg_t make_cfg(void)
+{
+  ra_ether_phy_cfg_t cfg = {};
+  cfg.io.read            = bus_read;
+  cfg.io.write           = bus_write;
+  cfg.io.ctx             = &s_io;
+  cfg.phy_address        = (uint8_t)k_test_phy_addr;
+  cfg.mii_type           = k_ra_ether_phy_rmii;
+  cfg.reset_wait_us      = 100U;
+  return cfg;
+}
+
+static void test_open_null(void)
+{
+  TEST_BEGIN("open rejects NULL cfg + NULL callbacks");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_ether_phy_open(nullptr));
+  ra_ether_phy_cfg_t cfg = make_cfg();
+  cfg.io.read            = nullptr;
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_ether_phy_open(&cfg));
+  cfg          = make_cfg();
+  cfg.io.write = nullptr;
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_ether_phy_open(&cfg));
+  TEST_END("open rejects NULL cfg + NULL callbacks");
+}
+
+static void test_open_bad_addr(void)
+{
+  TEST_BEGIN("open rejects out-of-range PHY address");
+  prep();
+  ra_ether_phy_cfg_t cfg = make_cfg();
+  cfg.phy_address        = (uint8_t)(k_test_phy_addr_high + 1U);
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_ether_phy_open(&cfg));
+  TEST_END("open rejects out-of-range PHY address");
+}
+
+static void test_lifecycle(void)
+{
+  TEST_BEGIN("open / re-open / close");
+  prep();
+  const ra_ether_phy_cfg_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ether_phy_open(&cfg));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_exists, (int32_t)ra_ether_phy_open(&cfg));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ether_phy_close());
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_ether_phy_close());
+  TEST_END("open / re-open / close");
+}
+
+static void test_mdio_io(void)
+{
+  TEST_BEGIN("mdio read / write round-trip");
+  prep();
+  const ra_ether_phy_cfg_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ether_phy_open(&cfg));
+
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_ether_phy_mdio_write((uint8_t)k_test_reg_count, 0xABCDU));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ether_phy_mdio_write(5U, 0xBEEFU));
+
+  uint16_t v = 0U;
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_ether_phy_mdio_read(5U, nullptr));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_ether_phy_mdio_read((uint8_t)k_test_reg_count, &v));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ether_phy_mdio_read(5U, &v));
+  TEST_ASSERT_EQ((int32_t)0xBEEF, (int32_t)v);
+  TEST_END("mdio read / write round-trip");
+}
+
+static void test_link_status(void)
+{
+  TEST_BEGIN("link_status_get reflects BMSR + LPA");
+  prep();
+  const ra_ether_phy_cfg_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ether_phy_open(&cfg));
+
+  /* Stage BMSR = link up + AN complete; LPA = 100full. */
+  s_io.regs[1] = (uint16_t)(0x0004U | 0x0020U);
+  s_io.regs[5] = 0x0100U;
+
+  ra_ether_phy_link_t link = {};
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_ether_phy_link_status_get(nullptr));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ether_phy_link_status_get(&link));
+  TEST_ASSERT_EQ((int32_t)1, (int32_t)link.link_up);
+  TEST_ASSERT_EQ((int32_t)1, (int32_t)link.auto_neg_done);
+  TEST_ASSERT_EQ((int32_t)k_ra_ether_phy_speed_100f, (int32_t)link.speed);
+  TEST_END("link_status_get reflects BMSR + LPA");
+}
+
+static void test_autoneg_start(void)
+{
+  TEST_BEGIN("auto_negotiate_start writes BMCR");
+  prep();
+  const ra_ether_phy_cfg_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ether_phy_open(&cfg));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ether_phy_auto_negotiate_start());
+  TEST_ASSERT_EQ((int32_t)0x1200, (int32_t)s_io.regs[0]);
+  TEST_END("auto_negotiate_start writes BMCR");
+}
+
+static void test_not_initialized(void)
+{
+  TEST_BEGIN("ops fail with not_initialized when closed");
+  prep();
+  uint16_t v = 0U;
+  TEST_ASSERT_EQ((int32_t)k_ra_err_not_initialized, (int32_t)ra_ether_phy_mdio_read(0U, &v));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_not_initialized, (int32_t)ra_ether_phy_mdio_write(0U, 0U));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_not_initialized, (int32_t)ra_ether_phy_auto_negotiate_start());
+  ra_ether_phy_link_t link = {};
+  TEST_ASSERT_EQ((int32_t)k_ra_err_not_initialized, (int32_t)ra_ether_phy_link_status_get(&link));
+  TEST_END("ops fail with not_initialized when closed");
+}
+
+int32_t main(void)
+{
+  test_open_null();
+  test_open_bad_addr();
+  test_lifecycle();
+  test_mdio_io();
+  test_link_status();
+  test_autoneg_start();
+  test_not_initialized();
+  (void)fprintf(stderr, "[OK ] test_ra_ether_phy.c\n");
+  return 0;
+}

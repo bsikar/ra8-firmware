@@ -8,12 +8,13 @@ PR descriptions, separate `STATUS.md` files). If you find yourself
 copying status out of here, the answer is to refer back to here
 instead.
 
-## Cross-verify sweep log (sweeps 1-8)
+## Cross-verify sweep log (sweeps 1-11)
 
 After the 14-checkbox waves closed at the cross-verify-loop entry
-point (commit `f2c3203`), eight feature-completion sweeps landed on
-top. Each sweep is documented in its commit message; this is the
-one-line summary so the roadmap is self-contained.
+point (commit `f2c3203`), eleven feature-completion sweeps landed on
+top, plus a Wave 11 closure pass. Each sweep is documented in its
+commit message; this is the one-line summary so the roadmap is
+self-contained.
 
 | Sweep | Commit | Title |
 |------:|:-------|:------|
@@ -25,10 +26,27 @@ one-line summary so the roadmap is self-contained.
 | 6 | `3ff1a8d` | DMAC/OSPI feature gaps, MIPI video timing, PTP IEEE 1588 |
 | 7 | `09abe38` | Six new hardware-flashable example apps |
 | 8 | `5e154b9` | BLE scaffold, USB host audio, software JPEG, ra_net stack |
+| 9 | `afeb54a` | FAT-FS adapter, TLS 1.2 client, font/glyph rendering, docs refresh |
+| 10 | `59cc3c3` | USB device classes, BLE host stack, legacy peers, USB hub |
+| 11 | `ba54974` | 20 missing peripherals, 3 demo apps, RSA/ECC/protected SCE |
+| 11.x | `f4fb1a6`, `7551634`, `f272dc7`, `ce76aa4`, `87b606f` | Wave 11 closure: coverage gate, doxygen, ADC_B/OSPI/ACMPHS layout fixes |
+
+Status snapshot at the close of sweep 11 (commit `ba54974`):
+
+- 115 driver source files in `libs/ra_hal/src/` (was 96 at sweep 8).
+- 11 top-level libraries: ra_core, ra_hal, ra_nsc, ra_net_pal,
+  ra_usb_pal, plus the five sweep-8/9/10 additions ra_net, ra_fs,
+  ra_tls, ra_gfx, ra_ble_host.
+- 65 drivers feature-complete vs FSP, 6 partial, 20 FSP-shaped
+  placeholders (carry `@warning`; bodies maintain software state),
+  24 scaffolds.
+- 139 ctest executables (`build/host-docker` ctest -N).
+- 15 hardware-flashable example apps (was 6 at start of sweep 7,
+  was 12 at end of sweep 8).
 
 For the at-a-glance driver-vs-FSP-parity matrix see
-`docs/DRIVER_STATUS.md`. For the residual gap list see
-`docs/MISSING.md`.
+`docs/DRIVER_STATUS.md`. For the residual gap list and DEFERRED
+items see `docs/MISSING.md`.
 
 Status markers:
 
