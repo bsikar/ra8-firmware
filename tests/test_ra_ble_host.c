@@ -1,0 +1,421 @@
+/**
+ * @file test_ra_ble_host.c
+ * @brief Unit tests for libs/ra_ble_host (L2CAP / ATT / GATT)
+ *
+ * @details
+ * Exercises the host stack against the host-compiled simulator
+ * peripheral mocks. Each test resets the simulator and re-runs
+ * ra_ble_host_init from scratch so state never leaks between
+ * cases.
+ *
+ * Coverage:
+ *   - Lifecycle (init/close, NULL guards, double-init).
+ *   - Advertising start sends LE_Set_Advertising_Enable (opcode 0x200A).
+ *   - GATT service registration + max-services exhaustion.
+ *   - GATT characteristic registration + value read/set.
+ *   - GATT notify path + CCCD subscribe.
+ *   - Attribute-table lookup by handle.
+ *   - Pre-init guards on all GATT entry points.
+ *   - Event-handler attachment.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
+ */
+
+#include <stddef.h>
+#include <stdint.h>
+#include <string.h>
+
+#include "ra_ble.h"
+#include "ra_ble_host.h"
+#include "ra_err.h"
+#include "ra_sim_mmap.h"
+#include "unity_minimal.h"
+
+/* Test hooks from libs/ra_hal/src/ra_ble.c. */
+const uint8_t* ra_ble_test_tx_capture(uint16_t* out_len);
+void           ra_ble_test_reset_capture(void);
+
+/* Test hooks from libs/ra_ble_host/src/ra_ble_l2cap.c. */
+void ra_ble_host_test_inject_acl(uint16_t conn_handle, const uint8_t* l2cap_frame, uint16_t len);
+uint32_t ra_ble_host_test_event_count(void);
+void     ra_ble_host_test_inject_connect(uint16_t conn_handle);
+
+typedef enum : uint16_t {
+  k_test_op_le_set_adv_params = 0x2006U,
+  k_test_op_le_set_adv_data   = 0x2008U,
+  k_test_op_le_set_adv_enable = 0x200AU,
+  k_test_conn_handle          = 0x0040U,
+  k_test_l2cap_cid_att        = 0x0004U,
+  k_test_default_appearance   = 0x0040U,
+  k_test_adv_interval_ms      = 100U,
+  k_test_adv_interval_too_low = 1U,
+  k_test_value_buf_size       = 32U,
+} ble_host_test_words_t;
+
+typedef enum : uint8_t {
+  k_test_pkt_cmd_byte     = 0x01U,
+  k_test_pkt_acl_byte     = 0x02U,
+  k_test_att_op_write_req = 0x12U,
+  k_test_att_op_read_req  = 0x0AU,
+  k_test_evt_count_zero   = 0U,
+} ble_host_test_bytes_t;
+
+/* --------------------------------------------------------------------- */
+
+static int32_t                  s_evt_count;
+static ra_ble_host_event_kind_t s_evt_last_kind;
+static uint16_t                 s_evt_last_attr;
+
+static void stub_event_cb(void* ctx, const ra_ble_host_event_t* evt)
+{
+  (void)ctx;
+  s_evt_count++;
+  s_evt_last_kind = evt->kind;
+  s_evt_last_attr = evt->attr_handle;
+}
+
+static void prep_init(ra_ble_host_role_t role)
+{
+  ra_sim_mmap_reset();
+  (void)ra_ble_host_close();
+  (void)ra_ble_close();
+  ra_ble_test_reset_capture();
+  s_evt_count                    = 0;
+  s_evt_last_kind                = k_ra_ble_host_event_connected;
+  s_evt_last_attr                = 0U;
+  const ra_ble_host_config_t cfg = {
+    .role       = role,
+    .name       = "ra8d2",
+    .appearance = (uint16_t)k_test_default_appearance,
+  };
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ble_host_init(&cfg));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ble_host_attach_event_handler(stub_event_cb, NULL));
+}
+
+/* Build a 128-bit UUID with a recognizable byte pattern. */
+static void make_uuid(uint8_t* out, uint8_t marker)
+{
+  for (uint8_t i = 0U; i < 16U; i++) {
+    out[i] = (uint8_t)(marker + i);
+  }
+}
+
+/* --------------------------------------------------------------------- */
+
+static void test_init_close(void)
+{
+  TEST_BEGIN("ble_host init + close");
+  ra_sim_mmap_reset();
+  (void)ra_ble_host_close();
+  (void)ra_ble_close();
+  const ra_ble_host_config_t cfg = {.role       = k_ra_ble_host_role_peripheral,
+                                    .name       = "x",
+                                    .appearance = 0U};
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ble_host_init(&cfg));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_ble_host_init(&cfg));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ble_host_close());
+  TEST_ASSERT_EQ((int32_t)k_ra_err_not_initialized, (int32_t)ra_ble_host_close());
+  TEST_END("ble_host init + close");
+}
+
+static void test_init_null_and_role(void)
+{
+  TEST_BEGIN("ble_host init NULL + bad role");
+  ra_sim_mmap_reset();
+  (void)ra_ble_host_close();
+  (void)ra_ble_close();
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_ble_host_init(NULL));
+  const ra_ble_host_config_t bad = {.role       = (ra_ble_host_role_t)0xFFU,
+                                    .name       = NULL,
+                                    .appearance = 0U};
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_ble_host_init(&bad));
+  TEST_END("ble_host init NULL + bad role");
+}
+
+static void test_pre_init_guards(void)
+{
+  TEST_BEGIN("ble_host pre-init guards");
+  ra_sim_mmap_reset();
+  (void)ra_ble_host_close();
+  (void)ra_ble_close();
+  uint16_t h = 0U;
+  uint8_t  uuid[16];
+  make_uuid(uuid, 1U);
+  TEST_ASSERT_EQ((int32_t)k_ra_err_not_initialized,
+                 (int32_t)ra_ble_host_gatt_register_service(uuid, &h));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_not_initialized, (int32_t)ra_ble_host_advertise_stop());
+  uint8_t buf[8];
+  TEST_ASSERT_EQ((int32_t)k_ra_err_not_initialized,
+                 (int32_t)ra_ble_host_gatt_set_value(1U, buf, 4U));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_not_initialized, (int32_t)ra_ble_host_gatt_notify(1U));
+  TEST_END("ble_host pre-init guards");
+}
+
+static void test_advertise_start_sends_enable(void)
+{
+  TEST_BEGIN("ble_host advertise_start emits LE_Set_Advertising_Enable");
+  prep_init(k_ra_ble_host_role_peripheral);
+
+  const uint8_t adv[] = {0x02U, 0x01U, 0x06U}; /* AD: flags general discoverable + LE-only. */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_ble_host_advertise_start(adv,
+                                                      (uint8_t)sizeof(adv),
+                                                      NULL,
+                                                      0U,
+                                                      (uint16_t)k_test_adv_interval_ms));
+
+  /* Last captured TX packet should be LE_Set_Advertising_Enable
+   * (opcode 0x200A) carrying enable=1. Frame format:
+   *   [0x01][0x0A][0x20][0x01][0x01]
+   */
+  /* tx_capture accumulates all HCI commands; check the LAST 5 bytes
+   * (LE_Set_Advertising_Enable comes after Adv_Params + Adv_Data). */
+  uint16_t       cap_len = 0U;
+  const uint8_t* cap     = ra_ble_test_tx_capture(&cap_len);
+  TEST_ASSERT(cap_len >= 5U);
+  const uint8_t* tail = cap + (cap_len - 5U);
+  TEST_ASSERT_EQ((int32_t)k_test_pkt_cmd_byte, (int32_t)tail[0]);
+  TEST_ASSERT_EQ((int32_t)0x0AU, (int32_t)tail[1]);
+  TEST_ASSERT_EQ((int32_t)0x20U, (int32_t)tail[2]);
+  TEST_ASSERT_EQ((int32_t)1, (int32_t)tail[3]);
+  TEST_ASSERT_EQ((int32_t)1, (int32_t)tail[4]);
+  TEST_END("ble_host advertise_start emits LE_Set_Advertising_Enable");
+}
+
+static void test_advertise_arg_validation(void)
+{
+  TEST_BEGIN("ble_host advertise_start arg validation");
+  prep_init(k_ra_ble_host_role_peripheral);
+  /* Interval too low. */
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_invalid_arg,
+    (int32_t)
+      ra_ble_host_advertise_start(NULL, 0U, NULL, 0U, (uint16_t)k_test_adv_interval_too_low));
+  /* NULL with non-zero len. */
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_null_ptr,
+    (int32_t)ra_ble_host_advertise_start(NULL, 4U, NULL, 0U, (uint16_t)k_test_adv_interval_ms));
+  /* Observer role can't advertise. */
+  (void)ra_ble_host_close();
+  prep_init(k_ra_ble_host_role_observer);
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_invalid_arg,
+    (int32_t)ra_ble_host_advertise_start(NULL, 0U, NULL, 0U, (uint16_t)k_test_adv_interval_ms));
+  TEST_END("ble_host advertise_start arg validation");
+}
+
+static void test_register_service_and_char(void)
+{
+  TEST_BEGIN("ble_host gatt register service + characteristic");
+  prep_init(k_ra_ble_host_role_peripheral);
+  uint8_t svc_uuid[16];
+  uint8_t chr_uuid[16];
+  make_uuid(svc_uuid, 0x10U);
+  make_uuid(chr_uuid, 0x20U);
+
+  uint16_t svc = 0U;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ble_host_gatt_register_service(svc_uuid, &svc));
+  TEST_ASSERT(svc != 0U);
+
+  uint8_t  buf[k_test_value_buf_size];
+  uint16_t chr = 0U;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_ble_host_gatt_register_char(
+                   svc,
+                   chr_uuid,
+                   (uint8_t)(k_ra_ble_host_char_prop_read | k_ra_ble_host_char_prop_notify),
+                   buf,
+                   (uint16_t)k_test_value_buf_size,
+                   &chr));
+  TEST_ASSERT(chr > svc);
+
+  /* NULL guards. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_ble_host_gatt_register_service(NULL, &svc));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_ble_host_gatt_register_service(svc_uuid, NULL));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_ble_host_gatt_register_char(svc, chr_uuid, 0U, buf, 4U, &chr));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_ble_host_gatt_register_char((uint16_t)0xBEEFU,
+                                                         chr_uuid,
+                                                         (uint8_t)k_ra_ble_host_char_prop_read,
+                                                         buf,
+                                                         4U,
+                                                         &chr));
+  TEST_END("ble_host gatt register service + characteristic");
+}
+
+static void test_set_value_and_notify_paths(void)
+{
+  TEST_BEGIN("ble_host gatt set_value + notify");
+  prep_init(k_ra_ble_host_role_peripheral);
+  uint8_t svc_uuid[16];
+  uint8_t chr_uuid[16];
+  make_uuid(svc_uuid, 0x30U);
+  make_uuid(chr_uuid, 0x40U);
+
+  uint16_t svc = 0U;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ble_host_gatt_register_service(svc_uuid, &svc));
+
+  uint8_t  buf[k_test_value_buf_size];
+  uint16_t chr = 0U;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_ble_host_gatt_register_char(
+                   svc,
+                   chr_uuid,
+                   (uint8_t)(k_ra_ble_host_char_prop_read | k_ra_ble_host_char_prop_notify),
+                   buf,
+                   (uint16_t)k_test_value_buf_size,
+                   &chr));
+
+  const uint8_t payload[4] = {0xDEU, 0xADU, 0xBEU, 0xEFU};
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_ble_host_gatt_set_value(chr, payload, (uint16_t)sizeof(payload)));
+
+  /* set_value bad handle. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_not_found,
+                 (int32_t)ra_ble_host_gatt_set_value(0xCAFEU, payload, 1U));
+  /* set_value too large. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_ble_host_gatt_set_value(chr, payload, (uint16_t)0x4000U));
+
+  /* notify with no connection -- silent ok. */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ble_host_gatt_notify(chr));
+
+  /* Inject a connection then a CCCD write to subscribe, then notify. */
+  ra_ble_host_test_inject_connect((uint16_t)k_test_conn_handle);
+  TEST_ASSERT_EQ((int32_t)k_ra_ble_host_event_connected, (int32_t)s_evt_last_kind);
+
+  /* Build an L2CAP B-frame: [len_lo][len_hi][cid_lo][cid_hi][ATT...].
+   * ATT Write_Request to the CCCD handle (chr+1) with value 0x0001
+   * (Notify enable). Find CCCD handle: chr is the value handle, decl
+   * handle is chr-1, value is chr, cccd is chr+1. */
+  const uint16_t cccd_handle = (uint16_t)(chr + 1U);
+  uint8_t        l2cap_frame[10];
+  /* L2CAP header: payload_len = 5 (write req opcode + handle + 2 byte value). */
+  l2cap_frame[0] = 5U;
+  l2cap_frame[1] = 0U;
+  l2cap_frame[2] = 0x04U;
+  l2cap_frame[3] = 0x00U;
+  l2cap_frame[4] = (uint8_t)k_test_att_op_write_req;
+  l2cap_frame[5] = (uint8_t)(cccd_handle & 0xFFU);
+  l2cap_frame[6] = (uint8_t)((cccd_handle >> 8U) & 0xFFU);
+  l2cap_frame[7] = 0x01U;
+  l2cap_frame[8] = 0x00U;
+
+  ra_ble_host_test_inject_acl((uint16_t)k_test_conn_handle, l2cap_frame, 9U);
+  TEST_ASSERT_EQ((int32_t)k_ra_ble_host_event_subscribe, (int32_t)s_evt_last_kind);
+
+  /* Now notify -- should send an ACL packet (controller TX captured). */
+  ra_ble_test_reset_capture();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ble_host_gatt_notify(chr));
+  uint16_t       cap_len = 0U;
+  const uint8_t* cap     = ra_ble_test_tx_capture(&cap_len);
+  TEST_ASSERT(cap_len > 0U);
+  TEST_ASSERT_EQ((int32_t)k_test_pkt_acl_byte, (int32_t)cap[0]);
+  TEST_END("ble_host gatt set_value + notify");
+}
+
+static void test_att_write_via_acl(void)
+{
+  TEST_BEGIN("ble_host ATT Write_Request -> write event");
+  prep_init(k_ra_ble_host_role_peripheral);
+  uint8_t svc_uuid[16];
+  uint8_t chr_uuid[16];
+  make_uuid(svc_uuid, 0x50U);
+  make_uuid(chr_uuid, 0x60U);
+
+  uint16_t svc = 0U;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ble_host_gatt_register_service(svc_uuid, &svc));
+  uint8_t  buf[8];
+  uint16_t chr = 0U;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_ble_host_gatt_register_char(svc,
+                                                         chr_uuid,
+                                                         (uint8_t)k_ra_ble_host_char_prop_write,
+                                                         buf,
+                                                         (uint16_t)sizeof(buf),
+                                                         &chr));
+
+  ra_ble_host_test_inject_connect((uint16_t)k_test_conn_handle);
+
+  /* Inject ATT Write_Request on chr with payload 0xAB. */
+  uint8_t l2cap_frame[10];
+  l2cap_frame[0] = 4U;
+  l2cap_frame[1] = 0U;
+  l2cap_frame[2] = 0x04U;
+  l2cap_frame[3] = 0x00U;
+  l2cap_frame[4] = (uint8_t)k_test_att_op_write_req;
+  l2cap_frame[5] = (uint8_t)(chr & 0xFFU);
+  l2cap_frame[6] = (uint8_t)((chr >> 8U) & 0xFFU);
+  l2cap_frame[7] = 0xABU;
+  ra_ble_host_test_inject_acl((uint16_t)k_test_conn_handle, l2cap_frame, 8U);
+
+  TEST_ASSERT_EQ((int32_t)k_ra_ble_host_event_write, (int32_t)s_evt_last_kind);
+  TEST_ASSERT_EQ((int32_t)chr, (int32_t)s_evt_last_attr);
+  TEST_ASSERT_EQ((int32_t)0xABU, (int32_t)buf[0]);
+  TEST_END("ble_host ATT Write_Request -> write event");
+}
+
+static void test_max_services_exhaustion(void)
+{
+  TEST_BEGIN("ble_host gatt service table exhaustion");
+  prep_init(k_ra_ble_host_role_peripheral);
+  uint8_t  uuid[16];
+  uint16_t h = 0U;
+  for (uint8_t i = 0U; i < (uint8_t)k_ra_ble_host_max_services; i++) {
+    make_uuid(uuid, (uint8_t)(0x80U + i));
+    TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ble_host_gatt_register_service(uuid, &h));
+  }
+  /* One more should fail with no_mem. */
+  make_uuid(uuid, 0xF0U);
+  TEST_ASSERT_EQ((int32_t)k_ra_err_no_mem, (int32_t)ra_ble_host_gatt_register_service(uuid, &h));
+  TEST_END("ble_host gatt service table exhaustion");
+}
+
+static void test_event_handler_attach(void)
+{
+  TEST_BEGIN("ble_host attach_event_handler accepts NULL");
+  prep_init(k_ra_ble_host_role_peripheral);
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ble_host_attach_event_handler(NULL, NULL));
+  /* Connection injection must not crash with no handler. */
+  ra_ble_host_test_inject_connect((uint16_t)k_test_conn_handle);
+  TEST_ASSERT(ra_ble_host_test_event_count() > 0U);
+  TEST_END("ble_host attach_event_handler accepts NULL");
+}
+
+static void test_advertise_stop_sends_disable(void)
+{
+  TEST_BEGIN("ble_host advertise_stop emits LE_Set_Advertising_Enable disable");
+  prep_init(k_ra_ble_host_role_peripheral);
+  ra_ble_test_reset_capture();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ble_host_advertise_stop());
+  uint16_t       cap_len = 0U;
+  const uint8_t* cap     = ra_ble_test_tx_capture(&cap_len);
+  TEST_ASSERT(cap_len >= 5U);
+  TEST_ASSERT_EQ((int32_t)k_test_pkt_cmd_byte, (int32_t)cap[0]);
+  TEST_ASSERT_EQ((int32_t)0x0AU, (int32_t)cap[1]);
+  TEST_ASSERT_EQ((int32_t)0x20U, (int32_t)cap[2]);
+  TEST_ASSERT_EQ((int32_t)0, (int32_t)cap[4]); /* enable = 0 */
+  TEST_END("ble_host advertise_stop emits LE_Set_Advertising_Enable disable");
+}
+
+/* --------------------------------------------------------------------- */
+
+int main(void)
+{
+  test_init_close();
+  test_init_null_and_role();
+  test_pre_init_guards();
+  test_advertise_start_sends_enable();
+  test_advertise_arg_validation();
+  test_register_service_and_char();
+  test_set_value_and_notify_paths();
+  test_att_write_via_acl();
+  test_max_services_exhaustion();
+  test_event_handler_attach();
+  test_advertise_stop_sends_disable();
+  return 0;
+}
