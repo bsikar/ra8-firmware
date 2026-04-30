@@ -17,27 +17,55 @@ silicon"; the last phase is library polish.
 
 ## Strategy: when to write native vs adopt 3rd party
 
-We are NOT trying to hand-roll everything. Past sweeps wrote
-hand-rolled minimal versions of TCP/IP / FAT / TLS / BLE-host stacks
-because we didn't have a strategy yet -- they're useful as reference,
-but for production we adopt the proven 3rd-party libraries below.
+We are NOT trying to hand-roll everything. Past sweeps wrote minimal
+versions of TCP/IP / FAT / TLS / BLE-host / GUI because we didn't have
+a strategy yet. The strategy now is: **go all-in on the Eclipse ThreadX
+X-Ware platform** for everything ThreadX provides, plus Apache NimBLE
+for BLE host. Hand-rolled minimal libraries stay in-tree as a no-RTOS
+fallback path so apps can still build without ThreadX.
 
-| Layer | Strategy |
-|---|---|
-| **RTOS** | **Eclipse ThreadX** (formerly Azure RTOS). User-chosen. |
-| **TCP/IP** | **NetX Duo** (ships with ThreadX, designed to integrate). lwIP is the alternate if we ever leave ThreadX. |
-| **TLS** | **NetX Crypto + NetX Secure** (ThreadX-native), with **mbedTLS** as an alternate ALT-provider option. |
-| **Filesystem** | **FileX** (ThreadX-native, ships with). Alternate: FatFs (Elm Chan) for non-ThreadX builds. |
-| **GUI** | **GUIX** (ThreadX-native) on top of `libs/ra_gfx` + `ra_drw`. |
-| **USB** | Keep our existing native `libs/ra_hal/src/ra_usb*.c` for evaluation and the small-footprint case. **USBX** (ThreadX-native) is the production option once ThreadX lands. |
-| **BLE host stack** | Replace our `libs/ra_ble_host` with **Apache NimBLE** or **Zephyr Bluetooth host** (both production-grade, both portable, both have GATT client + bonding + Mesh). Renesas does not ship a competitive BLE host stack. |
-| **Crypto block driver** | Native `libs/ra_hal/src/ra_rsip.c` driving the RSIP-E50D registers (datasheet-only). No 3rd-party crypto library at this layer; mbedTLS / NetX Crypto sit ABOVE this. |
-| **HAL** | All native. The HAL is the project's reason to exist. |
+| Layer | Strategy | Source |
+|---|---|---|
+| **RTOS** | **Eclipse ThreadX** | github.com/eclipse-threadx/threadx |
+| **TCP/IP** | **NetX Duo** -- replaces `libs/ra_net` | github.com/eclipse-threadx/netxduo |
+| **TLS** | **NetX Secure + NetX Crypto** -- ALT-shimmed into `ra_rsip` for hardware AES/SHA | (bundled in netxduo) |
+| **Filesystem** | **FileX** -- replaces `libs/ra_fs` | github.com/eclipse-threadx/filex |
+| **GUI** | **GUIX** -- on top of `libs/ra_gfx` + `ra_drw` | github.com/eclipse-threadx/guix |
+| **USB** | **USBX** -- replaces `libs/ra_hal/src/ra_usb_*cdc/hid/msc/audio*.c` class layers | github.com/eclipse-threadx/usbx |
+| **Flash wear leveling** | **LevelX** -- for the OSPI external flash | github.com/eclipse-threadx/levelx |
+| **BLE host stack** | **Apache NimBLE** -- replaces `libs/ra_ble_host` | github.com/apache/mynewt-nimble |
+| **Crypto block driver** | Native `libs/ra_hal/src/ra_rsip.c` driving RSIP-E50D registers (datasheet-only) | -- |
+| **USB controller driver** | Native `libs/ra_hal/src/ra_usb.c` (ra_usb stays; USBX class layers replace `ra_usb_*cdc/hid/msc/audio`) | -- |
+| **HAL** | All native. The HAL is the project's reason to exist. | -- |
 
-The native libraries we already have (`libs/ra_net`, `libs/ra_fs`,
-`libs/ra_gfx`, `libs/ra_ble_host`) stay in-tree as a no-RTOS fallback
-path so apps can still build without ThreadX. Production apps move
-to the 3rd-party stacks.
+The native ThreadX-replaceable libraries (`libs/ra_net`, `libs/ra_fs`,
+`libs/ra_gfx`, `libs/ra_ble_host`, `libs/ra_hal/src/ra_usb_*cdc/hid/msc*.c`)
+stay in-tree as a no-RTOS fallback path so apps can still build without
+ThreadX. Production apps switch to the 3rd-party stacks via build
+options.
+
+### Why "all-in on ThreadX X-Ware":
+
+- The X-Ware components are designed to integrate. NetX Duo expects
+  ThreadX semaphores; FileX uses ThreadX mutexes; GUIX schedules its
+  renderer thread; USBX uses ThreadX block pools for transfer
+  buffers. No impedance mismatches.
+- Single license (Apache 2.0), single coding style, single
+  community.
+- Renesas FSP already validates this combo on RA8 silicon -- we
+  benefit from their bring-up work even though we don't use FSP
+  itself, because the Cortex-M85 port and the integration patterns
+  are public.
+
+### Why NimBLE instead of NetX Bluetooth:
+
+NetX Bluetooth (Microsoft's BLE host for ThreadX) exists but has far
+less production mileage than NimBLE. NimBLE is the de-facto-standard
+embedded BLE host stack; battle-tested across millions of devices
+including all Espressif WiFi+BLE products. NimBLE's transport layer
+plugs cleanly into our `ra_ble.c` HCI ring -- it doesn't require
+ThreadX (we'd run NimBLE's tasks under ThreadX threads, but NimBLE
+itself is RTOS-portable).
 
 ---
 
@@ -394,29 +422,69 @@ LVGL (MIT license, RTOS-agnostic).
 
 **Estimate.** 3 sweeps (GUIX has a learning curve).
 
-### 4.4 USBX for USB (alternative to native `libs/ra_hal/src/ra_usb*`)
+### 4.4 USBX for USB class layers (replaces `libs/ra_hal/src/ra_usb_*cdc/hid/msc/audio*.c`)
 
 **Why.** Ships with ThreadX. Production USB device + host with all
-class drivers (CDC, HID, MSC, audio, video, hub, OTG). Replaces
-our hand-rolled stack.
+class drivers (CDC, HID, MSC, audio, video, hub, OTG, printer,
+vendor-defined). Adopting it means a single integrated stack
+across all our X-Ware components. Keep `libs/ra_hal/src/ra_usb.c`
+as the controller-layer driver underneath USBX.
 
-**Action.** OPTIONAL -- our native stack was the project's reason
-to exist. If we move to USBX:
+**Action.**
 - Vendor USBX under `libs/third_party/usbx/`.
 - Write `ux_dcd_ra_usb.c` (device controller driver) and
   `ux_hcd_ra_usb.c` (host controller driver) that bridge USBX's
   abstract calls to `ra_usb_*` register I/O.
-- Re-write the USB example apps against USBX's class API.
+- Re-write the USB example apps against USBX's class API. The
+  hand-rolled class layers (`ra_usb_cdc`, `ra_usb_phid`,
+  `ra_usb_pmsc`, `ra_usb_paud`, `ra_usb_hcdc`, `ra_usb_hmsc`,
+  `ra_usb_hhid`, `ra_usb_haud`, `ra_usb_hcdc_ecm`, `ra_usb_hhub`,
+  `ra_usb_pprn`, `ra_usb_pvnd`, `ra_usb_composite`) stay in-tree
+  for the no-ThreadX fallback path.
 
-**Recommendation.** Keep native USB. The native code is committed,
-tested, and works in the simulator. USBX is the production option
-once we have hardware-validation pain we want to outsource.
+**Estimate.** 4 sweeps (DCD/HCD bridge + re-write 6+ example apps
+against USBX class API).
 
-**Estimate.** 4 sweeps if we do it. 0 if we keep native.
+### 4.5 LevelX for OSPI flash wear leveling
 
-### 4.5 Apache NimBLE for BLE host (replaces `libs/ra_ble_host`)
+**Why.** Ships with ThreadX. Wear-leveling layer for raw NOR/NAND
+flash. The EK-RA8D2 ships with 64 MB Octo-SPI flash on the board
+(MX25LM512); without wear leveling the same blocks wear out under
+a database / log / ereader-library workload.
 
-(Already detailed in Phase 1.3.)
+**Action.**
+- Vendor LevelX under `libs/third_party/levelx/`.
+- Write `lx_nor_driver_ra_xspi.c` -- LevelX NOR driver that wraps
+  our `ra_xspi_*` read/program/erase calls.
+- Wire LevelX as the underlying block device for FileX -- so apps
+  open a `fx_media` on the OSPI flash and get wear-leveled FAT
+  storage transparently.
+
+**Estimate.** 1 sweep.
+
+### 4.6 NetX Crypto + NetX Secure for TLS
+
+**Why.** Ships with NetX Duo. Replaces the deleted `libs/ra_tls`
+plan with a fully integrated TLS stack. NetX Crypto provides the
+algorithm primitives (AES, SHA, RSA, ECDH, etc.); NetX Secure is
+the TLS state machine on top. ALT-shim NetX Crypto's AES + SHA
+into our hardware `ra_rsip` for hardware acceleration; let it fall
+back to software for everything else.
+
+**Action.**
+- (Already vendored as part of NetX Duo in Phase 4.1.)
+- Write `nx_crypto_aes_alt.c` and `nx_crypto_sha256_alt.c` that
+  route NetX Crypto's algorithm-table calls through `ra_rsip_*`.
+- Add `examples/tls_https_client/` (re-create the deleted one):
+  TLS 1.2 + 1.3 client to https://www.example.com over NetX Duo,
+  GET `/`, dump body to SCI8.
+
+**Estimate.** 2 sweeps.
+
+### 4.7 Apache NimBLE for BLE host (replaces `libs/ra_ble_host`)
+
+(Already detailed in Phase 1.3. NimBLE under
+`libs/third_party/nimble/`; transport adapter in `port/nimble/`.)
 
 ---
 
@@ -440,6 +508,209 @@ Once Phase 0 lands, these become attractive low-effort wins:
 
 Each of these is its own 1-3 sweep effort, scheduled when product
 demand exists.
+
+---
+
+## Phase 6 -- First product: ePub ereader (BOOX-style)
+
+This phase scopes the user's first target product on top of the
+RA8D2 + ThreadX X-Ware platform. An ePub ereader is roughly:
+
+> ARM-side software stack: framebuffer + GUI + filesystem + epub
+> parser + font renderer + CSS reflow engine + page-turn UX +
+> battery management + sleep/wake + USB mass-storage for
+> sideloading.
+
+What we already have, what we're missing, and where each piece
+plugs in:
+
+### 6.1 What's already in place from earlier phases
+
+| Need | Source |
+|---|---|
+| Display framebuffer (1024x600 RGB565 over GLCDC for prototype) | `libs/ra_hal/src/ra_glcdc.c` (sweep 2) |
+| 2D acceleration (blit / fill / glyph) | `libs/ra_hal/src/ra_drw.c` (Phase 3) |
+| File access | FileX (Phase 4.2) on top of FAT-formatted SD card via `ra_sdhi` |
+| External flash for the user library | LevelX (Phase 4.5) on top of OSPI via `ra_xspi` |
+| GUI widgets (book list, settings, reader view) | GUIX (Phase 4.3) |
+| USB sideloading (host plugs EVM in, sees the ereader as a USB drive containing books) | USBX MSC device class (Phase 4.4) |
+| Power management (sleep when not reading) | LPM driver from sweep 7 |
+| Battery low warning | LVD driver from sweep 7 |
+| Wake-on-button | ICU + GPIO from earlier sweeps |
+
+### 6.2 What's missing -- new HAL or 3rd-party work
+
+#### 6.2.1 E-Ink panel driver (`libs/ra_hal/src/ra_epaper.c`, NEW)
+
+**Problem.** A real ereader uses an electrophoretic (E-Ink) panel,
+not a TFT panel. E-Ink panels are typically driven over SPI through
+a controller IC like **IT8951** (DKE/Waveshare) or directly via the
+panel's SPI command stream (panels using JD9930 / EK79007 / etc.).
+
+**For development on EK-RA8D2 itself**: prototype on the on-board
+1024x600 parallel TFT. The GLCDC framebuffer rendering is identical;
+only the panel driver layer differs.
+
+**For a custom board**: write `ra_epaper` to drive the chosen panel.
+Recommended starting point: **IT8951 over SPI** -- well-documented,
+4096 grayscale levels, full A2 / GC16 / GC4 / DU waveform support
+in the controller IC. Driver provides:
+- `ra_epaper_init(spi_channel, busy_pin, reset_pin, hrdy_pin)` --
+  bring up controller, query panel info (width / height / VCOM).
+- `ra_epaper_load_image(x, y, w, h, buf, mode)` -- DMA-paste a
+  framebuffer region into IT8951 image RAM.
+- `ra_epaper_display_area(x, y, w, h, mode)` -- trigger waveform
+  refresh. mode: `k_epaper_mode_init / a2 / gc16 / gc4 / du`.
+- `ra_epaper_sleep()` / `_wake()` -- VCOM rail down for deep sleep.
+
+**Estimate.** 2 sweeps.
+
+#### 6.2.2 Touch input
+
+**Problem.** RA8D2 has NO CTSU (capacitive touch sensing unit).
+Touch on a custom ereader board is typically a **separate touch
+controller IC** -- e.g. GoodIX **GT911**, FocalTech **FT5x06**, or
+Cypress CY8CTMA -- talking to the MCU over IIC_B + an interrupt
+GPIO.
+
+**Action.** Add `libs/ra_hal/src/ra_touch.c` -- a high-level touch
+driver (multi-touch protocol) sitting on `ra_iic_b`. Pluggable
+backend per controller IC (GT911 first, FT5x06 second). Routes
+touch events into GUIX's input queue.
+
+**Estimate.** 1 sweep (GT911 backend) + 0.5 sweep per additional
+backend.
+
+#### 6.2.3 ePub container parser
+
+**Problem.** ePub is a ZIP archive. Inside: `META-INF/container.xml`
+points to the OPF (Open Packaging Format) document, which lists
+spine items (XHTML chapter files), manifest items, and the table of
+contents (NCX or XHTML nav). Need ZIP + XML parsing.
+
+**Action.** 3rd-party libraries:
+- **miniz** (single-header ZIP under MIT) -- vendored under
+  `libs/third_party/miniz/`. Used to read the .epub container.
+- **TinyXML2** (single-header XML under zlib license) -- vendored
+  under `libs/third_party/tinyxml2/`. Used to parse OPF + NCX +
+  XHTML structure.
+- Write `libs/ra_epub/` -- a thin domain layer on top of miniz +
+  tinyxml2 that exposes:
+  - `ra_epub_open(media, path, *out_book)` -- crack the .epub,
+    read OPF, build chapter list.
+  - `ra_epub_get_chapter_count(book)`.
+  - `ra_epub_load_chapter(book, idx, *out_xhtml_buf, *out_len)` --
+    extract one chapter's XHTML into RAM.
+  - `ra_epub_close(book)`.
+  - `ra_epub_get_metadata(book, *out_meta)` -- title, author,
+    cover image, language.
+
+**Estimate.** 2 sweeps.
+
+#### 6.2.4 HTML/CSS reflow engine
+
+**Problem.** XHTML chapters need to flow text within a page
+viewport, respecting CSS box model + line breaking + text styling
+(bold / italic / heading sizes). This is the hardest part of an
+ereader.
+
+**Options.**
+
+A. **LVGL's `lv_html`** -- LVGL has an HTML rendering widget but
+   it's not full reflow.
+
+B. **LiteHTML** (BSD-licensed full HTML+CSS rendering library,
+   used by Sumatra PDF and Notepad++) -- ~50 KLOC, supports flex
+   reflow and CSS3 selectors. Heavyweight for an MCU but it does
+   the job. Vendor under `libs/third_party/litehtml/`.
+
+C. **Hand-rolled minimal**: parse a subset of XHTML (`<p>`,
+   `<h1>..<h6>`, `<em>`, `<strong>`, `<br>`, `<img>`, `<ul>`/`<ol>`/
+   `<li>`, `<blockquote>`); ignore CSS positioning beyond
+   font-size + bold/italic + text-align. Greedy line-break by
+   measuring glyph widths. ~3-5 KLOC.
+
+**Recommendation.** Start with option C (hand-rolled) for the
+prototype, swap in LiteHTML if reflow fidelity is unsatisfactory.
+The hand-rolled approach renders 90% of public-domain ePubs
+acceptably (Project Gutenberg books are mostly simple).
+
+**Estimate.** 3 sweeps for hand-rolled; 4-5 sweeps for LiteHTML
+integration.
+
+#### 6.2.5 Font rendering
+
+**Problem.** Need to rasterise TrueType / OpenType glyphs at
+arbitrary sizes (10pt body text, 24pt chapter heading, etc.) into
+the framebuffer.
+
+**Options.**
+- **stb_truetype.h** (single-header, public-domain, ~5 KLOC) --
+  supports rendering, kerning, hinting. Used by countless
+  embedded apps.
+- **FreeType** (mature, larger, BSD-licensed) -- the gold standard,
+  but ~50 KLOC and overkill for a few fonts.
+
+**Recommendation.** stb_truetype.h. Vendor under
+`libs/third_party/stb/`. Pre-bake the system fonts (e.g. Noto Serif
++ Noto Sans, free Google fonts) into the firmware at compile time
+or load from FileX.
+
+**Estimate.** 1 sweep.
+
+#### 6.2.6 Image decoding
+
+**Problem.** Book covers and embedded illustrations are usually
+JPEG or PNG. ePub spec also allows GIF, SVG, and WebP.
+
+**Action.**
+- **JPEG**: we already have `libs/ra_hal/src/ra_jpeg_sw.c` (sweep 8).
+- **PNG**: vendor `stb_image.h` under `libs/third_party/stb/` --
+  same single-header lib as stb_truetype, supports PNG / BMP /
+  JPEG / GIF.
+- **SVG**: skip for v1. PDF rendering also skipped.
+
+**Estimate.** 0.5 sweep.
+
+#### 6.2.7 Power / wake / sleep flow
+
+**Problem.** An ereader must look "always on" -- show the current
+page persistently (E-Ink keeps the image with zero power), wake
+quickly on button press to turn the page, deep-sleep aggressively.
+
+**Action.** Application-level using existing HAL drivers:
+- `ra_lpm_enter_software_standby()` between page turns.
+- `ra_icu_enable_wakeup_on_pin(button_irq)` for wake-on-button.
+- `ra_lvd` to detect low-battery and warn user 50 pages early.
+- `ra_rtc` alarm for periodic-poll wake (e.g. once per hour to
+  check for new books over USB / OTA).
+
+**Estimate.** 0.5 sweep (it's mostly app code on top of existing
+HAL).
+
+### 6.3 Phasing for the ereader
+
+Roughly 6-month effort if all sweeps run sequentially; can be
+shorter with parallel agent work. Suggested order:
+
+1. **Phase 0 first**: ThreadX up.
+2. **Phase 4.2 (FileX)** + **Phase 4.3 (GUIX)** + **Phase 4.5
+   (LevelX)** in parallel.
+3. **6.2.5 (stb_truetype font rendering)** + **6.2.6 (PNG image
+   decode)** in parallel.
+4. **6.2.3 (ePub container parsing)**.
+5. **6.2.4 (reflow engine, hand-rolled v1)**.
+6. **6.2.7 (power/wake)**.
+7. **6.2.2 (touch IC over IIC_B)** -- only if doing custom board.
+8. **6.2.1 (e-paper driver)** -- only if doing custom board.
+9. **MVP demo**: load Project Gutenberg's "Pride and Prejudice"
+   from the SD card, render it with proper page-turning + library
+   view. Target: book opens in <1 s, page turn in <500 ms.
+10. **Iterate**: hyphenation, CSS3 selectors, table-of-contents
+    navigation, bookmarks, font-size adjustment, day/night mode.
+
+The minimum to "this is an ereader" is FileX + GUIX + stb_truetype
++ ePub parser + hand-rolled reflow. Everything else is polish.
 
 ---
 
@@ -485,23 +756,29 @@ on RA8D2 silicon.
 
 ---
 
-## Acceptance for "RA8D2 work is done"
+## Acceptance for "RA8D2 platform work is done"
 
-We will declare the project feature-complete when:
+We will declare the platform feature-complete when:
 
 1. **Phase 0 lands**: ThreadX runs on EK-RA8D2; `examples/threadx_blink/`
    verified.
-2. **Phase 1 lands**: ra_rsip drives real RSIP-E50D registers;
-   mbedTLS or NetX Secure has a working TLS path; BLE patch loader
-   is documented; all 17 example apps verified on EK-RA8D2 hardware.
+2. **Phase 1 lands**: ra_rsip drives real RSIP-E50D registers; NetX
+   Secure has a working TLS path with hardware-accelerated AES+SHA;
+   BLE patch loader is documented; all 17 prior example apps
+   verified on EK-RA8D2 hardware.
 3. **Phase 2 lands**: I3C / CANFD / MIPI-DSI / USB hhid / Flash
    partials filled.
 4. **Phase 3 lands at least for `ra_drw`**: hardware-accelerated
    blit / fill so `lcd_demo` is not software-pushing pixels.
-5. **Phase 4 has at least NetX Duo + FileX + NimBLE adopted**:
-   Production-quality TCP/IP, filesystem, BLE host stack.
+5. **Phase 4 lands**: ThreadX + NetX Duo + FileX + GUIX + USBX +
+   LevelX + NetX Secure + NimBLE all adopted; native fallback
+   libraries kept in-tree behind build options.
 
-After that, someone using our HAL has feature parity with FSP for
-everything RA8D2 silicon can do, except for closed-source Renesas
-crypto / BLE blobs (genuinely impossible) and FSP's QE configurator
-GUI tool (Phase 5 polish).
+After that, someone using our HAL has feature parity with FSP +
+Azure RTOS X-Ware for everything RA8D2 silicon can do, except for
+closed-source Renesas crypto / BLE blobs (genuinely impossible)
+and FSP's QE configurator GUI tool (Phase 5 polish).
+
+**Phase 6 is product work**, not platform work. The ereader is the
+first product to validate that the platform is actually usable for
+shipping a real device.
