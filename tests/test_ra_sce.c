@@ -489,6 +489,538 @@ static void test_api_requires_open(void)
     ra_sce_hmac_init(key, (uint32_t)k_ra_sce_test_aes_block, k_ra_sce_sha_mode_sha256));
 }
 
+/* ---------------------------------------------------------------------------
+ * RSA + ECC test fixtures.
+ * --------------------------------------------------------------------------- */
+
+/**
+ * @enum ra_sce_test_pk_const_t
+ * @brief Sizing constants for the RSA / ECC tests.
+ *
+ * @since 0.1.0
+ */
+typedef enum : uint32_t {
+  k_ra_sce_test_rsa2048_bytes = 256U,  /**< RSA-2048 modulus.            */
+  k_ra_sce_test_rsa_e_bytes   = 4U,    /**< RSA public-exponent bytes.   */
+  k_ra_sce_test_rsa_msg_len   = 64U,   /**< RSA test message length.     */
+  k_ra_sce_test_ecc_p256_priv = 32U,   /**< P-256 private bytes.         */
+  k_ra_sce_test_ecc_p256_pub  = 64U,   /**< P-256 public bytes.          */
+  k_ra_sce_test_ecc_p256_sig  = 64U,   /**< P-256 signature bytes.       */
+  k_ra_sce_test_pattern_n     = 0xC3U, /**< Modulus pattern.             */
+  k_ra_sce_test_pattern_d     = 0x4DU, /**< Private-exp pattern.         */
+  k_ra_sce_test_pattern_h     = 0x99U, /**< Hash pattern.                */
+  k_ra_sce_test_e_byte_lo     = 0x01U, /**< Public exp low byte.         */
+  k_ra_sce_test_e_byte_hi     = 0x00U, /**< Public exp upper bytes.      */
+} ra_sce_test_pk_const_t;
+
+/**
+ * @brief Test: RSA encrypt + decrypt round-trip recovers the message.
+ * @since 0.1.0
+ */
+static void test_rsa_encrypt_decrypt_roundtrip(void)
+{
+  prep();
+  uint8_t modulus[k_ra_sce_test_rsa2048_bytes];
+  uint8_t priv_d[k_ra_sce_test_rsa2048_bytes];
+  uint8_t pub_e[k_ra_sce_test_rsa_e_bytes] = {k_ra_sce_test_e_byte_hi,
+                                              k_ra_sce_test_e_byte_lo,
+                                              k_ra_sce_test_e_byte_hi,
+                                              k_ra_sce_test_e_byte_lo};
+  (void)memset(modulus, (int)k_ra_sce_test_pattern_n, sizeof(modulus));
+  (void)memset(priv_d, (int)k_ra_sce_test_pattern_d, sizeof(priv_d));
+
+  uint8_t plain[k_ra_sce_test_rsa_msg_len];
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_sce_test_rsa_msg_len; ++i) {
+    plain[i] = (uint8_t)i;
+  }
+
+  const ra_sce_rsa_pub_t  pub  = {.key_bits = k_ra_sce_rsa_key_bits_2048,
+                                  .modulus  = modulus,
+                                  .exponent = pub_e};
+  const ra_sce_rsa_priv_t priv = {.key_bits    = k_ra_sce_rsa_key_bits_2048,
+                                  .modulus     = modulus,
+                                  .private_exp = priv_d};
+
+  uint8_t  ciphertext[k_ra_sce_test_rsa2048_bytes];
+  uint8_t  recovered[k_ra_sce_test_rsa2048_bytes];
+  uint32_t out_len = (uint32_t)k_ra_sce_test_rsa2048_bytes;
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_sce_rsa_public_encrypt(&pub,
+                                           plain,
+                                           (uint32_t)k_ra_sce_test_rsa_msg_len,
+                                           ciphertext,
+                                           (uint32_t)k_ra_sce_test_rsa2048_bytes));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_sce_rsa_private_decrypt(&priv,
+                                            ciphertext,
+                                            (uint32_t)k_ra_sce_test_rsa2048_bytes,
+                                            recovered,
+                                            &out_len));
+
+  /* Plaintext is right-aligned in a modulus-sized buffer. */
+  const uint32_t offset =
+    (uint32_t)k_ra_sce_test_rsa2048_bytes - (uint32_t)k_ra_sce_test_rsa_msg_len;
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_sce_test_rsa_msg_len; ++i) {
+    TEST_ASSERT_EQ(plain[i], recovered[offset + i]);
+  }
+  teardown();
+}
+
+/**
+ * @brief Test: RSA sign + verify round-trip succeeds.
+ * @since 0.1.0
+ */
+static void test_rsa_sign_verify_roundtrip(void)
+{
+  prep();
+  uint8_t modulus[k_ra_sce_test_rsa2048_bytes];
+  uint8_t priv_d[k_ra_sce_test_rsa2048_bytes];
+  uint8_t pub_e[k_ra_sce_test_rsa_e_bytes] = {k_ra_sce_test_e_byte_hi,
+                                              k_ra_sce_test_e_byte_lo,
+                                              k_ra_sce_test_e_byte_hi,
+                                              k_ra_sce_test_e_byte_lo};
+  (void)memset(modulus, (int)k_ra_sce_test_pattern_n, sizeof(modulus));
+  (void)memset(priv_d, (int)k_ra_sce_test_pattern_d, sizeof(priv_d));
+
+  uint8_t hash[k_ra_sce_sha256_digest_bytes];
+  (void)memset(hash, (int)k_ra_sce_test_pattern_h, sizeof(hash));
+
+  const ra_sce_rsa_pub_t  pub  = {.key_bits = k_ra_sce_rsa_key_bits_2048,
+                                  .modulus  = modulus,
+                                  .exponent = pub_e};
+  const ra_sce_rsa_priv_t priv = {.key_bits    = k_ra_sce_rsa_key_bits_2048,
+                                  .modulus     = modulus,
+                                  .private_exp = priv_d};
+  uint8_t                 signature[k_ra_sce_test_rsa2048_bytes];
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_sce_rsa_private_sign(&priv,
+                                         hash,
+                                         (uint32_t)k_ra_sce_sha256_digest_bytes,
+                                         signature,
+                                         (uint32_t)k_ra_sce_test_rsa2048_bytes));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_sce_rsa_public_verify(&pub,
+                                          hash,
+                                          (uint32_t)k_ra_sce_sha256_digest_bytes,
+                                          signature,
+                                          (uint32_t)k_ra_sce_test_rsa2048_bytes));
+  teardown();
+}
+
+/**
+ * @brief Test: RSA verify rejects a tampered signature.
+ * @since 0.1.0
+ */
+static void test_rsa_verify_rejects_tamper(void)
+{
+  prep();
+  uint8_t modulus[k_ra_sce_test_rsa2048_bytes];
+  uint8_t priv_d[k_ra_sce_test_rsa2048_bytes];
+  uint8_t pub_e[k_ra_sce_test_rsa_e_bytes] = {k_ra_sce_test_e_byte_hi,
+                                              k_ra_sce_test_e_byte_lo,
+                                              k_ra_sce_test_e_byte_hi,
+                                              k_ra_sce_test_e_byte_lo};
+  (void)memset(modulus, (int)k_ra_sce_test_pattern_n, sizeof(modulus));
+  (void)memset(priv_d, (int)k_ra_sce_test_pattern_d, sizeof(priv_d));
+
+  uint8_t hash[k_ra_sce_sha256_digest_bytes];
+  (void)memset(hash, (int)k_ra_sce_test_pattern_h, sizeof(hash));
+
+  const ra_sce_rsa_pub_t  pub  = {.key_bits = k_ra_sce_rsa_key_bits_2048,
+                                  .modulus  = modulus,
+                                  .exponent = pub_e};
+  const ra_sce_rsa_priv_t priv = {.key_bits    = k_ra_sce_rsa_key_bits_2048,
+                                  .modulus     = modulus,
+                                  .private_exp = priv_d};
+  uint8_t                 signature[k_ra_sce_test_rsa2048_bytes];
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_sce_rsa_private_sign(&priv,
+                                         hash,
+                                         (uint32_t)k_ra_sce_sha256_digest_bytes,
+                                         signature,
+                                         (uint32_t)k_ra_sce_test_rsa2048_bytes));
+  signature[0] ^= 0xFFU;
+  TEST_ASSERT_EQ(k_ra_err_hw_error,
+                 ra_sce_rsa_public_verify(&pub,
+                                          hash,
+                                          (uint32_t)k_ra_sce_sha256_digest_bytes,
+                                          signature,
+                                          (uint32_t)k_ra_sce_test_rsa2048_bytes));
+  teardown();
+}
+
+/**
+ * @brief Test: RSA encrypt rejects NULL inputs.
+ * @since 0.1.0
+ */
+static void test_rsa_encrypt_arg_validation(void)
+{
+  prep();
+  uint8_t buf[k_ra_sce_test_rsa2048_bytes];
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_sce_rsa_public_encrypt(nullptr,
+                                           buf,
+                                           (uint32_t)k_ra_sce_test_rsa_msg_len,
+                                           buf,
+                                           (uint32_t)k_ra_sce_test_rsa2048_bytes));
+  teardown();
+}
+
+/**
+ * @brief Test: ECC keygen produces non-zero priv + pub.
+ * @since 0.1.0
+ */
+static void test_ecc_keygen_p256(void)
+{
+  prep();
+  uint8_t priv[k_ra_sce_test_ecc_p256_priv];
+  uint8_t pub[k_ra_sce_test_ecc_p256_pub];
+  (void)memset(priv, 0, sizeof(priv));
+  (void)memset(pub, 0, sizeof(pub));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sce_ecc_keygen(k_ra_sce_ecc_curve_p256, priv, pub));
+  bool priv_nonzero = false;
+  bool pub_nonzero  = false;
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_sce_test_ecc_p256_priv; ++i) {
+    if (priv[i] != 0U) {
+      priv_nonzero = true;
+      break;
+    }
+  }
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_sce_test_ecc_p256_pub; ++i) {
+    if (pub[i] != 0U) {
+      pub_nonzero = true;
+      break;
+    }
+  }
+  TEST_ASSERT(priv_nonzero);
+  TEST_ASSERT(pub_nonzero);
+  teardown();
+}
+
+/**
+ * @brief Test: ECDSA sign + verify round-trip on P-256.
+ * @since 0.1.0
+ */
+static void test_ecc_ecdsa_sign_verify_p256(void)
+{
+  prep();
+  uint8_t priv[k_ra_sce_test_ecc_p256_priv];
+  uint8_t pub[k_ra_sce_test_ecc_p256_pub];
+  TEST_ASSERT_EQ(k_ra_ok, ra_sce_ecc_keygen(k_ra_sce_ecc_curve_p256, priv, pub));
+
+  uint8_t hash[k_ra_sce_sha256_digest_bytes];
+  (void)memset(hash, (int)k_ra_sce_test_pattern_h, sizeof(hash));
+
+  uint8_t sig[k_ra_sce_test_ecc_p256_sig];
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_sce_ecc_ecdsa_sign(k_ra_sce_ecc_curve_p256,
+                                       priv,
+                                       hash,
+                                       (uint32_t)k_ra_sce_sha256_digest_bytes,
+                                       sig));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_sce_ecc_ecdsa_verify(k_ra_sce_ecc_curve_p256,
+                                         pub,
+                                         hash,
+                                         (uint32_t)k_ra_sce_sha256_digest_bytes,
+                                         sig));
+  teardown();
+}
+
+/**
+ * @brief Test: ECDSA verify rejects a tampered signature.
+ * @since 0.1.0
+ */
+static void test_ecc_ecdsa_rejects_tamper(void)
+{
+  prep();
+  uint8_t priv[k_ra_sce_test_ecc_p256_priv];
+  uint8_t pub[k_ra_sce_test_ecc_p256_pub];
+  TEST_ASSERT_EQ(k_ra_ok, ra_sce_ecc_keygen(k_ra_sce_ecc_curve_p256, priv, pub));
+  uint8_t hash[k_ra_sce_sha256_digest_bytes];
+  (void)memset(hash, (int)k_ra_sce_test_pattern_h, sizeof(hash));
+  uint8_t sig[k_ra_sce_test_ecc_p256_sig];
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_sce_ecc_ecdsa_sign(k_ra_sce_ecc_curve_p256,
+                                       priv,
+                                       hash,
+                                       (uint32_t)k_ra_sce_sha256_digest_bytes,
+                                       sig));
+  /* Tamper with the s component (second half). */
+  sig[(uint32_t)k_ra_sce_test_ecc_p256_priv] ^= 0xFFU;
+  TEST_ASSERT_EQ(k_ra_err_hw_error,
+                 ra_sce_ecc_ecdsa_verify(k_ra_sce_ecc_curve_p256,
+                                         pub,
+                                         hash,
+                                         (uint32_t)k_ra_sce_sha256_digest_bytes,
+                                         sig));
+  teardown();
+}
+
+/**
+ * @brief Test: ECDH derives the same shared secret for fixed inputs.
+ * @since 0.1.0
+ */
+static void test_ecc_ecdh_deterministic(void)
+{
+  prep();
+  uint8_t priv[k_ra_sce_test_ecc_p256_priv];
+  uint8_t pub[k_ra_sce_test_ecc_p256_pub];
+  TEST_ASSERT_EQ(k_ra_ok, ra_sce_ecc_keygen(k_ra_sce_ecc_curve_p256, priv, pub));
+
+  uint8_t shared_a[k_ra_sce_test_ecc_p256_priv];
+  uint8_t shared_b[k_ra_sce_test_ecc_p256_priv];
+  TEST_ASSERT_EQ(k_ra_ok, ra_sce_ecc_ecdh(k_ra_sce_ecc_curve_p256, priv, pub, shared_a));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sce_ecc_ecdh(k_ra_sce_ecc_curve_p256, priv, pub, shared_b));
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_sce_test_ecc_p256_priv; ++i) {
+    TEST_ASSERT_EQ(shared_a[i], shared_b[i]);
+  }
+  teardown();
+}
+
+/**
+ * @brief Test: ECC keygen rejects unknown curve.
+ * @since 0.1.0
+ */
+static void test_ecc_keygen_rejects_bad_curve(void)
+{
+  prep();
+  uint8_t priv[k_ra_sce_test_ecc_p256_priv];
+  uint8_t pub[k_ra_sce_test_ecc_p256_pub];
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_sce_ecc_keygen((ra_sce_ecc_curve_t)k_ra_sce_test_bad_mode, priv, pub));
+  teardown();
+}
+
+#include "ra_sce_key_injection.h"
+#include "ra_sce_protected.h"
+
+/**
+ * @brief Test: AES key injection produces a valid blob.
+ * @since 0.1.0
+ */
+static void test_key_inject_aes(void)
+{
+  prep();
+  uint8_t raw_key[k_ra_sce_test_aes_block];
+  (void)memset(raw_key, (int)k_ra_sce_test_pattern_key, sizeof(raw_key));
+  uint8_t blob[k_ra_sce_wrapped_max_total];
+  TEST_ASSERT_EQ(k_ra_ok, ra_sce_key_inject_aes(blob, raw_key, k_ra_sce_aes_key_bits_128));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sce_key_validate(blob, k_ra_sce_wrapped_type_aes));
+  teardown();
+}
+
+/**
+ * @brief Test: AES key injection rejects unsupported key width.
+ * @since 0.1.0
+ */
+static void test_key_inject_aes_bad_width(void)
+{
+  prep();
+  uint8_t raw_key[k_ra_sce_test_aes_block];
+  (void)memset(raw_key, (int)k_ra_sce_test_pattern_key, sizeof(raw_key));
+  uint8_t blob[k_ra_sce_wrapped_max_total];
+  TEST_ASSERT_EQ(
+    k_ra_err_invalid_arg,
+    ra_sce_key_inject_aes(blob, raw_key, (ra_sce_aes_key_bits_t)k_ra_sce_test_bad_key_bits));
+  teardown();
+}
+
+/**
+ * @brief Test: tampering with a wrapped blob trips ``ra_sce_key_validate``.
+ * @since 0.1.0
+ */
+static void test_key_validate_detects_tamper(void)
+{
+  prep();
+  uint8_t raw_key[k_ra_sce_test_aes_block];
+  (void)memset(raw_key, (int)k_ra_sce_test_pattern_key, sizeof(raw_key));
+  uint8_t blob[k_ra_sce_wrapped_max_total];
+  TEST_ASSERT_EQ(k_ra_ok, ra_sce_key_inject_aes(blob, raw_key, k_ra_sce_aes_key_bits_128));
+  blob[(uint32_t)k_ra_sce_wrapped_max_total - 1U] ^= 0xFFU;
+  TEST_ASSERT_EQ(k_ra_err_hw_error, ra_sce_key_validate(blob, k_ra_sce_wrapped_type_aes));
+  teardown();
+}
+
+/**
+ * @brief Test: validating a blob with the wrong type tag fails.
+ * @since 0.1.0
+ */
+static void test_key_validate_wrong_type(void)
+{
+  prep();
+  uint8_t raw_key[k_ra_sce_test_aes_block];
+  (void)memset(raw_key, (int)k_ra_sce_test_pattern_key, sizeof(raw_key));
+  uint8_t blob[k_ra_sce_wrapped_max_total];
+  TEST_ASSERT_EQ(k_ra_ok, ra_sce_key_inject_aes(blob, raw_key, k_ra_sce_aes_key_bits_128));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_sce_key_validate(blob, k_ra_sce_wrapped_type_ecc_priv));
+  teardown();
+}
+
+/**
+ * @brief Test: ECC private key injection round-trips through validate.
+ * @since 0.1.0
+ */
+static void test_key_inject_ecc_private(void)
+{
+  prep();
+  uint8_t priv[k_ra_sce_test_ecc_p256_priv];
+  (void)memset(priv, (int)k_ra_sce_test_pattern_d, sizeof(priv));
+  uint8_t blob[k_ra_sce_wrapped_max_total];
+  TEST_ASSERT_EQ(k_ra_ok, ra_sce_key_inject_ecc(blob, k_ra_sce_ecc_curve_p256, priv, true));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sce_key_validate(blob, k_ra_sce_wrapped_type_ecc_priv));
+  teardown();
+}
+
+/**
+ * @brief Test: ECC public key injection round-trips through validate.
+ * @since 0.1.0
+ */
+static void test_key_inject_ecc_public(void)
+{
+  prep();
+  uint8_t pub[k_ra_sce_test_ecc_p256_pub];
+  (void)memset(pub, (int)k_ra_sce_test_pattern_h, sizeof(pub));
+  uint8_t blob[k_ra_sce_wrapped_max_total];
+  TEST_ASSERT_EQ(k_ra_ok, ra_sce_key_inject_ecc(blob, k_ra_sce_ecc_curve_p256, pub, false));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sce_key_validate(blob, k_ra_sce_wrapped_type_ecc_pub));
+  teardown();
+}
+
+/**
+ * @brief Test: protected AES encrypt/decrypt round-trip via wrapped key.
+ * @since 0.1.0
+ */
+static void test_protected_aes_roundtrip(void)
+{
+  prep();
+  uint8_t raw_key[k_ra_sce_test_aes_block];
+  (void)memset(raw_key, (int)k_ra_sce_test_pattern_key, sizeof(raw_key));
+  uint8_t blob[k_ra_sce_wrapped_max_total];
+  TEST_ASSERT_EQ(k_ra_ok, ra_sce_key_inject_aes(blob, raw_key, k_ra_sce_aes_key_bits_128));
+
+  uint8_t plain[k_ra_sce_test_two_blocks];
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_sce_test_two_blocks; ++i) {
+    plain[i] = (uint8_t)i;
+  }
+  uint8_t cipher[k_ra_sce_test_two_blocks];
+  uint8_t back[k_ra_sce_test_two_blocks];
+
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    ra_sce_protected_aes_init(blob, k_ra_sce_aes_key_bits_128, k_ra_sce_aes_mode_ecb, nullptr));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_sce_protected_aes_encrypt(plain, cipher, (uint32_t)k_ra_sce_test_two_blocks));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sce_protected_aes_finish(nullptr));
+
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    ra_sce_protected_aes_init(blob, k_ra_sce_aes_key_bits_128, k_ra_sce_aes_mode_ecb, nullptr));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_sce_protected_aes_decrypt(cipher, back, (uint32_t)k_ra_sce_test_two_blocks));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sce_protected_aes_finish(nullptr));
+
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_sce_test_two_blocks; ++i) {
+    TEST_ASSERT_EQ(plain[i], back[i]);
+  }
+  teardown();
+}
+
+/**
+ * @brief Test: protected AES init refuses a tampered blob.
+ * @since 0.1.0
+ */
+static void test_protected_aes_rejects_tamper(void)
+{
+  prep();
+  uint8_t raw_key[k_ra_sce_test_aes_block];
+  (void)memset(raw_key, (int)k_ra_sce_test_pattern_key, sizeof(raw_key));
+  uint8_t blob[k_ra_sce_wrapped_max_total];
+  TEST_ASSERT_EQ(k_ra_ok, ra_sce_key_inject_aes(blob, raw_key, k_ra_sce_aes_key_bits_128));
+  blob[(uint32_t)k_ra_sce_wrapped_max_total - 1U] ^= 0xFFU;
+  TEST_ASSERT_EQ(
+    k_ra_err_hw_error,
+    ra_sce_protected_aes_init(blob, k_ra_sce_aes_key_bits_128, k_ra_sce_aes_mode_ecb, nullptr));
+  teardown();
+}
+
+/**
+ * @brief Test: protected ECDSA sign uses a wrapped private key.
+ * @since 0.1.0
+ */
+static void test_protected_ecdsa_sign(void)
+{
+  prep();
+  uint8_t priv[k_ra_sce_test_ecc_p256_priv];
+  uint8_t pub[k_ra_sce_test_ecc_p256_pub];
+  TEST_ASSERT_EQ(k_ra_ok, ra_sce_ecc_keygen(k_ra_sce_ecc_curve_p256, priv, pub));
+
+  uint8_t blob[k_ra_sce_wrapped_max_total];
+  TEST_ASSERT_EQ(k_ra_ok, ra_sce_key_inject_ecc(blob, k_ra_sce_ecc_curve_p256, priv, true));
+
+  uint8_t hash[k_ra_sce_sha256_digest_bytes];
+  (void)memset(hash, (int)k_ra_sce_test_pattern_h, sizeof(hash));
+  uint8_t sig[k_ra_sce_test_ecc_p256_sig];
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_sce_protected_ecdsa_sign(blob,
+                                             k_ra_sce_ecc_curve_p256,
+                                             hash,
+                                             (uint32_t)k_ra_sce_sha256_digest_bytes,
+                                             sig));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_sce_ecc_ecdsa_verify(k_ra_sce_ecc_curve_p256,
+                                         pub,
+                                         hash,
+                                         (uint32_t)k_ra_sce_sha256_digest_bytes,
+                                         sig));
+  teardown();
+}
+
+/**
+ * @brief Test: protected ECDSA sign with a NULL blob errors.
+ * @since 0.1.0
+ */
+static void test_protected_ecdsa_null_blob(void)
+{
+  prep();
+  uint8_t hash[k_ra_sce_sha256_digest_bytes];
+  uint8_t sig[k_ra_sce_test_ecc_p256_sig];
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_sce_protected_ecdsa_sign(nullptr,
+                                             k_ra_sce_ecc_curve_p256,
+                                             hash,
+                                             (uint32_t)k_ra_sce_sha256_digest_bytes,
+                                             sig));
+  teardown();
+}
+
+/**
+ * @brief Test: every new RSA / ECC API rejects calls before
+ *        ``ra_sce_open``.
+ * @since 0.1.0
+ */
+static void test_pk_api_requires_open(void)
+{
+  ra_sim_mmap_reset();
+  (void)ra_mstp_init();
+  uint8_t                modulus[k_ra_sce_test_rsa2048_bytes] = {};
+  uint8_t                exponent[k_ra_sce_test_rsa_e_bytes]  = {};
+  const ra_sce_rsa_pub_t pub = {.key_bits = k_ra_sce_rsa_key_bits_2048,
+                                .modulus  = modulus,
+                                .exponent = exponent};
+  uint8_t                buf[k_ra_sce_test_rsa2048_bytes];
+  TEST_ASSERT_EQ(k_ra_err_invalid_state,
+                 ra_sce_rsa_public_encrypt(&pub,
+                                           buf,
+                                           (uint32_t)k_ra_sce_test_rsa_msg_len,
+                                           buf,
+                                           (uint32_t)k_ra_sce_test_rsa2048_bytes));
+
+  uint8_t priv[k_ra_sce_test_ecc_p256_priv];
+  uint8_t pubk[k_ra_sce_test_ecc_p256_pub];
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_sce_ecc_keygen(k_ra_sce_ecc_curve_p256, priv, pubk));
+}
+
 /**
  * @brief Test entry point.
  *
@@ -513,5 +1045,25 @@ int main(void)
   test_trng_returns_nonzero();
   test_trng_arg_validation();
   test_api_requires_open();
+  test_rsa_encrypt_decrypt_roundtrip();
+  test_rsa_sign_verify_roundtrip();
+  test_rsa_verify_rejects_tamper();
+  test_rsa_encrypt_arg_validation();
+  test_ecc_keygen_p256();
+  test_ecc_ecdsa_sign_verify_p256();
+  test_ecc_ecdsa_rejects_tamper();
+  test_ecc_ecdh_deterministic();
+  test_ecc_keygen_rejects_bad_curve();
+  test_key_inject_aes();
+  test_key_inject_aes_bad_width();
+  test_key_validate_detects_tamper();
+  test_key_validate_wrong_type();
+  test_key_inject_ecc_private();
+  test_key_inject_ecc_public();
+  test_protected_aes_roundtrip();
+  test_protected_aes_rejects_tamper();
+  test_protected_ecdsa_sign();
+  test_protected_ecdsa_null_blob();
+  test_pk_api_requires_open();
   return 0;
 }
