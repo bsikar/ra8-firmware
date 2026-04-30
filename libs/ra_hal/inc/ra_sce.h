@@ -517,6 +517,406 @@ ra_sce_hmac_init(const uint8_t* key, uint32_t key_len, ra_sce_sha_mode_t sha_mod
  */
 [[nodiscard]] ra_err_t ra_sce_hmac_final(uint8_t* mac_out);
 
+/* =============================================================================
+ * RSA public-key crypto
+ * =============================================================================
+ */
+
+/**
+ * @enum ra_sce_rsa_key_bits_t
+ * @brief Permitted RSA modulus widths (FSP r_sce supports 2048/3072/4096).
+ *
+ * @details
+ * Stored as the literal modulus bit count so the byte count is just
+ * ``key_bits / 8``. Applies to both modulus and private-exponent
+ * buffers; the public exponent is always carried in
+ * ``k_ra_sce_rsa_pub_exp_bytes`` (4) bytes.
+ *
+ * @since 0.1.0
+ */
+typedef enum : uint16_t {
+  k_ra_sce_rsa_key_bits_2048 = 2048U, /**< RSA-2048 (256-byte modulus). */
+  k_ra_sce_rsa_key_bits_3072 = 3072U, /**< RSA-3072 (384-byte modulus). */
+  k_ra_sce_rsa_key_bits_4096 = 4096U, /**< RSA-4096 (512-byte modulus). */
+} ra_sce_rsa_key_bits_t;
+
+/**
+ * @struct ra_sce_rsa_pub_t
+ * @brief Plain (non-wrapped) RSA public key descriptor.
+ *
+ * @details
+ * ``modulus`` is a big-endian byte string of length ``key_bits / 8``;
+ * ``exponent`` is a 4-byte big-endian public exponent (typically
+ * 0x00010001). The buffer pointers must remain valid for the duration
+ * of the call that consumes them.
+ *
+ * @invariant ``modulus`` is non-NULL.
+ * @invariant ``key_bits`` is one of ``ra_sce_rsa_key_bits_t``.
+ *
+ * @since 0.1.0
+ */
+typedef struct {
+  ra_sce_rsa_key_bits_t key_bits; /**< Modulus width. */
+  const uint8_t*        modulus;  /**< Big-endian modulus (key_bits / 8 bytes). */
+  const uint8_t*        exponent; /**< Big-endian 4-byte public exponent. */
+} ra_sce_rsa_pub_t;
+
+/**
+ * @struct ra_sce_rsa_priv_t
+ * @brief Plain (non-wrapped) RSA private key descriptor.
+ *
+ * @details
+ * ``private_exp`` is the modular inverse of the public exponent and
+ * is the same length as the modulus. CRT components are not exposed
+ * here -- the stub backend uses straight modular exponentiation.
+ *
+ * @invariant ``modulus`` and ``private_exp`` are non-NULL.
+ *
+ * @since 0.1.0
+ */
+typedef struct {
+  ra_sce_rsa_key_bits_t key_bits;    /**< Modulus width.                         */
+  const uint8_t*        modulus;     /**< Big-endian modulus (key_bits / 8).     */
+  const uint8_t*        private_exp; /**< Big-endian private exponent.           */
+} ra_sce_rsa_priv_t;
+
+/**
+ * @brief RSA public-key encrypt (textbook RSAEP).
+ *
+ * @details
+ * Computes ``ciphertext = plaintext^e mod n`` where ``n`` is the
+ * modulus and ``e`` the public exponent. The plaintext is treated
+ * as a big-endian integer that must be < n. The output buffer must
+ * be sized to the modulus byte length and is written big-endian.
+ *
+ * @warning Stub: software modular-exponentiation backend; NOT a
+ *          drop-in for OAEP / PKCS#1 v1.5 padding schemes.
+ *
+ * @param[in]  pub                 Public key descriptor.
+ * @param[in]  plaintext           Big-endian message integer; ``<= modulus``.
+ * @param[in]  plaintext_len       Bytes in ``plaintext`` (``<= modulus_len``).
+ * @param[out] ciphertext_out      Destination buffer; ``modulus_len`` bytes.
+ * @param[in]  ciphertext_out_len  Capacity of ``ciphertext_out``.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok Ciphertext written.
+ * @retval k_ra_err_null_ptr Any pointer was NULL.
+ * @retval k_ra_err_invalid_arg Lengths inconsistent or unsupported key width.
+ * @retval k_ra_err_invalid_state ``ra_sce_open`` had not been called.
+ *
+ * @pre ``ra_sce_open`` returned ``k_ra_ok``.
+ * @pre Buffers do not overlap.
+ * @post On success, ``ciphertext_out[0..modulus_len-1]`` holds the
+ *       big-endian RSA encryption.
+ * @post ``ciphertext_out_len >= modulus_len``.
+ *
+ * @note Thread safety: not thread-safe.
+ *
+ * @see ra_sce_rsa_private_decrypt
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_sce_rsa_public_encrypt(const ra_sce_rsa_pub_t* pub,
+                                                 const uint8_t*          plaintext,
+                                                 uint32_t                plaintext_len,
+                                                 uint8_t*                ciphertext_out,
+                                                 uint32_t                ciphertext_out_len);
+
+/**
+ * @brief RSA public-key signature verify (textbook RSAVP1).
+ *
+ * @details
+ * Recovers ``m = signature^e mod n`` and compares it byte-wise against
+ * ``message``. Returns ``k_ra_ok`` only if every byte matches.
+ *
+ * @warning Stub backend. See file-level @warning.
+ *
+ * @param[in] pub        Public key descriptor.
+ * @param[in] message    Expected message bytes (typically a hash).
+ * @param[in] msg_len    Length of ``message`` (``<= modulus_len``).
+ * @param[in] signature  Big-endian signature value (``modulus_len`` bytes).
+ * @param[in] sig_len    Length of ``signature``; must equal ``modulus_len``.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok Signature matches.
+ * @retval k_ra_err_null_ptr Any pointer was NULL.
+ * @retval k_ra_err_invalid_arg Length mismatch / unsupported width.
+ * @retval k_ra_err_invalid_state ``ra_sce_open`` had not been called.
+ * @retval k_ra_err_hw_error Recovered message did not match.
+ *
+ * @pre ``ra_sce_open`` returned ``k_ra_ok``.
+ * @pre ``sig_len == modulus_len``.
+ * @post No state changes.
+ *
+ * @note Thread safety: not thread-safe.
+ *
+ * @see ra_sce_rsa_private_sign
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_sce_rsa_public_verify(const ra_sce_rsa_pub_t* pub,
+                                                const uint8_t*          message,
+                                                uint32_t                msg_len,
+                                                const uint8_t*          signature,
+                                                uint32_t                sig_len);
+
+/**
+ * @brief RSA private-key decrypt (textbook RSADP).
+ *
+ * @details
+ * Computes ``plaintext = ciphertext^d mod n``. Output is written
+ * big-endian, then leading zeros are stripped and the actual length
+ * returned via ``*plaintext_len_out`` so the caller can recover
+ * ``plaintext_len`` < ``modulus_len`` payloads.
+ *
+ * @warning Stub backend. See file-level @warning.
+ *
+ * @param[in]      priv             Private key descriptor.
+ * @param[in]      ciphertext       Big-endian ciphertext (``modulus_len``).
+ * @param[in]      ciphertext_len   Length of ``ciphertext``.
+ * @param[out]     plaintext_out    Destination (``>= modulus_len``).
+ * @param[in,out]  plaintext_len_out On entry: capacity. On exit: bytes used.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok Plaintext written.
+ * @retval k_ra_err_null_ptr Any pointer was NULL.
+ * @retval k_ra_err_invalid_arg Length mismatch / unsupported width.
+ * @retval k_ra_err_invalid_state ``ra_sce_open`` had not been called.
+ *
+ * @pre ``ra_sce_open`` returned ``k_ra_ok``.
+ * @pre ``*plaintext_len_out >= modulus_len``.
+ * @post On success, ``*plaintext_len_out`` reflects the actual plaintext
+ *       length after leading-zero strip.
+ *
+ * @note Thread safety: not thread-safe.
+ *
+ * @see ra_sce_rsa_public_encrypt
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_sce_rsa_private_decrypt(const ra_sce_rsa_priv_t* priv,
+                                                  const uint8_t*           ciphertext,
+                                                  uint32_t                 ciphertext_len,
+                                                  uint8_t*                 plaintext_out,
+                                                  uint32_t*                plaintext_len_out);
+
+/**
+ * @brief RSA private-key sign (textbook RSASP1).
+ *
+ * @details
+ * Computes ``signature = message^d mod n``. The caller is responsible
+ * for any digest-info / padding (PKCS#1 v1.5, PSS) -- this entry
+ * point performs the raw modular exponentiation only.
+ *
+ * @warning Stub backend. See file-level @warning.
+ *
+ * @param[in]  priv          Private key descriptor.
+ * @param[in]  message       Message bytes (``<= modulus_len``).
+ * @param[in]  msg_len       Length of ``message``.
+ * @param[out] signature_out Destination (``modulus_len`` bytes).
+ * @param[in]  sig_out_len   Capacity of ``signature_out``.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok Signature written.
+ * @retval k_ra_err_null_ptr Any pointer was NULL.
+ * @retval k_ra_err_invalid_arg Length mismatch / unsupported width.
+ * @retval k_ra_err_invalid_state ``ra_sce_open`` had not been called.
+ *
+ * @pre ``ra_sce_open`` returned ``k_ra_ok``.
+ * @pre ``sig_out_len >= modulus_len``.
+ * @post On success, ``signature_out[0..modulus_len-1]`` is set.
+ *
+ * @note Thread safety: not thread-safe.
+ *
+ * @see ra_sce_rsa_public_verify
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_sce_rsa_private_sign(const ra_sce_rsa_priv_t* priv,
+                                               const uint8_t*           message,
+                                               uint32_t                 msg_len,
+                                               uint8_t*                 signature_out,
+                                               uint32_t                 sig_out_len);
+
+/* =============================================================================
+ * ECC public-key crypto (P-256, P-384)
+ * =============================================================================
+ */
+
+/**
+ * @enum ra_sce_ecc_curve_t
+ * @brief Supported elliptic curves.
+ *
+ * @details
+ * Mirrors the FSP r_sce curve list -- the stub backend implements
+ * arithmetic for both NIST-P-256 and NIST-P-384 over their natural
+ * short-Weierstrass equation ``y^2 = x^3 + a*x + b mod p``.
+ *
+ * @since 0.1.0
+ */
+typedef enum : uint8_t {
+  k_ra_sce_ecc_curve_p256 = 0U, /**< NIST P-256 / secp256r1.   */
+  k_ra_sce_ecc_curve_p384 = 1U, /**< NIST P-384 / secp384r1.   */
+} ra_sce_ecc_curve_t;
+
+/**
+ * @enum ra_sce_ecc_const_t
+ * @brief Sizing constants for ECC byte strings.
+ *
+ * @details
+ * Public keys are uncompressed ``(x || y)`` in big-endian; private
+ * keys are big-endian scalars matching the curve order width.
+ *
+ * @since 0.1.0
+ */
+typedef enum : uint32_t {
+  k_ra_sce_ecc_p256_priv_bytes = 32U, /**< P-256 private scalar bytes.    */
+  k_ra_sce_ecc_p256_pub_bytes  = 64U, /**< P-256 public X || Y bytes.     */
+  k_ra_sce_ecc_p256_sig_bytes  = 64U, /**< P-256 ECDSA signature R || S.  */
+  k_ra_sce_ecc_p384_priv_bytes = 48U, /**< P-384 private scalar bytes.    */
+  k_ra_sce_ecc_p384_pub_bytes  = 96U, /**< P-384 public X || Y bytes.     */
+  k_ra_sce_ecc_p384_sig_bytes  = 96U, /**< P-384 ECDSA signature R || S.  */
+  k_ra_sce_ecc_max_pub_bytes   = 96U, /**< Largest pub-key buffer needed. */
+  k_ra_sce_ecc_max_priv_bytes  = 48U, /**< Largest priv-key buffer.       */
+  k_ra_sce_ecc_max_sig_bytes   = 96U, /**< Largest signature buffer.      */
+} ra_sce_ecc_const_t;
+
+/**
+ * @brief Generate an ECC key pair on the chosen curve.
+ *
+ * @details
+ * Draws a curve-order-width scalar from the TRNG, treats it as the
+ * private key, and computes ``Q = d * G`` for the curve-base point
+ * ``G``. ``out_priv`` receives the scalar; ``out_pub`` receives the
+ * uncompressed ``(x || y)`` form.
+ *
+ * @warning Stub backend uses double-and-add over a tiny on-host curve
+ *          model; NOT cryptographically secure. See file-level
+ *          @warning in ra_sce.h.
+ *
+ * @param[in]  curve     Target curve.
+ * @param[out] out_priv  Private scalar (curve-priv-bytes long).
+ * @param[out] out_pub   Public X || Y (curve-pub-bytes long).
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok Key pair written.
+ * @retval k_ra_err_null_ptr Any pointer was NULL.
+ * @retval k_ra_err_invalid_arg ``curve`` not in ``ra_sce_ecc_curve_t``.
+ * @retval k_ra_err_invalid_state ``ra_sce_open`` had not been called.
+ *
+ * @pre ``ra_sce_open`` returned ``k_ra_ok``.
+ * @pre Buffer sizes match the curve.
+ * @post On success, ``out_priv`` and ``out_pub`` are populated.
+ *
+ * @note Thread safety: not thread-safe.
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t
+ra_sce_ecc_keygen(ra_sce_ecc_curve_t curve, uint8_t* out_priv, uint8_t* out_pub);
+
+/**
+ * @brief ECDSA sign a fixed-length hash.
+ *
+ * @details
+ * Stub backend: produces a deterministic ``(r, s)`` pair from the
+ * (priv, hash) tuple so signatures round-trip with verify(). The
+ * pair is written as concatenated big-endian ``r || s`` of equal
+ * length matching the curve order width.
+ *
+ * @warning Stub backend. See file-level @warning.
+ *
+ * @param[in]  curve     Curve identifier.
+ * @param[in]  priv_key  Private scalar buffer.
+ * @param[in]  hash      Message digest bytes.
+ * @param[in]  hash_len  Length of ``hash`` (``<= sig_bytes / 2``).
+ * @param[out] sig_out   ``(r || s)`` destination buffer.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok Signature written.
+ * @retval k_ra_err_null_ptr Any pointer was NULL.
+ * @retval k_ra_err_invalid_arg Curve unknown.
+ * @retval k_ra_err_invalid_state ``ra_sce_open`` had not been called.
+ *
+ * @pre ``ra_sce_open`` returned ``k_ra_ok``.
+ * @post On success, ``sig_out`` is curve-sig-bytes long.
+ *
+ * @note Thread safety: not thread-safe.
+ *
+ * @see ra_sce_ecc_ecdsa_verify
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_sce_ecc_ecdsa_sign(ra_sce_ecc_curve_t curve,
+                                             const uint8_t*     priv_key,
+                                             const uint8_t*     hash,
+                                             uint32_t           hash_len,
+                                             uint8_t*           sig_out);
+
+/**
+ * @brief ECDSA verify a (hash, signature) tuple against a public key.
+ *
+ * @param[in] curve    Curve identifier.
+ * @param[in] pub_key  Uncompressed ``(x || y)`` public key.
+ * @param[in] hash     Message digest bytes.
+ * @param[in] hash_len Length of ``hash``.
+ * @param[in] sig      ``(r || s)`` signature.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok Signature matches the public key.
+ * @retval k_ra_err_null_ptr Any pointer was NULL.
+ * @retval k_ra_err_invalid_arg Curve unknown.
+ * @retval k_ra_err_invalid_state ``ra_sce_open`` had not been called.
+ * @retval k_ra_err_hw_error Signature did not validate.
+ *
+ * @pre ``ra_sce_open`` returned ``k_ra_ok``.
+ * @post No state changes.
+ *
+ * @note Thread safety: not thread-safe.
+ *
+ * @see ra_sce_ecc_ecdsa_sign
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_sce_ecc_ecdsa_verify(ra_sce_ecc_curve_t curve,
+                                               const uint8_t*     pub_key,
+                                               const uint8_t*     hash,
+                                               uint32_t           hash_len,
+                                               const uint8_t*     sig);
+
+/**
+ * @brief ECDH shared-secret derivation.
+ *
+ * @details
+ * Computes ``Z = priv * peer_pub``. ``shared_secret_out`` receives
+ * the X coordinate of the resulting point in big-endian form, which
+ * is the standard ECDH output.
+ *
+ * @warning Stub backend. See file-level @warning.
+ *
+ * @param[in]  curve              Curve identifier.
+ * @param[in]  priv_key           Local private scalar.
+ * @param[in]  peer_pub_key       Peer's public key (X || Y).
+ * @param[out] shared_secret_out  Destination (curve-priv-bytes long).
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok Shared secret written.
+ * @retval k_ra_err_null_ptr Any pointer was NULL.
+ * @retval k_ra_err_invalid_arg Curve unknown.
+ * @retval k_ra_err_invalid_state ``ra_sce_open`` had not been called.
+ *
+ * @pre ``ra_sce_open`` returned ``k_ra_ok``.
+ * @post On success, ``shared_secret_out[0..priv_bytes-1]`` holds X.
+ *
+ * @note Thread safety: not thread-safe.
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_sce_ecc_ecdh(ra_sce_ecc_curve_t curve,
+                                       const uint8_t*     priv_key,
+                                       const uint8_t*     peer_pub_key,
+                                       uint8_t*           shared_secret_out);
+
 #ifdef __cplusplus
 }
 #endif
