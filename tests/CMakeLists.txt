@@ -65,6 +65,7 @@ file(GLOB_RECURSE RA_CORE_SOURCES    CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_core/s
 file(GLOB_RECURSE RA_HAL_SOURCES     CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_hal/src/*.c)
 file(GLOB_RECURSE RA_NET_PAL_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_net_pal/src/*.c)
 file(GLOB_RECURSE RA_NET_SOURCES     CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_net/src/*.c)
+file(GLOB_RECURSE RA_BLE_HOST_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_ble_host/src/*.c)
 file(GLOB_RECURSE RA_USB_PAL_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_usb_pal/src/*.c)
 file(GLOB_RECURSE RA_FS_SOURCES      CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_fs/src/*.c)
 file(GLOB_RECURSE RA_GFX_SOURCES     CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_gfx/src/*.c)
@@ -76,6 +77,7 @@ add_library(ra_core_hal OBJECT
     ${RA_HAL_SOURCES}
     ${RA_NET_PAL_SOURCES}
     ${RA_NET_SOURCES}
+    ${RA_BLE_HOST_SOURCES}
     ${RA_USB_PAL_SOURCES}
     ${RA_FS_SOURCES}
     ${RA_GFX_SOURCES}
@@ -92,6 +94,7 @@ target_include_directories(ra_core_hal PUBLIC
     ${FW_ROOT}/libs/ra_hal/inc
     ${FW_ROOT}/libs/ra_net_pal/inc
     ${FW_ROOT}/libs/ra_net/inc
+    ${FW_ROOT}/libs/ra_ble_host/inc
     ${FW_ROOT}/libs/ra_usb_pal/inc
     ${FW_ROOT}/libs/ra_fs/inc
     ${FW_ROOT}/libs/ra_gfx/inc
@@ -119,6 +122,7 @@ function(ra_add_test name)
     ${FW_ROOT}/libs/ra_hal/inc
     ${FW_ROOT}/libs/ra_net_pal/inc
     ${FW_ROOT}/libs/ra_net/inc
+    ${FW_ROOT}/libs/ra_ble_host/inc
     ${FW_ROOT}/libs/ra_usb_pal/inc
     ${FW_ROOT}/libs/ra_fs/inc
     ${FW_ROOT}/libs/ra_gfx/inc
