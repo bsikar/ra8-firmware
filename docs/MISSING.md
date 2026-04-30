@@ -176,16 +176,15 @@ Minimal GATT server.
 - No HID-over-GATT profile catalog
 - No bonding / pairing / security manager
 
-### 4.5 TLS (deleted, deferred)
+### 4.5 TLS (deleted, will be replaced by 3rd-party)
 
-`libs/ra_tls` was removed in this cleanup because it depended on the
-removed `ra_sce` software stub. A real TLS layer needs:
-- ra_rsip exposing incremental SHA-256 + HMAC-SHA-256 (only one-shot
-  is exposed today)
-- Real RSA primitives in ra_rsip (driving RSIP-E50D registers)
-- Or: integration with mbedTLS / NetXSecure as the crypto provider
+`libs/ra_tls` was removed in this cleanup. Per the roadmap, TLS
+will be provided by **mbedTLS** (with ALT-provider hooks routing
+AES + SHA into ra_rsip once RSIP-E50D registers are real) or by
+**NetX Secure** (if going all-in on Eclipse ThreadX, which is the
+project's chosen RTOS).
 
-See `docs/ROADMAP_RA8D2.md` for the plan.
+See `docs/ROADMAP_RA8D2.md` Phase 1.2 for details.
 
 ---
 
@@ -212,16 +211,16 @@ is not yet committed under `docs/reference/`.
 These are FSP services that operate on top of the HAL layer; we have
 either nothing or a drastically minimal substitute.
 
-| FSP component | What it is | Our equivalent |
+| FSP component | What it is | Plan |
 |---|---|---|
-| FreeRTOS / ThreadX / Azure RTOS port | Full RTOS scheduler + glue | None (bare-metal only) |
-| FileX / exFAT | Production filesystem | Minimal `libs/ra_fs` (FAT only) |
-| GUIX / TouchGFX integration | GUI framework | Minimal `libs/ra_gfx` (no widgets) |
-| NetXDuo / lwIP | Production TCP/IP | Minimal `libs/ra_net` |
-| QE configurator | GUI clock-tree / pin-mux / IRQ generator | Hand-written register sequences |
-| `rm_*` mid-level libs | Higher-layer abstractions | None |
-| Bluetooth Mesh / HID-over-GATT / Profile catalog | Standard BLE profiles | `libs/ra_ble_host` minimal GATT only |
-| mbedTLS / NetXSecure | TLS stack | None (we removed ra_tls) |
+| FreeRTOS / ThreadX / Azure RTOS port | Full RTOS scheduler + glue | **Adopt Eclipse ThreadX** (Phase 0) |
+| FileX / exFAT | Production filesystem | **Adopt FileX** (Phase 4.2; ships with ThreadX) |
+| GUIX / TouchGFX integration | GUI framework | **Adopt GUIX** (Phase 4.3; ships with ThreadX) |
+| NetXDuo / lwIP | Production TCP/IP | **Adopt NetX Duo** (Phase 4.1; ships with ThreadX) |
+| mbedTLS / NetXSecure | TLS stack | **Adopt mbedTLS** with ra_rsip ALT shims (Phase 1.2), OR NetX Secure (Phase 1.2 alternate) |
+| Bluetooth host (Mesh / GATT client / bonding) | Standard BLE profiles | **Adopt Apache NimBLE** (Phase 1.3) |
+| QE configurator | GUI clock-tree / pin-mux / IRQ generator | Hand-written register sequences (Phase 5 deferred) |
+| `rm_*` mid-level libs | Higher-layer abstractions | None planned |
 
 ---
 
