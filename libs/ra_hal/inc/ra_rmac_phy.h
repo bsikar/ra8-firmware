@@ -1,0 +1,242 @@
+/**
+ * @file ra_rmac_phy.h
+ * @brief Reduced-MAC (RMAC) PHY driver -- off-chip PHY for the GMAC-FPI
+ *
+ * @details
+ * Mirrors the FSP `r_rmac_phy` API shape. The RMAC peripheral sits
+ * inside the RA8D2 (HUM Ch 33) and talks to an off-chip PHY over
+ * MII / RMII / GMII / RGMII. This driver is the per-PHY companion
+ * to `ra_rmac.c` and handles:
+ *
+ *  - PHY-LSI identification table (KSZ8041 / KSZ8091 / DP83620 /
+ *    ICS1894 / GPY111 / VSC8541, plus a CUSTOM slot).
+ *  - Clause-22 register access through the same pluggable bus
+ *    interface used by `ra_ether_phy`.
+ *  - Auto-negotiation start / poll / read partner ability with
+ *    1000Mbit support (Clause-22 register 9 master/slave).
+ *  - RGMII rx/tx clock-skew tuning (vendor-specific PHY register).
+ *  - Link-status and per-PHY callback hooks for the MAC ISR.
+ *
+ * Reference: FSP `r_rmac_phy` driver shape, IEEE 802.3 Clause 22 /
+ *            Clause 28A (auto-neg), IEEE 802.3-2018 Annex 28B.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
+ */
+
+#pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include <stdint.h>
+
+#include "ra_err.h"
+
+/**
+ * @enum ra_rmac_phy_lsi_t
+ * @brief Supported PHY-LSI identifiers.
+ */
+typedef enum : uint8_t {
+  k_ra_rmac_phy_lsi_default    = 0U,
+  k_ra_rmac_phy_lsi_ksz8091rnb = 1U,
+  k_ra_rmac_phy_lsi_ksz8041    = 2U,
+  k_ra_rmac_phy_lsi_dp83620    = 3U,
+  k_ra_rmac_phy_lsi_ics1894    = 4U,
+  k_ra_rmac_phy_lsi_gpy111     = 5U,
+  k_ra_rmac_phy_lsi_vsc8541    = 6U,
+  k_ra_rmac_phy_lsi_custom     = 7U,
+  k_ra_rmac_phy_lsi_count      = 8U,
+} ra_rmac_phy_lsi_t;
+
+/**
+ * @enum ra_rmac_phy_speed_t
+ * @brief Negotiated link speed.
+ */
+typedef enum : uint8_t {
+  k_ra_rmac_phy_speed_no_link = 0U,
+  k_ra_rmac_phy_speed_10h     = 1U,
+  k_ra_rmac_phy_speed_10f     = 2U,
+  k_ra_rmac_phy_speed_100h    = 3U,
+  k_ra_rmac_phy_speed_100f    = 4U,
+  k_ra_rmac_phy_speed_1000h   = 5U,
+  k_ra_rmac_phy_speed_1000f   = 6U,
+} ra_rmac_phy_speed_t;
+
+/**
+ * @enum ra_rmac_phy_addr_limit_t
+ * @brief MDIO address constraints.
+ */
+typedef enum : uint8_t {
+  k_ra_rmac_phy_addr_max = 31U,
+  k_ra_rmac_phy_reg_max  = 31U,
+} ra_rmac_phy_addr_limit_t;
+
+/**
+ * @struct ra_rmac_phy_io_t
+ * @brief Pluggable MDIO bus.
+ */
+typedef struct {
+  ra_err_t (*read)(void* ctx, uint8_t phy_addr, uint8_t reg_addr, uint16_t* out_data);
+  ra_err_t (*write)(void* ctx, uint8_t phy_addr, uint8_t reg_addr, uint16_t data);
+  void* ctx;
+} ra_rmac_phy_io_t;
+
+/**
+ * @struct ra_rmac_phy_link_t
+ * @brief Snapshot of resolved link parameters.
+ */
+typedef struct {
+  uint8_t             link_up;
+  uint8_t             auto_neg_done;
+  ra_rmac_phy_speed_t speed;
+  uint16_t            bmsr;
+  uint16_t            partner_ability;
+} ra_rmac_phy_link_t;
+
+/**
+ * @struct ra_rmac_phy_cfg_t
+ * @brief Configuration descriptor.
+ */
+typedef struct {
+  ra_rmac_phy_io_t  io;
+  ra_rmac_phy_lsi_t lsi_type;
+  uint8_t           phy_address;
+  uint16_t          reset_poll_max;
+  uint16_t          local_advertise; /**< Clause-22 reg 4 advertised. */
+  uint16_t          gbit_advertise;  /**< Clause-22 reg 9 (1000T).    */
+} ra_rmac_phy_cfg_t;
+
+/**
+ * @brief Open the PHY and run a soft-reset sequence.
+ *
+ * @details Mirrors `R_RMAC_PHY_Open`. Issues BMCR.RESET, polls until
+ *          self-clear, then writes the local advertisement register
+ *          and (if `gbit_advertise != 0`) the 1000BASE-T control
+ *          register so the next auto-neg round picks them up.
+ *
+ * @param[in] cfg Configuration. Must not be `nullptr`.
+ *
+ * @return `ra_err_t`.
+ * @retval k_ra_ok                  PHY initialised.
+ * @retval k_ra_err_null_ptr        `cfg` or required IO callback NULL.
+ * @retval k_ra_err_invalid_arg     `phy_address` > 31 or `lsi_type` invalid.
+ * @retval k_ra_err_exists          Already opened.
+ * @retval k_ra_err_hw_timeout      BMCR.RESET never cleared.
+ *
+ * @pre Single-threaded init context.
+ * @post Driver is in the open state.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_rmac_phy_open(const ra_rmac_phy_cfg_t* cfg);
+
+/**
+ * @brief Close the driver.
+ *
+ * @return `ra_err_t`.
+ * @retval k_ra_ok                  Closed.
+ * @retval k_ra_err_invalid_state   Not opened.
+ *
+ * @pre Driver is open.
+ * @post Subsequent ops return `k_ra_err_not_initialized`.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_rmac_phy_close(void);
+
+/**
+ * @brief Read a Clause-22 register on the off-chip PHY.
+ *
+ * @param[in]  reg_addr Register index (0..31).
+ * @param[out] out_data Receives the 16-bit register value.
+ *
+ * @return `ra_err_t`.
+ * @retval k_ra_ok                   Read completed.
+ * @retval k_ra_err_null_ptr         `out_data` NULL.
+ * @retval k_ra_err_invalid_arg      `reg_addr` > 31.
+ * @retval k_ra_err_not_initialized  Not opened.
+ *
+ * @pre Driver is open.
+ * @post `*out_data` is defined on success.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_rmac_phy_mdio_read(uint8_t reg_addr, uint16_t* out_data);
+
+/**
+ * @brief Write a Clause-22 register on the off-chip PHY.
+ *
+ * @param[in] reg_addr Register index (0..31).
+ * @param[in] data     16-bit value.
+ *
+ * @return `ra_err_t`.
+ * @retval k_ra_ok                   Write completed.
+ * @retval k_ra_err_invalid_arg      `reg_addr` > 31.
+ * @retval k_ra_err_not_initialized  Not opened.
+ *
+ * @pre Driver is open.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_rmac_phy_mdio_write(uint8_t reg_addr, uint16_t data);
+
+/**
+ * @brief Restart auto-negotiation on the PHY.
+ *
+ * @return `ra_err_t`.
+ * @retval k_ra_ok                   AN restarted.
+ * @retval k_ra_err_not_initialized  Not opened.
+ *
+ * @pre Driver is open.
+ * @post BMCR.AN_ENABLE | AN_RESTART was written.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_rmac_phy_auto_negotiate_start(void);
+
+/**
+ * @brief Read BMSR + partner ability and resolve speed/duplex.
+ *
+ * @param[out] out Receives the snapshot. Must not be `nullptr`.
+ *
+ * @return `ra_err_t`.
+ * @retval k_ra_ok                   Snapshot copied.
+ * @retval k_ra_err_null_ptr         `out` NULL.
+ * @retval k_ra_err_not_initialized  Not opened.
+ *
+ * @pre Pointer references writable memory.
+ * @post `*out` reflects the BMSR / LPA / 1000T_STATUS read at call time.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_rmac_phy_link_status_get(ra_rmac_phy_link_t* out);
+
+/**
+ * @brief Get the currently-bound PHY-LSI identifier.
+ *
+ * @param[out] out Receives the LSI id. Must not be `nullptr`.
+ *
+ * @return `ra_err_t`.
+ * @retval k_ra_ok                   Returned.
+ * @retval k_ra_err_null_ptr         `out` NULL.
+ * @retval k_ra_err_not_initialized  Not opened.
+ *
+ * @pre Driver is open.
+ * @post `*out` matches `cfg->lsi_type` from the original `ra_rmac_phy_open`.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_rmac_phy_lsi_get(ra_rmac_phy_lsi_t* out);
+
+#ifdef __cplusplus
+}
+#endif

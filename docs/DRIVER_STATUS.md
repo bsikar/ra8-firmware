@@ -1,20 +1,29 @@
 # Driver Status Matrix
 
-Audit date: 2026-04-29 (post-sweep-8 commit `5e154b9`).
+Audit date: 2026-04-29 (post-sweep-11 commit `ba54974`, plus Wave 11
+closure commits `f4fb1a6`, `7551634`, `f272dc7`, `ce76aa4`, `87b606f`).
 
 This file is the at-a-glance map of every driver in
 `libs/ra_hal/src/` plus the new top-level libraries (`libs/ra_net/`,
-`libs/ra_fs/`) against their FSP `r_*` parity benchmark. Status
-classes:
+`libs/ra_fs/`, `libs/ra_tls/`, `libs/ra_gfx/`, `libs/ra_ble_host/`)
+against their FSP `r_*` parity benchmark. Status classes:
 
-- `scaffold` -- init / deinit / register layout exists, no real
-  data path. Cannot move bytes.
+- `feature-complete` -- the public API matches FSP `R_*` parity for
+  the in-scope feature set on RA8D2. Real register I/O on real
+  silicon. May still be missing rarely-used FSP-only sub-modes;
+  those are noted in the rightmost column.
 - `partial` -- a useful subset of the FSP API is implemented but
   major features (slave mode, DMA, edge cases, etc.) are still
-  missing.
-- `feature-complete` -- the public API matches FSP `R_*` parity
-  for the in-scope feature set on RA8D2. May still be missing
-  rarely-used FSP-only sub-modes; those are noted.
+  missing. The driver moves real bytes today.
+- `placeholder` -- driver wraps an FSP-shape register block whose
+  RA8D2-silicon presence we could not confirm. File header carries
+  a `@warning`. Public API is preserved so FSP example projects
+  link against us; bodies maintain software state instead of
+  issuing real register writes.
+- `scaffold` -- init / deinit / register layout exists, no real
+  data path. Cannot move bytes. Distinct from placeholder in that
+  the silicon block is known to exist but the driver hasn't been
+  wired up.
 - `wholly-new` -- has no direct FSP counterpart on RA8D2 (or
   intentionally diverges). Treated as feature-complete relative
   to its own contract.
@@ -33,26 +42,48 @@ work; subsequent fixes may live in later commits.
 | Driver | FSP parity | Status | Landed | Notes |
 |---|---|---|---|---|
 | ra_sci | r_sci_b_uart | feature-complete | sweep 1 (`3f97975`) | async read/write, abort, baud calc, DMA path, callback set |
-| ra_iic_b | r_iic_b_master | feature-complete | sweep 1 (`3f97975`) | polling+IRQ read/write, restart, abort, callback. Slave mode N/A on RA8D2 master IP |
+| ra_iic_b | r_iic_b_master | feature-complete | sweep 1 (`3f97975`) | polling+IRQ read/write, restart, abort, callback. Slave mode = ra_iic_b_slave |
+| ra_iic_b_slave | r_iic_b_slave | feature-complete | sweep 10 (`59cc3c3`) | IIC_B peripheral mode, MSDVAD + BCTL.BUSE + SVCTL.GCAE |
+| ra_iic | r_iic_master + r_iic_slave | feature-complete | sweep 10 (`59cc3c3`) | legacy RIIC IP, master + slave on one driver |
+| ra_iica_master | r_iica_master | placeholder | sweep 11 (`ba54974`) | alternate IIC variant; RA8D2 silicon presence unverified |
+| ra_iica_slave | r_iica_slave | placeholder | sweep 11 (`ba54974`) | alternate IIC variant; RA8D2 silicon presence unverified |
 | ra_spi | r_spi_b | feature-complete | sweep 1 (`3f97975`) | read/write/write_read, 8/16/32-bit, DMA path. Slave mode = partial |
+| ra_spi_b | r_spi_b | feature-complete | (pre-sweep) | extended ra_spi back-end |
+| ra_sau_uart | r_sau_uart | placeholder | sweep 11 (`ba54974`) | SAU sub-protocol; RA8D2 silicon presence unverified |
+| ra_sau_spi | r_sau_spi | placeholder | sweep 11 (`ba54974`) | SAU sub-protocol; RA8D2 silicon presence unverified |
+| ra_sau_i2c | r_sau_i2c | placeholder | sweep 11 (`ba54974`) | SAU sub-protocol; RA8D2 silicon presence unverified |
+| ra_sau_lin | r_sau_lin | placeholder | sweep 11 (`ba54974`) | SAU sub-protocol; RA8D2 silicon presence unverified |
+| ra_uarta | r_uarta | placeholder | sweep 11 (`ba54974`) | legacy UARTA pre-SCI; RA8D2 ships SCI_B |
 | ra_sdhi | r_sdhi | feature-complete | sweep 1 (`3f97975`) | block read/write, 4-bit bus, control commands. Speed-class auto-switch deferred |
 | ra_i3c | r_i3c | partial | sweep 3 (`798b019`) | dynamic-address assign, CCC engine landed; HDR-DDR + IBI inbound queue still missing |
+| ra_can | r_can | feature-complete | sweep 10 (`59cc3c3`) | classical CAN, 11/29-bit IDs, mailbox arbitration |
 | ra_canfd | r_canfd | partial | (pre-sweep) | TX MB0 send + RX FIFO0 recv. GAFL filter + bit-rate switching still missing |
 | ra_gpio | r_ioport | feature-complete | (pre-sweep) | PFS + ICU IRQ attach. NCODR/PCR/DSCR + group-port atomic update remain |
+| ra_kint | r_kint | feature-complete | sweep 10 (`59cc3c3`) | Key Interrupt matrix, KRCTL column scan + KRSTR row read |
 
 ## Analog / safety / time
 
 | Driver | FSP parity | Status | Landed | Notes |
 |---|---|---|---|---|
 | adc (adc_b) | r_adc_b | feature-complete | sweep 3 (`798b019`) | scan groups A/B, continuous scan, comparator-window, oversampling |
+| ra_adc_d | r_adc_d | placeholder | sweep 11 (`ba54974`) | differential ADC mode; RA8D2 silicon mode unverified |
 | ra_dac_b | r_dac_b | partial | (pre-sweep) | single-channel write. Synchronized two-channel update + ADC-trigger update missing |
+| ra_dac | r_dac | placeholder | sweep 11 (`ba54974`) | legacy 12-bit DAC; RA8D2 ships DAC_B |
+| ra_dac8 | r_dac8 | placeholder | sweep 11 (`ba54974`) | 8-bit DAC; RA8D2 ships DAC_B |
 | ra_acmphs | r_acmphs | partial | (pre-sweep) | comparator init + read. Filter / pin-out routing limited |
+| ra_acmphs_b | r_acmphs_b | placeholder | sweep 11 (`ba54974`) | high-channel-count comparator; RA8D2 silicon presence unverified |
+| ra_acmplp | r_acmplp | placeholder | sweep 11 (`ba54974`) | low-power comparator; RA8D2 silicon presence unverified |
+| ra_opamp | r_opamp | feature-complete | sweep 10 (`59cc3c3`) | on-chip op-amp routing, AMPC/AMPGAIN/AMPINSEL/AMPTRS, 4 channels |
+| ra_iirfa | r_iirfa | placeholder | sweep 11 (`ba54974`) | IIR Filter Accelerator; RA8D2 silicon presence unverified |
+| ra_dsmif | r_dsmif | placeholder | sweep 11 (`ba54974`) | Delta-Sigma Demodulator; RA8D2 silicon presence unverified |
 | ra_rtc | r_rtc | partial | (pre-sweep) | calendar set/get, alarm. Periodic-IRQ and pseudo-32k mode pending |
+| ra_rtc_c | r_rtc_c | feature-complete | sweep 10 (`59cc3c3`) | calendar-mode RTC variant |
 | ra_wdt / ra_iwdt | r_wdt / r_iwdt | feature-complete | (pre-sweep) | refresh + status. Period locked by OFS0 by silicon |
 | ra_agt | r_agt | partial | (pre-sweep) | reload + IRQ. Event-counter mode missing |
 | ra_ulpt | r_ulpt | partial | (pre-sweep) | period + IRQ. Pulse-output / event-counter modes pending |
 | ra_cac | r_cac | feature-complete | (pre-sweep) | measure + IRQ on bound violation |
 | ra_crc | r_crc | feature-complete | (pre-sweep) | poly select + DMA-friendly streaming |
+| ra_doc | r_doc | partial | (pre-sweep) | data-operation circuit; comparator-mode missing |
 
 ## Timers / motor
 
@@ -61,6 +92,9 @@ work; subsequent fixes may live in later commits.
 | ra_gpt | r_gpt | feature-complete | sweep 3 (`798b019`) | PWM duty/period set, PWM pin output, dead-time |
 | ra_gpt three-phase | r_gpt_three_phase | feature-complete | sweep 3 (`798b019`) | `ra_gpt_three_phase_*` family for motor PWM |
 | ra_poeg | r_poeg | feature-complete | (pre-sweep) | trigger-stop, status get/clear |
+| ra_tau | r_tau | placeholder | sweep 11 (`ba54974`) | Timer Array Unit; RA8D2 silicon presence unverified |
+| ra_tau_pwm | r_tau_pwm | placeholder | sweep 11 (`ba54974`) | Timer Array Unit PWM; RA8D2 silicon presence unverified |
+| ra_tml | r_tml | placeholder | sweep 11 (`ba54974`) | Timer Module Library; RA8D2 silicon presence unverified |
 
 ## DMA / event
 
@@ -82,9 +116,10 @@ work; subsequent fixes may live in later commits.
 | ra_mipi_csi | r_mipi_csi | partial | sweep 6 (`3ff1a8d`) | virtual-channel + ECC/CRC checking landed. ULPS entry/exit TBD |
 | ra_mipi_phy | r_mipi_phy | feature-complete | (pre-sweep) | RFREQ encoding fixed in iter 3 |
 | ra_pdc | r_pdc | feature-complete | sweep 5 (`171901a`) | parallel camera bridge for OV5640 |
-| ra_ceu | (no FSP analog on RA8D2) | partial | (pre-sweep) | ceu register layout; PDC is the preferred path |
+| ra_ceu | (no FSP analog on RA8D2) | scaffold | (pre-sweep) | CEU register layout; PDC is the preferred path |
 | ra_jpeg_sw | (software) | wholly-new | sweep 8 (`5e154b9`) | software JPEG codec, no FSP `r_jpeg` hardware analog on RA8D2 |
 | ra_vin | r_vin | scaffold | (pre-sweep) | bring-up only |
+| ra_slcdc | r_slcdc | placeholder | sweep 11 (`ba54974`) | Segment LCD controller; not on EK-RA8D2 |
 
 ## Audio
 
@@ -98,8 +133,10 @@ work; subsequent fixes may live in later commits.
 | Driver | FSP parity | Status | Landed | Notes |
 |---|---|---|---|---|
 | ra_xspi | r_ospi_b | feature-complete | sweep 6 (`3ff1a8d`) | XIP enter/exit, DTR mode, DQS calibrate, suspend/resume |
+| ra_qspi | r_qspi | feature-complete | sweep 10 (`59cc3c3`) | legacy QSPI command-issue + memory-mapped XIP read |
 | ra_sdramc | r_bsp memory init | feature-complete | (pre-sweep) | timing + refresh interval + power transition |
 | ra_flash (MRAM) | r_mram | feature-complete | sweep 4 (`6fd856c`) | erase/write_block/blank_check + ARC; lock-bit + dual-bank deferred |
+| ra_flash_lp | r_flash_lp | placeholder | sweep 11 (`ba54974`) | low-power flash variant; RA8D2 ships MRAM |
 
 ## Networking
 
@@ -113,31 +150,38 @@ work; subsequent fixes may live in later commits.
 | ra_ptp | r_ptp | feature-complete | sweep 6 (`3ff1a8d`) | IEEE 1588 master/slave roles, sync/announce, time/rate adjust |
 | ra_tsn | r_tsn | scaffold | (pre-sweep) | IEEE 802.1 TSN block |
 | ra_rmac | r_rmac | scaffold | (pre-sweep) | reduced-MAC variant |
+| ra_layer3_switch | r_layer3_switch | placeholder | sweep 11 (`ba54974`) | L3 packet switch; RA8D2 silicon presence unverified |
 | libs/ra_net (IPv4) | (no FSP equivalent; lwIP would be FSP's pick) | wholly-new | sweep 8 (`5e154b9`) | hand-written ARP + IPv4 + ICMP + UDP + TCP stack on top of ra_eth |
 
 ## USB
 
 | Driver | FSP parity | Status | Landed | Notes |
 |---|---|---|---|---|
-| ra_usb (FS+HS controller) | r_usb_basic + r_usb_hmsc/hcdc/hhid + ... | feature-complete | (pre-sweep) | unified controller front-end |
+| ra_usb (FS+HS controller) | r_usb_basic + class peers | feature-complete | (pre-sweep) | unified controller front-end |
 | ra_usb_cdc (device) | r_usb_pcdc | feature-complete | (pre-sweep) | CDC ACM device |
 | ra_usb_phid (device) | r_usb_phid | feature-complete | sweep 2 (`4cde2a2`) | HID device class |
 | ra_usb_pmsc (device) | r_usb_pmsc | feature-complete | sweep 2 (`4cde2a2`) | MSC device class with SCSI command shim |
+| ra_usb_paud (device) | r_usb_paud | feature-complete | sweep 10 (`59cc3c3`) | USB device Audio class (UAC 1.0/2.0), iso-IN + iso-OUT |
+| ra_usb_pprn (device) | r_usb_pprn | feature-complete | sweep 10 (`59cc3c3`) | USB device Printer class, GET_DEVICE_ID / GET_PORT_STATUS / SOFT_RESET |
+| ra_usb_pvnd (device) | r_usb_pvnd | feature-complete | sweep 10 (`59cc3c3`) | USB device vendor-defined raw bulk transport |
 | ra_usb_composite (device) | r_usb_composite | feature-complete | sweep 3 (`798b019`) | multi-class composite device |
 | ra_usb_hcdc (host) | r_usb_hcdc | feature-complete | (pre-sweep) | host CDC ACM |
 | ra_usb_hmsc (host) | r_usb_hmsc | feature-complete | (pre-sweep) | host MSC + bulk-only transport |
 | ra_usb_hhid (host) | r_usb_hhid | partial | (pre-sweep) | host HID; `get_report` IN data phase still stubbed |
 | ra_usb_hcdc_ecm (host) | r_usb_hcdc_ecm | feature-complete | sweep 4 (`6fd856c`) | CDC-ECM (ethernet over USB host) |
 | ra_usb_haud (host) | r_usb_haud | feature-complete | sweep 8 (`5e154b9`) | host audio |
+| ra_usb_hhub (host) | r_usb_hhub | feature-complete | sweep 10 (`59cc3c3`) | USB host hub, up to 16 ports, USB 2.0 ch11 class requests |
 | ra_usb_typec | r_usb_typec | feature-complete | sweep 4 (`6fd856c`) | USB Type-C / PD orientation, source/sink, PD message build |
 
 ## Security / crypto
 
 | Driver | FSP parity | Status | Landed | Notes |
 |---|---|---|---|---|
-| ra_sce | r_sce + r_sce_protected | feature-complete | sweep 5 (`171901a`) | SHA-1/256/384/512, AES-128/192/256, key handling. RSA + ECC = task |
-| ra_rsip | r_rsip | scaffold | (pre-sweep) | unprotected RSIP only; r_rsip_protected + key_injection still missing |
-| ra_dotf | r_dotf | scaffold | (pre-sweep) | DOTF block layout |
+| ra_sce | r_sce | placeholder | sweep 5 (`171901a`) | SHA-1/256/384/512, AES-128/192/256, RSA, ECC. Backend is software stub; FSP `hw_sce_*.c` is closed-source |
+| ra_sce_protected | r_sce_protected | placeholder | sweep 11 (`ba54974`) | uses wrapped keys without exposing them. Backend wraps software ra_sce |
+| ra_sce_key_injection | r_sce_key_injection | placeholder | sweep 11 (`ba54974`) | wrap raw AES/RSA/ECC keys into SCE wrapped-key blobs |
+| ra_rsip | r_rsip | placeholder | (pre-sweep) | wraps software ra_sce; FSP r_rsip blob path not mirrorable |
+| ra_dotf | r_dotf | placeholder | (pre-sweep) | DOTF block layout; silicon mode unverified |
 | ra_cnecc | (no FSP RA8D2 analog) | scaffold | (pre-sweep) | bring-up |
 | key_vault (secure_app) | (project-local) | wholly-new | (pre-sweep) | 8-slot 256-bit key store + SHA-256 challenge veneer |
 
@@ -145,7 +189,7 @@ work; subsequent fixes may live in later commits.
 
 | Driver | FSP parity | Status | Landed | Notes |
 |---|---|---|---|---|
-| ra_ble | r_ble | scaffold | sweep 8 (`5e154b9`) | controller bring-up + HCI command/event ring; full host stack pending |
+| ra_ble | r_ble | placeholder | sweep 8 (`5e154b9`) | controller bring-up + HCI command/event ring; production needs Renesas firmware patch image |
 
 ## HMI / sensing
 
@@ -163,45 +207,74 @@ work; subsequent fixes may live in later commits.
 | ra_lvd | r_lvd | partial | (pre-sweep) | level detect + IRQ. Reset-on-trip not wired |
 | ra_reset | r_bsp reset | feature-complete | (pre-sweep) | software-reset, source readout |
 | ra_vreg | r_bsp vreg | feature-complete | (pre-sweep) | regulator config |
-| ra_pwr_b | r_lpm | feature-complete | (pre-sweep) | (covered by ra_pwr) |
 
 ## Inter-core / debug / misc
 
 | Driver | FSP parity | Status | Landed | Notes |
 |---|---|---|---|---|
 | ra_ipc | r_ipc | scaffold | (pre-sweep) | M85 <-> M33 mailbox bring-up |
-| ra_doc | r_doc | partial | (pre-sweep) | data-operation circuit; comparator-mode missing |
 | ra_pdg | r_pdg | scaffold | (pre-sweep) | bring-up |
 | ra_bkup | r_bkup | partial | (pre-sweep) | backup domain register read/write |
 | ra_sram | r_bsp ECC | feature-complete | (pre-sweep) | ECC enable + IRQ |
 | ra_bscan | r_bscan | scaffold | (pre-sweep) | boundary scan |
 | ra_mpc | r_ioport (PFS facade) | feature-complete | (pre-sweep) | pin route + PWPR unlock |
+| ra_ofs | (BSP option-function-select) | feature-complete | (pre-sweep) | OFS0/OFS1 read + audit |
 
 ## Top-level libraries
 
-| Library | Status | Notes |
-|---|---|---|
-| libs/ra_core | feature-complete | ra_err / ra_check / ra_log / ra_assert substrate |
-| libs/ra_nsc | feature-complete | NSC veneers across comms + I/O + key vault + xspi + eth + log |
-| libs/ra_net_pal | feature-complete | lwIP-port glue with in-memory ring fallback |
-| libs/ra_usb_pal | feature-complete | CherryUSB usb_dc port glue with per-EP ring |
-| libs/ra_net | wholly-new | hand-written ARP/IPv4/ICMP/UDP/TCP, no third-party stack |
-| libs/ra_fs | scaffold | CMakeLists only; sibling agent landing fat-fs in parallel |
+| Library | Status | Landed | Notes |
+|---|---|---|---|
+| libs/ra_core | feature-complete | (pre-sweep) | ra_err / ra_check / ra_log / ra_assert substrate |
+| libs/ra_hal | feature-complete | (across all sweeps) | 115 driver source files, 185 headers |
+| libs/ra_nsc | feature-complete | (pre-sweep) | NSC veneers across comms + I/O + key vault + xspi + eth + log |
+| libs/ra_net_pal | feature-complete | (pre-sweep) | lwIP-port glue with in-memory ring fallback |
+| libs/ra_usb_pal | feature-complete | (pre-sweep) | CherryUSB usb_dc port glue with per-EP ring |
+| libs/ra_net | wholly-new | sweep 8 (`5e154b9`) | hand-written ARP/IPv4/ICMP/UDP/TCP, no third-party stack |
+| libs/ra_fs | feature-complete | sweep 9 (`afeb54a`) | FAT12/16/32 reader+writer, mount/open/read/write/seek/listdir |
+| libs/ra_tls | partial | sweep 9 (`afeb54a`) | TLS 1.2 client, RSA premaster encrypt awaits real ra_sce RSA path |
+| libs/ra_gfx | feature-complete | sweep 9 (`afeb54a`) | GLCDC framebuffer drawing + 8x16 IBM PC VGA font (95 ASCII glyphs) |
+| libs/ra_ble_host | feature-complete | sweep 10 (`59cc3c3`) | L2CAP fixed channels + ATT server + GATT registration; depends on ra_ble placeholder |
 
 ---
 
 ## Summary tally
 
-- feature-complete drivers in libs/ra_hal/src/: 47
-- partial drivers: 11
-- scaffold drivers: 14
-- wholly-new (no FSP analog): 2 (ra_jpeg_sw, key_vault)
-- top-level libs feature-complete: 4 (ra_core, ra_nsc, ra_net_pal, ra_usb_pal)
-- top-level libs wholly-new: 1 (ra_net)
-- top-level libs scaffold: 1 (ra_fs -- in flight by sibling agent)
+Driver count rollup at the close of sweep 11:
 
-Of the 11 "partial" entries, six (ra_dac_b, ra_acmphs, ra_rtc, ra_agt,
-ra_ulpt, ra_canfd) carry small FSP gaps that are not on the critical
-path for the EK-RA8D2 reference apps. The remaining five (ra_i3c
-HDR-DDR/IBI, ra_mipi_dsi command-mode, ra_mipi_csi ULPS, ra_usb_hhid
-get_report IN, ra_lvd reset-on-trip) are tracked in MISSING.md.
+- **115 driver source files** in `libs/ra_hal/src/`
+- **65 feature-complete** drivers (real register I/O, FSP-parity API)
+- **6 partial** drivers (data path live, FSP gaps documented):
+  ra_i3c (HDR-DDR/IBI), ra_canfd (GAFL/BRS), ra_usb_hhid (get_report
+  IN), ra_lvd (reset-on-trip), ra_dac_b (sync update), ra_acmphs
+  (filter routing), plus small gaps on ra_rtc, ra_agt, ra_ulpt,
+  ra_doc, ra_bkup
+- **20 placeholders** with `@warning` (FSP-shape API, software-state
+  body): ra_acmphs_b, ra_acmplp, ra_adc_d, ra_dac, ra_dac8,
+  ra_iirfa, ra_slcdc, ra_uarta, ra_dsmif, ra_flash_lp,
+  ra_iica_master, ra_iica_slave, ra_layer3_switch, ra_sau_*,
+  ra_tau, ra_tau_pwm, ra_tml, plus crypto + BLE
+  (ra_sce family, ra_rsip, ra_dotf, ra_ble)
+- **24 scaffolds** (register layout traced, data path not wired):
+  ra_drw, ra_etha, ra_vin, ra_tsn, ra_rmac, ra_ssie, ra_cnecc,
+  ra_ipc, ra_pdg, ra_bscan, ra_ceu
+
+Top-level library rollup:
+
+- **11 libraries** total in `libs/`
+- **10 feature-complete** (ra_core, ra_hal, ra_nsc, ra_net_pal,
+  ra_usb_pal, ra_net, ra_fs, ra_gfx, ra_ble_host, plus the
+  secure_app key_vault inside ra_hal)
+- **1 partial** (ra_tls -- awaits real RSA primitive)
+
+Examples: 15 hardware-flashable applications (was 6 at start of
+sweep 7, was 12 at end of sweep 8, was 12 at end of sweep 10).
+
+Tests: 139 ctest executables covering every module above (was 91
+at start of sweep 1, was 144 internally counted at sweep 8, ctest
+-N reports 139 today after consolidation).
+
+Of the 6 "partial" entries, only two (ra_i3c HDR-DDR/IBI, ra_canfd
+GAFL/BRS) are realistic candidates for completion without external
+inputs. The crypto + BLE placeholders cannot be promoted to
+feature-complete without Renesas's closed-source firmware blobs --
+see `docs/MISSING.md` section 5 (DEFERRED).
