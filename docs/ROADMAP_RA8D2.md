@@ -15,6 +15,48 @@ silicon"; the last phase is library polish.
 
 ---
 
+## Tooling / build-system stance (firm)
+
+**We do not use e2 studio.** The project is command-line-only: CMake +
+arm-none-eabi-gcc, with the existing `make <app>` / `make apps`
+top-level shorthand. Every line of code, every linker script, every
+driver, every integration shim is hand-written and checked into the
+tree. This is by design and matches `CLAUDE.md`'s "Zero vendor IDE
+artifacts" rule.
+
+What that means practically for adopting Eclipse ThreadX X-Ware:
+
+- We do **not** rely on FSP's project generator or e2 studio's
+  Azure RTOS template. Those are convenient but they emit code into a
+  build system we don't use.
+- We **vendor** each X-Ware component directly from its
+  github.com/eclipse-threadx/* repo into `libs/third_party/` as a
+  git subtree (or submodule -- pick when we get there).
+- We **hand-write** every integration shim: the Cortex-M85 port glue
+  for ThreadX, the NetX Duo Ethernet driver shim on `ra_eth`, the
+  FileX media driver shim on `ra_sdhi`, the USBX DCD/HCD shims on
+  `ra_usb`, the GUIX display driver shim on `ra_glcdc` + `ra_drw`,
+  the NetX Crypto AES/SHA ALT shims on `ra_rsip`, the LevelX NOR
+  driver shim on `ra_xspi`, etc.
+- We can **read** Renesas FSP's shims (their portion is permissively
+  licensed) as a reference for "what does the right integration look
+  like", but we rewrite in this project's style.
+- Our `cmake/threadx.cmake` (to be added in Phase 0) exposes each
+  X-Ware component to the per-app `examples/<name>/CMakeLists.txt`
+  files via an `RA_USE_THREADX=ON` build option.
+- The native fallback libraries (`libs/ra_net`, `libs/ra_fs`,
+  `libs/ra_gfx`, `libs/ra_ble_host`, `libs/ra_hal/src/ra_usb_*cdc/
+  hid/msc/audio*.c`) stay in-tree so apps that don't want ThreadX can
+  still build with `RA_USE_THREADX=OFF`.
+
+The integration-shim write cost is real -- roughly 200-500 LOC per
+shim, ~2-3 days of focused work each. The benefit: a single, clean,
+hand-verified codebase we own top-to-bottom with no IDE-emitted code,
+no auto-generated config XMLs, and no dependence on a tool whose
+output we don't fully understand.
+
+---
+
 ## Strategy: when to write native vs adopt 3rd party
 
 We are NOT trying to hand-roll everything. Past sweeps wrote minimal
