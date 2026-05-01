@@ -72,9 +72,9 @@ if [[ -n "$c_files" ]]; then
     c23_ok=true
     for f in $c_files; do
         # _Static_assert -> static_assert
-        if grep -qn '_Static_assert' "$f" 2>/dev/null; then
+        if grep -qnE '^[[:space:]]*_Static_assert[[:space:]]*\(' "$f" 2>/dev/null; then
             echo "[FAIL] C11 _Static_assert in $f (use static_assert)"
-            grep -n '_Static_assert' "$f"
+            grep -nE '^[[:space:]]*_Static_assert[[:space:]]*\(' "$f"
             c23_ok=false
         fi
         # = {0} -> = {}
@@ -84,7 +84,7 @@ if [[ -n "$c_files" ]]; then
             c23_ok=false
         fi
         # #include <stdbool.h> (unnecessary in C23)
-        if grep -qn '#include <stdbool.h>' "$f" 2>/dev/null; then
+        if grep -qnE '^[[:space:]]*#[[:space:]]*include[[:space:]]+<stdbool\.h>' "$f" 2>/dev/null; then
             echo "[FAIL] Unnecessary #include <stdbool.h> in $f (bool is a C23 keyword)"
             c23_ok=false
         fi
