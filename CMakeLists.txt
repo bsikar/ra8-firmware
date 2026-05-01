@@ -45,6 +45,8 @@ set(CMAKE_C_EXTENSIONS ON) # Enable GNU extensions
 # Export compile commands for clangd/tooling
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/ra_warnings.cmake)
+
 #############################################################################
 # Compiler Flags (per build type)
 #############################################################################

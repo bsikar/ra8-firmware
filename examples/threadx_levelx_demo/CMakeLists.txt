@@ -77,6 +77,8 @@ if(NOT RA_USE_LEVELX OR NOT RA_USE_THREADX)
     return()
 endif()
 
+include(${RA_REPO_ROOT}/cmake/ra_warnings.cmake)
+
 #############################################################################
 # Sources
 #############################################################################
@@ -119,13 +121,8 @@ add_executable(${RA_APP_NAME}.elf
     ${RA_LEVELX_PORT_SOURCES}
 )
 
-target_compile_options(${RA_APP_NAME}.elf PRIVATE
-    -Wall
-    -Wextra
-    -Werror
-    -fshort-enums
-    $<$<COMPILE_LANGUAGE:C>:-Wstack-usage=2200>
-)
+ra_target_enable_project_warnings(${RA_APP_NAME}.elf STACK_USAGE_BYTES 2200)
+target_compile_options(${RA_APP_NAME}.elf PRIVATE -fshort-enums)
 
 if(RA_TRUSTZONE_ENABLE)
     target_compile_definitions(${RA_APP_NAME}.elf PRIVATE RA_TRUSTZONE_ENABLE)
