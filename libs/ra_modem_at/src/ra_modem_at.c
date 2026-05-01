@@ -1,0 +1,558 @@
+/**
+ * @file ra_modem_at.c
+ * @brief Cellular modem AT command/response driver implementation
+ *
+ * @par Tag
+ * [Ring 4 / PAL] {World: NS}
+ *
+ * @details
+ * See ``ra_modem_at.h`` for the public contract. This file
+ * implements the line accumulator state machine and the URC
+ * dispatch table. All buffers are statically allocated -- the
+ * caller-owned line buffer is referenced by pointer.
+ *
+ * The string utilities at the top of the file are project-local
+ * replacements for ``strlen``/``strncmp`` to keep the build free
+ * of ``string.h`` per the existing convention in
+ * ``libs/ra_net_pal/src/ra_net_pal.c``.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
+ */
+
+#include "ra_modem_at.h"
+
+#include <stddef.h>
+#include <stdint.h>
+
+#include "ra_check.h"
+#include "ra_err.h"
+#include "ra_log.h"
+
+/**
+ * @def RA_MODEM_AT_TAG
+ * @brief Component log tag.
+ */
+#define RA_MODEM_AT_TAG "MODEM_AT"
+
+/**
+ * @enum ra_modem_at_state_t
+ * @brief Internal line-accumulator FSM states.
+ *
+ * @details
+ * The state moves only forward through the cycle
+ * idle -> await_echo -> await_resp -> done -> idle.
+ * Echo handling is best-effort: if the modem has ATE0 active and
+ * never echoes, the first non-empty line transitions the FSM
+ * directly into ``await_resp``.
+ */
+typedef enum : uint8_t {
+  k_ra_modem_at_state_idle = 0U, /**< No command in flight. */
+  k_ra_modem_at_state_await_echo =
+      1U, /**< Sent command, waiting for echo line. */
+  k_ra_modem_at_state_await_resp = 2U, /**< Echo seen (or skipped), draining. */
+  k_ra_modem_at_state_done = 3U,       /**< Final result code matched. */
+} ra_modem_at_state_t;
+
+/**
+ * @struct ra_modem_at_urc_slot_t
+ * @brief One URC table entry.
+ */
+typedef struct {
+  uint8_t used;                                 /**< 1 if slot occupied. */
+  uint8_t prefix[k_ra_modem_at_max_prefix_len]; /**< NUL-terminated prefix. */
+  ra_modem_at_urc_fn_t fn;                      /**< Handler callback. */
+  void *ctx;                                    /**< Opaque ctx for ``fn``. */
+} ra_modem_at_urc_slot_t;
+
+/**
+ * @struct ra_modem_at_module_t
+ * @brief Aggregated module state.
+ *
+ * @details
+ * Held in a single file-static instance; a struct rather than a
+ * scatter of statics so future moves to a context-handle API are
+ * mechanical.
+ *
+ * @invariant ``initialised == 1`` implies ``cfg.line_buf != NULL``.
+ */
+typedef struct {
+  uint8_t initialised;       /**< 1 after ``ra_modem_at_init``. */
+  ra_modem_at_cfg_t cfg;     /**< Cached caller configuration. */
+  uint16_t line_len;         /**< Bytes pending in ``cfg.line_buf``. */
+  ra_modem_at_state_t state; /**< FSM state. */
+  ra_modem_at_urc_slot_t urcs[k_ra_modem_at_max_unsolicited]; /**< URC table. */
+} ra_modem_at_module_t;
+
+/**
+ * @var s_mod
+ * @brief Singleton module state (file scope, NASA Rule 6).
+ *
+ * @note Direct external access is forbidden; the public API guards it.
+ */
+static ra_modem_at_module_t s_mod;
+
+/* ------------------------------------------------------------------------- */
+/* Internal helpers                                                          */
+/* ------------------------------------------------------------------------- */
+
+/**
+ * @brief NUL-terminated string length.
+ *
+ * @param[in] s NUL-terminated input string (must be non-NULL).
+ * @return Length in bytes, capped at ``UINT16_MAX``.
+ */
+static uint16_t internal_str_len(const char *s) {
+  uint16_t i = 0U;
+  while ((i < UINT16_MAX) && (s[i] != '\0')) {
+    ++i;
+  }
+  return i;
+}
+
+/**
+ * @brief Return 1 if ``hay`` begins with ``needle``.
+ *
+ * @param[in] hay    NUL-terminated haystack.
+ * @param[in] needle NUL-terminated prefix.
+ * @return 1 on match, 0 otherwise.
+ */
+static uint8_t internal_starts_with(const char *hay, const char *needle) {
+  uint16_t i = 0U;
+  while (needle[i] != '\0') {
+    if (hay[i] != needle[i]) {
+      return 0U;
+    }
+    ++i;
+  }
+  return 1U;
+}
+
+/**
+ * @brief Compare two NUL-terminated strings for exact equality.
+ *
+ * @param[in] a First string.
+ * @param[in] b Second string.
+ * @return 1 if equal, 0 otherwise.
+ */
+static uint8_t internal_str_eq(const char *a, const char *b) {
+  uint16_t i = 0U;
+  while ((a[i] != '\0') && (b[i] != '\0')) {
+    if (a[i] != b[i]) {
+      return 0U;
+    }
+    ++i;
+  }
+  return (uint8_t)((a[i] == '\0') && (b[i] == '\0'));
+}
+
+/**
+ * @brief Append a single character to ``out`` if there is room.
+ *
+ * @param[in,out] out      Output buffer (NUL-terminated on entry).
+ * @param[in]     out_len  Total capacity of ``out``.
+ * @param[in,out] used     Current populated length (excluding NUL).
+ * @param[in]     ch       Character to append.
+ */
+static void internal_append_ch(char *out, size_t out_len, size_t *used,
+                               char ch) {
+  if ((*used + 1U) < out_len) {
+    out[*used] = ch;
+    ++(*used);
+    out[*used] = '\0';
+  }
+}
+
+/**
+ * @brief Reset the line accumulator for a fresh command cycle.
+ */
+static void internal_reset_line(void) {
+  s_mod.line_len = 0U;
+  if ((s_mod.cfg.line_buf != nullptr) && (s_mod.cfg.line_buf_len > 0U)) {
+    s_mod.cfg.line_buf[0] = (uint8_t)'\0';
+  }
+}
+
+/**
+ * @brief Test whether ``line`` is a final OK/ERROR result code.
+ *
+ * @param[in]  line     NUL-terminated received line.
+ * @param[out] is_error Set to 1 if ``line`` is an error result.
+ * @return 1 if ``line`` is any final result code, 0 otherwise.
+ */
+static uint8_t internal_classify_final(const char *line, uint8_t *is_error) {
+  *is_error = 0U;
+  if (internal_str_eq(line, "OK") != 0U) {
+    return 1U;
+  }
+  if (internal_str_eq(line, "ERROR") != 0U) {
+    *is_error = 1U;
+    return 1U;
+  }
+  if (internal_starts_with(line, "+CME ERROR") != 0U) {
+    *is_error = 1U;
+    return 1U;
+  }
+  if (internal_starts_with(line, "+CMS ERROR") != 0U) {
+    *is_error = 1U;
+    return 1U;
+  }
+  if (internal_str_eq(line, "BUSY") != 0U) {
+    *is_error = 1U;
+    return 1U;
+  }
+  if (internal_str_eq(line, "NO CARRIER") != 0U) {
+    *is_error = 1U;
+    return 1U;
+  }
+  return 0U;
+}
+
+/**
+ * @brief Dispatch a URC line to any matching registered handler.
+ *
+ * @param[in] line NUL-terminated line.
+ * @return 1 if a handler matched, 0 otherwise.
+ */
+static uint8_t internal_dispatch_urc(const char *line) {
+  for (uint8_t i = 0U; i < (uint8_t)k_ra_modem_at_max_unsolicited; ++i) {
+    if (s_mod.urcs[i].used == 0U) {
+      continue;
+    }
+    if (internal_starts_with(line, (const char *)s_mod.urcs[i].prefix) != 0U) {
+      s_mod.urcs[i].fn(line, s_mod.urcs[i].ctx);
+      return 1U;
+    }
+  }
+  return 0U;
+}
+
+/**
+ * @brief Result of processing a single completed line.
+ */
+typedef enum : uint8_t {
+  k_ra_modem_line_kind_empty = 0U,     /**< Empty line (CRLF-only). */
+  k_ra_modem_line_kind_echo = 1U,      /**< Echo of the command we sent. */
+  k_ra_modem_line_kind_urc = 2U,       /**< Dispatched to URC handler. */
+  k_ra_modem_line_kind_final_ok = 3U,  /**< Final ``OK``. */
+  k_ra_modem_line_kind_final_err = 4U, /**< Final ``ERROR``/``+CME ERROR``. */
+  k_ra_modem_line_kind_payload = 5U, /**< Response payload (incl. expected). */
+} ra_modem_line_kind_t;
+
+/**
+ * @brief Classify a complete (NUL-terminated) line for the FSM.
+ *
+ * @details
+ * The expected-prefix and command-echo arguments are caller-supplied
+ * because they vary per command invocation. URC dispatch happens
+ * inside this helper so the caller does not need to know about it.
+ *
+ * @param[in] line              NUL-terminated received line.
+ * @param[in] cmd_echo          Command we sent (for echo detection),
+ *                              may be NULL when not awaiting echo.
+ * @param[in] expected_response Optional caller-specified prefix.
+ * @return One of ``ra_modem_line_kind_t``.
+ */
+static ra_modem_line_kind_t internal_classify(const char *line,
+                                              const char *cmd_echo,
+                                              const char *expected_response) {
+  if (line[0] == '\0') {
+    return k_ra_modem_line_kind_empty;
+  }
+  if ((cmd_echo != nullptr) && (internal_str_eq(line, cmd_echo) != 0U)) {
+    return k_ra_modem_line_kind_echo;
+  }
+  uint8_t is_err = 0U;
+  if (internal_classify_final(line, &is_err) != 0U) {
+    return (is_err != 0U) ? k_ra_modem_line_kind_final_err
+                          : k_ra_modem_line_kind_final_ok;
+  }
+  /* If the caller didn't ask for a specific prefix, allow URC dispatch. */
+  if ((expected_response == nullptr) || (expected_response[0] == '\0') ||
+      (internal_starts_with(line, expected_response) == 0U)) {
+    if (internal_dispatch_urc(line) != 0U) {
+      return k_ra_modem_line_kind_urc;
+    }
+  }
+  return k_ra_modem_line_kind_payload;
+}
+
+/**
+ * @brief Push a single received byte into the line accumulator.
+ *
+ * @param[in]  byte     Just-received byte.
+ * @param[out] line_out If a complete line is now ready, set to
+ *                      ``cfg.line_buf`` (NUL-terminated). Otherwise NULL.
+ */
+static void internal_accumulate(uint8_t byte, const char **line_out) {
+  *line_out = nullptr;
+  if ((byte == (uint8_t)'\r') || (byte == (uint8_t)'\n')) {
+    if (s_mod.line_len > 0U) {
+      s_mod.cfg.line_buf[s_mod.line_len] = (uint8_t)'\0';
+      *line_out = (const char *)s_mod.cfg.line_buf;
+      s_mod.line_len = 0U;
+    }
+    return;
+  }
+  if ((s_mod.line_len + 1U) >= s_mod.cfg.line_buf_len) {
+    /* Overflow: terminate, emit what we have, drop the new byte. */
+    s_mod.cfg.line_buf[s_mod.line_len] = (uint8_t)'\0';
+    *line_out = (const char *)s_mod.cfg.line_buf;
+    s_mod.line_len = 0U;
+    return;
+  }
+  s_mod.cfg.line_buf[s_mod.line_len] = byte;
+  ++s_mod.line_len;
+}
+
+/**
+ * @brief Transmit a NUL-terminated string then ``"\r"``.
+ *
+ * @param[in] s NUL-terminated string to transmit.
+ * @return ``ra_err_t`` propagated from the transport.
+ */
+static ra_err_t internal_tx_command(const char *s) {
+  uint16_t i = 0U;
+  while (s[i] != '\0') {
+    const ra_err_t err = s_mod.cfg.io.tx_byte(s_mod.cfg.io.ctx, (uint8_t)s[i]);
+    if (err != k_ra_ok) {
+      return err;
+    }
+    ++i;
+  }
+  return s_mod.cfg.io.tx_byte(s_mod.cfg.io.ctx, (uint8_t)'\r');
+}
+
+/**
+ * @brief Resolve effective timeout in ms, applying default if 0.
+ */
+static uint16_t internal_effective_timeout(uint16_t timeout_ms) {
+  if (timeout_ms != 0U) {
+    return timeout_ms;
+  }
+  if (s_mod.cfg.default_timeout_ms != 0U) {
+    return s_mod.cfg.default_timeout_ms;
+  }
+  return (uint16_t)k_ra_modem_at_default_timeout_ms;
+}
+
+/**
+ * @brief Inner wait loop shared by send_cmd and send_cmd_capture.
+ *
+ * @param[in]  cmd               Command we sent (for echo strip).
+ * @param[in]  expected_response Optional expected prefix.
+ * @param[in]  timeout_ms        Effective timeout in ms (already resolved).
+ * @param[out] capture           Optional payload capture buffer (may be NULL).
+ * @param[in]  capture_len       Capacity of ``capture``.
+ * @return ``ra_err_t`` per public docs.
+ */
+static ra_err_t internal_wait_response(const char *cmd,
+                                       const char *expected_response,
+                                       uint16_t timeout_ms, char *capture,
+                                       size_t capture_len) {
+  const uint32_t start = s_mod.cfg.io.now_ms(s_mod.cfg.io.ctx);
+  size_t used = 0U;
+  uint8_t seen_exp = (uint8_t)((expected_response == nullptr) ||
+                               (expected_response[0] == '\0'));
+
+  if ((capture != nullptr) && (capture_len > 0U)) {
+    capture[0] = '\0';
+  }
+
+  s_mod.state = k_ra_modem_at_state_await_echo;
+
+  while (1) {
+    uint8_t byte = 0U;
+    const ra_err_t rx_err = s_mod.cfg.io.rx_byte(s_mod.cfg.io.ctx, &byte);
+    const uint32_t elapsed = s_mod.cfg.io.now_ms(s_mod.cfg.io.ctx) - start;
+
+    if (rx_err == k_ra_ok) {
+      const char *line = nullptr;
+      internal_accumulate(byte, &line);
+      if (line != nullptr) {
+        const ra_modem_line_kind_t kind =
+            internal_classify(line, cmd, expected_response);
+        switch (kind) {
+        case k_ra_modem_line_kind_empty:
+        case k_ra_modem_line_kind_urc:
+          break;
+        case k_ra_modem_line_kind_echo:
+          s_mod.state = k_ra_modem_at_state_await_resp;
+          break;
+        case k_ra_modem_line_kind_final_ok:
+          s_mod.state = k_ra_modem_at_state_done;
+          if (seen_exp == 0U) {
+            ra_log_error(RA_MODEM_AT_TAG, "OK without expected prefix");
+            internal_reset_line();
+            return k_ra_err_hw_error;
+          }
+          internal_reset_line();
+          return k_ra_ok;
+        case k_ra_modem_line_kind_final_err:
+          s_mod.state = k_ra_modem_at_state_done;
+          internal_reset_line();
+          return k_ra_err_hw_error;
+        case k_ra_modem_line_kind_payload:
+        default:
+          if ((expected_response != nullptr) &&
+              (expected_response[0] != '\0') &&
+              (internal_starts_with(line, expected_response) != 0U)) {
+            seen_exp = 1U;
+          }
+          if ((capture != nullptr) && (capture_len > 0U)) {
+            if (used > 0U) {
+              internal_append_ch(capture, capture_len, &used, '\n');
+            }
+            uint16_t k = 0U;
+            while (line[k] != '\0') {
+              internal_append_ch(capture, capture_len, &used, line[k]);
+              ++k;
+            }
+          }
+          if (s_mod.state == k_ra_modem_at_state_await_echo) {
+            s_mod.state = k_ra_modem_at_state_await_resp;
+          }
+          break;
+        }
+      }
+    }
+
+    if (elapsed >= (uint32_t)timeout_ms) {
+      s_mod.state = k_ra_modem_at_state_idle;
+      internal_reset_line();
+      return k_ra_err_hw_timeout;
+    }
+  }
+}
+
+/* ------------------------------------------------------------------------- */
+/* Public API                                                                */
+/* ------------------------------------------------------------------------- */
+
+ra_err_t ra_modem_at_init(const ra_modem_at_cfg_t *cfg) {
+  RA_CHECK_NULL_PTR(cfg, RA_MODEM_AT_TAG, "cfg");
+  RA_CHECK_NULL_PTR(cfg->line_buf, RA_MODEM_AT_TAG, "cfg->line_buf");
+  RA_CHECK_NULL_PTR((void *)cfg->io.tx_byte, RA_MODEM_AT_TAG,
+                    "cfg->io.tx_byte");
+  RA_CHECK_NULL_PTR((void *)cfg->io.rx_byte, RA_MODEM_AT_TAG,
+                    "cfg->io.rx_byte");
+  RA_CHECK_NULL_PTR((void *)cfg->io.now_ms, RA_MODEM_AT_TAG, "cfg->io.now_ms");
+
+  if (cfg->line_buf_len < 16U) {
+    ra_log_error(RA_MODEM_AT_TAG, "line_buf too small");
+    return k_ra_err_invalid_size;
+  }
+
+  s_mod.cfg = *cfg;
+  s_mod.line_len = 0U;
+  s_mod.state = k_ra_modem_at_state_idle;
+  s_mod.initialised = 1U;
+  for (uint8_t i = 0U; i < (uint8_t)k_ra_modem_at_max_unsolicited; ++i) {
+    s_mod.urcs[i].used = 0U;
+    s_mod.urcs[i].fn = nullptr;
+    s_mod.urcs[i].ctx = nullptr;
+  }
+  internal_reset_line();
+  return k_ra_ok;
+}
+
+ra_err_t ra_modem_at_send_cmd(const char *cmd, const char *expected_response,
+                              uint16_t timeout_ms) {
+  if (s_mod.initialised == 0U) {
+    return k_ra_err_not_initialized;
+  }
+  RA_CHECK_NULL_PTR(cmd, RA_MODEM_AT_TAG, "cmd");
+
+  internal_reset_line();
+  const ra_err_t tx_err = internal_tx_command(cmd);
+  if (tx_err != k_ra_ok) {
+    return tx_err;
+  }
+  return internal_wait_response(cmd, expected_response,
+                                internal_effective_timeout(timeout_ms), nullptr,
+                                0U);
+}
+
+ra_err_t ra_modem_at_send_cmd_capture(const char *cmd, char *out_buf,
+                                      size_t buf_len, uint16_t timeout_ms) {
+  if (s_mod.initialised == 0U) {
+    return k_ra_err_not_initialized;
+  }
+  RA_CHECK_NULL_PTR(cmd, RA_MODEM_AT_TAG, "cmd");
+  RA_CHECK_NULL_PTR(out_buf, RA_MODEM_AT_TAG, "out_buf");
+  if (buf_len == 0U) {
+    return k_ra_err_invalid_size;
+  }
+
+  out_buf[0] = '\0';
+  internal_reset_line();
+  const ra_err_t tx_err = internal_tx_command(cmd);
+  if (tx_err != k_ra_ok) {
+    return tx_err;
+  }
+  return internal_wait_response(
+      cmd, nullptr, internal_effective_timeout(timeout_ms), out_buf, buf_len);
+}
+
+ra_err_t ra_modem_at_register_unsolicited_handler(const char *prefix,
+                                                  ra_modem_at_urc_fn_t fn,
+                                                  void *ctx) {
+  if (s_mod.initialised == 0U) {
+    return k_ra_err_not_initialized;
+  }
+  RA_CHECK_NULL_PTR(prefix, RA_MODEM_AT_TAG, "prefix");
+  RA_CHECK_NULL_PTR((void *)fn, RA_MODEM_AT_TAG, "fn");
+
+  const uint16_t plen = internal_str_len(prefix);
+  if ((plen == 0U) || (plen >= (uint16_t)k_ra_modem_at_max_prefix_len)) {
+    return k_ra_err_invalid_size;
+  }
+
+  /* Replace existing slot with same prefix. */
+  for (uint8_t i = 0U; i < (uint8_t)k_ra_modem_at_max_unsolicited; ++i) {
+    if (s_mod.urcs[i].used != 0U) {
+      if (internal_str_eq((const char *)s_mod.urcs[i].prefix, prefix) != 0U) {
+        s_mod.urcs[i].fn = fn;
+        s_mod.urcs[i].ctx = ctx;
+        return k_ra_ok;
+      }
+    }
+  }
+  /* Find first free slot. */
+  for (uint8_t i = 0U; i < (uint8_t)k_ra_modem_at_max_unsolicited; ++i) {
+    if (s_mod.urcs[i].used == 0U) {
+      uint16_t k = 0U;
+      while (k < plen) {
+        s_mod.urcs[i].prefix[k] = (uint8_t)prefix[k];
+        ++k;
+      }
+      s_mod.urcs[i].prefix[plen] = (uint8_t)'\0';
+      s_mod.urcs[i].fn = fn;
+      s_mod.urcs[i].ctx = ctx;
+      s_mod.urcs[i].used = 1U;
+      return k_ra_ok;
+    }
+  }
+  return k_ra_err_no_mem;
+}
+
+ra_err_t ra_modem_at_poll(void) {
+  if (s_mod.initialised == 0U) {
+    return k_ra_err_not_initialized;
+  }
+  while (1) {
+    uint8_t byte = 0U;
+    const ra_err_t err = s_mod.cfg.io.rx_byte(s_mod.cfg.io.ctx, &byte);
+    if (err != k_ra_ok) {
+      break;
+    }
+    const char *line = nullptr;
+    internal_accumulate(byte, &line);
+    if (line != nullptr) {
+      const ra_modem_line_kind_t kind =
+          internal_classify(line, nullptr, nullptr);
+      (void)kind;
+    }
+  }
+  return k_ra_ok;
+}
