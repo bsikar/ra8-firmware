@@ -1437,6 +1437,27 @@ ra_mipi_dsi_send_command_long(ra_mipi_dsi_dt_t dt, const uint8_t* payload, uint1
   return ra_mipi_dsi_send_long_packet(dt, k_ra_mipi_dsi_vc0, payload, len, false);
 }
 
+[[nodiscard]] ra_err_t
+ra_mipi_dsi_send_command_payload(ra_mipi_dsi_dt_t packet_type, const uint8_t* payload, uint16_t len)
+{
+  if ((len > 0U) && (payload == nullptr)) {
+    return k_ra_err_null_ptr;
+  }
+  /* HUM Ch 65 "Command-mode packet TX" pp 3839-3934 -- short writes
+   * pack the payload into the 2-parameter header; long writes stage
+   * via TXPPD0..3R. */
+  enum : uint16_t {
+    k_ra_mipi_dsi_short_payload_max = 2U,
+  };
+  if (len <= k_ra_mipi_dsi_short_payload_max) {
+    const uint8_t p0 = (len > 0U) ? payload[0] : 0U;
+    const uint8_t p1 = (len > 1U) ? payload[1] : 0U;
+    return ra_mipi_dsi_send_short_packet(packet_type, k_ra_mipi_dsi_vc0, p0, p1);
+  }
+  /* Long packet through LP escape (low_power = true). */
+  return ra_mipi_dsi_send_long_packet(packet_type, k_ra_mipi_dsi_vc0, payload, len, true);
+}
+
 [[nodiscard]] ra_err_t ra_mipi_dsi_enter_ulps(void)
 {
   return ra_mipi_dsi_ulps_enter(k_ra_mipi_dsi_lane_all);

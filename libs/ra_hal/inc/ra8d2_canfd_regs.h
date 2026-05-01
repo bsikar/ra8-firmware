@@ -543,6 +543,32 @@ typedef enum : uint32_t {
   k_ra_gaflectr_bit_afldae = 1UL << 8U,
 } ra_gaflectr_bits_t;
 
+/**
+ * @enum ra_canfd_afl_total_t
+ * @brief Maximum number of GAFL filter rules across all paged windows.
+ *
+ * @details
+ * The CFDGAFLECTR.AFLPN field is 4 bits wide so the controller can
+ * page through at most 16 windows.  Each window exposes 16 entries
+ * (k_ra_canfd_afl_page_size), giving 256 total filters.  HUM Ch 41
+ * "Acceptance Filter List" pp 2702-2867.
+ */
+typedef enum : uint16_t {
+  k_ra_canfd_afl_total = (uint16_t)(16U * 16U), /**< 16 pages x 16 entries. */
+} ra_canfd_afl_total_t;
+
+/**
+ * @enum ra_canfd_gfdcfg_bits_t
+ * @brief CFDGFDCFG (Global FD Config) field positions.
+ *
+ * @details
+ * From FSP `R_CANFD_CFDGFDCFG_b` -- bit 0 is NISO (1 = ISO 11898-1
+ * stuff-count / CRC, 0 = original Bosch non-ISO framing).
+ */
+typedef enum : uint32_t {
+  k_ra_gfdcfg_bit_niso = 1UL << 0U, /**< NISO: ISO mode select. */
+} ra_canfd_gfdcfg_bits_t;
+
 /* =============================================================================
  * Message-ID layout (CFDRF.ID / CFDTM.ID / CFDCF.ID / CFDRM.ID)
  * =============================================================================

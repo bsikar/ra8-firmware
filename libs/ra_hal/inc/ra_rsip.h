@@ -393,6 +393,221 @@ void ra_rsip_dispatch(void);
 [[nodiscard]] ra_err_t ra_rsip_sha256(const uint8_t* msg, uint32_t msg_len, uint8_t* digest);
 
 /* =============================================================================
+ * SHA-256 incremental (init / update / final)
+ * =============================================================================
+ */
+
+/**
+ * @enum ra_rsip_sha_buf_t
+ * @brief Capacity caps for the incremental SHA / HMAC streaming buffers.
+ *
+ * @details
+ * The RSIP-E50D hash unit accepts a single contiguous buffer per
+ * operation (HUM Ch 52.2.3 "Hash Generator" p 3306). The incremental
+ * API therefore buffers all input, then issues a single hardware hash
+ * at ``final()``. The buffer cap is sized for TLS 1.2 / 1.3 handshake
+ * transcripts.
+ */
+typedef enum : uint16_t {
+  k_ra_rsip_inc_buf_bytes  = 8192U, /**< Streaming buffer for incremental hash. */
+  k_ra_rsip_sha256_block   = 64U,   /**< SHA-256 message-block byte length.    */
+  k_ra_rsip_hmac_inner_pad = 0x36U, /**< RFC 2104 inner-pad fill byte.         */
+  k_ra_rsip_hmac_outer_pad = 0x5CU, /**< RFC 2104 outer-pad fill byte.         */
+} ra_rsip_sha_buf_t;
+
+/**
+ * @struct ra_rsip_sha256_ctx_t
+ * @brief Streaming state for incremental SHA-256.
+ *
+ * @invariant ``used`` <= ``k_ra_rsip_inc_buf_bytes``.
+ * @since 0.1.0
+ */
+typedef struct {
+  uint8_t  buf[k_ra_rsip_inc_buf_bytes]; /**< Accumulated message bytes.   */
+  uint32_t used;                         /**< Bytes currently in ``buf``.  */
+  uint8_t  initialised;                  /**< 1 = ready, 0 = unset.        */
+} ra_rsip_sha256_ctx_t;
+
+/**
+ * @brief Initialise a streaming SHA-256 context.
+ *
+ * @param[out] ctx Streaming state; never NULL.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok                Context ready for ``update()``.
+ * @retval k_ra_err_null_ptr      ``ctx`` was nullptr.
+ *
+ * @pre ``ra_rsip_init`` has been called at least once since reset.
+ * @pre ``ctx`` is non-NULL.
+ *
+ * @post ``ctx->used == 0`` and ``ctx->initialised == 1``.
+ * @post No engine state is modified.
+ *
+ * @note Thread safety: not thread-safe.
+ *
+ * @code{.c}
+ * ra_rsip_sha256_ctx_t ctx;
+ * (void)ra_rsip_sha256_init(&ctx);
+ * (void)ra_rsip_sha256_update(&ctx, hello, hello_len);
+ * uint8_t transcript[k_ra_rsip_sha256_digest_bytes];
+ * (void)ra_rsip_sha256_final(&ctx, transcript);
+ * @endcode
+ *
+ * @see ra_rsip_sha256_update
+ * @see ra_rsip_sha256_final
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_rsip_sha256_init(ra_rsip_sha256_ctx_t* ctx);
+
+/**
+ * @brief Absorb additional bytes into a streaming SHA-256 context.
+ *
+ * @param[in,out] ctx  Context primed by ``ra_rsip_sha256_init``.
+ * @param[in]     data Bytes to absorb; may be NULL only if ``len`` is 0.
+ * @param[in]     len  Number of bytes in ``data``.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok                Bytes accumulated.
+ * @retval k_ra_err_null_ptr      ``ctx`` was nullptr or ``data`` was NULL with non-zero ``len``.
+ * @retval k_ra_err_invalid_state ``ctx`` was not initialised.
+ * @retval k_ra_err_invalid_arg   Cumulative input exceeds ``k_ra_rsip_inc_buf_bytes``.
+ *
+ * @pre ``ctx->initialised == 1``.
+ * @pre Either ``len == 0`` or ``data`` is non-NULL.
+ *
+ * @post On success ``ctx->used`` grew by ``len``.
+ * @post On failure ``ctx`` is unchanged.
+ *
+ * @note Thread safety: not thread-safe.
+ * @see ra_rsip_sha256_init
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t
+ra_rsip_sha256_update(ra_rsip_sha256_ctx_t* ctx, const uint8_t* data, uint32_t len);
+
+/**
+ * @brief Emit the digest of a streaming SHA-256 context.
+ *
+ * @param[in,out] ctx        Context populated by prior ``update()`` calls.
+ * @param[out]    digest_out 32-byte digest output buffer; never NULL.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok                Digest written.
+ * @retval k_ra_err_null_ptr      ``ctx`` or ``digest_out`` was nullptr.
+ * @retval k_ra_err_invalid_state ``ctx`` was not initialised.
+ * @retval k_ra_err_hw_timeout    Underlying ``ra_rsip_sha256`` timed out.
+ *
+ * @pre ``ctx->initialised == 1``.
+ * @pre ``digest_out`` is non-NULL.
+ *
+ * @post On success ``digest_out[0..31]`` holds the SHA-256.
+ * @post On any return ``ctx->initialised == 0``.
+ *
+ * @note Thread safety: not thread-safe.
+ * @see ra_rsip_sha256_init
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_rsip_sha256_final(ra_rsip_sha256_ctx_t* ctx, uint8_t* digest_out);
+
+/* =============================================================================
+ * HMAC-SHA-256 incremental (init / update / final)
+ * =============================================================================
+ */
+
+/**
+ * @struct ra_rsip_hmac_sha256_ctx_t
+ * @brief Streaming state for incremental HMAC-SHA-256.
+ *
+ * @details
+ * Implements HMAC-SHA-256 (RFC 2104) on top of the streaming SHA-256
+ * primitive. The inner SHA is built incrementally; the outer SHA is
+ * issued at ``final()``.
+ *
+ * @since 0.1.0
+ */
+typedef struct {
+  ra_rsip_sha256_ctx_t inner;                             /**< Running inner-hash state.   */
+  uint8_t              key_block[k_ra_rsip_sha256_block]; /**< Prepared 64-byte key block. */
+  uint8_t              initialised;                       /**< 1 = ready, 0 = unset.       */
+} ra_rsip_hmac_sha256_ctx_t;
+
+/**
+ * @brief Initialise a streaming HMAC-SHA-256 context.
+ *
+ * @param[out] ctx     Streaming HMAC state; never NULL.
+ * @param[in]  key     HMAC key bytes; never NULL when ``key_len`` > 0.
+ * @param[in]  key_len Length of ``key`` in bytes (may be 0).
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok                Context ready.
+ * @retval k_ra_err_null_ptr      ``ctx`` was nullptr or ``key`` was NULL with non-zero ``key_len``.
+ * @retval k_ra_err_hw_timeout    Internal SHA collapse of an oversized key timed out.
+ *
+ * @pre ``ra_rsip_init`` has been called.
+ * @pre ``ctx`` is non-NULL.
+ *
+ * @post ``ctx->initialised == 1``.
+ * @post No engine state is modified beyond the optional key-collapse.
+ *
+ * @note Thread safety: not thread-safe.
+ * @see ra_rsip_hmac_sha256_update
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t
+ra_rsip_hmac_sha256_init(ra_rsip_hmac_sha256_ctx_t* ctx, const uint8_t* key, uint32_t key_len);
+
+/**
+ * @brief Absorb additional bytes into a streaming HMAC-SHA-256 context.
+ *
+ * @param[in,out] ctx  Context primed by ``ra_rsip_hmac_sha256_init``.
+ * @param[in]     data Bytes to absorb; may be NULL only if ``len`` is 0.
+ * @param[in]     len  Number of bytes in ``data``.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok                Bytes accumulated.
+ * @retval k_ra_err_null_ptr      ``ctx`` was nullptr or ``data`` NULL with non-zero ``len``.
+ * @retval k_ra_err_invalid_state ``ctx`` was not initialised.
+ * @retval k_ra_err_invalid_arg   Cumulative input exceeds the buffer cap.
+ *
+ * @pre ``ctx->initialised == 1``.
+ * @pre Either ``len == 0`` or ``data`` is non-NULL.
+ *
+ * @post On success ``ctx->inner.used`` grew by ``len``.
+ * @post On failure ``ctx`` is unchanged.
+ *
+ * @note Thread safety: not thread-safe.
+ * @see ra_rsip_hmac_sha256_init
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t
+ra_rsip_hmac_sha256_update(ra_rsip_hmac_sha256_ctx_t* ctx, const uint8_t* data, uint32_t len);
+
+/**
+ * @brief Emit the MAC of a streaming HMAC-SHA-256 context.
+ *
+ * @param[in,out] ctx     Context populated by prior ``update()`` calls.
+ * @param[out]    mac_out 32-byte MAC output buffer; never NULL.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok                MAC written.
+ * @retval k_ra_err_null_ptr      ``ctx`` or ``mac_out`` was nullptr.
+ * @retval k_ra_err_invalid_state ``ctx`` was not initialised.
+ * @retval k_ra_err_hw_timeout    Either SHA pass timed out.
+ *
+ * @pre ``ctx->initialised == 1``.
+ * @pre ``mac_out`` is non-NULL.
+ *
+ * @post On success ``mac_out[0..31]`` is the HMAC-SHA-256.
+ * @post On any return ``ctx->initialised == 0``.
+ *
+ * @note Thread safety: not thread-safe.
+ * @see ra_rsip_hmac_sha256_init
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_rsip_hmac_sha256_final(ra_rsip_hmac_sha256_ctx_t* ctx, uint8_t* mac_out);
+
+/* =============================================================================
  * Power transition
  * =============================================================================
  */
