@@ -552,6 +552,74 @@ static void test_power_transition(void)
   TEST_END("canfd power transition");
 }
 
+/* ---------------------------------------------------------------------------
+ * Sweep 15 / Phase 2: GAFL filter, BRS, ISO/non-ISO mode.
+ * --------------------------------------------------------------------------- */
+
+static void test_filter_set_writes_id_mask_dlc(void)
+{
+  TEST_BEGIN("canfd filter_set programs CFDGAFL slot");
+  prep_w53();
+
+  /* Filter 0 -> page 0, slot 0. */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_canfd_filter_set(0U, 0x123U, 0x7FFU, 8U));
+  volatile r_canfd_t* reg = ra_canfd(0U);
+  TEST_ASSERT_EQ((int32_t)0x123U, (int32_t)reg->CFDGAFL[0].ID);
+  TEST_ASSERT_EQ((int32_t)0x7FFU, (int32_t)reg->CFDGAFL[0].M);
+  /* DLC=8 packed into [31:28] -> 8 << 28 = 0x80000000. */
+  TEST_ASSERT_EQ((int32_t)0x80000000U, (int32_t)reg->CFDGAFL[0].P1);
+  /* AFLDAE re-locked at exit (CFDGAFLECTR cleared). */
+  TEST_ASSERT_EQ((int32_t)0, (int32_t)reg->CFDGAFLECTR);
+  TEST_END("canfd filter_set programs CFDGAFL slot");
+}
+
+static void test_filter_set_validation(void)
+{
+  TEST_BEGIN("canfd filter_set rejects out-of-range args");
+  prep_w53();
+
+  /* Filter id past the 256-entry total. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_canfd_filter_set(0xFFFFU, 0x123U, 0x7FFU, 0U));
+  /* DLC > 15. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_canfd_filter_set(0U, 0x123U, 0x7FFU, 16U));
+  /* ID with stray top bits beyond the 29-bit extended range. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_canfd_filter_set(0U, 0x40000000U, 0xFFFFU, 0U));
+  TEST_END("canfd filter_set rejects out-of-range args");
+}
+
+static void test_set_brs_updates_dcfg(void)
+{
+  TEST_BEGIN("canfd set_brs reprograms CFDC2[0].DCFG");
+  prep_w53();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_canfd_init(0U));
+  /* 1 Mbps fast phase resolves cleanly against the simulated PCLKA. */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_canfd_set_brs(0U, 1000000U));
+  volatile r_canfd_t* reg = ra_canfd(0U);
+  TEST_ASSERT(reg->CFDC2[0].DCFG != 0U);
+  /* Bad channel -> null_ptr (matches existing convention). */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_canfd_set_brs(2U, 1000000U));
+  /* Zero rate -> invalid_arg. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_canfd_set_brs(0U, 0U));
+  TEST_END("canfd set_brs reprograms CFDC2[0].DCFG");
+}
+
+static void test_set_iso_mode_toggles_niso(void)
+{
+  TEST_BEGIN("canfd set_iso_mode toggles CFDGFDCFG.NISO");
+  prep_w53();
+
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_canfd_set_iso_mode(true));
+  volatile r_canfd_t* reg = ra_canfd(0U);
+  TEST_ASSERT((reg->CFDGFDCFG & (uint32_t)k_ra_gfdcfg_bit_niso) != 0U);
+
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_canfd_set_iso_mode(false));
+  TEST_ASSERT((reg->CFDGFDCFG & (uint32_t)k_ra_gfdcfg_bit_niso) == 0U);
+  TEST_END("canfd set_iso_mode toggles CFDGFDCFG.NISO");
+}
+
 int32_t main(void)
 {
   test_init_channel0_happy();
@@ -588,6 +656,10 @@ int32_t main(void)
   test_clear_status();
   test_attach_and_dispatch();
   test_power_transition();
+  test_filter_set_writes_id_mask_dlc();
+  test_filter_set_validation();
+  test_set_brs_updates_dcfg();
+  test_set_iso_mode_toggles_niso();
   (void)fprintf(stderr, "[OK ] test_ra_canfd.c\n");
   return 0;
 }

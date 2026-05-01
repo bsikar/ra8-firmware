@@ -1,0 +1,535 @@
+/**
+ * @file ra_reflow.h
+ * @brief HTML / CSS reflow + paginate engine for the ra8d2 ereader.
+ *
+ * @details
+ * `ra_reflow` is a small, hand-written HTML reflow + pagination engine
+ * sitting between `libs/ra_epub` (which produces per-chapter XHTML
+ * byte streams) and `libs/ra_gfx` (which owns the framebuffer). It is
+ * the page-layout core of the ereader application.
+ *
+ * The engine is intentionally bare-metal friendly:
+ *
+ *   - **Zero dynamic allocation.** Every buffer is statically sized via
+ *     a `ra_reflow_limits_t` enum and lives inside the engine handle.
+ *   - **Greedy line-break.** Walks each text run word-by-word measuring
+ *     glyph widths via `stb_truetype`; when adding the next word would
+ *     exceed `viewport_w - 2 * k_ra_reflow_margin_px`, the engine
+ *     breaks and starts a new line.
+ *   - **Page-break-on-overflow.** When the accumulated line height
+ *     would exceed `viewport_h - 2 * k_ra_reflow_margin_px`, the
+ *     engine starts a new page.
+ *   - **Caller-owned framebuffer.** Rendering blits each glyph via
+ *     `ra_gfx_pixel()` so the same engine works on the GLCDC plane,
+ *     an off-screen scratch buffer, or a host-test buffer.
+ *
+ * ## Supported HTML subset (v1)
+ *
+ *   - Block-flow tags:    `<p>`, `<h1>` .. `<h6>`, `<blockquote>`,
+ *                          `<ul>`, `<ol>`, `<li>`, `<hr>`.
+ *   - Inline tags:        `<em>`, `<strong>`, `<b>`, `<i>`, `<a>`,
+ *                          `<br>`.
+ *   - Replaced elements:  `<img>` -- rendered as a 1-pixel placeholder
+ *                          rectangle (image decoding is deferred).
+ *   - Everything else (CSS, scripts, `<div>`, `<span>`) is treated as
+ *     a transparent flow-pass-through; child content is still laid
+ *     out, the wrapping element itself contributes no styling.
+ *
+ * ## Lifecycle
+ *
+ *   1. `ra_reflow_init()` -- bind viewport, font, colours.
+ *   2. `ra_reflow_layout_chapter()` -- parse + lay out one XHTML
+ *      chapter, return total page count.
+ *   3. `ra_reflow_render_page()` -- rasterise page N into the active
+ *      ra_gfx framebuffer.
+ *   4. (optional) `ra_reflow_set_font_size()` -- triggers a re-flow on
+ *      the cached chapter.
+ *   5. `ra_reflow_close()` -- mark engine unused.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
+ *
+ * [Ring 4 / Reflow]
+ * {World: NS}
+ *
+ * @since 0.1.0
+ */
+
+#pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include <stddef.h>
+#include <stdint.h>
+
+#include "ra_err.h"
+
+/* ===========================================================================
+ * Compile-time limits
+ * ===========================================================================
+ */
+
+/**
+ * @enum ra_reflow_limits_t
+ * @brief Static-allocation caps for the reflow engine.
+ *
+ * @details
+ * The engine holds a fixed number of parsed tokens, positioned glyphs,
+ * and pages. Anything bigger is rejected with `k_ra_err_no_mem`. Sized
+ * to fit the EK-RA8D2's 2 MB SRAM with comfortable headroom.
+ */
+typedef enum : uint32_t {
+  k_ra_reflow_max_tokens         = 4096U,  /**< Max parsed token count.      */
+  k_ra_reflow_text_pool_bytes    = 65536U, /**< Bytes of text pool.          */
+  k_ra_reflow_max_glyphs         = 32768U, /**< Total positioned glyphs.     */
+  k_ra_reflow_max_pages          = 256U,   /**< Max paginated pages.         */
+  k_ra_reflow_max_lines_per_page = 96U,    /**< Lines per page upper bound.  */
+} ra_reflow_limits_t;
+
+/**
+ * @enum ra_reflow_layout_t
+ * @brief Layout-axis named constants used by the line-break engine.
+ *
+ * @details
+ * These values name the magic numbers that would otherwise show up in
+ * the layout pass: page margin, line-spacing multiplier numerator /
+ * denominator, default font size, and the heading multipliers H1..H6.
+ */
+typedef enum : uint16_t {
+  k_ra_reflow_margin_px        = 16U,  /**< Page edge inset, pixels.        */
+  k_ra_reflow_line_spacing_num = 12U,  /**< Line height numerator (= 1.2x). */
+  k_ra_reflow_line_spacing_den = 10U,  /**< Line height denominator.        */
+  k_ra_reflow_paragraph_gap_px = 8U,   /**< Vertical gap after a block.     */
+  k_ra_reflow_indent_px        = 24U,  /**< Indent for blockquote / li.     */
+  k_ra_reflow_default_font_px  = 18U,  /**< Default body font size.         */
+  k_ra_reflow_min_font_px      = 8U,   /**< Smallest accepted font size.    */
+  k_ra_reflow_max_font_px      = 96U,  /**< Largest accepted font size.     */
+  k_ra_reflow_h1_scale_pct     = 200U, /**< H1 size = 200 % of body.       */
+  k_ra_reflow_h2_scale_pct     = 175U, /**< H2 size = 175 % of body.       */
+  k_ra_reflow_h3_scale_pct     = 150U, /**< H3 size = 150 % of body.       */
+  k_ra_reflow_h4_scale_pct     = 125U, /**< H4 size = 125 % of body.       */
+  k_ra_reflow_h5_scale_pct     = 110U, /**< H5 size = 110 % of body.       */
+  k_ra_reflow_h6_scale_pct     = 100U, /**< H6 size = 100 % of body.       */
+  k_ra_reflow_pct_full         = 100U, /**< Percentage denominator.        */
+} ra_reflow_layout_t;
+
+/**
+ * @enum ra_reflow_html_tag_t
+ * @brief Recognised HTML element kinds.
+ *
+ * @details
+ * Tags outside this list are treated as transparent flow-through
+ * containers (children still emit, the tag itself contributes no
+ * styling).
+ */
+typedef enum : uint8_t {
+  k_ra_reflow_tag_unknown    = 0U,  /**< Anything not in this enum.       */
+  k_ra_reflow_tag_p          = 1U,  /**< Paragraph block.                 */
+  k_ra_reflow_tag_h1         = 2U,  /**< Heading level 1.                 */
+  k_ra_reflow_tag_h2         = 3U,  /**< Heading level 2.                 */
+  k_ra_reflow_tag_h3         = 4U,  /**< Heading level 3.                 */
+  k_ra_reflow_tag_h4         = 5U,  /**< Heading level 4.                 */
+  k_ra_reflow_tag_h5         = 6U,  /**< Heading level 5.                 */
+  k_ra_reflow_tag_h6         = 7U,  /**< Heading level 6.                 */
+  k_ra_reflow_tag_em         = 8U,  /**< Italic emphasis (inline).        */
+  k_ra_reflow_tag_strong     = 9U,  /**< Bold emphasis (inline).          */
+  k_ra_reflow_tag_b          = 10U, /**< Bold (inline).                   */
+  k_ra_reflow_tag_i          = 11U, /**< Italic (inline).                 */
+  k_ra_reflow_tag_br         = 12U, /**< Line break (void).               */
+  k_ra_reflow_tag_hr         = 13U, /**< Horizontal rule (void).          */
+  k_ra_reflow_tag_ul         = 14U, /**< Unordered list block.            */
+  k_ra_reflow_tag_ol         = 15U, /**< Ordered list block.              */
+  k_ra_reflow_tag_li         = 16U, /**< List item.                       */
+  k_ra_reflow_tag_blockquote = 17U, /**< Blockquote indent.               */
+  k_ra_reflow_tag_a          = 18U, /**< Anchor (renders underlined).     */
+  k_ra_reflow_tag_img        = 19U, /**< Image (placeholder rect).        */
+} ra_reflow_html_tag_t;
+
+/**
+ * @enum ra_reflow_font_style_t
+ * @brief Inline font-style flags (bitfield).
+ *
+ * @details
+ * Used by both the parse pass (active style on the cursor) and the
+ * render pass (per-glyph style stamp). v1 does not yet load separate
+ * bold / italic TTFs; the flag is stored so the renderer can later
+ * pick the right face without reflow.
+ */
+typedef enum : uint8_t {
+  k_ra_reflow_style_normal    = 0U,       /**< No emphasis.            */
+  k_ra_reflow_style_bold      = 1U << 0U, /**< Bold face.              */
+  k_ra_reflow_style_italic    = 1U << 1U, /**< Italic face.            */
+  k_ra_reflow_style_underline = 1U << 2U, /**< Underlined run.         */
+} ra_reflow_font_style_t;
+
+/**
+ * @enum ra_reflow_token_kind_t
+ * @brief Parsed token classification.
+ *
+ * @details
+ * The parser converts the DOM into a flat token stream. Block-start
+ * and block-end tokens carry an `ra_reflow_html_tag_t`; inline tokens
+ * carry text (a slice of the engine text pool) plus a font-style
+ * stamp.
+ */
+typedef enum : uint8_t {
+  k_ra_reflow_tok_block_start = 0U, /**< Open of a block-flow element. */
+  k_ra_reflow_tok_block_end   = 1U, /**< Close of a block-flow element.*/
+  k_ra_reflow_tok_text        = 2U, /**< Text run (slice into pool).   */
+  k_ra_reflow_tok_break       = 3U, /**< Forced line break (`<br>`).   */
+  k_ra_reflow_tok_rule        = 4U, /**< Horizontal rule (`<hr>`).     */
+  k_ra_reflow_tok_image       = 5U, /**< Image placeholder (`<img>`).  */
+} ra_reflow_token_kind_t;
+
+/* ===========================================================================
+ * Forward declarations (opaque payloads)
+ * ===========================================================================
+ */
+
+/**
+ * @struct ra_reflow_token_t
+ * @brief One parsed token in the engine's token stream.
+ *
+ * @details
+ * Internal-but-exposed so the engine handle can statically allocate an
+ * array of these. Treat fields as read-only outside of `ra_reflow_*`.
+ */
+typedef struct {
+  uint8_t  kind;     /**< `ra_reflow_token_kind_t`. */
+  uint8_t  tag;      /**< `ra_reflow_html_tag_t` (0 if N/A). */
+  uint8_t  style;    /**< Font-style bitmask.                 */
+  uint8_t  reserved; /**< Padding to 4-byte align.            */
+  uint32_t text_off; /**< Byte offset into the text pool.     */
+  uint32_t text_len; /**< Byte length within the text pool.   */
+} ra_reflow_token_t;
+
+/**
+ * @struct ra_reflow_glyph_t
+ * @brief One positioned glyph after layout.
+ *
+ * @details
+ * Stored per-page so render is a flat walk. `cp` is a Unicode code
+ * point (only ASCII is exercised by v1); `font_px` lets headings and
+ * body text mix on the same page without re-scanning style state.
+ */
+typedef struct {
+  int32_t  x;        /**< Pixel column of glyph baseline-left. */
+  int32_t  y;        /**< Pixel row of glyph baseline.         */
+  int32_t  cp;       /**< Unicode code point.                  */
+  uint32_t color;    /**< 32-bit RGB colour.                   */
+  uint16_t font_px;  /**< Pixel size used for this glyph.      */
+  uint8_t  style;    /**< Font-style bitmask.                  */
+  uint8_t  reserved; /**< Padding.                             */
+} ra_reflow_glyph_t;
+
+/**
+ * @struct ra_reflow_page_t
+ * @brief Index range of glyphs that belong to one page.
+ */
+typedef struct {
+  uint32_t glyph_first; /**< Index of first glyph in this page. */
+  uint32_t glyph_count; /**< Number of glyphs in this page.     */
+} ra_reflow_page_t;
+
+/* ===========================================================================
+ * Engine handle
+ * ===========================================================================
+ */
+
+/**
+ * @struct ra_reflow_t
+ * @brief Reflow / pagination engine state.
+ *
+ * @details
+ * Allocated by the caller (typically as a `static` in the ereader app)
+ * and bound via `ra_reflow_init()`. Treat all fields as read-only;
+ * mutate only through the `ra_reflow_*` API.
+ *
+ * @invariant `in_use == 1` while initialised; cleared by `ra_reflow_close()`.
+ *
+ * @see ra_reflow_init()
+ * @see ra_reflow_close()
+ */
+typedef struct {
+  /* --- viewport + style ------------------------------------------------ */
+  uint16_t viewport_w; /**< Viewport width, pixels.             */
+  uint16_t viewport_h; /**< Viewport height, pixels.            */
+  uint16_t font_px;    /**< Body font size in pixels.           */
+  uint16_t reserved16; /**< Padding.                            */
+  uint32_t body_color; /**< Body text colour (0xRRGGBB).        */
+  uint32_t link_color; /**< Anchor text colour (0xRRGGBB).      */
+
+  /* --- font (caller-owned TTF blob) ------------------------------------ */
+  const uint8_t* font_data; /**< TTF blob; outlives the engine.   */
+  size_t         font_len;  /**< Length of `font_data`, bytes.    */
+
+  /* --- cached chapter input ------------------------------------------- */
+  const uint8_t* xhtml_buf; /**< Last `layout_chapter` input.     */
+  size_t         xhtml_len; /**< Length of `xhtml_buf`.           */
+
+  /* --- token stream --------------------------------------------------- */
+  ra_reflow_token_t tokens[k_ra_reflow_max_tokens];         /**< Parsed tokens. */
+  uint32_t          token_count;                            /**< Tokens used.   */
+  uint8_t           text_pool[k_ra_reflow_text_pool_bytes]; /**< Text bytes. */
+  uint32_t          text_pool_used; /**< Bytes consumed in text_pool.       */
+
+  /* --- laid-out glyphs ------------------------------------------------ */
+  ra_reflow_glyph_t glyphs[k_ra_reflow_max_glyphs]; /**< Positioned glyphs. */
+  uint32_t          glyph_count;                    /**< Glyphs used.                          */
+  ra_reflow_page_t  pages[k_ra_reflow_max_pages];   /**< Page index ranges. */
+  uint32_t          page_count;                     /**< Pages used.                           */
+
+  /* --- lifecycle ------------------------------------------------------ */
+  uint8_t in_use;       /**< 1 = initialised, 0 = closed. */
+  uint8_t reserved8[3]; /**< Padding.               */
+} ra_reflow_t;
+
+/* ===========================================================================
+ * Public API -- lifecycle
+ * ===========================================================================
+ */
+
+/**
+ * @brief Initialise a reflow engine for a given viewport / font.
+ *
+ * @details
+ * Records the viewport size, font handle and colour palette into the
+ * engine handle and clears the cached chapter / glyph / page state.
+ *
+ * @param[in]  viewport_w  Viewport width, pixels (1..4096).
+ * @param[in]  viewport_h  Viewport height, pixels (1..4096).
+ * @param[in]  font_data   TTF blob; must outlive the engine.
+ * @param[in]  font_len    Length of `font_data`, bytes (>= 16).
+ * @param[in]  font_px     Initial font size, pixels
+ *                         (`k_ra_reflow_min_font_px` ..
+ *                          `k_ra_reflow_max_font_px`).
+ * @param[in]  body_color  Body text colour (0xRRGGBB).
+ * @param[in]  link_color  Anchor colour (0xRRGGBB).
+ * @param[out] out_engine  Engine handle to populate.
+ *
+ * @return ra_err_t
+ * @retval k_ra_ok                  Initialised.
+ * @retval k_ra_err_null_ptr        `font_data` or `out_engine` is NULL.
+ * @retval k_ra_err_invalid_arg     Viewport or font size out of range.
+ * @retval k_ra_err_invalid_size    `font_len` too small.
+ *
+ * @pre  `font_data` non-NULL, `out_engine` non-NULL.
+ * @pre  Viewport and font size in their documented ranges.
+ * @post On success, `out_engine->in_use == 1` and
+ *       `out_engine->page_count == 0`.
+ * @post On failure, `*out_engine` is zero-initialised.
+ *
+ * @note Not thread-safe. Single-threaded init context.
+ *
+ * @see ra_reflow_close()
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_reflow_init(uint16_t       viewport_w,
+                                      uint16_t       viewport_h,
+                                      const uint8_t* font_data,
+                                      size_t         font_len,
+                                      uint16_t       font_px,
+                                      uint32_t       body_color,
+                                      uint32_t       link_color,
+                                      ra_reflow_t*   out_engine);
+
+/**
+ * @brief Release a previously initialised engine.
+ *
+ * @param[in,out] engine Engine returned by `ra_reflow_init()`.
+ *
+ * @return ra_err_t
+ * @retval k_ra_ok                  Closed.
+ * @retval k_ra_err_null_ptr        `engine` is NULL.
+ * @retval k_ra_err_not_initialized `engine->in_use == 0`.
+ *
+ * @pre  `engine` non-NULL.
+ * @pre  `engine->in_use == 1`.
+ * @post `engine->in_use == 0`.
+ * @post `engine->page_count == 0`.
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_reflow_close(ra_reflow_t* engine);
+
+/* ===========================================================================
+ * Public API -- layout
+ * ===========================================================================
+ */
+
+/**
+ * @brief Parse + lay out one chapter of XHTML.
+ *
+ * @details
+ * Walks the XHTML once with tinyxml2, emits a token stream, then runs
+ * the greedy line-break + page-break engine to produce a flat list of
+ * positioned glyphs grouped by page. The engine caches the input
+ * buffer so `ra_reflow_set_font_size()` can re-flow without the caller
+ * re-supplying it.
+ *
+ * Algorithm summary:
+ *   1. Parse XHTML via tinyxml2; recursively walk the DOM emitting
+ *      tokens (`block_start` / `text` / `break` / ...).
+ *   2. For each token, if it is a text run, walk word-by-word.
+ *   3. Measure `word_width = sum(stbtt advance per glyph)`.
+ *   4. If `cursor_x + word_width > viewport_w - margins` then break
+ *      to a new line.
+ *   5. If `cursor_y + line_height > viewport_h - margins` then start
+ *      a new page.
+ *   6. After all tokens, record `page_count`.
+ *
+ * @param[in,out] engine          Initialised engine handle.
+ * @param[in]     xhtml_buf       UTF-8 / ASCII XHTML source bytes.
+ * @param[in]     xhtml_len       Length of `xhtml_buf`, bytes (>0).
+ * @param[out]    out_total_pages Total page count (>= 1 on success).
+ *
+ * @return ra_err_t
+ * @retval k_ra_ok                    Laid out.
+ * @retval k_ra_err_null_ptr          Any required pointer is NULL.
+ * @retval k_ra_err_not_initialized   `engine->in_use == 0`.
+ * @retval k_ra_err_invalid_size      `xhtml_len == 0`.
+ * @retval k_ra_err_validation_failed XHTML did not parse.
+ * @retval k_ra_err_no_mem            Token / glyph / page pool full.
+ *
+ * @pre  `engine`, `xhtml_buf`, `out_total_pages` non-NULL.
+ * @pre  `engine->in_use == 1`.
+ * @post On success, `*out_total_pages == engine->page_count >= 1`.
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_reflow_layout_chapter(ra_reflow_t*   engine,
+                                                const uint8_t* xhtml_buf,
+                                                size_t         xhtml_len,
+                                                uint32_t*      out_total_pages);
+
+/**
+ * @brief Render one page into the active `ra_gfx` framebuffer.
+ *
+ * @details
+ * Walks the slice of `engine->glyphs[]` that belongs to `page_idx`,
+ * rasterises each code point via `stbtt_GetCodepointBitmap()`, and
+ * blits the alpha-8 mask into the framebuffer with `ra_gfx_pixel()`.
+ *
+ * The framebuffer must already be bound by `ra_gfx_init()`. The
+ * background is NOT cleared; the caller chooses the background colour
+ * with a prior `ra_gfx_clear()`.
+ *
+ * @param[in]     engine      Laid-out engine.
+ * @param[in]     page_idx    Page to render (`[0, page_count)`).
+ * @param[in,out] framebuffer Reserved for future use; pass NULL while
+ *                            ra_gfx is bound. (Forward-compat hook so
+ *                            future builds can blit straight into a
+ *                            non-active buffer without re-binding
+ *                            ra_gfx.)
+ *
+ * @return ra_err_t
+ * @retval k_ra_ok                    Rendered.
+ * @retval k_ra_err_null_ptr          `engine` is NULL.
+ * @retval k_ra_err_not_initialized   `engine->in_use == 0`.
+ * @retval k_ra_err_out_of_range      `page_idx >= page_count`.
+ * @retval k_ra_err_validation_failed Font blob malformed.
+ *
+ * @pre  `ra_gfx_init()` has been called.
+ * @pre  A chapter has been laid out.
+ * @post Glyph pixels of the requested page are blitted into the bound
+ *       framebuffer.
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t
+ra_reflow_render_page(const ra_reflow_t* engine, uint32_t page_idx, void* framebuffer);
+
+/**
+ * @brief Report the laid-out page count.
+ *
+ * @param[in]  engine    Laid-out engine.
+ * @param[out] out_count Page count (0 if no chapter laid out yet).
+ *
+ * @return ra_err_t
+ * @retval k_ra_ok                  Reported.
+ * @retval k_ra_err_null_ptr        Any pointer is NULL.
+ * @retval k_ra_err_not_initialized `engine->in_use == 0`.
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_reflow_get_page_count(const ra_reflow_t* engine, uint32_t* out_count);
+
+/**
+ * @brief Change the body font size and re-flow the cached chapter.
+ *
+ * @details
+ * Re-runs the line-break + page-break engine against the most recent
+ * chapter handed to `ra_reflow_layout_chapter()`. Glyph and page state
+ * are rebuilt from scratch; the previous page count and page-glyph
+ * ranges are invalidated.
+ *
+ * @param[in,out] engine       Initialised + laid-out engine.
+ * @param[in]     new_font_px  New body font size, pixels
+ *                             (`k_ra_reflow_min_font_px` ..
+ *                              `k_ra_reflow_max_font_px`).
+ *
+ * @return ra_err_t
+ * @retval k_ra_ok                  Re-flowed.
+ * @retval k_ra_err_null_ptr        `engine` is NULL.
+ * @retval k_ra_err_not_initialized `engine->in_use == 0`.
+ * @retval k_ra_err_invalid_state   No chapter cached yet.
+ * @retval k_ra_err_invalid_arg     `new_font_px` out of range.
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_reflow_set_font_size(ra_reflow_t* engine, uint16_t new_font_px);
+
+/* ===========================================================================
+ * Internal -- exposed for the parse / layout / render TUs
+ * ===========================================================================
+ */
+
+/**
+ * @brief Parse the XHTML buffer into the engine's token stream.
+ *
+ * @details
+ * Internal helper used by `ra_reflow_layout_chapter()`. Lives in
+ * `ra_reflow_xml_shim.cpp` because it needs C++ to call into tinyxml2.
+ * Declared here so `ra_reflow_layout.c` can call it without a
+ * forward declaration.
+ *
+ * @param[in,out] engine     Engine whose token / text pools will be
+ *                           populated.
+ * @param[in]     xhtml_buf  XHTML source bytes.
+ * @param[in]     xhtml_len  Length of `xhtml_buf`.
+ *
+ * @return ra_err_t
+ * @retval k_ra_ok                    Tokens emitted.
+ * @retval k_ra_err_validation_failed XHTML did not parse.
+ * @retval k_ra_err_no_mem            Token or text pool full.
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t
+ra_reflow_parse_xhtml(ra_reflow_t* engine, const uint8_t* xhtml_buf, size_t xhtml_len);
+
+/**
+ * @brief Run the line-break + page-break pass over `engine->tokens[]`.
+ *
+ * @details
+ * Internal helper. Consumes the token stream populated by
+ * `ra_reflow_parse_xhtml()` and writes positioned glyphs into
+ * `engine->glyphs[]` plus page index ranges into `engine->pages[]`.
+ *
+ * @param[in,out] engine Engine in `in_use == 1` state with a populated
+ *                       token stream.
+ *
+ * @return ra_err_t
+ * @retval k_ra_ok       Layout complete.
+ * @retval k_ra_err_no_mem Glyph or page pool full.
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_reflow_run_layout(ra_reflow_t* engine);
+
+#ifdef __cplusplus
+}
+#endif

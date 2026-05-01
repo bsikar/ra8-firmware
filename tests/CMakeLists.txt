@@ -72,6 +72,8 @@ file(GLOB_RECURSE RA_GFX_SOURCES     CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_gfx/sr
 file(GLOB_RECURSE RA_NSC_SOURCES     CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_nsc/src/*.c)
 file(GLOB_RECURSE RA_EPUB_C_SOURCES  CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_epub/src/*.c)
 file(GLOB_RECURSE RA_EPUB_CPP_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_epub/src/*.cpp)
+file(GLOB_RECURSE RA_REFLOW_C_SOURCES   CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_reflow/src/*.c)
+file(GLOB_RECURSE RA_REFLOW_CPP_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_reflow/src/*.cpp)
 set(RA_EPUB_THIRD_PARTY
     ${FW_ROOT}/libs/third_party/miniz/miniz.c
     ${FW_ROOT}/libs/third_party/tinyxml2/tinyxml2.cpp
@@ -91,6 +93,8 @@ add_library(ra_core_hal OBJECT
     ${RA_NSC_SOURCES}
     ${RA_EPUB_C_SOURCES}
     ${RA_EPUB_CPP_SOURCES}
+    ${RA_REFLOW_C_SOURCES}
+    ${RA_REFLOW_CPP_SOURCES}
     ${RA_EPUB_THIRD_PARTY}
     ${RA_SECURE_APP_SOURCES}
     ${CMAKE_CURRENT_SOURCE_DIR}/mocks/ra_sim_mmap.c
@@ -111,6 +115,7 @@ target_include_directories(ra_core_hal PUBLIC
     ${FW_ROOT}/libs/ra_tls/inc
     ${FW_ROOT}/libs/ra_nsc/inc
     ${FW_ROOT}/libs/ra_epub/inc
+    ${FW_ROOT}/libs/ra_reflow/inc
     ${FW_ROOT}/libs/third_party/miniz
     ${FW_ROOT}/libs/third_party/tinyxml2
     ${FW_ROOT}/libs/third_party/stb
@@ -125,6 +130,7 @@ target_include_directories(ra_core_hal PUBLIC
 set_source_files_properties(
     ${FW_ROOT}/libs/third_party/tinyxml2/tinyxml2.cpp
     ${RA_EPUB_CPP_SOURCES}
+    ${RA_REFLOW_CPP_SOURCES}
     PROPERTIES LANGUAGE CXX
 )
 target_compile_features(ra_core_hal PUBLIC cxx_std_17)
@@ -158,6 +164,7 @@ function(ra_add_test name)
     ${FW_ROOT}/libs/ra_tls/inc
     ${FW_ROOT}/libs/ra_nsc/inc
     ${FW_ROOT}/libs/ra_epub/inc
+    ${FW_ROOT}/libs/ra_reflow/inc
     ${FW_ROOT}/libs/third_party/miniz
     ${FW_ROOT}/libs/third_party/tinyxml2
     ${FW_ROOT}/libs/third_party/stb

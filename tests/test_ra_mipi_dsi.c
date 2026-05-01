@@ -1035,6 +1035,86 @@ static void test_set_video_timing_overflow_each_field(void)
   TEST_END("mipi_dsi set_video_timing rejects every field overflow");
 }
 
+/* ---------------------------------------------------------------------------
+ * Sweep 15 / Phase 2: command-mode payload + LP-00 ULPS verification.
+ * --------------------------------------------------------------------------- */
+
+static void test_send_command_payload_short(void)
+{
+  TEST_BEGIN("mipi_dsi send_command_payload routes <=2 bytes via short path");
+  prep();
+  const ra_mipi_dsi_config_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_mipi_dsi_init(&cfg));
+
+  const uint8_t two[2] = {0xAAU, 0xBBU};
+  TEST_ASSERT_EQ((int)k_ra_ok,
+                 (int)ra_mipi_dsi_send_command_payload(k_ra_mipi_dsi_dt_dcs_short_write_1,
+                                                       two,
+                                                       (uint16_t)sizeof(two)));
+  /* Sequence channel 0 (LP) carries the short packet. */
+  volatile r_mipi_dsi_regs_t* reg = ra_mipi_dsi();
+  TEST_ASSERT(((reg->SQCH0SET0R & (uint32_t)k_ra_mipi_dsi_sqch_start) != 0U));
+  TEST_END("mipi_dsi send_command_payload routes <=2 bytes via short path");
+}
+
+static void test_send_command_payload_long(void)
+{
+  TEST_BEGIN("mipi_dsi send_command_payload routes >2 bytes via long path");
+  prep();
+  const ra_mipi_dsi_config_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_mipi_dsi_init(&cfg));
+
+  const uint8_t payload[6] = {0x11U, 0x22U, 0x33U, 0x44U, 0x55U, 0x66U};
+  TEST_ASSERT_EQ((int)k_ra_ok,
+                 (int)ra_mipi_dsi_send_command_payload(k_ra_mipi_dsi_dt_dcs_long_write,
+                                                       payload,
+                                                       (uint16_t)sizeof(payload)));
+  /* LP routing -> sequence channel 0 START asserted. */
+  volatile r_mipi_dsi_regs_t* reg = ra_mipi_dsi();
+  TEST_ASSERT(((reg->SQCH0SET0R & (uint32_t)k_ra_mipi_dsi_sqch_start) != 0U));
+  /* TXPPD0R holds the first 4 staged payload bytes (LE). */
+  TEST_ASSERT_EQ((int)0x44332211U, (int)reg->TXPPD0R);
+  TEST_END("mipi_dsi send_command_payload routes >2 bytes via long path");
+}
+
+static void test_send_command_payload_validation(void)
+{
+  TEST_BEGIN("mipi_dsi send_command_payload null + zero-length checks");
+  prep();
+  const ra_mipi_dsi_config_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_mipi_dsi_init(&cfg));
+
+  /* len > 0 with NULL payload rejected. */
+  TEST_ASSERT_EQ(
+    (int)k_ra_err_null_ptr,
+    (int)ra_mipi_dsi_send_command_payload(k_ra_mipi_dsi_dt_dcs_long_write, nullptr, 4U));
+  /* len == 0 with NULL payload accepted (zero-length short packet). */
+  TEST_ASSERT_EQ((int)k_ra_ok,
+                 (int)ra_mipi_dsi_send_command_payload(k_ra_mipi_dsi_dt_null_packet, nullptr, 0U));
+  TEST_END("mipi_dsi send_command_payload null + zero-length checks");
+}
+
+static void test_ulps_lp00_drive_sequence(void)
+{
+  TEST_BEGIN("mipi_dsi ULPS enter -> exit drives ULPSCR LP-00 pulses");
+  prep();
+  /* Non-continuous clock so clock-lane ULPS is permitted. */
+  const ra_mipi_dsi_config_t cfg = make_cfg_non_continuous();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_mipi_dsi_init(&cfg));
+
+  /* Enter ULPS for both lanes -> CLENT and DLENT pulsed (LP-00 drive). */
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_mipi_dsi_ulps_enter(k_ra_mipi_dsi_lane_all));
+  volatile r_mipi_dsi_regs_t* reg = ra_mipi_dsi();
+  TEST_ASSERT((reg->ULPSCR & (uint32_t)k_ra_mipi_dsi_ulpscr_clent) != 0U);
+  TEST_ASSERT((reg->ULPSCR & (uint32_t)k_ra_mipi_dsi_ulpscr_dlent) != 0U);
+
+  /* Exit ULPS -> CLEXIT/DLEXIT (LP-11 drive completion of the wake). */
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_mipi_dsi_ulps_exit(k_ra_mipi_dsi_lane_all));
+  TEST_ASSERT((reg->ULPSCR & (uint32_t)k_ra_mipi_dsi_ulpscr_clexit) != 0U);
+  TEST_ASSERT((reg->ULPSCR & (uint32_t)k_ra_mipi_dsi_ulpscr_dlexit) != 0U);
+  TEST_END("mipi_dsi ULPS enter -> exit drives ULPSCR LP-00 pulses");
+}
+
 int32_t main(void)
 {
   test_init_happy();
@@ -1075,6 +1155,10 @@ int32_t main(void)
   test_enter_exit_ulps();
   test_enter_ulps_continuous_rejected();
   test_get_link_status();
+  test_send_command_payload_short();
+  test_send_command_payload_long();
+  test_send_command_payload_validation();
+  test_ulps_lp00_drive_sequence();
   (void)fprintf(stderr, "[OK  ] test_ra_mipi_dsi.c\n");
   return 0;
 }

@@ -1104,6 +1104,275 @@ static void test_dotf_route(void)
   TEST_END("rsip dotf route");
 }
 
+/* ===========================================================================
+ * Sweep 15 / Phase 1.1: incremental SHA-256 + HMAC-SHA-256 (TLS transcript)
+ * ===========================================================================
+ */
+
+/**
+ * @brief One-shot software SHA-256 KAT: empty input.
+ */
+static void test_sha256_inc_empty(void)
+{
+  TEST_BEGIN("rsip sha256 incremental empty");
+  prep_running();
+
+  ra_rsip_sha256_ctx_t ctx        = {};
+  uint8_t              digest[32] = {};
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rsip_sha256_init(&ctx));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rsip_sha256_final(&ctx, digest));
+
+  /* SHA-256("") well-known KAT: e3b0c442 98fc1c14 ... 7852b855. */
+  TEST_ASSERT_EQ((int32_t)0xE3U, (int32_t)digest[0]);
+  TEST_ASSERT_EQ((int32_t)0xB0U, (int32_t)digest[1]);
+  TEST_ASSERT_EQ((int32_t)0xC4U, (int32_t)digest[2]);
+  TEST_ASSERT_EQ((int32_t)0x42U, (int32_t)digest[3]);
+  TEST_ASSERT_EQ((int32_t)0x55U, (int32_t)digest[31]);
+
+  /* Re-using a finalised context is a state error. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_rsip_sha256_final(&ctx, digest));
+
+  TEST_END("rsip sha256 incremental empty");
+}
+
+/**
+ * @brief Incremental SHA-256 KAT: "abc" in two chunks.
+ */
+static void test_sha256_inc_abc_split(void)
+{
+  TEST_BEGIN("rsip sha256 incremental abc split");
+  prep_running();
+
+  ra_rsip_sha256_ctx_t ctx        = {};
+  uint8_t              digest[32] = {};
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rsip_sha256_init(&ctx));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rsip_sha256_update(&ctx, (const uint8_t*)"ab", 2U));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rsip_sha256_update(&ctx, (const uint8_t*)"c", 1U));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rsip_sha256_final(&ctx, digest));
+
+  /* FIPS 180-4 Appendix B.1: SHA-256("abc") = ba7816bf 8f01cfea ... f20015ad. */
+  TEST_ASSERT_EQ((int32_t)0xBAU, (int32_t)digest[0]);
+  TEST_ASSERT_EQ((int32_t)0x78U, (int32_t)digest[1]);
+  TEST_ASSERT_EQ((int32_t)0x16U, (int32_t)digest[2]);
+  TEST_ASSERT_EQ((int32_t)0xBFU, (int32_t)digest[3]);
+  TEST_ASSERT_EQ((int32_t)0xADU, (int32_t)digest[31]);
+
+  TEST_END("rsip sha256 incremental abc split");
+}
+
+/**
+ * @brief Incremental SHA-256 across a full block boundary.
+ */
+static void test_sha256_inc_block_boundary(void)
+{
+  TEST_BEGIN("rsip sha256 incremental block boundary");
+  prep_running();
+
+  uint8_t input[64];
+  for (uint32_t i = 0U; i < 64U; ++i) {
+    input[i] = (uint8_t)i;
+  }
+
+  ra_rsip_sha256_ctx_t ref_ctx = {};
+  uint8_t              ref[32] = {};
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rsip_sha256_init(&ref_ctx));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rsip_sha256_update(&ref_ctx, input, 64U));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rsip_sha256_final(&ref_ctx, ref));
+
+  ra_rsip_sha256_ctx_t ctx        = {};
+  uint8_t              digest[32] = {};
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rsip_sha256_init(&ctx));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rsip_sha256_update(&ctx, input, 8U));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rsip_sha256_update(&ctx, &input[8], 8U));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rsip_sha256_update(&ctx, &input[16], 8U));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rsip_sha256_update(&ctx, &input[24], 8U));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rsip_sha256_update(&ctx, &input[32], 8U));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rsip_sha256_update(&ctx, &input[40], 24U));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rsip_sha256_final(&ctx, digest));
+
+  for (uint32_t i = 0U; i < 32U; ++i) {
+    TEST_ASSERT_EQ((int32_t)ref[i], (int32_t)digest[i]);
+  }
+  TEST_END("rsip sha256 incremental block boundary");
+}
+
+/**
+ * @brief Null + state checks for the incremental SHA API.
+ */
+static void test_sha256_inc_arg_check(void)
+{
+  TEST_BEGIN("rsip sha256 incremental arg check");
+  prep_running();
+
+  ra_rsip_sha256_ctx_t ctx        = {};
+  uint8_t              digest[32] = {};
+  uint8_t              data[4]    = {0U};
+
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_rsip_sha256_init(nullptr));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_rsip_sha256_update(nullptr, data, 4U));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_rsip_sha256_final(nullptr, digest));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_rsip_sha256_final(&ctx, nullptr));
+
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_rsip_sha256_update(&ctx, data, 4U));
+
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rsip_sha256_init(&ctx));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_rsip_sha256_update(&ctx, nullptr, 4U));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rsip_sha256_update(&ctx, nullptr, 0U));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rsip_sha256_final(&ctx, digest));
+
+  TEST_END("rsip sha256 incremental arg check");
+}
+
+/**
+ * @brief HMAC-SHA-256 RFC 4231 Test Case 1.
+ */
+static void test_hmac_sha256_inc_rfc4231_1(void)
+{
+  TEST_BEGIN("rsip hmac sha256 incremental rfc4231 case 1");
+  prep_running();
+
+  uint8_t key[20];
+  for (uint32_t i = 0U; i < 20U; ++i) {
+    key[i] = 0x0BU;
+  }
+  const uint8_t data[] = {'H', 'i', ' ', 'T', 'h', 'e', 'r', 'e'};
+
+  ra_rsip_hmac_sha256_ctx_t ctx     = {};
+  uint8_t                   mac[32] = {};
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rsip_hmac_sha256_init(&ctx, key, sizeof(key)));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_rsip_hmac_sha256_update(&ctx, data, (uint32_t)sizeof(data)));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rsip_hmac_sha256_final(&ctx, mac));
+
+  /* RFC 4231 Test Case 1: b0344c61 d8db3853 ... 2e32cff7. */
+  TEST_ASSERT_EQ((int32_t)0xB0U, (int32_t)mac[0]);
+  TEST_ASSERT_EQ((int32_t)0x34U, (int32_t)mac[1]);
+  TEST_ASSERT_EQ((int32_t)0x4CU, (int32_t)mac[2]);
+  TEST_ASSERT_EQ((int32_t)0x61U, (int32_t)mac[3]);
+  TEST_ASSERT_EQ((int32_t)0xF7U, (int32_t)mac[31]);
+
+  TEST_END("rsip hmac sha256 incremental rfc4231 case 1");
+}
+
+/**
+ * @brief HMAC-SHA-256 with an oversized key (forces SHA collapse to 32 bytes).
+ */
+static void test_hmac_sha256_inc_oversized_key(void)
+{
+  TEST_BEGIN("rsip hmac sha256 incremental oversized key");
+  prep_running();
+
+  uint8_t key[131];
+  for (uint32_t i = 0U; i < sizeof(key); ++i) {
+    key[i] = 0xAAU;
+  }
+  const uint8_t data[] = {'T', 'e', 's', 't'};
+
+  /* Reference: build expected MAC by hand using the same primitive. */
+  uint8_t prepared[64] = {0U};
+  {
+    ra_rsip_sha256_ctx_t prep_ctx   = {};
+    uint8_t              prep_h[32] = {};
+    TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rsip_sha256_init(&prep_ctx));
+    TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                   (int32_t)ra_rsip_sha256_update(&prep_ctx, key, (uint32_t)sizeof(key)));
+    TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rsip_sha256_final(&prep_ctx, prep_h));
+    for (uint32_t i = 0U; i < 32U; ++i) {
+      prepared[i] = prep_h[i];
+    }
+  }
+  uint8_t ipad[64];
+  uint8_t opad[64];
+  for (uint32_t i = 0U; i < 64U; ++i) {
+    ipad[i] = prepared[i] ^ 0x36U;
+    opad[i] = prepared[i] ^ 0x5CU;
+  }
+  uint8_t inner[32] = {};
+  {
+    ra_rsip_sha256_ctx_t inner_ctx = {};
+    TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rsip_sha256_init(&inner_ctx));
+    TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rsip_sha256_update(&inner_ctx, ipad, 64U));
+    TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                   (int32_t)ra_rsip_sha256_update(&inner_ctx, data, (uint32_t)sizeof(data)));
+    TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rsip_sha256_final(&inner_ctx, inner));
+  }
+  uint8_t expect[32] = {};
+  {
+    ra_rsip_sha256_ctx_t outer_ctx = {};
+    TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rsip_sha256_init(&outer_ctx));
+    TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rsip_sha256_update(&outer_ctx, opad, 64U));
+    TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rsip_sha256_update(&outer_ctx, inner, 32U));
+    TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rsip_sha256_final(&outer_ctx, expect));
+  }
+
+  /* Run through the public HMAC API and compare. */
+  ra_rsip_hmac_sha256_ctx_t ctx     = {};
+  uint8_t                   mac[32] = {};
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_rsip_hmac_sha256_init(&ctx, key, (uint32_t)sizeof(key)));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_rsip_hmac_sha256_update(&ctx, data, (uint32_t)sizeof(data)));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rsip_hmac_sha256_final(&ctx, mac));
+
+  for (uint32_t i = 0U; i < 32U; ++i) {
+    TEST_ASSERT_EQ((int32_t)expect[i], (int32_t)mac[i]);
+  }
+  TEST_END("rsip hmac sha256 incremental oversized key");
+}
+
+/**
+ * @brief Null + state checks for the incremental HMAC-SHA-256 API.
+ */
+static void test_hmac_sha256_inc_arg_check(void)
+{
+  TEST_BEGIN("rsip hmac sha256 incremental arg check");
+  prep_running();
+
+  ra_rsip_hmac_sha256_ctx_t ctx     = {};
+  uint8_t                   key[16] = {0U};
+  uint8_t                   data[4] = {0U};
+  uint8_t                   mac[32] = {};
+
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_rsip_hmac_sha256_init(nullptr, key, 16U));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_rsip_hmac_sha256_init(&ctx, nullptr, 16U));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rsip_hmac_sha256_init(&ctx, nullptr, 0U));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rsip_hmac_sha256_final(&ctx, mac));
+
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_rsip_hmac_sha256_update(nullptr, data, 4U));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_rsip_hmac_sha256_final(nullptr, mac));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_rsip_hmac_sha256_final(&ctx, nullptr));
+
+  /* Update / final on a finalised ctx returns invalid state. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state,
+                 (int32_t)ra_rsip_hmac_sha256_update(&ctx, data, 4U));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_rsip_hmac_sha256_final(&ctx, mac));
+
+  TEST_END("rsip hmac sha256 incremental arg check");
+}
+
+/**
+ * @brief Verify the SHA-256 command-issue sequence touched the right registers.
+ */
+static void test_sha256_command_sequence(void)
+{
+  TEST_BEGIN("rsip sha256 command issue sequence");
+  prep_running();
+
+  *ra_rsip_reg32(k_ra_rsip_off_hash_ctrl) = 0U;
+
+  const uint8_t msg[3] = {'a', 'b', 'c'};
+  uint8_t       d[32]  = {};
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rsip_sha256(msg, 3U, d));
+
+  TEST_ASSERT_EQ((int32_t)k_ra_rsip_hash_sha256, (int32_t)*ra_rsip_reg32(k_ra_rsip_off_hash_ctrl));
+  TEST_ASSERT_EQ(
+    (int32_t)0,
+    (int32_t)((*ra_rsip_reg32(k_ra_rsip_off_hash_status)) & (uint32_t)k_ra_rsip_mask_isr_done));
+
+  TEST_END("rsip sha256 command issue sequence");
+}
+
 int32_t main(void)
 {
   test_init_happy();
@@ -1115,6 +1384,7 @@ int32_t main(void)
   test_sha256_happy();
   test_sha256_partial_tail();
   test_sha256_null();
+  test_sha256_command_sequence();
   test_status_clear();
   test_attach_dispatch();
   test_power_transition();
@@ -1141,6 +1411,14 @@ int32_t main(void)
   test_debug_level();
   test_tamper();
   test_dotf_route();
+  /* Sweep 15 / Phase 1.1: incremental hash + HMAC for TLS handshakes. */
+  test_sha256_inc_empty();
+  test_sha256_inc_abc_split();
+  test_sha256_inc_block_boundary();
+  test_sha256_inc_arg_check();
+  test_hmac_sha256_inc_rfc4231_1();
+  test_hmac_sha256_inc_oversized_key();
+  test_hmac_sha256_inc_arg_check();
   (void)fprintf(stderr, "[OK ] test_ra_rsip.c\n");
   return 0;
 }
