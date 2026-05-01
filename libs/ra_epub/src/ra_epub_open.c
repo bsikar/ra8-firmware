@@ -139,8 +139,16 @@ priv_extract(mz_zip_archive* zip, const char* name, uint8_t* buf, size_t cap, si
   return k_ra_ok;
 }
 
+/* The book record holds an `mz_zip_archive` inline (no heap). Verify
+ * the inline storage is large enough at compile time. */
+static_assert(k_ra_epub_zip_archive_bytes >= sizeof(mz_zip_archive),
+              "k_ra_epub_zip_archive_bytes too small for mz_zip_archive");
+
 /**
- * @brief Tear down a half-open archive on the failure path.
+ * @brief Tear down an in-place archive on the failure path.
+ *
+ * @details Closes miniz state but does not free the storage; the book
+ *          record owns it inline.
  */
 static void priv_zip_destroy(mz_zip_archive* zip)
 {
@@ -148,7 +156,6 @@ static void priv_zip_destroy(mz_zip_archive* zip)
     return;
   }
   mz_zip_reader_end(zip);
-  free(zip);
 }
 
 /**
@@ -202,19 +209,22 @@ ra_err_t ra_epub_open(const void* media, const char* path, ra_epub_book_t* out_b
     return k_ra_err_invalid_arg;
   }
 
-  /* Zero-init the book up front so failure paths return a clean record. */
+  /* Zero-init the book up front so failure paths return a clean record.
+   * This also clears `zip_archive_storage` to a known state for miniz. */
   priv_byte_zero((uint8_t*)out_book, sizeof(*out_book));
 
-  mz_zip_archive* zip = (mz_zip_archive*)calloc(1U, sizeof(*zip));
-  if (zip == NULL) {
-    return k_ra_err_no_mem;
-  }
+  /* Place the mz_zip_archive directly in the book record's inline
+   * storage. No heap allocation -- NASA Rule 3 compliance. The byte-
+   * storage punning is intentional and documented in the header. */
+  void* const     zip_storage = &out_book->zip_archive_storage[0];
+  mz_zip_archive* zip         = (mz_zip_archive*)zip_storage;
   if (mz_zip_reader_init_mem(zip, mem->data, mem->size, 0U) == MZ_FALSE) {
-    free(zip);
     return k_ra_err_validation_failed;
   }
 
-  /* Heap-allocated OPF scratch keeps the firmware stack frame small. */
+  /* Static (file-scope) OPF scratch keeps the firmware stack frame
+   * small -- the OPF blob can be 16 KB and would otherwise blow our
+   * 2200-byte per-thread stack budget. */
   static uint8_t s_opf_buf[k_ra_epub_opf_xml_buf];
   ra_err_t       err = priv_parse_archive(zip, out_book, s_opf_buf, sizeof(s_opf_buf));
   if (err != k_ra_ok) {
@@ -222,10 +232,10 @@ ra_err_t ra_epub_open(const void* media, const char* path, ra_epub_book_t* out_b
     return err;
   }
 
-  out_book->zip_archive = zip;
-  out_book->zip_bytes   = mem->data;
-  out_book->zip_size    = mem->size;
-  out_book->in_use      = 1U;
+  out_book->zip_archive_active = 1U;
+  out_book->zip_bytes          = mem->data;
+  out_book->zip_size           = mem->size;
+  out_book->in_use             = 1U;
   return k_ra_ok;
 }
 
@@ -237,9 +247,10 @@ ra_err_t ra_epub_close(ra_epub_book_t* book)
   if (book->in_use == 0U) {
     return k_ra_err_not_initialized;
   }
-  if (book->zip_archive != NULL) {
-    priv_zip_destroy((mz_zip_archive*)book->zip_archive);
-    book->zip_archive = NULL;
+  if (book->zip_archive_active != 0U) {
+    void* const zip_storage = &book->zip_archive_storage[0];
+    priv_zip_destroy((mz_zip_archive*)zip_storage);
+    book->zip_archive_active = 0U;
   }
   book->in_use        = 0U;
   book->chapter_count = 0U;

@@ -35,8 +35,16 @@
  *
  *   - Chapter list:   `k_ra_epub_max_chapters` * `k_ra_epub_max_path_len`
  *   - Metadata:       3 * `k_ra_epub_meta_len`
- *   - Backing zip:    one `mz_zip_archive` + caller-owned file blob.
+ *   - Backing zip:    one `mz_zip_archive` embedded in the book record
+ *                     (no heap; size validated at compile time).
  *   - Font slot:      one `(uint8_t* font_data, size_t font_len)` pair.
+ *
+ * NASA Rule 3 (zero malloc/free in firmware) is honored: the book
+ * record holds the entire `mz_zip_archive` inline as a byte buffer
+ * sized for the type, the OPF scratch is a single `static` slot, and
+ * the chapter table is a fixed-size 2D array. The only residual
+ * allocation under this driver is internal to `tinyxml2`'s parser
+ * (vendored), which is documented as a deviation.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -76,7 +84,9 @@ extern "C" {
 typedef enum : uint16_t {
   k_ra_epub_max_chapters = 64,  /**< Max spine length we accept.            */
   k_ra_epub_max_path_len = 192, /**< Max `href` length (incl. NUL).         */
-  k_ra_epub_meta_len     = 128, /**< Max bytes per metadata field (incl. NUL).*/
+  k_ra_epub_meta_len     = 128, /**< Max bytes per metadata field.          */
+  k_ra_epub_zip_archive_bytes =
+    256, /**< Inline storage for `mz_zip_archive` (sizeof on miniz 3.0.2 is 112; cushion for upstream growth; static_assert in .c). */
 } ra_epub_limits_t;
 
 /**
@@ -141,7 +151,14 @@ typedef struct {
   size_t         zip_size;  /**< Length of the EPUB blob.            */
 
   /* --- miniz state ----------------------------------------------------- */
-  void* zip_archive; /**< Heap-allocated `mz_zip_archive*`.        */
+  /* Inline storage for `mz_zip_archive`. Sized via static_assert in
+   * ra_epub_open.c; the book record owns the archive in-place rather
+   * than allocating it on the heap (NASA Rule 3). Cast through
+   * `(mz_zip_archive*)&book->zip_archive_storage[0]` inside the
+   * implementation. The exact upstream type would force this header
+   * to include `miniz.h`; we hold an opaque byte buffer instead. */
+  uint8_t zip_archive_storage[k_ra_epub_zip_archive_bytes];
+  uint8_t zip_archive_active; /**< 1 = mz_zip_reader_init succeeded. */
 
   /* --- Chapter table --------------------------------------------------- */
   uint16_t chapter_count; /**< Spine length actually stored. */
