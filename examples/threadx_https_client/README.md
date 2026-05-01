@@ -9,9 +9,13 @@ The board:
 2. Boots ThreadX with a single worker thread that drives NetX Duo
    (static IPv4 192.168.1.42 / 24, gateway 192.168.1.1) and dials
    `93.184.216.34:443` -- the legacy `www.example.com` IP.
-3. Runs an Mbed TLS handshake over the NetX TCP socket. Mbed TLS's
-   AES + SHA-256 primitives are routed to the RSIP-E50D engine via
-   the `port/mbedtls/` shims; CTR_DRBG is seeded from the RSIP TRNG.
+3. Runs an Mbed TLS handshake over the NetX TCP socket. RSIP TRNG
+   feeds the PSA crypto layer through the
+   `mbedtls_psa_external_get_random()` hook (`MBEDTLS_PSA_CRYPTO_EXTERNAL_RNG`).
+   The AES / SHA-256 RSIP-E50D fast paths are wired as scaffolding in
+   `port/mbedtls/` but Mbed TLS 4.x replaced the legacy `*_ALT` hook
+   with the PSA driver wrapper interface, which is a follow-up sweep --
+   the current handshake runs the portable C primitives.
 4. Pins the peer leaf certificate by SHA-256 (compile-time constant
    in `main.c`); a mismatch aborts the request.
 5. Sends `GET / HTTP/1.1\r\nHost: www.example.com\r\n\r\n` and
@@ -86,7 +90,17 @@ configuration keeps building cleanly.
   certificate (typical: ~3 months), update `k_demo_cert_pin_sha256`
   and re-flash. The placeholder ships as 32 zero bytes so an
   un-customised flash will deliberately refuse to send the request.
-- The RSIP engine performs all AES (CBC / CTR / GCM single-shot)
-  rounds; SHA-256 (record MAC + transcript hash) is also routed.
-  RSA / ECDH stay on Mbed TLS bignum until the asymmetric path is
-  wired through `ra_rsip_rsa_*` / `ra_rsip_ecdh_*`.
+- Mbed TLS 4.x split crypto out into the
+  [TF-PSA-Crypto](https://github.com/Mbed-TLS/TF-PSA-Crypto) repo;
+  this firmware vendors both at `libs/third_party/mbedtls` (4.1.0)
+  and `libs/third_party/tf-psa-crypto` (1.1.0). The cmake glue is in
+  `cmake/mbedtls.cmake`; project-wide configs live in
+  `port/mbedtls/mbedtls_config.h` (TLS / X.509 surface) and
+  `port/mbedtls/tf_psa_crypto_config.h` (PSA crypto + builtin driver
+  surface).
+- RSIP wiring of AES / SHA-256 / RSA / ECDH primitives to PSA crypto
+  driver wrappers is a follow-up sweep -- the
+  `port/mbedtls/mbedtls_aes_alt.{c,h}` /
+  `port/mbedtls/mbedtls_sha256_alt.{c,h}` scaffolding from the 3.x
+  ALT-style port is intentionally not compiled (4.x removed those
+  hooks).

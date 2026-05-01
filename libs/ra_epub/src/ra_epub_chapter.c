@@ -199,11 +199,11 @@ ra_err_t ra_epub_get_chapter_count(const ra_epub_book_t* book, uint16_t* out_cou
   return k_ra_ok;
 }
 
-ra_err_t ra_epub_load_chapter(const ra_epub_book_t* book,
-                              uint16_t              idx,
-                              uint8_t*              out_xhtml,
-                              size_t                max_len,
-                              size_t*               got_len)
+ra_err_t ra_epub_load_chapter(ra_epub_book_t* book,
+                              uint16_t        idx,
+                              uint8_t*        out_xhtml,
+                              size_t          max_len,
+                              size_t*         got_len)
 {
   if (book == NULL || out_xhtml == NULL || got_len == NULL) {
     return k_ra_err_null_ptr;
@@ -222,7 +222,7 @@ ra_err_t ra_epub_load_chapter(const ra_epub_book_t* book,
   char full_path[k_ra_epub_max_path_len];
   priv_join_path(book->opf_dir, book->chapter_paths[idx], full_path, sizeof(full_path));
 
-  void* const     zip_storage = (void*)&book->zip_archive_storage[0];
+  void* const     zip_storage = &book->zip_archive_storage[0];
   mz_zip_archive* zip         = (mz_zip_archive*)zip_storage;
   return priv_locate_extract(zip, full_path, book->chapter_paths[idx], out_xhtml, max_len, got_len);
 }
@@ -241,10 +241,8 @@ ra_err_t ra_epub_get_metadata(const ra_epub_book_t* book, ra_epub_metadata_t* ou
   return k_ra_ok;
 }
 
-ra_err_t ra_epub_get_cover_image(const ra_epub_book_t* book,
-                                 uint8_t*              out_buf,
-                                 size_t                max_len,
-                                 size_t*               got_len)
+ra_err_t
+ra_epub_get_cover_image(ra_epub_book_t* book, uint8_t* out_buf, size_t max_len, size_t* got_len)
 {
   if (book == NULL || out_buf == NULL || got_len == NULL) {
     return k_ra_err_null_ptr;
@@ -263,7 +261,7 @@ ra_err_t ra_epub_get_cover_image(const ra_epub_book_t* book,
   char full_path[k_ra_epub_max_path_len];
   priv_join_path(book->opf_dir, book->cover_path, full_path, sizeof(full_path));
 
-  void* const     zip_storage = (void*)&book->zip_archive_storage[0];
+  void* const     zip_storage = &book->zip_archive_storage[0];
   mz_zip_archive* zip         = (mz_zip_archive*)zip_storage;
   return priv_locate_extract(zip, full_path, book->cover_path, out_buf, max_len, got_len);
 }

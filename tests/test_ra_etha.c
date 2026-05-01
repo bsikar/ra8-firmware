@@ -7,9 +7,11 @@
  */
 
 #include "ra8d2_etha_regs.h"
+#include "ra8d2_rmac_regs.h"
 #include "ra_err.h"
 #include "ra_etha.h"
 #include "ra_mstp.h"
+#include "ra_rmac.h"
 #include "ra_sim_mmap.h"
 #include "unity_minimal.h"
 
@@ -608,6 +610,168 @@ static void test_read_clear_stats(void)
   TEST_END("etha read + clear stats");
 }
 
+/* --- Per-port descriptor ring + traffic stats --- */
+
+static void test_descriptor_ring_init(void)
+{
+  TEST_BEGIN("etha descriptor_ring_init");
+  prep();
+  const ra_etha_config_t cfg = {.initial_mode = k_ra_etha_opc_config,
+                                .eaeie0_mask  = 0U,
+                                .eaeie1_mask  = 0U,
+                                .eaeie2_mask  = 0U};
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_init(k_ra_etha_port_0, &cfg));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_etha_descriptor_ring_init(k_ra_etha_port_0, 32U, 64U, 1518U));
+  for (uint8_t i = 0U; i < (uint8_t)k_ra_etha_tc_count; ++i) {
+    TEST_ASSERT_EQ((int32_t)32U, (int32_t)ra_etha(k_ra_etha_port_0)->EATDQDC[i]);
+  }
+  ra_etha_port_stats_t st = {};
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_get_stats(k_ra_etha_port_0, &st));
+  TEST_ASSERT_EQ((int32_t)32U, (int32_t)st.ring_tx);
+  TEST_ASSERT_EQ((int32_t)64U, (int32_t)st.ring_rx);
+  TEST_ASSERT_EQ((int32_t)1518U, (int32_t)st.ring_buf);
+  TEST_ASSERT_EQ((int32_t)0U, (int32_t)st.tx_ok);
+
+  /* Bad-arg + clamping cases. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_etha_descriptor_ring_init(k_ra_etha_port_0, 0U, 64U, 1518U));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_etha_descriptor_ring_init(k_ra_etha_port_0, 32U, 8000U, 1518U));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_etha_descriptor_ring_init(k_ra_etha_port_0, 32U, 64U, 16U));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_etha_descriptor_ring_init(k_ra_etha_port_0, 32U, 64U, 17000U));
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_invalid_arg,
+    (int32_t)
+      ra_etha_descriptor_ring_init((ra_etha_port_t)(uint8_t)k_ra_etha_port_count, 32U, 64U, 1518U));
+  /* Deep ring (>2047) clamped at the EATDQDC 11-bit ceiling. */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_etha_descriptor_ring_init(k_ra_etha_port_0, 4096U, 4096U, 1518U));
+  TEST_ASSERT_EQ((int32_t)2047U, (int32_t)ra_etha(k_ra_etha_port_0)->EATDQDC[0]);
+  TEST_END("etha descriptor_ring_init");
+}
+
+static void test_get_stats_and_account(void)
+{
+  TEST_BEGIN("etha get_stats + account_traffic");
+  prep();
+  const ra_etha_config_t cfg = {.initial_mode = k_ra_etha_opc_operation,
+                                .eaeie0_mask  = 0U,
+                                .eaeie1_mask  = 0U,
+                                .eaeie2_mask  = 0U};
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_init(k_ra_etha_port_0, &cfg));
+  ra_etha_port_stats_t st = {};
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_get_stats(k_ra_etha_port_0, &st));
+  TEST_ASSERT_EQ((int32_t)0U, (int32_t)st.tx_ok);
+
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_etha_account_traffic(k_ra_etha_port_0, 100U, 2U, 75U, 3U, 1U));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_get_stats(k_ra_etha_port_0, &st));
+  TEST_ASSERT_EQ((int32_t)100U, (int32_t)st.tx_ok);
+  TEST_ASSERT_EQ((int32_t)2U, (int32_t)st.tx_err);
+  TEST_ASSERT_EQ((int32_t)75U, (int32_t)st.rx_ok);
+  TEST_ASSERT_EQ((int32_t)3U, (int32_t)st.rx_err);
+  TEST_ASSERT_EQ((int32_t)1U, (int32_t)st.rx_drop);
+
+  /* Saturation: push tx_ok near UINT32_MAX and add 1000 more -> sat. */
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_ok,
+    (int32_t)ra_etha_account_traffic(k_ra_etha_port_0, UINT32_MAX - 50U, 0U, 0U, 0U, 0U));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_etha_account_traffic(k_ra_etha_port_0, 1000U, 0U, 0U, 0U, 0U));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_get_stats(k_ra_etha_port_0, &st));
+  TEST_ASSERT(st.tx_ok == UINT32_MAX);
+
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_etha_get_stats(k_ra_etha_port_0, nullptr));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_etha_get_stats((ra_etha_port_t)(uint8_t)k_ra_etha_port_count, &st));
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_invalid_arg,
+    (int32_t)
+      ra_etha_account_traffic((ra_etha_port_t)(uint8_t)k_ra_etha_port_count, 0U, 0U, 0U, 0U, 0U));
+  TEST_END("etha get_stats + account_traffic");
+}
+
+static void test_get_stats_after_deinit(void)
+{
+  TEST_BEGIN("etha get_stats after deinit (clean slate)");
+  prep();
+  const ra_etha_config_t cfg = {.initial_mode = k_ra_etha_opc_operation,
+                                .eaeie0_mask  = 0U,
+                                .eaeie1_mask  = 0U,
+                                .eaeie2_mask  = 0U};
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_init(k_ra_etha_port_0, &cfg));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_etha_account_traffic(k_ra_etha_port_0, 5U, 5U, 5U, 5U, 5U));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_deinit(k_ra_etha_port_0));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_init(k_ra_etha_port_0, &cfg));
+  ra_etha_port_stats_t st = {};
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_get_stats(k_ra_etha_port_0, &st));
+  TEST_ASSERT_EQ((int32_t)0U, (int32_t)st.tx_ok);
+  TEST_ASSERT_EQ((int32_t)0U, (int32_t)st.ring_tx);
+  TEST_END("etha get_stats after deinit (clean slate)");
+}
+
+static void test_etha_open_bad_args(void)
+{
+  TEST_BEGIN("etha open bad args");
+  prep();
+  const ra_etha_config_t cfg = {.initial_mode = k_ra_etha_opc_config,
+                                .eaeie0_mask  = 0U,
+                                .eaeie1_mask  = 0U,
+                                .eaeie2_mask  = 0U};
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_init(k_ra_etha_port_0, &cfg));
+  ra_rmac_phy_link_t       lk  = {};
+  const ra_etha_phy_open_t phy = {.phy_addr   = 5U,
+                                  .advertise  = (uint16_t)k_ra_rmac_phy_advert_100_fd,
+                                  .timeout_ms = 1U};
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_etha_open(k_ra_etha_port_0, nullptr, &lk));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_etha_open(k_ra_etha_port_0, &phy, nullptr));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_etha_open((ra_etha_port_t)(uint8_t)k_ra_etha_port_count, &phy, &lk));
+  TEST_END("etha open bad args");
+}
+
+static void test_etha_open_eamc_transition(void)
+{
+  TEST_BEGIN("etha open EAMC transition");
+  prep();
+  const ra_etha_config_t ecfg = {.initial_mode = k_ra_etha_opc_config,
+                                 .eaeie0_mask  = 0U,
+                                 .eaeie1_mask  = 0U,
+                                 .eaeie2_mask  = 0U};
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_init(k_ra_etha_port_0, &ecfg));
+  const ra_rmac_config_t rcfg = {.rx_filter       = k_ra_rmac_mrafc_unicast_match,
+                                 .err_irq_enable  = 0U,
+                                 .mon0_irq_enable = 0U,
+                                 .mon1_irq_enable = 0U,
+                                 .mon2_irq_enable = 0U,
+                                 .phy_interface   = k_ra_rmac_pis_rmii,
+                                 .link_speed      = k_ra_rmac_lsc_100mbit,
+                                 .duplex          = k_ra_rmac_duplex_full};
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rmac_init(k_ra_rmac_port_0, &rcfg));
+  /* Pre-arm MMIS1 for both PWACS and PRACS so MDIO writes complete; the
+   * driver's reads return 0 (PRD bits zeroed by issue), so BMCR.RESET
+   * appears already cleared and phy_reset succeeds. Auto-neg wait
+   * never sees AN_COMPLETE and times out, but EAMC must already be
+   * OPERATION at that point so callers can retry without re-entering
+   * CONFIG. */
+  ra_rmac(k_ra_rmac_port_0)->MMIS1 =
+    (uint32_t)k_ra_rmac_mmis1_pwacs | (uint32_t)k_ra_rmac_mmis1_pracs;
+  ra_rmac_phy_link_t       lk  = {};
+  const ra_etha_phy_open_t phy = {.phy_addr   = 1U,
+                                  .advertise  = (uint16_t)k_ra_rmac_phy_advert_100_fd,
+                                  .timeout_ms = 1U};
+  const ra_err_t           r   = ra_etha_open(k_ra_etha_port_0, &phy, &lk);
+  TEST_ASSERT(r == k_ra_ok || r == k_ra_err_hw_timeout);
+  TEST_ASSERT_EQ((int32_t)k_ra_etha_opc_operation,
+                 (int32_t)(ra_etha(k_ra_etha_port_0)->EAMC & (uint32_t)k_ra_etha_mask_opc));
+  TEST_END("etha open EAMC transition");
+}
+
 /* --- Security gate --- */
 
 static void test_set_security(void)
@@ -648,6 +812,11 @@ int32_t main(void)
   test_cbs_configure_and_state();
   test_tas_schedule_and_enable();
   test_read_clear_stats();
+  test_descriptor_ring_init();
+  test_get_stats_and_account();
+  test_get_stats_after_deinit();
+  test_etha_open_bad_args();
+  test_etha_open_eamc_transition();
   test_set_security();
   (void)fprintf(stderr, "[OK  ] test_ra_etha.c\n");
   return 0;

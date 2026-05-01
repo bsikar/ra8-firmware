@@ -101,6 +101,7 @@ ra_err_t             ra_ble_host_l2cap_send(uint16_t       conn_handle,
                                             const uint8_t* payload,
                                             uint16_t       payload_len);
 void ra_ble_host_att_handle_pdu(uint16_t conn_handle, const uint8_t* pdu, uint16_t pdu_len);
+ra_ble_host_attr_t* ra_ble_host_attr_lookup(uint16_t handle);
 
 /* =============================================================================
  * ATT opcodes / error codes

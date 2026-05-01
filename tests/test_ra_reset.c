@@ -43,8 +43,6 @@ typedef enum : uint32_t {
  *        snapshot so every case starts with the driver in its
  *        just-loaded state.
  */
-void ra_reset_test_only_reset_state(void);
-
 /**
  * @brief Reset every state the driver caches between cases.
  *

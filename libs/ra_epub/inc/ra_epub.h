@@ -59,6 +59,7 @@
 extern "C" {
 #endif
 
+#include <stdalign.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -156,8 +157,13 @@ typedef struct {
    * than allocating it on the heap (NASA Rule 3). Cast through
    * `(mz_zip_archive*)&book->zip_archive_storage[0]` inside the
    * implementation. The exact upstream type would force this header
-   * to include `miniz.h`; we hold an opaque byte buffer instead. */
-  uint8_t zip_archive_storage[k_ra_epub_zip_archive_bytes];
+   * to include `miniz.h`; we hold an opaque byte buffer instead.
+   *
+   * `alignas(max_align_t)` is mandatory: ``mz_zip_archive`` carries
+   * pointer-typed and ``uint64_t`` fields that require 8-byte
+   * alignment. Without the alignment specifier the cast is
+   * undefined behaviour on strict-alignment architectures. */
+  alignas(max_align_t) uint8_t zip_archive_storage[k_ra_epub_zip_archive_bytes];
   uint8_t zip_archive_active; /**< 1 = mz_zip_reader_init succeeded. */
 
   /* --- Chapter table --------------------------------------------------- */
@@ -313,11 +319,11 @@ typedef struct {
  *
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t ra_epub_load_chapter(const ra_epub_book_t* book,
-                                            uint16_t              idx,
-                                            uint8_t*              out_xhtml,
-                                            size_t                max_len,
-                                            size_t*               got_len);
+[[nodiscard]] ra_err_t ra_epub_load_chapter(ra_epub_book_t* book,
+                                            uint16_t        idx,
+                                            uint8_t*        out_xhtml,
+                                            size_t          max_len,
+                                            size_t*         got_len);
 
 /* ===========================================================================
  * Public API -- metadata + cover + glyph rasterise
@@ -366,10 +372,8 @@ typedef struct {
  *
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t ra_epub_get_cover_image(const ra_epub_book_t* book,
-                                               uint8_t*              out_buf,
-                                               size_t                max_len,
-                                               size_t*               got_len);
+[[nodiscard]] ra_err_t
+ra_epub_get_cover_image(ra_epub_book_t* book, uint8_t* out_buf, size_t max_len, size_t* got_len);
 
 /**
  * @brief Attach a TTF font blob to be used by `ra_epub_render_glyph()`.

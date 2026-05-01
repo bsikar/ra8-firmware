@@ -27,7 +27,7 @@ static const char* s_tag = "NSCETH";
 
 RA_NSC_VENEER ra_err_t ra_nsc_eth_send(const uint8_t* ns_frame, uint16_t len)
 {
-  RA_CHECK_NULL_PTR((void*)ns_frame, s_tag, "eth_send: ns_frame");
+  RA_CHECK_NULL_PTR(ns_frame, s_tag, "eth_send: ns_frame");
   if ((len == 0U) || (len > (uint16_t)k_ra_nsc_eth_frame_max)) {
     return k_ra_err_invalid_arg;
   }
