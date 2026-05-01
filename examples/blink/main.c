@@ -142,7 +142,8 @@ static inline volatile uint32_t* ra_pfs_reg(uint8_t port, uint8_t bit)
 
 static inline volatile uint32_t* ra_pcntr1_reg(uint8_t port)
 {
-  /* HUM Ch 20.2.7 "PCNTR1" -- low 16 = PDR, high 16 = PODR. */
+  /* HUM Ch 20.2.1 "PCNTR1/PODR/PDR : Port Control Register 1" p 840 */
+  /* low 16 = PDR, high 16 = PODR. */
   return ra_reg32(k_ra_port_base + ((uintptr_t)port * 0x20UL));
 }
 

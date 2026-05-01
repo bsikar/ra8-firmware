@@ -869,7 +869,9 @@ void ra_dotf_dispatch(uint8_t channel)
   if ((len & k_ra_dotf_addr_low_mask) != 0U) {
     return k_ra_err_invalid_arg;
   }
-  /* HUM Ch 45.3.1 / 45.3.2 p 3049: end address is inclusive. */
+  /* HUM Ch 45.3.1 "CONVAREAST" p 3049 */
+  /* HUM Ch 45.3.2 "CONVAREAD" p 3049 */
+  /* end address is inclusive. */
   const ra_dotf_region_t r = {
     .start_addr = start,
     .end_addr   = start + len - 1U,

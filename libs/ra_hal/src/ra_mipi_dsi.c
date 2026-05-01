@@ -517,11 +517,11 @@ static void internal_program_link(const ra_mipi_dsi_config_t* cfg)
 {
   volatile r_mipi_dsi_regs_t* reg = ra_mipi_dsi();
 
-  /* HUM Ch 65.2 "RSTCR" p 3853: pulse SWRST. */
+  /* HUM Ch 65.2 "RSTCR" p 3853 */ /* pulse SWRST. */
   reg->RSTCR = k_ra_mipi_dsi_rstcr_swrst;
   reg->RSTCR = 0U;
 
-  /* HUM Ch 65.2 "TXSETR" p 3845 / "ULPSSETR" p 3849 / "DSISETR" p 3855 */
+  /* HUM Ch 65.2 "TXSETR" p 3845 */ /* / "ULPSSETR" p 3849 / "DSISETR" p 3855 */
   reg->TXSETR   = internal_ra_mipi_dsi_make_txsetr(cfg);
   reg->ULPSSETR = (uint32_t)cfg->ulps_wakeup_period << (uint32_t)k_ulpssetr_wkup_shift;
   reg->DSISETR  = internal_ra_mipi_dsi_make_dsisetr(cfg);

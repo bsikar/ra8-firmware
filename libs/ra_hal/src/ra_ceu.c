@@ -458,7 +458,7 @@ ra_err_t ra_ceu_init(const ra_ceu_config_t* cfg)
   const ra_err_t mst_err = ra_mstp_enable(k_ra_mstp_ceu);
   RA_RETURN_ON_ERROR(mst_err, s_tag, "ceu_init: mstp enable");
 
-  /* HUM Ch 60.2.23 "CSTSR" p 3672 + HUM Ch 60.2.1 "CAPSR" p 3630 */
+  /* HUM Ch 60.2.23 "CSTSR" p 3672 */ /* + HUM Ch 60.2.1 "CAPSR" p 3630 */
   const ra_err_t idle_err = internal_wait_idle();
   RA_RETURN_ON_ERROR(idle_err, s_tag, "ceu_init: wait idle");
 

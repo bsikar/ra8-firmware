@@ -221,16 +221,16 @@ typedef enum : uint32_t {
  * @see HUM Ch 28.2 "Register Descriptions" p 1273.
  */
 typedef struct {
-  /* HUM Ch 28.2 "Register Descriptions" p 1273 + FSP R_IWDT_Type */
-  volatile uint8_t  IWDTRR;    /**< +0x00 Refresh register.             */
-  volatile uint8_t  _r0;       /**< +0x01 Reserved.                     */
-  volatile uint16_t IWDTCR;    /**< +0x02 Control register.             */
-  volatile uint16_t IWDTSR;    /**< +0x04 Status register.              */
-  volatile uint8_t  IWDTRCR;   /**< +0x06 Reset control register.       */
-  volatile uint8_t  _r1;       /**< +0x07 Reserved.                     */
-  volatile uint8_t  IWDTCSTPR; /**< +0x08 Count-stop control register.  */
-  volatile uint8_t  _r2;       /**< +0x09 Reserved.                     */
-  volatile uint16_t _r3;       /**< +0x0A Reserved (pads to 0x0C).      */
+  /* HUM Ch 28.2 "Register Descriptions" p 1273 */ /* + FSP R_IWDT_Type */
+  volatile uint8_t  IWDTRR;                        /**< +0x00 Refresh register.             */
+  volatile uint8_t  _r0;                           /**< +0x01 Reserved.                     */
+  volatile uint16_t IWDTCR;                        /**< +0x02 Control register.             */
+  volatile uint16_t IWDTSR;                        /**< +0x04 Status register.              */
+  volatile uint8_t  IWDTRCR;                       /**< +0x06 Reset control register.       */
+  volatile uint8_t  _r1;                           /**< +0x07 Reserved.                     */
+  volatile uint8_t  IWDTCSTPR;                     /**< +0x08 Count-stop control register.  */
+  volatile uint8_t  _r2;                           /**< +0x09 Reserved.                     */
+  volatile uint16_t _r3;                           /**< +0x0A Reserved (pads to 0x0C).      */
 } r_iwdt_regs_t;
 
 /**

@@ -253,7 +253,8 @@ static void internal_init_rings(uint16_t tx_count, uint16_t rx_count, uint16_t b
   }
 
   for (uint16_t i = 0U; i < rx_count; ++i) {
-    /* HUM Ch 34 -- RX descriptor handed to hardware via RACT=1. */
+    /* HUM Ch 34 "Ethernet CPU Agent (GWCA)" p 1787 */
+    /* RX descriptor handed to hardware via RACT=1. */
     s_rx_descriptors[i].status      = k_ra_eth_desc_ract;
     s_rx_descriptors[i].size        = 0U;
     s_rx_descriptors[i].buffer_size = buf_size;

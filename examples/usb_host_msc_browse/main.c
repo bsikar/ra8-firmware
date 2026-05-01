@@ -104,7 +104,7 @@ typedef enum : uint16_t {
  * for USBHS.
  */
 typedef enum : uint8_t {
-  k_usb_msc_psel_usb_hs = 0x14U, /* HUM Ch 20.2 "PFS PSEL field" p 1015 */
+  k_usb_msc_psel_usb_hs = 0x14U, /* HUM Ch 20.6 "Peripheral Select Settings" p 855 */
 } usb_host_msc_psel_t;
 
 /**

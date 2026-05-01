@@ -297,7 +297,60 @@ static ra_err_t priv_open_finalise(const ra_touch_cfg_t* cfg)
   return priv_attach_irq_pin(cfg->irq_pin);
 }
 
-/* NOLINTNEXTLINE(readability-function-size,readability-function-cognitive-complexity) */
+/**
+ * @brief Bring the GT911 from "validated config" up to "opened, IRQ
+ *        attached" state.
+ *
+ * @details
+ * Internal sub-step of ``ra_touch_open``. Extracted so the public entry
+ * point stays under the NASA Rule 4 / clang-tidy
+ * ``readability-function-size`` and ``readability-function-cognitive-complexity``
+ * thresholds without requiring an inline NOLINT override.
+ *
+ * Sequence:
+ *   1. Bring up the IIC_B channel at 400 kHz fast-mode.
+ *   2. Stash the validated config into the file-scope state slot.
+ *   3. Run the finalise step (product-id verification, status ack, IRQ
+ *      pin programming). On failure ``priv_open_finalise`` rolls back
+ *      the IIC_B channel.
+ *
+ * @param[in] cfg Validated, non-NULL touch configuration.
+ *
+ * @return ``ra_err_t`` propagated from the underlying steps.
+ * @retval k_ra_ok                    Driver hardware is up and reachable.
+ * @retval k_ra_err_hw_init_failed    Product-id verification rejected.
+ * @retval k_ra_err_invalid_arg       Underlying primitive rejected its
+ *                                    arguments.
+ *
+ * @pre ``cfg`` is non-NULL and has passed ``priv_validate_cfg``.
+ * @pre ``s_state.opened`` is ``false``.
+ * @post On ``k_ra_ok`` the IIC_B channel is initialised, ``s_state``
+ *       reflects ``cfg``, the GT911 status byte has been acknowledged,
+ *       and the IRQ pin (if any) is programmed for falling-edge detect.
+ * @post On error the IIC_B channel has been deinitialised.
+ *
+ * @note Not thread-safe; ``ra_touch_open`` is the only caller and runs
+ *       single-threaded during driver bring-up.
+ *
+ * @see priv_validate_cfg
+ * @see priv_bring_up_i2c
+ * @see priv_stash_state
+ * @see priv_open_finalise
+ *
+ * @since Wave 11
+ */
+[[nodiscard]] static ra_err_t priv_open_bring_up(const ra_touch_cfg_t* cfg)
+{
+  const ra_err_t iic_err = priv_bring_up_i2c(cfg->i2c_channel);
+  RA_RETURN_ON_ERROR(iic_err, s_tag, "ra_touch_open: iic_b_init");
+
+  priv_stash_state(cfg);
+
+  const ra_err_t fin_err = priv_open_finalise(cfg);
+  RA_RETURN_ON_ERROR(fin_err, s_tag, "ra_touch_open: finalise");
+  return k_ra_ok;
+}
+
 [[nodiscard]] ra_err_t ra_touch_open(const ra_touch_cfg_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg, s_tag, "ra_touch_open: cfg");
@@ -307,13 +360,8 @@ static ra_err_t priv_open_finalise(const ra_touch_cfg_t* cfg)
   const ra_err_t cfg_err = priv_validate_cfg(cfg);
   RA_RETURN_ON_ERROR(cfg_err, s_tag, "ra_touch_open: cfg validation");
 
-  const ra_err_t iic_err = priv_bring_up_i2c(cfg->i2c_channel);
-  RA_RETURN_ON_ERROR(iic_err, s_tag, "ra_touch_open: iic_b_init");
-
-  priv_stash_state(cfg);
-
-  const ra_err_t fin_err = priv_open_finalise(cfg);
-  RA_RETURN_ON_ERROR(fin_err, s_tag, "ra_touch_open: finalise");
+  const ra_err_t up_err = priv_open_bring_up(cfg);
+  RA_RETURN_ON_ERROR(up_err, s_tag, "ra_touch_open: bring_up");
 
   s_state.cb     = nullptr;
   s_state.ctx    = nullptr;

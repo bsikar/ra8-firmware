@@ -133,7 +133,7 @@ static ra_err_t internal_set_channel_mode(volatile r_canfd_t* reg, ra_chmdc_mode
  */
 static ra_err_t internal_set_global_mode(volatile r_canfd_t* reg, uint32_t gmdc_value)
 {
-  /* HUM Ch 41 p 2742 "CFDGCTR.GMDC" + GSLPR clear. */
+  /* HUM Ch 41 "CFDGCTR.GMDC" p 2742 */ /* "CFDGCTR.GMDC" + GSLPR clear. */
   uint32_t gctr = reg->CFDGCTR;
   gctr &= ~(k_ra_gctr_mask_gmdc | k_ra_gctr_mask_gslpr);
   gctr |= (gmdc_value & k_ra_gctr_mask_gmdc);
@@ -195,7 +195,7 @@ ra_err_t ra_canfd_deinit(uint8_t channel)
   volatile r_canfd_t* reg = ra_canfd(channel);
   RA_CHECK_NULL_PTR(reg, s_tag, "channel out of range");
 
-  /* HUM Ch 41 p 2762 "CFDCnCTR.CHMDC" -- park channel in reset. */
+  /* HUM Ch 41 "CFDCnCTR.CHMDC" p 2762 */ /* "CFDCnCTR.CHMDC" -- park channel in reset. */
   (void)internal_set_channel_mode(reg, k_ra_chmdc_reset);
   return k_ra_ok;
 }
@@ -307,7 +307,7 @@ ra_err_t ra_canfd_set_bitrate(uint8_t channel, uint32_t bitrate_bps, uint32_t da
   if (n_err != k_ra_ok) {
     return n_err;
   }
-  /* HUM Ch 41 p 2760 "CFDCnNCFG" + FSP r_canfd.c line ~422. */
+  /* HUM Ch 41 "CFDCnNCFG" p 2760 */ /* "CFDCnNCFG" + FSP r_canfd.c line ~422. */
   reg->CFDC[0].NCFG = internal_pack_ncfg(&nominal);
 
   if ((data_bitrate_bps != 0U) && (data_bitrate_bps > bitrate_bps)) {
@@ -318,7 +318,7 @@ ra_err_t ra_canfd_set_bitrate(uint8_t channel, uint32_t bitrate_bps, uint32_t da
     if (d_err != k_ra_ok) {
       return d_err;
     }
-    /* HUM Ch 41 p 2785 "CFDCnDCFG" + FSP r_canfd.c line ~432. */
+    /* HUM Ch 41 "CFDCnDCFG" p 2785 */ /* "CFDCnDCFG" + FSP r_canfd.c line ~432. */
     reg->CFDC2[0].DCFG = internal_pack_dcfg(&data);
   }
 
@@ -446,12 +446,12 @@ ra_err_t ra_canfd_receive(uint8_t channel, ra_canfd_frame_t* out_frame)
   RA_CHECK_NULL_PTR(reg, s_tag, "channel out of range");
   RA_CHECK_NULL_PTR(out_frame, s_tag, "out_frame must not be nullptr");
 
-  /* HUM Ch 41 p 2754 "CFDRFSTSn.RFEMP" -- empty flag is bit 0. */
+  /* HUM Ch 41 "CFDRFSTSn.RFEMP" p 2754 */ /* "CFDRFSTSn.RFEMP" -- empty flag is bit 0. */
   if ((reg->CFDRFSTS[k_ra_canfd_rx_fifo_default] & k_ra_rfsts_bit_empty) != 0U) {
     return k_ra_err_no_data;
   }
 
-  /* HUM Ch 41 p 2796 "CFDRFn ID/PTR/FDSTS/DF". */
+  /* HUM Ch 41 "CFDRFn ID/PTR/FDSTS/DF" p 2796 */ /* "CFDRFn ID/PTR/FDSTS/DF". */
   internal_decode_rx_header(reg->CFDRF[k_ra_canfd_rx_fifo_default].ID,
                             reg->CFDRF[k_ra_canfd_rx_fifo_default].PTR,
                             reg->CFDRF[k_ra_canfd_rx_fifo_default].FDSTS,
@@ -492,7 +492,7 @@ ra_err_t ra_canfd_get_status(uint8_t channel, uint32_t* out_mask)
   RA_CHECK_NULL_PTR(out_mask, s_tag, "out_mask must not be nullptr");
   volatile r_canfd_t* reg = ra_canfd(channel);
   RA_CHECK_NULL_PTR(reg, s_tag, "channel out of range");
-  /* HUM Ch 41 p 2766 "CFDCnSTS". */
+  /* HUM Ch 41 "CFDCnSTS" p 2766 */ /* "CFDCnSTS". */
   *out_mask = reg->CFDC[0].STS;
   return k_ra_ok;
 }
@@ -521,7 +521,7 @@ void ra_canfd_dispatch(uint8_t channel)
   if (reg == nullptr) {
     return;
   }
-  /* HUM Ch 41 p 2772 "CFDCnERFL" snapshot then ack. */
+  /* HUM Ch 41 "CFDCnERFL" p 2772 */ /* "CFDCnERFL" snapshot then ack. */
   const uint32_t            mask = reg->CFDC[0].ERFL;
   const ra_canfd_event_fn_t fn   = s_canfd_fn;
   void* const               ctx  = s_canfd_ctx;
@@ -555,7 +555,7 @@ static ra_err_t internal_program_data_phase(volatile r_canfd_t* reg, uint32_t da
   if (err != k_ra_ok) {
     return err;
   }
-  /* HUM Ch 41 p 2785 "CFDCnDCFG" */
+  /* HUM Ch 41 "CFDCnDCFG" p 2785 */ /* "CFDCnDCFG" */
   reg->CFDC2[0].DCFG = internal_pack_dcfg(&data);
   return k_ra_ok;
 }
@@ -583,10 +583,10 @@ ra_err_t ra_canfd_filter_set(uint16_t filter_id, uint32_t accept_id, uint32_t ma
   volatile r_canfd_t* reg = ra_canfd(0U);
   RA_CHECK_NULL_PTR(reg, s_tag, "filter_set: channel0 unavailable");
 
-  /* HUM Ch 41 "CFDGAFLECTR" pp 2702-2867 */
+  /* HUM Ch 41 "CFDGAFLECTR" p 2702-2867 */
   reg->CFDGAFLECTR = ((uint32_t)page & k_ra_gaflectr_mask_aflpn) | k_ra_gaflectr_bit_afldae;
 
-  /* HUM Ch 41 "CFDGAFLID/M/P1" pp 2702-2867 */
+  /* HUM Ch 41 "CFDGAFLID/M/P1" p 2702-2867 */
   reg->CFDGAFL[slot].ID = accept_id;
   reg->CFDGAFL[slot].M  = mask;
   reg->CFDGAFL[slot].P1 = ((uint32_t)dlc & k_ra_canfd_ptr_mask_dlc) << k_ra_canfd_ptr_shift_dlc;
@@ -624,7 +624,7 @@ ra_err_t ra_canfd_enter_stop(uint8_t channel)
   if (channel >= k_ra_canfd_instance_count) {
     return k_ra_err_invalid_arg;
   }
-  /* HUM Ch 11.2.8 "MSTPCRC", p 447 -- gate channel clock back off. */
+  /* HUM Ch 11.2.8 "MSTPCRC" p 447 */ /* gate channel clock back off. */
   return ra_mstp_disable(s_canfd_mstp_table[channel]);
 }
 
@@ -633,6 +633,6 @@ ra_err_t ra_canfd_exit_stop(uint8_t channel)
   if (channel >= k_ra_canfd_instance_count) {
     return k_ra_err_invalid_arg;
   }
-  /* HUM Ch 11.2.8 "MSTPCRC", p 447 -- ungate channel clock. */
+  /* HUM Ch 11.2.8 "MSTPCRC" p 447 */ /* ungate channel clock. */
   return ra_mstp_enable(s_canfd_mstp_table[channel]);
 }

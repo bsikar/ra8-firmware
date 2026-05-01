@@ -19,6 +19,7 @@
 #   make tidy       -- run clang-tidy against the whole tree
 #   make test       -- build + run the host unit tests
 #   make docs       -- generate doxygen HTML into build/docs/html/
+#   make dashboard  -- regenerate docs/ROADMAP_DASHBOARD.md + docs/badges/
 #   make ascii      -- scan for non-ASCII characters
 #   make version    -- verify @since tags match the VERSION file
 #
@@ -47,7 +48,7 @@ RA_APPS := $(sort $(patsubst $(ROOT)/examples/%/main.c,%,$(wildcard $(ROOT)/exam
 
 # We forward each <app> name to the app's own Makefile, so reserve the names
 # below from being shadowed by .PHONY targets.
-.PHONY: help apps default clean format check tidy test test-docker ctest coverage docs ascii version qe-test all $(RA_APPS)
+.PHONY: help apps default clean format check tidy test test-docker ctest coverage docs dashboard ascii version qe-test all $(RA_APPS)
 
 help:
 	@echo "ra8d2-firmware make targets:"
@@ -63,6 +64,7 @@ help:
 	@echo "  make ctest     rerun just ctest (assumes already built)"
 	@echo "  make coverage  generate lcov+genhtml HTML coverage report"
 	@echo "  make docs      generate doxygen HTML into build/docs/html/"
+	@echo "  make dashboard regenerate docs/ROADMAP_DASHBOARD.md + docs/badges/"
 	@echo "  make ascii     fix-encoding.py --check"
 	@echo "  make version   verify @since tags match the VERSION file"
 	@echo "  make qe-test   run tools/ra_qe (JSON configurator) unit tests"
@@ -111,6 +113,9 @@ ctest:
 
 docs:
 	bash scripts/build_docs.sh
+
+dashboard:
+	python3 scripts/utils/roadmap_dashboard.py
 
 coverage:
 	bash scripts/coverage_report.sh

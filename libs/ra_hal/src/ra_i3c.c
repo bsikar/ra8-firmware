@@ -67,11 +67,11 @@ static void* s_i3c_ctx;
  */
 static void priv_ra_i3c_reset_sequence(volatile r_i3c_regs_t* reg)
 {
-  /* HUM Ch 40 "CECTL : Clock Enable Control Register" pp 2445-2701 */
+  /* HUM Ch 40 "CECTL : Clock Enable Control Register" p 2445-2701 */
   reg->CECTL = 1U;
-  /* HUM Ch 40 "BCTL : Bus Control Register" pp 2445-2701 */
+  /* HUM Ch 40 "BCTL : Bus Control Register" p 2445-2701 */
   reg->BCTL = 0U;
-  /* HUM Ch 40 "RSTCTL : Reset Control Register" pp 2445-2701 */
+  /* HUM Ch 40 "RSTCTL : Reset Control Register" p 2445-2701 */
   reg->RSTCTL = k_ra_i3c_rstctl_ri3crst_mask;
   reg->RSTCTL = 0U; /* simulated-mmap clear / target HW already auto-cleared */
   reg->RSTCTL = k_ra_i3c_rstctl_intlrst_mask;
@@ -199,12 +199,12 @@ static void priv_ra_i3c_fifo_read(volatile r_i3c_regs_t* reg, uint8_t* out, uint
 
 ra_err_t ra_i3c_init(void)
 {
-  /* HUM Ch 11 "MSTPCRB : Module Stop Control Register B" pp 414-490 */
+  /* HUM Ch 11.2.7 "MSTPCRB : Module Stop Control Register B" p 444 */
   const ra_err_t mst_err = ra_mstp_enable(k_ra_mstp_i3c);
   RA_RETURN_ON_ERROR(mst_err, s_tag, "i3c_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
 
   volatile r_i3c_regs_t* reg = ra_i3c();
-  /* HUM Ch 40 "I3C Bus Interface (I3C)" pp 2445-2701 */
+  /* HUM Ch 40 "I3C Bus Interface (I3C)" p 2445-2701 */
   priv_ra_i3c_reset_sequence(reg);
 
   /* Clear every status / enable register to a deterministic state.
@@ -222,11 +222,11 @@ ra_err_t ra_i3c_init(void)
 ra_err_t ra_i3c_deinit(void)
 {
   volatile r_i3c_regs_t* reg = ra_i3c();
-  /* HUM Ch 40 "BCTL : Bus Control Register" pp 2445-2701 */
+  /* HUM Ch 40 "BCTL : Bus Control Register" p 2445-2701 */
   reg->INIE  = 0U;
   reg->INSTE = 0U;
   reg->BCTL  = 0U;
-  /* HUM Ch 40 "CECTL : Clock Enable Control Register" pp 2445-2701 */
+  /* HUM Ch 40 "CECTL : Clock Enable Control Register" p 2445-2701 */
   reg->CECTL = 0U;
   s_i3c_fn   = nullptr;
   s_i3c_ctx  = nullptr;
@@ -262,7 +262,7 @@ ra_err_t ra_i3c_bus_enable(bool enable)
 ra_err_t ra_i3c_get_status(uint32_t* out_mask)
 {
   RA_CHECK_NULL_PTR(out_mask, s_tag, "out_mask must not be nullptr");
-  /* HUM Ch 40 "INST : Internal Status Register" pp 2445-2701 */
+  /* HUM Ch 40 "INST : Internal Status Register" p 2445-2701 */
   *out_mask = ra_i3c()->INST;
   return k_ra_ok;
 }
@@ -286,7 +286,7 @@ ra_err_t ra_i3c_attach_handler(ra_i3c_event_fn_t fn, void* ctx)
 void ra_i3c_dispatch(void)
 {
   volatile r_i3c_regs_t* reg = ra_i3c();
-  /* HUM Ch 40 "INST : Internal Status Register" pp 2445-2701 */
+  /* HUM Ch 40 "INST : Internal Status Register" p 2445-2701 */
   const uint32_t          mask = reg->INST;
   const ra_i3c_event_fn_t fn   = s_i3c_fn;
   void* const             ctx  = s_i3c_ctx;
@@ -298,7 +298,7 @@ void ra_i3c_dispatch(void)
 
 ra_err_t ra_i3c_enter_stop(void)
 {
-  /* HUM Ch 40 "BCTL : Bus Control Register" pp 2445-2701 */
+  /* HUM Ch 40 "BCTL : Bus Control Register" p 2445-2701 */
   ra_i3c()->BCTL  = 0U;
   ra_i3c()->CECTL = 0U;
   return ra_mstp_disable(k_ra_mstp_i3c);
@@ -578,7 +578,7 @@ ra_err_t ra_i3c_slave_open(uint8_t static_addr)
    * before flipping the SLVE bit. */
   reg->BCTL = reg->BCTL & ~k_ra_i3c_bctl_buse_mask;
 
-  /* HUM Ch 40 "Slave Device Address Register" pp 2445-2701 */
+  /* HUM Ch 40 "Slave Device Address Register" p 2445-2701 */
   const uint32_t sdyad =
     (((uint32_t)static_addr) << k_ra_i3c_nsdvad_sdyad_shift) & k_ra_i3c_nsdvad_sdyad_mask;
   reg->NSDVAD = sdyad | k_ra_i3c_nsdvad_sdyadv_mask;

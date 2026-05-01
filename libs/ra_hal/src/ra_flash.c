@@ -755,7 +755,7 @@ ra_err_t ra_flash_suspend(void)
   *ra_mram_reg16(k_ra_mram_off_mentryr) = k_ra_mentryr_pe_pause;
 
   for (uint32_t i = 0U; i < k_ra_flash_pe_spin_limit; ++i) {
-    /* HUM Ch 59 "MENTRYR" pp 3582+ */
+    /* HUM Ch 59 "MENTRYR" p 3582 */ /* + */
     const uint16_t v = *ra_mram_reg16(k_ra_mram_off_mentryr);
     if ((v & k_ra_mentryr_mask_pcka) != 0U) {
       return k_ra_ok;
@@ -772,7 +772,7 @@ ra_err_t ra_flash_resume(void)
   *ra_mram_reg16(k_ra_mram_off_mentryr) = k_ra_mentryr_pe_resume;
 
   for (uint32_t i = 0U; i < k_ra_flash_pe_spin_limit; ++i) {
-    /* HUM Ch 59 "MENTRYR" pp 3582+ */
+    /* HUM Ch 59 "MENTRYR" p 3582 */ /* + */
     const uint16_t v = *ra_mram_reg16(k_ra_mram_off_mentryr);
     if ((v & k_ra_mentryr_mask_pcka) == 0U) {
       return k_ra_ok;
@@ -1335,7 +1335,7 @@ ra_err_t ra_flash_extra_mram_write(uint32_t mram_addr, const uint8_t* src, uint3
    * configuration set; the difference is in the trailer + payload size.
    * We re-use the config-set sequence with an 8-halfword chunked write
    * sized to ``len`` (padded with 0xFFFF). */
-  uint16_t cfg_words[k_ra_mram_config_set_word_count];
+  uint16_t cfg_words[k_ra_mram_config_set_word_count] = {};
   for (uint32_t i = 0U; i < k_ra_mram_config_set_word_count; ++i) {
     const uint32_t base = i * 2U;
     const uint8_t  lo   = (base < len) ? src[base] : 0xFFU;
