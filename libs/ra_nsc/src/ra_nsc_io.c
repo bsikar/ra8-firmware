@@ -29,7 +29,7 @@ static const char* s_tag = "NSCIO";
 
 RA_NSC_VENEER ra_err_t ra_nsc_gpt_init(uint8_t channel, const ra_gpt_cfg_t* cfg)
 {
-  RA_CHECK_NULL_PTR((void*)cfg, s_tag, "gpt_init: cfg");
+  RA_CHECK_NULL_PTR(cfg, s_tag, "gpt_init: cfg");
   RA_NSC_CHECK_NS_RANGE_R(cfg, sizeof(*cfg));
   return ra_gpt_init(channel, cfg);
 }
@@ -82,7 +82,7 @@ RA_NSC_VENEER ra_err_t ra_nsc_crc_init(ra_crc_poly_t poly)
 
 RA_NSC_VENEER ra_err_t ra_nsc_crc_compute(const uint8_t* data, uint32_t len, uint32_t* out_crc)
 {
-  RA_CHECK_NULL_PTR((void*)data, s_tag, "crc_compute: data");
+  RA_CHECK_NULL_PTR(data, s_tag, "crc_compute: data");
   RA_CHECK_NULL_PTR(out_crc, s_tag, "crc_compute: out_crc");
   RA_NSC_CHECK_NS_RANGE_R(data, len);
   RA_NSC_CHECK_NS_RANGE_RW(out_crc, sizeof(*out_crc));
@@ -91,7 +91,7 @@ RA_NSC_VENEER ra_err_t ra_nsc_crc_compute(const uint8_t* data, uint32_t len, uin
 
 RA_NSC_VENEER ra_err_t ra_nsc_glcdc_init(const ra_glcdc_config_t* cfg)
 {
-  RA_CHECK_NULL_PTR((void*)cfg, s_tag, "glcdc_init: cfg");
+  RA_CHECK_NULL_PTR(cfg, s_tag, "glcdc_init: cfg");
   RA_NSC_CHECK_NS_RANGE_R(cfg, sizeof(*cfg));
   return ra_glcdc_init(cfg);
 }

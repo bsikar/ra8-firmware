@@ -35,7 +35,7 @@ static const char* s_tag = "NSCCOM";
 
 RA_NSC_VENEER ra_err_t ra_nsc_sci_init(uint8_t channel, const ra_sci_cfg_t* cfg)
 {
-  RA_CHECK_NULL_PTR((void*)cfg, s_tag, "sci_init: cfg");
+  RA_CHECK_NULL_PTR(cfg, s_tag, "sci_init: cfg");
   RA_NSC_CHECK_NS_RANGE_R(cfg, sizeof(*cfg));
   return ra_sci_init(channel, cfg);
 }
@@ -59,7 +59,7 @@ RA_NSC_VENEER ra_err_t ra_nsc_sci_getc(uint8_t channel, uint8_t* out_byte)
 
 RA_NSC_VENEER ra_err_t ra_nsc_iic_init(uint8_t channel, const ra_iic_cfg_t* cfg)
 {
-  RA_CHECK_NULL_PTR((void*)cfg, s_tag, "iic_init: cfg");
+  RA_CHECK_NULL_PTR(cfg, s_tag, "iic_init: cfg");
   RA_NSC_CHECK_NS_RANGE_R(cfg, sizeof(*cfg));
   return ra_iic_init(channel, cfg);
 }
@@ -69,7 +69,7 @@ RA_NSC_VENEER ra_err_t ra_nsc_iic_write(uint8_t        channel,
                                         const uint8_t* data,
                                         uint32_t       len)
 {
-  RA_CHECK_NULL_PTR((void*)data, s_tag, "iic_write: data");
+  RA_CHECK_NULL_PTR(data, s_tag, "iic_write: data");
   RA_NSC_CHECK_NS_RANGE_R(data, len);
   return ra_iic_write(channel, target_7b, data, len);
 }
@@ -91,7 +91,7 @@ RA_NSC_VENEER ra_err_t ra_nsc_iic_read(uint8_t  channel,
 
 RA_NSC_VENEER ra_err_t ra_nsc_spi_init(uint8_t channel, const ra_spi_cfg_t* cfg)
 {
-  RA_CHECK_NULL_PTR((void*)cfg, s_tag, "spi_init: cfg");
+  RA_CHECK_NULL_PTR(cfg, s_tag, "spi_init: cfg");
   RA_NSC_CHECK_NS_RANGE_R(cfg, sizeof(*cfg));
   return ra_spi_init(channel, cfg);
 }
@@ -134,7 +134,7 @@ RA_NSC_VENEER ra_err_t ra_nsc_spi_write(uint8_t            channel,
                                         ra_spi_bit_width_t bit_width)
 {
   if (len > 0U) {
-    RA_CHECK_NULL_PTR((void*)tx, s_tag, "spi_write: tx");
+    RA_CHECK_NULL_PTR(tx, s_tag, "spi_write: tx");
     const uint8_t bytes_per_unit = internal_spi_unit_bytes(bit_width);
     if (bytes_per_unit == 0U) {
       return k_ra_err_invalid_arg;
@@ -167,7 +167,7 @@ RA_NSC_VENEER ra_err_t ra_nsc_spi_write_read(uint8_t            channel,
                                              ra_spi_bit_width_t bit_width)
 {
   if (len > 0U) {
-    RA_CHECK_NULL_PTR((void*)tx, s_tag, "spi_write_read: tx");
+    RA_CHECK_NULL_PTR(tx, s_tag, "spi_write_read: tx");
     RA_CHECK_NULL_PTR(rx, s_tag, "spi_write_read: rx");
     const uint8_t bytes_per_unit = internal_spi_unit_bytes(bit_width);
     if (bytes_per_unit == 0U) {

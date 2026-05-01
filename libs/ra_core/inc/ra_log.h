@@ -70,19 +70,25 @@ extern "C" {
  * @enum ra_log_level_t
  * @brief Compile-time and runtime log level.
  */
+#define RA_LOG_LEVEL_NONE  (0)
+#define RA_LOG_LEVEL_ERROR (1)
+#define RA_LOG_LEVEL_WARN  (2)
+#define RA_LOG_LEVEL_INFO  (3)
+#define RA_LOG_LEVEL_DEBUG (4)
+
 typedef enum : uint8_t {
-  k_ra_log_level_none  = 0, /**< Disable all logging.                          */
-  k_ra_log_level_error = 1, /**< Errors only.                                  */
-  k_ra_log_level_warn  = 2, /**< Errors + warnings.                            */
-  k_ra_log_level_info  = 3, /**< Errors + warnings + info (default for Debug). */
-  k_ra_log_level_debug = 4, /**< Everything, including per-iteration traces.   */
+  k_ra_log_level_none  = RA_LOG_LEVEL_NONE,  /**< Disable all logging.                          */
+  k_ra_log_level_error = RA_LOG_LEVEL_ERROR, /**< Errors only.                                  */
+  k_ra_log_level_warn  = RA_LOG_LEVEL_WARN,  /**< Errors + warnings.                            */
+  k_ra_log_level_info  = RA_LOG_LEVEL_INFO,  /**< Errors + warnings + info (default for Debug). */
+  k_ra_log_level_debug = RA_LOG_LEVEL_DEBUG, /**< Everything, including per-iteration traces.   */
 } ra_log_level_t;
 
 #ifndef RA_LOG_LEVEL
 #ifdef DEBUG
-#define RA_LOG_LEVEL k_ra_log_level_info
+#define RA_LOG_LEVEL RA_LOG_LEVEL_INFO
 #else
-#define RA_LOG_LEVEL k_ra_log_level_warn
+#define RA_LOG_LEVEL RA_LOG_LEVEL_WARN
 #endif
 #endif
 
@@ -128,7 +134,7 @@ void internal_ra_log_debug_val(const char* tag, const char* message, int32_t val
  * =============================================================================
  */
 
-#if RA_LOG_LEVEL >= k_ra_log_level_error
+#if RA_LOG_LEVEL >= RA_LOG_LEVEL_ERROR
 #define ra_log_error(tag, message)            internal_ra_log_error((tag), (message))
 #define ra_log_error_val(tag, message, value) internal_ra_log_error_val((tag), (message), (value))
 #else
@@ -136,7 +142,7 @@ void internal_ra_log_debug_val(const char* tag, const char* message, int32_t val
 #define ra_log_error_val(tag, message, value) ((void)0)
 #endif
 
-#if RA_LOG_LEVEL >= k_ra_log_level_warn
+#if RA_LOG_LEVEL >= RA_LOG_LEVEL_WARN
 #define ra_log_warn(tag, message)            internal_ra_log_warn((tag), (message))
 #define ra_log_warn_val(tag, message, value) internal_ra_log_warn_val((tag), (message), (value))
 #else
@@ -144,7 +150,7 @@ void internal_ra_log_debug_val(const char* tag, const char* message, int32_t val
 #define ra_log_warn_val(tag, message, value) ((void)0)
 #endif
 
-#if RA_LOG_LEVEL >= k_ra_log_level_info
+#if RA_LOG_LEVEL >= RA_LOG_LEVEL_INFO
 #define ra_log_info(tag, message)            internal_ra_log_info((tag), (message))
 #define ra_log_info_val(tag, message, value) internal_ra_log_info_val((tag), (message), (value))
 #else
@@ -152,7 +158,7 @@ void internal_ra_log_debug_val(const char* tag, const char* message, int32_t val
 #define ra_log_info_val(tag, message, value) ((void)0)
 #endif
 
-#if RA_LOG_LEVEL >= k_ra_log_level_debug
+#if RA_LOG_LEVEL >= RA_LOG_LEVEL_DEBUG
 #define ra_log_debug(tag, message)            internal_ra_log_debug((tag), (message))
 #define ra_log_debug_val(tag, message, value) internal_ra_log_debug_val((tag), (message), (value))
 #else

@@ -608,6 +608,148 @@ static void test_stop_and_resume(void)
   TEST_END("rmac stop + resume");
 }
 
+/* --- PHY auto-negotiation state machine ---
+ *
+ * The simulator backs MMIS1 with plain RAM; the driver clears
+ * completion bits via the separate MMID1 register, so once MMIS1 has
+ * both PWACS and PRACS set every subsequent driver-issued MDIO poll
+ * returns immediately. We pre-stage MPSM so the driver's read fetches
+ * a chosen value (driver clears PRD bits during issue, so reads
+ * always return 0 -- we leverage this for negative-path tests).
+ */
+static void prime_mdio(ra_rmac_port_t port, uint16_t mpsm_prd)
+{
+  ra_rmac(port)->MPSM  = ((uint32_t)mpsm_prd << 16U);
+  ra_rmac(port)->MMIS1 = (uint32_t)k_ra_rmac_mmis1_pwacs | (uint32_t)k_ra_rmac_mmis1_pracs;
+}
+
+static void test_phy_reset_happy(void)
+{
+  TEST_BEGIN("rmac phy reset happy");
+  prep();
+  const ra_rmac_config_t cfg = default_cfg();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rmac_init(k_ra_rmac_port_0, &cfg));
+  /* MPSM read returns 0 (RESET cleared) -> driver returns k_ra_ok. */
+  prime_mdio(k_ra_rmac_port_0, 0x0000U);
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rmac_phy_reset(k_ra_rmac_port_0, 5U));
+  TEST_END("rmac phy reset happy");
+}
+
+static void test_phy_reset_bad_args(void)
+{
+  TEST_BEGIN("rmac phy reset bad args");
+  prep();
+  const ra_rmac_config_t cfg = default_cfg();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rmac_init(k_ra_rmac_port_0, &cfg));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_rmac_phy_reset((ra_rmac_port_t)(uint8_t)k_ra_rmac_port_count, 0U));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_rmac_phy_reset(k_ra_rmac_port_0, 32U));
+  TEST_END("rmac phy reset bad args");
+}
+
+static void test_phy_set_advertise(void)
+{
+  TEST_BEGIN("rmac phy set_advertise");
+  prep();
+  const ra_rmac_config_t cfg = default_cfg();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rmac_init(k_ra_rmac_port_0, &cfg));
+  prime_mdio(k_ra_rmac_port_0, 0U);
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_rmac_phy_set_advertise(k_ra_rmac_port_0,
+                                                    7U,
+                                                    (uint16_t)k_ra_rmac_phy_advert_100_fd |
+                                                      (uint16_t)k_ra_rmac_phy_advert_10_fd));
+  /* MPSM PRD field should encode (capabilities | selector_bit). */
+  const uint32_t mpsm = ra_rmac(k_ra_rmac_port_0)->MPSM;
+  const uint16_t prd  = (uint16_t)((mpsm >> 16U) & 0xFFFFU);
+  TEST_ASSERT(((prd & (uint16_t)k_ra_rmac_phy_advert_100_fd) != 0U));
+  TEST_ASSERT(((prd & (uint16_t)k_ra_rmac_phy_advert_10_fd) != 0U));
+  TEST_ASSERT(((prd & 0x0001U) != 0U)); /* selector */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_rmac_phy_set_advertise(k_ra_rmac_port_0, 32U, 0U));
+  TEST_END("rmac phy set_advertise");
+}
+
+static void test_phy_auto_neg_start(void)
+{
+  TEST_BEGIN("rmac phy auto_neg_start");
+  prep();
+  const ra_rmac_config_t cfg = default_cfg();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rmac_init(k_ra_rmac_port_0, &cfg));
+  prime_mdio(k_ra_rmac_port_0, 0U);
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rmac_phy_auto_neg_start(k_ra_rmac_port_0, 1U));
+  const uint32_t mpsm = ra_rmac(k_ra_rmac_port_0)->MPSM;
+  const uint16_t prd  = (uint16_t)((mpsm >> 16U) & 0xFFFFU);
+  TEST_ASSERT(((prd & 0x1000U) != 0U)); /* AN_ENABLE */
+  TEST_ASSERT(((prd & 0x0200U) != 0U)); /* AN_RESTART */
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_invalid_arg,
+    (int32_t)ra_rmac_phy_auto_neg_start((ra_rmac_port_t)(uint8_t)k_ra_rmac_port_count, 0U));
+  TEST_END("rmac phy auto_neg_start");
+}
+
+static void test_phy_auto_neg_wait_happy(void)
+{
+  TEST_BEGIN("rmac phy auto_neg_wait MPSM transaction shape");
+  prep();
+  const ra_rmac_config_t cfg = default_cfg();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rmac_init(k_ra_rmac_port_0, &cfg));
+  /* Simulator returns 0 from MPSM PRD on every read; AN_COMPLETE will
+   * never be observed, so the call returns hw_timeout. We check the
+   * MPSM transaction shape (PRA = BMSR = 1, PSME = 1) regardless. */
+  prime_mdio(k_ra_rmac_port_0, 0U);
+  ra_rmac_phy_link_t link = {};
+  const ra_err_t     r    = ra_rmac_phy_auto_neg_wait(k_ra_rmac_port_0, 0U, 1U, &link);
+  TEST_ASSERT_EQ((int32_t)k_ra_err_hw_timeout, (int32_t)r);
+  TEST_ASSERT(!link.up);
+  const uint32_t mpsm = ra_rmac(k_ra_rmac_port_0)->MPSM;
+  TEST_ASSERT_EQ((int32_t)1U, (int32_t)(mpsm & 0x1U));          /* PSME */
+  TEST_ASSERT_EQ((int32_t)1U, (int32_t)((mpsm >> 8U) & 0x1FU)); /* PRA = BMSR */
+  TEST_END("rmac phy auto_neg_wait MPSM transaction shape");
+}
+
+static void test_phy_auto_neg_wait_timeout(void)
+{
+  TEST_BEGIN("rmac phy auto_neg_wait timeout");
+  prep();
+  const ra_rmac_config_t cfg = default_cfg();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rmac_init(k_ra_rmac_port_0, &cfg));
+  /* MMIS1 left at zero -> internal_mdio_wait exhausts its budget. */
+  ra_rmac(k_ra_rmac_port_0)->MMIS1 = 0U;
+  ra_rmac_phy_link_t link          = {.up = true, .speed = k_ra_rmac_phy_speed_100_fd};
+  const ra_err_t     r             = ra_rmac_phy_auto_neg_wait(k_ra_rmac_port_0, 1U, 1U, &link);
+  TEST_ASSERT_EQ((int32_t)k_ra_err_hw_timeout, (int32_t)r);
+  TEST_ASSERT(!link.up);
+  TEST_ASSERT_EQ((int32_t)k_ra_rmac_phy_speed_unknown, (int32_t)link.speed);
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_rmac_phy_auto_neg_wait(k_ra_rmac_port_0, 0U, 0U, nullptr));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_rmac_phy_auto_neg_wait((ra_rmac_port_t)(uint8_t)k_ra_rmac_port_count,
+                                                    0U,
+                                                    0U,
+                                                    &link));
+  TEST_END("rmac phy auto_neg_wait timeout");
+}
+
+static void test_phy_link_status(void)
+{
+  TEST_BEGIN("rmac phy link_status");
+  prep();
+  const ra_rmac_config_t cfg = default_cfg();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rmac_init(k_ra_rmac_port_0, &cfg));
+  /* Simulator returns 0 -> link reads as down. */
+  prime_mdio(k_ra_rmac_port_0, 0U);
+  ra_rmac_phy_link_t link = {.up = true, .speed = k_ra_rmac_phy_speed_100_fd};
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rmac_phy_link_status(k_ra_rmac_port_0, 3U, &link));
+  TEST_ASSERT(!link.up);
+  TEST_ASSERT_EQ((int32_t)k_ra_rmac_phy_speed_unknown, (int32_t)link.speed);
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_rmac_phy_link_status(k_ra_rmac_port_0, 0U, nullptr));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_rmac_phy_link_status(k_ra_rmac_port_0, 32U, &link));
+  TEST_END("rmac phy link_status");
+}
+
 static void test_deinit(void)
 {
   TEST_BEGIN("rmac deinit");
@@ -646,6 +788,13 @@ int32_t main(void)
   test_read_stats();
   test_attach_and_dispatch();
   test_stop_and_resume();
+  test_phy_reset_happy();
+  test_phy_reset_bad_args();
+  test_phy_set_advertise();
+  test_phy_auto_neg_start();
+  test_phy_auto_neg_wait_happy();
+  test_phy_auto_neg_wait_timeout();
+  test_phy_link_status();
   test_deinit();
   (void)fprintf(stderr, "[OK  ] test_ra_rmac.c\n");
   return 0;

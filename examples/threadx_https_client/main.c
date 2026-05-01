@@ -67,13 +67,19 @@
 #include "ra_time.h"
 
 #ifndef RA_SIMULATOR_MODE
-#include "mbedtls/ctr_drbg.h"
-#include "mbedtls/entropy.h"
-#include "mbedtls/sha256.h"
+/* Mbed TLS 4.x relocated the legacy crypto primitive headers under
+ * `mbedtls/private/`. The TLS / X.509 layer headers stay at the
+ * public top level. */
+#include "mbedtls/net_sockets.h"
+#include "mbedtls/platform.h"
+#include "mbedtls/private/ctr_drbg.h"
+#include "mbedtls/private/entropy.h"
+#include "mbedtls/private/sha256.h"
 #include "mbedtls/ssl.h"
 #include "mbedtls/x509_crt.h"
 #include "nx_api.h"
 #include "nx_ether_driver_ra_eth.h"
+#include "psa/crypto.h"
 #include "tx_api.h"
 #endif
 
@@ -652,6 +658,51 @@ static int demo_entropy_source(void* ctx, unsigned char* buf, size_t len, size_t
 }
 
 /**
+ * @brief PSA external RNG hook -- feeds RSIP TRNG straight into PSA.
+ *
+ * @details
+ * Mbed TLS 4.x removed @ref MBEDTLS_ENTROPY_C / @ref MBEDTLS_CTR_DRBG_C
+ * from the standard build path. With @ref MBEDTLS_PSA_CRYPTO_EXTERNAL_RNG
+ * the SSL layer pulls random bytes from this callback (via
+ * @ref psa_generate_random) instead of running an in-tree DRBG.
+ *
+ * @param[in,out] context     PSA's per-process external RNG context (unused).
+ * @param[out]    output      Output buffer.
+ * @param[in]     output_size Bytes requested.
+ * @param[out]    output_length Bytes actually produced.
+ *
+ * @retval PSA_SUCCESS on success.
+ * @retval PSA_ERROR_HARDWARE_FAILURE if the RSIP TRNG returned an error.
+ *
+ * @pre RSIP has been initialised by ``ra_rsip_init()``.
+ * @post @p output contains @p output_size bytes pulled from RSIP TRNG.
+ *
+ * @note Not thread-safe; callers must serialise across threads.
+ *
+ * @since 0.1.0
+ */
+psa_status_t mbedtls_psa_external_get_random(mbedtls_psa_external_random_context_t* context,
+                                             uint8_t*                               output,
+                                             size_t                                 output_size,
+                                             size_t*                                output_length);
+psa_status_t mbedtls_psa_external_get_random(mbedtls_psa_external_random_context_t* context,
+                                             uint8_t*                               output,
+                                             size_t                                 output_size,
+                                             size_t*                                output_length)
+{
+  (void)context;
+  if (output == NULL || output_length == NULL) {
+    return PSA_ERROR_INVALID_ARGUMENT;
+  }
+  ra_err_t err = ra_rsip_trng_read((uint8_t*)output, (uint32_t)output_size);
+  if (err != k_ra_ok) {
+    return PSA_ERROR_HARDWARE_FAILURE;
+  }
+  *output_length = output_size;
+  return PSA_SUCCESS;
+}
+
+/**
  * @brief Verify the peer's leaf certificate matches our compile-time pin.
  *
  * @details
@@ -788,26 +839,18 @@ static int demo_tls_session(void)
 {
   mbedtls_ssl_init(&s_ssl);
   mbedtls_ssl_config_init(&s_ssl_cfg);
-  mbedtls_ctr_drbg_init(&s_drbg);
-  mbedtls_entropy_init(&s_entropy);
 
-  /* Wire RSIP TRNG entropy. ``MBEDTLS_ENTROPY_SOURCE_STRONG`` tells
-   * the entropy aggregator that this is the only source it needs. */
-  if (mbedtls_entropy_add_source(&s_entropy,
-                                 demo_entropy_source,
-                                 NULL,
-                                 (size_t)k_demo_drbg_seed_len,
-                                 MBEDTLS_ENTROPY_SOURCE_STRONG) != 0) {
-    return -1;
-  }
-  static const char k_drbg_personalisation[] = "ra8d2-https-client";
-  if (mbedtls_ctr_drbg_seed(&s_drbg,
-                            mbedtls_entropy_func,
-                            &s_entropy,
-                            (const unsigned char*)k_drbg_personalisation,
-                            sizeof(k_drbg_personalisation) - 1U) != 0) {
-    return -1;
-  }
+  /* Mbed TLS 4.x removed MBEDTLS_ENTROPY_C and MBEDTLS_CTR_DRBG_C from
+   * the standard build path; the SSL layer pulls random bytes from PSA
+   * crypto (psa_generate_random), which the firmware wires to the RSIP
+   * TRNG via the mbedtls_psa_external_get_random() implementation
+   * above. The legacy mbedtls_entropy_* / mbedtls_ctr_drbg_* setup
+   * dance is therefore no longer needed. We still need PSA itself
+   * online; demo_thread_entry calls psa_crypto_init() before this. */
+  (void)demo_entropy_source; /* Retained for reference; unused on 4.x. */
+  (void)s_drbg;
+  (void)s_entropy;
+
   if (mbedtls_ssl_config_defaults(&s_ssl_cfg,
                                   MBEDTLS_SSL_IS_CLIENT,
                                   MBEDTLS_SSL_TRANSPORT_STREAM,
@@ -819,7 +862,11 @@ static int demo_tls_session(void)
    * handshake complete even with an empty trust store; the pin
    * check below is what gates the GET. */
   mbedtls_ssl_conf_authmode(&s_ssl_cfg, MBEDTLS_SSL_VERIFY_OPTIONAL);
-  mbedtls_ssl_conf_rng(&s_ssl_cfg, mbedtls_ctr_drbg_random, &s_drbg);
+  /* Mbed TLS 4.x removed mbedtls_ssl_conf_rng() -- the SSL layer
+   * pulls random bytes from PSA crypto's psa_generate_random() now,
+   * which is wired up by demo_psa_init() below via the
+   * MBEDTLS_PSA_CRYPTO_EXTERNAL_RNG hook
+   * (mbedtls_psa_external_get_random). */
 
   if (mbedtls_ssl_setup(&s_ssl, &s_ssl_cfg) != 0) {
     return -1;
@@ -857,6 +904,14 @@ static int demo_tls_session(void)
 static void demo_thread_entry(ULONG thread_input)
 {
   (void)thread_input;
+  /* Bring PSA crypto online before any TLS / X.509 work. The library
+   * lazy-initialises inside the SSL layer, but doing it explicitly
+   * here surfaces failures earlier and binds the RSIP-TRNG external
+   * RNG hook before the handshake's first random call. */
+  if (psa_crypto_init() != PSA_SUCCESS) {
+    demo_print("[https] psa_crypto_init failed\r\n");
+    return;
+  }
   demo_print("[https] bringing NetX Duo up...\r\n");
   if (demo_netx_bring_up() != NX_SUCCESS) {
     demo_print("[https] NetX bring-up failed\r\n");

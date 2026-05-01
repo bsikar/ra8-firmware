@@ -12,8 +12,8 @@ header:
 
 This script:
 
-    1. Walks libs/ra_hal/, libs/ra_*_pal/, libs/ra_nsc/, libs/third_party/
-       (Rings 3-5) and src/ (Ring 1 + Ring 6) and tests/.
+    1. Walks project-owned libs/, src/, tests/, and examples/ code while
+       skipping vendored trees such as libs/third_party/.
     2. For Ring 3+ files (anything outside Ring 1 BSP and Ring 2 Core),
        requires both a [Ring N / ...] tag and a {World: ...} tag in
        the first ~80 lines of the file.
@@ -51,8 +51,11 @@ REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 
 SOURCE_SUFFIXES = {".c", ".h", ".cpp", ".hpp"}
 
-# Top-level dirs we never lint: infrastructure / vendor / build trees.
+# Top-level dirs we scan by default. Vendored/build subtrees are filtered
+# during traversal.
 ALWAYS_SCAN_DIRS = ("libs", "src", "tests")
+
+EXCLUDED_PATH_PARTS = {"build", "_deps", "third_party"}
 
 # File names inside an app dir that carry boot-file (Ring 1) semantics.
 # main.c is Ring 6 / Application; everything else next to it (the
@@ -135,17 +138,15 @@ def file_is_in_ring1_or_ring2(rel_path: str) -> bool:
 
 
 def file_is_in_ring3_plus(rel_path: str) -> bool:
-    """Anything under libs/ra_hal/, libs/ra_*_pal/, libs/ra_nsc/,
-    libs/third_party/, src/secure_app/, tests/, and per-app main.c
-    (Ring 6 application code).
+    """Anything under project-owned Ring 3+ firmware code: libs/ra_hal/,
+    libs/ra_*_pal/, libs/ra_nsc/, src/secure_app/, tests/, and per-app
+    main.c (Ring 6 application code).
     """
     if rel_path.startswith("libs/ra_hal/"):
         return True
     if rel_path.startswith("libs/ra_") and "_pal/" in rel_path:
         return True
     if rel_path.startswith("libs/ra_nsc/"):
-        return True
-    if rel_path.startswith("libs/third_party/"):
         return True
     if rel_path.startswith("src/secure_app/"):
         return True
@@ -172,7 +173,7 @@ def iter_source_files(targets: Iterable[pathlib.Path]) -> Iterable[pathlib.Path]
             if sub.suffix.lower() not in SOURCE_SUFFIXES:
                 continue
             parts = set(sub.parts)
-            if "build" in parts or "_deps" in parts:
+            if parts & EXCLUDED_PATH_PARTS:
                 continue
             yield sub
 

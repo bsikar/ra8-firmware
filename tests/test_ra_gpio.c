@@ -329,7 +329,6 @@ static void test_release_pin(void)
   TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_gpio_output_init(pin, k_ra_level_low));
   TEST_ASSERT(ra_pin_validator_is_claimed(pin));
 
-  extern ra_err_t ra_gpio_release(ra_port_pin_t pin);
   TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_gpio_release(pin));
   TEST_ASSERT(!ra_pin_validator_is_claimed(pin));
   TEST_END("gpio release pin");
