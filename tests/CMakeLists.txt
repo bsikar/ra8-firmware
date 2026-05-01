@@ -87,6 +87,10 @@ set(RA_EPUB_THIRD_PARTY
 )
 file(GLOB_RECURSE RA_SECURE_APP_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/src/secure_app/*.c)
 file(GLOB_RECURSE RA_TOUCH_CAL_SOURCES  CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_touch_cal/src/*.c)
+file(GLOB_RECURSE RA_PSA_CRYPTO_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_psa_crypto/src/*.c)
+file(GLOB_RECURSE RA_WDT_SUPERVISOR_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_wdt_supervisor/src/*.c)
+file(GLOB_RECURSE RA_SENSOR_BME280_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_sensor_bme280/src/*.c)
+file(GLOB_RECURSE RA_MPU_SOURCES        CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_mpu/src/*.c)
 
 add_library(ra_core_hal OBJECT
     ${RA_CORE_SOURCES}
@@ -109,6 +113,8 @@ add_library(ra_core_hal OBJECT
     ${RA_EPUB_THIRD_PARTY}
     ${RA_SECURE_APP_SOURCES}
     ${RA_TOUCH_CAL_SOURCES}
+    ${RA_SENSOR_BME280_SOURCES}
+    ${RA_MPU_SOURCES}
     ${CMAKE_CURRENT_SOURCE_DIR}/mocks/ra_sim_mmap.c
     ${CMAKE_CURRENT_SOURCE_DIR}/mocks/ra_sim_irq.c
     ${CMAKE_CURRENT_SOURCE_DIR}/mocks/ra_sim_dma.c
@@ -139,6 +145,8 @@ target_include_directories(ra_core_hal PUBLIC
     ${FW_ROOT}/libs/ra_epub/inc
     ${FW_ROOT}/libs/ra_reflow/inc
     ${FW_ROOT}/libs/ra_touch_cal/inc
+    ${FW_ROOT}/libs/ra_sensor_bme280/inc
+    ${FW_ROOT}/libs/ra_mpu/inc
     ${FW_ROOT}/libs/third_party/miniz
     ${FW_ROOT}/libs/third_party/tinyxml2
     ${FW_ROOT}/libs/third_party/stb
@@ -205,6 +213,8 @@ function(ra_add_test name)
     ${FW_ROOT}/libs/ra_epub/inc
     ${FW_ROOT}/libs/ra_reflow/inc
     ${FW_ROOT}/libs/ra_touch_cal/inc
+    ${FW_ROOT}/libs/ra_sensor_bme280/inc
+    ${FW_ROOT}/libs/ra_mpu/inc
     ${FW_ROOT}/libs/third_party/miniz
     ${FW_ROOT}/libs/third_party/tinyxml2
     ${FW_ROOT}/libs/third_party/stb
