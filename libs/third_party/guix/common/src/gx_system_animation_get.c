@@ -1,0 +1,95 @@
+/***************************************************************************
+ * Copyright (c) 2024 Microsoft Corporation
+ * Copyright (c) 2026-present Eclipse ThreadX contributors
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the MIT License which is available at
+ * https://opensource.org/licenses/MIT.
+ *
+ * SPDX-License-Identifier: MIT
+ **************************************************************************/
+
+
+/**************************************************************************/
+/**************************************************************************/
+/**                                                                       */
+/** GUIX Component                                                        */
+/**                                                                       */
+/**   System Management (System)                                          */
+/**                                                                       */
+/**************************************************************************/
+
+#define GX_SOURCE_CODE
+
+
+/* Include necessary system files.  */
+
+#include "gx_api.h"
+#include "gx_system.h"
+#include "gx_animation.h"
+
+
+/**************************************************************************/
+/*                                                                        */
+/*  FUNCTION                                               RELEASE        */
+/*                                                                        */
+/*    _gx_system_animation_get                            PORTABLE C      */
+/*                                                           6.1.3        */
+/*  AUTHOR                                                                */
+/*                                                                        */
+/*    Kenneth Maxwell, Microsoft Corporation                              */
+/*                                                                        */
+/*  DESCRIPTION                                                           */
+/*                                                                        */
+/*    Obtain an animation structure from the system pool.                 */
+/*                                                                        */
+/*  INPUT                                                                 */
+/*                                                                        */
+/*    animation                             Adress to return pointer      */
+/*                                                                        */
+/*  OUTPUT                                                                */
+/*                                                                        */
+/*    status                                Completion status             */
+/*                                                                        */
+/*  CALLS                                                                 */
+/*                                                                        */
+/*   GX_ENTER_CRITICAL                      lock system mutex             */
+/*   GX_EXIT_CRITICAL                       unlock system mutex           */
+/*                                                                        */
+/*  CALLED BY                                                             */
+/*                                                                        */
+/*    GUIX Application                                                    */
+/*    GUIX Internal Code                                                  */
+/*                                                                        */
+/**************************************************************************/
+#if (GX_ANIMATION_POOL_SIZE > 0)
+
+UINT  _gx_system_animation_get(GX_ANIMATION **animation)
+{
+UINT status = GX_SUCCESS;
+GX_ANIMATION *free_block;
+
+    /* lock entering critical section */
+    GX_ENTER_CRITICAL
+
+    /* check for already having this timer */
+    if (_gx_system_animation_free_list)
+    {
+        free_block = _gx_system_animation_free_list;
+        _gx_system_animation_free_list = free_block -> gx_animation_next;
+        free_block -> gx_animation_next = GX_NULL;
+        free_block -> gx_animation_system_allocated = GX_TRUE;
+        free_block -> gx_animation_status = GX_ANIMATION_IDLE;
+        free_block -> gx_animation_canvas = GX_NULL;
+        *animation = free_block;
+    }
+    else
+    {
+        *animation = GX_NULL;
+        status = GX_OUT_OF_ANIMATIONS;
+    }
+ 
+    GX_EXIT_CRITICAL
+    return status;
+}
+#endif

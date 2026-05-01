@@ -1,0 +1,99 @@
+/***************************************************************************
+ * Copyright (c) 2024 Microsoft Corporation
+ * Copyright (c) 2026-present Eclipse ThreadX contributors
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the MIT License which is available at
+ * https://opensource.org/licenses/MIT.
+ *
+ * SPDX-License-Identifier: MIT
+ **************************************************************************/
+
+
+/**************************************************************************/
+/**************************************************************************/
+/**                                                                       */
+/** GUIX Component                                                        */
+/**                                                                       */
+/**   System Management (System)                                          */
+/**                                                                       */
+/**************************************************************************/
+
+#define GX_SOURCE_CODE
+
+
+/* Include necessary system files.  */
+
+#include "gx_api.h"
+#include "gx_system.h"
+#include "gx_widget.h"
+#include "gx_utility.h"
+
+
+/**************************************************************************/
+/*                                                                        */
+/*  FUNCTION                                               RELEASE        */
+/*                                                                        */
+/*    _gx_system_dirty_list_remove                        PORTABLE C      */
+/*                                                           6.1          */
+/*  AUTHOR                                                                */
+/*                                                                        */
+/*    Kenneth Maxwell, Microsoft Corporation                              */
+/*                                                                        */
+/*  DESCRIPTION                                                           */
+/*                                                                        */
+/*    This function removes a widget from the dirty list.                 */
+/*                                                                        */
+/*  INPUT                                                                 */
+/*                                                                        */
+/*    remove                                Widget to be removed          */
+/*                                                                        */
+/*  OUTPUT                                                                */
+/*                                                                        */
+/*    None                                                                */
+/*                                                                        */
+/*  CALLS                                                                 */
+/*                                                                        */
+/*    _gx_widget_child_detect               Detect a child widget         */
+/*                                                                        */
+/*  CALLED BY                                                             */
+/*                                                                        */
+/*    _gx_system_dirty_list_remove          Remove widget from dirty list */
+/*                                                                        */
+/**************************************************************************/
+VOID  _gx_system_dirty_list_remove(GX_WIDGET *remove)
+{
+GX_CANVAS     *canvas;
+GX_DIRTY_AREA *dirty_entry;
+UINT           index;
+
+    /* pick up pointer to canvas */
+
+    canvas = _gx_system_canvas_created_list;
+
+    while (canvas)
+    {
+        /* Setup pointer to dirty list.  */
+
+        dirty_entry = canvas -> gx_canvas_dirty_list;
+
+        /* Check to see if widget already has an entry.  */
+        for (index = 0; index < canvas -> gx_canvas_dirty_count; index++)
+        {
+            /* Is the same widget is present. */
+            if (dirty_entry -> gx_dirty_area_widget)
+            {
+                if (dirty_entry -> gx_dirty_area_widget == remove)
+                {
+                    dirty_entry -> gx_dirty_area_widget = GX_NULL;
+                }
+                /* No need to test for the dirty list entry being a child of the widget being deleted,
+                   since child widgets are always deleted before the parent.
+                */
+            }
+            dirty_entry++;
+        }
+        canvas = canvas -> gx_canvas_created_next;
+    }
+}
+

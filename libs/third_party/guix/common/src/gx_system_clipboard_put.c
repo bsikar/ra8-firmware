@@ -1,0 +1,94 @@
+/***************************************************************************
+ * Copyright (c) 2024 Microsoft Corporation
+ * Copyright (c) 2026-present Eclipse ThreadX contributors
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the MIT License which is available at
+ * https://opensource.org/licenses/MIT.
+ *
+ * SPDX-License-Identifier: MIT
+ **************************************************************************/
+
+
+/**************************************************************************/
+/**************************************************************************/
+/**                                                                       */
+/** GUIX Component                                                        */
+/**                                                                       */
+/**   System Management (System)                                          */
+/**                                                                       */
+/**************************************************************************/
+
+#define GX_SOURCE_CODE
+
+
+/* Include necessary system files.  */
+
+#include "gx_api.h"
+#include "gx_system.h"
+
+
+/**************************************************************************/
+/*                                                                        */
+/*  FUNCTION                                               RELEASE        */
+/*                                                                        */
+/*    _gx_system_clipboard_put                            PORTABLE C      */
+/*                                                           6.1          */
+/*  AUTHOR                                                                */
+/*                                                                        */
+/*    Kenneth Maxwell, Microsoft Corporation                              */
+/*                                                                        */
+/*  DESCRIPTION                                                           */
+/*                                                                        */
+/*    This service puts data to clipboard.                                */
+/*                                                                        */
+/*  INPUT                                                                 */
+/*                                                                        */
+/*    data                                  Pointer the copied data       */
+/*    data_size                             The number of bytes to copy   */
+/*                                                                        */
+/*  OUTPUT                                                                */
+/*                                                                        */
+/*    status                                Completion status             */
+/*                                                                        */
+/*  CALLS                                                                 */
+/*                                                                        */
+/*    _gx_system_memory_allocator           Application defined memory    */
+/*                                            allocation function         */
+/*    _gx_system_memory_free                Application defined memory    */
+/*                                            free function               */
+/*                                                                        */
+/*  CALLED BY                                                             */
+/*                                                                        */
+/*    GUIX Internal Code                                                  */
+/*                                                                        */
+/**************************************************************************/
+UINT  _gx_system_clipboard_put(VOID *data, UINT data_size)
+{
+
+    if ((!_gx_system_memory_allocator) ||
+        (!_gx_system_memory_free))
+    {
+        return GX_SYSTEM_MEMORY_ERROR;
+    }
+
+    if (_gx_system_clipboard)
+    {
+        _gx_system_memory_free(_gx_system_clipboard);
+    }
+
+    _gx_system_clipboard = _gx_system_memory_allocator(data_size);
+
+    /* Verify the memory allocation was successful. */
+    if(_gx_system_clipboard == GX_NULL)
+    {
+        return GX_SYSTEM_MEMORY_ERROR;
+    }
+
+    _gx_system_clipboard_size = data_size;
+
+    memcpy(_gx_system_clipboard, data, data_size); /* Use case of memcpy is verified. */
+
+    return(GX_SUCCESS);
+}
+

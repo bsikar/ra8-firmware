@@ -1,0 +1,75 @@
+/***************************************************************************
+ * Copyright (c) 2024 Microsoft Corporation
+ * Copyright (c) 2026-present Eclipse ThreadX contributors
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the MIT License which is available at
+ * https://opensource.org/licenses/MIT.
+ *
+ * SPDX-License-Identifier: MIT
+ **************************************************************************/
+
+
+/**************************************************************************/
+/**************************************************************************/
+/**                                                                       */
+/** GUIX Component                                                        */
+/**                                                                       */
+/**   System Management (System)                                          */
+/**                                                                       */
+/**************************************************************************/
+
+#define GX_SOURCE_CODE
+
+
+/* Include necessary system files.  */
+
+#include "gx_api.h"
+#include "gx_system.h"
+#include "gx_display.h"
+
+/* Bring in externs for caller checking code.  */
+GX_CALLER_CHECKING_EXTERNS
+/**************************************************************************/
+/*                                                                        */
+/*  FUNCTION                                               RELEASE        */
+/*                                                                        */
+/*    _gxe_system_language_table_get                      PORTABLE C      */
+/*                                                           6.1          */
+/*  AUTHOR                                                                */
+/*                                                                        */
+/*    Kenneth Maxwell, Microsoft Corporation                              */
+/*                                                                        */
+/*  DESCRIPTION                                                           */
+/*                                                                        */
+/*    This function checks for errors in system language table get call.  */
+/*                                                                        */
+/*  INPUT                                                                 */
+/*                                                                        */
+/*    language_table                        Pointer to string table       */
+/*    language_count                        Number of languages in table  */
+/*    string_count                          Number of strings in each     */
+/*                                            language                    */
+/*                                                                        */
+/*  OUTPUT                                                                */
+/*                                                                        */
+/*    status                                Completion status             */
+/*                                                                        */
+/*  CALLS                                                                 */
+/*                                                                        */
+/*    _gxe_display_language_table_get        Acutal system language table */
+/*                                            get call                    */
+/*                                                                        */
+/*  CALLED BY                                                             */
+/*                                                                        */
+/*    Application Code                                                    */
+/*                                                                        */
+/**************************************************************************/
+#if defined(GX_ENABLE_DEPRECATED_STRING_API)
+UINT _gxe_system_language_table_get(GX_CHAR ****language_table, GX_UBYTE *language_count, UINT *string_count)
+{
+    return _gxe_display_language_table_get(_gx_system_display_created_list,
+                                    language_table, language_count, string_count);
+
+}
+#endif
