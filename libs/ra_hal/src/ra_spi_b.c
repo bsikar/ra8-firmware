@@ -237,15 +237,39 @@ static uint32_t internal_spcr_master(void)
  * SPTEF (TX empty) and SPRF (RX full) are clear-on-write through
  * SPSRC -- callers are responsible for clearing after acting on
  * them.
+ *
+ * The host build (``RA_SIMULATOR_MODE``) does NOT spin. The simulator
+ * backs the SPI register file with plain mmap'd RAM, so SPSR cannot
+ * advance on its own -- a real busy-poll would either succeed
+ * immediately (test pre-staged the flag) or burn the full 200000-cycle
+ * budget before returning ``k_ra_err_hw_timeout``. The host
+ * short-circuit does a single-shot read of the (test-staged) SPSR
+ * value:
+ *   - flag set   -> k_ra_ok (happy-path: tests pre-stage SPSR =
+ *                   SPTEF|SPRF; the driver's SPSRC writes do not
+ *                   touch SPSR in plain-RAM mode, so a single
+ *                   pre-stage persists across xfers).
+ *   - flag clear -> k_ra_err_hw_timeout, instantly (preserves the
+ *                   timeout-path tests in test_ra_spi).
+ * This mirrors the pattern used by ``internal_ra_epaper_wait_ready``
+ * (commit 57f6c4a28) so any driver layered on top of SPI can run its
+ * happy-path through unit tests when the test pre-stages SPSR.
  */
 static ra_err_t internal_wait_spsr(volatile r_spi_regs_t* reg, uint32_t flag_mask)
 {
+#ifdef RA_SIMULATOR_MODE
+  if ((reg->SPSR & flag_mask) != 0U) {
+    return k_ra_ok;
+  }
+  return k_ra_err_hw_timeout;
+#else
   for (uint32_t i = 0U; i < k_ra_spi_b_poll_limit; i++) {
     if ((reg->SPSR & flag_mask) != 0U) {
       return k_ra_ok;
     }
   }
   return k_ra_err_hw_timeout;
+#endif
 }
 
 /* =============================================================================
