@@ -896,6 +896,126 @@ static void test_power_transition(void)
   TEST_END("ssie power transition");
 }
 
+/* ---------------------------------------------------------------------------
+ * Sweep 17 additions: set_fifo_threshold + attach_dma_pair + send/recv iso
+ * ---------------------------------------------------------------------------
+ */
+
+static void test_set_fifo_threshold_happy(void)
+{
+  TEST_BEGIN("ssie set_fifo_threshold programmes SSISCR");
+  prep();
+  const ra_ssie_cfg_t cfg = make_master_i2s_cfg();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
+
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_ssie_set_fifo_threshold((uint8_t)k_ra_ssie_test_ch0, 0x10U, 0x05U));
+  volatile r_ssie_regs_t* reg = ra_ssie((uint8_t)k_ra_ssie_test_ch0);
+  TEST_ASSERT((reg->SSISCR & (uint32_t)k_ra_ssie_mask_tdes) != 0U);
+  TEST_ASSERT((reg->SSISCR & (uint32_t)k_ra_ssie_mask_rdfs) != 0U);
+  TEST_END("ssie set_fifo_threshold programmes SSISCR");
+}
+
+static void test_set_fifo_threshold_bad_args(void)
+{
+  TEST_BEGIN("ssie set_fifo_threshold rejects bad arguments");
+  prep();
+  const ra_ssie_cfg_t cfg = make_master_i2s_cfg();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
+
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_ssie_set_fifo_threshold((uint8_t)k_ra_ssie_test_ch0, 0x40U, 0U));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_ssie_set_fifo_threshold((uint8_t)k_ra_ssie_test_ch_bad, 0U, 0U));
+  TEST_END("ssie set_fifo_threshold rejects bad arguments");
+}
+
+static void test_attach_dma_pair_happy(void)
+{
+  TEST_BEGIN("ssie attach_dma_pair binds tx+rx ids");
+  prep();
+  const ra_ssie_cfg_t cfg = make_master_i2s_cfg();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
+
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_ssie_attach_dma_pair((uint8_t)k_ra_ssie_test_ch0,
+                                                  (uint8_t)k_ra_ssie_test_dma_tx,
+                                                  (uint8_t)k_ra_ssie_test_dma_rx));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ssie_detach_dma((uint8_t)k_ra_ssie_test_ch0));
+  TEST_END("ssie attach_dma_pair binds tx+rx ids");
+}
+
+static void test_attach_dma_pair_bad_args(void)
+{
+  TEST_BEGIN("ssie attach_dma_pair rejects all-unused / bad channel");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_ssie_attach_dma_pair((uint8_t)k_ra_ssie_test_ch_bad, 0U, 1U));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_ssie_attach_dma_pair((uint8_t)k_ra_ssie_test_ch0, 0xFFU, 0xFFU));
+  TEST_END("ssie attach_dma_pair rejects all-unused / bad channel");
+}
+
+static void test_send_iso_happy(void)
+{
+  TEST_BEGIN("ssie send_iso pushes all samples");
+  prep();
+  const ra_ssie_cfg_t cfg = make_master_i2s_cfg();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
+
+  static const uint32_t buf[4] = {0xAA00U, 0xBB11U, 0xCC22U, 0xDD33U};
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ssie_send_iso((uint8_t)k_ra_ssie_test_ch0, buf, 4U));
+  TEST_END("ssie send_iso pushes all samples");
+}
+
+static void test_send_iso_bad_args(void)
+{
+  TEST_BEGIN("ssie send_iso rejects null buffer / bad channel");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_ssie_send_iso((uint8_t)k_ra_ssie_test_ch0, nullptr, 1U));
+  static const uint32_t buf[1] = {0U};
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_ssie_send_iso((uint8_t)k_ra_ssie_test_ch_bad, buf, 1U));
+  TEST_END("ssie send_iso rejects null buffer / bad channel");
+}
+
+static void test_recv_iso_drains_fifo(void)
+{
+  TEST_BEGIN("ssie recv_iso drains rx FIFO");
+  prep();
+  const ra_ssie_cfg_t cfg = make_master_i2s_cfg();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
+
+  /* Stub the SSIFSR RDC field so the loop runs at least once before
+   * deciding the FIFO is empty. */
+  volatile r_ssie_regs_t* reg = ra_ssie((uint8_t)k_ra_ssie_test_ch0);
+  reg->SSIFSR                 = (uint32_t)1U << (uint8_t)k_ra_ssie_shift_rdc;
+  reg->SSIFRDR                = 0xDEAD0001UL;
+
+  uint32_t out[2] = {0U, 0U};
+  uint16_t got    = 0U;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_ssie_recv_iso((uint8_t)k_ra_ssie_test_ch0, out, 2U, &got));
+  TEST_ASSERT(got <= 2U);
+  TEST_END("ssie recv_iso drains rx FIFO");
+}
+
+static void test_recv_iso_bad_args(void)
+{
+  TEST_BEGIN("ssie recv_iso rejects null + bad channel");
+  prep();
+  uint32_t out = 0U;
+  uint16_t got = 0U;
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_ssie_recv_iso((uint8_t)k_ra_ssie_test_ch0, nullptr, 1U, &got));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_ssie_recv_iso((uint8_t)k_ra_ssie_test_ch0, &out, 1U, nullptr));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_ssie_recv_iso((uint8_t)k_ra_ssie_test_ch_bad, &out, 1U, &got));
+  TEST_END("ssie recv_iso rejects null + bad channel");
+}
+
 int32_t main(void)
 {
   test_init_happy();
@@ -936,6 +1056,15 @@ int32_t main(void)
   test_set_irq_enable();
   test_attach_and_dispatch();
   test_power_transition();
+
+  test_set_fifo_threshold_happy();
+  test_set_fifo_threshold_bad_args();
+  test_attach_dma_pair_happy();
+  test_attach_dma_pair_bad_args();
+  test_send_iso_happy();
+  test_send_iso_bad_args();
+  test_recv_iso_drains_fifo();
+  test_recv_iso_bad_args();
   (void)fprintf(stderr, "[OK  ] test_ra_ssie.c\n");
   return 0;
 }

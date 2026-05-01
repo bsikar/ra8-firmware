@@ -27,7 +27,13 @@ target_include_directories(levelx_port_ra_xspi INTERFACE
 )
 
 # Track the source list as a global property so per-app builds can
-# splice it into their own add_executable() globs.
+# splice it into their own add_executable() globs. The raw LevelX <->
+# xSPI bridge is the always-on entry; the FAT-on-LevelX adapter is
+# tracked separately because it pulls in FileX headers and is only
+# wanted by apps that link both FileX and LevelX.
 set_property(GLOBAL PROPERTY RA_LEVELX_PORT_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/lx_nor_driver_ra_xspi.c
+)
+set_property(GLOBAL PROPERTY RA_LEVELX_FILEX_PORT_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/lx_filex_adapter.c
 )

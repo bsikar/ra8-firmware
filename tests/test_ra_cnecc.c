@@ -739,6 +739,103 @@ static void test_deinit_clears_judgment(void)
   TEST_END("cnecc deinit clears judgment");
 }
 
+/* ---------------------------------------------------------------------------
+ * Sweep 17 additions: open + compute + verify
+ * ---------------------------------------------------------------------------
+ */
+
+static void test_open_brings_up_with_defaults(void)
+{
+  TEST_BEGIN("cnecc open arms both instances with defaults");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_cnecc_open());
+  for (uint8_t i = (uint8_t)k_ra_cnecc_test_inst_first; i <= (uint8_t)k_ra_cnecc_test_inst_last;
+       ++i) {
+    volatile r_cnecc_regs_t* reg = ra_cnecc(i);
+    TEST_ASSERT_NOT_NULL((void*)reg);
+    TEST_ASSERT((reg->EC710CTL & (uint32_t)k_ra_cnecc_mask_ecervf) != 0U);
+  }
+  TEST_END("cnecc open arms both instances with defaults");
+}
+
+static void test_compute_happy(void)
+{
+  TEST_BEGIN("cnecc compute returns deterministic CRC");
+  prep();
+  static const uint32_t buf_a[4] = {0xDEADBEEFU, 0xCAFEBABEU, 0x12345678U, 0x9ABCDEF0U};
+  uint32_t              ecc_a    = 0U;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_cnecc_compute((uint32_t)(uintptr_t)buf_a, sizeof(buf_a), &ecc_a));
+  /* Re-running over the same data must yield the same result. */
+  uint32_t ecc_b = 0U;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_cnecc_compute((uint32_t)(uintptr_t)buf_a, sizeof(buf_a), &ecc_b));
+  TEST_ASSERT_EQ((int32_t)ecc_a, (int32_t)ecc_b);
+  TEST_END("cnecc compute returns deterministic CRC");
+}
+
+static void test_compute_null_out(void)
+{
+  TEST_BEGIN("cnecc compute rejects null out_ecc");
+  prep();
+  static const uint32_t buf[1] = {0U};
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_cnecc_compute((uint32_t)(uintptr_t)buf, sizeof(buf), nullptr));
+  TEST_END("cnecc compute rejects null out_ecc");
+}
+
+static void test_compute_misaligned_addr(void)
+{
+  TEST_BEGIN("cnecc compute rejects misaligned addr");
+  prep();
+  uint32_t ecc = 0U;
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_cnecc_compute(0x1001U, 16U, &ecc));
+  TEST_END("cnecc compute rejects misaligned addr");
+}
+
+static void test_compute_short_len(void)
+{
+  TEST_BEGIN("cnecc compute rejects len < 4");
+  prep();
+  static const uint32_t buf = 0U;
+  uint32_t              ecc = 0U;
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_cnecc_compute((uint32_t)(uintptr_t)&buf, 2U, &ecc));
+  TEST_END("cnecc compute rejects len < 4");
+}
+
+static void test_compute_zero_addr(void)
+{
+  TEST_BEGIN("cnecc compute rejects zero addr");
+  prep();
+  uint32_t ecc = 0U;
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_cnecc_compute(0U, 16U, &ecc));
+  TEST_END("cnecc compute rejects zero addr");
+}
+
+static void test_verify_match(void)
+{
+  TEST_BEGIN("cnecc verify accepts matching ecc");
+  prep();
+  static const uint32_t buf[2] = {0x11223344U, 0x55667788U};
+  uint32_t              ecc    = 0U;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_cnecc_compute((uint32_t)(uintptr_t)buf, sizeof(buf), &ecc));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_cnecc_verify((uint32_t)(uintptr_t)buf, sizeof(buf), ecc));
+  TEST_END("cnecc verify accepts matching ecc");
+}
+
+static void test_verify_mismatch(void)
+{
+  TEST_BEGIN("cnecc verify rejects mismatching ecc");
+  prep();
+  static const uint32_t buf[2] = {0x11223344U, 0x55667788U};
+  TEST_ASSERT_EQ((int32_t)k_ra_err_crc_mismatch,
+                 (int32_t)ra_cnecc_verify((uint32_t)(uintptr_t)buf, sizeof(buf), 0xBADBADU));
+  TEST_END("cnecc verify rejects mismatching ecc");
+}
+
 int32_t main(void)
 {
   test_init_null_cfg();
