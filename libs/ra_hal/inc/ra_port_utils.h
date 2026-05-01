@@ -114,6 +114,16 @@ extern "C" {
 [[nodiscard]] ra_err_t ra_gpio_read(ra_port_pin_t pin, ra_level_t* out_level);
 
 /**
+ * @brief Release a GPIO pin claim.
+ *
+ * @param[in] pin Packed port/pin identifier previously claimed by a
+ *                GPIO init call.
+ * @return `ra_err_t` error code from the pin validator.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_gpio_release(ra_port_pin_t pin);
+
+/**
  * @brief Route a pin to a non-IRQ peripheral function via PFS.PSEL.
  *
  * @details

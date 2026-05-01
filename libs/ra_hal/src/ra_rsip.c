@@ -60,7 +60,7 @@
  * can also force it on or off explicitly.
  */
 #if defined(RA_SIMULATOR_MODE) && !defined(RA_RSIP_SOFTWARE_BACKEND)
-#define RA_RSIP_SOFTWARE_BACKEND 1
+#define RA_RSIP_SOFTWARE_BACKEND (1)
 #endif
 
 /**
@@ -285,7 +285,7 @@ static void internal_sha256_pull_digest(uint8_t* digest)
 
 ra_err_t ra_rsip_init(const ra_rsip_config_t* cfg)
 {
-  RA_CHECK_NULL_PTR((void*)cfg, s_tag, "cfg must not be nullptr");
+  RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
 
   /* HUM Ch 11.2.8 "MSTPCRC : Module Stop Control Register C" p 446 */
   /* HUM Ch 52.3.2 "Module-Stop Function Setting" p 3307 */
@@ -433,7 +433,7 @@ ra_err_t ra_rsip_trng_read(uint8_t* buf, uint32_t len)
 
 ra_err_t ra_rsip_sha256(const uint8_t* msg, uint32_t msg_len, uint8_t* digest)
 {
-  RA_CHECK_NULL_PTR((void*)msg, s_tag, "msg must not be nullptr");
+  RA_CHECK_NULL_PTR(msg, s_tag, "msg must not be nullptr");
   RA_CHECK_NULL_PTR(digest, s_tag, "digest must not be nullptr");
 
   /* HUM Ch 52.2.3 "Hash Generator" p 3306 */
@@ -824,7 +824,7 @@ static ra_err_t internal_sha256_dispatch(const uint8_t* msg, uint32_t msg_len, u
 
 ra_err_t ra_rsip_sha256_init(ra_rsip_sha256_ctx_t* ctx)
 {
-  RA_CHECK_NULL_PTR((void*)ctx, s_tag, "ctx must not be nullptr");
+  RA_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");
   ctx->used        = 0U;
   ctx->initialised = 1U;
   return k_ra_ok;
@@ -832,7 +832,7 @@ ra_err_t ra_rsip_sha256_init(ra_rsip_sha256_ctx_t* ctx)
 
 ra_err_t ra_rsip_sha256_update(ra_rsip_sha256_ctx_t* ctx, const uint8_t* data, uint32_t len)
 {
-  RA_CHECK_NULL_PTR((void*)ctx, s_tag, "ctx must not be nullptr");
+  RA_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");
   if ((data == nullptr) && (len != 0U)) {
     return k_ra_err_null_ptr;
   }
@@ -854,7 +854,7 @@ ra_err_t ra_rsip_sha256_update(ra_rsip_sha256_ctx_t* ctx, const uint8_t* data, u
 
 ra_err_t ra_rsip_sha256_final(ra_rsip_sha256_ctx_t* ctx, uint8_t* digest_out)
 {
-  RA_CHECK_NULL_PTR((void*)ctx, s_tag, "ctx must not be nullptr");
+  RA_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");
   RA_CHECK_NULL_PTR(digest_out, s_tag, "digest_out must not be nullptr");
   if (ctx->initialised != 1U) {
     return k_ra_err_invalid_state;
@@ -913,7 +913,7 @@ internal_hmac_prep_key(const uint8_t* key, uint32_t key_len, uint8_t block[k_ra_
 ra_err_t
 ra_rsip_hmac_sha256_init(ra_rsip_hmac_sha256_ctx_t* ctx, const uint8_t* key, uint32_t key_len)
 {
-  RA_CHECK_NULL_PTR((void*)ctx, s_tag, "ctx must not be nullptr");
+  RA_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");
   if ((key == nullptr) && (key_len != 0U)) {
     return k_ra_err_null_ptr;
   }
@@ -941,7 +941,7 @@ ra_rsip_hmac_sha256_init(ra_rsip_hmac_sha256_ctx_t* ctx, const uint8_t* key, uin
 ra_err_t
 ra_rsip_hmac_sha256_update(ra_rsip_hmac_sha256_ctx_t* ctx, const uint8_t* data, uint32_t len)
 {
-  RA_CHECK_NULL_PTR((void*)ctx, s_tag, "ctx must not be nullptr");
+  RA_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");
   if (ctx->initialised != 1U) {
     return k_ra_err_invalid_state;
   }
@@ -988,7 +988,7 @@ static ra_err_t internal_hmac_outer(const uint8_t key_block[k_ra_rsip_sha256_blo
 
 ra_err_t ra_rsip_hmac_sha256_final(ra_rsip_hmac_sha256_ctx_t* ctx, uint8_t* mac_out)
 {
-  RA_CHECK_NULL_PTR((void*)ctx, s_tag, "ctx must not be nullptr");
+  RA_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");
   RA_CHECK_NULL_PTR(mac_out, s_tag, "mac_out must not be nullptr");
   if (ctx->initialised != 1U) {
     return k_ra_err_invalid_state;
@@ -1526,7 +1526,7 @@ static ra_err_t internal_oem_install(ra_rsip_oem_cmd_t     cmd,
 
 ra_err_t ra_rsip_aes128_install_plain(const uint8_t* key, ra_rsip_key_handle_t* out)
 {
-  RA_CHECK_NULL_PTR((void*)key, s_tag, "key must not be nullptr");
+  RA_CHECK_NULL_PTR(key, s_tag, "key must not be nullptr");
   RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
   return internal_oem_install(k_ra_rsip_oem_cmd_aes128,
                               nullptr,
@@ -1537,7 +1537,7 @@ ra_err_t ra_rsip_aes128_install_plain(const uint8_t* key, ra_rsip_key_handle_t* 
 
 ra_err_t ra_rsip_aes192_install_plain(const uint8_t* key, ra_rsip_key_handle_t* out)
 {
-  RA_CHECK_NULL_PTR((void*)key, s_tag, "key must not be nullptr");
+  RA_CHECK_NULL_PTR(key, s_tag, "key must not be nullptr");
   RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
   return internal_oem_install(k_ra_rsip_oem_cmd_aes192,
                               nullptr,
@@ -1548,7 +1548,7 @@ ra_err_t ra_rsip_aes192_install_plain(const uint8_t* key, ra_rsip_key_handle_t* 
 
 ra_err_t ra_rsip_aes256_install_plain(const uint8_t* key, ra_rsip_key_handle_t* out)
 {
-  RA_CHECK_NULL_PTR((void*)key, s_tag, "key must not be nullptr");
+  RA_CHECK_NULL_PTR(key, s_tag, "key must not be nullptr");
   RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
   return internal_oem_install(k_ra_rsip_oem_cmd_aes256,
                               nullptr,
@@ -1559,7 +1559,7 @@ ra_err_t ra_rsip_aes256_install_plain(const uint8_t* key, ra_rsip_key_handle_t* 
 
 ra_err_t ra_rsip_chacha20_install_plain(const uint8_t* key, ra_rsip_key_handle_t* out)
 {
-  RA_CHECK_NULL_PTR((void*)key, s_tag, "key must not be nullptr");
+  RA_CHECK_NULL_PTR(key, s_tag, "key must not be nullptr");
   RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
   return internal_oem_install(k_ra_rsip_oem_cmd_chacha20,
                               nullptr,
@@ -1573,7 +1573,7 @@ ra_err_t ra_rsip_hmac_install_plain(ra_rsip_oem_cmd_t     alg,
                                     uint32_t              key_len,
                                     ra_rsip_key_handle_t* out)
 {
-  RA_CHECK_NULL_PTR((void*)key, s_tag, "key must not be nullptr");
+  RA_CHECK_NULL_PTR(key, s_tag, "key must not be nullptr");
   RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
   if (key_len == 0U) {
     return k_ra_err_invalid_arg;
@@ -1598,8 +1598,8 @@ ra_err_t ra_rsip_oem_install(ra_rsip_oem_cmd_t     cmd,
                              uint32_t              blob_len,
                              ra_rsip_key_handle_t* out)
 {
-  RA_CHECK_NULL_PTR((void*)iv, s_tag, "iv must not be nullptr");
-  RA_CHECK_NULL_PTR((void*)oem_blob, s_tag, "oem_blob must not be nullptr");
+  RA_CHECK_NULL_PTR(iv, s_tag, "iv must not be nullptr");
+  RA_CHECK_NULL_PTR(oem_blob, s_tag, "oem_blob must not be nullptr");
   RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
   if (cmd == k_ra_rsip_oem_cmd_invalid) {
     return k_ra_err_invalid_arg;
@@ -1705,8 +1705,8 @@ ra_err_t ra_rsip_aes_cipher(const ra_rsip_key_handle_t* key,
                             uint8_t*                    out,
                             uint32_t                    len)
 {
-  RA_CHECK_NULL_PTR((void*)key, s_tag, "key must not be nullptr");
-  RA_CHECK_NULL_PTR((void*)in, s_tag, "in must not be nullptr");
+  RA_CHECK_NULL_PTR(key, s_tag, "key must not be nullptr");
+  RA_CHECK_NULL_PTR(in, s_tag, "in must not be nullptr");
   RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
   if ((mode == k_ra_rsip_aes_mode_gcm) || (mode == k_ra_rsip_aes_mode_ccm)) {
     return k_ra_err_invalid_arg; /* AEAD has dedicated entry points. */
@@ -1850,9 +1850,9 @@ ra_err_t ra_rsip_aes_gcm(const ra_rsip_key_handle_t* key,
                          uint32_t                    in_len,
                          uint8_t*                    tag)
 {
-  RA_CHECK_NULL_PTR((void*)key, s_tag, "key must not be nullptr");
-  RA_CHECK_NULL_PTR((void*)iv, s_tag, "iv must not be nullptr");
-  RA_CHECK_NULL_PTR((void*)in, s_tag, "in must not be nullptr");
+  RA_CHECK_NULL_PTR(key, s_tag, "key must not be nullptr");
+  RA_CHECK_NULL_PTR(iv, s_tag, "iv must not be nullptr");
+  RA_CHECK_NULL_PTR(in, s_tag, "in must not be nullptr");
   RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
   RA_CHECK_NULL_PTR(tag, s_tag, "tag must not be nullptr");
   const uint8_t alg_byte = internal_aes_alg_byte(key->alg);
@@ -1882,9 +1882,9 @@ ra_err_t ra_rsip_aes_ccm(const ra_rsip_key_handle_t* key,
                          uint32_t                    in_len,
                          uint8_t*                    tag)
 {
-  RA_CHECK_NULL_PTR((void*)key, s_tag, "key must not be nullptr");
-  RA_CHECK_NULL_PTR((void*)iv, s_tag, "iv must not be nullptr");
-  RA_CHECK_NULL_PTR((void*)in, s_tag, "in must not be nullptr");
+  RA_CHECK_NULL_PTR(key, s_tag, "key must not be nullptr");
+  RA_CHECK_NULL_PTR(iv, s_tag, "iv must not be nullptr");
+  RA_CHECK_NULL_PTR(in, s_tag, "in must not be nullptr");
   RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
   RA_CHECK_NULL_PTR(tag, s_tag, "tag must not be nullptr");
   const uint8_t alg_byte = internal_aes_alg_byte(key->alg);
@@ -1944,9 +1944,9 @@ ra_err_t ra_rsip_chacha20(const ra_rsip_key_handle_t* key,
                           uint8_t*                    out,
                           uint32_t                    len)
 {
-  RA_CHECK_NULL_PTR((void*)key, s_tag, "key must not be nullptr");
-  RA_CHECK_NULL_PTR((void*)nonce, s_tag, "nonce must not be nullptr");
-  RA_CHECK_NULL_PTR((void*)in, s_tag, "in must not be nullptr");
+  RA_CHECK_NULL_PTR(key, s_tag, "key must not be nullptr");
+  RA_CHECK_NULL_PTR(nonce, s_tag, "nonce must not be nullptr");
+  RA_CHECK_NULL_PTR(in, s_tag, "in must not be nullptr");
   RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
   if (key->alg != k_ra_rsip_oem_cmd_chacha20) {
     return k_ra_err_invalid_arg;
@@ -1979,9 +1979,9 @@ ra_err_t ra_rsip_chacha20_poly1305(const ra_rsip_key_handle_t* key,
                                    uint32_t                    in_len,
                                    uint8_t*                    tag)
 {
-  RA_CHECK_NULL_PTR((void*)key, s_tag, "key must not be nullptr");
-  RA_CHECK_NULL_PTR((void*)nonce, s_tag, "nonce must not be nullptr");
-  RA_CHECK_NULL_PTR((void*)in, s_tag, "in must not be nullptr");
+  RA_CHECK_NULL_PTR(key, s_tag, "key must not be nullptr");
+  RA_CHECK_NULL_PTR(nonce, s_tag, "nonce must not be nullptr");
+  RA_CHECK_NULL_PTR(in, s_tag, "in must not be nullptr");
   RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
   RA_CHECK_NULL_PTR(tag, s_tag, "tag must not be nullptr");
   if (key->alg != k_ra_rsip_oem_cmd_chacha20) {
@@ -2003,7 +2003,7 @@ ra_err_t ra_rsip_chacha20_poly1305(const ra_rsip_key_handle_t* key,
 ra_err_t
 ra_rsip_poly1305(const uint8_t* one_time_key, const uint8_t* msg, uint32_t msg_len, uint8_t* tag)
 {
-  RA_CHECK_NULL_PTR((void*)one_time_key, s_tag, "one_time_key must not be nullptr");
+  RA_CHECK_NULL_PTR(one_time_key, s_tag, "one_time_key must not be nullptr");
   RA_CHECK_NULL_PTR(tag, s_tag, "tag must not be nullptr");
   if ((msg == nullptr) && (msg_len != 0U)) {
     return k_ra_err_null_ptr;
@@ -2197,7 +2197,7 @@ ra_err_t ra_rsip_hmac(const ra_rsip_key_handle_t* key,
                       uint8_t*                    mac,
                       uint32_t                    mac_len)
 {
-  RA_CHECK_NULL_PTR((void*)key, s_tag, "key must not be nullptr");
+  RA_CHECK_NULL_PTR(key, s_tag, "key must not be nullptr");
   RA_CHECK_NULL_PTR(mac, s_tag, "mac must not be nullptr");
   if ((msg == nullptr) && (msg_len != 0U)) {
     return k_ra_err_null_ptr;
@@ -2306,8 +2306,8 @@ ra_err_t ra_rsip_rsa_sign(const ra_rsip_key_handle_t* key,
                           uint32_t                    digest_len,
                           uint8_t*                    signature)
 {
-  RA_CHECK_NULL_PTR((void*)key, s_tag, "key must not be nullptr");
-  RA_CHECK_NULL_PTR((void*)digest, s_tag, "digest must not be nullptr");
+  RA_CHECK_NULL_PTR(key, s_tag, "key must not be nullptr");
+  RA_CHECK_NULL_PTR(digest, s_tag, "digest must not be nullptr");
   RA_CHECK_NULL_PTR(signature, s_tag, "signature must not be nullptr");
   if ((size != k_ra_rsip_rsa_1024) && (size != k_ra_rsip_rsa_2048) &&
       (size != k_ra_rsip_rsa_3072) && (size != k_ra_rsip_rsa_4096)) {
@@ -2335,9 +2335,9 @@ ra_err_t ra_rsip_rsa_verify(const ra_rsip_key_handle_t* key,
                             uint32_t                    digest_len,
                             const uint8_t*              signature)
 {
-  RA_CHECK_NULL_PTR((void*)key, s_tag, "key must not be nullptr");
-  RA_CHECK_NULL_PTR((void*)digest, s_tag, "digest must not be nullptr");
-  RA_CHECK_NULL_PTR((void*)signature, s_tag, "signature must not be nullptr");
+  RA_CHECK_NULL_PTR(key, s_tag, "key must not be nullptr");
+  RA_CHECK_NULL_PTR(digest, s_tag, "digest must not be nullptr");
+  RA_CHECK_NULL_PTR(signature, s_tag, "signature must not be nullptr");
   if ((size != k_ra_rsip_rsa_1024) && (size != k_ra_rsip_rsa_2048) &&
       (size != k_ra_rsip_rsa_3072) && (size != k_ra_rsip_rsa_4096)) {
     return k_ra_err_invalid_arg;
@@ -2413,8 +2413,8 @@ ra_err_t ra_rsip_ecdsa_sign(const ra_rsip_key_handle_t* key,
                             uint32_t                    digest_len,
                             uint8_t*                    signature)
 {
-  RA_CHECK_NULL_PTR((void*)key, s_tag, "key must not be nullptr");
-  RA_CHECK_NULL_PTR((void*)digest, s_tag, "digest must not be nullptr");
+  RA_CHECK_NULL_PTR(key, s_tag, "key must not be nullptr");
+  RA_CHECK_NULL_PTR(digest, s_tag, "digest must not be nullptr");
   RA_CHECK_NULL_PTR(signature, s_tag, "signature must not be nullptr");
   const uint32_t curve_bytes = internal_curve_bytes(curve);
   if (curve_bytes == 0U) {
@@ -2442,9 +2442,9 @@ ra_err_t ra_rsip_ecdsa_verify(const ra_rsip_key_handle_t* key,
                               uint32_t                    digest_len,
                               const uint8_t*              signature)
 {
-  RA_CHECK_NULL_PTR((void*)key, s_tag, "key must not be nullptr");
-  RA_CHECK_NULL_PTR((void*)digest, s_tag, "digest must not be nullptr");
-  RA_CHECK_NULL_PTR((void*)signature, s_tag, "signature must not be nullptr");
+  RA_CHECK_NULL_PTR(key, s_tag, "key must not be nullptr");
+  RA_CHECK_NULL_PTR(digest, s_tag, "digest must not be nullptr");
+  RA_CHECK_NULL_PTR(signature, s_tag, "signature must not be nullptr");
   const uint32_t curve_bytes = internal_curve_bytes(curve);
   if (curve_bytes == 0U) {
     return k_ra_err_invalid_arg;
@@ -2497,9 +2497,9 @@ ra_err_t ra_rsip_ecdh_compute(const ra_rsip_key_handle_t* key,
                               const uint8_t*              peer_y,
                               ra_rsip_key_handle_t*       out)
 {
-  RA_CHECK_NULL_PTR((void*)key, s_tag, "key must not be nullptr");
-  RA_CHECK_NULL_PTR((void*)peer_x, s_tag, "peer_x must not be nullptr");
-  RA_CHECK_NULL_PTR((void*)peer_y, s_tag, "peer_y must not be nullptr");
+  RA_CHECK_NULL_PTR(key, s_tag, "key must not be nullptr");
+  RA_CHECK_NULL_PTR(peer_x, s_tag, "peer_x must not be nullptr");
+  RA_CHECK_NULL_PTR(peer_y, s_tag, "peer_y must not be nullptr");
   RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
   const uint32_t curve_bytes = internal_curve_bytes(curve);
   if (curve_bytes == 0U) {
@@ -2621,7 +2621,7 @@ ra_err_t ra_rsip_kv_read(uint8_t slot, uint8_t* out)
 
 ra_err_t ra_rsip_kv_write(uint8_t slot, const uint8_t* in)
 {
-  RA_CHECK_NULL_PTR((void*)in, s_tag, "in must not be nullptr");
+  RA_CHECK_NULL_PTR(in, s_tag, "in must not be nullptr");
   if (slot >= (uint8_t)k_ra_rsip_kv_slot_count) {
     return k_ra_err_invalid_arg;
   }
@@ -2735,9 +2735,9 @@ ra_err_t ra_rsip_key_wrap(const ra_rsip_key_handle_t* kek,
                           const ra_rsip_key_handle_t* src,
                           uint8_t*                    blob)
 {
-  RA_CHECK_NULL_PTR((void*)kek, s_tag, "kek must not be nullptr");
-  RA_CHECK_NULL_PTR((void*)iv, s_tag, "iv must not be nullptr");
-  RA_CHECK_NULL_PTR((void*)src, s_tag, "src must not be nullptr");
+  RA_CHECK_NULL_PTR(kek, s_tag, "kek must not be nullptr");
+  RA_CHECK_NULL_PTR(iv, s_tag, "iv must not be nullptr");
+  RA_CHECK_NULL_PTR(src, s_tag, "src must not be nullptr");
   RA_CHECK_NULL_PTR(blob, s_tag, "blob must not be nullptr");
   if (internal_aes_alg_byte(kek->alg) == 0U) {
     return k_ra_err_invalid_arg;
@@ -2795,9 +2795,9 @@ ra_err_t ra_rsip_key_unwrap(const ra_rsip_key_handle_t* kek,
                             const uint8_t*              blob,
                             ra_rsip_key_handle_t*       dest)
 {
-  RA_CHECK_NULL_PTR((void*)kek, s_tag, "kek must not be nullptr");
-  RA_CHECK_NULL_PTR((void*)iv, s_tag, "iv must not be nullptr");
-  RA_CHECK_NULL_PTR((void*)blob, s_tag, "blob must not be nullptr");
+  RA_CHECK_NULL_PTR(kek, s_tag, "kek must not be nullptr");
+  RA_CHECK_NULL_PTR(iv, s_tag, "iv must not be nullptr");
+  RA_CHECK_NULL_PTR(blob, s_tag, "blob must not be nullptr");
   RA_CHECK_NULL_PTR(dest, s_tag, "dest must not be nullptr");
   if (internal_aes_alg_byte(kek->alg) == 0U) {
     return k_ra_err_invalid_arg;

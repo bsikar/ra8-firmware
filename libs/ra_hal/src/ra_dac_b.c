@@ -175,7 +175,7 @@ static void internal_apply_cfg(uint8_t channel, const ra_dac_b_cfg_t* cfg)
 
 ra_err_t ra_dac_b_init_configured(const ra_dac_b_cfg_t* cfg)
 {
-  RA_CHECK_NULL_PTR((void*)cfg, s_tag, "cfg must not be nullptr");
+  RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
 
   ra_err_t mst_err = ra_mstp_enable(k_ra_mstp_dac12_0);
   RA_RETURN_ON_ERROR(mst_err, s_tag, "dac_b_init_cfg: mstp dac0"); /* GCOVR_EXCL_BR_LINE */

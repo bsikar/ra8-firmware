@@ -363,7 +363,7 @@ static void internal_program_dll(const ra_pdg_config_t* cfg, ra_pdg_frange_t fra
 
 ra_err_t ra_pdg_init(const ra_pdg_config_t* cfg)
 {
-  RA_CHECK_NULL_PTR((void*)cfg, s_tag, "cfg must not be nullptr");
+  RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
   const ra_err_t cfg_err = internal_validate_cfg(cfg);
   RA_RETURN_ON_ERROR(cfg_err, s_tag, "pdg_init: cfg invalid");
 
@@ -445,7 +445,7 @@ ra_err_t ra_pdg_get_delay(uint8_t channel, ra_pdg_pin_t pin, ra_pdg_edge_t edge,
 
 ra_err_t ra_pdg_set_delay_batch(const ra_pdg_delay_entry_t* entries, uint8_t count)
 {
-  RA_CHECK_NULL_PTR((void*)entries, s_tag, "entries must not be nullptr");
+  RA_CHECK_NULL_PTR(entries, s_tag, "entries must not be nullptr");
   if (!internal_pdg_is_initialised()) {
     return k_ra_err_not_initialized;
   }

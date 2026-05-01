@@ -210,13 +210,13 @@ static uint32_t internal_ra_ipc_sem_read_take(volatile uint32_t* sem)
 
 [[nodiscard]] ra_err_t ra_ipc_init(const ra_ipc_config_t* cfg)
 {
-  RA_CHECK_NULL_PTR((void*)cfg, s_tag, "cfg must not be nullptr");
+  RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
   if ((uint16_t)cfg->channel >= (uint16_t)k_ra_ipc_channel_count) {
     return k_ra_err_invalid_arg;
   }
 
   volatile r_ipc_channel_regs_t* reg = internal_ra_ipc_get_regs(cfg->channel);
-  RA_CHECK_NULL_PTR((void*)reg, s_tag, "channel mapping failed");
+  RA_CHECK_NULL_PTR(reg, s_tag, "channel mapping failed");
 
   if (cfg->reset_fifo) {
     /* HUM Ch 3.2.14 "IPC0CLR0" p 216 -- CLR.RST (bit 16) drops the
@@ -247,7 +247,7 @@ static uint32_t internal_ra_ipc_sem_read_take(volatile uint32_t* sem)
     return k_ra_err_invalid_arg;
   }
   volatile r_ipc_channel_regs_t* reg = internal_ra_ipc_get_regs(channel);
-  RA_CHECK_NULL_PTR((void*)reg, s_tag, "channel mapping failed");
+  RA_CHECK_NULL_PTR(reg, s_tag, "channel mapping failed");
 
   /* HUM Ch 3.2.14 "IPC0CLR0" p 216 -- clear every event bit then
    * drop the FIFO so the next init starts clean. */
@@ -344,7 +344,7 @@ ra_ipc_channel_for_recv(ra_ipc_core_id_t core, uint8_t pair, uint8_t* out_channe
     return k_ra_err_invalid_arg;
   }
   volatile r_ipc_channel_regs_t* reg = internal_ra_ipc_get_regs(channel);
-  RA_CHECK_NULL_PTR((void*)reg, s_tag, "channel mapping failed");
+  RA_CHECK_NULL_PTR(reg, s_tag, "channel mapping failed");
 
   /* HUM Ch 3.2.11 "IPC0ISET0" p 215 -- write 1 to SETn to assert
    * IRQn on the receiving core and raise the IPCnIRQm interrupt. */
@@ -361,7 +361,7 @@ ra_ipc_channel_for_recv(ra_ipc_core_id_t core, uint8_t pair, uint8_t* out_channe
     return k_ra_err_invalid_arg;
   }
   volatile r_ipc_channel_regs_t* reg = internal_ra_ipc_get_regs(channel);
-  RA_CHECK_NULL_PTR((void*)reg, s_tag, "channel mapping failed");
+  RA_CHECK_NULL_PTR(reg, s_tag, "channel mapping failed");
 
   /* HUM Ch 3.2.14 "CLRn bits" p 217 -- write 1 to CLRn to drop the
    * matching IRQn status bit. */
@@ -375,7 +375,7 @@ ra_ipc_channel_for_recv(ra_ipc_core_id_t core, uint8_t pair, uint8_t* out_channe
     return k_ra_err_invalid_arg;
   }
   volatile r_ipc_channel_regs_t* reg = internal_ra_ipc_get_regs(channel);
-  RA_CHECK_NULL_PTR((void*)reg, s_tag, "channel mapping failed");
+  RA_CHECK_NULL_PTR(reg, s_tag, "channel mapping failed");
 
   /* HUM Ch 3.2.10 "IPC0STA0 FULL bit" p 214 -- if the FIFO is full
    * the write to TXD is silently dropped and FERR is set. */
@@ -399,7 +399,7 @@ ra_ipc_send_message_retry(uint8_t channel, uint32_t message, uint16_t max_retrie
     max_retries = k_ra_ipc_retry_max;
   }
   volatile r_ipc_channel_regs_t* reg = internal_ra_ipc_get_regs(channel);
-  RA_CHECK_NULL_PTR((void*)reg, s_tag, "channel mapping failed");
+  RA_CHECK_NULL_PTR(reg, s_tag, "channel mapping failed");
 
   /* NASA Rule 2: bounded loop with the +1 covering the immediate-try
    * case where retries==0 still gets a single attempt. */
@@ -421,7 +421,7 @@ ra_ipc_send_message_retry(uint8_t channel, uint32_t message, uint16_t max_retrie
 [[nodiscard]] ra_err_t
 ra_ipc_send_burst(uint8_t channel, const uint32_t* data, uint32_t count, uint32_t* out_written)
 {
-  RA_CHECK_NULL_PTR((void*)data, s_tag, "data must not be nullptr");
+  RA_CHECK_NULL_PTR(data, s_tag, "data must not be nullptr");
   RA_CHECK_NULL_PTR(out_written, s_tag, "out_written must not be nullptr");
   if ((uint16_t)channel >= (uint16_t)k_ra_ipc_channel_count) {
     return k_ra_err_invalid_arg;
@@ -430,7 +430,7 @@ ra_ipc_send_burst(uint8_t channel, const uint32_t* data, uint32_t count, uint32_
     return k_ra_err_invalid_arg;
   }
   volatile r_ipc_channel_regs_t* reg = internal_ra_ipc_get_regs(channel);
-  RA_CHECK_NULL_PTR((void*)reg, s_tag, "channel mapping failed");
+  RA_CHECK_NULL_PTR(reg, s_tag, "channel mapping failed");
 
   uint32_t written = 0U;
   /* NASA Rule 2: bound is the user-supplied ``count`` and the inner
@@ -456,7 +456,7 @@ ra_ipc_send_burst(uint8_t channel, const uint32_t* data, uint32_t count, uint32_
     return k_ra_err_invalid_arg;
   }
   volatile r_ipc_channel_regs_t* reg = internal_ra_ipc_get_regs(channel);
-  RA_CHECK_NULL_PTR((void*)reg, s_tag, "channel mapping failed");
+  RA_CHECK_NULL_PTR(reg, s_tag, "channel mapping failed");
 
   /* HUM Ch 3.2.10 "RDY bit" p 214 -- a read of RXD while RDY=0
    * returns 0 and sets RERR. */
@@ -479,7 +479,7 @@ ra_ipc_recv_message_retry(uint8_t channel, uint32_t* out_msg, uint16_t max_retri
     max_retries = k_ra_ipc_retry_max;
   }
   volatile r_ipc_channel_regs_t* reg = internal_ra_ipc_get_regs(channel);
-  RA_CHECK_NULL_PTR((void*)reg, s_tag, "channel mapping failed");
+  RA_CHECK_NULL_PTR(reg, s_tag, "channel mapping failed");
 
   /* NASA Rule 2: bounded loop, max_retries clamped above. */
   for (uint16_t i = 0U; i <= max_retries; ++i) {
@@ -509,7 +509,7 @@ ra_ipc_recv_burst(uint8_t channel, uint32_t* out_data, uint32_t capacity, uint32
     return k_ra_err_invalid_arg;
   }
   volatile r_ipc_channel_regs_t* reg = internal_ra_ipc_get_regs(channel);
-  RA_CHECK_NULL_PTR((void*)reg, s_tag, "channel mapping failed");
+  RA_CHECK_NULL_PTR(reg, s_tag, "channel mapping failed");
 
   uint32_t read_count = 0U;
   /* NASA Rule 2: bound is the caller-supplied ``capacity`` plus an
@@ -539,7 +539,7 @@ ra_ipc_recv_burst(uint8_t channel, uint32_t* out_data, uint32_t capacity, uint32
     return k_ra_err_invalid_arg;
   }
   volatile r_ipc_channel_regs_t* reg = internal_ra_ipc_get_regs(channel);
-  RA_CHECK_NULL_PTR((void*)reg, s_tag, "channel mapping failed");
+  RA_CHECK_NULL_PTR(reg, s_tag, "channel mapping failed");
 
   /* HUM Ch 3.2.10 "IPC0STA0" p 214*/
   *out_sta = reg->STA;
@@ -552,7 +552,7 @@ ra_ipc_recv_burst(uint8_t channel, uint32_t* out_data, uint32_t capacity, uint32
     return k_ra_err_invalid_arg;
   }
   volatile r_ipc_channel_regs_t* reg = internal_ra_ipc_get_regs(channel);
-  RA_CHECK_NULL_PTR((void*)reg, s_tag, "channel mapping failed");
+  RA_CHECK_NULL_PTR(reg, s_tag, "channel mapping failed");
 
   const uint32_t clr = internal_ra_ipc_event_to_clr(mask);
   if (clr != 0U) {
@@ -657,7 +657,7 @@ ra_ipc_recv_burst(uint8_t channel, uint32_t* out_data, uint32_t capacity, uint32
 [[nodiscard]] ra_err_t
 ra_ipc_can_access(uint8_t channel, ra_ipc_attr_t const* required, bool* out_can_access)
 {
-  RA_CHECK_NULL_PTR((void*)required, s_tag, "required must not be nullptr");
+  RA_CHECK_NULL_PTR(required, s_tag, "required must not be nullptr");
   RA_CHECK_NULL_PTR(out_can_access, s_tag, "out_can_access must not be nullptr");
   ra_ipc_attr_t  live = {.secure = false, .privileged = false};
   const ra_err_t err  = ra_ipc_get_attribution(channel, &live);
@@ -681,7 +681,7 @@ ra_ipc_can_access(uint8_t channel, ra_ipc_attr_t const* required, bool* out_can_
     return k_ra_err_invalid_arg;
   }
   volatile uint32_t* sem = ra_ipc_sem(sem_id);
-  RA_CHECK_NULL_PTR((void*)sem, s_tag, "sem mapping failed");
+  RA_CHECK_NULL_PTR(sem, s_tag, "sem mapping failed");
   /* HUM Ch 3.2.3 "IPCSEMn" p 210 -- 32-bit read sets LOCK; the read
    * value reports the *previous* state. 0 -> we just acquired,
    * 1 -> someone else already owned it. */
@@ -704,7 +704,7 @@ ra_ipc_can_access(uint8_t channel, ra_ipc_attr_t const* required, bool* out_can_
     max_spins = k_ra_ipc_sem_take_max;
   }
   volatile uint32_t* sem = ra_ipc_sem(sem_id);
-  RA_CHECK_NULL_PTR((void*)sem, s_tag, "sem mapping failed");
+  RA_CHECK_NULL_PTR(sem, s_tag, "sem mapping failed");
   /* NASA Rule 2: bounded by ``max_spins``. */
   for (uint16_t i = 0U; i < max_spins; ++i) {
     /* HUM Ch 3.2.3 "IPCSEMn" p 210 */
@@ -722,7 +722,7 @@ ra_ipc_can_access(uint8_t channel, ra_ipc_attr_t const* required, bool* out_can_
     return k_ra_err_invalid_arg;
   }
   volatile uint32_t* sem = ra_ipc_sem(sem_id);
-  RA_CHECK_NULL_PTR((void*)sem, s_tag, "sem mapping failed");
+  RA_CHECK_NULL_PTR(sem, s_tag, "sem mapping failed");
   /* HUM Ch 3.2.3 "IPCSEMn" p 210 -- "Clear condition: Writing 1 to
    * this bit". */
   *sem = k_ra_ipc_sem_mask_lock;
@@ -742,7 +742,7 @@ ra_ipc_can_access(uint8_t channel, ra_ipc_attr_t const* required, bool* out_can_
     return k_ra_err_invalid_arg;
   }
   volatile uint32_t* sem = ra_ipc_sem(sem_id);
-  RA_CHECK_NULL_PTR((void*)sem, s_tag, "sem mapping failed");
+  RA_CHECK_NULL_PTR(sem, s_tag, "sem mapping failed");
   /* HUM Ch 3.2.3 "IPCSEMn" p 210 -- the 32-bit read takes the lock
    * as a side-effect, so we sample then restore the previous state. */
   const uint32_t prev = internal_ra_ipc_sem_read_take(sem);
@@ -1013,9 +1013,9 @@ static ra_err_t internal_ra_ipc_ring_validate(const ra_ipc_ring_t* ring)
 [[nodiscard]] ra_err_t ra_ipc_ring_init(ra_ipc_ring_t* ring)
 {
   RA_CHECK_NULL_PTR(ring, s_tag, "ring must not be nullptr");
-  RA_CHECK_NULL_PTR((void*)ring->slots, s_tag, "ring slots must not be nullptr");
-  RA_CHECK_NULL_PTR((void*)ring->head, s_tag, "ring head must not be nullptr");
-  RA_CHECK_NULL_PTR((void*)ring->tail, s_tag, "ring tail must not be nullptr");
+  RA_CHECK_NULL_PTR(ring->slots, s_tag, "ring slots must not be nullptr");
+  RA_CHECK_NULL_PTR(ring->head, s_tag, "ring head must not be nullptr");
+  RA_CHECK_NULL_PTR(ring->tail, s_tag, "ring tail must not be nullptr");
   const ra_err_t err = internal_ra_ipc_ring_validate(ring);
   if (err != k_ra_ok) {
     return err;
@@ -1071,7 +1071,7 @@ static ra_err_t internal_ra_ipc_ring_validate(const ra_ipc_ring_t* ring)
 
 [[nodiscard]] ra_err_t ra_ipc_ring_is_empty(const ra_ipc_ring_t* ring, bool* out_empty)
 {
-  RA_CHECK_NULL_PTR((void*)ring, s_tag, "ring must not be nullptr");
+  RA_CHECK_NULL_PTR(ring, s_tag, "ring must not be nullptr");
   RA_CHECK_NULL_PTR(out_empty, s_tag, "out_empty must not be nullptr");
   *out_empty = (*ring->head == *ring->tail);
   return k_ra_ok;
@@ -1079,7 +1079,7 @@ static ra_err_t internal_ra_ipc_ring_validate(const ra_ipc_ring_t* ring)
 
 [[nodiscard]] ra_err_t ra_ipc_ring_is_full(const ra_ipc_ring_t* ring, bool* out_full)
 {
-  RA_CHECK_NULL_PTR((void*)ring, s_tag, "ring must not be nullptr");
+  RA_CHECK_NULL_PTR(ring, s_tag, "ring must not be nullptr");
   RA_CHECK_NULL_PTR(out_full, s_tag, "out_full must not be nullptr");
   *out_full = ((*ring->head - *ring->tail) >= ring->capacity);
   return k_ra_ok;

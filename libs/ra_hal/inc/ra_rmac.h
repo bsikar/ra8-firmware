@@ -86,6 +86,60 @@ typedef struct {
 } ra_rmac_config_t;
 
 /**
+ * @enum ra_rmac_phy_speed_t
+ * @brief Resolved PHY link speed/duplex.
+ *
+ * @details
+ * Returned by ::ra_rmac_phy_auto_neg_wait once the off-chip PHY's
+ * IEEE 802.3 Clause 22 BMSR.AN_COMPLETE bit asserts. Encodes the
+ * highest-priority capability common to both link partners (the PHY
+ * itself decodes the LPA register and presents the resolved value).
+ */
+typedef enum : uint8_t {
+  k_ra_rmac_phy_speed_unknown = 0U, /**< No link / not yet resolved.    */
+  k_ra_rmac_phy_speed_10_hd   = 1U, /**< 10BASE-T half duplex.          */
+  k_ra_rmac_phy_speed_10_fd   = 2U, /**< 10BASE-T full duplex.          */
+  k_ra_rmac_phy_speed_100_hd  = 3U, /**< 100BASE-TX half duplex.        */
+  k_ra_rmac_phy_speed_100_fd  = 4U, /**< 100BASE-TX full duplex.        */
+  k_ra_rmac_phy_speed_count   = 5U, /**< Sentinel.                      */
+} ra_rmac_phy_speed_t;
+
+/**
+ * @struct ra_rmac_phy_link_t
+ * @brief Resolved PHY link status snapshot.
+ *
+ * @details
+ * Populated by ::ra_rmac_phy_auto_neg_wait and ::ra_rmac_phy_link_status.
+ * ``up`` mirrors IEEE 802.3 Clause 22 BMSR.LINK_STATUS (bit 2). When
+ * ``up`` is true, ``speed`` reflects the negotiated speed/duplex pair
+ * resolved against the link partner. When ``up`` is false the speed
+ * value is ::k_ra_rmac_phy_speed_unknown.
+ */
+typedef struct {
+  bool                up;    /**< true iff BMSR.LINK_STATUS = 1.        */
+  ra_rmac_phy_speed_t speed; /**< Negotiated speed/duplex when up.      */
+} ra_rmac_phy_link_t;
+
+/**
+ * @enum ra_rmac_phy_advert_t
+ * @brief 802.3 Clause 22 ANAR (auto-negotiation advertisement) bits.
+ *
+ * @details
+ * These match the IEEE 802.3 Clause 28.2.4 ANAR register bit layout
+ * for 10/100M abilities. Pass any bitwise OR to
+ * ::ra_rmac_phy_set_advertise. The selector field (bits 0-4) is set
+ * to ``00001`` (IEEE 802.3) by the helper; callers do not need to
+ * include it.
+ */
+typedef enum : uint16_t {
+  k_ra_rmac_phy_advert_10_hd  = 0x0020U, /**< IEEE 802.3 ANAR.10BASE-T.   */
+  k_ra_rmac_phy_advert_10_fd  = 0x0040U, /**< IEEE 802.3 ANAR.10BASE-T FD.*/
+  k_ra_rmac_phy_advert_100_hd = 0x0080U, /**< IEEE 802.3 ANAR.100BASE-TX. */
+  k_ra_rmac_phy_advert_100_fd = 0x0100U, /**< IEEE 802.3 ANAR.100BASE-TX FD.*/
+  k_ra_rmac_phy_advert_pause  = 0x0400U, /**< IEEE 802.3 ANAR.PAUSE.      */
+} ra_rmac_phy_advert_t;
+
+/**
  * @struct ra_rmac_status_t
  * @brief Snapshot of an RMAC port's runtime state.
  *
@@ -678,6 +732,162 @@ ra_rmac_attach_handler(ra_rmac_port_t port, ra_rmac_event_fn_t cb, void* ctx);
  * @since 0.1.0
  */
 void ra_rmac_dispatch(ra_rmac_port_t port);
+
+/**
+ * @brief Software-reset an off-chip PHY via Clause-22 MDIO.
+ *
+ * @details
+ * Writes IEEE 802.3 Clause 22 BMCR.RESET (bit 15), then polls BMCR
+ * until the reset bit self-clears or a bounded poll budget is
+ * exhausted.
+ *
+ * @param[in] port     Port identifier (::k_ra_rmac_port_0 / _1).
+ * @param[in] phy_addr 5-bit PHY address on the MDIO bus (0..31).
+ *
+ * @return ::ra_err_t Error code.
+ * @retval k_ra_ok               PHY reset complete.
+ * @retval k_ra_err_invalid_arg  port or phy_addr out of range.
+ * @retval k_ra_err_hw_timeout   BMCR.RESET never self-cleared.
+ *
+ * @pre Port previously brought up via ::ra_rmac_init.
+ * @pre MPIC.PSMCS programmed for the chosen MDC clock.
+ * @post BMCR.RESET observed cleared by the PHY.
+ * @post All other BMCR bits reset to power-on defaults by the PHY.
+ *
+ * @note IEEE 802.3 Clause 22 sec 22.2.4.1.1 "BMCR.RESET" defines the
+ *       self-clearing semantics this function relies on.
+ * @see ra_rmac_phy_auto_neg_start
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_rmac_phy_reset(ra_rmac_port_t port, uint8_t phy_addr);
+
+/**
+ * @brief Program the off-chip PHY's auto-negotiation advertisement.
+ *
+ * @details
+ * Writes the IEEE 802.3 Clause 22 ANAR register (register 4) with
+ * the supplied capability mask plus the IEEE 802.3 selector field
+ * (00001 in bits [4:0]). After updating the advertisement, callers
+ * typically invoke ::ra_rmac_phy_auto_neg_start to cause the PHY to
+ * restart auto-negotiation with the new capabilities.
+ *
+ * @param[in] port         Port identifier.
+ * @param[in] phy_addr     5-bit PHY address (0..31).
+ * @param[in] capabilities OR of ::ra_rmac_phy_advert_t bits.
+ *
+ * @return ::ra_err_t Error code.
+ * @retval k_ra_ok               ANAR programmed.
+ * @retval k_ra_err_invalid_arg  port or phy_addr out of range.
+ * @retval k_ra_err_hw_timeout   MDIO transaction never completed.
+ *
+ * @pre Port previously brought up via ::ra_rmac_init.
+ * @pre PHY is in a state that accepts ANAR writes (post reset OK).
+ * @post ANAR = capabilities | 0x0001 (selector field).
+ * @post Auto-neg restart still required to advertise new value.
+ *
+ * @note IEEE 802.3 Clause 28.2.4 "AN advertisement register" defines
+ *       the bit layout this helper writes.
+ * @see ra_rmac_phy_auto_neg_start
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t
+ra_rmac_phy_set_advertise(ra_rmac_port_t port, uint8_t phy_addr, uint16_t capabilities);
+
+/**
+ * @brief Kick off (or restart) auto-negotiation on the off-chip PHY.
+ *
+ * @details
+ * Sets IEEE 802.3 Clause 22 BMCR.AN_ENABLE (bit 12) and
+ * BMCR.AN_RESTART (bit 9) in a single MDIO write. Pair this call
+ * with ::ra_rmac_phy_auto_neg_wait to block until the PHY reports
+ * AN_COMPLETE in BMSR.
+ *
+ * @param[in] port     Port identifier.
+ * @param[in] phy_addr 5-bit PHY address.
+ *
+ * @return ::ra_err_t Error code.
+ * @retval k_ra_ok               AN restart issued.
+ * @retval k_ra_err_invalid_arg  port or phy_addr out of range.
+ * @retval k_ra_err_hw_timeout   MDIO transaction never completed.
+ *
+ * @pre Port previously brought up via ::ra_rmac_init.
+ * @pre PHY ANAR programmed (see ::ra_rmac_phy_set_advertise).
+ * @post BMCR.AN_ENABLE = 1; BMCR.AN_RESTART = 1.
+ * @post PHY transitions to AN_ABILITY_DETECT per IEEE 802.3 Clause 28.
+ *
+ * @note IEEE 802.3 Clause 22 sec 22.2.4.1 "BMCR" bit definitions.
+ * @see ra_rmac_phy_auto_neg_wait
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_rmac_phy_auto_neg_start(ra_rmac_port_t port, uint8_t phy_addr);
+
+/**
+ * @brief Block (with a bounded poll) until the PHY reports AN_COMPLETE.
+ *
+ * @details
+ * Reads IEEE 802.3 Clause 22 BMSR (register 1) in a loop; each
+ * iteration costs one MDIO transaction. Returns success when both
+ * BMSR.AN_COMPLETE (bit 5) and BMSR.LINK_STATUS (bit 2) are observed
+ * set in the same read. The resolved speed/duplex is decoded from
+ * the negotiated 10/100 capability bits in ANLPAR (register 5) once
+ * AN_COMPLETE asserts.
+ *
+ * @param[in]  port       Port identifier.
+ * @param[in]  phy_addr   5-bit PHY address.
+ * @param[in]  timeout_ms Maximum wait in milliseconds (0 -> internal cap).
+ * @param[out] out_link   Resolved link state on success.
+ *
+ * @return ::ra_err_t Error code.
+ * @retval k_ra_ok               AN_COMPLETE + LINK_STATUS observed.
+ * @retval k_ra_err_null_ptr     out_link is nullptr.
+ * @retval k_ra_err_invalid_arg  port or phy_addr out of range.
+ * @retval k_ra_err_hw_timeout   AN_COMPLETE never asserted.
+ *
+ * @pre Port previously brought up via ::ra_rmac_init.
+ * @pre Auto-neg started via ::ra_rmac_phy_auto_neg_start.
+ * @post On k_ra_ok, *out_link reflects negotiated speed/duplex/link.
+ * @post On k_ra_err_hw_timeout, *out_link->up = false.
+ *
+ * @note IEEE 802.3 Clause 22 sec 22.2.4.2 "BMSR" defines AN_COMPLETE
+ *       and LINK_STATUS; Clause 28.2.4.4 "ANLPAR" defines the
+ *       resolved-capability bit layout this helper decodes.
+ * @see ra_rmac_phy_auto_neg_start
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_rmac_phy_auto_neg_wait(ra_rmac_port_t      port,
+                                                 uint8_t             phy_addr,
+                                                 uint32_t            timeout_ms,
+                                                 ra_rmac_phy_link_t* out_link);
+
+/**
+ * @brief Quick poll of BMSR.LINK_STATUS (no auto-neg block).
+ *
+ * @details
+ * Single MDIO read of IEEE 802.3 Clause 22 BMSR. Reports up/down
+ * via ``out_link->up``. When up is true the speed field is decoded
+ * from ANLPAR if AN_COMPLETE is set, otherwise it is left as
+ * ::k_ra_rmac_phy_speed_unknown.
+ *
+ * @param[in]  port     Port identifier.
+ * @param[in]  phy_addr 5-bit PHY address.
+ * @param[out] out_link Destination for the snapshot.
+ *
+ * @return ::ra_err_t Error code.
+ * @retval k_ra_ok               BMSR read OK.
+ * @retval k_ra_err_null_ptr     out_link is nullptr.
+ * @retval k_ra_err_invalid_arg  port or phy_addr out of range.
+ * @retval k_ra_err_hw_timeout   MDIO transaction never completed.
+ *
+ * @pre Port previously brought up via ::ra_rmac_init.
+ * @pre PHY visible on the MDIO bus.
+ * @post out_link populated; no PHY register state changed.
+ *
+ * @note IEEE 802.3 Clause 22 sec 22.2.4.2 "BMSR.LINK_STATUS" is
+ *       latching-low: a single read clears any latched-down event.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t
+ra_rmac_phy_link_status(ra_rmac_port_t port, uint8_t phy_addr, ra_rmac_phy_link_t* out_link);
 
 #ifdef __cplusplus
 }

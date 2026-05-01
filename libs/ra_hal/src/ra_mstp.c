@@ -124,8 +124,9 @@ uint8_t ra_mstp_id_bit(ra_mstp_t id)
  */
 static bool internal_decode(ra_mstp_t id, uint8_t* out_reg, uint8_t* out_bit)
 {
-  const uint8_t reg = (uint8_t)ra_mstp_id_reg(id);
-  const uint8_t bit = ra_mstp_id_bit(id);
+  const ra_mstp_reg_t reg_id = ra_mstp_id_reg(id);
+  const uint8_t       reg    = (uint8_t)reg_id;
+  const uint8_t       bit    = ra_mstp_id_bit(id);
   if (reg >= k_ra_mstp_reg_count) {
     return false;
   }

@@ -86,12 +86,24 @@ typedef enum : uint16_t {
 } ra_etha_local_size_t;
 
 /**
+ * @enum ra_etha_ring_limits_t
+ * @brief Bound checks for ::ra_etha_descriptor_ring_init arguments.
+ */
+typedef enum : uint16_t {
+  k_ra_etha_ring_count_min = 1U,     /**< Minimum descriptor ring depth. */
+  k_ra_etha_ring_count_max = 4096U,  /**< Maximum descriptor ring depth. */
+  k_ra_etha_ring_buf_min   = 64U,    /**< IEEE 802.3 minimum frame.      */
+  k_ra_etha_ring_buf_max   = 16383U, /**< 14-bit frame-size field cap.   */
+} ra_etha_ring_limits_t;
+
+/**
  * @struct ra_etha_slot_t
  * @brief Per-port runtime state.
  */
 typedef struct {
-  ra_etha_event_fn_t cb;  /**< Attached callback (nullptr if none). */
-  void*              ctx; /**< Opaque cookie passed back to cb.     */
+  ra_etha_event_fn_t   cb;    /**< Attached callback (nullptr if none). */
+  void*                ctx;   /**< Opaque cookie passed back to cb.     */
+  ra_etha_port_stats_t stats; /**< Per-port traffic counters.            */
 } ra_etha_slot_t;
 
 /**
@@ -162,8 +174,9 @@ ra_err_t ra_etha_init(ra_etha_port_t port, const ra_etha_config_t* cfg)
   /* HUM Ch 32.4 "Error Interrupt Sources" p 1685 */
   reg->EAEIE2 = cfg->eaeie2_mask;
 
-  s_slots[(uint8_t)port].cb  = nullptr;
-  s_slots[(uint8_t)port].ctx = nullptr;
+  s_slots[(uint8_t)port].cb    = nullptr;
+  s_slots[(uint8_t)port].ctx   = nullptr;
+  s_slots[(uint8_t)port].stats = (ra_etha_port_stats_t){};
   ra_log_info(s_tag, "etha_init");
   return k_ra_ok;
 }
@@ -185,8 +198,9 @@ ra_err_t ra_etha_deinit(ra_etha_port_t port)
   /* HUM Ch 32.4 "Error Interrupt Sources" p 1685 */
   reg->EAEIE2 = 0U;
 
-  s_slots[(uint8_t)port].cb  = nullptr;
-  s_slots[(uint8_t)port].ctx = nullptr;
+  s_slots[(uint8_t)port].cb    = nullptr;
+  s_slots[(uint8_t)port].ctx   = nullptr;
+  s_slots[(uint8_t)port].stats = (ra_etha_port_stats_t){};
   /* MSTP gate is shared with the rest of the Ethernet subsystem; do
    * NOT drop it here. ra_eth_deinit owns the final reference. */
   return k_ra_ok;
@@ -241,12 +255,14 @@ ra_err_t ra_etha_clear_status(ra_etha_port_t port, ra_etha_irq_class_t block, ui
       reg->EAEIS1 = reg->EAEIS1 & ~mask;
       break;
     case k_ra_etha_irq_class_2:
-    default:
       /* HUM Ch 32.4 "Error Interrupt Sources" p 1685 */
       reg->EAEID2 = mask;
       /* HUM Ch 32.4 "Error Interrupt Sources" p 1685 */
       reg->EAEIS2 = reg->EAEIS2 & ~mask;
       break;
+    case k_ra_etha_irq_class_count:
+    default:
+      return k_ra_err_invalid_arg;
   }
   return k_ra_ok;
 }
@@ -268,10 +284,12 @@ ra_err_t ra_etha_enable_irq(ra_etha_port_t port, ra_etha_irq_class_t block, uint
       reg->EAEIE1 = reg->EAEIE1 | mask;
       break;
     case k_ra_etha_irq_class_2:
-    default:
       /* HUM Ch 32.4 "Error Interrupt Sources" p 1685 */
       reg->EAEIE2 = reg->EAEIE2 | mask;
       break;
+    case k_ra_etha_irq_class_count:
+    default:
+      return k_ra_err_invalid_arg;
   }
   return k_ra_ok;
 }
@@ -293,10 +311,12 @@ ra_err_t ra_etha_disable_irq(ra_etha_port_t port, ra_etha_irq_class_t block, uin
       reg->EAEIE1 = reg->EAEIE1 & ~mask;
       break;
     case k_ra_etha_irq_class_2:
-    default:
       /* HUM Ch 32.4 "Error Interrupt Sources" p 1685 */
       reg->EAEIE2 = reg->EAEIE2 & ~mask;
       break;
+    case k_ra_etha_irq_class_count:
+    default:
+      return k_ra_err_invalid_arg;
   }
   return k_ra_ok;
 }
@@ -747,4 +767,121 @@ ra_err_t ra_etha_set_security(ra_etha_port_t port, uint32_t mask)
   /* HUM Ch 32.3 "EASCR : Security Configuration" p 1697 */
   ra_etha(port)->EASCR = mask;
   return k_ra_ok;
+}
+
+/**
+ * @brief Validate descriptor-ring sizing.
+ */
+static inline bool internal_ring_args_ok(uint16_t num_tx, uint16_t num_rx, uint16_t buffer_size)
+{
+  return (num_tx >= k_ra_etha_ring_count_min) && (num_tx <= k_ra_etha_ring_count_max) &&
+         (num_rx >= k_ra_etha_ring_count_min) && (num_rx <= k_ra_etha_ring_count_max) &&
+         (buffer_size >= k_ra_etha_ring_buf_min) && (buffer_size <= k_ra_etha_ring_buf_max);
+}
+
+/**
+ * @brief Saturating-add helper for the per-port traffic counters.
+ */
+static inline uint32_t internal_sat_add_u32(uint32_t base, uint32_t inc)
+{
+  if (inc > (UINT32_MAX - base)) {
+    return UINT32_MAX;
+  }
+  return base + inc;
+}
+
+ra_err_t ra_etha_descriptor_ring_init(ra_etha_port_t channel,
+                                      uint16_t       num_tx,
+                                      uint16_t       num_rx,
+                                      uint16_t       buffer_size)
+{
+  if (!internal_port_ok(channel)) {
+    ra_log_error(s_tag, "etha_descriptor_ring_init: channel out of range");
+    return k_ra_err_invalid_arg;
+  }
+  if (!internal_ring_args_ok(num_tx, num_rx, buffer_size)) {
+    ra_log_error(s_tag, "etha_descriptor_ring_init: ring args out of range");
+    return k_ra_err_invalid_arg;
+  }
+  s_slots[(uint8_t)channel].stats.ring_tx  = num_tx;
+  s_slots[(uint8_t)channel].stats.ring_rx  = num_rx;
+  s_slots[(uint8_t)channel].stats.ring_buf = buffer_size;
+
+  /* Clamp every per-class TX queue depth to num_tx so the hardware
+   * never schedules a class deeper than the host-side ring can hold.
+   * EATDQDC is 11 bits (k_ra_etha_mask_dqd = 0x7FF = 2047). */
+  uint16_t depth = num_tx;
+  if ((uint32_t)depth > k_ra_etha_mask_dqd) {
+    depth = (uint16_t)k_ra_etha_mask_dqd;
+  }
+  volatile r_etha_regs_t* reg = ra_etha(channel);
+  for (uint8_t i = 0U; i < k_ra_etha_tc_count; ++i) {
+    /* HUM Ch 32.3 "EATDQDCq : Per-class TX Queue Depth Cfg" p 1641 */
+    reg->EATDQDC[i] = (uint32_t)depth & k_ra_etha_mask_dqd;
+  }
+  return k_ra_ok;
+}
+
+ra_err_t ra_etha_get_stats(ra_etha_port_t channel, ra_etha_port_stats_t* out_stats)
+{
+  RA_CHECK_NULL_PTR(out_stats, s_tag, "etha_get_stats: out_stats null");
+  if (!internal_port_ok(channel)) {
+    ra_log_error(s_tag, "etha_get_stats: channel out of range");
+    return k_ra_err_invalid_arg;
+  }
+  *out_stats = s_slots[(uint8_t)channel].stats;
+  return k_ra_ok;
+}
+
+ra_err_t ra_etha_account_traffic(ra_etha_port_t channel,
+                                 uint32_t       tx_ok,
+                                 uint32_t       tx_err,
+                                 uint32_t       rx_ok,
+                                 uint32_t       rx_err,
+                                 uint32_t       rx_drop)
+{
+  if (!internal_port_ok(channel)) {
+    ra_log_error(s_tag, "etha_account_traffic: channel out of range");
+    return k_ra_err_invalid_arg;
+  }
+  ra_etha_port_stats_t* st = &s_slots[(uint8_t)channel].stats;
+  st->tx_ok                = internal_sat_add_u32(st->tx_ok, tx_ok);
+  st->tx_err               = internal_sat_add_u32(st->tx_err, tx_err);
+  st->rx_ok                = internal_sat_add_u32(st->rx_ok, rx_ok);
+  st->rx_err               = internal_sat_add_u32(st->rx_err, rx_err);
+  st->rx_drop              = internal_sat_add_u32(st->rx_drop, rx_drop);
+  return k_ra_ok;
+}
+
+ra_err_t
+ra_etha_open(ra_etha_port_t channel, const ra_etha_phy_open_t* phy, ra_rmac_phy_link_t* out_link)
+{
+  RA_CHECK_NULL_PTR(phy, s_tag, "etha_open: phy null");
+  RA_CHECK_NULL_PTR(out_link, s_tag, "etha_open: out_link null");
+  if (!internal_port_ok(channel)) {
+    ra_log_error(s_tag, "etha_open: channel out of range");
+    return k_ra_err_invalid_arg;
+  }
+  /* Map ETHA channel index 1:1 onto the corresponding RMAC port. */
+  const ra_rmac_port_t rmac_port = (ra_rmac_port_t)(uint8_t)channel;
+
+  /* HUM Ch 32.3.1.1 "EAMC : Mode Command Register" p 1631 */
+  ra_etha(channel)->EAMC = (uint32_t)k_ra_etha_opc_operation;
+
+  ra_err_t err = ra_rmac_phy_reset(rmac_port, phy->phy_addr);
+  if (err != k_ra_ok) {
+    ra_log_error(s_tag, "etha_open: phy_reset");
+    return err;
+  }
+  err = ra_rmac_phy_set_advertise(rmac_port, phy->phy_addr, phy->advertise);
+  if (err != k_ra_ok) {
+    ra_log_error(s_tag, "etha_open: set_advertise");
+    return err;
+  }
+  err = ra_rmac_phy_auto_neg_start(rmac_port, phy->phy_addr);
+  if (err != k_ra_ok) {
+    ra_log_error(s_tag, "etha_open: auto_neg_start");
+    return err;
+  }
+  return ra_rmac_phy_auto_neg_wait(rmac_port, phy->phy_addr, phy->timeout_ms, out_link);
 }

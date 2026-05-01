@@ -173,7 +173,7 @@ static inline void internal_rmw8(volatile uint8_t* reg, uint8_t mask, bool enabl
 
 [[nodiscard]] ra_err_t ra_bkup_init(const ra_bkup_config_t* cfg)
 {
-  RA_CHECK_NULL_PTR((void*)cfg, s_tag, "cfg must not be nullptr");
+  RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
   const ra_err_t v_err = internal_validate_cfg(cfg);
   RA_RETURN_ON_ERROR(v_err, s_tag, "bkup_init: cfg out of range");
 
@@ -402,7 +402,7 @@ static inline void internal_rmw8(volatile uint8_t* reg, uint8_t mask, bool enabl
   }
   /* HUM Ch 12.2.7 "VBTBKRn : VBATT Backup Register", p 505 */
   volatile uint32_t* slot = ra_bkup_vbtbkr_word(word_index);
-  RA_CHECK_NULL_PTR((void*)slot, s_tag, "vbtbkr word slot mapping failed");
+  RA_CHECK_NULL_PTR(slot, s_tag, "vbtbkr word slot mapping failed");
   *out = *slot;
   return k_ra_ok;
 }
@@ -414,7 +414,7 @@ static inline void internal_rmw8(volatile uint8_t* reg, uint8_t mask, bool enabl
   }
   /* HUM Ch 12.2.7 "VBTBKRn : VBATT Backup Register", p 505 */
   volatile uint32_t* slot = ra_bkup_vbtbkr_word(word_index);
-  RA_CHECK_NULL_PTR((void*)slot, s_tag, "vbtbkr word slot mapping failed");
+  RA_CHECK_NULL_PTR(slot, s_tag, "vbtbkr word slot mapping failed");
   *slot = value;
   return k_ra_ok;
 }
@@ -427,7 +427,7 @@ static inline void internal_rmw8(volatile uint8_t* reg, uint8_t mask, bool enabl
   }
   /* HUM Ch 12.2.7 "VBTBKRn : VBATT Backup Register", p 505 */
   volatile uint8_t* slot = ra_bkup_vbtbkr(index);
-  RA_CHECK_NULL_PTR((void*)slot, s_tag, "vbtbkr byte slot mapping failed");
+  RA_CHECK_NULL_PTR(slot, s_tag, "vbtbkr byte slot mapping failed");
   *out = *slot;
   return k_ra_ok;
 }
@@ -439,7 +439,7 @@ static inline void internal_rmw8(volatile uint8_t* reg, uint8_t mask, bool enabl
   }
   /* HUM Ch 12.2.7 "VBTBKRn : VBATT Backup Register", p 505 */
   volatile uint8_t* slot = ra_bkup_vbtbkr(index);
-  RA_CHECK_NULL_PTR((void*)slot, s_tag, "vbtbkr byte slot mapping failed");
+  RA_CHECK_NULL_PTR(slot, s_tag, "vbtbkr byte slot mapping failed");
   *slot = value;
   return k_ra_ok;
 }
@@ -600,7 +600,7 @@ static uint8_t internal_compose_vbtadcr3(const ra_bkup_tamper_config_t* cfg)
 
 [[nodiscard]] ra_err_t ra_bkup_tamper_init(const ra_bkup_tamper_config_t* cfg)
 {
-  RA_CHECK_NULL_PTR((void*)cfg, s_tag, "tamper cfg must not be nullptr");
+  RA_CHECK_NULL_PTR(cfg, s_tag, "tamper cfg must not be nullptr");
   if ((uint16_t)cfg->nc_width > k_ra_bkup_max_nc_width) {
     return k_ra_err_invalid_arg;
   }
@@ -760,7 +760,7 @@ static ra_err_t internal_validate_security_cfg(const ra_bkup_security_config_t* 
 
 [[nodiscard]] ra_err_t ra_bkup_security_apply(const ra_bkup_security_config_t* cfg)
 {
-  RA_CHECK_NULL_PTR((void*)cfg, s_tag, "security cfg must not be nullptr");
+  RA_CHECK_NULL_PTR(cfg, s_tag, "security cfg must not be nullptr");
   const ra_err_t v_err = internal_validate_security_cfg(cfg);
   RA_RETURN_ON_ERROR(v_err, s_tag, "security_apply: cfg bad");
 
@@ -777,7 +777,7 @@ static ra_err_t internal_validate_security_cfg(const ra_bkup_security_config_t* 
 
 [[nodiscard]] ra_err_t ra_bkup_security_get(ra_bkup_security_config_t* cfg)
 {
-  RA_CHECK_NULL_PTR((void*)cfg, s_tag, "security cfg must not be nullptr");
+  RA_CHECK_NULL_PTR(cfg, s_tag, "security cfg must not be nullptr");
   /* HUM Ch 12.2.1 "BBFSAR : Battery Backup Function Security Attribute Register", p 500 */
   cfg->bbfsar = (uint32_t)(*ra_bkup_bbfsar() & k_ra_bkup_bbfsar_mask_all);
   /* HUM Ch 12.2.2 "VBRSABAR : VBATT Backup Register Security Attribute Boundary Address Register", p 502 */

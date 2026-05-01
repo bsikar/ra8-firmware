@@ -278,7 +278,7 @@ static ra_lpm_off_t internal_dpsiegr_offset(ra_lpm_dpsier_idx_t idx)
 
 [[nodiscard]] ra_err_t ra_lpm_init(const ra_lpm_config_t* cfg)
 {
-  RA_CHECK_NULL_PTR((const void*)cfg, s_tag, "cfg must not be nullptr");
+  RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
 
   /* SBYCR: only OPE is software-writable (HUM Ch 11.2.18 p 456). */
   uint8_t sbycr = 0U;
@@ -525,7 +525,7 @@ ra_lpm_snooze_set_request_sources(bool ulpt0_underflow, bool ulpt1_underflow, bo
 
 [[nodiscard]] ra_err_t ra_lpm_set_ram_retention(const ra_lpm_ram_retention_t* cfg)
 {
-  RA_CHECK_NULL_PTR((const void*)cfg, s_tag, "ram retention cfg null");
+  RA_CHECK_NULL_PTR(cfg, s_tag, "ram retention cfg null");
 
   /* HUM Ch 11.2.16 "PDRAMSCR0 : SRAM Power Domain Standby Control 0", p 453 */
   *ra_lpm_sysc_reg16(k_ra_lpm_pdramscr0_off) =
@@ -545,7 +545,7 @@ ra_lpm_snooze_set_request_sources(bool ulpt0_underflow, bool ulpt1_underflow, bo
 
 [[nodiscard]] ra_err_t ra_lpm_set_ldo_standby(const ra_lpm_ldo_cfg_t* cfg)
 {
-  RA_CHECK_NULL_PTR((const void*)cfg, s_tag, "ldo cfg null");
+  RA_CHECK_NULL_PTR(cfg, s_tag, "ldo cfg null");
 
   /* Verify OPCCR.OPCM == 0 (High-speed mode) per HUM Ch 11.2.1 p 436 -- *LDOCR
    * writes are only permitted in HSM. */
@@ -598,7 +598,7 @@ ra_lpm_snooze_set_request_sources(bool ulpt0_underflow, bool ulpt1_underflow, bo
 
 [[nodiscard]] ra_err_t ra_lpm_get_clock_stop(ra_lpm_clock_t clock, bool* stop)
 {
-  RA_CHECK_NULL_PTR((void*)stop, s_tag, "stop must not be nullptr");
+  RA_CHECK_NULL_PTR(stop, s_tag, "stop must not be nullptr");
   if ((uint8_t)clock >= k_ra_lpm_clock_count) {
     ra_log_error(s_tag, "get_clock_stop: bad clock");
     return k_ra_err_invalid_arg;
@@ -616,7 +616,7 @@ ra_lpm_snooze_set_request_sources(bool ulpt0_underflow, bool ulpt1_underflow, bo
 
 [[nodiscard]] ra_err_t ra_lpm_get_opccr(uint8_t* opccr)
 {
-  RA_CHECK_NULL_PTR((void*)opccr, s_tag, "opccr must not be nullptr");
+  RA_CHECK_NULL_PTR(opccr, s_tag, "opccr must not be nullptr");
   /* HUM Ch 11.2.11 "OPCCR : Operating Power Control Register", p 451 */
   *opccr = *ra_lpm_sysc_reg8(k_ra_lpm_opccr_off);
   return k_ra_ok;
@@ -701,7 +701,7 @@ ra_lpm_snooze_set_request_sources(bool ulpt0_underflow, bool ulpt1_underflow, bo
 
 [[nodiscard]] ra_err_t ra_lpm_get_status(uint32_t* out)
 {
-  RA_CHECK_NULL_PTR((void*)out, s_tag, "out must not be nullptr");
+  RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
 
   /* HUM Ch 11.2.18 "SBYCR : Standby Control Register", p 456 */
   const uint32_t sbycr = (uint32_t)*ra_lpm_sysc_reg8(k_ra_lpm_sbycr_off);
@@ -719,7 +719,7 @@ ra_lpm_snooze_set_request_sources(bool ulpt0_underflow, bool ulpt1_underflow, bo
 
 [[nodiscard]] ra_err_t ra_lpm_get_exit_cause(uint64_t* out)
 {
-  RA_CHECK_NULL_PTR((void*)out, s_tag, "out must not be nullptr");
+  RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
 
   /* HUM Ch 14.2.19 "WUPEN0 : Wake Up Interrupt Enable Register 0", p 550 */
   const uint64_t w0 = (uint64_t)*ra_lpm_icu_reg32(k_ra_lpm_wupen0_off);
@@ -732,9 +732,9 @@ ra_lpm_snooze_set_request_sources(bool ulpt0_underflow, bool ulpt1_underflow, bo
 
 [[nodiscard]] ra_err_t ra_lpm_get_dpsi_state(uint8_t enables[4], uint8_t flags[4], uint8_t edges[3])
 {
-  RA_CHECK_NULL_PTR((void*)enables, s_tag, "enables nullptr");
-  RA_CHECK_NULL_PTR((void*)flags, s_tag, "flags nullptr");
-  RA_CHECK_NULL_PTR((void*)edges, s_tag, "edges nullptr");
+  RA_CHECK_NULL_PTR(enables, s_tag, "enables nullptr");
+  RA_CHECK_NULL_PTR(flags, s_tag, "flags nullptr");
+  RA_CHECK_NULL_PTR(edges, s_tag, "edges nullptr");
 
   /* HUM Ch 11.2.22 "DPSIER0 : Deep Standby Interrupt Enable 0", p 459 */
   enables[0] = *ra_lpm_sysc_reg8(k_ra_lpm_dpsier0_off);

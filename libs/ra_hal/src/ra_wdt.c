@@ -244,7 +244,7 @@ static void internal_subs_clear_all(void)
 
 [[nodiscard]] ra_err_t ra_wdt_init(const ra_wdt_cfg_t* cfg)
 {
-  RA_CHECK_NULL_PTR((const void*)cfg, s_tag, "cfg must not be nullptr");
+  RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
   if (!internal_clock_div_is_valid(cfg->clock_div)) {
     return k_ra_err_invalid_arg;
   }
@@ -469,7 +469,7 @@ void ra_wdt_refresh_deferred(void)
 
 [[nodiscard]] ra_err_t ra_wdt_subscribe(ra_wdt_event_fn_t fn, void* ctx, uint8_t* out_slot)
 {
-  RA_CHECK_NULL_PTR((const void*)fn, s_tag, "fn must not be nullptr");
+  RA_CHECK_NULL_PTR(fn, s_tag, "fn must not be nullptr");
 
   /* Walk the table starting at the first non-legacy slot; slot 0 is
    * reserved for ``ra_wdt_attach_handler``. */

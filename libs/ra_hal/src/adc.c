@@ -267,7 +267,7 @@ ra_err_t ra_adc_read_channel(uint8_t channel, uint16_t* out_raw)
 
 ra_err_t ra_adc_init_configured(const ra_adc_cfg_t* cfg)
 {
-  RA_CHECK_NULL_PTR((void*)cfg, s_tag, "cfg must not be nullptr");
+  RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
 
   const ra_err_t mst_err = ra_mstp_enable(k_ra_mstp_adc16h);
   RA_RETURN_ON_ERROR(mst_err, s_tag, "adc_init_cfg: mstp enable");
@@ -513,7 +513,7 @@ static void internal_apply_group_enable(uint8_t group, ra_adc_trigger_src_t trig
 
 ra_err_t ra_adc_configure_scan_group(uint8_t group, const ra_adc_scan_group_cfg_t* cfg)
 {
-  RA_CHECK_NULL_PTR((void*)cfg, s_tag, "cfg must not be nullptr");
+  RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
 
   const ra_err_t v_err = internal_validate_group_cfg(group, cfg);
   RA_RETURN_ON_ERROR(v_err, s_tag, "configure_scan_group: validation");

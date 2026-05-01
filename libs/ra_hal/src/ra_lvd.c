@@ -525,7 +525,7 @@ static void internal_lvd_program_cr0_chain(const ra_lvd_channel_map_t* map, cons
 
 ra_err_t ra_lvd_channel_init(ra_lvd_channel_t channel, const ra_lvd_cfg_t* cfg)
 {
-  RA_CHECK_NULL_PTR((void*)cfg, s_tag, "cfg must not be nullptr");
+  RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
 
   uint8_t        idx     = 0U;
   const ra_err_t map_err = internal_channel_to_idx(channel, &idx);
@@ -849,7 +849,7 @@ ra_err_t ra_lvd_set_negate_mode(ra_lvd_channel_t channel, ra_lvd_negate_t negate
 
 ra_err_t ra_lvd_get_status(ra_lvd_channel_t channel, ra_lvd_status_t* out)
 {
-  RA_CHECK_NULL_PTR((void*)out, s_tag, "out must not be nullptr");
+  RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
 
   uint8_t        idx     = 0U;
   const ra_err_t map_err = internal_channel_to_idx(channel, &idx);

@@ -229,7 +229,7 @@ ra_err_t ra_gpt_read(uint8_t channel, uint32_t* out)
 
 ra_err_t ra_gpt_init(uint8_t channel, const ra_gpt_cfg_t* cfg)
 {
-  RA_CHECK_NULL_PTR((void*)cfg, s_tag, "cfg must not be nullptr");
+  RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
   volatile r_gpt_channel_regs_t* reg = ra_gpt(channel);
   RA_CHECK_NULL_PTR(reg, s_tag, "channel out of range");
 
@@ -364,7 +364,7 @@ ra_err_t ra_gpt_write_dma(uint8_t              channel,
                           void*                ctx,
                           uint8_t*             out_dma_channel)
 {
-  RA_CHECK_NULL_PTR((void*)periods, s_tag, "gpt_write_dma: periods");
+  RA_CHECK_NULL_PTR(periods, s_tag, "gpt_write_dma: periods");
   RA_CHECK_NULL_PTR(out_dma_channel, s_tag, "gpt_write_dma: out_dma_channel");
   if ((channel >= (uint8_t)k_ra_gpt_channel_count) || (count == 0U)) {
     return k_ra_err_invalid_arg;
@@ -500,7 +500,7 @@ static uint32_t internal_gtio_pattern(ra_gpt_pwm_polarity_t polarity)
 ra_err_t
 ra_gpt_pwm_pin_configure(uint8_t channel, ra_gpt_pwm_pin_t pin, const ra_gpt_pwm_pin_cfg_t* cfg)
 {
-  RA_CHECK_NULL_PTR((void*)cfg, s_tag, "cfg must not be nullptr");
+  RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
   if (pin > k_ra_gpt_pin_b) {
     return k_ra_err_invalid_arg;
   }
@@ -606,7 +606,7 @@ static ra_err_t internal_three_phase_init_subs(const ra_gpt_three_phase_cfg_t* c
 
 ra_err_t ra_gpt_three_phase_open(const ra_gpt_three_phase_cfg_t* cfg)
 {
-  RA_CHECK_NULL_PTR((void*)cfg, s_tag, "three_phase cfg must not be nullptr");
+  RA_CHECK_NULL_PTR(cfg, s_tag, "three_phase cfg must not be nullptr");
   if (s_three_phase.open) {
     return k_ra_err_invalid_state;
   }

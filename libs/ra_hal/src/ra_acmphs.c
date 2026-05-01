@@ -146,7 +146,7 @@ static void*                s_acmphs_ctx;
 
 ra_err_t ra_acmphs_channel_init(uint8_t channel, const ra_acmphs_cfg_t* cfg)
 {
-  RA_CHECK_NULL_PTR((void*)cfg, s_tag, "cfg must not be nullptr");
+  RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
   if ((uint16_t)channel >= k_ra_acmphs_channel_count) {
     return k_ra_err_invalid_arg;
   }

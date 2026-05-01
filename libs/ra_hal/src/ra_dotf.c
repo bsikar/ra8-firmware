@@ -415,7 +415,7 @@ static void internal_state_reset(uint8_t channel)
 
 [[nodiscard]] ra_err_t ra_dotf_set_region(uint8_t channel, const ra_dotf_region_t* region)
 {
-  RA_CHECK_NULL_PTR((void*)region, s_tag, "region must not be nullptr");
+  RA_CHECK_NULL_PTR(region, s_tag, "region must not be nullptr");
   if (!internal_channel_in_range(channel)) {
     return k_ra_err_invalid_arg;
   }
@@ -448,7 +448,7 @@ static void internal_state_reset(uint8_t channel)
     return k_ra_err_invalid_state;
   }
   volatile ra_dotf_regs_t* reg = ra_dotf_regs(channel);
-  RA_CHECK_NULL_PTR((void*)reg, s_tag, "channel mapping failed");
+  RA_CHECK_NULL_PTR(reg, s_tag, "channel mapping failed");
 
   const ra_dotf_region_t* r = &st->regions[region_id];
   /* FSP r_ospi_b.c:1660 "Set the end and start area for DOTF
@@ -464,7 +464,7 @@ static void internal_state_reset(uint8_t channel)
 
 [[nodiscard]] ra_err_t ra_dotf_get_active_region(uint8_t channel, ra_dotf_region_t* region)
 {
-  RA_CHECK_NULL_PTR((void*)region, s_tag, "region must not be nullptr");
+  RA_CHECK_NULL_PTR(region, s_tag, "region must not be nullptr");
   if (!internal_channel_in_range(channel)) {
     return k_ra_err_invalid_arg;
   }
@@ -483,7 +483,7 @@ static void internal_state_reset(uint8_t channel)
 
 [[nodiscard]] ra_err_t ra_dotf_install_key(uint8_t channel, const ra_dotf_key_handle_t* handle)
 {
-  RA_CHECK_NULL_PTR((void*)handle, s_tag, "handle must not be nullptr");
+  RA_CHECK_NULL_PTR(handle, s_tag, "handle must not be nullptr");
   if (!internal_channel_in_range(channel)) {
     return k_ra_err_invalid_arg;
   }
@@ -495,7 +495,7 @@ static void internal_state_reset(uint8_t channel)
     return k_ra_err_invalid_arg;
   }
   volatile ra_dotf_regs_t* reg = ra_dotf_regs(channel);
-  RA_CHECK_NULL_PTR((void*)reg, s_tag, "channel mapping failed");
+  RA_CHECK_NULL_PTR(reg, s_tag, "channel mapping failed");
 
   ra_dotf_chan_state_t* st = &s_dotf_state[channel];
   st->key                  = *handle;
@@ -507,12 +507,12 @@ static void internal_state_reset(uint8_t channel)
 
 [[nodiscard]] ra_err_t ra_dotf_set_iv(uint8_t channel, const uint32_t* iv_words)
 {
-  RA_CHECK_NULL_PTR((void*)iv_words, s_tag, "iv_words must not be nullptr");
+  RA_CHECK_NULL_PTR(iv_words, s_tag, "iv_words must not be nullptr");
   if (!internal_channel_in_range(channel)) {
     return k_ra_err_invalid_arg;
   }
   volatile ra_dotf_regs_t* reg = ra_dotf_regs(channel);
-  RA_CHECK_NULL_PTR((void*)reg, s_tag, "channel mapping failed");
+  RA_CHECK_NULL_PTR(reg, s_tag, "channel mapping failed");
 
   ra_dotf_chan_state_t* st = &s_dotf_state[channel];
   for (uint8_t i = 0U; i < k_ra_dotf_iv_word_count; ++i) {
@@ -601,12 +601,12 @@ static ra_err_t internal_validate_rotate_inputs(uint8_t                     chan
                                           const ra_dotf_key_handle_t* new_handle,
                                           const uint32_t*             iv_words)
 {
-  RA_CHECK_NULL_PTR((void*)new_handle, s_tag, "new_handle must not be nullptr");
+  RA_CHECK_NULL_PTR(new_handle, s_tag, "new_handle must not be nullptr");
   const ra_err_t val_err = internal_validate_rotate_inputs(channel, new_handle);
   RA_RETURN_ON_ERROR(val_err, s_tag, "rotate_key: validation failed");
 
   volatile ra_dotf_regs_t* reg = ra_dotf_regs(channel);
-  RA_CHECK_NULL_PTR((void*)reg, s_tag, "channel mapping failed");
+  RA_CHECK_NULL_PTR(reg, s_tag, "channel mapping failed");
 
   ra_dotf_chan_state_t* st          = &s_dotf_state[channel];
   const uint8_t         was_enabled = st->enabled;
@@ -643,7 +643,7 @@ static ra_err_t internal_validate_rotate_inputs(uint8_t                     chan
     return k_ra_err_invalid_arg;
   }
   volatile ra_dotf_regs_t* reg = ra_dotf_regs(channel);
-  RA_CHECK_NULL_PTR((void*)reg, s_tag, "channel mapping failed");
+  RA_CHECK_NULL_PTR(reg, s_tag, "channel mapping failed");
 
   ra_dotf_chan_state_t* st = &s_dotf_state[channel];
   /* REG00 enables AES; pattern is (mode=CTR | key_size | sca | enable).
@@ -662,7 +662,7 @@ static ra_err_t internal_validate_rotate_inputs(uint8_t                     chan
     return k_ra_err_invalid_arg;
   }
   volatile ra_dotf_regs_t* reg = ra_dotf_regs(channel);
-  RA_CHECK_NULL_PTR((void*)reg, s_tag, "channel mapping failed");
+  RA_CHECK_NULL_PTR(reg, s_tag, "channel mapping failed");
 
   /* Writing 0 to REG00 puts the channel in bypass.
    * HUM Ch 45.3 "Register Descriptions" p 3049 */
@@ -689,7 +689,7 @@ static ra_err_t internal_validate_rotate_inputs(uint8_t                     chan
   st->cached_sca           = level;
   if (st->enabled != 0U) {
     volatile ra_dotf_regs_t* reg = ra_dotf_regs(channel);
-    RA_CHECK_NULL_PTR((void*)reg, s_tag, "channel mapping failed");
+    RA_CHECK_NULL_PTR(reg, s_tag, "channel mapping failed");
     /* HUM Ch 45.3 "Register Descriptions" p 3049 */
     reg->REG00 = internal_assemble_reg00(st, true);
   }
@@ -709,7 +709,7 @@ static ra_err_t internal_validate_rotate_inputs(uint8_t                     chan
   st->cached_key_size      = size;
   if (st->enabled != 0U) {
     volatile ra_dotf_regs_t* reg = ra_dotf_regs(channel);
-    RA_CHECK_NULL_PTR((void*)reg, s_tag, "channel mapping failed");
+    RA_CHECK_NULL_PTR(reg, s_tag, "channel mapping failed");
     /* HUM Ch 45.3 "Register Descriptions" p 3049 */
     reg->REG00 = internal_assemble_reg00(st, true);
   }
@@ -718,12 +718,12 @@ static ra_err_t internal_validate_rotate_inputs(uint8_t                     chan
 
 [[nodiscard]] ra_err_t ra_dotf_run_self_test(uint8_t channel, uint32_t* out_status)
 {
-  RA_CHECK_NULL_PTR((void*)out_status, s_tag, "out_status must not be nullptr");
+  RA_CHECK_NULL_PTR(out_status, s_tag, "out_status must not be nullptr");
   if (!internal_channel_in_range(channel)) {
     return k_ra_err_invalid_arg;
   }
   volatile ra_dotf_regs_t* reg = ra_dotf_regs(channel);
-  RA_CHECK_NULL_PTR((void*)reg, s_tag, "channel mapping failed");
+  RA_CHECK_NULL_PTR(reg, s_tag, "channel mapping failed");
 
   /* Save current REG00 so the function is observably side-effect-free
    * once the self-test completes. */
@@ -752,12 +752,12 @@ static ra_err_t internal_validate_rotate_inputs(uint8_t                     chan
 
 [[nodiscard]] ra_err_t ra_dotf_get_status(uint8_t channel, uint32_t* out_mask)
 {
-  RA_CHECK_NULL_PTR((void*)out_mask, s_tag, "out_mask must not be nullptr");
+  RA_CHECK_NULL_PTR(out_mask, s_tag, "out_mask must not be nullptr");
   if (!internal_channel_in_range(channel)) {
     return k_ra_err_invalid_arg;
   }
   volatile ra_dotf_regs_t* reg = ra_dotf_regs(channel);
-  RA_CHECK_NULL_PTR((void*)reg, s_tag, "channel mapping failed");
+  RA_CHECK_NULL_PTR(reg, s_tag, "channel mapping failed");
 
   /* Raw REG00 read for diagnostics.
    * HUM Ch 45.3 "Register Descriptions" p 3049 */
@@ -771,7 +771,7 @@ static ra_err_t internal_validate_rotate_inputs(uint8_t                     chan
     return k_ra_err_invalid_arg;
   }
   volatile ra_dotf_regs_t* reg = ra_dotf_regs(channel);
-  RA_CHECK_NULL_PTR((void*)reg, s_tag, "channel mapping failed");
+  RA_CHECK_NULL_PTR(reg, s_tag, "channel mapping failed");
 
   /* Clearing REG00 wipes the AES enable + status bits.
    * HUM Ch 45.3 "Register Descriptions" p 3049 */

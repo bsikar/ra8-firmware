@@ -1295,7 +1295,7 @@ ra_err_t ra_mipi_phy_reset(void)
 
 ra_err_t ra_mipi_phy_recover_from_error(const ra_mipi_phy_config_t* cfg)
 {
-  RA_CHECK_NULL_PTR((const void*)cfg, s_tag, "recover: cfg must not be nullptr");
+  RA_CHECK_NULL_PTR(cfg, s_tag, "recover: cfg must not be nullptr");
   const ra_err_t r_err = ra_mipi_phy_reset();
   RA_RETURN_ON_ERROR(r_err, s_tag, "recover: reset failed");
   return ra_mipi_phy_init(cfg);
@@ -1424,7 +1424,7 @@ ra_err_t ra_mipi_phy_pll_stop(void)
 
 ra_err_t ra_mipi_phy_set_lane_speed(const ra_mipi_phy_pll_t* pll)
 {
-  RA_CHECK_NULL_PTR((const void*)pll, s_tag, "pll must not be nullptr");
+  RA_CHECK_NULL_PTR(pll, s_tag, "pll must not be nullptr");
   const ra_err_t v_err = internal_mipi_phy_validate_pll(pll);
   RA_RETURN_ON_ERROR(v_err, s_tag, "set_lane_speed: pll out of range");
 
@@ -1632,7 +1632,7 @@ ra_err_t ra_mipi_phy_select_timing(ra_mipi_phy_mode_t          mode,
 
 ra_err_t ra_mipi_phy_validate_pll_band(const ra_mipi_phy_pll_t* pll, uint8_t mosc_mhz)
 {
-  RA_CHECK_NULL_PTR((const void*)pll, s_tag, "validate_pll_band: pll must not be nullptr");
+  RA_CHECK_NULL_PTR(pll, s_tag, "validate_pll_band: pll must not be nullptr");
   if ((mosc_mhz < k_ra_mipi_phy_mosc_min_mhz) || (mosc_mhz > k_ra_mipi_phy_mosc_max_mhz)) {
     /* HUM Ch 64.1 "Overview" p 3822 */
     return k_ra_err_invalid_arg;

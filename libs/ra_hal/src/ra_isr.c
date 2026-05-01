@@ -215,7 +215,7 @@ ra_err_t ra_isr_register(ra_elc_event_t   event,
                          uint8_t          priority,
                          uint16_t*        out_slot)
 {
-  RA_CHECK_NULL_PTR((void*)handler, s_tag, "handler must not be NULL");
+  RA_CHECK_NULL_PTR(handler, s_tag, "handler must not be NULL");
   if (priority > k_ra_isr_prio_max) {
     return k_ra_err_invalid_arg;
   }

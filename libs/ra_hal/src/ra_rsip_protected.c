@@ -176,7 +176,7 @@ ra_err_t ra_rsip_protected_aes_init(const uint8_t*         wrapped_key,
                                     ra_rsip_aes_mode_t     mode,
                                     const uint8_t*         iv)
 {
-  RA_CHECK_NULL_PTR((void*)wrapped_key, s_tag, "p_aes_init: wrapped_key");
+  RA_CHECK_NULL_PTR(wrapped_key, s_tag, "p_aes_init: wrapped_key");
 
   ra_err_t rc = ra_rsip_key_validate(wrapped_key, k_ra_rsip_wrapped_type_aes);
   if (rc != k_ra_ok) {
@@ -218,7 +218,7 @@ ra_err_t ra_rsip_protected_aes_encrypt(const uint8_t* plaintext, uint8_t* cipher
   if (!s_p_aes_active) {
     return k_ra_err_invalid_state;
   }
-  RA_CHECK_NULL_PTR((void*)plaintext, s_tag, "p_aes_encrypt: plaintext");
+  RA_CHECK_NULL_PTR(plaintext, s_tag, "p_aes_encrypt: plaintext");
   RA_CHECK_NULL_PTR(ciphertext, s_tag, "p_aes_encrypt: ciphertext");
   return ra_rsip_aes_cipher(&s_p_aes_handle,
                             s_p_aes_mode,
@@ -234,7 +234,7 @@ ra_err_t ra_rsip_protected_aes_decrypt(const uint8_t* ciphertext, uint8_t* plain
   if (!s_p_aes_active) {
     return k_ra_err_invalid_state;
   }
-  RA_CHECK_NULL_PTR((void*)ciphertext, s_tag, "p_aes_decrypt: ciphertext");
+  RA_CHECK_NULL_PTR(ciphertext, s_tag, "p_aes_decrypt: ciphertext");
   RA_CHECK_NULL_PTR(plaintext, s_tag, "p_aes_decrypt: plaintext");
   return ra_rsip_aes_cipher(&s_p_aes_handle,
                             s_p_aes_mode,
@@ -265,8 +265,8 @@ ra_err_t ra_rsip_protected_rsa_decrypt(const uint8_t*     wrapped_priv,
                                        uint8_t*           plaintext_out,
                                        uint32_t           plaintext_cap)
 {
-  RA_CHECK_NULL_PTR((void*)wrapped_priv, s_tag, "p_rsa_decrypt: wrapped_priv");
-  RA_CHECK_NULL_PTR((void*)ciphertext, s_tag, "p_rsa_decrypt: ciphertext");
+  RA_CHECK_NULL_PTR(wrapped_priv, s_tag, "p_rsa_decrypt: wrapped_priv");
+  RA_CHECK_NULL_PTR(ciphertext, s_tag, "p_rsa_decrypt: ciphertext");
   RA_CHECK_NULL_PTR(plaintext_out, s_tag, "p_rsa_decrypt: plaintext_out");
 
   /* The injection layer tags both private and public RSA blobs with
@@ -342,8 +342,8 @@ ra_err_t ra_rsip_protected_ecdsa_sign(const uint8_t*  wrapped_priv,
                                       uint32_t        hash_len,
                                       uint8_t*        sig_out)
 {
-  RA_CHECK_NULL_PTR((void*)wrapped_priv, s_tag, "p_ecdsa_sign: wrapped_priv");
-  RA_CHECK_NULL_PTR((void*)hash, s_tag, "p_ecdsa_sign: hash");
+  RA_CHECK_NULL_PTR(wrapped_priv, s_tag, "p_ecdsa_sign: wrapped_priv");
+  RA_CHECK_NULL_PTR(hash, s_tag, "p_ecdsa_sign: hash");
   RA_CHECK_NULL_PTR(sig_out, s_tag, "p_ecdsa_sign: sig_out");
 
   ra_err_t rc = ra_rsip_key_validate(wrapped_priv, k_ra_rsip_wrapped_type_ecc_priv);

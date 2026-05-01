@@ -97,7 +97,7 @@ static inline uint32_t internal_pack_mac4(uint8_t b0, uint8_t b1, uint8_t b2, ui
 
 ra_err_t ra_ptp_open(const ra_ptp_cfg_t* cfg)
 {
-  RA_CHECK_NULL_PTR((void*)cfg, s_tag, "cfg must not be nullptr");
+  RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
   if ((uint16_t)cfg->domain > (uint16_t)k_ra_ptp_domain_user_max) {
     return k_ra_err_invalid_arg;
   }
