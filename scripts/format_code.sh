@@ -139,6 +139,7 @@ find_source_files() {
             done < <(find "$dir" -name "$ext" -type f \
                 -not -path "*/build/*" \
                 -not -path "*/_deps/*" \
+                -not -path "*/third_party/*" \
                 -print0 2>/dev/null)
         done
     done

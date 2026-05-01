@@ -1,0 +1,23 @@
+#
+# port/threadx/CMakeLists.txt
+#
+# This file exists so a per-app build can do
+#
+#     add_subdirectory(${RA_REPO_ROOT}/port/threadx threadx_port)
+#
+# and end up with the same `threadx` static library the top-level
+# include in cmake/threadx.cmake produces. Both routes call the same
+# helper file so the two paths stay in lock-step.
+#
+# Copyright (c) 2026 Brighton Sikarskie
+# SPDX-License-Identifier: MIT
+#
+
+cmake_minimum_required(VERSION 3.20)
+
+if(NOT DEFINED RA_REPO_ROOT)
+    get_filename_component(RA_REPO_ROOT
+                           "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUTE)
+endif()
+
+include(${RA_REPO_ROOT}/cmake/threadx.cmake)
