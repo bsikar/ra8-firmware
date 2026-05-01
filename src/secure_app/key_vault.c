@@ -191,7 +191,7 @@ ra_err_t ra_key_vault_init(void)
 
 ra_err_t ra_key_vault_store(uint16_t slot, const uint8_t* key)
 {
-  RA_CHECK_NULL_PTR((void*)key, s_tag, "store: key");
+  RA_CHECK_NULL_PTR(key, s_tag, "store: key");
   if (slot >= k_ra_key_vault_slots) {
     return k_ra_err_invalid_arg;
   }
@@ -203,7 +203,7 @@ ra_err_t ra_key_vault_store(uint16_t slot, const uint8_t* key)
 
 ra_err_t ra_key_vault_sha256_xor_challenge(uint16_t slot, const uint8_t* challenge, uint8_t* out)
 {
-  RA_CHECK_NULL_PTR((void*)challenge, s_tag, "challenge: challenge");
+  RA_CHECK_NULL_PTR(challenge, s_tag, "challenge: challenge");
   RA_CHECK_NULL_PTR(out, s_tag, "challenge: out");
   if (slot >= k_ra_key_vault_slots) {
     return k_ra_err_invalid_arg;

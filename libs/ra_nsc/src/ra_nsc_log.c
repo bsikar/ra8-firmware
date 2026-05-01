@@ -55,8 +55,8 @@ static void internal_safe_strcpy(char* dst, const char* src, uint32_t cap)
 
 RA_NSC_VENEER ra_err_t ra_nsc_log_emit(const char* tag, const char* message)
 {
-  RA_CHECK_NULL_PTR((void*)tag, s_tag, "log_emit: tag");
-  RA_CHECK_NULL_PTR((void*)message, s_tag, "log_emit: message");
+  RA_CHECK_NULL_PTR(tag, s_tag, "log_emit: tag");
+  RA_CHECK_NULL_PTR(message, s_tag, "log_emit: message");
   /* Bound check the cap; cmse_check_address_range only validates
    * the prefix we are about to copy. */
   RA_NSC_CHECK_NS_RANGE_R(tag, (uint32_t)k_ra_nsc_log_msg_max_len);

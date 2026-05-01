@@ -29,7 +29,7 @@ RA_NSC_VENEER ra_err_t ra_nsc_key_vault_challenge(uint16_t       slot,
                                                   const uint8_t* ns_chal,
                                                   uint8_t*       ns_digest)
 {
-  RA_CHECK_NULL_PTR((void*)ns_chal, s_tag, "challenge: ns_chal");
+  RA_CHECK_NULL_PTR(ns_chal, s_tag, "challenge: ns_chal");
   RA_CHECK_NULL_PTR(ns_digest, s_tag, "challenge: ns_digest");
   RA_NSC_CHECK_NS_RANGE_R(ns_chal, (uint32_t)k_ra_key_vault_chal_bytes);
   RA_NSC_CHECK_NS_RANGE_RW(ns_digest, (uint32_t)k_ra_key_vault_digest_bytes);

@@ -14,6 +14,7 @@
  * {World: NS}
  */
 
+#include <stdalign.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -143,6 +144,14 @@ priv_extract(mz_zip_archive* zip, const char* name, uint8_t* buf, size_t cap, si
  * the inline storage is large enough at compile time. */
 static_assert(k_ra_epub_zip_archive_bytes >= sizeof(mz_zip_archive),
               "k_ra_epub_zip_archive_bytes too small for mz_zip_archive");
+
+/* The byte buffer is declared with `alignas(max_align_t)` in the
+ * header; verify miniz's actual alignment requirement is satisfied by
+ * that choice. Catches future miniz revisions that bump alignment to
+ * something larger than the platform's max_align_t (extremely
+ * unlikely, but the cost of the check is zero). */
+static_assert(alignof(mz_zip_archive) <= alignof(max_align_t),
+              "mz_zip_archive alignment exceeds max_align_t");
 
 /**
  * @brief Tear down an in-place archive on the failure path.

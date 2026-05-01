@@ -195,7 +195,7 @@ ra_err_t ra_net_pal_deinit(void)
 
 ra_err_t ra_net_pal_set_mac_addr(const ra_net_pal_mac_t* mac)
 {
-  RA_CHECK_NULL_PTR((void*)mac, s_tag, "set_mac_addr: mac");
+  RA_CHECK_NULL_PTR(mac, s_tag, "set_mac_addr: mac");
   if (!s_state.initialised) {
     return k_ra_err_invalid_state;
   }
@@ -215,7 +215,7 @@ ra_err_t ra_net_pal_get_mac_addr(ra_net_pal_mac_t* out_mac)
 
 ra_err_t ra_net_pal_send_frame(const uint8_t* frame, uint16_t len)
 {
-  RA_CHECK_NULL_PTR((void*)frame, s_tag, "send_frame: frame");
+  RA_CHECK_NULL_PTR(frame, s_tag, "send_frame: frame");
   if (!s_state.initialised) {
     return k_ra_err_invalid_state;
   }
