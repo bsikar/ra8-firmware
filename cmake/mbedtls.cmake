@@ -1,26 +1,35 @@
 #
 # cmake/mbedtls.cmake
 #
-# Top-level integration for the vendored Mbed TLS library on RA8D2
-# (Cortex-M85). Mbed TLS owns the X.509 + TLS 1.2 / 1.3 surface; AES
-# + SHA-256 are routed through our RSIP port shims (see
-# ``port/mbedtls/``); RSA / ECDH stay on Mbed TLS's bignum until the
-# RSIP-asym path is wired in a later sweep.
+# Top-level integration for the vendored Mbed TLS 4.x + TF-PSA-Crypto
+# 1.x library on RA8D2 (Cortex-M85). Mbed TLS 4.x split the
+# cryptographic primitives out of the main repo into a companion
+# `tf-psa-crypto` repo: AES, SHA, RSA, ECC, bignum, PSA crypto layer
+# all live there now. The mbedtls/library/ tree retains TLS, X.509,
+# SSL, debug, and the MPS / net / timing helpers. Both trees are
+# vendored: ``libs/third_party/mbedtls`` and
+# ``libs/third_party/tf-psa-crypto``.
 #
 # Exposes the ``RA_USE_MBEDTLS`` option; when ON, this file:
 #
 #   1. Verifies that ThreadX + NetX Duo are also enabled (Mbed TLS
 #      reaches sockets through NetX Duo's ``nx_*`` API in this firmware
 #      and ThreadX is required for thread-safe locking).
-#   2. Compiles ``libs/third_party/mbedtls/library/*.c`` into a
-#      single ``mbedtls_objs`` object library, with the project-wide
-#      config file from ``port/mbedtls/mbedtls_config.h`` pinned via
-#      ``-DMBEDTLS_CONFIG_FILE`` so every TU sees the same surface.
+#   2. Compiles the union of TF-PSA-Crypto's ``core/`` +
+#      ``drivers/builtin/src/`` + ``utilities/`` + ``extras/`` +
+#      ``platform/`` and Mbed TLS's ``library/`` into a single
+#      ``mbedtls_objs`` object library, with the project-wide
+#      mbedtls + crypto config files pinned via
+#      ``-DMBEDTLS_CONFIG_FILE`` / ``-DTF_PSA_CRYPTO_CONFIG_FILE`` so
+#      every TU sees the same surface.
 #   3. Pulls in our ``port/mbedtls/`` shim. The port's include
 #      directory is INTERFACE-prepended on the consumer-facing
-#      ``mbedtls`` target so ``port/mbedtls/mbedtls_aes_alt.h`` /
-#      ``port/mbedtls/mbedtls_sha256_alt.h`` shadow the upstream
-#      AES_ALT / SHA256_ALT inclusion sites.
+#      ``mbedtls`` target. (In Mbed TLS 4.x the legacy
+#      ``MBEDTLS_AES_ALT`` / ``MBEDTLS_SHA256_ALT`` hooks have been
+#      replaced by the PSA driver wrapper interface; the port shim
+#      sources are kept compiling as scaffolding for a future
+#      RSIP-via-PSA-driver wave but they are not currently dispatched
+#      to.)
 #
 # Apps that want Mbed TLS link against ``mbedtls`` and
 # ``mbedtls_port_ra_rsip``; everything else (include dirs, defines,
@@ -67,6 +76,18 @@ set(_RA_MBEDTLS_LIB_DIR     "${_RA_MBEDTLS_VENDOR_DIR}/library")
 set(_RA_MBEDTLS_PORT_DIR    "${_RA_MBEDTLS_REPO_ROOT}/port/mbedtls")
 set(_RA_MBEDTLS_CONFIG_FILE "${_RA_MBEDTLS_PORT_DIR}/mbedtls_config.h")
 
+set(_RA_TFPSA_DIR              "${_RA_MBEDTLS_REPO_ROOT}/libs/third_party/tf-psa-crypto")
+set(_RA_TFPSA_INC_DIR          "${_RA_TFPSA_DIR}/include")
+set(_RA_TFPSA_CORE_DIR         "${_RA_TFPSA_DIR}/core")
+set(_RA_TFPSA_DISPATCH_DIR     "${_RA_TFPSA_DIR}/dispatch")
+set(_RA_TFPSA_DRIVERS_DIR      "${_RA_TFPSA_DIR}/drivers/builtin")
+set(_RA_TFPSA_DRIVERS_INC_DIR  "${_RA_TFPSA_DRIVERS_DIR}/include")
+set(_RA_TFPSA_DRIVERS_SRC_DIR  "${_RA_TFPSA_DRIVERS_DIR}/src")
+set(_RA_TFPSA_PLATFORM_DIR     "${_RA_TFPSA_DIR}/platform")
+set(_RA_TFPSA_UTILITIES_DIR    "${_RA_TFPSA_DIR}/utilities")
+set(_RA_TFPSA_EXTRAS_DIR       "${_RA_TFPSA_DIR}/extras")
+set(_RA_TFPSA_CRYPTO_CONFIG    "${_RA_MBEDTLS_PORT_DIR}/tf_psa_crypto_config.h")
+
 if(NOT EXISTS "${_RA_MBEDTLS_INC_DIR}/mbedtls/build_info.h")
     message(FATAL_ERROR
         "RA_USE_MBEDTLS=ON but Mbed TLS vendor tree is missing at "
@@ -79,36 +100,25 @@ if(NOT EXISTS "${_RA_MBEDTLS_CONFIG_FILE}")
         "${_RA_MBEDTLS_CONFIG_FILE} is missing.")
 endif()
 
-# The Mbed TLS 4.x vendor tree splits crypto into the companion
-# `tf-psa-crypto` repo. The combined check for that companion tree
-# lives in `mbedtls_common.h` which `#include`s
-# `tf_psa_crypto_platform_requirements.h`. When the companion tree
-# has not been vendored, defer the failure to a clear status message
-# (and skip the rest of this file) instead of letting the compile
-# blow up with a cryptic "file not found" later. The companion tree
-# arrives as `libs/third_party/tf-psa-crypto/` in a follow-up sweep.
-set(_RA_MBEDTLS_TF_PSA_HDR_PATTERNS
-    "${_RA_MBEDTLS_REPO_ROOT}/libs/third_party/tf-psa-crypto/include/tf_psa_crypto_platform_requirements.h"
-    "${_RA_MBEDTLS_REPO_ROOT}/libs/third_party/tf-psa-crypto/drivers/builtin/include/tf_psa_crypto_platform_requirements.h"
-)
-set(_RA_MBEDTLS_TF_PSA_FOUND FALSE)
-foreach(_p IN LISTS _RA_MBEDTLS_TF_PSA_HDR_PATTERNS)
-    if(EXISTS "${_p}")
-        set(_RA_MBEDTLS_TF_PSA_FOUND TRUE)
-        get_filename_component(_RA_MBEDTLS_TF_PSA_INC "${_p}" DIRECTORY)
-        break()
-    endif()
-endforeach()
-if(NOT _RA_MBEDTLS_TF_PSA_FOUND)
-    message(STATUS
-        "RA_USE_MBEDTLS=ON but the tf-psa-crypto companion vendor "
-        "tree is missing -- the vendored mbedtls 4.x library cannot "
-        "compile without it. The port shims in port/mbedtls/ are "
-        "still wired in for downstream consumers, but apps that "
-        "link `mbedtls` will skip themselves until the companion "
-        "tree lands at libs/third_party/tf-psa-crypto/.")
-    set(RA_USE_MBEDTLS OFF CACHE BOOL "Mbed TLS auto-disabled (tf-psa-crypto missing)" FORCE)
-    return()
+# The TF-PSA-Crypto companion vendor tree must be present. Mbed TLS 4.x
+# pulls cryptographic primitives from this tree via
+# `tf_psa_crypto_platform_requirements.h` and the PSA driver wrappers.
+if(NOT EXISTS "${_RA_TFPSA_CORE_DIR}/tf_psa_crypto_platform_requirements.h")
+    message(FATAL_ERROR
+        "RA_USE_MBEDTLS=ON but the tf-psa-crypto companion vendor tree "
+        "is missing at ${_RA_TFPSA_DIR}. Vendor it from "
+        "https://github.com/Mbed-TLS/TF-PSA-Crypto (matching tag for "
+        "Mbed TLS 4.1.0 is TF-PSA-Crypto 1.1.0).")
+endif()
+
+if(NOT EXISTS "${_RA_TFPSA_CORE_DIR}/psa_crypto_driver_wrappers.h")
+    message(FATAL_ERROR
+        "RA_USE_MBEDTLS=ON but the generated PSA driver wrapper header "
+        "${_RA_TFPSA_CORE_DIR}/psa_crypto_driver_wrappers.h is missing. "
+        "Regenerate it via "
+        "`python scripts/generate_driver_wrappers.py <out>` from the "
+        "tf-psa-crypto source tree (requires the `framework` git "
+        "submodule + jsonschema + jinja2).")
 endif()
 
 # Pull in the port shim FIRST so its include dir is visible when the
@@ -117,28 +127,73 @@ add_subdirectory(${_RA_MBEDTLS_PORT_DIR}
                  ${CMAKE_BINARY_DIR}/port_mbedtls)
 
 # ---------------------------------------------------------------------------
-# Mbed TLS library sources -- compiled as an OBJECT library so apps can
-# splice the objects directly into their final ELF without dragging the
-# vendored headers into the rest of the build's include path.
+# Source list
 # ---------------------------------------------------------------------------
+# Mbed TLS 4.x splits its sources across five trees. They all compile
+# into a single object library so apps splice the .o set into their
+# final ELF without forcing the rest of the build into the vendored
+# include path.
 file(GLOB _RA_MBEDTLS_LIB_SOURCES CONFIGURE_DEPENDS
     "${_RA_MBEDTLS_LIB_DIR}/*.c")
 
+file(GLOB _RA_TFPSA_CORE_SOURCES CONFIGURE_DEPENDS
+    "${_RA_TFPSA_CORE_DIR}/*.c")
+
+file(GLOB _RA_TFPSA_DRIVER_SOURCES CONFIGURE_DEPENDS
+    "${_RA_TFPSA_DRIVERS_SRC_DIR}/*.c")
+
+file(GLOB _RA_TFPSA_PLATFORM_SOURCES CONFIGURE_DEPENDS
+    "${_RA_TFPSA_PLATFORM_DIR}/*.c")
+
+file(GLOB _RA_TFPSA_UTIL_SOURCES CONFIGURE_DEPENDS
+    "${_RA_TFPSA_UTILITIES_DIR}/*.c")
+
+file(GLOB _RA_TFPSA_EXTRAS_SOURCES CONFIGURE_DEPENDS
+    "${_RA_TFPSA_EXTRAS_DIR}/*.c")
+
+# ---------------------------------------------------------------------------
+# Mbed TLS / TF-PSA-Crypto -- compiled as one OBJECT library so apps
+# can splice the objects directly into their final ELF without
+# dragging the vendored headers into the rest of the build's include
+# path.
+# ---------------------------------------------------------------------------
 add_library(mbedtls_objs OBJECT
     ${_RA_MBEDTLS_LIB_SOURCES}
+    ${_RA_TFPSA_CORE_SOURCES}
+    ${_RA_TFPSA_DRIVER_SOURCES}
+    ${_RA_TFPSA_PLATFORM_SOURCES}
+    ${_RA_TFPSA_UTIL_SOURCES}
+    ${_RA_TFPSA_EXTRAS_SOURCES}
 )
 
-# Order matters: prepend the port include dir so the upstream
-# ``mbedtls/aes.h`` / ``mbedtls/sha256.h`` inclusion sites that look
-# for ``mbedtls_aes_alt.h`` / ``mbedtls_sha256_alt.h`` resolve to our
-# overrides.
+# Order matters here: the port include dir comes first so any
+# overrides we drop into ``port/mbedtls/`` win the lookup; then the
+# Mbed TLS public include tree, then the TF-PSA-Crypto public
+# include tree, then the per-component private include trees the
+# library/core/drivers sources reach into via plain quoted includes.
 target_include_directories(mbedtls_objs PUBLIC
     ${_RA_MBEDTLS_PORT_DIR}
     ${_RA_MBEDTLS_INC_DIR}
-    ${_RA_MBEDTLS_TF_PSA_INC})
+    ${_RA_TFPSA_INC_DIR}
+    ${_RA_TFPSA_DRIVERS_INC_DIR}
+    ${_RA_TFPSA_CORE_DIR}
+    ${_RA_TFPSA_DISPATCH_DIR}
+    ${_RA_TFPSA_DRIVERS_SRC_DIR}
+    ${_RA_TFPSA_UTILITIES_DIR}
+    ${_RA_TFPSA_EXTRAS_DIR}
+    ${_RA_TFPSA_PLATFORM_DIR}
+    ${_RA_MBEDTLS_LIB_DIR})
 
 target_compile_definitions(mbedtls_objs PUBLIC
     MBEDTLS_CONFIG_FILE="${_RA_MBEDTLS_CONFIG_FILE}")
+
+# Pin the PSA crypto config too if the project supplies one; otherwise
+# the tree falls back to its bundled default
+# (`tf-psa-crypto/include/psa/crypto_config.h`).
+if(EXISTS "${_RA_TFPSA_CRYPTO_CONFIG}")
+    target_compile_definitions(mbedtls_objs PUBLIC
+        TF_PSA_CRYPTO_CONFIG_FILE="${_RA_TFPSA_CRYPTO_CONFIG}")
+endif()
 
 target_link_libraries(mbedtls_objs PRIVATE threadx)
 
@@ -153,10 +208,23 @@ target_sources(mbedtls INTERFACE $<TARGET_OBJECTS:mbedtls_objs>)
 target_include_directories(mbedtls INTERFACE
     ${_RA_MBEDTLS_PORT_DIR}
     ${_RA_MBEDTLS_INC_DIR}
-    ${_RA_MBEDTLS_TF_PSA_INC})
+    ${_RA_TFPSA_INC_DIR}
+    ${_RA_TFPSA_DRIVERS_INC_DIR}
+    ${_RA_TFPSA_CORE_DIR}
+    ${_RA_TFPSA_DISPATCH_DIR})
 target_compile_definitions(mbedtls INTERFACE
     MBEDTLS_CONFIG_FILE="${_RA_MBEDTLS_CONFIG_FILE}")
+if(EXISTS "${_RA_TFPSA_CRYPTO_CONFIG}")
+    target_compile_definitions(mbedtls INTERFACE
+        TF_PSA_CRYPTO_CONFIG_FILE="${_RA_TFPSA_CRYPTO_CONFIG}")
+endif()
 target_link_libraries(mbedtls INTERFACE threadx)
 
-message(STATUS "Mbed TLS enabled: ${_RA_MBEDTLS_VENDOR_DIR}")
-message(STATUS "Mbed TLS config:  ${_RA_MBEDTLS_CONFIG_FILE}")
+message(STATUS "Mbed TLS enabled:    ${_RA_MBEDTLS_VENDOR_DIR}")
+message(STATUS "TF-PSA-Crypto:       ${_RA_TFPSA_DIR}")
+message(STATUS "Mbed TLS config:     ${_RA_MBEDTLS_CONFIG_FILE}")
+if(EXISTS "${_RA_TFPSA_CRYPTO_CONFIG}")
+    message(STATUS "TF-PSA-Crypto config: ${_RA_TFPSA_CRYPTO_CONFIG}")
+else()
+    message(STATUS "TF-PSA-Crypto config: <upstream default>")
+endif()
