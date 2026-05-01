@@ -31,6 +31,7 @@
 #include <string.h>
 
 #include "ra_ble.h"
+#include "ra_ble_patch.h"
 #include "ra_err.h"
 
 /* =============================================================================
@@ -246,6 +247,14 @@ static void priv_acl_cb(void* ctx, uint16_t handle, const uint8_t* payload, uint
 
 ra_err_t ble_hci_ra_ble_init(void)
 {
+  /*
+   * Probe the BLE controller patch loader. The stub returns
+   * ``k_ra_err_not_supported`` and logs a one-shot warning when no
+   * Renesas-supplied patch image is configured; we proceed anyway so
+   * unit-test builds and dry-run smoke tests still come up.
+   */
+  (void)ra_ble_patch_load(NULL, 0U);
+
   if (ra_ble_attach_event_handler(priv_event_cb, NULL) != k_ra_ok) {
     return k_ra_err_not_initialized;
   }
