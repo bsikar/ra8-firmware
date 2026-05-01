@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Pre-commit hook for ra8d2-firmware
-# Runs: ASCII check, C23 pattern check, clang-format, clang-tidy
+# Runs: ASCII check, C23 pattern check, defensive macro paren check,
+#       clang-format, clang-tidy
 #
 # Install with:
 #   ln -s ../../scripts/git/pre-commit .git/hooks/pre-commit
@@ -91,6 +92,29 @@ if [[ -n "$c_files" ]]; then
     if [[ "$c23_ok" == "false" ]]; then
         echo ""
         echo "Policy: Use C23 constructs (static_assert, = {}, no stdbool.h)."
+        error_found=1
+    fi
+
+    # ---- Defensive macro paren check ---------------------------------------
+    # Object-like `#define FOO 1000` is fragile in expressions: if FOO is
+    # ever rewritten as `1+999`, callers like `BAR * FOO + 1` silently break.
+    # Wrap as `(1000)` so the value stays a single token in every context.
+    # Catches: bare integer or float literals (with optional U/L/F suffix);
+    # ignores function-like macros, bare feature flags, and already-parenthesized
+    # values.
+    parens_ok=true
+    paren_re='^[[:space:]]*#[[:space:]]*define[[:space:]]+[A-Za-z_][A-Za-z0-9_]*[[:space:]]+[+-]?(0[xX][0-9a-fA-F]+[uUlL]*|0[bB][01]+[uUlL]*|[0-9]+\.[0-9]*([eE][+-]?[0-9]+)?[fFlL]?|\.[0-9]+([eE][+-]?[0-9]+)?[fFlL]?|[0-9]+([eE][+-]?[0-9]+)?[fFlLuU]*)[[:space:]]*(/[/*].*)?$'
+    for f in $c_files; do
+        if grep -qnE "$paren_re" "$f" 2>/dev/null; then
+            echo "[FAIL] bare numeric #define value in $f (wrap with parens)"
+            grep -nE "$paren_re" "$f" | head -5
+            parens_ok=false
+        fi
+    done
+    if [[ "$parens_ok" == "false" ]]; then
+        echo ""
+        echo "Policy: numeric #define values must be wrapped in parens."
+        echo "        Example: #define FOO (1000)  not  #define FOO 1000"
         error_found=1
     fi
 

@@ -82,6 +82,8 @@ if(NOT RA_USE_THREADX OR NOT RA_USE_FILEX OR NOT RA_USE_GUIX)
     return()
 endif()
 
+include(${RA_REPO_ROOT}/cmake/ra_warnings.cmake)
+
 #############################################################################
 # Sources
 #############################################################################
@@ -155,13 +157,8 @@ add_executable(${RA_APP_NAME}.elf
     ${RA_GUIX_PORT_SOURCES}
 )
 
-target_compile_options(${RA_APP_NAME}.elf PRIVATE
-    -Wall
-    -Wextra
-    -Werror
-    -fshort-enums
-    $<$<COMPILE_LANGUAGE:C>:-Wstack-usage=4400>
-)
+ra_target_enable_project_warnings(${RA_APP_NAME}.elf STACK_USAGE_BYTES 4400)
+target_compile_options(${RA_APP_NAME}.elf PRIVATE -fshort-enums)
 
 if(RA_TRUSTZONE_ENABLE)
     target_compile_definitions(${RA_APP_NAME}.elf PRIVATE RA_TRUSTZONE_ENABLE)

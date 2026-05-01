@@ -32,21 +32,15 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+include(${CMAKE_CURRENT_SOURCE_DIR}/../cmake/ra_warnings.cmake)
+
 # Every TU is compiled with RA_SIMULATOR_MODE so code that normally
 # reaches into MCU register blocks takes the host-safe path instead.
 add_compile_definitions(RA_SIMULATOR_MODE UNIT_TEST)
 
-# Host warnings. We deliberately do NOT use -Wstack-usage=2200 here
-# because the host compiler ABI pushes wider arguments than Cortex-M85.
-add_compile_options(
-    -Wall
-    -Wextra
-    -Werror
-    -Wno-unused-function
-    -Wno-unused-parameter
-    -Wno-unused-variable
-    -Wno-address-of-packed-member
-)
+# Host warnings are applied per target below. We deliberately do NOT use
+# -Wstack-usage=2200 here because the host compiler ABI pushes wider
+# arguments than Cortex-M85.
 
 # Coverage instrumentation -- gcovr / lcov friendly.
 option(RA_COVERAGE "Emit gcov/lcov coverage data" ON)
@@ -103,6 +97,13 @@ add_library(ra_core_hal OBJECT
     ${CMAKE_CURRENT_SOURCE_DIR}/mocks/ra_sim_time.c
     ${CMAKE_CURRENT_SOURCE_DIR}/mocks/ra_sim_world.c
 )
+ra_target_enable_project_warnings(ra_core_hal)
+target_compile_options(ra_core_hal PRIVATE
+    -Wno-unused-function
+    -Wno-unused-parameter
+    -Wno-unused-variable
+    -Wno-address-of-packed-member
+)
 target_include_directories(ra_core_hal PUBLIC
     ${FW_ROOT}/libs/ra_core/inc
     ${FW_ROOT}/libs/ra_hal/inc
@@ -133,6 +134,10 @@ set_source_files_properties(
     ${RA_REFLOW_CPP_SOURCES}
     PROPERTIES LANGUAGE CXX
 )
+set_source_files_properties(
+    ${RA_EPUB_THIRD_PARTY}
+    PROPERTIES COMPILE_OPTIONS -w
+)
 target_compile_features(ra_core_hal PUBLIC cxx_std_17)
 
 # C++ enabled here only (the top-level project is C/ASM-only since the
@@ -150,6 +155,15 @@ enable_testing()
 
 function(ra_add_test name)
   add_executable(${name} ${name}.c $<TARGET_OBJECTS:ra_core_hal>)
+  target_compile_options(${name} PRIVATE
+    -Wall
+    -Wextra
+    -Werror
+    -Wno-unused-function
+    -Wno-unused-parameter
+    -Wno-unused-variable
+    -Wno-address-of-packed-member
+  )
   set_target_properties(${name} PROPERTIES LINKER_LANGUAGE CXX)
   target_include_directories(${name} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
