@@ -27,4 +27,29 @@
 # SPDX-License-Identifier: MIT
 #
 
-# Intentionally empty -- consumers reach into inc/ + src/ directly.
+# =============================================================================
+# v1 vs v2 (LiteHTML) selection
+# =============================================================================
+#
+# The v1 engine (src/*.c + ra_reflow_xml_shim.cpp) is the hand-rolled
+# greedy line-break / page-break implementation that was validated
+# against the EK-RA8D2 panel during Wave 11. v2 lives in v2/ and uses
+# LiteHTML (vendored at libs/third_party/litehtml/) as the rendering
+# engine. v2 is OFF by default until validated.
+#
+# Consumers (examples/ereader/, tests/) check this option and add
+# either the v1 src/*.c globs or the v2/ra_reflow_v2.cpp source.
+
+option(RA_REFLOW_USE_LITEHTML
+  "Build the LiteHTML-backed v2 ra_reflow engine instead of the v1 hand-rolled one"
+  OFF
+)
+
+if(RA_REFLOW_USE_LITEHTML)
+    message(STATUS "ra_reflow: using v2 (LiteHTML) engine")
+else()
+    message(STATUS "ra_reflow: using v1 (hand-rolled) engine [default]")
+endif()
+
+# Consumers reach into inc/ + src/ (or v2/) directly.
+

@@ -92,6 +92,7 @@ set(RA_APP_NAME ereader)
 
 set(APP_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/main.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/power.c
     ${CMAKE_CURRENT_SOURCE_DIR}/vector_table.c
     ${CMAKE_CURRENT_SOURCE_DIR}/system_init.c
     ${CMAKE_CURRENT_SOURCE_DIR}/secure_exception.c
@@ -127,7 +128,16 @@ set(LIB_THIRD_PARTY_SOURCES
 # build link-tests the library, but the call sites in main.c stay
 # gated on ``RA_HAS_REFLOW``.
 option(RA_HAS_REFLOW "Wire ra_reflow into the ereader render path" OFF)
-file(GLOB LIB_RA_REFLOW_SOURCES CONFIGURE_DEPENDS ${RA_REPO_ROOT}/libs/ra_reflow/src/*.c)
+option(RA_REFLOW_USE_LITEHTML
+       "Use the LiteHTML-backed v2 ra_reflow engine (default OFF: keeps v1)"
+       OFF)
+if(RA_REFLOW_USE_LITEHTML)
+    set(LIB_RA_REFLOW_SOURCES ${RA_REPO_ROOT}/libs/ra_reflow/v2/ra_reflow_v2.cpp)
+    set(LIB_RA_REFLOW_CPP_SOURCES "")
+else()
+    file(GLOB LIB_RA_REFLOW_SOURCES CONFIGURE_DEPENDS ${RA_REPO_ROOT}/libs/ra_reflow/src/*.c)
+    file(GLOB LIB_RA_REFLOW_CPP_SOURCES CONFIGURE_DEPENDS ${RA_REPO_ROOT}/libs/ra_reflow/src/*.cpp)
+endif()
 
 # Pull in the FileX <-> SDHI and GUIX <-> GLCDC port shims via the
 # global properties that port/{filex,guix}/CMakeLists.txt populate.
@@ -152,6 +162,7 @@ add_executable(${RA_APP_NAME}.elf
     ${LIB_RA_EPUB_C_SOURCES}
     ${LIB_RA_EPUB_CPP_SOURCES}
     ${LIB_RA_REFLOW_SOURCES}
+    ${LIB_RA_REFLOW_CPP_SOURCES}
     ${LIB_THIRD_PARTY_SOURCES}
     ${RA_FILEX_PORT_SOURCES}
     ${RA_GUIX_PORT_SOURCES}

@@ -66,8 +66,16 @@ file(GLOB_RECURSE RA_GFX_SOURCES     CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_gfx/sr
 file(GLOB_RECURSE RA_NSC_SOURCES     CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_nsc/src/*.c)
 file(GLOB_RECURSE RA_EPUB_C_SOURCES  CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_epub/src/*.c)
 file(GLOB_RECURSE RA_EPUB_CPP_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_epub/src/*.cpp)
-file(GLOB_RECURSE RA_REFLOW_C_SOURCES   CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_reflow/src/*.c)
-file(GLOB_RECURSE RA_REFLOW_CPP_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_reflow/src/*.cpp)
+# ra_reflow has two implementations: v1 (hand-rolled, default) and v2
+# (LiteHTML-backed, RA_REFLOW_USE_LITEHTML=ON). Only one set is compiled.
+option(RA_REFLOW_USE_LITEHTML "Use the LiteHTML v2 ra_reflow engine" OFF)
+if(RA_REFLOW_USE_LITEHTML)
+    set(RA_REFLOW_C_SOURCES    "")
+    set(RA_REFLOW_CPP_SOURCES  ${FW_ROOT}/libs/ra_reflow/v2/ra_reflow_v2.cpp)
+else()
+    file(GLOB_RECURSE RA_REFLOW_C_SOURCES   CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_reflow/src/*.c)
+    file(GLOB_RECURSE RA_REFLOW_CPP_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_reflow/src/*.cpp)
+endif()
 set(RA_EPUB_THIRD_PARTY
     ${FW_ROOT}/libs/third_party/miniz/miniz.c
     ${FW_ROOT}/libs/third_party/tinyxml2/tinyxml2.cpp

@@ -130,6 +130,10 @@
 #include "ra_reflow.h"
 #endif
 
+#ifndef RA_SIMULATOR_MODE
+#include "power.h"
+#endif
+
 /* =============================================================================
  * Compile-time configuration -- typed enums per the no-magic-number rule.
  * =============================================================================
@@ -1027,6 +1031,21 @@ static void reader_thread_entry(ULONG thread_input)
 
     ULONG ack = ereader_msg_pack(k_ereader_msg_rendered, (uint32_t)s_active_page);
     (void)tx_queue_send(&s_ui_queue, &ack, TX_NO_WAIT);
+
+    /* Page-turn power flow: the reader thread is idle until the
+     * next button press, so put the CPU into Sleep mode and let
+     * the ICU SW1/SW2 IRQs pull us out. ``out_woken_irq`` is the
+     * IRQ that woke us; we ignore the value here because the IRQ
+     * handler in power.c also re-posts the message into s_ui_queue,
+     * but a future power-aware scheduler can use the wake-source
+     * to skip the GUIX redraw when not needed. */
+    uint8_t        woke = (uint8_t)k_ereader_power_irq_none;
+    const ra_err_t pwr  = ereader_power_sleep_until_button(&woke);
+    if (pwr != k_ra_ok) {
+      /* Sleep failed -- continue without it. */
+      (void)pwr;
+    }
+    (void)woke;
   }
 }
 
@@ -1285,6 +1304,14 @@ static void ereader_ui_run(void)
     } else {
       /* Unknown message kind -- ignore. */
     }
+
+    /* Non-blocking LVD poll. If the rail dipped past the
+     * configured threshold since the last check, log a warning. The
+     * GUIX prompt is not updated here -- a future Phase-6 sweep
+     * will surface the warning in a status banner. */
+    if (ereader_power_check_battery()) {
+      ereader_print("[ereader] WARNING: low battery (LVD trip)\r\n");
+    }
   }
 }
 
@@ -1412,6 +1439,14 @@ int32_t main(void)
 {
 #ifndef RA_SIMULATOR_MODE
   ereader_setup_or_halt();
+  /* Bring up the power surface (ICU button IRQs, LVD low-battery
+   * threshold, LPM defaults). Failure here is non-fatal: the
+   * ereader still boots without sleep / wake / brown-out support
+   * if the chip-side substrate refuses; we just lose deep-sleep
+   * page-turn power savings. */
+  if (ereader_power_init() != k_ra_ok) {
+    ereader_print("[ereader] power_init failed (continuing)\r\n");
+  }
   ra_isr_globals_enable();
   ereader_print("[ereader] booting ThreadX + FileX + GUIX + ra_epub...\r\n");
   tx_kernel_enter();
