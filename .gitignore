@@ -38,10 +38,18 @@ tests/Unity/
 *.gcno
 *.gcov.json.gz
 
+# Coverage report outputs (already covered by build/ above; listed
+# explicitly so the directory is greppable)
+build/host-cov/
+build/coverage-html/
+
 # GCC RTL dump files
 *.expand
 
-# Doxygen generated output
+# Doxygen generated output (build/ is already ignored above; listed
+# explicitly here so a future change to the build-tree policy still
+# keeps the generated HTML out of git).
+build/docs/
 docs/doxygen/html/
 docs/doxygen/xml/
 docs/doxygen/latex/
