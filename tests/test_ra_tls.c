@@ -1,0 +1,306 @@
+/**
+ * @file test_ra_tls.c
+ * @brief Unit tests for the ``ra_tls`` Mbed TLS facade.
+ *
+ * @details
+ * Compiled with ``RA_SIMULATOR_MODE`` defined, so ``ra_tls.c``
+ * substitutes its loopback BIO drain for every ``mbedtls_ssl_*`` call.
+ * That keeps the host test build free of any hard dependency on the
+ * heavy Mbed TLS object library while still exercising:
+ *
+ *  - global init / deinit lifecycle (single-shot guard, deinit-without-init).
+ *  - ``ra_tls_session_open`` argument validation paths.
+ *  - Session pool exhaustion (open more than ``k_ra_tls_max_sessions``).
+ *  - ``ra_tls_session_close`` rejects NULL and non-pool pointers.
+ *  - End-to-end loopback: handshake + send + recv with a tiny in-memory
+ *    BIO pair so the function-pointer plumbing is fully covered.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
+ */
+
+#include <stddef.h>
+#include <stdint.h>
+#include <string.h>
+
+#include "ra_err.h"
+#include "ra_tls.h"
+#include "unity_minimal.h"
+
+/* =============================================================================
+ * Loopback BIO pair
+ * =============================================================================
+ */
+
+/** @brief Capacity (bytes) of the loopback BIO ring buffer. */
+typedef enum : uint16_t {
+  k_loop_buf_capacity = 256U,
+} loop_buf_capacity_t;
+
+/**
+ * @struct loop_bio_t
+ * @brief Tiny single-producer/single-consumer byte ring used by tests.
+ */
+typedef struct {
+  uint8_t  buf[k_loop_buf_capacity]; /**< Backing storage. */
+  uint16_t head;                     /**< Producer index. */
+  uint16_t tail;                     /**< Consumer index. */
+  uint16_t count;                    /**< Bytes currently buffered. */
+} loop_bio_t;
+
+/** @brief Per-test loopback context shared between send and recv callbacks. */
+static loop_bio_t s_loop;
+
+/**
+ * @brief Reset the loopback ring to an empty state.
+ */
+static void loop_reset(void)
+{
+  (void)memset(&s_loop, 0, sizeof(s_loop));
+}
+
+/**
+ * @brief BIO send callback that buffers ciphertext in ``s_loop``.
+ */
+static int loop_bio_send(void* ctx, const uint8_t* buf, size_t len)
+{
+  (void)ctx;
+  loop_bio_t* loop    = &s_loop;
+  size_t      written = 0U;
+  while ((written < len) && (loop->count < (uint16_t)k_loop_buf_capacity)) {
+    loop->buf[loop->head] = buf[written];
+    loop->head            = (uint16_t)((loop->head + 1U) % (uint16_t)k_loop_buf_capacity);
+    loop->count++;
+    written++;
+  }
+  return (int)written;
+}
+
+/**
+ * @brief BIO recv callback that drains ciphertext from ``s_loop``.
+ */
+static int loop_bio_recv(void* ctx, uint8_t* buf, size_t len)
+{
+  (void)ctx;
+  loop_bio_t* loop = &s_loop;
+  size_t      read = 0U;
+  while ((read < len) && (loop->count > 0U)) {
+    buf[read]  = loop->buf[loop->tail];
+    loop->tail = (uint16_t)((loop->tail + 1U) % (uint16_t)k_loop_buf_capacity);
+    loop->count--;
+    read++;
+  }
+  return (int)read;
+}
+
+/* =============================================================================
+ * Helpers
+ * =============================================================================
+ */
+
+/**
+ * @brief Build a valid session config wired to the loopback BIO pair.
+ */
+static ra_tls_session_cfg_t make_loopback_cfg(void)
+{
+  ra_tls_session_cfg_t cfg = {};
+  cfg.bio_send             = loop_bio_send;
+  cfg.bio_recv             = loop_bio_recv;
+  cfg.bio_ctx              = &s_loop;
+  cfg.server_name          = "test.local";
+  return cfg;
+}
+
+/* =============================================================================
+ * Tests
+ * =============================================================================
+ */
+
+static void test_global_init_idempotent_failure(void)
+{
+  TEST_BEGIN("global_init refuses double-init");
+  TEST_ASSERT_EQ(k_ra_ok, ra_tls_global_init());
+  TEST_ASSERT_EQ(k_ra_err_exists, ra_tls_global_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_tls_global_deinit());
+  TEST_END("global_init refuses double-init");
+}
+
+static void test_global_deinit_without_init(void)
+{
+  TEST_BEGIN("global_deinit without init returns not_initialized");
+  TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_tls_global_deinit());
+  TEST_END("global_deinit without init returns not_initialized");
+}
+
+static void test_session_open_invalid_args(void)
+{
+  TEST_BEGIN("session_open argument validation");
+  TEST_ASSERT_EQ(k_ra_ok, ra_tls_global_init());
+
+  ra_tls_session_t     s   = (ra_tls_session_t)0x1U;
+  ra_tls_session_cfg_t cfg = make_loopback_cfg();
+
+  /* NULL out_session pointer rejected. */
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_tls_session_open(NULL, &cfg));
+
+  /* NULL cfg rejected. */
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_tls_session_open(&s, NULL));
+  TEST_ASSERT_NULL(s);
+
+  /* NULL bio_send rejected. */
+  ra_tls_session_cfg_t bad = make_loopback_cfg();
+  bad.bio_send             = NULL;
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_tls_session_open(&s, &bad));
+  TEST_ASSERT_NULL(s);
+
+  /* NULL bio_recv rejected. */
+  bad          = make_loopback_cfg();
+  bad.bio_recv = NULL;
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_tls_session_open(&s, &bad));
+  TEST_ASSERT_NULL(s);
+
+  TEST_ASSERT_EQ(k_ra_ok, ra_tls_global_deinit());
+  TEST_END("session_open argument validation");
+}
+
+static void test_session_open_before_init(void)
+{
+  TEST_BEGIN("session_open before global_init returns not_initialized");
+  ra_tls_session_t     s   = NULL;
+  ra_tls_session_cfg_t cfg = make_loopback_cfg();
+  TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_tls_session_open(&s, &cfg));
+  TEST_ASSERT_NULL(s);
+  TEST_END("session_open before global_init returns not_initialized");
+}
+
+static void test_session_pool_exhaustion(void)
+{
+  TEST_BEGIN("session pool exhaustion returns no_mem");
+  TEST_ASSERT_EQ(k_ra_ok, ra_tls_global_init());
+
+  ra_tls_session_cfg_t cfg                             = make_loopback_cfg();
+  ra_tls_session_t     sessions[k_ra_tls_max_sessions] = {};
+  for (uint8_t i = 0U; i < (uint8_t)k_ra_tls_max_sessions; ++i) {
+    TEST_ASSERT_EQ(k_ra_ok, ra_tls_session_open(&sessions[i], &cfg));
+    TEST_ASSERT_NOT_NULL(sessions[i]);
+  }
+
+  /* One past the cap must fail. */
+  ra_tls_session_t overflow = NULL;
+  TEST_ASSERT_EQ(k_ra_err_no_mem, ra_tls_session_open(&overflow, &cfg));
+  TEST_ASSERT_NULL(overflow);
+
+  /* Closing one slot frees it for the next caller. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_tls_session_close(sessions[0]));
+  TEST_ASSERT_EQ(k_ra_ok, ra_tls_session_open(&overflow, &cfg));
+  TEST_ASSERT_NOT_NULL(overflow);
+
+  TEST_ASSERT_EQ(k_ra_ok, ra_tls_session_close(overflow));
+  for (uint8_t i = 1U; i < (uint8_t)k_ra_tls_max_sessions; ++i) {
+    TEST_ASSERT_EQ(k_ra_ok, ra_tls_session_close(sessions[i]));
+  }
+
+  TEST_ASSERT_EQ(k_ra_ok, ra_tls_global_deinit());
+  TEST_END("session pool exhaustion returns no_mem");
+}
+
+static void test_session_close_invalid_handle(void)
+{
+  TEST_BEGIN("session_close rejects bogus handles");
+  TEST_ASSERT_EQ(k_ra_ok, ra_tls_global_init());
+
+  /* NULL handle. */
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_tls_session_close(NULL));
+
+  /* Pointer that is not inside the pool. */
+  uint8_t          bogus_storage[16] = {};
+  ra_tls_session_t bogus             = (ra_tls_session_t)(void*)bogus_storage;
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_tls_session_close(bogus));
+
+  TEST_ASSERT_EQ(k_ra_ok, ra_tls_global_deinit());
+  TEST_END("session_close rejects bogus handles");
+}
+
+static void test_loopback_handshake_and_io(void)
+{
+  TEST_BEGIN("loopback handshake + send + recv round-trip");
+  loop_reset();
+  TEST_ASSERT_EQ(k_ra_ok, ra_tls_global_init());
+
+  ra_tls_session_t     s   = NULL;
+  ra_tls_session_cfg_t cfg = make_loopback_cfg();
+  TEST_ASSERT_EQ(k_ra_ok, ra_tls_session_open(&s, &cfg));
+  TEST_ASSERT_NOT_NULL(s);
+
+  /* Simulator handshake drives one byte through the BIO pair. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_tls_handshake(s));
+
+  /* Send returns the count buffered by loop_bio_send. */
+  const uint8_t payload[] = {'h', 'i'};
+  size_t        sent      = 0U;
+  TEST_ASSERT_EQ(k_ra_ok, ra_tls_send(s, payload, sizeof(payload), &sent));
+  TEST_ASSERT_EQ((int64_t)sizeof(payload), (int64_t)sent);
+
+  /* Recv reads the bytes back out of the loopback ring. */
+  uint8_t recv_buf[8] = {};
+  size_t  received    = 0U;
+  TEST_ASSERT_EQ(k_ra_ok, ra_tls_recv(s, recv_buf, sizeof(recv_buf), &received));
+  TEST_ASSERT_EQ((int64_t)sizeof(payload), (int64_t)received);
+  TEST_ASSERT(recv_buf[0] == 'h');
+  TEST_ASSERT(recv_buf[1] == 'i');
+
+  /* Zero-length transfers are no-ops with success. */
+  sent = 99U;
+  TEST_ASSERT_EQ(k_ra_ok, ra_tls_send(s, payload, 0U, &sent));
+  TEST_ASSERT_EQ(0, (int64_t)sent);
+
+  received = 99U;
+  TEST_ASSERT_EQ(k_ra_ok, ra_tls_recv(s, recv_buf, 0U, &received));
+  TEST_ASSERT_EQ(0, (int64_t)received);
+
+  TEST_ASSERT_EQ(k_ra_ok, ra_tls_session_close(s));
+  TEST_ASSERT_EQ(k_ra_ok, ra_tls_global_deinit());
+  TEST_END("loopback handshake + send + recv round-trip");
+}
+
+static void test_io_arg_validation(void)
+{
+  TEST_BEGIN("send/recv argument validation");
+  TEST_ASSERT_EQ(k_ra_ok, ra_tls_global_init());
+
+  ra_tls_session_t     s   = NULL;
+  ra_tls_session_cfg_t cfg = make_loopback_cfg();
+  TEST_ASSERT_EQ(k_ra_ok, ra_tls_session_open(&s, &cfg));
+
+  uint8_t buf[4] = {};
+  size_t  n      = 0U;
+
+  /* NULL out_sent / out_received rejected. */
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_tls_send(s, buf, sizeof(buf), NULL));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_tls_recv(s, buf, sizeof(buf), NULL));
+
+  /* NULL handle rejected. */
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_tls_send(NULL, buf, sizeof(buf), &n));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_tls_recv(NULL, buf, sizeof(buf), &n));
+
+  /* NULL buf with non-zero len rejected. */
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_tls_send(s, NULL, 4U, &n));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_tls_recv(s, NULL, 4U, &n));
+
+  TEST_ASSERT_EQ(k_ra_ok, ra_tls_session_close(s));
+  TEST_ASSERT_EQ(k_ra_ok, ra_tls_global_deinit());
+  TEST_END("send/recv argument validation");
+}
+
+int main(void)
+{
+  test_global_deinit_without_init();
+  test_global_init_idempotent_failure();
+  test_session_open_before_init();
+  test_session_open_invalid_args();
+  test_session_pool_exhaustion();
+  test_session_close_invalid_handle();
+  test_loopback_handshake_and_io();
+  test_io_arg_validation();
+  return 0;
+}

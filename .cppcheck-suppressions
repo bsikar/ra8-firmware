@@ -80,3 +80,11 @@ unusedStructMember:libs/ra_hal/inc/ra8d2_*_regs.h
 # ---------------------------------------------------------------------------
 constParameterPointer
 constVariablePointer
+
+
+# unusedStructMember on driver-facing config / matrix structs.
+# Justification: cppcheck cannot follow fields across .h boundaries.
+unusedStructMember:libs/ra_touch_cal/inc/ra_touch_cal.h
+unusedStructMember:libs/ra_tls/inc/ra_tls.h
+unusedStructMember:libs/ra_hal/inc/ra_sdcard.h
+unusedStructMember:libs/ra_hal/inc/ra_smbus.h
