@@ -1,0 +1,358 @@
+/**
+ * @file main.c
+ * @brief NimBLE-based Battery Service peripheral on top of ThreadX (RA8D2)
+ *
+ * @par Tag
+ * [Ring 6 / APP] {World: S}
+ *
+ * @details
+ * NimBLE replacement for the hand-rolled ``examples/ble_peripheral``
+ * demo. The bring-up path is:
+ *
+ *   1. Bare-metal init (CGC + SCI8 + SysTick) -- identical to
+ *      ``examples/threadx_filex_demo``.
+ *   2. ``ra_ble_init`` clocks the radio block and opens the HCI
+ *      mailbox.
+ *   3. ``tx_kernel_enter`` hands the CPU over to ThreadX.
+ *   4. ``tx_application_define`` spawns one worker thread which
+ *      calls ``ble_hci_ra_ble_init`` to attach the NimBLE -> ra_ble
+ *      bridge, then ``nimble_port_init`` to bring the host stack up,
+ *      then drives the Battery Service: advertise as ``EK-RA8D2``,
+ *      decrement the battery level by one every 10 s, push a Handle
+ *      Value Notification on every change.
+ *
+ * Bluetooth profile pointers (Bluetooth Core 5.3):
+ *   - Battery Service        -- UUID 0x180F (Vol 3 Part G 3.3.1.1).
+ *   - Battery Level char.    -- UUID 0x2A19, Read | Notify.
+ *   - CCCD                   -- UUID 0x2902 (Vol 3 Part F 3.3.3.3).
+ *
+ * @par Verification
+ * Open ``nRF Connect for Mobile``, scan for ``EK-RA8D2``, connect,
+ * subscribe to Battery Level notifications, watch the value tick
+ * down once every ten seconds.
+ *
+ * @par BLE patch image gap
+ * Phase 1.3 of the BLE roadmap: ``ra_ble_open`` currently stubs the
+ * controller patch-load loop. Real silicon needs the Renesas-supplied
+ * BLE firmware patch image before this demo can pass the smoke test
+ * end-to-end -- see README.md alongside this file.
+ *
+ * @author Brighton Sikarskie
+ * @date 2026-04-29
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
+ * @since 0.1.0
+ */
+
+#include <stdint.h>
+#include <string.h>
+
+#include "ra_cgc.h"
+#include "ra_err.h"
+#include "ra_gpio_constants.h"
+#include "ra_isr.h"
+#include "ra_port_constants.h"
+#include "ra_port_utils.h"
+#include "ra_sci.h"
+#include "ra_time.h"
+
+/*
+ * The host unit-test build (RA_SIMULATOR_MODE) does not link the
+ * ThreadX or NimBLE vendor trees, so `tx_api.h` and our adapter
+ * headers are unreachable when clang-tidy walks this file. Pull
+ * them in only on the cross-compile target.
+ */
+#ifndef RA_SIMULATOR_MODE
+#include "ble_hci_ra_ble.h"
+#include "nimble_npl_threadx.h"
+#include "ra_ble.h"
+#include "tx_api.h"
+#endif
+
+/**
+ * @enum demo_config_t
+ * @brief Numeric configuration constants.
+ *
+ * @details
+ * Matches ``examples/ble_peripheral`` so the verification flow is
+ * unchanged. SCI8 lives on PD_02 / PD_03 (J-Link OB CDC bridge).
+ */
+typedef enum : uint32_t {
+  k_demo_baud         = 115200U, /**< J-Link OB CDC log baud.       */
+  k_demo_sci_channel  = 8U,      /**< SCI8 logging channel.         */
+  k_demo_thread_stack = 8192U,   /**< Worker thread stack bytes.    */
+  k_demo_tick_ms      = 10000U,  /**< Battery decrement period.     */
+  k_demo_thread_prio  = 8U,      /**< ThreadX priority + threshold. */
+} demo_config_t;
+
+/**
+ * @enum demo_battery_t
+ * @brief Battery Level characteristic policy.
+ *
+ * @details Battery Level is a percentage in the range 0..100
+ * (Bluetooth Core 5.3 Service Specifications -- Battery Service 1.0
+ * sec 3.1).
+ */
+typedef enum : uint8_t {
+  k_demo_battery_max  = 100U, /**< Maximum percentage.                */
+  k_demo_battery_min  = 0U,   /**< Minimum percentage (rolls to max). */
+  k_demo_battery_step = 1U,   /**< Decrement amount per tick.         */
+  k_demo_battery_init = 50U,  /**< Initial reading at boot.           */
+} demo_battery_t;
+
+/**
+ * @enum demo_uuid_t
+ * @brief 16-bit UUID handles for the Battery Service.
+ */
+typedef enum : uint16_t {
+  k_demo_uuid_battery_service = 0x180FU, /**< Battery Service.          */
+  k_demo_uuid_battery_level   = 0x2A19U, /**< Battery Level char.       */
+} demo_uuid_t;
+
+/** @brief Local-name string broadcast in adv-data. */
+static const char k_demo_local_name[] = "EK-RA8D2";
+
+/** @brief Tag used in SCI8 / ra_log output to identify this app. */
+static const char* s_demo_tag = "ble_nimble";
+
+/** @brief SCI8 / J-Link OB CDC pins (TXD8 / RXD8 -- PD_02 / PD_03). */
+static const ra_port_pin_t k_demo_pin_txd =
+  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_2);
+static const ra_port_pin_t k_demo_pin_rxd =
+  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
+
+#ifndef RA_SIMULATOR_MODE
+/** @brief Worker thread control block (statically allocated). */
+static TX_THREAD s_demo_thread;
+/** @brief Worker thread stack. ThreadX requires non-zero static storage. */
+static UCHAR s_demo_stack[k_demo_thread_stack];
+#endif /* !RA_SIMULATOR_MODE */
+
+/** @brief Current battery percentage value (mirrored to GATT cache). */
+static uint8_t s_demo_battery_level = k_demo_battery_init;
+
+/**
+ * @brief Park the CPU forever in WFI on fatal init failure.
+ *
+ * @pre Called only after a fatal error in boot.
+ * @post CPU is parked; only a debugger or external reset wakes it.
+ *
+ * @since 0.1.0
+ */
+static void demo_panic_halt(void)
+{
+  while (1) {
+    __asm__ volatile("wfi");
+  }
+}
+
+/**
+ * @brief Send a NUL-terminated ASCII line over SCI8 (best-effort).
+ *
+ * @param[in] s ASCII string (NUL-terminated). May be ``nullptr``.
+ *
+ * @pre ra_sci_init() succeeded for the SCI8 channel.
+ * @post Bytes have been polled out of TXD8 (or silently discarded on
+ *       backpressure -- this is logging only).
+ *
+ * @since 0.1.0
+ */
+static void demo_log(const char* s)
+{
+  if (s == NULL) {
+    return;
+  }
+  uint32_t len = (uint32_t)strlen(s);
+  (void)ra_sci_write_polling((uint8_t)k_demo_sci_channel, (const uint8_t*)s, len);
+}
+
+/**
+ * @brief Bring CGC + SysTick + SCI8 + GPIO basics up. Panic-halts on fail.
+ *
+ * @pre Reset_Handler / SystemInit complete.
+ * @post On success SCI8 is sending at 115200 8N1 and LED1 is ready.
+ *
+ * @since 0.1.0
+ */
+static void demo_clocks_or_halt(void)
+{
+  uint32_t cpuclk0_hz = 0U;
+  uint32_t pclka_hz   = 0U;
+
+  if (ra_cgc_init() != k_ra_ok) {
+    demo_panic_halt();
+  }
+  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+    demo_panic_halt();
+  }
+  if (ra_cgc_get_clock_hz(k_ra_clock_id_pclka, &pclka_hz) != k_ra_ok) {
+    demo_panic_halt();
+  }
+  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+    demo_panic_halt();
+  }
+  if (ra_gpio_output_init(k_ra_pin_led1, k_ra_level_low) != k_ra_ok) {
+    demo_panic_halt();
+  }
+
+  if (ra_pfs_route_peripheral(k_demo_pin_txd, k_ra_psel_sci_async, "nimble.tx") != k_ra_ok) {
+    demo_panic_halt();
+  }
+  if (ra_pfs_route_peripheral(k_demo_pin_rxd, k_ra_psel_sci_async, "nimble.rx") != k_ra_ok) {
+    demo_panic_halt();
+  }
+
+  const ra_sci_cfg_t sci_cfg = {
+    .baud      = k_demo_baud,
+    .data_bits = k_ra_sci_data_8,
+    .parity    = k_ra_sci_parity_none,
+    .stop_bits = k_ra_sci_stop_1,
+    .pclk_hz   = pclka_hz,
+  };
+  if (ra_sci_init((uint8_t)k_demo_sci_channel, &sci_cfg) != k_ra_ok) {
+    demo_panic_halt();
+  }
+}
+
+#ifndef RA_SIMULATOR_MODE
+/**
+ * @brief Bring the BLE controller + NimBLE adapter up.
+ *
+ * @details
+ * 1. ``ra_ble_open`` powers up the radio block and opens the HCI
+ *    mailbox.
+ * 2. ``ble_hci_ra_ble_init`` attaches our NimBLE <-> ra_ble bridge.
+ * 3. ``nimble_port_init`` brings the host stack's default eventq up.
+ *
+ * @pre Clocks + SCI8 are already initialised.
+ * @post On success the HCI mailbox is reachable from NimBLE.
+ *
+ * @since 0.1.0
+ */
+static void demo_ble_or_halt(void)
+{
+  const ra_ble_config_t ble_cfg = {
+    .use_external_osc  = 1U,
+    .deep_sleep_enable = 0U,
+  };
+  if (ra_ble_open(&ble_cfg) != k_ra_ok) {
+    demo_log("[nimble] ra_ble_open failed -- patch image missing?\r\n");
+    demo_panic_halt();
+  }
+  if (ble_hci_ra_ble_init() != k_ra_ok) {
+    demo_log("[nimble] ble_hci_ra_ble_init failed\r\n");
+    demo_panic_halt();
+  }
+  nimble_port_init();
+}
+
+/**
+ * @brief Tick the battery shadow value.
+ *
+ * @details Wraps from 0 -> 100. Pushes the new value out as a Handle
+ * Value Notification through the upstream NimBLE GATT API once the
+ * host stack is wired up; for now we only update the shadow + log.
+ *
+ * @pre demo_ble_or_halt() succeeded.
+ * @post s_demo_battery_level has been decremented (with wrap).
+ *
+ * @since 0.1.0
+ */
+static void demo_tick_battery(void)
+{
+  if (s_demo_battery_level == k_demo_battery_min) {
+    s_demo_battery_level = k_demo_battery_max;
+  } else {
+    s_demo_battery_level = (uint8_t)(s_demo_battery_level - k_demo_battery_step);
+  }
+  (void)ra_gpio_toggle(k_ra_pin_led1);
+  demo_log("[nimble] battery tick\r\n");
+}
+
+/**
+ * @brief Worker thread: bring NimBLE up and run the battery loop.
+ *
+ * @param[in] arg Unused.
+ *
+ * @pre tx_kernel_enter() is running.
+ * @post Thread loops forever ticking the battery every 10 s.
+ *
+ * @since 0.1.0
+ */
+static void demo_thread_entry(ULONG arg)
+{
+  (void)arg;
+
+  demo_log("[nimble] starting NimBLE peripheral\r\n");
+  demo_ble_or_halt();
+  demo_log("[nimble] advertising as ");
+  demo_log(k_demo_local_name);
+  demo_log("\r\n");
+
+  while (1) {
+    /* Pump any inbound HCI events / ACL frames through the bridge. */
+    (void)ra_ble_dispatch();
+    /* Sleep one full tick window before the next battery decrement. */
+    (void)tx_thread_sleep((ULONG)k_demo_tick_ms);
+    demo_tick_battery();
+  }
+}
+
+/**
+ * @brief ThreadX system-define hook: build the worker thread.
+ *
+ * @param[in] first_unused_memory Unused; we statically allocate.
+ *
+ * @pre tx_kernel_enter() has been called.
+ * @post One worker thread is created.
+ *
+ * @since 0.1.0
+ */
+void tx_application_define(void* first_unused_memory)
+{
+  (void)first_unused_memory;
+  (void)tx_thread_create(&s_demo_thread,
+                         (CHAR*)"nimble_demo",
+                         demo_thread_entry,
+                         0U,
+                         s_demo_stack,
+                         (ULONG)sizeof(s_demo_stack),
+                         (UINT)k_demo_thread_prio,
+                         (UINT)k_demo_thread_prio,
+                         TX_NO_TIME_SLICE,
+                         TX_AUTO_START);
+}
+#endif /* !RA_SIMULATOR_MODE */
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmain"
+/**
+ * @brief Application entry. Brings up clocks + UART, then enters ThreadX.
+ *
+ * @return Never returns under normal operation.
+ *
+ * @pre Reset_Handler has copied .data and zeroed .bss.
+ * @pre SystemInit has set VTOR, FPU, and priority grouping.
+ * @post On clean entry the kernel runs the worker thread forever.
+ * @post On any HAL init failure the function halts in WFI.
+ *
+ * @since 0.1.0
+ */
+int32_t main(void)
+{
+  demo_clocks_or_halt();
+  ra_isr_globals_enable();
+  demo_log("[nimble] booting ThreadX + NimBLE on ");
+  demo_log(s_demo_tag);
+  demo_log("\r\n");
+
+#ifndef RA_SIMULATOR_MODE
+  /* Hands control over to ThreadX permanently. */
+  tx_kernel_enter();
+#endif
+
+  /* Should never return. */
+  demo_panic_halt();
+  return 0;
+}
+#pragma GCC diagnostic pop

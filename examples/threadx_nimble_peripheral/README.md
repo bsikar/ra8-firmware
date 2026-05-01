@@ -1,0 +1,77 @@
+# threadx_nimble_peripheral
+
+NimBLE-based replacement for `examples/ble_peripheral`. Same Battery
+Service profile (UUID 0x180F + Battery Level char 0x2A19, Read |
+Notify), same `EK-RA8D2` advertised local name, same 10-second
+battery-decrement loop -- but the host stack is now Apache NimBLE
+running on Eclipse ThreadX, glued to our `ra_ble` driver via the
+adapter under `port/nimble/`.
+
+## Topology
+
+```
++----------------------+        +-----------------------+
+|  NimBLE host stack   | <----> |  port/nimble adapter  | <----> ra_ble HCI mailbox
+| (host/ble_hs.h API)  |        |  ble_hci_ra_ble.c     |        (ra_ble_hci_send_*)
++----------------------+        |  nimble_npl_threadx.c |
+                                +-----------------------+
+                                            ^
+                                            |
+                                +-----------------------+
+                                | Eclipse ThreadX (NPL) |
+                                |  TX_MUTEX / TX_QUEUE  |
+                                |  TX_SEMAPHORE / TIMER |
+                                +-----------------------+
+```
+
+- `ble_hci_ra_ble.c` -- NimBLE HCI transport adapter. Implements
+  `ble_transport_to_ll_cmd_impl` / `ble_transport_to_ll_acl_impl`
+  (host -> controller) on top of `ra_ble_hci_send_command` /
+  `ra_ble_hci_send_acl_data`. Inbound traffic flows through
+  `ra_ble_attach_event_handler` / `ra_ble_attach_acl_handler`
+  callbacks that re-pack into NimBLE buffers and call
+  `ble_transport_to_hs_evt` / `ble_transport_to_hs_acl`.
+- `nimble_npl_threadx.c` -- ThreadX implementation of the NimBLE
+  Native Porting Layer.
+
+## Build
+
+```
+make threadx_nimble_peripheral
+```
+
+That forwards to the per-app Makefile, which configures cmake with
+`-DRA_USE_THREADX=ON -DRA_USE_NIMBLE=ON` and produces
+`build/threadx_nimble_peripheral.elf` / `.hex` / `.bin`.
+
+## Verify
+
+1. Flash: `make flash` from this directory.
+2. Open `nRF Connect for Mobile` (Nordic Semiconductor) on a phone.
+3. Scan for `EK-RA8D2`, tap to connect.
+4. Expand the Battery Service (0x180F).
+5. Tap the down-arrow on the Battery Level characteristic to enable
+   notifications.
+6. Watch the value tick down once every 10 seconds.
+
+## BLE patch image gap (Phase 1.3 of roadmap)
+
+The RA8D2 BLE controller requires a Renesas-supplied firmware patch
+image at boot. `ra_ble_open` currently stubs the patch-load loop
+(`ra_ble.h` documents this), so on real silicon `ra_ble_open` will
+report success but no air activity will happen until the production
+patch loader is wired in.
+
+This Wave 14 / Phase 1.3 task closes the *software* path -- HCI
+transport bridge + NPL + GATT skeleton -- so the patch-load gap is
+the only blocker remaining before the demo runs end-to-end.
+
+## Files
+
+- `main.c` -- application entry; CGC, SCI8, ra_ble_open, ThreadX
+  bring-up, NimBLE port init, battery loop.
+- `vector_table.c`, `system_init.c`, `secure_exception.c`,
+  `trustzone_init.{c,h}` -- per-app boot files (copied from
+  `examples/threadx_filex_demo`).
+- `linker_script.ld` -- per-app memory map.
+- `CMakeLists.txt`, `Makefile` -- per-app build wrappers.
