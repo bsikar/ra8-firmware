@@ -1,0 +1,73 @@
+/***************************************************************************
+ * Copyright (c) 2024 Microsoft Corporation
+ * Copyright (c) 2026-present Eclipse ThreadX contributors
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the MIT License which is available at
+ * https://opensource.org/licenses/MIT.
+ *
+ * SPDX-License-Identifier: MIT
+ **************************************************************************/
+
+
+/**************************************************************************/
+/**************************************************************************/
+/**                                                                       */
+/** GUIX Component                                                        */
+/**                                                                       */
+/**   Widget Management (Widget)                                          */
+/**                                                                       */
+/**************************************************************************/
+
+#define GX_SOURCE_CODE
+
+
+/* Include necessary system files.  */
+
+#include "gx_api.h"
+#include "gx_widget.h"
+
+
+/**************************************************************************/
+/*                                                                        */
+/*  FUNCTION                                               RELEASE        */
+/*                                                                        */
+/*    _gx_widget_status_remove                            PORTABLE C      */
+/*                                                           6.1          */
+/*  AUTHOR                                                                */
+/*                                                                        */
+/*    Kenneth Maxwell, Microsoft Corporation                              */
+/*                                                                        */
+/*  DESCRIPTION                                                           */
+/*                                                                        */
+/*    This service removes status flag(s) from the widget.                */
+/*                                                                        */
+/*  INPUT                                                                 */
+/*                                                                        */
+/*    widget                                Pointer to widget             */
+/*    status                                Status flag(s) to remove      */
+/*                                                                        */
+/*  OUTPUT                                                                */
+/*                                                                        */
+/*    status                                Completion status             */
+/*                                                                        */
+/*  CALLS                                                                 */
+/*                                                                        */
+/*    None                                                                */
+/*                                                                        */
+/*  CALLED BY                                                             */
+/*                                                                        */
+/*    Application Code                                                    */
+/*    GUIX Internal Code                                                  */
+/*                                                                        */
+/**************************************************************************/
+UINT _gx_widget_status_remove(GX_WIDGET *widget, ULONG status)
+{
+
+    /* Update the widget status.  */
+    widget -> gx_widget_status &= ~status;
+
+    /* Return the completion status.  */
+    return(GX_SUCCESS);
+}
+

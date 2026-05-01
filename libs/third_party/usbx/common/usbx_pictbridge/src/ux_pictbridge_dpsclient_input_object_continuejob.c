@@ -1,0 +1,102 @@
+/***************************************************************************
+ * Copyright (c) 2024 Microsoft Corporation
+ * Copyright (c) 2026-present Eclipse ThreadX contributors
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the MIT License which is available at
+ * https://opensource.org/licenses/MIT.
+ *
+ * SPDX-License-Identifier: MIT
+ **************************************************************************/
+
+
+/**************************************************************************/
+/**************************************************************************/
+/**                                                                       */
+/** USBX Component                                                        */
+/**                                                                       */
+/**   Pictbridge Application                                              */
+/**                                                                       */
+/**************************************************************************/
+/**************************************************************************/
+
+
+/* Include necessary system files.  */
+
+#define UX_SOURCE_CODE
+
+#include "ux_api.h"
+#include "ux_pictbridge.h"
+#include "ux_device_class_pima.h"
+
+
+/**************************************************************************/
+/*                                                                        */
+/*  FUNCTION                                               RELEASE        */
+/*                                                                        */
+/*    _ux_pictbridge_dpsclient_input_continuejob                          */
+/*                                                        PORTABLE C      */
+/*                                                           6.1          */
+/*  AUTHOR                                                                */
+/*                                                                        */
+/*    Chaoqiong Xiao, Microsoft Corporation                               */
+/*                                                                        */
+/*  DESCRIPTION                                                           */
+/*                                                                        */
+/*    This function creates the tag lines of the continue job             */
+/*    request.                                                            */
+/*                                                                        */
+/*  INPUT                                                                 */
+/*                                                                        */
+/*    pictbridge                            Pictbridge instance           */
+/*    pima_object_buffer                    Pointer to object buffer      */
+/*    object_length                         Length of the object          */
+/*    pima_object_buffer_updated            Updated Address of the object */
+/*    object_length_updated                 Updated length                */
+/*                                                                        */
+/*                                                                        */
+/*  OUTPUT                                                                */
+/*                                                                        */
+/*    Completion Status                                                   */
+/*                                                                        */
+/*  CALLS                                                                 */
+/*                                                                        */
+/*                                                                        */
+/*  CALLED BY                                                             */
+/*                                                                        */
+/*    _ux_pictbridge_dpsclient_input_object_prepare                       */
+/*                                                                        */
+/**************************************************************************/
+UINT _ux_pictbridge_dpsclient_input_object_continuejob(UX_PICTBRIDGE *pictbridge,
+                               ULONG input_subcode,
+                               ULONG input_parameter,
+                               UCHAR *pima_object_buffer,
+                               ULONG object_length,
+                               UCHAR **pima_object_buffer_updated,
+                               ULONG *object_length_updated)
+{
+
+UINT                status;
+
+
+    UX_PARAMETER_NOT_USED(pictbridge);
+    UX_PARAMETER_NOT_USED(input_subcode);
+    UX_PARAMETER_NOT_USED(input_parameter);
+
+    /* Add the line <continueJob/>  */
+    status = _ux_pictbridge_object_tag_line_add(pima_object_buffer, object_length, _ux_pictbridge_xml_tag_line_continuejob,
+                                                UX_PICTBRIDGE_TAG_FLAG_BEGIN | UX_PICTBRIDGE_TAG_FLAG_FORCE_SLASH_AT_END | UX_PICTBRIDGE_TAG_FLAG_FORCE_LF,
+                                                UX_NULL, 0, UX_NULL, &pima_object_buffer, &object_length);
+    if (status != UX_SUCCESS)
+        return(status);
+
+    /* Update the caller's object position.  */
+    *pima_object_buffer_updated = pima_object_buffer;
+
+    /* Update the caller's object length .  */
+    *object_length_updated = object_length;
+
+    /* Return completion status.  */
+    return(UX_SUCCESS);
+}
+

@@ -1,0 +1,100 @@
+/***************************************************************************
+ * Copyright (c) 2024 Microsoft Corporation
+ * Copyright (c) 2025-present Eclipse ThreadX Contributors
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the MIT License which is available at
+ * https://opensource.org/licenses/MIT.
+ *
+ * SPDX-License-Identifier: MIT
+ **************************************************************************/
+
+
+/**************************************************************************/
+/**************************************************************************/
+/**                                                                       */
+/** NetX Component                                                        */
+/**                                                                       */
+/**   Packet Pool Management (Packet)                                     */
+/**                                                                       */
+/**************************************************************************/
+/**************************************************************************/
+
+#define NX_SOURCE_CODE
+
+
+/* Include necessary system files.  */
+
+#include "nx_api.h"
+#include "nx_packet.h"
+
+/* Bring in externs for caller checking code.  */
+
+NX_CALLER_CHECKING_EXTERNS
+
+
+/**************************************************************************/
+/*                                                                        */
+/*  FUNCTION                                               RELEASE        */
+/*                                                                        */
+/*    _nxe_packet_pool_info_get                           PORTABLE C      */
+/*                                                           6.4.3        */
+/*  AUTHOR                                                                */
+/*                                                                        */
+/*    Yuxin Zhou, Microsoft Corporation                                   */
+/*                                                                        */
+/*  DESCRIPTION                                                           */
+/*                                                                        */
+/*    This function checks for errors in the packet pool information get  */
+/*    function call.                                                      */
+/*                                                                        */
+/*  INPUT                                                                 */
+/*                                                                        */
+/*    pool_ptr                              Pool to get information from  */
+/*    total_packets                         Destination for total packets */
+/*    free_packets                          Destination for free packets  */
+/*    empty_pool_requests                   Destination for empty requests*/
+/*    empty_pool_suspensions                Destination for empty         */
+/*                                            suspensions                 */
+/*    invalid_packet_releases               Destination for invalid packet*/
+/*                                            release requests            */
+/*                                                                        */
+/*  OUTPUT                                                                */
+/*                                                                        */
+/*    status                                Completion status             */
+/*                                                                        */
+/*  CALLS                                                                 */
+/*                                                                        */
+/*    _nx_packet_pool_info_get              Actual packet pool info get   */
+/*                                            function                    */
+/*                                                                        */
+/*  CALLED BY                                                             */
+/*                                                                        */
+/*    Application Code                                                    */
+/*                                                                        */
+/**************************************************************************/
+UINT  _nxe_packet_pool_info_get(NX_PACKET_POOL *pool_ptr, ULONG *total_packets, ULONG *free_packets,
+                                ULONG *empty_pool_requests, ULONG *empty_pool_suspensions,
+                                ULONG *invalid_packet_releases)
+{
+
+UINT status;
+
+
+    /* Check for invalid input pointers.  */
+    if ((pool_ptr == NX_NULL) || (pool_ptr -> nx_packet_pool_id != NX_PACKET_POOL_ID))
+    {
+        return(NX_PTR_ERROR);
+    }
+
+    /* Check for appropriate caller.  */
+    NX_NOT_ISR_CALLER_CHECKING
+
+    /* Call actual packet pool information get function.  */
+    status =  _nx_packet_pool_info_get(pool_ptr, total_packets, free_packets, empty_pool_requests,
+                                       empty_pool_suspensions, invalid_packet_releases);
+
+    /* Return completion status.  */
+    return(status);
+}
+

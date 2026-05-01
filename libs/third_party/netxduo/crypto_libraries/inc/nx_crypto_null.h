@@ -1,0 +1,82 @@
+/***************************************************************************
+ * Copyright (c) 2024 Microsoft Corporation
+ * Copyright (c) 2025-present Eclipse ThreadX Contributors
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the MIT License which is available at
+ * https://opensource.org/licenses/MIT.
+ *
+ * SPDX-License-Identifier: MIT
+ **************************************************************************/
+
+
+/**************************************************************************/
+/**************************************************************************/
+/**                                                                       */
+/** NetX Crypto Component                                                 */
+/**                                                                       */
+/**   NULL Cipher                                                         */
+/**                                                                       */
+/**************************************************************************/
+/**************************************************************************/
+
+
+/**************************************************************************/
+/*                                                                        */
+/*  APPLICATION INTERFACE DEFINITION                       RELEASE        */
+/*                                                                        */
+/*    nx_crypto_null.h                                    PORTABLE C      */
+/*                                                           6.4.3        */
+/*  AUTHOR                                                                */
+/*                                                                        */
+/*    Timothy Stapko, Microsoft Corporation                               */
+/*                                                                        */
+/*  DESCRIPTION                                                           */
+/*                                                                        */
+/*    This file defines the basic Application Interface (API) to the      */
+/*    NetX Crypto NULL module.                                            */
+/*                                                                        */
+/**************************************************************************/
+
+#ifndef NX_CRYPTO_NULL_H
+#define NX_CRYPTO_NULL_H
+
+/* Determine if a C++ compiler is being used.  If so, ensure that standard
+   C is used to process the API information.  */
+#ifdef __cplusplus
+
+/* Yes, C++ compiler is present.  Use standard C.  */
+extern   "C" {
+
+#endif
+
+/* Include the ThreadX and port-specific data type file.  */
+
+#include "nx_crypto.h"
+
+/* Function prototypes */
+
+UINT _nx_crypto_method_null_operation(UINT op,      /* Encrypt, Decrypt, Authenticate */
+                                      VOID *handle, /* Crypto handler */
+                                      struct NX_CRYPTO_METHOD_STRUCT *method,
+                                      UCHAR *key, NX_CRYPTO_KEY_SIZE key_size_in_bits,
+                                      UCHAR *input, ULONG input_length_in_byte,
+                                      UCHAR *iv_ptr,
+                                      UCHAR *output, ULONG output_length_in_byte,
+                                      VOID *crypto_metadata, ULONG crypto_metadata_size,
+                                      VOID *packet_ptr,
+                                      VOID (*nx_crypto_hw_process_callback)(VOID *packet_ptr, UINT status));
+
+UINT _nx_crypto_method_null_init(struct NX_CRYPTO_METHOD_STRUCT *method,
+                                 UCHAR *key, NX_CRYPTO_KEY_SIZE key_size_in_bits,
+                                 VOID **handle,
+                                 VOID *crypto_metadata, ULONG crypto_metadata_size);
+
+UINT _nx_crypto_method_null_cleanup(VOID *crypto_metadata);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* NX_CRYPTO_NULL_H */
+

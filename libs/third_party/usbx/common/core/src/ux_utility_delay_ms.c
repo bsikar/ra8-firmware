@@ -1,0 +1,91 @@
+/***************************************************************************
+ * Copyright (c) 2024 Microsoft Corporation
+ * Copyright (c) 2026-present Eclipse ThreadX contributors
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the MIT License which is available at
+ * https://opensource.org/licenses/MIT.
+ *
+ * SPDX-License-Identifier: MIT
+ **************************************************************************/
+
+
+/**************************************************************************/
+/**************************************************************************/
+/**                                                                       */
+/** USBX Component                                                        */
+/**                                                                       */
+/**   Host Stack                                                          */
+/**                                                                       */
+/**************************************************************************/
+/**************************************************************************/
+
+
+/* Include necessary system files.  */
+
+#define UX_SOURCE_CODE
+
+#include "ux_api.h"
+
+
+/**************************************************************************/
+/*                                                                        */
+/*  FUNCTION                                               RELEASE        */
+/*                                                                        */
+/*    _ux_utility_delay_ms                                PORTABLE C      */
+/*                                                           6.1.10       */
+/*  AUTHOR                                                                */
+/*                                                                        */
+/*    Chaoqiong Xiao, Microsoft Corporation                               */
+/*                                                                        */
+/*  DESCRIPTION                                                           */
+/*                                                                        */
+/*    This function causes the calling thread to sleep for the            */
+/*    specified number of milliseconds                                    */
+/*                                                                        */
+/*  INPUT                                                                 */
+/*                                                                        */
+/*    ms_wait                               Number of milliseconds to     */
+/*                                            wait for                    */
+/*                                                                        */
+/*  OUTPUT                                                                */
+/*                                                                        */
+/*    None                                                                */
+/*                                                                        */
+/*  CALLS                                                                 */
+/*                                                                        */
+/*    _ux_utility_thread_sleep              RTOS sleep function           */
+/*                                                                        */
+/*  CALLED BY                                                             */
+/*                                                                        */
+/*    USBX Components                                                     */
+/*                                                                        */
+/**************************************************************************/
+VOID  _ux_utility_delay_ms(ULONG ms_wait)
+{
+
+ULONG   ticks;
+
+#if defined(UX_STANDALONE)
+
+    /* Get current time.  */
+    ticks = _ux_utility_time_get();
+
+    /* Wait until timeout.  */
+    while(_ux_utility_time_elapsed(ticks, _ux_utility_time_get()) <
+            UX_MS_TO_TICK_NON_ZERO(ms_wait));
+#else
+
+    /* translate ms into ticks. */
+    ticks = (ULONG)(ms_wait * UX_PERIODIC_RATE) / 1000;
+
+    /* For safety add 1 to ticks.  */
+    ticks++;
+
+    /* Call RTOS sleep function.  */
+    _ux_utility_thread_sleep(ticks);
+#endif
+
+    /* Return completion status.  */
+    return;
+}

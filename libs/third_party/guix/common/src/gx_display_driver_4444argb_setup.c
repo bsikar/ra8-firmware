@@ -1,0 +1,80 @@
+
+/***************************************************************************
+ * Copyright (c) 2024 Microsoft Corporation
+ * Copyright (c) 2026-present Eclipse ThreadX contributors
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the MIT License which is available at
+ * https://opensource.org/licenses/MIT.
+ *
+ * SPDX-License-Identifier: MIT
+ **************************************************************************/
+
+
+/**************************************************************************/
+/**************************************************************************/
+/**                                                                       */
+/** GUIX Component                                                        */
+/**                                                                       */
+/**   Display Management (Display)                                        */
+/**                                                                       */
+/**************************************************************************/
+
+#define GX_SOURCE_CODE
+/* Include necessary system files.  */
+
+#include "gx_api.h"
+#include "gx_display.h"
+
+
+/**************************************************************************/
+/*                                                                        */
+/*  FUNCTION                                               RELEASE        */
+/*                                                                        */
+/*    _gx_display_driver_4444argb_setup                   PORTABLE C      */
+/*                                                           6.1          */
+/*  AUTHOR                                                                */
+/*                                                                        */
+/*    Kenneth Maxwell, Microsoft Corporation                              */
+/*                                                                        */
+/*  DESCRIPTION                                                           */
+/*                                                                        */
+/*    Generic 16-bit 4444ARGB color format display driver setup routine.  */
+/*                                                                        */
+/*  INPUT                                                                 */
+/*                                                                        */
+/*    display                               The display control block     */
+/*    aux_data                              Driver-defined auxiliary data */
+/*    toggle_function                       Driver-defined screen toggle  */
+/*                                            function                    */
+/*                                                                        */
+/*  OUTPUT                                                                */
+/*                                                                        */
+/*    None                                                                */
+/*                                                                        */
+/*  CALLS                                                                 */
+/*                                                                        */
+/*    _gx_display_driver_565rgb_setup       Basic display driver setup .  */
+/*                                            function for generic 565rgb */
+/*                                            color format                */
+/*                                                                        */
+/*  CALLED BY                                                             */
+/*                                                                        */
+/*    GUIX Internal Code                                                  */
+/*                                                                        */
+/**************************************************************************/
+VOID _gx_display_driver_4444argb_setup(GX_DISPLAY *display, VOID *aux_data,
+                                       VOID (*toggle_function)(struct GX_CANVAS_STRUCT *canvas,
+                                                               GX_RECTANGLE *dirty_area))
+{
+    _gx_display_driver_565rgb_setup(display, aux_data, toggle_function);
+    display -> gx_display_color_format                           = GX_COLOR_FORMAT_4444ARGB;
+    display -> gx_display_driver_native_color_get                = _gx_display_driver_4444argb_native_color_get;
+    display -> gx_display_driver_pixelmap_draw                   = _gx_display_driver_4444argb_pixelmap_draw;
+    display -> gx_display_driver_pixelmap_blend                  = _gx_display_driver_4444argb_pixelmap_blend;
+    display -> gx_display_driver_canvas_blend                    = _gx_display_driver_4444argb_canvas_blend;
+    display -> gx_display_driver_pixel_blend                     = _gx_display_driver_4444argb_pixel_blend;
+    display -> gx_display_driver_horizontal_pixelmap_line_draw   = _gx_display_driver_4444argb_horizontal_pixelmap_line_draw;
+    display -> gx_display_driver_pixelmap_rotate                 = _gx_display_driver_4444argb_pixelmap_rotate;
+}
+
