@@ -1,0 +1,52 @@
+/**
+ * @file port/threadx/tx_user.h
+ * @brief Eclipse ThreadX user-tunable defines for ra8d2-firmware
+ *
+ * @details
+ * Picked up by both the ThreadX library build and the application TUs
+ * because the project compiles ThreadX with `TX_INCLUDE_USER_DEFINE_FILE`
+ * and adds `port/threadx/` to the include search path.
+ *
+ * Tunables intended for the RA8D2:
+ *
+ * - `TX_TIMER_TICKS_PER_SECOND = 1000` -- 1 ms tick. SysTick reload is
+ *   programmed in `tx_initialize_low_level.S` to match.
+ * - `TX_MINIMUM_STACK = 512` -- doubled from upstream (200) to give
+ *   floating-point + Helium register save plenty of room.
+ * - `TX_MAX_PRIORITIES = 32` -- single 32-bit priority bitmap word, the
+ *   minimum legal value and the fastest path through the scheduler.
+ * - `TX_TIMER_PROCESS_IN_ISR` -- run timer expiration directly from
+ *   the SysTick ISR. Saves the timer-thread context switch.
+ * - `TX_REACTIVATE_INLINE` -- inline timer reactivation; small speedup
+ *   for periodic timers that only matters once we have a real workload.
+ * - `TX_DISABLE_PREEMPTION_THRESHOLD` -- the demo does not use it; saves
+ *   code size.
+ * - `TX_DISABLE_NOTIFY_CALLBACKS` -- ditto.
+ *
+ * Single-mode-secure: this firmware runs Secure-only for now (Cortex-M85
+ * TrustZone is configured but no Non-Secure partition is loaded), so we
+ * tell ThreadX it can skip the secure-stack management code.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
+ * @since 0.1.0
+ */
+
+#pragma once
+
+/* Tick + scheduler tuning. */
+#define TX_TIMER_TICKS_PER_SECOND        1000
+#define TX_MAX_PRIORITIES                32
+#define TX_MINIMUM_STACK                 512
+
+/* Performance / size knobs (see ThreadX user-guide chapter 4). */
+#define TX_TIMER_PROCESS_IN_ISR
+#define TX_REACTIVATE_INLINE
+#define TX_DISABLE_PREEMPTION_THRESHOLD
+#define TX_DISABLE_REDUNDANT_CLEARING
+#define TX_DISABLE_NOTIFY_CALLBACKS
+
+/* Single-mode-secure: no calls into a Non-Secure side, so ThreadX can
+ * compile out the secure-stack-context machinery. Matches the project's
+ * current Secure-world-only build. */
+#define TX_SINGLE_MODE_SECURE

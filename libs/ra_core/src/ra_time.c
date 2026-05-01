@@ -104,15 +104,18 @@ void ra_time_on_tick(void)
 }
 
 /*
- * Non-weak override of vector_table.c's weak SysTick_Handler -> Default_Handler
- * alias. The linker prefers a non-weak symbol over a weak one, so any TU that
- * links ra_time.c automatically gets the tick counter. An application that
- * wants to drive the ms tick from a different source (e.g. an RTOS tick) can
- * still override with its own non-weak SysTick_Handler -- the duplicate-symbol
- * link error is the right failure mode there ("only one heartbeat allowed").
+ * Default SysTick_Handler -- weak so that an app linking an RTOS (e.g.
+ * Eclipse ThreadX with `_tx_timer_interrupt`) can supply a non-weak
+ * override and steer the tick into its own scheduler. When no override
+ * is provided the linker keeps this body and the ms counter advances
+ * exactly as the bare-metal apps expect.
+ *
+ * The vector_table.c weak alias to Default_Handler is overridden by
+ * this stronger weak symbol; an even stronger non-weak one in the
+ * application file wins above both.
  */
 /* NOLINTNEXTLINE(misc-use-internal-linkage) -- linker symbol for vector table. */
-void SysTick_Handler(void)
+__attribute__((weak)) void SysTick_Handler(void)
 {
   ra_time_on_tick();
 }
