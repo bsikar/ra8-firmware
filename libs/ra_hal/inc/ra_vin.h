@@ -427,7 +427,7 @@ typedef void (*ra_vin_event_fn_t)(void* ctx, uint32_t status_mask);
  * @see ra_vin_capture_stop
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t ra_vin_capture_start(ra_vin_capture_mode_t mode);
+[[nodiscard]] ra_err_t ra_vin_capture_arm(ra_vin_capture_mode_t mode);
 
 /**
  * @brief Stop the current capture and drain outstanding AXI traffic.
@@ -455,7 +455,7 @@ typedef void (*ra_vin_event_fn_t)(void* ctx, uint32_t status_mask);
  * @see ra_vin_capture_start
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t ra_vin_capture_stop(void);
+[[nodiscard]] ra_err_t ra_vin_capture_disarm(void);
 
 /* =============================================================================
  * Geometry / pre-clip / scaling
@@ -1118,6 +1118,139 @@ void ra_vin_dispatch(void);
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_vin_exit_stop(void);
+
+/* =============================================================================
+ * Sweep 17: dynamic capture window + frame-end IRQ
+ * =============================================================================
+ */
+
+/**
+ * @typedef ra_vin_frame_fn_t
+ * @brief Frame-end callback registered via `ra_vin_attach_frame_handler`.
+ *
+ * @details
+ * Distinct from the generic INTS-mask callback registered through
+ * `ra_vin_attach_handler` -- this one fires from `ra_vin_dispatch`
+ * only when the FIE (frame-end) bit is set, and receives the buffer
+ * base + byte length of the just-completed frame as decoded from the
+ * driver's most recent `ra_vin_capture_start` call.
+ *
+ * @param[in] ctx Caller-supplied context.
+ * @param[in] buf Buffer base whose frame just completed.
+ * @param[in] len Frame length in bytes (= width * height * bytes_per_pixel).
+ *
+ * @since 0.1.0
+ */
+typedef void (*ra_vin_frame_fn_t)(void* ctx, void* buf, uint32_t len);
+
+/**
+ * @brief Start a single-frame capture into `buf` with the supplied geometry.
+ *
+ * @details
+ * High-level wrapper around `ra_vin_capture_arm(k_ra_vin_capture_single)`
+ * that:
+ *  1. Programmes MB1 with `(uint32_t)(uintptr_t)buf` (HUM Ch 67.2.10
+ *     "MB1: Memory Base 1 Register" p 3985).
+ *  2. Sets the IS register (HUM Ch 67.2.13 "IS: Image Stride Register"
+ *     p 3984) and pre-clip end coordinates to define the capture window.
+ *  3. Updates MC.INF (HUM Ch 67.2.1 "MC: Main Control Register" p 3975)
+ *     so the input format matches.
+ *  4. Caches `buf`/`w`/`h` so the frame-end handler (registered via
+ *     `ra_vin_attach_frame_handler`) sees the right buffer + length.
+ *  5. Calls `ra_vin_capture_arm(k_ra_vin_capture_single)`.
+ *
+ * @param[in] buf Capture target (must be 64-byte aligned).
+ * @param[in] w Width in pixels (1..4096).
+ * @param[in] h Height in lines (1..4096).
+ * @param[in] format Input format (`ra_vin_input_fmt_t`).
+ *
+ * @return ra_err_t
+ * @retval k_ra_ok Capture armed.
+ * @retval k_ra_err_null_ptr buf was NULL.
+ * @retval k_ra_err_invalid_arg w/h out of range or buf misaligned.
+ * @retval k_ra_err_invalid_state ME or CC was already 1.
+ *
+ * @pre `ra_vin_init` succeeded.
+ * @pre `buf` is 64-byte aligned.
+ * @post MB1 == (uint32_t)(uintptr_t)buf.
+ * @post MC.ME == 1.
+ *
+ * @note Not thread-safe.
+ * @see ra_vin_capture_stop
+ * @see ra_vin_attach_frame_handler
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t
+ra_vin_capture_start(void* buf, uint16_t w, uint16_t h, ra_vin_input_fmt_t format);
+
+/**
+ * @brief Stop the in-flight capture started via `ra_vin_capture_start`.
+ *
+ * @details
+ * Wraps `ra_vin_capture_disarm` -- exists so the high-level start /
+ * stop pair share matching names.
+ *
+ * @return ra_err_t error code from `ra_vin_capture_disarm`.
+ *
+ * @pre `ra_vin_capture_start` was previously called.
+ * @post MC.ME and FC.CC are both 0.
+ *
+ * @note Not thread-safe.
+ * @see ra_vin_capture_start
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_vin_capture_stop(void);
+
+/**
+ * @brief Programme a region-of-interest pre-clip window.
+ *
+ * @details
+ * Wraps `ra_vin_set_preclip` with a (x, y, w, h) signature for callers
+ * that prefer (x, y) over (start_line, start_pixel). HUM Ch 67.2.4..
+ * 67.2.7 p 3980-3981.
+ *
+ * @param[in] x Top-left pixel index (0..4095).
+ * @param[in] y Top-left line index (0..4095).
+ * @param[in] w Window width in pixels (>=1).
+ * @param[in] h Window height in lines (>=1).
+ *
+ * @return ra_err_t
+ * @retval k_ra_ok Window programmed.
+ * @retval k_ra_err_invalid_arg Arguments out of range.
+ *
+ * @pre Driver initialised, capture not running.
+ * @pre `w >= 1`, `h >= 1`, `x + w - 1 <= 4095`, `y + h - 1 <= 4095`.
+ * @post SLPRC/ELPRC/SPPRC/EPPRC reflect the requested window.
+ *
+ * @note Not thread-safe.
+ * @see ra_vin_set_preclip
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_vin_set_window(uint16_t x, uint16_t y, uint16_t w, uint16_t h);
+
+/**
+ * @brief Register the frame-end IRQ callback.
+ *
+ * @details
+ * The driver's generic `ra_vin_dispatch` fans every INTS bit through
+ * a single mask-style callback. This frame-end variant is invoked
+ * only when INTS.FIE is set after a `ra_vin_capture_start` call, and
+ * receives the cached buffer + length.
+ *
+ * @param[in] fn Callback (NULL detaches).
+ * @param[in] ctx Forwarded to the callback.
+ *
+ * @return ra_err_t
+ * @retval k_ra_ok Always.
+ *
+ * @pre Single-writer context (init or IRQ-masked).
+ * @post Subsequent `ra_vin_dispatch` calls fire `fn` on FIE.
+ *
+ * @note Not thread-safe.
+ * @see ra_vin_dispatch
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_vin_attach_frame_handler(ra_vin_frame_fn_t fn, void* ctx);
 
 #ifdef __cplusplus
 }

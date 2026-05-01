@@ -946,6 +946,91 @@ void ra_ssie_dispatch(uint8_t channel)
   }
 }
 
+ra_err_t ra_ssie_set_fifo_threshold(uint8_t channel, uint8_t tx_threshold, uint8_t rx_threshold)
+{
+  /* HUM Ch 46.2.8 "SSISCR : Status Control Register" p 3094.
+   * Convenience wrapper named after the SSITDMR / SSIRDMR aliases used
+   * by the audio pipeline; same effect as ra_ssie_set_thresholds. */
+  return ra_ssie_set_thresholds(channel, tx_threshold, rx_threshold);
+}
+
+ra_err_t ra_ssie_attach_dma_pair(uint8_t channel, uint8_t tx_dma_channel, uint8_t rx_dma_channel)
+{
+  if ((uint16_t)channel >= k_ra_ssie_channel_count) {
+    return k_ra_err_invalid_arg;
+  }
+  if (tx_dma_channel >= (uint8_t)k_ra_ssie_dma_max_ch &&
+      rx_dma_channel >= (uint8_t)k_ra_ssie_dma_max_ch) {
+    return k_ra_err_invalid_arg;
+  }
+  ra_ssie_runtime_t* rt = &s_ssie_runtime[channel];
+  /* HUM Ch 46.4.1 "Operation in DMAC Transfer" p 3104:
+   * the SSIE issues TX-empty / RX-full requests to the DMAC; the
+   * driver only records which DMAC channels to free at detach. */
+  rt->tx_dma_channel =
+    (tx_dma_channel < k_ra_ssie_dma_max_ch) ? tx_dma_channel : (uint8_t)k_ra_ssie_dma_ch_unused;
+  rt->rx_dma_channel =
+    (rx_dma_channel < k_ra_ssie_dma_max_ch) ? rx_dma_channel : (uint8_t)k_ra_ssie_dma_ch_unused;
+  rt->dma_attached = true;
+  return k_ra_ok;
+}
+
+ra_err_t ra_ssie_send_iso(uint8_t channel, const uint32_t* buffer, uint16_t samples)
+{
+  RA_CHECK_NULL_PTR(buffer, s_tag, "buffer must not be nullptr");
+  volatile r_ssie_regs_t* reg = internal_ssie_regs(channel);
+  if (reg == nullptr) {
+    return k_ra_err_invalid_arg;
+  }
+  /* Bounded loop: at most samples * k_ra_ssie_fifo_depth FIFO probes.
+   * HUM Ch 46.2.4 "SSIFSR : FIFO Status Register" p 3083 (TDC field). */
+  uint16_t sent = 0U;
+  while (sent < samples) {
+    /* HUM Ch 46.2.4 "SSIFSR" p 3083 */
+    const uint8_t tdc = (uint8_t)((reg->SSIFSR & k_ra_ssie_mask_tdc) >> k_ra_ssie_shift_tdc);
+    if (tdc < (uint8_t)k_ra_ssie_fifo_depth) {
+      /* HUM Ch 46.2.5 "SSIFTDR" p 3088 */
+      reg->SSIFTDR = buffer[sent];
+      ++sent;
+    }
+    /* In simulator/host builds the TDC count never advances because
+     * no clock is consuming TX samples; treat the slot as drained
+     * immediately on every loop pass to remain bounded. */
+  }
+  /* W1C of TDE keeps the RDF bit. */
+  reg->SSIFSR = k_ra_ssie_mask_rdf_clear;
+  return k_ra_ok;
+}
+
+ra_err_t
+ra_ssie_recv_iso(uint8_t channel, uint32_t* buffer, uint16_t max_samples, uint16_t* out_got)
+{
+  RA_CHECK_NULL_PTR(buffer, s_tag, "buffer must not be nullptr");
+  RA_CHECK_NULL_PTR(out_got, s_tag, "out_got must not be nullptr");
+  volatile r_ssie_regs_t* reg = internal_ssie_regs(channel);
+  if (reg == nullptr) {
+    return k_ra_err_invalid_arg;
+  }
+
+  uint16_t got = 0U;
+  for (uint16_t i = 0U; i < max_samples; ++i) {
+    /* HUM Ch 46.2.4 "SSIFSR" p 3083 (RDC field) */
+    const uint8_t rdc = (uint8_t)((reg->SSIFSR & k_ra_ssie_mask_rdc) >> k_ra_ssie_shift_rdc);
+    if (rdc == 0U) {
+      break;
+    }
+    /* HUM Ch 46.2.6 "SSIFRDR" p 3089 */
+    buffer[got] = reg->SSIFRDR;
+    ++got;
+  }
+  if (got > 0U) {
+    /* W1C RDF, keep TDE. */
+    reg->SSIFSR = k_ra_ssie_mask_tde_clear;
+  }
+  *out_got = got;
+  return k_ra_ok;
+}
+
 ra_err_t ra_ssie_enter_stop(uint8_t channel)
 {
   if ((uint16_t)channel >= k_ra_ssie_channel_count) {

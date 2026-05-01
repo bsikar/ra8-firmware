@@ -744,6 +744,65 @@ void ra_pdg_dispatch(void);
 [[nodiscard]] ra_err_t
 ra_pdg_required_write_ns(uint32_t pclka_hz, uint32_t gptclk_hz, uint32_t* out_ns);
 
+/* =============================================================================
+ * Sweep 17: capture-style buffered delay-code apply + completion callback
+ * =============================================================================
+ */
+
+/**
+ * @brief Stage a buffer of `ra_pdg_delay_entry_t` records and arm them.
+ *
+ * @details
+ * The PDG itself does not "capture" data -- this entry-point exists
+ * so the camera/data-capture orchestrator can stream a buffer of
+ * fine-delay updates through the same `*_capture_start(buf, len)`
+ * shape that the VIN / CEU drivers expose. Each
+ * `ra_pdg_delay_entry_t` in `buf` is forwarded to
+ * `ra_pdg_set_delay_batch` after a NULL / range check, and the
+ * registered completion callback (see `ra_pdg_attach_handler`) fires
+ * via `ra_pdg_dispatch` once all entries land.
+ *
+ * @param[in] buf Pointer to an array of `ra_pdg_delay_entry_t` records.
+ * @param[in] len Element count (must be > 0 and <= `k_ra_pdg_slot_count`).
+ *
+ * @return ra_err_t
+ * @retval k_ra_ok                   Entries staged + dispatch fired.
+ * @retval k_ra_err_null_ptr         buf was NULL.
+ * @retval k_ra_err_invalid_arg      len out of range or bad entry.
+ * @retval k_ra_err_not_initialized  PDG init has not run.
+ *
+ * @pre PDG `init` has run.
+ * @pre `buf` is non-NULL and points to `len` valid entries.
+ * @post All entries are written to their PDG temporary registers.
+ * @post The registered completion callback fires once.
+ *
+ * @note Not thread-safe.
+ * @see ra_pdg_set_delay_batch
+ * @see ra_pdg_capture_stop
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_pdg_capture_start(const ra_pdg_delay_entry_t* buf, uint8_t len);
+
+/**
+ * @brief Cancel any pending buffered apply and clear the completion latch.
+ *
+ * @details
+ * Mirrors the VIN / CEU `*_capture_stop` shape. Implementation simply
+ * clears the internal "in flight" flag so a subsequent
+ * `ra_pdg_dispatch` does not double-fire the callback.
+ *
+ * @return ra_err_t
+ * @retval k_ra_ok Always.
+ *
+ * @pre PDG `init` has run.
+ * @post Pending in-flight latch is cleared.
+ *
+ * @note Not thread-safe.
+ * @see ra_pdg_capture_start
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_pdg_capture_stop(void);
+
 #ifdef __cplusplus
 }
 #endif

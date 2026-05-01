@@ -641,6 +641,42 @@ void ra_pdg_dispatch(void)
 }
 
 /* =============================================================================
+ * Sweep 17: capture-style buffered delay-code apply + completion callback
+ * =============================================================================
+ */
+
+/**
+ * @var s_pdg_capture_in_flight
+ * @brief Set true between `ra_pdg_capture_start` and the callback fire.
+ *
+ * @note Cleared by `ra_pdg_capture_stop` and after the callback fires.
+ * @since 0.1.0
+ */
+static bool s_pdg_capture_in_flight;
+
+ra_err_t ra_pdg_capture_start(const ra_pdg_delay_entry_t* buf, uint8_t len)
+{
+  RA_CHECK_NULL_PTR(buf, s_tag, "buf must not be nullptr");
+  if (len == 0U) {
+    return k_ra_err_invalid_arg;
+  }
+  const ra_err_t batch_err = ra_pdg_set_delay_batch(buf, len);
+  if (batch_err != k_ra_ok) {
+    return batch_err;
+  }
+  s_pdg_capture_in_flight = true;
+  ra_pdg_dispatch();
+  s_pdg_capture_in_flight = false;
+  return k_ra_ok;
+}
+
+ra_err_t ra_pdg_capture_stop(void)
+{
+  s_pdg_capture_in_flight = false;
+  return k_ra_ok;
+}
+
+/* =============================================================================
  * Runtime FRANGE switch + auto-tune calibration
  * =============================================================================
  */

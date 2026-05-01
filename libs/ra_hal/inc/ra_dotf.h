@@ -662,6 +662,113 @@ void ra_dotf_dispatch(uint8_t channel);
  *
  * @since 0.1.0
  */
+/**
+ * @struct ra_dotf_open_cfg_t
+ * @brief One-shot DOTF bring-up descriptor consumed by ``ra_dotf_open``.
+ *
+ * @details
+ * Bundles the typical cold-boot sequence (init -> install_key -> set_iv ->
+ * set_region -> enable) into a single descriptor so the bootloader can
+ * cross from "DOTF off" to "XiP armed" with a single call. Per-field
+ * semantics mirror the underlying setters.
+ *
+ * cppcheck cannot see tests/ so it flags every member as unused; all
+ * fields are read by ``ra_dotf_open`` in ``ra_dotf.c``.
+ */
+/* cppcheck-suppress-begin [unusedStructMember] */
+typedef struct {
+  uint8_t              channel;      /**< 0 = DOTF0, 1 = DOTF1.            */
+  ra_dotf_key_handle_t key;          /**< RSIP-wrapped key handle.         */
+  uint32_t             iv_words[4];  /**< 128-bit IV in word order.        */
+  ra_dotf_region_t     region;       /**< Initial conversion region.       */
+  ra_dotf_sca_level_t  sca_level;    /**< Side-channel level.              */
+  bool                 enable_after; /**< true => arm AES after staging.   */
+} ra_dotf_open_cfg_t;
+/* cppcheck-suppress-end [unusedStructMember] */
+
+/**
+ * @brief One-shot DOTF bring-up: init + install_key + set_iv + set_region (+ enable).
+ *
+ * @details
+ * Convenience entry point for the bootloader: drives
+ * ``ra_dotf_init`` (idempotent re-init is allowed), ``ra_dotf_install_key``,
+ * ``ra_dotf_set_iv``, ``ra_dotf_set_region``, ``ra_dotf_select_region``,
+ * ``ra_dotf_set_sca_level`` and (optionally) ``ra_dotf_enable`` from a
+ * single descriptor. Used during cold boot when XiP code lives behind
+ * the AES core and must be armed before the first instruction fetch
+ * into the encrypted window.
+ *
+ * @param[in] cfg Non-NULL bring-up descriptor.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok                  Channel armed (or staged + idle).
+ * @retval k_ra_err_null_ptr        ``cfg`` was NULL.
+ * @retval k_ra_err_invalid_arg     Channel out of range or descriptor bad.
+ * @retval k_ra_err_hw_init_failed  MSTP enable failed.
+ *
+ * @pre IRQs masked or single-threaded boot context.
+ * @pre ``cfg->key.valid != 0``.
+ *
+ * @post Channel ``cfg->channel`` is staged + (if ``enable_after``) armed.
+ * @post REG00 / REG03 / CONVAREAST / CONVAREAD reflect the descriptor.
+ *
+ * @note Thread safety: not thread-safe.
+ * @see ra_dotf_close
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_dotf_open(const ra_dotf_open_cfg_t* cfg);
+
+/**
+ * @brief Tear down DOTF and release all hardware state.
+ *
+ * @details
+ * Companion to ``ra_dotf_open``: disables both channels and gates the
+ * shared OSPI MSTP bits via ``ra_dotf_deinit``. Provided as a thin
+ * symmetric helper so callers do not have to mix ``open`` / ``deinit``
+ * vocabulary.
+ *
+ * @return ``ra_err_t`` error code.
+ *
+ * @pre All XiP traffic is quiesced.
+ * @post Both DOTF channels disabled and gated.
+ *
+ * @note Thread safety: not thread-safe.
+ * @see ra_dotf_open
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_dotf_close(void);
+
+/**
+ * @brief Stage a region from a (start, length) pair instead of a struct.
+ *
+ * @details
+ * Thin convenience wrapper around ``ra_dotf_set_region`` for callers
+ * that have a ``base + len`` pair handy. Internally constructs a
+ * ``ra_dotf_region_t`` with ``region_id = 0``, ``key_index = 0`` and
+ * forwards. The end address is derived as ``start + len - 1`` and is
+ * subject to the same 4 KB alignment constraints as the struct API.
+ *
+ * @param[in] channel Channel index 0..1.
+ * @param[in] start   First byte of the encrypted region.
+ * @param[in] len     Length of the region in bytes (must be > 0 and 4 KB aligned).
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok                Region staged in slot 0.
+ * @retval k_ra_err_invalid_arg   Channel out of range or alignment bad.
+ *
+ * @pre ``ra_dotf_init`` (or ``ra_dotf_open``) has run.
+ * @pre ``len > 0`` and ``(start | len) % 4096 == 0``.
+ *
+ * @post Slot 0 of the channel mirrors the constructed region.
+ * @post Hardware CONVAREAST / CONVAREAD are NOT updated until
+ *       ``ra_dotf_select_region`` is called.
+ *
+ * @note Thread safety: not thread-safe.
+ * @see ra_dotf_set_region
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_dotf_set_region_window(uint8_t channel, uint32_t start, uint32_t len);
+
 [[nodiscard]] ra_err_t ra_dotf_enter_stop(void);
 
 /**

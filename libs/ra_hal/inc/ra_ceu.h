@@ -737,7 +737,7 @@ void ra_ceu_dispatch(void);
  * @see ra_ceu_dispatch  Listens for CETCR.CPE on capture completion.
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t ra_ceu_capture_start(uint8_t* buffer);
+[[nodiscard]] ra_err_t ra_ceu_capture_arm(uint8_t* buffer);
 
 /**
  * @brief Arm a capture using a full address bundle.
@@ -787,7 +787,7 @@ void ra_ceu_dispatch(void);
  * @note Not thread-safe.
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t ra_ceu_capture_stop(void);
+[[nodiscard]] ra_err_t ra_ceu_capture_disarm(void);
 
 /* =============================================================================
  * Plane / firewall / byte-swap setters (live reconfig)
@@ -988,6 +988,89 @@ void ra_ceu_dispatch(void);
  */
 [[nodiscard]] ra_err_t
 ra_ceu_dma_pump(uint8_t channel, const uint8_t* src, uint8_t* dst, uint32_t bytes);
+
+/* =============================================================================
+ * Sweep 17: DMA-driven framebuffer + multi-frame capture
+ * =============================================================================
+ */
+
+/**
+ * @brief Cache a DMAC-target framebuffer for the next `ra_ceu_capture_start`
+ *        call.
+ *
+ * @details
+ * The CEU writes pixel data straight to memory via its own bus master,
+ * so the "DMA buffer" here is just the next CDAYR target the driver
+ * will arm when `ra_ceu_capture_start(num_frames)` is called. The
+ * length is cached so the frame-end callback can hand the whole
+ * buffer back to the consumer.
+ *
+ * @param[in] buf Capture target (must be 8-byte aligned per HUM
+ *                Ch 60.2.13 p 3656).
+ * @param[in] len Buffer length in bytes (>0).
+ *
+ * @return ra_err_t
+ * @retval k_ra_ok                Buffer cached.
+ * @retval k_ra_err_null_ptr      buf was NULL.
+ * @retval k_ra_err_invalid_arg   len was 0 or buf misaligned.
+ *
+ * @pre `ra_ceu_init` previously called.
+ * @pre `buf` is non-NULL and 8-byte aligned, `len > 0`.
+ * @post The driver remembers (buf, len) for the next capture_start.
+ *
+ * @note Not thread-safe.
+ * @see ra_ceu_capture_start
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_ceu_set_dma_buffer(uint8_t* buf, uint32_t len);
+
+/**
+ * @brief Start a single or continuous capture into the cached DMA buffer.
+ *
+ * @details
+ * Wraps `ra_ceu_capture_arm` with the buffer that was cached via
+ * `ra_ceu_set_dma_buffer`. `num_frames` selects the capture mode:
+ *  - `num_frames == 1` -> single-shot (CAPCR.CTNCP = 0).
+ *  - `num_frames == 0` -> continuous capture (CAPCR.CTNCP = 1).
+ *  - Otherwise -> single-shot; the driver tracks the remaining count
+ *    through the dispatcher (out of scope for this entry-point, see
+ *    @par Note below).
+ *
+ * @param[in] num_frames 0 = continuous, otherwise number of frames.
+ *
+ * @return ra_err_t
+ * @retval k_ra_ok                 Capture armed.
+ * @retval k_ra_err_invalid_state  No buffer cached via
+ *                                 `ra_ceu_set_dma_buffer`.
+ * @retval k_ra_err_busy           CEU is already capturing.
+ *
+ * @pre `ra_ceu_init` and `ra_ceu_set_dma_buffer` were called.
+ * @post CAPCR.CTNCP reflects continuous vs single.
+ * @post CAPSR.CE == 1.
+ *
+ * @note Not thread-safe.
+ * @see ra_ceu_capture_stop
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_ceu_capture_start(uint32_t num_frames);
+
+/**
+ * @brief Stop the in-flight capture started via `ra_ceu_capture_start`.
+ *
+ * @details
+ * Wraps `ra_ceu_capture_disarm` so the high-level start/stop pair
+ * share matching names.
+ *
+ * @return ra_err_t error code from `ra_ceu_capture_disarm`.
+ *
+ * @pre `ra_ceu_capture_start` was previously called.
+ * @post CAPSR.CE == 0.
+ *
+ * @note Not thread-safe.
+ * @see ra_ceu_capture_start
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_ceu_capture_stop(void);
 
 #ifdef __cplusplus
 }

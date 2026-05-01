@@ -110,6 +110,23 @@ static uint32_t s_ceu_image_area;
 static ra_ceu_capture_format_t s_ceu_capture_format;
 
 /**
+ * @var s_ceu_dma_buf
+ * @brief Cached DMAC-target buffer set via `ra_ceu_set_dma_buffer`.
+ *
+ * @note Read by `ra_ceu_capture_start` to arm CDAYR.
+ * @since 0.1.0
+ */
+static uint8_t* s_ceu_dma_buf;
+
+/**
+ * @var s_ceu_dma_len
+ * @brief Cached buffer length (bytes) for the next capture.
+ *
+ * @since 0.1.0
+ */
+static uint32_t s_ceu_dma_len;
+
+/**
  * @brief Build the CAMCR value from a configuration descriptor.
  *
  * @param[in] cfg Non-NULL config (caller already validated).
@@ -472,6 +489,8 @@ ra_err_t ra_ceu_deinit(void)
   s_ceu_ctx        = nullptr;
   s_ceu_int_enable = 0U;
   s_ceu_image_area = 0U;
+  s_ceu_dma_buf    = nullptr;
+  s_ceu_dma_len    = 0U;
 
   /* HUM Ch 11.2.8 "MSTPCRC : Module Stop Control Register C" p 446 */
   return ra_mstp_disable(k_ra_mstp_ceu);
@@ -623,7 +642,7 @@ static ra_err_t internal_arm_capture(const ra_ceu_buffers_t* bufs)
   return k_ra_ok;
 }
 
-ra_err_t ra_ceu_capture_start(uint8_t* buffer)
+ra_err_t ra_ceu_capture_arm(uint8_t* buffer)
 {
   RA_CHECK_NULL_PTR(buffer, s_tag, "buffer must not be nullptr");
 
@@ -666,7 +685,7 @@ ra_err_t ra_ceu_capture_start_ex(const ra_ceu_buffers_t* bufs)
   return internal_arm_capture(bufs);
 }
 
-ra_err_t ra_ceu_capture_stop(void)
+ra_err_t ra_ceu_capture_disarm(void)
 {
   /* HUM Ch 60.2.1 "CAPSR : Capture Start Register" p 3630 -- clear
    * CE so the next VD does not start a new frame; in-flight frame
@@ -898,4 +917,48 @@ ra_err_t ra_ceu_dma_pump(uint8_t channel, const uint8_t* src, uint8_t* dst, uint
     .dst_inc = true,
   };
   return ra_dmac_start(channel, &cfg);
+}
+
+/* =============================================================================
+ * Sweep 17: DMA-driven framebuffer + multi-frame capture
+ * =============================================================================
+ */
+
+ra_err_t ra_ceu_set_dma_buffer(uint8_t* buf, uint32_t len)
+{
+  RA_CHECK_NULL_PTR(buf, s_tag, "buf must not be nullptr");
+  if (len == 0U) {
+    return k_ra_err_invalid_arg;
+  }
+  if (((uintptr_t)buf & k_ra_ceu_buffer_align_mask) != 0U) {
+    return k_ra_err_invalid_arg;
+  }
+  s_ceu_dma_buf = buf;
+  s_ceu_dma_len = len;
+  ra_log_info_val(s_tag, "ceu_set_dma_buffer len", len);
+  return k_ra_ok;
+}
+
+ra_err_t ra_ceu_capture_start(uint32_t num_frames)
+{
+  if (s_ceu_dma_buf == nullptr) {
+    return k_ra_err_invalid_state;
+  }
+  /* HUM Ch 60.2.2 "CAPCR" p 3634-3635 -- CTNCP[16] = 1 selects
+ * continuous capture, 0 selects single-shot. */
+  volatile uint32_t* capcr_reg = ra_ceu_reg32(k_ra_ceu_off_capcr);
+  uint32_t           capcr     = *capcr_reg;
+  if (num_frames == 0U) {
+    capcr |= ((uint32_t)1U << k_ra_ceu_capcr_shift_ctncp);
+  } else {
+    capcr &= ~((uint32_t)1U << k_ra_ceu_capcr_shift_ctncp);
+  }
+  *capcr_reg = capcr;
+
+  return ra_ceu_capture_arm(s_ceu_dma_buf);
+}
+
+ra_err_t ra_ceu_capture_stop(void)
+{
+  return ra_ceu_capture_disarm();
 }

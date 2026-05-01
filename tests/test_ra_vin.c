@@ -185,81 +185,80 @@ static void test_reset(void)
  * Capture tests
  * --------------------------------------------------------------------------*/
 
-static void test_capture_start_single(void)
+static void test_capture_arm_single(void)
 {
-  TEST_BEGIN("vin capture_start single");
+  TEST_BEGIN("vin capture_arm single");
   prep();
 
   const ra_vin_config_t cfg = make_cfg();
   TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_vin_init(&cfg));
 
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_vin_capture_start(k_ra_vin_capture_single));
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_vin_capture_arm(k_ra_vin_capture_single));
   const uint32_t mc = *ra_vin_reg32(k_ra_vin_off_mc);
   const uint32_t fc = *ra_vin_reg32(k_ra_vin_off_fc);
   TEST_ASSERT((mc & (uint32_t)k_ra_vin_mc_me) != 0U);
   TEST_ASSERT_EQ((int)0U, (int)(fc & (uint32_t)k_ra_vin_fc_cc));
-  TEST_END("vin capture_start single");
+  TEST_END("vin capture_arm single");
 }
 
-static void test_capture_start_continuous(void)
+static void test_capture_arm_continuous(void)
 {
-  TEST_BEGIN("vin capture_start continuous");
+  TEST_BEGIN("vin capture_arm continuous");
   prep();
 
   const ra_vin_config_t cfg = make_cfg();
   TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_vin_init(&cfg));
 
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_vin_capture_start(k_ra_vin_capture_continuous));
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_vin_capture_arm(k_ra_vin_capture_continuous));
   const uint32_t mc = *ra_vin_reg32(k_ra_vin_off_mc);
   const uint32_t fc = *ra_vin_reg32(k_ra_vin_off_fc);
   TEST_ASSERT((mc & (uint32_t)k_ra_vin_mc_me) != 0U);
   TEST_ASSERT((fc & (uint32_t)k_ra_vin_fc_cc) != 0U);
-  TEST_END("vin capture_start continuous");
+  TEST_END("vin capture_arm continuous");
 }
 
-static void test_capture_start_field_skip(void)
+static void test_capture_arm_field_skip(void)
 {
-  TEST_BEGIN("vin capture_start field-skip");
+  TEST_BEGIN("vin capture_arm field-skip");
   prep();
   const ra_vin_config_t cfg = make_cfg();
   TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_vin_init(&cfg));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_vin_capture_start(k_ra_vin_capture_continuous_field_skip));
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_vin_capture_arm(k_ra_vin_capture_continuous_field_skip));
   const uint32_t fc = *ra_vin_reg32(k_ra_vin_off_fc);
   TEST_ASSERT((fc & (uint32_t)k_ra_vin_fc_cc) != 0U);
-  TEST_END("vin capture_start field-skip");
+  TEST_END("vin capture_arm field-skip");
 }
 
-static void test_capture_start_invalid_mode(void)
+static void test_capture_arm_invalid_mode(void)
 {
-  TEST_BEGIN("vin capture_start invalid mode");
+  TEST_BEGIN("vin capture_arm invalid mode");
   prep();
   const ra_vin_config_t cfg = make_cfg();
   TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_vin_init(&cfg));
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
-                 (int)ra_vin_capture_start((ra_vin_capture_mode_t)0xFFU));
-  TEST_END("vin capture_start invalid mode");
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_vin_capture_arm((ra_vin_capture_mode_t)0xFFU));
+  TEST_END("vin capture_arm invalid mode");
 }
 
-static void test_capture_start_already_running(void)
+static void test_capture_arm_already_running(void)
 {
-  TEST_BEGIN("vin capture_start already running");
+  TEST_BEGIN("vin capture_arm already running");
   prep();
 
   const ra_vin_config_t cfg = make_cfg();
   TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_vin_init(&cfg));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_vin_capture_start(k_ra_vin_capture_single));
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_state, (int)ra_vin_capture_start(k_ra_vin_capture_single));
-  TEST_END("vin capture_start already running");
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_vin_capture_arm(k_ra_vin_capture_single));
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_state, (int)ra_vin_capture_arm(k_ra_vin_capture_single));
+  TEST_END("vin capture_arm already running");
 }
 
 static void test_capture_stop(void)
 {
-  TEST_BEGIN("vin capture_stop");
+  TEST_BEGIN("vin capture_disarm");
   prep();
 
   const ra_vin_config_t cfg = make_cfg();
   TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_vin_init(&cfg));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_vin_capture_start(k_ra_vin_capture_continuous));
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_vin_capture_arm(k_ra_vin_capture_continuous));
 
   TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_vin_capture_stop());
   const uint32_t mc      = *ra_vin_reg32(k_ra_vin_off_mc);
@@ -268,18 +267,18 @@ static void test_capture_stop(void)
   TEST_ASSERT_EQ((int)0U, (int)(mc & (uint32_t)k_ra_vin_mc_me));
   TEST_ASSERT_EQ((int)0U, (int)(fc & (uint32_t)k_ra_vin_fc_cc));
   TEST_ASSERT((mtcstop & (uint32_t)k_ra_vin_mtcstop_req) != 0U);
-  TEST_END("vin capture_stop");
+  TEST_END("vin capture_disarm");
 }
 
-static void test_capture_stop_idle(void)
+static void test_capture_disarm_idle(void)
 {
-  TEST_BEGIN("vin capture_stop idle");
+  TEST_BEGIN("vin capture_disarm idle");
   prep();
 
   const ra_vin_config_t cfg = make_cfg();
   TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_vin_init(&cfg));
   TEST_ASSERT_EQ((int)k_ra_err_invalid_state, (int)ra_vin_capture_stop());
-  TEST_END("vin capture_stop idle");
+  TEST_END("vin capture_disarm idle");
 }
 
 /* ----------------------------------------------------------------------------
@@ -872,7 +871,7 @@ static void test_power_transition(void)
 
   const ra_vin_config_t cfg = make_cfg();
   TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_vin_init(&cfg));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_vin_capture_start(k_ra_vin_capture_continuous));
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_vin_capture_arm(k_ra_vin_capture_continuous));
   TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_vin_enter_stop());
 
   const uint32_t mc = *ra_vin_reg32(k_ra_vin_off_mc);
@@ -882,6 +881,189 @@ static void test_power_transition(void)
 
   TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_vin_exit_stop());
   TEST_END("vin power transition");
+}
+
+/* ----------------------------------------------------------------------------
+ * Sweep 17: ra_vin_capture_start(buf, w, h, format) + window + frame handler
+ * --------------------------------------------------------------------------*/
+
+/**
+ * @enum ra_vin_test_geom_t
+ * @brief Magic-free geometry for the new high-level capture tests.
+ */
+typedef enum : uint16_t {
+  k_ra_vin_test_w        = 640U,
+  k_ra_vin_test_h        = 480U,
+  k_ra_vin_test_window_x = 16U,
+  k_ra_vin_test_window_y = 8U,
+  k_ra_vin_test_window_w = 320U,
+  k_ra_vin_test_window_h = 240U,
+} ra_vin_test_geom_t;
+
+static uint32_t s_vin_frame_count;
+static void*    s_vin_frame_last_buf;
+static uint32_t s_vin_frame_last_len;
+static void*    s_vin_frame_last_ctx;
+
+/**
+ * @brief Frame-end stub used by `test_attach_frame_handler`.
+ */
+static void stub_vin_frame(void* ctx, void* buf, uint32_t len)
+{
+  ++s_vin_frame_count;
+  s_vin_frame_last_buf = buf;
+  s_vin_frame_last_len = len;
+  s_vin_frame_last_ctx = ctx;
+}
+
+static void test_capture_start_buf_happy(void)
+{
+  TEST_BEGIN("vin capture_start(buf,w,h,format) happy");
+  prep();
+  const ra_vin_config_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_vin_init(&cfg));
+
+  void* const buf = (void*)(uintptr_t)k_ra_vin_test_fb_alt;
+  TEST_ASSERT_EQ((int)k_ra_ok,
+                 (int)ra_vin_capture_start(buf,
+                                           (uint16_t)k_ra_vin_test_w,
+                                           (uint16_t)k_ra_vin_test_h,
+                                           k_ra_vin_input_rgb888));
+  TEST_ASSERT_EQ((int)k_ra_vin_test_fb_alt, (int)*ra_vin_reg32(k_ra_vin_off_mb1));
+  TEST_ASSERT_EQ((int)k_ra_vin_test_w, (int)*ra_vin_reg32(k_ra_vin_off_is));
+  const uint32_t mc = *ra_vin_reg32(k_ra_vin_off_mc);
+  TEST_ASSERT((mc & (uint32_t)k_ra_vin_mc_me) != 0U);
+  TEST_END("vin capture_start(buf,w,h,format) happy");
+}
+
+static void test_capture_start_buf_null(void)
+{
+  TEST_BEGIN("vin capture_start NULL buf");
+  prep();
+  const ra_vin_config_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_vin_init(&cfg));
+  TEST_ASSERT_EQ((int)k_ra_err_null_ptr,
+                 (int)ra_vin_capture_start(nullptr,
+                                           (uint16_t)k_ra_vin_test_w,
+                                           (uint16_t)k_ra_vin_test_h,
+                                           k_ra_vin_input_rgb888));
+  TEST_END("vin capture_start NULL buf");
+}
+
+static void test_capture_start_buf_bad_geom(void)
+{
+  TEST_BEGIN("vin capture_start bad geometry");
+  prep();
+  const ra_vin_config_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_vin_init(&cfg));
+  void* const buf = (void*)(uintptr_t)k_ra_vin_test_fb_alt;
+  TEST_ASSERT_EQ(
+    (int)k_ra_err_invalid_arg,
+    (int)ra_vin_capture_start(buf, 0U, (uint16_t)k_ra_vin_test_h, k_ra_vin_input_rgb888));
+  TEST_ASSERT_EQ(
+    (int)k_ra_err_invalid_arg,
+    (int)ra_vin_capture_start(buf, (uint16_t)k_ra_vin_test_w, 0U, k_ra_vin_input_rgb888));
+  TEST_END("vin capture_start bad geometry");
+}
+
+static void test_capture_start_buf_misaligned(void)
+{
+  TEST_BEGIN("vin capture_start misaligned buf");
+  prep();
+  const ra_vin_config_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_vin_init(&cfg));
+  void* const bad = (void*)(uintptr_t)(k_ra_vin_test_fb_alt + 1U);
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
+                 (int)ra_vin_capture_start(bad,
+                                           (uint16_t)k_ra_vin_test_w,
+                                           (uint16_t)k_ra_vin_test_h,
+                                           k_ra_vin_input_rgb888));
+  TEST_END("vin capture_start misaligned buf");
+}
+
+static void test_capture_stop_wrapper(void)
+{
+  TEST_BEGIN("vin capture_stop wrapper");
+  prep();
+  const ra_vin_config_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_vin_init(&cfg));
+  void* const buf = (void*)(uintptr_t)k_ra_vin_test_fb_alt;
+  TEST_ASSERT_EQ((int)k_ra_ok,
+                 (int)ra_vin_capture_start(buf,
+                                           (uint16_t)k_ra_vin_test_w,
+                                           (uint16_t)k_ra_vin_test_h,
+                                           k_ra_vin_input_rgb888));
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_vin_capture_stop());
+  const uint32_t mc = *ra_vin_reg32(k_ra_vin_off_mc);
+  TEST_ASSERT_EQ((int)0U, (int)(mc & (uint32_t)k_ra_vin_mc_me));
+  TEST_END("vin capture_stop wrapper");
+}
+
+static void test_set_window_happy(void)
+{
+  TEST_BEGIN("vin set_window happy");
+  prep();
+  const ra_vin_config_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_vin_init(&cfg));
+  TEST_ASSERT_EQ((int)k_ra_ok,
+                 (int)ra_vin_set_window((uint16_t)k_ra_vin_test_window_x,
+                                        (uint16_t)k_ra_vin_test_window_y,
+                                        (uint16_t)k_ra_vin_test_window_w,
+                                        (uint16_t)k_ra_vin_test_window_h));
+  TEST_ASSERT_EQ((int)k_ra_vin_test_window_y, (int)*ra_vin_reg32(k_ra_vin_off_slprc));
+  TEST_ASSERT_EQ((int)k_ra_vin_test_window_x, (int)*ra_vin_reg32(k_ra_vin_off_spprc));
+  TEST_END("vin set_window happy");
+}
+
+static void test_set_window_invalid(void)
+{
+  TEST_BEGIN("vin set_window invalid");
+  prep();
+  const ra_vin_config_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_vin_init(&cfg));
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_vin_set_window(0U, 0U, 0U, 0U));
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_vin_set_window(4090U, 0U, 100U, 1U));
+  TEST_END("vin set_window invalid");
+}
+
+static void test_attach_frame_handler(void)
+{
+  TEST_BEGIN("vin attach_frame_handler");
+  prep();
+  s_vin_frame_count    = 0U;
+  s_vin_frame_last_buf = nullptr;
+  s_vin_frame_last_len = 0U;
+  s_vin_frame_last_ctx = nullptr;
+
+  const ra_vin_config_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_vin_init(&cfg));
+
+  void* const buf = (void*)(uintptr_t)k_ra_vin_test_fb_alt;
+  TEST_ASSERT_EQ(
+    (int)k_ra_ok,
+    (int)ra_vin_attach_frame_handler(stub_vin_frame, (void*)(uintptr_t)k_ra_vin_test_ctx));
+  TEST_ASSERT_EQ((int)k_ra_ok,
+                 (int)ra_vin_capture_start(buf,
+                                           (uint16_t)k_ra_vin_test_w,
+                                           (uint16_t)k_ra_vin_test_h,
+                                           k_ra_vin_input_raw8));
+
+  /* Inject the FME bit into INTS, then dispatch. */
+  *ra_vin_reg32(k_ra_vin_off_ints) = (uint32_t)k_ra_vin_int_fme;
+  ra_vin_dispatch();
+  TEST_ASSERT_EQ((int)1U, (int)s_vin_frame_count);
+  TEST_ASSERT_EQ((int)(uintptr_t)buf, (int)(uintptr_t)s_vin_frame_last_buf);
+  /* RAW8 = 1 byte/pixel -> len = w*h. */
+  TEST_ASSERT_EQ((int)((uint32_t)k_ra_vin_test_w * (uint32_t)k_ra_vin_test_h),
+                 (int)s_vin_frame_last_len);
+  TEST_ASSERT_EQ((int)k_ra_vin_test_ctx, (int)(uintptr_t)s_vin_frame_last_ctx);
+
+  /* Detach -> next dispatch must not increment. */
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_vin_attach_frame_handler(nullptr, nullptr));
+  *ra_vin_reg32(k_ra_vin_off_ints) = (uint32_t)k_ra_vin_int_fme;
+  ra_vin_dispatch();
+  TEST_ASSERT_EQ((int)1U, (int)s_vin_frame_count);
+  TEST_END("vin attach_frame_handler");
 }
 
 static void test_deinit(void)
@@ -907,13 +1089,13 @@ int32_t main(void)
   test_init_bad_im();
   test_init_bad_clp();
   test_reset();
-  test_capture_start_single();
-  test_capture_start_continuous();
-  test_capture_start_field_skip();
-  test_capture_start_invalid_mode();
-  test_capture_start_already_running();
+  test_capture_arm_single();
+  test_capture_arm_continuous();
+  test_capture_arm_field_skip();
+  test_capture_arm_invalid_mode();
+  test_capture_arm_already_running();
   test_capture_stop();
-  test_capture_stop_idle();
+  test_capture_disarm_idle();
   test_set_preclip();
   test_set_uds_scale();
   test_set_uds_passband();
@@ -937,6 +1119,14 @@ int32_t main(void)
   test_set_interrupt_enable();
   test_set_scanline_compare();
   test_attach_and_dispatch();
+  test_capture_start_buf_happy();
+  test_capture_start_buf_null();
+  test_capture_start_buf_bad_geom();
+  test_capture_start_buf_misaligned();
+  test_capture_stop_wrapper();
+  test_set_window_happy();
+  test_set_window_invalid();
+  test_attach_frame_handler();
   test_power_transition();
   test_deinit();
   (void)fprintf(stderr, "[OK  ] test_ra_vin.c\n");
