@@ -1,0 +1,406 @@
+/**
+ * @file ra_wdt_supervisor.c
+ * @brief ThreadX-aware watchdog supervisor implementation
+ *
+ * @par Tag
+ * [Ring 4 / Service] {World: NS}
+ *
+ * @details
+ * Static-allocation registry with a TX_MUTEX guard and a single TX_THREAD
+ * that wakes every ``refresh_period_ms``. See ``ra_wdt_supervisor.h`` for
+ * the design rationale.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
+ */
+
+#include "ra_wdt_supervisor.h"
+
+#include <stdint.h>
+#include <string.h>
+
+#include "ra_err.h"
+#include "ra_wdt.h"
+#ifdef RA_SIMULATOR_MODE
+#include "ra_wdt_sup_tx_shim.h"
+#else
+#include "tx_api.h"
+#endif
+
+/**
+ * @enum ra_wdt_sup_internal_t
+ * @brief Internal numeric constants used by the implementation.
+ */
+typedef enum : uint32_t {
+  k_ra_wdt_sup_min_stack       = 512U,    /**< Minimum acceptable stack size. */
+  k_ra_wdt_sup_max_priority    = 31U,     /**< Highest legal ThreadX priority. */
+  k_ra_wdt_sup_default_tick_ms = 1U,      /**< Default tick: 1 kHz kernel. */
+  k_ra_wdt_sup_slot_free       = 0U,      /**< Slot tag: empty. */
+  k_ra_wdt_sup_slot_used       = 1U,      /**< Slot tag: registered. */
+  k_ra_wdt_sup_mutex_id        = 0x57445353U, /**< 'WDSS' marker for the mutex. */
+  k_ra_wdt_sup_thread_id       = 0x57445354U, /**< 'WDST' marker for the thread. */
+} ra_wdt_sup_internal_t;
+
+/**
+ * @struct ra_wdt_sup_slot_t
+ * @brief One row of the supervisor registry.
+ */
+typedef struct {
+  uint8_t  state;                              /**< ``slot_free`` or ``slot_used``. */
+  char     name[k_ra_wdt_sup_name_max];        /**< Diagnostic name (NUL-terminated). */
+  uint32_t deadline_ms;                        /**< Max gap between check-ins. */
+  uint32_t last_checkin_ms;                    /**< Monotonic time of last check-in. */
+} ra_wdt_sup_slot_t;
+
+/**
+ * @struct ra_wdt_sup_state_t
+ * @brief Module state -- entirely static.
+ */
+typedef struct {
+  bool                    initialised;              /**< True after successful init. */
+  bool                    started;                  /**< True after start spawned the thread. */
+  ra_wdt_sup_cfg_t        cfg;                      /**< Cached configuration. */
+  ra_wdt_sup_slot_t       slots[k_ra_wdt_sup_max_threads]; /**< Registry. */
+  TX_MUTEX                mutex;                    /**< Guards ``slots``. */
+  TX_THREAD               thread;                   /**< Supervisor thread control block. */
+  ra_wdt_sup_now_fn_t     now;                      /**< Monotonic-time hook. */
+  ra_wdt_sup_refresh_fn_t refresh;                  /**< WDT-refresh hook. */
+} ra_wdt_sup_state_t;
+
+/**
+ * @var s_state
+ * @brief Singleton module state.
+ *
+ * @note Static; do not access outside this TU.
+ */
+static ra_wdt_sup_state_t s_state;
+
+/**
+ * @brief Default monotonic-time hook -- scales tx_time_get to ms.
+ *
+ * @details
+ * Assumes a 1 kHz kernel tick (the most common ThreadX default for
+ * Cortex-M cores). Override via ``ra_wdt_supervisor_set_now_hook`` if
+ * the kernel runs at a different rate.
+ *
+ * @return Current monotonic time in milliseconds.
+ *
+ * @pre None.
+ * @post No state is mutated.
+ */
+static uint32_t internal_default_now(void)
+{
+  return (uint32_t)tx_time_get() * (uint32_t)k_ra_wdt_sup_default_tick_ms;
+}
+
+/**
+ * @brief Default WDT-refresh hook.
+ *
+ * @details
+ * Wraps ``ra_wdt_refresh_deferred`` so the test build can swap it out
+ * without pulling the WDT register layout into the unit test image.
+ *
+ * @pre WDT block has been armed.
+ * @post WDTRR has been written with the unlock sequence.
+ */
+static void internal_default_refresh(void)
+{
+  ra_wdt_refresh_deferred();
+}
+
+/**
+ * @brief Validate the public configuration block.
+ *
+ * @param[in] cfg Caller-supplied configuration.
+ *
+ * @return ``k_ra_ok`` if the block is acceptable, else a specific error.
+ * @retval k_ra_err_null_ptr     ``cfg`` or ``cfg->stack`` was null.
+ * @retval k_ra_err_invalid_arg  Stack too small / period zero / priority bad.
+ *
+ * @pre None.
+ * @post No state is mutated.
+ */
+static ra_err_t internal_validate_cfg(const ra_wdt_sup_cfg_t* cfg)
+{
+  if (cfg == nullptr) {
+    return k_ra_err_null_ptr;
+  }
+  if (cfg->stack == nullptr) {
+    return k_ra_err_null_ptr;
+  }
+  if (cfg->stack_size_bytes < (uint32_t)k_ra_wdt_sup_min_stack) {
+    return k_ra_err_invalid_arg;
+  }
+  if (cfg->refresh_period_ms == 0U) {
+    return k_ra_err_invalid_arg;
+  }
+  if (cfg->priority > (uint32_t)k_ra_wdt_sup_max_priority) {
+    return k_ra_err_invalid_arg;
+  }
+  return k_ra_ok;
+}
+
+/**
+ * @brief Compute whether ``now - last_checkin`` exceeds ``deadline``.
+ *
+ * @details
+ * Uses unsigned subtraction so 32-bit wrap-around is handled implicitly
+ * as long as the gap is < 2^31 ms (~24.8 days), which is always the
+ * case for the supervisor's ms-scale ticks.
+ *
+ * @param[in] now          Current monotonic time (ms).
+ * @param[in] last_checkin Time of slot's last check-in (ms).
+ * @param[in] deadline     Slot's deadline budget (ms).
+ *
+ * @return ``true`` if the slot is overdue, ``false`` if alive.
+ *
+ * @pre None.
+ * @post No state is mutated.
+ */
+static bool internal_is_overdue(uint32_t now, uint32_t last_checkin, uint32_t deadline)
+{
+  const uint32_t gap = now - last_checkin;
+  return gap > deadline;
+}
+
+/**
+ * @brief The supervisor thread's entry point.
+ *
+ * @details
+ * Loops forever, sleeping ``refresh_period_ms`` between ticks. Each
+ * iteration calls ``ra_wdt_supervisor_tick`` to evaluate the registry
+ * and conditionally refresh the WDT.
+ *
+ * @param[in] arg Unused (ThreadX entry-fn signature requires a ULONG).
+ *
+ * @pre ``s_state.initialised`` is true.
+ * @post Loops forever (NASA Rule 2: bounded body, unbounded outer).
+ */
+static void internal_thread_entry(ULONG arg)
+{
+  (void)arg;
+  /* NASA Rule 2: outer loop is the canonical "main control loop"
+   * exception. Body is finite. */
+  while (true) {
+    bool refreshed = false;
+    (void)ra_wdt_supervisor_tick(&refreshed);
+    /* tx_thread_sleep takes ticks. Convert ms->ticks at the default
+     * 1 kHz rate; non-default rates can override the now hook. */
+    (void)tx_thread_sleep((ULONG)s_state.cfg.refresh_period_ms);
+  }
+}
+
+/* =============================================================================
+ * Public API
+ * =============================================================================
+ */
+
+ra_err_t ra_wdt_supervisor_init(const ra_wdt_sup_cfg_t* cfg)
+{
+  const ra_err_t cfg_err = internal_validate_cfg(cfg);
+  if (cfg_err != k_ra_ok) {
+    return cfg_err;
+  }
+  if (s_state.initialised) {
+    return k_ra_err_busy;
+  }
+
+  (void)memset(&s_state.slots[0], 0, sizeof s_state.slots);
+  s_state.cfg     = *cfg;
+  s_state.now     = internal_default_now;
+  s_state.refresh = internal_default_refresh;
+  s_state.started = false;
+
+  const UINT mx = tx_mutex_create(&s_state.mutex, (CHAR*)(uintptr_t)"ra_wdt_sup", TX_NO_INHERIT);
+  if (mx != TX_SUCCESS) {
+    return k_ra_err_rtos_error;
+  }
+
+  s_state.initialised = true;
+  return k_ra_ok;
+}
+
+ra_err_t ra_wdt_supervisor_deinit(void)
+{
+  if (s_state.initialised) {
+    if (s_state.started) {
+      (void)tx_thread_terminate(&s_state.thread);
+      (void)tx_thread_delete(&s_state.thread);
+    }
+    (void)tx_mutex_delete(&s_state.mutex);
+  }
+  (void)memset(&s_state, 0, sizeof s_state);
+  return k_ra_ok;
+}
+
+ra_err_t ra_wdt_supervisor_register_thread(const char* name,
+                                           uint32_t    deadline_ms,
+                                           uint8_t*    out_handle)
+{
+  if (out_handle == nullptr) {
+    return k_ra_err_null_ptr;
+  }
+  *out_handle = (uint8_t)k_ra_wdt_sup_handle_invalid;
+
+  if (name == nullptr) {
+    return k_ra_err_null_ptr;
+  }
+  if (deadline_ms == 0U) {
+    return k_ra_err_invalid_arg;
+  }
+  if (!s_state.initialised) {
+    return k_ra_err_not_initialized;
+  }
+
+  const UINT mx = tx_mutex_get(&s_state.mutex, TX_WAIT_FOREVER);
+  if (mx != TX_SUCCESS) {
+    return k_ra_err_rtos_error;
+  }
+
+  ra_err_t result = k_ra_err_no_mem;
+  for (uint8_t i = 0U; i < (uint8_t)k_ra_wdt_sup_max_threads; ++i) {
+    if (s_state.slots[i].state == (uint8_t)k_ra_wdt_sup_slot_free) {
+      s_state.slots[i].state       = (uint8_t)k_ra_wdt_sup_slot_used;
+      s_state.slots[i].deadline_ms = deadline_ms;
+      s_state.slots[i].last_checkin_ms = s_state.now();
+      /* Bounded copy with explicit NUL termination. */
+      (void)memset(s_state.slots[i].name, 0, sizeof s_state.slots[i].name);
+      const size_t cap = (size_t)k_ra_wdt_sup_name_max - 1U;
+      for (size_t k = 0U; k < cap; ++k) {
+        const char ch = name[k];
+        if (ch == '\0') {
+          break;
+        }
+        s_state.slots[i].name[k] = ch;
+      }
+      *out_handle = i;
+      result      = k_ra_ok;
+      break;
+    }
+  }
+
+  (void)tx_mutex_put(&s_state.mutex);
+  return result;
+}
+
+ra_err_t ra_wdt_supervisor_checkin(uint8_t handle)
+{
+  if (handle >= (uint8_t)k_ra_wdt_sup_max_threads) {
+    return k_ra_err_invalid_arg;
+  }
+  if (!s_state.initialised) {
+    return k_ra_err_not_initialized;
+  }
+
+  const UINT mx = tx_mutex_get(&s_state.mutex, TX_WAIT_FOREVER);
+  if (mx != TX_SUCCESS) {
+    return k_ra_err_rtos_error;
+  }
+
+  ra_err_t result = k_ra_err_not_found;
+  if (s_state.slots[handle].state == (uint8_t)k_ra_wdt_sup_slot_used) {
+    s_state.slots[handle].last_checkin_ms = s_state.now();
+    result                                = k_ra_ok;
+  }
+
+  (void)tx_mutex_put(&s_state.mutex);
+  return result;
+}
+
+ra_err_t ra_wdt_supervisor_start(void)
+{
+  if (!s_state.initialised) {
+    return k_ra_err_not_initialized;
+  }
+  if (s_state.started) {
+    return k_ra_err_busy;
+  }
+
+  const UINT tx = tx_thread_create(&s_state.thread,
+                                   (CHAR*)(uintptr_t)"ra_wdt_sup",
+                                   internal_thread_entry,
+                                   0UL,
+                                   s_state.cfg.stack,
+                                   (ULONG)s_state.cfg.stack_size_bytes,
+                                   (UINT)s_state.cfg.priority,
+                                   (UINT)s_state.cfg.priority,
+                                   TX_NO_TIME_SLICE,
+                                   TX_AUTO_START);
+  if (tx != TX_SUCCESS) {
+    return k_ra_err_rtos_error;
+  }
+
+  s_state.started = true;
+  return k_ra_ok;
+}
+
+ra_err_t ra_wdt_supervisor_tick(bool* out_did_refresh)
+{
+  if (!s_state.initialised) {
+    if (out_did_refresh != nullptr) {
+      *out_did_refresh = false;
+    }
+    return k_ra_err_not_initialized;
+  }
+
+  const UINT mx = tx_mutex_get(&s_state.mutex, TX_WAIT_FOREVER);
+  if (mx != TX_SUCCESS) {
+    if (out_did_refresh != nullptr) {
+      *out_did_refresh = false;
+    }
+    return k_ra_err_rtos_error;
+  }
+
+  bool           all_alive   = true;
+  bool           any_present = false;
+  const uint32_t now_ms      = s_state.now();
+  for (uint8_t i = 0U; i < (uint8_t)k_ra_wdt_sup_max_threads; ++i) {
+    if (s_state.slots[i].state != (uint8_t)k_ra_wdt_sup_slot_used) {
+      continue;
+    }
+    any_present = true;
+    if (internal_is_overdue(now_ms,
+                            s_state.slots[i].last_checkin_ms,
+                            s_state.slots[i].deadline_ms)) {
+      all_alive = false;
+      break;
+    }
+  }
+
+  (void)tx_mutex_put(&s_state.mutex);
+
+  /* Only refresh if at least one thread is registered AND every
+   * registered thread is alive. With zero workers we deliberately do
+   * NOT kick the dog -- the supervisor would mask a degenerate config. */
+  const bool will_refresh = any_present && all_alive;
+  if (will_refresh && (s_state.refresh != nullptr)) {
+    s_state.refresh();
+  }
+  if (out_did_refresh != nullptr) {
+    *out_did_refresh = will_refresh;
+  }
+  return k_ra_ok;
+}
+
+ra_err_t ra_wdt_supervisor_set_now_hook(ra_wdt_sup_now_fn_t now)
+{
+  s_state.now = (now != nullptr) ? now : internal_default_now;
+  return k_ra_ok;
+}
+
+ra_err_t ra_wdt_supervisor_set_refresh_hook(ra_wdt_sup_refresh_fn_t refresh)
+{
+  s_state.refresh = (refresh != nullptr) ? refresh : internal_default_refresh;
+  return k_ra_ok;
+}
+
+uint8_t ra_wdt_supervisor_thread_count(void)
+{
+  uint8_t count = 0U;
+  for (uint8_t i = 0U; i < (uint8_t)k_ra_wdt_sup_max_threads; ++i) {
+    if (s_state.slots[i].state == (uint8_t)k_ra_wdt_sup_slot_used) {
+      ++count;
+    }
+  }
+  return count;
+}
