@@ -53,6 +53,7 @@ typedef enum : uintptr_t {
  * - **Trusts:** the SFSR snapshot belongs to the failing access.
  * - **Denies:** any return path. The handler does not RET.
  */
+void SecureFault_Handler(void);
 void SecureFault_Handler(void)
 {
   const uint32_t sfsr = *(volatile uint32_t*)k_ra_sfsr_addr;

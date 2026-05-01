@@ -218,6 +218,7 @@ extern void _tx_timer_interrupt(void);
  *
  * @since 0.1.0
  */
+void SysTick_Handler(void);
 void SysTick_Handler(void)
 {
   _tx_timer_interrupt();
