@@ -34,32 +34,6 @@
 static const char* s_tag = "KEYIMP";
 
 /**
- * @var s_slot_used
- * @brief One bit per vault slot: 1 if currently allocated.
- *
- * @details Bit ``i`` of ``s_slot_used`` is set when slot ``i`` has been
- * imported via ``ra_key_import_seal``. ``ra_key_import_reset`` clears
- * the entire mask.
- *
- * @note Direct modification from anywhere outside this TU is forbidden.
- * @since 0.1.0
- */
-static uint16_t s_slot_used = 0U;
-
-/**
- * @var s_salt
- * @brief Per-boot 32-bit salt used for handle obfuscation + MAC.
- *
- * @details Refreshed on every ``ra_key_import_reset`` call. The chosen
- * value is intentionally non-zero so the handle for slot 0 never
- * collides with ``k_ra_key_import_handle_zero``.
- *
- * @warning Do not write directly; call ``ra_key_import_reset``.
- * @since 0.1.0
- */
-static uint32_t s_salt = (uint32_t)k_initial_salt;
-
-/**
  * @def k_handle_rotate_bits
  * @brief Bits the salt is rotated by before XORing into the slot.
  *
@@ -94,6 +68,32 @@ typedef enum : uint32_t {
   k_handle_high_bit_mask = 0x80000000U,
   k_salt_reroll_xor      = 0xDEADBEEFU,
 } ra_key_import_byte_mask_t;
+
+/**
+ * @var s_slot_used
+ * @brief One bit per vault slot: 1 if currently allocated.
+ *
+ * @details Bit ``i`` of ``s_slot_used`` is set when slot ``i`` has been
+ * imported via ``ra_key_import_seal``. ``ra_key_import_reset`` clears
+ * the entire mask.
+ *
+ * @note Direct modification from anywhere outside this TU is forbidden.
+ * @since 0.1.0
+ */
+static uint16_t s_slot_used = 0U;
+
+/**
+ * @var s_salt
+ * @brief Per-boot 32-bit salt used for handle obfuscation + MAC.
+ *
+ * @details Refreshed on every ``ra_key_import_reset`` call. The chosen
+ * value is intentionally non-zero so the handle for slot 0 never
+ * collides with ``k_ra_key_import_handle_zero``.
+ *
+ * @warning Do not write directly; call ``ra_key_import_reset``.
+ * @since 0.1.0
+ */
+static uint32_t s_salt = (uint32_t)k_initial_salt;
 
 
 static uint32_t internal_rotate_left_32(uint32_t value, uint8_t amount)
