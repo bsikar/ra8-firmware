@@ -1,0 +1,25 @@
+{
+  "app": "blink",
+  "description": "Minimal blink configuration: MOCO clock, single LED on P11.7, no IRQs, IOPORT released from module-stop.",
+  "clocks": {
+    "source": "moco",
+    "moco_hz": 8000000,
+    "cpuclk0_hz": 8000000,
+    "iclk_hz": 8000000,
+    "pclka_hz": 8000000,
+    "pclkb_hz": 8000000
+  },
+  "pinmux": [
+    {
+      "label": "led_blue",
+      "port": 11,
+      "pin": 7,
+      "mode": "output",
+      "initial_level": "low"
+    }
+  ],
+  "irqs": [],
+  "mstp": [
+    { "module": "ioport", "enable": true }
+  ]
+}

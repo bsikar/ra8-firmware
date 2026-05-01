@@ -47,7 +47,7 @@ RA_APPS := $(sort $(patsubst $(ROOT)/examples/%/main.c,%,$(wildcard $(ROOT)/exam
 
 # We forward each <app> name to the app's own Makefile, so reserve the names
 # below from being shadowed by .PHONY targets.
-.PHONY: help apps default clean format check tidy test test-docker ctest docs ascii version all $(RA_APPS)
+.PHONY: help apps default clean format check tidy test test-docker ctest docs ascii version qe-test all $(RA_APPS)
 
 help:
 	@echo "ra8d2-firmware make targets:"
@@ -64,6 +64,7 @@ help:
 	@echo "  make docs      run doxygen"
 	@echo "  make ascii     fix-encoding.py --check"
 	@echo "  make version   verify @since tags match the VERSION file"
+	@echo "  make qe-test   run tools/ra_qe (JSON configurator) unit tests"
 
 # `make` with no arg builds the default app.
 default: $(RA_DEFAULT_APP)
@@ -118,5 +119,8 @@ ascii:
 version:
 	@echo "project VERSION: $$(cat VERSION)"
 	@python3 scripts/utils/check-since-version.py --all
+
+qe-test:
+	python3 -m unittest tools/ra_qe/tests/test_generate.py
 
 all: format tidy test default
