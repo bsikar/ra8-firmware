@@ -338,6 +338,84 @@ static void test_set_report_setup_envelope(void)
   TEST_END("ra_usb_hhid_set_report stages bmRequestType=0x21 + bRequest=0x09");
 }
 
+/* ---------------------------------------------------------------------------
+ * Sweep 15 / Phase 2: get_report IN data phase wired in.
+ * --------------------------------------------------------------------------- */
+
+static void test_get_report_drains_in_data_phase(void)
+{
+  TEST_BEGIN("ra_usb_hhid_get_report drains EP0 IN FIFO into out_buf");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hhid_init(k_ra_usb_speed_fs));
+  walk_to_attach();
+  ra_usb_fs()->DCPCTR = 0U;
+
+  /* Stage two bytes into the DCP CFIFO via CFIFOCTR.DTLN + CFIFO.
+   * The simulated mmap backs CFIFOCTR/CFIFO with simple 32-bit cells,
+   * so we set DTLN=2 (FRDY left set) and stage 0xCAFE LE. */
+  volatile r_usb_regs_t* reg = ra_usb_fs();
+  /* FRDY (0x2000) | DTLN=2 -> drain helper sees "2 bytes ready". */
+  reg->CFIFOCTR = (uint16_t)(0x2000U | 2U);
+  reg->CFIFO    = (uint16_t)0xCAFEU;
+
+  uint8_t  buf[8] = {};
+  uint16_t got    = 0U;
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_ok,
+    (int32_t)ra_usb_hhid_get_report(k_ra_hhid_report_type_input, 0U, buf, sizeof(buf), &got));
+  /* The drain helper reads 16-bit LE: low byte 0xFE -> buf[0],
+   * high byte 0xCA -> buf[1]. */
+  TEST_ASSERT_EQ((int32_t)2U, (int32_t)got);
+  TEST_ASSERT_EQ((int32_t)0xFEU, (int32_t)buf[0]);
+  TEST_ASSERT_EQ((int32_t)0xCAU, (int32_t)buf[1]);
+  TEST_END("ra_usb_hhid_get_report drains EP0 IN FIFO into out_buf");
+}
+
+static void test_get_report_returns_zero_when_no_data(void)
+{
+  TEST_BEGIN("ra_usb_hhid_get_report returns got_len=0 when FIFO never ready");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hhid_init(k_ra_usb_speed_fs));
+  walk_to_attach();
+  ra_usb_fs()->DCPCTR = 0U;
+
+  /* Clear FRDY so the drain helper short-circuits with 0 bytes. */
+  ra_usb_fs()->CFIFOCTR = 0U;
+
+  uint8_t  buf[8] = {};
+  uint16_t got    = 0xFFFFU;
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_ok,
+    (int32_t)ra_usb_hhid_get_report(k_ra_hhid_report_type_input, 0U, buf, sizeof(buf), &got));
+  TEST_ASSERT_EQ((int32_t)0U, (int32_t)got);
+  TEST_END("ra_usb_hhid_get_report returns got_len=0 when FIFO never ready");
+}
+
+static void test_get_report_caps_at_max_len(void)
+{
+  TEST_BEGIN("ra_usb_hhid_get_report caps drained byte count at max_len");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hhid_init(k_ra_usb_speed_fs));
+  walk_to_attach();
+  ra_usb_fs()->DCPCTR = 0U;
+
+  /* Stage 4 bytes available but only ask for 1.  Caller buffer must
+   * not be over-written and got_len must equal max_len. */
+  volatile r_usb_regs_t* reg = ra_usb_fs();
+  reg->CFIFOCTR              = (uint16_t)(0x2000U | 4U);
+  reg->CFIFO                 = (uint16_t)0xBEEFU;
+
+  uint8_t  buf[1] = {0U};
+  uint16_t got    = 0U;
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_ok,
+    (int32_t)ra_usb_hhid_get_report(k_ra_hhid_report_type_input, 0U, buf, sizeof(buf), &got));
+  TEST_ASSERT_EQ((int32_t)1U, (int32_t)got);
+  /* Drained byte was the trailing odd-byte path: buf[0] == 0xEF. */
+  TEST_ASSERT_EQ((int32_t)0xEFU, (int32_t)buf[0]);
+  TEST_END("ra_usb_hhid_get_report caps drained byte count at max_len");
+}
+
 int32_t main(void)
 {
   test_init_fs_returns_ok();
@@ -353,6 +431,9 @@ int32_t main(void)
   test_set_idle_setup_envelope();
   test_set_protocol_setup_envelope();
   test_set_report_setup_envelope();
+  test_get_report_drains_in_data_phase();
+  test_get_report_returns_zero_when_no_data();
+  test_get_report_caps_at_max_len();
   (void)fprintf(stderr, "[OK ] test_ra_usb_hhid.c\n");
   return 0;
 }

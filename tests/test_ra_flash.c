@@ -891,6 +891,71 @@ static void test_status_clean(void)
 }
 
 /* ---------------------------------------------------------------------------
+ * Sweep 15 / Phase 2: suspend / resume + lock-bit programming.
+ * --------------------------------------------------------------------------- */
+
+static void test_suspend_resume_round_trip(void)
+{
+  TEST_BEGIN("flash suspend/resume round-trip via MENTRYR.PCKA");
+  ra_sim_mmap_reset();
+
+  /* Suspend writes the keyed pause pattern; the simulated MENTRYR
+   * cell reflects whatever was last written, so PCKA shows up as 1. */
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_flash_suspend());
+  const uint16_t after_suspend = *ra_mram_reg16((uint16_t)k_ra_mram_off_mentryr);
+  TEST_ASSERT((after_suspend & (uint16_t)k_ra_mentryr_mask_pcka) != 0U);
+
+  /* Resume clears PCKA but leaves MENTRY high. */
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_flash_resume());
+  const uint16_t after_resume = *ra_mram_reg16((uint16_t)k_ra_mram_off_mentryr);
+  TEST_ASSERT_EQ(0, (int)(after_resume & (uint16_t)k_ra_mentryr_mask_pcka));
+  TEST_END("flash suspend/resume round-trip via MENTRYR.PCKA");
+}
+
+static void test_lock_set_ns_world(void)
+{
+  TEST_BEGIN("flash lock_set programs MRCBPROT0 for NS addresses");
+  ra_sim_mmap_reset();
+
+  /* Address inside the NS half (bit 19 clear) -> MRCBPROT0 written. */
+  const uintptr_t ns_addr = (uintptr_t)k_ra_flash_code_start + 0x100U;
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_flash_lock_set(ns_addr, (uint16_t)k_ra_mrcbprot0_key_lock));
+  TEST_ASSERT_EQ((int)k_ra_mrcbprot0_key_lock,
+                 (int)*ra_mram_reg16((uint16_t)k_ra_mram_off_mrcbprot0));
+  TEST_END("flash lock_set programs MRCBPROT0 for NS addresses");
+}
+
+static void test_lock_set_s_world(void)
+{
+  TEST_BEGIN("flash lock_set programs MRCBPROT1 for S addresses");
+  ra_sim_mmap_reset();
+
+  /* Address with bit 19 set falls into the secure alias. */
+  const uintptr_t s_addr = (uintptr_t)k_ra_flash_code_start + 0x80000U;
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_flash_lock_set(s_addr, (uint16_t)k_ra_mrcbprot1_key_lock));
+  TEST_ASSERT_EQ((int)k_ra_mrcbprot1_key_lock,
+                 (int)*ra_mram_reg16((uint16_t)k_ra_mram_off_mrcbprot1));
+  TEST_END("flash lock_set programs MRCBPROT1 for S addresses");
+}
+
+static void test_lock_set_validation(void)
+{
+  TEST_BEGIN("flash lock_set rejects bad address / bad key");
+  ra_sim_mmap_reset();
+
+  /* Address below code-MRAM rejected. */
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
+                 (int)ra_flash_lock_set(0x01FFFFFCU, (uint16_t)k_ra_mrcbprot0_key_lock));
+  /* Address above code-MRAM rejected. */
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
+                 (int)ra_flash_lock_set(0x02100000U, (uint16_t)k_ra_mrcbprot0_key_lock));
+  /* Bogus key bytes rejected. */
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
+                 (int)ra_flash_lock_set((uintptr_t)k_ra_flash_code_start, 0x1234U));
+  TEST_END("flash lock_set rejects bad address / bad key");
+}
+
+/* ---------------------------------------------------------------------------
  * Main
  * ------------------------------------------------------------------------ */
 
@@ -947,6 +1012,11 @@ int32_t main(void)
   test_blank_check_paths();
   test_status_decoder();
   test_status_clean();
+
+  test_suspend_resume_round_trip();
+  test_lock_set_ns_world();
+  test_lock_set_s_world();
+  test_lock_set_validation();
 
   (void)fprintf(stderr, "[OK  ] test_ra_flash.c\n");
   return 0;

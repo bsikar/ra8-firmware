@@ -517,6 +517,79 @@ ra_err_t ra_i3c_read(uint8_t target_addr, uint8_t* buf, uint32_t len)
 }
 
 /* =============================================================================
+ * Sweep 15 / Phase 2: HDR mode + IBI control + slave-mode entry
+ * =============================================================================
+ */
+
+ra_err_t ra_i3c_set_hdr_mode(uint8_t target_addr, ra_i3c_hdr_mode_t mode)
+{
+  if (target_addr > (uint8_t)k_ra_i3c_addr_mask) {
+    return k_ra_err_invalid_arg;
+  }
+  if ((mode != k_ra_i3c_hdr_mode_sdr) && (mode != k_ra_i3c_hdr_mode_ddr) &&
+      (mode != k_ra_i3c_hdr_mode_ts)) {
+    return k_ra_err_invalid_arg;
+  }
+
+  /* HUM Ch 40 "Command Descriptor / Transfer Mode" pp 2445-2701 --
+   * regular-xfer attribute (0) + dynamic address + transfer-mode
+   * bits at [27:26]. */
+  uint32_t       cmd       = priv_ra_i3c_xfer_cmd_word(target_addr, false);
+  const uint32_t mode_bits = ((uint32_t)mode & k_ra_i3c_cmd_hdr_mode_mask)
+                             << k_ra_i3c_cmd_xfer_mode_shift;
+  cmd |= mode_bits;
+
+  volatile r_i3c_regs_t* reg = ra_i3c();
+  reg->NCMDQP                = cmd;
+  reg->NTST                  = reg->NTST & ~k_ra_i3c_ntst_cmdqef_mask;
+  return k_ra_ok;
+}
+
+ra_err_t ra_i3c_ibi_enable(uint8_t target_addr)
+{
+  if (target_addr > (uint8_t)k_ra_i3c_addr_mask) {
+    return k_ra_err_invalid_arg;
+  }
+  /* HUM Ch 40 "IBI Valid Control Register" pp 2445-2701 -- VLCNT[7:0]
+   * carries the count of IBI entries the controller will accept. */
+  enum : uint32_t {
+    k_ra_i3c_ntibivctl_one_target = 1U,
+  };
+  volatile r_i3c_regs_t* reg = ra_i3c();
+  reg->NTIBIVCTL             = (k_ra_i3c_ntibivctl_one_target << k_ra_i3c_ntibivctl_vlcnt_shift) &
+                               k_ra_i3c_ntibivctl_vlcnt_mask;
+  (void)target_addr;
+  return k_ra_ok;
+}
+
+ra_err_t ra_i3c_ibi_drain(ra_i3c_ibi_t* ibi)
+{
+  return ra_i3c_ibi_read(ibi);
+}
+
+ra_err_t ra_i3c_slave_open(uint8_t static_addr)
+{
+  if (static_addr > (uint8_t)k_ra_i3c_addr_mask) {
+    return k_ra_err_invalid_arg;
+  }
+
+  volatile r_i3c_regs_t* reg = ra_i3c();
+  /* HUM Ch 40 "BCTL : Bus Control Register" pp 2445-2701 -- drop BUSE
+   * before flipping the SLVE bit. */
+  reg->BCTL = reg->BCTL & ~k_ra_i3c_bctl_buse_mask;
+
+  /* HUM Ch 40 "Slave Device Address Register" pp 2445-2701 */
+  const uint32_t sdyad =
+    (((uint32_t)static_addr) << k_ra_i3c_nsdvad_sdyad_shift) & k_ra_i3c_nsdvad_sdyad_mask;
+  reg->NSDVAD = sdyad | k_ra_i3c_nsdvad_sdyadv_mask;
+
+  /* HUM Ch 40 "BCTL : Bus Control Register" pp 2445-2701 -- bit 16
+   * (SLVE) gates slave-mode reception. */
+  reg->BCTL = reg->BCTL | k_ra_i3c_bctl_slve_mask;
+  return k_ra_ok;
+}
+
+/* =============================================================================
  * IBI inbound queue
  * =============================================================================
  */

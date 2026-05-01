@@ -1329,6 +1329,78 @@ ra_flash_extra_mram_write(uint32_t mram_addr, const uint8_t* src, uint32_t len);
 [[nodiscard]] ra_err_t ra_flash_status(ra_flash_status_t* out);
 
 /**
+ * @brief Pause an in-flight MRAM program/erase operation.
+ *
+ * @details
+ * Drives the MENTRYR pause-key (KEY=0xAA, MENTRY=1, plus the project-
+ * internal ``PCKA`` "Pause-Code MRAM Access" bit, see HUM Ch 59
+ * "MENTRYR : Extra MRAM Program-Mode Entry" pp 3582+).  The
+ * controller halts the currently-running MACI command after the next
+ * 32-byte page boundary.  Resume with ::ra_flash_resume.
+ *
+ * @return ::ra_err_t outcome.
+ * @retval k_ra_ok            Suspend latched.
+ * @retval k_ra_err_hw_timeout MENTRYR.PCKA never went to 1.
+ *
+ * @pre  ::ra_flash_init has been called.
+ * @pre  Caller is in IRQ-masked or single-threaded context.
+ * @post Programming halts at the next page boundary.
+ *
+ * @note Not thread-safe.
+ * @see ra_flash_resume
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_flash_suspend(void);
+
+/**
+ * @brief Resume a previously-paused MRAM operation.
+ *
+ * @details
+ * Drives MENTRYR with the resume key (KEY=0xAA, MENTRY=1, PCKA=0).
+ * See HUM Ch 59 "MENTRYR" pp 3582+.
+ *
+ * @return ::ra_err_t outcome.
+ * @retval k_ra_ok            Operation resumed (or no-op).
+ * @retval k_ra_err_hw_timeout MENTRYR.PCKA never went to 0.
+ *
+ * @pre  ::ra_flash_init has been called.
+ * @pre  Caller is in IRQ-masked or single-threaded context.
+ * @post Programming continues on the next clock.
+ *
+ * @note Not thread-safe.
+ * @see ra_flash_suspend
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_flash_resume(void);
+
+/**
+ * @brief Programme MRCBPROT0/1 lock bits at @p addr.
+ *
+ * @details
+ * Writes the keyed value @p lock_bits into MRCBPROT0 (when @p addr
+ * falls in the non-secure code-MRAM half) or MRCBPROT1 (secure
+ * half).  See HUM Ch 59 "MRCBPROT0" p 3604 and "MRCBPROT1" p 3605.
+ *
+ * @param[in] addr      Address inside the code-MRAM window.  Bit 19
+ *                      selects secure (MRCBPROT1) vs non-secure
+ *                      (MRCBPROT0).
+ * @param[in] lock_bits Keyed 16-bit value to programme.
+ *
+ * @return ::ra_err_t outcome.
+ * @retval k_ra_ok               Lock register updated.
+ * @retval k_ra_err_invalid_arg  @p addr outside code-MRAM, or
+ *                               @p lock_bits has an invalid key byte.
+ *
+ * @pre  ::ra_flash_init has been called.
+ * @pre  Caller is in single-threaded init context.
+ * @post Selected MRCBPROTx register reflects @p lock_bits.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_flash_lock_set(uintptr_t addr, uint16_t lock_bits);
+
+/**
  * @brief Configure the soft access window enforced by write/erase.
  *
  * @details

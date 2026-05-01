@@ -38,6 +38,7 @@
 
 #include <stdint.h>
 
+#include "ra8d2_usb_regs.h"
 #include "ra_check.h"
 #include "ra_err.h"
 #include "ra_log.h"
@@ -498,19 +499,102 @@ ra_err_t ra_usb_hhid_attach_callback(ra_usb_hhid_attach_fn_t on_attach, void* ct
  * =============================================================================
  */
 
+/**
+ * @enum ra_usb_hhid_dcp_t
+ * @brief CFIFO programming constants used by the EP0 IN drain helper.
+ */
+typedef enum : uint16_t {
+  k_ra_hhid_dcp_pipe_dcp  = 0U,    /**< DCP / EP0 select. */
+  k_ra_hhid_fifo_poll_lim = 4096U, /**< FRDY-poll budget. */
+} ra_usb_hhid_dcp_t;
+
+/**
+ * @brief Pick the controller register window for the active speed.
+ */
+static volatile r_usb_regs_t* internal_pick_regs(ra_usb_speed_t speed)
+{
+  if (speed == k_ra_usb_speed_hs) {
+    return ra_usb_hs();
+  }
+  if (speed == k_ra_usb_speed_fs) {
+    return ra_usb_fs();
+  }
+  return nullptr;
+}
+
+/**
+ * @brief Drain the DCP (EP0) IN FIFO after a class GET_REPORT SETUP.
+ *
+ * @details
+ * Mirrors the FIFO-read path inside ``ra_usb_queue_out`` but targets
+ * pipe 0 (the DCP), which the public API rejects.
+ *
+ * Flow:
+ * 1. Select CFIFO -> DCP, IN direction (CFIFOSEL.ISEL=1, MBW=16).
+ * 2. Wait for CFIFOCTR.FRDY (bounded poll).
+ * 3. Read CFIFOCTR.DTLN to get the available byte count.
+ * 4. 16-bit LE drain into @p out, capped at @p max_len.
+ * 5. Write CFIFOCTR.BCLR to release the buffer.
+ *
+ * See HUM Ch 36.2.5 "CFIFO" p 1973 and Ch 36.2.8 "CFIFOCTR" p 1979.
+ */
+static uint16_t internal_dcp_in_drain(volatile r_usb_regs_t* reg, uint8_t* out, uint16_t max_len)
+{
+  if (max_len == 0U) {
+    return 0U;
+  }
+  /* HUM Ch 36.2.7 "CFIFOSEL" p 1976 -- pipe=0 (DCP), MBW=16, ISEL=1. */
+  uint16_t sel  = k_ra_hhid_dcp_pipe_dcp & k_ra_fifosel_curpipe;
+  sel           = (uint16_t)(sel | k_ra_fifosel_mbw_16);
+  sel           = (uint16_t)(sel | k_ra_fifosel_isel);
+  reg->CFIFOSEL = sel;
+
+  /* HUM Ch 36.2.8 "CFIFOCTR" p 1979 -- bounded FRDY spin. */
+  uint16_t ready = 0U;
+  for (uint16_t i = 0U; i < k_ra_hhid_fifo_poll_lim; ++i) {
+    if ((reg->CFIFOCTR & k_ra_fifoctr_frdy) != 0U) {
+      ready = 1U;
+      break;
+    }
+  }
+  if (ready == 0U) {
+    return 0U;
+  }
+
+  const uint16_t available = (uint16_t)(reg->CFIFOCTR & k_ra_fifoctr_dtln);
+  uint16_t       take      = (available < max_len) ? available : max_len;
+
+  /* HUM Ch 36.2.5 "CFIFO" p 1973 -- 16-bit LE drain. */
+  enum : uint8_t {
+    k_byte_bits = 8U,
+    k_byte_mask = 0xFFU,
+  };
+  const uint16_t even = (uint16_t)(take >> 1U);
+  for (uint16_t i = 0U; i < even; ++i) {
+    const uint16_t word = reg->CFIFO;
+    out[(2U * i) + 0U]  = (uint8_t)(word & k_byte_mask);
+    out[(2U * i) + 1U]  = (uint8_t)((word >> k_byte_bits) & k_byte_mask);
+  }
+  if ((take & 1U) != 0U) {
+    const uint16_t word = reg->CFIFO;
+    out[take - 1U]      = (uint8_t)(word & k_byte_mask);
+  }
+  /* Release the buffer so the controller can ACK the IN data phase. */
+  reg->CFIFOCTR = k_ra_fifoctr_bclr;
+  return take;
+}
+
 /* USB HID 1.11 sec 7.2.1 "Get_Report request":
  *   bmRequestType = 0xA1 (D2H | Class | Interface)
  *   bRequest      = 0x01 (GET_REPORT)
  *   wValue.high   = report type (1=Input / 2=Output / 3=Feature)
  *   wValue.low    = report ID (0 if device uses a single unnamed report)
  */
-ra_err_t ra_usb_hhid_get_report(
-  ra_usb_hhid_report_type_t target_report_type,
-  uint8_t                   target_report_id,
-  uint8_t*
-    out_buf, // NOLINT(readability-non-const-parameter) -- destination buffer; IN data phase wired in follow-up.
-  uint16_t  max_len,
-  uint16_t* got_len)
+ra_err_t ra_usb_hhid_get_report(ra_usb_hhid_report_type_t target_report_type,
+                                uint8_t                   target_report_id,
+                                uint8_t*                  out_buf,
+                                uint16_t                  max_len,
+                                uint16_t*                 got_len)
 {
   RA_CHECK_NULL_PTR(out_buf, s_tag, "get_report: out_buf");
   RA_CHECK_NULL_PTR(got_len, s_tag, "get_report: got_len");
@@ -536,8 +620,20 @@ ra_err_t ra_usb_hhid_get_report(
     .w_index         = (uint16_t)s_state.device.interface_number,
     .w_length        = max_len,
   };
-  *got_len = 0U;
-  return ra_usb_host_setup_request(s_state.speed, &setup);
+  *got_len                 = 0U;
+  const ra_err_t setup_err = ra_usb_host_setup_request(s_state.speed, &setup);
+  if (setup_err != k_ra_ok) {
+    return setup_err;
+  }
+
+  /* Wire the IN data phase: after the SETUP request lands the
+   * controller drives an IN token on EP0 and the device's response
+   * ends up in the DCP CFIFO.  Drain it into the caller's buffer. */
+  volatile r_usb_regs_t* reg = internal_pick_regs(s_state.speed);
+  if (reg != nullptr) {
+    *got_len = internal_dcp_in_drain(reg, out_buf, max_len);
+  }
+  return k_ra_ok;
 }
 
 /* USB HID 1.11 sec 7.2.2 "Set_Report request":

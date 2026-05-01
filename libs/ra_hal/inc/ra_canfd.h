@@ -179,6 +179,90 @@ typedef void (*ra_canfd_event_fn_t)(void* ctx, uint8_t channel, uint32_t status_
 void ra_canfd_dispatch(uint8_t channel);
 
 /**
+ * @brief Programme one Global Acceptance-Filter-List (GAFL) entry.
+ *
+ * @details
+ * Selects the AFL page that contains @p filter_id (each page holds
+ * 16 entries) by writing CFDGAFLECTR.AFLPN with the page index and
+ * unlocking the data window with CFDGAFLECTR.AFLDAE.  Then writes
+ * CFDGAFL[idx].ID with the accept ID, CFDGAFL[idx].M with the bit
+ * mask, and CFDGAFL[idx].P1 with the DLC field used to gate fast
+ * RX-FIFO routing.  See HUM Ch 41 "CFDGAFLECTR / CFDGAFL"
+ * pp 2702-2867.
+ *
+ * @param[in] filter_id  Filter index (0..k_ra_canfd_afl_total - 1).
+ * @param[in] accept_id  Raw arbitration ID to accept (11- or 29-bit).
+ * @param[in] mask       Bit mask -- bits clear are "don't care".
+ * @param[in] dlc        DLC code packed into CFDGAFL.P1 (0..15).
+ *
+ * @return ::ra_err_t outcome.
+ * @retval k_ra_ok               Filter slot programmed.
+ * @retval k_ra_err_invalid_arg  @p filter_id, @p accept_id, or @p dlc out
+ *                               of range.
+ *
+ * @pre  Channel is initialised; controller is in global-reset mode.
+ * @pre  Caller is single-threaded init context.
+ * @post CFDGAFL[entry].ID/M/P1 reflect the requested rule.
+ * @post CFDGAFLECTR.AFLDAE re-locked when the call returns.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t
+ra_canfd_filter_set(uint16_t filter_id, uint32_t accept_id, uint32_t mask, uint8_t dlc);
+
+/**
+ * @brief Configure the CAN-FD bit-rate-switch (BRS) data-phase rate.
+ *
+ * @details
+ * Re-runs the data-phase timing solver against PCLKA and updates
+ * CFDC2[0].DCFG so that subsequent BRS frames sent on @p channel
+ * use @p fast_bitrate during the payload phase.  See HUM Ch 41
+ * "CFDCnDCFG" pp 2702-2867.
+ *
+ * @param[in] channel       Channel index (0..1).
+ * @param[in] fast_bitrate  Data-phase bit rate in bits per second.
+ *
+ * @return ::ra_err_t outcome.
+ * @retval k_ra_ok               DCFG updated.
+ * @retval k_ra_err_null_ptr     @p channel out of range.
+ * @retval k_ra_err_invalid_arg  @p fast_bitrate is zero or unsolvable.
+ *
+ * @pre  ::ra_canfd_init succeeded for @p channel.
+ * @pre  PCLKA frequency is reachable via ``ra_cgc_get_clock_hz``.
+ * @post CFDC2[0].DCFG reflects the new fast-phase timing triple.
+ * @post Subsequent BRS frames switch to @p fast_bitrate after BRS bit.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_canfd_set_brs(uint8_t channel, uint32_t fast_bitrate);
+
+/**
+ * @brief Select ISO 11898-1 vs non-ISO CAN-FD framing.
+ *
+ * @details
+ * Writes CFDGFDCFG.NISO -- when the bit is clear the controller
+ * uses the ISO 11898-1 stuff-count + CRC; when set it falls back
+ * to the original Bosch non-ISO framing.  See HUM Ch 41 "CFDGFDCFG"
+ * pp 2702-2867.
+ *
+ * @param[in] enable  true -> ISO mode, false -> non-ISO mode.
+ *
+ * @return ::ra_err_t outcome.
+ * @retval k_ra_ok    Mode bit updated.
+ *
+ * @pre  At least one CANFD channel is initialised.
+ * @pre  Controller is in global-reset before flipping the bit.
+ * @post CFDGFDCFG.NISO reflects @p enable.
+ * @post Subsequent CAN-FD frames use the selected framing.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_canfd_set_iso_mode(bool enable);
+
+/**
  * @brief Put the CANFD channel into MSTP-gated stop.
  * @since 0.1.0
  */

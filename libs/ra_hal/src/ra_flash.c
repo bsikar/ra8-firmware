@@ -746,6 +746,77 @@ ra_err_t ra_flash_exit_pe_mode(void)
   return k_ra_err_hw_timeout;
 }
 
+ra_err_t ra_flash_suspend(void)
+{
+  /* HUM Ch 59 "MENTRYR : Extra MRAM Program-Mode Entry" pp 3582+ --
+   * driving MENTRYR with the keyed pause pattern (KEY=0xAA, MENTRY=1,
+   * PCKA=1) halts an in-flight MACI command at the next page
+   * boundary.  Poll for PCKA=1 to confirm the pause. */
+  *ra_mram_reg16(k_ra_mram_off_mentryr) = k_ra_mentryr_pe_pause;
+
+  for (uint32_t i = 0U; i < k_ra_flash_pe_spin_limit; ++i) {
+    /* HUM Ch 59 "MENTRYR" pp 3582+ */
+    const uint16_t v = *ra_mram_reg16(k_ra_mram_off_mentryr);
+    if ((v & k_ra_mentryr_mask_pcka) != 0U) {
+      return k_ra_ok;
+    }
+  }
+  return k_ra_err_hw_timeout;
+}
+
+ra_err_t ra_flash_resume(void)
+{
+  /* HUM Ch 59 "MENTRYR : Extra MRAM Program-Mode Entry" pp 3582+ --
+   * resume key clears PCKA, leaving MENTRY=1 so programming continues.
+   * Poll for PCKA=0 before returning. */
+  *ra_mram_reg16(k_ra_mram_off_mentryr) = k_ra_mentryr_pe_resume;
+
+  for (uint32_t i = 0U; i < k_ra_flash_pe_spin_limit; ++i) {
+    /* HUM Ch 59 "MENTRYR" pp 3582+ */
+    const uint16_t v = *ra_mram_reg16(k_ra_mram_off_mentryr);
+    if ((v & k_ra_mentryr_mask_pcka) == 0U) {
+      return k_ra_ok;
+    }
+  }
+  return k_ra_err_hw_timeout;
+}
+
+ra_err_t ra_flash_lock_set(uintptr_t addr, uint16_t lock_bits)
+{
+  /* Address must lie inside the 1 MiB code-MRAM window. */
+  const uintptr_t code_lo = k_ra_flash_code_start;
+  const uintptr_t code_hi = code_lo + k_ra_flash_code_size;
+  if ((addr < code_lo) || (addr >= code_hi)) {
+    return k_ra_err_invalid_arg;
+  }
+  /* Validate the keyed value: bits [15:8] must be one of the two
+   * documented keys (0x88 for MRCBPROT0, 0x44 for MRCBPROT1). */
+  enum : uint16_t {
+    k_ra_mrcbprot_key_byte_mask = 0xFF00U,
+    k_ra_mrcbprot_key_ns        = 0x8800U,
+    k_ra_mrcbprot_key_s         = 0x4400U,
+  };
+  enum : uint32_t {
+    k_ra_mrcbprot_secure_bit = 0x00080000UL, /**< Address bit 19. */
+  };
+  const uint16_t key    = (uint16_t)(lock_bits & k_ra_mrcbprot_key_byte_mask);
+  const bool     key_ns = (key == k_ra_mrcbprot_key_ns);
+  const bool     key_s  = (key == k_ra_mrcbprot_key_s);
+  if (!key_ns && !key_s) {
+    return k_ra_err_invalid_arg;
+  }
+
+  const bool is_secure = ((addr & (uintptr_t)k_ra_mrcbprot_secure_bit) != 0U);
+  if (is_secure) {
+    /* HUM Ch 59 "MRCBPROT1 : Code MRAM Block Protection (S)" p 3605 */
+    *ra_mram_reg16(k_ra_mram_off_mrcbprot1) = lock_bits;
+  } else {
+    /* HUM Ch 59 "MRCBPROT0 : Code MRAM Block Protection (NS)" p 3604 */
+    *ra_mram_reg16(k_ra_mram_off_mrcbprot0) = lock_bits;
+  }
+  return k_ra_ok;
+}
+
 /* =============================================================================
  * Public API: forced stop / reset
  * =============================================================================

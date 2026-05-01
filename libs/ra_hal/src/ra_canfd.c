@@ -531,6 +531,94 @@ void ra_canfd_dispatch(uint8_t channel)
   }
 }
 
+/**
+ * @brief Re-derive the data-phase timing triple and pack it into DCFG.
+ *
+ * @details
+ * Helper for ::ra_canfd_set_brs: solves for an integer prescaler
+ * against PCLKA for the requested @p data_bitrate, then writes the
+ * FSP-aligned DCFG layout.  HUM Ch 41 "CFDCnDCFG" pp 2702-2867.
+ */
+static ra_err_t internal_program_data_phase(volatile r_canfd_t* reg, uint32_t data_bitrate)
+{
+  if (data_bitrate == 0U) {
+    return k_ra_err_invalid_arg;
+  }
+  uint32_t       pclka_hz = 0U;
+  const ra_err_t clk_err  = ra_cgc_get_clock_hz(k_ra_clock_id_pclka, &pclka_hz);
+  if (clk_err != k_ra_ok) {
+    return clk_err;
+  }
+  ra_canfd_timing_t data = {};
+  const ra_err_t    err =
+    internal_solve_timing(pclka_hz, data_bitrate, k_ra_canfd_data_prescaler_max, &data);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  /* HUM Ch 41 p 2785 "CFDCnDCFG" */
+  reg->CFDC2[0].DCFG = internal_pack_dcfg(&data);
+  return k_ra_ok;
+}
+
+ra_err_t ra_canfd_filter_set(uint16_t filter_id, uint32_t accept_id, uint32_t mask, uint8_t dlc)
+{
+  if (filter_id >= k_ra_canfd_afl_total) {
+    return k_ra_err_invalid_arg;
+  }
+  if (dlc > k_ra_canfd_dlc_max) {
+    return k_ra_err_invalid_arg;
+  }
+  if ((accept_id & ~k_ra_canfd_id_ext_mask) != 0U) {
+    return k_ra_err_invalid_arg;
+  }
+
+  /* AFL is paged 16 entries at a time -- compute (page, slot). */
+  enum : uint16_t {
+    k_ra_canfd_afl_per_page = 16U,
+  };
+  const uint16_t page = (uint16_t)(filter_id / k_ra_canfd_afl_per_page);
+  const uint16_t slot = (uint16_t)(filter_id % k_ra_canfd_afl_per_page);
+
+  /* AFL is global across instances; access via channel 0. */
+  volatile r_canfd_t* reg = ra_canfd(0U);
+  RA_CHECK_NULL_PTR(reg, s_tag, "filter_set: channel0 unavailable");
+
+  /* HUM Ch 41 "CFDGAFLECTR" pp 2702-2867 */
+  reg->CFDGAFLECTR = ((uint32_t)page & k_ra_gaflectr_mask_aflpn) | k_ra_gaflectr_bit_afldae;
+
+  /* HUM Ch 41 "CFDGAFLID/M/P1" pp 2702-2867 */
+  reg->CFDGAFL[slot].ID = accept_id;
+  reg->CFDGAFL[slot].M  = mask;
+  reg->CFDGAFL[slot].P1 = ((uint32_t)dlc & k_ra_canfd_ptr_mask_dlc) << k_ra_canfd_ptr_shift_dlc;
+
+  /* Clear AFLDAE so the AFL window goes back to its locked state. */
+  reg->CFDGAFLECTR = 0U;
+  return k_ra_ok;
+}
+
+ra_err_t ra_canfd_set_brs(uint8_t channel, uint32_t fast_bitrate)
+{
+  volatile r_canfd_t* reg = ra_canfd(channel);
+  RA_CHECK_NULL_PTR(reg, s_tag, "channel out of range");
+  return internal_program_data_phase(reg, fast_bitrate);
+}
+
+ra_err_t ra_canfd_set_iso_mode(bool enable)
+{
+  volatile r_canfd_t* reg = ra_canfd(0U);
+  RA_CHECK_NULL_PTR(reg, s_tag, "set_iso_mode: channel0 unavailable");
+  /* HUM Ch 41 "CFDGFDCFG" pp 2702-2867 -- bit 0 (NISO) is set for ISO
+   * mode (default) and cleared for non-ISO Bosch framing. */
+  uint32_t v = reg->CFDGFDCFG;
+  if (enable) {
+    v |= k_ra_gfdcfg_bit_niso;
+  } else {
+    v &= ~k_ra_gfdcfg_bit_niso;
+  }
+  reg->CFDGFDCFG = v;
+  return k_ra_ok;
+}
+
 ra_err_t ra_canfd_enter_stop(uint8_t channel)
 {
   if (channel >= k_ra_canfd_instance_count) {

@@ -352,6 +352,13 @@ typedef enum : uint16_t {
   k_ra_mentryr_pe_enter     = 0xAA80U, /**< KEY=0xAA, MENTRY=1.      */
   k_ra_mentryr_read_mode    = 0xAA00U, /**< KEY=0xAA, MENTRY=0.      */
   k_ra_mentryr_mask_pe_mode = 0x0080U, /**< MENTRY status bit.       */
+  /* PCKA -- driver-internal name for the suspend/resume gate the
+   * FSP firmware exposes through the keyed MENTRYR write window.
+   * Setting PCKA pauses an in-flight P/E at the next page boundary;
+   * clearing it resumes.  HUM Ch 59 "MENTRYR" pp 3582+. */
+  k_ra_mentryr_mask_pcka = 0x0040U, /**< Pause / resume gate bit.   */
+  k_ra_mentryr_pe_pause  = 0xAAC0U, /**< KEY=0xAA, MENTRY=1, PCKA=1.*/
+  k_ra_mentryr_pe_resume = 0xAA80U, /**< KEY=0xAA, MENTRY=1, PCKA=0.*/
 } ra_mentryr_t;
 
 /**

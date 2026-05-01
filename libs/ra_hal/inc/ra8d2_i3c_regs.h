@@ -79,7 +79,7 @@ typedef enum : uint8_t {
    * these registers are touched by the current driver -- the higher-
    * level slave-mode + sync-timing card-stack consumer can carve them
    * out of the gap when it lands. */
-  k_ra_i3c_pad_after_scstlctl = 39U, /**< Reserved words 0x0B4..0x14F before NCMDQP. */
+  k_ra_i3c_pad_after_scstlctl = 37U, /**< Reserved words 0x0BC..0x14F before NCMDQP. */
   /* The 0x158..0x17B gap is 8 reserved words (RESERVED14[8]) before NIBIQP. */
   k_ra_i3c_pad_after_ntdtbp0 = 8U, /**< RESERVED14[8] after NTDTBP0. */
   /* IBI-status-queue port immediately follows NIBIQP -> NRSQP at 0x180. */
@@ -143,7 +143,15 @@ typedef struct {
   volatile uint32_t ACKCTL;   /**< +0x0A0 Acknowledge Control Register. */
   volatile uint32_t SCSTRCTL; /**< +0x0A4 SCL Stretch Control Register. */
   volatile uint32_t _r_scstr[k_ra_i3c_pad_after_scstr];
-  volatile uint32_t SCSTLCTL; /**< +0x0B0 SCL Stalling Control Register. */
+  volatile uint32_t SCSTLCTL;  /**< +0x0B0 SCL Stalling Control Register. */
+  volatile uint32_t NSDVAD;    /**< +0x0B4 Slave Device Address Register
+                                    (slave-mode dynamic address + valid).
+                                    See HUM Ch 40 "Slave Device Address"
+                                    pp 2445-2701. */
+  volatile uint32_t NTIBIVCTL; /**< +0x0B8 IBI Valid Control Register
+                                    (slave-side IBI queue valid count).
+                                    See HUM Ch 40 "IBI Valid Control"
+                                    pp 2445-2701. */
   volatile uint32_t _r_scstlctl[k_ra_i3c_pad_after_scstlctl];
   volatile uint32_t NCMDQP;  /**< +0x150 Normal Command Queue Port Register. */
   volatile uint32_t NRSPQP;  /**< +0x154 Normal Response Queue Port Register. */
@@ -164,10 +172,55 @@ typedef enum : uint32_t {
   k_ra_i3c_bctl_incba_mask    = 0x00000001UL, /**< INCBA bit 0. */
   k_ra_i3c_bctl_bmds_mask     = 0x00000080UL, /**< BMDS  bit 7. */
   k_ra_i3c_bctl_hjackctl_mask = 0x00000100UL, /**< HJACKCTL bit 8. */
+  k_ra_i3c_bctl_slve_mask     = 0x00010000UL, /**< SLVE  bit 16 (slave-mode enable). */
   k_ra_i3c_bctl_abt_mask      = 0x20000000UL, /**< ABT   bit 29. */
   k_ra_i3c_bctl_rsm_mask      = 0x40000000UL, /**< RSM   bit 30. */
   k_ra_i3c_bctl_buse_mask     = 0x80000000UL, /**< BUSE  bit 31. */
 } ra_i3c_bctl_bits_t;
+
+/**
+ * @typedef ra_i3c_nsdvad_bits_t
+ * @brief NSDVAD (Slave Device Address Register) bit positions / masks.
+ *
+ * @details
+ * Slave-mode counterpart of MSDVAD: SDYAD occupies bits [22:16],
+ * SDYADV (bit 31) marks the address as valid.  See HUM Ch 40
+ * "Slave Device Address Register" pp 2445-2701.
+ */
+typedef enum : uint32_t {
+  k_ra_i3c_nsdvad_sdyad_shift = 16U, /**< SDYAD bits [22:16]. */
+  k_ra_i3c_nsdvad_sdyad_mask  = 0x007F0000UL,
+  k_ra_i3c_nsdvad_sdyadv_mask = 0x80000000UL, /**< SDYADV bit 31. */
+} ra_i3c_nsdvad_bits_t;
+
+/**
+ * @typedef ra_i3c_ntibivctl_bits_t
+ * @brief NTIBIVCTL (IBI Valid Control) field positions.
+ *
+ * @details
+ * NTIBIVCTL.VLCNT[7:0] is the valid-entry count programmed by
+ * ``ra_i3c_ibi_enable``.  HUM Ch 40 "IBI Valid Control"
+ * pp 2445-2701.
+ */
+typedef enum : uint32_t {
+  k_ra_i3c_ntibivctl_vlcnt_mask  = 0x000000FFUL, /**< Valid-entry count [7:0]. */
+  k_ra_i3c_ntibivctl_vlcnt_shift = 0U,
+} ra_i3c_ntibivctl_bits_t;
+
+/**
+ * @typedef ra_i3c_cmd_hdr_mode_t
+ * @brief NCMDQP "transfer mode" attribute values for HDR transactions.
+ *
+ * @details
+ * The HDR-mode field lives at NCMDQP word-0 bits [27:26].  See
+ * HUM Ch 40 "Command Descriptor" pp 2445-2701.
+ */
+typedef enum : uint32_t {
+  k_ra_i3c_cmd_hdr_mode_sdr  = 0UL, /**< Plain SDR transfer (default). */
+  k_ra_i3c_cmd_hdr_mode_ddr  = 1UL, /**< HDR-DDR. */
+  k_ra_i3c_cmd_hdr_mode_ts   = 2UL, /**< HDR-TS. */
+  k_ra_i3c_cmd_hdr_mode_mask = 0x3UL,
+} ra_i3c_cmd_hdr_mode_t;
 
 /**
  * @typedef ra_i3c_msdvad_bits_t

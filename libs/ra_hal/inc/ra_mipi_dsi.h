@@ -1115,6 +1115,38 @@ typedef struct {
 ra_mipi_dsi_send_command_long(ra_mipi_dsi_dt_t dt, const uint8_t* payload, uint16_t len);
 
 /**
+ * @brief Send a DSI command-mode packet (short or long) on VC0 in LP escape.
+ *
+ * @details
+ * Routes a command-mode payload through the LP-escape sequence
+ * channel.  Short writes (``len <= 2``) use the short-packet path;
+ * longer writes go through the long-packet path with the payload
+ * staged into TXPPD0..3R.  Mirrors HUM Ch 65 "Command-mode packet
+ * TX" pp 3839-3934.
+ *
+ * @param[in] packet_type DSI Data Type (see ``k_ra_mipi_dsi_dt_*``).
+ * @param[in] payload     Payload bytes (``len`` bytes).
+ * @param[in] len         Payload length in bytes (LP cap = 128).
+ *
+ * @return ::ra_err_t outcome.
+ * @retval k_ra_ok               Packet queued.
+ * @retval k_ra_err_null_ptr     ``payload == nullptr`` and ``len > 0``.
+ * @retval k_ra_err_invalid_arg  ``len > 128`` (LP cap).
+ * @retval k_ra_err_busy         Sequence engine still running.
+ *
+ * @pre Driver initialised via ::ra_mipi_dsi_init.
+ * @pre Either ``len == 0`` or ``payload`` is non-NULL.
+ * @post Sequence channel 0 descriptor 0 carries the assembled header.
+ * @post ``SQCH0SET0R`` pulsed with START.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_mipi_dsi_send_command_payload(ra_mipi_dsi_dt_t packet_type,
+                                                        const uint8_t*   payload,
+                                                        uint16_t         len);
+
+/**
  * @brief Drive the entire link (clock + data lanes) into ULPS.
  *
  * @details

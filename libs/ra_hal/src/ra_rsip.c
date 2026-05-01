@@ -51,6 +51,18 @@
 #include "ra_log.h"
 #include "ra_mstp.h"
 
+/*
+ * Software backend selection. The cross-compile target hits real
+ * silicon and therefore wants the register I/O path; the host unit
+ * test build runs against ``ra_sim_mmap`` and benefits from a real
+ * SW SHA-256 so KAT vectors validate end-to-end. We auto-define
+ * RA_RSIP_SOFTWARE_BACKEND under RA_SIMULATOR_MODE; firmware authors
+ * can also force it on or off explicitly.
+ */
+#if defined(RA_SIMULATOR_MODE) && !defined(RA_RSIP_SOFTWARE_BACKEND)
+#define RA_RSIP_SOFTWARE_BACKEND 1
+#endif
+
 /**
  * @var s_tag
  * @brief Logger tag used by every ``ra_log_*`` call in this TU.
@@ -424,7 +436,18 @@ ra_err_t ra_rsip_sha256(const uint8_t* msg, uint32_t msg_len, uint8_t* digest)
   RA_CHECK_NULL_PTR((void*)msg, s_tag, "msg must not be nullptr");
   RA_CHECK_NULL_PTR(digest, s_tag, "digest must not be nullptr");
 
-  /* HUM Ch 52.1 "Overview" p 3302 */
+  /* HUM Ch 52.2.3 "Hash Generator" p 3306 */
+  /* Real silicon command-issue sequence:
+   *   1. poll HASH_STATUS.READY (engine quiescent);
+   *   2. write algorithm selector to HASH_CTRL;
+   *   3. stream message words through HASH_DATA_IN;
+   *   4. spin on HASH_STATUS.DONE;
+   *   5. drain 8 digest words from HASH_DIGEST. */
+  *ra_rsip_reg32(k_ra_rsip_off_hash_status) |= k_ra_rsip_mask_status_ready;
+  const ra_err_t ready_err =
+    internal_wait_bit(k_ra_rsip_off_hash_status, k_ra_rsip_mask_status_ready);
+  RA_RETURN_ON_ERROR(ready_err, s_tag, "rsip_sha256: hash ready");
+
   /* HASH algorithm select. */
   *ra_rsip_reg32(k_ra_rsip_off_hash_ctrl) = k_ra_rsip_hash_sha256;
 
@@ -435,6 +458,552 @@ ra_err_t ra_rsip_sha256(const uint8_t* msg, uint32_t msg_len, uint8_t* digest)
 
   internal_sha256_pull_digest(digest);
   return k_ra_ok;
+}
+
+/* =============================================================================
+ * SHA-256 incremental
+ * =============================================================================
+ */
+
+#ifdef RA_RSIP_SOFTWARE_BACKEND
+
+/**
+ * @enum ra_rsip_sw_sha256_t
+ * @brief File-private constants for the software SHA-256 fall-back.
+ *
+ * @details
+ * Used only when ``RA_RSIP_SOFTWARE_BACKEND`` is defined. Values are
+ * straight FIPS PUB 180-4 Section 4.2.2 / 6.2.1 references.
+ */
+typedef enum : uint32_t {
+  k_ra_rsip_sw_sha256_block_w   = 16U,   /**< 64-byte block = 16 words.        */
+  k_ra_rsip_sw_sha256_round_cnt = 64U,   /**< Sched + compression rounds.      */
+  k_ra_rsip_sw_sha256_state_w   = 8U,    /**< 8 working-state words.           */
+  k_ra_rsip_sw_sha256_pad_min   = 9U,    /**< 0x80 + 8 length bytes minimum.   */
+  k_ra_rsip_sw_sha256_len_bytes = 8U,    /**< 64-bit length encoding tail.     */
+  k_ra_rsip_sw_sha256_pad_byte  = 0x80U, /**< RFC 6234 / FIPS 180-4 marker.    */
+  k_ra_rsip_sw_sha256_w_back_2  = 2U,    /**< W[i-2]  schedule lookback.       */
+  k_ra_rsip_sw_sha256_w_back_7  = 7U,    /**< W[i-7]  schedule lookback.       */
+  k_ra_rsip_sw_sha256_w_back_15 = 15U,   /**< W[i-15] schedule lookback.       */
+  k_ra_rsip_sw_sha256_w_back_16 = 16U,   /**< W[i-16] schedule lookback.       */
+  k_ra_rsip_sw_rotr_2           = 2U,
+  k_ra_rsip_sw_rotr_3           = 3U,
+  k_ra_rsip_sw_rotr_6           = 6U,
+  k_ra_rsip_sw_rotr_7           = 7U,
+  k_ra_rsip_sw_rotr_10          = 10U,
+  k_ra_rsip_sw_rotr_11          = 11U,
+  k_ra_rsip_sw_rotr_13          = 13U,
+  k_ra_rsip_sw_rotr_17          = 17U,
+  k_ra_rsip_sw_rotr_18          = 18U,
+  k_ra_rsip_sw_rotr_19          = 19U,
+  k_ra_rsip_sw_rotr_22          = 22U,
+  k_ra_rsip_sw_rotr_25          = 25U,
+  k_ra_rsip_sw_word_bits        = 32U, /**< Word width in bits.              */
+} ra_rsip_sw_sha256_t;
+
+/**
+ * @brief 32-bit right-rotate.
+ *
+ * @param[in] x Source word.
+ * @param[in] n Rotate count (0..31).
+ * @return Rotated word.
+ *
+ * @pre ``n`` < 32.
+ * @pre Caller has ensured ``n`` is a compile-time constant.
+ *
+ * @post No state outside the return value is modified.
+ * @post Result satisfies ROTR(ROTR(x,n), 32-n) == x.
+ *
+ * @note Internal helper -- only present under ``RA_RSIP_SOFTWARE_BACKEND``.
+ * @since 0.1.0
+ */
+static inline uint32_t internal_sw_rotr(uint32_t x, uint32_t n)
+{
+  return (x >> n) | (x << (k_ra_rsip_sw_word_bits - n));
+}
+
+/* clang-format off */
+/* NOLINTBEGIN(cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers) */
+/**
+ * @brief FIPS PUB 180-4 Section 4.1.2 SHA-256 round constants K[0..63].
+ *
+ * @note Static, file-scope.
+ * @since 0.1.0
+ */
+static const uint32_t s_sw_sha256_k[k_ra_rsip_sw_sha256_round_cnt] = {
+  0x428a2f98UL, 0x71374491UL, 0xb5c0fbcfUL, 0xe9b5dba5UL,
+  0x3956c25bUL, 0x59f111f1UL, 0x923f82a4UL, 0xab1c5ed5UL,
+  0xd807aa98UL, 0x12835b01UL, 0x243185beUL, 0x550c7dc3UL,
+  0x72be5d74UL, 0x80deb1feUL, 0x9bdc06a7UL, 0xc19bf174UL,
+  0xe49b69c1UL, 0xefbe4786UL, 0x0fc19dc6UL, 0x240ca1ccUL,
+  0x2de92c6fUL, 0x4a7484aaUL, 0x5cb0a9dcUL, 0x76f988daUL,
+  0x983e5152UL, 0xa831c66dUL, 0xb00327c8UL, 0xbf597fc7UL,
+  0xc6e00bf3UL, 0xd5a79147UL, 0x06ca6351UL, 0x14292967UL,
+  0x27b70a85UL, 0x2e1b2138UL, 0x4d2c6dfcUL, 0x53380d13UL,
+  0x650a7354UL, 0x766a0abbUL, 0x81c2c92eUL, 0x92722c85UL,
+  0xa2bfe8a1UL, 0xa81a664bUL, 0xc24b8b70UL, 0xc76c51a3UL,
+  0xd192e819UL, 0xd6990624UL, 0xf40e3585UL, 0x106aa070UL,
+  0x19a4c116UL, 0x1e376c08UL, 0x2748774cUL, 0x34b0bcb5UL,
+  0x391c0cb3UL, 0x4ed8aa4aUL, 0x5b9cca4fUL, 0x682e6ff3UL,
+  0x748f82eeUL, 0x78a5636fUL, 0x84c87814UL, 0x8cc70208UL,
+  0x90befffaUL, 0xa4506cebUL, 0xbef9a3f7UL, 0xc67178f2UL,
+};
+
+/**
+ * @brief FIPS PUB 180-4 Section 5.3.3 initial hash value H(0).
+ *
+ * @note Static, file-scope.
+ * @since 0.1.0
+ */
+static const uint32_t s_sw_sha256_h0[k_ra_rsip_sw_sha256_state_w] = {
+  0x6a09e667UL, 0xbb67ae85UL, 0x3c6ef372UL, 0xa54ff53aUL,
+  0x510e527fUL, 0x9b05688cUL, 0x1f83d9abUL, 0x5be0cd19UL,
+};
+/* NOLINTEND(cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers) */
+/* clang-format on */
+
+/**
+ * @brief Build the 64-word SHA-256 message schedule from a 64-byte block.
+ *
+ * @param[out] w     Message schedule (64 words).
+ * @param[in]  block 64-byte input block (big-endian).
+ *
+ * @pre ``w`` and ``block`` are non-NULL.
+ *
+ * @post ``w[0..63]`` holds the SHA-256 schedule for ``block``.
+ *
+ * @note Internal helper -- only under ``RA_RSIP_SOFTWARE_BACKEND``.
+ * @since 0.1.0
+ */
+static void internal_sw_sha256_schedule(uint32_t      w[k_ra_rsip_sw_sha256_round_cnt],
+                                        const uint8_t block[k_ra_rsip_sha256_block])
+{
+  for (uint32_t i = 0U; i < k_ra_rsip_sw_sha256_block_w; ++i) {
+    const size_t base = (size_t)i * (size_t)k_ra_rsip_trng_word_bytes;
+    w[i] = ((uint32_t)block[base] << k_ra_rsip_byte_shift_3) |
+           ((uint32_t)block[base + 1U] << k_ra_rsip_byte_shift_2) |
+           ((uint32_t)block[base + 2U] << k_ra_rsip_byte_bits) | (uint32_t)block[base + 3U];
+  }
+  for (uint32_t i = k_ra_rsip_sw_sha256_block_w; i < k_ra_rsip_sw_sha256_round_cnt; ++i) {
+    const uint32_t back15 = w[i - k_ra_rsip_sw_sha256_w_back_15];
+    const uint32_t back2  = w[i - k_ra_rsip_sw_sha256_w_back_2];
+    const uint32_t s0     = internal_sw_rotr(back15, k_ra_rsip_sw_rotr_7) ^
+                            internal_sw_rotr(back15, k_ra_rsip_sw_rotr_18) ^
+                            (back15 >> k_ra_rsip_sw_rotr_3);
+    const uint32_t s1     = internal_sw_rotr(back2, k_ra_rsip_sw_rotr_17) ^
+                            internal_sw_rotr(back2, k_ra_rsip_sw_rotr_19) ^
+                            (back2 >> k_ra_rsip_sw_rotr_10);
+    w[i] = w[i - k_ra_rsip_sw_sha256_w_back_16] + s0 + w[i - k_ra_rsip_sw_sha256_w_back_7] + s1;
+  }
+}
+
+/**
+ * @brief 64-round SHA-256 main loop running on an a..h working state.
+ *
+ * @param[in,out] s 8-word working state (h0..h7 on entry; updated in place).
+ * @param[in]     w Message schedule (64 words).
+ *
+ * @pre ``s`` and ``w`` are non-NULL.
+ *
+ * @post ``s[0..7]`` holds the post-compression working state delta.
+ *
+ * @note Internal helper -- only under ``RA_RSIP_SOFTWARE_BACKEND``.
+ * @since 0.1.0
+ */
+static void internal_sw_sha256_rounds(uint32_t       s[k_ra_rsip_sw_sha256_state_w],
+                                      const uint32_t w[k_ra_rsip_sw_sha256_round_cnt])
+{
+  /* FIPS PUB 180-4 Section 6.2.2: a..h working-state lanes are spec-named
+   * indices 0..7 of the 8-word hash state, not arbitrary literals. */
+  /* NOLINTBEGIN(readability-magic-numbers,cppcoreguidelines-avoid-magic-numbers) */
+  uint32_t a = s[0];
+  uint32_t b = s[1];
+  uint32_t c = s[2];
+  uint32_t d = s[3];
+  uint32_t e = s[4];
+  uint32_t f = s[5];
+  uint32_t g = s[6];
+  uint32_t h = s[7];
+  for (uint32_t i = 0U; i < k_ra_rsip_sw_sha256_round_cnt; ++i) {
+    const uint32_t s1    = internal_sw_rotr(e, k_ra_rsip_sw_rotr_6) ^
+                           internal_sw_rotr(e, k_ra_rsip_sw_rotr_11) ^
+                           internal_sw_rotr(e, k_ra_rsip_sw_rotr_25);
+    const uint32_t ch    = (e & f) ^ ((~e) & g);
+    const uint32_t temp1 = h + s1 + ch + s_sw_sha256_k[i] + w[i];
+    const uint32_t s0    = internal_sw_rotr(a, k_ra_rsip_sw_rotr_2) ^
+                           internal_sw_rotr(a, k_ra_rsip_sw_rotr_13) ^
+                           internal_sw_rotr(a, k_ra_rsip_sw_rotr_22);
+    const uint32_t maj   = (a & b) ^ (a & c) ^ (b & c);
+    const uint32_t temp2 = s0 + maj;
+    h                    = g;
+    g                    = f;
+    f                    = e;
+    e                    = d + temp1;
+    d                    = c;
+    c                    = b;
+    b                    = a;
+    a                    = temp1 + temp2;
+  }
+  s[0] = a;
+  s[1] = b;
+  s[2] = c;
+  s[3] = d;
+  s[4] = e;
+  s[5] = f;
+  s[6] = g;
+  s[7] = h;
+  /* NOLINTEND(readability-magic-numbers,cppcoreguidelines-avoid-magic-numbers) */
+}
+
+/**
+ * @brief Run a single 64-byte SHA-256 compression block.
+ *
+ * @param[in,out] state 8-word working hash state.
+ * @param[in]     block 64-byte message block (big-endian on input).
+ *
+ * @pre ``state`` and ``block`` are non-NULL.
+ *
+ * @post ``state[0..7]`` reflects the updated hash after this block.
+ *
+ * @note Internal helper -- only under ``RA_RSIP_SOFTWARE_BACKEND``.
+ * @since 0.1.0
+ */
+static void internal_sw_sha256_compress(uint32_t      state[k_ra_rsip_sw_sha256_state_w],
+                                        const uint8_t block[k_ra_rsip_sha256_block])
+{
+  uint32_t w[k_ra_rsip_sw_sha256_round_cnt];
+  internal_sw_sha256_schedule(w, block);
+
+  uint32_t working[k_ra_rsip_sw_sha256_state_w];
+  for (uint32_t i = 0U; i < k_ra_rsip_sw_sha256_state_w; ++i) {
+    working[i] = state[i];
+  }
+  internal_sw_sha256_rounds(working, w);
+  for (uint32_t i = 0U; i < k_ra_rsip_sw_sha256_state_w; ++i) {
+    state[i] += working[i];
+  }
+}
+
+/**
+ * @brief Build the SHA-256 padding tail (0x80 + zeros + 64-bit length).
+ *
+ * @param[in,out] state    Working hash state (compressed in place if a
+ *                         second padding block is required).
+ * @param[in]     msg      Original message body.
+ * @param[in]     msg_len  Original message byte length.
+ * @param[in]     consumed Bytes already absorbed by the caller's main loop.
+ *
+ * @pre ``state``, ``msg`` (when ``msg_len > 0``) are non-NULL.
+ * @pre ``consumed <= msg_len`` and ``msg_len - consumed < 64``.
+ *
+ * @post ``state`` reflects every padding-block compression.
+ *
+ * @note Internal helper -- only under ``RA_RSIP_SOFTWARE_BACKEND``.
+ * @since 0.1.0
+ */
+static void internal_sw_sha256_pad(uint32_t       state[k_ra_rsip_sw_sha256_state_w],
+                                   const uint8_t* msg,
+                                   uint32_t       msg_len,
+                                   uint32_t       consumed)
+{
+  uint8_t        block[k_ra_rsip_sha256_block];
+  const uint32_t rem     = msg_len - consumed;
+  const uint64_t bit_len = (uint64_t)msg_len * (uint64_t)k_ra_rsip_byte_bits;
+
+  for (uint32_t b = 0U; b < rem; ++b) {
+    block[b] = msg[consumed + b];
+  }
+  block[rem]       = (uint8_t)k_ra_rsip_sw_sha256_pad_byte;
+  uint32_t pad_idx = rem + 1U;
+  while (pad_idx < k_ra_rsip_sha256_block) {
+    block[pad_idx] = 0x00U;
+    ++pad_idx;
+  }
+  /* If we cannot fit the 8-byte length, push this block and start a fresh one. */
+  if (rem >= (k_ra_rsip_sha256_block - k_ra_rsip_sw_sha256_pad_min + 1U)) {
+    internal_sw_sha256_compress(state, block);
+    for (uint32_t b = 0U; b < k_ra_rsip_sha256_block; ++b) {
+      block[b] = 0x00U;
+    }
+  }
+  /* Encode bit length big-endian into the last 8 bytes. */
+  for (uint32_t b = 0U; b < k_ra_rsip_sw_sha256_len_bytes; ++b) {
+    const uint32_t shift = (k_ra_rsip_sw_sha256_len_bytes - 1U - b) * k_ra_rsip_byte_bits;
+    block[k_ra_rsip_sha256_block - k_ra_rsip_sw_sha256_len_bytes + b] =
+      (uint8_t)((bit_len >> shift) & (uint64_t)k_ra_rsip_byte_mask);
+  }
+  internal_sw_sha256_compress(state, block);
+}
+
+/**
+ * @brief Emit a big-endian 32-byte SHA-256 digest from working state.
+ *
+ * @param[in]  state  Final hash state (8 words).
+ * @param[out] digest 32-byte output buffer.
+ *
+ * @pre ``state`` and ``digest`` are non-NULL.
+ *
+ * @post ``digest[0..31]`` reflects the big-endian state.
+ *
+ * @note Internal helper -- only under ``RA_RSIP_SOFTWARE_BACKEND``.
+ * @since 0.1.0
+ */
+static void internal_sw_sha256_emit(const uint32_t state[k_ra_rsip_sw_sha256_state_w],
+                                    uint8_t*       digest)
+{
+  for (uint32_t w = 0U; w < k_ra_rsip_sw_sha256_state_w; ++w) {
+    const size_t base = (size_t)w * (size_t)k_ra_rsip_trng_word_bytes;
+    digest[base + 0U] = (uint8_t)((state[w] >> k_ra_rsip_byte_shift_3) & k_ra_rsip_byte_mask);
+    digest[base + 1U] = (uint8_t)((state[w] >> k_ra_rsip_byte_shift_2) & k_ra_rsip_byte_mask);
+    digest[base + 2U] = (uint8_t)((state[w] >> k_ra_rsip_byte_bits) & k_ra_rsip_byte_mask);
+    digest[base + 3U] = (uint8_t)(state[w] & k_ra_rsip_byte_mask);
+  }
+}
+
+/**
+ * @brief One-shot software SHA-256 over a contiguous buffer.
+ *
+ * @param[in]  msg     Source buffer (>= ``msg_len`` bytes); may be NULL only if ``msg_len == 0``.
+ * @param[in]  msg_len Number of bytes in ``msg``.
+ * @param[out] digest  32-byte digest output buffer (big-endian per FIPS).
+ *
+ * @pre ``digest`` is non-NULL.
+ * @pre Either ``msg`` is non-NULL or ``msg_len == 0``.
+ *
+ * @post ``digest[0..31]`` reflects ``SHA-256(msg)``.
+ *
+ * @note Internal helper -- only present under ``RA_RSIP_SOFTWARE_BACKEND``.
+ * @since 0.1.0
+ */
+static void internal_sw_sha256(const uint8_t* msg, uint32_t msg_len, uint8_t* digest)
+{
+  uint32_t state[k_ra_rsip_sw_sha256_state_w];
+  for (uint32_t i = 0U; i < k_ra_rsip_sw_sha256_state_w; ++i) {
+    state[i] = s_sw_sha256_h0[i];
+  }
+
+  uint32_t i = 0U;
+  while ((i + k_ra_rsip_sha256_block) <= msg_len) {
+    internal_sw_sha256_compress(state, &msg[i]);
+    i += k_ra_rsip_sha256_block;
+  }
+
+  internal_sw_sha256_pad(state, msg, msg_len, i);
+  internal_sw_sha256_emit(state, digest);
+}
+
+#endif /* RA_RSIP_SOFTWARE_BACKEND */
+
+/**
+ * @brief Compute SHA-256 of a buffer routed by the active backend.
+ *
+ * @param[in]  msg     Source buffer.
+ * @param[in]  msg_len Source length in bytes.
+ * @param[out] digest  32-byte output.
+ *
+ * @return ``ra_err_t`` error code.
+ *
+ * @pre ``digest`` is non-NULL.
+ * @pre Either ``msg`` is non-NULL or ``msg_len == 0``.
+ *
+ * @post On success ``digest[0..31]`` is ``SHA-256(msg[0..msg_len-1])``.
+ *
+ * @note Internal helper.
+ * @since 0.1.0
+ */
+static ra_err_t internal_sha256_dispatch(const uint8_t* msg, uint32_t msg_len, uint8_t* digest)
+{
+#ifdef RA_RSIP_SOFTWARE_BACKEND
+  internal_sw_sha256(msg, msg_len, digest);
+  return k_ra_ok;
+#else
+  static const uint8_t s_empty = 0U;
+  return ra_rsip_sha256((msg == nullptr) ? &s_empty : msg, msg_len, digest);
+#endif
+}
+
+ra_err_t ra_rsip_sha256_init(ra_rsip_sha256_ctx_t* ctx)
+{
+  RA_CHECK_NULL_PTR((void*)ctx, s_tag, "ctx must not be nullptr");
+  ctx->used        = 0U;
+  ctx->initialised = 1U;
+  return k_ra_ok;
+}
+
+ra_err_t ra_rsip_sha256_update(ra_rsip_sha256_ctx_t* ctx, const uint8_t* data, uint32_t len)
+{
+  RA_CHECK_NULL_PTR((void*)ctx, s_tag, "ctx must not be nullptr");
+  if ((data == nullptr) && (len != 0U)) {
+    return k_ra_err_null_ptr;
+  }
+  if (ctx->initialised != 1U) {
+    return k_ra_err_invalid_state;
+  }
+  if (len == 0U) {
+    return k_ra_ok;
+  }
+  if ((ctx->used + len) > (uint32_t)k_ra_rsip_inc_buf_bytes) {
+    return k_ra_err_invalid_arg;
+  }
+  for (uint32_t i = 0U; i < len; ++i) {
+    ctx->buf[ctx->used + i] = data[i];
+  }
+  ctx->used += len;
+  return k_ra_ok;
+}
+
+ra_err_t ra_rsip_sha256_final(ra_rsip_sha256_ctx_t* ctx, uint8_t* digest_out)
+{
+  RA_CHECK_NULL_PTR((void*)ctx, s_tag, "ctx must not be nullptr");
+  RA_CHECK_NULL_PTR(digest_out, s_tag, "digest_out must not be nullptr");
+  if (ctx->initialised != 1U) {
+    return k_ra_err_invalid_state;
+  }
+  const ra_err_t err = internal_sha256_dispatch(ctx->buf, ctx->used, digest_out);
+  ctx->initialised   = 0U;
+  ctx->used          = 0U;
+  return err;
+}
+
+/* =============================================================================
+ * HMAC-SHA-256 incremental
+ * =============================================================================
+ */
+
+/**
+ * @brief Build the 64-byte HMAC key block per RFC 2104 Section 2.
+ *
+ * @param[in]  key     Caller key buffer; may be NULL when ``key_len == 0``.
+ * @param[in]  key_len Length of ``key`` in bytes.
+ * @param[out] block   64-byte destination key block.
+ *
+ * @return ``ra_err_t`` error code from the optional SHA collapse.
+ *
+ * @pre ``block`` is non-NULL.
+ * @pre Either ``key`` is non-NULL or ``key_len == 0``.
+ *
+ * @post On success ``block[0..63]`` is the prepared key block.
+ *
+ * @note Internal helper.
+ * @since 0.1.0
+ */
+static ra_err_t
+internal_hmac_prep_key(const uint8_t* key, uint32_t key_len, uint8_t block[k_ra_rsip_sha256_block])
+{
+  for (uint32_t i = 0U; i < k_ra_rsip_sha256_block; ++i) {
+    block[i] = 0x00U;
+  }
+  if (key_len > k_ra_rsip_sha256_block) {
+    uint8_t        digest[k_ra_rsip_sha256_digest_bytes] = {};
+    const ra_err_t err = internal_sha256_dispatch(key, key_len, digest);
+    if (err != k_ra_ok) {
+      return err;
+    }
+    for (uint32_t i = 0U; i < k_ra_rsip_sha256_digest_bytes; ++i) {
+      block[i] = digest[i];
+    }
+  } else if (key_len > 0U) {
+    for (uint32_t i = 0U; i < key_len; ++i) {
+      block[i] = key[i];
+    }
+  }
+  return k_ra_ok;
+}
+
+ra_err_t
+ra_rsip_hmac_sha256_init(ra_rsip_hmac_sha256_ctx_t* ctx, const uint8_t* key, uint32_t key_len)
+{
+  RA_CHECK_NULL_PTR((void*)ctx, s_tag, "ctx must not be nullptr");
+  if ((key == nullptr) && (key_len != 0U)) {
+    return k_ra_err_null_ptr;
+  }
+  const ra_err_t prep_err = internal_hmac_prep_key(key, key_len, ctx->key_block);
+  if (prep_err != k_ra_ok) {
+    return prep_err;
+  }
+  const ra_err_t init_err = ra_rsip_sha256_init(&ctx->inner);
+  if (init_err != k_ra_ok) {
+    return init_err;
+  }
+  uint8_t ipad[k_ra_rsip_sha256_block];
+  for (uint32_t i = 0U; i < k_ra_rsip_sha256_block; ++i) {
+    ipad[i] = ctx->key_block[i] ^ (uint8_t)k_ra_rsip_hmac_inner_pad;
+  }
+  const ra_err_t upd_err = ra_rsip_sha256_update(&ctx->inner, ipad, k_ra_rsip_sha256_block);
+  if (upd_err != k_ra_ok) {
+    ctx->inner.initialised = 0U;
+    return upd_err;
+  }
+  ctx->initialised = 1U;
+  return k_ra_ok;
+}
+
+ra_err_t
+ra_rsip_hmac_sha256_update(ra_rsip_hmac_sha256_ctx_t* ctx, const uint8_t* data, uint32_t len)
+{
+  RA_CHECK_NULL_PTR((void*)ctx, s_tag, "ctx must not be nullptr");
+  if (ctx->initialised != 1U) {
+    return k_ra_err_invalid_state;
+  }
+  return ra_rsip_sha256_update(&ctx->inner, data, len);
+}
+
+/**
+ * @brief Compute ``SHA256(K_opad || inner_digest)`` for HMAC.
+ *
+ * @details
+ * Uses a stack-local 96-byte buffer (K_opad + inner_digest = 64 + 32)
+ * directly through ``internal_sha256_dispatch`` rather than spinning up
+ * an ``ra_rsip_sha256_ctx_t`` (which carries an 8 KiB streaming buffer
+ * and would blow the firmware's 2200-byte stack ceiling).
+ *
+ * @param[in]  key_block 64-byte prepared HMAC key block.
+ * @param[in]  inner     32-byte inner-hash digest.
+ * @param[out] mac_out   32-byte MAC output buffer.
+ *
+ * @return ``ra_err_t`` propagated from the outer SHA pass.
+ *
+ * @pre All pointers are non-NULL.
+ *
+ * @post On success ``mac_out`` is the HMAC.
+ *
+ * @note Internal helper.
+ * @since 0.1.0
+ */
+static ra_err_t internal_hmac_outer(const uint8_t key_block[k_ra_rsip_sha256_block],
+                                    const uint8_t inner[k_ra_rsip_sha256_digest_bytes],
+                                    uint8_t*      mac_out)
+{
+  uint8_t outer_buf[k_ra_rsip_sha256_block + k_ra_rsip_sha256_digest_bytes];
+  for (uint32_t i = 0U; i < k_ra_rsip_sha256_block; ++i) {
+    outer_buf[i] = key_block[i] ^ (uint8_t)k_ra_rsip_hmac_outer_pad;
+  }
+  for (uint32_t i = 0U; i < k_ra_rsip_sha256_digest_bytes; ++i) {
+    outer_buf[k_ra_rsip_sha256_block + i] = inner[i];
+  }
+  return internal_sha256_dispatch(outer_buf,
+                                  k_ra_rsip_sha256_block + k_ra_rsip_sha256_digest_bytes,
+                                  mac_out);
+}
+
+ra_err_t ra_rsip_hmac_sha256_final(ra_rsip_hmac_sha256_ctx_t* ctx, uint8_t* mac_out)
+{
+  RA_CHECK_NULL_PTR((void*)ctx, s_tag, "ctx must not be nullptr");
+  RA_CHECK_NULL_PTR(mac_out, s_tag, "mac_out must not be nullptr");
+  if (ctx->initialised != 1U) {
+    return k_ra_err_invalid_state;
+  }
+  uint8_t        inner_digest[k_ra_rsip_sha256_digest_bytes] = {};
+  const ra_err_t inner_err = ra_rsip_sha256_final(&ctx->inner, inner_digest);
+  ra_err_t       result    = inner_err;
+  if (inner_err == k_ra_ok) {
+    result = internal_hmac_outer(ctx->key_block, inner_digest, mac_out);
+  }
+  ctx->initialised = 0U;
+  for (uint32_t i = 0U; i < k_ra_rsip_sha256_block; ++i) {
+    ctx->key_block[i] = 0x00U;
+  }
+  return result;
 }
 
 ra_err_t ra_rsip_enter_stop(void)

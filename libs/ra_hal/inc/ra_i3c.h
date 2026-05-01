@@ -294,6 +294,126 @@ ra_i3c_recv_ccc(uint8_t ccc, uint8_t target_addr, uint8_t* buf, uint8_t max_len,
 [[nodiscard]] ra_err_t ra_i3c_read(uint8_t target_addr, uint8_t* buf, uint32_t len);
 
 /**
+ * @enum ra_i3c_hdr_mode_t
+ * @brief HDR transfer mode selector for ::ra_i3c_set_hdr_mode.
+ *
+ * @details
+ * Mirrors NCMDQP word-0 [27:26] -- the controller's "transfer mode"
+ * field.  HDR-DDR doubles the symbol rate by toggling SDA on both
+ * SCL edges; HDR-TS uses ternary-symbol coding.  See HUM Ch 40
+ * "Command Descriptor / Transfer Mode" pp 2445-2701.
+ *
+ * @since 0.1.0
+ */
+typedef enum : uint8_t {
+  k_ra_i3c_hdr_mode_sdr = 0U, /**< Plain SDR transfer (default). */
+  k_ra_i3c_hdr_mode_ddr = 1U, /**< HDR-DDR. */
+  k_ra_i3c_hdr_mode_ts  = 2U, /**< HDR-TS. */
+} ra_i3c_hdr_mode_t;
+
+/**
+ * @brief Programme NCMDQP transfer-mode field for a target's next transaction.
+ *
+ * @details
+ * Builds an HDR-mode "set" command descriptor whose attribute is a
+ * regular transfer with the requested HDR-mode bits in word-0
+ * [27:26].  See HUM Ch 40 "Command Descriptor" pp 2445-2701.
+ *
+ * @param[in] target_addr 7-bit dynamic address of the target.
+ * @param[in] mode        HDR mode selector.
+ *
+ * @return ::ra_err_t
+ * @retval k_ra_ok               Descriptor queued.
+ * @retval k_ra_err_invalid_arg  @p target_addr or @p mode out of range.
+ *
+ * @pre  ``ra_i3c_init`` succeeded; bus enabled.
+ * @pre  Caller is single-threaded with respect to NCMDQP writes.
+ * @post NCMDQP holds an HDR-mode descriptor word for @p target_addr.
+ * @post NTST.CMDQEF cleared.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_i3c_set_hdr_mode(uint8_t target_addr, ra_i3c_hdr_mode_t mode);
+
+/**
+ * @brief Programme NTIBIVCTL.VLCNT to enable inbound IBI capture.
+ *
+ * @details
+ * Sets the per-target valid-count to 1 so a single IBI from
+ * @p target_addr can advance through the NIBIQP queue.  See HUM
+ * Ch 40 "IBI Valid Control" pp 2445-2701.
+ *
+ * @param[in] target_addr 7-bit dynamic address authorised to push an IBI.
+ *
+ * @return ::ra_err_t
+ * @retval k_ra_ok               IBI capture enabled.
+ * @retval k_ra_err_invalid_arg  @p target_addr out of 7-bit range.
+ *
+ * @pre  ``ra_i3c_init`` succeeded.
+ * @pre  Caller is in IRQ-masked or init context.
+ * @post NTIBIVCTL.VLCNT == 1 for the requested target.
+ * @post Subsequent IBI from @p target_addr will be queued in NIBIQP.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_i3c_ibi_enable(uint8_t target_addr);
+
+/**
+ * @brief Pop a single inbound IBI from NIBIQP (alias of ::ra_i3c_ibi_read).
+ *
+ * @details
+ * Convenience name FSP-style consumers expect; behaviour is
+ * identical to ::ra_i3c_ibi_read.  See HUM Ch 40 "IBI Status
+ * Descriptor" pp 2445-2701.
+ *
+ * @param[out] ibi Caller-supplied descriptor populated on success.
+ *
+ * @return ::ra_err_t
+ * @retval k_ra_ok               One IBI dequeued.
+ * @retval k_ra_err_no_data      IBI queue empty.
+ * @retval k_ra_err_null_ptr     @p ibi was NULL.
+ *
+ * @pre  ``ra_i3c_init`` succeeded.
+ * @pre  @p ibi non-NULL.
+ * @post NTST.IBIQEFF cleared on success.
+ * @post @p ibi populated with the dequeued descriptor.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_i3c_ibi_drain(ra_i3c_ibi_t* ibi);
+
+/**
+ * @brief Enter slave-mode by programming NSDVAD and asserting BCTL.SLVE.
+ *
+ * @details
+ * Bring-up sequence for the I3C controller acting as a target:
+ * 1. Drop BCTL.BUSE (master-mode bus operation off).
+ * 2. Programme NSDVAD with the static-address payload + valid bit.
+ * 3. Set BCTL.SLVE (bit 16) to enable slave-mode reception.
+ *
+ * See HUM Ch 40 "BCTL : Bus Control Register" + "Slave Device
+ * Address Register" pp 2445-2701.
+ *
+ * @param[in] static_addr Static (pre-DAA) 7-bit address.
+ *
+ * @return ::ra_err_t
+ * @retval k_ra_ok               Slave-mode entered.
+ * @retval k_ra_err_invalid_arg  @p static_addr out of 7-bit range.
+ *
+ * @pre  ``ra_i3c_init`` succeeded.
+ * @pre  Caller is single-threaded init context.
+ * @post BCTL.SLVE set; BCTL.BUSE clear.
+ * @post NSDVAD reflects @p static_addr with the valid bit asserted.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_i3c_slave_open(uint8_t static_addr);
+
+/**
  * @brief Drain one inbound IBI from NIBIQP.
  *
  * @param[out] out_ibi Caller-supplied descriptor; populated when

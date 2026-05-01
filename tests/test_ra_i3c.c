@@ -342,6 +342,96 @@ static void test_ibi_read_one(void)
   TEST_END("i3c ibi_read one IBI");
 }
 
+/* ---------------------------------------------------------------------------
+ * Sweep 15 / Phase 2: HDR + IBI + slave-mode entry surface.
+ * --------------------------------------------------------------------------- */
+
+static void test_set_hdr_mode_ddr(void)
+{
+  TEST_BEGIN("i3c set_hdr_mode DDR encodes [27:26]=01");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_i3c_init());
+
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_i3c_set_hdr_mode(0x42U, k_ra_i3c_hdr_mode_ddr));
+  /* NCMDQP word should carry the DDR mode bits (1U << 26) and the target
+   * dynamic address (0x42 << 16). */
+  const uint32_t ncmdqp = ra_i3c()->NCMDQP;
+  TEST_ASSERT(((ncmdqp >> 26) & 0x3U) == 1U);
+  TEST_ASSERT(((ncmdqp >> 16) & 0x7FU) == 0x42U);
+  TEST_END("i3c set_hdr_mode DDR encodes [27:26]=01");
+}
+
+static void test_set_hdr_mode_ts_and_validation(void)
+{
+  TEST_BEGIN("i3c set_hdr_mode TS + validation");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_i3c_init());
+
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_i3c_set_hdr_mode(0x10U, k_ra_i3c_hdr_mode_ts));
+  TEST_ASSERT(((ra_i3c()->NCMDQP >> 26) & 0x3U) == 2U);
+
+  /* Out-of-range address rejected. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_i3c_set_hdr_mode(0x80U, k_ra_i3c_hdr_mode_ddr));
+  /* Bogus mode rejected. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_i3c_set_hdr_mode(0x10U, (ra_i3c_hdr_mode_t)9U));
+  TEST_END("i3c set_hdr_mode TS + validation");
+}
+
+static void test_ibi_enable_writes_ntibivctl(void)
+{
+  TEST_BEGIN("i3c ibi_enable writes NTIBIVCTL.VLCNT=1");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_i3c_init());
+
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_i3c_ibi_enable(0x55U));
+  /* VLCNT field [7:0] should equal 1. */
+  TEST_ASSERT_EQ((int32_t)1, (int32_t)(ra_i3c()->NTIBIVCTL & 0xFFU));
+
+  /* Out-of-range address rejected. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_i3c_ibi_enable(0x80U));
+  TEST_END("i3c ibi_enable writes NTIBIVCTL.VLCNT=1");
+}
+
+static void test_ibi_drain_aliases_read(void)
+{
+  TEST_BEGIN("i3c ibi_drain mirrors ibi_read semantics");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_i3c_init());
+
+  /* Empty queue path. */
+  ra_i3c_ibi_t ibi = {};
+  TEST_ASSERT_EQ((int32_t)k_ra_err_no_data, (int32_t)ra_i3c_ibi_drain(&ibi));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_i3c_ibi_drain(nullptr));
+
+  /* Stage one IBI and verify drain returns it. */
+  ra_i3c()->NTST    = (uint32_t)k_ra_i3c_ntst_ibiqeff_mask;
+  ra_i3c()->NIBIQP  = ((uint32_t)0x84U << 8); /* len=0, IBI ID=0x84. */
+  ra_i3c()->NTDTBP0 = 0U;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_i3c_ibi_drain(&ibi));
+  TEST_ASSERT_EQ((int32_t)0x42U, (int32_t)ibi.address);
+  TEST_END("i3c ibi_drain mirrors ibi_read semantics");
+}
+
+static void test_slave_open_sets_slve_and_nsdvad(void)
+{
+  TEST_BEGIN("i3c slave_open sets BCTL.SLVE and NSDVAD");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_i3c_init());
+
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_i3c_slave_open(0x33U));
+  /* BCTL.SLVE (bit 16) set; BCTL.BUSE (bit 31) cleared. */
+  TEST_ASSERT(((ra_i3c()->BCTL >> 16) & 0x1U) == 1U);
+  TEST_ASSERT(((ra_i3c()->BCTL >> 31) & 0x1U) == 0U);
+  /* NSDVAD has SDYAD=0x33 in [22:16] and SDYADV (bit 31) set. */
+  const uint32_t expect = (0x33U << 16) | 0x80000000U;
+  TEST_ASSERT_EQ((int32_t)expect, (int32_t)ra_i3c()->NSDVAD);
+  /* Out-of-range static address rejected. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_i3c_slave_open(0x80U));
+  TEST_END("i3c slave_open sets BCTL.SLVE and NSDVAD");
+}
+
 int32_t main(void)
 {
   test_init();
@@ -362,6 +452,11 @@ int32_t main(void)
   test_read_happy();
   test_ibi_read_empty();
   test_ibi_read_one();
+  test_set_hdr_mode_ddr();
+  test_set_hdr_mode_ts_and_validation();
+  test_ibi_enable_writes_ntibivctl();
+  test_ibi_drain_aliases_read();
+  test_slave_open_sets_slve_and_nsdvad();
   (void)fprintf(stderr, "[OK  ] test_ra_i3c.c\n");
   return 0;
 }
