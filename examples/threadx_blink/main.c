@@ -157,6 +157,7 @@ static TX_THREAD s_thread_b;
  *       `tx_initialize_low_level.S` (0x40); IRQs at lower priority
  *       can still pre-empt it through PRIMASK / BASEPRI.
  */
+void SysTick_Handler(void);
 void SysTick_Handler(void)
 {
   _tx_timer_interrupt();

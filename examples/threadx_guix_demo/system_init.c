@@ -40,6 +40,8 @@
 
 #include <stdint.h>
 
+extern const uint32_t g_ra_vector_table_start[];
+
 #include "trustzone_init.h"
 
 /* =============================================================================
@@ -120,7 +122,6 @@ static void internal_set_vtor(void)
   /* Vector table sits at the start of the .vectors section, which
    * the linker pins to the start of MRAM (`0x02000000`). The SCB
    * VTOR register stores the absolute address. */
-  extern const uint32_t g_ra_vector_table_start[];
   internal_write32(k_ra_scb_vtor_addr, (uint32_t)(uintptr_t)g_ra_vector_table_start);
 }
 
@@ -316,6 +317,7 @@ internal_mpu_set_region(uint32_t region, uint32_t base_attr, uint32_t limit_enab
  * runs on the stack and writes to CPU / SCB memory only.
  */
 
+void SystemInit(void);
 /* NOLINTNEXTLINE(readability-identifier-naming) -- CMSIS-mandated name. */
 void SystemInit(void)
 {
