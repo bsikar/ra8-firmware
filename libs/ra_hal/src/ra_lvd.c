@@ -511,11 +511,10 @@ static void internal_lvd_program_cr0_chain(const ra_lvd_channel_map_t* map, cons
   }
 
   if (cfg->irq_enable && (cfg->response != k_ra_lvd_response_none)) {
-    if (map->has_irq) {
-      cr0 |= k_ra_lvd_cr0_mask_rie;
-    } else {
-      cr0 |= k_ra_lvd_cr0_mask_re;
-    }
+    /* RIE (m-channel: IRQ/reset enable) and RE (n-channel: reset-only)
+     * sit at the same CR0 bit position (0x01) on RA8D2; the semantic
+     * distinction lives in `map->has_irq`. Either mask gates bit 0. */
+    cr0 |= k_ra_lvd_cr0_mask_rie;
     *ra_lvd_reg8(map->cr0) = internal_cr0_apply_reserved(map, cr0);
   }
 

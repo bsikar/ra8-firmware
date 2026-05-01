@@ -809,6 +809,76 @@ void ra_dotf_dispatch(uint8_t channel)
  * =============================================================================
  */
 
+/* NOLINTNEXTLINE(readability-function-size,readability-function-cognitive-complexity) */
+[[nodiscard]] ra_err_t ra_dotf_open(const ra_dotf_open_cfg_t* cfg)
+{
+  RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
+  if (!internal_channel_in_range(cfg->channel)) {
+    return k_ra_err_invalid_arg;
+  }
+
+  /* Step 1: Power on the DOTF block (idempotent). HUM Ch 45.6.1 p 3050. */
+  const ra_err_t init_err = ra_dotf_init();
+  RA_RETURN_ON_ERROR(init_err, s_tag, "open: init");
+
+  /* Step 2: Install the wrapped key. HUM Ch 45.3 p 3049 (REG03 staging). */
+  const ra_err_t key_err = ra_dotf_install_key(cfg->channel, &cfg->key);
+  RA_RETURN_ON_ERROR(key_err, s_tag, "open: install_key");
+
+  /* Step 3: Stage the IV. HUM Ch 45.1 p 3048 (counter mode). */
+  const ra_err_t iv_err = ra_dotf_set_iv(cfg->channel, cfg->iv_words);
+  RA_RETURN_ON_ERROR(iv_err, s_tag, "open: set_iv");
+
+  /* Step 4: Stage the conversion region. HUM Ch 45.3.1 / 45.3.2 p 3049. */
+  const ra_err_t reg_err = ra_dotf_set_region(cfg->channel, &cfg->region);
+  RA_RETURN_ON_ERROR(reg_err, s_tag, "open: set_region");
+
+  /* Step 5: Promote to live region. */
+  const ra_err_t sel_err = ra_dotf_select_region(cfg->channel, cfg->region.region_id);
+  RA_RETURN_ON_ERROR(sel_err, s_tag, "open: select_region");
+
+  /* Step 6: Side-channel level. */
+  const ra_err_t sca_err = ra_dotf_set_sca_level(cfg->channel, cfg->sca_level);
+  RA_RETURN_ON_ERROR(sca_err, s_tag, "open: set_sca_level");
+
+  /* Step 7: Optionally arm the AES core. */
+  if (cfg->enable_after) {
+    const ra_err_t en_err = ra_dotf_enable(cfg->channel);
+    RA_RETURN_ON_ERROR(en_err, s_tag, "open: enable");
+  }
+  return k_ra_ok;
+}
+
+[[nodiscard]] ra_err_t ra_dotf_close(void)
+{
+  /* Symmetric companion to ra_dotf_open. HUM Ch 45.6.1 p 3050. */
+  return ra_dotf_deinit();
+}
+
+[[nodiscard]] ra_err_t ra_dotf_set_region_window(uint8_t channel, uint32_t start, uint32_t len)
+{
+  if (!internal_channel_in_range(channel)) {
+    return k_ra_err_invalid_arg;
+  }
+  if (len == 0U) {
+    return k_ra_err_invalid_arg;
+  }
+  if ((start & k_ra_dotf_addr_low_mask) != 0U) {
+    return k_ra_err_invalid_arg;
+  }
+  if ((len & k_ra_dotf_addr_low_mask) != 0U) {
+    return k_ra_err_invalid_arg;
+  }
+  /* HUM Ch 45.3.1 / 45.3.2 p 3049: end address is inclusive. */
+  const ra_dotf_region_t r = {
+    .start_addr = start,
+    .end_addr   = start + len - 1U,
+    .key_index  = 0U,
+    .region_id  = 0U,
+  };
+  return ra_dotf_set_region(channel, &r);
+}
+
 [[nodiscard]] ra_err_t ra_dotf_enter_stop(void)
 {
   for (uint8_t ch = 0U; ch < k_ra_dotf_channel_count; ++ch) {

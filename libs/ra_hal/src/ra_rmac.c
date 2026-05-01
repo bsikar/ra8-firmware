@@ -62,9 +62,10 @@ static const char* s_tag = "RMAC";
  * @brief Driver-private constants (poll budgets, sentinel values).
  */
 typedef enum : uint32_t {
-  k_ra_rmac_mdio_poll_budget    = 100000UL, /**< Bounded MDIO poll loop.   */
-  k_ra_rmac_phy_reset_iter_cap  = 4096UL,   /**< BMCR.RESET self-clear cap.*/
-  k_ra_rmac_phy_anwait_iter_cap = 65536UL,  /**< Auto-neg internal cap.    */
+  k_ra_rmac_mdio_poll_budget        = 100000UL, /**< Bounded MDIO poll loop.   */
+  k_ra_rmac_phy_reset_iter_cap      = 4096UL,   /**< BMCR.RESET self-clear cap.*/
+  k_ra_rmac_phy_anwait_iter_cap     = 65536UL,  /**< Auto-neg internal cap.    */
+  k_ra_rmac_phy_anwait_iters_per_ms = 100UL,    /**< 10us per spin -> 100/ms.  */
 } ra_rmac_internal_t;
 
 /**
@@ -990,8 +991,9 @@ ra_err_t ra_rmac_phy_auto_neg_wait(ra_rmac_port_t      port,
   out_link->up    = false;
   out_link->speed = k_ra_rmac_phy_speed_unknown;
 
-  uint32_t cap =
-    (timeout_ms == 0U) ? (uint32_t)k_ra_rmac_phy_anwait_iter_cap : (timeout_ms * 100UL);
+  /* 100 iters per ms = 10us per spin (k_ra_rmac_phy_anwait_us_per_iter). */
+  uint32_t cap = (timeout_ms == 0U) ? (uint32_t)k_ra_rmac_phy_anwait_iter_cap
+                                    : (timeout_ms * (uint32_t)k_ra_rmac_phy_anwait_iters_per_ms);
   if (cap == 0U) {
     cap = 1U;
   }
