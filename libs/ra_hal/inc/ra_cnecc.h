@@ -853,6 +853,106 @@ void ra_cnecc_dispatch(uint8_t instance, bool is_2bit, uint16_t err_addr);
  */
 void ra_cnecc_dispatch_overflow(uint8_t instance);
 
+/* =============================================================================
+ * Code-flash ECC compute / verify (software fallback)
+ * =============================================================================
+ */
+
+/**
+ * @brief One-shot CNECC bring-up using the driver's default config.
+ *
+ * @details
+ * Convenience wrapper that calls ``ra_cnecc_init`` with both instances
+ * configured to enable correction, irq_1bit, irq_2bit and judgment.
+ * Used by the boot-time fault monitor that just wants the ECC active
+ * without having to spell out a config struct.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok                  Both instances live with defaults.
+ * @retval k_ra_err_hw_init_failed  MSTP enable failed.
+ *
+ * @pre  ``ra_mstp_init`` has run.
+ * @pre  Caller is in single-threaded init context.
+ * @post Both instances' ECERVF / EC1EDIC / EC2EDIC are set.
+ * @post Both instances' EC1ECP is cleared (correction enabled).
+ *
+ * @note Not thread-safe.
+ * @see ra_cnecc_init
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_cnecc_open(void);
+
+/**
+ * @brief Compute a 32-bit ECC code over a (addr, len) memory region.
+ *
+ * @details
+ * Software fall-back used by the bootloader's anti-rollback path to
+ * derive an ECC tag for an MRAM / flash range when the hardware ECC
+ * does not expose a "compute" engine for arbitrary addresses (HUM
+ * Ch 42 only describes runtime read-side checking). The algorithm is
+ * a deterministic word-wise CRC32-style accumulator (polynomial
+ * ``0xEDB88320``) seeded with ``0xFFFFFFFF`` and finalised by XOR
+ * with ``0xFFFFFFFF``. ``len`` is rounded down to the nearest 4-byte
+ * boundary; trailing bytes (0..3) are NOT included to keep the
+ * computation deterministic and word-aligned.
+ *
+ * The result is suitable for "did this region change since boot"
+ * style checks; it is NOT a Hamming-style ECC and cannot correct
+ * single-bit faults. The hardware ECC behind ``EC710CTL`` remains
+ * the single point of truth for live read traffic.
+ *
+ * @param[in]  addr    Base address (must be 4-byte aligned).
+ * @param[in]  len     Region length in bytes (rounded down to /4).
+ * @param[out] out_ecc Receives the 32-bit ECC tag.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok              ECC computed.
+ * @retval k_ra_err_null_ptr    ``addr`` was 0 OR ``out_ecc`` was NULL.
+ * @retval k_ra_err_invalid_arg ``addr`` not 4-byte aligned OR ``len < 4``.
+ *
+ * @pre  ``addr`` is non-zero and 4-byte aligned.
+ * @pre  ``out_ecc`` points to writable storage.
+ * @post On success, ``*out_ecc`` is the deterministic CRC32 of the
+ *       word-aligned portion of [addr, addr + len).
+ * @post Hardware state is unchanged.
+ *
+ * @note Read-only path; safe to call from any context provided the
+ *       memory at ``addr`` is mapped.
+ * @see ra_cnecc_verify
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_cnecc_compute(uint32_t addr, uint32_t len, uint32_t* out_ecc);
+
+/**
+ * @brief Verify a region's ECC tag matches an expected value.
+ *
+ * @details
+ * Computes the CRC32 over ``[addr, addr + len)`` via ``ra_cnecc_compute``
+ * and compares against ``expected_ecc``. Returns ``k_ra_err_crc`` on
+ * mismatch so callers can route the failure into the same telemetry
+ * path as a hardware ECC fault.
+ *
+ * @param[in] addr         Base address (must be 4-byte aligned).
+ * @param[in] len          Region length in bytes (rounded down to /4).
+ * @param[in] expected_ecc Expected ECC tag.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok              Computed value matched.
+ * @retval k_ra_err_crc_mismatch Computed value did NOT match expected.
+ * @retval k_ra_err_invalid_arg ``addr`` not 4-byte aligned OR ``len < 4``.
+ *
+ * @pre  ``addr`` is non-zero and 4-byte aligned.
+ * @pre  ``len`` is at least 4 bytes.
+ * @post Hardware state is unchanged.
+ * @post On success the verification result is logged at INFO level;
+ *       on mismatch it is logged at ERROR level.
+ *
+ * @note Read-only path.
+ * @see ra_cnecc_compute
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_cnecc_verify(uint32_t addr, uint32_t len, uint32_t expected_ecc);
+
 #ifdef __cplusplus
 }
 #endif

@@ -484,6 +484,130 @@ typedef void (*ra_ssie_event_fn_t)(void* ctx, uint8_t channel, uint8_t events, u
 [[nodiscard]] ra_err_t
 ra_ssie_set_thresholds(uint8_t channel, uint8_t tx_threshold, uint8_t rx_threshold);
 
+/**
+ * @brief Programme SSITDMR / SSIRDMR FIFO thresholds in one call.
+ *
+ * @details
+ * Convenience wrapper that drives ``ra_ssie_set_thresholds`` with the
+ * exact pair of TX / RX FIFO watermarks the audio pipeline wants. The
+ * SSIE only carries ``SSISCR.TDES`` / ``SSISCR.RDFS`` (HUM Ch 46.2.8
+ * p 3094) -- the names ``SSITDMR`` / ``SSIRDMR`` are aliases the
+ * application layer uses for clarity.
+ *
+ * @param[in] channel       Channel index (0 = SSIE0, 1 = SSIE1).
+ * @param[in] tx_threshold  TDES[4:0]: TX-empty IRQ when TDC <= value.
+ * @param[in] rx_threshold  RDFS[4:0]: RX-full IRQ when RDC > value.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok              Thresholds programmed.
+ * @retval k_ra_err_invalid_arg Channel out of range or threshold > 0x1F.
+ *
+ * @pre Channel previously initialised.
+ * @pre Channel currently idle.
+ *
+ * @post SSISCR reflects the requested thresholds.
+ * @post Other SSISCR fields are zero (reserved).
+ *
+ * @note Thread safety: not thread-safe.
+ * @see ra_ssie_set_thresholds
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t
+ra_ssie_set_fifo_threshold(uint8_t channel, uint8_t tx_threshold, uint8_t rx_threshold);
+
+/**
+ * @brief Pair an SSIE channel's TX + RX FIFOs to DMAC channels.
+ *
+ * @details
+ * Thin variant of ``ra_ssie_attach_dma`` that takes only the DMAC
+ * channel ids (no buffers / counts). Useful for callers who programme
+ * the DMAC descriptors themselves and only need the SSIE side to
+ * record which DMAC channels to free during ``ra_ssie_detach_dma``.
+ * Pass ``>= 8`` to skip a direction.
+ *
+ * @param[in] channel        SSIE channel index 0..1.
+ * @param[in] tx_dma_channel DMAC channel id pumping TX (or >= 8).
+ * @param[in] rx_dma_channel DMAC channel id pumping RX (or >= 8).
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok              Channel binding recorded.
+ * @retval k_ra_err_invalid_arg Channel out of range OR both DMA ids >= 8.
+ *
+ * @pre Channel previously initialised.
+ * @pre At least one of ``tx_dma_channel`` / ``rx_dma_channel`` < 8.
+ *
+ * @post Internal DMA bookkeeping records the TX / RX DMAC ids.
+ * @post No DMAC start was issued (compare ``ra_ssie_attach_dma``).
+ *
+ * @note Thread safety: not thread-safe.
+ * @see ra_ssie_attach_dma
+ * @see ra_ssie_detach_dma
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t
+ra_ssie_attach_dma_pair(uint8_t channel, uint8_t tx_dma_channel, uint8_t rx_dma_channel);
+
+/**
+ * @brief Block-mode isochronous send. Drains the buffer fully.
+ *
+ * @details
+ * Loops until every requested sample has been pushed into SSIFTDR.
+ * Internally relies on the FIFO depth read-back to throttle, so the
+ * routine is bounded by ``samples * k_ra_ssie_fifo_depth`` SSIFSR reads
+ * worst-case (HUM Ch 46.2.4 p 3083). The non-DMA path used by the iso
+ * pacing layer.
+ *
+ * @param[in] channel Channel index 0..1.
+ * @param[in] buffer  Source samples.
+ * @param[in] samples Number of 32-bit samples to send.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok              All ``samples`` queued.
+ * @retval k_ra_err_null_ptr    ``buffer`` was NULL.
+ * @retval k_ra_err_invalid_arg Channel out of range.
+ *
+ * @pre Channel previously initialised + started in TX mode.
+ * @pre ``buffer`` is non-NULL and points to ``samples`` words.
+ *
+ * @post All ``samples`` words have been pushed into SSIFTDR.
+ * @post Remaining FIFO occupancy is implementation-defined.
+ *
+ * @note Thread safety: not thread-safe.
+ * @see ra_ssie_recv_iso
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_ssie_send_iso(uint8_t channel, const uint32_t* buffer, uint16_t samples);
+
+/**
+ * @brief Block-mode isochronous receive. Drains up to ``max_samples``.
+ *
+ * @details
+ * Loops until either the destination buffer is full or the SSIE RX
+ * FIFO drains. Returns the actual sample count via ``out_got``.
+ *
+ * @param[in]  channel     Channel index 0..1.
+ * @param[out] buffer      Destination buffer.
+ * @param[in]  max_samples Capacity of ``buffer`` in 32-bit samples.
+ * @param[out] out_got     Receives the number of samples consumed.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok              Up to ``max_samples`` words consumed.
+ * @retval k_ra_err_null_ptr    ``buffer`` or ``out_got`` was NULL.
+ * @retval k_ra_err_invalid_arg Channel out of range.
+ *
+ * @pre Channel previously initialised + started in RX mode.
+ * @pre ``buffer`` and ``out_got`` are non-NULL.
+ *
+ * @post ``*out_got <= max_samples``.
+ * @post Receive FIFO drained to either empty or ``max_samples`` cap.
+ *
+ * @note Thread safety: not thread-safe.
+ * @see ra_ssie_send_iso
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t
+ra_ssie_recv_iso(uint8_t channel, uint32_t* buffer, uint16_t max_samples, uint16_t* out_got);
+
 /* =============================================================================
  * Data path
  * =============================================================================

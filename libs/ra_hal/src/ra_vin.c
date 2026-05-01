@@ -86,6 +86,34 @@ static ra_vin_event_fn_t s_vin_fn;
 static void* s_vin_ctx;
 
 /**
+ * @var s_vin_frame_fn
+ * @brief Frame-end callback registered via `ra_vin_attach_frame_handler`.
+ * @since 0.1.0
+ */
+static ra_vin_frame_fn_t s_vin_frame_fn;
+
+/**
+ * @var s_vin_frame_ctx
+ * @brief Context forwarded to `s_vin_frame_fn`.
+ * @since 0.1.0
+ */
+static void* s_vin_frame_ctx;
+
+/**
+ * @var s_vin_frame_buf
+ * @brief Buffer base of the most recent `ra_vin_capture_start` call.
+ * @since 0.1.0
+ */
+static void* s_vin_frame_buf;
+
+/**
+ * @var s_vin_frame_len
+ * @brief Cached length (in bytes) of the most recent capture geometry.
+ * @since 0.1.0
+ */
+static uint32_t s_vin_frame_len;
+
+/**
  * @enum ra_vin_local_t
  * @brief File-scope magic-free constants.
  *
@@ -260,8 +288,12 @@ static void internal_mc_rmw(uint32_t clear_mask, uint32_t set_bits)
   /* HUM Ch 67.2.16 "INTS: Interrupt Status Register" p 3989 */
   *ra_vin_reg32(k_ra_vin_off_ints) = k_ra_vin_int_w1c_mask;
 
-  s_vin_fn  = nullptr;
-  s_vin_ctx = nullptr;
+  s_vin_fn        = nullptr;
+  s_vin_ctx       = nullptr;
+  s_vin_frame_fn  = nullptr;
+  s_vin_frame_ctx = nullptr;
+  s_vin_frame_buf = nullptr;
+  s_vin_frame_len = 0U;
 
   /* HUM Ch 11.2.8 "MSTPCRC: Module Stop Control Register C", p 446 */
   return ra_mstp_disable(k_ra_mstp_mipi_csi);
@@ -279,7 +311,7 @@ static void internal_mc_rmw(uint32_t clear_mask, uint32_t set_bits)
   return k_ra_ok;
 }
 
-[[nodiscard]] ra_err_t ra_vin_capture_start(ra_vin_capture_mode_t mode)
+[[nodiscard]] ra_err_t ra_vin_capture_arm(ra_vin_capture_mode_t mode)
 {
   if ((mode != k_ra_vin_capture_single) && (mode != k_ra_vin_capture_continuous) &&
       (mode != k_ra_vin_capture_continuous_field_skip)) {
@@ -312,7 +344,7 @@ static void internal_mc_rmw(uint32_t clear_mask, uint32_t set_bits)
   return k_ra_ok;
 }
 
-[[nodiscard]] ra_err_t ra_vin_capture_stop(void)
+[[nodiscard]] ra_err_t ra_vin_capture_disarm(void)
 {
   /* HUM Ch 67.2.1 "MC: Main Control Register" p 3975 */
   volatile uint32_t* mc_reg = ra_vin_reg32(k_ra_vin_off_mc);
@@ -791,6 +823,16 @@ void ra_vin_dispatch(void)
     fn(ctx, mask);
   }
 
+  /* Sweep 17: route FME (frame memory complete) into the frame-end
+ * callback registered via `ra_vin_attach_frame_handler`. */
+  if ((mask & k_ra_vin_int_fme) != 0UL) {
+    const ra_vin_frame_fn_t frame_fn  = s_vin_frame_fn;
+    void* const             frame_ctx = s_vin_frame_ctx;
+    if (frame_fn != nullptr) {
+      frame_fn(frame_ctx, s_vin_frame_buf, s_vin_frame_len);
+    }
+  }
+
   /* HUM Ch 67.2.16 "INTS: Interrupt Status Register" p 3989
  * Acknowledge the W1C subset (FOS / ARES / FIS2). */
   *reg = mask & k_ra_vin_int_w1c_mask;
@@ -812,4 +854,109 @@ void ra_vin_dispatch(void)
 {
   /* HUM Ch 11.2.8 "MSTPCRC: Module Stop Control Register C", p 446 */
   return ra_mstp_enable(k_ra_mstp_mipi_csi);
+}
+
+/* =============================================================================
+ * Sweep 17: dynamic capture window + frame-end IRQ
+ * =============================================================================
+ */
+
+/**
+ * @enum ra_vin_capture_geom_t
+ * @brief Bounded geometry constants used by `ra_vin_capture_start`.
+ */
+typedef enum : uint16_t {
+  k_ra_vin_geom_max_dim = 4096U, /**< Hardware caps both axes at 4096. */
+} ra_vin_capture_geom_t;
+
+/**
+ * @enum ra_vin_format_bpp_t
+ * @brief Bytes-per-pixel lookup for `ra_vin_input_fmt_t`.
+ */
+typedef enum : uint8_t {
+  k_ra_vin_bpp_ycbcr422 = 2U, /**< 4:2:2 packs to 2 bytes / pixel.  */
+  k_ra_vin_bpp_raw8     = 1U, /**< RAW8 = 1 byte / pixel.           */
+  k_ra_vin_bpp_rgb888   = 4U, /**< RGB888 packed in 32-bit cells.   */
+} ra_vin_format_bpp_t;
+
+/**
+ * @brief Resolve bytes-per-pixel for a given input format.
+ *
+ * @param[in] format Input format descriptor.
+ * @return Bytes per pixel; defaults to 2 for unknown formats.
+ *
+ * @pre format is one of `ra_vin_input_fmt_t`.
+ * @post Return value is in {1, 2, 4}.
+ *
+ * @note Pure helper; safe from any context.
+ * @since 0.1.0
+ */
+static uint8_t internal_format_bpp(ra_vin_input_fmt_t format)
+{
+  uint8_t bpp = k_ra_vin_bpp_ycbcr422;
+  if (format == k_ra_vin_input_raw8) {
+    bpp = k_ra_vin_bpp_raw8;
+  } else if (format == k_ra_vin_input_rgb888) {
+    bpp = k_ra_vin_bpp_rgb888;
+  } else {
+    bpp = k_ra_vin_bpp_ycbcr422;
+  }
+  return bpp;
+}
+
+[[nodiscard]] ra_err_t
+ra_vin_capture_start(void* buf, uint16_t w, uint16_t h, ra_vin_input_fmt_t format)
+{
+  RA_CHECK_NULL_PTR(buf, s_tag, "buf must not be nullptr");
+  if ((w == 0U) || (h == 0U) || (w > k_ra_vin_geom_max_dim) || (h > k_ra_vin_geom_max_dim)) {
+    return k_ra_err_invalid_arg;
+  }
+  if (((uintptr_t)buf & k_ra_vin_mb_align_mask) != 0U) {
+    return k_ra_err_invalid_arg;
+  }
+
+  /* HUM Ch 67.2.10 "MB1: Memory Base 1 Register" p 3985 */
+  *ra_vin_reg32(k_ra_vin_off_mb1) = (uint32_t)(uintptr_t)buf;
+  /* HUM Ch 67.2.13 "IS: Image Stride Register" p 3984 */
+  *ra_vin_reg32(k_ra_vin_off_is) = (uint32_t)w;
+
+  /* HUM Ch 67.2.1 "MC: Main Control Register" p 3975 -- update INF only. */
+  internal_mc_rmw(k_ra_vin_mc_inf, ((uint32_t)format << k_ra_vin_mc_shift_inf) & k_ra_vin_mc_inf);
+
+  /* Cache geometry for the frame-end callback. */
+  s_vin_frame_buf = buf;
+  s_vin_frame_len = (uint32_t)w * (uint32_t)h * (uint32_t)internal_format_bpp(format);
+
+  return ra_vin_capture_arm(k_ra_vin_capture_single);
+}
+
+[[nodiscard]] ra_err_t ra_vin_capture_stop(void)
+{
+  return ra_vin_capture_disarm();
+}
+
+[[nodiscard]] ra_err_t ra_vin_set_window(uint16_t x, uint16_t y, uint16_t w, uint16_t h)
+{
+  if ((w == 0U) || (h == 0U)) {
+    return k_ra_err_invalid_arg;
+  }
+  const uint32_t pixel_end = (uint32_t)x + (uint32_t)w - 1U;
+  const uint32_t line_end  = (uint32_t)y + (uint32_t)h - 1U;
+  if ((pixel_end > k_ra_vin_preclip_mask) || (line_end > k_ra_vin_preclip_mask)) {
+    return k_ra_err_invalid_arg;
+  }
+  const ra_vin_preclip_t window = {
+    .line_start  = y,
+    .line_end    = (uint16_t)line_end,
+    .pixel_start = x,
+    .pixel_end   = (uint16_t)pixel_end,
+  };
+  return ra_vin_set_preclip(&window);
+}
+
+[[nodiscard]] ra_err_t ra_vin_attach_frame_handler(ra_vin_frame_fn_t fn, void* ctx)
+{
+  s_vin_frame_fn  = fn;
+  s_vin_frame_ctx = ctx;
+  return k_ra_ok;
 }

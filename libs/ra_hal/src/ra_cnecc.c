@@ -699,3 +699,100 @@ void ra_cnecc_dispatch_overflow(uint8_t instance)
     ++s_cnecc_bbr_mirror[instance]->overflow_count;
   }
 }
+
+/* =============================================================================
+ * Code-flash ECC compute / verify (software fallback)
+ *
+ * The CNECC hardware (HUM Ch 42) only describes runtime read-side ECC for
+ * the CANFD MBRAM. The bootloader's anti-rollback and code-flash auditing
+ * paths still want a deterministic ECC tag for arbitrary memory regions
+ * (e.g. the active firmware slot in MRAM). We expose a small CRC32-style
+ * accumulator so callers can keep using the CNECC vocabulary without
+ * minting a separate driver.
+ * =============================================================================
+ */
+
+/**
+ * @enum ra_cnecc_compute_const_t
+ * @brief Magic numbers used by ``ra_cnecc_compute`` promoted to typed enums.
+ */
+typedef enum : uint32_t {
+  k_ra_cnecc_crc_seed   = 0xFFFFFFFFUL, /**< Initial CRC32 register value. */
+  k_ra_cnecc_crc_xorout = 0xFFFFFFFFUL, /**< Final XOR mask.               */
+  k_ra_cnecc_crc_poly   = 0xEDB88320UL, /**< Reflected CRC32 polynomial.   */
+} ra_cnecc_compute_const_t;
+
+/**
+ * @enum ra_cnecc_compute_align_t
+ * @brief Alignment / size constants for the compute path.
+ */
+typedef enum : uint8_t {
+  k_ra_cnecc_compute_align     = 4U,    /**< 4-byte alignment for addr / len. */
+  k_ra_cnecc_compute_byte_bits = 8U,    /**< Bits per byte.                   */
+  k_ra_cnecc_compute_byte_mask = 0xFFU, /**< Byte mask.                    */
+} ra_cnecc_compute_align_t;
+
+/**
+ * @brief Reflected CRC32 (poly 0xEDB88320) over a byte buffer.
+ */
+static uint32_t internal_crc32(const uint8_t* data, uint32_t bytes)
+{
+  uint32_t crc = (uint32_t)k_ra_cnecc_crc_seed;
+  for (uint32_t i = 0U; i < bytes; ++i) {
+    crc ^= (uint32_t)data[i];
+    for (uint8_t b = 0U; b < (uint8_t)k_ra_cnecc_compute_byte_bits; ++b) {
+      const uint32_t mask = (crc & 1UL) != 0UL ? (uint32_t)k_ra_cnecc_crc_poly : 0UL;
+      crc                 = (crc >> 1U) ^ mask;
+    }
+  }
+  return crc ^ (uint32_t)k_ra_cnecc_crc_xorout;
+}
+
+[[nodiscard]] ra_err_t ra_cnecc_open(void)
+{
+  /* Default config: every instance enabled with correction + IRQs on.
+   * Mirrors the typical bring-up pattern in apps that don't care about
+   * per-instance tuning. HUM Ch 42.3.1 figure 42.1 p 2874 procedure. */
+  const ra_cnecc_config_t cfg = {
+    .instances =
+      {
+        {.correct_1bit = true, .irq_1bit = true, .irq_2bit = true, .enable = true},
+        {.correct_1bit = true, .irq_1bit = true, .irq_2bit = true, .enable = true},
+      },
+  };
+  return ra_cnecc_init(&cfg);
+}
+
+[[nodiscard]] ra_err_t ra_cnecc_compute(uint32_t addr, uint32_t len, uint32_t* out_ecc)
+{
+  if (out_ecc == nullptr) {
+    return k_ra_err_null_ptr;
+  }
+  if (addr == 0U) {
+    return k_ra_err_null_ptr;
+  }
+  if ((addr % (uint32_t)k_ra_cnecc_compute_align) != 0U) {
+    return k_ra_err_invalid_arg;
+  }
+  if (len < (uint32_t)k_ra_cnecc_compute_align) {
+    return k_ra_err_invalid_arg;
+  }
+  /* Round down to the nearest 4-byte boundary so the computation is
+   * deterministic regardless of trailing bytes. */
+  const uint32_t aligned_len = len & ~((uint32_t)k_ra_cnecc_compute_align - 1U);
+  *out_ecc                   = internal_crc32((const uint8_t*)(uintptr_t)addr, aligned_len);
+  ra_log_info_val(s_tag, "compute ecc", *out_ecc);
+  return k_ra_ok;
+}
+
+[[nodiscard]] ra_err_t ra_cnecc_verify(uint32_t addr, uint32_t len, uint32_t expected_ecc)
+{
+  uint32_t       got = 0U;
+  const ra_err_t err = ra_cnecc_compute(addr, len, &got);
+  RA_RETURN_ON_ERROR(err, s_tag, "verify: compute failed");
+  if (got != expected_ecc) {
+    ra_log_error_val(s_tag, "verify mismatch", got);
+    return k_ra_err_crc_mismatch;
+  }
+  return k_ra_ok;
+}

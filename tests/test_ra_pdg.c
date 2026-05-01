@@ -738,6 +738,103 @@ static void test_attach_and_dispatch(void)
   TEST_END("pdg attach + dispatch");
 }
 
+/* ----------------------------------------------------------------------------
+ * Sweep 17: ra_pdg_capture_start/stop (buffered delay-code apply)
+ * --------------------------------------------------------------------------*/
+
+static void test_capture_start_happy(void)
+{
+  TEST_BEGIN("pdg capture_start happy");
+  prep();
+  const ra_pdg_config_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdg_init(&cfg));
+  s_pdg_cb_count = 0U;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_pdg_attach_handler(stub_pdg_cb, (void*)(uintptr_t)0xBEEFU));
+
+  const ra_pdg_delay_entry_t entries[] = {
+    {.channel = (uint8_t)k_ra_pdg_test_ch_first,
+     .pin     = k_ra_pdg_pin_a,
+     .edge    = k_ra_pdg_edge_rising,
+     .code    = (uint8_t)k_ra_pdg_test_code_hi},
+  };
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdg_capture_start(entries, 1U));
+  TEST_ASSERT_EQ((int32_t)1, (int32_t)s_pdg_cb_count);
+  volatile r_pdg_regs_t* reg = ra_pdg();
+  TEST_ASSERT_EQ((int32_t)k_ra_pdg_test_code_hi,
+                 (int32_t)reg->GTDLYR[(uint8_t)k_ra_pdg_test_ch_first].A);
+  TEST_END("pdg capture_start happy");
+}
+
+static void test_capture_start_null(void)
+{
+  TEST_BEGIN("pdg capture_start NULL buf");
+  prep();
+  const ra_pdg_config_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdg_init(&cfg));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_pdg_capture_start(nullptr, 1U));
+  TEST_END("pdg capture_start NULL buf");
+}
+
+static void test_capture_start_zero_len(void)
+{
+  TEST_BEGIN("pdg capture_start zero len");
+  prep();
+  const ra_pdg_config_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdg_init(&cfg));
+  const ra_pdg_delay_entry_t entries[1] = {
+    {.channel = 0U, .pin = k_ra_pdg_pin_a, .edge = k_ra_pdg_edge_rising, .code = 0U},
+  };
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_pdg_capture_start(entries, 0U));
+  TEST_END("pdg capture_start zero len");
+}
+
+static void test_capture_start_bad_entry(void)
+{
+  TEST_BEGIN("pdg capture_start bad entry");
+  prep();
+  const ra_pdg_config_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdg_init(&cfg));
+  const ra_pdg_delay_entry_t bad[] = {
+    {.channel = (uint8_t)k_ra_pdg_test_ch_bad,
+     .pin     = k_ra_pdg_pin_a,
+     .edge    = k_ra_pdg_edge_rising,
+     .code    = 0U},
+  };
+  const ra_err_t err = ra_pdg_capture_start(bad, 1U);
+  TEST_ASSERT(err != k_ra_ok);
+  TEST_END("pdg capture_start bad entry");
+}
+
+static void test_capture_stop_happy(void)
+{
+  TEST_BEGIN("pdg capture_stop");
+  prep();
+  const ra_pdg_config_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdg_init(&cfg));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdg_capture_stop());
+  TEST_END("pdg capture_stop");
+}
+
+static void test_capture_start_no_handler(void)
+{
+  TEST_BEGIN("pdg capture_start without handler");
+  prep();
+  const ra_pdg_config_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdg_init(&cfg));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdg_attach_handler(nullptr, nullptr));
+  s_pdg_cb_count                       = 0U;
+  const ra_pdg_delay_entry_t entries[] = {
+    {.channel = (uint8_t)k_ra_pdg_test_ch_first,
+     .pin     = k_ra_pdg_pin_b,
+     .edge    = k_ra_pdg_edge_falling,
+     .code    = 0x10U},
+  };
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdg_capture_start(entries, 1U));
+  TEST_ASSERT_EQ((int32_t)0, (int32_t)s_pdg_cb_count);
+  TEST_END("pdg capture_start without handler");
+}
+
 static void test_deinit(void)
 {
   TEST_BEGIN("pdg deinit");
@@ -792,6 +889,12 @@ int32_t main(void)
   test_check_constraints();
   test_required_write_ns();
   test_attach_and_dispatch();
+  test_capture_start_happy();
+  test_capture_start_null();
+  test_capture_start_zero_len();
+  test_capture_start_bad_entry();
+  test_capture_stop_happy();
+  test_capture_start_no_handler();
   test_deinit();
   (void)fprintf(stderr, "[OK ] test_ra_pdg.c\n");
   return 0;

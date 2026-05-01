@@ -250,7 +250,7 @@ static void test_init_low_pass_and_burst(void)
   TEST_END("ceu init LPF + burst + frame-drop");
 }
 
-static void test_capture_start_happy(void)
+static void test_capture_arm_happy(void)
 {
   TEST_BEGIN("ceu capture_start happy");
   prep();
@@ -258,7 +258,7 @@ static void test_capture_start_happy(void)
   const ra_ceu_config_t cfg = make_cfg();
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ceu_init(&cfg));
   TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ceu_capture_start((uint8_t*)(uintptr_t)k_test_ceu_buffer_addr));
+                 (int32_t)ra_ceu_capture_arm((uint8_t*)(uintptr_t)k_test_ceu_buffer_addr));
 
   /* CDAYR / CDACR receive the buffer, CAPSR.CE bit gets set. */
   TEST_ASSERT_EQ((int32_t)k_test_ceu_buffer_addr, (int32_t)*ra_ceu_reg32(k_ra_ceu_off_cdayr));
@@ -269,24 +269,24 @@ static void test_capture_start_happy(void)
   TEST_END("ceu capture_start happy");
 }
 
-static void test_capture_start_null(void)
+static void test_capture_arm_null(void)
 {
   TEST_BEGIN("ceu capture_start null buffer");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_ceu_capture_start(nullptr));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_ceu_capture_arm(nullptr));
   TEST_END("ceu capture_start null buffer");
 }
 
-static void test_capture_start_unaligned(void)
+static void test_capture_arm_unaligned(void)
 {
   TEST_BEGIN("ceu capture_start unaligned");
   prep();
   TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ceu_capture_start((uint8_t*)(uintptr_t)k_test_ceu_unaligned));
+                 (int32_t)ra_ceu_capture_arm((uint8_t*)(uintptr_t)k_test_ceu_unaligned));
   TEST_END("ceu capture_start unaligned");
 }
 
-static void test_capture_start_busy(void)
+static void test_capture_arm_busy(void)
 {
   TEST_BEGIN("ceu capture_start busy");
   prep();
@@ -295,13 +295,13 @@ static void test_capture_start_busy(void)
    * CSTSR.CPTON in the simulated mmap. */
   *ra_ceu_reg32(k_ra_ceu_off_cstsr) = (uint32_t)k_ra_ceu_cstsr_mask_cpton;
   TEST_ASSERT_EQ((int32_t)k_ra_err_busy,
-                 (int32_t)ra_ceu_capture_start((uint8_t*)(uintptr_t)k_test_ceu_buffer_addr));
+                 (int32_t)ra_ceu_capture_arm((uint8_t*)(uintptr_t)k_test_ceu_buffer_addr));
 
   /* Clear CSTSR but force CAPSR.CPKIL -> still busy. */
   *ra_ceu_reg32(k_ra_ceu_off_cstsr) = 0U;
   *ra_ceu_reg32(k_ra_ceu_off_capsr) = (uint32_t)k_ra_ceu_capsr_mask_cpkil;
   TEST_ASSERT_EQ((int32_t)k_ra_err_busy,
-                 (int32_t)ra_ceu_capture_start((uint8_t*)(uintptr_t)k_test_ceu_buffer_addr));
+                 (int32_t)ra_ceu_capture_arm((uint8_t*)(uintptr_t)k_test_ceu_buffer_addr));
 
   TEST_END("ceu capture_start busy");
 }
@@ -365,15 +365,15 @@ static void test_capture_start_ex_null(void)
   TEST_END("ceu capture_start_ex null");
 }
 
-static void test_capture_stop(void)
+static void test_capture_disarm(void)
 {
-  TEST_BEGIN("ceu capture_stop");
+  TEST_BEGIN("ceu capture_disarm");
   prep();
   const ra_ceu_config_t cfg = make_cfg();
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ceu_init(&cfg));
   TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ceu_capture_start((uint8_t*)(uintptr_t)k_test_ceu_buffer_addr));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ceu_capture_stop());
+                 (int32_t)ra_ceu_capture_arm((uint8_t*)(uintptr_t)k_test_ceu_buffer_addr));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ceu_capture_disarm());
   TEST_ASSERT((*ra_ceu_reg32(k_ra_ceu_off_capsr) & (uint32_t)k_ra_ceu_capsr_mask_ce) == 0U);
   TEST_END("ceu capture_stop");
 }
@@ -387,7 +387,7 @@ static void test_data_enable_arms_firewall(void)
   cfg.image_area_size = 4096U;
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ceu_init(&cfg));
   TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ceu_capture_start((uint8_t*)(uintptr_t)k_test_ceu_buffer_addr));
+                 (int32_t)ra_ceu_capture_arm((uint8_t*)(uintptr_t)k_test_ceu_buffer_addr));
   const uint32_t cfwcr = *ra_ceu_reg32(k_ra_ceu_off_cfwcr);
   TEST_ASSERT((cfwcr & (uint32_t)k_ra_ceu_cfwcr_mask_fwe) != 0U);
   TEST_END("ceu data-enable arms firewall");
@@ -718,6 +718,116 @@ static void test_dma_pump_bad_args(void)
   TEST_END("ceu dma_pump bad args");
 }
 
+/* ----------------------------------------------------------------------------
+ * Sweep 17: ra_ceu_set_dma_buffer + multi-frame capture wrappers
+ * --------------------------------------------------------------------------*/
+
+static void test_set_dma_buffer_happy(void)
+{
+  TEST_BEGIN("ceu set_dma_buffer happy");
+  prep();
+  const ra_ceu_config_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ceu_init(&cfg));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_ceu_set_dma_buffer((uint8_t*)(uintptr_t)k_test_ceu_buffer_addr,
+                                                (uint32_t)k_test_ceu_dma_bytes));
+  TEST_END("ceu set_dma_buffer happy");
+}
+
+static void test_set_dma_buffer_null(void)
+{
+  TEST_BEGIN("ceu set_dma_buffer null");
+  prep();
+  const ra_ceu_config_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ceu_init(&cfg));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_ceu_set_dma_buffer(nullptr, (uint32_t)k_test_ceu_dma_bytes));
+  TEST_END("ceu set_dma_buffer null");
+}
+
+static void test_set_dma_buffer_zero_len(void)
+{
+  TEST_BEGIN("ceu set_dma_buffer zero len");
+  prep();
+  const ra_ceu_config_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ceu_init(&cfg));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_ceu_set_dma_buffer((uint8_t*)(uintptr_t)k_test_ceu_buffer_addr, 0U));
+  TEST_END("ceu set_dma_buffer zero len");
+}
+
+static void test_set_dma_buffer_misaligned(void)
+{
+  TEST_BEGIN("ceu set_dma_buffer misaligned");
+  prep();
+  const ra_ceu_config_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ceu_init(&cfg));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_ceu_set_dma_buffer((uint8_t*)(uintptr_t)k_test_ceu_unaligned,
+                                                (uint32_t)k_test_ceu_dma_bytes));
+  TEST_END("ceu set_dma_buffer misaligned");
+}
+
+static void test_capture_start_n_single(void)
+{
+  TEST_BEGIN("ceu capture_start single (num_frames=1)");
+  prep();
+  const ra_ceu_config_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ceu_init(&cfg));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_ceu_set_dma_buffer((uint8_t*)(uintptr_t)k_test_ceu_buffer_addr,
+                                                (uint32_t)k_test_ceu_dma_bytes));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ceu_capture_start(1U));
+  const uint32_t capcr = *ra_ceu_reg32(k_ra_ceu_off_capcr);
+  TEST_ASSERT_EQ((int32_t)0U, (int32_t)(capcr & ((uint32_t)1U << k_ra_ceu_capcr_shift_ctncp)));
+  const uint32_t capsr = *ra_ceu_reg32(k_ra_ceu_off_capsr);
+  TEST_ASSERT((capsr & (uint32_t)k_ra_ceu_capsr_mask_ce) != 0U);
+  TEST_END("ceu capture_start single (num_frames=1)");
+}
+
+static void test_capture_start_n_continuous(void)
+{
+  TEST_BEGIN("ceu capture_start continuous (num_frames=0)");
+  prep();
+  const ra_ceu_config_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ceu_init(&cfg));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_ceu_set_dma_buffer((uint8_t*)(uintptr_t)k_test_ceu_buffer_addr,
+                                                (uint32_t)k_test_ceu_dma_bytes));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ceu_capture_start(0U));
+  const uint32_t capcr = *ra_ceu_reg32(k_ra_ceu_off_capcr);
+  TEST_ASSERT((capcr & ((uint32_t)1U << k_ra_ceu_capcr_shift_ctncp)) != 0U);
+  TEST_END("ceu capture_start continuous (num_frames=0)");
+}
+
+static void test_capture_start_no_buffer(void)
+{
+  TEST_BEGIN("ceu capture_start without set_dma_buffer");
+  prep();
+  const ra_ceu_config_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ceu_init(&cfg));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ceu_deinit());
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ceu_init(&cfg));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_ceu_capture_start(1U));
+  TEST_END("ceu capture_start without set_dma_buffer");
+}
+
+static void test_capture_stop_wrapper(void)
+{
+  TEST_BEGIN("ceu capture_stop wrapper");
+  prep();
+  const ra_ceu_config_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ceu_init(&cfg));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_ceu_set_dma_buffer((uint8_t*)(uintptr_t)k_test_ceu_buffer_addr,
+                                                (uint32_t)k_test_ceu_dma_bytes));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ceu_capture_start(1U));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ceu_capture_stop());
+  const uint32_t capsr = *ra_ceu_reg32(k_ra_ceu_off_capsr);
+  TEST_ASSERT_EQ((int32_t)0U, (int32_t)(capsr & (uint32_t)k_ra_ceu_capsr_mask_ce));
+  TEST_END("ceu capture_stop wrapper");
+}
+
 static void test_deinit(void)
 {
   TEST_BEGIN("ceu deinit");
@@ -746,14 +856,14 @@ int32_t main(void)
   test_init_byte_swap_full();
   test_init_scale_down();
   test_init_low_pass_and_burst();
-  test_capture_start_happy();
-  test_capture_start_null();
-  test_capture_start_unaligned();
-  test_capture_start_busy();
+  test_capture_arm_happy();
+  test_capture_arm_null();
+  test_capture_arm_unaligned();
+  test_capture_arm_busy();
   test_capture_start_ex_full_bundle();
   test_capture_start_ex_misaligned();
   test_capture_start_ex_null();
-  test_capture_stop();
+  test_capture_disarm();
   test_data_enable_arms_firewall();
   test_status_get_clear();
   test_status_snapshot();
@@ -775,6 +885,14 @@ int32_t main(void)
   test_frame_drop_set();
   test_dma_pump();
   test_dma_pump_bad_args();
+  test_set_dma_buffer_happy();
+  test_set_dma_buffer_null();
+  test_set_dma_buffer_zero_len();
+  test_set_dma_buffer_misaligned();
+  test_capture_start_n_single();
+  test_capture_start_n_continuous();
+  test_capture_start_no_buffer();
+  test_capture_stop_wrapper();
   test_deinit();
   (void)fprintf(stderr, "[OK  ] test_ra_ceu.c\n");
   return 0;
