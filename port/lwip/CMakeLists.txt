@@ -116,9 +116,14 @@ set(_RA_LWIP_VENDOR_SRCS
     ${_RA_LWIP_NETIF_SRCS}
 )
 
+set(_RA_LWIP_PORT_SRCS
+    ${CMAKE_CURRENT_SOURCE_DIR}/arch/sys_arch.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/netif/ra_etha_netif.c
+)
+
 set(_RA_LWIP_SOURCES
     ${_RA_LWIP_VENDOR_SRCS}
-    ${CMAKE_CURRENT_SOURCE_DIR}/arch/sys_arch.c
+    ${_RA_LWIP_PORT_SRCS}
 )
 
 add_library(lwip STATIC ${_RA_LWIP_SOURCES})
@@ -133,11 +138,19 @@ target_include_directories(lwip PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
-# `arch/sys_arch.c` includes "ra_log.h"; surface ra_core's headers so
-# the lwip target builds standalone (without the consuming app having
-# to splice ra_core into the lwip target's command line).
+# `arch/sys_arch.c` includes "ra_log.h"; `netif/ra_etha_netif.c` includes
+# "ra_etha.h" / "ra_err.h". Surface ra_core + ra_hal headers so the lwip
+# target builds standalone (without the consuming app having to splice
+# either into the lwip target's command line).
 target_include_directories(lwip PRIVATE
     ${RA_REPO_ROOT}/libs/ra_core/inc
+    ${RA_REPO_ROOT}/libs/ra_hal/inc
+)
+
+# Project netif glue lives under port/lwip/netif -- expose it to consumers
+# so they can `#include "ra_etha_netif.h"` without an extra include dir.
+target_include_directories(lwip PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/netif
 )
 
 # ThreadX is a hard dependency: sys_arch.c uses tx_* APIs. We re-use
@@ -155,7 +168,7 @@ set_source_files_properties(
 # The shim itself is allowed to relax -Wunused-parameter only -- lwIP
 # typedefs prevent us from naming every formal in some callbacks.
 set_source_files_properties(
-    ${CMAKE_CURRENT_SOURCE_DIR}/arch/sys_arch.c
+    ${_RA_LWIP_PORT_SRCS}
     PROPERTIES COMPILE_FLAGS "-Wno-error=unused-parameter"
 )
 
