@@ -18,7 +18,7 @@
 #   make check      -- run clang-format --dry-run (no changes)
 #   make tidy       -- run clang-tidy against the whole tree
 #   make test       -- build + run the host unit tests
-#   make docs       -- run doxygen against Doxyfile.main
+#   make docs       -- generate doxygen HTML into build/docs/html/
 #   make ascii      -- scan for non-ASCII characters
 #   make version    -- verify @since tags match the VERSION file
 #
@@ -47,7 +47,7 @@ RA_APPS := $(sort $(patsubst $(ROOT)/examples/%/main.c,%,$(wildcard $(ROOT)/exam
 
 # We forward each <app> name to the app's own Makefile, so reserve the names
 # below from being shadowed by .PHONY targets.
-.PHONY: help apps default clean format check tidy test test-docker ctest docs ascii version qe-test all $(RA_APPS)
+.PHONY: help apps default clean format check tidy test test-docker ctest coverage docs ascii version qe-test all $(RA_APPS)
 
 help:
 	@echo "ra8d2-firmware make targets:"
@@ -61,7 +61,8 @@ help:
 	@echo "  make test      host-compile + run unit tests (Linux native)"
 	@echo "  make test-docker host-compile + run unit tests in Linux container"
 	@echo "  make ctest     rerun just ctest (assumes already built)"
-	@echo "  make docs      run doxygen"
+	@echo "  make coverage  generate lcov+genhtml HTML coverage report"
+	@echo "  make docs      generate doxygen HTML into build/docs/html/"
 	@echo "  make ascii     fix-encoding.py --check"
 	@echo "  make version   verify @since tags match the VERSION file"
 	@echo "  make qe-test   run tools/ra_qe (JSON configurator) unit tests"
@@ -109,7 +110,10 @@ ctest:
 	ctest --test-dir $(TESTS_BUILD) --output-on-failure
 
 docs:
-	$(DOXYGEN) Doxyfile.main
+	bash scripts/build_docs.sh
+
+coverage:
+	bash scripts/coverage_report.sh
 
 ascii:
 	@for dir in src libs tests $(RA_APPS); do \
