@@ -76,6 +76,17 @@
  * hardware can light the panel by adding ``ra_glcdc_init`` /
  * ``ra_glcdc_start`` once the EK board manual entries land.
  *
+ * ## Hardware-accelerated rendering
+ *
+ * Sweep 17 routes the page-render hot-path
+ * (``ra_gfx_blit`` / ``ra_gfx_rect`` / ``ra_gfx_text_out``) through
+ * ``ra_drw`` (Renesas D/AVE 2D). The CMakeLists.txt for this app
+ * defines ``RA_GFX_USE_DRW=1``; ``libs/ra_gfx/src/ra_gfx_text.c``
+ * picks that up at compile time and replaces the software pixel
+ * pusher's rect / blit fast paths with D/AVE 2D commands. The public
+ * ra_gfx API is unchanged, so no call site in this file needed
+ * modification.
+ *
  * Touch input is intentionally deferred: the EK-RA8D2 LCD-connector
  * touch IC is not wired to a chip-side controller in the v1 board.
  * The README documents the SW1 / SW2 fallback wiring instead.
@@ -481,6 +492,7 @@ extern void _tx_timer_interrupt(void);
  *
  * @since 0.1.0
  */
+void SysTick_Handler(void);
 void SysTick_Handler(void)
 {
   _tx_timer_interrupt();
