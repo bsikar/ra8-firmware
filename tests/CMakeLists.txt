@@ -70,6 +70,13 @@ file(GLOB_RECURSE RA_USB_PAL_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_usb_pa
 file(GLOB_RECURSE RA_FS_SOURCES      CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_fs/src/*.c)
 file(GLOB_RECURSE RA_GFX_SOURCES     CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_gfx/src/*.c)
 file(GLOB_RECURSE RA_NSC_SOURCES     CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_nsc/src/*.c)
+file(GLOB_RECURSE RA_EPUB_C_SOURCES  CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_epub/src/*.c)
+file(GLOB_RECURSE RA_EPUB_CPP_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_epub/src/*.cpp)
+set(RA_EPUB_THIRD_PARTY
+    ${FW_ROOT}/libs/third_party/miniz/miniz.c
+    ${FW_ROOT}/libs/third_party/tinyxml2/tinyxml2.cpp
+    ${FW_ROOT}/libs/third_party/stb/stb_truetype_impl.c
+)
 file(GLOB_RECURSE RA_SECURE_APP_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/src/secure_app/*.c)
 
 add_library(ra_core_hal OBJECT
@@ -82,6 +89,9 @@ add_library(ra_core_hal OBJECT
     ${RA_FS_SOURCES}
     ${RA_GFX_SOURCES}
     ${RA_NSC_SOURCES}
+    ${RA_EPUB_C_SOURCES}
+    ${RA_EPUB_CPP_SOURCES}
+    ${RA_EPUB_THIRD_PARTY}
     ${RA_SECURE_APP_SOURCES}
     ${CMAKE_CURRENT_SOURCE_DIR}/mocks/ra_sim_mmap.c
     ${CMAKE_CURRENT_SOURCE_DIR}/mocks/ra_sim_irq.c
@@ -100,11 +110,29 @@ target_include_directories(ra_core_hal PUBLIC
     ${FW_ROOT}/libs/ra_gfx/inc
     ${FW_ROOT}/libs/ra_tls/inc
     ${FW_ROOT}/libs/ra_nsc/inc
+    ${FW_ROOT}/libs/ra_epub/inc
+    ${FW_ROOT}/libs/third_party/miniz
+    ${FW_ROOT}/libs/third_party/tinyxml2
+    ${FW_ROOT}/libs/third_party/stb
     ${FW_ROOT}/src
     ${FW_ROOT}/src/inc
     ${FW_ROOT}/src/secure_app
     ${CMAKE_CURRENT_SOURCE_DIR}/mocks
 )
+# tinyxml2.cpp + ra_epub_xml_shim.cpp are C++; everything else is C.
+# Override per-source language flags so cmake doesn't pass -std=c23 to the
+# C++ compiler.
+set_source_files_properties(
+    ${FW_ROOT}/libs/third_party/tinyxml2/tinyxml2.cpp
+    ${RA_EPUB_CPP_SOURCES}
+    PROPERTIES LANGUAGE CXX
+)
+target_compile_features(ra_core_hal PUBLIC cxx_std_17)
+
+# C++ enabled here only (the top-level project is C/ASM-only since the
+# cross-compile path doesn't ship a C++ runtime). tinyxml2 + ra_epub_xml_shim
+# in libs/ra_epub need C++17 for tinyxml2.
+enable_language(CXX)
 
 # Enable ctest so `cmake --build . --target test` and bash helpers work.
 enable_testing()
@@ -116,6 +144,7 @@ enable_testing()
 
 function(ra_add_test name)
   add_executable(${name} ${name}.c $<TARGET_OBJECTS:ra_core_hal>)
+  set_target_properties(${name} PROPERTIES LINKER_LANGUAGE CXX)
   target_include_directories(${name} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${FW_ROOT}/libs/ra_core/inc
@@ -128,6 +157,10 @@ function(ra_add_test name)
     ${FW_ROOT}/libs/ra_gfx/inc
     ${FW_ROOT}/libs/ra_tls/inc
     ${FW_ROOT}/libs/ra_nsc/inc
+    ${FW_ROOT}/libs/ra_epub/inc
+    ${FW_ROOT}/libs/third_party/miniz
+    ${FW_ROOT}/libs/third_party/tinyxml2
+    ${FW_ROOT}/libs/third_party/stb
     ${FW_ROOT}/src/secure_app
     ${CMAKE_CURRENT_SOURCE_DIR}/mocks
   )
