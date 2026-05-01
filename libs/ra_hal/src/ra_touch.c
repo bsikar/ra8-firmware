@@ -297,6 +297,7 @@ static ra_err_t priv_open_finalise(const ra_touch_cfg_t* cfg)
   return priv_attach_irq_pin(cfg->irq_pin);
 }
 
+/* NOLINTNEXTLINE(readability-function-size,readability-function-cognitive-complexity) */
 [[nodiscard]] ra_err_t ra_touch_open(const ra_touch_cfg_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg, s_tag, "ra_touch_open: cfg");

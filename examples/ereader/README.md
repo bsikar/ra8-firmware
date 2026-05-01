@@ -55,6 +55,17 @@ auto-detects it: if `libs/ra_reflow/src/*.c` exists and is
 non-empty, CMake sets `RA_HAS_REFLOW` and `main.c` calls
 `ra_reflow_layout_chapter` + `ra_reflow_render_page`. Without it,
 the demo paints a fallback `Hello world (reflow pending)` GUIX
+
+## Hardware-accelerated rendering (Sweep 17)
+
+The page-render hot-path is now wired through the Renesas D/AVE 2D
+graphics accelerator (`ra_drw`). The `CMakeLists.txt` defines
+`RA_GFX_USE_DRW=1`, which routes `ra_gfx_blit` / `ra_gfx_rect` /
+`ra_gfx_text_out` through `ra_drw` for hardware fill / blit /
+textured-rect commands instead of the software pixel pusher in
+`libs/ra_gfx/src/ra_gfx_text.c`. The public `ra_gfx` API is unchanged,
+so no call site in `main.c` needed modification -- the speed-up shows
+up automatically on the next page render.
 prompt so the build still passes.
 
 ## Build / flash

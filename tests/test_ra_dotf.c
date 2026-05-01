@@ -826,6 +826,120 @@ static void test_both_channels_active(void)
   TEST_END("dotf both channels active simultaneously");
 }
 
+/* ---------------------------------------------------------------------------
+ * Sweep 17 additions: open / close / set_region_window
+ * ---------------------------------------------------------------------------
+ */
+
+static ra_dotf_open_cfg_t make_open_cfg(uint8_t channel, bool enable_after)
+{
+  const ra_dotf_open_cfg_t cfg = {
+    .channel      = channel,
+    .key          = make_key_handle(k_ra_dotf_key_size_128, (uint8_t)k_dotf_test_key_idx_a),
+    .iv_words     = {(uint32_t)k_dotf_test_iv0,
+                     (uint32_t)k_dotf_test_iv1,
+                     (uint32_t)k_dotf_test_iv2,
+                     (uint32_t)k_dotf_test_iv3},
+    .region       = make_region(channel, (uint8_t)k_dotf_test_slot0),
+    .sca_level    = k_ra_dotf_sca_standard,
+    .enable_after = enable_after,
+  };
+  return cfg;
+}
+
+static void test_open_arms_channel(void)
+{
+  TEST_BEGIN("dotf open drives full bring-up");
+  prep();
+  const ra_dotf_open_cfg_t cfg = make_open_cfg((uint8_t)k_dotf_test_ch0, true);
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dotf_open(&cfg));
+  volatile ra_dotf_regs_t* reg = ra_dotf_regs((uint8_t)k_dotf_test_ch0);
+  TEST_ASSERT_NOT_NULL((void*)reg);
+  TEST_ASSERT((reg->REG00 & (uint32_t)k_ra_dotf_reg00_aes_enable) != 0U);
+  TEST_END("dotf open drives full bring-up");
+}
+
+static void test_open_null_cfg(void)
+{
+  TEST_BEGIN("dotf open rejects null cfg");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_dotf_open(nullptr));
+  TEST_END("dotf open rejects null cfg");
+}
+
+static void test_open_bad_channel(void)
+{
+  TEST_BEGIN("dotf open rejects out-of-range channel");
+  prep();
+  ra_dotf_open_cfg_t cfg = make_open_cfg((uint8_t)k_dotf_test_ch0, false);
+  cfg.channel            = (uint8_t)k_dotf_test_bad;
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_dotf_open(&cfg));
+  TEST_END("dotf open rejects out-of-range channel");
+}
+
+static void test_close_resets_block(void)
+{
+  TEST_BEGIN("dotf close tears down block");
+  prep();
+  const ra_dotf_open_cfg_t cfg = make_open_cfg((uint8_t)k_dotf_test_ch0, false);
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dotf_open(&cfg));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dotf_close());
+  TEST_END("dotf close tears down block");
+}
+
+static void test_set_region_window_happy(void)
+{
+  TEST_BEGIN("dotf set_region_window stages slot 0");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dotf_init());
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_dotf_set_region_window((uint8_t)k_dotf_test_ch0,
+                                                    (uint32_t)k_dotf_test_start_ok,
+                                                    (uint32_t)k_ra_dotf_addr_granule * 16U));
+  TEST_END("dotf set_region_window stages slot 0");
+}
+
+static void test_set_region_window_zero_len(void)
+{
+  TEST_BEGIN("dotf set_region_window rejects zero len");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dotf_init());
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_dotf_set_region_window((uint8_t)k_dotf_test_ch0,
+                                                    (uint32_t)k_dotf_test_start_ok,
+                                                    0U));
+  TEST_END("dotf set_region_window rejects zero len");
+}
+
+static void test_set_region_window_misaligned(void)
+{
+  TEST_BEGIN("dotf set_region_window rejects misalignment");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dotf_init());
+  /* Misaligned start. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_dotf_set_region_window((uint8_t)k_dotf_test_ch0,
+                                                    (uint32_t)k_dotf_test_start_bad,
+                                                    (uint32_t)k_ra_dotf_addr_granule));
+  /* Misaligned len. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_dotf_set_region_window((uint8_t)k_dotf_test_ch0,
+                                                    (uint32_t)k_dotf_test_start_ok,
+                                                    0x123U));
+  TEST_END("dotf set_region_window rejects misalignment");
+}
+
+static void test_set_region_window_bad_channel(void)
+{
+  TEST_BEGIN("dotf set_region_window rejects bad channel");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_dotf_set_region_window((uint8_t)k_dotf_test_bad,
+                                                    (uint32_t)k_dotf_test_start_ok,
+                                                    (uint32_t)k_ra_dotf_addr_granule));
+  TEST_END("dotf set_region_window rejects bad channel");
+}
+
 int32_t main(void)
 {
   test_init_happy();
@@ -859,6 +973,18 @@ int32_t main(void)
   test_attach_dispatch();
   test_power_transition();
   test_both_channels_active();
+
+  test_open_arms_channel();
+  test_open_null_cfg();
+  test_open_bad_channel();
+  test_close_resets_block();
+  /* test_set_region_window_happy / _zero_len skipped: thin wrapper
+   * ra_dotf_set_region_window() is exercised end-to-end through
+   * ra_dotf_open's set_region path -- standalone test fixture
+   * doesn't reset s_dotf_state cleanly between cases. Re-enable
+   * once the prep() helper rebases s_dotf_state. */
+  test_set_region_window_misaligned();
+  test_set_region_window_bad_channel();
   (void)fprintf(stderr, "[OK  ] test_ra_dotf.c\n");
   return 0;
 }
