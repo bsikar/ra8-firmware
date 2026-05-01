@@ -920,7 +920,7 @@ ra_vin_capture_start(void* buf, uint16_t w, uint16_t h, ra_vin_input_fmt_t forma
   /* HUM Ch 67.2.13 "IS: Image Stride Register" p 3984 */
   *ra_vin_reg32(k_ra_vin_off_is) = (uint32_t)w;
 
-  /* HUM Ch 67.2.1 "MC: Main Control Register" p 3975 -- update INF only. */
+  /* HUM Ch 67.2.1 "MC: Main Control Register" p 3975 */ /* update INF only. */
   internal_mc_rmw(k_ra_vin_mc_inf, ((uint32_t)format << k_ra_vin_mc_shift_inf) & k_ra_vin_mc_inf);
 
   /* Cache geometry for the frame-end callback. */

@@ -221,9 +221,9 @@ static ra_rtc_state_t s_rtc_state;
 ra_err_t ra_rtc_deinit(void)
 {
   volatile r_rtc_regs_t* rtc = ra_rtc();
-  /* HUM Ch 26.2.3 "RCR1" p 1229 -- mask all IRQs. */
+  /* HUM Ch 26.2.3 "RCR1" p 1229 */ /* mask all IRQs. */
   rtc->RCR1 = 0U;
-  /* HUM Ch 26.2.4 "RCR2" p 1230 -- stop the counter. */
+  /* HUM Ch 26.2.4 "RCR2" p 1230 */ /* stop the counter. */
   rtc->RCR2       = 0U;
   s_rtc_state.fn  = nullptr;
   s_rtc_state.ctx = nullptr;
@@ -233,7 +233,7 @@ ra_err_t ra_rtc_deinit(void)
 ra_err_t ra_rtc_set_irq_enable(uint8_t mask)
 {
   volatile r_rtc_regs_t* rtc = ra_rtc();
-  /* HUM Ch 26.2.3 "RCR1" p 1229 -- AIE/CIE/PIE enable bits 0..2. */
+  /* HUM Ch 26.2.3 "RCR1" p 1229 */ /* AIE/CIE/PIE enable bits 0..2. */
   rtc->RCR1 = (uint8_t)(rtc->RCR1 | (mask & k_ra_rtc_irq_all));
   return k_ra_ok;
 }
@@ -272,7 +272,7 @@ void ra_rtc_dispatch(void)
 ra_err_t ra_rtc_enter_stop(void)
 {
   volatile r_rtc_regs_t* rtc = ra_rtc();
-  /* HUM Ch 26.2.4 "RCR2.START" p 1230 -- clear START to halt counter. */
+  /* HUM Ch 26.2.4 "RCR2.START" p 1230 */ /* clear START to halt counter. */
   rtc->RCR2 = (uint8_t)(rtc->RCR2 & (uint8_t)~(1U << k_ra_rcr2_bit_start));
   internal_wait_bit(&rtc->RCR2, (uint8_t)(1U << k_ra_rcr2_bit_start), 0U);
   return k_ra_ok;
@@ -281,7 +281,7 @@ ra_err_t ra_rtc_enter_stop(void)
 ra_err_t ra_rtc_exit_stop(void)
 {
   volatile r_rtc_regs_t* rtc = ra_rtc();
-  /* HUM Ch 26.2.4 "RCR2.START" p 1230 -- set START to resume. */
+  /* HUM Ch 26.2.4 "RCR2.START" p 1230 */ /* set START to resume. */
   rtc->RCR2 = (uint8_t)(rtc->RCR2 | (1U << k_ra_rcr2_bit_start));
   internal_wait_bit(&rtc->RCR2,
                     (uint8_t)(1U << k_ra_rcr2_bit_start),

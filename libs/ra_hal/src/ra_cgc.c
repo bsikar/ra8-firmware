@@ -316,7 +316,8 @@ static ra_err_t internal_wait_oscsf_clear(uint8_t bit)
  */
 static void internal_clear_pfb(void)
 {
-  /* HUM Ch 54.4.3 "Frequency Change Procedure for MRAM" / FSP bsp_clocks.c:1182-1189 */
+  /* HUM Ch 59.4.3 "Frequency Change Procedure" p 3548 */
+  /* Cross-reference: FSP bsp_clocks.c:1182-1189. */
   volatile uint32_t* const mrcpfb = ra_mrms_mrcpfb();
   *mrcpfb                         = k_ra_mrcpfb_disable;
   for (uint8_t i = 0U; i < k_ra_pfb_flush_dummy_reads; i++) {
@@ -346,7 +347,8 @@ static void internal_clear_pfb(void)
  */
 static ra_err_t internal_set_vscr_not_high_v(void)
 {
-  /* HUM Ch 9.2.18 "VSCR : Voltage Scaling Control Register" / FSP bsp_clocks.c:2538-2539 */
+  /* HUM Ch 11.2.43 "VSCR : Voltage Scaling Control Register" p 477 */
+  /* Cross-reference: FSP bsp_clocks.c:2538-2539. */
   volatile uint32_t* const vscr = ra_sys_vscr();
   *vscr                         = k_ra_vscr_bit_vscm;
 
@@ -380,9 +382,11 @@ static ra_err_t internal_set_vscr_not_high_v(void)
  */
 static ra_err_t internal_stop_pll1(void)
 {
-  /* HUM Ch 9.2.31 "PLLCR : PLL Control Register" / FSP bsp_clocks.c:2121 */
+  /* HUM Ch 9.2.8 "PLLCR : PLL Control Register" p 333 */
+  /* Cross-reference: FSP bsp_clocks.c:2121. */
   *ra_sys_pllcr() = k_ra_pllcr_stop;
-  /* HUM Ch 9.2.20 "OSCSF : Oscillation Stabilization Flag Register" / FSP bsp_clocks.c:2122 */
+  /* HUM Ch 9.2.21 "OSCSF : Oscillation Stabilization Flag Register" p 344 */
+  /* Cross-reference: FSP bsp_clocks.c:2122. */
   return internal_wait_oscsf_clear(k_ra_oscsf_bit_pll1sf);
 }
 
@@ -429,14 +433,18 @@ static ra_err_t internal_program_and_start_pll1(void)
                                       ((uint16_t)k_ra_plodiv_div6 << k_ra_pllccr2_shift_plodivq) |
                                       ((uint16_t)k_ra_plodiv_div2 << k_ra_pllccr2_shift_plodivp));
 
-  /* HUM Ch 9.2.30 "PLLCCR : PLL Clock Control Register" / FSP bsp_clocks.c:2510 */
+  /* HUM Ch 9.2.6 "PLLCCR : PLL Clock Control Register" p 331 */
+  /* Cross-reference: FSP bsp_clocks.c:2510. */
   *ra_sys_pllccr() = pllccr;
-  /* HUM Ch 9.2.32 "PLLCCR2 : PLL Output Divider Register" / FSP bsp_clocks.c:2512 */
+  /* HUM Ch 9.2.7 "PLLCCR2 : PLL Clock Control Register 2" p 332 */
+  /* Cross-reference: FSP bsp_clocks.c:2512. */
   *ra_sys_pllccr2() = pllccr2;
 
-  /* HUM Ch 9.2.31 "PLLCR : PLL Control Register" / FSP bsp_clocks.c:2548 */
+  /* HUM Ch 9.2.8 "PLLCR : PLL Control Register" p 333 */
+  /* Cross-reference: FSP bsp_clocks.c:2548. */
   *ra_sys_pllcr() = k_ra_pllcr_run;
-  /* HUM Ch 9.2.20 "OSCSF : Oscillation Stabilization Flag Register" / FSP bsp_clocks.c:2553 */
+  /* HUM Ch 9.2.21 "OSCSF : Oscillation Stabilization Flag Register" p 344 */
+  /* Cross-reference: FSP bsp_clocks.c:2553. */
   return internal_wait_oscsf_set(k_ra_oscsf_bit_pll1sf);
 }
 
@@ -519,12 +527,14 @@ static ra_err_t internal_set_mrm_wait_states(uint32_t mriclk_hz, uint32_t mrpclk
                              ? 0U
                              : ((mrpclk_hz + k_ra_cgc_hz_per_mhz - 1U) / k_ra_cgc_hz_per_mhz);
 
-  /* HUM Ch 54.2.2 "MRCFREQ : MRAM Code Frequency Register" / FSP bsp_clocks.c:1224-1228 */
+  /* HUM Ch 59.5.2 "MRCFREQ : Code MRAM Frequency Notifications Register" p 3551 */
+  /* Cross-reference: FSP bsp_clocks.c:1224-1228. */
   ra_err_t err = internal_wait_mrm_freq(ra_mrms_mrcfreq(), k_ra_mrcfreq_key, mri_mhz);
   if (err != k_ra_ok) {
     return err;
   }
-  /* HUM Ch 54.2.3 "MREFREQ : MRAM Extra Frequency Register" / FSP bsp_clocks.c:1242-1246 */
+  /* HUM Ch 59.5.3 "MREFREQ : Extra MRAM Frequency Notifications Register" p 3552 */
+  /* Cross-reference: FSP bsp_clocks.c:1242-1246. */
   err = internal_wait_mrm_freq(ra_mrms_mrefreq(), k_ra_mrefreq_key, mre_mhz);
   return err;
 }
@@ -593,7 +603,8 @@ static void internal_set_pfb(void)
 {
   const uint32_t mri_mhz = *ra_mrms_mrcfreq();
   if (mri_mhz >= k_ra_mrcpfb_threshold_mhz) {
-    /* HUM Ch 54.2.1 "MRCPFB : MRAM Prefetch Buffer Enable" / FSP bsp_clocks.c:1201 */
+    /* HUM Ch 59.5.1 "MRCPFB : Code MRAM Prefetch Buffer Enable Register" p 3551 */
+    /* Cross-reference: FSP bsp_clocks.c:1201. */
     *ra_mrms_mrcpfb() = k_ra_mrcpfb_enable;
   }
 }
@@ -626,7 +637,8 @@ static ra_err_t internal_route_sciclk(void)
   volatile uint8_t* const ckcr  = ra_sys_scickcr();
   volatile uint8_t* const divcr = ra_sys_scickdivcr();
 
-  /* HUM Ch 9.2.54 "SCICKCR : SCI Clock Control Register" -- step 1 */
+  /* HUM Ch 9.2.54 "SCICKCR : SCI Clock Control Register" p 368 */
+  /* step 1 */
   *ckcr = (uint8_t)(*ckcr | k_ra_scickcr_cksreq);
 #ifdef RA_SIMULATOR_MODE
   /* Sim memory has no hardware ack -- fake CKSRDY toggling. */
@@ -640,7 +652,8 @@ static ra_err_t internal_route_sciclk(void)
       return k_ra_err_hw_timeout;
     }
   }
-  /* HUM Ch 9.2.54 "SCICKDIVCR : SCI Clock Divider Register" -- step 2 */
+  /* HUM Ch 9.2.49 "SCICKDIVCR : SCI Clock Division Control Register" p 365 */
+  /* step 2 */
   *divcr = k_ra_scickdivcr_div4;
   *ckcr  = (uint8_t)(k_ra_scickcr_sel_pll1r | k_ra_scickcr_cksreq);
   /* Step 3: clear CKSREQ to start the new clock. */
@@ -674,10 +687,10 @@ static ra_err_t internal_route_sciclk(void)
  */
 static ra_err_t internal_start_main_osc(void)
 {
-  /* HUM Ch 9.2.27 "MOSCWTCR : Main Clock Oscillator Wait Control" */
+  /* HUM Ch 9.2.27 "MOSCWTCR : Main Clock Oscillator Wait Control Register" p 349 */
   *ra_sys_moscwtcr() = k_ra_moscwtcr_2_to_16_cycles;
 
-  /* HUM Ch 9.2.13 "MOSCCR : Main Clock Oscillator Control Register" */
+  /* HUM Ch 9.2.13 "MOSCCR : Main Clock Oscillator Control Register" p 338 */
   volatile uint8_t* const moscr = (volatile uint8_t*)(k_ra_system_base_addr + k_ra_sys_off_moscr);
   *moscr                        = (uint8_t)(*moscr & (uint8_t)~k_ra_moscr_mostp_mask);
 
@@ -724,7 +737,7 @@ static ra_err_t internal_cgc_init_protected(void)
   }
   if (err == k_ra_ok) {
     internal_program_dividers();
-    /* HUM Ch 9.2.5 "SCKSCR : System Clock Source Control Register" */
+    /* HUM Ch 9.2.5 "SCKSCR : System Clock Source Control Register" p 330 */
     *ra_sys_sckscr() = k_ra_cksel_pll1;
   }
   return err;

@@ -72,7 +72,7 @@ ra_err_t ra_crc_init(ra_crc_poly_t poly)
    * (LSB-first); use ra_crc_set_bit_order() to change. */
   const uint8_t crccr0 = (uint8_t)((uint8_t)poly | k_ra_crccr0_dorclr);
   reg->CRCCR0          = crccr0;
-  /* HUM Ch 48.2.2 "CRCCR1 : CRC Control Register 1" p 3182 -- snoop off. */
+  /* HUM Ch 48.2.2 "CRCCR1 : CRC Control Register 1" p 3182 */ /* snoop off. */
   reg->CRCCR1 = 0U;
   ra_log_info_val(s_tag, "crc_init poly", (uint32_t)poly);
   return k_ra_ok;
@@ -94,7 +94,8 @@ ra_err_t ra_crc_compute(const uint8_t* data, uint32_t len, uint32_t* out_crc)
   RA_CHECK_NULL_PTR(out_crc, s_tag, "out_crc must not be nullptr");
 
   volatile r_crc_regs_t* reg = ra_crc();
-  /* HUM Ch 48.2.1 p 3181: GPS lives in the low 3 bits of CRCCR0. */
+  /* HUM Ch 48.2.1 "CRCCR0 : CRC Control Register 0" p 3181 */
+  /* GPS lives in the low 3 bits of CRCCR0. */
   const ra_crc_poly_t poly = (ra_crc_poly_t)(reg->CRCCR0 & k_ra_crccr0_gps_mask);
 
   if (ra_crc_is_32bit_poly(poly)) {

@@ -482,7 +482,8 @@ ra_err_t ra_ssie_init(uint8_t channel, const ra_ssie_cfg_t* cfg)
   const ra_err_t v_err = internal_validate_init_cfg(cfg, &omod, &frm, &pdta, &sdta);
   RA_RETURN_ON_ERROR(v_err, s_tag, "ssie_init: bad cfg");
 
-  /* HUM Ch 11.2.8 p 446 (MSTPCRC) + HUM Ch 46.2.3 p 3077 (SSIRST). */
+  /* HUM Ch 11.2.8 "MSTPCRC" p 446 */
+  /* HUM Ch 46.2.3 "SSIRST" p 3077 */
   const ra_err_t pwr_err = internal_ssie_power_up(channel, reg);
   RA_RETURN_ON_ERROR(pwr_err, s_tag, "ssie_init: power up");
 
@@ -544,7 +545,7 @@ ra_err_t ra_ssie_start(uint8_t channel, ra_ssie_dir_t dir)
   const ra_err_t rst_err = internal_pulse_fifo_reset(reg, ssifcr);
   RA_RETURN_ON_ERROR(rst_err, s_tag, "ssie_start: FIFO reset stuck");
 
-  /* HUM Ch 46.2.1 "SSICR" p 3057 / HUM Ch 46.2.3 "SSIFCR" p 3077 */
+  /* HUM Ch 46.2.1 "SSICR" p 3057 */ /* / HUM Ch 46.2.3 "SSIFCR" p 3077 */
   internal_apply_dir_irq_bits(desired_ren_ten, &ssicr, &ssifcr);
 
   reg->SSIFCR = ssifcr;
@@ -1014,7 +1015,7 @@ ra_ssie_recv_iso(uint8_t channel, uint32_t* buffer, uint16_t max_samples, uint16
 
   uint16_t got = 0U;
   for (uint16_t i = 0U; i < max_samples; ++i) {
-    /* HUM Ch 46.2.4 "SSIFSR" p 3083 (RDC field) */
+    /* HUM Ch 46.2.4 "SSIFSR" p 3083 */ /* (RDC field) */
     const uint8_t rdc = (uint8_t)((reg->SSIFSR & k_ra_ssie_mask_rdc) >> k_ra_ssie_shift_rdc);
     if (rdc == 0U) {
       break;

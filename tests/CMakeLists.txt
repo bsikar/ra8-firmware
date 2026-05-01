@@ -58,12 +58,16 @@ get_filename_component(FW_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/.." ABSOLUTE)
 file(GLOB_RECURSE RA_CORE_SOURCES    CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_core/src/*.c)
 file(GLOB_RECURSE RA_HAL_SOURCES     CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_hal/src/*.c)
 file(GLOB_RECURSE RA_NET_PAL_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_net_pal/src/*.c)
+file(GLOB_RECURSE RA_MODEM_AT_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_modem_at/src/*.c)
 file(GLOB_RECURSE RA_NET_SOURCES     CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_net/src/*.c)
 file(GLOB_RECURSE RA_BLE_HOST_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_ble_host/src/*.c)
+file(GLOB_RECURSE RA_TLS_SOURCES     CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_tls/src/*.c)
 file(GLOB_RECURSE RA_USB_PAL_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_usb_pal/src/*.c)
 file(GLOB_RECURSE RA_FS_SOURCES      CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_fs/src/*.c)
 file(GLOB_RECURSE RA_GFX_SOURCES     CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_gfx/src/*.c)
 file(GLOB_RECURSE RA_NSC_SOURCES     CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_nsc/src/*.c)
+file(GLOB_RECURSE RA_OTA_SOURCES     CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_ota/src/*.c)
+file(GLOB_RECURSE RA_POWER_PROFILE_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_power_profile/src/*.c)
 file(GLOB_RECURSE RA_EPUB_C_SOURCES  CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_epub/src/*.c)
 file(GLOB_RECURSE RA_EPUB_CPP_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_epub/src/*.cpp)
 # ra_reflow has two implementations: v1 (hand-rolled, default) and v2
@@ -82,23 +86,29 @@ set(RA_EPUB_THIRD_PARTY
     ${FW_ROOT}/libs/third_party/stb/stb_truetype_impl.c
 )
 file(GLOB_RECURSE RA_SECURE_APP_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/src/secure_app/*.c)
+file(GLOB_RECURSE RA_TOUCH_CAL_SOURCES  CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_touch_cal/src/*.c)
 
 add_library(ra_core_hal OBJECT
     ${RA_CORE_SOURCES}
     ${RA_HAL_SOURCES}
     ${RA_NET_PAL_SOURCES}
+    ${RA_MODEM_AT_SOURCES}
     ${RA_NET_SOURCES}
     ${RA_BLE_HOST_SOURCES}
+    ${RA_TLS_SOURCES}
     ${RA_USB_PAL_SOURCES}
     ${RA_FS_SOURCES}
     ${RA_GFX_SOURCES}
     ${RA_NSC_SOURCES}
+    ${RA_OTA_SOURCES}
+    ${RA_POWER_PROFILE_SOURCES}
     ${RA_EPUB_C_SOURCES}
     ${RA_EPUB_CPP_SOURCES}
     ${RA_REFLOW_C_SOURCES}
     ${RA_REFLOW_CPP_SOURCES}
     ${RA_EPUB_THIRD_PARTY}
     ${RA_SECURE_APP_SOURCES}
+    ${RA_TOUCH_CAL_SOURCES}
     ${CMAKE_CURRENT_SOURCE_DIR}/mocks/ra_sim_mmap.c
     ${CMAKE_CURRENT_SOURCE_DIR}/mocks/ra_sim_irq.c
     ${CMAKE_CURRENT_SOURCE_DIR}/mocks/ra_sim_dma.c
@@ -116,6 +126,7 @@ target_include_directories(ra_core_hal PUBLIC
     ${FW_ROOT}/libs/ra_core/inc
     ${FW_ROOT}/libs/ra_hal/inc
     ${FW_ROOT}/libs/ra_net_pal/inc
+    ${FW_ROOT}/libs/ra_modem_at/inc
     ${FW_ROOT}/libs/ra_net/inc
     ${FW_ROOT}/libs/ra_ble_host/inc
     ${FW_ROOT}/libs/ra_usb_pal/inc
@@ -123,8 +134,11 @@ target_include_directories(ra_core_hal PUBLIC
     ${FW_ROOT}/libs/ra_gfx/inc
     ${FW_ROOT}/libs/ra_tls/inc
     ${FW_ROOT}/libs/ra_nsc/inc
+    ${FW_ROOT}/libs/ra_ota/inc
+    ${FW_ROOT}/libs/ra_power_profile/inc
     ${FW_ROOT}/libs/ra_epub/inc
     ${FW_ROOT}/libs/ra_reflow/inc
+    ${FW_ROOT}/libs/ra_touch_cal/inc
     ${FW_ROOT}/libs/third_party/miniz
     ${FW_ROOT}/libs/third_party/tinyxml2
     ${FW_ROOT}/libs/third_party/stb
@@ -178,6 +192,7 @@ function(ra_add_test name)
     ${FW_ROOT}/libs/ra_core/inc
     ${FW_ROOT}/libs/ra_hal/inc
     ${FW_ROOT}/libs/ra_net_pal/inc
+    ${FW_ROOT}/libs/ra_modem_at/inc
     ${FW_ROOT}/libs/ra_net/inc
     ${FW_ROOT}/libs/ra_ble_host/inc
     ${FW_ROOT}/libs/ra_usb_pal/inc
@@ -185,8 +200,11 @@ function(ra_add_test name)
     ${FW_ROOT}/libs/ra_gfx/inc
     ${FW_ROOT}/libs/ra_tls/inc
     ${FW_ROOT}/libs/ra_nsc/inc
+    ${FW_ROOT}/libs/ra_ota/inc
+    ${FW_ROOT}/libs/ra_power_profile/inc
     ${FW_ROOT}/libs/ra_epub/inc
     ${FW_ROOT}/libs/ra_reflow/inc
+    ${FW_ROOT}/libs/ra_touch_cal/inc
     ${FW_ROOT}/libs/third_party/miniz
     ${FW_ROOT}/libs/third_party/tinyxml2
     ${FW_ROOT}/libs/third_party/stb

@@ -91,7 +91,7 @@ ra_err_t ra_cac_init(uint16_t upper, uint16_t lower)
    * r_cac_hw_configure() does the same, then waits on CACR0 readback). */
   reg->CACR0 = 0U;
   internal_cac_wait_cfme(reg, 0U);
-  /* HUM Ch 10.2.4 "CAICR" p 423 -- clear all stale W1C status flags. */
+  /* HUM Ch 10.2.4 "CAICR" p 423 */ /* clear all stale W1C status flags. */
   reg->CAICR = (uint8_t)(k_ra_cac_status_mask_all << (uint8_t)k_ra_cac_castr_to_caicr_shift);
   /* HUM Ch 10.2.2 "CACR1 : CAC Control Register 1" p 421 */
   reg->CACR1 = 0U;
@@ -210,7 +210,7 @@ void ra_cac_dispatch(void)
 ra_err_t ra_cac_enter_stop(void)
 {
   volatile r_cac_regs_t* reg = ra_cac();
-  /* HUM Ch 10.2.1 "CACR0" p 421 -- stop measurement before MSTP gate. */
+  /* HUM Ch 10.2.1 "CACR0" p 421 */ /* stop measurement before MSTP gate. */
   reg->CACR0 = 0U;
   internal_cac_wait_cfme(reg, 0U);
   return ra_mstp_disable(k_ra_mstp_cac);

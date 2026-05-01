@@ -543,13 +543,13 @@ static uint16_t internal_dcp_in_drain(volatile r_usb_regs_t* reg, uint8_t* out, 
   if (max_len == 0U) {
     return 0U;
   }
-  /* HUM Ch 36.2.7 "CFIFOSEL" p 1976 -- pipe=0 (DCP), MBW=16, ISEL=1. */
+  /* HUM Ch 36.2.7 "CFIFOSEL" p 1976 */ /* pipe=0 (DCP), MBW=16, ISEL=1. */
   uint16_t sel  = k_ra_hhid_dcp_pipe_dcp & k_ra_fifosel_curpipe;
   sel           = (uint16_t)(sel | k_ra_fifosel_mbw_16);
   sel           = (uint16_t)(sel | k_ra_fifosel_isel);
   reg->CFIFOSEL = sel;
 
-  /* HUM Ch 36.2.8 "CFIFOCTR" p 1979 -- bounded FRDY spin. */
+  /* HUM Ch 36.2.8 "CFIFOCTR" p 1979 */ /* bounded FRDY spin. */
   uint16_t ready = 0U;
   for (uint16_t i = 0U; i < k_ra_hhid_fifo_poll_lim; ++i) {
     if ((reg->CFIFOCTR & k_ra_fifoctr_frdy) != 0U) {
@@ -564,7 +564,7 @@ static uint16_t internal_dcp_in_drain(volatile r_usb_regs_t* reg, uint8_t* out, 
   const uint16_t available = (uint16_t)(reg->CFIFOCTR & k_ra_fifoctr_dtln);
   uint16_t       take      = (available < max_len) ? available : max_len;
 
-  /* HUM Ch 36.2.5 "CFIFO" p 1973 -- 16-bit LE drain. */
+  /* HUM Ch 36.2.5 "CFIFO" p 1973 */ /* 16-bit LE drain. */
   enum : uint8_t {
     k_byte_bits = 8U,
     k_byte_mask = 0xFFU,

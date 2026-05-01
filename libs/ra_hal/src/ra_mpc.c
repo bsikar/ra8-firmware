@@ -110,9 +110,10 @@ ra_err_t ra_mpc_route_peripheral(ra_port_t port, ra_pin_t pin, ra_mpc_psel_t pse
     return k_ra_err_gpio_invalid_pin;
   }
   ra_pfs_pwpr_unlock();
-  *pfs = 0U;              /* HUM Ch 20.2.4 p 859 step 1: PMR = 0. */
-  *pfs = psel_bits;       /* HUM Ch 20.2.4 p 859 step 2: PSEL, PMR=0. */
-  *pfs = psel_bits | pmr; /* HUM Ch 20.2.4 p 859 step 3: PSEL | PMR=1. */
+  /* HUM Ch 20.2.4 "Notes on the PmnPFS Register Setting" p 859 */
+  *pfs = 0U;              /* step 1: PMR = 0. */
+  *pfs = psel_bits;       /* step 2: PSEL, PMR=0. */
+  *pfs = psel_bits | pmr; /* step 3: PSEL | PMR=1. */
   ra_pfs_pwpr_lock();
 
   ra_log_info_val(s_tag, "route", (uint32_t)psel);

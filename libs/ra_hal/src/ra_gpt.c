@@ -453,7 +453,7 @@ ra_err_t ra_gpt_duty_cycle_set(uint8_t channel, ra_gpt_pwm_pin_t pin, uint32_t c
   volatile r_gpt_channel_regs_t* reg = ra_gpt(channel);
   RA_CHECK_NULL_PTR(reg, s_tag, "channel out of range");
 
-  /* HUM Ch 22.2.20 "GTCCRA..F" p 982 + Ch 22.2.17 "GTBER" p 965:
+  /* HUM Ch 22.2.20 "GTCCRA..F" p 982 */ /* + Ch 22.2.17 "GTBER" p 965:
      write compare into GTCCRC (shadow for A) or GTCCRE (shadow for
      B), then assert the matching GTBER buffer-enable bit so the
      next cycle-end reloads GTCCRA / GTCCRB. */
