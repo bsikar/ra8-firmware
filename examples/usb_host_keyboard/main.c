@@ -180,7 +180,7 @@ typedef enum : uint8_t {
  * for USBHS.
  */
 typedef enum : uint8_t {
-  k_usb_kbd_psel_usb_hs = 0x14U, /* HUM Ch 20.2 "PFS PSEL field" p 1015 */
+  k_usb_kbd_psel_usb_hs = 0x14U, /* HUM Ch 20.6 "Peripheral Select Settings" p 855 */
 } usb_host_kbd_psel_t;
 
 /**
@@ -770,7 +770,7 @@ static uint8_t usb_kbd_decode_keycode(uint8_t keycode, uint8_t modifier)
   if (glyph == k_usb_kbd_glyph_esc) {
     return usb_kbd_sci_write(k_usb_kbd_msg_esc, (uint32_t)(sizeof(k_usb_kbd_msg_esc) - 1U));
   }
-  uint8_t one[1] = {glyph};
+  const uint8_t one[1] = {glyph};
   return usb_kbd_sci_write(one, 1U);
 }
 
