@@ -173,6 +173,15 @@ typedef struct {
  */
 [[nodiscard]] ra_err_t ra_reset_init(void);
 
+#ifdef RA_SIMULATOR_MODE
+/**
+ * @brief Reset the cached reset-cause snapshot for host tests.
+ *
+ * @note Host-test only; not part of the target firmware API.
+ */
+void ra_reset_test_only_reset_state(void);
+#endif
+
 /* =============================================================================
  * Cause introspection
  * =============================================================================

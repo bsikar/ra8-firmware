@@ -205,7 +205,7 @@ static void internal_mc_rmw(uint32_t clear_mask, uint32_t set_bits)
 
 [[nodiscard]] ra_err_t ra_vin_init(const ra_vin_config_t* cfg)
 {
-  RA_CHECK_NULL_PTR((void*)cfg, s_tag, "cfg must not be nullptr");
+  RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
   if (cfg->image_stride_px == 0U) {
     return k_ra_err_invalid_arg;
   }
@@ -349,7 +349,7 @@ static void internal_mc_rmw(uint32_t clear_mask, uint32_t set_bits)
 
 [[nodiscard]] ra_err_t ra_vin_set_preclip(const ra_vin_preclip_t* window)
 {
-  RA_CHECK_NULL_PTR((void*)window, s_tag, "preclip must not be nullptr");
+  RA_CHECK_NULL_PTR(window, s_tag, "preclip must not be nullptr");
   if ((window->line_end < window->line_start) || (window->pixel_end < window->pixel_start)) {
     return k_ra_err_invalid_arg;
   }
@@ -371,7 +371,7 @@ static void internal_mc_rmw(uint32_t clear_mask, uint32_t set_bits)
 
 [[nodiscard]] ra_err_t ra_vin_set_uds_scale(const ra_vin_uds_scale_t* scale)
 {
-  RA_CHECK_NULL_PTR((void*)scale, s_tag, "scale must not be nullptr");
+  RA_CHECK_NULL_PTR(scale, s_tag, "scale must not be nullptr");
   if ((scale->v_mantissa > (uint8_t)k_ra_vin_uds_max_mant) ||
       (scale->h_mantissa > (uint8_t)k_ra_vin_uds_max_mant) ||
       (scale->v_fraction > k_ra_vin_uds_max_frac) || (scale->h_fraction > k_ra_vin_uds_max_frac)) {
@@ -413,7 +413,7 @@ static void internal_mc_rmw(uint32_t clear_mask, uint32_t set_bits)
 
 [[nodiscard]] ra_err_t ra_vin_set_uds_ctrl(const ra_vin_uds_ctrl_t* ctrl)
 {
-  RA_CHECK_NULL_PTR((void*)ctrl, s_tag, "ctrl must not be nullptr");
+  RA_CHECK_NULL_PTR(ctrl, s_tag, "ctrl must not be nullptr");
   /* HUM Ch 67.2.21 "UDS_CTRL: Scaling Control Register" p 3996 */
   uint32_t v = 0UL;
   if (ctrl->b_cb_nearest) {
@@ -453,7 +453,7 @@ static void internal_mc_rmw(uint32_t clear_mask, uint32_t set_bits)
                                           const uint8_t* cr_table,
                                           bool           enable)
 {
-  RA_CHECK_NULL_PTR((void*)y_table, s_tag, "y_table must not be nullptr");
+  RA_CHECK_NULL_PTR(y_table, s_tag, "y_table must not be nullptr");
   const uint8_t* cb = (cb_table != nullptr) ? cb_table : y_table;
   const uint8_t* cr = (cr_table != nullptr) ? cr_table : y_table;
 
@@ -481,7 +481,7 @@ static void internal_mc_rmw(uint32_t clear_mask, uint32_t set_bits)
 
 [[nodiscard]] ra_err_t ra_vin_set_yc_to_rgb(const ra_vin_yc_to_rgb_t* coeffs)
 {
-  RA_CHECK_NULL_PTR((void*)coeffs, s_tag, "coeffs must not be nullptr");
+  RA_CHECK_NULL_PTR(coeffs, s_tag, "coeffs must not be nullptr");
   /* HUM Ch 67.2.36 "CSCE1" p 4011 */
   uint32_t csce1 = (uint32_t)coeffs->y_multiplier & k_ra_vin_csce1_ymul2;
   if (coeffs->enable_round) {
@@ -542,7 +542,7 @@ internal_yc_offsets(uint8_t channel, ra_vin_off_t* off1, ra_vin_off_t* off2, ra_
 
 [[nodiscard]] ra_err_t ra_vin_set_rgb_to_yc(uint8_t channel, const ra_vin_rgb_to_yc_chan_t* row)
 {
-  RA_CHECK_NULL_PTR((void*)row, s_tag, "row must not be nullptr");
+  RA_CHECK_NULL_PTR(row, s_tag, "row must not be nullptr");
   if (channel > k_ra_vin_yc_chan_max) {
     return k_ra_err_invalid_arg;
   }
@@ -610,7 +610,7 @@ internal_yc_offsets(uint8_t channel, ra_vin_off_t* off1, ra_vin_off_t* off2, ra_
 
 [[nodiscard]] ra_err_t ra_vin_set_data_mode(const ra_vin_data_mode_t* mode)
 {
-  RA_CHECK_NULL_PTR((void*)mode, s_tag, "mode must not be nullptr");
+  RA_CHECK_NULL_PTR(mode, s_tag, "mode must not be nullptr");
   if ((mode->conv_mode > k_ra_vin_max_dtmd) || (mode->y_mode > k_ra_vin_max_ymode)) {
     return k_ra_err_invalid_arg;
   }
@@ -636,7 +636,7 @@ internal_yc_offsets(uint8_t channel, ra_vin_off_t* off1, ra_vin_off_t* off2, ra_
 
 [[nodiscard]] ra_err_t ra_vin_set_csi_input(const ra_vin_csi_input_t* input)
 {
-  RA_CHECK_NULL_PTR((void*)input, s_tag, "input must not be nullptr");
+  RA_CHECK_NULL_PTR(input, s_tag, "input must not be nullptr");
   if ((input->virtual_channel > k_ra_vin_max_vc_sel) || (input->data_type > k_ra_vin_max_dt)) {
     return k_ra_err_invalid_arg;
   }
@@ -653,7 +653,7 @@ internal_yc_offsets(uint8_t channel, ra_vin_off_t* off1, ra_vin_off_t* off2, ra_
 
 [[nodiscard]] ra_err_t ra_vin_set_field_detect(const ra_vin_field_detect_t* detect)
 {
-  RA_CHECK_NULL_PTR((void*)detect, s_tag, "detect must not be nullptr");
+  RA_CHECK_NULL_PTR(detect, s_tag, "detect must not be nullptr");
   if (detect->even_field_num > k_ra_vin_max_field_no) {
     return k_ra_err_invalid_arg;
   }
@@ -726,7 +726,7 @@ internal_yc_offsets(uint8_t channel, ra_vin_off_t* off1, ra_vin_off_t* off2, ra_
 
 [[nodiscard]] ra_err_t ra_vin_get_module_status(ra_vin_module_status_t* out_status)
 {
-  RA_CHECK_NULL_PTR((void*)out_status, s_tag, "out_status must not be nullptr");
+  RA_CHECK_NULL_PTR(out_status, s_tag, "out_status must not be nullptr");
   /* HUM Ch 67.2.2 "MS: Module Status Register" p 3978 */
   const uint32_t v                = *ra_vin_reg32(k_ra_vin_off_ms);
   out_status->capture_active      = ((v & k_ra_vin_ms_ca) != 0UL);
@@ -740,7 +740,7 @@ internal_yc_offsets(uint8_t channel, ra_vin_off_t* off1, ra_vin_off_t* off2, ra_
 
 [[nodiscard]] ra_err_t ra_vin_get_line_count(uint16_t* out_count)
 {
-  RA_CHECK_NULL_PTR((void*)out_count, s_tag, "out_count must not be nullptr");
+  RA_CHECK_NULL_PTR(out_count, s_tag, "out_count must not be nullptr");
   /* HUM Ch 67.2.14 "LC: Line Count Register" p 3987 */
   *out_count = (uint16_t)(*ra_vin_reg32(k_ra_vin_off_lc) & k_ra_vin_lc_mask);
   return k_ra_ok;
@@ -748,7 +748,7 @@ internal_yc_offsets(uint8_t channel, ra_vin_off_t* off1, ra_vin_off_t* off2, ra_
 
 [[nodiscard]] ra_err_t ra_vin_get_active_buffer(uint8_t* out_id)
 {
-  RA_CHECK_NULL_PTR((void*)out_id, s_tag, "out_id must not be nullptr");
+  RA_CHECK_NULL_PTR(out_id, s_tag, "out_id must not be nullptr");
   /* HUM Ch 67.2.2 "MS: Module Status Register" p 3978 */
   const uint32_t v = *ra_vin_reg32(k_ra_vin_off_ms);
   *out_id          = (uint8_t)((v & k_ra_vin_ms_fbs) >> k_ra_vin_ms_shift_fbs);

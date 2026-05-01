@@ -276,8 +276,8 @@ ra_err_t ra_gpio_attach_irq(ra_port_pin_t            pin,
                             ra_isr_handler_t         handler,
                             void*                    ctx)
 {
-  RA_CHECK_NULL_PTR((void*)cfg, s_tag, "cfg must not be nullptr");
-  RA_CHECK_NULL_PTR((void*)handler, s_tag, "handler must not be nullptr");
+  RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
+  RA_CHECK_NULL_PTR(handler, s_tag, "handler must not be nullptr");
   if (irq_num > k_ra_gpio_irq_num_max) {
     return k_ra_err_invalid_arg;
   }

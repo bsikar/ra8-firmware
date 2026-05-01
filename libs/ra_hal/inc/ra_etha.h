@@ -72,6 +72,7 @@ extern "C" {
 
 #include "ra8d2_etha_regs.h"
 #include "ra_err.h"
+#include "ra_rmac.h"
 
 /**
  * @struct ra_etha_config_t
@@ -124,6 +125,49 @@ typedef struct {
   uint16_t queue_overflow_err;   /**< EADQOECN.DQOEN[15:0]. */
   uint16_t queue_security_err;   /**< EADQSECN.DQSEN[15:0]. */
 } ra_etha_stats_t;
+
+/**
+ * @struct ra_etha_ring_cfg_t
+ * @brief Descriptor-ring configuration for ::ra_etha_descriptor_ring_init.
+ */
+typedef struct {
+  uint16_t num_tx;      /**< Number of TX descriptors (1..4096).      */
+  uint16_t num_rx;      /**< Number of RX descriptors (1..4096).      */
+  uint16_t buffer_size; /**< Per-descriptor buffer size in bytes.     */
+} ra_etha_ring_cfg_t;
+
+/**
+ * @struct ra_etha_port_stats_t
+ * @brief Per-port runtime traffic counters maintained by ra_etha.
+ *
+ * @details
+ * Distinct from ::ra_etha_stats_t (which holds the five MIB error
+ * counters from EAUSMFSECN/EATFECN/EAFSECN/EADQOECN/EADQSECN). This
+ * struct holds the software-maintained TX/RX OK/error totals updated
+ * as descriptors complete. Counters are 32-bit and saturate at
+ * 0xFFFFFFFF (do not wrap).
+ */
+typedef struct {
+  uint32_t tx_ok;    /**< Frames transmitted successfully.            */
+  uint32_t tx_err;   /**< Frames that failed to transmit.             */
+  uint32_t rx_ok;    /**< Frames received successfully.               */
+  uint32_t rx_err;   /**< Frames received with PHY/MAC/FCS error.     */
+  uint32_t rx_drop;  /**< Frames dropped due to ring overflow.        */
+  uint16_t ring_tx;  /**< Configured TX ring depth.                   */
+  uint16_t ring_rx;  /**< Configured RX ring depth.                   */
+  uint16_t ring_buf; /**< Configured per-descriptor buffer size.      */
+  uint16_t reserved; /**< Reserved for alignment / future use.        */
+} ra_etha_port_stats_t;
+
+/**
+ * @struct ra_etha_phy_open_t
+ * @brief PHY auto-negotiation parameters for ::ra_etha_open.
+ */
+typedef struct {
+  uint8_t  phy_addr;   /**< MDIO address of the off-chip PHY (0..31). */
+  uint16_t advertise;  /**< OR of ::ra_rmac_phy_advert_t bits.        */
+  uint32_t timeout_ms; /**< Auto-neg wait timeout (0 = internal cap). */
+} ra_etha_phy_open_t;
 
 /**
  * @struct ra_etha_vlan_tag_t
@@ -851,6 +895,117 @@ ra_etha_set_vlan_mode(ra_etha_port_t port, ra_etha_vim_t vim, ra_etha_vem_t vem)
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_etha_set_security(ra_etha_port_t port, uint32_t mask);
+
+/**
+ * @brief Configure the per-port descriptor-ring sizing.
+ *
+ * @param[in] channel     Port identifier (0..1, mapped to ::ra_etha_port_t).
+ * @param[in] num_tx      Number of TX descriptors (1..4096).
+ * @param[in] num_rx      Number of RX descriptors (1..4096).
+ * @param[in] buffer_size Bytes per descriptor buffer (>= 64, <= 16383).
+ *
+ * @return ::ra_err_t Error code.
+ * @retval k_ra_ok               Ring config captured.
+ * @retval k_ra_err_invalid_arg  Any argument out of range.
+ *
+ * @pre Port previously brought up via ::ra_etha_init.
+ * @pre Caller has reserved descriptor storage matching num_tx + num_rx.
+ * @post Per-port stats reflect ring_tx / ring_rx / ring_buf.
+ * @post Per-class TX queue depths are clamped to num_tx.
+ *
+ * @note Per-port; safe to call concurrently for distinct ports.
+ * @see ra_etha_get_stats
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_etha_descriptor_ring_init(ra_etha_port_t channel,
+                                                    uint16_t       num_tx,
+                                                    uint16_t       num_rx,
+                                                    uint16_t       buffer_size);
+
+/**
+ * @brief Snapshot the per-port software-maintained traffic counters.
+ *
+ * @param[in]  channel    Port identifier.
+ * @param[out] out_stats  Destination for the snapshot.
+ *
+ * @return ::ra_err_t Error code.
+ * @retval k_ra_ok               Snapshot returned.
+ * @retval k_ra_err_null_ptr     out_stats is nullptr.
+ * @retval k_ra_err_invalid_arg  channel out of range.
+ *
+ * @pre Port previously brought up via ::ra_etha_init.
+ * @pre out_stats is a writable pointer.
+ * @post out_stats is populated with the live per-port counters.
+ *
+ * @note Used by ethernet_tcp_echo / threadx_netx_tcp_echo for liveness.
+ * @see ra_etha_descriptor_ring_init
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_etha_get_stats(ra_etha_port_t channel, ra_etha_port_stats_t* out_stats);
+
+/**
+ * @brief Increment the per-port TX OK / TX err / RX OK / RX err / drop counters.
+ *
+ * @param[in] channel  Port identifier.
+ * @param[in] tx_ok    Frames to add to tx_ok.
+ * @param[in] tx_err   Frames to add to tx_err.
+ * @param[in] rx_ok    Frames to add to rx_ok.
+ * @param[in] rx_err   Frames to add to rx_err.
+ * @param[in] rx_drop  Frames to add to rx_drop.
+ *
+ * @return ::ra_err_t Error code.
+ * @retval k_ra_ok               Counters updated (or saturated).
+ * @retval k_ra_err_invalid_arg  channel out of range.
+ *
+ * @pre Port previously brought up via ::ra_etha_init.
+ * @pre Caller serialises against concurrent ::ra_etha_get_stats.
+ * @post Each counter += the matching argument, saturating at UINT32_MAX.
+ *
+ * @note IRQ-context safe; performs no allocation, no locks.
+ * @see ra_etha_get_stats
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_etha_account_traffic(ra_etha_port_t channel,
+                                               uint32_t       tx_ok,
+                                               uint32_t       tx_err,
+                                               uint32_t       rx_ok,
+                                               uint32_t       rx_err,
+                                               uint32_t       rx_drop);
+
+/**
+ * @brief Bring an ETHA port + its off-chip PHY up to OPERATION mode.
+ *
+ * @details
+ * One-shot helper that wraps the per-port bring-up sequence the
+ * ethernet_tcp_echo and threadx_netx_tcp_echo apps need. Steps:
+ *   1. EAMC = OPERATION
+ *   2. ::ra_rmac_phy_reset(channel, phy->phy_addr)
+ *   3. ::ra_rmac_phy_set_advertise(channel, ..., phy->advertise)
+ *   4. ::ra_rmac_phy_auto_neg_start(channel, ...)
+ *   5. ::ra_rmac_phy_auto_neg_wait(channel, ..., phy->timeout_ms, out_link)
+ *
+ * @param[in]  channel   Port identifier.
+ * @param[in]  phy       PHY bring-up parameters (must not be nullptr).
+ * @param[out] out_link  Resolved link state on success.
+ *
+ * @return ::ra_err_t Error code.
+ * @retval k_ra_ok               Port + PHY up; out_link populated.
+ * @retval k_ra_err_null_ptr     phy or out_link is nullptr.
+ * @retval k_ra_err_invalid_arg  channel out of range or phy fields bad.
+ * @retval k_ra_err_hw_timeout   PHY reset / auto-neg never completed.
+ *
+ * @pre Port previously brought up via ::ra_etha_init.
+ * @pre RMAC port previously brought up via ::ra_rmac_init.
+ * @pre Off-chip PHY visible on the MDIO bus at phy->phy_addr.
+ * @post EAMC = OPERATION.
+ * @post Auto-neg complete; *out_link reflects negotiated capability.
+ *
+ * @see ra_etha_descriptor_ring_init
+ * @see ra_rmac_phy_auto_neg_wait
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t
+ra_etha_open(ra_etha_port_t channel, const ra_etha_phy_open_t* phy, ra_rmac_phy_link_t* out_link);
 
 #ifdef __cplusplus
 }

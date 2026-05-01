@@ -462,7 +462,7 @@ static void internal_apply_per_bank(const ra_sram_config_t* cfg)
 
 [[nodiscard]] ra_err_t ra_sram_init(const ra_sram_config_t* cfg)
 {
-  RA_CHECK_NULL_PTR((const void*)cfg, s_tag, "cfg must not be nullptr");
+  RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
 
   const ra_err_t v_err = internal_validate_and_ungate(cfg);
   RA_RETURN_ON_ERROR(v_err, s_tag, "ra_sram_init: validate/ungate");
@@ -540,7 +540,7 @@ static void internal_apply_per_bank(const ra_sram_config_t* cfg)
 
 [[nodiscard]] ra_err_t ra_sram_set_mode(uint8_t bank, const ra_sram_bank_cfg_t* cfg)
 {
-  RA_CHECK_NULL_PTR((const void*)cfg, s_tag, "cfg must not be nullptr");
+  RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
   if ((uint16_t)bank >= (uint16_t)k_ra_sram_bank_count) {
     return k_ra_err_invalid_arg;
   }
@@ -751,8 +751,9 @@ ra_sram_self_test(uint8_t bank, uint32_t probe_offset, bool inject_two_bit, bool
 
   *out_caught = false;
 
-  volatile uint64_t* const data =
-    (volatile uint64_t*)((uint8_t*)ra_sram_bank_data_ptr(bank) + probe_offset);
+  volatile uint64_t* const bank_base = ra_sram_bank_data_ptr(bank);
+  const uintptr_t          data_addr = (uintptr_t)bank_base + (uintptr_t)probe_offset;
+  volatile uint64_t* const data      = (volatile uint64_t*)data_addr;
 
   /* Step 1: seed the line under ECC encode-only (HUM Ch 58.3.4 p 3539). */
   internal_write_cr_locked(bank, k_ra_sram_cr_self_test_phase_write);
@@ -850,7 +851,7 @@ ra_sram_self_test(uint8_t bank, uint32_t probe_offset, bool inject_two_bit, bool
 
 [[nodiscard]] ra_err_t ra_sram_attach_handler(ra_sram_error_fn_t fn, void* ctx)
 {
-  RA_CHECK_NULL_PTR((void*)fn, s_tag, "fn must not be nullptr");
+  RA_CHECK_NULL_PTR(fn, s_tag, "fn must not be nullptr");
   s_on_error     = fn;
   s_on_error_ctx = ctx;
   return k_ra_ok;
@@ -858,7 +859,7 @@ ra_sram_self_test(uint8_t bank, uint32_t probe_offset, bool inject_two_bit, bool
 
 [[nodiscard]] ra_err_t ra_sram_attach_bank_handler(uint8_t bank, ra_sram_error_fn_t fn, void* ctx)
 {
-  RA_CHECK_NULL_PTR((void*)fn, s_tag, "fn must not be nullptr");
+  RA_CHECK_NULL_PTR(fn, s_tag, "fn must not be nullptr");
   if ((uint16_t)bank >= (uint16_t)k_ra_sram_bank_count) {
     return k_ra_err_invalid_arg;
   }

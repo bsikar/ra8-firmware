@@ -370,7 +370,7 @@ static uint32_t internal_popcount32(uint32_t x)
 
 ra_err_t ra_flash_init(const ra_flash_cfg_t* cfg)
 {
-  RA_CHECK_NULL_PTR((const void*)cfg, s_tag, "cfg must not be nullptr");
+  RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
   if (cfg->mrcfreq_mhz > (uint16_t)k_ra_flash_max_mrcfreq_mhz) {
     return k_ra_err_invalid_arg;
   }
@@ -632,7 +632,7 @@ static ra_err_t internal_flash_program_window(uint32_t         mram_addr,
 ra_err_t
 ra_flash_write_block(uint32_t mram_addr, const uint8_t* src, uint32_t len, ra_flash_world_t world)
 {
-  RA_CHECK_NULL_PTR((const void*)src, s_tag, "src must not be nullptr");
+  RA_CHECK_NULL_PTR(src, s_tag, "src must not be nullptr");
   const ra_err_t v_err = internal_validate_write_block(mram_addr, len);
   RA_RETURN_ON_ERROR(v_err, s_tag, "flash_write: validate");
 
@@ -921,7 +921,7 @@ ra_err_t ra_flash_get_startup_area(uint8_t* out_btflg, uint8_t* out_fspr)
 
 ra_err_t ra_flash_config_set_write(uint32_t target_addr, const uint16_t* words)
 {
-  RA_CHECK_NULL_PTR((const void*)words, s_tag, "words must not be nullptr");
+  RA_CHECK_NULL_PTR(words, s_tag, "words must not be nullptr");
   /* The MACI ``config_set`` opener / 8-halfword payload / 0xD0 trailer is
    * shared between two flows:
    *   - OFS programming  (HUM Ch 7 "Option-Setting Memory"  p 278) targets
@@ -1307,7 +1307,7 @@ ra_err_t ra_flash_get_update_status(uint8_t* out_busy, uint8_t* out_done, uint8_
 
 ra_err_t ra_flash_extra_mram_write(uint32_t mram_addr, const uint8_t* src, uint32_t len)
 {
-  RA_CHECK_NULL_PTR((const void*)src, s_tag, "src must not be nullptr");
+  RA_CHECK_NULL_PTR(src, s_tag, "src must not be nullptr");
   if (len == 0U || len > k_ra_mram_write_size_bytes) {
     return k_ra_err_invalid_arg;
   }
@@ -1742,7 +1742,7 @@ ra_err_t ra_flash_erase(uintptr_t address, uint32_t num_blocks)
 
 ra_err_t ra_flash_write(uintptr_t address, const uint8_t* src, uint32_t len)
 {
-  RA_CHECK_NULL_PTR((const void*)src, s_tag, "src must not be nullptr");
+  RA_CHECK_NULL_PTR(src, s_tag, "src must not be nullptr");
   RA_VALIDATE_INIT(s_rt.initialised, s_tag, "flash_write before init");
   if (len == 0U || (len % k_ra_mram_write_size_bytes) != 0U) {
     return k_ra_err_invalid_arg;
@@ -1775,7 +1775,7 @@ typedef enum : uint8_t {
 
 ra_err_t ra_flash_blank_check(uintptr_t address, uint32_t len, bool* out_blank)
 {
-  RA_CHECK_NULL_PTR((void*)out_blank, s_tag, "out_blank must not be nullptr");
+  RA_CHECK_NULL_PTR(out_blank, s_tag, "out_blank must not be nullptr");
   if (len == 0U) {
     return k_ra_err_invalid_arg;
   }
@@ -1813,7 +1813,7 @@ ra_err_t ra_flash_blank_check(uintptr_t address, uint32_t len, bool* out_blank)
 
 ra_err_t ra_flash_status(ra_flash_status_t* out)
 {
-  RA_CHECK_NULL_PTR((void*)out, s_tag, "out must not be nullptr");
+  RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
 
   /* HUM Ch 59 "MRCPS : Code MRAM Program Status Register" p 3601 */
   const uint8_t mrcps = *ra_mram_reg8(k_ra_mram_off_mrcps);

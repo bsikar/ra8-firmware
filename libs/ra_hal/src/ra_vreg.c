@@ -277,7 +277,7 @@ static void internal_dcdc_disable_sequence(bool keep_lcboost)
 
 [[nodiscard]] ra_err_t ra_vreg_init(const ra_vreg_cfg_t* cfg)
 {
-  RA_CHECK_NULL_PTR((void*)cfg, s_tag, "cfg must not be nullptr");
+  RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
   const ra_err_t verr = internal_validate_cfg(cfg);
   if (verr != k_ra_ok) {
     return verr;

@@ -284,7 +284,7 @@ static void internal_ctl_rmw(volatile r_cnecc_regs_t* reg, uint32_t new_bits, ui
 
 [[nodiscard]] ra_err_t ra_cnecc_init(const ra_cnecc_config_t* cfg)
 {
-  RA_CHECK_NULL_PTR((void*)cfg, s_tag, "cfg must not be nullptr");
+  RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
 
   for (uint8_t i = 0U; i < (uint8_t)k_ra_cnecc_instance_count; ++i) {
     const ra_err_t err = internal_apply_instance(i, &cfg->instances[i]);
@@ -331,7 +331,7 @@ static void internal_ctl_rmw(volatile r_cnecc_regs_t* reg, uint32_t new_bits, ui
     return k_ra_err_invalid_arg;
   }
   volatile r_cnecc_regs_t* reg = ra_cnecc(instance);
-  RA_CHECK_NULL_PTR((void*)reg, s_tag, "instance mapping failed");
+  RA_CHECK_NULL_PTR(reg, s_tag, "instance mapping failed");
   /* HUM Ch 42.2.1 "EC710CTL : ECC Control Register", p 2870 */
   internal_ctl_rmw(reg, k_ra_cnecc_mask_ecervf, k_ra_cnecc_mask_ecervf);
   return k_ra_ok;
@@ -343,7 +343,7 @@ static void internal_ctl_rmw(volatile r_cnecc_regs_t* reg, uint32_t new_bits, ui
     return k_ra_err_invalid_arg;
   }
   volatile r_cnecc_regs_t* reg = ra_cnecc(instance);
-  RA_CHECK_NULL_PTR((void*)reg, s_tag, "instance mapping failed");
+  RA_CHECK_NULL_PTR(reg, s_tag, "instance mapping failed");
   /* HUM Ch 42.2.1 "EC710CTL : ECC Control Register", p 2870 */
   internal_ctl_rmw(reg, 0U, k_ra_cnecc_mask_ecervf);
   return k_ra_ok;
@@ -385,7 +385,7 @@ static void internal_ctl_rmw(volatile r_cnecc_regs_t* reg, uint32_t new_bits, ui
     return k_ra_err_invalid_arg;
   }
   volatile r_cnecc_regs_t* reg = ra_cnecc(instance);
-  RA_CHECK_NULL_PTR((void*)reg, s_tag, "instance mapping failed");
+  RA_CHECK_NULL_PTR(reg, s_tag, "instance mapping failed");
   uint32_t set_bits = 0U;
   if (irq_1bit) {
     set_bits |= k_ra_cnecc_mask_ec1edic;
@@ -407,7 +407,7 @@ static void internal_ctl_rmw(volatile r_cnecc_regs_t* reg, uint32_t new_bits, ui
     return k_ra_err_invalid_arg;
   }
   volatile r_cnecc_regs_t* reg = ra_cnecc(instance);
-  RA_CHECK_NULL_PTR((void*)reg, s_tag, "instance mapping failed");
+  RA_CHECK_NULL_PTR(reg, s_tag, "instance mapping failed");
   /* EC1ECP semantics are inverted: bit set means "correction NOT
    * executed" per HUM Ch 42.2.1 "EC710CTL : ECC Control Register"
    * EC1ECP, p 2870. */
@@ -422,12 +422,12 @@ static void internal_ctl_rmw(volatile r_cnecc_regs_t* reg, uint32_t new_bits, ui
 
 [[nodiscard]] ra_err_t ra_cnecc_get_status(uint8_t instance, ra_cnecc_status_t* out)
 {
-  RA_CHECK_NULL_PTR((void*)out, s_tag, "out must not be nullptr");
+  RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
   if ((uint16_t)instance >= k_ra_cnecc_instance_count) {
     return k_ra_err_invalid_arg;
   }
   volatile r_cnecc_regs_t* reg = ra_cnecc(instance);
-  RA_CHECK_NULL_PTR((void*)reg, s_tag, "instance mapping failed");
+  RA_CHECK_NULL_PTR(reg, s_tag, "instance mapping failed");
 
   /* HUM Ch 42.2.1 "EC710CTL : ECC Control Register", p 2868 */
   const uint32_t ctl = reg->EC710CTL;
@@ -460,7 +460,7 @@ static void internal_ctl_rmw(volatile r_cnecc_regs_t* reg, uint32_t new_bits, ui
 
 [[nodiscard]] ra_err_t ra_cnecc_get_counters(uint8_t instance, ra_cnecc_counters_t* out)
 {
-  RA_CHECK_NULL_PTR((void*)out, s_tag, "out must not be nullptr");
+  RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
   if ((uint16_t)instance >= k_ra_cnecc_instance_count) {
     return k_ra_err_invalid_arg;
   }
@@ -508,7 +508,7 @@ static void internal_ctl_rmw(volatile r_cnecc_regs_t* reg, uint32_t new_bits, ui
     return k_ra_err_invalid_arg;
   }
   volatile r_cnecc_regs_t* reg = ra_cnecc(instance);
-  RA_CHECK_NULL_PTR((void*)reg, s_tag, "instance mapping failed");
+  RA_CHECK_NULL_PTR(reg, s_tag, "instance mapping failed");
 
   /* HUM Ch 42.2.1 "EC710CTL : ECC Control Register" ECER1C/ECER2C,
    * p 2870: write-1 to both bits clears ECER1F, ECER2F, ECOVFF,
@@ -520,12 +520,12 @@ static void internal_ctl_rmw(volatile r_cnecc_regs_t* reg, uint32_t new_bits, ui
 
 [[nodiscard]] ra_err_t ra_cnecc_inject_fault(uint8_t instance, const ra_cnecc_inject_t* req)
 {
-  RA_CHECK_NULL_PTR((void*)req, s_tag, "req must not be nullptr");
+  RA_CHECK_NULL_PTR(req, s_tag, "req must not be nullptr");
   if ((uint16_t)instance >= k_ra_cnecc_instance_count) {
     return k_ra_err_invalid_arg;
   }
   volatile r_cnecc_regs_t* reg = ra_cnecc(instance);
-  RA_CHECK_NULL_PTR((void*)reg, s_tag, "instance mapping failed");
+  RA_CHECK_NULL_PTR(reg, s_tag, "instance mapping failed");
 
   /* HUM Ch 42.3.2 "ECC Decoder Testing", figure 42.2 p 2875.
    * The procedure literal values come straight from the figure --
@@ -562,7 +562,7 @@ static void internal_ctl_rmw(volatile r_cnecc_regs_t* reg, uint32_t new_bits, ui
     return k_ra_err_invalid_arg;
   }
   volatile r_cnecc_regs_t* reg = ra_cnecc(instance);
-  RA_CHECK_NULL_PTR((void*)reg, s_tag, "instance mapping failed");
+  RA_CHECK_NULL_PTR(reg, s_tag, "instance mapping failed");
   /* HUM Ch 42.2.2 "EC710TMC : ECC Test Mode Control Register", p 2871 */
   reg->EC710TMC = k_ra_cnecc_mask_test_disable;
   return k_ra_ok;
@@ -570,12 +570,12 @@ static void internal_ctl_rmw(volatile r_cnecc_regs_t* reg, uint32_t new_bits, ui
 
 [[nodiscard]] ra_err_t ra_cnecc_test_mode_active(uint8_t instance, bool* out)
 {
-  RA_CHECK_NULL_PTR((void*)out, s_tag, "out must not be nullptr");
+  RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
   if ((uint16_t)instance >= k_ra_cnecc_instance_count) {
     return k_ra_err_invalid_arg;
   }
   volatile r_cnecc_regs_t* reg = ra_cnecc(instance);
-  RA_CHECK_NULL_PTR((void*)reg, s_tag, "instance mapping failed");
+  RA_CHECK_NULL_PTR(reg, s_tag, "instance mapping failed");
   /* HUM Ch 42.2.2 "EC710TMC : ECC Test Mode Control Register", p 2872 */
   *out = ((reg->EC710TMC & k_ra_cnecc_mask_ectmce) != 0U);
   return k_ra_ok;
@@ -583,7 +583,7 @@ static void internal_ctl_rmw(volatile r_cnecc_regs_t* reg, uint32_t new_bits, ui
 
 [[nodiscard]] ra_err_t ra_cnecc_attach_handler(ra_cnecc_error_fn_t fn, void* ctx)
 {
-  RA_CHECK_NULL_PTR((void*)fn, s_tag, "fn must not be nullptr");
+  RA_CHECK_NULL_PTR(fn, s_tag, "fn must not be nullptr");
   s_cnecc_fn  = fn;
   s_cnecc_ctx = ctx;
   return k_ra_ok;

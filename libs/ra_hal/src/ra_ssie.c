@@ -469,7 +469,7 @@ static void internal_apply_init_regs(volatile r_ssie_regs_t* reg,
 
 ra_err_t ra_ssie_init(uint8_t channel, const ra_ssie_cfg_t* cfg)
 {
-  RA_CHECK_NULL_PTR((void*)cfg, s_tag, "cfg must not be nullptr");
+  RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
   volatile r_ssie_regs_t* reg = internal_ssie_regs(channel);
   if (reg == nullptr) {
     return k_ra_err_invalid_arg;
@@ -655,7 +655,7 @@ ra_err_t ra_ssie_write_buffer(uint8_t         channel,
                               uint16_t        samples,
                               uint16_t*       out_written)
 {
-  RA_CHECK_NULL_PTR((void*)buffer, s_tag, "buffer must not be nullptr");
+  RA_CHECK_NULL_PTR(buffer, s_tag, "buffer must not be nullptr");
   RA_CHECK_NULL_PTR(out_written, s_tag, "out_written must not be nullptr");
   volatile r_ssie_regs_t* reg = internal_ssie_regs(channel);
   if (reg == nullptr) {
@@ -830,7 +830,7 @@ static ra_err_t internal_attach_dma_dirs(volatile r_ssie_regs_t*  reg,
 
 ra_err_t ra_ssie_attach_dma(uint8_t channel, const ra_ssie_dma_cfg_t* dma)
 {
-  RA_CHECK_NULL_PTR((void*)dma, s_tag, "dma must not be nullptr");
+  RA_CHECK_NULL_PTR(dma, s_tag, "dma must not be nullptr");
   volatile r_ssie_regs_t* reg = internal_ssie_regs(channel);
   if (reg == nullptr) {
     return k_ra_err_invalid_arg;

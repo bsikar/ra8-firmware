@@ -136,7 +136,7 @@ static ra_err_t internal_validate_cfg(const ra_tsn_config_t* cfg)
 
 ra_err_t ra_tsn_init(const ra_tsn_config_t* cfg)
 {
-  RA_CHECK_NULL_PTR((void*)cfg, s_tag, "cfg must not be nullptr");
+  RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
   const ra_err_t cfg_err = internal_validate_cfg(cfg);
   RA_RETURN_ON_ERROR(cfg_err, s_tag, "tsn_init: cfg invalid");
 

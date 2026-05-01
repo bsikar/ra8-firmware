@@ -596,9 +596,9 @@ static inline volatile r_sram_cpscu_regs_t* ra_sram_cpscu_regs(void)
 static inline volatile uint8_t* ra_sram_cr_ptr(volatile r_sram_regs_t* regs, uint8_t bank)
 {
   /* SRAMCRn at +0x10 + 4 * n. */
-  uint8_t* base = (uint8_t*)regs;
-  return (volatile uint8_t*)(base + (size_t)k_ra_sram_cr_base_off +
-                             ((size_t)bank * (size_t)k_ra_sram_sparse_stride));
+  const uintptr_t base = (uintptr_t)regs;
+  return (volatile uint8_t*)(base + (uintptr_t)k_ra_sram_cr_base_off +
+                             ((uintptr_t)bank * (uintptr_t)k_ra_sram_sparse_stride));
 }
 
 /**
@@ -610,9 +610,9 @@ static inline volatile uint8_t* ra_sram_cr_ptr(volatile r_sram_regs_t* regs, uin
 static inline volatile uint8_t* ra_sram_eccrgn_ptr(volatile r_sram_regs_t* regs, uint8_t bank)
 {
   /* SRAMECCRGNn at +0x30 + 4 * n. */
-  uint8_t* base = (uint8_t*)regs;
-  return (volatile uint8_t*)(base + (size_t)k_ra_sram_eccrgn_base_off +
-                             ((size_t)bank * (size_t)k_ra_sram_sparse_stride));
+  const uintptr_t base = (uintptr_t)regs;
+  return (volatile uint8_t*)(base + (uintptr_t)k_ra_sram_eccrgn_base_off +
+                             ((uintptr_t)bank * (uintptr_t)k_ra_sram_sparse_stride));
 }
 
 /**
@@ -627,8 +627,8 @@ static inline volatile uint8_t* ra_sram_eccrgn_ptr(volatile r_sram_regs_t* regs,
  */
 static inline volatile uint64_t* ra_sram_bank_data_ptr(uint8_t bank)
 {
-  uint8_t* base = (uint8_t*)k_ra_sram_data_base_addr;
-  return (volatile uint64_t*)(base + ((size_t)bank * (size_t)k_ra_sram_bank012_size));
+  const uintptr_t base = (uintptr_t)k_ra_sram_data_base_addr;
+  return (volatile uint64_t*)(base + ((uintptr_t)bank * (uintptr_t)k_ra_sram_bank012_size));
 }
 
 /**

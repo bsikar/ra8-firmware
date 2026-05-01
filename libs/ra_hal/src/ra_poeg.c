@@ -75,7 +75,7 @@ static uint32_t internal_cfg_to_poegg(const ra_poeg_cfg_t* cfg)
 
 ra_err_t ra_poeg_init(uint8_t group, const ra_poeg_cfg_t* cfg)
 {
-  RA_CHECK_NULL_PTR((void*)cfg, s_tag, "cfg must not be nullptr");
+  RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
   volatile r_poeg_regs_t* reg = ra_poeg(group);
   RA_CHECK_NULL_PTR(reg, s_tag, "group out of range");
 

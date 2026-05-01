@@ -240,7 +240,7 @@ static void internal_program_rect_limiters(const ra_drw_rect_t* rect)
 
 [[nodiscard]] ra_err_t ra_drw_init(const ra_drw_config_t* cfg)
 {
-  RA_CHECK_NULL_PTR((void*)cfg, s_tag, "cfg must not be nullptr");
+  RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
 
   /* HUM Ch 11.2.8 "MSTPCRC: Module Stop Control Register C", p 446 */
   const ra_err_t mst_err = ra_mstp_enable(k_ra_mstp_drw);
@@ -444,7 +444,7 @@ void ra_drw_dispatch(void)
 
 [[nodiscard]] ra_err_t ra_drw_set_gradient(const ra_drw_gradient_t* grad)
 {
-  RA_CHECK_NULL_PTR((void*)grad, s_tag, "grad must not be nullptr");
+  RA_CHECK_NULL_PTR(grad, s_tag, "grad must not be nullptr");
   /* HUM Ch 62.2.7 "COLOR1: Base Color Register", p 3697 */
   *ra_drw_reg32(k_ra_drw_off_color1) = grad->color1_argb8888;
   /* HUM Ch 62.2.8 "COLOR2: Secondary Color Register", p 3697 */
@@ -530,7 +530,7 @@ static uint32_t internal_pack_blend_bits(const ra_drw_blend_t* blend)
 
 [[nodiscard]] ra_err_t ra_drw_set_blend(const ra_drw_blend_t* blend)
 {
-  RA_CHECK_NULL_PTR((void*)blend, s_tag, "blend must not be nullptr");
+  RA_CHECK_NULL_PTR(blend, s_tag, "blend must not be nullptr");
 
   /* HUM Ch 62.2.2 "CONTROL2: Surface Control Register", p 3691 */
   const uint32_t set_bits = internal_pack_blend_bits(blend);
@@ -619,7 +619,7 @@ static uint32_t internal_pack_texture_bits(const ra_drw_texture_t* tex)
 
 [[nodiscard]] ra_err_t ra_drw_set_texture(const ra_drw_texture_t* tex)
 {
-  RA_CHECK_NULL_PTR((void*)tex, s_tag, "tex must not be nullptr");
+  RA_CHECK_NULL_PTR(tex, s_tag, "tex must not be nullptr");
   if ((uint16_t)tex->pitch_px > k_ra_drw_max_texpitch_tx) {
     return k_ra_err_invalid_arg;
   }
@@ -667,7 +667,7 @@ static uint32_t internal_pack_texture_bits(const ra_drw_texture_t* tex)
 [[nodiscard]] ra_err_t
 ra_drw_load_clut(uint8_t start_index, const uint32_t* entries, uint32_t count)
 {
-  RA_CHECK_NULL_PTR((void*)entries, s_tag, "entries must not be nullptr");
+  RA_CHECK_NULL_PTR(entries, s_tag, "entries must not be nullptr");
   if (count == 0UL) {
     return k_ra_err_invalid_arg;
   }
@@ -694,7 +694,7 @@ ra_drw_load_clut(uint8_t start_index, const uint32_t* entries, uint32_t count)
 
 [[nodiscard]] ra_err_t ra_drw_fill_rect(const ra_drw_rect_t* rect)
 {
-  RA_CHECK_NULL_PTR((void*)rect, s_tag, "rect must not be nullptr");
+  RA_CHECK_NULL_PTR(rect, s_tag, "rect must not be nullptr");
   if ((uint16_t)rect->width_px < k_ra_drw_min_dim_px ||
       (uint16_t)rect->height_px < k_ra_drw_min_dim_px) {
     return k_ra_err_invalid_arg;
@@ -723,7 +723,7 @@ ra_drw_load_clut(uint8_t start_index, const uint32_t* entries, uint32_t count)
 
 [[nodiscard]] ra_err_t ra_drw_blit_textured_rect(const ra_drw_rect_t* rect)
 {
-  RA_CHECK_NULL_PTR((void*)rect, s_tag, "rect must not be nullptr");
+  RA_CHECK_NULL_PTR(rect, s_tag, "rect must not be nullptr");
   if ((uint16_t)rect->width_px < k_ra_drw_min_dim_px ||
       (uint16_t)rect->height_px < k_ra_drw_min_dim_px) {
     return k_ra_err_invalid_arg;
@@ -811,7 +811,7 @@ static void internal_program_line_limiters(const ra_drw_line_t* line)
 
 [[nodiscard]] ra_err_t ra_drw_draw_line(const ra_drw_line_t* line)
 {
-  RA_CHECK_NULL_PTR((void*)line, s_tag, "line must not be nullptr");
+  RA_CHECK_NULL_PTR(line, s_tag, "line must not be nullptr");
   if (line->width_px == 0U || (uint16_t)line->width_px > k_ra_drw_max_width_px) {
     return k_ra_err_invalid_arg;
   }
@@ -845,7 +845,7 @@ static void internal_program_line_limiters(const ra_drw_line_t* line)
 
 [[nodiscard]] ra_err_t ra_drw_draw_triangle(const ra_drw_triangle_t* tri)
 {
-  RA_CHECK_NULL_PTR((void*)tri, s_tag, "tri must not be nullptr");
+  RA_CHECK_NULL_PTR(tri, s_tag, "tri must not be nullptr");
 
   /* HUM Ch 62.2.7 "COLOR1: Base Color Register", p 3697 */
   *ra_drw_reg32(k_ra_drw_off_color1) = tri->color_argb8888;
