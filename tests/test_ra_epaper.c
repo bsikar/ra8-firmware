@@ -26,10 +26,12 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8d2_spi_regs.h"
 #include "ra_epaper.h"
 #include "ra_err.h"
 #include "ra_mstp.h"
 #include "ra_sim_mmap.h"
+#include "ra_spi.h"
 #include "unity_minimal.h"
 
 /**
@@ -69,6 +71,30 @@ static void prep(void)
   (void)ra_epaper_sleep();
   /* Bring up MSTP so ra_spi_init can flip the SPI module-stop bit. */
   (void)ra_mstp_init();
+}
+
+/**
+ * @brief Pre-stage SPSR with both ready flags asserted on every SPI channel.
+ *
+ * @details
+ * The host build of ``ra_spi_b.c`` short-circuits ``internal_wait_spsr``
+ * (RA_SIMULATOR_MODE branch): it returns ``k_ra_ok`` if the requested
+ * flag (SPTEF or SPRF) is asserted, otherwise ``k_ra_err_hw_timeout``.
+ * The simulator backs SPSR with plain mmap'd RAM that is zeroed by
+ * ``ra_sim_mmap_reset``, so a fresh test fixture has no flags
+ * asserted. Pre-staging once is sufficient because the driver clears
+ * flags via SPSRC (a separate write-1-to-clear register that, in sim,
+ * is independent RAM and does not touch SPSR).
+ */
+static void stage_spsr_ready(void)
+{
+  const uint32_t both = (uint32_t)k_ra_spsr_mask_sptef | (uint32_t)k_ra_spsr_mask_sprf;
+  for (uint8_t ch = 0U; ch < 2U; ch++) {
+    volatile r_spi_regs_t* reg = ra_spi(ch);
+    if (reg != nullptr) {
+      reg->SPSR = both;
+    }
+  }
 }
 
 static void test_init_null_cfg(void)
@@ -115,6 +141,7 @@ static void test_happy_path(void)
 {
   TEST_BEGIN("test_happy_path");
   prep();
+  stage_spsr_ready();
   const ra_epaper_cfg_t cfg = make_cfg();
   TEST_ASSERT_EQ(k_ra_ok, ra_epaper_init(&cfg));
 
@@ -149,10 +176,6 @@ int main(void)
   test_init_null_cfg();
   test_init_bad_cfg();
   test_calls_before_init();
-  /* TODO: re-enable once ra_spi_b sim-mode wait_spsr returns ok without
-   * SPSR pre-staging. Driver init currently times out in xfer8 because
-   * the mocked SPSR has neither SPTEF nor SPRF asserted. */
-  /* test_happy_path(); */
-  (void)test_happy_path;
+  test_happy_path();
   return 0;
 }
