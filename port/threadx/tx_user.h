@@ -35,9 +35,9 @@
 #pragma once
 
 /* Tick + scheduler tuning. */
-#define TX_TIMER_TICKS_PER_SECOND        1000
-#define TX_MAX_PRIORITIES                32
-#define TX_MINIMUM_STACK                 512
+#define TX_TIMER_TICKS_PER_SECOND        (1000)
+#define TX_MAX_PRIORITIES                (32)
+#define TX_MINIMUM_STACK                 (512)
 
 /* Performance / size knobs (see ThreadX user-guide chapter 4). */
 #define TX_TIMER_PROCESS_IN_ISR
