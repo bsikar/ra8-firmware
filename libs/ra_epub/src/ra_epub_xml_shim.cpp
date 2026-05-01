@@ -19,6 +19,27 @@
  * the rest of the codebase is `extern "C"` and uses caller-owned
  * fixed-size buffers, so no C++ ABI escapes the boundary.
  *
+ * ## NASA Rule 3 (no malloc/free in firmware) -- documented deviation
+ *
+ * `tinyxml2::XMLDocument::Parse()` allocates internal node objects via
+ * its `MemPoolT<>` allocator, which is heap-backed by default. We
+ * accept this as a vendored exemption rather than (a) hand-rolling a
+ * SAX-style scanner over the OPF/container XML, or (b) configuring
+ * tinyxml2's `MemPoolT` against a static arena. Rationale:
+ *
+ *   - The OPF and `META-INF/container.xml` files are bounded (we cap
+ *     the OPF scratch at `k_ra_epub_opf_xml_buf` in the C side), so
+ *     the tinyxml2 allocator has a bounded total footprint per parse.
+ *   - The `XMLDocument` is local to `extern "C"` parse functions and
+ *     is destroyed before the function returns. No allocation outlives
+ *     a single `ra_epub_*` call.
+ *   - Replacing tinyxml2 with a hand-rolled scanner is on the roadmap
+ *     (`docs/ROADMAP_RA8D2.md` Phase 6.2.3 fallback option).
+ *
+ * Anyone reviewing the no-alloc audit (`scripts/utils/check_no_dynamic_alloc.py`)
+ * should expect to see allocations charged to this TU at runtime; the
+ * rest of `libs/ra_epub` is alloc-free.
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  *
