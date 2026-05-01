@@ -337,6 +337,25 @@ typedef enum : uint32_t {
   k_ra_nsc_log_msg_max_len = 128U,  /**< Truncated copy size for logs. */
 } ra_nsc_limits_t;
 
+/* =============================================================================
+ * OTA bank-commit veneers (forwarded to src/secure_app/ota_commit.c)
+ * =============================================================================
+ */
+
+/**
+ * @brief NSC veneer: commit OTA target bank as the boot bank.
+ * @param[in] target_bank Target bank id (k_ra_ota_bank_a or _b).
+ * @return ra_err_t code.
+ */
+[[nodiscard]] RA_NSC_VENEER ra_err_t ra_nsc_ota_commit(uint8_t target_bank);
+
+/**
+ * @brief NSC veneer: write the flash bank-config word.
+ * @param[in] raw_value Raw value forwarded to the secure side.
+ * @return ra_err_t code.
+ */
+[[nodiscard]] RA_NSC_VENEER ra_err_t ra_nsc_flash_bank_config(uint32_t raw_value);
+
 #ifdef __cplusplus
 }
 #endif
