@@ -57,20 +57,6 @@ typedef enum : uint16_t {
  */
 
 /**
- * @brief Length-checked byte copy used in place of memcpy().
- *
- * @details
- * Keeps clang-tidy's `clang-analyzer-security.insecureAPI` checker
- * happy. Same effect on -O2 generated code as memcpy().
- */
-static void priv_byte_copy(uint8_t* dst, const uint8_t* src, size_t n)
-{
-  for (size_t i = 0U; i < n; i++) {
-    dst[i] = src[i];
-  }
-}
-
-/**
  * @brief Concatenate `dir` + `name` into `dst`, NUL-terminated.
  */
 static void priv_join_path(const char* dir, const char* name, char* dst, size_t cap)
@@ -167,31 +153,32 @@ static ra_err_t priv_render_into(const stbtt_fontinfo* font,
                                  uint32_t*             out_w,
                                  uint32_t*             out_h)
 {
-  const float    scale = stbtt_ScaleForPixelHeight(font, font_size);
-  int            w     = 0;
-  int            h     = 0;
-  int            xoff  = 0;
-  int            yoff  = 0;
-  unsigned char* bitmap =
-    stbtt_GetCodepointBitmap(font, 0.0F, scale, codepoint, &w, &h, &xoff, &yoff);
-  if (bitmap == NULL) {
-    return k_ra_err_validation_failed;
-  }
+  /* No-allocation glyph rasterisation. stbtt_GetCodepointBitmap()
+   * calls STBTT_malloc internally; instead use the two-step "Box"
+   * + "Make" path that writes into the caller's buffer. NASA Rule 3
+   * compliance. */
+  const float scale = stbtt_ScaleForPixelHeight(font, font_size);
+  int         x0    = 0;
+  int         y0    = 0;
+  int         x1    = 0;
+  int         y1    = 0;
+  stbtt_GetCodepointBitmapBox(font, codepoint, scale, scale, &x0, &y0, &x1, &y1);
+  const int w = x1 - x0;
+  const int h = y1 - y0;
   if (w < 0 || h < 0) {
-    stbtt_FreeBitmap(bitmap, NULL);
     return k_ra_err_validation_failed;
   }
   const size_t total = (size_t)w * (size_t)h;
   if (total > max_pixels) {
-    stbtt_FreeBitmap(bitmap, NULL);
     return k_ra_err_no_mem;
   }
   if (total > 0U) {
-    priv_byte_copy(out_bitmap, (const uint8_t*)bitmap, total);
+    /* Stride = w (tightly packed alpha-8). MakeCodepointBitmap writes
+     * directly into out_bitmap with no malloc. */
+    stbtt_MakeCodepointBitmap(font, out_bitmap, w, h, w, scale, scale, codepoint);
   }
   *out_w = (uint32_t)w;
   *out_h = (uint32_t)h;
-  stbtt_FreeBitmap(bitmap, NULL);
   return k_ra_ok;
 }
 
@@ -222,7 +209,7 @@ ra_err_t ra_epub_load_chapter(const ra_epub_book_t* book,
     return k_ra_err_null_ptr;
   }
   *got_len = 0U;
-  if (book->in_use == 0U || book->zip_archive == NULL) {
+  if (book->in_use == 0U || book->zip_archive_active == 0U) {
     return k_ra_err_not_initialized;
   }
   if (max_len == 0U) {
@@ -235,12 +222,9 @@ ra_err_t ra_epub_load_chapter(const ra_epub_book_t* book,
   char full_path[k_ra_epub_max_path_len];
   priv_join_path(book->opf_dir, book->chapter_paths[idx], full_path, sizeof(full_path));
 
-  return priv_locate_extract((mz_zip_archive*)book->zip_archive,
-                             full_path,
-                             book->chapter_paths[idx],
-                             out_xhtml,
-                             max_len,
-                             got_len);
+  void* const     zip_storage = (void*)&book->zip_archive_storage[0];
+  mz_zip_archive* zip         = (mz_zip_archive*)zip_storage;
+  return priv_locate_extract(zip, full_path, book->chapter_paths[idx], out_xhtml, max_len, got_len);
 }
 
 ra_err_t ra_epub_get_metadata(const ra_epub_book_t* book, ra_epub_metadata_t* out_meta)
@@ -266,7 +250,7 @@ ra_err_t ra_epub_get_cover_image(const ra_epub_book_t* book,
     return k_ra_err_null_ptr;
   }
   *got_len = 0U;
-  if (book->in_use == 0U || book->zip_archive == NULL) {
+  if (book->in_use == 0U || book->zip_archive_active == 0U) {
     return k_ra_err_not_initialized;
   }
   if (max_len == 0U) {
@@ -279,12 +263,9 @@ ra_err_t ra_epub_get_cover_image(const ra_epub_book_t* book,
   char full_path[k_ra_epub_max_path_len];
   priv_join_path(book->opf_dir, book->cover_path, full_path, sizeof(full_path));
 
-  return priv_locate_extract((mz_zip_archive*)book->zip_archive,
-                             full_path,
-                             book->cover_path,
-                             out_buf,
-                             max_len,
-                             got_len);
+  void* const     zip_storage = (void*)&book->zip_archive_storage[0];
+  mz_zip_archive* zip         = (mz_zip_archive*)zip_storage;
+  return priv_locate_extract(zip, full_path, book->cover_path, out_buf, max_len, got_len);
 }
 
 ra_err_t ra_epub_set_font(ra_epub_book_t* book, const uint8_t* font_data, size_t font_size)
