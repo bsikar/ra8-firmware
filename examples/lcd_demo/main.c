@@ -89,6 +89,7 @@
 #include <stdint.h>
 
 #include "ra8d2_glcdc_regs.h"
+#include "ra_board_ek_ra8d2.h"
 #include "ra_cgc.h"
 #include "ra_err.h"
 #include "ra_glcdc.h"
@@ -548,7 +549,7 @@ static void lcd_demo_drivers_init_or_halt(void)
   if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
     lcd_demo_panic_halt();
   }
-  if (ra_gpio_output_init(k_ra_pin_led1, k_ra_level_low) != k_ra_ok) {
+  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
     lcd_demo_panic_halt();
   }
   if (lcd_demo_pins_init() != k_ra_ok) {
@@ -660,7 +661,7 @@ int32_t main(void)
     lcd_demo_sprite_step();
     lcd_demo_layer1_draw_sprite(s_sprite_x, s_sprite_y, k_lcd_demo_sprite_color);
 
-    if (ra_gpio_toggle(k_ra_pin_led1) != k_ra_ok) {
+    if (ra_board_led_toggle(k_ra_board_led1) != k_ra_ok) {
       break;
     }
     ra_delay_ms(k_lcd_demo_frame_period_ms);

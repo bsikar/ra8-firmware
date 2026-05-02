@@ -53,6 +53,7 @@
 
 #include <stdint.h>
 
+#include "ra_board_ek_ra8d2.h"
 #include "ra_cgc.h"
 #include "ra_err.h"
 #include "ra_gpio_constants.h"
@@ -227,7 +228,7 @@ static void audio_loopback_init_clocks_and_led(uint32_t* out_pclka_hz)
   if (audio_loopback_pins_init() != k_ra_ok) {
     audio_loopback_panic_halt();
   }
-  if (ra_gpio_output_init(k_ra_pin_led1, k_ra_level_low) != k_ra_ok) {
+  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
     audio_loopback_panic_halt();
   }
 }
@@ -417,7 +418,7 @@ int32_t main(void)
       sample_count++;
       if ((sample_count % k_audio_loopback_print_period) == 0U) {
         audio_loopback_print_count(sample_count);
-        (void)ra_gpio_toggle(k_ra_pin_led1);
+        (void)ra_board_led_toggle(k_ra_board_led1);
       }
     }
     if (status.error) {

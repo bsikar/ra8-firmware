@@ -67,6 +67,7 @@
 
 #include <stdint.h>
 
+#include "ra_board_ek_ra8d2.h"
 #include "ra_cgc.h"
 #include "ra_err.h"
 #include "ra_gpio_constants.h"
@@ -366,7 +367,7 @@ static void motor_3phase_init_clocks_and_led(uint32_t* out_pclka_hz)
   if (motor_3phase_pins_init() != k_ra_ok) {
     motor_3phase_panic_halt();
   }
-  if (ra_gpio_output_init(k_ra_pin_led1, k_ra_level_low) != k_ra_ok) {
+  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
     motor_3phase_panic_halt();
   }
 }
@@ -596,7 +597,7 @@ int32_t main(void)
     if (print_accum_ms >= k_motor_3phase_print_period) {
       print_accum_ms = 0U;
       motor_3phase_print_duty(u_duty, v_duty, w_duty);
-      (void)ra_gpio_toggle(k_ra_pin_led1);
+      (void)ra_board_led_toggle(k_ra_board_led1);
     }
 
     ra_delay_ms(k_motor_3phase_update_ms);
