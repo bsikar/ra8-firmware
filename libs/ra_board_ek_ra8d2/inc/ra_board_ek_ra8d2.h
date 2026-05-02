@@ -28,6 +28,7 @@
 
 #pragma once
 
+#include <stddef.h>
 #include <stdint.h>
 
 #include "ra_err.h"
@@ -815,6 +816,236 @@ typedef enum : uint16_t {
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_board_mipi_dsi_init(void);
+
+/* =============================================================================
+ * 11. J-Link OB VCOM serial bridge (UM Section 5.2.4, Table 13, page 24)
+ * =============================================================================
+ */
+
+/**
+ * @enum ra_board_uart_t
+ * @brief Identifiers for board-routed UART consoles.
+ *
+ * @details
+ * The EK-RA8D2 v1 carries the J-Link OB debug MCU's USB-CDC virtual-COM
+ * bridge on chip pins PD02 (TXD) / PD03 (RXD) per UM Table 13 p 24.
+ * Hardware-flow-control lines PD04 (RTS) and PD05 (CTS) are present on
+ * the same connector but are gated by trace-cut links E17 / E9 and are
+ * not used by the basic console wiring.
+ *
+ * On the RA8D2 PD02/PD03 are the SCI3 TXD3/RXD3 alternate functions
+ * (chip HUM "Multiplexed Pin Function Selector"); the BSP forwards to
+ * SCI channel 3 via ``ra_sci_init`` / ``ra_sci_write_polling`` /
+ * ``ra_sci_getc_polling``.
+ */
+typedef enum : uint8_t {
+  k_ra_board_uart_console = 0U, /**< J-Link OB VCOM bridge: PD02 TXD / PD03 RXD on SCI3.
+                                 *   EK-RA8D2 UM Table 13 p 24. */
+} ra_board_uart_t;
+
+/**
+ * @brief SCI channel that backs ``k_ra_board_uart_console``.
+ *
+ * @details
+ * Exposed as an enum (not a macro) so test code and applications can
+ * reference the channel without re-encoding the magic number. The
+ * value comes from PD02/PD03's Multiplexed Pin Function Selector
+ * row in the chip HUM I/O Ports chapter (TXD3/RXD3 alternate).
+ */
+typedef enum : uint8_t {
+  k_ra_board_uart_console_sci_channel = 3U, /**< PD02/PD03 -> SCI3. */
+} ra_board_uart_sci_channel_t;
+
+/**
+ * @brief Pin assignments for the J-Link OB VCOM bridge (UM Table 13 p 24).
+ *
+ * @details
+ * PD02 / PD03 are always wired to the debug MCU's CDC bridge. PD04 /
+ * PD05 are the optional RTS / CTS lines (links E17 / E9, both closed
+ * by default). Chip-coordinate names: P1302 / P1303 / P1304 / P1305
+ * (port 13, pins 2..5).
+ */
+typedef enum : uint16_t {
+  k_ra_board_uart_console_pin_txd =
+    (uint16_t)RA_PIN(k_ra_port_13, k_ra_pin_2), /**< PD02 TXD. UM Table 13 p 24. */
+  k_ra_board_uart_console_pin_rxd =
+    (uint16_t)RA_PIN(k_ra_port_13, k_ra_pin_3), /**< PD03 RXD. UM Table 13 p 24. */
+  k_ra_board_uart_console_pin_rts =
+    (uint16_t)RA_PIN(k_ra_port_13, k_ra_pin_4), /**< PD04 RTS (link E17). UM Table 13 p 24. */
+  k_ra_board_uart_console_pin_cts =
+    (uint16_t)RA_PIN(k_ra_port_13, k_ra_pin_5), /**< PD05 CTS (link E9).  UM Table 13 p 24. */
+} ra_board_uart_console_pin_t;
+
+/**
+ * @brief Configure SCI3 + PD02/PD03 as the debug-console UART.
+ *
+ * @details
+ * Routes PD02 -> TXD3 and PD03 -> RXD3 (PSEL = SCI async) and brings
+ * SCI3 up via ``ra_sci_init`` with 8N1 framing at the requested baud.
+ * The PCLKB frequency used for the BRR calculation is taken from the
+ * chip's reset default (60 MHz on RA8D2 with stock CGC programming);
+ * applications that retune CGC must call ``ra_sci_set_baud`` after
+ * their CGC change to recompute the divisor.
+ *
+ * @param[in] baud Target line rate in bps (e.g. 115200).
+ *
+ * @retval k_ra_ok                  Console up, ready to TX/RX.
+ * @retval k_ra_err_invalid_arg     baud == 0.
+ * @retval k_ra_err_gpio_conflict   PD02 or PD03 already owned.
+ * @retval k_ra_err_hw_init_failed  Underlying ``ra_sci_init`` failed.
+ *
+ * @pre HAL pin validator initialised (single-threaded boot context).
+ * @pre ra_mstp_init() has run.
+ * @post SCI3 is enabled with TE=RE=1; PD02/PD03 are routed to SCI3.
+ *
+ * @note Not thread-safe; call once during board bring-up.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_board_uart_console_init(uint32_t baud);
+
+/**
+ * @brief Polled blocking write to the J-Link OB VCOM console.
+ *
+ * @param[in] data Bytes to transmit; must be non-NULL when ``len`` > 0.
+ * @param[in] len  Number of bytes in ``data``.
+ *
+ * @retval k_ra_ok                  All bytes pushed to TDR.
+ * @retval k_ra_err_invalid_arg     ``data`` NULL with non-zero ``len``.
+ * @retval k_ra_err_not_initialized ``ra_board_uart_console_init`` not called.
+ *
+ * @pre ra_board_uart_console_init succeeded.
+ * @post All ``len`` bytes have been handed to the SCI3 TDR shift register.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_board_uart_console_write(const uint8_t* data, size_t len);
+
+/**
+ * @brief Polled non-blocking read from the J-Link OB VCOM console.
+ *
+ * @details
+ * Drains up to ``cap`` bytes from SCI3 RDR while RDRF stays set. Stops
+ * (without error) the first time RDRF clears so the call never blocks
+ * waiting for a host that is silent.
+ *
+ * @param[out] out      Destination buffer (non-NULL when ``cap`` > 0).
+ * @param[in]  cap      Capacity of ``out`` in bytes.
+ * @param[out] out_len  Number of bytes actually read; non-NULL.
+ *
+ * @retval k_ra_ok                  Read complete; *out_len in [0, cap].
+ * @retval k_ra_err_invalid_arg     out / out_len NULL with non-zero cap.
+ * @retval k_ra_err_not_initialized Console not initialised.
+ *
+ * @pre ra_board_uart_console_init succeeded.
+ * @post 0 <= *out_len <= cap.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_board_uart_console_read(uint8_t* out, size_t cap, size_t* out_len);
+
+/* =============================================================================
+ * 12. On-board RGMII Ethernet PHY (UM Section 6.1, Tables 26 + 27, p 33-34)
+ * =============================================================================
+ */
+
+/**
+ * @brief Pin assignments for the on-board MaxLinear PEF7071 (GPY111) PHY.
+ *
+ * @details
+ * Per UM Table 26 ("Ethernet Port Assignments") p 33. The PHY is wired
+ * to the RA8D2 ETHERC0 / RMAC0 in **RGMII** mode (UM 6.1: "RGMII
+ * Ethernet Physical Layer Transceiver"). The 25 MHz reference clock
+ * is sourced from a discrete oscillator (ECS-250-10-37B-CTN-TR, UM
+ * Table 27 p 34) connected directly to the PHY -- the MCU does not
+ * drive REFCLK. Ethernet data rails are gated by trace-cut links
+ * E18..E24, E33, E34, E36..E38 (all closed by default).
+ */
+typedef enum : uint16_t {
+  k_ra_board_eth_pin_mdint =
+    (uint16_t)RA_PIN(k_ra_port_1, k_ra_pin_7), /**< MDINT, P107. UM Table 26 p 33. */
+  k_ra_board_eth_pin_mdc =
+    (uint16_t)RA_PIN(k_ra_port_4, k_ra_pin_15), /**< MDC,   P415. UM Table 26 p 33. */
+  k_ra_board_eth_pin_mdio =
+    (uint16_t)RA_PIN(k_ra_port_4, k_ra_pin_14), /**< MDIO,  P414. UM Table 26 p 33. */
+  k_ra_board_eth_pin_txd0 =
+    (uint16_t)RA_PIN(k_ra_port_3, k_ra_pin_7), /**< TXD0,  P307 (E21). UM Table 26 p 33. */
+  k_ra_board_eth_pin_txd1 =
+    (uint16_t)RA_PIN(k_ra_port_3, k_ra_pin_6), /**< TXD1,  P306 (E20). UM Table 26 p 33. */
+  k_ra_board_eth_pin_txd2 =
+    (uint16_t)RA_PIN(k_ra_port_3, k_ra_pin_5), /**< TXD2,  P305 (E19). UM Table 26 p 33. */
+  k_ra_board_eth_pin_txd3 =
+    (uint16_t)RA_PIN(k_ra_port_3, k_ra_pin_4), /**< TXD3,  P304 (E18). UM Table 26 p 33. */
+  k_ra_board_eth_pin_tx_ctl =
+    (uint16_t)RA_PIN(k_ra_port_3, k_ra_pin_10), /**< TX_CTL, P310 (E22). UM Table 26 p 33. */
+  k_ra_board_eth_pin_tx_clk =
+    (uint16_t)RA_PIN(k_ra_port_3, k_ra_pin_9), /**< TX_CLK, P309 (E23). UM Table 26 p 33. */
+  k_ra_board_eth_pin_rxd0 =
+    (uint16_t)RA_PIN(k_ra_port_9, k_ra_pin_6), /**< RXD0,  P906 (E36). UM Table 26 p 33. */
+  k_ra_board_eth_pin_rxd1 =
+    (uint16_t)RA_PIN(k_ra_port_9, k_ra_pin_7), /**< RXD1,  P907 (E34). UM Table 26 p 33. */
+  k_ra_board_eth_pin_rxd2 =
+    (uint16_t)RA_PIN(k_ra_port_9, k_ra_pin_8), /**< RXD2,  P908 (E33). UM Table 26 p 33. */
+  k_ra_board_eth_pin_rxd3 =
+    (uint16_t)RA_PIN(k_ra_port_9, k_ra_pin_9), /**< RXD3,  P909 (E24). UM Table 26 p 33. */
+  k_ra_board_eth_pin_rx_ctl =
+    (uint16_t)RA_PIN(k_ra_port_2, k_ra_pin_6), /**< RX_CTL, P206 (E38). UM Table 26 p 33. */
+  k_ra_board_eth_pin_rx_clk =
+    (uint16_t)RA_PIN(k_ra_port_9, k_ra_pin_5), /**< RX_CLK, P905 (E37). UM Table 26 p 33. */
+  k_ra_board_eth_pin_rstn =
+    (uint16_t)RA_PIN(k_ra_port_7, k_ra_pin_8), /**< RSTN,   P708.        UM Table 26 p 33. */
+} ra_board_eth_pin_t;
+
+/**
+ * @brief ETHA / RMAC port and PHY MDIO address for the on-board PHY.
+ *
+ * @details
+ * Per UM 6.1 ("Ethernet interface"). The on-board PHY (MaxLinear
+ * PEF7071VV16-LLHU, UM Table 27 p 34) is the only device on the MDIO
+ * bus and powers up at MDIO address 0; the RA8D2 has two ETHA / RMAC
+ * instances, of which port 0 is the one wired to J15.
+ */
+typedef enum : uint8_t {
+  k_ra_board_eth_etha_port = 0U, /**< ETHA0 (k_ra_etha_port_0). UM 6.1.   */
+  k_ra_board_eth_rmac_port = 0U, /**< RMAC0 (k_ra_rmac_port_0). UM 6.1.   */
+  k_ra_board_eth_phy_addr  = 0U, /**< MDIO addr of the on-board PHY (HW
+                                  *   strap on PEF7071, UM Table 27 p 34). */
+} ra_board_eth_index_t;
+
+/**
+ * @brief Bring up the on-board RGMII Ethernet PHY (PEF7071) and RMAC0.
+ *
+ * @details
+ * 1. Routes all sixteen Ethernet data / control pins (UM Table 26 p 33)
+ *    to their ETHERC RGMII alternate functions via
+ *    ``ra_pfs_route_peripheral`` (PSEL = ``k_ra_psel_ether_rmii`` --
+ *    same PSEL slot covers RMII and RGMII on RA8D2; the per-pin mux
+ *    is identical and RMAC.MPIC.PIS picks the data-path mode).
+ * 2. Initialises ETHA0 with the default ``ra_etha_config_t`` (RESET
+ *    mode, no IRQs enabled) via ``ra_etha_init``.
+ * 3. Initialises RMAC0 with ``phy_interface = k_ra_rmac_pis_rgmii``,
+ *    ``link_speed = k_ra_rmac_lsc_1000mbit``, ``duplex = full`` via
+ *    ``ra_rmac_init`` (auto-negotiation overrides this once link
+ *    comes up).
+ *
+ * The on-board PHY's 25 MHz reference is provided by an external
+ * crystal oscillator (UM Table 27 p 34); no chip-side REFCLK output
+ * programming is needed. Caller is responsible for driving RSTN
+ * (P708) low for >= 10 us before this function and for starting
+ * auto-negotiation via ``ra_rmac_phy_auto_neg_start`` after it
+ * returns.
+ *
+ * @retval k_ra_ok                  PHY pins routed; ETHA0 + RMAC0 up.
+ * @retval k_ra_err_gpio_conflict   At least one Ethernet pin is owned.
+ * @retval k_ra_err_hw_init_failed  ETHA or RMAC init failed.
+ *
+ * @pre IOPORT module powered (reset default).
+ * @pre ra_mstp_init() has run.
+ * @post All sixteen Ethernet pins are in RGMII alternate-function mode.
+ * @post ETHA0 and RMAC0 are initialised and ready for descriptor-ring
+ *       configuration / auto-negotiation.
+ *
+ * @note Not thread-safe; call once during board bring-up.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_board_ethernet_init(void);
 
 #ifdef __cplusplus
 }

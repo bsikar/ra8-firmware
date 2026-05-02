@@ -26,10 +26,15 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8d2_etha_regs.h"
+#include "ra8d2_rmac_regs.h"
 #include "ra_err.h"
+#include "ra_etha.h"
 #include "ra_gpio_constants.h"
 #include "ra_port_constants.h"
 #include "ra_port_utils.h"
+#include "ra_rmac.h"
+#include "ra_sci.h"
 
 /* =============================================================================
  * Board identity strings (UM cover page, R20UT5523EG0101 Rev 1.01)
@@ -652,4 +657,203 @@ ra_err_t ra_board_mipi_dsi_init(void)
    *   return ra_mipi_dsi_hs_clock_start();
    */
   return k_ra_err_not_supported;
+}
+
+/* =============================================================================
+ * 11. J-Link OB VCOM serial bridge (UM Table 13, page 24)
+ * =============================================================================
+ */
+
+/**
+ * @brief Tracks whether ``ra_board_uart_console_init`` has succeeded.
+ *
+ * @details
+ * Set to true after ``ra_sci_init`` returns ok and the PFS routes are
+ * programmed. The write/read helpers refuse to forward to ra_sci when
+ * this flag is false so callers cannot accidentally drive an
+ * unconfigured channel.
+ */
+static bool s_uart_console_initialised = false;
+
+/**
+ * @brief Default PCLKB frequency assumed for SCI3 BRR calculation.
+ *
+ * @details
+ * The RA8D2 reset-default CGC programming runs ICLK at 240 MHz and
+ * PCLKB at 60 MHz (chip HUM Ch 12 CGC). The console init uses this
+ * value when calling ``ra_sci_init``; applications that retune CGC
+ * must call ``ra_sci_set_baud(3, baud, new_pclkb_hz)`` afterwards.
+ */
+typedef enum : uint32_t {
+  k_ra_board_uart_console_default_pclkb_hz = 60000000UL,
+} ra_board_uart_console_clock_t;
+
+ra_err_t ra_board_uart_console_init(uint32_t baud)
+{
+  if (baud == 0U) {
+    return k_ra_err_invalid_arg;
+  }
+
+  /* Route PD02 -> TXD3, PD03 -> RXD3 (UM Table 13 p 24). PSEL value
+   * k_ra_psel_sci_async = 0x04 covers SCI async TXD/RXD per the chip
+   * HUM Multiplexed Pin Function Selector. */
+  /* NOLINTBEGIN(clang-analyzer-optin.core.EnumCastOutOfRange) */
+  ra_err_t err = ra_pfs_route_peripheral((ra_port_pin_t)k_ra_board_uart_console_pin_txd,
+                                         k_ra_psel_sci_async,
+                                         "ra_board.uart.console.txd");
+  if (err != k_ra_ok) {
+    return err;
+  }
+  err = ra_pfs_route_peripheral((ra_port_pin_t)k_ra_board_uart_console_pin_rxd,
+                                k_ra_psel_sci_async,
+                                "ra_board.uart.console.rxd");
+  /* NOLINTEND(clang-analyzer-optin.core.EnumCastOutOfRange) */
+  if (err != k_ra_ok) {
+    return err;
+  }
+
+  const ra_sci_cfg_t cfg = {
+    .baud      = baud,
+    .data_bits = k_ra_sci_data_8,
+    .parity    = k_ra_sci_parity_none,
+    .stop_bits = k_ra_sci_stop_1,
+    .pclk_hz   = (uint32_t)k_ra_board_uart_console_default_pclkb_hz,
+  };
+  err = ra_sci_init((uint8_t)k_ra_board_uart_console_sci_channel, &cfg);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  s_uart_console_initialised = true;
+  return k_ra_ok;
+}
+
+ra_err_t ra_board_uart_console_write(const uint8_t* data, size_t len)
+{
+  if (len == 0U) {
+    return k_ra_ok;
+  }
+  if (data == NULL) {
+    return k_ra_err_invalid_arg;
+  }
+  if (!s_uart_console_initialised) {
+    return k_ra_err_not_initialized;
+  }
+  return ra_sci_write_polling((uint8_t)k_ra_board_uart_console_sci_channel, data, (uint32_t)len);
+}
+
+ra_err_t ra_board_uart_console_read(uint8_t* out, size_t cap, size_t* out_len)
+{
+  if (out_len == NULL) {
+    return k_ra_err_invalid_arg;
+  }
+  *out_len = 0U;
+  if (cap == 0U) {
+    return k_ra_ok;
+  }
+  if (out == NULL) {
+    return k_ra_err_invalid_arg;
+  }
+  if (!s_uart_console_initialised) {
+    return k_ra_err_not_initialized;
+  }
+
+  /* Polled non-blocking drain: pull bytes while RDRF stays set, stop
+   * the moment ra_sci_getc_polling reports nothing available. The cap
+   * bounds the loop (NASA Rule 2). */
+  for (size_t i = 0U; i < cap; ++i) {
+    uint8_t        byte = 0U;
+    const ra_err_t err =
+      ra_sci_getc_polling((uint8_t)k_ra_board_uart_console_sci_channel, &byte);
+    if (err != k_ra_ok) {
+      /* No byte available yet -- treat as a non-blocking stop. */
+      return k_ra_ok;
+    }
+    out[i] = byte;
+    *out_len += 1U;
+  }
+  return k_ra_ok;
+}
+
+/* =============================================================================
+ * 12. On-board RGMII Ethernet PHY (UM Table 26 + 27, page 33-34)
+ * =============================================================================
+ */
+
+/**
+ * @brief Pin table walked by ``ra_board_ethernet_init``.
+ *
+ * @details
+ * Every entry is one of the sixteen Ethernet signals from UM Table 26
+ * p 33. All sixteen need ``k_ra_psel_ether_rmii`` (the RA8D2 PSEL slot
+ * 0x11 covers both RMII and RGMII -- the per-pin mux is the same; the
+ * RMAC.MPIC.PIS field selects RGMII vs RMII for the data path).
+ */
+static const struct {
+  ra_board_eth_pin_t pin;
+  const char*        owner;
+} s_eth_routes[] = {
+  {k_ra_board_eth_pin_mdint, "ra_board.eth.mdint"},
+  {k_ra_board_eth_pin_mdc, "ra_board.eth.mdc"},
+  {k_ra_board_eth_pin_mdio, "ra_board.eth.mdio"},
+  {k_ra_board_eth_pin_txd0, "ra_board.eth.txd0"},
+  {k_ra_board_eth_pin_txd1, "ra_board.eth.txd1"},
+  {k_ra_board_eth_pin_txd2, "ra_board.eth.txd2"},
+  {k_ra_board_eth_pin_txd3, "ra_board.eth.txd3"},
+  {k_ra_board_eth_pin_tx_ctl, "ra_board.eth.tx_ctl"},
+  {k_ra_board_eth_pin_tx_clk, "ra_board.eth.tx_clk"},
+  {k_ra_board_eth_pin_rxd0, "ra_board.eth.rxd0"},
+  {k_ra_board_eth_pin_rxd1, "ra_board.eth.rxd1"},
+  {k_ra_board_eth_pin_rxd2, "ra_board.eth.rxd2"},
+  {k_ra_board_eth_pin_rxd3, "ra_board.eth.rxd3"},
+  {k_ra_board_eth_pin_rx_ctl, "ra_board.eth.rx_ctl"},
+  {k_ra_board_eth_pin_rx_clk, "ra_board.eth.rx_clk"},
+  {k_ra_board_eth_pin_rstn, "ra_board.eth.rstn"},
+};
+
+ra_err_t ra_board_ethernet_init(void)
+{
+  /* Step 1: route every Ethernet pin to its ETHERC alternate. */
+  /* NOLINTBEGIN(clang-analyzer-optin.core.EnumCastOutOfRange) */
+  for (uint32_t i = 0U; i < sizeof(s_eth_routes) / sizeof(s_eth_routes[0]); ++i) {
+    const ra_err_t err = ra_pfs_route_peripheral((ra_port_pin_t)s_eth_routes[i].pin,
+                                                 k_ra_psel_ether_rmii,
+                                                 s_eth_routes[i].owner);
+    if (err != k_ra_ok) {
+      return err;
+    }
+  }
+  /* NOLINTEND(clang-analyzer-optin.core.EnumCastOutOfRange) */
+
+  /* Step 2: ETHA0 bring-up. RESET mode + no IRQs is enough for the
+   * descriptor-ring init the application will do later. */
+  const ra_etha_config_t etha_cfg = {
+    .initial_mode = k_ra_etha_opc_reset,
+    .eaeie0_mask  = 0U,
+    .eaeie1_mask  = 0U,
+    .eaeie2_mask  = 0U,
+  };
+  ra_err_t err = ra_etha_init((ra_etha_port_t)k_ra_board_eth_etha_port, &etha_cfg);
+  if (err != k_ra_ok) {
+    return err;
+  }
+
+  /* Step 3: RMAC0 bring-up. RGMII / 1Gb / full-duplex matches the
+   * board PHY's strap defaults; auto-negotiation will refine this
+   * once the application calls ra_rmac_phy_auto_neg_start. */
+  const ra_rmac_config_t rmac_cfg = {
+    .rx_filter       = (ra_rmac_mrafc_t)(k_ra_rmac_mrafc_unicast_match
+                                   | k_ra_rmac_mrafc_broadcast),
+    .err_irq_enable  = 0U,
+    .mon0_irq_enable = 0U,
+    .mon1_irq_enable = 0U,
+    .mon2_irq_enable = 0U,
+    .phy_interface   = k_ra_rmac_pis_rgmii,
+    .link_speed      = k_ra_rmac_lsc_1000mbit,
+    .duplex          = k_ra_rmac_duplex_full,
+  };
+  err = ra_rmac_init((ra_rmac_port_t)k_ra_board_eth_rmac_port, &rmac_cfg);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  return k_ra_ok;
 }

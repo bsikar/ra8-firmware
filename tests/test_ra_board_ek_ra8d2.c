@@ -278,6 +278,97 @@ static void test_stubs_return_not_supported(void)
   TEST_END("usbhs / mipi-dsi stubs return not_supported");
 }
 
+/* ------------------------------------------------------------------------- */
+/* J-Link OB VCOM serial bridge (UM Table 13 p 24)                            */
+/* ------------------------------------------------------------------------- */
+
+static void test_uart_console_pins(void)
+{
+  TEST_BEGIN("uart console pins match UM Table 13");
+  /* PD02 / PD03 are the always-wired TXD/RXD; PD04 / PD05 are the
+   * optional flow-control pair. Port 13 = PDxx on the RA8D2. */
+  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_13, k_ra_pin_2), (int)k_ra_board_uart_console_pin_txd);
+  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_13, k_ra_pin_3), (int)k_ra_board_uart_console_pin_rxd);
+  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_13, k_ra_pin_4), (int)k_ra_board_uart_console_pin_rts);
+  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_13, k_ra_pin_5), (int)k_ra_board_uart_console_pin_cts);
+  TEST_ASSERT_EQ((int)3, (int)k_ra_board_uart_console_sci_channel);
+  TEST_ASSERT_EQ((int)0, (int)k_ra_board_uart_console);
+  TEST_END("uart console pins match UM Table 13");
+}
+
+static void test_uart_console_init_rejects_zero_baud(void)
+{
+  TEST_BEGIN("uart_console_init rejects baud == 0");
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_board_uart_console_init(0U));
+  TEST_END("uart_console_init rejects baud == 0");
+}
+
+static void test_uart_console_write_validates(void)
+{
+  TEST_BEGIN("uart_console_write validates args + state");
+  /* Zero-length write is a no-op success regardless of init state. */
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_uart_console_write(NULL, 0U));
+  /* NULL data with non-zero len -> invalid_arg. */
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
+                 (int)ra_board_uart_console_write(NULL, 4U));
+  TEST_END("uart_console_write validates args + state");
+}
+
+static void test_uart_console_read_validates(void)
+{
+  TEST_BEGIN("uart_console_read validates args + state");
+  uint8_t buf[4]   = {};
+  size_t  out_len  = 0xAAU;
+  /* NULL out_len always rejected. */
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
+                 (int)ra_board_uart_console_read(buf, sizeof(buf), NULL));
+  /* cap == 0 is a successful no-op (and zeroes *out_len). */
+  out_len = 0xAAU;
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_uart_console_read(NULL, 0U, &out_len));
+  TEST_ASSERT_EQ((int64_t)0, (int64_t)out_len);
+  /* NULL buffer with non-zero cap -> invalid_arg. */
+  out_len = 0U;
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
+                 (int)ra_board_uart_console_read(NULL, sizeof(buf), &out_len));
+  TEST_END("uart_console_read validates args + state");
+}
+
+/* ------------------------------------------------------------------------- */
+/* On-board RGMII Ethernet PHY (UM Table 26 p 33)                             */
+/* ------------------------------------------------------------------------- */
+
+static void test_ethernet_pins(void)
+{
+  TEST_BEGIN("ethernet pins match UM Table 26");
+  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_1, k_ra_pin_7), (int)k_ra_board_eth_pin_mdint);
+  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_4, k_ra_pin_15), (int)k_ra_board_eth_pin_mdc);
+  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_4, k_ra_pin_14), (int)k_ra_board_eth_pin_mdio);
+  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_3, k_ra_pin_7), (int)k_ra_board_eth_pin_txd0);
+  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_3, k_ra_pin_6), (int)k_ra_board_eth_pin_txd1);
+  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_3, k_ra_pin_5), (int)k_ra_board_eth_pin_txd2);
+  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_3, k_ra_pin_4), (int)k_ra_board_eth_pin_txd3);
+  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_3, k_ra_pin_10), (int)k_ra_board_eth_pin_tx_ctl);
+  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_3, k_ra_pin_9), (int)k_ra_board_eth_pin_tx_clk);
+  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_9, k_ra_pin_6), (int)k_ra_board_eth_pin_rxd0);
+  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_9, k_ra_pin_7), (int)k_ra_board_eth_pin_rxd1);
+  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_9, k_ra_pin_8), (int)k_ra_board_eth_pin_rxd2);
+  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_9, k_ra_pin_9), (int)k_ra_board_eth_pin_rxd3);
+  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_2, k_ra_pin_6), (int)k_ra_board_eth_pin_rx_ctl);
+  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_9, k_ra_pin_5), (int)k_ra_board_eth_pin_rx_clk);
+  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_7, k_ra_pin_8), (int)k_ra_board_eth_pin_rstn);
+  TEST_END("ethernet pins match UM Table 26");
+}
+
+static void test_ethernet_index_constants(void)
+{
+  TEST_BEGIN("ethernet ETHA/RMAC port + PHY addr defaults");
+  /* The on-board PHY is on ETHA0 / RMAC0, MDIO addr 0 (PEF7071 strap). */
+  TEST_ASSERT_EQ((int)0, (int)k_ra_board_eth_etha_port);
+  TEST_ASSERT_EQ((int)0, (int)k_ra_board_eth_rmac_port);
+  TEST_ASSERT_EQ((int)0, (int)k_ra_board_eth_phy_addr);
+  TEST_END("ethernet ETHA/RMAC port + PHY addr defaults");
+}
+
 int32_t main(void)
 {
   test_board_get_info();
@@ -299,6 +390,12 @@ int32_t main(void)
   test_extmem_sizes();
   test_mipi_dsi_pins();
   test_stubs_return_not_supported();
+  test_uart_console_pins();
+  test_uart_console_init_rejects_zero_baud();
+  test_uart_console_write_validates();
+  test_uart_console_read_validates();
+  test_ethernet_pins();
+  test_ethernet_index_constants();
   (void)fprintf(stderr, "[OK ] test_ra_board_ek_ra8d2.c\n");
   return 0;
 }
