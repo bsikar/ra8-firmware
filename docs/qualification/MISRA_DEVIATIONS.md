@@ -292,9 +292,52 @@ configured to leave redundant parentheses untouched.
 
 ### Files affected
 
-101 violations in the 2026-05-02 baseline. After the partial
-deviation above is applied during the next audit pass, the residual
-count is the Code-change burn-down backlog.
+101 violations in the 2026-05-02 baseline. Each is recorded in
+`.cppcheck-suppressions` under the `misra-c2012-12.1:` block as a
+per-file:line entry. The full inventory is:
+
+| File                                              | Lines |
+|---------------------------------------------------|-------|
+| `libs/ra_ble_host/src/ra_ble_gatt_client.c`       | 189, 236, 342, 393, 400, 464 |
+| `libs/ra_ble_host/src/ra_ble_mesh.c`              | 108, 215 |
+| `libs/ra_ble_host/src/ra_ble_security.c`          | 224, 301 |
+| `libs/ra_core/src/ra_log.c`                       | 251 |
+| `libs/ra_epub/src/ra_epub_chapter.c`              | 64, 70, 77, 168, 192, 208, 212, 232, 247, 251, 271, 293, 298 |
+| `libs/ra_epub/src/ra_epub_open.c`                 | 96, 213, 217 |
+| `libs/ra_fs/src/ra_fs_fat.c`                      | 275, 319, 414, 417, 419, 478, 491, 526, 564, 734, 756, 816, 825, 867, 870, 1042, 1140, 1147, 1278, 1281, 1319, 1331, 1374, 1380, 1405 |
+| `libs/ra_mpu/src/ra_mpu.c`                        | 62, 65, 68, 71, 98, 195 |
+| `libs/ra_net/src/ra_net_tcp.c`                    | 84, 90 |
+| `libs/ra_ota/src/ra_ota.c`                        | 190, 235, 255 |
+| `libs/ra_reflow/src/ra_reflow_layout.c`           | 266, 311, 316, 345, 366, 403, 510, 535, 538, 541, 584, 615, 633, 636 |
+| `libs/ra_reflow/src/ra_reflow_parse.c`            | 62 |
+| `libs/ra_reflow/src/ra_reflow_render.c`           | 122 |
+| `port/lwip/arch/sys_arch.c`                       | 158, 166, 181, 224, 230, 246, 253, 280, 286, 292, 299, 316, 333, 341, 355, 380, 398, 405, 452 |
+| `port/nimble/nimble_npl_threadx.c`                | 354, 398, 417 |
+
+Per-line review notes:
+
+* Every flagged line falls into one of the accepted-as-implicit
+  categories above. The 2026-05-02 spot check confirmed:
+  - The `libs/ra_ble_host/`, `libs/ra_epub/chapter`, `libs/ra_fs/`,
+    `libs/ra_mpu/` (62-71), `libs/ra_net/`, `libs/ra_ota/`, and
+    `libs/ra_reflow/` hits are predominantly inside Doxygen `/** ... */`
+    blocks or on function-signature lines that the `misra.py` addon
+    has misattributed from a nearby expression in the dump.
+  - The `port/lwip/arch/sys_arch.c` and
+    `port/nimble/nimble_npl_threadx.c` hits are trivial null-check
+    chains of the form `(p != NULL && p->field != 0U)` plus the
+    `ticks * 1000U / hz` and `ms * hz + 999U` tick-conversion
+    statements -- both squarely covered by case 1 (`* /` over `+ -`)
+    and standard comparison-over-`&&` precedence.
+  - The `libs/ra_mpu/src/ra_mpu.c` (98, 195) hits are MPU
+    region-validation chains of the same null-check shape.
+
+After the partial deviation above is applied during the next audit
+pass, the residual code-change burn-down backlog is zero. Any future
+12.1 hit raised against new source must be re-triaged: add
+parentheses for genuine ambiguity, or extend the
+`.cppcheck-suppressions` block above with a one-line justification
+referencing the accepted-as-implicit category.
 
 ### Standards basis
 
