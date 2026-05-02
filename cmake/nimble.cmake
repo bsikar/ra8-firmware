@@ -74,11 +74,27 @@ endif()
 # without the per-app CMakeLists having to enumerate the path list.
 add_library(nimble INTERFACE)
 
+# Apps that link `nimble` are by definition the cross-compiled target
+# build, so any TU that pulls in NimBLE headers via this interface
+# library should also see RA_TARGET_BUILD. The host unit-test build in
+# tests/CMakeLists.txt does not link `nimble`, so it stays unaffected
+# and the wrappers fall through to their portable bookkeeping path.
+target_compile_definitions(nimble INTERFACE RA_TARGET_BUILD)
+
 target_include_directories(nimble SYSTEM INTERFACE
     ${_RA_NIMBLE_VENDOR_DIR}/nimble/include
     ${_RA_NIMBLE_VENDOR_DIR}/nimble/host/include
     ${_RA_NIMBLE_VENDOR_DIR}/nimble/transport/include
     ${_RA_NIMBLE_VENDOR_DIR}/porting/nimble/include
+    # Upstream ``nimble/nimble_npl.h`` chains to ``nimble/nimble_npl_os.h``
+    # which is provided per-port. Our ThreadX NPL adapter
+    # (``port/nimble/nimble_npl_threadx.h``) does not yet ship that shim,
+    # so the upstream "dummy" port's header is used to satisfy the chain
+    # for translation-units that only reference NimBLE host APIs by
+    # function name (e.g. libs/ra_ble_host/src/ra_ble_*.c). Code paths
+    # that actually exercise NPL primitives go through
+    # nimble_port_threadx, which carries its own ThreadX-typed NPL.
+    ${_RA_NIMBLE_VENDOR_DIR}/porting/npl/dummy/include
 )
 
 # NimBLE's NPL header pulls ThreadX primitives in via our
