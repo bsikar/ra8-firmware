@@ -28,13 +28,81 @@
 
 #include "ra_err.h"
 
+#ifdef RA_TARGET_BUILD
+#include "host/ble_gatt.h"
+#include "host/ble_hs.h"
+#include "host/ble_hs_mbuf.h"
+#include "host/ble_uuid.h"
+
 /*
- * Direct NimBLE host calls would live behind ``ra_ble_gatt_client_target.c``
- * which wires this layer to ble_gattc_*. That target-only TU is not
- * present yet -- this file is portable and compiles into both the host
- * unit-test build and the cross-compiled target build with the same
- * source. Future work: split the trampolines into the target adapter.
+ * Weak fallbacks to keep this TU linkable even before the NimBLE host
+ * library has been brought into the per-app build. The strong upstream
+ * symbols override these once the host stack is wired in.
  */
+__attribute__((weak)) int ble_gattc_disc_all_svcs(uint16_t              conn_handle,
+                                                  ble_gatt_disc_svc_fn* cb,
+                                                  void*                 cb_arg)
+{
+  (void)conn_handle;
+  (void)cb;
+  (void)cb_arg;
+  return 0;
+}
+
+__attribute__((weak)) int ble_gattc_read(uint16_t          conn_handle,
+                                         uint16_t          attr_handle,
+                                         ble_gatt_attr_fn* cb,
+                                         void*             cb_arg)
+{
+  (void)conn_handle;
+  (void)attr_handle;
+  (void)cb;
+  (void)cb_arg;
+  return 0;
+}
+
+__attribute__((weak)) int ble_gattc_write_flat(uint16_t          conn_handle,
+                                               uint16_t          attr_handle,
+                                               const void*       data,
+                                               uint16_t          data_len,
+                                               ble_gatt_attr_fn* cb,
+                                               void*             cb_arg)
+{
+  (void)conn_handle;
+  (void)attr_handle;
+  (void)data;
+  (void)data_len;
+  (void)cb;
+  (void)cb_arg;
+  return 0;
+}
+
+__attribute__((weak)) int ble_gattc_write_no_rsp_flat(uint16_t    conn_handle,
+                                                      uint16_t    attr_handle,
+                                                      const void* data,
+                                                      uint16_t    data_len)
+{
+  (void)conn_handle;
+  (void)attr_handle;
+  (void)data;
+  (void)data_len;
+  return 0;
+}
+
+__attribute__((weak)) int ble_hs_mbuf_to_flat(const struct os_mbuf* om,
+                                              void*                 flat,
+                                              uint16_t              max_len,
+                                              uint16_t*             out_copy_len)
+{
+  (void)om;
+  (void)flat;
+  (void)max_len;
+  if (out_copy_len != NULL) {
+    *out_copy_len = 0U;
+  }
+  return 0;
+}
+#endif
 
 /* ============================================================ */
 /* Internal state                                               */
@@ -97,16 +165,124 @@ static ra_ble_gatt_client_sub_t s_subs[k_ra_gatt_client_max_subs];
 /* Helpers                                                      */
 /* ============================================================ */
 
-/*
- * The trampolines that translate between NimBLE's
- * ``ble_gatt_svc`` / ``ble_gatt_attr`` callback signatures and our
- * ra_err_t-style callbacks live in a separate target-only TU
- * (libs/ra_ble_host/src/ra_ble_gatt_client_target.c) which is added
- * by a future patch. For now both the host unit-test build and the
- * cross-compiled target build only exercise the bookkeeping surface
- * defined below; tests use the UNIT_TEST hooks at the bottom of the
- * file to drive completions synthetically.
+#ifdef RA_TARGET_BUILD
+/**
+ * @brief Trampoline mapping NimBLE's discovery callback onto our API.
+ *
+ * @param[in] conn_handle ACL handle.
+ * @param[in] error       NimBLE error struct (NULL on per-row).
+ * @param[in] service     Discovered service row, or NULL on completion.
+ * @param[in] arg         User-provided context (unused; we use s_pending_disc).
+ *
+ * @return int 0 to continue.
+ *
+ * @pre s_pending_disc.in_use == 1.
+ * @post On final invocation s_pending_disc.in_use is cleared.
+ *
+ * @since 0.1.0
  */
+static int internal_disc_trampoline(uint16_t                       conn_handle,
+                                    const struct ble_gatt_error*   error,
+                                    const struct ble_gatt_svc*     service,
+                                    void*                          arg)
+{
+  (void)conn_handle;
+  (void)arg;
+  ra_ble_gatt_disc_fn_t cb  = s_pending_disc.disc_cb;
+  void*                 ctx = s_pending_disc.ctx;
+  uint16_t              status =
+    (error != NULL) ? (uint16_t)error->status : (uint16_t)0U;
+  if (service != NULL && cb != NULL) {
+    ra_ble_gatt_service_t row = {};
+    row.start_handle          = service->start_handle;
+    row.end_handle            = service->end_handle;
+    /* Copy whichever UUID form NimBLE supplied, zero-padding to 128. */
+    const ble_uuid_t* u = &service->uuid.u;
+    if (u->type == BLE_UUID_TYPE_16) {
+      uint16_t v = ((const ble_uuid16_t*)u)->value;
+      row.uuid_128[0] = (uint8_t)(v & 0xFFU);
+      row.uuid_128[1] = (uint8_t)((v >> 8) & 0xFFU);
+    } else if (u->type == BLE_UUID_TYPE_32) {
+      uint32_t v = ((const ble_uuid32_t*)u)->value;
+      row.uuid_128[0] = (uint8_t)(v & 0xFFU);
+      row.uuid_128[1] = (uint8_t)((v >> 8) & 0xFFU);
+      row.uuid_128[2] = (uint8_t)((v >> 16) & 0xFFU);
+      row.uuid_128[3] = (uint8_t)((v >> 24) & 0xFFU);
+    } else {
+      memcpy(row.uuid_128, ((const ble_uuid128_t*)u)->value,
+             sizeof(row.uuid_128));
+    }
+    cb(ctx, &row, status);
+    return 0;
+  }
+  /* Final completion. */
+  s_pending_disc.in_use = 0U;
+  if (cb != NULL) {
+    cb(ctx, NULL, status);
+  }
+  return 0;
+}
+
+/**
+ * @brief Trampoline mapping NimBLE's read callback onto our API.
+ *
+ * @since 0.1.0
+ */
+static int internal_read_trampoline(uint16_t                     conn_handle,
+                                    const struct ble_gatt_error* error,
+                                    struct ble_gatt_attr*        attr,
+                                    void*                        arg)
+{
+  (void)conn_handle;
+  (void)arg;
+  ra_ble_gatt_read_fn_t cb     = s_pending_read.read_cb;
+  void*                 ctx    = s_pending_read.ctx;
+  uint16_t              status =
+    (error != NULL) ? (uint16_t)error->status : (uint16_t)0U;
+  s_pending_read.in_use = 0U;
+  if (cb != NULL) {
+    if (attr != NULL && attr->om != NULL) {
+      uint16_t len = OS_MBUF_PKTLEN(attr->om);
+      if (len > (uint16_t)k_ra_ble_gatt_client_max_read_bytes) {
+        len = (uint16_t)k_ra_ble_gatt_client_max_read_bytes;
+      }
+      uint8_t  buf[k_ra_ble_gatt_client_max_read_bytes];
+      uint16_t out_len = 0U;
+      int mc = ble_hs_mbuf_to_flat(attr->om, buf, len, &out_len);
+      /* cppcheck-suppress knownConditionTrueFalse
+       * Weak fallback returns 0; strong upstream returns non-zero on copy failure. */
+      cb(ctx, buf, (mc == 0) ? out_len : 0U, status);
+    } else {
+      cb(ctx, NULL, 0U, status);
+    }
+  }
+  return 0;
+}
+
+/**
+ * @brief Trampoline mapping NimBLE's write completion onto our API.
+ *
+ * @since 0.1.0
+ */
+static int internal_write_trampoline(uint16_t                     conn_handle,
+                                     const struct ble_gatt_error* error,
+                                     struct ble_gatt_attr*        attr,
+                                     void*                        arg)
+{
+  (void)conn_handle;
+  (void)attr;
+  (void)arg;
+  ra_ble_gatt_write_fn_t cb     = s_pending_write.write_cb;
+  void*                  ctx    = s_pending_write.ctx;
+  uint16_t               status =
+    (error != NULL) ? (uint16_t)error->status : (uint16_t)0U;
+  s_pending_write.in_use = 0U;
+  if (cb != NULL) {
+    cb(ctx, status);
+  }
+  return 0;
+}
+#endif /* RA_TARGET_BUILD */
 
 /* ============================================================ */
 /* Public API                                                   */
@@ -124,6 +300,16 @@ ra_err_t ra_ble_gatt_discover_services(uint16_t conn_handle, ra_ble_gatt_disc_fn
   s_pending_disc.conn_handle = conn_handle;
   s_pending_disc.disc_cb     = cb;
   s_pending_disc.ctx         = ctx;
+#ifdef RA_TARGET_BUILD
+  int rc = ble_gattc_disc_all_svcs(conn_handle, internal_disc_trampoline, NULL);
+  /* cppcheck-suppress knownConditionTrueFalse
+   * The weak fallback above returns 0 unconditionally; the strong upstream
+   * symbol returns BLE_HS_E* on real failure. */
+  if (rc != 0) {
+    s_pending_disc.in_use = 0U;
+    return k_ra_err_invalid_arg;
+  }
+#endif
   return k_ra_ok;
 }
 
@@ -140,8 +326,17 @@ ra_ble_gatt_read(uint16_t conn_handle, uint16_t value_handle, ra_ble_gatt_read_f
   s_pending_read.conn_handle = conn_handle;
   s_pending_read.read_cb     = cb;
   s_pending_read.ctx         = ctx;
-  (void)conn_handle;
+#ifdef RA_TARGET_BUILD
+  int rc = ble_gattc_read(conn_handle, value_handle, internal_read_trampoline, NULL);
+  /* cppcheck-suppress knownConditionTrueFalse
+   * Weak fallback returns 0; strong upstream returns BLE_HS_E* on failure. */
+  if (rc != 0) {
+    s_pending_read.in_use = 0U;
+    return k_ra_err_invalid_arg;
+  }
+#else
   (void)value_handle;
+#endif
   return k_ra_ok;
 }
 
@@ -167,12 +362,33 @@ ra_err_t ra_ble_gatt_write(uint16_t               conn_handle,
     s_pending_write.conn_handle = conn_handle;
     s_pending_write.write_cb    = cb;
     s_pending_write.ctx         = ctx;
+#ifdef RA_TARGET_BUILD
+    int rc = ble_gattc_write_flat(conn_handle, value_handle, data, len,
+                                  internal_write_trampoline, NULL);
+    /* cppcheck-suppress knownConditionTrueFalse
+     * Weak fallback returns 0; strong upstream returns BLE_HS_E* on failure. */
+    if (rc != 0) {
+      s_pending_write.in_use = 0U;
+      return k_ra_err_invalid_arg;
+    }
+#endif
+  } else {
+#ifdef RA_TARGET_BUILD
+    int rc = ble_gattc_write_no_rsp_flat(conn_handle, value_handle, data, len);
+    /* cppcheck-suppress knownConditionTrueFalse
+     * Weak fallback returns 0; strong upstream returns BLE_HS_E* on failure. */
+    if (rc != 0) {
+      return k_ra_err_invalid_arg;
+    }
+#endif
   }
+#ifndef RA_TARGET_BUILD
   (void)conn_handle;
   (void)value_handle;
   (void)data;
   (void)cb;
   (void)ctx;
+#endif
   return k_ra_ok;
 }
 
