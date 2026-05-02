@@ -1115,6 +1115,457 @@ static void test_ulps_lp00_drive_sequence(void)
   TEST_END("mipi_dsi ULPS enter -> exit drives ULPSCR LP-00 pulses");
 }
 
+/* MC/DC vector tests for ra_mipi_dsi.c compound decisions
+ * (DO-178C Level B / IEC 61508 SIL 3 / ISO 26262 ASIL C). */
+
+typedef enum : uint8_t {
+  k_mcdc_dsi_lane_bad_5 = 5U,
+} mcdc_dsi_lane_t;
+
+typedef enum : uint16_t {
+  k_mcdc_dsi_lp_over  = 200U,
+  k_mcdc_dsi_hs_over  = 1100U,
+  k_mcdc_dsi_long_len = 4U,
+} mcdc_dsi_u16_t;
+
+/**
+ * @test test_mcdc_validate_cfg_lane_count
+ * @par MC/DC:
+ * Decision (libs/ra_hal/src/ra_mipi_dsi.c line 240, 2 conditions):
+ * `(lane_count != lanes_1) && (lane_count != lanes_2)`. V1 lc=1 (C1=F ok),
+ * V2 lc=2 (T,F ok), V3 lc=5 (T,T invalid_arg). N+1=3.
+ */
+static void test_mcdc_validate_cfg_lane_count(void)
+{
+  TEST_BEGIN("mipi_dsi MC/DC validate_cfg: lc!=1 && lc!=2");
+  prep();
+  ra_mipi_dsi_config_t cfg = make_cfg();
+  cfg.lane_count           = k_ra_mipi_dsi_lanes_1;
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_mipi_dsi_init(&cfg));
+  prep();
+  cfg            = make_cfg();
+  cfg.lane_count = k_ra_mipi_dsi_lanes_2;
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_mipi_dsi_init(&cfg));
+  prep();
+  cfg            = make_cfg();
+  cfg.lane_count = (ra_mipi_dsi_lane_count_t)k_mcdc_dsi_lane_bad_5;
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_mipi_dsi_init(&cfg));
+  TEST_END("mipi_dsi MC/DC validate_cfg: lc!=1 && lc!=2");
+}
+
+/**
+ * @test test_mcdc_validate_cmd_short_paths
+ * @par MC/DC:
+ * Three decisions in internal_ra_mipi_dsi_validate_cmd
+ * (libs/ra_hal/src/ra_mipi_dsi.c lines 483, 486, 489):
+ *   D_null: `(tx_len > 0) && (p_tx_buffer == NULL)`
+ *   D_lp:   `low_power && (tx_len > k_max_lp_bytes)`
+ *   D_hs:   `(!low_power) && (tx_len > k_max_hs_bytes)`
+ * Driven via send_long_packet. 3 vectors per decision (N+1=9 total).
+ */
+static void test_mcdc_validate_cmd_short_paths(void)
+{
+  TEST_BEGIN("mipi_dsi MC/DC validate_cmd: null/LP/HS guards");
+  prep();
+  const ra_mipi_dsi_config_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_mipi_dsi_init(&cfg));
+  TEST_ASSERT_EQ((int)k_ra_ok,
+                 (int)ra_mipi_dsi_send_long_packet(k_ra_mipi_dsi_dt_null_packet,
+                                                   k_ra_mipi_dsi_vc0,
+                                                   nullptr,
+                                                   0U,
+                                                   false));
+  static const uint8_t four[(uint16_t)k_mcdc_dsi_long_len] = {0x01U, 0x02U, 0x03U, 0x04U};
+  TEST_ASSERT_EQ((int)k_ra_ok,
+                 (int)ra_mipi_dsi_send_long_packet(k_ra_mipi_dsi_dt_dcs_long_write,
+                                                   k_ra_mipi_dsi_vc0,
+                                                   four,
+                                                   (uint16_t)k_mcdc_dsi_long_len,
+                                                   false));
+  TEST_ASSERT_EQ((int)k_ra_err_null_ptr,
+                 (int)ra_mipi_dsi_send_long_packet(k_ra_mipi_dsi_dt_dcs_long_write,
+                                                   k_ra_mipi_dsi_vc0,
+                                                   nullptr,
+                                                   (uint16_t)k_mcdc_dsi_long_len,
+                                                   false));
+  static uint8_t lp_buf[128] = {};
+  TEST_ASSERT_EQ((int)k_ra_ok,
+                 (int)ra_mipi_dsi_send_long_packet(k_ra_mipi_dsi_dt_dcs_long_write,
+                                                   k_ra_mipi_dsi_vc0,
+                                                   lp_buf,
+                                                   128U,
+                                                   true));
+  static uint8_t hs_buf[1024] = {};
+  TEST_ASSERT_EQ((int)k_ra_ok,
+                 (int)ra_mipi_dsi_send_long_packet(k_ra_mipi_dsi_dt_dcs_long_write,
+                                                   k_ra_mipi_dsi_vc0,
+                                                   hs_buf,
+                                                   1024U,
+                                                   false));
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
+                 (int)ra_mipi_dsi_send_long_packet(k_ra_mipi_dsi_dt_dcs_long_write,
+                                                   k_ra_mipi_dsi_vc0,
+                                                   hs_buf,
+                                                   (uint16_t)k_mcdc_dsi_lp_over,
+                                                   true));
+  static uint8_t big_buf[1100] = {};
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
+                 (int)ra_mipi_dsi_send_long_packet(k_ra_mipi_dsi_dt_dcs_long_write,
+                                                   k_ra_mipi_dsi_vc0,
+                                                   big_buf,
+                                                   (uint16_t)k_mcdc_dsi_hs_over,
+                                                   false));
+  TEST_END("mipi_dsi MC/DC validate_cmd: null/LP/HS guards");
+}
+
+/**
+ * @test test_mcdc_make_dsc_a_short_payload
+ * @par MC/DC:
+ * Two decisions in internal_ra_mipi_dsi_make_dsc_a (libs/ra_hal/src/
+ * ra_mipi_dsi.c lines 334, 337):
+ *   D0: `(p_tx_buffer != NULL) && (tx_len > 0)`
+ *   D1: `(p_tx_buffer != NULL) && (tx_len > 1)`
+ * V1 buf!=NULL tx=2 (D0 T,T D1 T,T), V2 buf!=NULL tx=1 (D0 T,T D1 T,F),
+ * V3 buf!=NULL tx=0 (D0 T,F D1 T,F), V4 buf=NULL tx=0 (D0 F D1 F).
+ * N+1=4 over both decisions.
+ */
+static void test_mcdc_make_dsc_a_short_payload(void)
+{
+  TEST_BEGIN("mipi_dsi MC/DC make_dsc_a: short payload byte selection");
+  prep();
+  const ra_mipi_dsi_config_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_mipi_dsi_init(&cfg));
+  volatile r_mipi_dsi_regs_t* reg = ra_mipi_dsi();
+  TEST_ASSERT_EQ((int)k_ra_ok,
+                 (int)ra_mipi_dsi_send_short_packet(k_ra_mipi_dsi_dt_dcs_short_write_1,
+                                                    k_ra_mipi_dsi_vc0,
+                                                    0xA1U,
+                                                    0xB2U));
+  TEST_ASSERT_EQ(0xA1, (int)(reg->SQCH0DSC[0].A & 0xFFU));
+  TEST_ASSERT_EQ(0xB2, (int)((reg->SQCH0DSC[0].A >> 8U) & 0xFFU));
+  prep();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_mipi_dsi_init(&cfg));
+  static const uint8_t one_byte[1] = {0xC3U};
+  TEST_ASSERT_EQ((int)k_ra_ok,
+                 (int)ra_mipi_dsi_send_long_packet(k_ra_mipi_dsi_dt_dcs_short_write_0,
+                                                   k_ra_mipi_dsi_vc0,
+                                                   one_byte,
+                                                   1U,
+                                                   false));
+  TEST_ASSERT_EQ(0xC3, (int)(reg->SQCH1DSC[0].A & 0xFFU));
+  TEST_ASSERT_EQ(0x00, (int)((reg->SQCH1DSC[0].A >> 8U) & 0xFFU));
+  prep();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_mipi_dsi_init(&cfg));
+  static const uint8_t any_byte[1] = {0xDDU};
+  TEST_ASSERT_EQ((int)k_ra_ok,
+                 (int)ra_mipi_dsi_send_long_packet(k_ra_mipi_dsi_dt_dcs_short_write_0,
+                                                   k_ra_mipi_dsi_vc0,
+                                                   any_byte,
+                                                   0U,
+                                                   false));
+  TEST_ASSERT_EQ(0x00, (int)(reg->SQCH1DSC[0].A & 0xFFU));
+  TEST_ASSERT_EQ(0x00, (int)((reg->SQCH1DSC[0].A >> 8U) & 0xFFU));
+  prep();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_mipi_dsi_init(&cfg));
+  TEST_ASSERT_EQ((int)k_ra_ok,
+                 (int)ra_mipi_dsi_send_long_packet(k_ra_mipi_dsi_dt_dcs_short_write_0,
+                                                   k_ra_mipi_dsi_vc0,
+                                                   nullptr,
+                                                   0U,
+                                                   false));
+  TEST_END("mipi_dsi MC/DC make_dsc_a: short payload byte selection");
+}
+
+/**
+ * @test test_mcdc_check_link_state
+ * @par MC/DC:
+ * Decisions (libs/ra_hal/src/ra_mipi_dsi.c lines 721, 729, 2 cond each):
+ *   D_lp:  `cmd->low_power && ((link & VRUN) != 0)`
+ *   D_aux: `cmd->aux_operation && ((link & VRUN) != 0)`
+ * V1 lp+VRUN=0 (F ok), V2 lp+VRUN=1 (T invalid_state), V3 hs+VRUN=1
+ * (D_lp F via C1=F, proceeds). N+1=3 per decision.
+ */
+static void test_mcdc_check_link_state(void)
+{
+  TEST_BEGIN("mipi_dsi MC/DC check_link_state: LP+VRUN guard");
+  prep();
+  const ra_mipi_dsi_config_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_mipi_dsi_init(&cfg));
+  volatile r_mipi_dsi_regs_t* reg = ra_mipi_dsi();
+  reg->LINKSR                     = 0U;
+  TEST_ASSERT_EQ((int)k_ra_ok,
+                 (int)ra_mipi_dsi_send_short_packet(k_ra_mipi_dsi_dt_dcs_short_write_1,
+                                                    k_ra_mipi_dsi_vc0,
+                                                    0x01U,
+                                                    0x02U));
+  reg->LINKSR = (uint32_t)k_ra_mipi_dsi_link_vrun;
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_state,
+                 (int)ra_mipi_dsi_send_short_packet(k_ra_mipi_dsi_dt_dcs_short_write_1,
+                                                    k_ra_mipi_dsi_vc0,
+                                                    0x01U,
+                                                    0x02U));
+  reg->LINKSR                       = (uint32_t)k_ra_mipi_dsi_link_vrun;
+  static const uint8_t hs_payload[] = {0x01U, 0x02U, 0x03U, 0x04U};
+  TEST_ASSERT_EQ((int)k_ra_ok,
+                 (int)ra_mipi_dsi_send_long_packet(k_ra_mipi_dsi_dt_dcs_long_write,
+                                                   k_ra_mipi_dsi_vc0,
+                                                   hs_payload,
+                                                   (uint16_t)sizeof(hs_payload),
+                                                   false));
+  TEST_END("mipi_dsi MC/DC check_link_state: LP+VRUN guard");
+}
+
+/**
+ * @test test_mcdc_send_stage_long
+ * @par MC/DC:
+ * Decision (libs/ra_hal/src/ra_mipi_dsi.c line 790, 2 conditions):
+ * `is_long && (cmd->tx_len > 0)`. V1 long+tx=4 (T,T staged), V2 long+tx=0
+ * (T,F skip), V3 short+tx=2 (F,- skip). N+1=3.
+ */
+static void test_mcdc_send_stage_long(void)
+{
+  TEST_BEGIN("mipi_dsi MC/DC send_stage_and_pulse: is_long && tx_len>0");
+  prep();
+  const ra_mipi_dsi_config_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_mipi_dsi_init(&cfg));
+  volatile r_mipi_dsi_regs_t* reg     = ra_mipi_dsi();
+  static const uint8_t        four[4] = {0x11U, 0x22U, 0x33U, 0x44U};
+  TEST_ASSERT_EQ((int)k_ra_ok,
+                 (int)ra_mipi_dsi_send_long_packet(k_ra_mipi_dsi_dt_dcs_long_write,
+                                                   k_ra_mipi_dsi_vc0,
+                                                   four,
+                                                   4U,
+                                                   false));
+  TEST_ASSERT_EQ(0x44332211, (int)reg->TXPPD0R);
+  prep();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_mipi_dsi_init(&cfg));
+  TEST_ASSERT_EQ((int)k_ra_ok,
+                 (int)ra_mipi_dsi_send_long_packet(k_ra_mipi_dsi_dt_dcs_long_write,
+                                                   k_ra_mipi_dsi_vc0,
+                                                   nullptr,
+                                                   0U,
+                                                   false));
+  TEST_ASSERT_EQ(0, (int)reg->TXPPD0R);
+  prep();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_mipi_dsi_init(&cfg));
+  TEST_ASSERT_EQ((int)k_ra_ok,
+                 (int)ra_mipi_dsi_send_short_packet(k_ra_mipi_dsi_dt_dcs_short_write_1,
+                                                    k_ra_mipi_dsi_vc0,
+                                                    0x01U,
+                                                    0x02U));
+  TEST_END("mipi_dsi MC/DC send_stage_and_pulse: is_long && tx_len>0");
+}
+
+/**
+ * @test test_mcdc_send_long_packet_arg_guard
+ * @par MC/DC:
+ * Decision `(tx_len > 0) && (data == nullptr)` reused at three sites in
+ * libs/ra_hal/src/ra_mipi_dsi.c (lines 846, 1433, 1443). Per site: V1
+ * tx=0 data=NULL (C1=F ok), V2 tx=4 data!=NULL (T,F ok), V3 tx=4
+ * data=NULL (T,T null_ptr). N+1=3 per site, 9 total.
+ */
+static void test_mcdc_send_long_packet_arg_guard(void)
+{
+  TEST_BEGIN("mipi_dsi MC/DC send_long/cmd_long/cmd_payload: tx>0 && data==NULL");
+  prep();
+  const ra_mipi_dsi_config_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_mipi_dsi_init(&cfg));
+  static const uint8_t four[4] = {0x01U, 0x02U, 0x03U, 0x04U};
+  TEST_ASSERT_EQ((int)k_ra_ok,
+                 (int)ra_mipi_dsi_send_long_packet(k_ra_mipi_dsi_dt_null_packet,
+                                                   k_ra_mipi_dsi_vc0,
+                                                   nullptr,
+                                                   0U,
+                                                   false));
+  TEST_ASSERT_EQ((int)k_ra_ok,
+                 (int)ra_mipi_dsi_send_long_packet(k_ra_mipi_dsi_dt_dcs_long_write,
+                                                   k_ra_mipi_dsi_vc0,
+                                                   four,
+                                                   4U,
+                                                   false));
+  TEST_ASSERT_EQ((int)k_ra_err_null_ptr,
+                 (int)ra_mipi_dsi_send_long_packet(k_ra_mipi_dsi_dt_dcs_long_write,
+                                                   k_ra_mipi_dsi_vc0,
+                                                   nullptr,
+                                                   4U,
+                                                   false));
+  prep();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_mipi_dsi_init(&cfg));
+  TEST_ASSERT_EQ((int)k_ra_ok,
+                 (int)ra_mipi_dsi_send_command_long(k_ra_mipi_dsi_dt_null_packet, nullptr, 0U));
+  TEST_ASSERT_EQ((int)k_ra_ok,
+                 (int)ra_mipi_dsi_send_command_long(k_ra_mipi_dsi_dt_dcs_long_write, four, 4U));
+  TEST_ASSERT_EQ((int)k_ra_err_null_ptr,
+                 (int)ra_mipi_dsi_send_command_long(k_ra_mipi_dsi_dt_dcs_long_write, nullptr, 4U));
+  prep();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_mipi_dsi_init(&cfg));
+  TEST_ASSERT_EQ((int)k_ra_ok,
+                 (int)ra_mipi_dsi_send_command_payload(k_ra_mipi_dsi_dt_null_packet, nullptr, 0U));
+  TEST_ASSERT_EQ((int)k_ra_ok,
+                 (int)ra_mipi_dsi_send_command_payload(k_ra_mipi_dsi_dt_dcs_long_write, four, 4U));
+  TEST_ASSERT_EQ(
+    (int)k_ra_err_null_ptr,
+    (int)ra_mipi_dsi_send_command_payload(k_ra_mipi_dsi_dt_dcs_long_write, nullptr, 4U));
+  TEST_END("mipi_dsi MC/DC send_long/cmd_long/cmd_payload: tx>0 && data==NULL");
+}
+
+/**
+ * @test test_mcdc_ulps_enter_exit
+ * @par MC/DC:
+ * Five 2-condition AND decisions in ulps_enter / _exit (libs/ra_hal/src/
+ * ra_mipi_dsi.c lines 905, 910, 914, 929, 933). Combined into a state
+ * walk that traverses 8 calls, isolating each condition by holding the
+ * others constant via mode (continuous vs non-continuous) and prior
+ * call state. The vectors collectively form the N+1 set for all five.
+ */
+static void test_mcdc_ulps_enter_exit(void)
+{
+  TEST_BEGIN("mipi_dsi MC/DC ulps_enter/exit: lane + state guards");
+  prep();
+  const ra_mipi_dsi_config_t cfg_cont = make_cfg();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_mipi_dsi_init(&cfg_cont));
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
+                 (int)ra_mipi_dsi_ulps_enter((uint8_t)k_ra_mipi_dsi_lane_clock));
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_mipi_dsi_ulps_enter((uint8_t)k_ra_mipi_dsi_lane_data));
+  volatile r_mipi_dsi_regs_t* reg = ra_mipi_dsi();
+  TEST_ASSERT(((reg->ULPSCR & (uint32_t)k_ra_mipi_dsi_ulpscr_dlent) != 0U));
+  reg->ULPSCR = 0U;
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_mipi_dsi_ulps_enter((uint8_t)k_ra_mipi_dsi_lane_data));
+  TEST_ASSERT_EQ(0, (int)(reg->ULPSCR & (uint32_t)k_ra_mipi_dsi_ulpscr_dlent));
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_mipi_dsi_ulps_exit((uint8_t)k_ra_mipi_dsi_lane_data));
+  TEST_ASSERT(((reg->ULPSCR & (uint32_t)k_ra_mipi_dsi_ulpscr_dlexit) != 0U));
+  reg->ULPSCR = 0U;
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_mipi_dsi_ulps_exit((uint8_t)k_ra_mipi_dsi_lane_data));
+  TEST_ASSERT_EQ(0, (int)(reg->ULPSCR & (uint32_t)k_ra_mipi_dsi_ulpscr_dlexit));
+  prep();
+  const ra_mipi_dsi_config_t cfg_nc = make_cfg_non_continuous();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_mipi_dsi_init(&cfg_nc));
+  reg = ra_mipi_dsi();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_mipi_dsi_ulps_enter((uint8_t)k_ra_mipi_dsi_lane_clock));
+  TEST_ASSERT(((reg->ULPSCR & (uint32_t)k_ra_mipi_dsi_ulpscr_clent) != 0U));
+  reg->ULPSCR = 0U;
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_mipi_dsi_ulps_enter((uint8_t)k_ra_mipi_dsi_lane_clock));
+  TEST_ASSERT_EQ(0, (int)(reg->ULPSCR & (uint32_t)k_ra_mipi_dsi_ulpscr_clent));
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_mipi_dsi_ulps_exit((uint8_t)k_ra_mipi_dsi_lane_clock));
+  TEST_ASSERT(((reg->ULPSCR & (uint32_t)k_ra_mipi_dsi_ulpscr_clexit) != 0U));
+  TEST_END("mipi_dsi MC/DC ulps_enter/exit: lane + state guards");
+}
+
+/**
+ * @test test_mcdc_set_video_timing_compound
+ * @par MC/DC:
+ * Three decisions in ra_mipi_dsi_set_video_timing (libs/ra_hal/src/
+ * ra_mipi_dsi.c lines 1384/1388/1394): D_sync (2 cond), D_porch (4 cond),
+ * D_active (2 cond). Each condition isolated by setting only that field
+ * over-max while holding the rest in-range. N+1=9 vectors total.
+ */
+static void test_mcdc_set_video_timing_compound(void)
+{
+  TEST_BEGIN("mipi_dsi MC/DC set_video_timing: sync+porch+active overflow");
+  prep();
+  const ra_mipi_dsi_config_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_mipi_dsi_init(&cfg));
+  ra_mipi_dsi_video_timing_t t = make_timing();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_mipi_dsi_set_video_timing(&t));
+  t                 = make_timing();
+  t.horizontal_sync = (uint16_t)0xFFFFU;
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_mipi_dsi_set_video_timing(&t));
+  t               = make_timing();
+  t.vertical_sync = (uint16_t)0xFFFFU;
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_mipi_dsi_set_video_timing(&t));
+  t                       = make_timing();
+  t.horizontal_back_porch = (uint16_t)0xFFFFU;
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_mipi_dsi_set_video_timing(&t));
+  t                        = make_timing();
+  t.horizontal_front_porch = (uint16_t)0xFFFFU;
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_mipi_dsi_set_video_timing(&t));
+  t                     = make_timing();
+  t.vertical_back_porch = (uint16_t)0xFFFFU;
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_mipi_dsi_set_video_timing(&t));
+  t                      = make_timing();
+  t.vertical_front_porch = (uint16_t)0xFFFFU;
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_mipi_dsi_set_video_timing(&t));
+  t                   = make_timing();
+  t.horizontal_active = (uint16_t)0xFFFFU;
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_mipi_dsi_set_video_timing(&t));
+  t                 = make_timing();
+  t.vertical_active = (uint16_t)0xFFFFU;
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_mipi_dsi_set_video_timing(&t));
+  TEST_END("mipi_dsi MC/DC set_video_timing: sync+porch+active overflow");
+}
+
+/**
+ * @test test_mcdc_dispatch_receive_pending
+ * @par MC/DC:
+ * Decision (libs/ra_hal/src/ra_mipi_dsi.c line 1298, 2 conditions):
+ * `(s_pending_rx_buffer != NULL) && (s_pending_rx_len > 0)`. V1 no
+ * pending read, RXRESP set (C1=F no copy), V2 read_packet pending,
+ * RXRESP set (T,T copies). The (buf!=NULL, len=0) row is unreachable
+ * from the public API; documented as deactivated code per DO-178C
+ * 6.4.4.3. N+1=2 for the reachable subset.
+ */
+static void test_mcdc_dispatch_receive_pending(void)
+{
+  TEST_BEGIN("mipi_dsi MC/DC dispatch_receive: pending buf && len>0");
+  prep();
+  const ra_mipi_dsi_config_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_mipi_dsi_init(&cfg));
+  volatile r_mipi_dsi_regs_t* reg = ra_mipi_dsi();
+  reg->RXSR                       = (uint32_t)k_ra_mipi_dsi_rxsr_rxresp;
+  ra_mipi_dsi_dispatch_receive();
+  static uint8_t rx[4] = {};
+  reg->LINKSR          = 0U;
+  TEST_ASSERT_EQ((int)k_ra_ok,
+                 (int)ra_mipi_dsi_read_packet(k_ra_mipi_dsi_dt_dcs_read,
+                                              k_ra_mipi_dsi_vc0,
+                                              0xAAU,
+                                              0x55U,
+                                              rx,
+                                              (uint16_t)sizeof(rx)));
+  reg->RXSR = (uint32_t)k_ra_mipi_dsi_rxsr_rxresp;
+  ra_mipi_dsi_dispatch_receive();
+  TEST_END("mipi_dsi MC/DC dispatch_receive: pending buf && len>0");
+}
+
+/**
+ * @test test_mcdc_program_descriptor_buf_addr
+ * @par MC/DC:
+ * Decision (libs/ra_hal/src/ra_mipi_dsi.c line 756, 2 conditions):
+ * `(cmd->bta == bta_read) || (cmd->p_rx_buffer != NULL)`. V1 bta=none
+ * rx=NULL (F descriptor.D=tx), V2 bta=read rx=buf (C1=T descriptor.D=rx).
+ * The (bta=none, rx!=NULL) row is unreachable from public API (read paths
+ * always set bta=read); documented as deactivated. N+1=2 for the
+ * reachable subset.
+ */
+static void test_mcdc_program_descriptor_buf_addr(void)
+{
+  TEST_BEGIN("mipi_dsi MC/DC program_descriptor: bta==read || p_rx!=NULL");
+  prep();
+  const ra_mipi_dsi_config_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_mipi_dsi_init(&cfg));
+  volatile r_mipi_dsi_regs_t* reg = ra_mipi_dsi();
+  TEST_ASSERT_EQ((int)k_ra_ok,
+                 (int)ra_mipi_dsi_send_short_packet(k_ra_mipi_dsi_dt_dcs_short_write_1,
+                                                    k_ra_mipi_dsi_vc0,
+                                                    0x01U,
+                                                    0x02U));
+  (void)reg->SQCH0DSC[0].D;
+  prep();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_mipi_dsi_init(&cfg));
+  reg                  = ra_mipi_dsi();
+  static uint8_t rx[4] = {};
+  reg->LINKSR          = 0U;
+  TEST_ASSERT_EQ((int)k_ra_ok,
+                 (int)ra_mipi_dsi_read_packet(k_ra_mipi_dsi_dt_dcs_read,
+                                              k_ra_mipi_dsi_vc0,
+                                              0xAAU,
+                                              0x55U,
+                                              rx,
+                                              (uint16_t)sizeof(rx)));
+  TEST_ASSERT_EQ((int)(uintptr_t)rx, (int)reg->SQCH0DSC[0].D);
+  TEST_END("mipi_dsi MC/DC program_descriptor: bta==read || p_rx!=NULL");
+}
+
 int32_t main(void)
 {
   test_init_happy();
@@ -1159,6 +1610,16 @@ int32_t main(void)
   test_send_command_payload_long();
   test_send_command_payload_validation();
   test_ulps_lp00_drive_sequence();
+  test_mcdc_validate_cfg_lane_count();
+  test_mcdc_validate_cmd_short_paths();
+  test_mcdc_make_dsc_a_short_payload();
+  test_mcdc_check_link_state();
+  test_mcdc_send_stage_long();
+  test_mcdc_send_long_packet_arg_guard();
+  test_mcdc_ulps_enter_exit();
+  test_mcdc_set_video_timing_compound();
+  test_mcdc_dispatch_receive_pending();
+  test_mcdc_program_descriptor_buf_addr();
   (void)fprintf(stderr, "[OK  ] test_ra_mipi_dsi.c\n");
   return 0;
 }
