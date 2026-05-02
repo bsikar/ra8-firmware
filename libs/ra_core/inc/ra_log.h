@@ -106,27 +106,201 @@ typedef enum : uint8_t {
  * requires no hardware setup beyond this call. A UART backend is
  * provided as an alternative for boards without a J-Link.
  *
+ * @return None.
+ * @retval None
+ *
+ * @pre `SystemInit()` has run.
+ * @pre Called exactly once.
+ * @post Log calls become routable.
+ * @post No global flag is set -- backend readiness is detected per emit.
+ *
  * @note Log calls made before `ra_log_init()` runs are dropped
- *       silently -- no buffering.
+ *       silently -- no buffering. Not thread-safe.
+ *
+ * @since 0.1.0
  */
 void ra_log_init(void);
 
-/** @brief Emit an ERROR-level log line with only a tag and a message. */
+/**
+ * @brief Emit an ERROR-level log line with only a tag and a message.
+ *
+ * @details Backend entry point for the `ra_log_error()` macro.
+ *
+ * @param[in] tag     Short component tag; must not be NULL.
+ * @param[in] message Free-form ASCII message; must not be NULL.
+ *
+ * @return None.
+ * @retval None
+ *
+ * @pre `tag` and `message` are NUL-terminated strings.
+ * @pre `ra_log_init()` has run (otherwise dropped).
+ * @post One log line emitted or dropped.
+ * @post No caller-visible state modified.
+ *
+ * @note Thread-safety inherited from the backend.
+ *
+ * @since 0.1.0
+ */
 void internal_ra_log_error(const char* tag, const char* message);
-/** @brief Emit a WARN-level log line with only a tag and a message. */
+
+/**
+ * @brief Emit a WARN-level log line with only a tag and a message.
+ *
+ * @details Backend entry point for the `ra_log_warn()` macro.
+ *
+ * @param[in] tag     Short component tag; must not be NULL.
+ * @param[in] message Free-form ASCII message; must not be NULL.
+ *
+ * @return None.
+ * @retval None
+ *
+ * @pre `tag` and `message` are NUL-terminated strings.
+ * @pre `ra_log_init()` has run.
+ * @post One log line emitted or dropped.
+ * @post No caller-visible state modified.
+ *
+ * @note Thread-safety inherited from the backend.
+ *
+ * @since 0.1.0
+ */
 void internal_ra_log_warn(const char* tag, const char* message);
-/** @brief Emit an INFO-level log line with only a tag and a message. */
+
+/**
+ * @brief Emit an INFO-level log line with only a tag and a message.
+ *
+ * @details Backend entry point for the `ra_log_info()` macro.
+ *
+ * @param[in] tag     Short component tag; must not be NULL.
+ * @param[in] message Free-form ASCII message; must not be NULL.
+ *
+ * @return None.
+ * @retval None
+ *
+ * @pre `tag` and `message` are NUL-terminated strings.
+ * @pre `ra_log_init()` has run.
+ * @post One log line emitted or dropped.
+ * @post No caller-visible state modified.
+ *
+ * @note Thread-safety inherited from the backend.
+ *
+ * @since 0.1.0
+ */
 void internal_ra_log_info(const char* tag, const char* message);
-/** @brief Emit a DEBUG-level log line with only a tag and a message. */
+
+/**
+ * @brief Emit a DEBUG-level log line with only a tag and a message.
+ *
+ * @details Backend entry point for the `ra_log_debug()` macro.
+ *
+ * @param[in] tag     Short component tag; must not be NULL.
+ * @param[in] message Free-form ASCII message; must not be NULL.
+ *
+ * @return None.
+ * @retval None
+ *
+ * @pre `tag` and `message` are NUL-terminated strings.
+ * @pre `ra_log_init()` has run.
+ * @post One log line emitted or dropped.
+ * @post No caller-visible state modified.
+ *
+ * @note Thread-safety inherited from the backend.
+ *
+ * @since 0.1.0
+ */
 void internal_ra_log_debug(const char* tag, const char* message);
 
-/** @brief Emit an ERROR log line with a `uint32_t` companion value. */
+/**
+ * @brief Emit an ERROR log line with a `uint32_t` companion value.
+ *
+ * @details Adds `=<decimal>` to the line emitted by `internal_ra_log_error`.
+ *
+ * @param[in] tag     Short component tag; must not be NULL.
+ * @param[in] message Free-form ASCII message; must not be NULL.
+ * @param[in] value   Unsigned numeric companion appended to the line.
+ *
+ * @return None.
+ * @retval None
+ *
+ * @pre `tag` and `message` are NUL-terminated strings.
+ * @pre `ra_log_init()` has run.
+ * @post One log line emitted or dropped.
+ * @post No caller-visible state modified.
+ *
+ * @note Thread-safety inherited from the backend.
+ *
+ * @since 0.1.0
+ */
 void internal_ra_log_error_val(const char* tag, const char* message, uint32_t value);
-/** @brief Emit a WARN log line with a `uint32_t` companion value. */
+
+/**
+ * @brief Emit a WARN log line with a `uint32_t` companion value.
+ *
+ * @details Adds `=<decimal>` to the line emitted by `internal_ra_log_warn`.
+ *
+ * @param[in] tag     Short component tag; must not be NULL.
+ * @param[in] message Free-form ASCII message; must not be NULL.
+ * @param[in] value   Unsigned numeric companion appended to the line.
+ *
+ * @return None.
+ * @retval None
+ *
+ * @pre `tag` and `message` are NUL-terminated strings.
+ * @pre `ra_log_init()` has run.
+ * @post One log line emitted or dropped.
+ * @post No caller-visible state modified.
+ *
+ * @note Thread-safety inherited from the backend.
+ *
+ * @since 0.1.0
+ */
 void internal_ra_log_warn_val(const char* tag, const char* message, uint32_t value);
-/** @brief Emit an INFO log line with a `uint32_t` companion value. */
+
+/**
+ * @brief Emit an INFO log line with a `uint32_t` companion value.
+ *
+ * @details Adds `=<decimal>` to the line emitted by `internal_ra_log_info`.
+ *
+ * @param[in] tag     Short component tag; must not be NULL.
+ * @param[in] message Free-form ASCII message; must not be NULL.
+ * @param[in] value   Unsigned numeric companion appended to the line.
+ *
+ * @return None.
+ * @retval None
+ *
+ * @pre `tag` and `message` are NUL-terminated strings.
+ * @pre `ra_log_init()` has run.
+ * @post One log line emitted or dropped.
+ * @post No caller-visible state modified.
+ *
+ * @note Thread-safety inherited from the backend.
+ *
+ * @since 0.1.0
+ */
 void internal_ra_log_info_val(const char* tag, const char* message, uint32_t value);
-/** @brief Emit a DEBUG log line with an `int32_t` companion value. */
+
+/**
+ * @brief Emit a DEBUG log line with an `int32_t` companion value.
+ *
+ * @details Adds `=<signed-decimal>` to the line emitted by
+ *          `internal_ra_log_debug`. Signed companion is intentional --
+ *          debug traces frequently emit deltas.
+ *
+ * @param[in] tag     Short component tag; must not be NULL.
+ * @param[in] message Free-form ASCII message; must not be NULL.
+ * @param[in] value   Signed numeric companion appended to the line.
+ *
+ * @return None.
+ * @retval None
+ *
+ * @pre `tag` and `message` are NUL-terminated strings.
+ * @pre `ra_log_init()` has run.
+ * @post One log line emitted or dropped.
+ * @post No caller-visible state modified.
+ *
+ * @note Thread-safety inherited from the backend.
+ *
+ * @since 0.1.0
+ */
 void internal_ra_log_debug_val(const char* tag, const char* message, int32_t value);
 
 /* =============================================================================
