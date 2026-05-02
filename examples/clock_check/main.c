@@ -48,6 +48,7 @@
 
 #include <stdint.h>
 
+#include "ra_board_ek_ra8d2.h"
 #include "ra_cgc.h"
 #include "ra_err.h"
 #include "ra_isr.h"
@@ -78,15 +79,15 @@ typedef enum : uint32_t {
  */
 [[nodiscard]] static ra_err_t clock_check_pins_init(void)
 {
-  ra_err_t err = ra_gpio_output_init(k_ra_pin_led1, k_ra_level_low);
+  ra_err_t err = ra_board_led_init(k_ra_board_led1);
   if (err != k_ra_ok) {
     return err;
   }
-  err = ra_gpio_output_init(k_ra_pin_led2, k_ra_level_low);
+  err = ra_board_led_init(k_ra_board_led2);
   if (err != k_ra_ok) {
     return err;
   }
-  return ra_gpio_output_init(k_ra_pin_led3, k_ra_level_low);
+  return ra_board_led_init(k_ra_board_led3);
 }
 
 /**
@@ -105,15 +106,15 @@ typedef enum : uint32_t {
  */
 [[nodiscard]] static ra_err_t clock_check_pins_toggle_all(void)
 {
-  ra_err_t err = ra_gpio_toggle(k_ra_pin_led1);
+  ra_err_t err = ra_board_led_toggle(k_ra_board_led1);
   if (err != k_ra_ok) {
     return err;
   }
-  err = ra_gpio_toggle(k_ra_pin_led2);
+  err = ra_board_led_toggle(k_ra_board_led2);
   if (err != k_ra_ok) {
     return err;
   }
-  return ra_gpio_toggle(k_ra_pin_led3);
+  return ra_board_led_toggle(k_ra_board_led3);
 }
 
 /**
