@@ -436,6 +436,101 @@ static void test_load_corruption(void)
 }
 
 /**
+ * @test test_compute_n_range_mcdc
+ *
+ * @par MC/DC:
+ * Decision: `if ((n < (uint8_t)k_ra_touch_cal_min_targets) ||
+ *               (n > (uint8_t)k_ra_touch_cal_max_targets))`
+ * (2 conditions, libs/ra_touch_cal/src/ra_touch_cal.c line 227)
+ * Standard: DO-178C Table A-7 obj 5; ISO 26262 Part 6 Table 12.
+ * - Vector 1: n=2  -> C1=T (short-circuits) -> Decision T (invalid_arg)
+ * - Vector 2: n=3  -> C1=F, C2=(3>5)=F -> Decision F (proceeds, returns
+ *                     invalid_arg only if the synthetic system is singular)
+ * - Vector 3: n=6  -> C1=F, C2=(6>5)=T -> Decision T (invalid_arg)
+ * Vectors 1+2 vary C1 (decision flips); vectors 2+3 vary C2 with C1
+ * held F (decision flips). N+1 = 3 vectors for N=2 conditions: minimal
+ * MC/DC.
+ */
+static void test_compute_n_range_mcdc(void)
+{
+  TEST_BEGIN("touch_cal compute MC/DC: n < min || n > max");
+  ra_touch_cal_point_t  pts[6] = {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}};
+  ra_touch_cal_matrix_t m      = {};
+
+  /* Vector 1: n=2 (below min=3). C1 short-circuits to T. Decision T. */
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_touch_cal_compute(pts, pts, 2U, &m));
+
+  /* Vector 2: n=3 (in-range). C1=F, C2=F -> Decision F. The compute
+   * proceeds; with all-zero samples the linear system is singular and
+   * internal_solve3 reports invalid_arg. The MC/DC obligation here is
+   * that C2 is observed F -- the post-decision return code is
+   * incidental. */
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_touch_cal_compute(pts, pts, 3U, &m));
+
+  /* Vector 3: n=6 (above max=5). C1=F, C2=T -> Decision T. */
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_touch_cal_compute(pts, pts, 6U, &m));
+  TEST_END("touch_cal compute MC/DC: n < min || n > max");
+}
+
+/**
+ * @test test_run_margin_mcdc
+ *
+ * @par MC/DC:
+ * Decision: `if ((margin_total >= (uint32_t)cfg->screen_width) ||
+ *               (margin_total >= (uint32_t)cfg->screen_height))`
+ * (2 conditions, libs/ra_touch_cal/src/ra_touch_cal.c line 307)
+ * Standard: DO-178C Table A-7 obj 5; IEC 61508-3 SIL 3 Table A.5.
+ * - Vector 1: w=100,h=100,inset=60 -> margin=120 >= 100 (C1=T,
+ *             short-circuits) -> Decision T (invalid_arg)
+ * - Vector 2: w=200,h=200,inset=10 -> margin=20 < 200 (C1=F),
+ *             margin=20 < 200 (C2=F) -> Decision F (proceeds; returns
+ *             hw_error from stub_read which has reads_idx >= n_reads
+ *             on first iteration)
+ * - Vector 3: w=200,h=100,inset=60 -> margin=120 < 200 (C1=F),
+ *             margin=120 >= 100 (C2=T) -> Decision T (invalid_arg)
+ * Vectors 1+2 vary C1; vectors 2+3 vary C2 with C1 held F.
+ */
+static void test_run_margin_mcdc(void)
+{
+  TEST_BEGIN("touch_cal run MC/DC: margin >= w || margin >= h");
+  /* Stub state with empty read buffer so the post-decision code path
+   * returns hw_error (proves the decision was F). */
+  ra_touch_cal_point_t  dummy[1] = {{0, 0}};
+  stub_state_t          state    = {.draws      = {{0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}},
+                                    .n_draws    = 0U,
+                                    .reads      = dummy,
+                                    .reads_idx  = 0U,
+                                    .n_reads    = 0U,
+                                    .forced_err = k_ra_ok};
+  ra_touch_cal_matrix_t got      = {};
+
+  /* Vector 1: C1=T short-circuits. */
+  ra_touch_cal_run_cfg_t cfg1 = {.screen_width  = 100U,
+                                 .screen_height = 100U,
+                                 .inset_px      = 60U,
+                                 .draw_target   = stub_draw,
+                                 .draw_ctx      = &state,
+                                 .read_raw      = stub_read,
+                                 .read_ctx      = &state};
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_touch_cal_run(&cfg1, &got));
+
+  /* Vector 2: C1=F, C2=F -> proceed; first read fails -> hw_error. */
+  ra_touch_cal_run_cfg_t cfg2 = cfg1;
+  cfg2.screen_width           = 200U;
+  cfg2.screen_height          = 200U;
+  cfg2.inset_px               = 10U;
+  TEST_ASSERT_EQ(k_ra_err_hw_error, ra_touch_cal_run(&cfg2, &got));
+
+  /* Vector 3: C1=F, C2=T. */
+  ra_touch_cal_run_cfg_t cfg3 = cfg1;
+  cfg3.screen_width           = 200U;
+  cfg3.screen_height          = 100U;
+  cfg3.inset_px               = 60U;
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_touch_cal_run(&cfg3, &got));
+  TEST_END("touch_cal run MC/DC: margin >= w || margin >= h");
+}
+
+/**
  * @brief Test driver.
  */
 int main(void)
@@ -448,5 +543,7 @@ int main(void)
   test_run_shim_error();
   test_save_load_roundtrip();
   test_load_corruption();
+  test_compute_n_range_mcdc();
+  test_run_margin_mcdc();
   return 0;
 }

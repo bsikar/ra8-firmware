@@ -482,6 +482,1001 @@ static void test_aead_invalid_args(void)
   TEST_END("psa aead invalid args");
 }
 
+/* ================================================================== */
+/* MC/DC vectors                                                      */
+/* ================================================================== */
+/*
+ * The vectors below close DO-178C Level B / IEC 61508 SIL 3 MC/DC
+ * obligations for compound boolean decisions in
+ * ``libs/ra_psa_crypto/src/ra_psa_crypto.c``. Each test follows the
+ * canonical N+1 pattern (see tests/test_ra_xspi.c::
+ * test_set_xip_mode_mcdc_addr_bytes for the reference template).
+ */
+
+/**
+ * @enum ra_psa_mcdc_const_t
+ * @brief Magic-number-free vector inputs for the MC/DC tests below.
+ */
+typedef enum : uint16_t {
+  k_psa_mcdc_short_input  = 1U,
+  k_psa_mcdc_short_aad    = 4U,
+  k_psa_mcdc_plain_len    = 8U,
+  k_psa_mcdc_tiny_len     = 8U,
+  k_psa_mcdc_bad_nonce    = 8U,
+  k_psa_mcdc_small_outcap = 2U,
+} ra_psa_mcdc_const_t;
+
+/** @brief Helper: import a valid AES key with the requested usage mask. */
+static ra_psa_key_t mcdc_import_aes_key(ra_psa_key_usage_t usage)
+{
+  const ra_psa_key_attr_t attr = {
+    .type  = k_ra_psa_key_type_aes,
+    .alg   = k_ra_psa_alg_aes_gcm,
+    .usage = usage,
+  };
+  ra_psa_key_t k = NULL;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_psa_key_import(&k, &attr, k_test_aes_key, sizeof(k_test_aes_key)));
+  return k;
+}
+
+/**
+ * @test test_mcdc_handle_valid_range_check
+ * @par MC/DC:
+ * Decision: `if ((handle < base) || (handle >= end))` (2 conditions,
+ * libs/ra_psa_crypto/src/ra_psa_crypto.c line 180,
+ * `internal_handle_valid`). Reached via `ra_psa_key_destroy`.
+ * V1 real slot: C1=F,C2=F -> F. V2 stack ptr below pool: C1=T -> T.
+ * V3 high address: C1=F,C2=T -> T. N+1 = 3 vectors for N=2.
+ */
+static void test_mcdc_handle_valid_range_check(void)
+{
+  TEST_BEGIN("psa MC/DC: handle range (handle<base || handle>=end)");
+  prep_init();
+  ra_psa_key_t real = mcdc_import_aes_key(k_ra_psa_usage_encrypt);
+  TEST_ASSERT_NOT_NULL(real);
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_psa_key_destroy(real));
+  uint8_t            on_stack = 0U;
+  const ra_psa_key_t below    = (ra_psa_key_t)&on_stack;
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_psa_key_destroy(below));
+  const ra_psa_key_t high = (ra_psa_key_t)(uintptr_t)0x7FFFFFFFFFFFUL;
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_psa_key_destroy(high));
+  teardown();
+  TEST_END("psa MC/DC: handle range (handle<base || handle>=end)");
+}
+
+/**
+ * @test test_mcdc_key_import_arg_quad
+ * @par MC/DC:
+ * Decision: `if ((out_handle == NULL) || (attr == NULL) ||
+ *               (data == NULL) || (data_len == 0U))` (4 conditions,
+ * libs/ra_psa_crypto/src/ra_psa_crypto.c line 673, `ra_psa_key_import`).
+ * V1 all valid -> F. V2 out=NULL -> C1=T. V3 attr=NULL -> C2=T.
+ * V4 data=NULL -> C3=T. V5 len=0 -> C4=T. N+1 = 5 vectors for N=4.
+ */
+static void test_mcdc_key_import_arg_quad(void)
+{
+  TEST_BEGIN("psa MC/DC: import arg quad (out||attr||data||len)");
+  prep_init();
+  const ra_psa_key_attr_t attr = {.type  = k_ra_psa_key_type_aes,
+                                  .alg   = k_ra_psa_alg_aes_gcm,
+                                  .usage = k_ra_psa_usage_encrypt};
+  ra_psa_key_t            k    = NULL;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_psa_key_import(&k, &attr, k_test_aes_key, sizeof(k_test_aes_key)));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_psa_key_destroy(k));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_psa_key_import(NULL, &attr, k_test_aes_key, sizeof(k_test_aes_key)));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_psa_key_import(&k, NULL, k_test_aes_key, sizeof(k_test_aes_key)));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_psa_key_import(&k, &attr, NULL, sizeof(k_test_aes_key)));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_psa_key_import(&k, &attr, k_test_aes_key, 0U));
+  teardown();
+  TEST_END("psa MC/DC: import arg quad (out||attr||data||len)");
+}
+
+/**
+ * @test test_mcdc_hash_compute_out_pair
+ * @par MC/DC:
+ * Decision: `if ((out == NULL) || (out_len == NULL))` (2 conditions,
+ * libs/ra_psa_crypto/src/ra_psa_crypto.c line 735). N+1 = 3 vectors for N=2.
+ */
+static void test_mcdc_hash_compute_out_pair(void)
+{
+  TEST_BEGIN("psa MC/DC: hash_compute (out||out_len) NULL pair");
+  prep_init();
+  uint8_t       out[k_ra_psa_sha256_len];
+  size_t        ol  = 0U;
+  const uint8_t inp = (uint8_t)'a';
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_psa_hash_compute(k_ra_psa_alg_sha_256,
+                                              &inp,
+                                              (size_t)k_psa_mcdc_short_input,
+                                              out,
+                                              sizeof(out),
+                                              &ol));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_psa_hash_compute(k_ra_psa_alg_sha_256,
+                                              &inp,
+                                              (size_t)k_psa_mcdc_short_input,
+                                              NULL,
+                                              sizeof(out),
+                                              &ol));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_psa_hash_compute(k_ra_psa_alg_sha_256,
+                                              &inp,
+                                              (size_t)k_psa_mcdc_short_input,
+                                              out,
+                                              sizeof(out),
+                                              NULL));
+  teardown();
+  TEST_END("psa MC/DC: hash_compute (out||out_len) NULL pair");
+}
+
+/**
+ * @test test_mcdc_hash_compute_input_and_len
+ * @par MC/DC:
+ * Decision: `if ((input == NULL) && (input_len != 0U))` (2 conditions,
+ * libs/ra_psa_crypto/src/ra_psa_crypto.c line 738).
+ * V1 NULL,len=0 -> C1=T,C2=F -> F. V2 !=NULL,len=1 -> C1=F -> F.
+ * V3 NULL,len=1 -> C1=T,C2=T -> T. N+1 = 3 vectors for N=2.
+ */
+static void test_mcdc_hash_compute_input_and_len(void)
+{
+  TEST_BEGIN("psa MC/DC: hash_compute (input==NULL && len!=0)");
+  prep_init();
+  uint8_t       out[k_ra_psa_sha256_len];
+  size_t        ol  = 0U;
+  const uint8_t inp = (uint8_t)'a';
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_ok,
+    (int32_t)ra_psa_hash_compute(k_ra_psa_alg_sha_256, NULL, 0U, out, sizeof(out), &ol));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_psa_hash_compute(k_ra_psa_alg_sha_256,
+                                              &inp,
+                                              (size_t)k_psa_mcdc_short_input,
+                                              out,
+                                              sizeof(out),
+                                              &ol));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_psa_hash_compute(k_ra_psa_alg_sha_256,
+                                              NULL,
+                                              (size_t)k_psa_mcdc_short_input,
+                                              out,
+                                              sizeof(out),
+                                              &ol));
+  teardown();
+  TEST_END("psa MC/DC: hash_compute (input==NULL && len!=0)");
+}
+
+/**
+ * @test test_mcdc_sign_hash_arg_triple
+ * @par MC/DC:
+ * Decision: `if ((hash == NULL) || (sig == NULL) || (sig_len == NULL))`
+ * (3 conditions, libs/ra_psa_crypto/src/ra_psa_crypto.c line 778).
+ * N+1 = 4 vectors for N=3.
+ */
+static void test_mcdc_sign_hash_arg_triple(void)
+{
+  TEST_BEGIN("psa MC/DC: sign_hash (hash||sig||sig_len) NULL triple");
+  prep_init();
+  const ra_psa_key_attr_t attr = {.type  = k_ra_psa_key_type_ecc_p256_priv,
+                                  .alg   = k_ra_psa_alg_ecdsa_sha_256,
+                                  .usage = k_ra_psa_usage_sign};
+  ra_psa_key_t            k    = NULL;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_psa_key_import(&k, &attr, k_test_ecdsa_key, sizeof(k_test_ecdsa_key)));
+  uint8_t hash[k_ra_psa_sha256_len] = {};
+  uint8_t sig[k_ra_psa_max_sig_bytes];
+  size_t  sl = 0U;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_psa_sign_hash(
+                   k, k_ra_psa_alg_ecdsa_sha_256, hash, sizeof(hash), sig, sizeof(sig), &sl));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_psa_sign_hash(
+                   k, k_ra_psa_alg_ecdsa_sha_256, NULL, sizeof(hash), sig, sizeof(sig), &sl));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_psa_sign_hash(
+                   k, k_ra_psa_alg_ecdsa_sha_256, hash, sizeof(hash), NULL, sizeof(sig), &sl));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_psa_sign_hash(
+                   k, k_ra_psa_alg_ecdsa_sha_256, hash, sizeof(hash), sig, sizeof(sig), NULL));
+  (void)ra_psa_key_destroy(k);
+  teardown();
+  TEST_END("psa MC/DC: sign_hash (hash||sig||sig_len) NULL triple");
+}
+
+/**
+ * @test test_mcdc_verify_hash_arg_pair
+ * @par MC/DC:
+ * Decision: `if ((hash == NULL) || (sig == NULL))` (2 conditions,
+ * libs/ra_psa_crypto/src/ra_psa_crypto.c line 834). N+1 = 3 vectors for N=2.
+ */
+static void test_mcdc_verify_hash_arg_pair(void)
+{
+  TEST_BEGIN("psa MC/DC: verify_hash (hash||sig) NULL pair");
+  prep_init();
+  const ra_psa_key_attr_t attr = {.type  = k_ra_psa_key_type_ecc_p256_priv,
+                                  .alg   = k_ra_psa_alg_ecdsa_sha_256,
+                                  .usage = (ra_psa_key_usage_t)(k_ra_psa_usage_sign |
+                                                                k_ra_psa_usage_verify)};
+  ra_psa_key_t            k    = NULL;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_psa_key_import(&k, &attr, k_test_ecdsa_key, sizeof(k_test_ecdsa_key)));
+  uint8_t hash[k_ra_psa_sha256_len] = {};
+  uint8_t sig[k_ra_psa_sha256_len]  = {};
+  size_t  sl                        = 0U;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_psa_sign_hash(
+                   k, k_ra_psa_alg_ecdsa_sha_256, hash, sizeof(hash), sig, sizeof(sig), &sl));
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_ok,
+    (int32_t)ra_psa_verify_hash(k, k_ra_psa_alg_ecdsa_sha_256, hash, sizeof(hash), sig, sl));
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_invalid_arg,
+    (int32_t)ra_psa_verify_hash(k, k_ra_psa_alg_ecdsa_sha_256, NULL, sizeof(hash), sig, sl));
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_invalid_arg,
+    (int32_t)ra_psa_verify_hash(k, k_ra_psa_alg_ecdsa_sha_256, hash, sizeof(hash), NULL, sl));
+  (void)ra_psa_key_destroy(k);
+  teardown();
+  TEST_END("psa MC/DC: verify_hash (hash||sig) NULL pair");
+}
+
+/**
+ * @test test_mcdc_aead_encrypt_check_triple
+ * @par MC/DC:
+ * Decision: `if ((nonce == NULL) || (out == NULL) || (out_len == NULL))`
+ * (3 conditions, libs/ra_psa_crypto/src/ra_psa_crypto.c line 894,
+ * `internal_aead_encrypt_check`). N+1 = 4 vectors for N=3.
+ */
+static void test_mcdc_aead_encrypt_check_triple(void)
+{
+  TEST_BEGIN("psa MC/DC: aead_encrypt_check (nonce||out||out_len) NULL triple");
+  prep_init();
+  ra_psa_key_t k = mcdc_import_aes_key((ra_psa_key_usage_t)(k_ra_psa_usage_encrypt));
+  TEST_ASSERT_NOT_NULL(k);
+  const uint8_t plain[k_psa_mcdc_plain_len] = {0U};
+  uint8_t       out[k_psa_mcdc_plain_len + k_ra_psa_gcm_tag_len];
+  size_t        ol = 0U;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_psa_aead_encrypt(k,
+                                              k_ra_psa_alg_aes_gcm,
+                                              k_test_nonce,
+                                              sizeof(k_test_nonce),
+                                              NULL,
+                                              0U,
+                                              plain,
+                                              sizeof(plain),
+                                              out,
+                                              sizeof(out),
+                                              &ol));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_psa_aead_encrypt(k,
+                                              k_ra_psa_alg_aes_gcm,
+                                              NULL,
+                                              sizeof(k_test_nonce),
+                                              NULL,
+                                              0U,
+                                              plain,
+                                              sizeof(plain),
+                                              out,
+                                              sizeof(out),
+                                              &ol));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_psa_aead_encrypt(k,
+                                              k_ra_psa_alg_aes_gcm,
+                                              k_test_nonce,
+                                              sizeof(k_test_nonce),
+                                              NULL,
+                                              0U,
+                                              plain,
+                                              sizeof(plain),
+                                              NULL,
+                                              sizeof(out),
+                                              &ol));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_psa_aead_encrypt(k,
+                                              k_ra_psa_alg_aes_gcm,
+                                              k_test_nonce,
+                                              sizeof(k_test_nonce),
+                                              NULL,
+                                              0U,
+                                              plain,
+                                              sizeof(plain),
+                                              out,
+                                              sizeof(out),
+                                              NULL));
+  (void)ra_psa_key_destroy(k);
+  teardown();
+  TEST_END("psa MC/DC: aead_encrypt_check (nonce||out||out_len) NULL triple");
+}
+
+/**
+ * @test test_mcdc_aead_encrypt_check_plain_aad_quad
+ * @par MC/DC:
+ * Decision: `if (((plain == NULL) && (plain_len != 0U)) ||
+ *               ((aad == NULL) && (aad_len != 0U)))` (4 conditions,
+ * libs/ra_psa_crypto/src/ra_psa_crypto.c line 897). Conditions
+ * A=(plain==NULL), B=(plain_len!=0), C=(aad==NULL), D=(aad_len!=0).
+ * V1 plain!=NULL,plen=8,aad=NULL,alen=0 -> A=F, sub2=F -> F.
+ * V2 plain=NULL,plen=8 -> A=T,B=T -> T. V3 plain=NULL,plen=0 -> A=T,B=F -> F.
+ * V4 aad=NULL,alen=4 -> sub1=F, C=T,D=T -> T. V5 aad!=NULL,alen=0 -> sub2=F -> F.
+ * N+1 = 5 vectors for N=4.
+ */
+static void test_mcdc_aead_encrypt_check_plain_aad_quad(void)
+{
+  TEST_BEGIN("psa MC/DC: encrypt_check (plain==NULL&&len) || (aad==NULL&&len)");
+  prep_init();
+  ra_psa_key_t k = mcdc_import_aes_key((ra_psa_key_usage_t)(k_ra_psa_usage_encrypt));
+  TEST_ASSERT_NOT_NULL(k);
+  const uint8_t plain[k_psa_mcdc_plain_len] = {0U};
+  const uint8_t aad[k_psa_mcdc_short_aad]   = {0U};
+  uint8_t       out[k_psa_mcdc_plain_len + k_ra_psa_gcm_tag_len];
+  size_t        ol = 0U;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_psa_aead_encrypt(k,
+                                              k_ra_psa_alg_aes_gcm,
+                                              k_test_nonce,
+                                              sizeof(k_test_nonce),
+                                              NULL,
+                                              0U,
+                                              plain,
+                                              sizeof(plain),
+                                              out,
+                                              sizeof(out),
+                                              &ol));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_psa_aead_encrypt(k,
+                                              k_ra_psa_alg_aes_gcm,
+                                              k_test_nonce,
+                                              sizeof(k_test_nonce),
+                                              NULL,
+                                              0U,
+                                              NULL,
+                                              sizeof(plain),
+                                              out,
+                                              sizeof(out),
+                                              &ol));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_psa_aead_encrypt(k,
+                                              k_ra_psa_alg_aes_gcm,
+                                              k_test_nonce,
+                                              sizeof(k_test_nonce),
+                                              NULL,
+                                              0U,
+                                              NULL,
+                                              0U,
+                                              out,
+                                              sizeof(out),
+                                              &ol));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_psa_aead_encrypt(k,
+                                              k_ra_psa_alg_aes_gcm,
+                                              k_test_nonce,
+                                              sizeof(k_test_nonce),
+                                              NULL,
+                                              sizeof(aad),
+                                              plain,
+                                              sizeof(plain),
+                                              out,
+                                              sizeof(out),
+                                              &ol));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_psa_aead_encrypt(k,
+                                              k_ra_psa_alg_aes_gcm,
+                                              k_test_nonce,
+                                              sizeof(k_test_nonce),
+                                              aad,
+                                              0U,
+                                              plain,
+                                              sizeof(plain),
+                                              out,
+                                              sizeof(out),
+                                              &ol));
+  (void)ra_psa_key_destroy(k);
+  teardown();
+  TEST_END("psa MC/DC: encrypt_check (plain==NULL&&len) || (aad==NULL&&len)");
+}
+
+/**
+ * @test test_mcdc_aead_encrypt_handle_alg_usage
+ * @par MC/DC:
+ * Decision: `if (!internal_handle_valid(handle) ||
+ *               (alg != k_ra_psa_alg_aes_gcm) ||
+ *               ((handle->attr.usage & k_ra_psa_usage_encrypt) == 0U))`
+ * (3 conditions, libs/ra_psa_crypto/src/ra_psa_crypto.c line 903).
+ * N+1 = 4 vectors for N=3.
+ */
+static void test_mcdc_aead_encrypt_handle_alg_usage(void)
+{
+  TEST_BEGIN("psa MC/DC: encrypt (!valid || alg!=gcm || !usage_encrypt)");
+  prep_init();
+  ra_psa_key_t  k                           = mcdc_import_aes_key(k_ra_psa_usage_encrypt);
+  const uint8_t plain[k_psa_mcdc_plain_len] = {0U};
+  uint8_t       out[k_psa_mcdc_plain_len + k_ra_psa_gcm_tag_len];
+  size_t        ol = 0U;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_psa_aead_encrypt(k,
+                                              k_ra_psa_alg_aes_gcm,
+                                              k_test_nonce,
+                                              sizeof(k_test_nonce),
+                                              NULL,
+                                              0U,
+                                              plain,
+                                              sizeof(plain),
+                                              out,
+                                              sizeof(out),
+                                              &ol));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_psa_aead_encrypt(NULL,
+                                              k_ra_psa_alg_aes_gcm,
+                                              k_test_nonce,
+                                              sizeof(k_test_nonce),
+                                              NULL,
+                                              0U,
+                                              plain,
+                                              sizeof(plain),
+                                              out,
+                                              sizeof(out),
+                                              &ol));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_psa_aead_encrypt(k,
+                                              k_ra_psa_alg_sha_256,
+                                              k_test_nonce,
+                                              sizeof(k_test_nonce),
+                                              NULL,
+                                              0U,
+                                              plain,
+                                              sizeof(plain),
+                                              out,
+                                              sizeof(out),
+                                              &ol));
+  (void)ra_psa_key_destroy(k);
+  ra_psa_key_t k2 = mcdc_import_aes_key(k_ra_psa_usage_decrypt);
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_psa_aead_encrypt(k2,
+                                              k_ra_psa_alg_aes_gcm,
+                                              k_test_nonce,
+                                              sizeof(k_test_nonce),
+                                              NULL,
+                                              0U,
+                                              plain,
+                                              sizeof(plain),
+                                              out,
+                                              sizeof(out),
+                                              &ol));
+  (void)ra_psa_key_destroy(k2);
+  teardown();
+  TEST_END("psa MC/DC: encrypt (!valid || alg!=gcm || !usage_encrypt)");
+}
+
+/**
+ * @test test_mcdc_aead_encrypt_size_pair
+ * @par MC/DC:
+ * Decision: `if ((nonce_len != gcm_nonce_len) ||
+ *               (out_cap < (plain_len + gcm_tag_len)))` (2 conditions,
+ * libs/ra_psa_crypto/src/ra_psa_crypto.c line 907). N+1 = 3 vectors for N=2.
+ */
+static void test_mcdc_aead_encrypt_size_pair(void)
+{
+  TEST_BEGIN("psa MC/DC: encrypt sizes (nonce_len||out_cap)");
+  prep_init();
+  ra_psa_key_t  k                           = mcdc_import_aes_key(k_ra_psa_usage_encrypt);
+  const uint8_t plain[k_psa_mcdc_plain_len] = {0U};
+  uint8_t       out[k_psa_mcdc_plain_len + k_ra_psa_gcm_tag_len];
+  size_t        ol = 0U;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_psa_aead_encrypt(k,
+                                              k_ra_psa_alg_aes_gcm,
+                                              k_test_nonce,
+                                              sizeof(k_test_nonce),
+                                              NULL,
+                                              0U,
+                                              plain,
+                                              sizeof(plain),
+                                              out,
+                                              sizeof(out),
+                                              &ol));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_size,
+                 (int32_t)ra_psa_aead_encrypt(k,
+                                              k_ra_psa_alg_aes_gcm,
+                                              k_test_nonce,
+                                              (size_t)k_psa_mcdc_bad_nonce,
+                                              NULL,
+                                              0U,
+                                              plain,
+                                              sizeof(plain),
+                                              out,
+                                              sizeof(out),
+                                              &ol));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_size,
+                 (int32_t)ra_psa_aead_encrypt(k,
+                                              k_ra_psa_alg_aes_gcm,
+                                              k_test_nonce,
+                                              sizeof(k_test_nonce),
+                                              NULL,
+                                              0U,
+                                              plain,
+                                              sizeof(plain),
+                                              out,
+                                              (size_t)k_psa_mcdc_small_outcap,
+                                              &ol));
+  (void)ra_psa_key_destroy(k);
+  teardown();
+  TEST_END("psa MC/DC: encrypt sizes (nonce_len||out_cap)");
+}
+
+/**
+ * @test test_mcdc_aead_decrypt_check_triple
+ * @par MC/DC:
+ * Decision: `if ((nonce == NULL) || (cipher == NULL) || (out_len == NULL))`
+ * (3 conditions, libs/ra_psa_crypto/src/ra_psa_crypto.c line 994,
+ * `internal_aead_decrypt_check`). N+1 = 4 vectors for N=3.
+ */
+static void test_mcdc_aead_decrypt_check_triple(void)
+{
+  TEST_BEGIN("psa MC/DC: decrypt_check (nonce||cipher||out_len) NULL triple");
+  prep_init();
+  ra_psa_key_t k = mcdc_import_aes_key(
+    (ra_psa_key_usage_t)(k_ra_psa_usage_encrypt | k_ra_psa_usage_decrypt));
+  TEST_ASSERT_NOT_NULL(k);
+  const uint8_t plain[k_psa_mcdc_plain_len] = {0U};
+  uint8_t       ct[k_psa_mcdc_plain_len + k_ra_psa_gcm_tag_len];
+  size_t        ctl = 0U;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_psa_aead_encrypt(k,
+                                              k_ra_psa_alg_aes_gcm,
+                                              k_test_nonce,
+                                              sizeof(k_test_nonce),
+                                              NULL,
+                                              0U,
+                                              plain,
+                                              sizeof(plain),
+                                              ct,
+                                              sizeof(ct),
+                                              &ctl));
+  uint8_t out[k_psa_mcdc_plain_len];
+  size_t  ol = 0U;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_psa_aead_decrypt(k,
+                                              k_ra_psa_alg_aes_gcm,
+                                              k_test_nonce,
+                                              sizeof(k_test_nonce),
+                                              NULL,
+                                              0U,
+                                              ct,
+                                              ctl,
+                                              out,
+                                              sizeof(out),
+                                              &ol));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_psa_aead_decrypt(k,
+                                              k_ra_psa_alg_aes_gcm,
+                                              NULL,
+                                              sizeof(k_test_nonce),
+                                              NULL,
+                                              0U,
+                                              ct,
+                                              ctl,
+                                              out,
+                                              sizeof(out),
+                                              &ol));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_psa_aead_decrypt(k,
+                                              k_ra_psa_alg_aes_gcm,
+                                              k_test_nonce,
+                                              sizeof(k_test_nonce),
+                                              NULL,
+                                              0U,
+                                              NULL,
+                                              ctl,
+                                              out,
+                                              sizeof(out),
+                                              &ol));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_psa_aead_decrypt(k,
+                                              k_ra_psa_alg_aes_gcm,
+                                              k_test_nonce,
+                                              sizeof(k_test_nonce),
+                                              NULL,
+                                              0U,
+                                              ct,
+                                              ctl,
+                                              out,
+                                              sizeof(out),
+                                              NULL));
+  (void)ra_psa_key_destroy(k);
+  teardown();
+  TEST_END("psa MC/DC: decrypt_check (nonce||cipher||out_len) NULL triple");
+}
+
+/**
+ * @test test_mcdc_aead_decrypt_aad_pair
+ * @par MC/DC:
+ * Decision: `if ((aad == NULL) && (aad_len != 0U))` (2 conditions,
+ * libs/ra_psa_crypto/src/ra_psa_crypto.c line 997). N+1 = 3 vectors for N=2.
+ */
+static void test_mcdc_aead_decrypt_aad_pair(void)
+{
+  TEST_BEGIN("psa MC/DC: decrypt_check (aad==NULL && aad_len!=0)");
+  prep_init();
+  ra_psa_key_t k = mcdc_import_aes_key(
+    (ra_psa_key_usage_t)(k_ra_psa_usage_encrypt | k_ra_psa_usage_decrypt));
+  const uint8_t plain[k_psa_mcdc_plain_len] = {0U};
+  const uint8_t aad[k_psa_mcdc_short_aad]   = {0U};
+  uint8_t       ct[k_psa_mcdc_plain_len + k_ra_psa_gcm_tag_len];
+  size_t        ctl = 0U;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_psa_aead_encrypt(k,
+                                              k_ra_psa_alg_aes_gcm,
+                                              k_test_nonce,
+                                              sizeof(k_test_nonce),
+                                              aad,
+                                              sizeof(aad),
+                                              plain,
+                                              sizeof(plain),
+                                              ct,
+                                              sizeof(ct),
+                                              &ctl));
+  uint8_t        out[k_psa_mcdc_plain_len];
+  size_t         ol = 0U;
+  const ra_err_t v1 = ra_psa_aead_decrypt(k,
+                                          k_ra_psa_alg_aes_gcm,
+                                          k_test_nonce,
+                                          sizeof(k_test_nonce),
+                                          NULL,
+                                          0U,
+                                          ct,
+                                          ctl,
+                                          out,
+                                          sizeof(out),
+                                          &ol);
+  TEST_ASSERT(v1 == k_ra_ok || v1 == k_ra_err_crc_mismatch);
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_psa_aead_decrypt(k,
+                                              k_ra_psa_alg_aes_gcm,
+                                              k_test_nonce,
+                                              sizeof(k_test_nonce),
+                                              aad,
+                                              sizeof(aad),
+                                              ct,
+                                              ctl,
+                                              out,
+                                              sizeof(out),
+                                              &ol));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_psa_aead_decrypt(k,
+                                              k_ra_psa_alg_aes_gcm,
+                                              k_test_nonce,
+                                              sizeof(k_test_nonce),
+                                              NULL,
+                                              sizeof(aad),
+                                              ct,
+                                              ctl,
+                                              out,
+                                              sizeof(out),
+                                              &ol));
+  (void)ra_psa_key_destroy(k);
+  teardown();
+  TEST_END("psa MC/DC: decrypt_check (aad==NULL && aad_len!=0)");
+}
+
+/**
+ * @test test_mcdc_aead_decrypt_handle_alg_usage
+ * @par MC/DC:
+ * Decision: `if (!internal_handle_valid(handle) ||
+ *               (alg != k_ra_psa_alg_aes_gcm) ||
+ *               ((handle->attr.usage & k_ra_psa_usage_decrypt) == 0U))`
+ * (3 conditions, libs/ra_psa_crypto/src/ra_psa_crypto.c line 1003).
+ * N+1 = 4 vectors for N=3.
+ */
+static void test_mcdc_aead_decrypt_handle_alg_usage(void)
+{
+  TEST_BEGIN("psa MC/DC: decrypt (!valid || alg!=gcm || !usage_decrypt)");
+  prep_init();
+  ra_psa_key_t k = mcdc_import_aes_key(
+    (ra_psa_key_usage_t)(k_ra_psa_usage_encrypt | k_ra_psa_usage_decrypt));
+  const uint8_t plain[k_psa_mcdc_plain_len] = {0U};
+  uint8_t       ct[k_psa_mcdc_plain_len + k_ra_psa_gcm_tag_len];
+  size_t        ctl = 0U;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_psa_aead_encrypt(k,
+                                              k_ra_psa_alg_aes_gcm,
+                                              k_test_nonce,
+                                              sizeof(k_test_nonce),
+                                              NULL,
+                                              0U,
+                                              plain,
+                                              sizeof(plain),
+                                              ct,
+                                              sizeof(ct),
+                                              &ctl));
+  uint8_t out[k_psa_mcdc_plain_len];
+  size_t  ol = 0U;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_psa_aead_decrypt(k,
+                                              k_ra_psa_alg_aes_gcm,
+                                              k_test_nonce,
+                                              sizeof(k_test_nonce),
+                                              NULL,
+                                              0U,
+                                              ct,
+                                              ctl,
+                                              out,
+                                              sizeof(out),
+                                              &ol));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_psa_aead_decrypt(NULL,
+                                              k_ra_psa_alg_aes_gcm,
+                                              k_test_nonce,
+                                              sizeof(k_test_nonce),
+                                              NULL,
+                                              0U,
+                                              ct,
+                                              ctl,
+                                              out,
+                                              sizeof(out),
+                                              &ol));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_psa_aead_decrypt(k,
+                                              k_ra_psa_alg_sha_256,
+                                              k_test_nonce,
+                                              sizeof(k_test_nonce),
+                                              NULL,
+                                              0U,
+                                              ct,
+                                              ctl,
+                                              out,
+                                              sizeof(out),
+                                              &ol));
+  (void)ra_psa_key_destroy(k);
+  ra_psa_key_t k2 = mcdc_import_aes_key(k_ra_psa_usage_encrypt);
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_psa_aead_decrypt(k2,
+                                              k_ra_psa_alg_aes_gcm,
+                                              k_test_nonce,
+                                              sizeof(k_test_nonce),
+                                              NULL,
+                                              0U,
+                                              ct,
+                                              ctl,
+                                              out,
+                                              sizeof(out),
+                                              &ol));
+  (void)ra_psa_key_destroy(k2);
+  teardown();
+  TEST_END("psa MC/DC: decrypt (!valid || alg!=gcm || !usage_decrypt)");
+}
+
+/**
+ * @test test_mcdc_aead_decrypt_size_pair
+ * @par MC/DC:
+ * Decision: `if ((nonce_len != gcm_nonce_len) ||
+ *               (cipher_len < gcm_tag_len))` (2 conditions,
+ * libs/ra_psa_crypto/src/ra_psa_crypto.c line 1007). N+1 = 3 vectors for N=2.
+ */
+static void test_mcdc_aead_decrypt_size_pair(void)
+{
+  TEST_BEGIN("psa MC/DC: decrypt sizes (nonce_len||cipher_len)");
+  prep_init();
+  ra_psa_key_t k = mcdc_import_aes_key(
+    (ra_psa_key_usage_t)(k_ra_psa_usage_encrypt | k_ra_psa_usage_decrypt));
+  const uint8_t plain[k_psa_mcdc_plain_len] = {0U};
+  uint8_t       ct[k_psa_mcdc_plain_len + k_ra_psa_gcm_tag_len];
+  size_t        ctl = 0U;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_psa_aead_encrypt(k,
+                                              k_ra_psa_alg_aes_gcm,
+                                              k_test_nonce,
+                                              sizeof(k_test_nonce),
+                                              NULL,
+                                              0U,
+                                              plain,
+                                              sizeof(plain),
+                                              ct,
+                                              sizeof(ct),
+                                              &ctl));
+  uint8_t out[k_psa_mcdc_plain_len];
+  size_t  ol = 0U;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_psa_aead_decrypt(k,
+                                              k_ra_psa_alg_aes_gcm,
+                                              k_test_nonce,
+                                              sizeof(k_test_nonce),
+                                              NULL,
+                                              0U,
+                                              ct,
+                                              ctl,
+                                              out,
+                                              sizeof(out),
+                                              &ol));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_size,
+                 (int32_t)ra_psa_aead_decrypt(k,
+                                              k_ra_psa_alg_aes_gcm,
+                                              k_test_nonce,
+                                              (size_t)k_psa_mcdc_bad_nonce,
+                                              NULL,
+                                              0U,
+                                              ct,
+                                              ctl,
+                                              out,
+                                              sizeof(out),
+                                              &ol));
+  uint8_t tiny[k_psa_mcdc_tiny_len] = {0U};
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_size,
+                 (int32_t)ra_psa_aead_decrypt(k,
+                                              k_ra_psa_alg_aes_gcm,
+                                              k_test_nonce,
+                                              sizeof(k_test_nonce),
+                                              NULL,
+                                              0U,
+                                              tiny,
+                                              sizeof(tiny),
+                                              out,
+                                              sizeof(out),
+                                              &ol));
+  (void)ra_psa_key_destroy(k);
+  teardown();
+  TEST_END("psa MC/DC: decrypt sizes (nonce_len||cipher_len)");
+}
+
+/**
+ * @test test_mcdc_aead_decrypt_out_pair
+ * @par MC/DC:
+ * Decision: `if ((out == NULL) && (plain_len != 0U))` (2 conditions,
+ * libs/ra_psa_crypto/src/ra_psa_crypto.c line 1012).
+ * V1 out=NULL,plain_len=0 (cipher = exactly tag) -> C1=T,C2=F -> F.
+ * V2 out!=NULL,plain_len=8 -> C1=F -> F. V3 out=NULL,plain_len=8 -> T.
+ * N+1 = 3 vectors for N=2.
+ */
+static void test_mcdc_aead_decrypt_out_pair(void)
+{
+  TEST_BEGIN("psa MC/DC: decrypt_check (out==NULL && plain_len!=0)");
+  prep_init();
+  ra_psa_key_t k = mcdc_import_aes_key(
+    (ra_psa_key_usage_t)(k_ra_psa_usage_encrypt | k_ra_psa_usage_decrypt));
+  const uint8_t plain[k_psa_mcdc_plain_len] = {0U};
+  uint8_t       ct8[k_psa_mcdc_plain_len + k_ra_psa_gcm_tag_len];
+  size_t        ctl8 = 0U;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_psa_aead_encrypt(k,
+                                              k_ra_psa_alg_aes_gcm,
+                                              k_test_nonce,
+                                              sizeof(k_test_nonce),
+                                              NULL,
+                                              0U,
+                                              plain,
+                                              sizeof(plain),
+                                              ct8,
+                                              sizeof(ct8),
+                                              &ctl8));
+  uint8_t ct0[k_ra_psa_gcm_tag_len];
+  size_t  ctl0 = 0U;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_psa_aead_encrypt(k,
+                                              k_ra_psa_alg_aes_gcm,
+                                              k_test_nonce,
+                                              sizeof(k_test_nonce),
+                                              NULL,
+                                              0U,
+                                              NULL,
+                                              0U,
+                                              ct0,
+                                              sizeof(ct0),
+                                              &ctl0));
+  uint8_t out[k_psa_mcdc_plain_len];
+  size_t  ol = 0U;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_psa_aead_decrypt(k,
+                                              k_ra_psa_alg_aes_gcm,
+                                              k_test_nonce,
+                                              sizeof(k_test_nonce),
+                                              NULL,
+                                              0U,
+                                              ct0,
+                                              ctl0,
+                                              NULL,
+                                              0U,
+                                              &ol));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_psa_aead_decrypt(k,
+                                              k_ra_psa_alg_aes_gcm,
+                                              k_test_nonce,
+                                              sizeof(k_test_nonce),
+                                              NULL,
+                                              0U,
+                                              ct8,
+                                              ctl8,
+                                              out,
+                                              sizeof(out),
+                                              &ol));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_psa_aead_decrypt(k,
+                                              k_ra_psa_alg_aes_gcm,
+                                              k_test_nonce,
+                                              sizeof(k_test_nonce),
+                                              NULL,
+                                              0U,
+                                              ct8,
+                                              ctl8,
+                                              NULL,
+                                              0U,
+                                              &ol));
+  (void)ra_psa_key_destroy(k);
+  teardown();
+  TEST_END("psa MC/DC: decrypt_check (out==NULL && plain_len!=0)");
+}
+
+/**
+ * @test test_mcdc_sim_aead_buf_loops
+ * @par MC/DC:
+ * Loop guards in `internal_sim_aead_tag` (lines 381, 384, 387, 390) and
+ * `internal_sim_keystream` (lines 416, 419) -- each is a 2-condition AND
+ * `(i < N) && (off < sizeof(buf))`. The C2 flip (off >= 256) is structurally
+ * unreachable through the public API: max(key + nonce + aad + cipher) is
+ * bounded by the input-validation checks at lines 894-908 well below 256.
+ * Documented as a deactivated condition under DO-178C 6.4.4.3. We exercise
+ * C1's entered-body and exit transitions for all six loops via an encrypt +
+ * decrypt round-trip with non-trivial inputs.
+ */
+static void test_mcdc_sim_aead_buf_loops(void)
+{
+  TEST_BEGIN("psa MC/DC: sim AEAD/keystream buffer loop guards (C1)");
+  prep_init();
+  ra_psa_key_t k = mcdc_import_aes_key(
+    (ra_psa_key_usage_t)(k_ra_psa_usage_encrypt | k_ra_psa_usage_decrypt));
+  const uint8_t plain[k_psa_mcdc_plain_len] = {0U};
+  const uint8_t aad[k_psa_mcdc_short_aad]   = {0U};
+  uint8_t       ct[k_psa_mcdc_plain_len + k_ra_psa_gcm_tag_len];
+  size_t        ctl = 0U;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_psa_aead_encrypt(k,
+                                              k_ra_psa_alg_aes_gcm,
+                                              k_test_nonce,
+                                              sizeof(k_test_nonce),
+                                              aad,
+                                              sizeof(aad),
+                                              plain,
+                                              sizeof(plain),
+                                              ct,
+                                              sizeof(ct),
+                                              &ctl));
+  uint8_t out[k_psa_mcdc_plain_len];
+  size_t  ol = 0U;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_psa_aead_decrypt(k,
+                                              k_ra_psa_alg_aes_gcm,
+                                              k_test_nonce,
+                                              sizeof(k_test_nonce),
+                                              aad,
+                                              sizeof(aad),
+                                              ct,
+                                              ctl,
+                                              out,
+                                              sizeof(out),
+                                              &ol));
+  uint8_t ct0[k_ra_psa_gcm_tag_len];
+  size_t  ctl0 = 0U;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_psa_aead_encrypt(k,
+                                              k_ra_psa_alg_aes_gcm,
+                                              k_test_nonce,
+                                              sizeof(k_test_nonce),
+                                              NULL,
+                                              0U,
+                                              NULL,
+                                              0U,
+                                              ct0,
+                                              sizeof(ct0),
+                                              &ctl0));
+  (void)ra_psa_key_destroy(k);
+  teardown();
+  TEST_END("psa MC/DC: sim AEAD/keystream buffer loop guards (C1)");
+}
+
 int32_t main(void)
 {
   test_init_double();
@@ -497,6 +1492,22 @@ int32_t main(void)
   test_sign_wrong_alg();
   test_aead_round_trip();
   test_aead_invalid_args();
+  test_mcdc_handle_valid_range_check();
+  test_mcdc_key_import_arg_quad();
+  test_mcdc_hash_compute_out_pair();
+  test_mcdc_hash_compute_input_and_len();
+  test_mcdc_sign_hash_arg_triple();
+  test_mcdc_verify_hash_arg_pair();
+  test_mcdc_aead_encrypt_check_triple();
+  test_mcdc_aead_encrypt_check_plain_aad_quad();
+  test_mcdc_aead_encrypt_handle_alg_usage();
+  test_mcdc_aead_encrypt_size_pair();
+  test_mcdc_aead_decrypt_check_triple();
+  test_mcdc_aead_decrypt_aad_pair();
+  test_mcdc_aead_decrypt_handle_alg_usage();
+  test_mcdc_aead_decrypt_size_pair();
+  test_mcdc_aead_decrypt_out_pair();
+  test_mcdc_sim_aead_buf_loops();
   (void)fprintf(stderr, "[OK  ] test_ra_psa_crypto.c\n");
   return 0;
 }

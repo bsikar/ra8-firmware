@@ -1081,6 +1081,102 @@ static void test_deinit(void)
   TEST_END("vin deinit");
 }
 
+/**
+ * @test test_set_uds_clip_mcdc_bounds
+ *
+ * @par MC/DC:
+ * Decision: `if ((v_size > k_ra_vin_uds_max_clip) ||
+ *               (h_size > k_ra_vin_uds_max_clip))`
+ * (2 conditions, libs/ra_hal/src/ra_vin.c line 436)
+ * Standard: DO-178C Table A-7 obj 5; ISO 26262 Part 6 Table 12.
+ * - Vector 1: v=0xFFFF,h=0     -> C1=T (short-circuits) -> Decision T
+ * - Vector 2: v=0,    h=0      -> C1=F, C2=F -> Decision F (ok)
+ * - Vector 3: v=0,    h=0xFFFF -> C1=F, C2=T -> Decision T
+ * Vectors 1+2 vary C1; vectors 2+3 vary C2 with C1=F. N+1 minimal.
+ */
+static void test_set_uds_clip_mcdc_bounds(void)
+{
+  TEST_BEGIN("vin set_uds_clip MC/DC: v>max || h>max");
+  prep();
+  const ra_vin_config_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_vin_init(&cfg));
+
+  /* Vector 1: v_size > max, h_size in range. C1=T short-circuits. */
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_vin_set_uds_clip(0xFFFFU, 0U));
+  /* Vector 2: both in range. C1=F, C2=F -> ok. */
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_vin_set_uds_clip(0U, 0U));
+  /* Vector 3: v in range, h_size > max. C1=F, C2=T. */
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_vin_set_uds_clip(0U, 0xFFFFU));
+  TEST_END("vin set_uds_clip MC/DC: v>max || h>max");
+}
+
+/**
+ * @test test_set_window_zero_dim_mcdc
+ *
+ * @par MC/DC:
+ * Decision: `if ((w == 0U) || (h == 0U))`
+ * (2 conditions, libs/ra_hal/src/ra_vin.c line 940)
+ * Standard: DO-178C Table A-7 obj 5; IEC 61508-3 SIL 3.
+ * - Vector 1: w=0,  h=10 -> C1=T (short-circuits) -> Decision T
+ * - Vector 2: w=10, h=10 -> C1=F, C2=F -> Decision F (ok path)
+ * - Vector 3: w=10, h=0  -> C1=F, C2=T -> Decision T
+ */
+static void test_set_window_zero_dim_mcdc(void)
+{
+  TEST_BEGIN("vin set_window MC/DC: w==0 || h==0");
+  prep();
+  const ra_vin_config_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_vin_init(&cfg));
+
+  /* Vector 1: w=0. C1=T short-circuits. */
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_vin_set_window(0U, 0U, 0U, 10U));
+  /* Vector 2: both non-zero, end fits. C1=F, C2=F -> ok. */
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_vin_set_window(0U, 0U, 10U, 10U));
+  /* Vector 3: h=0. C1=F, C2=T. */
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_vin_set_window(0U, 0U, 10U, 0U));
+  TEST_END("vin set_window MC/DC: w==0 || h==0");
+}
+
+/**
+ * @test test_set_framebuffers_all_zero_mcdc
+ *
+ * @par MC/DC:
+ * Decision: `if ((mb1 == 0U) && (mb2 == 0U) && (mb3 == 0U))`
+ * (3 conditions, libs/ra_hal/src/ra_vin.c line 709)
+ * Standard: DO-178C Table A-7 obj 5; ISO 26262 Part 6 Table 12.
+ * For an N=3 short-circuiting AND, MC/DC requires N+1 = 4 vectors.
+ * - Vector 1: mb1=0,mb2=0,mb3=0 -> C1=T,C2=T,C3=T -> Decision T (invalid_arg)
+ * - Vector 2: mb1=fb1,_,_       -> C1=F (short-circuits) -> Decision F
+ * - Vector 3: mb1=0,mb2=fb2,_   -> C1=T,C2=F (short-circuits) -> F
+ * - Vector 4: mb1=0,mb2=0,mb3=fb3 -> C1=T,C2=T,C3=F -> Decision F
+ * Pairs proving independence:
+ *   - C1: vec1 vs vec2 (decision flips when C2,C3 are observation-masked
+ *         by short-circuit; valid masking-MC/DC per DO-178C 6.4.4.2)
+ *   - C2: vec3 vs a hypothetical vec where mb1=0,mb2=0,_ -- captured
+ *         by the comparison vec3 vs vec1's prefix (C1=T held), C2 flip
+ *         changes outcome
+ *   - C3: vec4 vs vec1 (C1=T,C2=T held; C3 flip flips outcome)
+ * Subsequent decision at line 712 (alignment check) is exercised by
+ * vectors 2-4 with aligned addresses (k_ra_vin_test_fb*).
+ */
+static void test_set_framebuffers_all_zero_mcdc(void)
+{
+  TEST_BEGIN("vin set_framebuffers MC/DC: mb1==0 && mb2==0 && mb3==0");
+  prep();
+  const ra_vin_config_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_vin_init(&cfg));
+
+  /* Vector 1: all zero -> Decision T -> invalid_arg. */
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_vin_set_framebuffers(0U, 0U, 0U));
+  /* Vector 2: mb1 non-zero -> C1=F short-circuits -> ok. */
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_vin_set_framebuffers((uint32_t)k_ra_vin_test_fb1, 0U, 0U));
+  /* Vector 3: mb1=0, mb2 non-zero -> C1=T, C2=F -> ok. */
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_vin_set_framebuffers(0U, (uint32_t)k_ra_vin_test_fb2, 0U));
+  /* Vector 4: mb1=0, mb2=0, mb3 non-zero -> C1=T,C2=T,C3=F -> ok. */
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_vin_set_framebuffers(0U, 0U, (uint32_t)k_ra_vin_test_fb3));
+  TEST_END("vin set_framebuffers MC/DC: mb1==0 && mb2==0 && mb3==0");
+}
+
 int32_t main(void)
 {
   test_init_happy();
@@ -1129,6 +1225,9 @@ int32_t main(void)
   test_attach_frame_handler();
   test_power_transition();
   test_deinit();
+  test_set_uds_clip_mcdc_bounds();
+  test_set_window_zero_dim_mcdc();
+  test_set_framebuffers_all_zero_mcdc();
   (void)fprintf(stderr, "[OK  ] test_ra_vin.c\n");
   return 0;
 }
