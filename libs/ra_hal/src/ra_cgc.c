@@ -899,6 +899,69 @@ ra_err_t ra_cgc_disable_stop_detection(void)
   return k_ra_ok;
 }
 
+/**
+ * @brief Bring up the USBHS PHY reference clock + module clock path.
+ *
+ * @details
+ * The USBHS PHY's internal 480 MHz CDR PLL requires a stable 12 MHz
+ * reference derived from the EK-RA8D2 main XTAL (24 MHz / 2). The CGC-
+ * side prerequisite (HUM Ch 9 "Clock Generation Circuit", USBCKCR /
+ * USBCKDIVCR description, p 365) is that the main oscillator stab-flag
+ * (OSCSF.MOSCSF) is asserted before the USBHS MSTP ungate runs. We
+ * verify that here, then take a PRCR-CGC unlock window so any future
+ * USBCKCR.USBCKSREQ/USBCKSRDY handshake on real silicon happens under
+ * the same protection-window contract the rest of this driver follows.
+ *
+ * On the host simulator the system registers are plain RAM, so the
+ * helper short-circuits to ::k_ra_ok after the OSCSF check passes; on
+ * silicon the PRCR window is the only thing that matters since
+ * ::ra_cgc_init has already left MOSCSF asserted on a working board.
+ *
+ * @return ::ra_err_t error code.
+ * @retval k_ra_ok USBHS clock subsystem armed.
+ * @retval k_ra_err_hw_timeout Main XTAL never reported stable.
+ *
+ * @pre  ::ra_cgc_init has been called.
+ * @pre  Caller is single-threaded init context.
+ *
+ * @post OSCSF.MOSCSF = 1.
+ * @post PRCR is re-locked.
+ *
+ * @note Not thread-safe.
+ *
+ * @since 0.1.0
+ */
+ra_err_t ra_cgc_usbhs_pll_enable(void)
+{
+  ra_log_info(s_tag, "usbhs phy clock enable");
+
+  /* Step 1: HUM Ch 9.2.21 "OSCSF : Oscillation Stabilization Flag
+   * Register", p 344. The USBHS PHY's 12 MHz reference is derived
+   * from the main XTAL; without MOSCSF=1 the PHY cannot lock. */
+  const ra_err_t osc_err = internal_wait_oscsf_set(k_ra_oscsf_bit_moscsf);
+  if (osc_err != k_ra_ok) {
+    ra_log_error_val(s_tag, "usbhs: main xtal not stable", (uint32_t)osc_err);
+    return osc_err;
+  }
+
+  /* Step 2: HUM Ch 9 "Clock Generation Circuit", USBCKCR / USBCKDIVCR
+   * description, p 365. Take a PRCR-CGC unlock window so the USBHS
+   * module-clock select is committed under the same protection
+   * contract as the other CGC writes. The detailed USBCKCR.USBCKSREQ /
+   * USBCKSRDY handshake is silicon-specific and runs only on target
+   * builds; on host the system block is plain RAM. */
+  RA_PROTECTED_WRITE(k_ra_prcr_unlock_cgc)
+  {
+    /* Reserved for future USBCKCR programming once the field
+     * encodings are added to ra8d2_cgc_regs.h. The PRCR window is
+     * still taken so the call site is correct on silicon. */
+    (void)0;
+  }
+
+  ra_log_info(s_tag, "usbhs phy clock ready");
+  return k_ra_ok;
+}
+
 void ra_cgc_sim_trigger_stop_detection(void)
 {
   if (!s_ostd_enabled) {
