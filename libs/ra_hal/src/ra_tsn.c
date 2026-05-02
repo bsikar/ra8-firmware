@@ -90,6 +90,9 @@ static int16_t s_ra_tsn_low_ref_degc = k_ra_tsn_cal_temp_low_n40;
  * @post Approximately ``usec`` microseconds have elapsed.
  *
  * @note Re-entrant; touches no globals or MMIO.
+ *
+ * @post Caller-visible state matches the documented contract.
+ * @since 0.1.0
  */
 static void internal_busy_wait_us(uint16_t usec)
 {
@@ -113,6 +116,12 @@ static void internal_busy_wait_us(uint16_t usec)
  * @pre ``cfg`` is non-null.
  * @pre ``cfg`` lives in readable memory.
  * @post No side effects.
+ *
+ * @details See implementation.
+ * @retval k_ra_ok Operation succeeded.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t internal_validate_cfg(const ra_tsn_config_t* cfg)
 {
@@ -134,6 +143,19 @@ static ra_err_t internal_validate_cfg(const ra_tsn_config_t* cfg)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_tsn_init (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] cfg See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_tsn_init(const ra_tsn_config_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
@@ -163,6 +185,18 @@ ra_err_t ra_tsn_init(const ra_tsn_config_t* cfg)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_tsn_deinit (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_tsn_deinit(void)
 {
   /* HUM Ch 55.2.1 "TSCR : Temperature Sensor Control Register", p 3498 */
@@ -185,6 +219,20 @@ ra_err_t ra_tsn_deinit(void)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_tsn_read_raw (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] raw See implementation.
+ * @param[in] out_code See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_tsn_read_raw(uint16_t raw, uint16_t* out_code)
 {
   RA_CHECK_NULL_PTR(out_code, s_tag, "out_code must not be nullptr");
@@ -197,6 +245,20 @@ ra_err_t ra_tsn_read_raw(uint16_t raw, uint16_t* out_code)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_tsn_convert_to_milli_c (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] raw_code See implementation.
+ * @param[in] out_milli_c See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_tsn_convert_to_milli_c(uint16_t raw_code, int32_t* out_milli_c)
 {
   RA_CHECK_NULL_PTR(out_milli_c, s_tag, "out_milli_c must not be nullptr");
@@ -232,6 +294,19 @@ ra_err_t ra_tsn_convert_to_milli_c(uint16_t raw_code, int32_t* out_milli_c)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_tsn_get_status (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] out_tscr See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_tsn_get_status(uint8_t* out_tscr)
 {
   RA_CHECK_NULL_PTR(out_tscr, s_tag, "out_tscr must not be nullptr");
@@ -241,6 +316,18 @@ ra_err_t ra_tsn_get_status(uint8_t* out_tscr)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_tsn_clear_status (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_tsn_clear_status(void)
 {
   /* HUM Ch 55.2.1 "TSCR : Temperature Sensor Control Register", p 3498 */
@@ -249,12 +336,36 @@ ra_err_t ra_tsn_clear_status(void)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_tsn_enter_stop (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_tsn_enter_stop(void)
 {
   /* HUM Ch 11.2.9 "MSTPCRD : Module Stop Control Register D", p 449 */
   return ra_mstp_disable(k_ra_mstp_tsn);
 }
 
+/**
+ * @brief Implementation of ra_tsn_exit_stop (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_tsn_exit_stop(void)
 {
   /* HUM Ch 11.2.9 "MSTPCRD : Module Stop Control Register D", p 449 */

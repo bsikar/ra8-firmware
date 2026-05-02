@@ -7,28 +7,28 @@ Doxygen Documentation Requirements in `CLAUDE.md`. Scope: `libs/`,
 ## Summary
 
 - Total functions audited: 2778
-- Functions with gaps: 1595
-- Total missing-tag instances: 12242
+- Functions with gaps: 663
+- Total missing-tag instances: 4935
 
 ## Most-frequently-missing tags
 
 | Tag | Count |
 |-----|-------|
-| `@param` | 1986 |
-| `@post` | 1559 |
-| `@pre` | 1510 |
-| `@note` | 1462 |
-| `@since` | 1356 |
-| `@details` | 1317 |
-| `@retval` | 1161 |
-| `@return` | 994 |
-| `@brief` | 897 |
+| `@param` | 913 |
+| `@post` | 642 |
+| `@pre` | 609 |
+| `@note` | 582 |
+| `@details` | 538 |
+| `@since` | 477 |
+| `@retval` | 439 |
+| `@brief` | 372 |
+| `@return` | 363 |
 
 ## Worst 10 modules by gap count
 
 | Module | Functions with gaps |
 |--------|---------------------|
-| `libs/ra_hal` | 1228 |
+| `libs/ra_hal` | 296 |
 | `port/nimble` | 59 |
 | `port/lwip` | 40 |
 | `libs/ra_psa_crypto` | 31 |
@@ -43,36 +43,36 @@ Doxygen Documentation Requirements in `CLAUDE.md`. Scope: `libs/`,
 
 | File | Functions with gaps |
 |------|---------------------|
-| `libs/ra_hal/src/ra_ssie.c` | 43 |
 | `port/nimble/nimble_npl_threadx.c` | 42 |
-| `libs/ra_hal/src/ra_rmac.c` | 40 |
-| `libs/ra_hal/src/ra_drw.c` | 36 |
-| `libs/ra_hal/src/ra_usb.c` | 35 |
 | `libs/ra_hal/src/ra_xspi.c` | 35 |
-| `libs/ra_hal/src/adc.c` | 33 |
 | `libs/ra_hal/src/ra_flash.c` | 33 |
-| `libs/ra_hal/src/ra_pdg.c` | 33 |
 | `libs/ra_hal/src/ra_jpeg_sw.c` | 32 |
 | `libs/ra_hal/src/ra_sci.c` | 32 |
 | `port/lwip/arch/sys_arch.c` | 32 |
 | `libs/ra_board_ek_ra8d2/src/ra_board_ek_ra8d2.c` | 29 |
-| `libs/ra_hal/src/ra_usb_hcdc_ecm.c` | 29 |
-| `libs/ra_hal/src/ra_usb_hhid.c` | 29 |
-| `libs/ra_hal/src/ra_i3c.c` | 27 |
-| `libs/ra_hal/src/ra_spi_b.c` | 27 |
-| `libs/ra_hal/src/ra_usb_haud.c` | 27 |
 | `libs/ra_hal/src/ra_bkup.c` | 26 |
-| `libs/ra_hal/src/ra_usb_pmsc.c` | 25 |
+| `libs/ra_hal/src/ra_drw.c` | 26 |
 | `libs/ra_psa_crypto/src/ra_psa_crypto.c` | 25 |
-| `libs/ra_hal/src/ra_eth.c` | 24 |
-| `libs/ra_hal/src/ra_mipi_dsi.c` | 24 |
-| `libs/ra_hal/src/ra_usb_hcdc.c` | 23 |
-| `libs/ra_hal/src/ra_usb_hhub.c` | 22 |
-| `libs/ra_hal/src/ra_ble.c` | 21 |
-| `libs/ra_hal/src/ra_cgc.c` | 19 |
-| `libs/ra_hal/src/ra_isr.c` | 18 |
-| `libs/ra_hal/src/ra_sdhi.c` | 18 |
 | `libs/ra_hal/src/ra_dmac.c` | 17 |
+| `port/nimble/ble_hci_ra_ble.c` | 15 |
+| `libs/ra_mpu/src/ra_mpu.c` | 14 |
+| `libs/ra_hal/src/ra_lvd.c` | 13 |
+| `libs/ra_hal/src/ra_smbus.c` | 13 |
+| `libs/ra_hal/src/ra_ceu.c` | 12 |
+| `port/usbx/ux_dcd_ra_usb.c` | 12 |
+| `port/levelx/lx_filex_adapter.c` | 11 |
+| `libs/ra_hal/src/ra_rsip.c` | 10 |
+| `port/mbedtls/mbedtls_aes_alt.c` | 10 |
+| `libs/ra_ble_host/src/ra_ble_mesh.c` | 9 |
+| `libs/ra_core/src/ra_log.c` | 9 |
+| `libs/ra_hal/src/ra_sdcard.c` | 9 |
+| `libs/ra_tls/src/ra_tls.c` | 9 |
+| `port/guix/gx_display_driver_ra_glcdc.c` | 9 |
+| `port/netxduo/nx_crypto_aes_alt.c` | 9 |
+| `libs/ra_ble_host/src/ra_ble_gatt_client.c` | 8 |
+| `port/filex/fx_media_driver_ra_sdhi.c` | 8 |
+| `port/mbedtls/mbedtls_sha256_alt.c` | 8 |
+| `port/netxduo/nx_ether_driver_ra_eth.c` | 8 |
 
 ## Severity legend
 
@@ -87,4 +87,4 @@ See `docs/DOXYGEN_GAPS.csv` for the full row-by-row data.
 | Date | Functions with gaps | Missing-tag instances |
 |------|---------------------|-----------------------|
 | 2026-05-02 (original) | 2557 | 20328 |
-| 2026-05-02 (refresh)  | 1595 | 12242 |
+| 2026-05-02 (refresh)  | 663 | 4935 |

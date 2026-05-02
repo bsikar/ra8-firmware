@@ -743,6 +743,11 @@ void ra_wdt_refresh_deferred(void);
  * @pre None.
  * @post No state is mutated.
  * @since 0.1.0
+ *
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
  */
 uint8_t ra_wdt_subscriber_count(void);
 

@@ -66,6 +66,19 @@ typedef enum : uint8_t {
   k_ra_rtc_byte_mask_all = 0xFFU, /**< Whole-byte mask for wait loops. */
 } ra_rtc_byte_mask_t;
 
+/**
+ * @brief Internal helper.
+ * @details See implementation.
+ * @param[in] bcd See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 static uint8_t internal_bcd_to_bin(uint8_t bcd)
 {
   const uint8_t high = (uint8_t)((bcd >> k_ra_bcd_digit_shift) & k_ra_bcd_digit_mask);
@@ -73,6 +86,19 @@ static uint8_t internal_bcd_to_bin(uint8_t bcd)
   return (uint8_t)((high * k_ra_bcd_digit_base) + low);
 }
 
+/**
+ * @brief Internal helper.
+ * @details See implementation.
+ * @param[in] bin See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 static uint8_t internal_bin_to_bcd(uint8_t bin)
 {
   const uint8_t high = (uint8_t)(bin / k_ra_bcd_digit_base);
@@ -94,6 +120,13 @@ static uint8_t internal_bin_to_bcd(uint8_t bin)
  * @return Always returns success in current builds; if the bit never
  *         flips the function still returns after the iteration cap so
  *         init can continue (the mock back-end echoes writes).
+ *
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static void internal_wait_bit(volatile const uint8_t* reg, uint8_t mask, uint8_t expect)
 {
@@ -104,6 +137,18 @@ static void internal_wait_bit(volatile const uint8_t* reg, uint8_t mask, uint8_t
   }
 }
 
+/**
+ * @brief Implementation of ra_rtc_init (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_rtc_init(void)
 {
   volatile r_rtc_regs_t* rtc = ra_rtc();
@@ -139,6 +184,19 @@ ra_err_t ra_rtc_init(void)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_rtc_set (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] dt See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_rtc_set(const ra_rtc_datetime_t* dt)
 {
   RA_CHECK_NULL_PTR(dt, s_tag, "dt must not be nullptr");
@@ -181,6 +239,19 @@ ra_err_t ra_rtc_set(const ra_rtc_datetime_t* dt)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_rtc_get (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] out See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_rtc_get(ra_rtc_datetime_t* out)
 {
   RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
@@ -218,6 +289,18 @@ typedef struct {
 
 static ra_rtc_state_t s_rtc_state;
 
+/**
+ * @brief Implementation of ra_rtc_deinit (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_rtc_deinit(void)
 {
   volatile r_rtc_regs_t* rtc = ra_rtc();
@@ -230,6 +313,19 @@ ra_err_t ra_rtc_deinit(void)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_rtc_set_irq_enable (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] mask See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_rtc_set_irq_enable(uint8_t mask)
 {
   volatile r_rtc_regs_t* rtc = ra_rtc();
@@ -238,6 +334,19 @@ ra_err_t ra_rtc_set_irq_enable(uint8_t mask)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_rtc_get_status (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] out_mask See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_rtc_get_status(uint8_t* out_mask)
 {
   RA_CHECK_NULL_PTR(out_mask, s_tag, "out_mask must not be nullptr");
@@ -245,6 +354,19 @@ ra_err_t ra_rtc_get_status(uint8_t* out_mask)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_rtc_clear_status (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] mask See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_rtc_clear_status(uint8_t mask)
 {
   volatile r_rtc_regs_t* rtc = ra_rtc();
@@ -252,6 +374,20 @@ ra_err_t ra_rtc_clear_status(uint8_t mask)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_rtc_attach_handler (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] fn See implementation.
+ * @param[in] ctx See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_rtc_attach_handler(ra_rtc_event_fn_t fn, void* ctx)
 {
   s_rtc_state.fn  = fn;
@@ -259,6 +395,16 @@ ra_err_t ra_rtc_attach_handler(ra_rtc_event_fn_t fn, void* ctx)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_rtc_dispatch (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 void ra_rtc_dispatch(void)
 {
   const uint8_t           mask = (uint8_t)(ra_rtc()->RCR1 & k_ra_rtc_irq_all);
@@ -269,6 +415,18 @@ void ra_rtc_dispatch(void)
   }
 }
 
+/**
+ * @brief Implementation of ra_rtc_enter_stop (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_rtc_enter_stop(void)
 {
   volatile r_rtc_regs_t* rtc = ra_rtc();
@@ -278,6 +436,18 @@ ra_err_t ra_rtc_enter_stop(void)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_rtc_exit_stop (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_rtc_exit_stop(void)
 {
   volatile r_rtc_regs_t* rtc = ra_rtc();

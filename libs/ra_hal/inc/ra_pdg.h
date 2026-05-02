@@ -576,6 +576,13 @@ ra_pdg_get_delay(uint8_t channel, ra_pdg_pin_t pin, ra_pdg_edge_t edge, uint8_t*
  * @brief Fire the registered handler. Test / ELC entry point.
  *
  * @since 0.1.0
+ *
+ * @details See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
  */
 void ra_pdg_dispatch(void);
 

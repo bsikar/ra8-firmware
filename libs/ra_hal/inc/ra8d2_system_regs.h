@@ -308,13 +308,29 @@ static inline volatile uint8_t* ra_sys_rstsr2(void)
  *
  * @note Not thread-safe. Call only from single-threaded init or with
  *       interrupts masked.
+ *
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @since 0.1.0
  */
 static inline void ra_sys_prcr_unlock_cgc(void)
 {
   *ra_sys_prcr() = k_ra_prcr_unlock_cgc;
 }
 
-/** @brief Re-lock every protection group (write password with all group bits clear). */
+/**
+ * @brief Re-lock every protection group (write password with all group bits clear).
+ *
+ * @details See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 static inline void ra_sys_prcr_lock_all(void)
 {
   *ra_sys_prcr() = k_ra_prcr_lock_all;

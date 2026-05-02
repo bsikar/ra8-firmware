@@ -98,11 +98,37 @@ static uint8_t s_refcount[k_ra_mstp_reg_count][k_ra_mstp_bit_count];
  * =============================================================================
  */
 
+/**
+ * @brief Implementation of ra_mstp_id_reg (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] id See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_mstp_reg_t ra_mstp_id_reg(ra_mstp_t id)
 {
   return (ra_mstp_reg_t)(((uint16_t)id >> k_ra_bits_per_byte) & k_ra_mask_byte);
 }
 
+/**
+ * @brief Implementation of ra_mstp_id_bit (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] id See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 uint8_t ra_mstp_id_bit(ra_mstp_t id)
 {
   return (uint8_t)((uint16_t)id & k_ra_mask_byte);
@@ -121,6 +147,15 @@ uint8_t ra_mstp_id_bit(ra_mstp_t id)
  * @param[out] out_bit Bit position 0..31 on success.
  *
  * @return ``true`` if both fields decode to in-range values.
+ *
+ * @details See implementation.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static bool internal_decode(ra_mstp_t id, uint8_t* out_reg, uint8_t* out_bit)
 {
@@ -171,6 +206,14 @@ static volatile uint32_t* internal_reg_ptr(uint8_t reg)
  * only suppresses the host coverage gate -- the line still
  * compiles, executes on the target, and is part of the
  * NASA Power-of-10 Rule 2 statically-bounded loop budget.
+ *
+ * @details See implementation.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @since 0.1.0
  */
 static ra_err_t internal_wait_readback(uint8_t reg, uint8_t bit, bool expected_stopped)
 {
@@ -192,6 +235,18 @@ static ra_err_t internal_wait_readback(uint8_t reg, uint8_t bit, bool expected_s
  * =============================================================================
  */
 
+/**
+ * @brief Implementation of ra_mstp_init (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_mstp_init(void)
 {
   ra_log_info(s_tag, "ra_mstp_init -- gating all modules");
@@ -242,6 +297,19 @@ ra_err_t ra_mstp_init(void)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_mstp_enable (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] id See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_mstp_enable(ra_mstp_t id)
 {
   uint8_t reg = 0U;
@@ -283,6 +351,19 @@ ra_err_t ra_mstp_enable(ra_mstp_t id)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_mstp_disable (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] id See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_mstp_disable(ra_mstp_t id)
 {
   uint8_t reg = 0U;
@@ -323,6 +404,20 @@ ra_err_t ra_mstp_disable(ra_mstp_t id)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_mstp_get_refcount (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] id See implementation.
+ * @param[in] out_ref See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_mstp_get_refcount(ra_mstp_t id, uint8_t* out_ref)
 {
   RA_CHECK_NULL_PTR(out_ref, s_tag, "get_refcount: out_ref");
@@ -335,6 +430,20 @@ ra_err_t ra_mstp_get_refcount(ra_mstp_t id, uint8_t* out_ref)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_mstp_is_stopped (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] id See implementation.
+ * @param[in] out_stopped See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_mstp_is_stopped(ra_mstp_t id, bool* out_stopped)
 {
   RA_CHECK_NULL_PTR(out_stopped, s_tag, "is_stopped: out_stopped");

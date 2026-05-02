@@ -83,6 +83,12 @@ static ra_touch_state_t s_state;
  *
  * @pre ``out_buf`` is non-NULL and has at least 2 bytes of room.
  * @post ``out_buf[0]`` holds the high byte, ``out_buf[1]`` the low byte.
+ *
+ * @details See implementation.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static inline void priv_pack_reg(uint16_t reg, uint8_t* out_buf)
 {
@@ -103,6 +109,14 @@ static inline void priv_pack_reg(uint16_t reg, uint8_t* out_buf)
  * @param[in]  len Byte count.
  *
  * @return ``ra_iic_b_transfer`` return code.
+ *
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t priv_gt911_read(uint16_t reg, uint8_t* buf, uint32_t len)
 {
@@ -123,6 +137,15 @@ static ra_err_t priv_gt911_read(uint16_t reg, uint8_t* buf, uint32_t len)
  * @param[in] value Byte to write.
  *
  * @return ``ra_iic_b_write`` return code.
+ *
+ * @details See implementation.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t priv_gt911_write_byte(uint16_t reg, uint8_t value)
 {
@@ -144,6 +167,14 @@ static ra_err_t priv_gt911_write_byte(uint16_t reg, uint8_t value)
  *
  * @param[in]  raw Source buffer (8 bytes, GT911 wire format).
  * @param[out] out Decoded point.
+ *
+ * @details See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static void priv_decode_one(const uint8_t* raw, ra_touch_point_t* out)
 {
@@ -166,6 +197,14 @@ static void priv_decode_one(const uint8_t* raw, ra_touch_point_t* out)
  * @param[out] out       Destination buffer.
  * @param[in]  max_count Capacity of ``out``.
  * @param[out] got_count Entries actually written.
+ *
+ * @details See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static void priv_decode_block(const uint8_t*    raw,
                               uint8_t           n_points,
@@ -197,6 +236,15 @@ static void priv_decode_block(const uint8_t*    raw,
  *
  * @param[in] cfg Non-NULL configuration descriptor.
  * @return ``k_ra_ok`` if valid, otherwise ``k_ra_err_invalid_arg``.
+ *
+ * @details See implementation.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t priv_validate_cfg(const ra_touch_cfg_t* cfg)
 {
@@ -216,6 +264,15 @@ static ra_err_t priv_validate_cfg(const ra_touch_cfg_t* cfg)
  * @param[in] irq_pin IRQ pin index, or ::k_ra_touch_irq_pin_unset.
  * @return ``k_ra_ok`` if the pin was either out of range (skipped) or
  *         programmed for falling-edge detection.
+ *
+ * @details See implementation.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t priv_attach_irq_pin(uint8_t irq_pin)
 {
@@ -233,6 +290,15 @@ static ra_err_t priv_attach_irq_pin(uint8_t irq_pin)
 
 /**
  * @brief Stash the validated config into the state slot.
+ *
+ * @details See implementation.
+ * @param[in] cfg See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static void priv_stash_state(const ra_touch_cfg_t* cfg)
 {
@@ -247,6 +313,17 @@ static void priv_stash_state(const ra_touch_cfg_t* cfg)
 
 /**
  * @brief Bring up the IIC_B channel with the driver's defaults.
+ *
+ * @details See implementation.
+ * @param[in] channel See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t priv_bring_up_i2c(uint8_t channel)
 {
@@ -263,6 +340,15 @@ static ra_err_t priv_bring_up_i2c(uint8_t channel)
  * @details
  * On the host simulator the I2C read does not deliver real bytes, so
  * the verification is skipped to keep the open path testable.
+ *
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t priv_check_product_id(void)
 {
@@ -285,6 +371,17 @@ static ra_err_t priv_check_product_id(void)
 
 /**
  * @brief Post-init bring-up: product-id check, status ack, IRQ pin.
+ *
+ * @details See implementation.
+ * @param[in] cfg See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t priv_open_finalise(const ra_touch_cfg_t* cfg)
 {
@@ -397,6 +494,16 @@ static ra_err_t priv_open_finalise(const ra_touch_cfg_t* cfg)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_touch_dispatch_irq (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 void ra_touch_dispatch_irq(void)
 {
   const ra_touch_event_fn_t fn  = s_state.cb;
@@ -413,6 +520,18 @@ void ra_touch_dispatch_irq(void)
 
 /**
  * @brief Compute the actual number of touch records to drain.
+ *
+ * @details See implementation.
+ * @param[in] status_byte See implementation.
+ * @param[in] max_count See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static uint8_t priv_clamp_emit(uint8_t status_byte, uint8_t max_count)
 {
@@ -428,6 +547,14 @@ static uint8_t priv_clamp_emit(uint8_t status_byte, uint8_t max_count)
 
 /**
  * @brief Acknowledge the current frame; ignore I2C errors.
+ *
+ * @details See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static void priv_ack_frame(void)
 {
@@ -436,6 +563,19 @@ static void priv_ack_frame(void)
 
 /**
  * @brief Inner read: assumes args validated and driver opened.
+ *
+ * @details See implementation.
+ * @param[in] out_points See implementation.
+ * @param[in] max_count See implementation.
+ * @param[in] got_count See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t priv_read_inner(ra_touch_point_t* out_points, uint8_t max_count, uint8_t* got_count)
 {

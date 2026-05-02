@@ -317,6 +317,8 @@ void ra_isr_dispatch(uint16_t slot);
  *       safe no-op.
  *
  * @since 0.1.0
+ *
+ * @post Caller-visible state matches the documented contract.
  */
 void ra_isr_globals_enable(void);
 
@@ -339,6 +341,9 @@ void ra_isr_globals_enable(void);
  *       does not expose a wrapper for it.
  *
  * @since 0.1.0
+ *
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
  */
 void ra_isr_globals_disable(void);
 

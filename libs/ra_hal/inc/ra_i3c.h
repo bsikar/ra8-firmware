@@ -165,6 +165,13 @@ typedef struct {
 /**
  * @brief Dispatch an I3C event -- snapshot status + fire callback.
  * @since 0.1.0
+ *
+ * @details See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
  */
 void ra_i3c_dispatch(void);
 

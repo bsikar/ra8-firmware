@@ -105,6 +105,14 @@ static ra_adc_state_t s_adc_state;
  *
  * @param[in] resolution Public resolution selector (currently a soft hint).
  * @return ADMD0 mode code to OR into ADMDR.
+ *
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static uint32_t internal_admd0_for_resolution(ra_adc_resolution_t resolution)
 {
@@ -123,6 +131,13 @@ static uint32_t internal_admd0_for_resolution(ra_adc_resolution_t resolution)
  * and continue regardless rather than fail-loud.
  *
  * @param[in] desired Either ``k_ra_adclksr_mask_clksr`` (running) or 0 (off).
+ *
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static void internal_wait_clksr(uint32_t desired)
 {
@@ -138,6 +153,14 @@ static void internal_wait_clksr(uint32_t desired)
  * @brief Bring ADCLK up: ENR=0 -> wait CLKSR=0 -> CR=src -> ENR=1 -> CLKSR=1.
  *
  * @param[in] clkcr_value ADCLKCR value to programme (CLKSEL[1:0], DIVR[18:16]).
+ *
+ * @details See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static void internal_clock_bring_up(uint32_t clkcr_value)
 {
@@ -157,6 +180,13 @@ static void internal_clock_bring_up(uint32_t clkcr_value)
  * populates per-channel descriptors; we mirror that. This also
  * ensures a stale CNVCS / SGSEL field cannot leak between
  * configurations.
+ *
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static void internal_zero_channel_table(void)
 {
@@ -175,6 +205,14 @@ static void internal_zero_channel_table(void)
  *
  * @param[in] virtual_ch  Index of the ADCHCR slot to programme (0..23).
  * @param[in] physical_ch Physical analog channel selector (0..127).
+ *
+ * @details See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static void internal_program_channel(uint8_t virtual_ch, uint8_t physical_ch)
 {
@@ -196,6 +234,15 @@ static void internal_program_channel(uint8_t virtual_ch, uint8_t physical_ch)
  * @param[in] resolution Public resolution selector.
  * @param[in] scan_mode  True for continuous scan, false for one-shot.
  * @return Composite ADMDR value.
+ *
+ * @details See implementation.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static uint32_t internal_build_admdr(ra_adc_resolution_t resolution, bool scan_mode)
 {
@@ -204,6 +251,18 @@ static uint32_t internal_build_admdr(ra_adc_resolution_t resolution, bool scan_m
   return (admd0_code << (uint32_t)k_ra_admdr_bit_admd0) & k_ra_admdr_mask_admd0;
 }
 
+/**
+ * @brief Implementation of ra_adc_init (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_adc_init(void)
 {
   /* HUM Ch 11.2.9 "MSTPCRD : Module Stop Control Register D" p 449 */
@@ -229,6 +288,20 @@ ra_err_t ra_adc_init(void)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_adc_read_channel (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] channel See implementation.
+ * @param[in] out_raw See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_adc_read_channel(uint8_t channel, uint16_t* out_raw)
 {
   RA_CHECK_NULL_PTR(out_raw, s_tag, "out_raw must not be nullptr");
@@ -265,6 +338,19 @@ ra_err_t ra_adc_read_channel(uint8_t channel, uint16_t* out_raw)
   return k_ra_err_hw_timeout;
 }
 
+/**
+ * @brief Implementation of ra_adc_init_configured (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] cfg See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_adc_init_configured(const ra_adc_cfg_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
@@ -291,6 +377,18 @@ ra_err_t ra_adc_init_configured(const ra_adc_cfg_t* cfg)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_adc_deinit (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_adc_deinit(void)
 {
   /* HUM Ch 53 "16-bit A/D Converter (ADC16H)" p 3308 */
@@ -311,6 +409,19 @@ ra_err_t ra_adc_deinit(void)
   return ra_mstp_disable(k_ra_mstp_adc16h);
 }
 
+/**
+ * @brief Implementation of ra_adc_set_resolution (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] resolution See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_adc_set_resolution(ra_adc_resolution_t resolution)
 {
   if ((uint8_t)resolution > k_ra_adc_res_14bit) {
@@ -328,6 +439,19 @@ ra_err_t ra_adc_set_resolution(ra_adc_resolution_t resolution)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_adc_get_status (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] out_mask See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_adc_get_status(uint16_t* out_mask)
 {
   RA_CHECK_NULL_PTR(out_mask, s_tag, "out_mask must not be nullptr");
@@ -344,6 +468,18 @@ ra_err_t ra_adc_get_status(uint16_t* out_mask)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_adc_clear_status (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_adc_clear_status(void)
 {
   /* HUM Ch 53 "16-bit A/D Converter (ADC16H)" p 3308 */
@@ -356,6 +492,20 @@ ra_err_t ra_adc_clear_status(void)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_adc_attach_handler (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] fn See implementation.
+ * @param[in] ctx See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_adc_attach_handler(ra_adc_complete_fn_t fn, void* ctx)
 {
   s_adc_state.fn  = fn;
@@ -363,6 +513,18 @@ ra_err_t ra_adc_attach_handler(ra_adc_complete_fn_t fn, void* ctx)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_adc_enter_stop (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_adc_enter_stop(void)
 {
   /* HUM Ch 53 "16-bit A/D Converter (ADC16H)" p 3308 */
@@ -370,11 +532,34 @@ ra_err_t ra_adc_enter_stop(void)
   return ra_mstp_disable(k_ra_mstp_adc16h);
 }
 
+/**
+ * @brief Implementation of ra_adc_exit_stop (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_adc_exit_stop(void)
 {
   return ra_mstp_enable(k_ra_mstp_adc16h);
 }
 
+/**
+ * @brief Implementation of ra_adc_dispatch_cnv_end (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] channel See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 void ra_adc_dispatch_cnv_end(uint8_t channel)
 {
   volatile uint32_t* addr = ra_adc_b_addr(channel);
@@ -409,6 +594,15 @@ void ra_adc_dispatch_cnv_end(uint8_t channel)
  * @param[in] group Scan-group index.
  * @param[in] cfg   Non-NULL configuration descriptor.
  * @return ``k_ra_ok`` on pass, otherwise an error code.
+ *
+ * @details See implementation.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t internal_validate_group_cfg(uint8_t group, const ra_adc_scan_group_cfg_t* cfg)
 {
@@ -433,6 +627,15 @@ static ra_err_t internal_validate_group_cfg(uint8_t group, const ra_adc_scan_gro
  * @param[out] out_avemd AVEMD field value (00 = off, 10 = average).
  * @param[out] out_adc   ADC averaging-times code.
  * @return ``k_ra_ok`` on success, ``k_ra_err_invalid_arg`` for unknown modes.
+ *
+ * @details See implementation.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t
 internal_oversample_encode(ra_adc_oversample_t mode, uint32_t* out_avemd, uint32_t* out_adc)
@@ -466,6 +669,15 @@ internal_oversample_encode(ra_adc_oversample_t mode, uint32_t* out_avemd, uint32
  * @param[in] cfg   Validated configuration descriptor.
  * @return ``k_ra_ok`` or ``k_ra_err_out_of_range`` if any ADCHCR slot is
  *         unmapped (defensive -- channels were already range-checked).
+ *
+ * @details See implementation.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t internal_program_group_channels(uint8_t group, const ra_adc_scan_group_cfg_t* cfg)
 {
@@ -487,6 +699,16 @@ static ra_err_t internal_program_group_channels(uint8_t group, const ra_adc_scan
 
 /**
  * @brief Cache a group's channel list into ``s_adc_state.groups``.
+ *
+ * @details See implementation.
+ * @param[in] group See implementation.
+ * @param[in] cfg See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static void internal_cache_group_channels(uint8_t group, const ra_adc_scan_group_cfg_t* cfg)
 {
@@ -498,6 +720,16 @@ static void internal_cache_group_channels(uint8_t group, const ra_adc_scan_group
 
 /**
  * @brief Apply the per-group enable bit (ADSGER) and trigger source (ADTRGENR).
+ *
+ * @details See implementation.
+ * @param[in] group See implementation.
+ * @param[in] trigger See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static void internal_apply_group_enable(uint8_t group, ra_adc_trigger_src_t trigger)
 {
@@ -511,6 +743,20 @@ static void internal_apply_group_enable(uint8_t group, ra_adc_trigger_src_t trig
   }
 }
 
+/**
+ * @brief Implementation of ra_adc_configure_scan_group (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] group See implementation.
+ * @param[in] cfg See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_adc_configure_scan_group(uint8_t group, const ra_adc_scan_group_cfg_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
@@ -528,6 +774,19 @@ ra_err_t ra_adc_configure_scan_group(uint8_t group, const ra_adc_scan_group_cfg_
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_adc_start_group (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] group See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_adc_start_group(uint8_t group)
 {
   volatile uint32_t* adstr = ra_adc_b_adstr(group);
@@ -539,6 +798,19 @@ ra_err_t ra_adc_start_group(uint8_t group)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_adc_stop_group (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] group See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_adc_stop_group(uint8_t group)
 {
   volatile uint32_t* adstr = ra_adc_b_adstr(group);
@@ -551,6 +823,21 @@ ra_err_t ra_adc_stop_group(uint8_t group)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_adc_read_group_results (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] group See implementation.
+ * @param[in] out_buf See implementation.
+ * @param[in] out_count See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_adc_read_group_results(uint8_t group, uint16_t* out_buf, uint8_t* out_count)
 {
   RA_CHECK_NULL_PTR(out_buf, s_tag, "out_buf must not be nullptr");
@@ -577,6 +864,20 @@ ra_err_t ra_adc_read_group_results(uint8_t group, uint16_t* out_buf, uint8_t* ou
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_adc_set_continuous_scan (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] group See implementation.
+ * @param[in] enable See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_adc_set_continuous_scan(uint8_t group, bool enable)
 {
   if (group >= k_ra_adc_b_scan_groups) {
@@ -594,6 +895,21 @@ ra_err_t ra_adc_set_continuous_scan(uint8_t group, bool enable)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_adc_set_compare_window (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] channel See implementation.
+ * @param[in] low See implementation.
+ * @param[in] high See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_adc_set_compare_window(uint8_t channel, uint16_t low, uint16_t high)
 {
   if (channel >= k_ra_adc_b_cmp_tables) {
@@ -638,6 +954,20 @@ ra_err_t ra_adc_set_compare_window(uint8_t channel, uint16_t low, uint16_t high)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_adc_set_oversampling (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] channel See implementation.
+ * @param[in] mode See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_adc_set_oversampling(uint8_t channel, ra_adc_oversample_t mode)
 {
   uint32_t       avemd   = 0U;

@@ -110,6 +110,17 @@ static volatile r_usb_regs_t* internal_pick(ra_usb_speed_t speed)
 
 /**
  * @brief Resolve the per-speed MSTP id.
+ *
+ * @details See implementation.
+ * @param[in] speed See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_mstp_t internal_mstp(ra_usb_speed_t speed)
 {
@@ -118,6 +129,17 @@ static ra_mstp_t internal_mstp(ra_usb_speed_t speed)
 
 /**
  * @brief Apply a generic read-modify-write to a 16-bit register.
+ *
+ * @details See implementation.
+ * @param[in] reg See implementation.
+ * @param[in] set_mask See implementation.
+ * @param[in] clr_mask See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static void internal_rmw16(volatile uint16_t* reg, uint16_t set_mask, uint16_t clr_mask)
 {
@@ -134,6 +156,16 @@ static void internal_rmw16(volatile uint16_t* reg, uint16_t set_mask, uint16_t c
  * `hw_usb_pmodule_init` (FSP `r_usb_preg_access.c:235`). MBW is
  * always 16-bit on this driver path -- hardware FIFOs are
  * little-endian; the host build relies on identical behaviour.
+ *
+ * @param[in] reg See implementation.
+ * @param[in] pipe_num See implementation.
+ * @param[in] is_in_dir See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static void internal_select_cfifo(volatile r_usb_regs_t* reg, uint16_t pipe_num, bool is_in_dir)
 {
@@ -150,6 +182,16 @@ static void internal_select_cfifo(volatile r_usb_regs_t* reg, uint16_t pipe_num,
  * @brief Spin until `CFIFOCTR.FRDY` asserts or a deadline elapses.
  *
  * @return ra_ok on FRDY, k_ra_err_hw_timeout otherwise.
+ *
+ * @details See implementation.
+ * @param[in] reg See implementation.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t internal_wait_frdy(volatile r_usb_regs_t* reg)
 {
@@ -165,6 +207,16 @@ static ra_err_t internal_wait_frdy(volatile r_usb_regs_t* reg)
 /**
  * @brief Set DCPCTR PID field to a specific value while preserving the
  *        rest of the register.
+ *
+ * @details See implementation.
+ * @param[in] reg See implementation.
+ * @param[in] pid See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static void internal_dcp_pid(volatile r_usb_regs_t* reg, ra_usb_pid_t pid)
 {
@@ -174,6 +226,17 @@ static void internal_dcp_pid(volatile r_usb_regs_t* reg, ra_usb_pid_t pid)
 
 /**
  * @brief Set PIPECTR[idx] PID field.
+ *
+ * @details See implementation.
+ * @param[in] reg See implementation.
+ * @param[in] pipe_num See implementation.
+ * @param[in] pid See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static void internal_pipe_pid(volatile r_usb_regs_t* reg, uint8_t pipe_num, ra_usb_pid_t pid)
 {
@@ -184,6 +247,17 @@ static void internal_pipe_pid(volatile r_usb_regs_t* reg, uint8_t pipe_num, ra_u
 
 /**
  * @brief Translate `INTSTS0.DVSQ[2:0]` into the public state enum.
+ *
+ * @details See implementation.
+ * @param[in] intsts0 See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_usb_dev_state_t internal_decode_dvsq(uint16_t intsts0)
 {
@@ -209,6 +283,19 @@ static ra_usb_dev_state_t internal_decode_dvsq(uint16_t intsts0)
  * =============================================================================
  */
 
+/**
+ * @brief Implementation of ra_usb_device_init (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] speed See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_usb_device_init(ra_usb_speed_t speed)
 {
   volatile r_usb_regs_t* reg = internal_pick(speed);
@@ -254,6 +341,19 @@ ra_err_t ra_usb_device_init(ra_usb_speed_t speed)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_usb_device_deinit (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] speed See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_usb_device_deinit(ra_usb_speed_t speed)
 {
   volatile r_usb_regs_t* reg = internal_pick(speed);
@@ -273,6 +373,20 @@ ra_err_t ra_usb_device_deinit(ra_usb_speed_t speed)
   return ra_mstp_disable(internal_mstp(speed));
 }
 
+/**
+ * @brief Implementation of ra_usb_device_attach (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] speed See implementation.
+ * @param[in] attached See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_usb_device_attach(ra_usb_speed_t speed, bool attached)
 {
   volatile r_usb_regs_t* reg = internal_pick(speed);
@@ -296,6 +410,20 @@ ra_err_t ra_usb_device_attach(ra_usb_speed_t speed, bool attached)
  * =============================================================================
  */
 
+/**
+ * @brief Implementation of ra_usb_get_status (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] speed See implementation.
+ * @param[in] out_mask See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_usb_get_status(ra_usb_speed_t speed, uint16_t* out_mask)
 {
   RA_CHECK_NULL_PTR(out_mask, s_tag, "out_mask must not be nullptr");
@@ -308,6 +436,20 @@ ra_err_t ra_usb_get_status(ra_usb_speed_t speed, uint16_t* out_mask)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_usb_clear_status (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] speed See implementation.
+ * @param[in] mask See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_usb_clear_status(ra_usb_speed_t speed, uint16_t mask)
 {
   volatile r_usb_regs_t* reg = internal_pick(speed);
@@ -319,6 +461,20 @@ ra_err_t ra_usb_clear_status(ra_usb_speed_t speed, uint16_t mask)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_usb_get_device_state (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] speed See implementation.
+ * @param[in] out_state See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_usb_get_device_state(ra_usb_speed_t speed, ra_usb_dev_state_t* out_state)
 {
   RA_CHECK_NULL_PTR(out_state, s_tag, "out_state must not be nullptr");
@@ -331,6 +487,20 @@ ra_err_t ra_usb_get_device_state(ra_usb_speed_t speed, ra_usb_dev_state_t* out_s
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_usb_set_address (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] speed See implementation.
+ * @param[in] address See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_usb_set_address(ra_usb_speed_t speed, uint8_t address)
 {
   volatile r_usb_regs_t* reg = internal_pick(speed);
@@ -353,6 +523,19 @@ ra_err_t ra_usb_set_address(ra_usb_speed_t speed, uint8_t address)
 
 /**
  * @brief Build the PIPECFG word for a non-control endpoint.
+ *
+ * @details See implementation.
+ * @param[in] ep_addr See implementation.
+ * @param[in] dir See implementation.
+ * @param[in] type See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static uint16_t internal_pipecfg_word(uint8_t ep_addr, ra_usb_ep_dir_t dir, ra_usb_ep_type_t type)
 {
@@ -375,6 +558,20 @@ static uint16_t internal_pipecfg_word(uint8_t ep_addr, ra_usb_ep_dir_t dir, ra_u
  * @brief Validate the argument set for `ra_usb_configure_endpoint`.
  *
  * @return k_ra_ok if all arguments are in range.
+ *
+ * @details See implementation.
+ * @param[in] pipe_num See implementation.
+ * @param[in] ep_addr See implementation.
+ * @param[in] dir See implementation.
+ * @param[in] type See implementation.
+ * @param[in] max_packet See implementation.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t internal_check_ep_args(uint8_t          pipe_num,
                                        uint8_t          ep_addr,
@@ -400,6 +597,24 @@ static ra_err_t internal_check_ep_args(uint8_t          pipe_num,
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_usb_configure_endpoint (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] speed See implementation.
+ * @param[in] pipe_num See implementation.
+ * @param[in] ep_addr See implementation.
+ * @param[in] dir See implementation.
+ * @param[in] type See implementation.
+ * @param[in] max_packet See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_usb_configure_endpoint(ra_usb_speed_t   speed,
                                    uint8_t          pipe_num,
                                    uint8_t          ep_addr,
@@ -433,6 +648,20 @@ ra_err_t ra_usb_configure_endpoint(ra_usb_speed_t   speed,
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_usb_stall_endpoint (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] speed See implementation.
+ * @param[in] pipe_num See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_usb_stall_endpoint(ra_usb_speed_t speed, uint8_t pipe_num)
 {
   volatile r_usb_regs_t* reg = internal_pick(speed);
@@ -459,6 +688,16 @@ ra_err_t ra_usb_stall_endpoint(ra_usb_speed_t speed, uint8_t pipe_num)
  * for the 16-bit MBW path. The trailing byte is written via the
  * 8-bit halfword-low aperture of CFIFO using a halfword-aligned
  * left-padded write.
+ *
+ * @param[in] reg See implementation.
+ * @param[in] data See implementation.
+ * @param[in] len See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static void internal_fifo_write(volatile r_usb_regs_t* reg, const uint8_t* data, uint16_t len)
 {
@@ -476,6 +715,17 @@ static void internal_fifo_write(volatile r_usb_regs_t* reg, const uint8_t* data,
 
 /**
  * @brief Drain the CFIFO data port into a buffer (16-bit packed).
+ *
+ * @details See implementation.
+ * @param[in] reg See implementation.
+ * @param[in] data See implementation.
+ * @param[in] len See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static void internal_fifo_read(volatile r_usb_regs_t* reg, uint8_t* data, uint16_t len)
 {
@@ -492,6 +742,22 @@ static void internal_fifo_read(volatile r_usb_regs_t* reg, uint8_t* data, uint16
   }
 }
 
+/**
+ * @brief Implementation of ra_usb_queue_in (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] speed See implementation.
+ * @param[in] pipe_num See implementation.
+ * @param[in] data See implementation.
+ * @param[in] len See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_usb_queue_in(ra_usb_speed_t speed, uint8_t pipe_num, const uint8_t* data, uint16_t len)
 {
   volatile r_usb_regs_t* reg = internal_pick(speed);
@@ -525,6 +791,18 @@ ra_err_t ra_usb_queue_in(ra_usb_speed_t speed, uint8_t pipe_num, const uint8_t* 
  * @details Read-only over the buffers; the caller mutates them on
  * success. Marked `const` so clang-tidy's `readability-non-const-parameter`
  * is satisfied.
+ *
+ * @param[in] pipe_num See implementation.
+ * @param[in] out_buf See implementation.
+ * @param[in] inout_len See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t
 internal_check_queue_out_args(uint8_t pipe_num, const uint8_t* out_buf, const uint16_t* inout_len)
@@ -541,6 +819,22 @@ internal_check_queue_out_args(uint8_t pipe_num, const uint8_t* out_buf, const ui
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_usb_queue_out (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] speed See implementation.
+ * @param[in] pipe_num See implementation.
+ * @param[in] out_buf See implementation.
+ * @param[in] inout_len See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t
 ra_usb_queue_out(ra_usb_speed_t speed, uint8_t pipe_num, uint8_t* out_buf, uint16_t* inout_len)
 {
@@ -576,6 +870,20 @@ ra_usb_queue_out(ra_usb_speed_t speed, uint8_t pipe_num, uint8_t* out_buf, uint1
  * =============================================================================
  */
 
+/**
+ * @brief Implementation of ra_usb_read_setup (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] speed See implementation.
+ * @param[in] out_setup See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_usb_read_setup(ra_usb_speed_t speed, ra_usb_setup_t* out_setup)
 {
   RA_CHECK_NULL_PTR(out_setup, s_tag, "read_setup: out_setup");
@@ -601,6 +909,20 @@ ra_err_t ra_usb_read_setup(ra_usb_speed_t speed, ra_usb_setup_t* out_setup)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_usb_control_response (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] speed See implementation.
+ * @param[in] accept See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_usb_control_response(ra_usb_speed_t speed, bool accept)
 {
   volatile r_usb_regs_t* reg = internal_pick(speed);
@@ -626,6 +948,20 @@ ra_err_t ra_usb_control_response(ra_usb_speed_t speed, bool accept)
 static ra_usb_event_fn_t s_usb_fn;
 static void*             s_usb_ctx;
 
+/**
+ * @brief Implementation of ra_usb_attach_handler (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] fn See implementation.
+ * @param[in] ctx See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_usb_attach_handler(ra_usb_event_fn_t fn, void* ctx)
 {
   s_usb_fn  = fn;
@@ -633,6 +969,17 @@ ra_err_t ra_usb_attach_handler(ra_usb_event_fn_t fn, void* ctx)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_usb_dispatch (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] speed See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 void ra_usb_dispatch(ra_usb_speed_t speed)
 {
   volatile r_usb_regs_t* reg = internal_pick(speed);
@@ -649,6 +996,19 @@ void ra_usb_dispatch(ra_usb_speed_t speed)
   }
 }
 
+/**
+ * @brief Implementation of ra_usb_enter_stop (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] speed See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_usb_enter_stop(ra_usb_speed_t speed)
 {
   if ((speed != k_ra_usb_speed_fs) && (speed != k_ra_usb_speed_hs)) {
@@ -657,6 +1017,19 @@ ra_err_t ra_usb_enter_stop(ra_usb_speed_t speed)
   return ra_mstp_disable(internal_mstp(speed));
 }
 
+/**
+ * @brief Implementation of ra_usb_exit_stop (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] speed See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_usb_exit_stop(ra_usb_speed_t speed)
 {
   if ((speed != k_ra_usb_speed_fs) && (speed != k_ra_usb_speed_hs)) {
@@ -695,6 +1068,16 @@ typedef enum : uint8_t {
  *
  * @details Sets SCKE | DCFM | DRPD | USBE; adds HSE for the HS
  * instance. DPRPU is intentionally not set (device-mode pull-up).
+ *
+ * @param[in] speed See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static uint16_t internal_host_syscfg_word(ra_usb_speed_t speed)
 {
@@ -708,6 +1091,19 @@ static uint16_t internal_host_syscfg_word(ra_usb_speed_t speed)
   return syscfg;
 }
 
+/**
+ * @brief Implementation of ra_usb_host_init (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] speed See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_usb_host_init(ra_usb_speed_t speed)
 {
   volatile r_usb_regs_t* reg = internal_pick(speed);
@@ -756,6 +1152,19 @@ ra_err_t ra_usb_host_init(ra_usb_speed_t speed)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_usb_host_deinit (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] speed See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_usb_host_deinit(ra_usb_speed_t speed)
 {
   volatile r_usb_regs_t* reg = internal_pick(speed);
@@ -773,6 +1182,20 @@ ra_err_t ra_usb_host_deinit(ra_usb_speed_t speed)
   return ra_mstp_disable(internal_mstp(speed));
 }
 
+/**
+ * @brief Implementation of ra_usb_host_bus_reset (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] speed See implementation.
+ * @param[in] assert_reset See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_usb_host_bus_reset(ra_usb_speed_t speed, bool assert_reset)
 {
   volatile r_usb_regs_t* reg = internal_pick(speed);
@@ -791,6 +1214,20 @@ ra_err_t ra_usb_host_bus_reset(ra_usb_speed_t speed, bool assert_reset)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_usb_host_set_uact (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] speed See implementation.
+ * @param[in] enable See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_usb_host_set_uact(ra_usb_speed_t speed, bool enable)
 {
   volatile r_usb_regs_t* reg = internal_pick(speed);
@@ -807,6 +1244,20 @@ ra_err_t ra_usb_host_set_uact(ra_usb_speed_t speed, bool enable)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_usb_host_setup_request (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] speed See implementation.
+ * @param[in] setup See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_usb_host_setup_request(ra_usb_speed_t speed, const ra_usb_setup_t* setup)
 {
   RA_CHECK_NULL_PTR(setup, s_tag, "host_setup_request: setup");

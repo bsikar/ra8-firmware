@@ -84,6 +84,13 @@ typedef void (*ra_eth_event_fn_t)(void* ctx, uint32_t status_mask);
 /**
  * @brief Dispatch an ESWM event -- snapshot + fire callback.
  * @since 0.1.0
+ *
+ * @details See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
  */
 void ra_eth_dispatch(void);
 

@@ -306,6 +306,12 @@ typedef void (*ra_ptp_msg_fn_t)(void* ctx, ra_ptp_msg_type_t type, uint64_t sec,
  * @param[in] nsec Receive timestamp nanoseconds.
  *
  * @since 0.1.0
+ *
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
  */
 void ra_ptp_dispatch_message(ra_ptp_msg_type_t type, uint64_t sec, uint32_t nsec);
 

@@ -34,6 +34,18 @@ static const char* s_tag = "PDM";
 static ra_pdm_event_fn_t s_pdm_fn;
 static void*             s_pdm_ctx;
 
+/**
+ * @brief Implementation of ra_pdm_init (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_pdm_init(void)
 {
   /* HUM Ch 11.2.8 "MSTPCRC : Module Stop Control Register C" p 446 */
@@ -50,6 +62,18 @@ ra_err_t ra_pdm_init(void)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_pdm_deinit (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_pdm_deinit(void)
 {
   volatile r_pdm_regs_t* reg = ra_pdm();
@@ -61,6 +85,19 @@ ra_err_t ra_pdm_deinit(void)
   return ra_mstp_disable(k_ra_mstp_pdmif);
 }
 
+/**
+ * @brief Implementation of ra_pdm_get_status (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] out_mask See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_pdm_get_status(uint32_t* out_mask)
 {
   RA_CHECK_NULL_PTR(out_mask, s_tag, "out_mask must not be nullptr");
@@ -69,6 +106,19 @@ ra_err_t ra_pdm_get_status(uint32_t* out_mask)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_pdm_clear_status (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] mask See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_pdm_clear_status(uint32_t mask)
 {
   volatile r_pdm_regs_t* reg = ra_pdm();
@@ -77,6 +127,20 @@ ra_err_t ra_pdm_clear_status(uint32_t mask)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_pdm_attach_handler (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] fn See implementation.
+ * @param[in] ctx See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_pdm_attach_handler(ra_pdm_event_fn_t fn, void* ctx)
 {
   s_pdm_fn  = fn;
@@ -84,6 +148,16 @@ ra_err_t ra_pdm_attach_handler(ra_pdm_event_fn_t fn, void* ctx)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_pdm_dispatch (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 void ra_pdm_dispatch(void)
 {
   volatile r_pdm_regs_t*  reg  = ra_pdm();
@@ -96,12 +170,36 @@ void ra_pdm_dispatch(void)
   }
 }
 
+/**
+ * @brief Implementation of ra_pdm_enter_stop (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_pdm_enter_stop(void)
 {
   ra_pdm()->PDM_CTRL = 0U;
   return ra_mstp_disable(k_ra_mstp_pdmif);
 }
 
+/**
+ * @brief Implementation of ra_pdm_exit_stop (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_pdm_exit_stop(void)
 {
   return ra_mstp_enable(k_ra_mstp_pdmif);

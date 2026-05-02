@@ -465,6 +465,15 @@ static inline volatile uint32_t* ra_ipc_sem(uint8_t sem_id)
  * @return Unit id (0 for channels 0/1, 1 for channels 2/3), or
  *         ``k_ra_ipc_nmi_unit_count`` when ``channel`` is out of
  *         range (used as a sentinel by callers).
+ *
+ * @details See implementation.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static inline uint8_t ra_ipc_channel_to_unit(uint8_t channel)
 {

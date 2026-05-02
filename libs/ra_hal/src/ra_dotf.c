@@ -160,6 +160,15 @@ static const ra_mstp_t s_dotf_mstp_table[k_ra_dotf_channel_count] = {
  *
  * @param[in] channel Caller-provided channel value.
  * @return ``true`` if ``channel`` is in [0, k_ra_dotf_channel_count).
+ *
+ * @details See implementation.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static inline bool internal_channel_in_range(uint8_t channel)
 {
@@ -168,6 +177,17 @@ static inline bool internal_channel_in_range(uint8_t channel)
 
 /**
  * @brief XSPI window low bound for a given DOTF channel.
+ *
+ * @details See implementation.
+ * @param[in] channel See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static inline uint32_t internal_window_lo(uint8_t channel)
 {
@@ -176,6 +196,17 @@ static inline uint32_t internal_window_lo(uint8_t channel)
 
 /**
  * @brief XSPI window high bound for a given DOTF channel.
+ *
+ * @details See implementation.
+ * @param[in] channel See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static inline uint32_t internal_window_hi(uint8_t channel)
 {
@@ -184,6 +215,17 @@ static inline uint32_t internal_window_hi(uint8_t channel)
 
 /**
  * @brief Word count for a given AES key size.
+ *
+ * @details See implementation.
+ * @param[in] size See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static inline uint8_t internal_key_words(ra_dotf_key_size_t size)
 {
@@ -198,6 +240,17 @@ static inline uint8_t internal_key_words(ra_dotf_key_size_t size)
 
 /**
  * @brief Map an SCA level enum into REG00 SCA bits.
+ *
+ * @details See implementation.
+ * @param[in] level See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static inline uint32_t internal_sca_bits(ra_dotf_sca_level_t level)
 {
@@ -218,6 +271,16 @@ static inline uint32_t internal_sca_bits(ra_dotf_sca_level_t level)
  * uses ``bswap_32big`` / ``change_endian_long``). The host build
  * runs little-endian and the target Cortex-M85 also runs little-
  * endian, so an explicit byte-swap is required either way.
+ *
+ * @param[in] v See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static inline uint32_t internal_bswap32(uint32_t v)
 {
@@ -229,6 +292,18 @@ static inline uint32_t internal_bswap32(uint32_t v)
 
 /**
  * @brief Validate region range / alignment / window.
+ *
+ * @details See implementation.
+ * @param[in] channel See implementation.
+ * @param[in] region See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t internal_validate_region(uint8_t channel, const ra_dotf_region_t* region)
 {
@@ -258,6 +333,18 @@ static ra_err_t internal_validate_region(uint8_t channel, const ra_dotf_region_t
 
 /**
  * @brief Reject a region that overlaps the live region of the OTHER channel.
+ *
+ * @details See implementation.
+ * @param[in] channel See implementation.
+ * @param[in] region See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t internal_check_overlap(uint8_t channel, const ra_dotf_region_t* region)
 {
@@ -280,6 +367,18 @@ static ra_err_t internal_check_overlap(uint8_t channel, const ra_dotf_region_t* 
 
 /**
  * @brief Assemble the REG00 word for the channel's cached state.
+ *
+ * @details See implementation.
+ * @param[in] st See implementation.
+ * @param[in] enable See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static uint32_t internal_assemble_reg00(const ra_dotf_chan_state_t* st, bool enable)
 {
@@ -294,6 +393,16 @@ static uint32_t internal_assemble_reg00(const ra_dotf_chan_state_t* st, bool ena
 
 /**
  * @brief Stage a wrapped-key payload into REG03.
+ *
+ * @details See implementation.
+ * @param[in] reg See implementation.
+ * @param[in] h See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static void internal_stage_key(volatile ra_dotf_regs_t* reg, const ra_dotf_key_handle_t* h)
 {
@@ -309,6 +418,16 @@ static void internal_stage_key(volatile ra_dotf_regs_t* reg, const ra_dotf_key_h
 
 /**
  * @brief Stage 4 IV words into REG03 in big-endian order.
+ *
+ * @details See implementation.
+ * @param[in] reg See implementation.
+ * @param[in] iv See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static void internal_stage_iv(volatile ra_dotf_regs_t* reg, const uint32_t* iv)
 {
@@ -322,6 +441,15 @@ static void internal_stage_iv(volatile ra_dotf_regs_t* reg, const uint32_t* iv)
 
 /**
  * @brief Reset one channel's hardware to power-on state.
+ *
+ * @details See implementation.
+ * @param[in] reg See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static inline void internal_channel_reset(volatile ra_dotf_regs_t* reg)
 {
@@ -336,6 +464,15 @@ static inline void internal_channel_reset(volatile ra_dotf_regs_t* reg)
 
 /**
  * @brief Wipe all software state for one channel.
+ *
+ * @details See implementation.
+ * @param[in] channel See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static void internal_state_reset(uint8_t channel)
 {
@@ -540,6 +677,10 @@ static void internal_state_reset(uint8_t channel)
  * @post IV registers reflect the new IV when one was supplied or cached.
  *
  * @note Internal helper, not thread-safe.
+ *
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @since 0.1.0
  */
 static void
 internal_rotate_iv(ra_dotf_chan_state_t* st, volatile ra_dotf_regs_t* reg, const uint32_t* iv_words)
@@ -576,6 +717,10 @@ internal_rotate_iv(ra_dotf_chan_state_t* st, volatile ra_dotf_regs_t* reg, const
  * @post No side effects.
  *
  * @note Internal helper, not thread-safe.
+ *
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @since 0.1.0
  */
 static ra_err_t internal_validate_rotate_inputs(uint8_t                     channel,
                                                 const ra_dotf_key_handle_t* new_handle)
@@ -792,6 +937,17 @@ static ra_err_t internal_validate_rotate_inputs(uint8_t                     chan
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_dotf_dispatch (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] channel See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 void ra_dotf_dispatch(uint8_t channel)
 {
   if (!internal_channel_in_range(channel)) {

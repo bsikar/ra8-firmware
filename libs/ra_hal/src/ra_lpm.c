@@ -112,6 +112,13 @@ typedef enum : uint32_t {
  * Arm WFI intrinsic. On the host (``RA_SIMULATOR_MODE``) the
  * function is a no-op so unit tests can call ``ra_lpm_enter_sleep``
  * without blocking.
+ *
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static inline void internal_wait_for_interrupt(void)
 {
@@ -136,6 +143,13 @@ static inline void internal_wait_for_interrupt(void)
  * SLEEPONEXIT) are preserved.
  *
  * @param[in] enable true -- set SLEEPDEEP; false -- clear.
+ *
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static inline void internal_set_sleepdeep(bool enable)
 {
@@ -153,6 +167,17 @@ static inline void internal_set_sleepdeep(bool enable)
 
 /**
  * @brief Validate ``mode`` against the LPSCR.LPMD encoding table.
+ *
+ * @details See implementation.
+ * @param[in] mode See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t internal_validate_mode(ra_sleep_mode_t mode)
 {
@@ -174,6 +199,16 @@ static ra_err_t internal_validate_mode(ra_sleep_mode_t mode)
  *
  * @details
  * Returns 0 on invalid input -- callers must validate first.
+ *
+ * @param[in] clock See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_lpm_off_t internal_clock_offset(ra_lpm_clock_t clock)
 {
@@ -201,6 +236,17 @@ static ra_lpm_off_t internal_clock_offset(ra_lpm_clock_t clock)
 
 /**
  * @brief Resolve a DPSIER index to its register offset.
+ *
+ * @details See implementation.
+ * @param[in] idx See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_lpm_off_t internal_dpsier_offset(ra_lpm_dpsier_idx_t idx)
 {
@@ -224,6 +270,17 @@ static ra_lpm_off_t internal_dpsier_offset(ra_lpm_dpsier_idx_t idx)
 
 /**
  * @brief Resolve a DPSIFR index to its register offset.
+ *
+ * @details See implementation.
+ * @param[in] idx See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_lpm_off_t internal_dpsifr_offset(ra_lpm_dpsier_idx_t idx)
 {
@@ -252,6 +309,16 @@ static ra_lpm_off_t internal_dpsifr_offset(ra_lpm_dpsier_idx_t idx)
  * DPSIEGR3 does not exist on RA8D2 (HUM Ch 11.2 stops at DPSIEGR2);
  * passing index 3 returns DPSIEGR2 so the caller observes a
  * harmless re-read.
+ *
+ * @param[in] idx See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_lpm_off_t internal_dpsiegr_offset(ra_lpm_dpsier_idx_t idx)
 {

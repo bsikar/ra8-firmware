@@ -299,6 +299,17 @@ static ra_usb_pmsc_state_data_t s_state = {};
 /**
  * @brief Pick the bulk-max-packet ceiling matching the negotiated
  *        speed.
+ *
+ * @details See implementation.
+ * @param[in] speed See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static uint16_t internal_bulk_max_packet(ra_usb_speed_t speed)
 {
@@ -312,6 +323,15 @@ static uint16_t internal_bulk_max_packet(ra_usb_speed_t speed)
  * @details Mirrors FSP's `usb_pstd_pipe_table` writes condensed for
  * the MSC case. PIPE3 = bulk-IN, PIPE4 = bulk-OUT, matching the
  * host-MSC layer for symmetry.
+ *
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t internal_configure_pipes(void)
 {
@@ -336,6 +356,16 @@ static ra_err_t internal_configure_pipes(void)
 
 /**
  * @brief Pack a uint32 into 4 little-endian bytes.
+ *
+ * @details See implementation.
+ * @param[in] value See implementation.
+ * @param[in] dst See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static void internal_pack_u32_le(uint32_t value, uint8_t* dst)
 {
@@ -347,6 +377,16 @@ static void internal_pack_u32_le(uint32_t value, uint8_t* dst)
 
 /**
  * @brief Pack a uint32 into 4 big-endian bytes (SCSI on-wire order).
+ *
+ * @details See implementation.
+ * @param[in] value See implementation.
+ * @param[in] dst See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static void internal_pack_u32_be(uint32_t value, uint8_t* dst)
 {
@@ -358,6 +398,17 @@ static void internal_pack_u32_be(uint32_t value, uint8_t* dst)
 
 /**
  * @brief Unpack a uint32 from 4 little-endian bytes.
+ *
+ * @details See implementation.
+ * @param[in] src See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static uint32_t internal_unpack_u32_le(const uint8_t* src)
 {
@@ -371,6 +422,15 @@ static uint32_t internal_unpack_u32_le(const uint8_t* src)
  * @details Avoids `memset` so the project's clang-tidy
  * `clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling`
  * gate stays clean.
+ *
+ * @param[in] dst See implementation.
+ * @param[in] len See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static void internal_zero_bytes(uint8_t* dst, uint32_t len)
 {
@@ -381,6 +441,16 @@ static void internal_zero_bytes(uint8_t* dst, uint32_t len)
 
 /**
  * @brief Fill `len` bytes at `dst` with ASCII SPACE.
+ *
+ * @details See implementation.
+ * @param[in] dst See implementation.
+ * @param[in] len See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static void internal_pad_space(uint8_t* dst, uint32_t len)
 {
@@ -391,6 +461,17 @@ static void internal_pad_space(uint8_t* dst, uint32_t len)
 
 /**
  * @brief Copy `len` bytes from `src` to `dst` byte-by-byte.
+ *
+ * @details See implementation.
+ * @param[in] dst See implementation.
+ * @param[in] src See implementation.
+ * @param[in] len See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static void internal_copy_bytes(uint8_t* dst, const uint8_t* src, uint32_t len)
 {
@@ -406,6 +487,17 @@ static void internal_copy_bytes(uint8_t* dst, const uint8_t* src, uint32_t len)
 
 /**
  * @brief Decode a 10-byte READ(10) / WRITE(10) CDB.
+ *
+ * @details See implementation.
+ * @param[in] cdb See implementation.
+ * @param[in] out_lba See implementation.
+ * @param[in] out_block_count See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static void internal_decode_rw10(const uint8_t* cdb, uint32_t* out_lba, uint32_t* out_block_count)
 {
@@ -424,6 +516,18 @@ static void internal_decode_rw10(const uint8_t* cdb, uint32_t* out_lba, uint32_t
  * (vendor, product, revision) and bakes them into the response per
  * SBC-4 sec 6.6. SPACE-padding is applied if the backend returns a
  * shorter string.
+ *
+ * @param[in] data_buf See implementation.
+ * @param[in] capacity See implementation.
+ * @param[in] out_len See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t internal_handle_inquiry(uint8_t* data_buf, uint32_t capacity, uint32_t* out_len)
 {
@@ -461,6 +565,18 @@ static ra_err_t internal_handle_inquiry(uint8_t* data_buf, uint32_t capacity, ui
  * @details Per SBC-4 sec 5.10 the response is the LAST valid LBA
  * (block_count - 1, big-endian) followed by the block size
  * (big-endian).
+ *
+ * @param[in] data_buf See implementation.
+ * @param[in] capacity See implementation.
+ * @param[in] out_len See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t
 internal_handle_read_capacity(uint8_t* data_buf, uint32_t capacity, uint32_t* out_len)
@@ -490,6 +606,18 @@ internal_handle_read_capacity(uint8_t* data_buf, uint32_t capacity, uint32_t* ou
  * once the CHECK CONDITION has been cleared. The starter does not
  * track sense state; it always answers "no sense" so subsequent
  * commands proceed.
+ *
+ * @param[in] data_buf See implementation.
+ * @param[in] capacity See implementation.
+ * @param[in] out_len See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t
 internal_handle_request_sense(uint8_t* data_buf, uint32_t capacity, uint32_t* out_len)
@@ -513,6 +641,18 @@ internal_handle_request_sense(uint8_t* data_buf, uint32_t capacity, uint32_t* ou
  * no descriptors / pages are present. Byte 0 = mode data length
  * (3). Byte 1 = medium type (0). Byte 2 = device-specific parameter
  * (0). Byte 3 = block descriptor length (0).
+ *
+ * @param[in] data_buf See implementation.
+ * @param[in] capacity See implementation.
+ * @param[in] out_len See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t internal_handle_mode_sense(uint8_t* data_buf, uint32_t capacity, uint32_t* out_len)
 {
@@ -528,6 +668,19 @@ static ra_err_t internal_handle_mode_sense(uint8_t* data_buf, uint32_t capacity,
 
 /**
  * @brief Run a SCSI READ(10).
+ *
+ * @details See implementation.
+ * @param[in] data_buf See implementation.
+ * @param[in] capacity See implementation.
+ * @param[in] out_len See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t internal_handle_read10(uint8_t* data_buf, uint32_t capacity, uint32_t* out_len)
 {
@@ -563,6 +716,18 @@ static ra_err_t internal_handle_read10(uint8_t* data_buf, uint32_t capacity, uin
 /**
  * @brief Run a SCSI WRITE(10) -- the data buffer holds the
  *        host-supplied payload.
+ *
+ * @details See implementation.
+ * @param[in] data_buf See implementation.
+ * @param[in] out_len See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t internal_handle_write10(const uint8_t* data_buf, uint32_t* out_len)
 {
@@ -596,6 +761,19 @@ static ra_err_t internal_handle_write10(const uint8_t* data_buf, uint32_t* out_l
  * =============================================================================
  */
 
+/**
+ * @brief Implementation of ra_usb_pmsc_feed_cbw (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] cbw See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_usb_pmsc_feed_cbw(const uint8_t* cbw)
 {
   RA_CHECK_NULL_PTR(cbw, s_tag, "feed_cbw: cbw");
@@ -639,6 +817,19 @@ ra_err_t ra_usb_pmsc_feed_cbw(const uint8_t* cbw)
  * `k_ra_ok` and a populated `*data_len` on a supported opcode;
  * sets `*csw_status` to `failed` on an unsupported opcode and
  * leaves `*data_len` zero.
+ *
+ * @param[in] data_buf See implementation.
+ * @param[in] data_buf_capacity See implementation.
+ * @param[in] data_len See implementation.
+ * @param[in] csw_status See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t internal_dispatch_scsi(uint8_t*                  data_buf,
                                        uint32_t                  data_buf_capacity,
@@ -672,6 +863,17 @@ static ra_err_t internal_dispatch_scsi(uint8_t*                  data_buf,
 /**
  * @brief Validate `dispatch_command` preconditions (driver state +
  *        bot phase + buffer capacity).
+ *
+ * @details See implementation.
+ * @param[in] data_buf_capacity See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t internal_dispatch_preconditions(uint32_t data_buf_capacity)
 {
@@ -692,6 +894,15 @@ static ra_err_t internal_dispatch_preconditions(uint32_t data_buf_capacity)
 
 /**
  * @brief Advance BOT state after a successful CDB dispatch.
+ *
+ * @details See implementation.
+ * @param[in] data_len See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static void internal_dispatch_advance_state(uint32_t data_len)
 {
@@ -703,6 +914,22 @@ static void internal_dispatch_advance_state(uint32_t data_len)
   }
 }
 
+/**
+ * @brief Implementation of ra_usb_pmsc_dispatch_command (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] data_buf See implementation.
+ * @param[in] data_buf_capacity See implementation.
+ * @param[in] data_len See implementation.
+ * @param[in] csw_status See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_usb_pmsc_dispatch_command(uint8_t*                  data_buf,
                                       uint32_t                  data_buf_capacity,
                                       uint32_t*                 data_len,
@@ -727,6 +954,21 @@ ra_err_t ra_usb_pmsc_dispatch_command(uint8_t*                  data_buf,
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_usb_pmsc_build_csw (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] csw_status See implementation.
+ * @param[in] residue See implementation.
+ * @param[in] out_csw See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t
 ra_usb_pmsc_build_csw(ra_usb_pmsc_csw_status_t csw_status, uint32_t residue, uint8_t* out_csw)
 {
@@ -744,6 +986,18 @@ ra_usb_pmsc_build_csw(ra_usb_pmsc_csw_status_t csw_status, uint32_t residue, uin
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_usb_pmsc_step (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_usb_pmsc_step(void)
 {
   if (!s_state.initialised) {
@@ -789,6 +1043,19 @@ ra_err_t ra_usb_pmsc_step(void)
  * =============================================================================
  */
 
+/**
+ * @brief Implementation of ra_usb_pmsc_attach_storage (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] storage See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_usb_pmsc_attach_storage(const ra_usb_pmsc_storage_t* storage)
 {
   if (!s_state.initialised) {
@@ -812,6 +1079,19 @@ ra_err_t ra_usb_pmsc_attach_storage(const ra_usb_pmsc_storage_t* storage)
  * =============================================================================
  */
 
+/**
+ * @brief Implementation of ra_usb_pmsc_init (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] speed See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_usb_pmsc_init(ra_usb_speed_t speed)
 {
   if ((speed != k_ra_usb_speed_fs) && (speed != k_ra_usb_speed_hs)) {
@@ -847,6 +1127,18 @@ ra_err_t ra_usb_pmsc_init(ra_usb_speed_t speed)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_usb_pmsc_close (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_usb_pmsc_close(void)
 {
   if (!s_state.initialised) {

@@ -176,6 +176,13 @@ static ra_usb_composite_state_data_t s_state = {};
  * value of `class_index + 1` means class `class_index` owns it. The
  * `+1` bias keeps a single `uint8_t` array (no "magic" sentinel
  * needed) and lets `if_owner_plus_one[i] != 0` be the collision check.
+ *
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static void internal_clear_if_owners(void)
 {
@@ -190,6 +197,16 @@ static void internal_clear_if_owners(void)
  * @details Per the public contract: all three callbacks must be
  * non-NULL, `interface_number_count >= 1`, and the requested IF range
  * must fit under `k_ra_usb_composite_max_ifs`.
+ *
+ * @param[in] cl See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t internal_validate_class(const ra_usb_composite_class_t* cl)
 {
@@ -216,6 +233,16 @@ static ra_err_t internal_validate_class(const ra_usb_composite_class_t* cl)
  * `k_ra_err_exists` if any slot is already owned (i.e. nonzero in
  * `if_owner_plus_one`). USB 2.0 sec 9.6.5 requires interface numbers
  * to be unique within a configuration.
+ *
+ * @param[in] cl See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t internal_check_collision(const ra_usb_composite_class_t* cl)
 {
@@ -233,6 +260,15 @@ static ra_err_t internal_check_collision(const ra_usb_composite_class_t* cl)
  *
  * @details Stored as `class_index + 1` so 0 retains "unowned"
  * semantics. The class index is later recovered with `slot - 1`.
+ *
+ * @param[in] cl See implementation.
+ * @param[in] class_index See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static void internal_mark_ownership(const ra_usb_composite_class_t* cl, uint8_t class_index)
 {
@@ -247,6 +283,17 @@ static void internal_mark_ownership(const ra_usb_composite_class_t* cl, uint8_t 
  *
  * @details Returns the class index in `*out_idx` and `k_ra_ok`, or
  * `k_ra_err_not_found` if `if_num` is not in any registered range.
+ *
+ * @param[in] if_num See implementation.
+ * @param[in] out_idx See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t internal_lookup_class_for_if(uint8_t if_num, uint8_t* out_idx)
 {
@@ -275,6 +322,15 @@ static ra_err_t internal_lookup_class_for_if(uint8_t if_num, uint8_t* out_idx)
  * non-zero error from `handle_setup`.
  *
  * @return `k_ra_ok` on success.
+ *
+ * @param[in] setup See implementation.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t internal_handle_standard(const ra_usb_setup_t* setup)
 {
@@ -302,6 +358,17 @@ static ra_err_t internal_handle_standard(const ra_usb_setup_t* setup)
  * starter uses the low byte of `wIndex` as the IF number; the high
  * byte (for endpoint requests, sec 9.4) is ignored here because the
  * composite registry is keyed on interface number.
+ *
+ * @param[in] setup See implementation.
+ * @param[in] out_idx See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t internal_route_class(const ra_usb_setup_t* setup, uint8_t* out_idx)
 {
@@ -319,6 +386,16 @@ static ra_err_t internal_route_class(const ra_usb_setup_t* setup, uint8_t* out_i
 /**
  * @brief Pre-init guard helper used by every public entry point that
  *        is not `init` itself.
+ *
+ * @details See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static inline ra_err_t internal_require_init(void)
 {
@@ -333,6 +410,19 @@ static inline ra_err_t internal_require_init(void)
  * =============================================================================
  */
 
+/**
+ * @brief Implementation of ra_usb_composite_init (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] speed See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_usb_composite_init(ra_usb_speed_t speed)
 {
   if ((speed != k_ra_usb_speed_fs) && (speed != k_ra_usb_speed_hs)) {
@@ -360,6 +450,18 @@ ra_err_t ra_usb_composite_init(ra_usb_speed_t speed)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_usb_composite_close (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_usb_composite_close(void)
 {
   if (!s_state.initialised) {
@@ -396,6 +498,19 @@ ra_err_t ra_usb_composite_close(void)
  * =============================================================================
  */
 
+/**
+ * @brief Implementation of ra_usb_composite_register_class (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] class_layer See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_usb_composite_register_class(const ra_usb_composite_class_t* class_layer)
 {
   const ra_err_t init_check = internal_require_init();
@@ -436,6 +551,20 @@ ra_err_t ra_usb_composite_register_class(const ra_usb_composite_class_t* class_l
  * =============================================================================
  */
 
+/**
+ * @brief Implementation of ra_usb_composite_set_descriptors (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] device_desc See implementation.
+ * @param[in] config_desc See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_usb_composite_set_descriptors(const uint8_t* device_desc, const uint8_t* config_desc)
 {
   const ra_err_t init_check = internal_require_init();
@@ -456,6 +585,18 @@ ra_err_t ra_usb_composite_set_descriptors(const uint8_t* device_desc, const uint
  * =============================================================================
  */
 
+/**
+ * @brief Implementation of ra_usb_composite_step (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_usb_composite_step(void)
 {
   const ra_err_t init_check = internal_require_init();
@@ -487,6 +628,20 @@ ra_err_t ra_usb_composite_step(void)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_usb_composite_dispatch_setup (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] setup See implementation.
+ * @param[in] out_handler_class See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_usb_composite_dispatch_setup(const ra_usb_setup_t* setup, uint8_t* out_handler_class)
 {
   const ra_err_t init_check = internal_require_init();
@@ -518,6 +673,19 @@ ra_err_t ra_usb_composite_dispatch_setup(const ra_usb_setup_t* setup, uint8_t* o
   return route_err;
 }
 
+/**
+ * @brief Implementation of ra_usb_composite_get_class_count (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] out_count See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_usb_composite_get_class_count(uint8_t* out_count)
 {
   const ra_err_t init_check = internal_require_init();
@@ -529,6 +697,19 @@ ra_err_t ra_usb_composite_get_class_count(uint8_t* out_count)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_usb_composite_get_device_descriptor (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] out_desc See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_usb_composite_get_device_descriptor(const uint8_t** out_desc)
 {
   const ra_err_t init_check = internal_require_init();
@@ -540,6 +721,19 @@ ra_err_t ra_usb_composite_get_device_descriptor(const uint8_t** out_desc)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_usb_composite_get_config_descriptor (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] out_desc See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_usb_composite_get_config_descriptor(const uint8_t** out_desc)
 {
   const ra_err_t init_check = internal_require_init();

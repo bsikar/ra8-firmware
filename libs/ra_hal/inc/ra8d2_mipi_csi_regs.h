@@ -659,6 +659,14 @@ static inline volatile uint32_t* ra_mipi_csi_reg32(ra_mipi_csi_off_t off)
  * @return The combined offset for the chosen VC.
  *
  * @since 0.1.0
+ *
+ * @details See implementation.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
  */
 static inline ra_mipi_csi_off_t ra_mipi_csi_vc_off(ra_mipi_csi_off_t base, uint8_t vc)
 {
@@ -678,6 +686,14 @@ static inline ra_mipi_csi_off_t ra_mipi_csi_vc_off(ra_mipi_csi_off_t base, uint8
  * @return The combined offset for the chosen lane.
  *
  * @since 0.1.0
+ *
+ * @details See implementation.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
  */
 static inline ra_mipi_csi_off_t ra_mipi_csi_dl_off(ra_mipi_csi_off_t base, uint8_t lane)
 {

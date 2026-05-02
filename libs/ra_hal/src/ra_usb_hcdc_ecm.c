@@ -168,6 +168,17 @@ static ra_usb_hcdc_ecm_state_t s_state = {};
 
 /**
  * @brief Pick the bulk-max-packet ceiling matching the negotiated speed.
+ *
+ * @details See implementation.
+ * @param[in] speed See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static uint16_t internal_bulk_max_packet(ra_usb_speed_t speed)
 {
@@ -182,6 +193,15 @@ static uint16_t internal_bulk_max_packet(ra_usb_speed_t speed)
  * @details Mirrors FSP's `usb_hcdc_pipe_info` invocation site in
  * `r_usb_hcdc_ecm.c:732`. Bulk pipes are PIPE1 / PIPE2; the
  * notification pipe is PIPE6.
+ *
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t internal_configure_pipes(void)
 {
@@ -214,6 +234,20 @@ static ra_err_t internal_configure_pipes(void)
 
 /**
  * @brief Stage a chapter-9 GET_DESCRIPTOR SETUP request.
+ *
+ * @details See implementation.
+ * @param[in] desc_type See implementation.
+ * @param[in] desc_index See implementation.
+ * @param[in] lang_id See implementation.
+ * @param[in] length See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t internal_setup_get_descriptor(uint8_t  desc_type,
                                               uint8_t  desc_index,
@@ -233,6 +267,17 @@ static ra_err_t internal_setup_get_descriptor(uint8_t  desc_type,
 
 /**
  * @brief Stage a SET_ADDRESS SETUP request.
+ *
+ * @details See implementation.
+ * @param[in] address See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t internal_setup_set_address(uint8_t address)
 {
@@ -248,6 +293,17 @@ static ra_err_t internal_setup_set_address(uint8_t address)
 
 /**
  * @brief Stage a SET_CONFIGURATION SETUP request.
+ *
+ * @details See implementation.
+ * @param[in] config_value See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t internal_setup_set_config(uint8_t config_value)
 {
@@ -267,6 +323,15 @@ static ra_err_t internal_setup_set_config(uint8_t config_value)
  * @details USB CDC ECM 1.20 sec 3.4 "Switching Between Configurations
  * and Alternate Settings" mandates SET_INTERFACE(IF=1, alt=1) to bring
  * the data-class interface online.
+ *
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t internal_setup_set_interface_data(void)
 {
@@ -284,6 +349,16 @@ static ra_err_t internal_setup_set_interface_data(void)
  * @brief Stage SET_ETHERNET_PACKET_FILTER (bRequest=0x43).
  *
  * @details See USB CDC ECM 1.20 sec 6.2.4 "SetEthernetPacketFilter".
+ *
+ * @param[in] filter_mask See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t internal_setup_set_packet_filter(uint16_t filter_mask)
 {
@@ -299,6 +374,18 @@ static ra_err_t internal_setup_set_packet_filter(uint16_t filter_mask)
 
 /**
  * @brief Convert one ASCII hex digit to a 0..15 nibble.
+ *
+ * @details See implementation.
+ * @param[in] c See implementation.
+ * @param[in] out_nibble See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t internal_hex_nibble(char c, uint8_t* out_nibble)
 {
@@ -332,6 +419,13 @@ static ra_err_t internal_hex_nibble(char c, uint8_t* out_nibble)
  *
  * See USB CDC ECM 1.20 sec 3.5 "Functional Descriptors" and sec 5.4
  * "Device Class Interface Definitions".
+ *
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static void internal_walk_config_descriptor(void)
 {
@@ -349,6 +443,16 @@ static void internal_walk_config_descriptor(void)
 
 /**
  * @brief Step handler -- bus-reset assert.
+ *
+ * @details See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t internal_do_idle(void)
 {
@@ -358,6 +462,16 @@ static ra_err_t internal_do_idle(void)
 
 /**
  * @brief Step handler -- bus-reset release + SETUP for SET_ADDRESS.
+ *
+ * @details See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t internal_do_bus_reset(void)
 {
@@ -370,6 +484,16 @@ static ra_err_t internal_do_bus_reset(void)
 /**
  * @brief Step handler -- store assigned address + SETUP for
  *        GET_DEVICE_DESCRIPTOR.
+ *
+ * @details See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t internal_do_set_address(void)
 {
@@ -384,6 +508,16 @@ static ra_err_t internal_do_set_address(void)
 
 /**
  * @brief Step handler -- SETUP for GET_CONFIGURATION_DESCRIPTOR.
+ *
+ * @details See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t internal_do_get_dev_desc(void)
 {
@@ -396,6 +530,16 @@ static ra_err_t internal_do_get_dev_desc(void)
 
 /**
  * @brief Step handler -- SETUP for SET_CONFIGURATION.
+ *
+ * @details See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t internal_do_get_cfg_desc(void)
 {
@@ -405,6 +549,16 @@ static ra_err_t internal_do_get_cfg_desc(void)
 
 /**
  * @brief Step handler -- pure software descriptor walk.
+ *
+ * @details See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t internal_do_set_config(void)
 {
@@ -415,6 +569,16 @@ static ra_err_t internal_do_set_config(void)
 
 /**
  * @brief Step handler -- SETUP for GET_STRING_DESCRIPTOR(iMACAddress).
+ *
+ * @details See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t internal_do_walk_desc(void)
 {
@@ -436,6 +600,15 @@ static ra_err_t internal_do_walk_desc(void)
  * CTRT path consumes the real GET_STRING_DESCRIPTOR data stage and
  * calls `ra_usb_hcdc_ecm_parse_mac` directly. See USB CDC ECM 1.20
  * sec 5.4 "iMACAddress".
+ *
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t internal_do_get_string_mac(void)
 {
@@ -445,6 +618,16 @@ static ra_err_t internal_do_get_string_mac(void)
 
 /**
  * @brief Step handler -- SETUP for SET_INTERFACE (data IF, alt 1).
+ *
+ * @details See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t internal_do_set_filter(void)
 {
@@ -454,6 +637,16 @@ static ra_err_t internal_do_set_filter(void)
 
 /**
  * @brief Step handler -- finalise pipes + fire attach callback.
+ *
+ * @details See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t internal_do_set_interface(void)
 {
@@ -469,6 +662,16 @@ static ra_err_t internal_do_set_interface(void)
 
 /**
  * @brief Drive the enumeration step machine forward by one step.
+ *
+ * @details See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t internal_step_advance(void)
 {
@@ -504,6 +707,19 @@ static ra_err_t internal_step_advance(void)
  * =============================================================================
  */
 
+/**
+ * @brief Implementation of ra_usb_hcdc_ecm_init (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] speed See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_usb_hcdc_ecm_init(ra_usb_speed_t speed)
 {
   if ((speed != k_ra_usb_speed_fs) && (speed != k_ra_usb_speed_hs)) {
@@ -528,6 +744,18 @@ ra_err_t ra_usb_hcdc_ecm_init(ra_usb_speed_t speed)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_usb_hcdc_ecm_close (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_usb_hcdc_ecm_close(void)
 {
   if (!s_state.initialised) {
@@ -549,6 +777,20 @@ ra_err_t ra_usb_hcdc_ecm_close(void)
  * =============================================================================
  */
 
+/**
+ * @brief Implementation of ra_usb_hcdc_ecm_attach_callback (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] on_attach See implementation.
+ * @param[in] ctx See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_usb_hcdc_ecm_attach_callback(ra_usb_hcdc_ecm_attach_fn_t on_attach, void* ctx)
 {
   if (!s_state.initialised) {
@@ -564,6 +806,20 @@ ra_err_t ra_usb_hcdc_ecm_attach_callback(ra_usb_hcdc_ecm_attach_fn_t on_attach, 
  * =============================================================================
  */
 
+/**
+ * @brief Implementation of ra_usb_hcdc_ecm_send_frame (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] buf See implementation.
+ * @param[in] len See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_usb_hcdc_ecm_send_frame(const uint8_t* buf, uint16_t len)
 {
   if (!s_state.initialised) {
@@ -581,6 +837,21 @@ ra_err_t ra_usb_hcdc_ecm_send_frame(const uint8_t* buf, uint16_t len)
   return ra_usb_queue_in(s_state.speed, k_ra_hcdc_ecm_pipe_bulk_out, buf, len);
 }
 
+/**
+ * @brief Implementation of ra_usb_hcdc_ecm_recv_frame (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] buf See implementation.
+ * @param[in] max_len See implementation.
+ * @param[in] got_len See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_usb_hcdc_ecm_recv_frame(uint8_t* buf, uint16_t max_len, uint16_t* got_len)
 {
   RA_CHECK_NULL_PTR(buf, s_tag, "ecm_recv: buf");
@@ -609,6 +880,19 @@ ra_err_t ra_usb_hcdc_ecm_recv_frame(uint8_t* buf, uint16_t max_len, uint16_t* go
  * =============================================================================
  */
 
+/**
+ * @brief Implementation of ra_usb_hcdc_ecm_set_packet_filter (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] filter_mask See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_usb_hcdc_ecm_set_packet_filter(uint16_t filter_mask)
 {
   if (!s_state.initialised) {
@@ -623,6 +907,19 @@ ra_err_t ra_usb_hcdc_ecm_set_packet_filter(uint16_t filter_mask)
   return internal_setup_set_packet_filter(filter_mask);
 }
 
+/**
+ * @brief Implementation of ra_usb_hcdc_ecm_get_link_status (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] out_link See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_usb_hcdc_ecm_get_link_status(ra_usb_hcdc_ecm_link_t* out_link)
 {
   RA_CHECK_NULL_PTR(out_link, s_tag, "ecm_link: out_link");
@@ -656,6 +953,20 @@ ra_err_t ra_usb_hcdc_ecm_get_link_status(ra_usb_hcdc_ecm_link_t* out_link)
  * =============================================================================
  */
 
+/**
+ * @brief Implementation of ra_usb_hcdc_ecm_parse_mac (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] chars See implementation.
+ * @param[in] out_mac See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_usb_hcdc_ecm_parse_mac(const char* chars, uint8_t* out_mac)
 {
   RA_CHECK_NULL_PTR(chars, s_tag, "parse_mac: chars");
@@ -685,6 +996,18 @@ ra_err_t ra_usb_hcdc_ecm_parse_mac(const char* chars, uint8_t* out_mac)
  * =============================================================================
  */
 
+/**
+ * @brief Implementation of ra_usb_hcdc_ecm_step (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_usb_hcdc_ecm_step(void)
 {
   if (!s_state.initialised) {

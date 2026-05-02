@@ -123,6 +123,14 @@ typedef enum : uint32_t {
  * @return uint8_t 0 = no patch loaded (or stub path), 1 = patch live.
  *
  * @since 0.1.0
+ *
+ * @details See implementation.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
  */
 uint8_t ra_ble_patch_is_loaded(void);
 

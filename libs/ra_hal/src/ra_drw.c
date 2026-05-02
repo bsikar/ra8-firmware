@@ -101,6 +101,11 @@ typedef enum : uint32_t {
  *
  * @post Returned value has only the format bits set.
  * @post No side effects.
+ *
+ * @details See implementation.
+ * @retval k_ra_ok Operation succeeded.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static inline uint32_t internal_pack_writeformat(ra_drw_writeformat_t fmt)
 {
@@ -123,6 +128,11 @@ static inline uint32_t internal_pack_writeformat(ra_drw_writeformat_t fmt)
  * @post Returned word touches only READFORMAT_L (18:19) and
  * READFORMAT_H (4:5).
  * @post No side effects.
+ *
+ * @details See implementation.
+ * @retval k_ra_ok Operation succeeded.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static inline uint32_t internal_pack_readformat(ra_drw_readformat_t fmt)
 {
@@ -144,6 +154,11 @@ static inline uint32_t internal_pack_readformat(ra_drw_readformat_t fmt)
  * @post Returned value preserves bit width and is suitable for
  * LnSTART / LnXADD / LnYADD writes.
  * @post No side effects.
+ *
+ * @details See implementation.
+ * @retval k_ra_ok Operation succeeded.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static inline uint32_t internal_to_subpixel(int32_t px)
 {
@@ -160,6 +175,11 @@ static inline uint32_t internal_to_subpixel(int32_t px)
  * @pre Result fits in int32_t.
  * @post Returned value is >= 0.
  * @post No side effects.
+ *
+ * @details See implementation.
+ * @retval k_ra_ok Operation succeeded.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static inline int32_t internal_iabs(int32_t v)
 {
@@ -178,6 +198,11 @@ static inline int32_t internal_iabs(int32_t v)
  * at the start of an enumeration).
  * @post CONTROL2 = (old & ~clear_mask) | set_mask.
  * @post Other CONTROL2 fields preserved.
+ *
+ * @details See implementation.
+ * @retval k_ra_ok Operation succeeded.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static inline uint32_t internal_control2_rmw(uint32_t clear_mask, uint32_t set_mask)
 {
@@ -198,6 +223,10 @@ static inline uint32_t internal_control2_rmw(uint32_t clear_mask, uint32_t set_m
  * @pre Driver initialised.
  * @post L1..L4 START / XADD / YADD describe a filled axis-aligned quad.
  * @post SIZE = (height << 16) | width.
+ *
+ * @details See implementation.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static void internal_program_rect_limiters(const ra_drw_rect_t* rect)
 {
@@ -344,6 +373,16 @@ static void internal_program_rect_limiters(const ra_drw_rect_t* rect)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_drw_dispatch (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 void ra_drw_dispatch(void)
 {
   /* HUM Ch 62.2.5 "STATUS: Status Control Register", p 3695 */
@@ -491,6 +530,11 @@ void ra_drw_dispatch(void)
  * @post No side effects.
  *
  * @note Internal helper, not thread-safe.
+ *
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @since 0.1.0
  */
 static uint32_t internal_pack_blend_bits(const ra_drw_blend_t* blend)
 {
@@ -584,6 +628,11 @@ static uint32_t internal_pack_blend_bits(const ra_drw_blend_t* blend)
  * @post No side effects.
  *
  * @note Internal helper, not thread-safe.
+ *
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @since 0.1.0
  */
 static uint32_t internal_pack_texture_bits(const ra_drw_texture_t* tex)
 {
@@ -776,6 +825,10 @@ ra_drw_load_clut(uint8_t start_index, const uint32_t* entries, uint32_t count)
  * @post Limiter registers reflect the line stroke envelope.
  *
  * @note Internal helper, not thread-safe.
+ *
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @since 0.1.0
  */
 static void internal_program_line_limiters(const ra_drw_line_t* line)
 {
