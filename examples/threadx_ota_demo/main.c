@@ -24,6 +24,7 @@
 
 #include <stdint.h>
 
+#include "ra_board_ek_ra8d2.h"
 #include "ra_err.h"
 #include "ra_isr.h"
 #include "ra_port_constants.h"
@@ -104,11 +105,11 @@ static void thread_ota_entry(ULONG thread_input)
   while (1) {
     /* Heartbeat: four LED1 toggles equals one full step. */
     for (uint8_t i = 0U; i < 4U; i++) {
-      (void)ra_gpio_toggle(k_ra_pin_led1);
+      (void)ra_board_led_toggle(k_ra_board_led1);
       (void)tx_thread_sleep((ULONG)k_ota_heartbeat_ticks);
     }
     /* State-transition pulse on LED2. */
-    (void)ra_gpio_toggle(k_ra_pin_led2);
+    (void)ra_board_led_toggle(k_ra_board_led2);
   }
 }
 
@@ -158,12 +159,12 @@ void tx_application_define(void* first_unused_memory)
 #pragma GCC diagnostic ignored "-Wmain"
 int32_t main(void)
 {
-  if (ra_gpio_output_init(k_ra_pin_led1, k_ra_level_low) != k_ra_ok) {
+  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
     while (1) {
       __asm__ volatile("wfi");
     }
   }
-  if (ra_gpio_output_init(k_ra_pin_led2, k_ra_level_low) != k_ra_ok) {
+  if (ra_board_led_init(k_ra_board_led2) != k_ra_ok) {
     while (1) {
       __asm__ volatile("wfi");
     }

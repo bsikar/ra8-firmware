@@ -34,6 +34,7 @@
 
 #include <stdint.h>
 
+#include "ra_board_ek_ra8d2.h"
 #include "ra_err.h"
 #include "ra_isr.h"
 #include "ra_port_constants.h"
@@ -108,7 +109,7 @@ static void thread_tx_entry(ULONG thread_input)
 {
   (void)thread_input;
   while (1) {
-    (void)ra_gpio_toggle(k_ra_pin_led1);
+    (void)ra_board_led_toggle(k_ra_board_led1);
     (void)tx_thread_sleep((ULONG)k_canfd_heartbeat_ticks);
   }
 }
@@ -127,7 +128,7 @@ static void thread_rx_entry(ULONG thread_input)
 {
   (void)thread_input;
   while (1) {
-    (void)ra_gpio_toggle(k_ra_pin_led2);
+    (void)ra_board_led_toggle(k_ra_board_led2);
     (void)tx_thread_sleep((ULONG)k_canfd_rx_poll_ticks);
   }
 }
@@ -195,12 +196,12 @@ void tx_application_define(void* first_unused_memory)
 #pragma GCC diagnostic ignored "-Wmain"
 int32_t main(void)
 {
-  if (ra_gpio_output_init(k_ra_pin_led1, k_ra_level_low) != k_ra_ok) {
+  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
     while (1) {
       __asm__ volatile("wfi");
     }
   }
-  if (ra_gpio_output_init(k_ra_pin_led2, k_ra_level_low) != k_ra_ok) {
+  if (ra_board_led_init(k_ra_board_led2) != k_ra_ok) {
     while (1) {
       __asm__ volatile("wfi");
     }
