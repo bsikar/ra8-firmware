@@ -808,6 +808,23 @@ static ra_err_t priv_alloc_cluster(const ra_fs_mount_t* m, uint32_t* out_cluster
  */
 /**
  * @brief Upper-case ASCII conversion (returns input unchanged if not lowercase).
+ *
+ * @details Locale-independent ASCII upcase.
+ *
+ * @param[in] c Input character.
+ *
+ * @return Upper-case form of `c` if it was lower-case ASCII, else `c`.
+ * @retval 'A'..'Z'   Upper-cased input.
+ * @retval c          Otherwise unchanged.
+ *
+ * @pre None.
+ * @pre Caller wants ASCII-only handling.
+ * @post No state modified.
+ * @post Result is purely a function of `c`.
+ *
+ * @note Pure function; trivially thread-safe.
+ *
+ * @since 0.1.0
  */
 static char priv_to_upper(char c)
 {
@@ -819,6 +836,25 @@ static char priv_to_upper(char c)
 
 /**
  * @brief Pack the base portion of a path into out11[0..7]. Returns 0 on error.
+ *
+ * @details Reads characters from `*path_io` up to a `.` or NUL,
+ *          upper-cases them, and writes them into `out11[0..7]`.
+ *
+ * @param[in,out] path_io Cursor into the input path; advanced on success.
+ * @param[out]    out11   11-byte buffer; first 8 bytes are written.
+ *
+ * @return 1 on success, 0 on overflow or empty base.
+ * @retval 1  Base name packed.
+ * @retval 0  Base too long or zero-length.
+ *
+ * @pre `path_io`, `*path_io`, and `out11` are non-NULL.
+ * @pre `out11` has been pre-padded with spaces by the caller.
+ * @post On success, `out11[0..7]` holds the upper-cased base.
+ * @post On success, `*path_io` points at the `.` or terminator.
+ *
+ * @note Helper used only by `priv_path_to_83`.
+ *
+ * @since 0.1.0
  */
 static uint8_t priv_pack_base(const char** path_io, uint8_t* out11)
 {
@@ -839,6 +875,24 @@ static uint8_t priv_pack_base(const char** path_io, uint8_t* out11)
 
 /**
  * @brief Pack the extension portion of a path into out11[8..10]. Returns 0 on error.
+ *
+ * @details If `*path` is not `.`, returns success with no writes.
+ *
+ * @param[in]  path  Cursor at the `.` or terminator following the base.
+ * @param[out] out11 11-byte buffer; bytes 8..10 are written.
+ *
+ * @return 1 on success, 0 on overflow.
+ * @retval 1  Extension packed (or absent).
+ * @retval 0  Extension too long.
+ *
+ * @pre `path` and `out11` are non-NULL.
+ * @pre `out11` has been pre-padded with spaces by the caller.
+ * @post On success, `out11[8..10]` holds the upper-cased extension.
+ * @post `*path` is not modified.
+ *
+ * @note Helper used only by `priv_path_to_83`.
+ *
+ * @since 0.1.0
  */
 static uint8_t priv_pack_ext(const char* path, uint8_t* out11)
 {
@@ -857,6 +911,29 @@ static uint8_t priv_pack_ext(const char* path, uint8_t* out11)
   return 1U;
 }
 
+/**
+ * @brief Convert a "/FILE.TXT"-style path to packed 11-byte 8.3 form.
+ *
+ * @details Strips leading `/`, pre-pads `out11` with spaces, calls the
+ *          base/extension packers, and rewrites a leading 0xE5 byte to
+ *          the kanji escape 0x05.
+ *
+ * @param[in]  path  NUL-terminated input path. Must be non-NULL.
+ * @param[out] out11 11-byte output buffer. Must be non-NULL.
+ *
+ * @return 1 on success, 0 on invalid name.
+ * @retval 1  Name packed into `out11`.
+ * @retval 0  NULL input or name violates 8.3 rules.
+ *
+ * @pre `path` and `out11` are non-NULL when valid.
+ * @pre `out11` has at least `k_max_8_3_name` writable bytes.
+ * @post On success, `out11` holds the on-disk 8.3 representation.
+ * @post On failure, `out11` content is unspecified.
+ *
+ * @note Pure ASCII upcase; no locale support.
+ *
+ * @since 0.1.0
+ */
 static uint8_t priv_path_to_83(const char* path, uint8_t* out11)
 {
   if (path == NULL || out11 == NULL) {
@@ -883,8 +960,24 @@ static uint8_t priv_path_to_83(const char* path, uint8_t* out11)
 /**
  * @brief Unpack on-disk 11-byte 8.3 name into NUL-terminated "NAME.EXT".
  *
+ * @details Trims trailing space pad in the base portion, restores the
+ *          0x05 -> 0xE5 kanji escape, and emits the dot + extension
+ *          only when the extension is non-empty.
+ *
  * @param[in]  in11  Packed 11-byte name.
  * @param[out] out12 Buffer of at least 12 bytes (8 + . + 3 + NUL).
+ *
+ * @return None.
+ * @retval None
+ *
+ * @pre `in11` and `out12` are non-NULL.
+ * @pre `out12` has at least 13 writable bytes.
+ * @post `out12` is NUL-terminated.
+ * @post Trailing space padding has been stripped.
+ *
+ * @note Helper used only by `ra_fs_listdir`.
+ *
+ * @since 0.1.0
  */
 static void priv_83_to_str(const uint8_t* in11, char* out12)
 {
