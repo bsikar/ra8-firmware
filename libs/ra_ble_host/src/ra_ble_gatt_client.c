@@ -39,6 +39,28 @@
  * library has been brought into the per-app build. The strong upstream
  * symbols override these once the host stack is wired in.
  */
+/**
+ * @brief Weak fallback for NimBLE GATT-client "discover all services" call.
+ *
+ * @details No-op stub returning success; overridden by the real NimBLE
+ *          implementation when the host stack is linked in.
+ *
+ * @param[in,out] conn_handle BLE connection handle (ignored).
+ * @param[in,out] cb          Discovery callback (ignored).
+ * @param[in,out] cb_arg      Opaque pointer forwarded to cb (ignored).
+ *
+ * @return 0 always (stub).
+ * @retval 0 Stub success.
+ *
+ * @pre TU is being built without the real NimBLE host.
+ * @pre Caller does not depend on actual discovery happening.
+ * @post No state modified.
+ * @post Returned value is 0.
+ *
+ * @note Weak symbol; superseded by real NimBLE host when present.
+ *
+ * @since 0.1.0
+ */
 __attribute__((weak)) int
 ble_gattc_disc_all_svcs(uint16_t conn_handle, ble_gatt_disc_svc_fn* cb, void* cb_arg)
 {
@@ -48,6 +70,29 @@ ble_gattc_disc_all_svcs(uint16_t conn_handle, ble_gatt_disc_svc_fn* cb, void* cb
   return 0;
 }
 
+/**
+ * @brief Weak fallback for NimBLE GATT-client "read attribute" call.
+ *
+ * @details No-op stub returning success; overridden by the real NimBLE
+ *          implementation when the host stack is linked in.
+ *
+ * @param[in,out] conn_handle BLE connection handle (ignored).
+ * @param[in,out] attr_handle Attribute handle to read (ignored).
+ * @param[in,out] cb          Read-result callback (ignored).
+ * @param[in,out] cb_arg      Opaque pointer forwarded to cb (ignored).
+ *
+ * @return 0 always (stub).
+ * @retval 0 Stub success.
+ *
+ * @pre TU is being built without the real NimBLE host.
+ * @pre Caller does not depend on actual read happening.
+ * @post No state modified.
+ * @post Returned value is 0.
+ *
+ * @note Weak symbol; superseded by real NimBLE host when present.
+ *
+ * @since 0.1.0
+ */
 __attribute__((weak)) int
 ble_gattc_read(uint16_t conn_handle, uint16_t attr_handle, ble_gatt_attr_fn* cb, void* cb_arg)
 {
@@ -58,6 +103,30 @@ ble_gattc_read(uint16_t conn_handle, uint16_t attr_handle, ble_gatt_attr_fn* cb,
   return 0;
 }
 
+/**
+ * @brief Ble gattc write flat.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] conn_handle See function signature for type and usage.
+ * @param[in,out] attr_handle See function signature for type and usage.
+ * @param[in,out] data See function signature for type and usage.
+ * @param[in,out] data_len See function signature for type and usage.
+ * @param[in,out] cb See function signature for type and usage.
+ * @param[in,out] cb_arg See function signature for type and usage.
+ *
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 __attribute__((weak)) int ble_gattc_write_flat(uint16_t          conn_handle,
                                                uint16_t          attr_handle,
                                                const void*       data,
@@ -74,6 +143,28 @@ __attribute__((weak)) int ble_gattc_write_flat(uint16_t          conn_handle,
   return 0;
 }
 
+/**
+ * @brief Ble gattc write no rsp flat.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] conn_handle See function signature for type and usage.
+ * @param[in,out] attr_handle See function signature for type and usage.
+ * @param[in,out] data See function signature for type and usage.
+ * @param[in,out] data_len See function signature for type and usage.
+ *
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 __attribute__((weak)) int ble_gattc_write_no_rsp_flat(uint16_t    conn_handle,
                                                       uint16_t    attr_handle,
                                                       const void* data,
@@ -86,6 +177,29 @@ __attribute__((weak)) int ble_gattc_write_no_rsp_flat(uint16_t    conn_handle,
   return 0;
 }
 
+/**
+ * @brief Weak fallback for NimBLE "mbuf to flat buffer" copy.
+ *
+ * @details No-op stub returning success and writing zero bytes copied;
+ *          overridden by real NimBLE host when present.
+ *
+ * @param[in,out] om           Source mbuf chain (ignored).
+ * @param[in,out] flat         Destination flat buffer (ignored).
+ * @param[in,out] max_len      Capacity of flat buffer (ignored).
+ * @param[in,out] out_copy_len Output: bytes copied. Set to 0 when non-NULL.
+ *
+ * @return 0 always (stub).
+ * @retval 0 Stub success.
+ *
+ * @pre TU is being built without the real NimBLE host.
+ * @pre out_copy_len may be NULL; if non-NULL it is writable.
+ * @post out_copy_len (if non-NULL) is set to 0.
+ * @post No mbuf state modified.
+ *
+ * @note Weak symbol; superseded by real NimBLE host when present.
+ *
+ * @since 0.1.0
+ */
 __attribute__((weak)) int
 ble_hs_mbuf_to_flat(const struct os_mbuf* om, void* flat, uint16_t max_len, uint16_t* out_copy_len)
 {
@@ -615,12 +729,62 @@ ra_err_t ra_ble_gatt_subscribe(uint16_t                conn_handle,
 
 #ifdef UNIT_TEST
 /* Test-hook prototypes (external linkage). */
-void     ra_ble_gatt_client_test_inject_notify(uint16_t       conn_handle,
-                                               uint16_t       attr_handle,
-                                               const uint8_t* data,
-                                               uint16_t       len);
+/**
+ * @brief Ra ble gatt client test inject notify.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] conn_handle See function signature for type and usage.
+ * @param[in,out] attr_handle See function signature for type and usage.
+ * @param[in,out] data See function signature for type and usage.
+ * @param[in,out] len See function signature for type and usage.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
+void ra_ble_gatt_client_test_inject_notify(uint16_t       conn_handle,
+                                           uint16_t       attr_handle,
+                                           const uint8_t* data,
+                                           uint16_t       len);
+/**
+ * @brief Ra ble gatt client test pending count.
+ *
+ * @details See implementation for details.
+ *
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 uint32_t ra_ble_gatt_client_test_pending_count(void);
-void     ra_ble_gatt_client_test_reset(void);
+/**
+ * @brief Ra ble gatt client test reset.
+ *
+ * @details See implementation for details.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
+void ra_ble_gatt_client_test_reset(void);
 
 /**
  * @brief Test hook -- inject an HVN/HVI on a registered subscription.

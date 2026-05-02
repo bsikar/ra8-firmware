@@ -47,6 +47,13 @@ typedef struct {
  *
  * @note Nested calls are supported. Each enter must have a matching
  *       exit.
+ *
+ * @details See implementation for details.
+ * @pre Module has been initialised.
+ * @pre Caller has validated arguments.
+ * @post Side effects bounded to documented state.
+ * @post State reflects operation result.
+ * @since 0.1.0
  */
 static inline void ra_register_guard_enter(ra_register_guard_t* guard)
 {
@@ -55,6 +62,25 @@ static inline void ra_register_guard_enter(ra_register_guard_t* guard)
 #else
   uint32_t primask;
   __asm__ volatile("mrs %0, primask" : "=r"(primask));
+  /**
+   * @brief Volatile.
+   *
+   * @details See implementation for details.
+   *
+   * @param[in,out] memory See function signature for type and usage.
+   *
+   * @return Result code or value; see implementation.
+   * @retval 0 Success or default value.
+   *
+   * @pre Caller has validated arguments.
+   * @pre Module has been initialised.
+   * @post Side effects bounded to documented state.
+   * @post Returned value reflects current state.
+   *
+   * @note Not thread-safe unless documented otherwise.
+   *
+   * @since 0.1.0
+   */
   __asm__ volatile("cpsid i" ::: "memory");
   guard->saved_primask = primask;
 #endif
@@ -65,6 +91,14 @@ static inline void ra_register_guard_enter(ra_register_guard_t* guard)
  *
  * @param[in] guard Pointer to a guard previously passed to
  *                  `ra_register_guard_enter()`.
+ *
+ * @details See implementation for details.
+ * @pre Module has been initialised.
+ * @pre Caller has validated arguments.
+ * @post Side effects bounded to documented state.
+ * @post State reflects operation result.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static inline void ra_register_guard_exit(const ra_register_guard_t* guard)
 {

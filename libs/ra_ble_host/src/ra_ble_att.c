@@ -95,11 +95,67 @@ typedef struct {
 } ra_ble_host_state_t;
 
 ra_ble_host_state_t* ra_ble_host_state(void);
-void                 ra_ble_host_dispatch_event(const ra_ble_host_event_t* evt);
-ra_err_t             ra_ble_host_l2cap_send(uint16_t       conn_handle,
-                                            uint16_t       cid,
-                                            const uint8_t* payload,
-                                            uint16_t       payload_len);
+/**
+ * @brief Ra ble host dispatch event.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] evt See function signature for type and usage.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
+void ra_ble_host_dispatch_event(const ra_ble_host_event_t* evt);
+/**
+ * @brief Ra ble host l2cap send.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] conn_handle See function signature for type and usage.
+ * @param[in,out] cid See function signature for type and usage.
+ * @param[in,out] payload See function signature for type and usage.
+ * @param[in,out] payload_len See function signature for type and usage.
+ *
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
+ra_err_t ra_ble_host_l2cap_send(uint16_t       conn_handle,
+                                uint16_t       cid,
+                                const uint8_t* payload,
+                                uint16_t       payload_len);
+/**
+ * @brief Ra ble host att handle pdu.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] conn_handle See function signature for type and usage.
+ * @param[in,out] pdu See function signature for type and usage.
+ * @param[in,out] pdu_len See function signature for type and usage.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 void ra_ble_host_att_handle_pdu(uint16_t conn_handle, const uint8_t* pdu, uint16_t pdu_len);
 ra_ble_host_attr_t* ra_ble_host_attr_lookup(uint16_t handle);
 

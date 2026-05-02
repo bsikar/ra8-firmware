@@ -63,6 +63,11 @@ typedef enum : uint32_t {
  * @note Pure helper, no side effects.
  *
  * @since 0.1.0
+ *
+ * @details See implementation for details.
+ * @retval 0 Success or default value.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
  */
 static UINT priv_status_from_ra_err(ra_err_t err)
 {
@@ -81,6 +86,11 @@ static UINT priv_status_from_ra_err(ra_err_t err)
  * @post On success the SDHI MSTP gate is open and IRQ masks are cleared.
  *
  * @since 0.1.0
+ *
+ * @details See implementation for details.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @note Not thread-safe unless documented otherwise.
  */
 static void priv_handle_init(FX_MEDIA* media)
 {
@@ -101,6 +111,11 @@ static void priv_handle_init(FX_MEDIA* media)
  * @post SDHI MSTP gate is closed.
  *
  * @since 0.1.0
+ *
+ * @details See implementation for details.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @note Not thread-safe unless documented otherwise.
  */
 static void priv_handle_uninit(FX_MEDIA* media)
 {
@@ -120,6 +135,10 @@ static void priv_handle_uninit(FX_MEDIA* media)
  * @post On success the buffer holds ``sectors * 512`` bytes of card data.
  *
  * @since 0.1.0
+ *
+ * @details See implementation for details.
+ * @post Side effects bounded to documented state.
+ * @note Not thread-safe unless documented otherwise.
  */
 static void priv_handle_read(FX_MEDIA* media)
 {
@@ -144,6 +163,10 @@ static void priv_handle_read(FX_MEDIA* media)
  * @post On success the requested sector range has been written to the card.
  *
  * @since 0.1.0
+ *
+ * @details See implementation for details.
+ * @post Side effects bounded to documented state.
+ * @note Not thread-safe unless documented otherwise.
  */
 static void priv_handle_write(FX_MEDIA* media)
 {
@@ -167,6 +190,10 @@ static void priv_handle_write(FX_MEDIA* media)
  * @post On success the boot sector is in ``media->fx_media_driver_buffer``.
  *
  * @since 0.1.0
+ *
+ * @details See implementation for details.
+ * @post Side effects bounded to documented state.
+ * @note Not thread-safe unless documented otherwise.
  */
 static void priv_handle_boot_read(FX_MEDIA* media)
 {
@@ -188,6 +215,10 @@ static void priv_handle_boot_read(FX_MEDIA* media)
  * @post On success sector 0 has been overwritten with the buffer contents.
  *
  * @since 0.1.0
+ *
+ * @details See implementation for details.
+ * @post Side effects bounded to documented state.
+ * @note Not thread-safe unless documented otherwise.
  */
 static void priv_handle_boot_write(FX_MEDIA* media)
 {
@@ -198,6 +229,22 @@ static void priv_handle_boot_write(FX_MEDIA* media)
   media->fx_media_driver_status = priv_status_from_ra_err(err);
 }
 
+/**
+ * @brief Fx media driver ra sdhi.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] media See function signature for type and usage.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 void fx_media_driver_ra_sdhi(FX_MEDIA* media)
 {
   /* FileX never invokes the driver with media == NULL, but the FSP

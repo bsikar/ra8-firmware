@@ -70,6 +70,30 @@ typedef struct {
 
 /* Upstream symbols renamed by `--wrap=`. Declared so we can call
  * them in the forward path. */
+/**
+ * @brief   real  nx crypto method sha256 init.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] method See function signature for type and usage.
+ * @param[in,out] key See function signature for type and usage.
+ * @param[in,out] key_size_in_bits See function signature for type and usage.
+ * @param[in,out] handle See function signature for type and usage.
+ * @param[in,out] crypto_metadata See function signature for type and usage.
+ * @param[in,out] crypto_metadata_size See function signature for type and usage.
+ *
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 UINT __real__nx_crypto_method_sha256_init(struct NX_CRYPTO_METHOD_STRUCT* method,
                                           UCHAR*                          key,
                                           NX_CRYPTO_KEY_SIZE              key_size_in_bits,
@@ -92,6 +116,25 @@ UINT __real__nx_crypto_method_sha256_operation(UINT                            o
                                                VOID* packet_ptr,
                                                VOID (*hw_cb)(VOID*, UINT));
 
+/**
+ * @brief   real  nx crypto method sha256 cleanup.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] crypto_metadata See function signature for type and usage.
+ *
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 UINT __real__nx_crypto_method_sha256_cleanup(VOID* crypto_metadata);
 
 /**
@@ -125,6 +168,20 @@ static nx_sha256_alt_meta_t* priv_meta_of(VOID* crypto_metadata, ULONG size)
  * metadata area is large enough -- resets our trailing accumulator.
  *
  * @since 0.1.0
+ *
+ * @param[in,out] crypto_metadata See function signature.
+ * @param[in,out] crypto_metadata_size See function signature.
+ * @param[in,out] handle See function signature.
+ * @param[in,out] key See function signature.
+ * @param[in,out] key_size_in_bits See function signature.
+ * @param[in,out] method See function signature.
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ * @pre Module has been initialised.
+ * @pre Caller has validated arguments.
+ * @post Side effects bounded to documented state.
+ * @post State reflects operation result.
+ * @note Not thread-safe unless documented otherwise.
  */
 UINT __wrap__nx_crypto_method_sha256_init(struct NX_CRYPTO_METHOD_STRUCT* method,
                                           UCHAR*                          key,
@@ -282,6 +339,15 @@ UINT __wrap__nx_crypto_method_sha256_operation(UINT                            o
  * (``NX_SECURE_KEY_CLEAR``).
  *
  * @since 0.1.0
+ *
+ * @param[in,out] crypto_metadata See function signature.
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ * @pre Module has been initialised.
+ * @pre Caller has validated arguments.
+ * @post Side effects bounded to documented state.
+ * @post State reflects operation result.
+ * @note Not thread-safe unless documented otherwise.
  */
 UINT __wrap__nx_crypto_method_sha256_cleanup(VOID* crypto_metadata)
 {

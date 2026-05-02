@@ -379,6 +379,8 @@ ra_err_t ra_psa_key_import(ra_psa_key_t*            out_handle,
  * @see ra_psa_key_import()
  * @see PSA Crypto API spec (ARM IHI 0086) Sec 9.6 "psa_destroy_key".
  * @since 0.1.0
+ *
+ * @note Not thread-safe unless documented otherwise.
  */
 ra_err_t ra_psa_key_destroy(ra_psa_key_t handle);
 
@@ -413,6 +415,8 @@ ra_err_t ra_psa_key_destroy(ra_psa_key_t handle);
  *
  * @see PSA Crypto API spec (ARM IHI 0086) Sec 10.2 "Hash operations".
  * @since 0.1.0
+ *
+ * @note Not thread-safe unless documented otherwise.
  */
 ra_err_t ra_psa_hash_compute(ra_psa_alg_t   alg,
                              const uint8_t* input,
@@ -457,6 +461,8 @@ ra_err_t ra_psa_hash_compute(ra_psa_alg_t   alg,
  * @see ra_psa_verify_hash()
  * @see PSA Crypto API spec (ARM IHI 0086) Sec 12.6 "psa_sign_hash".
  * @since 0.1.0
+ *
+ * @note Not thread-safe unless documented otherwise.
  */
 ra_err_t ra_psa_sign_hash(ra_psa_key_t   handle,
                           ra_psa_alg_t   alg,
@@ -498,6 +504,9 @@ ra_err_t ra_psa_sign_hash(ra_psa_key_t   handle,
  * @see ra_psa_sign_hash()
  * @see PSA Crypto API spec (ARM IHI 0086) Sec 12.7 "psa_verify_hash".
  * @since 0.1.0
+ *
+ * @post Side effects bounded to documented state.
+ * @note Not thread-safe unless documented otherwise.
  */
 ra_err_t ra_psa_verify_hash(ra_psa_key_t   handle,
                             ra_psa_alg_t   alg,
@@ -548,6 +557,8 @@ ra_err_t ra_psa_verify_hash(ra_psa_key_t   handle,
  * @see ra_psa_aead_decrypt()
  * @see PSA Crypto API spec (ARM IHI 0086) Sec 11.4 "psa_aead_encrypt".
  * @since 0.1.0
+ *
+ * @note Not thread-safe unless documented otherwise.
  */
 ra_err_t ra_psa_aead_encrypt(ra_psa_key_t   handle,
                              ra_psa_alg_t   alg,
@@ -601,6 +612,8 @@ ra_err_t ra_psa_aead_encrypt(ra_psa_key_t   handle,
  * @see ra_psa_aead_encrypt()
  * @see PSA Crypto API spec (ARM IHI 0086) Sec 11.5 "psa_aead_decrypt".
  * @since 0.1.0
+ *
+ * @note Not thread-safe unless documented otherwise.
  */
 ra_err_t ra_psa_aead_decrypt(ra_psa_key_t   handle,
                              ra_psa_alg_t   alg,

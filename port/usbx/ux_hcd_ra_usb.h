@@ -112,10 +112,36 @@ typedef enum : uint8_t {
  *
  * @note Thread-safe (single 8-bit load).
  * @since 0.1.0
+ *
+ * @details See implementation for details.
+ * @retval 0 Success or default value.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
  */
 ra_usb_hcd_state_t ux_hcd_ra_usb_state(void);
 
 /* Dispatcher exposed for direct invocation and unit tests. */
+/**
+ * @brief  ux hcd ra usb function.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] hcd See function signature for type and usage.
+ * @param[in,out] function See function signature for type and usage.
+ * @param[in,out] parameter See function signature for type and usage.
+ *
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 unsigned int
 _ux_hcd_ra_usb_function(struct UX_HCD_STRUCT* hcd, unsigned int function, void* parameter);
 

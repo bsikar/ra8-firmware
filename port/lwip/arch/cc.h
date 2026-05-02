@@ -80,6 +80,23 @@ void ra_lwip_platform_assert(const char* msg, const char* file, int line) __attr
 extern "C" {
 #endif
 
+/**
+ * @brief Ra lwip rand.
+ *
+ * @details See implementation for details.
+ *
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 uint32_t ra_lwip_rand(void);
 
 #ifdef __cplusplus

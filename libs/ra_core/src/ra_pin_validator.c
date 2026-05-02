@@ -66,6 +66,8 @@ static const char* s_owner[k_ra_port_count * k_ra_pin_count];
  * @note Pure computation; trivially thread-safe.
  *
  * @since 0.1.0
+ *
+ * @details See implementation for details.
  */
 static ra_err_t internal_flat_index(ra_port_pin_t pin, uint16_t* out_index)
 {

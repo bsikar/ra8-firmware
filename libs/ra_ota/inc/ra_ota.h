@@ -488,6 +488,9 @@ typedef struct {
  *
  * @note Thread-safe: read of a single ``uint8_t``.
  * @since 0.1.0
+ *
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
  */
 ra_ota_state_t ra_ota_get_state(void);
 

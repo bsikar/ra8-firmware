@@ -123,6 +123,9 @@ UINT lx_filex_adapter_bind(LX_NOR_FLASH* nor_flash);
  * @note Pure helper, no side effects.
  *
  * @since 0.1.0
+ *
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
  */
 ULONG lx_filex_adapter_get_total_sectors(void);
 

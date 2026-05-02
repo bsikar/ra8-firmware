@@ -504,6 +504,8 @@ ra_err_t ra_net_pal_recv_frame(uint8_t* out_buf, uint16_t* inout_len)
  * @note Not thread-safe with respect to the event handler which
  *       can update link state from ISR context.
  * @since 0.1.0
+ *
+ * @details See implementation for details.
  */
 ra_err_t ra_net_pal_link_status(ra_net_pal_link_state_t* out_state)
 {

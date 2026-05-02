@@ -169,6 +169,16 @@ static bool s_initialised;
  *
  * @param[in] h Handle to validate.
  * @return ``true`` when ``h`` resolves to an in-use pool slot.
+ *
+ * @details See implementation for details.
+ * @param[in,out] handle See function signature.
+ * @retval 0 Success or default value.
+ * @pre Module has been initialised.
+ * @pre Caller has validated arguments.
+ * @post Side effects bounded to documented state.
+ * @post State reflects operation result.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static bool internal_handle_valid(ra_psa_key_t handle)
 {
@@ -224,12 +234,44 @@ static const uint32_t k_sha256_round_const[k_ra_psa_sha256_schedule_len] = {
   0xc67178f2U,
 };
 
+/**
+ * @brief Sha256 rotr.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] x See function signature for type and usage.
+ * @param[in,out] n See function signature for type and usage.
+ *
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 static inline uint32_t internal_sha256_rotr(uint32_t x, uint32_t n)
 {
   return (x >> n) | (x << (k_ra_psa_word_bits - n));
 }
 
-/** @brief Build the 64-word message schedule W[] from a single block. */
+/**
+ * @brief Build the 64-word message schedule W[] from a single block.
+ *
+ * @details See implementation for details.
+ * @param[in,out] block See function signature.
+ * @param[in,out] schedule See function signature.
+ * @pre Module has been initialised.
+ * @pre Caller has validated arguments.
+ * @post Side effects bounded to documented state.
+ * @post State reflects operation result.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 static void internal_sha256_schedule(uint32_t      schedule[k_ra_psa_sha256_schedule_len],
                                      const uint8_t block[k_ra_psa_sha256_block_bytes])
 {
@@ -254,7 +296,19 @@ static void internal_sha256_schedule(uint32_t      schedule[k_ra_psa_sha256_sche
   }
 }
 
-/** @brief Run the 64 SHA-256 compression rounds, updating ``state`` in place. */
+/**
+ * @brief Run the 64 SHA-256 compression rounds, updating ``state`` in place.
+ *
+ * @details See implementation for details.
+ * @param[in,out] schedule See function signature.
+ * @param[in,out] state See function signature.
+ * @pre Module has been initialised.
+ * @pre Caller has validated arguments.
+ * @post Side effects bounded to documented state.
+ * @post State reflects operation result.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 static void internal_sha256_rounds(uint32_t       state[k_ra_psa_sha256_state_words],
                                    const uint32_t schedule[k_ra_psa_sha256_schedule_len])
 {
@@ -296,7 +350,19 @@ static void internal_sha256_rounds(uint32_t       state[k_ra_psa_sha256_state_wo
   state[k_ra_psa_state_idx_h] += h;
 }
 
-/** @brief Process one 64-byte block into the hash ``state``. */
+/**
+ * @brief Process one 64-byte block into the hash ``state``.
+ *
+ * @details See implementation for details.
+ * @param[in,out] block See function signature.
+ * @param[in,out] state See function signature.
+ * @pre Module has been initialised.
+ * @pre Caller has validated arguments.
+ * @post Side effects bounded to documented state.
+ * @post State reflects operation result.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 static void internal_sha256_block(uint32_t      state[k_ra_psa_sha256_state_words],
                                   const uint8_t block[k_ra_psa_sha256_block_bytes])
 {
@@ -305,7 +371,20 @@ static void internal_sha256_block(uint32_t      state[k_ra_psa_sha256_state_word
   internal_sha256_rounds(state, schedule);
 }
 
-/** @brief One-shot SHA-256 over ``(in, in_len)`` -> 32-byte ``out``. */
+/**
+ * @brief One-shot SHA-256 over ``(in, in_len)`` -> 32-byte ``out``.
+ *
+ * @details See implementation for details.
+ * @param[in,out] in See function signature.
+ * @param[in,out] in_len See function signature.
+ * @param[in,out] out See function signature.
+ * @pre Module has been initialised.
+ * @pre Caller has validated arguments.
+ * @post Side effects bounded to documented state.
+ * @post State reflects operation result.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 static void
 internal_sha256_oneshot(const uint8_t* in, size_t in_len, uint8_t out[k_ra_psa_sha256_len])
 {
@@ -365,6 +444,22 @@ internal_sha256_oneshot(const uint8_t* in, size_t in_len, uint8_t out[k_ra_psa_s
  * cipher) truncated to 16 bytes. This is *not* cryptographically
  * secure but reproduces the same input dependencies, so tampering any
  * byte changes the tag and the decrypt-side check fails.
+ *
+ * @param[in,out] aad See function signature.
+ * @param[in,out] aad_len See function signature.
+ * @param[in,out] cipher See function signature.
+ * @param[in,out] cipher_len See function signature.
+ * @param[in,out] key See function signature.
+ * @param[in,out] key_len See function signature.
+ * @param[in,out] nonce See function signature.
+ * @param[in,out] nonce_len See function signature.
+ * @param[in,out] out_tag See function signature.
+ * @pre Module has been initialised.
+ * @pre Caller has validated arguments.
+ * @post Side effects bounded to documented state.
+ * @post State reflects operation result.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static void internal_sim_aead_tag(const uint8_t* key,
                                   size_t         key_len,
@@ -403,6 +498,19 @@ static void internal_sim_aead_tag(const uint8_t* key,
  * @details
  * Derives a per-position keystream from SHA-256(key || nonce || "ks").
  * Pseudo-AES, sufficient for round-trip tests.
+ *
+ * @param[in,out] dst See function signature.
+ * @param[in,out] key See function signature.
+ * @param[in,out] key_len See function signature.
+ * @param[in,out] len See function signature.
+ * @param[in,out] nonce See function signature.
+ * @param[in,out] nonce_len See function signature.
+ * @pre Module has been initialised.
+ * @pre Caller has validated arguments.
+ * @post Side effects bounded to documented state.
+ * @post State reflects operation result.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static void internal_sim_keystream(const uint8_t* key,
                                    size_t         key_len,
@@ -445,6 +553,24 @@ static void internal_sim_keystream(const uint8_t* key,
  * @details
  * Encrypts ``plain`` into ``out`` with the simulator XOR keystream and
  * appends a 16-byte SHA-256 tag at ``out[plain_len..plain_len+16)``.
+ *
+ * @param[in,out] aad See function signature.
+ * @param[in,out] aad_len See function signature.
+ * @param[in,out] nonce See function signature.
+ * @param[in,out] nonce_len See function signature.
+ * @param[in,out] out See function signature.
+ * @param[in,out] out_len See function signature.
+ * @param[in,out] plain See function signature.
+ * @param[in,out] plain_len See function signature.
+ * @param[in,out] slot See function signature.
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ * @pre Module has been initialised.
+ * @pre Caller has validated arguments.
+ * @post Side effects bounded to documented state.
+ * @post State reflects operation result.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t internal_sim_aead_encrypt(const struct ra_psa_key_handle* slot,
                                           const uint8_t*                  nonce,
@@ -485,6 +611,24 @@ static ra_err_t internal_sim_aead_encrypt(const struct ra_psa_key_handle* slot,
  * @details
  * Verifies the 16-byte tag at the tail of ``cipher`` and, on success,
  * writes ``plain_len`` bytes of plaintext into ``out``.
+ *
+ * @param[in,out] aad See function signature.
+ * @param[in,out] aad_len See function signature.
+ * @param[in,out] cipher See function signature.
+ * @param[in,out] nonce See function signature.
+ * @param[in,out] nonce_len See function signature.
+ * @param[in,out] out See function signature.
+ * @param[in,out] out_len See function signature.
+ * @param[in,out] plain_len See function signature.
+ * @param[in,out] slot See function signature.
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ * @pre Module has been initialised.
+ * @pre Caller has validated arguments.
+ * @post Side effects bounded to documented state.
+ * @post State reflects operation result.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t internal_sim_aead_decrypt(const struct ra_psa_key_handle* slot,
                                           const uint8_t*                  nonce,
@@ -534,6 +678,23 @@ static ra_err_t internal_sim_aead_decrypt(const struct ra_psa_key_handle* slot,
  * =============================================================================
  */
 
+/**
+ * @brief Ra psa crypto init.
+ *
+ * @details See implementation for details.
+ *
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ra_psa_crypto_init(void)
 {
   if (s_initialised) {
@@ -557,6 +718,23 @@ ra_err_t ra_psa_crypto_init(void)
   return k_ra_ok;
 }
 
+/**
+ * @brief Ra psa crypto deinit.
+ *
+ * @details See implementation for details.
+ *
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ra_psa_crypto_deinit(void)
 {
   if (!s_initialised) {
@@ -584,7 +762,20 @@ ra_err_t ra_psa_crypto_deinit(void)
 
 #ifndef RA_SIMULATOR_MODE
 
-/** @brief Translate ``ra_psa_key_type_t`` to its ``PSA_KEY_TYPE_*`` peer. */
+/**
+ * @brief Translate ``ra_psa_key_type_t`` to its ``PSA_KEY_TYPE_*`` peer.
+ *
+ * @details See implementation for details.
+ * @param[in,out] type See function signature.
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ * @pre Module has been initialised.
+ * @pre Caller has validated arguments.
+ * @post Side effects bounded to documented state.
+ * @post State reflects operation result.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 static psa_key_type_t internal_map_key_type(ra_psa_key_type_t type)
 {
   switch (type) {
@@ -602,7 +793,20 @@ static psa_key_type_t internal_map_key_type(ra_psa_key_type_t type)
   }
 }
 
-/** @brief Translate ``ra_psa_alg_t`` to its ``PSA_ALG_*`` peer. */
+/**
+ * @brief Translate ``ra_psa_alg_t`` to its ``PSA_ALG_*`` peer.
+ *
+ * @details See implementation for details.
+ * @param[in,out] alg See function signature.
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ * @pre Module has been initialised.
+ * @pre Caller has validated arguments.
+ * @post Side effects bounded to documented state.
+ * @post State reflects operation result.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 static psa_algorithm_t internal_map_alg(ra_psa_alg_t alg)
 {
   switch (alg) {
@@ -618,7 +822,20 @@ static psa_algorithm_t internal_map_alg(ra_psa_alg_t alg)
   }
 }
 
-/** @brief Translate ``ra_psa_key_usage_t`` bitmask to ``PSA_KEY_USAGE_*`` flags. */
+/**
+ * @brief Translate ``ra_psa_key_usage_t`` bitmask to ``PSA_KEY_USAGE_*`` flags.
+ *
+ * @details See implementation for details.
+ * @param[in,out] usage See function signature.
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ * @pre Module has been initialised.
+ * @pre Caller has validated arguments.
+ * @post Side effects bounded to documented state.
+ * @post State reflects operation result.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 static psa_key_usage_t internal_map_usage(ra_psa_key_usage_t usage)
 {
   psa_key_usage_t out = 0;
@@ -640,7 +857,23 @@ static psa_key_usage_t internal_map_usage(ra_psa_key_usage_t usage)
   return out;
 }
 
-/** @brief Run the PSA-side import + slot wire-up for ``ra_psa_key_import``. */
+/**
+ * @brief Run the PSA-side import + slot wire-up for ``ra_psa_key_import``.
+ *
+ * @details See implementation for details.
+ * @param[in,out] attr See function signature.
+ * @param[in,out] data See function signature.
+ * @param[in,out] data_len See function signature.
+ * @param[in,out] slot See function signature.
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ * @pre Module has been initialised.
+ * @pre Caller has validated arguments.
+ * @post Side effects bounded to documented state.
+ * @post State reflects operation result.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 static ra_err_t internal_psa_import_into_slot(struct ra_psa_key_handle* slot,
                                               const ra_psa_key_attr_t*  attr,
                                               const uint8_t*            data,
@@ -662,6 +895,28 @@ static ra_err_t internal_psa_import_into_slot(struct ra_psa_key_handle* slot,
 
 #endif /* !RA_SIMULATOR_MODE */
 
+/**
+ * @brief Ra psa key import.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] out_handle See function signature for type and usage.
+ * @param[in,out] attr See function signature for type and usage.
+ * @param[in,out] data See function signature for type and usage.
+ * @param[in,out] data_len See function signature for type and usage.
+ *
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ra_psa_key_import(ra_psa_key_t*            out_handle,
                            const ra_psa_key_attr_t* attr,
                            const uint8_t*           data,
@@ -704,6 +959,25 @@ ra_err_t ra_psa_key_import(ra_psa_key_t*            out_handle,
   return k_ra_ok;
 }
 
+/**
+ * @brief Ra psa key destroy.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] handle See function signature for type and usage.
+ *
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ra_psa_key_destroy(ra_psa_key_t handle)
 {
   if (!s_initialised) {
@@ -722,6 +996,30 @@ ra_err_t ra_psa_key_destroy(ra_psa_key_t handle)
   return k_ra_ok;
 }
 
+/**
+ * @brief Ra psa hash compute.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] alg See function signature for type and usage.
+ * @param[in,out] input See function signature for type and usage.
+ * @param[in,out] input_len See function signature for type and usage.
+ * @param[in,out] out See function signature for type and usage.
+ * @param[in,out] out_cap See function signature for type and usage.
+ * @param[in,out] out_len See function signature for type and usage.
+ *
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ra_psa_hash_compute(ra_psa_alg_t   alg,
                              const uint8_t* input,
                              size_t         input_len,
@@ -764,6 +1062,31 @@ ra_err_t ra_psa_hash_compute(ra_psa_alg_t   alg,
   return k_ra_ok;
 }
 
+/**
+ * @brief Ra psa sign hash.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] handle See function signature for type and usage.
+ * @param[in,out] alg See function signature for type and usage.
+ * @param[in,out] hash See function signature for type and usage.
+ * @param[in,out] hash_len See function signature for type and usage.
+ * @param[in,out] sig See function signature for type and usage.
+ * @param[in,out] sig_cap See function signature for type and usage.
+ * @param[in,out] sig_len See function signature for type and usage.
+ *
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ra_psa_sign_hash(ra_psa_key_t   handle,
                           ra_psa_alg_t   alg,
                           const uint8_t* hash,
@@ -824,6 +1147,30 @@ ra_err_t ra_psa_sign_hash(ra_psa_key_t   handle,
   return k_ra_ok;
 }
 
+/**
+ * @brief Ra psa verify hash.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] handle See function signature for type and usage.
+ * @param[in,out] alg See function signature for type and usage.
+ * @param[in,out] hash See function signature for type and usage.
+ * @param[in,out] hash_len See function signature for type and usage.
+ * @param[in,out] sig See function signature for type and usage.
+ * @param[in,out] sig_len See function signature for type and usage.
+ *
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ra_psa_verify_hash(ra_psa_key_t   handle,
                             ra_psa_alg_t   alg,
                             const uint8_t* hash,
@@ -878,7 +1225,30 @@ ra_err_t ra_psa_verify_hash(ra_psa_key_t   handle,
 #endif
 }
 
-/** @brief Shared precondition checks for ``ra_psa_aead_encrypt``. */
+/**
+ * @brief Shared precondition checks for ``ra_psa_aead_encrypt``.
+ *
+ * @details See implementation for details.
+ * @param[in,out] aad See function signature.
+ * @param[in,out] aad_len See function signature.
+ * @param[in,out] alg See function signature.
+ * @param[in,out] handle See function signature.
+ * @param[in,out] nonce See function signature.
+ * @param[in,out] nonce_len See function signature.
+ * @param[in,out] out See function signature.
+ * @param[in,out] out_cap See function signature.
+ * @param[in,out] out_len See function signature.
+ * @param[in,out] plain See function signature.
+ * @param[in,out] plain_len See function signature.
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ * @pre Module has been initialised.
+ * @pre Caller has validated arguments.
+ * @post Side effects bounded to documented state.
+ * @post State reflects operation result.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 static ra_err_t internal_aead_encrypt_check(ra_psa_key_t   handle,
                                             ra_psa_alg_t   alg,
                                             const uint8_t* nonce,
@@ -911,6 +1281,35 @@ static ra_err_t internal_aead_encrypt_check(ra_psa_key_t   handle,
   return k_ra_ok;
 }
 
+/**
+ * @brief Ra psa aead encrypt.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] handle See function signature for type and usage.
+ * @param[in,out] alg See function signature for type and usage.
+ * @param[in,out] nonce See function signature for type and usage.
+ * @param[in,out] nonce_len See function signature for type and usage.
+ * @param[in,out] aad See function signature for type and usage.
+ * @param[in,out] aad_len See function signature for type and usage.
+ * @param[in,out] plain See function signature for type and usage.
+ * @param[in,out] plain_len See function signature for type and usage.
+ * @param[in,out] out See function signature for type and usage.
+ * @param[in,out] out_cap See function signature for type and usage.
+ * @param[in,out] out_len See function signature for type and usage.
+ *
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ra_psa_aead_encrypt(ra_psa_key_t   handle,
                              ra_psa_alg_t   alg,
                              const uint8_t* nonce,
@@ -977,7 +1376,31 @@ ra_err_t ra_psa_aead_encrypt(ra_psa_key_t   handle,
   return k_ra_ok;
 }
 
-/** @brief Shared precondition checks for ``ra_psa_aead_decrypt``. */
+/**
+ * @brief Shared precondition checks for ``ra_psa_aead_decrypt``.
+ *
+ * @details See implementation for details.
+ * @param[in,out] aad See function signature.
+ * @param[in,out] aad_len See function signature.
+ * @param[in,out] alg See function signature.
+ * @param[in,out] cipher See function signature.
+ * @param[in,out] cipher_len See function signature.
+ * @param[in,out] handle See function signature.
+ * @param[in,out] nonce See function signature.
+ * @param[in,out] nonce_len See function signature.
+ * @param[in,out] out See function signature.
+ * @param[in,out] out_cap See function signature.
+ * @param[in,out] out_len See function signature.
+ * @param[in,out] out_plain_len See function signature.
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ * @pre Module has been initialised.
+ * @pre Caller has validated arguments.
+ * @post Side effects bounded to documented state.
+ * @post State reflects operation result.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 static ra_err_t internal_aead_decrypt_check(ra_psa_key_t   handle,
                                             ra_psa_alg_t   alg,
                                             const uint8_t* nonce,
@@ -1019,6 +1442,35 @@ static ra_err_t internal_aead_decrypt_check(ra_psa_key_t   handle,
   return k_ra_ok;
 }
 
+/**
+ * @brief Ra psa aead decrypt.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] handle See function signature for type and usage.
+ * @param[in,out] alg See function signature for type and usage.
+ * @param[in,out] nonce See function signature for type and usage.
+ * @param[in,out] nonce_len See function signature for type and usage.
+ * @param[in,out] aad See function signature for type and usage.
+ * @param[in,out] aad_len See function signature for type and usage.
+ * @param[in,out] cipher See function signature for type and usage.
+ * @param[in,out] cipher_len See function signature for type and usage.
+ * @param[in,out] out See function signature for type and usage.
+ * @param[in,out] out_cap See function signature for type and usage.
+ * @param[in,out] out_len See function signature for type and usage.
+ *
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ra_psa_aead_decrypt(ra_psa_key_t   handle,
                              ra_psa_alg_t   alg,
                              const uint8_t* nonce,

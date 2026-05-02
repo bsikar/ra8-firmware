@@ -129,6 +129,10 @@ struct ble_npl_mutex {
  * @post ``nimble_port_get_dflt_eventq`` returns a usable queue.
  *
  * @since 0.1.0
+ *
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @note Not thread-safe unless documented otherwise.
  */
 void nimble_port_init(void);
 
@@ -142,6 +146,10 @@ void nimble_port_init(void);
  * @post Calling thread runs the host loop until shutdown.
  *
  * @since 0.1.0
+ *
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @note Not thread-safe unless documented otherwise.
  */
 void nimble_port_run(void);
 

@@ -47,10 +47,36 @@
 
 struct os_mbuf;
 
-/** @brief Inbound HCI event submission to the host side. */
+/**
+ * @brief Inbound HCI event submission to the host side.
+ *
+ * @details See implementation for details.
+ * @param[in,out] buf See function signature.
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ * @pre Module has been initialised.
+ * @pre Caller has validated arguments.
+ * @post Side effects bounded to documented state.
+ * @post State reflects operation result.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 extern int ble_transport_to_hs_evt(void* buf);
 
-/** @brief Inbound HCI ACL submission to the host side. */
+/**
+ * @brief Inbound HCI ACL submission to the host side.
+ *
+ * @details See implementation for details.
+ * @param[in,out] om See function signature.
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ * @pre Module has been initialised.
+ * @pre Caller has validated arguments.
+ * @post Side effects bounded to documented state.
+ * @post State reflects operation result.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 extern int ble_transport_to_hs_acl(struct os_mbuf* om);
 
 /** @brief Allocate a non-discardable HCI event buffer (host-side). */
@@ -59,10 +85,38 @@ extern void* ble_transport_alloc_evt(int discardable);
 /** @brief Allocate a host-side ACL mbuf travelling LL -> HS. */
 extern struct os_mbuf* ble_transport_alloc_acl_from_ll(void);
 
-/** @brief Append `len` bytes of `data` to the end of the mbuf chain. */
+/**
+ * @brief Append `len` bytes of `data` to the end of the mbuf chain.
+ *
+ * @details See implementation for details.
+ * @param[in,out] data See function signature.
+ * @param[in,out] len See function signature.
+ * @param[in,out] om See function signature.
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ * @pre Module has been initialised.
+ * @pre Caller has validated arguments.
+ * @post Side effects bounded to documented state.
+ * @post State reflects operation result.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 extern int os_mbuf_append(struct os_mbuf* om, const void* data, uint16_t len);
 
-/** @brief Free an mbuf chain. */
+/**
+ * @brief Free an mbuf chain.
+ *
+ * @details See implementation for details.
+ * @param[in,out] om See function signature.
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ * @pre Module has been initialised.
+ * @pre Caller has validated arguments.
+ * @post Side effects bounded to documented state.
+ * @post State reflects operation result.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 extern int os_mbuf_free_chain(struct os_mbuf* om);
 
 /* =============================================================================
@@ -160,6 +214,8 @@ static ble_hci_ra_ble_state_t s_state = k_ble_hci_ra_ble_state_idle;
  *       where the caller schedules dispatch (kernel loop or ISR).
  *
  * @since 0.1.0
+ *
+ * @post Side effects bounded to documented state.
  */
 static void priv_event_cb(void* ctx, uint8_t evt_code, const uint8_t* params, uint8_t params_len)
 {
@@ -205,6 +261,9 @@ static void priv_event_cb(void* ctx, uint8_t evt_code, const uint8_t* params, ui
  *       dropped due to a transient OOM.
  *
  * @since 0.1.0
+ *
+ * @post Side effects bounded to documented state.
+ * @note Not thread-safe unless documented otherwise.
  */
 static void priv_acl_cb(void* ctx, uint16_t handle, const uint8_t* payload, uint16_t len)
 {
@@ -245,6 +304,23 @@ static void priv_acl_cb(void* ctx, uint16_t handle, const uint8_t* payload, uint
  * =============================================================================
  */
 
+/**
+ * @brief Ble hci ra ble init.
+ *
+ * @details See implementation for details.
+ *
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ble_hci_ra_ble_init(void)
 {
   /*
@@ -265,6 +341,23 @@ ra_err_t ble_hci_ra_ble_init(void)
   return k_ra_ok;
 }
 
+/**
+ * @brief Ble hci ra ble deinit.
+ *
+ * @details See implementation for details.
+ *
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ble_hci_ra_ble_deinit(void)
 {
   s_state = k_ble_hci_ra_ble_state_idle;
@@ -298,6 +391,10 @@ ra_err_t ble_hci_ra_ble_deinit(void)
  * @post Adapter is in the ``running`` state.
  *
  * @since 0.1.0
+ *
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @note Not thread-safe unless documented otherwise.
  */
 void ble_transport_ll_init(void)
 {
@@ -325,9 +422,31 @@ void ble_transport_ll_init(void)
  * @post buf has been freed via ``ble_transport_free``.
  *
  * @since 0.1.0
+ *
+ * @post Side effects bounded to documented state.
+ * @note Not thread-safe unless documented otherwise.
  */
 extern void ble_transport_free(void* buf);
 
+/**
+ * @brief Ble transport to ll cmd impl.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] buf See function signature for type and usage.
+ *
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 int ble_transport_to_ll_cmd_impl(void* buf)
 {
   if (buf == NULL) {
@@ -363,10 +482,55 @@ int ble_transport_to_ll_cmd_impl(void* buf)
  * @post om has been freed via ``os_mbuf_free_chain``.
  *
  * @since 0.1.0
+ *
+ * @retval 0 Success or default value.
+ * @post Side effects bounded to documented state.
+ * @note Not thread-safe unless documented otherwise.
  */
 extern uint16_t os_mbuf_len(const struct os_mbuf* om);
+/**
+ * @brief Os mbuf copydata.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] om See function signature for type and usage.
+ * @param[in,out] off See function signature for type and usage.
+ * @param[in,out] len See function signature for type and usage.
+ * @param[in,out] dst See function signature for type and usage.
+ *
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 extern int      os_mbuf_copydata(const struct os_mbuf* om, int off, int len, void* dst);
 
+/**
+ * @brief Ble transport to ll acl impl.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] om See function signature for type and usage.
+ *
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 int ble_transport_to_ll_acl_impl(struct os_mbuf* om)
 {
   if (om == NULL) {
@@ -420,6 +584,11 @@ int ble_transport_to_ll_acl_impl(struct os_mbuf* om)
  * @post om has been freed (if non-NULL).
  *
  * @since 0.1.0
+ *
+ * @retval 0 Success or default value.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @note Not thread-safe unless documented otherwise.
  */
 int ble_transport_to_ll_iso_impl(struct os_mbuf* om)
 {

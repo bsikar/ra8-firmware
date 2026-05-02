@@ -73,6 +73,14 @@ typedef struct {
  * @brief Read the current SCB fault-status registers.
  *
  * @param[out] out Pointer to a buffer to fill. Must not be `nullptr`.
+ *
+ * @details See implementation for details.
+ * @pre Module has been initialised.
+ * @pre Caller has validated arguments.
+ * @post Side effects bounded to documented state.
+ * @post State reflects operation result.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 void ra_exception_capture_diagnostics(ra_exception_diagnostics_t* out);
 

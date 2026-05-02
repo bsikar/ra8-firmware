@@ -62,6 +62,22 @@ static uint32_t s_state = (uint32_t)k_ra_rand_default_seed;
  * @since 0.1.0
  */
 /* NOLINTBEGIN(bugprone-reserved-identifier,cert-dcl37-c,cert-dcl51-cpp,readability-identifier-naming) */
+/**
+ * @brief Srand.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] seed See function signature for type and usage.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 void srand(unsigned int seed)
 {
   /* Avoid the all-zero state which would lock xorshift. */

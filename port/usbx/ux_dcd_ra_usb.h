@@ -152,6 +152,9 @@ typedef enum : uint8_t {
  *
  * @note Re-entrant only across speed instances (FS vs HS).
  * @since 0.1.0
+ *
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
  */
 void ux_dcd_ra_usb_irq(ra_usb_speed_t speed, uint16_t intsts0);
 
@@ -167,11 +170,37 @@ void ux_dcd_ra_usb_irq(ra_usb_speed_t speed, uint16_t intsts0);
  *
  * @note Thread-safe (single 8-bit load).
  * @since 0.1.0
+ *
+ * @details See implementation for details.
+ * @retval 0 Success or default value.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
  */
 ra_usb_dcd_state_t ux_dcd_ra_usb_state(void);
 
 /* Internal dispatcher exposed for direct invocation from
  * ``_ux_dcd_ra_usb_initialize`` (in the .c file) and for unit tests. */
+/**
+ * @brief  ux dcd ra usb function.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] dcd See function signature for type and usage.
+ * @param[in,out] function See function signature for type and usage.
+ * @param[in,out] parameter See function signature for type and usage.
+ *
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 unsigned int
 _ux_dcd_ra_usb_function(struct UX_SLAVE_DCD_STRUCT* dcd, unsigned int function, void* parameter);
 

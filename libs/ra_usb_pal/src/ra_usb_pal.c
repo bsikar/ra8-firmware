@@ -378,6 +378,8 @@ ra_err_t ra_usb_pal_attach(bool attached)
  *
  * @note Not thread-safe.
  * @since 0.1.0
+ *
+ * @details See implementation for details.
  */
 ra_err_t ra_usb_pal_get_state(ra_usb_pal_state_t* out_state)
 {

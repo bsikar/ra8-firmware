@@ -54,6 +54,25 @@ static ra_usb_hcd_t s_hcd = {
 /* Internal helpers                                                           */
 /* -------------------------------------------------------------------------- */
 
+/**
+ * @brief Ep to pipe.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] ep_addr See function signature for type and usage.
+ *
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 static uint8_t internal_ep_to_pipe(uint8_t ep_addr)
 {
   const uint8_t ep = ep_addr & (uint8_t)0x0FU;
@@ -66,6 +85,25 @@ static uint8_t internal_ep_to_pipe(uint8_t ep_addr)
   return 10U;
 }
 
+/**
+ * @brief Endpoint create.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] ep See function signature for type and usage.
+ *
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 static unsigned int internal_endpoint_create(struct UX_ENDPOINT_STRUCT* ep)
 {
   if (ep == nullptr) {
@@ -105,6 +143,25 @@ static unsigned int internal_endpoint_create(struct UX_ENDPOINT_STRUCT* ep)
            : UX_ERROR;
 }
 
+/**
+ * @brief Transfer request.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] tr See function signature for type and usage.
+ *
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 static unsigned int internal_transfer_request(struct UX_TRANSFER_STRUCT* tr)
 {
   if (tr == nullptr || tr->ux_transfer_request_endpoint == nullptr) {
@@ -174,6 +231,27 @@ static unsigned int internal_transfer_request(struct UX_TRANSFER_STRUCT* tr)
 /* Dispatcher                                                                 */
 /* -------------------------------------------------------------------------- */
 
+/**
+ * @brief  ux hcd ra usb function.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] hcd See function signature for type and usage.
+ * @param[in,out] function See function signature for type and usage.
+ * @param[in,out] parameter See function signature for type and usage.
+ *
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 unsigned int
 _ux_hcd_ra_usb_function(struct UX_HCD_STRUCT* hcd, unsigned int function, void* parameter)
 {
@@ -250,6 +328,25 @@ _ux_hcd_ra_usb_function(struct UX_HCD_STRUCT* hcd, unsigned int function, void* 
 /* Lifecycle                                                                  */
 /* -------------------------------------------------------------------------- */
 
+/**
+ * @brief Ux hcd ra usb initialize.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] speed See function signature for type and usage.
+ *
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ux_hcd_ra_usb_initialize(ra_usb_speed_t speed)
 {
   if ((uint8_t)speed > (uint8_t)k_ra_usb_speed_hs) {
@@ -285,6 +382,23 @@ ra_err_t ux_hcd_ra_usb_initialize(ra_usb_speed_t speed)
   return k_ra_ok;
 }
 
+/**
+ * @brief Ux hcd ra usb uninitialize.
+ *
+ * @details See implementation for details.
+ *
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ux_hcd_ra_usb_uninitialize(void)
 {
   if (s_hcd.state == k_ux_hcd_ra_usb_state_uninit) {
@@ -301,6 +415,23 @@ ra_err_t ux_hcd_ra_usb_uninitialize(void)
   return k_ra_ok;
 }
 
+/**
+ * @brief Ux hcd ra usb state.
+ *
+ * @details See implementation for details.
+ *
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 ra_usb_hcd_state_t ux_hcd_ra_usb_state(void)
 {
   return s_hcd.state;

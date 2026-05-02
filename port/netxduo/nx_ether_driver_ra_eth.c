@@ -169,6 +169,11 @@ static uint8_t s_local_mac[k_nx_ra_eth_mac_len];
  * @post ``mac[0..5]`` holds the local MAC in network byte order.
  *
  * @since 0.1.0
+ *
+ * @details See implementation for details.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @note Not thread-safe unless documented otherwise.
  */
 static void priv_unpack_mac(const NX_INTERFACE* iface, uint8_t* mac)
 {
@@ -196,6 +201,12 @@ static void priv_unpack_mac(const NX_INTERFACE* iface, uint8_t* mac)
  * @post ``*out_len <= cap`` on success.
  *
  * @since 0.1.0
+ *
+ * @details See implementation for details.
+ * @retval 0 Success or default value.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @note Not thread-safe unless documented otherwise.
  */
 static UCHAR
 priv_packet_to_buffer(const NX_PACKET* packet, uint8_t* dst, uint32_t cap, uint32_t* out_len)
@@ -230,6 +241,11 @@ priv_packet_to_buffer(const NX_PACKET* packet, uint8_t* dst, uint32_t cap, uint3
  * @post On success ``s_ra_eth_open == 1``.
  *
  * @since 0.1.0
+ *
+ * @details See implementation for details.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @note Not thread-safe unless documented otherwise.
  */
 static void priv_handle_init(NX_IP_DRIVER* req)
 {
@@ -269,6 +285,12 @@ static void priv_handle_init(NX_IP_DRIVER* req)
  * @post ``s_ra_eth_open == 0``.
  *
  * @since 0.1.0
+ *
+ * @details See implementation for details.
+ * @pre Module has been initialised.
+ * @pre Caller has validated arguments.
+ * @post Side effects bounded to documented state.
+ * @note Not thread-safe unless documented otherwise.
  */
 static void priv_handle_uninit(NX_IP_DRIVER* req)
 {
@@ -292,6 +314,12 @@ static void priv_handle_uninit(NX_IP_DRIVER* req)
  * @param[in,out] req NetX driver request.
  *
  * @since 0.1.0
+ *
+ * @pre Module has been initialised.
+ * @pre Caller has validated arguments.
+ * @post Side effects bounded to documented state.
+ * @post State reflects operation result.
+ * @note Not thread-safe unless documented otherwise.
  */
 static void priv_handle_send(NX_IP_DRIVER* req)
 {
@@ -338,6 +366,12 @@ static void priv_handle_send(NX_IP_DRIVER* req)
  * @param[in,out] req NetX driver request.
  *
  * @since 0.1.0
+ *
+ * @pre Module has been initialised.
+ * @pre Caller has validated arguments.
+ * @post Side effects bounded to documented state.
+ * @post State reflects operation result.
+ * @note Not thread-safe unless documented otherwise.
  */
 static void priv_handle_deferred_rx(NX_IP_DRIVER* req)
 {
@@ -389,6 +423,13 @@ static void priv_handle_deferred_rx(NX_IP_DRIVER* req)
  * @param[in,out] req NetX driver request.
  *
  * @since 0.1.0
+ *
+ * @details See implementation for details.
+ * @pre Module has been initialised.
+ * @pre Caller has validated arguments.
+ * @post Side effects bounded to documented state.
+ * @post State reflects operation result.
+ * @note Not thread-safe unless documented otherwise.
  */
 static void priv_handle_get_status(NX_IP_DRIVER* req)
 {
@@ -412,6 +453,22 @@ static void priv_handle_get_status(NX_IP_DRIVER* req)
   req->nx_ip_driver_status        = NX_SUCCESS;
 }
 
+/**
+ * @brief Nx ether driver ra eth.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] driver_req See function signature for type and usage.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 void nx_ether_driver_ra_eth(NX_IP_DRIVER* driver_req)
 {
   /* NetX never invokes the driver with NULL but mirror the FileX

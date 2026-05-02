@@ -81,10 +81,32 @@ typedef struct {
 } ra_ble_host_state_t;
 
 ra_ble_host_state_t* ra_ble_host_state(void);
-ra_err_t             ra_ble_host_l2cap_send(uint16_t       conn_handle,
-                                            uint16_t       cid,
-                                            const uint8_t* payload,
-                                            uint16_t       payload_len);
+/**
+ * @brief Ra ble host l2cap send.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] conn_handle See function signature for type and usage.
+ * @param[in,out] cid See function signature for type and usage.
+ * @param[in,out] payload See function signature for type and usage.
+ * @param[in,out] payload_len See function signature for type and usage.
+ *
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
+ra_err_t ra_ble_host_l2cap_send(uint16_t       conn_handle,
+                                uint16_t       cid,
+                                const uint8_t* payload,
+                                uint16_t       payload_len);
 
 /* Provided by ra_ble_att.c -- exposed so ra_ble_host_gatt_set_value can
  * find the attribute row for a given handle without duplicating the

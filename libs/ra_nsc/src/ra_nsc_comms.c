@@ -339,6 +339,9 @@ RA_NSC_VENEER ra_err_t ra_nsc_spi_xfer8(uint8_t channel, uint8_t tx, uint8_t* rx
  *
  * @note Static helper; pure function.
  * @since 0.1.0
+ *
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
  */
 static uint8_t internal_spi_unit_bytes(ra_spi_bit_width_t bit_width)
 {

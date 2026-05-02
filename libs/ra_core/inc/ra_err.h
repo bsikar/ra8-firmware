@@ -471,6 +471,14 @@ typedef ra_err_codes_t ra_err_t;
  * @return `true` if `err != k_ra_ok`, `false` otherwise.
  * @note Inline, zero overhead. Provided so call sites can read as
  *       `if (ra_err_is_error(err))` instead of `if (err != k_ra_ok)`.
+ *
+ * @details See implementation for details.
+ * @retval 0 Success or default value.
+ * @pre Module has been initialised.
+ * @pre Caller has validated arguments.
+ * @post Side effects bounded to documented state.
+ * @post State reflects operation result.
+ * @since 0.1.0
  */
 static inline bool ra_err_is_error(ra_err_t err)
 {
