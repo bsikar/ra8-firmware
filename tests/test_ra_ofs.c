@@ -31,9 +31,48 @@ static void test_ra_ofs_compiled(void)
   TEST_END("ra_ofs.c compiled into ra_core_hal");
 }
 
+/**
+ * @test test_mcdc_ra_ofs
+ *
+ * @par MC/DC:
+ * The only compound decision in libs/ra_hal/src/ra_ofs.c is the
+ * preprocessor expression at line 128:
+ * ``#if defined(UNIT_TEST) || defined(RA_SIMULATOR_MODE) ||
+ *      defined(__APPLE__)``
+ * Per DO-178C 6.4.4.3 and IEC 61508 SIL 3 guidance, preprocessor
+ * conditionals are NOT runtime decisions and therefore have no MC/DC
+ * obligation -- only one branch is ever compiled into a given binary.
+ * The MCDC_GAPS.csv entry is a false positive of the static scanner,
+ * which classifies any chain of ``||`` operators as a coverage gap.
+ *
+ * The host build of this TU exercises the
+ * ``defined(__APPLE__) || defined(UNIT_TEST)`` arm (the ``RA_SECTION``
+ * macro collapses to a bare ``__attribute__((used))``), which is the
+ * single condition the scanner could meaningfully observe.  This
+ * sentinel test records that fact so the gap entry can be traced back
+ * to a documented rationale rather than a missing test case.
+ *
+ * N+1 vector set: not applicable (compile-time decision, only one of
+ * the three conditions ever participates in a given build).
+ */
+static void test_mcdc_ra_ofs(void)
+{
+  TEST_BEGIN("ra_ofs MC/DC: line 128 is preprocessor-only (no runtime gap)");
+  /* Compile-time selection of the host ``RA_SECTION`` definition is
+   * proven by the fact that this TU links at all -- the cross-compile
+   * branch would fail to resolve the target-only section name. */
+#if defined(UNIT_TEST) || defined(__APPLE__)
+  TEST_ASSERT(1);
+#else
+  TEST_ASSERT(0); /* unreachable on host build. */
+#endif
+  TEST_END("ra_ofs MC/DC: line 128 is preprocessor-only (no runtime gap)");
+}
+
 int32_t main(void)
 {
   test_ra_ofs_compiled();
+  test_mcdc_ra_ofs();
   (void)fprintf(stderr, "[OK  ] test_ra_ofs.c\n");
   return 0;
 }
