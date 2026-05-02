@@ -89,3 +89,20 @@ make -C examples/ptp_master flash
    recent Unix epoch (2026-01-01T00:00:00Z).
 9. Loop: every second, `ra_ptp_send_sync` + `ra_ptp_send_announce`,
    `ra_ptp_get_time` for the running wall clock, log over SCI8.
+
+## Note on pin map vs EK-RA8D2 v1 board
+
+Same caveat as `ethernet_tcp_echo`: the RMII pin set this app programs
+targets a separate RMII-only daughter board, not the v1 board's
+on-board PEF7071 PHY (which is wired RGMII per UM Table 26 p 33). To
+run on the on-board PHY use `ra_board_ethernet_init()` from the
+`ra_board_ek_ra8d2` BSP and run PTP on top of the BSP-routed RMAC0.
+
+## BSP usage
+
+Uses `ra_board_ek_ra8d2` BSP for LED1 init/toggle (P600 per UM Table
+24 p 31). Ethernet pins are hand-rolled (see note above).
+
+Validated 2026-05-02 against EK-RA8D2 v1 User's Manual (R20UT5523EG0101
+Rev 1.01) Section 6.1 + Table 26 p 33 + Table 24 p 31, and IEEE
+1588-2019.
