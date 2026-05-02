@@ -196,3 +196,26 @@ inside newlib's rand()/srand() now boot cleanly:
 **Audit-chain bugs also caught (not all hardware-related):**
 - SDRAM base address (a98cbcb60), ELC CAN MRAM_ERI (cf1c8c70f), PFS PSEL (7cc37e1f9),
   RSIP key_op_status collision, HUM citations (446930c5a, b6f6227d5)
+
+## 2026-05-02 USB device enumeration root cause
+
+Investigated why macOS never enumerates `usb_hid_device` despite SYSCFG showing
+USBE=1, DPRPU=1, SCKE=1 and INTSTS0 ticking on the bus.
+
+**Finding:** `ra_usb_dispatch` (the function that reads INTSTS0 and forwards
+SETUP/BRDY/CTRT events to a registered handler) is **never called by anything**:
+- No `ra_isr_register` for USBFS_INT in `libs/ra_hal/src/ra_usb*.c`
+- No example main loop polls `ra_usb_dispatch`
+- `ra_usb_phid_handle_setup` exists but has no caller — only class SETUP is
+  wired; standard SETUP (GET_DESCRIPTOR/SET_ADDRESS/SET_CONFIGURATION) has no
+  handler at all
+
+**Scope:** Implementing the standard-request enumeration state machine is a
+multi-day port (FSP `r_usb_pdriver.c` + `r_usb_pstd_*` ~ 2000 LOC) and requires
+either an IRQ wire-up or a polled tick from every USB-device example. Out of
+scope for this hardware bring-up session; tracked as a separate effort.
+
+**Implication for current state:** The 6 USB apps marked "✅ running on silicon"
+above are accurate as-stated (firmware boots, no fault, main loop alive) but
+**none of them actually enumerate as USB devices/hosts on the bus**. They are
+"firmware-up" not "USB-functional".
