@@ -928,7 +928,7 @@ void ra_cnecc_dispatch_overflow(uint8_t instance);
  *
  * @details
  * Computes the CRC32 over ``[addr, addr + len)`` via ``ra_cnecc_compute``
- * and compares against ``expected_ecc``. Returns ``k_ra_err_crc`` on
+ * and compares against ``expected_ecc``. Returns ``k_ra_err_crc_mismatch`` on
  * mismatch so callers can route the failure into the same telemetry
  * path as a hardware ECC fault.
  *

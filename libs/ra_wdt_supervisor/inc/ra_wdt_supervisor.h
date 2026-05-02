@@ -225,7 +225,7 @@ typedef void (*ra_wdt_sup_refresh_fn_t)(void);
  * @retval k_ra_err_null_ptr ``name`` or ``out_handle`` was null.
  * @retval k_ra_err_invalid_arg ``deadline_ms`` was zero.
  * @retval k_ra_err_no_mem All slots are taken.
- * @retval k_ra_err_uninitialized ``ra_wdt_supervisor_init`` not called.
+ * @retval k_ra_err_not_initialized ``ra_wdt_supervisor_init`` not called.
  *
  * @pre ``name`` is NUL-terminated and non-null.
  * @pre ``deadline_ms`` > 0.
@@ -256,7 +256,7 @@ ra_wdt_supervisor_register_thread(const char* name, uint32_t deadline_ms, uint8_
  * @retval k_ra_ok Check-in recorded.
  * @retval k_ra_err_invalid_arg ``handle`` is out of range.
  * @retval k_ra_err_not_found ``handle`` refers to a free slot.
- * @retval k_ra_err_uninitialized ``ra_wdt_supervisor_init`` not called.
+ * @retval k_ra_err_not_initialized ``ra_wdt_supervisor_init`` not called.
  *
  * @pre ``handle`` < ``k_ra_wdt_sup_max_threads``.
  * @pre Slot was previously registered.
@@ -284,9 +284,9 @@ ra_wdt_supervisor_register_thread(const char* name, uint32_t deadline_ms, uint8_
  *
  * @return ``ra_err_t``
  * @retval k_ra_ok Supervisor thread created.
- * @retval k_ra_err_uninitialized ``ra_wdt_supervisor_init`` not called.
+ * @retval k_ra_err_not_initialized ``ra_wdt_supervisor_init`` not called.
  * @retval k_ra_err_busy Already started.
- * @retval k_ra_err_threadx Underlying ``tx_thread_create`` failed.
+ * @retval k_ra_err_rtos_thread_create Underlying ``tx_thread_create`` failed.
  *
  * @pre ``ra_wdt_supervisor_init`` returned ``k_ra_ok``.
  * @pre At least one worker has been registered.
@@ -315,7 +315,7 @@ ra_wdt_supervisor_register_thread(const char* name, uint32_t deadline_ms, uint8_
  *
  * @return ``ra_err_t``
  * @retval k_ra_ok Tick complete.
- * @retval k_ra_err_uninitialized ``ra_wdt_supervisor_init`` not called.
+ * @retval k_ra_err_not_initialized ``ra_wdt_supervisor_init`` not called.
  *
  * @pre ``ra_wdt_supervisor_init`` returned ``k_ra_ok``.
  * @post ``*out_did_refresh`` reflects whether the refresh hook ran.
