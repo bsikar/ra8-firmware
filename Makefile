@@ -62,7 +62,7 @@ $(foreach m,$(_RA_APP_MAINS),$(eval RA_APP_DIR_$(notdir $(patsubst %/main.c,%,$m
 
 # We forward each <app> name to the app's own Makefile, so reserve the names
 # below from being shadowed by .PHONY targets.
-.PHONY: help apps default clean format check tidy test test-cov test-docker ctest coverage mcdc misra docs dashboard ascii version qe-test smoke all $(RA_APPS)
+.PHONY: help apps default clean format check tidy test test-cov test-docker ctest coverage mcdc misra docs dashboard ascii version qe-test smoke stack-usage all $(RA_APPS)
 
 # EVM-tier apps (everything under examples/ek_ra8d2/) -- these are the
 # apps the hardware smoke test sweeps because they run on a stock
@@ -92,6 +92,7 @@ help:
 	@echo "  make version   verify @since tags match the VERSION file"
 	@echo "  make qe-test   run tools/ra_qe (JSON configurator) unit tests"
 	@echo "  make smoke     hardware smoke-test sweep over examples/ek_ra8d2/"
+	@echo "  make stack-usage build EVM apps + aggregate -fstack-usage report"
 
 # `make` with no arg builds the default app.
 default: $(RA_DEFAULT_APP)
@@ -189,5 +190,15 @@ qe-test:
 # Exits non-zero if any app comes back FAIL (NOBUILD/WIP are warnings).
 smoke: $(EK_APPS)
 	bash scripts/hw_smoke_test.sh
+
+# Stack-usage proof. Builds every EVM-tier app (each is already
+# compiled with -fstack-usage via cmake/ra_warnings.cmake), then runs
+# the python aggregator over the resulting .su files. Prints the
+# worst-10 stack frames across all apps; exits non-zero if any
+# critical-path module (ra_isr, ra_check, ra_err, ra_mpu, ra_cgc,
+# ra_pfs) breaches its 256-byte ceiling or contains a `dynamic` frame.
+# See docs/STACK_USAGE.md.
+stack-usage: $(EK_APPS)
+	python3 scripts/utils/stack_usage_check.py --top 10
 
 all: format tidy test default
