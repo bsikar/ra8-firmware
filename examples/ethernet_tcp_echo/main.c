@@ -53,6 +53,7 @@
 
 #include <stdint.h>
 
+#include "ra_board_ek_ra8d2.h"
 #include "ra_cgc.h"
 #include "ra_err.h"
 #include "ra_eth.h"
@@ -664,7 +665,7 @@ tcp_csum(const uint8_t* src_ip, const uint8_t* dst_ip, const uint8_t* seg, uint1
   }
   const ra_err_t err = ra_eth_write(frame, (uint32_t)pad_len);
   if (err == k_ra_ok) {
-    (void)ra_gpio_toggle(k_ra_pin_led2);
+    (void)ra_board_led_toggle(k_ra_board_led2);
   }
   return err;
 }
@@ -976,7 +977,7 @@ static void handle_tcp(const uint8_t* frame, uint16_t len, uint16_t ip_total)
  */
 static void handle_frame(const uint8_t* frame, uint16_t len)
 {
-  (void)ra_gpio_toggle(k_ra_pin_led1);
+  (void)ra_board_led_toggle(k_ra_board_led1);
   if (len < k_eth_hdr_len) {
     return;
   }
@@ -1041,10 +1042,10 @@ static void eth_tcp_echo_setup_or_halt(void)
   if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
     eth_tcp_echo_panic_halt();
   }
-  if (ra_gpio_output_init(k_ra_pin_led1, k_ra_level_low) != k_ra_ok) {
+  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
     eth_tcp_echo_panic_halt();
   }
-  if (ra_gpio_output_init(k_ra_pin_led2, k_ra_level_low) != k_ra_ok) {
+  if (ra_board_led_init(k_ra_board_led2) != k_ra_ok) {
     eth_tcp_echo_panic_halt();
   }
 

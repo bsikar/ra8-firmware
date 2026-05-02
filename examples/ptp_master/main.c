@@ -52,6 +52,7 @@
 
 #include <stdint.h>
 
+#include "ra_board_ek_ra8d2.h"
 #include "ra_cgc.h"
 #include "ra_err.h"
 #include "ra_eth.h"
@@ -328,7 +329,7 @@ static void ptp_master_clocks_or_halt(uint32_t* cpuclk0_hz, uint32_t* pclka_hz)
   if (ra_time_init(*cpuclk0_hz) != k_ra_ok) {
     ptp_master_panic_halt();
   }
-  if (ra_gpio_output_init(k_ra_pin_led1, k_ra_level_low) != k_ra_ok) {
+  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
     ptp_master_panic_halt();
   }
 }
@@ -494,7 +495,7 @@ static void ptp_master_setup_or_halt(void)
   ptp_master_log(".");
   ptp_master_log(nsec_buf);
   ptp_master_log(" s\r\n");
-  (void)ra_gpio_toggle(k_ra_pin_led1);
+  (void)ra_board_led_toggle(k_ra_board_led1);
   return k_ra_ok;
 }
 
