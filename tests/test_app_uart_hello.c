@@ -4,7 +4,7 @@
  *
  * @details
  * Mirrors STAR's test_communication_task.c structure for the UART
- * "hello" demo at examples/uart_hello/main.c. Exercises the full
+ * "hello" demo at examples/ek_ra8d2/uart_hello/main.c. Exercises the full
  * bring-up sequence (PFS routing -> ra_sci_init -> LED init) and
  * the steady-state loop (write_polling + led_toggle), with mocked
  * MMIO via the existing tests/mocks/ra_sim_mmap.c.
@@ -43,7 +43,7 @@ typedef enum : uint32_t {
 /** @brief Greeting buffer same shape as the app. */
 static const uint8_t k_test_uart_greeting[] = "hello, ra8d2!\r\n";
 
-/** @brief Pin map mirrors examples/uart_hello/main.c PD_02 / PD_03. */
+/** @brief Pin map mirrors examples/ek_ra8d2/uart_hello/main.c PD_02 / PD_03. */
 static const ra_port_pin_t k_test_uart_pin_txd =
   (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_2);
 static const ra_port_pin_t k_test_uart_pin_rxd =

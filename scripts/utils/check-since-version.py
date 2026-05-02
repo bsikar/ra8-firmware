@@ -50,15 +50,18 @@ ALWAYS_SCAN_DIRS = ("libs", "src", "tests")
 
 
 def _discover_scan_dirs() -> tuple[str, ...]:
-    """Return libs/src/tests + every examples/<app>/ dir."""
+    """Return libs/src/tests + every examples/<tier>/<app>/ dir."""
     out = list(ALWAYS_SCAN_DIRS)
     examples_root = REPO_ROOT / "examples"
     if examples_root.is_dir():
-        for entry in sorted(examples_root.iterdir()):
-            if not entry.is_dir():
+        for tier in sorted(examples_root.iterdir()):
+            if not tier.is_dir():
                 continue
-            if (entry / "main.c").is_file() and (entry / "CMakeLists.txt").is_file():
-                out.append(f"examples/{entry.name}")
+            for entry in sorted(tier.iterdir()):
+                if not entry.is_dir():
+                    continue
+                if (entry / "main.c").is_file() and (entry / "CMakeLists.txt").is_file():
+                    out.append(f"examples/{tier.name}/{entry.name}")
     return tuple(out)
 
 

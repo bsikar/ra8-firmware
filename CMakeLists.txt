@@ -91,30 +91,42 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/threadx.cmake OPTIONAL)
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/filex.cmake)
 
 #############################################################################
-# Auto-discover apps: every examples/<name>/ dir with main.c is an app
+# Auto-discover apps: examples/<tier>/<name>/ where <tier> is the board /
+# hardware-support category (currently ek_ra8d2/ for apps validated on the
+# stock EK-RA8D2 EVM, _unsupported/ for apps that need extra hardware).
+# Each app's directory name (e.g. "blink") remains the build-target name --
+# the tier directory is purely organisational so a developer can see which
+# apps we have hardware to validate without reading per-app READMEs.
 #############################################################################
 
 set(RA_APPS "")
-file(GLOB _ra_example_entries RELATIVE ${CMAKE_SOURCE_DIR}/examples ${CMAKE_SOURCE_DIR}/examples/*)
-foreach(entry ${_ra_example_entries})
-    set(full ${CMAKE_SOURCE_DIR}/examples/${entry})
-    if(IS_DIRECTORY ${full}
-       AND EXISTS ${full}/main.c
-       AND EXISTS ${full}/CMakeLists.txt)
-        list(APPEND RA_APPS ${entry})
+set(RA_APP_PATHS "")
+file(GLOB _ra_tier_entries RELATIVE ${CMAKE_SOURCE_DIR}/examples ${CMAKE_SOURCE_DIR}/examples/*)
+foreach(tier ${_ra_tier_entries})
+    set(tier_full ${CMAKE_SOURCE_DIR}/examples/${tier})
+    if(NOT IS_DIRECTORY ${tier_full})
+        continue()
     endif()
+    file(GLOB _ra_example_entries RELATIVE ${tier_full} ${tier_full}/*)
+    foreach(entry ${_ra_example_entries})
+        set(full ${tier_full}/${entry})
+        if(IS_DIRECTORY ${full}
+           AND EXISTS ${full}/main.c
+           AND EXISTS ${full}/CMakeLists.txt)
+            list(APPEND RA_APPS ${entry})
+            list(APPEND RA_APP_PATHS examples/${tier}/${entry})
+        endif()
+    endforeach()
 endforeach()
 
-list(SORT RA_APPS)
-
 if(NOT RA_APPS)
-    message(FATAL_ERROR "No apps discovered (looking under examples/ for dirs with main.c + CMakeLists.txt).")
+    message(FATAL_ERROR "No apps discovered (looking under examples/<tier>/<app>/ for dirs with main.c + CMakeLists.txt).")
 endif()
 
 message(STATUS "Discovered apps: ${RA_APPS}")
 
-foreach(app ${RA_APPS})
-    add_subdirectory(examples/${app})
+foreach(app_path ${RA_APP_PATHS})
+    add_subdirectory(${app_path})
 endforeach()
 
 # Convenience alias `firmware` that maps to the default app's elf.

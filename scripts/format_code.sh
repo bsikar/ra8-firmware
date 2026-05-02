@@ -110,7 +110,7 @@ discover_source_dirs() {
         [ -d "$entry" ] && out+=("$entry")
     done
     if [ -d examples ]; then
-        for app in examples/*; do
+        for app in examples/*/*; do
             [ -d "$app" ] && out+=("$app")
         done
     fi
