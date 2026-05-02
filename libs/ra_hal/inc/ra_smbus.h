@@ -286,10 +286,8 @@ typedef void (*ra_smbus_alert_fn_t)(void* ctx, uint8_t target_7b, uint8_t status
  *
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t ra_smbus_block_write(uint8_t        target_7b,
-                                            uint8_t        cmd,
-                                            const uint8_t* data,
-                                            uint8_t        len);
+[[nodiscard]] ra_err_t
+ra_smbus_block_write(uint8_t target_7b, uint8_t cmd, const uint8_t* data, uint8_t len);
 
 /**
  * @brief Block Read (SMBus 3.2 section 6.5.8).
@@ -321,11 +319,8 @@ typedef void (*ra_smbus_alert_fn_t)(void* ctx, uint8_t target_7b, uint8_t status
  *
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t ra_smbus_block_read(uint8_t  target_7b,
-                                           uint8_t  cmd,
-                                           uint8_t* buf,
-                                           uint8_t  cap,
-                                           uint8_t* out_len);
+[[nodiscard]] ra_err_t
+ra_smbus_block_read(uint8_t target_7b, uint8_t cmd, uint8_t* buf, uint8_t cap, uint8_t* out_len);
 
 /* =============================================================================
  * SMBALERT# / Host Notify (SMBus 3.2 sec 6.5.13)

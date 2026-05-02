@@ -156,10 +156,10 @@ typedef enum : uint8_t {
  * @see PSA Crypto API spec (ARM IHI 0086) Sec 10 "Algorithms".
  */
 typedef enum : uint8_t {
-  k_ra_psa_alg_none           = 0U, /**< Sentinel for "unset".                    */
-  k_ra_psa_alg_sha_256        = 1U, /**< SHA-256 hash (FIPS 180-4).              */
-  k_ra_psa_alg_aes_gcm        = 2U, /**< AES-GCM AEAD (NIST SP 800-38D).         */
-  k_ra_psa_alg_ecdsa_sha_256  = 3U, /**< ECDSA over SHA-256 (FIPS 186-4).        */
+  k_ra_psa_alg_none          = 0U, /**< Sentinel for "unset".                    */
+  k_ra_psa_alg_sha_256       = 1U, /**< SHA-256 hash (FIPS 180-4).              */
+  k_ra_psa_alg_aes_gcm       = 2U, /**< AES-GCM AEAD (NIST SP 800-38D).         */
+  k_ra_psa_alg_ecdsa_sha_256 = 3U, /**< ECDSA over SHA-256 (FIPS 186-4).        */
 } ra_psa_alg_t;
 
 /**
@@ -351,8 +351,10 @@ ra_err_t ra_psa_crypto_deinit(void);
  * @see PSA Crypto API spec (ARM IHI 0086) Sec 9.5 "Key import / export".
  * @since 0.1.0
  */
-ra_err_t ra_psa_key_import(ra_psa_key_t* out_handle, const ra_psa_key_attr_t* attr, const uint8_t* data,
-                           size_t data_len);
+ra_err_t ra_psa_key_import(ra_psa_key_t*            out_handle,
+                           const ra_psa_key_attr_t* attr,
+                           const uint8_t*           data,
+                           size_t                   data_len);
 
 /**
  * @brief Destroy a previously-imported key.
@@ -412,8 +414,12 @@ ra_err_t ra_psa_key_destroy(ra_psa_key_t handle);
  * @see PSA Crypto API spec (ARM IHI 0086) Sec 10.2 "Hash operations".
  * @since 0.1.0
  */
-ra_err_t ra_psa_hash_compute(ra_psa_alg_t alg, const uint8_t* input, size_t input_len, uint8_t* out, size_t out_cap,
-                             size_t* out_len);
+ra_err_t ra_psa_hash_compute(ra_psa_alg_t   alg,
+                             const uint8_t* input,
+                             size_t         input_len,
+                             uint8_t*       out,
+                             size_t         out_cap,
+                             size_t*        out_len);
 
 /**
  * @brief Sign a pre-computed hash with a private ECDSA key.
@@ -452,8 +458,13 @@ ra_err_t ra_psa_hash_compute(ra_psa_alg_t alg, const uint8_t* input, size_t inpu
  * @see PSA Crypto API spec (ARM IHI 0086) Sec 12.6 "psa_sign_hash".
  * @since 0.1.0
  */
-ra_err_t ra_psa_sign_hash(ra_psa_key_t handle, ra_psa_alg_t alg, const uint8_t* hash, size_t hash_len, uint8_t* sig,
-                          size_t sig_cap, size_t* sig_len);
+ra_err_t ra_psa_sign_hash(ra_psa_key_t   handle,
+                          ra_psa_alg_t   alg,
+                          const uint8_t* hash,
+                          size_t         hash_len,
+                          uint8_t*       sig,
+                          size_t         sig_cap,
+                          size_t*        sig_len);
 
 /**
  * @brief Verify an ECDSA signature over a pre-computed hash.
@@ -488,8 +499,12 @@ ra_err_t ra_psa_sign_hash(ra_psa_key_t handle, ra_psa_alg_t alg, const uint8_t* 
  * @see PSA Crypto API spec (ARM IHI 0086) Sec 12.7 "psa_verify_hash".
  * @since 0.1.0
  */
-ra_err_t ra_psa_verify_hash(ra_psa_key_t handle, ra_psa_alg_t alg, const uint8_t* hash, size_t hash_len,
-                            const uint8_t* sig, size_t sig_len);
+ra_err_t ra_psa_verify_hash(ra_psa_key_t   handle,
+                            ra_psa_alg_t   alg,
+                            const uint8_t* hash,
+                            size_t         hash_len,
+                            const uint8_t* sig,
+                            size_t         sig_len);
 
 /**
  * @brief Encrypt + authenticate a buffer with AES-GCM.
@@ -534,9 +549,17 @@ ra_err_t ra_psa_verify_hash(ra_psa_key_t handle, ra_psa_alg_t alg, const uint8_t
  * @see PSA Crypto API spec (ARM IHI 0086) Sec 11.4 "psa_aead_encrypt".
  * @since 0.1.0
  */
-ra_err_t ra_psa_aead_encrypt(ra_psa_key_t handle, ra_psa_alg_t alg, const uint8_t* nonce, size_t nonce_len,
-                             const uint8_t* aad, size_t aad_len, const uint8_t* plain, size_t plain_len, uint8_t* out,
-                             size_t out_cap, size_t* out_len);
+ra_err_t ra_psa_aead_encrypt(ra_psa_key_t   handle,
+                             ra_psa_alg_t   alg,
+                             const uint8_t* nonce,
+                             size_t         nonce_len,
+                             const uint8_t* aad,
+                             size_t         aad_len,
+                             const uint8_t* plain,
+                             size_t         plain_len,
+                             uint8_t*       out,
+                             size_t         out_cap,
+                             size_t*        out_len);
 
 /**
  * @brief Decrypt + verify-tag an AES-GCM buffer.
@@ -579,9 +602,17 @@ ra_err_t ra_psa_aead_encrypt(ra_psa_key_t handle, ra_psa_alg_t alg, const uint8_
  * @see PSA Crypto API spec (ARM IHI 0086) Sec 11.5 "psa_aead_decrypt".
  * @since 0.1.0
  */
-ra_err_t ra_psa_aead_decrypt(ra_psa_key_t handle, ra_psa_alg_t alg, const uint8_t* nonce, size_t nonce_len,
-                             const uint8_t* aad, size_t aad_len, const uint8_t* cipher, size_t cipher_len,
-                             uint8_t* out, size_t out_cap, size_t* out_len);
+ra_err_t ra_psa_aead_decrypt(ra_psa_key_t   handle,
+                             ra_psa_alg_t   alg,
+                             const uint8_t* nonce,
+                             size_t         nonce_len,
+                             const uint8_t* aad,
+                             size_t         aad_len,
+                             const uint8_t* cipher,
+                             size_t         cipher_len,
+                             uint8_t*       out,
+                             size_t         out_cap,
+                             size_t*        out_len);
 
 #ifdef __cplusplus
 }

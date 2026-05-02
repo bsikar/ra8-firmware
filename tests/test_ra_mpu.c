@@ -69,7 +69,7 @@ static void test_configure_too_many_regions(void)
   TEST_BEGIN("ra_mpu_configure rejects region_count > DREGION");
   mpu_test_setup();
   /* Pretend silicon only has 8 regions; ask for 16. */
-  ra_mpu_regs()->TYPE = (uint32_t)(8UL << 8U);
+  ra_mpu_regs()->TYPE     = (uint32_t)(8UL << 8U);
   const ra_mpu_region_t r = {
     .base       = (uintptr_t)k_test_mpu_region_base,
     .size       = (uint32_t)k_test_mpu_region_size,
@@ -225,8 +225,7 @@ static void test_enable_disable(void)
   TEST_ASSERT_EQ((int32_t)k_ra_mpu_ctrl_enable,
                  (int32_t)(ra_mpu_regs()->CTRL & (uint32_t)k_ra_mpu_ctrl_enable));
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mpu_disable());
-  TEST_ASSERT_EQ((int32_t)0,
-                 (int32_t)(ra_mpu_regs()->CTRL & (uint32_t)k_ra_mpu_ctrl_enable));
+  TEST_ASSERT_EQ((int32_t)0, (int32_t)(ra_mpu_regs()->CTRL & (uint32_t)k_ra_mpu_ctrl_enable));
   TEST_END("ra_mpu_enable / ra_mpu_disable toggle CTRL.ENABLE");
 }
 
@@ -278,16 +277,15 @@ static void test_set_region_writes_pair(void)
   TEST_ASSERT_EQ((int32_t)k_ra_mpu_rlar_en_mask,
                  (int32_t)(mpu->RLAR & (uint32_t)k_ra_mpu_rlar_en_mask));
   const uint32_t attr =
-    (mpu->RLAR & (uint32_t)k_ra_mpu_rlar_attridx_mask) >>
-    (uint32_t)k_ra_mpu_rlar_attridx_shift;
+    (mpu->RLAR & (uint32_t)k_ra_mpu_rlar_attridx_mask) >> (uint32_t)k_ra_mpu_rlar_attridx_shift;
   TEST_ASSERT_EQ((int32_t)k_ra_mpu_attr_idx_3, (int32_t)attr);
 
   /* RBAR.BASE field must equal our aligned base. */
   TEST_ASSERT_EQ((int32_t)k_test_mpu_region_base,
                  (int32_t)(mpu->RBAR & (uint32_t)k_ra_mpu_rbar_base_mask));
   /* AP encoding for priv RO + unpriv RO must be 0b11 = 3. */
-  const uint32_t ap = (mpu->RBAR & (uint32_t)k_ra_mpu_rbar_ap_mask) >>
-                      (uint32_t)k_ra_mpu_rbar_ap_shift;
+  const uint32_t ap =
+    (mpu->RBAR & (uint32_t)k_ra_mpu_rbar_ap_mask) >> (uint32_t)k_ra_mpu_rbar_ap_shift;
   TEST_ASSERT_EQ((int32_t)3, (int32_t)ap);
   /* XN = 0 because executable = true. */
   TEST_ASSERT_EQ((int32_t)0, (int32_t)(mpu->RBAR & (uint32_t)k_ra_mpu_rbar_xn_mask));

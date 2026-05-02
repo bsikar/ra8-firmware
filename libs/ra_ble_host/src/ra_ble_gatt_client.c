@@ -39,9 +39,8 @@
  * library has been brought into the per-app build. The strong upstream
  * symbols override these once the host stack is wired in.
  */
-__attribute__((weak)) int ble_gattc_disc_all_svcs(uint16_t              conn_handle,
-                                                  ble_gatt_disc_svc_fn* cb,
-                                                  void*                 cb_arg)
+__attribute__((weak)) int
+ble_gattc_disc_all_svcs(uint16_t conn_handle, ble_gatt_disc_svc_fn* cb, void* cb_arg)
 {
   (void)conn_handle;
   (void)cb;
@@ -49,10 +48,8 @@ __attribute__((weak)) int ble_gattc_disc_all_svcs(uint16_t              conn_han
   return 0;
 }
 
-__attribute__((weak)) int ble_gattc_read(uint16_t          conn_handle,
-                                         uint16_t          attr_handle,
-                                         ble_gatt_attr_fn* cb,
-                                         void*             cb_arg)
+__attribute__((weak)) int
+ble_gattc_read(uint16_t conn_handle, uint16_t attr_handle, ble_gatt_attr_fn* cb, void* cb_arg)
 {
   (void)conn_handle;
   (void)attr_handle;
@@ -89,10 +86,8 @@ __attribute__((weak)) int ble_gattc_write_no_rsp_flat(uint16_t    conn_handle,
   return 0;
 }
 
-__attribute__((weak)) int ble_hs_mbuf_to_flat(const struct os_mbuf* om,
-                                              void*                 flat,
-                                              uint16_t              max_len,
-                                              uint16_t*             out_copy_len)
+__attribute__((weak)) int
+ble_hs_mbuf_to_flat(const struct os_mbuf* om, void* flat, uint16_t max_len, uint16_t* out_copy_len)
 {
   (void)om;
   (void)flat;
@@ -181,17 +176,16 @@ static ra_ble_gatt_client_sub_t s_subs[k_ra_gatt_client_max_subs];
  *
  * @since 0.1.0
  */
-static int internal_disc_trampoline(uint16_t                       conn_handle,
-                                    const struct ble_gatt_error*   error,
-                                    const struct ble_gatt_svc*     service,
-                                    void*                          arg)
+static int internal_disc_trampoline(uint16_t                     conn_handle,
+                                    const struct ble_gatt_error* error,
+                                    const struct ble_gatt_svc*   service,
+                                    void*                        arg)
 {
   (void)conn_handle;
   (void)arg;
-  ra_ble_gatt_disc_fn_t cb  = s_pending_disc.disc_cb;
-  void*                 ctx = s_pending_disc.ctx;
-  uint16_t              status =
-    (error != NULL) ? (uint16_t)error->status : (uint16_t)0U;
+  ra_ble_gatt_disc_fn_t cb     = s_pending_disc.disc_cb;
+  void*                 ctx    = s_pending_disc.ctx;
+  uint16_t              status = (error != NULL) ? (uint16_t)error->status : (uint16_t)0U;
   if (service != NULL && cb != NULL) {
     ra_ble_gatt_service_t row = {};
     row.start_handle          = service->start_handle;
@@ -199,18 +193,17 @@ static int internal_disc_trampoline(uint16_t                       conn_handle,
     /* Copy whichever UUID form NimBLE supplied, zero-padding to 128. */
     const ble_uuid_t* u = &service->uuid.u;
     if (u->type == BLE_UUID_TYPE_16) {
-      uint16_t v = ((const ble_uuid16_t*)u)->value;
+      uint16_t v      = ((const ble_uuid16_t*)u)->value;
       row.uuid_128[0] = (uint8_t)(v & 0xFFU);
       row.uuid_128[1] = (uint8_t)((v >> 8) & 0xFFU);
     } else if (u->type == BLE_UUID_TYPE_32) {
-      uint32_t v = ((const ble_uuid32_t*)u)->value;
+      uint32_t v      = ((const ble_uuid32_t*)u)->value;
       row.uuid_128[0] = (uint8_t)(v & 0xFFU);
       row.uuid_128[1] = (uint8_t)((v >> 8) & 0xFFU);
       row.uuid_128[2] = (uint8_t)((v >> 16) & 0xFFU);
       row.uuid_128[3] = (uint8_t)((v >> 24) & 0xFFU);
     } else {
-      memcpy(row.uuid_128, ((const ble_uuid128_t*)u)->value,
-             sizeof(row.uuid_128));
+      memcpy(row.uuid_128, ((const ble_uuid128_t*)u)->value, sizeof(row.uuid_128));
     }
     cb(ctx, &row, status);
     return 0;
@@ -237,9 +230,8 @@ static int internal_read_trampoline(uint16_t                     conn_handle,
   (void)arg;
   ra_ble_gatt_read_fn_t cb     = s_pending_read.read_cb;
   void*                 ctx    = s_pending_read.ctx;
-  uint16_t              status =
-    (error != NULL) ? (uint16_t)error->status : (uint16_t)0U;
-  s_pending_read.in_use = 0U;
+  uint16_t              status = (error != NULL) ? (uint16_t)error->status : (uint16_t)0U;
+  s_pending_read.in_use        = 0U;
   if (cb != NULL) {
     if (attr != NULL && attr->om != NULL) {
       uint16_t len = OS_MBUF_PKTLEN(attr->om);
@@ -248,7 +240,7 @@ static int internal_read_trampoline(uint16_t                     conn_handle,
       }
       uint8_t  buf[k_ra_ble_gatt_client_max_read_bytes];
       uint16_t out_len = 0U;
-      int mc = ble_hs_mbuf_to_flat(attr->om, buf, len, &out_len);
+      int      mc      = ble_hs_mbuf_to_flat(attr->om, buf, len, &out_len);
       /* cppcheck-suppress knownConditionTrueFalse
        * Weak fallback returns 0; strong upstream returns non-zero on copy failure. */
       cb(ctx, buf, (mc == 0) ? out_len : 0U, status);
@@ -274,9 +266,8 @@ static int internal_write_trampoline(uint16_t                     conn_handle,
   (void)arg;
   ra_ble_gatt_write_fn_t cb     = s_pending_write.write_cb;
   void*                  ctx    = s_pending_write.ctx;
-  uint16_t               status =
-    (error != NULL) ? (uint16_t)error->status : (uint16_t)0U;
-  s_pending_write.in_use = 0U;
+  uint16_t               status = (error != NULL) ? (uint16_t)error->status : (uint16_t)0U;
+  s_pending_write.in_use        = 0U;
   if (cb != NULL) {
     cb(ctx, status);
   }
@@ -363,8 +354,8 @@ ra_err_t ra_ble_gatt_write(uint16_t               conn_handle,
     s_pending_write.write_cb    = cb;
     s_pending_write.ctx         = ctx;
 #ifdef RA_TARGET_BUILD
-    int rc = ble_gattc_write_flat(conn_handle, value_handle, data, len,
-                                  internal_write_trampoline, NULL);
+    int rc =
+      ble_gattc_write_flat(conn_handle, value_handle, data, len, internal_write_trampoline, NULL);
     /* cppcheck-suppress knownConditionTrueFalse
      * Weak fallback returns 0; strong upstream returns BLE_HS_E* on failure. */
     if (rc != 0) {

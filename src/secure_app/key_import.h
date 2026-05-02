@@ -102,9 +102,8 @@ typedef enum : uint16_t {
  *       static.
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t ra_key_import_seal(const uint8_t* blob,
-                                          uint32_t       blob_len,
-                                          uint32_t*      out_handle);
+[[nodiscard]] ra_err_t
+ra_key_import_seal(const uint8_t* blob, uint32_t blob_len, uint32_t* out_handle);
 
 /**
  * @brief Resolve a handle to the underlying slot index.

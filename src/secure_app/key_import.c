@@ -52,14 +52,14 @@ typedef enum : uint8_t {
 
 /* Magic-number suppression aids for clang-tidy. */
 typedef enum : uint8_t {
-  k_byte_shift_24    = 24U,
-  k_byte_shift_16    = 16U,
-  k_byte_shift_8     = 8U,
-  k_blob_off_byte0   = 0U,
-  k_blob_off_byte1   = 1U,
-  k_blob_off_byte2   = 2U,
-  k_blob_off_byte3   = 3U,
-  k_salt_reroll_rot  = 7U,
+  k_byte_shift_24   = 24U,
+  k_byte_shift_16   = 16U,
+  k_byte_shift_8    = 8U,
+  k_blob_off_byte0  = 0U,
+  k_blob_off_byte1  = 1U,
+  k_blob_off_byte2  = 2U,
+  k_blob_off_byte3  = 3U,
+  k_salt_reroll_rot = 7U,
 } ra_key_import_byte_pack_t;
 
 typedef enum : uint32_t {
@@ -95,7 +95,6 @@ static uint16_t s_slot_used = 0U;
  */
 static uint32_t s_salt = (uint32_t)k_initial_salt;
 
-
 static uint32_t internal_rotate_left_32(uint32_t value, uint8_t amount)
 {
   const uint8_t bits = (uint8_t)(amount & (uint8_t)31U);
@@ -123,9 +122,12 @@ static bool internal_verify_mac(const uint8_t* blob)
   for (uint16_t i = 0U; i < k_ra_key_import_key_bytes; ++i) {
     acc = internal_rotate_left_32(acc, 1U) ^ (uint32_t)blob[i];
   }
-  const uint32_t expect = ((uint32_t)blob[k_ra_key_import_key_bytes + (uint16_t)k_blob_off_byte0] << (uint32_t)k_byte_shift_24) |
-                          ((uint32_t)blob[k_ra_key_import_key_bytes + (uint16_t)k_blob_off_byte1] << (uint32_t)k_byte_shift_16) |
-                          ((uint32_t)blob[k_ra_key_import_key_bytes + (uint16_t)k_blob_off_byte2] << (uint32_t)k_byte_shift_8) |
+  const uint32_t expect = ((uint32_t)blob[k_ra_key_import_key_bytes + (uint16_t)k_blob_off_byte0]
+                           << (uint32_t)k_byte_shift_24) |
+                          ((uint32_t)blob[k_ra_key_import_key_bytes + (uint16_t)k_blob_off_byte1]
+                           << (uint32_t)k_byte_shift_16) |
+                          ((uint32_t)blob[k_ra_key_import_key_bytes + (uint16_t)k_blob_off_byte2]
+                           << (uint32_t)k_byte_shift_8) |
                           ((uint32_t)blob[k_ra_key_import_key_bytes + (uint16_t)k_blob_off_byte3]);
   return acc == expect;
 }
@@ -135,7 +137,8 @@ ra_err_t ra_key_import_reset(void)
   s_slot_used = 0U;
   /* Bump the salt with a fixed mixing constant so successive resets
    * also produce different handles. */
-  s_salt = internal_rotate_left_32(s_salt, (uint8_t)k_salt_reroll_rot) ^ (uint32_t)k_salt_reroll_xor;
+  s_salt =
+    internal_rotate_left_32(s_salt, (uint8_t)k_salt_reroll_rot) ^ (uint32_t)k_salt_reroll_xor;
   if (s_salt == 0U) {
     s_salt = (uint32_t)k_initial_salt;
   }
@@ -198,9 +201,13 @@ ra_err_t ra_key_import_build_blob(const uint8_t* key, uint8_t* out_blob)
     out_blob[i] = key[i];
     acc         = internal_rotate_left_32(acc, 1U) ^ (uint32_t)key[i];
   }
-  out_blob[k_ra_key_import_key_bytes + (uint16_t)k_blob_off_byte0] = (uint8_t)((acc >> (uint32_t)k_byte_shift_24) & (uint32_t)k_byte_lo_mask);
-  out_blob[k_ra_key_import_key_bytes + (uint16_t)k_blob_off_byte1] = (uint8_t)((acc >> (uint32_t)k_byte_shift_16) & (uint32_t)k_byte_lo_mask);
-  out_blob[k_ra_key_import_key_bytes + (uint16_t)k_blob_off_byte2] = (uint8_t)((acc >> (uint32_t)k_byte_shift_8) & (uint32_t)k_byte_lo_mask);
-  out_blob[k_ra_key_import_key_bytes + (uint16_t)k_blob_off_byte3] = (uint8_t)(acc & (uint32_t)k_byte_lo_mask);
+  out_blob[k_ra_key_import_key_bytes + (uint16_t)k_blob_off_byte0] =
+    (uint8_t)((acc >> (uint32_t)k_byte_shift_24) & (uint32_t)k_byte_lo_mask);
+  out_blob[k_ra_key_import_key_bytes + (uint16_t)k_blob_off_byte1] =
+    (uint8_t)((acc >> (uint32_t)k_byte_shift_16) & (uint32_t)k_byte_lo_mask);
+  out_blob[k_ra_key_import_key_bytes + (uint16_t)k_blob_off_byte2] =
+    (uint8_t)((acc >> (uint32_t)k_byte_shift_8) & (uint32_t)k_byte_lo_mask);
+  out_blob[k_ra_key_import_key_bytes + (uint16_t)k_blob_off_byte3] =
+    (uint8_t)(acc & (uint32_t)k_byte_lo_mask);
   return k_ra_ok;
 }

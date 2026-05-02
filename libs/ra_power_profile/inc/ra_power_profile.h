@@ -58,8 +58,7 @@ extern "C" {
  * @see ra_power_profile_region_id_t
  */
 typedef enum : uint8_t {
-  k_ra_power_profile_max_regions =
-      16, /**< Maximum number of distinct regions tracked. */
+  k_ra_power_profile_max_regions = 16, /**< Maximum number of distinct regions tracked. */
 } ra_power_profile_limits_t;
 
 /**
@@ -76,14 +75,12 @@ typedef enum : uint8_t {
  * @invariant Values fit in ``uint8_t``.
  */
 typedef enum : uint8_t {
-  k_ra_power_profile_region_active = 0, /**< CPU active / running mode. */
-  k_ra_power_profile_region_sleep = 1,  /**< Sleep mode (CPU clock stopped). */
+  k_ra_power_profile_region_active           = 0, /**< CPU active / running mode. */
+  k_ra_power_profile_region_sleep            = 1, /**< Sleep mode (CPU clock stopped). */
   k_ra_power_profile_region_software_standby = 2, /**< Software-standby mode. */
-  k_ra_power_profile_region_deep_standby =
-      3,                                /**< Deep-software-standby mode. */
-  k_ra_power_profile_region_snooze = 4, /**< Snooze (peripheral-driven wake). */
-  k_ra_power_profile_region_user_0 =
-      5, /**< First freely-assignable user slot. */
+  k_ra_power_profile_region_deep_standby     = 3, /**< Deep-software-standby mode. */
+  k_ra_power_profile_region_snooze           = 4, /**< Snooze (peripheral-driven wake). */
+  k_ra_power_profile_region_user_0           = 5, /**< First freely-assignable user slot. */
 } ra_power_profile_region_id_t;
 
 /**
@@ -105,8 +102,9 @@ typedef enum : uint8_t {
  *
  * @since 0.1.0
  */
-typedef void (*ra_power_profile_gpio_pulse_fn_t)(
-    void *ctx, ra_power_profile_region_id_t region_id, bool entering);
+typedef void (*ra_power_profile_gpio_pulse_fn_t)(void*                        ctx,
+                                                 ra_power_profile_region_id_t region_id,
+                                                 bool                         entering);
 
 /**
  * @typedef ra_power_profile_now_us_fn_t
@@ -125,7 +123,7 @@ typedef void (*ra_power_profile_gpio_pulse_fn_t)(
  *
  * @since 0.1.0
  */
-typedef uint64_t (*ra_power_profile_now_us_fn_t)(void *ctx);
+typedef uint64_t (*ra_power_profile_now_us_fn_t)(void* ctx);
 
 /**
  * @struct ra_power_profile_region_stats_t
@@ -246,7 +244,7 @@ typedef struct {
  *
  * @since 0.1.0
  */
-ra_err_t ra_power_profile_init(const ra_power_profile_config_t *cfg);
+ra_err_t ra_power_profile_init(const ra_power_profile_config_t* cfg);
 
 /**
  * @brief Mark entry into a tracked region.
@@ -354,7 +352,7 @@ ra_err_t ra_power_profile_mark_exit(ra_power_profile_region_id_t region_id);
  *
  * @since 0.1.0
  */
-ra_err_t ra_power_profile_get_stats(ra_power_profile_stats_t *out_stats);
+ra_err_t ra_power_profile_get_stats(ra_power_profile_stats_t* out_stats);
 
 /**
  * @brief Zero every accumulator (preserves the configured hooks).

@@ -120,8 +120,7 @@ static uint32_t ra_mpu_build_rbar(const ra_mpu_region_t* r)
     ((uint32_t)ra_mpu_encode_ap(r->priv, r->unpriv) << (uint32_t)k_ra_mpu_rbar_ap_shift) &
     (uint32_t)k_ra_mpu_rbar_ap_mask;
   const uint32_t sh =
-    ((uint32_t)r->shareable << (uint32_t)k_ra_mpu_rbar_sh_shift) &
-    (uint32_t)k_ra_mpu_rbar_sh_mask;
+    ((uint32_t)r->shareable << (uint32_t)k_ra_mpu_rbar_sh_shift) & (uint32_t)k_ra_mpu_rbar_sh_mask;
   const uint32_t xn = r->executable ? 0U : (uint32_t)k_ra_mpu_rbar_xn_mask;
   return base | sh | ap | xn;
 }
@@ -136,9 +135,8 @@ static uint32_t ra_mpu_build_rlar(const ra_mpu_region_t* r)
   /* Arm Cortex-M85 TRM "MPU_RLAR": LIMIT[31:5] | AttrIndx[3:1] | EN[0]. */
   const uint32_t limit_inclusive = (uint32_t)(r->base + r->size - 1U);
   const uint32_t limit           = limit_inclusive & (uint32_t)k_ra_mpu_rlar_limit_mask;
-  const uint32_t idx =
-    ((uint32_t)r->attr_idx << (uint32_t)k_ra_mpu_rlar_attridx_shift) &
-    (uint32_t)k_ra_mpu_rlar_attridx_mask;
+  const uint32_t idx = ((uint32_t)r->attr_idx << (uint32_t)k_ra_mpu_rlar_attridx_shift) &
+                       (uint32_t)k_ra_mpu_rlar_attridx_mask;
   return limit | idx | (uint32_t)k_ra_mpu_rlar_en_mask;
 }
 

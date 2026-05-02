@@ -38,14 +38,14 @@ static const char* s_tag = "SMBUS";
  * @brief Implementation constants.
  */
 typedef enum : uint16_t {
-  k_ra_smbus_pec_poly      = 0x07U, /**< CRC-8 polynomial (SMBus 3.2 5.4). */
-  k_ra_smbus_pec_init      = 0x00U, /**< CRC-8 initial value.              */
-  k_ra_smbus_addr_shift    = 1U,    /**< 7-bit -> 8-bit address shift.     */
-  k_ra_smbus_rw_write      = 0U,    /**< R/W bit value for write.          */
-  k_ra_smbus_rw_read       = 1U,    /**< R/W bit value for read.           */
-  k_ra_smbus_msb_for_byte  = 8U,    /**< MSB index for byte-loop pec calc. */
-  k_ra_smbus_pec_top_bit   = 0x80U, /**< Top bit mask used by pec loop.    */
-  k_ra_smbus_byte_mask     = 0xFFU, /**< 8-bit narrowing mask.             */
+  k_ra_smbus_pec_poly     = 0x07U, /**< CRC-8 polynomial (SMBus 3.2 5.4). */
+  k_ra_smbus_pec_init     = 0x00U, /**< CRC-8 initial value.              */
+  k_ra_smbus_addr_shift   = 1U,    /**< 7-bit -> 8-bit address shift.     */
+  k_ra_smbus_rw_write     = 0U,    /**< R/W bit value for write.          */
+  k_ra_smbus_rw_read      = 1U,    /**< R/W bit value for read.           */
+  k_ra_smbus_msb_for_byte = 8U,    /**< MSB index for byte-loop pec calc. */
+  k_ra_smbus_pec_top_bit  = 0x80U, /**< Top bit mask used by pec loop.    */
+  k_ra_smbus_byte_mask    = 0xFFU, /**< 8-bit narrowing mask.             */
 } ra_smbus_internal_t;
 
 /**
@@ -183,9 +183,9 @@ ra_err_t ra_smbus_send_byte(uint8_t target_7b, uint8_t data)
   }
   /* Frame: [data] (+ optional [PEC]) -- the address byte is emitted by
    * ra_iic_b_write itself but participates in the PEC. */
-  uint8_t        buf[2];
-  uint32_t       len      = 0U;
-  buf[len++]              = data;
+  uint8_t  buf[2];
+  uint32_t len = 0U;
+  buf[len++]   = data;
   if (s_state.pec_enabled) {
     const uint8_t addr_b = make_addr_byte(target_7b, (uint8_t)k_ra_smbus_rw_write);
     uint8_t       pec    = pec_update((uint8_t)k_ra_smbus_pec_init, addr_b);
@@ -254,8 +254,7 @@ ra_err_t ra_smbus_read_byte_data(uint8_t target_7b, uint8_t cmd, uint8_t* out_da
    * [PEC]). ra_iic_b_transfer handles the repeated-START framing. */
   uint8_t        rx[2] = {0U, 0U};
   const uint32_t rxlen = s_state.pec_enabled ? 2U : 1U;
-  const ra_err_t err =
-    ra_iic_b_transfer(s_state.channel, target_7b, &cmd, 1U, rx, rxlen);
+  const ra_err_t err   = ra_iic_b_transfer(s_state.channel, target_7b, &cmd, 1U, rx, rxlen);
   if (err != k_ra_ok) {
     return err;
   }
@@ -280,10 +279,7 @@ ra_err_t ra_smbus_read_byte_data(uint8_t target_7b, uint8_t cmd, uint8_t* out_da
  * =============================================================================
  */
 
-ra_err_t ra_smbus_block_write(uint8_t        target_7b,
-                              uint8_t        cmd,
-                              const uint8_t* data,
-                              uint8_t        len)
+ra_err_t ra_smbus_block_write(uint8_t target_7b, uint8_t cmd, const uint8_t* data, uint8_t len)
 {
   if (!s_state.initialised) {
     return k_ra_err_not_initialized;
@@ -314,11 +310,8 @@ ra_err_t ra_smbus_block_write(uint8_t        target_7b,
   return ra_iic_b_write(s_state.channel, target_7b, frame, fi, false);
 }
 
-ra_err_t ra_smbus_block_read(uint8_t  target_7b,
-                             uint8_t  cmd,
-                             uint8_t* buf,
-                             uint8_t  cap,
-                             uint8_t* out_len)
+ra_err_t
+ra_smbus_block_read(uint8_t target_7b, uint8_t cmd, uint8_t* buf, uint8_t cap, uint8_t* out_len)
 {
   RA_CHECK_NULL_PTR(buf, s_tag, "block_read: buf");
   RA_CHECK_NULL_PTR(out_len, s_tag, "block_read: out_len");
@@ -334,8 +327,7 @@ ra_err_t ra_smbus_block_read(uint8_t  target_7b,
    * the buffer allows to avoid two round trips to peek the count. */
   uint8_t        rx[257];
   const uint32_t want = (uint32_t)cap + 1U + (s_state.pec_enabled ? 1U : 0U);
-  ra_err_t       err =
-    ra_iic_b_transfer(s_state.channel, target_7b, &cmd, 1U, rx, want);
+  ra_err_t       err  = ra_iic_b_transfer(s_state.channel, target_7b, &cmd, 1U, rx, want);
   if (err != k_ra_ok) {
     return err;
   }

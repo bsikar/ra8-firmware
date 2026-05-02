@@ -29,30 +29,31 @@ enum : uint8_t {
 
 typedef struct {
   ra_power_profile_region_id_t region_id;
-  bool entering;
+  bool                         entering;
 } mock_pulse_record_t;
 
 typedef struct {
   mock_pulse_record_t log[k_mock_pulse_log_capacity];
-  uint8_t count;
+  uint8_t             count;
 } mock_gpio_t;
 
 typedef struct {
   uint64_t now_us;
 } mock_rtc_t;
 
-static void mock_gpio_pulse(void *ctx, ra_power_profile_region_id_t region_id,
-                            bool entering) {
-  mock_gpio_t *m = (mock_gpio_t *)ctx;
+static void mock_gpio_pulse(void* ctx, ra_power_profile_region_id_t region_id, bool entering)
+{
+  mock_gpio_t* m = (mock_gpio_t*)ctx;
   if (m->count < k_mock_pulse_log_capacity) {
     m->log[m->count].region_id = region_id;
-    m->log[m->count].entering = entering;
+    m->log[m->count].entering  = entering;
     m->count += 1U;
   }
 }
 
-static uint64_t mock_rtc_now_us(void *ctx) {
-  const mock_rtc_t *m = (const mock_rtc_t *)ctx;
+static uint64_t mock_rtc_now_us(void* ctx)
+{
+  const mock_rtc_t* m = (const mock_rtc_t*)ctx;
   return m->now_us;
 }
 
@@ -61,20 +62,22 @@ static uint64_t mock_rtc_now_us(void *ctx) {
  * ------------------------------------------------------------------------- */
 
 static mock_gpio_t s_gpio = {};
-static mock_rtc_t s_rtc = {};
+static mock_rtc_t  s_rtc  = {};
 
-static void reset_mocks(void) {
+static void reset_mocks(void)
+{
   s_gpio = (mock_gpio_t){};
-  s_rtc = (mock_rtc_t){};
+  s_rtc  = (mock_rtc_t){};
 }
 
-static ra_err_t init_with_mocks(void) {
+static ra_err_t init_with_mocks(void)
+{
   reset_mocks();
   ra_power_profile_config_t cfg = {
-      .pulse = mock_gpio_pulse,
-      .now_us = mock_rtc_now_us,
-      .user_ctx_gpio = &s_gpio,
-      .user_ctx_time = &s_rtc,
+    .pulse         = mock_gpio_pulse,
+    .now_us        = mock_rtc_now_us,
+    .user_ctx_gpio = &s_gpio,
+    .user_ctx_time = &s_rtc,
   };
   return ra_power_profile_init(&cfg);
 }
@@ -83,13 +86,15 @@ static ra_err_t init_with_mocks(void) {
  * Tests
  * ------------------------------------------------------------------------- */
 
-static void test_init_rejects_null_cfg(void) {
+static void test_init_rejects_null_cfg(void)
+{
   TEST_BEGIN("init rejects null cfg");
   TEST_ASSERT_EQ(k_ra_err_null_ptr, (int)ra_power_profile_init(nullptr));
   TEST_END("init rejects null cfg");
 }
 
-static void test_init_zeroes_stats(void) {
+static void test_init_zeroes_stats(void)
+{
   TEST_BEGIN("init zeroes stats");
   TEST_ASSERT_EQ(k_ra_ok, (int)init_with_mocks());
 
@@ -104,28 +109,26 @@ static void test_init_zeroes_stats(void) {
   TEST_END("init zeroes stats");
 }
 
-static void test_enter_exit_pulses_gpio(void) {
+static void test_enter_exit_pulses_gpio(void)
+{
   TEST_BEGIN("enter/exit pulses gpio");
   TEST_ASSERT_EQ(k_ra_ok, (int)init_with_mocks());
 
   s_rtc.now_us = 1000U;
-  TEST_ASSERT_EQ(k_ra_ok, (int)ra_power_profile_mark_enter(
-                              k_ra_power_profile_region_active));
+  TEST_ASSERT_EQ(k_ra_ok, (int)ra_power_profile_mark_enter(k_ra_power_profile_region_active));
   s_rtc.now_us = 1500U;
-  TEST_ASSERT_EQ(k_ra_ok, (int)ra_power_profile_mark_exit(
-                              k_ra_power_profile_region_active));
+  TEST_ASSERT_EQ(k_ra_ok, (int)ra_power_profile_mark_exit(k_ra_power_profile_region_active));
 
   TEST_ASSERT_EQ(2, (int)s_gpio.count);
-  TEST_ASSERT_EQ((int)k_ra_power_profile_region_active,
-                 (int)s_gpio.log[0].region_id);
+  TEST_ASSERT_EQ((int)k_ra_power_profile_region_active, (int)s_gpio.log[0].region_id);
   TEST_ASSERT_EQ(1, (int)s_gpio.log[0].entering);
-  TEST_ASSERT_EQ((int)k_ra_power_profile_region_active,
-                 (int)s_gpio.log[1].region_id);
+  TEST_ASSERT_EQ((int)k_ra_power_profile_region_active, (int)s_gpio.log[1].region_id);
   TEST_ASSERT_EQ(0, (int)s_gpio.log[1].entering);
   TEST_END("enter/exit pulses gpio");
 }
 
-static void test_time_accumulation(void) {
+static void test_time_accumulation(void)
+{
   TEST_BEGIN("time accumulation");
   TEST_ASSERT_EQ(k_ra_ok, (int)init_with_mocks());
 
@@ -144,8 +147,8 @@ static void test_time_accumulation(void) {
   ra_power_profile_stats_t stats = {};
   TEST_ASSERT_EQ(k_ra_ok, (int)ra_power_profile_get_stats(&stats));
 
-  const ra_power_profile_region_stats_t *slot =
-      &stats.regions[(uint8_t)k_ra_power_profile_region_sleep];
+  const ra_power_profile_region_stats_t* slot =
+    &stats.regions[(uint8_t)k_ra_power_profile_region_sleep];
   TEST_ASSERT_EQ(2, (int)slot->entries);
   TEST_ASSERT_EQ(2, (int)slot->exits);
   TEST_ASSERT_EQ(350, (int)slot->total_time_us);
@@ -153,45 +156,45 @@ static void test_time_accumulation(void) {
   TEST_END("time accumulation");
 }
 
-static void test_exit_without_enter_reports_invalid_state(void) {
+static void test_exit_without_enter_reports_invalid_state(void)
+{
   TEST_BEGIN("exit without enter -> invalid state");
   TEST_ASSERT_EQ(k_ra_ok, (int)init_with_mocks());
 
-  TEST_ASSERT_EQ(k_ra_err_invalid_state, (int)ra_power_profile_mark_exit(
-                                             k_ra_power_profile_region_snooze));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state,
+                 (int)ra_power_profile_mark_exit(k_ra_power_profile_region_snooze));
 
   ra_power_profile_stats_t stats = {};
   (void)ra_power_profile_get_stats(&stats);
-  TEST_ASSERT_EQ(
-      0, (int)stats.regions[(uint8_t)k_ra_power_profile_region_snooze].entries);
-  TEST_ASSERT_EQ(
-      1, (int)stats.regions[(uint8_t)k_ra_power_profile_region_snooze].exits);
+  TEST_ASSERT_EQ(0, (int)stats.regions[(uint8_t)k_ra_power_profile_region_snooze].entries);
+  TEST_ASSERT_EQ(1, (int)stats.regions[(uint8_t)k_ra_power_profile_region_snooze].exits);
   TEST_END("exit without enter -> invalid state");
 }
 
-static void test_region_id_range_check(void) {
+static void test_region_id_range_check(void)
+{
   TEST_BEGIN("region id range check");
   TEST_ASSERT_EQ(k_ra_ok, (int)init_with_mocks());
 
   TEST_ASSERT_EQ(
-      k_ra_err_range_check_failed,
-      (int)ra_power_profile_mark_enter(
-          (ra_power_profile_region_id_t)k_ra_power_profile_max_regions));
-  TEST_ASSERT_EQ(
-      k_ra_err_range_check_failed,
-      (int)ra_power_profile_mark_exit(
-          (ra_power_profile_region_id_t)(k_ra_power_profile_max_regions + 1U)));
+    k_ra_err_range_check_failed,
+    (int)ra_power_profile_mark_enter((ra_power_profile_region_id_t)k_ra_power_profile_max_regions));
+  TEST_ASSERT_EQ(k_ra_err_range_check_failed,
+                 (int)ra_power_profile_mark_exit(
+                   (ra_power_profile_region_id_t)(k_ra_power_profile_max_regions + 1U)));
   TEST_END("region id range check");
 }
 
-static void test_get_stats_null(void) {
+static void test_get_stats_null(void)
+{
   TEST_BEGIN("get_stats null");
   TEST_ASSERT_EQ(k_ra_ok, (int)init_with_mocks());
   TEST_ASSERT_EQ(k_ra_err_null_ptr, (int)ra_power_profile_get_stats(nullptr));
   TEST_END("get_stats null");
 }
 
-static void test_reset_stats_clears_accumulators(void) {
+static void test_reset_stats_clears_accumulators(void)
+{
   TEST_BEGIN("reset_stats clears accumulators");
   TEST_ASSERT_EQ(k_ra_ok, (int)init_with_mocks());
 
@@ -212,28 +215,24 @@ static void test_reset_stats_clears_accumulators(void) {
   TEST_END("reset_stats clears accumulators");
 }
 
-static void test_null_hooks_safe(void) {
+static void test_null_hooks_safe(void)
+{
   TEST_BEGIN("null hooks are safe");
   ra_power_profile_config_t cfg = {};
   TEST_ASSERT_EQ(k_ra_ok, (int)ra_power_profile_init(&cfg));
-  TEST_ASSERT_EQ(k_ra_ok, (int)ra_power_profile_mark_enter(
-                              k_ra_power_profile_region_user_0));
-  TEST_ASSERT_EQ(k_ra_ok, (int)ra_power_profile_mark_exit(
-                              k_ra_power_profile_region_user_0));
+  TEST_ASSERT_EQ(k_ra_ok, (int)ra_power_profile_mark_enter(k_ra_power_profile_region_user_0));
+  TEST_ASSERT_EQ(k_ra_ok, (int)ra_power_profile_mark_exit(k_ra_power_profile_region_user_0));
 
   ra_power_profile_stats_t stats = {};
   (void)ra_power_profile_get_stats(&stats);
-  TEST_ASSERT_EQ(
-      1, (int)stats.regions[(uint8_t)k_ra_power_profile_region_user_0].entries);
-  TEST_ASSERT_EQ(
-      1, (int)stats.regions[(uint8_t)k_ra_power_profile_region_user_0].exits);
-  TEST_ASSERT_EQ(0,
-                 (int)stats.regions[(uint8_t)k_ra_power_profile_region_user_0]
-                     .total_time_us);
+  TEST_ASSERT_EQ(1, (int)stats.regions[(uint8_t)k_ra_power_profile_region_user_0].entries);
+  TEST_ASSERT_EQ(1, (int)stats.regions[(uint8_t)k_ra_power_profile_region_user_0].exits);
+  TEST_ASSERT_EQ(0, (int)stats.regions[(uint8_t)k_ra_power_profile_region_user_0].total_time_us);
   TEST_END("null hooks are safe");
 }
 
-static void test_multiple_regions_independent(void) {
+static void test_multiple_regions_independent(void)
+{
   TEST_BEGIN("multiple regions independent");
   TEST_ASSERT_EQ(k_ra_ok, (int)init_with_mocks());
 
@@ -248,17 +247,15 @@ static void test_multiple_regions_independent(void) {
 
   ra_power_profile_stats_t stats = {};
   (void)ra_power_profile_get_stats(&stats);
-  TEST_ASSERT_EQ(400,
-                 (int)stats.regions[(uint8_t)k_ra_power_profile_region_sleep]
-                     .total_time_us);
+  TEST_ASSERT_EQ(400, (int)stats.regions[(uint8_t)k_ra_power_profile_region_sleep].total_time_us);
   TEST_ASSERT_EQ(
-      150,
-      (int)stats.regions[(uint8_t)k_ra_power_profile_region_software_standby]
-          .total_time_us);
+    150,
+    (int)stats.regions[(uint8_t)k_ra_power_profile_region_software_standby].total_time_us);
   TEST_END("multiple regions independent");
 }
 
-int32_t main(void) {
+int32_t main(void)
+{
   test_init_rejects_null_cfg();
   test_init_zeroes_stats();
   test_enter_exit_pulses_gpio();
