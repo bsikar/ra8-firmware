@@ -187,6 +187,65 @@ static void test_not_initialized(void)
   TEST_END("ops fail with not_initialized when closed");
 }
 
+/**
+ * @test test_mcdc_link_status_resolved_speed_guard
+ *
+ * @par MC/DC:
+ * Decision: ``if ((out->link_up != 0U) && (out->auto_neg_done != 0U))``
+ * (2 conditions, libs/ra_hal/src/ra_ether_phy.c line 164)
+ *
+ * Vectors (Chilenski masking-MC/DC, N+1 = 3 for N=2):
+ *  - V1: BMSR=0 (link_up=0)
+ *        -> C1=F shorts. Decision F (speed remains no_link, LPA not read).
+ *  - V2: BMSR=link_up only (an_complete=0)
+ *        -> C1=T, C2=F. Decision F (speed remains no_link).
+ *  - V3: BMSR=link_up | an_complete, LPA=100full
+ *        -> C1=T, C2=T. Decision T (speed resolves to 100full from LPA).
+ *
+ * Independence:
+ *  - V1 vs V3 vary C1 with C2 also flipping (masked under short-circuit
+ *    F-side); the decision flips F->T -- valid masking-MC/DC pair.
+ *  - V2 vs V3 vary C2 with C1 held T; the decision flips F->T.
+ *
+ * @par DO-178C 6.4.4.3 rationale:
+ * 2-condition decision; N+1 = 3 vectors satisfy MC/DC fully.
+ */
+static void test_mcdc_link_status_resolved_speed_guard(void)
+{
+  TEST_BEGIN("ra_ether_phy_link_status_get MC/DC: link_up && auto_neg_done");
+  prep();
+  const ra_ether_phy_cfg_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ether_phy_open(&cfg));
+
+  ra_ether_phy_link_t link = {};
+
+  /* V1: BMSR=0 -> link_up=0 -> C1=F, decision F. Speed stays no_link. */
+  s_io.regs[1] = 0x0000U;
+  s_io.regs[5] = 0x0100U; /* LPA=100full but should NOT be consulted */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ether_phy_link_status_get(&link));
+  TEST_ASSERT_EQ((int32_t)0, (int32_t)link.link_up);
+  TEST_ASSERT_EQ((int32_t)0, (int32_t)link.auto_neg_done);
+  TEST_ASSERT_EQ((int32_t)k_ra_ether_phy_speed_no_link, (int32_t)link.speed);
+
+  /* V2: BMSR=link_up only (no an_complete) -> C1=T, C2=F. Decision F. */
+  s_io.regs[1] = 0x0004U; /* link_up bit only */
+  s_io.regs[5] = 0x0100U;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ether_phy_link_status_get(&link));
+  TEST_ASSERT_EQ((int32_t)1, (int32_t)link.link_up);
+  TEST_ASSERT_EQ((int32_t)0, (int32_t)link.auto_neg_done);
+  TEST_ASSERT_EQ((int32_t)k_ra_ether_phy_speed_no_link, (int32_t)link.speed);
+
+  /* V3: BMSR=link_up | an_complete -> C1=T, C2=T. Decision T. LPA read. */
+  s_io.regs[1] = (uint16_t)(0x0004U | 0x0020U);
+  s_io.regs[5] = 0x0100U;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ether_phy_link_status_get(&link));
+  TEST_ASSERT_EQ((int32_t)1, (int32_t)link.link_up);
+  TEST_ASSERT_EQ((int32_t)1, (int32_t)link.auto_neg_done);
+  TEST_ASSERT_EQ((int32_t)k_ra_ether_phy_speed_100f, (int32_t)link.speed);
+
+  TEST_END("ra_ether_phy_link_status_get MC/DC: link_up && auto_neg_done");
+}
+
 int32_t main(void)
 {
   test_open_null();
@@ -196,6 +255,7 @@ int32_t main(void)
   test_link_status();
   test_autoneg_start();
   test_not_initialized();
+  test_mcdc_link_status_resolved_speed_guard();
   (void)fprintf(stderr, "[OK ] test_ra_ether_phy.c\n");
   return 0;
 }

