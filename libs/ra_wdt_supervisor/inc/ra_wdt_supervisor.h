@@ -376,6 +376,11 @@ ra_wdt_supervisor_register_thread(const char* name, uint32_t deadline_ms, uint8_
  * @post No state is mutated.
  *
  * @since 0.1.0
+ *
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
  */
 uint8_t ra_wdt_supervisor_thread_count(void);
 
