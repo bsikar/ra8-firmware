@@ -151,10 +151,22 @@ static void* s_lvd_chan_ctx[k_ra_lvd_map_idx_count];
  * @param[out] out_idx On success, the index in [0..3].
  * @return ``k_ra_ok`` if mapping succeeded, ``k_ra_err_invalid_arg`` otherwise.
  *
+ * @details
+ * Folds the public ::ra_lvd_channel_t enumerator (which uses the
+ * datasheet's PVD1/2/4/5 numbering) into a 0..3 array index used by
+ * the internal ``s_lvd_map`` lookup table. Channels 0 and 3 are
+ * intentionally absent; PVD3 is the always-on power-loss detector.
+ *
+ * @retval k_ra_ok               Mapping succeeded.
+ * @retval k_ra_err_invalid_arg  ``channel`` is not one of PVD1/2/4/5.
+ *
  * @pre out_idx != nullptr.
  * @pre channel may be any uint8_t.
  * @post On success, *out_idx is in [0, k_ra_lvd_map_idx_count).
  * @post On failure, *out_idx is unchanged.
+ *
+ * @note Pure helper; safe from any context.
+ * @since 0.1.0
  */
 static ra_err_t internal_channel_to_idx(ra_lvd_channel_t channel, uint8_t* out_idx)
 {
@@ -179,11 +191,23 @@ static ra_err_t internal_channel_to_idx(ra_lvd_channel_t channel, uint8_t* out_i
 /**
  * @brief Reject PVDLVL encodings outside the HUM-allowed range.
  *
+ * @details
+ * Per HUM Ch 12.2.4 "PVDmCR0" p 597 only PVDLVL values 0x03..0x0F
+ * are valid; lower values map to under-spec voltages and 0x10..0x1F
+ * are reserved.
+ *
  * @param[in] threshold PVDLVL[4:0] candidate.
  * @return k_ra_ok if 0x03 <= threshold <= 0x0F, k_ra_err_invalid_arg otherwise.
+ * @retval k_ra_ok               Threshold within spec.
+ * @retval k_ra_err_invalid_arg  Threshold below min or above max.
  *
  * @pre threshold is any uint8_t.
+ * @pre Caller has already mapped the enum to the 5-bit register field.
  * @post Hardware state unchanged.
+ * @post Return value reflects the bounds check only.
+ *
+ * @note Pure helper; safe from any context.
+ * @since 0.1.0
  */
 static ra_err_t internal_validate_threshold(ra_lvd_pvdlvl_t threshold)
 {
@@ -199,11 +223,22 @@ static ra_err_t internal_validate_threshold(ra_lvd_pvdlvl_t threshold)
 /**
  * @brief Validate FSAMP[1:0] candidate (0..3).
  *
+ * @details
+ * FSAMP[1:0] selects the LOCO sample-divider for the digital filter
+ * (HUM Ch 12.2.6 "PVDmCR1" p 599). All four encodings are valid.
+ *
  * @param[in] div Divider candidate.
  * @return k_ra_ok or k_ra_err_invalid_arg.
+ * @retval k_ra_ok               Divider within enum domain.
+ * @retval k_ra_err_invalid_arg  Divider above the documented maximum.
  *
  * @pre None.
+ * @pre Caller has not yet committed FSAMP to a register.
  * @post Hardware state unchanged.
+ * @post Return value reflects the bounds check only.
+ *
+ * @note Pure helper; safe from any context.
+ * @since 0.1.0
  */
 static ra_err_t internal_validate_div(ra_lvd_loco_div_t div)
 {
@@ -216,11 +251,23 @@ static ra_err_t internal_validate_div(ra_lvd_loco_div_t div)
 /**
  * @brief Validate IDTSEL[1:0] candidate (0..2). 0b11 is HUM-prohibited.
  *
+ * @details
+ * Edge selects which crossing direction triggers the IRQ
+ * (HUM Ch 12.2.6 "PVDmCR1" p 599). Only the rising / falling / both
+ * combinations are valid; 0b11 is reserved.
+ *
  * @param[in] edge Edge candidate.
  * @return k_ra_ok or k_ra_err_invalid_arg.
+ * @retval k_ra_ok               Edge encoding valid.
+ * @retval k_ra_err_invalid_arg  Edge encoding out of range or reserved.
  *
  * @pre None.
+ * @pre ``edge`` originates from the public ::ra_lvd_edge_t enum.
  * @post Hardware state unchanged.
+ * @post Return value reflects the bounds check only.
+ *
+ * @note Pure helper; safe from any context.
+ * @since 0.1.0
  */
 static ra_err_t internal_validate_edge(ra_lvd_edge_t edge)
 {
@@ -234,11 +281,23 @@ static ra_err_t internal_validate_edge(ra_lvd_edge_t edge)
 /**
  * @brief Read PVDmCR0.RI for an m channel.
  *
+ * @details
+ * Returns the Reset-on-Voltage bit (HUM Ch 12.2.4 "PVDmCR0" p 597)
+ * so the caller can decide whether to issue a software reset on a
+ * detected voltage crossing.
+ *
  * @param[in] map Channel map entry (must be has_irq=true).
  * @return Non-zero if RI is set.
+ * @retval 0     RI bit clear -- IRQ-only path.
+ * @retval !=0   RI bit set -- channel will reset the SoC on crossing.
  *
  * @pre map.has_irq == true.
+ * @pre PRCR.PRC3 unlocked (caller-managed).
  * @post Hardware state unchanged.
+ * @post No CR0 write has been issued.
+ *
+ * @note Read-only; safe under simple races.
+ * @since 0.1.0
  */
 static uint8_t internal_read_ri(const ra_lvd_channel_map_t* map)
 {
@@ -250,12 +309,23 @@ static uint8_t internal_read_ri(const ra_lvd_channel_map_t* map)
  * @brief Build a PVDnCR0 byte with the chip-mandated bit-6 = 1 / bit-7 = 0
  *        reserved values.
  *
+ * @details
+ * PVDnCR0 has a reserved bit-6 = 1 / bit-7 = 0 pattern that must
+ * survive every write (HUM Ch 12.2.5 "PVDnCR0" p 598). This helper
+ * folds the pattern into a candidate ``base`` value before commit.
+ *
  * @param[in] base CR0 candidate without reserved bits applied.
- * @return base | bit6 (HUM 8.2.5 p 306 "This bit is read as 1.
+ * @return base | bit6 (HUM 12.2.5 p 598 "This bit is read as 1.
  *         The write value should be 1.").
+ * @retval base|k_ra_lvd_cr0_mask_n_bit6 OR-folded reserved-bit pattern.
  *
  * @pre None.
+ * @pre Caller will write the result back to PVDnCR0.
  * @post Hardware state unchanged.
+ * @post Bit-6 of return is set; bit-7 stays as in ``base``.
+ *
+ * @note Pure helper; safe from any context.
+ * @since 0.1.0
  */
 static uint8_t internal_n_cr0_with_reserved(uint8_t base)
 {
@@ -266,11 +336,22 @@ static uint8_t internal_n_cr0_with_reserved(uint8_t base)
 /**
  * @brief Build a PVDmCR0 byte with bit3 forced to 1 (HUM-mandated).
  *
+ * @details
+ * PVDmCR0 has a HUM-mandated bit-3 = 1 reserved value that must
+ * accompany every write (HUM Ch 12.2.4 "PVDmCR0" p 597). This helper
+ * folds the bit into a candidate ``base`` value before commit.
+ *
  * @param[in] base CR0 candidate without bit3 applied.
- * @return base | bit3 (HUM 8.2.4 p 305 "The write value should be 1.").
+ * @return base | bit3 (HUM 12.2.4 p 597 "The write value should be 1.").
+ * @retval base|k_ra_lvd_cr0_mask_bit3 OR-folded reserved bit-3.
  *
  * @pre None.
+ * @pre Caller will write the result back to PVDmCR0.
  * @post Hardware state unchanged.
+ * @post Bit-3 of return is set; other bits stay as in ``base``.
+ *
+ * @note Pure helper; safe from any context.
+ * @since 0.1.0
  */
 static uint8_t internal_m_cr0_with_reserved(uint8_t base)
 {
@@ -281,12 +362,24 @@ static uint8_t internal_m_cr0_with_reserved(uint8_t base)
 /**
  * @brief Apply the chip-specific reserved-bit pattern to a CR0 value.
  *
+ * @details
+ * Dispatches between ``internal_m_cr0_with_reserved`` (PVDmCR0 with
+ * bit-3 = 1 reserved) and ``internal_n_cr0_with_reserved`` (PVDnCR0
+ * with bit-6 = 1 reserved) per HUM Ch 12.2.4 / 12.2.5.
+ *
  * @param[in] map  Channel map entry.
  * @param[in] base Pre-reserved CR0 value.
  * @return base ORed with the channel's mandatory reserved bits.
+ * @retval base|reserved Combined value safe for direct CR0 write.
  *
  * @pre None.
+ * @pre ``map`` reflects a valid channel descriptor.
  * @post Hardware state unchanged.
+ * @post Caller can write the return value to PVDxCR0 without losing
+ *       the reserved-bit invariant.
+ *
+ * @note Pure helper; safe from any context.
+ * @since 0.1.0
  */
 static uint8_t internal_cr0_apply_reserved(const ra_lvd_channel_map_t* map, uint8_t base)
 {
@@ -319,12 +412,22 @@ internal_cmpcr_rmw(ra_lvd_off_t off, uint8_t clear_mask, uint8_t set_bits)
  * @brief Read-modify-write helper for PVDmCR0 / PVDnCR0 with reserved-bit
  *        rewrite forced.
  *
+ * @details
+ * Reads PVDxCR0, masks out ``clear_mask``, ORs in ``set_bits``, then
+ * folds the channel's mandatory reserved-bit pattern back in via
+ * ``internal_cr0_apply_reserved`` (HUM Ch 12.2.4 / 12.2.5).
+ *
  * @param[in] map        Channel map.
  * @param[in] clear_mask Bits to clear.
  * @param[in] set_bits   Bits to set.
  *
  * @pre PRCR.PRC3 unlocked.
+ * @pre Caller has serialised access to the CR0 register.
  * @post Register reads as ((old & ~clear_mask) | set_bits | reserved).
+ * @post Reserved-bit invariant for the channel is preserved.
+ *
+ * @note Internal helper; not thread-safe.
+ * @since 0.1.0
  */
 static void internal_cr0_rmw(const ra_lvd_channel_map_t* map, uint8_t clear_mask, uint8_t set_bits)
 {
@@ -343,12 +446,25 @@ static void internal_cr0_rmw(const ra_lvd_channel_map_t* map, uint8_t clear_mask
 /**
  * @brief Validate the cfg fields that the per-channel init reads.
  *
+ * @details
+ * Sequentially calls the per-field validators (threshold, divider,
+ * edge for IRQ-capable channels) so a single error code surfaces
+ * without partial register writes. See HUM Ch 12 "Low Voltage
+ * Detection (LVD)" pp 593-624.
+ *
  * @param[in] map Channel map for the requested channel.
  * @param[in] cfg Caller-supplied configuration.
  * @return k_ra_ok or one of the *_err_* codes.
+ * @retval k_ra_ok               All fields in spec.
+ * @retval k_ra_err_invalid_arg  At least one field outside the documented domain.
  *
  * @pre cfg != nullptr.
+ * @pre map != nullptr.
  * @post Hardware state unchanged.
+ * @post Return reflects the strictest validator that fired.
+ *
+ * @note Internal helper; not thread-safe.
+ * @since 0.1.0
  */
 static ra_err_t internal_validate_cfg(const ra_lvd_channel_map_t* map, const ra_lvd_cfg_t* cfg)
 {

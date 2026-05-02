@@ -1073,7 +1073,28 @@ static void priv_dir_walk_init_root(const ra_fs_mount_t* m, dir_walk_t* w)
 }
 
 /**
- * @brief Advance the walker to the next sector. Returns 0 on EOD, 1 on ok.
+ * @brief Advance the walker to the next sector.
+ *
+ * @details For fixed-region roots simply increments the LBA. For
+ *          cluster-chain roots advances within the cluster, then
+ *          follows the FAT chain when the cluster is exhausted.
+ *
+ * @param[in]     m       Mount providing geometry and backend.
+ * @param[in,out] w       Walker cursor to advance.
+ * @param[out]    out_eod Set to 1 if end-of-directory reached, else 0.
+ *
+ * @return Error code.
+ * @retval k_ra_ok    Walker advanced (or EOD signalled in `*out_eod`).
+ * @retval k_ra_err_* Backend error from a FAT read.
+ *
+ * @pre `m`, `w`, and `out_eod` are non-NULL.
+ * @pre Walker has been initialised by `priv_dir_walk_init_root`.
+ * @post On success `w` either points at a new sector or `*out_eod` is 1.
+ * @post `w->entry_idx` is reset to 0 on a successful advance.
+ *
+ * @note Thread-safety inherited from the backend.
+ *
+ * @since 0.1.0
  */
 static ra_err_t priv_dir_walk_next_sector(const ra_fs_mount_t* m, dir_walk_t* w, uint8_t* out_eod)
 {
@@ -1111,14 +1132,30 @@ static ra_err_t priv_dir_walk_next_sector(const ra_fs_mount_t* m, dir_walk_t* w,
 }
 
 /**
- * @brief Find a directory entry by 8.3 name. On success returns the sector
- *        LBA and entry offset and the parsed entry bytes.
+ * @brief Find a directory entry by 8.3 name.
  *
- * @param[in]  m            Mount.
- * @param[in]  name83       Packed 11-byte name.
- * @param[out] out_lba      Sector containing the entry.
+ * @details Walks the root directory and matches on the packed 11-byte
+ *          name field. Skips LFN entries (attr 0x0F) and deleted slots.
+ *
+ * @param[in]  m             Mount providing geometry and backend.
+ * @param[in]  name83        Packed 11-byte name.
+ * @param[out] out_lba       Sector containing the entry.
  * @param[out] out_entry_off Byte offset within the sector.
- * @param[out] out_entry    32 bytes of the entry payload.
+ * @param[out] out_entry     32 bytes of the entry payload.
+ *
+ * @return Error code.
+ * @retval k_ra_ok            Entry found; out parameters populated.
+ * @retval k_ra_err_not_found End-of-directory reached without a match.
+ * @retval k_ra_err_*         Backend error.
+ *
+ * @pre All output pointers are non-NULL.
+ * @pre `name83` is non-NULL and points to 11 bytes.
+ * @post On success, out parameters identify the on-disk entry.
+ * @post On failure, out parameters are unspecified.
+ *
+ * @note Thread-safety inherited from the backend.
+ *
+ * @since 0.1.0
  */
 static ra_err_t priv_dir_find(const ra_fs_mount_t* m,
                               const uint8_t*       name83,
@@ -1163,6 +1200,27 @@ static ra_err_t priv_dir_find(const ra_fs_mount_t* m,
 
 /**
  * @brief Locate the first free entry slot in the root directory.
+ *
+ * @details Walks the root and returns the first entry whose name
+ *          field is 0x00 (never used) or 0xE5 (deleted).
+ *
+ * @param[in]  m             Mount providing geometry and backend.
+ * @param[out] out_lba       Sector containing the free entry.
+ * @param[out] out_entry_off Byte offset within the sector.
+ *
+ * @return Error code.
+ * @retval k_ra_ok          Free slot found; out parameters populated.
+ * @retval k_ra_err_no_mem  Root directory has no free slot.
+ * @retval k_ra_err_*       Backend error.
+ *
+ * @pre All output pointers are non-NULL.
+ * @pre `m` is mounted with valid geometry.
+ * @post On success, out parameters identify a writable slot.
+ * @post On failure, out parameters are unspecified.
+ *
+ * @note Thread-safety inherited from the backend.
+ *
+ * @since 0.1.0
  */
 static ra_err_t
 priv_dir_find_free(const ra_fs_mount_t* m, uint32_t* out_lba, uint32_t* out_entry_off)
@@ -1195,6 +1253,26 @@ priv_dir_find_free(const ra_fs_mount_t* m, uint32_t* out_lba, uint32_t* out_entr
 
 /**
  * @brief Free an entire cluster chain starting at `start`.
+ *
+ * @details Walks the chain via `priv_fat_get`, marking each cluster
+ *          free. A guard counter bounds the loop against on-disk loops.
+ *
+ * @param[in] m     Mount providing FAT access.
+ * @param[in] start First cluster of the chain.
+ *
+ * @return Error code.
+ * @retval k_ra_ok                 All clusters freed.
+ * @retval k_ra_err_protocol_error Loop detected in chain.
+ * @retval k_ra_err_*              Backend error.
+ *
+ * @pre `m` is non-NULL with a valid backend.
+ * @pre `start` is a valid cluster number or sentinel.
+ * @post On success, every cluster in the chain has FAT entry = 0.
+ * @post On failure, FAT may be partially updated.
+ *
+ * @note Thread-safety inherited from the backend.
+ *
+ * @since 0.1.0
  */
 static ra_err_t priv_free_chain(const ra_fs_mount_t* m, uint32_t start)
 {
@@ -1228,7 +1306,24 @@ static ra_err_t priv_free_chain(const ra_fs_mount_t* m, uint32_t start)
  * =============================================================================
  */
 
-/** @brief Allocate a free entry from the mount table; returns NULL if full. */
+/**
+ * @brief Allocate a free entry from the mount table; returns NULL if full.
+ *
+ * @details Linear scan of `s_mounts` for an entry with `in_use == 0`.
+ *
+ * @return Pointer to a free mount slot, or NULL if all are busy.
+ * @retval non-NULL Pointer to a `ra_fs_mount_t` with `in_use == 0`.
+ * @retval NULL     Mount table is full.
+ *
+ * @pre Module is initialised.
+ * @pre Caller serialises mount/unmount operations.
+ * @post No state modified.
+ * @post Returned pointer remains valid for the program lifetime.
+ *
+ * @note Not thread-safe; callers serialise.
+ *
+ * @since 0.1.0
+ */
 static ra_fs_mount_t* priv_alloc_mount_slot(void)
 {
   for (uint32_t i = 0; i < k_ra_fs_max_mounts; i++) {
@@ -1239,7 +1334,24 @@ static ra_fs_mount_t* priv_alloc_mount_slot(void)
   return NULL;
 }
 
-/** @brief Allocate a free entry from the file table; returns NULL if full. */
+/**
+ * @brief Allocate a free entry from the file table; returns NULL if full.
+ *
+ * @details Linear scan of `s_files` for an entry with `in_use == 0`.
+ *
+ * @return Pointer to a free file slot, or NULL if all are busy.
+ * @retval non-NULL Pointer to a `ra_fs_file_t` with `in_use == 0`.
+ * @retval NULL     File table is full.
+ *
+ * @pre Module is initialised.
+ * @pre Caller serialises open/close operations.
+ * @post No state modified.
+ * @post Returned pointer remains valid for the program lifetime.
+ *
+ * @note Not thread-safe; callers serialise.
+ *
+ * @since 0.1.0
+ */
 static ra_fs_file_t* priv_alloc_file_slot(void)
 {
   for (uint32_t i = 0; i < k_ra_fs_max_files; i++) {
@@ -1257,6 +1369,24 @@ static ra_fs_file_t* priv_alloc_file_slot(void)
 
 /**
  * @brief Parse the BPB layout fields out of `s_scratch` into `m`.
+ *
+ * @details Validates the boot signature (0x55AA) and reads the BPB
+ *          fields out of the boot sector scratch buffer.
+ *
+ * @param[in,out] m Mount to populate; backend already plugged in.
+ *
+ * @return Error code.
+ * @retval k_ra_ok                     Fields parsed successfully.
+ * @retval k_ra_err_validation_failed  Bad signature or sanity-check fail.
+ *
+ * @pre `m` is non-NULL.
+ * @pre `s_scratch` holds the boot sector (LBA 0).
+ * @post On success, the relevant `m->*` fields are populated.
+ * @post On failure, `m` may be partially updated.
+ *
+ * @note Not thread-safe -- uses module-level scratch.
+ *
+ * @since 0.1.0
  */
 static ra_err_t priv_parse_bpb_into_mount(ra_fs_mount_t* m)
 {
@@ -1285,6 +1415,24 @@ static ra_err_t priv_parse_bpb_into_mount(ra_fs_mount_t* m)
 
 /**
  * @brief Compute first_fat_lba, first_root_lba, first_data_lba, count_of_clusters.
+ *
+ * @details Derives region LBAs from the BPB and chooses FAT type using
+ *          the cluster-count thresholds in MS FAT spec sec 3.5.
+ *
+ * @param[in,out] m Mount with BPB fields already populated.
+ *
+ * @return Error code.
+ * @retval k_ra_ok                     Geometry computed.
+ * @retval k_ra_err_validation_failed  Total sectors smaller than data start.
+ *
+ * @pre `m` is non-NULL.
+ * @pre `priv_parse_bpb_into_mount` has populated the BPB-derived fields.
+ * @post On success, geometry fields and `m->type` are valid.
+ * @post On failure, `m` is left in an inconsistent state.
+ *
+ * @note Pure computation; thread-safe vs other readers.
+ *
+ * @since 0.1.0
  */
 static ra_err_t priv_compute_geometry(ra_fs_mount_t* m)
 {
