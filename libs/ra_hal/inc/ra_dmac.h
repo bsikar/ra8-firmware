@@ -368,9 +368,22 @@ ra_dmac_attach_callback(uint8_t channel, ra_dmac_callback_fn_t fn, void* ctx);
  * @details
  * Test / ISR helper; consumes the slot installed by
  * ``ra_dmac_attach_callback()``. Silently returns if no callback is
- * registered or the channel is out of range.
+ * registered or the channel is out of range. Reads ``DMINT.DTIE``
+ * (HUM Ch 16.2.7 "DMINT : DMA Interrupt Setting Register", p 612) to
+ * decide whether the transfer-end IRQ is enabled before invoking the
+ * callback.
  *
  * @param[in] channel DMAC0 channel index 0..7.
+ *
+ * @return None.
+ * @retval None Function returns ``void``; out-of-range channel is silently ignored.
+ *
+ * @pre ``ra_mstp_init()`` and ``ra_dmac_start(channel, ...)`` have been called.
+ * @pre Called from ISR context or unit-test driver.
+ * @post Registered completion callback invoked at most once.
+ * @post No state change if ``channel`` is out of range or no callback is set.
+ *
+ * @note Thread safety: ISR context only; not re-entrant per channel.
  * @since 0.1.0
  */
 void ra_dmac_dispatch(uint8_t channel);
@@ -378,7 +391,23 @@ void ra_dmac_dispatch(uint8_t channel);
 /**
  * @brief Fire the per-channel half-complete callback (DMINT.RPTIE path).
  *
+ * @details
+ * ISR / test helper for the repeat-block half-complete event. Consumes
+ * the slot installed by ``ra_dmac_attach_half_complete_handler()`` and
+ * silently returns if no callback is registered or the channel is out
+ * of range. Tied to ``DMINT.RPTIE`` (HUM Ch 16.2.7, p 612).
+ *
  * @param[in] channel DMAC0 channel index 0..7.
+ *
+ * @return None.
+ * @retval None Function returns ``void``; out-of-range channel is silently ignored.
+ *
+ * @pre ``ra_mstp_init()`` and ``ra_dmac_start_repeat(channel, ...)`` have been called.
+ * @pre Called from ISR context or unit-test driver.
+ * @post Registered half-complete callback invoked at most once.
+ * @post No state change if ``channel`` is out of range or no callback is set.
+ *
+ * @note Thread safety: ISR context only; not re-entrant per channel.
  * @since 0.1.0
  */
 void ra_dmac_dispatch_half(uint8_t channel);

@@ -157,8 +157,16 @@ typedef enum : uint16_t {
 /**
  * @brief Encode a `ra_vin_config_t` into the MC register value.
  *
+ * @details
+ * Folds ``cfg->{bypass_csc, big_endian, interlace_mode, input_fmt,
+ * pixel_clip_mode}`` into the MC bitfield documented at HUM Ch 67.2.1
+ * "MC: Main Control Register" (p 3975). The ME / ST start-trigger
+ * bits are deliberately left clear so the caller can pulse them on
+ * demand.
+ *
  * @param[in] cfg Validated configuration.
  * @return Composed MC value with ME / ST left clear.
+ * @retval 0..(uint32_t)-1 Bitwise-OR of the documented MC fields.
  *
  * @pre `cfg != NULL` (caller-validated).
  * @pre `cfg->input_fmt` fits the 3-bit MC.INF field.
@@ -191,11 +199,17 @@ static uint32_t internal_compose_mc(const ra_vin_config_t* cfg)
 /**
  * @brief Pulse MC.ST then absorb the >= 10 ICLK settling time.
  *
+ * @details
+ * Writes ``mc_now | MC.ST`` then reads MC back several times so the
+ * peripheral observes the >= 10-ICLK settle window mandated by HUM
+ * Ch 67.2.1 "MC: Main Control Register" (p 3975).
+ *
  * @param[in] mc_now Current MC register value (without ST set).
  *
  * @pre Caller holds mc_reg pointer to MC register.
  * @pre Capture is not in progress.
  * @post MC.ST has been pulsed; >= 10 ICLK have elapsed.
+ * @post MC retains the original ``mc_now`` field bits (ST is self-clearing).
  *
  * @note Inline helper, single-CPU.
  * @since 0.1.0
@@ -214,12 +228,19 @@ static void internal_pulse_st(uint32_t mc_now)
 /**
  * @brief Read-modify-write a single bit-field within MC.
  *
+ * @details
+ * Atomic from the caller's perspective when IRQs are masked. The
+ * helper exists to keep field-update sites from re-implementing the
+ * mask / shift dance for HUM Ch 67.2.1 "MC: Main Control Register"
+ * (p 3975).
+ *
  * @param[in] clear_mask Bits to clear before OR-ing in `set_bits`.
  * @param[in] set_bits Bits to set on top of the cleared field.
  *
  * @pre Caller has masked IRQs.
  * @pre `set_bits & ~clear_mask` is empty (no out-of-field bits).
  * @post MC = (MC & ~clear_mask) | set_bits.
+ * @post Bits outside ``clear_mask`` are unchanged.
  *
  * @note Inline helper.
  * @since 0.1.0
@@ -541,6 +562,12 @@ static void internal_mc_rmw(uint32_t clear_mask, uint32_t set_bits)
 /**
  * @brief Resolve the (set1, set2, set3) offset triple for one row.
  *
+ * @details
+ * Maps the channel index onto the matching YCCRn / CBCCRn / CRCCRn
+ * register-offset triple documented at HUM Ch 67.2.27 (p 4002-4011).
+ * Used by the runtime CSC programming path so the per-channel writes
+ * stay table-driven.
+ *
  * @param[in] channel 0 = Y (YCCRn), 1 = Cb (CBCCRn), 2 = Cr (CRCCRn).
  * @param[out] off1 Setting 1 offset.
  * @param[out] off2 Setting 2 offset.
@@ -549,6 +576,7 @@ static void internal_mc_rmw(uint32_t clear_mask, uint32_t set_bits)
  * @pre `channel <= k_ra_vin_yc_chan_max`.
  * @pre All out-pointers are non-NULL.
  * @post off1/off2/off3 carry the corresponding `ra_vin_off_t` values.
+ * @post No VIN register has been read or written.
  *
  * @note Inline helper.
  * @since 0.1.0

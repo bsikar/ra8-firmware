@@ -381,7 +381,18 @@ ra_etha_attach_handler(ra_etha_port_t port, ra_etha_event_fn_t cb, void* ctx);
 /**
  * @brief Snapshot all three EAEISx, clear them, then fire the per-port handler.
  *
+ * @details
+ * Reads the three Ethernet-A error/event status registers EAEIS0/1/2
+ * (HUM Ch 32 "ETHA error / event status registers EAEISn", p ~1408)
+ * for the given port, atomically writes back the captured bits to
+ * acknowledge them, then invokes the handler installed via
+ * ``ra_etha_attach_handler()`` with the snapshot mask. Out-of-range
+ * ports and missing handlers are silently ignored.
+ *
  * @param[in] port Port identifier. Out-of-range silently ignored.
+ *
+ * @return None.
+ * @retval None Function returns ``void``; out-of-range port is silently ignored.
  *
  * @pre Port previously brought up via ra_etha_init for the call to do work.
  * @pre Caller has masked the ETHA IRQ at the NVIC if reentrancy is undesirable.

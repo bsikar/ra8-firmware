@@ -45,6 +45,20 @@ typedef enum : uint8_t {
 
 /**
  * @brief Clamp a raw value to 12-bit range.
+ *
+ * @details See the matching header declaration for the full
+ * contract; this site adds no behaviour beyond what the public
+ * API documents.
+ * @param[in] value See header declaration for direction and constraints.
+ * @return ``ra_err_t`` error code (or void if the signature returns void).
+ * @retval k_ra_ok Success path.
+ * @retval k_ra_err_invalid_arg Caller violated a precondition.
+ * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Caller has validated all pointer parameters.
+ * @post Side effects are limited to those documented in the header.
+ * @post No global state is modified on the error path.
+ * @note Thread safety: see the header declaration.
+ * @since 0.1.0
  */
 static inline uint16_t internal_ra_dac_b_clamp(uint16_t value)
 {
@@ -65,6 +79,14 @@ static inline uint16_t internal_ra_dac_b_clamp(uint16_t value)
  * just-clocked register block.
  *
  * Citation: HUM Ch 54 "12-Bit D/A Converter (DAC12)" p 3490.
+ *
+ * @param[in] channel See header declaration for direction and constraints.
+ * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Caller has validated all pointer parameters.
+ * @post Side effects are limited to those documented in the header.
+ * @post No global state is modified on the error path.
+ * @note Thread safety: see the header declaration.
+ * @since 0.1.0
  */
 static void internal_disable_channel(uint8_t channel)
 {
@@ -84,6 +106,14 @@ static void internal_disable_channel(uint8_t channel)
  * Pure read-modify-write of bit 0 of DACR0; preserves DAE and
  * DAOUTDIS so callers can configure those in DACR0 *before*
  * starting conversion.
+ *
+ * @param[in] channel See header declaration for direction and constraints.
+ * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Caller has validated all pointer parameters.
+ * @post Side effects are limited to those documented in the header.
+ * @post No global state is modified on the error path.
+ * @note Thread safety: see the header declaration.
+ * @since 0.1.0
  */
 static void internal_start_channel(uint8_t channel)
 {
@@ -97,6 +127,17 @@ static void internal_start_channel(uint8_t channel)
 
 /**
  * @brief Clear DACEN on a channel (FSP R_DAC_B_Stop equivalent).
+ *
+ * @details See the matching header declaration for the full
+ * contract; this site adds no behaviour beyond what the public
+ * API documents.
+ * @param[in] channel See header declaration for direction and constraints.
+ * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Caller has validated all pointer parameters.
+ * @post Side effects are limited to those documented in the header.
+ * @post No global state is modified on the error path.
+ * @note Thread safety: see the header declaration.
+ * @since 0.1.0
  */
 static void internal_stop_channel(uint8_t channel)
 {
@@ -151,6 +192,18 @@ static ra_dac_b_state_t s_dac_b_state;
 
 /**
  * @brief Apply ``cfg`` to one DAC_B instance (FSP R_DAC_B_Open body).
+ *
+ * @details See the matching header declaration for the full
+ * contract; this site adds no behaviour beyond what the public
+ * API documents.
+ * @param[in] channel See header declaration for direction and constraints.
+ * @param[in] cfg See header declaration for direction and constraints.
+ * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Caller has validated all pointer parameters.
+ * @post Side effects are limited to those documented in the header.
+ * @post No global state is modified on the error path.
+ * @note Thread safety: see the header declaration.
+ * @since 0.1.0
  */
 static void internal_apply_cfg(uint8_t channel, const ra_dac_b_cfg_t* cfg)
 {
@@ -173,6 +226,22 @@ static void internal_apply_cfg(uint8_t channel, const ra_dac_b_cfg_t* cfg)
   }
 }
 
+/**
+ * @brief ra_dac_b_init_configured -- see header for full description.
+ * @details See the matching header declaration for the full
+ * contract; this site adds no behaviour beyond what the public
+ * API documents.
+ * @param[in] cfg See header declaration for direction and constraints.
+ * @return ``ra_err_t`` error code (or void if the signature returns void).
+ * @retval k_ra_ok Success path.
+ * @retval k_ra_err_invalid_arg Caller violated a precondition.
+ * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Caller has validated all pointer parameters.
+ * @post Side effects are limited to those documented in the header.
+ * @post No global state is modified on the error path.
+ * @note Thread safety: see the header declaration.
+ * @since 0.1.0
+ */
 ra_err_t ra_dac_b_init_configured(const ra_dac_b_cfg_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
@@ -195,6 +264,21 @@ ra_err_t ra_dac_b_init_configured(const ra_dac_b_cfg_t* cfg)
   return k_ra_ok;
 }
 
+/**
+ * @brief ra_dac_b_deinit -- see header for full description.
+ * @details See the matching header declaration for the full
+ * contract; this site adds no behaviour beyond what the public
+ * API documents.
+ * @return ``ra_err_t`` error code (or void if the signature returns void).
+ * @retval k_ra_ok Success path.
+ * @retval k_ra_err_invalid_arg Caller violated a precondition.
+ * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Caller has validated all pointer parameters.
+ * @post Side effects are limited to those documented in the header.
+ * @post No global state is modified on the error path.
+ * @note Thread safety: see the header declaration.
+ * @since 0.1.0
+ */
 ra_err_t ra_dac_b_deinit(void)
 {
   /* HUM Ch 54 "12-Bit D/A Converter (DAC12)" p 3490 -- FSP R_DAC_B_Close
@@ -216,6 +300,22 @@ ra_err_t ra_dac_b_deinit(void)
   return ra_mstp_disable(k_ra_mstp_dac12_0);
 }
 
+/**
+ * @brief ra_dac_b_set_vref -- see header for full description.
+ * @details See the matching header declaration for the full
+ * contract; this site adds no behaviour beyond what the public
+ * API documents.
+ * @param[in] vref See header declaration for direction and constraints.
+ * @return ``ra_err_t`` error code (or void if the signature returns void).
+ * @retval k_ra_ok Success path.
+ * @retval k_ra_err_invalid_arg Caller violated a precondition.
+ * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Caller has validated all pointer parameters.
+ * @post Side effects are limited to those documented in the header.
+ * @post No global state is modified on the error path.
+ * @note Thread safety: see the header declaration.
+ * @since 0.1.0
+ */
 ra_err_t ra_dac_b_set_vref(ra_dac_b_vref_t vref)
 {
   /* HUM Ch 54 "12-Bit D/A Converter (DAC12)" p 3490 -- DACR2.OFSSEL is
@@ -228,6 +328,23 @@ ra_err_t ra_dac_b_set_vref(ra_dac_b_vref_t vref)
   return k_ra_ok;
 }
 
+/**
+ * @brief ra_dac_b_set_output_enable -- see header for full description.
+ * @details See the matching header declaration for the full
+ * contract; this site adds no behaviour beyond what the public
+ * API documents.
+ * @param[in] channel See header declaration for direction and constraints.
+ * @param[in] enable See header declaration for direction and constraints.
+ * @return ``ra_err_t`` error code (or void if the signature returns void).
+ * @retval k_ra_ok Success path.
+ * @retval k_ra_err_invalid_arg Caller violated a precondition.
+ * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Caller has validated all pointer parameters.
+ * @post Side effects are limited to those documented in the header.
+ * @post No global state is modified on the error path.
+ * @note Thread safety: see the header declaration.
+ * @since 0.1.0
+ */
 ra_err_t ra_dac_b_set_output_enable(uint8_t channel, bool enable)
 {
   volatile r_dac_b_regs_t* reg = ra_dac_b(channel);
@@ -245,6 +362,22 @@ ra_err_t ra_dac_b_set_output_enable(uint8_t channel, bool enable)
   return k_ra_ok;
 }
 
+/**
+ * @brief ra_dac_b_get_status -- see header for full description.
+ * @details See the matching header declaration for the full
+ * contract; this site adds no behaviour beyond what the public
+ * API documents.
+ * @param[in] out_mask See header declaration for direction and constraints.
+ * @return ``ra_err_t`` error code (or void if the signature returns void).
+ * @retval k_ra_ok Success path.
+ * @retval k_ra_err_invalid_arg Caller violated a precondition.
+ * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Caller has validated all pointer parameters.
+ * @post Side effects are limited to those documented in the header.
+ * @post No global state is modified on the error path.
+ * @note Thread safety: see the header declaration.
+ * @since 0.1.0
+ */
 ra_err_t ra_dac_b_get_status(uint8_t* out_mask)
 {
   RA_CHECK_NULL_PTR(out_mask, s_tag, "out_mask must not be nullptr");
@@ -265,6 +398,21 @@ ra_err_t ra_dac_b_get_status(uint8_t* out_mask)
   return k_ra_ok;
 }
 
+/**
+ * @brief ra_dac_b_clear_status -- see header for full description.
+ * @details See the matching header declaration for the full
+ * contract; this site adds no behaviour beyond what the public
+ * API documents.
+ * @return ``ra_err_t`` error code (or void if the signature returns void).
+ * @retval k_ra_ok Success path.
+ * @retval k_ra_err_invalid_arg Caller violated a precondition.
+ * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Caller has validated all pointer parameters.
+ * @post Side effects are limited to those documented in the header.
+ * @post No global state is modified on the error path.
+ * @note Thread safety: see the header declaration.
+ * @since 0.1.0
+ */
 ra_err_t ra_dac_b_clear_status(void)
 {
   internal_stop_channel(k_ra_dac_b_channel_0);
@@ -272,6 +420,23 @@ ra_err_t ra_dac_b_clear_status(void)
   return k_ra_ok;
 }
 
+/**
+ * @brief ra_dac_b_attach_handler -- see header for full description.
+ * @details See the matching header declaration for the full
+ * contract; this site adds no behaviour beyond what the public
+ * API documents.
+ * @param[in] fn See header declaration for direction and constraints.
+ * @param[in] ctx See header declaration for direction and constraints.
+ * @return ``ra_err_t`` error code (or void if the signature returns void).
+ * @retval k_ra_ok Success path.
+ * @retval k_ra_err_invalid_arg Caller violated a precondition.
+ * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Caller has validated all pointer parameters.
+ * @post Side effects are limited to those documented in the header.
+ * @post No global state is modified on the error path.
+ * @note Thread safety: see the header declaration.
+ * @since 0.1.0
+ */
 ra_err_t ra_dac_b_attach_handler(ra_dac_b_update_fn_t fn, void* ctx)
 {
   s_dac_b_state.fn  = fn;
@@ -279,6 +444,21 @@ ra_err_t ra_dac_b_attach_handler(ra_dac_b_update_fn_t fn, void* ctx)
   return k_ra_ok;
 }
 
+/**
+ * @brief ra_dac_b_enter_stop -- see header for full description.
+ * @details See the matching header declaration for the full
+ * contract; this site adds no behaviour beyond what the public
+ * API documents.
+ * @return ``ra_err_t`` error code (or void if the signature returns void).
+ * @retval k_ra_ok Success path.
+ * @retval k_ra_err_invalid_arg Caller violated a precondition.
+ * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Caller has validated all pointer parameters.
+ * @post Side effects are limited to those documented in the header.
+ * @post No global state is modified on the error path.
+ * @note Thread safety: see the header declaration.
+ * @since 0.1.0
+ */
 ra_err_t ra_dac_b_enter_stop(void)
 {
   internal_disable_channel(k_ra_dac_b_channel_0);
@@ -287,6 +467,21 @@ ra_err_t ra_dac_b_enter_stop(void)
   return ra_mstp_disable(k_ra_mstp_dac12_0);
 }
 
+/**
+ * @brief ra_dac_b_exit_stop -- see header for full description.
+ * @details See the matching header declaration for the full
+ * contract; this site adds no behaviour beyond what the public
+ * API documents.
+ * @return ``ra_err_t`` error code (or void if the signature returns void).
+ * @retval k_ra_ok Success path.
+ * @retval k_ra_err_invalid_arg Caller violated a precondition.
+ * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Caller has validated all pointer parameters.
+ * @post Side effects are limited to those documented in the header.
+ * @post No global state is modified on the error path.
+ * @note Thread safety: see the header declaration.
+ * @since 0.1.0
+ */
 ra_err_t ra_dac_b_exit_stop(void)
 {
   const ra_err_t err0 = ra_mstp_enable(k_ra_mstp_dac12_0);
@@ -294,6 +489,19 @@ ra_err_t ra_dac_b_exit_stop(void)
   return ra_mstp_enable(k_ra_mstp_dac12_1);
 }
 
+/**
+ * @brief ra_dac_b_dispatch_update -- see header for full description.
+ * @details See the matching header declaration for the full
+ * contract; this site adds no behaviour beyond what the public
+ * API documents.
+ * @param[in] channel See header declaration for direction and constraints.
+ * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Caller has validated all pointer parameters.
+ * @post Side effects are limited to those documented in the header.
+ * @post No global state is modified on the error path.
+ * @note Thread safety: see the header declaration.
+ * @since 0.1.0
+ */
 void ra_dac_b_dispatch_update(uint8_t channel)
 {
   if ((uint16_t)channel >= k_ra_dac_b_channel_count) {

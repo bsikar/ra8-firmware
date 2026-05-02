@@ -1067,11 +1067,16 @@ typedef void (*ra_vin_event_fn_t)(void* ctx, uint32_t status_mask);
  * and writes back the W1C subset to acknowledge the event with the
  * hardware.
  *
+ * @return None.
+ * @retval None
+ *
  * @pre Called from a single CPU context.
  * @pre `ra_vin_init` was successful.
  * @post W1C bits in INTS read as 0 after this returns.
+ * @post Callback (if any) has run exactly once with the snapshot.
  *
  * @note Re-entrant only across distinct VIN instances (there is one).
+ *       See HUM Ch 47 "Video Input Module (VIN)" pp 2455-2540.
  * @see ra_vin_attach_handler
  * @since 0.1.0
  */

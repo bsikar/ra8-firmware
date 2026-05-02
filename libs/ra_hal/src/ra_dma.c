@@ -89,8 +89,25 @@ static bool s_initialized = false;
 /**
  * @brief Find the first free channel.
  *
+ * @details
+ * Linear scan over the static ``s_channels[]`` table looking for the
+ * first slot whose ``in_use`` flag is ``false``. Used by
+ * ``ra_dma_request()`` to allocate a channel; tests may also call it
+ * to assert table consistency. Loop is bounded by
+ * ``k_ra_dma_channel_count``.
+ *
  * @return Channel index on success, ``k_ra_dma_channel_none`` when
  *         every channel is allocated.
+ * @retval 0..k_ra_dma_channel_count-1 First free channel index.
+ * @retval k_ra_dma_channel_none Every channel slot is currently in use.
+ *
+ * @pre ``s_channels[]`` has been initialised (``ra_dma_init()`` called).
+ * @pre Caller holds an implicit lock against concurrent allocation.
+ * @post No state mutated by the scan itself.
+ * @post Returned index, if valid, references a free slot.
+ *
+ * @note Not thread-safe; pair with IRQ masking.
+ * @since 0.1.0
  */
 static uint8_t internal_find_free(void)
 {
@@ -105,6 +122,26 @@ static uint8_t internal_find_free(void)
 /**
  * @brief Copy a high-level ``ra_dma_request_t`` into the lower-level
  *        ``ra_dmac_config_t`` the DMAC driver expects.
+ *
+ * @details
+ * Translates the user-facing request descriptor (typed addresses,
+ * width enum, increment direction) into the register-level config
+ * struct consumed by ``ra_dmac_start()``. No validation -- caller
+ * has already invoked ``internal_validate_request()``.
+ *
+ * @param[in]  req      Source request descriptor (non-NULL).
+ * @param[out] out_cfg  Destination DMAC config struct (non-NULL).
+ *
+ * @return None.
+ * @retval None Function returns ``void``.
+ *
+ * @pre ``req != NULL`` and ``out_cfg != NULL``.
+ * @pre ``internal_validate_request(req) == k_ra_ok``.
+ * @post ``*out_cfg`` populated with values copied from ``*req``.
+ * @post No state mutated outside ``*out_cfg``.
+ *
+ * @note Not thread-safe; caller must own ``out_cfg``.
+ * @since 0.1.0
  */
 static void internal_pack_dmac_cfg(const ra_dma_request_t* req, ra_dmac_config_t* out_cfg)
 {
@@ -119,7 +156,25 @@ static void internal_pack_dmac_cfg(const ra_dma_request_t* req, ra_dmac_config_t
 /**
  * @brief Validate a request descriptor before touching hardware.
  *
+ * @details
+ * Bounds-checks the byte count and width enum so a malformed request
+ * is rejected before a single DMAC register write. Width must be
+ * within the ``k_ra_dmac_width_*`` range (HUM Ch 16.2.4 "DMTMD : DMA
+ * Transfer Mode Register", p 608).
+ *
+ * @param[in] req Request descriptor (non-NULL).
+ *
  * @return ``k_ra_ok`` on valid, otherwise the specific rejection code.
+ * @retval k_ra_ok Request is well-formed.
+ * @retval k_ra_err_invalid_arg ``count == 0`` or ``width`` out of range.
+ *
+ * @pre ``req != NULL``.
+ * @pre Caller has not yet armed the DMAC channel.
+ * @post No state mutated.
+ * @post On success, all fields of ``*req`` are within driver range.
+ *
+ * @note Pure function over the input pointer; thread-safe.
+ * @since 0.1.0
  */
 static ra_err_t internal_validate_request(const ra_dma_request_t* req)
 {
@@ -137,6 +192,27 @@ static ra_err_t internal_validate_request(const ra_dma_request_t* req)
  * =============================================================================
  */
 
+/**
+ * @brief Bring up the generic DMA substrate.
+ *
+ * @details
+ * Enables MSTPA22 (shared with DTC0, HUM Ch 11.2.6 "MSTPCRA : Module
+ * Stop Control Register A", p 443) and clears every entry in the
+ * channel-allocation / dispatch table. After this returns
+ * ``ra_dma_request()`` may allocate channels.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok Channel table reset and MSTP gate opened.
+ * @retval k_ra_err_hw_init_failed Underlying ``ra_mstp_enable()`` failed.
+ *
+ * @pre ``ra_mstp_init()`` previously succeeded.
+ * @pre Single-threaded init context (or IRQs masked).
+ * @post All channels report ``in_use == false``.
+ * @post DMAC0 + DTC0 MSTP reference held by this driver.
+ *
+ * @note Not thread-safe; call once during system init.
+ * @since 0.1.0
+ */
 ra_err_t ra_dma_init(void)
 {
   ra_log_info(s_tag, "ra_dma_init");
@@ -158,6 +234,27 @@ ra_err_t ra_dma_init(void)
   return k_ra_ok;
 }
 
+/**
+ * @brief Tear down the generic DMA substrate.
+ *
+ * @details
+ * Stops every in-use channel via ``ra_dmac_stop()``, clears the
+ * dispatch table, and releases the MSTPA22 reference (HUM Ch 11.2.6,
+ * p 443). After this returns ``ra_dma_request()`` rejects with
+ * ``k_ra_err_not_initialized``.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok All channels stopped and MSTP released.
+ * @retval k_ra_err_hw_error Underlying ``ra_mstp_disable()`` failed.
+ *
+ * @pre ``ra_dma_init()`` previously succeeded.
+ * @pre No outstanding interrupt expected from any channel.
+ * @post All channels report ``in_use == false``.
+ * @post Driver re-enters uninitialised state.
+ *
+ * @note Not thread-safe; call once during system shutdown.
+ * @since 0.1.0
+ */
 ra_err_t ra_dma_deinit(void)
 {
   /* Tear down every in-use channel before releasing the MSTP
@@ -182,6 +279,33 @@ ra_err_t ra_dma_deinit(void)
   return k_ra_ok;
 }
 
+/**
+ * @brief Allocate a channel and arm a DMAC transfer.
+ *
+ * @details
+ * Validates ``*req``, finds a free channel via ``internal_find_free()``,
+ * packs a ``ra_dmac_config_t`` and calls ``ra_dmac_start()``. On success
+ * the channel index is written through ``out_channel`` and the
+ * caller-supplied completion callback is stashed for later dispatch.
+ *
+ * @param[in]  req         Transfer descriptor (non-NULL).
+ * @param[out] out_channel Allocated channel index (non-NULL).
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok Channel allocated and DMAC armed.
+ * @retval k_ra_err_invalid_arg ``req`` malformed.
+ * @retval k_ra_err_not_initialized ``ra_dma_init()`` was not called.
+ * @retval k_ra_err_no_mem No free channel.
+ * @retval k_ra_err_hw_error ``ra_dmac_start()`` failed.
+ *
+ * @pre ``ra_dma_init()`` previously succeeded.
+ * @pre ``req != NULL`` and ``out_channel != NULL``.
+ * @post On success ``*out_channel`` references an in-use channel.
+ * @post On failure no channel is allocated and no DMAC register changed.
+ *
+ * @note Not thread-safe; pair with IRQ masking.
+ * @since 0.1.0
+ */
 ra_err_t ra_dma_request(const ra_dma_request_t* req, uint8_t* out_channel)
 {
   RA_CHECK_NULL_PTR(req, s_tag, "request must not be NULL");
@@ -220,6 +344,30 @@ ra_err_t ra_dma_request(const ra_dma_request_t* req, uint8_t* out_channel)
   return k_ra_ok;
 }
 
+/**
+ * @brief Release a previously allocated channel.
+ *
+ * @details
+ * Calls ``ra_dmac_stop()`` to disable the channel at the hardware
+ * level, then clears the dispatch entry. The MSTP reference held by
+ * the substrate root is preserved -- only ``ra_dma_deinit()`` releases it.
+ *
+ * @param[in] channel Channel previously returned by ``ra_dma_request()``.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok Channel released.
+ * @retval k_ra_err_invalid_arg ``channel >= k_ra_dma_channel_count``.
+ * @retval k_ra_err_invalid_state Channel was not in use.
+ * @retval k_ra_err_hw_error ``ra_dmac_stop()`` failed.
+ *
+ * @pre ``ra_dma_init()`` previously succeeded.
+ * @pre Caller has accepted any pending IRQs may still latch.
+ * @post Channel slot reports ``in_use == false``.
+ * @post DMAC channel is disabled at the register level.
+ *
+ * @note Not thread-safe; pair with IRQ masking.
+ * @since 0.1.0
+ */
 ra_err_t ra_dma_release(uint8_t channel)
 {
   if (channel >= k_ra_dma_channel_count) {
@@ -244,6 +392,28 @@ ra_err_t ra_dma_release(uint8_t channel)
 }
 
 #ifdef RA_SIMULATOR_MODE
+/**
+ * @brief Host-only peek at the cached request for a channel.
+ *
+ * @details
+ * Returns a pointer to the side-table copy of the original
+ * ``ra_dma_request_t`` so simulator code can inspect the full 64-bit
+ * host buffer pointers (the DMAC mirrors only hold 32-bit truncations).
+ *
+ * @param[in] channel Channel previously returned by ``ra_dma_request()``.
+ *
+ * @return Pointer to the cached request, or ``nullptr`` on miss.
+ * @retval non-NULL Pointer to the cached descriptor.
+ * @retval nullptr  ``channel`` out of range or slot not in use.
+ *
+ * @pre Built with ``RA_SIMULATOR_MODE`` defined.
+ * @pre ``ra_dma_request()`` previously returned ``k_ra_ok`` for ``channel``.
+ * @post No firmware state mutated.
+ * @post Returned pointer aliases the static side table.
+ *
+ * @note Test-only; not present on the target build.
+ * @since 0.1.0
+ */
 const ra_dma_request_t* ra_dma_sim_peek_request(uint8_t channel)
 {
   if (channel >= k_ra_dma_channel_count) {
@@ -256,6 +426,24 @@ const ra_dma_request_t* ra_dma_sim_peek_request(uint8_t channel)
 }
 #endif
 
+/**
+ * @brief Query whether a channel currently holds an active transfer.
+ *
+ * @param[in]  channel  Channel index 0..k_ra_dma_channel_count-1.
+ * @param[out] out_busy ``true`` if the channel is in use, else ``false``.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok Status reported via ``*out_busy``.
+ * @retval k_ra_err_invalid_arg ``out_busy == NULL`` or ``channel`` out of range.
+ *
+ * @pre ``ra_dma_init()`` previously succeeded.
+ * @pre ``out_busy != NULL``.
+ * @post On success ``*out_busy`` reflects the current ``in_use`` flag.
+ * @post No state mutated.
+ *
+ * @note Snapshot only; status may change immediately after return.
+ * @since 0.1.0
+ */
 ra_err_t ra_dma_channel_is_busy(uint8_t channel, bool* out_busy)
 {
   RA_CHECK_NULL_PTR(out_busy, s_tag, "out_busy must not be NULL");
@@ -266,6 +454,28 @@ ra_err_t ra_dma_channel_is_busy(uint8_t channel, bool* out_busy)
   return k_ra_ok;
 }
 
+/**
+ * @brief Fire the per-channel completion callback.
+ *
+ * @details
+ * Looks up the stashed callback / context for ``channel`` and invokes
+ * the callback if non-NULL. Called from the DMAC IRQ trampoline (or
+ * from a unit-test driver in simulator mode). Out-of-range channels
+ * are silently ignored.
+ *
+ * @param[in] channel Channel whose completion just fired.
+ *
+ * @return None.
+ * @retval None Function returns ``void``; out-of-range channel is silently ignored.
+ *
+ * @pre ``ra_dma_init()`` previously succeeded.
+ * @pre Called from ISR context or a test driver.
+ * @post Registered callback invoked at most once with the stored context.
+ * @post No state mutated by the dispatch itself.
+ *
+ * @note Thread safety: ISR context only; not re-entrant per channel.
+ * @since 0.1.0
+ */
 void ra_dma_dispatch_complete(uint8_t channel)
 {
   if (channel >= k_ra_dma_channel_count) {

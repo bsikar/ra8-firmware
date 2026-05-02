@@ -937,47 +937,77 @@ ra_mipi_dsi_irq_enable(ra_mipi_dsi_event_t event, uint32_t mask, bool enable);
  * stub may also call individual `_dispatch_*` directly when wired up
  * per-IRQ.
  *
+ * @return None.
+ * @retval None
+ *
  * @pre Called either in IRQ context or with IRQs masked.
  * @pre Driver init has run.
  * @post `ISR` reads 0 for the bits that were set when the call began.
+ * @post Per-class dispatch trampolines have each fired at most once.
  *
+ * @note Not thread-safe; pair with NVIC masking. See HUM Ch 65
+ *       "MIPI DSI Host" pp 3839-3934.
  * @since 0.1.0
  */
 void ra_mipi_dsi_dispatch(void);
 
 /** @brief Sequence-channel-0 IRQ handler (LP path).
+ *  @details Snapshots SQCH0SR, clears the latched bits and invokes the
+ *           registered seq0 callback. Safe to call from a spurious IRQ.
+ *  @return None. @retval None
  *  @pre Driver init done. @pre IRQ context.
  *  @post `SQCH0SR` cleared. @post Callback invoked with seq0 event.
+ *  @note ISR-context only; not thread-safe.
  *  @since 0.1.0 */
 void ra_mipi_dsi_dispatch_seq0(void);
 
 /** @brief Sequence-channel-1 IRQ handler (HS path).
+ *  @details Snapshots SQCH1SR, clears the latched bits and invokes the
+ *           registered seq1 callback. Safe to call from a spurious IRQ.
+ *  @return None. @retval None
  *  @pre Driver init done. @pre IRQ context.
  *  @post `SQCH1SR` cleared. @post Callback invoked with seq1 event.
+ *  @note ISR-context only; not thread-safe.
  *  @since 0.1.0 */
 void ra_mipi_dsi_dispatch_seq1(void);
 
 /** @brief Video-mode IRQ handler.
+ *  @details Snapshots VMSR, clears the latched bits and invokes the
+ *           registered video callback. Safe to call from a spurious IRQ.
+ *  @return None. @retval None
  *  @pre Driver init done. @pre IRQ context.
  *  @post `VMSR` cleared. @post Callback invoked with video event.
+ *  @note ISR-context only; not thread-safe.
  *  @since 0.1.0 */
 void ra_mipi_dsi_dispatch_video(void);
 
 /** @brief Receive IRQ handler.
+ *  @details Snapshots RXSR, clears the latched bits and invokes the
+ *           registered receive callback. Safe to call from a spurious IRQ.
+ *  @return None. @retval None
  *  @pre Driver init done. @pre IRQ context.
  *  @post `RXSR` cleared. @post Callback invoked with receive event.
+ *  @note ISR-context only; not thread-safe.
  *  @since 0.1.0 */
 void ra_mipi_dsi_dispatch_receive(void);
 
 /** @brief Fatal-error IRQ handler.
+ *  @details Snapshots FERRSR, clears the latched bits and invokes the
+ *           registered fatal callback. Safe to call from a spurious IRQ.
+ *  @return None. @retval None
  *  @pre Driver init done. @pre IRQ context.
  *  @post `FERRSR` cleared. @post Callback invoked with fatal event.
+ *  @note ISR-context only; not thread-safe.
  *  @since 0.1.0 */
 void ra_mipi_dsi_dispatch_fatal(void);
 
 /** @brief PHY-protocol-interface IRQ handler.
+ *  @details Snapshots PLSR, clears the latched bits and invokes the
+ *           registered phy callback. Safe to call from a spurious IRQ.
+ *  @return None. @retval None
  *  @pre Driver init done. @pre IRQ context.
  *  @post `PLSR` cleared. @post Callback invoked with phy event.
+ *  @note ISR-context only; not thread-safe.
  *  @since 0.1.0 */
 void ra_mipi_dsi_dispatch_phy(void);
 

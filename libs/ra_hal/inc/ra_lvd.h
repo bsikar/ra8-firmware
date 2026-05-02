@@ -997,11 +997,17 @@ ra_lvd_attach_channel_handler(ra_lvd_channel_t channel, ra_lvd_event_fn_t fn, vo
  *
  * @param[in] channel Channel id that fired the IRQ / NMI.
  *
- * @pre None.
+ * @return None.
+ * @retval None
+ *
+ * @pre Called from PVD ISR or NMI context.
+ * @pre ``channel`` is a valid ::ra_lvd_channel_t value.
+ *
  * @post If a callback is attached, it has been invoked exactly once.
  * @post PVDmSR.DET is 0 on return.
  *
- * @note Thread safety: ISR-context only.
+ * @note Thread safety: ISR-context only. See HUM Ch 12 "Low Voltage
+ *       Detection (LVD)" pp 593-624 for register semantics.
  * @since 0.1.0
  */
 void ra_lvd_dispatch(ra_lvd_channel_t channel);

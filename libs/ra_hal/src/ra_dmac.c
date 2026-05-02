@@ -52,6 +52,26 @@ static const char* s_tag = "DMAC";
 
 /**
  * @brief Translate `cfg->width` -> `DMTMD.SZ` 2-bit code.
+ *
+ * @details
+ * Maps the driver's ``ra_dmac_width_t`` enum onto the 2-bit ``SZ``
+ * field in DMTMD (HUM Ch 16.2.4 "DMTMD : DMA Transfer Mode Register",
+ * p 608). Defaults to byte-width when given an out-of-range value.
+ *
+ * @param[in] width Transfer width enum value.
+ *
+ * @return DMTMD.SZ field bits (already shifted into position 0).
+ * @retval k_ra_dmtmd_sz_byte 8-bit transfers.
+ * @retval k_ra_dmtmd_sz_half 16-bit transfers.
+ * @retval k_ra_dmtmd_sz_word 32-bit transfers.
+ *
+ * @pre ``width`` is a valid ``ra_dmac_width_t`` value.
+ * @pre Caller is composing a fresh DMTMD value.
+ * @post No state mutated.
+ * @post Result fits in the DMTMD.SZ field width.
+ *
+ * @note Pure function; thread-safe.
+ * @since 0.1.0
  */
 static inline uint16_t internal_sz_code(ra_dmac_width_t width)
 {
@@ -69,6 +89,27 @@ static inline uint16_t internal_sz_code(ra_dmac_width_t width)
 
 /**
  * @brief Translate `cfg->mode` -> `DMTMD.MD` 2-bit code.
+ *
+ * @details
+ * Maps the driver's ``ra_dmac_mode_t`` enum onto the 2-bit ``MD``
+ * field in DMTMD (HUM Ch 16.2.4, p 608). Defaults to normal mode when
+ * given an out-of-range value.
+ *
+ * @param[in] mode Transfer mode enum value.
+ *
+ * @return DMTMD.MD field bits (already shifted into position 0).
+ * @retval k_ra_dmtmd_md_normal       Normal-transfer mode.
+ * @retval k_ra_dmtmd_md_repeat       Repeat-transfer mode.
+ * @retval k_ra_dmtmd_md_block        Block-transfer mode.
+ * @retval k_ra_dmtmd_md_repeat_block Repeat-block-transfer mode.
+ *
+ * @pre ``mode`` is a valid ``ra_dmac_mode_t`` value.
+ * @pre Caller is composing a fresh DMTMD value.
+ * @post No state mutated.
+ * @post Result fits in the DMTMD.MD field width.
+ *
+ * @note Pure function; thread-safe.
+ * @since 0.1.0
  */
 static inline uint16_t internal_md_code(ra_dmac_mode_t mode)
 {

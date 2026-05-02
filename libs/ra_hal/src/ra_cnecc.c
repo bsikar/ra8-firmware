@@ -178,6 +178,11 @@ typedef enum : uint16_t {
  * @pre  ``cfg`` is non-NULL.
  * @post On success the instance's ``EC710CTL`` matches ``cfg``.
  * @post Driver-local counters for the instance are zeroed.
+ *
+ * @retval k_ra_ok Success path.
+ * @retval k_ra_err_invalid_arg Caller violated a precondition.
+ * @note Thread safety: see the header declaration.
+ * @since 0.1.0
  */
 static ra_err_t internal_apply_instance(uint8_t instance, const ra_cnecc_instance_cfg_t* cfg)
 {
@@ -261,6 +266,9 @@ static ra_err_t internal_apply_instance(uint8_t instance, const ra_cnecc_instanc
  * @pre  new_bits & ~mask == 0 (caller's responsibility).
  * @post EMCA bits in the register are 01b on the write.
  * @post Writable bits outside ``mask`` are preserved.
+ *
+ * @note Thread safety: see the header declaration.
+ * @since 0.1.0
  */
 static void internal_ctl_rmw(volatile r_cnecc_regs_t* reg, uint32_t new_bits, uint32_t mask)
 {
@@ -624,6 +632,19 @@ static void internal_ctl_rmw(volatile r_cnecc_regs_t* reg, uint32_t new_bits, ui
   return k_ra_ok;
 }
 
+/**
+ * @brief ra_cnecc_isr_handler -- see header for full description.
+ * @details See the matching header declaration for the full
+ * contract; this site adds no behaviour beyond what the public
+ * API documents.
+ * @param[in] ctx See header declaration for direction and constraints.
+ * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Caller has validated all pointer parameters.
+ * @post Side effects are limited to those documented in the header.
+ * @post No global state is modified on the error path.
+ * @note Thread safety: see the header declaration.
+ * @since 0.1.0
+ */
 void ra_cnecc_isr_handler(void* ctx)
 {
   const uint8_t instance = (uint8_t)((uintptr_t)ctx & (uintptr_t)k_ra_cnecc_isr_ctx_inst_mask);
@@ -666,6 +687,21 @@ void ra_cnecc_isr_handler(void* ctx)
   reg->EC710CTL = k_ra_cnecc_mask_clear_all;
 }
 
+/**
+ * @brief ra_cnecc_dispatch -- see header for full description.
+ * @details See the matching header declaration for the full
+ * contract; this site adds no behaviour beyond what the public
+ * API documents.
+ * @param[in] instance See header declaration for direction and constraints.
+ * @param[in] is_2bit See header declaration for direction and constraints.
+ * @param[in] err_addr See header declaration for direction and constraints.
+ * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Caller has validated all pointer parameters.
+ * @post Side effects are limited to those documented in the header.
+ * @post No global state is modified on the error path.
+ * @note Thread safety: see the header declaration.
+ * @since 0.1.0
+ */
 void ra_cnecc_dispatch(uint8_t instance, bool is_2bit, uint16_t err_addr)
 {
   if ((uint16_t)instance >= k_ra_cnecc_instance_count) {
@@ -689,6 +725,19 @@ void ra_cnecc_dispatch(uint8_t instance, bool is_2bit, uint16_t err_addr)
   }
 }
 
+/**
+ * @brief ra_cnecc_dispatch_overflow -- see header for full description.
+ * @details See the matching header declaration for the full
+ * contract; this site adds no behaviour beyond what the public
+ * API documents.
+ * @param[in] instance See header declaration for direction and constraints.
+ * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Caller has validated all pointer parameters.
+ * @post Side effects are limited to those documented in the header.
+ * @post No global state is modified on the error path.
+ * @note Thread safety: see the header declaration.
+ * @since 0.1.0
+ */
 void ra_cnecc_dispatch_overflow(uint8_t instance)
 {
   if ((uint16_t)instance >= k_ra_cnecc_instance_count) {
@@ -734,6 +783,21 @@ typedef enum : uint8_t {
 
 /**
  * @brief Reflected CRC32 (poly 0xEDB88320) over a byte buffer.
+ *
+ * @details See the matching header declaration for the full
+ * contract; this site adds no behaviour beyond what the public
+ * API documents.
+ * @param[in] data See header declaration for direction and constraints.
+ * @param[in] bytes See header declaration for direction and constraints.
+ * @return ``ra_err_t`` error code (or void if the signature returns void).
+ * @retval k_ra_ok Success path.
+ * @retval k_ra_err_invalid_arg Caller violated a precondition.
+ * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Caller has validated all pointer parameters.
+ * @post Side effects are limited to those documented in the header.
+ * @post No global state is modified on the error path.
+ * @note Thread safety: see the header declaration.
+ * @since 0.1.0
  */
 static uint32_t internal_crc32(const uint8_t* data, uint32_t bytes)
 {

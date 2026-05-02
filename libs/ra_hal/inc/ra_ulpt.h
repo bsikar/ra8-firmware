@@ -75,6 +75,25 @@ typedef void (*ra_ulpt_event_fn_t)(void* ctx, uint8_t channel);
 
 /**
  * @brief Dispatch a ULPT event -- fire callback.
+ *
+ * @details
+ * Called from the ULPT compare-match / underflow ISR (HUM Ch 26
+ * "Ultra-Low Power Timer (ULPT)", p 1273) to invoke the registered
+ * handler. Out-of-range ``channel`` and unattached slots are silently
+ * ignored so spurious IRQs are harmless.
+ *
+ * @param[in] channel ULPT channel index (0 or 1).
+ *
+ * @return None.
+ * @retval None
+ *
+ * @pre Called from ISR context or a host-test driver.
+ * @pre ``channel`` < 2.
+ *
+ * @post Stored callback (if any) has been invoked exactly once.
+ * @post No ULPT register state is mutated by this call.
+ *
+ * @note Not thread-safe; pair with NVIC masking.
  * @since 0.1.0
  */
 void ra_ulpt_dispatch(uint8_t channel);

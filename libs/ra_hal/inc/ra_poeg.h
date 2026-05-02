@@ -206,7 +206,25 @@ typedef void (*ra_poeg_event_fn_t)(void* ctx, uint32_t status_mask);
 
 /**
  * @brief Dispatch POEG event -- snapshot status + fire callback.
+ *
+ * @details
+ * Called from the POEG group-N ISR (HUM Ch 28 "Port Output Enable
+ * for GPT (POEG)", p 1335) to snapshot ``POEGGn.PIDF | OIDF | IOCF``
+ * and invoke the registered handler. Out-of-range ``group`` and
+ * unattached slots are silently ignored so a spurious IRQ is harmless.
+ *
  * @param[in] group POEG group 0..3.
+ *
+ * @return None.
+ * @retval None
+ *
+ * @pre Called from ISR context or a host-test driver.
+ * @pre ``group`` < 4.
+ *
+ * @post Stored callback (if any) has been invoked exactly once.
+ * @post POEGGn status latch is left for the caller to clear.
+ *
+ * @note Not thread-safe; pair with NVIC masking.
  * @since 0.1.0
  */
 void ra_poeg_dispatch(uint8_t group);

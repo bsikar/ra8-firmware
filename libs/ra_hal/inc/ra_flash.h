@@ -877,6 +877,9 @@ ra_flash_block_protect_set(ra_flash_world_t world, bool lock, bool permanent);
  * @note Thread-safe: no, IRQ-context only.
  * @see ra_flash_callback_set
  * @since 0.1.0
+ *
+ * @retval k_ra_ok Success path.
+ * @retval k_ra_err_invalid_arg Caller violated a precondition.
  */
 uint32_t ra_flash_dispatch_isr(void);
 

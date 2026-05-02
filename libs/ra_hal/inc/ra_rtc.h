@@ -111,6 +111,23 @@ typedef void (*ra_rtc_event_fn_t)(void* ctx, uint8_t status_mask);
 
 /**
  * @brief Dispatch an RTC event -- snapshot RCR1 + fire callback.
+ *
+ * @details
+ * Reads ``RTC.RCR1`` (HUM Ch 25.2.18 "RCR1 : RTC Control Register 1",
+ * p ~1097) to capture which interrupt flag (alarm AIE, carry CIE, or
+ * periodic PIE) is asserted, clears the captured bits, and invokes the
+ * handler installed via ``ra_rtc_attach_handler()`` with the snapshot
+ * mask. Silently returns if no handler is installed.
+ *
+ * @return None.
+ * @retval None Function returns ``void``; missing handler is silently ignored.
+ *
+ * @pre ``ra_rtc_init()`` previously succeeded.
+ * @pre Called from ISR context or unit-test driver.
+ * @post ``RCR1`` interrupt-enable bits captured at entry are cleared.
+ * @post Registered handler invoked at most once with the snapshot mask.
+ *
+ * @note Thread safety: ISR context only; not re-entrant.
  * @since 0.1.0
  */
 void ra_rtc_dispatch(void);

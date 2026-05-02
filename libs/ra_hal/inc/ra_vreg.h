@@ -650,12 +650,21 @@ typedef void (*ra_vreg_event_fn_t)(void* ctx, uint8_t status_word);
  * @brief Fire the registered fault callback with the current DCDCCTL value.
  *
  * @details
- * Intended to be called from the LVD / fault-router ISR. No-op when
- * no callback is attached.
+ * Intended to be called from the LVD / fault-router ISR. Snapshots
+ * DCDCCTL (HUM Ch 11 "Voltage Regulator (VREG)", p 581) and forwards
+ * the value to the registered callback. No-op when no callback is
+ * attached.
  *
- * @pre None.
+ * @return None.
+ * @retval None
+ *
+ * @pre Called from ISR context or a host-test driver.
+ * @pre VREG MSTP gate is open.
+ *
  * @post Registered callback executed once.
+ * @post DCDCCTL is unchanged.
  *
+ * @note Not thread-safe; pair with NVIC masking.
  * @since 0.1.0
  */
 void ra_vreg_dispatch(void);

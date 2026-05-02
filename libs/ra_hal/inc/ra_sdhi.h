@@ -100,6 +100,26 @@ ra_sdhi_send_command(uint8_t instance, uint32_t cmd, uint32_t arg, uint32_t* out
 
 /**
  * @brief Dispatch an SDHI event -- snapshot status + fire callback.
+ *
+ * @details
+ * Called from the SDHI access / DMA-end / SDIO ISR (HUM Ch 50
+ * "SD/MMC Host Interface (SDHI)", p 2655) to snapshot SD_INFO1 /
+ * SD_INFO2 and invoke the registered handler. Spurious IRQs and
+ * out-of-range ``instance`` values are silently ignored.
+ *
+ * @param[in] instance SDHI instance index (0 or 1).
+ *
+ * @return None.
+ * @retval None
+ *
+ * @pre Called from ISR context or a host-test driver.
+ * @pre ``instance`` < 2.
+ *
+ * @post Stored callback (if any) has been invoked exactly once.
+ * @post Status latch is left for the caller to clear via
+ *       ``ra_sdhi_clear_status``.
+ *
+ * @note Not thread-safe; pair with NVIC masking.
  * @since 0.1.0
  */
 void ra_sdhi_dispatch(uint8_t instance);

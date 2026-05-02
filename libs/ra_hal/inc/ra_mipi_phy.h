@@ -526,10 +526,19 @@ typedef void (*ra_mipi_phy_event_fn_t)(void* ctx, ra_mipi_phy_event_t event, uin
 /**
  * @brief Test whether the LDO has stabilised (DPHYSFR.PWRSF = 1).
  *
+ * @details
+ * Reads the DPHYSFR status register (HUM Ch 64.2 "D-PHY Status",
+ * p 3835) and returns the PWRSF bit so callers can poll without
+ * unpacking the register layout.
+ *
  * @return ``true`` if PWRSF is set, ``false`` otherwise.
+ * @retval true  PWRSF asserted -- LDO output is in regulation.
+ * @retval false PWRSF de-asserted -- LDO still settling or off.
  *
  * @pre -- (no preconditions; safe before ``init``).
+ * @pre LDO power supply present at MCU pin VL_DPHY.
  * @post Hardware state is unchanged.
+ * @post No DPHYSFR write was issued.
  *
  * @note Thread safety: read-only.
  * @since 0.1.0
@@ -539,10 +548,19 @@ bool ra_mipi_phy_is_ldo_stable(void);
 /**
  * @brief Test whether the PLL is locked (DPHYSFR.PLLSF = 1).
  *
+ * @details
+ * Reads DPHYSFR (HUM Ch 64.2 "D-PHY Status", p 3835) and returns
+ * the PLLSF bit so callers can poll without unpacking the register
+ * layout.
+ *
  * @return ``true`` if PLLSF is set, ``false`` otherwise.
+ * @retval true  PLLSF asserted -- D-PHY PLL is locked.
+ * @retval false PLLSF de-asserted -- PLL not yet locked or unlocked.
  *
  * @pre -- (no preconditions; safe before ``init``).
+ * @pre PLL has been programmed via ``ra_mipi_phy_init``.
  * @post Hardware state is unchanged.
+ * @post No DPHYSFR write was issued.
  *
  * @note Thread safety: read-only.
  * @since 0.1.0
@@ -601,10 +619,15 @@ bool ra_mipi_phy_is_pll_locked(void);
  * If neither bit moved, a single ``k_ra_mipi_phy_event_status_chg``
  * is emitted so the consumer at least knows the PHY was polled.
  *
- * @pre -- (no preconditions; tolerates the callback being NULL).
- * @post DPHYSFR has been read once; no register has been written.
+ * @return None.
+ * @retval None
  *
- * @note Thread safety: not thread-safe.
+ * @pre -- (no preconditions; tolerates the callback being NULL).
+ * @pre Called from ISR context, host-test driver or polling task.
+ * @post DPHYSFR has been read once; no register has been written.
+ * @post Internal status snapshot is updated for the next edge compare.
+ *
+ * @note Thread safety: not thread-safe. See HUM Ch 64.2 p 3835.
  * @since 0.1.0
  */
 void ra_mipi_phy_dispatch(void);
@@ -793,7 +816,23 @@ void ra_mipi_phy_dispatch(void);
 /**
  * @brief Read back the lane count last configured.
  *
+ * @details
+ * Returns the cached lane-count value last written via
+ * ``ra_mipi_phy_set_lane_count``. The PHY itself has no lane-count
+ * register (HUM Ch 64.1 Table 64.1 p 3822); this is a software shadow
+ * consulted by ``ra_mipi_phy_set_lane_enable``.
+ *
  * @return Active lane count (defaults to ``k_ra_mipi_phy_lane_count_2``).
+ * @retval k_ra_mipi_phy_lane_count_1 Single-lane mode.
+ * @retval k_ra_mipi_phy_lane_count_2 Dual-lane (default).
+ *
+ * @pre -- (no preconditions; safe before ``init``).
+ * @pre ``ra_mipi_phy_set_lane_count`` may or may not have been called.
+ * @post Hardware state is unchanged.
+ * @post Cached lane-count value is unchanged.
+ *
+ * @note Thread safety: read-only.
+ * @since 0.1.0
  */
 ra_mipi_phy_lane_count_t ra_mipi_phy_get_lane_count(void);
 
@@ -827,8 +866,23 @@ ra_mipi_phy_lane_count_t ra_mipi_phy_get_lane_count(void);
 /**
  * @brief Query whether the given lane is currently enabled.
  *
- * @param[in] lane Lane identifier.
+ * @details
+ * Returns the cached enable bit for ``lane`` set by
+ * ``ra_mipi_phy_set_lane_enable``. The DSI / CSI host driver consults
+ * this when programming its own lane gate.
+ *
+ * @param[in] lane Lane identifier (clk, d0, d1).
  * @return ``true`` if enabled (default for clk + d0 + d1), else ``false``.
+ * @retval true  Lane is software-enabled.
+ * @retval false Lane is software-disabled or out of range.
+ *
+ * @pre -- (no preconditions; safe before ``init``).
+ * @pre ``lane`` is a valid ::ra_mipi_phy_lane_id_t value.
+ * @post Hardware state is unchanged.
+ * @post Cached lane state is unchanged.
+ *
+ * @note Thread safety: read-only.
+ * @since 0.1.0
  */
 bool ra_mipi_phy_is_lane_enabled(ra_mipi_phy_lane_id_t lane);
 
@@ -852,7 +906,23 @@ bool ra_mipi_phy_is_lane_enabled(ra_mipi_phy_lane_id_t lane);
 /**
  * @brief Query the HS clock-lane mode last configured.
  *
+ * @details
+ * Returns the cached clock-lane mode set by
+ * ``ra_mipi_phy_set_clock_mode``. Per HUM Ch 64.3 p 3837, the PHY
+ * does not store the choice itself -- the DSI host gates HS-CLK
+ * based on this software shadow.
+ *
  * @return Active clock mode (defaults to non-continuous).
+ * @retval k_ra_mipi_phy_clk_mode_continuous     HS clock free-runs.
+ * @retval k_ra_mipi_phy_clk_mode_non_continuous HS clock gated when idle.
+ *
+ * @pre -- (no preconditions; safe before ``init``).
+ * @pre ``ra_mipi_phy_set_clock_mode`` may or may not have been called.
+ * @post Hardware state is unchanged.
+ * @post Cached clock-mode value is unchanged.
+ *
+ * @note Thread safety: read-only.
+ * @since 0.1.0
  */
 ra_mipi_phy_clk_mode_t ra_mipi_phy_get_clock_mode(void);
 
@@ -876,7 +946,22 @@ ra_mipi_phy_clk_mode_t ra_mipi_phy_get_clock_mode(void);
 /**
  * @brief Query the EoTP setting last configured.
  *
+ * @details
+ * Returns the cached End-of-Transmission-Packet preference last set
+ * via ``ra_mipi_phy_set_eotp``. The DSI master honours this when
+ * emitting the optional EoTP at the end of HS bursts.
+ *
  * @return Active EoTP setting (defaults to disabled).
+ * @retval k_ra_mipi_phy_eotp_disabled EoTP suppression -- legacy peripherals.
+ * @retval k_ra_mipi_phy_eotp_enabled  EoTP appended -- spec-compliant.
+ *
+ * @pre -- (no preconditions; safe before ``init``).
+ * @pre ``ra_mipi_phy_set_eotp`` may or may not have been called.
+ * @post Hardware state is unchanged.
+ * @post Cached EoTP value is unchanged.
+ *
+ * @note Thread safety: read-only.
+ * @since 0.1.0
  */
 ra_mipi_phy_eotp_t ra_mipi_phy_get_eotp(void);
 
@@ -1071,15 +1156,40 @@ ra_mipi_phy_compute_pll_freq(const ra_mipi_phy_pll_t* pll, uint8_t mosc_mhz, uin
  *
  * @return Cached ``ra_mipi_phy_state_t`` -- defaults to
  * ``k_ra_mipi_phy_state_off`` after reset / first init.
+ * @retval k_ra_mipi_phy_state_off       PHY powered down.
+ * @retval k_ra_mipi_phy_state_ldo_ready LDO stabilised.
+ * @retval k_ra_mipi_phy_state_pll_run   PLL locked and running.
+ *
+ * @pre -- (no preconditions; safe before ``init``).
+ * @pre Caller has access to driver state (no IRQ guard required).
+ * @post Hardware state is unchanged.
+ * @post Cached lifecycle state is unchanged.
+ *
+ * @note Thread safety: read-only.
+ * @since 0.1.0
  */
 ra_mipi_phy_state_t ra_mipi_phy_get_state(void);
 
 /**
  * @brief Read the most recently configured operating mode.
  *
+ * @details
+ * Returns the cached DPHYMDC.MASTEREN choice -- the bit is set during
+ * ``ra_mipi_phy_init`` and cleared when ``ra_mipi_phy_deinit`` runs.
+ *
  * @return Cached ``ra_mipi_phy_mode_t``. Defaults to
  * ``k_ra_mipi_phy_mode_csi_slave`` (matches DPHYMDC reset
  * value 0 -- HUM Ch 64.2.14 p 3837).
+ * @retval k_ra_mipi_phy_mode_dsi_master DSI host -- TX path.
+ * @retval k_ra_mipi_phy_mode_csi_slave  CSI sink -- RX path.
+ *
+ * @pre -- (no preconditions; safe before ``init``).
+ * @pre Caller has access to driver state.
+ * @post Hardware state is unchanged.
+ * @post Cached active-mode value is unchanged.
+ *
+ * @note Thread safety: read-only.
+ * @since 0.1.0
  */
 ra_mipi_phy_mode_t ra_mipi_phy_get_active_mode(void);
 
@@ -1109,8 +1219,25 @@ ra_mipi_phy_mode_t ra_mipi_phy_get_active_mode(void);
 /**
  * @brief Read back the dual-mode arbitration policy last configured.
  *
+ * @details
+ * Returns the cached arbitration policy set by
+ * ``ra_mipi_phy_set_dual_mode``. Higher-level stacks consult this when
+ * deciding whether to switch the shared D-PHY between DSI and CSI.
+ *
  * @return Active dual-mode setting (defaults to
  * ``k_ra_mipi_phy_dual_off``).
+ * @retval k_ra_mipi_phy_dual_off          No arbitration -- single owner.
+ * @retval k_ra_mipi_phy_dual_alternate    Cooperative time-multiplexing.
+ * @retval k_ra_mipi_phy_dual_dsi_priority DSI wins contention.
+ * @retval k_ra_mipi_phy_dual_csi_priority CSI wins contention.
+ *
+ * @pre -- (no preconditions; safe before ``init``).
+ * @pre Caller has access to driver state.
+ * @post Hardware state is unchanged.
+ * @post Cached dual-mode policy is unchanged.
+ *
+ * @note Thread safety: read-only.
+ * @since 0.1.0
  */
 ra_mipi_phy_dual_mode_t ra_mipi_phy_get_dual_mode(void);
 
@@ -1128,6 +1255,16 @@ ra_mipi_phy_dual_mode_t ra_mipi_phy_get_dual_mode(void);
  * @param[in] requestor Mode the caller wants to enter.
  *
  * @return ``true`` if the request is permitted, ``false`` if blocked.
+ * @retval true  Policy permits ``requestor`` to acquire the PHY.
+ * @retval false Policy blocks ``requestor`` (priority owner is active).
+ *
+ * @pre Driver init is not required; the test is purely software policy.
+ * @pre ``requestor`` is a valid ::ra_mipi_phy_mode_t value.
+ * @post Hardware state is unchanged.
+ * @post Cached dual-mode policy is unchanged.
+ *
+ * @note Thread safety: read-only over a software shadow.
+ * @since 0.1.0
  */
 bool ra_mipi_phy_dual_mode_can_acquire(ra_mipi_phy_mode_t requestor);
 
