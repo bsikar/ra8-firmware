@@ -54,11 +54,16 @@
 
 #include <stdint.h>
 
+#include "ra8d2_mstp_regs.h"
+#include "ra8d2_pfs_regs.h"
+#include "ra8d2_system_regs.h"
 #include "ra8d2_usb_regs.h"
+#include "ra_cgc.h"
 #include "ra_check.h"
 #include "ra_err.h"
 #include "ra_log.h"
 #include "ra_mstp.h"
+#include "ra_port_constants.h"
 
 static const char* s_tag = "USB";
 

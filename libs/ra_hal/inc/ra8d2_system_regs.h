@@ -75,6 +75,9 @@ typedef enum : uint16_t {
   k_ra_sys_off_pllccr2    = 0x04CU, /**< PLLCCR2 -- PLL1 output dividers (16-bit). */
   k_ra_sys_off_scickdivcr = 0x054U, /**< SCICKDIVCR (8-bit). */
   k_ra_sys_off_scickcr    = 0x055U, /**< SCICKCR    (8-bit). */
+  k_ra_sys_off_usbckdivcr = 0x06CU, /**< USBCKDIVCR (8-bit) -- USB clock divider. */
+  k_ra_sys_off_usbckcr    = 0x074U, /**< USBCKCR    (8-bit) -- USB-FS clock src. */
+  k_ra_sys_off_usb60ckcr  = 0x077U, /**< USB60CKCR  (8-bit) -- USBHS 60MHz src. */
   k_ra_sys_off_moscwtcr   = 0x0A2U, /**< MOSCWTCR  (8-bit).  */
   k_ra_sys_off_pllccr     = 0x0ACU, /**< PLLCCR    (32-bit). */
   k_ra_sys_off_rstsr1     = 0x0C0U, /**< RSTSR1    (32-bit). */
@@ -292,6 +295,55 @@ static inline volatile uint8_t* ra_sys_rstsr0(void)
 static inline volatile uint8_t* ra_sys_rstsr2(void)
 {
   return (volatile uint8_t*)(k_ra_system_base_addr + k_ra_sys_off_rstsr2);
+}
+
+/**
+ * @enum ra_usbckcr_bit_t
+ * @brief USBCKCR / USB60CKCR bit positions (HUM Ch 9).
+ *
+ * @details Cited from FSP CMSIS device header
+ * `R7KA8D2KF_core0.h:70402-70408`. USBCKSEL[3:0] selects the source
+ * clock; USBCKSREQ requests a switch; USBCKSRDY is the read-only
+ * handshake-done flag.
+ */
+typedef enum : uint8_t {
+  k_ra_usbckcr_shift_sel = 0U,    /**< USBCKSEL field starts at bit 0.  */
+  k_ra_usbckcr_mask_sel  = 0x0FU, /**< USBCKSEL field is 4 bits wide.   */
+  k_ra_usbckcr_bit_sreq  = 6U,    /**< USBCKSREQ -- request switch.     */
+  k_ra_usbckcr_bit_srdy  = 7U,    /**< USBCKSRDY -- handshake ready.    */
+} ra_usbckcr_bit_t;
+
+/**
+ * @enum ra_usbcksel_t
+ * @brief USBCKCR.USBCKSEL source codes (RA8D2 mapping).
+ */
+typedef enum : uint8_t {
+  k_ra_usbcksel_hoco  = 0U,  /**< HOCO.     */
+  k_ra_usbcksel_main  = 3U,  /**< Main XTAL.*/
+  k_ra_usbcksel_pll1p = 5U,  /**< PLL1P.    */
+  k_ra_usbcksel_pll2p = 6U,  /**< PLL2P.    */
+  k_ra_usbcksel_pll1q = 7U,  /**< PLL1Q.    */
+  k_ra_usbcksel_pll1r = 8U,  /**< PLL1R.    */
+  k_ra_usbcksel_pll2q = 9U,  /**< PLL2Q.    */
+  k_ra_usbcksel_pll2r = 10U, /**< PLL2R.    */
+} ra_usbcksel_t;
+
+/** @brief Get pointer to the 8-bit USBCKDIVCR (USB clock divider). */
+static inline volatile uint8_t* ra_sys_usbckdivcr(void)
+{
+  return (volatile uint8_t*)(k_ra_system_base_addr + k_ra_sys_off_usbckdivcr);
+}
+
+/** @brief Get pointer to the 8-bit USBCKCR (USB-FS source select). */
+static inline volatile uint8_t* ra_sys_usbckcr(void)
+{
+  return (volatile uint8_t*)(k_ra_system_base_addr + k_ra_sys_off_usbckcr);
+}
+
+/** @brief Get pointer to the 8-bit USB60CKCR (USBHS 60MHz source select). */
+static inline volatile uint8_t* ra_sys_usb60ckcr(void)
+{
+  return (volatile uint8_t*)(k_ra_system_base_addr + k_ra_sys_off_usb60ckcr);
 }
 
 /* =============================================================================

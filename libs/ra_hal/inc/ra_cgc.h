@@ -230,6 +230,55 @@ typedef void (*ra_cgc_ostd_fn_t)(void* ctx);
 [[nodiscard]] ra_err_t ra_cgc_usbhs_pll_enable(void);
 
 /**
+ * @brief Bring up the USB-FS module clock (USBCKCR / USBCKDIVCR).
+ *
+ * @details
+ * On RA8D2 the USB-FS controller is not clocked merely by ungating
+ * MSTPCRB.MSTPB11 -- the System Control block has a dedicated
+ * USBCKCR / USBCKDIVCR pair (HUM Ch 9, USBCKCR p 365) that selects
+ * the source clock for the controller's 48 MHz reference. After
+ * power-on reset USBCKCR reads as 0 (USBCKSEL = HOCO, ~20 MHz)
+ * which is **not** a valid USB-FS reference, and the SIE will never
+ * bus-reset a connected device. Symptom on EK-RA8D2: DVSTCTR0 stuck
+ * at 0x0002 (Powered, never Default), INTSTS0.CTRT = 0, no SETUP
+ * packet ever delivered.
+ *
+ * Sequence per FSP `bsp_clocks.c:2648-2691`:
+ *   1. PRCR-CGC unlock window.
+ *   2. USBCKCR.USBCKSREQ = 1, wait USBCKSRDY = 1 (clock gated).
+ *   3. Write USBCKDIVCR.
+ *   4. Write USBCKCR = src | USBCKSREQ.
+ *   5. Write USBCKCR = src (drop the request bit).
+ *   6. Wait USBCKSRDY = 0 (new clock running).
+ *   7. PRCR re-lock.
+ *
+ * Source picked here is PLL1Q with USBCKDIVCR = /8 codepoint.
+ * PLL1Q is 333.33 MHz so /8 == 41.67 MHz, which is *outside* the
+ * USB-FS spec (needs 48 MHz +/- 2500 ppm). This commit therefore
+ * does **not** promise host enumeration -- it is the first step that
+ * proves USBCKCR is being programmed at all (verifiable via
+ * ``g_ra_usb_phy_observed``). A follow-up must bring up PLL2 to
+ * deliver an exact 48 MHz.
+ *
+ * @return ::ra_err_t error code.
+ * @retval k_ra_ok USB-FS module clock running.
+ * @retval k_ra_err_hw_timeout USBCKSRDY handshake never completed.
+ *
+ * @pre  ::ra_cgc_init has been called (PLL1 locked).
+ * @pre  Single-threaded init context.
+ *
+ * @post USBCKCR.USBCKSEL = ::k_ra_usbcksel_pll1q.
+ * @post USBCKDIVCR programmed.
+ * @post PRCR is re-locked.
+ *
+ * @note Not thread-safe.
+ *
+ * @see ra_cgc_usbhs_pll_enable
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_cgc_usbfs_clock_enable(void);
+
+/**
  * @brief Test helper: invoke the registered OSTD callback.
  *
  * @details

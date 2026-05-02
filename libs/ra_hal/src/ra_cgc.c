@@ -1080,6 +1080,99 @@ ra_err_t ra_cgc_usbhs_pll_enable(void)
 }
 
 /**
+ * @enum ra_usbfs_clock_local_t
+ * @brief Local sentinels for the USBCKSRDY handshake.
+ */
+typedef enum : uint16_t {
+  k_ra_usbfs_srdy_poll_limit = 1000U, /**< Iterations before timeout.   */
+  k_ra_usbfs_div8_code       = 4U,    /**< USBCKDIVCR codepoint for /8. */
+} ra_usbfs_clock_local_t;
+
+/**
+ * @brief Spin until USBCKCR.USBCKSRDY matches the expected value.
+ * @details See implementation.
+ * @param[in] expected Expected value for USBCKSRDY (0 or 1).
+ * @return Result code.
+ * @retval k_ra_ok USBCKSRDY reached the expected level.
+ * @retval k_ra_err_hw_timeout Polling exceeded the iteration cap.
+ * @pre PRCR-CGC must be unlocked at call site.
+ * @pre Caller is in single-threaded init context.
+ * @post No mutation; readback only.
+ * @post Iteration count is bounded.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static ra_err_t internal_wait_usbcksrdy(uint8_t expected)
+{
+  const uint8_t mask = (uint8_t)(1U << k_ra_usbckcr_bit_srdy);
+  for (uint16_t i = 0U; i < k_ra_usbfs_srdy_poll_limit; ++i) {
+    const uint8_t got = (uint8_t)((*ra_sys_usbckcr() & mask) >> k_ra_usbckcr_bit_srdy);
+    if (got == expected) {
+      return k_ra_ok;
+    }
+  }
+  return k_ra_err_hw_timeout;
+}
+
+/**
+ * @brief Implementation of ra_cgc_usbfs_clock_enable (see header).
+ * @details Implements the FSP `bsp_clocks.c:2648-2691` USBCKCR /
+ *          USBCKSREQ handshake. PLL1Q (333.33 MHz) /8 ~= 41.67 MHz:
+ *          NOT a valid USB-FS reference (needs 48 MHz +/- 2500 ppm),
+ *          but the closest available given the existing PLL1 plan.
+ *          A follow-up commit must bring up PLL2 to deliver exact
+ *          48 MHz; this commit only proves USBCKCR is being
+ *          programmed at all (verifiable via g_ra_usb_phy_observed).
+ * @return Result code.
+ * @retval k_ra_ok USB-FS clock running.
+ * @retval k_ra_err_hw_timeout USBCKSRDY handshake never completed.
+ * @pre ra_cgc_init has been called (PLL1 locked).
+ * @pre Single-threaded init context.
+ * @post USBCKCR programmed with PLL1Q source.
+ * @post PRCR is re-locked.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+ra_err_t ra_cgc_usbfs_clock_enable(void)
+{
+  ra_log_info(s_tag, "usbfs clock enable");
+  ra_err_t err = k_ra_ok;
+
+  RA_PROTECTED_WRITE(k_ra_prcr_unlock_cgc)
+  {
+    /* HUM Ch 9.2.55 "USBCKCR : USB Clock Control Register" p 365 */
+    const uint8_t sreq_mask = (uint8_t)(1U << k_ra_usbckcr_bit_sreq);
+    *ra_sys_usbckcr()       = sreq_mask;
+
+    err = internal_wait_usbcksrdy(1U);
+    if (err != k_ra_ok) {
+      ra_log_error(s_tag, "usbfs: SRDY=1 timeout");
+      break;
+    }
+
+    /* HUM Ch 9.2.54 "USBCKDIVCR : USB Clock Division Control Register" p 364 */
+    *ra_sys_usbckdivcr() = (uint8_t)k_ra_usbfs_div8_code;
+
+    /* HUM Ch 9.2.55 "USBCKCR : USB Clock Control Register" p 365 */
+    const uint8_t src = (uint8_t)((uint8_t)k_ra_usbcksel_pll1q & k_ra_usbckcr_mask_sel);
+    *ra_sys_usbckcr() = (uint8_t)(src | sreq_mask);
+    *ra_sys_usbckcr() = src;
+
+    err = internal_wait_usbcksrdy(0U);
+    if (err != k_ra_ok) {
+      ra_log_error(s_tag, "usbfs: SRDY=0 timeout");
+      break;
+    }
+  }
+
+  if (err != k_ra_ok) {
+    return err;
+  }
+  ra_log_info(s_tag, "usbfs clock ready (PLL1Q/8)");
+  return k_ra_ok;
+}
+
+/**
  * @brief Implementation of ra_cgc_sim_trigger_stop_detection (see header for full contract).
  * @details See the public header for the documented contract; this definition implements it.
  * @pre Module state is consistent.
