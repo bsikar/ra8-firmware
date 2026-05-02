@@ -443,38 +443,72 @@ ra_err_t ra_board_glcdc_init(ra_board_glcdc_fmt_t fmt)
 static bool s_audio_initialised = false;
 
 /**
+ * @brief Supported PCM significant-bit-depth values for the DA7212 path.
+ *
+ * @details
+ * Names every bit depth the BSP knows how to map to an SSIE DWL/SWL pair.
+ * The DA7212 supports 16/24/32-bit native; 8/18/20/22 are accepted because
+ * the SSIE itself supports those data-word widths and an application may
+ * want to feed pre-padded streams.
+ */
+typedef enum : uint8_t {
+  k_ra_audio_bits_8  = 8U,
+  k_ra_audio_bits_16 = 16U,
+  k_ra_audio_bits_18 = 18U,
+  k_ra_audio_bits_20 = 20U,
+  k_ra_audio_bits_22 = 22U,
+  k_ra_audio_bits_24 = 24U,
+  k_ra_audio_bits_32 = 32U,
+} ra_audio_bit_depth_t;
+
+/**
+ * @brief Sample-frame channel counts the BSP accepts.
+ */
+typedef enum : uint8_t {
+  k_ra_audio_channels_mono   = 1U,
+  k_ra_audio_channels_stereo = 2U,
+} ra_audio_channels_t;
+
+/**
+ * @brief Stereo-frame packing factor (two int16_t samples per 32-bit word).
+ */
+typedef enum : uint8_t {
+  k_ra_audio_samples_per_word = 2U,
+} ra_audio_pack_t;
+
+/**
  * @brief Map ``bit_depth`` (significant bits) to SSIE DWL / SWL pair.
  */
 static ra_err_t internal_audio_bits_to_word(uint8_t                bit_depth,
                                             ra_ssie_data_word_t*   out_dwl,
                                             ra_ssie_system_word_t* out_swl)
 {
-  switch (bit_depth) {
-    case 8U:
+  switch ((ra_audio_bit_depth_t)bit_depth) {
+    case k_ra_audio_bits_8:
       *out_dwl = k_ra_ssie_dwl_8;
       *out_swl = k_ra_ssie_swl_8;
       return k_ra_ok;
-    case 16U:
+    case k_ra_audio_bits_16:
       *out_dwl = k_ra_ssie_dwl_16;
       *out_swl = k_ra_ssie_swl_16;
       return k_ra_ok;
-    case 18U:
+    case k_ra_audio_bits_18:
       *out_dwl = k_ra_ssie_dwl_18;
       *out_swl = k_ra_ssie_swl_24;
       return k_ra_ok;
-    case 20U:
+    case k_ra_audio_bits_20:
       *out_dwl = k_ra_ssie_dwl_20;
       *out_swl = k_ra_ssie_swl_24;
       return k_ra_ok;
-    case 22U:
+    case k_ra_audio_bits_22:
       *out_dwl = k_ra_ssie_dwl_22;
       *out_swl = k_ra_ssie_swl_24;
       return k_ra_ok;
-    case 24U:
+    case k_ra_audio_bits_24:
       *out_dwl = k_ra_ssie_dwl_24;
       *out_swl = k_ra_ssie_swl_24;
       return k_ra_ok;
-    case 32U:
+    case k_ra_audio_bits_32:
       *out_dwl = k_ra_ssie_dwl_32;
       *out_swl = k_ra_ssie_swl_32;
       return k_ra_ok;
@@ -483,25 +517,14 @@ static ra_err_t internal_audio_bits_to_word(uint8_t                bit_depth,
   }
 }
 
-ra_err_t ra_board_audio_init(uint32_t sample_rate_hz, uint8_t bit_depth, uint8_t channels)
+/**
+ * @brief Route the six DA7212 audio pins (4 SSIE + 2 IIC) to their alt fns.
+ */
+static ra_err_t internal_audio_route_pins(void)
 {
-  if (sample_rate_hz == 0U) {
-    return k_ra_err_invalid_arg;
-  }
-  if (channels != 1U && channels != 2U) {
-    return k_ra_err_invalid_arg;
-  }
-  ra_ssie_data_word_t   dwl  = k_ra_ssie_dwl_16;
-  ra_ssie_system_word_t swl  = k_ra_ssie_swl_16;
-  ra_err_t              berr = internal_audio_bits_to_word(bit_depth, &dwl, &swl);
-  if (berr != k_ra_ok) {
-    return berr;
-  }
-
-  /* Step 1: route the four DAI pins to SSIE0 + the I2C control pair
-   * to IIC1 (UM Table 32 p 38). MCLK on PD06 stays in GPIO mode --
-   * the application picks SSIE EXTAL or CGC clock-out explicitly.
-   * k_ra_psel_ssie comes from HUM Ch 19 PFS PSEL field. */
+  /* k_ra_psel_ssie comes from HUM Ch 19 PFS PSEL field. MCLK on PD06
+   * stays in GPIO mode -- the application picks SSIE EXTAL or CGC
+   * clock-out explicitly. */
   const struct {
     ra_port_pin_t pin;
     ra_psel_t     psel;
@@ -522,15 +545,24 @@ ra_err_t ra_board_audio_init(uint32_t sample_rate_hz, uint8_t bit_depth, uint8_t
       return err;
     }
   }
+  return k_ra_ok;
+}
 
-  /* Step 2: bring up SSIE0 in I2S controller mode. AUDIO_MCK / 4
-   * lands close to 12.288 MHz / 4 = 3.072 MHz BCK for 48 kHz x 2ch
-   * x 32-bit frames; finer rate matching is left to applications
-   * that re-call ra_ssie_init() with a tuned divider. */
-  (void)sample_rate_hz;
-  const ra_ssie_cfg_t cfg = {
+/**
+ * @brief Build the SSIE0 controller-mode I2S config for the DA7212 link.
+ *
+ * @details
+ * AUDIO_MCK / 4 lands close to 12.288 MHz / 4 = 3.072 MHz BCK for
+ * 48 kHz x 2ch x 32-bit frames; finer rate matching is left to
+ * applications that re-call ra_ssie_init() with a tuned divider.
+ */
+static ra_ssie_cfg_t
+internal_audio_build_ssie_cfg(uint8_t channels, ra_ssie_data_word_t dwl, ra_ssie_system_word_t swl)
+{
+  return (ra_ssie_cfg_t){
     .role          = k_ra_ssie_role_master,
-    .format        = (channels == 1U) ? k_ra_ssie_format_monaural : k_ra_ssie_format_i2s,
+    .format        = (channels == (uint8_t)k_ra_audio_channels_mono) ? k_ra_ssie_format_monaural
+                                                                     : k_ra_ssie_format_i2s,
     .data_word     = dwl,
     .system_word   = swl,
     .bclk_div      = k_ra_ssie_bclk_div_4,
@@ -546,7 +578,35 @@ ra_err_t ra_board_audio_init(uint32_t sample_rate_hz, uint8_t bit_depth, uint8_t
     .tx_threshold  = 0U,
     .rx_threshold  = 0U,
   };
-  const ra_err_t serr = ra_ssie_init((uint8_t)k_ra_board_audio_ssie_channel, &cfg);
+}
+
+ra_err_t ra_board_audio_init(uint32_t sample_rate_hz, uint8_t bit_depth, uint8_t channels)
+{
+  if (sample_rate_hz == 0U) {
+    return k_ra_err_invalid_arg;
+  }
+  if (channels != (uint8_t)k_ra_audio_channels_mono &&
+      channels != (uint8_t)k_ra_audio_channels_stereo) {
+    return k_ra_err_invalid_arg;
+  }
+  ra_ssie_data_word_t   dwl  = k_ra_ssie_dwl_16;
+  ra_ssie_system_word_t swl  = k_ra_ssie_swl_16;
+  ra_err_t              berr = internal_audio_bits_to_word(bit_depth, &dwl, &swl);
+  if (berr != k_ra_ok) {
+    return berr;
+  }
+
+  /* Step 1: route the four DAI pins to SSIE0 + the I2C control pair
+   * to IIC1 (UM Table 32 p 38). */
+  ra_err_t rerr = internal_audio_route_pins();
+  if (rerr != k_ra_ok) {
+    return rerr;
+  }
+
+  /* Step 2: bring up SSIE0 in I2S controller mode. */
+  (void)sample_rate_hz;
+  const ra_ssie_cfg_t cfg  = internal_audio_build_ssie_cfg(channels, dwl, swl);
+  const ra_err_t      serr = ra_ssie_init((uint8_t)k_ra_board_audio_ssie_channel, &cfg);
   if (serr != k_ra_ok) {
     return k_ra_err_hw_init_failed;
   }
@@ -559,23 +619,30 @@ ra_err_t ra_board_audio_play_sample_block(const int16_t* buf, uint32_t len)
   if (buf == NULL) {
     return k_ra_err_invalid_arg;
   }
-  if (len == 0U || (len % 2U) != 0U) {
+  if (len == 0U || (len % (uint32_t)k_ra_audio_samples_per_word) != 0U) {
     return k_ra_err_invalid_arg;
   }
   if (!s_audio_initialised) {
     return k_ra_err_not_initialized;
   }
   /* Two int16_t samples (one stereo frame) pack into one 32-bit SSIE
-   * FIFO word; len is guaranteed even by the check above. */
-  uint16_t       written = 0U;
-  const ra_err_t err     = ra_ssie_write_buffer((uint8_t)k_ra_board_audio_ssie_channel,
-                                            (const uint32_t*)(const void*)buf,
-                                            (uint16_t)(len / 2U),
-                                            &written);
+   * FIFO word; len is guaranteed even by the check above. The buffer
+   * is a contiguous PCM stream the SSIE FIFO consumes 32 bits at a
+   * time. Reinterpret via uintptr_t so we neither (a) double-hop
+   * through void* (bugprone-casting-through-void) nor (b) trip
+   * cast-align by going int16_t* -> uint32_t* directly. The caller
+   * contract requires ``buf`` to be 32-bit aligned (one stereo frame
+   * naturally aligns); see ra_board_audio_play_sample_block docs. */
+  const uint32_t        words   = len / (uint32_t)k_ra_audio_samples_per_word;
+  const uintptr_t       addr    = (uintptr_t)buf;
+  const uint32_t* const packed  = (const uint32_t*)addr; /* NOLINT(performance-no-int-to-ptr) */
+  uint16_t              written = 0U;
+  const ra_err_t        err =
+    ra_ssie_write_buffer((uint8_t)k_ra_board_audio_ssie_channel, packed, (uint16_t)words, &written);
   if (err != k_ra_ok) {
     return err;
   }
-  if (written != (uint16_t)(len / 2U)) {
+  if (written != (uint16_t)words) {
     return k_ra_err_hw_timeout;
   }
   return k_ra_ok;
