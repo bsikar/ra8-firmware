@@ -63,17 +63,22 @@ SOURCE_SUFFIXES = {".c", ".h", ".cpp", ".hpp"}
 def discover_scan_dirs() -> tuple[str, ...]:
     """Return (`libs`, `src`, `tests`) plus every example app dir.
 
-    An "app dir" is any directory under `examples/` that contains
-    both `main.c` and `CMakeLists.txt`.
+    An "app dir" is any directory under `examples/<tier>/` that
+    contains both `main.c` and `CMakeLists.txt`. The tier directory
+    layer (e.g. `ek_ra8d2/`, `_unsupported/`) groups apps by
+    hardware-support category.
     """
     out = list(ALWAYS_SCAN_DIRS)
     examples_root = REPO_ROOT / "examples"
     if examples_root.is_dir():
-        for entry in sorted(examples_root.iterdir()):
-            if not entry.is_dir():
+        for tier in sorted(examples_root.iterdir()):
+            if not tier.is_dir():
                 continue
-            if (entry / "main.c").is_file() and (entry / "CMakeLists.txt").is_file():
-                out.append(f"examples/{entry.name}")
+            for entry in sorted(tier.iterdir()):
+                if not entry.is_dir():
+                    continue
+                if (entry / "main.c").is_file() and (entry / "CMakeLists.txt").is_file():
+                    out.append(f"examples/{tier.name}/{entry.name}")
     return tuple(out)
 
 

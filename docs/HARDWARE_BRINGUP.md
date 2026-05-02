@@ -4,6 +4,28 @@
 **Tool chain**: arm-none-eabi-gcc, JLinkExe (SEGGER)
 **Date**: 2026-05-02
 
+## examples/ tier layout
+
+Applications under `examples/` are organised by hardware-support tier
+so a developer can see at a glance which apps the project can
+hardware-validate on the stock EVM:
+
+| Path                            | Meaning                                                                 |
+|---------------------------------|-------------------------------------------------------------------------|
+| `examples/ek_ra8d2/<app>/`      | Validates on a stock EK-RA8D2 v1 with no extra peripherals (or only a $5 USB device for the host-port demos). The pre-commit hook and CI smoke-test apps from this tier. |
+| `examples/_unsupported/<app>/`  | Requires extra hardware we do not have (audio amp, BLE radio + vendor patch image, RSIP BIST blob, PTP switch, MCK motor board, SD card slot). Cross-builds in CI but is not flashed; expect bit-rot until somebody acquires the hardware. |
+
+The build-target name is just the bare app directory name; the tier
+directory is purely organisational. `make blink` builds
+`examples/ek_ra8d2/blink/build/blink.elf`; `make motor_3phase` builds
+`examples/_unsupported/motor_3phase/build/motor_3phase.elf`. The
+top-level `Makefile` and `CMakeLists.txt` auto-discover apps under
+`examples/<tier>/<app>/`.
+
+When adding a new app, drop it under whichever tier matches the
+hardware story. See [`examples/ek_ra8d2/README.md`](../examples/ek_ra8d2/README.md)
+and [`examples/_unsupported/README.md`](../examples/_unsupported/README.md).
+
 ## Apps successfully flashed and verified running
 
 ### blink (commit f55b0... post-fix)
@@ -279,8 +301,8 @@ The all-ones response is the diagnostic floor: **the chip is not responding at a
 
    1. Look up the global's address for the app under test:
 
-          arm-none-eabi-nm examples/threadx_filex_levelx_demo/build/threadx_filex_levelx_demo.elf | grep g_ra_xspi_rdid_observed
-          arm-none-eabi-nm examples/threadx_levelx_demo/build/threadx_levelx_demo.elf | grep g_ra_xspi_rdid_observed
+          arm-none-eabi-nm examples/ek_ra8d2/threadx_filex_levelx_demo/build/threadx_filex_levelx_demo.elf | grep g_ra_xspi_rdid_observed
+          arm-none-eabi-nm examples/ek_ra8d2/threadx_levelx_demo/build/threadx_levelx_demo.elf | grep g_ra_xspi_rdid_observed
 
       Current addresses (will move with code changes):
         - threadx_filex_levelx_demo: `0x2200448c`
@@ -324,7 +346,7 @@ memory; route the peripheral region to attr 1 = 0x04 (device-nGnRnE).
 
 ## 2026-05-02 ra_bootloader spin is intentional
 
-`examples/ra_bootloader/main.c:278` is `while(1) { wfi; }` reached when
+`examples/ek_ra8d2/ra_bootloader/main.c:278` is `while(1) { wfi; }` reached when
 both bank A and bank B fail `internal_bank_is_valid` — i.e. neither
 slot holds an app. In the test environment we never flash apps into
 bank A/B, so the spin is the design-intended terminal state. The
@@ -362,7 +384,7 @@ output** (`/tmp/ra8d2-hw-test/runs/threadx_https_client.uart` is 0 bytes).
 ### Evidence chain
 
 1. `arm-none-eabi-addr2line` confirms PC=0x02000368 maps to `demo_panic_halt`
-   at `examples/threadx_https_client/main.c:239` -- the `wfi` inside the
+   at `examples/_unsupported/threadx_https_client/main.c:239` -- the `wfi` inside the
    panic-spin, not the actual fault site.
 2. `demo_panic_halt()` is called from 7 sites: 6 inside `demo_setup_or_halt()`
    (lines 258, 261, 264, 267, 270, 278) and one at line 925 (post
@@ -455,7 +477,7 @@ not a real bug. The demo runs cleanly and the entry has been amended.
 
 ### Code-path audit
 
-`examples/threadx_ipc_demo/main.c` has exactly one halt path:
+`examples/ek_ra8d2/threadx_ipc_demo/main.c` has exactly one halt path:
 `ipc_demo_panic_halt()` (line 154), reachable only from
 `ipc_demo_setup_or_halt()` and from `tx_thread_create` failure inside
 `tx_application_define`. Every site that can call it is local to the

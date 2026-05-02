@@ -4,7 +4,7 @@
  *
  * @details
  * Mirrors the multi-module integration-test pattern from STAR's
- * test_imu_task.c. examples/usb_hid_device/main.c stands up
+ * test_imu_task.c. examples/ek_ra8d2/usb_hid_device/main.c stands up
  * ThreadX, USBX, and the ra_usb_pal device-side controller bridge.
  * Neither USBX nor ThreadX is available to the host test build, so
  * this test exercises the same ra_usb_pal surface the USBX DCD glue

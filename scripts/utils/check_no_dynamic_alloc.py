@@ -132,11 +132,14 @@ def _scan_dirs() -> list[pathlib.Path]:
         out.append(src)
     examples = REPO_ROOT / "examples"
     if examples.is_dir():
-        for entry in sorted(examples.iterdir()):
-            if not entry.is_dir():
+        for tier in sorted(examples.iterdir()):
+            if not tier.is_dir():
                 continue
-            if (entry / "main.c").is_file() and (entry / "CMakeLists.txt").is_file():
-                out.append(entry)
+            for entry in sorted(tier.iterdir()):
+                if not entry.is_dir():
+                    continue
+                if (entry / "main.c").is_file() and (entry / "CMakeLists.txt").is_file():
+                    out.append(entry)
     return out
 
 

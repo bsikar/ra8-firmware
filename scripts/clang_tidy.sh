@@ -147,13 +147,13 @@ collect_source_files() {
     # driver code; they should be linted separately with their own
     # rule set if we ever need it.
     #
-    # Scope: libs/, src/, plus every examples/<app>/ dir with main.c.
+    # Scope: libs/, src/, plus every examples/<tier>/<app>/ dir with main.c.
     # Excludes build/_deps/third_party/tests and the infrastructure
     # dirs (docs, cmake, scripts, fsp, STAR, .git, node_modules,
     # .github, .devcontainer, .claude).
     local roots=("$FIRMWARE_DIR/libs" "$FIRMWARE_DIR/src")
     local entry
-    for entry in "$FIRMWARE_DIR"/examples/*/main.c; do
+    for entry in "$FIRMWARE_DIR"/examples/*/*/main.c; do
         [[ -f "$entry" ]] || continue
         roots+=("$(dirname "$entry")")
     done

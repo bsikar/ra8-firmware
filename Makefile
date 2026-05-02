@@ -1,12 +1,17 @@
 #
 # Top-level Makefile for ra8d2-firmware.
 #
-# Each application lives in its own top-level directory with its own
-# main.c, boot files (vector_table.c, system_init.c,
-# secure_exception.c, trustzone_init.c), linker_script.ld, Makefile,
-# and CMakeLists.txt. This top-level Makefile auto-discovers them
-# (any top-level dir containing a main.c is an app) and forwards
-# `make <app>` to that app's per-app Makefile.
+# Each application lives in its own directory under
+# examples/<tier>/<app>/ with its own main.c, boot files
+# (vector_table.c, system_init.c, secure_exception.c,
+# trustzone_init.c), linker_script.ld, Makefile, and CMakeLists.txt.
+# The <tier> layer groups apps by hardware-support category
+# (ek_ra8d2/ for the stock EVM, _unsupported/ for apps needing extra
+# hardware). The build-target name is just the bare app dir name --
+# the tier directory is purely organisational, so `make blink` works
+# regardless of which tier blink/ lives in. This top-level Makefile
+# auto-discovers them and forwards `make <app>` to the per-app
+# Makefile.
 #
 # Common targets:
 #
@@ -44,10 +49,16 @@ ARM_SIZE     ?= arm-none-eabi-size
 # Default app -- override on the command line, e.g. `make RA_DEFAULT_APP=blink_hal`.
 RA_DEFAULT_APP ?= blink
 
-# Auto-discover apps: every examples/<name>/ dir with main.c + CMakeLists.txt.
-# RA_APPS holds the bare names (e.g. "blink"); the per-app dir lives at
-# $(ROOT)/examples/$(app).
-RA_APPS := $(sort $(patsubst $(ROOT)/examples/%/main.c,%,$(wildcard $(ROOT)/examples/*/main.c)))
+# Auto-discover apps: every examples/<tier>/<name>/ dir with main.c +
+# CMakeLists.txt. RA_APPS holds the bare app names (e.g. "blink");
+# RA_APP_DIR_<app> resolves each one to its full per-app directory so
+# `make blink` works regardless of which tier (ek_ra8d2/ vs
+# _unsupported/) the app lives in. A "tier" is the hardware-support
+# category, organised so a developer can see at a glance which apps
+# we can hardware-validate on the stock EK-RA8D2 EVM.
+_RA_APP_MAINS := $(wildcard $(ROOT)/examples/*/*/main.c)
+RA_APPS       := $(sort $(notdir $(patsubst %/main.c,%,$(_RA_APP_MAINS))))
+$(foreach m,$(_RA_APP_MAINS),$(eval RA_APP_DIR_$(notdir $(patsubst %/main.c,%,$m)) := $(patsubst %/main.c,%,$m)))
 
 # We forward each <app> name to the app's own Makefile, so reserve the names
 # below from being shadowed by .PHONY targets.
@@ -78,20 +89,29 @@ help:
 default: $(RA_DEFAULT_APP)
 
 apps:
-	@echo "Available apps:"
-	@for app in $(RA_APPS); do \
-		first_brief=$$(grep -m1 "@brief" $(ROOT)/examples/$$app/main.c 2>/dev/null | sed 's/.*@brief //'); \
-		printf "  %-15s %s\n" "$$app" "$$first_brief"; \
+	@echo "Available apps (grouped by tier):"
+	@for tier_dir in $(ROOT)/examples/*/; do \
+		tier=$$(basename "$$tier_dir"); \
+		echo "  [$$tier]"; \
+		for main in "$$tier_dir"*/main.c; do \
+			[ -f "$$main" ] || continue; \
+			app=$$(basename "$$(dirname "$$main")"); \
+			first_brief=$$(grep -m1 "@brief" "$$main" 2>/dev/null | sed 's/.*@brief //'); \
+			printf "    %-32s %s\n" "$$app" "$$first_brief"; \
+		done; \
 	done
 
 # Forward `make <app>` to the per-app Makefile so the top-level shorthand
-# and `cd examples/<app> && make` produce the exact same artifacts.
+# and `cd examples/<tier>/<app> && make` produce the exact same artifacts.
+# The per-app dir is looked up via RA_APP_DIR_<app> so callers don't
+# need to know which tier directory the app lives in.
 $(RA_APPS):
-	$(MAKE) -C $(ROOT)/examples/$@ build
+	$(MAKE) -C $(RA_APP_DIR_$@) build
 
 clean:
-	@for app in $(RA_APPS); do \
-		$(MAKE) -C $(ROOT)/examples/$$app clean; \
+	@for d in $(ROOT)/examples/*/*/main.c; do \
+		[ -f "$$d" ] || continue; \
+		$(MAKE) -C "$$(dirname $$d)" clean; \
 	done
 	rm -rf $(TESTS_BUILD) $(TESTS_BUILD_COV) $(TIDY_BUILD)
 
@@ -132,8 +152,12 @@ mcdc:
 	bash scripts/utils/mcdc_report.sh
 
 ascii:
-	@for dir in src libs tests $(RA_APPS); do \
+	@for dir in src libs tests; do \
 		python3 scripts/utils/fix-encoding.py --check "$$dir" || exit 1; \
+	done
+	@for d in $(ROOT)/examples/*/*/main.c; do \
+		[ -f "$$d" ] || continue; \
+		python3 scripts/utils/fix-encoding.py --check "$$(dirname $$d)" || exit 1; \
 	done
 
 version:

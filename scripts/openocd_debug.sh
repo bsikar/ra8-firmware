@@ -25,7 +25,7 @@ GREEN='\033[0;32m'
 RED='\033[0;31m'
 NC='\033[0m'
 
-ELF="${1:-$FW_DIR/examples/blink/build/blink.elf}"
+ELF="${1:-$FW_DIR/examples/ek_ra8d2/blink/build/blink.elf}"
 
 if [[ ! -f "$ELF" ]]; then
     echo -e "${RED}Error:${NC} $ELF not found"

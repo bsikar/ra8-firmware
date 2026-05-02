@@ -25,11 +25,14 @@ if [ ! -d examples ]; then
     exit 1
 fi
 
-# Auto-discover apps: every examples/<name>/ dir with a main.c.
+# Auto-discover apps: every examples/<tier>/<name>/ dir with a main.c.
+# Apps live under tier directories (ek_ra8d2/, _unsupported/) but the
+# build-target name is just the bare app name -- `make blink` works
+# regardless of which tier directory the app lives in.
 apps=()
-for d in examples/*/; do
+for d in examples/*/*/; do
     d="${d%/}"
-    name="${d#examples/}"
+    name="$(basename "$d")"
     if [ -f "$d/main.c" ] && [ -f "$d/Makefile" ]; then
         apps+=("$name")
     fi

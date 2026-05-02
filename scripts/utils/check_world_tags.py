@@ -70,17 +70,20 @@ APP_BOOT_FILES = {
 
 
 def discover_app_dirs() -> tuple[str, ...]:
-    """Return every examples/<app>/ relative path that has main.c +
-    CMakeLists.txt."""
+    """Return every examples/<tier>/<app>/ relative path that has
+    main.c + CMakeLists.txt."""
     out: list[str] = []
     examples_root = REPO_ROOT / "examples"
     if not examples_root.is_dir():
         return tuple()
-    for entry in sorted(examples_root.iterdir()):
-        if not entry.is_dir():
+    for tier in sorted(examples_root.iterdir()):
+        if not tier.is_dir():
             continue
-        if (entry / "main.c").is_file() and (entry / "CMakeLists.txt").is_file():
-            out.append(f"examples/{entry.name}")
+        for entry in sorted(tier.iterdir()):
+            if not entry.is_dir():
+                continue
+            if (entry / "main.c").is_file() and (entry / "CMakeLists.txt").is_file():
+                out.append(f"examples/{tier.name}/{entry.name}")
     return tuple(out)
 
 

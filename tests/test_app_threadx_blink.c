@@ -5,7 +5,7 @@
  * @details
  * Mirrors the multi-module integration-test pattern from STAR's
  * test_motor_control_task.c. The actual app at
- * examples/threadx_blink/main.c wires two ThreadX threads to two LED
+ * examples/ek_ra8d2/threadx_blink/main.c wires two ThreadX threads to two LED
  * GPIO toggles. The kernel is not linked into the host test build
  * (RA_SIMULATOR_MODE), so this test exercises the same module surface
  * the threads call (ra_board_led_init / ra_board_led_toggle) in the
@@ -54,7 +54,7 @@ typedef enum : uint8_t {
 /**
  * @brief Verify the full bring-up sequence main() drives before kernel entry.
  *
- * @details Replays the call order of examples/threadx_blink/main.c:
+ * @details Replays the call order of examples/ek_ra8d2/threadx_blink/main.c:
  * led_init(LED1) then led_init(LED2). Both must succeed under the
  * simulator-mode HAL.
  *
