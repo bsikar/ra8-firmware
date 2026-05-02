@@ -150,3 +150,49 @@ Results across 27 testable apps:
    network up (so depends on lwIP echo working too).
 7. **ra_bootloader** — stuck in system_init.c:331. Boot stub design
    may intentionally halt waiting for a banked image; need to verify.
+
+## 2026-05-02 final sweep (after ra_rand_stub fix)
+
+The xorshift32 rand() override (commit 6d2ebbfac) was a **massive
+unblocker**. Apps that previously hit ra_sbrk_trap fatal_error from
+inside newlib's rand()/srand() now boot cleanly:
+
+### ✅ Confirmed running on silicon (18 of 27 apps)
+- blink, blink_hal, clock_check, uart_hello
+- threadx_blink, threadx_filex_demo, threadx_canfd_demo, threadx_ota_demo
+- threadx_ipc_demo (M85 sends ping; M33 has no firmware so no reply — expected)
+- threadx_lwip_tcp_echo, threadx_netx_tcp_echo *(newly unblocked)*
+- ethernet_tcp_echo *(newly unblocked)*
+- usb_cdc_echo, usb_hid_device, usb_msc_device *(newly unblocked)*
+- usb_host_cdc_echo, usb_host_keyboard, usb_host_msc_browse *(newly unblocked)*
+
+### 🐛 Still failing (9 apps)
+- **5 BLE apps** (ble_peripheral, threadx_nimble_peripheral, threadx_ble_central,
+  threadx_ble_mesh_node) — radio init panics. **Renesas BLE patch image required**
+  (vendor blob, documented in VENDOR_BLOBS.md). Cannot fix without the blob.
+- **2 LevelX/XSPI apps** (threadx_levelx_demo, threadx_filex_levelx_demo) — both
+  panic in lx_nor_flash_format. **XSPI NOR driver bring-up incomplete** for the
+  IS25LX512M-JHLE chip on EK-RA8D2 v1.
+- **threadx_https_client** — stuck in main init line 239. Likely waiting for
+  Ethernet linkup which is a separate bringup gap.
+- **threadx_mpu_partition_demo** — ra_error_handler spin. Probably the
+  intentional cross-region fault firing as designed (the fault IS the demo).
+- **ra_bootloader** — stuck in ra_log.c:126. Log-loop blocking on UART; likely
+  the boot stub's intentional "halt waiting for banked image" path.
+
+## Summary
+
+**Real bugs caught + fixed via hardware bring-up this session:**
+
+| Commit | Bug | Impact |
+|---|---|---|
+| d3a9a278f | SysTick weak-alias dropped ra_time.c handler | All 36 vector tables — without fix every blink/delay app spins forever |
+| 5f7110168 | BSP UART console wired to wrong SCI channel (3 vs 8) | All BSP UART users |
+| 394055f13 | usb_hid_device panics on pre-enum send_report | Any USB device app with same break-on-error pattern |
+| a953d16c9 | usb_cdc_echo same pattern | Same |
+| 2ec83f594 | lwIP echo hardcoded subnet -> DHCP | Reachability on any network |
+| **6d2ebbfac** | **rand() heap-allocates -> sbrk trap; xorshift32 override** | **5 apps unblocked: NetX, Ethernet, all USB device + host** |
+
+**Audit-chain bugs also caught (not all hardware-related):**
+- SDRAM base address (a98cbcb60), ELC CAN MRAM_ERI (cf1c8c70f), PFS PSEL (7cc37e1f9),
+  RSIP key_op_status collision, HUM citations (446930c5a, b6f6227d5)
