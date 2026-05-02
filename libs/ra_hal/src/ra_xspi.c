@@ -273,6 +273,26 @@ static uint32_t internal_make_cdt(uint8_t opcode,
 }
 
 /**
+ * @enum ra_spi_flash_resp_bytes_t
+ * @brief Per-opcode response-byte counts for read-direction commands.
+ *
+ * @details
+ * The xSPI manual-command engine drives DATASIZE clocks on the bus
+ * after the opcode (and address, if any) so the device can stream
+ * its response bytes into CDD0/CDD1. For 0x05 RDSR the device sends
+ * 1 byte; for 0x9F RDID it sends the JEDEC triplet (3 bytes). With
+ * DATASIZE=0 the controller never clocks the response phase and
+ * CDD0 stays at whatever it held before the transfer -- which is
+ * why an earlier version of this driver always read WIP=0 and
+ * tripped LevelX into believing erases had completed instantly.
+ * IS25LX512M datasheet Ch 8.6 (RDSR) + Ch 8.13 (RDID).
+ */
+typedef enum : uint8_t {
+  k_ra_xspi_resp_bytes_status = 1U, /**< RDSR returns 1 status byte. */
+  k_ra_xspi_resp_bytes_jedec  = 3U, /**< RDID returns MFR+TYPE+CAP. */
+} ra_spi_flash_resp_bytes_t;
+
+/**
  * @brief Bounded CMDCMP poll (with simulator-mode fast exit).
  */
 static ra_err_t internal_wait_command_done(volatile r_xspi_regs_t* reg)
@@ -331,6 +351,36 @@ static ra_err_t internal_issue_simple_opcode(volatile r_xspi_regs_t* reg, uint8_
                                                             k_ra_xspi_cdt_cmdsize_1,
                                                             k_ra_xspi_cdt_addsize_0,
                                                             0U,
+                                                            k_ra_xspi_cdt_trtype_read);
+  reg->CDBUF[k_ra_xspi_cdbuf_idx_addr]  = 0U;
+  reg->CDBUF[k_ra_xspi_cdbuf_idx_data0] = 0U;
+  reg->CDBUF[k_ra_xspi_cdbuf_idx_data1] = 0U;
+  return internal_kick_command(reg);
+}
+
+/**
+ * @brief Issue a 1-byte opcode that returns 1..8 response data bytes.
+ *
+ * @details
+ * Used by RDSR (0x05) / RDID (0x9F): no address phase, but we MUST
+ * tell the controller how many response bytes to clock in via
+ * ``DATASIZE``. Caller reads the response out of CDBUF[CDD0/CDD1]
+ * after CMDCMP. HUM Ch 44 p 2986; IS25LX512M datasheet Ch 8.6 + 8.13.
+ *
+ * @param[in] reg        xSPI register block.
+ * @param[in] opcode     JEDEC opcode (0x05 or 0x9F).
+ * @param[in] resp_bytes 1..8 response bytes to clock into CDBUF.
+ *
+ * @return ``k_ra_ok`` on success or the underlying CMDCMP timeout.
+ */
+static ra_err_t
+internal_issue_read_opcode(volatile r_xspi_regs_t* reg, uint8_t opcode, uint8_t resp_bytes)
+{
+  /* HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986 */
+  reg->CDBUF[k_ra_xspi_cdbuf_idx_cdt]   = internal_make_cdt(opcode,
+                                                            k_ra_xspi_cdt_cmdsize_1,
+                                                            k_ra_xspi_cdt_addsize_0,
+                                                            resp_bytes,
                                                             k_ra_xspi_cdt_trtype_read);
   reg->CDBUF[k_ra_xspi_cdbuf_idx_addr]  = 0U;
   reg->CDBUF[k_ra_xspi_cdbuf_idx_data0] = 0U;
@@ -565,7 +615,12 @@ ra_err_t ra_xspi_flash_read_status(uint8_t instance, uint8_t* out_status)
   volatile r_xspi_regs_t* reg = ra_xspi(instance);
   RA_CHECK_NULL_PTR(reg, s_tag, "instance out of range");
 
-  const ra_err_t e = internal_issue_simple_opcode(reg, k_ra_spi_flash_op_read_status);
+  /* RDSR returns 1 status byte; DATASIZE must be 1, not 0, or the
+   * controller never clocks the response and CDD0 stays stale. See
+   * IS25LX512M datasheet Ch 8.6. */
+  const ra_err_t e = internal_issue_read_opcode(reg,
+                                                k_ra_spi_flash_op_read_status,
+                                                (uint8_t)k_ra_xspi_resp_bytes_status);
   if (e != k_ra_ok) {
     return e;
   }
@@ -585,7 +640,10 @@ ra_err_t ra_xspi_flash_read_id(uint8_t instance, uint32_t* out_id)
   volatile r_xspi_regs_t* reg = ra_xspi(instance);
   RA_CHECK_NULL_PTR(reg, s_tag, "instance out of range");
 
-  const ra_err_t e = internal_issue_simple_opcode(reg, k_ra_spi_flash_op_read_id);
+  /* RDID returns 3 JEDEC bytes (MFR/TYPE/CAP); DATASIZE must be 3.
+   * IS25LX512M datasheet Ch 8.13 "Read Identification (RDID)". */
+  const ra_err_t e =
+    internal_issue_read_opcode(reg, k_ra_spi_flash_op_read_id, (uint8_t)k_ra_xspi_resp_bytes_jedec);
   if (e != k_ra_ok) {
     return e;
   }
