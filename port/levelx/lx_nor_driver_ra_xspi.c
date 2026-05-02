@@ -43,7 +43,33 @@
 #include "lx_api.h"
 #include "ra_board_ek_ra8d2.h"
 #include "ra_err.h"
+#include "ra_log.h"
 #include "ra_xspi.h"
+
+/** @brief Logging tag for the LevelX <-> ra_xspi bridge. */
+static const char* s_lx_xspi_tag = "LX_XSPI";
+
+/**
+ * @enum ra_lx_jedec_id_t
+ * @brief Expected JEDEC ID triplet for the EK-RA8D2 IS25LX512M-JHLE chip.
+ *
+ * @details
+ * The IS25LX512M datasheet Ch 8.13 "Read Identification (RDID)" lists:
+ *   - manufacturer ID = 0x9D (ISSI)
+ *   - memory type    = 0x5A (IS25LX family)
+ *   - capacity code  = 0x1A (512 Mbit)
+ * The ``ra_xspi_flash_read_id`` helper packs these as
+ * ``(mfr << 16) | (type << 8) | cap``, giving 0x9D5A1A. We assert on
+ * the packed value during bring-up and surface the actual value over
+ * the log so a wrong-chip / wrong-protocol bring-up is loud rather
+ * than a silent ``LX_ERROR`` from ``lx_nor_flash_format``.
+ */
+typedef enum : uint32_t {
+  k_ra_lx_jedec_mfr      = 0x9DU,      /**< ISSI manufacturer ID.      */
+  k_ra_lx_jedec_type     = 0x5AU,      /**< IS25LX memory-type code.   */
+  k_ra_lx_jedec_capacity = 0x1AU,      /**< 512 Mbit capacity code.    */
+  k_ra_lx_jedec_expected = 0x9D5A1AUL, /**< Packed RDID expected.      */
+} ra_lx_jedec_id_t;
 
 /**
  * @brief Compile-time constants for the xSPI <-> LevelX bridge.
@@ -328,8 +354,9 @@ static bool s_xspi_bus_ready = false;
  *
  * @pre ``ra_infrastructure_init`` has run (pin validator alive).
  * @post On success the IS25LX512M is out of reset, OCTA pins are
- *       routed to PSEL=0x1C, the xSPI controller MSTP gate is open
- *       and ``LIOCFGCS[0]`` is in 1S-1S-1S mode.
+ *       routed to PSEL=0x1C, the xSPI controller MSTP gate is open,
+ *       ``LIOCFGCS[0]`` is in 1S-1S-1S mode, and the chip has
+ *       reported the expected RDID triplet ``0x9D 0x5A 0x1A``.
  *
  * @since 0.1.0
  */
@@ -339,11 +366,38 @@ static UINT priv_bus_init_once(void)
     return (UINT)LX_SUCCESS;
   }
   if (ra_board_xspi_pins_init() != k_ra_ok) {
+    ra_log_error(s_lx_xspi_tag, "xspi pin init failed");
     return (UINT)LX_ERROR;
   }
   if (ra_xspi_init((uint8_t)k_ra_lx_xspi_instance, k_ra_xspi_lio_1s1s1s) != k_ra_ok) {
+    ra_log_error(s_lx_xspi_tag, "ra_xspi_init failed");
     return (UINT)LX_ERROR;
   }
+
+  /* Probe RDID. If the controller can't even read the JEDEC triplet
+   * back, every downstream WREN / PP / SE call will fail too -- bail
+   * loudly here so the failure is obvious in the SCI8 console rather
+   * than a generic LX_ERROR from ``lx_nor_flash_format``. We expect
+   * the IS25LX512M-JHLE on EK-RA8D2 v1 to return
+   * ``{0x9D, 0x5A, 0x1A}`` per IS25LX512M datasheet Ch 8.13. A
+   * non-matching value most commonly means:
+   *   - the controller is in 8D-8D-8D protocol while the chip is
+   *     still in 1S-1S-1S (or vice versa), so the opcode bits are
+   *     being mis-interpreted on the bus, or
+   *   - one of the OCTA pin functions is not actually mapped to
+   *     PSEL=0x1C, so the chip never sees a clean RDID frame. */
+  uint32_t       jedec_id = 0U;
+  const ra_err_t rid_err  = ra_xspi_flash_read_id((uint8_t)k_ra_lx_xspi_instance, &jedec_id);
+  if (rid_err != k_ra_ok) {
+    ra_log_error_val(s_lx_xspi_tag, "RDID transfer failed err", (uint32_t)rid_err);
+    return (UINT)LX_ERROR;
+  }
+  ra_log_info_val(s_lx_xspi_tag, "RDID returned", jedec_id);
+  if (jedec_id != (uint32_t)k_ra_lx_jedec_expected) {
+    ra_log_error_val(s_lx_xspi_tag, "RDID mismatch (expected 0x9D5A1A); got", jedec_id);
+    return (UINT)LX_ERROR;
+  }
+
   s_xspi_bus_ready = true;
   return (UINT)LX_SUCCESS;
 }

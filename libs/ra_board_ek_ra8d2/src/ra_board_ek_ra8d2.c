@@ -475,16 +475,25 @@ static const ra_port_pin_t s_xspi_octa_pins[] = {
  * @brief Hardware reset pulse + post-reset settle times for IS25LX512M-JHLE.
  *
  * @details
- * IS25LX512M datasheet Ch 9.2 "Hardware Reset" specifies:
- *   - tRLRH (RESET_L low pulse width): min 100 ns
- *   - tRHSL (RESET_L high to first chip-select): min 100 us
- * Both are rounded up generously to 1 ms to keep the bring-up code
- * trivial; the demo only resets once at boot so a 2 ms total delay
- * is invisible.
+ * IS25LX512M datasheet specifies:
+ *   - tRLRH (RESET_L low pulse width): min 100 ns (Ch 9.2 "Hardware Reset")
+ *   - tRHSL (RESET_L high to first chip-select): min 100 us (Ch 9.2)
+ *   - tPUW  (power-up window before first command):
+ *           up to 10 ms (Ch 14 "Power-up / Power-down Timing")
+ *
+ * From cold boot we must honour tPUW, not just the much shorter
+ * reset recovery. The previous 1 ms / 1 ms pulse was compliant with
+ * tRLRH/tRHSL but not necessarily with tPUW: the controller could
+ * clock RDID before the IS25LX internal regulator was stable, the
+ * device would silently NAK, and CMDCMP would never assert -- LevelX
+ * format then bailed at ``ra_xspi_flash_read_id``. Post-release
+ * settle is now 15 ms, comfortably clearing tPUW from a true cold
+ * boot. The pre-release low pulse stays at 1 ms (still 10000x the
+ * 100 ns minimum tRLRH, just generous).
  */
 typedef enum : uint32_t {
-  k_ra_board_xspi_reset_low_ms  = 1U, /**< Hold RESET_L low for >= tRLRH. */
-  k_ra_board_xspi_reset_high_ms = 1U, /**< Wait tRHSL before first CS.    */
+  k_ra_board_xspi_reset_low_ms  = 1U,  /**< Hold RESET_L low for >= tRLRH. */
+  k_ra_board_xspi_reset_high_ms = 15U, /**< Wait >= tPUW before first CS.  */
 } ra_board_xspi_reset_timing_t;
 
 ra_err_t ra_board_xspi_pins_init(void)
