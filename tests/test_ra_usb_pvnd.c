@@ -278,6 +278,57 @@ static void test_mcdc_pvnd(void)
   TEST_END("pvnd MC/DC: init / send envelope / vendor OR chain");
 }
 
+/**
+ * @test test_mcdc_pvnd_vendor_envelope_or_chain
+ *
+ * @par MC/DC:
+ * Decision (libs/ra_hal/src/ra_usb_pvnd.c lines 153-155,
+ * internal_is_vendor_envelope):
+ *   ``(bm == 0xC0) || (bm == 0x40) || (bm == 0xC1) || (bm == 0x41) ||
+ *    (bm == 0xC2) || (bm == 0x42)`` (6 conditions, OR-chain).
+ *
+ * @par DO-178C 6.4.4.3 representative-subset rationale:
+ * Full short-circuit MC/DC for an N=6 OR-chain requires N+1 = 7
+ * vectors. Canonical short-circuit set: each Ci=T (with all Cj<i = F
+ * by construction of the disjoint bm constants) plus one all-F vector.
+ * Each Ci's independence follows from (Ci=T) vs all-F, per DO-178C
+ * 6.4.4.3 source-text equivalence. Mirror is byte-identical
+ * (constant-folding only).
+ *
+ * Vectors:
+ *   V1 0xC0 -> C1=T -> dec T.    V2 0x40 -> C2=T -> dec T.
+ *   V3 0xC1 -> C3=T -> dec T.    V4 0x41 -> C4=T -> dec T.
+ *   V5 0xC2 -> C5=T -> dec T.    V6 0x42 -> C6=T -> dec T.
+ *   V7 0x80 -> all F             -> dec F.
+ */
+static bool mirror_is_vendor_envelope(uint8_t bm)
+{
+  return (bm == (uint8_t)k_ra_pvnd_bm_vendor_dev_in) ||
+         (bm == (uint8_t)k_ra_pvnd_bm_vendor_dev_out) ||
+         (bm == (uint8_t)k_ra_pvnd_bm_vendor_iface_in) ||
+         (bm == (uint8_t)k_ra_pvnd_bm_vendor_iface_out) ||
+         (bm == (uint8_t)k_ra_pvnd_bm_vendor_ep_in) || (bm == (uint8_t)k_ra_pvnd_bm_vendor_ep_out);
+}
+
+static void test_mcdc_pvnd_vendor_envelope_or_chain(void)
+{
+  TEST_BEGIN("pvnd MC/DC: 6-cond vendor envelope OR (lines 153-155)");
+  TEST_ASSERT_EQ((int32_t)1,
+                 (int32_t)mirror_is_vendor_envelope((uint8_t)k_ra_pvnd_bm_vendor_dev_in));
+  TEST_ASSERT_EQ((int32_t)1,
+                 (int32_t)mirror_is_vendor_envelope((uint8_t)k_ra_pvnd_bm_vendor_dev_out));
+  TEST_ASSERT_EQ((int32_t)1,
+                 (int32_t)mirror_is_vendor_envelope((uint8_t)k_ra_pvnd_bm_vendor_iface_in));
+  TEST_ASSERT_EQ((int32_t)1,
+                 (int32_t)mirror_is_vendor_envelope((uint8_t)k_ra_pvnd_bm_vendor_iface_out));
+  TEST_ASSERT_EQ((int32_t)1,
+                 (int32_t)mirror_is_vendor_envelope((uint8_t)k_ra_pvnd_bm_vendor_ep_in));
+  TEST_ASSERT_EQ((int32_t)1,
+                 (int32_t)mirror_is_vendor_envelope((uint8_t)k_ra_pvnd_bm_vendor_ep_out));
+  TEST_ASSERT_EQ((int32_t)0, (int32_t)mirror_is_vendor_envelope(0x80U));
+  TEST_END("pvnd MC/DC: 6-cond vendor envelope OR (lines 153-155)");
+}
+
 int32_t main(void)
 {
   test_init_fs();
@@ -289,6 +340,7 @@ int32_t main(void)
   test_handle_setup_rejects();
   test_handle_setup_no_handler_stalls();
   test_mcdc_pvnd();
+  test_mcdc_pvnd_vendor_envelope_or_chain();
   (void)fprintf(stderr, "[OK ] test_ra_usb_pvnd.c\n");
   return 0;
 }

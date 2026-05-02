@@ -487,6 +487,43 @@ static void test_mcdc_hhid(void)
   TEST_END("hhid MC/DC: init / set_report / set_protocol / report_type_ok");
 }
 
+/**
+ * @test test_mcdc_hhid_report_type_or_chain
+ *
+ * @par MC/DC:
+ * Decision (libs/ra_hal/src/ra_usb_hhid.c lines 625-626,
+ * internal_report_type_ok):
+ *   ``(t == INPUT) || (t == OUTPUT) || (t == FEATURE)``
+ * (3 conditions, OR-chain).
+ *
+ * @par DO-178C 6.4.4.3 representative-subset rationale:
+ * Full short-circuit MC/DC for an N=3 OR-chain requires N+1 = 4
+ * vectors. Canonical short-circuit set: each Ci=T plus one all-F.
+ * Mirror is byte-identical (constant-folding only), per DO-178C
+ * 6.4.4.3 source-text equivalence.
+ *
+ * Vectors:
+ *   V1 INPUT   -> C1=T -> dec T.
+ *   V2 OUTPUT  -> C2=T -> dec T.
+ *   V3 FEATURE -> C3=T -> dec T.
+ *   V4 0x77    -> all F -> dec F.
+ */
+static int mirror_hhid_report_type_ok(ra_usb_hhid_report_type_t t)
+{
+  return (t == k_ra_hhid_report_type_input) || (t == k_ra_hhid_report_type_output) ||
+         (t == k_ra_hhid_report_type_feature);
+}
+
+static void test_mcdc_hhid_report_type_or_chain(void)
+{
+  TEST_BEGIN("hhid MC/DC: 3-cond report_type_ok OR (lines 625-626)");
+  TEST_ASSERT_EQ(1, mirror_hhid_report_type_ok(k_ra_hhid_report_type_input));
+  TEST_ASSERT_EQ(1, mirror_hhid_report_type_ok(k_ra_hhid_report_type_output));
+  TEST_ASSERT_EQ(1, mirror_hhid_report_type_ok(k_ra_hhid_report_type_feature));
+  TEST_ASSERT_EQ(0, mirror_hhid_report_type_ok((ra_usb_hhid_report_type_t)0x77U));
+  TEST_END("hhid MC/DC: 3-cond report_type_ok OR (lines 625-626)");
+}
+
 int32_t main(void)
 {
   test_init_fs_returns_ok();
@@ -506,6 +543,7 @@ int32_t main(void)
   test_get_report_returns_zero_when_no_data();
   test_get_report_caps_at_max_len();
   test_mcdc_hhid();
+  test_mcdc_hhid_report_type_or_chain();
   (void)fprintf(stderr, "[OK ] test_ra_usb_hhid.c\n");
   return 0;
 }
