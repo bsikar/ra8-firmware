@@ -133,3 +133,15 @@ mem32 0x40169094 1   # GPT0 GTDVD   -- falling dead-time count
 mem32 0x40169100 1   # GPT1 GTCR
 mem32 0x40169200 1   # GPT2 GTCR
 ```
+
+## BSP usage
+
+Uses `ra_board_ek_ra8d2` BSP for LED1 init/toggle (P600 per EK-RA8D2
+v1 UM Table 24 p 31). The three placeholder GPT output pins are not
+wired to a specific EK-RA8D2 connector in main.c -- choose any GPT-
+capable pad on the Arduino header (UM Table 20 p 27/28) or Pmod ports
+(UM Tables 17 / 19 p 26/27) when targeting a real driver IC.
+
+Validated 2026-05-02 against EK-RA8D2 v1 User's Manual (R20UT5523EG0101
+Rev 1.01) Table 24 p 31 + Table 20 p 27 (Arduino GTIOC routings), and
+HUM (R01UH1065EJ0130) Ch 22 "General PWM Timer (GPT)".

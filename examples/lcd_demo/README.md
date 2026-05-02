@@ -77,6 +77,22 @@ make flash               # via SEGGER J-Link OB
 ## References
 
 - HUM Ch 53 "Graphics LCD Controller (GLCDC)", `docs/reference/r01uh1065ej0130-ra8d2.pdf`.
+- EK-RA8D2 v1 UM Section 8.1 + Table 33 "Parallel Graphics Expansion
+  Port Pin Assignments" p 42 -- canonical J1 pin map across RGB565 /
+  RGB666 / RGB888 modes (matches `ra_board_glcdc_*_pins` in the BSP).
 - `libs/ra_hal/src/ra_glcdc.c` -- two-layer driver implementation.
 - `libs/ra_hal/inc/ra8d2_glcdc_regs.h` -- panel timing constants
   (`k_ra_glcdc_ek_*`).
+- `libs/ra_board_ek_ra8d2` -- BSP `ra_board_glcdc_init` veneer that
+  programs the J1 pin block per Table 33; this app currently bypasses
+  the BSP and walks its own placeholder pin list, which is why the
+  TODO comments above remain.
+
+Uses `ra_board_ek_ra8d2` BSP for LED1 init/toggle (P600 per UM Table
+24 p 31). The J1 panel pin programming is hand-rolled in main.c rather
+than via `ra_board_glcdc_init` until the placeholder pin list is
+reconciled with UM Table 33.
+
+Validated 2026-05-02 against EK-RA8D2 v1 User's Manual (R20UT5523EG0101
+Rev 1.01) Section 8.1 + Table 33 p 42 + Table 24 p 31, and HUM
+(R01UH1065EJ0130) Ch 53 "GLCDC".
