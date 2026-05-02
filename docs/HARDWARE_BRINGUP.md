@@ -199,6 +199,33 @@ inside newlib's rand()/srand() now boot cleanly:
 - SDRAM base address (a98cbcb60), ELC CAN MRAM_ERI (cf1c8c70f), PFS PSEL (7cc37e1f9),
   RSIP key_op_status collision, HUM citations (446930c5a, b6f6227d5)
 
+## 2026-05-02 MPU demo HardFault root cause + fix
+
+`threadx_mpu_partition_demo` was previously documented as "intentional
+fault catch". Wrong — there is no deliberate cross-region access in
+the demo; it just blinks LED1 from a ThreadX worker thread inside an
+MPU-protected region. The observed `internal_bkpt` PC is a real
+HardFault.
+
+Root cause: `s_mpu_cfg.mair0 = 0`, so `attr_idx 0` resolved to
+device-nGnRnE (strongly-ordered) for all three regions. The MRAM
+region (0x02000000, 1 MiB) holds executable code; instruction fetches
+from device-typed memory are UNPREDICTABLE per Armv8-M ARM D1.6.7,
+and the M85 HardFaults on the first fetch after MPU enable.
+
+Fix (commit `c41954c8f`): set MAIR0 attr 0 = 0xFF (Normal, inner+outer
+write-back, RW-allocate, non-transient) so MRAM/SRAM are Normal
+memory; route the peripheral region to attr 1 = 0x04 (device-nGnRnE).
+
+## 2026-05-02 ra_bootloader spin is intentional
+
+`examples/ra_bootloader/main.c:278` is `while(1) { wfi; }` reached when
+both bank A and bank B fail `internal_bank_is_valid` — i.e. neither
+slot holds an app. In the test environment we never flash apps into
+bank A/B, so the spin is the design-intended terminal state. The
+earlier "stuck at ra_log.c:126" observation was just a sample during
+the log burst before the spin started. No bug, no fix needed.
+
 ## 2026-05-02 USB device enumeration root cause
 
 Investigated why macOS never enumerates `usb_hid_device` despite SYSCFG showing
