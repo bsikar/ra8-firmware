@@ -36,6 +36,7 @@
 extern "C" {
 #endif
 
+#include <stddef.h>
 #include <stdint.h>
 
 #include "ra8d2_ether_regs.h"
@@ -120,6 +121,24 @@ typedef enum : uint16_t {
   k_ra_etha_off_eaeie2    = 0x0524U, /**< EAEIE2: error IRQ enable 2.    */
   k_ra_etha_off_eaeid2    = 0x0528U, /**< EAEID2: error IRQ disable 2.   */
   k_ra_etha_off_eascr     = 0x0580U, /**< EASCR: security configuration. */
+  /* Additional offsets used by the layout static_asserts below. */
+  k_ra_etha_off_eacaivc0   = 0x0220U, /**< EACAIVC0: CBS admin increment.   */
+  k_ra_etha_off_eacaulc0   = 0x0240U, /**< EACAULC0: CBS admin upper limit. */
+  k_ra_etha_off_eacoem     = 0x0260U, /**< EACOEM: CBS oper enable mon.     */
+  k_ra_etha_off_eacoivm0   = 0x0280U, /**< EACOIVM0: CBS oper increment.    */
+  k_ra_etha_off_eacoulm0   = 0x02A0U, /**< EACOULM0: CBS oper upper limit.  */
+  k_ra_etha_off_eacgsm     = 0x02C0U, /**< EACGSM: CBS gate state monitor.  */
+  k_ra_etha_off_eatasigsc  = 0x0304U, /**< EATASIGSC: TAS init gate state.  */
+  k_ra_etha_off_eatasenc0  = 0x0320U, /**< EATASENC0: TAS entry-number cfg. */
+  k_ra_etha_off_eatasctenc = 0x0340U, /**< EATASCTENC: TAS cut-through cfg. */
+  k_ra_etha_off_eatasenm0  = 0x0360U, /**< EATASENM0: TAS entry-number mon. */
+  k_ra_etha_off_eatasctenm = 0x0380U, /**< EATASCTENM: TAS cut-through mon. */
+  k_ra_etha_off_eatascstc0 = 0x03A0U, /**< EATASCSTC0: TAS cycle start lo.  */
+  k_ra_etha_off_eatasctc   = 0x03B0U, /**< EATASCTC: TAS cycle time cfg.    */
+  k_ra_etha_off_eatasgl0   = 0x03C0U, /**< EATASGL0: TAS gate learn 0.      */
+  k_ra_etha_off_eatasgr    = 0x03D0U, /**< EATASGR: TAS gate read.          */
+  k_ra_etha_off_eatashcc   = 0x03E0U, /**< EATASHCC: TAS HW calibration.    */
+  k_ra_etha_off_eatassm    = 0x03E8U, /**< EATASSM: TAS status monitor.     */
 } ra_etha_offset_t;
 
 /**
@@ -424,6 +443,90 @@ typedef struct {
   volatile uint32_t EASCR;                            /**< +0x0580 Security configuration.        */
 } r_etha_regs_t;
 /* cppcheck-suppress-end [unusedStructMember] */
+
+/**
+ * @enum ra_etha_size_t
+ * @brief ETHA register window total size (FSP R_ETHA0_Type, HUM Ch 32).
+ */
+typedef enum : uint16_t {
+  k_ra_etha_window_bytes = 0x584U, /**< Total MMIO window (FSP size). */
+} ra_etha_size_t;
+
+/**
+ * @brief Compile-time offset and size insurance for r_etha_regs_t.
+ *
+ * @details
+ * Mirrors the FSP R_ETHA0_Type byte-for-byte (size 0x584) and matches
+ * HUM Ch 32 Table 32.x. If any field drifts (e.g. a reserved gap is
+ * mis-sized), these assertions fire at compile time before any test
+ * runs -- silent frame corruption on the wire is avoided.
+ */
+static_assert(sizeof(r_etha_regs_t) == (size_t)k_ra_etha_window_bytes,
+              "r_etha_regs_t must match FSP R_ETHA0_Type size 0x584");
+
+static_assert(offsetof(r_etha_regs_t, EAMC) == (size_t)k_ra_etha_off_eamc, "EAMC offset");
+static_assert(offsetof(r_etha_regs_t, EAMS) == (size_t)k_ra_etha_off_eams, "EAMS offset");
+static_assert(offsetof(r_etha_regs_t, EAIRC) == (size_t)k_ra_etha_off_eairc, "EAIRC offset");
+static_assert(offsetof(r_etha_regs_t, EATDQSC) == (size_t)k_ra_etha_off_eatdqsc, "EATDQSC offset");
+static_assert(offsetof(r_etha_regs_t, EATDQC) == (size_t)k_ra_etha_off_eatdqc, "EATDQC offset");
+static_assert(offsetof(r_etha_regs_t, EATDQAC) == (size_t)k_ra_etha_off_eatdqac, "EATDQAC offset");
+static_assert(offsetof(r_etha_regs_t, EATPEC) == (size_t)k_ra_etha_off_eatpec, "EATPEC offset");
+static_assert(offsetof(r_etha_regs_t, EATMFSC) == (size_t)k_ra_etha_off_eatmfsc0, "EATMFSC offset");
+static_assert(offsetof(r_etha_regs_t, EATDQDC) == (size_t)k_ra_etha_off_eatdqdc0, "EATDQDC offset");
+static_assert(offsetof(r_etha_regs_t, EATDQM) == (size_t)k_ra_etha_off_eatdqm0, "EATDQM offset");
+static_assert(offsetof(r_etha_regs_t, EATDQMLM) == (size_t)k_ra_etha_off_eatdqmlm0,
+              "EATDQMLM offset");
+static_assert(offsetof(r_etha_regs_t, EACTQC) == (size_t)k_ra_etha_off_eactqc, "EACTQC offset");
+static_assert(offsetof(r_etha_regs_t, EAVCC) == (size_t)k_ra_etha_off_eavcc, "EAVCC offset");
+static_assert(offsetof(r_etha_regs_t, EAVTC) == (size_t)k_ra_etha_off_eavtc, "EAVTC offset");
+static_assert(offsetof(r_etha_regs_t, EARTFC) == (size_t)k_ra_etha_off_eartfc, "EARTFC offset");
+static_assert(offsetof(r_etha_regs_t, EACAEC) == (size_t)k_ra_etha_off_eacaec, "EACAEC offset");
+static_assert(offsetof(r_etha_regs_t, EACC) == (size_t)k_ra_etha_off_eacc, "EACC offset");
+static_assert(offsetof(r_etha_regs_t, EACAIVC) == (size_t)k_ra_etha_off_eacaivc0, "EACAIVC offset");
+static_assert(offsetof(r_etha_regs_t, EACAULC) == (size_t)k_ra_etha_off_eacaulc0, "EACAULC offset");
+static_assert(offsetof(r_etha_regs_t, EACOEM) == (size_t)k_ra_etha_off_eacoem, "EACOEM offset");
+static_assert(offsetof(r_etha_regs_t, EACOIVM) == (size_t)k_ra_etha_off_eacoivm0, "EACOIVM offset");
+static_assert(offsetof(r_etha_regs_t, EACOULM) == (size_t)k_ra_etha_off_eacoulm0, "EACOULM offset");
+static_assert(offsetof(r_etha_regs_t, EACGSM) == (size_t)k_ra_etha_off_eacgsm, "EACGSM offset");
+static_assert(offsetof(r_etha_regs_t, EATASC) == (size_t)k_ra_etha_off_eatasc, "EATASC offset");
+static_assert(offsetof(r_etha_regs_t, EATASIGSC) == (size_t)k_ra_etha_off_eatasigsc,
+              "EATASIGSC offset");
+static_assert(offsetof(r_etha_regs_t, EATASENC) == (size_t)k_ra_etha_off_eatasenc0,
+              "EATASENC offset");
+static_assert(offsetof(r_etha_regs_t, EATASCTENC) == (size_t)k_ra_etha_off_eatasctenc,
+              "EATASCTENC offset");
+static_assert(offsetof(r_etha_regs_t, EATASENM) == (size_t)k_ra_etha_off_eatasenm0,
+              "EATASENM offset");
+static_assert(offsetof(r_etha_regs_t, EATASCTENM) == (size_t)k_ra_etha_off_eatasctenm,
+              "EATASCTENM offset");
+static_assert(offsetof(r_etha_regs_t, EATASCSTC0) == (size_t)k_ra_etha_off_eatascstc0,
+              "EATASCSTC0 offset");
+static_assert(offsetof(r_etha_regs_t, EATASCTC) == (size_t)k_ra_etha_off_eatasctc,
+              "EATASCTC offset");
+static_assert(offsetof(r_etha_regs_t, EATASGL0) == (size_t)k_ra_etha_off_eatasgl0,
+              "EATASGL0 offset");
+static_assert(offsetof(r_etha_regs_t, EATASGR) == (size_t)k_ra_etha_off_eatasgr, "EATASGR offset");
+static_assert(offsetof(r_etha_regs_t, EATASHCC) == (size_t)k_ra_etha_off_eatashcc,
+              "EATASHCC offset");
+static_assert(offsetof(r_etha_regs_t, EATASSM) == (size_t)k_ra_etha_off_eatassm, "EATASSM offset");
+static_assert(offsetof(r_etha_regs_t, EAUSMFSECN) == (size_t)k_ra_etha_off_eausmfsec,
+              "EAUSMFSECN offset");
+static_assert(offsetof(r_etha_regs_t, EATFECN) == (size_t)k_ra_etha_off_eatfecn, "EATFECN offset");
+static_assert(offsetof(r_etha_regs_t, EAFSECN) == (size_t)k_ra_etha_off_eafsecn, "EAFSECN offset");
+static_assert(offsetof(r_etha_regs_t, EADQOECN) == (size_t)k_ra_etha_off_eadqoecn,
+              "EADQOECN offset");
+static_assert(offsetof(r_etha_regs_t, EADQSECN) == (size_t)k_ra_etha_off_eadqsecn,
+              "EADQSECN offset");
+static_assert(offsetof(r_etha_regs_t, EAEIS0) == (size_t)k_ra_etha_off_eaeis0, "EAEIS0 offset");
+static_assert(offsetof(r_etha_regs_t, EAEIE0) == (size_t)k_ra_etha_off_eaeie0, "EAEIE0 offset");
+static_assert(offsetof(r_etha_regs_t, EAEID0) == (size_t)k_ra_etha_off_eaeid0, "EAEID0 offset");
+static_assert(offsetof(r_etha_regs_t, EAEIS1) == (size_t)k_ra_etha_off_eaeis1, "EAEIS1 offset");
+static_assert(offsetof(r_etha_regs_t, EAEIE1) == (size_t)k_ra_etha_off_eaeie1, "EAEIE1 offset");
+static_assert(offsetof(r_etha_regs_t, EAEID1) == (size_t)k_ra_etha_off_eaeid1, "EAEID1 offset");
+static_assert(offsetof(r_etha_regs_t, EAEIS2) == (size_t)k_ra_etha_off_eaeis2, "EAEIS2 offset");
+static_assert(offsetof(r_etha_regs_t, EAEIE2) == (size_t)k_ra_etha_off_eaeie2, "EAEIE2 offset");
+static_assert(offsetof(r_etha_regs_t, EAEID2) == (size_t)k_ra_etha_off_eaeid2, "EAEID2 offset");
+static_assert(offsetof(r_etha_regs_t, EASCR) == (size_t)k_ra_etha_off_eascr, "EASCR offset");
 
 /**
  * @brief Get pointer to a per-port ETHA register block.
