@@ -451,6 +451,67 @@ static void test_set_contrast(void)
   TEST_END("glcdc set_contrast");
 }
 
+/* ===========================================================================
+ * MC/DC vector coverage for compound boolean decisions in ra_glcdc.c.
+ * Per docs/MCDC_GAPS.csv there is one decision (line 261, 2 conditions).
+ * ===========================================================================
+ */
+
+/**
+ * @enum test_glcdc_mcdc_t
+ * @brief Numeric vectors for the MC/DC tests below.
+ */
+typedef enum : uint32_t {
+  k_test_glcdc_mcdc_clut_zero      = 0U,   /**< Below valid range.        */
+  k_test_glcdc_mcdc_clut_in_range  = 4U,   /**< Within 1..256.            */
+  k_test_glcdc_mcdc_clut_too_large = 257U, /**< Above k_clut_entries=256. */
+} test_glcdc_mcdc_t;
+
+/**
+ * @test test_mcdc_set_clut_double_buffered_entries
+ *
+ * @par MC/DC:
+ * Decision: `if ((entries == 0U) || (entries > (uint32_t)k_ra_glcdc_clut_entries))`
+ * (2 conditions, libs/ra_hal/src/ra_glcdc.c line 261)
+ *
+ * - V1: entries=4   -> C1=(4==0)=F, C2=(4>256)=F -> decision F: ok
+ * - V2: entries=0   -> C1=T short-circuits        -> decision T: invalid_arg
+ * - V3: entries=257 -> C1=F, C2=T                 -> decision T: invalid_arg
+ * V1+V2 vary C1; V1+V3 vary C2 (C1 held F). N+1=3 vectors for N=2.
+ */
+static void test_mcdc_set_clut_double_buffered_entries(void)
+{
+  TEST_BEGIN("glcdc MC/DC set_clut_double_buffered entries range");
+  ra_sim_mmap_reset();
+  static const uint32_t clut[(uint32_t)k_test_glcdc_mcdc_clut_in_range] = {
+    (uint32_t)k_test_clut_e0,
+    (uint32_t)k_test_clut_e1,
+    (uint32_t)k_test_clut_e2,
+    (uint32_t)k_test_clut_e3,
+  };
+  /* V1: in-range. */
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_ok,
+    (int32_t)ra_glcdc_set_clut_double_buffered((uint8_t)k_test_layer1,
+                                               clut,
+                                               (uint32_t)k_test_glcdc_mcdc_clut_in_range,
+                                               false));
+  /* V2: zero entries. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_glcdc_set_clut_double_buffered((uint8_t)k_test_layer1,
+                                                            clut,
+                                                            (uint32_t)k_test_glcdc_mcdc_clut_zero,
+                                                            false));
+  /* V3: above max. */
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_invalid_arg,
+    (int32_t)ra_glcdc_set_clut_double_buffered((uint8_t)k_test_layer1,
+                                               clut,
+                                               (uint32_t)k_test_glcdc_mcdc_clut_too_large,
+                                               false));
+  TEST_END("glcdc MC/DC set_clut_double_buffered entries range");
+}
+
 int32_t main(void)
 {
   test_init_happy_path();
@@ -476,6 +537,7 @@ int32_t main(void)
   test_set_dithering_modes();
   test_set_brightness();
   test_set_contrast();
+  test_mcdc_set_clut_double_buffered_entries();
   (void)fprintf(stderr, "[OK ] test_ra_glcdc.c\n");
   return 0;
 }
