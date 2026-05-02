@@ -523,12 +523,18 @@ The project follows NASA/JPL Power of 10 rules for safety-critical embedded code
 - Build fails on ANY warning
 - CI enforces zero-warning builds
 
-## DO-178B Level B Qualification (This Project)
+## IEC 61508 SIL 3 / DO-178C Level B Qualification (This Project)
 
-**MANDATORY:** This project targets **DO-178B Level B** safety-critical airborne
-software qualification. Every test added to this codebase must satisfy
-**MC/DC (Modified Condition/Decision Coverage)** -- statement and branch
-coverage are necessary but not sufficient.
+**MANDATORY:** This project targets **IEC 61508 SIL 3** as its industry-agnostic
+safety bar (DO-178C Level B and ISO 26262 ASIL C/D are equivalent industry-
+specific derivatives — pick whichever certification body is relevant if/when
+this firmware ships into a regulated domain). All three frameworks require
+**MC/DC (Modified Condition/Decision Coverage)** for the highest safety
+integrity level. Statement and branch coverage are necessary but not
+sufficient.
+
+**Note:** DO-178B was superseded by DO-178C in December 2011; do not cite
+DO-178B in new docs or tests.
 
 ### What MC/DC Requires
 
