@@ -50,6 +50,7 @@
 #include "ra_time.h"
 
 #ifndef RA_SIMULATOR_MODE
+#include "lwip/dhcp.h"
 #include "lwip/err.h"
 #include "lwip/ip4_addr.h"
 #include "lwip/netif.h"
@@ -290,6 +291,9 @@ static err_t demo_netif_bring_up(void)
   }
   netif_set_default(&s_netif);
   netif_set_up(&s_netif);
+  /* Switch from static IP to DHCP so the demo finds an address on
+   * whatever subnet the cable is plugged into. */
+  (void)dhcp_start(&s_netif);
   return ERR_OK;
 }
 
