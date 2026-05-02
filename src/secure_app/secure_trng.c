@@ -59,6 +59,25 @@ typedef enum : uint32_t {
  */
 static uint64_t s_state = (uint64_t)k_xorshift_seed;
 
+/**
+ * @brief Advance the xorshift64* state and return one 64-bit word.
+ *
+ * @details
+ * Standard Marsaglia (12, 25, 27) xorshift triple followed by the
+ * 0x2545F4914F6CDD1D multiplier. Used to fan random bytes out into
+ * the caller buffer in 8-byte chunks.
+ *
+ * @return Next pseudo-random 64-bit word.
+ * @retval Any uint64_t value; output cycle length 2^64 - 1.
+ *
+ * @pre ``s_state`` has been seeded by ::ra_secure_trng_reset or boot default.
+ * @pre Caller is in the secure-side dispatch path.
+ * @post ``s_state`` is advanced to the next state in the sequence.
+ * @post No other state is modified.
+ *
+ * @note Not thread-safe; secure-side serial dispatch only.
+ * @since 0.1.0
+ */
 static uint64_t internal_xorshift64(void)
 {
   uint64_t x = s_state;
@@ -69,12 +88,55 @@ static uint64_t internal_xorshift64(void)
   return x * (uint64_t)k_xorshift_multiplier;
 }
 
+/**
+ * @brief Re-seed the xorshift64* state to the boot default.
+ *
+ * @details
+ * Used between unit-test scenarios so reads are reproducible.
+ * The real RSIP TRNG hookup will replace this in Wave 14.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok Always; the operation cannot fail.
+ *
+ * @pre Caller is in the secure-side init/test path.
+ * @pre No NS-side TRNG read is in flight.
+ * @post ``s_state == k_xorshift_seed``.
+ * @post No other state is modified.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
 ra_err_t ra_secure_trng_reset(void)
 {
   s_state = (uint64_t)k_xorshift_seed;
   return k_ra_ok;
 }
 
+/**
+ * @brief Fill a caller buffer with pseudo-random bytes.
+ *
+ * @details
+ * Drives ::internal_xorshift64 in a loop, splitting each 64-bit
+ * word into eight bytes and writing them to ``out`` until ``len``
+ * bytes have been emitted. Loop bound is the per-call cap so the
+ * function is NASA Rule 2 compliant.
+ *
+ * @param[out] out Destination buffer.
+ * @param[in]  len Number of bytes to emit; 1..k_ra_secure_trng_max_bytes.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok                 Buffer filled.
+ * @retval k_ra_err_null_ptr       ``out`` was NULL.
+ * @retval k_ra_err_invalid_arg    ``len`` zero or above the per-call cap.
+ *
+ * @pre ``out`` is non-NULL and spans at least ``len`` bytes.
+ * @pre ``len`` is within the documented per-call cap.
+ * @post On success, ``out[0..len-1]`` is filled with PRNG output.
+ * @post ``s_state`` is advanced by ceil(len/8) iterations.
+ *
+ * @note Not thread-safe; secure-side serial dispatch only.
+ * @since 0.1.0
+ */
 ra_err_t ra_secure_trng_read(uint8_t* out, uint32_t len)
 {
   RA_CHECK_NULL_PTR(out, s_tag, "trng_read: out");

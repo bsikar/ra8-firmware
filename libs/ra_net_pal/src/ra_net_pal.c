@@ -33,6 +33,18 @@
  * insecureAPI.DeprecatedOrUnsafeBufferHandling check; this loop is
  * the project-local replacement for ``memcpy`` on small fixed
  * buffers like the 6-byte MAC.
+ *
+ * @param[out] dst Destination buffer; must hold at least ``len`` bytes.
+ * @param[in]  src Source buffer; must hold at least ``len`` bytes.
+ * @param[in]  len Number of bytes to copy.
+ *
+ * @pre ``dst`` and ``src`` are non-NULL.
+ * @pre ``dst`` and ``src`` do not overlap.
+ * @post ``dst[0..len-1] == src[0..len-1]``.
+ * @post No other state is mutated.
+ *
+ * @note Pure helper; safe from any context.
+ * @since 0.1.0
  */
 static void internal_copy_bytes(uint8_t* dst, const uint8_t* src, uint16_t len)
 {
@@ -43,6 +55,21 @@ static void internal_copy_bytes(uint8_t* dst, const uint8_t* src, uint16_t len)
 
 /**
  * @brief Zero ``len`` bytes (project-local replacement for memset).
+ *
+ * @details
+ * Same rationale as ::internal_copy_bytes -- string.h is excluded
+ * by clang-tidy policy, so a hand-rolled loop fills small buffers.
+ *
+ * @param[out] dst Destination buffer; must hold at least ``len`` bytes.
+ * @param[in]  len Number of bytes to clear.
+ *
+ * @pre ``dst`` is non-NULL.
+ * @pre ``len`` accurately describes the writable extent of ``dst``.
+ * @post ``dst[0..len-1] == 0``.
+ * @post No other state is mutated.
+ *
+ * @note Pure helper; safe from any context.
+ * @since 0.1.0
  */
 static void internal_zero_bytes(uint8_t* dst, uint16_t len)
 {
@@ -103,6 +130,19 @@ static ra_net_pal_state_t s_state = {};
 
 /**
  * @brief Reset the software ring to empty.
+ *
+ * @details
+ * Clears the head/tail/count cursors and zeroes every slot's
+ * ``len`` field so a subsequent ::ra_net_pal_send_frame starts at
+ * slot 0.
+ *
+ * @pre Caller holds the PAL single-thread lock (init/deinit context).
+ * @pre ``s_state`` storage is mapped and writable.
+ * @post ``s_state.head == s_state.tail == s_state.count == 0``.
+ * @post Every ``s_state.ring[i].len == 0``.
+ *
+ * @note Not thread-safe; call only from init/deinit paths.
+ * @since 0.1.0
  */
 static void internal_ring_reset(void)
 {
@@ -116,6 +156,25 @@ static void internal_ring_reset(void)
 
 /**
  * @brief Translate ra_eth status bits into PAL event bits.
+ *
+ * @details
+ * Today the mapping is "any non-zero ra_eth status bit becomes an
+ * error event"; future waves will fan the bits out into the
+ * link/RX/TX event taxonomy.
+ *
+ * @param[in] eth_mask Raw status mask published by ``ra_eth``.
+ *
+ * @return PAL-side event mask suitable for the stack callback.
+ * @retval k_ra_net_pal_event_none  ``eth_mask`` was zero.
+ * @retval k_ra_net_pal_event_error ``eth_mask`` had any bit set.
+ *
+ * @pre ``eth_mask`` may take any uint32_t value.
+ * @pre No global state is read.
+ * @post No state is modified.
+ * @post Return value reflects the translation only.
+ *
+ * @note Pure helper; safe from any context.
+ * @since 0.1.0
  */
 static uint32_t internal_translate_event(uint32_t eth_mask)
 {
@@ -127,6 +186,24 @@ static uint32_t internal_translate_event(uint32_t eth_mask)
 
 /**
  * @brief ra_eth event handler -- translate + forward to the PAL callback.
+ *
+ * @details
+ * Installed via ``ra_eth_attach_handler`` during ::ra_net_pal_init.
+ * Drops events while the PAL is uninitialised, then translates the
+ * raw status mask via ::internal_translate_event and forwards
+ * non-zero results to the stack-installed callback.
+ *
+ * @param[in] ctx         Opaque context (unused -- PAL is a singleton).
+ * @param[in] status_mask Raw ``ra_eth`` status bits.
+ *
+ * @pre Invoked from ``ra_eth`` ISR or task context.
+ * @pre ``s_state`` storage is mapped and readable.
+ * @post No PAL state is mutated.
+ * @post Stack callback may have been invoked at most once per call.
+ *
+ * @note Reentrant only with respect to a different ra_net_pal instance,
+ *       which does not exist; treat as not thread-safe.
+ * @since 0.1.0
  */
 static void internal_eth_event(void* ctx, uint32_t status_mask)
 {
@@ -145,6 +222,33 @@ static void internal_eth_event(void* ctx, uint32_t status_mask)
  * =============================================================================
  */
 
+/**
+ * @brief Bring up the network PAL singleton.
+ *
+ * @details
+ * Powers up the underlying ``ra_eth`` driver, programmes the supplied
+ * MAC (or leaves it zero), resets the in-memory ring, and installs
+ * the internal ra_eth event handler so the stack callback can fire.
+ *
+ * @param[in] mac MAC descriptor to programme; may be NULL to keep
+ *                the all-zero default.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok                   PAL ready, link state = down.
+ * @retval k_ra_err_hw_init_failed   ``ra_eth_init`` or the handler
+ *                                   attach failed.
+ *
+ * @pre ``ra_mstp_init`` and ``ra_pwr_init`` have been called.
+ * @pre IRQs masked or single-threaded init context.
+ * @post On success, ``s_state.initialised == true`` and the ring
+ *       is empty.
+ * @post On failure, ``s_state.initialised == false`` and ra_eth has
+ *       been torn down.
+ *
+ * @note Not thread-safe; must run from boot init context.
+ * @see ra_net_pal_deinit
+ * @since 0.1.0
+ */
 ra_err_t ra_net_pal_init(const ra_net_pal_mac_t* mac)
 {
   const ra_err_t eth_err = ra_eth_init();
@@ -178,6 +282,27 @@ ra_err_t ra_net_pal_init(const ra_net_pal_mac_t* mac)
   return k_ra_ok;
 }
 
+/**
+ * @brief Tear down the network PAL singleton.
+ *
+ * @details
+ * Detaches the ra_eth handler, releases the underlying driver,
+ * clears the event callback, marks the link as down, and resets
+ * the in-memory ring.
+ *
+ * @return ``ra_err_t`` error code from ``ra_eth_deinit``.
+ * @retval k_ra_ok                   Released cleanly.
+ * @retval k_ra_err_invalid_state    PAL was never initialised.
+ *
+ * @pre IRQs masked or single-threaded shutdown context.
+ * @pre PAL was previously initialised (otherwise returns invalid_state).
+ * @post ``s_state.initialised == false``.
+ * @post Subsequent send/recv calls return ``k_ra_err_invalid_state``.
+ *
+ * @note Not thread-safe.
+ * @see ra_net_pal_init
+ * @since 0.1.0
+ */
 ra_err_t ra_net_pal_deinit(void)
 {
   if (!s_state.initialised) {
@@ -193,6 +318,28 @@ ra_err_t ra_net_pal_deinit(void)
   return err;
 }
 
+/**
+ * @brief Programme the PAL MAC address.
+ *
+ * @details
+ * Updates the in-memory MAC. When ra_eth gains MAC-write support
+ * the same call will also update the ESWM hardware filter.
+ *
+ * @param[in] mac Non-NULL MAC descriptor.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok                  MAC stored.
+ * @retval k_ra_err_null_ptr        ``mac`` was NULL.
+ * @retval k_ra_err_invalid_state   PAL not initialised.
+ *
+ * @pre ``mac`` is non-NULL.
+ * @pre PAL has been initialised.
+ * @post ``s_state.mac`` mirrors the supplied descriptor.
+ * @post No other PAL state is mutated.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
 ra_err_t ra_net_pal_set_mac_addr(const ra_net_pal_mac_t* mac)
 {
   RA_CHECK_NULL_PTR(mac, s_tag, "set_mac_addr: mac");
@@ -203,6 +350,26 @@ ra_err_t ra_net_pal_set_mac_addr(const ra_net_pal_mac_t* mac)
   return k_ra_ok;
 }
 
+/**
+ * @brief Read the currently programmed MAC address.
+ *
+ * @details Copies ``s_state.mac`` into the caller buffer.
+ *
+ * @param[out] out_mac Receives the MAC descriptor.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok                  MAC copied.
+ * @retval k_ra_err_null_ptr        ``out_mac`` was NULL.
+ * @retval k_ra_err_invalid_state   PAL not initialised.
+ *
+ * @pre ``out_mac`` is non-NULL.
+ * @pre PAL has been initialised.
+ * @post ``out_mac`` holds the current MAC.
+ * @post No PAL state is modified.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
 ra_err_t ra_net_pal_get_mac_addr(ra_net_pal_mac_t* out_mac)
 {
   RA_CHECK_NULL_PTR(out_mac, s_tag, "get_mac_addr: out_mac");
@@ -213,6 +380,36 @@ ra_err_t ra_net_pal_get_mac_addr(ra_net_pal_mac_t* out_mac)
   return k_ra_ok;
 }
 
+/**
+ * @brief Hand a complete ethernet frame to the MAC for transmit.
+ *
+ * @details
+ * Copies ``frame[0..len-1]`` into the next free TX ring slot. On
+ * real hardware the slot would be a GWCA descriptor; in the host
+ * build it is a plain RAM buffer the PAL also exposes through
+ * ::ra_net_pal_recv_frame for loopback tests. Fires the
+ * ``k_ra_net_pal_event_tx_done`` event after enqueue when an event
+ * handler is installed.
+ *
+ * @param[in] frame Ethernet frame bytes (header + payload, no FCS).
+ * @param[in] len   Frame length in bytes; non-zero, <= frame_max.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok                  Frame queued.
+ * @retval k_ra_err_null_ptr        ``frame`` was NULL.
+ * @retval k_ra_err_invalid_arg     ``len`` zero or above ``k_ra_net_pal_frame_max``.
+ * @retval k_ra_err_invalid_state   PAL not initialised.
+ * @retval k_ra_err_no_mem          TX ring is full; retry after drain.
+ *
+ * @pre ``frame`` is non-NULL.
+ * @pre PAL has been initialised.
+ * @post On success, ``s_state.count`` is incremented by one.
+ * @post On error, no ring state is mutated.
+ *
+ * @note Not thread-safe.
+ * @see ra_net_pal_recv_frame
+ * @since 0.1.0
+ */
 ra_err_t ra_net_pal_send_frame(const uint8_t* frame, uint16_t len)
 {
   RA_CHECK_NULL_PTR(frame, s_tag, "send_frame: frame");
@@ -236,6 +433,36 @@ ra_err_t ra_net_pal_send_frame(const uint8_t* frame, uint16_t len)
   return k_ra_ok;
 }
 
+/**
+ * @brief Pull the next received ethernet frame, if any, into a buffer.
+ *
+ * @details
+ * If a frame is available it is copied into ``out_buf`` and
+ * ``*inout_len`` is set to the byte count actually written. When
+ * no frame is queued the function returns ``k_ra_err_no_data`` so
+ * callers can poll without blocking.
+ *
+ * @param[out]    out_buf   Destination buffer, sized at least
+ *                          ``k_ra_net_pal_frame_max`` bytes.
+ * @param[in,out] inout_len On entry: capacity of ``out_buf``.
+ *                          On exit: bytes written.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok                 Frame copied.
+ * @retval k_ra_err_no_data        No frame ready.
+ * @retval k_ra_err_null_ptr       ``out_buf`` or ``inout_len`` NULL.
+ * @retval k_ra_err_invalid_state  PAL not initialised.
+ * @retval k_ra_err_invalid_arg    ``*inout_len`` < ``k_ra_net_pal_frame_max``.
+ *
+ * @pre ``out_buf`` and ``inout_len`` are non-NULL.
+ * @pre ``*inout_len`` >= ``k_ra_net_pal_frame_max``.
+ * @post On success, the consumed slot is freed and ``s_state.count`` decremented.
+ * @post On error, no ring state is mutated.
+ *
+ * @note Not thread-safe.
+ * @see ra_net_pal_send_frame
+ * @since 0.1.0
+ */
 ra_err_t ra_net_pal_recv_frame(uint8_t* out_buf, uint16_t* inout_len)
 {
   RA_CHECK_NULL_PTR(out_buf, s_tag, "recv_frame: out_buf");
@@ -259,6 +486,25 @@ ra_err_t ra_net_pal_recv_frame(uint8_t* out_buf, uint16_t* inout_len)
   return k_ra_ok;
 }
 
+/**
+ * @brief Read the last observed link state.
+ *
+ * @param[out] out_state Receives ``link_up`` / ``link_down``.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok                  Link state copied.
+ * @retval k_ra_err_null_ptr        ``out_state`` was NULL.
+ * @retval k_ra_err_invalid_state   PAL not initialised.
+ *
+ * @pre ``out_state`` is non-NULL.
+ * @pre PAL has been initialised.
+ * @post ``*out_state`` reflects ``s_state.link_state`` at call time.
+ * @post No PAL state is mutated.
+ *
+ * @note Not thread-safe with respect to the event handler which
+ *       can update link state from ISR context.
+ * @since 0.1.0
+ */
 ra_err_t ra_net_pal_link_status(ra_net_pal_link_state_t* out_state)
 {
   RA_CHECK_NULL_PTR(out_state, s_tag, "link_status: out_state");
@@ -269,6 +515,29 @@ ra_err_t ra_net_pal_link_status(ra_net_pal_link_state_t* out_state)
   return k_ra_ok;
 }
 
+/**
+ * @brief Install a single event handler for link / RX / TX events.
+ *
+ * @details
+ * Replaces any previously installed callback. Pass ``fn == nullptr``
+ * to detach. The callback fires from ra_eth ISR/task context via
+ * ::internal_eth_event and from the send/recv hot path.
+ *
+ * @param[in] fn  Event callback, or NULL to detach.
+ * @param[in] ctx Opaque context handed back to ``fn``.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok                  Handler installed/cleared.
+ * @retval k_ra_err_invalid_state   PAL not initialised.
+ *
+ * @pre PAL has been initialised.
+ * @pre ``fn`` is callable from ISR context if it is non-NULL.
+ * @post ``s_state.event_fn == fn`` and ``s_state.event_ctx == ctx``.
+ * @post No other PAL state is mutated.
+ *
+ * @note Not thread-safe with respect to a concurrent event delivery.
+ * @since 0.1.0
+ */
 ra_err_t ra_net_pal_set_event_handler(ra_net_pal_event_fn_t fn, void* ctx)
 {
   if (!s_state.initialised) {

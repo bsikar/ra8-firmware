@@ -92,6 +92,26 @@ static ra_usb_pal_state_inner_t s_state = {};
  * =============================================================================
  */
 
+/**
+ * @brief Copy ``len`` bytes (string.h-free local memcpy substitute).
+ *
+ * @details
+ * The codebase avoids ``string.h`` to keep clang-tidy's
+ * insecureAPI.DeprecatedOrUnsafeBufferHandling check quiet; this
+ * loop fills the same role for small fixed buffers.
+ *
+ * @param[out] dst Destination buffer; must hold at least ``len`` bytes.
+ * @param[in]  src Source buffer; must hold at least ``len`` bytes.
+ * @param[in]  len Number of bytes to copy.
+ *
+ * @pre ``dst`` and ``src`` are non-NULL.
+ * @pre ``dst`` and ``src`` do not overlap.
+ * @post ``dst[0..len-1] == src[0..len-1]``.
+ * @post No other state is mutated.
+ *
+ * @note Pure helper; safe from any context.
+ * @since 0.1.0
+ */
 static void internal_copy_bytes(uint8_t* dst, const uint8_t* src, uint16_t len)
 {
   for (uint16_t i = 0U; i < len; ++i) {
@@ -101,6 +121,19 @@ static void internal_copy_bytes(uint8_t* dst, const uint8_t* src, uint16_t len)
 
 /**
  * @brief Reset every endpoint slot to empty / unopened.
+ *
+ * @details
+ * Walks the per-endpoint table, marks each slot ``opened == false``,
+ * resets its OUT/control defaults, and zeroes the per-EP ring
+ * cursors and packet lengths.
+ *
+ * @pre Caller holds the PAL single-thread lock (init/deinit context).
+ * @pre ``s_state`` storage is mapped and writable.
+ * @post Every ``s_state.eps[i].opened == false``.
+ * @post Every per-EP ring is cursor-reset and length-zeroed.
+ *
+ * @note Not thread-safe; call only from init/deinit paths.
+ * @since 0.1.0
  */
 static void internal_reset_eps(void)
 {
@@ -121,6 +154,25 @@ static void internal_reset_eps(void)
 
 /**
  * @brief Translate ra_usb status mask -> PAL event mask.
+ *
+ * @details
+ * Today the mapping is "any non-zero ra_usb status bit becomes an
+ * error event"; later waves will fan the bits out into per-EP and
+ * bus-event masks.
+ *
+ * @param[in] usb_mask Raw status mask published by ``ra_usb``.
+ *
+ * @return PAL-side event mask suitable for the stack callback.
+ * @retval k_ra_usb_pal_event_none  ``usb_mask`` was zero.
+ * @retval k_ra_usb_pal_event_error ``usb_mask`` had any bit set.
+ *
+ * @pre ``usb_mask`` may take any uint16_t value.
+ * @pre No global state is read.
+ * @post No state is modified.
+ * @post Return value reflects the translation only.
+ *
+ * @note Pure helper; safe from any context.
+ * @since 0.1.0
  */
 static uint16_t internal_translate(uint16_t usb_mask)
 {
@@ -130,6 +182,29 @@ static uint16_t internal_translate(uint16_t usb_mask)
   return k_ra_usb_pal_event_none;
 }
 
+/**
+ * @brief ra_usb event handler -- translate + forward to the PAL callback.
+ *
+ * @details
+ * Installed via ``ra_usb_attach_handler`` during ::ra_usb_pal_init.
+ * Drops events while the PAL is uninitialised or arriving from a
+ * different speed than the one negotiated, then translates the raw
+ * status mask via ::internal_translate and forwards non-zero
+ * results to the stack callback.
+ *
+ * @param[in] ctx         Opaque context (unused -- PAL is a singleton).
+ * @param[in] speed       Speed reported by the ra_usb driver.
+ * @param[in] status_mask Raw ra_usb status bits.
+ *
+ * @pre Invoked from ``ra_usb`` ISR or task context.
+ * @pre ``s_state`` storage is mapped and readable.
+ * @post No PAL state is mutated.
+ * @post Stack callback is invoked at most once per call.
+ *
+ * @note Treat as not thread-safe; do not call back into the PAL
+ *       from inside the callback.
+ * @since 0.1.0
+ */
 static void internal_usb_event(void* ctx, ra_usb_speed_t speed, uint16_t status_mask)
 {
   (void)ctx;
@@ -150,6 +225,33 @@ static void internal_usb_event(void* ctx, ra_usb_speed_t speed, uint16_t status_
  * =============================================================================
  */
 
+/**
+ * @brief Bring up the USB PAL singleton at the requested speed.
+ *
+ * @details
+ * Validates the speed, powers up the ``ra_usb`` device-mode driver,
+ * resets every endpoint slot, and installs the internal event
+ * handler so the stack callback can fire.
+ *
+ * @param[in] speed FS or HS speed selector.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok                  PAL ready, state = detached.
+ * @retval k_ra_err_invalid_arg     ``speed`` not FS or HS.
+ * @retval k_ra_err_hw_init_failed  ``ra_usb_device_init`` or handler
+ *                                  attach failed.
+ *
+ * @pre ``ra_mstp_init`` and ``ra_pwr_init`` have been called.
+ * @pre IRQs masked or single-threaded init context.
+ * @post On success, ``s_state.initialised == true`` and every EP
+ *       slot is in the unopened state.
+ * @post On failure, ``s_state.initialised == false`` and the
+ *       underlying ra_usb driver has been torn down.
+ *
+ * @note Not thread-safe; must run from boot init context.
+ * @see ra_usb_pal_deinit
+ * @since 0.1.0
+ */
 ra_err_t ra_usb_pal_init(ra_usb_speed_t speed)
 {
   if ((speed != k_ra_usb_speed_fs) && (speed != k_ra_usb_speed_hs)) {
@@ -182,6 +284,27 @@ ra_err_t ra_usb_pal_init(ra_usb_speed_t speed)
   return k_ra_ok;
 }
 
+/**
+ * @brief Tear down the USB PAL singleton.
+ *
+ * @details
+ * Detaches the device, removes the ra_usb event handler, deinits
+ * the underlying driver, clears stack callback state, marks the
+ * state as detached, and resets every endpoint slot.
+ *
+ * @return ``ra_err_t`` error code from ``ra_usb_device_deinit``.
+ * @retval k_ra_ok                  Released cleanly.
+ * @retval k_ra_err_invalid_state   PAL was never initialised.
+ *
+ * @pre IRQs masked or single-threaded shutdown context.
+ * @pre PAL was previously initialised (otherwise returns invalid_state).
+ * @post ``s_state.initialised == false``.
+ * @post Subsequent EP calls return ``k_ra_err_invalid_state``.
+ *
+ * @note Not thread-safe.
+ * @see ra_usb_pal_init
+ * @since 0.1.0
+ */
 ra_err_t ra_usb_pal_deinit(void)
 {
   if (!s_state.initialised) {
@@ -198,6 +321,27 @@ ra_err_t ra_usb_pal_deinit(void)
   return err;
 }
 
+/**
+ * @brief Drive the D+ pull-up to attach or detach the device.
+ *
+ * @details
+ * Wraps ``ra_usb_device_attach`` and updates the cached PAL state
+ * so subsequent ::ra_usb_pal_get_state calls reflect the request.
+ *
+ * @param[in] attached true to assert attach, false to detach.
+ *
+ * @return ``ra_err_t`` error code from the underlying driver.
+ * @retval k_ra_ok                  Attach state updated.
+ * @retval k_ra_err_invalid_state   PAL not initialised.
+ *
+ * @pre PAL has been initialised.
+ * @pre Bus is in a stable enumeration state (host connected if attaching).
+ * @post On success, ``s_state.state`` reflects ``attached``.
+ * @post On error, no PAL state is mutated.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
 ra_err_t ra_usb_pal_attach(bool attached)
 {
   if (!s_state.initialised) {
@@ -217,6 +361,24 @@ ra_err_t ra_usb_pal_attach(bool attached)
   return k_ra_ok;
 }
 
+/**
+ * @brief Read the cached USB device state.
+ *
+ * @param[out] out_state Receives detached/attached/configured value.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok                  State copied.
+ * @retval k_ra_err_null_ptr        ``out_state`` was NULL.
+ * @retval k_ra_err_invalid_state   PAL not initialised.
+ *
+ * @pre ``out_state`` is non-NULL.
+ * @pre PAL has been initialised.
+ * @post ``*out_state`` reflects ``s_state.state`` at call time.
+ * @post No PAL state is mutated.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
 ra_err_t ra_usb_pal_get_state(ra_usb_pal_state_t* out_state)
 {
   RA_CHECK_NULL_PTR(out_state, s_tag, "get_state: out_state");
@@ -227,6 +389,33 @@ ra_err_t ra_usb_pal_get_state(ra_usb_pal_state_t* out_state)
   return k_ra_ok;
 }
 
+/**
+ * @brief Open one endpoint and reserve a per-EP packet ring.
+ *
+ * @details
+ * Records direction, transfer type, and max packet size in the
+ * per-EP slot; resets the slot's queue cursors so subsequent
+ * ::ra_usb_pal_ep_send / ::ra_usb_pal_ep_recv start at slot 0.
+ *
+ * @param[in] ep_addr    Endpoint address (1..k_ra_usb_pal_ep_max).
+ * @param[in] dir        OUT or IN direction.
+ * @param[in] type       Control / bulk / iso / intr transfer type.
+ * @param[in] max_packet Maximum packet size; 1..k_ra_usb_pal_xfer_max.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok                  Endpoint opened.
+ * @retval k_ra_err_invalid_state   PAL not initialised.
+ * @retval k_ra_err_invalid_arg     Address, direction, type, or max_packet
+ *                                  out of range.
+ *
+ * @pre PAL has been initialised.
+ * @pre Endpoint is not currently opened (re-opens are allowed and reset state).
+ * @post On success, the slot is opened and the per-EP ring is empty.
+ * @post On error, no slot state is mutated.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
 ra_err_t ra_usb_pal_ep_open(uint8_t              ep_addr,
                             ra_usb_pal_ep_dir_t  dir,
                             ra_usb_pal_ep_type_t type,
@@ -259,6 +448,34 @@ ra_err_t ra_usb_pal_ep_open(uint8_t              ep_addr,
   return k_ra_ok;
 }
 
+/**
+ * @brief Queue a packet for transmit on an open IN endpoint.
+ *
+ * @details
+ * Copies ``data[0..len-1]`` into the next free slot of the per-EP
+ * ring. Fires ``k_ra_usb_pal_event_ep_in`` when an event handler
+ * is installed. ``len == 0`` is allowed (zero-length packet); when
+ * ``len == 0`` the ``data`` pointer may be NULL.
+ *
+ * @param[in] ep_addr Endpoint address (1..k_ra_usb_pal_ep_max).
+ * @param[in] data    Packet bytes; non-NULL when ``len > 0``.
+ * @param[in] len     Packet length in bytes (<= max_packet).
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok                  Packet queued.
+ * @retval k_ra_err_invalid_state   PAL not initialised or EP not opened.
+ * @retval k_ra_err_null_ptr        ``data`` NULL with ``len > 0``.
+ * @retval k_ra_err_invalid_arg     Address out of range or length above limit.
+ * @retval k_ra_err_no_mem          Per-EP ring full; drain and retry.
+ *
+ * @pre PAL has been initialised.
+ * @pre Endpoint was opened via ::ra_usb_pal_ep_open.
+ * @post On success, the per-EP ring depth is incremented by one.
+ * @post On error, no slot state is mutated.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
 ra_err_t ra_usb_pal_ep_send(uint8_t ep_addr, const uint8_t* data, uint16_t len)
 {
   if (!s_state.initialised) {
@@ -293,6 +510,35 @@ ra_err_t ra_usb_pal_ep_send(uint8_t ep_addr, const uint8_t* data, uint16_t len)
   return k_ra_ok;
 }
 
+/**
+ * @brief Pull the next packet, if any, from an open OUT endpoint.
+ *
+ * @details
+ * Copies up to ``*inout_len`` bytes from the head of the per-EP ring
+ * into ``out_buf`` and updates ``*inout_len`` with the byte count
+ * actually written. When the ring is empty the call returns
+ * ``k_ra_err_no_data`` so the stack can poll without blocking.
+ *
+ * @param[in]     ep_addr   Endpoint address (1..k_ra_usb_pal_ep_max).
+ * @param[out]    out_buf   Destination buffer.
+ * @param[in,out] inout_len On entry: capacity of ``out_buf``.
+ *                          On exit: bytes written.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok                  Packet copied.
+ * @retval k_ra_err_no_data         Ring empty.
+ * @retval k_ra_err_null_ptr        ``out_buf`` or ``inout_len`` NULL.
+ * @retval k_ra_err_invalid_state   PAL not initialised or EP not opened.
+ * @retval k_ra_err_invalid_arg     Address out of range or capacity zero.
+ *
+ * @pre PAL has been initialised.
+ * @pre Endpoint was opened via ::ra_usb_pal_ep_open.
+ * @post On success, the per-EP ring depth is decremented by one.
+ * @post On error, no slot state is mutated.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
 ra_err_t ra_usb_pal_ep_recv(uint8_t ep_addr, uint8_t* out_buf, uint16_t* inout_len)
 {
   RA_CHECK_NULL_PTR(out_buf, s_tag, "ep_recv: out_buf");
@@ -325,6 +571,29 @@ ra_err_t ra_usb_pal_ep_recv(uint8_t ep_addr, uint8_t* out_buf, uint16_t* inout_l
   return k_ra_ok;
 }
 
+/**
+ * @brief Install a single event handler for bus and per-EP events.
+ *
+ * @details
+ * Replaces any previously installed callback. Pass ``fn == nullptr``
+ * to detach. The callback is invoked from ra_usb ISR/task context
+ * via ::internal_usb_event and from the per-EP send/recv hot path.
+ *
+ * @param[in] fn  Event callback, or NULL to detach.
+ * @param[in] ctx Opaque context handed back to ``fn``.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok                  Handler installed/cleared.
+ * @retval k_ra_err_invalid_state   PAL not initialised.
+ *
+ * @pre PAL has been initialised.
+ * @pre ``fn`` is callable from ISR context if it is non-NULL.
+ * @post ``s_state.event_fn == fn`` and ``s_state.event_ctx == ctx``.
+ * @post No other PAL state is mutated.
+ *
+ * @note Not thread-safe with respect to a concurrent event delivery.
+ * @since 0.1.0
+ */
 ra_err_t ra_usb_pal_set_event_handler(ra_usb_pal_event_fn_t fn, void* ctx)
 {
   if (!s_state.initialised) {
