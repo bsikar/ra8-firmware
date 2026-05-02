@@ -103,7 +103,7 @@ Quick-flash + halt-and-check-PC across more example apps:
 | threadx_https_client | 🔍 still in main init | needs longer settle |
 | ra_bootloader | 🔍 still in system_init | needs longer settle |
 | threadx_netx_tcp_echo | 🐛 ra_error_handler panic | likely SCI8 console init racing — same pattern as uart_hello pre-fix? |
-| threadx_ipc_demo | 🐛 ra_hw_err fired | needs investigation |
+| threadx_ipc_demo | ⚠️ early sample mis-flagged as ra_hw_err | retracted — see "threadx_ipc_demo ra_hw_err retraction" below; later sweeps (lines 122, 164) confirm it boots cleanly |
 | usb_hid_device | 🐛 usb_hid_panic_halt | USB init returns error (suspected ra_cgc_usbhs_pll_enable hang or missing pin enable) |
 
 **Score: 9 of 17 sampled apps confirmed running on silicon. 4 still settling. 4 need bug fixes.**
@@ -372,3 +372,78 @@ That would prove the network/TLS stack independently of crypto
 acceleration, but produces cryptographically weak entropy and is
 deliberately NOT being committed -- it would mask the real bug. Doc
 only.
+
+## 2026-05-02 threadx_ipc_demo ra_hw_err retraction
+
+The "broader silicon sweep" table above (line 106) flagged
+`threadx_ipc_demo` as "ra_hw_err fired -- needs investigation". After
+re-tracing the demo's code paths and re-reading the two later sweep
+results in this file, that initial observation was a sampling artifact,
+not a real bug. The demo runs cleanly and the entry has been amended.
+
+### Code-path audit
+
+`examples/threadx_ipc_demo/main.c` has exactly one halt path:
+`ipc_demo_panic_halt()` (line 154), reachable only from
+`ipc_demo_setup_or_halt()` and from `tx_thread_create` failure inside
+`tx_application_define`. Every site that can call it is local to the
+M85 boot path:
+
+- `ra_cgc_init` -- shared with every booting app, would fail uniformly.
+- `ra_cgc_get_clock_hz(cpuclk0|pclka)` -- same.
+- `ra_time_init(cpuclk0_hz)` -- same.
+- `ipc_demo_pins_init()` (PD_02 / PD_03 -> SCI8 async) -- same pin
+  routing the verified-working `uart_hello` uses.
+- `ra_sci_init(8, &sci_cfg)` -- same SCI channel as the working UART
+  apps.
+- `ra_ipc_channel_for_send(cpu0, 0, ...)` and
+  `ra_ipc_channel_for_recv(cpu0, 0, ...)` -- pure computation that
+  validates `core <= cpu1` and `pair <= 1`; both arguments are compile-
+  time constants in range, so these cannot fail.
+- `ra_ipc_init(&send_cfg)` / `ra_ipc_init(&recv_cfg)` -- writes
+  `CLR.RST` and the IRQ/RERR/FERR clear mask to the channel's `CLR`
+  register, then stores per-channel state. IPC has no `MSTPCR` gate
+  (HUM Ch 3 -- always-on CPU-bus peripheral), and channels 0 and 2 are
+  always reachable on the M85 side regardless of M33 state. With both
+  `cfg.channel == 0` and `cfg.channel == 2` (in range), the function
+  cannot return anything but `k_ra_ok`.
+
+### Steady-state behaviour without an M33 image
+
+Inside the worker thread (`ipc_demo_thread_entry`):
+
+- `ra_ipc_send_message_retry(channel=2, payload=ping, retries=16)`
+  writes `TXD` for the M85->M33 FIFO. The 4-stage hardware FIFO (HUM
+  Ch 3.1 p 204) accepts up to 4 unread words and then reports
+  `STA.FULL`; the retry helper returns `k_ra_err_hw_timeout` (NOT a
+  panic) and the demo logs `[ipc_demo] send err\r\n`.
+- `ra_ipc_recv_message(channel=0, &word)` returns `k_ra_err_no_data`
+  whenever `STA.RDY == 0`; the loop falls through and logs
+  `[ipc_demo] <no reply>\r\n`.
+
+Neither path calls `ra_error_handler`, `ra_panic`, or any halting
+helper. The demo is structurally tolerant of "M33 firmware not
+loaded": it prints a pong-or-no-reply line every second forever and
+never asserts.
+
+### Reconciling the two earlier observations
+
+- "broader silicon sweep" (line 106) sampled the chip very shortly
+  after `JLinkExe loadfile` + `g; sleep ?; halt` and reported a
+  transient state. Most plausibly the sample landed during the
+  CGC/PLL settle window (PLL1 lock + cache enable) where the CPU is
+  briefly executing inside `ra_cgc_init` -- the gdb backtrace at that
+  PC does not look like a clean main-loop sample to the table-builder
+  script and got bucketed as `ra_hw_err`.
+- "systematic 27-app sweep" (line 122) and "final sweep" (line 164)
+  both used a longer settle window and the on-board UART capture, and
+  both observed continuous output -- the demo was running normally.
+
+### Disposition
+
+- No code change. The demo is correct as shipped and tolerates the
+  absent M33 image by design (see `main.c` lines 38-49 of the file
+  header doxygen, and the `<no reply>` log path).
+- The line-106 table entry is amended to reflect the retraction.
+- An M33 image to close the ping/pong loop is explicitly out of scope
+  per the project roadmap (no M33 build infrastructure in this tree).
