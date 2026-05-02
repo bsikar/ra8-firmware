@@ -87,3 +87,14 @@ layer in `libs/ra_hal/src/ra_usb_hhid.c`.
 make usb_host_keyboard                     # cross-compile
 make -C examples/usb_host_keyboard flash   # flash via J-Link OB
 ```
+
+## BSP usage
+
+Uses `ra_board_ek_ra8d2` BSP for LED1 / LED2 init/toggle (P600 / P303
+per EK-RA8D2 v1 UM Table 24 p 31). USBHS_VBUS sense (P408) is the only
+PFS-muxed USBHS pin (UM Table 28 p 34); DP / DM are dedicated PHY
+balls. SCI8 console on PD02 / PD03 per UM Table 13 p 24.
+
+Validated 2026-05-02 against EK-RA8D2 v1 User's Manual (R20UT5523EG0101
+Rev 1.01) Tables 13 p 24 / 24 p 31 / 28 p 34, USB HID 1.11 Boot
+Keyboard profile, and HUM (R01UH1065EJ0130) Ch "USBHS".
