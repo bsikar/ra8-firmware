@@ -67,6 +67,21 @@ static ra_err_t s_last_err = k_ra_ok;
 /** @brief Streaming buffer reused by manifest + download paths. */
 static uint8_t s_buf[k_ra_ota_chunk_bytes];
 
+/**
+ * @enum ra_ota_internal_const_t
+ * @brief Internal numeric constants used by JSON / hex helpers.
+ */
+typedef enum : uint32_t {
+  k_ra_ota_json_skip_max     = 8U,    /**< Max JSON whitespace/quote skip. */
+  k_ra_ota_u32_decimal_digits = 12U,  /**< Max decimal digits in a uint32. */
+  k_ra_ota_u32_decimal_base   = 10U,  /**< Base for decimal parsing. */
+  k_ra_ota_hex_alpha_offset   = 10U,  /**< Offset added for 'a'..'f'/'A'..'F'. */
+  k_ra_ota_hex_invalid_nibble = 0xFFU,/**< Sentinel for invalid hex nibble. */
+  k_ra_ota_hex_chars_per_byte = 2U,   /**< Two hex chars per encoded byte. */
+  k_ra_ota_hex_nibble_shift   = 4U,   /**< Shift for high nibble in a byte. */
+  k_ra_ota_hex_buf_bytes      = 257U, /**< Capacity of stack hex buffer. */
+} ra_ota_internal_const_t;
+
 /* =============================================================================
  * Internal helpers
  * ============================================================================= */
@@ -101,26 +116,53 @@ static void priv_set_state(ra_ota_state_t new_state, ra_err_t err) {
  *
  * @return k_ra_ok or k_ra_err_null_ptr / k_ra_err_invalid_arg.
  */
-static ra_err_t priv_validate_cfg(const ra_ota_cfg_t* cfg) {
-  RA_CHECK_NULL_PTR(cfg, s_tag, "cfg");
+/** @brief Validate the network function-pointer block of @p cfg. */
+static ra_err_t priv_validate_cfg_net(const ra_ota_cfg_t* cfg) {
   RA_CHECK_NULL_PTR(cfg->net.open, s_tag, "net.open");
   RA_CHECK_NULL_PTR(cfg->net.read, s_tag, "net.read");
   RA_CHECK_NULL_PTR(cfg->net.close, s_tag, "net.close");
+  return k_ra_ok;
+}
+
+/** @brief Validate the crypto function-pointer block of @p cfg. */
+static ra_err_t priv_validate_cfg_crypto(const ra_ota_cfg_t* cfg) {
   RA_CHECK_NULL_PTR(cfg->crypto.sha256_init, s_tag, "crypto.sha256_init");
   RA_CHECK_NULL_PTR(cfg->crypto.sha256_update, s_tag, "crypto.sha256_update");
   RA_CHECK_NULL_PTR(cfg->crypto.sha256_final, s_tag, "crypto.sha256_final");
   RA_CHECK_NULL_PTR(cfg->crypto.ecdsa_verify, s_tag, "crypto.ecdsa_verify");
+  return k_ra_ok;
+}
+
+/** @brief Validate the flash function-pointer block of @p cfg. */
+static ra_err_t priv_validate_cfg_flash(const ra_ota_cfg_t* cfg) {
   RA_CHECK_NULL_PTR(cfg->flash.erase, s_tag, "flash.erase");
   RA_CHECK_NULL_PTR(cfg->flash.program, s_tag, "flash.program");
   RA_CHECK_NULL_PTR(cfg->flash.set_startup, s_tag, "flash.set_startup");
   RA_CHECK_NULL_PTR(cfg->flash.readback, s_tag, "flash.readback");
-  if (cfg->manifest_url[0] == '\0') {
-    return k_ra_err_invalid_arg;
-  }
   if (cfg->flash.bank_size_bytes == 0U) {
     return k_ra_err_invalid_arg;
   }
   if (cfg->flash.bank_size_bytes > k_ra_ota_max_image_bytes) {
+    return k_ra_err_invalid_arg;
+  }
+  return k_ra_ok;
+}
+
+static ra_err_t priv_validate_cfg(const ra_ota_cfg_t* cfg) {
+  RA_CHECK_NULL_PTR(cfg, s_tag, "cfg");
+  ra_err_t e = priv_validate_cfg_net(cfg);
+  if (e != k_ra_ok) {
+    return e;
+  }
+  e = priv_validate_cfg_crypto(cfg);
+  if (e != k_ra_ok) {
+    return e;
+  }
+  e = priv_validate_cfg_flash(cfg);
+  if (e != k_ra_ok) {
+    return e;
+  }
+  if (cfg->manifest_url[0] == '\0') {
     return k_ra_err_invalid_arg;
   }
   return k_ra_ok;
@@ -201,7 +243,7 @@ static ra_err_t priv_json_u32(const char* json, const char* key, uint32_t* out_v
   }
   p += strlen(key);
   /* Skip past quote/colon/whitespace. */
-  for (uint32_t guard = 0U; guard < 8U; ++guard) {
+  for (uint32_t guard = 0U; guard < (uint32_t)k_ra_ota_json_skip_max; ++guard) {
     if (*p == ':' || *p == ' ' || *p == '"') {
       ++p;
     } else {
@@ -210,12 +252,12 @@ static ra_err_t priv_json_u32(const char* json, const char* key, uint32_t* out_v
   }
   uint32_t v = 0U;
   uint32_t i = 0U;
-  for (; i < 12U; ++i) {
+  for (; i < (uint32_t)k_ra_ota_u32_decimal_digits; ++i) {
     const char c = p[i];
     if ((c < '0') || (c > '9')) {
       break;
     }
-    v = (v * 10U) + (uint32_t)(c - '0');
+    v = (v * (uint32_t)k_ra_ota_u32_decimal_base) + (uint32_t)(c - '0');
   }
   if (i == 0U) {
     return k_ra_err_invalid_arg;
@@ -232,12 +274,12 @@ static uint8_t priv_hex_nibble(char c) {
     return (uint8_t)(c - '0');
   }
   if ((c >= 'a') && (c <= 'f')) {
-    return (uint8_t)(10 + (c - 'a'));
+    return (uint8_t)((uint8_t)k_ra_ota_hex_alpha_offset + (c - 'a'));
   }
   if ((c >= 'A') && (c <= 'F')) {
-    return (uint8_t)(10 + (c - 'A'));
+    return (uint8_t)((uint8_t)k_ra_ota_hex_alpha_offset + (c - 'A'));
   }
-  return 0xFFU;
+  return (uint8_t)k_ra_ota_hex_invalid_nibble;
 }
 
 /**
@@ -246,20 +288,22 @@ static uint8_t priv_hex_nibble(char c) {
  */
 static uint32_t priv_hex_decode(const char* in, uint8_t* out, uint32_t out_cap) {
   const uint32_t in_len = (uint32_t)strlen(in);
-  if ((in_len % 2U) != 0U) {
+  if ((in_len % (uint32_t)k_ra_ota_hex_chars_per_byte) != 0U) {
     return 0U;
   }
-  const uint32_t bytes = in_len / 2U;
+  const uint32_t bytes = in_len / (uint32_t)k_ra_ota_hex_chars_per_byte;
   if (bytes > out_cap) {
     return 0U;
   }
   for (uint32_t i = 0U; i < bytes; ++i) {
-    const uint8_t hi = priv_hex_nibble(in[2U * i]);
-    const uint8_t lo = priv_hex_nibble(in[(2U * i) + 1U]);
-    if ((hi == 0xFFU) || (lo == 0xFFU)) {
+    const size_t base_idx = (size_t)i * (size_t)k_ra_ota_hex_chars_per_byte;
+    const uint8_t hi      = priv_hex_nibble(in[base_idx]);
+    const uint8_t lo      = priv_hex_nibble(in[base_idx + 1U]);
+    if ((hi == (uint8_t)k_ra_ota_hex_invalid_nibble) ||
+        (lo == (uint8_t)k_ra_ota_hex_invalid_nibble)) {
       return 0U;
     }
-    out[i] = (uint8_t)((hi << 4U) | lo);
+    out[i] = (uint8_t)((hi << (uint8_t)k_ra_ota_hex_nibble_shift) | lo);
   }
   return bytes;
 }
@@ -272,7 +316,7 @@ static uint32_t priv_hex_decode(const char* in, uint8_t* out, uint32_t out_cap) 
  * @brief Pull the sha256 + signature hex blobs out of a JSON manifest.
  */
 static ra_err_t priv_manifest_decode_crypto(const char* json, ra_ota_manifest_t* out) {
-  char hex[257];
+  char hex[k_ra_ota_hex_buf_bytes];
   ra_err_t e = priv_json_str(json, "\"sha256\"", hex, sizeof hex);
   if (e != k_ra_ok) {
     return e;
@@ -362,6 +406,33 @@ ra_ota_state_t ra_ota_get_state(void) {
   return s_state;
 }
 
+/**
+ * @brief Open the manifest URL and drain its payload into ``s_buf``.
+ *
+ * @param[out] out_got Bytes received (NUL terminator added at ``s_buf[got]``).
+ * @return ``k_ra_ok`` or a backend / size error.
+ */
+static ra_err_t priv_fetch_manifest_payload(uint32_t* out_got) {
+  uint32_t content_len = 0U;
+  ra_err_t e = s_cfg.net.open(s_cfg.net.ctx, s_cfg.manifest_url, &content_len);
+  if (e != k_ra_ok) {
+    return e;
+  }
+  if (content_len > k_ra_ota_manifest_max_bytes) {
+    (void)s_cfg.net.close(s_cfg.net.ctx);
+    return k_ra_err_invalid_size;
+  }
+  uint32_t got = 0U;
+  e            = priv_drain(s_buf, k_ra_ota_manifest_max_bytes - 1U, &got);
+  (void)s_cfg.net.close(s_cfg.net.ctx);
+  if (e != k_ra_ok) {
+    return e;
+  }
+  s_buf[got] = 0U; /* NUL terminate so JSON helpers can use strstr. */
+  *out_got   = got;
+  return k_ra_ok;
+}
+
 ra_err_t ra_ota_check_for_update(ra_ota_manifest_t* out_manifest) {
   if (!s_initialised) {
     return k_ra_err_not_initialized;
@@ -372,26 +443,12 @@ ra_err_t ra_ota_check_for_update(ra_ota_manifest_t* out_manifest) {
   }
   priv_set_state(k_ra_ota_state_checking, k_ra_ok);
 
-  uint32_t content_len = 0U;
-  ra_err_t e = s_cfg.net.open(s_cfg.net.ctx, s_cfg.manifest_url, &content_len);
-  if (e != k_ra_ok) {
-    priv_set_state(k_ra_ota_state_error, e);
-    return e;
-  }
-  if (content_len > k_ra_ota_manifest_max_bytes) {
-    (void)s_cfg.net.close(s_cfg.net.ctx);
-    priv_set_state(k_ra_ota_state_error, k_ra_err_invalid_size);
-    return k_ra_err_invalid_size;
-  }
-
   uint32_t got = 0U;
-  e            = priv_drain(s_buf, k_ra_ota_manifest_max_bytes - 1U, &got);
-  (void)s_cfg.net.close(s_cfg.net.ctx);
+  ra_err_t e   = priv_fetch_manifest_payload(&got);
   if (e != k_ra_ok) {
     priv_set_state(k_ra_ota_state_error, e);
     return e;
   }
-  s_buf[got] = 0U; /* NUL terminate so JSON helpers can use strstr. */
 
   e = priv_manifest_decode((const char*)s_buf, out_manifest);
   if (e != k_ra_ok) {
@@ -431,6 +488,43 @@ static ra_err_t priv_download_chunk(uint32_t addr_base, uint32_t* in_out_done, u
   return k_ra_ok;
 }
 
+/**
+ * @brief Erase the inactive bank and prime the SHA accumulator.
+ *
+ * Only invoked on a fresh download start (``s_bytes_done == 0``).
+ */
+static ra_err_t priv_prepare_bank(const ra_ota_manifest_t* manifest) {
+  ra_err_t e = s_cfg.flash.erase(s_cfg.flash.ctx, s_cfg.flash.inactive_bank_addr,
+                                 manifest->image_size_bytes);
+  if (e != k_ra_ok) {
+    return e;
+  }
+  return s_cfg.crypto.sha256_init(s_cfg.crypto.ctx);
+}
+
+/**
+ * @brief Drain chunks until the entire image is downloaded or an error fires.
+ */
+static ra_err_t priv_download_loop(const ra_ota_manifest_t* manifest) {
+  const uint32_t max_chunks =
+    (k_ra_ota_max_image_bytes / k_ra_ota_chunk_bytes) + 1U;
+  uint32_t chunks = 0U;
+  ra_err_t e      = k_ra_ok;
+  while (s_bytes_done < manifest->image_size_bytes) {
+    if (chunks >= max_chunks) {
+      e = k_ra_err_hw_error;
+      break;
+    }
+    e = priv_download_chunk(s_cfg.flash.inactive_bank_addr, &s_bytes_done,
+                            manifest->image_size_bytes);
+    if (e != k_ra_ok) {
+      break;
+    }
+    ++chunks;
+  }
+  return e;
+}
+
 ra_err_t ra_ota_download_to_inactive_bank(const ra_ota_manifest_t* manifest) {
   if (!s_initialised) {
     return k_ra_err_not_initialized;
@@ -444,16 +538,8 @@ ra_err_t ra_ota_download_to_inactive_bank(const ra_ota_manifest_t* manifest) {
     return k_ra_err_invalid_size;
   }
 
-  /* Erase the bank only on a fresh start. A retry resumes from
-   * ``s_bytes_done`` -- the inactive bank was never re-erased. */
   if (s_bytes_done == 0U) {
-    ra_err_t e =
-      s_cfg.flash.erase(s_cfg.flash.ctx, s_cfg.flash.inactive_bank_addr, manifest->image_size_bytes);
-    if (e != k_ra_ok) {
-      priv_set_state(k_ra_ota_state_error, e);
-      return e;
-    }
-    e = s_cfg.crypto.sha256_init(s_cfg.crypto.ctx);
+    const ra_err_t e = priv_prepare_bank(manifest);
     if (e != k_ra_ok) {
       priv_set_state(k_ra_ota_state_error, e);
       return e;
@@ -468,22 +554,7 @@ ra_err_t ra_ota_download_to_inactive_bank(const ra_ota_manifest_t* manifest) {
   }
   priv_set_state(k_ra_ota_state_downloading, k_ra_ok);
 
-  /* Bounded loop: chunks-per-image is at most
-   * ``k_ra_ota_max_image_bytes / k_ra_ota_chunk_bytes`` (= 128). */
-  const uint32_t max_chunks = (k_ra_ota_max_image_bytes / k_ra_ota_chunk_bytes) + 1U;
-  uint32_t       chunks     = 0U;
-  while (s_bytes_done < manifest->image_size_bytes) {
-    if (chunks >= max_chunks) {
-      e = k_ra_err_hw_error;
-      break;
-    }
-    e = priv_download_chunk(s_cfg.flash.inactive_bank_addr, &s_bytes_done,
-                            manifest->image_size_bytes);
-    if (e != k_ra_ok) {
-      break;
-    }
-    ++chunks;
-  }
+  e = priv_download_loop(manifest);
   (void)s_cfg.net.close(s_cfg.net.ctx);
 
   if (e != k_ra_ok) {
