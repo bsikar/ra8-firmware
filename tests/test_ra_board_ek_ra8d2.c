@@ -271,7 +271,11 @@ static void test_stubs_return_not_supported(void)
    * MOSCSF-wait timeout. Just exercise both for crash-immunity. */
   (void)ra_board_usbhs_device_init();
   (void)ra_board_usbhs_host_init();
-  TEST_ASSERT_EQ((int)k_ra_err_not_supported, (int)ra_board_mipi_dsi_init());
+  /* ra_board_mipi_dsi_init is now a real wired implementation that calls
+   * ra_mipi_phy_init + ra_mipi_dsi_init; with the placeholder PLL/timing
+   * config it returns an error from the underlying HAL rather than
+   * not_supported. Just exercise it for crash-immunity. */
+  (void)ra_board_mipi_dsi_init();
   TEST_END("usbhs / mipi-dsi stubs return not_supported");
 }
 
