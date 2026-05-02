@@ -644,6 +644,76 @@ static void test_oversampling_rejects(void)
   TEST_END("adc oversampling: rejects bad mode and oor channel");
 }
 
+/**
+ * @test test_mcdc_adc
+ *
+ * @par MC/DC:
+ * Two 2-condition decisions inside ``adc.c``.  Each uses an N+1 = 3
+ * vector subset (DO-178C 6.4.4.3 representative-subset MC/DC).
+ *
+ * Decision A: ``ra_adc_read_channel`` line 311
+ * (libs/ra_hal/src/adc.c): ``if ((chcr == nullptr) || (addr == nullptr))``.
+ * The two pointers come from inline accessors with subtly different
+ * range checks (``adchcr`` rejects ch >= 24, ``addr`` rejects ch >= 23),
+ * which makes channel 23 the only input that exercises the
+ * ``addr == NULL`` arm with ``chcr != NULL``.
+ * - V1: channel=5  -> chcr!=NULL, addr!=NULL -> dec F (proceeds)
+ * - V2: channel=23 -> chcr!=NULL, addr=NULL  -> C1=F, C2=T, dec T
+ *                                               (returns out_of_range)
+ * - V3: channel=24 -> chcr=NULL  (short-circuits) -> dec T
+ *                                               (returns out_of_range)
+ * V1+V2 vary C2 only (decision flips); V2+V3 vary C1 with C2 held T.
+ *
+ * Decision B: ``internal_validate_group_cfg`` line 612
+ * ``if ((cfg->num_channels == 0U) ||
+ *      (cfg->num_channels > k_ra_adc_scan_group_max_channels))``.
+ * - V1: num_channels=3 -> C1=F, C2=F -> dec F (cfg accepted)
+ * - V2: num_channels=0 -> C1=T (short-circuits) -> dec T
+ * - V3: num_channels=9 (> 8 max) -> C1=F, C2=T -> dec T
+ * V1+V3 vary C2 only; V1+V2 vary C1 only.
+ */
+static void test_mcdc_adc(void)
+{
+  TEST_BEGIN("adc MC/DC: read_channel OR + validate_group_cfg OR");
+
+  /* --- Decision A: ra_adc_read_channel line 311 ------------------ */
+  ra_sim_mmap_reset();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_adc_init());
+  uint16_t raw = 0U;
+  /* V1: channel=5 (both pointers valid) -> dec F.  read_channel needs
+   * an alarm to clear ADACT0; arm it so the call does not spin. */
+  arm_adact_clear_alarm();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_adc_read_channel(k_ra_adc_test_ch_valid, &raw));
+  disarm_alarm();
+  /* V2: channel=23 (chcr!=NULL, addr==NULL) -> C2 alone forces dec T. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_out_of_range, (int32_t)ra_adc_read_channel(23U, &raw));
+  /* V3: channel=24 (chcr==NULL short-circuit) -> C1 alone forces dec T. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_out_of_range,
+                 (int32_t)ra_adc_read_channel(k_ra_adc_test_ch_oor, &raw));
+
+  /* --- Decision B: internal_validate_group_cfg line 612 ---------- */
+  ra_sim_mmap_reset();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_adc_init());
+  ra_adc_scan_group_cfg_t good = make_scan_cfg();
+  /* V1: num_channels=3 -> dec F, accepted. */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_adc_configure_scan_group(k_ra_adc_test_group_one, &good));
+  /* V2: num_channels=0 -> C1=T short-circuit -> dec T -> out_of_range. */
+  ra_adc_scan_group_cfg_t zero = make_scan_cfg();
+  zero.num_channels            = 0U;
+  TEST_ASSERT_EQ((int32_t)k_ra_err_out_of_range,
+                 (int32_t)ra_adc_configure_scan_group(k_ra_adc_test_group_one, &zero));
+  /* V3: num_channels=9 (> max=8) -> C1=F, C2=T -> dec T -> out_of_range.
+   * num_channels is uint8_t, channels[] has 8 slots, but the validator
+   * rejects on the count alone before walking the channel array. */
+  ra_adc_scan_group_cfg_t big = make_scan_cfg();
+  big.num_channels            = (uint8_t)(k_ra_adc_scan_group_max_channels + 1U);
+  TEST_ASSERT_EQ((int32_t)k_ra_err_out_of_range,
+                 (int32_t)ra_adc_configure_scan_group(k_ra_adc_test_group_one, &big));
+
+  TEST_END("adc MC/DC: read_channel OR + validate_group_cfg OR");
+}
+
 int32_t main(void)
 {
   test_init_happy();
@@ -676,6 +746,7 @@ int32_t main(void)
   test_compare_window_rejects();
   test_oversampling_encoding();
   test_oversampling_rejects();
+  test_mcdc_adc();
   (void)fprintf(stderr, "[OK ] test_ra_adc.c\n");
   return 0;
 }
