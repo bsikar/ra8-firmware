@@ -85,7 +85,10 @@ bash scripts/utils/misra_check.sh
 ```
 
 * Source files scanned: 158 `.c` translation units (plus headers).
-* Total unique violations: **1371**.
+* Total unique violations: **1271** (was 1371 in the original
+  2026-05-02 baseline; the 101 misra-c2012-12.1 advisory hits were
+  closed under D-004 by adding per-line suppression entries to
+  `.cppcheck-suppressions` -- see `docs/qualification/MISRA_DEVIATIONS.md`).
 * Output: `build/misra/results.txt` (TSV) and
   `docs/MISRA_GAPS.csv` (capped at 1000 rows + tail summary).
 
