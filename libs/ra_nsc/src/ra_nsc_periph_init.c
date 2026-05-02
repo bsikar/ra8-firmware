@@ -32,6 +32,36 @@ static const char* s_tag = "NSCPRH";
 
 static bool s_initialised = false;
 
+/**
+ * @brief NSC veneer: bring up the secure-side peripheral substrate.
+ *
+ * @details
+ * Sequences the four substrate init calls that the Non-Secure world
+ * cannot perform because the MSTP / CGC / ICU / DMA register windows
+ * live in the secure region partitioning:
+ * ``ra_mstp_init`` -> ``ra_pwr_init`` -> ``ra_isr_init`` -> ``ra_dma_init``.
+ *
+ * The function is idempotent: subsequent calls return ``k_ra_ok``
+ * without redoing the work. On failure the latched ``s_initialised``
+ * flag stays false so a future call may retry from scratch.
+ *
+ * @return ra_err_t outcome.
+ * @retval k_ra_ok                  Substrate up (or already up).
+ * @retval k_ra_err_hw_init_failed  One of the secure init steps failed.
+ *
+ * @pre Reset vector has handed over to the firmware.
+ * @pre TrustZone SAU has been programmed (single-world or NS region carved).
+ * @post On success the secure peripheral substrate is fully up.
+ * @post On failure the substrate is in an indeterminate partial state;
+ *       the caller may retry.
+ *
+ * @par TrustZone:
+ *   NS->S boundary via ``cmse_nonsecure_entry``. Argument-less, scalar
+ *   return -- nothing crosses the boundary that needs range-checking.
+ *
+ * @note Thread-safe: no -- intended to be called once at boot.
+ * @since 0.1.0
+ */
 RA_NSC_VENEER ra_err_t ra_nsc_periph_init(void)
 {
   if (s_initialised) {
