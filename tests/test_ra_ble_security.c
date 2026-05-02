@@ -108,6 +108,55 @@ static void test_event_callback(void)
   TEST_END("test_event_callback");
 }
 
+/* --------------------------------------------------------------------- */
+/* MC/DC vector tests for libs/ra_ble_host/src/ra_ble_security.c         */
+/* --------------------------------------------------------------------- */
+
+/**
+ * @test test_mcdc_security_emit_event_guard
+ *
+ * @par MC/DC:
+ * Decision: `(s_state.event_fn != NULL) && (evt != NULL)`
+ * (2 conditions, libs/ra_ble_host/src/ra_ble_security.c line 301)
+ * Reached via the UNIT_TEST hook ra_ble_security_test_emit_event().
+ * - V1 fn=non-NULL, evt=non-NULL -> C1=T, C2=T. Decision T (callback fires).
+ * - V2 fn=NULL,     evt=non-NULL -> C1=F short-circuits. Decision F (no fire).
+ * - V3 fn=non-NULL, evt=NULL     -> C1=T, C2=F. Decision F (no fire).
+ * V1+V2 vary C1 with C2 held T. V1+V3 vary C2 with C1 held T. N+1=3.
+ *
+ * @par DO-178C 6.4.4.3 rationale: Full minimal MC/DC achieved.
+ *
+ * @par Internal note (ra_ble_security.c line 224):
+ * The compound `(io_cap==display_yes_no || io_cap==keyboard_display)` in
+ * ra_ble_security_passkey_reply() is wrapped in #ifdef RA_TARGET_BUILD
+ * and is dead in the host (UNIT_TEST) build. Per IEC 61508 / DO-178C
+ * 6.4.4.3 the host harness has no execution path into that branch;
+ * coverage is taken on the target build via the integrated NimBLE SM
+ * passkey-display fixture.
+ */
+static void test_mcdc_security_emit_event_guard(void)
+{
+  TEST_BEGIN("mcdc security emit_event (fn!=NULL && evt!=NULL)");
+  reset_state();
+  s_evt_count                        = 0U;
+  const ra_ble_security_config_t cfg = {.io_cap = k_ra_ble_io_cap_display_only};
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_security_init(&cfg));
+  ra_ble_security_event_t evt = {.kind = k_ra_ble_sec_evt_passkey_display, .passkey = 1U};
+  /* V1: handler registered, evt non-NULL -> fires. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_security_attach_event_handler(capture_evt, NULL));
+  ra_ble_security_test_emit_event(&evt);
+  TEST_ASSERT_EQ(1U, s_evt_count);
+  /* V2: handler NULL, evt non-NULL -> no fire. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_security_attach_event_handler(NULL, NULL));
+  ra_ble_security_test_emit_event(&evt);
+  TEST_ASSERT_EQ(1U, s_evt_count);
+  /* V3: handler registered again, evt NULL -> no fire. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_security_attach_event_handler(capture_evt, NULL));
+  ra_ble_security_test_emit_event(NULL);
+  TEST_ASSERT_EQ(1U, s_evt_count);
+  TEST_END("mcdc security emit_event (fn!=NULL && evt!=NULL)");
+}
+
 int main(void)
 {
   test_init_null();
@@ -116,5 +165,6 @@ int main(void)
   test_passkey_reply_range();
   test_bond_count();
   test_event_callback();
+  test_mcdc_security_emit_event_guard();
   return 0;
 }
