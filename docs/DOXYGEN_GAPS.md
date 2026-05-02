@@ -7,46 +7,42 @@ Doxygen Documentation Requirements in `CLAUDE.md`. Scope: `libs/`,
 ## Summary
 
 - Total functions audited: 2778
-- Functions with gaps: 1977
-- Total missing-tag instances: 15170
+- Functions with gaps: 1595
+- Total missing-tag instances: 12242
 
 ## Most-frequently-missing tags
 
 | Tag | Count |
 |-----|-------|
-| `@param` | 2600 |
-| `@post` | 1876 |
-| `@pre` | 1823 |
-| `@note` | 1770 |
-| `@details` | 1672 |
-| `@since` | 1665 |
-| `@retval` | 1453 |
-| `@return` | 1239 |
-| `@brief` | 1072 |
+| `@param` | 1986 |
+| `@post` | 1559 |
+| `@pre` | 1510 |
+| `@note` | 1462 |
+| `@since` | 1356 |
+| `@details` | 1317 |
+| `@retval` | 1161 |
+| `@return` | 994 |
+| `@brief` | 897 |
 
 ## Worst 10 modules by gap count
 
 | Module | Functions with gaps |
 |--------|---------------------|
-| `libs/ra_hal` | 1419 |
+| `libs/ra_hal` | 1228 |
 | `port/nimble` | 59 |
 | `port/lwip` | 40 |
 | `libs/ra_psa_crypto` | 31 |
 | `libs/ra_ble_host` | 30 |
-| `libs/ra_nsc` | 30 |
 | `libs/ra_board_ek_ra8d2` | 29 |
-| `libs/ra_reflow` | 29 |
-| `libs/ra_ota` | 28 |
 | `libs/ra_core` | 27 |
+| `port/usbx` | 24 |
+| `port/netxduo` | 23 |
+| `port/levelx` | 19 |
 
 ## Top 30 files by gap count
 
 | File | Functions with gaps |
 |------|---------------------|
-| `libs/ra_hal/src/ra_rsip.c` | 111 |
-| `libs/ra_hal/src/ra_mipi_csi.c` | 55 |
-| `libs/ra_hal/src/ra_mipi_phy.c` | 47 |
-| `libs/ra_hal/src/ra_usb_hmsc.c` | 45 |
 | `libs/ra_hal/src/ra_ssie.c` | 43 |
 | `port/nimble/nimble_npl_threadx.c` | 42 |
 | `libs/ra_hal/src/ra_rmac.c` | 40 |
@@ -62,7 +58,6 @@ Doxygen Documentation Requirements in `CLAUDE.md`. Scope: `libs/`,
 | `libs/ra_board_ek_ra8d2/src/ra_board_ek_ra8d2.c` | 29 |
 | `libs/ra_hal/src/ra_usb_hcdc_ecm.c` | 29 |
 | `libs/ra_hal/src/ra_usb_hhid.c` | 29 |
-| `libs/ra_ota/src/ra_ota.c` | 28 |
 | `libs/ra_hal/src/ra_i3c.c` | 27 |
 | `libs/ra_hal/src/ra_spi_b.c` | 27 |
 | `libs/ra_hal/src/ra_usb_haud.c` | 27 |
@@ -71,8 +66,13 @@ Doxygen Documentation Requirements in `CLAUDE.md`. Scope: `libs/`,
 | `libs/ra_psa_crypto/src/ra_psa_crypto.c` | 25 |
 | `libs/ra_hal/src/ra_eth.c` | 24 |
 | `libs/ra_hal/src/ra_mipi_dsi.c` | 24 |
-| `libs/ra_modem_at/src/ra_modem_at.c` | 24 |
 | `libs/ra_hal/src/ra_usb_hcdc.c` | 23 |
+| `libs/ra_hal/src/ra_usb_hhub.c` | 22 |
+| `libs/ra_hal/src/ra_ble.c` | 21 |
+| `libs/ra_hal/src/ra_cgc.c` | 19 |
+| `libs/ra_hal/src/ra_isr.c` | 18 |
+| `libs/ra_hal/src/ra_sdhi.c` | 18 |
+| `libs/ra_hal/src/ra_dmac.c` | 17 |
 
 ## Severity legend
 
@@ -87,4 +87,4 @@ See `docs/DOXYGEN_GAPS.csv` for the full row-by-row data.
 | Date | Functions with gaps | Missing-tag instances |
 |------|---------------------|-----------------------|
 | 2026-05-02 (original) | 2557 | 20328 |
-| 2026-05-02 (refresh)  | 1977 | 15170 |
+| 2026-05-02 (refresh)  | 1595 | 12242 |
