@@ -43,8 +43,22 @@ function(ra_target_enable_project_warnings target)
         $<$<COMPILE_LANG_AND_ID:C,GNU>:-Wlogical-op>
     )
 
-    if(RA_WARN_STACK_USAGE_BYTES)
-        target_compile_options(${target} PRIVATE
-            $<$<COMPILE_LANGUAGE:C>:-Wstack-usage=${RA_WARN_STACK_USAGE_BYTES}>)
+    # Per-app stack-usage budget. Defaults to 2048 bytes per function.
+    # Per-app CMakeLists may override by passing STACK_USAGE_BYTES to
+    # ra_target_enable_project_warnings().
+    #
+    # Two effects, both required for the project-wide stack-bound proof
+    # (see docs/STACK_USAGE.md):
+    #   * -Wstack-usage=N -- the build-time gate. Any function whose
+    #     compile-time stack frame exceeds N bytes triggers -Werror.
+    #   * -fstack-usage   -- gcc emits a `<file>.su` next to each `.o`,
+    #     consumed by scripts/utils/stack_usage_check.py to aggregate
+    #     a project-wide report and to gate the critical-path modules
+    #     (ra_isr, ra_check, ra_err, ra_mpu, ra_cgc, ra_pfs).
+    if(NOT DEFINED RA_WARN_STACK_USAGE_BYTES OR RA_WARN_STACK_USAGE_BYTES STREQUAL "")
+        set(RA_WARN_STACK_USAGE_BYTES 2048)
     endif()
+    target_compile_options(${target} PRIVATE
+        $<$<COMPILE_LANG_AND_ID:C,GNU>:-Wstack-usage=${RA_WARN_STACK_USAGE_BYTES}>
+        $<$<COMPILE_LANG_AND_ID:C,GNU>:-fstack-usage>)
 endfunction()
