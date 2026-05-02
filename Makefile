@@ -29,9 +29,12 @@
 
 SHELL := /bin/bash
 
-ROOT         := $(abspath .)
-TESTS_DIR    := $(ROOT)/tests
-TESTS_BUILD  := $(ROOT)/build/tidy
+ROOT             := $(abspath .)
+TESTS_DIR        := $(ROOT)/tests
+TESTS_BUILD      := $(TESTS_DIR)/build
+TESTS_BUILD_COV  := $(TESTS_DIR)/build-cov
+# Legacy tidy build dir kept so `bash scripts/clang_tidy.sh` keeps working.
+TIDY_BUILD       := $(ROOT)/build/tidy
 
 CMAKE        ?= cmake
 CLANG_FORMAT ?= clang-format
@@ -48,7 +51,7 @@ RA_APPS := $(sort $(patsubst $(ROOT)/examples/%/main.c,%,$(wildcard $(ROOT)/exam
 
 # We forward each <app> name to the app's own Makefile, so reserve the names
 # below from being shadowed by .PHONY targets.
-.PHONY: help apps default clean format check tidy test test-docker ctest coverage mcdc docs dashboard ascii version qe-test all $(RA_APPS)
+.PHONY: help apps default clean format check tidy test test-cov test-docker ctest coverage mcdc docs dashboard ascii version qe-test all $(RA_APPS)
 
 help:
 	@echo "ra8d2-firmware make targets:"
@@ -59,7 +62,8 @@ help:
 	@echo "  make format    run clang-format in place"
 	@echo "  make check     run clang-format --dry-run"
 	@echo "  make tidy      run clang-tidy"
-	@echo "  make test      host-compile + run unit tests (Linux native)"
+	@echo "  make test      host-compile + run unit tests (tests/build/)"
+	@echo "  make test-cov  alias for make mcdc (tests/build-cov/)"
 	@echo "  make test-docker host-compile + run unit tests in Linux container"
 	@echo "  make ctest     rerun just ctest (assumes already built)"
 	@echo "  make coverage  generate lcov+genhtml HTML coverage report"
@@ -89,7 +93,7 @@ clean:
 	@for app in $(RA_APPS); do \
 		$(MAKE) -C $(ROOT)/examples/$$app clean; \
 	done
-	rm -rf $(TESTS_BUILD)
+	rm -rf $(TESTS_BUILD) $(TESTS_BUILD_COV) $(TIDY_BUILD)
 
 format:
 	bash scripts/format_code.sh
@@ -104,10 +108,13 @@ test-docker:
 	bash scripts/test-docker.sh
 
 test:
-	$(CMAKE) -B $(TESTS_BUILD) -S $(TESTS_DIR) \
-		-DCMAKE_EXPORT_COMPILE_COMMANDS=ON -Wno-dev
-	$(CMAKE) --build $(TESTS_BUILD) --parallel
-	ctest --test-dir $(TESTS_BUILD) --output-on-failure
+	bash $(TESTS_DIR)/build_tests.sh
+	bash $(TESTS_DIR)/run_tests.sh
+
+# `make test-cov` is an alias for `make mcdc` -- the coverage build
+# tree (tests/build-cov/) lives in parallel with the fast tree
+# (tests/build/) so toggling between them is incremental.
+test-cov: mcdc
 
 ctest:
 	ctest --test-dir $(TESTS_BUILD) --output-on-failure

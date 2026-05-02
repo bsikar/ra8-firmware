@@ -151,8 +151,7 @@ static void test_lwip_send_frame_in_range(void)
    * sim defaults; either is acceptable since both are "well-formed
    * call accepted". The unacceptable outcome is a NULL-arg crash. */
   ra_err_t err = ra_net_pal_send_frame(frame, (uint16_t)k_test_lwip_frame_max);
-  TEST_ASSERT(err == k_ra_ok || err == k_ra_err_hw_not_ready
-              || err == k_ra_err_not_initialized);
+  TEST_ASSERT(err == k_ra_ok || err == k_ra_err_hw_not_ready || err == k_ra_err_not_initialized);
   TEST_END("lwip: send_frame accepts in-range payload");
 }
 
@@ -210,8 +209,8 @@ static void test_lwip_recv_empty_queue(void)
   uint16_t len = (uint16_t)k_test_lwip_frame_max;
   ra_err_t err = ra_net_pal_recv_frame(buf, &len);
   /* Empty ring may surface as either of these well-formed errors. */
-  TEST_ASSERT(err == k_ra_err_no_data || err == k_ra_err_would_block
-              || err == k_ra_err_not_initialized || err == k_ra_ok);
+  TEST_ASSERT(err == k_ra_err_no_data || err == k_ra_err_would_block ||
+              err == k_ra_err_not_initialized || err == k_ra_ok);
   TEST_END("lwip: recv_frame on empty queue is non-fatal");
 }
 

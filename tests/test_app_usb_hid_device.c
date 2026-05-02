@@ -35,9 +35,9 @@
 
 /** @brief Per-test enums. */
 typedef enum : uint16_t {
-  k_test_usb_ep_hid_in       = 0x81U, /**< EP1 IN (interrupt) -- HID report. */
-  k_test_usb_hid_max_packet  = 8U,    /**< Boot-protocol keyboard packet size. */
-  k_test_usb_report_len      = 8U,    /**< Modifier + reserved + 6 keycodes. */
+  k_test_usb_ep_hid_in      = 0x81U, /**< EP1 IN (interrupt) -- HID report. */
+  k_test_usb_hid_max_packet = 8U,    /**< Boot-protocol keyboard packet size. */
+  k_test_usb_report_len     = 8U,    /**< Modifier + reserved + 6 keycodes. */
 } test_usb_const_t;
 
 /** @brief Captured event mask + speed from PAL callback. */
@@ -160,8 +160,8 @@ static void test_usb_send_first_hid_report(void)
     ra_usb_pal_ep_send((uint8_t)k_test_usb_ep_hid_in, report, (uint16_t)k_test_usb_report_len);
   /* Mock controller may queue or report not_ready; both are
    * acceptable -- we are exercising call-shape, not OUT-completion. */
-  TEST_ASSERT(err == k_ra_ok || err == k_ra_err_no_mem || err == k_ra_err_hw_not_ready
-              || err == k_ra_err_invalid_state);
+  TEST_ASSERT(err == k_ra_ok || err == k_ra_err_no_mem || err == k_ra_err_hw_not_ready ||
+              err == k_ra_err_invalid_state);
   TEST_END("usb_hid: ep_send 8-byte HID report");
 }
 

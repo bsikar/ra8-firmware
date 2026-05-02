@@ -30,6 +30,7 @@ vgcore.*
 
 # Test build artifacts
 tests/build/
+tests/build-cov/
 tests/Unity/
 
 # GCC coverage instrumentation
