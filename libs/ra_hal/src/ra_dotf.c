@@ -809,18 +809,83 @@ void ra_dotf_dispatch(uint8_t channel)
  * =============================================================================
  */
 
-/* NOLINTNEXTLINE(readability-function-size,readability-function-cognitive-complexity) */
-[[nodiscard]] ra_err_t ra_dotf_open(const ra_dotf_open_cfg_t* cfg)
+/**
+ * @brief Validate ``ra_dotf_open`` inputs and power up the DOTF block.
+ *
+ * @details
+ * Internal sub-step of ``ra_dotf_open``. Extracted so the public entry
+ * point stays under the NASA Rule 4 / clang-tidy
+ * ``readability-function-size`` and ``readability-function-cognitive-complexity``
+ * thresholds without requiring an inline NOLINT override.
+ *
+ * Sequence:
+ *   1. Range-check ``cfg->channel``.
+ *   2. Idempotently power on both DOTF channels via ``ra_dotf_init``
+ *      (HUM Ch 45.6.1 p 3050).
+ *
+ * @param[in] cfg Non-NULL caller-supplied open config.
+ *
+ * @return ``ra_err_t`` propagated from the underlying steps.
+ * @retval k_ra_ok                    Channel valid, DOTF block powered.
+ * @retval k_ra_err_invalid_arg       ``cfg->channel`` out of range.
+ * @retval k_ra_err_hw_init_failed    Channel-base mapping failed.
+ *
+ * @pre ``cfg`` is non-NULL.
+ * @pre Caller is single-threaded (driver bring-up context).
+ * @post On ``k_ra_ok`` MSTPB16/17 are ungated for both channels.
+ *
+ * @note Not thread-safe; sole caller is ``ra_dotf_open``.
+ *
+ * @see ra_dotf_init
+ *
+ * @since Wave 11
+ */
+[[nodiscard]] static ra_err_t internal_open_validate_init(const ra_dotf_open_cfg_t* cfg)
 {
-  RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
   if (!internal_channel_in_range(cfg->channel)) {
     return k_ra_err_invalid_arg;
   }
-
   /* Step 1: Power on the DOTF block (idempotent). HUM Ch 45.6.1 p 3050. */
   const ra_err_t init_err = ra_dotf_init();
   RA_RETURN_ON_ERROR(init_err, s_tag, "open: init");
+  return k_ra_ok;
+}
 
+/**
+ * @brief Stage the wrapped key, IV, and conversion region for ``ra_dotf_open``.
+ *
+ * @details
+ * Internal sub-step of ``ra_dotf_open``. Performs steps 2..5: wrapped-key
+ * install (HUM Ch 45.3 p 3049 REG03 staging), IV stage (HUM Ch 45.1
+ * p 3048 counter mode), region descriptor stage (HUM Ch 45.3.1 / 45.3.2
+ * p 3049), and live-region promotion via ``ra_dotf_select_region``.
+ *
+ * @param[in] cfg Non-NULL caller-supplied open config (already validated).
+ *
+ * @return ``ra_err_t`` propagated from the underlying steps.
+ * @retval k_ra_ok                    Key, IV, and region all staged.
+ * @retval k_ra_err_invalid_arg       Underlying primitive rejected input.
+ * @retval k_ra_err_conflict          Region overlaps live region of other
+ *                                    channel.
+ * @retval k_ra_err_invalid_state     ``ra_dotf_select_region`` rejected.
+ *
+ * @pre ``cfg`` is non-NULL and has passed ``internal_open_validate_init``.
+ * @pre DOTF MSTP gate is open for ``cfg->channel``.
+ * @post On ``k_ra_ok`` REG03 holds wrapped key + IV, CONVAREAST/ED reflect
+ *       the requested region, and ``s_dotf_state[ch].active_region_id``
+ *       equals ``cfg->region.region_id``.
+ *
+ * @note Not thread-safe; sole caller is ``ra_dotf_open``.
+ *
+ * @see ra_dotf_install_key
+ * @see ra_dotf_set_iv
+ * @see ra_dotf_set_region
+ * @see ra_dotf_select_region
+ *
+ * @since Wave 11
+ */
+[[nodiscard]] static ra_err_t internal_open_stage_key_iv_region(const ra_dotf_open_cfg_t* cfg)
+{
   /* Step 2: Install the wrapped key. HUM Ch 45.3 p 3049 (REG03 staging). */
   const ra_err_t key_err = ra_dotf_install_key(cfg->channel, &cfg->key);
   RA_RETURN_ON_ERROR(key_err, s_tag, "open: install_key");
@@ -836,7 +901,39 @@ void ra_dotf_dispatch(uint8_t channel)
   /* Step 5: Promote to live region. */
   const ra_err_t sel_err = ra_dotf_select_region(cfg->channel, cfg->region.region_id);
   RA_RETURN_ON_ERROR(sel_err, s_tag, "open: select_region");
+  return k_ra_ok;
+}
 
+/**
+ * @brief Apply SCA level and (optionally) arm the AES core.
+ *
+ * @details
+ * Internal sub-step of ``ra_dotf_open``. Performs step 6 (REG00 SCA bits
+ * via ``ra_dotf_set_sca_level``) and step 7 (gated by
+ * ``cfg->enable_after``: arm the AES enable bit via ``ra_dotf_enable``).
+ * HUM Ch 45.3 "Register Descriptions" p 3049.
+ *
+ * @param[in] cfg Non-NULL caller-supplied open config (already validated).
+ *
+ * @return ``ra_err_t`` propagated from the underlying steps.
+ * @retval k_ra_ok                    SCA applied; AES armed if requested.
+ * @retval k_ra_err_invalid_arg       Underlying primitive rejected input.
+ *
+ * @pre ``cfg`` is non-NULL.
+ * @pre Key, IV, and region staging have already succeeded.
+ * @post Cached SCA level reflects ``cfg->sca_level``.
+ * @post On ``k_ra_ok`` and ``cfg->enable_after``, REG00 has the AES
+ *       enable bit set.
+ *
+ * @note Not thread-safe; sole caller is ``ra_dotf_open``.
+ *
+ * @see ra_dotf_set_sca_level
+ * @see ra_dotf_enable
+ *
+ * @since Wave 11
+ */
+[[nodiscard]] static ra_err_t internal_open_finalise(const ra_dotf_open_cfg_t* cfg)
+{
   /* Step 6: Side-channel level. */
   const ra_err_t sca_err = ra_dotf_set_sca_level(cfg->channel, cfg->sca_level);
   RA_RETURN_ON_ERROR(sca_err, s_tag, "open: set_sca_level");
@@ -846,6 +943,21 @@ void ra_dotf_dispatch(uint8_t channel)
     const ra_err_t en_err = ra_dotf_enable(cfg->channel);
     RA_RETURN_ON_ERROR(en_err, s_tag, "open: enable");
   }
+  return k_ra_ok;
+}
+
+[[nodiscard]] ra_err_t ra_dotf_open(const ra_dotf_open_cfg_t* cfg)
+{
+  RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
+
+  const ra_err_t vi_err = internal_open_validate_init(cfg);
+  RA_RETURN_ON_ERROR(vi_err, s_tag, "open: validate_init");
+
+  const ra_err_t st_err = internal_open_stage_key_iv_region(cfg);
+  RA_RETURN_ON_ERROR(st_err, s_tag, "open: stage");
+
+  const ra_err_t fi_err = internal_open_finalise(cfg);
+  RA_RETURN_ON_ERROR(fi_err, s_tag, "open: finalise");
   return k_ra_ok;
 }
 
