@@ -26,14 +26,41 @@
 
 #include "ra_err.h"
 
+#ifdef RA_TARGET_BUILD
 /*
- * The translation onto the upstream NimBLE Mesh stack
- * (``bt_mesh_init`` / ``bt_mesh_prov_enable`` / ``bt_mesh_reset``)
- * lives in a separate target-only TU (``ra_ble_mesh_target.c``)
- * to keep the host unit-test build free of the mesh vendor headers.
- * That TU is added by a future patch; this file is a portable
- * wrapper that the host and target builds share.
+ * Forward-declare the upstream mesh entry points instead of pulling in
+ * ``mesh/main.h``: that header chains to ``mesh/glue.h`` which expects
+ * the per-app syscfg.h on the include path. The wrapper only needs the
+ * three function signatures + the bearer enum below to compile.
  */
+typedef enum {
+  k_bt_mesh_prov_adv  = 1 << 0,
+  k_bt_mesh_prov_gatt = 1 << 1,
+} ra_internal_bt_mesh_prov_bearer_t;
+
+extern int  bt_mesh_prov_enable(uint32_t bearers);
+extern int  bt_mesh_prov_disable(uint32_t bearers);
+extern void bt_mesh_reset(void);
+
+/*
+ * Weak fallbacks so this TU stays linkable until the NimBLE Mesh
+ * objects are wired into the per-app build. Strong upstream symbols
+ * override these once the mesh stack is brought in.
+ */
+__attribute__((weak)) int bt_mesh_prov_enable(uint32_t bearers)
+{
+  (void)bearers;
+  return 0;
+}
+
+__attribute__((weak)) int bt_mesh_prov_disable(uint32_t bearers)
+{
+  (void)bearers;
+  return 0;
+}
+
+__attribute__((weak)) void bt_mesh_reset(void) {}
+#endif
 
 /* ============================================================ */
 /* Internal state                                               */
@@ -125,6 +152,14 @@ ra_err_t ra_ble_mesh_prov_enable(void)
   if (s_state.initialized == 0U) {
     return k_ra_err_not_initialized;
   }
+#ifdef RA_TARGET_BUILD
+  int rc = bt_mesh_prov_enable((uint32_t)(k_bt_mesh_prov_adv | k_bt_mesh_prov_gatt));
+  /* cppcheck-suppress knownConditionTrueFalse
+   * Weak fallback returns 0; strong upstream returns non-zero on failure. */
+  if (rc != 0) {
+    return k_ra_err_hw_error;
+  }
+#endif
   s_state.provisioning_on = 1U;
   return k_ra_ok;
 }
@@ -134,6 +169,14 @@ ra_err_t ra_ble_mesh_prov_disable(void)
   if (s_state.initialized == 0U) {
     return k_ra_err_not_initialized;
   }
+#ifdef RA_TARGET_BUILD
+  int rc = bt_mesh_prov_disable((uint32_t)(k_bt_mesh_prov_adv | k_bt_mesh_prov_gatt));
+  /* cppcheck-suppress knownConditionTrueFalse
+   * Weak fallback returns 0; strong upstream returns non-zero on failure. */
+  if (rc != 0) {
+    return k_ra_err_hw_error;
+  }
+#endif
   s_state.provisioning_on = 0U;
   return k_ra_ok;
 }
@@ -143,6 +186,9 @@ ra_err_t ra_ble_mesh_factory_reset(void)
   if (s_state.initialized == 0U) {
     return k_ra_err_not_initialized;
   }
+#ifdef RA_TARGET_BUILD
+  bt_mesh_reset();
+#endif
   s_state.provisioning_on = 0U;
   return k_ra_ok;
 }
