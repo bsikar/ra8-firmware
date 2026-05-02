@@ -640,6 +640,108 @@ static void test_suspend_resume_null(void)
   TEST_END("xspi suspend / resume reject bad instance");
 }
 
+/**
+ * @enum test_xspi_mcdc_t
+ * @brief Numeric vectors used by the MC/DC tests below.
+ */
+typedef enum : uint8_t {
+  k_test_xspi_addr_bytes_3    = 3U, /**< Valid 24-bit address mode.       */
+  k_test_xspi_addr_bytes_4    = 4U, /**< Valid 32-bit address mode.       */
+  k_test_xspi_addr_bytes_bad  = 5U, /**< Neither 3 nor 4: rejected.       */
+  k_test_xspi_reset_bytes_1s  = 1U, /**< Reset cmd width for 1S mode.     */
+  k_test_xspi_reset_bytes_8d  = 2U, /**< Reset cmd width for 8D mode.     */
+  k_test_xspi_reset_bytes_bad = 3U, /**< Neither 1 nor 2: rejected.       */
+  k_test_xspi_xip_read_cmd    = 0xEBU,
+} test_xspi_mcdc_t;
+
+/**
+ * @test test_set_xip_mode_mcdc_addr_bytes
+ *
+ * @par MC/DC:
+ * Decision: `if ((addr_bytes != k_ra_xspi_addr_bytes_3) &&
+ *               (addr_bytes != k_ra_xspi_addr_bytes_4))`
+ * (2 conditions, libs/ra_hal/src/ra_xspi.c line 889)
+ * - Vector 1: addr_bytes=3 -> false (control: C1 short-circuits to F)
+ * - Vector 2: addr_bytes=4 -> false (varies C2 only; C1 held T)
+ * - Vector 3: addr_bytes=5 -> true  (varies C1 vs vec1; both true)
+ * Vectors 1+3 prove `addr_bytes != 3` independently flips outcome
+ * (with C2 held implicitly true since 5 != 4 and 3 trivially != 4 is
+ * unreachable -- C2 not evaluated when C1=F, so the masking pair is
+ * vec1 (decision F) vs vec3 (decision T) varying C1). Vectors 2+3
+ * prove `addr_bytes != 4` independently flips outcome with C1 held T.
+ * N+1 = 3 vectors for N=2 conditions: minimal MC/DC.
+ */
+static void test_set_xip_mode_mcdc_addr_bytes(void)
+{
+  TEST_BEGIN("xspi set_xip_mode MC/DC: addr_bytes != 3 && addr_bytes != 4");
+  prep_w51();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_xspi_init((uint8_t)k_test_xspi_valid_inst0, k_ra_xspi_lio_1s8s8s));
+
+  /* Vector 1: addr_bytes=3. C1=(3!=3)=F short-circuits. Decision F.
+   * Function proceeds to programme XIP and returns ok. */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_xspi_set_xip_mode((uint8_t)k_test_xspi_valid_inst0,
+                                               false,
+                                               (uint8_t)k_test_xspi_xip_read_cmd,
+                                               (uint8_t)k_test_xspi_addr_bytes_3));
+
+  /* Vector 2: addr_bytes=4. C1=(4!=3)=T, C2=(4!=4)=F. Decision F.
+   * Function returns ok. */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_xspi_set_xip_mode((uint8_t)k_test_xspi_valid_inst0,
+                                               false,
+                                               (uint8_t)k_test_xspi_xip_read_cmd,
+                                               (uint8_t)k_test_xspi_addr_bytes_4));
+
+  /* Vector 3: addr_bytes=5. C1=(5!=3)=T, C2=(5!=4)=T. Decision T,
+   * function returns invalid_arg. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_xspi_set_xip_mode((uint8_t)k_test_xspi_valid_inst0,
+                                               false,
+                                               (uint8_t)k_test_xspi_xip_read_cmd,
+                                               (uint8_t)k_test_xspi_addr_bytes_bad));
+  TEST_END("xspi set_xip_mode MC/DC: addr_bytes != 3 && addr_bytes != 4");
+}
+
+/**
+ * @test test_software_reset_mcdc_cmd_bytes
+ *
+ * @par MC/DC:
+ * Decision: `if ((cmd_bytes != (uint8_t)k_ra_xspi_reset_cmd_bytes_1s) &&
+ *               (cmd_bytes != (uint8_t)k_ra_xspi_reset_cmd_bytes_8d))`
+ * (2 conditions, libs/ra_hal/src/ra_xspi.c line 1026)
+ * - Vector 1: cmd_bytes=1 -> false (C1=(1!=1)=F short-circuits)
+ * - Vector 2: cmd_bytes=2 -> false (C1=(2!=1)=T, C2=(2!=2)=F)
+ * - Vector 3: cmd_bytes=3 -> true  (C1=T, C2=T -> invalid_arg)
+ * Vectors 1+3 vary C1 (decision flips); vectors 2+3 vary C2 (decision
+ * flips). N+1 = 3 vectors for N=2 conditions: minimal MC/DC.
+ */
+static void test_software_reset_mcdc_cmd_bytes(void)
+{
+  TEST_BEGIN("xspi software_reset MC/DC: cmd_bytes != 1 && cmd_bytes != 2");
+  prep_w51();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_xspi_init((uint8_t)k_test_xspi_valid_inst0, k_ra_xspi_lio_1s1s1s));
+
+  /* Vector 1: cmd_bytes=1 (1S-1S-1S reset width). Decision F, function
+   * proceeds and issues RSTEN + RST opcodes; returns ok. */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_xspi_software_reset((uint8_t)k_test_xspi_valid_inst0,
+                                                 (uint8_t)k_test_xspi_reset_bytes_1s));
+
+  /* Vector 2: cmd_bytes=2 (8D-8D-8D reset width). Decision F, ok. */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_xspi_software_reset((uint8_t)k_test_xspi_valid_inst0,
+                                                 (uint8_t)k_test_xspi_reset_bytes_8d));
+
+  /* Vector 3: cmd_bytes=3. Decision T, returns invalid_arg. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_xspi_software_reset((uint8_t)k_test_xspi_valid_inst0,
+                                                 (uint8_t)k_test_xspi_reset_bytes_bad));
+  TEST_END("xspi software_reset MC/DC: cmd_bytes != 1 && cmd_bytes != 2");
+}
+
 int32_t main(void)
 {
   test_init_inst0_happy();
@@ -683,6 +785,8 @@ int32_t main(void)
   test_calibrate_dqs();
   test_suspend_resume();
   test_suspend_resume_null();
+  test_set_xip_mode_mcdc_addr_bytes();
+  test_software_reset_mcdc_cmd_bytes();
   (void)fprintf(stderr, "[OK ] test_ra_xspi.c\n");
   return 0;
 }
