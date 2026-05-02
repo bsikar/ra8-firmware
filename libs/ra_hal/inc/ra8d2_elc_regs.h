@@ -121,8 +121,8 @@ typedef enum : uint16_t {
   k_ra_elc_event_icu_irq12 = 0x00DU, /**< External pin interrupt 12 (HUM Ch 14 ELC event 0x00D). */
   k_ra_elc_event_icu_irq13 = 0x00EU, /**< External pin interrupt 13 (HUM Ch 14 ELC event 0x00E). */
   k_ra_elc_event_icu_irq15 = 0x010U, /**< External pin interrupt 15. */
-  k_ra_elc_event_can0_mram_eri = 0x100U, /**< CAN0 MRAM error. */
-  k_ra_elc_event_can1_mram_eri = 0x101U, /**< CAN1 MRAM error. */
+  k_ra_elc_event_can0_mram_eri = 0x338U, /**< CANFD0 MRAM ECC error (HUM Ch 19 Table 19.3). */
+  k_ra_elc_event_can1_mram_eri = 0x339U, /**< CANFD1 MRAM ECC error (HUM Ch 19 Table 19.3). */
 } ra_elc_event_t;
 
 #ifdef __cplusplus
