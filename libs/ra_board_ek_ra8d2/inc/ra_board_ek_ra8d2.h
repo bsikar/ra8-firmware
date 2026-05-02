@@ -778,6 +778,29 @@ typedef enum : uint16_t {
                      k_ra_pin_4), /**< OSPI_FLASH_DQ7, P804. EK-RA8D2 UM Table 29 p 35. */
 } ra_board_xspi_pin_t;
 
+/**
+ * @brief Route the 12 OCTA bus pins to the xSPI peripheral and pulse RESET_L.
+ *
+ * @details
+ * Configures CS / CK / DQS / DQ0..DQ7 under PSEL=k_ra_psel_qspi (0x1C)
+ * per EK-RA8D2 UM Table 29 (p 35), then drives the active-low RESET
+ * strap as a GPIO output: low for >= tRLRH, high for >= tRHSL before
+ * the first xSPI command. Must run BEFORE any `ra_xspi_*` call.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok All pins routed and reset strap pulsed.
+ * @retval k_ra_err_invalid_arg PFS programming rejected an entry.
+ *
+ * @pre IOPORT MSTP cleared (ra_pfs_init has run).
+ * @pre Single-threaded init context.
+ * @post 12 OCTA pins are under PSEL=0x1C.
+ * @post RESET_L is high; the IS25LX512M is ready for its first command.
+ *
+ * @note Not thread-safe; init context only.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_board_xspi_pins_init(void);
+
 /* =============================================================================
  * 10. MIPI-DSI graphics expansion port J32
  *     (UM Section 8.2, Table 34, page 45)

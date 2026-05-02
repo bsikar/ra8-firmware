@@ -41,6 +41,7 @@
 #include <stdint.h>
 
 #include "lx_api.h"
+#include "ra_board_ek_ra8d2.h"
 #include "ra_err.h"
 #include "ra_xspi.h"
 
@@ -307,10 +308,58 @@ static UINT priv_nor_block_erased_verify(ULONG block)
   return (UINT)LX_SUCCESS;
 }
 
+/**
+ * @brief One-shot guard so we only run the bus bring-up once.
+ *
+ * @details
+ * LevelX calls ``lx_nor_driver_ra_xspi_initialize`` on every
+ * ``lx_nor_flash_format`` and every ``lx_nor_flash_open``. Pin
+ * routing and ``ra_xspi_init`` must run exactly once -- a second
+ * ``ra_pfs_route_peripheral`` would trip the validator and return
+ * ``k_ra_err_gpio_conflict``. This file-static latches once the
+ * first call succeeds.
+ */
+static bool s_xspi_bus_ready = false;
+
+/**
+ * @brief Bring the OCTA bus up (pins + controller) on first call.
+ *
+ * @return ``LX_SUCCESS`` if the bus is ready, ``LX_ERROR`` otherwise.
+ *
+ * @pre ``ra_infrastructure_init`` has run (pin validator alive).
+ * @post On success the IS25LX512M is out of reset, OCTA pins are
+ *       routed to PSEL=0x1C, the xSPI controller MSTP gate is open
+ *       and ``LIOCFGCS[0]`` is in 1S-1S-1S mode.
+ *
+ * @since 0.1.0
+ */
+static UINT priv_bus_init_once(void)
+{
+  if (s_xspi_bus_ready) {
+    return (UINT)LX_SUCCESS;
+  }
+  if (ra_board_xspi_pins_init() != k_ra_ok) {
+    return (UINT)LX_ERROR;
+  }
+  if (ra_xspi_init((uint8_t)k_ra_lx_xspi_instance, k_ra_xspi_lio_1s1s1s) != k_ra_ok) {
+    return (UINT)LX_ERROR;
+  }
+  s_xspi_bus_ready = true;
+  return (UINT)LX_SUCCESS;
+}
+
 UINT lx_nor_driver_ra_xspi_initialize(LX_NOR_FLASH* nor_flash)
 {
   if (nor_flash == LX_NULL) {
     return (UINT)LX_ERROR;
+  }
+
+  /* Idempotent bus bring-up: pins + xSPI controller. Done here (not
+   * in main) so the LevelX driver is self-contained and apps don't
+   * have to remember the order of init calls. */
+  const UINT bus = priv_bus_init_once();
+  if (bus != (UINT)LX_SUCCESS) {
+    return bus;
   }
 
   /* Programme the synthetic base + geometry. LevelX uses the base
