@@ -84,8 +84,8 @@ static void priv_join_path(const char* dir, const char* name, char* dst, size_t 
       ++off;
     }
   }
-  size_t i = 0U;
   if (name != NULL) {
+    size_t i = 0U;
     while (off + 1U < cap && name[i] != '\0') {
       dst[off] = name[i];
       ++off;
