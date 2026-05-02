@@ -62,7 +62,13 @@ $(foreach m,$(_RA_APP_MAINS),$(eval RA_APP_DIR_$(notdir $(patsubst %/main.c,%,$m
 
 # We forward each <app> name to the app's own Makefile, so reserve the names
 # below from being shadowed by .PHONY targets.
-.PHONY: help apps default clean format check tidy test test-cov test-docker ctest coverage mcdc docs dashboard ascii version qe-test all $(RA_APPS)
+.PHONY: help apps default clean format check tidy test test-cov test-docker ctest coverage mcdc docs dashboard ascii version qe-test smoke all $(RA_APPS)
+
+# EVM-tier apps (everything under examples/ek_ra8d2/) -- these are the
+# apps the hardware smoke test sweeps because they run on a stock
+# EK-RA8D2 with no extra peripherals required.
+_EK_APP_MAINS := $(wildcard $(ROOT)/examples/ek_ra8d2/*/main.c)
+EK_APPS       := $(sort $(notdir $(patsubst %/main.c,%,$(_EK_APP_MAINS))))
 
 help:
 	@echo "ra8d2-firmware make targets:"
@@ -84,6 +90,7 @@ help:
 	@echo "  make ascii     fix-encoding.py --check"
 	@echo "  make version   verify @since tags match the VERSION file"
 	@echo "  make qe-test   run tools/ra_qe (JSON configurator) unit tests"
+	@echo "  make smoke     hardware smoke-test sweep over examples/ek_ra8d2/"
 
 # `make` with no arg builds the default app.
 default: $(RA_DEFAULT_APP)
@@ -166,5 +173,12 @@ version:
 
 qe-test:
 	python3 -m unittest tools/ra_qe/tests/test_generate.py
+
+# Hardware smoke test -- builds every EVM-tier app, then flashes each
+# one through the on-board J-Link OB and classifies the halt-PC as
+# PASS / WIP / FAIL. See scripts/hw_smoke_test.sh for the rules.
+# Exits non-zero if any app comes back FAIL (NOBUILD/WIP are warnings).
+smoke: $(EK_APPS)
+	bash scripts/hw_smoke_test.sh
 
 all: format tidy test default
