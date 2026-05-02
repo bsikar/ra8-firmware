@@ -634,6 +634,74 @@ static_assert(sizeof(r_rmac_regs_t) == (size_t)k_ra_rmac_window_bytes,
               "r_rmac_regs_t must match FSP R_RMAC0_Type size 0x530");
 
 /**
+ * @brief Compile-time offset insurance against silent layout drift.
+ *
+ * @details
+ * Each named register's offset is asserted against the matching
+ * `k_ra_rmac_off_*` constant (which is the source of truth from HUM
+ * Ch 33.3 Table 33.4). If a future edit perturbs a reserved gap or
+ * field width, the build fails before any silent frame corruption
+ * can hit the wire.
+ */
+static_assert(offsetof(r_rmac_regs_t, MPSM) == (size_t)k_ra_rmac_off_mpsm, "MPSM offset");
+static_assert(offsetof(r_rmac_regs_t, MPIC) == (size_t)k_ra_rmac_off_mpic, "MPIC offset");
+static_assert(offsetof(r_rmac_regs_t, MPIM) == (size_t)k_ra_rmac_off_mpim, "MPIM offset");
+static_assert(offsetof(r_rmac_regs_t, MIOC) == (size_t)k_ra_rmac_off_mioc, "MIOC offset");
+static_assert(offsetof(r_rmac_regs_t, MTFFC) == (size_t)k_ra_rmac_off_mtffc, "MTFFC offset");
+static_assert(offsetof(r_rmac_regs_t, MTPFC) == (size_t)k_ra_rmac_off_mtpfc, "MTPFC offset");
+static_assert(offsetof(r_rmac_regs_t, MTPFC2) == (size_t)k_ra_rmac_off_mtpfc2, "MTPFC2 offset");
+static_assert(offsetof(r_rmac_regs_t, MTPFC3) == (size_t)k_ra_rmac_off_mtpfc30, "MTPFC3 offset");
+static_assert(offsetof(r_rmac_regs_t, MTATC) == (size_t)k_ra_rmac_off_mtatc0, "MTATC offset");
+static_assert(offsetof(r_rmac_regs_t, MTIM) == (size_t)k_ra_rmac_off_mtim, "MTIM offset");
+static_assert(offsetof(r_rmac_regs_t, MRGC) == (size_t)k_ra_rmac_off_mrgc, "MRGC offset");
+static_assert(offsetof(r_rmac_regs_t, MRMAC0) == (size_t)k_ra_rmac_off_mrmac0, "MRMAC0 offset");
+static_assert(offsetof(r_rmac_regs_t, MRMAC1) == (size_t)k_ra_rmac_off_mrmac1, "MRMAC1 offset");
+static_assert(offsetof(r_rmac_regs_t, MRAFC) == (size_t)k_ra_rmac_off_mrafc, "MRAFC offset");
+static_assert(offsetof(r_rmac_regs_t, MRSCE) == (size_t)k_ra_rmac_off_mrsce, "MRSCE offset");
+static_assert(offsetof(r_rmac_regs_t, MRSCP) == (size_t)k_ra_rmac_off_mrscp, "MRSCP offset");
+static_assert(offsetof(r_rmac_regs_t, MRSCC) == (size_t)k_ra_rmac_off_mrscc, "MRSCC offset");
+static_assert(offsetof(r_rmac_regs_t, MRFSCE) == (size_t)k_ra_rmac_off_mrfsce, "MRFSCE offset");
+static_assert(offsetof(r_rmac_regs_t, MRFSCP) == (size_t)k_ra_rmac_off_mrfscp, "MRFSCP offset");
+static_assert(offsetof(r_rmac_regs_t, MTRC) == (size_t)k_ra_rmac_off_mtrc, "MTRC offset");
+static_assert(offsetof(r_rmac_regs_t, MRPFM) == (size_t)k_ra_rmac_off_mrpfm, "MRPFM offset");
+static_assert(offsetof(r_rmac_regs_t, MPFC) == (size_t)k_ra_rmac_off_mpfc0, "MPFC offset");
+static_assert(offsetof(r_rmac_regs_t, MLVC) == (size_t)k_ra_rmac_off_mlvc, "MLVC offset");
+static_assert(offsetof(r_rmac_regs_t, MEEEC) == (size_t)k_ra_rmac_off_meeec, "MEEEC offset");
+static_assert(offsetof(r_rmac_regs_t, MLBC) == (size_t)k_ra_rmac_off_mlbc, "MLBC offset");
+static_assert(offsetof(r_rmac_regs_t, MXGMIIC) == (size_t)k_ra_rmac_off_mxgmiic, "MXGMIIC offset");
+static_assert(offsetof(r_rmac_regs_t, MPCH) == (size_t)k_ra_rmac_off_mpch, "MPCH offset");
+static_assert(offsetof(r_rmac_regs_t, MANM) == (size_t)k_ra_rmac_off_manm, "MANM offset");
+static_assert(offsetof(r_rmac_regs_t, MEIS) == (size_t)k_ra_rmac_off_meis, "MEIS offset");
+static_assert(offsetof(r_rmac_regs_t, MEIE) == (size_t)k_ra_rmac_off_meie, "MEIE offset");
+static_assert(offsetof(r_rmac_regs_t, MEID) == (size_t)k_ra_rmac_off_meid, "MEID offset");
+static_assert(offsetof(r_rmac_regs_t, MMIS0) == (size_t)k_ra_rmac_off_mmis0, "MMIS0 offset");
+static_assert(offsetof(r_rmac_regs_t, MMIE0) == (size_t)k_ra_rmac_off_mmie0, "MMIE0 offset");
+static_assert(offsetof(r_rmac_regs_t, MMID0) == (size_t)k_ra_rmac_off_mmid0, "MMID0 offset");
+static_assert(offsetof(r_rmac_regs_t, MMIS1) == (size_t)k_ra_rmac_off_mmis1, "MMIS1 offset");
+static_assert(offsetof(r_rmac_regs_t, MMIE1) == (size_t)k_ra_rmac_off_mmie1, "MMIE1 offset");
+static_assert(offsetof(r_rmac_regs_t, MMID1) == (size_t)k_ra_rmac_off_mmid1, "MMID1 offset");
+static_assert(offsetof(r_rmac_regs_t, MMIS2) == (size_t)k_ra_rmac_off_mmis2, "MMIS2 offset");
+static_assert(offsetof(r_rmac_regs_t, MMIE2) == (size_t)k_ra_rmac_off_mmie2, "MMIE2 offset");
+static_assert(offsetof(r_rmac_regs_t, MMID2) == (size_t)k_ra_rmac_off_mmid2, "MMID2 offset");
+static_assert(offsetof(r_rmac_regs_t, MMPFTCT) == (size_t)k_ra_rmac_off_mmpftct, "MMPFTCT offset");
+static_assert(offsetof(r_rmac_regs_t, MAPFTCT) == (size_t)k_ra_rmac_off_mapftct, "MAPFTCT offset");
+static_assert(offsetof(r_rmac_regs_t, MPFRCT) == (size_t)k_ra_rmac_off_mpfrct, "MPFRCT offset");
+static_assert(offsetof(r_rmac_regs_t, MFCICT) == (size_t)k_ra_rmac_off_mfcict, "MFCICT offset");
+static_assert(offsetof(r_rmac_regs_t, MEEECT) == (size_t)k_ra_rmac_off_meeect, "MEEECT offset");
+static_assert(offsetof(r_rmac_regs_t, MMPCFTCT) == (size_t)k_ra_rmac_off_mmpcftct0,
+              "MMPCFTCT offset");
+static_assert(offsetof(r_rmac_regs_t, MAPCFTCT) == (size_t)k_ra_rmac_off_mapcftct0,
+              "MAPCFTCT offset");
+static_assert(offsetof(r_rmac_regs_t, MPCFRCT) == (size_t)k_ra_rmac_off_mpcfrct0, "MPCFRCT offset");
+static_assert(offsetof(r_rmac_regs_t, MROVFC) == (size_t)k_ra_rmac_off_mrovfc, "MROVFC offset");
+static_assert(offsetof(r_rmac_regs_t, MRHCRCEC) == (size_t)k_ra_rmac_off_mrhcrcec,
+              "MRHCRCEC offset");
+static_assert(offsetof(r_rmac_regs_t, MRGFCE) == (size_t)k_ra_rmac_off_mrgfce, "MRGFCE offset");
+static_assert(offsetof(r_rmac_regs_t, MRGFCP) == (size_t)k_ra_rmac_off_mrgfcp, "MRGFCP offset");
+static_assert(offsetof(r_rmac_regs_t, MTGFCE) == (size_t)k_ra_rmac_off_mtgfce, "MTGFCE offset");
+static_assert(offsetof(r_rmac_regs_t, MTGFCP) == (size_t)k_ra_rmac_off_mtgfcp, "MTGFCP offset");
+
+/**
  * @brief Get pointer to a per-port RMAC register block.
  *
  * @param[in] port Port identifier (k_ra_rmac_port_0 or k_ra_rmac_port_1).
