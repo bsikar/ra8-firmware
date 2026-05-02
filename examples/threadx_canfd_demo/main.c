@@ -29,7 +29,7 @@
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
- * @since 0.5.0
+ * @since 0.1.0
  */
 
 #include <stdint.h>
@@ -66,10 +66,10 @@ typedef enum : uint8_t {
  * @brief Period and identifier values used by the heartbeat thread.
  */
 typedef enum : uint16_t {
-  k_canfd_heartbeat_ticks = 500U, /**< 500 ms in 1 kHz ticks.   */
-  k_canfd_rx_poll_ticks   = 50U,  /**< 50 ms RX poll cadence.   */
+  k_canfd_heartbeat_ticks = 500U,   /**< 500 ms in 1 kHz ticks.   */
+  k_canfd_rx_poll_ticks   = 50U,    /**< 50 ms RX poll cadence.   */
   k_canfd_heartbeat_id    = 0x123U, /**< 11-bit CAN identifier. */
-  k_canfd_heartbeat_dlc   = 8U,   /**< Data length code (bytes).*/
+  k_canfd_heartbeat_dlc   = 8U,     /**< Data length code (bytes).*/
 } canfd_period_t;
 
 /* ---------------------------------------------------------------------------
@@ -81,8 +81,8 @@ typedef enum : uint16_t {
 extern void _tx_timer_interrupt(void);
 /* NOLINTEND(bugprone-reserved-identifier,cert-dcl37-c,readability-identifier-naming) */
 
-static uint8_t s_thread_tx_stack[k_canfd_thread_stack_bytes] __attribute__((aligned(8)));
-static uint8_t s_thread_rx_stack[k_canfd_thread_stack_bytes] __attribute__((aligned(8)));
+static uint8_t   s_thread_tx_stack[k_canfd_thread_stack_bytes] __attribute__((aligned(8)));
+static uint8_t   s_thread_rx_stack[k_canfd_thread_stack_bytes] __attribute__((aligned(8)));
 static TX_THREAD s_thread_tx;
 static TX_THREAD s_thread_rx;
 

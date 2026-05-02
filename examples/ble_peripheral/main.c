@@ -44,9 +44,9 @@
 
 #include <stdint.h>
 
-#include "ra_board_ek_ra8d2.h"
 #include "ra_ble.h"
 #include "ra_ble_host.h"
+#include "ra_board_ek_ra8d2.h"
 #include "ra_cgc.h"
 #include "ra_err.h"
 #include "ra_gpio_constants.h"

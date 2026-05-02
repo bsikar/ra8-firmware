@@ -31,8 +31,7 @@
 
 RA_NSC_VENEER ra_err_t ra_nsc_ota_commit(uint8_t target_bank)
 {
-  if ((target_bank != (uint8_t)k_ra_ota_bank_a) &&
-      (target_bank != (uint8_t)k_ra_ota_bank_b)) {
+  if ((target_bank != (uint8_t)k_ra_ota_bank_a) && (target_bank != (uint8_t)k_ra_ota_bank_b)) {
     return k_ra_err_invalid_arg;
   }
   return ra_ota_commit_swap_bank((ra_ota_bank_t)target_bank);

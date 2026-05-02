@@ -137,8 +137,9 @@ static void audio_loopback_panic_halt(void)
   if (err != k_ra_ok) {
     return err;
   }
-  return ra_pfs_route_peripheral(
-    k_audio_loopback_pin_rxd, k_ra_psel_sci_async, "audio_loopback.rxd8");
+  return ra_pfs_route_peripheral(k_audio_loopback_pin_rxd,
+                                 k_ra_psel_sci_async,
+                                 "audio_loopback.rxd8");
 }
 
 /**

@@ -65,16 +65,16 @@
  * which slot the bootloader hands control to.
  */
 typedef enum : uintptr_t {
-  k_ra_boot_bank_a_base    = 0x02000000UL, /**< Bank A vector table base. */
-  k_ra_boot_bank_b_base    = 0x02080000UL, /**< Bank B vector table base. */
-  k_ra_boot_bankcfg_addr   = 0x02003F00UL, /**< Bank-config word (within
+  k_ra_boot_bank_a_base   = 0x02000000UL, /**< Bank A vector table base. */
+  k_ra_boot_bank_b_base   = 0x02080000UL, /**< Bank B vector table base. */
+  k_ra_boot_bankcfg_addr  = 0x02003F00UL, /**< Bank-config word (within
                                                  boot region, before bank-A
                                                  app vectors at 0x02004000). */
-  k_ra_boot_scb_vtor_addr  = 0xE000ED08UL, /**< SCB.VTOR -- vector offset.   */
-  k_ra_boot_mram_origin    = 0x02000000UL, /**< Start of MRAM.               */
-  k_ra_boot_mram_end       = 0x02100000UL, /**< End of 1 MiB MRAM (exclusive)*/
-  k_ra_boot_sram_origin    = 0x22000000UL, /**< Start of ECC SRAM.           */
-  k_ra_boot_sram_end       = 0x22200000UL, /**< End of 2 MiB SRAM (exclusive)*/
+  k_ra_boot_scb_vtor_addr = 0xE000ED08UL, /**< SCB.VTOR -- vector offset.   */
+  k_ra_boot_mram_origin   = 0x02000000UL, /**< Start of MRAM.               */
+  k_ra_boot_mram_end      = 0x02100000UL, /**< End of 1 MiB MRAM (exclusive)*/
+  k_ra_boot_sram_origin   = 0x22000000UL, /**< Start of ECC SRAM.           */
+  k_ra_boot_sram_end      = 0x22200000UL, /**< End of 2 MiB SRAM (exclusive)*/
 } ra_boot_bank_addr_t;
 
 /**
@@ -204,8 +204,7 @@ static uint32_t internal_bank_is_valid(uintptr_t bank_base)
  * @warning Must be the very last call -- nothing after the
  *          ``bx`` instruction executes.
  */
-__attribute__((noreturn))
-static void internal_jump_to_bank(uintptr_t bank_base)
+__attribute__((noreturn)) static void internal_jump_to_bank(uintptr_t bank_base)
 {
   const uint32_t app_msp   = internal_read32(bank_base + 0U);
   const uint32_t app_reset = internal_read32(bank_base + 4U);

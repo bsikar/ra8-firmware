@@ -65,7 +65,10 @@ __attribute__((weak)) int ble_sm_inject_io(uint16_t conn_handle, struct ble_sm_i
   return 0;
 }
 
-__attribute__((weak)) int ble_store_clear(void) { return 0; }
+__attribute__((weak)) int ble_store_clear(void)
+{
+  return 0;
+}
 #endif
 
 /* ============================================================ */

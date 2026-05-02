@@ -78,10 +78,9 @@ extern "C" {
  * width and the values appear by name in the debugger.
  */
 typedef enum : uint8_t {
-  k_ra_modem_at_max_unsolicited =
-      8U, /**< Maximum number of registered URC handlers. */
+  k_ra_modem_at_max_unsolicited = 8U, /**< Maximum number of registered URC handlers. */
   k_ra_modem_at_max_prefix_len =
-      16U, /**< Maximum bytes of a URC prefix (including ``+`` and ``:``). */
+    16U, /**< Maximum bytes of a URC prefix (including ``+`` and ``:``). */
 } ra_modem_at_limits_t;
 
 /**
@@ -169,7 +168,7 @@ typedef struct {
  *                  (e.g. ``"+CMTI: \"SM\",3"``).
  * @param[in] ctx   Opaque pointer registered with the handler.
  */
-typedef void (*ra_modem_at_urc_fn_t)(const char *line, void *ctx);
+typedef void (*ra_modem_at_urc_fn_t)(const char* line, void* ctx);
 
 /**
  * @brief Bind transport, buffer and timeout policy.
@@ -214,7 +213,7 @@ typedef void (*ra_modem_at_urc_fn_t)(const char *line, void *ctx);
  *
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t ra_modem_at_init(const ra_modem_at_cfg_t *cfg);
+[[nodiscard]] ra_err_t ra_modem_at_init(const ra_modem_at_cfg_t* cfg);
 
 /**
  * @brief Send an AT command and wait for ``OK``/``ERROR``/expected.
@@ -258,9 +257,8 @@ typedef void (*ra_modem_at_urc_fn_t)(const char *line, void *ctx);
  * @see ra_modem_at_send_cmd_capture()
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t ra_modem_at_send_cmd(const char *cmd,
-                                            const char *expected_response,
-                                            uint16_t timeout_ms);
+[[nodiscard]] ra_err_t
+ra_modem_at_send_cmd(const char* cmd, const char* expected_response, uint16_t timeout_ms);
 
 /**
  * @brief Send an AT command and capture the response payload.
@@ -293,10 +291,8 @@ typedef void (*ra_modem_at_urc_fn_t)(const char *line, void *ctx);
  * @see ra_modem_at_send_cmd()
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t ra_modem_at_send_cmd_capture(const char *cmd,
-                                                    char *out_buf,
-                                                    size_t buf_len,
-                                                    uint16_t timeout_ms);
+[[nodiscard]] ra_err_t
+ra_modem_at_send_cmd_capture(const char* cmd, char* out_buf, size_t buf_len, uint16_t timeout_ms);
 
 /**
  * @brief Register a URC (unsolicited result code) handler.
@@ -328,8 +324,7 @@ typedef void (*ra_modem_at_urc_fn_t)(const char *line, void *ctx);
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t
-ra_modem_at_register_unsolicited_handler(const char *prefix,
-                                         ra_modem_at_urc_fn_t fn, void *ctx);
+ra_modem_at_register_unsolicited_handler(const char* prefix, ra_modem_at_urc_fn_t fn, void* ctx);
 
 /**
  * @brief Pump the RX path without sending a command.

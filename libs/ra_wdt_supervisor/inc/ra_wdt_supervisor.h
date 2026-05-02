@@ -238,9 +238,8 @@ typedef void (*ra_wdt_sup_refresh_fn_t)(void);
  * @see ra_wdt_supervisor_checkin
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t ra_wdt_supervisor_register_thread(const char* name,
-                                                         uint32_t    deadline_ms,
-                                                         uint8_t*    out_handle);
+[[nodiscard]] ra_err_t
+ra_wdt_supervisor_register_thread(const char* name, uint32_t deadline_ms, uint8_t* out_handle);
 
 /**
  * @brief Record a thread check-in, resetting its deadline window.

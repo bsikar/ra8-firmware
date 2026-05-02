@@ -113,12 +113,12 @@ typedef enum : uint8_t {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  char     version[k_ra_ota_version_str_bytes];      /**< Firmware version string. */
-  char     image_url[k_ra_ota_url_max_bytes];        /**< HTTPS URL of the image blob. */
-  uint32_t image_size_bytes;                         /**< Image size on the wire. */
-  uint8_t  image_sha256[k_ra_ota_sha256_bytes];      /**< Expected digest. */
-  uint8_t  signature[k_ra_ota_signature_max_bytes];  /**< ECDSA signature over digest. */
-  uint16_t signature_len;                            /**< Bytes used in ``signature``. */
+  char     version[k_ra_ota_version_str_bytes];     /**< Firmware version string. */
+  char     image_url[k_ra_ota_url_max_bytes];       /**< HTTPS URL of the image blob. */
+  uint32_t image_size_bytes;                        /**< Image size on the wire. */
+  uint8_t  image_sha256[k_ra_ota_sha256_bytes];     /**< Expected digest. */
+  uint8_t  signature[k_ra_ota_signature_max_bytes]; /**< ECDSA signature over digest. */
+  uint16_t signature_len;                           /**< Bytes used in ``signature``. */
 } ra_ota_manifest_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 
@@ -128,10 +128,10 @@ typedef struct {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  ra_ota_state_t state;            /**< Current state machine value. */
-  uint32_t       bytes_done;       /**< Bytes successfully programmed so far. */
-  uint32_t       bytes_total;      /**< Manifest-declared size. */
-  ra_err_t       last_err;         /**< Last error (k_ra_ok if healthy). */
+  ra_ota_state_t state;       /**< Current state machine value. */
+  uint32_t       bytes_done;  /**< Bytes successfully programmed so far. */
+  uint32_t       bytes_total; /**< Manifest-declared size. */
+  ra_err_t       last_err;    /**< Last error (k_ra_ok if healthy). */
 } ra_ota_progress_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 
@@ -248,7 +248,7 @@ typedef struct {
   /** @brief Size of one bank in bytes. */
   uint32_t bank_size_bytes;
   /** @brief Bank index ``set_startup`` should select on commit. */
-  uint8_t  inactive_bank_index;
+  uint8_t inactive_bank_index;
 
   /** @brief Opaque context passed back to every callback. */
   void* ctx;

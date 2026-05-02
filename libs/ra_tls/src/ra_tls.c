@@ -32,7 +32,6 @@
 #include "ra_err.h"
 #include "ra_log.h"
 
-
 /* NOLINTBEGIN(readability-magic-numbers,readability-function-size,readability-function-cognitive-complexity,clang-analyzer-optin.performance.Padding,misc-misplaced-const) */
 #ifndef RA_SIMULATOR_MODE
 #include "mbedtls/ctr_drbg.h"
@@ -170,7 +169,8 @@ ra_err_t ra_tls_global_init(void)
 #ifndef RA_SIMULATOR_MODE
   mbedtls_entropy_init(&s_entropy);
   mbedtls_ctr_drbg_init(&s_ctr_drbg);
-  const int seed_rc = mbedtls_ctr_drbg_seed(&s_ctr_drbg, mbedtls_entropy_func, &s_entropy, NULL, 0U);
+  const int seed_rc =
+    mbedtls_ctr_drbg_seed(&s_ctr_drbg, mbedtls_entropy_func, &s_entropy, NULL, 0U);
   if (seed_rc != 0) {
     mbedtls_ctr_drbg_free(&s_ctr_drbg);
     mbedtls_entropy_free(&s_entropy);
