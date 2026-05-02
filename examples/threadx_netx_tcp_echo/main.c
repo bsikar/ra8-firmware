@@ -43,14 +43,11 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra_board_ek_ra8d2.h"
 #include "ra_cgc.h"
 #include "ra_err.h"
 #include "ra_eth.h"
-#include "ra_gpio_constants.h"
 #include "ra_isr.h"
-#include "ra_port_constants.h"
-#include "ra_port_utils.h"
-#include "ra_sci.h"
 #include "ra_time.h"
 
 #ifndef RA_SIMULATOR_MODE
@@ -73,7 +70,6 @@
  */
 typedef enum : uint32_t {
   k_demo_baud           = 115200U,
-  k_demo_sci_channel    = 8U,
   k_demo_thread_stack   = 8192U,
   k_demo_ip_thread_pri  = 1U,
   k_demo_app_thread_pri = 8U,
@@ -132,36 +128,6 @@ typedef enum : uint8_t {
   k_demo_decimal_base = 10U, /**< Base used by ``demo_append_byte``. */
 } demo_decimal_t;
 
-/** @brief Pinout for the on-board J-Link OB CDC channel (SCI8 / PD02 + PD03). */
-static const ra_port_pin_t k_demo_pin_txd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_2);
-static const ra_port_pin_t k_demo_pin_rxd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
-
-/** @brief RMII signal pinout for the EK-RA8D2 v1 J64 connector. */
-static const ra_port_pin_t k_demo_pin_eth_ref_clk =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_7 << 8) | (uint16_t)k_ra_pin_0);
-static const ra_port_pin_t k_demo_pin_eth_mdc =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_4 << 8) | (uint16_t)k_ra_pin_1);
-static const ra_port_pin_t k_demo_pin_eth_mdio =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_4 << 8) | (uint16_t)k_ra_pin_2);
-static const ra_port_pin_t k_demo_pin_eth_txd0 =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_7 << 8) | (uint16_t)k_ra_pin_1);
-static const ra_port_pin_t k_demo_pin_eth_txd1 =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_7 << 8) | (uint16_t)k_ra_pin_2);
-static const ra_port_pin_t k_demo_pin_eth_tx_en =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_7 << 8) | (uint16_t)k_ra_pin_3);
-static const ra_port_pin_t k_demo_pin_eth_rxd0 =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_7 << 8) | (uint16_t)k_ra_pin_4);
-static const ra_port_pin_t k_demo_pin_eth_rxd1 =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_7 << 8) | (uint16_t)k_ra_pin_5);
-static const ra_port_pin_t k_demo_pin_eth_rx_dv =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_7 << 8) | (uint16_t)k_ra_pin_6);
-static const ra_port_pin_t k_demo_pin_eth_rx_er =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_7 << 8) | (uint16_t)k_ra_pin_7);
-static const ra_port_pin_t k_demo_pin_eth_crs_dv =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_7 << 8) | (uint16_t)k_ra_pin_8);
-
 /** @brief Locally-administered unicast MAC for this board. */
 static const uint8_t k_demo_mac[6] = {0x02U, 0x00U, 0x00U, 0x00U, 0x00U, 0x01U};
 
@@ -202,76 +168,17 @@ static void demo_panic_halt(void)
 }
 
 /**
- * @brief Route PD_02 / PD_03 to SCI8 TXD / RXD.
- *
- * @retval k_ra_ok                       Both pins routed.
- * @retval k_ra_err_gpio_invalid_port    PFS port out of range.
- * @retval k_ra_err_gpio_invalid_pin     PFS pin out of range.
- * @retval k_ra_err_gpio_conflict        Pin already claimed.
- *
- * @pre IOPORT module reachable.
- * @post On success PD_02 / PD_03 are in SCI-async mode.
- *
- * @since 0.1.0
- */
-[[nodiscard]] static ra_err_t demo_sci_pins_init(void)
-{
-  ra_err_t err = ra_pfs_route_peripheral(k_demo_pin_txd, k_ra_psel_sci_async, "nxtcp.txd8");
-  if (err != k_ra_ok) {
-    return err;
-  }
-  return ra_pfs_route_peripheral(k_demo_pin_rxd, k_ra_psel_sci_async, "nxtcp.rxd8");
-}
-
-/**
- * @brief Route the eleven RMII pins to the on-chip Ethernet MAC.
- *
- * @retval k_ra_ok                      Pins routed.
- * @retval k_ra_err_gpio_invalid_port   PSEL target out of range.
- * @retval k_ra_err_gpio_invalid_pin    Pin index out of range.
- * @retval k_ra_err_gpio_conflict       Pin owned by another module.
- *
- * @pre IOPORT module is reachable.
- * @post On success the RMII pins are PSEL=0x11 (Ethernet RMII).
- *
- * @since 0.1.0
- */
-[[nodiscard]] static ra_err_t demo_eth_pins_init(void)
-{
-  const ra_port_pin_t pins[] = {
-    k_demo_pin_eth_ref_clk,
-    k_demo_pin_eth_mdc,
-    k_demo_pin_eth_mdio,
-    k_demo_pin_eth_txd0,
-    k_demo_pin_eth_txd1,
-    k_demo_pin_eth_tx_en,
-    k_demo_pin_eth_rxd0,
-    k_demo_pin_eth_rxd1,
-    k_demo_pin_eth_rx_dv,
-    k_demo_pin_eth_rx_er,
-    k_demo_pin_eth_crs_dv,
-  };
-  for (uint8_t i = 0U; i < (uint8_t)(sizeof(pins) / sizeof(pins[0])); i++) {
-    const ra_err_t err = ra_pfs_route_peripheral(pins[i], k_ra_psel_ether_rmii, "nxtcp.eth");
-    if (err != k_ra_ok) {
-      return err;
-    }
-  }
-  return k_ra_ok;
-}
-
-/**
- * @brief Bring CGC + SCI8 + RMII pins up. Panic-halts on any failure.
+ * @brief Bring CGC + the J-Link OB VCOM console + on-board Ethernet up.
  *
  * @pre Reset_Handler / SystemInit complete.
- * @post On success SCI8 is sending at 115200 8N1 and RMII pins are routed.
+ * @post On success the BSP console is sending at 115200 8N1 and the
+ *       on-board RGMII PHY pins + ETHA0 / RMAC0 are initialised.
  *
  * @since 0.1.0
  */
 static void demo_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  uint32_t pclka_hz   = 0U;
 
   if (ra_cgc_init() != k_ra_ok) {
     demo_panic_halt();
@@ -279,27 +186,13 @@ static void demo_setup_or_halt(void)
   if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
     demo_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_pclka, &pclka_hz) != k_ra_ok) {
-    demo_panic_halt();
-  }
   if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
     demo_panic_halt();
   }
-  if (demo_sci_pins_init() != k_ra_ok) {
+  if (ra_board_uart_console_init((uint32_t)k_demo_baud) != k_ra_ok) {
     demo_panic_halt();
   }
-  if (demo_eth_pins_init() != k_ra_ok) {
-    demo_panic_halt();
-  }
-
-  const ra_sci_cfg_t sci_cfg = {
-    .baud      = k_demo_baud,
-    .data_bits = k_ra_sci_data_8,
-    .parity    = k_ra_sci_parity_none,
-    .stop_bits = k_ra_sci_stop_1,
-    .pclk_hz   = pclka_hz,
-  };
-  if (ra_sci_init((uint8_t)k_demo_sci_channel, &sci_cfg) != k_ra_ok) {
+  if (ra_board_ethernet_init() != k_ra_ok) {
     demo_panic_halt();
   }
 }
@@ -319,8 +212,8 @@ static void demo_print(const char* s)
   if (s == (const char*)0) {
     return;
   }
-  uint32_t len = (uint32_t)strlen(s);
-  (void)ra_sci_write_polling((uint8_t)k_demo_sci_channel, (const uint8_t*)s, len);
+  size_t len = strlen(s);
+  (void)ra_board_uart_console_write((const uint8_t*)s, len);
 }
 
 /**

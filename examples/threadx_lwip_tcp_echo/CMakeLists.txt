@@ -111,6 +111,7 @@ file(GLOB_RECURSE LIB_RA_HAL_SOURCES     CONFIGURE_DEPENDS ${RA_REPO_ROOT}/libs/
 file(GLOB_RECURSE LIB_RA_NET_PAL_SOURCES CONFIGURE_DEPENDS ${RA_REPO_ROOT}/libs/ra_net_pal/src/*.c)
 file(GLOB_RECURSE LIB_RA_USB_PAL_SOURCES CONFIGURE_DEPENDS ${RA_REPO_ROOT}/libs/ra_usb_pal/src/*.c)
 file(GLOB_RECURSE LIB_RA_NSC_SOURCES     CONFIGURE_DEPENDS ${RA_REPO_ROOT}/libs/ra_nsc/src/*.c)
+file(GLOB_RECURSE LIB_RA_BOARD_SOURCES   CONFIGURE_DEPENDS ${RA_REPO_ROOT}/libs/ra_board_ek_ra8d2/src/*.c)
 file(GLOB_RECURSE APP_SECURE_SOURCES     CONFIGURE_DEPENDS ${RA_REPO_ROOT}/src/secure_app/*.c)
 
 #############################################################################
@@ -126,6 +127,7 @@ add_executable(${RA_APP_NAME}.elf
     ${LIB_RA_NET_PAL_SOURCES}
     ${LIB_RA_USB_PAL_SOURCES}
     ${LIB_RA_NSC_SOURCES}
+    ${LIB_RA_BOARD_SOURCES}
     ${APP_SECURE_SOURCES}
 )
 
@@ -163,6 +165,7 @@ target_include_directories(${RA_APP_NAME}.elf PRIVATE
     ${RA_REPO_ROOT}/libs/ra_net_pal/inc
     ${RA_REPO_ROOT}/libs/ra_usb_pal/inc
     ${RA_REPO_ROOT}/libs/ra_nsc/inc
+    ${RA_REPO_ROOT}/libs/ra_board_ek_ra8d2/inc
 )
 
 # lwIP (and ThreadX, transitively) come in as a static library. The
