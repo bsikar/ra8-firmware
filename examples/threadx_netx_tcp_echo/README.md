@@ -45,3 +45,13 @@ init / operation / cleanup callbacks through `ra_rsip_aes_cipher`
 and `ra_rsip_sha256` on real silicon. The TCP echo path doesn't use
 crypto, but the same target is the proving ground for adding NetX
 Secure (TLS) on top later.
+
+## BSP usage
+
+Uses `ra_board_ek_ra8d2` BSP for LED init/toggle (per UM Table 24 p
+31) and `ra_board_ethernet_init` for the on-board PEF7071 PHY (RGMII
+per UM Table 26 p 33). SCI8 console pins follow UM Table 13 p 24.
+
+Validated 2026-05-02 against EK-RA8D2 v1 User's Manual (R20UT5523EG0101
+Rev 1.01) Section 6.1 + Tables 13 p 24 / 24 p 31 / 26 p 33, and HUM
+(R01UH1065EJ0130) Ethernet + RSIP chapters.
