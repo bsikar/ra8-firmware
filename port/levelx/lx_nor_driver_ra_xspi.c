@@ -335,6 +335,93 @@ static UINT priv_nor_block_erased_verify(ULONG block)
 }
 
 /**
+ * @struct ra_xspi_rdid_observation_t
+ * @brief JLink-readable snapshot of the most recent RDID probe.
+ *
+ * @details
+ * UART on the EK-RA8D2 will not reliably drain ``ra_log_*`` output
+ * before ``demo_panic_halt`` fires inside ``lx_nor_flash_format``,
+ * so the operator cannot see the IS25LX512M JEDEC triplet via the
+ * console. Stash the result in a known SRAM word that the developer
+ * can read with ``mem32 <addr> 1`` from JLinkExe / Ozone after the
+ * panic halt.
+ *
+ * Layout (little-endian on Cortex-M85):
+ *   - ``magic``    -- ``k_ra_xspi_rdid_magic`` once any probe has run
+ *                     (``0`` on cold boot before the global has been
+ *                     touched, so the operator can tell stale-RAM
+ *                     values from a real reading).
+ *   - ``call_count`` -- number of times ``priv_bus_init_once`` has
+ *                       reached the RDID probe step. Bumped before
+ *                       the call so even a hang inside the HAL leaves
+ *                       a visible breadcrumb.
+ *   - ``rid_err``  -- ``ra_err_t`` returned by ``ra_xspi_flash_read_id``
+ *                     (cast to ``uint32_t``). ``0`` (= ``k_ra_ok``)
+ *                     means the call returned cleanly.
+ *   - ``jedec_id`` -- packed ``(mfr << 16) | (type << 8) | capacity``
+ *                     from the HAL. Expected ``0x009D5A1A`` for the
+ *                     IS25LX512M-JHLE on EK-RA8D2 v1.
+ *
+ * @invariant ``magic`` is either ``0`` (untouched) or
+ *            ``k_ra_xspi_rdid_magic``; any other value indicates SRAM
+ *            corruption / wrong address.
+ *
+ * @see g_ra_xspi_rdid_observed
+ *
+ * @since 0.1.0
+ */
+typedef struct {
+  uint32_t magic;      /**< ``k_ra_xspi_rdid_magic`` once written.        */
+  uint32_t call_count; /**< Number of probe attempts since reset.         */
+  uint32_t rid_err;    /**< Last ``ra_err_t`` from ``read_id`` (uint).    */
+  uint32_t jedec_id;   /**< Last raw RDID triplet from the HAL.           */
+} ra_xspi_rdid_observation_t;
+
+/**
+ * @enum ra_xspi_rdid_magic_t
+ * @brief Sentinel value distinguishing a written observation from
+ *        cold-boot zero / stale RAM.
+ *
+ * @details
+ * Picked to be ASCII ``"RDID"`` (little-endian read order) so the
+ * operator can recognise the field in a ``mem32`` dump at a glance.
+ */
+typedef enum : uint32_t {
+  k_ra_xspi_rdid_magic = 0x44494452UL, /**< 'R','D','I','D' little-endian. */
+} ra_xspi_rdid_magic_t;
+
+/**
+ * @var g_ra_xspi_rdid_observed
+ * @brief JLink-readable observation of the last RDID probe.
+ *
+ * @details
+ * Lives in normal ``.bss`` (zero-initialised by the C runtime), so on
+ * cold boot the ``magic`` field reads ``0`` and the operator knows
+ * the global has not yet been written. Updated unconditionally inside
+ * ``priv_bus_init_once`` *before* any error-return path so that even
+ * an immediate ``ra_log_error`` -> ``demo_panic_halt`` sequence
+ * leaves the actual JEDEC triplet visible in SRAM.
+ *
+ * Look up its address with::
+ *
+ *     arm-none-eabi-nm build/.../<app>.elf | grep g_ra_xspi_rdid_observed
+ *
+ * Then in JLinkExe / Ozone::
+ *
+ *     mem32 <addr> 4
+ *
+ * to dump ``{magic, call_count, rid_err, jedec_id}``.
+ *
+ * @note Not ``static`` -- exported deliberately so external tools
+ *       (``arm-none-eabi-nm``, JLink ELF symbol view) can locate it.
+ * @warning Direct modification by other modules is forbidden; only
+ *          ``priv_bus_init_once`` writes this global.
+ *
+ * @since 0.1.0
+ */
+ra_xspi_rdid_observation_t g_ra_xspi_rdid_observed;
+
+/**
  * @brief One-shot guard so we only run the bus bring-up once.
  *
  * @details
@@ -386,8 +473,23 @@ static UINT priv_bus_init_once(void)
    *     being mis-interpreted on the bus, or
    *   - one of the OCTA pin functions is not actually mapped to
    *     PSEL=0x1C, so the chip never sees a clean RDID frame. */
-  uint32_t       jedec_id = 0U;
-  const ra_err_t rid_err  = ra_xspi_flash_read_id((uint8_t)k_ra_lx_xspi_instance, &jedec_id);
+  uint32_t jedec_id = 0U;
+
+  /* Stamp the magic + bump the call counter BEFORE issuing the HAL
+   * call so that even if ``ra_xspi_flash_read_id`` hangs, the
+   * developer can see in SRAM that the probe was attempted. The
+   * jedec_id / rid_err fields are then back-filled with the actual
+   * result before we take any error-return path -- UART will not
+   * drain in time to surface this via ``ra_log_*``, but JLink can
+   * read the global at any time. */
+  g_ra_xspi_rdid_observed.magic = (uint32_t)k_ra_xspi_rdid_magic;
+  g_ra_xspi_rdid_observed.call_count += 1U;
+  g_ra_xspi_rdid_observed.rid_err  = (uint32_t)k_ra_ok;
+  g_ra_xspi_rdid_observed.jedec_id = 0U;
+
+  const ra_err_t rid_err           = ra_xspi_flash_read_id((uint8_t)k_ra_lx_xspi_instance, &jedec_id);
+  g_ra_xspi_rdid_observed.rid_err  = (uint32_t)rid_err;
+  g_ra_xspi_rdid_observed.jedec_id = jedec_id;
   if (rid_err != k_ra_ok) {
     ra_log_error_val(s_lx_xspi_tag, "RDID transfer failed err", (uint32_t)rid_err);
     return (UINT)LX_ERROR;
