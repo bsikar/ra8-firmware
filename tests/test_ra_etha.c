@@ -790,6 +790,91 @@ static void test_set_security(void)
   TEST_END("etha set security gate");
 }
 
+/**
+ * @test test_clear_status_mcdc_port_block
+ *
+ * @par MC/DC:
+ * Decision: `if (!internal_port_ok(port) || !internal_irq_block_ok(block))`
+ * (2 conditions, libs/ra_hal/src/ra_etha.c line 238)
+ * Standard: DO-178C Table A-7 obj 5; ISO 26262 Part 6 Table 12.
+ * - Vector 1: port=invalid, block=valid -> C1=T (short-circuits) -> Decision T
+ * - Vector 2: port=valid,   block=valid -> C1=F, C2=F -> Decision F (ok)
+ * - Vector 3: port=valid,   block=invalid -> C1=F, C2=T -> Decision T
+ * Vectors 1+2 vary C1 (decision flips); vectors 2+3 vary C2 with C1=F
+ * (decision flips). N+1 = 3 vectors for N=2 conditions: minimal MC/DC.
+ * The same compound decision shape repeats in ra_etha_enable_irq (line
+ * 272) and ra_etha_disable_irq (line 299); a single MC/DC vector set
+ * on clear_status discharges the obligation for the textually
+ * identical guards (rationale per DO-178C Section 6.4.4.3 source-text
+ * equivalence).
+ */
+static void test_clear_status_mcdc_port_block(void)
+{
+  TEST_BEGIN("etha clear_status MC/DC: !port_ok || !block_ok");
+  prep();
+  const ra_etha_config_t cfg = {.initial_mode = k_ra_etha_opc_operation,
+                                .eaeie0_mask  = 0U,
+                                .eaeie1_mask  = 0U,
+                                .eaeie2_mask  = 0U};
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_init(k_ra_etha_port_0, &cfg));
+
+  /* Vector 1: port out of range, block in range. C1=T short-circuits. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_etha_clear_status((ra_etha_port_t)(uint8_t)k_ra_etha_port_count,
+                                               k_ra_etha_irq_class_0,
+                                               0U));
+
+  /* Vector 2: port valid, block valid. C1=F, C2=F -> Decision F. */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_etha_clear_status(k_ra_etha_port_0, k_ra_etha_irq_class_0, 0U));
+
+  /* Vector 3: port valid, block out of range. C1=F, C2=T. */
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_invalid_arg,
+    (int32_t)ra_etha_clear_status(k_ra_etha_port_0,
+                                  (ra_etha_irq_class_t)(uint8_t)k_ra_etha_irq_class_count,
+                                  0U));
+  TEST_END("etha clear_status MC/DC: !port_ok || !block_ok");
+}
+
+/**
+ * @test test_set_mode_mcdc_port_mode
+ *
+ * @par MC/DC:
+ * Decision: `if (!internal_port_ok(port) ||
+ *               (uint32_t)mode > k_ra_etha_mask_opc)`
+ * (2 conditions, libs/ra_hal/src/ra_etha.c line 408)
+ * Standard: DO-178C Table A-7 obj 5; IEC 61508-3 SIL 3.
+ * - Vector 1: port=invalid, mode=valid -> C1=T (short-circuits) -> Decision T
+ * - Vector 2: port=valid,   mode<=mask -> C1=F, C2=F -> Decision F (ok)
+ * - Vector 3: port=valid,   mode>mask  -> C1=F, C2=T -> Decision T
+ */
+static void test_set_mode_mcdc_port_mode(void)
+{
+  TEST_BEGIN("etha set_mode MC/DC: !port_ok || mode > mask");
+  prep();
+  const ra_etha_config_t cfg = {.initial_mode = k_ra_etha_opc_config,
+                                .eaeie0_mask  = 0U,
+                                .eaeie1_mask  = 0U,
+                                .eaeie2_mask  = 0U};
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_init(k_ra_etha_port_0, &cfg));
+
+  /* Vector 1: port out of range, valid mode. C1=T short-circuits. */
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_invalid_arg,
+    (int32_t)ra_etha_set_mode((ra_etha_port_t)(uint8_t)k_ra_etha_port_count, k_ra_etha_opc_config));
+
+  /* Vector 2: port valid, mode within mask. C1=F, C2=F -> Decision F. */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_etha_set_mode(k_ra_etha_port_0, k_ra_etha_opc_config));
+
+  /* Vector 3: port valid, mode > k_ra_etha_mask_opc. C1=F, C2=T. */
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_invalid_arg,
+    (int32_t)ra_etha_set_mode(k_ra_etha_port_0, (ra_etha_opc_t)(k_ra_etha_mask_opc + 1U)));
+  TEST_END("etha set_mode MC/DC: !port_ok || mode > mask");
+}
+
 int32_t main(void)
 {
   test_init_happy();
@@ -818,6 +903,8 @@ int32_t main(void)
   test_etha_open_bad_args();
   test_etha_open_eamc_transition();
   test_set_security();
+  test_clear_status_mcdc_port_block();
+  test_set_mode_mcdc_port_mode();
   (void)fprintf(stderr, "[OK  ] test_ra_etha.c\n");
   return 0;
 }

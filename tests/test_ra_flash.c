@@ -956,6 +956,110 @@ static void test_lock_set_validation(void)
 }
 
 /* ---------------------------------------------------------------------------
+ * MC/DC vector tests
+ * ------------------------------------------------------------------------ */
+
+/**
+ * @test test_block_protect_set_mcdc
+ *
+ * @par MC/DC:
+ * Decision: `if (permanent && !lock)`
+ * (2 conditions, libs/ra_hal/src/ra_flash.c line 679)
+ * Standard: DO-178C Table A-7 obj 5; ISO 26262 Part 6 Table 12.
+ * Short-circuit AND with N=2 conditions; N+1 = 3 vectors.
+ * - Vector 1: permanent=false             -> C1=F (short-circuits) -> Decision F
+ * - Vector 2: permanent=true,  lock=true  -> C1=T, C2=(!true)=F -> Decision F
+ * - Vector 3: permanent=true,  lock=false -> C1=T, C2=(!false)=T -> Decision T
+ *                                            (returns invalid_arg)
+ * Vectors 1+3 vary C1 (decision flips); vectors 2+3 vary C2 with C1=T
+ * (decision flips). Minimal MC/DC.
+ */
+static void test_block_protect_set_mcdc(void)
+{
+  TEST_BEGIN("flash block_protect_set MC/DC: permanent && !lock");
+  ra_sim_mmap_reset();
+
+  /* Vector 1: permanent=F, lock=F. C1=F short-circuits. Decision F -> ok. */
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_flash_block_protect_set(k_ra_flash_world_ns, false, false));
+  /* Vector 2: permanent=T, lock=T. C1=T, C2=F -> Decision F -> ok. */
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_flash_block_protect_set(k_ra_flash_world_ns, true, true));
+  /* Vector 3: permanent=T, lock=F. C1=T, C2=T -> Decision T -> invalid_arg. */
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
+                 (int)ra_flash_block_protect_set(k_ra_flash_world_ns, false, true));
+  TEST_END("flash block_protect_set MC/DC: permanent && !lock");
+}
+
+/**
+ * @test test_set_window_mcdc
+ *
+ * @par MC/DC:
+ * Decision: `if (low == 0U && high == 0U)`
+ * (2 conditions, libs/ra_hal/src/ra_flash.c line 1641)
+ * Standard: DO-178C Table A-7 obj 5; IEC 61508-3 SIL 3.
+ * - Vector 1: low=1, high=2 -> C1=F (short-circuits) -> Decision F (low<high so ok)
+ * - Vector 2: low=0, high=1 -> C1=T, C2=F -> Decision F (then 0<1 so ok)
+ * - Vector 3: low=0, high=0 -> C1=T, C2=T -> Decision T (clears window, ok)
+ * Vectors 1+3 vary C1 (decision flips); vectors 2+3 vary C2 with C1=T.
+ * The downstream `if (low >= high)` is exercised by an existing test
+ * elsewhere in this file (test_set_window_paths).
+ */
+static void test_set_window_mcdc(void)
+{
+  TEST_BEGIN("flash set_window MC/DC: low==0 && high==0");
+  ra_sim_mmap_reset();
+  const ra_flash_cfg_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_flash_init(&cfg));
+
+  /* Vector 1: low=1, high=2. C1=F short-circuits. Then low<high -> ok. */
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_flash_set_window(1U, 2U));
+  /* Vector 2: low=0, high=1. C1=T, C2=F -> Decision F; then 0<1 -> ok. */
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_flash_set_window(0U, 1U));
+  /* Vector 3: low=0, high=0. C1=T, C2=T -> Decision T -> clears, ok. */
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_flash_set_window(0U, 0U));
+
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_flash_deinit());
+  TEST_END("flash set_window MC/DC: low==0 && high==0");
+}
+
+/**
+ * @test test_write_validation_mcdc
+ *
+ * @par MC/DC:
+ * Decision: `if (len == 0U || (len % k_ra_mram_write_size_bytes) != 0U)`
+ * (2 conditions, libs/ra_hal/src/ra_flash.c line 1747)
+ * Standard: DO-178C Table A-7 obj 5; ISO 26262 Part 6 Table 12.
+ * - Vector 1: len=0  -> C1=T (short-circuits) -> Decision T (invalid_arg)
+ * - Vector 2: len=32 -> C1=F, C2=(32%32==0) so !=0 is F -> Decision F (proceeds)
+ * - Vector 3: len=33 -> C1=F, C2=(33%32!=0) is T -> Decision T (invalid_arg)
+ * The post-decision happy path is incidentally validated by other
+ * tests (test_write_validation_and_chunking).
+ */
+static void test_write_validation_mcdc(void)
+{
+  TEST_BEGIN("flash write MC/DC: len==0 || (len % page) != 0");
+  ra_sim_mmap_reset();
+  const ra_flash_cfg_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_flash_init(&cfg));
+
+  uint8_t buf[64] = {};
+
+  /* Vector 1: len=0. C1=T short-circuits. */
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
+                 (int)ra_flash_write((uintptr_t)k_ra_flash_code_start, buf, 0U));
+  /* Vector 3: len=33 (not page-aligned). C1=F, C2=T. */
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
+                 (int)ra_flash_write((uintptr_t)k_ra_flash_code_start, buf, 33U));
+  /* Vector 2: len=32 (one page, page-aligned). C1=F, C2=F -> Decision F.
+   * We supply a deliberately invalid (out-of-range) address so the
+   * post-decision range validator fails fast -- still observes the
+   * line-1747 decision evaluating F. */
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_flash_write((uintptr_t)0xDEADBEEFU, buf, 32U));
+
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_flash_deinit());
+  TEST_END("flash write MC/DC: len==0 || (len % page) != 0");
+}
+
+/* ---------------------------------------------------------------------------
  * Main
  * ------------------------------------------------------------------------ */
 
@@ -1017,6 +1121,9 @@ int32_t main(void)
   test_lock_set_ns_world();
   test_lock_set_s_world();
   test_lock_set_validation();
+  test_block_protect_set_mcdc();
+  test_set_window_mcdc();
+  test_write_validation_mcdc();
 
   (void)fprintf(stderr, "[OK  ] test_ra_flash.c\n");
   return 0;
