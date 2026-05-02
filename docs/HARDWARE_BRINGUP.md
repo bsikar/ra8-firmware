@@ -81,3 +81,29 @@ SCI8 -> J-Link OB UART bridge -> USB-CDC -> /dev/cu.usbmodem0010865671981 -> hos
 2. **Ethernet integration** — switch threadx_lwip_tcp_echo to lwIP DHCP so it picks up an IP from any subnet the cable connects to. Or add a runtime config knob.
 3. **Phase 7.1 tier 1 LED-only sweep** — flash blink_hal, threadx_mpu_partition_demo (LED+MPU), confirm each runs.
 4. **ra_board_uart_console real-console verification** — refactor uart_hello to call ra_board_uart_console_* (now correct on SCI8) instead of raw ra_sci_*.
+
+## 2026-05-02 broader silicon sweep
+
+Quick-flash + halt-and-check-PC across more example apps:
+
+| App | Result | Halt PC location |
+|---|---|---|
+| blink | ✅ | ra_delay_ms loop |
+| blink_hal | ✅ | ra_delay_ms loop |
+| uart_hello | ✅ | "hello, ra8d2!\n" stream verified |
+| clock_check | ✅ | ra_delay_ms loop |
+| threadx_blink | ✅ | tx_thread_schedule idle |
+| threadx_filex_demo | ✅ | tx_thread_schedule idle |
+| threadx_canfd_demo | ✅ | tx_thread_schedule idle |
+| threadx_ota_demo | ✅ | tx_thread_schedule idle |
+| threadx_lwip_tcp_echo | ✅ runs, ⚠️ unreachable (subnet) | tx_thread_schedule idle |
+| threadx_mpu_partition_demo | ⚠️ caught fault (intentional?) | internal_bkpt — the deliberate cross-region access fired the fault handler as designed; the panic-spin is the demo's "fault caught" path |
+| threadx_levelx_demo | 🔍 still in main init at sample time | needs longer settle window |
+| threadx_filex_levelx_demo | 🔍 still in main init | needs longer settle |
+| threadx_https_client | 🔍 still in main init | needs longer settle |
+| ra_bootloader | 🔍 still in system_init | needs longer settle |
+| threadx_netx_tcp_echo | 🐛 ra_error_handler panic | likely SCI8 console init racing — same pattern as uart_hello pre-fix? |
+| threadx_ipc_demo | 🐛 ra_hw_err fired | needs investigation |
+| usb_hid_device | 🐛 usb_hid_panic_halt | USB init returns error (suspected ra_cgc_usbhs_pll_enable hang or missing pin enable) |
+
+**Score: 9 of 17 sampled apps confirmed running on silicon. 4 still settling. 4 need bug fixes.**
