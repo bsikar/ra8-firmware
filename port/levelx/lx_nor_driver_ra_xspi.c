@@ -44,6 +44,7 @@
 #include "ra_board_ek_ra8d2.h"
 #include "ra_err.h"
 #include "ra_log.h"
+#include "ra_time.h"
 #include "ra_xspi.h"
 
 /** @brief Logging tag for the LevelX <-> ra_xspi bridge. */
@@ -371,11 +372,34 @@ static UINT priv_nor_block_erased_verify(ULONG block)
  * @since 0.1.0
  */
 typedef struct {
-  uint32_t magic;      /**< ``k_ra_xspi_rdid_magic`` once written.        */
-  uint32_t call_count; /**< Number of probe attempts since reset.         */
-  uint32_t rid_err;    /**< Last ``ra_err_t`` from ``read_id`` (uint).    */
-  uint32_t jedec_id;   /**< Last raw RDID triplet from the HAL.           */
+  uint32_t magic;        /**< ``k_ra_xspi_rdid_magic`` once written.        */
+  uint32_t call_count;   /**< Number of probe attempts since reset.         */
+  uint32_t rid_err;      /**< Last ``ra_err_t`` from ``read_id`` (uint).    */
+  uint32_t jedec_id;     /**< Last raw RDID triplet from the HAL.           */
+  uint32_t reset_8d_err; /**< ``ra_err_t`` from 8D-form software reset.   */
+  uint32_t reset_1s_err; /**< ``ra_err_t`` from 1S-form software reset.   */
+  uint32_t stage;        /**< Last stage reached (see ``ra_xspi_stage_t``). */
+  uint32_t reserved;     /**< Reserved for future diagnostics.              */
 } ra_xspi_rdid_observation_t;
+
+/**
+ * @enum ra_xspi_stage_t
+ * @brief Bring-up stage markers stamped into ``g_ra_xspi_rdid_observed.stage``.
+ *
+ * @details
+ * Lets a JLink operator tell at a glance how far the bring-up made it
+ * before either succeeding (``k_ra_xspi_stage_done``) or returning an
+ * error.
+ */
+typedef enum : uint32_t {
+  k_ra_xspi_stage_pins     = 1U, /**< Pin routing in progress. */
+  k_ra_xspi_stage_init_8d  = 2U, /**< xSPI init in 8D mode.    */
+  k_ra_xspi_stage_reset_8d = 3U, /**< Software reset in 8D.    */
+  k_ra_xspi_stage_init_1s  = 4U, /**< xSPI init in 1S mode.    */
+  k_ra_xspi_stage_reset_1s = 5U, /**< Software reset in 1S.    */
+  k_ra_xspi_stage_rdid     = 6U, /**< RDID probe in flight.    */
+  k_ra_xspi_stage_done     = 7U, /**< Bring-up succeeded.      */
+} ra_xspi_stage_t;
 
 /**
  * @enum ra_xspi_rdid_magic_t
@@ -447,47 +471,108 @@ static bool s_xspi_bus_ready = false;
  *
  * @since 0.1.0
  */
+/**
+ * @enum ra_xspi_reset_timing_t
+ * @brief Post-software-reset settle time required by the IS25LX512M.
+ *
+ * @details
+ * IS25LX512M datasheet Ch 8.21 "Reset (RST)" p 39 specifies tRPH
+ * (reset processing time) = 50 us max before the next chip-select
+ * is allowed. We use a 1 ms ``ra_delay_ms`` because that is the
+ * smallest delay primitive available in ``ra_core/ra_time.h`` and
+ * 1 ms >> 50 us with 20x headroom.
+ */
+typedef enum : uint32_t {
+  k_ra_xspi_reset_settle_ms = 1U, /**< >= tRPH (50 us). */
+} ra_xspi_reset_timing_t;
+
+/**
+ * @enum ra_xspi_reset_form_t
+ * @brief Width of the opcode pair shipped to ``ra_xspi_software_reset``.
+ *
+ * @details
+ * IS25LX512M Ch 7.3 "Operating Protocols" p 27 -- 1S-1S-1S accepts
+ * 1-byte JEDEC opcodes; 8D-8D-8D OPI requires the opcode followed by
+ * its 1's-complement (so the device sees 2 bytes per "opcode" on the
+ * 8 DQ lines on both clock edges).
+ */
+typedef enum : uint8_t {
+  k_ra_xspi_reset_form_1s = 1U, /**< 1-byte opcode for 1S-1S-1S. */
+  k_ra_xspi_reset_form_8d = 2U, /**< Opcode + complement for 8D-8D-8D. */
+} ra_xspi_reset_form_t;
+
 static UINT priv_bus_init_once(void)
 {
   if (s_xspi_bus_ready) {
     return (UINT)LX_SUCCESS;
   }
+
+  /* Stamp the magic + bump the counter BEFORE any HAL call so even a
+   * hang inside the controller leaves a visible breadcrumb at the
+   * known SRAM address. The sub-stage err fields are back-filled as
+   * each step completes so the operator can see exactly which step
+   * tripped. */
+  g_ra_xspi_rdid_observed.magic = (uint32_t)k_ra_xspi_rdid_magic;
+  g_ra_xspi_rdid_observed.call_count += 1U;
+  g_ra_xspi_rdid_observed.rid_err      = (uint32_t)k_ra_ok;
+  g_ra_xspi_rdid_observed.jedec_id     = 0U;
+  g_ra_xspi_rdid_observed.reset_8d_err = (uint32_t)k_ra_ok;
+  g_ra_xspi_rdid_observed.reset_1s_err = (uint32_t)k_ra_ok;
+  g_ra_xspi_rdid_observed.stage        = (uint32_t)k_ra_xspi_stage_pins;
+
   if (ra_board_xspi_pins_init() != k_ra_ok) {
     ra_log_error(s_lx_xspi_tag, "xspi pin init failed");
     return (UINT)LX_ERROR;
   }
-  if (ra_xspi_init((uint8_t)k_ra_lx_xspi_instance, k_ra_xspi_lio_1s1s1s) != k_ra_ok) {
-    ra_log_error(s_lx_xspi_tag, "ra_xspi_init failed");
+
+  /* Phase A: punch the chip out of any 8D-OPI mode left over from a
+   * previous boot. The volatile-config register that selects 8D mode
+   * survives a Cortex-M85 warm-reset because power was never removed,
+   * so even after our PFS reset pulse the IS25LX512M may still be in
+   * OPI. The only language it understands in that state is the 8D
+   * RSTEN/RST opcode pair (0x66 0x99 0x99 0x66) -- send that first
+   * with the controller in 8D mode. If the chip was actually in 1S,
+   * the 8D bytes look like garbage and the chip ignores them; we
+   * recover via the 1S reset in Phase B. */
+  g_ra_xspi_rdid_observed.stage = (uint32_t)k_ra_xspi_stage_init_8d;
+  if (ra_xspi_init((uint8_t)k_ra_lx_xspi_instance, k_ra_xspi_lio_8d8d8d) != k_ra_ok) {
+    ra_log_error(s_lx_xspi_tag, "ra_xspi_init 8d failed");
     return (UINT)LX_ERROR;
   }
+  g_ra_xspi_rdid_observed.stage = (uint32_t)k_ra_xspi_stage_reset_8d;
+  const ra_err_t reset_8d =
+    ra_xspi_software_reset((uint8_t)k_ra_lx_xspi_instance, (uint8_t)k_ra_xspi_reset_form_8d);
+  g_ra_xspi_rdid_observed.reset_8d_err = (uint32_t)reset_8d;
+  /* Tolerate timeouts here: if the chip is in 1S mode, the 8D bytes
+   * never form a recognised opcode and CMDCMP may legitimately stall.
+   * The Phase-B 1S reset will recover regardless. */
+  ra_delay_ms((uint32_t)k_ra_xspi_reset_settle_ms);
 
-  /* Probe RDID. If the controller can't even read the JEDEC triplet
-   * back, every downstream WREN / PP / SE call will fail too -- bail
-   * loudly here so the failure is obvious in the SCI8 console rather
-   * than a generic LX_ERROR from ``lx_nor_flash_format``. We expect
-   * the IS25LX512M-JHLE on EK-RA8D2 v1 to return
-   * ``{0x9D, 0x5A, 0x1A}`` per IS25LX512M datasheet Ch 8.13. A
-   * non-matching value most commonly means:
-   *   - the controller is in 8D-8D-8D protocol while the chip is
-   *     still in 1S-1S-1S (or vice versa), so the opcode bits are
-   *     being mis-interpreted on the bus, or
-   *   - one of the OCTA pin functions is not actually mapped to
-   *     PSEL=0x1C, so the chip never sees a clean RDID frame. */
-  uint32_t jedec_id = 0U;
+  /* Phase B: switch the controller back to 1S-1S-1S (the chip's
+   * power-on default and the protocol the rest of the driver uses)
+   * and issue the 1-byte RSTEN/RST pair. After this any chip that
+   * survived Phase A in 1S mode is now also in a known reset state. */
+  g_ra_xspi_rdid_observed.stage = (uint32_t)k_ra_xspi_stage_init_1s;
+  if (ra_xspi_init((uint8_t)k_ra_lx_xspi_instance, k_ra_xspi_lio_1s1s1s) != k_ra_ok) {
+    ra_log_error(s_lx_xspi_tag, "ra_xspi_init 1s failed");
+    return (UINT)LX_ERROR;
+  }
+  g_ra_xspi_rdid_observed.stage = (uint32_t)k_ra_xspi_stage_reset_1s;
+  const ra_err_t reset_1s =
+    ra_xspi_software_reset((uint8_t)k_ra_lx_xspi_instance, (uint8_t)k_ra_xspi_reset_form_1s);
+  g_ra_xspi_rdid_observed.reset_1s_err = (uint32_t)reset_1s;
+  ra_delay_ms((uint32_t)k_ra_xspi_reset_settle_ms);
 
-  /* Stamp the magic + bump the call counter BEFORE issuing the HAL
-   * call so that even if ``ra_xspi_flash_read_id`` hangs, the
-   * developer can see in SRAM that the probe was attempted. The
-   * jedec_id / rid_err fields are then back-filled with the actual
-   * result before we take any error-return path -- UART will not
-   * drain in time to surface this via ``ra_log_*``, but JLink can
-   * read the global at any time. */
-  g_ra_xspi_rdid_observed.magic = (uint32_t)k_ra_xspi_rdid_magic;
-  g_ra_xspi_rdid_observed.call_count += 1U;
-  g_ra_xspi_rdid_observed.rid_err  = (uint32_t)k_ra_ok;
-  g_ra_xspi_rdid_observed.jedec_id = 0U;
-
-  const ra_err_t rid_err           = ra_xspi_flash_read_id((uint8_t)k_ra_lx_xspi_instance, &jedec_id);
+  /* Probe RDID. If the controller still can't read back the JEDEC
+   * triplet, every downstream WREN / PP / SE will fail too -- bail
+   * loudly so the failure is obvious. We expect the IS25LX512M-JHLE
+   * on EK-RA8D2 v1 to return ``{0x9D, 0x5A, 0x1A}`` per IS25LX512M
+   * datasheet Ch 8.13 p 36. A non-matching value after the dual-mode
+   * software reset most likely means a pin-routing issue (CS / DQ
+   * not actually on PSEL=0x1C). */
+  g_ra_xspi_rdid_observed.stage = (uint32_t)k_ra_xspi_stage_rdid;
+  uint32_t       jedec_id       = 0U;
+  const ra_err_t rid_err        = ra_xspi_flash_read_id((uint8_t)k_ra_lx_xspi_instance, &jedec_id);
   g_ra_xspi_rdid_observed.rid_err  = (uint32_t)rid_err;
   g_ra_xspi_rdid_observed.jedec_id = jedec_id;
   if (rid_err != k_ra_ok) {
@@ -500,7 +585,8 @@ static UINT priv_bus_init_once(void)
     return (UINT)LX_ERROR;
   }
 
-  s_xspi_bus_ready = true;
+  g_ra_xspi_rdid_observed.stage = (uint32_t)k_ra_xspi_stage_done;
+  s_xspi_bus_ready              = true;
   return (UINT)LX_SUCCESS;
 }
 

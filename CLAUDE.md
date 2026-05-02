@@ -523,6 +523,67 @@ The project follows NASA/JPL Power of 10 rules for safety-critical embedded code
 - Build fails on ANY warning
 - CI enforces zero-warning builds
 
+## DO-178B Level B Qualification (This Project)
+
+**MANDATORY:** This project targets **DO-178B Level B** safety-critical airborne
+software qualification. Every test added to this codebase must satisfy
+**MC/DC (Modified Condition/Decision Coverage)** -- statement and branch
+coverage are necessary but not sufficient.
+
+### What MC/DC Requires
+
+For every compound boolean decision (e.g. `if (a && b)` or `while (c || (d && e))`),
+test vectors must demonstrate that **each individual condition independently
+affects the outcome**:
+
+- For N conditions in a decision, MC/DC typically requires **N+1 test cases**.
+- Each condition must be shown to flip the decision result while all other
+  conditions are held fixed.
+- Multiple-condition coverage (2^N) is sufficient but wasteful; aim for the
+  N+1 minimal MC/DC vector set.
+
+### Enforcement
+
+- **Every new test** must include MC/DC vectors for every compound decision in
+  the code path it covers. State the MC/DC vector pattern in the test's
+  Doxygen `@par MC/DC:` block.
+- **No new compound boolean decision** may be added to first-party code
+  without a paired test that demonstrates MC/DC for it. Reviewers should
+  reject PRs that add an `&&` / `||` without the matching test vectors.
+- **Coverage measurement**: clang 18+ with `-fcoverage-mcdc` is the canonical
+  toolchain. The `make mcdc` target runs the coverage build and emits a
+  per-file MC/DC report. See `docs/MCDC.md`.
+- **CI gate** (eventually): once the existing 135-test suite is brought up to
+  100% MC/DC, the pre-commit hook will reject commits that drop coverage.
+  See `docs/MCDC_GAPS.md` and `docs/MCDC_GAPS.csv` for the current gap list.
+
+### Exempt Code
+
+- `libs/third_party/` -- ThreadX, NetX, FileX, USBX, GUIX, mbedTLS, lwIP,
+  NimBLE are SOUP (Software Of Unknown Provenance). DO-178B treats them as
+  pre-qualified components requiring justification documents but not
+  source-level MC/DC re-test in this repo.
+- Generated code (vector tables, register-bank headers) is exempt from MC/DC
+  if it has no compound decisions.
+- Host-only test scaffolding under `tests/` itself is exempt.
+
+### Example MC/DC Test Block
+
+```c
+/**
+ * @test ra_isr_register_validates_inputs
+ *
+ * @par MC/DC:
+ * Decision: `if (handler == nullptr || priority > k_ra_isr_prio_max)` (2 conditions)
+ * - Vector 1: handler=valid, priority=0       -> false (control: both conditions false)
+ * - Vector 2: handler=NULL,  priority=0       -> true  (varies handler only)
+ * - Vector 3: handler=valid, priority=255     -> true  (varies priority only)
+ * Vectors 1+2 prove handler independently affects outcome; 1+3 prove the
+ * same for priority. N+1 = 3 vectors for N=2 conditions: minimal MC/DC.
+ */
+TEST(ra_isr, register_validates_inputs) { ... }
+```
+
 ## SOLID Principles for C (This Project)
 
 ### Single Responsibility (S)
