@@ -62,7 +62,7 @@ $(foreach m,$(_RA_APP_MAINS),$(eval RA_APP_DIR_$(notdir $(patsubst %/main.c,%,$m
 
 # We forward each <app> name to the app's own Makefile, so reserve the names
 # below from being shadowed by .PHONY targets.
-.PHONY: help apps default clean format check tidy test test-cov test-docker ctest coverage mcdc docs dashboard ascii version qe-test smoke all $(RA_APPS)
+.PHONY: help apps default clean format check tidy test test-cov test-docker ctest coverage mcdc misra docs dashboard ascii version qe-test smoke all $(RA_APPS)
 
 # EVM-tier apps (everything under examples/ek_ra8d2/) -- these are the
 # apps the hardware smoke test sweeps because they run on a stock
@@ -85,6 +85,7 @@ help:
 	@echo "  make ctest     rerun just ctest (assumes already built)"
 	@echo "  make coverage  generate lcov+genhtml HTML coverage report"
 	@echo "  make mcdc      generate DO-178C Level B MC/DC report (clang >= 18)"
+	@echo "  make misra     run MISRA-C 2012 audit (advisory; see docs/MISRA.md)"
 	@echo "  make docs      generate doxygen HTML into build/docs/html/"
 	@echo "  make dashboard regenerate docs/ROADMAP_DASHBOARD.md + docs/badges/"
 	@echo "  make ascii     fix-encoding.py --check"
@@ -157,6 +158,14 @@ coverage:
 
 mcdc:
 	bash scripts/utils/mcdc_report.sh
+
+# MISRA-C 2012 audit (advisory; see docs/MISRA.md). Outputs:
+#   build/misra/results.txt  -- one TSV violation per line
+#   build/misra/raw.txt      -- raw cppcheck stderr
+#   build/misra/misra-raw.txt-- raw misra.py stdout
+# Not gated by pre-commit yet.
+misra:
+	bash scripts/utils/misra_check.sh
 
 ascii:
 	@for dir in src libs tests; do \
