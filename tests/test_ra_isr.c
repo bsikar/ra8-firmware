@@ -200,6 +200,63 @@ static void test_lookup_slot_null_out(void)
   TEST_END("ra_isr_lookup_slot: NULL out rejected");
 }
 
+/**
+ * @test test_find_event_mcdc_compound_guard
+ *
+ * @par MC/DC:
+ * Decision: `if (s_slots[slot].in_use && s_slots[slot].event == event)`
+ * (2 conditions, libs/ra_hal/src/ra_isr.c line 190)
+ * - Vector 1: in_use=F, event=*    -> false (control: C1 short-circuits C2)
+ * - Vector 2: in_use=T, event!=qry -> false (varies C2 only; C1 held T)
+ * - Vector 3: in_use=T, event==qry -> true  (varies C1 vs vec1; C2 held T)
+ * Vectors 1+3 prove `in_use` independently affects the outcome (the
+ * iterated slot transitions from free to occupied-with-match);
+ * vectors 2+3 prove `event == query` independently affects the outcome
+ * (slot occupied, only the event field differs). N+1 = 3 vectors for
+ * N=2 conditions: minimal MC/DC. Reached via ra_isr_lookup_slot which
+ * delegates to internal_find_event.
+ *
+ * Vector mapping:
+ * - Vec1: lookup on a freshly-initialised table (every slot in_use=F).
+ * - Vec2: register event 0x40 in slot 0, then lookup event 0x41 -- the
+ *   loop hits slot 0 (in_use=T, event=0x40 != 0x41) then slot 1 free
+ *   and returns slot_none.
+ * - Vec3: register event 0x40 in slot 0, then lookup event 0x40 -- the
+ *   loop hits slot 0 (in_use=T, event match) and returns 0.
+ */
+static void test_find_event_mcdc_compound_guard(void)
+{
+  TEST_BEGIN("internal_find_event MC/DC: in_use && event==query");
+  ra_sim_mmap_reset();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_isr_init());
+
+  /* Vector 1: in_use=F (table empty). Decision must be false for every
+   * slot, so lookup returns slot_none. */
+  uint16_t slot_v1 = 0xFFFFU;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_isr_lookup_slot((ra_elc_event_t)0x40U, &slot_v1));
+  TEST_ASSERT_EQ((int32_t)k_ra_isr_slot_none, (int32_t)slot_v1);
+
+  /* Register one event so subsequent vectors see in_use=T in slot 0. */
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_ok,
+    (int32_t)ra_isr_register((ra_elc_event_t)0x40U, stub_handler_a, nullptr, 0U, nullptr));
+
+  /* Vector 2: in_use=T, event mismatch. Decision is false on slot 0
+   * (because event 0x40 != query 0x41) and on every subsequent slot
+   * (in_use=F short-circuits). Lookup returns slot_none. */
+  uint16_t slot_v2 = 0xFFFFU;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_isr_lookup_slot((ra_elc_event_t)0x41U, &slot_v2));
+  TEST_ASSERT_EQ((int32_t)k_ra_isr_slot_none, (int32_t)slot_v2);
+
+  /* Vector 3: in_use=T, event match. Decision is true on slot 0; lookup
+   * returns 0. */
+  uint16_t slot_v3 = 0xFFFFU;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_isr_lookup_slot((ra_elc_event_t)0x40U, &slot_v3));
+  TEST_ASSERT_EQ((int32_t)0, (int32_t)slot_v3);
+
+  TEST_END("internal_find_event MC/DC: in_use && event==query");
+}
+
 int32_t main(void)
 {
   test_init_clears_state();
@@ -213,6 +270,7 @@ int32_t main(void)
   test_multiple_events_get_distinct_slots();
   test_set_priority_roundtrip();
   test_lookup_slot_null_out();
+  test_find_event_mcdc_compound_guard();
   (void)fprintf(stderr, "[OK  ] test_ra_isr.c\n");
   return 0;
 }
