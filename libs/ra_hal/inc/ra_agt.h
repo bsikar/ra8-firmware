@@ -68,6 +68,25 @@ typedef void (*ra_agt_event_fn_t)(void* ctx, uint8_t channel);
 
 /**
  * @brief Dispatch an AGT event -- fire callback.
+ *
+ * @details
+ * Called from the AGT compare-match / underflow ISR (HUM Ch 24
+ * "Asynchronous General Purpose Timer", p 1167) to fan out the
+ * registered handler. Silently returns when ``channel`` is out of
+ * range or no handler has been attached.
+ *
+ * @param[in] channel AGT channel (0..9) whose ISR fired.
+ *
+ * @return None.
+ * @retval None
+ *
+ * @pre Called from ISR context or a host-test driver.
+ * @pre ``channel`` < 10.
+ *
+ * @post Stored callback (if any) has been invoked exactly once.
+ * @post No AGT register state is mutated by this call.
+ *
+ * @note Not thread-safe; pair with IRQ masking.
  * @since 0.1.0
  */
 void ra_agt_dispatch(uint8_t channel);
