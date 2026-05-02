@@ -52,7 +52,20 @@ static const char* s_owner[k_ra_port_count * k_ra_pin_count];
  *
  * @param[in]  pin       Packed port/pin id.
  * @param[out] out_index On success, flat index into `s_claimed` / `s_owner`.
+ *
  * @return `k_ra_ok` on valid input, error code otherwise.
+ * @retval k_ra_ok                     Valid; `*out_index` is set.
+ * @retval k_ra_err_gpio_invalid_port  Port out of range.
+ * @retval k_ra_err_gpio_invalid_pin   Pin out of range within the port.
+ *
+ * @pre `out_index` is non-NULL when input is valid.
+ * @pre `pin` is the result of `RA_PIN_PACK(port, idx)`.
+ * @post On success, `*out_index < k_ra_port_count * k_ra_pin_count`.
+ * @post On failure, `*out_index` is unspecified.
+ *
+ * @note Pure computation; trivially thread-safe.
+ *
+ * @since 0.1.0
  */
 static ra_err_t internal_flat_index(ra_port_pin_t pin, uint16_t* out_index)
 {
@@ -70,6 +83,31 @@ static ra_err_t internal_flat_index(ra_port_pin_t pin, uint16_t* out_index)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of `ra_pin_validator_claim()`.
+ *
+ * @details Marks the pin's bit in `s_claimed` and stores the owner
+ *          pointer in `s_owner`.
+ *
+ * @param[in] pin   Packed port/pin identifier.
+ * @param[in] owner String literal naming the claimer; must be non-NULL.
+ *
+ * @return Error code.
+ * @retval k_ra_ok                     Pin successfully claimed.
+ * @retval k_ra_err_null_ptr           `owner` was NULL.
+ * @retval k_ra_err_gpio_invalid_port  Port out of range.
+ * @retval k_ra_err_gpio_invalid_pin   Pin out of range.
+ * @retval k_ra_err_gpio_conflict      Pin already owned.
+ *
+ * @pre `ra_infrastructure_init()` has run.
+ * @pre Caller serialises concurrent claim/release calls.
+ * @post On success, the pin reads as claimed.
+ * @post On failure, validator state is unchanged.
+ *
+ * @note Not thread-safe with respect to other claim/release callers.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ra_pin_validator_claim(ra_port_pin_t pin, const char* owner)
 {
   RA_CHECK_NULL_PTR(owner, s_tag, "owner must not be nullptr");
@@ -93,6 +131,27 @@ ra_err_t ra_pin_validator_claim(ra_port_pin_t pin, const char* owner)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of `ra_pin_validator_release()`.
+ *
+ * @details Clears the pin's bit in `s_claimed` and zeroes its owner.
+ *
+ * @param[in] pin Packed port/pin identifier.
+ *
+ * @return Error code.
+ * @retval k_ra_ok                     Pin released (or was already free).
+ * @retval k_ra_err_gpio_invalid_port  Port out of range.
+ * @retval k_ra_err_gpio_invalid_pin   Pin out of range.
+ *
+ * @pre `ra_infrastructure_init()` has run.
+ * @pre Caller serialises concurrent claim/release calls.
+ * @post On success, the pin reads as free.
+ * @post Owner pointer for the pin is `nullptr`.
+ *
+ * @note Not thread-safe with respect to other claim/release callers.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ra_pin_validator_release(ra_port_pin_t pin)
 {
   uint16_t       flat = 0;
@@ -109,6 +168,26 @@ ra_err_t ra_pin_validator_release(ra_port_pin_t pin)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of `ra_pin_validator_is_claimed()`.
+ *
+ * @details Out-of-range identifiers quietly report `false`.
+ *
+ * @param[in] pin Packed port/pin identifier.
+ *
+ * @return `true` if claimed, `false` otherwise.
+ * @retval true   Pin is owned.
+ * @retval false  Pin is free OR identifier is invalid.
+ *
+ * @pre `ra_infrastructure_init()` has run.
+ * @pre Caller tolerates a best-effort read.
+ * @post No state modified.
+ * @post Result reflects the bitmap at the moment of the call.
+ *
+ * @note Thread-safe vs other readers; not safe vs concurrent writers.
+ *
+ * @since 0.1.0
+ */
 bool ra_pin_validator_is_claimed(ra_port_pin_t pin)
 {
   uint16_t       flat = 0;
@@ -122,6 +201,23 @@ bool ra_pin_validator_is_claimed(ra_port_pin_t pin)
   return (s_claimed[byte] & bit_mask) != 0U;
 }
 
+/**
+ * @brief Implementation of `ra_pin_validator_reset()`.
+ *
+ * @details Zeroes the claim bitmap and the owner array.
+ *
+ * @return None.
+ * @retval None
+ *
+ * @pre Called exactly once during early init.
+ * @pre No other code is currently inspecting validator state.
+ * @post Every pin reads as free.
+ * @post Every owner pointer is `nullptr`.
+ *
+ * @note Not thread-safe; one-shot init only.
+ *
+ * @since 0.1.0
+ */
 void ra_pin_validator_reset(void)
 {
   for (uint16_t i = 0U; i < (uint16_t)sizeof(s_claimed); i++) {
