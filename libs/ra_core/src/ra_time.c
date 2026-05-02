@@ -39,21 +39,94 @@ typedef enum : uint32_t {
   k_ra_systick_csr_clksource = 0x00000004UL, /**< 1 = CPU clock, 0 = ext ref. */
 } ra_systick_csr_bit_t;
 
+/**
+ * @brief Get the SysTick Control & Status Register pointer.
+ *
+ * @details Trivial address-cast helper for SYST_CSR.
+ *
+ * @return Volatile pointer to SYST_CSR.
+ * @retval (volatile uint32_t*)k_ra_systick_csr_addr
+ *
+ * @pre None.
+ * @pre SCS region is mapped (always true on Cortex-M).
+ * @post No state modified.
+ * @post Returned pointer remains valid for the program lifetime.
+ *
+ * @note Trivially thread-safe.
+ *
+ * @since 0.1.0
+ */
 static inline volatile uint32_t* internal_csr(void)
 {
   return (volatile uint32_t*)k_ra_systick_csr_addr;
 }
 
+/**
+ * @brief Get the SysTick Reload Value Register pointer.
+ *
+ * @details Trivial address-cast helper for SYST_RVR.
+ *
+ * @return Volatile pointer to SYST_RVR.
+ * @retval (volatile uint32_t*)k_ra_systick_rvr_addr
+ *
+ * @pre None.
+ * @pre SCS region is mapped.
+ * @post No state modified.
+ * @post Returned pointer remains valid for the program lifetime.
+ *
+ * @note Trivially thread-safe.
+ *
+ * @since 0.1.0
+ */
 static inline volatile uint32_t* internal_rvr(void)
 {
   return (volatile uint32_t*)k_ra_systick_rvr_addr;
 }
 
+/**
+ * @brief Get the SysTick Current Value Register pointer.
+ *
+ * @details Trivial address-cast helper for SYST_CVR.
+ *
+ * @return Volatile pointer to SYST_CVR.
+ * @retval (volatile uint32_t*)k_ra_systick_cvr_addr
+ *
+ * @pre None.
+ * @pre SCS region is mapped.
+ * @post No state modified.
+ * @post Returned pointer remains valid for the program lifetime.
+ *
+ * @note Trivially thread-safe.
+ *
+ * @since 0.1.0
+ */
 static inline volatile uint32_t* internal_cvr(void)
 {
   return (volatile uint32_t*)k_ra_systick_cvr_addr;
 }
 
+/**
+ * @brief Implementation of `ra_time_init()` -- programme SysTick.
+ *
+ * @details Computes the reload as `cpu_hz / 1000 - 1`, programmes
+ *          SYST_RVR/CVR/CSR. On the simulator host the SCS writes are
+ *          skipped.
+ *
+ * @param[in] cpu_hz Current CPU clock in Hz.
+ *
+ * @return Error code.
+ * @retval k_ra_ok                SysTick programmed; tick interrupt active.
+ * @retval k_ra_err_invalid_arg   `cpu_hz` is zero or yields a zero reload.
+ *
+ * @pre `ra_cgc_init()` has run -- CPU clock is stable.
+ * @pre Function is called from a single-threaded context.
+ * @post On success, SysTick fires every 1 ms.
+ * @post `s_tick_ms` is reset to zero.
+ *
+ * @note Not thread-safe; intended for one-shot init only.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ra_time_init(uint32_t cpu_hz)
 {
   if (cpu_hz == 0U) {
@@ -83,11 +156,47 @@ ra_err_t ra_time_init(uint32_t cpu_hz)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of `ra_time_ms()` -- read SysTick counter.
+ *
+ * @details Returns the SysTick-incremented `s_tick_ms` counter.
+ *
+ * @return Milliseconds since `ra_time_init()`, modulo 2^32.
+ * @retval 0..UINT32_MAX  Current tick count.
+ *
+ * @pre `ra_time_init()` has been called.
+ * @pre Reader is OK with single-word atomicity.
+ * @post No state modified.
+ * @post Successive calls are non-decreasing modulo 2^32.
+ *
+ * @note Thread-safe (atomic single-word read on Cortex-M).
+ *
+ * @since 0.1.0
+ */
 uint32_t ra_time_ms(void)
 {
   return s_tick_ms;
 }
 
+/**
+ * @brief Implementation of `ra_delay_ms()` -- busy-wait with `wfi`.
+ *
+ * @details Loops on `s_tick_ms` and issues `wfi` between checks.
+ *
+ * @param[in] ms Milliseconds to wait. Zero returns immediately.
+ *
+ * @return None.
+ * @retval None
+ *
+ * @pre `ra_time_init()` has been called.
+ * @pre IRQs are NOT globally masked.
+ * @post At least `ms` milliseconds have elapsed.
+ * @post No internal state modified.
+ *
+ * @note Thread-safe.
+ *
+ * @since 0.1.0
+ */
 void ra_delay_ms(uint32_t ms)
 {
   const uint32_t start = s_tick_ms;
@@ -98,6 +207,23 @@ void ra_delay_ms(uint32_t ms)
   }
 }
 
+/**
+ * @brief Implementation of `ra_time_on_tick()` -- SysTick IRQ tick.
+ *
+ * @details Increments `s_tick_ms`. Invoked from SysTick IRQ.
+ *
+ * @return None.
+ * @retval None
+ *
+ * @pre Invoked from SysTick IRQ context (or test equivalent).
+ * @pre `ra_time_init()` has set up the SysTick reload.
+ * @post `s_tick_ms` is incremented by exactly one.
+ * @post No other state is modified.
+ *
+ * @note IRQ-safe; SysTick cannot pre-empt itself.
+ *
+ * @since 0.1.0
+ */
 void ra_time_on_tick(void)
 {
   s_tick_ms++;

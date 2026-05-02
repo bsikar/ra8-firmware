@@ -63,6 +63,27 @@
 // NOLINTBEGIN(bugprone-reserved-identifier,cert-dcl37-c,cert-dcl51-cpp,readability-identifier-naming)
 void* _sbrk(int32_t incr);
 
+/**
+ * @brief Trap-stub definition for newlib `_sbrk()`.
+ *
+ * @details Never returns. See the matching declaration above for the
+ *          full rationale and policy notes.
+ *
+ * @param[in] incr Byte count newlib wants to advance the break by.
+ *                 Ignored.
+ *
+ * @return Does not return.
+ * @retval None
+ *
+ * @pre Build links this strong symbol ahead of newlib's libc.
+ * @pre Caller is newlib's malloc path -- not user code.
+ * @post Control never returns to the caller; firmware halts.
+ * @post Fatal-error sink emits the violation tag.
+ *
+ * @note Not thread-safe and not intended to be -- never returns.
+ *
+ * @since 0.1.0
+ */
 /* GCOVR_EXCL_START -- trap function; by design never reached in a
  * correctly-built firmware image. If coverage suddenly lights up
  * here, a caller has dragged malloc() into the link. */
