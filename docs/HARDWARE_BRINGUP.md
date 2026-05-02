@@ -232,6 +232,23 @@ prio, ctx)` (and likewise USBHS for HS-mode), where
 `ra_usb_dispatch(speed)`. The ELC event codes for `usbfs_int` /
 `usbhs_int` need to be added to `ra8d2_elc_regs.h::ra_elc_event_t`.
 
+## 2026-05-02 second-round hardware verification
+
+After USBX IRQ wiring (commit 5b65e45b9, since reverted) and xSPI
+octal bring-up extensions (commit 52e373507):
+
+| App | Outcome | Evidence |
+|---|---|---|
+| usb_hid_device with IRQ wiring | FAIL HardFault | PC=0xEFFFFFFE, MMFAR/BFAR=0x40700004 (out of any peripheral range). Faults the moment ra_isr_register(USBFS_INT) is called. The ELC event code 0x09A taken from FSP for older RA series is almost certainly wrong for RA8D2 |
+| usb_hid_device polled (post-revert in commit a67acbc26) | PASS chip-alive, FAIL enumeration | PC=tx_thread_schedule.S:268. SYSCFG=0x411 (USBE+DPRPU+SCKE), INTSTS0=0x9F00 ticking, but VID 0x1209 still absent from macOS ioreg. Polling cadence (~30ms via jiggle period) is too slow for SETUP-window timeouts |
+| threadx_filex_levelx_demo with all xSPI fixes | FAIL same panic site | PC=main.c:141 (panic_halt), LR=main.c:244, i.e. lx_nor_flash_format still returns non-LX_SUCCESS even after CMDCMP poll budget bump (64 -> 1M), tPUW reset wait (1ms -> 15ms), BMCTL0 disable, and RDID validation. UART won't drain the failure log (1-3 bytes captured at any baud) so the actual RDID response is not yet observable |
+
+### Open WIP
+
+1. USBFS_INT ELC event code for RA8D2 — verify the actual code from the RA8D2-specific FSP bsp_elc.h (currently 0x09A is suspected wrong).
+2. IS25LX512M RDID actual response — get UART output to drain to surface the [LX_XSPI] RDID returned 0xNNN log line.
+3. USB polled-mode tick rate — even if the IRQ event code is wrong, a thread-pumped ra_usb_dispatch at >= 1 kHz should keep up with FS enumeration.
+
 ## 2026-05-02 MPU demo HardFault root cause + fix
 
 `threadx_mpu_partition_demo` was previously documented as "intentional
