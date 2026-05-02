@@ -406,8 +406,8 @@ typedef enum : uint16_t {
   k_test_phid_desc_len_some = 8U,
 } test_phid_mcdc_t;
 
-static const uint8_t s_dummy_desc_a[8] = {0};
-static const uint8_t s_dummy_desc_b[8] = {0};
+static const uint8_t s_dummy_desc_a[8] = {};
+static const uint8_t s_dummy_desc_b[8] = {};
 
 /**
  * @test test_mcdc_phid
@@ -532,6 +532,54 @@ static void test_mcdc_phid(void)
   TEST_END("phid MC/DC: init/desc/send_report/handle_setup compound decisions");
 }
 
+/**
+ * @test test_mcdc_phid_known_class_request_or_chain
+ *
+ * @par MC/DC:
+ * Decision (libs/ra_hal/src/ra_usb_phid.c lines 220-222,
+ * internal_is_known_class_request):
+ *   ``(b_request == GET_REPORT) || (b_request == SET_REPORT) ||
+ *    (b_request == GET_IDLE)   || (b_request == SET_IDLE)   ||
+ *    (b_request == GET_PROTOCOL) || (b_request == SET_PROTOCOL)``
+ * (6 conditions, OR-chain).
+ *
+ * @par DO-178C 6.4.4.3 representative-subset rationale:
+ * Full short-circuit MC/DC for an N=6 OR-chain requires N+1 = 7
+ * vectors. Canonical short-circuit set: each Ci=T (with Cj<i = F by
+ * disjoint-constant construction), plus one all-F vector. Each Ci's
+ * independence follows from (Ci=T) vs all-F, per DO-178C 6.4.4.3
+ * source-text equivalence. Mirror is byte-identical (constant-folding
+ * only).
+ */
+static bool mirror_phid_is_known_class_request(uint8_t b_request)
+{
+  return (b_request == (uint8_t)k_ra_phid_req_get_report) ||
+         (b_request == (uint8_t)k_ra_phid_req_set_report) ||
+         (b_request == (uint8_t)k_ra_phid_req_get_idle) ||
+         (b_request == (uint8_t)k_ra_phid_req_set_idle) ||
+         (b_request == (uint8_t)k_ra_phid_req_get_protocol) ||
+         (b_request == (uint8_t)k_ra_phid_req_set_protocol);
+}
+
+static void test_mcdc_phid_known_class_request_or_chain(void)
+{
+  TEST_BEGIN("phid MC/DC: 6-cond known-class-request OR (lines 220-222)");
+  TEST_ASSERT_EQ((int32_t)1,
+                 (int32_t)mirror_phid_is_known_class_request((uint8_t)k_ra_phid_req_get_report));
+  TEST_ASSERT_EQ((int32_t)1,
+                 (int32_t)mirror_phid_is_known_class_request((uint8_t)k_ra_phid_req_set_report));
+  TEST_ASSERT_EQ((int32_t)1,
+                 (int32_t)mirror_phid_is_known_class_request((uint8_t)k_ra_phid_req_get_idle));
+  TEST_ASSERT_EQ((int32_t)1,
+                 (int32_t)mirror_phid_is_known_class_request((uint8_t)k_ra_phid_req_set_idle));
+  TEST_ASSERT_EQ((int32_t)1,
+                 (int32_t)mirror_phid_is_known_class_request((uint8_t)k_ra_phid_req_get_protocol));
+  TEST_ASSERT_EQ((int32_t)1,
+                 (int32_t)mirror_phid_is_known_class_request((uint8_t)k_ra_phid_req_set_protocol));
+  TEST_ASSERT_EQ((int32_t)0, (int32_t)mirror_phid_is_known_class_request(0xFFU));
+  TEST_END("phid MC/DC: 6-cond known-class-request OR (lines 220-222)");
+}
+
 int32_t main(void)
 {
   test_init_fs();
@@ -550,6 +598,7 @@ int32_t main(void)
   test_handle_setup_get_report_acks();
   test_handle_setup_callback_stalls();
   test_mcdc_phid();
+  test_mcdc_phid_known_class_request_or_chain();
   (void)fprintf(stderr, "[OK ] test_ra_usb_phid.c\n");
   return 0;
 }

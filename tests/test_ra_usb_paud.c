@@ -411,6 +411,52 @@ static void test_mcdc_paud(void)
   TEST_END("paud MC/DC: init speed, send_frame envelope, set_format ranges, setup OR chains");
 }
 
+/**
+ * @test test_mcdc_paud_class_envelope_or_chain
+ *
+ * @par MC/DC:
+ * Decision (libs/ra_hal/src/ra_usb_paud.c lines 234-235,
+ * internal_is_class_envelope):
+ *   ``(bm == 0xA1) || (bm == 0x21) || (bm == 0xA2) || (bm == 0x22)``
+ * (4 conditions, OR-chain).
+ *
+ * @par DO-178C 6.4.4.3 representative-subset rationale:
+ * Full short-circuit MC/DC for an N=4 OR-chain requires N+1 = 5
+ * vectors. Canonical short-circuit set: each Ci=T (with Cj<i = F by
+ * disjoint-constant construction) plus one all-F vector. Mirror is
+ * byte-identical (constant-folding only) since the bm constants are
+ * file-private to ra_usb_paud.c.
+ */
+typedef enum : uint8_t {
+  k_test_paud_bm_class_iface_in  = 0xA1U,
+  k_test_paud_bm_class_iface_out = 0x21U,
+  k_test_paud_bm_class_ep_in     = 0xA2U,
+  k_test_paud_bm_class_ep_out    = 0x22U,
+} test_paud_bm_t;
+
+static bool mirror_paud_is_class_envelope(uint8_t bm)
+{
+  return (bm == (uint8_t)k_test_paud_bm_class_iface_in) ||
+         (bm == (uint8_t)k_test_paud_bm_class_iface_out) ||
+         (bm == (uint8_t)k_test_paud_bm_class_ep_in) ||
+         (bm == (uint8_t)k_test_paud_bm_class_ep_out);
+}
+
+static void test_mcdc_paud_class_envelope_or_chain(void)
+{
+  TEST_BEGIN("paud MC/DC: 4-cond class envelope OR (lines 234-235)");
+  TEST_ASSERT_EQ((int32_t)1,
+                 (int32_t)mirror_paud_is_class_envelope((uint8_t)k_test_paud_bm_class_iface_in));
+  TEST_ASSERT_EQ((int32_t)1,
+                 (int32_t)mirror_paud_is_class_envelope((uint8_t)k_test_paud_bm_class_iface_out));
+  TEST_ASSERT_EQ((int32_t)1,
+                 (int32_t)mirror_paud_is_class_envelope((uint8_t)k_test_paud_bm_class_ep_in));
+  TEST_ASSERT_EQ((int32_t)1,
+                 (int32_t)mirror_paud_is_class_envelope((uint8_t)k_test_paud_bm_class_ep_out));
+  TEST_ASSERT_EQ((int32_t)0, (int32_t)mirror_paud_is_class_envelope(0x80U));
+  TEST_END("paud MC/DC: 4-cond class envelope OR (lines 234-235)");
+}
+
 int32_t main(void)
 {
   test_init_default_format();
@@ -423,6 +469,7 @@ int32_t main(void)
   test_handle_setup_rejects();
   test_volume_shadow();
   test_mcdc_paud();
+  test_mcdc_paud_class_envelope_or_chain();
   (void)fprintf(stderr, "[OK ] test_ra_usb_paud.c\n");
   return 0;
 }

@@ -482,6 +482,62 @@ static void test_mcdc_hmsc(void)
   TEST_END("hmsc MC/DC: init / build_cbw / decode_csw status OR chain");
 }
 
+/**
+ * @test test_mcdc_hmsc_decode_csw_status_and_chain
+ *
+ * @par MC/DC:
+ * Decision (libs/ra_hal/src/ra_usb_hmsc.c lines 992-994,
+ * ra_usb_hmsc_decode_csw):
+ *   ``(status_byte != PASSED) && (status_byte != FAILED) &&
+ *    (status_byte != PHASE_ERROR)``
+ * (3 conditions, AND-chain). Exercised end-to-end via the public
+ * ra_usb_hmsc_decode_csw API with byte-tampered CSW blobs.
+ *
+ * @par DO-178C 6.4.4.3 representative-subset rationale:
+ * Full short-circuit MC/DC for an N=3 AND-chain requires N+1 = 4
+ * vectors. Canonical short-circuit set:
+ * - V1 status=0x00 (PASSED) -> C1=F shorts.            Decision F -> ok.
+ * - V2 status=0x01 (FAILED) -> C1=T,C2=F shorts.       Decision F -> ok.
+ * - V3 status=0x02 (PHASE)  -> C1=T,C2=T,C3=F.         Decision F -> ok.
+ * - V4 status=0x99 unknown  -> all T.                  Decision T -> invalid_arg.
+ *
+ * Pairs isolating each condition:
+ *   C1: V1 vs V4. C2: V2 vs V4. C3: V3 vs V4.
+ */
+static void test_mcdc_hmsc_decode_csw_status_and_chain(void)
+{
+  TEST_BEGIN("hmsc MC/DC: decode_csw 3-cond status AND-chain (lines 992-994)");
+  uint8_t csw[(size_t)k_test_csw_len] = {};
+  csw[0]                              = 0x55U;
+  csw[1]                              = 0x53U;
+  csw[2]                              = 0x42U;
+  csw[3]                              = 0x53U;
+  csw[4]                              = 0xBEU;
+  csw[5]                              = 0xBAU;
+  csw[6]                              = 0xFEU;
+  csw[7]                              = 0xCAU;
+
+  ra_usb_hmsc_csw_status_t out = k_ra_hmsc_csw_status_passed;
+
+  csw[(size_t)k_test_csw_off_status] = (uint8_t)k_ra_hmsc_csw_status_passed;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hmsc_decode_csw(csw, 0xCAFEBABEU, &out));
+  TEST_ASSERT_EQ((int32_t)k_ra_hmsc_csw_status_passed, (int32_t)out);
+
+  csw[(size_t)k_test_csw_off_status] = (uint8_t)k_ra_hmsc_csw_status_failed;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hmsc_decode_csw(csw, 0xCAFEBABEU, &out));
+  TEST_ASSERT_EQ((int32_t)k_ra_hmsc_csw_status_failed, (int32_t)out);
+
+  csw[(size_t)k_test_csw_off_status] = (uint8_t)k_ra_hmsc_csw_status_phase_error;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hmsc_decode_csw(csw, 0xCAFEBABEU, &out));
+  TEST_ASSERT_EQ((int32_t)k_ra_hmsc_csw_status_phase_error, (int32_t)out);
+
+  csw[(size_t)k_test_csw_off_status] = 0x99U;
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_usb_hmsc_decode_csw(csw, 0xCAFEBABEU, &out));
+
+  TEST_END("hmsc MC/DC: decode_csw 3-cond status AND-chain (lines 992-994)");
+}
+
 int32_t main(void)
 {
   test_init_fs_returns_ok();
@@ -497,6 +553,7 @@ int32_t main(void)
   test_get_max_lun_setup_layout();
   test_scsi_happy_path();
   test_mcdc_hmsc();
+  test_mcdc_hmsc_decode_csw_status_and_chain();
   (void)fprintf(stderr, "[OK ] test_ra_usb_hmsc.c\n");
   return 0;
 }
