@@ -935,6 +935,27 @@ ra_err_t ra_iic_b_read(uint8_t channel, uint8_t target_7b, uint8_t* buf, uint32_
  * =============================================================================
  */
 
+/**
+ * @brief ra_iic_b_transfer -- see header for full description.
+ * @details See the matching header declaration for the full
+ * contract; this site adds no behaviour beyond what the public
+ * API documents.
+ * @param[in] channel See header declaration for direction and constraints.
+ * @param[in] target_7b See header declaration for direction and constraints.
+ * @param[in] tx See header declaration for direction and constraints.
+ * @param[in] tx_len See header declaration for direction and constraints.
+ * @param[in] rx See header declaration for direction and constraints.
+ * @param[in] rx_len See header declaration for direction and constraints.
+ * @return ``ra_err_t`` error code (or void if the signature returns void).
+ * @retval k_ra_ok Success path.
+ * @retval k_ra_err_invalid_arg Caller violated a precondition.
+ * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Caller has validated all pointer parameters.
+ * @post Side effects are limited to those documented in the header.
+ * @post No global state is modified on the error path.
+ * @note Thread safety: see the header declaration.
+ * @since 0.1.0
+ */
 ra_err_t ra_iic_b_transfer(uint8_t        channel,
                            uint8_t        target_7b,
                            const uint8_t* tx,
@@ -982,6 +1003,22 @@ ra_err_t ra_iic_b_transfer(uint8_t        channel,
  * =============================================================================
  */
 
+/**
+ * @brief ra_iic_b_abort -- see header for full description.
+ * @details See the matching header declaration for the full
+ * contract; this site adds no behaviour beyond what the public
+ * API documents.
+ * @param[in] channel See header declaration for direction and constraints.
+ * @return ``ra_err_t`` error code (or void if the signature returns void).
+ * @retval k_ra_ok Success path.
+ * @retval k_ra_err_invalid_arg Caller violated a precondition.
+ * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Caller has validated all pointer parameters.
+ * @post Side effects are limited to those documented in the header.
+ * @post No global state is modified on the error path.
+ * @note Thread safety: see the header declaration.
+ * @since 0.1.0
+ */
 ra_err_t ra_iic_b_abort(uint8_t channel)
 {
   volatile r_iic_b_regs_t* reg = ra_iic_b(channel);
@@ -1005,6 +1042,24 @@ ra_err_t ra_iic_b_abort(uint8_t channel)
  * =============================================================================
  */
 
+/**
+ * @brief ra_iic_b_scan -- see header for full description.
+ * @details See the matching header declaration for the full
+ * contract; this site adds no behaviour beyond what the public
+ * API documents.
+ * @param[in] channel See header declaration for direction and constraints.
+ * @param[in] target_7b See header declaration for direction and constraints.
+ * @param[in] out_acked See header declaration for direction and constraints.
+ * @return ``ra_err_t`` error code (or void if the signature returns void).
+ * @retval k_ra_ok Success path.
+ * @retval k_ra_err_invalid_arg Caller violated a precondition.
+ * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Caller has validated all pointer parameters.
+ * @post Side effects are limited to those documented in the header.
+ * @post No global state is modified on the error path.
+ * @note Thread safety: see the header declaration.
+ * @since 0.1.0
+ */
 ra_err_t ra_iic_b_scan(uint8_t channel, uint8_t target_7b, bool* out_acked)
 {
   volatile r_iic_b_regs_t* reg = ra_iic_b(channel);
@@ -1045,6 +1100,23 @@ ra_err_t ra_iic_b_scan(uint8_t channel, uint8_t target_7b, bool* out_acked)
  * =============================================================================
  */
 
+/**
+ * @brief ra_iic_b_get_errors -- see header for full description.
+ * @details See the matching header declaration for the full
+ * contract; this site adds no behaviour beyond what the public
+ * API documents.
+ * @param[in] channel See header declaration for direction and constraints.
+ * @param[in] out_mask See header declaration for direction and constraints.
+ * @return ``ra_err_t`` error code (or void if the signature returns void).
+ * @retval k_ra_ok Success path.
+ * @retval k_ra_err_invalid_arg Caller violated a precondition.
+ * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Caller has validated all pointer parameters.
+ * @post Side effects are limited to those documented in the header.
+ * @post No global state is modified on the error path.
+ * @note Thread safety: see the header declaration.
+ * @since 0.1.0
+ */
 ra_err_t ra_iic_b_get_errors(uint8_t channel, uint8_t* out_mask)
 {
   RA_CHECK_NULL_PTR(out_mask, s_tag, "iic_b_get_errors: out_mask");
@@ -1092,6 +1164,24 @@ ra_err_t ra_iic_b_clear_errors(uint8_t channel)
  * =============================================================================
  */
 
+/**
+ * @brief ra_iic_b_attach_handler -- see header for full description.
+ * @details See the matching header declaration for the full
+ * contract; this site adds no behaviour beyond what the public
+ * API documents.
+ * @param[in] channel See header declaration for direction and constraints.
+ * @param[in] fn See header declaration for direction and constraints.
+ * @param[in] ctx See header declaration for direction and constraints.
+ * @return ``ra_err_t`` error code (or void if the signature returns void).
+ * @retval k_ra_ok Success path.
+ * @retval k_ra_err_invalid_arg Caller violated a precondition.
+ * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Caller has validated all pointer parameters.
+ * @post Side effects are limited to those documented in the header.
+ * @post No global state is modified on the error path.
+ * @note Thread safety: see the header declaration.
+ * @since 0.1.0
+ */
 ra_err_t ra_iic_b_attach_handler(uint8_t channel, ra_iic_b_complete_fn_t fn, void* ctx)
 {
   volatile r_iic_b_regs_t* reg = ra_iic_b(channel);
@@ -1154,6 +1244,23 @@ void ra_iic_b_dispatch_eri(uint8_t channel)
  * =============================================================================
  */
 
+/**
+ * @brief ra_iic_init -- see header for full description.
+ * @details See the matching header declaration for the full
+ * contract; this site adds no behaviour beyond what the public
+ * API documents.
+ * @param[in] channel See header declaration for direction and constraints.
+ * @param[in] cfg See header declaration for direction and constraints.
+ * @return ``ra_err_t`` error code (or void if the signature returns void).
+ * @retval k_ra_ok Success path.
+ * @retval k_ra_err_invalid_arg Caller violated a precondition.
+ * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Caller has validated all pointer parameters.
+ * @post Side effects are limited to those documented in the header.
+ * @post No global state is modified on the error path.
+ * @note Thread safety: see the header declaration.
+ * @since 0.1.0
+ */
 ra_err_t ra_iic_init(uint8_t channel, const ra_iic_cfg_t* cfg)
 {
   return ra_iic_b_init(channel, cfg);
