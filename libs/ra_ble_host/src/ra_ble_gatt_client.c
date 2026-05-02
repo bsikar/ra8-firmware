@@ -164,15 +164,24 @@ static ra_ble_gatt_client_sub_t s_subs[k_ra_gatt_client_max_subs];
 /**
  * @brief Trampoline mapping NimBLE's discovery callback onto our API.
  *
+ * @details Bluetooth Core 5.3 Vol 3 Part G 4.4 "Primary Service
+ *          Discovery" -- this trampoline shapes NimBLE's per-row /
+ *          completion callback into ra_ble_gatt_disc_fn_t.
+ *
  * @param[in] conn_handle ACL handle.
  * @param[in] error       NimBLE error struct (NULL on per-row).
  * @param[in] service     Discovered service row, or NULL on completion.
  * @param[in] arg         User-provided context (unused; we use s_pending_disc).
  *
  * @return int 0 to continue.
+ * @retval 0  Always returned (NimBLE convention to keep walking).
  *
  * @pre s_pending_disc.in_use == 1.
+ * @pre Caller is the NimBLE host task.
  * @post On final invocation s_pending_disc.in_use is cleared.
+ * @post User callback (if registered) has been invoked.
+ *
+ * @note Not thread-safe; called only from the NimBLE host task.
  *
  * @since 0.1.0
  */
@@ -219,6 +228,25 @@ static int internal_disc_trampoline(uint16_t                     conn_handle,
 /**
  * @brief Trampoline mapping NimBLE's read callback onto our API.
  *
+ * @details Bluetooth Core 5.3 Vol 3 Part F 3.4.4.3 Read_Request
+ *          completion path -- shapes NimBLE's mbuf into a flat byte
+ *          buffer for the user callback.
+ *
+ * @param[in] conn_handle ACL handle (unused; tracked in s_pending_read).
+ * @param[in] error       NimBLE error struct, NULL on success.
+ * @param[in] attr        Attribute value mbuf carrier, may be NULL.
+ * @param[in] arg         User context (unused).
+ *
+ * @return int 0 to continue (NimBLE convention).
+ * @retval 0  Always returned.
+ *
+ * @pre s_pending_read.in_use == 1.
+ * @pre Caller is the NimBLE host task.
+ * @post s_pending_read.in_use is cleared.
+ * @post User callback (if registered) has been invoked exactly once.
+ *
+ * @note Not thread-safe; called only from the NimBLE host task.
+ *
  * @since 0.1.0
  */
 static int internal_read_trampoline(uint16_t                     conn_handle,
@@ -254,6 +282,25 @@ static int internal_read_trampoline(uint16_t                     conn_handle,
 /**
  * @brief Trampoline mapping NimBLE's write completion onto our API.
  *
+ * @details Bluetooth Core 5.3 Vol 3 Part F 3.4.5.1 Write_Request
+ *          completion path -- forwards the status code into
+ *          ra_ble_gatt_write_fn_t.
+ *
+ * @param[in] conn_handle ACL handle (unused; tracked in s_pending_write).
+ * @param[in] error       NimBLE error struct, NULL on success.
+ * @param[in] attr        Attribute mbuf (unused on write completion).
+ * @param[in] arg         User context (unused).
+ *
+ * @return int 0 to continue (NimBLE convention).
+ * @retval 0  Always returned.
+ *
+ * @pre s_pending_write.in_use == 1.
+ * @pre Caller is the NimBLE host task.
+ * @post s_pending_write.in_use is cleared.
+ * @post User callback (if registered) has been invoked exactly once.
+ *
+ * @note Not thread-safe; called only from the NimBLE host task.
+ *
  * @since 0.1.0
  */
 static int internal_write_trampoline(uint16_t                     conn_handle,
@@ -279,6 +326,33 @@ static int internal_write_trampoline(uint16_t                     conn_handle,
 /* Public API                                                   */
 /* ============================================================ */
 
+/**
+ * @brief Issue a "Discover All Primary Services" GATT procedure.
+ *
+ * @details Bluetooth Core 5.3 Vol 3 Part G 4.4.1. Drives the upstream
+ *          NimBLE ble_gattc_disc_all_svcs and forwards each row plus
+ *          a final completion to the user callback. Only one
+ *          discovery may be in flight at a time.
+ *
+ * @param[in] conn_handle ACL handle of the active connection.
+ * @param[in] cb          User completion callback (must not be NULL).
+ * @param[in] ctx         Opaque user pointer forwarded to cb.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok               Discovery launched.
+ * @retval k_ra_err_null_ptr     cb is NULL.
+ * @retval k_ra_err_busy         Another discovery is already in flight.
+ * @retval k_ra_err_invalid_arg  NimBLE rejected the request.
+ *
+ * @pre A live connection identified by conn_handle exists.
+ * @pre s_pending_disc.in_use == 0.
+ * @post On success s_pending_disc.in_use == 1 until completion.
+ * @post On failure no state is mutated.
+ *
+ * @note Not thread-safe; called from the application thread.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ra_ble_gatt_discover_services(uint16_t conn_handle, ra_ble_gatt_disc_fn_t cb, void* ctx)
 {
   if (cb == NULL) {
@@ -304,6 +378,34 @@ ra_err_t ra_ble_gatt_discover_services(uint16_t conn_handle, ra_ble_gatt_disc_fn
   return k_ra_ok;
 }
 
+/**
+ * @brief Issue a GATT Read Characteristic Value procedure.
+ *
+ * @details Bluetooth Core 5.3 Vol 3 Part G 4.8.1. Drives NimBLE's
+ *          ble_gattc_read; the result is delivered asynchronously
+ *          through the supplied callback. One read at a time per
+ *          stack instance.
+ *
+ * @param[in] conn_handle  ACL handle.
+ * @param[in] value_handle Attribute (value) handle to read.
+ * @param[in] cb           User completion callback (must not be NULL).
+ * @param[in] ctx          Opaque user pointer forwarded to cb.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok               Read launched.
+ * @retval k_ra_err_null_ptr     cb is NULL.
+ * @retval k_ra_err_busy         Another read is already in flight.
+ * @retval k_ra_err_invalid_arg  NimBLE rejected the request.
+ *
+ * @pre A live connection identified by conn_handle exists.
+ * @pre s_pending_read.in_use == 0.
+ * @post On success s_pending_read.in_use == 1 until completion.
+ * @post On failure no state is mutated.
+ *
+ * @note Not thread-safe; called from the application thread.
+ *
+ * @since 0.1.0
+ */
 ra_err_t
 ra_ble_gatt_read(uint16_t conn_handle, uint16_t value_handle, ra_ble_gatt_read_fn_t cb, void* ctx)
 {
@@ -331,6 +433,40 @@ ra_ble_gatt_read(uint16_t conn_handle, uint16_t value_handle, ra_ble_gatt_read_f
   return k_ra_ok;
 }
 
+/**
+ * @brief Issue a GATT Write Characteristic Value procedure.
+ *
+ * @details Bluetooth Core 5.3 Vol 3 Part G 4.9. Selects between
+ *          Write_Request (response != 0, Vol 3 Part F 3.4.5.1) and
+ *          Write_Command (response == 0, Vol 3 Part F 3.4.5.3) based
+ *          on the response argument.
+ *
+ * @param[in] conn_handle  ACL handle.
+ * @param[in] value_handle Attribute (value) handle to write.
+ * @param[in] data         Bytes to write (may be NULL when len == 0).
+ * @param[in] len          Number of bytes in data.
+ * @param[in] response     0 to send Write Without Response, non-zero
+ *                         to issue a Write Request.
+ * @param[in] cb           Completion callback (only used when
+ *                         response != 0; may be NULL).
+ * @param[in] ctx          Opaque user pointer forwarded to cb.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok               Write launched.
+ * @retval k_ra_err_null_ptr     data is NULL while len > 0.
+ * @retval k_ra_err_invalid_arg  len exceeds the per-write cap or NimBLE rejected.
+ * @retval k_ra_err_busy         A pending Write_Request is already in flight.
+ *
+ * @pre A live connection identified by conn_handle exists.
+ * @pre When response != 0, s_pending_write.in_use == 0.
+ * @post On success the write has been queued; for Write_Request
+ *       s_pending_write.in_use == 1 until completion.
+ * @post On failure no state is mutated.
+ *
+ * @note Not thread-safe; called from the application thread.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ra_ble_gatt_write(uint16_t               conn_handle,
                            uint16_t               value_handle,
                            const uint8_t*         data,
@@ -383,6 +519,42 @@ ra_err_t ra_ble_gatt_write(uint16_t               conn_handle,
   return k_ra_ok;
 }
 
+/**
+ * @brief Subscribe / unsubscribe to characteristic notifications and
+ *        indications by writing the peer CCCD.
+ *
+ * @details Bluetooth Core 5.3 Vol 3 Part G 3.3.3.3 "Client
+ *          Characteristic Configuration" -- bit 0 enables
+ *          notifications, bit 1 enables indications. The CCCD value
+ *          is written via Write_Request and the local subscription
+ *          table is updated so subsequent HVN/HVI PDUs route to
+ *          notify_cb.
+ *
+ * @param[in] conn_handle      ACL handle.
+ * @param[in] cccd_handle      Attribute handle of the peer's CCCD.
+ * @param[in] enable_notify    Non-zero to set the notify bit.
+ * @param[in] enable_indicate  Non-zero to set the indicate bit.
+ * @param[in] notify_cb        Inbound HVN/HVI callback (may be NULL
+ *                             only when both enables are 0).
+ * @param[in] ctx              Opaque user pointer forwarded to notify_cb.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok               Subscription updated.
+ * @retval k_ra_err_invalid_arg  Both enables are 0 with NULL callback.
+ * @retval k_ra_err_no_mem       Subscription table is full.
+ * @retval other                 Error from the underlying CCCD write.
+ *
+ * @pre A live connection identified by conn_handle exists.
+ * @pre cccd_handle was discovered via ra_ble_gatt_discover_services.
+ * @post On success the local subscription table holds the slot and
+ *       a CCCD Write_Request has been queued.
+ * @post On failure the subscription table may have an allocated slot
+ *       that is reused on retry (no leak).
+ *
+ * @note Not thread-safe; called from the application thread.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ra_ble_gatt_subscribe(uint16_t                conn_handle,
                                uint16_t                cccd_handle,
                                uint8_t                 enable_notify,
@@ -453,6 +625,24 @@ void     ra_ble_gatt_client_test_reset(void);
 /**
  * @brief Test hook -- inject an HVN/HVI on a registered subscription.
  *
+ * @details Walks the subscription table and invokes the matching
+ *          notify_cb directly, simulating an inbound Bluetooth Core
+ *          5.3 Vol 3 Part F 3.4.7 Handle Value Notification /
+ *          Indication.
+ *
+ * @param[in] conn_handle ACL handle to attribute the event to.
+ * @param[in] attr_handle Value attribute handle that "fired".
+ * @param[in] data        Notification payload bytes.
+ * @param[in] len         Number of bytes in data.
+ *
+ * @pre A subscription was previously installed via
+ *      ra_ble_gatt_subscribe.
+ * @pre Caller is the unit-test harness (single-threaded).
+ * @post Matching notify callbacks have been invoked.
+ * @post No internal table state is mutated.
+ *
+ * @note Not thread-safe; for unit-test harness use only.
+ *
  * @since 0.1.0
  */
 void ra_ble_gatt_client_test_inject_notify(uint16_t       conn_handle,
@@ -470,6 +660,20 @@ void ra_ble_gatt_client_test_inject_notify(uint16_t       conn_handle,
 
 /**
  * @brief Test hook -- count of in-flight pending requests.
+ *
+ * @details Returns the number of disc/read/write singletons currently
+ *          marked in_use.
+ *
+ * @return uint32_t Number of in-flight operations (0..3).
+ * @retval 0  No operations are pending.
+ * @retval >0 At least one disc/read/write is pending.
+ *
+ * @pre Caller is the unit-test harness (single-threaded).
+ * @pre None on the global state (function is read-only).
+ * @post No state is mutated.
+ * @post Return value reflects the snapshot at call time.
+ *
+ * @note Not thread-safe; for unit-test harness use only.
  *
  * @since 0.1.0
  */
@@ -490,6 +694,17 @@ uint32_t ra_ble_gatt_client_test_pending_count(void)
 
 /**
  * @brief Test hook -- reset internal state for fixture reset.
+ *
+ * @details Zeroes the disc/read/write pending singletons and the
+ *          subscription table so subsequent test fixtures start from
+ *          a clean slate.
+ *
+ * @pre Caller is the unit-test harness (single-threaded).
+ * @pre No upstream NimBLE callbacks are racing.
+ * @post All pending operations are cleared.
+ * @post All subscriptions are cleared.
+ *
+ * @note Not thread-safe; for unit-test harness use only.
  *
  * @since 0.1.0
  */

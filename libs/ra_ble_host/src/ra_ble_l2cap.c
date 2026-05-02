@@ -172,11 +172,18 @@ void ra_ble_host_att_handle_pdu(uint16_t conn_handle, const uint8_t* pdu, uint16
 /**
  * @brief Pack a little-endian uint16 into a byte buffer.
  *
+ * @details Bluetooth Core 5.3 Vol 3 Part A 3 specifies LE byte order
+ *          for L2CAP fields; this helper centralises the packing.
+ *
  * @param[out] dst Two-byte destination.
  * @param[in]  v   Value to pack.
  *
  * @pre dst != NULL.
- * @post dst[0..1] holds the LE16 encoding of ``v``.
+ * @pre dst points to at least 2 writable bytes.
+ * @post dst[0..1] holds the LE16 encoding of v.
+ * @post No other memory is mutated.
+ *
+ * @note Not thread-safe; caller serializes access to dst.
  *
  * @since 0.1.0
  */
@@ -195,11 +202,19 @@ static void internal_pack_le16(uint8_t* dst, uint16_t v)
 /**
  * @brief Unpack a little-endian uint16 from a byte buffer.
  *
+ * @details Reads the LE16 layout per Bluetooth Core 5.3 Vol 3 Part A 3.
+ *
  * @param[in] src Two-byte source. Must not be NULL.
  * @return Unpacked value.
+ * @retval 0     src[0] and src[1] are both zero.
+ * @retval other Combined LE16 value.
  *
  * @pre src != NULL.
- * @post return value matches src[0] | (src[1] << 8).
+ * @pre src points to at least 2 readable bytes.
+ * @post No memory is modified.
+ * @post Return value equals src[0] | (src[1] << 8).
+ *
+ * @note Not thread-safe; caller serializes access to src.
  *
  * @since 0.1.0
  */
@@ -226,9 +241,14 @@ static uint16_t internal_unpack_le16(const uint8_t* src)
  *          to resolve a global symbol by name.
  *
  * @return Pointer to the singleton state. Never NULL.
+ * @retval !NULL Always returns a valid pointer to s_state.
  *
  * @pre None.
+ * @pre Linker has placed s_state in writable BSS/data.
  * @post Returned pointer is valid for the program's lifetime.
+ * @post No state is mutated.
+ *
+ * @note Not thread-safe; the underlying state struct is not lock-guarded.
  *
  * @since 0.1.0
  */
@@ -240,10 +260,18 @@ ra_ble_host_state_t* ra_ble_host_state(void)
 /**
  * @brief Deliver an event to the user callback if one is registered.
  *
+ * @details Bumps the dispatched-event counter and (when an event
+ *          handler is attached via ra_ble_host_attach_event_handler)
+ *          forwards the event payload.
+ *
  * @param[in] evt Event payload. Must not be NULL.
  *
  * @pre evt != NULL.
+ * @pre Stack is initialized.
  * @post s_state.evt_count incremented.
+ * @post If a handler is registered it has been invoked synchronously.
+ *
+ * @note Not thread-safe; called from the host serial dispatch loop.
  *
  * @since 0.1.0
  */
@@ -280,6 +308,13 @@ void ra_ble_host_dispatch_event(const ra_ble_host_event_t* evt)
  * @retval k_ra_err_invalid_arg   payload_len exceeds the scratch.
  * @retval k_ra_err_null_ptr      payload NULL with payload_len > 0.
  * @retval other                  Whatever ra_ble_hci_send_acl_data returns.
+ *
+ * @pre Stack is initialized.
+ * @pre payload is non-NULL when payload_len > 0.
+ * @post On success the L2CAP frame has been queued on the HCI ACL TX FIFO.
+ * @post On failure no state is mutated.
+ *
+ * @note Not thread-safe; called from the host serial dispatch loop.
  *
  * @since 0.1.0
  */
@@ -340,7 +375,11 @@ ra_err_t ra_ble_host_l2cap_send(uint16_t       conn_handle,
  * @param[in] len         Byte count.
  *
  * @pre payload != NULL or len == 0.
+ * @pre Stack is initialized (otherwise the function early-returns).
  * @post Inbound complete L2CAP frames have been dispatched to ATT.
+ * @post Reassembly state may have advanced or reset.
+ *
+ * @note Not thread-safe; called from the HCI ACL trampoline only.
  *
  * @since 0.1.0
  */
@@ -410,6 +449,13 @@ static void ra_ble_host_acl_in(uint16_t conn_handle, const uint8_t* payload, uin
  * @param[in] payload ACL data bytes.
  * @param[in] len     Byte count.
  *
+ * @pre Registered via ra_ble_attach_acl_handler.
+ * @pre Stack is initialized.
+ * @post ra_ble_host_acl_in has been invoked with the masked handle.
+ * @post Reassembly state may have advanced.
+ *
+ * @note Not thread-safe; called only from the HCI driver callback.
+ *
  * @since 0.1.0
  */
 static void
@@ -440,6 +486,14 @@ internal_acl_trampoline(void* ctx, uint16_t handle, const uint8_t* payload, uint
  * @param[in] evt_code  HCI event code.
  * @param[in] params    Parameter bytes.
  * @param[in] params_len Parameter byte count.
+ *
+ * @pre Registered via ra_ble_attach_event_handler.
+ * @pre Stack is initialized.
+ * @post Connection bookkeeping (conn_handle, att_mtu, CCCDs) updated
+ *       and a connect/disconnect event dispatched on transitions.
+ * @post No state change for unrecognised events.
+ *
+ * @note Not thread-safe; called only from the HCI driver callback.
  *
  * @since 0.1.0
  */
@@ -511,6 +565,34 @@ internal_evt_trampoline(void* ctx, uint8_t evt_code, const uint8_t* params, uint
  * =============================================================================
  */
 
+/**
+ * @brief Initialize the BLE host stack.
+ *
+ * @details Validates the supplied config, opens the underlying HCI
+ *          driver via ra_ble_open, attaches the host's HCI event /
+ *          ACL trampolines, zeroes the GATT attribute table, and
+ *          marks the host singleton as initialized. After this
+ *          returns k_ra_ok the application may register services and
+ *          start advertising. See Bluetooth Core 5.3 Vol 3 Part C 2.2
+ *          for the GAP roles enumerated by ra_ble_host_role_t.
+ *
+ * @param[in] cfg Configuration. Must not be NULL.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok                  Stack is up.
+ * @retval k_ra_err_null_ptr        cfg == NULL.
+ * @retval k_ra_err_invalid_arg     cfg->role out of range or already initialized.
+ * @retval k_ra_err_invalid_state   ra_ble_open failed.
+ *
+ * @pre Caller is single-threaded init context.
+ * @pre Stack is not already initialized.
+ * @post On success ra_ble_host_state()->initialized == 1.
+ * @post On failure no state is left initialised.
+ *
+ * @note Not thread-safe; called once at boot.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ra_ble_host_init(const ra_ble_host_config_t* cfg)
 {
   if (cfg == NULL) {
@@ -557,6 +639,25 @@ ra_err_t ra_ble_host_init(const ra_ble_host_config_t* cfg)
   return k_ra_ok;
 }
 
+/**
+ * @brief Tear down the BLE host stack.
+ *
+ * @details Detaches the HCI event / ACL trampolines, calls
+ *          ra_ble_close, and zeroes the singleton state.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok                  Stack closed.
+ * @retval k_ra_err_not_initialized Stack was never initialized.
+ *
+ * @pre ra_ble_host_init has succeeded.
+ * @pre Caller is single-threaded.
+ * @post Stack is no longer initialized.
+ * @post All registered services / characteristics are forgotten.
+ *
+ * @note Not thread-safe; called once at shutdown.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ra_ble_host_close(void)
 {
   if (s_state.initialized == 0U) {
@@ -569,6 +670,41 @@ ra_err_t ra_ble_host_close(void)
   return k_ra_ok;
 }
 
+/**
+ * @brief Start undirected connectable advertising.
+ *
+ * @details Issues HCI LE_Set_Advertising_Parameters
+ *          (Bluetooth Core 5.3 Vol 4 Part E 7.8.5),
+ *          LE_Set_Advertising_Data (7.8.7),
+ *          LE_Set_Scan_Response_Data (7.8.8) and finally
+ *          LE_Set_Advertising_Enable (7.8.9). Only Peripheral and
+ *          Broadcaster GAP roles may advertise.
+ *
+ * @param[in] adv_data       AD structure bytes (may be NULL when
+ *                           adv_data_len == 0).
+ * @param[in] adv_data_len   Number of bytes in adv_data (<= 31).
+ * @param[in] scan_resp      Scan-response AD bytes (may be NULL when
+ *                           scan_resp_len == 0).
+ * @param[in] scan_resp_len  Number of bytes in scan_resp (<= 31).
+ * @param[in] interval_ms    Advertising interval in milliseconds
+ *                           (20..10240).
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok                   Advertising enabled.
+ * @retval k_ra_err_not_initialized  Stack not yet initialized.
+ * @retval k_ra_err_invalid_arg      Bad role / length / interval.
+ * @retval k_ra_err_null_ptr         Length > 0 with NULL buffer.
+ * @retval other                     Underlying HCI error.
+ *
+ * @pre ra_ble_host_init has succeeded with role peripheral or broadcaster.
+ * @pre Caller is single-threaded.
+ * @post On success the controller is advertising.
+ * @post On failure advertising state is unchanged.
+ *
+ * @note Not thread-safe; called from the application thread.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ra_ble_host_advertise_start(const uint8_t* adv_data,
                                      uint8_t        adv_data_len,
                                      const uint8_t* scan_resp,
@@ -652,6 +788,26 @@ ra_err_t ra_ble_host_advertise_start(const uint8_t* adv_data,
   return ra_ble_set_advertising_enable(1U);
 }
 
+/**
+ * @brief Stop advertising.
+ *
+ * @details Issues HCI LE_Set_Advertising_Enable(0)
+ *          (Bluetooth Core 5.3 Vol 4 Part E 7.8.9).
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok                   Advertising disabled.
+ * @retval k_ra_err_not_initialized  Stack not yet initialized.
+ * @retval other                     Underlying HCI error.
+ *
+ * @pre ra_ble_host_init has succeeded.
+ * @pre Caller is single-threaded.
+ * @post Controller is no longer advertising.
+ * @post No host bookkeeping is mutated beyond the controller state.
+ *
+ * @note Not thread-safe; called from the application thread.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ra_ble_host_advertise_stop(void)
 {
   if (s_state.initialized == 0U) {
@@ -660,6 +816,28 @@ ra_err_t ra_ble_host_advertise_stop(void)
   return ra_ble_set_advertising_enable(0U);
 }
 
+/**
+ * @brief Register the application's event handler.
+ *
+ * @details The handler receives connect / disconnect / write /
+ *          subscribe events as they occur (see ra_ble_host_event_t).
+ *          Passing NULL detaches the handler.
+ *
+ * @param[in] fn  Event callback (NULL detaches).
+ * @param[in] ctx Opaque context forwarded to fn.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok Always returned.
+ *
+ * @pre ra_ble_host_init has succeeded.
+ * @pre Caller is single-threaded.
+ * @post s_state.evt_fn = fn and s_state.evt_ctx = ctx.
+ * @post Subsequent events route to the new handler.
+ *
+ * @note Not thread-safe; called from the application thread.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ra_ble_host_attach_event_handler(ra_ble_host_event_fn_t fn, void* ctx)
 {
   s_state.evt_fn  = fn;
@@ -673,16 +851,76 @@ ra_err_t ra_ble_host_attach_event_handler(ra_ble_host_event_fn_t fn, void* ctx)
  */
 
 #ifdef UNIT_TEST
+/**
+ * @brief Test hook -- inject a synthetic L2CAP frame into the host.
+ *
+ * @details Wraps ra_ble_host_acl_in so unit tests can drive the host
+ *          state machine without going through the controller HCI
+ *          ACL pipe (Bluetooth Core 5.3 Vol 3 Part A 3).
+ *
+ * @param[in] conn_handle 12-bit ACL connection handle to attribute the
+ *                        frame to.
+ * @param[in] l2cap_frame L2CAP B-frame bytes.
+ * @param[in] len         Total byte count.
+ *
+ * @pre Stack is initialized.
+ * @pre l2cap_frame is non-NULL when len > 0.
+ * @post The L2CAP layer has consumed the frame.
+ * @post Reassembly state may have advanced.
+ *
+ * @note Not thread-safe; for unit-test harness use only.
+ *
+ * @since 0.1.0
+ */
 void ra_ble_host_test_inject_acl(uint16_t conn_handle, const uint8_t* l2cap_frame, uint16_t len)
 {
   ra_ble_host_acl_in(conn_handle, l2cap_frame, len);
 }
 
+/**
+ * @brief Test hook -- read the cumulative dispatched-event counter.
+ *
+ * @details Returns s_state.evt_count, useful for verifying that an
+ *          expected event was synthesised by the L2CAP/ATT layer.
+ *
+ * @return uint32_t Cumulative dispatched-event count.
+ * @retval 0  No events dispatched yet.
+ * @retval >0 At least one event delivered.
+ *
+ * @pre Stack is initialized.
+ * @pre Caller is single-threaded.
+ * @post No state change.
+ * @post Return value is monotonically non-decreasing.
+ *
+ * @note Not thread-safe; for unit-test harness use only.
+ *
+ * @since 0.1.0
+ */
 uint32_t ra_ble_host_test_event_count(void)
 {
   return s_state.evt_count;
 }
 
+/**
+ * @brief Test hook -- force the host into the "connected" state.
+ *
+ * @details Bypasses the HCI transport and forces s_state.conn_handle
+ *          to conn_handle, dispatching a synthetic
+ *          k_ra_ble_host_event_connected. Mirrors the effect of
+ *          Bluetooth Core 5.3 Vol 4 Part E 7.7.65.1
+ *          (LE_Connection_Complete).
+ *
+ * @param[in] conn_handle 12-bit ACL connection handle to assign.
+ *
+ * @pre Stack is initialized.
+ * @pre Caller is single-threaded.
+ * @post s_state.conn_handle == conn_handle.
+ * @post A k_ra_ble_host_event_connected event was dispatched.
+ *
+ * @note Not thread-safe; for unit-test harness use only.
+ *
+ * @since 0.1.0
+ */
 void ra_ble_host_test_inject_connect(uint16_t conn_handle)
 {
   s_state.conn_handle         = conn_handle;

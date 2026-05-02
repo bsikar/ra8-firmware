@@ -24,6 +24,32 @@
 
 /* NOLINTBEGIN(readability-magic-numbers,readability-redundant-casting,clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling) */
 
+/**
+ * @brief Process an inbound ICMP frame; reply to echo requests.
+ *
+ * @details RFC 792 echo-request -> echo-reply only. All other ICMP
+ *          types are silently dropped.
+ *
+ * @param[in] frame Pointer to the Ethernet+IPv4+ICMP frame. Must not be NULL.
+ * @param[in] len   Frame length in bytes.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok                  Frame processed (reply queued if echo-req).
+ * @retval k_ra_err_null_ptr        frame == NULL.
+ * @retval k_ra_err_invalid_arg     Frame too short or malformed IPv4 header.
+ * @retval k_ra_err_invalid_size    ICMP payload exceeds the PAL frame max.
+ * @retval other                    Whatever ra_net_ipv4_send returns.
+ *
+ * @pre ra_net_open has succeeded.
+ * @pre frame is non-NULL.
+ * @post On a valid echo-request a corresponding echo-reply has been
+ *       queued for transmission.
+ * @post Other ICMP types leave the stack state unchanged.
+ *
+ * @note Not thread-safe; called from the network thread.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ra_net_icmp_handle(const uint8_t* frame, uint16_t len)
 {
   if (frame == nullptr) {

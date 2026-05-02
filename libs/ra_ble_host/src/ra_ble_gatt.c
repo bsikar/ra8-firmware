@@ -110,7 +110,11 @@ ra_ble_host_attr_t* ra_ble_host_attr_lookup(uint16_t handle);
  * @param[in]  v   16-bit UUID.
  *
  * @pre dst != NULL.
+ * @pre dst points to at least 16 writable bytes.
  * @post dst holds the LE-byte-ordered 128-bit UUID.
+ * @post Bytes outside the data1 field match the Bluetooth Base UUID.
+ *
+ * @note Not thread-safe; caller serializes access to dst.
  *
  * @since 0.1.0
  */
@@ -154,6 +158,10 @@ static void internal_uuid16_to_128(uint8_t* dst, uint16_t v)
 /**
  * @brief Append one row to the attribute table.
  *
+ * @details Bumps the host-singleton ``next_handle`` and writes a fresh
+ *          attribute row at the next free slot. Used by the GATT
+ *          service / characteristic registration helpers.
+ *
  * @param[in] kind        Internal classification.
  * @param[in] uuid_le_128 16-byte LE-ordered UUID.
  * @param[in] props       Properties bitmask (only meaningful for char_decl).
@@ -162,9 +170,15 @@ static void internal_uuid16_to_128(uint8_t* dst, uint16_t v)
  *
  * @return Pointer to the newly inserted row, or NULL if the table is
  *         full.
+ * @retval NULL    Attribute table is at capacity (96 rows).
+ * @retval !NULL   Pointer to the newly inserted attribute row.
  *
  * @pre Stack initialized.
+ * @pre attr_count < 96 for a non-NULL return.
  * @post On success attr_count incremented and next_handle advanced.
+ * @post On failure no state is mutated.
+ *
+ * @note Not thread-safe; called from the host serial dispatch loop.
  *
  * @since 0.1.0
  */
@@ -203,6 +217,34 @@ static ra_ble_host_attr_t* internal_append_attr(ra_ble_host_attr_kind_t kind,
  * =============================================================================
  */
 
+/**
+ * @brief Register a Primary Service entry in the GATT attribute table.
+ *
+ * @details Appends a Primary Service attribute (UUID 0x2800,
+ *          Bluetooth Core 5.3 Vol 3 Part G 3.1) whose value is the
+ *          128-bit service UUID supplied by the caller. The handle of
+ *          the newly created entry is returned via ``out_handle`` and
+ *          can be passed to ra_ble_host_gatt_register_char.
+ *
+ * @param[in]  uuid_128   Service UUID, 16 bytes, little-endian on the
+ *                        wire.
+ * @param[out] out_handle Filled with the assigned ATT handle on success.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok                   Service registered.
+ * @retval k_ra_err_null_ptr         uuid_128 or out_handle is NULL.
+ * @retval k_ra_err_not_initialized  Stack not yet opened.
+ * @retval k_ra_err_no_mem           Service or attribute table at capacity.
+ *
+ * @pre ra_ble_host_init has succeeded.
+ * @pre uuid_128 and out_handle are non-NULL.
+ * @post On success a new primary-service row exists in the table.
+ * @post On failure no state is mutated.
+ *
+ * @note Not thread-safe; called from single-threaded application init.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ra_ble_host_gatt_register_service(const uint8_t* uuid_128, uint16_t* out_handle)
 {
   if ((uuid_128 == NULL) || (out_handle == NULL)) {
@@ -231,6 +273,42 @@ ra_err_t ra_ble_host_gatt_register_service(const uint8_t* uuid_128, uint16_t* ou
   return k_ra_ok;
 }
 
+/**
+ * @brief Register a Characteristic + value (+ optional CCCD) under a
+ *        previously registered service.
+ *
+ * @details Appends the attribute rows that Bluetooth Core 5.3 Vol 3
+ *          Part G 3.3 demands for a characteristic: the Characteristic
+ *          Declaration (UUID 0x2803), the Characteristic Value, and
+ *          (when notify or indicate is set in props) the Client
+ *          Characteristic Configuration Descriptor
+ *          (UUID 0x2902, Vol 3 Part G 3.3.3.3). The new value handle
+ *          is returned to the caller.
+ *
+ * @param[in]  svc_handle  Handle of the parent service.
+ * @param[in]  uuid_128    Characteristic UUID, 16 bytes, LE on wire.
+ * @param[in]  props       Property bitmask (k_ra_ble_host_char_prop_*).
+ * @param[in]  value_buf   Backing storage for the value (may be NULL
+ *                         when value_max == 0).
+ * @param[in]  value_max   Capacity of value_buf in bytes (<= 512).
+ * @param[out] out_handle  Filled with the value handle on success.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok                   Characteristic registered.
+ * @retval k_ra_err_null_ptr         Required pointer was NULL.
+ * @retval k_ra_err_not_initialized  Stack not yet opened.
+ * @retval k_ra_err_invalid_arg      Bad svc_handle, zero props, or oversized value.
+ * @retval k_ra_err_no_mem           Char count or attribute table at capacity.
+ *
+ * @pre ra_ble_host_init has succeeded.
+ * @pre uuid_128 and out_handle are non-NULL.
+ * @post On success 2 or 3 attribute rows have been appended.
+ * @post On failure no state is mutated past the rejected appends.
+ *
+ * @note Not thread-safe; called from single-threaded application init.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ra_ble_host_gatt_register_char(uint16_t       svc_handle,
                                         const uint8_t* uuid_128,
                                         uint8_t        props,
@@ -332,6 +410,35 @@ ra_err_t ra_ble_host_gatt_register_char(uint16_t       svc_handle,
   return k_ra_ok;
 }
 
+/**
+ * @brief Update the cached value of a registered characteristic.
+ *
+ * @details Copies up to ``len`` bytes into the characteristic's
+ *          backing buffer. Used together with ra_ble_host_gatt_notify
+ *          to push fresh data to subscribed peers
+ *          (Bluetooth Core 5.3 Vol 3 Part F 3.4.7 Notifications and
+ *          Indications).
+ *
+ * @param[in] char_handle  Value handle from ra_ble_host_gatt_register_char.
+ * @param[in] value        Source bytes (may be NULL when len == 0).
+ * @param[in] len          Number of bytes to copy (<= value_max).
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok                   Value updated.
+ * @retval k_ra_err_null_ptr         value is NULL while len > 0.
+ * @retval k_ra_err_not_initialized  Stack not yet opened.
+ * @retval k_ra_err_not_found        char_handle does not name a value row.
+ * @retval k_ra_err_invalid_arg      len exceeds the value_max.
+ *
+ * @pre ra_ble_host_init has succeeded.
+ * @pre char_handle was returned by ra_ble_host_gatt_register_char.
+ * @post On success the row's value buffer holds len valid bytes.
+ * @post On failure no state is mutated.
+ *
+ * @note Not thread-safe; called from the application thread.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ra_ble_host_gatt_set_value(uint16_t char_handle, const uint8_t* value, uint16_t len)
 {
   if ((value == NULL) && (len > 0U)) {
@@ -355,6 +462,34 @@ ra_err_t ra_ble_host_gatt_set_value(uint16_t char_handle, const uint8_t* value, 
   return k_ra_ok;
 }
 
+/**
+ * @brief Send an ATT Handle_Value_Notification (HVN) for a characteristic.
+ *
+ * @details Frames an HVN PDU (opcode 0x1B, Bluetooth Core 5.3 Vol 3
+ *          Part F 3.4.7.1) with the characteristic's current value
+ *          and pushes it through the L2CAP layer on CID 0x0004 (LE
+ *          ATT). Silently succeeds when no peer is connected or when
+ *          the peer has not enabled notifications via the CCCD
+ *          (Vol 3 Part G 3.3.3.3).
+ *
+ * @param[in] char_handle Value handle from ra_ble_host_gatt_register_char.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok                   Notification queued (or silently dropped).
+ * @retval k_ra_err_not_initialized  Stack not yet opened.
+ * @retval k_ra_err_not_found        char_handle does not name a value row.
+ * @retval k_ra_err_invalid_arg      Characteristic does not advertise notify.
+ * @retval other                     Whatever ra_ble_host_l2cap_send returns.
+ *
+ * @pre ra_ble_host_init has succeeded.
+ * @pre Characteristic was registered with the notify property bit.
+ * @post On success an HVN PDU has been queued (or silently dropped).
+ * @post On failure no state is mutated.
+ *
+ * @note Not thread-safe; called from the application thread.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ra_ble_host_gatt_notify(uint16_t char_handle)
 {
   enum : uint8_t {

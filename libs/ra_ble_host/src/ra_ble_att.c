@@ -149,11 +149,20 @@ typedef enum : uint8_t {
 /**
  * @brief Pack a little-endian uint16.
  *
+ * @details Writes the low byte of ``v`` to ``dst[0]`` and the high
+ *          byte to ``dst[1]``. This is the byte order used throughout
+ *          the L2CAP / ATT wire format (Bluetooth Core 5.3 Vol 3
+ *          Part A 3 "Data Packet Format").
+ *
  * @param[out] dst Two-byte destination. Must not be NULL.
  * @param[in]  v   Value.
  *
  * @pre dst != NULL.
- * @post dst[0..1] is the LE16 of v.
+ * @pre dst points to at least 2 writable bytes.
+ * @post dst[0..1] holds the LE16 encoding of v.
+ * @post No other memory is mutated.
+ *
+ * @note Not thread-safe; caller serializes access to dst.
  *
  * @since 0.1.0
  */
@@ -172,11 +181,20 @@ static void internal_pack_le16(uint8_t* dst, uint16_t v)
 /**
  * @brief Unpack a little-endian uint16.
  *
+ * @details Reads the LE16 layout used throughout the L2CAP / ATT wire
+ *          format (Bluetooth Core 5.3 Vol 3 Part A 3).
+ *
  * @param[in] src Two-byte source. Must not be NULL.
  * @return Unpacked value.
+ * @retval 0     src[0] and src[1] are both zero.
+ * @retval other Combined LE16 value.
  *
  * @pre src != NULL.
- * @post return value is src[0] | (src[1] << 8).
+ * @pre src points to at least 2 readable bytes.
+ * @post No memory is modified.
+ * @post Return value equals src[0] | (src[1] << 8).
+ *
+ * @note Not thread-safe; caller serializes access to src.
  *
  * @since 0.1.0
  */
@@ -193,12 +211,21 @@ static uint16_t internal_unpack_le16(const uint8_t* src)
 /**
  * @brief Look up the attribute-table row for a given ATT handle.
  *
+ * @details Linear scan over the ra_ble_host_state attribute table
+ *          (Bluetooth Core 5.3 Vol 3 Part F 3.2 "Attribute").
+ *
  * @param[in] handle ATT handle (1-based).
  * @return Pointer to the row, or NULL if the handle is not registered.
+ * @retval NULL  No matching row was found, or handle == 0.
+ * @retval !NULL Pointer into the singleton attribute table.
  *
- * @pre None (handle == 0 returns NULL).
- * @post Returned pointer (if non-NULL) points into ra_ble_host_state()'s
- *       attribute table.
+ * @pre Stack initialized (ra_ble_host_init succeeded).
+ * @pre handle == 0 returns NULL (no precondition violation).
+ * @post No state mutation.
+ * @post Returned pointer (if non-NULL) points into the host attribute
+ *       table.
+ *
+ * @note Not thread-safe; caller is the host's serial dispatch loop.
  *
  * @since 0.1.0
  */
@@ -216,13 +243,21 @@ ra_ble_host_attr_t* ra_ble_host_attr_lookup(uint16_t handle)
 /**
  * @brief Send an ATT Error_Response on CID 0x0004 (LE ATT).
  *
+ * @details Builds the 5-byte Error_Response PDU (opcode 0x01) per
+ *          Bluetooth Core 5.3 Vol 3 Part F 3.4.1.1 and queues it via
+ *          ra_ble_host_l2cap_send.
+ *
  * @param[in] conn_handle ACL handle.
  * @param[in] op_in_error Original request opcode.
  * @param[in] handle      Attribute handle that triggered the error.
  * @param[in] err         ATT error code.
  *
  * @pre Connection is live.
+ * @pre Stack is initialized.
  * @post Error_Response queued on the HCI ACL TX FIFO.
+ * @post Host attribute state is unchanged.
+ *
+ * @note Not thread-safe; called from the host serial dispatch loop.
  *
  * @since 0.1.0
  */
@@ -262,6 +297,14 @@ static void internal_send_error(uint16_t         conn_handle,
  * @param[in] conn_handle ACL handle.
  * @param[in] pdu         Inbound PDU bytes (already past the opcode).
  * @param[in] len         Bytes after the opcode.
+ *
+ * @pre pdu is non-NULL when len > 0.
+ * @pre Stack is initialized.
+ * @post Either a Find_Information_Response or an Error_Response has
+ *       been queued.
+ * @post Host attribute table is unchanged.
+ *
+ * @note Not thread-safe; called from the host serial dispatch loop.
  *
  * @since 0.1.0
  */
@@ -337,6 +380,14 @@ static void internal_handle_find_info(uint16_t conn_handle, const uint8_t* pdu, 
  * @param[in] pdu         Inbound PDU bytes (already past the opcode).
  * @param[in] len         Bytes after the opcode.
  *
+ * @pre pdu is non-NULL when len > 0.
+ * @pre Stack is initialized.
+ * @post Either a Read_By_Type_Response or an Error_Response has been
+ *       queued.
+ * @post Host attribute table is unchanged.
+ *
+ * @note Not thread-safe; called from the host serial dispatch loop.
+ *
  * @since 0.1.0
  */
 static void internal_handle_read_by_type(uint16_t conn_handle, const uint8_t* pdu, uint16_t len)
@@ -411,9 +462,21 @@ static void internal_handle_read_by_type(uint16_t conn_handle, const uint8_t* pd
 /**
  * @brief Handle ATT Read_Request (Vol 3 Part F 3.4.4.3).
  *
+ * @details Looks up the requested attribute, then emits a
+ *          Read_Response (opcode 0x0B) carrying its current value, or
+ *          an Error_Response if the handle is unknown
+ *          (Bluetooth Core 5.3 Vol 3 Part F 3.4.4.3 / 3.4.1.1).
+ *
  * @param[in] conn_handle ACL handle.
  * @param[in] pdu         Bytes past the opcode.
  * @param[in] len         Length.
+ *
+ * @pre pdu is non-NULL when len > 0.
+ * @pre Stack is initialized.
+ * @post Either a Read_Response or an Error_Response has been queued.
+ * @post Host attribute table is unchanged.
+ *
+ * @note Not thread-safe; called from the host serial dispatch loop.
  *
  * @since 0.1.0
  */
@@ -481,6 +544,15 @@ static void internal_handle_read(uint16_t conn_handle, const uint8_t* pdu, uint1
  * @param[in] op           Original opcode (write_req or write_cmd).
  * @param[in] pdu          Bytes past the opcode.
  * @param[in] len          Length.
+ *
+ * @pre pdu is non-NULL when len > 0.
+ * @pre Stack is initialized.
+ * @post On Write_Request the attribute value (or CCCD) has been
+ *       updated and a Write_Response or Error_Response queued.
+ * @post On Write_Command the attribute is updated and no response is
+ *       sent (per Vol 3 Part F 3.4.5.3).
+ *
+ * @note Not thread-safe; called from the host serial dispatch loop.
  *
  * @since 0.1.0
  */
@@ -562,6 +634,32 @@ internal_handle_write(uint16_t conn_handle, uint8_t op, const uint8_t* pdu, uint
  * =============================================================================
  */
 
+/**
+ * @brief Top-level ATT PDU dispatcher invoked by the L2CAP layer.
+ *
+ * @details Switches on the first byte (the ATT opcode per
+ *          Bluetooth Core 5.3 Vol 3 Part F 3.4.8 Table 3.37) and
+ *          forwards the remainder to the matching handler. Unknown
+ *          opcodes are answered with an Error_Response (Request Not
+ *          Supported, Vol 3 Part F 3.4.1.1).
+ *
+ * @param[in] conn_handle ACL handle the PDU arrived on.
+ * @param[in] pdu         ATT PDU bytes (opcode + body).
+ * @param[in] pdu_len     Total PDU byte count including the opcode.
+ *
+ * @return None.
+ * @retval None Function returns void.
+ *
+ * @pre Stack is initialized.
+ * @pre pdu is non-NULL when pdu_len > 0.
+ * @post The matching per-opcode handler has run, or an Error_Response
+ *       has been queued for an unsupported opcode.
+ * @post No host state outside the attribute table is mutated.
+ *
+ * @note Not thread-safe; called from the host serial dispatch loop.
+ *
+ * @since 0.1.0
+ */
 void ra_ble_host_att_handle_pdu(uint16_t conn_handle, const uint8_t* pdu, uint16_t pdu_len)
 {
   if ((pdu == NULL) || (pdu_len == 0U)) {

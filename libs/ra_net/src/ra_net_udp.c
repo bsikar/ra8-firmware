@@ -42,6 +42,26 @@
  * =============================================================================
  */
 
+/**
+ * @brief Locate the UDP socket bound to a local port.
+ *
+ * @details Linear scan over the socket table.
+ *
+ * @param[in] port Local UDP port number.
+ *
+ * @return int16_t Slot index, or -1 on no match.
+ * @retval -1   No matching UDP socket.
+ * @retval >=0  Slot index of the bound socket.
+ *
+ * @pre ra_net_open has succeeded.
+ * @pre Caller is the network thread.
+ * @post No state mutation.
+ * @post Returned index is valid for ra_net_internal_state()->socks.
+ *
+ * @note Not thread-safe.
+ *
+ * @since 0.1.0
+ */
 static int16_t find_udp_socket_by_port(uint16_t port)
 {
   ra_net_state_t* s = ra_net_internal_state();
@@ -53,6 +73,31 @@ static int16_t find_udp_socket_by_port(uint16_t port)
   return -1;
 }
 
+/**
+ * @brief Allocate a new UDP socket bound to local_port.
+ *
+ * @details RFC 768 -- claims the first unused slot, refusing
+ *          duplicate bindings.
+ *
+ * @param[in]  local_port Local UDP port (must be non-zero).
+ * @param[out] out_handle Filled with the socket handle on success.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok               Socket allocated.
+ * @retval k_ra_err_null_ptr     out_handle == NULL.
+ * @retval k_ra_err_invalid_arg  local_port == 0.
+ * @retval k_ra_err_exists       Another socket already bound to local_port.
+ * @retval k_ra_err_no_mem       Socket table is full.
+ *
+ * @pre ra_net_open has succeeded.
+ * @pre out_handle is non-NULL.
+ * @post On success a UDP socket holds the binding.
+ * @post On failure no state mutation.
+ *
+ * @note Not thread-safe.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ra_net_udp_socket(uint16_t local_port, ra_net_handle_t* out_handle)
 {
   if (out_handle == nullptr) {
@@ -82,6 +127,30 @@ ra_err_t ra_net_udp_socket(uint16_t local_port, ra_net_handle_t* out_handle)
  * =============================================================================
  */
 
+/**
+ * @brief Compute the UDP pseudo-header checksum partial-sum.
+ *
+ * @details RFC 768 -- builds the (src, dst, proto, length)
+ *          pseudo-header sum that ra_net_checksum_ones folds with
+ *          the UDP datagram.
+ *
+ * @param[in] src     Source IPv4 address.
+ * @param[in] dst     Destination IPv4 address.
+ * @param[in] udp_len Total UDP datagram length (header + payload).
+ *
+ * @return uint16_t Folded pseudo-header sum.
+ * @retval 0      All inputs were zero (degenerate case).
+ * @retval other  Folded one's-complement of the pseudo-header.
+ *
+ * @pre src and dst are non-NULL.
+ * @pre Caller is the network thread.
+ * @post No state mutation.
+ * @post Return value is independent of host byte order.
+ *
+ * @note Not thread-safe; pure function.
+ *
+ * @since 0.1.0
+ */
 static uint16_t
 udp_pseudo_header_sum(const ra_net_ipv4_t* src, const ra_net_ipv4_t* dst, uint16_t udp_len)
 {
@@ -95,6 +164,32 @@ udp_pseudo_header_sum(const ra_net_ipv4_t* src, const ra_net_ipv4_t* dst, uint16
   return (uint16_t)sum;
 }
 
+/**
+ * @brief Build and transmit one UDP datagram.
+ *
+ * @details RFC 768 -- writes the 8-byte UDP header, computes the
+ *          checksum, and pushes through ra_net_ipv4_send.
+ *
+ * @param[in] dst_ip       Destination IPv4.
+ * @param[in] dst_port     Destination UDP port.
+ * @param[in] src_port     Source UDP port.
+ * @param[in] payload      Optional payload (may be NULL when payload_len == 0).
+ * @param[in] payload_len  Payload length.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok                Datagram queued.
+ * @retval k_ra_err_invalid_size  Combined header+payload exceeds PAL frame max.
+ * @retval other                  ra_net_ipv4_send error code.
+ *
+ * @pre ra_net_open has succeeded.
+ * @pre payload is non-NULL when payload_len > 0.
+ * @post On success a UDP datagram is queued.
+ * @post On failure no state mutation.
+ *
+ * @note Not thread-safe.
+ *
+ * @since 0.1.0
+ */
 static ra_err_t udp_emit(ra_net_ipv4_t  dst_ip,
                          uint16_t       dst_port,
                          uint16_t       src_port,
@@ -123,6 +218,34 @@ static ra_err_t udp_emit(ra_net_ipv4_t  dst_ip,
   return ra_net_ipv4_send(dst_ip, k_ip_proto_udp, buf, udp_len);
 }
 
+/**
+ * @brief Send a UDP datagram from a previously allocated socket.
+ *
+ * @details RFC 768 -- thin wrapper that validates the socket binding
+ *          and forwards to udp_emit.
+ *
+ * @param[in] h        Socket handle.
+ * @param[in] buf      Payload bytes (must not be NULL).
+ * @param[in] len      Payload length (> 0).
+ * @param[in] dst_ip   Destination IPv4.
+ * @param[in] dst_port Destination UDP port (> 0).
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok                Datagram queued.
+ * @retval k_ra_err_null_ptr      buf == NULL.
+ * @retval k_ra_err_invalid_arg   dst_port == 0 or len == 0.
+ * @retval k_ra_err_invalid_state Slot is not a UDP socket.
+ * @retval other                  udp_emit error code.
+ *
+ * @pre h was returned by ra_net_udp_socket.
+ * @pre buf is non-NULL and len > 0.
+ * @post On success a datagram is queued.
+ * @post On failure no state mutation.
+ *
+ * @note Not thread-safe.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ra_net_udp_send(ra_net_handle_t h,
                          const uint8_t*  buf,
                          uint16_t        len,
@@ -142,6 +265,33 @@ ra_err_t ra_net_udp_send(ra_net_handle_t h,
   return udp_emit(dst_ip, dst_port, s->socks[h].udp.local_port, buf, len);
 }
 
+/**
+ * @brief Pop the oldest queued datagram for a UDP socket.
+ *
+ * @details RFC 768 -- copies the head of the per-socket FIFO into
+ *          the caller's buffer, then advances the read index.
+ *
+ * @param[in]  h         Socket handle.
+ * @param[out] buf       Destination buffer.
+ * @param[in]  max_len   Capacity of buf.
+ * @param[out] got_len   Filled with the bytes copied.
+ * @param[out] src_ip    Filled with the datagram's source IPv4.
+ * @param[out] src_port  Filled with the datagram's source port.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok                Datagram returned.
+ * @retval k_ra_err_invalid_state Slot is not a UDP socket.
+ * @retval k_ra_err_no_data       Queue empty.
+ *
+ * @pre h was returned by ra_net_udp_socket.
+ * @pre All output pointers are non-NULL.
+ * @post On success the slot's queue advanced and outputs are filled.
+ * @post On failure no state mutation.
+ *
+ * @note Not thread-safe.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ra_net_udp_recv(ra_net_handle_t h,
                          uint8_t*        buf,
                          uint16_t        max_len,
@@ -175,6 +325,34 @@ ra_err_t ra_net_udp_recv(ra_net_handle_t h,
 
 static void dns_consume_response(const uint8_t* dns, uint16_t dlen);
 
+/**
+ * @brief Process an inbound UDP frame; enqueue to the bound socket
+ *        and (when applicable) feed the DNS resolver.
+ *
+ * @details RFC 768 -- parses the UDP header and either appends to
+ *          the per-socket queue, or drops if no socket is bound. DNS
+ *          responses (source port 53) additionally feed
+ *          dns_consume_response.
+ *
+ * @param[in] frame Ethernet+IPv4+UDP frame bytes. Must not be NULL.
+ * @param[in] len   Frame length.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok               Datagram enqueued (or dropped to a missing socket).
+ * @retval k_ra_err_null_ptr     frame == NULL.
+ * @retval k_ra_err_invalid_arg  Frame too short / malformed.
+ * @retval k_ra_err_not_found    No socket bound to dport.
+ * @retval k_ra_err_no_mem       Per-socket queue full.
+ *
+ * @pre ra_net_open has succeeded.
+ * @pre frame is non-NULL.
+ * @post On success the matching socket queue gained a row.
+ * @post DNS state machine may have advanced.
+ *
+ * @note Not thread-safe.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ra_net_udp_handle(const uint8_t* frame, uint16_t len)
 {
   if (frame == nullptr) {
@@ -239,6 +417,28 @@ typedef enum : uint16_t {
   k_dns_label_max  = 63U,
 } ra_net_dns_consts_t;
 
+/**
+ * @brief Encode a hostname into the DNS QNAME wire format.
+ *
+ * @details RFC 1035 sec 3.1 -- length-prefixed labels terminated by
+ *          a zero-length label.
+ *
+ * @param[in]  host NUL-terminated hostname (must not be NULL).
+ * @param[out] out  Destination for the QNAME bytes.
+ *
+ * @return uint16_t Number of bytes written, including the terminator.
+ * @retval 0      Empty hostname (caller treats as malformed).
+ * @retval other  Number of bytes written.
+ *
+ * @pre host is non-NULL and NUL-terminated.
+ * @pre out has at least 2 * k_ra_net_dns_max_hostname bytes.
+ * @post out holds the label-encoded QNAME terminated by a zero byte.
+ * @post No other state mutation.
+ *
+ * @note Not thread-safe; pure function.
+ *
+ * @since 0.1.0
+ */
 static uint16_t dns_encode_qname(const char* host, uint8_t* out)
 {
   uint16_t outpos = 0U;
@@ -267,6 +467,29 @@ static uint16_t dns_encode_qname(const char* host, uint8_t* out)
   return outpos;
 }
 
+/**
+ * @brief Walk a DNS response and capture the first A record.
+ *
+ * @details RFC 1035 sec 4.1 -- skips the question section, then
+ *          walks the answers and stores the first IN-A record into
+ *          the singleton's dns_answer field.
+ *
+ * @param[in] dns  DNS message bytes (UDP payload).
+ * @param[in] dlen Message length.
+ *
+ * @return None.
+ * @retval None Function returns void.
+ *
+ * @pre dns is non-NULL.
+ * @pre s_state.dns_pending == 1.
+ * @post On success s_state.dns_answer holds the resolved IPv4 and
+ *       s_state.dns_pending == 0.
+ * @post On failure s_state.dns_pending may stay 1 (caller times out).
+ *
+ * @note Not thread-safe.
+ *
+ * @since 0.1.0
+ */
 static void dns_consume_response(const uint8_t* dns, uint16_t dlen)
 {
   ra_net_state_t* s = ra_net_internal_state();
@@ -336,6 +559,35 @@ static void dns_consume_response(const uint8_t* dns, uint16_t dlen)
   }
 }
 
+/**
+ * @brief Synchronously resolve a hostname to an IPv4 address.
+ *
+ * @details RFC 1035 -- emits a DNS A query to the configured server
+ *          and polls until the response arrives or the timeout
+ *          elapses. Note: blocks the caller; intended for
+ *          single-threaded firmware contexts.
+ *
+ * @param[in]  hostname NUL-terminated hostname (must not be NULL).
+ * @param[out] out_ip   Filled with the resolved IPv4 on success.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok                Hostname resolved.
+ * @retval k_ra_err_null_ptr      hostname or out_ip is NULL.
+ * @retval k_ra_err_invalid_state Stack not opened.
+ * @retval k_ra_err_invalid_arg   Hostname too long.
+ * @retval k_ra_err_timeout       No response within k_ra_net_dns_timeout_ms.
+ * @retval k_ra_err_not_found     DNS NXDOMAIN response.
+ * @retval other                  ra_net_ipv4_send error code.
+ *
+ * @pre ra_net_open has succeeded with a configured DNS server.
+ * @pre Both pointers are non-NULL.
+ * @post On success *out_ip holds the resolved IPv4.
+ * @post On failure *out_ip is unspecified.
+ *
+ * @note Not thread-safe; blocks until the resolver completes.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ra_net_dns_query(const char* hostname, ra_net_ipv4_t* out_ip)
 {
   if ((hostname == nullptr) || (out_ip == nullptr)) {

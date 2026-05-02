@@ -66,6 +66,33 @@ typedef enum : uint32_t {
  * =============================================================================
  */
 
+/**
+ * @brief Find the TCP socket matching a 4-tuple (or LISTEN fallback).
+ *
+ * @details Walks the socket table preferring an established
+ *          (local_port, remote_ip, remote_port) match; falls back to a
+ *          LISTEN socket on the same local port if requested by the
+ *          caller's match_state argument.
+ *
+ * @param[in] local_port  Local TCP port to match.
+ * @param[in] remote_ip   Remote IPv4 to match (ignored for LISTEN slot).
+ * @param[in] remote_port Remote TCP port to match.
+ * @param[in] want_state  State to require when match_state != 0.
+ * @param[in] match_state Non-zero to require want_state, 0 for any state.
+ *
+ * @return int16_t Index into the socket table, or -1 on no match.
+ * @retval -1     No matching socket.
+ * @retval >=0    Index of the matching socket.
+ *
+ * @pre ra_net_open has succeeded.
+ * @pre Caller is the network thread.
+ * @post No state mutation.
+ * @post Return value is a valid index into ra_net_internal_state()->socks.
+ *
+ * @note Not thread-safe.
+ *
+ * @since 0.1.0
+ */
 static int16_t find_tcp_socket(uint16_t           local_port,
                                ra_net_ipv4_t      remote_ip,
                                uint16_t           remote_port,
@@ -94,6 +121,30 @@ static int16_t find_tcp_socket(uint16_t           local_port,
   return -1;
 }
 
+/**
+ * @brief Compute the TCP pseudo-header checksum partial-sum.
+ *
+ * @details RFC 793 sec 3.1 -- builds the (src, dst, proto, length)
+ *          pseudo-header sum that ra_net_checksum_ones folds with the
+ *          TCP segment.
+ *
+ * @param[in] src     Source IPv4 address.
+ * @param[in] dst     Destination IPv4 address.
+ * @param[in] tcp_len Total TCP segment length (header + payload).
+ *
+ * @return uint16_t Folded pseudo-header sum.
+ * @retval 0      All inputs were zero (degenerate case).
+ * @retval other  Folded one's-complement of the pseudo-header.
+ *
+ * @pre src and dst are non-NULL.
+ * @pre Caller is the network thread.
+ * @post No state mutation.
+ * @post Return value is independent of host byte order.
+ *
+ * @note Not thread-safe; pure function.
+ *
+ * @since 0.1.0
+ */
 static uint16_t tcp_pseudo_sum(const ra_net_ipv4_t* src, const ra_net_ipv4_t* dst, uint16_t tcp_len)
 {
   uint32_t sum = 0U;
@@ -106,6 +157,32 @@ static uint16_t tcp_pseudo_sum(const ra_net_ipv4_t* src, const ra_net_ipv4_t* ds
   return (uint16_t)sum;
 }
 
+/**
+ * @brief Build and transmit a single TCP segment from a socket.
+ *
+ * @details Frames a fixed-20-byte header (no options), computes the
+ *          checksum with tcp_pseudo_sum, and pushes through
+ *          ra_net_ipv4_send (RFC 793 sec 3.1).
+ *
+ * @param[in] t        Socket whose 4-tuple seeds the segment.
+ * @param[in] flags    TCP control flag bitmask.
+ * @param[in] data     Optional payload (may be NULL when data_len == 0).
+ * @param[in] data_len Payload byte count.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok                Segment queued.
+ * @retval k_ra_err_invalid_size  Combined header+payload exceeds PAL frame max.
+ * @retval other                  ra_net_ipv4_send error code.
+ *
+ * @pre t is a valid socket pointer.
+ * @pre data is non-NULL when data_len > 0.
+ * @post On success a TCP segment is queued.
+ * @post On failure no state mutation.
+ *
+ * @note Not thread-safe.
+ *
+ * @since 0.1.0
+ */
 static ra_err_t
 tcp_emit_segment(ra_net_tcp_sock_t* t, uint8_t flags, const uint8_t* data, uint16_t data_len)
 {
@@ -133,6 +210,26 @@ tcp_emit_segment(ra_net_tcp_sock_t* t, uint8_t flags, const uint8_t* data, uint1
   return ra_net_ipv4_send(t->remote_ip, k_ip_proto_tcp, buf, tcp_len);
 }
 
+/**
+ * @brief Allocate a fresh TCP socket slot.
+ *
+ * @details Counts active TCP sockets, refuses past
+ *          k_ra_net_max_tcp_sockets, then claims the first unused
+ *          row.
+ *
+ * @return ra_net_handle_t Slot index, or k_ra_net_invalid_handle.
+ * @retval k_ra_net_invalid_handle Table is full.
+ * @retval other                   Index of the freshly allocated slot.
+ *
+ * @pre ra_net_open has succeeded.
+ * @pre Caller is the network thread.
+ * @post On success the slot is zeroed and marked TCP.
+ * @post On failure no state mutation.
+ *
+ * @note Not thread-safe.
+ *
+ * @since 0.1.0
+ */
 static ra_net_handle_t alloc_tcp_slot(void)
 {
   ra_net_state_t* s    = ra_net_internal_state();
@@ -160,6 +257,30 @@ static ra_net_handle_t alloc_tcp_slot(void)
  * =============================================================================
  */
 
+/**
+ * @brief Open a passive TCP socket on local_port.
+ *
+ * @details RFC 793 sec 3.5 LISTEN -- a passive open, ready to accept
+ *          incoming SYN segments.
+ *
+ * @param[in]  local_port Local TCP port (must be non-zero).
+ * @param[out] out_handle Filled with the socket handle on success.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok               Socket in LISTEN.
+ * @retval k_ra_err_null_ptr     out_handle == NULL.
+ * @retval k_ra_err_invalid_arg  local_port == 0.
+ * @retval k_ra_err_no_mem       Socket table is full.
+ *
+ * @pre ra_net_open has succeeded.
+ * @pre out_handle is non-NULL.
+ * @post On success a TCP socket is in LISTEN.
+ * @post On failure no state mutation.
+ *
+ * @note Not thread-safe.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ra_net_tcp_listen(uint16_t local_port, ra_net_handle_t* out_handle)
 {
   if (out_handle == nullptr) {
@@ -179,6 +300,31 @@ ra_err_t ra_net_tcp_listen(uint16_t local_port, ra_net_handle_t* out_handle)
   return k_ra_ok;
 }
 
+/**
+ * @brief Initiate an active TCP open and send a SYN.
+ *
+ * @details RFC 793 sec 3.4 / 3.5 SYN_SENT.
+ *
+ * @param[in]  remote_ip   Destination IPv4.
+ * @param[in]  remote_port Destination TCP port (must be non-zero).
+ * @param[out] out_handle  Filled with the socket handle on success.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok               SYN queued.
+ * @retval k_ra_err_null_ptr     out_handle == NULL.
+ * @retval k_ra_err_invalid_arg  remote_port == 0.
+ * @retval k_ra_err_no_mem       Socket table is full.
+ * @retval other                 ra_net_ipv4_send error code.
+ *
+ * @pre ra_net_open has succeeded.
+ * @pre out_handle is non-NULL.
+ * @post On success a TCP socket is in SYN_SENT and a SYN is queued.
+ * @post On failure no state mutation.
+ *
+ * @note Not thread-safe.
+ *
+ * @since 0.1.0
+ */
 ra_err_t
 ra_net_tcp_connect(ra_net_ipv4_t remote_ip, uint16_t remote_port, ra_net_handle_t* out_handle)
 {
@@ -210,6 +356,32 @@ ra_net_tcp_connect(ra_net_ipv4_t remote_ip, uint16_t remote_port, ra_net_handle_
   return e;
 }
 
+/**
+ * @brief Send application data on an established TCP socket.
+ *
+ * @details RFC 793 sec 3.7 SEND -- copies into the TX buffer and
+ *          immediately emits a PSH+ACK segment carrying the data.
+ *
+ * @param[in] h   Socket handle.
+ * @param[in] buf Payload bytes (must not be NULL).
+ * @param[in] len Payload length.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok                Segment queued.
+ * @retval k_ra_err_null_ptr      buf == NULL.
+ * @retval k_ra_err_invalid_state Socket is not ESTABLISHED.
+ * @retval k_ra_err_no_mem        TX buffer full.
+ * @retval other                  ra_net_ipv4_send error code.
+ *
+ * @pre h was returned by a TCP open.
+ * @pre buf is non-NULL.
+ * @post On success snd_nxt advances and a segment is queued.
+ * @post On failure no state mutation.
+ *
+ * @note Not thread-safe.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ra_net_tcp_send(ra_net_handle_t h, const uint8_t* buf, uint16_t len)
 {
   if (buf == nullptr) {
@@ -238,6 +410,33 @@ ra_err_t ra_net_tcp_send(ra_net_handle_t h, const uint8_t* buf, uint16_t len)
   return e;
 }
 
+/**
+ * @brief Drain bytes from a TCP socket's RX buffer.
+ *
+ * @details RFC 793 sec 3.7 RECEIVE -- pops up to max_len bytes from
+ *          the socket's RX buffer.
+ *
+ * @param[in]  h         Socket handle.
+ * @param[out] buf       Destination buffer.
+ * @param[in]  max_len   Capacity of buf.
+ * @param[out] got_len   Filled with the bytes copied.
+ * @param[out] peer_ip   Filled with the connected peer IPv4.
+ * @param[out] peer_port Filled with the connected peer port.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok                Bytes returned.
+ * @retval k_ra_err_invalid_state Slot is not a TCP socket.
+ * @retval k_ra_err_no_data       RX buffer is empty.
+ *
+ * @pre h was returned by a TCP open.
+ * @pre All output pointers are non-NULL.
+ * @post On success bytes have been removed from the RX buffer.
+ * @post On failure no state mutation.
+ *
+ * @note Not thread-safe.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ra_net_tcp_recv(ra_net_handle_t h,
                          uint8_t*        buf,
                          uint16_t        max_len,
@@ -266,6 +465,29 @@ ra_err_t ra_net_tcp_recv(ra_net_handle_t h,
   return k_ra_ok;
 }
 
+/**
+ * @brief Initiate the active-close path on a TCP socket.
+ *
+ * @details RFC 793 sec 3.5 CLOSE -- transitions LISTEN/SYN_SENT/CLOSED
+ *          slots to free immediately, ESTABLISHED to FIN_WAIT, and
+ *          CLOSE_WAIT to LAST_ACK.
+ *
+ * @param[in] h Socket handle.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok               Close initiated (or completed).
+ * @retval k_ra_err_invalid_arg  Slot is not a TCP socket.
+ * @retval other                 ra_net_ipv4_send error code.
+ *
+ * @pre h was returned by a TCP open.
+ * @pre Caller is the network thread.
+ * @post On success the FSM is in FIN_WAIT, LAST_ACK, or fully closed.
+ * @post On failure no state mutation.
+ *
+ * @note Not thread-safe.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ra_net_tcp_close(ra_net_handle_t h)
 {
   ra_net_state_t* s = ra_net_internal_state();
@@ -312,6 +534,31 @@ ra_err_t ra_net_tcp_close(ra_net_handle_t h)
  * =============================================================================
  */
 
+/**
+ * @brief Process an inbound TCP frame; drive the per-socket FSM.
+ *
+ * @details RFC 793 -- finds the matching socket by 4-tuple (or
+ *          LISTEN on the destination port), then advances its FSM.
+ *
+ * @param[in] frame Ethernet+IPv4+TCP frame bytes. Must not be NULL.
+ * @param[in] len   Frame length.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok               Frame processed.
+ * @retval k_ra_err_null_ptr     frame == NULL.
+ * @retval k_ra_err_invalid_arg  Frame too short / malformed.
+ * @retval k_ra_err_not_found    No matching socket.
+ * @retval other                 Whatever the per-state path returns.
+ *
+ * @pre ra_net_open has succeeded.
+ * @pre frame is non-NULL.
+ * @post Matching socket FSM advanced; ACK / SYN-ACK / FIN may be queued.
+ * @post Otherwise no state mutation.
+ *
+ * @note Not thread-safe.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ra_net_tcp_handle(const uint8_t* frame, uint16_t len)
 {
   if (frame == nullptr) {

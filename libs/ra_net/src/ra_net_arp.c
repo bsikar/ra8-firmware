@@ -53,12 +53,53 @@ typedef enum : uint8_t {
   k_arp_plen_ipv4 = 4U,
 } ra_net_arp_lens_t;
 
+/**
+ * @brief Reset (clear) the ARP cache.
+ *
+ * @details Zeroes every cache entry so subsequent ra_net_arp_resolve
+ *          calls fall through to a fresh broadcast request (RFC 826
+ *          sec 4).
+ *
+ * @return None.
+ * @retval None Function returns void.
+ *
+ * @pre ra_net_open has succeeded.
+ * @pre Caller is single-threaded.
+ * @post Every ARP cache slot is empty.
+ * @post No bytes outside the cache are touched.
+ *
+ * @note Not thread-safe; called from the network thread.
+ *
+ * @since 0.1.0
+ */
 void ra_net_arp_reset(void)
 {
   ra_net_state_t* s = ra_net_internal_state();
   (void)memset(s->arp, 0, sizeof(s->arp));
 }
 
+/**
+ * @brief Look up an IPv4 address in the ARP cache.
+ *
+ * @details Linear scan over the 16-entry cache, expiring entries past
+ *          their TTL (RFC 826 sec 4 / RFC 1122 sec 2.3.2.1).
+ *
+ * @param[in]  ip  IPv4 address to look up. Must not be NULL.
+ * @param[out] out Filled with the cached MAC on hit. Must not be NULL.
+ *
+ * @return uint8_t 1 on cache hit, 0 on miss.
+ * @retval 0 No matching live entry.
+ * @retval 1 Cache hit; *out is populated.
+ *
+ * @pre ra_net_open has succeeded.
+ * @pre ip and out are non-NULL.
+ * @post On hit *out holds the cached MAC.
+ * @post Expired entries encountered during the scan have been zeroed.
+ *
+ * @note Not thread-safe; called from the network thread.
+ *
+ * @since 0.1.0
+ */
 static uint8_t arp_lookup(const ra_net_ipv4_t* ip, ra_net_mac_t* out)
 {
   ra_net_state_t* s   = ra_net_internal_state();
@@ -79,6 +120,28 @@ static uint8_t arp_lookup(const ra_net_ipv4_t* ip, ra_net_mac_t* out)
   return 0U;
 }
 
+/**
+ * @brief Insert (or refresh) an IP -> MAC mapping in the ARP cache.
+ *
+ * @details Updates an existing entry, otherwise fills the first free
+ *          slot, otherwise overwrites slot 0 (RFC 826 sec 4 cache
+ *          policy).
+ *
+ * @param[in] ip  IPv4 address. Must not be NULL.
+ * @param[in] mac MAC address to associate. Must not be NULL.
+ *
+ * @return None.
+ * @retval None Function returns void.
+ *
+ * @pre ra_net_open has succeeded.
+ * @pre ip and mac are non-NULL.
+ * @post One cache slot reflects the new mapping.
+ * @post Other slots are unchanged.
+ *
+ * @note Not thread-safe; called from the network thread.
+ *
+ * @since 0.1.0
+ */
 static void arp_insert(const ra_net_ipv4_t* ip, const ra_net_mac_t* mac)
 {
   ra_net_state_t* s   = ra_net_internal_state();
@@ -109,6 +172,28 @@ static void arp_insert(const ra_net_ipv4_t* ip, const ra_net_mac_t* mac)
   s->arp[0].timestamp_ms = now;
 }
 
+/**
+ * @brief Emit a broadcast ARP Request frame for the given target IP.
+ *
+ * @details Builds a 42-byte Ethernet+ARP frame per RFC 826 sec 4 and
+ *          hands it to the PAL TX path.
+ *
+ * @param[in] target Target protocol address (IPv4). Passed by value.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok                   Frame queued for transmission.
+ * @retval k_ra_err_pal_send_failed  PAL rejected the frame.
+ * @retval other                     Whatever ra_net_pal_send_frame returns.
+ *
+ * @pre ra_net_open has succeeded.
+ * @pre Caller is the network thread.
+ * @post On success a broadcast ARP Request has been queued.
+ * @post On failure no state is mutated.
+ *
+ * @note Not thread-safe; called from the network thread.
+ *
+ * @since 0.1.0
+ */
 static ra_err_t emit_request(ra_net_ipv4_t target)
 {
   ra_net_state_t* s                                = ra_net_internal_state();
@@ -134,6 +219,31 @@ static ra_err_t emit_request(ra_net_ipv4_t target)
   return ra_net_pal_send_frame(f, (uint16_t)sizeof(f));
 }
 
+/**
+ * @brief Resolve an IPv4 address to a MAC, emitting an ARP request on miss.
+ *
+ * @details RFC 826 sec 4 -- on cache hit the MAC is returned
+ *          immediately, on miss a broadcast request is queued and
+ *          k_ra_err_no_data is returned so the caller can retry on a
+ *          subsequent ra_net_poll cycle.
+ *
+ * @param[in]  ip      IPv4 address to resolve. Passed by value.
+ * @param[out] out_mac Filled with the MAC on cache hit.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok            Cache hit; *out_mac populated.
+ * @retval k_ra_err_null_ptr  out_mac is NULL.
+ * @retval k_ra_err_no_data   Cache miss; ARP request queued.
+ *
+ * @pre ra_net_open has succeeded.
+ * @pre out_mac is non-NULL.
+ * @post On hit *out_mac holds the resolved MAC.
+ * @post On miss a broadcast ARP Request is queued.
+ *
+ * @note Not thread-safe; called from the network thread.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ra_net_arp_resolve(ra_net_ipv4_t ip, ra_net_mac_t* out_mac)
 {
   if (out_mac == nullptr) {
@@ -146,6 +256,31 @@ ra_err_t ra_net_arp_resolve(ra_net_ipv4_t ip, ra_net_mac_t* out_mac)
   return k_ra_err_no_data;
 }
 
+/**
+ * @brief Process an inbound ARP frame.
+ *
+ * @details RFC 826 sec 4 -- caches the sender mapping unconditionally;
+ *          on a request directed at our IP we emit a unicast ARP
+ *          Reply.
+ *
+ * @param[in] frame Pointer to the Ethernet+ARP frame. Must not be NULL.
+ * @param[in] len   Frame length in bytes.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok                  Frame processed (cache updated, reply queued if applicable).
+ * @retval k_ra_err_null_ptr        frame == NULL.
+ * @retval k_ra_err_invalid_arg     Frame too short.
+ * @retval k_ra_err_not_supported   Non-Ethernet / non-IPv4 hardware/protocol.
+ *
+ * @pre ra_net_open has succeeded.
+ * @pre frame is non-NULL.
+ * @post On a request for our IP, an ARP Reply has been queued.
+ * @post Sender mapping is cached.
+ *
+ * @note Not thread-safe; called from the network thread.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ra_net_arp_handle(const uint8_t* frame, uint16_t len)
 {
   if (frame == nullptr) {
