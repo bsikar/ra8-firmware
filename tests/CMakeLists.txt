@@ -378,6 +378,17 @@ if(RA_REFLOW_USE_LITEHTML)
   list(REMOVE_ITEM RA_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra_reflow.c)
 endif()
 
+# test_coverage_compile_all.c is the coverage aggregator: a single
+# no-op TU whose only purpose is to force every first-party source
+# to be linked with the active coverage instrumentation flags so
+# llvm-cov / gcovr can compute uniform repository-wide coverage.
+# It contributes zero functional test value, so we exclude it from
+# the fast `make test` flow (RA_MCDC=OFF) and only build it when
+# `RA_MCDC=ON`.
+if(NOT RA_MCDC)
+  list(REMOVE_ITEM RA_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_coverage_compile_all.c)
+endif()
+
 foreach(src ${RA_TEST_SOURCES})
   get_filename_component(name ${src} NAME_WE)
   ra_add_test(${name})

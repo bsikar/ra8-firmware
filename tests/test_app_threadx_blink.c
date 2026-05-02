@@ -42,7 +42,7 @@ static void reset_world(void)
 
 /** @brief Per-test enums replacing magic numbers. */
 typedef enum : uint8_t {
-  k_test_blink_iters       = 4U,  /**< Per-thread loop iterations to simulate. */
+  k_test_blink_iters        = 4U, /**< Per-thread loop iterations to simulate. */
   k_test_blink_thread_idx_a = 0U, /**< Thread A == LED1 owner. */
   k_test_blink_thread_idx_b = 1U, /**< Thread B == LED2 owner. */
 } test_blink_const_t;

@@ -33,11 +33,11 @@
 
 /** @brief Per-test enums. */
 typedef enum : uint32_t {
-  k_test_uart_baud         = 115200U,
-  k_test_uart_pclk_hz      = 125000000U, /**< Same PCLKA the app sees. */
-  k_test_uart_sci_channel  = 8U,
-  k_test_uart_loop_iters   = 3U,
-  k_test_uart_bad_channel  = 99U,
+  k_test_uart_baud        = 115200U,
+  k_test_uart_pclk_hz     = 125000000U, /**< Same PCLKA the app sees. */
+  k_test_uart_sci_channel = 8U,
+  k_test_uart_loop_iters  = 3U,
+  k_test_uart_bad_channel = 99U,
 } test_uart_const_t;
 
 /** @brief Greeting buffer same shape as the app. */
@@ -74,14 +74,12 @@ static void test_uart_pfs_routing_ok(void)
 {
   reset_world();
   TEST_BEGIN("uart_hello: PFS routes TXD8 + RXD8");
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_pfs_route_peripheral(k_test_uart_pin_txd,
-                                              k_ra_psel_sci_async,
-                                              "test.txd8"));
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_pfs_route_peripheral(k_test_uart_pin_rxd,
-                                              k_ra_psel_sci_async,
-                                              "test.rxd8"));
+  TEST_ASSERT_EQ(
+    (int)k_ra_ok,
+    (int)ra_pfs_route_peripheral(k_test_uart_pin_txd, k_ra_psel_sci_async, "test.txd8"));
+  TEST_ASSERT_EQ(
+    (int)k_ra_ok,
+    (int)ra_pfs_route_peripheral(k_test_uart_pin_rxd, k_ra_psel_sci_async, "test.rxd8"));
   TEST_END("uart_hello: PFS routes TXD8 + RXD8");
 }
 
@@ -125,14 +123,12 @@ static void test_uart_steady_state_write_and_toggle(void)
   reset_world();
   TEST_BEGIN("uart_hello: write+toggle loop");
   /* Bring everything up first like the app does. */
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_pfs_route_peripheral(k_test_uart_pin_txd,
-                                              k_ra_psel_sci_async,
-                                              "test.txd8"));
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_pfs_route_peripheral(k_test_uart_pin_rxd,
-                                              k_ra_psel_sci_async,
-                                              "test.rxd8"));
+  TEST_ASSERT_EQ(
+    (int)k_ra_ok,
+    (int)ra_pfs_route_peripheral(k_test_uart_pin_txd, k_ra_psel_sci_async, "test.txd8"));
+  TEST_ASSERT_EQ(
+    (int)k_ra_ok,
+    (int)ra_pfs_route_peripheral(k_test_uart_pin_rxd, k_ra_psel_sci_async, "test.rxd8"));
   const ra_sci_cfg_t cfg = {
     .baud      = (uint32_t)k_test_uart_baud,
     .data_bits = k_ra_sci_data_8,
@@ -209,8 +205,7 @@ static void test_uart_pfs_route_invalid_pin_rejected(void)
   reset_world();
   TEST_BEGIN("uart_hello: PFS route rejects bad port");
   /* Port 15 is out-of-range on the RA8D2; the BSP must reject it. */
-  const ra_port_pin_t bad_pin =
-    (ra_port_pin_t)(((uint16_t)0x0FU << 8) | (uint16_t)k_ra_pin_0);
+  const ra_port_pin_t bad_pin = (ra_port_pin_t)(((uint16_t)0x0FU << 8) | (uint16_t)k_ra_pin_0);
   TEST_ASSERT(ra_pfs_route_peripheral(bad_pin, k_ra_psel_sci_async, "test.bad") != k_ra_ok);
   TEST_END("uart_hello: PFS route rejects bad port");
 }

@@ -160,6 +160,7 @@ collect_source_files() {
     find "${roots[@]}" \
         \( -name '*.c' -o -name '*.h' \) \
         ! -path '*/build/*' \
+        ! -path '*/build-cov/*' \
         ! -path '*/_deps/*' \
         ! -path '*/third_party/*' \
         ! -path '*/tests/*' \
