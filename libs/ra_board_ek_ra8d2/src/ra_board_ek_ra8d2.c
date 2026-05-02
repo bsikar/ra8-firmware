@@ -37,6 +37,8 @@
 #include "ra_gpio_constants.h"
 #include "ra_icu.h"
 #include "ra_isr.h"
+#include "ra_mipi_dsi.h"
+#include "ra_mipi_phy.h"
 #include "ra_mstp.h"
 #include "ra_port_constants.h"
 #include "ra_port_utils.h"
@@ -223,8 +225,8 @@ ra_err_t ra_board_sw_attach_irq(ra_board_sw_id_t sw, ra_board_sw_irq_cb_t cb, vo
   /* Step 2: route the ELC event for IRQ12-DS / IRQ13-DS through an
    * IELSR slot and enable the matching NVIC line. SW1 -> IRQ13-DS
    * (event 0x00E), SW2 -> IRQ12-DS (event 0x00D). */
-  const ra_elc_event_t evt = (sw == k_ra_board_sw1) ? k_ra_elc_event_icu_irq13
-                                                    : k_ra_elc_event_icu_irq12;
+  const ra_elc_event_t evt =
+    (sw == k_ra_board_sw1) ? k_ra_elc_event_icu_irq13 : k_ra_elc_event_icu_irq12;
   return ra_isr_register(evt, (ra_isr_handler_t)cb, ctx, k_ra_isr_prio_default, NULL);
 }
 
@@ -620,45 +622,132 @@ ra_err_t ra_board_usbhs_host_init(void)
 }
 
 /* =============================================================================
- * 10. MIPI-DSI bring-up stub
+ * 10. MIPI-DSI panel bring-up (J32 -- Renesas RTKMIPILCDB00000BE mezzanine)
  * =============================================================================
  */
 
+/**
+ * @brief Static placeholder geometry + line rate for the J32 panel.
+ *
+ * @details
+ * The Renesas MIPI Graphics Expansion Board (RTKMIPILCDB00000BE) carries a
+ * Focus-LCD E45RA-MW276-C 480 x 854 panel driven over a 2-lane D-PHY link.
+ * The exact per-lane bit rate is panel-vendor information; the placeholder
+ * 480 Mbps/lane lands in the HAL's PMUL=1/4 band so the PLL coefficient
+ * block below is at least self-consistent at compile time.
+ *
+ * TODO(panel-datasheet): replace these three values with the row from the
+ * RTKMIPILCDB00000BE / Focus E45RA-MW276-C datasheet.
+ */
+typedef enum : uint16_t {
+  k_ra_board_mipi_panel_h_active       = 480U,
+  k_ra_board_mipi_panel_v_active       = 854U,
+  k_ra_board_mipi_panel_line_rate_mbps = 480U,
+} ra_board_mipi_panel_geometry_t;
+
+/**
+ * @brief MIPI DSI host link-layer config for the J32 mezzanine.
+ *
+ * @details
+ * Only fields whose values come from the SoC side (lane count, ECC / EoTP
+ * defaults, ULPS wake-up) are filled in here. The guard-band timing block
+ * and bus timeouts are left at the driver power-on defaults until the
+ * panel datasheet pins down concrete numbers.
+ *
+ * TODO(panel-datasheet): populate ``timing`` (CLSTPTSETR / LPTRNSTSETR)
+ * and ``timeouts`` (HSTXTOSETR, LRXHTOSETR, TATOSETR, PRESPTO*SETR) from
+ * the panel datasheet -- the empty-init values below are accepted by the
+ * driver but produce conservative blanking that may not meet the panel's
+ * minimum HSA / HBP / HFP windows.
+ */
+static const ra_mipi_dsi_config_t s_mipi_panel_cfg = {
+  .lane_count             = k_ra_mipi_dsi_lanes_2,
+  .clock_mode             = k_ra_mipi_dsi_clock_non_continuous,
+  .max_return_packet_size = 16U,
+  .ulps_wakeup_period     = 0U,
+  .ecc_check_enable       = true,
+  .eotp_enable            = true,
+  .scramble_enable        = false,
+  .tearing_detect_enable  = true,
+  .crc_check_vc_mask      = 0x01U, /* VC0 only -- the only VC J32 wires up. */
+  .timing                 = {},    /* TODO(panel-datasheet). */
+  .timeouts               = {},    /* TODO(panel-datasheet). */
+};
+
+/**
+ * @brief Placeholder D-PHY HS/LP transition timing block.
+ *
+ * @details
+ * The HAL exposes ``ra_mipi_phy_select_timing`` to look the right
+ * DPHYTIM1..6 row up automatically; using it would be the right move once
+ * the line rate is locked. The placeholder below carries a single non-zero
+ * TINIT so the gap is obvious in a debugger.
+ *
+ * TODO(panel-datasheet): swap for a ``ra_mipi_phy_select_timing`` lookup
+ * keyed on the confirmed panel line rate.
+ */
+static const ra_mipi_phy_timing_t s_mipi_phy_timing_placeholder = {
+  .tinit = 1U,
+};
+
+/**
+ * @brief MIPI D-PHY config for the J32 mezzanine.
+ *
+ * @details
+ * PLL coefficients solve ``f = MOSC * (1/IDIV) * (NMUL+NFMUL) * (1/PMUL)``;
+ * the placeholder values below assume MOSC=20 MHz and target 240 MHz PLL
+ * out (480 Mbps/lane line rate, P=1/4 band).
+ *
+ * TODO(panel-datasheet): re-solve once the panel datasheet pins the line
+ * rate down and the actual MOSC frequency on the EK-RA8D2 board is
+ * confirmed; today's pclka_mhz=60 assumes the chip's CGC reset default.
+ */
+static const ra_mipi_phy_config_t s_mipi_phy_cfg = {
+  .mode           = k_ra_mipi_phy_mode_dsi_master,
+  .pclka_mhz      = 60U,
+  .line_rate_mbps = (uint16_t)k_ra_board_mipi_panel_line_rate_mbps,
+  .lane_count     = k_ra_mipi_phy_lane_count_2,
+  .clk_mode       = k_ra_mipi_phy_clk_noncontinuous,
+  .eotp           = k_ra_mipi_phy_eotp_enabled,
+  .pll =
+    {
+      .idiv     = k_ra_mipi_phy_idiv_1,
+      .pmul     = k_ra_mipi_phy_pmul_4,
+      .nfmul    = k_ra_mipi_phy_nfmul_0_00,
+      .nmul_int = 48U, /* TODO(panel-datasheet). */
+    },
+  .escdiv   = 0U,
+  .p_timing = &s_mipi_phy_timing_placeholder,
+};
+
 ra_err_t ra_board_mipi_dsi_init(void)
 {
-  /* The DSI host bring-up function ra_mipi_dsi_init(const
-   * ra_mipi_dsi_config_t* cfg) exists in libs/ra_hal/inc/ra_mipi_dsi.h
-   * and is fully implemented (it programmes TXSETR / DSISETR /
-   * timeouts / guard-band timing). What is missing here is:
+  /* Step 1: PHY first -- HUM Ch 64.3.1 startup procedure. The HAL warns
+   * "The MIPI PHY (HUM Ch 64) must be brought up first" before the DSI
+   * host can clock its LP/HS lanes. */
+  ra_err_t err = ra_mipi_phy_init(&s_mipi_phy_cfg);
+  if (err != k_ra_ok) {
+    return err;
+  }
+
+  /* Step 2: DSI host link layer (HUM Ch 65). Programmes TXSETR / DSISETR
+   * / guard-band timing / timeouts -- but does NOT start the HS clock
+   * yet, so the application can splice in the panel-side reset pulse on
+   * k_ra_board_mipi_dsi_reset_n (P606) and backlight enable on
+   * k_ra_board_mipi_dsi_backlight (P514) between init and clock start. */
+  err = ra_mipi_dsi_init(&s_mipi_panel_cfg);
+  if (err != k_ra_ok) {
+    return err;
+  }
+
+  /* Step 3: kick the differential HS clock. After this returns the link
+   * is HS-ready; callers can replay the panel DCS init stream via
+   * ra_mipi_dsi_send_command() and finally call ra_mipi_dsi_video_start.
    *
-   *   1. A validated ra_mipi_dsi_config_t for the MIPI Graphics
-   *      Expansion Board 1 panel (Renesas RTKMIPILCDB00000BE,
-   *      Focus LCD E45RA-MW276-C, 854 x 480). The
-   *      lane_count / clock_mode / timing / timeouts struct fields
-   *      need values cross-checked against the panel datasheet --
-   *      no committed reference exists under cmake/ yet.
-   *   2. Up-front D-PHY bring-up. The HAL warns "The MIPI PHY
-   *      (HUM Ch 64) must be brought up first" -- ra_mipi_phy.h
-   *      exposes the PHY API but the EK-RA8D2-specific PLL
-   *      configuration (REFDIV / FBDIV / lane bit-rate) is not yet
-   *      committed.
-   *   3. Panel-side init sequence: backlight enable on
-   *      k_ra_board_mipi_dsi_backlight (P514), reset pulse on
-   *      k_ra_board_mipi_dsi_reset_n (P606), and the per-panel DCS
-   *      command stream that has to be replayed via
-   *      ra_mipi_dsi_send_command() before the video link starts.
-   *
-   * TODO(bsp): once the panel descriptor lands in the BSP (e.g. as
-   * a static const ra_mipi_dsi_config_t s_mipi_panel_cfg), promote
-   * this function to:
-   *
-   *   ra_err_t err = ra_mipi_phy_init(&s_mipi_phy_cfg);
-   *   if (err != k_ra_ok) { return err; }
-   *   err = ra_mipi_dsi_init(&s_mipi_panel_cfg);
-   *   if (err != k_ra_ok) { return err; }
-   *   return ra_mipi_dsi_hs_clock_start();
-   */
-  return k_ra_err_not_supported;
+   * TODO(panel-datasheet): the per-panel DCS command sequence (sleep-out,
+   * pixel-format set, display-on, etc.) for the Focus E45RA-MW276-C is
+   * not committed here -- the application currently owns it. */
+  return ra_mipi_dsi_hs_clock_start();
 }
 
 /* =============================================================================
@@ -764,8 +853,7 @@ ra_err_t ra_board_uart_console_read(uint8_t* out, size_t cap, size_t* out_len)
    * bounds the loop (NASA Rule 2). */
   for (size_t i = 0U; i < cap; ++i) {
     uint8_t        byte = 0U;
-    const ra_err_t err =
-      ra_sci_getc_polling((uint8_t)k_ra_board_uart_console_sci_channel, &byte);
+    const ra_err_t err  = ra_sci_getc_polling((uint8_t)k_ra_board_uart_console_sci_channel, &byte);
     if (err != k_ra_ok) {
       /* No byte available yet -- treat as a non-blocking stop. */
       return k_ra_ok;
@@ -843,8 +931,7 @@ ra_err_t ra_board_ethernet_init(void)
    * board PHY's strap defaults; auto-negotiation will refine this
    * once the application calls ra_rmac_phy_auto_neg_start. */
   const ra_rmac_config_t rmac_cfg = {
-    .rx_filter       = (ra_rmac_mrafc_t)(k_ra_rmac_mrafc_unicast_match
-                                   | k_ra_rmac_mrafc_broadcast),
+    .rx_filter       = (ra_rmac_mrafc_t)(k_ra_rmac_mrafc_unicast_match | k_ra_rmac_mrafc_broadcast),
     .err_irq_enable  = 0U,
     .mon0_irq_enable = 0U,
     .mon1_irq_enable = 0U,
