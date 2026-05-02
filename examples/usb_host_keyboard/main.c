@@ -84,6 +84,7 @@
 
 #include <stdint.h>
 
+#include "ra_board_ek_ra8d2.h"
 #include "ra_cgc.h"
 #include "ra_err.h"
 #include "ra_gpio_constants.h"
@@ -599,7 +600,7 @@ static void usb_kbd_on_attach(void* ctx, const ra_usb_hhid_device_t* device)
   }
   s_state.device   = *device;
   s_state.attached = true;
-  (void)ra_gpio_write(k_ra_pin_led1, k_ra_level_high);
+  (void)ra_board_led_on(k_ra_board_led1);
 }
 
 /**
@@ -640,10 +641,10 @@ static void usb_kbd_setup_or_halt(void)
     usb_kbd_panic_halt();
   }
 
-  if (ra_gpio_output_init(k_ra_pin_led1, k_ra_level_low) != k_ra_ok) {
+  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
     usb_kbd_panic_halt();
   }
-  if (ra_gpio_output_init(k_ra_pin_led2, k_ra_level_low) != k_ra_ok) {
+  if (ra_board_led_init(k_ra_board_led2) != k_ra_ok) {
     usb_kbd_panic_halt();
   }
 
@@ -811,7 +812,7 @@ static uint8_t usb_kbd_decode_keycode(uint8_t keycode, uint8_t modifier)
       continue;
     }
     /* New keypress: blink LED2 and try to emit ASCII. */
-    if (ra_gpio_toggle(k_ra_pin_led2) != k_ra_ok) {
+    if (ra_board_led_toggle(k_ra_board_led2) != k_ra_ok) {
       return k_ra_err_gpio_invalid_pin;
     }
     const uint8_t  glyph = usb_kbd_decode_keycode(keycode, modifier);

@@ -79,6 +79,7 @@
 
 #include <stdint.h>
 
+#include "ra_board_ek_ra8d2.h"
 #include "ra_cgc.h"
 #include "ra_err.h"
 #include "ra_gpio_constants.h"
@@ -222,7 +223,7 @@ static void usb_cdc_echo_setup_or_halt(void)
   if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
     usb_cdc_echo_panic_halt();
   }
-  if (ra_gpio_output_init(k_ra_pin_led1, k_ra_level_low) != k_ra_ok) {
+  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
     usb_cdc_echo_panic_halt();
   }
   if (usb_cdc_echo_pins_init() != k_ra_ok) {
@@ -297,7 +298,7 @@ static void usb_cdc_echo_setup_or_halt(void)
    * byte landing on the host. At small chunk sizes this is
    * dominated by USB latency so the LED stays human-visible. */
   for (uint16_t i = 0U; i < len; i++) {
-    if (ra_gpio_toggle(k_ra_pin_led1) != k_ra_ok) {
+    if (ra_board_led_toggle(k_ra_board_led1) != k_ra_ok) {
       return k_ra_err_gpio_invalid_pin;
     }
   }

@@ -60,6 +60,7 @@
 
 #include <stdint.h>
 
+#include "ra_board_ek_ra8d2.h"
 #include "ra_cgc.h"
 #include "ra_err.h"
 #include "ra_gpio_constants.h"
@@ -515,7 +516,7 @@ static void usb_msc_on_attach(void* ctx, const ra_usb_hmsc_device_t* device)
   }
   s_state.device   = *device;
   s_state.attached = true;
-  (void)ra_gpio_write(k_ra_pin_led1, k_ra_level_high);
+  (void)ra_board_led_on(k_ra_board_led1);
 }
 
 /**
@@ -559,10 +560,10 @@ static void usb_msc_setup_or_halt(void)
     usb_msc_panic_halt();
   }
 
-  if (ra_gpio_output_init(k_ra_pin_led1, k_ra_level_low) != k_ra_ok) {
+  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
     usb_msc_panic_halt();
   }
-  if (ra_gpio_output_init(k_ra_pin_led2, k_ra_level_low) != k_ra_ok) {
+  if (ra_board_led_init(k_ra_board_led2) != k_ra_ok) {
     usb_msc_panic_halt();
   }
 
@@ -733,7 +734,7 @@ static void usb_msc_setup_or_halt(void)
  */
 [[nodiscard]] static ra_err_t usb_msc_blink_op(void)
 {
-  return ra_gpio_toggle(k_ra_pin_led2);
+  return ra_board_led_toggle(k_ra_board_led2);
 }
 
 /**
