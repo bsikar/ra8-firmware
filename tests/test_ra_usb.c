@@ -490,6 +490,460 @@ static void test_hs_paths(void)
   TEST_END("usb HS paths");
 }
 
+/* =====================================================================
+ * MC/DC vector tests (DO-178C Level B / IEC 61508 SIL 3)
+ *
+ * Each test below pins all conditions in a compound boolean decision
+ * except one and shows that flipping the varied condition flips the
+ * decision outcome. With N conditions the minimal set is N+1 vectors.
+ * Source-of-truth gap rows: docs/MCDC_GAPS.csv (ra_usb.c entries).
+ * ===================================================================== */
+
+typedef enum : uint16_t {
+  k_mcdc_usb_pipe_lo_bad = 0U,    /**< pipe_num == 0 -> rejected. */
+  k_mcdc_usb_pipe_hi_bad = 99U,   /**< pipe_num > k_ra_usb_max_pipe_num. */
+  k_mcdc_usb_pipe_ok     = 1U,    /**< 1 .. k_ra_usb_max_pipe_num. */
+  k_mcdc_usb_ep_lo_bad   = 0U,    /**< ep_addr == 0 -> rejected. */
+  k_mcdc_usb_ep_hi_bad   = 99U,   /**< ep_addr > k_ra_usb_max_ep_addr. */
+  k_mcdc_usb_ep_ok       = 1U,    /**< 1 .. k_ra_usb_max_ep_addr. */
+  k_mcdc_usb_mp_lo_bad   = 0U,    /**< max_packet == 0 -> rejected. */
+  k_mcdc_usb_mp_hi_bad   = 9999U, /**< max_packet > pipe_max_packet. */
+  k_mcdc_usb_mp_ok       = 64U,   /**< common bulk max packet. */
+  k_mcdc_usb_len_zero    = 0U,
+  k_mcdc_usb_len_ok      = 4U,
+  k_mcdc_usb_len_too_big = 9999U,
+  k_mcdc_usb_speed_bogus = 9U, /**< not FS, not HS. */
+} mcdc_usb_const_t;
+
+/**
+ * @test test_mcdc_check_ep_args_pipe_num
+ *
+ * @par MC/DC:
+ * Decision: `if ((pipe_num == 0U) || (pipe_num > k_ra_usb_max_pipe_num))`
+ * (libs/ra_hal/src/ra_usb.c:385, 2 conditions, reached via
+ * ra_usb_configure_endpoint -> internal_check_ep_args).
+ * - V1: pipe=1, others valid               -> false (control: both false).
+ * - V2: pipe=0, others valid               -> true  (varies C1 only).
+ * - V3: pipe=99, others valid              -> true  (varies C2 only).
+ * V1+V2 prove C1 (pipe==0) independently flips the decision; V1+V3
+ * prove C2 (pipe>max). N+1 = 3 vectors for N=2.
+ */
+static void test_mcdc_check_ep_args_pipe_num(void)
+{
+  TEST_BEGIN("mcdc: check_ep_args pipe_num decision");
+  prep_cb();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_device_init(k_ra_usb_speed_fs));
+
+  /* V1: both conditions false -> ok (config succeeds). */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_usb_configure_endpoint(k_ra_usb_speed_fs,
+                                                    (uint8_t)k_mcdc_usb_pipe_ok,
+                                                    (uint8_t)k_mcdc_usb_ep_ok,
+                                                    k_ra_usb_ep_dir_in,
+                                                    k_ra_usb_ep_type_bulk,
+                                                    (uint16_t)k_mcdc_usb_mp_ok));
+  /* V2: pipe == 0 -> rejected. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_usb_configure_endpoint(k_ra_usb_speed_fs,
+                                                    (uint8_t)k_mcdc_usb_pipe_lo_bad,
+                                                    (uint8_t)k_mcdc_usb_ep_ok,
+                                                    k_ra_usb_ep_dir_in,
+                                                    k_ra_usb_ep_type_bulk,
+                                                    (uint16_t)k_mcdc_usb_mp_ok));
+  /* V3: pipe > max -> rejected. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_usb_configure_endpoint(k_ra_usb_speed_fs,
+                                                    (uint8_t)k_mcdc_usb_pipe_hi_bad,
+                                                    (uint8_t)k_mcdc_usb_ep_ok,
+                                                    k_ra_usb_ep_dir_in,
+                                                    k_ra_usb_ep_type_bulk,
+                                                    (uint16_t)k_mcdc_usb_mp_ok));
+  TEST_END("mcdc: check_ep_args pipe_num decision");
+}
+
+/**
+ * @test test_mcdc_check_ep_args_ep_addr
+ *
+ * @par MC/DC:
+ * Decision: `if ((ep_addr == 0U) || (ep_addr > k_ra_usb_max_ep_addr))`
+ * (libs/ra_hal/src/ra_usb.c:388, 2 conditions).
+ * - V1: ep=1, others valid     -> false (both false).
+ * - V2: ep=0, others valid     -> true  (varies C1).
+ * - V3: ep=99, others valid    -> true  (varies C2).
+ * N+1 = 3 vectors for N=2.
+ */
+static void test_mcdc_check_ep_args_ep_addr(void)
+{
+  TEST_BEGIN("mcdc: check_ep_args ep_addr decision");
+  prep_cb();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_device_init(k_ra_usb_speed_fs));
+
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_usb_configure_endpoint(k_ra_usb_speed_fs,
+                                                    (uint8_t)k_mcdc_usb_pipe_ok,
+                                                    (uint8_t)k_mcdc_usb_ep_ok,
+                                                    k_ra_usb_ep_dir_in,
+                                                    k_ra_usb_ep_type_bulk,
+                                                    (uint16_t)k_mcdc_usb_mp_ok));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_usb_configure_endpoint(k_ra_usb_speed_fs,
+                                                    (uint8_t)k_mcdc_usb_pipe_ok,
+                                                    (uint8_t)k_mcdc_usb_ep_lo_bad,
+                                                    k_ra_usb_ep_dir_in,
+                                                    k_ra_usb_ep_type_bulk,
+                                                    (uint16_t)k_mcdc_usb_mp_ok));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_usb_configure_endpoint(k_ra_usb_speed_fs,
+                                                    (uint8_t)k_mcdc_usb_pipe_ok,
+                                                    (uint8_t)k_mcdc_usb_ep_hi_bad,
+                                                    k_ra_usb_ep_dir_in,
+                                                    k_ra_usb_ep_type_bulk,
+                                                    (uint16_t)k_mcdc_usb_mp_ok));
+  TEST_END("mcdc: check_ep_args ep_addr decision");
+}
+
+/**
+ * @test test_mcdc_check_ep_args_dir
+ *
+ * @par MC/DC:
+ * Decision: `if ((dir != k_ra_usb_ep_dir_in) && (dir != k_ra_usb_ep_dir_out))`
+ * (libs/ra_hal/src/ra_usb.c:391, 2 conditions). Note these are AND-of-NEs:
+ * the decision is true only when dir matches NEITHER enum value.
+ * - V1: dir = IN  -> C1 false, short-circuits  -> false (control).
+ * - V2: dir = OUT -> C1 true, C2 false         -> false (varies C2).
+ * - V3: dir = 9   -> C1 true, C2 true          -> true  (rejected).
+ * V1+V3 prove C1 flips outcome (with C2 fixed true via dir=9 vs dir=IN
+ * where C2 is unreachable -- short-circuit masking is the standard MC/DC
+ * concession here). V2+V3 prove C2 flips outcome with C1 held true.
+ * N+1 = 3 vectors for N=2.
+ */
+static void test_mcdc_check_ep_args_dir(void)
+{
+  TEST_BEGIN("mcdc: check_ep_args dir decision");
+  prep_cb();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_device_init(k_ra_usb_speed_fs));
+
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_usb_configure_endpoint(k_ra_usb_speed_fs,
+                                                    (uint8_t)k_mcdc_usb_pipe_ok,
+                                                    (uint8_t)k_mcdc_usb_ep_ok,
+                                                    k_ra_usb_ep_dir_in,
+                                                    k_ra_usb_ep_type_bulk,
+                                                    (uint16_t)k_mcdc_usb_mp_ok));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_usb_configure_endpoint(k_ra_usb_speed_fs,
+                                                    (uint8_t)k_mcdc_usb_pipe_ok,
+                                                    (uint8_t)k_mcdc_usb_ep_ok,
+                                                    k_ra_usb_ep_dir_out,
+                                                    k_ra_usb_ep_type_bulk,
+                                                    (uint16_t)k_mcdc_usb_mp_ok));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_usb_configure_endpoint(k_ra_usb_speed_fs,
+                                                    (uint8_t)k_mcdc_usb_pipe_ok,
+                                                    (uint8_t)k_mcdc_usb_ep_ok,
+                                                    (ra_usb_ep_dir_t)9U,
+                                                    k_ra_usb_ep_type_bulk,
+                                                    (uint16_t)k_mcdc_usb_mp_ok));
+  TEST_END("mcdc: check_ep_args dir decision");
+}
+
+/**
+ * @test test_mcdc_check_ep_args_max_packet
+ *
+ * @par MC/DC:
+ * Decision: `if ((max_packet == 0U) || (max_packet > k_ra_usb_pipe_max_packet))`
+ * (libs/ra_hal/src/ra_usb.c:397, 2 conditions).
+ * - V1: mp=64,  others valid    -> false (both false).
+ * - V2: mp=0,   others valid    -> true  (varies C1).
+ * - V3: mp=9999,others valid    -> true  (varies C2, exceeds 1024 cap).
+ * N+1 = 3 vectors for N=2.
+ */
+static void test_mcdc_check_ep_args_max_packet(void)
+{
+  TEST_BEGIN("mcdc: check_ep_args max_packet decision");
+  prep_cb();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_device_init(k_ra_usb_speed_fs));
+
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_usb_configure_endpoint(k_ra_usb_speed_fs,
+                                                    (uint8_t)k_mcdc_usb_pipe_ok,
+                                                    (uint8_t)k_mcdc_usb_ep_ok,
+                                                    k_ra_usb_ep_dir_in,
+                                                    k_ra_usb_ep_type_bulk,
+                                                    (uint16_t)k_mcdc_usb_mp_ok));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_usb_configure_endpoint(k_ra_usb_speed_fs,
+                                                    (uint8_t)k_mcdc_usb_pipe_ok,
+                                                    (uint8_t)k_mcdc_usb_ep_ok,
+                                                    k_ra_usb_ep_dir_in,
+                                                    k_ra_usb_ep_type_bulk,
+                                                    (uint16_t)k_mcdc_usb_mp_lo_bad));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_usb_configure_endpoint(k_ra_usb_speed_fs,
+                                                    (uint8_t)k_mcdc_usb_pipe_ok,
+                                                    (uint8_t)k_mcdc_usb_ep_ok,
+                                                    k_ra_usb_ep_dir_in,
+                                                    k_ra_usb_ep_type_bulk,
+                                                    (uint16_t)k_mcdc_usb_mp_hi_bad));
+  TEST_END("mcdc: check_ep_args max_packet decision");
+}
+
+/**
+ * @test test_mcdc_queue_in_pipe_num
+ *
+ * @par MC/DC:
+ * Decision: `if ((pipe_num == 0U) || (pipe_num > k_ra_usb_max_pipe_num))`
+ * (libs/ra_hal/src/ra_usb.c:501, 2 conditions, in ra_usb_queue_in).
+ * - V1: pipe=1, FRDY pre-asserted, len=4   -> false (both false, returns ok).
+ * - V2: pipe=0                              -> true  (varies C1).
+ * - V3: pipe=99                             -> true  (varies C2).
+ * N+1 = 3 vectors for N=2.
+ */
+static void test_mcdc_queue_in_pipe_num(void)
+{
+  TEST_BEGIN("mcdc: queue_in pipe_num decision");
+  prep_cb();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_device_init(k_ra_usb_speed_fs));
+
+  uint8_t buf[4] = {0U, 0U, 0U, 0U};
+  /* V1: pre-arm FRDY so the success path runs. */
+  ra_usb_fs()->CFIFOCTR = (uint16_t)k_ra_fifoctr_frdy;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_usb_queue_in(k_ra_usb_speed_fs,
+                                          (uint8_t)k_mcdc_usb_pipe_ok,
+                                          buf,
+                                          (uint16_t)k_mcdc_usb_len_ok));
+  /* V2: pipe == 0. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_usb_queue_in(k_ra_usb_speed_fs,
+                                          (uint8_t)k_mcdc_usb_pipe_lo_bad,
+                                          buf,
+                                          (uint16_t)k_mcdc_usb_len_ok));
+  /* V3: pipe > max. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_usb_queue_in(k_ra_usb_speed_fs,
+                                          (uint8_t)k_mcdc_usb_pipe_hi_bad,
+                                          buf,
+                                          (uint16_t)k_mcdc_usb_len_ok));
+  TEST_END("mcdc: queue_in pipe_num decision");
+}
+
+/**
+ * @test test_mcdc_queue_in_data_len
+ *
+ * @par MC/DC:
+ * Decision: `if ((len > k_ra_usb_pipe_max_packet) ||
+ *                ((data == nullptr) && (len != 0U)))`
+ * (libs/ra_hal/src/ra_usb.c:504, 3 conditions).
+ * Naming: C1 = (len > MAX), C2 = (data == NULL), C3 = (len != 0).
+ * The inner AND short-circuits on C2, so we use the N+1 = 4 vector set:
+ * - V1: data=buf, len=4              -> C1=F, (C2=F so AND=F)         -> false (control).
+ * - V2: data=buf, len=9999           -> C1=T                          -> true  (varies C1).
+ * - V3: data=NULL,len=4              -> C1=F, C2=T, C3=T -> AND=T     -> true  (varies C2 with C1 held false).
+ * - V4: data=NULL,len=0              -> C1=F, C2=T, C3=F -> AND=F     -> false (varies C3 with C2 held true).
+ * V1+V2 prove C1; V1+V3 prove C2 (C1 held false); V3+V4 prove C3
+ * (C2 held true). N+1 = 4 vectors for N=3.
+ */
+static void test_mcdc_queue_in_data_len(void)
+{
+  TEST_BEGIN("mcdc: queue_in (len/data) compound decision");
+  prep_cb();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_device_init(k_ra_usb_speed_fs));
+
+  uint8_t buf[4]        = {0U, 0U, 0U, 0U};
+  ra_usb_fs()->CFIFOCTR = (uint16_t)k_ra_fifoctr_frdy;
+
+  /* V1: small valid call. */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_usb_queue_in(k_ra_usb_speed_fs,
+                                          (uint8_t)k_mcdc_usb_pipe_ok,
+                                          buf,
+                                          (uint16_t)k_mcdc_usb_len_ok));
+  /* V2: len exceeds pipe_max_packet. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_usb_queue_in(k_ra_usb_speed_fs,
+                                          (uint8_t)k_mcdc_usb_pipe_ok,
+                                          buf,
+                                          (uint16_t)k_mcdc_usb_len_too_big));
+  /* V3: data NULL with non-zero len. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_usb_queue_in(k_ra_usb_speed_fs,
+                                          (uint8_t)k_mcdc_usb_pipe_ok,
+                                          nullptr,
+                                          (uint16_t)k_mcdc_usb_len_ok));
+  /* V4: data NULL with zero len -> AND collapses to false; the outer
+   * decision is false; the call falls through to the no-op zero-byte
+   * write path and returns ok. */
+  ra_usb_fs()->CFIFOCTR = (uint16_t)k_ra_fifoctr_frdy;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_usb_queue_in(k_ra_usb_speed_fs,
+                                          (uint8_t)k_mcdc_usb_pipe_ok,
+                                          nullptr,
+                                          (uint16_t)k_mcdc_usb_len_zero));
+  TEST_END("mcdc: queue_in (len/data) compound decision");
+}
+
+/**
+ * @test test_mcdc_check_queue_out_args_buf
+ *
+ * @par MC/DC:
+ * Decision: `if ((out_buf == nullptr) || (inout_len == nullptr))`
+ * (libs/ra_hal/src/ra_usb.c:532, 2 conditions, in
+ * internal_check_queue_out_args via ra_usb_queue_out).
+ * - V1: out_buf=valid, inout_len=valid (with FRDY+DTLN=0)  -> false (both false; reaches no_data).
+ * - V2: out_buf=NULL,  inout_len=valid                     -> true  (varies C1).
+ * - V3: out_buf=valid, inout_len=NULL                      -> true  (varies C2).
+ * N+1 = 3 vectors for N=2.
+ */
+static void test_mcdc_check_queue_out_args_buf(void)
+{
+  TEST_BEGIN("mcdc: queue_out NULL-arg decision");
+  prep_cb();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_device_init(k_ra_usb_speed_fs));
+
+  uint8_t  buf[8] = {0U};
+  uint16_t len    = 8U;
+
+  /* V1: both pointers valid -> falls through to FRDY/DTLN logic. */
+  ra_usb_fs()->CFIFOCTR = (uint16_t)k_ra_fifoctr_frdy;
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_no_data,
+    (int32_t)ra_usb_queue_out(k_ra_usb_speed_fs, (uint8_t)k_mcdc_usb_pipe_ok, buf, &len));
+  /* V2: out_buf NULL. */
+  len = 8U;
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_null_ptr,
+    (int32_t)ra_usb_queue_out(k_ra_usb_speed_fs, (uint8_t)k_mcdc_usb_pipe_ok, nullptr, &len));
+  /* V3: inout_len NULL. */
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_null_ptr,
+    (int32_t)ra_usb_queue_out(k_ra_usb_speed_fs, (uint8_t)k_mcdc_usb_pipe_ok, buf, nullptr));
+  TEST_END("mcdc: queue_out NULL-arg decision");
+}
+
+/**
+ * @test test_mcdc_check_queue_out_args_pipe
+ *
+ * @par MC/DC:
+ * Decision: `if ((pipe_num == 0U) || (pipe_num > k_ra_usb_max_pipe_num))`
+ * (libs/ra_hal/src/ra_usb.c:535, 2 conditions, in
+ * internal_check_queue_out_args).
+ * - V1: pipe=1                      -> false.
+ * - V2: pipe=0                      -> true (varies C1).
+ * - V3: pipe=99                     -> true (varies C2).
+ * N+1 = 3 vectors for N=2.
+ */
+static void test_mcdc_check_queue_out_args_pipe(void)
+{
+  TEST_BEGIN("mcdc: queue_out pipe_num decision");
+  prep_cb();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_device_init(k_ra_usb_speed_fs));
+
+  uint8_t  buf[8] = {0U};
+  uint16_t len    = 8U;
+
+  ra_usb_fs()->CFIFOCTR = (uint16_t)k_ra_fifoctr_frdy;
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_no_data,
+    (int32_t)ra_usb_queue_out(k_ra_usb_speed_fs, (uint8_t)k_mcdc_usb_pipe_ok, buf, &len));
+  len = 8U;
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_invalid_arg,
+    (int32_t)ra_usb_queue_out(k_ra_usb_speed_fs, (uint8_t)k_mcdc_usb_pipe_lo_bad, buf, &len));
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_invalid_arg,
+    (int32_t)ra_usb_queue_out(k_ra_usb_speed_fs, (uint8_t)k_mcdc_usb_pipe_hi_bad, buf, &len));
+  TEST_END("mcdc: queue_out pipe_num decision");
+}
+
+/**
+ * @test test_mcdc_check_queue_out_args_inout_len
+ *
+ * @par MC/DC:
+ * Decision: `if ((*inout_len == 0U) || (*inout_len > k_ra_usb_pipe_max_packet))`
+ * (libs/ra_hal/src/ra_usb.c:538, 2 conditions).
+ * - V1: *inout_len=8                -> false (both false).
+ * - V2: *inout_len=0                -> true  (varies C1).
+ * - V3: *inout_len=9999             -> true  (varies C2).
+ * N+1 = 3 vectors for N=2.
+ */
+static void test_mcdc_check_queue_out_args_inout_len(void)
+{
+  TEST_BEGIN("mcdc: queue_out *inout_len decision");
+  prep_cb();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_device_init(k_ra_usb_speed_fs));
+
+  uint8_t  buf[8] = {0U};
+  uint16_t len    = (uint16_t)k_mcdc_usb_len_ok + 4U; /* 8 */
+
+  ra_usb_fs()->CFIFOCTR = (uint16_t)k_ra_fifoctr_frdy;
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_no_data,
+    (int32_t)ra_usb_queue_out(k_ra_usb_speed_fs, (uint8_t)k_mcdc_usb_pipe_ok, buf, &len));
+  uint16_t zero = (uint16_t)k_mcdc_usb_len_zero;
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_invalid_arg,
+    (int32_t)ra_usb_queue_out(k_ra_usb_speed_fs, (uint8_t)k_mcdc_usb_pipe_ok, buf, &zero));
+  uint16_t big = (uint16_t)k_mcdc_usb_len_too_big;
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_invalid_arg,
+    (int32_t)ra_usb_queue_out(k_ra_usb_speed_fs, (uint8_t)k_mcdc_usb_pipe_ok, buf, &big));
+  TEST_END("mcdc: queue_out *inout_len decision");
+}
+
+/**
+ * @test test_mcdc_enter_stop_speed
+ *
+ * @par MC/DC:
+ * Decision: `if ((speed != k_ra_usb_speed_fs) && (speed != k_ra_usb_speed_hs))`
+ * (libs/ra_hal/src/ra_usb.c:654, 2 conditions, in ra_usb_enter_stop).
+ * - V1: speed=FS -> C1=F, short-circuits             -> false (control, returns ok).
+ * - V2: speed=HS -> C1=T, C2=F                       -> false (varies C2).
+ * - V3: speed=9  -> C1=T, C2=T                       -> true  (rejected).
+ * V1+V3 prove C1 (with C2 held T via speed=9 vs FS where C2 unevaluated).
+ * V2+V3 prove C2 with C1 held T. N+1 = 3 vectors for N=2.
+ */
+static void test_mcdc_enter_stop_speed(void)
+{
+  TEST_BEGIN("mcdc: enter_stop speed decision");
+  prep_cb();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_device_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_enter_stop(k_ra_usb_speed_fs));
+  prep_cb();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_device_init(k_ra_usb_speed_hs));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_enter_stop(k_ra_usb_speed_hs));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_usb_enter_stop((ra_usb_speed_t)k_mcdc_usb_speed_bogus));
+  TEST_END("mcdc: enter_stop speed decision");
+}
+
+/**
+ * @test test_mcdc_exit_stop_speed
+ *
+ * @par MC/DC:
+ * Decision: `if ((speed != k_ra_usb_speed_fs) && (speed != k_ra_usb_speed_hs))`
+ * (libs/ra_hal/src/ra_usb.c:662, 2 conditions, in ra_usb_exit_stop).
+ * - V1: speed=FS  -> false.
+ * - V2: speed=HS  -> false (varies C2).
+ * - V3: speed=9   -> true  (varies C1).
+ * N+1 = 3 vectors for N=2.
+ */
+static void test_mcdc_exit_stop_speed(void)
+{
+  TEST_BEGIN("mcdc: exit_stop speed decision");
+  prep_cb();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_device_init(k_ra_usb_speed_fs));
+  (void)ra_usb_enter_stop(k_ra_usb_speed_fs);
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_exit_stop(k_ra_usb_speed_fs));
+  prep_cb();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_device_init(k_ra_usb_speed_hs));
+  (void)ra_usb_enter_stop(k_ra_usb_speed_hs);
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_exit_stop(k_ra_usb_speed_hs));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_usb_exit_stop((ra_usb_speed_t)k_mcdc_usb_speed_bogus));
+  TEST_END("mcdc: exit_stop speed decision");
+}
+
 int32_t main(void)
 {
   test_init_fs_happy_path();
@@ -511,6 +965,17 @@ int32_t main(void)
   test_queue_in_arg_validation();
   test_queue_out_arg_validation();
   test_hs_paths();
+  test_mcdc_check_ep_args_pipe_num();
+  test_mcdc_check_ep_args_ep_addr();
+  test_mcdc_check_ep_args_dir();
+  test_mcdc_check_ep_args_max_packet();
+  test_mcdc_queue_in_pipe_num();
+  test_mcdc_queue_in_data_len();
+  test_mcdc_check_queue_out_args_buf();
+  test_mcdc_check_queue_out_args_pipe();
+  test_mcdc_check_queue_out_args_inout_len();
+  test_mcdc_enter_stop_speed();
+  test_mcdc_exit_stop_speed();
   (void)fprintf(stderr, "[OK ] test_ra_usb.c\n");
   return 0;
 }

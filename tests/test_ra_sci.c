@@ -739,6 +739,338 @@ static void test_async_null_arg_rejection(void)
   TEST_END("ra_sci async API: NULL + bad-channel rejection");
 }
 
+/* =====================================================================
+ * MC/DC vector tests (DO-178C Level B / IEC 61508 SIL 3)
+ *
+ * Each test pins all conditions in a compound boolean decision except
+ * one and shows that flipping the varied condition flips the outcome.
+ * With N conditions the minimal set is N+1 vectors.
+ * Source-of-truth gap rows: docs/MCDC_GAPS.csv (ra_sci.c entries).
+ * ===================================================================== */
+
+typedef enum : uint32_t {
+  k_mcdc_sci_ch_ok     = 0U,  /**< In-range SCI channel index. */
+  k_mcdc_sci_ch_bad    = 99U, /**< Out-of-range channel -> internal_reg() = NULL. */
+  k_mcdc_sci_baud_zero = 0U,
+  k_mcdc_sci_baud_ok   = 115200U,
+  k_mcdc_sci_pclk_zero = 0U,
+  k_mcdc_sci_pclk_ok   = 60000000U,
+  k_mcdc_sci_len_zero  = 0U,
+  k_mcdc_sci_len_one   = 1U,
+} mcdc_sci_const_t;
+
+/**
+ * @test test_mcdc_internal_brr
+ *
+ * @par MC/DC:
+ * Decision: `if ((baud == 0U) || (pclk_hz == 0U))`
+ * (libs/ra_hal/src/ra_sci.c:182, internal_brr -- reachable via
+ * ra_sci_init since init does not pre-validate baud/pclk).
+ * - V1: baud=115200, pclk=60e6   -> false (BRR computed normally; init returns ok).
+ * - V2: baud=0,      pclk=60e6   -> true  (varies C1; internal_brr returns 0; init still ok).
+ * - V3: baud=115200, pclk=0      -> true  (varies C2; internal_brr returns 0; init still ok).
+ * Note: internal_brr's outcome is observable through the BRR field of
+ * CCR2 -- for the false branch BRR > 0, for either true branch BRR=0.
+ * N+1 = 3 vectors for N=2.
+ */
+static void test_mcdc_internal_brr(void)
+{
+  TEST_BEGIN("mcdc: internal_brr (baud|pclk == 0) decision");
+  prep();
+
+  /* V1: both non-zero -> success path. */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_init((uint8_t)k_mcdc_sci_ch_ok, &k_cfg));
+  const uint32_t ccr2_v1 = ra_sci((uint8_t)k_mcdc_sci_ch_ok)->CCR2;
+  TEST_ASSERT(ccr2_v1 != 0U);
+
+  /* V2: baud == 0. */
+  prep();
+  const ra_sci_cfg_t cfg_v2 = {
+    .baud      = (uint32_t)k_mcdc_sci_baud_zero,
+    .data_bits = k_ra_sci_data_8,
+    .parity    = k_ra_sci_parity_none,
+    .stop_bits = k_ra_sci_stop_1,
+    .pclk_hz   = (uint32_t)k_mcdc_sci_pclk_ok,
+  };
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_init((uint8_t)k_mcdc_sci_ch_ok, &cfg_v2));
+
+  /* V3: pclk_hz == 0. */
+  prep();
+  const ra_sci_cfg_t cfg_v3 = {
+    .baud      = (uint32_t)k_mcdc_sci_baud_ok,
+    .data_bits = k_ra_sci_data_8,
+    .parity    = k_ra_sci_parity_none,
+    .stop_bits = k_ra_sci_stop_1,
+    .pclk_hz   = (uint32_t)k_mcdc_sci_pclk_zero,
+  };
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_init((uint8_t)k_mcdc_sci_ch_ok, &cfg_v3));
+
+  TEST_END("mcdc: internal_brr (baud|pclk == 0) decision");
+}
+
+/**
+ * @test test_mcdc_write_polling_data_len
+ *
+ * @par MC/DC:
+ * Decision: `if ((data == nullptr) && (len != 0U))`
+ * (libs/ra_hal/src/ra_sci.c:467, ra_sci_write_polling).
+ * - V1: data=valid, len=1   -> C1=F, short-circuit  -> false (control).
+ * - V2: data=NULL,  len=0   -> C1=T, C2=F           -> false (varies C2).
+ * - V3: data=NULL,  len=1   -> C1=T, C2=T           -> true  (rejected).
+ * V1+V3 prove C1; V2+V3 prove C2 (with C1 held T). N+1 = 3 vectors for N=2.
+ */
+static void test_mcdc_write_polling_data_len(void)
+{
+  TEST_BEGIN("mcdc: write_polling (data&&len) decision");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_init((uint8_t)k_mcdc_sci_ch_ok, &k_cfg));
+
+  const uint8_t buf[1] = {0xA5U};
+  /* V1: pre-seed TDRE so the polling tx loop completes. */
+  ra_sci((uint8_t)k_mcdc_sci_ch_ok)->CSR = (1U << (uint8_t)k_ra_sci_csr_bit_tdre);
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_ok,
+    (int32_t)ra_sci_write_polling((uint8_t)k_mcdc_sci_ch_ok, buf, (uint32_t)k_mcdc_sci_len_one));
+  /* V2: zero-length is always ok even with NULL data. */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_sci_write_polling((uint8_t)k_mcdc_sci_ch_ok,
+                                               nullptr,
+                                               (uint32_t)k_mcdc_sci_len_zero));
+  /* V3: NULL data with non-zero len -> rejected. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_sci_write_polling((uint8_t)k_mcdc_sci_ch_ok,
+                                               nullptr,
+                                               (uint32_t)k_mcdc_sci_len_one));
+  TEST_END("mcdc: write_polling (data&&len) decision");
+}
+
+/**
+ * @test test_mcdc_baud_calculate_args
+ *
+ * @par MC/DC:
+ * Decision: `if ((baud == 0U) || (pclk_hz == 0U))`
+ * (libs/ra_hal/src/ra_sci.c:651, ra_sci_baud_calculate).
+ * - V1: baud=115200, pclk=60e6  -> false (success).
+ * - V2: baud=0,      pclk=60e6  -> true  (varies C1).
+ * - V3: baud=115200, pclk=0     -> true  (varies C2).
+ * N+1 = 3 vectors for N=2.
+ */
+static void test_mcdc_baud_calculate_args(void)
+{
+  TEST_BEGIN("mcdc: baud_calculate (baud|pclk == 0) decision");
+  prep();
+
+  uint16_t brr     = 0U;
+  uint8_t  clk_div = 0U;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_sci_baud_calculate((uint32_t)k_mcdc_sci_baud_ok,
+                                                (uint32_t)k_mcdc_sci_pclk_ok,
+                                                &brr,
+                                                &clk_div));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_sci_baud_calculate((uint32_t)k_mcdc_sci_baud_zero,
+                                                (uint32_t)k_mcdc_sci_pclk_ok,
+                                                &brr,
+                                                &clk_div));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_sci_baud_calculate((uint32_t)k_mcdc_sci_baud_ok,
+                                                (uint32_t)k_mcdc_sci_pclk_zero,
+                                                &brr,
+                                                &clk_div));
+  TEST_END("mcdc: baud_calculate (baud|pclk == 0) decision");
+}
+
+/**
+ * @test test_mcdc_async_write_data_len
+ *
+ * @par MC/DC:
+ * Decision: `if ((data == nullptr) && (len != 0U))`
+ * (libs/ra_hal/src/ra_sci.c:683, ra_sci_write).
+ * - V1: data=buf, len=1    -> false (control).
+ * - V2: data=NULL,len=0    -> false (varies C2).
+ * - V3: data=NULL,len=1    -> true  (rejected).
+ * N+1 = 3 vectors for N=2.
+ */
+static void test_mcdc_async_write_data_len(void)
+{
+  TEST_BEGIN("mcdc: ra_sci_write (data&&len) decision");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_init((uint8_t)k_mcdc_sci_ch_ok, &k_cfg));
+
+  const uint8_t buf[1] = {0x5AU};
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_ok,
+    (int32_t)ra_sci_write((uint8_t)k_mcdc_sci_ch_ok, buf, (uint32_t)k_mcdc_sci_len_one));
+  /* Abort to release the TX state for the next call. */
+  (void)ra_sci_abort((uint8_t)k_mcdc_sci_ch_ok, k_ra_sci_dir_tx);
+
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_ok,
+    (int32_t)ra_sci_write((uint8_t)k_mcdc_sci_ch_ok, nullptr, (uint32_t)k_mcdc_sci_len_zero));
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_null_ptr,
+    (int32_t)ra_sci_write((uint8_t)k_mcdc_sci_ch_ok, nullptr, (uint32_t)k_mcdc_sci_len_one));
+  TEST_END("mcdc: ra_sci_write (data&&len) decision");
+}
+
+/**
+ * @test test_mcdc_async_read_buf_len
+ *
+ * @par MC/DC:
+ * Decision: `if ((buf == nullptr) && (len != 0U))`
+ * (libs/ra_hal/src/ra_sci.c:711, ra_sci_read).
+ * - V1: buf=valid, len=1   -> false (control).
+ * - V2: buf=NULL,  len=0   -> false (varies C2).
+ * - V3: buf=NULL,  len=1   -> true  (rejected).
+ * N+1 = 3 vectors for N=2.
+ */
+static void test_mcdc_async_read_buf_len(void)
+{
+  TEST_BEGIN("mcdc: ra_sci_read (buf&&len) decision");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_init((uint8_t)k_mcdc_sci_ch_ok, &k_cfg));
+
+  uint8_t buf[1] = {0U};
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_ok,
+    (int32_t)ra_sci_read((uint8_t)k_mcdc_sci_ch_ok, buf, (uint32_t)k_mcdc_sci_len_one));
+  (void)ra_sci_abort((uint8_t)k_mcdc_sci_ch_ok, k_ra_sci_dir_rx);
+
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_ok,
+    (int32_t)ra_sci_read((uint8_t)k_mcdc_sci_ch_ok, nullptr, (uint32_t)k_mcdc_sci_len_zero));
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_null_ptr,
+    (int32_t)ra_sci_read((uint8_t)k_mcdc_sci_ch_ok, nullptr, (uint32_t)k_mcdc_sci_len_one));
+  TEST_END("mcdc: ra_sci_read (buf&&len) decision");
+}
+
+/**
+ * @test test_mcdc_abort_direction
+ *
+ * @par MC/DC:
+ * Decision: `if ((direction != k_ra_sci_dir_tx) &&
+ *                (direction != k_ra_sci_dir_rx) &&
+ *                (direction != k_ra_sci_dir_both))`
+ * (libs/ra_hal/src/ra_sci.c:744, ra_sci_abort, 3 conditions).
+ * The decision is true (rejected) only when direction matches none of
+ * the three enum values. AND chain short-circuits left-to-right.
+ * Naming: C1=(dir!=TX), C2=(dir!=RX), C3=(dir!=BOTH).
+ * - V1: dir=TX   -> C1=F, short-circuits          -> false (control: ok).
+ * - V2: dir=RX   -> C1=T, C2=F                    -> false (varies C2).
+ * - V3: dir=BOTH -> C1=T, C2=T, C3=F              -> false (varies C3).
+ * - V4: dir=0xFF -> C1=T, C2=T, C3=T              -> true  (rejected).
+ * V1+V4 prove C1; V2+V4 prove C2; V3+V4 prove C3. N+1 = 4 vectors for N=3.
+ */
+static void test_mcdc_abort_direction(void)
+{
+  TEST_BEGIN("mcdc: ra_sci_abort 3-condition direction decision");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_init((uint8_t)k_mcdc_sci_ch_ok, &k_cfg));
+
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_sci_abort((uint8_t)k_mcdc_sci_ch_ok, k_ra_sci_dir_tx));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_sci_abort((uint8_t)k_mcdc_sci_ch_ok, k_ra_sci_dir_rx));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_sci_abort((uint8_t)k_mcdc_sci_ch_ok, k_ra_sci_dir_both));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_sci_abort((uint8_t)k_mcdc_sci_ch_ok, (ra_sci_dir_t)0xFFU));
+  TEST_END("mcdc: ra_sci_abort 3-condition direction decision");
+}
+
+/**
+ * @test test_mcdc_write_dma_reg_len
+ *
+ * @par MC/DC:
+ * Decision: `if ((reg == nullptr) || (len == 0U))`
+ * (libs/ra_hal/src/ra_sci.c:854, ra_sci_write_dma).
+ * `reg` is the result of internal_reg(channel) which returns NULL for
+ * out-of-range channels.
+ * - V1: ch=valid (reg!=NULL), len=1   -> false (control: ok path).
+ * - V2: ch=99    (reg==NULL), len=1   -> true  (varies C1).
+ * - V3: ch=valid (reg!=NULL), len=0   -> true  (varies C2).
+ * N+1 = 3 vectors for N=2.
+ */
+static void test_mcdc_write_dma_reg_len(void)
+{
+  TEST_BEGIN("mcdc: write_dma (reg||len==0) decision");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dma_init());
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_init((uint8_t)k_mcdc_sci_ch_ok, &k_cfg));
+
+  const uint8_t src[1] = {0x77U};
+  uint8_t       dma_ch = 0xFFU;
+
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_sci_write_dma((uint8_t)k_mcdc_sci_ch_ok,
+                                           src,
+                                           (uint16_t)k_mcdc_sci_len_one,
+                                           nullptr,
+                                           nullptr,
+                                           &dma_ch));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_sci_write_dma((uint8_t)k_mcdc_sci_ch_bad,
+                                           src,
+                                           (uint16_t)k_mcdc_sci_len_one,
+                                           nullptr,
+                                           nullptr,
+                                           &dma_ch));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_sci_write_dma((uint8_t)k_mcdc_sci_ch_ok,
+                                           src,
+                                           (uint16_t)k_mcdc_sci_len_zero,
+                                           nullptr,
+                                           nullptr,
+                                           &dma_ch));
+  TEST_END("mcdc: write_dma (reg||len==0) decision");
+}
+
+/**
+ * @test test_mcdc_read_dma_reg_len
+ *
+ * @par MC/DC:
+ * Decision: `if ((reg == nullptr) || (len == 0U))`
+ * (libs/ra_hal/src/ra_sci.c:883, ra_sci_read_dma).
+ * - V1: ch=valid, len=1   -> false (control).
+ * - V2: ch=99,    len=1   -> true  (varies C1).
+ * - V3: ch=valid, len=0   -> true  (varies C2).
+ * N+1 = 3 vectors for N=2.
+ */
+static void test_mcdc_read_dma_reg_len(void)
+{
+  TEST_BEGIN("mcdc: read_dma (reg||len==0) decision");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dma_init());
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_init((uint8_t)k_mcdc_sci_ch_ok, &k_cfg));
+
+  uint8_t dst[1] = {0U};
+  uint8_t dma_ch = 0xFFU;
+
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_sci_read_dma((uint8_t)k_mcdc_sci_ch_ok,
+                                          dst,
+                                          (uint16_t)k_mcdc_sci_len_one,
+                                          nullptr,
+                                          nullptr,
+                                          &dma_ch));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_sci_read_dma((uint8_t)k_mcdc_sci_ch_bad,
+                                          dst,
+                                          (uint16_t)k_mcdc_sci_len_one,
+                                          nullptr,
+                                          nullptr,
+                                          &dma_ch));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_sci_read_dma((uint8_t)k_mcdc_sci_ch_ok,
+                                          dst,
+                                          (uint16_t)k_mcdc_sci_len_zero,
+                                          nullptr,
+                                          nullptr,
+                                          &dma_ch));
+  TEST_END("mcdc: read_dma (reg||len==0) decision");
+}
+
 int32_t main(void)
 {
   test_init_sets_ccr0_enables();
@@ -770,6 +1102,14 @@ int32_t main(void)
   test_baud_calculate_115200_at_60mhz();
   test_receive_suspend_resume();
   test_async_null_arg_rejection();
+  test_mcdc_internal_brr();
+  test_mcdc_write_polling_data_len();
+  test_mcdc_baud_calculate_args();
+  test_mcdc_async_write_data_len();
+  test_mcdc_async_read_buf_len();
+  test_mcdc_abort_direction();
+  test_mcdc_write_dma_reg_len();
+  test_mcdc_read_dma_reg_len();
   (void)fprintf(stderr, "[OK  ] test_ra_sci.c\n");
   return 0;
 }
