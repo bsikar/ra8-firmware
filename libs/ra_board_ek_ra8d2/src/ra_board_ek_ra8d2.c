@@ -26,11 +26,15 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8d2_elc_regs.h"
 #include "ra8d2_etha_regs.h"
+#include "ra8d2_icu_regs.h"
 #include "ra8d2_rmac_regs.h"
 #include "ra_err.h"
 #include "ra_etha.h"
 #include "ra_gpio_constants.h"
+#include "ra_icu.h"
+#include "ra_isr.h"
 #include "ra_port_constants.h"
 #include "ra_port_utils.h"
 #include "ra_rmac.h"
@@ -198,44 +202,26 @@ ra_err_t ra_board_sw_attach_irq(ra_board_sw_id_t sw, ra_board_sw_irq_cb_t cb, vo
   if ((uint8_t)sw >= (uint8_t)k_ra_board_sw_count) {
     return k_ra_err_invalid_arg;
   }
-  /* Wiring this veneer to the HAL needs two ICU pieces, only one of
-   * which exists today:
-   *
-   *   1. ra_icu_configure_irq_pin(channel, &cfg) -- already in
-   *      libs/ra_hal/inc/ra_icu.h; would be called with channel =
-   *      s_sw_irq_nums[sw] and cfg.sense = falling-edge so a button
-   *      press latches IRQCR[12]/IRQCR[13].
-   *   2. ra_isr_register(event, handler, ctx, prio, &slot) -- exists
-   *      in libs/ra_hal/inc/ra_isr.h, but takes a ra_elc_event_t and
-   *      the only IRQ-pin events currently named in
-   *      libs/ra_hal/inc/ra8d2_elc_regs.h are k_ra_elc_event_icu_irq0
-   *      (0x001), k_ra_elc_event_icu_irq1 (0x002), and
-   *      k_ra_elc_event_icu_irq15 (0x010). The board's SW1/SW2 land
-   *      on IRQ13-DS / IRQ12-DS, whose ELC events would be 0x00E and
-   *      0x00D respectively -- those enumerators are NOT defined.
-   *
-   * TODO(bsp): once libs/ra_hal/inc/ra8d2_elc_regs.h enumerates the
-   * full IRQ2..IRQ14 + IRQ16..IRQ31 set (k_ra_elc_event_icu_irq2 ..
-   * k_ra_elc_event_icu_irq31), plumb the call below:
-   *
-   *   const ra_icu_irq_cfg_t cfg = {
-   *     .sense      = k_ra_icu_irqmd_falling_edge,
-   *     .filter_div = k_ra_icu_fclksel_div_1,
-   *     .filter_en  = true,
-   *   };
-   *   ra_err_t err = ra_icu_configure_irq_pin(s_sw_irq_nums[sw], &cfg);
-   *   if (err != k_ra_ok) { return err; }
-   *   const ra_elc_event_t evt = (ra_elc_event_t)
-   *       ((uint16_t)k_ra_elc_event_icu_irq0 + s_sw_irq_nums[sw]);
-   *   return ra_isr_register(evt, (ra_isr_handler_t)cb, ctx,
-   *                          k_ra_isr_prio_default, NULL);
-   *
-   * Until the missing enumerators land, return k_ra_err_not_supported
-   * so callers fall back to polling via ra_board_sw_read(). */
-  (void)s_sw_irq_nums[sw];
-  (void)cb;
-  (void)ctx;
-  return k_ra_err_not_supported;
+  /* Step 1: configure the ICU IRQ pin for falling-edge detection so a
+   * button press (active-low; UM Table 25 p 32) latches IRQCR[12] /
+   * IRQCR[13]. The digital filter samples at PCLKB to debounce
+   * contact bounce; HUM Ch 14.2.12 (p 535) describes IRQCRi fields. */
+  const ra_icu_irq_cfg_t cfg = {
+    .sense      = k_ra_icu_irqmd_falling,
+    .filter_div = k_ra_icu_fclksel_pclkb,
+    .filter_en  = true,
+  };
+  ra_err_t err = ra_icu_configure_irq_pin(s_sw_irq_nums[sw], &cfg);
+  if (err != k_ra_ok) {
+    return err;
+  }
+
+  /* Step 2: route the ELC event for IRQ12-DS / IRQ13-DS through an
+   * IELSR slot and enable the matching NVIC line. SW1 -> IRQ13-DS
+   * (event 0x00E), SW2 -> IRQ12-DS (event 0x00D). */
+  const ra_elc_event_t evt = (sw == k_ra_board_sw1) ? k_ra_elc_event_icu_irq13
+                                                    : k_ra_elc_event_icu_irq12;
+  return ra_isr_register(evt, (ra_isr_handler_t)cb, ctx, k_ra_isr_prio_default, NULL);
 }
 
 /* =============================================================================
