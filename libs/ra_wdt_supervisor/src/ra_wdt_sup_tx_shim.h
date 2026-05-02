@@ -25,23 +25,29 @@ extern "C" {
 
 #include <stdint.h>
 
+/* The five ThreadX type aliases (ULONG, UINT, CHAR, TX_MUTEX, TX_THREAD)
+ * intentionally violate the project's lower_case typedef rule because
+ * they MUST mirror the real ThreadX ``tx_api.h`` spelling: this header
+ * stands in for the vendor header on the host build, and the supervisor
+ * source uses the upper-case names the vendor API mandates. */
+
 /**
  * @typedef ULONG
  * @brief ThreadX-compatible unsigned long (host stub).
  */
-typedef unsigned long ULONG;
+typedef unsigned long ULONG; /* NOLINT(readability-identifier-naming) */
 
 /**
  * @typedef UINT
  * @brief ThreadX-compatible unsigned int (host stub).
  */
-typedef unsigned int UINT;
+typedef unsigned int UINT; /* NOLINT(readability-identifier-naming) */
 
 /**
  * @typedef CHAR
  * @brief ThreadX-compatible CHAR (host stub).
  */
-typedef char CHAR;
+typedef char CHAR; /* NOLINT(readability-identifier-naming) */
 
 /** @def TX_SUCCESS Successful ThreadX status code (host stub). */
 #define TX_SUCCESS (0U)
@@ -77,7 +83,7 @@ typedef enum : uint32_t {
  */
 typedef struct {
   uint32_t magic; /**< Sentinel for "created". */
-} TX_MUTEX;
+} TX_MUTEX;       /* NOLINT(readability-identifier-naming) */
 
 /**
  * @struct TX_THREAD
@@ -85,10 +91,11 @@ typedef struct {
  */
 typedef struct {
   uint32_t magic; /**< Sentinel for "created". */
-} TX_THREAD;
+} TX_THREAD;      /* NOLINT(readability-identifier-naming) */
 
 /** @brief Host stub for tx_mutex_create. */
-static inline UINT tx_mutex_create(TX_MUTEX* m, CHAR* name, UINT inherit)
+static inline UINT
+tx_mutex_create(TX_MUTEX* m, CHAR* name /* NOLINT(readability-non-const-parameter) */, UINT inherit)
 {
   (void)name;
   (void)inherit;
@@ -122,7 +129,7 @@ static inline UINT tx_mutex_delete(TX_MUTEX* m)
 
 /** @brief Host stub for tx_thread_create. */
 static inline UINT tx_thread_create(TX_THREAD* t,
-                                    CHAR*      name,
+                                    CHAR*      name /* NOLINT(readability-non-const-parameter) */,
                                     void (*entry)(ULONG),
                                     ULONG arg,
                                     void* stack,
