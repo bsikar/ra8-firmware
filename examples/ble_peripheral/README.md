@@ -86,5 +86,16 @@ make -C examples/ble_peripheral flash
 ## Pinout
 
 This example only uses SCI8 (PD_02 / PD_03) for SCI logging plus LED1
-(P6_00) for visual heartbeat. The BLE controller is on the on-chip
+(P600) for visual heartbeat. The BLE controller is on the on-chip
 radio block; no external pins are required.
+
+Uses `ra_board_ek_ra8d2` BSP for LED1 init/toggle (LED1 = P600 per
+EK-RA8D2 v1 UM Table 24 p 31). The SCI8 / J-Link OB CDC pins (PD02 /
+PD03) are routed directly via `ra_pfs_route_peripheral`; PD02 / PD03
+match the EK-RA8D2 v1 UM Table 13 ("Debug Serial Port Assignment") p
+24 wiring even though the apps drive SCI8 instead of the BSP's
+SCI3-based `ra_board_uart_console_init` veneer.
+
+Validated 2026-05-02 against EK-RA8D2 v1 User's Manual (R20UT5523EG0101
+Rev 1.01) Table 13 p 24, Table 24 p 31, and Bluetooth Core 5.3 Vol 3
+Part C/G.

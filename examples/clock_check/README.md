@@ -70,3 +70,12 @@ If `ra_cgc_init` HardFaults, the most common causes (in order):
    external-oscillator-enable.
 3. Clock mux switched to a clock that hasn't stabilised yet --
    check `SYSC.SCKSCR` write order vs. `SYSC.OSCSF`.
+
+## BSP usage
+
+Uses `ra_board_ek_ra8d2` BSP for LED1/LED2/LED3 init/toggle (LEDs map
+to P600 / P303 / PA07 per EK-RA8D2 v1 UM Table 24 p 31).
+
+Validated 2026-05-02 against EK-RA8D2 v1 User's Manual (R20UT5523EG0101
+Rev 1.01) Table 24 p 31, and HUM (R01UH1065EJ0130) Ch 8 "Clock
+Generation Circuit (CGC)".
