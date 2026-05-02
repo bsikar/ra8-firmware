@@ -186,6 +186,11 @@ static uint32_t s_mipi_csi_vcie_saved[k_ra_mipi_csi_vc_count];
  * @pre Caller has just stopped the receiver.
  * @post Peripheral reset has finished or timeout returned.
  * @post No callback has been invoked.
+ * @details Implementation detail; see surrounding code and HUM citations.
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ * @note Internal helper. Not thread-safe; caller provides synchronisation.
+ * @since 0.1.0
  */
 static ra_err_t internal_wait_reset_idle(void)
 {
@@ -209,6 +214,11 @@ static ra_err_t internal_wait_reset_idle(void)
  * @pre cfg->lanes is one of {1, 2}.
  * @post Returned value masks only documented MCT0 bits.
  * @post Reserved bits remain 0.
+ * @details Implementation detail; see surrounding code and HUM citations.
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ * @note Internal helper. Not thread-safe; caller provides synchronisation.
+ * @since 0.1.0
  */
 static uint32_t internal_encode_mct0(const ra_mipi_csi_config_t* cfg)
 {
@@ -243,6 +253,11 @@ static uint32_t internal_encode_mct0(const ra_mipi_csi_config_t* cfg)
  * @pre Register window is mapped.
  * @post No hardware state is modified.
  * @post Returned value reflects current MCT3.RXEN bit.
+ * @details Implementation detail; see surrounding code and HUM citations.
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ * @note Internal helper. Not thread-safe; caller provides synchronisation.
+ * @since 0.1.0
  */
 static ra_err_t internal_reject_if_running(void)
 {
@@ -277,6 +292,9 @@ static ra_err_t internal_reject_if_running(void)
  * @post No register writes occur on failure.
  *
  * @note Internal helper, not thread-safe.
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
+ * @since 0.1.0
  */
 static ra_err_t internal_validate_cfg(const ra_mipi_csi_config_t* cfg)
 {
@@ -312,6 +330,9 @@ static ra_err_t internal_validate_cfg(const ra_mipi_csi_config_t* cfg)
  * @post All listed registers reflect ``cfg``.
  *
  * @note Internal helper, not thread-safe.
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
+ * @since 0.1.0
  */
 static void internal_program_receiver(const ra_mipi_csi_config_t* cfg)
 {
@@ -376,6 +397,9 @@ static void internal_program_receiver(const ra_mipi_csi_config_t* cfg)
  * @post All interrupt-enable registers reflect ``cfg``.
  *
  * @note Internal helper, not thread-safe.
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
+ * @since 0.1.0
  */
 static void internal_program_irq_masks(const ra_mipi_csi_config_t* cfg)
 {
@@ -399,6 +423,24 @@ static void internal_program_irq_masks(const ra_mipi_csi_config_t* cfg)
   *ra_mipi_csi_reg32(k_ra_mipi_csi_off_gsie) = cfg->short_irq_mask;
 }
 
+/**
+ * @brief ra mipi csi init.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] cfg See declaration: ``const ra_mipi_csi_config_t* cfg``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_mipi_csi_init(const ra_mipi_csi_config_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
@@ -425,6 +467,23 @@ ra_err_t ra_mipi_csi_init(const ra_mipi_csi_config_t* cfg)
   return k_ra_ok;
 }
 
+/**
+ * @brief ra mipi csi deinit.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_mipi_csi_deinit(void)
 {
   /* HUM Ch 66.3.4 "MCT3 : Module Control Register 3" p 3938 */
@@ -468,6 +527,23 @@ ra_err_t ra_mipi_csi_deinit(void)
   return ra_mstp_disable(k_ra_mstp_mipi_csi);
 }
 
+/**
+ * @brief ra mipi csi reset.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_mipi_csi_reset(void)
 {
   /* HUM Ch 66.3.5 "RTCT : Reset Control Register" p 3938 */
@@ -481,6 +557,23 @@ ra_err_t ra_mipi_csi_reset(void)
  * =============================================================================
  */
 
+/**
+ * @brief ra mipi csi start receive.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_mipi_csi_start_receive(void)
 {
   const ra_err_t state_err = internal_reject_if_running();
@@ -491,6 +584,23 @@ ra_err_t ra_mipi_csi_start_receive(void)
   return k_ra_ok;
 }
 
+/**
+ * @brief ra mipi csi stop receive.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_mipi_csi_stop_receive(void)
 {
   /* HUM Ch 66.3.4 "MCT3 : Module Control Register 3" p 3938 */
@@ -506,6 +616,24 @@ ra_err_t ra_mipi_csi_stop_receive(void)
  * =============================================================================
  */
 
+/**
+ * @brief ra mipi csi get status.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[out] out_mask See declaration: ``uint32_t* out_mask``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_mipi_csi_get_status(uint32_t* out_mask)
 {
   RA_CHECK_NULL_PTR(out_mask, s_tag, "out_mask must not be nullptr");
@@ -514,6 +642,24 @@ ra_err_t ra_mipi_csi_get_status(uint32_t* out_mask)
   return k_ra_ok;
 }
 
+/**
+ * @brief ra mipi csi clear status.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] mask See declaration: ``uint32_t mask``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_mipi_csi_clear_status(uint32_t mask)
 {
   /* HUM Ch 66.3.13 "RXSC : Receive Status Clear Register" p 3945
@@ -522,6 +668,24 @@ ra_err_t ra_mipi_csi_clear_status(uint32_t mask)
   return k_ra_ok;
 }
 
+/**
+ * @brief ra mipi csi set rx irq enable.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] mask See declaration: ``uint32_t mask``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_mipi_csi_set_rx_irq_enable(uint32_t mask)
 {
   /* HUM Ch 66.3.14 "RXIE : Receive Interrupt Enable Register" p 3946 */
@@ -529,6 +693,24 @@ ra_err_t ra_mipi_csi_set_rx_irq_enable(uint32_t mask)
   return k_ra_ok;
 }
 
+/**
+ * @brief ra mipi csi get module irq status.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[out] out_mask See declaration: ``uint32_t* out_mask``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_mipi_csi_get_module_irq_status(uint32_t* out_mask)
 {
   RA_CHECK_NULL_PTR(out_mask, s_tag, "out_mask must not be nullptr");
@@ -537,6 +719,24 @@ ra_err_t ra_mipi_csi_get_module_irq_status(uint32_t* out_mask)
   return k_ra_ok;
 }
 
+/**
+ * @brief ra mipi csi get module info.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[out] out See declaration: ``ra_mipi_csi_module_info_t* out``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_mipi_csi_get_module_info(ra_mipi_csi_module_info_t* out)
 {
   RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
@@ -554,6 +754,25 @@ ra_err_t ra_mipi_csi_get_module_info(ra_mipi_csi_module_info_t* out)
  * =============================================================================
  */
 
+/**
+ * @brief ra mipi csi set data type filter.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] low_mask See declaration: ``uint32_t low_mask``.
+ * @param[in] high_mask See declaration: ``uint32_t high_mask``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_mipi_csi_set_data_type_filter(uint32_t low_mask, uint32_t high_mask)
 {
   /* HUM Ch 66.3.10 "DTEL : Receive Data Type Enable Low" p 3943 */
@@ -568,6 +787,25 @@ ra_err_t ra_mipi_csi_set_data_type_filter(uint32_t low_mask, uint32_t high_mask)
  * =============================================================================
  */
 
+/**
+ * @brief ra mipi csi set ecc mode.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] eccv13 See declaration: ``bool eccv13``.
+ * @param[in] lfsren See declaration: ``bool lfsren``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_mipi_csi_set_ecc_mode(bool eccv13, bool lfsren)
 {
   const ra_err_t state_err = internal_reject_if_running();
@@ -586,6 +824,26 @@ ra_err_t ra_mipi_csi_set_ecc_mode(bool eccv13, bool lfsren)
   return k_ra_ok;
 }
 
+/**
+ * @brief ra mipi csi set frame error mode.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] zlmd See declaration: ``bool zlmd``.
+ * @param[in] edmd See declaration: ``bool edmd``.
+ * @param[in] rvmd See declaration: ``bool rvmd``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_mipi_csi_set_frame_error_mode(bool zlmd, bool edmd, bool rvmd)
 {
   const ra_err_t state_err = internal_reject_if_running();
@@ -613,6 +871,27 @@ ra_err_t ra_mipi_csi_set_frame_error_mode(bool zlmd, bool edmd, bool rvmd)
  * =============================================================================
  */
 
+/**
+ * @brief ra mipi csi set epd.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] enable See declaration: ``bool enable``.
+ * @param[in] option_2 See declaration: ``bool option_2``.
+ * @param[in] long_spacer See declaration: ``uint16_t long_spacer``.
+ * @param[in] short_spacer See declaration: ``uint16_t short_spacer``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t
 ra_mipi_csi_set_epd(bool enable, bool option_2, uint16_t long_spacer, uint16_t short_spacer)
 {
@@ -642,6 +921,25 @@ ra_mipi_csi_set_epd(bool enable, bool option_2, uint16_t long_spacer, uint16_t s
   return k_ra_ok;
 }
 
+/**
+ * @brief ra mipi csi set lrte.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] vlsien See declaration: ``ra_mipi_csi_vlsien_t vlsien``.
+ * @param[in] eotp_enable See declaration: ``bool eotp_enable``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_mipi_csi_set_lrte(ra_mipi_csi_vlsien_t vlsien, bool eotp_enable)
 {
   if ((uint8_t)vlsien > k_ra_mipi_csi_vlsien_x4) {
@@ -666,6 +964,25 @@ ra_err_t ra_mipi_csi_set_lrte(ra_mipi_csi_vlsien_t vlsien, bool eotp_enable)
  * =============================================================================
  */
 
+/**
+ * @brief ra mipi csi dl get status.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] lane See declaration: ``uint8_t lane``.
+ * @param[out] out_mask See declaration: ``uint32_t* out_mask``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_mipi_csi_dl_get_status(uint8_t lane, uint32_t* out_mask)
 {
   RA_CHECK_NULL_PTR(out_mask, s_tag, "out_mask must not be nullptr");
@@ -678,6 +995,25 @@ ra_err_t ra_mipi_csi_dl_get_status(uint8_t lane, uint32_t* out_mask)
   return k_ra_ok;
 }
 
+/**
+ * @brief ra mipi csi dl clear status.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] lane See declaration: ``uint8_t lane``.
+ * @param[in] mask See declaration: ``uint32_t mask``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_mipi_csi_dl_clear_status(uint8_t lane, uint32_t mask)
 {
   if (lane > (uint8_t)k_ra_mipi_csi_dl_max) {
@@ -689,6 +1025,25 @@ ra_err_t ra_mipi_csi_dl_clear_status(uint8_t lane, uint32_t mask)
   return k_ra_ok;
 }
 
+/**
+ * @brief ra mipi csi dl set irq enable.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] lane See declaration: ``uint8_t lane``.
+ * @param[in] mask See declaration: ``uint32_t mask``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_mipi_csi_dl_set_irq_enable(uint8_t lane, uint32_t mask)
 {
   if (lane > (uint8_t)k_ra_mipi_csi_dl_max) {
@@ -705,6 +1060,25 @@ ra_err_t ra_mipi_csi_dl_set_irq_enable(uint8_t lane, uint32_t mask)
  * =============================================================================
  */
 
+/**
+ * @brief ra mipi csi vc get status.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] vc See declaration: ``uint8_t vc``.
+ * @param[out] out_mask See declaration: ``uint32_t* out_mask``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_mipi_csi_vc_get_status(uint8_t vc, uint32_t* out_mask)
 {
   RA_CHECK_NULL_PTR(out_mask, s_tag, "out_mask must not be nullptr");
@@ -717,6 +1091,25 @@ ra_err_t ra_mipi_csi_vc_get_status(uint8_t vc, uint32_t* out_mask)
   return k_ra_ok;
 }
 
+/**
+ * @brief ra mipi csi vc clear status.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] vc See declaration: ``uint8_t vc``.
+ * @param[in] mask See declaration: ``uint32_t mask``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_mipi_csi_vc_clear_status(uint8_t vc, uint32_t mask)
 {
   if (vc > (uint8_t)k_ra_mipi_csi_vc_max) {
@@ -728,6 +1121,25 @@ ra_err_t ra_mipi_csi_vc_clear_status(uint8_t vc, uint32_t mask)
   return k_ra_ok;
 }
 
+/**
+ * @brief ra mipi csi vc set irq enable.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] vc See declaration: ``uint8_t vc``.
+ * @param[in] mask See declaration: ``uint32_t mask``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_mipi_csi_vc_set_irq_enable(uint8_t vc, uint32_t mask)
 {
   if (vc > (uint8_t)k_ra_mipi_csi_vc_max) {
@@ -744,6 +1156,24 @@ ra_err_t ra_mipi_csi_vc_set_irq_enable(uint8_t vc, uint32_t mask)
  * =============================================================================
  */
 
+/**
+ * @brief ra mipi csi pm get status.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[out] out_mask See declaration: ``uint32_t* out_mask``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_mipi_csi_pm_get_status(uint32_t* out_mask)
 {
   RA_CHECK_NULL_PTR(out_mask, s_tag, "out_mask must not be nullptr");
@@ -752,6 +1182,24 @@ ra_err_t ra_mipi_csi_pm_get_status(uint32_t* out_mask)
   return k_ra_ok;
 }
 
+/**
+ * @brief ra mipi csi pm clear status.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] mask See declaration: ``uint32_t mask``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_mipi_csi_pm_clear_status(uint32_t mask)
 {
   /* HUM Ch 66.3.22 "PMSC : Power Management Status Clear" p 3955
@@ -760,6 +1208,24 @@ ra_err_t ra_mipi_csi_pm_clear_status(uint32_t mask)
   return k_ra_ok;
 }
 
+/**
+ * @brief ra mipi csi pm set irq enable.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] mask See declaration: ``uint32_t mask``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_mipi_csi_pm_set_irq_enable(uint32_t mask)
 {
   /* HUM Ch 66.3.23 "PMIE : Power Management Interrupt Enable" p 3956 */
@@ -772,6 +1238,25 @@ ra_err_t ra_mipi_csi_pm_set_irq_enable(uint32_t mask)
  * =============================================================================
  */
 
+/**
+ * @brief ra mipi csi short packet configure.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] threshold See declaration: ``uint8_t threshold``.
+ * @param[in] store_enable See declaration: ``bool store_enable``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_mipi_csi_short_packet_configure(uint8_t threshold, bool store_enable)
 {
   if ((uint32_t)threshold > k_ra_mipi_csi_gsct_shth_max) {
@@ -786,6 +1271,24 @@ ra_err_t ra_mipi_csi_short_packet_configure(uint8_t threshold, bool store_enable
   return k_ra_ok;
 }
 
+/**
+ * @brief ra mipi csi short packet set irq enable.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] mask See declaration: ``uint32_t mask``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_mipi_csi_short_packet_set_irq_enable(uint32_t mask)
 {
   /* HUM Ch 66.3.27 "GSIE : Generic Short Packet Interrupt Enable" p 3958 */
@@ -793,6 +1296,24 @@ ra_err_t ra_mipi_csi_short_packet_set_irq_enable(uint32_t mask)
   return k_ra_ok;
 }
 
+/**
+ * @brief ra mipi csi short packet get status.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[out] out_mask See declaration: ``uint32_t* out_mask``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_mipi_csi_short_packet_get_status(uint32_t* out_mask)
 {
   RA_CHECK_NULL_PTR(out_mask, s_tag, "out_mask must not be nullptr");
@@ -801,6 +1322,24 @@ ra_err_t ra_mipi_csi_short_packet_get_status(uint32_t* out_mask)
   return k_ra_ok;
 }
 
+/**
+ * @brief ra mipi csi short packet clear status.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] mask See declaration: ``uint32_t mask``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_mipi_csi_short_packet_clear_status(uint32_t mask)
 {
   /* HUM Ch 66.3.26 "GSSC : Generic Short Packet Status Clear" p 3958
@@ -809,6 +1348,24 @@ ra_err_t ra_mipi_csi_short_packet_clear_status(uint32_t mask)
   return k_ra_ok;
 }
 
+/**
+ * @brief ra mipi csi read short packet.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[out] out See declaration: ``ra_mipi_csi_short_packet_t* out``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_mipi_csi_read_short_packet(ra_mipi_csi_short_packet_t* out)
 {
   RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
@@ -833,6 +1390,23 @@ ra_err_t ra_mipi_csi_read_short_packet(ra_mipi_csi_short_packet_t* out)
   return k_ra_ok;
 }
 
+/**
+ * @brief ra mipi csi short packet clear fifo.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_mipi_csi_short_packet_clear_fifo(void)
 {
   /* HUM Ch 66.3.29 "GSIU : Generic Short Packet Information Update" p 3960
@@ -855,6 +1429,23 @@ ra_err_t ra_mipi_csi_short_packet_clear_fifo(void)
   return err;
 }
 
+/**
+ * @brief ra mipi csi short packet re enable store.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_mipi_csi_short_packet_re_enable_store(void)
 {
   /* HUM Ch 66.3.29 "GSIU : Generic Short Packet Information Update" p 3960 */
@@ -867,6 +1458,26 @@ ra_err_t ra_mipi_csi_short_packet_re_enable_store(void)
  * =============================================================================
  */
 
+/**
+ * @brief Attach the module-level CSI event callback.
+ *
+ * @details Stores the supplied callback and opaque context for later
+ * invocation by ::ra_mipi_csi_dispatch when a module-level event fires.
+ *
+ * @param[in] fn  Event-callback function pointer (NULL to detach).
+ * @param[in] ctx Opaque context passed back to the callback.
+ *
+ * @return ::ra_err_t outcome.
+ * @retval k_ra_ok Always returned in the current implementation.
+ *
+ * @pre Module has been initialised via ::ra_mipi_csi_init.
+ * @pre Caller serialises with the IRQ source if registering at runtime.
+ * @post Subsequent ::ra_mipi_csi_dispatch calls invoke ``fn`` with ``ctx``.
+ * @post Previously registered callback (if any) is overwritten.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_mipi_csi_attach_handler(ra_mipi_csi_event_fn_t fn, void* ctx)
 {
   s_mipi_csi_fn  = fn;
@@ -874,6 +1485,25 @@ ra_err_t ra_mipi_csi_attach_handler(ra_mipi_csi_event_fn_t fn, void* ctx)
   return k_ra_ok;
 }
 
+/**
+ * @brief ra mipi csi attach dl handler.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] fn See declaration: ``ra_mipi_csi_dl_event_fn_t fn``.
+ * @param[out] ctx See declaration: ``void* ctx``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_mipi_csi_attach_dl_handler(ra_mipi_csi_dl_event_fn_t fn, void* ctx)
 {
   s_mipi_csi_dl_fn  = fn;
@@ -881,6 +1511,25 @@ ra_err_t ra_mipi_csi_attach_dl_handler(ra_mipi_csi_dl_event_fn_t fn, void* ctx)
   return k_ra_ok;
 }
 
+/**
+ * @brief ra mipi csi attach vc handler.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] fn See declaration: ``ra_mipi_csi_vc_event_fn_t fn``.
+ * @param[out] ctx See declaration: ``void* ctx``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_mipi_csi_attach_vc_handler(ra_mipi_csi_vc_event_fn_t fn, void* ctx)
 {
   s_mipi_csi_vc_fn  = fn;
@@ -888,6 +1537,25 @@ ra_err_t ra_mipi_csi_attach_vc_handler(ra_mipi_csi_vc_event_fn_t fn, void* ctx)
   return k_ra_ok;
 }
 
+/**
+ * @brief ra mipi csi attach pm handler.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] fn See declaration: ``ra_mipi_csi_pm_event_fn_t fn``.
+ * @param[out] ctx See declaration: ``void* ctx``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_mipi_csi_attach_pm_handler(ra_mipi_csi_pm_event_fn_t fn, void* ctx)
 {
   s_mipi_csi_pm_fn  = fn;
@@ -895,6 +1563,25 @@ ra_err_t ra_mipi_csi_attach_pm_handler(ra_mipi_csi_pm_event_fn_t fn, void* ctx)
   return k_ra_ok;
 }
 
+/**
+ * @brief ra mipi csi attach short packet handler.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] fn See declaration: ``ra_mipi_csi_short_event_fn_t fn``.
+ * @param[out] ctx See declaration: ``void* ctx``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_mipi_csi_attach_short_packet_handler(ra_mipi_csi_short_event_fn_t fn, void* ctx)
 {
   s_mipi_csi_gst_fn  = fn;
@@ -902,6 +1589,20 @@ ra_err_t ra_mipi_csi_attach_short_packet_handler(ra_mipi_csi_short_event_fn_t fn
   return k_ra_ok;
 }
 
+/**
+ * @brief ra mipi csi dispatch.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 void ra_mipi_csi_dispatch(void)
 {
   /* HUM Ch 66.3.12 "RXST : Receive Status Register" p 3944 */
@@ -917,6 +1618,20 @@ void ra_mipi_csi_dispatch(void)
   }
 }
 
+/**
+ * @brief ra mipi csi dispatch dl.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 void ra_mipi_csi_dispatch_dl(void)
 {
   /* HUM Ch 66.3.9 "MIST : Module Interrupt Status" p 3941 */
@@ -945,6 +1660,20 @@ void ra_mipi_csi_dispatch_dl(void)
   }
 }
 
+/**
+ * @brief ra mipi csi dispatch vc.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 void ra_mipi_csi_dispatch_vc(void)
 {
   /* HUM Ch 66.3.9 "MIST : Module Interrupt Status" p 3941 */
@@ -1000,6 +1729,20 @@ void ra_mipi_csi_dispatch_vc(void)
   }
 }
 
+/**
+ * @brief ra mipi csi dispatch pm.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 void ra_mipi_csi_dispatch_pm(void)
 {
   /* HUM Ch 66.3.21 "PMST : Power Management Status" p 3954 */
@@ -1015,6 +1758,20 @@ void ra_mipi_csi_dispatch_pm(void)
   }
 }
 
+/**
+ * @brief ra mipi csi dispatch short packet.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 void ra_mipi_csi_dispatch_short_packet(void)
 {
   /* HUM Ch 66.3.25 "GSST : Generic Short Packet Status" p 3957 */
@@ -1046,6 +1803,13 @@ void ra_mipi_csi_dispatch_short_packet(void)
  *
  * @pre is_high and bit non-NULL.
  * @post On success, *is_high and *bit are set.
+ * @details Implementation detail; see surrounding code and HUM citations.
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
+ * @note Internal helper. Not thread-safe; caller provides synchronisation.
+ * @since 0.1.0
  */
 static ra_err_t
 internal_format_to_bit(ra_mipi_csi_data_format_t format, bool* is_high, uint32_t* bit)
@@ -1087,6 +1851,13 @@ internal_format_to_bit(ra_mipi_csi_data_format_t format, bool* is_high, uint32_t
 
 /**
  * @brief Recompute DTEL/DTEH from the per-VC format shadow.
+ * @details Implementation detail; see surrounding code and HUM citations.
+ * @pre Module/state preconditions hold (see function body).
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
+ * @post Documented side effects are visible on success.
+ * @note Internal helper. Not thread-safe; caller provides synchronisation.
+ * @since 0.1.0
  */
 static void internal_recompute_dt_filter(void)
 {
@@ -1110,6 +1881,24 @@ static void internal_recompute_dt_filter(void)
   *ra_mipi_csi_reg32(k_ra_mipi_csi_off_dteh) = high;
 }
 
+/**
+ * @brief ra mipi csi set virtual channels.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] vc_mask See declaration: ``uint16_t vc_mask``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_mipi_csi_set_virtual_channels(uint16_t vc_mask)
 {
   if (vc_mask == 0U) {
@@ -1139,6 +1928,25 @@ ra_err_t ra_mipi_csi_set_virtual_channels(uint16_t vc_mask)
   return k_ra_ok;
 }
 
+/**
+ * @brief ra mipi csi set data format.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] vc See declaration: ``uint8_t vc``.
+ * @param[in] format See declaration: ``ra_mipi_csi_data_format_t format``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_mipi_csi_set_data_format(uint8_t vc, ra_mipi_csi_data_format_t format)
 {
   if (vc >= (uint8_t)k_ra_mipi_csi_vc_count) {
@@ -1155,6 +1963,25 @@ ra_err_t ra_mipi_csi_set_data_format(uint8_t vc, ra_mipi_csi_data_format_t forma
   return k_ra_ok;
 }
 
+/**
+ * @brief ra mipi csi attach error handler.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] fn See declaration: ``ra_mipi_csi_error_fn_t fn``.
+ * @param[out] ctx See declaration: ``void* ctx``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_mipi_csi_attach_error_handler(ra_mipi_csi_error_fn_t fn, void* ctx)
 {
   s_mipi_csi_err_fn  = fn;
@@ -1167,12 +1994,46 @@ ra_err_t ra_mipi_csi_attach_error_handler(ra_mipi_csi_error_fn_t fn, void* ctx)
  * =============================================================================
  */
 
+/**
+ * @brief ra mipi csi enter stop.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_mipi_csi_enter_stop(void)
 {
   /* HUM Ch 11.2.8 "MSTPCRC : Module Stop Control Register C", p 446 */
   return ra_mstp_disable(k_ra_mstp_mipi_csi);
 }
 
+/**
+ * @brief ra mipi csi exit stop.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_mipi_csi_exit_stop(void)
 {
   /* HUM Ch 11.2.8 "MSTPCRC : Module Stop Control Register C", p 446 */

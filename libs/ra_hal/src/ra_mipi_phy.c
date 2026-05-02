@@ -171,6 +171,14 @@ static ra_mipi_phy_eotp_t s_eotp = k_ra_mipi_phy_eotp_disabled;
  * Ch 64.4.2 p 3838 ("MIPI PHY operation can be disabled or enabled
  * using Module Stop Control Register C (MSTPCRC). The MIPI PHY
  * module is initially stopped after reset.").
+ *
+ * @pre Caller has unlocked write protection on MSTPCRC if required.
+ * @pre Called from a single-threaded init context (or with IRQs masked).
+ * @post MSTPCRC bit 13 is cleared and the MIPI PHY clock is running.
+ * @post No other MSTPCRC bits are modified.
+ *
+ * @note Internal helper. Not thread-safe; caller provides synchronisation.
+ * @since 0.1.0
  */
 static void internal_mipi_phy_mstp_unstop(void)
 {
@@ -181,6 +189,18 @@ static void internal_mipi_phy_mstp_unstop(void)
 
 /**
  * @brief Spin until ``(reg & mask) == mask`` or the budget runs out.
+ * @details Implementation detail; see surrounding code and HUM citations.
+ * @param[in] reg See declaration: ``volatile const uint32_t* reg``.
+ * @param[in] mask See declaration: ``uint32_t mask``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ * @pre Module/state preconditions hold (see function body).
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
+ * @post Documented side effects are visible on success.
+ * @note Internal helper. Not thread-safe; caller provides synchronisation.
+ * @since 0.1.0
  */
 static ra_err_t internal_mipi_phy_wait_set(volatile const uint32_t* reg, uint32_t mask)
 {
@@ -194,6 +214,17 @@ static ra_err_t internal_mipi_phy_wait_set(volatile const uint32_t* reg, uint32_
 
 /**
  * @brief Pack a validated PLL config into the DPHYPLFCR register layout.
+ * @details Implementation detail; see surrounding code and HUM citations.
+ * @param[in] pll See declaration: ``const ra_mipi_phy_pll_t* pll``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ * @pre Module/state preconditions hold (see function body).
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
+ * @post Documented side effects are visible on success.
+ * @note Internal helper. Not thread-safe; caller provides synchronisation.
+ * @since 0.1.0
  */
 static uint32_t internal_mipi_phy_pack_plfcr(const ra_mipi_phy_pll_t* pll)
 {
@@ -215,6 +246,16 @@ static uint32_t internal_mipi_phy_pack_plfcr(const ra_mipi_phy_pll_t* pll)
  * @details
  * Range-checks NMUL[8:0] only. Use ``ra_mipi_phy_validate_pll_band``
  * for the full PMUL band check.
+ * @param[in] pll See declaration: ``const ra_mipi_phy_pll_t* pll``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ * @pre Module/state preconditions hold (see function body).
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
+ * @post Documented side effects are visible on success.
+ * @note Internal helper. Not thread-safe; caller provides synchronisation.
+ * @since 0.1.0
  */
 static ra_err_t internal_mipi_phy_validate_pll(const ra_mipi_phy_pll_t* pll)
 {
@@ -226,6 +267,14 @@ static ra_err_t internal_mipi_phy_validate_pll(const ra_mipi_phy_pll_t* pll)
 
 /**
  * @brief Write the six DPHYTIMx registers from the timing block.
+ * @details Implementation detail; see surrounding code and HUM citations.
+ * @param[in] t See declaration: ``const ra_mipi_phy_timing_t* t``.
+ * @pre Module/state preconditions hold (see function body).
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
+ * @post Documented side effects are visible on success.
+ * @note Internal helper. Not thread-safe; caller provides synchronisation.
+ * @since 0.1.0
  */
 static void internal_mipi_phy_write_timing(const ra_mipi_phy_timing_t* t)
 {
@@ -1096,6 +1145,18 @@ static const ra_mipi_phy_timing_t* internal_mipi_phy_lookup_timing(const mipi_ph
 
 /**
  * @brief Compute the PLL output frequency for a (mosc, pll) tuple.
+ * @details Implementation detail; see surrounding code and HUM citations.
+ * @param[in] pll See declaration: ``const ra_mipi_phy_pll_t* pll``.
+ * @param[in] mosc_mhz See declaration: ``uint8_t mosc_mhz``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ * @pre Module/state preconditions hold (see function body).
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
+ * @post Documented side effects are visible on success.
+ * @note Internal helper. Not thread-safe; caller provides synchronisation.
+ * @since 0.1.0
  */
 static uint32_t internal_mipi_phy_compute_freq(const ra_mipi_phy_pll_t* pll, uint8_t mosc_mhz)
 {
@@ -1127,6 +1188,16 @@ static uint32_t internal_mipi_phy_compute_freq(const ra_mipi_phy_pll_t* pll, uin
  * width), Ch 64.1 p 3822 (lane-count support matrix), and Ch 64.2.2
  * p 3823 (PLL parameter range, master mode only). Also rejects
  * nullptrs in ``cfg`` and ``cfg->p_timing``.
+ * @param[in] cfg See declaration: ``const ra_mipi_phy_config_t* cfg``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ * @pre Module/state preconditions hold (see function body).
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
+ * @post Documented side effects are visible on success.
+ * @note Internal helper. Not thread-safe; caller provides synchronisation.
+ * @since 0.1.0
  */
 static ra_err_t internal_mipi_phy_validate_init_cfg(const ra_mipi_phy_config_t* cfg)
 {
@@ -1162,6 +1233,16 @@ static ra_err_t internal_mipi_phy_validate_init_cfg(const ra_mipi_phy_config_t* 
  * Step 3 (HUM Ch 64.2.1 p 3822) programs DPHYREFCR.
  * Step 4 (HUM Ch 64.2.5 p 3826) sets DPHYPWRCR.PWRSEN.
  * Step 5 (HUM Ch 64.2.6 p 3826) polls DPHYSFR until PWRSF latches.
+ * @param[in] cfg See declaration: ``const ra_mipi_phy_config_t* cfg``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ * @pre Module/state preconditions hold (see function body).
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
+ * @post Documented side effects are visible on success.
+ * @note Internal helper. Not thread-safe; caller provides synchronisation.
+ * @since 0.1.0
  */
 static ra_err_t internal_mipi_phy_init_power_up(const ra_mipi_phy_config_t* cfg)
 {
@@ -1184,6 +1265,16 @@ static ra_err_t internal_mipi_phy_init_power_up(const ra_mipi_phy_config_t* cfg)
  * @details
  * Steps come from HUM Ch 64 p 3823-3826: program PLFCR, ESCCR, clear
  * PLOCR, then poll DPHYSFR until PLLSF latches.
+ * @param[in] cfg See declaration: ``const ra_mipi_phy_config_t* cfg``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ * @pre Module/state preconditions hold (see function body).
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
+ * @post Documented side effects are visible on success.
+ * @note Internal helper. Not thread-safe; caller provides synchronisation.
+ * @since 0.1.0
  */
 static ra_err_t internal_mipi_phy_init_master(const ra_mipi_phy_config_t* cfg)
 {
@@ -1201,6 +1292,13 @@ static ra_err_t internal_mipi_phy_init_master(const ra_mipi_phy_config_t* cfg)
  * @details
  * None of these settings live in PHY registers; downstream DSI / CSI
  * drivers consult them after init returns.
+ * @param[in] cfg See declaration: ``const ra_mipi_phy_config_t* cfg``.
+ * @pre Module/state preconditions hold (see function body).
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
+ * @post Documented side effects are visible on success.
+ * @note Internal helper. Not thread-safe; caller provides synchronisation.
+ * @since 0.1.0
  */
 static void internal_mipi_phy_cache_state(const ra_mipi_phy_config_t* cfg)
 {
@@ -1211,6 +1309,24 @@ static void internal_mipi_phy_cache_state(const ra_mipi_phy_config_t* cfg)
   s_last_sfr         = *ra_mipi_phy_reg32(k_ra_mipi_phy_off_sfr);
 }
 
+/**
+ * @brief ra mipi phy init.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] cfg See declaration: ``const ra_mipi_phy_config_t* cfg``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_mipi_phy_init(const ra_mipi_phy_config_t* cfg)
 {
   const ra_err_t v_err = internal_mipi_phy_validate_init_cfg(cfg);
@@ -1246,6 +1362,23 @@ ra_err_t ra_mipi_phy_init(const ra_mipi_phy_config_t* cfg)
   return k_ra_ok;
 }
 
+/**
+ * @brief ra mipi phy deinit.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_mipi_phy_deinit(void)
 {
   /* Step 1 -- HUM Ch 64.2.7 "DPHYOCR : D-PHY Operation Control Register", p 3827 */
@@ -1261,6 +1394,23 @@ ra_err_t ra_mipi_phy_deinit(void)
   return k_ra_ok;
 }
 
+/**
+ * @brief ra mipi phy reset.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_mipi_phy_reset(void)
 {
   /* HUM Ch 64.2.7 "DPHYOCR : D-PHY Operation Control Register", p 3827 */
@@ -1293,6 +1443,24 @@ ra_err_t ra_mipi_phy_reset(void)
   return k_ra_ok;
 }
 
+/**
+ * @brief ra mipi phy recover from error.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] cfg See declaration: ``const ra_mipi_phy_config_t* cfg``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_mipi_phy_recover_from_error(const ra_mipi_phy_config_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg, s_tag, "recover: cfg must not be nullptr");
@@ -1301,6 +1469,24 @@ ra_err_t ra_mipi_phy_recover_from_error(const ra_mipi_phy_config_t* cfg)
   return ra_mipi_phy_init(cfg);
 }
 
+/**
+ * @brief ra mipi phy get status.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[out] out_mask See declaration: ``uint32_t* out_mask``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_mipi_phy_get_status(uint32_t* out_mask)
 {
   RA_CHECK_NULL_PTR(out_mask, s_tag, "out_mask must not be nullptr");
@@ -1310,6 +1496,24 @@ ra_err_t ra_mipi_phy_get_status(uint32_t* out_mask)
   return k_ra_ok;
 }
 
+/**
+ * @brief ra mipi phy clear status.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] mask See declaration: ``uint32_t mask``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_mipi_phy_clear_status(uint32_t mask)
 {
   /* DPHYSFR is read-only on this part (HUM Ch 64.2.6 p 3826) -- nothing to write. */
@@ -1317,18 +1521,69 @@ ra_err_t ra_mipi_phy_clear_status(uint32_t mask)
   return k_ra_ok;
 }
 
+/**
+ * @brief ra mipi phy is ldo stable.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 bool ra_mipi_phy_is_ldo_stable(void)
 {
   /* HUM Ch 64.2.6 "DPHYSFR : D-PHY Status Flag Register", p 3826 */
   return (*ra_mipi_phy_reg32(k_ra_mipi_phy_off_sfr) & k_ra_mipi_phy_sfr_pwrsf) != 0U;
 }
 
+/**
+ * @brief ra mipi phy is pll locked.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 bool ra_mipi_phy_is_pll_locked(void)
 {
   /* HUM Ch 64.2.6 "DPHYSFR : D-PHY Status Flag Register", p 3826 */
   return (*ra_mipi_phy_reg32(k_ra_mipi_phy_off_sfr) & k_ra_mipi_phy_sfr_pllsf) != 0U;
 }
 
+/**
+ * @brief ra mipi phy wait ready.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_mipi_phy_wait_ready(void)
 {
   /* HUM Ch 64.2.6 "DPHYSFR : D-PHY Status Flag Register", p 3826 */
@@ -1336,6 +1591,25 @@ ra_err_t ra_mipi_phy_wait_ready(void)
                                     k_ra_mipi_phy_sfr_ready_mask);
 }
 
+/**
+ * @brief ra mipi phy attach handler.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] fn See declaration: ``ra_mipi_phy_event_fn_t fn``.
+ * @param[out] ctx See declaration: ``void* ctx``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_mipi_phy_attach_handler(ra_mipi_phy_event_fn_t fn, void* ctx)
 {
   s_mipi_phy_fn  = fn;
@@ -1343,6 +1617,20 @@ ra_err_t ra_mipi_phy_attach_handler(ra_mipi_phy_event_fn_t fn, void* ctx)
   return k_ra_ok;
 }
 
+/**
+ * @brief ra mipi phy dispatch.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 void ra_mipi_phy_dispatch(void)
 {
   /* HUM Ch 64.2.6 "DPHYSFR : D-PHY Status Flag Register", p 3826 */
@@ -1378,18 +1666,70 @@ void ra_mipi_phy_dispatch(void)
   }
 }
 
+/**
+ * @brief ra mipi phy enter stop.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_mipi_phy_enter_stop(void)
 {
   /* HUM Ch 64.4.1 "Power Gating Control or Software Standby Mode", p 3837 */
   return ra_mipi_phy_deinit();
 }
 
+/**
+ * @brief ra mipi phy exit stop.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] cfg See declaration: ``const ra_mipi_phy_config_t* cfg``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_mipi_phy_exit_stop(const ra_mipi_phy_config_t* cfg)
 {
   /* HUM Ch 64.4.1 "Power Gating Control or Software Standby Mode", p 3837 */
   return ra_mipi_phy_init(cfg);
 }
 
+/**
+ * @brief ra mipi phy ldo enable.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_mipi_phy_ldo_enable(void)
 {
   /* HUM Ch 64.2.5 "DPHYPWRCR : D-PHY Power Supplying Control Register", p 3826 */
@@ -1399,6 +1739,23 @@ ra_err_t ra_mipi_phy_ldo_enable(void)
                                     k_ra_mipi_phy_sfr_pwrsf);
 }
 
+/**
+ * @brief ra mipi phy ldo disable.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_mipi_phy_ldo_disable(void)
 {
   /* HUM Ch 64.2.5 "DPHYPWRCR : D-PHY Power Supplying Control Register", p 3826 */
@@ -1406,6 +1763,23 @@ ra_err_t ra_mipi_phy_ldo_disable(void)
   return k_ra_ok;
 }
 
+/**
+ * @brief ra mipi phy pll start.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_mipi_phy_pll_start(void)
 {
   /* HUM Ch 64.2.3 "DPHYPLOCR : D-PHY PLL Operation Control Register", p 3824 */
@@ -1415,6 +1789,23 @@ ra_err_t ra_mipi_phy_pll_start(void)
                                     k_ra_mipi_phy_sfr_pllsf);
 }
 
+/**
+ * @brief ra mipi phy pll stop.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_mipi_phy_pll_stop(void)
 {
   /* HUM Ch 64.2.3 "DPHYPLOCR : D-PHY PLL Operation Control Register", p 3824 */
@@ -1422,6 +1813,24 @@ ra_err_t ra_mipi_phy_pll_stop(void)
   return k_ra_ok;
 }
 
+/**
+ * @brief ra mipi phy set lane speed.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] pll See declaration: ``const ra_mipi_phy_pll_t* pll``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_mipi_phy_set_lane_speed(const ra_mipi_phy_pll_t* pll)
 {
   RA_CHECK_NULL_PTR(pll, s_tag, "pll must not be nullptr");
@@ -1443,6 +1852,24 @@ ra_err_t ra_mipi_phy_set_lane_speed(const ra_mipi_phy_pll_t* pll)
                                     k_ra_mipi_phy_sfr_pllsf);
 }
 
+/**
+ * @brief ra mipi phy switch mode.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] mode See declaration: ``ra_mipi_phy_mode_t mode``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_mipi_phy_switch_mode(ra_mipi_phy_mode_t mode)
 {
   if ((mode != k_ra_mipi_phy_mode_dsi_master) && (mode != k_ra_mipi_phy_mode_csi_slave)) {
@@ -1456,6 +1883,24 @@ ra_err_t ra_mipi_phy_switch_mode(ra_mipi_phy_mode_t mode)
   return k_ra_ok;
 }
 
+/**
+ * @brief ra mipi phy set lane count.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] count See declaration: ``ra_mipi_phy_lane_count_t count``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_mipi_phy_set_lane_count(ra_mipi_phy_lane_count_t count)
 {
   if ((count == k_ra_mipi_phy_lane_count_3) || (count == k_ra_mipi_phy_lane_count_4)) {
@@ -1476,11 +1921,47 @@ ra_err_t ra_mipi_phy_set_lane_count(ra_mipi_phy_lane_count_t count)
   return k_ra_ok;
 }
 
+/**
+ * @brief ra mipi phy get lane count.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_mipi_phy_lane_count_t ra_mipi_phy_get_lane_count(void)
 {
   return s_lane_count;
 }
 
+/**
+ * @brief ra mipi phy set lane enable.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] lane See declaration: ``ra_mipi_phy_lane_id_t lane``.
+ * @param[in] enable See declaration: ``bool enable``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_mipi_phy_set_lane_enable(ra_mipi_phy_lane_id_t lane, bool enable)
 {
   if ((lane == k_ra_mipi_phy_lane_d2) || (lane == k_ra_mipi_phy_lane_d3)) {
@@ -1513,6 +1994,24 @@ ra_err_t ra_mipi_phy_set_lane_enable(ra_mipi_phy_lane_id_t lane, bool enable)
   return k_ra_ok;
 }
 
+/**
+ * @brief ra mipi phy is lane enabled.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] lane See declaration: ``ra_mipi_phy_lane_id_t lane``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 bool ra_mipi_phy_is_lane_enabled(ra_mipi_phy_lane_id_t lane)
 {
   uint8_t bit = 0U;
@@ -1532,6 +2031,24 @@ bool ra_mipi_phy_is_lane_enabled(ra_mipi_phy_lane_id_t lane)
   return (s_lane_enable_mask & (uint8_t)((uint8_t)1U << bit)) != 0U;
 }
 
+/**
+ * @brief ra mipi phy set clock mode.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] mode See declaration: ``ra_mipi_phy_clk_mode_t mode``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_mipi_phy_set_clock_mode(ra_mipi_phy_clk_mode_t mode)
 {
   if ((mode != k_ra_mipi_phy_clk_continuous) && (mode != k_ra_mipi_phy_clk_noncontinuous)) {
@@ -1541,11 +2058,46 @@ ra_err_t ra_mipi_phy_set_clock_mode(ra_mipi_phy_clk_mode_t mode)
   return k_ra_ok;
 }
 
+/**
+ * @brief ra mipi phy get clock mode.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_mipi_phy_clk_mode_t ra_mipi_phy_get_clock_mode(void)
 {
   return s_clk_mode;
 }
 
+/**
+ * @brief ra mipi phy set eotp.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] eotp See declaration: ``ra_mipi_phy_eotp_t eotp``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_mipi_phy_set_eotp(ra_mipi_phy_eotp_t eotp)
 {
   if ((eotp != k_ra_mipi_phy_eotp_enabled) && (eotp != k_ra_mipi_phy_eotp_disabled)) {
@@ -1555,11 +2107,46 @@ ra_err_t ra_mipi_phy_set_eotp(ra_mipi_phy_eotp_t eotp)
   return k_ra_ok;
 }
 
+/**
+ * @brief ra mipi phy get eotp.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_mipi_phy_eotp_t ra_mipi_phy_get_eotp(void)
 {
   return s_eotp;
 }
 
+/**
+ * @brief ra mipi phy set pclka freq.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] mhz See declaration: ``uint8_t mhz``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_mipi_phy_set_pclka_freq(uint8_t mhz)
 {
   /* HUM Ch 64.2.1 "DPHYREFCR : D-PHY Reference Clock Setting Register", p 3822
@@ -1574,6 +2161,24 @@ ra_err_t ra_mipi_phy_set_pclka_freq(uint8_t mhz)
   return k_ra_ok;
 }
 
+/**
+ * @brief ra mipi phy set escape divisor.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] escdiv See declaration: ``uint8_t escdiv``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_mipi_phy_set_escape_divisor(uint8_t escdiv)
 {
   /* HUM Ch 64.2.4 "DPHYESCCR : D-PHY Escape Mode Clock Control Register", p 3825 */
@@ -1590,6 +2195,27 @@ ra_err_t ra_mipi_phy_set_escape_divisor(uint8_t escdiv)
                                     k_ra_mipi_phy_sfr_pllsf);
 }
 
+/**
+ * @brief ra mipi phy select timing.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] mode See declaration: ``ra_mipi_phy_mode_t          mode``.
+ * @param[in] pclka_mhz See declaration: ``uint8_t                     pclka_mhz``.
+ * @param[in] rate_mbps See declaration: ``uint16_t                    rate_mbps``.
+ * @param[in] out_timing See declaration: ``ra_mipi_phy_timing_t* const out_timing``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_mipi_phy_select_timing(ra_mipi_phy_mode_t          mode,
                                    uint8_t                     pclka_mhz,
                                    uint16_t                    rate_mbps,
@@ -1630,6 +2256,25 @@ ra_err_t ra_mipi_phy_select_timing(ra_mipi_phy_mode_t          mode,
   return k_ra_ok;
 }
 
+/**
+ * @brief ra mipi phy validate pll band.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] pll See declaration: ``const ra_mipi_phy_pll_t* pll``.
+ * @param[in] mosc_mhz See declaration: ``uint8_t mosc_mhz``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_mipi_phy_validate_pll_band(const ra_mipi_phy_pll_t* pll, uint8_t mosc_mhz)
 {
   RA_CHECK_NULL_PTR(pll, s_tag, "validate_pll_band: pll must not be nullptr");

@@ -301,6 +301,17 @@ static ra_usb_hmsc_state_t s_state = {};
 
 /**
  * @brief Pick the bulk-max-packet ceiling matching the negotiated speed.
+ * @details Implementation detail; see surrounding code and HUM citations.
+ * @param[in] speed See declaration: ``ra_usb_speed_t speed``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ * @pre Module/state preconditions hold (see function body).
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
+ * @post Documented side effects are visible on success.
+ * @note Internal helper. Not thread-safe; caller provides synchronisation.
+ * @since 0.1.0
  */
 static uint16_t internal_bulk_max_packet(ra_usb_speed_t speed)
 {
@@ -314,6 +325,15 @@ static uint16_t internal_bulk_max_packet(ra_usb_speed_t speed)
  * `r_usb_hmsc_driver.c`. The starter never wraps in a single test
  * run; production should detect wrap-around but a 32-bit counter
  * lasts long enough that this is not urgent.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ * @pre Module/state preconditions hold (see function body).
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
+ * @post Documented side effects are visible on success.
+ * @note Internal helper. Not thread-safe; caller provides synchronisation.
+ * @since 0.1.0
  */
 static uint32_t internal_next_tag(void)
 {
@@ -329,6 +349,15 @@ static uint32_t internal_next_tag(void)
  * @details Mirrors FSP's `usb_hmsc_pipe_info`. Bulk pipes are PIPE3 +
  * PIPE4 here so they don't clash with the host-CDC class which owns
  * PIPE1 + PIPE2.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ * @pre Module/state preconditions hold (see function body).
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
+ * @post Documented side effects are visible on success.
+ * @note Internal helper. Not thread-safe; caller provides synchronisation.
+ * @since 0.1.0
  */
 static ra_err_t internal_configure_pipes(void)
 {
@@ -353,6 +382,18 @@ static ra_err_t internal_configure_pipes(void)
 
 /**
  * @brief Stage a chapter-9 GET_DESCRIPTOR SETUP request.
+ * @details Implementation detail; see surrounding code and HUM citations.
+ * @param[in] desc_type See declaration: ``uint8_t desc_type``.
+ * @param[in] length See declaration: ``uint16_t length``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ * @pre Module/state preconditions hold (see function body).
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
+ * @post Documented side effects are visible on success.
+ * @note Internal helper. Not thread-safe; caller provides synchronisation.
+ * @since 0.1.0
  */
 static ra_err_t internal_setup_get_descriptor(uint8_t desc_type, uint16_t length)
 {
@@ -368,6 +409,17 @@ static ra_err_t internal_setup_get_descriptor(uint8_t desc_type, uint16_t length
 
 /**
  * @brief Stage a SET_ADDRESS SETUP request.
+ * @details Implementation detail; see surrounding code and HUM citations.
+ * @param[in] address See declaration: ``uint8_t address``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ * @pre Module/state preconditions hold (see function body).
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
+ * @post Documented side effects are visible on success.
+ * @note Internal helper. Not thread-safe; caller provides synchronisation.
+ * @since 0.1.0
  */
 static ra_err_t internal_setup_set_address(uint8_t address)
 {
@@ -383,6 +435,17 @@ static ra_err_t internal_setup_set_address(uint8_t address)
 
 /**
  * @brief Stage a SET_CONFIGURATION SETUP request.
+ * @details Implementation detail; see surrounding code and HUM citations.
+ * @param[in] config_value See declaration: ``uint8_t config_value``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ * @pre Module/state preconditions hold (see function body).
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
+ * @post Documented side effects are visible on success.
+ * @note Internal helper. Not thread-safe; caller provides synchronisation.
+ * @since 0.1.0
  */
 static ra_err_t internal_setup_set_config(uint8_t config_value)
 {
@@ -398,6 +461,16 @@ static ra_err_t internal_setup_set_config(uint8_t config_value)
 
 /**
  * @brief Stage a SET_INTERFACE (alt 0, iface 0) SETUP request.
+ * @details Implementation detail; see surrounding code and HUM citations.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ * @pre Module/state preconditions hold (see function body).
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
+ * @post Documented side effects are visible on success.
+ * @note Internal helper. Not thread-safe; caller provides synchronisation.
+ * @since 0.1.0
  */
 static ra_err_t internal_setup_set_interface(void)
 {
@@ -421,6 +494,15 @@ static ra_err_t internal_setup_set_interface(void)
  * - wValue        = 0.
  * - wIndex        = bInterfaceNumber.
  * - wLength       = 1.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ * @pre Module/state preconditions hold (see function body).
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
+ * @post Documented side effects are visible on success.
+ * @note Internal helper. Not thread-safe; caller provides synchronisation.
+ * @since 0.1.0
  */
 static ra_err_t internal_setup_get_max_lun(void)
 {
@@ -445,6 +527,17 @@ static ra_err_t internal_setup_get_max_lun(void)
  * bulk-OUT at EP address 2, single MSC interface 0. If the attached
  * device deviates, the production path will overwrite these defaults
  * during the descriptor walk.
+ *
+ * @pre ``s_state.speed`` reflects the negotiated USB bus speed.
+ * @pre The GET_CONFIG_DESCRIPTOR data-stage transfer has completed.
+ *
+ * @post ``s_state.device`` is populated with default MSC endpoint /
+ *       interface assignments.
+ * @post No hardware register is touched by this helper.
+ *
+ * @note Internal helper. Not thread-safe; called from the single-threaded
+ *       enumeration FSM.
+ * @since 0.1.0
  */
 static void internal_walk_config_descriptor(void)
 {
@@ -461,6 +554,16 @@ static void internal_walk_config_descriptor(void)
 
 /**
  * @brief Step handler -- bus-reset assert.
+ * @details Implementation detail; see surrounding code and HUM citations.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ * @pre Module/state preconditions hold (see function body).
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
+ * @post Documented side effects are visible on success.
+ * @note Internal helper. Not thread-safe; caller provides synchronisation.
+ * @since 0.1.0
  */
 static ra_err_t internal_do_idle(void)
 {
@@ -470,6 +573,16 @@ static ra_err_t internal_do_idle(void)
 
 /**
  * @brief Step handler -- bus-reset release + SETUP for SET_ADDRESS.
+ * @details Implementation detail; see surrounding code and HUM citations.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ * @pre Module/state preconditions hold (see function body).
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
+ * @post Documented side effects are visible on success.
+ * @note Internal helper. Not thread-safe; caller provides synchronisation.
+ * @since 0.1.0
  */
 static ra_err_t internal_do_bus_reset(void)
 {
@@ -482,6 +595,16 @@ static ra_err_t internal_do_bus_reset(void)
 /**
  * @brief Step handler -- store assigned address + SETUP for
  *        GET_DEVICE_DESCRIPTOR.
+ * @details Implementation detail; see surrounding code and HUM citations.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ * @pre Module/state preconditions hold (see function body).
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
+ * @post Documented side effects are visible on success.
+ * @note Internal helper. Not thread-safe; caller provides synchronisation.
+ * @since 0.1.0
  */
 static ra_err_t internal_do_set_address(void)
 {
@@ -493,6 +616,16 @@ static ra_err_t internal_do_set_address(void)
 
 /**
  * @brief Step handler -- SETUP for GET_CONFIGURATION_DESCRIPTOR.
+ * @details Implementation detail; see surrounding code and HUM citations.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ * @pre Module/state preconditions hold (see function body).
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
+ * @post Documented side effects are visible on success.
+ * @note Internal helper. Not thread-safe; caller provides synchronisation.
+ * @since 0.1.0
  */
 static ra_err_t internal_do_get_dev_desc(void)
 {
@@ -502,6 +635,16 @@ static ra_err_t internal_do_get_dev_desc(void)
 
 /**
  * @brief Step handler -- SETUP for SET_CONFIGURATION.
+ * @details Implementation detail; see surrounding code and HUM citations.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ * @pre Module/state preconditions hold (see function body).
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
+ * @post Documented side effects are visible on success.
+ * @note Internal helper. Not thread-safe; caller provides synchronisation.
+ * @since 0.1.0
  */
 static ra_err_t internal_do_get_cfg_desc(void)
 {
@@ -511,6 +654,16 @@ static ra_err_t internal_do_get_cfg_desc(void)
 
 /**
  * @brief Step handler -- SETUP for SET_INTERFACE.
+ * @details Implementation detail; see surrounding code and HUM citations.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ * @pre Module/state preconditions hold (see function body).
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
+ * @post Documented side effects are visible on success.
+ * @note Internal helper. Not thread-safe; caller provides synchronisation.
+ * @since 0.1.0
  */
 static ra_err_t internal_do_set_config(void)
 {
@@ -520,6 +673,16 @@ static ra_err_t internal_do_set_config(void)
 
 /**
  * @brief Step handler -- pure software descriptor walk.
+ * @details Implementation detail; see surrounding code and HUM citations.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ * @pre Module/state preconditions hold (see function body).
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
+ * @post Documented side effects are visible on success.
+ * @note Internal helper. Not thread-safe; caller provides synchronisation.
+ * @since 0.1.0
  */
 static ra_err_t internal_do_set_interface(void)
 {
@@ -530,6 +693,16 @@ static ra_err_t internal_do_set_interface(void)
 
 /**
  * @brief Step handler -- finalise pipes + stage Get-Max-LUN.
+ * @details Implementation detail; see surrounding code and HUM citations.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ * @pre Module/state preconditions hold (see function body).
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
+ * @post Documented side effects are visible on success.
+ * @note Internal helper. Not thread-safe; caller provides synchronisation.
+ * @since 0.1.0
  */
 static ra_err_t internal_do_walk_desc(void)
 {
@@ -541,6 +714,16 @@ static ra_err_t internal_do_walk_desc(void)
 
 /**
  * @brief Step handler -- terminal: fire attach callback.
+ * @details Implementation detail; see surrounding code and HUM citations.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ * @pre Module/state preconditions hold (see function body).
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
+ * @post Documented side effects are visible on success.
+ * @note Internal helper. Not thread-safe; caller provides synchronisation.
+ * @since 0.1.0
  */
 static ra_err_t internal_do_get_max_lun(void)
 {
@@ -554,6 +737,16 @@ static ra_err_t internal_do_get_max_lun(void)
 
 /**
  * @brief Drive the enumeration step machine forward by one step.
+ * @details Implementation detail; see surrounding code and HUM citations.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ * @pre Module/state preconditions hold (see function body).
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
+ * @post Documented side effects are visible on success.
+ * @note Internal helper. Not thread-safe; caller provides synchronisation.
+ * @since 0.1.0
  */
 static ra_err_t internal_step_advance(void)
 {
@@ -587,6 +780,13 @@ static ra_err_t internal_step_advance(void)
  *
  * @param[in] value 32-bit value.
  * @param[out] dst Destination 4-byte buffer.
+ * @details Implementation detail; see surrounding code and HUM citations.
+ * @pre Module/state preconditions hold (see function body).
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
+ * @post Documented side effects are visible on success.
+ * @note Internal helper. Not thread-safe; caller provides synchronisation.
+ * @since 0.1.0
  */
 static void internal_pack_u32_le(uint32_t value, uint8_t* dst)
 {
@@ -598,6 +798,17 @@ static void internal_pack_u32_le(uint32_t value, uint8_t* dst)
 
 /**
  * @brief Unpack a uint32 from 4 little-endian bytes.
+ * @details Implementation detail; see surrounding code and HUM citations.
+ * @param[in] src See declaration: ``const uint8_t* src``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ * @pre Module/state preconditions hold (see function body).
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
+ * @post Documented side effects are visible on success.
+ * @note Internal helper. Not thread-safe; caller provides synchronisation.
+ * @since 0.1.0
  */
 static uint32_t internal_unpack_u32_le(const uint8_t* src)
 {
@@ -607,6 +818,17 @@ static uint32_t internal_unpack_u32_le(const uint8_t* src)
 
 /**
  * @brief Unpack a uint32 from 4 big-endian bytes (SCSI on-wire order).
+ * @details Implementation detail; see surrounding code and HUM citations.
+ * @param[in] src See declaration: ``const uint8_t* src``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ * @pre Module/state preconditions hold (see function body).
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
+ * @post Documented side effects are visible on success.
+ * @note Internal helper. Not thread-safe; caller provides synchronisation.
+ * @since 0.1.0
  */
 static uint32_t internal_unpack_u32_be(const uint8_t* src)
 {
@@ -621,6 +843,14 @@ static uint32_t internal_unpack_u32_be(const uint8_t* src)
  * `clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling`
  * gate stays clean. The starter never zeros buffers > 64 bytes so the
  * loop overhead is negligible.
+ * @param[out] dst See declaration: ``uint8_t* dst``.
+ * @param[in] len See declaration: ``uint16_t len``.
+ * @pre Module/state preconditions hold (see function body).
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
+ * @post Documented side effects are visible on success.
+ * @note Internal helper. Not thread-safe; caller provides synchronisation.
+ * @since 0.1.0
  */
 static void internal_zero_bytes(uint8_t* dst, uint16_t len)
 {
@@ -631,6 +861,16 @@ static void internal_zero_bytes(uint8_t* dst, uint16_t len)
 
 /**
  * @brief Copy `len` bytes from `src` to `dst` byte-by-byte.
+ * @details Implementation detail; see surrounding code and HUM citations.
+ * @param[out] dst See declaration: ``uint8_t* dst``.
+ * @param[in] src See declaration: ``const uint8_t* src``.
+ * @param[in] len See declaration: ``uint16_t len``.
+ * @pre Module/state preconditions hold (see function body).
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
+ * @post Documented side effects are visible on success.
+ * @note Internal helper. Not thread-safe; caller provides synchronisation.
+ * @since 0.1.0
  */
 static void internal_copy_bytes(uint8_t* dst, const uint8_t* src, uint16_t len)
 {
@@ -644,6 +884,29 @@ static void internal_copy_bytes(uint8_t* dst, const uint8_t* src, uint16_t len)
  * =============================================================================
  */
 
+/**
+ * @brief ra usb hmsc build cbw.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] target_lun See declaration: ``uint8_t        target_lun``.
+ * @param[in] data_transfer_length See declaration: ``uint32_t       data_transfer_length``.
+ * @param[in] data_in See declaration: ``bool           data_in``.
+ * @param[in] cdb See declaration: ``const uint8_t* cdb``.
+ * @param[in] cdb_len See declaration: ``uint8_t        cdb_len``.
+ * @param[out] out_cbw See declaration: ``uint8_t*       out_cbw``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_usb_hmsc_build_cbw(uint8_t        target_lun,
                                uint32_t       data_transfer_length,
                                bool           data_in,
@@ -689,6 +952,26 @@ ra_err_t ra_usb_hmsc_build_cbw(uint8_t        target_lun,
   return k_ra_ok;
 }
 
+/**
+ * @brief ra usb hmsc decode csw.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] csw See declaration: ``const uint8_t*            csw``.
+ * @param[in] expected_tag See declaration: ``uint32_t                  expected_tag``.
+ * @param[out] out_status See declaration: ``ra_usb_hmsc_csw_status_t* out_status``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_usb_hmsc_decode_csw(const uint8_t*            csw,
                                 uint32_t                  expected_tag,
                                 ra_usb_hmsc_csw_status_t* out_status)
@@ -721,6 +1004,24 @@ ra_err_t ra_usb_hmsc_decode_csw(const uint8_t*            csw,
  * =============================================================================
  */
 
+/**
+ * @brief ra usb hmsc init.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] speed See declaration: ``ra_usb_speed_t speed``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_usb_hmsc_init(ra_usb_speed_t speed)
 {
   if ((speed != k_ra_usb_speed_fs) && (speed != k_ra_usb_speed_hs)) {
@@ -745,6 +1046,23 @@ ra_err_t ra_usb_hmsc_init(ra_usb_speed_t speed)
   return k_ra_ok;
 }
 
+/**
+ * @brief ra usb hmsc close.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_usb_hmsc_close(void)
 {
   if (!s_state.initialised) {
@@ -766,6 +1084,25 @@ ra_err_t ra_usb_hmsc_close(void)
  * =============================================================================
  */
 
+/**
+ * @brief ra usb hmsc attach callback.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] on_attach See declaration: ``ra_usb_hmsc_attach_fn_t on_attach``.
+ * @param[out] ctx See declaration: ``void* ctx``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_usb_hmsc_attach_callback(ra_usb_hmsc_attach_fn_t on_attach, void* ctx)
 {
   if (!s_state.initialised) {
@@ -783,6 +1120,17 @@ ra_err_t ra_usb_hmsc_attach_callback(ra_usb_hmsc_attach_fn_t on_attach, void* ct
 
 /**
  * @brief Validate driver state + LUN before issuing a SCSI command.
+ * @details Implementation detail; see surrounding code and HUM citations.
+ * @param[in] target_lun See declaration: ``uint8_t target_lun``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ * @pre Module/state preconditions hold (see function body).
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
+ * @post Documented side effects are visible on success.
+ * @note Internal helper. Not thread-safe; caller provides synchronisation.
+ * @since 0.1.0
  */
 static ra_err_t internal_check_ready(uint8_t target_lun)
 {
@@ -804,6 +1152,16 @@ static ra_err_t internal_check_ready(uint8_t target_lun)
  * @details The starter ignores the low-level transfer status that
  * `ra_usb_queue_in` returns -- the CSW phase is what the caller
  * checks. Production should propagate transfer errors here.
+ * @param[in] cbw See declaration: ``const uint8_t* cbw``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ * @pre Module/state preconditions hold (see function body).
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
+ * @post Documented side effects are visible on success.
+ * @note Internal helper. Not thread-safe; caller provides synchronisation.
+ * @since 0.1.0
  */
 static ra_err_t internal_send_cbw(const uint8_t* cbw)
 {
@@ -815,6 +1173,17 @@ static ra_err_t internal_send_cbw(const uint8_t* cbw)
  *
  * @details `inout_len` is initialised to capacity by the caller and
  * receives the actual byte count on return.
+ * @param[out] dst See declaration: ``uint8_t* dst``.
+ * @param[out] inout_len See declaration: ``uint16_t* inout_len``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ * @pre Module/state preconditions hold (see function body).
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
+ * @post Documented side effects are visible on success.
+ * @note Internal helper. Not thread-safe; caller provides synchronisation.
+ * @since 0.1.0
  */
 static ra_err_t internal_recv_bytes(uint8_t* dst, uint16_t* inout_len)
 {
@@ -823,6 +1192,14 @@ static ra_err_t internal_recv_bytes(uint8_t* dst, uint16_t* inout_len)
 
 /**
  * @brief Build a 6-byte CDB for SCSI INQUIRY.
+ * @details Implementation detail; see surrounding code and HUM citations.
+ * @param[out] cdb See declaration: ``uint8_t* cdb``.
+ * @pre Module/state preconditions hold (see function body).
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
+ * @post Documented side effects are visible on success.
+ * @note Internal helper. Not thread-safe; caller provides synchronisation.
+ * @since 0.1.0
  */
 static void internal_build_inquiry_cdb(uint8_t* cdb)
 {
@@ -833,6 +1210,14 @@ static void internal_build_inquiry_cdb(uint8_t* cdb)
 
 /**
  * @brief Build a 10-byte CDB for SCSI READ_CAPACITY(10).
+ * @details Implementation detail; see surrounding code and HUM citations.
+ * @param[out] cdb See declaration: ``uint8_t* cdb``.
+ * @pre Module/state preconditions hold (see function body).
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
+ * @post Documented side effects are visible on success.
+ * @note Internal helper. Not thread-safe; caller provides synchronisation.
+ * @since 0.1.0
  */
 static void internal_build_read_capacity_cdb(uint8_t* cdb)
 {
@@ -845,6 +1230,16 @@ static void internal_build_read_capacity_cdb(uint8_t* cdb)
  *
  * @details See SBC-4 sec 5.7 (READ(10)) and 5.20 (WRITE(10)). LBA is
  * big-endian on the wire.
+ * @param[in] opcode See declaration: ``uint8_t opcode``.
+ * @param[in] lba See declaration: ``uint32_t lba``.
+ * @param[in] block_count See declaration: ``uint16_t block_count``.
+ * @param[out] cdb See declaration: ``uint8_t* cdb``.
+ * @pre Module/state preconditions hold (see function body).
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
+ * @post Documented side effects are visible on success.
+ * @note Internal helper. Not thread-safe; caller provides synchronisation.
+ * @since 0.1.0
  */
 static void
 internal_build_rw10_cdb(uint8_t opcode, uint32_t lba, uint16_t block_count, uint8_t* cdb)
@@ -862,6 +1257,17 @@ internal_build_rw10_cdb(uint8_t opcode, uint32_t lba, uint16_t block_count, uint
 
 /**
  * @brief Treat hw_timeout / no_data as soft (simulator) failures.
+ * @details Implementation detail; see surrounding code and HUM citations.
+ * @param[in] err See declaration: ``ra_err_t err``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ * @pre Module/state preconditions hold (see function body).
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
+ * @post Documented side effects are visible on success.
+ * @note Internal helper. Not thread-safe; caller provides synchronisation.
+ * @since 0.1.0
  */
 static ra_err_t internal_normalise_xfer_err(ra_err_t err)
 {
@@ -873,6 +1279,21 @@ static ra_err_t internal_normalise_xfer_err(ra_err_t err)
 
 /**
  * @brief Build CBW + push it on bulk-OUT.
+ * @details Implementation detail; see surrounding code and HUM citations.
+ * @param[in] target_lun See declaration: ``uint8_t        target_lun``.
+ * @param[in] xfer_len See declaration: ``uint32_t       xfer_len``.
+ * @param[in] data_in See declaration: ``bool           data_in``.
+ * @param[in] cdb See declaration: ``const uint8_t* cdb``.
+ * @param[in] cdb_len See declaration: ``uint8_t        cdb_len``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ * @pre Module/state preconditions hold (see function body).
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
+ * @post Documented side effects are visible on success.
+ * @note Internal helper. Not thread-safe; caller provides synchronisation.
+ * @since 0.1.0
  */
 static ra_err_t internal_issue_cbw(uint8_t        target_lun,
                                    uint32_t       xfer_len,
@@ -889,6 +1310,21 @@ static ra_err_t internal_issue_cbw(uint8_t        target_lun,
 /**
  * @brief Run a complete data-IN BBB transaction: issue CBW + drain
  *        the bulk-IN response.
+ * @details Implementation detail; see surrounding code and HUM citations.
+ * @param[in] target_lun See declaration: ``uint8_t        target_lun``.
+ * @param[in] cdb See declaration: ``const uint8_t* cdb``.
+ * @param[in] cdb_len See declaration: ``uint8_t        cdb_len``.
+ * @param[out] out_buf See declaration: ``uint8_t*       out_buf``.
+ * @param[out] inout_len See declaration: ``uint16_t*      inout_len``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ * @pre Module/state preconditions hold (see function body).
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
+ * @post Documented side effects are visible on success.
+ * @note Internal helper. Not thread-safe; caller provides synchronisation.
+ * @since 0.1.0
  */
 static ra_err_t internal_run_data_in(uint8_t        target_lun,
                                      const uint8_t* cdb,
@@ -904,6 +1340,21 @@ static ra_err_t internal_run_data_in(uint8_t        target_lun,
 /**
  * @brief Run a complete data-OUT BBB transaction: issue CBW + push
  *        the bulk-OUT data buffer.
+ * @details Implementation detail; see surrounding code and HUM citations.
+ * @param[in] target_lun See declaration: ``uint8_t        target_lun``.
+ * @param[in] cdb See declaration: ``const uint8_t* cdb``.
+ * @param[in] cdb_len See declaration: ``uint8_t        cdb_len``.
+ * @param[in] in_buf See declaration: ``const uint8_t* in_buf``.
+ * @param[in] push_len See declaration: ``uint16_t       push_len``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ * @pre Module/state preconditions hold (see function body).
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
+ * @post Documented side effects are visible on success.
+ * @note Internal helper. Not thread-safe; caller provides synchronisation.
+ * @since 0.1.0
  */
 static ra_err_t internal_run_data_out(uint8_t        target_lun,
                                       const uint8_t* cdb,
@@ -919,6 +1370,15 @@ static ra_err_t internal_run_data_out(uint8_t        target_lun,
 
 /**
  * @brief Decode the 36-byte INQUIRY response into the public struct.
+ * @details Implementation detail; see surrounding code and HUM citations.
+ * @param[in] raw See declaration: ``const uint8_t* raw``.
+ * @param[out] response See declaration: ``ra_usb_hmsc_inquiry_response_t* response``.
+ * @pre Module/state preconditions hold (see function body).
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
+ * @post Documented side effects are visible on success.
+ * @note Internal helper. Not thread-safe; caller provides synchronisation.
+ * @since 0.1.0
  */
 static void internal_decode_inquiry(const uint8_t* raw, ra_usb_hmsc_inquiry_response_t* response)
 {
@@ -946,6 +1406,25 @@ static void internal_decode_inquiry(const uint8_t* raw, ra_usb_hmsc_inquiry_resp
  * =============================================================================
  */
 
+/**
+ * @brief ra usb hmsc inquiry.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] target_lun See declaration: ``uint8_t target_lun``.
+ * @param[out] response See declaration: ``ra_usb_hmsc_inquiry_response_t* response``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_usb_hmsc_inquiry(uint8_t target_lun, ra_usb_hmsc_inquiry_response_t* response)
 {
   RA_CHECK_NULL_PTR(response, s_tag, "inquiry: response");
@@ -964,6 +1443,26 @@ ra_err_t ra_usb_hmsc_inquiry(uint8_t target_lun, ra_usb_hmsc_inquiry_response_t*
   return k_ra_ok;
 }
 
+/**
+ * @brief ra usb hmsc read capacity.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] target_lun See declaration: ``uint8_t target_lun``.
+ * @param[out] block_count See declaration: ``uint32_t* block_count``.
+ * @param[out] block_size See declaration: ``uint32_t* block_size``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_usb_hmsc_read_capacity(uint8_t target_lun, uint32_t* block_count, uint32_t* block_size)
 {
   RA_CHECK_NULL_PTR(block_count, s_tag, "read_capacity: block_count");
@@ -991,6 +1490,27 @@ ra_err_t ra_usb_hmsc_read_capacity(uint8_t target_lun, uint32_t* block_count, ui
   return k_ra_ok;
 }
 
+/**
+ * @brief ra usb hmsc read10.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] target_lun See declaration: ``uint8_t target_lun``.
+ * @param[in] lba See declaration: ``uint32_t lba``.
+ * @param[in] block_count See declaration: ``uint16_t block_count``.
+ * @param[out] out_buf See declaration: ``uint8_t* out_buf``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t
 ra_usb_hmsc_read10(uint8_t target_lun, uint32_t lba, uint16_t block_count, uint8_t* out_buf)
 {
@@ -1015,6 +1535,27 @@ ra_usb_hmsc_read10(uint8_t target_lun, uint32_t lba, uint16_t block_count, uint8
   return k_ra_ok;
 }
 
+/**
+ * @brief ra usb hmsc write10.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] target_lun See declaration: ``uint8_t target_lun``.
+ * @param[in] lba See declaration: ``uint32_t lba``.
+ * @param[in] block_count See declaration: ``uint16_t block_count``.
+ * @param[in] in_buf See declaration: ``const uint8_t* in_buf``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t
 ra_usb_hmsc_write10(uint8_t target_lun, uint32_t lba, uint16_t block_count, const uint8_t* in_buf)
 {
@@ -1041,6 +1582,23 @@ ra_usb_hmsc_write10(uint8_t target_lun, uint32_t lba, uint16_t block_count, cons
  * =============================================================================
  */
 
+/**
+ * @brief ra usb hmsc step.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_usb_hmsc_step(void)
 {
   if (!s_state.initialised) {
