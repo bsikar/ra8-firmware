@@ -192,6 +192,106 @@ static void test_send_recv_arg_validation(void)
   TEST_END("ra_usb_cdc_{send,recv} validate args");
 }
 
+/* =============================================================================
+ * MC/DC vector tests for compound boolean decisions flagged in
+ * docs/MCDC_GAPS.csv against libs/ra_hal/src/ra_usb_cdc.c.
+ * =============================================================================
+ */
+
+/**
+ * @enum test_cdc_mcdc_t
+ */
+typedef enum : uint16_t {
+  k_test_cdc_speed_bad      = 9U,
+  k_test_cdc_iface_class    = 0x21U, /**< k_ra_cdc_bm_class_recip_iface. */
+  k_test_cdc_iface_class_in = 0xA1U, /**< k_ra_cdc_bm_class_recip_in.   */
+  k_test_cdc_bm_bogus       = 0x80U,
+} test_cdc_mcdc_t;
+
+/**
+ * @test test_mcdc_cdc
+ *
+ * @par MC/DC:
+ * Covers compound decisions flagged in docs/MCDC_GAPS.csv for
+ * libs/ra_hal/src/ra_usb_cdc.c.
+ *
+ * Decision A (line 174, 2 conds): cdc_init speed gate
+ *   `(speed != FS) && (speed != HS)` -- N+1=3:
+ *   - V1 FS -> C1=F (short circuit) -> dec=F (init ok)
+ *   - V2 HS -> C1=T, C2=F           -> dec=F (init ok)
+ *   - V3 9  -> C1=T, C2=T           -> dec=T (invalid_arg)
+ *
+ * Decision B (line 229, 2 conds): cdc_send NULL-with-len
+ *   `(data == NULL) && (len != 0)` -- N+1=3:
+ *   - V1 (NULL,0) -> C1=T, C2=F -> dec=F (forwards OK)
+ *   - V2 (buf,4)  -> C1=F       -> dec=F (forwards OK)
+ *   - V3 (NULL,4) -> C1=T, C2=T -> dec=T (invalid_arg)
+ *
+ * Decision C (line 311-312, 2 conds): handle_setup envelope
+ *   `(bm != iface) && (bm != iface_in)` -- N+1=3:
+ *   - V1 iface     -> C1=F (short circuit)              -> dec=F (dispatched)
+ *   - V2 iface_in  -> C1=T, C2=F                        -> dec=F (dispatched)
+ *   - V3 0x80      -> C1=T, C2=T                        -> dec=T (not_supported)
+ *
+ * Decision D (line 154, 2 conds, internal_apply_line_coding):
+ *   `(data == NULL) || (len < 7)`. Per DO-178C 6.4.4.3 deactivated-code
+ *   provision: this static helper is only called from
+ *   `internal_dispatch_class_setup` after `internal_pull_data_stage`
+ *   returns `k_ra_ok`, but `internal_pull_data_stage` is currently a
+ *   stub that always returns `k_ra_err_not_supported` (see source line
+ *   269). The line-coding apply branch is therefore unreachable from
+ *   any public entry point; an MC/DC vector set is not constructable
+ *   without modifying the unit under test. The branch is left under
+ *   structural-coverage waiver until the live USB ISR path that
+ *   delivers the EP0 OUT data stage is integrated, at which point the
+ *   waiver lifts and the standard 3-vector pattern (NULL/len<7,
+ *   buf/len<7, buf/len>=7) becomes runnable.
+ */
+static void test_mcdc_cdc(void)
+{
+  TEST_BEGIN("cdc MC/DC: init / send / handle_setup compound decisions");
+
+  /* Decision A: init speed gate. */
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_cdc_init(k_ra_usb_speed_fs));
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_cdc_init(k_ra_usb_speed_hs));
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_usb_cdc_init((ra_usb_speed_t)k_test_cdc_speed_bad));
+
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_cdc_init(k_ra_usb_speed_fs));
+
+  /* Decision B: send null/len matrix. */
+  uint8_t buf[8] = {};
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_usb_cdc_send(nullptr, 4U));
+  /* V1 NULL,0: forwarded to ra_usb_queue_in which may return ok or
+   * hw_error from the simulator -- we only assert it is NOT
+   * invalid_arg, which is the only outcome for B-V1 false. */
+  const ra_err_t b_v1 = ra_usb_cdc_send(nullptr, 0U);
+  TEST_ASSERT(b_v1 != k_ra_err_invalid_arg);
+  const ra_err_t b_v2 = ra_usb_cdc_send(buf, 4U);
+  TEST_ASSERT(b_v2 != k_ra_err_invalid_arg);
+
+  /* Decision C: handle_setup envelope. */
+  ra_usb_setup_t setup = {
+    .bm_request_type = (uint8_t)k_test_cdc_iface_class,
+    .b_request       = (uint8_t)k_ra_cdc_req_set_control_line_state,
+    .w_value         = 0U,
+    .w_index         = 0U,
+    .w_length        = 0U,
+  };
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_cdc_handle_setup(&setup));
+  setup.bm_request_type = (uint8_t)k_test_cdc_iface_class_in;
+  setup.b_request       = (uint8_t)k_ra_cdc_req_get_line_coding;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_cdc_handle_setup(&setup));
+  setup.bm_request_type = (uint8_t)k_test_cdc_bm_bogus;
+  TEST_ASSERT_EQ((int32_t)k_ra_err_not_supported, (int32_t)ra_usb_cdc_handle_setup(&setup));
+
+  TEST_END("cdc MC/DC: init / send / handle_setup compound decisions");
+}
+
 int32_t main(void)
 {
   test_init_fs_default_coding();
@@ -203,6 +303,7 @@ int32_t main(void)
   test_handle_setup_get_line_coding_acks();
   test_handle_setup_rejects_standard();
   test_send_recv_arg_validation();
+  test_mcdc_cdc();
   (void)fprintf(stderr, "[OK ] test_ra_usb_cdc.c\n");
   return 0;
 }

@@ -272,6 +272,48 @@ static void test_clear_port_feature_envelope(void)
   TEST_END("ra_usb_hhub_clear_port_feature stages bmRequestType=0x23 + bRequest=0x01");
 }
 
+/**
+ * @test test_mcdc_hhub
+ *
+ * @par MC/DC:
+ * Covers compound decisions flagged in docs/MCDC_GAPS.csv for
+ * libs/ra_hal/src/ra_usb_hhub.c.
+ *
+ * Decision A (line 300, 2 conds): hhub_init speed gate
+ *   `(speed != FS) && (speed != HS)` -- N+1=3.
+ * Decision B (line 211, 2 conds): internal_port_ok bounds check
+ *   `(port >= first_port) && (port <= port_count)` -- N+1=3:
+ *   - V1 port=2 (1..4 valid) -> C1=T,C2=T -> dec=T (forwards)
+ *   - V2 port=0 (< first=1)  -> C1=F (short circuit) -> dec=F (invalid_arg)
+ *   - V3 port=99 (> 4)       -> C1=T,C2=F -> dec=F (invalid_arg)
+ *   Exercised through `ra_usb_hhub_get_port_status`.
+ */
+static void test_mcdc_hhub(void)
+{
+  TEST_BEGIN("hhub MC/DC: init speed / port_ok bounds");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hhub_init(k_ra_usb_speed_fs));
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hhub_init(k_ra_usb_speed_hs));
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_usb_hhub_init((ra_usb_speed_t)9U));
+
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hhub_init(k_ra_usb_speed_fs));
+  walk_to_attach();
+
+  uint32_t status = 0U;
+  /* B-V1: port=2 in [1..4] -> ok (forwards SETUP). */
+  const ra_err_t b_v1 = ra_usb_hhub_get_port_status(2U, &status);
+  TEST_ASSERT(b_v1 != k_ra_err_invalid_arg);
+  /* B-V2: port=0 below first -> invalid_arg. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_usb_hhub_get_port_status(0U, &status));
+  /* B-V3: port=99 above count -> invalid_arg. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_usb_hhub_get_port_status(99U, &status));
+
+  TEST_END("hhub MC/DC: init speed / port_ok bounds");
+}
+
 int32_t main(void)
 {
   test_init_fs_returns_ok();
@@ -286,6 +328,7 @@ int32_t main(void)
   test_get_port_status_envelope();
   test_set_port_feature_envelope();
   test_clear_port_feature_envelope();
+  test_mcdc_hhub();
   (void)fprintf(stderr, "[OK ] test_ra_usb_hhub.c\n");
   return 0;
 }

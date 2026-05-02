@@ -236,6 +236,181 @@ static void test_volume_shadow(void)
   TEST_END("ra_usb_paud_set_volume / get_volume round-trip");
 }
 
+/* =============================================================================
+ * MC/DC vector tests for the compound boolean decisions flagged in
+ * docs/MCDC_GAPS.csv against libs/ra_hal/src/ra_usb_paud.c.
+ * =============================================================================
+ */
+
+/**
+ * @enum test_paud_mcdc_t
+ * @brief Numeric vectors driving the MC/DC tests below.
+ */
+typedef enum : uint16_t {
+  k_test_paud_speed_fs       = 0U, /**< k_ra_usb_speed_fs alias.        */
+  k_test_paud_speed_hs       = 1U, /**< k_ra_usb_speed_hs alias.        */
+  k_test_paud_speed_bad      = 9U, /**< Neither FS nor HS.              */
+  k_test_paud_iface_in       = 0xA1U,
+  k_test_paud_iface_out      = 0x21U,
+  k_test_paud_ep_in          = 0xA2U,
+  k_test_paud_ep_out         = 0x22U,
+  k_test_paud_bm_bogus       = 0x40U,
+  k_test_paud_breq_unknown   = 0x77U,
+  k_test_paud_send_len_zero  = 0U,
+  k_test_paud_send_len_small = 4U,
+  k_test_paud_send_len_huge  = 1024U,
+  k_test_paud_chan_min       = 1U,
+  k_test_paud_chan_max       = 8U,
+  k_test_paud_chan_bad_low   = 0U,
+  k_test_paud_chan_bad_high  = 9U,
+  k_test_paud_bps_min        = 1U,
+  k_test_paud_bps_max        = 4U,
+  k_test_paud_bps_bad_low    = 0U,
+  k_test_paud_bps_bad_high   = 5U,
+} test_paud_mcdc_t;
+
+/**
+ * @test test_mcdc_paud
+ *
+ * @par MC/DC:
+ * Covers every compound decision flagged in docs/MCDC_GAPS.csv for
+ * libs/ra_hal/src/ra_usb_paud.c.
+ *
+ * Decision A (line 192, 2 conds): ra_usb_paud_init speed gate
+ *   `(speed != FS) && (speed != HS)` -- N+1=3:
+ *   - V1 speed=FS  -> C1=F (short circuit) -> dec=F (init ok)
+ *   - V2 speed=HS  -> C1=T, C2=F           -> dec=F (init ok)
+ *   - V3 speed=9   -> C1=T, C2=T           -> dec=T (invalid_arg)
+ *
+ * Decision B (line 255, 2 conds): send_frame null-with-len
+ *   `(frame == NULL) && (len != 0)` -- N+1=3:
+ *   - V1 frame=NULL,len=0 -> C1=T,C2=F -> dec=F (falls through to len==0
+ *     check which returns invalid_arg)
+ *   - V2 frame=buf,len=4  -> C1=F      -> dec=F (forwards to queue)
+ *   - V3 frame=NULL,len=4 -> C1=T,C2=T -> dec=T (null_ptr)
+ *
+ * Decision C (line 258, 2 conds): send_frame size envelope
+ *   `(len == 0) || (len > iso_max_packet)` -- N+1=3:
+ *   - V1 len=0    -> C1=T (short circuit)            -> dec=T (invalid_arg)
+ *   - V2 len=4    -> C1=F, C2=F                      -> dec=F (ok)
+ *   - V3 len=1024 -> C1=F, C2=T (FS iso ceiling=192) -> dec=T (invalid_arg)
+ *
+ * Decision D (line 297-298, 2 conds): set_format channel range
+ *   `(channels < min) || (channels > max)` -- N+1=3:
+ *   - V1 channels=0 -> C1=T (short circuit) -> dec=T (invalid_arg)
+ *   - V2 channels=2 -> C1=F, C2=F           -> dec=F (passes)
+ *   - V3 channels=9 -> C1=F, C2=T           -> dec=T (invalid_arg)
+ *
+ * Decision E (line 301-302, 2 conds): set_format bps range
+ *   `(bps < min) || (bps > max)` -- N+1=3 (mirror of D).
+ *
+ * Decisions F+G (lines 169-173 / 181-182, 9- and 4-condition OR chains
+ * inside `internal_is_known_class_request` and `internal_is_class_envelope`):
+ * exercised through `ra_usb_paud_handle_setup`. Per DO-178C 6.4.4.3,
+ * MC/DC for an N-condition pure OR (no side effects) is satisfiable
+ * with the representative-subset criterion: 1 vector that makes each
+ * condition independently true (decision T) plus 1 vector that makes
+ * every condition false (decision F). For F that is 9+1=10 vectors; for
+ * G that is 4+1=5 vectors. Every other condition is held false in the
+ * "lone-true" vector, which proves independent control of the outcome.
+ */
+static void test_mcdc_paud(void)
+{
+  TEST_BEGIN("paud MC/DC: init speed, send_frame envelope, set_format ranges, setup OR chains");
+  prep();
+
+  /* ---- Decision A: init speed gate ---- */
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_paud_init(k_ra_usb_speed_fs));
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_paud_init(k_ra_usb_speed_hs));
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_usb_paud_init((ra_usb_speed_t)k_test_paud_speed_bad));
+
+  /* Re-init for the remaining decisions (FS = 192-byte iso ceiling). */
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_paud_init(k_ra_usb_speed_fs));
+
+  /* ---- Decisions B + C: send_frame ---- */
+  uint8_t buf[16] = {};
+  /* B-V1 / C-V1 collapse: frame=NULL,len=0 -- B returns false (C1=T,C2=F),
+   * then C catches len==0 -> invalid_arg. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_usb_paud_send_frame(nullptr, (uint16_t)k_test_paud_send_len_zero));
+  /* B-V3: frame=NULL,len!=0 -> null_ptr. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_usb_paud_send_frame(nullptr, (uint16_t)k_test_paud_send_len_small));
+  /* B-V2 + C-V2: frame=buf,len=4 -> both decisions false, forwards. */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_usb_paud_send_frame(buf, (uint16_t)k_test_paud_send_len_small));
+  /* C-V3: frame=buf,len=1024 (> FS iso ceiling 192) -> invalid_arg. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_usb_paud_send_frame(buf, (uint16_t)k_test_paud_send_len_huge));
+
+  /* ---- Decisions D + E: set_format ranges ---- */
+  ra_usb_paud_format_t fmt = {.sample_rate_hz = 48000U, .channels = 2U, .bytes_per_sample = 2U};
+  /* D-V2 + E-V2: in-range. */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_paud_set_format(fmt));
+  /* D-V1: channels below min. */
+  fmt.channels = (uint8_t)k_test_paud_chan_bad_low;
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_usb_paud_set_format(fmt));
+  /* D-V3: channels above max. */
+  fmt.channels = (uint8_t)k_test_paud_chan_bad_high;
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_usb_paud_set_format(fmt));
+  /* E-V1: bps below min. */
+  fmt.channels         = 2U;
+  fmt.bytes_per_sample = (uint8_t)k_test_paud_bps_bad_low;
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_usb_paud_set_format(fmt));
+  /* E-V3: bps above max. */
+  fmt.bytes_per_sample = (uint8_t)k_test_paud_bps_bad_high;
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_usb_paud_set_format(fmt));
+
+  /* ---- Decision G (envelope OR chain, 4 conds): per-condition lone-true ---- */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_usb_paud_attach_setup_handler(test_setup_cb, nullptr));
+  ra_usb_setup_t setup = {
+    .bm_request_type = (uint8_t)k_test_paud_iface_in,
+    .b_request       = (uint8_t)k_ra_paud_req_set_cur,
+    .w_value         = 0U,
+    .w_index         = 0U,
+    .w_length        = 0U,
+  };
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_paud_handle_setup(&setup));
+  setup.bm_request_type = (uint8_t)k_test_paud_iface_out;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_paud_handle_setup(&setup));
+  setup.bm_request_type = (uint8_t)k_test_paud_ep_in;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_paud_handle_setup(&setup));
+  setup.bm_request_type = (uint8_t)k_test_paud_ep_out;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_paud_handle_setup(&setup));
+  /* All-false vector for G. */
+  setup.bm_request_type = (uint8_t)k_test_paud_bm_bogus;
+  TEST_ASSERT_EQ((int32_t)k_ra_err_not_supported, (int32_t)ra_usb_paud_handle_setup(&setup));
+
+  /* ---- Decision F (request-code OR chain, 9 conds): per-condition lone-true ---- */
+  setup.bm_request_type    = (uint8_t)k_test_paud_iface_in;
+  const uint8_t requests[] = {
+    (uint8_t)k_ra_paud_req_set_cur,
+    (uint8_t)k_ra_paud_req_get_cur,
+    (uint8_t)k_ra_paud_req_set_min,
+    (uint8_t)k_ra_paud_req_get_min,
+    (uint8_t)k_ra_paud_req_set_max,
+    (uint8_t)k_ra_paud_req_get_max,
+    (uint8_t)k_ra_paud_req_set_res,
+    (uint8_t)k_ra_paud_req_get_res,
+    (uint8_t)k_ra_paud_req_get_stat,
+  };
+  for (uint8_t i = 0U; i < (uint8_t)(sizeof(requests) / sizeof(requests[0])); ++i) {
+    setup.b_request = requests[i];
+    TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_paud_handle_setup(&setup));
+  }
+  /* All-false vector for F. */
+  setup.b_request = (uint8_t)k_test_paud_breq_unknown;
+  TEST_ASSERT_EQ((int32_t)k_ra_err_not_supported, (int32_t)ra_usb_paud_handle_setup(&setup));
+
+  TEST_END("paud MC/DC: init speed, send_frame envelope, set_format ranges, setup OR chains");
+}
+
 int32_t main(void)
 {
   test_init_default_format();
@@ -247,6 +422,7 @@ int32_t main(void)
   test_handle_setup_dispatch();
   test_handle_setup_rejects();
   test_volume_shadow();
+  test_mcdc_paud();
   (void)fprintf(stderr, "[OK ] test_ra_usb_paud.c\n");
   return 0;
 }

@@ -523,6 +523,54 @@ static void test_close_invokes_each_class_close(void)
   TEST_END("close walks registered classes and calls each close hook");
 }
 
+/**
+ * @test test_mcdc_composite
+ *
+ * @par MC/DC:
+ * Covers compound decisions flagged in docs/MCDC_GAPS.csv for
+ * libs/ra_hal/src/ra_usb_composite.c.
+ *
+ * Decision A (line 338, 2 conds): composite_init speed gate
+ *   `(speed != FS) && (speed != HS)` -- N+1=3.
+ * Decision B (line 199, 3 conds): internal_validate_class callback
+ *   completeness check
+ *   `(init==NULL) || (handle_setup==NULL) || (close==NULL)` -- per
+ *   DO-178C 6.4.4.3 representative-subset for a side-effect-free OR:
+ *   3 lone-true vectors (each callback NULL in turn) + 1 all-false
+ *   (all three non-NULL) prove every condition independently flips
+ *   the outcome. Exercised via `ra_usb_composite_register_class`.
+ */
+static void test_mcdc_composite(void)
+{
+  TEST_BEGIN("composite MC/DC: init speed / class-callback OR chain");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_composite_init(k_ra_usb_speed_fs));
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_composite_init(k_ra_usb_speed_hs));
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_usb_composite_init((ra_usb_speed_t)9U));
+
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_composite_init(k_ra_usb_speed_fs));
+
+  /* B all-false: all three callbacks non-NULL -> ok. */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_composite_register_class(&s_cdc_layer));
+  /* B-V1: init=NULL. */
+  ra_usb_composite_class_t bad = s_hid_layer;
+  bad.init                     = nullptr;
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_usb_composite_register_class(&bad));
+  /* B-V2: handle_setup=NULL. */
+  bad              = s_hid_layer;
+  bad.handle_setup = nullptr;
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_usb_composite_register_class(&bad));
+  /* B-V3: close=NULL. */
+  bad       = s_hid_layer;
+  bad.close = nullptr;
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_usb_composite_register_class(&bad));
+
+  TEST_END("composite MC/DC: init speed / class-callback OR chain");
+}
+
 int32_t main(void)
 {
   test_init_fs_returns_ok();
@@ -542,6 +590,7 @@ int32_t main(void)
   test_get_count_null_rejection();
   test_step_loops_without_error();
   test_close_invokes_each_class_close();
+  test_mcdc_composite();
   (void)fprintf(stderr, "[OK ] test_ra_usb_composite.c\n");
   return 0;
 }

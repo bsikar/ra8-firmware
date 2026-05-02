@@ -593,6 +593,33 @@ static void test_build_csw_null_guard(void)
   TEST_END("build_csw rejects NULL output");
 }
 
+/**
+ * @test test_mcdc_pmsc
+ *
+ * @par MC/DC:
+ * Covers the compound boolean decision flagged in docs/MCDC_GAPS.csv
+ * for libs/ra_hal/src/ra_usb_pmsc.c.
+ *
+ * Decision A (line 817, 2 conds): pmsc_init speed gate
+ *   `(speed != FS) && (speed != HS)` -- N+1=3:
+ *   - V1 FS -> C1=F (short circuit) -> dec=F (init ok)
+ *   - V2 HS -> C1=T, C2=F           -> dec=F (init ok)
+ *   - V3 9  -> C1=T, C2=T           -> dec=T (invalid_arg)
+ * Vectors V1+V3 vary C1 with C2 implicit (decision flips); V2+V3 vary
+ * C2 with C1 held T (decision flips). N+1=3 minimal MC/DC.
+ */
+static void test_mcdc_pmsc(void)
+{
+  TEST_BEGIN("pmsc MC/DC: init speed gate");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pmsc_init(k_ra_usb_speed_fs));
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pmsc_init(k_ra_usb_speed_hs));
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_usb_pmsc_init((ra_usb_speed_t)9U));
+  TEST_END("pmsc MC/DC: init speed gate");
+}
+
 int32_t main(void)
 {
   test_init_fs_returns_ok();
@@ -613,6 +640,7 @@ int32_t main(void)
   test_step_state_machine_loops();
   test_dispatch_null_arg_rejection();
   test_build_csw_null_guard();
+  test_mcdc_pmsc();
   (void)fprintf(stderr, "[OK ] test_ra_usb_pmsc.c\n");
   return 0;
 }

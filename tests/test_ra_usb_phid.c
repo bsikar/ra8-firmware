@@ -384,6 +384,154 @@ static void test_handle_setup_callback_stalls(void)
   TEST_END("ra_usb_phid_handle_setup stalls EP0 when callback returns error");
 }
 
+/* =============================================================================
+ * MC/DC vector tests for the compound boolean decisions flagged in
+ * docs/MCDC_GAPS.csv against libs/ra_hal/src/ra_usb_phid.c.
+ * =============================================================================
+ */
+
+/**
+ * @enum test_phid_mcdc_t
+ * @brief Numeric vectors driving the MC/DC tests below.
+ */
+typedef enum : uint16_t {
+  k_test_phid_speed_bad     = 9U,
+  k_test_phid_iface_in      = 0xA1U,
+  k_test_phid_iface_out     = 0x21U,
+  k_test_phid_bm_bogus      = 0x80U,
+  k_test_phid_breq_unknown  = 0x77U,
+  k_test_phid_send_len_zero = 0U,
+  k_test_phid_send_len_some = 4U,
+  k_test_phid_desc_len_zero = 0U,
+  k_test_phid_desc_len_some = 8U,
+} test_phid_mcdc_t;
+
+static const uint8_t s_dummy_desc_a[8] = {0};
+static const uint8_t s_dummy_desc_b[8] = {0};
+
+/**
+ * @test test_mcdc_phid
+ *
+ * @par MC/DC:
+ * Covers every compound decision flagged in docs/MCDC_GAPS.csv for
+ * libs/ra_hal/src/ra_usb_phid.c.
+ *
+ * Decision A (line 223, 2 conds): init speed gate
+ *   `(speed != FS) && (speed != HS)` -- N+1=3:
+ *   - V1 FS  -> C1=F (short circuit) -> dec=F
+ *   - V2 HS  -> C1=T, C2=F           -> dec=F
+ *   - V3 9   -> C1=T, C2=T           -> dec=T (invalid_arg)
+ *
+ * Decision B (line 274, 2 conds): set_descriptors len OR
+ *   `(report_desc_len == 0) || (hid_desc_len == 0)` -- N+1=3:
+ *   - V1 (8,8) -> C1=F, C2=F -> dec=F (ok)
+ *   - V2 (0,8) -> C1=T (short circuit) -> dec=T (invalid_arg)
+ *   - V3 (8,0) -> C1=F, C2=T -> dec=T (invalid_arg)
+ *
+ * Decision C (line 294, 2 conds): send_report null-with-len
+ *   `(payload == NULL) && (len != 0)` -- N+1=3:
+ *   - V1 (NULL,0) -> C1=T,C2=F -> dec=F (falls to next check)
+ *   - V2 (buf,4)  -> C1=F      -> dec=F
+ *   - V3 (NULL,4) -> C1=T,C2=T -> dec=T (null_ptr)
+ *
+ * Decision D (line 297, 2 conds): send_report (rid==0 && len==0)
+ *   - V1 (rid=0,len=0)   -> C1=T, C2=T -> dec=T (invalid_arg)
+ *   - V2 (rid=1,len=0)   -> C1=F       -> dec=F (falls through)
+ *   - V3 (rid=0,len=4)   -> C1=T, C2=F -> dec=F (falls through)
+ *
+ * Decision E (lines 372-373, 2 conds): handle_setup envelope
+ *   `(bm != iface_in) && (bm != iface_out)` -- N+1=3.
+ *
+ * Decision F (lines 178-180, 6-condition OR chain inside
+ * `internal_is_known_class_request`): per DO-178C 6.4.4.3
+ * representative-subset: 6 lone-true vectors + 1 all-false (7 total).
+ */
+static void test_mcdc_phid(void)
+{
+  TEST_BEGIN("phid MC/DC: init/desc/send_report/handle_setup compound decisions");
+
+  /* Decision A: init speed gate. */
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_phid_init(k_ra_usb_speed_fs));
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_phid_init(k_ra_usb_speed_hs));
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_usb_phid_init((ra_usb_speed_t)k_test_phid_speed_bad));
+
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_phid_init(k_ra_usb_speed_fs));
+
+  /* Decision B: set_descriptors len OR. */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_usb_phid_set_descriptors(s_dummy_desc_a, 8U, s_dummy_desc_b, 8U));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_usb_phid_set_descriptors(s_dummy_desc_a, 0U, s_dummy_desc_b, 8U));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_usb_phid_set_descriptors(s_dummy_desc_a, 8U, s_dummy_desc_b, 0U));
+
+  /* Decision C + D: send_report. */
+  uint8_t buf[8] = {};
+  /* C-V3: NULL with len -> null_ptr. */
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_null_ptr,
+    (int32_t)ra_usb_phid_send_report(0U, nullptr, (uint16_t)k_test_phid_send_len_some));
+  /* D-V1: rid=0, len=0 -> invalid_arg. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_usb_phid_send_report(0U, buf, (uint16_t)k_test_phid_send_len_zero));
+  /* C-V1 + D-V1: NULL,0 -> still invalid_arg via D path. */
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_invalid_arg,
+    (int32_t)ra_usb_phid_send_report(0U, nullptr, (uint16_t)k_test_phid_send_len_zero));
+  /* D-V2: rid!=0, len=0 -> exits via len overflow check or queue_in;
+   * either way decision D stays false. The send may return ok or
+   * hw_error from the simulator; we only assert it is NOT invalid_arg. */
+  const ra_err_t d_v2 = ra_usb_phid_send_report(1U, buf, (uint16_t)k_test_phid_send_len_zero);
+  TEST_ASSERT(d_v2 != k_ra_err_invalid_arg);
+  /* D-V3: rid=0, len!=0 -> decision D false. */
+  const ra_err_t d_v3 = ra_usb_phid_send_report(0U, buf, (uint16_t)k_test_phid_send_len_some);
+  TEST_ASSERT(d_v3 != k_ra_err_invalid_arg);
+
+  /* Decision E + F: handle_setup. */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_usb_phid_attach_setup_handler(test_setup_cb, nullptr));
+  ra_usb_setup_t setup = {
+    .bm_request_type = (uint8_t)k_test_phid_iface_in,
+    .b_request       = (uint8_t)k_ra_phid_req_get_report,
+    .w_value         = 0U,
+    .w_index         = 0U,
+    .w_length        = 0U,
+  };
+  /* E-V1 iface_in -> envelope ok. */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_phid_handle_setup(&setup));
+  /* E-V2 iface_out -> envelope ok. */
+  setup.bm_request_type = (uint8_t)k_test_phid_iface_out;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_phid_handle_setup(&setup));
+  /* E-V3 standard envelope -> not_supported. */
+  setup.bm_request_type = (uint8_t)k_test_phid_bm_bogus;
+  TEST_ASSERT_EQ((int32_t)k_ra_err_not_supported, (int32_t)ra_usb_phid_handle_setup(&setup));
+
+  /* F: 6 lone-true vectors. */
+  setup.bm_request_type    = (uint8_t)k_test_phid_iface_in;
+  const uint8_t requests[] = {
+    (uint8_t)k_ra_phid_req_get_report,
+    (uint8_t)k_ra_phid_req_set_report,
+    (uint8_t)k_ra_phid_req_get_idle,
+    (uint8_t)k_ra_phid_req_set_idle,
+    (uint8_t)k_ra_phid_req_get_protocol,
+    (uint8_t)k_ra_phid_req_set_protocol,
+  };
+  for (uint8_t i = 0U; i < (uint8_t)(sizeof(requests) / sizeof(requests[0])); ++i) {
+    setup.b_request = requests[i];
+    TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_phid_handle_setup(&setup));
+  }
+  /* F all-false vector. */
+  setup.b_request = (uint8_t)k_test_phid_breq_unknown;
+  TEST_ASSERT_EQ((int32_t)k_ra_err_not_supported, (int32_t)ra_usb_phid_handle_setup(&setup));
+
+  TEST_END("phid MC/DC: init/desc/send_report/handle_setup compound decisions");
+}
+
 int32_t main(void)
 {
   test_init_fs();
@@ -401,6 +549,7 @@ int32_t main(void)
   test_handle_setup_rejects_standard();
   test_handle_setup_get_report_acks();
   test_handle_setup_callback_stalls();
+  test_mcdc_phid();
   (void)fprintf(stderr, "[OK ] test_ra_usb_phid.c\n");
   return 0;
 }

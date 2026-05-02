@@ -203,6 +203,81 @@ static void test_handle_setup_no_handler_stalls(void)
   TEST_END("ra_usb_pvnd_handle_setup stalls vendor SETUP when no callback registered");
 }
 
+/**
+ * @test test_mcdc_pvnd
+ *
+ * @par MC/DC:
+ * Covers compound decisions flagged in docs/MCDC_GAPS.csv for
+ * libs/ra_hal/src/ra_usb_pvnd.c.
+ *
+ * Decision A (line 124, 2 conds): pvnd_init speed gate
+ *   `(speed != FS) && (speed != HS)` -- N+1=3 (FS / HS / 9).
+ *
+ * Decision B (line 187, 2 conds): pvnd_send NULL-with-len
+ *   `(data == NULL) && (len != 0)` -- N+1=3.
+ *
+ * Decision C (line 190, 2 conds): pvnd_send size envelope
+ *   `(len == 0) || (len > bulk_max_packet)` -- N+1=3.
+ *
+ * Decision D (lines 112-114, 6-condition OR chain in
+ * `internal_is_vendor_envelope`): per DO-178C 6.4.4.3
+ * representative-subset criterion for a side-effect-free OR: 6
+ * lone-true vectors + 1 all-false vector (7 total) prove every
+ * condition independently flips the outcome. Exercised through
+ * `ra_usb_pvnd_handle_setup`.
+ */
+static void test_mcdc_pvnd(void)
+{
+  TEST_BEGIN("pvnd MC/DC: init / send envelope / vendor OR chain");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pvnd_init(k_ra_usb_speed_fs));
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pvnd_init(k_ra_usb_speed_hs));
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_usb_pvnd_init((ra_usb_speed_t)9U));
+
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pvnd_init(k_ra_usb_speed_fs));
+
+  /* Decision B + C: send. */
+  uint8_t buf[16] = {};
+  /* B-V1 / C-V1: NULL,0 -> C catches len==0, returns invalid_arg. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_usb_pvnd_send(nullptr, 0U));
+  /* B-V3: NULL,4 -> null_ptr. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_usb_pvnd_send(nullptr, 4U));
+  /* B-V2 + C-V2: buf,4 -> forwarded. */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pvnd_send(buf, 4U));
+  /* C-V3: buf,1024 (FS bulk ceiling=64) -> invalid_arg. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_usb_pvnd_send(buf, 1024U));
+
+  /* Decision D: vendor envelope OR chain. */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_usb_pvnd_attach_setup_handler(test_setup_cb, nullptr));
+  ra_usb_setup_t setup = {
+    .bm_request_type = (uint8_t)k_ra_pvnd_bm_vendor_dev_in,
+    .b_request       = 0x10U,
+    .w_value         = 0U,
+    .w_index         = 0U,
+    .w_length        = 0U,
+  };
+  const uint8_t bms[] = {
+    (uint8_t)k_ra_pvnd_bm_vendor_dev_in,
+    (uint8_t)k_ra_pvnd_bm_vendor_dev_out,
+    (uint8_t)k_ra_pvnd_bm_vendor_iface_in,
+    (uint8_t)k_ra_pvnd_bm_vendor_iface_out,
+    (uint8_t)k_ra_pvnd_bm_vendor_ep_in,
+    (uint8_t)k_ra_pvnd_bm_vendor_ep_out,
+  };
+  for (uint8_t i = 0U; i < (uint8_t)(sizeof(bms) / sizeof(bms[0])); ++i) {
+    setup.bm_request_type = bms[i];
+    TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pvnd_handle_setup(&setup));
+  }
+  /* All-false vector: standard envelope. */
+  setup.bm_request_type = 0x80U;
+  TEST_ASSERT_EQ((int32_t)k_ra_err_not_supported, (int32_t)ra_usb_pvnd_handle_setup(&setup));
+  TEST_END("pvnd MC/DC: init / send envelope / vendor OR chain");
+}
+
 int32_t main(void)
 {
   test_init_fs();
@@ -213,6 +288,7 @@ int32_t main(void)
   test_handle_setup_dispatch();
   test_handle_setup_rejects();
   test_handle_setup_no_handler_stalls();
+  test_mcdc_pvnd();
   (void)fprintf(stderr, "[OK ] test_ra_usb_pvnd.c\n");
   return 0;
 }
