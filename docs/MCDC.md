@@ -174,3 +174,9 @@ for MC/DC and the gate.
 - `ra_psa_crypto` constant-time paths intentionally evaluate every
   condition (no short-circuit) for side-channel reasons; they will be
   documented as "deactivated short-circuit" rather than gated on MC/DC.
+
+## Measurement history
+
+| Date       | First-party MC/DC % | Notes                                              |
+|------------|---------------------|----------------------------------------------------|
+| 2026-05-02 | 68.31               | clang-18 in devcontainer; 142/169 host tests pass. |
