@@ -84,6 +84,7 @@ target_compile_definitions(nimble INTERFACE RA_TARGET_BUILD)
 target_include_directories(nimble SYSTEM INTERFACE
     ${_RA_NIMBLE_VENDOR_DIR}/nimble/include
     ${_RA_NIMBLE_VENDOR_DIR}/nimble/host/include
+    ${_RA_NIMBLE_VENDOR_DIR}/nimble/host/mesh/include
     ${_RA_NIMBLE_VENDOR_DIR}/nimble/transport/include
     ${_RA_NIMBLE_VENDOR_DIR}/porting/nimble/include
     # Upstream ``nimble/nimble_npl.h`` chains to ``nimble/nimble_npl_os.h``
@@ -96,6 +97,13 @@ target_include_directories(nimble SYSTEM INTERFACE
     # nimble_port_threadx, which carries its own ThreadX-typed NPL.
     ${_RA_NIMBLE_VENDOR_DIR}/porting/npl/dummy/include
 )
+
+# Apps that link `nimble` get RA_TARGET_BUILD so the ra_ble_host
+# wrapper TUs (ra_ble_security.c / ra_ble_gatt_client.c / ra_ble_mesh.c)
+# compile in the direct NimBLE call paths. Host unit tests do not link
+# `nimble`, so RA_TARGET_BUILD stays undefined and the wrappers fall
+# back to their portable bookkeeping-only implementations.
+target_compile_definitions(nimble INTERFACE RA_TARGET_BUILD)
 
 # NimBLE's NPL header pulls ThreadX primitives in via our
 # port/nimble/nimble_npl_threadx.h shim. Inherit the ThreadX include
