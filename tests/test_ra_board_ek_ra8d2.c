@@ -137,8 +137,7 @@ static void test_audio_play_sample_block_validates(void)
   TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_board_audio_play_sample_block(buf, 0U));
   TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_board_audio_play_sample_block(buf, 3U));
   /* Even-length non-empty buffer reaches the (currently stubbed) HAL hook. */
-  TEST_ASSERT_EQ((int)k_ra_err_not_supported,
-                 (int)ra_board_audio_play_sample_block(buf, 4U));
+  TEST_ASSERT_EQ((int)k_ra_err_not_supported, (int)ra_board_audio_play_sample_block(buf, 4U));
   TEST_END("audio_play_sample_block rejects bad args");
 }
 
@@ -162,9 +161,9 @@ static void test_arduino_pins(void)
 static void test_arduino_pin_init_invalid_mode(void)
 {
   TEST_BEGIN("arduino_pin_init rejects unknown mode");
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
-                 (int)ra_board_arduino_pin_init(k_ra_board_arduino_d2,
-                                                (ra_board_arduino_mode_t)0xFFU));
+  TEST_ASSERT_EQ(
+    (int)k_ra_err_invalid_arg,
+    (int)ra_board_arduino_pin_init(k_ra_board_arduino_d2, (ra_board_arduino_mode_t)0xFFU));
   TEST_END("arduino_pin_init rejects unknown mode");
 }
 
@@ -206,20 +205,16 @@ static void test_glcdc_pin_tables_populated(void)
   TEST_ASSERT(g_ra_board_glcdc_rgb666_pin_count >= g_ra_board_glcdc_rgb565_pin_count);
 
   /* Spot-check J1-1 BLEN = P514 across all tables. */
-  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_5, k_ra_pin_14),
-                 (int)g_ra_board_glcdc_rgb888_pins[0].pin);
-  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_5, k_ra_pin_14),
-                 (int)g_ra_board_glcdc_rgb666_pins[0].pin);
-  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_5, k_ra_pin_14),
-                 (int)g_ra_board_glcdc_rgb565_pins[0].pin);
+  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_5, k_ra_pin_14), (int)g_ra_board_glcdc_rgb888_pins[0].pin);
+  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_5, k_ra_pin_14), (int)g_ra_board_glcdc_rgb666_pins[0].pin);
+  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_5, k_ra_pin_14), (int)g_ra_board_glcdc_rgb565_pins[0].pin);
   TEST_END("glcdc pin tables non-empty + sized correctly");
 }
 
 static void test_glcdc_init_invalid_fmt(void)
 {
   TEST_BEGIN("glcdc_init rejects bogus format");
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
-                 (int)ra_board_glcdc_init((ra_board_glcdc_fmt_t)0xFFU));
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_board_glcdc_init((ra_board_glcdc_fmt_t)0xFFU));
   TEST_END("glcdc_init rejects bogus format");
 }
 
@@ -272,8 +267,10 @@ static void test_mipi_dsi_pins(void)
 static void test_stubs_return_not_supported(void)
 {
   TEST_BEGIN("usbhs / mipi-dsi stubs return not_supported");
-  TEST_ASSERT_EQ((int)k_ra_err_not_supported, (int)ra_board_usbhs_device_init());
-  TEST_ASSERT_EQ((int)k_ra_err_not_supported, (int)ra_board_usbhs_host_init());
+  /* USBHS device/host promoted to real in commit 28c4ed436; sim hits CGC
+   * MOSCSF-wait timeout. Just exercise both for crash-immunity. */
+  (void)ra_board_usbhs_device_init();
+  (void)ra_board_usbhs_host_init();
   TEST_ASSERT_EQ((int)k_ra_err_not_supported, (int)ra_board_mipi_dsi_init());
   TEST_END("usbhs / mipi-dsi stubs return not_supported");
 }
@@ -309,16 +306,15 @@ static void test_uart_console_write_validates(void)
   /* Zero-length write is a no-op success regardless of init state. */
   TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_uart_console_write(NULL, 0U));
   /* NULL data with non-zero len -> invalid_arg. */
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
-                 (int)ra_board_uart_console_write(NULL, 4U));
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_board_uart_console_write(NULL, 4U));
   TEST_END("uart_console_write validates args + state");
 }
 
 static void test_uart_console_read_validates(void)
 {
   TEST_BEGIN("uart_console_read validates args + state");
-  uint8_t buf[4]   = {};
-  size_t  out_len  = 0xAAU;
+  uint8_t buf[4]  = {};
+  size_t  out_len = 0xAAU;
   /* NULL out_len always rejected. */
   TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
                  (int)ra_board_uart_console_read(buf, sizeof(buf), NULL));
