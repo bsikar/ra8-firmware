@@ -73,3 +73,17 @@ make flash      # JLinkExe load
 - The first run of the demo reformats both layers; persistence across
   resets is intentionally not tested by this skeleton (each cold boot
   re-formats the partition so the demo is self-contained).
+- The EK-RA8D2 v1 board's on-board Octo-SPI flash is an Infineon
+  IS25LX512M-JHLE (UM Section 6.3 + Table 29 p 35), not a Macronix
+  MX25LM512 -- the historical "Macronix MX25LM512" label in this
+  README is a copy-paste from the FSP example; treat it as "the
+  on-board Octo-SPI NOR flash" regardless of vendor part.
+
+## BSP usage
+
+Uses `ra_board_ek_ra8d2` BSP for LED init/toggle (per UM Table 24 p
+31). On-board Octo-SPI flash pin set per UM Table 29 p 35.
+
+Validated 2026-05-02 against EK-RA8D2 v1 User's Manual (R20UT5523EG0101
+Rev 1.01) Section 6.3 + Table 29 p 35 + Table 24 p 31, and HUM
+(R01UH1065EJ0130) Octo-SPI chapter.

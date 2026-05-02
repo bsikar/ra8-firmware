@@ -121,8 +121,18 @@ make clean
    table above. `pclk_hz` comes from `ra_cgc_get_clock_hz` so the
    BRR calculator never goes stale.
 4. `ra_time_init()` sets up SysTick for `ra_delay_ms`.
-5. `ra_gpio_output_init(k_ra_pin_led1, low)` for the heartbeat.
+5. `ra_board_led_init(k_ra_board_led1)` for the heartbeat (LED1 = P600
+   per EK-RA8D2 v1 UM Table 24 p 31).
 6. Loop: write the greeting, toggle LED1, sleep 1 s.
+
+## BSP usage
+
+Uses `ra_board_ek_ra8d2` BSP for LED1 init/toggle (P600). The SCI8
+console pins (PD02 / PD03) are routed via `ra_pfs_route_peripheral`
+directly rather than through the BSP `ra_board_uart_console_init`
+veneer (which currently forwards to SCI3 -- the BSP veneer's channel
+selection lags behind the FSP-aligned SCI8 wiring this app uses on the
+J-Link OB CDC bridge per UM Table 13 p 24).
 
 ## Debugging
 
@@ -149,3 +159,8 @@ mem32 0x4013C004 1    # MRCFREQ -- expected 0xFA  (250 MHz, key stripped)
 mem32 0x4013C008 1    # MREFREQ -- expected 0x7D  (125 MHz, key stripped)
 mem32 0x4001E014 1    # VSCR    -- expected bit 0 set (VSCM=1)
 ```
+
+Validated 2026-05-02 against EK-RA8D2 v1 User's Manual (R20UT5523EG0101
+Rev 1.01) Table 13 "Debug Serial Port Assignment" p 24 + Table 24
+"LED Functions" p 31, and HUM (R01UH1065EJ0130) Ch 38 "SCI" / Ch 8
+"CGC".

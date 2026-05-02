@@ -50,3 +50,13 @@ into the cmake configure step, which in turn pulls in
 If the top-level `make threadx_filex_demo` complains about missing
 ThreadX targets, that means the sibling Wave 13 / Phase 4.1 ThreadX
 port has not landed yet -- see `cmake/threadx.cmake`.
+
+## BSP usage
+
+Uses `ra_board_ek_ra8d2` BSP for LED init/toggle (per EK-RA8D2 v1 UM
+Table 24 p 31). Micro-SD slot is the on-board J6 SDHI connector. SCI8
+console pins are PD02/PD03 per UM Table 13 p 24.
+
+Validated 2026-05-02 against EK-RA8D2 v1 User's Manual (R20UT5523EG0101
+Rev 1.01) Table 13 p 24 + Table 24 p 31, and HUM (R01UH1065EJ0130)
+SDHI / SCI chapters.

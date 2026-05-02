@@ -51,3 +51,20 @@ into the cmake configure step, which in turn pulls in
 If the top-level `make threadx_levelx_demo` complains about missing
 ThreadX targets, that means the sibling Wave 13 ThreadX port has not
 landed yet -- see `cmake/threadx.cmake`.
+
+Note: the EK-RA8D2 v1 board carries an **Infineon IS25LX512M-JHLE**
+64 MB Octo-SPI flash (UM Section 6.3 + Table 29 p 35), not a Macronix
+MX25LM512 -- the README/main.c reference to "Macronix MX25LM512" is a
+copy-paste from the FSP example and should be read as "the on-board
+Octo-SPI NOR flash" regardless of vendor part.
+
+## BSP usage
+
+Uses `ra_board_ek_ra8d2` BSP for LED init/toggle (LEDs per EK-RA8D2
+v1 UM Table 24 p 31). On-board Octo-SPI flash pins per UM Table 29
+"Octo-SPI Flash Assignments" p 35 (SW4-3 selects Octo-SPI vs Arduino/
+Pmod1).
+
+Validated 2026-05-02 against EK-RA8D2 v1 User's Manual (R20UT5523EG0101
+Rev 1.01) Table 13 p 24 + Table 24 p 31 + Section 6.3 + Table 29 p 35,
+and HUM (R01UH1065EJ0130) Ch "Octo-SPI / OSPI".

@@ -46,3 +46,11 @@ aliases. The application overrides `SysTick_Handler` in `main.c` to
 tail-call `_tx_timer_interrupt`. `PendSV_Handler` and `SVC_Handler`
 are supplied as strong symbols by the upstream ThreadX port and
 override the weak aliases automatically.
+
+## BSP usage
+
+Uses `ra_board_ek_ra8d2` BSP for LED1 / LED2 init/toggle (P600 / P303
+per EK-RA8D2 v1 UM Table 24 p 31).
+
+Validated 2026-05-02 against EK-RA8D2 v1 User's Manual (R20UT5523EG0101
+Rev 1.01) Table 24 p 31, and Eclipse ThreadX Cortex-M85 GNU port docs.
