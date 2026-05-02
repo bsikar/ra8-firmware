@@ -309,7 +309,51 @@ def audit_file(path: Path):
     return rows
 
 
+def run_check() -> int:
+    """Strict gate: exit 0 if zero gaps, else exit 1 with offender list.
+
+    Used by the pre-commit hook to keep documentation coverage at 100%.
+    Does not write CSV/MD outputs -- read-only audit.
+    """
+    all_rows = []
+    for top in SCAN_DIRS:
+        root = REPO_ROOT / top
+        if not root.is_dir():
+            continue
+        for dirpath, dirnames, filenames in os.walk(root):
+            dirnames[:] = [d for d in dirnames if d not in EXCLUDE_PARTS]
+            for fn in filenames:
+                if not (fn.endswith(".c") or fn.endswith(".h")):
+                    continue
+                p = Path(dirpath) / fn
+                rel_parts = p.relative_to(REPO_ROOT).parts
+                if any(part in EXCLUDE_PARTS for part in rel_parts):
+                    continue
+                all_rows.extend(audit_file(p))
+
+    gap_rows = [r for r in all_rows if r[3]]
+    if not gap_rows:
+        print("doxy_audit --check: gaps=0 (PASS)")
+        return 0
+
+    print(f"doxy_audit --check: gaps={len(gap_rows)} (FAIL)")
+    print("Offending functions (file:line  function  -- missing tags):")
+    # cap output to 50 lines so the hook stays readable
+    cap = 50
+    for src, line, name, missing, _sev in gap_rows[:cap]:
+        print(f"  {src}:{line}  {name}  --  {';'.join(missing)}")
+    if len(gap_rows) > cap:
+        print(f"  ... and {len(gap_rows) - cap} more")
+    print("")
+    print("Refresh the audit report by running:")
+    print("  python3 scripts/utils/doxy_audit.py")
+    return 1
+
+
 def main() -> int:
+    if "--check" in sys.argv[1:]:
+        return run_check()
+
     all_rows = []
     for top in SCAN_DIRS:
         root = REPO_ROOT / top
