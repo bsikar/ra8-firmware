@@ -353,6 +353,48 @@ static void test_attach_per_channel_callback(void)
   TEST_END("dmac per-channel callback dispatches");
 }
 
+/**
+ * @test test_mcdc_set_address_mode_bounds
+ *
+ * @par MC/DC:
+ * Decision: `if ((src_mode > k_ra_dmac_addr_decrement) ||
+ *               (dest_mode > k_ra_dmac_addr_decrement))`
+ * (2 conditions, libs/ra_hal/src/ra_dmac.c line 629 -- gap row 337 in CSV)
+ * - Vector 1: src=fixed (0), dest=fixed (0) -> F,F decision F -> ok.
+ * - Vector 2: src=99 (out of range), dest=fixed -> T,_ short-circuit
+ *   decision T -> invalid_arg (varies C1 vs V1).
+ * - Vector 3: src=fixed, dest=99 -> F,T decision T -> invalid_arg
+ *   (varies C2 vs V1; C1 held F).
+ * MC/DC pair for C1: V1(F,F)->F vs V2(T,_)->T (decision flips, C2
+ * masked by short-circuit). MC/DC pair for C2: V1(F,F)->F vs V3(F,T)->T
+ * (decision flips, C1 held F). N+1 = 3 vectors for N=2 conditions.
+ */
+static void test_mcdc_set_address_mode_bounds(void)
+{
+  TEST_BEGIN("dmac set_address_mode MC/DC: src>dec || dest>dec");
+  prep_dmac_ext();
+
+  /* Vector 1: both in range. */
+  TEST_ASSERT_EQ((int)k_ra_ok,
+                 (int)ra_dmac_set_address_mode((uint8_t)k_ra_dmac_test_channel_valid,
+                                               k_ra_dmac_addr_fixed,
+                                               k_ra_dmac_addr_fixed));
+
+  /* Vector 2: src out of range, dest in range -> C1=T short-circuits. */
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
+                 (int)ra_dmac_set_address_mode((uint8_t)k_ra_dmac_test_channel_valid,
+                                               (ra_dmac_addr_mode_t)99U,
+                                               k_ra_dmac_addr_fixed));
+
+  /* Vector 3: src in range, dest out of range -> C1=F, C2=T. */
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
+                 (int)ra_dmac_set_address_mode((uint8_t)k_ra_dmac_test_channel_valid,
+                                               k_ra_dmac_addr_fixed,
+                                               (ra_dmac_addr_mode_t)99U));
+
+  TEST_END("dmac set_address_mode MC/DC: src>dec || dest>dec");
+}
+
 int32_t main(void)
 {
   test_start_null_cfg();
@@ -371,6 +413,7 @@ int32_t main(void)
   test_set_address_mode_invalid();
   test_attach_half_complete_handler();
   test_attach_per_channel_callback();
+  test_mcdc_set_address_mode_bounds();
   (void)fprintf(stderr, "[OK  ] test_ra_dmac.c\n");
   return 0;
 }

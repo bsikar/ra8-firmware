@@ -258,6 +258,52 @@ static void test_power_transition(void)
   TEST_END("crc power transition");
 }
 
+/**
+ * @test test_mcdc_is_32bit_poly
+ *
+ * @par MC/DC:
+ * Decision: `return (poly == k_ra_crc_poly_32_ieee802_3) ||
+ *                  (poly == k_ra_crc_poly_32c_rev);`
+ * (2 conditions, libs/ra_hal/src/ra_crc.c line 70 -- gap row 58 in CSV)
+ * Exercised indirectly via `ra_crc_compute()` which calls
+ * `ra_crc_is_32bit_poly(poly)` to choose the 32-bit-word vs byte input
+ * loop. The selected branch is observed by running compute() to k_ra_ok
+ * for each polynomial.
+ * - Vector 1: poly = poly_32_ieee802_3 -> C1=T, C2 short-circuits
+ *   decision T -> word path (CRCDIR writes)
+ * - Vector 2: poly = poly_32c_rev      -> C1=F, C2=T
+ *   decision T -> word path (varies C2 vs V3)
+ * - Vector 3: poly = poly_16           -> C1=F, C2=F
+ *   decision F -> byte path (CRCDIR_BY writes)
+ * MC/DC pair for C1: V1(T,_)->T vs V3(F,F)->F, decision flips, C2 held
+ * F (or short-circuited). MC/DC pair for C2: V2(F,T)->T vs V3(F,F)->F,
+ * decision flips, C1 held F. N+1 = 3 vectors for N=2 conditions.
+ */
+static void test_mcdc_is_32bit_poly(void)
+{
+  TEST_BEGIN("crc compute MC/DC: poly==32_ieee || poly==32c_rev");
+  prep_w44();
+
+  uint32_t crc = 0U;
+
+  /* Vector 1: CRC-32 IEEE 802.3 -> C1=T -> word path. */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_crc_init(k_ra_crc_poly_32_ieee802_3));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_crc_compute(s_payload, (uint32_t)k_ra_crc_test_len, &crc));
+
+  /* Vector 2: CRC-32C reversed -> C1=F, C2=T -> word path. */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_crc_init(k_ra_crc_poly_32c_rev));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_crc_compute(s_payload, (uint32_t)k_ra_crc_test_len, &crc));
+
+  /* Vector 3: CRC-16 -> C1=F, C2=F -> byte path. */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_crc_init(k_ra_crc_poly_16));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_crc_compute(s_payload, (uint32_t)k_ra_crc_test_len, &crc));
+
+  TEST_END("crc compute MC/DC: poly==32_ieee || poly==32c_rev");
+}
+
 int32_t main(void)
 {
   test_init_programs_poly_crc8();
@@ -276,6 +322,7 @@ int32_t main(void)
   test_set_poly();
   test_get_status();
   test_power_transition();
+  test_mcdc_is_32bit_poly();
   (void)fprintf(stderr, "[OK ] test_ra_crc.c\n");
   return 0;
 }

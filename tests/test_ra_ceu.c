@@ -845,6 +845,112 @@ static void test_deinit(void)
   TEST_END("ceu deinit");
 }
 
+/**
+ * @test test_mcdc_init_continuous_format_guard
+ *
+ * @par MC/DC:
+ * Decision: `if ((cfg->capture_mode == k_ra_ceu_capture_continuous) &&
+ *               (cfg->capture_format != k_ra_ceu_fmt_image_capture))`
+ * (2 conditions, libs/ra_hal/src/ra_ceu.c line 607 -- gap row 452 in CSV)
+ * - Vector 1: mode=single, format=any -> C1=F short-circuits.
+ *   Decision F -> ok.
+ * - Vector 2: mode=continuous, format=image_capture -> C1=T, C2=F.
+ *   Decision F -> ok (the documented "continuous + image" combo).
+ * - Vector 3: mode=continuous, format=data_synchronous -> C1=T, C2=T.
+ *   Decision T -> invalid_arg.
+ * MC/DC pair for C1: V1(F,_)->F vs V3(T,T)->T (decision flips, C2
+ * masked in V1 by short-circuit). MC/DC pair for C2: V2(T,F)->F vs
+ * V3(T,T)->T (decision flips, C1 held T). N+1 = 3 vectors for N=2
+ * conditions: minimal MC/DC.
+ */
+static void test_mcdc_init_continuous_format_guard(void)
+{
+  TEST_BEGIN("ceu init MC/DC: continuous && format!=image");
+  prep();
+
+  ra_ceu_config_t v1 = make_cfg();
+  v1.capture_mode    = k_ra_ceu_capture_single;
+  v1.capture_format  = k_ra_ceu_fmt_data_synchronous;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ceu_init(&v1));
+  prep();
+
+  ra_ceu_config_t v2 = make_cfg();
+  v2.capture_mode    = k_ra_ceu_capture_continuous;
+  v2.capture_format  = k_ra_ceu_fmt_image_capture;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ceu_init(&v2));
+  prep();
+
+  ra_ceu_config_t v3 = make_cfg();
+  v3.capture_mode    = k_ra_ceu_capture_continuous;
+  v3.capture_format  = k_ra_ceu_fmt_data_synchronous;
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_ceu_init(&v3));
+
+  TEST_END("ceu init MC/DC: continuous && format!=image");
+}
+
+/**
+ * @test test_mcdc_arm_capture_firewall_guard
+ *
+ * @par MC/DC:
+ * Decision: `if ((s_ceu_image_area != 0U) && (bufs->y_top != nullptr))`
+ * (2 conditions, libs/ra_hal/src/ra_ceu.c line 965 -- gap row 627 in CSV)
+ * Reached only when capture_format == data_enable; firewall register
+ * is programmed only when both conditions are true. We observe the
+ * decision via the CFWCR register (FWE bit set when decision T).
+ * - Vector 1: image_area=0,    y_top!=NULL -> C1=F short-circuit ->
+ *   CFWCR firewall not enabled.
+ * - Vector 2: image_area=4096, y_top=NULL  -> C1=T, C2=F           ->
+ *   firewall not enabled.
+ * - Vector 3: image_area=4096, y_top!=NULL -> C1=T, C2=T           ->
+ *   firewall enabled (FWE bit set, FWV upper bound encoded).
+ * MC/DC pair for C1: V1(F,_)->F vs V3(T,T)->T. MC/DC pair for C2:
+ * V2(T,F)->F vs V3(T,T)->T. N+1 = 3 vectors for N=2 conditions:
+ * minimal MC/DC.
+ */
+static void test_mcdc_arm_capture_firewall_guard(void)
+{
+  TEST_BEGIN("ceu arm MC/DC: image_area!=0 && y_top!=NULL");
+
+  /* Vector 1: image_area=0, y_top non-NULL. */
+  prep();
+  ra_ceu_config_t cfg = make_cfg();
+  cfg.capture_format  = k_ra_ceu_fmt_data_enable;
+  cfg.image_area_size = 0U;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ceu_init(&cfg));
+  *ra_ceu_reg32(k_ra_ceu_off_cfwcr) = 0xDEADBEEFU;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_ceu_capture_arm((uint8_t*)(uintptr_t)k_test_ceu_buffer_addr));
+  /* C1=F -> the if-body is skipped; the else-branch unconditionally
+   * clears CFWCR to 0. */
+  TEST_ASSERT_EQ((int32_t)0, (int32_t)*ra_ceu_reg32(k_ra_ceu_off_cfwcr));
+
+  /* Vector 2: image_area=4096, y_top=NULL via capture_start_ex. */
+  prep();
+  cfg                 = make_cfg();
+  cfg.capture_format  = k_ra_ceu_fmt_data_enable;
+  cfg.image_area_size = 4096U;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ceu_init(&cfg));
+  const ra_ceu_buffers_t bufs_v2    = {.y_top = nullptr};
+  *ra_ceu_reg32(k_ra_ceu_off_cfwcr) = 0xCAFEBABEU;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ceu_capture_start_ex(&bufs_v2));
+  /* C1=T, C2=F -> inner write skipped; CFWCR retains previous value. */
+  TEST_ASSERT_EQ((int32_t)0xCAFEBABEU, (int32_t)*ra_ceu_reg32(k_ra_ceu_off_cfwcr));
+
+  /* Vector 3: image_area=4096, y_top non-NULL -> firewall programmed. */
+  prep();
+  cfg                 = make_cfg();
+  cfg.capture_format  = k_ra_ceu_fmt_data_enable;
+  cfg.image_area_size = 4096U;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ceu_init(&cfg));
+  *ra_ceu_reg32(k_ra_ceu_off_cfwcr) = 0U;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_ceu_capture_arm((uint8_t*)(uintptr_t)k_test_ceu_buffer_addr));
+  /* C1=T, C2=T -> FWE bit asserted. */
+  TEST_ASSERT((*ra_ceu_reg32(k_ra_ceu_off_cfwcr) & (uint32_t)k_ra_ceu_cfwcr_mask_fwe) != 0U);
+
+  TEST_END("ceu arm MC/DC: image_area!=0 && y_top!=NULL");
+}
+
 int32_t main(void)
 {
   test_init_happy();
@@ -894,6 +1000,8 @@ int32_t main(void)
   test_capture_start_no_buffer();
   test_capture_stop_wrapper();
   test_deinit();
+  test_mcdc_init_continuous_format_guard();
+  test_mcdc_arm_capture_firewall_guard();
   (void)fprintf(stderr, "[OK  ] test_ra_ceu.c\n");
   return 0;
 }

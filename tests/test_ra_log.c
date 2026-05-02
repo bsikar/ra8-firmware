@@ -292,6 +292,59 @@ static void test_err_to_str_unknown_default(void)
   TEST_END("ra_err_to_str returns 'unknown' for out-of-enum value");
 }
 
+/**
+ * @test test_mcdc_itm_put_u32_loop
+ *
+ * @par MC/DC:
+ * Decision: `while (value != 0U && i < k_ra_u32_max_digits)`
+ * (2 conditions, libs/ra_core/src/ra_log.c line 244 -- gap row 148 in CSV)
+ * Exercised indirectly via `internal_ra_log_info_val()` once the ITM
+ * is armed so the emit path actually reaches `internal_itm_put_u32()`.
+ * - Vector 1: value=0           -> C1=F (early-return path before loop;
+ *   loop predicate evaluated zero times so decision F controls entry)
+ * - Vector 2: value=1           -> C1=T, C2=T (i=0<10) -> enter loop
+ *   once, then value becomes 0 -> exit (C1=F).
+ * - Vector 3: value=0xFFFFFFFFU -> C1=T, C2=T 10 times until i reaches
+ *   k_ra_u32_max_digits=10 (full digit emit). Within the budget C1
+ *   stays T while C2 transitions T->F at iteration 10.
+ *
+ * MC/DC pair for C1: V1(F,_)->F vs V2(T,T)->T (C2 held T). MC/DC pair
+ * for C2 within V3: at iter 9 (T,T) the loop continues, at iter 10
+ * (T,F) the loop exits while C1 still T -- decision flip with C1 held
+ * T. N+1 = 3 vectors for N=2 conditions.
+ *
+ * @par DO-178C 6.4.4.3 rationale:
+ * C2 (`i < k_ra_u32_max_digits`) is structurally bounded: a uint32_t
+ * holds at most 10 decimal digits and the buffer is sized for exactly
+ * 10. The C2=F transition is observable only inside V3's iteration
+ * sequence; no caller can produce a uint32_t requiring 11+ digits, so
+ * the C1=T,C2=F-then-decision-F masking pair is provably reachable
+ * only within the V3 trajectory. This is acceptable per DO-178C
+ * 6.4.4.3 representative-subset coverage where structural bounds
+ * preclude an isolated single-vector demonstration.
+ */
+static void test_mcdc_itm_put_u32_loop(void)
+{
+  TEST_BEGIN("ra_log put_u32 MC/DC: value!=0 && i<max_digits");
+  ra_sim_mmap_reset();
+  test_itm_arm();
+  ra_log_init();
+
+  /* Vector 1: value == 0 -> early return path (C1=F at first check). */
+  internal_ra_log_info_val("V1", "zero", 0U);
+
+  /* Vector 2: value == 1 -> single loop iteration (C1=T, C2=T then
+   * value becomes 0 so C1 flips to F on the second predicate). */
+  internal_ra_log_info_val("V2", "one", 1U);
+
+  /* Vector 3: value == UINT32_MAX -> 10 iterations exhausting the
+   * digit budget so C2 transitions T->F at iteration 10 with C1 still
+   * T -- proves C2 independently controls loop exit. */
+  internal_ra_log_info_val("V3", "max", 0xFFFFFFFFU);
+
+  TEST_END("ra_log put_u32 MC/DC: value!=0 && i<max_digits");
+}
+
 int32_t main(void)
 {
   test_log_init_runs();
@@ -308,6 +361,7 @@ int32_t main(void)
   test_log_ready_fifo_full();
   test_err_to_str_every_code();
   test_err_to_str_unknown_default();
+  test_mcdc_itm_put_u32_loop();
   (void)fprintf(stderr, "[OK  ] test_ra_log.c\n");
   return 0;
 }

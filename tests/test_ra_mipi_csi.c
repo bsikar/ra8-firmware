@@ -1187,6 +1187,48 @@ static void test_attach_error_handler_null_safe(void)
   TEST_END("mipi_csi attach_error_handler accepts NULL detach");
 }
 
+/**
+ * @test test_mcdc_validate_lanes
+ *
+ * @par MC/DC:
+ * Decision: `if ((cfg->lanes != k_ra_mipi_csi_lanes_1) &&
+ *               (cfg->lanes != k_ra_mipi_csi_lanes_2))`
+ * (2 conditions, libs/ra_hal/src/ra_mipi_csi.c line 283)
+ * - Vector 1: lanes=1 -> C1=(1!=1)=F short-circuits. Decision F -> ok.
+ * - Vector 2: lanes=2 -> C1=(2!=1)=T, C2=(2!=2)=F. Decision F -> ok.
+ * - Vector 3: lanes=3 -> C1=(3!=1)=T, C2=(3!=2)=T. Decision T -> invalid_arg.
+ * MC/DC pair for C1: V1(F,_)->F vs V3(T,T)->T (decision flips, C2
+ * masked: not evaluated in V1, T in V3 so the masking pair is the
+ * effective short-circuit pair). MC/DC pair for C2: V2(T,F)->F vs
+ * V3(T,T)->T (decision flips, C1 held T). N+1 = 3 vectors for N=2
+ * conditions: minimal MC/DC.
+ */
+static void test_mcdc_validate_lanes(void)
+{
+  TEST_BEGIN("mipi_csi init MC/DC: lanes!=1 && lanes!=2");
+  prep();
+
+  ra_mipi_csi_config_t cfg = make_cfg();
+
+  /* Vector 1: lanes=1 -> decision F -> ok. */
+  cfg.lanes = k_ra_mipi_csi_lanes_1;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mipi_csi_init(&cfg));
+  prep();
+
+  /* Vector 2: lanes=2 -> decision F -> ok. */
+  cfg       = make_cfg();
+  cfg.lanes = k_ra_mipi_csi_lanes_2;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mipi_csi_init(&cfg));
+  prep();
+
+  /* Vector 3: lanes=3 -> decision T -> invalid_arg. */
+  cfg       = make_cfg();
+  cfg.lanes = (ra_mipi_csi_lanes_t)3U;
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_mipi_csi_init(&cfg));
+
+  TEST_END("mipi_csi init MC/DC: lanes!=1 && lanes!=2");
+}
+
 int32_t main(void)
 {
   test_init_happy();
@@ -1230,6 +1272,7 @@ int32_t main(void)
   test_attach_error_handler();
   test_error_handler_no_errors_silent();
   test_attach_error_handler_null_safe();
+  test_mcdc_validate_lanes();
   (void)fprintf(stderr, "[OK  ] test_ra_mipi_csi.c\n");
   return 0;
 }

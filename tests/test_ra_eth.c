@@ -368,6 +368,97 @@ static void test_apis_require_open(void)
   TEST_END("eth apis require open");
 }
 
+/**
+ * @test test_mcdc_resolve_sizes_buf_size
+ *
+ * @par MC/DC:
+ * Decision: `if ((bs < k_ra_eth_min_frame) || (bs > k_ra_eth_buf_size))`
+ * (2 conditions, libs/ra_hal/src/ra_eth.c line 309)
+ * Note: tx/rx counterparts on lines 303/306 have C1 unreachable from
+ * the public ra_eth_open API because zero is auto-defaulted to the
+ * compile-time max immediately above the predicate (lines 294-302).
+ * Buffer-size has the same default but the upper-bound condition C2 is
+ * still observable when user supplies a value in (max, UINT16_MAX].
+ * - Vector 1: bs=k_ra_eth_buf_size (1536) -> C1=(1536<60)=F,
+ *   C2=(1536>1536)=F. Decision F -> ok.
+ * - Vector 2: bs=10 (< min)               -> C1=(10<60)=T short-circuit.
+ *   Decision T -> invalid_arg (varies C1).
+ * - Vector 3: bs=2000 (> max)             -> C1=(2000<60)=F, C2=T.
+ *   Decision T -> invalid_arg (varies C2).
+ * MC/DC pair for C1: V1(F,F)->F vs V2(T,_)->T (C2 short-circuited in V2,
+ * F in V1; effective masking pair). MC/DC pair for C2: V1(F,F)->F vs
+ * V3(F,T)->T (C1 held F, decision flips). N+1 = 3 vectors for N=2
+ * conditions: minimal MC/DC.
+ *
+ * @par DO-178C 6.4.4.3 rationale:
+ * The sister tx/rx decisions on lines 303/306 are non-coverable via
+ * the public API because the auto-default at lines 294-298 makes
+ * tx==0 and rx==0 unreachable at the predicate. This is acceptable
+ * structural deviation per DO-178C 6.4.4.3 -- the buffer-size
+ * decision provides representative coverage of the same
+ * "(value < min) || (value > max)" pattern.
+ */
+static void test_mcdc_resolve_sizes_buf_size(void)
+{
+  TEST_BEGIN("eth open MC/DC: bs<min || bs>max");
+  prep();
+  /* Vector 1: bs=max -> in range. */
+  ra_eth_cfg_t v1 = s_test_cfg;
+  v1.buffer_size  = (uint16_t)k_ra_eth_buf_size;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_eth_open(&v1));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_eth_close());
+
+  /* Vector 2: bs<min -> C1=T short-circuit. */
+  prep();
+  ra_eth_cfg_t v2 = s_test_cfg;
+  v2.buffer_size  = 10U;
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_eth_open(&v2));
+
+  /* Vector 3: bs>max -> C1=F, C2=T. */
+  prep();
+  ra_eth_cfg_t v3 = s_test_cfg;
+  v3.buffer_size  = 2000U;
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_eth_open(&v3));
+
+  TEST_END("eth open MC/DC: bs<min || bs>max");
+}
+
+/**
+ * @test test_mcdc_eth_write_len_bounds
+ *
+ * @par MC/DC:
+ * Decision: `if ((len < k_ra_eth_min_frame) || (len > k_ra_eth_max_frame))`
+ * (2 conditions, libs/ra_hal/src/ra_eth.c line 546)
+ * - Vector 1: len=64 (in range)  -> F,F decision F -> ok / busy.
+ * - Vector 2: len=10 (too short) -> T,_ decision T -> invalid_arg (varies C1).
+ * - Vector 3: len=9999 (too long) -> F,T decision T -> invalid_arg (varies C2).
+ * MC/DC pair for C1: V1(F,F)->F vs V2(T,_)->T. MC/DC pair for C2:
+ * V1(F,F)->F vs V3(F,T)->T (C1 held F). N+1 = 3 vectors for N=2
+ * conditions: minimal MC/DC.
+ */
+static void test_mcdc_eth_write_len_bounds(void)
+{
+  TEST_BEGIN("eth write MC/DC: len<min || len>max");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_eth_open(&s_test_cfg));
+
+  uint8_t pkt[2000];
+  (void)memset(pkt, 0xA5, sizeof(pkt));
+
+  /* Vector 1: in-range length succeeds. */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_eth_write(pkt, 64U));
+
+  /* Vector 2: under-min length rejected (C1=T short-circuit). */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_eth_write(pkt, (uint32_t)k_ra_eth_test_short_size));
+
+  /* Vector 3: over-max length rejected (C1=F, C2=T). */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_eth_write(pkt, 9999U));
+
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_eth_close());
+  TEST_END("eth write MC/DC: len<min || len>max");
+}
+
 int32_t main(void)
 {
   test_init();
@@ -393,6 +484,9 @@ int32_t main(void)
   test_link_status_via_mdio();
   test_get_stats_after_io();
   test_apis_require_open();
+
+  test_mcdc_resolve_sizes_buf_size();
+  test_mcdc_eth_write_len_bounds();
 
   (void)fprintf(stderr, "[OK  ] test_ra_eth.c\n");
   return 0;
