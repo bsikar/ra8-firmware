@@ -211,11 +211,29 @@ def main(argv: list) -> int:
     )
     parser.add_argument("--top", type=int, default=10)
     parser.add_argument("--quiet", action="store_true")
+    parser.add_argument(
+        "--warn-only",
+        action="store_true",
+        help=(
+            "Pre-commit-friendly mode: report soft violations and the "
+            "top-N table without failing on per-app frame breaches "
+            "or critical-module budget breaches. The only hard "
+            "failure left is a `dynamic` qualifier anywhere (NASA "
+            "Power-of-10 Rule 3 -- VLAs / alloca are forbidden). "
+            "Skips the report entirely if no .su files are present "
+            "yet (so a fresh clone never blocks a commit)."
+        ),
+    )
     args = parser.parse_args(argv)
 
     repo_root = args.repo_root.resolve()
     su_files = find_su_files(repo_root)
     if not su_files:
+        if args.warn_only:
+            # Pre-commit-friendly: a freshly cloned tree has no .su
+            # files yet, and forcing a full app build inside the hook
+            # would slow every commit by minutes. Skip silently.
+            return 0
         print(
             "stack_usage_check: no .su files found under "
             "examples/*/*/build*/.\n  Build at least one app with "
@@ -267,6 +285,28 @@ def main(argv: list) -> int:
             f"{','.join(CRITICAL_MODULES)}):"
         )
         for e in sorted(critical, key=lambda r: r.bytes_, reverse=True):
+            print(
+                f"  [{e.app}] {e.func} ({e.tu}): "
+                f"{e.bytes_} bytes [{e.qualifier}]"
+            )
+        if not args.warn_only:
+            return 1
+
+    # NASA Power-of-10 Rule 3 hard gate: a `dynamic` qualifier means
+    # the function uses a VLA or `alloca()`. Both are forbidden in
+    # this firmware regardless of frame size, in any module, and the
+    # gate applies even in --warn-only mode (i.e. always-on for
+    # pre-commit). No deviation procedure is offered.
+    dyn = [e for e in all_entries if e.is_dynamic]
+    if dyn:
+        print(
+            f"\nNASA P10 Rule 3 violation: "
+            f"{len(dyn)} function(s) carry a `dynamic` qualifier "
+            f"(VLA or alloca). Forbidden in this firmware -- "
+            f"replace with a fixed-size buffer or an enum-bounded "
+            f"static array."
+        )
+        for e in sorted(dyn, key=lambda r: r.bytes_, reverse=True):
             print(
                 f"  [{e.app}] {e.func} ({e.tu}): "
                 f"{e.bytes_} bytes [{e.qualifier}]"

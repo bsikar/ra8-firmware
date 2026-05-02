@@ -28,6 +28,7 @@
 #include "ra_log.h"
 #include "ra_rsip.h"
 #include "ra_rsip_key_injection.h"
+#include "ra_stack_budget.h"
 
 // NOLINTBEGIN(readability-magic-numbers,readability-function-size,readability-function-cognitive-complexity)
 
@@ -195,6 +196,14 @@ p_aes_install(const uint8_t* raw_key, ra_rsip_aes_key_bits_t key_bits, ra_rsip_k
  * @post Caller-visible state matches the documented contract.
  * @post Caller-visible state matches the documented contract.
  * @note Not thread-safe unless documented otherwise.
+ * @par Stack-budget deviation:
+ *      Holds a 32-byte raw-key scratch + a full ra_rsip_key_handle_t on
+ *      the stack (~1128 bytes total per the .su file) so the unwrapped
+ *      key material is scrubbed via `p_scrub` when the frame unwinds
+ *      and never lives in .bss. Considered alternatives (a static
+ *      single-use scratch struct in .bss, a heap allocation) both
+ *      defeat the scrub-on-return security property. See
+ *      docs/STACK_USAGE.md and the per-app STACK_USAGE_BYTES override.
  * @since 0.1.0
  */
 ra_err_t ra_rsip_protected_aes_init(const uint8_t*         wrapped_key,
@@ -202,6 +211,8 @@ ra_err_t ra_rsip_protected_aes_init(const uint8_t*         wrapped_key,
                                     ra_rsip_aes_mode_t     mode,
                                     const uint8_t*         iv)
 {
+  /* cppcheck-suppress unknownMacro */
+  RA_STACK_BUDGET(1128); /* unwrapped-key scratch; scrubbed on unwind */
   RA_CHECK_NULL_PTR(wrapped_key, s_tag, "p_aes_init: wrapped_key");
 
   ra_err_t rc = ra_rsip_key_validate(wrapped_key, k_ra_rsip_wrapped_type_aes);
@@ -342,6 +353,14 @@ ra_err_t ra_rsip_protected_aes_finish(void)
  * @post Caller-visible state matches the documented contract.
  * @post Caller-visible state matches the documented contract.
  * @note Not thread-safe unless documented otherwise.
+ * @par Stack-budget deviation:
+ *      Holds a 512-byte RSA-4096 modulus scratch + ra_rsip_key_handle_t
+ *      + a 16-byte install IV (~1720 bytes total per the .su file) on
+ *      the stack so the unwrapped private modulus is scrubbed via
+ *      `p_scrub` when the frame unwinds. Moving the modulus into .bss
+ *      would either persist the secret across calls or require an
+ *      explicit clear-on-exit path that doubles the attack surface.
+ *      See docs/STACK_USAGE.md.
  * @since 0.1.0
  */
 ra_err_t ra_rsip_protected_rsa_decrypt(const uint8_t*     wrapped_priv,
@@ -351,6 +370,8 @@ ra_err_t ra_rsip_protected_rsa_decrypt(const uint8_t*     wrapped_priv,
                                        uint8_t*           plaintext_out,
                                        uint32_t           plaintext_cap)
 {
+  /* cppcheck-suppress unknownMacro */
+  RA_STACK_BUDGET(1720); /* RSA-4096 modulus scratch; scrubbed on unwind */
   RA_CHECK_NULL_PTR(wrapped_priv, s_tag, "p_rsa_decrypt: wrapped_priv");
   RA_CHECK_NULL_PTR(ciphertext, s_tag, "p_rsa_decrypt: ciphertext");
   RA_CHECK_NULL_PTR(plaintext_out, s_tag, "p_rsa_decrypt: plaintext_out");
@@ -437,6 +458,12 @@ ra_err_t ra_rsip_protected_rsa_decrypt(const uint8_t*     wrapped_priv,
  * @post Caller-visible state matches the documented contract.
  * @post Caller-visible state matches the documented contract.
  * @note Not thread-safe unless documented otherwise.
+ * @par Stack-budget deviation:
+ *      Holds an ECC private-key scratch + a full ra_rsip_key_handle_t
+ *      on the stack (~1104 bytes total per the .su file) so the
+ *      unwrapped private scalar is scrubbed via `p_scrub` when the
+ *      frame unwinds. The same scrub-on-return security property
+ *      forbids moving the buffer into .bss. See docs/STACK_USAGE.md.
  * @since 0.1.0
  */
 ra_err_t ra_rsip_protected_ecdsa_sign(const uint8_t*  wrapped_priv,
@@ -445,6 +472,8 @@ ra_err_t ra_rsip_protected_ecdsa_sign(const uint8_t*  wrapped_priv,
                                       uint32_t        hash_len,
                                       uint8_t*        sig_out)
 {
+  /* cppcheck-suppress unknownMacro */
+  RA_STACK_BUDGET(1104); /* ECC private scalar scratch; scrubbed on unwind */
   RA_CHECK_NULL_PTR(wrapped_priv, s_tag, "p_ecdsa_sign: wrapped_priv");
   RA_CHECK_NULL_PTR(hash, s_tag, "p_ecdsa_sign: hash");
   RA_CHECK_NULL_PTR(sig_out, s_tag, "p_ecdsa_sign: sig_out");

@@ -89,37 +89,87 @@ build-time gate for those.
 
 ## Current top-10 worst-offender functions
 
-Snapshot taken after a fresh `make blink` build (2026-05-02). Refresh
-this section by running `make stack-usage` and pasting the script's
-"Top 10" output. The intent is that this list be reviewed at every
-release and never grow without justification.
+Snapshot taken after a full EVM-tier `make stack-usage` sweep
+(2026-05-02). Refresh this section by running `make stack-usage` and
+pasting the script's "Top 10" output. The intent is that this list be
+reviewed at every release and never grow without justification.
 
 ```
    bytes  qualifier         app/function  (tu)
    -----  -----------       ------------  ----
-    1720  static            blink/ra_rsip_protected_rsa_decrypt    (libs/ra_hal/src/ra_rsip_protected.c)
-    1128  static            blink/ra_rsip_protected_aes_init       (libs/ra_hal/src/ra_rsip_protected.c)
-    1104  static            blink/ra_rsip_protected_ecdsa_sign     (libs/ra_hal/src/ra_rsip_protected.c)
-     824  static            blink/dec_decode_scan                  (libs/ra_hal/src/ra_jpeg_sw.c)
-     816  static            blink/enc_build_codes                  (libs/ra_hal/src/ra_jpeg_sw.c)
-     648  static            blink/ra_rsip_key_inject_rsa           (libs/ra_hal/src/ra_rsip_key_injection.c)
-     568  static            blink/enc_block                        (libs/ra_hal/src/ra_jpeg_sw.c)
-     464  static            blink/internal_sha256_32               (src/secure_app/key_vault.c)
-     376  static            blink/idct8x8                          (libs/ra_hal/src/ra_jpeg_sw.c)
-     376  static            blink/fdct8x8                          (libs/ra_hal/src/ra_jpeg_sw.c)
+    9936  static            ereader/mz_zip_reader_extract_to_callback         (libs/third_party/miniz/miniz.c)
+    9880  static            ereader/mz_zip_reader_extract_to_mem_no_alloc1    (libs/third_party/miniz/miniz.c)
+    8448  static            ereader/tinfl_decompress_mem_to_heap              (libs/third_party/miniz/miniz.c)
+    8440  static            ereader/tinfl_decompress_mem_to_callback          (libs/third_party/miniz/miniz.c)
+    8416  static            ereader/tinfl_decompress_mem_to_mem               (libs/third_party/miniz/miniz.c)
+    4968  static            ereader/mz_zip_reader_read_central_dir            (libs/third_party/miniz/miniz.c)
+    4344  static            ereader/priv_parse_archive                        (libs/ra_epub/src/ra_epub_open.c)
+    4256  static            ereader/mz_zip_reader_locate_header_sig           (libs/third_party/miniz/miniz.c)
+    3144  static            ereader/tdefl_radix_sort_syms                     (libs/third_party/miniz/miniz.c)
+    2640  static            ereader/tdefl_optimize_huffman_table              (libs/third_party/miniz/miniz.c)
 ```
 
-All entries above are `static` (no VLAs / `alloca`) and none belong to
-a critical-path module. The three `ra_rsip_protected_*` frames sit
-near the per-target ceiling; they are reviewed under the existing
-`STACK_USAGE_BYTES 2200` override in `examples/ek_ra8d2/blink/CMakeLists.txt`.
+All entries above are `static` (no VLAs / `alloca`) and none belong
+to a critical-path module. The miniz frames are vendored third-party
+code in `libs/third_party/miniz/` and only link into the `ereader`
+demo; the project policy is "vendor 3rd-party libs directly and
+hand-write integration shims" (see CLAUDE.md), so we accept the
+upstream frames without modification and rely on the per-app
+`STACK_USAGE_BYTES` override in
+`examples/ek_ra8d2/ereader/CMakeLists.txt` to size its main stack
+accordingly.
+
+Highest-frame project-owned (non-third-party) functions, all of
+which carry an inline `RA_STACK_BUDGET(N)` annotation matching the
+.su value:
+
+```
+   bytes  qualifier         function                                       (tu)
+   -----  -----------       ------------------------------------------     ----
+    1720  static            ra_rsip_protected_rsa_decrypt                  (libs/ra_hal/src/ra_rsip_protected.c)
+    1128  static            ra_rsip_protected_aes_init                     (libs/ra_hal/src/ra_rsip_protected.c)
+    1104  static            ra_rsip_protected_ecdsa_sign                   (libs/ra_hal/src/ra_rsip_protected.c)
+```
+
+Each of those three holds an unwrapped key/modulus scratch buffer
+plus a full `ra_rsip_key_handle_t` on the stack so the secret
+material is scrubbed via `p_scrub` when the frame unwinds; moving
+the buffers into `.bss` would either persist the secret across calls
+or require an explicit clear-on-exit path that doubles the attack
+surface. See the `@par Stack-budget deviation:` block on each
+function and the `STACK_USAGE_BYTES 2200` override in
+`examples/ek_ra8d2/blink/CMakeLists.txt`.
+
+Across the entire 61k-function aggregated report there are zero
+functions with a `dynamic` qualifier (no VLAs, no `alloca`) and
+zero critical-path-module breaches.
+
+## Pre-commit gate
+
+`scripts/git/pre-commit` invokes
+`scripts/utils/stack_usage_check.py --warn-only --quiet` on every
+commit. Behaviour:
+
+* If no `.su` files exist yet (fresh clone) the gate is a no-op so
+  the first commit on a clean tree never blocks.
+* Soft violations (per-app frame > 2048 bytes) and critical-module
+  breaches are reported but do not fail the commit -- this gate is
+  intentionally warn-only initially and will be promoted to strict
+  in a follow-up commit once every soft violator has been either
+  reduced or annotated with `RA_STACK_BUDGET(N)`.
+* A `dynamic` qualifier ANYWHERE in the report is a hard fail. NASA
+  Power-of-10 Rule 3 forbids VLAs and `alloca()` in this firmware
+  regardless of frame size, so no deviation procedure is offered.
 
 ## Deviation procedure
 
 If a function legitimately needs more than its module's budget
 (e.g. a one-shot init routine that builds a large config struct on
 the stack rather than holding it in `.bss`), the deviation MUST be
-recorded inline using the `RA_STACK_BUDGET(N)` annotation macro:
+recorded inline using the `RA_STACK_BUDGET(N)` annotation macro from
+`libs/ra_core/inc/ra_stack_budget.h`. Place the marker as the first
+statement inside the function body so the preceding Doxygen block
+remains adjacent to the function signature for `doxy_audit.py`:
 
 ```c
 /**
@@ -129,8 +179,11 @@ recorded inline using the `RA_STACK_BUDGET(N)` annotation macro:
  *          ~5 ms at boot. Reviewed against the 8 KB main stack
  *          reservation in linker_script.ld.
  */
-RA_STACK_BUDGET(1536) /* deviation: see commit <sha> + ticket */
-ra_err_t ra_ota_validate_header(const ra_ota_blob_t *blob);
+ra_err_t ra_ota_validate_header(const ra_ota_blob_t *blob)
+{
+    RA_STACK_BUDGET(1536); /* deviation: see commit <sha> + ticket */
+    /* ... */
+}
 ```
 
 The macro itself is a no-op marker (it expands to nothing); its
