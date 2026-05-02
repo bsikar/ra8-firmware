@@ -177,6 +177,16 @@ static uint8_t s_fake_flash[k_ra_xspi_instance_count][k_ra_xspi_fake_flash_size]
 
 /**
  * @brief Set every byte of ``dst[0..len-1]`` to ``value`` via a plain loop.
+ * @details Implementation detail; see surrounding code and HUM citations.
+ * @param[out] dst See declaration: ``uint8_t* dst``.
+ * @param[in] value See declaration: ``uint8_t value``.
+ * @param[in] len See declaration: ``uint32_t len``.
+ * @pre Module/state preconditions hold (see function body).
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
+ * @post Documented side effects are visible on success.
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
  */
 static void internal_fake_flash_fill(uint8_t* dst, uint8_t value, uint32_t len)
 {
@@ -187,6 +197,16 @@ static void internal_fake_flash_fill(uint8_t* dst, uint8_t value, uint32_t len)
 
 /**
  * @brief Byte-wise copy helper (avoids libc string calls in host tests).
+ * @details Implementation detail; see surrounding code and HUM citations.
+ * @param[out] dst See declaration: ``uint8_t* dst``.
+ * @param[in] src See declaration: ``const uint8_t* src``.
+ * @param[in] len See declaration: ``uint32_t len``.
+ * @pre Module/state preconditions hold (see function body).
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
+ * @post Documented side effects are visible on success.
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
  */
 static void internal_fake_flash_copy(uint8_t* dst, const uint8_t* src, uint32_t len)
 {
@@ -195,6 +215,19 @@ static void internal_fake_flash_copy(uint8_t* dst, const uint8_t* src, uint32_t 
   }
 }
 
+/**
+ * @brief internal xspi sim init.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 __attribute__((constructor)) static void internal_xspi_sim_init(void)
 {
   for (uint8_t i = 0U; i < k_ra_xspi_instance_count; i++) {
@@ -216,6 +249,26 @@ static const ra_mstp_t s_xspi_mstp_table[] = {
   k_ra_mstp_ospi1,
 };
 
+/**
+ * @brief ra xspi init.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] instance See declaration: ``uint8_t instance``.
+ * @param[in] mode See declaration: ``ra_xspi_lio_mode_t mode``.
+ *
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_xspi_init(uint8_t instance, ra_xspi_lio_mode_t mode)
 {
   volatile r_xspi_regs_t* reg = ra_xspi(instance);
@@ -257,6 +310,27 @@ ra_err_t ra_xspi_init(uint8_t instance, ra_xspi_lio_mode_t mode)
   return k_ra_ok;
 }
 
+/**
+ * @brief ra xspi direct command.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] instance See declaration: ``uint8_t instance``.
+ * @param[in] cmd_buf See declaration: ``const uint8_t* cmd_buf``.
+ * @param[in] len See declaration: ``uint8_t len``.
+ *
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_xspi_direct_command(uint8_t instance, const uint8_t* cmd_buf, uint8_t len)
 {
   RA_CHECK_NULL_PTR(cmd_buf, s_tag, "cmd_buf must not be nullptr");
@@ -296,6 +370,20 @@ ra_err_t ra_xspi_direct_command(uint8_t instance, const uint8_t* cmd_buf, uint8_
  * CMDSIZE/ADDSIZE/DATASIZE/TRTYPE plus the JEDEC opcode at bits
  * [31..16]. Latency is fixed at zero for the simple JEDEC opcodes
  * this driver issues. HUM Ch 44 p 2986.
+ * @param[in] opcode See declaration: ``uint8_t opcode``.
+ * @param[in] cmd_bytes See declaration: ``uint8_t cmd_bytes``.
+ * @param[in] addr_bytes See declaration: ``uint8_t addr_bytes``.
+ * @param[in] data_bytes See declaration: ``uint8_t data_bytes``.
+ * @param[in] is_write See declaration: ``uint8_t is_write``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ * @pre Module/state preconditions hold (see function body).
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
+ * @post Documented side effects are visible on success.
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
  */
 static uint32_t internal_make_cdt(uint8_t opcode,
                                   uint8_t cmd_bytes,
@@ -332,6 +420,17 @@ typedef enum : uint8_t {
 
 /**
  * @brief Bounded CMDCMP poll (with simulator-mode fast exit).
+ * @details Implementation detail; see surrounding code and HUM citations.
+ * @param[in] reg See declaration: ``volatile r_xspi_regs_t* reg``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ * @pre Module/state preconditions hold (see function body).
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
+ * @post Documented side effects are visible on success.
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
  */
 static ra_err_t internal_wait_command_done(volatile r_xspi_regs_t* reg)
 {
@@ -366,6 +465,16 @@ static ra_err_t internal_wait_command_done(volatile r_xspi_regs_t* reg)
  * TRREQ to self-clear before pushing a new request, then sets
  * TRREQ=1 and waits for it to self-clear again. We mirror the
  * FSP "self-clear" semantics by polling ``INTS.CMDCMP``.
+ * @param[in] reg See declaration: ``volatile r_xspi_regs_t* reg``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ * @pre Module/state preconditions hold (see function body).
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
+ * @post Documented side effects are visible on success.
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
  */
 static ra_err_t internal_kick_command(volatile r_xspi_regs_t* reg)
 {
@@ -376,6 +485,18 @@ static ra_err_t internal_kick_command(volatile r_xspi_regs_t* reg)
 
 /**
  * @brief Build CDBUF[0] for a 1-byte opcode with no address / no data.
+ * @details Implementation detail; see surrounding code and HUM citations.
+ * @param[in] reg See declaration: ``volatile r_xspi_regs_t* reg``.
+ * @param[in] opcode See declaration: ``uint8_t opcode``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ * @pre Module/state preconditions hold (see function body).
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
+ * @post Documented side effects are visible on success.
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
  */
 static ra_err_t internal_issue_simple_opcode(volatile r_xspi_regs_t* reg, uint8_t opcode)
 {
@@ -410,6 +531,14 @@ static ra_err_t internal_issue_simple_opcode(volatile r_xspi_regs_t* reg, uint8_
  * @param[in] resp_bytes 1..8 response bytes to clock into CDBUF.
  *
  * @return ``k_ra_ok`` on success or the underlying CMDCMP timeout.
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ * @pre Module/state preconditions hold (see function body).
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
+ * @post Documented side effects are visible on success.
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
  */
 static ra_err_t
 internal_issue_read_opcode(volatile r_xspi_regs_t* reg, uint8_t opcode, uint8_t resp_bytes)
@@ -435,6 +564,17 @@ internal_issue_read_opcode(volatile r_xspi_regs_t* reg, uint8_t opcode, uint8_t 
  * is fixed at 3 bytes for the JEDEC opcodes in use; ``data_bytes``
  * is 0..8 (one slot's worth). FSP equivalent: the body of
  * ``r_ospi_b_direct_transfer`` that builds ``cdtbuf0``.
+ * @param[in] reg See declaration: ``volatile r_xspi_regs_t* reg``.
+ * @param[in] opcode See declaration: ``uint8_t                 opcode``.
+ * @param[in] addr See declaration: ``uint32_t                addr``.
+ * @param[in] data_bytes See declaration: ``uint8_t                 data_bytes``.
+ * @param[in] is_write See declaration: ``uint8_t                 is_write``.
+ * @pre Module/state preconditions hold (see function body).
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
+ * @post Documented side effects are visible on success.
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
  */
 static void internal_build_chunk_header(volatile r_xspi_regs_t* reg,
                                         uint8_t                 opcode,
@@ -454,6 +594,26 @@ static void internal_build_chunk_header(volatile r_xspi_regs_t* reg,
  * @brief Clamp ``flash_addr + len`` to the simulator fake-flash size.
  */
 #ifdef RA_SIMULATOR_MODE
+/**
+ * @brief internal sim range check.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] flash_addr See declaration: ``uint32_t flash_addr``.
+ * @param[in] len See declaration: ``uint32_t len``.
+ *
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 static ra_err_t internal_sim_range_check(uint32_t flash_addr, uint32_t len)
 {
   if (flash_addr >= k_ra_xspi_fake_flash_size) {
@@ -466,6 +626,28 @@ static ra_err_t internal_sim_range_check(uint32_t flash_addr, uint32_t len)
 }
 #endif
 
+/**
+ * @brief ra xspi flash read.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] instance See declaration: ``uint8_t instance``.
+ * @param[in] flash_addr See declaration: ``uint32_t flash_addr``.
+ * @param[out] buf See declaration: ``uint8_t* buf``.
+ * @param[in] len See declaration: ``uint32_t len``.
+ *
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_xspi_flash_read(uint8_t instance, uint32_t flash_addr, uint8_t* buf, uint32_t len)
 {
   RA_CHECK_NULL_PTR(buf, s_tag, "buf must not be nullptr");
@@ -518,6 +700,19 @@ ra_err_t ra_xspi_flash_read(uint8_t instance, uint32_t flash_addr, uint8_t* buf,
 
 /**
  * @brief Drive the page-program register sequence (WREN -> PP -> kick).
+ * @details Implementation detail; see surrounding code and HUM citations.
+ * @param[in] reg See declaration: ``volatile r_xspi_regs_t* reg``.
+ * @param[in] flash_addr See declaration: ``uint32_t flash_addr``.
+ * @param[in] len See declaration: ``uint32_t len``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ * @pre Module/state preconditions hold (see function body).
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
+ * @post Documented side effects are visible on success.
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
  */
 static ra_err_t
 internal_flash_start_program(volatile r_xspi_regs_t* reg, uint32_t flash_addr, uint32_t len)
@@ -543,6 +738,17 @@ internal_flash_start_program(volatile r_xspi_regs_t* reg, uint32_t flash_addr, u
 
 /**
  * @brief Poll the SPI flash Status Register until WIP == 0 or timeout.
+ * @details Implementation detail; see surrounding code and HUM citations.
+ * @param[in] instance See declaration: ``uint8_t instance``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ * @pre Module/state preconditions hold (see function body).
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
+ * @post Documented side effects are visible on success.
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
  */
 static ra_err_t internal_poll_wip_clear(uint8_t instance)
 {
@@ -565,6 +771,28 @@ static ra_err_t internal_poll_wip_clear(uint8_t instance)
 #endif
 }
 
+/**
+ * @brief ra xspi flash program.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] instance See declaration: ``uint8_t instance``.
+ * @param[in] flash_addr See declaration: ``uint32_t flash_addr``.
+ * @param[in] data See declaration: ``const uint8_t* data``.
+ * @param[in] len See declaration: ``uint32_t len``.
+ *
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t
 ra_xspi_flash_program(uint8_t instance, uint32_t flash_addr, const uint8_t* data, uint32_t len)
 {
@@ -611,6 +839,26 @@ ra_xspi_flash_program(uint8_t instance, uint32_t flash_addr, const uint8_t* data
   return internal_poll_wip_clear(instance);
 }
 
+/**
+ * @brief ra xspi flash erase sector.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] instance See declaration: ``uint8_t instance``.
+ * @param[in] flash_addr See declaration: ``uint32_t flash_addr``.
+ *
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_xspi_flash_erase_sector(uint8_t instance, uint32_t flash_addr)
 {
   volatile r_xspi_regs_t* reg = ra_xspi(instance);
@@ -647,6 +895,26 @@ ra_err_t ra_xspi_flash_erase_sector(uint8_t instance, uint32_t flash_addr)
   return internal_poll_wip_clear(instance);
 }
 
+/**
+ * @brief ra xspi flash read status.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] instance See declaration: ``uint8_t instance``.
+ * @param[out] out_status See declaration: ``uint8_t* out_status``.
+ *
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_xspi_flash_read_status(uint8_t instance, uint8_t* out_status)
 {
   RA_CHECK_NULL_PTR(out_status, s_tag, "out_status must not be nullptr");
@@ -672,6 +940,26 @@ ra_err_t ra_xspi_flash_read_status(uint8_t instance, uint8_t* out_status)
   return k_ra_ok;
 }
 
+/**
+ * @brief ra xspi flash read id.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] instance See declaration: ``uint8_t instance``.
+ * @param[out] out_id See declaration: ``uint32_t* out_id``.
+ *
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_xspi_flash_read_id(uint8_t instance, uint32_t* out_id)
 {
   RA_CHECK_NULL_PTR(out_id, s_tag, "out_id must not be nullptr");
@@ -715,6 +1003,25 @@ typedef struct {
 /** @brief Per-instance callback state (s_ prefix for file-static). */
 static ra_xspi_state_t s_xspi_state[k_ra_xspi_instance_count];
 
+/**
+ * @brief ra xspi deinit.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] instance See declaration: ``uint8_t instance``.
+ *
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_xspi_deinit(uint8_t instance)
 {
   volatile r_xspi_regs_t* reg = ra_xspi(instance);
@@ -730,6 +1037,26 @@ ra_err_t ra_xspi_deinit(uint8_t instance)
   return ra_mstp_disable(s_xspi_mstp_table[instance]);
 }
 
+/**
+ * @brief ra xspi get status.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] instance See declaration: ``uint8_t instance``.
+ * @param[out] out_mask See declaration: ``uint32_t* out_mask``.
+ *
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_xspi_get_status(uint8_t instance, uint32_t* out_mask)
 {
   RA_CHECK_NULL_PTR(out_mask, s_tag, "out_mask must not be nullptr");
@@ -740,6 +1067,26 @@ ra_err_t ra_xspi_get_status(uint8_t instance, uint32_t* out_mask)
   return k_ra_ok;
 }
 
+/**
+ * @brief ra xspi clear status.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] instance See declaration: ``uint8_t instance``.
+ * @param[in] mask See declaration: ``uint32_t mask``.
+ *
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_xspi_clear_status(uint8_t instance, uint32_t mask)
 {
   volatile r_xspi_regs_t* reg = ra_xspi(instance);
@@ -749,6 +1096,27 @@ ra_err_t ra_xspi_clear_status(uint8_t instance, uint32_t mask)
   return k_ra_ok;
 }
 
+/**
+ * @brief ra xspi attach handler.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] instance See declaration: ``uint8_t instance``.
+ * @param[in] fn See declaration: ``ra_xspi_event_fn_t fn``.
+ * @param[out] ctx See declaration: ``void* ctx``.
+ *
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_xspi_attach_handler(uint8_t instance, ra_xspi_event_fn_t fn, void* ctx)
 {
   if (instance >= k_ra_xspi_instance_count) {
@@ -759,6 +1127,21 @@ ra_err_t ra_xspi_attach_handler(uint8_t instance, ra_xspi_event_fn_t fn, void* c
   return k_ra_ok;
 }
 
+/**
+ * @brief ra xspi dispatch.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] instance See declaration: ``uint8_t instance``.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 void ra_xspi_dispatch(uint8_t instance)
 {
   if (instance >= k_ra_xspi_instance_count) {
@@ -782,6 +1165,25 @@ void ra_xspi_dispatch(uint8_t instance)
   }
 }
 
+/**
+ * @brief ra xspi enter stop.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] instance See declaration: ``uint8_t instance``.
+ *
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_xspi_enter_stop(uint8_t instance)
 {
   if (instance >= k_ra_xspi_instance_count) {
@@ -790,6 +1192,25 @@ ra_err_t ra_xspi_enter_stop(uint8_t instance)
   return ra_mstp_disable(s_xspi_mstp_table[instance]);
 }
 
+/**
+ * @brief ra xspi exit stop.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] instance See declaration: ``uint8_t instance``.
+ *
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_xspi_exit_stop(uint8_t instance)
 {
   if (instance >= k_ra_xspi_instance_count) {
@@ -798,6 +1219,27 @@ ra_err_t ra_xspi_exit_stop(uint8_t instance)
   return ra_mstp_enable(s_xspi_mstp_table[instance]);
 }
 
+/**
+ * @brief ra xspi xip enter.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] instance See declaration: ``uint8_t instance``.
+ * @param[in] enter_code See declaration: ``uint8_t enter_code``.
+ * @param[in] exit_code See declaration: ``uint8_t exit_code``.
+ *
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_xspi_xip_enter(uint8_t instance, uint8_t enter_code, uint8_t exit_code)
 {
   volatile r_xspi_regs_t* reg = ra_xspi(instance);
@@ -820,6 +1262,25 @@ ra_err_t ra_xspi_xip_enter(uint8_t instance, uint8_t enter_code, uint8_t exit_co
   return k_ra_ok;
 }
 
+/**
+ * @brief ra xspi xip exit.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] instance See declaration: ``uint8_t instance``.
+ *
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_xspi_xip_exit(uint8_t instance)
 {
   volatile r_xspi_regs_t* reg = ra_xspi(instance);
@@ -882,6 +1343,28 @@ typedef enum : uint32_t {
   k_ra_xspi_calib_spin = 1024U, /**< CCCTL0.CAEN poll budget. */
 } ra_xspi_calib_spin_t;
 
+/**
+ * @brief ra xspi set xip mode.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] instance See declaration: ``uint8_t instance``.
+ * @param[in] enable See declaration: ``bool enable``.
+ * @param[in] read_cmd See declaration: ``uint8_t read_cmd``.
+ * @param[in] addr_bytes See declaration: ``uint8_t addr_bytes``.
+ *
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_xspi_set_xip_mode(uint8_t instance, bool enable, uint8_t read_cmd, uint8_t addr_bytes)
 {
   volatile r_xspi_regs_t* reg = ra_xspi(instance);
@@ -913,6 +1396,26 @@ ra_err_t ra_xspi_set_xip_mode(uint8_t instance, bool enable, uint8_t read_cmd, u
   return k_ra_ok;
 }
 
+/**
+ * @brief ra xspi set dtr mode.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] instance See declaration: ``uint8_t instance``.
+ * @param[in] enable See declaration: ``bool enable``.
+ *
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_xspi_set_dtr_mode(uint8_t instance, bool enable)
 {
   volatile r_xspi_regs_t* reg = ra_xspi(instance);
@@ -929,6 +1432,25 @@ ra_err_t ra_xspi_set_dtr_mode(uint8_t instance, bool enable)
   return k_ra_ok;
 }
 
+/**
+ * @brief ra xspi calibrate dqs.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] instance See declaration: ``uint8_t instance``.
+ *
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_xspi_calibrate_dqs(uint8_t instance)
 {
   volatile r_xspi_regs_t* reg = ra_xspi(instance);
@@ -958,6 +1480,25 @@ ra_err_t ra_xspi_calibrate_dqs(uint8_t instance)
 #endif
 }
 
+/**
+ * @brief ra xspi suspend.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] instance See declaration: ``uint8_t instance``.
+ *
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_xspi_suspend(uint8_t instance)
 {
   volatile r_xspi_regs_t* reg = ra_xspi(instance);
@@ -965,6 +1506,25 @@ ra_err_t ra_xspi_suspend(uint8_t instance)
   return internal_issue_simple_opcode(reg, k_ra_spi_flash_op_suspend);
 }
 
+/**
+ * @brief ra xspi resume.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] instance See declaration: ``uint8_t instance``.
+ *
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_xspi_resume(uint8_t instance)
 {
   volatile r_xspi_regs_t* reg = ra_xspi(instance);
@@ -993,6 +1553,14 @@ ra_err_t ra_xspi_resume(uint8_t instance)
  *
  * @return ``k_ra_ok`` on success, ``k_ra_err_hw_timeout`` on CMDCMP
  *         timeout.
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ * @pre Module/state preconditions hold (see function body).
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
+ * @post Documented side effects are visible on success.
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
  */
 static ra_err_t
 internal_issue_reset_opcode(volatile r_xspi_regs_t* reg, uint8_t opcode, uint8_t cmd_bytes)
@@ -1019,6 +1587,26 @@ internal_issue_reset_opcode(volatile r_xspi_regs_t* reg, uint8_t opcode, uint8_t
   return internal_kick_command(reg);
 }
 
+/**
+ * @brief ra xspi software reset.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] instance See declaration: ``uint8_t instance``.
+ * @param[in] cmd_bytes See declaration: ``uint8_t cmd_bytes``.
+ *
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_xspi_software_reset(uint8_t instance, uint8_t cmd_bytes)
 {
   volatile r_xspi_regs_t* reg = ra_xspi(instance);
