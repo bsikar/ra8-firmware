@@ -671,18 +671,22 @@ static void test_mcdc_sign_hash_arg_triple(void)
   uint8_t hash[k_ra_psa_sha256_len] = {};
   uint8_t sig[k_ra_psa_max_sig_bytes];
   size_t  sl = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_psa_sign_hash(
-                   k, k_ra_psa_alg_ecdsa_sha_256, hash, sizeof(hash), sig, sizeof(sig), &sl));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_psa_sign_hash(
-                   k, k_ra_psa_alg_ecdsa_sha_256, NULL, sizeof(hash), sig, sizeof(sig), &sl));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_psa_sign_hash(
-                   k, k_ra_psa_alg_ecdsa_sha_256, hash, sizeof(hash), NULL, sizeof(sig), &sl));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_psa_sign_hash(
-                   k, k_ra_psa_alg_ecdsa_sha_256, hash, sizeof(hash), sig, sizeof(sig), NULL));
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_ok,
+    (int32_t)
+      ra_psa_sign_hash(k, k_ra_psa_alg_ecdsa_sha_256, hash, sizeof(hash), sig, sizeof(sig), &sl));
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_invalid_arg,
+    (int32_t)
+      ra_psa_sign_hash(k, k_ra_psa_alg_ecdsa_sha_256, NULL, sizeof(hash), sig, sizeof(sig), &sl));
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_invalid_arg,
+    (int32_t)
+      ra_psa_sign_hash(k, k_ra_psa_alg_ecdsa_sha_256, hash, sizeof(hash), NULL, sizeof(sig), &sl));
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_invalid_arg,
+    (int32_t)
+      ra_psa_sign_hash(k, k_ra_psa_alg_ecdsa_sha_256, hash, sizeof(hash), sig, sizeof(sig), NULL));
   (void)ra_psa_key_destroy(k);
   teardown();
   TEST_END("psa MC/DC: sign_hash (hash||sig||sig_len) NULL triple");
@@ -698,19 +702,20 @@ static void test_mcdc_verify_hash_arg_pair(void)
 {
   TEST_BEGIN("psa MC/DC: verify_hash (hash||sig) NULL pair");
   prep_init();
-  const ra_psa_key_attr_t attr = {.type  = k_ra_psa_key_type_ecc_p256_priv,
-                                  .alg   = k_ra_psa_alg_ecdsa_sha_256,
-                                  .usage = (ra_psa_key_usage_t)(k_ra_psa_usage_sign |
-                                                                k_ra_psa_usage_verify)};
-  ra_psa_key_t            k    = NULL;
+  const ra_psa_key_attr_t attr = {
+    .type  = k_ra_psa_key_type_ecc_p256_priv,
+    .alg   = k_ra_psa_alg_ecdsa_sha_256,
+    .usage = (ra_psa_key_usage_t)(k_ra_psa_usage_sign | k_ra_psa_usage_verify)};
+  ra_psa_key_t k = NULL;
   TEST_ASSERT_EQ((int32_t)k_ra_ok,
                  (int32_t)ra_psa_key_import(&k, &attr, k_test_ecdsa_key, sizeof(k_test_ecdsa_key)));
   uint8_t hash[k_ra_psa_sha256_len] = {};
   uint8_t sig[k_ra_psa_sha256_len]  = {};
   size_t  sl                        = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_psa_sign_hash(
-                   k, k_ra_psa_alg_ecdsa_sha_256, hash, sizeof(hash), sig, sizeof(sig), &sl));
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_ok,
+    (int32_t)
+      ra_psa_sign_hash(k, k_ra_psa_alg_ecdsa_sha_256, hash, sizeof(hash), sig, sizeof(sig), &sl));
   TEST_ASSERT_EQ(
     (int32_t)k_ra_ok,
     (int32_t)ra_psa_verify_hash(k, k_ra_psa_alg_ecdsa_sha_256, hash, sizeof(hash), sig, sl));
@@ -1020,8 +1025,8 @@ static void test_mcdc_aead_decrypt_check_triple(void)
 {
   TEST_BEGIN("psa MC/DC: decrypt_check (nonce||cipher||out_len) NULL triple");
   prep_init();
-  ra_psa_key_t k = mcdc_import_aes_key(
-    (ra_psa_key_usage_t)(k_ra_psa_usage_encrypt | k_ra_psa_usage_decrypt));
+  ra_psa_key_t k =
+    mcdc_import_aes_key((ra_psa_key_usage_t)(k_ra_psa_usage_encrypt | k_ra_psa_usage_decrypt));
   TEST_ASSERT_NOT_NULL(k);
   const uint8_t plain[k_psa_mcdc_plain_len] = {0U};
   uint8_t       ct[k_psa_mcdc_plain_len + k_ra_psa_gcm_tag_len];
@@ -1103,8 +1108,8 @@ static void test_mcdc_aead_decrypt_aad_pair(void)
 {
   TEST_BEGIN("psa MC/DC: decrypt_check (aad==NULL && aad_len!=0)");
   prep_init();
-  ra_psa_key_t k = mcdc_import_aes_key(
-    (ra_psa_key_usage_t)(k_ra_psa_usage_encrypt | k_ra_psa_usage_decrypt));
+  ra_psa_key_t k =
+    mcdc_import_aes_key((ra_psa_key_usage_t)(k_ra_psa_usage_encrypt | k_ra_psa_usage_decrypt));
   const uint8_t plain[k_psa_mcdc_plain_len] = {0U};
   const uint8_t aad[k_psa_mcdc_short_aad]   = {0U};
   uint8_t       ct[k_psa_mcdc_plain_len + k_ra_psa_gcm_tag_len];
@@ -1177,8 +1182,8 @@ static void test_mcdc_aead_decrypt_handle_alg_usage(void)
 {
   TEST_BEGIN("psa MC/DC: decrypt (!valid || alg!=gcm || !usage_decrypt)");
   prep_init();
-  ra_psa_key_t k = mcdc_import_aes_key(
-    (ra_psa_key_usage_t)(k_ra_psa_usage_encrypt | k_ra_psa_usage_decrypt));
+  ra_psa_key_t k =
+    mcdc_import_aes_key((ra_psa_key_usage_t)(k_ra_psa_usage_encrypt | k_ra_psa_usage_decrypt));
   const uint8_t plain[k_psa_mcdc_plain_len] = {0U};
   uint8_t       ct[k_psa_mcdc_plain_len + k_ra_psa_gcm_tag_len];
   size_t        ctl = 0U;
@@ -1262,8 +1267,8 @@ static void test_mcdc_aead_decrypt_size_pair(void)
 {
   TEST_BEGIN("psa MC/DC: decrypt sizes (nonce_len||cipher_len)");
   prep_init();
-  ra_psa_key_t k = mcdc_import_aes_key(
-    (ra_psa_key_usage_t)(k_ra_psa_usage_encrypt | k_ra_psa_usage_decrypt));
+  ra_psa_key_t k =
+    mcdc_import_aes_key((ra_psa_key_usage_t)(k_ra_psa_usage_encrypt | k_ra_psa_usage_decrypt));
   const uint8_t plain[k_psa_mcdc_plain_len] = {0U};
   uint8_t       ct[k_psa_mcdc_plain_len + k_ra_psa_gcm_tag_len];
   size_t        ctl = 0U;
@@ -1336,8 +1341,8 @@ static void test_mcdc_aead_decrypt_out_pair(void)
 {
   TEST_BEGIN("psa MC/DC: decrypt_check (out==NULL && plain_len!=0)");
   prep_init();
-  ra_psa_key_t k = mcdc_import_aes_key(
-    (ra_psa_key_usage_t)(k_ra_psa_usage_encrypt | k_ra_psa_usage_decrypt));
+  ra_psa_key_t k =
+    mcdc_import_aes_key((ra_psa_key_usage_t)(k_ra_psa_usage_encrypt | k_ra_psa_usage_decrypt));
   const uint8_t plain[k_psa_mcdc_plain_len] = {0U};
   uint8_t       ct8[k_psa_mcdc_plain_len + k_ra_psa_gcm_tag_len];
   size_t        ctl8 = 0U;
@@ -1426,8 +1431,8 @@ static void test_mcdc_sim_aead_buf_loops(void)
 {
   TEST_BEGIN("psa MC/DC: sim AEAD/keystream buffer loop guards (C1)");
   prep_init();
-  ra_psa_key_t k = mcdc_import_aes_key(
-    (ra_psa_key_usage_t)(k_ra_psa_usage_encrypt | k_ra_psa_usage_decrypt));
+  ra_psa_key_t k =
+    mcdc_import_aes_key((ra_psa_key_usage_t)(k_ra_psa_usage_encrypt | k_ra_psa_usage_decrypt));
   const uint8_t plain[k_psa_mcdc_plain_len] = {0U};
   const uint8_t aad[k_psa_mcdc_short_aad]   = {0U};
   uint8_t       ct[k_psa_mcdc_plain_len + k_ra_psa_gcm_tag_len];
