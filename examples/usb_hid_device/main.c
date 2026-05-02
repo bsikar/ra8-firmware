@@ -1,6 +1,6 @@
 /**
  * @file examples/usb_hid_device/main.c
- * @brief USB HID boot-protocol mouse smoke test for EK-RA8D2 (USB-FS)
+ * @brief ThreadX + USBX HID boot-mouse demo for EK-RA8D2 (USB-FS)
  *
  * @par Tag
  * [Ring 6 / APP] {World: S}
@@ -8,110 +8,142 @@
  * @details
  * Brings the chip up via ``ra_cgc_init()`` (XTAL -> PLL1 -> CPUCLK0 =
  * 1 GHz, PCLKA = 125 MHz), routes the four USB-FS pins per the
- * EK-RA8D2 v1 User's Manual ("USB Full-Speed Connector" pinout table)
- * to the on-board USB-FS receptacle, then brings the device-mode HID
- * stack up via ``ra_usb_phid``. Once the host enumerates the device
- * the firmware drops into a 1 Hz loop that pushes a 4-pixel cursor
- * jiggle (right, down, left, up) on the interrupt-IN pipe. LED1
- * toggles per send so the bench operator can see traffic on the wire.
+ * EK-RA8D2 v1 User's Manual to the on-board USB-FS receptacle, hands
+ * control to ThreadX, and brings the HID class up through Eclipse
+ * USBX's class layer (``ux_device_class_hid_initialize``). Same
+ * hardware test as the previous bare-metal version of this app, but
+ * driving USBX's class abstraction (which sits on top of
+ * ``port/usbx/ux_dcd_ra_usb`` -> ``ra_usb`` -- HUM Ch. 36) instead of
+ * the hand-rolled ``ra_usb_phid`` layer. The host actually enumerates
+ * the device because USBX's chapter-9 state machine answers SETUP
+ * packets through the DCD bridge.
+ *
+ * Once enumerated, the worker thread pushes a 4-pixel cursor jiggle
+ * (right, down, left, up) to the host every second on the interrupt-IN
+ * pipe via ``_ux_device_class_hid_event_set``. LED1 toggles per send.
  *
  * The HID Report Descriptor is the canonical 3-button + X/Y boot-
- * protocol mouse described in USB HID 1.11 sec E.10 "Sample Report
- * Descriptor (Mouse)". Reports are 3 bytes:
+ * protocol mouse described in USB HID 1.11 sec E.10. Reports are
+ * 3 bytes:
  *
  *   - byte 0: button bitmap (B1=left, B2=right, B3=middle).
  *   - byte 1: signed X delta (-127 .. +127).
  *   - byte 2: signed Y delta (-127 .. +127).
  *
- * The HID class descriptor (HID 1.11 sec 6.2.1) is hand-rolled in
- * ``s_hid_descriptor`` to advertise the report-descriptor length so
- * GET_DESCRIPTOR(HID) returns a coherent reply during enumeration.
- *
  * ## Pinout (USB-FS, FSP-aligned)
  *
- * | Net           | Pin    | PFS PSEL                | Notes                         |
- * |---------------|--------|-------------------------|-------------------------------|
- * | USB_FS_VBUS   | P4_07  | k_ra_psel_usb_fs (0x13) | VBUS sense (input).           |
- * | USB_FS_VBUSEN | P5_00  | k_ra_psel_usb_fs (0x13) | VBUS-enable drive (output).   |
- * | USB_FS_DP     | P8_14  | k_ra_psel_usb_fs (0x13) | D+ data line (analog buffer). |
- * | USB_FS_DM     | P8_15  | k_ra_psel_usb_fs (0x13) | D- data line (analog buffer). |
+ * | Net           | Pin    | PFS PSEL                |
+ * |---------------|--------|-------------------------|
+ * | USB_FS_VBUS   | P4_07  | k_ra_psel_usb_fs (0x13) |
+ * | USB_FS_VBUSEN | P5_00  | k_ra_psel_usb_fs (0x13) |
+ * | USB_FS_DP     | P8_14  | k_ra_psel_usb_fs (0x13) |
+ * | USB_FS_DM     | P8_15  | k_ra_psel_usb_fs (0x13) |
  *
- * ## Verification
+ * ## Sequence
  *
- *   - Linux: ``lsusb`` shows ``Brighton Sikarskie EK-RA8D2 HID Mouse``;
- *     ``xinput list`` adds a "pointer" device; the cursor jiggles in a
- *     small square on the desktop, LED1 toggles at 1 Hz.
- *   - macOS: ``system_profiler SPUSBDataType`` lists the device under
- *     "USB Bus" with class HID. The cursor moves on screen the same
- *     way; no driver install needed (the OS uses its built-in boot-
- *     mouse class driver).
+ *   1. ``ra_cgc_init()`` -- standard FSP-quickstart clock tree.
+ *   2. ``ra_time_init`` for back-off delays.
+ *   3. ``ra_pfs_route_peripheral`` for the four USB-FS pins.
+ *   4. ``ra_board_led_init(k_ra_board_led1)`` for visual heartbeat.
+ *   5. ThreadX ``tx_kernel_enter()`` -- spins the scheduler.
+ *   6. ``tx_application_define`` -- spawns one worker thread that:
+ *        - Allocates USBX memory pool and calls
+ *          ``_ux_system_initialize`` + ``_ux_device_stack_initialize``.
+ *        - Calls ``_ux_device_stack_class_register`` for the HID class.
+ *        - Calls ``ux_dcd_ra_usb_initialize(k_ra_usb_speed_fs)`` to
+ *          plug our DCD bridge into USBX.
+ *        - Calls ``ra_usb_device_attach(true)`` so the host begins
+ *          enumeration.
+ *        - Drops into the jiggle loop:
+ *          ``_ux_device_class_hid_event_set`` once per second, LED1
+ *          toggle per send.
  *
- * @par Architectural ring
- * [Ring 6 / APP] {World: S} -- application-layer code that runs in
- * the Secure world.
+ * ## Verification (macOS)
+ *
+ * After flashing, the EK-RA8D2's USB-FS receptacle (J11) enumerates
+ * as an HID Mouse. ``system_profiler SPUSBDataType`` lists the device
+ * under "USB Bus" with class HID. The cursor moves on screen in a
+ * 4-pixel square; no driver install needed (the OS uses its built-in
+ * boot-mouse class driver).
  *
  * @author Brighton Sikarskie
- * @date 2026-04-29
+ * @date 2026-05-02
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 
 #include <stdint.h>
+#include <string.h>
 
 #include "ra_board_ek_ra8d2.h"
 #include "ra_cgc.h"
 #include "ra_err.h"
 #include "ra_gpio_constants.h"
 #include "ra_isr.h"
-#include "ra_nsc_comms.h"
 #include "ra_port_constants.h"
 #include "ra_port_utils.h"
 #include "ra_time.h"
 #include "ra_usb.h"
-#include "ra_usb_phid.h"
 
-/* =============================================================================
- * USB-FS pinout (mirrors usb_cdc_echo)
- * =============================================================================
- */
+#ifndef RA_SIMULATOR_MODE
+#include "tx_api.h"
+#include "ux_api.h"
+#include "ux_dcd_ra_usb.h"
+#include "ux_device_class_hid.h"
+#include "ux_device_stack.h"
+#endif
+
+/* -------------------------------------------------------------------------- */
+/* Pinout (FSP-aligned, EK-RA8D2 v1 User's Manual)                            */
+/* -------------------------------------------------------------------------- */
 
 /**
  * @brief USB-FS pin identifiers, packed ``ra_port_pin_t`` (port << 8 | pin).
  *
  * @details Built as a runtime cast so clang-tidy's enum-range check
  * is happy with the otherwise out-of-enum value.
+ * @since 0.1.0
  */
-static const ra_port_pin_t k_usb_hid_pin_vbus =
+static const ra_port_pin_t k_demo_pin_vbus =
   (ra_port_pin_t)(((uint16_t)k_ra_port_4 << 8) | (uint16_t)k_ra_pin_7);
-static const ra_port_pin_t k_usb_hid_pin_vbusen =
+static const ra_port_pin_t k_demo_pin_vbusen =
   (ra_port_pin_t)(((uint16_t)k_ra_port_5 << 8) | (uint16_t)k_ra_pin_0);
-static const ra_port_pin_t k_usb_hid_pin_dp =
+static const ra_port_pin_t k_demo_pin_dp =
   (ra_port_pin_t)(((uint16_t)k_ra_port_8 << 8) | (uint16_t)k_ra_pin_14);
-static const ra_port_pin_t k_usb_hid_pin_dm =
+static const ra_port_pin_t k_demo_pin_dm =
   (ra_port_pin_t)(((uint16_t)k_ra_port_8 << 8) | (uint16_t)k_ra_pin_15);
 
-/* =============================================================================
- * Tunables
- * =============================================================================
- */
+/* -------------------------------------------------------------------------- */
+/* Tunables                                                                   */
+/* -------------------------------------------------------------------------- */
 
 /**
- * @enum usb_hid_report_t
+ * @enum demo_config_t
+ * @brief Compile-time settings for the worker thread + USBX pool.
+ */
+typedef enum : uint32_t {
+  k_demo_thread_stack        = 4096U,  /**< Worker thread stack (bytes).        */
+  k_demo_usbx_pool_bytes     = 16384U, /**< USBX memory pool (bytes).           */
+  k_demo_jiggle_period_ticks = 100U,   /**< ThreadX ticks between sends.      */
+} demo_config_t;
+
+/**
+ * @enum demo_hid_report_t
  * @brief Sizing for the boot-protocol mouse input report.
  *
  * @details Per USB HID 1.11 sec E.10 the boot-mouse input report is
  * 3 bytes wide: { buttons, dx, dy }.
  */
 typedef enum : uint8_t {
-  k_usb_hid_report_bytes = 3U, /**< Boot mouse report width. */
-  k_usb_hid_idx_buttons  = 0U, /**< Byte offset for buttons. */
-  k_usb_hid_idx_dx       = 1U, /**< Byte offset for X delta. */
-  k_usb_hid_idx_dy       = 2U, /**< Byte offset for Y delta. */
-} usb_hid_report_t;
+  k_demo_hid_report_bytes = 3U, /**< Boot mouse report width.        */
+  k_demo_hid_idx_buttons  = 0U, /**< Byte offset for buttons.        */
+  k_demo_hid_idx_dx       = 1U, /**< Byte offset for X delta.        */
+  k_demo_hid_idx_dy       = 2U, /**< Byte offset for Y delta.        */
+} demo_hid_report_t;
 
 /**
- * @enum usb_hid_jiggle_t
+ * @enum demo_jiggle_t
  * @brief Per-step cursor delta values for the autonomous jiggle.
  *
  * @details A 4-pixel right / down / left / up square so the cursor
@@ -119,89 +151,101 @@ typedef enum : uint8_t {
  * 8-bit per HID Usage Tables sec 4 "Generic Desktop Usage Page".
  */
 typedef enum : int8_t {
-  k_usb_hid_jiggle_step = 4,  /**< Magnitude of each jiggle step.  */
-  k_usb_hid_jiggle_zero = 0,  /**< No motion on the inactive axis. */
-  k_usb_hid_jiggle_neg  = -4, /**< Reverse of ``k_step``.          */
-} usb_hid_jiggle_t;
+  k_demo_jiggle_step = 4,  /**< Magnitude of each jiggle step.  */
+  k_demo_jiggle_zero = 0,  /**< No motion on the inactive axis. */
+  k_demo_jiggle_neg  = -4, /**< Reverse of ``k_step``.          */
+} demo_jiggle_t;
 
 /**
- * @enum usb_hid_phase_t
+ * @enum demo_phase_t
  * @brief Index into the four-step jiggle pattern.
  */
 typedef enum : uint8_t {
-  k_usb_hid_phase_right = 0U, /**< +X, 0Y. */
-  k_usb_hid_phase_down  = 1U, /**< 0X, +Y. */
-  k_usb_hid_phase_left  = 2U, /**< -X, 0Y. */
-  k_usb_hid_phase_up    = 3U, /**< 0X, -Y. */
-  k_usb_hid_phase_count = 4U, /**< Modulus. */
-} usb_hid_phase_t;
+  k_demo_phase_right = 0U, /**< +X, 0Y. */
+  k_demo_phase_down  = 1U, /**< 0X, +Y. */
+  k_demo_phase_left  = 2U, /**< -X, 0Y. */
+  k_demo_phase_up    = 3U, /**< 0X, -Y. */
+  k_demo_phase_count = 4U, /**< Modulus. */
+} demo_phase_t;
+
+#ifndef RA_SIMULATOR_MODE
+
+/* -------------------------------------------------------------------------- */
+/* ThreadX worker + USBX pool storage                                         */
+/* -------------------------------------------------------------------------- */
 
 /**
- * @enum usb_hid_timing_t
- * @brief Loop timing.
+ * @var s_demo_thread
+ * @brief ThreadX TCB for the USBX worker thread.
+ * @details Owned by ``tx_application_define``; one thread services
+ *          USBX init + the jiggle loop.
+ * @note Single-writer (worker only); readers must not mutate.
+ * @since 0.1.0
  */
-typedef enum : uint16_t {
-  k_usb_hid_send_period_ms = 1000U, /**< 1 second between jiggle sends. */
-} usb_hid_timing_t;
+static TX_THREAD s_demo_thread;
 
 /**
- * @enum usb_hid_report_id_t
- * @brief HID report-ID space.
- *
- * @details Boot-protocol mouse uses a single unnamed report (no
- * leading report ID byte), per USB HID 1.11 sec 7.2.5
- * "GetProtocol/SetProtocol" notes for the boot subclass.
+ * @var s_demo_stack
+ * @brief Stack backing storage for ``s_demo_thread``.
+ * @since 0.1.0
  */
-typedef enum : uint8_t {
-  k_usb_hid_report_id_none = 0U, /**< Single unnamed report. */
-} usb_hid_report_id_t;
+static UCHAR s_demo_stack[k_demo_thread_stack];
 
-/* =============================================================================
- * HID Report Descriptor (3-button + X/Y boot mouse)
- * =============================================================================
- *
- * Built byte-for-byte from USB HID 1.11 sec E.10 "Sample Report
- * Descriptor (Mouse)". Each row is annotated with the prefix-byte +
- * decoded item per HID 1.11 sec 6.2.2 "Report Descriptor".
+/**
+ * @var s_usbx_pool
+ * @brief USBX memory pool (USBX uses ``tx_byte_pool`` internally).
+ * @since 0.1.0
  */
+static UCHAR s_usbx_pool[k_demo_usbx_pool_bytes];
+
+/**
+ * @var s_hid_class
+ * @brief Active HID class instance, captured by the activate callback.
+ * @note Read by worker thread; written by USBX class thread.
+ * @since 0.1.0
+ */
+static UX_SLAVE_CLASS_HID* s_hid_class = UX_NULL;
+
+/* -------------------------------------------------------------------------- */
+/* HID Report Descriptor (3-button + X/Y boot mouse)                          */
+/* -------------------------------------------------------------------------- */
 
 /**
  * @var s_report_descriptor
  * @brief HID Report Descriptor for the boot mouse.
  *
- * @details Decoded sequence:
+ * @details Decoded sequence per USB HID 1.11 sec E.10:
  *   05 01           Usage Page (Generic Desktop)
  *   09 02           Usage      (Mouse)
  *   A1 01           Collection (Application)
  *     09 01           Usage      (Pointer)
  *     A1 00           Collection (Physical)
  *       05 09           Usage Page (Buttons)
- *       19 01           Usage Min  (Button 1)
- *       29 03           Usage Max  (Button 3)
+ *       19 01           Usage Min  (1)
+ *       29 03           Usage Max  (3)
  *       15 00           Logical Min (0)
  *       25 01           Logical Max (1)
  *       95 03           Report Count (3)
- *       75 01           Report Size  (1 bit)
- *       81 02           Input (Data, Var, Abs)        -- 3 button bits
+ *       75 01           Report Size  (1)
+ *       81 02           Input (Data,Var,Abs)
  *       95 01           Report Count (1)
- *       75 05           Report Size  (5 bits)
- *       81 03           Input (Cnst, Var, Abs)        -- 5 padding bits
+ *       75 05           Report Size  (5)
+ *       81 03           Input (Cnst,Var,Abs)        -- 5 padding bits
  *       05 01           Usage Page (Generic Desktop)
  *       09 30           Usage      (X)
  *       09 31           Usage      (Y)
  *       15 81           Logical Min (-127)
  *       25 7F           Logical Max ( 127)
- *       75 08           Report Size  (8 bits)
+ *       75 08           Report Size  (8)
  *       95 02           Report Count (2)
- *       81 06           Input (Data, Var, Rel)        -- dx, dy
+ *       81 06           Input (Data,Var,Rel)
  *     C0              End Collection (Physical)
  *   C0              End Collection (Application)
  *
- * @note Pure 7-bit ASCII; bytes are hex literals, not multi-byte
- *       Unicode.
+ * @note Pure 7-bit ASCII; bytes are hex literals.
  * @since 0.1.0
  */
-static const uint8_t s_report_descriptor[] = {
+static UCHAR s_report_descriptor[] = {
   0x05U, 0x01U, /* Usage Page (Generic Desktop)        */
   0x09U, 0x02U, /* Usage (Mouse)                       */
   0xA1U, 0x01U, /* Collection (Application)            */
@@ -230,54 +274,386 @@ static const uint8_t s_report_descriptor[] = {
   0xC0U,        /* End Collection (Application)        */
 };
 
-/**
- * @enum usb_hid_desc_layout_t
- * @brief Layout of the 9-byte HID class descriptor (HID 1.11 sec 6.2.1).
- */
-typedef enum : uint8_t {
-  k_usb_hid_class_desc_len      = 9U,    /**< bLength.                  */
-  k_usb_hid_class_desc_type     = 0x21U, /**< bDescriptorType (HID).    */
-  k_usb_hid_class_desc_bcd_lo   = 0x11U, /**< bcdHID low (1.11).        */
-  k_usb_hid_class_desc_bcd_hi   = 0x01U, /**< bcdHID high (1.11).       */
-  k_usb_hid_class_desc_country  = 0x00U, /**< bCountryCode (none).      */
-  k_usb_hid_class_desc_num_desc = 1U,    /**< bNumDescriptors.          */
-  k_usb_hid_class_desc_rep_type = 0x22U, /**< bDescriptorType (Report). */
-} usb_hid_desc_layout_t;
+/* -------------------------------------------------------------------------- */
+/* USB descriptors (DEVICE + CONFIG + INTERFACE + HID + EP IN)                */
+/* -------------------------------------------------------------------------- */
 
-/**
- * @var s_hid_descriptor
- * @brief HID class descriptor advertised in GET_DESCRIPTOR(HID).
+/* VID/PID matches the prior bare-metal app (pid.codes test range). The
+ * configuration is one HID interface, one interrupt-IN endpoint, no
+ * OUT endpoint -- the boot mouse class profile.
  *
- * @details Layout per USB HID 1.11 sec 6.2.1 "HID Descriptor". The
- * report-descriptor length field is little-endian.
+ * Total config-blob length:
+ *   9 (config) + 9 (interface) + 9 (HID class) + 7 (EP IN) = 34 bytes.
+ *
+ * Layout per USB 2.0 sec 9.6 and HID 1.11 sec 6.2.1.
  */
-static const uint8_t s_hid_descriptor[] = {
-  k_usb_hid_class_desc_len,
-  k_usb_hid_class_desc_type,
-  k_usb_hid_class_desc_bcd_lo,
-  k_usb_hid_class_desc_bcd_hi,
-  k_usb_hid_class_desc_country,
-  k_usb_hid_class_desc_num_desc,
-  k_usb_hid_class_desc_rep_type,
-  (uint8_t)(sizeof(s_report_descriptor) & 0xFFU),
-  (uint8_t)((sizeof(s_report_descriptor) >> 8U) & 0xFFU),
+static UCHAR s_device_framework_fs[] = {
+  /* Device descriptor (USB 2.0 sec 9.6.1) -- 18 bytes. */
+  0x12U,
+  0x01U,
+  0x00U,
+  0x02U,
+  0x00U,
+  0x00U,
+  0x00U,
+  0x40U,
+  0x09U,
+  0x12U,
+  0x01U,
+  0x00U,
+  0x00U,
+  0x01U,
+  0x01U,
+  0x02U,
+  0x03U,
+  0x01U,
+  /* Configuration descriptor (USB 2.0 sec 9.6.3) -- 9 bytes. */
+  0x09U,
+  0x02U,
+  0x22U,
+  0x00U,
+  0x01U,
+  0x01U,
+  0x00U,
+  0xC0U,
+  0x32U,
+  /* Interface descriptor -- HID, boot subclass, mouse protocol. */
+  0x09U,
+  0x04U,
+  0x00U,
+  0x00U,
+  0x01U,
+  0x03U,
+  0x01U,
+  0x02U,
+  0x00U,
+  /* HID class descriptor (HID 1.11 sec 6.2.1) -- 9 bytes.
+   * Report-descriptor length is sizeof(s_report_descriptor) = 52,
+   * little-endian (0x34, 0x00). */
+  0x09U,
+  0x21U,
+  0x11U,
+  0x01U,
+  0x00U,
+  0x01U,
+  0x22U,
+  0x34U,
+  0x00U,
+  /* Endpoint descriptor: EP1 IN, interrupt, 8-byte MPS, 10 ms poll. */
+  0x07U,
+  0x05U,
+  0x81U,
+  0x03U,
+  0x08U,
+  0x00U,
+  0x0AU,
 };
 
-/* =============================================================================
- * Helpers
- * =============================================================================
+/* String descriptors -- vendor / product / serial. Each entry:
+ *   2 bytes lang-id, 1 byte string index, 1 byte string length,
+ *   then ASCII bytes. */
+static UCHAR s_string_framework[] = {
+  /* idx 1: "Brighton Sikarskie" (18 chars). */
+  0x09U,
+  0x04U,
+  0x01U,
+  0x12U,
+  'B',
+  'r',
+  'i',
+  'g',
+  'h',
+  't',
+  'o',
+  'n',
+  ' ',
+  'S',
+  'i',
+  'k',
+  'a',
+  'r',
+  's',
+  'k',
+  'i',
+  'e',
+  /* idx 2: "EK-RA8D2 HID Mouse" (18 chars). */
+  0x09U,
+  0x04U,
+  0x02U,
+  0x12U,
+  'E',
+  'K',
+  '-',
+  'R',
+  'A',
+  '8',
+  'D',
+  '2',
+  ' ',
+  'H',
+  'I',
+  'D',
+  ' ',
+  'M',
+  'o',
+  'u',
+  's',
+  'e',
+  /* idx 3: "00000001" (8 chars). */
+  0x09U,
+  0x04U,
+  0x03U,
+  0x08U,
+  '0',
+  '0',
+  '0',
+  '0',
+  '0',
+  '0',
+  '0',
+  '1',
+};
+
+static UCHAR s_language_id_framework[] = {0x09U, 0x04U};
+
+/* -------------------------------------------------------------------------- */
+/* HID activate / deactivate callbacks                                        */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * @brief HID activate callback. Captures the live class instance.
+ *
+ * @param[in] hid_instance Pointer to ``UX_SLAVE_CLASS_HID``.
+ *
+ * @pre Called from the USBX class thread.
+ * @post ``s_hid_class`` points at the live HID class.
+ *
+ * @note USBX guarantees serialization with the deactivate callback.
+ * @since 0.1.0
  */
+static VOID demo_hid_activate(VOID* hid_instance)
+{
+  s_hid_class = (UX_SLAVE_CLASS_HID*)hid_instance;
+}
+
+/**
+ * @brief HID deactivate callback. Drops the live-class pointer.
+ *
+ * @param[in] hid_instance Pointer to ``UX_SLAVE_CLASS_HID`` (unused).
+ *
+ * @pre Called from the USBX class thread.
+ * @post ``s_hid_class`` is ``UX_NULL``.
+ *
+ * @note USBX guarantees serialization with the activate callback.
+ * @since 0.1.0
+ */
+static VOID demo_hid_deactivate(VOID* hid_instance)
+{
+  (void)hid_instance;
+  s_hid_class = UX_NULL;
+}
+
+/**
+ * @brief HID GET_REPORT / SET_REPORT control-pipe callback.
+ *
+ * @details Boot mouse: hosts that issue GET_REPORT(input) get a zero-
+ * deltas neutral report so they don't see stale state. SET_REPORT
+ * (output / feature) is silently consumed -- the boot-mouse profile
+ * has no LED bitmap.
+ *
+ * @param[in,out] hid       USBX HID class instance (unused).
+ * @param[in,out] hid_event Pre-allocated event slot to fill.
+ *
+ * @return ``UX_SUCCESS`` always.
+ *
+ * @pre ``hid_event`` is non-NULL (USBX guarantee).
+ * @post Event buffer holds a 3-byte neutral report.
+ *
+ * @note Called from USBX's control-pipe thread.
+ * @since 0.1.0
+ */
+static UINT demo_hid_get_callback(UX_SLAVE_CLASS_HID* hid, UX_SLAVE_CLASS_HID_EVENT* hid_event)
+{
+  (void)hid;
+  hid_event->ux_device_class_hid_event_length      = (ULONG)k_demo_hid_report_bytes;
+  hid_event->ux_device_class_hid_event_report_id   = 0UL;
+  hid_event->ux_device_class_hid_event_report_type = (ULONG)UX_DEVICE_CLASS_HID_REPORT_TYPE_INPUT;
+  hid_event->ux_device_class_hid_event_buffer[k_demo_hid_idx_buttons] = 0U;
+  hid_event->ux_device_class_hid_event_buffer[k_demo_hid_idx_dx]      = 0U;
+  hid_event->ux_device_class_hid_event_buffer[k_demo_hid_idx_dy]      = 0U;
+  return UX_SUCCESS;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Worker thread: bring USBX up + jiggle loop                                 */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * @brief Build the boot-mouse report for one phase of the jiggle.
+ *
+ * @param[in]  phase  Position in the 4-step square pattern.
+ * @param[out] report Destination buffer; must hold ``k_demo_hid_report_bytes``.
+ *
+ * @pre ``report`` is non-NULL.
+ * @pre ``phase < k_demo_phase_count``.
+ * @post All three report bytes written.
+ *
+ * @note Reentrant; no shared state.
+ * @since 0.1.0
+ */
+static void demo_build_jiggle(demo_phase_t phase, UCHAR* report)
+{
+  int8_t dx = k_demo_jiggle_zero;
+  int8_t dy = k_demo_jiggle_zero;
+  switch (phase) {
+    case k_demo_phase_right:
+      dx = k_demo_jiggle_step;
+      break;
+    case k_demo_phase_down:
+      dy = k_demo_jiggle_step;
+      break;
+    case k_demo_phase_left:
+      dx = k_demo_jiggle_neg;
+      break;
+    case k_demo_phase_up:
+      dy = k_demo_jiggle_neg;
+      break;
+    case k_demo_phase_count:
+    default:
+      break;
+  }
+  report[k_demo_hid_idx_buttons] = 0U;
+  report[k_demo_hid_idx_dx]      = (UCHAR)dx;
+  report[k_demo_hid_idx_dy]      = (UCHAR)dy;
+}
+
+/**
+ * @brief Worker thread entry. Brings USBX + HID up, then jiggles the
+ *        cursor forever.
+ *
+ * @param[in] arg Unused (ThreadX entry signature).
+ *
+ * @pre ``tx_application_define`` started this thread auto-start.
+ * @post Thread loops forever; never returns.
+ *
+ * @note Single-instance worker; not designed for re-entry.
+ * @since 0.1.0
+ */
+static VOID demo_worker(ULONG arg)
+{
+  (void)arg;
+
+  /* Bring USBX up. */
+  if (_ux_system_initialize(s_usbx_pool, k_demo_usbx_pool_bytes, UX_NULL, 0) != UX_SUCCESS) {
+    return;
+  }
+  if (_ux_device_stack_initialize((UCHAR*)UX_NULL, /* HS framework            */
+                                  0,
+                                  s_device_framework_fs,
+                                  sizeof(s_device_framework_fs),
+                                  s_string_framework,
+                                  sizeof(s_string_framework),
+                                  s_language_id_framework,
+                                  sizeof(s_language_id_framework),
+                                  UX_NULL) != UX_SUCCESS) {
+    return;
+  }
+
+  /* Register HID class against the configuration. */
+  UX_SLAVE_CLASS_HID_PARAMETER hid_params = {
+    .ux_slave_class_hid_instance_activate         = demo_hid_activate,
+    .ux_slave_class_hid_instance_deactivate       = demo_hid_deactivate,
+    .ux_device_class_hid_parameter_report_address = s_report_descriptor,
+    .ux_device_class_hid_parameter_report_id      = 0UL,
+    .ux_device_class_hid_parameter_report_length  = (ULONG)sizeof(s_report_descriptor),
+    .ux_device_class_hid_parameter_callback       = UX_NULL,
+    .ux_device_class_hid_parameter_get_callback   = demo_hid_get_callback,
+  };
+  if (_ux_device_stack_class_register((UCHAR*)"ux_slave_class_hid",
+                                      _ux_device_class_hid_entry,
+                                      1, /* configuration #  */
+                                      0, /* interface #      */
+                                      &hid_params) != UX_SUCCESS) {
+    return;
+  }
+
+  /* Plug our DCD bridge into the device stack and turn the bus on. */
+  if (ux_dcd_ra_usb_initialize(k_ra_usb_speed_fs) != k_ra_ok) {
+    return;
+  }
+  if (ra_usb_device_attach(k_ra_usb_speed_fs, true) != k_ra_ok) {
+    return;
+  }
+
+  /* Jiggle loop. */
+  UX_SLAVE_CLASS_HID_EVENT hid_event;
+  demo_phase_t             phase = k_demo_phase_right;
+  while (1) {
+    if (s_hid_class == UX_NULL) {
+      tx_thread_sleep(k_demo_jiggle_period_ticks);
+      continue;
+    }
+
+    (void)memset(&hid_event, 0, sizeof(hid_event));
+    hid_event.ux_device_class_hid_event_length      = (ULONG)k_demo_hid_report_bytes;
+    hid_event.ux_device_class_hid_event_report_id   = 0UL;
+    hid_event.ux_device_class_hid_event_report_type = (ULONG)UX_DEVICE_CLASS_HID_REPORT_TYPE_INPUT;
+    demo_build_jiggle(phase, hid_event.ux_device_class_hid_event_buffer);
+
+    if (_ux_device_class_hid_event_set(s_hid_class, &hid_event) == UX_SUCCESS) {
+      (void)ra_board_led_toggle(k_ra_board_led1);
+      phase = (demo_phase_t)(((uint8_t)(phase + 1U)) % k_demo_phase_count);
+    }
+
+    tx_thread_sleep(k_demo_jiggle_period_ticks);
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* ThreadX kernel entry: spawn the worker                                     */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * @brief ThreadX application-define hook. Spawns the demo worker.
+ *
+ * @param[in] first_unused_memory Sentinel (unused; we use static stacks).
+ *
+ * @pre Called from ``tx_kernel_enter`` after scheduler init.
+ * @post One auto-start worker thread is queued.
+ *
+ * @note Called once at boot; not thread-safe.
+ * @since 0.1.0
+ */
+VOID tx_application_define(VOID* first_unused_memory)
+{
+  (void)first_unused_memory;
+  (void)tx_thread_create(&s_demo_thread,
+                         "usb_hid_device",
+                         demo_worker,
+                         0UL,
+                         s_demo_stack,
+                         k_demo_thread_stack,
+                         8U, /* priority         */
+                         8U, /* preempt threshold */
+                         TX_NO_TIME_SLICE,
+                         TX_AUTO_START);
+}
+#endif /* !RA_SIMULATOR_MODE */
+
+/* -------------------------------------------------------------------------- */
+/* Startup helpers                                                            */
+/* -------------------------------------------------------------------------- */
 
 /**
  * @brief Halt forever in WFI -- panic stop on init failure.
  *
- * @pre Called only after a fatal error during boot.
+ * @pre Called only after a fatal error in boot.
+ * @post CPU is parked; only debugger / external reset wakes it.
  *
- * @post CPU parked; only debugger / external reset wakes it.
- *
+ * @note Not thread-safe; not reachable post-boot.
  * @since 0.1.0
  */
-static void usb_hid_panic_halt(void)
+static void demo_panic_halt(void)
 {
   while (1) {
     __asm__ volatile("wfi");
@@ -285,183 +661,78 @@ static void usb_hid_panic_halt(void)
 }
 
 /**
- * @brief Route the four USB-FS pins (VBUS, VBUSEN, D+, D-) to the
- *        USBFS controller via the PFS PSEL field.
+ * @brief Route the four USB-FS pins to the USBFS controller.
  *
- * @return Error code.
+ * @return Error from the first failing route call, or k_ra_ok.
  * @retval k_ra_ok All four pins routed.
- * @retval other   PFS routing failure.
  *
- * @pre IOPORT module reachable.
+ * @pre IOPORT module is reachable.
  * @pre Single-threaded init context.
- *
  * @post On success the four USB-FS pins are in USB peripheral mode.
  *
+ * @note Not thread-safe.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t usb_hid_pins_init(void)
+[[nodiscard]] static ra_err_t demo_pins_init(void)
 {
-  ra_err_t err = ra_pfs_route_peripheral(k_usb_hid_pin_vbus, k_ra_psel_usb_fs, "usb_hid.vbus");
+  ra_err_t err = ra_pfs_route_peripheral(k_demo_pin_vbus, k_ra_psel_usb_fs, "usb_hid.vbus");
   if (err != k_ra_ok) {
     return err;
   }
-  err = ra_pfs_route_peripheral(k_usb_hid_pin_vbusen, k_ra_psel_usb_fs, "usb_hid.vbusen");
+  err = ra_pfs_route_peripheral(k_demo_pin_vbusen, k_ra_psel_usb_fs, "usb_hid.vbusen");
   if (err != k_ra_ok) {
     return err;
   }
-  err = ra_pfs_route_peripheral(k_usb_hid_pin_dp, k_ra_psel_usb_fs, "usb_hid.dp");
+  err = ra_pfs_route_peripheral(k_demo_pin_dp, k_ra_psel_usb_fs, "usb_hid.dp");
   if (err != k_ra_ok) {
     return err;
   }
-  return ra_pfs_route_peripheral(k_usb_hid_pin_dm, k_ra_psel_usb_fs, "usb_hid.dm");
-}
-
-/**
- * @brief Bring up CGC, SysTick, USB pin mux, LED1, USB controller, and
- *        the device-HID class. Panic-halts on any failure.
- *
- * @details
- * Mirrors the structure of usb_cdc_echo's setup helper but installs
- * ``ra_usb_phid_*`` instead of ``ra_usb_cdc_*``. After
- * ``ra_usb_phid_set_descriptors`` the D+ pull-up is raised by
- * ``ra_nsc_usb_attach`` so the host begins enumeration.
- *
- * @since 0.1.0
- */
-static void usb_hid_setup_or_halt(void)
-{
-  uint32_t cpuclk0_hz = 0U;
-
-  if (ra_cgc_init() != k_ra_ok) {
-    usb_hid_panic_halt();
-  }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
-    usb_hid_panic_halt();
-  }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
-    usb_hid_panic_halt();
-  }
-  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
-    usb_hid_panic_halt();
-  }
-  if (usb_hid_pins_init() != k_ra_ok) {
-    usb_hid_panic_halt();
-  }
-
-  /* USB controller bring-up via the NSC veneer -- releases USBFS MSTP
-   * gate, drives SCKE high, clears DRPD, sets USBE, programs the DCP
-   * max-packet to 64, and unmasks the device-mode IRQ set. */
-  if (ra_nsc_usb_init(k_ra_usb_speed_fs) != k_ra_ok) {
-    usb_hid_panic_halt();
-  }
-
-  /* HID class layer: configures PIPE6 (intr IN, EP1 IN) and PIPE7
-   * (intr OUT, EP2 OUT) at the FS default packet size, primes idle
-   * rate to 0 (report-on-change) and protocol to "report". */
-  if (ra_usb_phid_init(k_ra_usb_speed_fs) != k_ra_ok) {
-    usb_hid_panic_halt();
-  }
-
-  if (ra_usb_phid_set_descriptors(s_report_descriptor,
-                                  (uint16_t)sizeof(s_report_descriptor),
-                                  s_hid_descriptor,
-                                  (uint16_t)sizeof(s_hid_descriptor)) != k_ra_ok) {
-    usb_hid_panic_halt();
-  }
-
-  /* Raise D+ pull-up so the host begins SET_ADDRESS / GET_DESCRIPTOR
-   * / SET_CONFIGURATION. VID/PID/strings come from the secure-side
-   * standard-request handler (same VID 0x1209, locally chosen PID). */
-  if (ra_nsc_usb_attach(k_ra_usb_speed_fs, true) != k_ra_ok) {
-    usb_hid_panic_halt();
-  }
-}
-
-/**
- * @brief Build the boot-mouse report for one phase of the jiggle.
- *
- * @details No buttons pressed; only X/Y deltas vary by phase.
- *
- * @param[in]  phase Position in the 4-step square pattern.
- * @param[out] report Destination buffer, must hold ``k_report_bytes``.
- *
- * @pre ``report`` is non-NULL.
- * @pre ``phase < k_usb_hid_phase_count``.
- *
- * @post All three report bytes are written.
- *
- * @since 0.1.0
- */
-static void usb_hid_build_jiggle(usb_hid_phase_t phase, uint8_t* report)
-{
-  int8_t dx = k_usb_hid_jiggle_zero;
-  int8_t dy = k_usb_hid_jiggle_zero;
-  switch (phase) {
-    case k_usb_hid_phase_right:
-      dx = k_usb_hid_jiggle_step;
-      break;
-    case k_usb_hid_phase_down:
-      dy = k_usb_hid_jiggle_step;
-      break;
-    case k_usb_hid_phase_left:
-      dx = k_usb_hid_jiggle_neg;
-      break;
-    case k_usb_hid_phase_up:
-      dy = k_usb_hid_jiggle_neg;
-      break;
-    case k_usb_hid_phase_count:
-    default:
-      break;
-  }
-
-  report[k_usb_hid_idx_buttons] = 0U;
-  report[k_usb_hid_idx_dx]      = (uint8_t)dx;
-  report[k_usb_hid_idx_dy]      = (uint8_t)dy;
+  return ra_pfs_route_peripheral(k_demo_pin_dm, k_ra_psel_usb_fs, "usb_hid.dm");
 }
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmain"
 /**
- * @brief Application entry. Brings up CGC + USB-FS + HID, then jiggles
- *        the host cursor in a 4-pixel square at 1 Hz forever.
+ * @brief Application entry. Brings up CGC + USB-FS pins + LED1 + ThreadX.
  *
- * @return Never returns.
+ * @return Never returns (``tx_kernel_enter`` is __noreturn).
  *
  * @pre Reset_Handler has copied .data and zeroed .bss.
  * @pre SystemInit has set VTOR, FPU, and priority grouping.
- *
- * @post On clean entry the CPU stays in the send-jiggle loop forever.
+ * @post On clean entry the CPU stays in tx_kernel_enter forever.
  * @post On any HAL init failure the function halts in WFI.
  *
+ * @note Single entry point; not re-entrant.
  * @since 0.1.0
  */
 int32_t main(void)
 {
-  usb_hid_setup_or_halt();
-  ra_isr_globals_enable();
+  uint32_t cpuclk0_hz = 0U;
 
-  uint8_t         report[k_usb_hid_report_bytes] = {};
-  usb_hid_phase_t phase                          = k_usb_hid_phase_right;
-
-  while (1) {
-    usb_hid_build_jiggle(phase, report);
-
-    /* Pre-enumeration the controller has no IN buffer space; ignore
-     * the error and retry next tick. After the host opens the
-     * interface, send_report starts succeeding. */
-    (void)ra_usb_phid_send_report(k_usb_hid_report_id_none,
-                                  report,
-                                  (uint16_t)k_usb_hid_report_bytes);
-
-    if (ra_board_led_toggle(k_ra_board_led1) != k_ra_ok) {
-      break;
-    }
-
-    phase = (usb_hid_phase_t)(((uint8_t)(phase + 1U)) % k_usb_hid_phase_count);
-    ra_delay_ms((uint32_t)k_usb_hid_send_period_ms);
+  if (ra_cgc_init() != k_ra_ok) {
+    demo_panic_halt();
+  }
+  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+    demo_panic_halt();
+  }
+  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+    demo_panic_halt();
+  }
+  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
+    demo_panic_halt();
+  }
+  if (demo_pins_init() != k_ra_ok) {
+    demo_panic_halt();
   }
 
-  usb_hid_panic_halt();
+  ra_isr_globals_enable();
+
+#ifndef RA_SIMULATOR_MODE
+  /* tx_kernel_enter is __noreturn -- it never comes back. */
+  tx_kernel_enter();
+#endif
+
+  demo_panic_halt();
   return 0;
 }
 #pragma GCC diagnostic pop
