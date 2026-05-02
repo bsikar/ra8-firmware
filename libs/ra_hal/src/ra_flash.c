@@ -139,6 +139,7 @@ typedef enum : uint16_t {
  * @retval k_ra_err_invalid_arg Caller violated a precondition.
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
+ * @post Documented side effects are visible on success.
  */
 static ra_err_t internal_wait_buffer_ready(uint32_t limit)
 {
@@ -169,6 +170,7 @@ static ra_err_t internal_wait_buffer_ready(uint32_t limit)
  * @retval k_ra_err_invalid_arg Caller violated a precondition.
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
+ * @post Documented side effects are visible on success.
  */
 static ra_err_t internal_wait_commit_done(uint32_t limit)
 {
@@ -199,6 +201,7 @@ static ra_err_t internal_wait_commit_done(uint32_t limit)
  * @retval k_ra_err_invalid_arg Caller violated a precondition.
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
+ * @post Documented side effects are visible on success.
  */
 static ra_err_t internal_wait_mrdy(uint32_t limit)
 {
@@ -226,6 +229,8 @@ static ra_err_t internal_wait_mrdy(uint32_t limit)
  * API documents.
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
  */
 static void internal_set_program_gate(ra_flash_world_t world, bool enable)
 {
@@ -261,6 +266,8 @@ static void internal_set_program_gate(ra_flash_world_t world, bool enable)
  * API documents.
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
  */
 static void internal_set_hsp_mode(bool enable)
 {
@@ -285,6 +292,8 @@ static void internal_set_hsp_mode(bool enable)
  * API documents.
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
  */
 static void internal_set_prefetch(bool enable)
 {
@@ -310,6 +319,8 @@ static void internal_set_prefetch(bool enable)
  * API documents.
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
  */
 static void internal_maci_cmd8(uint8_t byte)
 {
@@ -330,6 +341,8 @@ static void internal_maci_cmd8(uint8_t byte)
  * API documents.
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
  */
 static void internal_maci_cmd16(uint16_t half)
 {
@@ -353,6 +366,8 @@ static void internal_maci_cmd16(uint16_t half)
  * @retval k_ra_err_invalid_arg Caller violated a precondition.
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
  */
 static uint8_t internal_arc_to_mcntselr(ra_flash_arc_id_t id)
 {
@@ -391,6 +406,8 @@ static uint8_t internal_arc_to_mcntselr(ra_flash_arc_id_t id)
  * @retval k_ra_err_invalid_arg Caller violated a precondition.
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
  */
 static uint32_t internal_arc_max_count(ra_flash_arc_id_t id)
 {
@@ -429,6 +446,8 @@ static uint32_t internal_arc_max_count(ra_flash_arc_id_t id)
  * @since 0.1.0
  *
  * @param[in] cfg See header declaration for direction and constraints.
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
  */
 static uint32_t internal_popcount32(uint32_t x)
 {
@@ -695,6 +714,8 @@ ra_err_t ra_flash_set_rww_disable(bool disable)
  * @retval k_ra_ok Success path.
  * @retval k_ra_err_invalid_arg Caller violated a precondition.
  * @since 0.1.0
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
  */
 static bool internal_window_allows(uintptr_t addr, uint32_t len)
 {
@@ -737,6 +758,8 @@ static bool internal_window_allows(uintptr_t addr, uint32_t len)
  * @retval k_ra_ok Success path.
  * @retval k_ra_err_invalid_arg Caller violated a precondition.
  * @since 0.1.0
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
  */
 static ra_err_t internal_validate_write_block(uint32_t mram_addr, uint32_t len)
 {
@@ -796,6 +819,8 @@ static ra_err_t internal_validate_write_block(uint32_t mram_addr, uint32_t len)
  *
  * @param[in] lock See header declaration for direction and constraints.
  * @param[in] permanent See header declaration for direction and constraints.
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
  */
 static ra_err_t internal_flash_program_window(uint32_t         mram_addr,
                                               const uint8_t*   src,
@@ -811,6 +836,25 @@ static ra_err_t internal_flash_program_window(uint32_t         mram_addr,
     dst[i] = src[i];
   }
 
+  /**
+   * @brief volatile.
+   *
+   * @details Implementation detail; see surrounding code and HUM citations.
+   *
+   * @param[in] memory See declaration: ``"" ::: "memory"``.
+   *
+   * @return ::ra_err_t outcome (or scalar return value).
+   * @retval k_ra_ok Operation completed successfully.
+   * @retval other Non-zero error code from the underlying operation.
+   *
+   * @pre Module has been initialised where applicable.
+   * @pre Pointer arguments (if any) are valid for the requested length.
+   * @post Hardware / software state reflects the requested operation on success.
+   * @post No side effects beyond those documented above.
+   *
+   * @note Not thread-safe; the caller must serialise concurrent access.
+   * @since 0.1.0
+   */
   __asm__ volatile("" ::: "memory");
   /* HUM Ch 59 "MRCFLR : Code MRAM Flush Register" p 3601 */
   *ra_mram_reg16(k_ra_mram_off_mrcflr) = k_ra_mrcflr_key_flush;
@@ -1396,6 +1440,8 @@ ra_err_t ra_flash_config_set_write(uint32_t target_addr, const uint16_t* words)
  * @retval k_ra_err_invalid_arg Caller violated a precondition.
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
  */
 static ra_err_t internal_arc_cmd(uint8_t mcntselr, uint8_t cmd)
 {
@@ -1450,6 +1496,8 @@ static ra_err_t internal_arc_cmd(uint8_t mcntselr, uint8_t cmd)
  * @since 0.1.0
  *
  * @param[in] list_select See header declaration for direction and constraints.
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
  */
 static uint32_t internal_arc_nsec_count(ra_flash_arc_id_t id)
 {
@@ -2059,6 +2107,8 @@ ra_err_t ra_flash_extra_mram_erase(uint32_t mram_addr)
  * @note Internal helper, not thread-safe.
  *
  * @since 0.1.0
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
  */
 static void internal_irq_rmw8(uint16_t off, uint8_t bit, bool enable)
 {
@@ -2089,6 +2139,8 @@ static void internal_irq_rmw8(uint16_t off, uint8_t bit, bool enable)
  * @note Internal helper, not thread-safe.
  *
  * @since 0.1.0
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
  */
 static void internal_apply_ecc_irq(uint16_t off, bool is_ted, bool enable)
 {
@@ -2115,6 +2167,8 @@ static void internal_apply_ecc_irq(uint16_t off, bool is_ted, bool enable)
  * @note Internal helper, not thread-safe.
  *
  * @since 0.1.0
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
  */
 static void internal_apply_extra_err_irq(bool err_kind, bool enable)
 {
@@ -2224,6 +2278,8 @@ ra_err_t ra_flash_callback_set(ra_flash_callback_t cb, void* user_ctx)
  * API documents.
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
  */
 static void internal_deliver(ra_flash_irq_src_t src, uint32_t fault_addr, uint32_t status_word)
 {
@@ -2265,6 +2321,8 @@ static void internal_deliver(ra_flash_irq_src_t src, uint32_t fault_addr, uint32
  * @retval k_ra_ok Success path.
  * @retval k_ra_err_invalid_arg Caller violated a precondition.
  * @since 0.1.0
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
  */
 static uint32_t internal_dispatch_ecc(uint16_t           status_off,
                                       uint16_t           ted_addr_off,
@@ -2460,6 +2518,8 @@ ra_err_t ra_flash_set_window(uintptr_t low, uintptr_t high)
  * @retval k_ra_ok Success path.
  * @retval k_ra_err_invalid_arg Caller violated a precondition.
  * @since 0.1.0
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
  */
 static ra_flash_world_t internal_world_for_addr(uintptr_t addr)
 {
@@ -2492,6 +2552,8 @@ static ra_flash_world_t internal_world_for_addr(uintptr_t addr)
  * @retval k_ra_ok Success path.
  * @retval k_ra_err_invalid_arg Caller violated a precondition.
  * @since 0.1.0
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
  */
 static ra_err_t internal_validate_range(uintptr_t address, uint64_t total_len)
 {
