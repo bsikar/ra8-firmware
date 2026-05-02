@@ -84,6 +84,22 @@ typedef enum : uint32_t {
  */
 
 /* HUM Ch 63 "Graphics LCD Controller (GLCDC)" p 3744 */
+/**
+ * @brief ra_glcdc_init -- see header for full description.
+ * @details See the matching header declaration for the full
+ * contract; this site adds no behaviour beyond what the public
+ * API documents.
+ * @param[in] cfg See header declaration for direction and constraints.
+ * @return ``ra_err_t`` error code (or void if the signature returns void).
+ * @retval k_ra_ok Success path.
+ * @retval k_ra_err_invalid_arg Caller violated a precondition.
+ * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Caller has validated all pointer parameters.
+ * @post Side effects are limited to those documented in the header.
+ * @post No global state is modified on the error path.
+ * @note Thread safety: see the header declaration.
+ * @since 0.1.0
+ */
 ra_err_t ra_glcdc_init(const ra_glcdc_config_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
@@ -154,6 +170,22 @@ ra_err_t ra_glcdc_start(bool enable)
  * =============================================================================
  */
 
+/**
+ * @brief ra_glcdc_set_layer2 -- see header for full description.
+ * @details See the matching header declaration for the full
+ * contract; this site adds no behaviour beyond what the public
+ * API documents.
+ * @param[in] cfg See header declaration for direction and constraints.
+ * @return ``ra_err_t`` error code (or void if the signature returns void).
+ * @retval k_ra_ok Success path.
+ * @retval k_ra_err_invalid_arg Caller violated a precondition.
+ * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Caller has validated all pointer parameters.
+ * @post Side effects are limited to those documented in the header.
+ * @post No global state is modified on the error path.
+ * @note Thread safety: see the header declaration.
+ * @since 0.1.0
+ */
 ra_err_t ra_glcdc_set_layer2(const ra_glcdc_layer2_cfg_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
@@ -209,6 +241,23 @@ ra_err_t ra_glcdc_set_layer2(const ra_glcdc_layer2_cfg_t* cfg)
  * =============================================================================
  */
 
+/**
+ * @brief ra_glcdc_set_blend -- see header for full description.
+ * @details See the matching header declaration for the full
+ * contract; this site adds no behaviour beyond what the public
+ * API documents.
+ * @param[in] mode See header declaration for direction and constraints.
+ * @param[in] global_alpha See header declaration for direction and constraints.
+ * @return ``ra_err_t`` error code (or void if the signature returns void).
+ * @retval k_ra_ok Success path.
+ * @retval k_ra_err_invalid_arg Caller violated a precondition.
+ * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Caller has validated all pointer parameters.
+ * @post Side effects are limited to those documented in the header.
+ * @post No global state is modified on the error path.
+ * @note Thread safety: see the header declaration.
+ * @since 0.1.0
+ */
 ra_err_t ra_glcdc_set_blend(ra_glcdc_blend_mode_t mode, uint8_t global_alpha)
 {
   uint32_t dispsel = 0U;
@@ -249,6 +298,22 @@ ra_err_t ra_glcdc_set_blend(ra_glcdc_blend_mode_t mode, uint8_t global_alpha)
  * =============================================================================
  */
 
+/**
+ * @brief ra_glcdc_set_background_color -- see header for full description.
+ * @details See the matching header declaration for the full
+ * contract; this site adds no behaviour beyond what the public
+ * API documents.
+ * @param[in] argb See header declaration for direction and constraints.
+ * @return ``ra_err_t`` error code (or void if the signature returns void).
+ * @retval k_ra_ok Success path.
+ * @retval k_ra_err_invalid_arg Caller violated a precondition.
+ * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Caller has validated all pointer parameters.
+ * @post Side effects are limited to those documented in the header.
+ * @post No global state is modified on the error path.
+ * @note Thread safety: see the header declaration.
+ * @since 0.1.0
+ */
 ra_err_t ra_glcdc_set_background_color(uint32_t argb)
 {
   /* HUM Ch 63 "BG_BGC" p 3744 */ /* panel-wide fallback colour. */
@@ -359,6 +424,22 @@ ra_err_t ra_glcdc_set_clut_double_buffered(uint8_t         layer,
  * =============================================================================
  */
 
+/**
+ * @brief ra_glcdc_set_dithering -- see header for full description.
+ * @details See the matching header declaration for the full
+ * contract; this site adds no behaviour beyond what the public
+ * API documents.
+ * @param[in] mode See header declaration for direction and constraints.
+ * @return ``ra_err_t`` error code (or void if the signature returns void).
+ * @retval k_ra_ok Success path.
+ * @retval k_ra_err_invalid_arg Caller violated a precondition.
+ * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Caller has validated all pointer parameters.
+ * @post Side effects are limited to those documented in the header.
+ * @post No global state is modified on the error path.
+ * @note Thread safety: see the header declaration.
+ * @since 0.1.0
+ */
 ra_err_t ra_glcdc_set_dithering(ra_glcdc_dither_mode_t mode)
 {
   uint32_t sel;

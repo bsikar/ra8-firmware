@@ -345,7 +345,28 @@ static const uint8_t s_hval_ac_chroma[162] = {
 /*  Helper utilities                                                   */
 /* ------------------------------------------------------------------ */
 
-/** @brief Clamp `v` to the unsigned 8-bit pixel range. */
+/**
+ * @brief Clamp `v` to the unsigned 8-bit pixel range.
+ *
+ * @details
+ * Saturating cast used by the IDCT output stage so out-of-range
+ * coefficients map to the legal 8-bit pixel domain. Pure helper.
+ *
+ * @param[in] v Signed integer value to saturate.
+ *
+ * @return Saturated 8-bit value.
+ * @retval 0      ``v`` was negative.
+ * @retval 255    ``v`` was > 255.
+ * @retval (u8)v  ``v`` was in 0..255.
+ *
+ * @pre ``v`` is a valid signed integer (no preconditions on range).
+ * @pre Caller is using the result for an 8-bit pixel slot.
+ * @post Return value is in 0..255 (k_ra_jpeg_pixel_max).
+ * @post No global state is touched.
+ *
+ * @note Pure helper; safe from any context.
+ * @since 0.1.0
+ */
 static inline uint8_t clamp_u8(int32_t v)
 {
   if (v < 0) {
@@ -357,13 +378,52 @@ static inline uint8_t clamp_u8(int32_t v)
   return (uint8_t)v;
 }
 
-/** @brief Read a 16-bit big-endian word from `p`. */
+/**
+ * @brief Read a 16-bit big-endian word from `p`.
+ *
+ * @details
+ * JPEG marker payloads use big-endian length prefixes. Inline helper
+ * keeps the parser sites free of byte-shifting noise.
+ *
+ * @param[in] p Non-NULL pointer to two readable bytes.
+ *
+ * @return Decoded big-endian word.
+ * @retval 0..65535 ``(p[0] << 8) | p[1]``.
+ *
+ * @pre ``p`` is non-NULL.
+ * @pre At least two bytes are readable starting at ``p``.
+ * @post No memory has been written.
+ * @post Return value reflects the bytes at the call site.
+ *
+ * @note Pure helper; safe from any context.
+ * @since 0.1.0
+ */
 static inline uint16_t read_be16(const uint8_t* p)
 {
   return (uint16_t)(((uint16_t)p[0] << k_ra_jpeg_byte_shift) | (uint16_t)p[1]);
 }
 
-/** @brief Write a 16-bit big-endian word into `p`. */
+/**
+ * @brief Write a 16-bit big-endian word into `p`.
+ *
+ * @details
+ * Encoder helper for emitting JPEG marker payloads (length prefixes,
+ * SOFn / DHT / DQT field counts).
+ *
+ * @param[out] p Non-NULL pointer to two writable bytes.
+ * @param[in]  v Value to encode.
+ *
+ * @return None.
+ * @retval None
+ *
+ * @pre ``p`` is non-NULL.
+ * @pre At least two bytes are writable starting at ``p``.
+ * @post ``p[0]`` holds the high byte of ``v``, ``p[1]`` the low byte.
+ * @post No global state is touched.
+ *
+ * @note Pure helper; safe from any context.
+ * @since 0.1.0
+ */
 static inline void write_be16(uint8_t* p, uint16_t v)
 {
   p[0] = (uint8_t)(v >> k_ra_jpeg_byte_shift);
@@ -392,7 +452,28 @@ typedef struct {
   uint8_t        had_eoi; /**< Set when an end marker is consumed. */
 } ra_jpeg_bitreader_t;
 
-/** @brief Refill `acc` until at least 16 bits are available. */
+/**
+ * @brief Refill `acc` until at least 16 bits are available.
+ *
+ * @details
+ * Pulls bytes from the entropy stream into the 32-bit accumulator,
+ * unstuffing ``0xFF 0x00`` sequences per T.81 F.1.2.3 and stopping
+ * when a real marker is reached (rewinds two bytes so the caller can
+ * inspect it).
+ *
+ * @param[in,out] br Bit reader (state mutated in place).
+ *
+ * @return None.
+ * @retval None
+ *
+ * @pre ``br`` is non-NULL.
+ * @pre ``br->buf`` and ``br->len`` describe a valid byte slice.
+ * @post ``br->nbits`` is >= 24 OR ``br->had_eoi`` is set.
+ * @post ``br->pos`` advances past consumed payload bytes.
+ *
+ * @note Internal helper; not thread-safe.
+ * @since 0.1.0
+ */
 static void br_fill(ra_jpeg_bitreader_t* br)
 {
   while (br->nbits <= 24U && !br->had_eoi) {
@@ -422,7 +503,28 @@ static void br_fill(ra_jpeg_bitreader_t* br)
   }
 }
 
-/** @brief Pop `n` bits MSB-first; returns -1 on underflow. */
+/**
+ * @brief Pop `n` bits MSB-first; returns -1 on underflow.
+ *
+ * @details
+ * Calls ``br_fill`` to top off the accumulator, then drains ``n``
+ * MSBs as a non-negative integer.
+ *
+ * @param[in,out] br Bit reader (state mutated in place).
+ * @param[in]     n  Number of bits to consume (0..16).
+ *
+ * @return Decoded bit pattern, or -1 on stream underflow.
+ * @retval >=0 ``n``-bit unsigned value drained from the accumulator.
+ * @retval -1  Underflow / EOI before ``n`` bits were available.
+ *
+ * @pre ``br`` is non-NULL.
+ * @pre ``n`` <= 16 (caller-enforced).
+ * @post ``br->nbits`` decreases by ``n`` on success.
+ * @post Accumulator is masked to its remaining bits.
+ *
+ * @note Internal helper; not thread-safe.
+ * @since 0.1.0
+ */
 static int32_t br_get_bits(ra_jpeg_bitreader_t* br, uint8_t n)
 {
   if (n == 0U) {
@@ -464,7 +566,28 @@ typedef struct {
   uint16_t total;
 } ra_jpeg_htab_t;
 
-/** @brief Build canonical code/size and mincode/maxcode tables. */
+/**
+ * @brief Build canonical code/size and mincode/maxcode tables.
+ *
+ * @details
+ * Implements T.81 Annex C "Generation of size table" + "Generation of
+ * code table" plus the Annex F.2.2.3 mincode/maxcode/valptr tables
+ * used by the symbol decoder.
+ *
+ * @param[in,out] h Huffman table (BITS / VALS in, derived tables out).
+ *
+ * @return None.
+ * @retval None
+ *
+ * @pre ``h`` is non-NULL.
+ * @pre ``h->bits`` and ``h->vals`` populated from the JPEG DHT marker.
+ * @post ``h->huffcode``, ``h->huffsize``, ``h->mincode``, ``h->maxcode``
+ *       and ``h->valptr`` are populated.
+ * @post ``h->total`` reflects the symbol count.
+ *
+ * @note Internal helper; not thread-safe.
+ * @since 0.1.0
+ */
 static void htab_build(ra_jpeg_htab_t* h)
 {
   /* T.81 Annex C, "Generation of size table" + "Generation of code
@@ -512,7 +635,28 @@ static void htab_build(ra_jpeg_htab_t* h)
   }
 }
 
-/** @brief Decode one Huffman symbol from `br` using table `h`. */
+/**
+ * @brief Decode one Huffman symbol from `br` using table `h`.
+ *
+ * @details
+ * Single-bit greedy lookup per T.81 F.2.2.3 "Decoder code-length
+ * algorithm". Returns -1 on stream underflow or table miss.
+ *
+ * @param[in,out] br Bit reader (state mutated in place).
+ * @param[in]     h  Pre-built canonical Huffman table.
+ *
+ * @return Decoded symbol or -1 on error.
+ * @retval >=0 Symbol value from ``h->vals``.
+ * @retval -1  Stream underflow or table miss.
+ *
+ * @pre ``br`` and ``h`` non-NULL.
+ * @pre ``h`` was previously populated by ``htab_build``.
+ * @post ``br`` advances by the consumed code length on success.
+ * @post No table state is mutated.
+ *
+ * @note Internal helper; not thread-safe.
+ * @since 0.1.0
+ */
 static int32_t htab_decode(ra_jpeg_bitreader_t* br, const ra_jpeg_htab_t* h)
 {
   br_fill(br);
@@ -542,7 +686,29 @@ static int32_t htab_decode(ra_jpeg_bitreader_t* br, const ra_jpeg_htab_t* h)
   return -1;
 }
 
-/** @brief Decode a signed `n`-bit DCT coefficient (T.81 F.1.2.1.3). */
+/**
+ * @brief Decode a signed `n`-bit DCT coefficient (T.81 F.1.2.1.3).
+ *
+ * @details
+ * Extends a non-negative ``n``-bit pattern into the signed range
+ * documented at T.81 Figure F.12 "EXTEND". A leading-zero pattern
+ * is treated as the negative of the symmetric positive value.
+ *
+ * @param[in] v Non-negative bit pattern from the bit reader.
+ * @param[in] n Number of significant bits.
+ *
+ * @return Signed coefficient.
+ * @retval 0..(1<<n)-1   ``v`` had its high bit set (positive value).
+ * @retval -(1<<n)+1..0  ``v`` had its high bit clear (negative value).
+ *
+ * @pre ``v`` is in 0..(1 << n) - 1.
+ * @pre ``n`` <= 16 (caller-enforced from JPEG stream).
+ * @post Return value is in (-(1<<n))+1 .. (1<<n)-1.
+ * @post No global state is mutated.
+ *
+ * @note Pure helper; safe from any context.
+ * @since 0.1.0
+ */
 static int32_t huff_extend(int32_t v, uint8_t n)
 {
   if (n == 0U) {

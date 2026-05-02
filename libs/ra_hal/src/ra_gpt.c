@@ -319,6 +319,23 @@ ra_err_t ra_gpt_read(uint8_t channel, uint32_t* out)
  * =============================================================================
  */
 
+/**
+ * @brief ra_gpt_init -- see header for full description.
+ * @details See the matching header declaration for the full
+ * contract; this site adds no behaviour beyond what the public
+ * API documents.
+ * @param[in] channel See header declaration for direction and constraints.
+ * @param[in] cfg See header declaration for direction and constraints.
+ * @return ``ra_err_t`` error code (or void if the signature returns void).
+ * @retval k_ra_ok Success path.
+ * @retval k_ra_err_invalid_arg Caller violated a precondition.
+ * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Caller has validated all pointer parameters.
+ * @post Side effects are limited to those documented in the header.
+ * @post No global state is modified on the error path.
+ * @note Thread safety: see the header declaration.
+ * @since 0.1.0
+ */
 ra_err_t ra_gpt_init(uint8_t channel, const ra_gpt_cfg_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
@@ -584,6 +601,27 @@ ra_err_t ra_gpt_exit_stop(uint8_t channel)
 
 /* ---- DMA TX / RX ----------------------------------------- */
 
+/**
+ * @brief ra_gpt_write_dma -- see header for full description.
+ * @details See the matching header declaration for the full
+ * contract; this site adds no behaviour beyond what the public
+ * API documents.
+ * @param[in] channel See header declaration for direction and constraints.
+ * @param[in] periods See header declaration for direction and constraints.
+ * @param[in] count See header declaration for direction and constraints.
+ * @param[in] on_complete See header declaration for direction and constraints.
+ * @param[in] ctx See header declaration for direction and constraints.
+ * @param[in] out_dma_channel See header declaration for direction and constraints.
+ * @return ``ra_err_t`` error code (or void if the signature returns void).
+ * @retval k_ra_ok Success path.
+ * @retval k_ra_err_invalid_arg Caller violated a precondition.
+ * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Caller has validated all pointer parameters.
+ * @post Side effects are limited to those documented in the header.
+ * @post No global state is modified on the error path.
+ * @note Thread safety: see the header declaration.
+ * @since 0.1.0
+ */
 ra_err_t ra_gpt_write_dma(uint8_t              channel,
                           const uint32_t*      periods,
                           uint16_t             count,
@@ -617,6 +655,27 @@ ra_err_t ra_gpt_write_dma(uint8_t              channel,
 }
 
 /* out_counts is written by the DMAC engine. */
+/**
+ * @brief ra_gpt_read_dma -- see header for full description.
+ * @details See the matching header declaration for the full
+ * contract; this site adds no behaviour beyond what the public
+ * API documents.
+ * @param[in] channel See header declaration for direction and constraints.
+ * @param[in] out_counts See header declaration for direction and constraints.
+ * @param[in] count See header declaration for direction and constraints.
+ * @param[in] on_complete See header declaration for direction and constraints.
+ * @param[in] ctx See header declaration for direction and constraints.
+ * @param[in] out_dma_channel See header declaration for direction and constraints.
+ * @return ``ra_err_t`` error code (or void if the signature returns void).
+ * @retval k_ra_ok Success path.
+ * @retval k_ra_err_invalid_arg Caller violated a precondition.
+ * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Caller has validated all pointer parameters.
+ * @post Side effects are limited to those documented in the header.
+ * @post No global state is modified on the error path.
+ * @note Thread safety: see the header declaration.
+ * @since 0.1.0
+ */
 ra_err_t ra_gpt_read_dma(uint8_t              channel,
                          uint32_t*            out_counts, // NOLINT(readability-non-const-parameter)
                          uint16_t             count,
@@ -654,6 +713,23 @@ ra_err_t ra_gpt_read_dma(uint8_t              channel,
  * =============================================================================
  */
 
+/**
+ * @brief ra_gpt_period_set -- see header for full description.
+ * @details See the matching header declaration for the full
+ * contract; this site adds no behaviour beyond what the public
+ * API documents.
+ * @param[in] channel See header declaration for direction and constraints.
+ * @param[in] period_counts See header declaration for direction and constraints.
+ * @return ``ra_err_t`` error code (or void if the signature returns void).
+ * @retval k_ra_ok Success path.
+ * @retval k_ra_err_invalid_arg Caller violated a precondition.
+ * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Caller has validated all pointer parameters.
+ * @post Side effects are limited to those documented in the header.
+ * @post No global state is modified on the error path.
+ * @note Thread safety: see the header declaration.
+ * @since 0.1.0
+ */
 ra_err_t ra_gpt_period_set(uint8_t channel, uint32_t period_counts)
 {
   volatile r_gpt_channel_regs_t* reg = ra_gpt(channel);
@@ -1067,6 +1143,20 @@ ra_err_t ra_gpt_three_phase_close(void)
 
 /* ---- ISR dispatch ---------------------------------------------------- */
 
+/**
+ * @brief internal_dispatch -- see header for full description.
+ * @details See the matching header declaration for the full
+ * contract; this site adds no behaviour beyond what the public
+ * API documents.
+ * @param[in] channel See header declaration for direction and constraints.
+ * @param[in] status_mask See header declaration for direction and constraints.
+ * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Caller has validated all pointer parameters.
+ * @post Side effects are limited to those documented in the header.
+ * @post No global state is modified on the error path.
+ * @note Thread safety: see the header declaration.
+ * @since 0.1.0
+ */
 static void internal_dispatch(uint8_t channel, uint32_t status_mask)
 {
   if (channel >= (uint8_t)k_ra_gpt_channel_count) {

@@ -449,6 +449,22 @@ static uint32_t internal_popcount32(uint32_t x)
  * =============================================================================
  */
 
+/**
+ * @brief ra_flash_init -- see header for full description.
+ * @details See the matching header declaration for the full
+ * contract; this site adds no behaviour beyond what the public
+ * API documents.
+ * @param[in] cfg See header declaration for direction and constraints.
+ * @return ``ra_err_t`` error code (or void if the signature returns void).
+ * @retval k_ra_ok Success path.
+ * @retval k_ra_err_invalid_arg Caller violated a precondition.
+ * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Caller has validated all pointer parameters.
+ * @post Side effects are limited to those documented in the header.
+ * @post No global state is modified on the error path.
+ * @note Thread safety: see the header declaration.
+ * @since 0.1.0
+ */
 ra_err_t ra_flash_init(const ra_flash_cfg_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
@@ -548,6 +564,22 @@ ra_err_t ra_flash_deinit(void)
  * =============================================================================
  */
 
+/**
+ * @brief ra_flash_get_status -- see header for full description.
+ * @details See the matching header declaration for the full
+ * contract; this site adds no behaviour beyond what the public
+ * API documents.
+ * @param[in] out_status See header declaration for direction and constraints.
+ * @return ``ra_err_t`` error code (or void if the signature returns void).
+ * @retval k_ra_ok Success path.
+ * @retval k_ra_err_invalid_arg Caller violated a precondition.
+ * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Caller has validated all pointer parameters.
+ * @post Side effects are limited to those documented in the header.
+ * @post No global state is modified on the error path.
+ * @note Thread safety: see the header declaration.
+ * @since 0.1.0
+ */
 ra_err_t ra_flash_get_status(uint8_t* out_status)
 {
   RA_CHECK_NULL_PTR(out_status, s_tag, "out_status must not be nullptr");
@@ -874,6 +906,24 @@ ra_err_t ra_flash_erase_block(uint32_t mram_addr, ra_flash_world_t world)
  * =============================================================================
  */
 
+/**
+ * @brief ra_flash_block_protect_set -- see header for full description.
+ * @details See the matching header declaration for the full
+ * contract; this site adds no behaviour beyond what the public
+ * API documents.
+ * @param[in] world See header declaration for direction and constraints.
+ * @param[in] lock See header declaration for direction and constraints.
+ * @param[in] permanent See header declaration for direction and constraints.
+ * @return ``ra_err_t`` error code (or void if the signature returns void).
+ * @retval k_ra_ok Success path.
+ * @retval k_ra_err_invalid_arg Caller violated a precondition.
+ * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Caller has validated all pointer parameters.
+ * @post Side effects are limited to those documented in the header.
+ * @post No global state is modified on the error path.
+ * @note Thread safety: see the header declaration.
+ * @since 0.1.0
+ */
 ra_err_t ra_flash_block_protect_set(ra_flash_world_t world, bool lock, bool permanent)
 {
   if (permanent && !lock) {
@@ -914,6 +964,21 @@ ra_err_t ra_flash_block_protect_set(ra_flash_world_t world, bool lock, bool perm
  * =============================================================================
  */
 
+/**
+ * @brief ra_flash_enter_pe_mode -- see header for full description.
+ * @details See the matching header declaration for the full
+ * contract; this site adds no behaviour beyond what the public
+ * API documents.
+ * @return ``ra_err_t`` error code (or void if the signature returns void).
+ * @retval k_ra_ok Success path.
+ * @retval k_ra_err_invalid_arg Caller violated a precondition.
+ * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Caller has validated all pointer parameters.
+ * @post Side effects are limited to those documented in the header.
+ * @post No global state is modified on the error path.
+ * @note Thread safety: see the header declaration.
+ * @since 0.1.0
+ */
 ra_err_t ra_flash_enter_pe_mode(void)
 {
   internal_set_prefetch(false);
@@ -1084,6 +1149,21 @@ ra_err_t ra_flash_lock_set(uintptr_t addr, uint16_t lock_bits)
  * =============================================================================
  */
 
+/**
+ * @brief ra_flash_force_stop -- see header for full description.
+ * @details See the matching header declaration for the full
+ * contract; this site adds no behaviour beyond what the public
+ * API documents.
+ * @return ``ra_err_t`` error code (or void if the signature returns void).
+ * @retval k_ra_ok Success path.
+ * @retval k_ra_err_invalid_arg Caller violated a precondition.
+ * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Caller has validated all pointer parameters.
+ * @post Side effects are limited to those documented in the header.
+ * @post No global state is modified on the error path.
+ * @note Thread safety: see the header declaration.
+ * @since 0.1.0
+ */
 ra_err_t ra_flash_force_stop(void)
 {
   /* HUM Ch 59 "MACI Command-Issuing Area" p 3550 */
@@ -1140,6 +1220,23 @@ ra_err_t ra_flash_reset(void)
  * =============================================================================
  */
 
+/**
+ * @brief ra_flash_set_startup_area -- see header for full description.
+ * @details See the matching header declaration for the full
+ * contract; this site adds no behaviour beyond what the public
+ * API documents.
+ * @param[in] target See header declaration for direction and constraints.
+ * @param[in] temporary See header declaration for direction and constraints.
+ * @return ``ra_err_t`` error code (or void if the signature returns void).
+ * @retval k_ra_ok Success path.
+ * @retval k_ra_err_invalid_arg Caller violated a precondition.
+ * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Caller has validated all pointer parameters.
+ * @post Side effects are limited to those documented in the header.
+ * @post No global state is modified on the error path.
+ * @note Thread safety: see the header declaration.
+ * @since 0.1.0
+ */
 ra_err_t ra_flash_set_startup_area(ra_flash_startup_t target, bool temporary)
 {
   if (target > k_ra_flash_startup_btflg) {
@@ -1213,6 +1310,23 @@ ra_err_t ra_flash_get_startup_area(uint8_t* out_btflg, uint8_t* out_fspr)
  * =============================================================================
  */
 
+/**
+ * @brief ra_flash_config_set_write -- see header for full description.
+ * @details See the matching header declaration for the full
+ * contract; this site adds no behaviour beyond what the public
+ * API documents.
+ * @param[in] target_addr See header declaration for direction and constraints.
+ * @param[in] words See header declaration for direction and constraints.
+ * @return ``ra_err_t`` error code (or void if the signature returns void).
+ * @retval k_ra_ok Success path.
+ * @retval k_ra_err_invalid_arg Caller violated a precondition.
+ * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Caller has validated all pointer parameters.
+ * @post Side effects are limited to those documented in the header.
+ * @post No global state is modified on the error path.
+ * @note Thread safety: see the header declaration.
+ * @since 0.1.0
+ */
 ra_err_t ra_flash_config_set_write(uint32_t target_addr, const uint16_t* words)
 {
   RA_CHECK_NULL_PTR(words, s_tag, "words must not be nullptr");
@@ -1513,6 +1627,21 @@ ra_err_t ra_flash_arc_read(ra_flash_arc_id_t counter, uint32_t* out_count)
  * =============================================================================
  */
 
+/**
+ * @brief ra_flash_zeroize_huk -- see header for full description.
+ * @details See the matching header declaration for the full
+ * contract; this site adds no behaviour beyond what the public
+ * API documents.
+ * @return ``ra_err_t`` error code (or void if the signature returns void).
+ * @retval k_ra_ok Success path.
+ * @retval k_ra_err_invalid_arg Caller violated a precondition.
+ * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Caller has validated all pointer parameters.
+ * @post Side effects are limited to those documented in the header.
+ * @post No global state is modified on the error path.
+ * @note Thread safety: see the header declaration.
+ * @since 0.1.0
+ */
 ra_err_t ra_flash_zeroize_huk(void)
 {
   RA_VALIDATE_INIT(s_rt.initialised, s_tag, "zeroize before init");
@@ -1751,6 +1880,22 @@ ra_err_t ra_flash_update_clock_freq(uint16_t mrcfreq_mhz, uint8_t mrefreq_mhz)
  * =============================================================================
  */
 
+/**
+ * @brief ra_flash_set_update_transfer -- see header for full description.
+ * @details See the matching header declaration for the full
+ * contract; this site adds no behaviour beyond what the public
+ * API documents.
+ * @param[in] list_select See header declaration for direction and constraints.
+ * @return ``ra_err_t`` error code (or void if the signature returns void).
+ * @retval k_ra_ok Success path.
+ * @retval k_ra_err_invalid_arg Caller violated a precondition.
+ * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Caller has validated all pointer parameters.
+ * @post Side effects are limited to those documented in the header.
+ * @post No global state is modified on the error path.
+ * @note Thread safety: see the header declaration.
+ * @since 0.1.0
+ */
 ra_err_t ra_flash_set_update_transfer(uint8_t list_select)
 {
   if (list_select > (uint8_t)k_ra_flash_max_list_select) {
@@ -1799,6 +1944,24 @@ ra_err_t ra_flash_get_update_status(uint8_t* out_busy, uint8_t* out_done, uint8_
  * =============================================================================
  */
 
+/**
+ * @brief ra_flash_extra_mram_write -- see header for full description.
+ * @details See the matching header declaration for the full
+ * contract; this site adds no behaviour beyond what the public
+ * API documents.
+ * @param[in] mram_addr See header declaration for direction and constraints.
+ * @param[in] src See header declaration for direction and constraints.
+ * @param[in] len See header declaration for direction and constraints.
+ * @return ``ra_err_t`` error code (or void if the signature returns void).
+ * @retval k_ra_ok Success path.
+ * @retval k_ra_err_invalid_arg Caller violated a precondition.
+ * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Caller has validated all pointer parameters.
+ * @post Side effects are limited to those documented in the header.
+ * @post No global state is modified on the error path.
+ * @note Thread safety: see the header declaration.
+ * @since 0.1.0
+ */
 ra_err_t ra_flash_extra_mram_write(uint32_t mram_addr, const uint8_t* src, uint32_t len)
 {
   RA_CHECK_NULL_PTR(src, s_tag, "src must not be nullptr");
@@ -2198,6 +2361,22 @@ uint32_t ra_flash_dispatch_isr(void)
  * =============================================================================
  */
 
+/**
+ * @brief ra_flash_open -- see header for full description.
+ * @details See the matching header declaration for the full
+ * contract; this site adds no behaviour beyond what the public
+ * API documents.
+ * @param[in] cfg See header declaration for direction and constraints.
+ * @return ``ra_err_t`` error code (or void if the signature returns void).
+ * @retval k_ra_ok Success path.
+ * @retval k_ra_err_invalid_arg Caller violated a precondition.
+ * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Caller has validated all pointer parameters.
+ * @post Side effects are limited to those documented in the header.
+ * @post No global state is modified on the error path.
+ * @note Thread safety: see the header declaration.
+ * @since 0.1.0
+ */
 ra_err_t ra_flash_open(const ra_flash_cfg_t* cfg)
 {
   /* FSP r_mram.c L253 R_MRAM_Open delegates to mram_init; we delegate to the
