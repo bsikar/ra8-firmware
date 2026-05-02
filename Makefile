@@ -48,7 +48,7 @@ RA_APPS := $(sort $(patsubst $(ROOT)/examples/%/main.c,%,$(wildcard $(ROOT)/exam
 
 # We forward each <app> name to the app's own Makefile, so reserve the names
 # below from being shadowed by .PHONY targets.
-.PHONY: help apps default clean format check tidy test test-docker ctest coverage docs dashboard ascii version qe-test all $(RA_APPS)
+.PHONY: help apps default clean format check tidy test test-docker ctest coverage mcdc docs dashboard ascii version qe-test all $(RA_APPS)
 
 help:
 	@echo "ra8d2-firmware make targets:"
@@ -63,6 +63,7 @@ help:
 	@echo "  make test-docker host-compile + run unit tests in Linux container"
 	@echo "  make ctest     rerun just ctest (assumes already built)"
 	@echo "  make coverage  generate lcov+genhtml HTML coverage report"
+	@echo "  make mcdc      generate DO-178B Level B MC/DC report (clang >= 18)"
 	@echo "  make docs      generate doxygen HTML into build/docs/html/"
 	@echo "  make dashboard regenerate docs/ROADMAP_DASHBOARD.md + docs/badges/"
 	@echo "  make ascii     fix-encoding.py --check"
@@ -119,6 +120,9 @@ dashboard:
 
 coverage:
 	bash scripts/coverage_report.sh
+
+mcdc:
+	bash scripts/utils/mcdc_report.sh
 
 ascii:
 	@for dir in src libs tests $(RA_APPS); do \
