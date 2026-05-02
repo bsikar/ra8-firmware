@@ -114,6 +114,7 @@ add_library(ra_core_hal OBJECT
     ${RA_TOUCH_CAL_SOURCES}
     ${RA_MPU_SOURCES}
     ${RA_PSA_CRYPTO_SOURCES}
+    ${RA_WDT_SUPERVISOR_SOURCES}
     ${CMAKE_CURRENT_SOURCE_DIR}/mocks/ra_sim_mmap.c
     ${CMAKE_CURRENT_SOURCE_DIR}/mocks/ra_sim_irq.c
     ${CMAKE_CURRENT_SOURCE_DIR}/mocks/ra_sim_dma.c
@@ -146,6 +147,7 @@ target_include_directories(ra_core_hal PUBLIC
     ${FW_ROOT}/libs/ra_touch_cal/inc
     ${FW_ROOT}/libs/ra_mpu/inc
     ${FW_ROOT}/libs/ra_psa_crypto/inc
+    ${FW_ROOT}/libs/ra_wdt_supervisor/inc
     ${FW_ROOT}/libs/third_party/miniz
     ${FW_ROOT}/libs/third_party/tinyxml2
     ${FW_ROOT}/libs/third_party/stb
@@ -214,6 +216,7 @@ function(ra_add_test name)
     ${FW_ROOT}/libs/ra_touch_cal/inc
     ${FW_ROOT}/libs/ra_mpu/inc
     ${FW_ROOT}/libs/ra_psa_crypto/inc
+    ${FW_ROOT}/libs/ra_wdt_supervisor/inc
     ${FW_ROOT}/libs/third_party/miniz
     ${FW_ROOT}/libs/third_party/tinyxml2
     ${FW_ROOT}/libs/third_party/stb
