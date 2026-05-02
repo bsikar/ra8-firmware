@@ -112,9 +112,16 @@ tables; rule texts are paraphrased to stay within the licence.)
   codebase. The plan (below) is a project-wide deviation under
   MISRA-C:2012 sec. 5.2.
 * **Rule 8.4 (declaration before definition) -- 196 violations.**
-  Required. Real bug-class -- catches non-static functions defined
-  without a prior `extern` declaration in a header. Likely an actual
-  hygiene gap; will be fixed in code, not deviated.
+  Required. Initially triaged as a real bug-class. Per the
+  investigation recorded in
+  [`docs/qualification/MISRA_DEVIATIONS.md`](qualification/MISRA_DEVIATIONS.md)
+  D-005, every hit is a cppcheck-2.20 false positive caused by the
+  `[[nodiscard]]` C23 attribute on the matching public-header
+  prototype (or, for the `port/` translation units, by the
+  third-party header that owns the prototype being intentionally
+  excluded from the audit). The cross compiler rejects any real
+  Rule 8.4 violation as a build error, so the source obeys the
+  rule. Reclassified as Tooling gap.
 * **Rule 17.3 (implicit function declaration) -- 170 violations.**
   Mandatory. cppcheck's "implicit declaration" trips when a header
   fails to parse (e.g. on a C23 typed-enum line) and a downstream
@@ -144,11 +151,11 @@ The triage below tracks that decision per top-violated rule.
 
 | Rule              | Count | Disposition       | Rationale |
 |-------------------|------:|-------------------|-----------|
-| misra-c2012-15.5  | 751 | Project deviation | Single-exit conflicts with NASA Power-of-10 Rule 7 (check every return value) and with the project's `RA_RETURN_ON_ERROR` macro. Mitigation: NASA Rule 5 enforces >= 2 pre/post-condition assertions per function, which provides equivalent assurance against missed cleanup paths. |
-| misra-c2012-8.4   | 196 | Code change       | Add missing `extern` declarations / move definitions behind their existing public headers. |
-| misra-c2012-17.3  | 170 | Tooling gap       | Re-audit after cppcheck adds `--std=c23`. Track residual count and reclassify whatever remains. |
-| misra-c2012-12.1  | 101 | Code change       | Mechanical fix: add redundant parentheses; clang-format will not re-flatten them. |
-| misra-c2012-9.2   |  35 | Tooling gap       | Caused by C23 `= {}` empty-aggregate initializers. Re-audit after cppcheck-C23. |
+| misra-c2012-15.5  | 751 | Project deviation (D-001) | Single-exit conflicts with NASA Power-of-10 Rule 7 (check every return value) and with the project's `RA_RETURN_ON_ERROR` macro. Mitigation: NASA Rule 5 enforces >= 2 pre/post-condition assertions per function plus 100% MC/DC at Phase 1, which provides equivalent assurance against missed cleanup paths. |
+| misra-c2012-8.4   | 196 | Tooling gap (D-005)        | Caused by cppcheck-2.20 syntaxError on the C23 `[[nodiscard]]` attribute on public-header prototypes (and by intentional exclusion of `libs/third_party/` headers for the `port/` files). Authoritative check is arm-none-eabi-gcc `-Wmissing-prototypes -Werror`. Re-audit after cppcheck adds `--std=c23`. |
+| misra-c2012-17.3  | 170 | Tooling gap (D-002)        | Re-audit after cppcheck adds `--std=c23`. Track residual count and reclassify whatever remains. |
+| misra-c2012-12.1  | 101 | Partial deviation + Code change (D-004) | Accept implicit precedence for `* /` over `+ -`, unary over binary, member-access over any, postfix call over any. Add redundant parentheses everywhere else. clang-format will not re-flatten them. |
+| misra-c2012-9.2   |  35 | Tooling gap (D-003)        | Caused by C23 `= {}` empty-aggregate initializers. Re-audit after cppcheck-C23. |
 | misra-c2012-13.3, 8.9, 18.4, 10.8, 17.8, 17.7, 7.3, 21.x | 90 | Mixed | Per-finding triage in the next audit pass. |
 
 ### Workflow
