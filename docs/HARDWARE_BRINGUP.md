@@ -107,3 +107,46 @@ Quick-flash + halt-and-check-PC across more example apps:
 | usb_hid_device | 🐛 usb_hid_panic_halt | USB init returns error (suspected ra_cgc_usbhs_pll_enable hang or missing pin enable) |
 
 **Score: 9 of 17 sampled apps confirmed running on silicon. 4 still settling. 4 need bug fixes.**
+
+## 2026-05-02 systematic 27-app sweep
+
+Built a /tmp/ra8d2-hw-test test harness (flash + UART capture + halt-and-PC).
+Results across 27 testable apps:
+
+### ✅ Confirmed running on silicon (12 apps)
+- blink, blink_hal, clock_check, uart_hello (UART verified)
+- threadx_blink, threadx_filex_demo, threadx_canfd_demo, threadx_ota_demo
+- threadx_lwip_tcp_echo (boots, runs scheduler)
+- threadx_filex_levelx_demo (boots, prints "[fxlx] booting...")
+- threadx_ipc_demo (prints continuously — M85 sends ping, no M33 reply
+  because M33 has no firmware loaded — this is the expected partial
+  state, not a bug)
+- usb_hid_device (after 394055f13 fix), usb_cdc_echo (after this commit)
+
+### 🔍 Partial / boot logs visible
+- threadx_filex_levelx_demo: "[fxlx] formatting + opening LevelX
+  partition / [fxlx] lx_nor_flash_format failed" — XSPI NOR driver
+  hand-off doesn't initialise the chip correctly
+- threadx_levelx_demo: same lx_nor_flash_format path fails
+
+### 🐛 Real bugs surfaced (not yet fixed)
+1. **NetX malloc** — threadx_netx_tcp_echo: nx_system_initialize calls
+   malloc → ra_sbrk_trap fires (NASA Rule 3 enforcement). Need to
+   compile NetX with NX_TRACE_INSERT off + NX_PHYSICAL_HEADER right or
+   pre-allocate a static heap pool.
+2. **XSPI NOR flash format** — LevelX apps fail at lx_nor_flash_format.
+   Likely the lx_nor_driver_ra_xspi_initialize hook isn't actually
+   bringing up the IS25LX512M-JHLE chip. Needs xSPI bring-up debug.
+3. **USB device enumeration silent** — usb_hid_device firmware runs
+   stably but macOS never enumerates VID 0x1209. ra_nsc_usb_init or
+   downstream USB-FS controller bring-up missing a step (possibly D+
+   pull-up, PHY clock, or VBUS-detect).
+4. **USB host apps fault** — usb_host_cdc_echo / keyboard / msc_browse
+   all hit Default_Handler. USBHS host bring-up incomplete.
+5. **BLE apps fault** — threadx_nimble_peripheral prints "[nimble] boot"
+   then crashes. Renesas BLE patch image (vendor blob) required for
+   radio init; documented in VENDOR_BLOBS.md.
+6. **threadx_https_client** — stuck in main init at line 239. Needs
+   network up (so depends on lwIP echo working too).
+7. **ra_bootloader** — stuck in system_init.c:331. Boot stub design
+   may intentionally halt waiting for a banked image; need to verify.
