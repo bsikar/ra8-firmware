@@ -95,7 +95,28 @@ typedef enum : uint8_t {
  * @brief Bounded spin budgets for host + target builds.
  */
 typedef enum : uint32_t {
-  k_ra_xspi_cmd_spin            = 64U,      /**< CMDCMP poll budget. */
+  /**
+   * @brief CMDCMP poll budget for a single manual-command transfer.
+   *
+   * @details
+   * Sized for the worst-case ``ra_xspi`` JEDEC command at the chip's
+   * default 1S-1S-1S clock (which on the RA8D2 powers up at the OCTA
+   * peripheral-clock reset rate, on the order of a few MHz before any
+   * higher-frequency PLL is selected). A 1-byte opcode + 3-byte
+   * address + 8 data bytes = 12 bytes = 96 bits. At 2 MHz that is
+   * ~48 us. A core spin loop at 240 MHz runs roughly 60M iterations
+   * per second, so 48 us = 2880 iterations of the empty poll loop.
+   * We pick 1,000,000 to also cover the long tail when the OCTA
+   * clock is still on the cold-boot LOCO rate (~32 kHz) before
+   * ``ra_cgc_init`` has switched to PLL. Matches the order-of-
+   * magnitude spin used by ``ra_sdhi`` for its CMDCMP wait. The
+   * prior 64-iteration budget timed out before the controller could
+   * ever raise CMDCMP -- masquerading as ``k_ra_err_hw_timeout`` on
+   * every JEDEC opcode and bricking LevelX format on real silicon.
+   * HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986;
+   * IS25LX512M datasheet Ch 8 "Command Set".
+   */
+  k_ra_xspi_cmd_spin            = 1000000U, /**< CMDCMP poll budget. */
   k_ra_flash_program_timeout_us = 1000000U, /**< Max 1 s for a program op. */
 } ra_xspi_timeouts_t;
 
@@ -209,10 +230,27 @@ ra_err_t ra_xspi_init(uint8_t instance, ra_xspi_lio_mode_t mode)
 
   /* HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986 */
   /* Wake the wrapper, idle the common config, set the link-IO
-   * protocol for slave 0, and clear any latent interrupt flags. */
+   * protocol for slave 0, and clear any latent interrupt flags.
+   *
+   * BMCTL0 is forced to ``disabled`` here so the AHB system-bus
+   * path to the slave window cannot race with the manual-command
+   * engine during JEDEC ID / RDSR / page-program traffic. FSP
+   * performs the equivalent gate via ``r_ospi_b_xip(false)`` before
+   * any manual transfer; without it the controller can NAK
+   * ``CDCTL0.TRREQ`` because the bridge believes a memory-mapped
+   * read is still in flight, which silently times out CMDCMP and
+   * surfaces as ``k_ra_err_hw_timeout`` to LevelX. CMCTLCH[0/1] are
+   * also zeroed so XIPEN cannot be left armed across ra_xspi_init.
+   * CDCTL0 is forced to 0 (CSSEL=0 -> slave 0 = on-board IS25LX,
+   * TRREQ=0) so the next manual command starts from a known state.
+   * HUM Ch 44 p 2986 "CDCTL0 : Command Manual Control 0". */
+  reg->BMCTL0      = (uint32_t)k_ra_xspi_bmctl0_disabled;
+  reg->CMCTLCH[0]  = 0U;
+  reg->CMCTLCH[1]  = 0U;
   reg->WRAPCFG     = 0U;
   reg->COMCFG      = 0U;
   reg->LIOCFGCS[0] = (uint32_t)mode;
+  reg->CDCTL0      = 0U;
   reg->INTC        = k_ra_xspi_ints_mask_all;
 
   ra_log_info_val(s_tag, "xspi_init inst", (uint32_t)instance);
