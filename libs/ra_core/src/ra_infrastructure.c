@@ -45,6 +45,19 @@ typedef enum : uint32_t {
 
 /**
  * @brief Fill `.stack_canary` with the sentinel pattern.
+ *
+ * @details Walks the linker-defined region and writes
+ *          `k_ra_stack_canary_pattern` into every word. No-op on the
+ *          simulator host where the linker symbols are absent.
+ *
+ * @pre Linker-defined symbols are valid (target build only).
+ * @pre Function is called once during early init.
+ * @post Every 32-bit word in the canary region equals the sentinel.
+ * @post No other state modified.
+ *
+ * @note Not thread-safe; intended for one-shot init only.
+ *
+ * @since 0.1.0
  */
 static void internal_write_stack_canary(void)
 {
@@ -55,6 +68,24 @@ static void internal_write_stack_canary(void)
 #endif
 }
 
+/**
+ * @brief Implementation of `ra_infrastructure_init()` -- bring-up.
+ *
+ * @details Initialises the log backend, resets the pin validator, and
+ *          seeds the stack canary region.
+ *
+ * @return None.
+ * @retval None
+ *
+ * @pre `SystemInit()` has executed.
+ * @pre Function is called from a single-threaded context.
+ * @post Log backend, pin validator, and stack canary are initialised.
+ * @post Drivers may now be brought up.
+ *
+ * @note Not thread-safe; intended for one-shot init only.
+ *
+ * @since 0.1.0
+ */
 void ra_infrastructure_init(void)
 {
   /* Logging backend first so the rest of the init flow can emit. */
@@ -69,6 +100,26 @@ void ra_infrastructure_init(void)
   ra_log_info("INFRA", "infrastructure ready");
 }
 
+/**
+ * @brief Implementation of `ra_stack_canary_check()` -- sentinel check.
+ *
+ * @details Walks the linker-defined region and compares each word to
+ *          `k_ra_stack_canary_pattern`.
+ *
+ * @return Error code.
+ * @retval k_ra_ok                     Sentinel intact.
+ * @retval k_ra_err_validation_failed  At least one word was corrupted.
+ *
+ * @pre `ra_infrastructure_init()` has run.
+ * @pre Linker-defined sentinel symbols are valid (target build).
+ * @post No state modified.
+ * @post Result reflects the canary region at the moment of the call.
+ *
+ * @note Thread-safe (read-only walk). On the simulator host this is a
+ *       no-op that always returns `k_ra_ok`.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ra_stack_canary_check(void)
 {
 #ifndef RA_SIMULATOR_MODE
