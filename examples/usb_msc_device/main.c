@@ -69,6 +69,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra_board_ek_ra8d2.h"
 #include "ra_cgc.h"
 #include "ra_err.h"
 #include "ra_gpio_constants.h"
@@ -660,7 +661,7 @@ static void usb_msc_setup_or_halt(void)
   if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
     usb_msc_panic_halt();
   }
-  if (ra_gpio_output_init(k_ra_pin_led2, k_ra_level_low) != k_ra_ok) {
+  if (ra_board_led_init(k_ra_board_led2) != k_ra_ok) {
     usb_msc_panic_halt();
   }
   if (usb_msc_pins_init() != k_ra_ok) {
@@ -714,7 +715,7 @@ int32_t main(void)
       continue;
     }
     /* One LED2 toggle per BOT phase advance == per host SCSI command. */
-    if (ra_gpio_toggle(k_ra_pin_led2) != k_ra_ok) {
+    if (ra_board_led_toggle(k_ra_board_led2) != k_ra_ok) {
       break;
     }
   }
