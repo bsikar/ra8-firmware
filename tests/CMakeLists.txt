@@ -44,13 +44,13 @@ add_compile_definitions(RA_SIMULATOR_MODE UNIT_TEST)
 
 # Coverage instrumentation -- gcovr / lcov friendly.
 option(RA_COVERAGE "Emit gcov/lcov coverage data" ON)
-option(RA_MCDC     "Emit clang source-based coverage with MC/DC (DO-178B Level B)" OFF)
+option(RA_MCDC     "Emit clang source-based coverage with MC/DC (DO-178C Level B)" OFF)
 
 # RA_MCDC takes precedence over RA_COVERAGE: the two instrumentation
 # schemes are mutually exclusive (clang's source-based coverage and
 # gcov-style arc/line counters use different runtime libraries).
 #
-# DO-178B Level B requires Modified Condition/Decision Coverage. The
+# DO-178C Level B requires Modified Condition/Decision Coverage. The
 # only open-source path is clang >= 18 with -fcoverage-mcdc paired
 # with -fcoverage-mapping + -fprofile-instr-generate, then reported
 # via `llvm-cov show --show-mcdc-summary`.
@@ -89,7 +89,7 @@ if(RA_MCDC)
 
     message(WARNING
       "RA_MCDC requested but the host compiler does not support "
-      "clang's -fcoverage-mcdc. DO-178B Level B MC/DC CANNOT be "
+      "clang's -fcoverage-mcdc. DO-178C Level B MC/DC CANNOT be "
       "measured with this toolchain. "
       "Install clang >= 18 (brew install llvm / apt install clang-18) "
       "and re-run.")
@@ -268,7 +268,7 @@ set_source_files_properties(
 )
 
 # Strip MC/DC / coverage instrumentation from vendored third_party
-# sources. Under DO-178B these are SOUP (Software Of Unknown
+# sources. Under DO-178C these are SOUP (Software Of Unknown
 # Pedigree) and are exempted from MC/DC measurement -- see
 # docs/MCDC.md. Per-file COMPILE_OPTIONS overrides the directory
 # add_compile_options() set above when RA_MCDC=ON.
@@ -278,8 +278,9 @@ if(RA_MCDC)
   )
   foreach(_src ${RA_MCDC_THIRD_PARTY_SOURCES})
     set_property(SOURCE ${_src} APPEND PROPERTY COMPILE_OPTIONS
-        -fno-profile-instr-generate
+        -fno-coverage-mcdc
         -fno-coverage-mapping
+        -fno-profile-instr-generate
         -w
     )
   endforeach()
