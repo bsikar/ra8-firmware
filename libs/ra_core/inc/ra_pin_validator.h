@@ -80,22 +80,43 @@ extern "C" {
 /**
  * @brief Test whether a pin is currently claimed.
  *
+ * @details Reads the bitmap maintained by claim/release. Out-of-range
+ *          identifiers report `false` rather than an error.
+ *
  * @param[in] pin Packed port/pin identifier.
  * @return `true` if claimed, `false` if free or if `pin` is out of range.
+ * @retval true   The pin is currently owned by some driver.
+ * @retval false  The pin is free OR the identifier is out of range.
  *
- * @note This is a best-effort read; the result may be stale the moment
- *       the function returns. Use for diagnostics, not for
- *       claim-on-check patterns (call `ra_pin_validator_claim()`
- *       directly for those).
+ * @pre `ra_infrastructure_init()` has run.
+ * @pre `pin` is the result of `RA_PIN_PACK(port, pin)` or 0.
+ * @post No internal state modified.
+ * @post Result reflects the bitmap at the moment of the call.
+ *
+ * @note Best-effort read; result may be stale on return. Thread-safe
+ *       vs other readers; not safe vs concurrent claim/release.
+ *
+ * @since 0.1.0
  */
 bool ra_pin_validator_is_claimed(ra_port_pin_t pin);
 
 /**
  * @brief Reset the validator (release every pin).
  *
- * @details
- * Called exactly once during `ra_infrastructure_init()`. Should never
- * be called from driver code at runtime.
+ * @details Called exactly once during `ra_infrastructure_init()`.
+ *          Clears the claim bitmap and parallel owner-tag array.
+ *
+ * @return None.
+ * @retval None
+ *
+ * @pre Called exactly once during early infrastructure bring-up.
+ * @pre All driver state referencing pin claims has been torn down.
+ * @post Every pin reads as free.
+ * @post Every owner tag pointer is `nullptr`.
+ *
+ * @note Not thread-safe; one-shot init only.
+ *
+ * @since 0.1.0
  */
 void ra_pin_validator_reset(void);
 
