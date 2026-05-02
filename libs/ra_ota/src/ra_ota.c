@@ -90,11 +90,22 @@ typedef enum : uint32_t {
 /**
  * @brief Set state and (if registered) call the progress callback.
  *
+ * @details
+ * Updates ``s_state`` and ``s_last_err``, then synthesises a
+ * ``ra_ota_progress_t`` snapshot and forwards it to the user-provided
+ * ``on_progress`` callback when one was registered at init time.
+ *
  * @param[in] new_state New SM state.
  * @param[in] err       Error to surface (k_ra_ok on healthy paths).
  *
  * @pre Module is initialised.
+ * @pre Caller is the single OTA worker (no concurrent callers).
  * @post ``s_state`` == new_state.
+ * @post ``s_last_err`` == err.
+ *
+ * @note Static helper; not thread-safe -- the OTA module assumes a
+ *       single owning context.
+ * @since 0.1.0
  */
 static void priv_set_state(ra_ota_state_t new_state, ra_err_t err)
 {
@@ -112,13 +123,28 @@ static void priv_set_state(ra_ota_state_t new_state, ra_err_t err)
 }
 
 /**
- * @brief Validate that every required function pointer in ``cfg`` is set.
+ * @brief Validate the network function-pointer block of @p cfg.
  *
- * @param[in] cfg Non-NULL caller configuration.
+ * @details
+ * Confirms ``cfg->net.open``, ``cfg->net.read`` and ``cfg->net.close``
+ * are all non-NULL. Required for the OTA module to fetch manifests
+ * and image chunks.
  *
- * @return k_ra_ok or k_ra_err_null_ptr / k_ra_err_invalid_arg.
+ * @param[in] cfg Caller configuration (already verified non-NULL by
+ *                ``priv_validate_cfg``).
+ *
+ * @return ra_err_t outcome.
+ * @retval k_ra_ok           All net function pointers set.
+ * @retval k_ra_err_null_ptr A required net function pointer is NULL.
+ *
+ * @pre ``cfg`` is non-NULL.
+ * @pre Module is in the process of being initialised.
+ * @post Returns k_ra_ok iff every net pointer is non-NULL.
+ * @post No state mutated.
+ *
+ * @note Static helper; pure validation function.
+ * @since 0.1.0
  */
-/** @brief Validate the network function-pointer block of @p cfg. */
 static ra_err_t priv_validate_cfg_net(const ra_ota_cfg_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg->net.open, s_tag, "net.open");
@@ -127,7 +153,28 @@ static ra_err_t priv_validate_cfg_net(const ra_ota_cfg_t* cfg)
   return k_ra_ok;
 }
 
-/** @brief Validate the crypto function-pointer block of @p cfg. */
+/**
+ * @brief Validate the crypto function-pointer block of @p cfg.
+ *
+ * @details
+ * Confirms the four crypto callbacks (sha256_init/update/final and
+ * ecdsa_verify) are all wired up. Required to hash and authenticate
+ * downloaded firmware images.
+ *
+ * @param[in] cfg Caller configuration (already verified non-NULL).
+ *
+ * @return ra_err_t outcome.
+ * @retval k_ra_ok           All crypto function pointers set.
+ * @retval k_ra_err_null_ptr A required crypto function pointer is NULL.
+ *
+ * @pre ``cfg`` is non-NULL.
+ * @pre Module is in the process of being initialised.
+ * @post Returns k_ra_ok iff every crypto pointer is non-NULL.
+ * @post No state mutated.
+ *
+ * @note Static helper; pure validation function.
+ * @since 0.1.0
+ */
 static ra_err_t priv_validate_cfg_crypto(const ra_ota_cfg_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg->crypto.sha256_init, s_tag, "crypto.sha256_init");
@@ -137,7 +184,29 @@ static ra_err_t priv_validate_cfg_crypto(const ra_ota_cfg_t* cfg)
   return k_ra_ok;
 }
 
-/** @brief Validate the flash function-pointer block of @p cfg. */
+/**
+ * @brief Validate the flash function-pointer block of @p cfg.
+ *
+ * @details
+ * Confirms erase/program/set_startup/readback callbacks are wired up
+ * and the configured ``bank_size_bytes`` is non-zero and below the
+ * firmware-wide cap.
+ *
+ * @param[in] cfg Caller configuration (already verified non-NULL).
+ *
+ * @return ra_err_t outcome.
+ * @retval k_ra_ok              All flash callbacks set, bank size sane.
+ * @retval k_ra_err_null_ptr    A required flash callback is NULL.
+ * @retval k_ra_err_invalid_arg ``bank_size_bytes`` is zero or above the cap.
+ *
+ * @pre ``cfg`` is non-NULL.
+ * @pre Module is in the process of being initialised.
+ * @post Returns k_ra_ok iff all callbacks are present and the bank size is sane.
+ * @post No state mutated.
+ *
+ * @note Static helper; pure validation function.
+ * @since 0.1.0
+ */
 static ra_err_t priv_validate_cfg_flash(const ra_ota_cfg_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg->flash.erase, s_tag, "flash.erase");
@@ -153,6 +222,30 @@ static ra_err_t priv_validate_cfg_flash(const ra_ota_cfg_t* cfg)
   return k_ra_ok;
 }
 
+/**
+ * @brief Validate the entire OTA configuration descriptor.
+ *
+ * @details
+ * Composes the net/crypto/flash sub-validators and verifies the
+ * manifest URL is non-empty. This is the single gate every public
+ * ``ra_ota_init`` call must pass before the module captures the
+ * config into ``s_cfg``.
+ *
+ * @param[in] cfg Caller configuration (may be NULL -- checked here).
+ *
+ * @return ra_err_t outcome.
+ * @retval k_ra_ok              Configuration is valid.
+ * @retval k_ra_err_null_ptr    ``cfg`` or a sub-pointer is NULL.
+ * @retval k_ra_err_invalid_arg Bank size out of range or empty URL.
+ *
+ * @pre Module init is in progress (no concurrent OTA operation).
+ * @pre Caller has not yet committed ``cfg`` to ``s_cfg``.
+ * @post Returns k_ra_ok iff every required field is populated.
+ * @post No module state mutated.
+ *
+ * @note Static helper; pure validation function.
+ * @since 0.1.0
+ */
 static ra_err_t priv_validate_cfg(const ra_ota_cfg_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg, s_tag, "cfg");
@@ -177,11 +270,27 @@ static ra_err_t priv_validate_cfg(const ra_ota_cfg_t* cfg)
 /**
  * @brief Drain the network stream and accumulate up to ``cap`` bytes.
  *
+ * @details
+ * Loops calling the user-supplied ``s_cfg.net.read`` callback until
+ * either ``cap`` bytes have been collected or the backend reports EOF
+ * (``got == 0``). The loop is bounded by ``cap + 1`` iterations
+ * (NASA Rule 2). Returns the byte count via ``out_n``.
+ *
  * @param[in,out] dst   Destination buffer.
  * @param[in]     cap   Capacity in bytes.
  * @param[out]    out_n Bytes actually received.
  *
- * @return k_ra_ok or backend error.
+ * @return ra_err_t outcome.
+ * @retval k_ra_ok        Drain completed (possibly short on EOF).
+ * @retval other          Whatever the network backend returned.
+ *
+ * @pre Module is initialised and ``s_cfg.net.read`` is set.
+ * @pre ``dst`` and ``out_n`` are non-NULL.
+ * @post On success ``*out_n`` reflects bytes written into ``dst``.
+ * @post On failure ``*out_n`` is unspecified.
+ *
+ * @note Static helper; not thread-safe -- shares the OTA worker context.
+ * @since 0.1.0
  */
 static ra_err_t priv_drain(uint8_t* dst, uint32_t cap, uint32_t* out_n)
 {
@@ -209,12 +318,29 @@ static ra_err_t priv_drain(uint8_t* dst, uint32_t cap, uint32_t* out_n)
  * @brief Locate ``"key"`` inside a JSON-ish buffer and copy its
  *        string value (assumes minimal, well-formed manifest).
  *
+ * @details
+ * Uses ``strstr`` to find ``key``, walks past the next ``"``, captures
+ * everything up to the matching close-quote and copies it into ``dst``
+ * with a trailing NUL. Not a general JSON parser -- the manifest
+ * format is intentionally minimal.
+ *
  * @param[in]  json  Source bytes (NUL-terminated).
- * @param[in]  key   Key name to look for, e.g. ``"version"``.
+ * @param[in]  key   Key name to look for, e.g. ``"\"version\""``.
  * @param[out] dst   Destination string buffer.
  * @param[in]  cap   Capacity of ``dst``.
  *
- * @return k_ra_ok or k_ra_err_invalid_arg if the key is missing.
+ * @return ra_err_t outcome.
+ * @retval k_ra_ok               String value copied into ``dst``.
+ * @retval k_ra_err_invalid_arg  Key not found or quotes missing.
+ * @retval k_ra_err_invalid_size Value would not fit in ``dst``.
+ *
+ * @pre All pointer arguments are non-NULL.
+ * @pre ``json`` is NUL-terminated.
+ * @post On success ``dst`` is a NUL-terminated copy of the value.
+ * @post On failure ``dst`` content is undefined.
+ *
+ * @note Static helper; pure function.
+ * @since 0.1.0
  */
 static ra_err_t priv_json_str(const char* json, const char* key, char* dst, uint32_t cap)
 {
@@ -242,6 +368,28 @@ static ra_err_t priv_json_str(const char* json, const char* key, char* dst, uint
 
 /**
  * @brief Parse a decimal ``"key": NNN`` field out of a JSON-ish buffer.
+ *
+ * @details
+ * Locates ``key`` via ``strstr``, skips past colon/quote/whitespace
+ * (bounded by ``k_ra_ota_json_skip_max``) then accumulates a base-10
+ * value out of up to ``k_ra_ota_u32_decimal_digits`` digit characters.
+ * Both inner loops are statically bounded (NASA Rule 2).
+ *
+ * @param[in]  json  Source JSON bytes (NUL-terminated).
+ * @param[in]  key   Key string including its quotes, e.g. ``"\"size\""``.
+ * @param[out] out_v Receives the parsed value on success.
+ *
+ * @return ra_err_t outcome.
+ * @retval k_ra_ok              Value parsed into ``*out_v``.
+ * @retval k_ra_err_invalid_arg Key not found or no digits after the colon.
+ *
+ * @pre All pointer arguments are non-NULL.
+ * @pre ``json`` is NUL-terminated.
+ * @post On success ``*out_v`` reflects the parsed unsigned value.
+ * @post On failure ``*out_v`` is unchanged.
+ *
+ * @note Static helper; pure function.
+ * @since 0.1.0
  */
 static ra_err_t priv_json_u32(const char* json, const char* key, uint32_t* out_v)
 {
@@ -276,6 +424,21 @@ static ra_err_t priv_json_u32(const char* json, const char* key, uint32_t* out_v
 
 /**
  * @brief Decode a single hex nibble. Returns 0xFFU on invalid input.
+ *
+ * @details Maps ``'0'..'9'`` to 0..9 and ``'a'..'f'`` / ``'A'..'F'`` to
+ *   10..15 via ``k_ra_ota_hex_alpha_offset``. Any other character returns
+ *   ``k_ra_ota_hex_invalid_nibble`` (0xFFU).
+ *
+ * @param[in] c Candidate hex character.
+ *
+ * @return Nibble value 0..15.
+ * @retval k_ra_ota_hex_invalid_nibble Character is not a hex digit.
+ *
+ * @pre None.
+ * @post No state mutated.
+ *
+ * @note Static helper; pure function.
+ * @since 0.1.0
  */
 static uint8_t priv_hex_nibble(char c)
 {
@@ -294,6 +457,25 @@ static uint8_t priv_hex_nibble(char c)
 /**
  * @brief Decode a hex string into bytes. Returns the number of bytes
  *        decoded, or 0 on a malformed input.
+ *
+ * @details Walks the input two characters at a time, calling
+ *   ``priv_hex_nibble`` on each. Rejects odd-length input or any
+ *   non-hex character by returning 0.
+ *
+ * @param[in]  in      NUL-terminated hex string.
+ * @param[out] out     Destination byte buffer.
+ * @param[in]  out_cap Capacity of ``out`` in bytes.
+ *
+ * @return Number of bytes written into ``out``.
+ * @retval 0 Malformed input or capacity exceeded.
+ *
+ * @pre ``in`` and ``out`` non-NULL.
+ * @pre ``in`` is NUL-terminated.
+ * @post On success ``out[0..return-1]`` holds the decoded bytes.
+ * @post On failure ``out`` content is unspecified.
+ *
+ * @note Static helper; pure function.
+ * @since 0.1.0
  */
 static uint32_t priv_hex_decode(const char* in, uint8_t* out, uint32_t out_cap)
 {
@@ -324,6 +506,25 @@ static uint32_t priv_hex_decode(const char* in, uint8_t* out, uint32_t out_cap)
 
 /**
  * @brief Pull the sha256 + signature hex blobs out of a JSON manifest.
+ *
+ * @details Locates the ``"sha256"`` and ``"signature"`` string fields
+ *   via ``priv_json_str``, hex-decodes them with ``priv_hex_decode``
+ *   into the manifest struct, and validates lengths.
+ *
+ * @param[in]  json NUL-terminated JSON payload.
+ * @param[out] out  Manifest struct to populate.
+ *
+ * @return ra_err_t outcome.
+ * @retval k_ra_ok               Both fields decoded.
+ * @retval k_ra_err_invalid_arg  Field missing or wrong byte length.
+ *
+ * @pre Both pointers non-NULL.
+ * @pre ``json`` is NUL-terminated.
+ * @post On success ``out->image_sha256`` and ``out->signature`` populated.
+ * @post On failure ``out`` content is undefined.
+ *
+ * @note Static helper; pure function.
+ * @since 0.1.0
  */
 static ra_err_t priv_manifest_decode_crypto(const char* json, ra_ota_manifest_t* out)
 {
@@ -352,10 +553,26 @@ static ra_err_t priv_manifest_decode_crypto(const char* json, ra_ota_manifest_t*
 /**
  * @brief Decode every field of a JSON manifest into an ``ra_ota_manifest_t``.
  *
+ * @details
+ * Zeroes ``*out`` then pulls ``version``, ``url``, ``size`` and finally
+ * the cryptographic fields (via ``priv_manifest_decode_crypto``). The
+ * size is bounded by ``k_ra_ota_max_image_bytes``.
+ *
  * @param[in]  json NUL-terminated JSON payload.
  * @param[out] out  Destination struct (filled even on partial errors).
  *
- * @return k_ra_ok or k_ra_err_invalid_arg / k_ra_err_invalid_size.
+ * @return ra_err_t outcome.
+ * @retval k_ra_ok                Manifest fully decoded.
+ * @retval k_ra_err_invalid_arg   Required field missing or zero size.
+ * @retval k_ra_err_invalid_size  Image size above firmware-wide cap.
+ *
+ * @pre Both pointers non-NULL.
+ * @pre ``json`` is NUL-terminated.
+ * @post On success ``*out`` is fully populated.
+ * @post On failure ``*out`` may hold a partial decode.
+ *
+ * @note Static helper; pure function.
+ * @since 0.1.0
  */
 static ra_err_t priv_manifest_decode(const char* json, ra_ota_manifest_t* out)
 {
@@ -385,6 +602,40 @@ static ra_err_t priv_manifest_decode(const char* json, ra_ota_manifest_t* out)
  * Public API
  * ============================================================================= */
 
+/**
+ * @brief Initialise the OTA module from a caller-supplied configuration.
+ *
+ * @details
+ * Verifies the module is in the un-initialised state, runs the full
+ * ``priv_validate_cfg`` check on ``cfg``, then captures the descriptor
+ * by-value into ``s_cfg`` and resets the state machine to
+ * ``k_ra_ota_state_idle``.
+ *
+ * @param[in] cfg Configuration descriptor (function pointers + URLs).
+ *
+ * @return ra_err_t outcome.
+ * @retval k_ra_ok                Module initialised.
+ * @retval k_ra_err_invalid_state Module already initialised.
+ * @retval k_ra_err_null_ptr      ``cfg`` (or sub-pointer) was NULL.
+ * @retval k_ra_err_invalid_arg   Configuration field out of range.
+ *
+ * @pre Module is uninitialised (or ``ra_ota_deinit`` was called).
+ * @pre All function pointers in ``cfg`` are wired up.
+ * @post On success the module is in ``k_ra_ota_state_idle``.
+ * @post On failure no module state was mutated.
+ *
+ * @par Example:
+ * @code
+ * ra_ota_cfg_t cfg = { .net = { ... }, .crypto = { ... } };
+ * RA_RETURN_ON_ERROR(ra_ota_init(&cfg), s_tag, "ota init");
+ * @endcode
+ *
+ * @see ra_ota_deinit()
+ * @see ra_ota_run_full_update()
+ *
+ * @note Thread-safe: no.
+ * @since 0.1.0
+ */
 ra_err_t ra_ota_init(const ra_ota_cfg_t* cfg)
 {
   if (s_initialised) {
@@ -405,6 +656,26 @@ ra_err_t ra_ota_init(const ra_ota_cfg_t* cfg)
   return k_ra_ok;
 }
 
+/**
+ * @brief Reset the OTA module to its un-initialised state.
+ *
+ * @details
+ * Clears the cached configuration, manifest, byte-counter and last
+ * error so a future ``ra_ota_init`` starts from a clean slate.
+ *
+ * @return ra_err_t outcome.
+ * @retval k_ra_ok Always succeeds.
+ *
+ * @pre None (safe to call before init).
+ * @post ``s_initialised`` is false.
+ * @post ``s_cfg`` is zeroed.
+ *
+ * @see ra_ota_init()
+ *
+ * @note Thread-safe: no -- intended to be called when no OTA worker
+ *       is running.
+ * @since 0.1.0
+ */
 ra_err_t ra_ota_deinit(void)
 {
   s_initialised    = false;
@@ -416,6 +687,25 @@ ra_err_t ra_ota_deinit(void)
   return k_ra_ok;
 }
 
+/**
+ * @brief Return the current OTA state-machine value.
+ *
+ * @details
+ * Reads the latched ``s_state`` directly. ``s_state`` is a single byte,
+ * so a torn read is impossible on the target.
+ *
+ * @return ra_ota_state_t outcome.
+ * @retval k_ra_ota_state_idle Module not initialised, or genuinely idle.
+ * @retval other               Whatever state the worker last latched.
+ *
+ * @pre None (safe to call before init -- returns ``idle``).
+ * @post No state mutated.
+ *
+ * @see ra_ota_run_step()
+ *
+ * @note Thread-safe: yes -- single-byte read of a static.
+ * @since 0.1.0
+ */
 ra_ota_state_t ra_ota_get_state(void)
 {
   return s_state;
@@ -424,8 +714,26 @@ ra_ota_state_t ra_ota_get_state(void)
 /**
  * @brief Open the manifest URL and drain its payload into ``s_buf``.
  *
+ * @details
+ * Calls ``s_cfg.net.open`` on the configured manifest URL, validates
+ * the advertised content length is below ``k_ra_ota_manifest_max_bytes``,
+ * then drains via ``priv_drain`` and appends a NUL byte so the JSON
+ * helpers may use ``strstr``.
+ *
  * @param[out] out_got Bytes received (NUL terminator added at ``s_buf[got]``).
- * @return ``k_ra_ok`` or a backend / size error.
+ *
+ * @return ra_err_t outcome.
+ * @retval k_ra_ok                Payload fetched into ``s_buf``.
+ * @retval k_ra_err_invalid_size  Server advertised too large a body.
+ * @retval other                  Whatever the network backend returned.
+ *
+ * @pre Module is initialised.
+ * @pre ``out_got`` non-NULL.
+ * @post On success ``s_buf[0..*out_got]`` holds the payload + trailing NUL.
+ * @post On failure the network connection has been closed.
+ *
+ * @note Static helper; not thread-safe.
+ * @since 0.1.0
  */
 static ra_err_t priv_fetch_manifest_payload(uint32_t* out_got)
 {
@@ -449,6 +757,34 @@ static ra_err_t priv_fetch_manifest_payload(uint32_t* out_got)
   return k_ra_ok;
 }
 
+/**
+ * @brief Fetch and decode the upstream manifest, leaving it cached.
+ *
+ * @details
+ * Transitions the state machine ``idle -> checking -> idle`` (success)
+ * or ``idle -> checking -> error`` (failure). On success the manifest
+ * is mirrored both into ``*out_manifest`` and into the module-private
+ * ``s_manifest`` so subsequent steps can refer to it.
+ *
+ * @param[out] out_manifest Caller-owned manifest buffer.
+ *
+ * @return ra_err_t outcome.
+ * @retval k_ra_ok                  Manifest cached and returned.
+ * @retval k_ra_err_not_initialized Module not initialised.
+ * @retval k_ra_err_null_ptr        ``out_manifest`` was NULL.
+ * @retval k_ra_err_invalid_state   Module not in ``idle``.
+ * @retval other                    Network or decode error.
+ *
+ * @pre ``ra_ota_init`` succeeded.
+ * @pre Module is in ``k_ra_ota_state_idle``.
+ * @post On success state == ``idle``, manifest is cached.
+ * @post On failure state == ``error`` with ``s_last_err`` set.
+ *
+ * @see ra_ota_download_to_inactive_bank()
+ *
+ * @note Thread-safe: no.
+ * @since 0.1.0
+ */
 ra_err_t ra_ota_check_for_update(ra_ota_manifest_t* out_manifest)
 {
   if (!s_initialised) {
@@ -480,6 +816,29 @@ ra_err_t ra_ota_check_for_update(ra_ota_manifest_t* out_manifest)
 
 /**
  * @brief Stream one chunk: drain network -> hash -> flash program.
+ *
+ * @details
+ * Computes a chunk size capped at ``k_ra_ota_chunk_bytes``, drains it
+ * via ``priv_drain``, updates the SHA-256 accumulator, programs it
+ * into flash at ``addr_base + *in_out_done`` and bumps the running
+ * counter.
+ *
+ * @param[in]     addr_base   Bank base address inside flash.
+ * @param[in,out] in_out_done Bytes already programmed; bumped on success.
+ * @param[in]     total       Image size in bytes.
+ *
+ * @return ra_err_t outcome.
+ * @retval k_ra_ok            Chunk programmed and accumulator updated.
+ * @retval k_ra_err_hw_error  Backend EOF before image complete.
+ * @retval other              Network / crypto / flash error.
+ *
+ * @pre Module is in ``downloading`` (or about to enter it).
+ * @pre Pointers non-NULL.
+ * @post On success ``*in_out_done`` increased by the chunk byte count.
+ * @post On failure no flash bytes were programmed in this call.
+ *
+ * @note Static helper; not thread-safe.
+ * @since 0.1.0
  */
 static ra_err_t priv_download_chunk(uint32_t addr_base, uint32_t* in_out_done, uint32_t total)
 {
@@ -509,7 +868,25 @@ static ra_err_t priv_download_chunk(uint32_t addr_base, uint32_t* in_out_done, u
 /**
  * @brief Erase the inactive bank and prime the SHA accumulator.
  *
+ * @details
  * Only invoked on a fresh download start (``s_bytes_done == 0``).
+ * Erases ``manifest->image_size_bytes`` worth of inactive-bank flash
+ * then re-initialises the SHA-256 accumulator so the new download is
+ * hashed from byte 0.
+ *
+ * @param[in] manifest Currently active manifest.
+ *
+ * @return ra_err_t outcome.
+ * @retval k_ra_ok Bank erased and SHA primed.
+ * @retval other   Whatever the flash erase / sha init returned.
+ *
+ * @pre ``manifest`` non-NULL.
+ * @pre Module owns the inactive bank.
+ * @post On success the inactive bank is fully erased and SHA is primed.
+ * @post On failure the bank may be partially erased.
+ *
+ * @note Static helper; not thread-safe.
+ * @since 0.1.0
  */
 static ra_err_t priv_prepare_bank(const ra_ota_manifest_t* manifest)
 {
@@ -523,6 +900,27 @@ static ra_err_t priv_prepare_bank(const ra_ota_manifest_t* manifest)
 
 /**
  * @brief Drain chunks until the entire image is downloaded or an error fires.
+ *
+ * @details
+ * Loops calling ``priv_download_chunk`` until ``s_bytes_done`` reaches
+ * ``manifest->image_size_bytes``. Bounded by
+ * ``(k_ra_ota_max_image_bytes / k_ra_ota_chunk_bytes) + 1`` iterations
+ * (NASA Rule 2).
+ *
+ * @param[in] manifest Manifest describing the in-flight image.
+ *
+ * @return ra_err_t outcome.
+ * @retval k_ra_ok           Download completed.
+ * @retval k_ra_err_hw_error Chunk count exceeded the static cap.
+ * @retval other             Whatever ``priv_download_chunk`` returned.
+ *
+ * @pre Module is in ``downloading``.
+ * @pre ``manifest`` non-NULL.
+ * @post On success ``s_bytes_done == manifest->image_size_bytes``.
+ * @post On failure ``s_bytes_done`` reflects the partial progress.
+ *
+ * @note Static helper; not thread-safe.
+ * @since 0.1.0
  */
 static ra_err_t priv_download_loop(const ra_ota_manifest_t* manifest)
 {
@@ -545,6 +943,35 @@ static ra_err_t priv_download_loop(const ra_ota_manifest_t* manifest)
   return e;
 }
 
+/**
+ * @brief Download an image into the inactive bank, hashing as it goes.
+ *
+ * @details
+ * On a fresh start (``s_bytes_done == 0``) erases the bank and primes
+ * the SHA accumulator via ``priv_prepare_bank``. Then opens the image
+ * URL and runs ``priv_download_loop``. On success the state machine
+ * lands in ``verifying``; on failure it lands in ``error``.
+ *
+ * @param[in] manifest Manifest describing the image to fetch.
+ *
+ * @return ra_err_t outcome.
+ * @retval k_ra_ok                  Download complete; ready to verify.
+ * @retval k_ra_err_not_initialized Module not initialised.
+ * @retval k_ra_err_null_ptr        ``manifest`` was NULL.
+ * @retval k_ra_err_invalid_state   Module not in ``idle`` or ``downloading``.
+ * @retval k_ra_err_invalid_size    Image larger than the configured bank.
+ * @retval other                    Network / crypto / flash error.
+ *
+ * @pre ``ra_ota_init`` succeeded.
+ * @pre ``manifest`` non-NULL.
+ * @post On success state == ``verifying``.
+ * @post On failure state == ``error`` with ``s_last_err`` set.
+ *
+ * @see ra_ota_verify_signature()
+ *
+ * @note Thread-safe: no.
+ * @since 0.1.0
+ */
 ra_err_t ra_ota_download_to_inactive_bank(const ra_ota_manifest_t* manifest)
 {
   if (!s_initialised) {
@@ -588,6 +1015,28 @@ ra_err_t ra_ota_download_to_inactive_bank(const ra_ota_manifest_t* manifest)
 
 /**
  * @brief Re-hash the inactive bank to re-derive the digest after program.
+ *
+ * @details
+ * Re-initialises the SHA accumulator then walks the inactive bank in
+ * ``k_ra_ota_chunk_bytes`` chunks via ``s_cfg.flash.readback``,
+ * feeding each one to ``s_cfg.crypto.sha256_update``. Finalises into
+ * ``out_digest``. Loop is bounded by
+ * ``(k_ra_ota_max_image_bytes / k_ra_ota_chunk_bytes) + 1``.
+ *
+ * @param[in]  m          Manifest (provides ``image_size_bytes``).
+ * @param[out] out_digest 32-byte SHA-256 destination.
+ *
+ * @return ra_err_t outcome.
+ * @retval k_ra_ok Digest derived.
+ * @retval other   Whatever the readback / crypto callbacks returned.
+ *
+ * @pre Module is in ``verifying``.
+ * @pre Pointers non-NULL.
+ * @post On success ``out_digest`` holds SHA-256 of the bank contents.
+ * @post On failure ``out_digest`` content is unspecified.
+ *
+ * @note Static helper; not thread-safe.
+ * @since 0.1.0
  */
 static ra_err_t priv_rehash_bank(const ra_ota_manifest_t* m, uint8_t out_digest[32])
 {
@@ -616,6 +1065,37 @@ static ra_err_t priv_rehash_bank(const ra_ota_manifest_t* m, uint8_t out_digest[
   return s_cfg.crypto.sha256_final(s_cfg.crypto.ctx, out_digest);
 }
 
+/**
+ * @brief Verify the freshly-programmed bank against the manifest signature.
+ *
+ * @details
+ * Re-hashes the inactive bank via ``priv_rehash_bank``, compares the
+ * digest against ``manifest->image_sha256``, and on a match invokes
+ * the configured ECDSA verifier with the public-key handle and the
+ * manifest signature. On success the state machine lands in
+ * ``committing``.
+ *
+ * @param[in] manifest Manifest used for the download.
+ *
+ * @return ra_err_t outcome.
+ * @retval k_ra_ok                  Image authenticated.
+ * @retval k_ra_err_not_initialized Module not initialised.
+ * @retval k_ra_err_null_ptr        ``manifest`` was NULL.
+ * @retval k_ra_err_invalid_state   Module not in ``verifying``.
+ * @retval k_ra_err_crc_mismatch    SHA-256 mismatch (image corrupt).
+ * @retval k_ra_err_hw_error        ECDSA verify rejected the signature.
+ * @retval other                    Crypto / flash backend error.
+ *
+ * @pre ``ra_ota_download_to_inactive_bank`` succeeded.
+ * @pre ``manifest`` non-NULL.
+ * @post On success state == ``committing``.
+ * @post On failure state == ``error``.
+ *
+ * @see ra_ota_commit_and_reboot()
+ *
+ * @note Thread-safe: no.
+ * @since 0.1.0
+ */
 ra_err_t ra_ota_verify_signature(const ra_ota_manifest_t* manifest)
 {
   if (!s_initialised) {
@@ -649,6 +1129,32 @@ ra_err_t ra_ota_verify_signature(const ra_ota_manifest_t* manifest)
   return k_ra_ok;
 }
 
+/**
+ * @brief Latch the inactive bank as the next boot bank and reboot.
+ *
+ * @details
+ * Calls ``s_cfg.flash.set_startup`` to mark the inactive bank as the
+ * boot bank, then invokes ``ra_ota_system_reset_hook`` (which on
+ * hardware overrides to ``NVIC_SystemReset`` and on host is a no-op
+ * for testability).
+ *
+ * @return ra_err_t outcome.
+ * @retval k_ra_ok                  Bank latched (the call normally
+ *                                  doesn't return on hardware).
+ * @retval k_ra_err_not_initialized Module not initialised.
+ * @retval k_ra_err_invalid_state   Module not in ``committing``.
+ * @retval other                    Backend error from set_startup.
+ *
+ * @pre ``ra_ota_verify_signature`` succeeded.
+ * @pre Module is in ``k_ra_ota_state_committing``.
+ * @post On success state == ``done`` and the system reset hook fired.
+ * @post On failure state == ``error``.
+ *
+ * @see ra_ota_system_reset_hook()
+ *
+ * @note Thread-safe: no.
+ * @since 0.1.0
+ */
 ra_err_t ra_ota_commit_and_reboot(void)
 {
   if (!s_initialised) {
@@ -672,6 +1178,23 @@ ra_err_t ra_ota_commit_and_reboot(void)
 
 /**
  * @brief Drive one transition based on the current state.
+ *
+ * @details
+ * Switches on ``s_state`` and dispatches to the matching public-API
+ * function (``check_for_update``, ``download_to_inactive_bank``,
+ * ``verify_signature`` or ``commit_and_reboot``). Terminal states
+ * (``done`` / ``error``) return ``k_ra_ok`` so the caller may stop
+ * polling.
+ *
+ * @return ra_err_t outcome.
+ * @retval k_ra_ok Step completed (or terminal state reached).
+ * @retval other   Whatever the dispatched function returned.
+ *
+ * @pre Module is initialised.
+ * @post The state machine has advanced by at most one transition.
+ *
+ * @note Static helper; not thread-safe.
+ * @since 0.1.0
  */
 static ra_err_t priv_step_dispatch(void)
 {
@@ -698,6 +1221,28 @@ static ra_err_t priv_step_dispatch(void)
   }
 }
 
+/**
+ * @brief Drive the OTA state machine one step forward.
+ *
+ * @details
+ * Thin wrapper over ``priv_step_dispatch`` that gates on
+ * ``s_initialised``. Intended for callers that opted out of running
+ * the OTA worker as a background thread.
+ *
+ * @return ra_err_t outcome.
+ * @retval k_ra_ok                  Step completed.
+ * @retval k_ra_err_not_initialized Module not initialised.
+ * @retval other                    Step-specific error.
+ *
+ * @pre ``ra_ota_init`` succeeded.
+ * @post The state machine has advanced by at most one transition.
+ *
+ * @see ra_ota_get_state()
+ * @see ra_ota_run_full_update()
+ *
+ * @note Thread-safe: no -- single owner only.
+ * @since 0.1.0
+ */
 ra_err_t ra_ota_run_step(void)
 {
   if (!s_initialised) {
@@ -706,6 +1251,28 @@ ra_err_t ra_ota_run_step(void)
   return priv_step_dispatch();
 }
 
+/**
+ * @brief Drive the OTA state machine through an end-to-end update.
+ *
+ * @details
+ * Loops calling ``ra_ota_run_step`` for at most ``k_ra_ota_state_count``
+ * iterations (NASA Rule 2 bound: idle -> checking -> downloading ->
+ * verifying -> committing -> done). Stops early on ``done`` or
+ * ``error``.
+ *
+ * @return ra_err_t outcome.
+ * @retval k_ra_ok                  Update completed (or already done).
+ * @retval k_ra_err_not_initialized Module not initialised.
+ * @retval other                    Whatever the failing step returned.
+ *
+ * @pre ``ra_ota_init`` succeeded.
+ * @post Module is in ``done`` (success) or ``error`` (failure).
+ *
+ * @see ra_ota_run_step()
+ *
+ * @note Thread-safe: no.
+ * @since 0.1.0
+ */
 ra_err_t ra_ota_run_full_update(void)
 {
   if (!s_initialised) {
@@ -732,6 +1299,30 @@ ra_err_t ra_ota_run_full_update(void)
  * actually exit the process.
  * ============================================================================= */
 
+/**
+ * @brief Weak system-reset hook overridden by the target build.
+ *
+ * @details
+ * Called from ``ra_ota_commit_and_reboot`` after the bank-swap is
+ * latched. The hardware build overrides this with a definition that
+ * calls ``NVIC_SystemReset``. The host (unit-test) build keeps the
+ * weak no-op default so tests can observe post-commit state without
+ * actually exiting the process.
+ *
+ * @return None.
+ *
+ * @pre Weak symbol; safe to leave unimplemented.
+ * @post Default no-op; target override never returns.
+ *
+ * @par Example:
+ * @code
+ * // In target firmware:
+ * void ra_ota_system_reset_hook(void) { NVIC_SystemReset(); }
+ * @endcode
+ *
+ * @note Thread-safe: target override does not return, so trivially safe.
+ * @since 0.1.0
+ */
 #if defined(__GNUC__) || defined(__clang__)
 __attribute__((weak))
 #endif
