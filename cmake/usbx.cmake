@@ -81,13 +81,18 @@ list(FILTER _RA_USBX_CORE_SOURCES
 list(FILTER _RA_USBX_CORE_SOURCES
     EXCLUDE REGEX ".*/ux_hcd_sim_host_.*\\.c$")
 
-# CDC-ACM device class (the only class the USBX demo enables).
+# CDC-ACM device class (used by threadx_usbx_cdc_demo).
 file(GLOB _RA_USBX_CDC_SOURCES CONFIGURE_DEPENDS
     "${_RA_USBX_DEV_CLS_SRC}/ux_device_class_cdc_acm_*.c")
 
+# HID device class (used by usb_hid_device).
+file(GLOB _RA_USBX_HID_SOURCES CONFIGURE_DEPENDS
+    "${_RA_USBX_DEV_CLS_SRC}/ux_device_class_hid_*.c")
+
 add_library(usbx_objs OBJECT
     ${_RA_USBX_CORE_SOURCES}
-    ${_RA_USBX_CDC_SOURCES})
+    ${_RA_USBX_CDC_SOURCES}
+    ${_RA_USBX_HID_SOURCES})
 
 target_include_directories(usbx_objs PUBLIC
     ${_RA_USBX_COMMON_INC}
