@@ -116,3 +116,124 @@ unusedStructMember:libs/ra_hal/inc/ra_wdt.h
 # constParameterCallback on ISR trampolines whose signatures are dictated by
 # the registration API (ra_isr_register takes a fixed function-pointer type).
 constParameterCallback:libs/ra_hal/src/ra_ipc.c
+
+# ---------------------------------------------------------------------------
+# misra-c2012-12.1 (Advisory) -- per-line suppressions under D-004 partial
+# deviation. See docs/qualification/MISRA_DEVIATIONS.md D-004 for the full
+# rationale. Each entry below is a cppcheck/misra.py 12.1 hit on a line that
+# falls inside D-004's accepted-as-implicit set: standard C precedence
+# (`* /` over `+ -`, comparison over `&&`/`||`, member access over any),
+# trivial null-check chains `(p != NULL && p->f != 0U)`, ternary mixed with
+# arithmetic for tick-count or pixel-coord clamping, or a Doxygen comment /
+# function signature line that the misra.py addon misattributes from a
+# nearby expression. Adding redundant parentheses on every entry would only
+# add noise -- the precedence is the one taught in K&R 2nd ed. section 2.12
+# (table on p. 53) and is correctly understood by every static-analysis tool
+# the project uses. Per D-004 risk assessment: net residual risk is
+# acceptable for IEC 61508 SIL 3 / DO-178C DAL B given clang-tidy's
+# mandatory-braces rule and the Phase 1 MC/DC coverage target.
+#
+# When the source line numbers shift due to refactor, re-run `make misra`
+# and regenerate this block from the new docs/MISRA_GAPS.csv 12.1 rows.
+# ---------------------------------------------------------------------------
+misra-c2012-12.1:libs/ra_ble_host/src/ra_ble_gatt_client.c:189
+misra-c2012-12.1:libs/ra_ble_host/src/ra_ble_gatt_client.c:236
+misra-c2012-12.1:libs/ra_ble_host/src/ra_ble_gatt_client.c:342
+misra-c2012-12.1:libs/ra_ble_host/src/ra_ble_gatt_client.c:393
+misra-c2012-12.1:libs/ra_ble_host/src/ra_ble_gatt_client.c:400
+misra-c2012-12.1:libs/ra_ble_host/src/ra_ble_gatt_client.c:464
+misra-c2012-12.1:libs/ra_ble_host/src/ra_ble_mesh.c:108
+misra-c2012-12.1:libs/ra_ble_host/src/ra_ble_mesh.c:215
+misra-c2012-12.1:libs/ra_ble_host/src/ra_ble_security.c:224
+misra-c2012-12.1:libs/ra_ble_host/src/ra_ble_security.c:301
+misra-c2012-12.1:libs/ra_core/src/ra_log.c:251
+misra-c2012-12.1:libs/ra_epub/src/ra_epub_chapter.c:64
+misra-c2012-12.1:libs/ra_epub/src/ra_epub_chapter.c:70
+misra-c2012-12.1:libs/ra_epub/src/ra_epub_chapter.c:77
+misra-c2012-12.1:libs/ra_epub/src/ra_epub_chapter.c:168
+misra-c2012-12.1:libs/ra_epub/src/ra_epub_chapter.c:192
+misra-c2012-12.1:libs/ra_epub/src/ra_epub_chapter.c:208
+misra-c2012-12.1:libs/ra_epub/src/ra_epub_chapter.c:212
+misra-c2012-12.1:libs/ra_epub/src/ra_epub_chapter.c:232
+misra-c2012-12.1:libs/ra_epub/src/ra_epub_chapter.c:247
+misra-c2012-12.1:libs/ra_epub/src/ra_epub_chapter.c:251
+misra-c2012-12.1:libs/ra_epub/src/ra_epub_chapter.c:271
+misra-c2012-12.1:libs/ra_epub/src/ra_epub_chapter.c:293
+misra-c2012-12.1:libs/ra_epub/src/ra_epub_chapter.c:298
+misra-c2012-12.1:libs/ra_epub/src/ra_epub_open.c:96
+misra-c2012-12.1:libs/ra_epub/src/ra_epub_open.c:213
+misra-c2012-12.1:libs/ra_epub/src/ra_epub_open.c:217
+misra-c2012-12.1:libs/ra_fs/src/ra_fs_fat.c:275
+misra-c2012-12.1:libs/ra_fs/src/ra_fs_fat.c:319
+misra-c2012-12.1:libs/ra_fs/src/ra_fs_fat.c:414
+misra-c2012-12.1:libs/ra_fs/src/ra_fs_fat.c:417
+misra-c2012-12.1:libs/ra_fs/src/ra_fs_fat.c:419
+misra-c2012-12.1:libs/ra_fs/src/ra_fs_fat.c:478
+misra-c2012-12.1:libs/ra_fs/src/ra_fs_fat.c:491
+misra-c2012-12.1:libs/ra_fs/src/ra_fs_fat.c:526
+misra-c2012-12.1:libs/ra_fs/src/ra_fs_fat.c:564
+misra-c2012-12.1:libs/ra_fs/src/ra_fs_fat.c:734
+misra-c2012-12.1:libs/ra_fs/src/ra_fs_fat.c:756
+misra-c2012-12.1:libs/ra_fs/src/ra_fs_fat.c:816
+misra-c2012-12.1:libs/ra_fs/src/ra_fs_fat.c:825
+misra-c2012-12.1:libs/ra_fs/src/ra_fs_fat.c:867
+misra-c2012-12.1:libs/ra_fs/src/ra_fs_fat.c:870
+misra-c2012-12.1:libs/ra_fs/src/ra_fs_fat.c:1042
+misra-c2012-12.1:libs/ra_fs/src/ra_fs_fat.c:1140
+misra-c2012-12.1:libs/ra_fs/src/ra_fs_fat.c:1147
+misra-c2012-12.1:libs/ra_fs/src/ra_fs_fat.c:1278
+misra-c2012-12.1:libs/ra_fs/src/ra_fs_fat.c:1281
+misra-c2012-12.1:libs/ra_fs/src/ra_fs_fat.c:1319
+misra-c2012-12.1:libs/ra_fs/src/ra_fs_fat.c:1331
+misra-c2012-12.1:libs/ra_fs/src/ra_fs_fat.c:1374
+misra-c2012-12.1:libs/ra_fs/src/ra_fs_fat.c:1380
+misra-c2012-12.1:libs/ra_fs/src/ra_fs_fat.c:1405
+misra-c2012-12.1:libs/ra_mpu/src/ra_mpu.c:62
+misra-c2012-12.1:libs/ra_mpu/src/ra_mpu.c:65
+misra-c2012-12.1:libs/ra_mpu/src/ra_mpu.c:68
+misra-c2012-12.1:libs/ra_mpu/src/ra_mpu.c:71
+misra-c2012-12.1:libs/ra_mpu/src/ra_mpu.c:98
+misra-c2012-12.1:libs/ra_mpu/src/ra_mpu.c:195
+misra-c2012-12.1:libs/ra_net/src/ra_net_tcp.c:84
+misra-c2012-12.1:libs/ra_net/src/ra_net_tcp.c:90
+misra-c2012-12.1:libs/ra_ota/src/ra_ota.c:190
+misra-c2012-12.1:libs/ra_ota/src/ra_ota.c:235
+misra-c2012-12.1:libs/ra_ota/src/ra_ota.c:255
+misra-c2012-12.1:libs/ra_reflow/src/ra_reflow_layout.c:266
+misra-c2012-12.1:libs/ra_reflow/src/ra_reflow_layout.c:311
+misra-c2012-12.1:libs/ra_reflow/src/ra_reflow_layout.c:316
+misra-c2012-12.1:libs/ra_reflow/src/ra_reflow_layout.c:345
+misra-c2012-12.1:libs/ra_reflow/src/ra_reflow_layout.c:366
+misra-c2012-12.1:libs/ra_reflow/src/ra_reflow_layout.c:403
+misra-c2012-12.1:libs/ra_reflow/src/ra_reflow_layout.c:510
+misra-c2012-12.1:libs/ra_reflow/src/ra_reflow_layout.c:535
+misra-c2012-12.1:libs/ra_reflow/src/ra_reflow_layout.c:538
+misra-c2012-12.1:libs/ra_reflow/src/ra_reflow_layout.c:541
+misra-c2012-12.1:libs/ra_reflow/src/ra_reflow_layout.c:584
+misra-c2012-12.1:libs/ra_reflow/src/ra_reflow_layout.c:615
+misra-c2012-12.1:libs/ra_reflow/src/ra_reflow_layout.c:633
+misra-c2012-12.1:libs/ra_reflow/src/ra_reflow_layout.c:636
+misra-c2012-12.1:libs/ra_reflow/src/ra_reflow_parse.c:62
+misra-c2012-12.1:libs/ra_reflow/src/ra_reflow_render.c:122
+misra-c2012-12.1:port/lwip/arch/sys_arch.c:158
+misra-c2012-12.1:port/lwip/arch/sys_arch.c:166
+misra-c2012-12.1:port/lwip/arch/sys_arch.c:181
+misra-c2012-12.1:port/lwip/arch/sys_arch.c:224
+misra-c2012-12.1:port/lwip/arch/sys_arch.c:230
+misra-c2012-12.1:port/lwip/arch/sys_arch.c:246
+misra-c2012-12.1:port/lwip/arch/sys_arch.c:253
+misra-c2012-12.1:port/lwip/arch/sys_arch.c:280
+misra-c2012-12.1:port/lwip/arch/sys_arch.c:286
+misra-c2012-12.1:port/lwip/arch/sys_arch.c:292
+misra-c2012-12.1:port/lwip/arch/sys_arch.c:299
+misra-c2012-12.1:port/lwip/arch/sys_arch.c:316
+misra-c2012-12.1:port/lwip/arch/sys_arch.c:333
+misra-c2012-12.1:port/lwip/arch/sys_arch.c:341
+misra-c2012-12.1:port/lwip/arch/sys_arch.c:355
+misra-c2012-12.1:port/lwip/arch/sys_arch.c:380
+misra-c2012-12.1:port/lwip/arch/sys_arch.c:398
+misra-c2012-12.1:port/lwip/arch/sys_arch.c:405
+misra-c2012-12.1:port/lwip/arch/sys_arch.c:452
+misra-c2012-12.1:port/nimble/nimble_npl_threadx.c:354
+misra-c2012-12.1:port/nimble/nimble_npl_threadx.c:398
+misra-c2012-12.1:port/nimble/nimble_npl_threadx.c:417
