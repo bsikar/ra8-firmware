@@ -258,6 +258,51 @@ typedef enum : uint8_t {
  */
 [[nodiscard]] ra_err_t ra_sci_write_polling(uint8_t channel, const uint8_t* data, uint32_t len);
 
+/**
+ * @brief Block until the channel's transmit shift register is empty.
+ *
+ * @details
+ * Spins on CSR.TEND (HUM Ch 38.2.17 "CSR : Common Status Register",
+ * p 2225). TEND asserts only after both TDR and the shift register are
+ * drained, so this call guarantees that every byte previously handed to
+ * the SCI has finished clocking out on the wire.
+ *
+ * The intended use is **before any panic / sleep / WFI sequence** that
+ * would gate the SCI clock and silently lose in-flight bytes:
+ *
+ * @code
+ * (void)ra_sci_write_polling(k_demo_sci_channel, panic_msg, len);
+ * (void)ra_sci_flush(k_demo_sci_channel);  // wait for the wire
+ * panic_halt();                            // safe to WFI now
+ * @endcode
+ *
+ * The wait is bounded by ``ra_hw_wait_flag_set32`` (medium budget --
+ * roughly 65k tight-loop iterations), so the call is guaranteed to
+ * return in finite time even if TXD is wedged. On the host
+ * (`RA_SIMULATOR_MODE`) the simulator does not model the shift-register
+ * drain, so this routine returns ``k_ra_ok`` without polling.
+ *
+ * @param[in] channel SCI channel (0..9).
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok TEND observed high (or simulator stub).
+ * @retval k_ra_err_invalid_arg ``channel`` > 9.
+ * @retval k_ra_err_hw_timeout Spin budget elapsed without TEND.
+ *
+ * @pre Channel previously initialised via ``ra_sci_init``.
+ * @post On success, the SCI transmit shift register is empty -- safe to
+ *       drop CCR0.TE, gate the MSTP clock, or execute WFI.
+ *
+ * @note Thread safety: not thread-safe with respect to ISR-driven TX on
+ *       the same channel (the ISR may refill TDR mid-poll). Drain or
+ *       abort the async TX first, then flush.
+ *
+ * @see ra_sci_write_polling
+ * @see ra_sci_abort
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_sci_flush(uint8_t channel);
+
 /* =============================================================================
  * Interrupt TX / RX
  * =============================================================================

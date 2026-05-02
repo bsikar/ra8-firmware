@@ -968,6 +968,37 @@ typedef enum : uint16_t {
  */
 [[nodiscard]] ra_err_t ra_board_uart_console_read(uint8_t* out, size_t cap, size_t* out_len);
 
+/**
+ * @brief Block until every byte queued on the J-Link OB VCOM console
+ *        has finished clocking out on the wire.
+ *
+ * @details
+ * Thin wrapper around ``ra_sci_flush(k_ra_board_uart_console_sci_channel)``
+ * that polls CSR.TEND on the SCI8 channel that backs the J-Link OB VCOM
+ * bridge (HUM Ch 38.2.17 "CSR : Common Status Register", p 2225). The
+ * intended caller is a panic-handler that needs the failure log to
+ * reach the host before WFI gates the SCI clock and silently drops the
+ * remaining FIFO contents.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok TEND observed (or simulator stub).
+ * @retval k_ra_err_not_initialized ``ra_board_uart_console_init`` not called.
+ * @retval k_ra_err_hw_timeout Spin budget elapsed without TEND.
+ *
+ * @pre ``ra_board_uart_console_init`` succeeded.
+ * @post On success, every byte previously passed to
+ *       ``ra_board_uart_console_write`` has been transmitted.
+ *
+ * @note Not thread-safe with respect to a concurrent
+ *       ``ra_board_uart_console_write`` -- the writer may refill the
+ *       shift register while the flush is polling.
+ *
+ * @see ra_sci_flush
+ * @see ra_board_uart_console_write
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_board_uart_console_flush(void);
+
 /* =============================================================================
  * 12. On-board RGMII Ethernet PHY (UM Section 6.1, Tables 26 + 27, p 33-34)
  * =============================================================================
