@@ -7,37 +7,23 @@
  * [Ring 6 / APP] {World: S}
  *
  * @details
- * Brings the chip up via ``ra_cgc_init()``, routes the eleven RMII
- * pins on the EK-RA8D2 v1 board (J64 connector) to the on-chip Ethernet
- * MAC, opens the NIC at MAC ``02:00:00:00:00:01`` (locally-administered
- * unicast) and waits for PHY link-up. With the link up, ``ra_ptp_open``
- * arms the PTP block in master role on domain 0 with a 1 Hz Sync
- * interval, ``ra_ptp_set_time`` seeds the counter from a fixed Unix
- * epoch (RTC integration is out of scope for this smoke test), and the
- * main loop emits one Sync + one Announce every second
- * (IEEE 1588-2019 sec 13.6 / 13.5).
+ * Brings the chip up via ``ra_cgc_init()``, routes the on-board PEF7071
+ * PHY pins via ``ra_board_ethernet_init()`` (RGMII per EK-RA8D2 v1 UM
+ * Table 26 p 33), opens the NIC at MAC ``02:00:00:00:00:01``
+ * (locally-administered unicast) and waits for PHY link-up. With the
+ * link up, ``ra_ptp_open`` arms the PTP block in master role on domain
+ * 0 with a 1 Hz Sync interval, ``ra_ptp_set_time`` seeds the counter
+ * from a fixed Unix epoch (RTC integration is out of scope for this
+ * smoke test), and the main loop emits one Sync + one Announce every
+ * second (IEEE 1588-2019 sec 13.6 / 13.5).
  *
  * SCI8 (PD_02 / PD_03) at 115200 8N1 prints the running PTP time once
  * per loop iteration so an attached terminal can see the clock advance.
  *
- * ## Pinout (EK-RA8D2 v1 J64 RMII connector)
- *
- * | Net          | Pin    | PSEL                       | Direction      |
- * |--------------|--------|----------------------------|----------------|
- * | ETH_REF_CLK  | P7_00  | k_ra_psel_ether_rmii (0x11)| 50 MHz REFCLK  |
- * | ETH_MDC      | P4_01  | k_ra_psel_ether_rmii (0x11)| MDIO clock     |
- * | ETH_MDIO     | P4_02  | k_ra_psel_ether_rmii (0x11)| MDIO data      |
- * | ETH_TXD0     | P7_01  | k_ra_psel_ether_rmii (0x11)| Tx data 0      |
- * | ETH_TXD1     | P7_02  | k_ra_psel_ether_rmii (0x11)| Tx data 1      |
- * | ETH_TX_EN    | P7_03  | k_ra_psel_ether_rmii (0x11)| Tx enable      |
- * | ETH_RXD0     | P7_04  | k_ra_psel_ether_rmii (0x11)| Rx data 0      |
- * | ETH_RXD1     | P7_05  | k_ra_psel_ether_rmii (0x11)| Rx data 1      |
- * | ETH_RX_DV    | P7_06  | k_ra_psel_ether_rmii (0x11)| Rx data valid  |
- * | ETH_RX_ER    | P7_07  | k_ra_psel_ether_rmii (0x11)| Rx error       |
- * | ETH_CRS_DV   | P7_08  | k_ra_psel_ether_rmii (0x11)| Carrier sense  |
- *
- * Pin assignments are copied verbatim from ``examples/ethernet_tcp_echo``
- * because the EK-RA8D2 v1 board only routes RMII to one channel.
+ * The full sixteen-pin RGMII map (TXC/TX_CTL/TXD0..3, RXC/RX_CTL/
+ * RXD0..3, MDC/MDIO, plus PHY reset / interrupt / power) is owned by
+ * ``ra_board_ethernet_init()``. See ``libs/ra_board_ek_ra8d2`` for the
+ * authoritative pin list.
  *
  * @par Architectural ring
  * [Ring 6 / APP] {World: S} -- application-layer code that runs in
@@ -111,30 +97,6 @@ typedef enum : uint32_t {
  * bit 0 is clear (unicast). Same value the ethernet_tcp_echo demo uses.
  */
 static const uint8_t k_ptp_master_mac[] = {0x02U, 0x00U, 0x00U, 0x00U, 0x00U, 0x01U};
-
-/** @brief RMII signal pinout for the EK-RA8D2 v1 J64 connector. */
-static const ra_port_pin_t k_ptp_master_pin_ref_clk =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_7 << 8) | (uint16_t)k_ra_pin_0);
-static const ra_port_pin_t k_ptp_master_pin_mdc =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_4 << 8) | (uint16_t)k_ra_pin_1);
-static const ra_port_pin_t k_ptp_master_pin_mdio =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_4 << 8) | (uint16_t)k_ra_pin_2);
-static const ra_port_pin_t k_ptp_master_pin_txd0 =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_7 << 8) | (uint16_t)k_ra_pin_1);
-static const ra_port_pin_t k_ptp_master_pin_txd1 =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_7 << 8) | (uint16_t)k_ra_pin_2);
-static const ra_port_pin_t k_ptp_master_pin_tx_en =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_7 << 8) | (uint16_t)k_ra_pin_3);
-static const ra_port_pin_t k_ptp_master_pin_rxd0 =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_7 << 8) | (uint16_t)k_ra_pin_4);
-static const ra_port_pin_t k_ptp_master_pin_rxd1 =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_7 << 8) | (uint16_t)k_ra_pin_5);
-static const ra_port_pin_t k_ptp_master_pin_rx_dv =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_7 << 8) | (uint16_t)k_ra_pin_6);
-static const ra_port_pin_t k_ptp_master_pin_rx_er =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_7 << 8) | (uint16_t)k_ra_pin_7);
-static const ra_port_pin_t k_ptp_master_pin_crs_dv =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_7 << 8) | (uint16_t)k_ra_pin_8);
 
 /** @brief SCI8 / J-Link OB CDC pins (TXD8 / RXD8 -- PD_02 / PD_03). */
 static const ra_port_pin_t k_ptp_master_pin_log_tx =
@@ -238,47 +200,6 @@ static void ptp_master_u32_to_ascii(uint32_t value, char* buf, uint32_t cap)
 }
 
 /**
- * @brief Route the eleven RMII pins to the on-chip Ethernet MAC.
- *
- * @return Error code from the first failing route call, or k_ra_ok.
- *
- * @retval k_ra_ok                      All eleven pins routed.
- * @retval k_ra_err_gpio_invalid_port   PFS port index out of range.
- * @retval k_ra_err_gpio_invalid_pin    PFS pin index out of range.
- * @retval k_ra_err_gpio_conflict       Pin owned by another module.
- *
- * @pre IOPORT module is reachable.
- * @pre Caller is single-threaded init context.
- * @post On success the eleven RMII pins are PSEL=0x11.
- *
- * @since 0.1.0
- */
-[[nodiscard]] static ra_err_t ptp_master_pins_init(void)
-{
-  const ra_port_pin_t pins[] = {
-    k_ptp_master_pin_ref_clk,
-    k_ptp_master_pin_mdc,
-    k_ptp_master_pin_mdio,
-    k_ptp_master_pin_txd0,
-    k_ptp_master_pin_txd1,
-    k_ptp_master_pin_tx_en,
-    k_ptp_master_pin_rxd0,
-    k_ptp_master_pin_rxd1,
-    k_ptp_master_pin_rx_dv,
-    k_ptp_master_pin_rx_er,
-    k_ptp_master_pin_crs_dv,
-  };
-  const uint8_t pin_count = (uint8_t)(sizeof(pins) / sizeof(pins[0]));
-  for (uint8_t i = 0U; i < pin_count; i++) {
-    const ra_err_t err = ra_pfs_route_peripheral(pins[i], k_ra_psel_ether_rmii, "ptp_master");
-    if (err != k_ra_ok) {
-      return err;
-    }
-  }
-  return k_ra_ok;
-}
-
-/**
  * @brief Block until the PHY reports link-up via BMSR.
  *
  * @details Polls ``ra_eth_link_status`` every 100 ms until ``link_up == 1``.
@@ -376,7 +297,8 @@ static void ptp_master_sci_or_halt(uint32_t pclka_hz)
  */
 static void ptp_master_eth_or_halt(void)
 {
-  if (ptp_master_pins_init() != k_ra_ok) {
+  /* RGMII pinmux per EK-RA8D2 v1 UM Table 26 p 33. */
+  if (ra_board_ethernet_init() != k_ra_ok) {
     ptp_master_panic_halt();
   }
   const ra_eth_cfg_t eth_cfg = {
