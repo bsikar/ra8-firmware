@@ -446,21 +446,73 @@ ra_spi_attach_transfer_handler(uint8_t channel, ra_spi_complete_fn_t fn, void* c
 
 /**
  * @brief Dispatch SPTI -- advance TX state.
- * @param[in] channel SPI channel.
+ *
+ * @details
+ * Invoked from the SPTIn IRQ trampoline when the transmit FIFO/holding
+ * register is ready for the next word. Loads the next byte from the
+ * caller-supplied TX buffer into ``SPDR`` (HUM Ch 36.2.7 "SPDR : SPI
+ * Data Register", p 1532) and decrements the remaining count. Silently
+ * returns if the channel is out of range or no transfer is in progress.
+ *
+ * @param[in] channel SPI channel index (0..1).
+ *
+ * @return None.
+ * @retval None Function returns ``void``.
+ *
+ * @pre ``ra_spi_init(channel, ...)`` succeeded.
+ * @pre Called from ISR context (or unit-test driver).
+ * @post Either one TX word was written or the transfer is complete.
+ * @post No state change if channel is out of range.
+ *
+ * @note Thread safety: ISR context only; not re-entrant per channel.
  * @since 0.1.0
  */
 void ra_spi_dispatch_spti(uint8_t channel);
 
 /**
  * @brief Dispatch SPRI -- advance RX state.
- * @param[in] channel SPI channel.
+ *
+ * @details
+ * Invoked from the SPRIn IRQ trampoline when the receive FIFO/holding
+ * register has new data. Reads ``SPDR`` (HUM Ch 36.2.7, p 1532) into
+ * the caller-supplied RX buffer and, when the byte count reaches zero,
+ * invokes the registered completion callback.
+ *
+ * @param[in] channel SPI channel index (0..1).
+ *
+ * @return None.
+ * @retval None Function returns ``void``.
+ *
+ * @pre ``ra_spi_init(channel, ...)`` succeeded.
+ * @pre Called from ISR context (or unit-test driver).
+ * @post Either one RX word was consumed or the completion callback ran.
+ * @post No state change if channel is out of range.
+ *
+ * @note Thread safety: ISR context only; not re-entrant per channel.
  * @since 0.1.0
  */
 void ra_spi_dispatch_spri(uint8_t channel);
 
 /**
  * @brief Dispatch SPEI -- collect + clear errors, fire callback.
- * @param[in] channel SPI channel.
+ *
+ * @details
+ * Invoked from the SPEIn IRQ trampoline. Reads and clears the error
+ * status bits in ``SPSR`` (HUM Ch 36.2.5 "SPSR : SPI Status Register",
+ * p 1530) -- mode-fault (MODF), overrun (OVRF), parity (PERF) -- then
+ * invokes the registered error callback with the collected mask.
+ *
+ * @param[in] channel SPI channel index (0..1).
+ *
+ * @return None.
+ * @retval None Function returns ``void``.
+ *
+ * @pre ``ra_spi_init(channel, ...)`` succeeded.
+ * @pre Called from ISR context (or unit-test driver).
+ * @post All error bits in ``SPSR`` are cleared for ``channel``.
+ * @post Error callback invoked exactly once with the captured mask.
+ *
+ * @note Thread safety: ISR context only; not re-entrant per channel.
  * @since 0.1.0
  */
 void ra_spi_dispatch_spei(uint8_t channel);

@@ -166,6 +166,26 @@ typedef void (*ra_xspi_event_fn_t)(void* ctx, uint32_t status_mask);
 
 /**
  * @brief Dispatch an xSPI event -- snapshot INTS + fire callback.
+ *
+ * @details
+ * Called from the xSPI transfer-complete / error ISR (HUM Ch 49
+ * "xSPI", p 2581) to snapshot INTS and invoke the registered handler.
+ * Out-of-range ``instance`` and unattached slots are silently dropped
+ * so spurious IRQs are harmless.
+ *
+ * @param[in] instance xSPI controller instance index (0 or 1).
+ *
+ * @return None.
+ * @retval None
+ *
+ * @pre Called from ISR context or a host-test driver.
+ * @pre ``instance`` < 2.
+ *
+ * @post Stored callback (if any) has been invoked exactly once.
+ * @post INTS latch is left for the caller to ack via
+ *       ``ra_xspi_clear_status``.
+ *
+ * @note Not thread-safe; pair with NVIC masking.
  * @since 0.1.0
  */
 void ra_xspi_dispatch(uint8_t instance);

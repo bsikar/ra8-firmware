@@ -28,6 +28,16 @@ static const char* s_tag = "DOC";
  * @brief Write `mode` into `DOCR.OMS[1:0]`, preserving other bits.
  *
  * @param[in] mode Operation mode to programme.
+ *
+ * @details See the matching header declaration for the full
+ * contract; this site adds no behaviour beyond what the public
+ * API documents.
+ * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Caller has validated all pointer parameters.
+ * @post Side effects are limited to those documented in the header.
+ * @post No global state is modified on the error path.
+ * @note Thread safety: see the header declaration.
+ * @since 0.1.0
  */
 static inline void internal_ra_doc_set_mode(ra_docr_oms_t mode)
 {

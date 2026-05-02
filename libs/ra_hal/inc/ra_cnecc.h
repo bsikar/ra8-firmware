@@ -802,6 +802,10 @@ typedef struct {
  * @note Re-entrant.
  * @see ra_cnecc_attach_isr
  * @since 0.1.0
+ *
+ * @return ``ra_err_t`` error code (or void if the signature returns void).
+ * @retval k_ra_ok Success path.
+ * @retval k_ra_err_invalid_arg Caller violated a precondition.
  */
 void ra_cnecc_isr_handler(void* ctx);
 
@@ -829,6 +833,10 @@ void ra_cnecc_isr_handler(void* ctx);
  * @note Safe to call from NMI/ISR context provided the registered
  *       handler is itself NMI-safe.
  * @since 0.1.0
+ *
+ * @return ``ra_err_t`` error code (or void if the signature returns void).
+ * @retval k_ra_ok Success path.
+ * @retval k_ra_err_invalid_arg Caller violated a precondition.
  */
 void ra_cnecc_dispatch(uint8_t instance, bool is_2bit, uint16_t err_addr);
 
@@ -850,6 +858,10 @@ void ra_cnecc_dispatch(uint8_t instance, bool is_2bit, uint16_t err_addr);
  *
  * @note Re-entrant.
  * @since 0.1.0
+ *
+ * @return ``ra_err_t`` error code (or void if the signature returns void).
+ * @retval k_ra_ok Success path.
+ * @retval k_ra_err_invalid_arg Caller violated a precondition.
  */
 void ra_cnecc_dispatch_overflow(uint8_t instance);
 

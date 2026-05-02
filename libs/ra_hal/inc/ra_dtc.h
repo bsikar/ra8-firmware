@@ -111,6 +111,23 @@ typedef void (*ra_dtc_event_fn_t)(void* ctx, uint16_t status);
 
 /**
  * @brief Fire the attached activation callback with current DTCSTS.
+ *
+ * @details
+ * Reads ``DTC.DTCSTS`` (HUM Ch 17.2.10 "DTCSTS : DTC Status Register",
+ * p 654) which captures the most recent DTC activation source and ACT
+ * flag, and invokes the handler registered through
+ * ``ra_dtc_attach_handler()`` with that status word and the stored
+ * context pointer. Silently returns when no handler is installed.
+ *
+ * @return None.
+ * @retval None Function returns ``void``; missing handler is silently ignored.
+ *
+ * @pre ``ra_dtc_init()`` previously succeeded.
+ * @pre Called from ISR context or unit-test driver.
+ * @post Registered handler invoked at most once with current ``DTCSTS``.
+ * @post No DTC register state mutated by the dispatch itself.
+ *
+ * @note Thread safety: ISR context only; not re-entrant.
  * @since 0.1.0
  */
 void ra_dtc_dispatch(void);

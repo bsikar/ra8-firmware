@@ -63,6 +63,35 @@ typedef struct {
 
 static ra_rmac_phy_internal_t s_state = {};
 
+/**
+ * @brief Open the off-chip Ethernet PHY via Clause-22 MDIO.
+ *
+ * @details
+ * Validates the injected MDIO IO callbacks, drives BMCR.RESET (IEEE
+ * 802.3 Clause 22) and polls until the PHY clears it, then writes the
+ * caller's auto-negotiation advertisement registers (LPA + optional
+ * 1000T-CTRL). The MDIO transport itself is provided through the RMAC
+ * MDIO interface (HUM Ch 41 "RMAC", p 1893 -- "Station Management").
+ *
+ * @param[in] cfg Non-NULL configuration block (PHY address, advertise
+ *                masks and IO function pointers).
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok                 PHY reset and advertised.
+ * @retval k_ra_err_null_ptr       ``cfg`` or required IO callback NULL.
+ * @retval k_ra_err_invalid_arg    ``phy_address`` or ``lsi_type`` bad.
+ * @retval k_ra_err_exists         Driver already opened.
+ * @retval k_ra_err_hw_timeout     BMCR.RESET did not self-clear.
+ *
+ * @pre IRQs masked or single-threaded init context.
+ * @pre RMAC station-management clock has been brought up.
+ *
+ * @post Driver state holds the validated configuration on success.
+ * @post PHY is in a known reset-then-advertised state.
+ *
+ * @note Not thread-safe; one PHY per driver instance.
+ * @since 0.1.0
+ */
 ra_err_t ra_rmac_phy_open(const ra_rmac_phy_cfg_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
@@ -135,6 +164,28 @@ ra_err_t ra_rmac_phy_open(const ra_rmac_phy_cfg_t* cfg)
   return k_ra_ok;
 }
 
+/**
+ * @brief Close the PHY driver and forget all cached state.
+ *
+ * @details
+ * Marks the driver as closed so subsequent IO calls return
+ * ``k_ra_err_not_initialized``. The PHY itself is left in its
+ * current state (the caller may issue another reset via
+ * ``ra_rmac_phy_open`` later).
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok                  Driver state cleared.
+ * @retval k_ra_err_invalid_state   Driver was not open.
+ *
+ * @pre IRQs masked or single-threaded shutdown context.
+ * @pre ``ra_rmac_phy_open`` previously succeeded.
+ *
+ * @post Driver state is marked closed.
+ * @post Off-chip PHY register state is unchanged.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
 ra_err_t ra_rmac_phy_close(void)
 {
   if (!s_state.opened) {
@@ -144,6 +195,32 @@ ra_err_t ra_rmac_phy_close(void)
   return k_ra_ok;
 }
 
+/**
+ * @brief Read a 16-bit Clause-22 PHY register.
+ *
+ * @details
+ * Forwards the read to the injected ``io.read`` callback so the
+ * caller controls the actual MDIO transport. ``reg_addr`` must be in
+ * 0..31 (Clause-22 5-bit register space).
+ *
+ * @param[in]  reg_addr Clause-22 register index 0..31.
+ * @param[out] out_data Receives the 16-bit register value.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok                  Read completed.
+ * @retval k_ra_err_null_ptr        ``out_data`` was NULL.
+ * @retval k_ra_err_not_initialized ``ra_rmac_phy_open`` not called.
+ * @retval k_ra_err_invalid_arg     ``reg_addr`` > 31.
+ *
+ * @pre ``out_data`` non-NULL.
+ * @pre Driver previously opened.
+ *
+ * @post ``*out_data`` reflects the live PHY register value.
+ * @post No PHY register has been written.
+ *
+ * @note Re-entrancy is governed by the injected IO callback.
+ * @since 0.1.0
+ */
 ra_err_t ra_rmac_phy_mdio_read(uint8_t reg_addr, uint16_t* out_data)
 {
   RA_CHECK_NULL_PTR(out_data, s_tag, "out_data must not be nullptr");
@@ -156,6 +233,31 @@ ra_err_t ra_rmac_phy_mdio_read(uint8_t reg_addr, uint16_t* out_data)
   return s_state.io.read(s_state.io.ctx, s_state.phy_address, reg_addr, out_data);
 }
 
+/**
+ * @brief Write a 16-bit Clause-22 PHY register.
+ *
+ * @details
+ * Forwards the write to the injected ``io.write`` callback. The PHY
+ * may treat the write as set-and-forget or as a self-clearing strobe
+ * depending on the register (e.g. BMCR.RESET).
+ *
+ * @param[in] reg_addr Clause-22 register index 0..31.
+ * @param[in] data     Value to write.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok                  Write completed.
+ * @retval k_ra_err_not_initialized ``ra_rmac_phy_open`` not called.
+ * @retval k_ra_err_invalid_arg     ``reg_addr`` > 31.
+ *
+ * @pre Driver previously opened.
+ * @pre Caller has serialised access to MDIO.
+ *
+ * @post Selected PHY register reflects ``data`` per IEEE 802.3 Clause 22.
+ * @post Driver state is unchanged.
+ *
+ * @note Re-entrancy is governed by the injected IO callback.
+ * @since 0.1.0
+ */
 ra_err_t ra_rmac_phy_mdio_write(uint8_t reg_addr, uint16_t data)
 {
   if (!s_state.opened) {
@@ -167,6 +269,27 @@ ra_err_t ra_rmac_phy_mdio_write(uint8_t reg_addr, uint16_t data)
   return s_state.io.write(s_state.io.ctx, s_state.phy_address, reg_addr, data);
 }
 
+/**
+ * @brief Restart auto-negotiation by writing BMCR.{ANE | ANR}.
+ *
+ * @details
+ * Sets the AN-enable + AN-restart bits in the IEEE 802.3 Clause-22
+ * BMCR (register 0). Useful after the link partner changes or after
+ * the local advertisement masks were updated.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok                  Restart command issued.
+ * @retval k_ra_err_not_initialized ``ra_rmac_phy_open`` not called.
+ *
+ * @pre Driver previously opened.
+ * @pre Local + gigabit advertisement registers have been programmed.
+ *
+ * @post BMCR.ANE and BMCR.ANR are set.
+ * @post Auto-negotiation FSM restarts on the link.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
 ra_err_t ra_rmac_phy_auto_negotiate_start(void)
 {
   if (!s_state.opened) {
@@ -176,6 +299,31 @@ ra_err_t ra_rmac_phy_auto_negotiate_start(void)
   return s_state.io.write(s_state.io.ctx, s_state.phy_address, k_ra_rmac_phy_reg_control, bmcr);
 }
 
+/**
+ * @brief Read BMSR / 1000T-status / LPA and decode the link state.
+ *
+ * @details
+ * Reads BMSR (IEEE 802.3 register 1), then -- if AN is complete and
+ * the link is up -- consults the gigabit master/slave status (MSR,
+ * register 10) and the partner ability (LPA, register 5) to map the
+ * advertised speeds to ::ra_rmac_phy_speed_t.
+ *
+ * @param[out] out Receives the decoded link snapshot.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok                  ``*out`` populated.
+ * @retval k_ra_err_null_ptr        ``out`` was NULL.
+ * @retval k_ra_err_not_initialized Driver not open.
+ *
+ * @pre ``out`` non-NULL.
+ * @pre Driver previously opened.
+ *
+ * @post ``*out`` reflects the live PHY state.
+ * @post ``s_state.last_bmsr`` caches the raw BMSR for diagnostics.
+ *
+ * @note Not thread-safe; pair with caller-side mutex if shared.
+ * @since 0.1.0
+ */
 ra_err_t ra_rmac_phy_link_status_get(ra_rmac_phy_link_t* out)
 {
   RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
@@ -228,6 +376,29 @@ ra_err_t ra_rmac_phy_link_status_get(ra_rmac_phy_link_t* out)
   return k_ra_ok;
 }
 
+/**
+ * @brief Return the LSI tag the caller passed to ``ra_rmac_phy_open``.
+ *
+ * @details
+ * Echoes back the cached ::ra_rmac_phy_lsi_t so higher-level stacks
+ * can branch on the on-board PHY model without re-querying MDIO.
+ *
+ * @param[out] out Receives the cached LSI tag.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok                  ``*out`` populated.
+ * @retval k_ra_err_null_ptr        ``out`` was NULL.
+ * @retval k_ra_err_not_initialized Driver not open.
+ *
+ * @pre ``out`` non-NULL.
+ * @pre Driver previously opened.
+ *
+ * @post ``*out`` equals the value passed in ``cfg->lsi_type``.
+ * @post Driver state is unchanged.
+ *
+ * @note Read-only; safe under simple races.
+ * @since 0.1.0
+ */
 ra_err_t ra_rmac_phy_lsi_get(ra_rmac_phy_lsi_t* out)
 {
   RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");

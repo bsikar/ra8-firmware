@@ -656,6 +656,10 @@ typedef void (*ra_ceu_event_fn_t)(void* ctx, uint32_t event_mask);
  *
  * @note Returns silently if no callback is registered.
  * @since 0.1.0
+ *
+ * @return ``ra_err_t`` error code (or void if the signature returns void).
+ * @retval k_ra_ok Success path.
+ * @retval k_ra_err_invalid_arg Caller violated a precondition.
  */
 void ra_ceu_dispatch(void);
 

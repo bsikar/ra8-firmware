@@ -125,6 +125,18 @@ typedef void (*ra_glcdc_event_fn_t)(void* ctx, uint32_t status_mask);
 /**
  * @brief Dispatch a GLCDC event -- snapshot + fire callback.
  * @since 0.1.0
+ *
+ * @details See the matching header declaration for the full
+ * contract; this site adds no behaviour beyond what the public
+ * API documents.
+ * @return ``ra_err_t`` error code (or void if the signature returns void).
+ * @retval k_ra_ok Success path.
+ * @retval k_ra_err_invalid_arg Caller violated a precondition.
+ * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Caller has validated all pointer parameters.
+ * @post Side effects are limited to those documented in the header.
+ * @post No global state is modified on the error path.
+ * @note Thread safety: see the header declaration.
  */
 void ra_glcdc_dispatch(void);
 

@@ -234,20 +234,78 @@ typedef struct {
 [[nodiscard]] ra_err_t ra_icu_route(uint16_t nvic_index, ra_elc_event_t event);
 
 /**
- * @brief Enable NVIC line N directly (legacy).
- * @deprecated Prefer ``ra_isr_register`` which also enables.
+ * @brief Enable NVIC line N directly.
+ *
+ * @details
+ * Sets the corresponding bit in ``NVIC->ISER[]`` (ARMv8-M Architecture
+ * Reference Manual, B3.4.4 NVIC_ISER) for the requested IELSR slot.
+ * Thin wrapper retained for low-level callers; higher-level code
+ * should use ``ra_isr_register()`` which routes the event and enables
+ * the line in one call. Pairs with ``ra_icu_route()`` (HUM Ch 14.2.2
+ * "IELSR : ICU Event Link Setting Register", p ~498).
+ *
+ * @param[in] nvic_index IELSR slot index 0..111.
+ *
+ * @return None.
+ * @retval None Function returns ``void``; out-of-range is silently ignored.
+ *
+ * @pre ``ra_icu_init()`` previously succeeded.
+ * @pre IELSRn for ``nvic_index`` has been programmed (e.g. via ``ra_icu_route``).
+ * @post NVIC line for ``nvic_index`` is enabled.
+ * @post No state change if ``nvic_index`` is out of range.
+ *
+ * @note Not thread-safe; use during init or with IRQs masked.
+ * @since 0.1.0
  */
 void ra_icu_nvic_enable(uint16_t nvic_index);
 
 /**
- * @brief Disable NVIC line N directly (legacy).
- * @deprecated Prefer ``ra_isr_unregister`` which also disables.
+ * @brief Disable NVIC line N directly.
+ *
+ * @details
+ * Sets the corresponding bit in ``NVIC->ICER[]`` (ARMv8-M Architecture
+ * Reference Manual, B3.4.5 NVIC_ICER). The IELSRn routing entry is
+ * left intact; only the NVIC enable is cleared. Higher-level callers
+ * should prefer ``ra_isr_unregister()``.
+ *
+ * @param[in] nvic_index IELSR slot index 0..111.
+ *
+ * @return None.
+ * @retval None Function returns ``void``; out-of-range is silently ignored.
+ *
+ * @pre ``ra_icu_init()`` previously succeeded.
+ * @pre Caller has accepted that pending IRQs may still latch.
+ * @post NVIC line for ``nvic_index`` is disabled.
+ * @post No state change if ``nvic_index`` is out of range.
+ *
+ * @note Not thread-safe; use during init or with IRQs masked.
+ * @since 0.1.0
  */
 void ra_icu_nvic_disable(uint16_t nvic_index);
 
 /**
- * @brief Set the NVIC priority byte for a line directly (legacy).
- * @deprecated Prefer ``ra_isr_set_priority``.
+ * @brief Set the NVIC priority byte for a line directly.
+ *
+ * @details
+ * Writes ``NVIC->IPR[nvic_index]`` (ARMv8-M Architecture Reference
+ * Manual, B3.4.7 NVIC_IPRn). The byte semantics follow the ARM
+ * 8-bit-priority convention; only the upper ``__NVIC_PRIO_BITS`` bits
+ * are implemented in silicon. Higher-level callers should prefer
+ * ``ra_isr_set_priority()``.
+ *
+ * @param[in] nvic_index IELSR slot index 0..111.
+ * @param[in] priority   Priority byte (0 = highest, 255 = lowest).
+ *
+ * @return None.
+ * @retval None Function returns ``void``; out-of-range is silently ignored.
+ *
+ * @pre ``ra_icu_init()`` previously succeeded.
+ * @pre ``priority`` reflects the project's interrupt-priority plan.
+ * @post Priority register for ``nvic_index`` updated.
+ * @post No state change if ``nvic_index`` is out of range.
+ *
+ * @note Not thread-safe; use during init or with IRQs masked.
+ * @since 0.1.0
  */
 void ra_icu_nvic_set_priority(uint16_t nvic_index, uint8_t priority);
 

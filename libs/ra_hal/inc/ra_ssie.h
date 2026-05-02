@@ -860,7 +860,16 @@ ra_ssie_read_buffer(uint8_t channel, uint32_t* buffer, uint16_t samples, uint16_
 /**
  * @brief ISR helper: fire the registered event handler.
  *
+ * @details
+ * Snapshots SSISR for ``channel`` (HUM Ch 51 "Serial Sound Interface
+ * Enhanced (SSIE)", p 2731), then invokes the attached event handler.
+ * Out-of-range channel indices and unattached slots are silently
+ * dropped so spurious IRQs are harmless.
+ *
  * @param[in] channel Channel that fired.
+ *
+ * @return None.
+ * @retval None
  *
  * @pre Channel index in range (out-of-range silently dropped).
  * @pre A handler was attached via ``ra_ssie_attach_handler``.

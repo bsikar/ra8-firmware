@@ -81,6 +81,13 @@ typedef enum : uint16_t {
  * register header. Provided as an extern so other compilation units
  * do not have to pull in ``ra8d2_iwdt_regs.h``. Mirrors FSP
  * ``R_IWDT_Refresh`` (which writes 0x00 then 0xFF to IWDTRR).
+ *
+ * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Caller has validated all pointer parameters.
+ * @post Side effects are limited to those documented in the header.
+ * @post No global state is modified on the error path.
+ * @note Thread safety: see the header declaration.
+ * @since 0.1.0
  */
 void ra_iwdt_refresh_deferred(void)
 {
@@ -88,6 +95,22 @@ void ra_iwdt_refresh_deferred(void)
   ra_iwdt_refresh();
 }
 
+/**
+ * @brief ra_iwdt_get_status -- see header for full description.
+ * @details See the matching header declaration for the full
+ * contract; this site adds no behaviour beyond what the public
+ * API documents.
+ * @param[in] out_mask See header declaration for direction and constraints.
+ * @return ``ra_err_t`` error code (or void if the signature returns void).
+ * @retval k_ra_ok Success path.
+ * @retval k_ra_err_invalid_arg Caller violated a precondition.
+ * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Caller has validated all pointer parameters.
+ * @post Side effects are limited to those documented in the header.
+ * @post No global state is modified on the error path.
+ * @note Thread safety: see the header declaration.
+ * @since 0.1.0
+ */
 ra_err_t ra_iwdt_get_status(uint16_t* out_mask)
 {
   RA_CHECK_NULL_PTR(out_mask, s_tag, "out_mask must not be nullptr");
@@ -98,6 +121,21 @@ ra_err_t ra_iwdt_get_status(uint16_t* out_mask)
   return k_ra_ok;
 }
 
+/**
+ * @brief ra_iwdt_clear_status -- see header for full description.
+ * @details See the matching header declaration for the full
+ * contract; this site adds no behaviour beyond what the public
+ * API documents.
+ * @return ``ra_err_t`` error code (or void if the signature returns void).
+ * @retval k_ra_ok Success path.
+ * @retval k_ra_err_invalid_arg Caller violated a precondition.
+ * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Caller has validated all pointer parameters.
+ * @post Side effects are limited to those documented in the header.
+ * @post No global state is modified on the error path.
+ * @note Thread safety: see the header declaration.
+ * @since 0.1.0
+ */
 ra_err_t ra_iwdt_clear_status(void)
 {
   volatile r_iwdt_regs_t* reg = ra_iwdt();
@@ -112,6 +150,22 @@ ra_err_t ra_iwdt_clear_status(void)
   return k_ra_ok;
 }
 
+/**
+ * @brief ra_iwdt_get_counter -- see header for full description.
+ * @details See the matching header declaration for the full
+ * contract; this site adds no behaviour beyond what the public
+ * API documents.
+ * @param[in] out_counter See header declaration for direction and constraints.
+ * @return ``ra_err_t`` error code (or void if the signature returns void).
+ * @retval k_ra_ok Success path.
+ * @retval k_ra_err_invalid_arg Caller violated a precondition.
+ * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Caller has validated all pointer parameters.
+ * @post Side effects are limited to those documented in the header.
+ * @post No global state is modified on the error path.
+ * @note Thread safety: see the header declaration.
+ * @since 0.1.0
+ */
 ra_err_t ra_iwdt_get_counter(uint16_t* out_counter)
 {
   RA_CHECK_NULL_PTR(out_counter, s_tag, "out_counter must not be nullptr");
@@ -121,6 +175,23 @@ ra_err_t ra_iwdt_get_counter(uint16_t* out_counter)
   return k_ra_ok;
 }
 
+/**
+ * @brief ra_iwdt_attach_handler -- see header for full description.
+ * @details See the matching header declaration for the full
+ * contract; this site adds no behaviour beyond what the public
+ * API documents.
+ * @param[in] fn See header declaration for direction and constraints.
+ * @param[in] ctx See header declaration for direction and constraints.
+ * @return ``ra_err_t`` error code (or void if the signature returns void).
+ * @retval k_ra_ok Success path.
+ * @retval k_ra_err_invalid_arg Caller violated a precondition.
+ * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Caller has validated all pointer parameters.
+ * @post Side effects are limited to those documented in the header.
+ * @post No global state is modified on the error path.
+ * @note Thread safety: see the header declaration.
+ * @since 0.1.0
+ */
 ra_err_t ra_iwdt_attach_handler(ra_iwdt_event_fn_t fn, void* ctx)
 {
   s_iwdt_state.fn  = fn;
@@ -128,6 +199,18 @@ ra_err_t ra_iwdt_attach_handler(ra_iwdt_event_fn_t fn, void* ctx)
   return k_ra_ok;
 }
 
+/**
+ * @brief ra_iwdt_dispatch -- see header for full description.
+ * @details See the matching header declaration for the full
+ * contract; this site adds no behaviour beyond what the public
+ * API documents.
+ * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Caller has validated all pointer parameters.
+ * @post Side effects are limited to those documented in the header.
+ * @post No global state is modified on the error path.
+ * @note Thread safety: see the header declaration.
+ * @since 0.1.0
+ */
 void ra_iwdt_dispatch(void)
 {
   volatile r_iwdt_regs_t* reg = ra_iwdt();

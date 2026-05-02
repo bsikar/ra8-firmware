@@ -290,6 +290,9 @@ typedef void (*ra_rsip_event_fn_t)(void* ctx, uint32_t isr);
  * (if any), and acks the bits the callback observed via
  * ``ra_rsip_clear_status``.
  *
+ * @return None.
+ * @retval None
+ *
  * @pre Caller is the IRQ glue layer; runs in IRQ context.
  * @pre ``ra_rsip_init`` has been called at least once since reset.
  *
@@ -298,7 +301,8 @@ typedef void (*ra_rsip_event_fn_t)(void* ctx, uint32_t isr);
  * @post No CTRL bits are modified.
  *
  * @note Thread safety: must run with IRQ priority above the RSIP
- * line (default for ICU dispatch).
+ * line (default for ICU dispatch). See HUM Ch 39 "Renesas Secure
+ * IP (RSIP-E51A)" pp 1839-1859.
  *
  * @see ra_rsip_attach_handler
  *

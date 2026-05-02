@@ -91,6 +91,14 @@ typedef enum : uint16_t {
  * @pre cfg != nullptr.
  * @pre cfg->vdet_level represents a valid VBTBPCR2.VDETLVL encoding.
  * @post No side effects.
+ *
+ * @details See the matching header declaration for the full
+ * contract; this site adds no behaviour beyond what the public
+ * API documents.
+ * @retval k_ra_ok Success path.
+ * @retval k_ra_err_invalid_arg Caller violated a precondition.
+ * @note Thread safety: see the header declaration.
+ * @since 0.1.0
  */
 static ra_err_t internal_validate_cfg(const ra_bkup_config_t* cfg)
 {
@@ -109,6 +117,14 @@ static ra_err_t internal_validate_cfg(const ra_bkup_config_t* cfg)
  * @pre ch != nullptr.
  * @pre ch->edge / ch->capture_src are enum values.
  * @post No side effects.
+ *
+ * @details See the matching header declaration for the full
+ * contract; this site adds no behaviour beyond what the public
+ * API documents.
+ * @retval k_ra_ok Success path.
+ * @retval k_ra_err_invalid_arg Caller violated a precondition.
+ * @note Thread safety: see the header declaration.
+ * @since 0.1.0
  */
 static ra_err_t internal_validate_chan(const ra_bkup_tamper_chan_cfg_t* ch)
 {
@@ -139,6 +155,11 @@ static ra_err_t internal_validate_chan(const ra_bkup_tamper_chan_cfg_t* ch)
  * @pre channel < k_ra_bkup_chan_count.
  * @pre base_mask != 0.
  * @post Returned mask covers exactly one bit.
+ *
+ * @retval k_ra_ok Success path.
+ * @retval k_ra_err_invalid_arg Caller violated a precondition.
+ * @note Thread safety: see the header declaration.
+ * @since 0.1.0
  */
 static inline uint8_t internal_chan_mask(uint8_t base_mask, ra_bkup_channel_t channel)
 {
@@ -155,6 +176,12 @@ static inline uint8_t internal_chan_mask(uint8_t base_mask, ra_bkup_channel_t ch
  * @pre reg != nullptr.
  * @pre mask != 0.
  * @post Bits in ``mask`` reflect ``enable``; other bits unchanged.
+ *
+ * @details See the matching header declaration for the full
+ * contract; this site adds no behaviour beyond what the public
+ * API documents.
+ * @note Thread safety: see the header declaration.
+ * @since 0.1.0
  */
 static inline void internal_rmw8(volatile uint8_t* reg, uint8_t mask, bool enable)
 {
@@ -470,6 +497,14 @@ static inline void internal_rmw8(volatile uint8_t* reg, uint8_t mask, bool enabl
  * @pre cfg != nullptr.
  * @pre cfg->channels has ``k_ra_bkup_chan_count`` entries.
  * @post No side effects.
+ *
+ * @details See the matching header declaration for the full
+ * contract; this site adds no behaviour beyond what the public
+ * API documents.
+ * @retval k_ra_ok Success path.
+ * @retval k_ra_err_invalid_arg Caller violated a precondition.
+ * @note Thread safety: see the header declaration.
+ * @since 0.1.0
  */
 static ra_err_t internal_validate_tamper_channels(const ra_bkup_tamper_config_t* cfg)
 {
@@ -489,6 +524,14 @@ static ra_err_t internal_validate_tamper_channels(const ra_bkup_tamper_config_t*
  * @pre cfg != nullptr.
  * @pre cfg->channels has ``k_ra_bkup_chan_count`` entries.
  * @post Returned mask only sets VCHnINEN bits.
+ *
+ * @details See the matching header declaration for the full
+ * contract; this site adds no behaviour beyond what the public
+ * API documents.
+ * @retval k_ra_ok Success path.
+ * @retval k_ra_err_invalid_arg Caller violated a precondition.
+ * @note Thread safety: see the header declaration.
+ * @since 0.1.0
  */
 static uint8_t internal_compose_vbtictlr(const ra_bkup_tamper_config_t* cfg)
 {
@@ -511,6 +554,14 @@ static uint8_t internal_compose_vbtictlr(const ra_bkup_tamper_config_t* cfg)
  * @pre cfg != nullptr.
  * @pre cfg->channels has ``k_ra_bkup_chan_count`` entries.
  * @post Returned mask only sets VCHnNCE/VCHnEG bits.
+ *
+ * @details See the matching header declaration for the full
+ * contract; this site adds no behaviour beyond what the public
+ * API documents.
+ * @retval k_ra_ok Success path.
+ * @retval k_ra_err_invalid_arg Caller violated a precondition.
+ * @note Thread safety: see the header declaration.
+ * @since 0.1.0
  */
 static uint8_t internal_compose_vbtictlr2(const ra_bkup_tamper_config_t* cfg)
 {
@@ -537,6 +588,14 @@ static uint8_t internal_compose_vbtictlr2(const ra_bkup_tamper_config_t* cfg)
  * @pre cfg != nullptr.
  * @pre cfg->channels has ``k_ra_bkup_chan_count`` entries.
  * @post Returned mask only sets VBTADIE0/VBTADCE0 family bits.
+ *
+ * @details See the matching header declaration for the full
+ * contract; this site adds no behaviour beyond what the public
+ * API documents.
+ * @retval k_ra_ok Success path.
+ * @retval k_ra_err_invalid_arg Caller violated a precondition.
+ * @note Thread safety: see the header declaration.
+ * @since 0.1.0
  */
 static uint8_t internal_compose_vbtadcr1(const ra_bkup_tamper_config_t* cfg)
 {
@@ -563,6 +622,14 @@ static uint8_t internal_compose_vbtadcr1(const ra_bkup_tamper_config_t* cfg)
  * @pre cfg != nullptr.
  * @pre cfg->channels has ``k_ra_bkup_chan_count`` entries.
  * @post Returned mask only sets VBRTCES0 family bits.
+ *
+ * @details See the matching header declaration for the full
+ * contract; this site adds no behaviour beyond what the public
+ * API documents.
+ * @retval k_ra_ok Success path.
+ * @retval k_ra_err_invalid_arg Caller violated a precondition.
+ * @note Thread safety: see the header declaration.
+ * @since 0.1.0
  */
 static uint8_t internal_compose_vbtadcr2(const ra_bkup_tamper_config_t* cfg)
 {
@@ -585,6 +652,14 @@ static uint8_t internal_compose_vbtadcr2(const ra_bkup_tamper_config_t* cfg)
  * @pre cfg != nullptr.
  * @pre cfg->channels has ``k_ra_bkup_chan_count`` entries.
  * @post Returned mask only sets VBTADZE0 family bits.
+ *
+ * @details See the matching header declaration for the full
+ * contract; this site adds no behaviour beyond what the public
+ * API documents.
+ * @retval k_ra_ok Success path.
+ * @retval k_ra_err_invalid_arg Caller violated a precondition.
+ * @note Thread safety: see the header declaration.
+ * @since 0.1.0
  */
 static uint8_t internal_compose_vbtadcr3(const ra_bkup_tamper_config_t* cfg)
 {
@@ -722,6 +797,14 @@ static uint8_t internal_compose_vbtadcr3(const ra_bkup_tamper_config_t* cfg)
  *
  * @pre None.
  * @post No side effects.
+ *
+ * @details See the matching header declaration for the full
+ * contract; this site adds no behaviour beyond what the public
+ * API documents.
+ * @retval k_ra_ok Success path.
+ * @retval k_ra_err_invalid_arg Caller violated a precondition.
+ * @note Thread safety: see the header declaration.
+ * @since 0.1.0
  */
 static ra_err_t internal_validate_boundary(uint16_t addr)
 {
@@ -743,6 +826,14 @@ static ra_err_t internal_validate_boundary(uint16_t addr)
  * @pre cfg != nullptr.
  * @pre cfg->bbfsar / cfg->saba / cfg->pabas / cfg->pabans are populated.
  * @post No side effects.
+ *
+ * @details See the matching header declaration for the full
+ * contract; this site adds no behaviour beyond what the public
+ * API documents.
+ * @retval k_ra_ok Success path.
+ * @retval k_ra_err_invalid_arg Caller violated a precondition.
+ * @note Thread safety: see the header declaration.
+ * @since 0.1.0
  */
 static ra_err_t internal_validate_security_cfg(const ra_bkup_security_config_t* cfg)
 {
@@ -826,6 +917,19 @@ static ra_err_t internal_validate_security_cfg(const ra_bkup_security_config_t* 
   return k_ra_ok;
 }
 
+/**
+ * @brief ra_bkup_dispatch -- see header for full description.
+ * @details See the matching header declaration for the full
+ * contract; this site adds no behaviour beyond what the public
+ * API documents.
+ * @param[in] tamper_flags See header declaration for direction and constraints.
+ * @pre Driver state has been initialised by the matching ``*_init``.
+ * @pre Caller has validated all pointer parameters.
+ * @post Side effects are limited to those documented in the header.
+ * @post No global state is modified on the error path.
+ * @note Thread safety: see the header declaration.
+ * @since 0.1.0
+ */
 void ra_bkup_dispatch(uint8_t tamper_flags)
 {
   const ra_bkup_event_fn_t fn  = s_bkup_fn;

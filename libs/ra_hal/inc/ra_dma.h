@@ -271,9 +271,13 @@ typedef struct {
  * @param[in] channel DMAC channel number 0..7.
  * @return Pointer to the stashed request, or ``nullptr`` if the
  * channel is free or out of range.
+ * @retval non-NULL Pointer to the cached ``ra_dma_request_t``.
+ * @retval nullptr  ``channel`` out of range or slot not in use.
  *
  * @pre Test is running under ``RA_SIMULATOR_MODE``.
- * @post No state is modified.
+ * @pre ``ra_dma_request()`` previously returned ``k_ra_ok`` for ``channel``.
+ * @post No firmware state is modified.
+ * @post Returned pointer aliases the static side-table entry.
  *
  * @note Test-only; not declared on the target build.
  * @since 0.1.0
@@ -292,10 +296,15 @@ const ra_dma_request_t* ra_dma_sim_peek_request(uint8_t channel);
  *
  * @param[in] channel Channel whose completion just fired.
  *
+ * @return None.
+ * @retval None Function returns ``void``; out-of-range channel is silently ignored.
+ *
  * @pre Called from ISR context or (for tests) from a direct test
  * helper such as ``ra_sim_dma_complete``.
- * @post On entry, the stored completion callback has been
+ * @pre ``ra_dma_init()`` previously succeeded.
+ * @post On exit, the stored completion callback has been
  * invoked exactly once (if non-NULL).
+ * @post No state change if ``channel`` is out of range.
  *
  * @note Thread safety: re-entrant in the sense that the handler
  * itself may enable nested interrupts; the dispatcher does

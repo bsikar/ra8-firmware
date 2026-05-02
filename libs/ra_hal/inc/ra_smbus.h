@@ -399,7 +399,15 @@ ra_smbus_block_read(uint8_t target_7b, uint8_t cmd, uint8_t* buf, uint8_t cap, u
  * @param[in] len  Byte count.
  *
  * @return Computed CRC-8 value.
+ * @retval 0x00 Either ``len == 0`` or the input bytes happen to hash to zero.
+ * @retval other Computed CRC-8 over ``data[0..len-1]`` per SMBus 3.2 section 5.4.
  *
+ * @pre ``data != NULL`` when ``len > 0``.
+ * @pre ``len`` reflects the true buffer size (no aliasing past ``len``).
+ * @post Function is pure -- no firmware state mutated.
+ * @post Result depends only on ``data`` and ``len``.
+ *
+ * @note Thread-safe: pure function with no shared state.
  * @since 0.1.0
  */
 uint8_t ra_smbus_pec(const uint8_t* data, uint32_t len);
