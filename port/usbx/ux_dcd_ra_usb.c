@@ -24,9 +24,26 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8d2_elc_regs.h"
 #include "ra_check.h"
+#include "ra_isr.h"
 #include "ra_log.h"
 #include "ux_api.h"
+
+/**
+ * @enum ra_usb_dcd_isr_prio_t
+ * @brief NVIC priority chosen for the USB controller IRQs.
+ *
+ * @details
+ * USB completion IRQs sit between SysTick (priority 0, the highest in
+ * this firmware) and the application-level work threads. Picking 4
+ * leaves headroom for higher-priority drivers (timers, fault paths)
+ * while still pre-empting ThreadX context switches and USBX class
+ * threads so SETUP / BRDY / BEMP events drain promptly.
+ */
+typedef enum : uint8_t {
+  k_ra_usb_dcd_isr_prio = 4U, /**< NVIC priority used for both USBFS and USBHS lines. */
+} ra_usb_dcd_isr_prio_t;
 
 /* Tag used by ra_log_*. Must be a static lifetime string. */
 static const char* const s_tag = "ux_dcd_ra_usb";
@@ -294,6 +311,107 @@ _ux_dcd_ra_usb_function(struct UX_SLAVE_DCD_STRUCT* dcd, unsigned int function, 
 /* -------------------------------------------------------------------------- */
 
 /**
+ * @brief NVIC -> ra_usb_dispatch trampoline for the USBFS controller.
+ *
+ * @details
+ * Registered with ``ra_isr_register(k_ra_elc_event_usbfs_int, ...)``
+ * during ``ux_dcd_ra_usb_initialize`` when the bridge is brought up
+ * for the FS controller. ``ra_usb_dispatch`` reads ``INTSTS0``,
+ * clears it, and forwards the snapshot to the handler attached via
+ * ``ra_usb_attach_handler`` (which lives in the bridge as
+ * ``internal_event_cb``). Without this trampoline the controller's
+ * SETUP / BRDY / BEMP / DVST bits accumulate in INTSTS0 and the host
+ * times out the enumeration handshake.
+ *
+ * @param[in] ctx Unused; kept to match ``ra_isr_handler_t``.
+ *
+ * @pre Bridge is in ``k_ux_dcd_ra_usb_state_ready`` or ``_active``.
+ * @pre ``ra_usb_attach_handler`` has been called (done in the same init).
+ *
+ * @post ``INTSTS0`` for the FS controller has been cleared.
+ * @post The bridge's ``internal_event_cb`` ran for any pending bits.
+ *
+ * @note Runs in NVIC handler mode; must not block.
+ *
+ * @see ra_usb_dispatch
+ * @see ux_dcd_ra_usb_irq
+ *
+ * @since 0.1.0
+ */
+static void internal_usbfs_isr(void* ctx)
+{
+  (void)ctx;
+  ra_usb_dispatch(k_ra_usb_speed_fs);
+}
+
+/**
+ * @brief NVIC -> ra_usb_dispatch trampoline for the USBHS controller.
+ *
+ * @details
+ * Sibling of ``internal_usbfs_isr`` for the high-speed instance. On
+ * RA8D2 the USBHS controller raises a single combined "interrupt
+ * or resume" line (FSP ``ELC_EVENT_USBHS_USB_INT_RESUME``); this
+ * handler forwards both into ``ra_usb_dispatch`` which decodes the
+ * cause from ``INTSTS0``.
+ *
+ * @param[in] ctx Unused; kept to match ``ra_isr_handler_t``.
+ *
+ * @pre Bridge is in ``k_ux_dcd_ra_usb_state_ready`` or ``_active``.
+ * @pre ``ra_usb_attach_handler`` has been called (done in the same init).
+ *
+ * @post ``INTSTS0`` for the HS controller has been cleared.
+ * @post The bridge's ``internal_event_cb`` ran for any pending bits.
+ *
+ * @note Runs in NVIC handler mode; must not block.
+ *
+ * @see ra_usb_dispatch
+ * @see ux_dcd_ra_usb_irq
+ *
+ * @since 0.1.0
+ */
+static void internal_usbhs_isr(void* ctx)
+{
+  (void)ctx;
+  ra_usb_dispatch(k_ra_usb_speed_hs);
+}
+
+/**
+ * @brief Pick the ELC event number for a controller.
+ *
+ * @param[in] speed Which controller (FS or HS).
+ * @return ``ra_elc_event_t`` event number for that controller.
+ *
+ * @pre ``speed`` is ``k_ra_usb_speed_fs`` or ``k_ra_usb_speed_hs``.
+ * @post No state mutated.
+ *
+ * @note Pure function.
+ *
+ * @since 0.1.0
+ */
+static ra_elc_event_t internal_pick_event(ra_usb_speed_t speed)
+{
+  return (speed == k_ra_usb_speed_hs) ? k_ra_elc_event_usbhs_int_resume : k_ra_elc_event_usbfs_int;
+}
+
+/**
+ * @brief Pick the ISR trampoline for a controller.
+ *
+ * @param[in] speed Which controller (FS or HS).
+ * @return Function pointer to the trampoline.
+ *
+ * @pre ``speed`` is ``k_ra_usb_speed_fs`` or ``k_ra_usb_speed_hs``.
+ * @post No state mutated.
+ *
+ * @note Pure function.
+ *
+ * @since 0.1.0
+ */
+static ra_isr_handler_t internal_pick_isr(ra_usb_speed_t speed)
+{
+  return (speed == k_ra_usb_speed_hs) ? internal_usbhs_isr : internal_usbfs_isr;
+}
+
+/**
  * @brief ra_usb_attach_handler trampoline.
  */
 static void internal_event_cb(void* ctx, ra_usb_speed_t speed, uint16_t status_mask)
@@ -355,6 +473,16 @@ ra_err_t ux_dcd_ra_usb_initialize(ra_usb_speed_t speed)
                      s_tag,
                      "ra_usb_attach_handler");
 
+  /* Wire the controller's NVIC line into ra_usb_dispatch so SETUP /
+   * BRDY / BEMP / DVST events actually drain INTSTS0 instead of
+   * accumulating until the host gives up. Hardware verification on
+   * EK-RA8D2 confirmed enumeration silently failed without this. */
+  const ra_elc_event_t   irq_event = internal_pick_event(speed);
+  const ra_isr_handler_t irq_fn    = internal_pick_isr(speed);
+  RA_RETURN_ON_ERROR(ra_isr_register(irq_event, irq_fn, nullptr, k_ra_usb_dcd_isr_prio, nullptr),
+                     s_tag,
+                     "ra_isr_register usb");
+
   /* Wire ourselves into _ux_system_slave -> ux_system_slave_dcd. */
   if (_ux_system_slave == UX_NULL) {
     return k_ra_err_invalid_state;
@@ -385,6 +513,7 @@ ra_err_t ux_dcd_ra_usb_uninitialize(void)
   if (s_dcd.state == k_ux_dcd_ra_usb_state_uninit) {
     return k_ra_err_invalid_state;
   }
+  (void)ra_isr_unregister(internal_pick_event(s_dcd.speed));
   (void)ra_usb_attach_handler(nullptr, nullptr);
   (void)ra_usb_device_deinit(s_dcd.speed);
   if (s_dcd.owner != nullptr) {
