@@ -7,9 +7,14 @@ example app: `examples/blink/main.c` plus its own `vector_table.c`,
 
 ## What it does
 
-Drives the EK-RA8D2 user-LED candidate pins (P6_00, P6_01, P6_02,
-P3_03, P10_07) at a clean 1 Hz cycle (500 ms on, 500 ms off) using
-the Cortex-M85 SysTick timer for delay -- no busy-wait.
+Drives EK-RA8D2 user-LED1 (P600, blue) at a clean 1 Hz cycle (500 ms
+on, 500 ms off) using the Cortex-M85 SysTick timer for delay -- no
+busy-wait. LED1 / P600 wiring per EK-RA8D2 v1 User's Manual Table 24
+("EK-RA8D2 Board LED Functions") page 31.
+
+Uses `ra_board_ek_ra8d2` BSP for LED init/toggle (`ra_board_led_init`,
+`ra_board_led_toggle`) and `ra_time` for the 1 ms SysTick. For a
+multi-LED HAL-driven variant see `examples/blink_hal`.
 
 ## Build + flash
 
@@ -49,7 +54,7 @@ make -C examples/blink debug    # attach gdb via JLinkGDBServer on blink.elf
 ## Notes
 
 - The chip boots on MOCO at ~8.4 MHz (measured via `DWT.CYCCNT`, lines
-  up with the RA-family MOCO nominal 8 MHz spec). `k_ra_cpu_hz_at_reset`
+  up with the RA-family MOCO nominal 8 MHz spec). `k_blink_cpu_hz_at_reset`
   in `main.c` reflects this. After CGC bring-up brings HOCO + PLL up
   to 1 GHz, the constant should be replaced with the actual operating
   rate.
@@ -59,9 +64,7 @@ make -C examples/blink debug    # attach gdb via JLinkGDBServer on blink.elf
 - The linker stack is in SRAM-0 only (1 MiB). SRAM-1 (the second 1 MiB
   bank) needs explicit MSTPCR + SRAMSAR programming before it's
   accessible.
-- Only `P6_00`, `P3_03`, and `P10_07` are coded in
-  `libs/ra_core/inc/ra_port_constants.h` as the canonical EK-RA8D2
-  LED pins; the demo also drives `P6_01` and `P6_02` because the
-  EK-RA family commonly uses three LEDs on consecutive port-6 pins.
-  Confirm against the EK-RA8D2 schematic before relying on a
-  specific pin in production code.
+
+Validated 2026-05-02 against EK-RA8D2 v1 User's Manual (R20UT5523EG0101
+Rev 1.01) Table 24 "EK-RA8D2 Board LED Functions" p 31, and HUM
+(R01UH1065EJ0130) Ch SysTick / IOPORT.

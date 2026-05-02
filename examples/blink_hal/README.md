@@ -65,3 +65,13 @@ table + log helpers + assertion strings.
 
 When those subsystems are ready to flip on, this app is the
 canonical place to add them one at a time.
+
+Uses `ra_board_ek_ra8d2` BSP for LED1 / LED2 / LED3 init + toggle
+(`ra_board_led_init`, `ra_board_led_toggle`), so the demo speaks board
+coordinates ("LED1, LED2, LED3") instead of chip pin numbers. Underlying
+chip pins (P600 / P303 / PA07) come from the BSP per EK-RA8D2 v1 UM
+Table 24 p 31.
+
+Validated 2026-05-02 against EK-RA8D2 v1 User's Manual (R20UT5523EG0101
+Rev 1.01) Table 24 "EK-RA8D2 Board LED Functions" p 31, and HUM
+(R01UH1065EJ0130) IOPORT / SysTick chapters.
