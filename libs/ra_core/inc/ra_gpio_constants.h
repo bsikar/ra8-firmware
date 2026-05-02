@@ -38,29 +38,43 @@ extern "C" {
  * @brief Peripheral-function select codes (written to PSEL[4:0]).
  *
  * @details
- * The PSEL field is 5 bits wide. The list below is extracted from
- * HUM section 20.4. When a driver needs a code not listed here,
- * add it and cite the HUM section number in the doc comment.
+ * The PSEL field is 5 bits wide. Values below are taken from
+ * HUM Ch 20 "I/O Ports" section 20.6 "Peripheral Select Settings
+ * for Each Product" (R01UH1065EJ0130, p 855-870). Each entry is
+ * the binary code that appears in the per-port PSEL[4:0] tables
+ * (Table 20.7..Table 20.21).
+ *
+ * When a driver needs a code not listed here, add it and cite the
+ * HUM section number in the doc comment.
  */
 typedef enum : uint8_t {
-  k_ra_psel_gpio       = 0x00U, /**< Plain GPIO mode (PMR=0).             */
-  k_ra_psel_agt        = 0x01U, /**< AGT input/output.                    */
-  k_ra_psel_gpt0       = 0x03U, /**< GPT timer I/O (and related).         */
-  k_ra_psel_gpt1       = 0x04U,
-  k_ra_psel_sci_async  = 0x04U, /**< SCI async serial (UART).             */
-  k_ra_psel_sci_sync   = 0x05U, /**< SCI synchronous / simple SPI.        */
-  k_ra_psel_sci_i2c    = 0x07U, /**< SCI simple I2C.                      */
-  k_ra_psel_spi        = 0x06U, /**< RSPI / SPI.                          */
-  k_ra_psel_iic        = 0x07U, /**< IIC controller-peripheral I2C.       */
-  k_ra_psel_ssie       = 0x0AU, /**< SSIE I2S audio (HUM Ch 19 PFS PSEL). */
-  k_ra_psel_can        = 0x10U, /**< CANFD.                               */
-  k_ra_psel_usb_fs     = 0x13U, /**< USB Full-Speed.                      */
-  k_ra_psel_sdhi       = 0x12U, /**< SDHI SD / MMC.                       */
-  k_ra_psel_ether_rmii = 0x11U, /**< Ethernet RMII / RGMII.               */
-  k_ra_psel_qspi       = 0x14U, /**< QSPI / xSPI / Octo-SPI.              */
-  k_ra_psel_glcdc      = 0x15U, /**< Graphics LCD Controller outputs.     */
-  k_ra_psel_adc_b      = 0x00U, /**< Analog input (ASEL=1 + PMR=0).       */
-  k_ra_psel_dac        = 0x00U, /**< DAC output (ASEL=1 + PMR=0).         */
+  k_ra_psel_gpio        = 0x00U, /**< 00000b: GPIO / Hi-Z (PMR=0). HUM Tbl 20.7..20.21. */
+  k_ra_psel_agt         = 0x01U, /**< 00001b: AGT input/output. HUM 20.6.               */
+  k_ra_psel_gpt_trig    = 0x02U, /**< 00010b: GPT trigger pins (GTETRGA/B). HUM 20.6.   */
+  k_ra_psel_gpt0        = 0x03U, /**< 00011b: GPT timer I/O (GTIOCnA/B). HUM 20.6.      */
+  k_ra_psel_sci_async   = 0x04U, /**< 00100b: SCI async serial (UART). HUM 20.6.        */
+  k_ra_psel_sci_sync    = 0x05U, /**< 00101b: SCI synchronous / simple SPI. HUM 20.6.   */
+  k_ra_psel_spi         = 0x06U, /**< 00110b: RSPI / SPI. HUM 20.6.                     */
+  k_ra_psel_iic         = 0x07U, /**< 00111b: IIC / I3C controller-peripheral. HUM 20.6.*/
+  k_ra_psel_rtc_clkout  = 0x09U, /**< 01001b: RTC/CLKOUT/ACMPHS/ETHPHYCLK. HUM 20.6.    */
+  k_ra_psel_cac_adc     = 0x0AU, /**< 01010b: CAC / ADC16H trigger. HUM 20.6.           */
+  k_ra_psel_bus         = 0x0BU, /**< 01011b: External BUS interface. HUM 20.6.         */
+  k_ra_psel_sci_de      = 0x0DU, /**< 01101b: SCI driver-enable (DE). HUM 20.6.         */
+  k_ra_psel_sci_alt     = 0x0EU, /**< 01110b: SCI alternate function. HUM 20.6.         */
+  k_ra_psel_ceu         = 0x0FU, /**< 01111b: CEU camera capture. HUM 20.6.             */
+  k_ra_psel_can         = 0x10U, /**< 10000b: CANFD. HUM 20.6.                          */
+  k_ra_psel_ssie        = 0x12U, /**< 10010b: SSIE I2S audio. HUM 20.6.                 */
+  k_ra_psel_usb_fs      = 0x13U, /**< 10011b: USB Full-Speed. HUM 20.6.                 */
+  k_ra_psel_usb_hs      = 0x14U, /**< 10100b: USB High-Speed (e.g. USBHS_VBUS). HUM 20.6.*/
+  k_ra_psel_sdhi        = 0x15U, /**< 10101b: SDHI SD / MMC. HUM 20.6.                  */
+  k_ra_psel_ether_mii   = 0x16U, /**< 10110b: ESWM (GMII / MII). HUM 20.6.              */
+  k_ra_psel_ether_rmii  = 0x17U, /**< 10111b: ESWM (RMII). HUM 20.6.                    */
+  k_ra_psel_ether_rgmii = 0x18U, /**< 11000b: ESWM (RGMII). HUM 20.6.                   */
+  k_ra_psel_glcdc       = 0x19U, /**< 11001b: Graphics LCD Controller outputs. HUM 20.6.*/
+  k_ra_psel_qspi        = 0x1CU, /**< 11100b: OSPI / Octo-SPI / xSPI. HUM 20.6.         */
+  k_ra_psel_ulpt        = 0x1EU, /**< 11110b: ULPT ultra-low-power timer. HUM 20.6.     */
+  k_ra_psel_adc_b       = 0x00U, /**< Analog input (ASEL=1 + PMR=0).                    */
+  k_ra_psel_dac         = 0x00U, /**< DAC output (ASEL=1 + PMR=0).                      */
 } ra_psel_t;
 
 #ifdef __cplusplus

@@ -123,7 +123,8 @@ typedef enum : uint16_t {
  * `k_ra_mpc_psel_usbhs`.
  */
 typedef enum : uint8_t {
-  k_usb_host_psel_usb_hs = 0x14U, /* HUM Ch 20.6 "Peripheral Select Settings" p 855 */
+  k_usb_host_psel_usb_hs =
+    (uint8_t)k_ra_psel_usb_hs, /* HUM Ch 20.6 "Peripheral Select Settings" p 855 */
 } usb_host_cdc_echo_psel_t;
 
 /* =============================================================================
