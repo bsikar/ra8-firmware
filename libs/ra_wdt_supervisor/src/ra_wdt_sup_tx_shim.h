@@ -44,15 +44,32 @@ typedef unsigned int UINT;
 typedef char CHAR;
 
 /** @def TX_SUCCESS Successful ThreadX status code (host stub). */
-#define TX_SUCCESS 0U
+#define TX_SUCCESS (0U)
 /** @def TX_NO_INHERIT Mutex priority-inherit disable flag (host stub). */
-#define TX_NO_INHERIT 0U
+#define TX_NO_INHERIT (0U)
 /** @def TX_WAIT_FOREVER Block-forever wait option (host stub). */
-#define TX_WAIT_FOREVER 0xFFFFFFFFUL
+#define TX_WAIT_FOREVER (0xFFFFFFFFUL)
 /** @def TX_AUTO_START Auto-start flag (host stub). */
-#define TX_AUTO_START 1U
+#define TX_AUTO_START (1U)
 /** @def TX_NO_TIME_SLICE Disable time-slicing flag (host stub). */
-#define TX_NO_TIME_SLICE 0U
+#define TX_NO_TIME_SLICE (0U)
+
+/**
+ * @enum ra_wdt_sup_tx_shim_canary_t
+ * @brief Canary patterns stamped into host-stub TX_MUTEX / TX_THREAD blocks.
+ *
+ * @details
+ * The host shim does not implement real ThreadX semantics; it only needs a
+ * way to mark a control block as "created" so unit tests that introspect
+ * the structures can tell the difference. Two distinct canaries are used
+ * so a stray pointer pun between mutex and thread is detectable. Per
+ * CLAUDE.md no integer literals are allowed in source files -- these are
+ * named typed enums.
+ */
+typedef enum : uint32_t {
+  k_ra_wdt_sup_tx_shim_mutex_canary  = 0xA5A5A5A5U, /**< Stamped into TX_MUTEX::magic on create. */
+  k_ra_wdt_sup_tx_shim_thread_canary = 0x5A5A5A5AU, /**< Stamped into TX_THREAD::magic on create. */
+} ra_wdt_sup_tx_shim_canary_t;
 
 /**
  * @struct TX_MUTEX
@@ -76,7 +93,7 @@ static inline UINT tx_mutex_create(TX_MUTEX* m, CHAR* name, UINT inherit)
   (void)name;
   (void)inherit;
   if (m != ((void*)0)) {
-    m->magic = 0xA5A5A5A5U;
+    m->magic = (uint32_t)k_ra_wdt_sup_tx_shim_mutex_canary;
   }
   return TX_SUCCESS;
 }
@@ -107,13 +124,13 @@ static inline UINT tx_mutex_delete(TX_MUTEX* m)
 static inline UINT tx_thread_create(TX_THREAD* t,
                                     CHAR*      name,
                                     void (*entry)(ULONG),
-                                    ULONG      arg,
-                                    void*      stack,
-                                    ULONG      stack_size,
-                                    UINT       prio,
-                                    UINT       preempt_thresh,
-                                    UINT       slice,
-                                    UINT       autostart)
+                                    ULONG arg,
+                                    void* stack,
+                                    ULONG stack_size,
+                                    UINT  prio,
+                                    UINT  preempt_thresh,
+                                    UINT  slice,
+                                    UINT  autostart)
 {
   (void)name;
   (void)entry;
@@ -125,7 +142,7 @@ static inline UINT tx_thread_create(TX_THREAD* t,
   (void)slice;
   (void)autostart;
   if (t != ((void*)0)) {
-    t->magic = 0x5A5A5A5AU;
+    t->magic = (uint32_t)k_ra_wdt_sup_tx_shim_thread_canary;
   }
   return TX_SUCCESS;
 }
