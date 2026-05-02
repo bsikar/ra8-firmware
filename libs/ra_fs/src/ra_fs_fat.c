@@ -319,6 +319,25 @@ static uint8_t priv_byte_equal(const uint8_t* a, const uint8_t* b, uint32_t n)
 
 /**
  * @brief Read a single sector into the module scratch buffer.
+ *
+ * @details Forwards to the mount's `backend.read_block` callback.
+ *
+ * @param[in]  m   Mount whose backend to use.
+ * @param[in]  lba Logical block address to read.
+ * @param[out] buf Destination of `k_ra_fs_bytes_per_sector` bytes.
+ *
+ * @return Backend-supplied error code.
+ * @retval k_ra_ok    Sector read successfully.
+ * @retval k_ra_err_* Whatever the backend returned.
+ *
+ * @pre `m`, `m->backend.read_block`, and `buf` are non-NULL.
+ * @pre `lba` is within the volume's addressable range.
+ * @post On success, `buf` holds the sector contents.
+ * @post On failure, `buf` content is undefined.
+ *
+ * @note Thread-safety inherited from the backend.
+ *
+ * @since 0.1.0
  */
 static ra_err_t priv_read_sector(const ra_fs_mount_t* m, uint32_t lba, uint8_t* buf)
 {
@@ -327,6 +346,25 @@ static ra_err_t priv_read_sector(const ra_fs_mount_t* m, uint32_t lba, uint8_t* 
 
 /**
  * @brief Write a single sector from a caller-provided buffer.
+ *
+ * @details Forwards to the mount's `backend.write_block` callback.
+ *
+ * @param[in] m   Mount whose backend to use.
+ * @param[in] lba Logical block address to write.
+ * @param[in] buf Source of `k_ra_fs_bytes_per_sector` bytes.
+ *
+ * @return Backend-supplied error code.
+ * @retval k_ra_ok    Sector written successfully.
+ * @retval k_ra_err_* Whatever the backend returned.
+ *
+ * @pre `m`, `m->backend.write_block`, and `buf` are non-NULL.
+ * @pre `lba` is within the volume's addressable range.
+ * @post On success, the underlying backend has the new sector contents.
+ * @post On failure, backend state is implementation-defined.
+ *
+ * @note Thread-safety inherited from the backend.
+ *
+ * @since 0.1.0
  */
 static ra_err_t priv_write_sector(const ra_fs_mount_t* m, uint32_t lba, const uint8_t* buf)
 {
@@ -340,6 +378,24 @@ static ra_err_t priv_write_sector(const ra_fs_mount_t* m, uint32_t lba, const ui
 
 /**
  * @brief Compute the byte offset of `cluster`'s FAT entry for this FAT type.
+ *
+ * @details FAT12 entries are 1.5 bytes, FAT16 are 2 bytes, FAT32 are 4
+ *          bytes. Result is the byte offset within the FAT region.
+ *
+ * @param[in] m       Mount providing the FAT type.
+ * @param[in] cluster Cluster number to look up.
+ *
+ * @return Byte offset within the FAT region.
+ * @retval 0..UINT32_MAX  Byte offset.
+ *
+ * @pre `m` is non-NULL.
+ * @pre `cluster` is within the addressable cluster range.
+ * @post No state modified.
+ * @post Result is purely a function of inputs.
+ *
+ * @note Pure function; trivially thread-safe.
+ *
+ * @since 0.1.0
  */
 static uint32_t priv_fat_entry_byte_offset(const ra_fs_mount_t* m, uint32_t cluster)
 {
@@ -358,6 +414,23 @@ static uint32_t priv_fat_entry_byte_offset(const ra_fs_mount_t* m, uint32_t clus
  * @details
  * On FAT12 a single entry can straddle two sectors, which is why we read
  * one sector at a time and re-read on overflow.
+ *
+ * @param[in]  m         Mount providing the FAT type and geometry.
+ * @param[in]  cluster   Cluster whose FAT entry to read.
+ * @param[out] out_value Receives the next-cluster value.
+ *
+ * @return Error code.
+ * @retval k_ra_ok    Entry read successfully.
+ * @retval k_ra_err_* Backend error from a sector read.
+ *
+ * @pre `m` and `out_value` are non-NULL.
+ * @pre `cluster` is within the addressable cluster range.
+ * @post On success, `*out_value` holds the FAT entry.
+ * @post Stack buffers used; module scratch untouched.
+ *
+ * @note Thread-safety inherited from the backend.
+ *
+ * @since 0.1.0
  */
 static ra_err_t priv_fat_get(const ra_fs_mount_t* m, uint32_t cluster, uint32_t* out_value)
 {
@@ -404,6 +477,27 @@ static ra_err_t priv_fat_get(const ra_fs_mount_t* m, uint32_t cluster, uint32_t*
 
 /**
  * @brief Write a FAT12 entry, handling sector-straddling 12-bit packing.
+ *
+ * @details FAT12 entries are 12 bits and may straddle a sector boundary.
+ *
+ * @param[in] m       Mount providing backend access.
+ * @param[in] sec_num Sector number containing the entry's first byte.
+ * @param[in] sec_off Byte offset within that sector.
+ * @param[in] cluster Cluster number (used to pick low/high nibble).
+ * @param[in] value   12-bit value to write (low 12 bits used).
+ *
+ * @return Error code.
+ * @retval k_ra_ok    Entry updated.
+ * @retval k_ra_err_* Backend read/write failure.
+ *
+ * @pre `m` is non-NULL with a valid backend.
+ * @pre `sec_off < k_ra_fs_bytes_per_sector`.
+ * @post On success, the FAT12 entry on disk reflects the new value.
+ * @post On failure, on-disk state is implementation-defined.
+ *
+ * @note Thread-safety inherited from the backend.
+ *
+ * @since 0.1.0
  */
 static ra_err_t priv_fat12_set_one(const ra_fs_mount_t* m,
                                    uint32_t             sec_num,
@@ -455,6 +549,27 @@ static ra_err_t priv_fat12_set_one(const ra_fs_mount_t* m,
 
 /**
  * @brief Write a FAT16 entry into one sector.
+ *
+ * @details FAT16 entries never straddle sectors. One read/write cycle
+ *          updates the entry.
+ *
+ * @param[in] m       Mount providing backend access.
+ * @param[in] sec_num Sector number containing the entry.
+ * @param[in] sec_off Byte offset within that sector.
+ * @param[in] value   Value to write (low 16 bits used).
+ *
+ * @return Error code.
+ * @retval k_ra_ok    Entry updated.
+ * @retval k_ra_err_* Backend read/write failure.
+ *
+ * @pre `m` is non-NULL with a valid backend.
+ * @pre `sec_off <= k_ra_fs_bytes_per_sector - 2`.
+ * @post On success, the FAT16 entry on disk reflects the new value.
+ * @post On failure, on-disk state is implementation-defined.
+ *
+ * @note Thread-safety inherited from the backend.
+ *
+ * @since 0.1.0
  */
 static ra_err_t
 priv_fat16_set_one(const ra_fs_mount_t* m, uint32_t sec_num, uint32_t sec_off, uint32_t value)
@@ -470,6 +585,27 @@ priv_fat16_set_one(const ra_fs_mount_t* m, uint32_t sec_num, uint32_t sec_off, u
 
 /**
  * @brief Write a FAT32 entry into one sector (preserves top 4 reserved bits).
+ *
+ * @details FAT32 entries are 32 bits but only the low 28 bits are
+ *          cluster data; the high 4 reserved bits must be preserved.
+ *
+ * @param[in] m       Mount providing backend access.
+ * @param[in] sec_num Sector number containing the entry.
+ * @param[in] sec_off Byte offset within that sector.
+ * @param[in] value   Value to write (low 28 bits used).
+ *
+ * @return Error code.
+ * @retval k_ra_ok    Entry updated.
+ * @retval k_ra_err_* Backend read/write failure.
+ *
+ * @pre `m` is non-NULL with a valid backend.
+ * @pre `sec_off <= k_ra_fs_bytes_per_sector - 4`.
+ * @post Low 28 bits of the entry equal `value`; high 4 bits preserved.
+ * @post On failure, on-disk state is implementation-defined.
+ *
+ * @note Thread-safety inherited from the backend.
+ *
+ * @since 0.1.0
  */
 static ra_err_t
 priv_fat32_set_one(const ra_fs_mount_t* m, uint32_t sec_num, uint32_t sec_off, uint32_t value)
@@ -486,6 +622,26 @@ priv_fat32_set_one(const ra_fs_mount_t* m, uint32_t sec_num, uint32_t sec_off, u
 
 /**
  * @brief Write `value` into the FAT entry for `cluster` across every FAT copy.
+ *
+ * @details Walks `m->num_fats` FAT copies and dispatches to the
+ *          appropriate FAT12/16/32 set helper.
+ *
+ * @param[in] m       Mount providing geometry, backend, and FAT type.
+ * @param[in] cluster Cluster whose FAT entry to update.
+ * @param[in] value   Value to write.
+ *
+ * @return Error code.
+ * @retval k_ra_ok    All FAT copies updated.
+ * @retval k_ra_err_* Backend or set-helper failure.
+ *
+ * @pre `m` is non-NULL with a valid backend and `num_fats >= 1`.
+ * @pre `cluster` is within the addressable cluster range.
+ * @post On success, every FAT copy reflects the new value.
+ * @post On partial failure, FAT copies may be inconsistent.
+ *
+ * @note Thread-safety inherited from the backend.
+ *
+ * @since 0.1.0
  */
 static ra_err_t priv_fat_set(const ra_fs_mount_t* m, uint32_t cluster, uint32_t value)
 {
@@ -511,6 +667,24 @@ static ra_err_t priv_fat_set(const ra_fs_mount_t* m, uint32_t cluster, uint32_t 
 
 /**
  * @brief Test whether `value` is an end-of-chain marker for this FAT type.
+ *
+ * @details EOC markers differ across FAT12/16/32.
+ *
+ * @param[in] m     Mount providing the FAT type.
+ * @param[in] value FAT entry value to test.
+ *
+ * @return 1 if EOC, 0 otherwise.
+ * @retval 1  `value` indicates end-of-chain.
+ * @retval 0  `value` is a normal next-cluster pointer.
+ *
+ * @pre `m` is non-NULL.
+ * @pre `value` was obtained from a FAT entry read.
+ * @post No state modified.
+ * @post Result is purely a function of inputs.
+ *
+ * @note Pure function; trivially thread-safe.
+ *
+ * @since 0.1.0
  */
 static uint8_t priv_is_eoc(const ra_fs_mount_t* m, uint32_t value)
 {
@@ -523,7 +697,28 @@ static uint8_t priv_is_eoc(const ra_fs_mount_t* m, uint32_t value)
   return (uint8_t)(value >= k_cluster_eoc_min_fat32 ? 1U : 0U);
 }
 
-/** @brief End-of-chain value to write for this FAT type. */
+/**
+ * @brief End-of-chain value to write for this FAT type.
+ *
+ * @details Returns the canonical EOC value (`0xFFF`, `0xFFFF`, or
+ *          `0x0FFFFFFF`).
+ *
+ * @param[in] m Mount providing the FAT type.
+ *
+ * @return Canonical EOC value for this volume.
+ * @retval k_cluster_eoc_write_fat12   FAT12 EOC.
+ * @retval k_cluster_eoc_write_fat16   FAT16 EOC.
+ * @retval k_cluster_eoc_write_fat32   FAT32 EOC.
+ *
+ * @pre `m` is non-NULL.
+ * @pre `m->type` has been computed by `priv_compute_geometry`.
+ * @post No state modified.
+ * @post Result is purely a function of `m->type`.
+ *
+ * @note Pure function; trivially thread-safe.
+ *
+ * @since 0.1.0
+ */
 static uint32_t priv_eoc_write(const ra_fs_mount_t* m)
 {
   if (m->type == k_ra_fs_type_fat12) {
@@ -537,6 +732,23 @@ static uint32_t priv_eoc_write(const ra_fs_mount_t* m)
 
 /**
  * @brief Convert a cluster number into its first data-region LBA.
+ *
+ * @details Cluster numbering starts at `k_cluster_first_data` (= 2).
+ *
+ * @param[in] m       Mount providing geometry.
+ * @param[in] cluster Cluster number (>= `k_cluster_first_data`).
+ *
+ * @return Sector LBA of the cluster's first sector.
+ * @retval 0..UINT32_MAX  Computed LBA.
+ *
+ * @pre `m` is non-NULL with valid geometry.
+ * @pre `cluster >= k_cluster_first_data`.
+ * @post No state modified.
+ * @post Result is purely a function of inputs.
+ *
+ * @note Pure function; trivially thread-safe.
+ *
+ * @since 0.1.0
  */
 static uint32_t priv_cluster_to_lba(const ra_fs_mount_t* m, uint32_t cluster)
 {
@@ -545,6 +757,26 @@ static uint32_t priv_cluster_to_lba(const ra_fs_mount_t* m, uint32_t cluster)
 
 /**
  * @brief Linear free-cluster scan -- no FSInfo cache. O(count_of_clusters).
+ *
+ * @details Walks every cluster looking for one whose FAT entry is
+ *          `k_cluster_free`. Returns the first match.
+ *
+ * @param[in]  m           Mount providing geometry and backend.
+ * @param[out] out_cluster On success, the allocated cluster number.
+ *
+ * @return Error code.
+ * @retval k_ra_ok          Cluster found; `*out_cluster` set.
+ * @retval k_ra_err_no_mem  Volume is full -- no free clusters.
+ * @retval k_ra_err_*       Backend read failure.
+ *
+ * @pre `m` and `out_cluster` are non-NULL.
+ * @pre Volume is mounted and geometry is valid.
+ * @post On success, `*out_cluster` is in range and free.
+ * @post On failure, `*out_cluster` is unspecified.
+ *
+ * @note Caller must mark the cluster as EOC after carving it.
+ *
+ * @since 0.1.0
  */
 static ra_err_t priv_alloc_cluster(const ra_fs_mount_t* m, uint32_t* out_cluster)
 {
