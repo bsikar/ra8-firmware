@@ -480,6 +480,30 @@ static void test_alert_not_initialized(void)
   TEST_END("ra_smbus_alert: not_initialized when init missing");
 }
 
+/**
+ * @test test_mcdc_ra_smbus
+ *
+ * @par MC/DC:
+ * Decision A: ``ra_smbus_pec`` line 109,
+ * libs/ra_hal/src/ra_smbus.c:
+ * ``if ((data == nullptr) || (len == 0U))`` (2 conditions, ``||``).
+ * N+1 = 3 (V1 uses non-zero input so its observed return differs from
+ * the init-value sentinel):
+ * - V1: data=valid, len=1  -> dec F (compute CRC = 0x07)
+ * - V2: data=NULL,  len=5  -> dec T (return init = 0)
+ * - V3: data=valid, len=0  -> dec T (return init = 0)
+ * DO-178C 6.4.4.3 met.
+ */
+static void test_mcdc_ra_smbus(void)
+{
+  TEST_BEGIN("smbus MC/DC: ra_smbus_pec 2-cond null+len decision");
+  const uint8_t one = 0x01U;
+  TEST_ASSERT_EQ((int32_t)0x07, (int32_t)ra_smbus_pec(&one, 1U));
+  TEST_ASSERT_EQ((int32_t)0, (int32_t)ra_smbus_pec(nullptr, 5U));
+  TEST_ASSERT_EQ((int32_t)0, (int32_t)ra_smbus_pec(&one, 0U));
+  TEST_END("smbus MC/DC: ra_smbus_pec 2-cond null+len decision");
+}
+
 int32_t main(void)
 {
   test_pec_empty_and_null();
@@ -506,6 +530,7 @@ int32_t main(void)
   test_alert_register_and_dispatch();
   test_alert_dispatch_without_callback();
   test_alert_not_initialized();
+  test_mcdc_ra_smbus();
   (void)fprintf(stderr, "[OK ] test_ra_smbus.c\n");
   return 0;
 }

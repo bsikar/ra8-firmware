@@ -766,6 +766,33 @@ static void test_dispatch_from_esr_walks_all_bits(void)
  * =============================================================================
  */
 
+/**
+ * @test test_mcdc_ra_sram
+ *
+ * @par MC/DC:
+ * Decision A: ``ra_sram_set_wait_state_for_clock`` line 582,
+ * libs/ra_hal/src/ra_sram.c:
+ * ``if ((iclk_hz == 0U) || (iclk_max_hz == 0U))`` (2 conditions, ``||``).
+ * N+1 = 3:
+ * - V1: iclk=200M, max=250M  -> dec F (compute wait)
+ * - V2: iclk=0,    max=250M  -> dec T (invalid_arg)
+ * - V3: iclk=200M, max=0     -> dec T (invalid_arg)
+ * DO-178C 6.4.4.3 met.
+ */
+static void test_mcdc_ra_sram(void)
+{
+  TEST_BEGIN("sram MC/DC: set_wait_state_for_clock 2-cond decision");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_sram_set_wait_state_for_clock((uint32_t)k_ra_sram_test_iclk_high,
+                                                           (uint32_t)k_ra_sram_test_iclk_max));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_sram_set_wait_state_for_clock(0U, (uint32_t)k_ra_sram_test_iclk_max));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_sram_set_wait_state_for_clock((uint32_t)k_ra_sram_test_iclk_high, 0U));
+  TEST_END("sram MC/DC: set_wait_state_for_clock 2-cond decision");
+}
+
 int32_t main(void)
 {
   test_init_null_cfg();
@@ -800,6 +827,7 @@ int32_t main(void)
   test_attach_null_fn_rejected();
   test_dispatch_fires_callback();
   test_dispatch_from_esr_walks_all_bits();
+  test_mcdc_ra_sram();
   (void)fprintf(stderr, "[OK  ] test_ra_sram.c\n");
   return 0;
 }
