@@ -181,3 +181,15 @@ mem32 0x40400D0F 1     # P815 PFS  -- expected PSEL = 0x13
   documented above for traceability.
 - **macOS gates RDONLY** -- `cat /dev/cu.usbmodem*` returns nothing;
   use picocom / screen / minicom which open RDWR and assert DTR.
+
+## BSP usage
+
+Uses `ra_board_ek_ra8d2` BSP for LED1 init/toggle (P600 per EK-RA8D2
+v1 UM Table 24 p 31). USB-FS pin set (P407 / P500 / P814 / P815) is
+the only routing the chip exposes for the on-board J11 Type-C USB-FS
+receptacle (UM Table 22 p 30); main.c programs this pin set directly
+via `ra_pfs_route_peripheral`.
+
+Validated 2026-05-02 against EK-RA8D2 v1 User's Manual (R20UT5523EG0101
+Rev 1.01) Table 22 p 30 + Table 24 p 31, USB CDC PSTN 1.20, and HUM
+(R01UH1065EJ0130) Ch "USBFS".
