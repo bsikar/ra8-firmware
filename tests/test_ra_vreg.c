@@ -554,6 +554,47 @@ static void test_deinit_clears_regs(void)
   TEST_END("vreg deinit clears regs");
 }
 
+/**
+ * @test test_mcdc_ra_vreg
+ *
+ * @par MC/DC:
+ * Decision A: ``ra_vreg_set_mode`` line 365,
+ * libs/ra_hal/src/ra_vreg.c:
+ * ``if ((mode != k_ra_vreg_mode_ldo) && (mode != k_ra_vreg_mode_dcdc))``
+ * (2 conditions, ``&&``). N+1 = 3:
+ * - V1: mode=ldo  -> C1=F (short)        -> dec F (accept)
+ * - V2: mode=dcdc -> C1=T,C2=F           -> dec F (accept)
+ * - V3: mode=99   -> C1=T,C2=T           -> dec T (reject)
+ *
+ * Decision B: ``ra_vreg_get_status`` line 492,
+ * ``if (dcdcon_set && pd_clear)`` (2 conditions, ``&&``). N+1 = 3:
+ * - V1: dcdcon=F          -> dec F (false)
+ * - V2: dcdcon=T, pd=set  -> dec F (false)
+ * - V3: dcdcon=T, pd=clr  -> dec T (true)
+ * DO-178C 6.4.4.3 met.
+ */
+static void test_mcdc_ra_vreg(void)
+{
+  TEST_BEGIN("vreg MC/DC: set_mode + get_status 2-cond decisions");
+  ra_sim_mmap_reset();
+  const ra_vreg_cfg_t cfg = make_cfg_dcdc();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_vreg_init(&cfg));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_vreg_set_mode(k_ra_vreg_mode_ldo));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_vreg_set_mode(k_ra_vreg_mode_dcdc));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_vreg_set_mode((ra_vreg_mode_t)99U));
+  ra_vreg_status_t out = {};
+  *ra_vreg_dcdcctl()   = 0U;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_vreg_get_status(&out));
+  TEST_ASSERT(out.dcdc_ready == false);
+  *ra_vreg_dcdcctl() = (uint8_t)((uint8_t)k_ra_vreg_mask_dcdcon | (uint8_t)k_ra_vreg_mask_pd);
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_vreg_get_status(&out));
+  TEST_ASSERT(out.dcdc_ready == false);
+  *ra_vreg_dcdcctl() = (uint8_t)k_ra_vreg_mask_dcdcon;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_vreg_get_status(&out));
+  TEST_ASSERT(out.dcdc_ready == true);
+  TEST_END("vreg MC/DC: set_mode + get_status 2-cond decisions");
+}
+
 int32_t main(void)
 {
   test_init_happy_dcdc();
@@ -588,6 +629,7 @@ int32_t main(void)
 
   test_attach_dispatch();
   test_deinit_clears_regs();
+  test_mcdc_ra_vreg();
   (void)fprintf(stderr, "[OK  ] test_ra_vreg.c\n");
   return 0;
 }

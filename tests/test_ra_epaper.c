@@ -171,11 +171,91 @@ static void test_happy_path(void)
   TEST_END("test_happy_path");
 }
 
+/**
+ * @test test_mcdc_ra_epaper
+ *
+ * @par MC/DC:
+ * Decision A: ``internal_ra_epaper_validate_cfg`` line 372,
+ * libs/ra_hal/src/ra_epaper.c:
+ * ``if ((spi_channel > 1) || (panel_w == 0) || (panel_h == 0) ||
+ *      (panel_w > MAX) || (panel_h > MAX) || (baud == 0) || (baud > BAUD_MAX))``
+ * (7 conditions, ``||`` short-circuit chain).
+ *
+ * Per DO-178C 6.4.4.3 a 7-condition decision requires N+1 = 8 vectors.
+ * Representative-subset rationale: each Boolean Ck is exercised
+ * independently against an otherwise-valid baseline (so each Ck flips
+ * while every other Ci is fixed-false), giving the required pair-wise
+ * independence proof:
+ * - V0: all Ci=F                -> dec F (accept)
+ * - V1: spi_channel=99          -> dec T (reject)
+ * - V2: panel_width=0           -> dec T (reject)
+ * - V3: panel_height=0          -> dec T (reject)
+ * - V4: panel_width>MAX         -> dec T (reject)
+ * - V5: panel_height>MAX        -> dec T (reject)
+ * - V6: baud_hz=0               -> dec T (reject)
+ * - V7: baud_hz>BAUD_MAX        -> dec T (reject)
+ *
+ * Decision B: ``ra_epaper_load_image`` line 562,
+ * ``if ((buf_len != expect) || (expect == 0U))`` (2 conditions, ``||``).
+ * N+1 = 3:
+ * - V1: buf_len=expect, expect>0 -> dec F (accept)
+ * - V2: buf_len!=expect          -> dec T (reject)
+ * - V3: expect=0 (0x0 area)      -> dec T (reject)
+ */
+static void test_mcdc_ra_epaper(void)
+{
+  TEST_BEGIN("epaper MC/DC: validate_cfg 7-cond + load_image 2-cond");
+  prep();
+  stage_spsr_ready();
+  ra_epaper_cfg_t cfg = make_cfg();
+  TEST_ASSERT_EQ(k_ra_ok, ra_epaper_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_epaper_sleep());
+
+  cfg             = make_cfg();
+  cfg.spi_channel = 99U;
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_epaper_init(&cfg));
+  cfg             = make_cfg();
+  cfg.panel_width = 0U;
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_epaper_init(&cfg));
+  cfg              = make_cfg();
+  cfg.panel_height = 0U;
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_epaper_init(&cfg));
+  cfg             = make_cfg();
+  cfg.panel_width = (uint16_t)0xFFFFU;
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_epaper_init(&cfg));
+  cfg              = make_cfg();
+  cfg.panel_height = (uint16_t)0xFFFFU;
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_epaper_init(&cfg));
+  cfg             = make_cfg();
+  cfg.spi_baud_hz = 0U;
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_epaper_init(&cfg));
+  cfg             = make_cfg();
+  cfg.spi_baud_hz = (uint32_t)k_ra_epaper_test_baud_huge;
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_epaper_init(&cfg));
+
+  prep();
+  stage_spsr_ready();
+  cfg = make_cfg();
+  TEST_ASSERT_EQ(k_ra_ok, ra_epaper_init(&cfg));
+  uint8_t                pixels[k_ra_epaper_test_buf_pixels] = {};
+  const ra_epaper_area_t area_8x8 = {.x = 0U, .y = 0U, .width = 8U, .height = 8U};
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    ra_epaper_load_image(&area_8x8, pixels, sizeof(pixels), k_ra_epaper_endian_little));
+  TEST_ASSERT_EQ(k_ra_err_invalid_size,
+                 ra_epaper_load_image(&area_8x8, pixels, 1U, k_ra_epaper_endian_little));
+  const ra_epaper_area_t area_0x0 = {.x = 0U, .y = 0U, .width = 0U, .height = 0U};
+  TEST_ASSERT_EQ(k_ra_err_invalid_size,
+                 ra_epaper_load_image(&area_0x0, pixels, 0U, k_ra_epaper_endian_little));
+  TEST_END("epaper MC/DC: validate_cfg 7-cond + load_image 2-cond");
+}
+
 int main(void)
 {
   test_init_null_cfg();
   test_init_bad_cfg();
   test_calls_before_init();
   test_happy_path();
+  test_mcdc_ra_epaper();
   return 0;
 }

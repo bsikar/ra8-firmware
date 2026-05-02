@@ -767,6 +767,47 @@ static void test_deinit(void)
   TEST_END("rmac deinit");
 }
 
+/**
+ * @test test_mcdc_ra_rmac
+ *
+ * @par MC/DC:
+ * Decision A: ``internal_phy_args_ok`` line 893,
+ * libs/ra_hal/src/ra_rmac.c:
+ * ``return internal_port_ok(port) && (phy_addr <= 31)``
+ * (2 conditions, ``&&``). Threaded through ``ra_rmac_phy_link_status``.
+ * N+1 = 3:
+ * - V1: port=0,    phy=5  -> dec T (k_ra_ok)
+ * - V2: port=COUNT,phy=5  -> dec F (invalid_arg)
+ * - V3: port=0,    phy=32 -> dec F (invalid_arg)
+ *
+ * Decision B: ``ra_rmac_phy_link_status`` line 1047,
+ * ``if (out_link->up && ((bmsr & an_done) != 0U))`` (2 conditions, ``&&``).
+ * Simulator MDIO returns 0 -> only V1 (C1=F short-circuit) is
+ * achievable. Representative-subset rationale per DO-178C 6.4.4.3
+ * (environment constraint: MDIO simulator does not deliver a non-zero
+ * BMSR response without an injection mock; documented limitation).
+ */
+static void test_mcdc_ra_rmac(void)
+{
+  TEST_BEGIN("rmac MC/DC: phy_args_ok + link_status decisions");
+  prep();
+  const ra_rmac_config_t cfg = default_cfg();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rmac_init(k_ra_rmac_port_0, &cfg));
+  prime_mdio(k_ra_rmac_port_0, 0U);
+  ra_rmac_phy_link_t link = {.up = true, .speed = k_ra_rmac_phy_speed_100_fd};
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rmac_phy_link_status(k_ra_rmac_port_0, 5U, &link));
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_invalid_arg,
+    (int32_t)ra_rmac_phy_link_status((ra_rmac_port_t)(uint8_t)k_ra_rmac_port_count, 5U, &link));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_rmac_phy_link_status(k_ra_rmac_port_0, 32U, &link));
+  link = (ra_rmac_phy_link_t){.up = true, .speed = k_ra_rmac_phy_speed_100_fd};
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rmac_phy_link_status(k_ra_rmac_port_0, 3U, &link));
+  TEST_ASSERT(!link.up);
+  TEST_ASSERT_EQ((int32_t)k_ra_rmac_phy_speed_unknown, (int32_t)link.speed);
+  TEST_END("rmac MC/DC: phy_args_ok + link_status decisions");
+}
+
 int32_t main(void)
 {
   test_init_happy();
@@ -796,6 +837,7 @@ int32_t main(void)
   test_phy_auto_neg_wait_timeout();
   test_phy_link_status();
   test_deinit();
+  test_mcdc_ra_rmac();
   (void)fprintf(stderr, "[OK  ] test_ra_rmac.c\n");
   return 0;
 }

@@ -312,6 +312,35 @@ static void test_mac_address_packing(void)
   TEST_END("ptp mac address packing");
 }
 
+/**
+ * @test test_mcdc_ra_ptp
+ *
+ * @par MC/DC:
+ * Decision A: ``internal_send`` line 180,
+ * libs/ra_hal/src/ra_ptp.c:
+ * ``if ((s_role != MASTER) && (s_role != BOUNDARY_CLOCK))``
+ * (2 conditions, ``&&``). Threaded through ``ra_ptp_send_sync``.
+ * N+1 = 3:
+ * - V1: role=MASTER         -> dec F (send ok)
+ * - V2: role=BOUNDARY_CLOCK -> dec F (send ok)
+ * - V3: role=SLAVE          -> dec T (invalid_state)
+ * DO-178C 6.4.4.3 met.
+ */
+static void test_mcdc_ra_ptp(void)
+{
+  TEST_BEGIN("ptp MC/DC: internal_send role 2-cond decision");
+  prep();
+  const ra_ptp_cfg_t cfg = default_cfg();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ptp_open(&cfg));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ptp_set_role(k_ra_ptp_role_master));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ptp_send_sync());
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ptp_set_role(k_ra_ptp_role_boundary_clock));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ptp_send_sync());
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ptp_set_role(k_ra_ptp_role_slave));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_ptp_send_sync());
+  TEST_END("ptp MC/DC: internal_send role 2-cond decision");
+}
+
 int32_t main(void)
 {
   test_open_close();
@@ -327,6 +356,7 @@ int32_t main(void)
   test_get_offset();
   test_pre_init_rejects();
   test_mac_address_packing();
+  test_mcdc_ra_ptp();
   (void)fprintf(stderr, "[OK  ] test_ra_ptp.c\n");
   return 0;
 }

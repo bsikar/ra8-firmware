@@ -1306,6 +1306,54 @@ static void test_mailbox_empty_rejection(void)
   TEST_END("ipc mailbox empty rejection");
 }
 
+/**
+ * @test test_mcdc_ra_ipc
+ *
+ * @par MC/DC:
+ * Decision A: ``ra_ipc_can_access`` line 669,
+ * libs/ra_hal/src/ra_ipc.c:
+ * ``*out = (bool)(secure_match && privileged_match)`` (2 conditions, ``&&``).
+ * N+1 = 3:
+ * - V1: secure=T,priv=T -> dec T (out=true)
+ * - V2: secure=F,priv=T -> dec F (out=false)
+ * - V3: secure=T,priv=F -> dec F (out=false)
+ *
+ * Decision B: ``ra_ipc_dispatch`` line 893,
+ * ``if ((fn != nullptr) && (fired != 0U))`` (2 conditions, ``&&``).
+ * V1 covered by test_attach_and_dispatch_message; V2 by
+ * test_dispatch_no_callback_is_safe; V3 added here.
+ * DO-178C 6.4.4.3 met.
+ */
+static void test_mcdc_ra_ipc(void)
+{
+  TEST_BEGIN("ipc MC/DC: can_access + dispatch 2-cond decisions");
+  prep();
+  volatile uint32_t* sar = ra_ipc_ipcsar();
+  volatile uint32_t* par = ra_ipc_ipcpar();
+  bool               ok  = false;
+  *sar                   = 0U;
+  *par                   = 0U;
+  ra_ipc_attr_t want_v1  = {.secure = true, .privileged = true};
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_ipc_can_access((uint8_t)k_ra_ipc_test_ch_mid, &want_v1, &ok));
+  TEST_ASSERT(ok == true);
+  ra_ipc_attr_t want_v2 = {.secure = false, .privileged = true};
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_ipc_can_access((uint8_t)k_ra_ipc_test_ch_mid, &want_v2, &ok));
+  TEST_ASSERT(ok == false);
+  ra_ipc_attr_t want_v3 = {.secure = true, .privileged = false};
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_ipc_can_access((uint8_t)k_ra_ipc_test_ch_mid, &want_v3, &ok));
+  TEST_ASSERT(ok == false);
+  prep();
+  const ra_ipc_config_t cfg = make_cfg((uint8_t)k_ra_ipc_test_ch_first);
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ipc_init(&cfg));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ipc_attach_handler(stub_ipc_cb, nullptr));
+  ra_ipc_dispatch((uint8_t)k_ra_ipc_test_ch_first);
+  TEST_ASSERT_EQ((int32_t)0U, (int32_t)s_ipc_cb_count);
+  TEST_END("ipc MC/DC: can_access + dispatch 2-cond decisions");
+}
+
 int32_t main(void)
 {
   test_init_happy();
@@ -1361,6 +1409,7 @@ int32_t main(void)
   test_channel_out_of_range_sweep();
   test_mailbox_full_rejection();
   test_mailbox_empty_rejection();
+  test_mcdc_ra_ipc();
   (void)fprintf(stderr, "[OK  ] test_ra_ipc.c\n");
   return 0;
 }
