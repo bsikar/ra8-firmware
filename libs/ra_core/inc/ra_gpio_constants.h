@@ -52,6 +52,7 @@ typedef enum : uint8_t {
   k_ra_psel_sci_i2c    = 0x07U, /**< SCI simple I2C.                      */
   k_ra_psel_spi        = 0x06U, /**< RSPI / SPI.                          */
   k_ra_psel_iic        = 0x07U, /**< IIC controller-peripheral I2C.       */
+  k_ra_psel_ssie       = 0x0AU, /**< SSIE I2S audio (HUM Ch 19 PFS PSEL). */
   k_ra_psel_can        = 0x10U, /**< CANFD.                               */
   k_ra_psel_usb_fs     = 0x13U, /**< USB Full-Speed.                      */
   k_ra_psel_sdhi       = 0x12U, /**< SDHI SD / MMC.                       */

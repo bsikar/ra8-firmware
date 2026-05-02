@@ -136,9 +136,20 @@ static void test_audio_play_sample_block_validates(void)
   TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_board_audio_play_sample_block(NULL, 4U));
   TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_board_audio_play_sample_block(buf, 0U));
   TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_board_audio_play_sample_block(buf, 3U));
-  /* Even-length non-empty buffer reaches the (currently stubbed) HAL hook. */
-  TEST_ASSERT_EQ((int)k_ra_err_not_supported, (int)ra_board_audio_play_sample_block(buf, 4U));
+  /* Even-length non-empty buffer reaches the SSIE hook; without a
+   * preceding ra_board_audio_init the BSP refuses with not_initialized. */
+  TEST_ASSERT_EQ((int)k_ra_err_not_initialized,
+                 (int)ra_board_audio_play_sample_block(buf, 4U));
   TEST_END("audio_play_sample_block rejects bad args");
+}
+
+static void test_audio_init_validates(void)
+{
+  TEST_BEGIN("audio_init validates sample rate / depth / channels");
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_board_audio_init(0U, 16U, 2U));
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_board_audio_init(48000U, 12U, 2U));
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_board_audio_init(48000U, 16U, 3U));
+  TEST_END("audio_init validates sample rate / depth / channels");
 }
 
 /* ------------------------------------------------------------------------- */
@@ -379,6 +390,7 @@ int32_t main(void)
   test_sw_attach_irq_null_cb();
   test_audio_pins();
   test_audio_play_sample_block_validates();
+  test_audio_init_validates();
   test_arduino_pins();
   test_arduino_pin_init_invalid_mode();
   test_pmod1_spi_pins();
