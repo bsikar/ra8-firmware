@@ -75,3 +75,18 @@ Hardware bring-up. Validates the sweep-2 descriptor-ring drivers end
 to end. CI builds for the cross-target only; there is no host-side
 unit test (the byte-level builders are exercised through other apps'
 test suites).
+
+## Note on pin map vs EK-RA8D2 v1 board
+
+The pin table above is what `main.c` programs (RMII on P7_xx + P4_xx).
+The EK-RA8D2 v1 board's on-board MaxLinear PEF7071 PHY is actually
+wired for **RGMII** on a different pin set (UM Table 26 "Ethernet Port
+Assignments" p 33: TXD0..3 on P304..P307, RXD0..3 on P906..P909, etc.,
+plus RX_CTL on P206 and RX_CLK on P905). To run on the on-board PHY
+the app must use `ra_board_ethernet_init()` from `ra_board_ek_ra8d2`
+BSP; the current main.c targets a separate RMII-only daughter board
+variant, not the v1 board's on-board PHY.
+
+Validated 2026-05-02 against EK-RA8D2 v1 User's Manual (R20UT5523EG0101
+Rev 1.01) Section 6.1 + Table 26 p 33, and HUM (R01UH1065EJ0130)
+Ch "Ethernet" / "RMAC".

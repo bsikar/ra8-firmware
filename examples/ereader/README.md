@@ -127,3 +127,16 @@ rm -rf build/tidy
 docker run --rm -v "$PWD":/work -w /work ra8d2-firmware-test:latest \
   bash -lc "bash scripts/clang_tidy.sh --check"
 ```
+
+## BSP usage
+
+Uses `ra_board_ek_ra8d2` BSP for LED1 / LED2 init+toggle (P600 / P303
+per EK-RA8D2 v1 UM Table 24 p 31). SW1 / SW2 IRQ wiring goes through
+the BSP `ra_board_sw_attach_irq` veneer (P009 / P008 -> IRQ13-DS /
+IRQ12-DS per UM Table 25 p 32). Micro-SD slot is J6 (UM Table 31
+"SD Card Connector" -- SDHI bus on PC00..PC05). GLCDC parallel-RGB
+J1 panel pins follow UM Table 33 p 42.
+
+Validated 2026-05-02 against EK-RA8D2 v1 User's Manual (R20UT5523EG0101
+Rev 1.01) Tables 24 (LEDs) p 31, 25 (switches) p 32, 31 (SD card),
+33 (GLCDC J1) p 42, and HUM (R01UH1065EJ0130) Ch 53 "GLCDC".
