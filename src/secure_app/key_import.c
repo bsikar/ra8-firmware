@@ -95,6 +95,27 @@ static uint16_t s_slot_used = 0U;
  */
 static uint32_t s_salt = (uint32_t)k_initial_salt;
 
+/**
+ * @brief Rotate a 32-bit value left by ``amount`` bits (mod 32).
+ *
+ * @details
+ * Used by both the salt rerolling step and the MAC fold so the bit
+ * mixing is well distributed even for sparse blob inputs.
+ *
+ * @param[in] value  Source 32-bit word.
+ * @param[in] amount Bit count; only the low 5 bits are used.
+ *
+ * @return ``value`` rotated left by ``amount mod 32`` bits.
+ * @retval ``value`` when ``amount mod 32 == 0``.
+ *
+ * @pre ``amount`` may take any uint8_t value.
+ * @pre Caller treats this as a pure expression (no side effects).
+ * @post No state is mutated.
+ * @post Return value depends only on the parameters.
+ *
+ * @note Pure helper; safe from any context.
+ * @since 0.1.0
+ */
 static uint32_t internal_rotate_left_32(uint32_t value, uint8_t amount)
 {
   const uint8_t bits = (uint8_t)(amount & (uint8_t)31U);
@@ -104,6 +125,27 @@ static uint32_t internal_rotate_left_32(uint32_t value, uint8_t amount)
   return (value << bits) | (value >> (32U - bits));
 }
 
+/**
+ * @brief Compute the opaque NS-side handle for a vault slot index.
+ *
+ * @details
+ * Mixes the per-boot salt with the slot index so two boots vend
+ * different handles for the same slot, then forces bit 31 high so
+ * the value never collides with the reserved zero sentinel.
+ *
+ * @param[in] slot Slot index (0..k_ra_key_vault_slots-1).
+ *
+ * @return Opaque handle suitable for return to NS callers.
+ * @retval Always a value with bit 31 set, never ``0``.
+ *
+ * @pre ``slot`` was validated by the caller.
+ * @pre ``s_salt`` has been initialised by ::ra_key_import_reset or boot default.
+ * @post No state is mutated.
+ * @post Return value is deterministic for fixed (slot, s_salt).
+ *
+ * @note Pure helper; safe from any context.
+ * @since 0.1.0
+ */
 static uint32_t internal_handle_for_slot(uint16_t slot)
 {
   const uint32_t mixed = internal_rotate_left_32(s_salt, k_handle_rotate_bits);
@@ -112,6 +154,29 @@ static uint32_t internal_handle_for_slot(uint16_t slot)
   return ((uint32_t)slot ^ mixed) | (uint32_t)k_handle_high_bit_mask;
 }
 
+/**
+ * @brief Verify the trailing MAC bytes of a sealed key blob.
+ *
+ * @details
+ * Folds the 32 key bytes into a 32-bit accumulator (rotate-and-XOR
+ * with the per-boot salt seed) and compares the result to the
+ * trailing 4 big-endian bytes of the blob. The scheme is a stub for
+ * the SCE CMAC engine slated for Wave 14; the interface is final.
+ *
+ * @param[in] blob Sealed key blob; ``k_ra_key_import_blob_bytes`` long.
+ *
+ * @return true when the computed MAC matches the trailing bytes.
+ * @retval true  Blob authentic under the current ``s_salt``.
+ * @retval false Blob tampered or built under a different salt.
+ *
+ * @pre ``blob`` is non-NULL.
+ * @pre ``blob`` storage spans at least ``k_ra_key_import_blob_bytes``.
+ * @post No state is mutated.
+ * @post Return value depends only on ``blob`` and ``s_salt``.
+ *
+ * @note Pure helper; safe from any context.
+ * @since 0.1.0
+ */
 static bool internal_verify_mac(const uint8_t* blob)
 {
   /* MAC scheme: fold the 32 key bytes into a 32-bit accumulator
@@ -132,6 +197,26 @@ static bool internal_verify_mac(const uint8_t* blob)
   return acc == expect;
 }
 
+/**
+ * @brief Reset the import allocator and reroll the per-boot salt.
+ *
+ * @details
+ * Clears every ``s_slot_used`` bit and rotates the salt with a
+ * fixed mixing constant so successive resets vend different
+ * handles for the same slot index. Falls back to the boot seed
+ * if the rerolled salt happens to be zero.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok Always; the operation cannot fail.
+ *
+ * @pre Caller is in the secure-side init context.
+ * @pre No NS-side handle issued before the call may be considered live afterwards.
+ * @post All slots are marked free.
+ * @post ``s_salt`` is non-zero.
+ *
+ * @note Not thread-safe; reset belongs to the boot/test path.
+ * @since 0.1.0
+ */
 ra_err_t ra_key_import_reset(void)
 {
   s_slot_used = 0U;
@@ -145,6 +230,36 @@ ra_err_t ra_key_import_reset(void)
   return k_ra_ok;
 }
 
+/**
+ * @brief Verify, store, and assign an opaque handle for a sealed key blob.
+ *
+ * @details
+ * Validates the blob length, checks the MAC, allocates the lowest
+ * free vault slot, copies the key into the vault, and returns an
+ * opaque handle that the NS world can later present to the SHA-256
+ * challenge primitive without ever learning the slot index.
+ *
+ * @param[in]  blob       Sealed key blob.
+ * @param[in]  blob_len   Length of ``blob``; must equal
+ *                        ``k_ra_key_import_blob_bytes``.
+ * @param[out] out_handle Receives the opaque handle on success.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok                 Key sealed and handle issued.
+ * @retval k_ra_err_null_ptr       ``blob`` or ``out_handle`` was NULL.
+ * @retval k_ra_err_invalid_size   ``blob_len`` did not match expected size.
+ * @retval k_ra_err_invalid_arg    MAC verification failed.
+ * @retval k_ra_err_no_mem         All vault slots are in use.
+ *
+ * @pre ``blob`` and ``out_handle`` are non-NULL.
+ * @pre Caller has finished bring-up of the key vault via ::ra_key_vault_init.
+ * @post On success, the chosen slot bit is set in ``s_slot_used``.
+ * @post On error, no vault slot is mutated.
+ *
+ * @note Not thread-safe; secure-side serial dispatch only.
+ * @see ra_key_import_resolve
+ * @since 0.1.0
+ */
 ra_err_t ra_key_import_seal(const uint8_t* blob, uint32_t blob_len, uint32_t* out_handle)
 {
   RA_CHECK_NULL_PTR(blob, s_tag, "seal: blob");
@@ -179,6 +294,32 @@ ra_err_t ra_key_import_seal(const uint8_t* blob, uint32_t blob_len, uint32_t* ou
   return k_ra_ok;
 }
 
+/**
+ * @brief Resolve a previously issued handle back to its vault slot.
+ *
+ * @details
+ * Walks the live slot bitmap and recomputes the per-slot handle
+ * until a match is found. The slot index never leaves the secure
+ * world via the handle itself; this function is the only place
+ * that performs the inverse mapping.
+ *
+ * @param[in]  handle   Opaque handle previously returned by ::ra_key_import_seal.
+ * @param[out] out_slot Receives the resolved slot index on success.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok                 Handle matched a live slot.
+ * @retval k_ra_err_null_ptr       ``out_slot`` was NULL.
+ * @retval k_ra_err_not_found      Handle does not match any live slot.
+ *
+ * @pre ``out_slot`` is non-NULL.
+ * @pre Caller has previously issued the handle through ::ra_key_import_seal.
+ * @post On success, ``*out_slot`` is in [0, k_ra_key_vault_slots).
+ * @post No vault state is mutated.
+ *
+ * @note Not thread-safe.
+ * @see ra_key_import_seal
+ * @since 0.1.0
+ */
 ra_err_t ra_key_import_resolve(uint32_t handle, uint16_t* out_slot)
 {
   RA_CHECK_NULL_PTR(out_slot, s_tag, "resolve: out_slot");
@@ -192,6 +333,32 @@ ra_err_t ra_key_import_resolve(uint32_t handle, uint16_t* out_slot)
   return k_ra_err_not_found;
 }
 
+/**
+ * @brief Build a sealed key blob from a raw 32-byte key (test helper).
+ *
+ * @details
+ * Copies the key bytes verbatim, computes the same MAC fold as
+ * ::internal_verify_mac, and writes the trailing 4 big-endian
+ * bytes. Provided so unit tests can exercise the verify path
+ * without a separate sealing utility.
+ *
+ * @param[in]  key      Raw 32-byte key.
+ * @param[out] out_blob Receives ``k_ra_key_import_blob_bytes`` of output.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok                 Blob written.
+ * @retval k_ra_err_null_ptr       ``key`` or ``out_blob`` was NULL.
+ *
+ * @pre ``key`` and ``out_blob`` are non-NULL.
+ * @pre ``out_blob`` storage spans at least ``k_ra_key_import_blob_bytes``.
+ * @post ``out_blob`` contains a blob accepted by ::internal_verify_mac
+ *       under the current ``s_salt``.
+ * @post No global state is mutated.
+ *
+ * @note Not thread-safe.
+ * @see ra_key_import_seal
+ * @since 0.1.0
+ */
 ra_err_t ra_key_import_build_blob(const uint8_t* key, uint8_t* out_blob)
 {
   RA_CHECK_NULL_PTR(key, s_tag, "build_blob: key");

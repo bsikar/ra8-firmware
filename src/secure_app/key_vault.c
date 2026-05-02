@@ -84,6 +84,27 @@ static const uint32_t k_sha256_h0[8] = {
   0x5be0cd19U,
 };
 
+/**
+ * @brief 32-bit rotate-right primitive used by the SHA-256 sponge.
+ *
+ * @details
+ * Hot helper for the FIPS 180-4 message-schedule and round-function
+ * mixing. Inlined by the compiler under -O2.
+ *
+ * @param[in] x Source 32-bit word.
+ * @param[in] n Rotate amount; only the low 5 bits are meaningful.
+ *
+ * @return ``x`` rotated right by ``n mod 32`` bits.
+ * @retval ``x`` when ``n mod 32 == 0``.
+ *
+ * @pre Caller treats this as a pure expression.
+ * @pre ``n`` may take any uint32_t value.
+ * @post No state is mutated.
+ * @post Return value depends only on the parameters.
+ *
+ * @note Pure helper; safe from any context.
+ * @since 0.1.0
+ */
 static uint32_t internal_rotr(uint32_t x, uint32_t n)
 {
   return (x >> n) | (x << (32U - n));
@@ -91,6 +112,24 @@ static uint32_t internal_rotr(uint32_t x, uint32_t n)
 
 /**
  * @brief Hash a 32-byte input. Padding produces a single 64-byte block.
+ *
+ * @details
+ * Implements just enough of FIPS 180-4 to digest exactly 32 bytes.
+ * The padding block is hard-coded (0x80, zeros, big-endian length
+ * 0x0100) so the caller never has to assemble it. Used by
+ * ::ra_key_vault_sha256_xor_challenge to scramble a per-key XOR
+ * result without leaking the underlying key bytes.
+ *
+ * @param[in]  in32  32-byte input message.
+ * @param[out] out32 32-byte SHA-256 digest.
+ *
+ * @pre ``in32`` and ``out32`` are non-NULL.
+ * @pre Both buffers span at least 32 bytes.
+ * @post ``out32`` contains the SHA-256 digest of ``in32``.
+ * @post No global state is mutated.
+ *
+ * @note Pure compute function; safe from any context.
+ * @since 0.1.0
  */
 static void internal_sha256_32(const uint8_t* in32, uint8_t* out32)
 {
@@ -179,6 +218,26 @@ static void internal_sha256_32(const uint8_t* in32, uint8_t* out32)
  * =============================================================================
  */
 
+/**
+ * @brief Zero every slot in the key vault.
+ *
+ * @details
+ * Walks the static slot array and clears each key byte so a freshly
+ * booted vault contains no residual material. Called once during
+ * secure-side bring-up before any ::ra_key_vault_store request can
+ * arrive from the importer.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok Always; the operation cannot fail.
+ *
+ * @pre Caller is in the secure-side init context.
+ * @pre No NS-side challenge is in flight (single-thread guarantee).
+ * @post Every slot's key bytes are zero.
+ * @post No other state is modified.
+ *
+ * @note Not thread-safe; init/test path only.
+ * @since 0.1.0
+ */
 ra_err_t ra_key_vault_init(void)
 {
   for (uint16_t s = 0U; s < k_ra_key_vault_slots; ++s) {
@@ -189,6 +248,31 @@ ra_err_t ra_key_vault_init(void)
   return k_ra_ok;
 }
 
+/**
+ * @brief Copy a 32-byte key into the requested vault slot.
+ *
+ * @details
+ * Validates the slot index, then byte-copies the supplied key into
+ * the secure-side slot array. No allocation, no freeing, no audit
+ * log -- the importer holds those responsibilities.
+ *
+ * @param[in] slot Slot index (0..k_ra_key_vault_slots-1).
+ * @param[in] key  Source 32-byte key material.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok                 Key stored.
+ * @retval k_ra_err_null_ptr       ``key`` was NULL.
+ * @retval k_ra_err_invalid_arg    ``slot`` out of range.
+ *
+ * @pre ``key`` is non-NULL.
+ * @pre Caller is in the secure-side dispatch path.
+ * @post On success, ``s_vault[slot].key`` holds the new material.
+ * @post On error, no slot bytes are mutated.
+ *
+ * @note Not thread-safe; secure-side serial dispatch only.
+ * @see ra_key_vault_sha256_xor_challenge
+ * @since 0.1.0
+ */
 ra_err_t ra_key_vault_store(uint16_t slot, const uint8_t* key)
 {
   RA_CHECK_NULL_PTR(key, s_tag, "store: key");
@@ -201,6 +285,34 @@ ra_err_t ra_key_vault_store(uint16_t slot, const uint8_t* key)
   return k_ra_ok;
 }
 
+/**
+ * @brief Reply to an NS challenge with SHA-256(key XOR challenge).
+ *
+ * @details
+ * Forms the per-call scratch ``key XOR challenge`` on the secure
+ * stack, hashes it via ::internal_sha256_32, then wipes the scratch
+ * before returning so the XOR result does not linger in stack
+ * memory. The NS world only ever sees the digest; the underlying
+ * key never leaves the vault.
+ *
+ * @param[in]  slot      Slot index (0..k_ra_key_vault_slots-1).
+ * @param[in]  challenge 32-byte challenge from NS.
+ * @param[out] out       32-byte SHA-256 response.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok                 Response written.
+ * @retval k_ra_err_null_ptr       ``challenge`` or ``out`` was NULL.
+ * @retval k_ra_err_invalid_arg    ``slot`` out of range.
+ *
+ * @pre ``challenge`` and ``out`` are non-NULL.
+ * @pre Caller arrived through the NSC veneer with a resolved slot.
+ * @post On success, ``out`` contains the digest.
+ * @post Stack scratch ``key XOR challenge`` is wiped before return.
+ *
+ * @note Not thread-safe; secure-side serial dispatch only.
+ * @see ra_key_vault_store
+ * @since 0.1.0
+ */
 ra_err_t ra_key_vault_sha256_xor_challenge(uint16_t slot, const uint8_t* challenge, uint8_t* out)
 {
   RA_CHECK_NULL_PTR(challenge, s_tag, "challenge: challenge");
