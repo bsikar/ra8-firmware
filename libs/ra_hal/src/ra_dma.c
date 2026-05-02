@@ -443,6 +443,8 @@ const ra_dma_request_t* ra_dma_sim_peek_request(uint8_t channel)
  *
  * @note Snapshot only; status may change immediately after return.
  * @since 0.1.0
+ *
+ * @details See implementation for details.
  */
 ra_err_t ra_dma_channel_is_busy(uint8_t channel, bool* out_busy)
 {

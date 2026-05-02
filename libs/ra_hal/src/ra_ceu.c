@@ -491,6 +491,9 @@ static void internal_program_addresses(const ra_ceu_buffers_t* bufs)
  * @note Internal helper, not thread-safe.
  *
  * @since 0.1.0
+ *
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
  */
 static void internal_program_geometry(const ra_ceu_config_t* cfg)
 {
@@ -532,6 +535,9 @@ static void internal_program_geometry(const ra_ceu_config_t* cfg)
  * @note Internal helper, not thread-safe.
  *
  * @since 0.1.0
+ *
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
  */
 static void internal_program_format(const ra_ceu_config_t* cfg)
 {
@@ -556,6 +562,9 @@ static void internal_program_format(const ra_ceu_config_t* cfg)
  * @note Internal helper, not thread-safe.
  *
  * @since 0.1.0
+ *
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
  */
 static void internal_program_destination(const ra_ceu_config_t* cfg)
 {
@@ -1095,6 +1104,9 @@ ra_err_t ra_ceu_capture_disarm(void)
  * @note Internal helper, not thread-safe.
  *
  * @since 0.1.0
+ *
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
  */
 static void internal_plane_b_mirror_from_a(void)
 {
@@ -1144,6 +1156,8 @@ static void internal_plane_b_mirror_from_a(void)
  * @retval k_ra_ok Success path.
  * @retval k_ra_err_invalid_arg Caller violated a precondition.
  * @since 0.1.0
+ *
+ * @post Side effects bounded to documented state.
  */
 static void internal_plane_b_apply_overrides(const ra_ceu_buffers_t* bufs)
 {

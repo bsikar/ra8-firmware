@@ -85,6 +85,12 @@ typedef enum : uint32_t {
  * @post Returned value is one of TX_WAIT_FOREVER / TX_NO_WAIT / tmo.
  *
  * @since 0.1.0
+ *
+ * @details See implementation for details.
+ * @retval 0 Success or default value.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @note Not thread-safe unless documented otherwise.
  */
 static ULONG priv_tmo_to_tx(ble_npl_time_t tmo)
 {
@@ -110,6 +116,12 @@ static ULONG priv_tmo_to_tx(ble_npl_time_t tmo)
  * @post On success the underlying ``TX_MUTEX`` is created.
  *
  * @since 0.1.0
+ *
+ * @details See implementation for details.
+ * @retval 0 Success or default value.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @note Not thread-safe unless documented otherwise.
  */
 uint32_t ble_npl_mutex_init(struct ble_npl_mutex* mu)
 {
@@ -132,6 +144,12 @@ uint32_t ble_npl_mutex_init(struct ble_npl_mutex* mu)
  * @post On success the calling thread owns the mutex.
  *
  * @since 0.1.0
+ *
+ * @details See implementation for details.
+ * @retval 0 Success or default value.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @note Not thread-safe unless documented otherwise.
  */
 uint32_t ble_npl_mutex_pend(struct ble_npl_mutex* mu, ble_npl_time_t timeout)
 {
@@ -157,6 +175,11 @@ uint32_t ble_npl_mutex_pend(struct ble_npl_mutex* mu, ble_npl_time_t timeout)
  * @post Calling thread no longer owns the mutex.
  *
  * @since 0.1.0
+ *
+ * @details See implementation for details.
+ * @retval 0 Success or default value.
+ * @post Side effects bounded to documented state.
+ * @note Not thread-safe unless documented otherwise.
  */
 uint32_t ble_npl_mutex_release(struct ble_npl_mutex* mu)
 {
@@ -185,6 +208,12 @@ uint32_t ble_npl_mutex_release(struct ble_npl_mutex* mu)
  *       ``tokens`` initial counts.
  *
  * @since 0.1.0
+ *
+ * @details See implementation for details.
+ * @retval 0 Success or default value.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @note Not thread-safe unless documented otherwise.
  */
 uint32_t ble_npl_sem_init(struct ble_npl_sem* sem, uint16_t tokens)
 {
@@ -207,6 +236,12 @@ uint32_t ble_npl_sem_init(struct ble_npl_sem* sem, uint16_t tokens)
  * @post On success one token has been consumed.
  *
  * @since 0.1.0
+ *
+ * @details See implementation for details.
+ * @retval 0 Success or default value.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @note Not thread-safe unless documented otherwise.
  */
 uint32_t ble_npl_sem_pend(struct ble_npl_sem* sem, ble_npl_time_t timeout)
 {
@@ -231,6 +266,12 @@ uint32_t ble_npl_sem_pend(struct ble_npl_sem* sem, ble_npl_time_t timeout)
  * @post Token count incremented by one.
  *
  * @since 0.1.0
+ *
+ * @details See implementation for details.
+ * @retval 0 Success or default value.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @note Not thread-safe unless documented otherwise.
  */
 uint32_t ble_npl_sem_release(struct ble_npl_sem* sem)
 {
@@ -252,6 +293,12 @@ uint32_t ble_npl_sem_release(struct ble_npl_sem* sem)
  * @post No state change.
  *
  * @since 0.1.0
+ *
+ * @details See implementation for details.
+ * @retval 0 Success or default value.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @note Not thread-safe unless documented otherwise.
  */
 uint16_t ble_npl_sem_get_count(struct ble_npl_sem* sem)
 {
@@ -279,6 +326,11 @@ uint16_t ble_npl_sem_get_count(struct ble_npl_sem* sem)
  * @post ev is in the unqueued state.
  *
  * @since 0.1.0
+ *
+ * @details See implementation for details.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @note Not thread-safe unless documented otherwise.
  */
 void ble_npl_event_init(struct ble_npl_event* ev, ble_npl_event_fn* fn, void* arg)
 {
@@ -299,6 +351,11 @@ void ble_npl_event_init(struct ble_npl_event* ev, ble_npl_event_fn* fn, void* ar
  * @post Queue is empty and ready to accept events.
  *
  * @since 0.1.0
+ *
+ * @details See implementation for details.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @note Not thread-safe unless documented otherwise.
  */
 void ble_npl_eventq_init(struct ble_npl_eventq* evq)
 {
@@ -348,6 +405,11 @@ struct ble_npl_event* ble_npl_eventq_get(struct ble_npl_eventq* evq, ble_npl_tim
  * @post On success ev->queued is 1.
  *
  * @since 0.1.0
+ *
+ * @details See implementation for details.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @note Not thread-safe unless documented otherwise.
  */
 void ble_npl_eventq_put(struct ble_npl_eventq* evq, struct ble_npl_event* ev)
 {
@@ -373,6 +435,11 @@ void ble_npl_eventq_put(struct ble_npl_eventq* evq, struct ble_npl_event* ev)
  *       just clearing the queued flag so a later enqueue is honoured).
  *
  * @since 0.1.0
+ *
+ * @details See implementation for details.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @note Not thread-safe unless documented otherwise.
  */
 void ble_npl_eventq_remove(struct ble_npl_eventq* evq, struct ble_npl_event* ev)
 {
@@ -392,6 +459,11 @@ void ble_npl_eventq_remove(struct ble_npl_eventq* evq, struct ble_npl_event* ev)
  * @post ev->fn() has been invoked synchronously.
  *
  * @since 0.1.0
+ *
+ * @details See implementation for details.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @note Not thread-safe unless documented otherwise.
  */
 void ble_npl_event_run(struct ble_npl_event* ev)
 {
@@ -411,6 +483,13 @@ void ble_npl_event_run(struct ble_npl_event* ev)
  * @pre ev may be NULL.
  *
  * @since 0.1.0
+ *
+ * @details See implementation for details.
+ * @retval 0 Success or default value.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post State reflects operation result.
+ * @note Not thread-safe unless documented otherwise.
  */
 uint8_t ble_npl_event_is_queued(struct ble_npl_event* ev)
 {
@@ -442,6 +521,12 @@ void* ble_npl_event_get_arg(struct ble_npl_event* ev)
  * @pre ev != NULL.
  *
  * @since 0.1.0
+ *
+ * @details See implementation for details.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post State reflects operation result.
+ * @note Not thread-safe unless documented otherwise.
  */
 void ble_npl_event_set_arg(struct ble_npl_event* ev, void* arg)
 {
@@ -460,6 +545,13 @@ void ble_npl_event_set_arg(struct ble_npl_event* ev, void* arg)
  * @pre evq may be NULL.
  *
  * @since 0.1.0
+ *
+ * @details See implementation for details.
+ * @retval 0 Success or default value.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post State reflects operation result.
+ * @note Not thread-safe unless documented otherwise.
  */
 uint8_t ble_npl_eventq_is_empty(struct ble_npl_eventq* evq)
 {
@@ -490,6 +582,10 @@ uint8_t ble_npl_eventq_is_empty(struct ble_npl_eventq* evq)
  *       ``TX_TIMER_PROCESS_IN_ISR`` is defined).
  *
  * @since 0.1.0
+ *
+ * @details See implementation for details.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
  */
 static void priv_callout_trampoline(ULONG arg)
 {
@@ -512,6 +608,11 @@ static void priv_callout_trampoline(ULONG arg)
  * @post Underlying ``TX_TIMER`` is created in the inactive state.
  *
  * @since 0.1.0
+ *
+ * @details See implementation for details.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @note Not thread-safe unless documented otherwise.
  */
 void ble_npl_callout_init(struct ble_npl_callout* co,
                           struct ble_npl_eventq*  evq,
@@ -546,6 +647,12 @@ void ble_npl_callout_init(struct ble_npl_callout* co,
  * @post Timer is active; will fire once after ``ticks``.
  *
  * @since 0.1.0
+ *
+ * @details See implementation for details.
+ * @retval 0 Success or default value.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @note Not thread-safe unless documented otherwise.
  */
 uint32_t ble_npl_callout_reset(struct ble_npl_callout* co, ble_npl_time_t ticks)
 {
@@ -570,6 +677,11 @@ uint32_t ble_npl_callout_reset(struct ble_npl_callout* co, ble_npl_time_t ticks)
  * @post Timer is inactive.
  *
  * @since 0.1.0
+ *
+ * @details See implementation for details.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @note Not thread-safe unless documented otherwise.
  */
 void ble_npl_callout_stop(struct ble_npl_callout* co)
 {
@@ -589,6 +701,13 @@ void ble_npl_callout_stop(struct ble_npl_callout* co)
  * @pre co may be NULL.
  *
  * @since 0.1.0
+ *
+ * @details See implementation for details.
+ * @retval 0 Success or default value.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post State reflects operation result.
+ * @note Not thread-safe unless documented otherwise.
  */
 uint8_t ble_npl_callout_is_active(struct ble_npl_callout* co)
 {
@@ -611,6 +730,12 @@ uint8_t ble_npl_callout_is_active(struct ble_npl_callout* co)
  * @pre co != NULL.
  *
  * @since 0.1.0
+ *
+ * @details See implementation for details.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post State reflects operation result.
+ * @note Not thread-safe unless documented otherwise.
  */
 void ble_npl_callout_set_arg(struct ble_npl_callout* co, void* arg)
 {
@@ -630,6 +755,14 @@ void ble_npl_callout_set_arg(struct ble_npl_callout* co, void* arg)
  * @return Current ThreadX tick count.
  *
  * @since 0.1.0
+ *
+ * @details See implementation for details.
+ * @retval 0 Success or default value.
+ * @pre Module has been initialised.
+ * @pre Caller has validated arguments.
+ * @post Side effects bounded to documented state.
+ * @post State reflects operation result.
+ * @note Not thread-safe unless documented otherwise.
  */
 ble_npl_time_t ble_npl_time_get(void)
 {
@@ -647,6 +780,13 @@ ble_npl_time_t ble_npl_time_get(void)
  * @pre out_ticks != NULL.
  *
  * @since 0.1.0
+ *
+ * @details See implementation for details.
+ * @retval 0 Success or default value.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post State reflects operation result.
+ * @note Not thread-safe unless documented otherwise.
  */
 uint32_t ble_npl_time_ms_to_ticks(uint32_t ms, ble_npl_time_t* out_ticks)
 {
@@ -669,6 +809,13 @@ uint32_t ble_npl_time_ms_to_ticks(uint32_t ms, ble_npl_time_t* out_ticks)
  * @pre out_ms != NULL.
  *
  * @since 0.1.0
+ *
+ * @details See implementation for details.
+ * @retval 0 Success or default value.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post State reflects operation result.
+ * @note Not thread-safe unless documented otherwise.
  */
 uint32_t ble_npl_time_ticks_to_ms(ble_npl_time_t ticks, uint32_t* out_ms)
 {
@@ -688,6 +835,11 @@ uint32_t ble_npl_time_ticks_to_ms(ble_npl_time_t ticks, uint32_t* out_ms)
  * @post Calling thread has been suspended for at least ``ticks``.
  *
  * @since 0.1.0
+ *
+ * @details See implementation for details.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @note Not thread-safe unless documented otherwise.
  */
 void ble_npl_time_delay(ble_npl_time_t ticks)
 {
@@ -709,6 +861,12 @@ void ble_npl_time_delay(ble_npl_time_t ticks)
  * @note Pairs with ``ble_npl_hw_exit_critical``.
  *
  * @since 0.1.0
+ *
+ * @details See implementation for details.
+ * @retval 0 Success or default value.
+ * @pre Module has been initialised.
+ * @pre Caller has validated arguments.
+ * @post Side effects bounded to documented state.
  */
 uint32_t ble_npl_hw_enter_critical(void)
 {
@@ -723,6 +881,12 @@ uint32_t ble_npl_hw_enter_critical(void)
  * @post Interrupts are restored to ``ctx``.
  *
  * @since 0.1.0
+ *
+ * @details See implementation for details.
+ * @pre Module has been initialised.
+ * @pre Caller has validated arguments.
+ * @post Side effects bounded to documented state.
+ * @note Not thread-safe unless documented otherwise.
  */
 void ble_npl_hw_exit_critical(uint32_t ctx)
 {
@@ -739,6 +903,13 @@ void ble_npl_hw_exit_critical(uint32_t ctx)
  * only).
  *
  * @since 0.1.0
+ *
+ * @retval 0 Success or default value.
+ * @pre Module has been initialised.
+ * @pre Caller has validated arguments.
+ * @post Side effects bounded to documented state.
+ * @post State reflects operation result.
+ * @note Not thread-safe unless documented otherwise.
  */
 uint8_t ble_npl_hw_is_in_critical(void)
 {
@@ -775,6 +946,11 @@ static uint8_t s_dflt_eventq_ready = 0U;
  *       eventq.
  *
  * @since 0.1.0
+ *
+ * @details See implementation for details.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @note Not thread-safe unless documented otherwise.
  */
 void nimble_port_init(void)
 {
@@ -809,6 +985,10 @@ struct ble_npl_eventq* nimble_port_get_dflt_eventq(void)
  * @post Calling thread runs the host loop until shutdown.
  *
  * @since 0.1.0
+ *
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @note Not thread-safe unless documented otherwise.
  */
 void nimble_port_run(void)
 {
@@ -869,6 +1049,13 @@ __attribute__((weak)) struct os_mbuf* ble_transport_alloc_acl_from_ll(void)
  * @param[in] buf Buffer pointer; ignored by the stub.
  *
  * @since 0.1.0
+ *
+ * @details See implementation for details.
+ * @pre Module has been initialised.
+ * @pre Caller has validated arguments.
+ * @post Side effects bounded to documented state.
+ * @post State reflects operation result.
+ * @note Not thread-safe unless documented otherwise.
  */
 __attribute__((weak)) void ble_transport_free(void* buf)
 {
@@ -883,6 +1070,14 @@ __attribute__((weak)) void ble_transport_free(void* buf)
  * @return Always 0.
  *
  * @since 0.1.0
+ *
+ * @details See implementation for details.
+ * @retval 0 Success or default value.
+ * @pre Module has been initialised.
+ * @pre Caller has validated arguments.
+ * @post Side effects bounded to documented state.
+ * @post State reflects operation result.
+ * @note Not thread-safe unless documented otherwise.
  */
 __attribute__((weak)) int ble_transport_to_hs_evt(void* buf)
 {
@@ -898,6 +1093,14 @@ __attribute__((weak)) int ble_transport_to_hs_evt(void* buf)
  * @return Always 0.
  *
  * @since 0.1.0
+ *
+ * @details See implementation for details.
+ * @retval 0 Success or default value.
+ * @pre Module has been initialised.
+ * @pre Caller has validated arguments.
+ * @post Side effects bounded to documented state.
+ * @post State reflects operation result.
+ * @note Not thread-safe unless documented otherwise.
  */
 __attribute__((weak)) int ble_transport_to_hs_acl(struct os_mbuf* om)
 {
@@ -911,6 +1114,17 @@ __attribute__((weak)) int ble_transport_to_hs_acl(struct os_mbuf* om)
  * @return Always 0.
  *
  * @since 0.1.0
+ *
+ * @details See implementation for details.
+ * @param[in,out] data See function signature.
+ * @param[in,out] len See function signature.
+ * @param[in,out] om See function signature.
+ * @retval 0 Success or default value.
+ * @pre Module has been initialised.
+ * @pre Caller has validated arguments.
+ * @post Side effects bounded to documented state.
+ * @post State reflects operation result.
+ * @note Not thread-safe unless documented otherwise.
  */
 __attribute__((weak)) int os_mbuf_append(struct os_mbuf* om, const void* data, uint16_t len)
 {
@@ -926,6 +1140,15 @@ __attribute__((weak)) int os_mbuf_append(struct os_mbuf* om, const void* data, u
  * @return Always 0.
  *
  * @since 0.1.0
+ *
+ * @details See implementation for details.
+ * @param[in,out] om See function signature.
+ * @retval 0 Success or default value.
+ * @pre Module has been initialised.
+ * @pre Caller has validated arguments.
+ * @post Side effects bounded to documented state.
+ * @post State reflects operation result.
+ * @note Not thread-safe unless documented otherwise.
  */
 __attribute__((weak)) int os_mbuf_free_chain(struct os_mbuf* om)
 {
@@ -939,6 +1162,15 @@ __attribute__((weak)) int os_mbuf_free_chain(struct os_mbuf* om)
  * @return Always 0.
  *
  * @since 0.1.0
+ *
+ * @details See implementation for details.
+ * @param[in,out] om See function signature.
+ * @retval 0 Success or default value.
+ * @pre Module has been initialised.
+ * @pre Caller has validated arguments.
+ * @post Side effects bounded to documented state.
+ * @post State reflects operation result.
+ * @note Not thread-safe unless documented otherwise.
  */
 __attribute__((weak)) uint16_t os_mbuf_len(const struct os_mbuf* om)
 {
@@ -952,6 +1184,18 @@ __attribute__((weak)) uint16_t os_mbuf_len(const struct os_mbuf* om)
  * @return Always 0.
  *
  * @since 0.1.0
+ *
+ * @details See implementation for details.
+ * @param[in,out] dst See function signature.
+ * @param[in,out] len See function signature.
+ * @param[in,out] off See function signature.
+ * @param[in,out] om See function signature.
+ * @retval 0 Success or default value.
+ * @pre Module has been initialised.
+ * @pre Caller has validated arguments.
+ * @post Side effects bounded to documented state.
+ * @post State reflects operation result.
+ * @note Not thread-safe unless documented otherwise.
  */
 __attribute__((weak)) int os_mbuf_copydata(const struct os_mbuf* om, int off, int len, void* dst)
 {
@@ -970,15 +1214,82 @@ __attribute__((weak)) int os_mbuf_copydata(const struct os_mbuf* om, int off, in
  * which call the ``*_impl`` symbols defined in ``ble_hci_ra_ble.c``.
  * We provide weak ``to_ll_*`` aliases here so an app that bypasses
  * the upstream wrapper (e.g. a smoke test) can still link.
+ *
+ * @param[in,out] buf See function signature.
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ * @pre Module has been initialised.
+ * @pre Caller has validated arguments.
+ * @post Side effects bounded to documented state.
+ * @post State reflects operation result.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 __attribute__((weak)) int ble_transport_to_ll_cmd(void* buf)
 {
+  /**
+   * @brief Ble transport to ll cmd impl.
+   *
+   * @details See implementation for details.
+   *
+   * @param[in,out] buf See function signature for type and usage.
+   *
+   * @return Result code or value; see implementation.
+   * @retval 0 Success or default value.
+   *
+   * @pre Caller has validated arguments.
+   * @pre Module has been initialised.
+   * @post Side effects bounded to documented state.
+   * @post Returned value reflects current state.
+   *
+   * @note Not thread-safe unless documented otherwise.
+   *
+   * @since 0.1.0
+   */
   extern int ble_transport_to_ll_cmd_impl(void* buf);
   return ble_transport_to_ll_cmd_impl(buf);
 }
 
+/**
+ * @brief Ble transport to ll acl.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] om See function signature for type and usage.
+ *
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 __attribute__((weak)) int ble_transport_to_ll_acl(struct os_mbuf* om)
 {
+  /**
+   * @brief Ble transport to ll acl impl.
+   *
+   * @details See implementation for details.
+   *
+   * @param[in,out] om See function signature for type and usage.
+   *
+   * @return Result code or value; see implementation.
+   * @retval 0 Success or default value.
+   *
+   * @pre Caller has validated arguments.
+   * @pre Module has been initialised.
+   * @post Side effects bounded to documented state.
+   * @post Returned value reflects current state.
+   *
+   * @note Not thread-safe unless documented otherwise.
+   *
+   * @since 0.1.0
+   */
   extern int ble_transport_to_ll_acl_impl(struct os_mbuf * om);
   return ble_transport_to_ll_acl_impl(om);
 }

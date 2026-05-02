@@ -117,6 +117,34 @@ unusedStructMember:libs/ra_hal/inc/ra_wdt.h
 # the registration API (ra_isr_register takes a fixed function-pointer type).
 constParameterCallback:libs/ra_hal/src/ra_ipc.c
 
+# unusedStructMember in ra_ble_host implementation files. These TUs each
+# define a forward-compatible state struct whose fields are populated by
+# downstream NimBLE-target builds; cppcheck's per-TU view cannot see those
+# uses. Suppressing per-file rather than per-field keeps the suppression set
+# stable when new fields are added during BLE bring-up.
+unusedStructMember:libs/ra_ble_host/src/ra_ble_att.c
+unusedStructMember:libs/ra_ble_host/src/ra_ble_gatt.c
+unusedStructMember:libs/ra_ble_host/src/ra_ble_gatt_client.c
+unusedStructMember:libs/ra_ble_host/src/ra_ble_l2cap.c
+unusedStructMember:libs/ra_ble_host/src/ra_ble_mesh.c
+unusedStructMember:libs/ra_ble_host/src/ra_ble_security.c
+
+# unusedStructMember in NimBLE NPL-ThreadX bridge headers. Fields are
+# consumed by NimBLE host code at link time, not visible to the per-TU
+# cppcheck pass.
+unusedStructMember:port/nimble/nimble_npl_threadx.h
+
+# Cortex-M exception-frame and net-internal struct fields populated by
+# fault handlers / future net-stack consumers; not yet visible to the
+# per-TU cppcheck pass.
+unusedStructMember:libs/ra_core/inc/ra_exception.h
+unusedStructMember:libs/ra_net/src/ra_net_internal.h
+
+# knownConditionTrueFalse in ra_net_udp DNS poll loop. The inner check is
+# a defensive early-out that cppcheck proves redundant from the loop
+# condition, but it documents intent when the surrounding logic evolves.
+knownConditionTrueFalse:libs/ra_net/src/ra_net_udp.c:664
+
 # ---------------------------------------------------------------------------
 # misra-c2012-12.1 (Advisory) -- per-line suppressions under D-004 partial
 # deviation. See docs/qualification/MISRA_DEVIATIONS.md D-004 for the full

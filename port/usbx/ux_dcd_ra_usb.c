@@ -918,6 +918,9 @@ static bool s_dispatch_thread_started = false;
  * @pre ``ux_dcd_ra_usb_initialize`` has stamped ``s_dcd.speed``.
  * @pre ThreadX scheduler is running.
  *
+ * @return Never returns (worker loops forever).
+ * @retval (none) Worker entry; no value is ever returned.
+ *
  * @post Never returns.
  * @post For every INTSTS0 edge the bridge callback has executed.
  *

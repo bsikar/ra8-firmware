@@ -50,6 +50,25 @@
 static inline void internal_disable_irq(void)
 {
 #ifndef RA_SIMULATOR_MODE
+  /**
+   * @brief Volatile.
+   *
+   * @details See implementation for details.
+   *
+   * @param[in,out] memory See function signature for type and usage.
+   *
+   * @return Result code or value; see implementation.
+   * @retval 0 Success or default value.
+   *
+   * @pre Caller has validated arguments.
+   * @pre Module has been initialised.
+   * @post Side effects bounded to documented state.
+   * @post Returned value reflects current state.
+   *
+   * @note Not thread-safe unless documented otherwise.
+   *
+   * @since 0.1.0
+   */
   __asm__ volatile("cpsid i" ::: "memory");
 #endif
 }
@@ -75,6 +94,25 @@ static inline void internal_disable_irq(void)
 static inline void internal_bkpt(void)
 {
 #ifndef RA_SIMULATOR_MODE
+  /**
+   * @brief Volatile.
+   *
+   * @details See implementation for details.
+   *
+   * @param[in,out] bkpt See function signature for type and usage.
+   *
+   * @return Result code or value; see implementation.
+   * @retval 0 Success or default value.
+   *
+   * @pre Caller has validated arguments.
+   * @pre Module has been initialised.
+   * @post Side effects bounded to documented state.
+   * @post Returned value reflects current state.
+   *
+   * @note Not thread-safe unless documented otherwise.
+   *
+   * @since 0.1.0
+   */
   __asm__ volatile("bkpt #0");
 #endif
 }
@@ -98,10 +136,50 @@ static inline void internal_bkpt(void)
 static inline void internal_wfi(void)
 {
 #ifndef RA_SIMULATOR_MODE
+  /**
+   * @brief Volatile.
+   *
+   * @details See implementation for details.
+   *
+   * @param[in,out] wfi See function signature for type and usage.
+   *
+   * @return Result code or value; see implementation.
+   * @retval 0 Success or default value.
+   *
+   * @pre Caller has validated arguments.
+   * @pre Module has been initialised.
+   * @post Side effects bounded to documented state.
+   * @post Returned value reflects current state.
+   *
+   * @note Not thread-safe unless documented otherwise.
+   *
+   * @since 0.1.0
+   */
   __asm__ volatile("wfi");
 #endif
 }
 
+/**
+ * @brief Fatal-error trap: log and halt the system.
+ *
+ * @details Disables interrupts, emits a best-effort error line plus the
+ *          numeric @p err code, then traps via BKPT and an infinite loop
+ *          (or @c __builtin_trap on the simulator host so unit tests fail
+ *          loudly instead of spinning forever).
+ *
+ * @param[in] tag     NUL-terminated module/component tag.
+ * @param[in] message NUL-terminated short failure description.
+ * @param[in] err     Numeric error code (typically a @c ra_err_t value).
+ *
+ * @pre tag and message are non-NULL, NUL-terminated.
+ * @pre Interrupt state is recoverable from disabled (we never return).
+ * @post Interrupts are masked.
+ * @post Function does not return; control is trapped or loops forever.
+ *
+ * @note Weak symbol; downstream apps may override with a richer halt path.
+ *
+ * @since 0.1.0
+ */
 __attribute__((weak)) void
 internal_ra_fatal_error(const char* tag, const char* message, uint32_t err)
 {

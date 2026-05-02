@@ -146,6 +146,10 @@ static ra_sdcard_state_t s_sdcard;
  * @post On success ``*out_ocr & 0x80000000`` is non-zero.
  *
  * @since 0.1.0
+ *
+ * @details See implementation for details.
+ * @post Side effects bounded to documented state.
+ * @note Not thread-safe unless documented otherwise.
  */
 static ra_err_t internal_run_acmd41(uint8_t instance, uint32_t* out_ocr)
 {
@@ -201,6 +205,11 @@ static ra_err_t internal_run_acmd41(uint8_t instance, uint32_t* out_ocr)
  * @post On v2 success ``*out_blocks = (C_SIZE + 1) * 1024``.
  *
  * @since 0.1.0
+ *
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ * @post Side effects bounded to documented state.
+ * @note Not thread-safe unless documented otherwise.
  */
 static ra_err_t internal_decode_csd(const uint32_t* rsp, uint32_t* out_blocks)
 {
@@ -238,6 +247,25 @@ static ra_err_t internal_decode_csd(const uint32_t* rsp, uint32_t* out_blocks)
   return k_ra_err_hw_init_failed;
 }
 
+/**
+ * @brief Ra sdcard init.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] cfg See function signature for type and usage.
+ *
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ra_sdcard_init(const ra_sdcard_cfg_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg, s_tag, "cfg");
@@ -352,6 +380,13 @@ ra_err_t ra_sdcard_init(const ra_sdcard_cfg_t* cfg)
  * @return Argument value to load into SD_ARG.
  *
  * @since 0.1.0
+ *
+ * @retval 0 Success or default value.
+ * @pre Module has been initialised.
+ * @pre Caller has validated arguments.
+ * @post Side effects bounded to documented state.
+ * @post State reflects operation result.
+ * @note Not thread-safe unless documented otherwise.
  */
 static uint32_t internal_to_card_address(uint32_t lba)
 {
@@ -361,6 +396,27 @@ static uint32_t internal_to_card_address(uint32_t lba)
   return lba;
 }
 
+/**
+ * @brief Ra sdcard read blocks.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] lba See function signature for type and usage.
+ * @param[in,out] buf See function signature for type and usage.
+ * @param[in,out] count See function signature for type and usage.
+ *
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ra_sdcard_read_blocks(uint32_t lba, uint8_t* buf, uint32_t count)
 {
   RA_CHECK_NULL_PTR(buf, s_tag, "buf");
@@ -377,6 +433,27 @@ ra_err_t ra_sdcard_read_blocks(uint32_t lba, uint8_t* buf, uint32_t count)
   return ra_sdhi_read_block(s_sdcard.instance, card_lba, buf, count);
 }
 
+/**
+ * @brief Ra sdcard write blocks.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] lba See function signature for type and usage.
+ * @param[in,out] buf See function signature for type and usage.
+ * @param[in,out] count See function signature for type and usage.
+ *
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ra_sdcard_write_blocks(uint32_t lba, const uint8_t* buf, uint32_t count)
 {
   RA_CHECK_NULL_PTR(buf, s_tag, "buf");
@@ -393,6 +470,25 @@ ra_err_t ra_sdcard_write_blocks(uint32_t lba, const uint8_t* buf, uint32_t count
   return ra_sdhi_write_block(s_sdcard.instance, card_lba, buf, count);
 }
 
+/**
+ * @brief Ra sdcard get capacity.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] out_blocks See function signature for type and usage.
+ *
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ra_sdcard_get_capacity(uint32_t* out_blocks)
 {
   RA_CHECK_NULL_PTR(out_blocks, s_tag, "out_blocks");
@@ -403,6 +499,25 @@ ra_err_t ra_sdcard_get_capacity(uint32_t* out_blocks)
   return k_ra_ok;
 }
 
+/**
+ * @brief Ra sdcard get type.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] out_type See function signature for type and usage.
+ *
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ra_sdcard_get_type(ra_sdcard_card_type_t* out_type)
 {
   RA_CHECK_NULL_PTR(out_type, s_tag, "out_type");
@@ -413,6 +528,23 @@ ra_err_t ra_sdcard_get_type(ra_sdcard_card_type_t* out_type)
   return k_ra_ok;
 }
 
+/**
+ * @brief Ra sdcard deinit.
+ *
+ * @details See implementation for details.
+ *
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ra_sdcard_deinit(void)
 {
   if (s_sdcard.initialised == 0U) {

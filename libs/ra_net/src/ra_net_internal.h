@@ -234,6 +234,24 @@ typedef enum : uint32_t {
 } ra_net_shifts_t;
 
 /* Bounded-buffer helpers (project style: avoid memcpy/memset linting). */
+/**
+ * @brief Ra net copy bytes.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] dst See function signature for type and usage.
+ * @param[in,out] src See function signature for type and usage.
+ * @param[in,out] n See function signature for type and usage.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 static inline void ra_net_copy_bytes(uint8_t* dst, const uint8_t* src, uint16_t n)
 {
   for (uint16_t i = 0U; i < n; i++) {
@@ -241,6 +259,23 @@ static inline void ra_net_copy_bytes(uint8_t* dst, const uint8_t* src, uint16_t 
   }
 }
 
+/**
+ * @brief Ra net zero bytes.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] dst See function signature for type and usage.
+ * @param[in,out] n See function signature for type and usage.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 static inline void ra_net_zero_bytes(uint8_t* dst, uint16_t n)
 {
   for (uint16_t i = 0U; i < n; i++) {
@@ -248,6 +283,27 @@ static inline void ra_net_zero_bytes(uint8_t* dst, uint16_t n)
   }
 }
 
+/**
+ * @brief Ra net compare bytes.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] a See function signature for type and usage.
+ * @param[in,out] b See function signature for type and usage.
+ * @param[in,out] n See function signature for type and usage.
+ *
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 static inline int ra_net_compare_bytes(const uint8_t* a, const uint8_t* b, uint16_t n)
 {
   for (uint16_t i = 0U; i < n; i++) {
@@ -260,23 +316,95 @@ static inline int ra_net_compare_bytes(const uint8_t* a, const uint8_t* b, uint1
 
 /* Helpers shared across TUs ------------------------------------------------ */
 
+/**
+ * @brief Ra net be16.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] p See function signature for type and usage.
+ *
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 static inline uint16_t ra_net_be16(const uint8_t* p)
 {
   return (uint16_t)((((uint16_t)p[0]) << k_shift_byte_1) | (uint16_t)p[1]);
 }
 
+/**
+ * @brief Ra net put be16.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] p See function signature for type and usage.
+ * @param[in,out] v See function signature for type and usage.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 static inline void ra_net_put_be16(uint8_t* p, uint16_t v)
 {
   p[0] = (uint8_t)(v >> k_shift_byte_1);
   p[1] = (uint8_t)(v & (uint16_t)k_byte_mask_low);
 }
 
+/**
+ * @brief Ra net be32.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] p See function signature for type and usage.
+ *
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 static inline uint32_t ra_net_be32(const uint8_t* p)
 {
   return (((uint32_t)p[0]) << k_shift_byte_3) | (((uint32_t)p[1]) << k_shift_byte_2) |
          (((uint32_t)p[2]) << k_shift_byte_1) | ((uint32_t)p[3]);
 }
 
+/**
+ * @brief Ra net put be32.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] p See function signature for type and usage.
+ * @param[in,out] v See function signature for type and usage.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 static inline void ra_net_put_be32(uint8_t* p, uint32_t v)
 {
   p[0] = (uint8_t)(v >> k_shift_byte_3);

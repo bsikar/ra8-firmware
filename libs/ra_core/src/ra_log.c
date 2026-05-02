@@ -233,6 +233,22 @@ typedef enum : uint8_t {
   k_ra_decimal_base   = 10U, /**< Decimal radix.                    */
 } ra_log_u32_t;
 
+/**
+ * @brief Itm put u32.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] value See function signature for type and usage.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 static inline void internal_itm_put_u32(uint32_t value)
 {
   char    buf[k_ra_u32_max_digits + 1U] = {};
@@ -438,21 +454,89 @@ static void internal_emit_line_i(const char* level, const char* tag, const char*
 
 /* ---- plain string log -------------------------------------------------- */
 
+/**
+ * @brief Ra log error.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] tag See function signature for type and usage.
+ * @param[in,out] message See function signature for type and usage.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 __attribute__((weak)) void internal_ra_log_error(const char* tag, const char* message)
 {
   internal_emit_line("ERROR", tag, message);
 }
 
+/**
+ * @brief Ra log warn.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] tag See function signature for type and usage.
+ * @param[in,out] message See function signature for type and usage.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 __attribute__((weak)) void internal_ra_log_warn(const char* tag, const char* message)
 {
   internal_emit_line("WARN", tag, message);
 }
 
+/**
+ * @brief Ra log info.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] tag See function signature for type and usage.
+ * @param[in,out] message See function signature for type and usage.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 __attribute__((weak)) void internal_ra_log_info(const char* tag, const char* message)
 {
   internal_emit_line("INFO", tag, message);
 }
 
+/**
+ * @brief Ra log debug.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] tag See function signature for type and usage.
+ * @param[in,out] message See function signature for type and usage.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 __attribute__((weak)) void internal_ra_log_debug(const char* tag, const char* message)
 {
   internal_emit_line("DEBUG", tag, message);
@@ -460,24 +544,80 @@ __attribute__((weak)) void internal_ra_log_debug(const char* tag, const char* me
 
 /* ---- string + value log ------------------------------------------------- */
 
+/**
+ * @brief ERROR-level log emitter that also reports a uint32 value.
+ * @details Weak default backend. Forwards to ::internal_emit_line_u with the
+ *          fixed level string "ERROR".
+ * @param[in] tag     NUL-terminated module tag (e.g. "ra_log").
+ * @param[in] message NUL-terminated short event description.
+ * @param[in] value   uint32 datum appended as "=NNN" to the line.
+ * @pre tag and message are non-NULL, NUL-terminated.
+ * @pre ra_log_init() has run (otherwise the line is silently dropped).
+ * @post One line is emitted to the log backend (or dropped if backend down).
+ * @post No internal logger state is modified.
+ * @note Thread-safety inherited from the active backend (ITM by default).
+ * @since 0.1.0
+ */
 __attribute__((weak)) void
 internal_ra_log_error_val(const char* tag, const char* message, uint32_t value)
 {
   internal_emit_line_u("ERROR", tag, message, value);
 }
 
+/**
+ * @brief WARN-level log emitter that also reports a uint32 value.
+ * @details Weak default backend. Forwards to ::internal_emit_line_u with the
+ *          fixed level string "WARN".
+ * @param[in] tag     NUL-terminated module tag.
+ * @param[in] message NUL-terminated short event description.
+ * @param[in] value   uint32 datum appended as "=NNN" to the line.
+ * @pre tag and message are non-NULL, NUL-terminated.
+ * @pre ra_log_init() has run.
+ * @post One line is emitted (or dropped).
+ * @post No internal logger state is modified.
+ * @note Thread-safety inherited from the active backend.
+ * @since 0.1.0
+ */
 __attribute__((weak)) void
 internal_ra_log_warn_val(const char* tag, const char* message, uint32_t value)
 {
   internal_emit_line_u("WARN", tag, message, value);
 }
 
+/**
+ * @brief INFO-level log emitter that also reports a uint32 value.
+ * @details Weak default backend. Forwards to ::internal_emit_line_u with the
+ *          fixed level string "INFO".
+ * @param[in] tag     NUL-terminated module tag.
+ * @param[in] message NUL-terminated short event description.
+ * @param[in] value   uint32 datum appended as "=NNN" to the line.
+ * @pre tag and message are non-NULL, NUL-terminated.
+ * @pre ra_log_init() has run.
+ * @post One line is emitted (or dropped).
+ * @post No internal logger state is modified.
+ * @note Thread-safety inherited from the active backend.
+ * @since 0.1.0
+ */
 __attribute__((weak)) void
 internal_ra_log_info_val(const char* tag, const char* message, uint32_t value)
 {
   internal_emit_line_u("INFO", tag, message, value);
 }
 
+/**
+ * @brief DEBUG-level log emitter that also reports a signed int32 value.
+ * @details Weak default backend. Forwards to ::internal_emit_line_i with the
+ *          fixed level string "DEBUG".
+ * @param[in] tag     NUL-terminated module tag.
+ * @param[in] message NUL-terminated short event description.
+ * @param[in] value   int32 datum appended as "=NNN" (sign preserved).
+ * @pre tag and message are non-NULL, NUL-terminated.
+ * @pre ra_log_init() has run.
+ * @post One line is emitted (or dropped).
+ * @post No internal logger state is modified.
+ * @note Thread-safety inherited from the active backend.
+ * @since 0.1.0
+ */
 __attribute__((weak)) void
 internal_ra_log_debug_val(const char* tag, const char* message, int32_t value)
 {

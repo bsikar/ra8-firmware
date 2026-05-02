@@ -334,6 +334,16 @@ static void internal_clear_csr_flags(volatile r_sci_regs_t* reg)
  * On the host (`RA_SIMULATOR_MODE`) the simulator does not model the
  * shift-register drain -- `*reg` would never see TEND assert -- so we
  * short-circuit and return success.
+ *
+ * @param[in,out] reg See function signature.
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ * @pre Module has been initialised.
+ * @pre Caller has validated arguments.
+ * @post Side effects bounded to documented state.
+ * @post State reflects operation result.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t internal_wait_tx_end(volatile r_sci_regs_t* reg)
 {

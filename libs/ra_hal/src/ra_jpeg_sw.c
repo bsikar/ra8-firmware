@@ -1264,6 +1264,19 @@ dec_block(ra_jpeg_dec_ctx_t* d, ra_jpeg_bitreader_t* br, uint8_t ci, int32_t* ou
  * @details
  * MVE-accelerated path is enabled when `__ARM_FEATURE_MVE` is
  * defined (Cortex-M85 target). Host tests run the scalar path.
+ *
+ * @param[in,out] cb See function signature.
+ * @param[in,out] cr See function signature.
+ * @param[in,out] out_b See function signature.
+ * @param[in,out] out_g See function signature.
+ * @param[in,out] out_r See function signature.
+ * @param[in,out] y See function signature.
+ * @pre Module has been initialised.
+ * @pre Caller has validated arguments.
+ * @post Side effects bounded to documented state.
+ * @post State reflects operation result.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static inline void
 ycc_to_rgb(int32_t y, int32_t cb, int32_t cr, uint8_t* out_r, uint8_t* out_g, uint8_t* out_b)

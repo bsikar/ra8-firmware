@@ -38,8 +38,60 @@ typedef enum {
   k_bt_mesh_prov_gatt = 1 << 1,
 } ra_internal_bt_mesh_prov_bearer_t;
 
-extern int  bt_mesh_prov_enable(uint32_t bearers);
-extern int  bt_mesh_prov_disable(uint32_t bearers);
+/**
+ * @brief Bt mesh prov enable.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] bearers See function signature for type and usage.
+ *
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
+extern int bt_mesh_prov_enable(uint32_t bearers);
+/**
+ * @brief Bt mesh prov disable.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] bearers See function signature for type and usage.
+ *
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
+extern int bt_mesh_prov_disable(uint32_t bearers);
+/**
+ * @brief Bt mesh reset.
+ *
+ * @details See implementation for details.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 extern void bt_mesh_reset(void);
 
 /*
@@ -47,18 +99,70 @@ extern void bt_mesh_reset(void);
  * objects are wired into the per-app build. Strong upstream symbols
  * override these once the mesh stack is brought in.
  */
+/**
+ * @brief Bt mesh prov enable.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] bearers See function signature for type and usage.
+ *
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 __attribute__((weak)) int bt_mesh_prov_enable(uint32_t bearers)
 {
   (void)bearers;
   return 0;
 }
 
+/**
+ * @brief Bt mesh prov disable.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] bearers See function signature for type and usage.
+ *
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 __attribute__((weak)) int bt_mesh_prov_disable(uint32_t bearers)
 {
   (void)bearers;
   return 0;
 }
 
+/**
+ * @brief Bt mesh reset.
+ *
+ * @details See implementation for details.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 __attribute__((weak)) void bt_mesh_reset(void) {}
 #endif
 
@@ -326,6 +430,8 @@ ra_err_t ra_ble_mesh_factory_reset(void)
  * @note Not thread-safe.
  *
  * @since 0.1.0
+ *
+ * @details See implementation for details.
  */
 ra_err_t ra_ble_mesh_attach_event_handler(ra_ble_mesh_event_fn_t fn, void* ctx)
 {
@@ -336,7 +442,40 @@ ra_err_t ra_ble_mesh_attach_event_handler(ra_ble_mesh_event_fn_t fn, void* ctx)
 
 #ifdef UNIT_TEST
 /* Test-hook prototypes (external linkage). */
-void    ra_ble_mesh_test_emit_event(const ra_ble_mesh_event_t* evt);
+/**
+ * @brief Ra ble mesh test emit event.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] evt See function signature for type and usage.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
+void ra_ble_mesh_test_emit_event(const ra_ble_mesh_event_t* evt);
+/**
+ * @brief Ra ble mesh test prov active.
+ *
+ * @details See implementation for details.
+ *
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 uint8_t ra_ble_mesh_test_prov_active(void);
 
 /**

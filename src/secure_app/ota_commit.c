@@ -139,6 +139,8 @@ ra_err_t ra_ota_commit_swap_bank(ra_ota_bank_t target)
  *
  * @note Not thread-safe.
  * @since 0.1.0
+ *
+ * @details See implementation for details.
  */
 ra_err_t ra_ota_commit_pending(ra_ota_bank_t* out_target)
 {
@@ -196,6 +198,8 @@ ra_err_t ra_ota_commit_set_bank_config(uint32_t raw_value)
  * @note Not thread-safe.
  * @see ra_ota_commit_set_bank_config
  * @since 0.1.0
+ *
+ * @details See implementation for details.
  */
 ra_err_t ra_ota_commit_get_bank_config(uint32_t* out_value)
 {

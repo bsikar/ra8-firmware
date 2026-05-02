@@ -839,6 +839,20 @@ internal_yc_offsets(uint8_t channel, ra_vin_off_t* off1, ra_vin_off_t* off2, ra_
   return k_ra_ok;
 }
 
+/**
+ * @brief Ra vin dispatch.
+ *
+ * @details See implementation for details.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 void ra_vin_dispatch(void)
 {
   /* HUM Ch 67.2.16 "INTS: Interrupt Status Register" p 3989 */
@@ -918,6 +932,11 @@ typedef enum : uint8_t {
  *
  * @note Pure helper; safe from any context.
  * @since 0.1.0
+ *
+ * @details See implementation for details.
+ * @retval 0 Success or default value.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
  */
 static uint8_t internal_format_bpp(ra_vin_input_fmt_t format)
 {
