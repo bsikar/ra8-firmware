@@ -68,7 +68,7 @@ typedef enum : uint32_t {
  *
  * @retval k_ra_ok               Every LED pin is now a digital output.
  * @retval k_ra_err_invalid_arg  A pin id was rejected by the HAL.
- * @retval k_ra_err_pin_conflict A pin was already claimed.
+ * @retval k_ra_err_gpio_conflict A pin was already claimed.
  *
  * @pre IOPORT module is reachable (true on reset).
  * @pre Caller is single-threaded init context.
