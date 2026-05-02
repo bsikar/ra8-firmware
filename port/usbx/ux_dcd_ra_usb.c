@@ -473,16 +473,6 @@ ra_err_t ux_dcd_ra_usb_initialize(ra_usb_speed_t speed)
                      s_tag,
                      "ra_usb_attach_handler");
 
-  /* Wire the controller's NVIC line into ra_usb_dispatch so SETUP /
-   * BRDY / BEMP / DVST events actually drain INTSTS0 instead of
-   * accumulating until the host gives up. Hardware verification on
-   * EK-RA8D2 confirmed enumeration silently failed without this. */
-  const ra_elc_event_t   irq_event = internal_pick_event(speed);
-  const ra_isr_handler_t irq_fn    = internal_pick_isr(speed);
-  RA_RETURN_ON_ERROR(ra_isr_register(irq_event, irq_fn, nullptr, k_ra_usb_dcd_isr_prio, nullptr),
-                     s_tag,
-                     "ra_isr_register usb");
-
   /* Wire ourselves into _ux_system_slave -> ux_system_slave_dcd. */
   if (_ux_system_slave == UX_NULL) {
     return k_ra_err_invalid_state;
@@ -496,6 +486,12 @@ ra_err_t ux_dcd_ra_usb_initialize(ra_usb_speed_t speed)
   s_dcd.speed = speed;
   s_dcd.owner = owner;
   s_dcd.state = k_ux_dcd_ra_usb_state_ready;
+
+  /* IRQ wiring temporarily disabled — see WIP investigation in
+   * docs/HARDWARE_BRINGUP.md. Polled mode keeps the bridge functional
+   * without the fault we hit when ra_isr_register'ing USBFS_INT. */
+  (void)internal_pick_event;
+  (void)internal_pick_isr;
   for (uint8_t i = 0U; i < (uint8_t)k_ux_dcd_ra_usb_max_pipes; i++) {
     s_dcd.pipes[i].xfer = nullptr;
   }
