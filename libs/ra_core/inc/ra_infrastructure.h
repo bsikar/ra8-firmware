@@ -47,9 +47,19 @@ extern "C" {
  * - Enables the I-cache and D-cache for performance.
  * - Enables the branch prediction unit.
  *
+ * @return None.
+ * @retval None
+ *
+ * @pre `SystemInit()` has already executed.
+ * @pre Function is called from a single-threaded context.
+ * @post Log backend, pin validator, and stack canary are initialised.
+ * @post Subsequent `ra_*_init()` driver entries may be called.
+ *
  * @note Must be called before any `ra_*` driver init function. Safe
  *       to call from `main()` before ThreadX / FreeRTOS / etc. starts
- *       (no scheduling dependency).
+ *       (no scheduling dependency). Not thread-safe.
+ *
+ * @since 0.1.0
  */
 void ra_infrastructure_init(void);
 
