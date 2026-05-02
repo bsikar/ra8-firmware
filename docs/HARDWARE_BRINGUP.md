@@ -856,3 +856,136 @@ Logic-analyzer-class debug needed; out of scope for this sweep.
   `HardFault_Handler`, `MemManage_Handler`, `BusFault_Handler`,
   `UsageFault_Handler`, `SecureFault_Handler`, or 0xEFFFFFFE
   observed.
+
+## 2026-05-02 LevelX OCTA pin readback verification
+
+Added a new JLink-readable global to the LevelX-on-xSPI driver
+(`port/levelx/lx_nor_driver_ra_xspi.c`), `g_ra_xspi_pin_observed`,
+which captures the 5-bit `PSEL` and the `PMR` bit of every OCTA
+pin AFTER `ra_board_xspi_pins_init` returns. Goal: confirm /
+disprove the long-standing hypothesis that one of the 12 pins in
+the BSP table (`s_xspi_octa_pins`) is mis-routed -- which would
+silently drop CS / DQ on the wrong pad and explain the all-ones
+RDID readout.
+
+### Verification procedure
+
+1. `arm-none-eabi-nm threadx_filex_levelx_demo.elf | grep g_ra_xspi_pin_observed`
+   -> address `0x220044AC` (will move; re-resolve on rebuild).
+2. Flash, settle 5s, halt.
+3. `JLinkExe ... mem32 0x220044AC 24` (12 rows x 8 bytes per row).
+
+Each row encodes `{port, pin, psel_observed, pmr_observed, pfs_raw}`.
+
+### Observed (commit pending)
+
+```
+220044AC = 011C0401 1C010002 011C0808 1C010000   <- CS=P104, CK=P808
+220044BC = 011C0108 1C010002 011C0001 1C010002   <- DQS=P801, DQ0=P100
+220044CC = 011C0308 1C010002 011C0301 1C010002   <- DQ1=P803, DQ2=P103
+220044DC = 011C0101 1C010002 011C0201 1C010002   <- DQ3=P101, DQ4=P102
+220044EC = 011C0008 1C010002 011C0208 1C010002   <- DQ5=P800, DQ6=P802
+220044FC = 011C0408 1C010002 FFFFFFFF 00000000   <- DQ7=P804, sentinel
+```
+
+Decoded: every active row has `psel_observed = 0x1C`
+(`k_ra_psel_qspi`) and `pmr_observed = 1`. **All 12 OCTA pins are
+correctly routed to the OSPI peripheral.** Pin-routing hypothesis
+is conclusively ruled out. The BSP `s_xspi_octa_pins` enum matches
+EK-RA8D2 v1 UM Table 29 (p 35) byte-for-byte, and the chip's PFS
+hardware confirms the routing took effect.
+
+The remaining all-ones RDID readout (`0x00FFFFFF`, captured via
+`g_ra_xspi_rdid_observed` at `0x2200448C`) is therefore caused by
+something the chip is doing on the bus side -- not by the
+controller failing to drive the right pad. Most likely candidates
+are now (in order of plausibility):
+
+1. **Voltage / pull-up issue on a DQ line** (would need a 'scope to confirm).
+2. **DQS sampling phase wrong** (`LIOCFGCS[0].DQSEN` / `SDRSMPMD`).
+3. **Chip stuck in QPI** (4S-4S-4S) -- the dual 8D + 1S reset
+   sequence in `priv_bus_init_once` doesn't try the QPI-form RSTEN/RST.
+4. **Octa-SPI PHY calibration** (`LIOCFGCS[0]` slew / drive strength)
+   not yet matched to the IS25LX512M datasheet recommendations.
+
+All four are logic-analyzer / 'scope class debugging. WIP marked
+permanent for this app pair until that hardware is available.
+
+## 2026-05-02 lcd_demo + ereader root cause
+
+The `lcd_demo` and `ereader` apps both halt at `*_panic_halt` very
+early in boot. `addr2line` of the captured PC + LR pinpoints:
+
+| App | PC | LR | Failing call |
+|---|---|---|---|
+| lcd_demo | `0x02000204` (panic_halt) | `0x02000515` | `lcd_demo_pins_init()` (main.c:555) |
+| ereader  | `0x0200042C` (panic_halt) | `0x02000657` | `ra_board_led_init(k_ra_board_led1)` (main.c:672) |
+
+**Common root cause:** Both apps' `k_*_glcdc_pins[]` tables are the
+unfinished TODO stub left over from before the EK-RA8D2 v1 board
+manual landed in `docs/reference/`. They list LCDD0..LCDD7 as
+P600..P607, LCDD8..15 as P700..P707, LCDD16..23 as P800..P807,
+HSYNC/VSYNC/DE/CLK as P900..P903 -- a guess based on the chip's
+GLCDC pin-capability table, not the actual board.
+
+The real EK-RA8D2 v1 LCD-connector wiring (UM Table 33, p 42, the
+"Parallel Graphics Expansion Port") is scattered across ports 2, 5,
+6, 7, 8, 9, B with completely different bit assignments. Examples:
+
+  - LCD_CLK   = P515  (BSP guess: P903)
+  - LCD_TCON0 = P806  (BSP guess: P900 = VSYNC)
+  - LCD_TCON1 = P805  (BSP guess: P901 = HSYNC)
+  - LCD_TCON2 = P807  (BSP guess: P902 = DE)
+  - RGB565 R5 = PB01
+  - RGB565 R6 = PB04
+  - RGB565 R7 = PB03
+  ... etc, full table at HARDWARE_BRINGUP.md `Table 33` excerpt.
+
+The downstream symptom differs between the two apps because of
+init-order:
+
+- `lcd_demo` calls `ra_board_led_init(LED1)` BEFORE
+  `lcd_demo_pins_init()`. LED1 is P600. The pin validator gives
+  P600 to LED1, then `lcd_demo_pins_init()` immediately tries to
+  re-claim P600 as LCDD0 (its first GLCDC pin) and gets
+  `k_ra_err_gpio_conflict`. Panic.
+
+- `ereader` calls `ereader_pins_init()` BEFORE
+  `ra_board_led_init(LED1)`. The GLCDC route succeeds (P600 silently
+  becomes LCDD0), then `ra_board_led_init(LED1)` tries to take
+  P600 as plain GPIO and the validator denies it. Panic.
+
+`lcd_demo` also collides with LED2 (P303 not in its pin table) and
+with the J-Link OB SCI8 console (PD02/PD03 -- LCDD0..LCDD7 stub
+overlaps PD's range only if extended). `ereader`'s SDHI table
+(`k_ereader_sdhi_pins`) is similarly stubbed at P400..P407, which
+on EK-RA8D2 v1 are CANFD/IIC pads not SDHI -- the board has no
+on-chip SD slot at all (Tier 7 in the README, requires extra
+hardware).
+
+### Fix scope
+
+Properly fixing these two apps requires:
+
+1. **Parallel Graphics Expansion Board 1** (sold separately by
+   Renesas) physically attached to J1, OR concession that the
+   apps are software-stack demos that exercise the GLCDC API
+   without lighting an external panel.
+2. Full re-typing of `k_lcd_demo_glcdc_pins[]` and
+   `k_ereader_glcdc_pins[]` against UM Table 33's 28 entries.
+3. Replacement of `k_ereader_sdhi_pins[]` with either real SDHI
+   pads (port D / port C on RA8D2 -- requires datasheet pin-function
+   sweep) or removal entirely if the EK-RA8D2 v1 has no SD slot.
+4. Switching the LED-init order in both apps so the GLCDC + SDHI
+   routing happens FIRST and the LED layer either uses pads not
+   on the LCD bus, or drops LED indication entirely while the LCD
+   is active.
+
+Items 2-4 are mechanical but pointless without item 1. Both apps
+are therefore reclassified as "requires Parallel Graphics
+Expansion Board" and stay in the `WIP` column of the smoke
+sweep until that hardware is available.
+
+The LCD test vehicles that actually validate today (no expansion
+board needed) are `clock_check`, `blink`, `blink_hal`,
+`threadx_blink` -- none of which try to drive the LCD bus.

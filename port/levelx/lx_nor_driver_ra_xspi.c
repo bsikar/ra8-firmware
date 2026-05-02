@@ -41,9 +41,11 @@
 #include <stdint.h>
 
 #include "lx_api.h"
+#include "ra8d2_pfs_regs.h"
 #include "ra_board_ek_ra8d2.h"
 #include "ra_err.h"
 #include "ra_log.h"
+#include "ra_port_constants.h"
 #include "ra_time.h"
 #include "ra_xspi.h"
 
@@ -144,6 +146,11 @@ static ULONG s_ra_lx_nor_sector_buffer[LX_NOR_SECTOR_SIZE];
  * @note Pure helper, no side effects.
  *
  * @since 0.1.0
+ *
+ * @details See implementation for details.
+ * @retval 0 Success or default value.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
  */
 static uint32_t priv_flash_offset_bytes(ULONG* flash_address)
 {
@@ -181,6 +188,9 @@ static uint32_t priv_flash_offset_bytes(ULONG* flash_address)
  * @note Not thread-safe; LevelX serialises driver calls.
  *
  * @since 0.1.0
+ *
+ * @retval 0 Success or default value.
+ * @post Side effects bounded to documented state.
  */
 static UINT priv_nor_read(ULONG* flash_address, ULONG* destination, ULONG words)
 {
@@ -226,6 +236,9 @@ static UINT priv_nor_read(ULONG* flash_address, ULONG* destination, ULONG words)
  * @note Not thread-safe; LevelX serialises driver calls.
  *
  * @since 0.1.0
+ *
+ * @retval 0 Success or default value.
+ * @post Side effects bounded to documented state.
  */
 static UINT priv_nor_write(ULONG* flash_address, ULONG* source, ULONG words)
 {
@@ -266,6 +279,10 @@ static UINT priv_nor_write(ULONG* flash_address, ULONG* source, ULONG words)
  * @note Not thread-safe; LevelX serialises driver calls.
  *
  * @since 0.1.0
+ *
+ * @retval 0 Success or default value.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
  */
 static UINT priv_nor_block_erase(ULONG block, ULONG erase_count)
 {
@@ -303,6 +320,10 @@ static UINT priv_nor_block_erase(ULONG block, ULONG erase_count)
  * @note Not thread-safe; LevelX serialises driver calls.
  *
  * @since 0.1.0
+ *
+ * @retval 0 Success or default value.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
  */
 static UINT priv_nor_block_erased_verify(ULONG block)
 {
@@ -446,6 +467,167 @@ typedef enum : uint32_t {
 ra_xspi_rdid_observation_t g_ra_xspi_rdid_observed;
 
 /**
+ * @enum ra_xspi_pin_count_t
+ * @brief Number of OCTA bus pin slots in ``g_ra_xspi_pin_observed``.
+ *
+ * @details
+ * 11 active rows (CS, CK, DQS, DQ0..DQ7) plus one reserved sentinel
+ * row so the array size matches the comment in
+ * ``ra_board_ek_ra8d2.c::s_xspi_octa_pins``. RESET_L is excluded --
+ * it is plain GPIO, not a peripheral function.
+ */
+typedef enum : uint8_t {
+  k_ra_xspi_pin_count = 12U, /**< CS + CK + DQS + DQ0..DQ7 + 1 spare. */
+} ra_xspi_pin_count_t;
+
+/**
+ * @struct ra_xspi_pin_observation_t
+ * @brief One row per OCTA pin captured AFTER ``ra_board_xspi_pins_init``.
+ *
+ * @details
+ * Stores both the (port, pin) pair the BSP claimed it routed and
+ * the actual PFS readback. If ``psel_observed`` != ``k_ra_psel_qspi``
+ * (0x1C) or ``pmr_observed`` != 1 the BSP enum is wrong for that pin
+ * and the chip will not see CS / CLK / DQ asserted on the right pad,
+ * which is the most likely root cause for the all-ones RDID readout
+ * documented in HARDWARE_BRINGUP.md.
+ *
+ * @invariant ``port <= k_ra_port_max`` or 0xFF sentinel.
+ *
+ * @see g_ra_xspi_pin_observed
+ *
+ * @since 0.1.0
+ */
+typedef struct {
+  uint8_t  port;          /**< Port index from ``ra_port_t``. */
+  uint8_t  pin;           /**< Pin index within the port.     */
+  uint8_t  psel_observed; /**< PFS PSEL[28..24] >> 24.        */
+  uint8_t  pmr_observed;  /**< 1 if PFS.PMR == 1 after init.  */
+  uint32_t pfs_raw;       /**< Full 32-bit PmnPFS readback.   */
+} ra_xspi_pin_observation_t;
+
+/**
+ * @var g_ra_xspi_pin_observed
+ * @brief JLink-readable PSEL readback for the 12 OCTA pin slots.
+ *
+ * @details
+ * Updated unconditionally by ``priv_bus_init_once`` immediately
+ * after ``ra_board_xspi_pins_init`` returns. Cold-boot value is
+ * all-zero (``.bss``). Look up the address with::
+ *
+ *     arm-none-eabi-nm <app>.elf | grep g_ra_xspi_pin_observed
+ *
+ * Then in JLinkExe::
+ *
+ *     mem32 <addr> 24
+ *
+ * to dump 12 rows (2 words / 8 bytes per row). Each row's
+ * ``psel_observed`` byte should equal 0x1C and ``pmr_observed``
+ * should equal 1; any deviation flags a BSP enum error.
+ *
+ * @note Not ``static`` -- exported for ``nm`` / JLink lookup.
+ * @warning Direct modification by other modules is forbidden.
+ *
+ * @since 0.1.0
+ */
+ra_xspi_pin_observation_t g_ra_xspi_pin_observed[k_ra_xspi_pin_count];
+
+/**
+ * @struct ra_xspi_pin_ref_t
+ * @brief Board-side reference (port, pin) for the 12 OCTA pad slots.
+ *
+ * @details
+ * Mirrors the order in
+ * ``libs/ra_board_ek_ra8d2/src/ra_board_ek_ra8d2.c::s_xspi_octa_pins``
+ * (CS, CK, DQS, DQ0..DQ7) so a JLink operator can match a row index
+ * in ``g_ra_xspi_pin_observed`` 1:1 with the BSP table comment.
+ * Sourced from EK-RA8D2 v1 UM Table 29 (p 35).
+ *
+ * @invariant ``port`` and ``pin`` are valid PFS indices, or 0xFF
+ *            sentinel for the reserved row.
+ *
+ * @since 0.1.0
+ */
+typedef struct {
+  uint8_t port; /**< Port index. */
+  uint8_t pin;  /**< Pin index.  */
+} ra_xspi_pin_ref_t;
+
+/**
+ * @var s_ra_xspi_pin_refs
+ * @brief Static reference list of OCTA (port, pin) pairs.
+ *
+ * @details
+ * Indexed by row 0..11 of ``g_ra_xspi_pin_observed``. The 12th slot
+ * is a sentinel (0xFF, 0xFF) reserved for parity with the BSP table.
+ *
+ * @note File-scope; read-only.
+ *
+ * @since 0.1.0
+ */
+static const ra_xspi_pin_ref_t s_ra_xspi_pin_refs[k_ra_xspi_pin_count] = {
+  {(uint8_t)k_ra_port_1, (uint8_t)k_ra_pin_4},  /**< CS,  P104. */
+  {(uint8_t)k_ra_port_8, (uint8_t)k_ra_pin_8},  /**< CK,  P808. */
+  {(uint8_t)k_ra_port_8, (uint8_t)k_ra_pin_1},  /**< DQS, P801. */
+  {(uint8_t)k_ra_port_1, (uint8_t)k_ra_pin_0},  /**< DQ0, P100. */
+  {(uint8_t)k_ra_port_8, (uint8_t)k_ra_pin_3},  /**< DQ1, P803. */
+  {(uint8_t)k_ra_port_1, (uint8_t)k_ra_pin_3},  /**< DQ2, P103. */
+  {(uint8_t)k_ra_port_1, (uint8_t)k_ra_pin_1},  /**< DQ3, P101. */
+  {(uint8_t)k_ra_port_1, (uint8_t)k_ra_pin_2},  /**< DQ4, P102. */
+  {(uint8_t)k_ra_port_8, (uint8_t)k_ra_pin_0},  /**< DQ5, P800. */
+  {(uint8_t)k_ra_port_8, (uint8_t)k_ra_pin_2},  /**< DQ6, P802. */
+  {(uint8_t)k_ra_port_8, (uint8_t)k_ra_pin_4},  /**< DQ7, P804. */
+  {0xFFU,                0xFFU               }, /**< Reserved sentinel. */
+};
+
+/**
+ * @brief Capture the post-init PFS state of every OCTA pin.
+ *
+ * @details
+ * Iterates ``s_ra_xspi_pin_refs`` and reads each pin's ``PmnPFS``
+ * register, extracting the 5-bit PSEL field and the PMR bit. Called
+ * AFTER ``ra_board_xspi_pins_init`` so any mis-routed pin where
+ * PSEL != 0x1C is recorded for JLink readout.
+ *
+ * @return Nothing.
+ *
+ * @pre ``ra_board_xspi_pins_init`` has been called.
+ * @pre IOPORT module clock is on.
+ *
+ * @post ``g_ra_xspi_pin_observed[0..k_ra_xspi_pin_count-1]`` filled.
+ * @post No state outside that array is modified.
+ *
+ * @note Not thread-safe; called once from boot.
+ *
+ * @since 0.1.0
+ */
+static void priv_capture_xspi_pin_state(void)
+{
+  for (uint8_t i = 0U; i < (uint8_t)k_ra_xspi_pin_count; i++) {
+    const uint8_t port                      = s_ra_xspi_pin_refs[i].port;
+    const uint8_t pin                       = s_ra_xspi_pin_refs[i].pin;
+    g_ra_xspi_pin_observed[i].port          = port;
+    g_ra_xspi_pin_observed[i].pin           = pin;
+    g_ra_xspi_pin_observed[i].psel_observed = 0xFFU;
+    g_ra_xspi_pin_observed[i].pmr_observed  = 0xFFU;
+    g_ra_xspi_pin_observed[i].pfs_raw       = 0U;
+    if ((port > (uint8_t)k_ra_port_max) || (pin > (uint8_t)k_ra_pin_max)) {
+      continue;
+    }
+    volatile uint32_t* pfs = ra_pfs_pmn((ra_port_t)port, (ra_pin_t)pin);
+    if (pfs == nullptr) {
+      continue;
+    }
+    const uint32_t raw                = *pfs;
+    g_ra_xspi_pin_observed[i].pfs_raw = raw;
+    g_ra_xspi_pin_observed[i].psel_observed =
+      (uint8_t)((raw >> (uint32_t)k_ra_pfs_bit_psel0) & 0x1FU);
+    g_ra_xspi_pin_observed[i].pmr_observed =
+      (uint8_t)(((raw & (uint32_t)k_ra_pfs_mask_pmr) != 0U) ? 1U : 0U);
+  }
+}
+
+/**
  * @brief One-shot guard so we only run the bus bring-up once.
  *
  * @details
@@ -501,6 +683,23 @@ typedef enum : uint8_t {
   k_ra_xspi_reset_form_8d = 2U, /**< Opcode + complement for 8D-8D-8D. */
 } ra_xspi_reset_form_t;
 
+/**
+ * @brief Bus init once.
+ *
+ * @details See implementation for details.
+ *
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 static UINT priv_bus_init_once(void)
 {
   if (s_xspi_bus_ready) {
@@ -521,9 +720,16 @@ static UINT priv_bus_init_once(void)
   g_ra_xspi_rdid_observed.stage        = (uint32_t)k_ra_xspi_stage_pins;
 
   if (ra_board_xspi_pins_init() != k_ra_ok) {
+    /* Capture whatever pin state we have BEFORE bailing so JLink can
+     * see how far the BSP got even on partial-failure paths. */
+    priv_capture_xspi_pin_state();
     ra_log_error(s_lx_xspi_tag, "xspi pin init failed");
     return (UINT)LX_ERROR;
   }
+  /* Snapshot post-init PSEL on every OCTA pad. Any row where
+   * psel_observed != 0x1C or pmr_observed != 1 means the BSP enum is
+   * wrong for that pin -- the chip will not see that signal. */
+  priv_capture_xspi_pin_state();
 
   /* Phase A: punch the chip out of any 8D-OPI mode left over from a
    * previous boot. The volatile-config register that selects 8D mode
@@ -590,6 +796,25 @@ static UINT priv_bus_init_once(void)
   return (UINT)LX_SUCCESS;
 }
 
+/**
+ * @brief Lx nor driver ra xspi initialize.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] nor_flash See function signature for type and usage.
+ *
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 UINT lx_nor_driver_ra_xspi_initialize(LX_NOR_FLASH* nor_flash)
 {
   if (nor_flash == LX_NULL) {
