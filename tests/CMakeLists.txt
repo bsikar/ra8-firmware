@@ -44,7 +44,81 @@ add_compile_definitions(RA_SIMULATOR_MODE UNIT_TEST)
 
 # Coverage instrumentation -- gcovr / lcov friendly.
 option(RA_COVERAGE "Emit gcov/lcov coverage data" ON)
-if(RA_COVERAGE)
+option(RA_MCDC     "Emit clang source-based coverage with MC/DC (DO-178B Level B)" OFF)
+
+# RA_MCDC takes precedence over RA_COVERAGE: the two instrumentation
+# schemes are mutually exclusive (clang's source-based coverage and
+# gcov-style arc/line counters use different runtime libraries).
+#
+# DO-178B Level B requires Modified Condition/Decision Coverage. The
+# only open-source path is clang >= 18 with -fcoverage-mcdc paired
+# with -fcoverage-mapping + -fprofile-instr-generate, then reported
+# via `llvm-cov show --show-mcdc-summary`.
+#
+# We probe the host compiler at configure time. If MC/DC is available
+# we wire it in for first-party sources only (third_party/ is opted
+# out -- see scripts/utils/mcdc_report.sh for the SOUP exemption
+# policy). If MC/DC is unavailable we fall back to gcc 14's
+# `-fcondition-coverage` (decision/condition coverage, NOT MC/DC) and
+# print a loud warning so callers know they are NOT measuring MC/DC.
+if(RA_MCDC)
+  set(RA_COVERAGE OFF CACHE BOOL "Disabled because RA_MCDC=ON" FORCE)
+
+  # Probe: does the active C compiler accept the MC/DC flag trio?
+  include(CheckCCompilerFlag)
+  set(CMAKE_REQUIRED_FLAGS "-fprofile-instr-generate -fcoverage-mapping -fcoverage-mcdc")
+  check_c_compiler_flag("-fcoverage-mcdc" RA_HAVE_CLANG_MCDC)
+  unset(CMAKE_REQUIRED_FLAGS)
+
+  if(RA_HAVE_CLANG_MCDC)
+    message(STATUS "RA_MCDC: clang MC/DC instrumentation ENABLED "
+                   "(-fprofile-instr-generate -fcoverage-mapping -fcoverage-mcdc)")
+    set(RA_MCDC_C_FLAGS
+        -O0 -g
+        -fprofile-instr-generate
+        -fcoverage-mapping
+        -fcoverage-mcdc
+    )
+    add_link_options(-fprofile-instr-generate -fcoverage-mapping)
+  else()
+    # gcc 14+ ships -fcondition-coverage. Probe for it as a best-effort
+    # fallback. This is NOT MC/DC -- it is condition coverage only.
+    set(CMAKE_REQUIRED_FLAGS "-fprofile-arcs -ftest-coverage -fcondition-coverage")
+    check_c_compiler_flag("-fcondition-coverage" RA_HAVE_GCC_CONDCOV)
+    unset(CMAKE_REQUIRED_FLAGS)
+
+    message(WARNING
+      "RA_MCDC requested but the host compiler does not support "
+      "clang's -fcoverage-mcdc. DO-178B Level B MC/DC CANNOT be "
+      "measured with this toolchain. "
+      "Install clang >= 18 (brew install llvm / apt install clang-18) "
+      "and re-run.")
+
+    if(RA_HAVE_GCC_CONDCOV)
+      message(WARNING
+        "Falling back to gcc -fcondition-coverage (condition coverage "
+        "only, NOT MC/DC).")
+      set(RA_MCDC_C_FLAGS
+          -O0 -g --coverage
+          -fprofile-arcs -ftest-coverage -fcondition-coverage
+      )
+      add_link_options(--coverage -fprofile-arcs -ftest-coverage)
+    else()
+      message(WARNING
+        "Falling back to plain gcov decision/branch coverage. No "
+        "condition-level data will be produced.")
+      set(RA_MCDC_C_FLAGS
+          -O0 -g --coverage -fprofile-arcs -ftest-coverage
+      )
+      add_link_options(--coverage -fprofile-arcs -ftest-coverage)
+    endif()
+  endif()
+
+  # Apply globally so test executables get the same flags as the
+  # ra_core_hal OBJECT library. Per-source opt-out for third_party
+  # is performed below, after the source lists are populated.
+  add_compile_options(${RA_MCDC_C_FLAGS})
+elseif(RA_COVERAGE)
   add_compile_options(-O0 -g --coverage -fprofile-arcs -ftest-coverage)
   add_link_options(--coverage -fprofile-arcs -ftest-coverage)
 endif()
@@ -192,6 +266,24 @@ set_source_files_properties(
     ${RA_EPUB_THIRD_PARTY}
     PROPERTIES COMPILE_OPTIONS -w
 )
+
+# Strip MC/DC / coverage instrumentation from vendored third_party
+# sources. Under DO-178B these are SOUP (Software Of Unknown
+# Pedigree) and are exempted from MC/DC measurement -- see
+# docs/MCDC.md. Per-file COMPILE_OPTIONS overrides the directory
+# add_compile_options() set above when RA_MCDC=ON.
+if(RA_MCDC)
+  set(RA_MCDC_THIRD_PARTY_SOURCES
+      ${RA_EPUB_THIRD_PARTY}
+  )
+  foreach(_src ${RA_MCDC_THIRD_PARTY_SOURCES})
+    set_property(SOURCE ${_src} APPEND PROPERTY COMPILE_OPTIONS
+        -fno-profile-instr-generate
+        -fno-coverage-mapping
+        -w
+    )
+  endforeach()
+endif()
 if(RA_REFLOW_USE_LITEHTML)
     set_source_files_properties(
         ${FW_ROOT}/libs/ra_reflow/v2/ra_reflow_v2.cpp
