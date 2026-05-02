@@ -185,8 +185,7 @@ ra_err_t ra_board_sw_read(ra_board_sw_id_t sw, ra_board_sw_state_t* out_pressed)
   return k_ra_ok;
 }
 
-ra_err_t
-ra_board_sw_attach_irq(ra_board_sw_id_t sw, ra_board_sw_irq_cb_t cb, void* ctx)
+ra_err_t ra_board_sw_attach_irq(ra_board_sw_id_t sw, ra_board_sw_irq_cb_t cb, void* ctx)
 {
   if (cb == NULL) {
     return k_ra_err_invalid_arg;
@@ -194,15 +193,40 @@ ra_board_sw_attach_irq(ra_board_sw_id_t sw, ra_board_sw_irq_cb_t cb, void* ctx)
   if ((uint8_t)sw >= (uint8_t)k_ra_board_sw_count) {
     return k_ra_err_invalid_arg;
   }
-  /* The actual ICU IRQ wiring is left to the caller's HAL config; this
-   * BSP veneer only verifies the (sw, irq) mapping above and stages
-   * the callback. The HAL hook lands once ra_icu_register_callback
-   * is wired through ra_board_sw_attach_irq -- left as a TODO since
-   * the ICU callback table is module-internal in libs/ra_hal/src.
+  /* Wiring this veneer to the HAL needs two ICU pieces, only one of
+   * which exists today:
    *
-   * TODO(bsp): once libs/ra_hal exposes ra_icu_register_callback for
-   * external IRQ channels, plumb (s_sw_irq_nums[sw], cb, ctx) here.
-   * Today we silence "unused" warnings to keep the BSP compiling. */
+   *   1. ra_icu_configure_irq_pin(channel, &cfg) -- already in
+   *      libs/ra_hal/inc/ra_icu.h; would be called with channel =
+   *      s_sw_irq_nums[sw] and cfg.sense = falling-edge so a button
+   *      press latches IRQCR[12]/IRQCR[13].
+   *   2. ra_isr_register(event, handler, ctx, prio, &slot) -- exists
+   *      in libs/ra_hal/inc/ra_isr.h, but takes a ra_elc_event_t and
+   *      the only IRQ-pin events currently named in
+   *      libs/ra_hal/inc/ra8d2_elc_regs.h are k_ra_elc_event_icu_irq0
+   *      (0x001), k_ra_elc_event_icu_irq1 (0x002), and
+   *      k_ra_elc_event_icu_irq15 (0x010). The board's SW1/SW2 land
+   *      on IRQ13-DS / IRQ12-DS, whose ELC events would be 0x00E and
+   *      0x00D respectively -- those enumerators are NOT defined.
+   *
+   * TODO(bsp): once libs/ra_hal/inc/ra8d2_elc_regs.h enumerates the
+   * full IRQ2..IRQ14 + IRQ16..IRQ31 set (k_ra_elc_event_icu_irq2 ..
+   * k_ra_elc_event_icu_irq31), plumb the call below:
+   *
+   *   const ra_icu_irq_cfg_t cfg = {
+   *     .sense      = k_ra_icu_irqmd_falling_edge,
+   *     .filter_div = k_ra_icu_fclksel_div_1,
+   *     .filter_en  = true,
+   *   };
+   *   ra_err_t err = ra_icu_configure_irq_pin(s_sw_irq_nums[sw], &cfg);
+   *   if (err != k_ra_ok) { return err; }
+   *   const ra_elc_event_t evt = (ra_elc_event_t)
+   *       ((uint16_t)k_ra_elc_event_icu_irq0 + s_sw_irq_nums[sw]);
+   *   return ra_isr_register(evt, (ra_isr_handler_t)cb, ctx,
+   *                          k_ra_isr_prio_default, NULL);
+   *
+   * Until the missing enumerators land, return k_ra_err_not_supported
+   * so callers fall back to polling via ra_board_sw_read(). */
   (void)s_sw_irq_nums[sw];
   (void)cb;
   (void)ctx;
@@ -222,41 +246,75 @@ ra_board_sw_attach_irq(ra_board_sw_id_t sw, ra_board_sw_irq_cb_t cb, void* ctx)
  * RGB888 mode. Order matches the UM table (J1-1..J1-38).
  */
 const ra_board_glcdc_pin_t g_ra_board_glcdc_rgb888_pins[] = {
-  {.signal = "BLEN",   .pin = (ra_port_pin_t)RA_PIN(k_ra_port_5, k_ra_pin_14)},  /**< J1-1 BLEN, P514. */
-  {.signal = "SDA1",   .pin = (ra_port_pin_t)RA_PIN(k_ra_port_5, k_ra_pin_11)},  /**< J1-2 SDA1, P511. */
-  {.signal = "INT",    .pin = (ra_port_pin_t)RA_PIN(k_ra_port_1, k_ra_pin_11)},  /**< J1-3 INT,  P111. */
-  {.signal = "SCL1",   .pin = (ra_port_pin_t)RA_PIN(k_ra_port_5, k_ra_pin_12)},  /**< J1-4 SCL1, P512. */
-  {.signal = "RST",    .pin = (ra_port_pin_t)RA_PIN(k_ra_port_6, k_ra_pin_6)},   /**< J1-6 RST,  P606. */
-  {.signal = "TCON0",  .pin = (ra_port_pin_t)RA_PIN(k_ra_port_8, k_ra_pin_6)},   /**< J1-9 VSYNC/TCON0, P806. */
-  {.signal = "CLK",    .pin = (ra_port_pin_t)RA_PIN(k_ra_port_5, k_ra_pin_15)},  /**< J1-10 CLK,        P515. */
-  {.signal = "TCON2",  .pin = (ra_port_pin_t)RA_PIN(k_ra_port_8, k_ra_pin_7)},   /**< J1-11 DE/TCON2,   P807. */
-  {.signal = "TCON1",  .pin = (ra_port_pin_t)RA_PIN(k_ra_port_8, k_ra_pin_5)},   /**< J1-12 HSYNC/TCON1,P805. */
-  {.signal = "EXTCLK", .pin = (ra_port_pin_t)RA_PIN(k_ra_port_7, k_ra_pin_10)},  /**< J1-13 EXTCLK,     P710. */
-  {.signal = "TCON3",  .pin = (ra_port_pin_t)RA_PIN(k_ra_port_5, k_ra_pin_13)},  /**< J1-14 TCON3,      P513. */
-  {.signal = "B1",     .pin = (ra_port_pin_t)RA_PIN(k_ra_port_9, k_ra_pin_15)},  /**< J1-15 DATA1/B1,   P915. */
-  {.signal = "B0",     .pin = (ra_port_pin_t)RA_PIN(k_ra_port_9, k_ra_pin_14)},  /**< J1-16 DATA0/B0,   P914. */
-  {.signal = "B3",     .pin = (ra_port_pin_t)RA_PIN(k_ra_port_9, k_ra_pin_2)},   /**< J1-17 DATA3/B3,   P902. */
-  {.signal = "B2",     .pin = (ra_port_pin_t)RA_PIN(k_ra_port_9, k_ra_pin_3)},   /**< J1-18 DATA2/B2,   P903. */
-  {.signal = "B5",     .pin = (ra_port_pin_t)RA_PIN(k_ra_port_9, k_ra_pin_11)},  /**< J1-19 DATA5/B5,   P911. */
-  {.signal = "B4",     .pin = (ra_port_pin_t)RA_PIN(k_ra_port_9, k_ra_pin_10)},  /**< J1-20 DATA4/B4,   P910. */
-  {.signal = "B7",     .pin = (ra_port_pin_t)RA_PIN(k_ra_port_9, k_ra_pin_13)},  /**< J1-21 DATA7/B7,   P913. */
-  {.signal = "B6",     .pin = (ra_port_pin_t)RA_PIN(k_ra_port_9, k_ra_pin_12)},  /**< J1-22 DATA6/B6,   P912. */
-  {.signal = "G1",     .pin = (ra_port_pin_t)RA_PIN(k_ra_port_2, k_ra_pin_7)},   /**< J1-23 DATA9/G1,   P207. */
-  {.signal = "G0",     .pin = (ra_port_pin_t)RA_PIN(k_ra_port_9, k_ra_pin_4)},   /**< J1-24 DATA8/G0,   P904. */
-  {.signal = "G3",     .pin = (ra_port_pin_t)RA_PIN(k_ra_port_11, k_ra_pin_6)},  /**< J1-25 DATA11/G3,  PB06. */
-  {.signal = "G2",     .pin = (ra_port_pin_t)RA_PIN(k_ra_port_11, k_ra_pin_7)},  /**< J1-26 DATA10/G2,  PB07. */
-  {.signal = "G5",     .pin = (ra_port_pin_t)RA_PIN(k_ra_port_11, k_ra_pin_1)},  /**< J1-27 DATA13/G5,  PB01. */
-  {.signal = "G4",     .pin = (ra_port_pin_t)RA_PIN(k_ra_port_11, k_ra_pin_5)},  /**< J1-28 DATA12/G4,  PB05. */
-  {.signal = "G7",     .pin = (ra_port_pin_t)RA_PIN(k_ra_port_11, k_ra_pin_3)},  /**< J1-29 DATA15/G7,  PB03. */
-  {.signal = "G6",     .pin = (ra_port_pin_t)RA_PIN(k_ra_port_11, k_ra_pin_4)},  /**< J1-30 DATA14/G6,  PB04. */
-  {.signal = "R1",     .pin = (ra_port_pin_t)RA_PIN(k_ra_port_11, k_ra_pin_0)},  /**< J1-31 DATA17/R1,  PB00. */
-  {.signal = "R0",     .pin = (ra_port_pin_t)RA_PIN(k_ra_port_11, k_ra_pin_2)},  /**< J1-32 DATA16/R0,  PB02. */
-  {.signal = "R3",     .pin = (ra_port_pin_t)RA_PIN(k_ra_port_7, k_ra_pin_11)},  /**< J1-33 DATA19/R3,  P711. */
-  {.signal = "R2",     .pin = (ra_port_pin_t)RA_PIN(k_ra_port_7, k_ra_pin_7)},   /**< J1-34 DATA18/R2,  P707. */
-  {.signal = "R5",     .pin = (ra_port_pin_t)RA_PIN(k_ra_port_7, k_ra_pin_13)},  /**< J1-35 DATA21/R5,  P713. */
-  {.signal = "R4",     .pin = (ra_port_pin_t)RA_PIN(k_ra_port_7, k_ra_pin_12)},  /**< J1-36 DATA20/R4,  P712. */
-  {.signal = "R7",     .pin = (ra_port_pin_t)RA_PIN(k_ra_port_7, k_ra_pin_15)},  /**< J1-37 DATA23/R7,  P715. */
-  {.signal = "R6",     .pin = (ra_port_pin_t)RA_PIN(k_ra_port_7, k_ra_pin_14)},  /**< J1-38 DATA22/R6,  P714. */
+  {.signal = "BLEN",
+   .pin    = (ra_port_pin_t)RA_PIN(k_ra_port_5, k_ra_pin_14)}, /**< J1-1 BLEN, P514. */
+  {.signal = "SDA1",
+   .pin    = (ra_port_pin_t)RA_PIN(k_ra_port_5, k_ra_pin_11)}, /**< J1-2 SDA1, P511. */
+  {.signal = "INT",
+   .pin    = (ra_port_pin_t)RA_PIN(k_ra_port_1, k_ra_pin_11)}, /**< J1-3 INT,  P111. */
+  {.signal = "SCL1",
+   .pin    = (ra_port_pin_t)RA_PIN(k_ra_port_5, k_ra_pin_12)},              /**< J1-4 SCL1, P512. */
+  {.signal = "RST", .pin = (ra_port_pin_t)RA_PIN(k_ra_port_6, k_ra_pin_6)}, /**< J1-6 RST,  P606. */
+  {.signal = "TCON0",
+   .pin    = (ra_port_pin_t)RA_PIN(k_ra_port_8, k_ra_pin_6)}, /**< J1-9 VSYNC/TCON0, P806. */
+  {.signal = "CLK",
+   .pin    = (ra_port_pin_t)RA_PIN(k_ra_port_5, k_ra_pin_15)}, /**< J1-10 CLK,        P515. */
+  {.signal = "TCON2",
+   .pin    = (ra_port_pin_t)RA_PIN(k_ra_port_8, k_ra_pin_7)}, /**< J1-11 DE/TCON2,   P807. */
+  {.signal = "TCON1",
+   .pin    = (ra_port_pin_t)RA_PIN(k_ra_port_8, k_ra_pin_5)}, /**< J1-12 HSYNC/TCON1,P805. */
+  {.signal = "EXTCLK",
+   .pin    = (ra_port_pin_t)RA_PIN(k_ra_port_7, k_ra_pin_10)}, /**< J1-13 EXTCLK,     P710. */
+  {.signal = "TCON3",
+   .pin    = (ra_port_pin_t)RA_PIN(k_ra_port_5, k_ra_pin_13)}, /**< J1-14 TCON3,      P513. */
+  {.signal = "B1",
+   .pin    = (ra_port_pin_t)RA_PIN(k_ra_port_9, k_ra_pin_15)}, /**< J1-15 DATA1/B1,   P915. */
+  {.signal = "B0",
+   .pin    = (ra_port_pin_t)RA_PIN(k_ra_port_9, k_ra_pin_14)}, /**< J1-16 DATA0/B0,   P914. */
+  {.signal = "B3",
+   .pin    = (ra_port_pin_t)RA_PIN(k_ra_port_9, k_ra_pin_2)}, /**< J1-17 DATA3/B3,   P902. */
+  {.signal = "B2",
+   .pin    = (ra_port_pin_t)RA_PIN(k_ra_port_9, k_ra_pin_3)}, /**< J1-18 DATA2/B2,   P903. */
+  {.signal = "B5",
+   .pin    = (ra_port_pin_t)RA_PIN(k_ra_port_9, k_ra_pin_11)}, /**< J1-19 DATA5/B5,   P911. */
+  {.signal = "B4",
+   .pin    = (ra_port_pin_t)RA_PIN(k_ra_port_9, k_ra_pin_10)}, /**< J1-20 DATA4/B4,   P910. */
+  {.signal = "B7",
+   .pin    = (ra_port_pin_t)RA_PIN(k_ra_port_9, k_ra_pin_13)}, /**< J1-21 DATA7/B7,   P913. */
+  {.signal = "B6",
+   .pin    = (ra_port_pin_t)RA_PIN(k_ra_port_9, k_ra_pin_12)}, /**< J1-22 DATA6/B6,   P912. */
+  {.signal = "G1",
+   .pin    = (ra_port_pin_t)RA_PIN(k_ra_port_2, k_ra_pin_7)}, /**< J1-23 DATA9/G1,   P207. */
+  {.signal = "G0",
+   .pin    = (ra_port_pin_t)RA_PIN(k_ra_port_9, k_ra_pin_4)}, /**< J1-24 DATA8/G0,   P904. */
+  {.signal = "G3",
+   .pin    = (ra_port_pin_t)RA_PIN(k_ra_port_11, k_ra_pin_6)}, /**< J1-25 DATA11/G3,  PB06. */
+  {.signal = "G2",
+   .pin    = (ra_port_pin_t)RA_PIN(k_ra_port_11, k_ra_pin_7)}, /**< J1-26 DATA10/G2,  PB07. */
+  {.signal = "G5",
+   .pin    = (ra_port_pin_t)RA_PIN(k_ra_port_11, k_ra_pin_1)}, /**< J1-27 DATA13/G5,  PB01. */
+  {.signal = "G4",
+   .pin    = (ra_port_pin_t)RA_PIN(k_ra_port_11, k_ra_pin_5)}, /**< J1-28 DATA12/G4,  PB05. */
+  {.signal = "G7",
+   .pin    = (ra_port_pin_t)RA_PIN(k_ra_port_11, k_ra_pin_3)}, /**< J1-29 DATA15/G7,  PB03. */
+  {.signal = "G6",
+   .pin    = (ra_port_pin_t)RA_PIN(k_ra_port_11, k_ra_pin_4)}, /**< J1-30 DATA14/G6,  PB04. */
+  {.signal = "R1",
+   .pin    = (ra_port_pin_t)RA_PIN(k_ra_port_11, k_ra_pin_0)}, /**< J1-31 DATA17/R1,  PB00. */
+  {.signal = "R0",
+   .pin    = (ra_port_pin_t)RA_PIN(k_ra_port_11, k_ra_pin_2)}, /**< J1-32 DATA16/R0,  PB02. */
+  {.signal = "R3",
+   .pin    = (ra_port_pin_t)RA_PIN(k_ra_port_7, k_ra_pin_11)}, /**< J1-33 DATA19/R3,  P711. */
+  {.signal = "R2",
+   .pin    = (ra_port_pin_t)RA_PIN(k_ra_port_7, k_ra_pin_7)}, /**< J1-34 DATA18/R2,  P707. */
+  {.signal = "R5",
+   .pin    = (ra_port_pin_t)RA_PIN(k_ra_port_7, k_ra_pin_13)}, /**< J1-35 DATA21/R5,  P713. */
+  {.signal = "R4",
+   .pin    = (ra_port_pin_t)RA_PIN(k_ra_port_7, k_ra_pin_12)}, /**< J1-36 DATA20/R4,  P712. */
+  {.signal = "R7",
+   .pin    = (ra_port_pin_t)RA_PIN(k_ra_port_7, k_ra_pin_15)}, /**< J1-37 DATA23/R7,  P715. */
+  {.signal = "R6",
+   .pin    = (ra_port_pin_t)RA_PIN(k_ra_port_7, k_ra_pin_14)}, /**< J1-38 DATA22/R6,  P714. */
 };
 
 /**
@@ -269,35 +327,35 @@ const ra_board_glcdc_pin_t g_ra_board_glcdc_rgb888_pins[] = {
  * lines and drops DATA22..DATA23 (R6/R7) which are NC in RGB666.
  */
 const ra_board_glcdc_pin_t g_ra_board_glcdc_rgb666_pins[] = {
-  {.signal = "BLEN",   .pin = (ra_port_pin_t)RA_PIN(k_ra_port_5, k_ra_pin_14)},
-  {.signal = "SDA1",   .pin = (ra_port_pin_t)RA_PIN(k_ra_port_5, k_ra_pin_11)},
-  {.signal = "INT",    .pin = (ra_port_pin_t)RA_PIN(k_ra_port_1, k_ra_pin_11)},
-  {.signal = "SCL1",   .pin = (ra_port_pin_t)RA_PIN(k_ra_port_5, k_ra_pin_12)},
-  {.signal = "RST",    .pin = (ra_port_pin_t)RA_PIN(k_ra_port_6, k_ra_pin_6)},
-  {.signal = "TCON0",  .pin = (ra_port_pin_t)RA_PIN(k_ra_port_8, k_ra_pin_6)},
-  {.signal = "CLK",    .pin = (ra_port_pin_t)RA_PIN(k_ra_port_5, k_ra_pin_15)},
-  {.signal = "TCON2",  .pin = (ra_port_pin_t)RA_PIN(k_ra_port_8, k_ra_pin_7)},
-  {.signal = "TCON1",  .pin = (ra_port_pin_t)RA_PIN(k_ra_port_8, k_ra_pin_5)},
+  {.signal = "BLEN", .pin = (ra_port_pin_t)RA_PIN(k_ra_port_5, k_ra_pin_14)},
+  {.signal = "SDA1", .pin = (ra_port_pin_t)RA_PIN(k_ra_port_5, k_ra_pin_11)},
+  {.signal = "INT", .pin = (ra_port_pin_t)RA_PIN(k_ra_port_1, k_ra_pin_11)},
+  {.signal = "SCL1", .pin = (ra_port_pin_t)RA_PIN(k_ra_port_5, k_ra_pin_12)},
+  {.signal = "RST", .pin = (ra_port_pin_t)RA_PIN(k_ra_port_6, k_ra_pin_6)},
+  {.signal = "TCON0", .pin = (ra_port_pin_t)RA_PIN(k_ra_port_8, k_ra_pin_6)},
+  {.signal = "CLK", .pin = (ra_port_pin_t)RA_PIN(k_ra_port_5, k_ra_pin_15)},
+  {.signal = "TCON2", .pin = (ra_port_pin_t)RA_PIN(k_ra_port_8, k_ra_pin_7)},
+  {.signal = "TCON1", .pin = (ra_port_pin_t)RA_PIN(k_ra_port_8, k_ra_pin_5)},
   {.signal = "EXTCLK", .pin = (ra_port_pin_t)RA_PIN(k_ra_port_7, k_ra_pin_10)},
-  {.signal = "TCON3",  .pin = (ra_port_pin_t)RA_PIN(k_ra_port_5, k_ra_pin_13)},
-  {.signal = "B3",     .pin = (ra_port_pin_t)RA_PIN(k_ra_port_9, k_ra_pin_15)},  /**< J1-15 in RGB666. */
-  {.signal = "B2",     .pin = (ra_port_pin_t)RA_PIN(k_ra_port_9, k_ra_pin_14)},
-  {.signal = "B5",     .pin = (ra_port_pin_t)RA_PIN(k_ra_port_9, k_ra_pin_2)},
-  {.signal = "B4",     .pin = (ra_port_pin_t)RA_PIN(k_ra_port_9, k_ra_pin_3)},
-  {.signal = "B7",     .pin = (ra_port_pin_t)RA_PIN(k_ra_port_9, k_ra_pin_11)},
-  {.signal = "B6",     .pin = (ra_port_pin_t)RA_PIN(k_ra_port_9, k_ra_pin_10)},
-  {.signal = "G3",     .pin = (ra_port_pin_t)RA_PIN(k_ra_port_9, k_ra_pin_13)},
-  {.signal = "G2",     .pin = (ra_port_pin_t)RA_PIN(k_ra_port_9, k_ra_pin_12)},
-  {.signal = "G5",     .pin = (ra_port_pin_t)RA_PIN(k_ra_port_2, k_ra_pin_7)},
-  {.signal = "G4",     .pin = (ra_port_pin_t)RA_PIN(k_ra_port_9, k_ra_pin_4)},
-  {.signal = "G7",     .pin = (ra_port_pin_t)RA_PIN(k_ra_port_11, k_ra_pin_6)},
-  {.signal = "G6",     .pin = (ra_port_pin_t)RA_PIN(k_ra_port_11, k_ra_pin_7)},
-  {.signal = "R3",     .pin = (ra_port_pin_t)RA_PIN(k_ra_port_11, k_ra_pin_1)},
-  {.signal = "R2",     .pin = (ra_port_pin_t)RA_PIN(k_ra_port_11, k_ra_pin_5)},
-  {.signal = "R5",     .pin = (ra_port_pin_t)RA_PIN(k_ra_port_11, k_ra_pin_3)},
-  {.signal = "R4",     .pin = (ra_port_pin_t)RA_PIN(k_ra_port_11, k_ra_pin_4)},
-  {.signal = "R7",     .pin = (ra_port_pin_t)RA_PIN(k_ra_port_11, k_ra_pin_0)},
-  {.signal = "R6",     .pin = (ra_port_pin_t)RA_PIN(k_ra_port_11, k_ra_pin_2)},
+  {.signal = "TCON3", .pin = (ra_port_pin_t)RA_PIN(k_ra_port_5, k_ra_pin_13)},
+  {.signal = "B3", .pin = (ra_port_pin_t)RA_PIN(k_ra_port_9, k_ra_pin_15)}, /**< J1-15 in RGB666. */
+  {.signal = "B2", .pin = (ra_port_pin_t)RA_PIN(k_ra_port_9, k_ra_pin_14)},
+  {.signal = "B5", .pin = (ra_port_pin_t)RA_PIN(k_ra_port_9, k_ra_pin_2)},
+  {.signal = "B4", .pin = (ra_port_pin_t)RA_PIN(k_ra_port_9, k_ra_pin_3)},
+  {.signal = "B7", .pin = (ra_port_pin_t)RA_PIN(k_ra_port_9, k_ra_pin_11)},
+  {.signal = "B6", .pin = (ra_port_pin_t)RA_PIN(k_ra_port_9, k_ra_pin_10)},
+  {.signal = "G3", .pin = (ra_port_pin_t)RA_PIN(k_ra_port_9, k_ra_pin_13)},
+  {.signal = "G2", .pin = (ra_port_pin_t)RA_PIN(k_ra_port_9, k_ra_pin_12)},
+  {.signal = "G5", .pin = (ra_port_pin_t)RA_PIN(k_ra_port_2, k_ra_pin_7)},
+  {.signal = "G4", .pin = (ra_port_pin_t)RA_PIN(k_ra_port_9, k_ra_pin_4)},
+  {.signal = "G7", .pin = (ra_port_pin_t)RA_PIN(k_ra_port_11, k_ra_pin_6)},
+  {.signal = "G6", .pin = (ra_port_pin_t)RA_PIN(k_ra_port_11, k_ra_pin_7)},
+  {.signal = "R3", .pin = (ra_port_pin_t)RA_PIN(k_ra_port_11, k_ra_pin_1)},
+  {.signal = "R2", .pin = (ra_port_pin_t)RA_PIN(k_ra_port_11, k_ra_pin_5)},
+  {.signal = "R5", .pin = (ra_port_pin_t)RA_PIN(k_ra_port_11, k_ra_pin_3)},
+  {.signal = "R4", .pin = (ra_port_pin_t)RA_PIN(k_ra_port_11, k_ra_pin_4)},
+  {.signal = "R7", .pin = (ra_port_pin_t)RA_PIN(k_ra_port_11, k_ra_pin_0)},
+  {.signal = "R6", .pin = (ra_port_pin_t)RA_PIN(k_ra_port_11, k_ra_pin_2)},
 };
 
 /**
@@ -309,33 +367,33 @@ const ra_board_glcdc_pin_t g_ra_board_glcdc_rgb666_pins[] = {
  * RGB888.
  */
 const ra_board_glcdc_pin_t g_ra_board_glcdc_rgb565_pins[] = {
-  {.signal = "BLEN",   .pin = (ra_port_pin_t)RA_PIN(k_ra_port_5, k_ra_pin_14)},
-  {.signal = "SDA1",   .pin = (ra_port_pin_t)RA_PIN(k_ra_port_5, k_ra_pin_11)},
-  {.signal = "INT",    .pin = (ra_port_pin_t)RA_PIN(k_ra_port_1, k_ra_pin_11)},
-  {.signal = "SCL1",   .pin = (ra_port_pin_t)RA_PIN(k_ra_port_5, k_ra_pin_12)},
-  {.signal = "RST",    .pin = (ra_port_pin_t)RA_PIN(k_ra_port_6, k_ra_pin_6)},
-  {.signal = "TCON0",  .pin = (ra_port_pin_t)RA_PIN(k_ra_port_8, k_ra_pin_6)},
-  {.signal = "CLK",    .pin = (ra_port_pin_t)RA_PIN(k_ra_port_5, k_ra_pin_15)},
-  {.signal = "TCON2",  .pin = (ra_port_pin_t)RA_PIN(k_ra_port_8, k_ra_pin_7)},
-  {.signal = "TCON1",  .pin = (ra_port_pin_t)RA_PIN(k_ra_port_8, k_ra_pin_5)},
+  {.signal = "BLEN", .pin = (ra_port_pin_t)RA_PIN(k_ra_port_5, k_ra_pin_14)},
+  {.signal = "SDA1", .pin = (ra_port_pin_t)RA_PIN(k_ra_port_5, k_ra_pin_11)},
+  {.signal = "INT", .pin = (ra_port_pin_t)RA_PIN(k_ra_port_1, k_ra_pin_11)},
+  {.signal = "SCL1", .pin = (ra_port_pin_t)RA_PIN(k_ra_port_5, k_ra_pin_12)},
+  {.signal = "RST", .pin = (ra_port_pin_t)RA_PIN(k_ra_port_6, k_ra_pin_6)},
+  {.signal = "TCON0", .pin = (ra_port_pin_t)RA_PIN(k_ra_port_8, k_ra_pin_6)},
+  {.signal = "CLK", .pin = (ra_port_pin_t)RA_PIN(k_ra_port_5, k_ra_pin_15)},
+  {.signal = "TCON2", .pin = (ra_port_pin_t)RA_PIN(k_ra_port_8, k_ra_pin_7)},
+  {.signal = "TCON1", .pin = (ra_port_pin_t)RA_PIN(k_ra_port_8, k_ra_pin_5)},
   {.signal = "EXTCLK", .pin = (ra_port_pin_t)RA_PIN(k_ra_port_7, k_ra_pin_10)},
-  {.signal = "TCON3",  .pin = (ra_port_pin_t)RA_PIN(k_ra_port_5, k_ra_pin_13)},
-  {.signal = "B4",     .pin = (ra_port_pin_t)RA_PIN(k_ra_port_9, k_ra_pin_15)},
-  {.signal = "B3",     .pin = (ra_port_pin_t)RA_PIN(k_ra_port_9, k_ra_pin_14)},
-  {.signal = "B6",     .pin = (ra_port_pin_t)RA_PIN(k_ra_port_9, k_ra_pin_2)},
-  {.signal = "B5",     .pin = (ra_port_pin_t)RA_PIN(k_ra_port_9, k_ra_pin_3)},
-  {.signal = "G2",     .pin = (ra_port_pin_t)RA_PIN(k_ra_port_9, k_ra_pin_11)},
-  {.signal = "B7",     .pin = (ra_port_pin_t)RA_PIN(k_ra_port_9, k_ra_pin_10)},
-  {.signal = "G4",     .pin = (ra_port_pin_t)RA_PIN(k_ra_port_9, k_ra_pin_13)},
-  {.signal = "G3",     .pin = (ra_port_pin_t)RA_PIN(k_ra_port_9, k_ra_pin_12)},
-  {.signal = "G6",     .pin = (ra_port_pin_t)RA_PIN(k_ra_port_2, k_ra_pin_7)},
-  {.signal = "G5",     .pin = (ra_port_pin_t)RA_PIN(k_ra_port_9, k_ra_pin_4)},
-  {.signal = "R3",     .pin = (ra_port_pin_t)RA_PIN(k_ra_port_11, k_ra_pin_6)},
-  {.signal = "G7",     .pin = (ra_port_pin_t)RA_PIN(k_ra_port_11, k_ra_pin_7)},
-  {.signal = "R5",     .pin = (ra_port_pin_t)RA_PIN(k_ra_port_11, k_ra_pin_1)},
-  {.signal = "R4",     .pin = (ra_port_pin_t)RA_PIN(k_ra_port_11, k_ra_pin_5)},
-  {.signal = "R7",     .pin = (ra_port_pin_t)RA_PIN(k_ra_port_11, k_ra_pin_3)},
-  {.signal = "R6",     .pin = (ra_port_pin_t)RA_PIN(k_ra_port_11, k_ra_pin_4)},
+  {.signal = "TCON3", .pin = (ra_port_pin_t)RA_PIN(k_ra_port_5, k_ra_pin_13)},
+  {.signal = "B4", .pin = (ra_port_pin_t)RA_PIN(k_ra_port_9, k_ra_pin_15)},
+  {.signal = "B3", .pin = (ra_port_pin_t)RA_PIN(k_ra_port_9, k_ra_pin_14)},
+  {.signal = "B6", .pin = (ra_port_pin_t)RA_PIN(k_ra_port_9, k_ra_pin_2)},
+  {.signal = "B5", .pin = (ra_port_pin_t)RA_PIN(k_ra_port_9, k_ra_pin_3)},
+  {.signal = "G2", .pin = (ra_port_pin_t)RA_PIN(k_ra_port_9, k_ra_pin_11)},
+  {.signal = "B7", .pin = (ra_port_pin_t)RA_PIN(k_ra_port_9, k_ra_pin_10)},
+  {.signal = "G4", .pin = (ra_port_pin_t)RA_PIN(k_ra_port_9, k_ra_pin_13)},
+  {.signal = "G3", .pin = (ra_port_pin_t)RA_PIN(k_ra_port_9, k_ra_pin_12)},
+  {.signal = "G6", .pin = (ra_port_pin_t)RA_PIN(k_ra_port_2, k_ra_pin_7)},
+  {.signal = "G5", .pin = (ra_port_pin_t)RA_PIN(k_ra_port_9, k_ra_pin_4)},
+  {.signal = "R3", .pin = (ra_port_pin_t)RA_PIN(k_ra_port_11, k_ra_pin_6)},
+  {.signal = "G7", .pin = (ra_port_pin_t)RA_PIN(k_ra_port_11, k_ra_pin_7)},
+  {.signal = "R5", .pin = (ra_port_pin_t)RA_PIN(k_ra_port_11, k_ra_pin_1)},
+  {.signal = "R4", .pin = (ra_port_pin_t)RA_PIN(k_ra_port_11, k_ra_pin_5)},
+  {.signal = "R7", .pin = (ra_port_pin_t)RA_PIN(k_ra_port_11, k_ra_pin_3)},
+  {.signal = "R6", .pin = (ra_port_pin_t)RA_PIN(k_ra_port_11, k_ra_pin_4)},
 };
 
 const uint32_t g_ra_board_glcdc_rgb888_pin_count =
@@ -351,25 +409,24 @@ ra_err_t ra_board_glcdc_init(ra_board_glcdc_fmt_t fmt)
   uint32_t                    count = 0U;
 
   switch (fmt) {
-  case k_ra_board_glcdc_fmt_rgb888:
-    table = g_ra_board_glcdc_rgb888_pins;
-    count = g_ra_board_glcdc_rgb888_pin_count;
-    break;
-  case k_ra_board_glcdc_fmt_rgb666:
-    table = g_ra_board_glcdc_rgb666_pins;
-    count = g_ra_board_glcdc_rgb666_pin_count;
-    break;
-  case k_ra_board_glcdc_fmt_rgb565:
-    table = g_ra_board_glcdc_rgb565_pins;
-    count = g_ra_board_glcdc_rgb565_pin_count;
-    break;
-  default:
-    return k_ra_err_invalid_arg;
+    case k_ra_board_glcdc_fmt_rgb888:
+      table = g_ra_board_glcdc_rgb888_pins;
+      count = g_ra_board_glcdc_rgb888_pin_count;
+      break;
+    case k_ra_board_glcdc_fmt_rgb666:
+      table = g_ra_board_glcdc_rgb666_pins;
+      count = g_ra_board_glcdc_rgb666_pin_count;
+      break;
+    case k_ra_board_glcdc_fmt_rgb565:
+      table = g_ra_board_glcdc_rgb565_pins;
+      count = g_ra_board_glcdc_rgb565_pin_count;
+      break;
+    default:
+      return k_ra_err_invalid_arg;
   }
 
   for (uint32_t i = 0U; i < count; ++i) {
-    const ra_err_t err =
-      ra_pfs_route_peripheral(table[i].pin, k_ra_psel_glcdc, "ra_board.glcdc");
+    const ra_err_t err = ra_pfs_route_peripheral(table[i].pin, k_ra_psel_glcdc, "ra_board.glcdc");
     if (err != k_ra_ok) {
       return err;
     }
@@ -398,25 +455,24 @@ ra_err_t ra_board_audio_init(void)
     ra_port_pin_t pin;
     ra_psel_t     psel;
     const char*   owner;
-  /* The cast from ra_board_audio_pin_t to ra_port_pin_t is a re-tag
+    /* The cast from ra_board_audio_pin_t to ra_port_pin_t is a re-tag
    * of the same underlying uint16_t (port << 8 | pin) value; the
    * static analyzer doesn't know the value space is identical. */
-  /* NOLINTBEGIN(clang-analyzer-optin.core.EnumCastOutOfRange) */
+    /* NOLINTBEGIN(clang-analyzer-optin.core.EnumCastOutOfRange) */
   } routes[] = {
-    {(ra_port_pin_t)k_ra_board_audio_pin_bclk,    k_ra_psel_iic,        "ra_board.audio.bclk"   },
-    {(ra_port_pin_t)k_ra_board_audio_pin_wclk,    k_ra_psel_iic,        "ra_board.audio.wclk"   },
-    {(ra_port_pin_t)k_ra_board_audio_pin_datin,   k_ra_psel_iic,        "ra_board.audio.datin"  },
-    {(ra_port_pin_t)k_ra_board_audio_pin_datout,  k_ra_psel_iic,        "ra_board.audio.datout" },
-    {(ra_port_pin_t)k_ra_board_audio_pin_i2c_sda, k_ra_psel_iic,        "ra_board.audio.i2c.sda"},
-    {(ra_port_pin_t)k_ra_board_audio_pin_i2c_scl, k_ra_psel_iic,        "ra_board.audio.i2c.scl"},
+    {(ra_port_pin_t)k_ra_board_audio_pin_bclk, k_ra_psel_iic, "ra_board.audio.bclk"},
+    {(ra_port_pin_t)k_ra_board_audio_pin_wclk, k_ra_psel_iic, "ra_board.audio.wclk"},
+    {(ra_port_pin_t)k_ra_board_audio_pin_datin, k_ra_psel_iic, "ra_board.audio.datin"},
+    {(ra_port_pin_t)k_ra_board_audio_pin_datout, k_ra_psel_iic, "ra_board.audio.datout"},
+    {(ra_port_pin_t)k_ra_board_audio_pin_i2c_sda, k_ra_psel_iic, "ra_board.audio.i2c.sda"},
+    {(ra_port_pin_t)k_ra_board_audio_pin_i2c_scl, k_ra_psel_iic, "ra_board.audio.i2c.scl"},
   };
   /* NOLINTEND(clang-analyzer-optin.core.EnumCastOutOfRange) */
   /* TODO(bsp): k_ra_psel_iic is the IIC alt; SSIE uses a different
    * PSEL value not currently named in ra_gpio_constants.h. Once
    * k_ra_psel_ssie is added, swap the four DAI entries above. */
   for (uint32_t i = 0U; i < sizeof(routes) / sizeof(routes[0]); ++i) {
-    const ra_err_t err =
-      ra_pfs_route_peripheral(routes[i].pin, routes[i].psel, routes[i].owner);
+    const ra_err_t err = ra_pfs_route_peripheral(routes[i].pin, routes[i].psel, routes[i].owner);
     if (err != k_ra_ok) {
       return err;
     }
@@ -432,8 +488,36 @@ ra_err_t ra_board_audio_play_sample_block(const int16_t* buf, uint32_t len)
   if (len == 0U || (len % 2U) != 0U) {
     return k_ra_err_invalid_arg;
   }
-  /* TODO(bsp): wire to ra_ssie_write_buffer once SSIE callback
-   * registration on EK-RA8D2 has been validated. */
+  /* The HAL surface for the data path is complete:
+   * ra_ssie_write_buffer(channel, const uint32_t* buffer,
+   *                      uint16_t samples, uint16_t* out_written)
+   * is exported from libs/ra_hal/inc/ra_ssie.h. The piece this BSP
+   * veneer is missing is the one-time SSIE0 bring-up:
+   *
+   *   1. ra_board_audio_init() programmes the PFS routing but does
+   *      NOT call ra_ssie_init(0, &cfg) -- the bclk/wclk divisors
+   *      depend on the runtime sample rate the application picks,
+   *      so the BSP cannot statically choose a ra_ssie_cfg_t.
+   *   2. The DAI pins (P403..P406) are routed via k_ra_psel_iic in
+   *      ra_board_audio_init() because ra_gpio_constants.h only
+   *      defines k_ra_psel_iic = 0x07, not a dedicated
+   *      k_ra_psel_ssie. The DA7212 controller-mode SSIE pins want
+   *      a different PSEL value (chip HUM IO-Ports chapter,
+   *      Table "Multiplexed Pin Function Selector").
+   *
+   * TODO(bsp): once (a) ra_gpio_constants.h gains k_ra_psel_ssie
+   * with the right PSEL encoding, and (b) ra_board_audio_init() takes
+   * a sample-rate argument so it can compute SSICR.CKDV and call
+   * ra_ssie_init(0, &cfg), this function can be promoted to:
+   *
+   *   uint16_t written = 0U;
+   *   return ra_ssie_write_buffer(k_ra_board_audio_ssie_channel,
+   *                               (const uint32_t*)buf,
+   *                               (uint16_t)(len / 2U),
+   *                               &written);
+   *
+   * Until that lands, return k_ra_err_not_supported so the caller
+   * does not block forever on an un-initialised SSIE FIFO. */
   return k_ra_err_not_supported;
 }
 
@@ -442,18 +526,17 @@ ra_err_t ra_board_audio_play_sample_block(const int16_t* buf, uint32_t len)
  * =============================================================================
  */
 
-ra_err_t
-ra_board_arduino_pin_init(ra_board_arduino_pin_t pin, ra_board_arduino_mode_t mode)
+ra_err_t ra_board_arduino_pin_init(ra_board_arduino_pin_t pin, ra_board_arduino_mode_t mode)
 {
   switch (mode) {
-  case k_ra_board_arduino_mode_input:
-    return ra_gpio_input_init((ra_port_pin_t)pin, k_ra_pull_none);
-  case k_ra_board_arduino_mode_input_pullup:
-    return ra_gpio_input_init((ra_port_pin_t)pin, k_ra_pull_up);
-  case k_ra_board_arduino_mode_output:
-    return ra_gpio_output_init((ra_port_pin_t)pin, k_ra_level_low);
-  default:
-    return k_ra_err_invalid_arg;
+    case k_ra_board_arduino_mode_input:
+      return ra_gpio_input_init((ra_port_pin_t)pin, k_ra_pull_none);
+    case k_ra_board_arduino_mode_input_pullup:
+      return ra_gpio_input_init((ra_port_pin_t)pin, k_ra_pull_up);
+    case k_ra_board_arduino_mode_output:
+      return ra_gpio_output_init((ra_port_pin_t)pin, k_ra_level_low);
+    default:
+      return k_ra_err_invalid_arg;
   }
 }
 
@@ -477,15 +560,55 @@ ra_err_t ra_board_arduino_gpio_read(ra_board_arduino_pin_t pin, ra_level_t* out_
 
 ra_err_t ra_board_usbhs_device_init(void)
 {
-  /* TODO(bsp): integrate ra_usb_pal HS device init once the PHY
-   * power sequence is validated against UM section 6.2 + chip HUM. */
+  /* The controller-side bring-up exists in libs/ra_hal/inc/ra_usb.h
+   * as ra_usb_device_init(k_ra_usb_speed_hs); it ungates MSTP, drives
+   * SYSCFG.SCKE / USBE / HSE, and arms the device-mode IRQ set. The
+   * piece still missing on the EK-RA8D2 side is the off-controller
+   * PHY power-up:
+   *
+   *   - LDO_USBHS enable. EK-RA8D2 v1 UM Rev 1.01 Section 6.2 lists
+   *     USBHS at J7 but does NOT itemise an LDO-enable port pin --
+   *     the rail is gated by a discrete USB-PD controller, so the
+   *     BSP cannot route it via ra_pfs_route_peripheral.
+   *   - USBHS PLL lock wait (chip HUM Ch 12 USBHS clock subsystem).
+   *     ra_cgc only exposes the main PLLP / PLL2 helpers today; no
+   *     ra_cgc_usbhs_pll_enable() exists yet.
+   *
+   * TODO(bsp): once libs/ra_hal/inc/ra_cgc.h gains
+   * ra_cgc_usbhs_pll_enable(), promote this function to:
+   *
+   *   ra_err_t err = ra_cgc_usbhs_pll_enable();
+   *   if (err != k_ra_ok) { return err; }
+   *   return ra_usb_device_init(k_ra_usb_speed_hs);
+   *
+   * Until then, returning k_ra_err_not_supported keeps callers from
+   * silently bringing up the controller without a clocked PHY. */
   return k_ra_err_not_supported;
 }
 
 ra_err_t ra_board_usbhs_host_init(void)
 {
-  /* TODO(bsp): integrate ra_usb_pal HS host init once VBUS-enable
-   * routing on EK-RA8D2 is itemised in a future UM revision. */
+  /* Symmetric to ra_board_usbhs_device_init: ra_usb_host_init(
+   * k_ra_usb_speed_hs) exists in libs/ra_hal/inc/ra_usb.h and would
+   * drive SYSCFG.DCFM=1 / DRPD=1 / USBE=1 plus the DCP setup. The
+   * missing pieces are:
+   *
+   *   - USBHS PLL bring-up (same gap as the device-mode helper:
+   *     ra_cgc_usbhs_pll_enable() does not exist).
+   *   - VBUS-enable / OVRCUR routing -- EK-RA8D2 v1 UM Rev 1.01
+   *     Table 28 lists USBHS_VBUSEN / USBHS_OVRCUR as PHY-controller
+   *     pins, NOT board-routed RA8D2 port pins. The board uses a
+   *     discrete USB-PD controller for VBUS sourcing, so the BSP
+   *     cannot drive it via ra_pfs_route_peripheral.
+   *
+   * TODO(bsp): once ra_cgc_usbhs_pll_enable() exists and the VBUS
+   * enable path is documented (likely an I2C poke to the on-board
+   * USB-PD controller), promote this function to:
+   *
+   *   ra_err_t err = ra_cgc_usbhs_pll_enable();
+   *   if (err != k_ra_ok) { return err; }
+   *   return ra_usb_host_init(k_ra_usb_speed_hs);
+   */
   return k_ra_err_not_supported;
 }
 
@@ -496,8 +619,37 @@ ra_err_t ra_board_usbhs_host_init(void)
 
 ra_err_t ra_board_mipi_dsi_init(void)
 {
-  /* TODO(bsp): wire to ra_mipi_dsi_init() once a validated config
-   * for the MIPI Graphics Expansion Board 1 panel
-   * (E45RA-MW276-C, 854 x 480) is committed under cmake/. */
+  /* The DSI host bring-up function ra_mipi_dsi_init(const
+   * ra_mipi_dsi_config_t* cfg) exists in libs/ra_hal/inc/ra_mipi_dsi.h
+   * and is fully implemented (it programmes TXSETR / DSISETR /
+   * timeouts / guard-band timing). What is missing here is:
+   *
+   *   1. A validated ra_mipi_dsi_config_t for the MIPI Graphics
+   *      Expansion Board 1 panel (Renesas RTKMIPILCDB00000BE,
+   *      Focus LCD E45RA-MW276-C, 854 x 480). The
+   *      lane_count / clock_mode / timing / timeouts struct fields
+   *      need values cross-checked against the panel datasheet --
+   *      no committed reference exists under cmake/ yet.
+   *   2. Up-front D-PHY bring-up. The HAL warns "The MIPI PHY
+   *      (HUM Ch 64) must be brought up first" -- ra_mipi_phy.h
+   *      exposes the PHY API but the EK-RA8D2-specific PLL
+   *      configuration (REFDIV / FBDIV / lane bit-rate) is not yet
+   *      committed.
+   *   3. Panel-side init sequence: backlight enable on
+   *      k_ra_board_mipi_dsi_backlight (P514), reset pulse on
+   *      k_ra_board_mipi_dsi_reset_n (P606), and the per-panel DCS
+   *      command stream that has to be replayed via
+   *      ra_mipi_dsi_send_command() before the video link starts.
+   *
+   * TODO(bsp): once the panel descriptor lands in the BSP (e.g. as
+   * a static const ra_mipi_dsi_config_t s_mipi_panel_cfg), promote
+   * this function to:
+   *
+   *   ra_err_t err = ra_mipi_phy_init(&s_mipi_phy_cfg);
+   *   if (err != k_ra_ok) { return err; }
+   *   err = ra_mipi_dsi_init(&s_mipi_panel_cfg);
+   *   if (err != k_ra_ok) { return err; }
+   *   return ra_mipi_dsi_hs_clock_start();
+   */
   return k_ra_err_not_supported;
 }

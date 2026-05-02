@@ -326,13 +326,20 @@ extern const uint32_t g_ra_board_glcdc_rgb565_pin_count;
  * the camera and CODEC cannot be used simultaneously.
  */
 typedef enum : uint16_t {
-  k_ra_board_audio_pin_bclk    = (uint16_t)RA_PIN(k_ra_port_4, k_ra_pin_3),  /**< P403, EK-RA8D2 UM Table 32 p 38. */
-  k_ra_board_audio_pin_wclk    = (uint16_t)RA_PIN(k_ra_port_4, k_ra_pin_4),  /**< P404, EK-RA8D2 UM Table 32 p 38. */
-  k_ra_board_audio_pin_datin   = (uint16_t)RA_PIN(k_ra_port_4, k_ra_pin_5),  /**< P405 (J41), EK-RA8D2 UM Table 32 p 38. */
-  k_ra_board_audio_pin_datout  = (uint16_t)RA_PIN(k_ra_port_4, k_ra_pin_6),  /**< P406 (J41), EK-RA8D2 UM Table 32 p 38. */
-  k_ra_board_audio_pin_mclk    = (uint16_t)RA_PIN(k_ra_port_13, k_ra_pin_6), /**< PD06, EK-RA8D2 UM Table 32 p 38. */
-  k_ra_board_audio_pin_i2c_sda = (uint16_t)RA_PIN(k_ra_port_5, k_ra_pin_11), /**< P511 (SDA1), EK-RA8D2 UM Table 32 p 38. */
-  k_ra_board_audio_pin_i2c_scl = (uint16_t)RA_PIN(k_ra_port_5, k_ra_pin_12), /**< P512 (SCL1), EK-RA8D2 UM Table 32 p 38. */
+  k_ra_board_audio_pin_bclk =
+    (uint16_t)RA_PIN(k_ra_port_4, k_ra_pin_3), /**< P403, EK-RA8D2 UM Table 32 p 38. */
+  k_ra_board_audio_pin_wclk =
+    (uint16_t)RA_PIN(k_ra_port_4, k_ra_pin_4), /**< P404, EK-RA8D2 UM Table 32 p 38. */
+  k_ra_board_audio_pin_datin =
+    (uint16_t)RA_PIN(k_ra_port_4, k_ra_pin_5), /**< P405 (J41), EK-RA8D2 UM Table 32 p 38. */
+  k_ra_board_audio_pin_datout =
+    (uint16_t)RA_PIN(k_ra_port_4, k_ra_pin_6), /**< P406 (J41), EK-RA8D2 UM Table 32 p 38. */
+  k_ra_board_audio_pin_mclk =
+    (uint16_t)RA_PIN(k_ra_port_13, k_ra_pin_6), /**< PD06, EK-RA8D2 UM Table 32 p 38. */
+  k_ra_board_audio_pin_i2c_sda =
+    (uint16_t)RA_PIN(k_ra_port_5, k_ra_pin_11), /**< P511 (SDA1), EK-RA8D2 UM Table 32 p 38. */
+  k_ra_board_audio_pin_i2c_scl =
+    (uint16_t)RA_PIN(k_ra_port_5, k_ra_pin_12), /**< P512 (SCL1), EK-RA8D2 UM Table 32 p 38. */
 } ra_board_audio_pin_t;
 
 /**
@@ -391,30 +398,58 @@ typedef enum : uint8_t {
  */
 typedef enum : uint16_t {
   /* Digital I/O (J23 + J24). */
-  k_ra_board_arduino_d0  = (uint16_t)RA_PIN(k_ra_port_8, k_ra_pin_8),  /**< D0 RXD7/GTIOC13B, P808. UM Table 20 p 28. */
-  k_ra_board_arduino_d1  = (uint16_t)RA_PIN(k_ra_port_8, k_ra_pin_9),  /**< D1 TXD7,           P809. UM Table 20 p 28. */
-  k_ra_board_arduino_d2  = (uint16_t)RA_PIN(k_ra_port_0, k_ra_pin_11), /**< D2 INT0/IRQ16,     P011. UM Table 20 p 28. */
-  k_ra_board_arduino_d3  = (uint16_t)RA_PIN(k_ra_port_8, k_ra_pin_11), /**< D3 INT1/GTIOC10B,  P811. UM Table 20 p 28. */
-  k_ra_board_arduino_d4  = (uint16_t)RA_PIN(k_ra_port_8, k_ra_pin_10), /**< D4 GTIOC10A/IRQ21, P810. UM Table 20 p 28. */
-  k_ra_board_arduino_d5  = (uint16_t)RA_PIN(k_ra_port_1, k_ra_pin_4),  /**< D5 GTIOC1B/IRQ1,   P104. UM Table 20 p 28. */
-  k_ra_board_arduino_d6  = (uint16_t)RA_PIN(k_ra_port_1, k_ra_pin_5),  /**< D6 GTIOC1A/IRQ0,   P105. UM Table 20 p 28. */
-  k_ra_board_arduino_d7  = (uint16_t)RA_PIN(k_ra_port_3, k_ra_pin_12), /**< D7 IRQ22-DS,       P312. UM Table 20 p 28. */
-  k_ra_board_arduino_d8  = (uint16_t)RA_PIN(k_ra_port_13, k_ra_pin_1), /**< D8 IRQ22,          PD01. UM Table 20 p 28. */
-  k_ra_board_arduino_d9  = (uint16_t)RA_PIN(k_ra_port_1, k_ra_pin_10), /**< D9 GTIOC9B/IRQ20,  P110. UM Table 20 p 28. */
-  k_ra_board_arduino_d10 = (uint16_t)RA_PIN(k_ra_port_1, k_ra_pin_3),  /**< D10 SPI_SS / GTIOC2A,  P103. UM Table 20 p 28. */
-  k_ra_board_arduino_d11 = (uint16_t)RA_PIN(k_ra_port_1, k_ra_pin_1),  /**< D11 SPI_MOSI / GTIOC8A,P101. UM Table 20 p 28. */
-  k_ra_board_arduino_d12 = (uint16_t)RA_PIN(k_ra_port_1, k_ra_pin_0),  /**< D12 SPI_MISO / GTIOC8B,P100. UM Table 20 p 28. */
-  k_ra_board_arduino_d13 = (uint16_t)RA_PIN(k_ra_port_1, k_ra_pin_2),  /**< D13 SPI_SCK / GTIOC2B, P102. UM Table 20 p 28. */
-  k_ra_board_arduino_d14 = (uint16_t)RA_PIN(k_ra_port_5, k_ra_pin_11), /**< D14 SDA1 (or SDA0=P401 if SW4-5 ON), P511. UM Table 20 p 28. */
-  k_ra_board_arduino_d15 = (uint16_t)RA_PIN(k_ra_port_5, k_ra_pin_12), /**< D15 SCL1 (or SCL0=P400 if SW4-5 ON), P512. UM Table 20 p 28. */
+  k_ra_board_arduino_d0 =
+    (uint16_t)RA_PIN(k_ra_port_8, k_ra_pin_8), /**< D0 RXD7/GTIOC13B, P808. UM Table 20 p 28. */
+  k_ra_board_arduino_d1 =
+    (uint16_t)RA_PIN(k_ra_port_8, k_ra_pin_9), /**< D1 TXD7,           P809. UM Table 20 p 28. */
+  k_ra_board_arduino_d2 =
+    (uint16_t)RA_PIN(k_ra_port_0, k_ra_pin_11), /**< D2 INT0/IRQ16,     P011. UM Table 20 p 28. */
+  k_ra_board_arduino_d3 =
+    (uint16_t)RA_PIN(k_ra_port_8, k_ra_pin_11), /**< D3 INT1/GTIOC10B,  P811. UM Table 20 p 28. */
+  k_ra_board_arduino_d4 =
+    (uint16_t)RA_PIN(k_ra_port_8, k_ra_pin_10), /**< D4 GTIOC10A/IRQ21, P810. UM Table 20 p 28. */
+  k_ra_board_arduino_d5 =
+    (uint16_t)RA_PIN(k_ra_port_1, k_ra_pin_4), /**< D5 GTIOC1B/IRQ1,   P104. UM Table 20 p 28. */
+  k_ra_board_arduino_d6 =
+    (uint16_t)RA_PIN(k_ra_port_1, k_ra_pin_5), /**< D6 GTIOC1A/IRQ0,   P105. UM Table 20 p 28. */
+  k_ra_board_arduino_d7 =
+    (uint16_t)RA_PIN(k_ra_port_3, k_ra_pin_12), /**< D7 IRQ22-DS,       P312. UM Table 20 p 28. */
+  k_ra_board_arduino_d8 =
+    (uint16_t)RA_PIN(k_ra_port_13, k_ra_pin_1), /**< D8 IRQ22,          PD01. UM Table 20 p 28. */
+  k_ra_board_arduino_d9 =
+    (uint16_t)RA_PIN(k_ra_port_1, k_ra_pin_10), /**< D9 GTIOC9B/IRQ20,  P110. UM Table 20 p 28. */
+  k_ra_board_arduino_d10 =
+    (uint16_t)RA_PIN(k_ra_port_1,
+                     k_ra_pin_3), /**< D10 SPI_SS / GTIOC2A,  P103. UM Table 20 p 28. */
+  k_ra_board_arduino_d11 =
+    (uint16_t)RA_PIN(k_ra_port_1,
+                     k_ra_pin_1), /**< D11 SPI_MOSI / GTIOC8A,P101. UM Table 20 p 28. */
+  k_ra_board_arduino_d12 =
+    (uint16_t)RA_PIN(k_ra_port_1,
+                     k_ra_pin_0), /**< D12 SPI_MISO / GTIOC8B,P100. UM Table 20 p 28. */
+  k_ra_board_arduino_d13 =
+    (uint16_t)RA_PIN(k_ra_port_1,
+                     k_ra_pin_2), /**< D13 SPI_SCK / GTIOC2B, P102. UM Table 20 p 28. */
+  k_ra_board_arduino_d14 = (uint16_t)RA_PIN(
+    k_ra_port_5,
+    k_ra_pin_11), /**< D14 SDA1 (or SDA0=P401 if SW4-5 ON), P511. UM Table 20 p 28. */
+  k_ra_board_arduino_d15 = (uint16_t)RA_PIN(
+    k_ra_port_5,
+    k_ra_pin_12), /**< D15 SCL1 (or SCL0=P400 if SW4-5 ON), P512. UM Table 20 p 28. */
 
   /* Analog input block (J19). */
-  k_ra_board_arduino_a0 = (uint16_t)RA_PIN(k_ra_port_0, k_ra_pin_1), /**< A0 AN001, P001. UM Table 20 p 27. */
-  k_ra_board_arduino_a1 = (uint16_t)RA_PIN(k_ra_port_0, k_ra_pin_7), /**< A1 AN007, P007. UM Table 20 p 27. */
-  k_ra_board_arduino_a2 = (uint16_t)RA_PIN(k_ra_port_0, k_ra_pin_3), /**< A2 AN003, P003. UM Table 20 p 27. */
-  k_ra_board_arduino_a3 = (uint16_t)RA_PIN(k_ra_port_0, k_ra_pin_4), /**< A3 AN004, P004. UM Table 20 p 27. */
-  k_ra_board_arduino_a4 = (uint16_t)RA_PIN(k_ra_port_0, k_ra_pin_14), /**< A4 AN014/DA0, P014. UM Table 20 p 27. */
-  k_ra_board_arduino_a5 = (uint16_t)RA_PIN(k_ra_port_0, k_ra_pin_15), /**< A5 AN015/DA1, P015. UM Table 20 p 27. */
+  k_ra_board_arduino_a0 =
+    (uint16_t)RA_PIN(k_ra_port_0, k_ra_pin_1), /**< A0 AN001, P001. UM Table 20 p 27. */
+  k_ra_board_arduino_a1 =
+    (uint16_t)RA_PIN(k_ra_port_0, k_ra_pin_7), /**< A1 AN007, P007. UM Table 20 p 27. */
+  k_ra_board_arduino_a2 =
+    (uint16_t)RA_PIN(k_ra_port_0, k_ra_pin_3), /**< A2 AN003, P003. UM Table 20 p 27. */
+  k_ra_board_arduino_a3 =
+    (uint16_t)RA_PIN(k_ra_port_0, k_ra_pin_4), /**< A3 AN004, P004. UM Table 20 p 27. */
+  k_ra_board_arduino_a4 =
+    (uint16_t)RA_PIN(k_ra_port_0, k_ra_pin_14), /**< A4 AN014/DA0, P014. UM Table 20 p 27. */
+  k_ra_board_arduino_a5 =
+    (uint16_t)RA_PIN(k_ra_port_0, k_ra_pin_15), /**< A5 AN015/DA1, P015. UM Table 20 p 27. */
 } ra_board_arduino_pin_t;
 
 /** @brief Direction mode for an Arduino-header GPIO pin. */
@@ -431,8 +466,8 @@ typedef enum : uint8_t {
  * @pre HAL pin validator initialised.
  * @pre SW4-4 ON (Arduino vs Octo-SPI selection).
  */
-[[nodiscard]] ra_err_t
-ra_board_arduino_pin_init(ra_board_arduino_pin_t pin, ra_board_arduino_mode_t mode);
+[[nodiscard]] ra_err_t ra_board_arduino_pin_init(ra_board_arduino_pin_t  pin,
+                                                 ra_board_arduino_mode_t mode);
 
 /**
  * @brief Drive a previously-initialised Arduino GPIO pin.
@@ -444,8 +479,8 @@ ra_board_arduino_pin_init(ra_board_arduino_pin_t pin, ra_board_arduino_mode_t mo
  * @brief Sample a previously-initialised Arduino GPIO pin.
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t
-ra_board_arduino_gpio_read(ra_board_arduino_pin_t pin, ra_level_t* out_level);
+[[nodiscard]] ra_err_t ra_board_arduino_gpio_read(ra_board_arduino_pin_t pin,
+                                                  ra_level_t*            out_level);
 
 /* =============================================================================
  * 6. Pmod connectors (UM Section 5.3.3.1 + 5.3.3.2, Tables 17 + 19, p 26-27)
@@ -454,8 +489,8 @@ ra_board_arduino_gpio_read(ra_board_arduino_pin_t pin, ra_level_t* out_level);
 
 /** @brief Identifiers for the two Pmod sockets. */
 typedef enum : uint8_t {
-  k_ra_board_pmod1 = 0U, /**< Pmod1 -- J26, SCI2 simple-SPI/UART/I2C. UM Table 17 p 26. */
-  k_ra_board_pmod2 = 1U, /**< Pmod2 -- J25, SPI/UART (RSPI/SCI0).     UM Table 19 p 27. */
+  k_ra_board_pmod1      = 0U, /**< Pmod1 -- J26, SCI2 simple-SPI/UART/I2C. UM Table 17 p 26. */
+  k_ra_board_pmod2      = 1U, /**< Pmod2 -- J25, SPI/UART (RSPI/SCI0).     UM Table 19 p 27. */
   k_ra_board_pmod_count = 2U,
 } ra_board_pmod_id_t;
 
@@ -468,32 +503,57 @@ typedef enum : uint8_t {
  * is selected.
  */
 typedef enum : uint16_t {
-  k_ra_board_pmod1_spi_cs   = (uint16_t)RA_PIN(k_ra_port_8, k_ra_pin_4), /**< Pmod1.1 SS  (SS2/IRQ14),  P804. UM Table 17 p 26. */
-  k_ra_board_pmod1_spi_copi = (uint16_t)RA_PIN(k_ra_port_8, k_ra_pin_1), /**< Pmod1.2 MOSI (MOSI2/TXD2),P801. UM Table 17 p 26. */
-  k_ra_board_pmod1_spi_cipo = (uint16_t)RA_PIN(k_ra_port_8, k_ra_pin_2), /**< Pmod1.3 MISO (MISO2/RXD2),P802. UM Table 17 p 26. */
-  k_ra_board_pmod1_spi_sck  = (uint16_t)RA_PIN(k_ra_port_8, k_ra_pin_3), /**< Pmod1.4 SCK  (SCK2),       P803. UM Table 17 p 26. */
+  k_ra_board_pmod1_spi_cs =
+    (uint16_t)RA_PIN(k_ra_port_8,
+                     k_ra_pin_4), /**< Pmod1.1 SS  (SS2/IRQ14),  P804. UM Table 17 p 26. */
+  k_ra_board_pmod1_spi_copi =
+    (uint16_t)RA_PIN(k_ra_port_8,
+                     k_ra_pin_1), /**< Pmod1.2 MOSI (MOSI2/TXD2),P801. UM Table 17 p 26. */
+  k_ra_board_pmod1_spi_cipo =
+    (uint16_t)RA_PIN(k_ra_port_8,
+                     k_ra_pin_2), /**< Pmod1.3 MISO (MISO2/RXD2),P802. UM Table 17 p 26. */
+  k_ra_board_pmod1_spi_sck =
+    (uint16_t)RA_PIN(k_ra_port_8,
+                     k_ra_pin_3), /**< Pmod1.4 SCK  (SCK2),       P803. UM Table 17 p 26. */
 } ra_board_pmod1_spi_pin_t;
 
 /** @brief Pin assignments for Pmod1 (J26) in UART mode (UM Table 17 p 26). */
 typedef enum : uint16_t {
-  k_ra_board_pmod1_uart_txd = (uint16_t)RA_PIN(k_ra_port_8, k_ra_pin_1), /**< Pmod1 UART TXD (TXD2), P801. UM Table 17 p 26. */
-  k_ra_board_pmod1_uart_rxd = (uint16_t)RA_PIN(k_ra_port_8, k_ra_pin_2), /**< Pmod1 UART RXD (RXD2), P802. UM Table 17 p 26. */
-  k_ra_board_pmod1_uart_cts = (uint16_t)RA_PIN(k_ra_port_8, k_ra_pin_0), /**< Pmod1 UART CTS (CTS2), P800. UM Table 17 p 26. */
-  k_ra_board_pmod1_uart_rts = (uint16_t)RA_PIN(k_ra_port_8, k_ra_pin_4), /**< Pmod1 UART RTS (RTS2), P804. UM Table 17 p 26. */
+  k_ra_board_pmod1_uart_txd =
+    (uint16_t)RA_PIN(k_ra_port_8,
+                     k_ra_pin_1), /**< Pmod1 UART TXD (TXD2), P801. UM Table 17 p 26. */
+  k_ra_board_pmod1_uart_rxd =
+    (uint16_t)RA_PIN(k_ra_port_8,
+                     k_ra_pin_2), /**< Pmod1 UART RXD (RXD2), P802. UM Table 17 p 26. */
+  k_ra_board_pmod1_uart_cts =
+    (uint16_t)RA_PIN(k_ra_port_8,
+                     k_ra_pin_0), /**< Pmod1 UART CTS (CTS2), P800. UM Table 17 p 26. */
+  k_ra_board_pmod1_uart_rts =
+    (uint16_t)RA_PIN(k_ra_port_8,
+                     k_ra_pin_4), /**< Pmod1 UART RTS (RTS2), P804. UM Table 17 p 26. */
 } ra_board_pmod1_uart_pin_t;
 
 /** @brief Pin assignments for Pmod1 (J26) in I2C mode (UM Table 17 p 26). */
 typedef enum : uint16_t {
-  k_ra_board_pmod1_i2c_sda = (uint16_t)RA_PIN(k_ra_port_5, k_ra_pin_11), /**< Pmod1 I2C SDA (SDA1), P511. UM Table 17 p 26. */
-  k_ra_board_pmod1_i2c_scl = (uint16_t)RA_PIN(k_ra_port_5, k_ra_pin_12), /**< Pmod1 I2C SCL (SCL1), P512. UM Table 17 p 26. */
+  k_ra_board_pmod1_i2c_sda =
+    (uint16_t)RA_PIN(k_ra_port_5,
+                     k_ra_pin_11), /**< Pmod1 I2C SDA (SDA1), P511. UM Table 17 p 26. */
+  k_ra_board_pmod1_i2c_scl =
+    (uint16_t)RA_PIN(k_ra_port_5,
+                     k_ra_pin_12), /**< Pmod1 I2C SCL (SCL1), P512. UM Table 17 p 26. */
 } ra_board_pmod1_i2c_pin_t;
 
 /** @brief Pin assignments for Pmod1 GPIO + IRQ side-band (UM Table 17 p 26). */
 typedef enum : uint16_t {
-  k_ra_board_pmod1_irq    = (uint16_t)RA_PIN(k_ra_port_0, k_ra_pin_6),  /**< Pmod1.7 IRQ (IRQ11-DS), P006. UM Table 17 p 26. */
-  k_ra_board_pmod1_reset  = (uint16_t)RA_PIN(k_ra_port_4, k_ra_pin_2),  /**< Pmod1.8 RESET, P402. UM Table 17 p 26. */
-  k_ra_board_pmod1_gpio_a = (uint16_t)RA_PIN(k_ra_port_4, k_ra_pin_12), /**< Pmod1.9 GPIO,  P412. UM Table 17 p 26. */
-  k_ra_board_pmod1_gpio_b = (uint16_t)RA_PIN(k_ra_port_4, k_ra_pin_13), /**< Pmod1.10 GPIO, P413. UM Table 17 p 26. */
+  k_ra_board_pmod1_irq =
+    (uint16_t)RA_PIN(k_ra_port_0,
+                     k_ra_pin_6), /**< Pmod1.7 IRQ (IRQ11-DS), P006. UM Table 17 p 26. */
+  k_ra_board_pmod1_reset =
+    (uint16_t)RA_PIN(k_ra_port_4, k_ra_pin_2), /**< Pmod1.8 RESET, P402. UM Table 17 p 26. */
+  k_ra_board_pmod1_gpio_a =
+    (uint16_t)RA_PIN(k_ra_port_4, k_ra_pin_12), /**< Pmod1.9 GPIO,  P412. UM Table 17 p 26. */
+  k_ra_board_pmod1_gpio_b =
+    (uint16_t)RA_PIN(k_ra_port_4, k_ra_pin_13), /**< Pmod1.10 GPIO, P413. UM Table 17 p 26. */
 } ra_board_pmod1_gpio_pin_t;
 
 /**
@@ -504,26 +564,43 @@ typedef enum : uint16_t {
  * are present; selection is by jumper E10/E14/E15/E16.
  */
 typedef enum : uint16_t {
-  k_ra_board_pmod2_spi_cs   = (uint16_t)RA_PIN(k_ra_port_6, k_ra_pin_4), /**< Pmod2.1 SS   (SSLB0), P604. UM Table 19 p 27. */
-  k_ra_board_pmod2_spi_copi = (uint16_t)RA_PIN(k_ra_port_6, k_ra_pin_3), /**< Pmod2.2 MOSI (MOSIB), P603. UM Table 19 p 27. */
-  k_ra_board_pmod2_spi_cipo = (uint16_t)RA_PIN(k_ra_port_6, k_ra_pin_2), /**< Pmod2.3 MISO (MISOB), P602. UM Table 19 p 27. */
-  k_ra_board_pmod2_spi_sck  = (uint16_t)RA_PIN(k_ra_port_6, k_ra_pin_1), /**< Pmod2.4 SCK  (RSPCKB),P601. UM Table 19 p 27. */
+  k_ra_board_pmod2_spi_cs =
+    (uint16_t)RA_PIN(k_ra_port_6, k_ra_pin_4), /**< Pmod2.1 SS   (SSLB0), P604. UM Table 19 p 27. */
+  k_ra_board_pmod2_spi_copi =
+    (uint16_t)RA_PIN(k_ra_port_6, k_ra_pin_3), /**< Pmod2.2 MOSI (MOSIB), P603. UM Table 19 p 27. */
+  k_ra_board_pmod2_spi_cipo =
+    (uint16_t)RA_PIN(k_ra_port_6, k_ra_pin_2), /**< Pmod2.3 MISO (MISOB), P602. UM Table 19 p 27. */
+  k_ra_board_pmod2_spi_sck =
+    (uint16_t)RA_PIN(k_ra_port_6, k_ra_pin_1), /**< Pmod2.4 SCK  (RSPCKB),P601. UM Table 19 p 27. */
 } ra_board_pmod2_spi_pin_t;
 
 /** @brief Pin assignments for Pmod2 (J25) in UART mode (UM Table 19 p 27). */
 typedef enum : uint16_t {
-  k_ra_board_pmod2_uart_txd = (uint16_t)RA_PIN(k_ra_port_6, k_ra_pin_3), /**< Pmod2 UART TXD (TXD0), P603. UM Table 19 p 27. */
-  k_ra_board_pmod2_uart_rxd = (uint16_t)RA_PIN(k_ra_port_6, k_ra_pin_2), /**< Pmod2 UART RXD (RXD0), P602. UM Table 19 p 27. */
-  k_ra_board_pmod2_uart_cts = (uint16_t)RA_PIN(k_ra_port_6, k_ra_pin_5), /**< Pmod2 UART CTS (CTS0), P605. UM Table 19 p 27. */
-  k_ra_board_pmod2_uart_rts = (uint16_t)RA_PIN(k_ra_port_6, k_ra_pin_4), /**< Pmod2 UART RTS (RTS0), P604. UM Table 19 p 27. */
+  k_ra_board_pmod2_uart_txd =
+    (uint16_t)RA_PIN(k_ra_port_6,
+                     k_ra_pin_3), /**< Pmod2 UART TXD (TXD0), P603. UM Table 19 p 27. */
+  k_ra_board_pmod2_uart_rxd =
+    (uint16_t)RA_PIN(k_ra_port_6,
+                     k_ra_pin_2), /**< Pmod2 UART RXD (RXD0), P602. UM Table 19 p 27. */
+  k_ra_board_pmod2_uart_cts =
+    (uint16_t)RA_PIN(k_ra_port_6,
+                     k_ra_pin_5), /**< Pmod2 UART CTS (CTS0), P605. UM Table 19 p 27. */
+  k_ra_board_pmod2_uart_rts =
+    (uint16_t)RA_PIN(k_ra_port_6,
+                     k_ra_pin_4), /**< Pmod2 UART RTS (RTS0), P604. UM Table 19 p 27. */
 } ra_board_pmod2_uart_pin_t;
 
 /** @brief Pin assignments for Pmod2 GPIO + IRQ side-band (UM Table 19 p 27). */
 typedef enum : uint16_t {
-  k_ra_board_pmod2_irq    = (uint16_t)RA_PIN(k_ra_port_0, k_ra_pin_12), /**< Pmod2.7 IRQ (IRQ15),  P012. UM Table 19 p 27. */
-  k_ra_board_pmod2_reset  = (uint16_t)RA_PIN(k_ra_port_4, k_ra_pin_10), /**< Pmod2.8 RESET, P410. UM Table 19 p 27. */
-  k_ra_board_pmod2_gpio_a = (uint16_t)RA_PIN(k_ra_port_4, k_ra_pin_9),  /**< Pmod2.9 GPIO,  P409. UM Table 19 p 27. */
-  k_ra_board_pmod2_gpio_b = (uint16_t)RA_PIN(k_ra_port_7, k_ra_pin_4),  /**< Pmod2.10 GPIO, P704. UM Table 19 p 27. */
+  k_ra_board_pmod2_irq =
+    (uint16_t)RA_PIN(k_ra_port_0,
+                     k_ra_pin_12), /**< Pmod2.7 IRQ (IRQ15),  P012. UM Table 19 p 27. */
+  k_ra_board_pmod2_reset =
+    (uint16_t)RA_PIN(k_ra_port_4, k_ra_pin_10), /**< Pmod2.8 RESET, P410. UM Table 19 p 27. */
+  k_ra_board_pmod2_gpio_a =
+    (uint16_t)RA_PIN(k_ra_port_4, k_ra_pin_9), /**< Pmod2.9 GPIO,  P409. UM Table 19 p 27. */
+  k_ra_board_pmod2_gpio_b =
+    (uint16_t)RA_PIN(k_ra_port_7, k_ra_pin_4), /**< Pmod2.10 GPIO, P704. UM Table 19 p 27. */
 } ra_board_pmod2_gpio_pin_t;
 
 /* =============================================================================
@@ -584,22 +661,43 @@ typedef enum : uint16_t {
  * mutually exclusive.
  */
 typedef enum : uint16_t {
-  k_ra_board_cam_d0    = (uint16_t)RA_PIN(k_ra_port_4, k_ra_pin_0),  /**< CAM D0,    P400. EK-RA8D2 UM Table 35 p 48. */
-  k_ra_board_cam_d1    = (uint16_t)RA_PIN(k_ra_port_9, k_ra_pin_2),  /**< CAM D1,    P902. EK-RA8D2 UM Table 35 p 48. */
-  k_ra_board_cam_d2    = (uint16_t)RA_PIN(k_ra_port_4, k_ra_pin_5),  /**< CAM D2,    P405 (J41). EK-RA8D2 UM Table 35 p 48. */
-  k_ra_board_cam_d3    = (uint16_t)RA_PIN(k_ra_port_4, k_ra_pin_6),  /**< CAM D3,    P406 (J41). EK-RA8D2 UM Table 35 p 48. */
-  k_ra_board_cam_d4    = (uint16_t)RA_PIN(k_ra_port_7, k_ra_pin_0),  /**< CAM D4,    P700. EK-RA8D2 UM Table 35 p 48. */
-  k_ra_board_cam_d5    = (uint16_t)RA_PIN(k_ra_port_7, k_ra_pin_1),  /**< CAM D5,    P701. EK-RA8D2 UM Table 35 p 48. */
-  k_ra_board_cam_d6    = (uint16_t)RA_PIN(k_ra_port_7, k_ra_pin_2),  /**< CAM D6,    P702. EK-RA8D2 UM Table 35 p 48. */
-  k_ra_board_cam_d7    = (uint16_t)RA_PIN(k_ra_port_7, k_ra_pin_3),  /**< CAM D7,    P703. EK-RA8D2 UM Table 35 p 48. */
-  k_ra_board_cam_vsync = (uint16_t)RA_PIN(k_ra_port_11, k_ra_pin_2), /**< CAM VSYNC, PB02. EK-RA8D2 UM Table 35 p 48. */
-  k_ra_board_cam_hsync = (uint16_t)RA_PIN(k_ra_port_11, k_ra_pin_3), /**< CAM HSYNC, PB03. EK-RA8D2 UM Table 35 p 48. */
-  k_ra_board_cam_pclk  = (uint16_t)RA_PIN(k_ra_port_11, k_ra_pin_4), /**< CAM PCLK,  PB04. EK-RA8D2 UM Table 35 p 48. */
-  k_ra_board_cam_xclk  = (uint16_t)RA_PIN(k_ra_port_5, k_ra_pin_1),  /**< CAM XCLK,  P501. EK-RA8D2 UM Table 35 p 48. */
-  k_ra_board_cam_rst   = (uint16_t)RA_PIN(k_ra_port_7, k_ra_pin_9),  /**< CAM RST,   P709. EK-RA8D2 UM Table 35 p 48. */
-  k_ra_board_cam_int   = (uint16_t)RA_PIN(k_ra_port_0, k_ra_pin_10), /**< CAM INT (IRQ-14), P010. EK-RA8D2 UM Table 35 p 48. */
-  k_ra_board_cam_i2c_sda = (uint16_t)RA_PIN(k_ra_port_5, k_ra_pin_11), /**< CAM I2C SDA (SDA1), P511. EK-RA8D2 UM Table 35 p 48. */
-  k_ra_board_cam_i2c_scl = (uint16_t)RA_PIN(k_ra_port_5, k_ra_pin_12), /**< CAM I2C SCL (SCL1), P512. EK-RA8D2 UM Table 35 p 48. */
+  k_ra_board_cam_d0 =
+    (uint16_t)RA_PIN(k_ra_port_4, k_ra_pin_0), /**< CAM D0,    P400. EK-RA8D2 UM Table 35 p 48. */
+  k_ra_board_cam_d1 =
+    (uint16_t)RA_PIN(k_ra_port_9, k_ra_pin_2), /**< CAM D1,    P902. EK-RA8D2 UM Table 35 p 48. */
+  k_ra_board_cam_d2 =
+    (uint16_t)RA_PIN(k_ra_port_4,
+                     k_ra_pin_5), /**< CAM D2,    P405 (J41). EK-RA8D2 UM Table 35 p 48. */
+  k_ra_board_cam_d3 =
+    (uint16_t)RA_PIN(k_ra_port_4,
+                     k_ra_pin_6), /**< CAM D3,    P406 (J41). EK-RA8D2 UM Table 35 p 48. */
+  k_ra_board_cam_d4 =
+    (uint16_t)RA_PIN(k_ra_port_7, k_ra_pin_0), /**< CAM D4,    P700. EK-RA8D2 UM Table 35 p 48. */
+  k_ra_board_cam_d5 =
+    (uint16_t)RA_PIN(k_ra_port_7, k_ra_pin_1), /**< CAM D5,    P701. EK-RA8D2 UM Table 35 p 48. */
+  k_ra_board_cam_d6 =
+    (uint16_t)RA_PIN(k_ra_port_7, k_ra_pin_2), /**< CAM D6,    P702. EK-RA8D2 UM Table 35 p 48. */
+  k_ra_board_cam_d7 =
+    (uint16_t)RA_PIN(k_ra_port_7, k_ra_pin_3), /**< CAM D7,    P703. EK-RA8D2 UM Table 35 p 48. */
+  k_ra_board_cam_vsync =
+    (uint16_t)RA_PIN(k_ra_port_11, k_ra_pin_2), /**< CAM VSYNC, PB02. EK-RA8D2 UM Table 35 p 48. */
+  k_ra_board_cam_hsync =
+    (uint16_t)RA_PIN(k_ra_port_11, k_ra_pin_3), /**< CAM HSYNC, PB03. EK-RA8D2 UM Table 35 p 48. */
+  k_ra_board_cam_pclk =
+    (uint16_t)RA_PIN(k_ra_port_11, k_ra_pin_4), /**< CAM PCLK,  PB04. EK-RA8D2 UM Table 35 p 48. */
+  k_ra_board_cam_xclk =
+    (uint16_t)RA_PIN(k_ra_port_5, k_ra_pin_1), /**< CAM XCLK,  P501. EK-RA8D2 UM Table 35 p 48. */
+  k_ra_board_cam_rst =
+    (uint16_t)RA_PIN(k_ra_port_7, k_ra_pin_9), /**< CAM RST,   P709. EK-RA8D2 UM Table 35 p 48. */
+  k_ra_board_cam_int =
+    (uint16_t)RA_PIN(k_ra_port_0,
+                     k_ra_pin_10), /**< CAM INT (IRQ-14), P010. EK-RA8D2 UM Table 35 p 48. */
+  k_ra_board_cam_i2c_sda =
+    (uint16_t)RA_PIN(k_ra_port_5,
+                     k_ra_pin_11), /**< CAM I2C SDA (SDA1), P511. EK-RA8D2 UM Table 35 p 48. */
+  k_ra_board_cam_i2c_scl =
+    (uint16_t)RA_PIN(k_ra_port_5,
+                     k_ra_pin_12), /**< CAM I2C SCL (SCL1), P512. EK-RA8D2 UM Table 35 p 48. */
 } ra_board_camera_pin_t;
 
 /* =============================================================================
@@ -638,18 +736,42 @@ typedef enum : uint32_t {
  * OSPI_FLASH_S_L, mapped to P104.
  */
 typedef enum : uint16_t {
-  k_ra_board_xspi_cs    = (uint16_t)RA_PIN(k_ra_port_1, k_ra_pin_4), /**< OSPI_FLASH_S_L, P104. EK-RA8D2 UM Table 29 p 35. */
-  k_ra_board_xspi_clk   = (uint16_t)RA_PIN(k_ra_port_8, k_ra_pin_8), /**< OSPI_FLASH_C,   P808. EK-RA8D2 UM Table 29 p 35. */
-  k_ra_board_xspi_dqs   = (uint16_t)RA_PIN(k_ra_port_8, k_ra_pin_1), /**< OSPI_FLASH_DQS, P801. EK-RA8D2 UM Table 29 p 35. */
-  k_ra_board_xspi_reset = (uint16_t)RA_PIN(k_ra_port_1, k_ra_pin_6), /**< OSPI_FLASH_RESET_L, P106. EK-RA8D2 UM Table 29 p 35. */
-  k_ra_board_xspi_dq0   = (uint16_t)RA_PIN(k_ra_port_1, k_ra_pin_0), /**< OSPI_FLASH_DQ0, P100. EK-RA8D2 UM Table 29 p 35. */
-  k_ra_board_xspi_dq1   = (uint16_t)RA_PIN(k_ra_port_8, k_ra_pin_3), /**< OSPI_FLASH_DQ1, P803. EK-RA8D2 UM Table 29 p 35. */
-  k_ra_board_xspi_dq2   = (uint16_t)RA_PIN(k_ra_port_1, k_ra_pin_3), /**< OSPI_FLASH_DQ2, P103. EK-RA8D2 UM Table 29 p 35. */
-  k_ra_board_xspi_dq3   = (uint16_t)RA_PIN(k_ra_port_1, k_ra_pin_1), /**< OSPI_FLASH_DQ3, P101. EK-RA8D2 UM Table 29 p 35. */
-  k_ra_board_xspi_dq4   = (uint16_t)RA_PIN(k_ra_port_1, k_ra_pin_2), /**< OSPI_FLASH_DQ4, P102. EK-RA8D2 UM Table 29 p 35. */
-  k_ra_board_xspi_dq5   = (uint16_t)RA_PIN(k_ra_port_8, k_ra_pin_0), /**< OSPI_FLASH_DQ5, P800. EK-RA8D2 UM Table 29 p 35. */
-  k_ra_board_xspi_dq6   = (uint16_t)RA_PIN(k_ra_port_8, k_ra_pin_2), /**< OSPI_FLASH_DQ6, P802. EK-RA8D2 UM Table 29 p 35. */
-  k_ra_board_xspi_dq7   = (uint16_t)RA_PIN(k_ra_port_8, k_ra_pin_4), /**< OSPI_FLASH_DQ7, P804. EK-RA8D2 UM Table 29 p 35. */
+  k_ra_board_xspi_cs =
+    (uint16_t)RA_PIN(k_ra_port_1,
+                     k_ra_pin_4), /**< OSPI_FLASH_S_L, P104. EK-RA8D2 UM Table 29 p 35. */
+  k_ra_board_xspi_clk =
+    (uint16_t)RA_PIN(k_ra_port_8,
+                     k_ra_pin_8), /**< OSPI_FLASH_C,   P808. EK-RA8D2 UM Table 29 p 35. */
+  k_ra_board_xspi_dqs =
+    (uint16_t)RA_PIN(k_ra_port_8,
+                     k_ra_pin_1), /**< OSPI_FLASH_DQS, P801. EK-RA8D2 UM Table 29 p 35. */
+  k_ra_board_xspi_reset =
+    (uint16_t)RA_PIN(k_ra_port_1,
+                     k_ra_pin_6), /**< OSPI_FLASH_RESET_L, P106. EK-RA8D2 UM Table 29 p 35. */
+  k_ra_board_xspi_dq0 =
+    (uint16_t)RA_PIN(k_ra_port_1,
+                     k_ra_pin_0), /**< OSPI_FLASH_DQ0, P100. EK-RA8D2 UM Table 29 p 35. */
+  k_ra_board_xspi_dq1 =
+    (uint16_t)RA_PIN(k_ra_port_8,
+                     k_ra_pin_3), /**< OSPI_FLASH_DQ1, P803. EK-RA8D2 UM Table 29 p 35. */
+  k_ra_board_xspi_dq2 =
+    (uint16_t)RA_PIN(k_ra_port_1,
+                     k_ra_pin_3), /**< OSPI_FLASH_DQ2, P103. EK-RA8D2 UM Table 29 p 35. */
+  k_ra_board_xspi_dq3 =
+    (uint16_t)RA_PIN(k_ra_port_1,
+                     k_ra_pin_1), /**< OSPI_FLASH_DQ3, P101. EK-RA8D2 UM Table 29 p 35. */
+  k_ra_board_xspi_dq4 =
+    (uint16_t)RA_PIN(k_ra_port_1,
+                     k_ra_pin_2), /**< OSPI_FLASH_DQ4, P102. EK-RA8D2 UM Table 29 p 35. */
+  k_ra_board_xspi_dq5 =
+    (uint16_t)RA_PIN(k_ra_port_8,
+                     k_ra_pin_0), /**< OSPI_FLASH_DQ5, P800. EK-RA8D2 UM Table 29 p 35. */
+  k_ra_board_xspi_dq6 =
+    (uint16_t)RA_PIN(k_ra_port_8,
+                     k_ra_pin_2), /**< OSPI_FLASH_DQ6, P802. EK-RA8D2 UM Table 29 p 35. */
+  k_ra_board_xspi_dq7 =
+    (uint16_t)RA_PIN(k_ra_port_8,
+                     k_ra_pin_4), /**< OSPI_FLASH_DQ7, P804. EK-RA8D2 UM Table 29 p 35. */
 } ra_board_xspi_pin_t;
 
 /* =============================================================================
@@ -671,12 +793,19 @@ typedef enum : uint16_t {
  * touch INT) is BSP-addressable.
  */
 typedef enum : uint16_t {
-  k_ra_board_mipi_dsi_te        = (uint16_t)RA_PIN(k_ra_port_4, k_ra_pin_11), /**< DSI tearing-effect, P411. UM Table 34 p 45. */
-  k_ra_board_mipi_dsi_reset_n   = (uint16_t)RA_PIN(k_ra_port_6, k_ra_pin_6),  /**< DSI DISP_RST, P606. UM Table 34 p 45. */
-  k_ra_board_mipi_dsi_backlight = (uint16_t)RA_PIN(k_ra_port_5, k_ra_pin_14), /**< DSI DISP_BLEN, P514. UM Table 34 p 45. */
-  k_ra_board_mipi_dsi_touch_int = (uint16_t)RA_PIN(k_ra_port_1, k_ra_pin_11), /**< DSI DISP_INT (IRQ-19), P111. UM Table 34 p 45. */
-  k_ra_board_mipi_dsi_i2c_sda   = (uint16_t)RA_PIN(k_ra_port_5, k_ra_pin_11), /**< DSI I2C SDA1, P511. UM Table 34 p 45. */
-  k_ra_board_mipi_dsi_i2c_scl   = (uint16_t)RA_PIN(k_ra_port_5, k_ra_pin_12), /**< DSI I2C SCL1, P512. UM Table 34 p 45. */
+  k_ra_board_mipi_dsi_te =
+    (uint16_t)RA_PIN(k_ra_port_4, k_ra_pin_11), /**< DSI tearing-effect, P411. UM Table 34 p 45. */
+  k_ra_board_mipi_dsi_reset_n =
+    (uint16_t)RA_PIN(k_ra_port_6, k_ra_pin_6), /**< DSI DISP_RST, P606. UM Table 34 p 45. */
+  k_ra_board_mipi_dsi_backlight =
+    (uint16_t)RA_PIN(k_ra_port_5, k_ra_pin_14), /**< DSI DISP_BLEN, P514. UM Table 34 p 45. */
+  k_ra_board_mipi_dsi_touch_int =
+    (uint16_t)RA_PIN(k_ra_port_1,
+                     k_ra_pin_11), /**< DSI DISP_INT (IRQ-19), P111. UM Table 34 p 45. */
+  k_ra_board_mipi_dsi_i2c_sda =
+    (uint16_t)RA_PIN(k_ra_port_5, k_ra_pin_11), /**< DSI I2C SDA1, P511. UM Table 34 p 45. */
+  k_ra_board_mipi_dsi_i2c_scl =
+    (uint16_t)RA_PIN(k_ra_port_5, k_ra_pin_12), /**< DSI I2C SCL1, P512. UM Table 34 p 45. */
 } ra_board_mipi_dsi_pin_t;
 
 /**
