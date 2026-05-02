@@ -110,15 +110,26 @@ static UCHAR     s_demo_stack[k_demo_thread_stack];
 #endif /* !RA_SIMULATOR_MODE */
 
 /**
- * @brief Halt forever in WFI.
+ * @brief Halt forever in WFI, after draining the J-Link OB VCOM TX FIFO.
+ *
+ * @details
+ * Calls ``ra_board_uart_console_flush`` so any panic message previously
+ * queued via ``ra_board_uart_console_write`` finishes clocking onto the
+ * wire before WFI gates the SCI clock. Without the flush, only the
+ * first 1-3 bytes of the failure log reach the host because WFI
+ * silences the peripheral mid-frame. Return code is intentionally
+ * discarded -- if the flush times out we still want to halt rather
+ * than spin.
  *
  * @pre Called only after a fatal error.
- * @post CPU is parked.
+ * @post Pending console TX has drained (or the flush budget expired)
+ *       and the CPU is parked.
  *
  * @since 0.1.0
  */
 static void demo_panic_halt(void)
 {
+  (void)ra_board_uart_console_flush();
   while (1) {
     __asm__ volatile("wfi");
   }

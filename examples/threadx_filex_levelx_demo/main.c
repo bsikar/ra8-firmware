@@ -128,15 +128,25 @@ static UCHAR     s_demo_stack[k_demo_thread_stack];
 #endif /* !RA_SIMULATOR_MODE */
 
 /**
- * @brief Halt forever in WFI.
+ * @brief Halt forever in WFI, after draining the SCI8 TX shift register.
+ *
+ * @details
+ * Calls ``ra_sci_flush`` so any panic message previously queued via
+ * ``ra_sci_write_polling`` finishes clocking onto the wire before WFI
+ * gates the SCI clock. Without the flush, only the first 1-3 bytes of
+ * the failure log reach the host UART because WFI silences the
+ * peripheral mid-frame. Return code is intentionally discarded -- if
+ * the flush times out we still want to halt rather than spin.
  *
  * @pre Called only after a fatal error.
- * @post CPU is parked.
+ * @post Pending SCI8 TX has drained (or the flush budget expired) and
+ *       the CPU is parked.
  *
  * @since 0.1.0
  */
 static void demo_panic_halt(void)
 {
+  (void)ra_sci_flush((uint8_t)k_demo_sci_channel);
   while (1) {
     __asm__ volatile("wfi");
   }

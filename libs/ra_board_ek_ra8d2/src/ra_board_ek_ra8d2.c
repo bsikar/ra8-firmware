@@ -1094,6 +1094,18 @@ ra_err_t ra_board_uart_console_read(uint8_t* out, size_t cap, size_t* out_len)
   return k_ra_ok;
 }
 
+ra_err_t ra_board_uart_console_flush(void)
+{
+  if (!s_uart_console_initialised) {
+    return k_ra_err_not_initialized;
+  }
+  /* HUM Ch 38.2.17 "CSR : Common Status Register", p 2225 -- defer to
+   * ra_sci_flush which spins on CSR.TEND for the SCI8 channel that
+   * backs this console. Lets panic_halt() drain the failure log before
+   * WFI gates the SCI clock. */
+  return ra_sci_flush((uint8_t)k_ra_board_uart_console_sci_channel);
+}
+
 /* =============================================================================
  * 12. On-board RGMII Ethernet PHY (UM Table 26 + 27, page 33-34)
  * =============================================================================
