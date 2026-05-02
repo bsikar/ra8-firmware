@@ -39,3 +39,28 @@
 - /tmp/ra8d2-hw-test/02_flash_blink.log — first successful flash
 - /tmp/ra8d2-hw-test/05_uart_capture.txt onward — empty UART captures
 - All zero-byte UART captures despite firmware actively running in main loop
+
+## 2026-05-02 follow-up: UART working
+
+Caught additional bugs via continued hardware bring-up:
+
+3. **BSP UART console SCI channel was wrong** — `k_ra_board_uart_console_sci_channel`
+   was set to `3U` by the original BSP-additions agent (commit a937aecbf).
+   Sweeping channels 0..9 on real silicon revealed the J-Link OB VCOM
+   bridge is on **SCI8**, not SCI3. PD02/PD03 routing under PSEL=`sci_async`
+   maps to SCI8 on EK-RA8D2 v1. **Fixed.**
+
+4. **Wrong serial port** — `/dev/cu.usbmodem508RMDZL10983` is something
+   else (possibly a parallel DAPLink interface). The actual J-Link OB VCOM
+   bridge is **`/dev/cu.usbmodem0010865671981`** (matches J-Link SN
+   001086567198).
+
+### Verified output
+At 115200 8N1 (with 2.7% baud-rate drift accepted by the J-Link OB CDC bridge):
+```
+hello, ra8d2!
+hello, ra8d2!
+hello, ra8d2!
+...
+```
+SCI8 -> J-Link OB UART bridge -> USB-CDC -> /dev/cu.usbmodem0010865671981 -> host.
