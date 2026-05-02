@@ -29,6 +29,7 @@
 #include "ra_check.h"
 #include "ra_isr.h"
 #include "ra_log.h"
+#include "tx_api.h"
 #include "ux_api.h"
 #include "ux_device_stack.h"
 
@@ -131,6 +132,15 @@ typedef enum : uint16_t {
  * @param[in] ep_addr Endpoint address (with dir bit in 0x80).
  *
  * @return Pipe index 0..9, or k_ux_dcd_ra_usb_max_pipes on overflow.
+ *
+ * @details See implementation for details.
+ * @retval 0 Success or default value.
+ * @pre Module has been initialised.
+ * @pre Caller has validated arguments.
+ * @post Side effects bounded to documented state.
+ * @post State reflects operation result.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static uint8_t internal_ep_to_pipe(uint8_t ep_addr)
 {
@@ -150,6 +160,15 @@ static uint8_t internal_ep_to_pipe(uint8_t ep_addr)
  * @param[in,out] tr USBX transfer request.
  *
  * @return UX_SUCCESS on enqueue, UX_TRANSFER_ERROR on rejection.
+ *
+ * @details See implementation for details.
+ * @retval 0 Success or default value.
+ * @pre Module has been initialised.
+ * @pre Caller has validated arguments.
+ * @post Side effects bounded to documented state.
+ * @post State reflects operation result.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static unsigned int internal_transfer_request(struct UX_SLAVE_TRANSFER_STRUCT* tr)
 {
@@ -204,6 +223,17 @@ static unsigned int internal_transfer_request(struct UX_SLAVE_TRANSFER_STRUCT* t
 
 /**
  * @brief Translate a USBX endpoint create request into ra_usb call.
+ *
+ * @details See implementation for details.
+ * @param[in,out] ep See function signature.
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ * @pre Module has been initialised.
+ * @pre Caller has validated arguments.
+ * @post Side effects bounded to documented state.
+ * @post State reflects operation result.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static unsigned int internal_endpoint_create(struct UX_SLAVE_ENDPOINT_STRUCT* ep)
 {
@@ -249,6 +279,25 @@ static unsigned int internal_endpoint_create(struct UX_SLAVE_ENDPOINT_STRUCT* ep
   return UX_SUCCESS;
 }
 
+/**
+ * @brief Endpoint stall.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] ep See function signature for type and usage.
+ *
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 static unsigned int internal_endpoint_stall(struct UX_SLAVE_ENDPOINT_STRUCT* ep)
 {
   if (ep == nullptr) {
@@ -269,6 +318,19 @@ static unsigned int internal_endpoint_stall(struct UX_SLAVE_ENDPOINT_STRUCT* ep)
 /**
  * @brief USBX DCD function dispatcher. Stamps into
  *        ``UX_SLAVE_DCD::ux_slave_dcd_function`` during init.
+ *
+ * @details See implementation for details.
+ * @param[in,out] dcd See function signature.
+ * @param[in,out] function See function signature.
+ * @param[in,out] parameter See function signature.
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ * @pre Module has been initialised.
+ * @pre Caller has validated arguments.
+ * @post Side effects bounded to documented state.
+ * @post State reflects operation result.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 unsigned int
 _ux_dcd_ra_usb_function(struct UX_SLAVE_DCD_STRUCT* dcd, unsigned int function, void* parameter)
@@ -420,6 +482,11 @@ static void internal_usbhs_isr(void* ctx)
  * @note Pure function.
  *
  * @since 0.1.0
+ *
+ * @details See implementation for details.
+ * @retval 0 Success or default value.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
  */
 static ra_elc_event_t internal_pick_event(ra_usb_speed_t speed)
 {
@@ -438,6 +505,11 @@ static ra_elc_event_t internal_pick_event(ra_usb_speed_t speed)
  * @note Pure function.
  *
  * @since 0.1.0
+ *
+ * @details See implementation for details.
+ * @retval 0 Success or default value.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
  */
 static ra_isr_handler_t internal_pick_isr(ra_usb_speed_t speed)
 {
@@ -446,6 +518,17 @@ static ra_isr_handler_t internal_pick_isr(ra_usb_speed_t speed)
 
 /**
  * @brief ra_usb_attach_handler trampoline.
+ *
+ * @details See implementation for details.
+ * @param[in,out] ctx See function signature.
+ * @param[in,out] speed See function signature.
+ * @param[in,out] status_mask See function signature.
+ * @pre Module has been initialised.
+ * @pre Caller has validated arguments.
+ * @post Side effects bounded to documented state.
+ * @post State reflects operation result.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static void internal_event_cb(void* ctx, ra_usb_speed_t speed, uint16_t status_mask)
 {
@@ -658,6 +741,23 @@ static void internal_handle_dvst(uint16_t intsts0)
   }
 }
 
+/**
+ * @brief Ux dcd ra usb irq.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] speed See function signature for type and usage.
+ * @param[in,out] intsts0 See function signature for type and usage.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 void ux_dcd_ra_usb_irq(ra_usb_speed_t speed, uint16_t intsts0)
 {
   if (s_dcd.state == k_ux_dcd_ra_usb_state_uninit) {
@@ -709,9 +809,206 @@ void ux_dcd_ra_usb_irq(ra_usb_speed_t speed, uint16_t intsts0)
 }
 
 /* -------------------------------------------------------------------------- */
+/* Polled-dispatch worker (Option A from HARDWARE_BRINGUP.md USB-FS notes)    */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * @enum ra_usb_dcd_worker_cfg_t
+ * @brief Compile-time sizing for the bridge's polled-dispatch worker.
+ *
+ * @details
+ * The RA8D2 USBFS / USBHS controllers normally drive enumeration off
+ * the USBFS_INT / USBHS_USB_INT_RESUME NVIC line, but registering that
+ * line via ``ra_isr_register`` HardFaults on EK-RA8D2 silicon
+ * (PC=0xEFFFFFFE, see ``docs/HARDWARE_BRINGUP.md`` "second-round
+ * hardware verification" + "night sweep" sections). Until that
+ * root-cause is solved we run a ``ra_usb_dispatch`` polling loop in a
+ * dedicated ThreadX thread so SETUP / BRDY / BEMP / DVST events drain
+ * INTSTS0 with sub-millisecond latency -- well inside the macOS
+ * ~10 ms post-DPRPU SETUP window.
+ *
+ * The worker is spawned by ``ux_dcd_ra_usb_initialize`` BEFORE the
+ * caller's ``ra_usb_device_attach(true)`` raises DPRPU, so the very
+ * first SETUP packet the host issues is observed by the dispatcher.
+ *
+ * @invariant Worker priority is strictly greater (numerically) than
+ *            any application init thread that calls
+ *            ``ra_usb_device_attach`` -- otherwise the worker starves
+ *            the init thread before D+ pull-up is asserted.
+ */
+typedef enum : uint16_t {
+  k_ra_usb_dcd_worker_stack_bytes = 2048U, /**< Worker thread stack (bytes).      */
+  k_ra_usb_dcd_worker_priority    = 12U,   /**< ThreadX priority (lower than app worker @8). */
+  k_ra_usb_dcd_worker_threshold   = 12U,   /**< Pre-emption threshold == priority.*/
+  k_ra_usb_dcd_worker_time_slice  = 0U,    /**< 0 == TX_NO_TIME_SLICE.            */
+} ra_usb_dcd_worker_cfg_t;
+
+/**
+ * @var s_dispatch_thread
+ * @brief ThreadX TCB for the polled-dispatch worker.
+ *
+ * @details One worker per bridge instance. The bridge is a singleton
+ * (RA8D2 has two USB controllers but the device stack only ever
+ * drives one at a time), so a single TCB is sufficient.
+ *
+ * @note Owned by ``ux_dcd_ra_usb_initialize``; must not be touched
+ *       outside the bridge.
+ * @warning Direct modification will corrupt the ThreadX scheduler.
+ * @since 0.1.0
+ */
+static TX_THREAD s_dispatch_thread;
+
+/**
+ * @var s_dispatch_stack
+ * @brief Stack backing storage for ``s_dispatch_thread``.
+ *
+ * @details Statically allocated per NASA Power-of-10 Rule 3 (no
+ * dynamic allocation after init).
+ *
+ * @note Read/written exclusively by the ThreadX scheduler.
+ * @since 0.1.0
+ */
+static UCHAR s_dispatch_stack[k_ra_usb_dcd_worker_stack_bytes];
+
+/**
+ * @var s_dispatch_thread_name
+ * @brief Mutable name buffer handed to ``tx_thread_create``.
+ *
+ * @details ThreadX's ``tx_thread_create`` takes ``CHAR*`` (non-const)
+ * for the thread name, so we keep a writable storage slot to avoid a
+ * ``-Wcast-qual`` warning at the call site. Contents are never
+ * modified after init.
+ *
+ * @note Read-only post-init; treat as ``const`` despite the type.
+ * @since 0.1.0
+ */
+static CHAR s_dispatch_thread_name[] = "ux_dcd_ra_usb_disp";
+
+/**
+ * @var s_dispatch_thread_started
+ * @brief Guard preventing a second ``tx_thread_create`` on re-init.
+ *
+ * @details ``ux_dcd_ra_usb_initialize`` may be called once per boot,
+ * but if the application explicitly tears the bridge down and back up
+ * we keep the original thread alive (the worker is benign in the
+ * uninit state because it relinquishes immediately when
+ * ``s_dcd.state`` is ``k_ux_dcd_ra_usb_state_uninit``).
+ *
+ * @note Single-writer (init path); single-reader.
+ * @since 0.1.0
+ */
+static bool s_dispatch_thread_started = false;
+
+/**
+ * @brief Polled-dispatch worker entry. Calls ``ra_usb_dispatch`` in a
+ *        tight loop so the bridge sees SETUP / BRDY / BEMP / DVST
+ *        edges with sub-millisecond latency.
+ *
+ * @details
+ * Runs forever. Each iteration:
+ *   1. If the bridge is uninit, relinquish (avoid burning CPU before
+ *      ``ux_dcd_ra_usb_initialize`` has stamped ``s_dcd.speed``).
+ *   2. Otherwise call ``ra_usb_dispatch(s_dcd.speed)`` which reads
+ *      INTSTS0, clears it, and drives the bridge's
+ *      ``internal_event_cb`` for any pending bits.
+ *   3. ``tx_thread_relinquish`` so equal-priority threads round-robin.
+ *
+ * @param[in] arg Unused (ThreadX entry signature).
+ *
+ * @pre ``ux_dcd_ra_usb_initialize`` has stamped ``s_dcd.speed``.
+ * @pre ThreadX scheduler is running.
+ *
+ * @post Never returns.
+ * @post For every INTSTS0 edge the bridge callback has executed.
+ *
+ * @note Single-instance worker; not designed for re-entry.
+ * @warning Lower-priority threads (the application init thread that
+ *          calls ra_usb_device_attach) must run before this worker is
+ *          useful -- see priority rationale on ``ra_usb_dcd_worker_cfg_t``.
+ *
+ * @see ra_usb_dispatch
+ * @since 0.1.0
+ */
+static VOID internal_dispatch_worker(ULONG arg)
+{
+  (void)arg;
+  while (1) {
+    if (s_dcd.state == k_ux_dcd_ra_usb_state_uninit) {
+      tx_thread_relinquish();
+      continue;
+    }
+    ra_usb_dispatch(s_dcd.speed);
+    tx_thread_relinquish();
+  }
+}
+
+/**
+ * @brief Spawn the polled-dispatch worker exactly once per boot.
+ *
+ * @details
+ * Idempotent. Subsequent calls (e.g. across a deinit / reinit cycle)
+ * are no-ops because ThreadX cannot recycle a TCB cleanly without a
+ * full ``tx_thread_delete`` dance which the bridge intentionally
+ * avoids -- the worker is benign in the uninit state.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok                     Worker running (or already running).
+ * @retval k_ra_err_rtos_thread_create ``tx_thread_create`` failed.
+ *
+ * @pre ThreadX scheduler is running.
+ * @pre Caller holds the bridge init lock (single-threaded init context).
+ *
+ * @post Exactly one ``s_dispatch_thread`` instance exists.
+ * @post Worker is auto-started.
+ *
+ * @note Not thread-safe; call only from ``ux_dcd_ra_usb_initialize``.
+ * @since 0.1.0
+ */
+static ra_err_t internal_start_dispatch_worker(void)
+{
+  if (s_dispatch_thread_started) {
+    return k_ra_ok;
+  }
+  const UINT tx = tx_thread_create(&s_dispatch_thread,
+                                   s_dispatch_thread_name,
+                                   internal_dispatch_worker,
+                                   0UL,
+                                   s_dispatch_stack,
+                                   (ULONG)k_ra_usb_dcd_worker_stack_bytes,
+                                   (UINT)k_ra_usb_dcd_worker_priority,
+                                   (UINT)k_ra_usb_dcd_worker_threshold,
+                                   (ULONG)k_ra_usb_dcd_worker_time_slice,
+                                   TX_AUTO_START);
+  if (tx != TX_SUCCESS) {
+    return k_ra_err_rtos_thread_create;
+  }
+  s_dispatch_thread_started = true;
+  return k_ra_ok;
+}
+
+/* -------------------------------------------------------------------------- */
 /* Lifecycle                                                                  */
 /* -------------------------------------------------------------------------- */
 
+/**
+ * @brief Ux dcd ra usb initialize.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] speed See function signature for type and usage.
+ *
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ux_dcd_ra_usb_initialize(ra_usb_speed_t speed)
 {
   if ((uint8_t)speed > (uint8_t)k_ra_usb_speed_hs) {
@@ -740,14 +1037,16 @@ ra_err_t ux_dcd_ra_usb_initialize(ra_usb_speed_t speed)
     s_dcd.pipes[i].xfer = nullptr;
   }
 
-  /* IRQ wiring temporarily disabled — see HARDWARE_BRINGUP.md
+  /* IRQ wiring temporarily disabled -- see HARDWARE_BRINGUP.md
    * "second-round" entry. Even with FSP-verified event codes (0x09A
    * USBFS_INT, 0x2C3 USBHS_USB_INT_RESUME) the very first
    * ra_isr_register call HardFaults on EK-RA8D2 silicon (PC=
-   * 0xEFFFFFFE, MMFAR=0x40700004 — BLE placeholder space, unrelated
+   * 0xEFFFFFFE, MMFAR=0x40700004 -- BLE placeholder space, unrelated
    * to NVIC). Likely a SAU/IDAU-style transition issue or a
-   * dispatch-table init order problem. Apps poll ra_usb_dispatch
-   * from a worker tick instead. */
+   * dispatch-table init order problem. The bridge spawns a dedicated
+   * polled-dispatch worker below (Option A in the night-sweep notes)
+   * so SETUP / BRDY / BEMP / DVST events still drain INTSTS0 fast
+   * enough for the host to complete enumeration. */
   (void)internal_pick_event;
   (void)internal_pick_isr;
   (void)k_ra_usb_dcd_isr_prio;
@@ -756,10 +1055,38 @@ ra_err_t ux_dcd_ra_usb_initialize(ra_usb_speed_t speed)
   _ux_system_slave->ux_system_slave_speed =
     (speed == k_ra_usb_speed_hs) ? UX_HIGH_SPEED_DEVICE : UX_FULL_SPEED_DEVICE;
 
+  /* Spawn the polled-dispatch worker BEFORE returning so it is
+   * already pumping ra_usb_dispatch by the time the application
+   * calls ra_usb_device_attach(true). Without this the host raises
+   * D+ pull-up, sees the device, issues a SETUP within ~10 ms, and
+   * suspends the bus before the application worker even reaches its
+   * first ra_usb_dispatch call (ctrt_count=0, setup_count=0 -- see
+   * HARDWARE_BRINGUP.md "night sweep"). */
+  RA_RETURN_ON_ERROR(internal_start_dispatch_worker(),
+                     s_tag,
+                     "internal_start_dispatch_worker");
+
   ra_log_info(s_tag, "DCD bridge installed");
   return k_ra_ok;
 }
 
+/**
+ * @brief Ux dcd ra usb uninitialize.
+ *
+ * @details See implementation for details.
+ *
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ux_dcd_ra_usb_uninitialize(void)
 {
   if (s_dcd.state == k_ux_dcd_ra_usb_state_uninit) {
@@ -777,6 +1104,23 @@ ra_err_t ux_dcd_ra_usb_uninitialize(void)
   return k_ra_ok;
 }
 
+/**
+ * @brief Ux dcd ra usb state.
+ *
+ * @details See implementation for details.
+ *
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 ra_usb_dcd_state_t ux_dcd_ra_usb_state(void)
 {
   return s_dcd.state;
