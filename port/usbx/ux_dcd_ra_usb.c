@@ -491,23 +491,17 @@ ra_err_t ux_dcd_ra_usb_initialize(ra_usb_speed_t speed)
     s_dcd.pipes[i].xfer = nullptr;
   }
 
-  /* Wire the controller's combined interrupt line into the IELSR
-   * dispatch table. Event codes verified against FSP
-   * `ra/fsp/src/bsp/mcu/ra8d2/bsp_elc.h` lines 133/347 -- USBFS_INT =
-   * 0x09A, USBHS_USB_INT_RESUME = 0x2C3. State is set to
-   * `_ready` first so the IRQ trampoline (which runs immediately after
-   * ra_isr_register enables the NVIC line) sees a coherent bridge. */
-  uint16_t       slot      = 0U;
-  const ra_err_t isr_err   = ra_isr_register(internal_pick_event(speed),
-                                           internal_pick_isr(speed),
-                                           nullptr,
-                                           (uint8_t)k_ra_usb_dcd_isr_prio,
-                                           &slot);
-  if (isr_err != k_ra_ok) {
-    ra_log_error(s_tag, "ra_isr_register USB interrupt failed");
-    s_dcd.state = k_ux_dcd_ra_usb_state_uninit;
-    return isr_err;
-  }
+  /* IRQ wiring temporarily disabled — see HARDWARE_BRINGUP.md
+   * "second-round" entry. Even with FSP-verified event codes (0x09A
+   * USBFS_INT, 0x2C3 USBHS_USB_INT_RESUME) the very first
+   * ra_isr_register call HardFaults on EK-RA8D2 silicon (PC=
+   * 0xEFFFFFFE, MMFAR=0x40700004 — BLE placeholder space, unrelated
+   * to NVIC). Likely a SAU/IDAU-style transition issue or a
+   * dispatch-table init order problem. Apps poll ra_usb_dispatch
+   * from a worker tick instead. */
+  (void)internal_pick_event;
+  (void)internal_pick_isr;
+  (void)k_ra_usb_dcd_isr_prio;
 
   /* Tell USBX system the speed. */
   _ux_system_slave->ux_system_slave_speed =
@@ -522,7 +516,7 @@ ra_err_t ux_dcd_ra_usb_uninitialize(void)
   if (s_dcd.state == k_ux_dcd_ra_usb_state_uninit) {
     return k_ra_err_invalid_state;
   }
-  (void)ra_isr_unregister(internal_pick_event(s_dcd.speed));
+  /* Matching pair to the disabled ra_isr_register in the init path. */
   (void)ra_usb_attach_handler(nullptr, nullptr);
   (void)ra_usb_device_deinit(s_dcd.speed);
   if (s_dcd.owner != nullptr) {
