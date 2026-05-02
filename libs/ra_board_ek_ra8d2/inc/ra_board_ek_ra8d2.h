@@ -384,7 +384,7 @@ ra_board_audio_init(uint32_t sample_rate_hz, uint8_t bit_depth, uint8_t channels
 [[nodiscard]] ra_err_t ra_board_audio_play_sample_block(const int16_t* buf, uint32_t len);
 
 /* =============================================================================
- * 5. Arduino Uno header (J18/J19/J23/J24) (UM Section 5.3.4, Table 20, p 27)
+ * 5. Arduino Uno header (J18/J19/J23/J24) (UM Section 5.3.4, Table 20, p 27-28)
  * =============================================================================
  */
 
@@ -441,17 +441,17 @@ typedef enum : uint16_t {
 
   /* Analog input block (J19). */
   k_ra_board_arduino_a0 =
-    (uint16_t)RA_PIN(k_ra_port_0, k_ra_pin_1), /**< A0 AN001, P001. UM Table 20 p 27. */
+    (uint16_t)RA_PIN(k_ra_port_0, k_ra_pin_1), /**< A0 AN001, P001. UM Table 20 p 28. */
   k_ra_board_arduino_a1 =
-    (uint16_t)RA_PIN(k_ra_port_0, k_ra_pin_7), /**< A1 AN007, P007. UM Table 20 p 27. */
+    (uint16_t)RA_PIN(k_ra_port_0, k_ra_pin_7), /**< A1 AN007, P007. UM Table 20 p 28. */
   k_ra_board_arduino_a2 =
-    (uint16_t)RA_PIN(k_ra_port_0, k_ra_pin_3), /**< A2 AN003, P003. UM Table 20 p 27. */
+    (uint16_t)RA_PIN(k_ra_port_0, k_ra_pin_3), /**< A2 AN003, P003. UM Table 20 p 28. */
   k_ra_board_arduino_a3 =
-    (uint16_t)RA_PIN(k_ra_port_0, k_ra_pin_4), /**< A3 AN004, P004. UM Table 20 p 27. */
+    (uint16_t)RA_PIN(k_ra_port_0, k_ra_pin_4), /**< A3 AN004, P004. UM Table 20 p 28. */
   k_ra_board_arduino_a4 =
-    (uint16_t)RA_PIN(k_ra_port_0, k_ra_pin_14), /**< A4 AN014/DA0, P014. UM Table 20 p 27. */
+    (uint16_t)RA_PIN(k_ra_port_0, k_ra_pin_14), /**< A4 AN014/DA0, P014. UM Table 20 p 28. */
   k_ra_board_arduino_a5 =
-    (uint16_t)RA_PIN(k_ra_port_0, k_ra_pin_15), /**< A5 AN015/DA1, P015. UM Table 20 p 27. */
+    (uint16_t)RA_PIN(k_ra_port_0, k_ra_pin_15), /**< A5 AN015/DA1, P015. UM Table 20 p 28. */
 } ra_board_arduino_pin_t;
 
 /** @brief Direction mode for an Arduino-header GPIO pin. */
