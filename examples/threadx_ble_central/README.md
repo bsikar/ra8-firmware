@@ -10,3 +10,11 @@ Build:
 
 Pair against `examples/threadx_nimble_peripheral` running on a second
 EK-RA8D2 to exchange Battery Service notifications.
+
+Uses `ra_board_ek_ra8d2` BSP for LED feedback (per EK-RA8D2 v1 UM
+Table 24 p 31). The BLE controller is on-chip; no external pins are
+required.
+
+Validated 2026-05-02 against EK-RA8D2 v1 User's Manual (R20UT5523EG0101
+Rev 1.01) Table 24 p 31, and Bluetooth Core 5.3 + Apache NimBLE GATT
+client API.
