@@ -1032,6 +1032,24 @@ typedef struct {
 
 /**
  * @brief Initialise a walker that iterates the volume root directory.
+ *
+ * @details FAT12/16 use a fixed root region; FAT32 uses a cluster
+ *          chain rooted at `m->root_cluster`.
+ *
+ * @param[in]  m Mount providing geometry and FAT type.
+ * @param[out] w Walker cursor to initialise.
+ *
+ * @return None.
+ * @retval None
+ *
+ * @pre `m` and `w` are non-NULL.
+ * @pre `m` has been fully populated by `priv_compute_geometry`.
+ * @post `w` points at the first sector of the root directory.
+ * @post `w->entry_idx` is zero.
+ *
+ * @note Pure init -- does not touch the backend.
+ *
+ * @since 0.1.0
  */
 static void priv_dir_walk_init_root(const ra_fs_mount_t* m, dir_walk_t* w)
 {

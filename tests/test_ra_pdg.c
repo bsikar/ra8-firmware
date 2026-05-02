@@ -860,6 +860,49 @@ static void test_deinit(void)
   TEST_END("pdg deinit");
 }
 
+/**
+ * @test test_mcdc_pdg
+ *
+ * @par MC/DC:
+ * Decision A: ``ra_pdg_check_constraints`` line 805,
+ * libs/ra_hal/src/ra_pdg.c:
+ * ``if ((mode != k_ra_pdg_wave_saw) && (mode != k_ra_pdg_wave_triangle))``
+ * (2 conditions). N+1 = 3 vectors:
+ * - V1: mode=saw      -> C1=F (short-circuits)        -> dec F (->ok)
+ * - V2: mode=triangle -> C1=T,C2=F                    -> dec F (->ok)
+ * - V3: mode=bogus    -> C1=T,C2=T                    -> dec T (->invalid_arg)
+ * (V1,V3) flips C1 with C2 fixed; (V2,V3) flips C2 with C1 fixed.
+ *
+ * Decision B: ``ra_pdg_check_constraints`` line 808,
+ * ``if ((dir != k_ra_pdg_dir_up) && (dir != k_ra_pdg_dir_down))``
+ * (2 conditions). Same N+1 = 3 vector shape on ``dir``; mode pinned
+ * to k_ra_pdg_wave_saw to bypass decision A.
+ */
+static void test_mcdc_pdg(void)
+{
+  TEST_BEGIN("pdg MC/DC: check_constraints mode + dir 2-cond rejects");
+  /* Decision A: mode validation. Use a benign dir + gtpr/cm so the
+   * downstream constraint checks do not poison the A-result. */
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_ok,
+    (int32_t)ra_pdg_check_constraints(k_ra_pdg_wave_saw, k_ra_pdg_dir_down, 100U, 200U));
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_ok,
+    (int32_t)ra_pdg_check_constraints(k_ra_pdg_wave_triangle, k_ra_pdg_dir_up, 100U, 200U));
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_invalid_arg,
+    (int32_t)ra_pdg_check_constraints((ra_pdg_wave_mode_t)0xFFU, k_ra_pdg_dir_up, 100U, 200U));
+
+  /* Decision B: dir validation, with mode held at saw (passes A). */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_pdg_check_constraints(k_ra_pdg_wave_saw, k_ra_pdg_dir_up, 100U, 200U));
+  /* dir=down already exercised in V1 of decision A above. */
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_invalid_arg,
+    (int32_t)ra_pdg_check_constraints(k_ra_pdg_wave_saw, (ra_pdg_count_dir_t)0xFFU, 100U, 200U));
+  TEST_END("pdg MC/DC: check_constraints mode + dir 2-cond rejects");
+}
+
 int32_t main(void)
 {
   test_init_happy();
@@ -896,6 +939,7 @@ int32_t main(void)
   test_capture_stop_happy();
   test_capture_start_no_handler();
   test_deinit();
+  test_mcdc_pdg();
   (void)fprintf(stderr, "[OK ] test_ra_pdg.c\n");
   return 0;
 }

@@ -889,6 +889,50 @@ static void test_every_threshold_value(void)
   TEST_END("lvd every PVDLVL value accepted");
 }
 
+/**
+ * @test test_mcdc_lvd
+ *
+ * @par MC/DC:
+ * Decision: ``ra_lvd_set_hysteresis_mode`` line 794,
+ * libs/ra_hal/src/ra_lvd.c:
+ * ``if (map.has_irq && (hyst == k_ra_lvd_hysteresis_hvd))``
+ * (2 conditions, ``&&`` short-circuit).
+ *
+ * N+1 = 3 vectors:
+ * - V1: m channel (has_irq=T) + hyst=HVD + RI=0
+ *       -> C1=T,C2=T -> dec T -> invalid_state (RI gate trips)
+ * - V2: m channel (has_irq=T) + hyst=LVD
+ *       -> C1=T,C2=F -> dec F -> ok
+ * - V3: n channel (has_irq=F) + hyst=HVD
+ *       -> C1=F (short-circuits) -> dec F -> ok (no RI gate)
+ * Pairs: (V1,V2) flip C2 with C1 fixed; (V1,V3) flip C1 with C2 fixed.
+ */
+static void test_mcdc_lvd(void)
+{
+  TEST_BEGIN("lvd MC/DC: set_hysteresis_mode RI gate (2-cond)");
+  prep();
+
+  /* V1: m chan, RI=0 (response=interrupt sets RIE not RI), HVD -> dec T. */
+  ra_lvd_cfg_t cfg_v1 = make_cfg();
+  cfg_v1.response     = k_ra_lvd_response_interrupt;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_lvd_channel_init(k_ra_lvd_ch1, &cfg_v1));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state,
+                 (int32_t)ra_lvd_set_hysteresis_mode(k_ra_lvd_ch1, k_ra_lvd_hysteresis_hvd));
+
+  /* V2: m chan, hyst=LVD -> C2=F -> dec F -> ok. */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_lvd_set_hysteresis_mode(k_ra_lvd_ch1, k_ra_lvd_hysteresis_lvd));
+
+  /* V3: n chan (has_irq=F), HVD -> C1=F (short-circuits) -> dec F -> ok. */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_lvd_unlock_n_channels());
+  ra_lvd_cfg_t cfg_v3 = make_cfg();
+  cfg_v3.response     = k_ra_lvd_response_reset;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_lvd_channel_init(k_ra_lvd_ch4, &cfg_v3));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_lvd_set_hysteresis_mode(k_ra_lvd_ch4, k_ra_lvd_hysteresis_hvd));
+  TEST_END("lvd MC/DC: set_hysteresis_mode RI gate (2-cond)");
+}
+
 int32_t main(void)
 {
   test_init_happy_ch1();
@@ -926,6 +970,7 @@ int32_t main(void)
   test_attach_and_dispatch_shared();
   test_attach_per_channel_handler();
   test_every_threshold_value();
+  test_mcdc_lvd();
   (void)fprintf(stderr, "[OK  ] test_ra_lvd.c\n");
   return 0;
 }

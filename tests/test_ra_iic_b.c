@@ -740,6 +740,59 @@ static void test_legacy_pass_throughs(void)
   TEST_END("ra_iic_init/write/read: NSC pass-throughs forward");
 }
 
+/**
+ * @test test_mcdc_iic_b
+ *
+ * @par MC/DC:
+ * Three 2-condition decisions in ``ra_iic_b_transfer``,
+ * libs/ra_hal/src/ra_iic_b.c:
+ *
+ * Decision A (line 948): ``if ((tx_len == 0U) && (rx_len == 0U))``
+ * - V1: tx=0, rx=0  -> C1=T,C2=T -> dec T (-> invalid_arg)
+ * - V2: tx=non-zero -> C1=F (short-circuits) -> dec F
+ * - V3: tx=0, rx=non-zero -> C1=T,C2=F -> dec F
+ * Pairs (V1,V2) flip C1; (V1,V3) flip C2.
+ *
+ * Decision B (line 951): ``if ((tx_len != 0U) && (tx == nullptr))``
+ * - V1: tx_len=0       -> C1=F (short-circuits)         -> dec F
+ * - V2: tx_len!=0, tx=non-null -> C1=T,C2=F             -> dec F
+ * - V3: tx_len!=0, tx=NULL     -> C1=T,C2=T             -> dec T (null_ptr)
+ *
+ * Decision C (line 954): ``if ((rx_len != 0U) && (rx == nullptr))``
+ * mirrors B with rx_len/rx; same N+1 = 3 vectors.
+ */
+static void test_mcdc_iic_b(void)
+{
+  TEST_BEGIN("iic_b MC/DC: transfer arg-validation 2-cond decisions");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_iic_b_init(0U, &k_iic_b_cfg));
+
+  uint8_t tx_buf[1] = {0xA5U};
+  uint8_t rx_buf[1] = {0U};
+
+  /* Decision A V1: both lens zero -> invalid_arg. */
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_invalid_arg,
+    (int32_t)ra_iic_b_transfer(0U, (uint8_t)k_ra_iic_b_test_target, tx_buf, 0U, rx_buf, 0U));
+
+  /* Decision B V3: tx_len!=0 with NULL tx -> null_ptr. */
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_null_ptr,
+    (int32_t)ra_iic_b_transfer(0U, (uint8_t)k_ra_iic_b_test_target, nullptr, 1U, rx_buf, 0U));
+
+  /* Decision C V3: rx_len!=0 with NULL rx -> null_ptr. tx_len=0 to
+   * keep decision A=F (because rx_len!=0) and decision B=F (tx_len=0). */
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_null_ptr,
+    (int32_t)ra_iic_b_transfer(0U, (uint8_t)k_ra_iic_b_test_target, tx_buf, 0U, nullptr, 1U));
+
+  /* Decision B V2 + C V2 happy path covered by test_transfer_happy and
+   * Decision A V2 / V3 covered implicitly through happy + decision B
+   * V1 short-circuit. The asserts above are the masking pairs that
+   * give MC/DC for the rejection branches. */
+  TEST_END("iic_b MC/DC: transfer arg-validation 2-cond decisions");
+}
+
 int32_t main(void)
 {
   test_init_configured();
@@ -772,6 +825,7 @@ int32_t main(void)
   test_attach_handler_toggles_iers();
   test_dispatch_eri_fires_callback();
   test_legacy_pass_throughs();
+  test_mcdc_iic_b();
   (void)fprintf(stderr, "[OK ] test_ra_iic_b.c\n");
   return 0;
 }

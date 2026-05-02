@@ -750,6 +750,61 @@ static void test_perf_arm_read_reset(void)
   TEST_END("drw perf arm/read/reset");
 }
 
+/**
+ * @test test_mcdc_drw
+ *
+ * @par MC/DC:
+ * Decision: ``ra_drw_cache_flush`` line 422,
+ * libs/ra_hal/src/ra_drw.c:
+ * ``if (!flush_fb && !flush_texture)``  (2 conditions on the negated
+ * boolean operands; treat ``!flush_fb`` and ``!flush_texture`` as the
+ * Boolean conditions C1 and C2).
+ *
+ * N+1 = 3 vector representative subset:
+ * - V1: (flush_fb=true,  flush_texture=*)    -> C1=F, decision F (does work)
+ * - V2: (flush_fb=false, flush_texture=true) -> C1=T,C2=F, decision F (does work)
+ * - V3: (flush_fb=false, flush_texture=false)-> C1=T,C2=T, decision T (warns/no-op)
+ * Pairs: (V1,V3) flips C1 with C2 fixed; (V2,V3) flips C2 with C1 fixed.
+ *
+ * Decision B: ``ra_drw_perf_arm`` line 937,
+ * ``if ((uint16_t)event_ctr1 > k_ra_drw_internal_perfev_max ||
+ *      (uint16_t)event_ctr2 > k_ra_drw_internal_perfev_max)``
+ * (2 conditions, ``||`` short-circuit). N+1 = 3 vectors:
+ * - V1: ctr1 in range, ctr2 in range -> both F -> dec F (ok)
+ * - V2: ctr1 out, ctr2 in range      -> C1=T short-circuits -> dec T
+ * - V3: ctr1 in range, ctr2 out      -> C1=F, C2=T -> dec T
+ */
+static void test_mcdc_drw(void)
+{
+  TEST_BEGIN("drw MC/DC: cache_flush + perf_arm 2-cond decisions");
+  prep();
+  const ra_drw_config_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_drw_init(&cfg));
+
+  /* Decision A vectors. All three return ok; correctness = no crash &
+   * the side-effect mask in CACHECTL is set on V1/V2 and untouched on V3. */
+  const uint32_t before = *ra_drw_reg32(k_ra_drw_off_cachectl);
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_drw_cache_flush(true, false));
+  const uint32_t after_v1 = *ra_drw_reg32(k_ra_drw_off_cachectl);
+  TEST_ASSERT((after_v1 & (uint32_t)k_ra_drw_cachectl_cflushfx) != 0U);
+
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_drw_cache_flush(false, true));
+  const uint32_t after_v2 = *ra_drw_reg32(k_ra_drw_off_cachectl);
+  TEST_ASSERT((after_v2 & (uint32_t)k_ra_drw_cachectl_cflushtx) != 0U);
+
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_drw_cache_flush(false, false));
+  /* V3 takes the early-return branch; CACHECTL not touched here. */
+  (void)before;
+
+  /* Decision B vectors: perf_arm. */
+  const ra_drw_perftrigger_t in_range  = (ra_drw_perftrigger_t)0U;
+  const ra_drw_perftrigger_t out_range = (ra_drw_perftrigger_t)0xBADU;
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_drw_perf_arm(in_range, in_range));
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_drw_perf_arm(out_range, in_range));
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_drw_perf_arm(in_range, out_range));
+  TEST_END("drw MC/DC: cache_flush + perf_arm 2-cond decisions");
+}
+
 int32_t main(void)
 {
   test_init_happy();
@@ -784,6 +839,7 @@ int32_t main(void)
   test_draw_triangle();
   test_run_dlist();
   test_perf_arm_read_reset();
+  test_mcdc_drw();
   (void)fprintf(stderr, "[OK  ] test_ra_drw.c\n");
   return 0;
 }

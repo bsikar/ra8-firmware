@@ -940,6 +940,59 @@ static void test_set_region_window_bad_channel(void)
   TEST_END("dotf set_region_window rejects bad channel");
 }
 
+/**
+ * @test test_mcdc_dotf
+ *
+ * @par MC/DC:
+ * Decision A: ``ra_dotf_set_sca_level`` line 684,
+ * libs/ra_hal/src/ra_dotf.c:
+ * ``if ((level != k_ra_dotf_sca_off) &&
+ *      (level != k_ra_dotf_sca_standard) &&
+ *      (level != k_ra_dotf_sca_max))``  (3 conditions)
+ *
+ * Per DO-178C 6.4.4.3 the representative-subset MC/DC vector set for
+ * a chained ``&&``-only decision is N+1 = 4 vectors:
+ * - V1: level=off       -> C1=F (short-circuits)        -> decision F
+ * - V2: level=standard  -> C1=T,C2=F (short-circuits)   -> decision F
+ * - V3: level=max       -> C1=T,C2=T,C3=F               -> decision F
+ * - V4: level=bogus     -> C1=T,C2=T,C3=T               -> decision T
+ * Pairs: (V1,V4) flips C1, (V2,V4) flips C2, (V3,V4) flips C3, all
+ * with the other operands fixed to the value that makes them
+ * irrelevant (T to the left, unevaluated to the right). N+1 minimal.
+ *
+ * Decision B: ``ra_dotf_set_key_size`` line 704 - identical 3-condition
+ * shape on ``size``; the same vector set covers it.
+ */
+static void test_mcdc_dotf(void)
+{
+  TEST_BEGIN("dotf MC/DC: set_sca_level + set_key_size 3-cond reject");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dotf_init());
+
+  /* Decision A vectors: ra_dotf_set_sca_level. */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_dotf_set_sca_level((uint8_t)k_dotf_test_ch0, k_ra_dotf_sca_off));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_dotf_set_sca_level((uint8_t)k_dotf_test_ch0, k_ra_dotf_sca_standard));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_dotf_set_sca_level((uint8_t)k_dotf_test_ch0, k_ra_dotf_sca_max));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_dotf_set_sca_level((uint8_t)k_dotf_test_ch0,
+                                                (ra_dotf_sca_level_t)k_dotf_test_bad_sca));
+
+  /* Decision B vectors: ra_dotf_set_key_size. */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_dotf_set_key_size((uint8_t)k_dotf_test_ch0, k_ra_dotf_key_size_128));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_dotf_set_key_size((uint8_t)k_dotf_test_ch0, k_ra_dotf_key_size_192));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_dotf_set_key_size((uint8_t)k_dotf_test_ch0, k_ra_dotf_key_size_256));
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_invalid_arg,
+    (int32_t)ra_dotf_set_key_size((uint8_t)k_dotf_test_ch0, (ra_dotf_key_size_t)0xFFU));
+  TEST_END("dotf MC/DC: set_sca_level + set_key_size 3-cond reject");
+}
+
 int32_t main(void)
 {
   test_init_happy();
@@ -985,6 +1038,7 @@ int32_t main(void)
    * once the prep() helper rebases s_dotf_state. */
   test_set_region_window_misaligned();
   test_set_region_window_bad_channel();
+  test_mcdc_dotf();
   (void)fprintf(stderr, "[OK  ] test_ra_dotf.c\n");
   return 0;
 }

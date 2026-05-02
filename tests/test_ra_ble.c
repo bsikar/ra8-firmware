@@ -350,6 +350,65 @@ static void test_attach_handlers_idempotent(void)
   TEST_END("ble attach handlers detach + reattach");
 }
 
+/**
+ * @test test_mcdc_ble
+ *
+ * @par MC/DC:
+ * Three 2-condition decisions in libs/ra_hal/src/ra_ble.c:
+ *
+ * Decision A (line 238, ``ra_ble_hci_send_command``):
+ * ``if ((params == NULL) && (params_len > 0U))``
+ * - V1: params=NULL,    plen=0 -> C1=T,C2=F -> dec F (ok)
+ * - V2: params=valid,   plen=0 -> C1=F (short-circuits) -> dec F
+ * - V3: params=NULL,    plen=4 -> C1=T,C2=T -> dec T (invalid_arg)
+ * Pairs (V2,V3) flip C1 with C2=T fixed; (V1,V3) flip C2 with C1=T fixed.
+ *
+ * Decision B (line 416, ``ra_ble_scan_start`` interval):
+ * ``if ((interval < scan_min) || (interval > scan_max))``
+ * - V1: interval in range, window in range -> C1=F,C2=F -> dec F (ok)
+ * - V2: interval too small                  -> C1=T short-circuits -> dec T
+ * - V3: interval too large                  -> C1=F,C2=T -> dec T
+ *
+ * Decision C (line 419, ``ra_ble_scan_start`` window):
+ * Same shape on ``window``. Vectors fold into the same calls -- holding
+ * interval valid lets us probe window=lo and window=hi independently.
+ */
+static void test_mcdc_ble(void)
+{
+  TEST_BEGIN("ble MC/DC: hci_send_command + scan_start range decisions");
+  prep_open();
+
+  /* Decision A vectors. */
+  uint8_t pbuf[4] = {0U};
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_ble_hci_send_command((uint16_t)k_test_op_le_set_adv_enable, NULL, 0U));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_ble_hci_send_command((uint16_t)k_test_op_le_set_adv_enable, pbuf, 0U));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_ble_hci_send_command((uint16_t)k_test_op_le_set_adv_enable, NULL, 4U));
+
+  /* Decision B + C: scan_start interval / window range gates.
+   * Use a known-valid (interval, window) and known-bad probes. */
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_ok,
+    (int32_t)ra_ble_scan_start(0U, (uint16_t)k_test_scan_interval, (uint16_t)k_test_scan_window));
+  /* Decision B V2: interval too small. */
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_invalid_arg,
+    (int32_t)ra_ble_scan_start(0U, (uint16_t)k_test_scan_bad, (uint16_t)k_test_scan_window));
+  /* Decision B V3: interval too large (> scan_max). */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_ble_scan_start(0U, 0xFFFFU, (uint16_t)k_test_scan_window));
+  /* Decision C V2: window too small. */
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_invalid_arg,
+    (int32_t)ra_ble_scan_start(0U, (uint16_t)k_test_scan_interval, (uint16_t)k_test_scan_bad));
+  /* Decision C V3: window too large. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_ble_scan_start(0U, (uint16_t)k_test_scan_interval, 0xFFFFU));
+  TEST_END("ble MC/DC: hci_send_command + scan_start range decisions");
+}
+
 int32_t main(void)
 {
   test_open_close();
@@ -365,6 +424,7 @@ int32_t main(void)
   test_scan_start();
   test_dispatch_before_open();
   test_attach_handlers_idempotent();
+  test_mcdc_ble();
   (void)fprintf(stderr, "[OK ] test_ra_ble.c\n");
   return 0;
 }
