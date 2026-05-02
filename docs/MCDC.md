@@ -1,13 +1,13 @@
-# MC/DC Coverage (DO-178B Level B)
+# MC/DC Coverage (DO-178C Level B)
 
 This document describes how `ra8d2-firmware` measures **Modified
 Condition/Decision Coverage** (MC/DC) and how to add MC/DC test
 vectors for new code.
 
-MC/DC is the structural coverage criterion mandated by **DO-178B Level
+MC/DC is the structural coverage criterion mandated by **DO-178C Level
 B** (Hazardous failure condition) and **DO-178C Table A-7 objective
 5**. The infrastructure described here is the foundation for
-qualifying portions of this codebase under DO-178B; per-module MC/DC
+qualifying portions of this codebase under DO-178C; per-module MC/DC
 test vectors are tracked separately.
 
 ## What is MC/DC?
@@ -56,7 +56,7 @@ If clang >= 18 is not on `$PATH`, the build falls back to gcc 14's
 `-fcondition-coverage` (condition coverage, **NOT** MC/DC) and prints
 a loud warning. This fallback exists so the script still runs
 end-to-end on machines without modern clang; **it is not
-DO-178B-compliant** and the report gate is skipped.
+DO-178C-compliant** and the report gate is skipped.
 
 ## How to run
 
@@ -131,7 +131,7 @@ Three tests cover MC/DC for the loop guard:
   by adjusting `k_ra_u32_max_digits` in a test fixture, OR by calling
   the loop in a wrapper that pre-loads `i`). On real `uint32_t` this
   branch is unreachable, which means the MC/DC obligation translates
-  to a **deactivated code** justification under DO-178B Section 6.4.4.3
+  to a **deactivated code** justification under DO-178C Section 6.4.4.3
   -- annotate it in the per-module Software Verification Plan rather
   than chasing impossible coverage.
 - **T3**: log any non-zero `uint32_t` (e.g. `123U`). The loop runs
@@ -144,7 +144,7 @@ required truth-table rows.
 
 ## Currently exempted code (SOUP)
 
-DO-178B Section 12.1.4 ("Software of Unknown Pedigree") allows
+DO-178C Section 12.1.4 ("Software of Unknown Pedigree") allows
 unmodified third-party libraries to be used without source-level MC/DC
 provided their behaviour is verified at the integration boundary.
 
@@ -158,7 +158,7 @@ The following directories are excluded from MC/DC instrumentation in
 - `libs/third_party/stb/`      -- TrueType rasteriser, used by `ra_epub`
 - Mbed TLS (when integrated)   -- vendored crypto, used by `ra_tls` and `ra_psa_crypto`
 
-These are SOUP under DO-178B and are tracked separately in
+These are SOUP under DO-178C and are tracked separately in
 `docs/VENDOR_BLOBS.md`.
 
 First-party HAL, PAL, application, and security code under
