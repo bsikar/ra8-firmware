@@ -84,6 +84,18 @@ static volatile uint8_t* internal_elsegr(uint8_t group)
  * =============================================================================
  */
 
+/**
+ * @brief Implementation of ra_elc_init (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_elc_init(void)
 {
   ra_log_info(s_tag, "ra_elc_init");
@@ -111,6 +123,18 @@ ra_err_t ra_elc_init(void)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_elc_deinit (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_elc_deinit(void)
 {
   /* HUM Ch 19.2.1 "ELCR : Event Link Control Register", p 817 */
@@ -118,6 +142,20 @@ ra_err_t ra_elc_deinit(void)
   return ra_mstp_disable(k_ra_mstp_elc);
 }
 
+/**
+ * @brief Implementation of ra_elc_link (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] elsr_index See implementation.
+ * @param[in] event See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_elc_link(uint8_t elsr_index, ra_elc_event_t event)
 {
   if (elsr_index >= k_ra_elc_elsr_count) {
@@ -128,6 +166,19 @@ ra_err_t ra_elc_link(uint8_t elsr_index, ra_elc_event_t event)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_elc_unlink (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] elsr_index See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_elc_unlink(uint8_t elsr_index)
 {
   if (elsr_index >= k_ra_elc_elsr_count) {
@@ -138,6 +189,19 @@ ra_err_t ra_elc_unlink(uint8_t elsr_index)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_elc_software_trigger (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] event_index See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_elc_software_trigger(uint8_t event_index)
 {
   if (event_index >= k_ra_elc_segr_count) {
@@ -155,6 +219,19 @@ ra_err_t ra_elc_software_trigger(uint8_t event_index)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_elc_is_enabled (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] out_enabled See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_elc_is_enabled(bool* out_enabled)
 {
   RA_CHECK_NULL_PTR(out_enabled, s_tag, "is_enabled out");

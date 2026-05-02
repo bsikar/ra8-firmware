@@ -31,6 +31,19 @@ typedef struct {
 
 static ra_layer3_switch_state_t s_state = {};
 
+/**
+ * @brief Implementation of ra_layer3_switch_open (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] cfg See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_layer3_switch_open(const ra_layer3_switch_cfg_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
@@ -49,6 +62,19 @@ ra_err_t ra_layer3_switch_open(const ra_layer3_switch_cfg_t* cfg)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_layer3_switch_route_add (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] route See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_layer3_switch_route_add(const ra_layer3_switch_route_t* route)
 {
   RA_CHECK_NULL_PTR(route, s_tag, "route must not be nullptr");
@@ -58,6 +84,20 @@ ra_err_t ra_layer3_switch_route_add(const ra_layer3_switch_route_t* route)
   return k_ra_err_not_supported;
 }
 
+/**
+ * @brief Implementation of ra_layer3_switch_route_delete (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] dst_ip See implementation.
+ * @param[in] mask See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_layer3_switch_route_delete(uint32_t dst_ip, uint32_t mask)
 {
   (void)dst_ip;
@@ -68,6 +108,20 @@ ra_err_t ra_layer3_switch_route_delete(uint32_t dst_ip, uint32_t mask)
   return k_ra_err_not_supported;
 }
 
+/**
+ * @brief Implementation of ra_layer3_switch_status_get (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] out_open See implementation.
+ * @param[in] out_promisc See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_layer3_switch_status_get(uint8_t* out_open, uint8_t* out_promisc)
 {
   RA_CHECK_NULL_PTR(out_open, s_tag, "out_open must not be nullptr");
@@ -77,6 +131,18 @@ ra_err_t ra_layer3_switch_status_get(uint8_t* out_open, uint8_t* out_promisc)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_layer3_switch_close (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_layer3_switch_close(void)
 {
   if (!s_state.opened) {

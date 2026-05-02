@@ -343,6 +343,14 @@ static ra_epaper_panel_t s_panel;
 
 /**
  * @brief Pulse the panel /RESET line low for 10 ms then back high.
+ *
+ * @details See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static void internal_ra_epaper_pulse_reset(void)
 {

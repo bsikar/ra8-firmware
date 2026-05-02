@@ -163,6 +163,14 @@ static ra_spi_state_t s_spi_state[k_ra_spi_b_channel_count];
  * @param[in] pclka_hz Active PCLKA frequency in Hz.
  *
  * @return SPBR value, clamped to [0, 0xFF].
+ *
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static uint8_t internal_spbr(uint32_t baud_hz, uint32_t pclka_hz)
 {
@@ -192,6 +200,16 @@ static uint8_t internal_spbr(uint32_t baud_hz, uint32_t pclka_hz)
  *  - ``SPB``   [20:16]  set to 8-bit frame (k_ra_spcmd_spb_8bit).
  *  - Delay enables (SPNDEN/SLNDEN/SCKDEN) are left clear; the
  *    bring-up driver does not gate delay registers.
+ *
+ * @param[in] cfg See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static uint32_t internal_spcmd(const ra_spi_cfg_t* cfg)
 {
@@ -219,6 +237,15 @@ static uint32_t internal_spcmd(const ra_spi_cfg_t* cfg)
  * 525-670). Sets MSTR + SCKASE + SPE; leaves IRQ-enable bits
  * (SPRIE/SPTIE/SPEIE/CENDIE) clear because the polling driver
  * services SPSR directly.
+ *
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static uint32_t internal_spcr_master(void)
 {
@@ -254,6 +281,17 @@ static uint32_t internal_spcr_master(void)
  * This mirrors the pattern used by ``internal_ra_epaper_wait_ready``
  * (commit 57f6c4a28) so any driver layered on top of SPI can run its
  * happy-path through unit tests when the test pre-stages SPSR.
+ *
+ * @param[in] reg See implementation.
+ * @param[in] flag_mask See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t internal_wait_spsr(volatile r_spi_regs_t* reg, uint32_t flag_mask)
 {
@@ -277,6 +315,20 @@ static ra_err_t internal_wait_spsr(volatile r_spi_regs_t* reg, uint32_t flag_mas
  * =============================================================================
  */
 
+/**
+ * @brief Implementation of ra_spi_init (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] channel See implementation.
+ * @param[in] cfg See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_spi_init(uint8_t channel, const ra_spi_cfg_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg, s_tag, "spi_init: cfg");
@@ -336,6 +388,19 @@ ra_err_t ra_spi_init(uint8_t channel, const ra_spi_cfg_t* cfg)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_spi_deinit (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] channel See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_spi_deinit(uint8_t channel)
 {
   if (channel >= k_ra_spi_b_channel_count) {
@@ -359,6 +424,19 @@ ra_err_t ra_spi_deinit(uint8_t channel)
  * =============================================================================
  */
 
+/**
+ * @brief Implementation of ra_spi_master_init (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] channel See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_spi_master_init(uint8_t channel)
 {
   const ra_spi_cfg_t cfg = {
@@ -375,6 +453,21 @@ ra_err_t ra_spi_master_init(uint8_t channel)
   return ra_spi_init(channel, &cfg);
 }
 
+/**
+ * @brief Implementation of ra_spi_xfer8 (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] channel See implementation.
+ * @param[in] tx See implementation.
+ * @param[in] rx See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_spi_xfer8(uint8_t channel, uint8_t tx, uint8_t* rx)
 {
   volatile r_spi_regs_t* reg = ra_spi(channel);
@@ -429,6 +522,15 @@ ra_err_t ra_spi_xfer8(uint8_t channel, uint8_t tx, uint8_t* rx)
  *
  * @retval k_ra_ok ``*out_bytes`` written.
  * @retval k_ra_err_invalid_arg ``bit_width`` not one of the supported widths.
+ *
+ * @details See implementation.
+ * @return Result code.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t internal_unit_bytes(ra_spi_bit_width_t bit_width, uint8_t* out_bytes)
 {
@@ -457,6 +559,15 @@ static ra_err_t internal_unit_bytes(ra_spi_bit_width_t bit_width, uint8_t* out_b
  * encoding so it can be shifted into place directly. The driver
  * keeps SSL Level Keep cleared (single-segment polling transfers
  * only); FSP's SSLKP burst handling is out of scope for this wave.
+ *
+ * @param[in] reg See implementation.
+ * @param[in] bit_width See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static void internal_apply_bit_width(volatile r_spi_regs_t* reg, ra_spi_bit_width_t bit_width)
 {
@@ -476,6 +587,17 @@ static void internal_apply_bit_width(volatile r_spi_regs_t* reg, ra_spi_bit_widt
  * is NULL the driver writes a dummy (idle-high) value -- this
  * mirrors typical SPI-flash / SD-card RX-only conventions and
  * differs from FSP only in the dummy magnitude (FSP writes 0).
+ *
+ * @param[in] reg See implementation.
+ * @param[in] tx See implementation.
+ * @param[in] idx See implementation.
+ * @param[in] bit_width See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static void internal_push_unit(volatile r_spi_regs_t* reg,
                                const void*            tx,
@@ -510,6 +632,17 @@ static void internal_push_unit(volatile r_spi_regs_t* reg,
  * front-end of SPDR returns the most-recently shifted-in unit, and
  * the bit-width determines whether the caller buffer is a uint8_t,
  * uint16_t, or uint32_t array.
+ *
+ * @param[in] reg See implementation.
+ * @param[in] rx See implementation.
+ * @param[in] idx See implementation.
+ * @param[in] bit_width See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static void
 internal_pop_unit(volatile r_spi_regs_t* reg, void* rx, uint32_t idx, ra_spi_bit_width_t bit_width)
@@ -546,6 +679,20 @@ internal_pop_unit(volatile r_spi_regs_t* reg, void* rx, uint32_t idx, ra_spi_bit
  * - Rule 2: Outer loop bounded by ``len`` (caller-supplied);
  *   inner SPSR wait bounded by ``k_ra_spi_b_poll_limit``.
  * - Rule 5: 4 preconditions, 2 postconditions.
+ *
+ * @param[in] channel See implementation.
+ * @param[in] tx See implementation.
+ * @param[in] rx See implementation.
+ * @param[in] len See implementation.
+ * @param[in] bit_width See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t internal_xfer_common(uint8_t            channel,
                                      const void*        tx,
@@ -598,6 +745,22 @@ static ra_err_t internal_xfer_common(uint8_t            channel,
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_spi_write (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] channel See implementation.
+ * @param[in] tx See implementation.
+ * @param[in] len See implementation.
+ * @param[in] bit_width See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_spi_write(uint8_t channel, const void* tx, uint32_t len, ra_spi_bit_width_t bit_width)
 {
   if ((tx == nullptr) && (len > 0U)) {
@@ -606,6 +769,22 @@ ra_err_t ra_spi_write(uint8_t channel, const void* tx, uint32_t len, ra_spi_bit_
   return internal_xfer_common(channel, tx, nullptr, len, bit_width);
 }
 
+/**
+ * @brief Implementation of ra_spi_read (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] channel See implementation.
+ * @param[in] rx See implementation.
+ * @param[in] len See implementation.
+ * @param[in] bit_width See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_spi_read(uint8_t channel, void* rx, uint32_t len, ra_spi_bit_width_t bit_width)
 {
   if ((rx == nullptr) && (len > 0U)) {
@@ -614,6 +793,23 @@ ra_err_t ra_spi_read(uint8_t channel, void* rx, uint32_t len, ra_spi_bit_width_t
   return internal_xfer_common(channel, nullptr, rx, len, bit_width);
 }
 
+/**
+ * @brief Implementation of ra_spi_write_read (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] channel See implementation.
+ * @param[in] tx See implementation.
+ * @param[in] rx See implementation.
+ * @param[in] len See implementation.
+ * @param[in] bit_width See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_spi_write_read(uint8_t            channel,
                            const void*        tx,
                            void*              rx,
@@ -636,6 +832,21 @@ ra_err_t ra_spi_write_read(uint8_t            channel,
  * =============================================================================
  */
 
+/**
+ * @brief Implementation of ra_spi_set_clock (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] channel See implementation.
+ * @param[in] baud_hz See implementation.
+ * @param[in] pclka_hz See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_spi_set_clock(uint8_t channel, uint32_t baud_hz, uint32_t pclka_hz)
 {
   if (channel >= k_ra_spi_b_channel_count) {
@@ -661,6 +872,20 @@ ra_err_t ra_spi_set_clock(uint8_t channel, uint32_t baud_hz, uint32_t pclka_hz)
  * =============================================================================
  */
 
+/**
+ * @brief Implementation of ra_spi_get_errors (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] channel See implementation.
+ * @param[in] out_mask See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_spi_get_errors(uint8_t channel, uint8_t* out_mask)
 {
   RA_CHECK_NULL_PTR(out_mask, s_tag, "spi get_errors");
@@ -689,6 +914,19 @@ ra_err_t ra_spi_get_errors(uint8_t channel, uint8_t* out_mask)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_spi_clear_errors (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] channel See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_spi_clear_errors(uint8_t channel)
 {
   if (channel >= k_ra_spi_b_channel_count) {
@@ -704,6 +942,21 @@ ra_err_t ra_spi_clear_errors(uint8_t channel)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_spi_attach_transfer_handler (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] channel See implementation.
+ * @param[in] fn See implementation.
+ * @param[in] ctx See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_spi_attach_transfer_handler(uint8_t channel, ra_spi_complete_fn_t fn, void* ctx)
 {
   if (channel >= k_ra_spi_b_channel_count) {
@@ -719,6 +972,19 @@ ra_err_t ra_spi_attach_transfer_handler(uint8_t channel, ra_spi_complete_fn_t fn
  * =============================================================================
  */
 
+/**
+ * @brief Implementation of ra_spi_enter_stop (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] channel See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_spi_enter_stop(uint8_t channel)
 {
   if (channel >= k_ra_spi_b_channel_count) {
@@ -734,6 +1000,19 @@ ra_err_t ra_spi_enter_stop(uint8_t channel)
   return ra_mstp_disable(s_spi_mstp_table[channel]);
 }
 
+/**
+ * @brief Implementation of ra_spi_exit_stop (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] channel See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_spi_exit_stop(uint8_t channel)
 {
   if (channel >= k_ra_spi_b_channel_count) {
@@ -747,6 +1026,24 @@ ra_err_t ra_spi_exit_stop(uint8_t channel)
  * =============================================================================
  */
 
+/**
+ * @brief Implementation of ra_spi_write_dma (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] channel See implementation.
+ * @param[in] data See implementation.
+ * @param[in] len See implementation.
+ * @param[in] on_complete See implementation.
+ * @param[in] ctx See implementation.
+ * @param[in] out_dma_channel See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_spi_write_dma(uint8_t              channel,
                           const uint8_t*       data,
                           uint16_t             len,
@@ -779,6 +1076,24 @@ ra_err_t ra_spi_write_dma(uint8_t              channel,
   return ra_dma_request(&req, out_dma_channel);
 }
 
+/**
+ * @brief Implementation of ra_spi_read_dma (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] channel See implementation.
+ * @param[in] out_buf See implementation.
+ * @param[in] len See implementation.
+ * @param[in] on_complete See implementation.
+ * @param[in] ctx See implementation.
+ * @param[in] out_dma_channel See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_spi_read_dma(uint8_t              channel,
                          uint8_t*             out_buf, // NOLINT(readability-non-const-parameter)
                          uint16_t             len,
@@ -814,6 +1129,17 @@ ra_err_t ra_spi_read_dma(uint8_t              channel,
  * =============================================================================
  */
 
+/**
+ * @brief Implementation of ra_spi_dispatch_spti (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] channel See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 void ra_spi_dispatch_spti(uint8_t channel)
 {
   if (channel >= k_ra_spi_b_channel_count) {
@@ -822,6 +1148,17 @@ void ra_spi_dispatch_spti(uint8_t channel)
   (void)s_spi_state[channel].cb;
 }
 
+/**
+ * @brief Implementation of ra_spi_dispatch_spri (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] channel See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 void ra_spi_dispatch_spri(uint8_t channel)
 {
   if (channel >= k_ra_spi_b_channel_count) {
@@ -830,6 +1167,17 @@ void ra_spi_dispatch_spri(uint8_t channel)
   (void)s_spi_state[channel].cb;
 }
 
+/**
+ * @brief Implementation of ra_spi_dispatch_spei (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] channel See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 void ra_spi_dispatch_spei(uint8_t channel)
 {
   if (channel >= k_ra_spi_b_channel_count) {

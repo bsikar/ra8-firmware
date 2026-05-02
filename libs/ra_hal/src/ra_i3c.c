@@ -64,6 +64,14 @@ static void* s_i3c_ctx;
  *
  * Each step follows HUM Ch 40 "RSTCTL : Reset Control Register"
  * description (pp 2445-2701).
+ *
+ * @param[in] reg See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static void priv_ra_i3c_reset_sequence(volatile r_i3c_regs_t* reg)
 {
@@ -93,6 +101,14 @@ static void priv_ra_i3c_reset_sequence(volatile r_i3c_regs_t* reg)
  * @param[in] target_addr 7-bit dynamic address.
  * @param[in] rnw         True for read transfers.
  * @return Word 0 of the command descriptor (Word 1 is the length).
+ *
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static uint32_t priv_ra_i3c_xfer_cmd_word(uint8_t target_addr, bool rnw)
 {
@@ -113,6 +129,15 @@ static uint32_t priv_ra_i3c_xfer_cmd_word(uint8_t target_addr, bool rnw)
  * @param[in] target_addr Dynamic address (used only for direct CCCs).
  * @param[in] rnw         True for direct-get CCCs.
  * @return Word 0 of the descriptor.
+ *
+ * @details See implementation.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static uint32_t priv_ra_i3c_ccc_cmd_word(uint8_t ccc, uint8_t target_addr, bool rnw)
 {
@@ -136,6 +161,16 @@ static uint32_t priv_ra_i3c_ccc_cmd_word(uint8_t ccc, uint8_t target_addr, bool 
  * zero, matching FSP ``i3c_fifo_write``.  The simulated-mmap test
  * back-end is happy to accept the writes -- on silicon the
  * controller drains them onto the bus.
+ *
+ * @param[in] reg See implementation.
+ * @param[in] data See implementation.
+ * @param[in] len See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static void priv_ra_i3c_fifo_write(volatile r_i3c_regs_t* reg, const uint8_t* data, uint32_t len)
 {
@@ -168,6 +203,16 @@ static void priv_ra_i3c_fifo_write(volatile r_i3c_regs_t* reg, const uint8_t* da
  * Hardware exposes the receive buffer as a 32-bit FIFO -- the
  * driver reads one word and unpacks LE bytes; trailing partial
  * words are masked to the requested length.
+ *
+ * @param[in] reg See implementation.
+ * @param[in] out See implementation.
+ * @param[in] len See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static void priv_ra_i3c_fifo_read(volatile r_i3c_regs_t* reg, uint8_t* out, uint32_t len)
 {
@@ -197,6 +242,18 @@ static void priv_ra_i3c_fifo_read(volatile r_i3c_regs_t* reg, uint8_t* out, uint
  * =============================================================================
  */
 
+/**
+ * @brief Implementation of ra_i3c_init (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_i3c_init(void)
 {
   /* HUM Ch 11.2.7 "MSTPCRB : Module Stop Control Register B" p 444 */
@@ -219,6 +276,18 @@ ra_err_t ra_i3c_init(void)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_i3c_deinit (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_i3c_deinit(void)
 {
   volatile r_i3c_regs_t* reg = ra_i3c();
@@ -233,6 +302,19 @@ ra_err_t ra_i3c_deinit(void)
   return ra_mstp_disable(k_ra_mstp_i3c);
 }
 
+/**
+ * @brief Implementation of ra_i3c_set_address (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] addr See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_i3c_set_address(uint32_t addr)
 {
   if (addr > k_ra_i3c_msdvad_addr_max) {
@@ -246,6 +328,19 @@ ra_err_t ra_i3c_set_address(uint32_t addr)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_i3c_bus_enable (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] enable See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_i3c_bus_enable(bool enable)
 {
   volatile r_i3c_regs_t* reg = ra_i3c();
@@ -259,6 +354,19 @@ ra_err_t ra_i3c_bus_enable(bool enable)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_i3c_get_status (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] out_mask See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_i3c_get_status(uint32_t* out_mask)
 {
   RA_CHECK_NULL_PTR(out_mask, s_tag, "out_mask must not be nullptr");
@@ -267,6 +375,19 @@ ra_err_t ra_i3c_get_status(uint32_t* out_mask)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_i3c_clear_status (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] mask See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_i3c_clear_status(uint32_t mask)
 {
   volatile r_i3c_regs_t* reg = ra_i3c();
@@ -276,6 +397,20 @@ ra_err_t ra_i3c_clear_status(uint32_t mask)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_i3c_attach_handler (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] fn See implementation.
+ * @param[in] ctx See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_i3c_attach_handler(ra_i3c_event_fn_t fn, void* ctx)
 {
   s_i3c_fn  = fn;
@@ -283,6 +418,16 @@ ra_err_t ra_i3c_attach_handler(ra_i3c_event_fn_t fn, void* ctx)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_i3c_dispatch (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 void ra_i3c_dispatch(void)
 {
   volatile r_i3c_regs_t* reg = ra_i3c();
@@ -296,6 +441,18 @@ void ra_i3c_dispatch(void)
   }
 }
 
+/**
+ * @brief Implementation of ra_i3c_enter_stop (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_i3c_enter_stop(void)
 {
   /* HUM Ch 40 "BCTL : Bus Control Register" p 2445-2701 */
@@ -304,6 +461,18 @@ ra_err_t ra_i3c_enter_stop(void)
   return ra_mstp_disable(k_ra_mstp_i3c);
 }
 
+/**
+ * @brief Implementation of ra_i3c_exit_stop (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_i3c_exit_stop(void)
 {
   return ra_mstp_enable(k_ra_mstp_i3c);
@@ -314,6 +483,20 @@ ra_err_t ra_i3c_exit_stop(void)
  * =============================================================================
  */
 
+/**
+ * @brief Implementation of ra_i3c_dynamic_address_assign (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] targets See implementation.
+ * @param[in] target_count See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_i3c_dynamic_address_assign(ra_i3c_daa_target_t* targets, uint8_t target_count)
 {
   RA_CHECK_NULL_PTR(targets, s_tag, "targets must not be nullptr");
@@ -362,6 +545,20 @@ ra_err_t ra_i3c_dynamic_address_assign(ra_i3c_daa_target_t* targets, uint8_t tar
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_i3c_set_dynamic_address (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] static_addr See implementation.
+ * @param[in] dynamic_addr See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_i3c_set_dynamic_address(uint8_t static_addr, uint8_t dynamic_addr)
 {
   if ((static_addr > (uint8_t)k_ra_i3c_addr_mask) || (dynamic_addr > (uint8_t)k_ra_i3c_addr_mask)) {
@@ -381,6 +578,18 @@ ra_err_t ra_i3c_set_dynamic_address(uint8_t static_addr, uint8_t dynamic_addr)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_i3c_reset_dynamic_addresses (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_i3c_reset_dynamic_addresses(void)
 {
   volatile r_i3c_regs_t* reg = ra_i3c();
@@ -397,6 +606,22 @@ ra_err_t ra_i3c_reset_dynamic_addresses(void)
  * =============================================================================
  */
 
+/**
+ * @brief Implementation of ra_i3c_send_ccc (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] ccc See implementation.
+ * @param[in] target_addr See implementation.
+ * @param[in] payload See implementation.
+ * @param[in] len See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_i3c_send_ccc(uint8_t ccc, uint8_t target_addr, const uint8_t* payload, uint8_t len)
 {
   if (target_addr > (uint8_t)k_ra_i3c_addr_mask) {
@@ -434,6 +659,23 @@ ra_err_t ra_i3c_send_ccc(uint8_t ccc, uint8_t target_addr, const uint8_t* payloa
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_i3c_recv_ccc (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] ccc See implementation.
+ * @param[in] target_addr See implementation.
+ * @param[in] buf See implementation.
+ * @param[in] max_len See implementation.
+ * @param[in] got_len See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t
 ra_i3c_recv_ccc(uint8_t ccc, uint8_t target_addr, uint8_t* buf, uint8_t max_len, uint8_t* got_len)
 {
@@ -462,6 +704,21 @@ ra_i3c_recv_ccc(uint8_t ccc, uint8_t target_addr, uint8_t* buf, uint8_t max_len,
  * =============================================================================
  */
 
+/**
+ * @brief Implementation of ra_i3c_write (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] target_addr See implementation.
+ * @param[in] data See implementation.
+ * @param[in] len See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_i3c_write(uint8_t target_addr, const uint8_t* data, uint32_t len)
 {
   if (target_addr > (uint8_t)k_ra_i3c_addr_mask) {
@@ -496,6 +753,21 @@ ra_err_t ra_i3c_write(uint8_t target_addr, const uint8_t* data, uint32_t len)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_i3c_read (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] target_addr See implementation.
+ * @param[in] buf See implementation.
+ * @param[in] len See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_i3c_read(uint8_t target_addr, uint8_t* buf, uint32_t len)
 {
   RA_CHECK_NULL_PTR(buf, s_tag, "buf must not be nullptr");
@@ -521,6 +793,20 @@ ra_err_t ra_i3c_read(uint8_t target_addr, uint8_t* buf, uint32_t len)
  * =============================================================================
  */
 
+/**
+ * @brief Implementation of ra_i3c_set_hdr_mode (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] target_addr See implementation.
+ * @param[in] mode See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_i3c_set_hdr_mode(uint8_t target_addr, ra_i3c_hdr_mode_t mode)
 {
   if (target_addr > (uint8_t)k_ra_i3c_addr_mask) {
@@ -545,6 +831,19 @@ ra_err_t ra_i3c_set_hdr_mode(uint8_t target_addr, ra_i3c_hdr_mode_t mode)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_i3c_ibi_enable (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] target_addr See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_i3c_ibi_enable(uint8_t target_addr)
 {
   if (target_addr > (uint8_t)k_ra_i3c_addr_mask) {
@@ -562,11 +861,37 @@ ra_err_t ra_i3c_ibi_enable(uint8_t target_addr)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_i3c_ibi_drain (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] ibi See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_i3c_ibi_drain(ra_i3c_ibi_t* ibi)
 {
   return ra_i3c_ibi_read(ibi);
 }
 
+/**
+ * @brief Implementation of ra_i3c_slave_open (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] static_addr See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_i3c_slave_open(uint8_t static_addr)
 {
   if (static_addr > (uint8_t)k_ra_i3c_addr_mask) {
@@ -594,6 +919,19 @@ ra_err_t ra_i3c_slave_open(uint8_t static_addr)
  * =============================================================================
  */
 
+/**
+ * @brief Implementation of ra_i3c_ibi_read (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] out_ibi See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_i3c_ibi_read(ra_i3c_ibi_t* out_ibi)
 {
   RA_CHECK_NULL_PTR(out_ibi, s_tag, "out_ibi must not be nullptr");

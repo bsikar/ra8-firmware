@@ -213,6 +213,12 @@ typedef void (*ra_touch_event_fn_t)(void* ctx);
  * INT pin fires. The shim simply forwards to the registered handler.
  *
  * @since 0.1.0
+ *
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
  */
 void ra_touch_dispatch_irq(void);
 

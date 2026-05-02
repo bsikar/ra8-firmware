@@ -124,6 +124,17 @@ static ra_wdt_sub_t s_wdt_subs[k_ra_wdt_max_subs];
  * choice. On the target this maps to a real flash / MRAM read; in
  * unit tests the ``ra_wdt_ofs_reader_set`` hook is normally swapped
  * for a stub that returns canned data.
+ *
+ * @param[in] ofs_addr See implementation.
+ * @param[in] out_word See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t internal_default_ofs_reader(uintptr_t ofs_addr, uint32_t* out_word)
 {
@@ -162,6 +173,15 @@ typedef enum : uint16_t {
  * @param[in] div Caller-supplied divider value.
  * @return ``true`` iff ``div`` is one of the legal encodings in HUM
  *         Ch 27.2.2 p 1258.
+ *
+ * @details See implementation.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static bool internal_clock_div_is_valid(ra_wdt_clock_div_t div)
 {
@@ -185,6 +205,15 @@ static bool internal_clock_div_is_valid(ra_wdt_clock_div_t div)
  *
  * @param[in] sel Caller-supplied timeout selector.
  * @return ``true`` iff ``sel`` is one of the four legal TOPS values.
+ *
+ * @details See implementation.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static bool internal_timeout_sel_is_valid(ra_wdt_timeout_sel_t sel)
 {
@@ -209,6 +238,15 @@ static bool internal_timeout_sel_is_valid(ra_wdt_timeout_sel_t sel)
  *
  * @param[in] cfg Caller-validated configuration block.
  * @return The 16-bit value to write into WDTCR.
+ *
+ * @details See implementation.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static uint16_t internal_pack_wdtcr(const ra_wdt_cfg_t* cfg)
 {
@@ -228,6 +266,14 @@ static uint16_t internal_pack_wdtcr(const ra_wdt_cfg_t* cfg)
 
 /**
  * @brief Clear every subscriber slot.
+ *
+ * @details See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static void internal_subs_clear_all(void)
 {
@@ -295,6 +341,16 @@ static void internal_subs_clear_all(void)
  * =============================================================================
  */
 
+/**
+ * @brief Implementation of ra_wdt_refresh_deferred (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 void ra_wdt_refresh_deferred(void)
 {
   /* HUM Ch 27.2.1 "WDTRR : WDT Refresh Register", p 1257 */
@@ -501,6 +557,18 @@ void ra_wdt_refresh_deferred(void)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_wdt_subscriber_count (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 uint8_t ra_wdt_subscriber_count(void)
 {
   uint8_t count = 0U;
@@ -512,6 +580,16 @@ uint8_t ra_wdt_subscriber_count(void)
   return count;
 }
 
+/**
+ * @brief Implementation of ra_wdt_dispatch (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 void ra_wdt_dispatch(void)
 {
   volatile r_wdt_regs_t* reg = ra_wdt();

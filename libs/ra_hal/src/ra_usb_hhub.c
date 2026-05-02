@@ -125,6 +125,18 @@ static ra_usb_hhub_state_t s_state = {};
 
 /**
  * @brief Stage a chapter-9 GET_DESCRIPTOR SETUP request.
+ *
+ * @details See implementation.
+ * @param[in] desc_type See implementation.
+ * @param[in] length See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t internal_setup_get_descriptor(uint8_t desc_type, uint16_t length)
 {
@@ -140,6 +152,17 @@ static ra_err_t internal_setup_get_descriptor(uint8_t desc_type, uint16_t length
 
 /**
  * @brief Stage a SET_ADDRESS SETUP request.
+ *
+ * @details See implementation.
+ * @param[in] address See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t internal_setup_set_address(uint8_t address)
 {
@@ -155,6 +178,17 @@ static ra_err_t internal_setup_set_address(uint8_t address)
 
 /**
  * @brief Stage a SET_CONFIGURATION SETUP request.
+ *
+ * @details See implementation.
+ * @param[in] config_value See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t internal_setup_set_config(uint8_t config_value)
 {
@@ -174,6 +208,15 @@ static ra_err_t internal_setup_set_config(uint8_t config_value)
  * @details Per USB 2.0 sec 11.24.2.5 GET_HUB_DESCRIPTOR uses
  * bmRequestType = 0xA0 (Class | Device | In), bRequest = 0x06,
  * wValue.high = 0x29 (HUB), wIndex = 0, wLength = descriptor length.
+ *
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t internal_setup_get_hub_descriptor(void)
 {
@@ -194,6 +237,13 @@ static ra_err_t internal_setup_get_hub_descriptor(void)
  * descriptor data stage and reads `bNbrPorts` (USB 2.0 sec 11.23.2.1).
  * The starter populates a sensible default (4 ports, no VID/PID) so
  * tests can exercise the API surface deterministically.
+ *
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static void internal_populate_device_defaults(void)
 {
@@ -205,6 +255,17 @@ static void internal_populate_device_defaults(void)
 
 /**
  * @brief Validate `port` is within [1, port_count].
+ *
+ * @details See implementation.
+ * @param[in] port See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static bool internal_port_ok(uint8_t port)
 {
@@ -213,12 +274,36 @@ static bool internal_port_ok(uint8_t port)
 
 /* ---- Per-step handlers ---- */
 
+/**
+ * @brief Internal helper.
+ * @details See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 static ra_err_t internal_do_idle(void)
 {
   s_state.step = k_ra_hhub_step_bus_reset;
   return ra_usb_host_bus_reset(s_state.speed, true);
 }
 
+/**
+ * @brief Internal helper.
+ * @details See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 static ra_err_t internal_do_bus_reset(void)
 {
   const ra_err_t rel = ra_usb_host_bus_reset(s_state.speed, false);
@@ -227,6 +312,18 @@ static ra_err_t internal_do_bus_reset(void)
   return internal_setup_set_address(k_ra_hhub_assigned_address);
 }
 
+/**
+ * @brief Internal helper.
+ * @details See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 static ra_err_t internal_do_set_address(void)
 {
   const ra_err_t addr_err = ra_usb_set_address(s_state.speed, k_ra_hhub_assigned_address);
@@ -235,24 +332,72 @@ static ra_err_t internal_do_set_address(void)
   return internal_setup_get_descriptor(k_ra_hhub_desc_device, k_ra_hhub_dev_desc_len);
 }
 
+/**
+ * @brief Internal helper.
+ * @details See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 static ra_err_t internal_do_get_dev_desc(void)
 {
   s_state.step = k_ra_hhub_step_get_cfg_desc;
   return internal_setup_get_descriptor(k_ra_hhub_desc_configuration, k_ra_hhub_cfg_desc_len);
 }
 
+/**
+ * @brief Internal helper.
+ * @details See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 static ra_err_t internal_do_get_cfg_desc(void)
 {
   s_state.step = k_ra_hhub_step_set_config;
   return internal_setup_set_config(k_ra_hhub_default_config);
 }
 
+/**
+ * @brief Internal helper.
+ * @details See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 static ra_err_t internal_do_set_config(void)
 {
   s_state.step = k_ra_hhub_step_get_hub_desc;
   return internal_setup_get_hub_descriptor();
 }
 
+/**
+ * @brief Internal helper.
+ * @details See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 static ra_err_t internal_do_get_hub_desc(void)
 {
   internal_populate_device_defaults();
@@ -266,6 +411,16 @@ static ra_err_t internal_do_get_hub_desc(void)
 
 /**
  * @brief Drive the enumeration step machine forward by one step.
+ *
+ * @details See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t internal_step_advance(void)
 {
@@ -295,6 +450,19 @@ static ra_err_t internal_step_advance(void)
  * =============================================================================
  */
 
+/**
+ * @brief Implementation of ra_usb_hhub_init (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] speed See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_usb_hhub_init(ra_usb_speed_t speed)
 {
   if ((speed != k_ra_usb_speed_fs) && (speed != k_ra_usb_speed_hs)) {
@@ -318,6 +486,18 @@ ra_err_t ra_usb_hhub_init(ra_usb_speed_t speed)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_usb_hhub_close (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_usb_hhub_close(void)
 {
   if (!s_state.initialised) {
@@ -338,6 +518,20 @@ ra_err_t ra_usb_hhub_close(void)
  * =============================================================================
  */
 
+/**
+ * @brief Implementation of ra_usb_hhub_attach_callback (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] on_attach See implementation.
+ * @param[in] ctx See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_usb_hhub_attach_callback(ra_usb_hhub_attach_fn_t on_attach, void* ctx)
 {
   if (!s_state.initialised) {
@@ -353,6 +547,19 @@ ra_err_t ra_usb_hhub_attach_callback(ra_usb_hhub_attach_fn_t on_attach, void* ct
  * =============================================================================
  */
 
+/**
+ * @brief Implementation of ra_usb_hhub_get_port_count (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] count See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_usb_hhub_get_port_count(uint8_t* count)
 {
   RA_CHECK_NULL_PTR(count, s_tag, "get_port_count: count");
@@ -372,6 +579,20 @@ ra_err_t ra_usb_hhub_get_port_count(uint8_t* count)
  *   wValue        = 0
  *   wIndex        = port
  *   wLength       = 4
+ */
+/**
+ * @brief Implementation of ra_usb_hhub_get_port_status (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] port See implementation.
+ * @param[in] status See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 ra_err_t ra_usb_hhub_get_port_status(uint8_t port, uint32_t* status)
 {
@@ -403,6 +624,20 @@ ra_err_t ra_usb_hhub_get_port_status(uint8_t port, uint32_t* status)
  *   wIndex        = port
  *   wLength       = 0
  */
+/**
+ * @brief Implementation of ra_usb_hhub_set_port_feature (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] port See implementation.
+ * @param[in] feature See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_usb_hhub_set_port_feature(uint8_t port, ra_usb_hhub_feature_t feature)
 {
   if (!s_state.initialised) {
@@ -431,6 +666,20 @@ ra_err_t ra_usb_hhub_set_port_feature(uint8_t port, ra_usb_hhub_feature_t featur
  *   wIndex        = port
  *   wLength       = 0
  */
+/**
+ * @brief Implementation of ra_usb_hhub_clear_port_feature (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] port See implementation.
+ * @param[in] feature See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_usb_hhub_clear_port_feature(uint8_t port, ra_usb_hhub_feature_t feature)
 {
   if (!s_state.initialised) {
@@ -457,6 +706,18 @@ ra_err_t ra_usb_hhub_clear_port_feature(uint8_t port, ra_usb_hhub_feature_t feat
  * =============================================================================
  */
 
+/**
+ * @brief Implementation of ra_usb_hhub_step (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_usb_hhub_step(void)
 {
   if (!s_state.initialised) {

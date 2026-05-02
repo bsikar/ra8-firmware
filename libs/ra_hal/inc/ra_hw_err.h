@@ -131,6 +131,8 @@ typedef enum : uint32_t {
  * @par NASA Power of 10 Compliance:
  * - Rule 2: ``budget`` is a fixed upper bound, supplied by the caller.
  * - Rule 5: 2 preconditions, 2 postconditions.
+ *
+ * @details See implementation.
  */
 static inline ra_err_t
 ra_hw_wait_flag_set8(volatile const uint8_t* reg, uint8_t mask, uint32_t budget)
@@ -166,6 +168,8 @@ ra_hw_wait_flag_set8(volatile const uint8_t* reg, uint8_t mask, uint32_t budget)
  *
  * @note Inline. Not thread-safe.
  * @since 0.1.0
+ *
+ * @details See implementation.
  */
 static inline ra_err_t
 ra_hw_wait_flag_clear8(volatile const uint8_t* reg, uint8_t mask, uint32_t budget)
@@ -203,6 +207,9 @@ ra_hw_wait_flag_clear8(volatile const uint8_t* reg, uint8_t mask, uint32_t budge
  *
  * @note Inline. Not thread-safe.
  * @since 0.1.0
+ *
+ * @details See implementation.
+ * @retval k_ra_ok Operation succeeded.
  */
 static inline ra_err_t
 ra_hw_wait_flag_set32(volatile const uint32_t* reg, uint32_t mask, uint32_t budget)
@@ -234,6 +241,9 @@ ra_hw_wait_flag_set32(volatile const uint32_t* reg, uint32_t mask, uint32_t budg
  *
  * @note Inline. Not thread-safe.
  * @since 0.1.0
+ *
+ * @details See implementation.
+ * @retval k_ra_ok Operation succeeded.
  */
 static inline ra_err_t
 ra_hw_wait_flag_clear32(volatile const uint32_t* reg, uint32_t mask, uint32_t budget)

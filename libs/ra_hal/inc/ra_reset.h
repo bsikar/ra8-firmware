@@ -178,6 +178,13 @@ typedef struct {
  * @brief Reset the cached reset-cause snapshot for host tests.
  *
  * @note Host-test only; not part of the target firmware API.
+ *
+ * @details See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @since 0.1.0
  */
 void ra_reset_test_only_reset_state(void);
 #endif

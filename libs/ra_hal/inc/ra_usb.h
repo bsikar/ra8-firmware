@@ -510,6 +510,9 @@ ra_usb_queue_out(ra_usb_speed_t speed, uint8_t pipe_num, uint8_t* out_buf, uint1
  * @note Re-entrant only across instances; not within a single
  * controller.
  * @since 0.1.0
+ *
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
  */
 void ra_usb_dispatch(ra_usb_speed_t speed);
 

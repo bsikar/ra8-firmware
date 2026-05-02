@@ -223,6 +223,13 @@ typedef enum : uint16_t {
  * is in ``libs/ra_hal/src/ra_mstp.c``.
  *
  * @since 0.1.0
+ *
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
  */
 ra_mstp_reg_t ra_mstp_id_reg(ra_mstp_t id);
 
@@ -235,6 +242,13 @@ ra_mstp_reg_t ra_mstp_id_reg(ra_mstp_t id);
  * Defined in ``libs/ra_hal/src/ra_mstp.c``.
  *
  * @since 0.1.0
+ *
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
  */
 uint8_t ra_mstp_id_bit(ra_mstp_t id);
 

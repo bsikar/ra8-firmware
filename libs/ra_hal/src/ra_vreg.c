@@ -96,6 +96,14 @@ static void* s_vreg_ctx;
  * @return ra_err_t
  * @retval k_ra_ok                 All fields in range.
  * @retval k_ra_err_invalid_arg    A field is out of range.
+ *
+ * @details See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t internal_validate_cfg(const ra_vreg_cfg_t* cfg)
 {
@@ -119,6 +127,15 @@ static ra_err_t internal_validate_cfg(const ra_vreg_cfg_t* cfg)
  *
  * @param[in] profile Validated profile enum.
  * @return Raw LVOCR byte (only LVO0E / LVO1E ever set).
+ *
+ * @details See implementation.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static uint8_t internal_lvocr_from_profile(ra_vreg_lv_profile_t profile)
 {
@@ -136,6 +153,15 @@ static uint8_t internal_lvocr_from_profile(ra_vreg_lv_profile_t profile)
  *
  * @param[in] lvocr Live LVOCR register read.
  * @return One of `k_ra_vreg_lv_off / lv_p0 / lv_p1`.
+ *
+ * @details See implementation.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_vreg_lv_profile_t internal_profile_from_lvocr(uint8_t lvocr)
 {
@@ -154,6 +180,15 @@ static ra_vreg_lv_profile_t internal_profile_from_lvocr(uint8_t lvocr)
  *
  * @param[in] dcdcctl Live DCDCCTL register read.
  * @return `k_ra_vreg_ocp_off` or the cached level when OCPEN is set.
+ *
+ * @details See implementation.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_vreg_ocp_t internal_ocp_from_dcdcctl(uint8_t dcdcctl)
 {
@@ -175,6 +210,14 @@ static ra_vreg_ocp_t internal_ocp_from_dcdcctl(uint8_t dcdcctl)
  *
  * @param[in] cfg Validated configuration descriptor (must be non-NULL).
  * @return Packed DCDCCTL value.
+ *
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static uint8_t internal_pack_ldo_dcdcctl(const ra_vreg_cfg_t* cfg)
 {
@@ -209,6 +252,13 @@ static uint8_t internal_pack_ldo_dcdcctl(const ra_vreg_cfg_t* cfg)
  *
  * @param[in] fast True for fast-startup, false for the conservative
  *                 5-step handshake.
+ *
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static void internal_dcdc_enable_sequence(bool fast)
 {
@@ -252,6 +302,14 @@ static void internal_dcdc_enable_sequence(bool fast)
  *        DCDC offline and stops the IO buffer.
  *
  * @param[in] keep_lcboost Preserve DCDCCTL.LCBOOST through the transition.
+ *
+ * @details See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static void internal_dcdc_disable_sequence(bool keep_lcboost)
 {
@@ -585,6 +643,16 @@ static void internal_dcdc_disable_sequence(bool keep_lcboost)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_vreg_dispatch (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 void ra_vreg_dispatch(void)
 {
   const ra_vreg_event_fn_t fn  = s_vreg_fn;

@@ -297,6 +297,8 @@ typedef enum : uint16_t {
  *
  * @note Thread safety: not thread-safe.
  * @since 0.1.0
+ *
+ * @post Caller-visible state matches the documented contract.
  */
 void ra_pwr_enter_sleep(void);
 

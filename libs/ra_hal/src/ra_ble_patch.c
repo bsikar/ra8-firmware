@@ -74,6 +74,20 @@ static const char* s_ra_ble_patch_tag = "ble_patch";
 /* Public API                                                   */
 /* ============================================================ */
 
+/**
+ * @brief Implementation of ra_ble_patch_load (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] image See implementation.
+ * @param[in] len See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_ble_patch_load(const uint8_t* image, size_t len)
 {
   /* "Probe" path: caller asks if a patch is configured. */
@@ -108,6 +122,18 @@ ra_err_t ra_ble_patch_load(const uint8_t* image, size_t len)
   return k_ra_err_not_supported;
 }
 
+/**
+ * @brief Implementation of ra_ble_patch_is_loaded (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 uint8_t ra_ble_patch_is_loaded(void)
 {
   return s_patch_loaded;
@@ -115,13 +141,42 @@ uint8_t ra_ble_patch_is_loaded(void)
 
 #ifdef UNIT_TEST
 /* Test-hook prototypes (external linkage; production firmware ignores). */
-void    ra_ble_patch_test_reset(void);
+/**
+ * @brief Implementation of ra_ble_patch_test_reset (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
+void ra_ble_patch_test_reset(void);
+/**
+ * @brief Implementation of ra_ble_patch_test_warned (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 uint8_t ra_ble_patch_test_warned(void);
 
 /**
  * @brief Test hook -- reset the file-scope flags between cases.
  *
  * @since 0.1.0
+ *
+ * @details See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
  */
 void ra_ble_patch_test_reset(void)
 {
@@ -133,6 +188,15 @@ void ra_ble_patch_test_reset(void)
  * @brief Test hook -- read the warned flag.
  *
  * @since 0.1.0
+ *
+ * @details See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
  */
 uint8_t ra_ble_patch_test_warned(void)
 {

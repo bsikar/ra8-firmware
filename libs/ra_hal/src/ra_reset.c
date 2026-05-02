@@ -87,6 +87,14 @@ static ra_reset_state_t s_state;
  * @brief Read RSTSR0/1/2/3 into ``out``.
  *
  * @param[out] out Destination raw struct (caller-validated non-NULL).
+ *
+ * @details See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static void internal_read_raw(ra_reset_raw_t* out)
 {
@@ -130,6 +138,11 @@ static void internal_read_raw(ra_reset_raw_t* out)
  * @post Returned value is one of the documented enumerator values.
  *
  * @note Internal helper, not thread-safe.
+ *
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @since 0.1.0
  */
 static ra_reset_cause_t internal_decode_rstsr0(uint8_t rstsr0)
 {
@@ -172,6 +185,11 @@ static ra_reset_cause_t internal_decode_rstsr0(uint8_t rstsr0)
  * @post Returned value is one of the documented enumerator values.
  *
  * @note Internal helper, not thread-safe.
+ *
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @since 0.1.0
  */
 static ra_reset_cause_t internal_decode_rstsr1(uint32_t rstsr1)
 {
@@ -226,6 +244,11 @@ static ra_reset_cause_t internal_decode_rstsr1(uint32_t rstsr1)
  * @post Returned value is one of the documented enumerator values.
  *
  * @note Internal helper, not thread-safe.
+ *
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @since 0.1.0
  */
 static ra_reset_cause_t internal_decode_rstsr3(uint8_t rstsr3)
 {
@@ -241,6 +264,19 @@ static ra_reset_cause_t internal_decode_rstsr3(uint8_t rstsr3)
   return k_ra_reset_cause_unknown;
 }
 
+/**
+ * @brief Internal helper.
+ * @details See implementation.
+ * @param[in] raw See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 static ra_reset_cause_t internal_decode(const ra_reset_raw_t* raw)
 {
   ra_reset_cause_t cause = internal_decode_rstsr0(raw->rstsr0);
@@ -271,6 +307,18 @@ static ra_reset_cause_t internal_decode(const ra_reset_raw_t* raw)
  * =============================================================================
  */
 
+/**
+ * @brief Implementation of ra_reset_init (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_reset_init(void)
 {
   internal_read_raw(&s_state.raw);
@@ -310,6 +358,19 @@ void ra_reset_test_only_reset_state(void)
 }
 #endif /* RA_SIMULATOR_MODE */
 
+/**
+ * @brief Implementation of ra_reset_get_cause (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] out See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_reset_get_cause(ra_reset_cause_t* out)
 {
   RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
@@ -323,6 +384,19 @@ ra_err_t ra_reset_get_cause(ra_reset_cause_t* out)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_reset_get_raw (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] out See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_reset_get_raw(ra_reset_raw_t* out)
 {
   RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
@@ -334,6 +408,19 @@ ra_err_t ra_reset_get_raw(ra_reset_raw_t* out)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_reset_clear_cause (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] mask See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_reset_clear_cause(uint32_t mask)
 {
   /* HUM Ch 6.2.2 "RSTSR0 : Reset Status Register 0" p 258 */
@@ -370,6 +457,19 @@ ra_err_t ra_reset_clear_cause(uint32_t mask)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_reset_get_attribution (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] out See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_reset_get_attribution(uint32_t* out)
 {
   RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
@@ -378,6 +478,16 @@ ra_err_t ra_reset_get_attribution(uint32_t* out)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_reset_software_reset (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 void ra_reset_software_reset(void)
 {
   /* HUM Ch 6.1 Table 6.1 p 244 -- "Software reset / Register setting

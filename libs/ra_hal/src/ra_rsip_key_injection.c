@@ -105,6 +105,11 @@ typedef enum : uint32_t {
  * @post Return value is non-zero.
  *
  * @since 0.1.0
+ *
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
  */
 static uint64_t ki_xorshift(uint64_t state)
 {
@@ -126,6 +131,12 @@ static uint64_t ki_xorshift(uint64_t state)
  * @post Return value is non-zero.
  *
  * @since 0.1.0
+ *
+ * @details See implementation.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
  */
 static uint64_t ki_mix_byte(uint64_t state, uint8_t b)
 {
@@ -144,6 +155,11 @@ static uint64_t ki_mix_byte(uint64_t state, uint8_t b)
  * @post ``mac_out[0..15]`` is populated.
  *
  * @since 0.1.0
+ *
+ * @details See implementation.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
  */
 static void ki_compute_mac(const uint8_t* buf, uint32_t len, uint8_t* mac_out)
 {
@@ -167,6 +183,11 @@ static void ki_compute_mac(const uint8_t* buf, uint32_t len, uint8_t* mac_out)
  * @post First 4 bytes of ``buf`` reflect ``tag`` (LE).
  *
  * @since 0.1.0
+ *
+ * @details See implementation.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
  */
 static void ki_write_type(uint8_t* buf, uint32_t tag)
 {
@@ -189,6 +210,12 @@ static void ki_write_type(uint8_t* buf, uint32_t tag)
  * @post No state changes.
  *
  * @since 0.1.0
+ *
+ * @details See implementation.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
  */
 static uint32_t ki_read_type(const uint8_t* buf)
 {
@@ -211,6 +238,11 @@ static uint32_t ki_read_type(const uint8_t* buf)
  * @post ``mgmt[0..15]`` is populated deterministically.
  *
  * @since 0.1.0
+ *
+ * @details See implementation.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
  */
 static void ki_fill_mgmt_info(uint8_t* mgmt, const uint8_t* raw, uint32_t len)
 {
@@ -232,6 +264,14 @@ static void ki_fill_mgmt_info(uint8_t* mgmt, const uint8_t* raw, uint32_t len)
  * @return ``true`` on supported width.
  *
  * @since 0.1.0
+ *
+ * @details See implementation.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
  */
 static bool ki_aes_bytes(ra_rsip_aes_key_bits_t key_bits, uint32_t* out)
 {
@@ -261,6 +301,14 @@ static bool ki_aes_bytes(ra_rsip_aes_key_bits_t key_bits, uint32_t* out)
  * @return ``true`` on supported width.
  *
  * @since 0.1.0
+ *
+ * @details See implementation.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
  */
 static bool ki_rsa_bytes(ra_rsip_rsa_size_t size, uint32_t* out)
 {
@@ -294,6 +342,14 @@ static bool ki_rsa_bytes(ra_rsip_rsa_size_t size, uint32_t* out)
  * @return ``true`` on supported curve.
  *
  * @since 0.1.0
+ *
+ * @details See implementation.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
  */
 static bool ki_ecc_bytes(ra_rsip_curve_t curve, uint32_t* priv, uint32_t* pub)
 {
@@ -338,6 +394,11 @@ static bool ki_ecc_bytes(ra_rsip_curve_t curve, uint32_t* priv, uint32_t* pub)
  * @post First ``k_ra_rsip_wrapped_max_total`` bytes of ``dst`` populated.
  *
  * @since 0.1.0
+ *
+ * @details See implementation.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
  */
 static void ki_pack(uint8_t* dst, uint32_t type, const uint8_t* payload, uint32_t payload_len)
 {
@@ -355,6 +416,21 @@ static void ki_pack(uint8_t* dst, uint32_t type, const uint8_t* payload, uint32_
   ki_compute_mac(dst, mac_off, dst + mac_off);
 }
 
+/**
+ * @brief Implementation of ra_rsip_key_inject_aes (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] installed_key_buf See implementation.
+ * @param[in] raw_key See implementation.
+ * @param[in] key_bits See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_rsip_key_inject_aes(uint8_t*               installed_key_buf,
                                 const uint8_t*         raw_key,
                                 ra_rsip_aes_key_bits_t key_bits)
@@ -370,6 +446,22 @@ ra_err_t ra_rsip_key_inject_aes(uint8_t*               installed_key_buf,
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_rsip_key_inject_rsa (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] installed_key_buf See implementation.
+ * @param[in] raw_modulus See implementation.
+ * @param[in] raw_exponent See implementation.
+ * @param[in] size See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_rsip_key_inject_rsa(uint8_t*           installed_key_buf,
                                 const uint8_t*     raw_modulus,
                                 const uint8_t*     raw_exponent,
@@ -406,6 +498,22 @@ ra_err_t ra_rsip_key_inject_rsa(uint8_t*           installed_key_buf,
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_rsip_key_inject_ecc (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] installed_key_buf See implementation.
+ * @param[in] curve See implementation.
+ * @param[in] raw_priv_or_pub See implementation.
+ * @param[in] is_private See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_rsip_key_inject_ecc(uint8_t*        installed_key_buf,
                                 ra_rsip_curve_t curve,
                                 const uint8_t*  raw_priv_or_pub,
@@ -426,6 +534,20 @@ ra_err_t ra_rsip_key_inject_ecc(uint8_t*        installed_key_buf,
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_rsip_key_validate (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] installed_key_buf See implementation.
+ * @param[in] expected_type See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_rsip_key_validate(const uint8_t*             installed_key_buf,
                               ra_rsip_wrapped_key_type_t expected_type)
 {

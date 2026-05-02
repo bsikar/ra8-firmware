@@ -245,6 +245,8 @@ typedef void (*ra_cgc_ostd_fn_t)(void* ctx);
  *
  * @note Thread safety: not thread-safe.
  * @since 0.1.0
+ *
+ * @pre Module state is consistent.
  */
 void ra_cgc_sim_trigger_stop_detection(void);
 

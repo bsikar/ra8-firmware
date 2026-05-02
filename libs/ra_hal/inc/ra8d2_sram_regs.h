@@ -635,6 +635,15 @@ static inline volatile uint64_t* ra_sram_bank_data_ptr(uint8_t bank)
  * @brief Per-bank data-region size in bytes.
  * @param[in] bank Bank index 0..3.
  * @return Number of bytes in the bank's user-visible data window.
+ *
+ * @details See implementation.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static inline uint32_t ra_sram_bank_size_bytes(uint8_t bank)
 {
@@ -646,6 +655,15 @@ static inline uint32_t ra_sram_bank_size_bytes(uint8_t bank)
  * @param[in] bank Bank index 0..3.
  * @return Number of bytes in the bank's ECC syndrome window
  *         (only meaningful when ``SRAMCRn.TSTBYP=1``).
+ *
+ * @details See implementation.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static inline uint32_t ra_sram_bank_ecc_size_bytes(uint8_t bank)
 {

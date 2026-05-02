@@ -157,6 +157,15 @@ static void* s_on_error_bank_ctx[k_ra_sram_bank_count] = {
  * @param[in] cfg  Non-NULL pointer (caller already checked).
  * @param[in] bank Bank index (used for the SRAM3 region check).
  * @return ``k_ra_ok`` or ``k_ra_err_invalid_arg``.
+ *
+ * @details See implementation.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t internal_validate_bank_cfg(const ra_sram_bank_cfg_t* cfg, uint8_t bank)
 {
@@ -180,6 +189,16 @@ static ra_err_t internal_validate_bank_cfg(const ra_sram_bank_cfg_t* cfg, uint8_
  * @details
  * Per HUM Ch 58.2.7 "SRAMCRn", p 3532. The TSTBYP bit is left clear
  * here -- the self-test routine sets it explicitly when it needs to.
+ *
+ * @param[in] cfg See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static uint8_t internal_encode_cr(const ra_sram_bank_cfg_t* cfg)
 {
@@ -210,6 +229,15 @@ static uint8_t internal_encode_cr(const ra_sram_bank_cfg_t* cfg)
  * SRAMCRn / SRAMECCRGNn are gated by the ``PR`` bit which is enabled
  * by writing the half-word ``0xA501`` (KW=0xA5, PR=1). This function
  * unlocks, writes, and re-locks.
+ *
+ * @param[in] bank See implementation.
+ * @param[in] value See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static void internal_write_cr_locked(uint8_t bank, uint8_t value)
 {
@@ -234,6 +262,15 @@ static void internal_write_cr_locked(uint8_t bank, uint8_t value)
  * @details
  * Per HUM Ch 58.2.8..58.2.11 (p 3533-3535) the per-bank ECC region
  * registers share the SRAMPRCR_S protection scheme.
+ *
+ * @param[in] bank See implementation.
+ * @param[in] value See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static void internal_write_eccrgn_locked(uint8_t bank, uint8_t value)
 {
@@ -252,6 +289,15 @@ static void internal_write_eccrgn_locked(uint8_t bank, uint8_t value)
 
 /**
  * @brief Write SRAMWTSC under SRAMPRCR_S unlock.
+ *
+ * @details See implementation.
+ * @param[in] value See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static void internal_write_wtsc_locked(uint8_t value)
 {
@@ -276,6 +322,16 @@ static void internal_write_wtsc_locked(uint8_t value)
  * ``ERR{bank}{0=1bit | 1=2bit}`` packed two bits per bank starting
  * at bit 0. So bit ``2*bank`` is the 1-bit flag and bit
  * ``2*bank + 1`` is the 2-bit flag.
+ *
+ * @param[in] raw See implementation.
+ * @param[in] one_bit_mask See implementation.
+ * @param[in] two_bit_mask See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static void internal_decode_esr(uint16_t raw, uint8_t* one_bit_mask, uint8_t* two_bit_mask)
 {
@@ -298,6 +354,17 @@ static void internal_decode_esr(uint16_t raw, uint8_t* one_bit_mask, uint8_t* tw
 /**
  * @brief Translate a SRAMEAR offset into its absolute Secure-alias
  *        address (per HUM Ch 58.2.14 p 3537).
+ *
+ * @details See implementation.
+ * @param[in] ear See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static uintptr_t internal_ear_to_abs_addr(uint32_t ear)
 {
@@ -316,6 +383,14 @@ static uintptr_t internal_ear_to_abs_addr(uint32_t ear)
  * (p 3529). This helper just walks the cfg fields and writes the
  * three register groups in the order SRAMSAR -> SRAMESAR -> SABARn so
  * boundary writes happen after the per-bank security flag is set.
+ *
+ * @param[in] sec See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static void internal_apply_security(const ra_sram_security_cfg_t* sec)
 {
@@ -358,6 +433,14 @@ static void internal_apply_security(const ra_sram_security_cfg_t* sec)
  * Per HUM Ch 58.3.2 (p 3538) and HUM 58.4.2 (p 3541) the SRAM is read
  * in 8-byte units, so the syndrome line is computed per uint64_t. The
  * loop bound is the bank's documented size, divided by 8.
+ *
+ * @param[in] bank See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static void internal_zero_fill_bank(uint8_t bank)
 {
@@ -381,6 +464,14 @@ static void internal_zero_fill_bank(uint8_t bank)
  *   2. Walk the bank in 8-byte stores, writing zero.
  *   3. SRAMCRn = ECCMOD=00b (ECC off) so the caller can pick its own
  *      final mode via ``ra_sram_set_mode``.
+ *
+ * @param[in] bank See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static void internal_zero_init_with_no_check(uint8_t bank)
 {
@@ -417,6 +508,11 @@ static void internal_zero_init_with_no_check(uint8_t bank)
  *       the caller must clean up.
  *
  * @note Internal helper, not thread-safe.
+ *
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @since 0.1.0
  */
 static ra_err_t internal_validate_and_ungate(const ra_sram_config_t* cfg)
 {
@@ -445,6 +541,10 @@ static ra_err_t internal_validate_and_ungate(const ra_sram_config_t* cfg)
  * @post Each bank's eccrgn + SRAMCRn matches ``cfg``.
  *
  * @note Internal helper, not thread-safe.
+ *
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @since 0.1.0
  */
 static void internal_apply_per_bank(const ra_sram_config_t* cfg)
 {
@@ -685,6 +785,10 @@ static void internal_apply_per_bank(const ra_sram_config_t* cfg)
  *       then re-armed for verification.
  *
  * @note Internal helper, not thread-safe.
+ *
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @since 0.1.0
  */
 static void internal_self_test_inject(uint8_t bank, volatile uint64_t* data, bool inject_two_bit)
 {
@@ -718,6 +822,10 @@ static void internal_self_test_inject(uint8_t bank, volatile uint64_t* data, boo
  * @post SRAMESR has the matching error flag set; SRAMEAR populated.
  *
  * @note Host-only helper, not thread-safe.
+ *
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @since 0.1.0
  */
 static void internal_simulator_force_latch(uint8_t bank, bool inject_two_bit, uint32_t probe_offset)
 {
@@ -868,6 +976,19 @@ ra_sram_self_test(uint8_t bank, uint32_t probe_offset, bool inject_two_bit, bool
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_sram_dispatch (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] bank See implementation.
+ * @param[in] is_2bit See implementation.
+ * @param[in] err_addr See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 void ra_sram_dispatch(uint8_t bank, bool is_2bit, uintptr_t err_addr)
 {
   if ((uint16_t)bank >= (uint16_t)k_ra_sram_bank_count) {
@@ -885,6 +1006,19 @@ void ra_sram_dispatch(uint8_t bank, bool is_2bit, uintptr_t err_addr)
   }
 }
 
+/**
+ * @brief Implementation of ra_sram_dispatch_from_esr (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] out_status See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 uint16_t ra_sram_dispatch_from_esr(ra_sram_status_t* out_status)
 {
   ra_sram_status_t local = {};

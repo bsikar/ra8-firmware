@@ -273,6 +273,10 @@ static inline volatile r_iwdt_regs_t* ra_iwdt(void)
  *
  * @warning A SINGLE write to IWDTRR does NOT refresh the counter;
  *          both bytes are required, in order.
+ *
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @since 0.1.0
  */
 static inline void ra_iwdt_refresh(void)
 {

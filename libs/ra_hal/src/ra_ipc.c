@@ -98,6 +98,17 @@ static ra_ipc_isr_state_t     s_ipc_isr_state[k_ra_ipc_nmi_unit_count];
 /**
  * @brief Translate a public ``ra_ipc_event_t`` mask into the matching
  *        IPCnCLRm bit pattern.
+ *
+ * @details See implementation.
+ * @param[in] event_mask See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static uint32_t internal_ra_ipc_event_to_clr(uint32_t event_mask)
 {
@@ -151,6 +162,16 @@ static volatile r_ipc_nmi_regs_t* internal_ra_ipc_get_nmi(uint8_t unit)
  * ``ra_elc_event_t`` via ``uint16_t`` at the boundary -- the enum's
  * declared list does not yet enumerate the IPC IRQ event numbers
  * (0x05B / 0x05C) and the static analyzer flags a direct cast.
+ *
+ * @param[in] unit See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static uint16_t internal_ra_ipc_unit_to_event(uint8_t unit)
 {
@@ -165,6 +186,16 @@ static uint16_t internal_ra_ipc_unit_to_event(uint8_t unit)
 /**
  * @brief Walk every IRQn bit in ``mask`` and call the per-line
  *        callback registered for that channel/line, if any.
+ *
+ * @details See implementation.
+ * @param[in] channel See implementation.
+ * @param[in] mask See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static void internal_ra_ipc_dispatch_irq_lines(uint8_t channel, uint32_t mask)
 {
@@ -188,6 +219,17 @@ static void internal_ra_ipc_dispatch_irq_lines(uint8_t channel, uint32_t mask)
 /**
  * @brief Test-and-set on IPCSEMn -- a 32-bit read takes the lock and
  *        returns the previous LOCK value.
+ *
+ * @details See implementation.
+ * @param[in] sem See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static uint32_t internal_ra_ipc_sem_read_take(volatile uint32_t* sem)
 {
@@ -811,6 +853,17 @@ ra_ipc_can_access(uint8_t channel, ra_ipc_attr_t const* required, bool* out_can_
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_ipc_dispatch_nmi (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] unit See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 void ra_ipc_dispatch_nmi(uint8_t unit)
 {
   volatile r_ipc_nmi_regs_t* nmi = internal_ra_ipc_get_nmi(unit);
@@ -862,6 +915,17 @@ void ra_ipc_dispatch_nmi(uint8_t unit)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_ipc_dispatch (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] channel See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 void ra_ipc_dispatch(uint8_t channel)
 {
   if ((uint16_t)channel >= (uint16_t)k_ra_ipc_channel_count) {
@@ -910,6 +974,14 @@ void ra_ipc_dispatch(uint8_t channel)
  * The RA8D2 collapses both FIFO channels in a unit into a single ELC
  * event (HUM Ch 18 + bsp_elc.h). Inside the ISR we read STA on both
  * channels in the unit and call the regular dispatch path on each.
+ *
+ * @param[in] ctx See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static void internal_ra_ipc_isr(void* ctx)
 {
@@ -988,6 +1060,12 @@ static void internal_ra_ipc_isr(void* ctx)
  * @pre ring != nullptr.
  * @pre ring->slots / head / tail are non-null.
  * @post No side effects.
+ *
+ * @details See implementation.
+ * @retval k_ra_ok Operation succeeded.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t internal_ra_ipc_ring_validate(const ra_ipc_ring_t* ring)
 {

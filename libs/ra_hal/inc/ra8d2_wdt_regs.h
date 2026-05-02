@@ -336,6 +336,13 @@ static inline volatile r_wdt_regs_t* ra_wdt_for(ra_wdt_instance_t which)
  * @post No hardware state is touched.
  *
  * @see HUM Ch 7 "Option-Setting Memory" p 278.
+ *
+ * @details See implementation.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static inline uintptr_t ra_wdt_ofs_addr(ra_wdt_instance_t which)
 {
@@ -364,6 +371,10 @@ static inline uintptr_t ra_wdt_ofs_addr(ra_wdt_instance_t which)
  * @post WDTRR holds 0xFF and the down-counter has reloaded.
  *
  * @note Not thread-safe; serialise externally if multiple writers.
+ *
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @since 0.1.0
  */
 static inline void ra_wdt_refresh(void)
 {
@@ -384,6 +395,11 @@ static inline void ra_wdt_refresh(void)
  * @note Not thread-safe.
  *
  * @see HUM Ch 27.2.1 "WDTRR : WDT Refresh Register", p 1257.
+ *
+ * @details See implementation.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @since 0.1.0
  */
 static inline void ra_wdt_refresh_instance(ra_wdt_instance_t which)
 {

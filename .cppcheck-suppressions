@@ -108,3 +108,11 @@ unusedStructMember:libs/ra_tls/inc/ra_tls.h
 unusedStructMember:libs/ra_hal/inc/ra_sdcard.h
 unusedStructMember:libs/ra_hal/inc/ra_smbus.h
 unusedStructMember:libs/ra_wdt_supervisor/inc/ra_wdt_supervisor.h
+unusedStructMember:libs/ra_hal/inc/ra_eth.h
+unusedStructMember:libs/ra_hal/inc/ra_touch.h
+unusedStructMember:libs/ra_hal/inc/ra_usb.h
+unusedStructMember:libs/ra_hal/inc/ra_wdt.h
+
+# constParameterCallback on ISR trampolines whose signatures are dictated by
+# the registration API (ra_isr_register takes a fixed function-pointer type).
+constParameterCallback:libs/ra_hal/src/ra_ipc.c

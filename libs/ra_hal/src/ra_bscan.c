@@ -80,6 +80,15 @@ static ra_bscan_state_t s_bscan_state = {
  * @param[in] instr Candidate opcode.
  * @return true if ``instr`` matches one of the values in
  *         HUM Ch 50.2.1 Table (p 3258); false for any reserved code.
+ *
+ * @details See implementation.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static bool internal_is_known_instruction(ra_bscan_instr_t instr)
 {

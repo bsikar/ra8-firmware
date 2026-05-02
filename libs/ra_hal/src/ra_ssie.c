@@ -136,6 +136,14 @@ static volatile r_ssie_regs_t* internal_ssie_regs(uint8_t channel)
  *
  * @details See HUM Ch 46.2.1 FRM table p 3057 and HUM Ch 46.2.7
  * OMOD table p 3091.
+ *
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static bool internal_format_decode(ra_ssie_format_t format,
                                    uint8_t*         out_omod,
@@ -188,6 +196,15 @@ static bool internal_format_decode(ra_ssie_format_t format,
  * @param[in] ssisr  Raw SSISR snapshot (HUM Ch 46.2.2 p 3066).
  * @param[in] ssifsr Raw SSIFSR snapshot (HUM Ch 46.2.4 p 3083).
  * @return Bitmap of ``ra_ssie_event_t`` flags.
+ *
+ * @details See implementation.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static uint8_t internal_decode_event(uint32_t ssisr, uint32_t ssifsr)
 {
@@ -224,6 +241,19 @@ static uint8_t internal_decode_event(uint32_t ssisr, uint32_t ssifsr)
  * register image. TEN/REN are intentionally left clear so the
  * caller can prime the TX FIFO before starting communication
  * (HUM Ch 46.6.2 "Transmission" p 3098).
+ *
+ * @param[in] cfg See implementation.
+ * @param[in] frm See implementation.
+ * @param[in] pdta See implementation.
+ * @param[in] sdta See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static uint32_t
 internal_build_ssicr(const ra_ssie_cfg_t* cfg, uint8_t frm, uint8_t pdta, uint8_t sdta)
@@ -281,6 +311,15 @@ internal_build_ssicr(const ra_ssie_cfg_t* cfg, uint8_t frm, uint8_t pdta, uint8_
  * @details See HUM Ch 46.2.3 "SSIRST" description, p 3077-3078.
  * In simulator/host mode the bit clears immediately after we
  * write 0; in production a few PCLK cycles are required.
+ *
+ * @param[in] reg See implementation.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t internal_wait_ssirst_clear(volatile r_ssie_regs_t* reg)
 {
@@ -295,6 +334,17 @@ static ra_err_t internal_wait_ssirst_clear(volatile r_ssie_regs_t* reg)
 
 /**
  * @brief Bounded poll on SSIFCR until both FIFO reset bits clear.
+ *
+ * @details See implementation.
+ * @param[in] reg See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t internal_wait_fifo_reset_clear(volatile r_ssie_regs_t* reg)
 {
@@ -314,6 +364,17 @@ static ra_err_t internal_wait_fifo_reset_clear(volatile r_ssie_regs_t* reg)
  * Honours the HUM Ch 46.2.7 Note 2 p 3091 constraint that BCKASTP and
  * LRCONT must not be set together: LRCONT wins, BCKASTP is silently
  * dropped when both are requested.
+ *
+ * @param[in] cfg See implementation.
+ * @param[in] omod See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static uint32_t internal_build_ssiofr(const ra_ssie_cfg_t* cfg, uint8_t omod)
 {
@@ -331,6 +392,16 @@ static uint32_t internal_build_ssiofr(const ra_ssie_cfg_t* cfg, uint8_t omod)
  * @brief Pack SSIFCR (FIFO control register) value from cfg.
  *
  * @details See HUM Ch 46.2.3 "SSIFCR : FIFO Control Register" p 3077.
+ *
+ * @param[in] cfg See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static uint32_t internal_build_ssifcr(const ra_ssie_cfg_t* cfg)
 {
@@ -348,6 +419,17 @@ static uint32_t internal_build_ssifcr(const ra_ssie_cfg_t* cfg)
  * @brief Pack SSISCR (status control register) value from TX/RX thresholds.
  *
  * @details See HUM Ch 46.2.8 "SSISCR : Status Control Register" p 3094.
+ *
+ * @param[in] tx_threshold See implementation.
+ * @param[in] rx_threshold See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static uint32_t internal_build_ssiscr(uint8_t tx_threshold, uint8_t rx_threshold)
 {
@@ -362,6 +444,17 @@ static uint32_t internal_build_ssiscr(uint8_t tx_threshold, uint8_t rx_threshold
  * @details
  * HUM Ch 46.2.3 "SSIFCR : FIFO Control Register" p 3077. ``ssifcr_base``
  * is the desired post-reset SSIFCR image (RFRST/TFRST clear).
+ *
+ * @param[in] reg See implementation.
+ * @param[in] ssifcr_base See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t internal_pulse_fifo_reset(volatile r_ssie_regs_t* reg, uint32_t ssifcr_base)
 {
@@ -376,6 +469,16 @@ static ra_err_t internal_pulse_fifo_reset(volatile r_ssie_regs_t* reg, uint32_t 
  * @details
  * Sets TUIEN+TIE for TX-enabled directions and ROIEN+RIE for RX-enabled
  * directions per HUM Ch 46.2.1 p 3057 and HUM Ch 46.2.3 p 3077.
+ *
+ * @param[in] desired_ren_ten See implementation.
+ * @param[in] ssicr See implementation.
+ * @param[in] ssifcr See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static void internal_apply_dir_irq_bits(uint32_t desired_ren_ten, uint32_t* ssicr, uint32_t* ssifcr)
 {
@@ -400,6 +503,15 @@ static void internal_apply_dir_irq_bits(uint32_t desired_ren_ten, uint32_t* ssic
  *
  * @return ``k_ra_ok`` on success, ``k_ra_err_invalid_arg`` if thresholds
  *         are out of range or the format enum is unrecognised.
+ *
+ * @details See implementation.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t internal_validate_init_cfg(const ra_ssie_cfg_t* cfg,
                                            uint8_t*             out_omod,
@@ -426,6 +538,16 @@ static ra_err_t internal_validate_init_cfg(const ra_ssie_cfg_t* cfg,
  * @details
  * Pulses SSIRST high then low, then polls SSIFCR until SSIRST clears.
  * HUM Ch 46.2.3 "SSIFCR : FIFO Control Register" p 3077.
+ *
+ * @param[in] reg See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t internal_pulse_ssi_reset(volatile r_ssie_regs_t* reg)
 {
@@ -441,6 +563,17 @@ static ra_err_t internal_pulse_ssi_reset(volatile r_ssie_regs_t* reg)
  * Combines the two HUM-required pre-config steps so ``ra_ssie_init``
  * stays under the per-function statement budget. HUM Ch 11.2.8 p 446
  * for MSTPCRC, HUM Ch 46.2.3 p 3077 for the reset pulse.
+ *
+ * @param[in] channel See implementation.
+ * @param[in] reg See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t internal_ssie_power_up(uint8_t channel, volatile r_ssie_regs_t* reg)
 {
@@ -453,6 +586,20 @@ static ra_err_t internal_ssie_power_up(uint8_t channel, volatile r_ssie_regs_t* 
 
 /**
  * @brief Stamp SSICR/SSIOFR/SSISCR/SSIFCR for a freshly reset SSIE block.
+ *
+ * @details See implementation.
+ * @param[in] reg See implementation.
+ * @param[in] cfg See implementation.
+ * @param[in] frm See implementation.
+ * @param[in] pdta See implementation.
+ * @param[in] sdta See implementation.
+ * @param[in] omod See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static void internal_apply_init_regs(volatile r_ssie_regs_t* reg,
                                      const ra_ssie_cfg_t*    cfg,
@@ -467,6 +614,20 @@ static void internal_apply_init_regs(volatile r_ssie_regs_t* reg,
   reg->SSIFCR = internal_build_ssifcr(cfg);
 }
 
+/**
+ * @brief Implementation of ra_ssie_init (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] channel See implementation.
+ * @param[in] cfg See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_ssie_init(uint8_t channel, const ra_ssie_cfg_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
@@ -495,6 +656,19 @@ ra_err_t ra_ssie_init(uint8_t channel, const ra_ssie_cfg_t* cfg)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_ssie_deinit (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] channel See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_ssie_deinit(uint8_t channel)
 {
   volatile r_ssie_regs_t* reg = internal_ssie_regs(channel);
@@ -513,6 +687,20 @@ ra_err_t ra_ssie_deinit(uint8_t channel)
   return ra_mstp_disable(s_ssie_mstp_table[channel]);
 }
 
+/**
+ * @brief Implementation of ra_ssie_start (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] channel See implementation.
+ * @param[in] dir See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_ssie_start(uint8_t channel, ra_ssie_dir_t dir)
 {
   if (dir != k_ra_ssie_dir_rx && dir != k_ra_ssie_dir_tx && dir != k_ra_ssie_dir_tx_rx) {
@@ -554,6 +742,19 @@ ra_err_t ra_ssie_start(uint8_t channel, ra_ssie_dir_t dir)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_ssie_stop (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] channel See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_ssie_stop(uint8_t channel)
 {
   volatile r_ssie_regs_t* reg = internal_ssie_regs(channel);
@@ -576,6 +777,19 @@ ra_err_t ra_ssie_stop(uint8_t channel)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_ssie_start_recovery (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] channel See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_ssie_start_recovery(uint8_t channel)
 {
   volatile r_ssie_regs_t* reg = internal_ssie_regs(channel);
@@ -597,6 +811,20 @@ ra_err_t ra_ssie_start_recovery(uint8_t channel)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_ssie_mute (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] channel See implementation.
+ * @param[in] enable See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_ssie_mute(uint8_t channel, bool enable)
 {
   volatile r_ssie_regs_t* reg = internal_ssie_regs(channel);
@@ -614,6 +842,21 @@ ra_err_t ra_ssie_mute(uint8_t channel, bool enable)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_ssie_set_thresholds (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] channel See implementation.
+ * @param[in] tx_threshold See implementation.
+ * @param[in] rx_threshold See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_ssie_set_thresholds(uint8_t channel, uint8_t tx_threshold, uint8_t rx_threshold)
 {
   volatile r_ssie_regs_t* reg = internal_ssie_regs(channel);
@@ -628,6 +871,20 @@ ra_err_t ra_ssie_set_thresholds(uint8_t channel, uint8_t tx_threshold, uint8_t r
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_ssie_write_sample (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] channel See implementation.
+ * @param[in] sample See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_ssie_write_sample(uint8_t channel, uint32_t sample)
 {
   volatile r_ssie_regs_t* reg = internal_ssie_regs(channel);
@@ -639,6 +896,20 @@ ra_err_t ra_ssie_write_sample(uint8_t channel, uint32_t sample)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_ssie_read_sample (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] channel See implementation.
+ * @param[in] out See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_ssie_read_sample(uint8_t channel, uint32_t* out)
 {
   RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
@@ -651,6 +922,22 @@ ra_err_t ra_ssie_read_sample(uint8_t channel, uint32_t* out)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_ssie_write_buffer (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] channel See implementation.
+ * @param[in] buffer See implementation.
+ * @param[in] samples See implementation.
+ * @param[in] out_written See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_ssie_write_buffer(uint8_t         channel,
                               const uint32_t* buffer,
                               uint16_t        samples,
@@ -685,6 +972,22 @@ ra_err_t ra_ssie_write_buffer(uint8_t         channel,
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_ssie_read_buffer (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] channel See implementation.
+ * @param[in] buffer See implementation.
+ * @param[in] samples See implementation.
+ * @param[in] out_read See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t
 ra_ssie_read_buffer(uint8_t channel, uint32_t* buffer, uint16_t samples, uint16_t* out_read)
 {
@@ -726,6 +1029,15 @@ ra_ssie_read_buffer(uint8_t channel, uint32_t* buffer, uint16_t samples, uint16_
  *
  * @return ``k_ra_ok`` if the descriptor is consistent, else
  *         ``k_ra_err_invalid_arg``.
+ *
+ * @details See implementation.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t
 internal_validate_dma_cfg(const ra_ssie_dma_cfg_t* dma, bool* want_tx, bool* want_rx)
@@ -748,6 +1060,18 @@ internal_validate_dma_cfg(const ra_ssie_dma_cfg_t* dma, bool* want_tx, bool* wan
  * @brief Kick off the TX DMAC for an SSIE channel.
  *
  * @details See HUM Ch 46.4.1 "Operation in DMAC Transfer" p 3104.
+ *
+ * @param[in] reg See implementation.
+ * @param[in] channel See implementation.
+ * @param[in] dma See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t
 internal_start_tx_dma(volatile r_ssie_regs_t* reg, uint8_t channel, const ra_ssie_dma_cfg_t* dma)
@@ -771,6 +1095,18 @@ internal_start_tx_dma(volatile r_ssie_regs_t* reg, uint8_t channel, const ra_ssi
  * @brief Kick off the RX DMAC for an SSIE channel.
  *
  * @details See HUM Ch 46.4.1 "Operation in DMAC Transfer" p 3104.
+ *
+ * @param[in] reg See implementation.
+ * @param[in] channel See implementation.
+ * @param[in] dma See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t
 internal_start_rx_dma(volatile r_ssie_regs_t* reg, uint8_t channel, const ra_ssie_dma_cfg_t* dma)
@@ -792,6 +1128,16 @@ internal_start_rx_dma(volatile r_ssie_regs_t* reg, uint8_t channel, const ra_ssi
 
 /**
  * @brief Roll back a TX DMAC start when the RX side fails.
+ *
+ * @details See implementation.
+ * @param[in] channel See implementation.
+ * @param[in] tx_dma_channel See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static void internal_unwind_tx_dma(uint8_t channel, uint8_t tx_dma_channel)
 {
@@ -806,6 +1152,20 @@ static void internal_unwind_tx_dma(uint8_t channel, uint8_t tx_dma_channel)
  * Encapsulates the body of ``ra_ssie_attach_dma`` once validation has
  * already chosen ``want_tx`` / ``want_rx``. On RX failure, the TX side
  * (if started) is unwound through ``internal_unwind_tx_dma``.
+ *
+ * @param[in] reg See implementation.
+ * @param[in] channel See implementation.
+ * @param[in] dma See implementation.
+ * @param[in] want_tx See implementation.
+ * @param[in] want_rx See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t internal_attach_dma_dirs(volatile r_ssie_regs_t*  reg,
                                          uint8_t                  channel,
@@ -829,6 +1189,20 @@ static ra_err_t internal_attach_dma_dirs(volatile r_ssie_regs_t*  reg,
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_ssie_attach_dma (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] channel See implementation.
+ * @param[in] dma See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_ssie_attach_dma(uint8_t channel, const ra_ssie_dma_cfg_t* dma)
 {
   RA_CHECK_NULL_PTR(dma, s_tag, "dma must not be nullptr");
@@ -849,6 +1223,19 @@ ra_err_t ra_ssie_attach_dma(uint8_t channel, const ra_ssie_dma_cfg_t* dma)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_ssie_detach_dma (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] channel See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_ssie_detach_dma(uint8_t channel)
 {
   if ((uint16_t)channel >= k_ra_ssie_channel_count) {
@@ -867,6 +1254,20 @@ ra_err_t ra_ssie_detach_dma(uint8_t channel)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_ssie_get_status (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] channel See implementation.
+ * @param[in] out See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_ssie_get_status(uint8_t channel, ra_ssie_status_t* out)
 {
   RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
@@ -891,6 +1292,20 @@ ra_err_t ra_ssie_get_status(uint8_t channel, ra_ssie_status_t* out)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_ssie_clear_status (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] channel See implementation.
+ * @param[in] mask See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_ssie_clear_status(uint8_t channel, uint32_t mask)
 {
   volatile r_ssie_regs_t* reg = internal_ssie_regs(channel);
@@ -904,6 +1319,21 @@ ra_err_t ra_ssie_clear_status(uint8_t channel, uint32_t mask)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_ssie_set_irq_enable (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] channel See implementation.
+ * @param[in] mask See implementation.
+ * @param[in] enable See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_ssie_set_irq_enable(uint8_t channel, uint32_t mask, bool enable)
 {
   volatile r_ssie_regs_t* reg = internal_ssie_regs(channel);
@@ -922,6 +1352,20 @@ ra_err_t ra_ssie_set_irq_enable(uint8_t channel, uint32_t mask, bool enable)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_ssie_attach_handler (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] fn See implementation.
+ * @param[in] ctx See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_ssie_attach_handler(ra_ssie_event_fn_t fn, void* ctx)
 {
   s_ssie_fn  = fn;
@@ -929,6 +1373,17 @@ ra_err_t ra_ssie_attach_handler(ra_ssie_event_fn_t fn, void* ctx)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_ssie_dispatch (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] channel See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 void ra_ssie_dispatch(uint8_t channel)
 {
   volatile r_ssie_regs_t* reg = internal_ssie_regs(channel);
@@ -947,6 +1402,21 @@ void ra_ssie_dispatch(uint8_t channel)
   }
 }
 
+/**
+ * @brief Implementation of ra_ssie_set_fifo_threshold (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] channel See implementation.
+ * @param[in] tx_threshold See implementation.
+ * @param[in] rx_threshold See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_ssie_set_fifo_threshold(uint8_t channel, uint8_t tx_threshold, uint8_t rx_threshold)
 {
   /* HUM Ch 46.2.8 "SSISCR : Status Control Register" p 3094.
@@ -955,6 +1425,21 @@ ra_err_t ra_ssie_set_fifo_threshold(uint8_t channel, uint8_t tx_threshold, uint8
   return ra_ssie_set_thresholds(channel, tx_threshold, rx_threshold);
 }
 
+/**
+ * @brief Implementation of ra_ssie_attach_dma_pair (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] channel See implementation.
+ * @param[in] tx_dma_channel See implementation.
+ * @param[in] rx_dma_channel See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_ssie_attach_dma_pair(uint8_t channel, uint8_t tx_dma_channel, uint8_t rx_dma_channel)
 {
   if ((uint16_t)channel >= k_ra_ssie_channel_count) {
@@ -976,6 +1461,21 @@ ra_err_t ra_ssie_attach_dma_pair(uint8_t channel, uint8_t tx_dma_channel, uint8_
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_ssie_send_iso (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] channel See implementation.
+ * @param[in] buffer See implementation.
+ * @param[in] samples See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_ssie_send_iso(uint8_t channel, const uint32_t* buffer, uint16_t samples)
 {
   RA_CHECK_NULL_PTR(buffer, s_tag, "buffer must not be nullptr");
@@ -1003,6 +1503,22 @@ ra_err_t ra_ssie_send_iso(uint8_t channel, const uint32_t* buffer, uint16_t samp
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_ssie_recv_iso (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] channel See implementation.
+ * @param[in] buffer See implementation.
+ * @param[in] max_samples See implementation.
+ * @param[in] out_got See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t
 ra_ssie_recv_iso(uint8_t channel, uint32_t* buffer, uint16_t max_samples, uint16_t* out_got)
 {
@@ -1032,6 +1548,19 @@ ra_ssie_recv_iso(uint8_t channel, uint32_t* buffer, uint16_t max_samples, uint16
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_ssie_enter_stop (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] channel See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_ssie_enter_stop(uint8_t channel)
 {
   if ((uint16_t)channel >= k_ra_ssie_channel_count) {
@@ -1040,6 +1569,19 @@ ra_err_t ra_ssie_enter_stop(uint8_t channel)
   return ra_mstp_disable(s_ssie_mstp_table[channel]);
 }
 
+/**
+ * @brief Implementation of ra_ssie_exit_stop (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] channel See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_ssie_exit_stop(uint8_t channel)
 {
   if ((uint16_t)channel >= k_ra_ssie_channel_count) {

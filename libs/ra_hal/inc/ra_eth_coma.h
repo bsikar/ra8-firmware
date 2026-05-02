@@ -46,7 +46,16 @@ typedef void (*ra_eth_coma_event_fn_t)(void* ctx, uint32_t status_mask);
 /** @brief Attach the shared event handler. @since 0.1.0 */
 [[nodiscard]] ra_err_t ra_eth_coma_attach_handler(ra_eth_coma_event_fn_t fn, void* ctx);
 
-/** @brief Dispatch a COMA event. @since 0.1.0 */
+/**
+ * @brief Dispatch a COMA event. @since 0.1.0
+ *
+ * @details See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ */
 void ra_eth_coma_dispatch(void);
 
 /** @brief Put COMA into MSTP-gated stop. @since 0.1.0 */

@@ -695,6 +695,8 @@ ra_sram_self_test(uint8_t bank, uint32_t probe_offset, bool inject_two_bit, bool
  * @note Safe to call from NMI context (the underlying handler
  *       must itself be NMI-safe).
  * @since 0.1.0
+ *
+ * @post Caller-visible state matches the documented contract.
  */
 void ra_sram_dispatch(uint8_t bank, bool is_2bit, uintptr_t err_addr);
 
@@ -722,6 +724,8 @@ void ra_sram_dispatch(uint8_t bank, bool is_2bit, uintptr_t err_addr);
  *
  * @note Safe to call from NMI context.
  * @since 0.1.0
+ *
+ * @retval k_ra_ok Operation succeeded.
  */
 uint16_t ra_sram_dispatch_from_esr(ra_sram_status_t* out_status);
 

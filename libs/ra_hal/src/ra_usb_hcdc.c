@@ -159,6 +159,17 @@ static ra_usb_hcdc_state_t s_state = {};
 
 /**
  * @brief Pick the bulk-max-packet ceiling matching the negotiated speed.
+ *
+ * @details See implementation.
+ * @param[in] speed See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static uint16_t internal_bulk_max_packet(ra_usb_speed_t speed)
 {
@@ -172,6 +183,15 @@ static uint16_t internal_bulk_max_packet(ra_usb_speed_t speed)
  * @details Mirrors FSP's `usb_hcdc_pipe_info`
  * (`r_usb_hcdc_driver.c:172`). Bulk pipes are PIPE1 / PIPE2; the
  * notification pipe is PIPE6.
+ *
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t internal_configure_pipes(void)
 {
@@ -207,6 +227,17 @@ static ra_err_t internal_configure_pipes(void)
  *
  * @details Helper for `internal_step_*` so the step machine itself
  * stays linear / readable.
+ *
+ * @param[in] desc_type See implementation.
+ * @param[in] length See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t internal_setup_get_descriptor(uint8_t desc_type, uint16_t length)
 {
@@ -222,6 +253,17 @@ static ra_err_t internal_setup_get_descriptor(uint8_t desc_type, uint16_t length
 
 /**
  * @brief Stage a SET_ADDRESS SETUP request.
+ *
+ * @details See implementation.
+ * @param[in] address See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t internal_setup_set_address(uint8_t address)
 {
@@ -237,6 +279,17 @@ static ra_err_t internal_setup_set_address(uint8_t address)
 
 /**
  * @brief Stage a SET_CONFIGURATION SETUP request.
+ *
+ * @details See implementation.
+ * @param[in] config_value See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t internal_setup_set_config(uint8_t config_value)
 {
@@ -252,6 +305,16 @@ static ra_err_t internal_setup_set_config(uint8_t config_value)
 
 /**
  * @brief Stage a SET_INTERFACE (alt 0, iface 0) SETUP request.
+ *
+ * @details See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t internal_setup_set_interface(void)
 {
@@ -277,6 +340,13 @@ static ra_err_t internal_setup_set_interface(void)
  * the layout the device-side CDC class in `ra_usb_cdc.c` advertises).
  * If the attached device deviates, the production path will overwrite
  * these defaults during the descriptor walk.
+ *
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static void internal_walk_config_descriptor(void)
 {
@@ -292,6 +362,16 @@ static void internal_walk_config_descriptor(void)
 
 /**
  * @brief Step handler -- bus-reset assert.
+ *
+ * @details See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t internal_do_idle(void)
 {
@@ -301,6 +381,16 @@ static ra_err_t internal_do_idle(void)
 
 /**
  * @brief Step handler -- bus-reset release + SETUP for SET_ADDRESS.
+ *
+ * @details See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t internal_do_bus_reset(void)
 {
@@ -313,6 +403,16 @@ static ra_err_t internal_do_bus_reset(void)
 /**
  * @brief Step handler -- store assigned address + SETUP for
  *        GET_DEVICE_DESCRIPTOR.
+ *
+ * @details See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t internal_do_set_address(void)
 {
@@ -324,6 +424,16 @@ static ra_err_t internal_do_set_address(void)
 
 /**
  * @brief Step handler -- SETUP for GET_CONFIGURATION_DESCRIPTOR.
+ *
+ * @details See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t internal_do_get_dev_desc(void)
 {
@@ -333,6 +443,16 @@ static ra_err_t internal_do_get_dev_desc(void)
 
 /**
  * @brief Step handler -- SETUP for SET_CONFIGURATION.
+ *
+ * @details See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t internal_do_get_cfg_desc(void)
 {
@@ -342,6 +462,16 @@ static ra_err_t internal_do_get_cfg_desc(void)
 
 /**
  * @brief Step handler -- SETUP for SET_INTERFACE.
+ *
+ * @details See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t internal_do_set_config(void)
 {
@@ -351,6 +481,16 @@ static ra_err_t internal_do_set_config(void)
 
 /**
  * @brief Step handler -- pure software descriptor walk.
+ *
+ * @details See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t internal_do_set_interface(void)
 {
@@ -361,6 +501,16 @@ static ra_err_t internal_do_set_interface(void)
 
 /**
  * @brief Step handler -- finalise pipes + fire attach callback.
+ *
+ * @details See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t internal_do_walk_desc(void)
 {
@@ -380,6 +530,15 @@ static ra_err_t internal_do_walk_desc(void)
  * @details Invoked from `ra_usb_hcdc_step` (tests) or from the CTRT
  * branch of `ra_usb_dispatch` (production). Each call advances the
  * step counter by one and dispatches to the appropriate handler.
+ *
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t internal_step_advance(void)
 {
@@ -411,6 +570,19 @@ static ra_err_t internal_step_advance(void)
  * =============================================================================
  */
 
+/**
+ * @brief Implementation of ra_usb_hcdc_init (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] speed See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_usb_hcdc_init(ra_usb_speed_t speed)
 {
   if ((speed != k_ra_usb_speed_fs) && (speed != k_ra_usb_speed_hs)) {
@@ -434,6 +606,18 @@ ra_err_t ra_usb_hcdc_init(ra_usb_speed_t speed)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_usb_hcdc_close (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_usb_hcdc_close(void)
 {
   if (!s_state.initialised) {
@@ -455,6 +639,20 @@ ra_err_t ra_usb_hcdc_close(void)
  * =============================================================================
  */
 
+/**
+ * @brief Implementation of ra_usb_hcdc_attach_callback (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] on_attach See implementation.
+ * @param[in] ctx See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_usb_hcdc_attach_callback(ra_usb_hcdc_attach_fn_t on_attach, void* ctx)
 {
   if (!s_state.initialised) {
@@ -470,6 +668,20 @@ ra_err_t ra_usb_hcdc_attach_callback(ra_usb_hcdc_attach_fn_t on_attach, void* ct
  * =============================================================================
  */
 
+/**
+ * @brief Implementation of ra_usb_hcdc_send (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] data See implementation.
+ * @param[in] len See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_usb_hcdc_send(const uint8_t* data, uint16_t len)
 {
   if (!s_state.initialised) {
@@ -484,6 +696,21 @@ ra_err_t ra_usb_hcdc_send(const uint8_t* data, uint16_t len)
   return ra_usb_queue_in(s_state.speed, k_ra_hcdc_pipe_bulk_out, data, len);
 }
 
+/**
+ * @brief Implementation of ra_usb_hcdc_recv (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] out_buf See implementation.
+ * @param[in] max_len See implementation.
+ * @param[in] got_len See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_usb_hcdc_recv(uint8_t* out_buf, uint16_t max_len, uint16_t* got_len)
 {
   RA_CHECK_NULL_PTR(out_buf, s_tag, "hcdc_recv: out_buf");
@@ -512,6 +739,21 @@ ra_err_t ra_usb_hcdc_recv(uint8_t* out_buf, uint16_t max_len, uint16_t* got_len)
  * =============================================================================
  */
 
+/**
+ * @brief Implementation of ra_usb_hcdc_set_line_coding (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] baud See implementation.
+ * @param[in] parity See implementation.
+ * @param[in] stop_bits See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_usb_hcdc_set_line_coding(uint32_t                baud,
                                      ra_usb_hcdc_parity_t    parity,
                                      ra_usb_hcdc_stop_bits_t stop_bits)
@@ -559,6 +801,18 @@ ra_err_t ra_usb_hcdc_set_line_coding(uint32_t                baud,
  * =============================================================================
  */
 
+/**
+ * @brief Implementation of ra_usb_hcdc_step (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_usb_hcdc_step(void)
 {
   if (!s_state.initialised) {

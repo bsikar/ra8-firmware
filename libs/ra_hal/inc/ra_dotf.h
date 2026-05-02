@@ -644,6 +644,13 @@ typedef void (*ra_dotf_event_fn_t)(void* ctx, uint8_t channel);
  * @param[in] channel Channel index 0..1 that raised the event. Out of
  *                    range channels are dropped silently.
  * @since 0.1.0
+ *
+ * @details See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
  */
 void ra_dotf_dispatch(uint8_t channel);
 

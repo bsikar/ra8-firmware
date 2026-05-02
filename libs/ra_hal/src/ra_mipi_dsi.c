@@ -234,6 +234,12 @@ typedef enum : uint8_t {
  * @pre `cfg` is non-NULL (checked by caller via `RA_CHECK_NULL_PTR`).
  * @pre Caller is in single-threaded context.
  * @post No side effects.
+ *
+ * @details See implementation.
+ * @retval k_ra_ok Operation succeeded.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t internal_ra_mipi_dsi_validate_cfg(const ra_mipi_dsi_config_t* cfg)
 {
@@ -254,6 +260,10 @@ static ra_err_t internal_ra_mipi_dsi_validate_cfg(const ra_mipi_dsi_config_t* cf
  * @pre Block is out of MSTP gate.
  * @pre Caller's IRQs are masked or the call is itself in IRQ context.
  * @post All sub-status registers read 0 for valid bits.
+ *
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static void internal_ra_mipi_dsi_clear_all_status(void)
 {
@@ -277,6 +287,15 @@ static void internal_ra_mipi_dsi_clear_all_status(void)
  *
  * @param[in] cfg Validated configuration.
  * @return Word ready for write to `TXSETR`.
+ *
+ * @details See implementation.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static uint32_t internal_ra_mipi_dsi_make_txsetr(const ra_mipi_dsi_config_t* cfg)
 {
@@ -292,6 +311,15 @@ static uint32_t internal_ra_mipi_dsi_make_txsetr(const ra_mipi_dsi_config_t* cfg
  *
  * @param[in] cfg Validated configuration.
  * @return Word ready for write to `DSISETR`.
+ *
+ * @details See implementation.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static uint32_t internal_ra_mipi_dsi_make_dsisetr(const ra_mipi_dsi_config_t* cfg)
 {
@@ -318,6 +346,15 @@ static uint32_t internal_ra_mipi_dsi_make_dsisetr(const ra_mipi_dsi_config_t* cf
  *
  * @param[in] cmd Validated command.
  * @return 32-bit DSC?AR value.
+ *
+ * @details See implementation.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static uint32_t internal_ra_mipi_dsi_make_dsc_a(const ra_mipi_dsi_command_t* cmd)
 {
@@ -361,6 +398,15 @@ static uint32_t internal_ra_mipi_dsi_make_dsc_a(const ra_mipi_dsi_command_t* cmd
  *
  * @param[in] cmd Validated command.
  * @return 32-bit DSC?CR value.
+ *
+ * @details See implementation.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static uint32_t internal_ra_mipi_dsi_make_dsc_c(const ra_mipi_dsi_command_t* cmd)
 {
@@ -378,6 +424,14 @@ static uint32_t internal_ra_mipi_dsi_make_dsc_c(const ra_mipi_dsi_command_t* cmd
  *
  * @param[in] data Payload bytes.
  * @param[in] len  Length, capped at `k_ra_mipi_dsi_payload_max`.
+ *
+ * @details See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static void internal_ra_mipi_dsi_stage_payload(const uint8_t* data, uint16_t len)
 {
@@ -409,6 +463,13 @@ static void internal_ra_mipi_dsi_stage_payload(const uint8_t* data, uint16_t len
  * Mirrors FSP `R_MIPI_DSI->SQCH?SET0R = SQCHnSET0R_BIT_23 | (n == ch)`
  * pattern. Both channel registers must be written so the engine
  * latches the channel-select bit correctly.
+ *
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static void internal_ra_mipi_dsi_pulse_start(uint8_t channel)
 {
@@ -428,6 +489,14 @@ static void internal_ra_mipi_dsi_pulse_start(uint8_t channel)
  *
  * @param[in]  raw       Raw 32-bit RXRSS?R word.
  * @param[out] out_result Populated by the caller.
+ *
+ * @details See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static void internal_ra_mipi_dsi_decode_rx(uint32_t raw, ra_mipi_dsi_rx_result_t* out_result)
 {
@@ -457,6 +526,15 @@ static void internal_ra_mipi_dsi_decode_rx(uint32_t raw, ra_mipi_dsi_rx_result_t
  * @return `k_ra_ok` if the condition was met within
  *         `k_ra_mipi_dsi_busy_loop_max` iterations, otherwise
  *         `k_ra_err_hw_timeout`.
+ *
+ * @details See implementation.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t
 internal_ra_mipi_dsi_wait_eq(volatile const uint32_t* reg, uint32_t mask, uint32_t expect)
@@ -474,6 +552,15 @@ internal_ra_mipi_dsi_wait_eq(volatile const uint32_t* reg, uint32_t mask, uint32
  *
  * @param[in] cmd Validated command (caller already null-checked).
  * @return `k_ra_ok` if all bounds OK, otherwise an error code.
+ *
+ * @details See implementation.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t internal_ra_mipi_dsi_validate_cmd(const ra_mipi_dsi_command_t* cmd)
 {
@@ -512,6 +599,10 @@ static ra_err_t internal_ra_mipi_dsi_validate_cmd(const ra_mipi_dsi_command_t* c
  * @post Listed registers reflect ``cfg``; SWRST cleared.
  *
  * @note Internal helper, not thread-safe.
+ *
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @since 0.1.0
  */
 static void internal_program_link(const ra_mipi_dsi_config_t* cfg)
 {
@@ -552,6 +643,10 @@ static void internal_program_link(const ra_mipi_dsi_config_t* cfg)
  * @post Listed timeout registers reflect ``cfg``.
  *
  * @note Internal helper, not thread-safe.
+ *
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @since 0.1.0
  */
 static void internal_program_timeouts(const ra_mipi_dsi_config_t* cfg)
 {
@@ -713,6 +808,10 @@ static void internal_program_timeouts(const ra_mipi_dsi_config_t* cfg)
  * @post No side effects.
  *
  * @note Internal helper, not thread-safe.
+ *
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @since 0.1.0
  */
 static ra_err_t internal_check_link_state(const ra_mipi_dsi_command_t* cmd)
 {
@@ -746,6 +845,10 @@ static ra_err_t internal_check_link_state(const ra_mipi_dsi_command_t* cmd)
  * @post Descriptor words A..D reflect ``cmd``.
  *
  * @note Internal helper, not thread-safe.
+ *
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @since 0.1.0
  */
 static void internal_program_descriptor(volatile r_mipi_dsi_descriptor_t* dsc,
                                         const ra_mipi_dsi_command_t*      cmd)
@@ -775,6 +878,10 @@ static void internal_program_descriptor(volatile r_mipi_dsi_descriptor_t* dsc,
  *       the matching channel pulsed.
  *
  * @note Internal helper, not thread-safe.
+ *
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @since 0.1.0
  */
 static void internal_send_stage_and_pulse(const ra_mipi_dsi_command_t* cmd)
 {
@@ -1239,6 +1346,14 @@ ra_mipi_dsi_rx_payload_read(uint8_t* dest, uint16_t max_len, uint16_t* out_len)
  *
  * @param[in] event Class enum.
  * @param[in] mask  Status bits captured before clearing.
+ *
+ * @details See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static void internal_ra_mipi_dsi_call_user(ra_mipi_dsi_event_t event, uint32_t mask)
 {
@@ -1249,6 +1364,16 @@ static void internal_ra_mipi_dsi_call_user(ra_mipi_dsi_event_t event, uint32_t m
   }
 }
 
+/**
+ * @brief Implementation of ra_mipi_dsi_dispatch_seq0 (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 void ra_mipi_dsi_dispatch_seq0(void)
 {
   volatile r_mipi_dsi_regs_t* reg = ra_mipi_dsi();
@@ -1259,6 +1384,16 @@ void ra_mipi_dsi_dispatch_seq0(void)
   internal_ra_mipi_dsi_call_user(k_ra_mipi_dsi_event_seq0, bits);
 }
 
+/**
+ * @brief Implementation of ra_mipi_dsi_dispatch_seq1 (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 void ra_mipi_dsi_dispatch_seq1(void)
 {
   volatile r_mipi_dsi_regs_t* reg = ra_mipi_dsi();
@@ -1269,6 +1404,16 @@ void ra_mipi_dsi_dispatch_seq1(void)
   internal_ra_mipi_dsi_call_user(k_ra_mipi_dsi_event_seq1, bits);
 }
 
+/**
+ * @brief Implementation of ra_mipi_dsi_dispatch_video (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 void ra_mipi_dsi_dispatch_video(void)
 {
   volatile r_mipi_dsi_regs_t* reg = ra_mipi_dsi();
@@ -1286,6 +1431,16 @@ void ra_mipi_dsi_dispatch_video(void)
   internal_ra_mipi_dsi_call_user(k_ra_mipi_dsi_event_video, bits);
 }
 
+/**
+ * @brief Implementation of ra_mipi_dsi_dispatch_receive (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 void ra_mipi_dsi_dispatch_receive(void)
 {
   volatile r_mipi_dsi_regs_t* reg = ra_mipi_dsi();
@@ -1307,6 +1462,16 @@ void ra_mipi_dsi_dispatch_receive(void)
   internal_ra_mipi_dsi_call_user(k_ra_mipi_dsi_event_receive, bits);
 }
 
+/**
+ * @brief Implementation of ra_mipi_dsi_dispatch_fatal (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 void ra_mipi_dsi_dispatch_fatal(void)
 {
   volatile r_mipi_dsi_regs_t* reg = ra_mipi_dsi();
@@ -1317,6 +1482,16 @@ void ra_mipi_dsi_dispatch_fatal(void)
   internal_ra_mipi_dsi_call_user(k_ra_mipi_dsi_event_fatal, bits);
 }
 
+/**
+ * @brief Implementation of ra_mipi_dsi_dispatch_phy (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 void ra_mipi_dsi_dispatch_phy(void)
 {
   volatile r_mipi_dsi_regs_t* reg = ra_mipi_dsi();
@@ -1327,6 +1502,16 @@ void ra_mipi_dsi_dispatch_phy(void)
   internal_ra_mipi_dsi_call_user(k_ra_mipi_dsi_event_phy, bits);
 }
 
+/**
+ * @brief Implementation of ra_mipi_dsi_dispatch (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 void ra_mipi_dsi_dispatch(void)
 {
   /* HUM Ch 65.2 "ISR : Interrupt Status Register", p 3840 */

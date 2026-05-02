@@ -59,6 +59,19 @@ typedef struct {
 
 static ra_ether_phy_internal_t s_state = {};
 
+/**
+ * @brief Implementation of ra_ether_phy_open (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] cfg See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_ether_phy_open(const ra_ether_phy_cfg_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
@@ -102,6 +115,18 @@ ra_err_t ra_ether_phy_open(const ra_ether_phy_cfg_t* cfg)
   return k_ra_err_hw_timeout;
 }
 
+/**
+ * @brief Implementation of ra_ether_phy_close (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_ether_phy_close(void)
 {
   if (!s_state.opened) {
@@ -111,6 +136,20 @@ ra_err_t ra_ether_phy_close(void)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_ether_phy_mdio_read (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] reg_addr See implementation.
+ * @param[in] out_data See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_ether_phy_mdio_read(uint8_t reg_addr, uint16_t* out_data)
 {
   RA_CHECK_NULL_PTR(out_data, s_tag, "out_data must not be nullptr");
@@ -123,6 +162,20 @@ ra_err_t ra_ether_phy_mdio_read(uint8_t reg_addr, uint16_t* out_data)
   return s_state.io.read(s_state.io.ctx, s_state.phy_address, reg_addr, out_data);
 }
 
+/**
+ * @brief Implementation of ra_ether_phy_mdio_write (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] reg_addr See implementation.
+ * @param[in] data See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_ether_phy_mdio_write(uint8_t reg_addr, uint16_t data)
 {
   if (!s_state.opened) {
@@ -134,6 +187,18 @@ ra_err_t ra_ether_phy_mdio_write(uint8_t reg_addr, uint16_t data)
   return s_state.io.write(s_state.io.ctx, s_state.phy_address, reg_addr, data);
 }
 
+/**
+ * @brief Implementation of ra_ether_phy_auto_negotiate_start (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_ether_phy_auto_negotiate_start(void)
 {
   if (!s_state.opened) {
@@ -144,6 +209,19 @@ ra_err_t ra_ether_phy_auto_negotiate_start(void)
   return s_state.io.write(s_state.io.ctx, s_state.phy_address, k_ra_ether_phy_reg_control, bmcr);
 }
 
+/**
+ * @brief Implementation of ra_ether_phy_link_status_get (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] out See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_ether_phy_link_status_get(ra_ether_phy_link_t* out)
 {
   RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");

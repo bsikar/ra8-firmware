@@ -201,6 +201,12 @@ static inline volatile uint8_t* ra_pfs_pwprs(void)
  *       If a future bring-up needs NS ports it must (a) write the
  *       relevant PMSAR bit Secure-side and (b) the matching PFSWE
  *       write will then take effect through the NS path.
+ *
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @since 0.1.0
  */
 static inline void ra_pfs_pwpr_unlock(void)
 {
@@ -221,6 +227,13 @@ static inline void ra_pfs_pwpr_unlock(void)
  * @details
  * Clears `PFSWE`, then sets `B0WI` so subsequent accidental writes to
  * `PFSWE` are silently dropped.
+ *
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static inline void ra_pfs_pwpr_lock(void)
 {

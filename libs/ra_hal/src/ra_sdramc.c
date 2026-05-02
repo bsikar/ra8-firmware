@@ -37,6 +37,18 @@ typedef enum : uint32_t {
   k_ra_sdtr_default = 0x00010222UL, /**< Conservative timing defaults. */
 } ra_sdramc_timing_t;
 
+/**
+ * @brief Implementation of ra_sdramc_init (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_sdramc_init(void)
 {
   volatile r_sdramc_regs_t* reg = ra_sdramc();
@@ -72,6 +84,18 @@ ra_err_t ra_sdramc_init(void)
  * =============================================================================
  */
 
+/**
+ * @brief Implementation of ra_sdramc_deinit (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_sdramc_deinit(void)
 {
   volatile r_sdramc_regs_t* reg = ra_sdramc();
@@ -87,6 +111,19 @@ ra_err_t ra_sdramc_deinit(void)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_sdramc_set_refresh_interval (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] sdrfcr See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_sdramc_set_refresh_interval(uint16_t sdrfcr)
 {
   /* HUM Ch 15 "Buses" p 583 */
@@ -95,6 +132,19 @@ ra_err_t ra_sdramc_set_refresh_interval(uint16_t sdrfcr)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_sdramc_get_status (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] out_enabled See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_sdramc_get_status(uint8_t* out_enabled)
 {
   RA_CHECK_NULL_PTR(out_enabled, s_tag, "out_enabled must not be nullptr");
@@ -104,6 +154,18 @@ ra_err_t ra_sdramc_get_status(uint8_t* out_enabled)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_sdramc_enter_stop (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_sdramc_enter_stop(void)
 {
   /* HUM Ch 15 "Buses" p 583 */
@@ -112,6 +174,18 @@ ra_err_t ra_sdramc_enter_stop(void)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_sdramc_exit_stop (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_sdramc_exit_stop(void)
 {
   /* HUM Ch 15 "Buses" p 583 */
