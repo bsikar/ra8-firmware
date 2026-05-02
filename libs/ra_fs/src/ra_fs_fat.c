@@ -1457,6 +1457,32 @@ static ra_err_t priv_compute_geometry(ra_fs_mount_t* m)
   return k_ra_ok;
 }
 
+/**
+ * @brief Mount a FAT volume on the supplied block backend.
+ *
+ * @details Allocates a mount slot, reads the boot sector, parses the
+ *          BPB, and computes the geometry.
+ *
+ * @param[in]  backend    Block-device backend to drive.
+ * @param[out] out_handle On success, opaque mount handle.
+ *
+ * @return Error code.
+ * @retval k_ra_ok                     Volume mounted.
+ * @retval k_ra_err_null_ptr           NULL `backend` or `out_handle`.
+ * @retval k_ra_err_invalid_arg        Backend missing required callbacks.
+ * @retval k_ra_err_no_mem             Mount table is full.
+ * @retval k_ra_err_validation_failed  Not a recognisable FAT volume.
+ * @retval k_ra_err_*                  Backend read failure.
+ *
+ * @pre `backend` and `out_handle` are non-NULL.
+ * @pre Backend's read/write/get_capacity callbacks are non-NULL.
+ * @post On success, `*out_handle` is a valid mount.
+ * @post On failure, no mount slot is marked in-use.
+ *
+ * @note Not thread-safe; callers serialise.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ra_fs_mount(const ra_fs_backend_t* backend, ra_fs_mount_t** out_handle)
 {
   if (backend == NULL || out_handle == NULL) {
@@ -1488,6 +1514,28 @@ ra_err_t ra_fs_mount(const ra_fs_backend_t* backend, ra_fs_mount_t** out_handle)
   return k_ra_ok;
 }
 
+/**
+ * @brief Release a previously mounted FAT volume.
+ *
+ * @details Marks the mount slot free; does not flush -- callers must
+ *          close all files first.
+ *
+ * @param[in] handle Mount handle from `ra_fs_mount()`.
+ *
+ * @return Error code.
+ * @retval k_ra_ok                Volume unmounted.
+ * @retval k_ra_err_null_ptr      `handle` was NULL.
+ * @retval k_ra_err_invalid_state `handle` is not currently mounted.
+ *
+ * @pre `handle` is non-NULL and currently in use.
+ * @pre All files opened on this mount have been closed.
+ * @post Mount slot is free for reuse.
+ * @post `handle->type` is reset to `k_ra_fs_type_unknown`.
+ *
+ * @note Not thread-safe; callers serialise.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ra_fs_unmount(ra_fs_mount_t* handle)
 {
   if (handle == NULL) {
@@ -1506,7 +1554,26 @@ ra_err_t ra_fs_unmount(ra_fs_mount_t* handle)
  * =============================================================================
  */
 
-/** @brief Read the first cluster from a 32-byte directory entry. */
+/**
+ * @brief Read the first cluster from a 32-byte directory entry.
+ *
+ * @details Combines the high and low cluster halves into a single
+ *          32-bit value (FAT32 layout; high half is 0 on FAT12/16).
+ *
+ * @param[in] entry 32-byte directory entry.
+ *
+ * @return First cluster of the file.
+ * @retval 0..UINT32_MAX  Cluster number.
+ *
+ * @pre `entry` is non-NULL and points to 32 readable bytes.
+ * @pre Caller has already filtered LFN / deleted entries.
+ * @post No state modified.
+ * @post Result is purely a function of inputs.
+ *
+ * @note Pure function; trivially thread-safe.
+ *
+ * @since 0.1.0
+ */
 static uint32_t priv_entry_first_cluster(const uint8_t* entry)
 {
   const uint32_t hi = priv_rd16(&entry[k_dir_off_fst_clus_hi]);
@@ -1514,7 +1581,28 @@ static uint32_t priv_entry_first_cluster(const uint8_t* entry)
   return (hi << k_shift_two_bytes) | lo;
 }
 
-/** @brief Patch first-cluster + size back into a 32-byte directory entry. */
+/**
+ * @brief Patch first-cluster + size back into a 32-byte directory entry.
+ *
+ * @details Inverse of `priv_entry_first_cluster`; also writes file size.
+ *
+ * @param[in,out] entry   32-byte directory entry to update.
+ * @param[in]     cluster New first cluster.
+ * @param[in]     size    New file size in bytes.
+ *
+ * @return None.
+ * @retval None
+ *
+ * @pre `entry` is non-NULL and points to 32 writable bytes.
+ * @pre Caller has staged the entry in a sector buffer that will be
+ *      written back to disk.
+ * @post `entry` reflects the new first-cluster and size fields.
+ * @post No other state modified.
+ *
+ * @note Trivially thread-safe; not reentrant against the same buffer.
+ *
+ * @since 0.1.0
+ */
 static void priv_entry_set_cluster_size(uint8_t* entry, uint32_t cluster, uint32_t size)
 {
   priv_wr16(&entry[k_dir_off_fst_clus_hi],
@@ -1525,6 +1613,27 @@ static void priv_entry_set_cluster_size(uint8_t* entry, uint32_t cluster, uint32
 
 /**
  * @brief Truncate an existing file's chain and zero its dir-entry size.
+ *
+ * @details Frees the cluster chain, resets the in-memory file state,
+ *          then writes a fresh dir entry with cluster=0 and size=0.
+ *
+ * @param[in,out] handle Mount providing FAT access.
+ * @param[in,out] f      File state to reset.
+ * @param[in]     lba    Sector LBA holding the directory entry.
+ * @param[in]     off    Byte offset of the entry within the sector.
+ *
+ * @return Error code.
+ * @retval k_ra_ok    File truncated successfully.
+ * @retval k_ra_err_* Backend or FAT error.
+ *
+ * @pre All pointers are non-NULL; mount/file are in use.
+ * @pre `lba`/`off` identify the file's directory entry.
+ * @post On success, the file occupies zero clusters and its size is 0.
+ * @post On failure, on-disk state may be partially updated.
+ *
+ * @note Thread-safety inherited from the backend.
+ *
+ * @since 0.1.0
  */
 static ra_err_t
 priv_truncate_existing(ra_fs_mount_t* handle, ra_fs_file_t* f, uint32_t lba, uint32_t off)
@@ -1550,6 +1659,31 @@ priv_truncate_existing(ra_fs_mount_t* handle, ra_fs_file_t* f, uint32_t lba, uin
 
 /**
  * @brief Populate a fresh file handle from an existing on-disk dir entry.
+ *
+ * @details Allocates a file slot, copies the entry's first cluster /
+ *          size into it, sets the requested mode, and applies
+ *          truncate/append behaviour for write/append modes.
+ *
+ * @param[in,out] handle   Mount on which the file lives.
+ * @param[in]     entry    32-byte directory entry already on disk.
+ * @param[in]     lba      Sector LBA holding the directory entry.
+ * @param[in]     off      Byte offset of the entry within the sector.
+ * @param[in]     mode     Open mode (read / write / append).
+ * @param[out]    out_file Receives the populated file handle.
+ *
+ * @return Error code.
+ * @retval k_ra_ok          File handle ready.
+ * @retval k_ra_err_no_mem  File table is full.
+ * @retval k_ra_err_*       Backend error during truncation.
+ *
+ * @pre All pointers are non-NULL; mount is in use.
+ * @pre `entry` came from a successful `priv_dir_find` for `lba`/`off`.
+ * @post On success, `*out_file` is in use and configured for `mode`.
+ * @post On failure, the file slot is marked free again.
+ *
+ * @note Not thread-safe; callers serialise.
+ *
+ * @since 0.1.0
  */
 static ra_err_t priv_open_existing(ra_fs_mount_t* handle,
                                    const uint8_t* entry,
@@ -1587,6 +1721,29 @@ static ra_err_t priv_open_existing(ra_fs_mount_t* handle,
 
 /**
  * @brief Carve a fresh dir entry for `name83` and populate a file handle.
+ *
+ * @details Locates a free directory slot, writes the 8.3 name plus an
+ *          archive attribute, and returns a file handle pointing at
+ *          an empty file with no allocated clusters.
+ *
+ * @param[in,out] handle   Mount on which to create the file.
+ * @param[in]     name83   Packed 11-byte 8.3 short name.
+ * @param[in]     mode     Open mode used to record into the handle.
+ * @param[out]    out_file Receives the populated file handle.
+ *
+ * @return Error code.
+ * @retval k_ra_ok          New file created and opened.
+ * @retval k_ra_err_no_mem  No free directory slot or file table full.
+ * @retval k_ra_err_*       Backend error.
+ *
+ * @pre All pointers are non-NULL; mount is in use.
+ * @pre `name83` is already validated by `priv_path_to_83`.
+ * @post On success, `*out_file` is in use and the dir entry is on disk.
+ * @post On failure, no dir entry is written.
+ *
+ * @note Not thread-safe; callers serialise.
+ *
+ * @since 0.1.0
  */
 static ra_err_t priv_create_new(ra_fs_mount_t* handle,
                                 const uint8_t* name83,
@@ -1631,6 +1788,36 @@ static ra_err_t priv_create_new(ra_fs_mount_t* handle,
   return k_ra_ok;
 }
 
+/**
+ * @brief Open a file by path on a mounted FAT volume.
+ *
+ * @details Resolves the path to an 8.3 name, searches the root
+ *          directory, and either opens an existing entry or creates a
+ *          new one (write/append modes).
+ *
+ * @param[in]  handle   Mount handle.
+ * @param[in]  path     NUL-terminated path; only flat root names supported.
+ * @param[in]  mode     Open mode.
+ * @param[out] out_file Receives the open file handle.
+ *
+ * @return Error code.
+ * @retval k_ra_ok                File opened.
+ * @retval k_ra_err_null_ptr      Any pointer argument was NULL.
+ * @retval k_ra_err_invalid_state Mount is not currently in use.
+ * @retval k_ra_err_invalid_arg   Path is not a valid 8.3 name.
+ * @retval k_ra_err_not_found     Read-only open of a missing file.
+ * @retval k_ra_err_no_mem        File or directory table full.
+ * @retval k_ra_err_*             Backend error.
+ *
+ * @pre `handle`, `path`, and `out_file` are non-NULL.
+ * @pre Mount is in use.
+ * @post On success, `*out_file` is a valid open handle.
+ * @post On failure, no file slot is marked in use.
+ *
+ * @note Not thread-safe; callers serialise.
+ *
+ * @since 0.1.0
+ */
 ra_err_t
 ra_fs_open(ra_fs_mount_t* handle, const char* path, ra_fs_mode_t mode, ra_fs_file_t** out_file)
 {
@@ -1660,6 +1847,27 @@ ra_fs_open(ra_fs_mount_t* handle, const char* path, ra_fs_mode_t mode, ra_fs_fil
   return priv_create_new(handle, name83, mode, out_file);
 }
 
+/**
+ * @brief Close an open file handle.
+ *
+ * @details Marks the slot free; the driver does not buffer writes so
+ *          there is nothing to flush.
+ *
+ * @param[in] file Handle from `ra_fs_open()`.
+ *
+ * @return Error code.
+ * @retval k_ra_ok           File closed.
+ * @retval k_ra_err_null_ptr `file` was NULL.
+ *
+ * @pre `file` is non-NULL.
+ * @pre All pending writes have already been issued.
+ * @post File slot is marked free for reuse.
+ * @post `file->mount` is reset to NULL.
+ *
+ * @note Idempotent on a freshly-closed handle.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ra_fs_close(ra_fs_file_t* file)
 {
   if (file == NULL) {
