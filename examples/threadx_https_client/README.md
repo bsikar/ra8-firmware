@@ -104,3 +104,13 @@ configuration keeps building cleanly.
   `port/mbedtls/mbedtls_sha256_alt.{c,h}` scaffolding from the 3.x
   ALT-style port is intentionally not compiled (4.x removed those
   hooks).
+
+## BSP usage
+
+Uses `ra_board_ek_ra8d2` BSP for LED1 init/toggle (P600) and
+`ra_board_ethernet_init` for the on-board PEF7071 PHY (RGMII per UM
+Table 26 p 33). SCI8 console pins follow UM Table 13 p 24.
+
+Validated 2026-05-02 against EK-RA8D2 v1 User's Manual (R20UT5523EG0101
+Rev 1.01) Section 6.1 + Tables 13 p 24 / 24 p 31 / 26 p 33, and HUM
+(R01UH1065EJ0130) Ethernet + RSIP-E50D chapters.
