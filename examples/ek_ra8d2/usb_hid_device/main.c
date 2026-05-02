@@ -585,21 +585,15 @@ static VOID demo_worker(ULONG arg)
     return;
   }
 
-  /* Jiggle loop. The DCD bridge is currently driven in polled mode
-   * (USBFS_INT IRQ wiring is WIP); pump ra_usb_dispatch many times
-   * per cycle so SETUP / BRDY / BEMP events drain INTSTS0 fast
-   * enough for the host to complete enumeration without timing out. */
-  enum : uint16_t {
-    k_demo_pumps_per_cycle = 4096U, /**< ra_usb_dispatch calls between sleeps. */
-  };
+  /* Jiggle loop. INTSTS0 is drained by the bridge's own polled-dispatch
+   * worker (spawned inside ux_dcd_ra_usb_initialize BEFORE the
+   * ra_usb_device_attach(true) above raised DPRPU), so this thread
+   * only needs to push HID reports once per period. */
   UX_SLAVE_CLASS_HID_EVENT hid_event;
   demo_phase_t             phase = k_demo_phase_right;
   while (1) {
-    for (uint16_t i = 0U; i < (uint16_t)k_demo_pumps_per_cycle; i++) {
-      ra_usb_dispatch(k_ra_usb_speed_fs);
-    }
     if (s_hid_class == UX_NULL) {
-      tx_thread_relinquish();
+      tx_thread_sleep(k_demo_jiggle_period_ticks);
       continue;
     }
 
