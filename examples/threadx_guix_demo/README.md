@@ -43,3 +43,13 @@ GUIX UI framework.
 - Touch input on EK-RA8D2 is not wired in this demo. The "tap" widget
   animates automatically from the `app` thread instead of waiting on
   a real GPIO event.
+
+## BSP usage
+
+Uses `ra_board_ek_ra8d2` BSP for LED1 init/toggle (P600 per EK-RA8D2
+v1 UM Table 24 p 31). When GLCDC bring-up is added, switch to
+`ra_board_glcdc_init` so the J1 pin block follows UM Table 33 p 42.
+
+Validated 2026-05-02 against EK-RA8D2 v1 User's Manual (R20UT5523EG0101
+Rev 1.01) Table 24 p 31 + Table 33 p 42, and HUM (R01UH1065EJ0130)
+Ch 53 "GLCDC".
