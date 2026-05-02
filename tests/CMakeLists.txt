@@ -76,6 +76,26 @@ option(RA_REFLOW_USE_LITEHTML "Use the LiteHTML v2 ra_reflow engine" OFF)
 if(RA_REFLOW_USE_LITEHTML)
     set(RA_REFLOW_C_SOURCES    "")
     set(RA_REFLOW_CPP_SOURCES  ${FW_ROOT}/libs/ra_reflow/v2/ra_reflow_v2.cpp)
+    enable_language(CXX)
+    set(_RA_SAVED_C_FLAGS   "${CMAKE_C_FLAGS}")
+    set(_RA_SAVED_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+    string(REPLACE "-Werror" "" CMAKE_C_FLAGS   "${CMAKE_C_FLAGS}")
+    string(REPLACE "-Werror" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+    if(NOT TARGET litehtml)
+      add_subdirectory(
+          ${FW_ROOT}/libs/third_party/litehtml
+          ${CMAKE_BINARY_DIR}/_litehtml
+          EXCLUDE_FROM_ALL
+      )
+    endif()
+    if(TARGET litehtml)
+        target_compile_options(litehtml PRIVATE -w)
+    endif()
+    if(TARGET gumbo)
+        target_compile_options(gumbo PRIVATE -w)
+    endif()
+    set(CMAKE_C_FLAGS   "${_RA_SAVED_C_FLAGS}")
+    set(CMAKE_CXX_FLAGS "${_RA_SAVED_CXX_FLAGS}")
 else()
     file(GLOB_RECURSE RA_REFLOW_C_SOURCES   CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_reflow/src/*.c)
     file(GLOB_RECURSE RA_REFLOW_CPP_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_reflow/src/*.cpp)
@@ -90,6 +110,7 @@ file(GLOB_RECURSE RA_TOUCH_CAL_SOURCES  CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_tou
 file(GLOB_RECURSE RA_PSA_CRYPTO_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_psa_crypto/src/*.c)
 file(GLOB_RECURSE RA_WDT_SUPERVISOR_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_wdt_supervisor/src/*.c)
 file(GLOB_RECURSE RA_MPU_SOURCES        CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_mpu/src/*.c)
+file(GLOB_RECURSE RA_BOARD_EK_RA8D2_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_board_ek_ra8d2/src/*.c)
 
 add_library(ra_core_hal OBJECT
     ${RA_CORE_SOURCES}
@@ -115,6 +136,7 @@ add_library(ra_core_hal OBJECT
     ${RA_MPU_SOURCES}
     ${RA_PSA_CRYPTO_SOURCES}
     ${RA_WDT_SUPERVISOR_SOURCES}
+    ${RA_BOARD_EK_RA8D2_SOURCES}
     ${CMAKE_CURRENT_SOURCE_DIR}/mocks/ra_sim_mmap.c
     ${CMAKE_CURRENT_SOURCE_DIR}/mocks/ra_sim_irq.c
     ${CMAKE_CURRENT_SOURCE_DIR}/mocks/ra_sim_dma.c
@@ -148,6 +170,7 @@ target_include_directories(ra_core_hal PUBLIC
     ${FW_ROOT}/libs/ra_mpu/inc
     ${FW_ROOT}/libs/ra_psa_crypto/inc
     ${FW_ROOT}/libs/ra_wdt_supervisor/inc
+    ${FW_ROOT}/libs/ra_board_ek_ra8d2/inc
     ${FW_ROOT}/libs/third_party/miniz
     ${FW_ROOT}/libs/third_party/tinyxml2
     ${FW_ROOT}/libs/third_party/stb
@@ -169,6 +192,16 @@ set_source_files_properties(
     ${RA_EPUB_THIRD_PARTY}
     PROPERTIES COMPILE_OPTIONS -w
 )
+if(RA_REFLOW_USE_LITEHTML)
+    set_source_files_properties(
+        ${FW_ROOT}/libs/ra_reflow/v2/ra_reflow_v2.cpp
+        PROPERTIES COMPILE_OPTIONS -w
+    )
+    target_include_directories(ra_core_hal PUBLIC
+        ${FW_ROOT}/libs/third_party/litehtml/include
+    )
+    target_link_libraries(ra_core_hal PUBLIC litehtml gumbo)
+endif()
 target_compile_features(ra_core_hal PUBLIC cxx_std_17)
 
 # C++ enabled here only (the top-level project is C/ASM-only since the
@@ -217,6 +250,7 @@ function(ra_add_test name)
     ${FW_ROOT}/libs/ra_mpu/inc
     ${FW_ROOT}/libs/ra_psa_crypto/inc
     ${FW_ROOT}/libs/ra_wdt_supervisor/inc
+    ${FW_ROOT}/libs/ra_board_ek_ra8d2/inc
     ${FW_ROOT}/libs/third_party/miniz
     ${FW_ROOT}/libs/third_party/tinyxml2
     ${FW_ROOT}/libs/third_party/stb
@@ -229,6 +263,12 @@ function(ra_add_test name)
       "-Wl,-segalign,0x4000"
     )
   endif()
+  if(RA_REFLOW_USE_LITEHTML)
+    # ra_core_hal is an OBJECT library, so link deps don't propagate
+    # automatically; bind litehtml/gumbo directly into each test exe
+    # so the v2 adapter's symbols resolve.
+    target_link_libraries(${name} PRIVATE litehtml gumbo)
+  endif()
   add_test(NAME ${name} COMMAND ${name})
 endfunction()
 
@@ -237,7 +277,44 @@ endfunction()
 # manual list edit required. (CONFIGURE_DEPENDS means CMake re-globs
 # on the next build if the directory contents changed.)
 file(GLOB RA_TEST_SOURCES CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/test_*.c)
+
+# v1's test_ra_reflow.c asserts on glyph-array internals that v2
+# deliberately does not populate; drop it under v2 and add the
+# C++ v2 test below in its place.
+if(RA_REFLOW_USE_LITEHTML)
+  list(REMOVE_ITEM RA_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra_reflow.c)
+endif()
+
 foreach(src ${RA_TEST_SOURCES})
   get_filename_component(name ${src} NAME_WE)
   ra_add_test(${name})
 endforeach()
+
+if(RA_REFLOW_USE_LITEHTML)
+  add_executable(test_ra_reflow_v2
+    ${CMAKE_CURRENT_SOURCE_DIR}/test_ra_reflow_v2.cpp
+    $<TARGET_OBJECTS:ra_core_hal>
+  )
+  set_target_properties(test_ra_reflow_v2 PROPERTIES LINKER_LANGUAGE CXX)
+  target_compile_options(test_ra_reflow_v2 PRIVATE
+    -Wall -Wextra -Wno-unused-function -Wno-unused-parameter
+    -Wno-unused-variable -Wno-address-of-packed-member
+  )
+  target_compile_features(test_ra_reflow_v2 PRIVATE cxx_std_17)
+  target_include_directories(test_ra_reflow_v2 PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${FW_ROOT}/libs/ra_core/inc
+    ${FW_ROOT}/libs/ra_reflow/inc
+    ${FW_ROOT}/libs/third_party/litehtml/include
+    ${FW_ROOT}/libs/third_party/stb
+    ${CMAKE_CURRENT_SOURCE_DIR}/mocks
+  )
+  target_link_libraries(test_ra_reflow_v2 PRIVATE litehtml gumbo)
+  if(APPLE)
+    target_link_options(test_ra_reflow_v2 PRIVATE
+      "-Wl,-pagezero_size,0x4000"
+      "-Wl,-segalign,0x4000"
+    )
+  endif()
+  add_test(NAME test_ra_reflow_v2 COMMAND test_ra_reflow_v2)
+endif()
