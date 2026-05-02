@@ -29,16 +29,20 @@
 #include "ra8d2_elc_regs.h"
 #include "ra8d2_etha_regs.h"
 #include "ra8d2_icu_regs.h"
+#include "ra8d2_mstp_regs.h"
 #include "ra8d2_rmac_regs.h"
+#include "ra_cgc.h"
 #include "ra_err.h"
 #include "ra_etha.h"
 #include "ra_gpio_constants.h"
 #include "ra_icu.h"
 #include "ra_isr.h"
+#include "ra_mstp.h"
 #include "ra_port_constants.h"
 #include "ra_port_utils.h"
 #include "ra_rmac.h"
 #include "ra_sci.h"
+#include "ra_usb.h"
 
 /* =============================================================================
  * Board identity strings (UM cover page, R20UT5523EG0101 Rev 1.01)
@@ -549,58 +553,70 @@ ra_err_t ra_board_arduino_gpio_read(ra_board_arduino_pin_t pin, ra_level_t* out_
  * =============================================================================
  */
 
+/**
+ * @brief Shared CGC + MSTP bring-up for both USBHS modes.
+ *
+ * @details
+ * Sequence per HUM Ch 9 (CGC, USBCKCR / USBCKDIVCR, p 365) and Ch 11
+ * (MSTP, MSTPCRB12 USBHS, p 469):
+ *   1. ``ra_cgc_usbhs_pll_enable()`` -- arms the PHY 12 MHz reference
+ *      derived from the main XTAL.
+ *   2. ``ra_mstp_init()`` -- ensures the MSTP refcount table exists
+ *      (idempotent across BSP veneers).
+ *   3. ``ra_mstp_enable(k_ra_mstp_usbhs)`` -- ungates MSTPCRB.MSTPB12
+ *      so the controller's SYSCFG block is reachable.
+ *
+ * @return ra_err_t First non-OK result, or k_ra_ok on a clean run.
+ *
+ * @pre  ra_cgc_init() has been called.
+ * @post On k_ra_ok, USBHS controller registers are clocked and ready
+ *       for ra_usb_device_init / ra_usb_host_init.
+ *
+ * @note Not thread-safe.
+ *
+ * @since 0.1.0
+ */
+static ra_err_t internal_usbhs_clock_and_mstp(void)
+{
+  ra_err_t err = ra_cgc_usbhs_pll_enable();
+  if (err != k_ra_ok) {
+    return err;
+  }
+  err = ra_mstp_init();
+  if (err != k_ra_ok) {
+    return err;
+  }
+  return ra_mstp_enable(k_ra_mstp_usbhs);
+}
+
 ra_err_t ra_board_usbhs_device_init(void)
 {
-  /* The controller-side bring-up exists in libs/ra_hal/inc/ra_usb.h
-   * as ra_usb_device_init(k_ra_usb_speed_hs); it ungates MSTP, drives
-   * SYSCFG.SCKE / USBE / HSE, and arms the device-mode IRQ set. The
-   * piece still missing on the EK-RA8D2 side is the off-controller
-   * PHY power-up:
-   *
-   *   - LDO_USBHS enable. EK-RA8D2 v1 UM Rev 1.01 Section 6.2 lists
-   *     USBHS at J7 but does NOT itemise an LDO-enable port pin --
-   *     the rail is gated by a discrete USB-PD controller, so the
-   *     BSP cannot route it via ra_pfs_route_peripheral.
-   *   - USBHS PLL lock wait (chip HUM Ch 12 USBHS clock subsystem).
-   *     ra_cgc only exposes the main PLLP / PLL2 helpers today; no
-   *     ra_cgc_usbhs_pll_enable() exists yet.
-   *
-   * TODO(bsp): once libs/ra_hal/inc/ra_cgc.h gains
-   * ra_cgc_usbhs_pll_enable(), promote this function to:
-   *
-   *   ra_err_t err = ra_cgc_usbhs_pll_enable();
-   *   if (err != k_ra_ok) { return err; }
-   *   return ra_usb_device_init(k_ra_usb_speed_hs);
-   *
-   * Until then, returning k_ra_err_not_supported keeps callers from
-   * silently bringing up the controller without a clocked PHY. */
-  return k_ra_err_not_supported;
+  /* HUM Ch 9 (CGC) USBCKCR p 365 + HUM Ch 11 (MSTP) MSTPCRB12 p 469
+   * stage the PHY clock and ungate the controller block; then the
+   * generic device-mode entry in libs/ra_hal/inc/ra_usb.h drives
+   * SYSCFG.SCKE / USBE / HSE and arms the device IRQ set. The
+   * EK-RA8D2 v1 UM Rev 1.01 Section 6.2 (J7 USBHS) does not itemise
+   * an LDO-enable port pin -- the VBUS rail is gated by a discrete
+   * USB-PD controller -- so no BSP-side PFS routing is needed. */
+  ra_err_t err = internal_usbhs_clock_and_mstp();
+  if (err != k_ra_ok) {
+    return err;
+  }
+  return ra_usb_device_init(k_ra_usb_speed_hs);
 }
 
 ra_err_t ra_board_usbhs_host_init(void)
 {
-  /* Symmetric to ra_board_usbhs_device_init: ra_usb_host_init(
-   * k_ra_usb_speed_hs) exists in libs/ra_hal/inc/ra_usb.h and would
-   * drive SYSCFG.DCFM=1 / DRPD=1 / USBE=1 plus the DCP setup. The
-   * missing pieces are:
-   *
-   *   - USBHS PLL bring-up (same gap as the device-mode helper:
-   *     ra_cgc_usbhs_pll_enable() does not exist).
-   *   - VBUS-enable / OVRCUR routing -- EK-RA8D2 v1 UM Rev 1.01
-   *     Table 28 lists USBHS_VBUSEN / USBHS_OVRCUR as PHY-controller
-   *     pins, NOT board-routed RA8D2 port pins. The board uses a
-   *     discrete USB-PD controller for VBUS sourcing, so the BSP
-   *     cannot drive it via ra_pfs_route_peripheral.
-   *
-   * TODO(bsp): once ra_cgc_usbhs_pll_enable() exists and the VBUS
-   * enable path is documented (likely an I2C poke to the on-board
-   * USB-PD controller), promote this function to:
-   *
-   *   ra_err_t err = ra_cgc_usbhs_pll_enable();
-   *   if (err != k_ra_ok) { return err; }
-   *   return ra_usb_host_init(k_ra_usb_speed_hs);
-   */
-  return k_ra_err_not_supported;
+  /* Symmetric to ra_board_usbhs_device_init. EK-RA8D2 v1 UM Rev 1.01
+   * Table 28 lists USBHS_VBUSEN / USBHS_OVRCUR as PHY-controller
+   * pins not routed to RA8D2 port pins, so VBUS sourcing is left to
+   * the on-board USB-PD controller. ra_usb_host_init drives
+   * SYSCFG.DCFM=1 / DRPD=1 / USBE=1 plus the DCP setup. */
+  ra_err_t err = internal_usbhs_clock_and_mstp();
+  if (err != k_ra_ok) {
+    return err;
+  }
+  return ra_usb_host_init(k_ra_usb_speed_hs);
 }
 
 /* =============================================================================
