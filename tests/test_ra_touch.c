@@ -387,6 +387,52 @@ static void test_calibrate_noop(void)
   TEST_END("ra_touch_calibrate: no-op returns ok");
 }
 
+/**
+ * @test test_mcdc_ra_touch
+ *
+ * @par MC/DC:
+ * Decision A: ``priv_validate_cfg`` line 254,
+ * libs/ra_hal/src/ra_touch.c:
+ * ``if ((target_7b != GT911_LOW) && (target_7b != GT911_HIGH))``
+ * (2 conditions, ``&&``). N+1 = 3:
+ * - V1: addr=0x5D -> dec F (accept)
+ * - V2: addr=0x14 -> dec F (accept)
+ * - V3: addr=0x42 -> dec T (reject)
+ *
+ * Decision B: ``priv_stash_state`` line 309,
+ * ``if ((max_points == 0) || (max_points > MAX))`` (2 conditions, ``||``).
+ * N+1 = 3 (clamp observed via post-state):
+ * - V1: max=5  -> dec F (no clamp)
+ * - V2: max=0  -> dec T (clamp)
+ * - V3: max=99 -> dec T (clamp)
+ * DO-178C 6.4.4.3 met.
+ */
+static void test_mcdc_ra_touch(void)
+{
+  TEST_BEGIN("touch MC/DC: validate_cfg + stash_state 2-cond decisions");
+  prep();
+  ra_touch_cfg_t cfg = k_cfg_default;
+  cfg.target_7b      = (uint8_t)k_ra_touch_gt911_addr_low;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_touch_open(&cfg));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_touch_close());
+  cfg.target_7b = (uint8_t)k_ra_touch_gt911_addr_high;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_touch_open(&cfg));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_touch_close());
+  cfg.target_7b = (uint8_t)0x42U;
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_touch_open(&cfg));
+  cfg            = k_cfg_default;
+  cfg.max_points = 5U;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_touch_open(&cfg));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_touch_close());
+  cfg.max_points = 0U;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_touch_open(&cfg));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_touch_close());
+  cfg.max_points = 99U;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_touch_open(&cfg));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_touch_close());
+  TEST_END("touch MC/DC: validate_cfg + stash_state 2-cond decisions");
+}
+
 int32_t main(void)
 {
   test_open_close_happy();
@@ -404,6 +450,7 @@ int32_t main(void)
   test_decode_clamp_to_max_count();
   test_attach_dispatch();
   test_calibrate_noop();
+  test_mcdc_ra_touch();
   (void)fprintf(stderr, "[OK ] test_ra_touch.c\n");
   return 0;
 }

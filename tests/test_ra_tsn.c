@@ -260,6 +260,50 @@ static void test_power_transition(void)
   TEST_END("tsn power transition");
 }
 
+/**
+ * @test test_mcdc_ra_tsn
+ *
+ * @par MC/DC:
+ * Decision A: ``internal_validate_cfg`` line 120,
+ * libs/ra_hal/src/ra_tsn.c:
+ * ``if ((cfg->high_ref_degc == 125) || (cfg->high_ref_degc == 105))``
+ * (2 conditions, ``||``). N+1 = 3:
+ * - V1: 125 -> dec T (high_ok)
+ * - V2: 105 -> dec T (high_ok)
+ * - V3: 200 -> dec F (reject)
+ *
+ * Decision B: ``internal_validate_cfg`` line 128,
+ * ``if (!high_ok || !low_ok)`` (2 conditions, ``||``). N+1 = 3:
+ * - V1: high=T,low=T -> dec F (accept)
+ * - V2: high=F,low=T -> dec T (reject)
+ * - V3: high=T,low=F -> dec T (reject)
+ * DO-178C 6.4.4.3 met.
+ */
+static void test_mcdc_ra_tsn(void)
+{
+  TEST_BEGIN("tsn MC/DC: validate_cfg high/low ref decisions");
+  ra_sim_mmap_reset();
+  (void)ra_mstp_init();
+  ra_tsn_config_t cfg = make_cfg();
+  cfg.high_ref_degc   = k_ra_tsn_cal_temp_high_125;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_tsn_init(&cfg));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_tsn_deinit());
+  cfg.high_ref_degc = k_ra_tsn_cal_temp_high_105;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_tsn_init(&cfg));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_tsn_deinit());
+  cfg.high_ref_degc = (ra_tsn_cal_temp_t)200;
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_tsn_init(&cfg));
+  cfg = make_cfg();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_tsn_init(&cfg));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_tsn_deinit());
+  cfg.high_ref_degc = (ra_tsn_cal_temp_t)200;
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_tsn_init(&cfg));
+  cfg              = make_cfg();
+  cfg.low_ref_degc = (ra_tsn_cal_temp_t)0;
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_tsn_init(&cfg));
+  TEST_END("tsn MC/DC: validate_cfg high/low ref decisions");
+}
+
 int32_t main(void)
 {
   test_init_happy();
@@ -275,6 +319,7 @@ int32_t main(void)
   test_convert_null_out();
   test_get_and_clear_status();
   test_power_transition();
+  test_mcdc_ra_tsn();
   (void)fprintf(stderr, "[OK  ] test_ra_tsn.c\n");
   return 0;
 }

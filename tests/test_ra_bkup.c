@@ -853,6 +853,47 @@ static void test_all_nc_widths(void)
   TEST_END("bkup all nc widths accepted");
 }
 
+/**
+ * @test test_mcdc_ra_bkup
+ *
+ * @par MC/DC:
+ * Decision A: ``internal_validate_chan`` line 115,
+ * libs/ra_hal/src/ra_bkup.c:
+ * ``if ((edge != FALLING) && (edge != RISING))`` (2 conditions, ``&&``).
+ * N+1 = 3:
+ * - V1: edge=FALLING -> dec F (accept)
+ * - V2: edge=RISING  -> dec F (accept)
+ * - V3: edge=0xFF    -> dec T (reject)
+ *
+ * Decision B: ``internal_validate_chan`` line 119,
+ * ``if ((capture_src != PIN) && (capture_src != VBTADF))``
+ * (2 conditions, ``&&``). N+1 = 3:
+ * - V1: src=PIN     -> dec F (accept)
+ * - V2: src=VBTADF  -> dec F (accept)
+ * - V3: src=0xFF    -> dec T (reject)
+ * DO-178C 6.4.4.3 met.
+ */
+static void test_mcdc_ra_bkup(void)
+{
+  TEST_BEGIN("bkup MC/DC: validate_chan edge + capture_src decisions");
+  prep();
+  ra_bkup_tamper_config_t cfg = make_tamper_cfg();
+  cfg.channels[0].edge        = k_ra_bkup_edge_falling;
+  cfg.channels[1].edge        = k_ra_bkup_edge_rising;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_bkup_tamper_init(&cfg));
+  cfg                  = make_tamper_cfg();
+  cfg.channels[0].edge = (ra_bkup_edge_t)0xFFU;
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_bkup_tamper_init(&cfg));
+  cfg                         = make_tamper_cfg();
+  cfg.channels[0].capture_src = k_ra_bkup_capture_src_pin;
+  cfg.channels[1].capture_src = k_ra_bkup_capture_src_vbtadf;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_bkup_tamper_init(&cfg));
+  cfg                         = make_tamper_cfg();
+  cfg.channels[2].capture_src = (ra_bkup_capture_src_t)0xFFU;
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_bkup_tamper_init(&cfg));
+  TEST_END("bkup MC/DC: validate_chan edge + capture_src decisions");
+}
+
 int32_t main(void)
 {
   test_init_happy();
@@ -891,6 +932,7 @@ int32_t main(void)
   test_isr_handle_not_initialized();
   test_all_vdet_levels();
   test_all_nc_widths();
+  test_mcdc_ra_bkup();
   (void)fprintf(stderr, "[OK  ] test_ra_bkup.c\n");
   return 0;
 }
