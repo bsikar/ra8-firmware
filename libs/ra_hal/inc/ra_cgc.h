@@ -191,6 +191,45 @@ typedef void (*ra_cgc_ostd_fn_t)(void* ctx);
 [[nodiscard]] ra_err_t ra_cgc_disable_stop_detection(void);
 
 /**
+ * @brief Bring up the USBHS PHY reference clock + module clock.
+ *
+ * @details
+ * The RA8D2 USB 2.0 High-Speed controller drives an internal PHY whose
+ * 480 MHz CDR PLL needs a stable 12 MHz reference derived from the
+ * main XTAL (24 MHz / 2). The CGC-side gating for that path lives in
+ * the System Control block; the procedure (per HUM Ch 9 "Clock
+ * Generation Circuit", USBCKCR / USBCKDIVCR description, p 365) is:
+ *
+ * 1. Verify the main oscillator is stable (OSCSF.MOSCSF = 1). The PHY
+ *    cannot lock without a stable XTAL reference.
+ * 2. Inside a PRCR-CGC unlock window, the USBHS module clock select
+ *    is committed (USBCKCR.USBCKSREQ / USBCKSRDY handshake on
+ *    silicon; plain RAM on the host simulator).
+ * 3. Re-lock PRCR.
+ *
+ * After this returns ::k_ra_ok the caller is free to invoke
+ * ::ra_mstp_enable for ::k_ra_mstp_usbhs (typically routed through
+ * ::ra_usb_device_init / ::ra_usb_host_init) and the controller's
+ * SYSCFG.USBE bit will see a clocked PHY underneath it.
+ *
+ * @return ::ra_err_t error code.
+ * @retval k_ra_ok USBHS clock subsystem armed.
+ * @retval k_ra_err_hw_timeout Main XTAL never reported stable.
+ *
+ * @pre  ::ra_cgc_init has been called (main XTAL has been started).
+ * @pre  Caller is single-threaded init context.
+ *
+ * @post OSCSF.MOSCSF = 1 (main XTAL still running).
+ * @post USBHS clock subsystem is selected and ready for the MSTP
+ *       ungate that follows.
+ *
+ * @note Not thread-safe.
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_cgc_usbhs_pll_enable(void);
+
+/**
  * @brief Test helper: invoke the registered OSTD callback.
  *
  * @details
