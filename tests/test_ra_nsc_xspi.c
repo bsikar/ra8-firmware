@@ -1,0 +1,92 @@
+/**
+ * @file test_ra_nsc_xspi.c
+ * @brief MC/DC unit test for libs/ra_nsc/src/ra_nsc_xspi.c
+ *
+ * @details
+ * Targets the single 2-condition compound decision identified in
+ * docs/MCDC_GAPS.csv at libs/ra_nsc/src/ra_nsc_xspi.c:67
+ * (``ra_nsc_xspi_read`` length validator).
+ *
+ * The veneer body is short:
+ * @code
+ *   if ((len == 0U) || (len > k_ra_nsc_xspi_max_read)) {
+ *       return k_ra_err_invalid_arg;
+ *   }
+ *   RA_NSC_CHECK_NS_RANGE_RW(ns_dst, len);
+ *   return ra_xspi_flash_read(k_ra_nsc_xspi_instance, flash_off, ns_dst, len);
+ * @endcode
+ *
+ * In the host build the CMSE check is a no-op; the tail call lands in
+ * ``ra_xspi_flash_read``.  We do not initialise the XSPI driver here,
+ * so the dec=F vector falls through to a non-``invalid_arg`` failure
+ * code (proving the validator did not reject the input).
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
+ */
+
+#include <stdint.h>
+
+#include "ra_err.h"
+#include "ra_nsc.h"
+#include "unity_minimal.h"
+
+typedef enum : uint32_t {
+  k_test_xspi_len_ok   = 256U,  /**< Valid read length.                */
+  k_test_xspi_len_zero = 0U,    /**< Forces C1=T (short-circuits).     */
+  k_test_xspi_len_max  = 4096U, /**< Last accepted length.             */
+  k_test_xspi_len_over = 4097U, /**< First rejected length.            */
+  k_test_xspi_offset   = 0U,    /**< Arbitrary flash offset.           */
+} test_xspi_len_t;
+
+/**
+ * @test test_mcdc_ra_nsc_xspi
+ *
+ * @par MC/DC:
+ * Decision: ``ra_nsc_xspi_read`` line 67,
+ * ``if ((len == 0U) || (len > k_ra_nsc_xspi_max_read))``
+ * (libs/ra_nsc/src/ra_nsc_xspi.c:67). 2 conditions, ``||``.
+ * N+1 = 3 vectors:
+ * - V1: len=256  -> C1=F, C2=F -> dec F (validator accepts; tail call
+ *                                         fails with non-invalid_arg)
+ * - V2: len=0    -> C1=T (short-circuits) -> dec T -> invalid_arg
+ * - V3: len=4097 -> C1=F, C2=T -> dec T -> invalid_arg
+ * V1+V3 vary C2 only; V1+V2 vary C1 only.
+ * DO-178C 6.4.4.3 minimal MC/DC subset.
+ */
+static void test_mcdc_ra_nsc_xspi(void)
+{
+  TEST_BEGIN("ra_nsc_xspi_read MC/DC: length validator OR");
+  static uint8_t s_dst[5000] = {};
+
+  /* V1: valid length -> dec F.  XSPI driver not initialised in this
+   * TU, so the tail call returns a non-invalid_arg error. */
+  const ra_err_t v1 =
+    ra_nsc_xspi_read((uint32_t)k_test_xspi_offset, s_dst, (uint32_t)k_test_xspi_len_ok);
+  TEST_ASSERT(v1 != k_ra_err_invalid_arg);
+
+  /* V2: len=0 -> dec T via C1 -> invalid_arg. */
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_invalid_arg,
+    (int32_t)ra_nsc_xspi_read((uint32_t)k_test_xspi_offset, s_dst, (uint32_t)k_test_xspi_len_zero));
+
+  /* V3: len=4097 (one past max) -> dec T via C2 -> invalid_arg. */
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_invalid_arg,
+    (int32_t)ra_nsc_xspi_read((uint32_t)k_test_xspi_offset, s_dst, (uint32_t)k_test_xspi_len_over));
+
+  /* Bonus: maximum still accepted (not part of the N+1 set, but
+   * confirms the ``>`` is strict). */
+  const ra_err_t v_max =
+    ra_nsc_xspi_read((uint32_t)k_test_xspi_offset, s_dst, (uint32_t)k_test_xspi_len_max);
+  TEST_ASSERT(v_max != k_ra_err_invalid_arg);
+
+  TEST_END("ra_nsc_xspi_read MC/DC: length validator OR");
+}
+
+int32_t main(void)
+{
+  test_mcdc_ra_nsc_xspi();
+  (void)fprintf(stderr, "[OK ] test_ra_nsc_xspi.c\n");
+  return 0;
+}

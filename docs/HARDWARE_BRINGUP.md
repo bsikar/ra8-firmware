@@ -666,3 +666,193 @@ app). Hardware results below.
   remains incomplete -- see prior sections in this doc).
 - Zero hard faults this sweep -- no `Default_Handler`, `HardFault_Handler`,
   or 0xEFFFFFFE lockups observed across all 26 apps.
+
+## 2026-05-02 night sweep (post-USB-INTSTS0-fix + post-doxygen-avalanche)
+
+Re-sweep of every app under `examples/ek_ra8d2/` after commit `3e522dd19`
+(USB-FS DCD: stop clearing INTSTS0 before the bridge callback runs, and
+restore DCPCTR.PID = BUF after every received SETUP token) and after the
+test/doxygen avalanche that landed between the evening sweep above and
+this run (`07b84847a` MC/DC vector subsets, `13e1e96a8` /
+`2673557d5` doxygen audits in `ra_hal`, `f0ceae6cf` MISRA rule-12.1
+closure, etc.). Goal: confirm the USB-FS fix flipped `usb_hid_device`
+into a host-visible enumeration AND that no other EVM app regressed
+under the test/doc churn.
+
+Probe: on-board J-Link OB SN 1086567198 -> EK-RA8D2 v1, JLinkExe v9.38a.
+Per-app procedure identical to the evening sweep (`make smoke` still
+hangs in this environment, so executed manually):
+
+1. `bash scripts/flash.sh examples/ek_ra8d2/<app>/build/<app>.hex` (30s
+   timeout per flash).
+2. `sleep 5` (`sleep 8` for `usb_hid_device` so macOS has time to start
+   the enumeration handshake) to let init code settle.
+3. `JLinkExe` -- `device R7KA8D2KF_CPU0; si 1; speed 4000; connect;
+   halt; regs; q`.
+4. `arm-none-eabi-addr2line -f -e <elf> 0x<PC>`.
+5. Classify against the same PASS / WIP / FAIL / UNKNOWN rubric the
+   harness uses.
+
+Build pass count: 26 of 26 apps clean (`make <app>` for every EVM-tier
+app re-run from scratch this session). Hardware results below.
+
+| App | Result | PC | Symbol |
+|---|---|---|---|
+| blink | PASS | 0x02000B2E | ra_delay_ms libs/ra_core/src/ra_time.c:94 |
+| blink_hal | PASS | 0x02000B8A | ra_delay_ms libs/ra_core/src/ra_time.c:203 |
+| clock_check | PASS | 0x02000BEE | ra_delay_ms libs/ra_core/src/ra_time.c:203 |
+| ereader | WIP | 0x0200042C | ereader_panic_halt examples/ek_ra8d2/ereader/main.c:524 |
+| ethernet_tcp_echo | PASS | 0x020018AE | ra_delay_ms libs/ra_core/src/ra_time.c:203 |
+| lcd_demo | WIP | 0x02000204 | lcd_demo_panic_halt examples/ek_ra8d2/lcd_demo/main.c:353 |
+| ra_bootloader | UNKNOWN | 0x02000452 | internal_write32 examples/ek_ra8d2/ra_bootloader/system_init.c:89 |
+| threadx_blink | PASS | 0x0200029A | __tx_ts_wait tx_thread_schedule.S:264 |
+| threadx_canfd_demo | PASS | 0x020002A0 | __tx_ts_wait tx_thread_schedule.S:268 |
+| threadx_filex_demo | PASS | 0x0200029A | __tx_ts_wait tx_thread_schedule.S:264 |
+| threadx_filex_levelx_demo | WIP | 0x0200035C | demo_panic_halt examples/ek_ra8d2/threadx_filex_levelx_demo/main.c:151 |
+| threadx_guix_demo | PASS | 0x020002A0 | __tx_ts_wait tx_thread_schedule.S:268 |
+| threadx_ipc_demo | PASS | 0x0200029A | __tx_ts_wait tx_thread_schedule.S:264 |
+| threadx_levelx_demo | WIP | 0x02000326 | demo_panic_halt examples/ek_ra8d2/threadx_levelx_demo/main.c:134 |
+| threadx_lwip_tcp_echo | PASS | 0x020002A4 | __tx_ts_wait tx_thread_schedule.S:294 |
+| threadx_mpu_partition_demo | PASS | 0x020002A0 | __tx_ts_wait tx_thread_schedule.S:268 |
+| threadx_netx_tcp_echo | PASS | 0x0200029A | __tx_ts_wait tx_thread_schedule.S:264 |
+| threadx_ota_demo | PASS | 0x020002A0 | __tx_ts_wait tx_thread_schedule.S:268 |
+| threadx_usbx_cdc_demo | PASS | 0x020002A0 | __tx_ts_wait tx_thread_schedule.S:268 |
+| uart_hello | PASS | 0x02000CAA | ra_delay_ms libs/ra_core/src/ra_time.c:94 |
+| usb_cdc_echo | PASS | 0x0200029A | __tx_ts_wait tx_thread_schedule.S:264 |
+| usb_hid_device | UNKNOWN | 0x02001C8C | ra_usb_fs libs/ra_hal/inc/ra8d2_usb_regs.h:297 |
+| usb_host_cdc_echo | PASS | 0x0200117E | ra_delay_ms libs/ra_core/src/ra_time.c:203 |
+| usb_host_keyboard | PASS | 0x02001156 | ra_delay_ms libs/ra_core/src/ra_time.c:203 |
+| usb_host_msc_browse | PASS | 0x0200142E | ra_delay_ms libs/ra_core/src/ra_time.c:203 |
+| usb_msc_device | PASS | 0x020002A0 | __tx_ts_wait tx_thread_schedule.S:268 |
+
+### Tally
+
+- Total apps swept: 26
+- PASS:    20
+- WIP:     4 (ereader, lcd_demo, threadx_filex_levelx_demo, threadx_levelx_demo)
+- UNKNOWN: 2 (ra_bootloader, usb_hid_device)
+- FAIL:    0
+- NOBUILD: 0
+
+Identical PASS/WIP/UNKNOWN/FAIL counts to the evening sweep -- the
+test-infrastructure / doxygen / MISRA churn between the two runs did
+not regress any of the 20 PASSing apps and did not introduce any new
+hard faults.
+
+### USB-FS enumeration verification (commit `3e522dd19`)
+
+`usb_hid_device` was flashed with the new INTSTS0/PID-BUF fixes and
+allowed to settle for 8s before halt-and-read. Outcome:
+
+- macOS host enumeration count for VID 0x1209 (`ioreg -p IOUSB -l |
+  grep -c '"idVendor" = 4617'`): **0** -- the device still does not
+  appear on the host USB tree.
+- Halt PC = `0x02001C8C` -> `ra_usb_fs (libs/ra_hal/inc/ra8d2_usb_regs.h:297)`,
+  i.e. the M85 is alive and parked inside the USB-FS register accessor
+  invoked from the dispatch poll loop. No fault, no panic_halt.
+- `g_ra_usb_dcd_diag` at `0x2200564C` (struct size 0x68, dumped with
+  `mem32 0x2200564C 26`):
+
+```
+2200564C = 44434455 00000000 00000001 00000000   <- magic | ctrt_count | dvst_count | setup_count
+2200565C = 00000000 00000000 000000D0 00000040   <- dispatch_ok | dispatch_err | last_intsts0 | last_dvsq/ctsq
+2200566C = 00000000 00000000 00000000 00000000   <- start of SETUP ring (8 x uint64 wire-order)
+2200567C = 00000000 00000000 00000000 00000000
+2200568C = 00000000 00000000 00000000 00000000
+2200569C = 00000000 00000000 00000000 00000000   <- end of SETUP ring
+```
+
+Decoded:
+
+- magic        = `0x44434455` (`UCDD` little-endian -- struct
+                 initialised, bridge code linked in and ran).
+- ctrt_count   = 0      -- **zero CTRT (CTRL-transfer-ready) edges seen**.
+- dvst_count   = 1      -- one DVST (device-state change) edge seen
+                          (the initial detached -> powered transition
+                          when DPRPU was asserted).
+- setup_count  = 0      -- no SETUP packet ever latched into
+                          USBREQ/USBVAL/USBINDX/USBLENG.
+- dispatch_ok  = 0
+- dispatch_err = 0      -- chapter-9 dispatcher never invoked because
+                          no SETUP arrived.
+- last_intsts0 = `0x00D0` -- exactly the post-fix value documented in
+                             the commit message (`SOFR | DVST | CTSQ`
+                             status bits with all the W0C handshake
+                             bits already cleared).
+- last_dvsq/ctsq = `0x40` -- DVSQ = `0x4` (DEFAULT, i.e. POWERED but
+                             not yet ADDRESSED) shifted into bits
+                             [6:4]; CTSQ low nibble = 0 (idle).
+- SETUP ring (16 words / 8 packets) = all zeros.
+
+**Interpretation:** the INTSTS0/PID-BUF fixes from `3e522dd19` are
+running on silicon (struct magic written, INTSTS0 settled to 0x00D0
+exactly as the commit message predicted, DVST edge correctly counted
+once), but they do not unblock enumeration on their own. The device
+attaches electrically (DVSQ reaches DEFAULT) and macOS notices the
+attach (the kernel does send SOF), but no SETUP token is ever
+delivered to the controller -- ctrt_count and setup_count remain at
+zero throughout the 8s settle window. This matches the commit
+message's own caveat ("dispatch is being called only after the host
+has already given up and electrically suspended the port") and
+points at the init-order / DPRPU-timing follow-up the commit
+explicitly defers ("the dispatch loop should start polling BEFORE
+ra_usb_device_attach asserts DPRPU, not after").
+
+Net result: USB enumeration is still **not** functional, but the
+two specific bugs `3e522dd19` fixed are no longer reachable on the
+SETUP path -- INTSTS0 is no longer cleared pre-callback (last_intsts0
+shows live status bits), and DCPCTR PID restoration is correctly
+gated by a SETUP edge that simply never arrives. Out of scope to
+diagnose further per task brief.
+
+### xSPI RDID re-check (`threadx_filex_levelx_demo`)
+
+`g_ra_xspi_rdid_observed` at `0x2200448C` (8 words, dumped with
+`mem32 0x2200448C 8`):
+
+```
+2200448C = 44494452 00000001 00000000 00FFFFFF   <- magic | call_count | rid_err | jedec_id
+2200449C = 00000000 00000000 00000006 00000000   <- reset_8d_err | reset_1s_err | stage | (pad)
+```
+
+Decoded:
+
+- magic        = `0x44494452` (`RDID`, probe ran).
+- call_count   = 1     -- `priv_bus_init_once` executed exactly once.
+- rid_err      = 0     -- `ra_xspi_flash_read_id` returned
+                          `k_ra_ok` (controller-side OK).
+- jedec_id     = `0x00FFFFFF` -- **chip still silent, identical to
+                                 the evening sweep and to all prior
+                                 captures**. No change.
+- reset_8d_err = 0
+- reset_1s_err = 0
+- stage        = 6     -- `k_ra_xspi_stage_rdid` reached.
+
+No regression and no progress on the IS25LX512M-JHLE bring-up --
+the RDID response is still all-ones, identical to the
+"Confirmed via JLink memory read -- round 2" capture above.
+Logic-analyzer-class debug needed; out of scope for this sweep.
+
+### Notes (no source changes; record-only per task scope)
+
+- All 20 PASS rows are byte-identical PC + symbol matches to the
+  evening sweep, modulo the `usb_hid_device` row (now parked inside
+  the USB-FS register accessor instead of `ux_dcd_ra_usb_irq`,
+  consistent with the new dispatch-poll loop introduced by
+  `3e522dd19`).
+- `ra_bootloader`'s UNKNOWN row sampled inside
+  `internal_write32` (system_init.c:89) this time instead of
+  `SystemInit` itself -- still the same pre-banner clock/PFS
+  bring-up burst before the documented intentional spin in
+  `main.c:278`. Not a fault; matches the "ra_bootloader spin is
+  intentional" section above.
+- `usb_hid_device`'s UNKNOWN row is the new INTSTS0/PID-BUF dispatch
+  loop running cleanly -- it does not match the harness PASS keyword
+  set (the new poll body is `ra_usb_fs` accessor, not
+  `tx_thread_schedule`/`ra_delay_ms`/`main.c`/`internal_*`), so the
+  classifier falls through to UNKNOWN. Chip is alive and the bridge
+  IRQ ran (g_ra_usb_dcd_diag.magic = `UCDD`).
+- Zero hard faults across all 26 apps -- no `Default_Handler`,
+  `HardFault_Handler`, `MemManage_Handler`, `BusFault_Handler`,
+  `UsageFault_Handler`, `SecureFault_Handler`, or 0xEFFFFFFE
+  observed.
