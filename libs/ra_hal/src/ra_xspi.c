@@ -845,9 +845,25 @@ ra_err_t ra_xspi_xip_exit(uint8_t instance)
  * @brief Extra JEDEC opcodes used by suspend/resume control.
  */
 typedef enum : uint8_t {
-  k_ra_spi_flash_op_suspend = 0x75U, /**< 0x75 erase/program suspend. */
-  k_ra_spi_flash_op_resume  = 0x7AU, /**< 0x7A erase/program resume.  */
+  k_ra_spi_flash_op_suspend   = 0x75U, /**< 0x75 erase/program suspend. */
+  k_ra_spi_flash_op_resume    = 0x7AU, /**< 0x7A erase/program resume.  */
+  k_ra_spi_flash_op_reset_en  = 0x66U, /**< 0x66 RSTEN  -- IS25LX512M Ch 8.20 p 39. */
+  k_ra_spi_flash_op_reset_dev = 0x99U, /**< 0x99 RST    -- IS25LX512M Ch 8.21 p 39. */
 } ra_xspi_jedec_extra_t;
+
+/**
+ * @enum ra_xspi_reset_cmd_bytes_t
+ * @brief Allowed ``cmd_bytes`` values for ``ra_xspi_software_reset``.
+ *
+ * @details
+ * 1-byte opcodes are used in 1S-1S-1S extended SPI mode, 2-byte
+ * opcodes (``opcode | (~opcode << 8)``) in 8D-8D-8D OPI/DDR mode.
+ * Cite: IS25LX512M datasheet Ch 7.3 "Operating Protocols" p 27.
+ */
+typedef enum : uint8_t {
+  k_ra_xspi_reset_cmd_bytes_1s = 1U, /**< 1-byte opcode for 1S-1S-1S. */
+  k_ra_xspi_reset_cmd_bytes_8d = 2U, /**< 2-byte opcode pair for 8D-8D-8D. */
+} ra_xspi_reset_cmd_bytes_t;
 
 /**
  * @enum ra_xspi_addr_bytes_t
@@ -954,4 +970,73 @@ ra_err_t ra_xspi_resume(uint8_t instance)
   volatile r_xspi_regs_t* reg = ra_xspi(instance);
   RA_CHECK_NULL_PTR(reg, s_tag, "instance out of range");
   return internal_issue_simple_opcode(reg, k_ra_spi_flash_op_resume);
+}
+
+/**
+ * @brief Issue a single RSTEN-or-RST opcode in either 1S or 8D form.
+ *
+ * @details
+ * In 1S-1S-1S mode the opcode is a single byte placed at CDT.CMD bits
+ * [31..16] with CMDSIZE=1. In 8D-8D-8D mode the chip expects the
+ * opcode followed by its bitwise complement so the controller has to
+ * ship two bytes; we encode that as ``opcode | (~opcode << 8)`` in
+ * the same CMD field with CMDSIZE=2. The CDT.CMD field is 16 bits
+ * wide ([31..16]) so both forms fit cleanly. No address phase, no
+ * data phase. IS25LX512M datasheet Ch 7.3 p 27 ("Operating Protocols")
+ * + Ch 8.20/8.21 p 39 (RSTEN/RST opcodes); HUM Ch 44 p 2986 for the
+ * CDT layout.
+ *
+ * @param[in] reg       xSPI register block.
+ * @param[in] opcode    JEDEC reset opcode (0x66 RSTEN or 0x99 RST).
+ * @param[in] cmd_bytes 1 (1S) or 2 (8D); chosen by the caller based
+ *                      on the protocol mode the chip *might* be in.
+ *
+ * @return ``k_ra_ok`` on success, ``k_ra_err_hw_timeout`` on CMDCMP
+ *         timeout.
+ */
+static ra_err_t
+internal_issue_reset_opcode(volatile r_xspi_regs_t* reg, uint8_t opcode, uint8_t cmd_bytes)
+{
+  /* HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986 */
+  /* Build the CMD half-word for either 1S (just the opcode) or 8D
+   * (opcode + complement). The complement form is what 8D-mode SPI
+   * NOR devices require so they can distinguish "real opcode" from
+   * "garbage on the bus". */
+  uint16_t cmd_word = opcode;
+  if (cmd_bytes == (uint8_t)k_ra_xspi_reset_cmd_bytes_8d) {
+    cmd_word = (uint16_t)(opcode | (((uint16_t)(uint8_t)~opcode) << 8U));
+  }
+  reg->CDBUF[k_ra_xspi_cdbuf_idx_cdt] =
+    (((uint32_t)cmd_bytes & k_ra_xspi_cdt_mask_cmdsize) << k_ra_xspi_cdt_pos_cmdsize) |
+    (((uint32_t)k_ra_xspi_cdt_addsize_0 & k_ra_xspi_cdt_mask_addsize)
+     << k_ra_xspi_cdt_pos_addsize) |
+    (((uint32_t)k_ra_xspi_cdt_trtype_write & k_ra_xspi_cdt_mask_trtype)
+     << k_ra_xspi_cdt_pos_trtype) |
+    (((uint32_t)cmd_word) << k_ra_xspi_cdt_pos_cmd);
+  reg->CDBUF[k_ra_xspi_cdbuf_idx_addr]  = 0U;
+  reg->CDBUF[k_ra_xspi_cdbuf_idx_data0] = 0U;
+  reg->CDBUF[k_ra_xspi_cdbuf_idx_data1] = 0U;
+  return internal_kick_command(reg);
+}
+
+ra_err_t ra_xspi_software_reset(uint8_t instance, uint8_t cmd_bytes)
+{
+  volatile r_xspi_regs_t* reg = ra_xspi(instance);
+  RA_CHECK_NULL_PTR(reg, s_tag, "instance out of range");
+  if ((cmd_bytes != (uint8_t)k_ra_xspi_reset_cmd_bytes_1s) &&
+      (cmd_bytes != (uint8_t)k_ra_xspi_reset_cmd_bytes_8d)) {
+    return k_ra_err_invalid_arg;
+  }
+
+  /* IS25LX512M Ch 8.20-8.21 p 39: RSTEN must be the immediately
+   * preceding command before RST or the device ignores RST. */
+  const ra_err_t en = internal_issue_reset_opcode(reg, k_ra_spi_flash_op_reset_en, cmd_bytes);
+  if (en != k_ra_ok) {
+    return en;
+  }
+  const ra_err_t rst = internal_issue_reset_opcode(reg, k_ra_spi_flash_op_reset_dev, cmd_bytes);
+  if (rst != k_ra_ok) {
+    return rst;
+  }
+  return k_ra_ok;
 }
