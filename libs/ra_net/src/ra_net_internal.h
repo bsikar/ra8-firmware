@@ -179,6 +179,24 @@ typedef struct {
 } ra_net_state_t;
 
 /* Singleton accessor (defined in ra_net_ipv4.c). */
+/**
+ * @brief Return the singleton ra_net_state_t pointer.
+ *
+ * @details Used by every ra_net TU to share the socket / ARP / DNS
+ *          tables. Defined in ra_net_ipv4.c.
+ *
+ * @return ra_net_state_t* Pointer to the singleton state. Never NULL.
+ * @retval !NULL Always returns a valid pointer.
+ *
+ * @pre Linker has placed s_state in writable storage.
+ * @pre Caller is the network thread.
+ * @post No state mutation.
+ * @post Returned pointer is valid for the program's lifetime.
+ *
+ * @note Not thread-safe; the underlying state is not lock-guarded.
+ *
+ * @since 0.1.0
+ */
 ra_net_state_t* ra_net_internal_state(void);
 
 /** @brief Generic numeric magic-numbers (kept as named enums to satisfy
@@ -267,21 +285,241 @@ static inline void ra_net_put_be32(uint8_t* p, uint32_t v)
   p[3] = (uint8_t)(v & (uint32_t)k_byte_mask_low);
 }
 
+/**
+ * @brief Compute the RFC 1071 one's-complement Internet checksum.
+ *
+ * @details Folds 16-bit words and the trailing odd byte into the
+ *          16-bit running total seeded by sum0 (a pseudo-header sum
+ *          when computing TCP/UDP checksums). Defined in ra_net_ipv4.c.
+ *
+ * @param[in] data Buffer to sum. Must not be NULL when len > 0.
+ * @param[in] len  Byte count.
+ * @param[in] sum0 Initial running sum (typically 0 or pseudo-header).
+ *
+ * @return uint16_t The one's-complement checksum.
+ * @retval 0xFFFF When the folded sum is zero (RFC 1071 convention).
+ * @retval other  Folded one's-complement of the running sum.
+ *
+ * @pre data is non-NULL when len > 0.
+ * @pre Caller is the network thread.
+ * @post No state mutation.
+ * @post Return value is independent of host byte order.
+ *
+ * @note Not thread-safe; pure function.
+ *
+ * @since 0.1.0
+ */
 uint16_t ra_net_checksum_ones(const uint8_t* data, uint16_t len, uint32_t sum0);
 
+/**
+ * @brief Resolve an IPv4 address through the local ARP cache.
+ *
+ * @details Defined in ra_net_arp.c. RFC 826.
+ *
+ * @param[in]  ip      IPv4 address to resolve.
+ * @param[out] out_mac Filled with the resolved MAC on cache hit.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok           Cache hit; *out_mac populated.
+ * @retval k_ra_err_null_ptr out_mac is NULL.
+ * @retval k_ra_err_no_data  Cache miss; ARP request queued.
+ *
+ * @pre ra_net_open has succeeded.
+ * @pre out_mac is non-NULL.
+ * @post On hit *out_mac holds the MAC; on miss a request is queued.
+ * @post No other state mutation.
+ *
+ * @note Not thread-safe; called from the network thread.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ra_net_arp_resolve(ra_net_ipv4_t ip, ra_net_mac_t* out_mac);
-ra_err_t ra_net_arp_handle(const uint8_t* frame, uint16_t len);
-void     ra_net_arp_reset(void);
 
+/**
+ * @brief Process an inbound ARP frame.
+ *
+ * @details Defined in ra_net_arp.c. RFC 826.
+ *
+ * @param[in] frame Ethernet+ARP frame bytes. Must not be NULL.
+ * @param[in] len   Frame length.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok                Frame processed.
+ * @retval k_ra_err_null_ptr      frame == NULL.
+ * @retval k_ra_err_invalid_arg   Frame too short.
+ * @retval k_ra_err_not_supported Non-Ethernet / non-IPv4 ARP packet.
+ *
+ * @pre ra_net_open has succeeded.
+ * @pre frame is non-NULL.
+ * @post Sender mapping cached; reply queued for ARP requests targeting our IP.
+ * @post Otherwise no state mutation.
+ *
+ * @note Not thread-safe; called from the network thread.
+ *
+ * @since 0.1.0
+ */
+ra_err_t ra_net_arp_handle(const uint8_t* frame, uint16_t len);
+
+/**
+ * @brief Clear every ARP cache entry.
+ *
+ * @details Defined in ra_net_arp.c.
+ *
+ * @return None.
+ * @retval None Function returns void.
+ *
+ * @pre ra_net_open has succeeded.
+ * @pre Caller is the network thread.
+ * @post Every ARP cache slot is empty.
+ * @post No other state mutation.
+ *
+ * @note Not thread-safe.
+ *
+ * @since 0.1.0
+ */
+void ra_net_arp_reset(void);
+
+/**
+ * @brief Process an inbound ICMP frame; reply to echo requests.
+ *
+ * @details Defined in ra_net_icmp.c. RFC 792.
+ *
+ * @param[in] frame Ethernet+IPv4+ICMP frame bytes. Must not be NULL.
+ * @param[in] len   Frame length.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok               Frame processed.
+ * @retval k_ra_err_null_ptr     frame == NULL.
+ * @retval k_ra_err_invalid_arg  Frame too short / malformed.
+ * @retval k_ra_err_invalid_size ICMP payload exceeds PAL frame max.
+ * @retval other                 ra_net_ipv4_send error code.
+ *
+ * @pre ra_net_open has succeeded.
+ * @pre frame is non-NULL.
+ * @post Echo-request frames are answered with an echo-reply.
+ * @post Other ICMP types are silently dropped.
+ *
+ * @note Not thread-safe.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ra_net_icmp_handle(const uint8_t* frame, uint16_t len);
 
+/**
+ * @brief Process an inbound UDP frame; enqueue to a bound socket.
+ *
+ * @details Defined in ra_net_udp.c. RFC 768. DNS responses are
+ *          additionally fed to the resolver state machine.
+ *
+ * @param[in] frame Ethernet+IPv4+UDP frame bytes. Must not be NULL.
+ * @param[in] len   Frame length.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok               Datagram enqueued.
+ * @retval k_ra_err_null_ptr     frame == NULL.
+ * @retval k_ra_err_invalid_arg  Frame too short / malformed.
+ * @retval k_ra_err_not_found    No socket bound to the destination port.
+ * @retval k_ra_err_no_mem       Per-socket queue is full.
+ *
+ * @pre ra_net_open has succeeded.
+ * @pre frame is non-NULL.
+ * @post On success the matching socket's receive queue gained one row.
+ * @post No other state mutation.
+ *
+ * @note Not thread-safe.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ra_net_udp_handle(const uint8_t* frame, uint16_t len);
+
+/**
+ * @brief Allocate a new UDP socket bound to local_port.
+ *
+ * @details Defined in ra_net_udp.c.
+ *
+ * @param[in]  local_port Local port (must be non-zero, unique).
+ * @param[out] out_handle Filled with the socket handle on success.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok              Socket allocated.
+ * @retval k_ra_err_null_ptr    out_handle == NULL.
+ * @retval k_ra_err_invalid_arg local_port == 0.
+ * @retval k_ra_err_exists      Another socket already bound to local_port.
+ * @retval k_ra_err_no_mem      Socket table is full.
+ *
+ * @pre ra_net_open has succeeded.
+ * @pre out_handle is non-NULL.
+ * @post On success a fresh socket slot holds the binding.
+ * @post On failure no state mutation.
+ *
+ * @note Not thread-safe.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ra_net_udp_socket(uint16_t local_port, ra_net_handle_t* out_handle);
+
+/**
+ * @brief Send a UDP datagram from a previously allocated socket.
+ *
+ * @details Defined in ra_net_udp.c. Adds UDP and IPv4 headers and
+ *          pushes through the PAL.
+ *
+ * @param[in] h        Socket handle from ra_net_udp_socket.
+ * @param[in] buf      Payload bytes (must not be NULL).
+ * @param[in] len      Payload length (> 0).
+ * @param[in] dst_ip   Destination IPv4 address.
+ * @param[in] dst_port Destination UDP port (> 0).
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok                Datagram queued.
+ * @retval k_ra_err_null_ptr      buf == NULL.
+ * @retval k_ra_err_invalid_arg   dst_port == 0 or len == 0.
+ * @retval k_ra_err_invalid_state Slot is not a UDP socket.
+ * @retval k_ra_err_invalid_size  Payload exceeds PAL frame max.
+ * @retval other                  ra_net_ipv4_send error code.
+ *
+ * @pre h was returned by ra_net_udp_socket.
+ * @pre buf is non-NULL and len > 0.
+ * @post On success a UDP datagram is queued on the PAL.
+ * @post On failure no state mutation.
+ *
+ * @note Not thread-safe.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ra_net_udp_send(ra_net_handle_t h,
                          const uint8_t*  buf,
                          uint16_t        len,
                          ra_net_ipv4_t   dst_ip,
                          uint16_t        dst_port);
+
+/**
+ * @brief Pop the oldest queued datagram for a UDP socket.
+ *
+ * @details Defined in ra_net_udp.c.
+ *
+ * @param[in]  h         Socket handle from ra_net_udp_socket.
+ * @param[out] buf       Destination buffer.
+ * @param[in]  max_len   Capacity of buf in bytes.
+ * @param[out] got_len   Filled with the bytes copied.
+ * @param[out] src_ip    Filled with the datagram's source IPv4.
+ * @param[out] src_port  Filled with the datagram's source port.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok                 Datagram returned.
+ * @retval k_ra_err_invalid_state  Slot is not a UDP socket.
+ * @retval k_ra_err_no_data        Queue is empty.
+ *
+ * @pre h was returned by ra_net_udp_socket.
+ * @pre All output pointers are non-NULL.
+ * @post On success *got_len and the source fields are populated and
+ *       the slot's queue advanced.
+ * @post On failure no state mutation.
+ *
+ * @note Not thread-safe.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ra_net_udp_recv(ra_net_handle_t h,
                          uint8_t*        buf,
                          uint16_t        max_len,
@@ -289,20 +527,198 @@ ra_err_t ra_net_udp_recv(ra_net_handle_t h,
                          ra_net_ipv4_t*  src_ip,
                          uint16_t*       src_port);
 
+/**
+ * @brief Process an inbound TCP frame; drive the per-socket FSM.
+ *
+ * @details Defined in ra_net_tcp.c. RFC 793 (subset).
+ *
+ * @param[in] frame Ethernet+IPv4+TCP frame bytes. Must not be NULL.
+ * @param[in] len   Frame length.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok               Frame processed.
+ * @retval k_ra_err_null_ptr     frame == NULL.
+ * @retval k_ra_err_invalid_arg  Frame too short.
+ * @retval k_ra_err_not_found    No matching socket.
+ * @retval other                 Whatever the per-state FSM returns.
+ *
+ * @pre ra_net_open has succeeded.
+ * @pre frame is non-NULL.
+ * @post Matching socket FSM advanced; ACK / SYN-ACK / FIN may be queued.
+ * @post Otherwise no state mutation.
+ *
+ * @note Not thread-safe.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ra_net_tcp_handle(const uint8_t* frame, uint16_t len);
+
+/**
+ * @brief Allocate a passive (LISTEN) TCP socket on local_port.
+ *
+ * @details Defined in ra_net_tcp.c. RFC 793 sec 3.5 LISTEN.
+ *
+ * @param[in]  local_port Local port (must be non-zero).
+ * @param[out] out_handle Filled with the socket handle on success.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok              Socket in LISTEN.
+ * @retval k_ra_err_null_ptr    out_handle == NULL.
+ * @retval k_ra_err_invalid_arg local_port == 0.
+ * @retval k_ra_err_no_mem      TCP socket table is full.
+ *
+ * @pre ra_net_open has succeeded.
+ * @pre out_handle is non-NULL.
+ * @post On success the socket is in LISTEN.
+ * @post On failure no state mutation.
+ *
+ * @note Not thread-safe.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ra_net_tcp_listen(uint16_t local_port, ra_net_handle_t* out_handle);
+
+/**
+ * @brief Initiate an active (SYN_SENT) TCP open.
+ *
+ * @details Defined in ra_net_tcp.c. RFC 793 sec 3.4 / 3.5.
+ *
+ * @param[in]  remote_ip   Destination IPv4 address.
+ * @param[in]  remote_port Destination TCP port (> 0).
+ * @param[out] out_handle  Filled with the socket handle on success.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok              SYN sent.
+ * @retval k_ra_err_null_ptr    out_handle == NULL.
+ * @retval k_ra_err_invalid_arg remote_port == 0.
+ * @retval k_ra_err_no_mem      TCP socket table is full.
+ * @retval other                ra_net_ipv4_send error code.
+ *
+ * @pre ra_net_open has succeeded.
+ * @pre out_handle is non-NULL.
+ * @post On success the socket is in SYN_SENT and a SYN has been queued.
+ * @post On failure the socket slot is left clean.
+ *
+ * @note Not thread-safe.
+ *
+ * @since 0.1.0
+ */
 ra_err_t
 ra_net_tcp_connect(ra_net_ipv4_t remote_ip, uint16_t remote_port, ra_net_handle_t* out_handle);
+
+/**
+ * @brief Queue and transmit application data on an established TCP socket.
+ *
+ * @details Defined in ra_net_tcp.c. RFC 793 sec 3.7 SEND.
+ *
+ * @param[in] h   Socket handle.
+ * @param[in] buf Payload bytes (must not be NULL).
+ * @param[in] len Payload length.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok                Segment queued.
+ * @retval k_ra_err_null_ptr      buf == NULL.
+ * @retval k_ra_err_invalid_state Socket is not in ESTABLISHED.
+ * @retval k_ra_err_no_mem        TX buffer is full.
+ * @retval other                  ra_net_ipv4_send error code.
+ *
+ * @pre h was returned by ra_net_tcp_connect / ra_net_tcp_listen.
+ * @pre buf is non-NULL.
+ * @post On success snd_nxt advances by len and a PSH+ACK segment is queued.
+ * @post On failure no state mutation.
+ *
+ * @note Not thread-safe.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ra_net_tcp_send(ra_net_handle_t h, const uint8_t* buf, uint16_t len);
+
+/**
+ * @brief Drain bytes from an established TCP socket's RX buffer.
+ *
+ * @details Defined in ra_net_tcp.c. RFC 793 sec 3.7 RECEIVE.
+ *
+ * @param[in]  h         Socket handle.
+ * @param[out] buf       Destination buffer.
+ * @param[in]  max_len   Capacity of buf in bytes.
+ * @param[out] got_len   Filled with the bytes copied.
+ * @param[out] peer_ip   Filled with the connected peer IPv4.
+ * @param[out] peer_port Filled with the connected peer port.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok                Bytes returned.
+ * @retval k_ra_err_invalid_state Socket is not a TCP socket.
+ * @retval k_ra_err_no_data       RX buffer is empty.
+ *
+ * @pre h was returned by a TCP open call.
+ * @pre All output pointers are non-NULL.
+ * @post On success bytes have been removed from the per-socket RX buffer.
+ * @post On failure no state mutation.
+ *
+ * @note Not thread-safe.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ra_net_tcp_recv(ra_net_handle_t h,
                          uint8_t*        buf,
                          uint16_t        max_len,
                          uint16_t*       got_len,
                          ra_net_ipv4_t*  peer_ip,
                          uint16_t*       peer_port);
+
+/**
+ * @brief Initiate the active-close path on a TCP socket.
+ *
+ * @details Defined in ra_net_tcp.c. RFC 793 sec 3.5 CLOSE.
+ *
+ * @param[in] h Socket handle.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok               Close initiated (or fully torn down).
+ * @retval k_ra_err_invalid_arg  Slot is not a TCP socket.
+ * @retval other                 ra_net_ipv4_send error code.
+ *
+ * @pre h was returned by a TCP open call.
+ * @pre Caller is the network thread.
+ * @post On success the FSM is in FIN_WAIT, LAST_ACK, or fully closed.
+ * @post On failure no state mutation.
+ *
+ * @note Not thread-safe.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ra_net_tcp_close(ra_net_handle_t h);
 
 /* IPv4 helpers used by sub-protocols when constructing TX frames. */
+/**
+ * @brief Build an IPv4 frame around payload and emit it via the PAL.
+ *
+ * @details Defined in ra_net_ipv4.c. RFC 791. Resolves the next-hop
+ *          MAC through the ARP cache (or falls back to broadcast on
+ *          unresolved); fills in IPv4 header (no options, TTL 64);
+ *          calls the PAL TX path.
+ *
+ * @param[in] dst         Destination IPv4 address.
+ * @param[in] proto       IPv4 protocol number (ICMP/UDP/TCP).
+ * @param[in] payload     Upper-layer payload (must not be NULL).
+ * @param[in] payload_len Payload length.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok                Frame queued.
+ * @retval k_ra_err_null_ptr      payload == NULL.
+ * @retval k_ra_err_invalid_state Stack not opened.
+ * @retval k_ra_err_invalid_size  Combined header+payload exceeds PAL frame max.
+ * @retval other                  ra_net_pal_send_frame error code.
+ *
+ * @pre ra_net_open has succeeded.
+ * @pre payload is non-NULL.
+ * @post On success a complete Ethernet+IPv4 frame is queued on the PAL.
+ * @post On failure no state mutation.
+ *
+ * @note Not thread-safe.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ra_net_ipv4_send(ra_net_ipv4_t     dst,
                           ra_net_ip_proto_t proto,
                           const uint8_t*    payload,

@@ -449,19 +449,72 @@ ra_ble_host_gatt_set_value(uint16_t char_handle, const uint8_t* value, uint16_t 
  *        arrived over HCI ACL.
  *
  * @details Only present in UNIT_TEST builds. Bypasses the controller
- *          and feeds bytes straight into the host's L2CAP layer.
+ *          and feeds bytes straight into the host's L2CAP layer
+ *          (Bluetooth Core 5.3 Vol 3 Part A 3 "Data Packet Format").
+ *
+ * @param[in] conn_handle 12-bit ACL connection handle to attribute the
+ *                        PDU to.
+ * @param[in] l2cap_frame L2CAP B-frame bytes (length(LE16) + cid(LE16)
+ *                        + payload).
+ * @param[in] len         Total byte count in l2cap_frame.
+ *
+ * @return None.
+ * @retval None Function returns void.
+ *
+ * @pre ra_ble_host_init has succeeded.
+ * @pre l2cap_frame is non-NULL when len > 0.
+ * @post The L2CAP layer has consumed the frame and dispatched it.
+ * @post Internal reassembly state may have advanced.
+ *
+ * @note Not thread-safe; intended for the unit-test harness.
+ *
+ * @since 0.1.0
  */
 void ra_ble_host_test_inject_acl(uint16_t conn_handle, const uint8_t* l2cap_frame, uint16_t len);
 
 /**
  * @brief Test hook: report whether the application event handler has
  *        been called and, if so, the most recent event kind.
+ *
+ * @details Returns the running count of host events dispatched since
+ *          ra_ble_host_init.
+ *
+ * @return uint32_t Cumulative dispatched-event count.
+ * @retval 0      No events dispatched yet.
+ * @retval >0     One or more events delivered.
+ *
+ * @pre ra_ble_host_init has succeeded.
+ * @pre Caller is single-threaded.
+ * @post No state change.
+ * @post Return value is monotonically non-decreasing.
+ *
+ * @note Not thread-safe; intended for the unit-test harness.
+ *
+ * @since 0.1.0
  */
 uint32_t ra_ble_host_test_event_count(void);
 
 /**
  * @brief Test hook: synthesize an LE_Connection_Complete subevent to
  *        drive the stack into the "connected" state.
+ *
+ * @details Bypasses the HCI transport and forces the host's connection
+ *          handle / MTU bookkeeping as if Bluetooth Core 5.3 Vol 4
+ *          Part E 7.7.65.1 (LE_Connection_Complete) had been received.
+ *
+ * @param[in] conn_handle 12-bit ACL connection handle to assign.
+ *
+ * @return None.
+ * @retval None Function returns void.
+ *
+ * @pre ra_ble_host_init has succeeded.
+ * @pre Caller is single-threaded.
+ * @post The host's conn_handle is set to conn_handle.
+ * @post A k_ra_ble_host_event_connected event has been dispatched.
+ *
+ * @note Not thread-safe; intended for the unit-test harness.
+ *
+ * @since 0.1.0
  */
 void ra_ble_host_test_inject_connect(uint16_t conn_handle);
 #endif

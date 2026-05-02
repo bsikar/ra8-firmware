@@ -91,12 +91,23 @@ static ra_ble_mesh_state_t s_state;
 /**
  * @brief Validate a mesh composition config.
  *
+ * @details Checks element / model counts against the limits in
+ *          ra_ble_mesh_limits_t (see Bluetooth Mesh Profile 1.0.1
+ *          sec 4.2 "Composition Data" for the underlying concept).
+ *
  * @param[in] cfg Mesh config. Must not be NULL.
  *
  * @return ra_err_t Error code.
  * @retval k_ra_ok               Config OK.
- * @retval k_ra_err_null_ptr     ``cfg == NULL``.
+ * @retval k_ra_err_null_ptr     cfg == NULL.
  * @retval k_ra_err_invalid_arg  Element / model count out of range.
+ *
+ * @pre Called from ra_ble_mesh_init.
+ * @pre Caller is single-threaded.
+ * @post No state mutation.
+ * @post Return value reflects validity of cfg only.
+ *
+ * @note Not thread-safe; called from init context.
  *
  * @since 0.1.0
  */
@@ -120,6 +131,30 @@ static ra_err_t internal_validate(const ra_ble_mesh_config_t* cfg)
 /* Public API                                                   */
 /* ============================================================ */
 
+/**
+ * @brief Initialize the Bluetooth Mesh wrapper.
+ *
+ * @details Validates the supplied composition data (Mesh Profile
+ *          1.0.1 sec 4.2) and captures it into the singleton state.
+ *          The upstream NimBLE Mesh stack is left dormant until
+ *          ra_ble_mesh_prov_enable is called.
+ *
+ * @param[in] cfg Mesh composition config. Must not be NULL.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok               Wrapper initialized.
+ * @retval k_ra_err_null_ptr     cfg == NULL.
+ * @retval k_ra_err_invalid_arg  Composition out of range.
+ *
+ * @pre cfg points to a valid composition struct.
+ * @pre Wrapper is not already initialized.
+ * @post On success s_state.initialized == 1.
+ * @post On failure no state is mutated.
+ *
+ * @note Not thread-safe; called once at boot.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ra_ble_mesh_init(const ra_ble_mesh_config_t* cfg)
 {
   ra_err_t err = internal_validate(cfg);
@@ -135,6 +170,26 @@ ra_err_t ra_ble_mesh_init(const ra_ble_mesh_config_t* cfg)
   return k_ra_ok;
 }
 
+/**
+ * @brief Tear down the Bluetooth Mesh wrapper.
+ *
+ * @details Clears the captured config and forgets any registered
+ *          event handler. Does not unprovision an already-provisioned
+ *          node; use ra_ble_mesh_factory_reset for that.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok                  Wrapper torn down.
+ * @retval k_ra_err_not_initialized Wrapper was never initialised.
+ *
+ * @pre ra_ble_mesh_init has succeeded.
+ * @pre Caller is single-threaded.
+ * @post Wrapper is no longer initialised.
+ * @post Provisioning beacon is off.
+ *
+ * @note Not thread-safe.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ra_ble_mesh_close(void)
 {
   if (s_state.initialized == 0U) {
@@ -147,6 +202,27 @@ ra_err_t ra_ble_mesh_close(void)
   return k_ra_ok;
 }
 
+/**
+ * @brief Start advertising the unprovisioned-device beacon.
+ *
+ * @details Mesh Profile 1.0.1 sec 3.9 "Provisioning". Enables both
+ *          the PB-ADV bearer and PB-GATT so phones and dedicated
+ *          provisioners can both reach the node.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok                  Beaconing started.
+ * @retval k_ra_err_not_initialized Wrapper not initialised.
+ * @retval k_ra_err_hw_error        Upstream NimBLE Mesh rejected.
+ *
+ * @pre ra_ble_mesh_init has succeeded.
+ * @pre Caller is single-threaded.
+ * @post On success s_state.provisioning_on == 1.
+ * @post On failure no state is mutated.
+ *
+ * @note Not thread-safe.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ra_ble_mesh_prov_enable(void)
 {
   if (s_state.initialized == 0U) {
@@ -164,6 +240,26 @@ ra_err_t ra_ble_mesh_prov_enable(void)
   return k_ra_ok;
 }
 
+/**
+ * @brief Stop advertising the unprovisioned-device beacon.
+ *
+ * @details Mesh Profile 1.0.1 sec 3.9. Disables both PB-ADV and
+ *          PB-GATT bearers.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok                  Beaconing stopped.
+ * @retval k_ra_err_not_initialized Wrapper not initialised.
+ * @retval k_ra_err_hw_error        Upstream NimBLE Mesh rejected.
+ *
+ * @pre ra_ble_mesh_init has succeeded.
+ * @pre Caller is single-threaded.
+ * @post s_state.provisioning_on == 0.
+ * @post Underlying mesh stack no longer beacons.
+ *
+ * @note Not thread-safe.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ra_ble_mesh_prov_disable(void)
 {
   if (s_state.initialized == 0U) {
@@ -181,6 +277,26 @@ ra_err_t ra_ble_mesh_prov_disable(void)
   return k_ra_ok;
 }
 
+/**
+ * @brief Wipe persisted Mesh provisioning data.
+ *
+ * @details Mesh Profile 1.0.1 sec 3.10 "Node Removal". Calls into
+ *          NimBLE's bt_mesh_reset, which forgets the provisioning
+ *          data, network keys, app keys and bindings.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok                  Reset issued.
+ * @retval k_ra_err_not_initialized Wrapper not initialised.
+ *
+ * @pre ra_ble_mesh_init has succeeded.
+ * @pre Caller is single-threaded.
+ * @post Persisted provisioning state is wiped.
+ * @post s_state.provisioning_on == 0.
+ *
+ * @note Not thread-safe.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ra_ble_mesh_factory_reset(void)
 {
   if (s_state.initialized == 0U) {
@@ -193,6 +309,24 @@ ra_err_t ra_ble_mesh_factory_reset(void)
   return k_ra_ok;
 }
 
+/**
+ * @brief Register the application's mesh event handler.
+ *
+ * @param[in] fn  Event callback (NULL detaches).
+ * @param[in] ctx Opaque context forwarded to fn.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok Always returned.
+ *
+ * @pre ra_ble_mesh_init has succeeded.
+ * @pre Caller is single-threaded.
+ * @post s_state.event_fn = fn and s_state.event_ctx = ctx.
+ * @post Subsequent mesh events route to the new handler.
+ *
+ * @note Not thread-safe.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ra_ble_mesh_attach_event_handler(ra_ble_mesh_event_fn_t fn, void* ctx)
 {
   s_state.event_fn  = fn;
@@ -208,6 +342,18 @@ uint8_t ra_ble_mesh_test_prov_active(void);
 /**
  * @brief Test hook -- emit a mesh lifecycle event.
  *
+ * @details Forwards a synthetic event payload to the registered
+ *          handler so tests can verify their callback dispatch.
+ *
+ * @param[in] evt Event payload (must not be NULL for delivery).
+ *
+ * @pre Wrapper is initialised.
+ * @pre Caller is the unit-test harness (single-threaded).
+ * @post If a handler is registered and evt != NULL it has been invoked.
+ * @post No internal state is mutated.
+ *
+ * @note Not thread-safe; for unit-test harness use only.
+ *
  * @since 0.1.0
  */
 void ra_ble_mesh_test_emit_event(const ra_ble_mesh_event_t* evt)
@@ -219,6 +365,21 @@ void ra_ble_mesh_test_emit_event(const ra_ble_mesh_event_t* evt)
 
 /**
  * @brief Test hook -- return whether prov beaconing is on.
+ *
+ * @details Reads the cached s_state.provisioning_on flag so tests can
+ *          assert the lifecycle of ra_ble_mesh_prov_enable /
+ *          ra_ble_mesh_prov_disable.
+ *
+ * @return uint8_t 1 when prov beaconing is on, 0 otherwise.
+ * @retval 0 Provisioning beacon is off.
+ * @retval 1 Provisioning beacon is on.
+ *
+ * @pre Wrapper is initialised.
+ * @pre Caller is the unit-test harness (single-threaded).
+ * @post No state is mutated.
+ * @post Return value matches s_state.provisioning_on.
+ *
+ * @note Not thread-safe; for unit-test harness use only.
  *
  * @since 0.1.0
  */
