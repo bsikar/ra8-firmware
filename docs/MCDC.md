@@ -180,3 +180,4 @@ for MC/DC and the gate.
 | Date       | First-party MC/DC % | Notes                                              |
 |------------|---------------------|----------------------------------------------------|
 | 2026-05-02 | 68.31               | clang-18 in devcontainer; 142/169 host tests pass. |
+| 2026-05-02 evening | 70.40       | clang-18 in devcontainer; 149/178 host tests pass. |
