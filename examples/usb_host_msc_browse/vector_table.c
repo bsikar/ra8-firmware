@@ -82,15 +82,16 @@ void SecureFault_Handler(void) __attribute__((weak, alias("Default_Handler")));
 void SVC_Handler(void) __attribute__((weak, alias("Default_Handler")));
 void DebugMon_Handler(void) __attribute__((weak, alias("Default_Handler")));
 void PendSV_Handler(void) __attribute__((weak, alias("Default_Handler")));
-void SysTick_Handler(void) __attribute__((weak, alias("Default_Handler")));
 #else
 void NMI_Handler(void) __attribute__((weak));
 void SecureFault_Handler(void) __attribute__((weak));
 void SVC_Handler(void) __attribute__((weak));
 void DebugMon_Handler(void) __attribute__((weak));
 void PendSV_Handler(void) __attribute__((weak));
-void SysTick_Handler(void) __attribute__((weak));
 #endif
+
+/* SysTick provided by libs/ra_core/src/ra_time.c (weak) so RTOS apps may override. */
+extern void SysTick_Handler(void);
 
 /* =============================================================================
  * Peripheral IRQ handlers
