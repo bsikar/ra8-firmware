@@ -1,58 +1,53 @@
 /**
- * @file examples/threadx_blink/main.c
- * @brief Eclipse ThreadX bring-up smoke test on the EK-RA8D2
+ * @file examples/threadx_sdcard_demo/main.c
+ * @brief Eclipse ThreadX SD-card boot-sector dump on the EK-RA8D2
  *
  * @par Tag
  * [Ring 6 / APP] {World: S}
  *
  * @details
- * Two ThreadX threads, each blinking a different LED at a different
- * rate, sharing the Cortex-M85 via cooperative-plus-preemptive
- * scheduling. This is the canonical "is the RTOS alive?" demo and the
- * first piece of code that exercises:
+ * One ThreadX thread that exercises the full ``ra_sdcard`` HAL stack:
  *
- *   - The project's `port/threadx/cortex_m85/tx_initialize_low_level.S`
- *     bring-up (SysTick at 1 ms, system stack pointer save, priority
- *     fix-up).
- *   - SysTick_Handler routed to `_tx_timer_interrupt` (override of the
- *     vector_table.c default).
- *   - The upstream port's `PendSV_Handler` and `SVC_Handler` strong
- *     symbols replacing the weak aliases in `vector_table.c`.
- *   - The HAL's `ra_gpio_output_init` + `ra_gpio_toggle` -- the same
- *     paths `examples/blink_hal/main.c` uses, but driven by RTOS
- *     threads instead of a busy `ra_delay_ms` loop.
+ *   1. Route the eight SDHI pins (CMD, CLK, DAT0..3, WP, CD) on port 4
+ *      to PSEL=k_ra_psel_sdhi (0x12 -- SDHI / MMC).
+ *   2. Bring the J-Link OB VCOM console up at 115200 8N1 via
+ *      ``ra_board_uart_console_init``.
+ *   3. ``ra_sdcard_init`` runs the standard SD Physical Layer
+ *      initialization sequence (CMD0 -> CMD7) on SDHI instance 0.
+ *   4. ``ra_sdcard_read_blocks(0, ...)`` reads sector 0 (the MBR / boot
+ *      sector) into a 512-byte SRAM buffer.
+ *   5. The first 16 bytes are formatted as ASCII hex
+ *      (``XX XX XX XX...``) and pushed out the console; LED1 toggles
+ *      once per pass to make the activity visible.
  *
- * Like `examples/blink_hal`, this app deliberately skips
- * `ra_cgc_init()` -- it runs on the boot-default MOCO (~8.4 MHz) so
- * the SysTick reload programmed in `tx_initialize_low_level.S` stays
- * accurate.
+ * SDHI pin map mirrors ``examples/ereader``: port 4, pins 0..7 routed
+ * to the on-chip SDHI block (see ereader main.c for the same map).
  *
  * @par Threads
  *
- * | Name        | Priority | Period            | LED       |
- * |:------------|:---------|:------------------|:----------|
- * | `blink_a`   | 4        | 1000 ms (1 Hz)    | LED1 P6_00 |
- * | `blink_b`   | 4        | 2000 ms (0.5 Hz)  | LED2 P3_03 |
- *
- * Both threads run at the same priority; ThreadX round-robins them on
- * each `tx_thread_sleep` wake.
+ * | Name        | Priority | Period         | Action                       |
+ * |:------------|:---------|:---------------|:-----------------------------|
+ * | ``sdcard``  | 4        | 5000 ms loop   | Read block 0, dump 16 bytes  |
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 
+#include <stddef.h>
 #include <stdint.h>
 
 #include "ra_board_ek_ra8d2.h"
 #include "ra_err.h"
+#include "ra_gpio_constants.h"
 #include "ra_isr.h"
 #include "ra_port_constants.h"
 #include "ra_port_utils.h"
+#include "ra_sdcard.h"
 
 /*
  * The host unit-test build (RA_SIMULATOR_MODE) does not link the
- * ThreadX vendor tree, so `tx_api.h` is unreachable when clang-tidy
+ * ThreadX vendor tree, so ``tx_api.h`` is unreachable when clang-tidy
  * walks this file. Pull it in only on the cross-compile target.
  */
 #ifndef RA_SIMULATOR_MODE
@@ -60,48 +55,99 @@
 #endif
 
 /* ---------------------------------------------------------------------------
- * Timer-thread tunables (typed enums per the project's no-magic-number rule).
+ * Tunables (typed enums per the project's no-magic-number rule).
  * --------------------------------------------------------------------------- */
 
 /**
- * @brief Stack size, in bytes, for each user blink thread.
- *
- * @details
- * 1 KiB is comfortably above `TX_MINIMUM_STACK` (set to 512 in
- * `port/threadx/tx_user.h`) and accommodates the FPU + Helium register
- * save area on a context switch. Static allocation keeps the demo
- * compatible with NASA Power of 10 Rule 3 (no dynamic memory).
+ * @brief Stack size, in bytes, for the SD card thread.
  */
 typedef enum : uint16_t {
-  k_blink_thread_stack_bytes = 1024U,
-} blink_stack_t;
+  k_sdcard_thread_stack_bytes = 4096U,
+} sdcard_stack_t;
 
 /**
- * @brief Thread priority for both blink threads.
+ * @brief Thread priority for the SD card thread.
  */
 typedef enum : uint8_t {
-  k_blink_thread_priority = 4U,
-} blink_priority_t;
+  k_sdcard_thread_priority = 4U,
+} sdcard_priority_t;
 
 /**
- * @brief Sleep durations expressed in ThreadX ticks.
- *
- * @details
- * `port/threadx/tx_user.h` pins the tick rate to 1000 Hz, so a tick is
- * 1 ms. `k_blink_a_ticks` therefore lights LED1 at 1 Hz and
- * `k_blink_b_ticks` lights LED2 at 0.5 Hz.
+ * @brief Console baud (115200 8N1).
+ */
+typedef enum : uint32_t {
+  k_sdcard_console_baud = 115200U,
+} sdcard_baud_t;
+
+/**
+ * @brief Loop period in ThreadX ticks (port/threadx/tx_user.h pins to 1 ms).
  */
 typedef enum : uint16_t {
-  k_blink_a_ticks = 500U,
-  k_blink_b_ticks = 1000U,
-} blink_period_t;
+  k_sdcard_loop_ticks = 5000U,
+} sdcard_period_t;
+
+/**
+ * @brief SDHI pin layout constants.
+ */
+typedef enum : uint8_t {
+  k_sdcard_sdhi_pin_count = 8U,  /**< CMD + CLK + DAT0..3 + WP + CD. */
+  k_sdcard_sdhi_instance  = 0U,  /**< SDHI instance index.            */
+  k_sdcard_dump_bytes     = 16U, /**< Bytes from sector 0 to print.   */
+} sdcard_layout_t;
+
+/**
+ * @brief ASCII-hex formatting constants.
+ */
+typedef enum : uint8_t {
+  k_sdcard_hex_chars_per_byte  = 3U,    /**< "XX " incl. trailing space. */
+  k_sdcard_hex_nibble_shift    = 4U,    /**< High-nibble right-shift.    */
+  k_sdcard_hex_nibble_mask     = 0x0FU, /**< Low-nibble mask.            */
+  k_sdcard_hex_alpha_threshold = 10U,   /**< 10..15 -> 'A'..'F'.         */
+} sdcard_hex_t;
+
+/**
+ * @brief SD logical block size (512 bytes for SDHC/SDXC).
+ */
+typedef enum : uint16_t {
+  k_sdcard_block_bytes = 512U,
+} sdcard_block_size_t;
+
+/**
+ * @brief Pack (port, pin) into a ra_port_pin_t at file scope.
+ */
+typedef enum : uint8_t {
+  k_sdcard_port_shift = 8U,
+} sdcard_port_pack_t;
 
 /* ---------------------------------------------------------------------------
- * Vector table override: SysTick_Handler -> _tx_timer_interrupt.
+ * SDHI pin map (port 4, pins 0..7) -- identical to examples/ereader.
+ * --------------------------------------------------------------------------- */
+
+#define SDCARD_PP(port_, pin_)                                                                     \
+  ((ra_port_pin_t)(((uint16_t)(port_) << k_sdcard_port_shift) | (uint16_t)(pin_)))
+
+/**
+ * @brief SDHI pin list. Each pin is set to ``k_ra_psel_sdhi``.
  *
- * `vector_table.c` declares SysTick_Handler weak-aliased to
- * Default_Handler. Providing this strong definition tells the linker to
- * use it instead, so SysTick now drives the ThreadX scheduler tick.
+ * @details
+ * RA8D2 datasheet R01DS0493EJ "Pin Functions" -> "SDHI" lists the
+ * default mapping at port 4. Same caveat as examples/ereader -- the
+ * board-side wiring should be confirmed against EK-RA8D2 v1 docs once
+ * they are committed to ``docs/reference/``.
+ */
+static const ra_port_pin_t k_sdcard_sdhi_pins[k_sdcard_sdhi_pin_count] = {
+  SDCARD_PP(k_ra_port_4, k_ra_pin_0), /* SD_CMD  */
+  SDCARD_PP(k_ra_port_4, k_ra_pin_1), /* SD_CLK  */
+  SDCARD_PP(k_ra_port_4, k_ra_pin_2), /* SD_DAT0 */
+  SDCARD_PP(k_ra_port_4, k_ra_pin_3), /* SD_DAT1 */
+  SDCARD_PP(k_ra_port_4, k_ra_pin_4), /* SD_DAT2 */
+  SDCARD_PP(k_ra_port_4, k_ra_pin_5), /* SD_DAT3 */
+  SDCARD_PP(k_ra_port_4, k_ra_pin_6), /* SD_WP   */
+  SDCARD_PP(k_ra_port_4, k_ra_pin_7), /* SD_CD   */
+};
+
+/* ---------------------------------------------------------------------------
+ * Vector table override and thread storage (cross-build only).
  * --------------------------------------------------------------------------- */
 
 #ifndef RA_SIMULATOR_MODE
@@ -109,54 +155,28 @@ typedef enum : uint16_t {
 extern void _tx_timer_interrupt(void);
 /* NOLINTEND(bugprone-reserved-identifier,cert-dcl37-c,readability-identifier-naming) */
 
-/* ---------------------------------------------------------------------------
- * Static thread + stack storage. Only meaningful on the cross build,
- * where TX_THREAD is defined by the ThreadX vendor headers.
- * --------------------------------------------------------------------------- */
-
 /**
- * @brief Stack for thread A (LED1 blinker).
- * @note 32-bit aligned per ARMv8-M AAPCS.
+ * @brief Stack for the SD card thread (32-bit aligned per ARMv8-M AAPCS).
  */
-static uint8_t s_thread_a_stack[k_blink_thread_stack_bytes] __attribute__((aligned(8)));
+static uint8_t s_sdcard_stack[k_sdcard_thread_stack_bytes] __attribute__((aligned(8)));
 
 /**
- * @brief Stack for thread B (LED2 blinker).
+ * @brief Thread control block. ThreadX zeroes it on tx_thread_create.
  */
-static uint8_t s_thread_b_stack[k_blink_thread_stack_bytes] __attribute__((aligned(8)));
+static TX_THREAD s_sdcard_thread;
 
 /**
- * @brief Thread A control block. ThreadX zeroes it on tx_thread_create.
+ * @brief Block buffer for one SD sector. File-scope so it does not eat
+ *        thread-stack budget.
  */
-static TX_THREAD s_thread_a;
+static uint8_t s_sdcard_block[k_sdcard_block_bytes];
 
 /**
- * @brief Thread B control block.
- */
-static TX_THREAD s_thread_b;
-
-/**
- * @brief SysTick exception handler.
- *
- * @details
- * Tail-calls into the ThreadX timer interrupt so each 1 ms SysTick
- * advances the kernel tick counter, evaluates timers, and pre-empts
- * the running thread when a higher-priority thread becomes ready.
- *
- * @return Nothing -- AAPCS: lr at entry holds EXC_RETURN; we return
- *         to it transparently.
+ * @brief SysTick exception handler -- tail-calls the ThreadX timer.
  *
  * @pre Called from exception context (IPSR == 15).
- * @pre `_tx_initialize_low_level` has programmed SysTick.
- *
- * @post `_tx_thread_system_state` and the timer-list head reflect one
- *       elapsed tick.
- * @post On return PendSV may be pending if the scheduler chose a new
- *       thread.
- *
- * @note Runs at the priority programmed in
- *       `tx_initialize_low_level.S` (0x40); IRQs at lower priority
- *       can still pre-empt it through PRIMASK / BASEPRI.
+ * @pre ``_tx_initialize_low_level`` has programmed SysTick.
+ * @post One ThreadX tick elapsed; PendSV may be pending.
  */
 void SysTick_Handler(void);
 void SysTick_Handler(void)
@@ -165,114 +185,171 @@ void SysTick_Handler(void)
 }
 
 /* ---------------------------------------------------------------------------
- * Thread bodies.
+ * Helpers.
  * --------------------------------------------------------------------------- */
 
 /**
- * @brief Thread A entry point: toggle LED1 every `k_blink_a_ticks` ms.
+ * @brief Convert a single nibble to its ASCII hex character.
  *
- * @param[in] thread_input Unused (ThreadX cookie).
+ * @param[in] nibble Low 4 bits of an arbitrary uint8_t.
  *
- * @return Never returns -- threads run until tx_thread_terminate.
+ * @return ASCII char in '0'..'9' or 'A'..'F'.
  *
- * @pre `ra_gpio_output_init` has succeeded for `k_ra_pin_led1`.
- * @pre ThreadX scheduler is running (`tx_kernel_enter` has dispatched
- *      a thread).
- *
- * @post LED1 toggles on each loop iteration.
- * @post The thread blocks at `tx_thread_sleep`, yielding the CPU.
+ * @pre 0 <= nibble <= 15.
+ * @post Returned byte is a printable ASCII hex digit.
  */
-static void thread_a_entry(ULONG thread_input)
+static char sdcard_nibble_to_hex(uint8_t nibble)
 {
-  (void)thread_input;
-  while (1) {
-    (void)ra_board_led_toggle(k_ra_board_led1);
-    (void)tx_thread_sleep((ULONG)k_blink_a_ticks);
+  const uint8_t n = (uint8_t)(nibble & (uint8_t)k_sdcard_hex_nibble_mask);
+  if (n < (uint8_t)k_sdcard_hex_alpha_threshold) {
+    return (char)('0' + (char)n);
+  }
+  return (char)('A' + (char)(n - (uint8_t)k_sdcard_hex_alpha_threshold));
+}
+
+/**
+ * @brief Format ``len`` bytes from ``in`` into "XX XX ..." ASCII.
+ *
+ * @param[in]  in     Source buffer.
+ * @param[in]  len    Number of source bytes to format.
+ * @param[out] out    Destination buffer; must hold ``len * 3`` bytes.
+ *
+ * @pre  in / out non-NULL; out has space for len * 3 bytes.
+ * @post out holds an ASCII hex dump (no NUL terminator written).
+ */
+static void sdcard_hex_dump(const uint8_t* in, uint8_t len, char* out)
+{
+  for (uint8_t i = 0U; i < len; i++) {
+    const uint8_t b = in[i];
+    out[i * k_sdcard_hex_chars_per_byte + 0U] =
+      sdcard_nibble_to_hex((uint8_t)(b >> k_sdcard_hex_nibble_shift));
+    out[i * k_sdcard_hex_chars_per_byte + 1U] =
+      sdcard_nibble_to_hex((uint8_t)(b & (uint8_t)k_sdcard_hex_nibble_mask));
+    out[i * k_sdcard_hex_chars_per_byte + 2U] = ' ';
   }
 }
 
 /**
- * @brief Thread B entry point: toggle LED2 every `k_blink_b_ticks` ms.
+ * @brief Push a NUL-terminated ASCII string out the J-Link OB VCOM.
+ *
+ * @param[in] s NUL-terminated string. NULL is a no-op.
+ *
+ * @pre ra_board_uart_console_init has succeeded.
+ * @post Bytes have been handed to SCI3 TDR (or silently dropped on err).
+ */
+static void sdcard_log(const char* s)
+{
+  if (s == NULL) {
+    return;
+  }
+  size_t len = 0U;
+  while (s[len] != '\0') {
+    len++;
+  }
+  (void)ra_board_uart_console_write((const uint8_t*)s, len);
+}
+
+/**
+ * @brief Route the eight SDHI pins to PSEL=k_ra_psel_sdhi.
+ *
+ * @return Error code from the first failing route call, or k_ra_ok.
+ *
+ * @pre IOPORT module reachable; single-threaded init context.
+ * @post On success the eight SDHI pins are owned by the SDHI block.
+ */
+[[nodiscard]] static ra_err_t sdcard_pins_init(void)
+{
+  for (uint8_t i = 0U; i < (uint8_t)k_sdcard_sdhi_pin_count; i++) {
+    const ra_err_t err =
+      ra_pfs_route_peripheral(k_sdcard_sdhi_pins[i], k_ra_psel_sdhi, "threadx_sdcard.sdhi");
+    if (err != k_ra_ok) {
+      return err;
+    }
+  }
+  return k_ra_ok;
+}
+
+/* ---------------------------------------------------------------------------
+ * Thread body.
+ * --------------------------------------------------------------------------- */
+
+/**
+ * @brief Read sector 0 into ``s_sdcard_block`` and log status / hex dump.
+ *
+ * @pre ra_sdcard_init has succeeded.
+ * @post Either the dump line has been emitted or an error line has.
+ */
+static void sdcard_one_pass(void)
+{
+  const ra_err_t err = ra_sdcard_read_blocks(0U, s_sdcard_block, 1U);
+  if (err != k_ra_ok) {
+    sdcard_log("sdcard: read block 0 failed\r\n");
+    return;
+  }
+  char dump[k_sdcard_dump_bytes * k_sdcard_hex_chars_per_byte + 1U] = {};
+  sdcard_hex_dump(s_sdcard_block, (uint8_t)k_sdcard_dump_bytes, dump);
+  dump[k_sdcard_dump_bytes * k_sdcard_hex_chars_per_byte] = '\0';
+  sdcard_log("sdcard: blk0[0..15] = ");
+  sdcard_log(dump);
+  sdcard_log("\r\n");
+}
+
+/**
+ * @brief Thread entry: init the card once, then loop reading sector 0.
  *
  * @param[in] thread_input Unused (ThreadX cookie).
  *
- * @return Never returns.
- *
- * @pre `ra_gpio_output_init` has succeeded for `k_ra_pin_led2`.
- * @pre ThreadX scheduler is running.
- *
- * @post LED2 toggles on each loop iteration.
- * @post Thread sleeps via tx_thread_sleep so the scheduler can pick A.
+ * @pre Pins routed; console initialised; ThreadX scheduler running.
+ * @post Loops forever: read + dump + LED1 toggle + sleep.
  */
-static void thread_b_entry(ULONG thread_input)
+static void sdcard_thread_entry(ULONG thread_input)
 {
   (void)thread_input;
+
+  const ra_sdcard_cfg_t cfg = {.instance = k_sdcard_sdhi_instance};
+  if (ra_sdcard_init(&cfg) != k_ra_ok) {
+    sdcard_log("sdcard: init failed (no card / bad pinmux?)\r\n");
+    while (1) {
+      (void)tx_thread_sleep((ULONG)k_sdcard_loop_ticks);
+    }
+  }
+  sdcard_log("sdcard: card initialised\r\n");
+
   while (1) {
-    (void)ra_board_led_toggle(k_ra_board_led2);
-    (void)tx_thread_sleep((ULONG)k_blink_b_ticks);
+    sdcard_one_pass();
+    (void)ra_board_led_toggle(k_ra_board_led1);
+    (void)tx_thread_sleep((ULONG)k_sdcard_loop_ticks);
   }
 }
 
 /* ---------------------------------------------------------------------------
- * tx_application_define -- ThreadX calls this once, just before the first
- * scheduling decision, with the address of the first byte of unused RAM.
- * Threads are created here, NOT in main(), because the kernel needs them
- * registered before tx_kernel_enter dispatches.
+ * tx_application_define -- ThreadX calls this once before the first
+ * scheduling decision.
  * --------------------------------------------------------------------------- */
 
 /**
- * @brief ThreadX application initialization callback.
+ * @brief ThreadX application initialisation callback.
  *
- * @param[in] first_unused_memory Pointer to the first byte of free RAM
- *            after the kernel's internal allocations. Unused here --
- *            both threads use static stacks declared at file scope.
+ * @param[in] first_unused_memory Unused -- the demo uses a static stack.
  *
- * @return Nothing.
- *
- * @pre Called from `_tx_initialize_kernel_enter`, before the scheduler
- *      starts. IRQs are masked at this point.
- * @pre `ra_gpio_output_init` has already configured LED1 + LED2 (done
- *      from `main()` before `tx_kernel_enter()`).
- *
- * @post Thread A is created at priority `k_blink_thread_priority` and
- *       set to auto-start.
- * @post Thread B is created at the same priority.
- *
- * @note `tx_thread_create` returns `TX_SUCCESS` on a clean register --
- *       on failure we busy-loop here because there is no log channel
- *       up yet and the kernel is about to take over.
+ * @pre Called from ``_tx_initialize_kernel_enter`` with IRQs masked.
+ * @post The SD card thread is created and auto-started.
  */
 /* NOLINTNEXTLINE(misc-use-internal-linkage) -- exported symbol expected by ThreadX. */
 void tx_application_define(void* first_unused_memory)
 {
   (void)first_unused_memory;
 
-  UINT err = tx_thread_create(&s_thread_a,
-                              "blink_a",
-                              thread_a_entry,
-                              0U,
-                              s_thread_a_stack,
-                              (ULONG)k_blink_thread_stack_bytes,
-                              (UINT)k_blink_thread_priority,
-                              (UINT)k_blink_thread_priority,
-                              TX_NO_TIME_SLICE,
-                              TX_AUTO_START);
-  if (err != TX_SUCCESS) {
-    while (1) {
-      __asm__ volatile("wfi");
-    }
-  }
-
-  err = tx_thread_create(&s_thread_b,
-                         "blink_b",
-                         thread_b_entry,
-                         0U,
-                         s_thread_b_stack,
-                         (ULONG)k_blink_thread_stack_bytes,
-                         (UINT)k_blink_thread_priority,
-                         (UINT)k_blink_thread_priority,
-                         TX_NO_TIME_SLICE,
-                         TX_AUTO_START);
+  const UINT err = tx_thread_create(&s_sdcard_thread,
+                                    "sdcard",
+                                    sdcard_thread_entry,
+                                    0U,
+                                    s_sdcard_stack,
+                                    (ULONG)k_sdcard_thread_stack_bytes,
+                                    (UINT)k_sdcard_thread_priority,
+                                    (UINT)k_sdcard_thread_priority,
+                                    TX_NO_TIME_SLICE,
+                                    TX_AUTO_START);
   if (err != TX_SUCCESS) {
     while (1) {
       __asm__ volatile("wfi");
@@ -286,16 +363,14 @@ void tx_application_define(void* first_unused_memory)
  * --------------------------------------------------------------------------- */
 
 /**
- * @brief Application entry. Configures GPIO, then launches ThreadX.
+ * @brief Application entry. Brings up LED, console, SDHI pins, then ThreadX.
  *
- * @return Never returns -- `tx_kernel_enter` does not.
+ * @return Never returns -- ``tx_kernel_enter`` does not.
  *
  * @pre Reset_Handler has copied .data + zeroed .bss.
  * @pre SystemInit has set VTOR, FPU, and priority grouping.
- *
- * @post The two LED threads are running and SysTick is generating
- *       1 ms ticks for the scheduler.
- * @post On any HAL init failure the function halts in `__WFI`.
+ * @post On clean entry the SD card thread runs forever.
+ * @post On any HAL init failure the function halts in ``__WFI``.
  *
  * @since 0.1.0
  */
@@ -303,26 +378,26 @@ void tx_application_define(void* first_unused_memory)
 #pragma GCC diagnostic ignored "-Wmain"
 int32_t main(void)
 {
-  /* GPIO init runs with PRIMASK set; ThreadX will re-enable IRQs once
-   * its scheduler is up. */
   if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
     while (1) {
       __asm__ volatile("wfi");
     }
   }
-  if (ra_board_led_init(k_ra_board_led2) != k_ra_ok) {
+  if (ra_board_uart_console_init((uint32_t)k_sdcard_console_baud) != k_ra_ok) {
     while (1) {
       __asm__ volatile("wfi");
     }
   }
-
-  /* Drop into ThreadX. Returns only on internal scheduler error.
-   * The host build has no kernel, so it just falls into the WFI loop. */
 #ifndef RA_SIMULATOR_MODE
+  if (sdcard_pins_init() != k_ra_ok) {
+    while (1) {
+      __asm__ volatile("wfi");
+    }
+  }
+  ra_isr_globals_enable();
   tx_kernel_enter();
 #endif
 
-  /* Belt + suspenders. */
   while (1) {
     __asm__ volatile("wfi");
   }
