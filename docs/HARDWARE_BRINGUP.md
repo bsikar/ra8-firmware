@@ -64,3 +64,20 @@ hello, ra8d2!
 ...
 ```
 SCI8 -> J-Link OB UART bridge -> USB-CDC -> /dev/cu.usbmodem0010865671981 -> host.
+
+## 2026-05-02 Tier-by-tier results
+
+| App | Tier | Result | Notes |
+|---|---|---|---|
+| blink | 1 (LED) | ✅ Running | gdb halt confirmed PC in main loop, no fault |
+| uart_hello | 2 (UART) | ✅ Verified | "hello, ra8d2!" stream at 115200 8N1 on SCI8 via /dev/cu.usbmodem0010865671981 |
+| threadx_blink | 1+RTOS | ✅ Running | ThreadX scheduler in tx_thread_schedule idle; threads active |
+| threadx_lwip_tcp_echo | 5 (ETH) | ⚠️  Running but unreachable | Firmware up; static IP 192.168.1.50 mismatches host network 10.0.64.x. Needs DHCP or subnet-match. |
+| usb_hid_device | 3 (USB-FS) | 🐛 Init fails | PC parked at usb_hid_panic_halt (main.c:283). USB init returns error on real silicon — likely ra_cgc_usbhs_pll_enable timeout or a stub that we promoted assuming chip behaviour that doesn't match. |
+
+## Open follow-ups for next hardware session
+
+1. **USB device bring-up debug** — usb_hid_device fails. Add log/gdb-trace to identify exact failing call. Likely candidate: ra_cgc_usbhs_pll_enable's USBCKCR PLL-lock wait may not actually settle in real hardware; or a missing pin-enable.
+2. **Ethernet integration** — switch threadx_lwip_tcp_echo to lwIP DHCP so it picks up an IP from any subnet the cable connects to. Or add a runtime config knob.
+3. **Phase 7.1 tier 1 LED-only sweep** — flash blink_hal, threadx_mpu_partition_demo (LED+MPU), confirm each runs.
+4. **ra_board_uart_console real-console verification** — refactor uart_hello to call ra_board_uart_console_* (now correct on SCI8) instead of raw ra_sci_*.
