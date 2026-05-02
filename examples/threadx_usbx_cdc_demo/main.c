@@ -60,6 +60,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra_board_ek_ra8d2.h"
 #include "ra_cgc.h"
 #include "ra_err.h"
 #include "ra_gpio_constants.h"
@@ -318,7 +319,7 @@ static VOID demo_worker(ULONG arg)
       continue;
     }
     for (ULONG i = 0UL; i < n; i++) {
-      (void)ra_gpio_toggle(k_ra_pin_led1);
+      (void)ra_board_led_toggle(k_ra_board_led1);
     }
   }
 }
@@ -418,7 +419,7 @@ int32_t main(void)
   if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
     demo_panic_halt();
   }
-  if (ra_gpio_output_init(k_ra_pin_led1, k_ra_level_low) != k_ra_ok) {
+  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
     demo_panic_halt();
   }
   if (demo_pins_init() != k_ra_ok) {
