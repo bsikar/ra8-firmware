@@ -1,5 +1,7 @@
 # ra8d2-firmware
 
+[![firmware](https://github.com/bsikar/ra8d2-firmware/actions/workflows/firmware.yml/badge.svg?branch=main)](https://github.com/bsikar/ra8d2-firmware/actions/workflows/firmware.yml)
+
 Bare-metal firmware for the Renesas **RA8D2** MCU group, targeting the
 **EK-RA8D2** evaluation kit (part number 968-K7EKA8D2S01001BE).
 

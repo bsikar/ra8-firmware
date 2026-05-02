@@ -6,8 +6,13 @@ on:
   pull_request:
     branches: [main]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   CMAKE_BUILD_PARALLEL_LEVEL: 4
+  MCDC_BASELINE_FILE: .github/mcdc-baseline.txt
 
 jobs:
   # ---------------------------------------------------------------------------
@@ -90,9 +95,9 @@ jobs:
         run: bash scripts/clang_tidy.sh --check --verbose
 
   # ---------------------------------------------------------------------------
-  # Host unit tests (ctest)
+  # Host unit tests (ctest) -- aggregates tests/build_tests.sh + run_tests.sh
   # ---------------------------------------------------------------------------
-  test:
+  unit-tests:
     name: Unit tests (host)
     runs-on: ubuntu-latest
     steps:
@@ -100,19 +105,15 @@ jobs:
       - name: Install build tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y cmake ninja-build gcc
-      - name: Configure
-        run: |
-          cmake -B build/tidy -S tests \
-            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-            -Wno-dev -G Ninja
-      - name: Build
-        run: cmake --build build/tidy
-      - name: Run ctest
-        run: ctest --test-dir build/tidy --output-on-failure
+          sudo apt-get install -y cmake ninja-build gcc clang-18 llvm-18 \
+                                  libclang-rt-18-dev
+      - name: Build host tests
+        run: bash tests/build_tests.sh
+      - name: Run host tests
+        run: bash tests/run_tests.sh
 
   # ---------------------------------------------------------------------------
-  # Coverage gate (gcovr 90/90)
+  # Coverage gate (gcovr 90/90) -- legacy line/branch coverage
   # ---------------------------------------------------------------------------
   coverage:
     name: Coverage (gcovr 90/90)
@@ -134,6 +135,216 @@ jobs:
           name: coverage-html
           path: build/coverage/coverage/
           retention-days: 14
+
+  # ---------------------------------------------------------------------------
+  # MC/DC report (clang-18 source-based coverage with -fcoverage-mcdc)
+  # Gates against .github/mcdc-baseline.txt -- never let coverage regress.
+  # ---------------------------------------------------------------------------
+  mcdc:
+    name: MC/DC coverage gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install clang-18 + LLVM 18 + compiler-rt
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            clang-18 llvm-18 libclang-rt-18-dev \
+            cmake ninja-build python3
+      - name: Run MC/DC report (in-container path skipped on Linux runner)
+        env:
+          CC: clang-18
+          CXX: clang++-18
+          # Threshold inside mcdc_report.sh defaults to 100% (full per-file
+          # gate); we let it run, then we apply the project-wide baseline
+          # gate ourselves below, which is the actual CI quality bar.
+          RA_MCDC_THRESHOLD: "0"
+        run: |
+          set -o pipefail
+          bash scripts/utils/mcdc_report.sh --in-container | tee mcdc-output.log
+      - name: Compare against baseline
+        id: baseline
+        run: |
+          set -e
+          summary="build/mcdc-report/summary.txt"
+          baseline_file="${MCDC_BASELINE_FILE}"
+          if [ ! -f "$summary" ]; then
+            echo "FAIL: MC/DC summary not produced at $summary" >&2
+            exit 1
+          fi
+          if [ ! -f "$baseline_file" ]; then
+            echo "FAIL: baseline file $baseline_file missing" >&2
+            exit 1
+          fi
+          baseline=$(tr -d '[:space:]' < "$baseline_file")
+          total_line=$(grep -E '^TOTAL' "$summary" | tail -1 || true)
+          if [ -z "$total_line" ]; then
+            echo "FAIL: no TOTAL row in $summary" >&2
+            tail -40 "$summary" || true
+            exit 1
+          fi
+          # Last percentage column on the TOTAL row is the MC/DC %.
+          measured=$(echo "$total_line" | grep -oE '[0-9]+\.[0-9]+%' | tail -1 | tr -d '%')
+          if [ -z "$measured" ]; then
+            echo "FAIL: could not parse MC/DC % from TOTAL row: $total_line" >&2
+            exit 1
+          fi
+          echo "measured=$measured" >> "$GITHUB_OUTPUT"
+          echo "baseline=$baseline" >> "$GITHUB_OUTPUT"
+          printf "Measured MC/DC: %s%%   Baseline: %s%%\n" "$measured" "$baseline"
+          drop=$(awk -v m="$measured" -v b="$baseline" 'BEGIN{print (m+0 < b+0) ? 1 : 0}')
+          if [ "$drop" -eq 1 ]; then
+            echo "FAIL: MC/DC coverage ${measured}% dropped below baseline ${baseline}%"
+            echo "      To raise the baseline intentionally, edit ${MCDC_BASELINE_FILE}."
+            exit 1
+          fi
+          echo "PASS: MC/DC coverage holds the baseline."
+      - name: Upload MC/DC report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mcdc-report
+          path: build/mcdc-report/
+          retention-days: 14
+
+  # ---------------------------------------------------------------------------
+  # Pre-commit gate suite -- mirrors scripts/git/pre-commit so PRs
+  # surface what the local hook would have caught.
+  # ---------------------------------------------------------------------------
+  pre-commit-checks:
+    name: Pre-commit gate suite
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install gate tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-format clang-tidy cppcheck \
+                                  cmake ninja-build gcc
+      - name: Compute base ref for diff
+        id: baseref
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "base=origin/${{ github.event.pull_request.base.ref }}" >> "$GITHUB_OUTPUT"
+          else
+            # On push to main, diff against the previous commit so we still
+            # have something the per-file checkers can iterate over.
+            echo "base=HEAD~1" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Run all check_*.py scripts
+        env:
+          BASE: ${{ steps.baseref.outputs.base }}
+        run: |
+          set -e
+          # Best-effort: not every check_*.py honours --warn or accepts a
+          # diff range, so we run them in their default modes (which match
+          # how the pre-commit hook invokes them).
+          python3 scripts/utils/check_obsolete_standards.py
+          python3 scripts/utils/check_world_tags.py --warn
+          python3 scripts/utils/check_mcdc_block.py
+          # check_no_dynamic_alloc.py scans the production tree.
+          python3 scripts/utils/check_no_dynamic_alloc.py
+      - name: clang-format dry run
+        run: bash scripts/format_code.sh --check
+      - name: clang-tidy
+        run: bash scripts/clang_tidy.sh --check
+      - name: HUM citation validator
+        run: python3 scripts/utils/cite_check.py --warn
+      - name: ROADMAP summary stats
+        run: |
+          if [ -f docs/ROADMAP.md ]; then
+            python3 scripts/utils/roadmap_stats.py --check
+          else
+            echo "no docs/ROADMAP.md -- skipping roadmap_stats"
+          fi
+
+  # ---------------------------------------------------------------------------
+  # Cross-compile every example under examples/<tier>/<app> in parallel.
+  # The matrix is generated on the fly so adding a new app needs zero
+  # workflow edits.
+  # ---------------------------------------------------------------------------
+  build-discover:
+    name: Discover example apps
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.list.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: list
+        name: Enumerate examples/<tier>/<app>
+        run: |
+          set -e
+          apps=()
+          for d in examples/ek_ra8d2/*/ examples/_unsupported/*/; do
+            d="${d%/}"
+            [ -f "$d/main.c" ] || continue
+            apps+=("$d")
+          done
+          # Emit a JSON array suitable for matrix.include.
+          json="["
+          first=1
+          for a in "${apps[@]}"; do
+            tier=$(basename "$(dirname "$a")")
+            name=$(basename "$a")
+            if [ $first -eq 0 ]; then json+=","; fi
+            json+="{\"tier\":\"${tier}\",\"app\":\"${name}\",\"dir\":\"${a}\"}"
+            first=0
+          done
+          json+="]"
+          echo "matrix={\"include\":${json}}" >> "$GITHUB_OUTPUT"
+          echo "Discovered ${#apps[@]} apps."
+
+  build-cross:
+    name: Cross-build ${{ matrix.tier }}/${{ matrix.app }}
+    runs-on: ubuntu-latest
+    needs: build-discover
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.build-discover.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cache ARM GNU toolchain apt package
+        uses: actions/cache@v4
+        with:
+          path: |
+            /var/cache/apt/archives/gcc-arm-none-eabi*.deb
+            /var/cache/apt/archives/libnewlib-arm-none-eabi*.deb
+          key: arm-gnu-toolchain-${{ runner.os }}-apt-v1
+      - name: Install ARM GNU Toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            gcc-arm-none-eabi libnewlib-arm-none-eabi \
+            cmake ninja-build
+      - name: Print toolchain version
+        run: arm-none-eabi-gcc --version | head -1
+      - name: Build ${{ matrix.app }}
+        run: make ${{ matrix.app }}
+
+  # ---------------------------------------------------------------------------
+  # Doxygen warning gate
+  # ---------------------------------------------------------------------------
+  docs:
+    name: Doxygen warnings
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install doxygen
+        run: sudo apt-get update && sudo apt-get install -y doxygen graphviz
+      - name: Run doxygen
+        run: doxygen Doxyfile.main 2>&1 | tee doxygen.log
+      - name: Fail on warnings
+        run: |
+          if grep -q "warning:" doxygen.log; then
+            echo "Doxygen reported warnings:"
+            grep "warning:" doxygen.log
+            exit 1
+          fi
 
   # ---------------------------------------------------------------------------
   # cppcheck static analysis
@@ -163,46 +374,118 @@ jobs:
                    src libs "${apps[@]}"
 
   # ---------------------------------------------------------------------------
-  # Cross-compile with arm-none-eabi-gcc
+  # PR-only: post a per-file MC/DC delta comment vs the main branch.
+  # Limited to the first 50 rows so the comment stays readable.
   # ---------------------------------------------------------------------------
-  build:
-    name: Cross-build (arm-none-eabi)
+  coverage-comment:
+    name: MC/DC delta comment
     runs-on: ubuntu-latest
+    needs: mcdc
+    if: github.event_name == 'pull_request'
+    permissions:
+      pull-requests: write
+      contents: read
     steps:
       - uses: actions/checkout@v4
-      - name: Install ARM GNU Toolchain
+        with:
+          fetch-depth: 0
+      - name: Download PR MC/DC report
+        uses: actions/download-artifact@v4
+        with:
+          name: mcdc-report
+          path: pr-mcdc
+      - name: Install clang-18 + LLVM 18 + compiler-rt
         run: |
           sudo apt-get update
-          sudo apt-get install -y gcc-arm-none-eabi libnewlib-arm-none-eabi \
-                                   cmake ninja-build
-      - name: Print toolchain version
-        run: arm-none-eabi-gcc --version | head -1
-      - name: Configure
+          sudo apt-get install -y --no-install-recommends \
+            clang-18 llvm-18 libclang-rt-18-dev \
+            cmake ninja-build python3
+      - name: Build main MC/DC report (best-effort)
+        id: main_run
+        env:
+          CC: clang-18
+          CXX: clang++-18
+          RA_MCDC_THRESHOLD: "0"
+        continue-on-error: true
         run: |
-          cmake -B build -S . \
-            -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-ra8d2.cmake \
-            -DCMAKE_BUILD_TYPE=Debug \
-            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-            -G Ninja
-      - name: Build
-        run: cmake --build build --verbose
-
-  # ---------------------------------------------------------------------------
-  # Doxygen warning gate
-  # ---------------------------------------------------------------------------
-  docs:
-    name: Doxygen warnings
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install doxygen
-        run: sudo apt-get update && sudo apt-get install -y doxygen graphviz
-      - name: Run doxygen
-        run: doxygen Doxyfile.main 2>&1 | tee doxygen.log
-      - name: Fail on warnings
-        run: |
-          if grep -q "warning:" doxygen.log; then
-            echo "Doxygen reported warnings:"
-            grep "warning:" doxygen.log
-            exit 1
+          set -e
+          git worktree add /tmp/main-tree origin/${{ github.event.pull_request.base.ref }}
+          (cd /tmp/main-tree && bash scripts/utils/mcdc_report.sh --in-container) || \
+            echo "main MC/DC build failed -- delta will be PR-only"
+          if [ -f /tmp/main-tree/build/mcdc-report/summary.txt ]; then
+            cp /tmp/main-tree/build/mcdc-report/summary.txt main-summary.txt
+          else
+            echo "" > main-summary.txt
           fi
+      - name: Render delta comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            function loadSummary(path) {
+              if (!fs.existsSync(path)) return new Map();
+              const m = new Map();
+              const lines = fs.readFileSync(path, 'utf8').split(/\r?\n/);
+              for (const line of lines) {
+                // A typical llvm-cov report row looks like:
+                //   path/to/file.c   1   2   50.00%   3   4   75.00%   ...   12.34%
+                // We take the first whitespace-delimited token as the
+                // file path and the last %-suffixed token as MC/DC %.
+                const trimmed = line.trim();
+                if (!trimmed || trimmed.startsWith('---') ||
+                    trimmed.startsWith('Filename') ||
+                    trimmed.startsWith('TOTAL')) continue;
+                const cols = trimmed.split(/\s+/);
+                if (cols.length < 2) continue;
+                const pcts = cols.filter(c => /^[0-9]+(\.[0-9]+)?%$/.test(c));
+                if (!pcts.length) continue;
+                const file = cols[0];
+                const pct = parseFloat(pcts[pcts.length - 1]);
+                m.set(file, pct);
+              }
+              return m;
+            }
+            const pr = loadSummary('pr-mcdc/summary.txt');
+            const main = loadSummary('main-summary.txt');
+            const files = new Set([...pr.keys(), ...main.keys()]);
+            const rows = [];
+            for (const f of files) {
+              const a = main.has(f) ? main.get(f) : null;
+              const b = pr.has(f) ? pr.get(f) : null;
+              const delta = (a !== null && b !== null) ? (b - a) : null;
+              rows.push({ file: f, main: a, pr: b, delta });
+            }
+            rows.sort((x, y) => {
+              const dx = x.delta === null ? -Infinity : x.delta;
+              const dy = y.delta === null ? -Infinity : y.delta;
+              return dx - dy;
+            });
+            const top = rows.slice(0, 50);
+            const fmt = v => v === null ? "n/a" : v.toFixed(2) + "%";
+            const sign = v => v === null ? "" : (v > 0 ? "+" : "");
+            let body = "## MC/DC delta (PR vs main)\n\n";
+            body += "Showing up to 50 files sorted by delta (regressions first).\n\n";
+            body += "| file | main | PR | delta |\n|---|---|---|---|\n";
+            for (const r of top) {
+              body += `| \`${r.file}\` | ${fmt(r.main)} | ${fmt(r.pr)} | ${sign(r.delta)}${fmt(r.delta)} |\n`;
+            }
+            if (!top.length) {
+              body += "| _no rows_ | | | |\n";
+            }
+            const { owner, repo } = context.repo;
+            const issue_number = context.payload.pull_request.number;
+            const marker = "<!-- mcdc-delta-comment -->";
+            body = marker + "\n" + body;
+            const existing = await github.rest.issues.listComments({
+              owner, repo, issue_number, per_page: 100,
+            });
+            const prior = existing.data.find(c => c.body && c.body.includes(marker));
+            if (prior) {
+              await github.rest.issues.updateComment({
+                owner, repo, comment_id: prior.id, body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner, repo, issue_number, body,
+              });
+            }
