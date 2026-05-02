@@ -469,8 +469,19 @@ typedef struct {
 /**
  * @brief Return the current state-machine value.
  *
+ * @details
+ * Direct read of the latched state byte. ``s_state`` is a single
+ * ``uint8_t`` so a torn read is impossible on the target.
+ *
  * @return One of ``ra_ota_state_t``; ``k_ra_ota_state_idle`` if the
  *         module has not been initialised.
+ * @retval k_ra_ota_state_idle        Uninitialised, idle, or already done.
+ * @retval k_ra_ota_state_checking    Manifest fetch in progress.
+ * @retval k_ra_ota_state_downloading Image download in progress.
+ * @retval k_ra_ota_state_verifying   Verifying signature.
+ * @retval k_ra_ota_state_committing  Committing bank swap.
+ * @retval k_ra_ota_state_done        Update complete.
+ * @retval k_ra_ota_state_error       Last step failed.
  *
  * @pre None.
  * @post No state change.
@@ -530,6 +541,11 @@ ra_ota_state_t ra_ota_get_state(void);
  * detects it is running outside the ARM target (``RA_SIMULATOR_MODE``
  * defined). Default implementation is a no-op. Tests override to
  * count invocations.
+ *
+ * @pre None (safe to call any time after init).
+ * @pre Caller has already latched the new boot bank.
+ * @post Default implementation: no state mutation.
+ * @post Target override: function does not return -- the part resets.
  *
  * @note Weak symbol; safe to leave unimplemented.
  * @since 0.1.0

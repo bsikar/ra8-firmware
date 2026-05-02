@@ -22,9 +22,46 @@
 
 static const char* s_tag = "NSCKV";
 
-/* The 32-byte slot bound is published by k_ra_key_vault_*_bytes;
- * the veneer enforces it on both buffers before calling into the
- * secure key vault. */
+/**
+ * @brief NSC veneer: SHA-256(slot_key XOR challenge) for a stored slot.
+ *
+ * @details
+ * Validates that the NS challenge buffer (read) and the NS digest
+ * buffer (read/write) lie inside the Non-Secure region, then forwards
+ * to ``ra_key_vault_sha256_xor_challenge``. The raw key never leaves
+ * the secure world; only the 32-byte SHA-256 digest crosses the
+ * boundary back to NS.
+ *
+ * The 32-byte slot bound is published by ``k_ra_key_vault_chal_bytes``
+ * and ``k_ra_key_vault_digest_bytes``; the veneer enforces it on both
+ * buffers before calling into the secure key vault.
+ *
+ * @param[in]  slot      Vault slot index.
+ * @param[in]  ns_chal   NS challenge buffer (k_ra_key_vault_chal_bytes).
+ * @param[out] ns_digest NS destination for the SHA-256 digest
+ *                       (k_ra_key_vault_digest_bytes).
+ *
+ * @return ra_err_t outcome.
+ * @retval k_ra_ok                      Digest copied to ``ns_digest``.
+ * @retval k_ra_err_null_ptr            A pointer argument was NULL.
+ * @retval k_ra_err_invalid_arg         Buffer outside NS region or bad slot.
+ *
+ * @pre TrustZone substrate up.
+ * @pre Both buffers lie entirely within the NS data region.
+ * @post On success ``ns_digest`` holds the SHA-256(key XOR challenge).
+ * @post On failure ``ns_digest`` content is undefined and no key bytes
+ *       are exposed.
+ *
+ * @par TrustZone:
+ *   NS->S boundary via ``cmse_nonsecure_entry``. Both NS pointers are
+ *   ``cmse_check_address_range``-validated. The raw slot key is read
+ *   only inside the secure world; it is XORed with the challenge and
+ *   hashed before any byte crosses back to NS, so a malicious NS caller
+ *   cannot recover the key from the digest without breaking SHA-256.
+ *
+ * @note Thread-safe: serialised by the secure key-vault lock.
+ * @since 0.1.0
+ */
 RA_NSC_VENEER ra_err_t ra_nsc_key_vault_challenge(uint16_t       slot,
                                                   const uint8_t* ns_chal,
                                                   uint8_t*       ns_digest)
