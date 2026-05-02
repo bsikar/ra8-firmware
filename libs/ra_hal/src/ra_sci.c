@@ -489,6 +489,19 @@ ra_err_t ra_sci_write_polling(uint8_t channel, const uint8_t* data, uint32_t len
   return k_ra_ok;
 }
 
+ra_err_t ra_sci_flush(uint8_t channel)
+{
+  volatile r_sci_regs_t* reg = internal_reg(channel);
+  if (reg == nullptr) {
+    return k_ra_err_invalid_arg;
+  }
+  /* HUM Ch 38.2.17 "CSR : Common Status Register", p 2225 -- block on
+   * TEND so the shift register has fully drained before the caller
+   * proceeds (typically into a panic_halt / WFI that would gate the
+   * SCI clock and discard in-flight bytes). */
+  return internal_wait_tx_end(reg);
+}
+
 /* ---- Interrupt handler attach ---------------------------------------- */
 
 ra_err_t ra_sci_attach_rx_handler(uint8_t channel, ra_sci_rx_fn_t fn, void* ctx)
