@@ -239,6 +239,35 @@ if [[ -f scripts/utils/check_mcdc_block.py ]]; then
     fi
 fi
 
+# ---- Stack-usage aggregator (warn-only, hard fail on `dynamic`) ---
+# Re-runs the project-wide -fstack-usage aggregator over whatever
+# .su files already exist under examples/*/*/build*/. We do NOT
+# trigger a build here -- a fresh clone has no .su files yet and
+# running `make stack-usage` from a hook would slow every commit by
+# minutes. The script simply skips silently when nothing is built.
+#
+# Behaviour:
+#   * Soft violations (per-app frame > 2048 bytes) -- reported,
+#     do not fail the commit. Authors are expected to either reduce
+#     the frame, raise the per-app STACK_USAGE_BYTES, or drop a
+#     RA_STACK_BUDGET(N) marker and document the deviation. This
+#     gate will be promoted to strict in a follow-up commit.
+#   * Critical-module breaches (ra_isr/ra_check/ra_err/ra_mpu/
+#     ra_cgc/ra_pfs > 256 bytes) -- reported, do not fail the
+#     commit yet (warn-only).
+#   * `dynamic` qualifier anywhere -- HARD FAIL. NASA Power-of-10
+#     Rule 3 forbids VLAs and alloca() in this firmware regardless
+#     of frame size. No deviation procedure is offered.
+#
+# See docs/STACK_USAGE.md.
+if [[ -f scripts/utils/stack_usage_check.py ]]; then
+    if ! python3 scripts/utils/stack_usage_check.py --warn-only --quiet; then
+        echo "[FAIL] stack_usage_check.py: dynamic frame detected."
+        echo "       NASA P10 Rule 3 forbids VLAs / alloca in firmware."
+        error_found=1
+    fi
+fi
+
 # -----------------------------------------------------------------------------
 # CONCLUSION
 # -----------------------------------------------------------------------------
