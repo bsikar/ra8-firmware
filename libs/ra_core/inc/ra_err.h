@@ -488,10 +488,20 @@ static inline bool ra_err_is_error(ra_err_t err)
  * @param[in] err Code to look up.
  * @return Pointer to a static C string. Never NULL; an unknown code
  *         returns the literal `"unknown"`.
+ * @retval "ok"            Returned for `k_ra_ok`.
+ * @retval "<name>"        Returned for any known `k_ra_err_*` code.
+ * @retval "unknown"       Returned for any code not in the lookup table.
+ *
+ * @pre None -- pure lookup; safe to call before init.
+ * @pre Module-level lookup table `s_ra_err_names` is fully populated.
+ * @post No internal state is modified.
+ * @post Returned pointer remains valid for the program lifetime.
  *
  * @note Implementation lives in `ra_err.c`. Declared `[[nodiscard]]`-free
  *       intentionally: it is common to pass the result straight into a
- *       variadic log macro.
+ *       variadic log macro. Thread-safe -- pure read of `.rodata`.
+ *
+ * @since 0.1.0
  */
 const char* ra_err_to_str(ra_err_t err);
 
