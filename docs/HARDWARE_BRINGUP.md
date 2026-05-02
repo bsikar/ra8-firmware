@@ -173,8 +173,10 @@ inside newlib's rand()/srand() now boot cleanly:
 - **2 LevelX/XSPI apps** (threadx_levelx_demo, threadx_filex_levelx_demo) — both
   panic in lx_nor_flash_format. **XSPI NOR driver bring-up incomplete** for the
   IS25LX512M-JHLE chip on EK-RA8D2 v1.
-- **threadx_https_client** — stuck in main init line 239. Likely waiting for
-  Ethernet linkup which is a separate bringup gap.
+- **threadx_https_client** -- stuck in main init line 239 (see
+  "threadx_https_client RSIP BIST root cause" section below). Panic is in
+  `demo_setup_or_halt()`, triggered by `ra_rsip_init({.run_bist=true})`,
+  not Ethernet.
 - **threadx_mpu_partition_demo** — ra_error_handler spin. Probably the
   intentional cross-region fault firing as designed (the fault IS the demo).
 - **ra_bootloader** — stuck in ra_log.c:126. Log-loop blocking on UART; likely
@@ -215,7 +217,98 @@ multi-day port (FSP `r_usb_pdriver.c` + `r_usb_pstd_*` ~ 2000 LOC) and requires
 either an IRQ wire-up or a polled tick from every USB-device example. Out of
 scope for this hardware bring-up session; tracked as a separate effort.
 
-**Implication for current state:** The 6 USB apps marked "✅ running on silicon"
+**Implication for current state:** The 6 USB apps marked "running on silicon"
 above are accurate as-stated (firmware boots, no fault, main loop alive) but
 **none of them actually enumerate as USB devices/hosts on the bus**. They are
 "firmware-up" not "USB-functional".
+
+## 2026-05-02 threadx_https_client RSIP BIST root cause
+
+Investigated why `threadx_https_client` halts at `main.c:239` with **zero UART
+output** (`/tmp/ra8d2-hw-test/runs/threadx_https_client.uart` is 0 bytes).
+
+### Evidence chain
+
+1. `arm-none-eabi-addr2line` confirms PC=0x02000368 maps to `demo_panic_halt`
+   at `examples/threadx_https_client/main.c:239` -- the `wfi` inside the
+   panic-spin, not the actual fault site.
+2. `demo_panic_halt()` is called from 7 sites: 6 inside `demo_setup_or_halt()`
+   (lines 258, 261, 264, 267, 270, 278) and one at line 925 (post
+   `tx_kernel_enter` return). The boot banner `[https] booting ThreadX...`
+   is printed at line 919, **after** `demo_setup_or_halt()` returns.
+3. **No banner ever appears on the UART** -> the panic happened inside
+   `demo_setup_or_halt()`, before line 919.
+4. The only call in `demo_setup_or_halt()` that is **unique to this app**
+   (i.e. not also exercised by the apps that DO boot) is
+   `ra_rsip_init({.run_bist=true})` at line 277. Apps `threadx_lwip_tcp_echo`,
+   `threadx_netx_tcp_echo`, and `ethernet_tcp_echo` share lines 257-270
+   (cgc/time/uart/ethernet init) and they all reach their banner.
+
+Conclusion: the panicking call is line 278, fired by
+`ra_rsip_init` returning non-`k_ra_ok`.
+
+### Why ra_rsip_init fails on real silicon
+
+`libs/ra_hal/src/ra_rsip.c::internal_run_bist()` does:
+
+```c
+*ctrl   |= k_ra_rsip_mask_ctrl_bist;     /* arm BIST */
+*status |= k_ra_rsip_mask_status_bistok; /* host-sim hack */
+return internal_wait_bit(k_ra_rsip_off_status,
+                         k_ra_rsip_mask_status_bistok); /* spin */
+```
+
+The OR-write into `STATUS` is described in the source comment as a
+"no-op on silicon" host-sim hack so the unit test deterministically
+terminates the spin without modelling the BIST sequencer. On the
+RA8D2, the `STATUS.BIST_OK` bit is set by the access-management
+circuit (AMC) inside the sealed RSIP-E engine, **not** by the host
+write. If the RSIP-E AMC firmware is not actually running -- which is
+the default state until the FSP-equivalent SCE init sequence has
+loaded the AMC code page -- the bit never sets, `internal_wait_bit`
+exhausts its 4096-iteration budget, and `internal_run_bist` returns
+`k_ra_err_hw_init_failed`. `ra_rsip_init` propagates the error and
+`demo_setup_or_halt()` jumps straight to `demo_panic_halt()`.
+
+The hand-rolled CTRL/STATUS register layout in
+`libs/ra_hal/inc/ra8d2_rsip_regs.h` (CTRL @ +0x0, STATUS @ +0x4,
+ENABLE/RESET/BIST bit assignments) is **not documented in the RA8D2
+Hardware User's Manual**. RSIP-E (a.k.a. SCE9) is a sealed-engine
+peripheral whose only Renesas-supported entry point is the FSP
+`r_sce_*` driver family. The current `ra_rsip` register definitions
+were inferred for the host-sim test path and have never been
+validated against silicon.
+
+### Fix scope
+
+Bringing real RSIP/SCE up requires:
+
+1. Importing the FSP `r_sce` AMC firmware blob into the tree (a
+   binary lifecycle / key-injection page that ships only via FSP).
+2. Either translating `r_sce_subprc_select` + the SCE9 bring-up
+   handshake into our HAL, or wrapping the FSP driver as a
+   third-party blob behind a thin `ra_rsip_*` shim.
+3. Re-validating CTRL/STATUS/CMD/MAILBOX register offsets against
+   FSP's `bsp_sec.h` (the canonical layout) instead of the inferred
+   host-sim layout.
+
+This is a multi-day port comparable in scope to the USB enumeration
+work (~2000 LOC of vendor driver state machine plus a binary blob
+lifecycle). **Out of scope for the bring-up sweep; tracked here as
+the canonical root cause for `threadx_https_client`'s line-239 halt.**
+
+### Workaround for unblocking the HTTPS demo separately
+
+For functional testing of the NetX-Duo + Mbed TLS data path without
+touching RSIP, the demo could be patched to:
+
+- Replace `ra_rsip_init({.run_bist=true})` with a no-op on hardware
+  builds (the call is currently the only one at boot), and
+- Replace the `ra_rsip_trng_read`-backed
+  `mbedtls_psa_external_get_random` with the existing xorshift32
+  `rand()` (already in tree per commit 6d2ebbfac) until SCE comes up.
+
+That would prove the network/TLS stack independently of crypto
+acceleration, but produces cryptographically weak entropy and is
+deliberately NOT being committed -- it would mask the real bug. Doc
+only.
