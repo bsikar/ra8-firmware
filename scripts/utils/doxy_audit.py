@@ -196,11 +196,29 @@ def audit_file(path: Path):
         if name in NON_FUNC_NAMES:
             continue
         ret = m.group("ret")
+        args = m.group("args")
         # filter out things like "return foo(x);" patterns
         if "return" in ret.split():
             continue
         # filter typedef/struct lines
         if re.search(r"\btypedef\b", ret):
+            continue
+        # Reject call expressions misparsed as declarations.
+        # 1) An assignment target on the LHS: the args group spilled past the
+        #    real closing paren and now contains '=' or an extra ')'. This is
+        #    the `*foo(off) = bar;` / `*foo() = ...;` shape used heavily by
+        #    inline-accessor register writes.
+        if "=" in args or ")" in args:
+            continue
+        # 2) Return-type token is *only* a dereference (`*` or `&`) with no
+        #    real type name -- those are call expressions, not declarations.
+        ret_stripped = ret.strip()
+        if ret_stripped in ("*", "&") or re.fullmatch(r"[*&\s]+", ret_stripped):
+            continue
+        # 3) Full matched text starting with `*name(` or `&name(` is a call
+        #    expression (deref/address-of of an inline accessor return).
+        full = m.group(0).lstrip()
+        if full.startswith("*") or full.startswith("&"):
             continue
         # skip definitions of macros (shouldn't appear since stripped, but safety)
         # determine the line number in original file
@@ -208,7 +226,7 @@ def audit_file(path: Path):
         # preserves newlines, line numbers in stripped == line numbers in raw.
         line_no = src_no_comments.count("\n", 0, m.start()) + 1
 
-        args = parse_args(m.group("args"))
+        args = parse_args(args)
 
         # Get the doxy block from the *original* source so comments are present
         # We need the offset in raw. Use line_no to approximate.
@@ -397,8 +415,9 @@ def main() -> int:
     lines.append("")
     lines.append("| Date | Functions with gaps | Missing-tag instances |")
     lines.append("|------|---------------------|-----------------------|")
-    lines.append("| 2026-05-02 (original) | 2557 | 20328 |")
-    lines.append(f"| 2026-05-02 (refresh)  | {total_gaps} | {total_missing_tags} |")
+    lines.append("| 2026-05-02 (original)                 | 2557 | 20328 |")
+    lines.append("| 2026-05-02 (refresh)                  | 663  | 4935  |")
+    lines.append(f"| 2026-05-02 (auditor false-pos fix)    | {total_gaps} | {total_missing_tags} |")
     lines.append("")
 
     # cap at 200 lines if necessary
