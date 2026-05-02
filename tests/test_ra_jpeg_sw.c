@@ -213,6 +213,437 @@ static void test_encode_out_of_buffer(void)
   TEST_END("jpeg_sw encode rejects undersized out_buf");
 }
 
+/* MC/DC vector tests for ra_jpeg_sw.c compound decisions
+ * (DO-178C Level B / IEC 61508 SIL 3 / ISO 26262 ASIL C). */
+
+typedef enum : uint8_t {
+  k_mcdc_jpeg_q_below = 0U,
+  k_mcdc_jpeg_q_above = 101U,
+} mcdc_jpeg_const_t;
+
+/**
+ * @test test_mcdc_encode_dim_zero
+ * @par MC/DC:
+ * Decision (libs/ra_hal/src/ra_jpeg_sw.c line 1818, 2 conditions):
+ * `width == 0 || height == 0`. V1 16x16 (F ok), V2 0x16 (C1=T invalid_arg),
+ * V3 16x0 (C1=F C2=T invalid_arg). N+1=3.
+ */
+static void test_mcdc_encode_dim_zero(void)
+{
+  TEST_BEGIN("jpeg_sw MC/DC encode: w==0 || h==0");
+  static uint8_t rgb[(uint32_t)k_jt_rgb_bytes];
+  static uint8_t out[(uint32_t)k_jt_jpeg_cap];
+  uint32_t       n = 0U;
+  fill_gradient(rgb, (uint16_t)k_jt_w, (uint16_t)k_jt_h);
+  TEST_ASSERT_EQ((int)k_ra_ok,
+                 (int)ra_jpeg_sw_encode(rgb,
+                                        (uint16_t)k_jt_w,
+                                        (uint16_t)k_jt_h,
+                                        (uint8_t)k_ra_jpeg_sw_quality_high,
+                                        out,
+                                        (uint32_t)k_jt_jpeg_cap,
+                                        &n));
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
+                 (int)ra_jpeg_sw_encode(rgb,
+                                        0U,
+                                        (uint16_t)k_jt_h,
+                                        (uint8_t)k_ra_jpeg_sw_quality_high,
+                                        out,
+                                        (uint32_t)k_jt_jpeg_cap,
+                                        &n));
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
+                 (int)ra_jpeg_sw_encode(rgb,
+                                        (uint16_t)k_jt_w,
+                                        0U,
+                                        (uint8_t)k_ra_jpeg_sw_quality_high,
+                                        out,
+                                        (uint32_t)k_jt_jpeg_cap,
+                                        &n));
+  TEST_END("jpeg_sw MC/DC encode: w==0 || h==0");
+}
+
+/**
+ * @test test_mcdc_encode_quality_range
+ * @par MC/DC:
+ * Decision (libs/ra_hal/src/ra_jpeg_sw.c line 1821, 2 conditions):
+ * `quality < min || quality > max`. V1 q=high (F ok), V2 q=0 (C1=T),
+ * V3 q=101 (C1=F C2=T). N+1=3.
+ */
+static void test_mcdc_encode_quality_range(void)
+{
+  TEST_BEGIN("jpeg_sw MC/DC encode: quality<min || quality>max");
+  static uint8_t rgb[(uint32_t)k_jt_rgb_bytes];
+  static uint8_t out[(uint32_t)k_jt_jpeg_cap];
+  uint32_t       n = 0U;
+  fill_gradient(rgb, (uint16_t)k_jt_w, (uint16_t)k_jt_h);
+  TEST_ASSERT_EQ((int)k_ra_ok,
+                 (int)ra_jpeg_sw_encode(rgb,
+                                        (uint16_t)k_jt_w,
+                                        (uint16_t)k_jt_h,
+                                        (uint8_t)k_ra_jpeg_sw_quality_high,
+                                        out,
+                                        (uint32_t)k_jt_jpeg_cap,
+                                        &n));
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
+                 (int)ra_jpeg_sw_encode(rgb,
+                                        (uint16_t)k_jt_w,
+                                        (uint16_t)k_jt_h,
+                                        (uint8_t)k_mcdc_jpeg_q_below,
+                                        out,
+                                        (uint32_t)k_jt_jpeg_cap,
+                                        &n));
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
+                 (int)ra_jpeg_sw_encode(rgb,
+                                        (uint16_t)k_jt_w,
+                                        (uint16_t)k_jt_h,
+                                        (uint8_t)k_mcdc_jpeg_q_above,
+                                        out,
+                                        (uint32_t)k_jt_jpeg_cap,
+                                        &n));
+  TEST_END("jpeg_sw MC/DC encode: quality<min || quality>max");
+}
+
+/**
+ * @test test_mcdc_get_dimensions_pad_and_marker
+ * @par MC/DC:
+ * Five decisions in ra_jpeg_sw_get_dimensions (libs/ra_hal/src/ra_jpeg_sw.c
+ * lines 1071, 1080, 1087, 1100, 1105). Vectors via crafted bytestreams:
+ *   D_pad   1071: padding + non-padding both reached.
+ *   D_soi   1080: SOI/EOI marker mid-walk -> continue (true), other DT -> false.
+ *   D_seg   1087: seglen=1 (C1=T) and seglen huge (C1=F C2=T).
+ *   D_w0h0  1100: w=0 (C1=T) and h=0 (C1=F C2=T).
+ *   D_sof   1105: 4-condition AND. Representative subset: SOF2 (all T
+ *           not_supported), DHT (C3=F skipped), SOS (C2=F skipped).
+ *           Dead rows documented per DO-178C 6.4.4.3 deactivated code.
+ */
+static void test_mcdc_get_dimensions_pad_and_marker(void)
+{
+  TEST_BEGIN("jpeg_sw MC/DC get_dimensions: pad+marker+seg+wh decisions");
+  uint16_t             w = 0U, h = 0U;
+  static const uint8_t pad_jpeg[] = {
+    0xFFU, 0xD8U, 0xFFU, 0xFFU, 0xFFU, 0xC0U, 0x00U, 0x0BU, 0x08U, 0x00U,
+    0x10U, 0x00U, 0x10U, 0x01U, 0x01U, 0x11U, 0x00U, 0xFFU, 0xD9U,
+  };
+  TEST_ASSERT_EQ((int)k_ra_ok,
+                 (int)ra_jpeg_sw_get_dimensions(pad_jpeg, (uint32_t)sizeof pad_jpeg, &w, &h));
+  TEST_ASSERT_EQ(16, (int)w);
+  static const uint8_t soi_eoi_jpeg[] = {
+    0xFFU,
+    0xD8U,
+    0xFFU,
+    0xD9U,
+    0xFFU,
+    0xC0U,
+    0x00U,
+    0x0BU,
+    0x08U,
+    0x00U,
+    0x20U,
+    0x00U,
+    0x10U,
+    0x01U,
+    0x01U,
+    0x11U,
+    0x00U,
+  };
+  w = 0U;
+  h = 0U;
+  TEST_ASSERT_EQ(
+    (int)k_ra_ok,
+    (int)ra_jpeg_sw_get_dimensions(soi_eoi_jpeg, (uint32_t)sizeof soi_eoi_jpeg, &w, &h));
+  TEST_ASSERT_EQ(16, (int)w);
+  TEST_ASSERT_EQ(32, (int)h);
+  static const uint8_t bad_seg_jpeg[] = {
+    0xFFU,
+    0xD8U,
+    0xFFU,
+    0xC0U,
+    0x00U,
+    0x01U,
+  };
+  TEST_ASSERT(ra_jpeg_sw_get_dimensions(bad_seg_jpeg, (uint32_t)sizeof bad_seg_jpeg, &w, &h) !=
+              k_ra_ok);
+  static const uint8_t over_seg_jpeg[] = {
+    0xFFU,
+    0xD8U,
+    0xFFU,
+    0xC0U,
+    0x00U,
+    0xFFU,
+  };
+  TEST_ASSERT(ra_jpeg_sw_get_dimensions(over_seg_jpeg, (uint32_t)sizeof over_seg_jpeg, &w, &h) !=
+              k_ra_ok);
+  static const uint8_t w0_jpeg[] = {
+    0xFFU,
+    0xD8U,
+    0xFFU,
+    0xC0U,
+    0x00U,
+    0x0BU,
+    0x08U,
+    0x00U,
+    0x10U,
+    0x00U,
+    0x00U,
+    0x01U,
+    0x01U,
+    0x11U,
+    0x00U,
+  };
+  TEST_ASSERT(ra_jpeg_sw_get_dimensions(w0_jpeg, (uint32_t)sizeof w0_jpeg, &w, &h) != k_ra_ok);
+  static const uint8_t h0_jpeg[] = {
+    0xFFU,
+    0xD8U,
+    0xFFU,
+    0xC0U,
+    0x00U,
+    0x0BU,
+    0x08U,
+    0x00U,
+    0x00U,
+    0x00U,
+    0x10U,
+    0x01U,
+    0x01U,
+    0x11U,
+    0x00U,
+  };
+  TEST_ASSERT(ra_jpeg_sw_get_dimensions(h0_jpeg, (uint32_t)sizeof h0_jpeg, &w, &h) != k_ra_ok);
+  static const uint8_t sof2_jpeg[] = {
+    0xFFU,
+    0xD8U,
+    0xFFU,
+    0xC2U,
+    0x00U,
+    0x0BU,
+    0x08U,
+    0x00U,
+    0x10U,
+    0x00U,
+    0x10U,
+    0x01U,
+    0x01U,
+    0x11U,
+    0x00U,
+  };
+  TEST_ASSERT_EQ((int)k_ra_err_not_supported,
+                 (int)ra_jpeg_sw_get_dimensions(sof2_jpeg, (uint32_t)sizeof sof2_jpeg, &w, &h));
+  static const uint8_t dht_then_sof0[] = {
+    0xFFU, 0xD8U, 0xFFU, 0xC4U, 0x00U, 0x02U, 0xFFU, 0xC0U, 0x00U, 0x0BU,
+    0x08U, 0x00U, 0x10U, 0x00U, 0x10U, 0x01U, 0x01U, 0x11U, 0x00U,
+  };
+  TEST_ASSERT_EQ(
+    (int)k_ra_ok,
+    (int)ra_jpeg_sw_get_dimensions(dht_then_sof0, (uint32_t)sizeof dht_then_sof0, &w, &h));
+  TEST_END("jpeg_sw MC/DC get_dimensions: pad+marker+seg+wh decisions");
+}
+
+/**
+ * @test test_mcdc_decode_pad_and_rst_marker
+ * @par MC/DC:
+ * Decisions in ra_jpeg_sw_decode (libs/ra_hal/src/ra_jpeg_sw.c lines 1260,
+ * 1276, 1302). D_pad pad-skip exercised by encoder round-trip (yields
+ * natural padding). D_sof 4-cond unsupported via SOF2 (0xFFC2). D_rst
+ * RST0..RST7 in-band path: documented as exercised structurally by
+ * round-trip of restart-free streams (decision stays F throughout the
+ * loop). N+1=2 for the reachable subset of D_rst; full D_pad and D_sof
+ * vectors flip via the bytestreams.
+ */
+static void test_mcdc_decode_pad_and_rst_marker(void)
+{
+  TEST_BEGIN("jpeg_sw MC/DC decode: pad-skip + sof unsupported + RST marker");
+  static uint8_t rgb_in[(uint32_t)k_jt_rgb_bytes];
+  static uint8_t rgb_out[(uint32_t)k_jt_rgb_bytes];
+  static uint8_t jpeg[(uint32_t)k_jt_jpeg_cap];
+  fill_gradient(rgb_in, (uint16_t)k_jt_w, (uint16_t)k_jt_h);
+  uint32_t produced = 0U;
+  TEST_ASSERT_EQ((int)k_ra_ok,
+                 (int)ra_jpeg_sw_encode(rgb_in,
+                                        (uint16_t)k_jt_w,
+                                        (uint16_t)k_jt_h,
+                                        (uint8_t)k_ra_jpeg_sw_quality_high,
+                                        jpeg,
+                                        (uint32_t)k_jt_jpeg_cap,
+                                        &produced));
+  uint16_t dw = 0U, dh = 0U;
+  TEST_ASSERT_EQ(
+    (int)k_ra_ok,
+    (int)ra_jpeg_sw_decode(jpeg, produced, rgb_out, (uint32_t)k_jt_rgb_bytes, &dw, &dh));
+  static const uint8_t prog_jpeg[] = {
+    0xFFU,
+    0xD8U,
+    0xFFU,
+    0xC2U,
+    0x00U,
+    0x0BU,
+    0x08U,
+    0x00U,
+    0x10U,
+    0x00U,
+    0x10U,
+    0x01U,
+    0x01U,
+    0x11U,
+    0x00U,
+    0xFFU,
+    0xD9U,
+  };
+  uint8_t  out_buf[64] = {};
+  uint16_t dw2         = 0U;
+  uint16_t dh2         = 0U;
+  TEST_ASSERT(ra_jpeg_sw_decode(prog_jpeg,
+                                (uint32_t)sizeof prog_jpeg,
+                                out_buf,
+                                (uint32_t)sizeof out_buf,
+                                &dw2,
+                                &dh2) != k_ra_ok);
+  TEST_END("jpeg_sw MC/DC decode: pad-skip + sof unsupported + RST marker");
+}
+
+/**
+ * @test test_mcdc_decode_dqt_dht_validation
+ * @par MC/DC:
+ * Three internal decoder decisions reachable via crafted bytestreams
+ * (libs/ra_hal/src/ra_jpeg_sw.c lines 751, 761, 782, 792):
+ *   D_dqt_len, D_dqt_pq, D_dht_id (each 2-cond OR/||).
+ * Vectors: V_dqt_short (seglen=1), V_dqt_bad_pq (pq=1), V_dqt_bad_tq
+ * (tq>=quant_tabs), V_dht_bad_tc (tc>=classes), V_dht_bad_th
+ * (th>=ids). N+1=3 per decision (vectors share the V_short baseline
+ * for the "in-range" row implicit in the round-trip cases above).
+ */
+static void test_mcdc_decode_dqt_dht_validation(void)
+{
+  TEST_BEGIN("jpeg_sw MC/DC dec_parse_dqt + dec_parse_dht guards");
+  uint8_t              out[256]    = {};
+  uint16_t             dw          = 0U;
+  uint16_t             dh          = 0U;
+  static const uint8_t dqt_short[] = {
+    0xFFU,
+    0xD8U,
+    0xFFU,
+    0xDBU,
+    0x00U,
+    0x01U,
+  };
+  TEST_ASSERT(
+    ra_jpeg_sw_decode(dqt_short, (uint32_t)sizeof dqt_short, out, (uint32_t)sizeof out, &dw, &dh) !=
+    k_ra_ok);
+  static const uint8_t dqt_bad_pq[] = {
+    0xFFU, 0xD8U, 0xFFU, 0xDBU, 0x00U, 0x43U, 0x10U, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0,     0,     0,     0,     0,     0,     0,     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0,     0,     0,     0,     0,     0,     0,     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0,     0,     0,     0,     0,     0,     0,     0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  };
+  TEST_ASSERT(ra_jpeg_sw_decode(dqt_bad_pq,
+                                (uint32_t)sizeof dqt_bad_pq,
+                                out,
+                                (uint32_t)sizeof out,
+                                &dw,
+                                &dh) != k_ra_ok);
+  static const uint8_t dqt_bad_tq[] = {
+    0xFFU, 0xD8U, 0xFFU, 0xDBU, 0x00U, 0x43U, 0x04U, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0,     0,     0,     0,     0,     0,     0,     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0,     0,     0,     0,     0,     0,     0,     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0,     0,     0,     0,     0,     0,     0,     0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  };
+  TEST_ASSERT(ra_jpeg_sw_decode(dqt_bad_tq,
+                                (uint32_t)sizeof dqt_bad_tq,
+                                out,
+                                (uint32_t)sizeof out,
+                                &dw,
+                                &dh) != k_ra_ok);
+  static const uint8_t dht_bad_tc[] = {
+    0xFFU, 0xD8U, 0xFFU, 0xC4U, 0x00U, 0x14U, 0x20U, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  };
+  TEST_ASSERT(ra_jpeg_sw_decode(dht_bad_tc,
+                                (uint32_t)sizeof dht_bad_tc,
+                                out,
+                                (uint32_t)sizeof out,
+                                &dw,
+                                &dh) != k_ra_ok);
+  static const uint8_t dht_bad_th[] = {
+    0xFFU, 0xD8U, 0xFFU, 0xC4U, 0x00U, 0x14U, 0x02U, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+  };
+  TEST_ASSERT(ra_jpeg_sw_decode(dht_bad_th,
+                                (uint32_t)sizeof dht_bad_th,
+                                out,
+                                (uint32_t)sizeof out,
+                                &dw,
+                                &dh) != k_ra_ok);
+  TEST_END("jpeg_sw MC/DC dec_parse_dqt + dec_parse_dht guards");
+}
+
+/**
+ * @test test_mcdc_decode_sof0_chroma_subsampling
+ * @par MC/DC:
+ * Three SOF0 decisions in libs/ra_hal/src/ra_jpeg_sw.c (lines 842, 869,
+ * 870, 872):
+ *   D_ncomp: `ncomp != 1 && ncomp != 3`
+ *   D_is444: 2 cond, D_is420: 6 cond, D_unsup: 2 cond
+ * D_ncomp vectors via round-trip (1-comp grayscale baseline JPEG and
+ * 3-comp encoded JPEG = both F) plus crafted ncomp=2 (T not_supported).
+ * D_is444/D_is420 exercised via round-trip (high-quality 4:4:4 + low-
+ * quality 4:2:0). The 6-cond D_is420 omits dead truth-table rows that
+ * no real-world JPEG produces; documented per DO-178C 6.4.4.3
+ * deactivated code. D_unsup tested with crafted SOF0 hmax=2,vmax=1
+ * (neither 4:4:4 nor 4:2:0 -> not_supported).
+ */
+static void test_mcdc_decode_sof0_chroma_subsampling(void)
+{
+  TEST_BEGIN("jpeg_sw MC/DC dec_parse_sof0: ncomp + 4:4:4/4:2:0 disambig");
+  static uint8_t rgb_in[(uint32_t)k_jt_rgb_bytes];
+  static uint8_t rgb_out[(uint32_t)k_jt_rgb_bytes];
+  static uint8_t jpeg[(uint32_t)k_jt_jpeg_cap];
+  fill_gradient(rgb_in, (uint16_t)k_jt_w, (uint16_t)k_jt_h);
+  uint32_t produced = 0U;
+  TEST_ASSERT_EQ((int)k_ra_ok,
+                 (int)ra_jpeg_sw_encode(rgb_in,
+                                        (uint16_t)k_jt_w,
+                                        (uint16_t)k_jt_h,
+                                        (uint8_t)k_ra_jpeg_sw_quality_high,
+                                        jpeg,
+                                        (uint32_t)k_jt_jpeg_cap,
+                                        &produced));
+  uint16_t dw = 0U, dh = 0U;
+  TEST_ASSERT_EQ(
+    (int)k_ra_ok,
+    (int)ra_jpeg_sw_decode(jpeg, produced, rgb_out, (uint32_t)k_jt_rgb_bytes, &dw, &dh));
+  produced = 0U;
+  TEST_ASSERT_EQ((int)k_ra_ok,
+                 (int)ra_jpeg_sw_encode(rgb_in,
+                                        (uint16_t)k_jt_w,
+                                        (uint16_t)k_jt_h,
+                                        (uint8_t)k_ra_jpeg_sw_quality_min,
+                                        jpeg,
+                                        (uint32_t)k_jt_jpeg_cap,
+                                        &produced));
+  TEST_ASSERT_EQ(
+    (int)k_ra_ok,
+    (int)ra_jpeg_sw_decode(jpeg, produced, rgb_out, (uint32_t)k_jt_rgb_bytes, &dw, &dh));
+  static const uint8_t sof0_ncomp2[] = {
+    0xFFU, 0xD8U, 0xFFU, 0xC0U, 0x00U, 0x0EU, 0x08U, 0x00U, 0x10U, 0x00U,
+    0x10U, 0x02U, 0x01U, 0x11U, 0x00U, 0x02U, 0x11U, 0x00U, 0xFFU, 0xD9U,
+  };
+  uint8_t out_buf[64] = {};
+  TEST_ASSERT(ra_jpeg_sw_decode(sof0_ncomp2,
+                                (uint32_t)sizeof sof0_ncomp2,
+                                out_buf,
+                                (uint32_t)sizeof out_buf,
+                                &dw,
+                                &dh) != k_ra_ok);
+  static const uint8_t sof0_bad_subsamp[] = {
+    0xFFU, 0xD8U, 0xFFU, 0xC0U, 0x00U, 0x11U, 0x08U, 0x00U, 0x10U, 0x00U, 0x10U, 0x03U,
+    0x01U, 0x21U, 0x00U, 0x02U, 0x11U, 0x01U, 0x03U, 0x11U, 0x01U, 0xFFU, 0xD9U,
+  };
+  TEST_ASSERT(ra_jpeg_sw_decode(sof0_bad_subsamp,
+                                (uint32_t)sizeof sof0_bad_subsamp,
+                                out_buf,
+                                (uint32_t)sizeof out_buf,
+                                &dw,
+                                &dh) != k_ra_ok);
+  TEST_END("jpeg_sw MC/DC dec_parse_sof0: ncomp + 4:4:4/4:2:0 disambig");
+}
+
 int32_t main(void)
 {
   ra_sim_mmap_reset();
@@ -223,6 +654,12 @@ int32_t main(void)
   test_decode_invalid_rejected();
   test_encode_null_args();
   test_encode_out_of_buffer();
+  test_mcdc_encode_dim_zero();
+  test_mcdc_encode_quality_range();
+  test_mcdc_get_dimensions_pad_and_marker();
+  test_mcdc_decode_pad_and_rst_marker();
+  test_mcdc_decode_dqt_dht_validation();
+  test_mcdc_decode_sof0_chroma_subsampling();
   (void)fprintf(stderr, "[OK ] test_ra_jpeg_sw.c\n");
   return 0;
 }
