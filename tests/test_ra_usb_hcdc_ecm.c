@@ -320,6 +320,70 @@ static void test_filter_mask_bits(void)
   TEST_END("filter mask enum bits match USB CDC ECM 1.20 sec 6.2.4");
 }
 
+/**
+ * @test test_mcdc_hcdc_ecm
+ *
+ * @par MC/DC:
+ * Covers compound decisions flagged in docs/MCDC_GAPS.csv for
+ * libs/ra_hal/src/ra_usb_hcdc_ecm.c.
+ *
+ * Decision A (line 509, 2 conds): hcdc_ecm_init speed gate
+ *   `(speed != FS) && (speed != HS)` -- N+1=3.
+ * Decision B (line 575, 2 conds): send_frame NULL-with-len
+ *   `(buf == NULL) && (len != 0)` -- N+1=3.
+ * Decisions C/D/E (lines 305 / 309 / 313, 3 x 2-cond AND ranges in
+ *   `internal_hex_nibble`): each tested via parse_mac with N+1=3
+ *   vectors per range (in-range + low-out + high-out):
+ *   - C `(c >= '0') && (c <= '9')`: '5' (T,T), '/' (F=short circuit),
+ *     ':' (T,F).
+ *   - D `(c >= 'a') && (c <= 'f')`: 'c' (T,T), '`' (F), 'g' (T,F).
+ *   - E `(c >= 'A') && (c <= 'F')`: 'C' (T,T), '@' (F), 'G' (T,F).
+ */
+static void test_mcdc_hcdc_ecm(void)
+{
+  TEST_BEGIN("hcdc_ecm MC/DC: init speed / send_frame / hex_nibble ranges");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hcdc_ecm_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hcdc_ecm_close());
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hcdc_ecm_init(k_ra_usb_speed_hs));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hcdc_ecm_close());
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_usb_hcdc_ecm_init((ra_usb_speed_t)9U));
+
+  uint8_t mac[6] = {};
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hcdc_ecm_parse_mac("0123456789AB", mac));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hcdc_ecm_parse_mac("aabbccddeeff", mac));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hcdc_ecm_parse_mac("AABBCCDDEEFF", mac));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_usb_hcdc_ecm_parse_mac("/123456789A", mac));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_usb_hcdc_ecm_parse_mac(":123456789A", mac));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_usb_hcdc_ecm_parse_mac("`123456789A", mac));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_usb_hcdc_ecm_parse_mac("g123456789A", mac));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_usb_hcdc_ecm_parse_mac("@123456789A", mac));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_usb_hcdc_ecm_parse_mac("G123456789A", mac));
+
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hcdc_ecm_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_usb_hcdc_ecm_attach_callback(stub_on_attach, nullptr));
+  walk_to_attach();
+
+  uint8_t buf[16] = {};
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_usb_hcdc_ecm_send_frame(nullptr, 4U));
+  const ra_err_t b_v1 = ra_usb_hcdc_ecm_send_frame(nullptr, 0U);
+  TEST_ASSERT(b_v1 != k_ra_err_invalid_arg);
+  const ra_err_t b_v2 = ra_usb_hcdc_ecm_send_frame(buf, 4U);
+  TEST_ASSERT(b_v2 != k_ra_err_invalid_arg);
+
+  TEST_END("hcdc_ecm MC/DC: init speed / send_frame / hex_nibble ranges");
+}
+
 int32_t main(void)
 {
   test_init_close_fs_returns_ok();
@@ -334,6 +398,7 @@ int32_t main(void)
   test_parse_mac_address();
   test_pre_init_guards();
   test_filter_mask_bits();
+  test_mcdc_hcdc_ecm();
   (void)fprintf(stderr, "[OK ] test_ra_usb_hcdc_ecm.c\n");
   return 0;
 }

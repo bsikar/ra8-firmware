@@ -263,6 +263,75 @@ static void test_handle_setup_rejects(void)
   TEST_END("ra_usb_pprn_handle_setup rejects non-class / unknown / NULL");
 }
 
+/**
+ * @test test_mcdc_pprn
+ *
+ * @par MC/DC:
+ * Covers compound decisions flagged in docs/MCDC_GAPS.csv for
+ * libs/ra_hal/src/ra_usb_pprn.c.
+ *
+ * Decision A (line 156, 2 conds): pprn_init speed gate
+ *   `(speed != FS) && (speed != HS)` -- N+1=3.
+ * Decision B (line 251, 2 conds): pprn_send NULL-with-len
+ *   `(data == NULL) && (len != 0)` -- N+1=3.
+ * Decision C (line 254, 2 conds): pprn_send size envelope
+ *   `(len == 0) || (len > bulk_max_packet)` -- N+1=3.
+ * Decision D (lines 310-311, 2 conds): handle_setup envelope
+ *   `(bm != iface_in) && (bm != iface_out)` -- N+1=3.
+ * Decision E (lines 145-146, 3-condition OR chain): per DO-178C
+ *   6.4.4.3 representative-subset for a side-effect-free OR -- 3
+ *   lone-true vectors + 1 all-false vector.
+ */
+static void test_mcdc_pprn(void)
+{
+  TEST_BEGIN("pprn MC/DC: init / send envelope / handle_setup decisions");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pprn_init(k_ra_usb_speed_fs));
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pprn_init(k_ra_usb_speed_hs));
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_usb_pprn_init((ra_usb_speed_t)9U));
+
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pprn_init(k_ra_usb_speed_fs));
+
+  uint8_t buf[16] = {};
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_usb_pprn_send(nullptr, 0U));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_usb_pprn_send(nullptr, 4U));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pprn_send(buf, 4U));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_usb_pprn_send(buf, 1024U));
+
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_usb_pprn_attach_setup_handler(test_setup_cb, nullptr));
+  ra_usb_setup_t setup = {
+    .bm_request_type = (uint8_t)0xA1U,
+    .b_request       = (uint8_t)k_ra_pprn_req_get_device_id,
+    .w_value         = 0U,
+    .w_index         = 0U,
+    .w_length        = 0U,
+  };
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pprn_handle_setup(&setup));
+  setup.bm_request_type = (uint8_t)0x21U;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pprn_handle_setup(&setup));
+  setup.bm_request_type = (uint8_t)0x80U;
+  TEST_ASSERT_EQ((int32_t)k_ra_err_not_supported, (int32_t)ra_usb_pprn_handle_setup(&setup));
+
+  setup.bm_request_type    = (uint8_t)0xA1U;
+  const uint8_t requests[] = {
+    (uint8_t)k_ra_pprn_req_get_device_id,
+    (uint8_t)k_ra_pprn_req_get_port_status,
+    (uint8_t)k_ra_pprn_req_soft_reset,
+  };
+  for (uint8_t i = 0U; i < 3U; ++i) {
+    setup.b_request = requests[i];
+    TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pprn_handle_setup(&setup));
+  }
+  setup.b_request = 0x77U;
+  TEST_ASSERT_EQ((int32_t)k_ra_err_not_supported, (int32_t)ra_usb_pprn_handle_setup(&setup));
+
+  TEST_END("pprn MC/DC: init / send envelope / handle_setup decisions");
+}
+
 int32_t main(void)
 {
   test_init_default_status();
@@ -274,6 +343,7 @@ int32_t main(void)
   test_port_status_round_trip();
   test_handle_setup_dispatch();
   test_handle_setup_rejects();
+  test_mcdc_pprn();
   (void)fprintf(stderr, "[OK ] test_ra_usb_pprn.c\n");
   return 0;
 }
