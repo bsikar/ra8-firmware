@@ -37,6 +37,15 @@
  * `ra_error_handler.c` does not pull in a full CMSIS dependency -- it
  * is intentionally self-contained so a failure in CMSIS init cannot
  * prevent the fault handler from running.
+ *
+ * @pre None -- callable from any context, including a fault handler.
+ * @pre Build is not `RA_SIMULATOR_MODE` (no-op on the host).
+ * @post PRIMASK.PM = 1 on the target; no-op on the simulator host.
+ * @post No other CPU register is touched (clobber list is `memory`).
+ *
+ * @note Trivially thread-safe -- single CPSID instruction.
+ *
+ * @since 0.1.0
  */
 static inline void internal_disable_irq(void)
 {
@@ -53,6 +62,15 @@ static inline void internal_disable_irq(void)
  * debugger the instruction faults to the HardFault handler, which is
  * acceptable -- by the time we reach this function we have already
  * decided that continuing is unsafe.
+ *
+ * @pre Caller has already decided the firmware cannot continue.
+ * @pre Build is not `RA_SIMULATOR_MODE` (no-op on the host).
+ * @post Execution halts under debugger; otherwise faults to HardFault.
+ * @post Returns only if debugger steps over the BKPT.
+ *
+ * @note Single instruction; trivially thread-safe.
+ *
+ * @since 0.1.0
  */
 static inline void internal_bkpt(void)
 {
@@ -63,6 +81,19 @@ static inline void internal_bkpt(void)
 
 /**
  * @brief Architectural `__WFI` wrapper used inside the halt loop.
+ *
+ * @details Issues a `wfi` so the CPU drops into sleep until the next
+ *          exception. Used inside the post-fault halt loop so the MCU
+ *          is not burning power spinning.
+ *
+ * @pre Build is not `RA_SIMULATOR_MODE` (no-op on the host).
+ * @pre Called from the halt loop after IRQs have been masked.
+ * @post CPU enters WFI sleep until any exception wakes it.
+ * @post No register state modified.
+ *
+ * @note Single architectural instruction; trivially thread-safe.
+ *
+ * @since 0.1.0
  */
 static inline void internal_wfi(void)
 {
