@@ -32,11 +32,11 @@
  * @brief Internal numeric constants used by the implementation.
  */
 typedef enum : uint32_t {
-  k_ra_wdt_sup_min_stack       = 512U,    /**< Minimum acceptable stack size. */
-  k_ra_wdt_sup_max_priority    = 31U,     /**< Highest legal ThreadX priority. */
-  k_ra_wdt_sup_default_tick_ms = 1U,      /**< Default tick: 1 kHz kernel. */
-  k_ra_wdt_sup_slot_free       = 0U,      /**< Slot tag: empty. */
-  k_ra_wdt_sup_slot_used       = 1U,      /**< Slot tag: registered. */
+  k_ra_wdt_sup_min_stack       = 512U,        /**< Minimum acceptable stack size. */
+  k_ra_wdt_sup_max_priority    = 31U,         /**< Highest legal ThreadX priority. */
+  k_ra_wdt_sup_default_tick_ms = 1U,          /**< Default tick: 1 kHz kernel. */
+  k_ra_wdt_sup_slot_free       = 0U,          /**< Slot tag: empty. */
+  k_ra_wdt_sup_slot_used       = 1U,          /**< Slot tag: registered. */
   k_ra_wdt_sup_mutex_id        = 0x57445353U, /**< 'WDSS' marker for the mutex. */
   k_ra_wdt_sup_thread_id       = 0x57445354U, /**< 'WDST' marker for the thread. */
 } ra_wdt_sup_internal_t;
@@ -46,10 +46,10 @@ typedef enum : uint32_t {
  * @brief One row of the supervisor registry.
  */
 typedef struct {
-  uint8_t  state;                              /**< ``slot_free`` or ``slot_used``. */
-  char     name[k_ra_wdt_sup_name_max];        /**< Diagnostic name (NUL-terminated). */
-  uint32_t deadline_ms;                        /**< Max gap between check-ins. */
-  uint32_t last_checkin_ms;                    /**< Monotonic time of last check-in. */
+  uint8_t  state;                       /**< ``slot_free`` or ``slot_used``. */
+  char     name[k_ra_wdt_sup_name_max]; /**< Diagnostic name (NUL-terminated). */
+  uint32_t deadline_ms;                 /**< Max gap between check-ins. */
+  uint32_t last_checkin_ms;             /**< Monotonic time of last check-in. */
 } ra_wdt_sup_slot_t;
 
 /**
@@ -57,14 +57,14 @@ typedef struct {
  * @brief Module state -- entirely static.
  */
 typedef struct {
-  bool                    initialised;              /**< True after successful init. */
-  bool                    started;                  /**< True after start spawned the thread. */
-  ra_wdt_sup_cfg_t        cfg;                      /**< Cached configuration. */
+  bool                    initialised; /**< True after successful init. */
+  bool                    started;     /**< True after start spawned the thread. */
+  ra_wdt_sup_cfg_t        cfg;         /**< Cached configuration. */
   ra_wdt_sup_slot_t       slots[k_ra_wdt_sup_max_threads]; /**< Registry. */
-  TX_MUTEX                mutex;                    /**< Guards ``slots``. */
-  TX_THREAD               thread;                   /**< Supervisor thread control block. */
-  ra_wdt_sup_now_fn_t     now;                      /**< Monotonic-time hook. */
-  ra_wdt_sup_refresh_fn_t refresh;                  /**< WDT-refresh hook. */
+  TX_MUTEX                mutex;                           /**< Guards ``slots``. */
+  TX_THREAD               thread;                          /**< Supervisor thread control block. */
+  ra_wdt_sup_now_fn_t     now;                             /**< Monotonic-time hook. */
+  ra_wdt_sup_refresh_fn_t refresh;                         /**< WDT-refresh hook. */
 } ra_wdt_sup_state_t;
 
 /**
@@ -233,9 +233,42 @@ ra_err_t ra_wdt_supervisor_deinit(void)
   return k_ra_ok;
 }
 
-ra_err_t ra_wdt_supervisor_register_thread(const char* name,
-                                           uint32_t    deadline_ms,
-                                           uint8_t*    out_handle)
+/**
+ * @brief Initialise an unused slot with the caller's parameters.
+ *
+ * @details
+ * Helper extracted from ::ra_wdt_supervisor_register_thread so the
+ * outer function fits the project size threshold (NASA Power-of-10
+ * Rule 4 / clang-tidy ``readability-function-size``). The caller MUST
+ * already hold ``s_state.mutex``.
+ *
+ * @param[in] idx         Index of a free slot in ``s_state.slots``.
+ * @param[in] name        Caller-supplied thread name (NUL-terminated).
+ * @param[in] deadline_ms Per-thread deadline in milliseconds.
+ *
+ * @pre Caller holds ``s_state.mutex``.
+ * @pre ``idx`` < ::k_ra_wdt_sup_max_threads.
+ * @post ``s_state.slots[idx]`` is in the ``slot_used`` state.
+ */
+static void internal_fill_slot(uint8_t idx, const char* name, uint32_t deadline_ms)
+{
+  s_state.slots[idx].state           = (uint8_t)k_ra_wdt_sup_slot_used;
+  s_state.slots[idx].deadline_ms     = deadline_ms;
+  s_state.slots[idx].last_checkin_ms = s_state.now();
+  /* Bounded copy with explicit NUL termination. */
+  (void)memset(s_state.slots[idx].name, 0, sizeof s_state.slots[idx].name);
+  const size_t cap = (size_t)k_ra_wdt_sup_name_max - 1U;
+  for (size_t k = 0U; k < cap; ++k) {
+    const char ch = name[k];
+    if (ch == '\0') {
+      break;
+    }
+    s_state.slots[idx].name[k] = ch;
+  }
+}
+
+ra_err_t
+ra_wdt_supervisor_register_thread(const char* name, uint32_t deadline_ms, uint8_t* out_handle)
 {
   if (out_handle == nullptr) {
     return k_ra_err_null_ptr;
@@ -260,19 +293,7 @@ ra_err_t ra_wdt_supervisor_register_thread(const char* name,
   ra_err_t result = k_ra_err_no_mem;
   for (uint8_t i = 0U; i < (uint8_t)k_ra_wdt_sup_max_threads; ++i) {
     if (s_state.slots[i].state == (uint8_t)k_ra_wdt_sup_slot_free) {
-      s_state.slots[i].state       = (uint8_t)k_ra_wdt_sup_slot_used;
-      s_state.slots[i].deadline_ms = deadline_ms;
-      s_state.slots[i].last_checkin_ms = s_state.now();
-      /* Bounded copy with explicit NUL termination. */
-      (void)memset(s_state.slots[i].name, 0, sizeof s_state.slots[i].name);
-      const size_t cap = (size_t)k_ra_wdt_sup_name_max - 1U;
-      for (size_t k = 0U; k < cap; ++k) {
-        const char ch = name[k];
-        if (ch == '\0') {
-          break;
-        }
-        s_state.slots[i].name[k] = ch;
-      }
+      internal_fill_slot(i, name, deadline_ms);
       *out_handle = i;
       result      = k_ra_ok;
       break;
