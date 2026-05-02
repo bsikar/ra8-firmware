@@ -585,10 +585,14 @@ static VOID demo_worker(ULONG arg)
     return;
   }
 
-  /* Jiggle loop. */
+  /* Jiggle loop. The DCD bridge is currently driven in polled mode
+   * (USBFS_INT IRQ wiring is WIP); pump ra_usb_dispatch on every
+   * iteration so SETUP / BRDY / BEMP events drain INTSTS0 and the
+   * host can complete enumeration. */
   UX_SLAVE_CLASS_HID_EVENT hid_event;
   demo_phase_t             phase = k_demo_phase_right;
   while (1) {
+    ra_usb_dispatch(k_ra_usb_speed_fs);
     if (s_hid_class == UX_NULL) {
       tx_thread_sleep(k_demo_jiggle_period_ticks);
       continue;
