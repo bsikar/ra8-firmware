@@ -39,6 +39,7 @@
 
 #include <stdint.h>
 
+#include "ra_board_ek_ra8d2.h"
 #include "ra_err.h"
 #include "ra_gpio_constants.h"
 #include "ra_isr.h"
@@ -614,7 +615,7 @@ int32_t main(void)
    * out whatever is already there. The LED gives the user a visible
    * "ThreadX is alive" indication while the GUI thread paints.
    */
-  if (ra_gpio_output_init(k_ra_pin_led1, k_ra_level_low) != k_ra_ok) {
+  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
     while (1) {
       __asm__ volatile("wfi");
     }

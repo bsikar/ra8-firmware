@@ -44,6 +44,7 @@
 
 #include <stdint.h>
 
+#include "ra_board_ek_ra8d2.h"
 #include "ra_ble.h"
 #include "ra_ble_host.h"
 #include "ra_cgc.h"
@@ -473,7 +474,7 @@ static void ble_peripheral_clocks_or_halt(uint32_t* cpuclk0_hz, uint32_t* pclka_
   if (ra_time_init(*cpuclk0_hz) != k_ra_ok) {
     ble_peripheral_panic_halt();
   }
-  if (ra_gpio_output_init(k_ra_pin_led1, k_ra_level_low) != k_ra_ok) {
+  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
     ble_peripheral_panic_halt();
   }
 }
@@ -599,7 +600,7 @@ static void ble_peripheral_tick_battery(void)
                                    &s_ble_peripheral_battery_level,
                                    (uint16_t)sizeof(s_ble_peripheral_battery_level));
   (void)ra_ble_host_gatt_notify(s_ble_peripheral_level_handle);
-  (void)ra_gpio_toggle(k_ra_pin_led1);
+  (void)ra_board_led_toggle(k_ra_board_led1);
 }
 
 #pragma GCC diagnostic push
