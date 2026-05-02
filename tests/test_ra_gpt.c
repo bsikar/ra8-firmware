@@ -823,6 +823,100 @@ static void test_gpt_three_phase_arg_validation(void)
   TEST_END("gpt three_phase_open / set_duty arg validation");
 }
 
+/**
+ * @test test_mcdc_write_dma_arg_guard
+ *
+ * @par MC/DC:
+ * Decision: `if ((channel >= (uint8_t)k_ra_gpt_channel_count) ||
+ *               (count == 0U))`
+ * (2 conditions, libs/ra_hal/src/ra_gpt.c line 634 -- gap row 369 in CSV;
+ * the same shape repeats at line 688 for ra_gpt_read_dma)
+ * - Vector 1: channel=valid, count=1   -> F,F decision F -> ok.
+ * - Vector 2: channel=99, count=1      -> T,_ decision T -> invalid_arg.
+ * - Vector 3: channel=valid, count=0   -> F,T decision T -> invalid_arg.
+ * MC/DC pair for C1: V1(F,F)->F vs V2(T,_)->T (decision flips, C2
+ * masked in V2 by short-circuit). MC/DC pair for C2: V1(F,F)->F vs
+ * V3(F,T)->T (decision flips, C1 held F). N+1 = 3 vectors for N=2
+ * conditions: minimal MC/DC.
+ */
+static void test_mcdc_write_dma_arg_guard(void)
+{
+  TEST_BEGIN("gpt write_dma MC/DC: channel>=cnt || count==0");
+  prep_w35();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dma_init());
+  const ra_gpt_cfg_t cfg = make_gpt_cfg();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_gpt_init((uint8_t)k_ra_gpt_test_channel_valid, &cfg));
+
+  const uint32_t periods[] = {0xAAAAAAAAUL};
+  uint8_t        dch       = 0xFFU;
+
+  /* Vector 1: in-range channel, non-zero count -> ok. */
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_ok,
+    (int32_t)
+      ra_gpt_write_dma((uint8_t)k_ra_gpt_test_channel_valid, periods, 1U, nullptr, nullptr, &dch));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dma_release(dch));
+
+  /* Vector 2: out-of-range channel -> C1=T short-circuit. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_gpt_write_dma(99U, periods, 1U, nullptr, nullptr, &dch));
+
+  /* Vector 3: count==0 -> C1=F, C2=T. */
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_invalid_arg,
+    (int32_t)
+      ra_gpt_write_dma((uint8_t)k_ra_gpt_test_channel_valid, periods, 0U, nullptr, nullptr, &dch));
+
+  TEST_END("gpt write_dma MC/DC: channel>=cnt || count==0");
+}
+
+/**
+ * @test test_mcdc_dead_time_set_tde_predicate
+ *
+ * @par MC/DC:
+ * Decision: `reg->GTDTCR = ((rising_dt != 0U) || (falling_dt != 0U))
+ *                          ? k_ra_gpt_gtdtcr_tde : 0U;`
+ * (2 conditions, libs/ra_hal/src/ra_gpt.c line 931 -- gap row 545 in CSV)
+ * Decision is observed via the GTDTCR register value after the call.
+ * - Vector 1: rising=0,    falling=0    -> F,F decision F -> GTDTCR=0
+ * - Vector 2: rising!=0,   falling=0    -> T,_ decision T -> GTDTCR=TDE
+ * - Vector 3: rising=0,    falling!=0   -> F,T decision T -> GTDTCR=TDE
+ * MC/DC pair for C1: V1(F,F)->F vs V2(T,_)->T. MC/DC pair for C2:
+ * V1(F,F)->F vs V3(F,T)->T. N+1 = 3 vectors for N=2 conditions:
+ * minimal MC/DC.
+ */
+static void test_mcdc_dead_time_set_tde_predicate(void)
+{
+  TEST_BEGIN("gpt dead_time_set MC/DC: rising!=0 || falling!=0");
+  prep_w35();
+  const ra_gpt_cfg_t cfg = make_gpt_cfg();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_gpt_init((uint8_t)k_ra_gpt_test_channel_valid, &cfg));
+  volatile r_gpt_channel_regs_t* reg = ra_gpt((uint8_t)k_ra_gpt_test_channel_valid);
+
+  /* Vector 1: both zero -> TDE cleared. */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_gpt_dead_time_set((uint8_t)k_ra_gpt_test_channel_valid, 0U, 0U));
+  TEST_ASSERT_EQ((int32_t)0, (int32_t)reg->GTDTCR);
+
+  /* Vector 2: rising != 0 -> TDE asserted. */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_gpt_dead_time_set((uint8_t)k_ra_gpt_test_channel_valid,
+                                               (uint32_t)k_ra_gpt_t2_dt_rise,
+                                               0U));
+  TEST_ASSERT_EQ((int32_t)k_ra_gpt_t2_gtdtcr_tde, (int32_t)reg->GTDTCR);
+
+  /* Vector 3: falling != 0 only -> TDE asserted. */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_gpt_dead_time_set((uint8_t)k_ra_gpt_test_channel_valid,
+                                               0U,
+                                               (uint32_t)k_ra_gpt_t2_dt_fall));
+  TEST_ASSERT_EQ((int32_t)k_ra_gpt_t2_gtdtcr_tde, (int32_t)reg->GTDTCR);
+
+  TEST_END("gpt dead_time_set MC/DC: rising!=0 || falling!=0");
+}
+
 int32_t main(void)
 {
   test_start_happy();
@@ -863,6 +957,8 @@ int32_t main(void)
   test_gpt_three_phase_set_duty_atomic();
   test_gpt_three_phase_close_stops_all();
   test_gpt_three_phase_arg_validation();
+  test_mcdc_write_dma_arg_guard();
+  test_mcdc_dead_time_set_tde_predicate();
   (void)fprintf(stderr, "[OK ] test_ra_gpt.c\n");
   return 0;
 }

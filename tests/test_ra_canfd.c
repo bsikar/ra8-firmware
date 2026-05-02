@@ -620,6 +620,99 @@ static void test_set_iso_mode_toggles_niso(void)
   TEST_END("canfd set_iso_mode toggles CFDGFDCFG.NISO");
 }
 
+/**
+ * @test test_mcdc_set_bitrate_data_rate_guard
+ *
+ * @par MC/DC:
+ * Decision: `if ((data_bitrate_bps != 0U) &&
+ *               (data_bitrate_bps > bitrate_bps))`
+ * (2 conditions, libs/ra_hal/src/ra_canfd.c line 313 -- gap row 313 in CSV)
+ * - Vector 1: data=0, nominal=250k -> C1=F short-circuits.
+ *   Decision F -> classic CAN, ok.
+ * - Vector 2: data=500k, nominal=500k -> C1=T, C2=(500k>500k)=F.
+ *   Decision F -> CAN-FD with same nominal/data rate, ok (varies C2).
+ * - Vector 3: data=1M, nominal=250k -> C1=T, C2=(1M>250k)=T.
+ *   Decision T -> invalid_arg.
+ * MC/DC pair for C1: V1(F,_)->F vs V3(T,T)->T (decision flips, C2
+ * masked in V1 by short-circuit). MC/DC pair for C2: V2(T,F)->F vs
+ * V3(T,T)->T (decision flips, C1 held T). N+1 = 3 vectors for N=2
+ * conditions: minimal MC/DC.
+ */
+static void test_mcdc_set_bitrate_data_rate_guard(void)
+{
+  TEST_BEGIN("canfd set_bitrate MC/DC: data_bitrate!=0 && data>nominal");
+  ra_sim_mmap_reset();
+
+  /* Vector 1: data=0 -> classic CAN path. */
+  TEST_ASSERT_EQ((int)k_ra_ok,
+                 (int)ra_canfd_set_bitrate((uint8_t)k_ra_canfd_test_channel_0,
+                                           (uint32_t)k_ra_test_bitrate_500k,
+                                           0U));
+
+  /* Vector 2: data == nominal (both 500k) -> same rate, decision F. */
+  TEST_ASSERT_EQ((int)k_ra_ok,
+                 (int)ra_canfd_set_bitrate((uint8_t)k_ra_canfd_test_channel_0,
+                                           (uint32_t)k_ra_test_bitrate_500k,
+                                           (uint32_t)k_ra_test_bitrate_500k));
+
+  /* Vector 3: data > nominal -> decision T -> invalid_arg. */
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
+                 (int)ra_canfd_set_bitrate((uint8_t)k_ra_canfd_test_channel_0,
+                                           (uint32_t)k_ra_test_bitrate_250k,
+                                           (uint32_t)k_ra_test_bitrate_1m));
+
+  TEST_END("canfd set_bitrate MC/DC: data_bitrate!=0 && data>nominal");
+}
+
+/**
+ * @test test_mcdc_validate_frame_brs_without_fd
+ *
+ * @par MC/DC:
+ * Decision: `if ((frame->is_brs != 0U) && (frame->is_fd == 0U))`
+ * (2 conditions, libs/ra_hal/src/ra_canfd.c line 485 -- gap row 346 in CSV)
+ * - Vector 1: brs=0, fd=0 -> C1=F short-circuit. Decision F -> ok
+ *   (classic CAN frame).
+ * - Vector 2: brs=1, fd=1 -> C1=T, C2=F. Decision F -> ok
+ *   (CAN-FD with bit-rate-switch; varies C2 vs V3).
+ * - Vector 3: brs=1, fd=0 -> C1=T, C2=T. Decision T -> invalid_arg
+ *   (BRS demanded without enabling FD; varies C1 vs V1).
+ * MC/DC pair for C1: V1(F,_)->F vs V3(T,T)->T. MC/DC pair for C2:
+ * V2(T,F)->F vs V3(T,T)->T. N+1 = 3 vectors for N=2 conditions:
+ * minimal MC/DC.
+ */
+static void test_mcdc_validate_frame_brs_without_fd(void)
+{
+  TEST_BEGIN("canfd validate_frame MC/DC: is_brs && !is_fd");
+  ra_sim_mmap_reset();
+
+  /* Vector 1: brs=0, fd=0 -> classic CAN frame, ok. */
+  ra_canfd_frame_t f1 = {};
+  f1.id               = (uint32_t)k_ra_test_std_id;
+  f1.dlc              = 4U;
+  f1.is_extended      = 0U;
+  f1.is_fd            = 0U;
+  f1.is_brs           = 0U;
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_canfd_transmit((uint8_t)k_ra_canfd_test_channel_0, &f1));
+
+  /* Vector 2: brs=1, fd=1 -> CAN-FD with BRS, ok. */
+  ra_canfd_frame_t f2 = {};
+  f2.id               = (uint32_t)k_ra_test_std_id;
+  f2.dlc              = 4U;
+  f2.is_extended      = 0U;
+  f2.is_fd            = 1U;
+  f2.is_brs           = 1U;
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_canfd_transmit((uint8_t)k_ra_canfd_test_channel_0, &f2));
+
+  /* Vector 3: brs=1, fd=0 -> rejected. */
+  ra_canfd_frame_t f3 = {};
+  f3.is_brs           = 1U;
+  f3.is_fd            = 0U;
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
+                 (int)ra_canfd_transmit((uint8_t)k_ra_canfd_test_channel_0, &f3));
+
+  TEST_END("canfd validate_frame MC/DC: is_brs && !is_fd");
+}
+
 int32_t main(void)
 {
   test_init_channel0_happy();
@@ -660,6 +753,8 @@ int32_t main(void)
   test_filter_set_validation();
   test_set_brs_updates_dcfg();
   test_set_iso_mode_toggles_niso();
+  test_mcdc_set_bitrate_data_rate_guard();
+  test_mcdc_validate_frame_brs_without_fd();
   (void)fprintf(stderr, "[OK ] test_ra_canfd.c\n");
   return 0;
 }
