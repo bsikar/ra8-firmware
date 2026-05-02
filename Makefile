@@ -63,7 +63,7 @@ help:
 	@echo "  make test-docker host-compile + run unit tests in Linux container"
 	@echo "  make ctest     rerun just ctest (assumes already built)"
 	@echo "  make coverage  generate lcov+genhtml HTML coverage report"
-	@echo "  make mcdc      generate DO-178B Level B MC/DC report (clang >= 18)"
+	@echo "  make mcdc      generate DO-178C Level B MC/DC report (clang >= 18)"
 	@echo "  make docs      generate doxygen HTML into build/docs/html/"
 	@echo "  make dashboard regenerate docs/ROADMAP_DASHBOARD.md + docs/badges/"
 	@echo "  make ascii     fix-encoding.py --check"
