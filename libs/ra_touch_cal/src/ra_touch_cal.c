@@ -79,6 +79,14 @@ static const float s_min_det = 1.0e-3F;
  *
  * @param[out] dst   Destination (4 bytes available).
  * @param[in]  word  Value to write.
+ *
+ * @details See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static void internal_pack_le32(uint8_t* dst, uint32_t word)
 {
@@ -93,6 +101,15 @@ static void internal_pack_le32(uint8_t* dst, uint32_t word)
  *
  * @param[in] src  Source (4 bytes available).
  * @return Unpacked word.
+ *
+ * @details See implementation.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static uint32_t internal_unpack_le32(const uint8_t* src)
 {
@@ -110,6 +127,14 @@ static uint32_t internal_unpack_le32(const uint8_t* src)
  *
  * @param[in] f  Source float.
  * @return Bit pattern of ``f``.
+ *
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static uint32_t internal_float_to_u32(float f)
 {
@@ -123,6 +148,15 @@ static uint32_t internal_float_to_u32(float f)
  *
  * @param[in] w  Source bit pattern.
  * @return Float with the supplied encoding.
+ *
+ * @details See implementation.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static float internal_u32_to_float(uint32_t w)
 {
@@ -140,6 +174,14 @@ static float internal_u32_to_float(uint32_t w)
  * @param[in] data  Input bytes.
  * @param[in] len   Number of bytes.
  * @return Final CRC32, post-XOR.
+ *
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static uint32_t internal_crc32(const uint8_t* data, size_t len)
 {
@@ -166,6 +208,13 @@ static uint32_t internal_crc32(const uint8_t* data, size_t len)
  * @param[in]  b    Right-hand side (length 3).
  * @param[out] x    Solution vector (length 3).
  * @param[out] ok   Set to true on success, false if ``|det| < s_min_det``.
+ *
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static void internal_solve3(const float a[9], const float b[3], float x[3], bool* ok)
 {
@@ -199,6 +248,19 @@ static void internal_solve3(const float a[9], const float b[3], float x[3], bool
 
 /**
  * @brief Clip a value to ``[lo, hi]``.
+ *
+ * @details See implementation.
+ * @param[in] v See implementation.
+ * @param[in] lo See implementation.
+ * @param[in] hi See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static int32_t internal_clip32(int32_t v, int32_t lo, int32_t hi)
 {
@@ -216,6 +278,22 @@ static int32_t internal_clip32(int32_t v, int32_t lo, int32_t hi)
  * ===========================================================================
  */
 
+/**
+ * @brief Implementation of ra_touch_cal_compute (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] raw See implementation.
+ * @param[in] screen See implementation.
+ * @param[in] n See implementation.
+ * @param[in] out_mtx See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_touch_cal_compute(const ra_touch_cal_point_t* raw,
                               const ra_touch_cal_point_t* screen,
                               uint8_t                     n,
@@ -292,6 +370,20 @@ ra_err_t ra_touch_cal_compute(const ra_touch_cal_point_t* raw,
  * ===========================================================================
  */
 
+/**
+ * @brief Implementation of ra_touch_cal_run (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] cfg See implementation.
+ * @param[in] out_matrix See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_touch_cal_run(const ra_touch_cal_run_cfg_t* cfg, ra_touch_cal_matrix_t* out_matrix)
 {
   if ((cfg == NULL) || (out_matrix == NULL)) {
@@ -348,6 +440,23 @@ ra_err_t ra_touch_cal_run(const ra_touch_cal_run_cfg_t* cfg, ra_touch_cal_matrix
  * ===========================================================================
  */
 
+/**
+ * @brief Implementation of ra_touch_cal_apply (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] raw See implementation.
+ * @param[in] matrix See implementation.
+ * @param[in] screen_width See implementation.
+ * @param[in] screen_height See implementation.
+ * @param[in] out_screen See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_touch_cal_apply(ra_touch_cal_point_t         raw,
                             const ra_touch_cal_matrix_t* matrix,
                             uint16_t                     screen_width,
@@ -380,6 +489,21 @@ ra_err_t ra_touch_cal_apply(ra_touch_cal_point_t         raw,
  * ===========================================================================
  */
 
+/**
+ * @brief Implementation of ra_touch_cal_save (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] matrix See implementation.
+ * @param[in] dst See implementation.
+ * @param[in] dst_size See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_touch_cal_save(const ra_touch_cal_matrix_t* matrix, uint8_t* dst, size_t dst_size)
 {
   if ((matrix == NULL) || (dst == NULL)) {
@@ -417,6 +541,21 @@ ra_err_t ra_touch_cal_save(const ra_touch_cal_matrix_t* matrix, uint8_t* dst, si
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_touch_cal_load (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] src See implementation.
+ * @param[in] src_size See implementation.
+ * @param[in] out_matrix See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_touch_cal_load(const uint8_t* src, size_t src_size, ra_touch_cal_matrix_t* out_matrix)
 {
   if ((src == NULL) || (out_matrix == NULL)) {

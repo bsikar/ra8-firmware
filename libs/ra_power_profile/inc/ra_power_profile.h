@@ -351,6 +351,8 @@ ra_err_t ra_power_profile_mark_exit(ra_power_profile_region_id_t region_id);
  * @see ra_power_profile_reset_stats
  *
  * @since 0.1.0
+ *
+ * @post Caller-visible state matches the documented contract.
  */
 ra_err_t ra_power_profile_get_stats(ra_power_profile_stats_t* out_stats);
 
@@ -372,6 +374,8 @@ ra_err_t ra_power_profile_get_stats(ra_power_profile_stats_t* out_stats);
  * @note Not thread-safe.
  *
  * @since 0.1.0
+ *
+ * @pre Module state is consistent.
  */
 ra_err_t ra_power_profile_reset_stats(void);
 

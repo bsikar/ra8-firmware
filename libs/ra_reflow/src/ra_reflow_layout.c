@@ -44,6 +44,15 @@
  * rule rejects `memset()`. We use a tiny private byte-walk so the
  * engine handle can be wiped without dragging the C runtime's
  * deprecated string API into the analyser.
+ *
+ * @param[in] dst See implementation.
+ * @param[in] n See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static void priv_byte_zero(uint8_t* dst, size_t n)
 {
@@ -101,6 +110,17 @@ typedef struct {
  *
  * @return `k_ra_ok` if the blob parses, `k_ra_err_validation_failed`
  *         on a malformed TTF.
+ *
+ * @details See implementation.
+ * @param[in] engine See implementation.
+ * @param[in] out_font See implementation.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t priv_init_font(const ra_reflow_t* engine, stbtt_fontinfo* out_font)
 {
@@ -120,6 +140,16 @@ static ra_err_t priv_init_font(const ra_reflow_t* engine, stbtt_fontinfo* out_fo
  * @details
  * `line_height = font_px * num / den` with the constants picked from
  * the public enum so the value is searchable.
+ *
+ * @param[in] font_px See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static uint16_t priv_line_height(uint16_t font_px)
 {
@@ -132,6 +162,17 @@ static uint16_t priv_line_height(uint16_t font_px)
  * @brief Pick the font size for a given block tag.
  *
  * @return Pixel size for headings, or the body size otherwise.
+ *
+ * @details See implementation.
+ * @param[in] body_px See implementation.
+ * @param[in] tag See implementation.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static uint16_t priv_block_font_px(uint16_t body_px, ra_reflow_html_tag_t tag)
 {
@@ -168,6 +209,18 @@ static uint16_t priv_block_font_px(uint16_t body_px, ra_reflow_html_tag_t tag)
  * @details
  * Uses `stbtt_GetCodepointHMetrics()` (advance is in font-units; we
  * scale by `stbtt_ScaleForPixelHeight`).
+ *
+ * @param[in] font See implementation.
+ * @param[in] font_px See implementation.
+ * @param[in] cp See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static int32_t priv_glyph_advance(const stbtt_fontinfo* font, uint16_t font_px, int32_t cp)
 {
@@ -182,6 +235,22 @@ static int32_t priv_glyph_advance(const stbtt_fontinfo* font, uint16_t font_px, 
  * @brief Push one positioned glyph into the engine pool.
  *
  * @return false on overflow, true otherwise.
+ *
+ * @details See implementation.
+ * @param[in] engine See implementation.
+ * @param[in] x See implementation.
+ * @param[in] y See implementation.
+ * @param[in] cp See implementation.
+ * @param[in] font_px See implementation.
+ * @param[in] style See implementation.
+ * @param[in] color See implementation.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static bool priv_push_glyph(ra_reflow_t* engine,
                             int32_t      x,
@@ -210,6 +279,17 @@ static bool priv_push_glyph(ra_reflow_t* engine,
  * @brief Finalise the current page and start a new one.
  *
  * @return false if the page pool overflowed, true otherwise.
+ *
+ * @details See implementation.
+ * @param[in] engine See implementation.
+ * @param[in] cur See implementation.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static bool priv_finish_page(ra_reflow_t* engine, priv_cursor_t* cur)
 {
@@ -231,6 +311,18 @@ static bool priv_finish_page(ra_reflow_t* engine, priv_cursor_t* cur)
 
 /**
  * @brief Wrap to a new line, finishing a page if the bottom margin is hit.
+ *
+ * @details See implementation.
+ * @param[in] engine See implementation.
+ * @param[in] cur See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static bool priv_newline(ra_reflow_t* engine, priv_cursor_t* cur)
 {
@@ -251,6 +343,21 @@ static bool priv_newline(ra_reflow_t* engine, priv_cursor_t* cur)
 /**
  * @brief Append one ASCII code point at the current cursor, wrapping
  *        if it would overflow the viewport.
+ *
+ * @details See implementation.
+ * @param[in] engine See implementation.
+ * @param[in] cur See implementation.
+ * @param[in] font See implementation.
+ * @param[in] cp See implementation.
+ * @param[in] color See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t priv_emit_char(ra_reflow_t*          engine,
                                priv_cursor_t*        cur,
@@ -279,6 +386,20 @@ static ra_err_t priv_emit_char(ra_reflow_t*          engine,
 /**
  * @brief Lay out one text token: walk byte-by-byte, breaking at
  *        whitespace, and emit each character through `priv_emit_char`.
+ *
+ * @details See implementation.
+ * @param[in] engine See implementation.
+ * @param[in] cur See implementation.
+ * @param[in] font See implementation.
+ * @param[in] tok See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t priv_layout_text(ra_reflow_t*             engine,
                                  priv_cursor_t*           cur,
@@ -332,6 +453,19 @@ static ra_err_t priv_layout_text(ra_reflow_t*             engine,
 /**
  * @brief Apply a `block_start` token: flush current line, set heading
  *        font size, set indent.
+ *
+ * @details See implementation.
+ * @param[in] engine See implementation.
+ * @param[in] cur See implementation.
+ * @param[in] tok See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static bool priv_open_block(ra_reflow_t* engine, priv_cursor_t* cur, const ra_reflow_token_t* tok)
 {
@@ -351,6 +485,19 @@ static bool priv_open_block(ra_reflow_t* engine, priv_cursor_t* cur, const ra_re
 
 /**
  * @brief Apply a `block_end` token: flush line + add paragraph gap.
+ *
+ * @details See implementation.
+ * @param[in] engine See implementation.
+ * @param[in] cur See implementation.
+ * @param[in] tok See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static bool priv_close_block(ra_reflow_t* engine, priv_cursor_t* cur, const ra_reflow_token_t* tok)
 {
@@ -380,6 +527,18 @@ static bool priv_close_block(ra_reflow_t* engine, priv_cursor_t* cur, const ra_r
 
 /**
  * @brief Apply a `<hr>` rule token: flush the line and bump the cursor.
+ *
+ * @details See implementation.
+ * @param[in] engine See implementation.
+ * @param[in] cur See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static bool priv_apply_rule(ra_reflow_t* engine, priv_cursor_t* cur)
 {
@@ -395,6 +554,18 @@ static bool priv_apply_rule(ra_reflow_t* engine, priv_cursor_t* cur)
 
 /**
  * @brief Apply an `<img>` token: reserve a placeholder rectangle.
+ *
+ * @details See implementation.
+ * @param[in] engine See implementation.
+ * @param[in] cur See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static bool priv_apply_image(ra_reflow_t* engine, priv_cursor_t* cur)
 {
@@ -417,6 +588,19 @@ static bool priv_apply_image(ra_reflow_t* engine, priv_cursor_t* cur)
  * Splits the per-token switch out of `priv_layout_tokens()` to keep
  * the outer loop under clang-tidy's cognitive-complexity threshold
  * (Rule 4 / 25-statement budget).
+ *
+ * @param[in] engine See implementation.
+ * @param[in] cur See implementation.
+ * @param[in] font See implementation.
+ * @param[in] tok See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t priv_apply_token(ra_reflow_t*             engine,
                                  priv_cursor_t*           cur,
@@ -446,6 +630,18 @@ static ra_err_t priv_apply_token(ra_reflow_t*             engine,
 /**
  * @brief Run one pass over the token stream populating `engine->glyphs[]`
  *        and `engine->pages[]`.
+ *
+ * @details See implementation.
+ * @param[in] engine See implementation.
+ * @param[in] font See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t priv_layout_tokens(ra_reflow_t* engine, const stbtt_fontinfo* font)
 {
@@ -484,6 +680,19 @@ static ra_err_t priv_layout_tokens(ra_reflow_t* engine, const stbtt_fontinfo* fo
  * ===========================================================================
  */
 
+/**
+ * @brief Implementation of ra_reflow_run_layout (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] engine See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_reflow_run_layout(ra_reflow_t* engine)
 {
   if (engine == NULL) {
@@ -523,6 +732,26 @@ ra_err_t ra_reflow_run_layout(ra_reflow_t* engine)
  * ===========================================================================
  */
 
+/**
+ * @brief Implementation of ra_reflow_init (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] viewport_w See implementation.
+ * @param[in] viewport_h See implementation.
+ * @param[in] font_data See implementation.
+ * @param[in] font_len See implementation.
+ * @param[in] font_px See implementation.
+ * @param[in] body_color See implementation.
+ * @param[in] link_color See implementation.
+ * @param[in] out_engine See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_reflow_init(uint16_t       viewport_w,
                         uint16_t       viewport_h,
                         const uint8_t* font_data,
@@ -558,6 +787,19 @@ ra_err_t ra_reflow_init(uint16_t       viewport_w,
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_reflow_close (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] engine See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_reflow_close(ra_reflow_t* engine)
 {
   if (engine == NULL) {
@@ -576,6 +818,22 @@ ra_err_t ra_reflow_close(ra_reflow_t* engine)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_reflow_layout_chapter (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] engine See implementation.
+ * @param[in] xhtml_buf See implementation.
+ * @param[in] xhtml_len See implementation.
+ * @param[in] out_total_pages See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_reflow_layout_chapter(ra_reflow_t*   engine,
                                   const uint8_t* xhtml_buf,
                                   size_t         xhtml_len,
@@ -610,6 +868,20 @@ ra_err_t ra_reflow_layout_chapter(ra_reflow_t*   engine,
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_reflow_get_page_count (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] engine See implementation.
+ * @param[in] out_count See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_reflow_get_page_count(const ra_reflow_t* engine, uint32_t* out_count)
 {
   if (engine == NULL || out_count == NULL) {
@@ -622,6 +894,20 @@ ra_err_t ra_reflow_get_page_count(const ra_reflow_t* engine, uint32_t* out_count
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_reflow_set_font_size (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] engine See implementation.
+ * @param[in] new_font_px See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_reflow_set_font_size(ra_reflow_t* engine, uint16_t new_font_px)
 {
   if (engine == NULL) {

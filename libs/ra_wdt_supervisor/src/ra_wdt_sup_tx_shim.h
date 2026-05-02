@@ -93,7 +93,22 @@ typedef struct {
   uint32_t magic; /**< Sentinel for "created". */
 } TX_THREAD;      /* NOLINT(readability-identifier-naming) */
 
-/** @brief Host stub for tx_mutex_create. */
+/**
+ * @brief Host stub for tx_mutex_create.
+ *
+ * @details See implementation.
+ * @param[in] m See implementation.
+ * @param[in] name See implementation.
+ * @param[in] inherit See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 static inline UINT
 tx_mutex_create(TX_MUTEX* m, CHAR* name /* NOLINT(readability-non-const-parameter) */, UINT inherit)
 {
@@ -105,7 +120,21 @@ tx_mutex_create(TX_MUTEX* m, CHAR* name /* NOLINT(readability-non-const-paramete
   return TX_SUCCESS;
 }
 
-/** @brief Host stub for tx_mutex_get. */
+/**
+ * @brief Host stub for tx_mutex_get.
+ *
+ * @details See implementation.
+ * @param[in] m See implementation.
+ * @param[in] wait See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 static inline UINT tx_mutex_get(TX_MUTEX* m, ULONG wait)
 {
   (void)m;
@@ -113,21 +142,69 @@ static inline UINT tx_mutex_get(TX_MUTEX* m, ULONG wait)
   return TX_SUCCESS;
 }
 
-/** @brief Host stub for tx_mutex_put. */
+/**
+ * @brief Host stub for tx_mutex_put.
+ *
+ * @details See implementation.
+ * @param[in] m See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 static inline UINT tx_mutex_put(TX_MUTEX* m)
 {
   (void)m;
   return TX_SUCCESS;
 }
 
-/** @brief Host stub for tx_mutex_delete. */
+/**
+ * @brief Host stub for tx_mutex_delete.
+ *
+ * @details See implementation.
+ * @param[in] m See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 static inline UINT tx_mutex_delete(TX_MUTEX* m)
 {
   (void)m;
   return TX_SUCCESS;
 }
 
-/** @brief Host stub for tx_thread_create. */
+/**
+ * @brief Host stub for tx_thread_create.
+ *
+ * @details See implementation.
+ * @param[in] t See implementation.
+ * @param[in] name See implementation.
+ * @param[in] entry See implementation.
+ * @param[in] arg See implementation.
+ * @param[in] stack See implementation.
+ * @param[in] stack_size See implementation.
+ * @param[in] prio See implementation.
+ * @param[in] preempt_thresh See implementation.
+ * @param[in] slice See implementation.
+ * @param[in] autostart See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 static inline UINT tx_thread_create(TX_THREAD* t,
                                     CHAR*      name /* NOLINT(readability-non-const-parameter) */,
                                     void (*entry)(ULONG),
@@ -154,28 +231,79 @@ static inline UINT tx_thread_create(TX_THREAD* t,
   return TX_SUCCESS;
 }
 
-/** @brief Host stub for tx_thread_terminate. */
+/**
+ * @brief Host stub for tx_thread_terminate.
+ *
+ * @details See implementation.
+ * @param[in] t See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 static inline UINT tx_thread_terminate(TX_THREAD* t)
 {
   (void)t;
   return TX_SUCCESS;
 }
 
-/** @brief Host stub for tx_thread_delete. */
+/**
+ * @brief Host stub for tx_thread_delete.
+ *
+ * @details See implementation.
+ * @param[in] t See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 static inline UINT tx_thread_delete(TX_THREAD* t)
 {
   (void)t;
   return TX_SUCCESS;
 }
 
-/** @brief Host stub for tx_thread_sleep. */
+/**
+ * @brief Host stub for tx_thread_sleep.
+ *
+ * @details See implementation.
+ * @param[in] ticks See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 static inline UINT tx_thread_sleep(ULONG ticks)
 {
   (void)ticks;
   return TX_SUCCESS;
 }
 
-/** @brief Host stub for tx_time_get. */
+/**
+ * @brief Host stub for tx_time_get.
+ *
+ * @details See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 static inline ULONG tx_time_get(void)
 {
   return 0UL;

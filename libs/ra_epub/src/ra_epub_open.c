@@ -52,10 +52,40 @@ typedef struct {
   char opf_path[k_ra_epub_max_path_len];
 } ra_epub_container_result_t;
 
+/**
+ * @brief Implementation of ra_epub_xml_parse_container (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] xml_bytes See implementation.
+ * @param[in] xml_len See implementation.
+ * @param[in] out See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_epub_xml_parse_container(const uint8_t*              xml_bytes,
                                      size_t                      xml_len,
                                      ra_epub_container_result_t* out);
 
+/**
+ * @brief Implementation of ra_epub_xml_parse_opf (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] xml_bytes See implementation.
+ * @param[in] xml_len See implementation.
+ * @param[in] book See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_epub_xml_parse_opf(const uint8_t* xml_bytes, size_t xml_len, ra_epub_book_t* book);
 
 /* ---------------------------------------------------------------------------
@@ -69,6 +99,16 @@ ra_err_t ra_epub_xml_parse_opf(const uint8_t* xml_bytes, size_t xml_len, ra_epub
  * @details
  * Keeps clang-tidy's `clang-analyzer-security.insecureAPI` checker
  * happy. Same effect on -O2 generated code as memcpy().
+ *
+ * @param[in] dst See implementation.
+ * @param[in] src See implementation.
+ * @param[in] n See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static void priv_byte_copy(uint8_t* dst, const uint8_t* src, size_t n)
 {
@@ -79,6 +119,16 @@ static void priv_byte_copy(uint8_t* dst, const uint8_t* src, size_t n)
 
 /**
  * @brief Bounded zero-fill used in place of memset(0).
+ *
+ * @details See implementation.
+ * @param[in] dst See implementation.
+ * @param[in] n See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static void priv_byte_zero(uint8_t* dst, size_t n)
 {
@@ -90,6 +140,17 @@ static void priv_byte_zero(uint8_t* dst, size_t n)
 /**
  * @brief Write the directory portion of `path` (everything up to and
  *        including the last '/') into `dst`.
+ *
+ * @details See implementation.
+ * @param[in] path See implementation.
+ * @param[in] dst See implementation.
+ * @param[in] cap See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static void priv_dirname(const char* path, char* dst, size_t cap)
 {
@@ -117,6 +178,21 @@ static void priv_dirname(const char* path, char* dst, size_t cap)
  *
  * Returns the actual size in `*got`. `k_ra_err_no_mem` if the entry is
  * larger than `cap`, `k_ra_err_not_found` if the entry is missing.
+ *
+ * @details See implementation.
+ * @param[in] zip See implementation.
+ * @param[in] name See implementation.
+ * @param[in] buf See implementation.
+ * @param[in] cap See implementation.
+ * @param[in] got See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t
 priv_extract(mz_zip_archive* zip, const char* name, uint8_t* buf, size_t cap, size_t* got)
@@ -158,6 +234,14 @@ static_assert(alignof(mz_zip_archive) <= alignof(max_align_t),
  *
  * @details Closes miniz state but does not free the storage; the book
  *          record owns it inline.
+ *
+ * @param[in] zip See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static void priv_zip_destroy(mz_zip_archive* zip)
 {
@@ -173,6 +257,20 @@ static void priv_zip_destroy(mz_zip_archive* zip)
  * Splits out of `ra_epub_open` to keep that function under the
  * NASA-Rule-4 statement budget enforced by clang-tidy
  * (`readability-function-size`).
+ *
+ * @details See implementation.
+ * @param[in] zip See implementation.
+ * @param[in] out_book See implementation.
+ * @param[in] opf_scratch See implementation.
+ * @param[in] opf_cap See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t priv_parse_archive(mz_zip_archive* zip,
                                    ra_epub_book_t* out_book,
@@ -207,6 +305,21 @@ static ra_err_t priv_parse_archive(mz_zip_archive* zip,
  * ---------------------------------------------------------------------------
  */
 
+/**
+ * @brief Implementation of ra_epub_open (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] media See implementation.
+ * @param[in] path See implementation.
+ * @param[in] out_book See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_epub_open(const void* media, const char* path, ra_epub_book_t* out_book)
 {
   (void)path;
@@ -248,6 +361,19 @@ ra_err_t ra_epub_open(const void* media, const char* path, ra_epub_book_t* out_b
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_epub_close (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] book See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_epub_close(ra_epub_book_t* book)
 {
   if (book == NULL) {

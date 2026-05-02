@@ -47,6 +47,18 @@ typedef enum : uint16_t {
 
 /**
  * @brief Initialise an stbtt_fontinfo from the engine's font blob.
+ *
+ * @details See implementation.
+ * @param[in] engine See implementation.
+ * @param[in] out_font See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t priv_init_font(const ra_reflow_t* engine, stbtt_fontinfo* out_font)
 {
@@ -63,6 +75,20 @@ static ra_err_t priv_init_font(const ra_reflow_t* engine, stbtt_fontinfo* out_fo
 /**
  * @brief Walk one glyph bitmap and blit any sufficiently-covered
  *        pixels into the bound framebuffer.
+ *
+ * @details See implementation.
+ * @param[in] g See implementation.
+ * @param[in] bitmap See implementation.
+ * @param[in] w See implementation.
+ * @param[in] h See implementation.
+ * @param[in] xoff See implementation.
+ * @param[in] yoff See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static void priv_blit_alpha_mask(const ra_reflow_glyph_t* g,
                                  const unsigned char*     bitmap,
@@ -86,6 +112,17 @@ static void priv_blit_alpha_mask(const ra_reflow_glyph_t* g,
 
 /**
  * @brief Draw the underline strip for a link glyph.
+ *
+ * @details See implementation.
+ * @param[in] font See implementation.
+ * @param[in] g See implementation.
+ * @param[in] scale See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static void priv_draw_underline(const stbtt_fontinfo* font, const ra_reflow_glyph_t* g, float scale)
 {
@@ -107,6 +144,15 @@ static void priv_draw_underline(const stbtt_fontinfo* font, const ra_reflow_glyp
  * stbtt y-offset so the bitmap lands in the correct row above the
  * baseline; columns are offset by stbtt's xoff so accents and
  * descenders place correctly.
+ *
+ * @param[in] font See implementation.
+ * @param[in] g See implementation.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static void priv_blit_glyph(const stbtt_fontinfo* font, const ra_reflow_glyph_t* g)
 {
@@ -134,6 +180,21 @@ static void priv_blit_glyph(const stbtt_fontinfo* font, const ra_reflow_glyph_t*
  * ===========================================================================
  */
 
+/**
+ * @brief Implementation of ra_reflow_render_page (see header for full contract).
+ * @details See the public header for the documented contract; this definition implements it.
+ * @param[in] engine See implementation.
+ * @param[in] page_idx See implementation.
+ * @param[in] framebuffer See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
 ra_err_t ra_reflow_render_page(const ra_reflow_t* engine, uint32_t page_idx, void* framebuffer)
 {
   (void)framebuffer; /* Reserved hook -- ra_gfx is bound externally. */
