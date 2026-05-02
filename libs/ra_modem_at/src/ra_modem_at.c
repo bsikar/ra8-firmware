@@ -36,6 +36,14 @@
 #define RA_MODEM_AT_TAG "MODEM_AT"
 
 /**
+ * @enum ra_modem_at_internal_const_t
+ * @brief Internal numeric constants used by the AT driver.
+ */
+typedef enum : uint16_t {
+  k_ra_modem_at_min_line_buf_bytes = 16U, /**< Minimum line buffer length. */
+} ra_modem_at_internal_const_t;
+
+/**
  * @enum ra_modem_at_state_t
  * @brief Internal line-accumulator FSM states.
  *
@@ -337,6 +345,115 @@ static uint16_t internal_effective_timeout(uint16_t timeout_ms) {
 }
 
 /**
+ * @brief Outcome of handling one classified line in @ref internal_wait_response.
+ */
+typedef enum : uint8_t {
+  k_ra_modem_line_action_continue = 0U, /**< Keep waiting. */
+  k_ra_modem_line_action_done_ok  = 1U, /**< Final OK observed. */
+  k_ra_modem_line_action_done_err = 2U, /**< Final error observed. */
+} ra_modem_line_action_t;
+
+/**
+ * @brief Append a NUL-terminated line into ``capture`` (with newline sep).
+ */
+static void internal_capture_line(const char *line, char *capture,
+                                  size_t capture_len, size_t *used) {
+  if ((capture == nullptr) || (capture_len == 0U)) {
+    return;
+  }
+  if (*used > 0U) {
+    internal_append_ch(capture, capture_len, used, '\n');
+  }
+  uint16_t k = 0U;
+  while (line[k] != '\0') {
+    internal_append_ch(capture, capture_len, used, line[k]);
+    ++k;
+  }
+}
+
+/**
+ * @brief Drive the response FSM by one classified line.
+ *
+ * @param[in]     line              Just-completed line.
+ * @param[in]     kind              Result of @ref internal_classify.
+ * @param[in]     expected_response Optional caller-supplied prefix.
+ * @param[in,out] seen_exp          Sticky flag: prefix has been observed.
+ * @param[out]    capture           Optional capture buffer.
+ * @param[in]     capture_len       Capacity of ``capture``.
+ * @param[in,out] used              Bytes already populated in ``capture``.
+ * @return One of @ref ra_modem_line_action_t.
+ */
+static ra_modem_line_action_t
+internal_handle_line(const char *line, ra_modem_line_kind_t kind,
+                     const char *expected_response, uint8_t *seen_exp,
+                     char *capture, size_t capture_len, size_t *used) {
+  switch (kind) {
+  case k_ra_modem_line_kind_empty:
+  case k_ra_modem_line_kind_urc:
+    return k_ra_modem_line_action_continue;
+  case k_ra_modem_line_kind_echo:
+    s_mod.state = k_ra_modem_at_state_await_resp;
+    return k_ra_modem_line_action_continue;
+  case k_ra_modem_line_kind_final_ok:
+    s_mod.state = k_ra_modem_at_state_done;
+    if (*seen_exp == 0U) {
+      ra_log_error(RA_MODEM_AT_TAG, "OK without expected prefix");
+      return k_ra_modem_line_action_done_err;
+    }
+    return k_ra_modem_line_action_done_ok;
+  case k_ra_modem_line_kind_final_err:
+    s_mod.state = k_ra_modem_at_state_done;
+    return k_ra_modem_line_action_done_err;
+  case k_ra_modem_line_kind_payload:
+  default:
+    if ((expected_response != nullptr) && (expected_response[0] != '\0') &&
+        (internal_starts_with(line, expected_response) != 0U)) {
+      *seen_exp = 1U;
+    }
+    internal_capture_line(line, capture, capture_len, used);
+    if (s_mod.state == k_ra_modem_at_state_await_echo) {
+      s_mod.state = k_ra_modem_at_state_await_resp;
+    }
+    return k_ra_modem_line_action_continue;
+  }
+}
+
+/**
+ * @brief Bundled args + state for one iteration of the wait loop.
+ */
+typedef struct {
+  const char *cmd;               /**< Command we sent (for echo). */
+  const char *expected_response; /**< Optional expected prefix. */
+  char *capture;                 /**< Optional capture buffer. */
+  size_t capture_len;            /**< Capacity of ``capture``. */
+  size_t *used;                  /**< Bytes already populated in capture. */
+  uint8_t *seen_exp;             /**< Sticky: prefix observed yet? */
+} ra_modem_wait_ctx_t;
+
+/**
+ * @brief Pull one byte and process any completed line.
+ *
+ * @return The line action (continue / done_ok / done_err).
+ */
+static ra_modem_line_action_t
+internal_pump_one(const ra_modem_wait_ctx_t *wc) {
+  uint8_t byte = 0U;
+  const ra_err_t rx_err = s_mod.cfg.io.rx_byte(s_mod.cfg.io.ctx, &byte);
+  if (rx_err != k_ra_ok) {
+    return k_ra_modem_line_action_continue;
+  }
+  const char *line = nullptr;
+  internal_accumulate(byte, &line);
+  if (line == nullptr) {
+    return k_ra_modem_line_action_continue;
+  }
+  const ra_modem_line_kind_t kind =
+      internal_classify(line, wc->cmd, wc->expected_response);
+  return internal_handle_line(line, kind, wc->expected_response, wc->seen_exp,
+                              wc->capture, wc->capture_len, wc->used);
+}
+
+/**
  * @brief Inner wait loop shared by send_cmd and send_cmd_capture.
  *
  * @param[in]  cmd               Command we sent (for echo strip).
@@ -361,62 +478,26 @@ static ra_err_t internal_wait_response(const char *cmd,
 
   s_mod.state = k_ra_modem_at_state_await_echo;
 
+  const ra_modem_wait_ctx_t wc = {
+      .cmd = cmd,
+      .expected_response = expected_response,
+      .capture = capture,
+      .capture_len = capture_len,
+      .used = &used,
+      .seen_exp = &seen_exp,
+  };
+
   while (1) {
-    uint8_t byte = 0U;
-    const ra_err_t rx_err = s_mod.cfg.io.rx_byte(s_mod.cfg.io.ctx, &byte);
-    const uint32_t elapsed = s_mod.cfg.io.now_ms(s_mod.cfg.io.ctx) - start;
-
-    if (rx_err == k_ra_ok) {
-      const char *line = nullptr;
-      internal_accumulate(byte, &line);
-      if (line != nullptr) {
-        const ra_modem_line_kind_t kind =
-            internal_classify(line, cmd, expected_response);
-        switch (kind) {
-        case k_ra_modem_line_kind_empty:
-        case k_ra_modem_line_kind_urc:
-          break;
-        case k_ra_modem_line_kind_echo:
-          s_mod.state = k_ra_modem_at_state_await_resp;
-          break;
-        case k_ra_modem_line_kind_final_ok:
-          s_mod.state = k_ra_modem_at_state_done;
-          if (seen_exp == 0U) {
-            ra_log_error(RA_MODEM_AT_TAG, "OK without expected prefix");
-            internal_reset_line();
-            return k_ra_err_hw_error;
-          }
-          internal_reset_line();
-          return k_ra_ok;
-        case k_ra_modem_line_kind_final_err:
-          s_mod.state = k_ra_modem_at_state_done;
-          internal_reset_line();
-          return k_ra_err_hw_error;
-        case k_ra_modem_line_kind_payload:
-        default:
-          if ((expected_response != nullptr) &&
-              (expected_response[0] != '\0') &&
-              (internal_starts_with(line, expected_response) != 0U)) {
-            seen_exp = 1U;
-          }
-          if ((capture != nullptr) && (capture_len > 0U)) {
-            if (used > 0U) {
-              internal_append_ch(capture, capture_len, &used, '\n');
-            }
-            uint16_t k = 0U;
-            while (line[k] != '\0') {
-              internal_append_ch(capture, capture_len, &used, line[k]);
-              ++k;
-            }
-          }
-          if (s_mod.state == k_ra_modem_at_state_await_echo) {
-            s_mod.state = k_ra_modem_at_state_await_resp;
-          }
-          break;
-        }
-      }
+    const ra_modem_line_action_t action = internal_pump_one(&wc);
+    if (action == k_ra_modem_line_action_done_ok) {
+      internal_reset_line();
+      return k_ra_ok;
     }
-
+    if (action == k_ra_modem_line_action_done_err) {
+      internal_reset_line();
+      return k_ra_err_hw_error;
+    }
+    const uint32_t elapsed = s_mod.cfg.io.now_ms(s_mod.cfg.io.ctx) - start;
     if (elapsed >= (uint32_t)timeout_ms) {
       s_mod.state = k_ra_modem_at_state_idle;
       internal_reset_line();
@@ -429,7 +510,17 @@ static ra_err_t internal_wait_response(const char *cmd,
 /* Public API                                                                */
 /* ------------------------------------------------------------------------- */
 
-ra_err_t ra_modem_at_init(const ra_modem_at_cfg_t *cfg) {
+/** @brief Reset the URC dispatch table to all-empty. */
+static void internal_clear_urc_table(void) {
+  for (uint8_t i = 0U; i < (uint8_t)k_ra_modem_at_max_unsolicited; ++i) {
+    s_mod.urcs[i].used = 0U;
+    s_mod.urcs[i].fn = nullptr;
+    s_mod.urcs[i].ctx = nullptr;
+  }
+}
+
+/** @brief Validate every required pointer in @p cfg's IO block. */
+static ra_err_t internal_validate_init_cfg(const ra_modem_at_cfg_t *cfg) {
   RA_CHECK_NULL_PTR(cfg, RA_MODEM_AT_TAG, "cfg");
   RA_CHECK_NULL_PTR(cfg->line_buf, RA_MODEM_AT_TAG, "cfg->line_buf");
   RA_CHECK_NULL_PTR((void *)cfg->io.tx_byte, RA_MODEM_AT_TAG,
@@ -437,21 +528,23 @@ ra_err_t ra_modem_at_init(const ra_modem_at_cfg_t *cfg) {
   RA_CHECK_NULL_PTR((void *)cfg->io.rx_byte, RA_MODEM_AT_TAG,
                     "cfg->io.rx_byte");
   RA_CHECK_NULL_PTR((void *)cfg->io.now_ms, RA_MODEM_AT_TAG, "cfg->io.now_ms");
-
-  if (cfg->line_buf_len < 16U) {
+  if (cfg->line_buf_len < (uint16_t)k_ra_modem_at_min_line_buf_bytes) {
     ra_log_error(RA_MODEM_AT_TAG, "line_buf too small");
     return k_ra_err_invalid_size;
   }
+  return k_ra_ok;
+}
 
+ra_err_t ra_modem_at_init(const ra_modem_at_cfg_t *cfg) {
+  const ra_err_t verr = internal_validate_init_cfg(cfg);
+  if (verr != k_ra_ok) {
+    return verr;
+  }
   s_mod.cfg = *cfg;
   s_mod.line_len = 0U;
   s_mod.state = k_ra_modem_at_state_idle;
   s_mod.initialised = 1U;
-  for (uint8_t i = 0U; i < (uint8_t)k_ra_modem_at_max_unsolicited; ++i) {
-    s_mod.urcs[i].used = 0U;
-    s_mod.urcs[i].fn = nullptr;
-    s_mod.urcs[i].ctx = nullptr;
-  }
+  internal_clear_urc_table();
   internal_reset_line();
   return k_ra_ok;
 }
@@ -494,6 +587,49 @@ ra_err_t ra_modem_at_send_cmd_capture(const char *cmd, char *out_buf,
       cmd, nullptr, internal_effective_timeout(timeout_ms), out_buf, buf_len);
 }
 
+/**
+ * @brief Find an existing URC slot for ``prefix`` and update its callback.
+ * @return 1 if a slot matched (and was updated), 0 otherwise.
+ */
+static uint8_t internal_urc_replace(const char *prefix, ra_modem_at_urc_fn_t fn,
+                                    void *ctx) {
+  for (uint8_t i = 0U; i < (uint8_t)k_ra_modem_at_max_unsolicited; ++i) {
+    if (s_mod.urcs[i].used == 0U) {
+      continue;
+    }
+    if (internal_str_eq((const char *)s_mod.urcs[i].prefix, prefix) != 0U) {
+      s_mod.urcs[i].fn = fn;
+      s_mod.urcs[i].ctx = ctx;
+      return 1U;
+    }
+  }
+  return 0U;
+}
+
+/**
+ * @brief Allocate the first free URC slot and copy the prefix into it.
+ * @return 1 on success, 0 if the table is full.
+ */
+static uint8_t internal_urc_insert(const char *prefix, uint16_t plen,
+                                   ra_modem_at_urc_fn_t fn, void *ctx) {
+  for (uint8_t i = 0U; i < (uint8_t)k_ra_modem_at_max_unsolicited; ++i) {
+    if (s_mod.urcs[i].used != 0U) {
+      continue;
+    }
+    uint16_t k = 0U;
+    while (k < plen) {
+      s_mod.urcs[i].prefix[k] = (uint8_t)prefix[k];
+      ++k;
+    }
+    s_mod.urcs[i].prefix[plen] = (uint8_t)'\0';
+    s_mod.urcs[i].fn = fn;
+    s_mod.urcs[i].ctx = ctx;
+    s_mod.urcs[i].used = 1U;
+    return 1U;
+  }
+  return 0U;
+}
+
 ra_err_t ra_modem_at_register_unsolicited_handler(const char *prefix,
                                                   ra_modem_at_urc_fn_t fn,
                                                   void *ctx) {
@@ -508,30 +644,11 @@ ra_err_t ra_modem_at_register_unsolicited_handler(const char *prefix,
     return k_ra_err_invalid_size;
   }
 
-  /* Replace existing slot with same prefix. */
-  for (uint8_t i = 0U; i < (uint8_t)k_ra_modem_at_max_unsolicited; ++i) {
-    if (s_mod.urcs[i].used != 0U) {
-      if (internal_str_eq((const char *)s_mod.urcs[i].prefix, prefix) != 0U) {
-        s_mod.urcs[i].fn = fn;
-        s_mod.urcs[i].ctx = ctx;
-        return k_ra_ok;
-      }
-    }
+  if (internal_urc_replace(prefix, fn, ctx) != 0U) {
+    return k_ra_ok;
   }
-  /* Find first free slot. */
-  for (uint8_t i = 0U; i < (uint8_t)k_ra_modem_at_max_unsolicited; ++i) {
-    if (s_mod.urcs[i].used == 0U) {
-      uint16_t k = 0U;
-      while (k < plen) {
-        s_mod.urcs[i].prefix[k] = (uint8_t)prefix[k];
-        ++k;
-      }
-      s_mod.urcs[i].prefix[plen] = (uint8_t)'\0';
-      s_mod.urcs[i].fn = fn;
-      s_mod.urcs[i].ctx = ctx;
-      s_mod.urcs[i].used = 1U;
-      return k_ra_ok;
-    }
+  if (internal_urc_insert(prefix, plen, fn, ctx) != 0U) {
+    return k_ra_ok;
   }
   return k_ra_err_no_mem;
 }
