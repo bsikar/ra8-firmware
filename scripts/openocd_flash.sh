@@ -24,7 +24,7 @@ GREEN='\033[0;32m'
 RED='\033[0;31m'
 NC='\033[0m'
 
-HEX="${1:-$FW_DIR/examples/blink/build/blink.hex}"
+HEX="${1:-$FW_DIR/examples/ek_ra8d2/blink/build/blink.hex}"
 
 if [[ ! -f "$HEX" ]]; then
     echo -e "${RED}Error:${NC} $HEX not found"

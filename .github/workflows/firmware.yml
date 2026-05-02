@@ -21,10 +21,10 @@ jobs:
       - name: Scan
         run: |
           set -e
-          # Auto-discover example app dirs (examples/<app> with main.c).
+          # Auto-discover example app dirs (examples/<tier>/<app>/ with main.c).
           apps=()
           if [ -d examples ]; then
-            for d in examples/*/; do
+            for d in examples/*/*/; do
               d="${d%/}"
               [ -f "$d/main.c" ] && apps+=("$d")
             done
@@ -150,7 +150,7 @@ jobs:
           set -e
           apps=()
           if [ -d examples ]; then
-            for d in examples/*/; do
+            for d in examples/*/*/; do
               d="${d%/}"
               [ -f "$d/main.c" ] && apps+=("$d")
             done
