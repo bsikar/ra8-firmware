@@ -19,7 +19,7 @@
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
- * @since 0.6.0
+ * @since 0.1.0
  */
 
 #include <stdint.h>
@@ -56,8 +56,8 @@ typedef enum : uint8_t {
  * @brief Heartbeat / step cadence in 1 kHz ThreadX ticks.
  */
 typedef enum : uint16_t {
-  k_ota_heartbeat_ticks = 250U, /**< 250 ms heartbeat cadence. */
-  k_ota_step_ticks      = 1000U,/**< 1 s per state-machine step. */
+  k_ota_heartbeat_ticks = 250U,  /**< 250 ms heartbeat cadence. */
+  k_ota_step_ticks      = 1000U, /**< 1 s per state-machine step. */
 } ota_period_t;
 
 /* ---------------------------------------------------------------------------
@@ -69,7 +69,7 @@ typedef enum : uint16_t {
 extern void _tx_timer_interrupt(void);
 /* NOLINTEND(bugprone-reserved-identifier,cert-dcl37-c,readability-identifier-naming) */
 
-static uint8_t s_thread_ota_stack[k_ota_thread_stack_bytes] __attribute__((aligned(8)));
+static uint8_t   s_thread_ota_stack[k_ota_thread_stack_bytes] __attribute__((aligned(8)));
 static TX_THREAD s_thread_ota;
 
 /**

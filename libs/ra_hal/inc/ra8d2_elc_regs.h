@@ -115,12 +115,12 @@ typedef enum : uint8_t {
  *       are 0..1023; `uint16_t` is the smallest type that fits.
  */
 typedef enum : uint16_t {
-  k_ra_elc_event_none          = 0x000U, /**< Link disabled (HUM Ch 19.2.3 ELS=0). */
-  k_ra_elc_event_icu_irq0      = 0x001U, /**< External pin interrupt 0. */
-  k_ra_elc_event_icu_irq1      = 0x002U, /**< External pin interrupt 1. */
-  k_ra_elc_event_icu_irq12     = 0x00DU, /**< External pin interrupt 12 (HUM Ch 14 ELC event 0x00D). */
-  k_ra_elc_event_icu_irq13     = 0x00EU, /**< External pin interrupt 13 (HUM Ch 14 ELC event 0x00E). */
-  k_ra_elc_event_icu_irq15     = 0x010U, /**< External pin interrupt 15. */
+  k_ra_elc_event_none      = 0x000U, /**< Link disabled (HUM Ch 19.2.3 ELS=0). */
+  k_ra_elc_event_icu_irq0  = 0x001U, /**< External pin interrupt 0. */
+  k_ra_elc_event_icu_irq1  = 0x002U, /**< External pin interrupt 1. */
+  k_ra_elc_event_icu_irq12 = 0x00DU, /**< External pin interrupt 12 (HUM Ch 14 ELC event 0x00D). */
+  k_ra_elc_event_icu_irq13 = 0x00EU, /**< External pin interrupt 13 (HUM Ch 14 ELC event 0x00E). */
+  k_ra_elc_event_icu_irq15 = 0x010U, /**< External pin interrupt 15. */
   k_ra_elc_event_can0_mram_eri = 0x100U, /**< CAN0 MRAM error. */
   k_ra_elc_event_can1_mram_eri = 0x101U, /**< CAN1 MRAM error. */
 } ra_elc_event_t;

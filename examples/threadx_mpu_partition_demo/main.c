@@ -23,7 +23,7 @@
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
- * @since 0.7.0
+ * @since 0.1.0
  */
 
 #include <stdint.h>
@@ -83,27 +83,27 @@ typedef enum : uint32_t {
  * worlds and apply per-thread sub-regions.
  */
 static const ra_mpu_region_t s_mpu_regions[] = {
-    {.base       = k_mpu_region_mram_base,
-     .size       = k_mpu_region_mram_size,
-     .priv       = k_ra_mpu_perm_ro,
-     .unpriv     = k_ra_mpu_perm_ro,
-     .executable = true,
-     .shareable  = k_ra_mpu_share_non,
-     .attr_idx   = k_ra_mpu_attr_idx_0},
-    {.base       = k_mpu_region_sram_base,
-     .size       = k_mpu_region_sram_size,
-     .priv       = k_ra_mpu_perm_rw,
-     .unpriv     = k_ra_mpu_perm_rw,
-     .executable = false,
-     .shareable  = k_ra_mpu_share_inner,
-     .attr_idx   = k_ra_mpu_attr_idx_0},
-    {.base       = k_mpu_region_peri_base,
-     .size       = k_mpu_region_peri_size,
-     .priv       = k_ra_mpu_perm_rw,
-     .unpriv     = k_ra_mpu_perm_none,
-     .executable = false,
-     .shareable  = k_ra_mpu_share_outer,
-     .attr_idx   = k_ra_mpu_attr_idx_0},
+  {.base       = k_mpu_region_mram_base,
+   .size       = k_mpu_region_mram_size,
+   .priv       = k_ra_mpu_perm_ro,
+   .unpriv     = k_ra_mpu_perm_ro,
+   .executable = true,
+   .shareable  = k_ra_mpu_share_non,
+   .attr_idx   = k_ra_mpu_attr_idx_0},
+  {.base       = k_mpu_region_sram_base,
+   .size       = k_mpu_region_sram_size,
+   .priv       = k_ra_mpu_perm_rw,
+   .unpriv     = k_ra_mpu_perm_rw,
+   .executable = false,
+   .shareable  = k_ra_mpu_share_inner,
+   .attr_idx   = k_ra_mpu_attr_idx_0},
+  {.base       = k_mpu_region_peri_base,
+   .size       = k_mpu_region_peri_size,
+   .priv       = k_ra_mpu_perm_rw,
+   .unpriv     = k_ra_mpu_perm_none,
+   .executable = false,
+   .shareable  = k_ra_mpu_share_outer,
+   .attr_idx   = k_ra_mpu_attr_idx_0},
 };
 
 typedef enum : uint8_t {
@@ -114,12 +114,12 @@ typedef enum : uint8_t {
  * @brief Aggregate MPU configuration handed to ra_mpu_configure().
  */
 static const ra_mpu_cfg_t s_mpu_cfg = {
-    .regions      = s_mpu_regions,
-    .region_count = k_mpu_region_count,
-    .mair0        = 0U,
-    .mair1        = 0U,
-    .privdefena   = true,
-    .hfnmiena     = false,
+  .regions      = s_mpu_regions,
+  .region_count = k_mpu_region_count,
+  .mair0        = 0U,
+  .mair1        = 0U,
+  .privdefena   = true,
+  .hfnmiena     = false,
 };
 
 /* ---------------------------------------------------------------------------
@@ -131,7 +131,7 @@ static const ra_mpu_cfg_t s_mpu_cfg = {
 extern void _tx_timer_interrupt(void);
 /* NOLINTEND(bugprone-reserved-identifier,cert-dcl37-c,readability-identifier-naming) */
 
-static uint8_t s_thread_stack[k_mpu_thread_stack_bytes] __attribute__((aligned(8)));
+static uint8_t   s_thread_stack[k_mpu_thread_stack_bytes] __attribute__((aligned(8)));
 static TX_THREAD s_thread;
 
 void SysTick_Handler(void);

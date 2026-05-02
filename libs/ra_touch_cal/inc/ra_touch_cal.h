@@ -96,11 +96,11 @@ extern "C" {
  * @brief Static-allocation caps and protocol constants.
  */
 typedef enum : uint8_t {
-  k_ra_touch_cal_n_targets        = 5U,  /**< 4 corners + centre.            */
-  k_ra_touch_cal_min_targets      = 3U,  /**< Floor for a unique solve.      */
-  k_ra_touch_cal_max_targets      = 5U,  /**< Ceiling for the fit.           */
-  k_ra_touch_cal_blob_size        = 36U, /**< Bytes in ::ra_touch_cal_save.  */
-  k_ra_touch_cal_storage_version  = 1U,  /**< On-disk format version.        */
+  k_ra_touch_cal_n_targets       = 5U,  /**< 4 corners + centre.            */
+  k_ra_touch_cal_min_targets     = 3U,  /**< Floor for a unique solve.      */
+  k_ra_touch_cal_max_targets     = 5U,  /**< Ceiling for the fit.           */
+  k_ra_touch_cal_blob_size       = 36U, /**< Bytes in ::ra_touch_cal_save.  */
+  k_ra_touch_cal_storage_version = 1U,  /**< On-disk format version.        */
 } ra_touch_cal_limits_t;
 
 /**
@@ -190,8 +190,7 @@ typedef struct {
  * @return ``ra_err_t`` -- shim implementation defined; ``k_ra_ok`` on
  *         success.
  */
-typedef ra_err_t (*ra_touch_cal_draw_target_fn_t)(void* ctx,
-                                                  ra_touch_cal_point_t target);
+typedef ra_err_t (*ra_touch_cal_draw_target_fn_t)(void* ctx, ra_touch_cal_point_t target);
 
 /**
  * @typedef ra_touch_cal_read_raw_fn_t
@@ -203,8 +202,7 @@ typedef ra_err_t (*ra_touch_cal_draw_target_fn_t)(void* ctx,
  * @return ``ra_err_t`` -- shim implementation defined; ``k_ra_ok`` on
  *         success.
  */
-typedef ra_err_t (*ra_touch_cal_read_raw_fn_t)(void* ctx,
-                                               ra_touch_cal_point_t* out_raw);
+typedef ra_err_t (*ra_touch_cal_read_raw_fn_t)(void* ctx, ra_touch_cal_point_t* out_raw);
 
 /**
  * @struct ra_touch_cal_run_cfg_t
@@ -217,14 +215,14 @@ typedef ra_err_t (*ra_touch_cal_read_raw_fn_t)(void* ctx,
  * register simulator.
  */
 typedef struct {
-  uint16_t                       screen_width;  /**< Panel width, pixels.    */
-  uint16_t                       screen_height; /**< Panel height, pixels.   */
-  uint16_t                       inset_px;      /**< Margin from panel edge
+  uint16_t                      screen_width;  /**< Panel width, pixels.    */
+  uint16_t                      screen_height; /**< Panel height, pixels.   */
+  uint16_t                      inset_px;      /**< Margin from panel edge
                                                      to corner targets.      */
-  ra_touch_cal_draw_target_fn_t  draw_target;   /**< Cross-hair painter.     */
-  void*                          draw_ctx;      /**< Forwarded to painter.   */
-  ra_touch_cal_read_raw_fn_t     read_raw;      /**< Raw sample reader.      */
-  void*                          read_ctx;      /**< Forwarded to reader.    */
+  ra_touch_cal_draw_target_fn_t draw_target;   /**< Cross-hair painter.     */
+  void*                         draw_ctx;      /**< Forwarded to painter.   */
+  ra_touch_cal_read_raw_fn_t    read_raw;      /**< Raw sample reader.      */
+  void*                         read_ctx;      /**< Forwarded to reader.    */
 } ra_touch_cal_run_cfg_t;
 
 /* ===========================================================================
@@ -279,11 +277,10 @@ typedef struct {
  *
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t
-ra_touch_cal_compute(const ra_touch_cal_point_t* raw,
-                     const ra_touch_cal_point_t* screen,
-                     uint8_t                     n,
-                     ra_touch_cal_matrix_t*      out_mtx);
+[[nodiscard]] ra_err_t ra_touch_cal_compute(const ra_touch_cal_point_t* raw,
+                                            const ra_touch_cal_point_t* screen,
+                                            uint8_t                     n,
+                                            ra_touch_cal_matrix_t*      out_mtx);
 
 /**
  * @brief Drive the on-screen calibration sequence and produce a matrix.
@@ -319,9 +316,8 @@ ra_touch_cal_compute(const ra_touch_cal_point_t* raw,
  *
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t
-ra_touch_cal_run(const ra_touch_cal_run_cfg_t* cfg,
-                 ra_touch_cal_matrix_t*        out_matrix);
+[[nodiscard]] ra_err_t ra_touch_cal_run(const ra_touch_cal_run_cfg_t* cfg,
+                                        ra_touch_cal_matrix_t*        out_matrix);
 
 /**
  * @brief Apply a calibration matrix to a single raw touch sample.
@@ -351,12 +347,11 @@ ra_touch_cal_run(const ra_touch_cal_run_cfg_t* cfg,
  *
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t
-ra_touch_cal_apply(ra_touch_cal_point_t         raw,
-                   const ra_touch_cal_matrix_t* matrix,
-                   uint16_t                     screen_width,
-                   uint16_t                     screen_height,
-                   ra_touch_cal_point_t*        out_screen);
+[[nodiscard]] ra_err_t ra_touch_cal_apply(ra_touch_cal_point_t         raw,
+                                          const ra_touch_cal_matrix_t* matrix,
+                                          uint16_t                     screen_width,
+                                          uint16_t                     screen_height,
+                                          ra_touch_cal_point_t*        out_screen);
 
 /**
  * @brief Serialise a calibration matrix to a fixed-size byte blob.
@@ -389,9 +384,7 @@ ra_touch_cal_apply(ra_touch_cal_point_t         raw,
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t
-ra_touch_cal_save(const ra_touch_cal_matrix_t* matrix,
-                  uint8_t*                     dst,
-                  size_t                       dst_size);
+ra_touch_cal_save(const ra_touch_cal_matrix_t* matrix, uint8_t* dst, size_t dst_size);
 
 /**
  * @brief Deserialise a calibration matrix from a byte blob.
@@ -414,9 +407,7 @@ ra_touch_cal_save(const ra_touch_cal_matrix_t* matrix,
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t
-ra_touch_cal_load(const uint8_t*         src,
-                  size_t                 src_size,
-                  ra_touch_cal_matrix_t* out_matrix);
+ra_touch_cal_load(const uint8_t* src, size_t src_size, ra_touch_cal_matrix_t* out_matrix);
 
 #ifdef __cplusplus
 }

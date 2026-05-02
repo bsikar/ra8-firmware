@@ -177,8 +177,7 @@ typedef struct {
  *
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t
-ra_sdcard_write_blocks(uint32_t lba, const uint8_t* buf, uint32_t count);
+[[nodiscard]] ra_err_t ra_sdcard_write_blocks(uint32_t lba, const uint8_t* buf, uint32_t count);
 
 /**
  * @brief Return card capacity in 512-byte blocks.

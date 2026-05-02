@@ -55,11 +55,10 @@ typedef enum : uint16_t {
  * directly into ``await_resp``.
  */
 typedef enum : uint8_t {
-  k_ra_modem_at_state_idle = 0U, /**< No command in flight. */
-  k_ra_modem_at_state_await_echo =
-      1U, /**< Sent command, waiting for echo line. */
+  k_ra_modem_at_state_idle       = 0U, /**< No command in flight. */
+  k_ra_modem_at_state_await_echo = 1U, /**< Sent command, waiting for echo line. */
   k_ra_modem_at_state_await_resp = 2U, /**< Echo seen (or skipped), draining. */
-  k_ra_modem_at_state_done = 3U,       /**< Final result code matched. */
+  k_ra_modem_at_state_done       = 3U, /**< Final result code matched. */
 } ra_modem_at_state_t;
 
 /**
@@ -67,10 +66,10 @@ typedef enum : uint8_t {
  * @brief One URC table entry.
  */
 typedef struct {
-  uint8_t used;                                 /**< 1 if slot occupied. */
-  uint8_t prefix[k_ra_modem_at_max_prefix_len]; /**< NUL-terminated prefix. */
-  ra_modem_at_urc_fn_t fn;                      /**< Handler callback. */
-  void *ctx;                                    /**< Opaque ctx for ``fn``. */
+  uint8_t              used;                                 /**< 1 if slot occupied. */
+  uint8_t              prefix[k_ra_modem_at_max_prefix_len]; /**< NUL-terminated prefix. */
+  ra_modem_at_urc_fn_t fn;                                   /**< Handler callback. */
+  void*                ctx;                                  /**< Opaque ctx for ``fn``. */
 } ra_modem_at_urc_slot_t;
 
 /**
@@ -85,10 +84,10 @@ typedef struct {
  * @invariant ``initialised == 1`` implies ``cfg.line_buf != NULL``.
  */
 typedef struct {
-  uint8_t initialised;       /**< 1 after ``ra_modem_at_init``. */
-  ra_modem_at_cfg_t cfg;     /**< Cached caller configuration. */
-  uint16_t line_len;         /**< Bytes pending in ``cfg.line_buf``. */
-  ra_modem_at_state_t state; /**< FSM state. */
+  uint8_t                initialised; /**< 1 after ``ra_modem_at_init``. */
+  ra_modem_at_cfg_t      cfg;         /**< Cached caller configuration. */
+  uint16_t               line_len;    /**< Bytes pending in ``cfg.line_buf``. */
+  ra_modem_at_state_t    state;       /**< FSM state. */
   ra_modem_at_urc_slot_t urcs[k_ra_modem_at_max_unsolicited]; /**< URC table. */
 } ra_modem_at_module_t;
 
@@ -110,7 +109,8 @@ static ra_modem_at_module_t s_mod;
  * @param[in] s NUL-terminated input string (must be non-NULL).
  * @return Length in bytes, capped at ``UINT16_MAX``.
  */
-static uint16_t internal_str_len(const char *s) {
+static uint16_t internal_str_len(const char* s)
+{
   uint16_t i = 0U;
   while ((i < UINT16_MAX) && (s[i] != '\0')) {
     ++i;
@@ -125,7 +125,8 @@ static uint16_t internal_str_len(const char *s) {
  * @param[in] needle NUL-terminated prefix.
  * @return 1 on match, 0 otherwise.
  */
-static uint8_t internal_starts_with(const char *hay, const char *needle) {
+static uint8_t internal_starts_with(const char* hay, const char* needle)
+{
   uint16_t i = 0U;
   while (needle[i] != '\0') {
     if (hay[i] != needle[i]) {
@@ -143,7 +144,8 @@ static uint8_t internal_starts_with(const char *hay, const char *needle) {
  * @param[in] b Second string.
  * @return 1 if equal, 0 otherwise.
  */
-static uint8_t internal_str_eq(const char *a, const char *b) {
+static uint8_t internal_str_eq(const char* a, const char* b)
+{
   uint16_t i = 0U;
   while ((a[i] != '\0') && (b[i] != '\0')) {
     if (a[i] != b[i]) {
@@ -162,8 +164,8 @@ static uint8_t internal_str_eq(const char *a, const char *b) {
  * @param[in,out] used     Current populated length (excluding NUL).
  * @param[in]     ch       Character to append.
  */
-static void internal_append_ch(char *out, size_t out_len, size_t *used,
-                               char ch) {
+static void internal_append_ch(char* out, size_t out_len, size_t* used, char ch)
+{
   if ((*used + 1U) < out_len) {
     out[*used] = ch;
     ++(*used);
@@ -174,7 +176,8 @@ static void internal_append_ch(char *out, size_t out_len, size_t *used,
 /**
  * @brief Reset the line accumulator for a fresh command cycle.
  */
-static void internal_reset_line(void) {
+static void internal_reset_line(void)
+{
   s_mod.line_len = 0U;
   if ((s_mod.cfg.line_buf != nullptr) && (s_mod.cfg.line_buf_len > 0U)) {
     s_mod.cfg.line_buf[0] = (uint8_t)'\0';
@@ -188,7 +191,8 @@ static void internal_reset_line(void) {
  * @param[out] is_error Set to 1 if ``line`` is an error result.
  * @return 1 if ``line`` is any final result code, 0 otherwise.
  */
-static uint8_t internal_classify_final(const char *line, uint8_t *is_error) {
+static uint8_t internal_classify_final(const char* line, uint8_t* is_error)
+{
   *is_error = 0U;
   if (internal_str_eq(line, "OK") != 0U) {
     return 1U;
@@ -222,12 +226,13 @@ static uint8_t internal_classify_final(const char *line, uint8_t *is_error) {
  * @param[in] line NUL-terminated line.
  * @return 1 if a handler matched, 0 otherwise.
  */
-static uint8_t internal_dispatch_urc(const char *line) {
+static uint8_t internal_dispatch_urc(const char* line)
+{
   for (uint8_t i = 0U; i < (uint8_t)k_ra_modem_at_max_unsolicited; ++i) {
     if (s_mod.urcs[i].used == 0U) {
       continue;
     }
-    if (internal_starts_with(line, (const char *)s_mod.urcs[i].prefix) != 0U) {
+    if (internal_starts_with(line, (const char*)s_mod.urcs[i].prefix) != 0U) {
       s_mod.urcs[i].fn(line, s_mod.urcs[i].ctx);
       return 1U;
     }
@@ -239,12 +244,12 @@ static uint8_t internal_dispatch_urc(const char *line) {
  * @brief Result of processing a single completed line.
  */
 typedef enum : uint8_t {
-  k_ra_modem_line_kind_empty = 0U,     /**< Empty line (CRLF-only). */
-  k_ra_modem_line_kind_echo = 1U,      /**< Echo of the command we sent. */
-  k_ra_modem_line_kind_urc = 2U,       /**< Dispatched to URC handler. */
-  k_ra_modem_line_kind_final_ok = 3U,  /**< Final ``OK``. */
+  k_ra_modem_line_kind_empty     = 0U, /**< Empty line (CRLF-only). */
+  k_ra_modem_line_kind_echo      = 1U, /**< Echo of the command we sent. */
+  k_ra_modem_line_kind_urc       = 2U, /**< Dispatched to URC handler. */
+  k_ra_modem_line_kind_final_ok  = 3U, /**< Final ``OK``. */
   k_ra_modem_line_kind_final_err = 4U, /**< Final ``ERROR``/``+CME ERROR``. */
-  k_ra_modem_line_kind_payload = 5U, /**< Response payload (incl. expected). */
+  k_ra_modem_line_kind_payload   = 5U, /**< Response payload (incl. expected). */
 } ra_modem_line_kind_t;
 
 /**
@@ -261,9 +266,9 @@ typedef enum : uint8_t {
  * @param[in] expected_response Optional caller-specified prefix.
  * @return One of ``ra_modem_line_kind_t``.
  */
-static ra_modem_line_kind_t internal_classify(const char *line,
-                                              const char *cmd_echo,
-                                              const char *expected_response) {
+static ra_modem_line_kind_t
+internal_classify(const char* line, const char* cmd_echo, const char* expected_response)
+{
   if (line[0] == '\0') {
     return k_ra_modem_line_kind_empty;
   }
@@ -272,8 +277,7 @@ static ra_modem_line_kind_t internal_classify(const char *line,
   }
   uint8_t is_err = 0U;
   if (internal_classify_final(line, &is_err) != 0U) {
-    return (is_err != 0U) ? k_ra_modem_line_kind_final_err
-                          : k_ra_modem_line_kind_final_ok;
+    return (is_err != 0U) ? k_ra_modem_line_kind_final_err : k_ra_modem_line_kind_final_ok;
   }
   /* If the caller didn't ask for a specific prefix, allow URC dispatch. */
   if ((expected_response == nullptr) || (expected_response[0] == '\0') ||
@@ -292,21 +296,22 @@ static ra_modem_line_kind_t internal_classify(const char *line,
  * @param[out] line_out If a complete line is now ready, set to
  *                      ``cfg.line_buf`` (NUL-terminated). Otherwise NULL.
  */
-static void internal_accumulate(uint8_t byte, const char **line_out) {
+static void internal_accumulate(uint8_t byte, const char** line_out)
+{
   *line_out = nullptr;
   if ((byte == (uint8_t)'\r') || (byte == (uint8_t)'\n')) {
     if (s_mod.line_len > 0U) {
       s_mod.cfg.line_buf[s_mod.line_len] = (uint8_t)'\0';
-      *line_out = (const char *)s_mod.cfg.line_buf;
-      s_mod.line_len = 0U;
+      *line_out                          = (const char*)s_mod.cfg.line_buf;
+      s_mod.line_len                     = 0U;
     }
     return;
   }
   if ((s_mod.line_len + 1U) >= s_mod.cfg.line_buf_len) {
     /* Overflow: terminate, emit what we have, drop the new byte. */
     s_mod.cfg.line_buf[s_mod.line_len] = (uint8_t)'\0';
-    *line_out = (const char *)s_mod.cfg.line_buf;
-    s_mod.line_len = 0U;
+    *line_out                          = (const char*)s_mod.cfg.line_buf;
+    s_mod.line_len                     = 0U;
     return;
   }
   s_mod.cfg.line_buf[s_mod.line_len] = byte;
@@ -319,7 +324,8 @@ static void internal_accumulate(uint8_t byte, const char **line_out) {
  * @param[in] s NUL-terminated string to transmit.
  * @return ``ra_err_t`` propagated from the transport.
  */
-static ra_err_t internal_tx_command(const char *s) {
+static ra_err_t internal_tx_command(const char* s)
+{
   uint16_t i = 0U;
   while (s[i] != '\0') {
     const ra_err_t err = s_mod.cfg.io.tx_byte(s_mod.cfg.io.ctx, (uint8_t)s[i]);
@@ -334,7 +340,8 @@ static ra_err_t internal_tx_command(const char *s) {
 /**
  * @brief Resolve effective timeout in ms, applying default if 0.
  */
-static uint16_t internal_effective_timeout(uint16_t timeout_ms) {
+static uint16_t internal_effective_timeout(uint16_t timeout_ms)
+{
   if (timeout_ms != 0U) {
     return timeout_ms;
   }
@@ -356,8 +363,8 @@ typedef enum : uint8_t {
 /**
  * @brief Append a NUL-terminated line into ``capture`` (with newline sep).
  */
-static void internal_capture_line(const char *line, char *capture,
-                                  size_t capture_len, size_t *used) {
+static void internal_capture_line(const char* line, char* capture, size_t capture_len, size_t* used)
+{
   if ((capture == nullptr) || (capture_len == 0U)) {
     return;
   }
@@ -383,38 +390,42 @@ static void internal_capture_line(const char *line, char *capture,
  * @param[in,out] used              Bytes already populated in ``capture``.
  * @return One of @ref ra_modem_line_action_t.
  */
-static ra_modem_line_action_t
-internal_handle_line(const char *line, ra_modem_line_kind_t kind,
-                     const char *expected_response, uint8_t *seen_exp,
-                     char *capture, size_t capture_len, size_t *used) {
+static ra_modem_line_action_t internal_handle_line(const char*          line,
+                                                   ra_modem_line_kind_t kind,
+                                                   const char*          expected_response,
+                                                   uint8_t*             seen_exp,
+                                                   char*                capture,
+                                                   size_t               capture_len,
+                                                   size_t*              used)
+{
   switch (kind) {
-  case k_ra_modem_line_kind_empty:
-  case k_ra_modem_line_kind_urc:
-    return k_ra_modem_line_action_continue;
-  case k_ra_modem_line_kind_echo:
-    s_mod.state = k_ra_modem_at_state_await_resp;
-    return k_ra_modem_line_action_continue;
-  case k_ra_modem_line_kind_final_ok:
-    s_mod.state = k_ra_modem_at_state_done;
-    if (*seen_exp == 0U) {
-      ra_log_error(RA_MODEM_AT_TAG, "OK without expected prefix");
-      return k_ra_modem_line_action_done_err;
-    }
-    return k_ra_modem_line_action_done_ok;
-  case k_ra_modem_line_kind_final_err:
-    s_mod.state = k_ra_modem_at_state_done;
-    return k_ra_modem_line_action_done_err;
-  case k_ra_modem_line_kind_payload:
-  default:
-    if ((expected_response != nullptr) && (expected_response[0] != '\0') &&
-        (internal_starts_with(line, expected_response) != 0U)) {
-      *seen_exp = 1U;
-    }
-    internal_capture_line(line, capture, capture_len, used);
-    if (s_mod.state == k_ra_modem_at_state_await_echo) {
+    case k_ra_modem_line_kind_empty:
+    case k_ra_modem_line_kind_urc:
+      return k_ra_modem_line_action_continue;
+    case k_ra_modem_line_kind_echo:
       s_mod.state = k_ra_modem_at_state_await_resp;
-    }
-    return k_ra_modem_line_action_continue;
+      return k_ra_modem_line_action_continue;
+    case k_ra_modem_line_kind_final_ok:
+      s_mod.state = k_ra_modem_at_state_done;
+      if (*seen_exp == 0U) {
+        ra_log_error(RA_MODEM_AT_TAG, "OK without expected prefix");
+        return k_ra_modem_line_action_done_err;
+      }
+      return k_ra_modem_line_action_done_ok;
+    case k_ra_modem_line_kind_final_err:
+      s_mod.state = k_ra_modem_at_state_done;
+      return k_ra_modem_line_action_done_err;
+    case k_ra_modem_line_kind_payload:
+    default:
+      if ((expected_response != nullptr) && (expected_response[0] != '\0') &&
+          (internal_starts_with(line, expected_response) != 0U)) {
+        *seen_exp = 1U;
+      }
+      internal_capture_line(line, capture, capture_len, used);
+      if (s_mod.state == k_ra_modem_at_state_await_echo) {
+        s_mod.state = k_ra_modem_at_state_await_resp;
+      }
+      return k_ra_modem_line_action_continue;
   }
 }
 
@@ -422,12 +433,12 @@ internal_handle_line(const char *line, ra_modem_line_kind_t kind,
  * @brief Bundled args + state for one iteration of the wait loop.
  */
 typedef struct {
-  const char *cmd;               /**< Command we sent (for echo). */
-  const char *expected_response; /**< Optional expected prefix. */
-  char *capture;                 /**< Optional capture buffer. */
-  size_t capture_len;            /**< Capacity of ``capture``. */
-  size_t *used;                  /**< Bytes already populated in capture. */
-  uint8_t *seen_exp;             /**< Sticky: prefix observed yet? */
+  const char* cmd;               /**< Command we sent (for echo). */
+  const char* expected_response; /**< Optional expected prefix. */
+  char*       capture;           /**< Optional capture buffer. */
+  size_t      capture_len;       /**< Capacity of ``capture``. */
+  size_t*     used;              /**< Bytes already populated in capture. */
+  uint8_t*    seen_exp;          /**< Sticky: prefix observed yet? */
 } ra_modem_wait_ctx_t;
 
 /**
@@ -435,22 +446,26 @@ typedef struct {
  *
  * @return The line action (continue / done_ok / done_err).
  */
-static ra_modem_line_action_t
-internal_pump_one(const ra_modem_wait_ctx_t *wc) {
-  uint8_t byte = 0U;
+static ra_modem_line_action_t internal_pump_one(const ra_modem_wait_ctx_t* wc)
+{
+  uint8_t        byte   = 0U;
   const ra_err_t rx_err = s_mod.cfg.io.rx_byte(s_mod.cfg.io.ctx, &byte);
   if (rx_err != k_ra_ok) {
     return k_ra_modem_line_action_continue;
   }
-  const char *line = nullptr;
+  const char* line = nullptr;
   internal_accumulate(byte, &line);
   if (line == nullptr) {
     return k_ra_modem_line_action_continue;
   }
-  const ra_modem_line_kind_t kind =
-      internal_classify(line, wc->cmd, wc->expected_response);
-  return internal_handle_line(line, kind, wc->expected_response, wc->seen_exp,
-                              wc->capture, wc->capture_len, wc->used);
+  const ra_modem_line_kind_t kind = internal_classify(line, wc->cmd, wc->expected_response);
+  return internal_handle_line(line,
+                              kind,
+                              wc->expected_response,
+                              wc->seen_exp,
+                              wc->capture,
+                              wc->capture_len,
+                              wc->used);
 }
 
 /**
@@ -463,14 +478,15 @@ internal_pump_one(const ra_modem_wait_ctx_t *wc) {
  * @param[in]  capture_len       Capacity of ``capture``.
  * @return ``ra_err_t`` per public docs.
  */
-static ra_err_t internal_wait_response(const char *cmd,
-                                       const char *expected_response,
-                                       uint16_t timeout_ms, char *capture,
-                                       size_t capture_len) {
+static ra_err_t internal_wait_response(const char* cmd,
+                                       const char* expected_response,
+                                       uint16_t    timeout_ms,
+                                       char*       capture,
+                                       size_t      capture_len)
+{
   const uint32_t start = s_mod.cfg.io.now_ms(s_mod.cfg.io.ctx);
-  size_t used = 0U;
-  uint8_t seen_exp = (uint8_t)((expected_response == nullptr) ||
-                               (expected_response[0] == '\0'));
+  size_t         used  = 0U;
+  uint8_t seen_exp = (uint8_t)((expected_response == nullptr) || (expected_response[0] == '\0'));
 
   if ((capture != nullptr) && (capture_len > 0U)) {
     capture[0] = '\0';
@@ -479,12 +495,12 @@ static ra_err_t internal_wait_response(const char *cmd,
   s_mod.state = k_ra_modem_at_state_await_echo;
 
   const ra_modem_wait_ctx_t wc = {
-      .cmd = cmd,
-      .expected_response = expected_response,
-      .capture = capture,
-      .capture_len = capture_len,
-      .used = &used,
-      .seen_exp = &seen_exp,
+    .cmd               = cmd,
+    .expected_response = expected_response,
+    .capture           = capture,
+    .capture_len       = capture_len,
+    .used              = &used,
+    .seen_exp          = &seen_exp,
   };
 
   while (1) {
@@ -511,23 +527,23 @@ static ra_err_t internal_wait_response(const char *cmd,
 /* ------------------------------------------------------------------------- */
 
 /** @brief Reset the URC dispatch table to all-empty. */
-static void internal_clear_urc_table(void) {
+static void internal_clear_urc_table(void)
+{
   for (uint8_t i = 0U; i < (uint8_t)k_ra_modem_at_max_unsolicited; ++i) {
     s_mod.urcs[i].used = 0U;
-    s_mod.urcs[i].fn = nullptr;
-    s_mod.urcs[i].ctx = nullptr;
+    s_mod.urcs[i].fn   = nullptr;
+    s_mod.urcs[i].ctx  = nullptr;
   }
 }
 
 /** @brief Validate every required pointer in @p cfg's IO block. */
-static ra_err_t internal_validate_init_cfg(const ra_modem_at_cfg_t *cfg) {
+static ra_err_t internal_validate_init_cfg(const ra_modem_at_cfg_t* cfg)
+{
   RA_CHECK_NULL_PTR(cfg, RA_MODEM_AT_TAG, "cfg");
   RA_CHECK_NULL_PTR(cfg->line_buf, RA_MODEM_AT_TAG, "cfg->line_buf");
-  RA_CHECK_NULL_PTR((void *)cfg->io.tx_byte, RA_MODEM_AT_TAG,
-                    "cfg->io.tx_byte");
-  RA_CHECK_NULL_PTR((void *)cfg->io.rx_byte, RA_MODEM_AT_TAG,
-                    "cfg->io.rx_byte");
-  RA_CHECK_NULL_PTR((void *)cfg->io.now_ms, RA_MODEM_AT_TAG, "cfg->io.now_ms");
+  RA_CHECK_NULL_PTR((void*)cfg->io.tx_byte, RA_MODEM_AT_TAG, "cfg->io.tx_byte");
+  RA_CHECK_NULL_PTR((void*)cfg->io.rx_byte, RA_MODEM_AT_TAG, "cfg->io.rx_byte");
+  RA_CHECK_NULL_PTR((void*)cfg->io.now_ms, RA_MODEM_AT_TAG, "cfg->io.now_ms");
   if (cfg->line_buf_len < (uint16_t)k_ra_modem_at_min_line_buf_bytes) {
     ra_log_error(RA_MODEM_AT_TAG, "line_buf too small");
     return k_ra_err_invalid_size;
@@ -535,22 +551,23 @@ static ra_err_t internal_validate_init_cfg(const ra_modem_at_cfg_t *cfg) {
   return k_ra_ok;
 }
 
-ra_err_t ra_modem_at_init(const ra_modem_at_cfg_t *cfg) {
+ra_err_t ra_modem_at_init(const ra_modem_at_cfg_t* cfg)
+{
   const ra_err_t verr = internal_validate_init_cfg(cfg);
   if (verr != k_ra_ok) {
     return verr;
   }
-  s_mod.cfg = *cfg;
-  s_mod.line_len = 0U;
-  s_mod.state = k_ra_modem_at_state_idle;
+  s_mod.cfg         = *cfg;
+  s_mod.line_len    = 0U;
+  s_mod.state       = k_ra_modem_at_state_idle;
   s_mod.initialised = 1U;
   internal_clear_urc_table();
   internal_reset_line();
   return k_ra_ok;
 }
 
-ra_err_t ra_modem_at_send_cmd(const char *cmd, const char *expected_response,
-                              uint16_t timeout_ms) {
+ra_err_t ra_modem_at_send_cmd(const char* cmd, const char* expected_response, uint16_t timeout_ms)
+{
   if (s_mod.initialised == 0U) {
     return k_ra_err_not_initialized;
   }
@@ -561,13 +578,16 @@ ra_err_t ra_modem_at_send_cmd(const char *cmd, const char *expected_response,
   if (tx_err != k_ra_ok) {
     return tx_err;
   }
-  return internal_wait_response(cmd, expected_response,
-                                internal_effective_timeout(timeout_ms), nullptr,
+  return internal_wait_response(cmd,
+                                expected_response,
+                                internal_effective_timeout(timeout_ms),
+                                nullptr,
                                 0U);
 }
 
-ra_err_t ra_modem_at_send_cmd_capture(const char *cmd, char *out_buf,
-                                      size_t buf_len, uint16_t timeout_ms) {
+ra_err_t
+ra_modem_at_send_cmd_capture(const char* cmd, char* out_buf, size_t buf_len, uint16_t timeout_ms)
+{
   if (s_mod.initialised == 0U) {
     return k_ra_err_not_initialized;
   }
@@ -583,22 +603,25 @@ ra_err_t ra_modem_at_send_cmd_capture(const char *cmd, char *out_buf,
   if (tx_err != k_ra_ok) {
     return tx_err;
   }
-  return internal_wait_response(
-      cmd, nullptr, internal_effective_timeout(timeout_ms), out_buf, buf_len);
+  return internal_wait_response(cmd,
+                                nullptr,
+                                internal_effective_timeout(timeout_ms),
+                                out_buf,
+                                buf_len);
 }
 
 /**
  * @brief Find an existing URC slot for ``prefix`` and update its callback.
  * @return 1 if a slot matched (and was updated), 0 otherwise.
  */
-static uint8_t internal_urc_replace(const char *prefix, ra_modem_at_urc_fn_t fn,
-                                    void *ctx) {
+static uint8_t internal_urc_replace(const char* prefix, ra_modem_at_urc_fn_t fn, void* ctx)
+{
   for (uint8_t i = 0U; i < (uint8_t)k_ra_modem_at_max_unsolicited; ++i) {
     if (s_mod.urcs[i].used == 0U) {
       continue;
     }
-    if (internal_str_eq((const char *)s_mod.urcs[i].prefix, prefix) != 0U) {
-      s_mod.urcs[i].fn = fn;
+    if (internal_str_eq((const char*)s_mod.urcs[i].prefix, prefix) != 0U) {
+      s_mod.urcs[i].fn  = fn;
       s_mod.urcs[i].ctx = ctx;
       return 1U;
     }
@@ -610,8 +633,9 @@ static uint8_t internal_urc_replace(const char *prefix, ra_modem_at_urc_fn_t fn,
  * @brief Allocate the first free URC slot and copy the prefix into it.
  * @return 1 on success, 0 if the table is full.
  */
-static uint8_t internal_urc_insert(const char *prefix, uint16_t plen,
-                                   ra_modem_at_urc_fn_t fn, void *ctx) {
+static uint8_t
+internal_urc_insert(const char* prefix, uint16_t plen, ra_modem_at_urc_fn_t fn, void* ctx)
+{
   for (uint8_t i = 0U; i < (uint8_t)k_ra_modem_at_max_unsolicited; ++i) {
     if (s_mod.urcs[i].used != 0U) {
       continue;
@@ -622,22 +646,22 @@ static uint8_t internal_urc_insert(const char *prefix, uint16_t plen,
       ++k;
     }
     s_mod.urcs[i].prefix[plen] = (uint8_t)'\0';
-    s_mod.urcs[i].fn = fn;
-    s_mod.urcs[i].ctx = ctx;
-    s_mod.urcs[i].used = 1U;
+    s_mod.urcs[i].fn           = fn;
+    s_mod.urcs[i].ctx          = ctx;
+    s_mod.urcs[i].used         = 1U;
     return 1U;
   }
   return 0U;
 }
 
-ra_err_t ra_modem_at_register_unsolicited_handler(const char *prefix,
-                                                  ra_modem_at_urc_fn_t fn,
-                                                  void *ctx) {
+ra_err_t
+ra_modem_at_register_unsolicited_handler(const char* prefix, ra_modem_at_urc_fn_t fn, void* ctx)
+{
   if (s_mod.initialised == 0U) {
     return k_ra_err_not_initialized;
   }
   RA_CHECK_NULL_PTR(prefix, RA_MODEM_AT_TAG, "prefix");
-  RA_CHECK_NULL_PTR((void *)fn, RA_MODEM_AT_TAG, "fn");
+  RA_CHECK_NULL_PTR((void*)fn, RA_MODEM_AT_TAG, "fn");
 
   const uint16_t plen = internal_str_len(prefix);
   if ((plen == 0U) || (plen >= (uint16_t)k_ra_modem_at_max_prefix_len)) {
@@ -653,21 +677,21 @@ ra_err_t ra_modem_at_register_unsolicited_handler(const char *prefix,
   return k_ra_err_no_mem;
 }
 
-ra_err_t ra_modem_at_poll(void) {
+ra_err_t ra_modem_at_poll(void)
+{
   if (s_mod.initialised == 0U) {
     return k_ra_err_not_initialized;
   }
   while (1) {
-    uint8_t byte = 0U;
-    const ra_err_t err = s_mod.cfg.io.rx_byte(s_mod.cfg.io.ctx, &byte);
+    uint8_t        byte = 0U;
+    const ra_err_t err  = s_mod.cfg.io.rx_byte(s_mod.cfg.io.ctx, &byte);
     if (err != k_ra_ok) {
       break;
     }
-    const char *line = nullptr;
+    const char* line = nullptr;
     internal_accumulate(byte, &line);
     if (line != nullptr) {
-      const ra_modem_line_kind_t kind =
-          internal_classify(line, nullptr, nullptr);
+      const ra_modem_line_kind_t kind = internal_classify(line, nullptr, nullptr);
       (void)kind;
     }
   }

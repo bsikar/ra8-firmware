@@ -111,8 +111,8 @@ static ra_power_profile_stats_t s_stats = {};
  * @note Internal helper; not exported.
  * @since 0.1.0
  */
-static ra_err_t
-internal_validate_region(ra_power_profile_region_id_t region_id) {
+static ra_err_t internal_validate_region(ra_power_profile_region_id_t region_id)
+{
   if ((uint8_t)region_id >= (uint8_t)k_ra_power_profile_max_regions) {
     ra_log_error(RA_POWER_PROFILE_TAG, "region id out of range");
     return k_ra_err_range_check_failed;
@@ -137,7 +137,8 @@ internal_validate_region(ra_power_profile_region_id_t region_id) {
  * @note Internal helper; not exported.
  * @since 0.1.0
  */
-static uint64_t internal_now_us(void) {
+static uint64_t internal_now_us(void)
+{
   if (s_cfg.now_us == nullptr) {
     return 0U;
   }
@@ -160,24 +161,26 @@ static uint64_t internal_now_us(void) {
  * @note Internal helper; not exported.
  * @since 0.1.0
  */
-static void internal_fire_pulse(ra_power_profile_region_id_t region_id,
-                                bool entering) {
+static void internal_fire_pulse(ra_power_profile_region_id_t region_id, bool entering)
+{
   if (s_cfg.pulse == nullptr) {
     return;
   }
   s_cfg.pulse(s_cfg.user_ctx_gpio, region_id, entering);
 }
 
-ra_err_t ra_power_profile_init(const ra_power_profile_config_t *cfg) {
+ra_err_t ra_power_profile_init(const ra_power_profile_config_t* cfg)
+{
   RA_CHECK_NULL_PTR(cfg, RA_POWER_PROFILE_TAG, "cfg must not be nullptr");
 
-  s_cfg = *cfg;
-  s_stats = (ra_power_profile_stats_t){};
+  s_cfg         = *cfg;
+  s_stats       = (ra_power_profile_stats_t){};
   s_initialized = true;
   return k_ra_ok;
 }
 
-ra_err_t ra_power_profile_mark_enter(ra_power_profile_region_id_t region_id) {
+ra_err_t ra_power_profile_mark_enter(ra_power_profile_region_id_t region_id)
+{
   RA_VALIDATE_INIT(s_initialized, RA_POWER_PROFILE_TAG, "init not called");
 
   const ra_err_t range_err = internal_validate_region(region_id);
@@ -185,16 +188,17 @@ ra_err_t ra_power_profile_mark_enter(ra_power_profile_region_id_t region_id) {
     return range_err;
   }
 
-  ra_power_profile_region_stats_t *slot = &s_stats.regions[(uint8_t)region_id];
+  ra_power_profile_region_stats_t* slot = &s_stats.regions[(uint8_t)region_id];
   slot->entries += 1U;
   slot->last_enter_us = internal_now_us();
-  slot->is_open = true;
+  slot->is_open       = true;
 
   internal_fire_pulse(region_id, true);
   return k_ra_ok;
 }
 
-ra_err_t ra_power_profile_mark_exit(ra_power_profile_region_id_t region_id) {
+ra_err_t ra_power_profile_mark_exit(ra_power_profile_region_id_t region_id)
+{
   RA_VALIDATE_INIT(s_initialized, RA_POWER_PROFILE_TAG, "init not called");
 
   const ra_err_t range_err = internal_validate_region(region_id);
@@ -202,7 +206,7 @@ ra_err_t ra_power_profile_mark_exit(ra_power_profile_region_id_t region_id) {
     return range_err;
   }
 
-  ra_power_profile_region_stats_t *slot = &s_stats.regions[(uint8_t)region_id];
+  ra_power_profile_region_stats_t* slot = &s_stats.regions[(uint8_t)region_id];
   slot->exits += 1U;
 
   ra_err_t ret = k_ra_ok;
@@ -221,16 +225,17 @@ ra_err_t ra_power_profile_mark_exit(ra_power_profile_region_id_t region_id) {
   return ret;
 }
 
-ra_err_t ra_power_profile_get_stats(ra_power_profile_stats_t *out_stats) {
+ra_err_t ra_power_profile_get_stats(ra_power_profile_stats_t* out_stats)
+{
   RA_VALIDATE_INIT(s_initialized, RA_POWER_PROFILE_TAG, "init not called");
-  RA_CHECK_NULL_PTR(out_stats, RA_POWER_PROFILE_TAG,
-                    "out_stats must not be nullptr");
+  RA_CHECK_NULL_PTR(out_stats, RA_POWER_PROFILE_TAG, "out_stats must not be nullptr");
 
   (void)memcpy(out_stats, &s_stats, sizeof(*out_stats));
   return k_ra_ok;
 }
 
-ra_err_t ra_power_profile_reset_stats(void) {
+ra_err_t ra_power_profile_reset_stats(void)
+{
   RA_VALIDATE_INIT(s_initialized, RA_POWER_PROFILE_TAG, "init not called");
 
   s_stats = (ra_power_profile_stats_t){};

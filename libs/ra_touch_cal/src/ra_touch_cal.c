@@ -45,14 +45,14 @@
  * @brief Module-private numeric constants (no magic numbers).
  */
 typedef enum : uint32_t {
-  k_internal_centre_div    = 2U,         /**< Halve to get panel centre.     */
-  k_internal_byte_mask     = 0xFFU,      /**< 8-bit mask for byte extracts.  */
-  k_internal_byte_shift_8  = 8U,         /**< Shift to byte 1.               */
-  k_internal_byte_shift_16 = 16U,        /**< Shift to byte 2.               */
-  k_internal_byte_shift_24 = 24U,        /**< Shift to byte 3.               */
-  k_internal_crc32_init    = 0xFFFFFFFFU,/**< IEEE 802.3 CRC seed.           */
-  k_internal_crc32_poly    = 0xEDB88320U,/**< IEEE 802.3 reversed polynomial.*/
-  k_internal_bits_per_byte = 8U,         /**< Bits in one byte.              */
+  k_internal_centre_div    = 2U,          /**< Halve to get panel centre.     */
+  k_internal_byte_mask     = 0xFFU,       /**< 8-bit mask for byte extracts.  */
+  k_internal_byte_shift_8  = 8U,          /**< Shift to byte 1.               */
+  k_internal_byte_shift_16 = 16U,         /**< Shift to byte 2.               */
+  k_internal_byte_shift_24 = 24U,         /**< Shift to byte 3.               */
+  k_internal_crc32_init    = 0xFFFFFFFFU, /**< IEEE 802.3 CRC seed.           */
+  k_internal_crc32_poly    = 0xEDB88320U, /**< IEEE 802.3 reversed polynomial.*/
+  k_internal_bits_per_byte = 8U,          /**< Bits in one byte.              */
 } internal_const_t;
 
 /**
@@ -83,12 +83,9 @@ static const float s_min_det = 1.0e-3F;
 static void internal_pack_le32(uint8_t* dst, uint32_t word)
 {
   dst[0] = (uint8_t)(word & (uint32_t)k_internal_byte_mask);
-  dst[1] = (uint8_t)((word >> (uint32_t)k_internal_byte_shift_8)
-                     & (uint32_t)k_internal_byte_mask);
-  dst[2] = (uint8_t)((word >> (uint32_t)k_internal_byte_shift_16)
-                     & (uint32_t)k_internal_byte_mask);
-  dst[3] = (uint8_t)((word >> (uint32_t)k_internal_byte_shift_24)
-                     & (uint32_t)k_internal_byte_mask);
+  dst[1] = (uint8_t)((word >> (uint32_t)k_internal_byte_shift_8) & (uint32_t)k_internal_byte_mask);
+  dst[2] = (uint8_t)((word >> (uint32_t)k_internal_byte_shift_16) & (uint32_t)k_internal_byte_mask);
+  dst[3] = (uint8_t)((word >> (uint32_t)k_internal_byte_shift_24) & (uint32_t)k_internal_byte_mask);
 }
 
 /**
@@ -151,7 +148,7 @@ static uint32_t internal_crc32(const uint8_t* data, size_t len)
     crc ^= (uint32_t)data[i];
     for (uint8_t b = 0U; b < (uint8_t)k_internal_bits_per_byte; b++) {
       const uint32_t mask = (uint32_t)0U - (crc & 1U);
-      crc = (crc >> 1U) ^ ((uint32_t)k_internal_crc32_poly & mask);
+      crc                 = (crc >> 1U) ^ ((uint32_t)k_internal_crc32_poly & mask);
     }
   }
   return crc ^ (uint32_t)k_internal_crc32_init;
@@ -170,15 +167,11 @@ static uint32_t internal_crc32(const uint8_t* data, size_t len)
  * @param[out] x    Solution vector (length 3).
  * @param[out] ok   Set to true on success, false if ``|det| < s_min_det``.
  */
-static void internal_solve3(const float a[9],
-                            const float b[3],
-                            float       x[3],
-                            bool*       ok)
+static void internal_solve3(const float a[9], const float b[3], float x[3], bool* ok)
 {
-  const float det =
-      (a[0] * ((a[4] * a[8]) - (a[5] * a[7])))
-    - (a[1] * ((a[3] * a[8]) - (a[5] * a[6])))
-    + (a[2] * ((a[3] * a[7]) - (a[4] * a[6])));
+  const float det = (a[0] * ((a[4] * a[8]) - (a[5] * a[7]))) -
+                    (a[1] * ((a[3] * a[8]) - (a[5] * a[6]))) +
+                    (a[2] * ((a[3] * a[7]) - (a[4] * a[6])));
 
   const float abs_det = (det < 0.0F) ? -det : det;
   if (abs_det < s_min_det) {
@@ -186,20 +179,17 @@ static void internal_solve3(const float a[9],
     return;
   }
 
-  const float dx =
-      (b[0] * ((a[4] * a[8]) - (a[5] * a[7])))
-    - (a[1] * ((b[1] * a[8]) - (a[5] * b[2])))
-    + (a[2] * ((b[1] * a[7]) - (a[4] * b[2])));
+  const float dx = (b[0] * ((a[4] * a[8]) - (a[5] * a[7]))) -
+                   (a[1] * ((b[1] * a[8]) - (a[5] * b[2]))) +
+                   (a[2] * ((b[1] * a[7]) - (a[4] * b[2])));
 
-  const float dy =
-      (a[0] * ((b[1] * a[8]) - (a[5] * b[2])))
-    - (b[0] * ((a[3] * a[8]) - (a[5] * a[6])))
-    + (a[2] * ((a[3] * b[2]) - (b[1] * a[6])));
+  const float dy = (a[0] * ((b[1] * a[8]) - (a[5] * b[2]))) -
+                   (b[0] * ((a[3] * a[8]) - (a[5] * a[6]))) +
+                   (a[2] * ((a[3] * b[2]) - (b[1] * a[6])));
 
-  const float dz =
-      (a[0] * ((a[4] * b[2]) - (b[1] * a[7])))
-    - (a[1] * ((a[3] * b[2]) - (b[1] * a[6])))
-    + (b[0] * ((a[3] * a[7]) - (a[4] * a[6])));
+  const float dz = (a[0] * ((a[4] * b[2]) - (b[1] * a[7]))) -
+                   (a[1] * ((a[3] * b[2]) - (b[1] * a[6]))) +
+                   (b[0] * ((a[3] * a[7]) - (a[4] * a[6])));
 
   x[0] = dx / det;
   x[1] = dy / det;
@@ -212,8 +202,12 @@ static void internal_solve3(const float a[9],
  */
 static int32_t internal_clip32(int32_t v, int32_t lo, int32_t hi)
 {
-  if (v < lo) { return lo; }
-  if (v > hi) { return hi; }
+  if (v < lo) {
+    return lo;
+  }
+  if (v > hi) {
+    return hi;
+  }
   return v;
 }
 
@@ -230,8 +224,7 @@ ra_err_t ra_touch_cal_compute(const ra_touch_cal_point_t* raw,
   if ((raw == NULL) || (screen == NULL) || (out_mtx == NULL)) {
     return k_ra_err_null_ptr;
   }
-  if ((n < (uint8_t)k_ra_touch_cal_min_targets)
-      || (n > (uint8_t)k_ra_touch_cal_max_targets)) {
+  if ((n < (uint8_t)k_ra_touch_cal_min_targets) || (n > (uint8_t)k_ra_touch_cal_max_targets)) {
     return k_ra_err_invalid_arg;
   }
 
@@ -246,24 +239,30 @@ ra_err_t ra_touch_cal_compute(const ra_touch_cal_point_t* raw,
     const float yi = (float)raw[i].y;
     const float ui = (float)screen[i].x;
     const float vi = (float)screen[i].y;
-    Sx  += xi;
-    Sy  += yi;
+    Sx += xi;
+    Sy += yi;
     Sxx += xi * xi;
     Syy += yi * yi;
     Sxy += xi * yi;
-    Su  += ui;
-    Sv  += vi;
+    Su += ui;
+    Sv += vi;
     Sxu += xi * ui;
     Syu += yi * ui;
     Sxv += xi * vi;
     Syv += yi * vi;
   }
 
-  const float fn = (float)n;
+  const float fn   = (float)n;
   const float A[9] = {
-      Sxx, Sxy, Sx,
-      Sxy, Syy, Sy,
-      Sx,  Sy,  fn,
+    Sxx,
+    Sxy,
+    Sx,
+    Sxy,
+    Syy,
+    Sy,
+    Sx,
+    Sy,
+    fn,
   };
 
   float       sol_u[3] = {0.0F, 0.0F, 0.0F};
@@ -293,8 +292,7 @@ ra_err_t ra_touch_cal_compute(const ra_touch_cal_point_t* raw,
  * ===========================================================================
  */
 
-ra_err_t ra_touch_cal_run(const ra_touch_cal_run_cfg_t* cfg,
-                          ra_touch_cal_matrix_t*        out_matrix)
+ra_err_t ra_touch_cal_run(const ra_touch_cal_run_cfg_t* cfg, ra_touch_cal_matrix_t* out_matrix)
 {
   if ((cfg == NULL) || (out_matrix == NULL)) {
     return k_ra_err_null_ptr;
@@ -306,8 +304,8 @@ ra_err_t ra_touch_cal_run(const ra_touch_cal_run_cfg_t* cfg,
     return k_ra_err_invalid_arg;
   }
   const uint32_t margin_total = (uint32_t)cfg->inset_px * 2U;
-  if ((margin_total >= (uint32_t)cfg->screen_width)
-      || (margin_total >= (uint32_t)cfg->screen_height)) {
+  if ((margin_total >= (uint32_t)cfg->screen_width) ||
+      (margin_total >= (uint32_t)cfg->screen_height)) {
     return k_ra_err_invalid_arg;
   }
 
@@ -316,16 +314,19 @@ ra_err_t ra_touch_cal_run(const ra_touch_cal_run_cfg_t* cfg,
   const int32_t ins = (int32_t)cfg->inset_px;
 
   ra_touch_cal_point_t targets[k_ra_touch_cal_n_targets] = {
-      { ins,         ins         }, /* top-left     */
-      { w - 1 - ins, ins         }, /* top-right    */
-      { w - 1 - ins, h - 1 - ins }, /* bottom-right */
-      { ins,         h - 1 - ins }, /* bottom-left  */
-      { w / (int32_t)k_internal_centre_div,
-        h / (int32_t)k_internal_centre_div }, /* centre */
+    {ins, ins},                                                               /* top-left     */
+    {w - 1 - ins, ins},                                                       /* top-right    */
+    {w - 1 - ins, h - 1 - ins},                                               /* bottom-right */
+    {ins, h - 1 - ins},                                                       /* bottom-left  */
+    {w / (int32_t)k_internal_centre_div, h / (int32_t)k_internal_centre_div}, /* centre */
   };
 
   ra_touch_cal_point_t samples[k_ra_touch_cal_n_targets] = {
-      {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0},
+    {0, 0},
+    {0, 0},
+    {0, 0},
+    {0, 0},
+    {0, 0},
   };
 
   for (uint8_t i = 0U; i < (uint8_t)k_ra_touch_cal_n_targets; i++) {
@@ -339,8 +340,7 @@ ra_err_t ra_touch_cal_run(const ra_touch_cal_run_cfg_t* cfg,
     }
   }
 
-  return ra_touch_cal_compute(samples, targets,
-                              (uint8_t)k_ra_touch_cal_n_targets, out_matrix);
+  return ra_touch_cal_compute(samples, targets, (uint8_t)k_ra_touch_cal_n_targets, out_matrix);
 }
 
 /* ===========================================================================
@@ -367,15 +367,11 @@ ra_err_t ra_touch_cal_apply(ra_touch_cal_point_t         raw,
   const float v  = (matrix->d * xf) + (matrix->e * yf) + matrix->f;
 
   /* Round-to-nearest before clipping. */
-  const int32_t ui = (u >= 0.0F) ? (int32_t)(u + 0.5F)
-                                 : (int32_t)(u - 0.5F);
-  const int32_t vi = (v >= 0.0F) ? (int32_t)(v + 0.5F)
-                                 : (int32_t)(v - 0.5F);
+  const int32_t ui = (u >= 0.0F) ? (int32_t)(u + 0.5F) : (int32_t)(u - 0.5F);
+  const int32_t vi = (v >= 0.0F) ? (int32_t)(v + 0.5F) : (int32_t)(v - 0.5F);
 
-  out_screen->x =
-      internal_clip32(ui, 0, (int32_t)screen_width - 1);
-  out_screen->y =
-      internal_clip32(vi, 0, (int32_t)screen_height - 1);
+  out_screen->x = internal_clip32(ui, 0, (int32_t)screen_width - 1);
+  out_screen->y = internal_clip32(vi, 0, (int32_t)screen_height - 1);
   return k_ra_ok;
 }
 
@@ -384,9 +380,7 @@ ra_err_t ra_touch_cal_apply(ra_touch_cal_point_t         raw,
  * ===========================================================================
  */
 
-ra_err_t ra_touch_cal_save(const ra_touch_cal_matrix_t* matrix,
-                           uint8_t*                     dst,
-                           size_t                       dst_size)
+ra_err_t ra_touch_cal_save(const ra_touch_cal_matrix_t* matrix, uint8_t* dst, size_t dst_size)
 {
   if ((matrix == NULL) || (dst == NULL)) {
     return k_ra_err_null_ptr;
@@ -395,35 +389,35 @@ ra_err_t ra_touch_cal_save(const ra_touch_cal_matrix_t* matrix,
     return k_ra_err_invalid_size;
   }
 
-  dst[(size_t)k_ra_touch_cal_off_magic + 0U] = (uint8_t)k_ra_touch_cal_magic_b0;
-  dst[(size_t)k_ra_touch_cal_off_magic + 1U] = (uint8_t)k_ra_touch_cal_magic_b1;
-  dst[(size_t)k_ra_touch_cal_off_magic + 2U] = (uint8_t)k_ra_touch_cal_magic_b2;
-  dst[(size_t)k_ra_touch_cal_off_magic + 3U] = (uint8_t)k_ra_touch_cal_magic_b3;
-  dst[(size_t)k_ra_touch_cal_off_version]    = (uint8_t)k_ra_touch_cal_storage_version;
+  dst[(size_t)k_ra_touch_cal_off_magic + 0U]    = (uint8_t)k_ra_touch_cal_magic_b0;
+  dst[(size_t)k_ra_touch_cal_off_magic + 1U]    = (uint8_t)k_ra_touch_cal_magic_b1;
+  dst[(size_t)k_ra_touch_cal_off_magic + 2U]    = (uint8_t)k_ra_touch_cal_magic_b2;
+  dst[(size_t)k_ra_touch_cal_off_magic + 3U]    = (uint8_t)k_ra_touch_cal_magic_b3;
+  dst[(size_t)k_ra_touch_cal_off_version]       = (uint8_t)k_ra_touch_cal_storage_version;
   dst[(size_t)k_ra_touch_cal_off_reserved + 0U] = 0U;
   dst[(size_t)k_ra_touch_cal_off_reserved + 1U] = 0U;
   dst[(size_t)k_ra_touch_cal_off_reserved + 2U] = 0U;
 
   const float coeffs[6] = {
-      matrix->a, matrix->b, matrix->c,
-      matrix->d, matrix->e, matrix->f,
+    matrix->a,
+    matrix->b,
+    matrix->c,
+    matrix->d,
+    matrix->e,
+    matrix->f,
   };
   for (uint8_t i = 0U; i < 6U; i++) {
     const uint32_t bits = internal_float_to_u32(coeffs[i]);
-    internal_pack_le32(&dst[(size_t)k_ra_touch_cal_off_coeffs
-                             + ((size_t)i * sizeof(uint32_t))],
+    internal_pack_le32(&dst[(size_t)k_ra_touch_cal_off_coeffs + ((size_t)i * sizeof(uint32_t))],
                        bits);
   }
 
-  const uint32_t crc =
-      internal_crc32(dst, (size_t)k_ra_touch_cal_off_crc32);
+  const uint32_t crc = internal_crc32(dst, (size_t)k_ra_touch_cal_off_crc32);
   internal_pack_le32(&dst[(size_t)k_ra_touch_cal_off_crc32], crc);
   return k_ra_ok;
 }
 
-ra_err_t ra_touch_cal_load(const uint8_t*         src,
-                           size_t                 src_size,
-                           ra_touch_cal_matrix_t* out_matrix)
+ra_err_t ra_touch_cal_load(const uint8_t* src, size_t src_size, ra_touch_cal_matrix_t* out_matrix)
 {
   if ((src == NULL) || (out_matrix == NULL)) {
     return k_ra_err_null_ptr;
@@ -432,30 +426,23 @@ ra_err_t ra_touch_cal_load(const uint8_t*         src,
     return k_ra_err_invalid_size;
   }
 
-  if ((src[(size_t)k_ra_touch_cal_off_magic + 0U]
-        != (uint8_t)k_ra_touch_cal_magic_b0)
-      || (src[(size_t)k_ra_touch_cal_off_magic + 1U]
-        != (uint8_t)k_ra_touch_cal_magic_b1)
-      || (src[(size_t)k_ra_touch_cal_off_magic + 2U]
-        != (uint8_t)k_ra_touch_cal_magic_b2)
-      || (src[(size_t)k_ra_touch_cal_off_magic + 3U]
-        != (uint8_t)k_ra_touch_cal_magic_b3)) {
+  if ((src[(size_t)k_ra_touch_cal_off_magic + 0U] != (uint8_t)k_ra_touch_cal_magic_b0) ||
+      (src[(size_t)k_ra_touch_cal_off_magic + 1U] != (uint8_t)k_ra_touch_cal_magic_b1) ||
+      (src[(size_t)k_ra_touch_cal_off_magic + 2U] != (uint8_t)k_ra_touch_cal_magic_b2) ||
+      (src[(size_t)k_ra_touch_cal_off_magic + 3U] != (uint8_t)k_ra_touch_cal_magic_b3)) {
     return k_ra_err_invalid_arg;
   }
-  if (src[(size_t)k_ra_touch_cal_off_version]
-      != (uint8_t)k_ra_touch_cal_storage_version) {
+  if (src[(size_t)k_ra_touch_cal_off_version] != (uint8_t)k_ra_touch_cal_storage_version) {
     return k_ra_err_invalid_arg;
   }
-  if ((src[(size_t)k_ra_touch_cal_off_reserved + 0U] != 0U)
-      || (src[(size_t)k_ra_touch_cal_off_reserved + 1U] != 0U)
-      || (src[(size_t)k_ra_touch_cal_off_reserved + 2U] != 0U)) {
+  if ((src[(size_t)k_ra_touch_cal_off_reserved + 0U] != 0U) ||
+      (src[(size_t)k_ra_touch_cal_off_reserved + 1U] != 0U) ||
+      (src[(size_t)k_ra_touch_cal_off_reserved + 2U] != 0U)) {
     return k_ra_err_invalid_arg;
   }
 
-  const uint32_t want_crc =
-      internal_unpack_le32(&src[(size_t)k_ra_touch_cal_off_crc32]);
-  const uint32_t have_crc =
-      internal_crc32(src, (size_t)k_ra_touch_cal_off_crc32);
+  const uint32_t want_crc = internal_unpack_le32(&src[(size_t)k_ra_touch_cal_off_crc32]);
+  const uint32_t have_crc = internal_crc32(src, (size_t)k_ra_touch_cal_off_crc32);
   if (want_crc != have_crc) {
     return k_ra_err_crc_mismatch;
   }
@@ -463,8 +450,7 @@ ra_err_t ra_touch_cal_load(const uint8_t*         src,
   float coeffs[6] = {0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F};
   for (uint8_t i = 0U; i < 6U; i++) {
     const uint32_t bits = internal_unpack_le32(
-        &src[(size_t)k_ra_touch_cal_off_coeffs
-              + ((size_t)i * sizeof(uint32_t))]);
+      &src[(size_t)k_ra_touch_cal_off_coeffs + ((size_t)i * sizeof(uint32_t))]);
     coeffs[i] = internal_u32_to_float(bits);
   }
   out_matrix->a = coeffs[0];

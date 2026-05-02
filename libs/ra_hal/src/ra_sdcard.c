@@ -55,14 +55,14 @@ static const char* s_tag = "SDCARD";
  * commands used here.
  */
 typedef enum : uint8_t {
-  k_ra_sdcard_cmd0_go_idle           = 0U,  /**< CMD0  GO_IDLE_STATE */
-  k_ra_sdcard_cmd2_all_send_cid      = 2U,  /**< CMD2  ALL_SEND_CID */
-  k_ra_sdcard_cmd3_send_rca          = 3U,  /**< CMD3  SEND_RELATIVE_ADDR */
-  k_ra_sdcard_cmd7_select_card       = 7U,  /**< CMD7  SELECT_CARD */
-  k_ra_sdcard_cmd8_send_if_cond      = 8U,  /**< CMD8  SEND_IF_COND */
-  k_ra_sdcard_cmd9_send_csd          = 9U,  /**< CMD9  SEND_CSD */
-  k_ra_sdcard_cmd55_app_cmd          = 55U, /**< CMD55 APP_CMD prefix */
-  k_ra_sdcard_acmd41_send_op_cond    = 41U, /**< ACMD41 SD_SEND_OP_COND */
+  k_ra_sdcard_cmd0_go_idle        = 0U,  /**< CMD0  GO_IDLE_STATE */
+  k_ra_sdcard_cmd2_all_send_cid   = 2U,  /**< CMD2  ALL_SEND_CID */
+  k_ra_sdcard_cmd3_send_rca       = 3U,  /**< CMD3  SEND_RELATIVE_ADDR */
+  k_ra_sdcard_cmd7_select_card    = 7U,  /**< CMD7  SELECT_CARD */
+  k_ra_sdcard_cmd8_send_if_cond   = 8U,  /**< CMD8  SEND_IF_COND */
+  k_ra_sdcard_cmd9_send_csd       = 9U,  /**< CMD9  SEND_CSD */
+  k_ra_sdcard_cmd55_app_cmd       = 55U, /**< CMD55 APP_CMD prefix */
+  k_ra_sdcard_acmd41_send_op_cond = 41U, /**< ACMD41 SD_SEND_OP_COND */
 } ra_sdcard_cmd_t;
 
 /**
@@ -76,14 +76,14 @@ typedef enum : uint8_t {
  * supports.
  */
 typedef enum : uint32_t {
-  k_ra_sdcard_cmd8_pattern        = 0x000001AAUL, /**< VHS=0001, check=0xAA */
-  k_ra_sdcard_cmd8_pattern_mask   = 0x00000FFFUL, /**< low 12 bits echoed */
-  k_ra_sdcard_acmd41_hcs          = 0x40000000UL, /**< HCS bit -- request HC support */
-  k_ra_sdcard_acmd41_voltage_win  = 0x00FF8000UL, /**< OCR voltage window 2.7-3.6 V */
-  k_ra_sdcard_ocr_busy_done_mask  = 0x80000000UL, /**< OCR.busy clears when ready */
-  k_ra_sdcard_ocr_ccs_mask        = 0x40000000UL, /**< OCR.CCS = 1 -> SDHC/SDXC */
-  k_ra_sdcard_init_retry_max      = 1000U,        /**< ACMD41 retry budget */
-  k_ra_sdcard_default_clk_div     = 0x00000004UL, /**< CLKSEL=4 -> 25 MHz at 200 MHz PCLKB */
+  k_ra_sdcard_cmd8_pattern       = 0x000001AAUL, /**< VHS=0001, check=0xAA */
+  k_ra_sdcard_cmd8_pattern_mask  = 0x00000FFFUL, /**< low 12 bits echoed */
+  k_ra_sdcard_acmd41_hcs         = 0x40000000UL, /**< HCS bit -- request HC support */
+  k_ra_sdcard_acmd41_voltage_win = 0x00FF8000UL, /**< OCR voltage window 2.7-3.6 V */
+  k_ra_sdcard_ocr_busy_done_mask = 0x80000000UL, /**< OCR.busy clears when ready */
+  k_ra_sdcard_ocr_ccs_mask       = 0x40000000UL, /**< OCR.CCS = 1 -> SDHC/SDXC */
+  k_ra_sdcard_init_retry_max     = 1000U,        /**< ACMD41 retry budget */
+  k_ra_sdcard_default_clk_div    = 0x00000004UL, /**< CLKSEL=4 -> 25 MHz at 200 MHz PCLKB */
 } ra_sdcard_proto_t;
 
 /**
@@ -105,7 +105,7 @@ typedef enum : uint32_t {
  * ``r_sdhi_csd_extract``.
  */
 typedef enum : uint32_t {
-  k_ra_sdcard_csd_v2_blocks_per_unit = 1024UL, /**< 512 KiB / 512 B */
+  k_ra_sdcard_csd_v2_blocks_per_unit = 1024UL,    /**< 512 KiB / 512 B */
   k_ra_sdcard_sdhc_threshold_blocks  = 4194304UL, /**< 2 GiB / 512 B = SDXC boundary */
 } ra_sdcard_csd_t;
 
@@ -151,9 +151,9 @@ static ra_err_t internal_run_acmd41(uint8_t instance, uint32_t* out_ocr)
 {
   RA_CHECK_NULL_PTR(out_ocr, s_tag, "ocr");
 
-  uint32_t rsp[4]   = {0U, 0U, 0U, 0U};
-  uint32_t ocr      = 0U;
-  uint8_t  done     = 0U;
+  uint32_t rsp[4] = {0U, 0U, 0U, 0U};
+  uint32_t ocr    = 0U;
+  uint8_t  done   = 0U;
   for (uint32_t i = 0U; i < (uint32_t)k_ra_sdcard_init_retry_max; ++i) {
     /* HUM Ch 47.2.1 "SD_CMD : Command Type Register" p 3125 */
     /* CMD55 prefix is required before every ACMDxx. */
@@ -261,9 +261,10 @@ ra_err_t ra_sdcard_init(const ra_sdcard_cfg_t* cfg)
   /* HUM Ch 47.2.5 "SD_RSP10 : Response Register 10" p 3132 */
   /* CMD8 SEND_IF_COND -- echoes the low 12 bits of the argument back
    * in R7. Mismatch means a v1 (no-CMD8) card or no card at all. */
-  const ra_err_t e8 = ra_sdhi_send_command(
-    cfg->instance, (uint32_t)k_ra_sdcard_cmd8_send_if_cond,
-    (uint32_t)k_ra_sdcard_cmd8_pattern, rsp);
+  const ra_err_t e8 = ra_sdhi_send_command(cfg->instance,
+                                           (uint32_t)k_ra_sdcard_cmd8_send_if_cond,
+                                           (uint32_t)k_ra_sdcard_cmd8_pattern,
+                                           rsp);
   RA_RETURN_ON_ERROR(e8, s_tag, "cmd8");
   if ((rsp[0] & (uint32_t)k_ra_sdcard_cmd8_pattern_mask) !=
       ((uint32_t)k_ra_sdcard_cmd8_pattern & (uint32_t)k_ra_sdcard_cmd8_pattern_mask)) {
@@ -272,14 +273,13 @@ ra_err_t ra_sdcard_init(const ra_sdcard_cfg_t* cfg)
   }
 
   /* ACMD41 op-cond loop -- card moves from idle to ready. */
-  uint32_t       ocr   = 0U;
-  const ra_err_t e41   = internal_run_acmd41(cfg->instance, &ocr);
+  uint32_t       ocr = 0U;
+  const ra_err_t e41 = internal_run_acmd41(cfg->instance, &ocr);
   if (e41 != k_ra_ok) {
     (void)ra_sdhi_deinit(cfg->instance);
     return e41;
   }
-  const uint8_t high_capacity =
-    ((ocr & (uint32_t)k_ra_sdcard_ocr_ccs_mask) != 0U) ? 1U : 0U;
+  const uint8_t high_capacity = ((ocr & (uint32_t)k_ra_sdcard_ocr_ccs_mask) != 0U) ? 1U : 0U;
 
   /* HUM Ch 47.2.5 "SD_RSP10..76 : Response Registers" p 3132 */
   /* CMD2 ALL_SEND_CID -- 136-bit response (R2). We don't decode the
@@ -318,8 +318,7 @@ ra_err_t ra_sdcard_init(const ra_sdcard_cfg_t* cfg)
   /* Bump the bus from the 400 kHz identification rate to default
    * speed. The SDR50 / DDR50 negotiation lives in the future
    * ::ra_sdcard_set_speed extension. */
-  const ra_err_t eclk =
-    ra_sdhi_set_clock(cfg->instance, (uint32_t)k_ra_sdcard_default_clk_div);
+  const ra_err_t eclk = ra_sdhi_set_clock(cfg->instance, (uint32_t)k_ra_sdcard_default_clk_div);
   RA_RETURN_ON_ERROR(eclk, s_tag, "set_clock");
 
   s_sdcard.instance        = cfg->instance;
@@ -419,7 +418,7 @@ ra_err_t ra_sdcard_deinit(void)
   if (s_sdcard.initialised == 0U) {
     return k_ra_ok;
   }
-  const uint8_t  inst = s_sdcard.instance;
+  const uint8_t inst       = s_sdcard.instance;
   s_sdcard.initialised     = 0U;
   s_sdcard.capacity_blocks = 0U;
   s_sdcard.rca             = 0U;

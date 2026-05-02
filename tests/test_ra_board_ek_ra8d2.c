@@ -138,8 +138,7 @@ static void test_audio_play_sample_block_validates(void)
   TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_board_audio_play_sample_block(buf, 3U));
   /* Even-length non-empty buffer reaches the SSIE hook; without a
    * preceding ra_board_audio_init the BSP refuses with not_initialized. */
-  TEST_ASSERT_EQ((int)k_ra_err_not_initialized,
-                 (int)ra_board_audio_play_sample_block(buf, 4U));
+  TEST_ASSERT_EQ((int)k_ra_err_not_initialized, (int)ra_board_audio_play_sample_block(buf, 4U));
   TEST_END("audio_play_sample_block rejects bad args");
 }
 

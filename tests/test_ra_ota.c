@@ -78,7 +78,8 @@ static uint8_t g_expected_sig[8];
  * Mock helpers
  * ============================================================================= */
 
-static void priv_compute_xor_hash(const uint8_t* data, uint32_t len, uint8_t out[32]) {
+static void priv_compute_xor_hash(const uint8_t* data, uint32_t len, uint8_t out[32])
+{
   (void)memset(out, 0, k_ra_ota_sha256_bytes);
   for (uint32_t i = 0U; i < len; ++i) {
     out[i % k_ra_ota_sha256_bytes] ^= data[i];
@@ -89,7 +90,8 @@ static void priv_compute_xor_hash(const uint8_t* data, uint32_t len, uint8_t out
  * Mock network interface
  * ============================================================================= */
 
-static ra_err_t mock_net_open(void* ctx, const char* url, uint32_t* out_len) {
+static ra_err_t mock_net_open(void* ctx, const char* url, uint32_t* out_len)
+{
   (void)ctx;
   if ((url == NULL) || (out_len == NULL)) {
     return k_ra_err_null_ptr;
@@ -106,7 +108,8 @@ static ra_err_t mock_net_open(void* ctx, const char* url, uint32_t* out_len) {
   return k_ra_ok;
 }
 
-static ra_err_t mock_net_read(void* ctx, uint8_t* dst, uint32_t cap, uint32_t* out) {
+static ra_err_t mock_net_read(void* ctx, uint8_t* dst, uint32_t cap, uint32_t* out)
+{
   (void)ctx;
   if ((dst == NULL) || (out == NULL)) {
     return k_ra_err_null_ptr;
@@ -130,7 +133,8 @@ static ra_err_t mock_net_read(void* ctx, uint8_t* dst, uint32_t cap, uint32_t* o
   return k_ra_ok;
 }
 
-static ra_err_t mock_net_close(void* ctx) {
+static ra_err_t mock_net_close(void* ctx)
+{
   (void)ctx;
   return k_ra_ok;
 }
@@ -139,13 +143,15 @@ static ra_err_t mock_net_close(void* ctx) {
  * Mock crypto interface
  * ============================================================================= */
 
-static ra_err_t mock_sha_init(void* ctx) {
+static ra_err_t mock_sha_init(void* ctx)
+{
   (void)ctx;
   (void)memset(g_running_hash, 0, sizeof g_running_hash);
   return k_ra_ok;
 }
 
-static ra_err_t mock_sha_update(void* ctx, const uint8_t* data, uint32_t len) {
+static ra_err_t mock_sha_update(void* ctx, const uint8_t* data, uint32_t len)
+{
   (void)ctx;
   for (uint32_t i = 0U; i < len; ++i) {
     g_running_hash[i % k_ra_ota_sha256_bytes] ^= data[i];
@@ -153,14 +159,19 @@ static ra_err_t mock_sha_update(void* ctx, const uint8_t* data, uint32_t len) {
   return k_ra_ok;
 }
 
-static ra_err_t mock_sha_final(void* ctx, uint8_t out[k_ra_ota_sha256_bytes]) {
+static ra_err_t mock_sha_final(void* ctx, uint8_t out[k_ra_ota_sha256_bytes])
+{
   (void)ctx;
   (void)memcpy(out, g_running_hash, k_ra_ota_sha256_bytes);
   return k_ra_ok;
 }
 
-static ra_err_t mock_ecdsa_verify(void* ctx, uint32_t key, const uint8_t digest[32],
-                                  const uint8_t* sig, uint32_t sig_len) {
+static ra_err_t mock_ecdsa_verify(void*          ctx,
+                                  uint32_t       key,
+                                  const uint8_t  digest[32],
+                                  const uint8_t* sig,
+                                  uint32_t       sig_len)
+{
   (void)ctx;
   (void)digest;
   if (g_ecdsa_should_fail) {
@@ -179,7 +190,8 @@ static ra_err_t mock_ecdsa_verify(void* ctx, uint32_t key, const uint8_t digest[
  * Mock flash interface
  * ============================================================================= */
 
-static ra_err_t mock_flash_erase(void* ctx, uint32_t addr, uint32_t len) {
+static ra_err_t mock_flash_erase(void* ctx, uint32_t addr, uint32_t len)
+{
   (void)ctx;
   if ((addr < k_test_bank_addr) || ((addr + len) > (k_test_bank_addr + k_test_bank_size))) {
     return k_ra_err_invalid_arg;
@@ -188,7 +200,8 @@ static ra_err_t mock_flash_erase(void* ctx, uint32_t addr, uint32_t len) {
   return k_ra_ok;
 }
 
-static ra_err_t mock_flash_program(void* ctx, uint32_t addr, const uint8_t* src, uint32_t len) {
+static ra_err_t mock_flash_program(void* ctx, uint32_t addr, const uint8_t* src, uint32_t len)
+{
   (void)ctx;
   if ((addr < k_test_bank_addr) || ((addr + len) > (k_test_bank_addr + k_test_bank_size))) {
     return k_ra_err_invalid_arg;
@@ -197,14 +210,16 @@ static ra_err_t mock_flash_program(void* ctx, uint32_t addr, const uint8_t* src,
   return k_ra_ok;
 }
 
-static ra_err_t mock_flash_set_startup(void* ctx, uint8_t which, bool persistent) {
+static ra_err_t mock_flash_set_startup(void* ctx, uint8_t which, bool persistent)
+{
   (void)ctx;
   (void)which;
   (void)persistent;
   return k_ra_ok;
 }
 
-static ra_err_t mock_flash_readback(void* ctx, uint32_t addr, uint8_t* dst, uint32_t len) {
+static ra_err_t mock_flash_readback(void* ctx, uint32_t addr, uint8_t* dst, uint32_t len)
+{
   (void)ctx;
   if ((addr < k_test_bank_addr) || ((addr + len) > (k_test_bank_addr + k_test_bank_size))) {
     return k_ra_err_invalid_arg;
@@ -220,7 +235,8 @@ static ra_err_t mock_flash_readback(void* ctx, uint32_t addr, uint8_t* dst, uint
  * Override the weak system-reset hook so the test process keeps running.
  * ============================================================================= */
 
-void ra_ota_system_reset_hook(void) {
+void ra_ota_system_reset_hook(void)
+{
   ++g_reset_count;
 }
 
@@ -228,13 +244,15 @@ void ra_ota_system_reset_hook(void) {
  * Fixture helpers
  * ============================================================================= */
 
-static void priv_make_image(void) {
+static void priv_make_image(void)
+{
   for (uint32_t i = 0U; i < k_test_image_size; ++i) {
     g_mock_image[i] = (uint8_t)(i ^ 0x5AU);
   }
 }
 
-static void priv_make_manifest(void) {
+static void priv_make_manifest(void)
+{
   /* Build a manifest whose sha256 == priv_compute_xor_hash(g_mock_image). */
   priv_compute_xor_hash(g_mock_image, k_test_image_size, g_expected_hash);
   for (uint32_t i = 0U; i < sizeof g_expected_sig; ++i) {
@@ -253,13 +271,17 @@ static void priv_make_manifest(void) {
     sig_hex[2U * i]      = nibble[g_expected_sig[i] >> 4U];
     sig_hex[2U * i + 1U] = nibble[g_expected_sig[i] & 0x0FU];
   }
-  (void)snprintf(g_mock_manifest, sizeof g_mock_manifest,
+  (void)snprintf(g_mock_manifest,
+                 sizeof g_mock_manifest,
                  "{ \"version\": \"1.0.0\", \"url\": \"https://example.test/img\","
                  " \"size\": %u, \"sha256\": \"%s\", \"signature\": \"%s\" }",
-                 (unsigned)k_test_image_size, hex, sig_hex);
+                 (unsigned)k_test_image_size,
+                 hex,
+                 sig_hex);
 }
 
-static void priv_reset_globals(void) {
+static void priv_reset_globals(void)
+{
   g_inject_short_eof  = false;
   g_ecdsa_should_fail = false;
   g_corrupt_readback  = false;
@@ -267,10 +289,10 @@ static void priv_reset_globals(void) {
   (void)memset(g_bank_storage, 0, sizeof g_bank_storage);
 }
 
-static ra_ota_cfg_t priv_make_cfg(void) {
+static ra_ota_cfg_t priv_make_cfg(void)
+{
   ra_ota_cfg_t cfg = {};
-  (void)snprintf(cfg.manifest_url, k_ra_ota_url_max_bytes,
-                 "https://example.test/manifest.json");
+  (void)snprintf(cfg.manifest_url, k_ra_ota_url_max_bytes, "https://example.test/manifest.json");
   cfg.pubkey_handle             = k_test_pubkey;
   cfg.on_progress               = NULL;
   cfg.run_as_thread             = false;
@@ -295,7 +317,8 @@ static ra_ota_cfg_t priv_make_cfg(void) {
  * Tests
  * ============================================================================= */
 
-static void test_init_validation(void) {
+static void test_init_validation(void)
+{
   TEST_BEGIN("test_init_validation");
   (void)ra_ota_deinit();
   TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_ota_init(NULL));
@@ -320,7 +343,8 @@ static void test_init_validation(void) {
   TEST_END("test_init_validation");
 }
 
-static void test_check_bad_manifest(void) {
+static void test_check_bad_manifest(void)
+{
   TEST_BEGIN("test_check_bad_manifest");
   priv_reset_globals();
   priv_make_image();
@@ -330,14 +354,15 @@ static void test_check_bad_manifest(void) {
   ra_ota_cfg_t cfg = priv_make_cfg();
   TEST_ASSERT_EQ(k_ra_ok, ra_ota_init(&cfg));
   ra_ota_manifest_t m = {};
-  const ra_err_t e    = ra_ota_check_for_update(&m);
+  const ra_err_t    e = ra_ota_check_for_update(&m);
   TEST_ASSERT_EQ(k_ra_err_invalid_arg, e);
   TEST_ASSERT_EQ((int)k_ra_ota_state_error, (int)ra_ota_get_state());
   TEST_ASSERT_EQ(k_ra_ok, ra_ota_deinit());
   TEST_END("test_check_bad_manifest");
 }
 
-static void test_partial_download_recovery(void) {
+static void test_partial_download_recovery(void)
+{
   TEST_BEGIN("test_partial_download_recovery");
   priv_reset_globals();
   priv_make_image();
@@ -369,7 +394,8 @@ static void test_partial_download_recovery(void) {
   TEST_END("test_partial_download_recovery");
 }
 
-static void test_signature_mismatch(void) {
+static void test_signature_mismatch(void)
+{
   TEST_BEGIN("test_signature_mismatch");
   priv_reset_globals();
   priv_make_image();
@@ -388,7 +414,8 @@ static void test_signature_mismatch(void) {
   TEST_END("test_signature_mismatch");
 }
 
-static void test_sha256_mismatch(void) {
+static void test_sha256_mismatch(void)
+{
   TEST_BEGIN("test_sha256_mismatch");
   priv_reset_globals();
   priv_make_image();
@@ -408,7 +435,8 @@ static void test_sha256_mismatch(void) {
   TEST_END("test_sha256_mismatch");
 }
 
-static void test_happy_path(void) {
+static void test_happy_path(void)
+{
   TEST_BEGIN("test_happy_path");
   priv_reset_globals();
   priv_make_image();
@@ -442,7 +470,8 @@ static void test_happy_path(void) {
  * main
  * ============================================================================= */
 
-int main(void) {
+int main(void)
+{
   test_init_validation();
   test_check_bad_manifest();
   test_partial_download_recovery();
