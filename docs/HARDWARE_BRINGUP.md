@@ -243,6 +243,19 @@ octal bring-up extensions (commit 52e373507):
 | usb_hid_device polled (post-revert in commit a67acbc26) | PASS chip-alive, FAIL enumeration | PC=tx_thread_schedule.S:268. SYSCFG=0x411 (USBE+DPRPU+SCKE), INTSTS0=0x9F00 ticking, but VID 0x1209 still absent from macOS ioreg. Polling cadence (~30ms via jiggle period) is too slow for SETUP-window timeouts |
 | threadx_filex_levelx_demo with all xSPI fixes | FAIL same panic site | PC=main.c:141 (panic_halt), LR=main.c:244, i.e. lx_nor_flash_format still returns non-LX_SUCCESS even after CMDCMP poll budget bump (64 -> 1M), tPUW reset wait (1ms -> 15ms), BMCTL0 disable, and RDID validation. UART won't drain the failure log (1-3 bytes captured at any baud) so the actual RDID response is not yet observable |
 
+### Confirmed via JLink memory read (commit 2f2560915 + first hardware capture)
+
+`g_ra_xspi_rdid_observed` at `0x2200448C` reads `{0x44494452, 1, 0, 0x00FFFFFF}`:
+- magic = 'RDID' (probe ran)
+- call_count = 1 (priv_bus_init_once executed once)
+- rid_err = 0 (`ra_xspi_flash_read_id` returned `k_ra_ok`)
+- jedec_id = **0x00FFFFFF** — expected `0x009D5A1A` for IS25LX512M
+
+The all-ones response is the diagnostic floor: **the chip is not responding at all**. The xSPI controller successfully clocks out the RDID opcode and the response window completes without timeout, but the data lines come back floating high. Either:
+- Chip is still in reset (RESET_L not actually driven high for tPUW)
+- One of the 12 OCTA pins (CS / CK / DQS / DQ0..DQ7) is mis-routed in PSEL → chip doesn't see CS asserted, so it never drives DQ
+- Chip is in a different protocol mode than the controller (chip ships in 1S-1S-1S; if a prior boot put it in 8D-8D-8D and we don't switch back via SRESET, the chip ignores 1S commands)
+
 ### Open WIP
 
 1. USBFS_INT ELC event code for RA8D2 — verify the actual code from the RA8D2-specific FSP bsp_elc.h (currently 0x09A is suspected wrong).

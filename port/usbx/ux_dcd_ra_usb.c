@@ -487,13 +487,26 @@ ra_err_t ux_dcd_ra_usb_initialize(ra_usb_speed_t speed)
   s_dcd.owner = owner;
   s_dcd.state = k_ux_dcd_ra_usb_state_ready;
 
-  /* IRQ wiring temporarily disabled — see WIP investigation in
-   * docs/HARDWARE_BRINGUP.md. Polled mode keeps the bridge functional
-   * without the fault we hit when ra_isr_register'ing USBFS_INT. */
-  (void)internal_pick_event;
-  (void)internal_pick_isr;
   for (uint8_t i = 0U; i < (uint8_t)k_ux_dcd_ra_usb_max_pipes; i++) {
     s_dcd.pipes[i].xfer = nullptr;
+  }
+
+  /* Wire the controller's combined interrupt line into the IELSR
+   * dispatch table. Event codes verified against FSP
+   * `ra/fsp/src/bsp/mcu/ra8d2/bsp_elc.h` lines 133/347 -- USBFS_INT =
+   * 0x09A, USBHS_USB_INT_RESUME = 0x2C3. State is set to
+   * `_ready` first so the IRQ trampoline (which runs immediately after
+   * ra_isr_register enables the NVIC line) sees a coherent bridge. */
+  uint16_t       slot      = 0U;
+  const ra_err_t isr_err   = ra_isr_register(internal_pick_event(speed),
+                                           internal_pick_isr(speed),
+                                           nullptr,
+                                           (uint8_t)k_ra_usb_dcd_isr_prio,
+                                           &slot);
+  if (isr_err != k_ra_ok) {
+    ra_log_error(s_tag, "ra_isr_register USB interrupt failed");
+    s_dcd.state = k_ux_dcd_ra_usb_state_uninit;
+    return isr_err;
   }
 
   /* Tell USBX system the speed. */
