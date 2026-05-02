@@ -531,6 +531,115 @@ static void test_run_margin_mcdc(void)
 }
 
 /**
+ * @test test_mcdc_compute_null_or3
+ *
+ * @par MC/DC:
+ * Decision: ``if ((raw == NULL) || (screen == NULL) || (out_mtx == NULL))``
+ * (3 conditions, libs/ra_touch_cal/src/ra_touch_cal.c ra_touch_cal_compute).
+ *
+ * @par DO-178C 6.4.4.3 omission rationale:
+ * Full short-circuit MC/DC for N=3 OR requires N+1 = 4 vectors. We use the
+ * canonical short-circuit set; each predicate flips with the others held at
+ * their masking value (F):
+ * - V1: all non-NULL                       -> all F           -> dec F (proceeds)
+ * - V2: raw=NULL                           -> C1=T short      -> dec T -> null_ptr
+ * - V3: raw=ok, screen=NULL                -> C1=F, C2=T short -> dec T -> null_ptr
+ * - V4: raw=ok, screen=ok, out_mtx=NULL    -> C1=F, C2=F, C3=T -> dec T -> null_ptr
+ */
+static void test_mcdc_compute_null_or3(void)
+{
+  TEST_BEGIN("touch_cal compute MC/DC: raw||screen||out NULL");
+  const ra_touch_cal_point_t raw[3] = {
+    {(int32_t)k_tc_raw_min, (int32_t)k_tc_raw_min},
+    {(int32_t)k_tc_raw_max, (int32_t)k_tc_raw_min},
+    {(int32_t)k_tc_raw_centre, (int32_t)k_tc_raw_max},
+  };
+  const ra_touch_cal_point_t scr[3] = {{0, 0}, {1023, 0}, {512, 599}};
+  ra_touch_cal_matrix_t      got    = {};
+  /* V1 */
+  TEST_ASSERT_EQ(k_ra_ok, ra_touch_cal_compute(raw, scr, 3U, &got));
+  /* V2 */
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_touch_cal_compute(NULL, scr, 3U, &got));
+  /* V3 */
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_touch_cal_compute(raw, NULL, 3U, &got));
+  /* V4 */
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_touch_cal_compute(raw, scr, 3U, NULL));
+  TEST_END("touch_cal compute MC/DC: raw||screen||out NULL");
+}
+
+/**
+ * @test test_mcdc_run_cb_null_or
+ *
+ * @par MC/DC:
+ * Decision: ``if ((cfg->draw_target == NULL) || (cfg->read_raw == NULL))``
+ * (2 conditions, libs/ra_touch_cal/src/ra_touch_cal.c ra_touch_cal_run).
+ * N+1 = 3 vectors.
+ * - V1: draw=ok, read=ok   -> C1=F, C2=F -> dec F (proceeds)
+ * - V2: draw=NULL          -> C1=T short -> dec T -> null_ptr
+ * - V3: draw=ok, read=NULL -> C1=F, C2=T -> dec T -> null_ptr
+ */
+static void test_mcdc_run_cb_null_or(void)
+{
+  TEST_BEGIN("touch_cal run MC/DC: draw||read NULL");
+  ra_touch_cal_matrix_t        m  = {};
+  const ra_touch_cal_run_cfg_t v1 = {
+    .screen_width  = (uint16_t)k_tc_screen_w,
+    .screen_height = (uint16_t)k_tc_screen_h,
+    .inset_px      = (uint16_t)k_tc_inset,
+    .draw_target   = stub_draw,
+    .read_raw      = stub_read,
+  };
+  /* V2: draw=NULL */
+  ra_touch_cal_run_cfg_t v2 = v1;
+  v2.draw_target            = NULL;
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_touch_cal_run(&v2, &m));
+  /* V3: read=NULL */
+  ra_touch_cal_run_cfg_t v3 = v1;
+  v3.read_raw               = NULL;
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_touch_cal_run(&v3, &m));
+  /* V1 verified by test_run_full_sequence (proceeds path), but we add a
+   * lightweight non-null assertion here to make the masking pair explicit:
+   * the very-bad-args path is rejected for a *different* reason
+   * (zero screen size) -- proving that the cb null guard alone returns ok. */
+  ra_touch_cal_run_cfg_t v1_bad_screen = v1;
+  v1_bad_screen.screen_width           = 0U;
+  /* draw/read both ok -> C1=F, C2=F (decision F); rejection comes from the
+   * subsequent screen-size guard returning invalid_arg, NOT null_ptr. */
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_touch_cal_run(&v1_bad_screen, &m));
+  TEST_END("touch_cal run MC/DC: draw||read NULL");
+}
+
+/**
+ * @test test_mcdc_run_cfg_out_null_or
+ *
+ * @par MC/DC:
+ * Decision: ``if ((cfg == NULL) || (out_matrix == NULL))``
+ * (2 conditions, libs/ra_touch_cal/src/ra_touch_cal.c ra_touch_cal_run).
+ * N+1 = 3.
+ * - V1: cfg=ok, out=ok -> C1=F, C2=F -> dec F (proceeds)
+ * - V2: cfg=NULL       -> C1=T short -> dec T -> null_ptr
+ * - V3: cfg=ok, out=NULL -> C1=F, C2=T -> dec T -> null_ptr
+ */
+static void test_mcdc_run_cfg_out_null_or(void)
+{
+  TEST_BEGIN("touch_cal run MC/DC: cfg||out NULL");
+  ra_touch_cal_matrix_t        m   = {};
+  const ra_touch_cal_run_cfg_t cfg = {
+    .screen_width  = (uint16_t)k_tc_screen_w,
+    .screen_height = (uint16_t)k_tc_screen_h,
+    .inset_px      = (uint16_t)k_tc_inset,
+    .draw_target   = stub_draw,
+    .read_raw      = stub_read,
+  };
+  /* V2 */
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_touch_cal_run(NULL, &m));
+  /* V3 */
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_touch_cal_run(&cfg, NULL));
+  /* V1 (decision F) verified end-to-end by test_run_full_sequence. */
+  TEST_END("touch_cal run MC/DC: cfg||out NULL");
+}
+
+/**
  * @brief Test driver.
  */
 int main(void)
@@ -545,5 +654,8 @@ int main(void)
   test_load_corruption();
   test_compute_n_range_mcdc();
   test_run_margin_mcdc();
+  test_mcdc_compute_null_or3();
+  test_mcdc_run_cb_null_or();
+  test_mcdc_run_cfg_out_null_or();
   return 0;
 }

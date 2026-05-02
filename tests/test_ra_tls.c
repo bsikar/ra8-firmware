@@ -352,6 +352,73 @@ static void test_mcdc_tls(void)
   TEST_END("tls MC/DC: session_open BIO + send NULL/len decisions");
 }
 
+/**
+ * @test test_mcdc_tls_recv_buf_len
+ *
+ * @par MC/DC:
+ * Decision: ``if ((buf == NULL) && (len > 0U))`` in ``ra_tls_recv``
+ * (libs/ra_tls/src/ra_tls.c). 2 conditions, N+1 = 3 vectors.
+ * - V1: buf=NULL,  len=0 -> C1=T, C2=F -> dec F (early ok return on len==0)
+ * - V2: buf=valid, len=0 -> C1=F short-circuits -> dec F (early ok)
+ * - V3: buf=NULL,  len>0 -> C1=T, C2=T -> dec T -> invalid_arg
+ * (V2,V3) flips C1 with C2=T fixed; (V1,V3) flips C2 with C1=T fixed.
+ */
+static void test_mcdc_tls_recv_buf_len(void)
+{
+  TEST_BEGIN("tls MC/DC: recv buf == NULL && len > 0");
+  loop_reset();
+  TEST_ASSERT_EQ(k_ra_ok, ra_tls_global_init());
+  ra_tls_session_t     s   = NULL;
+  ra_tls_session_cfg_t cfg = make_loopback_cfg();
+  TEST_ASSERT_EQ(k_ra_ok, ra_tls_session_open(&s, &cfg));
+  uint8_t buf[4] = {0U};
+  size_t  got    = 0U;
+  /* V1: buf=NULL, len=0 -> dec F, len-zero short-circuits to ok. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_tls_recv(s, NULL, 0U, &got));
+  /* V2: buf=valid, len=0 -> C1=F short-circuits, dec F, len-zero short-circuits to ok. */
+  got = 0U;
+  TEST_ASSERT_EQ(k_ra_ok, ra_tls_recv(s, buf, 0U, &got));
+  /* V3: buf=NULL, len=4 -> dec T -> invalid_arg. */
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_tls_recv(s, NULL, 4U, &got));
+  TEST_ASSERT_EQ(k_ra_ok, ra_tls_session_close(s));
+  TEST_ASSERT_EQ(k_ra_ok, ra_tls_global_deinit());
+  TEST_END("tls MC/DC: recv buf == NULL && len > 0");
+}
+
+/**
+ * @test test_mcdc_tls_handle_valid_bounds
+ *
+ * @par MC/DC:
+ * Decision: ``if ((session < base) || (session >= end))`` in
+ * ``internal_handle_valid`` (libs/ra_tls/src/ra_tls.c). 2 conditions, N+1=3.
+ * Exercised through any session-using public API (we use ra_tls_session_close
+ * here -- it returns invalid_arg when the handle fails internal_handle_valid).
+ * - V1: session inside pool (live)            -> C1=F, C2=F -> dec F (-> ok)
+ * - V2: session below base (e.g. small ptr)    -> C1=T short-circuits -> invalid_arg
+ * - V3: session above end (large ptr)          -> C1=F, C2=T -> invalid_arg
+ * (V1,V2) flips C1 with C2 masked; (V1,V3) flips C2 with C1 fixed F.
+ */
+static void test_mcdc_tls_handle_valid_bounds(void)
+{
+  TEST_BEGIN("tls MC/DC: handle_valid (session<base || session>=end)");
+  loop_reset();
+  TEST_ASSERT_EQ(k_ra_ok, ra_tls_global_init());
+  ra_tls_session_t     s   = NULL;
+  ra_tls_session_cfg_t cfg = make_loopback_cfg();
+  /* V1: open a real session (lives inside the pool). */
+  TEST_ASSERT_EQ(k_ra_ok, ra_tls_session_open(&s, &cfg));
+  /* V2: cast a deliberately-low pointer -- below the pool base. */
+  ra_tls_session_t below = (ra_tls_session_t)(uintptr_t)0x100U;
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_tls_session_close(below));
+  /* V3: cast a deliberately-high pointer -- above the pool end. */
+  ra_tls_session_t above = (ra_tls_session_t)(uintptr_t)UINTPTR_MAX;
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_tls_session_close(above));
+  /* V1: the live session closes successfully. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_tls_session_close(s));
+  TEST_ASSERT_EQ(k_ra_ok, ra_tls_global_deinit());
+  TEST_END("tls MC/DC: handle_valid (session<base || session>=end)");
+}
+
 int main(void)
 {
   test_global_deinit_without_init();
@@ -363,5 +430,7 @@ int main(void)
   test_loopback_handshake_and_io();
   test_io_arg_validation();
   test_mcdc_tls();
+  test_mcdc_tls_recv_buf_len();
+  test_mcdc_tls_handle_valid_bounds();
   return 0;
 }

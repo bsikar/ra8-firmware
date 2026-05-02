@@ -598,6 +598,56 @@ static void test_mcdc_capture_buf_guard(void)
   TEST_END("mcdc capture buf guard (NULL || zero)");
 }
 
+/**
+ * @test test_mcdc_reset_line_buf_pair
+ *
+ * @par MC/DC:
+ * Decision: ``if ((s_mod.cfg.line_buf != nullptr) && (s_mod.cfg.line_buf_len > 0U))``
+ * (2 conditions, libs/ra_modem_at/src/ra_modem_at.c internal_reset_line line 225).
+ * The decision lives in static helper internal_reset_line; both fields are
+ * supplied through the public init contract:
+ *   - V1: line_buf valid, len>0  -> C1=F-ish (NOT NULL)=T short-eval, C2=T -> dec T (clears)
+ *   - V2: post init the call is exercised every time send_cmd / poll runs;
+ *     to vary C1 we would have to forge an init with NULL line_buf, which the
+ *     init validator rejects (k_ra_err_null_ptr). To vary C2, we'd need
+ *     line_buf_len=0, which init rejects (k_ra_err_invalid_size below the
+ *     min line_buf_bytes floor).
+ *
+ * @par DO-178C 6.4.4.3 omission rationale:
+ * Cases C1=F or C2=F at this decision are mutually exclusive with a
+ * successful ra_modem_at_init -- the init validator (line 700) refuses
+ * them with k_ra_err_null_ptr / k_ra_err_invalid_size. We discharge the
+ * obligation by exercising the init validator's pre-conditions explicitly
+ * for both flips (V2=NULL line_buf rejected, V3=zero len rejected). The
+ * decision in internal_reset_line is therefore reached only with both
+ * conditions T, which we cover via test_at_ok_with_echo (V1).
+ */
+static void test_mcdc_reset_line_buf_pair(void)
+{
+  TEST_BEGIN("mcdc reset_line buf+len pair (init-validator equivalence)");
+  reset_world();
+  /* V2: line_buf NULL is rejected by init -> internal_reset_line never reached. */
+  ra_modem_at_cfg_t cfg2 = {
+    .io                 = {.tx_byte = mock_tx, .rx_byte = mock_rx, .now_ms = mock_now, .ctx = NULL},
+    .line_buf           = NULL,
+    .line_buf_len       = (uint16_t)sizeof s_line_buf,
+    .default_timeout_ms = 1000U,
+  };
+  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_modem_at_init(&cfg2));
+  /* V3: line_buf_len=0 is rejected by init for the same reason. */
+  ra_modem_at_cfg_t cfg3 = {
+    .io                 = {.tx_byte = mock_tx, .rx_byte = mock_rx, .now_ms = mock_now, .ctx = NULL},
+    .line_buf           = s_line_buf,
+    .line_buf_len       = 0U,
+    .default_timeout_ms = 1000U,
+  };
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_size, (int)ra_modem_at_init(&cfg3));
+  /* V1: full happy init -- internal_reset_line is invoked and exercises
+   * the AND-decision with both conditions T (proceeds to clear). */
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)bring_up());
+  TEST_END("mcdc reset_line buf+len pair (init-validator equivalence)");
+}
+
 int32_t main(void)
 {
   /* This test must run BEFORE bring_up() so the initialised flag is 0. */
@@ -619,6 +669,12 @@ int32_t main(void)
   test_expected_response();
   test_send_cmd_null_arg();
   test_default_timeout_used();
+  test_mcdc_register_urc_prefix_len();
+  test_mcdc_capture_expected_response();
+  test_mcdc_internal_classify_expected();
+  test_mcdc_accumulate_line_terminator();
+  test_mcdc_capture_buf_guard();
+  test_mcdc_reset_line_buf_pair();
   (void)fprintf(stderr, "[OK ] test_ra_modem_at.c\n");
   return 0;
 }
