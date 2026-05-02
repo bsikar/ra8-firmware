@@ -151,6 +151,7 @@ static const ra_port_pin_t k_motor_3phase_pin_rxd = RA_PIN(k_ra_port_13, k_ra_pi
  * at three adjacent low-port pins so the validator does not collide
  * with the SCI8 / LED pins. Update once the manual table is read.
  */
+// TODO(board-rev): no public GTIOC0A on EK-RA8D2 v1; pins conflict with debug UART per UM. Use P105/P103/Pmod-GTIOC10A or a custom carrier board.
 static const ra_port_pin_t k_motor_3phase_pin_u = RA_PIN(k_ra_port_4, k_ra_pin_8);
 static const ra_port_pin_t k_motor_3phase_pin_v = RA_PIN(k_ra_port_4, k_ra_pin_9);
 static const ra_port_pin_t k_motor_3phase_pin_w = RA_PIN(k_ra_port_4, k_ra_pin_10);

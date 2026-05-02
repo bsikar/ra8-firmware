@@ -122,24 +122,6 @@ typedef enum : int16_t {
   k_usb_audio_volume_0_db = 0, /**< 0 dB attenuation, full scale. */
 } usb_audio_volume_t;
 
-/**
- * @brief USB-FS pinout (FSP-aligned, EK-RA8D2 v1 User's Manual).
- *
- * @details Each value is a packed ``ra_port_pin_t`` (port << 8 | pin):
- *   - P4_07 -- USB_FS_VBUS sense.
- *   - P5_00 -- USB_FS_VBUSEN drive.
- *   - P8_14 -- USB_FS_DP.
- *   - P8_15 -- USB_FS_DM.
- */
-static const ra_port_pin_t k_usb_audio_pin_vbus =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_4 << 8) | (uint16_t)k_ra_pin_7);
-static const ra_port_pin_t k_usb_audio_pin_vbusen =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_5 << 8) | (uint16_t)k_ra_pin_0);
-static const ra_port_pin_t k_usb_audio_pin_dp =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_8 << 8) | (uint16_t)k_ra_pin_14);
-static const ra_port_pin_t k_usb_audio_pin_dm =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_8 << 8) | (uint16_t)k_ra_pin_15);
-
 /** @brief SCI8 / J-Link OB CDC pins (TXD8 / RXD8 -- PD_02 / PD_03). */
 static const ra_port_pin_t k_usb_audio_pin_log_tx =
   (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_2);
@@ -294,40 +276,6 @@ static void usb_audio_u32_to_ascii(uint32_t value, char* buf, uint32_t cap)
 }
 
 /**
- * @brief Route the four USB-FS pins to the USBFS controller.
- *
- * @return Error code from the first failing route call, or k_ra_ok.
- * @retval k_ra_ok                     All four pins routed.
- * @retval k_ra_err_gpio_invalid_port  Port out of range.
- * @retval k_ra_err_gpio_invalid_pin   Pin out of range.
- * @retval k_ra_err_gpio_conflict      Pin claimed by another owner.
- *
- * @pre IOPORT module is reachable.
- * @pre Caller is single-threaded init context.
- * @post On success the four USB-FS pins are PSEL=0x13.
- *
- * @since 0.1.0
- */
-[[nodiscard]] static ra_err_t usb_audio_pins_init(void)
-{
-  ra_err_t err =
-    ra_pfs_route_peripheral(k_usb_audio_pin_vbus, k_ra_psel_usb_fs, "usb_audio_device.vbus");
-  if (err != k_ra_ok) {
-    return err;
-  }
-  err =
-    ra_pfs_route_peripheral(k_usb_audio_pin_vbusen, k_ra_psel_usb_fs, "usb_audio_device.vbusen");
-  if (err != k_ra_ok) {
-    return err;
-  }
-  err = ra_pfs_route_peripheral(k_usb_audio_pin_dp, k_ra_psel_usb_fs, "usb_audio_device.dp");
-  if (err != k_ra_ok) {
-    return err;
-  }
-  return ra_pfs_route_peripheral(k_usb_audio_pin_dm, k_ra_psel_usb_fs, "usb_audio_device.dm");
-}
-
-/**
  * @brief Bring up clocks, time, GPIO. Panic-halts on any failure.
  *
  * @param[out] cpuclk0_hz Receives CPUCLK0 rate.
@@ -408,10 +356,7 @@ static void usb_audio_sci_or_halt(uint32_t pclka_hz)
  */
 static void usb_audio_usb_or_halt(void)
 {
-  if (usb_audio_pins_init() != k_ra_ok) {
-    usb_audio_panic_halt();
-  }
-  if (ra_nsc_usb_init(k_ra_usb_speed_fs) != k_ra_ok) {
+  if (ra_board_usbhs_device_init() != k_ra_ok) {
     usb_audio_panic_halt();
   }
   if (ra_usb_paud_init(k_ra_usb_speed_fs) != k_ra_ok) {
