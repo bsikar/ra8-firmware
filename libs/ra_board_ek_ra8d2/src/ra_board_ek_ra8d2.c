@@ -45,6 +45,7 @@
 #include "ra_rmac.h"
 #include "ra_sci.h"
 #include "ra_ssie.h"
+#include "ra_time.h"
 #include "ra_usb.h"
 
 /* =============================================================================
@@ -425,6 +426,96 @@ ra_err_t ra_board_glcdc_init(ra_board_glcdc_fmt_t fmt)
 
   for (uint32_t i = 0U; i < count; ++i) {
     const ra_err_t err = ra_pfs_route_peripheral(table[i].pin, k_ra_psel_glcdc, "ra_board.glcdc");
+    if (err != k_ra_ok) {
+      return err;
+    }
+  }
+  return k_ra_ok;
+}
+
+/* =============================================================================
+ * 3b. Octo-SPI flash pin routing (UM Table 29 p 35, IS25LX512M-JHLE)
+ * =============================================================================
+ */
+
+/**
+ * @brief Lookup table for the 12 OCTA bus pins routed to PSEL=0x1C.
+ *
+ * @details
+ * Order: CS, CK, DQS, DQ0..DQ7. The pin enums are uint16_t encodings
+ * of (port << 8) | pin -- compatible with ``ra_port_pin_t`` value
+ * space. The RESET_L pin is intentionally NOT in this table: it is
+ * driven by the GPIO subsystem (active-low strap, not a peripheral
+ * function). Source: EK-RA8D2 UM Table 29 "Octo-SPI Flash
+ * Assignments" p 35.
+ *
+ * The ``ra_port_pin_t`` enum only enumerates the convenience
+ * ``k_ra_pin_led*`` aliases; raw RA_PIN()-derived values are valid
+ * data-space members but trigger the EnumCastOutOfRange checker, so
+ * the cast cluster is wrapped in a NOLINT region matching the
+ * convention used by ``internal_audio_route_pins`` below.
+ */
+/* NOLINTBEGIN(clang-analyzer-optin.core.EnumCastOutOfRange) */
+static const ra_port_pin_t s_xspi_octa_pins[] = {
+  (ra_port_pin_t)k_ra_board_xspi_cs,  /**< OSPI_FLASH_S_L,   P104. */
+  (ra_port_pin_t)k_ra_board_xspi_clk, /**< OSPI_FLASH_C,     P808. */
+  (ra_port_pin_t)k_ra_board_xspi_dqs, /**< OSPI_FLASH_DQS,   P801. */
+  (ra_port_pin_t)k_ra_board_xspi_dq0, /**< OSPI_FLASH_DQ0,   P100. */
+  (ra_port_pin_t)k_ra_board_xspi_dq1, /**< OSPI_FLASH_DQ1,   P803. */
+  (ra_port_pin_t)k_ra_board_xspi_dq2, /**< OSPI_FLASH_DQ2,   P103. */
+  (ra_port_pin_t)k_ra_board_xspi_dq3, /**< OSPI_FLASH_DQ3,   P101. */
+  (ra_port_pin_t)k_ra_board_xspi_dq4, /**< OSPI_FLASH_DQ4,   P102. */
+  (ra_port_pin_t)k_ra_board_xspi_dq5, /**< OSPI_FLASH_DQ5,   P800. */
+  (ra_port_pin_t)k_ra_board_xspi_dq6, /**< OSPI_FLASH_DQ6,   P802. */
+  (ra_port_pin_t)k_ra_board_xspi_dq7, /**< OSPI_FLASH_DQ7,   P804. */
+};
+/* NOLINTEND(clang-analyzer-optin.core.EnumCastOutOfRange) */
+
+/**
+ * @brief Hardware reset pulse + post-reset settle times for IS25LX512M-JHLE.
+ *
+ * @details
+ * IS25LX512M datasheet Ch 9.2 "Hardware Reset" specifies:
+ *   - tRLRH (RESET_L low pulse width): min 100 ns
+ *   - tRHSL (RESET_L high to first chip-select): min 100 us
+ * Both are rounded up generously to 1 ms to keep the bring-up code
+ * trivial; the demo only resets once at boot so a 2 ms total delay
+ * is invisible.
+ */
+typedef enum : uint32_t {
+  k_ra_board_xspi_reset_low_ms  = 1U, /**< Hold RESET_L low for >= tRLRH. */
+  k_ra_board_xspi_reset_high_ms = 1U, /**< Wait tRHSL before first CS.    */
+} ra_board_xspi_reset_timing_t;
+
+ra_err_t ra_board_xspi_pins_init(void)
+{
+  /* Step 1: drive RESET_L low while the pin is still GPIO. PSEL=0x00
+   * + PDR=output is the IS25LX512M strap that holds the chip in
+   * reset (datasheet Ch 9.2). EK-RA8D2 UM Table 29 maps RESET_L to
+   * P106. */
+  /* NOLINTBEGIN(clang-analyzer-optin.core.EnumCastOutOfRange) */
+  const ra_port_pin_t reset_pin = (ra_port_pin_t)k_ra_board_xspi_reset;
+  /* NOLINTEND(clang-analyzer-optin.core.EnumCastOutOfRange) */
+  ra_err_t err = ra_gpio_output_init(reset_pin, k_ra_level_low);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  ra_delay_ms((uint32_t)k_ra_board_xspi_reset_low_ms);
+
+  /* Step 2: drive RESET_L high to release the chip. */
+  err = ra_gpio_write(reset_pin, k_ra_level_high);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  ra_delay_ms((uint32_t)k_ra_board_xspi_reset_high_ms);
+
+  /* Step 3: route the 12 OCTA bus pins to PSEL=0x1C. PSEL 0x1C is
+   * shared between the QSPI and Octo-SPI controllers per HUM Ch 20.6
+   * "Multiplexed Pin Function Selector" p 871; the named constant
+   * is ``k_ra_psel_qspi`` for legacy reasons. */
+  const uint32_t count = (uint32_t)(sizeof(s_xspi_octa_pins) / sizeof(s_xspi_octa_pins[0]));
+  for (uint32_t i = 0U; i < count; ++i) {
+    err = ra_pfs_route_peripheral(s_xspi_octa_pins[i], k_ra_psel_qspi, "ra_board.xspi");
     if (err != k_ra_ok) {
       return err;
     }
