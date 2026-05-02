@@ -243,6 +243,17 @@ octal bring-up extensions (commit 52e373507):
 | usb_hid_device polled (post-revert in commit a67acbc26) | PASS chip-alive, FAIL enumeration | PC=tx_thread_schedule.S:268. SYSCFG=0x411 (USBE+DPRPU+SCKE), INTSTS0=0x9F00 ticking, but VID 0x1209 still absent from macOS ioreg. Polling cadence (~30ms via jiggle period) is too slow for SETUP-window timeouts |
 | threadx_filex_levelx_demo with all xSPI fixes | FAIL same panic site | PC=main.c:141 (panic_halt), LR=main.c:244, i.e. lx_nor_flash_format still returns non-LX_SUCCESS even after CMDCMP poll budget bump (64 -> 1M), tPUW reset wait (1ms -> 15ms), BMCTL0 disable, and RDID validation. UART won't drain the failure log (1-3 bytes captured at any baud) so the actual RDID response is not yet observable |
 
+### Confirmed via JLink memory read — round 2 (after dual-protocol soft-reset)
+
+`g_ra_xspi_rdid_observed` (8 words) at `0x2200448C` now reads `{magic, 1, 0, 0xFFFFFF, 0, 0, 6, 0}`:
+- magic = 'RDID', call_count = 1, rid_err = `k_ra_ok`
+- jedec_id still `0x00FFFFFF` (chip silent)
+- reset_8d_err = 0 (8D soft-reset controller-side OK)
+- reset_1s_err = 0 (1S soft-reset controller-side OK)
+- stage = 6 (`k_ra_xspi_stage_rdid` — reached RDID step)
+
+**Hypothesis #3 (stuck-in-8D) ruled out.** Controller is healthy (CMDCMP fires for every command). Remaining: pin routing in `s_xspi_octa_pins[]` is wrong on at least one of the 12 OCTA pins, OR DQS is not being clocked back. This is logic-analyzer-class debugging now — beyond what JLink + UART can resolve.
+
 ### Confirmed via JLink memory read (commit 2f2560915 + first hardware capture)
 
 `g_ra_xspi_rdid_observed` at `0x2200448C` reads `{0x44494452, 1, 0, 0x00FFFFFF}`:
