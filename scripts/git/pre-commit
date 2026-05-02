@@ -203,6 +203,31 @@ if [[ -f scripts/utils/roadmap_stats.py && -f docs/ROADMAP.md ]]; then
 fi
 
 # -----------------------------------------------------------------------------
+# IEC 61508 SIL 3 / DO-178C QUALIFICATION GATES
+# -----------------------------------------------------------------------------
+# Per CLAUDE.md, this codebase targets IEC 61508 SIL 3 (industry-agnostic) /
+# DO-178C Level B / ISO 26262 ASIL C/D. DO-178B is OBSOLETE and must not
+# appear in new content. Every test of a compound boolean decision must
+# declare its MC/DC vector pattern via @par MC/DC: in Doxygen.
+
+# ---- Forbid obsolete safety-standard references (strict) ----------
+if [[ -f scripts/utils/check_obsolete_standards.py ]]; then
+    if ! python3 scripts/utils/check_obsolete_standards.py; then
+        echo "[FAIL] Obsolete safety-standard reference (DO-178B)."
+        echo "       Use DO-178C, IEC 61508 SIL 3, or ISO 26262 instead."
+        error_found=1
+    fi
+fi
+
+# ---- @par MC/DC: block on staged tests (warn in Wave 0) -----------
+if [[ -f scripts/utils/check_mcdc_block.py ]]; then
+    if ! python3 scripts/utils/check_mcdc_block.py; then
+        echo "[FAIL] check_mcdc_block.py reported issues."
+        error_found=1
+    fi
+fi
+
+# -----------------------------------------------------------------------------
 # CONCLUSION
 # -----------------------------------------------------------------------------
 if [[ $error_found -ne 0 ]]; then

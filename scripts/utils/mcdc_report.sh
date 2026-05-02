@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 #
-# scripts/utils/mcdc_report.sh -- DO-178B Level B MC/DC report.
+# scripts/utils/mcdc_report.sh -- DO-178C Level B MC/DC report.
 #
 # Modified Condition/Decision Coverage (MC/DC) is the structural
-# coverage criterion mandated by DO-178B Level B for compound boolean
+# coverage criterion mandated by DO-178C Level B for compound boolean
 # decisions. The only open-source path to true MC/DC is clang >= 18
 # with `-fcoverage-mcdc` paired with `-fcoverage-mapping` and
 # `-fprofile-instr-generate`, then reported via
@@ -46,6 +46,77 @@ REPORT_DIR="${RA_MCDC_REPORT_DIR:-$REPO_ROOT/build/mcdc-report}"
 THRESHOLD="${RA_MCDC_THRESHOLD:-100}"
 
 # ---------------------------------------------------------------------------
+# macOS shim: the host test harness uses MAP_FIXED below 4 GiB for the
+# simulated MMIO region; macOS arm64 SIGKILLs the process. Re-exec
+# inside the project's Linux devcontainer just like
+# scripts/coverage_report.sh does. Pass --in-container to skip this.
+# ---------------------------------------------------------------------------
+if [[ "$(uname -s)" == "Darwin" && "${1:-}" != "--in-container" ]]; then
+    if ! command -v docker >/dev/null 2>&1; then
+        echo "error: docker not on PATH (need it on macOS for MC/DC)" >&2
+        exit 1
+    fi
+    if command -v colima >/dev/null 2>&1; then
+        if ! colima status >/dev/null 2>&1; then
+            echo "==> Starting colima VM"
+            colima start --cpu 4 --memory 6
+        fi
+    fi
+    if ! docker info >/dev/null 2>&1; then
+        echo "error: docker daemon not reachable" >&2
+        exit 1
+    fi
+
+    IMAGE_TAG="ra8d2-firmware-test:latest"
+    if ! docker image inspect "$IMAGE_TAG" >/dev/null 2>&1; then
+        echo "==> Building $IMAGE_TAG"
+        docker build -t "$IMAGE_TAG" \
+            -f "$REPO_ROOT/.devcontainer/Dockerfile" \
+            "$REPO_ROOT/.devcontainer"
+    fi
+
+    docker run --rm \
+        -v "$REPO_ROOT":/work \
+        -w /work \
+        -e RA_MCDC_THRESHOLD \
+        "$IMAGE_TAG" \
+        bash -lc '
+            set -e
+            if [[ $EUID -eq 0 ]]; then SUDO=""; else SUDO="sudo"; fi
+            # Required pieces for clang MC/DC: the compiler itself,
+            # llvm-profdata + llvm-cov for reporting, and compiler-rt
+            # which ships libclang_rt.profile-<arch>.a (otherwise the
+            # link step can not resolve __llvm_profile_*).
+            need_install=0
+            command -v clang-18 >/dev/null 2>&1   || need_install=1
+            command -v llvm-profdata-18 >/dev/null 2>&1 \
+                || command -v llvm-profdata >/dev/null 2>&1 || need_install=1
+            command -v llvm-cov-18 >/dev/null 2>&1 \
+                || command -v llvm-cov >/dev/null 2>&1 || need_install=1
+            ARCH=$(uname -m)
+            RT_LIB="/usr/lib/llvm-18/lib/clang/18/lib/linux/libclang_rt.profile-${ARCH}.a"
+            [[ -f "$RT_LIB" ]] || need_install=1
+            if [[ $need_install -eq 1 ]]; then
+                echo "==> Installing clang-18 + llvm-18 + libclang-rt-18-dev"
+                $SUDO apt-get update -qq
+                $SUDO env DEBIAN_FRONTEND=noninteractive \
+                    apt-get install -y -qq --no-install-recommends \
+                    clang-18 llvm-18 libclang-rt-18-dev
+            fi
+            export CC="${CC:-$(command -v clang-18 || command -v clang)}"
+            export CXX="${CXX:-$(command -v clang++-18 || command -v clang++)}"
+            bash scripts/utils/mcdc_report.sh --in-container
+        '
+    exit $?
+fi
+
+# Strip the in-container marker so it never reaches argument parsing
+# below.
+if [[ "${1:-}" == "--in-container" ]]; then
+    shift
+fi
+
+# ---------------------------------------------------------------------------
 # Compiler/tool resolution. We require clang for MC/DC; gcc paths are
 # tolerated only as fallback so the script still runs end-to-end.
 # ---------------------------------------------------------------------------
@@ -78,19 +149,31 @@ fi
 CC_DIR="$(dirname "$CC_BIN")"
 LLVM_PROFDATA_BIN="${LLVM_PROFDATA:-}"
 LLVM_COV_BIN="${LLVM_COV:-}"
+# If $CC_BIN looks like clang-18 / clang-20 etc., look for the
+# matching llvm-profdata-NN / llvm-cov-NN that Debian-style packaging
+# installs.
+CC_BASENAME="$(basename "$CC_BIN")"
+CC_VERSUFFIX=""
+if [[ "$CC_BASENAME" =~ -([0-9]+)$ ]]; then
+    CC_VERSUFFIX="-${BASH_REMATCH[1]}"
+fi
 if [[ -z "$LLVM_PROFDATA_BIN" ]]; then
-    if [[ -x "$CC_DIR/llvm-profdata" ]]; then
-        LLVM_PROFDATA_BIN="$CC_DIR/llvm-profdata"
-    else
-        LLVM_PROFDATA_BIN="$(command -v llvm-profdata 2>/dev/null || true)"
-    fi
+    for cand in "$CC_DIR/llvm-profdata" "$CC_DIR/llvm-profdata${CC_VERSUFFIX}" \
+                "/usr/bin/llvm-profdata${CC_VERSUFFIX}" "/usr/bin/llvm-profdata"; do
+        if [[ -x "$cand" ]]; then LLVM_PROFDATA_BIN="$cand"; break; fi
+    done
+    [[ -z "$LLVM_PROFDATA_BIN" ]] && \
+        LLVM_PROFDATA_BIN="$(command -v "llvm-profdata${CC_VERSUFFIX}" 2>/dev/null \
+                              || command -v llvm-profdata 2>/dev/null || true)"
 fi
 if [[ -z "$LLVM_COV_BIN" ]]; then
-    if [[ -x "$CC_DIR/llvm-cov" ]]; then
-        LLVM_COV_BIN="$CC_DIR/llvm-cov"
-    else
-        LLVM_COV_BIN="$(command -v llvm-cov 2>/dev/null || true)"
-    fi
+    for cand in "$CC_DIR/llvm-cov" "$CC_DIR/llvm-cov${CC_VERSUFFIX}" \
+                "/usr/bin/llvm-cov${CC_VERSUFFIX}" "/usr/bin/llvm-cov"; do
+        if [[ -x "$cand" ]]; then LLVM_COV_BIN="$cand"; break; fi
+    done
+    [[ -z "$LLVM_COV_BIN" ]] && \
+        LLVM_COV_BIN="$(command -v "llvm-cov${CC_VERSUFFIX}" 2>/dev/null \
+                         || command -v llvm-cov 2>/dev/null || true)"
 fi
 
 echo "==> ra8d2-firmware MC/DC report"
@@ -106,7 +189,7 @@ echo ""
 
 if [[ $HAVE_MCDC -eq 0 ]]; then
     echo "WARNING: $CC_BIN does NOT support -fcoverage-mcdc."
-    echo "         DO-178B Level B MC/DC cannot be measured with this compiler."
+    echo "         DO-178C Level B MC/DC cannot be measured with this compiler."
     echo "         Install clang >= 18 (brew install llvm / apt install clang-18)."
     echo "         Continuing with the configured fallback for completeness..."
     echo ""
