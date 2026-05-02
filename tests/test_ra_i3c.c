@@ -432,6 +432,59 @@ static void test_slave_open_sets_slve_and_nsdvad(void)
   TEST_END("i3c slave_open sets BCTL.SLVE and NSDVAD");
 }
 
+/**
+ * @test test_mcdc_i3c
+ *
+ * @par MC/DC:
+ * Three 2-condition decisions in libs/ra_hal/src/ra_i3c.c:
+ *
+ * Decision A (line 320, ``ra_i3c_dynamic_address_assign``):
+ * ``if ((target_count == 0U) || (target_count > k_ra_i3c_max_targets))``
+ * - V1: count=0  -> C1=T (short-circuits) -> dec T (invalid_arg)
+ * - V2: count=1  -> C1=F,C2=F             -> dec F (ok)
+ * - V3: count=k_ra_i3c_max_targets+1 -> C1=F,C2=T -> dec T (invalid_arg)
+ * Pairs: (V1,V2) flip C1 with C2 fixed; (V2,V3) flip C2 with C1 fixed.
+ *
+ * Decision B (line 367, ``ra_i3c_set_dynamic_address``):
+ * ``if ((static_addr > addr_mask) || (dynamic_addr > addr_mask))``
+ * - V1: static=ok, dyn=ok   -> C1=F,C2=F -> dec F (ok)
+ * - V2: static=bad, dyn=ok  -> C1=T (short-circuits) -> dec T
+ * - V3: static=ok, dyn=bad  -> C1=F,C2=T -> dec T
+ *
+ * Decision C (line 405, ``ra_i3c_send_ccc``):
+ * ``if ((len > 0U) && (payload == nullptr))``
+ * - V1: len=0           -> C1=F (short-circuits) -> dec F (ok)
+ * - V2: len>0, payload!=NULL -> C1=T,C2=F -> dec F (ok)
+ * - V3: len>0, payload=NULL  -> C1=T,C2=T -> dec T (null_ptr)
+ */
+static void test_mcdc_i3c(void)
+{
+  TEST_BEGIN("i3c MC/DC: three 2-cond arg decisions");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_i3c_init());
+
+  /* Decision A: dynamic_address_assign */
+  ra_i3c_daa_target_t one         = {};
+  ra_i3c_daa_target_t many[1 + 8] = {}; /* generous; only count is checked */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_i3c_dynamic_address_assign(&one, 0U));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_i3c_dynamic_address_assign(&one, 1U));
+  /* Use a count strictly greater than k_ra_i3c_max_targets. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_i3c_dynamic_address_assign(many, 0xFFU));
+
+  /* Decision B: set_dynamic_address */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_i3c_set_dynamic_address(0x33U, 0x44U));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_i3c_set_dynamic_address(0x80U, 0x44U));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_i3c_set_dynamic_address(0x33U, 0x80U));
+
+  /* Decision C: send_ccc */
+  uint8_t payload[1] = {0xA5U};
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_i3c_send_ccc(0x00U, 0x33U, nullptr, 0U));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_i3c_send_ccc(0x00U, 0x33U, payload, 1U));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_i3c_send_ccc(0x00U, 0x33U, nullptr, 1U));
+  TEST_END("i3c MC/DC: three 2-cond arg decisions");
+}
+
 int32_t main(void)
 {
   test_init();
@@ -457,6 +510,7 @@ int32_t main(void)
   test_ibi_enable_writes_ntibivctl();
   test_ibi_drain_aliases_read();
   test_slave_open_sets_slve_and_nsdvad();
+  test_mcdc_i3c();
   (void)fprintf(stderr, "[OK  ] test_ra_i3c.c\n");
   return 0;
 }

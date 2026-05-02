@@ -292,6 +292,66 @@ static void test_io_arg_validation(void)
   TEST_END("send/recv argument validation");
 }
 
+/**
+ * @test test_mcdc_tls
+ *
+ * @par MC/DC:
+ * Two 2-condition decisions in libs/ra_tls/src/ra_tls.c:
+ *
+ * Decision A (line 217, ``ra_tls_session_open``):
+ * ``if ((cfg->bio_send == NULL) || (cfg->bio_recv == NULL))``
+ * - V1: send=valid, recv=valid -> C1=F,C2=F -> dec F (open ok)
+ * - V2: send=NULL, recv=valid  -> C1=T (short-circuits) -> dec T (invalid_arg)
+ * - V3: send=valid, recv=NULL  -> C1=F,C2=T -> dec T (invalid_arg)
+ * Pairs (V1,V2) flip C1 with C2 fixed; (V1,V3) flip C2 with C1 fixed.
+ *
+ * Decision B (line 341, ``ra_tls_send``):
+ * ``if ((buf == NULL) && (len > 0U))``
+ * - V1: buf=NULL, len=0       -> C1=T,C2=F -> dec F (returns ok 0-byte)
+ * - V2: buf=valid, len=0      -> C1=F (short-circuits) -> dec F
+ * - V3: buf=NULL, len=4       -> C1=T,C2=T -> dec T -> invalid_arg
+ * Pairs (V2,V3) flip C1 with C2=T fixed; (V1,V3) flip C2 with C1=T fixed.
+ */
+static void test_mcdc_tls(void)
+{
+  TEST_BEGIN("tls MC/DC: session_open BIO + send NULL/len decisions");
+  loop_reset();
+  TEST_ASSERT_EQ(k_ra_ok, ra_tls_global_init());
+
+  /* Decision A vectors. */
+  ra_tls_session_t     s  = NULL;
+  ra_tls_session_cfg_t v1 = make_loopback_cfg();
+  TEST_ASSERT_EQ(k_ra_ok, ra_tls_session_open(&s, &v1));
+  TEST_ASSERT_EQ(k_ra_ok, ra_tls_session_close(s));
+
+  s                       = NULL;
+  ra_tls_session_cfg_t v2 = make_loopback_cfg();
+  v2.bio_send             = NULL;
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_tls_session_open(&s, &v2));
+
+  s                       = NULL;
+  ra_tls_session_cfg_t v3 = make_loopback_cfg();
+  v3.bio_recv             = NULL;
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_tls_session_open(&s, &v3));
+
+  /* Decision B vectors. Need a live session. */
+  ra_tls_session_cfg_t cfg_io = make_loopback_cfg();
+  TEST_ASSERT_EQ(k_ra_ok, ra_tls_session_open(&s, &cfg_io));
+  uint8_t buf[4] = {0U};
+  size_t  sent   = 0U;
+  /* V1: buf=NULL, len=0 -> C1=T,C2=F -> dec F. Implementation accepts. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_tls_send(s, NULL, 0U, &sent));
+  /* V2: buf=valid, len=0 -> C1=F short-circuits -> dec F. */
+  sent = 0U;
+  TEST_ASSERT_EQ(k_ra_ok, ra_tls_send(s, buf, 0U, &sent));
+  /* V3: buf=NULL, len>0 -> C1=T,C2=T -> dec T -> invalid_arg. */
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_tls_send(s, NULL, 4U, &sent));
+
+  TEST_ASSERT_EQ(k_ra_ok, ra_tls_session_close(s));
+  TEST_ASSERT_EQ(k_ra_ok, ra_tls_global_deinit());
+  TEST_END("tls MC/DC: session_open BIO + send NULL/len decisions");
+}
+
 int main(void)
 {
   test_global_deinit_without_init();
@@ -302,5 +362,6 @@ int main(void)
   test_session_close_invalid_handle();
   test_loopback_handshake_and_io();
   test_io_arg_validation();
+  test_mcdc_tls();
   return 0;
 }
