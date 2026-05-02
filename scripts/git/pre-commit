@@ -131,6 +131,18 @@ if [[ -n "$c_files" ]]; then
         echo "   Install: sudo apt install clang-tidy"
     fi
 
+    # ---- Doxygen full-coverage audit (strict: zero gaps required) ---------
+    # Runs only when C/H files are staged. Scans libs/, src/, port/ for any
+    # function that is missing a required Doxygen tag per CLAUDE.md.
+    if [[ -f scripts/utils/doxy_audit.py ]]; then
+        if ! python3 scripts/utils/doxy_audit.py --check; then
+            echo "[FAIL] doxy_audit.py reported documentation gaps."
+            echo "       Every function in libs/, src/, port/ must have the"
+            echo "       full required Doxygen tag set (see CLAUDE.md)."
+            error_found=1
+        fi
+    fi
+
     # ---- Doxygen @since tag enforcement -----------------------------------
     if ! python3 scripts/utils/check-since-version.py $c_files; then
         echo "[FAIL] public function declarations missing @since tags."
