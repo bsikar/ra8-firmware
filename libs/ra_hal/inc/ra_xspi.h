@@ -352,6 +352,61 @@ ra_xspi_set_xip_mode(uint8_t instance, bool enable, uint8_t read_cmd, uint8_t ad
  */
 [[nodiscard]] ra_err_t ra_xspi_resume(uint8_t instance);
 
+/**
+ * @brief Issue the JEDEC software-reset pair (RSTEN 0x66 + RST 0x99).
+ *
+ * @details
+ * Drives the two-step JEDEC reset sequence used by every modern SPI
+ * NOR vendor (ISSI IS25LX, Macronix MX25, Winbond W25, Micron MT25Q):
+ * first ``RSTEN`` (Reset Enable, opcode 0x66) and then ``RST`` (Reset,
+ * opcode 0x99). After ``RST`` returns the device must be left
+ * undisturbed for tRPH (~50 us) before the next CS assertion; the
+ * caller is responsible for that wait (we use ``ra_delay_ms(1)``).
+ *
+ * The two protocol modes the driver exercises are:
+ *   - 1S-1S-1S (``cmd_bytes = 1``): single 8-bit opcode on DQ0 only.
+ *     This is the form the chip will recognise after a power-on reset.
+ *   - 8D-8D-8D (``cmd_bytes = 2``): two 8-bit opcodes shipped as
+ *     ``opcode | (~opcode << 8)`` on all eight DQ lines on both clock
+ *     edges. This is the form the chip will recognise if a previous
+ *     boot left it in OPI mode and the SoC was warm-reset (POR is the
+ *     only thing that clears the volatile-config-register choice of
+ *     protocol on IS25LX512M).
+ *
+ * To recover from an unknown protocol state at cold-or-warm boot the
+ * board bring-up should call this function once in each protocol mode:
+ * one of the two will be the no-op (the chip ignores the wrong-shape
+ * opcode) and the other will actually reset the chip back to 1S-1S-1S.
+ *
+ * Cite: IS25LX512M datasheet Ch 8.20 "Reset Enable (RSTEN)" and
+ *       Ch 8.21 "Reset (RST)" (p 39); HUM Ch 44 p 2986 for the manual-
+ *       command engine fields used to send the opcodes.
+ *
+ * @param[in] instance  xSPI instance (0 or 1).
+ * @param[in] cmd_bytes Number of opcode bytes to ship per command:
+ *                      ``1`` for 1S-1S-1S SPI, ``2`` for 8D-8D-8D OPI.
+ *
+ * @return ``k_ra_ok`` on success.
+ * @return ``k_ra_err_null_ptr`` if ``instance`` is out of range.
+ * @return ``k_ra_err_invalid_arg`` if ``cmd_bytes`` is neither 1 nor 2.
+ * @return ``k_ra_err_hw_timeout`` if the controller never raises
+ *         CMDCMP for either RSTEN or RST.
+ *
+ * @pre Driver has been initialised via ``ra_xspi_init()`` in a
+ *      protocol mode that matches ``cmd_bytes``.
+ * @pre Caller will leave the chip undisturbed for tRPH (>=50 us)
+ *      after this returns before issuing the next command.
+ *
+ * @post The flash device, if it recognised the opcode pair, has
+ *       reverted its volatile-config registers to power-on defaults
+ *       and is back in 1S-1S-1S extended SPI.
+ *
+ * @note Not thread-safe. Intended to be called only during bring-up.
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_xspi_software_reset(uint8_t instance, uint8_t cmd_bytes);
+
 #ifdef __cplusplus
 }
 #endif
