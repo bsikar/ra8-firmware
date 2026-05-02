@@ -86,3 +86,15 @@ can confirm the iso-IN feed is running. Connect at 115200 8N1.
    the host begins enumeration.
 7. Loop: feed the 192-byte sine LUT into the iso-IN endpoint every
    1 ms, log every 1000 frames, toggle LED1 per log line.
+
+## BSP usage
+
+Uses `ra_board_ek_ra8d2` BSP for LED1 init/toggle (P600 per EK-RA8D2
+v1 UM Table 24 p 31). USB-FS pin set (P407 / P500 / P814 / P815) is
+the only routing the chip exposes for the on-board J11 Type-C USB-FS
+receptacle (UM Table 22 "USB Full Speed Port Pin Assignments" p 30);
+main.c programs this pin set directly via `ra_pfs_route_peripheral`.
+
+Validated 2026-05-02 against EK-RA8D2 v1 User's Manual (R20UT5523EG0101
+Rev 1.01) Table 22 p 30 + Table 24 p 31, USB Audio 1.0 spec sec
+2.2.5, and HUM (R01UH1065EJ0130) Ch "USBFS".
