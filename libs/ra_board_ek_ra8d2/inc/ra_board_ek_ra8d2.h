@@ -856,7 +856,8 @@ typedef enum : uint8_t {
  * row in the chip HUM I/O Ports chapter (TXD3/RXD3 alternate).
  */
 typedef enum : uint8_t {
-  k_ra_board_uart_console_sci_channel = 3U, /**< PD02/PD03 -> SCI3. */
+  k_ra_board_uart_console_sci_channel =
+    8U, /**< PD02/PD03 -> SCI8 (verified on real EK-RA8D2 v1 silicon). */
 } ra_board_uart_sci_channel_t;
 
 /**
