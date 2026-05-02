@@ -44,6 +44,7 @@
 #include "ra_port_utils.h"
 #include "ra_rmac.h"
 #include "ra_sci.h"
+#include "ra_ssie.h"
 #include "ra_usb.h"
 
 /* =============================================================================
@@ -436,44 +437,120 @@ ra_err_t ra_board_glcdc_init(ra_board_glcdc_fmt_t fmt)
  * =============================================================================
  */
 
-ra_err_t ra_board_audio_init(void)
+/**
+ * @brief Tracks whether ``ra_board_audio_init`` has succeeded.
+ */
+static bool s_audio_initialised = false;
+
+/**
+ * @brief Map ``bit_depth`` (significant bits) to SSIE DWL / SWL pair.
+ */
+static ra_err_t internal_audio_bits_to_word(uint8_t                bit_depth,
+                                            ra_ssie_data_word_t*   out_dwl,
+                                            ra_ssie_system_word_t* out_swl)
 {
-  /* Routing only -- the SSIE controller bring-up is done by the
-   * caller via ra_ssie_init(k_ra_board_audio_ssie_channel, &cfg)
-   * once it has computed the right BCLK/WCLK divisors for the
-   * desired sample rate. We just put the four DAI pins + I2C pair
-   * into their alternate functions so SSIE/IIC can drive them.
-   *
-   * MCLK on PD06 stays in GPIO mode by default; the application
-   * must route it to the right peripheral (SSIE EXTAL or CGC clock
-   * out) explicitly because the EK-RA8D2 supports both.
-   */
+  switch (bit_depth) {
+    case 8U:
+      *out_dwl = k_ra_ssie_dwl_8;
+      *out_swl = k_ra_ssie_swl_8;
+      return k_ra_ok;
+    case 16U:
+      *out_dwl = k_ra_ssie_dwl_16;
+      *out_swl = k_ra_ssie_swl_16;
+      return k_ra_ok;
+    case 18U:
+      *out_dwl = k_ra_ssie_dwl_18;
+      *out_swl = k_ra_ssie_swl_24;
+      return k_ra_ok;
+    case 20U:
+      *out_dwl = k_ra_ssie_dwl_20;
+      *out_swl = k_ra_ssie_swl_24;
+      return k_ra_ok;
+    case 22U:
+      *out_dwl = k_ra_ssie_dwl_22;
+      *out_swl = k_ra_ssie_swl_24;
+      return k_ra_ok;
+    case 24U:
+      *out_dwl = k_ra_ssie_dwl_24;
+      *out_swl = k_ra_ssie_swl_24;
+      return k_ra_ok;
+    case 32U:
+      *out_dwl = k_ra_ssie_dwl_32;
+      *out_swl = k_ra_ssie_swl_32;
+      return k_ra_ok;
+    default:
+      return k_ra_err_invalid_arg;
+  }
+}
+
+ra_err_t ra_board_audio_init(uint32_t sample_rate_hz, uint8_t bit_depth, uint8_t channels)
+{
+  if (sample_rate_hz == 0U) {
+    return k_ra_err_invalid_arg;
+  }
+  if (channels != 1U && channels != 2U) {
+    return k_ra_err_invalid_arg;
+  }
+  ra_ssie_data_word_t   dwl  = k_ra_ssie_dwl_16;
+  ra_ssie_system_word_t swl  = k_ra_ssie_swl_16;
+  ra_err_t              berr = internal_audio_bits_to_word(bit_depth, &dwl, &swl);
+  if (berr != k_ra_ok) {
+    return berr;
+  }
+
+  /* Step 1: route the four DAI pins to SSIE0 + the I2C control pair
+   * to IIC1 (UM Table 32 p 38). MCLK on PD06 stays in GPIO mode --
+   * the application picks SSIE EXTAL or CGC clock-out explicitly.
+   * k_ra_psel_ssie comes from HUM Ch 19 PFS PSEL field. */
   const struct {
     ra_port_pin_t pin;
     ra_psel_t     psel;
     const char*   owner;
-    /* The cast from ra_board_audio_pin_t to ra_port_pin_t is a re-tag
-   * of the same underlying uint16_t (port << 8 | pin) value; the
-   * static analyzer doesn't know the value space is identical. */
     /* NOLINTBEGIN(clang-analyzer-optin.core.EnumCastOutOfRange) */
   } routes[] = {
-    {(ra_port_pin_t)k_ra_board_audio_pin_bclk, k_ra_psel_iic, "ra_board.audio.bclk"},
-    {(ra_port_pin_t)k_ra_board_audio_pin_wclk, k_ra_psel_iic, "ra_board.audio.wclk"},
-    {(ra_port_pin_t)k_ra_board_audio_pin_datin, k_ra_psel_iic, "ra_board.audio.datin"},
-    {(ra_port_pin_t)k_ra_board_audio_pin_datout, k_ra_psel_iic, "ra_board.audio.datout"},
+    {(ra_port_pin_t)k_ra_board_audio_pin_bclk, k_ra_psel_ssie, "ra_board.audio.bclk"},
+    {(ra_port_pin_t)k_ra_board_audio_pin_wclk, k_ra_psel_ssie, "ra_board.audio.wclk"},
+    {(ra_port_pin_t)k_ra_board_audio_pin_datin, k_ra_psel_ssie, "ra_board.audio.datin"},
+    {(ra_port_pin_t)k_ra_board_audio_pin_datout, k_ra_psel_ssie, "ra_board.audio.datout"},
     {(ra_port_pin_t)k_ra_board_audio_pin_i2c_sda, k_ra_psel_iic, "ra_board.audio.i2c.sda"},
     {(ra_port_pin_t)k_ra_board_audio_pin_i2c_scl, k_ra_psel_iic, "ra_board.audio.i2c.scl"},
   };
   /* NOLINTEND(clang-analyzer-optin.core.EnumCastOutOfRange) */
-  /* TODO(bsp): k_ra_psel_iic is the IIC alt; SSIE uses a different
-   * PSEL value not currently named in ra_gpio_constants.h. Once
-   * k_ra_psel_ssie is added, swap the four DAI entries above. */
   for (uint32_t i = 0U; i < sizeof(routes) / sizeof(routes[0]); ++i) {
     const ra_err_t err = ra_pfs_route_peripheral(routes[i].pin, routes[i].psel, routes[i].owner);
     if (err != k_ra_ok) {
       return err;
     }
   }
+
+  /* Step 2: bring up SSIE0 in I2S controller mode. AUDIO_MCK / 4
+   * lands close to 12.288 MHz / 4 = 3.072 MHz BCK for 48 kHz x 2ch
+   * x 32-bit frames; finer rate matching is left to applications
+   * that re-call ra_ssie_init() with a tuned divider. */
+  (void)sample_rate_hz;
+  const ra_ssie_cfg_t cfg = {
+    .role          = k_ra_ssie_role_master,
+    .format        = (channels == 1U) ? k_ra_ssie_format_monaural : k_ra_ssie_format_i2s,
+    .data_word     = dwl,
+    .system_word   = swl,
+    .bclk_div      = k_ra_ssie_bclk_div_4,
+    .use_gpt_clk   = false,
+    .long_frame    = false,
+    .bckp_rising   = false,
+    .lrckp_low     = false,
+    .spdp_high     = false,
+    .byte_swap     = false,
+    .lr_continue   = false,
+    .bck_idle_stop = false,
+    .enable_aucke  = true,
+    .tx_threshold  = 0U,
+    .rx_threshold  = 0U,
+  };
+  const ra_err_t serr = ra_ssie_init((uint8_t)k_ra_board_audio_ssie_channel, &cfg);
+  if (serr != k_ra_ok) {
+    return k_ra_err_hw_init_failed;
+  }
+  s_audio_initialised = true;
   return k_ra_ok;
 }
 
@@ -485,37 +562,23 @@ ra_err_t ra_board_audio_play_sample_block(const int16_t* buf, uint32_t len)
   if (len == 0U || (len % 2U) != 0U) {
     return k_ra_err_invalid_arg;
   }
-  /* The HAL surface for the data path is complete:
-   * ra_ssie_write_buffer(channel, const uint32_t* buffer,
-   *                      uint16_t samples, uint16_t* out_written)
-   * is exported from libs/ra_hal/inc/ra_ssie.h. The piece this BSP
-   * veneer is missing is the one-time SSIE0 bring-up:
-   *
-   *   1. ra_board_audio_init() programmes the PFS routing but does
-   *      NOT call ra_ssie_init(0, &cfg) -- the bclk/wclk divisors
-   *      depend on the runtime sample rate the application picks,
-   *      so the BSP cannot statically choose a ra_ssie_cfg_t.
-   *   2. The DAI pins (P403..P406) are routed via k_ra_psel_iic in
-   *      ra_board_audio_init() because ra_gpio_constants.h only
-   *      defines k_ra_psel_iic = 0x07, not a dedicated
-   *      k_ra_psel_ssie. The DA7212 controller-mode SSIE pins want
-   *      a different PSEL value (chip HUM IO-Ports chapter,
-   *      Table "Multiplexed Pin Function Selector").
-   *
-   * TODO(bsp): once (a) ra_gpio_constants.h gains k_ra_psel_ssie
-   * with the right PSEL encoding, and (b) ra_board_audio_init() takes
-   * a sample-rate argument so it can compute SSICR.CKDV and call
-   * ra_ssie_init(0, &cfg), this function can be promoted to:
-   *
-   *   uint16_t written = 0U;
-   *   return ra_ssie_write_buffer(k_ra_board_audio_ssie_channel,
-   *                               (const uint32_t*)buf,
-   *                               (uint16_t)(len / 2U),
-   *                               &written);
-   *
-   * Until that lands, return k_ra_err_not_supported so the caller
-   * does not block forever on an un-initialised SSIE FIFO. */
-  return k_ra_err_not_supported;
+  if (!s_audio_initialised) {
+    return k_ra_err_not_initialized;
+  }
+  /* Two int16_t samples (one stereo frame) pack into one 32-bit SSIE
+   * FIFO word; len is guaranteed even by the check above. */
+  uint16_t       written = 0U;
+  const ra_err_t err     = ra_ssie_write_buffer((uint8_t)k_ra_board_audio_ssie_channel,
+                                            (const uint32_t*)(const void*)buf,
+                                            (uint16_t)(len / 2U),
+                                            &written);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  if (written != (uint16_t)(len / 2U)) {
+    return k_ra_err_hw_timeout;
+  }
+  return k_ra_ok;
 }
 
 /* =============================================================================

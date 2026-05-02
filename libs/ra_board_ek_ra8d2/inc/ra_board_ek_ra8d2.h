@@ -364,7 +364,8 @@ typedef enum : uint8_t {
  * @post All CODEC pins are routed; SSIE0 is enabled.
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t ra_board_audio_init(void);
+[[nodiscard]] ra_err_t
+ra_board_audio_init(uint32_t sample_rate_hz, uint8_t bit_depth, uint8_t channels);
 
 /**
  * @brief Push one block of stereo PCM samples to the CODEC's DAC.
