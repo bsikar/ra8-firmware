@@ -446,11 +446,12 @@ int32_t main(void)
   while (1) {
     usb_hid_build_jiggle(phase, report);
 
-    if (ra_usb_phid_send_report(k_usb_hid_report_id_none,
-                                report,
-                                (uint16_t)k_usb_hid_report_bytes) != k_ra_ok) {
-      break;
-    }
+    /* Pre-enumeration the controller has no IN buffer space; ignore
+     * the error and retry next tick. After the host opens the
+     * interface, send_report starts succeeding. */
+    (void)ra_usb_phid_send_report(k_usb_hid_report_id_none,
+                                  report,
+                                  (uint16_t)k_usb_hid_report_bytes);
 
     if (ra_board_led_toggle(k_ra_board_led1) != k_ra_ok) {
       break;
