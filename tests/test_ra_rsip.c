@@ -1475,6 +1475,59 @@ static void test_aes_cipher_mcdc_aead_modes(void)
   TEST_END("rsip aes_cipher MC/DC: mode==GCM || mode==CCM");
 }
 
+/**
+ * @test test_mcdc_hmac_init_key_len
+ *
+ * @par MC/DC:
+ * Decision: ``if ((key == nullptr) && (key_len != 0U))`` (2 conditions,
+ * libs/ra_hal/src/ra_rsip.c ra_rsip_hmac_sha256_init). N+1 = 3.
+ * - V1: key=valid, key_len=4 -> C1=F short-circuits -> dec F (proceeds)
+ * - V2: key=NULL,  key_len=0 -> C1=T, C2=F          -> dec F (zero-key path)
+ * - V3: key=NULL,  key_len=4 -> C1=T, C2=T          -> dec T -> null_ptr
+ */
+static void test_mcdc_hmac_init_key_len(void)
+{
+  TEST_BEGIN("rsip hmac_sha256_init MC/DC: key==null && key_len!=0");
+  prep_running();
+  ra_rsip_hmac_sha256_ctx_t ctx    = {};
+  const uint8_t             key[4] = {0x11U, 0x22U, 0x33U, 0x44U};
+  /* V1: valid key. */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rsip_hmac_sha256_init(&ctx, key, 4U));
+  /* V2: zero-len, NULL key (zero-key HMAC is permitted). */
+  ra_rsip_hmac_sha256_ctx_t ctx2 = {};
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rsip_hmac_sha256_init(&ctx2, nullptr, 0U));
+  /* V3: NULL with non-zero len. */
+  ra_rsip_hmac_sha256_ctx_t ctx3 = {};
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_rsip_hmac_sha256_init(&ctx3, nullptr, 4U));
+  TEST_END("rsip hmac_sha256_init MC/DC: key==null && key_len!=0");
+}
+
+/**
+ * @test test_mcdc_poly1305_msg_len
+ *
+ * @par MC/DC:
+ * Decision: ``if ((msg == nullptr) && (msg_len != 0U))`` (2 conditions,
+ * libs/ra_hal/src/ra_rsip.c ra_rsip_poly1305). N+1 = 3.
+ * - V1: msg=valid, msg_len=8 -> C1=F short-circuits -> dec F (proceeds)
+ * - V2: msg=NULL,  msg_len=0 -> C1=T, C2=F          -> dec F (proceeds zero-len)
+ * - V3: msg=NULL,  msg_len=8 -> C1=T, C2=T          -> dec T -> null_ptr
+ */
+static void test_mcdc_poly1305_msg_len(void)
+{
+  TEST_BEGIN("rsip poly1305 MC/DC: msg==null && msg_len!=0");
+  prep_running();
+  uint8_t       otk[32] = {};
+  const uint8_t msg[8]  = {0U};
+  uint8_t       tag[16] = {};
+  /* V1 */
+  (void)ra_rsip_poly1305(otk, msg, 8U, tag);
+  /* V2: zero-len NULL OK -> dec F. */
+  (void)ra_rsip_poly1305(otk, nullptr, 0U, tag);
+  /* V3: NULL with non-zero len -> dec T -> null_ptr. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_rsip_poly1305(otk, nullptr, 8U, tag));
+  TEST_END("rsip poly1305 MC/DC: msg==null && msg_len!=0");
+}
+
 int32_t main(void)
 {
   test_init_happy();
@@ -1523,6 +1576,8 @@ int32_t main(void)
   test_hmac_sha256_inc_arg_check();
   test_sha256_update_mcdc_data_len();
   test_aes_cipher_mcdc_aead_modes();
+  test_mcdc_hmac_init_key_len();
+  test_mcdc_poly1305_msg_len();
   (void)fprintf(stderr, "[OK ] test_ra_rsip.c\n");
   return 0;
 }

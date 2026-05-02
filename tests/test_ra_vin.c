@@ -1177,6 +1177,117 @@ static void test_set_framebuffers_all_zero_mcdc(void)
   TEST_END("vin set_framebuffers MC/DC: mb1==0 && mb2==0 && mb3==0");
 }
 
+/**
+ * @test test_mcdc_capture_arm_mode_triple
+ *
+ * @par MC/DC:
+ * Decision: ``if ((mode != single) && (mode != continuous) &&
+ *               (mode != continuous_field_skip))`` (3 conditions,
+ * libs/ra_hal/src/ra_vin.c ra_vin_capture_arm).
+ *
+ * @par DO-178C 6.4.4.3 omission rationale:
+ * Full short-circuit MC/DC for N=3 AND requires N+1=4 vectors. We use
+ * the canonical short-circuit set; each predicate flips with the others
+ * held at their masking value (T):
+ * - V1: mode=single                       -> C1=F short-circuits -> dec F (proceeds, ok)
+ * - V2: mode=continuous                   -> C1=T, C2=F short    -> dec F (proceeds, ok)
+ * - V3: mode=continuous_field_skip        -> C1=T, C2=T, C3=F    -> dec F (proceeds, ok)
+ * - V4: mode=0xFE (none)                  -> C1=T, C2=T, C3=T    -> dec T -> invalid_arg
+ */
+static void test_mcdc_capture_arm_mode_triple(void)
+{
+  TEST_BEGIN("vin capture_arm MC/DC: mode != {single, cont, cont_field_skip}");
+  prep();
+  const ra_vin_config_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_vin_init(&cfg));
+  /* V1: single. */
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_vin_capture_arm(k_ra_vin_capture_single));
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_vin_capture_disarm());
+  /* V2: continuous. */
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_vin_capture_arm(k_ra_vin_capture_continuous));
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_vin_capture_disarm());
+  /* V3: continuous_field_skip. */
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_vin_capture_arm(k_ra_vin_capture_continuous_field_skip));
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_vin_capture_disarm());
+  /* V4: bogus. */
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_vin_capture_arm((ra_vin_capture_mode_t)0xFEU));
+  TEST_END("vin capture_arm MC/DC: mode != {single, cont, cont_field_skip}");
+}
+
+/**
+ * @test test_mcdc_capture_arm_continuous_pair
+ *
+ * @par MC/DC:
+ * Decision: ``if ((mode == continuous) || (mode == continuous_field_skip))``
+ * (2 conditions, libs/ra_hal/src/ra_vin.c ra_vin_capture_arm). N+1=3.
+ * - V1: mode=single        -> C1=F, C2=F             -> dec F (no FC.CC write)
+ * - V2: mode=continuous    -> C1=T short-circuits    -> dec T (FC.CC programmed)
+ * - V3: mode=cont_field_skip -> C1=F, C2=T            -> dec T (FC.CC programmed)
+ * (V1,V2) flips C1 with C2 masked F; (V1,V3) flips C2 with C1 fixed F.
+ */
+static void test_mcdc_capture_arm_continuous_pair(void)
+{
+  TEST_BEGIN("vin capture_arm MC/DC: mode == cont || mode == cont_field_skip");
+  prep();
+  const ra_vin_config_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_vin_init(&cfg));
+  volatile uint32_t* fc_reg = ra_vin_reg32(k_ra_vin_off_fc);
+  /* V1: single -- FC.CC must remain clear. */
+  *fc_reg = 0U;
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_vin_capture_arm(k_ra_vin_capture_single));
+  TEST_ASSERT_EQ((int32_t)0, (int32_t)(*fc_reg & k_ra_vin_fc_cc));
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_vin_capture_disarm());
+  /* V2: continuous -- FC.CC must be set. */
+  *fc_reg = 0U;
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_vin_capture_arm(k_ra_vin_capture_continuous));
+  TEST_ASSERT((*fc_reg & k_ra_vin_fc_cc) != 0U);
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_vin_capture_disarm());
+  /* V3: continuous_field_skip -- FC.CC must be set. */
+  *fc_reg = 0U;
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_vin_capture_arm(k_ra_vin_capture_continuous_field_skip));
+  TEST_ASSERT((*fc_reg & k_ra_vin_fc_cc) != 0U);
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_vin_capture_disarm());
+  TEST_END("vin capture_arm MC/DC: mode == cont || mode == cont_field_skip");
+}
+
+/**
+ * @test test_mcdc_set_preclip_window_pair
+ *
+ * @par MC/DC:
+ * Decision: ``if ((window->line_end < window->line_start) ||
+ *               (window->pixel_end < window->pixel_start))`` (2 conditions,
+ * libs/ra_hal/src/ra_vin.c ra_vin_set_preclip). N+1 = 3.
+ * - V1: line_end>=start, pixel_end>=start  -> C1=F, C2=F -> dec F (proceeds, ok)
+ * - V2: line_end<start                     -> C1=T short -> dec T -> invalid_arg
+ * - V3: line ok, pixel_end<start           -> C1=F, C2=T -> dec T -> invalid_arg
+ */
+static void test_mcdc_set_preclip_window_pair(void)
+{
+  TEST_BEGIN("vin set_preclip MC/DC: line_end<start || pixel_end<start");
+  prep();
+  const ra_vin_config_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_vin_init(&cfg));
+  /* V1: well-formed window. */
+  const ra_vin_preclip_t v1 = {.line_start  = 0U,
+                               .line_end    = 10U,
+                               .pixel_start = 0U,
+                               .pixel_end   = 10U};
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_vin_set_preclip(&v1));
+  /* V2: line_end < line_start. */
+  const ra_vin_preclip_t v2 = {.line_start  = 10U,
+                               .line_end    = 0U,
+                               .pixel_start = 0U,
+                               .pixel_end   = 10U};
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_vin_set_preclip(&v2));
+  /* V3: pixel_end < pixel_start. */
+  const ra_vin_preclip_t v3 = {.line_start  = 0U,
+                               .line_end    = 10U,
+                               .pixel_start = 10U,
+                               .pixel_end   = 0U};
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_vin_set_preclip(&v3));
+  TEST_END("vin set_preclip MC/DC: line_end<start || pixel_end<start");
+}
+
 int32_t main(void)
 {
   test_init_happy();
@@ -1228,6 +1339,9 @@ int32_t main(void)
   test_set_uds_clip_mcdc_bounds();
   test_set_window_zero_dim_mcdc();
   test_set_framebuffers_all_zero_mcdc();
+  test_mcdc_capture_arm_mode_triple();
+  test_mcdc_capture_arm_continuous_pair();
+  test_mcdc_set_preclip_window_pair();
   (void)fprintf(stderr, "[OK  ] test_ra_vin.c\n");
   return 0;
 }

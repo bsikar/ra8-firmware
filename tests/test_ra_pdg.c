@@ -903,6 +903,113 @@ static void test_mcdc_pdg(void)
   TEST_END("pdg MC/DC: check_constraints mode + dir 2-cond rejects");
 }
 
+/**
+ * @test test_mcdc_set_delay_batch_count
+ *
+ * @par MC/DC:
+ * Decision: ``if ((count == 0U) || (count > k_ra_pdg_slot_count))``
+ * (2 conditions, libs/ra_hal/src/ra_pdg.c ra_pdg_set_delay_batch). N+1 = 3.
+ * - V1: count=1 (in range)               -> C1=F short-circuits   -> F (proceeds)
+ * - V2: count=k_ra_pdg_slot_count (max)  -> C1=F, C2=F            -> F (proceeds)
+ * - V3: count=k_ra_pdg_slot_count+1 (oor) -> C1=F, C2=T           -> T -> invalid_arg
+ * - V4: count=0                          -> C1=T short-circuits   -> T -> invalid_arg
+ * (V1,V4) flips C1 with C2 masked F; (V2,V3) flips C2 with C1 fixed F. N+1=3.
+ */
+static void test_mcdc_set_delay_batch_count(void)
+{
+  TEST_BEGIN("pdg MC/DC: set_delay_batch count == 0 || count > slot_count");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_pdg_init(&(const ra_pdg_config_t){
+                   .frange       = k_ra_pdg_frange_80_160_mhz,
+                   .channel_mask = (uint8_t)k_ra_pdg_test_mask_all,
+                   .auto_tune    = 0U,
+                   .gptclk_hz    = 0U,
+                 }));
+  const ra_pdg_delay_entry_t one[1] = {{
+    .channel = (uint8_t)k_ra_pdg_test_ch_first,
+    .pin     = k_ra_pdg_pin_a,
+    .edge    = k_ra_pdg_edge_rising,
+    .code    = (uint8_t)k_ra_pdg_test_code_lo,
+  }};
+  /* V1: count=1 in range -> proceeds */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdg_set_delay_batch(one, 1U));
+  /* V4: count=0 -> C1=T -> invalid_arg */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_pdg_set_delay_batch(one, 0U));
+  /* V3: count > slot_count -> C1=F, C2=T -> invalid_arg */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_pdg_set_delay_batch(one, (uint8_t)(k_ra_pdg_slot_count + 1U)));
+  TEST_END("pdg MC/DC: set_delay_batch count == 0 || count > slot_count");
+}
+
+/**
+ * @test test_mcdc_pin_disable_pin_neither
+ *
+ * @par MC/DC:
+ * Decision: ``if ((pin != k_ra_pdg_pin_a) && (pin != k_ra_pdg_pin_b))``
+ * (2 conditions, libs/ra_hal/src/ra_pdg.c ra_pdg_pin_disable). N+1 = 3.
+ * - V1: pin=pin_a   -> C1=F short-circuits          -> F (proceeds, ok)
+ * - V2: pin=pin_b   -> C1=T, C2=F                   -> F (proceeds, ok)
+ * - V3: pin=0xFE    -> C1=T, C2=T                   -> T -> invalid_arg
+ * (V1,V3) flips C1 with C2 set T; (V2,V3) flips C2 with C1 set T.
+ */
+static void test_mcdc_pin_disable_pin_neither(void)
+{
+  TEST_BEGIN("pdg MC/DC: pin_disable pin != A && pin != B");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_pdg_init(&(const ra_pdg_config_t){
+                   .frange       = k_ra_pdg_frange_80_160_mhz,
+                   .channel_mask = (uint8_t)k_ra_pdg_test_mask_all,
+                   .auto_tune    = 0U,
+                   .gptclk_hz    = 0U,
+                 }));
+  /* V1: pin_a */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_pdg_pin_disable((uint8_t)k_ra_pdg_test_ch_first, k_ra_pdg_pin_a));
+  /* V2: pin_b */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_pdg_pin_disable((uint8_t)k_ra_pdg_test_ch_first, k_ra_pdg_pin_b));
+  /* V3: bogus */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_pdg_pin_disable((uint8_t)k_ra_pdg_test_ch_first, (ra_pdg_pin_t)0xFEU));
+  TEST_END("pdg MC/DC: pin_disable pin != A && pin != B");
+}
+
+/**
+ * @test test_mcdc_validate_cfg_gptclk_range
+ *
+ * @par MC/DC:
+ * Decision: ``if ((cfg->gptclk_hz < freq_low_min) || (cfg->gptclk_hz > freq_high_max))``
+ * (2 conditions, internal_validate_cfg auto-tune branch). N+1 = 3.
+ * Exercised through ra_pdg_init since internal_validate_cfg is private.
+ * - V1: gptclk in band (e.g. 100 MHz)  -> C1=F, C2=F       -> dec F (->ok)
+ * - V2: gptclk too low (50 MHz)        -> C1=T short-circuits -> dec T -> out_of_range
+ * - V3: gptclk too high (400 MHz)      -> C1=F, C2=T       -> dec T -> out_of_range
+ * (V1,V2) flips C1 with C2 masked; (V1,V3) flips C2 with C1 fixed F.
+ */
+static void test_mcdc_validate_cfg_gptclk_range(void)
+{
+  TEST_BEGIN("pdg MC/DC: validate_cfg auto-tune gptclk band");
+  prep();
+  ra_pdg_config_t cfg = {
+    .frange       = k_ra_pdg_frange_80_160_mhz,
+    .channel_mask = (uint8_t)k_ra_pdg_test_mask_one,
+    .auto_tune    = 1U,
+    .gptclk_hz    = (uint32_t)k_ra_pdg_test_clk_low_band,
+  };
+  /* V1: 100 MHz in band -> ok. */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdg_init(&cfg));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdg_deinit());
+  /* V2: 50 MHz too low -> out_of_range. */
+  cfg.gptclk_hz = (uint32_t)k_ra_pdg_test_clk_too_low;
+  TEST_ASSERT_EQ((int32_t)k_ra_err_out_of_range, (int32_t)ra_pdg_init(&cfg));
+  /* V3: 400 MHz too high -> out_of_range. */
+  cfg.gptclk_hz = (uint32_t)k_ra_pdg_test_clk_too_high;
+  TEST_ASSERT_EQ((int32_t)k_ra_err_out_of_range, (int32_t)ra_pdg_init(&cfg));
+  TEST_END("pdg MC/DC: validate_cfg auto-tune gptclk band");
+}
+
 int32_t main(void)
 {
   test_init_happy();
@@ -940,6 +1047,9 @@ int32_t main(void)
   test_capture_start_no_handler();
   test_deinit();
   test_mcdc_pdg();
+  test_mcdc_set_delay_batch_count();
+  test_mcdc_pin_disable_pin_neither();
+  test_mcdc_validate_cfg_gptclk_range();
   (void)fprintf(stderr, "[OK ] test_ra_pdg.c\n");
   return 0;
 }

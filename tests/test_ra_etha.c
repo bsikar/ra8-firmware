@@ -875,6 +875,104 @@ static void test_set_mode_mcdc_port_mode(void)
   TEST_END("etha set_mode MC/DC: !port_ok || mode > mask");
 }
 
+/**
+ * @test test_mcdc_enable_irq_port_block
+ *
+ * @par MC/DC:
+ * Decision: ``if (!internal_port_ok(port) || !internal_irq_block_ok(block))``
+ * (2 conditions, libs/ra_hal/src/ra_etha.c ra_etha_enable_irq). N+1 = 3.
+ * - V1: port=0 (ok), block=0 (ok)              -> C1=F, C2=F -> dec F (proceeds, ok)
+ * - V2: port=99 (oor)                          -> C1=T short-circuits -> dec T -> invalid_arg
+ * - V3: port=0 (ok), block=count (oor)         -> C1=F, C2=T -> dec T -> invalid_arg
+ * (V1,V2) flips C1 with C2 masked F; (V1,V3) flips C2 with C1 fixed F.
+ */
+static void test_mcdc_enable_irq_port_block(void)
+{
+  TEST_BEGIN("etha enable_irq MC/DC: !port_ok || !block_ok");
+  prep();
+  const ra_etha_config_t cfg = {.initial_mode = k_ra_etha_opc_config};
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_init(k_ra_etha_port_0, &cfg));
+  /* V1 */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_etha_enable_irq(k_ra_etha_port_0, k_ra_etha_irq_class_0, 0xFFU));
+  /* V2 */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_etha_enable_irq((ra_etha_port_t)99U, k_ra_etha_irq_class_0, 0xFFU));
+  /* V3 */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_etha_enable_irq(k_ra_etha_port_0,
+                                             (ra_etha_irq_class_t)k_ra_etha_irq_class_count,
+                                             0xFFU));
+  TEST_END("etha enable_irq MC/DC: !port_ok || !block_ok");
+}
+
+/**
+ * @test test_mcdc_disable_irq_port_block
+ *
+ * @par MC/DC:
+ * Decision: ``if (!internal_port_ok(port) || !internal_irq_block_ok(block))``
+ * (2 conditions, libs/ra_hal/src/ra_etha.c ra_etha_disable_irq). N+1 = 3.
+ * Same shape as enable_irq above; vectors mirror.
+ */
+static void test_mcdc_disable_irq_port_block(void)
+{
+  TEST_BEGIN("etha disable_irq MC/DC: !port_ok || !block_ok");
+  prep();
+  const ra_etha_config_t cfg = {.initial_mode = k_ra_etha_opc_config};
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_init(k_ra_etha_port_0, &cfg));
+  /* V1 */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_etha_disable_irq(k_ra_etha_port_0, k_ra_etha_irq_class_0, 0xFFU));
+  /* V2 */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_etha_disable_irq((ra_etha_port_t)99U, k_ra_etha_irq_class_0, 0xFFU));
+  /* V3 */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_etha_disable_irq(k_ra_etha_port_0,
+                                              (ra_etha_irq_class_t)k_ra_etha_irq_class_count,
+                                              0xFFU));
+  TEST_END("etha disable_irq MC/DC: !port_ok || !block_ok");
+}
+
+/**
+ * @test test_mcdc_set_queue_arb_triple
+ *
+ * @par MC/DC:
+ * Decision: ``if (!internal_port_ok(port) || !internal_tc_ok(tc) ||
+ *               (uint32_t)arb > k_ra_etha_mask_tdqa)``
+ * (3 conditions, libs/ra_hal/src/ra_etha.c ra_etha_set_queue_arb).
+ *
+ * @par DO-178C 6.4.4.3 omission rationale:
+ * Full short-circuit MC/DC for N=3 OR requires N+1=4 vectors. We use the
+ * canonical short-circuit set; each predicate flips with the others held
+ * at their masking value (F).
+ * - V1: port=ok, tc=ok, arb=ok  -> all F          -> dec F (proceeds, ok)
+ * - V2: port=99 (oor)           -> C1=T short    -> dec T -> invalid_arg
+ * - V3: port=ok, tc=99 (oor)    -> C1=F, C2=T short -> dec T -> invalid_arg
+ * - V4: port=ok, tc=ok, arb=oor -> C1=F, C2=F, C3=T -> dec T -> invalid_arg
+ */
+static void test_mcdc_set_queue_arb_triple(void)
+{
+  TEST_BEGIN("etha set_queue_arb MC/DC: !port_ok || !tc_ok || arb>mask");
+  prep();
+  const ra_etha_config_t cfg = {.initial_mode = k_ra_etha_opc_config};
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_init(k_ra_etha_port_0, &cfg));
+  /* V1: all good. */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_etha_set_queue_arb(k_ra_etha_port_0, (ra_etha_tc_t)0U, 1U));
+  /* V2: bad port. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_etha_set_queue_arb((ra_etha_port_t)99U, (ra_etha_tc_t)0U, 1U));
+  /* V3: bad tc. */
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_invalid_arg,
+    (int32_t)ra_etha_set_queue_arb(k_ra_etha_port_0, (ra_etha_tc_t)k_ra_etha_tc_count, 1U));
+  /* V4: bad arb. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_etha_set_queue_arb(k_ra_etha_port_0, (ra_etha_tc_t)0U, 0xFFU));
+  TEST_END("etha set_queue_arb MC/DC: !port_ok || !tc_ok || arb>mask");
+}
+
 int32_t main(void)
 {
   test_init_happy();
@@ -905,6 +1003,9 @@ int32_t main(void)
   test_set_security();
   test_clear_status_mcdc_port_block();
   test_set_mode_mcdc_port_mode();
+  test_mcdc_enable_irq_port_block();
+  test_mcdc_disable_irq_port_block();
+  test_mcdc_set_queue_arb_triple();
   (void)fprintf(stderr, "[OK  ] test_ra_etha.c\n");
   return 0;
 }
