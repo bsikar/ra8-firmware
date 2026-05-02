@@ -1885,6 +1885,28 @@ ra_err_t ra_fs_close(ra_fs_file_t* file)
 
 /**
  * @brief Walk `n` clusters forward from `start` along the FAT chain.
+ *
+ * @details Used by the read path to position to the cluster covering
+ *          `file->offset`. Stops early on EOC.
+ *
+ * @param[in]  m     Mount providing FAT access.
+ * @param[in]  start First cluster of the chain.
+ * @param[in]  n     Number of clusters to walk.
+ * @param[out] out   Receives the cluster reached (or last before EOC).
+ *
+ * @return Error code.
+ * @retval k_ra_ok                Walked exactly `n` clusters.
+ * @retval k_ra_err_invalid_state Hit EOC before walking `n` clusters.
+ * @retval k_ra_err_*             Backend error.
+ *
+ * @pre `m` and `out` are non-NULL.
+ * @pre `start` is a valid cluster number.
+ * @post On success, `*out` is the destination cluster.
+ * @post On EOC failure, `*out` is the last valid cluster reached.
+ *
+ * @note Thread-safety inherited from the backend.
+ *
+ * @since 0.1.0
  */
 static ra_err_t
 priv_skip_clusters(const ra_fs_mount_t* m, uint32_t start, uint32_t n, uint32_t* out)
@@ -1908,6 +1930,27 @@ priv_skip_clusters(const ra_fs_mount_t* m, uint32_t start, uint32_t n, uint32_t*
 
 /**
  * @brief Read up to one sector's worth of bytes at the file's current offset.
+ *
+ * @details Resolves the cluster covering `file->offset`, reads the
+ *          containing sector, and copies the relevant slice into `buf`.
+ *
+ * @param[in,out] file      File handle providing offset and chain root.
+ * @param[out]    buf       Destination of the byte slice.
+ * @param[in]     remaining Maximum bytes the caller can accept.
+ * @param[out]    out_take  Number of bytes actually copied.
+ *
+ * @return Error code.
+ * @retval k_ra_ok    Slice copied.
+ * @retval k_ra_err_* Backend or FAT error.
+ *
+ * @pre All pointers are non-NULL; file is in use.
+ * @pre `file->offset < file->size_bytes`.
+ * @post On success, `*out_take > 0` and `buf[0..*out_take]` populated.
+ * @post `file->offset` is NOT advanced -- caller does that.
+ *
+ * @note Thread-safety inherited from the backend.
+ *
+ * @since 0.1.0
  */
 static ra_err_t
 priv_read_one_chunk(ra_fs_file_t* file, uint8_t* buf, uint32_t remaining, uint32_t* out_take)
@@ -1938,6 +1981,33 @@ priv_read_one_chunk(ra_fs_file_t* file, uint8_t* buf, uint32_t remaining, uint32
   return k_ra_ok;
 }
 
+/**
+ * @brief Read bytes from an open file.
+ *
+ * @details Loops on `priv_read_one_chunk`, advancing `file->offset`
+ *          after each chunk. Stops at EOF or when `max_len` met.
+ *
+ * @param[in,out] file    Open file handle.
+ * @param[out]    buf     Destination buffer.
+ * @param[in]     max_len Maximum bytes to read.
+ * @param[out]    got_len Bytes actually read.
+ *
+ * @return Error code.
+ * @retval k_ra_ok                Read completed (possibly short at EOF).
+ * @retval k_ra_err_null_ptr      Any pointer was NULL.
+ * @retval k_ra_err_invalid_state File is not open.
+ * @retval k_ra_err_*             Backend error.
+ *
+ * @pre `file`, `buf`, and `got_len` are non-NULL.
+ * @pre File is in use.
+ * @post On success, `*got_len` bytes were placed in `buf` and the
+ *       file offset advanced by the same amount.
+ * @post On failure, `*got_len` is 0.
+ *
+ * @note Not thread-safe per file; callers serialise.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ra_fs_read(ra_fs_file_t* file, uint8_t* buf, uint32_t max_len, uint32_t* got_len)
 {
   if (file == NULL || buf == NULL || got_len == NULL) {
@@ -1971,6 +2041,26 @@ ra_err_t ra_fs_read(ra_fs_file_t* file, uint8_t* buf, uint32_t max_len, uint32_t
 
 /**
  * @brief Allocate a fresh cluster, mark it EOC, and return its number.
+ *
+ * @details Combines `priv_alloc_cluster` with a `priv_fat_set` to the
+ *          canonical EOC value. Used by the write path when the file
+ *          chain needs to grow.
+ *
+ * @param[in]  m     Mount providing FAT access.
+ * @param[out] out_c Receives the allocated cluster.
+ *
+ * @return Error code.
+ * @retval k_ra_ok    Cluster allocated and marked EOC.
+ * @retval k_ra_err_* Backend or FAT error.
+ *
+ * @pre `m` and `out_c` are non-NULL.
+ * @pre Volume has free clusters.
+ * @post On success, `*out_c` is in range and FAT entry = EOC.
+ * @post On failure, FAT may have been partially updated.
+ *
+ * @note Thread-safety inherited from the backend.
+ *
+ * @since 0.1.0
  */
 static ra_err_t priv_alloc_eoc_cluster(const ra_fs_mount_t* m, uint32_t* out_c)
 {
@@ -1983,6 +2073,27 @@ static ra_err_t priv_alloc_eoc_cluster(const ra_fs_mount_t* m, uint32_t* out_c)
 
 /**
  * @brief Walk to cluster index `idx` from `start`, growing the chain as needed.
+ *
+ * @details Like `priv_skip_clusters` but extends the chain (with new
+ *          EOC clusters) when EOC is encountered before reaching `idx`.
+ *
+ * @param[in]  m           Mount providing FAT access.
+ * @param[in]  start       First cluster of the chain.
+ * @param[in]  idx         Index to walk to.
+ * @param[out] out_cluster Receives the cluster at index `idx`.
+ *
+ * @return Error code.
+ * @retval k_ra_ok    Reached / created cluster at `idx`.
+ * @retval k_ra_err_* Backend, FAT, or no-mem error.
+ *
+ * @pre `m` and `out_cluster` are non-NULL.
+ * @pre `start` is a valid cluster.
+ * @post On success, `*out_cluster` is the cluster at offset `idx`.
+ * @post On failure, FAT may have been partially extended.
+ *
+ * @note Thread-safety inherited from the backend.
+ *
+ * @since 0.1.0
  */
 static ra_err_t
 priv_walk_grow(const ra_fs_mount_t* m, uint32_t start, uint32_t idx, uint32_t* out_cluster)
@@ -2014,6 +2125,29 @@ priv_walk_grow(const ra_fs_mount_t* m, uint32_t start, uint32_t idx, uint32_t* o
 
 /**
  * @brief Write `put` bytes into one sector at `lba` starting at `off_in_sector`.
+ *
+ * @details Read-modify-write of a single sector. Used by the write
+ *          path so partial-sector updates do not destroy neighbouring
+ *          file data.
+ *
+ * @param[in] m             Mount providing the backend.
+ * @param[in] lba           Sector to update.
+ * @param[in] off_in_sector Byte offset within the sector.
+ * @param[in] src           Source bytes.
+ * @param[in] put           Number of bytes to write.
+ *
+ * @return Error code.
+ * @retval k_ra_ok    Sector updated.
+ * @retval k_ra_err_* Backend read or write failure.
+ *
+ * @pre `m` and `src` are non-NULL.
+ * @pre `off_in_sector + put <= k_ra_fs_bytes_per_sector`.
+ * @post On success, the sector reflects the merged content.
+ * @post On failure, the sector content is implementation-defined.
+ *
+ * @note Thread-safety inherited from the backend.
+ *
+ * @since 0.1.0
  */
 static ra_err_t priv_write_into_sector(const ra_fs_mount_t* m,
                                        uint32_t             lba,
@@ -2032,6 +2166,27 @@ static ra_err_t priv_write_into_sector(const ra_fs_mount_t* m,
 
 /**
  * @brief Inner write loop: stream `len` bytes from `buf` into the file's chain.
+ *
+ * @details Allocates the first cluster on demand, then walks/grows
+ *          the chain as needed and forwards each sector slice through
+ *          `priv_write_into_sector`.
+ *
+ * @param[in,out] file File handle providing chain root and offset.
+ * @param[in]     buf  Source buffer.
+ * @param[in]     len  Number of bytes to write.
+ *
+ * @return Error code.
+ * @retval k_ra_ok    All `len` bytes written.
+ * @retval k_ra_err_* Backend, FAT, or no-mem error.
+ *
+ * @pre All pointers are non-NULL; file is open for writing.
+ * @pre `len > 0`.
+ * @post On success, `file->offset` advanced by `len`; size grew if needed.
+ * @post On failure, partial bytes may already be on disk.
+ *
+ * @note Thread-safety inherited from the backend.
+ *
+ * @since 0.1.0
  */
 static ra_err_t priv_write_stream(ra_fs_file_t* file, const uint8_t* buf, uint32_t len)
 {
@@ -2076,6 +2231,31 @@ static ra_err_t priv_write_stream(ra_fs_file_t* file, const uint8_t* buf, uint32
   return k_ra_ok;
 }
 
+/**
+ * @brief Write bytes to an open file.
+ *
+ * @details Forwards to `priv_write_stream`, then patches the on-disk
+ *          dir entry with the updated first-cluster and file size.
+ *
+ * @param[in,out] file File handle.
+ * @param[in]     buf  Source buffer.
+ * @param[in]     len  Bytes to write.
+ *
+ * @return Error code.
+ * @retval k_ra_ok                All bytes written.
+ * @retval k_ra_err_null_ptr      `file` or `buf` was NULL.
+ * @retval k_ra_err_invalid_state File not open or opened read-only.
+ * @retval k_ra_err_*             Backend, FAT, or no-mem error.
+ *
+ * @pre `file` and `buf` are non-NULL.
+ * @pre `file->mode != k_ra_fs_mode_read`.
+ * @post On success, the file's dir entry on disk reflects new size.
+ * @post On failure, partial bytes may already be on disk.
+ *
+ * @note Not thread-safe per file; callers serialise.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ra_fs_write(ra_fs_file_t* file, const uint8_t* buf, uint32_t len)
 {
   if (file == NULL || buf == NULL) {
@@ -2101,6 +2281,29 @@ ra_err_t ra_fs_write(ra_fs_file_t* file, const uint8_t* buf, uint32_t len)
   return priv_write_sector(m, file->dir_entry_lba, dirsec);
 }
 
+/**
+ * @brief Move the file's read/write cursor.
+ *
+ * @details Clamps the requested offset to the current file size; the
+ *          driver does not implement sparse files.
+ *
+ * @param[in,out] file         Open file handle.
+ * @param[in]     offset_bytes Desired cursor position.
+ *
+ * @return Error code.
+ * @retval k_ra_ok                Cursor moved (possibly clamped).
+ * @retval k_ra_err_null_ptr      `file` was NULL.
+ * @retval k_ra_err_invalid_state File not open.
+ *
+ * @pre `file` is non-NULL.
+ * @pre File is in use.
+ * @post `file->offset == min(offset_bytes, file->size_bytes)`.
+ * @post No on-disk state modified.
+ *
+ * @note Not thread-safe per file; callers serialise.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ra_fs_seek(ra_fs_file_t* file, uint32_t offset_bytes)
 {
   if (file == NULL) {
@@ -2117,6 +2320,28 @@ ra_err_t ra_fs_seek(ra_fs_file_t* file, uint32_t offset_bytes)
   return k_ra_ok;
 }
 
+/**
+ * @brief Report the file's current cursor position.
+ *
+ * @details Reads `file->offset`.
+ *
+ * @param[in]  file       Open file handle.
+ * @param[out] out_offset Receives the current offset in bytes.
+ *
+ * @return Error code.
+ * @retval k_ra_ok                Position returned.
+ * @retval k_ra_err_null_ptr      Any pointer was NULL.
+ * @retval k_ra_err_invalid_state File not open.
+ *
+ * @pre `file` and `out_offset` are non-NULL.
+ * @pre File is in use.
+ * @post `*out_offset == file->offset`.
+ * @post No state modified.
+ *
+ * @note Thread-safety: single-word read; safe vs other readers.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ra_fs_tell(const ra_fs_file_t* file, uint32_t* out_offset)
 {
   if (file == NULL || out_offset == NULL) {
@@ -2129,6 +2354,28 @@ ra_err_t ra_fs_tell(const ra_fs_file_t* file, uint32_t* out_offset)
   return k_ra_ok;
 }
 
+/**
+ * @brief Report the file's size in bytes.
+ *
+ * @details Reads `file->size_bytes`.
+ *
+ * @param[in]  file      Open file handle.
+ * @param[out] out_bytes Receives the file size in bytes.
+ *
+ * @return Error code.
+ * @retval k_ra_ok                Size returned.
+ * @retval k_ra_err_null_ptr      Any pointer was NULL.
+ * @retval k_ra_err_invalid_state File not open.
+ *
+ * @pre `file` and `out_bytes` are non-NULL.
+ * @pre File is in use.
+ * @post `*out_bytes == file->size_bytes`.
+ * @post No state modified.
+ *
+ * @note Thread-safety: single-word read; safe vs other readers.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ra_fs_size(const ra_fs_file_t* file, uint32_t* out_bytes)
 {
   if (file == NULL || out_bytes == NULL) {
@@ -2149,7 +2396,25 @@ ra_err_t ra_fs_size(const ra_fs_file_t* file, uint32_t* out_bytes)
 /**
  * @brief Visit every visible entry in one already-loaded directory sector.
  *
+ * @details Skips deleted (0xE5) and LFN (attr 0x0F) entries. Stops on
+ *          the end-of-directory marker (0x00).
+ *
+ * @param[in] buf 512-byte sector buffer holding directory entries.
+ * @param[in] cb  Caller-supplied per-entry callback.
+ * @param[in] ctx Opaque pointer forwarded to `cb`.
+ *
  * @return 1 if end-of-directory marker hit (caller can stop), 0 otherwise.
+ * @retval 1  End-of-directory reached; caller should stop.
+ * @retval 0  Sector exhausted without end-of-directory.
+ *
+ * @pre `buf` and `cb` are non-NULL.
+ * @pre `buf` holds a sector loaded from disk.
+ * @post No state modified by this function (callback may modify `ctx`).
+ * @post `cb` invoked once per visible entry.
+ *
+ * @note Thread-safety inherited from `cb`.
+ *
+ * @since 0.1.0
  */
 static uint8_t priv_listdir_visit_sector(const uint8_t* buf, ra_fs_listdir_cb_t cb, void* ctx)
 {
@@ -2172,6 +2437,33 @@ static uint8_t priv_listdir_visit_sector(const uint8_t* buf, ra_fs_listdir_cb_t 
   return 0U;
 }
 
+/**
+ * @brief Enumerate the entries in the volume root directory.
+ *
+ * @details Only the root path `"/"` is currently supported -- subdir
+ *          traversal is not implemented.
+ *
+ * @param[in,out] handle Mount handle.
+ * @param[in]     path   Must be `"/"`.
+ * @param[in]     cb     Per-entry callback.
+ * @param[in]     ctx    Opaque pointer forwarded to `cb`.
+ *
+ * @return Error code.
+ * @retval k_ra_ok                  Directory walked successfully.
+ * @retval k_ra_err_null_ptr        Any required pointer was NULL.
+ * @retval k_ra_err_invalid_state   Mount not in use.
+ * @retval k_ra_err_not_supported   `path` is not `"/"`.
+ * @retval k_ra_err_*               Backend error.
+ *
+ * @pre `handle`, `path`, and `cb` are non-NULL.
+ * @pre Mount is in use.
+ * @post `cb` invoked once per visible root-directory entry.
+ * @post No on-disk state modified.
+ *
+ * @note Not thread-safe; callers serialise.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ra_fs_listdir(ra_fs_mount_t* handle, const char* path, ra_fs_listdir_cb_t cb, void* ctx)
 {
   if (handle == NULL || cb == NULL || path == NULL) {
@@ -2204,6 +2496,32 @@ ra_err_t ra_fs_listdir(ra_fs_mount_t* handle, const char* path, ra_fs_listdir_cb
   return k_ra_ok;
 }
 
+/**
+ * @brief Delete a file from the root directory.
+ *
+ * @details Frees the cluster chain (if any) and marks the dir entry
+ *          deleted by writing 0xE5 to the first byte of the name field.
+ *
+ * @param[in,out] handle Mount handle.
+ * @param[in]     path   NUL-terminated path; only flat root names supported.
+ *
+ * @return Error code.
+ * @retval k_ra_ok                File deleted.
+ * @retval k_ra_err_null_ptr      Any pointer was NULL.
+ * @retval k_ra_err_invalid_state Mount not in use.
+ * @retval k_ra_err_invalid_arg   Path is not a valid 8.3 name.
+ * @retval k_ra_err_not_found     No such file.
+ * @retval k_ra_err_*             Backend or FAT error.
+ *
+ * @pre `handle` and `path` are non-NULL.
+ * @pre Mount is in use; no file handle currently references this entry.
+ * @post On success, file's clusters are free and dir entry is deleted.
+ * @post On failure, on-disk state may be partially updated.
+ *
+ * @note Not thread-safe; callers serialise.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ra_fs_unlink(ra_fs_mount_t* handle, const char* path)
 {
   if (handle == NULL || path == NULL) {
