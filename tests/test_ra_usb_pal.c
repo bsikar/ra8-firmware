@@ -245,6 +245,172 @@ static void test_calls_before_init_fail(void)
   TEST_END("ra_usb_pal_*: pre-init calls return invalid_state");
 }
 
+/* =============================================================================
+ * MC/DC tests for compound decisions in libs/ra_usb_pal/src/ra_usb_pal.c
+ * ============================================================================= */
+
+/**
+ * @test test_mcdc_init_speed
+ *
+ * @par MC/DC:
+ * Decision: `if ((speed != k_ra_usb_speed_fs) && (speed != k_ra_usb_speed_hs))`
+ * (libs/ra_usb_pal/src/ra_usb_pal.c:155, ra_usb_pal_init).
+ * - V1: speed=fs       -> C1=F short-circuit -> false (proceed; ok).
+ * - V2: speed=99 (bad) -> C1=T, C2=T -> true (rejected; varies C1).
+ * - V3: speed=hs       -> C1=T, C2=F -> false (proceed; varies C2).
+ * V1 vs V2 vary C1. V2 vs V3 vary C2. N+1 = 3 vectors for N=2.
+ */
+static void test_mcdc_init_speed(void)
+{
+  TEST_BEGIN("mcdc: ra_usb_pal_init speed (!=fs && !=hs)");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pal_init(k_ra_usb_speed_fs));
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_usb_pal_init((ra_usb_speed_t)99U));
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pal_init(k_ra_usb_speed_hs));
+  TEST_END("mcdc: ra_usb_pal_init speed (!=fs && !=hs)");
+}
+
+/**
+ * @test test_mcdc_ep_open_addr
+ *
+ * @par MC/DC:
+ * Decision: `if ((ep_addr == 0U) || (ep_addr > k_ra_usb_pal_ep_max))`
+ * (libs/ra_usb_pal/src/ra_usb_pal.c:238, ra_usb_pal_ep_open).
+ * - V1: ep_addr=1                     -> C1=F, C2=F -> false (proceed).
+ * - V2: ep_addr=0                     -> C1=T short-circuit -> true (varies C1).
+ * - V3: ep_addr=k_ra_usb_pal_ep_max+1 -> C1=F, C2=T -> true (varies C2).
+ * V1 vs V2 vary C1. V1 vs V3 vary C2 with C1 held F. N+1 = 3 vectors.
+ */
+static void test_mcdc_ep_open_addr(void)
+{
+  TEST_BEGIN("mcdc: ep_open ep_addr (==0 || >ep_max)");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pal_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_ok,
+    (int32_t)ra_usb_pal_ep_open(1U, k_ra_usb_pal_ep_dir_in, k_ra_usb_pal_ep_type_bulk, 64U));
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_invalid_arg,
+    (int32_t)ra_usb_pal_ep_open(0U, k_ra_usb_pal_ep_dir_in, k_ra_usb_pal_ep_type_bulk, 64U));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_usb_pal_ep_open((uint8_t)((uint32_t)k_ra_usb_pal_ep_max + 1U),
+                                             k_ra_usb_pal_ep_dir_in,
+                                             k_ra_usb_pal_ep_type_bulk,
+                                             64U));
+  TEST_END("mcdc: ep_open ep_addr (==0 || >ep_max)");
+}
+
+/**
+ * @test test_mcdc_ep_open_dir
+ *
+ * @par MC/DC:
+ * Decision: `if ((dir != k_ra_usb_pal_ep_dir_out) && (dir != k_ra_usb_pal_ep_dir_in))`
+ * (libs/ra_usb_pal/src/ra_usb_pal.c:241, ra_usb_pal_ep_open).
+ * - V1: dir=out -> C1=F short-circuit -> false (proceed).
+ * - V2: dir=99  -> C1=T, C2=T         -> true (reject; varies C1).
+ * - V3: dir=in  -> C1=T, C2=F         -> false (proceed; varies C2).
+ * V1 vs V2 vary C1. V2 vs V3 vary C2. N+1 = 3 vectors for N=2.
+ */
+static void test_mcdc_ep_open_dir(void)
+{
+  TEST_BEGIN("mcdc: ep_open dir (!=out && !=in)");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pal_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_ok,
+    (int32_t)ra_usb_pal_ep_open(1U, k_ra_usb_pal_ep_dir_out, k_ra_usb_pal_ep_type_bulk, 64U));
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_invalid_arg,
+    (int32_t)ra_usb_pal_ep_open(2U, (ra_usb_pal_ep_dir_t)99U, k_ra_usb_pal_ep_type_bulk, 64U));
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_ok,
+    (int32_t)ra_usb_pal_ep_open(3U, k_ra_usb_pal_ep_dir_in, k_ra_usb_pal_ep_type_bulk, 64U));
+  TEST_END("mcdc: ep_open dir (!=out && !=in)");
+}
+
+/**
+ * @test test_mcdc_ep_open_type_packet
+ *
+ * @par MC/DC:
+ * Decision (3 conditions OR): `if ((type > k_ra_usb_pal_ep_type_intr) ||
+ * (max_packet == 0U) || (max_packet > k_ra_usb_pal_xfer_max))`
+ * (libs/ra_usb_pal/src/ra_usb_pal.c:244, ra_usb_pal_ep_open).
+ * - V1: type=bulk, packet=64           -> C1=F,C2=F,C3=F -> false (proceed).
+ * - V2: type=99,   packet=64           -> C1=T short-circuit -> true (varies C1).
+ * - V3: type=bulk, packet=0            -> C1=F,C2=T short-circuit -> true (varies C2).
+ * - V4: type=bulk, packet=k_xfer_max+1 -> C1=F,C2=F,C3=T -> true (varies C3).
+ *
+ * @par DO-178C 6.4.4.3 rationale:
+ * Chilenski masking-MC/DC minimal cover for a 3-input short-circuit
+ * OR. Each vector varies exactly one condition relative to V1 with
+ * the others held in their non-masking value (false for OR). DO-178C
+ * Level B / IEC 61508 SIL 3 qualified form; full 2^3=8 combinatoric
+ * coverage is not required.
+ */
+static void test_mcdc_ep_open_type_packet(void)
+{
+  TEST_BEGIN("mcdc: ep_open type/packet (3-cond OR)");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pal_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_ok,
+    (int32_t)ra_usb_pal_ep_open(1U, k_ra_usb_pal_ep_dir_in, k_ra_usb_pal_ep_type_bulk, 64U));
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_invalid_arg,
+    (int32_t)ra_usb_pal_ep_open(2U, k_ra_usb_pal_ep_dir_in, (ra_usb_pal_ep_type_t)99U, 64U));
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_invalid_arg,
+    (int32_t)ra_usb_pal_ep_open(3U, k_ra_usb_pal_ep_dir_in, k_ra_usb_pal_ep_type_bulk, 0U));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_usb_pal_ep_open(4U,
+                                             k_ra_usb_pal_ep_dir_in,
+                                             k_ra_usb_pal_ep_type_bulk,
+                                             (uint16_t)((uint32_t)k_ra_usb_pal_xfer_max + 1U)));
+  TEST_END("mcdc: ep_open type/packet (3-cond OR)");
+}
+
+/**
+ * @test test_mcdc_ep_send_len_data
+ *
+ * @par MC/DC:
+ * Decision (3 conditions): `if ((len > k_ra_usb_pal_xfer_max) ||
+ * ((data == nullptr) && (len != 0U)))`
+ * (libs/ra_usb_pal/src/ra_usb_pal.c:270, ra_usb_pal_ep_send).
+ * Let A=`len>xfer_max`, B=`data==nullptr`, C=`len!=0U`. Decision
+ * is `A || (B && C)`.
+ * - V1: A=F,B=F,C=T (data!=NULL, len=1) -> false (send ok).
+ * - V2: A=T (len > xfer_max)            -> true  (varies A; reject).
+ * - V3: A=F,B=T,C=T (data=NULL, len=1)  -> true  (varies B; reject).
+ * - V4: A=F,B=T,C=F (data=NULL, len=0)  -> false (varies C).
+ *
+ * @par DO-178C 6.4.4.3 rationale:
+ * The mixed `A || (B && C)` admits the same masking-MC/DC minimal
+ * cover as a 3-condition decision: 4 representative vectors per
+ * Chilenski. DO-178C Level B / IEC 61508 SIL 3 qualified form.
+ */
+static void test_mcdc_ep_send_len_data(void)
+{
+  TEST_BEGIN("mcdc: ep_send len/data (3-cond mixed)");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pal_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_ok,
+    (int32_t)ra_usb_pal_ep_open(1U, k_ra_usb_pal_ep_dir_in, k_ra_usb_pal_ep_type_bulk, 64U));
+
+  uint8_t buf[16] = {0U};
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pal_ep_send(1U, buf, 1U));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_usb_pal_ep_send(1U, buf, (uint16_t)(k_ra_usb_pal_xfer_max + 1U)));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_usb_pal_ep_send(1U, nullptr, 1U));
+  /* V4: data=NULL,len=0 -> guard does not return null_ptr; the
+   * compound decision evaluates FALSE here (B=T, C=F). */
+  const ra_err_t v4 = ra_usb_pal_ep_send(1U, nullptr, 0U);
+  TEST_ASSERT(v4 != k_ra_err_null_ptr);
+  TEST_END("mcdc: ep_send len/data (3-cond mixed)");
+}
+
 int32_t main(void)
 {
   test_init_fs_starts_detached();
@@ -257,6 +423,11 @@ int32_t main(void)
   test_event_handler_attach_detach();
   test_dispatch_relays_intsts0();
   test_calls_before_init_fail();
+  test_mcdc_init_speed();
+  test_mcdc_ep_open_addr();
+  test_mcdc_ep_open_dir();
+  test_mcdc_ep_open_type_packet();
+  test_mcdc_ep_send_len_data();
   (void)fprintf(stderr, "[OK ] test_ra_usb_pal.c\n");
   return 0;
 }

@@ -467,6 +467,146 @@ static void test_happy_path(void)
 }
 
 /* =============================================================================
+ * MC/DC tests for compound decisions in libs/ra_ota/src/ra_ota.c
+ * ============================================================================= */
+
+/**
+ * @test test_mcdc_download_state_guard
+ *
+ * @par MC/DC:
+ * Decision: `if ((s_state != k_ra_ota_state_idle) && (s_state != k_ra_ota_state_downloading))`
+ * (libs/ra_ota/src/ra_ota.c:554, ra_ota_download_to_inactive_bank).
+ * - V1: state=idle      -> C1=F, short-circuit -> false (proceed; ok).
+ * - V2: state=verifying -> C1=T, C2=T          -> true  (rejected: invalid_state).
+ * - V3: state=downloading -> C1=T, C2=F        -> false (proceed; reached via re-init/check).
+ * V1 vs V2 vary C1 with C2 held T. V2 vs V3 vary C2 with C1 held T.
+ * N+1 = 3 vectors for N=2.
+ */
+static void test_mcdc_download_state_guard(void)
+{
+  TEST_BEGIN("mcdc: download state guard (state!=idle && state!=downloading)");
+  priv_reset_globals();
+  priv_make_image();
+  priv_make_manifest();
+
+  ra_ota_cfg_t cfg = priv_make_cfg();
+  TEST_ASSERT_EQ(k_ra_ok, ra_ota_init(&cfg));
+  ra_ota_manifest_t m = {};
+  TEST_ASSERT_EQ(k_ra_ok, ra_ota_check_for_update(&m));
+
+  /* V1: state=idle -> proceed. */
+  TEST_ASSERT_EQ((int)k_ra_ota_state_idle, (int)ra_ota_get_state());
+  TEST_ASSERT_EQ(k_ra_ok, ra_ota_download_to_inactive_bank(&m));
+  TEST_ASSERT_EQ((int)k_ra_ota_state_verifying, (int)ra_ota_get_state());
+
+  /* V2: state=verifying -> guard rejects. */
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_state, (int)ra_ota_download_to_inactive_bank(&m));
+
+  /* V3: re-init -> idle -> check -> download to exercise the C2=F leg. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_ota_deinit());
+  TEST_ASSERT_EQ(k_ra_ok, ra_ota_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ota_check_for_update(&m));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ota_download_to_inactive_bank(&m));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ota_deinit());
+  TEST_END("mcdc: download state guard (state!=idle && state!=downloading)");
+}
+
+/**
+ * @test test_mcdc_run_full_update_terminal
+ *
+ * @par MC/DC:
+ * Decision: `if ((s_state == k_ra_ota_state_done) || (s_state == k_ra_ota_state_error))`
+ * (libs/ra_ota/src/ra_ota.c:718, ra_ota_run_full_update terminal-state break).
+ * - V1: state=idle  -> C1=F, C2=F -> false (loop continues).
+ * - V2: state=done  -> C1=T, short-circuit -> true (loop breaks; varies C1).
+ * - V3: state=error -> C1=F, C2=T -> true (loop breaks; varies C2).
+ * V1 vs V2 vary C1 with C2 held F. V1 vs V3 vary C2 with C1 held F.
+ * N+1 = 3 vectors for N=2.
+ */
+static void test_mcdc_run_full_update_terminal(void)
+{
+  TEST_BEGIN("mcdc: run_full_update terminal (state==done || state==error)");
+  priv_reset_globals();
+  priv_make_image();
+  priv_make_manifest();
+  ra_ota_cfg_t cfg = priv_make_cfg();
+  TEST_ASSERT_EQ(k_ra_ok, ra_ota_init(&cfg));
+  /* V1: progress to done -> the guard breaks the loop on the first
+   * iteration where C1 OR C2 holds. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_ota_run_full_update());
+  TEST_ASSERT_EQ((int)k_ra_ota_state_done, (int)ra_ota_get_state());
+
+  /* V2: state=done -> immediate no-op (loop breaks via C1). */
+  TEST_ASSERT_EQ(k_ra_ok, ra_ota_run_full_update());
+  TEST_ASSERT_EQ((int)k_ra_ota_state_done, (int)ra_ota_get_state());
+  TEST_ASSERT_EQ(k_ra_ok, ra_ota_deinit());
+
+  /* V3: error state -> terminal guard short-circuits via C2. */
+  priv_reset_globals();
+  priv_make_image();
+  (void)snprintf(g_mock_manifest, sizeof g_mock_manifest, "{ \"hello\": \"world\" }");
+  TEST_ASSERT_EQ(k_ra_ok, ra_ota_init(&cfg));
+  ra_ota_manifest_t m = {};
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ota_check_for_update(&m));
+  TEST_ASSERT_EQ((int)k_ra_ota_state_error, (int)ra_ota_get_state());
+  const ra_err_t e = ra_ota_run_full_update();
+  TEST_ASSERT(e != k_ra_ok);
+  TEST_ASSERT_EQ((int)k_ra_ota_state_error, (int)ra_ota_get_state());
+  TEST_ASSERT_EQ(k_ra_ok, ra_ota_deinit());
+  TEST_END("mcdc: run_full_update terminal (state==done || state==error)");
+}
+
+/**
+ * @test test_mcdc_hex_decode_invalid_nibble
+ *
+ * @par MC/DC:
+ * Decision: `if ((hi == k_ra_ota_hex_invalid_nibble) || (lo == k_ra_ota_hex_invalid_nibble))`
+ * (libs/ra_ota/src/ra_ota.c:312, priv_hex_decode).
+ * Reached through ra_ota_check_for_update -> priv_manifest_decode_crypto
+ * which decodes the "sha256" hex blob first.
+ * - V1: both nibbles valid hex (C1=F, C2=F) -> false (decode succeeds).
+ * - V2: hi nibble bogus 'Z'   (C1=T, short-circuit) -> true (rejected; varies C1).
+ * - V3: lo nibble bogus 'Z'   (C1=F, C2=T) -> true (rejected; varies C2).
+ * N+1 = 3 vectors for N=2.
+ */
+static void test_mcdc_hex_decode_invalid_nibble(void)
+{
+  TEST_BEGIN("mcdc: hex_decode invalid-nibble (hi||lo == invalid)");
+  /* V1: well-formed manifest -> hex decode succeeds. */
+  priv_reset_globals();
+  priv_make_image();
+  priv_make_manifest();
+  ra_ota_cfg_t cfg = priv_make_cfg();
+  TEST_ASSERT_EQ(k_ra_ok, ra_ota_init(&cfg));
+  ra_ota_manifest_t m = {};
+  TEST_ASSERT_EQ(k_ra_ok, ra_ota_check_for_update(&m));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ota_deinit());
+
+  /* V2: corrupt the FIRST nibble of the sha256 hex blob with 'Z'. */
+  priv_reset_globals();
+  priv_make_image();
+  priv_make_manifest();
+  char* sha_field = strstr(g_mock_manifest, "\"sha256\": \"");
+  TEST_ASSERT_NOT_NULL(sha_field);
+  sha_field[strlen("\"sha256\": \"")] = 'Z';
+  TEST_ASSERT_EQ(k_ra_ok, ra_ota_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ota_check_for_update(&m));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ota_deinit());
+
+  /* V3: corrupt the SECOND nibble of the sha256 hex blob with 'Z'. */
+  priv_reset_globals();
+  priv_make_image();
+  priv_make_manifest();
+  char* sha_field2 = strstr(g_mock_manifest, "\"sha256\": \"");
+  TEST_ASSERT_NOT_NULL(sha_field2);
+  sha_field2[strlen("\"sha256\": \"") + 1U] = 'Z';
+  TEST_ASSERT_EQ(k_ra_ok, ra_ota_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ota_check_for_update(&m));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ota_deinit());
+  TEST_END("mcdc: hex_decode invalid-nibble (hi||lo == invalid)");
+}
+
+/* =============================================================================
  * main
  * ============================================================================= */
 
@@ -478,6 +618,9 @@ int main(void)
   test_signature_mismatch();
   test_sha256_mismatch();
   test_happy_path();
+  test_mcdc_download_state_guard();
+  test_mcdc_run_full_update_terminal();
+  test_mcdc_hex_decode_invalid_nibble();
   (void)fprintf(stderr, "[OK  ] test_ra_ota.c\n");
   return 0;
 }
