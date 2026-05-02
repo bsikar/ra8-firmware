@@ -77,6 +77,19 @@ g_ra_ls_stack_top = ORIGIN(SRAM) + LENGTH(SRAM);
  * accidental malloc() call from newlib. */
 
 /*
+ * ThreadX `_tx_initialize_unused_memory` sentinel.
+ *
+ * The Cortex-M85 port assembly stores this address in the global
+ * `_tx_initialize_unused_memory`, which is what `tx_application_define`
+ * receives as its `first_unused_memory` argument. The demo only uses
+ * static thread stacks so the value is informational, but it must be a
+ * valid address inside writable RAM. We point it at the start of the
+ * external SDRAM block so any future app that wants to bump-allocate
+ * out of it has plenty of room.
+ */
+PROVIDE(g_ra_threadx_unused_memory_start = ORIGIN(SDRAM));
+
+/*
  * Option-setting region fixed addresses (HUM section 4).
  *
  * Every entry is PROVIDE()-d so it can be overridden with

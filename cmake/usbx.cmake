@@ -89,10 +89,19 @@ file(GLOB _RA_USBX_CDC_SOURCES CONFIGURE_DEPENDS
 file(GLOB _RA_USBX_HID_SOURCES CONFIGURE_DEPENDS
     "${_RA_USBX_DEV_CLS_SRC}/ux_device_class_hid_*.c")
 
+# Mass-Storage Class (used by usb_msc_device). Drop the PIMA still-image
+# files that share the storage_* prefix in some upstream layouts -- they
+# are part of the PIMA class, not MSC.
+file(GLOB _RA_USBX_MSC_SOURCES CONFIGURE_DEPENDS
+    "${_RA_USBX_DEV_CLS_SRC}/ux_device_class_storage_*.c")
+list(FILTER _RA_USBX_MSC_SOURCES
+    EXCLUDE REGEX ".*/ux_device_class_pima_storage_.*\\.c$")
+
 add_library(usbx_objs OBJECT
     ${_RA_USBX_CORE_SOURCES}
     ${_RA_USBX_CDC_SOURCES}
-    ${_RA_USBX_HID_SOURCES})
+    ${_RA_USBX_HID_SOURCES}
+    ${_RA_USBX_MSC_SOURCES})
 
 target_include_directories(usbx_objs PUBLIC
     ${_RA_USBX_COMMON_INC}
