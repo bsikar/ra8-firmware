@@ -315,6 +315,55 @@ static void test_host_setup_request_validates(void)
   TEST_END("ra_usb_host_setup_request validates args");
 }
 
+/**
+ * @test test_mcdc_hcdc
+ *
+ * @par MC/DC:
+ * Covers compound decisions flagged in docs/MCDC_GAPS.csv for
+ * libs/ra_hal/src/ra_usb_hcdc.c.
+ *
+ * Decision A (line 416, 2 conds): hcdc_init speed gate
+ *   `(speed != FS) && (speed != HS)` -- N+1=3.
+ * Decision B (line 481, 2 conds): hcdc_send NULL-with-len
+ *   `(data == NULL) && (len != 0)` -- N+1=3.
+ *   - V1 (NULL,0)  -> C1=T, C2=F -> dec=F (forwards to queue)
+ *   - V2 (buf,4)   -> C1=F       -> dec=F (forwards to queue)
+ *   - V3 (NULL,4)  -> C1=T, C2=T -> dec=T (invalid_arg)
+ */
+static void test_mcdc_hcdc(void)
+{
+  TEST_BEGIN("hcdc MC/DC: init speed / send NULL-with-len");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hcdc_init(k_ra_usb_speed_fs));
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hcdc_init(k_ra_usb_speed_hs));
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_usb_hcdc_init((ra_usb_speed_t)9U));
+
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hcdc_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hcdc_attach_callback(stub_on_attach, nullptr));
+  for (uint8_t i = 0U; i < k_test_hcdc_max_steps; ++i) {
+    if (s_attach_count != 0U) {
+      break;
+    }
+    ra_usb_fs()->DCPCTR = 0U;
+    TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hcdc_step());
+  }
+  /* Post-attach: exercise B vectors. */
+  uint8_t buf[16] = {};
+  /* B-V3: (NULL, 4) -> invalid_arg. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_usb_hcdc_send(nullptr, 4U));
+  /* B-V1: (NULL, 0) -> not invalid_arg (forwarded). */
+  const ra_err_t b_v1 = ra_usb_hcdc_send(nullptr, 0U);
+  TEST_ASSERT(b_v1 != k_ra_err_invalid_arg);
+  /* B-V2: (buf, 4) -> not invalid_arg (forwarded). */
+  const ra_err_t b_v2 = ra_usb_hcdc_send(buf, 4U);
+  TEST_ASSERT(b_v2 != k_ra_err_invalid_arg);
+
+  TEST_END("hcdc MC/DC: init speed / send NULL-with-len");
+}
+
 int32_t main(void)
 {
   test_init_fs_returns_ok();
@@ -328,6 +377,7 @@ int32_t main(void)
   test_pre_init_guards();
   test_host_set_uact_and_bus_reset();
   test_host_setup_request_validates();
+  test_mcdc_hcdc();
   (void)fprintf(stderr, "[OK ] test_ra_usb_hcdc.c\n");
   return 0;
 }

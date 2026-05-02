@@ -416,6 +416,77 @@ static void test_get_report_caps_at_max_len(void)
   TEST_END("ra_usb_hhid_get_report caps drained byte count at max_len");
 }
 
+/**
+ * @test test_mcdc_hhid
+ *
+ * @par MC/DC:
+ * Covers compound decisions flagged in docs/MCDC_GAPS.csv for
+ * libs/ra_hal/src/ra_usb_hhid.c.
+ *
+ * Decision A (line 445, 2 conds): hhid_init speed gate
+ *   `(speed != FS) && (speed != HS)` -- N+1=3.
+ * Decision B (line 654, 2 conds): set_report NULL-with-len
+ *   `(in_buf == NULL) && (len != 0)` -- N+1=3.
+ * Decision C (line 716, 2 conds): set_protocol value gate
+ *   `(boot_or_report != boot) && (boot_or_report != report)` -- N+1=3:
+ *   - V1 boot   -> C1=F (short circuit)            -> dec=F (forwards)
+ *   - V2 report -> C1=T, C2=F                      -> dec=F (forwards)
+ *   - V3 99     -> C1=T, C2=T                      -> dec=T (invalid_arg)
+ * Decision D (lines 434-435, 3-condition OR chain inside
+ *   `internal_report_type_ok`): per DO-178C 6.4.4.3
+ *   representative-subset for a side-effect-free OR -- 3 lone-true
+ *   vectors (input / output / feature) + 1 all-false vector (0x77).
+ *   Exercised through `ra_usb_hhid_set_report` and
+ *   `ra_usb_hhid_get_report`.
+ */
+static void test_mcdc_hhid(void)
+{
+  TEST_BEGIN("hhid MC/DC: init / set_report / set_protocol / report_type_ok");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hhid_init(k_ra_usb_speed_fs));
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hhid_init(k_ra_usb_speed_hs));
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_usb_hhid_init((ra_usb_speed_t)9U));
+
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hhid_init(k_ra_usb_speed_fs));
+  walk_to_attach();
+
+  /* Decision B: set_report NULL/len matrix. */
+  uint8_t buf[16] = {};
+  /* B-V3: NULL,4 -> null_ptr. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_usb_hhid_set_report(k_ra_hhid_report_type_input, 0U, nullptr, 4U));
+  /* B-V1: NULL,0 -> falls past null check; report_type ok then forwards. */
+  const ra_err_t b_v1 = ra_usb_hhid_set_report(k_ra_hhid_report_type_input, 0U, nullptr, 0U);
+  TEST_ASSERT(b_v1 != k_ra_err_null_ptr);
+  /* B-V2: buf,4 -> forwards. */
+  const ra_err_t b_v2 = ra_usb_hhid_set_report(k_ra_hhid_report_type_input, 0U, buf, 4U);
+  TEST_ASSERT(b_v2 != k_ra_err_null_ptr);
+
+  /* Decision C: set_protocol gate. */
+  const ra_err_t c_v1 = ra_usb_hhid_set_protocol(k_ra_hhid_proto_boot);
+  TEST_ASSERT(c_v1 != k_ra_err_invalid_arg);
+  const ra_err_t c_v2 = ra_usb_hhid_set_protocol(k_ra_hhid_proto_report);
+  TEST_ASSERT(c_v2 != k_ra_err_invalid_arg);
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_usb_hhid_set_protocol((ra_usb_hhid_protocol_select_t)99U));
+
+  /* Decision D: report_type_ok via set_report. */
+  const ra_err_t d_in = ra_usb_hhid_set_report(k_ra_hhid_report_type_input, 0U, buf, 4U);
+  TEST_ASSERT(d_in != k_ra_err_invalid_arg);
+  const ra_err_t d_out = ra_usb_hhid_set_report(k_ra_hhid_report_type_output, 0U, buf, 4U);
+  TEST_ASSERT(d_out != k_ra_err_invalid_arg);
+  const ra_err_t d_feat = ra_usb_hhid_set_report(k_ra_hhid_report_type_feature, 0U, buf, 4U);
+  TEST_ASSERT(d_feat != k_ra_err_invalid_arg);
+  /* All-false vector. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_usb_hhid_set_report((ra_usb_hhid_report_type_t)0x77U, 0U, buf, 4U));
+
+  TEST_END("hhid MC/DC: init / set_report / set_protocol / report_type_ok");
+}
+
 int32_t main(void)
 {
   test_init_fs_returns_ok();
@@ -434,6 +505,7 @@ int32_t main(void)
   test_get_report_drains_in_data_phase();
   test_get_report_returns_zero_when_no_data();
   test_get_report_caps_at_max_len();
+  test_mcdc_hhid();
   (void)fprintf(stderr, "[OK ] test_ra_usb_hhid.c\n");
   return 0;
 }

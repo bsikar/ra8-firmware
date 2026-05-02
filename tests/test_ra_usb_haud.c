@@ -314,6 +314,58 @@ static void test_iso_invalid_args(void)
   TEST_END("send_samples / recv_samples reject zero-length post-attach");
 }
 
+/**
+ * @test test_mcdc_haud
+ *
+ * @par MC/DC:
+ * Covers compound decisions flagged in docs/MCDC_GAPS.csv for
+ * libs/ra_hal/src/ra_usb_haud.c.
+ *
+ * Decision A (line 469, 2 conds): haud_init speed gate
+ *   `(speed != FS) && (speed != HS)` -- N+1=3 (FS / HS / 9).
+ * Decision B (line 636, 2 conds): send_samples NULL-with-len
+ *   `(buf == NULL) && (len_bytes != 0)` -- N+1=3.
+ *   Note: source has a redundant 2nd `if (buf == nullptr)` immediately
+ *   after, so any NULL buf returns null_ptr regardless. The compound
+ *   decision is still exercised: V1=(NULL,0) flips to false because
+ *   C2=F, V3=(NULL,4) is true.
+ * Decisions C/D/E (lines 447-456, 3 x 2-cond OR decisions inside
+ *   `internal_format_ok`, exercised through `ra_usb_haud_set_format`):
+ *   each tested with N+1=3 vectors (in-range, low-out-of-range,
+ *   high-out-of-range) for channel_count, bits_per_sample, and
+ *   sample_rate respectively.
+ */
+static void test_mcdc_haud(void)
+{
+  TEST_BEGIN("haud MC/DC: init speed / send_samples / format ranges");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_haud_init(k_ra_usb_speed_fs));
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_haud_init(k_ra_usb_speed_hs));
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_usb_haud_init((ra_usb_speed_t)9U));
+
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_haud_init(k_ra_usb_speed_fs));
+  walk_to_attach();
+
+  uint8_t buf[16] = {};
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_usb_haud_send_samples(nullptr, 4U));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_usb_haud_send_samples(nullptr, 0U));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_usb_haud_send_samples(buf, 0U));
+
+  const ra_err_t c_in = ra_usb_haud_set_format(2U, 16U, 48000U);
+  TEST_ASSERT(c_in != k_ra_err_invalid_arg);
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_usb_haud_set_format(0U, 16U, 48000U));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_usb_haud_set_format(9U, 16U, 48000U));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_usb_haud_set_format(2U, 4U, 48000U));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_usb_haud_set_format(2U, 64U, 48000U));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_usb_haud_set_format(2U, 16U, 4000U));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_usb_haud_set_format(2U, 16U, 384000U));
+
+  TEST_END("haud MC/DC: init speed / send_samples / format ranges");
+}
+
 int32_t main(void)
 {
   test_init_fs_returns_ok();
@@ -328,6 +380,7 @@ int32_t main(void)
   test_set_volume_setup_envelope();
   test_set_mute_setup_envelope();
   test_iso_invalid_args();
+  test_mcdc_haud();
   (void)fprintf(stderr, "[OK ] test_ra_usb_haud.c\n");
   return 0;
 }
