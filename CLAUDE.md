@@ -569,6 +569,10 @@ affects the outcome**:
   NimBLE are SOUP (Software Of Unknown Provenance). DO-178B treats them as
   pre-qualified components requiring justification documents but not
   source-level MC/DC re-test in this repo.
+  Per-component justifications (provenance, license, qualification basis,
+  risk mitigation, last review date) live under `docs/SOUP/`; see
+  `docs/SOUP/README.md` for the index. Add a new file there whenever a
+  new direct subdirectory is added to `libs/third_party/`.
 - Generated code (vector tables, register-bank headers) is exempt from MC/DC
   if it has no compound decisions.
 - Host-only test scaffolding under `tests/` itself is exempt.
