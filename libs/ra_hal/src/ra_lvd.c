@@ -502,19 +502,24 @@ static ra_err_t internal_validate_cfg(const ra_lvd_channel_map_t* map, const ra_
  * @brief Compute the initial CR0 value for ``ra_lvd_channel_init``.
  *
  * @details
- * Encodes FSAMP, DFDIS, RN and RI per HUM Ch 8.2.4 / 8.2.5 (pp 305-306).
- * The DFDIS bit is left asserted; the caller drops it after the first
- * CR0 write if ``cfg->filter_en`` is true.
+ * Encodes FSAMP, DFDIS, RN and RI per HUM Ch 12.2.4 / 12.2.5
+ * (pp 597-598). DFDIS stays asserted; the caller drops it after the
+ * first CR0 write if ``cfg->filter_en`` is true.
  *
  * @param[in] map Channel map (decides whether RN/RI exist).
  * @param[in] cfg Caller-supplied config.
  *
  * @return Encoded CR0 byte (without the reserved-bit overlay applied).
+ * @retval 0..0xFF Bit-packed CR0 value with DFDIS already set.
  *
  * @pre ``map`` and ``cfg`` are non-null and refer to the same channel.
+ * @pre Caller will fold the reserved-bit pattern in via
+ *      ``internal_cr0_apply_reserved`` before commit.
  * @post No side effects.
+ * @post DFDIS bit is set in the returned value.
  *
  * @note Internal helper, not thread-safe.
+ * @since 0.1.0
  */
 static uint8_t internal_compose_cr0(const ra_lvd_channel_map_t* map, const ra_lvd_cfg_t* cfg)
 {
@@ -543,10 +548,16 @@ static uint8_t internal_compose_cr0(const ra_lvd_channel_map_t* map, const ra_lv
  * @param[in] map Channel map.
  * @param[in] cfg Caller-supplied config.
  *
+ * @return None.
+ * @retval None
+ *
  * @pre ``map`` describes an m channel (caller checks ``map->has_irq``).
+ * @pre PRCR.PRC3 unlocked (caller-managed).
  * @post CR1 reflects ``cfg``, DET cleared if ``cfg->clear_status``.
+ * @post Reserved-bit invariant for the channel is preserved.
  *
  * @note Internal helper, not thread-safe.
+ * @since 0.1.0
  */
 static void internal_program_cr1(const ra_lvd_channel_map_t* map, const ra_lvd_cfg_t* cfg)
 {
@@ -573,10 +584,16 @@ static void internal_program_cr1(const ra_lvd_channel_map_t* map, const ra_lvd_c
  * @param[in] map Channel map.
  * @param[in] cfg Caller-supplied config.
  *
+ * @return None.
+ * @retval None
+ *
  * @pre Module clock ungated.
+ * @pre PRCR.PRC3 unlocked (caller-managed).
  * @post CMPCR/FCR reflect ``cfg``; PVDE asserted.
+ * @post Channel comparator is armed and stabilising.
  *
  * @note Internal helper, not thread-safe.
+ * @since 0.1.0
  */
 static void internal_lvd_program_cmpcr(const ra_lvd_channel_map_t* map, const ra_lvd_cfg_t* cfg)
 {
@@ -607,10 +624,16 @@ static void internal_lvd_program_cmpcr(const ra_lvd_channel_map_t* map, const ra
  * @param[in] map Channel map.
  * @param[in] cfg Caller-supplied config.
  *
+ * @return None.
+ * @retval None
+ *
  * @pre ``ra_lvd_channel_init`` already ran the CMPCR steps.
+ * @pre PRCR.PRC3 unlocked (caller-managed).
  * @post Channel is armed per ``cfg``.
+ * @post CMPE bit is set on the matching CR0 register.
  *
  * @note Internal helper, not thread-safe.
+ * @since 0.1.0
  */
 static void internal_lvd_program_cr0_chain(const ra_lvd_channel_map_t* map, const ra_lvd_cfg_t* cfg)
 {
@@ -638,6 +661,31 @@ static void internal_lvd_program_cr0_chain(const ra_lvd_channel_map_t* map, cons
   *ra_lvd_reg8(map->cr0) = internal_cr0_apply_reserved(map, cr0);
 }
 
+/**
+ * @brief Bring up one PVD channel per HUM Ch 12 Table 12.4 / 12.6.
+ *
+ * @details
+ * Validates ``cfg``, then runs the comparator-then-CR0 sequence
+ * documented at HUM Ch 12.3.1 "Operating LVD" pp 600-602.
+ *
+ * @param[in] channel PVD channel id (PVD1 / PVD2 / PVD4 / PVD5).
+ * @param[in] cfg     Non-NULL configuration block.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok                  Channel armed per ``cfg``.
+ * @retval k_ra_err_null_ptr        ``cfg`` was NULL.
+ * @retval k_ra_err_invalid_arg     Channel or config field out of range.
+ * @retval k_ra_err_not_supported   Response unavailable for the channel kind.
+ *
+ * @pre ``cfg`` non-NULL.
+ * @pre PRCR.PRC3 unlocked (caller-managed).
+ *
+ * @post On success, the channel comparator is armed and CMPE is set.
+ * @post On error, no register has been written for the channel.
+ *
+ * @note Not thread-safe; pair with init-context IRQ masking.
+ * @since 0.1.0
+ */
 ra_err_t ra_lvd_channel_init(ra_lvd_channel_t channel, const ra_lvd_cfg_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
@@ -657,6 +705,28 @@ ra_err_t ra_lvd_channel_init(ra_lvd_channel_t channel, const ra_lvd_cfg_t* cfg)
   return k_ra_ok;
 }
 
+/**
+ * @brief Tear down one PVD channel per HUM Ch 12 Table 12.5 / 12.7.
+ *
+ * @details
+ * Walks the documented disable sequence (CMPE -> RIE/RE -> DFDIS ->
+ * PVDE) so the comparator is in a known idle state.
+ *
+ * @param[in] channel PVD channel id.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok                Channel disabled.
+ * @retval k_ra_err_invalid_arg   Channel mapping failed.
+ *
+ * @pre PRCR.PRC3 unlocked (caller-managed).
+ * @pre Caller is in single-threaded shutdown context.
+ *
+ * @post All channel control registers read as 0 (or reserved-only).
+ * @post CMPCR is 0; the comparator is fully disarmed.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
 ra_err_t ra_lvd_channel_deinit(ra_lvd_channel_t channel)
 {
   uint8_t        idx     = 0U;
@@ -699,6 +769,28 @@ ra_err_t ra_lvd_channel_deinit(ra_lvd_channel_t channel)
  * =============================================================================
  */
 
+/**
+ * @brief Update PVDLVL for an already-armed channel.
+ *
+ * @details
+ * Drops PVDE around the PVDLVL write so the comparator does not
+ * glitch (HUM Ch 12.2.2 "PVDmCMPCR" p 595), then restores PVDE.
+ *
+ * @param[in] channel  PVD channel id.
+ * @param[in] threshold New PVDLVL[4:0] encoding (0x03..0x0F).
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok                Threshold updated.
+ * @retval k_ra_err_invalid_arg   Channel or threshold out of range.
+ *
+ * @pre Channel previously brought up via ``ra_lvd_channel_init``.
+ * @pre PRCR.PRC3 unlocked.
+ * @post CMPCR.PVDLVL reflects ``threshold``.
+ * @post CMPCR.PVDE state is preserved across the write.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
 ra_err_t ra_lvd_set_threshold(ra_lvd_channel_t channel, ra_lvd_pvdlvl_t threshold)
 {
   uint8_t        idx     = 0U;
@@ -723,6 +815,30 @@ ra_err_t ra_lvd_set_threshold(ra_lvd_channel_t channel, ra_lvd_pvdlvl_t threshol
   return k_ra_ok;
 }
 
+/**
+ * @brief Update CR1.IDTSEL for an IRQ-capable PVDm channel.
+ *
+ * @details
+ * Read-modify-writes CR1 (HUM Ch 12.2.6 "PVDmCR1" p 599) so the
+ * caller can change which crossing edge raises the IRQ without
+ * disturbing IRQSEL.
+ *
+ * @param[in] channel PVDm channel id (PVD1 / PVD2).
+ * @param[in] edge    New edge encoding.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok                Edge updated.
+ * @retval k_ra_err_invalid_arg   Channel or edge out of range.
+ * @retval k_ra_err_not_supported Channel has no IRQ path (PVDn).
+ *
+ * @pre Channel previously brought up via ``ra_lvd_channel_init``.
+ * @pre PRCR.PRC3 unlocked.
+ * @post CR1.IDTSEL reflects ``edge``.
+ * @post CR1.IRQSEL is unchanged.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
 ra_err_t ra_lvd_set_irq_edge(ra_lvd_channel_t channel, ra_lvd_edge_t edge)
 {
   uint8_t        idx     = 0U;
@@ -745,6 +861,29 @@ ra_err_t ra_lvd_set_irq_edge(ra_lvd_channel_t channel, ra_lvd_edge_t edge)
   return k_ra_ok;
 }
 
+/**
+ * @brief Update CR1.IRQSEL (maskable IRQ vs NMI) for a PVDm channel.
+ *
+ * @details
+ * Read-modify-writes CR1 (HUM Ch 12.2.6 "PVDmCR1" p 599) so the
+ * caller can switch the IRQ delivery vector at runtime.
+ *
+ * @param[in] channel PVDm channel id.
+ * @param[in] kind    Maskable IRQ or NMI.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok                Kind updated.
+ * @retval k_ra_err_invalid_arg   Channel mapping failed.
+ * @retval k_ra_err_not_supported Channel has no IRQ path.
+ *
+ * @pre Channel previously brought up via ``ra_lvd_channel_init``.
+ * @pre PRCR.PRC3 unlocked.
+ * @post CR1.IRQSEL reflects ``kind``.
+ * @post CR1.IDTSEL is unchanged.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
 ra_err_t ra_lvd_set_irq_kind(ra_lvd_channel_t channel, ra_lvd_irq_type_t kind)
 {
   uint8_t        idx     = 0U;
@@ -771,6 +910,28 @@ ra_err_t ra_lvd_set_irq_kind(ra_lvd_channel_t channel, ra_lvd_irq_type_t kind)
  * =============================================================================
  */
 
+/**
+ * @brief Set CR0.RIE on an IRQ-capable PVDm channel.
+ *
+ * @details
+ * Enables IRQ delivery via the standard CR0 RMW path so the reserved
+ * bit-3 stays set (HUM Ch 12.2.4 "PVDmCR0" p 597).
+ *
+ * @param[in] channel PVDm channel id.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok                IRQ enabled.
+ * @retval k_ra_err_invalid_arg   Channel mapping failed.
+ * @retval k_ra_err_not_supported Channel has no IRQ path.
+ *
+ * @pre Channel previously brought up via ``ra_lvd_channel_init``.
+ * @pre PRCR.PRC3 unlocked.
+ * @post CR0.RIE reads as 1.
+ * @post Reserved-bit invariant for the channel is preserved.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
 ra_err_t ra_lvd_enable_irq(ra_lvd_channel_t channel)
 {
   uint8_t        idx     = 0U;
@@ -787,6 +948,28 @@ ra_err_t ra_lvd_enable_irq(ra_lvd_channel_t channel)
   return k_ra_ok;
 }
 
+/**
+ * @brief Clear CR0.RIE on an IRQ-capable PVDm channel.
+ *
+ * @details
+ * Disables IRQ delivery via the standard CR0 RMW path so the reserved
+ * bit-3 stays set (HUM Ch 12.2.4 "PVDmCR0" p 597).
+ *
+ * @param[in] channel PVDm channel id.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok                IRQ disabled.
+ * @retval k_ra_err_invalid_arg   Channel mapping failed.
+ * @retval k_ra_err_not_supported Channel has no IRQ path.
+ *
+ * @pre Channel previously brought up via ``ra_lvd_channel_init``.
+ * @pre PRCR.PRC3 unlocked.
+ * @post CR0.RIE reads as 0.
+ * @post Reserved-bit invariant for the channel is preserved.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
 ra_err_t ra_lvd_disable_irq(ra_lvd_channel_t channel)
 {
   uint8_t        idx     = 0U;
@@ -802,6 +985,27 @@ ra_err_t ra_lvd_disable_irq(ra_lvd_channel_t channel)
   return k_ra_ok;
 }
 
+/**
+ * @brief Arm the reset response for a PVD channel.
+ *
+ * @details
+ * For PVDm channels sets RI + RIE; for PVDn channels sets RE (the
+ * only response option). See HUM Ch 12.2.4 / 12.2.5 (pp 597-598).
+ *
+ * @param[in] channel PVD channel id.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok                Reset response armed.
+ * @retval k_ra_err_invalid_arg   Channel mapping failed.
+ *
+ * @pre Channel previously brought up via ``ra_lvd_channel_init``.
+ * @pre PRCR.PRC3 unlocked.
+ * @post Channel will reset the SoC on the configured crossing.
+ * @post Reserved-bit invariant for the channel is preserved.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
 ra_err_t ra_lvd_enable_reset(ra_lvd_channel_t channel)
 {
   uint8_t        idx     = 0U;
@@ -821,6 +1025,27 @@ ra_err_t ra_lvd_enable_reset(ra_lvd_channel_t channel)
   return k_ra_ok;
 }
 
+/**
+ * @brief Disarm the reset response for a PVD channel.
+ *
+ * @details
+ * For PVDm channels clears RI; for PVDn channels clears RE. See HUM
+ * Ch 12.2.4 / 12.2.5 (pp 597-598).
+ *
+ * @param[in] channel PVD channel id.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok                Reset response disarmed.
+ * @retval k_ra_err_invalid_arg   Channel mapping failed.
+ *
+ * @pre Channel previously brought up via ``ra_lvd_channel_init``.
+ * @pre PRCR.PRC3 unlocked.
+ * @post Channel will not reset the SoC on subsequent crossings.
+ * @post Reserved-bit invariant for the channel is preserved.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
 ra_err_t ra_lvd_disable_reset(ra_lvd_channel_t channel)
 {
   uint8_t        idx     = 0U;
@@ -837,6 +1062,28 @@ ra_err_t ra_lvd_disable_reset(ra_lvd_channel_t channel)
   return k_ra_ok;
 }
 
+/**
+ * @brief Set CR0.CMPE so the comparator output drives the response logic.
+ *
+ * @details
+ * Per HUM Ch 12.2.4 (p 597) CMPE gates whether a detected crossing
+ * fans out to RIE/RE/RI; this helper toggles CMPE alone so the
+ * caller can stage the bring-up.
+ *
+ * @param[in] channel PVD channel id.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok               CMPE asserted.
+ * @retval k_ra_err_invalid_arg  Channel mapping failed.
+ *
+ * @pre Channel previously brought up via ``ra_lvd_channel_init``.
+ * @pre PRCR.PRC3 unlocked.
+ * @post CR0.CMPE reads as 1.
+ * @post Reserved-bit invariant for the channel is preserved.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
 ra_err_t ra_lvd_enable_cmpe(ra_lvd_channel_t channel)
 {
   uint8_t        idx     = 0U;
@@ -849,6 +1096,27 @@ ra_err_t ra_lvd_enable_cmpe(ra_lvd_channel_t channel)
   return k_ra_ok;
 }
 
+/**
+ * @brief Clear CR0.CMPE so the comparator stops driving the response logic.
+ *
+ * @details
+ * Per HUM Ch 12.2.4 (p 597), used during shutdown or reconfiguration
+ * to silence the channel's response path without dropping PVDE.
+ *
+ * @param[in] channel PVD channel id.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok               CMPE cleared.
+ * @retval k_ra_err_invalid_arg  Channel mapping failed.
+ *
+ * @pre Channel previously brought up via ``ra_lvd_channel_init``.
+ * @pre PRCR.PRC3 unlocked.
+ * @post CR0.CMPE reads as 0.
+ * @post Reserved-bit invariant for the channel is preserved.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
 ra_err_t ra_lvd_disable_cmpe(ra_lvd_channel_t channel)
 {
   uint8_t        idx     = 0U;
@@ -866,6 +1134,30 @@ ra_err_t ra_lvd_disable_cmpe(ra_lvd_channel_t channel)
  * =============================================================================
  */
 
+/**
+ * @brief Update FSAMP and DFDIS for a PVD channel at runtime.
+ *
+ * @details
+ * FSAMP can only be modified while DFDIS = 1 (HUM Ch 12.2.4 / 12.2.5
+ * pp 597-598). This helper temporarily sets DFDIS, writes FSAMP, and
+ * drops DFDIS back when ``filter_en`` is true.
+ *
+ * @param[in] channel    PVD channel id.
+ * @param[in] filter_div New FSAMP divider.
+ * @param[in] filter_en  True to enable the digital filter.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok                Filter updated.
+ * @retval k_ra_err_invalid_arg   Channel or divider out of range.
+ *
+ * @pre Channel previously brought up via ``ra_lvd_channel_init``.
+ * @pre PRCR.PRC3 unlocked.
+ * @post CR0.FSAMP reflects ``filter_div``.
+ * @post CR0.DFDIS reflects the inverse of ``filter_en``.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
 ra_err_t ra_lvd_set_filter(ra_lvd_channel_t channel, ra_lvd_loco_div_t filter_div, bool filter_en)
 {
   uint8_t        idx     = 0U;
@@ -892,6 +1184,31 @@ ra_err_t ra_lvd_set_filter(ra_lvd_channel_t channel, ra_lvd_loco_div_t filter_di
   return k_ra_ok;
 }
 
+/**
+ * @brief Update FCR.RHSEL (hysteresis mode) for a PVD channel.
+ *
+ * @details
+ * Per HUM Ch 12.2.8 "PVDmFCR" p 600 RHSEL must not be set to 1 when
+ * PVDmCR0.RI = 0 on m channels. RHSEL can only be modified when
+ * every PVDE is 0; this helper preserves and restores the channel's
+ * own PVDE around the write.
+ *
+ * @param[in] channel PVD channel id.
+ * @param[in] hyst    New hysteresis mode.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok                  Hysteresis mode updated.
+ * @retval k_ra_err_invalid_arg     Channel or mode out of range.
+ * @retval k_ra_err_invalid_state   HVD requested with RI=0 (m channel only).
+ *
+ * @pre Channel previously brought up via ``ra_lvd_channel_init``.
+ * @pre PRCR.PRC3 unlocked.
+ * @post FCR.RHSEL reflects ``hyst``.
+ * @post CMPCR.PVDE state is preserved across the write.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
 ra_err_t ra_lvd_set_hysteresis_mode(ra_lvd_channel_t channel, ra_lvd_hysteresis_t hyst)
 {
   uint8_t        idx     = 0U;
@@ -927,6 +1244,30 @@ ra_err_t ra_lvd_set_hysteresis_mode(ra_lvd_channel_t channel, ra_lvd_hysteresis_
   return k_ra_ok;
 }
 
+/**
+ * @brief Update CR0.RN (negate-after-assert) for a PVDm channel.
+ *
+ * @details
+ * Per HUM Ch 12.2.4 "PVDmCR0" p 597, RN=1 is rejected when RHSEL=1
+ * (HVD mode). This helper enforces the constraint and writes RN.
+ *
+ * @param[in] channel PVDm channel id.
+ * @param[in] negate  Negation behaviour.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok                  RN updated.
+ * @retval k_ra_err_invalid_arg     Channel or mode out of range.
+ * @retval k_ra_err_not_supported   Channel has no IRQ path (PVDn).
+ * @retval k_ra_err_invalid_state   RN=1 conflicts with FCR.RHSEL=1.
+ *
+ * @pre Channel previously brought up via ``ra_lvd_channel_init``.
+ * @pre PRCR.PRC3 unlocked.
+ * @post CR0.RN reflects ``negate``.
+ * @post Reserved-bit invariant for the channel is preserved.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
 ra_err_t ra_lvd_set_negate_mode(ra_lvd_channel_t channel, ra_lvd_negate_t negate)
 {
   uint8_t        idx     = 0U;
@@ -962,6 +1303,31 @@ ra_err_t ra_lvd_set_negate_mode(ra_lvd_channel_t channel, ra_lvd_negate_t negate
  * =============================================================================
  */
 
+/**
+ * @brief Read PVDmSR and decode DET / MON into ::ra_lvd_status_t.
+ *
+ * @details
+ * Reads the status register documented at HUM Ch 12.2.7 "PVDmSR"
+ * p 600 and unpacks the latched-crossing (DET) and live-comparator
+ * (MON) bits.
+ *
+ * @param[in]  channel PVDm channel id.
+ * @param[out] out     Receives the decoded status.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok                  Status decoded.
+ * @retval k_ra_err_null_ptr        ``out`` was NULL.
+ * @retval k_ra_err_invalid_arg     Channel mapping failed.
+ * @retval k_ra_err_not_supported   Channel has no IRQ path (PVDn).
+ *
+ * @pre ``out`` non-NULL.
+ * @pre Channel previously brought up via ``ra_lvd_channel_init``.
+ * @post ``*out`` reflects the live SR contents.
+ * @post Hardware state is unchanged.
+ *
+ * @note Read-only; safe under simple races.
+ * @since 0.1.0
+ */
 ra_err_t ra_lvd_get_status(ra_lvd_channel_t channel, ra_lvd_status_t* out)
 {
   RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
@@ -982,6 +1348,28 @@ ra_err_t ra_lvd_get_status(ra_lvd_channel_t channel, ra_lvd_status_t* out)
   return k_ra_ok;
 }
 
+/**
+ * @brief Acknowledge PVDmSR.DET via write-0-to-clear.
+ *
+ * @details
+ * Per HUM Ch 12.2.7 "PVDmSR" p 600 Note 1, only 0 can be written to
+ * DET; MON is preserved by clearing only the DET bit.
+ *
+ * @param[in] channel PVDm channel id.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok                  DET acknowledged.
+ * @retval k_ra_err_invalid_arg     Channel mapping failed.
+ * @retval k_ra_err_not_supported   Channel has no IRQ path (PVDn).
+ *
+ * @pre Channel previously brought up via ``ra_lvd_channel_init``.
+ * @pre PRCR.PRC3 unlocked.
+ * @post SR.DET reads as 0.
+ * @post SR.MON is unchanged.
+ *
+ * @note Not thread-safe (read-modify-write on SR).
+ * @since 0.1.0
+ */
 ra_err_t ra_lvd_clear_status(ra_lvd_channel_t channel)
 {
   uint8_t        idx     = 0U;
@@ -1007,6 +1395,27 @@ ra_err_t ra_lvd_clear_status(ra_lvd_channel_t channel)
  * =============================================================================
  */
 
+/**
+ * @brief Program PVDSAR security attribution for PVD channels.
+ *
+ * @details
+ * Writes the security attribution mask (HUM Ch 12.2.1 "PVDSAR"
+ * p 594) so each PVD channel can be claimed by Secure or Non-secure.
+ *
+ * @param[in] mask Bitwise-OR of ``k_ra_lvd_pvdsar_*`` constants.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok                Mask written.
+ * @retval k_ra_err_invalid_arg   ``mask`` includes undefined bits.
+ *
+ * @pre PRCR.PRC3 unlocked (caller-managed).
+ * @pre Caller is in Secure world (PVDSAR is S-only).
+ * @post PVDSAR reflects ``mask``.
+ * @post Subsequent PVD register accesses honour the new attribution.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
 ra_err_t ra_lvd_set_security(uint32_t mask)
 {
   /* HUM Ch 8.2.1 "PVDSAR : Programmable Voltage Detection Security
@@ -1018,6 +1427,25 @@ ra_err_t ra_lvd_set_security(uint32_t mask)
   return k_ra_ok;
 }
 
+/**
+ * @brief Unlock PVDLR so PVDn channels accept further writes.
+ *
+ * @details
+ * Writes the documented unlock pattern to PVDLR (HUM Ch 12.2.10
+ * "PVDLR" p 601) so subsequent ``ra_lvd_*`` calls on PVDn channels
+ * are honoured.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok                Lock released.
+ *
+ * @pre PRCR.PRC3 unlocked (caller-managed).
+ * @pre Caller plans to update PVDn state next.
+ * @post PVDLR.LOCK reads as 0.
+ * @post PVDn channel writes are accepted.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
 ra_err_t ra_lvd_unlock_n_channels(void)
 {
   /* HUM Ch 8.2.10 "PVDLR : Voltage Monitor Lock Register" p 309*/
@@ -1025,6 +1453,25 @@ ra_err_t ra_lvd_unlock_n_channels(void)
   return k_ra_ok;
 }
 
+/**
+ * @brief Relock PVDLR after a PVDn maintenance window.
+ *
+ * @details
+ * Writes any non-unlock pattern to PVDLR (HUM Ch 12.2.10 p 601 --
+ * "if you write an arbitrary value to the LOCK, the LOCK bit is
+ * fixed to 1.").
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok                Lock re-engaged.
+ *
+ * @pre PRCR.PRC3 unlocked.
+ * @pre PVDn updates are complete and safe to freeze.
+ * @post PVDLR.LOCK reads as 1.
+ * @post Further PVDn writes are silently ignored.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
 ra_err_t ra_lvd_relock_n_channels(void)
 {
   /* HUM Ch 8.2.10 "PVDLR : Voltage Monitor Lock Register" p 309 --
@@ -1039,6 +1486,29 @@ ra_err_t ra_lvd_relock_n_channels(void)
  * =============================================================================
  */
 
+/**
+ * @brief Arm the ELC event line for a PVDm channel.
+ *
+ * @details
+ * Per HUM Ch 12.7 "Event Link Controller (ELC) Output" p 606 the
+ * event line tracks CMPE; this helper acknowledges any latched DET
+ * before raising CMPE so the ELC consumer sees a clean transition.
+ *
+ * @param[in] channel PVDm channel id.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok                  ELC line armed.
+ * @retval k_ra_err_invalid_arg     Channel mapping failed.
+ * @retval k_ra_err_not_supported   Channel has no IRQ path (PVDn).
+ *
+ * @pre Channel previously brought up via ``ra_lvd_channel_init``.
+ * @pre PRCR.PRC3 unlocked.
+ * @post SR.DET reads as 0; CR0.CMPE reads as 1.
+ * @post ELC consumer receives subsequent crossings as events.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
 ra_err_t ra_lvd_enable_elc_event(ra_lvd_channel_t channel)
 {
   uint8_t        idx     = 0U;
@@ -1061,6 +1531,27 @@ ra_err_t ra_lvd_enable_elc_event(ra_lvd_channel_t channel)
   return k_ra_ok;
 }
 
+/**
+ * @brief Disarm the ELC event line for a PVDm channel.
+ *
+ * @details
+ * Per HUM Ch 12.7 p 606, clears CMPE so the ELC line goes inactive.
+ *
+ * @param[in] channel PVDm channel id.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok                  ELC line disarmed.
+ * @retval k_ra_err_invalid_arg     Channel mapping failed.
+ * @retval k_ra_err_not_supported   Channel has no IRQ path (PVDn).
+ *
+ * @pre Channel previously brought up via ``ra_lvd_channel_init``.
+ * @pre PRCR.PRC3 unlocked.
+ * @post CR0.CMPE reads as 0.
+ * @post ELC consumer no longer receives crossings as events.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
 ra_err_t ra_lvd_disable_elc_event(ra_lvd_channel_t channel)
 {
   uint8_t        idx     = 0U;
@@ -1077,6 +1568,27 @@ ra_err_t ra_lvd_disable_elc_event(ra_lvd_channel_t channel)
   return k_ra_ok;
 }
 
+/**
+ * @brief Reconfigure a PVD channel for entry into Software / Deep Standby.
+ *
+ * @details
+ * Per HUM Ch 12.5 (p 602-603), the digital filter must be disabled
+ * and (for m channels) RI / RN cleared before entering standby.
+ *
+ * @param[in] channel PVD channel id.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok                Channel reconfigured for standby.
+ * @retval k_ra_err_invalid_arg   Channel mapping failed.
+ *
+ * @pre Channel previously brought up via ``ra_lvd_channel_init``.
+ * @pre Caller is preparing the SoC for standby entry.
+ * @post CR0.DFDIS reads as 1.
+ * @post For m channels CR0.RI and CR0.RN read as 0.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
 ra_err_t ra_lvd_configure_for_standby(ra_lvd_channel_t channel)
 {
   uint8_t        idx     = 0U;
@@ -1099,6 +1611,25 @@ ra_err_t ra_lvd_configure_for_standby(ra_lvd_channel_t channel)
   return k_ra_ok;
 }
 
+/**
+ * @brief Drop CR0.RI on every NMI-capable channel (deep-standby exit).
+ *
+ * @details
+ * Per HUM Ch 12.2.4 (p 597), prepares the PVD subsystem for normal
+ * operation after exiting Deep Standby by clearing the per-channel
+ * RI bit (which is documented to be UD-only across DPSTBY).
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok                Path cleared on every NMI channel.
+ *
+ * @pre PRCR.PRC3 unlocked (caller-managed).
+ * @pre Caller has just exited Deep Software Standby.
+ * @post CR0.RI reads as 0 on every NMI-capable channel.
+ * @post Subsequent crossings will not auto-reset the SoC.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
 ra_err_t ra_lvd_cancel_deep_standby_path(void)
 {
   /* HUM Ch 8.2.4 "PVDmCR0" p 305 */
@@ -1113,6 +1644,28 @@ ra_err_t ra_lvd_cancel_deep_standby_path(void)
  * =============================================================================
  */
 
+/**
+ * @brief Compute the digital-filter settle delay in microseconds.
+ *
+ * @details
+ * Implements the "2s + 3 cycles of the LOCO" formula from HUM
+ * Table 12.4 / 12.6 step 8 (s = 2^(div+1)). Matches FSP's
+ * ``r_lvd_filter_delay`` rounded-up microseconds.
+ *
+ * @param[in] div     LOCO divider used by the channel.
+ * @param[in] loco_hz LOCO frequency in Hz (0 -> default 32_768 Hz).
+ *
+ * @return Settle delay in microseconds (rounded up by +1 us).
+ * @retval >=1 Microseconds the caller must wait after FSAMP changes.
+ *
+ * @pre None.
+ * @pre Caller will block / sleep at least the returned amount.
+ * @post Hardware state is unchanged.
+ * @post Return value is in microseconds.
+ *
+ * @note Pure function; safe from any context.
+ * @since 0.1.0
+ */
 uint32_t ra_lvd_filter_delay_us(ra_lvd_loco_div_t div, uint32_t loco_hz)
 {
   /* HUM Table 8.4 step 8 (p 312) / Table 8.6 step 8 (p 315): wait for
@@ -1133,6 +1686,27 @@ uint32_t ra_lvd_filter_delay_us(ra_lvd_loco_div_t div, uint32_t loco_hz)
  * =============================================================================
  */
 
+/**
+ * @brief Register the shared LVD ISR callback (NULL detaches).
+ *
+ * @details
+ * Stores ``(fn, ctx)`` in the shared slot consulted by every
+ * ``ra_lvd_dispatch`` call when no per-channel handler is attached.
+ *
+ * @param[in] fn  Callback function or NULL to detach.
+ * @param[in] ctx Opaque value forwarded verbatim to ``fn``.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok               Slot updated.
+ *
+ * @pre IRQs masked or single-threaded init context.
+ * @pre Lifetime of ``ctx`` outlives the next ``ra_lvd_dispatch`` call.
+ * @post Shared callback slot reflects ``(fn, ctx)``.
+ * @post Per-channel slots are unchanged.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
 ra_err_t ra_lvd_attach_handler(ra_lvd_event_fn_t fn, void* ctx)
 {
   s_lvd_fn  = fn;
@@ -1140,6 +1714,30 @@ ra_err_t ra_lvd_attach_handler(ra_lvd_event_fn_t fn, void* ctx)
   return k_ra_ok;
 }
 
+/**
+ * @brief Register a per-channel LVD callback for a PVDm channel.
+ *
+ * @details
+ * Per-channel handlers take precedence over the shared callback set
+ * by ``ra_lvd_attach_handler``. Available only on PVDm channels.
+ *
+ * @param[in] channel PVDm channel id.
+ * @param[in] fn      Callback function or NULL to detach.
+ * @param[in] ctx     Opaque value forwarded verbatim to ``fn``.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok                Slot updated.
+ * @retval k_ra_err_invalid_arg   Channel mapping failed.
+ * @retval k_ra_err_not_supported Channel has no IRQ path (PVDn).
+ *
+ * @pre IRQs masked or single-threaded init context.
+ * @pre Lifetime of ``ctx`` outlives the next ``ra_lvd_dispatch`` call.
+ * @post Per-channel slot for ``channel`` reflects ``(fn, ctx)``.
+ * @post Shared callback slot is unchanged.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
 ra_err_t ra_lvd_attach_channel_handler(ra_lvd_channel_t channel, ra_lvd_event_fn_t fn, void* ctx)
 {
   uint8_t        idx     = 0U;
@@ -1155,6 +1753,29 @@ ra_err_t ra_lvd_attach_channel_handler(ra_lvd_channel_t channel, ra_lvd_event_fn
   return k_ra_ok;
 }
 
+/**
+ * @brief Demux a PVD ISR -- ack DET, fire per-channel + shared callbacks.
+ *
+ * @details
+ * Snapshots PVDmSR.DET; if no crossing is latched the call is a
+ * no-op. Otherwise invokes the per-channel callback (if any), then
+ * the shared callback (if any), then clears DET via the W0C
+ * sequence (HUM Ch 12.2.7 "PVDmSR" p 600).
+ *
+ * @param[in] channel PVD channel id that fired the IRQ / NMI.
+ *
+ * @return None.
+ * @retval None
+ *
+ * @pre Called from PVD ISR or NMI context.
+ * @pre PRCR.PRC3 unlocked (caller-managed during ack).
+ *
+ * @post If a callback was attached, it has been invoked exactly once.
+ * @post PVDmSR.DET is 0 on return.
+ *
+ * @note Thread safety: ISR-context only.
+ * @since 0.1.0
+ */
 void ra_lvd_dispatch(ra_lvd_channel_t channel)
 {
   uint8_t        idx     = 0U;
