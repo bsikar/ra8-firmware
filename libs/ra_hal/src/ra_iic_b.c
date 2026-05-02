@@ -108,7 +108,7 @@ static ra_iic_b_state_t s_iic_b_state[k_ra_iic_b_channel_count];
  * each half is ``round(pclka_hz / (2 * bus_hz)) - 1``.
  *
  * Result is clamped to 8 bits to fit the SBRLO/SBRHO fields per HUM
- * Ch 40.2.16 "STDBR : Standard Bit Rate Register", p 2462.
+ * Ch 40.2.15 "STDBR : Standard Bit Rate Register", p 2463.
  *
  * @param[in] bus_hz   Target bus clock (non-zero).
  * @param[in] pclka_hz PCLKA frequency (non-zero).
@@ -181,11 +181,11 @@ static uint8_t internal_iic_b_decode_errors(uint32_t bst)
  * the loop cleanly. In production the explicit zero-write hits while
  * the hardware is still draining the reset and is harmless.
  *
- * HUM Ch 40.2.6 "RSTCTL : Reset Control Register" p 2456
+ * HUM Ch 40.2.4 "RSTCTL : Reset Control Register" p 2451
  */
 static ra_err_t internal_iic_b_reset(volatile r_iic_b_regs_t* reg)
 {
-  /* HUM Ch 40.2.6 "RSTCTL : Reset Control Register" p 2456 */
+  /* HUM Ch 40.2.4 "RSTCTL : Reset Control Register" p 2451 */
   reg->RSTCTL = k_ra_iic_b_msk_rstctl_ri3crst;
   reg->RSTCTL = 0U;
   for (uint32_t i = 0U; i < k_ra_iic_b_poll_limit; i++) {
@@ -201,7 +201,7 @@ static ra_err_t internal_iic_b_reset(volatile r_iic_b_regs_t* reg)
  */
 static void internal_iic_b_start(volatile r_iic_b_regs_t* reg)
 {
-  /* HUM Ch 40.2.27 "CNDCTL : Condition Control Register" p 2473 */
+  /* HUM Ch 40.2.32 "CNDCTL : Condition Control Register" p 2479 */
   reg->CNDCTL = k_ra_iic_b_msk_cndctl_stcnd;
 }
 
@@ -209,14 +209,14 @@ static void internal_iic_b_start(volatile r_iic_b_regs_t* reg)
  * @brief Issue a repeated-START (Sr) condition.
  *
  * @details
- * HUM Ch 40.2.27 "CNDCTL : Condition Control Register" p 2473 -- Sr
+ * HUM Ch 40.2.32 "CNDCTL : Condition Control Register" p 2479 -- Sr
  * differs from S in that it is gated by the prior transfer not having
  * issued STOP. The polling driver achieves that by leaving STOP off
  * when the caller passes ``restart=true`` to write/read.
  */
 static void internal_iic_b_restart(volatile r_iic_b_regs_t* reg)
 {
-  /* HUM Ch 40.2.27 "CNDCTL : Condition Control Register" p 2473 */
+  /* HUM Ch 40.2.32 "CNDCTL : Condition Control Register" p 2479 */
   reg->CNDCTL = k_ra_iic_b_msk_cndctl_srcnd;
 }
 
@@ -229,7 +229,7 @@ static void internal_iic_b_restart(volatile r_iic_b_regs_t* reg)
  * helpers don't gate on it because the synchronous flow is already
  * past the data phase by the time we get here.
  *
- * HUM Ch 40.2.27 "CNDCTL : Condition Control Register" p 2473
+ * HUM Ch 40.2.32 "CNDCTL : Condition Control Register" p 2479
  */
 static void internal_iic_b_stop(volatile r_iic_b_regs_t* reg)
 {
@@ -249,7 +249,7 @@ static void internal_iic_b_clear_bst(volatile r_iic_b_regs_t* reg)
                                 k_ra_iic_b_msk_bst_nackdf | k_ra_iic_b_msk_bst_tendf |
                                 k_ra_iic_b_msk_bst_alf | k_ra_iic_b_msk_bst_todf,
   };
-  /* HUM Ch 40.2.31 "BST : Bus Status Register" p 2482 */
+  /* HUM Ch 40.2.46 "BST : Bus Status Register" p 2490 */
   reg->BST = reg->BST & ~k_ra_iic_b_bst_clear_mask;
 }
 
@@ -265,12 +265,12 @@ static void internal_iic_b_clear_bst(volatile r_iic_b_regs_t* reg)
 static ra_err_t internal_iic_b_send_address(volatile r_iic_b_regs_t* reg, uint8_t address_byte)
 {
   /* Wait for first TDBEF0 (set after START condition is on the bus).
-   * HUM Ch 40.2.34 "NTST : Normal Transfer Status Register" p 2486 */
+   * HUM Ch 40.2.50 "NTST : Normal Transfer Status Register" p 2498 */
   ra_err_t err = internal_iic_b_wait_ntst(reg, k_ra_iic_b_msk_ntst_tdbef0);
   if (err != k_ra_ok) {
     return err;
   }
-  /* HUM Ch 40.2.30 "NTDTBP0 : Normal Transfer Data Buffer Port 0" p 2476 */
+  /* HUM Ch 40.2.35 "NTDTBP0 : Normal Transfer Data Buffer Port 0" p 2481 */
   reg->NTDTBP0 = (uint32_t)address_byte;
   return k_ra_ok;
 }
@@ -300,7 +300,7 @@ static ra_err_t internal_iic_b_status_from_bst(uint32_t bst)
  * @brief True when the bus is free as reported by BCST.BFREF.
  *
  * @details
- * HUM Ch 40.2.41 "BCST : Bus Condition Status Register" p 2491:
+ * HUM Ch 40.2.58 "BCST : Bus Condition Status Register" p 2512:
  * ``BFREF`` is 1 when the bus is in the free state. FSP gates new
  * master transactions on this flag (see ``iic_b_master_run_hw_master``
  * around the ``IIC_B_MASTER_HW_WAIT_BUS_FREE`` block).
@@ -325,16 +325,16 @@ static bool internal_iic_b_bus_free(volatile const r_iic_b_regs_t* reg)
  */
 static void internal_iic_b_apply_init_regs(volatile r_iic_b_regs_t* reg, const ra_iic_b_cfg_t* cfg)
 {
-  /* HUM Ch 40.2.15 "REFCKCTL : Reference Clock Control Register" p 2462 */
+  /* HUM Ch 40.2.14 "REFCKCTL : Reference Clock Control Register" p 2463 */
   reg->REFCKCTL = 0U;
 
-  /* HUM Ch 40.2.16 "STDBR : Standard Bit Rate Register" p 2462 */
+  /* HUM Ch 40.2.15 "STDBR : Standard Bit Rate Register" p 2463 */
   const uint8_t  half  = internal_iic_b_half_period(cfg->bus_hz, cfg->pclka_hz);
   const uint32_t stdbr = ((uint32_t)half << (uint32_t)k_ra_iic_b_stdbr_sbrlo_pos) |
                          ((uint32_t)half << (uint32_t)k_ra_iic_b_stdbr_sbrho_pos);
   reg->STDBR           = stdbr;
 
-  /* HUM Ch 40.2.12 "BFCTL : Bus Function Control Register" p 2461 */
+  /* HUM Ch 40.2.12 "BFCTL : Bus Function Control Register" p 2459 */
   uint32_t bfctl =
     k_ra_iic_b_msk_bfctl_male | k_ra_iic_b_msk_bfctl_nale | k_ra_iic_b_msk_bfctl_scsyne;
   if (cfg->bus_hz >= k_ra_iic_b_speed_fast_plus) {
@@ -342,13 +342,13 @@ static void internal_iic_b_apply_init_regs(volatile r_iic_b_regs_t* reg, const r
   }
   reg->BFCTL = bfctl;
 
-  /* HUM Ch 40.2.22 "ACKCTL : Acknowledge Control Register" p 2468 */
+  /* HUM Ch 40.2.24 "ACKCTL : Acknowledge Control Register" p 2473 */
   reg->ACKCTL = k_ra_iic_b_msk_ackctl_acktwp;
-  /* HUM Ch 40.2.23 "SCSTRCTL : SCL Stretch Control Register" p 2469 */
+  /* HUM Ch 40.2.25 "SCSTRCTL : SCL Stretch Control Register" p 2474 */
   reg->SCSTRCTL = 0U;
 
   /* BUSE=1: drive the bus.
-   * HUM Ch 40.2.4 "BCTL : Bus Control Register" p 2454 */
+   * HUM Ch 40.2.2 "BCTL : Bus Control Register" p 2449 */
   reg->BCTL = k_ra_iic_b_msk_bctl_buse;
 }
 
@@ -367,10 +367,10 @@ ra_err_t ra_iic_b_init(uint8_t channel, const ra_iic_b_cfg_t* cfg)
   const ra_err_t mst_err = ra_mstp_enable(k_ra_mstp_i3c);
   RA_RETURN_ON_ERROR(mst_err, s_tag, "iic_b_init: mstp enable");
 
-  /* HUM Ch 40.2.3 "CECTL : Clock Enable Control Register" p 2453 */
+  /* HUM Ch 40.2.92 "CECTL : Clock Enable Control Register" p 2543 */
   reg->CECTL = k_ra_iic_b_msk_cectl_clke;
   /* BUSE=0: detach SCL/SDA before reset.
-   * HUM Ch 40.2.4 "BCTL : Bus Control Register" p 2454 */
+   * HUM Ch 40.2.2 "BCTL : Bus Control Register" p 2449 */
   reg->BCTL = 0U;
 
   const ra_err_t reset_err = internal_iic_b_reset(reg);
@@ -394,9 +394,9 @@ ra_err_t ra_iic_b_deinit(uint8_t channel)
     return k_ra_err_invalid_arg;
   }
   /* BUSE=0: release the bus.
-   * HUM Ch 40.2.4 "BCTL : Bus Control Register" p 2454 */
+   * HUM Ch 40.2.2 "BCTL : Bus Control Register" p 2449 */
   reg->BCTL = 0U;
-  /* HUM Ch 40.2.3 "CECTL : Clock Enable Control Register" p 2453 */
+  /* HUM Ch 40.2.92 "CECTL : Clock Enable Control Register" p 2543 */
   reg->CECTL                         = 0U;
   s_iic_b_state[channel].cb          = nullptr;
   s_iic_b_state[channel].ctx         = nullptr;
@@ -414,7 +414,7 @@ ra_err_t ra_iic_b_set_clock(uint8_t channel, uint32_t bus_hz, uint32_t pclka_hz)
   if ((bus_hz == 0U) || (pclka_hz == 0U)) {
     return k_ra_err_invalid_arg;
   }
-  /* HUM Ch 40.2.16 "STDBR : Standard Bit Rate Register" p 2462 */
+  /* HUM Ch 40.2.15 "STDBR : Standard Bit Rate Register" p 2463 */
   const uint8_t half = internal_iic_b_half_period(bus_hz, pclka_hz);
   reg->STDBR         = ((uint32_t)half << (uint32_t)k_ra_iic_b_stdbr_sbrlo_pos) |
                        ((uint32_t)half << (uint32_t)k_ra_iic_b_stdbr_sbrho_pos);
@@ -459,7 +459,7 @@ internal_iic_b_drain_tx(volatile r_iic_b_regs_t* reg, const uint8_t* data, uint3
     if ((reg->BST & k_ra_iic_b_msk_bst_nackdf) != 0U) {
       break;
     }
-    /* HUM Ch 40.2.30 "NTDTBP0 : Normal Transfer Data Buffer Port 0" p 2476 */
+    /* HUM Ch 40.2.35 "NTDTBP0 : Normal Transfer Data Buffer Port 0" p 2481 */
     reg->NTDTBP0 = (uint32_t)data[i];
   }
   return err;
@@ -550,14 +550,14 @@ static ra_err_t internal_iic_b_drain_rx(volatile r_iic_b_regs_t* reg, uint8_t* o
   ra_err_t err = k_ra_ok;
   for (uint32_t i = 0U; i < len; i++) {
     if (i == (len - 1U)) {
-      /* HUM Ch 40.2.22 "ACKCTL : Acknowledge Control Register" p 2468 */
+      /* HUM Ch 40.2.24 "ACKCTL : Acknowledge Control Register" p 2473 */
       reg->ACKCTL = k_ra_iic_b_msk_ackctl_acktwp | k_ra_iic_b_msk_ackctl_ackt;
     }
     err = internal_iic_b_wait_ntst(reg, k_ra_iic_b_msk_ntst_rdbff0);
     if (err != k_ra_ok) {
       break;
     }
-    /* HUM Ch 40.2.30 "NTDTBP0 : Normal Transfer Data Buffer Port 0" p 2476 */
+    /* HUM Ch 40.2.35 "NTDTBP0 : Normal Transfer Data Buffer Port 0" p 2481 */
     out[i] = (uint8_t)(reg->NTDTBP0 & k_ra_iic_b_byte_mask);
   }
   return err;
@@ -679,7 +679,7 @@ ra_err_t ra_iic_b_abort(uint8_t channel)
   }
   /* Mask interrupts before tearing down (mirrors FSP
    * iic_b_master_abort_seq_master).
-   * HUM Ch 40.2.33 "BIE", p 2484 / Ch 40.2.36 "NTIE" p 2488. */
+   * HUM Ch 40.2.48 "BIE", p 2495 / Ch 40.2.52 "NTIE" p 2504. */
   reg->BIE  = 0U;
   reg->NTIE = 0U;
 
@@ -751,7 +751,7 @@ ra_err_t ra_iic_b_clear_errors(uint8_t channel)
   if (reg == nullptr) {
     return k_ra_err_invalid_arg;
   }
-  /* HUM Ch 40.2.31 "BST : Bus Status Register" p 2482 */
+  /* HUM Ch 40.2.46 "BST : Bus Status Register" p 2490 */
   enum : uint32_t {
     k_ra_iic_b_err_clear_mask =
       k_ra_iic_b_msk_bst_alf | k_ra_iic_b_msk_bst_nackdf | k_ra_iic_b_msk_bst_todf,
@@ -778,15 +778,15 @@ ra_err_t ra_iic_b_attach_handler(uint8_t channel, ra_iic_b_complete_fn_t fn, voi
    * single group when (de)attaching a handler. Per-bit tuning lands
    * when the first interrupt-mode consumer arrives. */
   if (fn != nullptr) {
-    /* HUM Ch 40.2.33 "BIE : Bus Interrupt Enable Register" p 2484 */
+    /* HUM Ch 40.2.48 "BIE : Bus Interrupt Enable Register" p 2495 */
     reg->BIE = k_ra_iic_b_msk_bie_nackdie | k_ra_iic_b_msk_bie_alie | k_ra_iic_b_msk_bie_todie |
                k_ra_iic_b_msk_bie_tendie;
-    /* HUM Ch 40.2.36 "NTIE : Normal Transfer Interrupt Enable" p 2488 */
+    /* HUM Ch 40.2.52 "NTIE : Normal Transfer Interrupt Enable" p 2504 */
     reg->NTIE = k_ra_iic_b_msk_ntie_tdbeie0 | k_ra_iic_b_msk_ntie_rdbfie0;
   } else {
-    /* HUM Ch 40.2.33 "BIE : Bus Interrupt Enable Register" p 2484 */
+    /* HUM Ch 40.2.48 "BIE : Bus Interrupt Enable Register" p 2495 */
     reg->BIE = 0U;
-    /* HUM Ch 40.2.36 "NTIE : Normal Transfer Interrupt Enable" p 2488 */
+    /* HUM Ch 40.2.52 "NTIE : Normal Transfer Interrupt Enable" p 2504 */
     reg->NTIE = 0U;
   }
   return k_ra_ok;
