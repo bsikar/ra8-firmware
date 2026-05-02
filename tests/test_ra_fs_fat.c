@@ -549,8 +549,7 @@ static void test_mcdc_pack_base_terminator(void)
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_fs_close(f));
   TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
                  (int32_t)ra_fs_open(h, ".TXT", k_ra_fs_mode_write, &f));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_fs_open(h, "", k_ra_fs_mode_write, &f));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_fs_open(h, "", k_ra_fs_mode_write, &f));
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_fs_unmount(h));
   free_volume();
   TEST_END("ra_fs MC/DC: pack_base (*p!=0 && *p!='.')");
