@@ -199,6 +199,39 @@ inside newlib's rand()/srand() now boot cleanly:
 - SDRAM base address (a98cbcb60), ELC CAN MRAM_ERI (cf1c8c70f), PFS PSEL (7cc37e1f9),
   RSIP key_op_status collision, HUM citations (446930c5a, b6f6227d5)
 
+## 2026-05-02 hardware verification of recent fixes
+
+Flashed each recently-touched app and read back PC + macOS USB tree
+with the J-Link probe (SN 1086567198).
+
+| App | Outcome | Evidence |
+|---|---|---|
+| blink (regression baseline) | **PASS** | PC=`ra_time.c:94` (ra_delay_ms loop) |
+| threadx_mpu_partition_demo | **PASS — fix verified** | PC=`tx_timer_interrupt.S:237`, LR=`main.c:163` (worker thread). Pre-fix: HardFault |
+| threadx_filex_levelx_demo | **FAIL — code fix insufficient** | PC=`main.c:141` (`demo_panic_halt`), LR=`main.c:244` — `lx_nor_flash_format` still returns non-LX_SUCCESS. Pin routing + DATASIZE fixes built clean but did not make the IS25LX512M actually format. Likely still missing: octal-DDR mode-switch, or RDID returning wrong manufacturer ID, or RESET timing |
+| usb_hid_device | **FAIL — does not enumerate** | Chip alive in `tx_thread_schedule.S:264`, but VID 0x1209 absent from macOS `ioreg -p IOUSB`. USBX library is wired but no host-visible device |
+
+### USB enumeration root cause (now confirmed by hardware)
+
+`port/usbx/ux_dcd_ra_usb.c::ux_dcd_ra_usb_initialize` calls
+`ra_usb_attach_handler(internal_event_cb, nullptr)` — so the DCD
+bridge has a callback waiting for events. But that callback only
+fires when something invokes `ra_usb_dispatch(speed)`. Grep across
+the entire repo confirms **no source file** ever calls
+`ra_usb_dispatch` from an IRQ context (it is linked into every
+binary because `ra_usb.c` defines it, but it has zero callers).
+
+Result: the USB controller's `INTSTS0` accumulates SETUP/CTRT bits
+that nobody reads, so SETUP packets time out at the host before
+the DCD ever sees them. macOS gives up enumerating.
+
+**Fix needed** (separate task): in `ux_dcd_ra_usb_initialize`, call
+`ra_isr_register(k_ra_event_usbfs_int, slot, internal_usb_isr,
+prio, ctx)` (and likewise USBHS for HS-mode), where
+`internal_usb_isr` is a thin C function that calls
+`ra_usb_dispatch(speed)`. The ELC event codes for `usbfs_int` /
+`usbhs_int` need to be added to `ra8d2_elc_regs.h::ra_elc_event_t`.
+
 ## 2026-05-02 MPU demo HardFault root cause + fix
 
 `threadx_mpu_partition_demo` was previously documented as "intentional
