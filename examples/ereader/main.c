@@ -102,6 +102,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra_board_ek_ra8d2.h"
 #include "ra_cgc.h"
 #include "ra_err.h"
 #include "ra_gpio_constants.h"
@@ -668,10 +669,10 @@ static void ereader_setup_or_halt(void)
     ereader_panic_halt();
   }
 
-  if (ra_gpio_output_init(k_ra_pin_led1, k_ra_level_low) != k_ra_ok) {
+  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
     ereader_panic_halt();
   }
-  if (ra_gpio_output_init(k_ra_pin_led2, k_ra_level_low) != k_ra_ok) {
+  if (ra_board_led_init(k_ra_board_led2) != k_ra_ok) {
     ereader_panic_halt();
   }
 }
@@ -1009,7 +1010,7 @@ static void reader_thread_entry(ULONG thread_input)
     if (kind == (uint8_t)k_ereader_msg_load_book) {
       s_active_book = (uint8_t)payload;
       s_active_page = 0U;
-      (void)ra_gpio_write(k_ra_pin_led2, k_ra_level_high);
+      (void)ra_board_led_on(k_ra_board_led2);
     } else if (kind == (uint8_t)k_ereader_msg_page_next) {
       s_active_page = (uint16_t)(s_active_page + 1U);
     } else if (kind == (uint8_t)k_ereader_msg_page_prev) {
@@ -1023,10 +1024,7 @@ static void reader_thread_entry(ULONG thread_input)
     if (s_active_book < s_book_count) {
       (void)ereader_render_page(s_active_book, s_active_page);
       /* LED1 toggles per page-render. */
-      ra_level_t cur = k_ra_level_low;
-      (void)ra_gpio_read(k_ra_pin_led1, &cur);
-      (void)ra_gpio_write(k_ra_pin_led1,
-                          (cur == k_ra_level_high) ? k_ra_level_low : k_ra_level_high);
+      (void)ra_board_led_toggle(k_ra_board_led1);
     }
 
     ULONG ack = ereader_msg_pack(k_ereader_msg_rendered, (uint32_t)s_active_page);
