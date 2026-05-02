@@ -221,6 +221,55 @@ static void test_not_initialized(void)
   TEST_END("ops fail with not_initialized when closed");
 }
 
+/**
+ * @test test_mcdc_link_status_link_and_an
+ *
+ * @par MC/DC:
+ * Decision: `if ((out->link_up != 0U) && (out->auto_neg_done != 0U))`
+ * (2 conditions, libs/ra_hal/src/ra_rmac_phy.c line 346)
+ * BMSR.LINK is bit 2 (0x0004); BMSR.AN_COMPLETE is bit 5 (0x0020).
+ * - Vector 1: BMSR=0x0000 -> link_up=0, an_done=0 -> C1=F short-circuit.
+ *   Decision F -> speed=no_link.
+ * - Vector 2: BMSR=0x0004 -> link_up=1, an_done=0 -> C1=T, C2=F.
+ *   Decision F -> speed=no_link.
+ * - Vector 3: BMSR=0x0024 -> link_up=1, an_done=1 -> C1=T, C2=T.
+ *   Decision T -> speed resolution body executed (resolves via LPA).
+ * MC/DC pair for C1: V1(F,_)->F vs V3(T,T)->T (decision flips, C2
+ * masked in V1 by short-circuit). MC/DC pair for C2: V2(T,F)->F vs
+ * V3(T,T)->T (decision flips, C1 held T). N+1 = 3 vectors for N=2
+ * conditions: minimal MC/DC.
+ */
+static void test_mcdc_link_status_link_and_an(void)
+{
+  TEST_BEGIN("rmac_phy link_status MC/DC: link_up && auto_neg_done");
+  prep();
+  ra_rmac_phy_cfg_t cfg = make_cfg();
+  cfg.gbit_advertise    = 0U; /* skip 1000T branch -> fall to LPA. */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rmac_phy_open(&cfg));
+
+  ra_rmac_phy_link_t lk = {};
+
+  /* Vector 1: BMSR=0 -> no link, no AN -> decision F. */
+  s_io.regs[1] = 0x0000U;
+  s_io.regs[5] = 0U;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rmac_phy_link_status_get(&lk));
+  TEST_ASSERT_EQ((int32_t)k_ra_rmac_phy_speed_no_link, (int32_t)lk.speed);
+
+  /* Vector 2: BMSR.LINK only -> C1=T, C2=F -> decision F. */
+  s_io.regs[1] = 0x0004U;
+  s_io.regs[5] = 0x0080U; /* 100H bit; should be ignored since decision F. */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rmac_phy_link_status_get(&lk));
+  TEST_ASSERT_EQ((int32_t)k_ra_rmac_phy_speed_no_link, (int32_t)lk.speed);
+
+  /* Vector 3: BMSR.LINK + AN_COMPLETE -> decision T -> resolves via LPA. */
+  s_io.regs[1] = (uint16_t)(0x0004U | 0x0020U);
+  s_io.regs[5] = 0x0080U; /* 100H */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rmac_phy_link_status_get(&lk));
+  TEST_ASSERT_EQ((int32_t)k_ra_rmac_phy_speed_100h, (int32_t)lk.speed);
+
+  TEST_END("rmac_phy link_status MC/DC: link_up && auto_neg_done");
+}
+
 int32_t main(void)
 {
   test_open_null();
@@ -232,6 +281,7 @@ int32_t main(void)
   test_link_100half_fallback();
   test_lsi_and_autoneg();
   test_not_initialized();
+  test_mcdc_link_status_link_and_an();
   (void)fprintf(stderr, "[OK ] test_ra_rmac_phy.c\n");
   return 0;
 }

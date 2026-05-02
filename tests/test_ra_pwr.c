@@ -166,6 +166,45 @@ static void test_get_clock_hz_forwards_to_cgc(void)
   TEST_END("ra_pwr_get_clock_hz: forwards to ra_cgc_get_clock_hz");
 }
 
+/**
+ * @test test_mcdc_software_standby_wupen
+ *
+ * @par MC/DC:
+ * Decision: `if ((wupen0 == 0U) && (wupen1 == 0U))`
+ * (2 conditions, libs/ra_hal/src/ra_pwr.c line 203)
+ * - Vector 1: wupen0=0, wupen1=0 -> T,T  decision T  -> invalid_state
+ * - Vector 2: wupen0!=0, wupen1=0 -> F,_ decision F  -> ok (C1 short-circuits)
+ * - Vector 3: wupen0=0, wupen1!=0 -> T,F decision F  -> ok
+ * Vectors 1+2 vary C1 with decision flipping; vectors 1+3 vary C2 with
+ * decision flipping. N+1 = 3 vectors for N=2 conditions: minimal MC/DC.
+ */
+static void test_mcdc_software_standby_wupen(void)
+{
+  TEST_BEGIN("ra_pwr_enter_software_standby MC/DC: wupen0==0 && wupen1==0");
+  ra_sim_mmap_reset();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pwr_init());
+
+  /* Vector 1: both zero -> T,T -> decision T -> invalid_state. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_pwr_enter_software_standby());
+
+  /* Vector 2: wupen0 != 0, wupen1 == 0 -> F,_ -> decision F -> ok.
+   * IRQ3 lands in WUPEN0 bit 3. */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pwr_set_wake_source(k_ra_pwr_wake_irq3));
+  TEST_ASSERT(*wupen0_ptr() != 0U);
+  TEST_ASSERT_EQ((int64_t)0, (int64_t)*wupen1_ptr());
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pwr_enter_software_standby());
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pwr_clear_wake_source(k_ra_pwr_wake_irq3));
+
+  /* Vector 3: wupen0 == 0, wupen1 != 0 -> T,F -> decision F -> ok.
+   * AGT0 lands in WUPEN1 bit 0. */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pwr_set_wake_source(k_ra_pwr_wake_agt0));
+  TEST_ASSERT_EQ((int64_t)0, (int64_t)*wupen0_ptr());
+  TEST_ASSERT(*wupen1_ptr() != 0U);
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pwr_enter_software_standby());
+
+  TEST_END("ra_pwr_enter_software_standby MC/DC: wupen0==0 && wupen1==0");
+}
+
 int32_t main(void)
 {
   test_init_clears_wupen_and_resets_mstp();
@@ -176,6 +215,7 @@ int32_t main(void)
   test_enter_sleep_is_no_op_on_host();
   test_software_standby_requires_wake_source();
   test_get_clock_hz_forwards_to_cgc();
+  test_mcdc_software_standby_wupen();
   (void)fprintf(stderr, "[OK  ] test_ra_pwr.c\n");
   return 0;
 }
