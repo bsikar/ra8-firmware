@@ -127,11 +127,11 @@ typedef enum : uint32_t {
  *
  * @details
  * GTBER layout from RA8D2 CMSIS R_GPT0_GTBER (HUM Ch 22.2.17,
- * p 965..968): CCRA at bits 16..17, CCRB at bits 18..19. Setting
+ * p 932..935): CCRA at bits 16..17, CCRB at bits 18..19. Setting
  * the lower bit of each pair to 1 selects single-buffer (GTCCRC ->
  * GTCCRA / GTCCRE -> GTCCRB) reload at cycle end.
  *
- * GTDTCR.TDE is bit 0 (HUM Ch 22.2.27 "GTDTCR", p 998..999).
+ * GTDTCR.TDE is bit 0 (HUM Ch 22.2.27 "GTDTCR", p 941..942).
  *
  * The ``compare_c`` / ``compare_e`` indices are GTCCR[2] and
  * GTCCR[3] respectively per HUM Ch 22.2.20.
@@ -244,7 +244,7 @@ ra_err_t ra_gpt_init(uint8_t channel, const ra_gpt_cfg_t* cfg)
   reg->GTPBR = cfg->period;
   /* GTCCRA / GTCCRB are PWM compare values for GTIOCnA / GTIOCnB
      outputs in saw-wave PWM mode. */
-  /* HUM Ch 22.2.20 "GTCCRA..F : General PWM Timer Compare Capture Register" p 982 */
+  /* HUM Ch 22.2.20 "GTCCRA..F : General PWM Timer Compare Capture Register" p 938 */
   reg->GTCCR[0] = cfg->duty_a;
   reg->GTCCR[1] = cfg->duty_b;
   reg->GTCNT    = 0U;
@@ -375,7 +375,7 @@ ra_err_t ra_gpt_write_dma(uint8_t              channel,
   }
   /* Word-wide DMA writes stream period values into GTPR;
      dst_inc=false so every element lands at the same MMIO address. */
-  /* HUM Ch 22.2.21 "GTPR : General PWM Timer Cycle Setting Register" p 985 */
+  /* HUM Ch 22.2.21 "GTPR : General PWM Timer Cycle Setting Register" p 938 */
   ra_dma_request_t req = {};
   req.src_addr         = (uintptr_t)periods;
   req.dst_addr         = (uintptr_t)&reg->GTPR;
@@ -407,7 +407,7 @@ ra_err_t ra_gpt_read_dma(uint8_t              channel,
     return k_ra_err_invalid_arg; /* GCOVR_EXCL_LINE */
   }
   /* Word-wide DMA reads stream GTCNT snapshots into out_counts[]. */
-  /* HUM Ch 22.2.19 "GTCNT : General PWM Timer Counter" p 980 */
+  /* HUM Ch 22.2.19 "GTCNT : General PWM Timer Counter" p 938 */
   ra_dma_request_t req = {};
   req.src_addr         = (uintptr_t)&reg->GTCNT;
   req.dst_addr         = (uintptr_t)out_counts;
@@ -453,7 +453,7 @@ ra_err_t ra_gpt_duty_cycle_set(uint8_t channel, ra_gpt_pwm_pin_t pin, uint32_t c
   volatile r_gpt_channel_regs_t* reg = ra_gpt(channel);
   RA_CHECK_NULL_PTR(reg, s_tag, "channel out of range");
 
-  /* HUM Ch 22.2.20 "GTCCRA..F" p 982 */ /* + Ch 22.2.17 "GTBER" p 965:
+  /* HUM Ch 22.2.20 "GTCCRA..F" p 938 */ /* + Ch 22.2.17 "GTBER" p 932:
      write compare into GTCCRC (shadow for A) or GTCCRE (shadow for
      B), then assert the matching GTBER buffer-enable bit so the
      next cycle-end reloads GTCCRA / GTCCRB. */
@@ -624,7 +624,7 @@ ra_err_t ra_gpt_three_phase_open(const ra_gpt_three_phase_cfg_t* cfg)
 
   /* Synchronous start: a single GTSTR write to the U-channel slot
      with all three CSTRTn bits set kicks all three counters on the
-     same PCLKD edge. HUM Ch 22.2.2 "GTSTR" p 901. */
+     same PCLKD edge. HUM Ch 22.2.2 "GTSTR" p 886. */
   volatile r_gpt_channel_regs_t* u_reg = ra_gpt(cfg->channels[0]);
   if (u_reg != nullptr) {
     u_reg->GTWP  = k_ra_gtwp_key_unlock;
