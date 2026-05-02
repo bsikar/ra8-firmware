@@ -329,9 +329,8 @@ int32_t main(void)
   ra_isr_globals_enable();
 
   while (1) {
-    if (usb_cdc_echo_pump_once() != k_ra_ok) {
-      break;
-    }
+    /* Pre-enumeration the controller may return errors; just retry. */
+    (void)usb_cdc_echo_pump_once();
     ra_delay_ms((uint32_t)k_usb_cdc_echo_idle_ms);
   }
 
