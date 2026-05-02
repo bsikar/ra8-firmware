@@ -246,7 +246,38 @@ octal bring-up extensions (commit 52e373507):
 ### Open WIP
 
 1. USBFS_INT ELC event code for RA8D2 — verify the actual code from the RA8D2-specific FSP bsp_elc.h (currently 0x09A is suspected wrong).
-2. IS25LX512M RDID actual response — get UART output to drain to surface the [LX_XSPI] RDID returned 0xNNN log line.
+2. IS25LX512M RDID actual response - UART would not drain in time to
+   print the `[LX_XSPI] RDID returned 0xNNN` log line before
+   `demo_panic_halt`. Diagnostic now stashed in SRAM via
+   `g_ra_xspi_rdid_observed` (defined in
+   `port/levelx/lx_nor_driver_ra_xspi.c`). Read it with JLink after
+   the panic halt:
+
+   1. Look up the global's address for the app under test:
+
+          arm-none-eabi-nm examples/threadx_filex_levelx_demo/build/threadx_filex_levelx_demo.elf | grep g_ra_xspi_rdid_observed
+          arm-none-eabi-nm examples/threadx_levelx_demo/build/threadx_levelx_demo.elf | grep g_ra_xspi_rdid_observed
+
+      Current addresses (will move with code changes):
+        - threadx_filex_levelx_demo: `0x2200448c`
+        - threadx_levelx_demo:       `0x22001d28`
+
+   2. From `JLinkExe` (after `connect`, halt the target) run:
+
+          mem32 0x2200448c 4
+
+      Four words are dumped in this order:
+        - `[0] magic`      = `0x44494452` ("RDID" little-endian) once
+                             written; `0` means the probe never ran.
+        - `[1] call_count` = number of `priv_bus_init_once` probe
+                             attempts since reset.
+        - `[2] rid_err`    = `ra_err_t` from `ra_xspi_flash_read_id`
+                             cast to uint32 (`0` = `k_ra_ok`).
+        - `[3] jedec_id`   = packed `(mfr<<16)|(type<<8)|capacity`;
+                             expected `0x009D5A1A` for IS25LX512M-JHLE.
+
+      Replace the address with the value from `nm` for the app you
+      flashed.
 3. USB polled-mode tick rate — even if the IRQ event code is wrong, a thread-pumped ra_usb_dispatch at >= 1 kHz should keep up with FS enumeration.
 
 ## 2026-05-02 MPU demo HardFault root cause + fix
