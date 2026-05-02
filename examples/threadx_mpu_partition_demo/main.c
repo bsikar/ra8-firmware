@@ -74,13 +74,35 @@ typedef enum : uint32_t {
 } mpu_region_size_t;
 
 /**
+ * @brief MAIR attribute encodings used by the region table below.
+ *
+ * @details
+ * Attr 0 = Normal memory, inner+outer write-back, RW-allocate,
+ * non-transient (encoding 0xFF per Armv8-M Architecture Reference
+ * Manual D1.6.7 "Memory attribute encodings"). Required for the MRAM
+ * code region: instruction fetches from device-typed memory are
+ * UNPREDICTABLE and most cores HardFault. Attr 1 = device-nGnRnE
+ * (encoding 0x04) for the peripheral region.
+ */
+typedef enum : uint8_t {
+  k_mpu_mair_attr0_normal_wb = 0xFFU,
+  k_mpu_mair_attr1_device    = 0x04U,
+} mpu_mair_encoding_t;
+
+typedef enum : uint32_t {
+  k_mpu_mair0_word =
+    ((uint32_t)k_mpu_mair_attr1_device << 8U) | (uint32_t)k_mpu_mair_attr0_normal_wb,
+} mpu_mair0_t;
+
+/**
  * @brief Static MPU region table installed at boot.
  *
  * @details
  * Three coarse regions cover code, data, and the peripheral block.
- * MAIR slots default to 0 (device-nGnRnE) -- adequate for a smoke
- * test. A real partitioning policy would split secure / non-secure
- * worlds and apply per-thread sub-regions.
+ * MRAM + SRAM use attr_idx 0 (Normal write-back); the peripheral
+ * region uses attr_idx 1 (device-nGnRnE). A real partitioning policy
+ * would split secure / non-secure worlds and apply per-thread
+ * sub-regions.
  */
 static const ra_mpu_region_t s_mpu_regions[] = {
   {.base       = k_mpu_region_mram_base,
@@ -103,7 +125,7 @@ static const ra_mpu_region_t s_mpu_regions[] = {
    .unpriv     = k_ra_mpu_perm_none,
    .executable = false,
    .shareable  = k_ra_mpu_share_outer,
-   .attr_idx   = k_ra_mpu_attr_idx_0},
+   .attr_idx   = k_ra_mpu_attr_idx_1},
 };
 
 typedef enum : uint8_t {
@@ -116,7 +138,7 @@ typedef enum : uint8_t {
 static const ra_mpu_cfg_t s_mpu_cfg = {
   .regions      = s_mpu_regions,
   .region_count = k_mpu_region_count,
-  .mair0        = 0U,
+  .mair0        = (uint32_t)k_mpu_mair0_word,
   .mair1        = 0U,
   .privdefena   = true,
   .hfnmiena     = false,
