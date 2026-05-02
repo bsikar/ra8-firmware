@@ -39,6 +39,28 @@ typedef enum : uint32_t {
 
 static uint32_t s_state = (uint32_t)k_ra_rand_default_seed;
 
+/**
+ * @brief Strong override for newlib `srand()` -- xorshift32 seed.
+ *
+ * @details Replaces newlib's heap-backed `srand()` with a direct write
+ *          to the xorshift32 state word. A zero seed is silently mapped
+ *          to `k_ra_rand_default_seed` to avoid xorshift's all-zero
+ *          lockup state.
+ *
+ * @param[in] seed Initial state. Zero rewritten to default seed.
+ *
+ * @return None.
+ * @retval None
+ *
+ * @pre None.
+ * @pre Linker pulls this strong symbol in before `-lc`.
+ * @post `s_state` is non-zero.
+ * @post Subsequent `rand()` results follow the new seed.
+ *
+ * @note Not thread-safe -- single shared state word.
+ *
+ * @since 0.1.0
+ */
 /* NOLINTBEGIN(bugprone-reserved-identifier,cert-dcl37-c,cert-dcl51-cpp,readability-identifier-naming) */
 void srand(unsigned int seed)
 {
@@ -46,6 +68,26 @@ void srand(unsigned int seed)
   s_state = (seed == 0U) ? (uint32_t)k_ra_rand_default_seed : (uint32_t)seed;
 }
 
+/**
+ * @brief Strong override for newlib `rand()` -- xorshift32 step.
+ *
+ * @details Replaces newlib's heap-backed `rand()` with one xorshift32
+ *          advance. NOT cryptographically secure -- callers needing a
+ *          CSPRNG must go through `ra_rsip` TRNG.
+ *
+ * @return Pseudo-random value in `[0, RAND_MAX]`.
+ * @retval 0..RAND_MAX  Next xorshift32 output.
+ *
+ * @pre `srand()` has been called at least once OR the default seed is
+ *      acceptable to the caller.
+ * @pre Linker pulls this strong symbol in before `-lc`.
+ * @post `s_state` advances by one xorshift32 step.
+ * @post Return value lives in `[0, RAND_MAX]`.
+ *
+ * @note Not thread-safe -- single shared state word.
+ *
+ * @since 0.1.0
+ */
 int rand(void)
 {
   /* Marsaglia xorshift32 with constants 13/17/5. */
