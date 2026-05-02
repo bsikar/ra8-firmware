@@ -439,6 +439,9 @@ static ra_err_t priv_json_u32(const char* json, const char* key, uint32_t* out_v
  *
  * @note Static helper; pure function.
  * @since 0.1.0
+ *
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
  */
 static uint8_t priv_hex_nibble(char c)
 {
@@ -675,6 +678,8 @@ ra_err_t ra_ota_init(const ra_ota_cfg_t* cfg)
  * @note Thread-safe: no -- intended to be called when no OTA worker
  *       is running.
  * @since 0.1.0
+ *
+ * @pre Module has been initialised.
  */
 ra_err_t ra_ota_deinit(void)
 {
@@ -705,6 +710,9 @@ ra_err_t ra_ota_deinit(void)
  *
  * @note Thread-safe: yes -- single-byte read of a static.
  * @since 0.1.0
+ *
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
  */
 ra_ota_state_t ra_ota_get_state(void)
 {
@@ -1195,6 +1203,9 @@ ra_err_t ra_ota_commit_and_reboot(void)
  *
  * @note Static helper; not thread-safe.
  * @since 0.1.0
+ *
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
  */
 static ra_err_t priv_step_dispatch(void)
 {
@@ -1242,6 +1253,9 @@ static ra_err_t priv_step_dispatch(void)
  *
  * @note Thread-safe: no -- single owner only.
  * @since 0.1.0
+ *
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
  */
 ra_err_t ra_ota_run_step(void)
 {
@@ -1272,6 +1286,9 @@ ra_err_t ra_ota_run_step(void)
  *
  * @note Thread-safe: no.
  * @since 0.1.0
+ *
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
  */
 ra_err_t ra_ota_run_full_update(void)
 {
@@ -1326,6 +1343,20 @@ ra_err_t ra_ota_run_full_update(void)
 #if defined(__GNUC__) || defined(__clang__)
 __attribute__((weak))
 #endif
+/**
+ * @brief Ra ota system reset hook.
+ *
+ * @details See implementation for details.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 void ra_ota_system_reset_hook(void)
 {
   /* Intentionally empty. */

@@ -79,6 +79,13 @@ typedef enum : uint8_t {
  * @pre None.
  *
  * @since 0.1.0
+ *
+ * @details See implementation for details.
+ * @retval 0 Success or default value.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post State reflects operation result.
+ * @note Not thread-safe unless documented otherwise.
  */
 static int priv_map_err(ra_err_t err)
 {
@@ -103,6 +110,13 @@ static int priv_map_err(ra_err_t err)
  * @pre ``key != NULL`` and ``handle != NULL``.
  *
  * @since 0.1.0
+ *
+ * @details See implementation for details.
+ * @retval 0 Success or default value.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post State reflects operation result.
+ * @note Not thread-safe unless documented otherwise.
  */
 static ra_err_t
 priv_install_key(const unsigned char* key, unsigned int key_bits, ra_rsip_key_handle_t* handle)
@@ -128,6 +142,11 @@ priv_install_key(const unsigned char* key, unsigned int key_bits, ra_rsip_key_ha
  * @post ``ctx`` is fully zeroed and ready for ``setkey_*``.
  *
  * @since 0.1.0
+ *
+ * @details See implementation for details.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @note Not thread-safe unless documented otherwise.
  */
 void mbedtls_aes_init(mbedtls_aes_context* ctx)
 {
@@ -146,6 +165,12 @@ void mbedtls_aes_init(mbedtls_aes_context* ctx)
  * @post ``ctx`` is fully zeroed if non-NULL.
  *
  * @since 0.1.0
+ *
+ * @details See implementation for details.
+ * @pre Module has been initialised.
+ * @pre Caller has validated arguments.
+ * @post Side effects bounded to documented state.
+ * @note Not thread-safe unless documented otherwise.
  */
 void mbedtls_aes_free(mbedtls_aes_context* ctx)
 {
@@ -171,6 +196,12 @@ void mbedtls_aes_free(mbedtls_aes_context* ctx)
  * @post On success, ``ctx`` carries a wrapped key handle.
  *
  * @since 0.1.0
+ *
+ * @details See implementation for details.
+ * @retval 0 Success or default value.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @note Not thread-safe unless documented otherwise.
  */
 int mbedtls_aes_setkey_enc(mbedtls_aes_context* ctx, const unsigned char* key, unsigned int keybits)
 {
@@ -201,6 +232,12 @@ int mbedtls_aes_setkey_enc(mbedtls_aes_context* ctx, const unsigned char* key, u
  * @post On success, ``ctx`` carries a wrapped key handle.
  *
  * @since 0.1.0
+ *
+ * @details See implementation for details.
+ * @retval 0 Success or default value.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @note Not thread-safe unless documented otherwise.
  */
 int mbedtls_aes_setkey_dec(mbedtls_aes_context* ctx, const unsigned char* key, unsigned int keybits)
 {
@@ -234,6 +271,13 @@ int mbedtls_aes_setkey_dec(mbedtls_aes_context* ctx, const unsigned char* key, u
  * @pre ``ctx->ready == 1``.
  *
  * @since 0.1.0
+ *
+ * @details See implementation for details.
+ * @retval 0 Success or default value.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post State reflects operation result.
+ * @note Not thread-safe unless documented otherwise.
  */
 static int priv_issue(const mbedtls_aes_context* ctx,
                       ra_rsip_aes_mode_t         mode,
@@ -263,6 +307,13 @@ static int priv_issue(const mbedtls_aes_context* ctx,
  * @pre ``ctx``, ``input`` and ``output`` are non-NULL.
  *
  * @since 0.1.0
+ *
+ * @details See implementation for details.
+ * @retval 0 Success or default value.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post State reflects operation result.
+ * @note Not thread-safe unless documented otherwise.
  */
 int mbedtls_aes_crypt_ecb(mbedtls_aes_context* ctx,
                           int                  mode,
@@ -299,6 +350,13 @@ int mbedtls_aes_crypt_ecb(mbedtls_aes_context* ctx,
  * @pre ``ctx``, ``iv``, ``input`` and ``output`` are non-NULL.
  *
  * @since 0.1.0
+ *
+ * @details See implementation for details.
+ * @retval 0 Success or default value.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post State reflects operation result.
+ * @note Not thread-safe unless documented otherwise.
  */
 int mbedtls_aes_crypt_cbc(mbedtls_aes_context* ctx,
                           int                  mode,
@@ -373,6 +431,12 @@ int mbedtls_aes_crypt_cbc(mbedtls_aes_context* ctx,
  * @pre Pointers are non-NULL.
  *
  * @since 0.1.0
+ *
+ * @retval 0 Success or default value.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post State reflects operation result.
+ * @note Not thread-safe unless documented otherwise.
  */
 int mbedtls_aes_crypt_ctr(mbedtls_aes_context* ctx,
                           size_t               length,

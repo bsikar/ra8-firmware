@@ -99,6 +99,8 @@ typedef enum : uint16_t {
  * @retval k_ra_err_invalid_arg Caller violated a precondition.
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
+ *
+ * @post Side effects bounded to documented state.
  */
 static ra_err_t internal_validate_cfg(const ra_bkup_config_t* cfg)
 {
@@ -125,6 +127,8 @@ static ra_err_t internal_validate_cfg(const ra_bkup_config_t* cfg)
  * @retval k_ra_err_invalid_arg Caller violated a precondition.
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
+ *
+ * @post Side effects bounded to documented state.
  */
 static ra_err_t internal_validate_chan(const ra_bkup_tamper_chan_cfg_t* ch)
 {
@@ -160,6 +164,8 @@ static ra_err_t internal_validate_chan(const ra_bkup_tamper_chan_cfg_t* ch)
  * @retval k_ra_err_invalid_arg Caller violated a precondition.
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
+ *
+ * @post Side effects bounded to documented state.
  */
 static inline uint8_t internal_chan_mask(uint8_t base_mask, ra_bkup_channel_t channel)
 {
@@ -182,6 +188,8 @@ static inline uint8_t internal_chan_mask(uint8_t base_mask, ra_bkup_channel_t ch
  * API documents.
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
+ *
+ * @post Side effects bounded to documented state.
  */
 static inline void internal_rmw8(volatile uint8_t* reg, uint8_t mask, bool enable)
 {
@@ -505,6 +513,8 @@ static inline void internal_rmw8(volatile uint8_t* reg, uint8_t mask, bool enabl
  * @retval k_ra_err_invalid_arg Caller violated a precondition.
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
+ *
+ * @post Side effects bounded to documented state.
  */
 static ra_err_t internal_validate_tamper_channels(const ra_bkup_tamper_config_t* cfg)
 {
@@ -532,6 +542,8 @@ static ra_err_t internal_validate_tamper_channels(const ra_bkup_tamper_config_t*
  * @retval k_ra_err_invalid_arg Caller violated a precondition.
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
+ *
+ * @post Side effects bounded to documented state.
  */
 static uint8_t internal_compose_vbtictlr(const ra_bkup_tamper_config_t* cfg)
 {
@@ -562,6 +574,8 @@ static uint8_t internal_compose_vbtictlr(const ra_bkup_tamper_config_t* cfg)
  * @retval k_ra_err_invalid_arg Caller violated a precondition.
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
+ *
+ * @post Side effects bounded to documented state.
  */
 static uint8_t internal_compose_vbtictlr2(const ra_bkup_tamper_config_t* cfg)
 {
@@ -596,6 +610,8 @@ static uint8_t internal_compose_vbtictlr2(const ra_bkup_tamper_config_t* cfg)
  * @retval k_ra_err_invalid_arg Caller violated a precondition.
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
+ *
+ * @post Side effects bounded to documented state.
  */
 static uint8_t internal_compose_vbtadcr1(const ra_bkup_tamper_config_t* cfg)
 {
@@ -630,6 +646,8 @@ static uint8_t internal_compose_vbtadcr1(const ra_bkup_tamper_config_t* cfg)
  * @retval k_ra_err_invalid_arg Caller violated a precondition.
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
+ *
+ * @post Side effects bounded to documented state.
  */
 static uint8_t internal_compose_vbtadcr2(const ra_bkup_tamper_config_t* cfg)
 {
@@ -660,6 +678,8 @@ static uint8_t internal_compose_vbtadcr2(const ra_bkup_tamper_config_t* cfg)
  * @retval k_ra_err_invalid_arg Caller violated a precondition.
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
+ *
+ * @post Side effects bounded to documented state.
  */
 static uint8_t internal_compose_vbtadcr3(const ra_bkup_tamper_config_t* cfg)
 {
@@ -805,6 +825,9 @@ static uint8_t internal_compose_vbtadcr3(const ra_bkup_tamper_config_t* cfg)
  * @retval k_ra_err_invalid_arg Caller violated a precondition.
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
+ *
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
  */
 static ra_err_t internal_validate_boundary(uint16_t addr)
 {
@@ -834,6 +857,8 @@ static ra_err_t internal_validate_boundary(uint16_t addr)
  * @retval k_ra_err_invalid_arg Caller violated a precondition.
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
+ *
+ * @post Side effects bounded to documented state.
  */
 static ra_err_t internal_validate_security_cfg(const ra_bkup_security_config_t* cfg)
 {

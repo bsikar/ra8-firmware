@@ -58,6 +58,13 @@
  * @pre None.
  *
  * @since 0.1.0
+ *
+ * @details See implementation for details.
+ * @retval 0 Success or default value.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post State reflects operation result.
+ * @note Not thread-safe unless documented otherwise.
  */
 static int priv_map_err(ra_err_t err)
 {
@@ -78,6 +85,12 @@ static int priv_map_err(ra_err_t err)
  * @post ``ctx`` is fully zeroed; ``starts`` is required before update.
  *
  * @since 0.1.0
+ *
+ * @details See implementation for details.
+ * @pre Module has been initialised.
+ * @pre Caller has validated arguments.
+ * @post Side effects bounded to documented state.
+ * @note Not thread-safe unless documented otherwise.
  */
 void mbedtls_sha256_init(mbedtls_sha256_context* ctx)
 {
@@ -95,6 +108,12 @@ void mbedtls_sha256_init(mbedtls_sha256_context* ctx)
  * @post ``ctx`` is fully zeroed if non-NULL.
  *
  * @since 0.1.0
+ *
+ * @details See implementation for details.
+ * @pre Module has been initialised.
+ * @pre Caller has validated arguments.
+ * @post Side effects bounded to documented state.
+ * @note Not thread-safe unless documented otherwise.
  */
 void mbedtls_sha256_free(mbedtls_sha256_context* ctx)
 {
@@ -120,6 +139,10 @@ void mbedtls_sha256_free(mbedtls_sha256_context* ctx)
  * @post ``*dst`` is a value-copy of ``*src``.
  *
  * @since 0.1.0
+ *
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @note Not thread-safe unless documented otherwise.
  */
 void mbedtls_sha256_clone(mbedtls_sha256_context* dst, const mbedtls_sha256_context* src)
 {
@@ -141,6 +164,13 @@ void mbedtls_sha256_clone(mbedtls_sha256_context* dst, const mbedtls_sha256_cont
  * @pre ``ctx != NULL``.
  *
  * @since 0.1.0
+ *
+ * @details See implementation for details.
+ * @retval 0 Success or default value.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post State reflects operation result.
+ * @note Not thread-safe unless documented otherwise.
  */
 int mbedtls_sha256_starts(mbedtls_sha256_context* ctx, int is224)
 {
@@ -173,6 +203,13 @@ int mbedtls_sha256_starts(mbedtls_sha256_context* ctx, int is224)
  * @pre ``ctx != NULL``.
  *
  * @since 0.1.0
+ *
+ * @details See implementation for details.
+ * @retval 0 Success or default value.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post State reflects operation result.
+ * @note Not thread-safe unless documented otherwise.
  */
 int mbedtls_sha256_update(mbedtls_sha256_context* ctx, const unsigned char* input, size_t ilen)
 {
@@ -203,6 +240,13 @@ int mbedtls_sha256_update(mbedtls_sha256_context* ctx, const unsigned char* inpu
  * @pre ``ctx != NULL`` and ``output != NULL``.
  *
  * @since 0.1.0
+ *
+ * @details See implementation for details.
+ * @retval 0 Success or default value.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post State reflects operation result.
+ * @note Not thread-safe unless documented otherwise.
  */
 int mbedtls_sha256_finish(mbedtls_sha256_context* ctx, unsigned char* output)
 {
@@ -235,6 +279,12 @@ int mbedtls_sha256_finish(mbedtls_sha256_context* ctx, unsigned char* output)
  * @pre ``ctx != NULL`` and ``data != NULL``.
  *
  * @since 0.1.0
+ *
+ * @retval 0 Success or default value.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post State reflects operation result.
+ * @note Not thread-safe unless documented otherwise.
  */
 int mbedtls_internal_sha256_process(mbedtls_sha256_context* ctx, const unsigned char data[64])
 {

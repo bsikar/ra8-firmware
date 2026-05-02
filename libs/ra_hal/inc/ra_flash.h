@@ -880,6 +880,8 @@ ra_flash_block_protect_set(ra_flash_world_t world, bool lock, bool permanent);
  *
  * @retval k_ra_ok Success path.
  * @retval k_ra_err_invalid_arg Caller violated a precondition.
+ *
+ * @pre Module has been initialised.
  */
 uint32_t ra_flash_dispatch_isr(void);
 

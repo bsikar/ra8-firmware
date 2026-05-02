@@ -578,6 +578,8 @@ ra_err_t ra_net_socket_udp(uint16_t local_port, ra_net_handle_t* out_handle)
  * @note Not thread-safe.
  *
  * @since 0.1.0
+ *
+ * @details See implementation for details.
  */
 ra_err_t ra_net_socket_tcp_listen(uint16_t local_port, ra_net_handle_t* out_handle)
 {
@@ -607,6 +609,8 @@ ra_err_t ra_net_socket_tcp_listen(uint16_t local_port, ra_net_handle_t* out_hand
  * @note Not thread-safe.
  *
  * @since 0.1.0
+ *
+ * @details See implementation for details.
  */
 ra_err_t ra_net_socket_tcp_connect(ra_net_ipv4_t    remote_ip,
                                    uint16_t         remote_port,

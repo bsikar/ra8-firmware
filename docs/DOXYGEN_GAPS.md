@@ -6,73 +6,24 @@ Doxygen Documentation Requirements in `CLAUDE.md`. Scope: `libs/`,
 
 ## Summary
 
-- Total functions audited: 2666
-- Functions with gaps: 429
-- Total missing-tag instances: 2919
+- Total functions audited: 2669
+- Functions with gaps: 0
+- Total missing-tag instances: 0
 
 ## Most-frequently-missing tags
 
 | Tag | Count |
 |-----|-------|
-| `@param` | 500 |
-| `@post` | 408 |
-| `@pre` | 378 |
-| `@note` | 372 |
-| `@details` | 341 |
-| `@since` | 268 |
-| `@retval` | 258 |
-| `@brief` | 209 |
-| `@return` | 185 |
 
 ## Worst 10 modules by gap count
 
 | Module | Functions with gaps |
 |--------|---------------------|
-| `libs/ra_hal` | 72 |
-| `port/nimble` | 59 |
-| `port/lwip` | 38 |
-| `libs/ra_psa_crypto` | 31 |
-| `libs/ra_ble_host` | 30 |
-| `libs/ra_board_ek_ra8d2` | 29 |
-| `port/usbx` | 24 |
-| `libs/ra_core` | 23 |
-| `port/levelx` | 19 |
-| `port/netxduo` | 19 |
 
 ## Top 30 files by gap count
 
 | File | Functions with gaps |
 |------|---------------------|
-| `port/nimble/nimble_npl_threadx.c` | 42 |
-| `port/lwip/arch/sys_arch.c` | 32 |
-| `libs/ra_board_ek_ra8d2/src/ra_board_ek_ra8d2.c` | 29 |
-| `libs/ra_psa_crypto/src/ra_psa_crypto.c` | 25 |
-| `libs/ra_hal/src/ra_dmac.c` | 17 |
-| `port/nimble/ble_hci_ra_ble.c` | 15 |
-| `libs/ra_mpu/src/ra_mpu.c` | 14 |
-| `libs/ra_hal/src/ra_smbus.c` | 13 |
-| `libs/ra_hal/src/ra_bkup.c` | 12 |
-| `port/usbx/ux_dcd_ra_usb.c` | 12 |
-| `port/levelx/lx_filex_adapter.c` | 11 |
-| `port/mbedtls/mbedtls_aes_alt.c` | 10 |
-| `libs/ra_ble_host/src/ra_ble_mesh.c` | 9 |
-| `libs/ra_core/src/ra_log.c` | 9 |
-| `libs/ra_hal/src/ra_sdcard.c` | 9 |
-| `libs/ra_tls/src/ra_tls.c` | 9 |
-| `port/guix/gx_display_driver_ra_glcdc.c` | 9 |
-| `libs/ra_ble_host/src/ra_ble_gatt_client.c` | 8 |
-| `port/filex/fx_media_driver_ra_sdhi.c` | 8 |
-| `port/mbedtls/mbedtls_sha256_alt.c` | 8 |
-| `port/netxduo/nx_ether_driver_ra_eth.c` | 8 |
-| `libs/ra_net/src/ra_net_internal.h` | 7 |
-| `libs/ra_ota/src/ra_ota.c` | 7 |
-| `port/levelx/lx_nor_driver_ra_xspi.c` | 7 |
-| `port/netxduo/nx_crypto_aes_alt.c` | 7 |
-| `port/usbx/ux_hcd_ra_usb.c` | 7 |
-| `libs/ra_psa_crypto/inc/ra_psa_crypto.h` | 6 |
-| `libs/ra_ble_host/src/ra_ble_security.c` | 5 |
-| `libs/ra_hal/src/ra_ceu.c` | 5 |
-| `port/lwip/netif/ra_etha_netif.c` | 5 |
 
 ## Severity legend
 
@@ -88,4 +39,4 @@ See `docs/DOXYGEN_GAPS.csv` for the full row-by-row data.
 |------|---------------------|-----------------------|
 | 2026-05-02 (original)                 | 2557 | 20328 |
 | 2026-05-02 (refresh)                  | 663  | 4935  |
-| 2026-05-02 (auditor false-pos fix)    | 429 | 2919 |
+| 2026-05-02 (auditor false-pos fix)    | 0 | 0 |

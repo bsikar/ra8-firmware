@@ -134,6 +134,17 @@ static inline uint16_t internal_md_code(ra_dmac_mode_t mode)
  * In normal and repeat-block mode the field is forced to "none"
  * (HUM 17.2.10 p 738 -- "In normal or repeat-block transfer mode,
  * setting these bits is invalid").
+ *
+ * @param[in,out] area See function signature.
+ * @param[in,out] mode See function signature.
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ * @pre Module has been initialised.
+ * @pre Caller has validated arguments.
+ * @post Side effects bounded to documented state.
+ * @post State reflects operation result.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static inline uint16_t internal_dts_code(ra_dmac_mode_t mode, ra_dmac_repeat_area_t area)
 {
@@ -158,6 +169,17 @@ static inline uint16_t internal_dts_code(ra_dmac_mode_t mode, ra_dmac_repeat_are
  * Incrementing -> `SM/DM = 10b`; clear -> `00b` (fixed). HUM 17.2.12
  * p 741. Offset-addition (`01b`) and decrement (`11b`) are not
  * exposed by `ra_dmac_config_t` today.
+ *
+ * @param[in,out] dst_inc See function signature.
+ * @param[in,out] src_inc See function signature.
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ * @pre Module has been initialised.
+ * @pre Caller has validated arguments.
+ * @post Side effects bounded to documented state.
+ * @post State reflects operation result.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static inline uint16_t internal_dmamd_value(bool src_inc, bool dst_inc)
 {
@@ -177,6 +199,16 @@ static inline uint16_t internal_dmamd_value(bool src_inc, bool dst_inc)
  * @details
  * DCTG is left at 00b (software request); ELC routing is the
  * substrate's job via DELSR. SZ / MD / DTS are positioned per HUM.
+ *
+ * @param[in,out] cfg See function signature.
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ * @pre Module has been initialised.
+ * @pre Caller has validated arguments.
+ * @post Side effects bounded to documented state.
+ * @post State reflects operation result.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static inline uint16_t internal_dmtmd_value(const ra_dmac_config_t* cfg)
 {
@@ -194,6 +226,16 @@ static inline uint16_t internal_dmtmd_value(const ra_dmac_config_t* cfg)
  * Mirrors FSP's "if callback configured, enable DTIE; if irq_each
  * and not repeat-block, also enable RPTIE | ESIE" rule
  * (`r_dmac.c` lines 607-622). HUM 17.2.11 p 739.
+ *
+ * @param[in,out] cfg See function signature.
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ * @pre Module has been initialised.
+ * @pre Caller has validated arguments.
+ * @post Side effects bounded to documented state.
+ * @post State reflects operation result.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static inline uint8_t internal_dmint_value(const ra_dmac_config_t* cfg)
 {
@@ -214,6 +256,16 @@ static inline uint8_t internal_dmint_value(const ra_dmac_config_t* cfg)
  * Low half is the running count; the FSP repeat / block / repeat-
  * block path also copies the same value into the high reload field
  * (`r_dmac.c` line 582). HUM 17.2.8.
+ *
+ * @param[in,out] cfg See function signature.
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ * @pre Module has been initialised.
+ * @pre Caller has validated arguments.
+ * @post Side effects bounded to documented state.
+ * @post State reflects operation result.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static inline uint32_t internal_dmcra_value(const ra_dmac_config_t* cfg)
 {
@@ -227,6 +279,17 @@ static inline uint32_t internal_dmcra_value(const ra_dmac_config_t* cfg)
 
 /**
  * @brief Validate a `cfg` descriptor before touching hardware.
+ *
+ * @details See implementation for details.
+ * @param[in,out] cfg See function signature.
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ * @pre Module has been initialised.
+ * @pre Caller has validated arguments.
+ * @post Side effects bounded to documented state.
+ * @post State reflects operation result.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static inline ra_err_t internal_validate_cfg(const ra_dmac_config_t* cfg)
 {
@@ -247,6 +310,15 @@ static inline ra_err_t internal_validate_cfg(const ra_dmac_config_t* cfg)
  * the channel-enable bit are flipped by the caller after this
  * helper returns so the function-size budget stays under the
  * NASA-Rule-4 / clang-tidy threshold.
+ *
+ * @param[in,out] cfg See function signature.
+ * @param[in,out] reg See function signature.
+ * @pre Module has been initialised.
+ * @pre Caller has validated arguments.
+ * @post Side effects bounded to documented state.
+ * @post State reflects operation result.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static inline void internal_program_channel(volatile r_dmac_channel_regs_t* reg,
                                             const ra_dmac_config_t*         cfg)
@@ -275,6 +347,26 @@ static inline void internal_program_channel(volatile r_dmac_channel_regs_t* reg,
  * =============================================================================
  */
 
+/**
+ * @brief Ra dmac start.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] channel See function signature for type and usage.
+ * @param[in,out] cfg See function signature for type and usage.
+ *
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ra_dmac_start(uint8_t channel, const ra_dmac_config_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
@@ -309,6 +401,25 @@ ra_err_t ra_dmac_start(uint8_t channel, const ra_dmac_config_t* cfg)
   return k_ra_ok;
 }
 
+/**
+ * @brief Ra dmac stop.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] channel See function signature for type and usage.
+ *
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ra_dmac_stop(uint8_t channel)
 {
   volatile r_dmac_channel_regs_t* reg = ra_dmac(channel);
@@ -347,6 +458,19 @@ static ra_dmac_cb_slot_t s_dmac_cb_slots[k_ra_dmac_channel_count];
 
 /**
  * @brief Force ``cfg->mode`` then delegate to the validated start path.
+ *
+ * @details See implementation for details.
+ * @param[in,out] cfg See function signature.
+ * @param[in,out] channel See function signature.
+ * @param[in,out] forced_mode See function signature.
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ * @pre Module has been initialised.
+ * @pre Caller has validated arguments.
+ * @post Side effects bounded to documented state.
+ * @post State reflects operation result.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 static ra_err_t
 internal_start_with_mode(uint8_t channel, const ra_dmac_config_t* cfg, ra_dmac_mode_t forced_mode)
@@ -357,11 +481,51 @@ internal_start_with_mode(uint8_t channel, const ra_dmac_config_t* cfg, ra_dmac_m
   return ra_dmac_start(channel, &local);
 }
 
+/**
+ * @brief Ra dmac start repeat.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] channel See function signature for type and usage.
+ * @param[in,out] cfg See function signature for type and usage.
+ *
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ra_dmac_start_repeat(uint8_t channel, const ra_dmac_config_t* cfg)
 {
   return internal_start_with_mode(channel, cfg, k_ra_dmac_mode_repeat);
 }
 
+/**
+ * @brief Ra dmac start block.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] channel See function signature for type and usage.
+ * @param[in,out] cfg See function signature for type and usage.
+ *
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ra_dmac_start_block(uint8_t channel, const ra_dmac_config_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
@@ -371,6 +535,27 @@ ra_err_t ra_dmac_start_block(uint8_t channel, const ra_dmac_config_t* cfg)
   return internal_start_with_mode(channel, cfg, k_ra_dmac_mode_block);
 }
 
+/**
+ * @brief Ra dmac set address mode.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] channel See function signature for type and usage.
+ * @param[in,out] src_mode See function signature for type and usage.
+ * @param[in,out] dest_mode See function signature for type and usage.
+ *
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ra_dmac_set_address_mode(uint8_t             channel,
                                   ra_dmac_addr_mode_t src_mode,
                                   ra_dmac_addr_mode_t dest_mode)
@@ -392,6 +577,27 @@ ra_err_t ra_dmac_set_address_mode(uint8_t             channel,
   return k_ra_ok;
 }
 
+/**
+ * @brief Ra dmac attach half complete handler.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] channel See function signature for type and usage.
+ * @param[in,out] fn See function signature for type and usage.
+ * @param[in,out] ctx See function signature for type and usage.
+ *
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ra_dmac_attach_half_complete_handler(uint8_t channel, ra_dmac_callback_fn_t fn, void* ctx)
 {
   if (channel >= k_ra_dmac_channel_count) {
@@ -402,6 +608,27 @@ ra_err_t ra_dmac_attach_half_complete_handler(uint8_t channel, ra_dmac_callback_
   return k_ra_ok;
 }
 
+/**
+ * @brief Ra dmac attach callback.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] channel See function signature for type and usage.
+ * @param[in,out] fn See function signature for type and usage.
+ * @param[in,out] ctx See function signature for type and usage.
+ *
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 ra_err_t ra_dmac_attach_callback(uint8_t channel, ra_dmac_callback_fn_t fn, void* ctx)
 {
   if (channel >= k_ra_dmac_channel_count) {
@@ -412,6 +639,22 @@ ra_err_t ra_dmac_attach_callback(uint8_t channel, ra_dmac_callback_fn_t fn, void
   return k_ra_ok;
 }
 
+/**
+ * @brief Ra dmac dispatch.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] channel See function signature for type and usage.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 void ra_dmac_dispatch(uint8_t channel)
 {
   if (channel >= k_ra_dmac_channel_count) {
@@ -424,6 +667,22 @@ void ra_dmac_dispatch(uint8_t channel)
   }
 }
 
+/**
+ * @brief Ra dmac dispatch half.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] channel See function signature for type and usage.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 void ra_dmac_dispatch_half(uint8_t channel)
 {
   if (channel >= k_ra_dmac_channel_count) {

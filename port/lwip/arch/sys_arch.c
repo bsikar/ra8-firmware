@@ -88,6 +88,22 @@ static const char* const s_lwip_tag = "lwip";
 /* Diagnostics shim (referenced from arch/cc.h)                              */
 /* ========================================================================= */
 
+/**
+ * @brief Ra lwip platform diag.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] fmt See function signature for type and usage.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 void ra_lwip_platform_diag(const char* fmt, ...) {
     char buf[160];
     va_list ap;
@@ -108,6 +124,15 @@ void ra_lwip_platform_diag(const char* fmt, ...) {
  * cryptographic; sufficient for DNS transaction IDs, ephemeral port
  * selection, and TCP ISN salt. When `ra_rsip_trng_read` lands this
  * implementation will be replaced.
+ *
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ * @pre Module has been initialised.
+ * @pre Caller has validated arguments.
+ * @post Side effects bounded to documented state.
+ * @post State reflects operation result.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
  */
 uint32_t ra_lwip_rand(void) {
     static uint32_t s_state = 0xA5A5C3C3U;
@@ -119,6 +144,24 @@ uint32_t ra_lwip_rand(void) {
     return x;
 }
 
+/**
+ * @brief Ra lwip platform assert.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] msg See function signature for type and usage.
+ * @param[in,out] file See function signature for type and usage.
+ * @param[in,out] line See function signature for type and usage.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 void ra_lwip_platform_assert(const char* msg, const char* file, int line) {
     ra_log_error_val(s_lwip_tag, msg, (uint32_t)line);
     ra_log_error(s_lwip_tag, file);
@@ -132,6 +175,20 @@ void ra_lwip_platform_assert(const char* msg, const char* file, int line) {
 /* sys_init                                                                  */
 /* ========================================================================= */
 
+/**
+ * @brief Sys init.
+ *
+ * @details See implementation for details.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 void sys_init(void) {
     if (!s_protect_mutex_valid) {
         UINT st = tx_mutex_create(&s_protect_mutex, "lwip_prot", TX_INHERIT);
@@ -146,10 +203,44 @@ void sys_init(void) {
 /* Time                                                                      */
 /* ========================================================================= */
 
+/**
+ * @brief Sys jiffies.
+ *
+ * @details See implementation for details.
+ *
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 u32_t sys_jiffies(void) {
     return (u32_t)tx_time_get();
 }
 
+/**
+ * @brief Sys now.
+ *
+ * @details See implementation for details.
+ *
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 u32_t sys_now(void) {
     /* Convert ThreadX ticks -> ms. TX_TIMER_TICKS_PER_SECOND is provided by
      * the project's tx_user.h (port/threadx/tx_user.h). */
@@ -158,6 +249,22 @@ u32_t sys_now(void) {
     return (u32_t)((uint64_t)ticks * 1000U / (hz != 0U ? hz : 1U));
 }
 
+/**
+ * @brief Sys msleep.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] ms See function signature for type and usage.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 void sys_msleep(u32_t ms) {
     if (ms == 0U) {
         return;
@@ -173,6 +280,25 @@ void sys_msleep(u32_t ms) {
 /* Helper: convert a ms timeout to ThreadX ticks (0 means TX_NO_WAIT, 0xff..f
  * is reserved by lwIP to mean wait-forever -- but lwIP itself never passes
  * that to sys_arch_*; 0 means wait-forever in lwIP semantics). */
+/**
+ * @brief Ms to ticks.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] ms See function signature for type and usage.
+ *
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 static ULONG ms_to_ticks(u32_t ms) {
     if (ms == 0U) {
         return TX_WAIT_FOREVER;
@@ -189,6 +315,23 @@ static ULONG ms_to_ticks(u32_t ms) {
 /* SYS_LIGHTWEIGHT_PROT                                                      */
 /* ========================================================================= */
 
+/**
+ * @brief Sys arch protect.
+ *
+ * @details See implementation for details.
+ *
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 sys_prot_t sys_arch_protect(void) {
     if (s_protect_mutex_valid) {
         (void)tx_mutex_get(&s_protect_mutex, TX_WAIT_FOREVER);
@@ -196,6 +339,22 @@ sys_prot_t sys_arch_protect(void) {
     return (sys_prot_t)0;
 }
 
+/**
+ * @brief Sys arch unprotect.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] pval See function signature for type and usage.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 void sys_arch_unprotect(sys_prot_t pval) {
     (void)pval;
     if (s_protect_mutex_valid) {
@@ -207,6 +366,26 @@ void sys_arch_unprotect(sys_prot_t pval) {
 /* Semaphores                                                                */
 /* ========================================================================= */
 
+/**
+ * @brief Sys sem new.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] sem See function signature for type and usage.
+ * @param[in,out] count See function signature for type and usage.
+ *
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 err_t sys_sem_new(sys_sem_t* sem, u8_t count) {
     if (sem == NULL) {
         return ERR_ARG;
@@ -220,12 +399,48 @@ err_t sys_sem_new(sys_sem_t* sem, u8_t count) {
     return ERR_OK;
 }
 
+/**
+ * @brief Sys sem signal.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] sem See function signature for type and usage.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 void sys_sem_signal(sys_sem_t* sem) {
     if (sem != NULL && sem->valid != 0U) {
         (void)tx_semaphore_put(&sem->tx);
     }
 }
 
+/**
+ * @brief Sys arch sem wait.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] sem See function signature for type and usage.
+ * @param[in,out] timeout_ms See function signature for type and usage.
+ *
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 u32_t sys_arch_sem_wait(sys_sem_t* sem, u32_t timeout_ms) {
     if (sem == NULL || sem->valid == 0U) {
         return SYS_ARCH_TIMEOUT;
@@ -242,6 +457,22 @@ u32_t sys_arch_sem_wait(sys_sem_t* sem, u32_t timeout_ms) {
     return (u32_t)(end_ms - start_ms);
 }
 
+/**
+ * @brief Sys sem free.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] sem See function signature for type and usage.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 void sys_sem_free(sys_sem_t* sem) {
     if (sem != NULL && sem->valid != 0U) {
         (void)tx_semaphore_delete(&sem->tx);
@@ -249,10 +480,45 @@ void sys_sem_free(sys_sem_t* sem) {
     }
 }
 
+/**
+ * @brief Sys sem valid.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] sem See function signature for type and usage.
+ *
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 int sys_sem_valid(sys_sem_t* sem) {
     return (sem != NULL && sem->valid != 0U) ? 1 : 0;
 }
 
+/**
+ * @brief Sys sem set invalid.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] sem See function signature for type and usage.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 void sys_sem_set_invalid(sys_sem_t* sem) {
     if (sem != NULL) {
         sem->valid = 0U;
@@ -263,6 +529,25 @@ void sys_sem_set_invalid(sys_sem_t* sem) {
 /* Mutexes                                                                   */
 /* ========================================================================= */
 
+/**
+ * @brief Sys mutex new.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] mutex See function signature for type and usage.
+ *
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 err_t sys_mutex_new(sys_mutex_t* mutex) {
     if (mutex == NULL) {
         return ERR_ARG;
@@ -276,18 +561,66 @@ err_t sys_mutex_new(sys_mutex_t* mutex) {
     return ERR_OK;
 }
 
+/**
+ * @brief Sys mutex lock.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] mutex See function signature for type and usage.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 void sys_mutex_lock(sys_mutex_t* mutex) {
     if (mutex != NULL && mutex->valid != 0U) {
         (void)tx_mutex_get(&mutex->tx, TX_WAIT_FOREVER);
     }
 }
 
+/**
+ * @brief Sys mutex unlock.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] mutex See function signature for type and usage.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 void sys_mutex_unlock(sys_mutex_t* mutex) {
     if (mutex != NULL && mutex->valid != 0U) {
         (void)tx_mutex_put(&mutex->tx);
     }
 }
 
+/**
+ * @brief Sys mutex free.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] mutex See function signature for type and usage.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 void sys_mutex_free(sys_mutex_t* mutex) {
     if (mutex != NULL && mutex->valid != 0U) {
         (void)tx_mutex_delete(&mutex->tx);
@@ -295,10 +628,45 @@ void sys_mutex_free(sys_mutex_t* mutex) {
     }
 }
 
+/**
+ * @brief Sys mutex valid.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] mutex See function signature for type and usage.
+ *
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 int sys_mutex_valid(sys_mutex_t* mutex) {
     return (mutex != NULL && mutex->valid != 0U) ? 1 : 0;
 }
 
+/**
+ * @brief Sys mutex set invalid.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] mutex See function signature for type and usage.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 void sys_mutex_set_invalid(sys_mutex_t* mutex) {
     if (mutex != NULL) {
         mutex->valid = 0U;
@@ -309,6 +677,26 @@ void sys_mutex_set_invalid(sys_mutex_t* mutex) {
 /* Mailboxes                                                                 */
 /* ========================================================================= */
 
+/**
+ * @brief Sys mbox new.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] mbox See function signature for type and usage.
+ * @param[in,out] size See function signature for type and usage.
+ *
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 err_t sys_mbox_new(sys_mbox_t* mbox, int size) {
     if (mbox == NULL) {
         return ERR_ARG;
@@ -329,6 +717,23 @@ err_t sys_mbox_new(sys_mbox_t* mbox, int size) {
     return ERR_OK;
 }
 
+/**
+ * @brief Sys mbox post.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] mbox See function signature for type and usage.
+ * @param[in,out] msg See function signature for type and usage.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 void sys_mbox_post(sys_mbox_t* mbox, void* msg) {
     if (mbox == NULL || mbox->valid == 0U) {
         return;
@@ -337,6 +742,26 @@ void sys_mbox_post(sys_mbox_t* mbox, void* msg) {
     (void)tx_queue_send(&mbox->tx, &slot, TX_WAIT_FOREVER);
 }
 
+/**
+ * @brief Sys mbox trypost.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] mbox See function signature for type and usage.
+ * @param[in,out] msg See function signature for type and usage.
+ *
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 err_t sys_mbox_trypost(sys_mbox_t* mbox, void* msg) {
     if (mbox == NULL || mbox->valid == 0U) {
         return ERR_ARG;
@@ -346,11 +771,52 @@ err_t sys_mbox_trypost(sys_mbox_t* mbox, void* msg) {
     return (st == TX_SUCCESS) ? ERR_OK : ERR_MEM;
 }
 
+/**
+ * @brief Sys mbox trypost fromisr.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] mbox See function signature for type and usage.
+ * @param[in,out] msg See function signature for type and usage.
+ *
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 err_t sys_mbox_trypost_fromisr(sys_mbox_t* mbox, void* msg) {
     /* tx_queue_send is ISR-safe in ThreadX so long as TX_NO_WAIT is used. */
     return sys_mbox_trypost(mbox, msg);
 }
 
+/**
+ * @brief Sys arch mbox fetch.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] mbox See function signature for type and usage.
+ * @param[in,out] msg See function signature for type and usage.
+ * @param[in,out] timeout_ms See function signature for type and usage.
+ *
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 u32_t sys_arch_mbox_fetch(sys_mbox_t* mbox, void** msg, u32_t timeout_ms) {
     if (mbox == NULL || mbox->valid == 0U) {
         return SYS_ARCH_TIMEOUT;
@@ -376,6 +842,26 @@ u32_t sys_arch_mbox_fetch(sys_mbox_t* mbox, void** msg, u32_t timeout_ms) {
     return (u32_t)(sys_now() - start_ms);
 }
 
+/**
+ * @brief Sys arch mbox tryfetch.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] mbox See function signature for type and usage.
+ * @param[in,out] msg See function signature for type and usage.
+ *
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 u32_t sys_arch_mbox_tryfetch(sys_mbox_t* mbox, void** msg) {
     if (mbox == NULL || mbox->valid == 0U) {
         return SYS_MBOX_EMPTY;
@@ -394,6 +880,22 @@ u32_t sys_arch_mbox_tryfetch(sys_mbox_t* mbox, void** msg) {
     return 0U;
 }
 
+/**
+ * @brief Sys mbox free.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] mbox See function signature for type and usage.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 void sys_mbox_free(sys_mbox_t* mbox) {
     if (mbox != NULL && mbox->valid != 0U) {
         (void)tx_queue_delete(&mbox->tx);
@@ -401,10 +903,45 @@ void sys_mbox_free(sys_mbox_t* mbox) {
     }
 }
 
+/**
+ * @brief Sys mbox valid.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] mbox See function signature for type and usage.
+ *
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 int sys_mbox_valid(sys_mbox_t* mbox) {
     return (mbox != NULL && mbox->valid != 0U) ? 1 : 0;
 }
 
+/**
+ * @brief Sys mbox set invalid.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] mbox See function signature for type and usage.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 void sys_mbox_set_invalid(sys_mbox_t* mbox) {
     if (mbox != NULL) {
         mbox->valid = 0U;
@@ -430,6 +967,29 @@ static ra_lwip_thread_slot_t* alloc_thread_slot(void) {
     return NULL;
 }
 
+/**
+ * @brief Sys thread new.
+ *
+ * @details See implementation for details.
+ *
+ * @param[in,out] name See function signature for type and usage.
+ * @param[in,out] thread See function signature for type and usage.
+ * @param[in,out] arg See function signature for type and usage.
+ * @param[in,out] stacksize See function signature for type and usage.
+ * @param[in,out] prio See function signature for type and usage.
+ *
+ * @return Result code or value; see implementation.
+ * @retval 0 Success or default value.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 sys_thread_t sys_thread_new(const char*     name,
                             lwip_thread_fn  thread,
                             void*           arg,

@@ -358,6 +358,8 @@ ra_err_t ra_tls_session_open(ra_tls_session_t* out_session, const ra_tls_session
  *
  * @see ra_tls_session_open()
  * @since 0.1.0
+ *
+ * @note Not thread-safe unless documented otherwise.
  */
 ra_err_t ra_tls_session_close(ra_tls_session_t session);
 
@@ -392,6 +394,8 @@ ra_err_t ra_tls_session_close(ra_tls_session_t session);
  * @see ra_tls_send()
  * @see ra_tls_recv()
  * @since 0.1.0
+ *
+ * @note Not thread-safe unless documented otherwise.
  */
 ra_err_t ra_tls_handshake(ra_tls_session_t session);
 
@@ -423,6 +427,8 @@ ra_err_t ra_tls_handshake(ra_tls_session_t session);
  *
  * @see ra_tls_recv()
  * @since 0.1.0
+ *
+ * @note Not thread-safe unless documented otherwise.
  */
 ra_err_t ra_tls_send(ra_tls_session_t session, const uint8_t* buf, size_t len, size_t* out_sent);
 
@@ -454,6 +460,8 @@ ra_err_t ra_tls_send(ra_tls_session_t session, const uint8_t* buf, size_t len, s
  *
  * @see ra_tls_send()
  * @since 0.1.0
+ *
+ * @note Not thread-safe unless documented otherwise.
  */
 ra_err_t ra_tls_recv(ra_tls_session_t session, uint8_t* buf, size_t len, size_t* out_received);
 

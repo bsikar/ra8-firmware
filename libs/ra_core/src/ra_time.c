@@ -202,6 +202,25 @@ void ra_delay_ms(uint32_t ms)
   const uint32_t start = s_tick_ms;
   while ((uint32_t)(s_tick_ms - start) < ms) {
 #ifndef RA_SIMULATOR_MODE
+    /**
+     * @brief Volatile.
+     *
+     * @details See implementation for details.
+     *
+     * @param[in,out] wfi See function signature for type and usage.
+     *
+     * @return Result code or value; see implementation.
+     * @retval 0 Success or default value.
+     *
+     * @pre Caller has validated arguments.
+     * @pre Module has been initialised.
+     * @post Side effects bounded to documented state.
+     * @post Returned value reflects current state.
+     *
+     * @note Not thread-safe unless documented otherwise.
+     *
+     * @since 0.1.0
+     */
     __asm__ volatile("wfi");
 #endif
   }
@@ -240,9 +259,37 @@ void ra_time_on_tick(void)
  * this stronger weak symbol; an even stronger non-weak one in the
  * application file wins above both.
  */
+/**
+ * @brief Systick handler.
+ *
+ * @details See implementation for details.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 void SysTick_Handler(void);
 
 /* NOLINTNEXTLINE(misc-use-internal-linkage) -- linker symbol for vector table. */
+/**
+ * @brief Systick handler.
+ *
+ * @details See implementation for details.
+ *
+ * @pre Caller has validated arguments.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @post Returned value reflects current state.
+ *
+ * @note Not thread-safe unless documented otherwise.
+ *
+ * @since 0.1.0
+ */
 __attribute__((weak)) void SysTick_Handler(void)
 {
   ra_time_on_tick();

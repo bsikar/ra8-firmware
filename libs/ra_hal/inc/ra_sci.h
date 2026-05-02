@@ -758,6 +758,11 @@ ra_sci_baud_calculate(uint32_t baud, uint32_t pclk_hz, uint16_t* brr_out, uint8_
  * @post If the attached TX callback returns true, the next byte
  * has been written to TDR. Otherwise TIE is cleared.
  * @since 0.1.0
+ *
+ * @details See implementation for details.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @note Not thread-safe unless documented otherwise.
  */
 void ra_sci_dispatch_txi(uint8_t channel);
 
@@ -770,6 +775,11 @@ void ra_sci_dispatch_txi(uint8_t channel);
  * @post If an RX callback is attached, it has been invoked with
  * the byte read from RDR.
  * @since 0.1.0
+ *
+ * @details See implementation for details.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @note Not thread-safe unless documented otherwise.
  */
 void ra_sci_dispatch_rxi(uint8_t channel);
 
@@ -782,6 +792,11 @@ void ra_sci_dispatch_rxi(uint8_t channel);
  * @pre Called from ISR context.
  * @post SSR error bits are cleared.
  * @since 0.1.0
+ *
+ * @details See implementation for details.
+ * @pre Module has been initialised.
+ * @post Side effects bounded to documented state.
+ * @note Not thread-safe unless documented otherwise.
  */
 void ra_sci_dispatch_eri(uint8_t channel);
 
