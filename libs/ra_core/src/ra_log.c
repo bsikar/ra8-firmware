@@ -44,7 +44,20 @@ typedef enum : uintptr_t {
 
 /**
  * @brief Get the ITM stimulus-port-0 register.
+ *
+ * @details Trivial address-cast helper. Always inlined.
+ *
  * @return Volatile pointer to the 32-bit stimulus FIFO.
+ * @retval (volatile uint32_t*)k_ra_itm_stim_base
+ *
+ * @pre None.
+ * @pre Underlying MMIO is mapped (always true on Cortex-M85).
+ * @post No state modified.
+ * @post Returned pointer remains valid for the program lifetime.
+ *
+ * @note Trivially thread-safe.
+ *
+ * @since 0.1.0
  */
 static inline volatile uint32_t* internal_itm_stim0(void)
 {
@@ -53,7 +66,20 @@ static inline volatile uint32_t* internal_itm_stim0(void)
 
 /**
  * @brief Get the ITM Trace Control Register.
+ *
+ * @details Trivial address-cast helper for the ITM TCR.
+ *
  * @return Volatile pointer to TCR.
+ * @retval (volatile uint32_t*)k_ra_itm_tcr_addr
+ *
+ * @pre None.
+ * @pre Underlying MMIO is mapped.
+ * @post No state modified.
+ * @post Returned pointer remains valid for the program lifetime.
+ *
+ * @note Trivially thread-safe.
+ *
+ * @since 0.1.0
  */
 static inline volatile uint32_t* internal_itm_tcr(void)
 {
@@ -62,7 +88,20 @@ static inline volatile uint32_t* internal_itm_tcr(void)
 
 /**
  * @brief Get the ITM Trace Enable Register.
+ *
+ * @details Trivial address-cast helper for the ITM TENR.
+ *
  * @return Volatile pointer to TENR.
+ * @retval (volatile uint32_t*)k_ra_itm_tenr_addr
+ *
+ * @pre None.
+ * @pre Underlying MMIO is mapped.
+ * @post No state modified.
+ * @post Returned pointer remains valid for the program lifetime.
+ *
+ * @note Trivially thread-safe.
+ *
+ * @since 0.1.0
  */
 static inline volatile uint32_t* internal_itm_tenr(void)
 {
@@ -71,16 +110,25 @@ static inline volatile uint32_t* internal_itm_tenr(void)
 
 /**
  * @brief Check whether ITM port 0 is enabled and ready to accept bytes.
- * @return `true` if enabled and not full, `false` otherwise.
  *
  * @details
  * Reads TCR, TENR, and the STIM0 FIFO register directly. On the
  * target these are the real Cortex-M85 ITM registers. On the
  * `RA_SIMULATOR_MODE` host test build the same virtual addresses are
- * backed by anonymous RAM via `ra_sim_mmap.c`, so the same logic
- * produces a well-defined answer: the log backend stays a no-op until
- * a test pre-seeds the three registers, at which point it will walk
- * the full emit path.
+ * backed by anonymous RAM via `ra_sim_mmap.c`.
+ *
+ * @return `true` if enabled and not full, `false` otherwise.
+ * @retval true   ITMENA, port-0 enable, and FIFO-ready bits all set.
+ * @retval false  Any of the above is clear.
+ *
+ * @pre None -- pure read of architectural registers.
+ * @pre On the simulator, `ra_sim_mmap.c` has mapped the SCS region.
+ * @post No state is modified.
+ * @post Result reflects the registers at the moment of the call.
+ *
+ * @note Thread-safe (read-only). Always inlined.
+ *
+ * @since 0.1.0
  */
 static inline bool internal_itm_ready(void)
 {
@@ -98,7 +146,24 @@ static inline bool internal_itm_ready(void)
 
 /**
  * @brief Blocking-but-bounded write of a single byte to ITM port 0.
+ *
+ * @details Polls the FIFO-ready bit up to `k_ra_itm_poll_limit` times,
+ *          then either writes the byte or gives up silently.
+ *
  * @param[in] byte Character to emit.
+ *
+ * @return None.
+ * @retval None
+ *
+ * @pre None -- caller does not need to pre-check ready state.
+ * @pre Underlying MMIO is mapped.
+ * @post Either the byte has been pushed into the FIFO or the poll
+ *       budget has been exhausted (drop).
+ * @post No other state modified.
+ *
+ * @note Always inlined. Thread-safety is a backend concern.
+ *
+ * @since 0.1.0
  */
 static inline void internal_itm_putc(uint8_t byte)
 {
@@ -119,7 +184,22 @@ static inline void internal_itm_putc(uint8_t byte)
 
 /**
  * @brief Emit a NUL-terminated string over ITM port 0.
+ *
+ * @details Walks `s` and forwards each byte through `internal_itm_putc`.
+ *
  * @param[in] s String to emit (must be non-NULL).
+ *
+ * @return None.
+ * @retval None
+ *
+ * @pre `s` is non-NULL and NUL-terminated.
+ * @pre Backend FIFO is reachable -- otherwise bytes are dropped.
+ * @post All bytes up to (excluding) the NUL have been pushed (or dropped).
+ * @post No internal state modified.
+ *
+ * @note Always inlined. Not thread-safe across multiple writers.
+ *
+ * @since 0.1.0
  */
 static inline void internal_itm_puts(const char* s)
 {
@@ -130,7 +210,23 @@ static inline void internal_itm_puts(const char* s)
 
 /**
  * @brief Emit an unsigned decimal integer over ITM port 0.
+ *
+ * @details Hand-rolled itoa for `uint32_t`. Avoids `snprintf` (which
+ *          would drag in vararg + nano stdio).
+ *
  * @param[in] value Value to emit.
+ *
+ * @return None.
+ * @retval None
+ *
+ * @pre Underlying MMIO is reachable -- otherwise digits are dropped.
+ * @pre Caller has already emitted any prefix it wants.
+ * @post Decimal digits of `value` (MSB-first) have been pushed.
+ * @post No state modified.
+ *
+ * @note Always inlined. Bounded loop, NASA Rule 2 compliant.
+ *
+ * @since 0.1.0
  */
 typedef enum : uint8_t {
   k_ra_u32_max_digits = 10U, /**< Max decimal digits in a uint32_t. */
@@ -158,7 +254,24 @@ static inline void internal_itm_put_u32(uint32_t value)
 
 /**
  * @brief Emit a signed decimal integer over ITM port 0.
+ *
+ * @details Emits a leading `-` for negative values then forwards to
+ *          `internal_itm_put_u32`. Negation goes through `int64_t` to
+ *          avoid signed-overflow UB at `INT32_MIN`.
+ *
  * @param[in] value Value to emit.
+ *
+ * @return None.
+ * @retval None
+ *
+ * @pre Underlying MMIO is reachable -- otherwise dropped.
+ * @pre Caller has already emitted any prefix it wants.
+ * @post Sign + decimal digits have been pushed.
+ * @post No state modified.
+ *
+ * @note Always inlined.
+ *
+ * @since 0.1.0
  */
 static inline void internal_itm_put_i32(int32_t value)
 {
@@ -176,6 +289,24 @@ static inline void internal_itm_put_i32(int32_t value)
  * =============================================================================
  */
 
+/**
+ * @brief Default log backend init -- no-op for the ITM sink.
+ *
+ * @details ITM is enabled by the debugger when it attaches; the
+ *          firmware does not need to programme any control registers.
+ *
+ * @return None.
+ * @retval None
+ *
+ * @pre Called exactly once during early boot.
+ * @pre Build either has a debugger attached or is the simulator host.
+ * @post Subsequent log calls follow the ITM emit path.
+ * @post No state modified -- the function is intentionally empty.
+ *
+ * @note Thread-safety irrelevant -- one-shot init only.
+ *
+ * @since 0.1.0
+ */
 void ra_log_init(void)
 {
   /* ITM is set up by the debugger when it attaches. Nothing to do here
@@ -185,9 +316,25 @@ void ra_log_init(void)
 
 /**
  * @brief Common tagged-line emit helper.
- * @param[in] level String like `"ERROR"` or `"INFO"`.
- * @param[in] tag   Component tag.
- * @param[in] msg   Free-form message.
+ *
+ * @details Writes `[tag] level: msg\r\n`. Bails out early if the ITM
+ *          backend is not ready.
+ *
+ * @param[in] level String like `"ERROR"` or `"INFO"`. Must be non-NULL.
+ * @param[in] tag   Component tag. Must be non-NULL.
+ * @param[in] msg   Free-form message. Must be non-NULL.
+ *
+ * @return None.
+ * @retval None
+ *
+ * @pre All three string parameters are non-NULL and NUL-terminated.
+ * @pre `ra_log_init()` has run (otherwise dropped).
+ * @post One log line is emitted (or dropped).
+ * @post No internal state modified.
+ *
+ * @note Thread-safety inherited from the backend.
+ *
+ * @since 0.1.0
  */
 static void internal_emit_line(const char* level, const char* tag, const char* msg)
 {
@@ -208,6 +355,25 @@ static void internal_emit_line(const char* level, const char* tag, const char* m
 
 /**
  * @brief Common tagged-line-with-value emit helper (unsigned).
+ *
+ * @details Writes `[tag] level: msg=<decimal>\r\n`.
+ *
+ * @param[in] level String like `"ERROR"`. Must be non-NULL.
+ * @param[in] tag   Component tag. Must be non-NULL.
+ * @param[in] msg   Free-form message. Must be non-NULL.
+ * @param[in] value Unsigned numeric companion value.
+ *
+ * @return None.
+ * @retval None
+ *
+ * @pre All string parameters are non-NULL and NUL-terminated.
+ * @pre `ra_log_init()` has run (otherwise dropped).
+ * @post One log line is emitted (or dropped).
+ * @post No internal state modified.
+ *
+ * @note Thread-safety inherited from the backend.
+ *
+ * @since 0.1.0
  */
 static void
 internal_emit_line_u(const char* level, const char* tag, const char* msg, uint32_t value)
@@ -231,6 +397,25 @@ internal_emit_line_u(const char* level, const char* tag, const char* msg, uint32
 
 /**
  * @brief Common tagged-line-with-value emit helper (signed).
+ *
+ * @details Writes `[tag] level: msg=<signed-decimal>\r\n`.
+ *
+ * @param[in] level String like `"DEBUG"`. Must be non-NULL.
+ * @param[in] tag   Component tag. Must be non-NULL.
+ * @param[in] msg   Free-form message. Must be non-NULL.
+ * @param[in] value Signed numeric companion value.
+ *
+ * @return None.
+ * @retval None
+ *
+ * @pre All string parameters are non-NULL and NUL-terminated.
+ * @pre `ra_log_init()` has run (otherwise dropped).
+ * @post One log line is emitted (or dropped).
+ * @post No internal state modified.
+ *
+ * @note Thread-safety inherited from the backend.
+ *
+ * @since 0.1.0
  */
 static void internal_emit_line_i(const char* level, const char* tag, const char* msg, int32_t value)
 {
@@ -407,6 +592,28 @@ static const ra_err_name_entry_t s_ra_err_names[] = {
 static const uint32_t k_ra_err_names_count =
   (uint32_t)(sizeof(s_ra_err_names) / sizeof(s_ra_err_names[0]));
 
+/**
+ * @brief Implementation of `ra_err_to_str()` -- linear-scan lookup.
+ *
+ * @details Walks `s_ra_err_names` and returns the matching `name`.
+ *          Returns the literal `"unknown"` if no entry matches.
+ *
+ * @param[in] err Error code to look up.
+ *
+ * @return Pointer to a static C string. Never NULL.
+ * @retval "ok"        Returned for `k_ra_ok`.
+ * @retval "<name>"    Returned for any known `k_ra_err_*` code.
+ * @retval "unknown"   Returned for any code not in the table.
+ *
+ * @pre None -- pure lookup.
+ * @pre Module-level table is populated at compile time.
+ * @post No state modified.
+ * @post Returned pointer remains valid for the program lifetime.
+ *
+ * @note Thread-safe (read-only walk of `.rodata`).
+ *
+ * @since 0.1.0
+ */
 const char* ra_err_to_str(ra_err_t err)
 {
   for (uint32_t i = 0; i < k_ra_err_names_count; i++) {
