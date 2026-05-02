@@ -121,8 +121,21 @@ typedef enum : uint16_t {
   k_ra_elc_event_icu_irq12 = 0x00DU, /**< External pin interrupt 12 (HUM Ch 14 ELC event 0x00D). */
   k_ra_elc_event_icu_irq13 = 0x00EU, /**< External pin interrupt 13 (HUM Ch 14 ELC event 0x00E). */
   k_ra_elc_event_icu_irq15 = 0x010U, /**< External pin interrupt 15. */
-  k_ra_elc_event_can0_mram_eri = 0x338U, /**< CANFD0 MRAM ECC error (HUM Ch 19 Table 19.3). */
-  k_ra_elc_event_can1_mram_eri = 0x339U, /**< CANFD1 MRAM ECC error (HUM Ch 19 Table 19.3). */
+  k_ra_elc_event_can0_mram_eri    = 0x338U, /**< CANFD0 MRAM ECC error (HUM Ch 19 Table 19.3). */
+  k_ra_elc_event_can1_mram_eri    = 0x339U, /**< CANFD1 MRAM ECC error (HUM Ch 19 Table 19.3). */
+  k_ra_elc_event_usbfs_int        = 0x09AU, /**< USBFS controller interrupt
+                                              (HUM Ch 19 Table 19.3, Ch 36).
+                                              FSP `bsp_elc.h` ELC_EVENT_USBFS_INT. */
+  k_ra_elc_event_usbfs_resume     = 0x09BU, /**< USBFS resume from suspend
+                                              (HUM Ch 19 Table 19.3, Ch 36).
+                                              FSP `bsp_elc.h` ELC_EVENT_USBFS_RESUME. */
+  k_ra_elc_event_usbhs_int_resume = 0x2C3U, /**< USBHS combined int + resume
+                                                 (HUM Ch 19 Table 19.3, Ch 37).
+                                                 FSP `bsp_elc.h`
+                                                 ELC_EVENT_USBHS_USB_INT_RESUME.
+                                                 RA8D2 collapses the separate
+                                                 USBR event from older RA parts
+                                                 into this single line. */
 } ra_elc_event_t;
 
 #ifdef __cplusplus
