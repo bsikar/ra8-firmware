@@ -467,6 +467,7 @@ typedef enum : uint8_t {
  * @retval k_ra_ok / k_ra_err_invalid_arg / k_ra_err_gpio_conflict
  * @pre HAL pin validator initialised.
  * @pre SW4-4 ON (Arduino vs Octo-SPI selection).
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_board_arduino_pin_init(ra_board_arduino_pin_t  pin,
                                                  ra_board_arduino_mode_t mode);
@@ -719,7 +720,8 @@ typedef enum : uint16_t {
  */
 typedef enum : uintptr_t {
   k_ra_board_xspi_flash_base = 0x80000000UL, /**< 64 MB IS25LX512M (chip HUM memory map). */
-  k_ra_board_sdram_base      = 0x90000000UL, /**< 64 MB IS42S32160F (chip HUM memory map). */
+  k_ra_board_sdram_base =
+    0x68000000UL, /**< 64 MB IS42S32160F (per linker scripts + ra_sdramc.c). */
 } ra_board_extmem_base_t;
 
 /** @brief Sizes of the off-chip memories, in bytes. */
