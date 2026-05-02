@@ -1,0 +1,74 @@
+/**
+ * @file test_ra_epub_open.c
+ * @brief MC/DC unit tests for libs/ra_epub/src/ra_epub_open.c
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
+ */
+
+#include <stddef.h>
+#include <stdint.h>
+
+#include "ra_epub.h"
+#include "ra_err.h"
+#include "unity_minimal.h"
+
+typedef enum : uint8_t {
+  k_test_epub_dummy_byte = 0x42U,
+} test_epub_byte_t;
+
+typedef enum : size_t {
+  k_test_epub_size_zero    = 0U,
+  k_test_epub_size_nonzero = 16U,
+} test_epub_size_t;
+
+static uint8_t s_blob[16];
+
+/**
+ * @test test_mcdc_epub_open_media_or_book_null
+ *
+ * @par MC/DC:
+ * Decision: ``if (media == NULL || out_book == NULL)``
+ * (2 conditions, libs/ra_epub/src/ra_epub_open.c around line 326)
+ * Per DO-178C 6.4.4.3 N+1 = 3 vectors.
+ */
+static void test_mcdc_epub_open_media_or_book_null(void)
+{
+  TEST_BEGIN("epub_open MC/DC: (media==NULL || out_book==NULL)");
+  ra_epub_book_t            book  = {};
+  const ra_epub_mem_media_t media = {.data = s_blob, .size = (size_t)k_test_epub_size_nonzero};
+  s_blob[0]                       = (uint8_t)k_test_epub_dummy_byte;
+  TEST_ASSERT(ra_epub_open(&media, NULL, &book) != k_ra_err_null_ptr);
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_epub_open(NULL, NULL, &book));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_epub_open(&media, NULL, NULL));
+  TEST_END("epub_open MC/DC: (media==NULL || out_book==NULL)");
+}
+
+/**
+ * @test test_mcdc_epub_open_mem_data_or_size
+ *
+ * @par MC/DC:
+ * Decision: ``if (mem->data == NULL || mem->size == 0U)``
+ * (2 conditions, libs/ra_epub/src/ra_epub_open.c around line 330)
+ * Per DO-178C 6.4.4.3 N+1 = 3 vectors.
+ */
+static void test_mcdc_epub_open_mem_data_or_size(void)
+{
+  TEST_BEGIN("epub_open MC/DC: (mem->data==NULL || mem->size==0)");
+  ra_epub_book_t            book = {};
+  const ra_epub_mem_media_t v1m  = {.data = s_blob, .size = (size_t)k_test_epub_size_nonzero};
+  TEST_ASSERT(ra_epub_open(&v1m, NULL, &book) != k_ra_err_invalid_arg);
+  const ra_epub_mem_media_t v2m = {.data = NULL, .size = (size_t)k_test_epub_size_nonzero};
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_epub_open(&v2m, NULL, &book));
+  const ra_epub_mem_media_t v3m = {.data = s_blob, .size = (size_t)k_test_epub_size_zero};
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_epub_open(&v3m, NULL, &book));
+  TEST_END("epub_open MC/DC: (mem->data==NULL || mem->size==0)");
+}
+
+int32_t main(void)
+{
+  test_mcdc_epub_open_media_or_book_null();
+  test_mcdc_epub_open_mem_data_or_size();
+  (void)fprintf(stderr, "[OK ] test_ra_epub_open.c\n");
+  return 0;
+}

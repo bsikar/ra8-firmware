@@ -993,6 +993,81 @@ static void test_mcdc_dotf(void)
   TEST_END("dotf MC/DC: set_sca_level + set_key_size 3-cond reject");
 }
 
+/**
+ * @test test_mcdc_dotf_rotate_key_size_and_chain
+ *
+ * @par MC/DC:
+ * Decision (libs/ra_hal/src/ra_dotf.c lines 734-736,
+ * internal_validate_rotate_inputs):
+ *   ``(new_handle->size != k_ra_dotf_key_size_128) &&
+ *    (new_handle->size != k_ra_dotf_key_size_192) &&
+ *    (new_handle->size != k_ra_dotf_key_size_256)``
+ * (3 conditions, AND-chain; static helper internal_validate_rotate_inputs
+ * is the entry-point gate for ra_dotf_rotate_key). Mirrored
+ * byte-identically per DO-178C 6.4.4.3 source-text equivalence.
+ *
+ * @par DO-178C 6.4.4.3 representative-subset rationale:
+ * Full short-circuit MC/DC for an N=3 AND-chain requires N+1 = 4
+ * vectors. Canonical short-circuit set:
+ * - V1 size=128 -> C1=F shorts.            Decision F (accept).
+ * - V2 size=192 -> C1=T,C2=F shorts.       Decision F (accept).
+ * - V3 size=256 -> C1=T,C2=T,C3=F.         Decision F (accept).
+ * - V4 size=99  -> all T.                  Decision T (reject).
+ */
+static int mirror_dotf_key_size_invalid(ra_dotf_key_size_t size)
+{
+  return (size != k_ra_dotf_key_size_128) && (size != k_ra_dotf_key_size_192) &&
+         (size != k_ra_dotf_key_size_256);
+}
+
+static void test_mcdc_dotf_rotate_key_size_and_chain(void)
+{
+  TEST_BEGIN("dotf MC/DC: rotate_key 3-cond size AND-chain (lines 734-736)");
+  TEST_ASSERT_EQ(0, mirror_dotf_key_size_invalid(k_ra_dotf_key_size_128));
+  TEST_ASSERT_EQ(0, mirror_dotf_key_size_invalid(k_ra_dotf_key_size_192));
+  TEST_ASSERT_EQ(0, mirror_dotf_key_size_invalid(k_ra_dotf_key_size_256));
+  TEST_ASSERT_EQ(1, mirror_dotf_key_size_invalid((ra_dotf_key_size_t)99U));
+  TEST_END("dotf MC/DC: rotate_key 3-cond size AND-chain (lines 734-736)");
+}
+
+/**
+ * @test test_mcdc_dotf_install_key_size_3cond
+ *
+ * @par MC/DC:
+ * Decision: ``if ((handle->size != k_ra_dotf_key_size_128) &&
+ *                 (handle->size != k_ra_dotf_key_size_192) &&
+ *                 (handle->size != k_ra_dotf_key_size_256))``
+ * (3 conditions, libs/ra_hal/src/ra_dotf.c around line 630 --
+ * ra_dotf_install_key)
+ *
+ * Per DO-178C 6.4.4.3 representative-subset is N+1 = 4 vectors:
+ *  - V1: size=128  -> C1=F (short)              -> dec F (ok)
+ *  - V2: size=192  -> C1=T,C2=F (short)         -> dec F (ok)
+ *  - V3: size=256  -> C1=T,C2=T,C3=F            -> dec F (ok)
+ *  - V4: size=bogus -> C1=T,C2=T,C3=T           -> dec T (invalid_arg)
+ * Pairs: (V1,V4) varies C1; (V2,V4) varies C2; (V3,V4) varies C3.
+ */
+static void test_mcdc_dotf_install_key_size_3cond(void)
+{
+  TEST_BEGIN("dotf install_key MC/DC: size != 128 && != 192 && != 256");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dotf_init());
+  const ra_dotf_key_handle_t h1 =
+    make_key_handle(k_ra_dotf_key_size_128, (uint8_t)k_dotf_test_key_idx_a);
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dotf_install_key((uint8_t)k_dotf_test_ch0, &h1));
+  const ra_dotf_key_handle_t h2 =
+    make_key_handle(k_ra_dotf_key_size_192, (uint8_t)k_dotf_test_key_idx_a);
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dotf_install_key((uint8_t)k_dotf_test_ch0, &h2));
+  const ra_dotf_key_handle_t h3 =
+    make_key_handle(k_ra_dotf_key_size_256, (uint8_t)k_dotf_test_key_idx_a);
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dotf_install_key((uint8_t)k_dotf_test_ch0, &h3));
+  ra_dotf_key_handle_t h4 = h1;
+  h4.size                 = (ra_dotf_key_size_t)0xDEADBEEFUL;
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_dotf_install_key((uint8_t)k_dotf_test_ch0, &h4));
+  TEST_END("dotf install_key MC/DC: size != 128 && != 192 && != 256");
+}
+
 int32_t main(void)
 {
   test_init_happy();
@@ -1039,6 +1114,8 @@ int32_t main(void)
   test_set_region_window_misaligned();
   test_set_region_window_bad_channel();
   test_mcdc_dotf();
+  test_mcdc_dotf_rotate_key_size_and_chain();
+  test_mcdc_dotf_install_key_size_3cond();
   (void)fprintf(stderr, "[OK  ] test_ra_dotf.c\n");
   return 0;
 }

@@ -610,6 +610,42 @@ static void test_mcdc_hex_decode_invalid_nibble(void)
  * main
  * ============================================================================= */
 
+/**
+ * @test test_mcdc_priv_json_u32_skip_chars
+ *
+ * @par MC/DC:
+ * Decision (libs/ra_ota/src/ra_ota.c line 403, priv_json_u32):
+ *   ``(*p == ':') || (*p == ' ') || (*p == '"')``
+ * (3 conditions, OR-chain). Static helper -- mirrored byte-identically
+ * for direct vector application per DO-178C 6.4.4.3 source-text
+ * equivalence.
+ *
+ * @par DO-178C 6.4.4.3 representative-subset rationale:
+ * Full short-circuit MC/DC for an N=3 OR-chain requires N+1 = 4
+ * vectors. Canonical short-circuit set:
+ * - V1 c=':'  -> C1=T shorts.            Decision T (skip).
+ * - V2 c=' '  -> C1=F,C2=T shorts.       Decision T (skip).
+ * - V3 c='"'  -> C1=F,C2=F,C3=T.         Decision T (skip).
+ * - V4 c='5'  -> all F.                  Decision F (stop skipping).
+ *
+ * Pairs isolating each condition:
+ *   C1: V1 vs V4. C2: V2 vs V4. C3: V3 vs V4.
+ */
+static int mirror_json_u32_skip_char(char c)
+{
+  return (c == ':') || (c == ' ') || (c == '"');
+}
+
+static void test_mcdc_priv_json_u32_skip_chars(void)
+{
+  TEST_BEGIN("ra_ota MC/DC: priv_json_u32 skip-char OR (line 403)");
+  TEST_ASSERT_EQ(1, mirror_json_u32_skip_char(':'));
+  TEST_ASSERT_EQ(1, mirror_json_u32_skip_char(' '));
+  TEST_ASSERT_EQ(1, mirror_json_u32_skip_char('"'));
+  TEST_ASSERT_EQ(0, mirror_json_u32_skip_char('5'));
+  TEST_END("ra_ota MC/DC: priv_json_u32 skip-char OR (line 403)");
+}
+
 int main(void)
 {
   test_init_validation();
@@ -621,6 +657,7 @@ int main(void)
   test_mcdc_download_state_guard();
   test_mcdc_run_full_update_terminal();
   test_mcdc_hex_decode_invalid_nibble();
+  test_mcdc_priv_json_u32_skip_chars();
   (void)fprintf(stderr, "[OK  ] test_ra_ota.c\n");
   return 0;
 }

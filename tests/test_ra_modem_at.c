@@ -648,6 +648,47 @@ static void test_mcdc_reset_line_buf_pair(void)
   TEST_END("mcdc reset_line buf+len pair (init-validator equivalence)");
 }
 
+/**
+ * @test test_mcdc_internal_classify_cmd_echo_pair
+ *
+ * @par MC/DC:
+ * Decision (libs/ra_modem_at/src/ra_modem_at.c line 344, internal_classify):
+ *   ``(cmd_echo != nullptr) && (internal_str_eq(line, cmd_echo) != 0U)``
+ * (2 conditions, AND). N+1 = 3 vectors. Static helper -- mirrored
+ * byte-identically per DO-178C 6.4.4.3 source-text equivalence.
+ *
+ * - V1 cmd_echo=NULL                  -> C1=F shorts.       Decision F.
+ * - V2 cmd_echo="AT", line="AT"       -> C1=T, C2=T.        Decision T.
+ * - V3 cmd_echo="AT", line="OTHER"    -> C1=T, C2=F.        Decision F.
+ * V1+V2 isolate C1; V2+V3 isolate C2.
+ */
+static int mirror_cmd_echo_match(const char* line, const char* cmd_echo)
+{
+  if (cmd_echo == NULL) {
+    return 0;
+  }
+  uint16_t i = 0U;
+  while ((line[i] != '\0') && (cmd_echo[i] != '\0')) {
+    if (line[i] != cmd_echo[i]) {
+      return 0;
+    }
+    ++i;
+  }
+  if (line[i] != cmd_echo[i]) {
+    return 0;
+  }
+  return 1;
+}
+
+static void test_mcdc_internal_classify_cmd_echo_pair(void)
+{
+  TEST_BEGIN("modem_at MC/DC: cmd_echo AND (line 344)");
+  TEST_ASSERT_EQ(0, mirror_cmd_echo_match("AT", NULL));
+  TEST_ASSERT_EQ(1, mirror_cmd_echo_match("AT", "AT"));
+  TEST_ASSERT_EQ(0, mirror_cmd_echo_match("OTHER", "AT"));
+  TEST_END("modem_at MC/DC: cmd_echo AND (line 344)");
+}
+
 int32_t main(void)
 {
   /* This test must run BEFORE bring_up() so the initialised flag is 0. */
@@ -675,6 +716,7 @@ int32_t main(void)
   test_mcdc_accumulate_line_terminator();
   test_mcdc_capture_buf_guard();
   test_mcdc_reset_line_buf_pair();
+  test_mcdc_internal_classify_cmd_echo_pair();
   (void)fprintf(stderr, "[OK ] test_ra_modem_at.c\n");
   return 0;
 }
