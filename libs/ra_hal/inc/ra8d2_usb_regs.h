@@ -71,6 +71,7 @@
 extern "C" {
 #endif
 
+#include <stddef.h>
 #include <stdint.h>
 
 /**
@@ -163,6 +164,133 @@ typedef struct {
   volatile uint16_t PIPEPERI;                        /**< +0x06E Selected pipe period.      */
   volatile uint16_t PIPECTR[k_ra_usb_pipectr_count]; /**< +0x070 PIPE1..9 ctrl. */
 } r_usb_regs_t;
+
+/**
+ * @enum ra_usb_offset_t
+ * @brief Byte offsets of the named USB register fields within `r_usb_regs_t`.
+ *
+ * @details Sourced from HUM Ch 36 (USBFS, p 1965) and HUM Ch 37 (USBHS,
+ * p 2059). Both controllers share the same device-mode register layout in
+ * this offset window, so a single set of constants covers both instances.
+ */
+typedef enum : uint16_t {
+  k_ra_usb_off_syscfg    = 0x000U, /**< SYSCFG    : System config.        */
+  k_ra_usb_off_buswait   = 0x002U, /**< BUSWAIT   : CPU bus wait.         */
+  k_ra_usb_off_syssts0   = 0x004U, /**< SYSSTS0   : System status 0.      */
+  k_ra_usb_off_dvstctr0  = 0x008U, /**< DVSTCTR0  : Device state ctrl.    */
+  k_ra_usb_off_cfifo     = 0x014U, /**< CFIFO     : Control FIFO port.    */
+  k_ra_usb_off_d0fifo    = 0x018U, /**< D0FIFO    : DMA FIFO 0 port.      */
+  k_ra_usb_off_d1fifo    = 0x01CU, /**< D1FIFO    : DMA FIFO 1 port.      */
+  k_ra_usb_off_cfifosel  = 0x020U, /**< CFIFOSEL  : Control FIFO select.  */
+  k_ra_usb_off_cfifoctr  = 0x022U, /**< CFIFOCTR  : Control FIFO control. */
+  k_ra_usb_off_d0fifosel = 0x028U, /**< D0FIFOSEL : DMA FIFO 0 select.    */
+  k_ra_usb_off_d0fifoctr = 0x02AU, /**< D0FIFOCTR : DMA FIFO 0 control.   */
+  k_ra_usb_off_d1fifosel = 0x02CU, /**< D1FIFOSEL : DMA FIFO 1 select.    */
+  k_ra_usb_off_d1fifoctr = 0x02EU, /**< D1FIFOCTR : DMA FIFO 1 control.   */
+  k_ra_usb_off_intenb0   = 0x030U, /**< INTENB0   : Interrupt Enable 0.   */
+  k_ra_usb_off_intenb1   = 0x032U, /**< INTENB1   : Interrupt Enable 1.   */
+  k_ra_usb_off_brdyenb   = 0x036U, /**< BRDYENB   : BRDY Enable.          */
+  k_ra_usb_off_nrdyenb   = 0x038U, /**< NRDYENB   : NRDY Enable.          */
+  k_ra_usb_off_bempenb   = 0x03AU, /**< BEMPENB   : BEMP Enable.          */
+  k_ra_usb_off_sofcfg    = 0x03CU, /**< SOFCFG    : SOF Output Config.    */
+  k_ra_usb_off_intsts0   = 0x040U, /**< INTSTS0   : Interrupt Status 0.   */
+  k_ra_usb_off_intsts1   = 0x042U, /**< INTSTS1   : Interrupt Status 1.   */
+  k_ra_usb_off_brdysts   = 0x046U, /**< BRDYSTS   : BRDY Status.          */
+  k_ra_usb_off_nrdysts   = 0x048U, /**< NRDYSTS   : NRDY Status.          */
+  k_ra_usb_off_bempsts   = 0x04AU, /**< BEMPSTS   : BEMP Status.          */
+  k_ra_usb_off_frmnum    = 0x04CU, /**< FRMNUM    : Frame number.         */
+  k_ra_usb_off_usbaddr   = 0x050U, /**< USBADDR   : USB address.          */
+  k_ra_usb_off_usbreq    = 0x054U, /**< USBREQ    : USB request type.     */
+  k_ra_usb_off_usbval    = 0x056U, /**< USBVAL    : USB request wValue.   */
+  k_ra_usb_off_usbindx   = 0x058U, /**< USBINDX   : USB request wIndex.   */
+  k_ra_usb_off_usbleng   = 0x05AU, /**< USBLENG   : USB request wLength.  */
+  k_ra_usb_off_dcpcfg    = 0x05CU, /**< DCPCFG    : DCP configuration.    */
+  k_ra_usb_off_dcpmaxp   = 0x05EU, /**< DCPMAXP   : DCP max packet.       */
+  k_ra_usb_off_dcpctr    = 0x060U, /**< DCPCTR    : DCP control.          */
+  k_ra_usb_off_pipesel   = 0x064U, /**< PIPESEL   : Pipe window select.   */
+  k_ra_usb_off_pipecfg   = 0x068U, /**< PIPECFG   : Selected pipe cfg.    */
+  k_ra_usb_off_pipebuf   = 0x06AU, /**< PIPEBUF   : Selected pipe buf.    */
+  k_ra_usb_off_pipemaxp  = 0x06CU, /**< PIPEMAXP  : Selected pipe maxp.   */
+  k_ra_usb_off_pipeperi  = 0x06EU, /**< PIPEPERI  : Selected pipe period. */
+  k_ra_usb_off_pipectr   = 0x070U, /**< PIPECTR   : PIPE1..9 control.     */
+} ra_usb_offset_t;
+
+/**
+ * @enum ra_usb_size_t
+ * @brief Total byte size of the modelled USB register window.
+ *
+ * @details The device-mode subset ends at PIPECTR[9] (last halfword at
+ * offset 0x080..0x081). HS-only registers past 0x090 (PHYSET, LPCTRL,
+ * LPSTS, BCCTRL, ...) are intentionally not modelled.
+ */
+typedef enum : uint16_t {
+  k_ra_usb_window_bytes = 0x082U, /**< 0x070 + (9 * 2) = 0x082 bytes. */
+} ra_usb_size_t;
+
+/**
+ * @brief Compile-time offset and size insurance for `r_usb_regs_t`.
+ *
+ * @details
+ * Mirrors HUM Ch 36 / Ch 37 byte-for-byte. If any field drifts (a
+ * reserved gap is mis-sized, or a halfword-versus-word width slips),
+ * these assertions fire at compile time before any test runs -- silent
+ * register-bank corruption (writing the wrong USB pipe, or stomping on
+ * the next peripheral) is avoided.
+ *
+ * Both USB FS (HUM Ch 36, p 1965) and USB HS (HUM Ch 37, p 2059) share
+ * the same device-mode register layout in this window, so one set of
+ * offset assertions covers both controller instances.
+ */
+static_assert(sizeof(r_usb_regs_t) == (size_t)k_ra_usb_window_bytes,
+              "r_usb_regs_t window size must be 0x082 bytes (PIPECTR[9] end)");
+
+static_assert(offsetof(r_usb_regs_t, SYSCFG) == (size_t)k_ra_usb_off_syscfg, "SYSCFG offset");
+static_assert(offsetof(r_usb_regs_t, BUSWAIT) == (size_t)k_ra_usb_off_buswait, "BUSWAIT offset");
+static_assert(offsetof(r_usb_regs_t, SYSSTS0) == (size_t)k_ra_usb_off_syssts0, "SYSSTS0 offset");
+static_assert(offsetof(r_usb_regs_t, DVSTCTR0) == (size_t)k_ra_usb_off_dvstctr0, "DVSTCTR0 offset");
+static_assert(offsetof(r_usb_regs_t, CFIFO) == (size_t)k_ra_usb_off_cfifo, "CFIFO offset");
+static_assert(offsetof(r_usb_regs_t, D0FIFO) == (size_t)k_ra_usb_off_d0fifo, "D0FIFO offset");
+static_assert(offsetof(r_usb_regs_t, D1FIFO) == (size_t)k_ra_usb_off_d1fifo, "D1FIFO offset");
+static_assert(offsetof(r_usb_regs_t, CFIFOSEL) == (size_t)k_ra_usb_off_cfifosel, "CFIFOSEL offset");
+static_assert(offsetof(r_usb_regs_t, CFIFOCTR) == (size_t)k_ra_usb_off_cfifoctr, "CFIFOCTR offset");
+static_assert(offsetof(r_usb_regs_t, D0FIFOSEL) == (size_t)k_ra_usb_off_d0fifosel,
+              "D0FIFOSEL offset");
+static_assert(offsetof(r_usb_regs_t, D0FIFOCTR) == (size_t)k_ra_usb_off_d0fifoctr,
+              "D0FIFOCTR offset");
+static_assert(offsetof(r_usb_regs_t, D1FIFOSEL) == (size_t)k_ra_usb_off_d1fifosel,
+              "D1FIFOSEL offset");
+static_assert(offsetof(r_usb_regs_t, D1FIFOCTR) == (size_t)k_ra_usb_off_d1fifoctr,
+              "D1FIFOCTR offset");
+static_assert(offsetof(r_usb_regs_t, INTENB0) == (size_t)k_ra_usb_off_intenb0, "INTENB0 offset");
+static_assert(offsetof(r_usb_regs_t, INTENB1) == (size_t)k_ra_usb_off_intenb1, "INTENB1 offset");
+static_assert(offsetof(r_usb_regs_t, BRDYENB) == (size_t)k_ra_usb_off_brdyenb, "BRDYENB offset");
+static_assert(offsetof(r_usb_regs_t, NRDYENB) == (size_t)k_ra_usb_off_nrdyenb, "NRDYENB offset");
+static_assert(offsetof(r_usb_regs_t, BEMPENB) == (size_t)k_ra_usb_off_bempenb, "BEMPENB offset");
+static_assert(offsetof(r_usb_regs_t, SOFCFG) == (size_t)k_ra_usb_off_sofcfg, "SOFCFG offset");
+static_assert(offsetof(r_usb_regs_t, INTSTS0) == (size_t)k_ra_usb_off_intsts0, "INTSTS0 offset");
+static_assert(offsetof(r_usb_regs_t, INTSTS1) == (size_t)k_ra_usb_off_intsts1, "INTSTS1 offset");
+static_assert(offsetof(r_usb_regs_t, BRDYSTS) == (size_t)k_ra_usb_off_brdysts, "BRDYSTS offset");
+static_assert(offsetof(r_usb_regs_t, NRDYSTS) == (size_t)k_ra_usb_off_nrdysts, "NRDYSTS offset");
+static_assert(offsetof(r_usb_regs_t, BEMPSTS) == (size_t)k_ra_usb_off_bempsts, "BEMPSTS offset");
+static_assert(offsetof(r_usb_regs_t, FRMNUM) == (size_t)k_ra_usb_off_frmnum, "FRMNUM offset");
+static_assert(offsetof(r_usb_regs_t, USBADDR) == (size_t)k_ra_usb_off_usbaddr, "USBADDR offset");
+static_assert(offsetof(r_usb_regs_t, USBREQ) == (size_t)k_ra_usb_off_usbreq, "USBREQ offset");
+static_assert(offsetof(r_usb_regs_t, USBVAL) == (size_t)k_ra_usb_off_usbval, "USBVAL offset");
+static_assert(offsetof(r_usb_regs_t, USBINDX) == (size_t)k_ra_usb_off_usbindx, "USBINDX offset");
+static_assert(offsetof(r_usb_regs_t, USBLENG) == (size_t)k_ra_usb_off_usbleng, "USBLENG offset");
+static_assert(offsetof(r_usb_regs_t, DCPCFG) == (size_t)k_ra_usb_off_dcpcfg, "DCPCFG offset");
+static_assert(offsetof(r_usb_regs_t, DCPMAXP) == (size_t)k_ra_usb_off_dcpmaxp, "DCPMAXP offset");
+static_assert(offsetof(r_usb_regs_t, DCPCTR) == (size_t)k_ra_usb_off_dcpctr, "DCPCTR offset");
+static_assert(offsetof(r_usb_regs_t, PIPESEL) == (size_t)k_ra_usb_off_pipesel, "PIPESEL offset");
+static_assert(offsetof(r_usb_regs_t, PIPECFG) == (size_t)k_ra_usb_off_pipecfg, "PIPECFG offset");
+static_assert(offsetof(r_usb_regs_t, PIPEBUF) == (size_t)k_ra_usb_off_pipebuf, "PIPEBUF offset");
+static_assert(offsetof(r_usb_regs_t, PIPEMAXP) == (size_t)k_ra_usb_off_pipemaxp, "PIPEMAXP offset");
+static_assert(offsetof(r_usb_regs_t, PIPEPERI) == (size_t)k_ra_usb_off_pipeperi, "PIPEPERI offset");
+static_assert(offsetof(r_usb_regs_t, PIPECTR) == (size_t)k_ra_usb_off_pipectr,
+              "PIPECTR base offset");
+static_assert(sizeof(((r_usb_regs_t*)0)->PIPECTR) ==
+                ((size_t)k_ra_usb_pipectr_count * sizeof(uint16_t)),
+              "PIPECTR array spans PIPE1..PIPE9 (9 * 2 bytes)");
 
 /** @brief Get pointer to the USB FS controller register block. */
 static inline volatile r_usb_regs_t* ra_usb_fs(void)
