@@ -135,6 +135,8 @@ typedef enum : uint32_t {
  *
  * @note Internal helper; not exposed in the public header.
  * @since 0.1.0
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
  */
 static ra_err_t internal_wait_bit(ra_rsip_off_t offset, uint32_t mask)
 {
@@ -168,6 +170,8 @@ static ra_err_t internal_wait_bit(ra_rsip_off_t offset, uint32_t mask)
  *
  * @note Internal helper; not exposed in the public header.
  * @since 0.1.0
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
  */
 static ra_err_t internal_run_bist(void)
 {
@@ -199,10 +203,61 @@ static ra_err_t internal_run_bist(void)
 }
 
 /* Forward declarations: round-3 helpers defined further down are reused
- * by the round-1 ``ra_rsip_sha256`` entry point above the round-3 block. */
+ * by the round-1 ``ra_rsip_sha256`` entry point above the round-3 block.
+ * Each helper carries its full Doxygen block at its definition site
+ * further below; the prototypes here are intentionally minimal. */
+
+/**
+ * @brief Forward declaration; see definition for full documentation.
+ * @details Pack 4 source bytes ``p[0..3]`` into a little-endian uint32_t.
+ *          Used by the RSIP register-port writers when streaming key
+ *          material, IVs, and message blocks into the engine.
+ * @param[in] p Source byte pointer.
+ * @return Packed little-endian 32-bit word.
+ * @retval value Packed word built from ``p[0..3]`` in LE order.
+ * @pre ``p`` is non-NULL and points to at least 4 readable bytes.
+ * @pre Caller has ensured ``p`` is correctly aligned for the architecture.
+ * @post No caller-visible side effects beyond returning the packed word.
+ * @post The 4 source bytes are unmodified.
+ * @note Internal helper; defined later in this TU.
+ * @since 0.1.0
+ */
 static uint32_t internal_pack_le(const uint8_t* p);
-static void     internal_unpack_le(uint32_t word, uint8_t* p);
-static void     internal_push_bytes_to_port(ra_rsip_off_t off, const uint8_t* in, uint32_t len);
+
+/**
+ * @brief Forward declaration; see definition for full documentation.
+ * @details Inverse of ``internal_pack_le`` -- split a little-endian 32-bit
+ *          word into 4 destination bytes. Used by the RSIP digest /
+ *          key-output port readers to materialise byte buffers from the
+ *          engine's word-addressed result registers.
+ * @param[in]  word  Little-endian 32-bit word to split.
+ * @param[out] p     Destination 4-byte buffer.
+ * @pre ``p`` is non-NULL and points to at least 4 writable bytes.
+ * @pre Caller owns the destination buffer for the duration of the call.
+ * @post ``p[0..3]`` reflect ``word`` in little-endian byte order.
+ * @post No state outside the destination buffer is modified.
+ * @note Internal helper; defined later in this TU.
+ * @since 0.1.0
+ */
+static void internal_unpack_le(uint32_t word, uint8_t* p);
+
+/**
+ * @brief Forward declaration; see definition for full documentation.
+ * @details Stream ``len`` source bytes into the RSIP word-addressed
+ *          register at ``off`` using little-endian packing. Trailing
+ *          bytes that don't fill a 32-bit word are zero-extended into a
+ *          single final word write per HUM Ch 52.2 mailbox conventions.
+ * @param[in] off Word-addressed RSIP register offset (input port).
+ * @param[in] in  Source byte buffer (>= ``len`` bytes); may be NULL only when ``len == 0``.
+ * @param[in] len Number of bytes to push into the port.
+ * @pre Engine has been initialised and the target port is ready for writes.
+ * @pre Either ``len == 0`` or ``in != NULL``.
+ * @post The port has observed ``ceil(len / 4)`` 32-bit writes.
+ * @post No caller-visible buffer is modified.
+ * @note Internal helper; defined later in this TU.
+ * @since 0.1.0
+ */
+static void internal_push_bytes_to_port(ra_rsip_off_t off, const uint8_t* in, uint32_t len);
 
 /**
  * @brief Stream the SHA-256 message body into the HASH input port.
@@ -218,6 +273,7 @@ static void     internal_push_bytes_to_port(ra_rsip_off_t off, const uint8_t* in
  *
  * @note Internal helper; thin wrapper around ``internal_push_bytes_to_port``.
  * @since 0.1.0
+ * @details Implementation detail; see surrounding code and HUM citations.
  */
 static void internal_sha256_push_msg(const uint8_t* msg, uint32_t msg_len)
 {
@@ -241,6 +297,9 @@ static void internal_sha256_push_msg(const uint8_t* msg, uint32_t msg_len)
  *
  * @note Internal helper.
  * @since 0.1.0
+ * @details Implementation detail; see surrounding code and HUM citations.
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
  */
 static ra_err_t internal_hash_wait_done(void)
 {
@@ -265,6 +324,7 @@ static ra_err_t internal_hash_wait_done(void)
  *
  * @note Internal helper.
  * @since 0.1.0
+ * @details Implementation detail; see surrounding code and HUM citations.
  */
 static void internal_sha256_pull_digest(uint8_t* digest)
 {
@@ -283,6 +343,24 @@ static void internal_sha256_pull_digest(uint8_t* digest)
   *ra_rsip_reg32(k_ra_rsip_off_hash_status) &= ~k_ra_rsip_mask_isr_done;
 }
 
+/**
+ * @brief ra rsip init.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] cfg See declaration: ``const ra_rsip_config_t* cfg``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_rsip_init(const ra_rsip_config_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
@@ -314,6 +392,23 @@ ra_err_t ra_rsip_init(const ra_rsip_config_t* cfg)
   return k_ra_ok;
 }
 
+/**
+ * @brief ra rsip deinit.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_rsip_deinit(void)
 {
   /* HUM Ch 52.3.1 "Software Standby Mode" p 3307 */
@@ -331,6 +426,24 @@ ra_err_t ra_rsip_deinit(void)
   return ra_mstp_disable(k_ra_mstp_rsip);
 }
 
+/**
+ * @brief ra rsip get status.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[out] out See declaration: ``uint32_t* out``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_rsip_get_status(uint32_t* out)
 {
   RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
@@ -340,6 +453,24 @@ ra_err_t ra_rsip_get_status(uint32_t* out)
   return k_ra_ok;
 }
 
+/**
+ * @brief ra rsip clear status.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] mask See declaration: ``uint32_t mask``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_rsip_clear_status(uint32_t mask)
 {
   if ((mask & ~k_ra_rsip_mask_isr_all) != 0U) {
@@ -354,6 +485,25 @@ ra_err_t ra_rsip_clear_status(uint32_t mask)
   return k_ra_ok;
 }
 
+/**
+ * @brief ra rsip attach handler.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] fn See declaration: ``ra_rsip_event_fn_t fn``.
+ * @param[out] ctx See declaration: ``void* ctx``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_rsip_attach_handler(ra_rsip_event_fn_t fn, void* ctx)
 {
   s_rsip_fn  = fn;
@@ -361,6 +511,20 @@ ra_err_t ra_rsip_attach_handler(ra_rsip_event_fn_t fn, void* ctx)
   return k_ra_ok;
 }
 
+/**
+ * @brief ra rsip dispatch.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 void ra_rsip_dispatch(void)
 {
   /* HUM Ch 52.1 "Overview" p 3302 */
@@ -383,6 +547,25 @@ void ra_rsip_dispatch(void)
   }
 }
 
+/**
+ * @brief ra rsip trng read.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[out] buf See declaration: ``uint8_t* buf``.
+ * @param[in] len See declaration: ``uint32_t len``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_rsip_trng_read(uint8_t* buf, uint32_t len)
 {
   RA_CHECK_NULL_PTR(buf, s_tag, "buf must not be nullptr");
@@ -431,6 +614,26 @@ ra_err_t ra_rsip_trng_read(uint8_t* buf, uint32_t len)
   return k_ra_ok;
 }
 
+/**
+ * @brief ra rsip sha256.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] msg See declaration: ``const uint8_t* msg``.
+ * @param[in] msg_len See declaration: ``uint32_t msg_len``.
+ * @param[out] digest See declaration: ``uint8_t* digest``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_rsip_sha256(const uint8_t* msg, uint32_t msg_len, uint8_t* digest)
 {
   RA_CHECK_NULL_PTR(msg, s_tag, "msg must not be nullptr");
@@ -516,6 +719,9 @@ typedef enum : uint32_t {
  *
  * @note Internal helper -- only present under ``RA_RSIP_SOFTWARE_BACKEND``.
  * @since 0.1.0
+ * @details Implementation detail; see surrounding code and HUM citations.
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
  */
 static inline uint32_t internal_sw_rotr(uint32_t x, uint32_t n)
 {
@@ -574,6 +780,9 @@ static const uint32_t s_sw_sha256_h0[k_ra_rsip_sw_sha256_state_w] = {
  *
  * @note Internal helper -- only under ``RA_RSIP_SOFTWARE_BACKEND``.
  * @since 0.1.0
+ * @details Implementation detail; see surrounding code and HUM citations.
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
  */
 static void internal_sw_sha256_schedule(uint32_t      w[k_ra_rsip_sw_sha256_round_cnt],
                                         const uint8_t block[k_ra_rsip_sha256_block])
@@ -609,6 +818,9 @@ static void internal_sw_sha256_schedule(uint32_t      w[k_ra_rsip_sw_sha256_roun
  *
  * @note Internal helper -- only under ``RA_RSIP_SOFTWARE_BACKEND``.
  * @since 0.1.0
+ * @details Implementation detail; see surrounding code and HUM citations.
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
  */
 static void internal_sw_sha256_rounds(uint32_t       s[k_ra_rsip_sw_sha256_state_w],
                                       const uint32_t w[k_ra_rsip_sw_sha256_round_cnt])
@@ -667,6 +879,9 @@ static void internal_sw_sha256_rounds(uint32_t       s[k_ra_rsip_sw_sha256_state
  *
  * @note Internal helper -- only under ``RA_RSIP_SOFTWARE_BACKEND``.
  * @since 0.1.0
+ * @details Implementation detail; see surrounding code and HUM citations.
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
  */
 static void internal_sw_sha256_compress(uint32_t      state[k_ra_rsip_sw_sha256_state_w],
                                         const uint8_t block[k_ra_rsip_sha256_block])
@@ -700,6 +915,8 @@ static void internal_sw_sha256_compress(uint32_t      state[k_ra_rsip_sw_sha256_
  *
  * @note Internal helper -- only under ``RA_RSIP_SOFTWARE_BACKEND``.
  * @since 0.1.0
+ * @details Implementation detail; see surrounding code and HUM citations.
+ * @post Documented side effects are visible on success.
  */
 static void internal_sw_sha256_pad(uint32_t       state[k_ra_rsip_sw_sha256_state_w],
                                    const uint8_t* msg,
@@ -747,6 +964,9 @@ static void internal_sw_sha256_pad(uint32_t       state[k_ra_rsip_sw_sha256_stat
  *
  * @note Internal helper -- only under ``RA_RSIP_SOFTWARE_BACKEND``.
  * @since 0.1.0
+ * @details Implementation detail; see surrounding code and HUM citations.
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
  */
 static void internal_sw_sha256_emit(const uint32_t state[k_ra_rsip_sw_sha256_state_w],
                                     uint8_t*       digest)
@@ -774,6 +994,8 @@ static void internal_sw_sha256_emit(const uint32_t state[k_ra_rsip_sw_sha256_sta
  *
  * @note Internal helper -- only present under ``RA_RSIP_SOFTWARE_BACKEND``.
  * @since 0.1.0
+ * @details Implementation detail; see surrounding code and HUM citations.
+ * @post Documented side effects are visible on success.
  */
 static void internal_sw_sha256(const uint8_t* msg, uint32_t msg_len, uint8_t* digest)
 {
@@ -810,6 +1032,10 @@ static void internal_sw_sha256(const uint8_t* msg, uint32_t msg_len, uint8_t* di
  *
  * @note Internal helper.
  * @since 0.1.0
+ * @details Implementation detail; see surrounding code and HUM citations.
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ * @post Documented side effects are visible on success.
  */
 static ra_err_t internal_sha256_dispatch(const uint8_t* msg, uint32_t msg_len, uint8_t* digest)
 {
@@ -822,6 +1048,24 @@ static ra_err_t internal_sha256_dispatch(const uint8_t* msg, uint32_t msg_len, u
 #endif
 }
 
+/**
+ * @brief ra rsip sha256 init.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[out] ctx See declaration: ``ra_rsip_sha256_ctx_t* ctx``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_rsip_sha256_init(ra_rsip_sha256_ctx_t* ctx)
 {
   RA_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");
@@ -830,6 +1074,26 @@ ra_err_t ra_rsip_sha256_init(ra_rsip_sha256_ctx_t* ctx)
   return k_ra_ok;
 }
 
+/**
+ * @brief ra rsip sha256 update.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[out] ctx See declaration: ``ra_rsip_sha256_ctx_t* ctx``.
+ * @param[in] data See declaration: ``const uint8_t* data``.
+ * @param[in] len See declaration: ``uint32_t len``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_rsip_sha256_update(ra_rsip_sha256_ctx_t* ctx, const uint8_t* data, uint32_t len)
 {
   RA_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");
@@ -852,6 +1116,25 @@ ra_err_t ra_rsip_sha256_update(ra_rsip_sha256_ctx_t* ctx, const uint8_t* data, u
   return k_ra_ok;
 }
 
+/**
+ * @brief ra rsip sha256 final.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[out] ctx See declaration: ``ra_rsip_sha256_ctx_t* ctx``.
+ * @param[out] digest_out See declaration: ``uint8_t* digest_out``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_rsip_sha256_final(ra_rsip_sha256_ctx_t* ctx, uint8_t* digest_out)
 {
   RA_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");
@@ -886,6 +1169,10 @@ ra_err_t ra_rsip_sha256_final(ra_rsip_sha256_ctx_t* ctx, uint8_t* digest_out)
  *
  * @note Internal helper.
  * @since 0.1.0
+ * @details Implementation detail; see surrounding code and HUM citations.
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ * @post Documented side effects are visible on success.
  */
 static ra_err_t
 internal_hmac_prep_key(const uint8_t* key, uint32_t key_len, uint8_t block[k_ra_rsip_sha256_block])
@@ -910,6 +1197,26 @@ internal_hmac_prep_key(const uint8_t* key, uint32_t key_len, uint8_t block[k_ra_
   return k_ra_ok;
 }
 
+/**
+ * @brief ra rsip hmac sha256 init.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[out] ctx See declaration: ``ra_rsip_hmac_sha256_ctx_t* ctx``.
+ * @param[in] key See declaration: ``const uint8_t* key``.
+ * @param[in] key_len See declaration: ``uint32_t key_len``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t
 ra_rsip_hmac_sha256_init(ra_rsip_hmac_sha256_ctx_t* ctx, const uint8_t* key, uint32_t key_len)
 {
@@ -938,6 +1245,26 @@ ra_rsip_hmac_sha256_init(ra_rsip_hmac_sha256_ctx_t* ctx, const uint8_t* key, uin
   return k_ra_ok;
 }
 
+/**
+ * @brief ra rsip hmac sha256 update.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[out] ctx See declaration: ``ra_rsip_hmac_sha256_ctx_t* ctx``.
+ * @param[in] data See declaration: ``const uint8_t* data``.
+ * @param[in] len See declaration: ``uint32_t len``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t
 ra_rsip_hmac_sha256_update(ra_rsip_hmac_sha256_ctx_t* ctx, const uint8_t* data, uint32_t len)
 {
@@ -969,6 +1296,10 @@ ra_rsip_hmac_sha256_update(ra_rsip_hmac_sha256_ctx_t* ctx, const uint8_t* data, 
  *
  * @note Internal helper.
  * @since 0.1.0
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
  */
 static ra_err_t internal_hmac_outer(const uint8_t key_block[k_ra_rsip_sha256_block],
                                     const uint8_t inner[k_ra_rsip_sha256_digest_bytes],
@@ -986,6 +1317,25 @@ static ra_err_t internal_hmac_outer(const uint8_t key_block[k_ra_rsip_sha256_blo
                                   mac_out);
 }
 
+/**
+ * @brief ra rsip hmac sha256 final.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[out] ctx See declaration: ``ra_rsip_hmac_sha256_ctx_t* ctx``.
+ * @param[out] mac_out See declaration: ``uint8_t* mac_out``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_rsip_hmac_sha256_final(ra_rsip_hmac_sha256_ctx_t* ctx, uint8_t* mac_out)
 {
   RA_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");
@@ -1006,6 +1356,23 @@ ra_err_t ra_rsip_hmac_sha256_final(ra_rsip_hmac_sha256_ctx_t* ctx, uint8_t* mac_
   return result;
 }
 
+/**
+ * @brief ra rsip enter stop.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_rsip_enter_stop(void)
 {
   /* HUM Ch 52.3.1 "Software Standby Mode" p 3307 */
@@ -1014,6 +1381,23 @@ ra_err_t ra_rsip_enter_stop(void)
   return ra_mstp_disable(k_ra_mstp_rsip);
 }
 
+/**
+ * @brief ra rsip exit stop.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_rsip_exit_stop(void)
 {
   /* HUM Ch 11.2.8 "MSTPCRC : Module Stop Control Register C" p 446 */
@@ -1063,6 +1447,9 @@ typedef enum : uint32_t {
  *
  * @note Internal helper.
  * @since 0.1.0
+ * @details Implementation detail; see surrounding code and HUM citations.
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
  */
 static uint32_t internal_pack_le(const uint8_t* p)
 {
@@ -1085,6 +1472,7 @@ static uint32_t internal_pack_le(const uint8_t* p)
  *
  * @note Internal helper.
  * @since 0.1.0
+ * @details Implementation detail; see surrounding code and HUM citations.
  */
 static void internal_unpack_le(uint32_t word, uint8_t* p)
 {
@@ -1109,6 +1497,9 @@ static void internal_unpack_le(uint32_t word, uint8_t* p)
  *
  * @note Internal helper.
  * @since 0.1.0
+ * @details Implementation detail; see surrounding code and HUM citations.
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
  */
 static uint32_t internal_handle_words_for(ra_rsip_oem_cmd_t cmd)
 {
@@ -1176,6 +1567,9 @@ static uint32_t internal_handle_words_for(ra_rsip_oem_cmd_t cmd)
  *
  * @note Internal helper.
  * @since 0.1.0
+ * @details Implementation detail; see surrounding code and HUM citations.
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
  */
 static ra_err_t internal_complete(uint32_t done_mask)
 {
@@ -1252,6 +1646,7 @@ static void internal_push_bytes_to_port(ra_rsip_off_t off, const uint8_t* in, ui
  *
  * @note Internal helper used by the cipher / hash / HMAC paths.
  * @since 0.1.0
+ * @details Implementation detail; see surrounding code and HUM citations.
  */
 static void internal_push_data(const uint8_t* in, uint32_t len)
 {
@@ -1292,6 +1687,7 @@ static void internal_push_data(const uint8_t* in, uint32_t len)
  *
  * @note Internal helper.
  * @since 0.1.0
+ * @details Implementation detail; see surrounding code and HUM citations.
  */
 static void internal_pull_data(uint8_t* out, uint32_t len)
 {
@@ -1361,6 +1757,7 @@ static void internal_push_iv_lanes(ra_rsip_off_t base, const uint8_t* iv)
  *
  * @note Internal helper.
  * @since 0.1.0
+ * @details Implementation detail; see surrounding code and HUM citations.
  */
 static void internal_push_iv(const uint8_t* iv)
 {
@@ -1440,6 +1837,7 @@ static void internal_push_handle_body(const ra_rsip_key_handle_t* handle)
  *
  * @note Internal helper.
  * @since 0.1.0
+ * @details Implementation detail; see surrounding code and HUM citations.
  */
 static void internal_load_handle(const ra_rsip_key_handle_t* handle)
 {
@@ -1471,6 +1869,9 @@ static void internal_load_handle(const ra_rsip_key_handle_t* handle)
  *
  * @note Internal helper.
  * @since 0.1.0
+ * @details Implementation detail; see surrounding code and HUM citations.
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
  */
 static ra_err_t internal_oem_install(ra_rsip_oem_cmd_t     cmd,
                                      const uint8_t*        iv,
@@ -1524,6 +1925,25 @@ static ra_err_t internal_oem_install(ra_rsip_oem_cmd_t     cmd,
  * ===========================================================================
  */
 
+/**
+ * @brief ra rsip aes128 install plain.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] key See declaration: ``const uint8_t* key``.
+ * @param[out] out See declaration: ``ra_rsip_key_handle_t* out``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_rsip_aes128_install_plain(const uint8_t* key, ra_rsip_key_handle_t* out)
 {
   RA_CHECK_NULL_PTR(key, s_tag, "key must not be nullptr");
@@ -1535,6 +1955,25 @@ ra_err_t ra_rsip_aes128_install_plain(const uint8_t* key, ra_rsip_key_handle_t* 
                               out);
 }
 
+/**
+ * @brief ra rsip aes192 install plain.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] key See declaration: ``const uint8_t* key``.
+ * @param[out] out See declaration: ``ra_rsip_key_handle_t* out``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_rsip_aes192_install_plain(const uint8_t* key, ra_rsip_key_handle_t* out)
 {
   RA_CHECK_NULL_PTR(key, s_tag, "key must not be nullptr");
@@ -1546,6 +1985,25 @@ ra_err_t ra_rsip_aes192_install_plain(const uint8_t* key, ra_rsip_key_handle_t* 
                               out);
 }
 
+/**
+ * @brief ra rsip aes256 install plain.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] key See declaration: ``const uint8_t* key``.
+ * @param[out] out See declaration: ``ra_rsip_key_handle_t* out``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_rsip_aes256_install_plain(const uint8_t* key, ra_rsip_key_handle_t* out)
 {
   RA_CHECK_NULL_PTR(key, s_tag, "key must not be nullptr");
@@ -1557,6 +2015,25 @@ ra_err_t ra_rsip_aes256_install_plain(const uint8_t* key, ra_rsip_key_handle_t* 
                               out);
 }
 
+/**
+ * @brief ra rsip chacha20 install plain.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] key See declaration: ``const uint8_t* key``.
+ * @param[out] out See declaration: ``ra_rsip_key_handle_t* out``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_rsip_chacha20_install_plain(const uint8_t* key, ra_rsip_key_handle_t* out)
 {
   RA_CHECK_NULL_PTR(key, s_tag, "key must not be nullptr");
@@ -1568,6 +2045,27 @@ ra_err_t ra_rsip_chacha20_install_plain(const uint8_t* key, ra_rsip_key_handle_t
                               out);
 }
 
+/**
+ * @brief ra rsip hmac install plain.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] alg See declaration: ``ra_rsip_oem_cmd_t     alg``.
+ * @param[in] key See declaration: ``const uint8_t*        key``.
+ * @param[in] key_len See declaration: ``uint32_t              key_len``.
+ * @param[out] out See declaration: ``ra_rsip_key_handle_t* out``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_rsip_hmac_install_plain(ra_rsip_oem_cmd_t     alg,
                                     const uint8_t*        key,
                                     uint32_t              key_len,
@@ -1592,6 +2090,28 @@ ra_err_t ra_rsip_hmac_install_plain(ra_rsip_oem_cmd_t     alg,
   return internal_oem_install(alg, nullptr, key, key_len, out);
 }
 
+/**
+ * @brief ra rsip oem install.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] cmd See declaration: ``ra_rsip_oem_cmd_t     cmd``.
+ * @param[in] iv See declaration: ``const uint8_t*        iv``.
+ * @param[in] oem_blob See declaration: ``const uint8_t*        oem_blob``.
+ * @param[in] blob_len See declaration: ``uint32_t              blob_len``.
+ * @param[out] out See declaration: ``ra_rsip_key_handle_t* out``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_rsip_oem_install(ra_rsip_oem_cmd_t     cmd,
                              const uint8_t*        iv,
                              const uint8_t*        oem_blob,
@@ -1637,6 +2157,9 @@ ra_err_t ra_rsip_oem_install(ra_rsip_oem_cmd_t     cmd,
  *
  * @note Internal helper that drives both the AES and ChaCha20 paths.
  * @since 0.1.0
+ * @details Implementation detail; see surrounding code and HUM citations.
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
  */
 static ra_err_t internal_sym_run(const ra_rsip_key_handle_t* key,
                                  uint8_t                     alg_byte,
@@ -1682,6 +2205,9 @@ static ra_err_t internal_sym_run(const ra_rsip_key_handle_t* key,
  *
  * @note Internal helper.
  * @since 0.1.0
+ * @details Implementation detail; see surrounding code and HUM citations.
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
  */
 static uint8_t internal_aes_alg_byte(uint32_t alg)
 {
@@ -1697,6 +2223,30 @@ static uint8_t internal_aes_alg_byte(uint32_t alg)
   }
 }
 
+/**
+ * @brief ra rsip aes cipher.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] key See declaration: ``const ra_rsip_key_handle_t* key``.
+ * @param[in] mode See declaration: ``ra_rsip_aes_mode_t          mode``.
+ * @param[in] dir See declaration: ``ra_rsip_aes_dir_t           dir``.
+ * @param[in] iv See declaration: ``const uint8_t*              iv``.
+ * @param[in] in See declaration: ``const uint8_t*              in``.
+ * @param[out] out See declaration: ``uint8_t*                    out``.
+ * @param[in] len See declaration: ``uint32_t                    len``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_rsip_aes_cipher(const ra_rsip_key_handle_t* key,
                             ra_rsip_aes_mode_t          mode,
                             ra_rsip_aes_dir_t           dir,
@@ -1762,6 +2312,7 @@ ra_err_t ra_rsip_aes_cipher(const ra_rsip_key_handle_t* key,
  *
  * @note Internal helper.
  * @since 0.1.0
+ * @details Implementation detail; see surrounding code and HUM citations.
  */
 static void internal_aead_push_tag(const uint8_t* tag)
 {
@@ -1784,6 +2335,7 @@ static void internal_aead_push_tag(const uint8_t* tag)
  *
  * @note Internal helper.
  * @since 0.1.0
+ * @details Implementation detail; see surrounding code and HUM citations.
  */
 static void internal_aead_pull_tag(uint8_t* tag)
 {
@@ -1793,6 +2345,34 @@ static void internal_aead_pull_tag(uint8_t* tag)
   }
 }
 
+/**
+ * @brief internal aead run.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] key See declaration: ``const ra_rsip_key_handle_t* key``.
+ * @param[in] alg_byte See declaration: ``uint8_t                     alg_byte``.
+ * @param[in] mode See declaration: ``ra_rsip_aes_mode_t          mode``.
+ * @param[in] dir See declaration: ``ra_rsip_aes_dir_t           dir``.
+ * @param[in] iv See declaration: ``const uint8_t*              iv``.
+ * @param[in] aad See declaration: ``const uint8_t*              aad``.
+ * @param[in] aad_len See declaration: ``uint32_t                    aad_len``.
+ * @param[in] in See declaration: ``const uint8_t*              in``.
+ * @param[out] out See declaration: ``uint8_t*                    out``.
+ * @param[in] in_len See declaration: ``uint32_t                    in_len``.
+ * @param[out] tag See declaration: ``uint8_t*                    tag``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Internal helper. Not thread-safe; caller provides synchronisation.
+ * @since 0.1.0
+ */
 static ra_err_t internal_aead_run(const ra_rsip_key_handle_t* key,
                                   uint8_t                     alg_byte,
                                   ra_rsip_aes_mode_t          mode,
@@ -1840,6 +2420,32 @@ static ra_err_t internal_aead_run(const ra_rsip_key_handle_t* key,
   return k_ra_ok;
 }
 
+/**
+ * @brief ra rsip aes gcm.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] key See declaration: ``const ra_rsip_key_handle_t* key``.
+ * @param[in] dir See declaration: ``ra_rsip_aes_dir_t           dir``.
+ * @param[in] iv See declaration: ``const uint8_t*              iv``.
+ * @param[in] aad See declaration: ``const uint8_t*              aad``.
+ * @param[in] aad_len See declaration: ``uint32_t                    aad_len``.
+ * @param[in] in See declaration: ``const uint8_t*              in``.
+ * @param[out] out See declaration: ``uint8_t*                    out``.
+ * @param[in] in_len See declaration: ``uint32_t                    in_len``.
+ * @param[out] tag See declaration: ``uint8_t*                    tag``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_rsip_aes_gcm(const ra_rsip_key_handle_t* key,
                          ra_rsip_aes_dir_t           dir,
                          const uint8_t*              iv,
@@ -1872,6 +2478,32 @@ ra_err_t ra_rsip_aes_gcm(const ra_rsip_key_handle_t* key,
                            tag);
 }
 
+/**
+ * @brief ra rsip aes ccm.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] key See declaration: ``const ra_rsip_key_handle_t* key``.
+ * @param[in] dir See declaration: ``ra_rsip_aes_dir_t           dir``.
+ * @param[in] iv See declaration: ``const uint8_t*              iv``.
+ * @param[in] aad See declaration: ``const uint8_t*              aad``.
+ * @param[in] aad_len See declaration: ``uint32_t                    aad_len``.
+ * @param[in] in See declaration: ``const uint8_t*              in``.
+ * @param[out] out See declaration: ``uint8_t*                    out``.
+ * @param[in] in_len See declaration: ``uint32_t                    in_len``.
+ * @param[out] tag See declaration: ``uint8_t*                    tag``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_rsip_aes_ccm(const ra_rsip_key_handle_t* key,
                          ra_rsip_aes_dir_t           dir,
                          const uint8_t*              iv,
@@ -1923,6 +2555,7 @@ ra_err_t ra_rsip_aes_ccm(const ra_rsip_key_handle_t* key,
  *
  * @note Internal helper.
  * @since 0.1.0
+ * @details Implementation detail; see surrounding code and HUM citations.
  */
 static void internal_chacha20_push_iv(uint32_t counter, const uint8_t* nonce)
 {
@@ -1936,6 +2569,30 @@ static void internal_chacha20_push_iv(uint32_t counter, const uint8_t* nonce)
     internal_pack_le(&nonce[(size_t)2U * (size_t)k_ra_rsip_trng_word_bytes]);
 }
 
+/**
+ * @brief ra rsip chacha20.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] key See declaration: ``const ra_rsip_key_handle_t* key``.
+ * @param[in] dir See declaration: ``ra_rsip_aes_dir_t           dir``.
+ * @param[in] nonce See declaration: ``const uint8_t*              nonce``.
+ * @param[in] counter See declaration: ``uint32_t                    counter``.
+ * @param[in] in See declaration: ``const uint8_t*              in``.
+ * @param[out] out See declaration: ``uint8_t*                    out``.
+ * @param[in] len See declaration: ``uint32_t                    len``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_rsip_chacha20(const ra_rsip_key_handle_t* key,
                           ra_rsip_aes_dir_t           dir,
                           const uint8_t*              nonce,
@@ -1969,6 +2626,32 @@ ra_err_t ra_rsip_chacha20(const ra_rsip_key_handle_t* key,
   return k_ra_ok;
 }
 
+/**
+ * @brief ra rsip chacha20 poly1305.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] key See declaration: ``const ra_rsip_key_handle_t* key``.
+ * @param[in] dir See declaration: ``ra_rsip_aes_dir_t           dir``.
+ * @param[in] nonce See declaration: ``const uint8_t*              nonce``.
+ * @param[in] aad See declaration: ``const uint8_t*              aad``.
+ * @param[in] aad_len See declaration: ``uint32_t                    aad_len``.
+ * @param[in] in See declaration: ``const uint8_t*              in``.
+ * @param[out] out See declaration: ``uint8_t*                    out``.
+ * @param[in] in_len See declaration: ``uint32_t                    in_len``.
+ * @param[out] tag See declaration: ``uint8_t*                    tag``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_rsip_chacha20_poly1305(const ra_rsip_key_handle_t* key,
                                    ra_rsip_aes_dir_t           dir,
                                    const uint8_t*              nonce,
@@ -2000,6 +2683,27 @@ ra_err_t ra_rsip_chacha20_poly1305(const ra_rsip_key_handle_t* key,
                            tag);
 }
 
+/**
+ * @brief ra rsip poly1305.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] one_time_key See declaration: ``const uint8_t* one_time_key``.
+ * @param[in] msg See declaration: ``const uint8_t* msg``.
+ * @param[in] msg_len See declaration: ``uint32_t msg_len``.
+ * @param[out] tag See declaration: ``uint8_t* tag``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t
 ra_rsip_poly1305(const uint8_t* one_time_key, const uint8_t* msg, uint32_t msg_len, uint8_t* tag)
 {
@@ -2056,6 +2760,9 @@ ra_rsip_poly1305(const uint8_t* one_time_key, const uint8_t* msg, uint32_t msg_l
  *
  * @note Internal helper.
  * @since 0.1.0
+ * @details Implementation detail; see surrounding code and HUM citations.
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
  */
 static uint32_t internal_hash_size(ra_rsip_hash_alg_t alg)
 {
@@ -2102,6 +2809,10 @@ static uint32_t internal_hash_size(ra_rsip_hash_alg_t alg)
  *
  * @note Internal helper.
  * @since 0.1.0
+ * @details Implementation detail; see surrounding code and HUM citations.
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ * @pre Module/state preconditions hold (see function body).
  */
 static ra_err_t internal_hash_validate(ra_rsip_hash_alg_t alg,
                                        const uint8_t*     msg,
@@ -2137,6 +2848,7 @@ static ra_err_t internal_hash_validate(ra_rsip_hash_alg_t alg,
  *
  * @note Internal helper.
  * @since 0.1.0
+ * @details Implementation detail; see surrounding code and HUM citations.
  */
 static void internal_hash_pull_digest(uint8_t* digest, uint32_t to_read)
 {
@@ -2162,6 +2874,28 @@ static void internal_hash_pull_digest(uint8_t* digest, uint32_t to_read)
   *ra_rsip_reg32(k_ra_rsip_off_hash_status) &= ~k_ra_rsip_mask_isr_done;
 }
 
+/**
+ * @brief ra rsip hash.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] alg See declaration: ``ra_rsip_hash_alg_t alg``.
+ * @param[in] msg See declaration: ``const uint8_t*     msg``.
+ * @param[in] msg_len See declaration: ``uint32_t           msg_len``.
+ * @param[out] digest See declaration: ``uint8_t*           digest``.
+ * @param[in] digest_len See declaration: ``uint32_t           digest_len``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_rsip_hash(ra_rsip_hash_alg_t alg,
                       const uint8_t*     msg,
                       uint32_t           msg_len,
@@ -2191,6 +2925,28 @@ ra_err_t ra_rsip_hash(ra_rsip_hash_alg_t alg,
   return k_ra_ok;
 }
 
+/**
+ * @brief ra rsip hmac.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] key See declaration: ``const ra_rsip_key_handle_t* key``.
+ * @param[in] msg See declaration: ``const uint8_t*              msg``.
+ * @param[in] msg_len See declaration: ``uint32_t                    msg_len``.
+ * @param[out] mac See declaration: ``uint8_t*                    mac``.
+ * @param[in] mac_len See declaration: ``uint32_t                    mac_len``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_rsip_hmac(const ra_rsip_key_handle_t* key,
                       const uint8_t*              msg,
                       uint32_t                    msg_len,
@@ -2252,6 +3008,7 @@ ra_err_t ra_rsip_hmac(const ra_rsip_key_handle_t* key,
  *
  * @note Internal helper.
  * @since 0.1.0
+ * @details Implementation detail; see surrounding code and HUM citations.
  */
 static void internal_asym_push(ra_rsip_off_t off, const uint8_t* buf, uint32_t len)
 {
@@ -2284,6 +3041,7 @@ static void internal_asym_push(ra_rsip_off_t off, const uint8_t* buf, uint32_t l
  *
  * @note Internal helper.
  * @since 0.1.0
+ * @details Implementation detail; see surrounding code and HUM citations.
  */
 static void internal_asym_pull(ra_rsip_off_t off, uint8_t* buf, uint32_t len)
 {
@@ -2300,6 +3058,28 @@ static void internal_asym_pull(ra_rsip_off_t off, uint8_t* buf, uint32_t len)
   }
 }
 
+/**
+ * @brief ra rsip rsa sign.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] key See declaration: ``const ra_rsip_key_handle_t* key``.
+ * @param[in] size See declaration: ``ra_rsip_rsa_size_t          size``.
+ * @param[in] digest See declaration: ``const uint8_t*              digest``.
+ * @param[in] digest_len See declaration: ``uint32_t                    digest_len``.
+ * @param[out] signature See declaration: ``uint8_t*                    signature``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_rsip_rsa_sign(const ra_rsip_key_handle_t* key,
                           ra_rsip_rsa_size_t          size,
                           const uint8_t*              digest,
@@ -2329,6 +3109,28 @@ ra_err_t ra_rsip_rsa_sign(const ra_rsip_key_handle_t* key,
   return k_ra_ok;
 }
 
+/**
+ * @brief ra rsip rsa verify.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] key See declaration: ``const ra_rsip_key_handle_t* key``.
+ * @param[in] size See declaration: ``ra_rsip_rsa_size_t          size``.
+ * @param[in] digest See declaration: ``const uint8_t*              digest``.
+ * @param[in] digest_len See declaration: ``uint32_t                    digest_len``.
+ * @param[in] signature See declaration: ``const uint8_t*              signature``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_rsip_rsa_verify(const ra_rsip_key_handle_t* key,
                             ra_rsip_rsa_size_t          size,
                             const uint8_t*              digest,
@@ -2383,6 +3185,24 @@ typedef enum : uint32_t {
   k_ra_rsip_curve_bytes_521 = 66U, /**< 521-bit curves: secp521r1.        */
 } ra_rsip_curve_bytes_t;
 
+/**
+ * @brief internal curve bytes.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] curve See declaration: ``ra_rsip_curve_t curve``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Internal helper. Not thread-safe; caller provides synchronisation.
+ * @since 0.1.0
+ */
 static uint32_t internal_curve_bytes(ra_rsip_curve_t curve)
 {
   switch (curve) {
@@ -2407,6 +3227,28 @@ static uint32_t internal_curve_bytes(ra_rsip_curve_t curve)
   }
 }
 
+/**
+ * @brief ra rsip ecdsa sign.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] key See declaration: ``const ra_rsip_key_handle_t* key``.
+ * @param[in] curve See declaration: ``ra_rsip_curve_t             curve``.
+ * @param[in] digest See declaration: ``const uint8_t*              digest``.
+ * @param[in] digest_len See declaration: ``uint32_t                    digest_len``.
+ * @param[out] signature See declaration: ``uint8_t*                    signature``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_rsip_ecdsa_sign(const ra_rsip_key_handle_t* key,
                             ra_rsip_curve_t             curve,
                             const uint8_t*              digest,
@@ -2436,6 +3278,28 @@ ra_err_t ra_rsip_ecdsa_sign(const ra_rsip_key_handle_t* key,
   return k_ra_ok;
 }
 
+/**
+ * @brief ra rsip ecdsa verify.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] key See declaration: ``const ra_rsip_key_handle_t* key``.
+ * @param[in] curve See declaration: ``ra_rsip_curve_t             curve``.
+ * @param[in] digest See declaration: ``const uint8_t*              digest``.
+ * @param[in] digest_len See declaration: ``uint32_t                    digest_len``.
+ * @param[in] signature See declaration: ``const uint8_t*              signature``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_rsip_ecdsa_verify(const ra_rsip_key_handle_t* key,
                               ra_rsip_curve_t             curve,
                               const uint8_t*              digest,
@@ -2491,6 +3355,28 @@ static void internal_ecdh_pull_shared(ra_rsip_key_handle_t* out)
   internal_zero_handle_tail(out, out->body_words);
 }
 
+/**
+ * @brief ra rsip ecdh compute.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] key See declaration: ``const ra_rsip_key_handle_t* key``.
+ * @param[in] curve See declaration: ``ra_rsip_curve_t             curve``.
+ * @param[in] peer_x See declaration: ``const uint8_t*              peer_x``.
+ * @param[in] peer_y See declaration: ``const uint8_t*              peer_y``.
+ * @param[out] out See declaration: ``ra_rsip_key_handle_t*       out``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_rsip_ecdh_compute(const ra_rsip_key_handle_t* key,
                               ra_rsip_curve_t             curve,
                               const uint8_t*              peer_x,
@@ -2526,6 +3412,24 @@ ra_err_t ra_rsip_ecdh_compute(const ra_rsip_key_handle_t* key,
  * ===========================================================================
  */
 
+/**
+ * @brief ra rsip oem bl version get.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[out] out See declaration: ``uint32_t* out``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_rsip_oem_bl_version_get(uint32_t* out)
 {
   RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
@@ -2534,6 +3438,23 @@ ra_err_t ra_rsip_oem_bl_version_get(uint32_t* out)
   return k_ra_ok;
 }
 
+/**
+ * @brief ra rsip oem bl version increment.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_rsip_oem_bl_version_increment(void)
 {
   /* HUM Ch 52.1 "Application Key Management" p 3303 */
@@ -2546,6 +3467,23 @@ ra_err_t ra_rsip_oem_bl_version_increment(void)
   return k_ra_ok;
 }
 
+/**
+ * @brief ra rsip oem bl version lock.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_rsip_oem_bl_version_lock(void)
 {
   /* HUM Ch 52.1 "Application Key Management" p 3303 */
@@ -2574,6 +3512,9 @@ ra_err_t ra_rsip_oem_bl_version_lock(void)
  *
  * @note Internal helper.
  * @since 0.1.0
+ * @details Implementation detail; see surrounding code and HUM citations.
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
  */
 static ra_err_t internal_kv_op(ra_rsip_kv_op_t op, uint8_t slot)
 {
@@ -2593,6 +3534,25 @@ static uint8_t s_sim_kv_slots[(uint32_t)k_ra_rsip_kv_slot_count]
                              [k_ra_rsip_kv_slot_w * (uint32_t)k_ra_rsip_trng_word_bytes];
 #endif
 
+/**
+ * @brief ra rsip kv read.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] slot See declaration: ``uint8_t slot``.
+ * @param[out] out See declaration: ``uint8_t* out``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_rsip_kv_read(uint8_t slot, uint8_t* out)
 {
   RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
@@ -2619,6 +3579,25 @@ ra_err_t ra_rsip_kv_read(uint8_t slot, uint8_t* out)
   return k_ra_ok;
 }
 
+/**
+ * @brief ra rsip kv write.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] slot See declaration: ``uint8_t slot``.
+ * @param[in] in See declaration: ``const uint8_t* in``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_rsip_kv_write(uint8_t slot, const uint8_t* in)
 {
   RA_CHECK_NULL_PTR(in, s_tag, "in must not be nullptr");
@@ -2638,6 +3617,24 @@ ra_err_t ra_rsip_kv_write(uint8_t slot, const uint8_t* in)
   return internal_kv_op(k_ra_rsip_kv_op_write, slot);
 }
 
+/**
+ * @brief ra rsip kv erase.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] slot See declaration: ``uint8_t slot``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_rsip_kv_erase(uint8_t slot)
 {
   if (slot >= (uint8_t)k_ra_rsip_kv_slot_count) {
@@ -2646,6 +3643,24 @@ ra_err_t ra_rsip_kv_erase(uint8_t slot)
   return internal_kv_op(k_ra_rsip_kv_op_erase, slot);
 }
 
+/**
+ * @brief ra rsip kv count.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[out] out See declaration: ``uint32_t* out``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_rsip_kv_count(uint32_t* out)
 {
   RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
@@ -2678,6 +3693,7 @@ ra_err_t ra_rsip_kv_count(uint32_t* out)
  *
  * @note Internal helper.
  * @since 0.1.0
+ * @pre Module/state preconditions hold (see function body).
  */
 static void internal_kw_stage_kek(const ra_rsip_key_handle_t* kek, const uint8_t* iv)
 {
@@ -2699,6 +3715,8 @@ static void internal_kw_stage_kek(const ra_rsip_key_handle_t* kek, const uint8_t
  *
  * @note Internal helper.
  * @since 0.1.0
+ * @details Implementation detail; see surrounding code and HUM citations.
+ * @post Documented side effects are visible on success.
  */
 static void internal_kw_pull_blob(uint8_t* blob)
 {
@@ -2721,6 +3739,7 @@ static void internal_kw_pull_blob(uint8_t* blob)
  *
  * @note Internal helper.
  * @since 0.1.0
+ * @details Implementation detail; see surrounding code and HUM citations.
  */
 static void internal_kw_push_src(const ra_rsip_key_handle_t* src)
 {
@@ -2730,6 +3749,27 @@ static void internal_kw_push_src(const ra_rsip_key_handle_t* src)
   }
 }
 
+/**
+ * @brief ra rsip key wrap.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] kek See declaration: ``const ra_rsip_key_handle_t* kek``.
+ * @param[in] iv See declaration: ``const uint8_t*              iv``.
+ * @param[in] src See declaration: ``const ra_rsip_key_handle_t* src``.
+ * @param[out] blob See declaration: ``uint8_t*                    blob``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_rsip_key_wrap(const ra_rsip_key_handle_t* kek,
                           const uint8_t*              iv,
                           const ra_rsip_key_handle_t* src,
@@ -2773,6 +3813,7 @@ ra_err_t ra_rsip_key_wrap(const ra_rsip_key_handle_t* kek,
  *
  * @note Internal helper.
  * @since 0.1.0
+ * @details Implementation detail; see surrounding code and HUM citations.
  */
 static ra_err_t internal_kw_pull_handle(ra_rsip_key_handle_t* dest)
 {
@@ -2790,6 +3831,27 @@ static ra_err_t internal_kw_pull_handle(ra_rsip_key_handle_t* dest)
   return k_ra_ok;
 }
 
+/**
+ * @brief ra rsip key unwrap.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] kek See declaration: ``const ra_rsip_key_handle_t* kek``.
+ * @param[in] iv See declaration: ``const uint8_t*              iv``.
+ * @param[in] blob See declaration: ``const uint8_t*              blob``.
+ * @param[out] dest See declaration: ``ra_rsip_key_handle_t*       dest``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_rsip_key_unwrap(const ra_rsip_key_handle_t* kek,
                             const uint8_t*              iv,
                             const uint8_t*              blob,
@@ -2842,6 +3904,11 @@ ra_err_t ra_rsip_key_unwrap(const ra_rsip_key_handle_t* kek,
  *
  * @note Internal helper.
  * @since 0.1.0
+ * @details Implementation detail; see surrounding code and HUM citations.
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
  */
 static ra_err_t internal_kdf_validate(ra_rsip_kdf_op_t            op,
                                       const ra_rsip_key_handle_t* ikm,
@@ -2886,6 +3953,9 @@ static ra_err_t internal_kdf_validate(ra_rsip_kdf_op_t            op,
  *
  * @note Internal helper.
  * @since 0.1.0
+ * @details Implementation detail; see surrounding code and HUM citations.
+ * @pre Module/state preconditions hold (see function body).
+ * @post Documented side effects are visible on success.
  */
 static void internal_kdf_stage(ra_rsip_kdf_op_t            op,
                                const ra_rsip_key_handle_t* ikm,
@@ -2923,6 +3993,7 @@ static void internal_kdf_stage(ra_rsip_kdf_op_t            op,
  *
  * @note Internal helper.
  * @since 0.1.0
+ * @details Implementation detail; see surrounding code and HUM citations.
  */
 static void internal_kdf_pull_handle(ra_rsip_key_handle_t* out)
 {
@@ -2935,6 +4006,31 @@ static void internal_kdf_pull_handle(ra_rsip_key_handle_t* out)
   internal_zero_handle_tail(out, out->body_words);
 }
 
+/**
+ * @brief ra rsip kdf.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] op See declaration: ``ra_rsip_kdf_op_t            op``.
+ * @param[in] ikm See declaration: ``const ra_rsip_key_handle_t* ikm``.
+ * @param[in] label See declaration: ``const uint8_t*              label``.
+ * @param[in] label_len See declaration: ``uint32_t                    label_len``.
+ * @param[in] salt See declaration: ``const uint8_t*              salt``.
+ * @param[in] salt_len See declaration: ``uint32_t                    salt_len``.
+ * @param[in] out_len See declaration: ``uint32_t                    out_len``.
+ * @param[out] out See declaration: ``ra_rsip_key_handle_t*       out``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_rsip_kdf(ra_rsip_kdf_op_t            op,
                      const ra_rsip_key_handle_t* ikm,
                      const uint8_t*              label,
@@ -2964,6 +4060,24 @@ ra_err_t ra_rsip_kdf(ra_rsip_kdf_op_t            op,
  * ===========================================================================
  */
 
+/**
+ * @brief ra rsip life get.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[out] out See declaration: ``ra_rsip_life_state_t* out``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_rsip_life_get(ra_rsip_life_state_t* out)
 {
   RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
@@ -2972,6 +4086,24 @@ ra_err_t ra_rsip_life_get(ra_rsip_life_state_t* out)
   return k_ra_ok;
 }
 
+/**
+ * @brief ra rsip life advance.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] state See declaration: ``ra_rsip_life_state_t state``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_rsip_life_advance(ra_rsip_life_state_t state)
 {
   if ((uint32_t)state > k_ra_rsip_life_rma) {
@@ -2986,6 +4118,24 @@ ra_err_t ra_rsip_life_advance(ra_rsip_life_state_t state)
   return k_ra_ok;
 }
 
+/**
+ * @brief ra rsip debug level get.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[out] out See declaration: ``ra_rsip_debug_level_t* out``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_rsip_debug_level_get(ra_rsip_debug_level_t* out)
 {
   RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
@@ -2994,6 +4144,24 @@ ra_err_t ra_rsip_debug_level_get(ra_rsip_debug_level_t* out)
   return k_ra_ok;
 }
 
+/**
+ * @brief ra rsip debug level set.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] level See declaration: ``ra_rsip_debug_level_t level``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_rsip_debug_level_set(ra_rsip_debug_level_t level)
 {
   if ((uint32_t)level > (uint32_t)k_ra_rsip_debug_al2) {
@@ -3009,6 +4177,24 @@ ra_err_t ra_rsip_debug_level_set(ra_rsip_debug_level_t level)
  * ===========================================================================
  */
 
+/**
+ * @brief ra rsip tamper enable.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] sources See declaration: ``uint32_t sources``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_rsip_tamper_enable(uint32_t sources)
 {
   if ((sources & ~k_ra_rsip_tamper_src_all) != 0U) {
@@ -3019,6 +4205,24 @@ ra_err_t ra_rsip_tamper_enable(uint32_t sources)
   return k_ra_ok;
 }
 
+/**
+ * @brief ra rsip tamper status.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[out] out See declaration: ``uint32_t* out``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_rsip_tamper_status(uint32_t* out)
 {
   RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
@@ -3027,6 +4231,24 @@ ra_err_t ra_rsip_tamper_status(uint32_t* out)
   return k_ra_ok;
 }
 
+/**
+ * @brief ra rsip tamper ack.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] mask See declaration: ``uint32_t mask``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_rsip_tamper_ack(uint32_t mask)
 {
   if (mask == 0U) {
@@ -3040,6 +4262,24 @@ ra_err_t ra_rsip_tamper_ack(uint32_t mask)
   return k_ra_ok;
 }
 
+/**
+ * @brief ra rsip dpa arm.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] enable See declaration: ``bool enable``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_rsip_dpa_arm(bool enable)
 {
   /* HUM Ch 51.5 "Side-channel countermeasures" p 3290 */
@@ -3058,6 +4298,26 @@ ra_err_t ra_rsip_dpa_arm(bool enable)
  * ===========================================================================
  */
 
+/**
+ * @brief ra rsip dotf route.
+ *
+ * @details Implementation detail; see surrounding code and HUM citations.
+ *
+ * @param[in] which See declaration: ``uint8_t which``.
+ * @param[in] slot See declaration: ``uint8_t slot``.
+ * @param[in] on See declaration: ``bool on``.
+ * @return ::ra_err_t outcome (or scalar return value).
+ * @retval k_ra_ok Operation completed successfully.
+ * @retval other Non-zero error code from the underlying operation.
+ *
+ * @pre Module has been initialised where applicable.
+ * @pre Pointer arguments (if any) are valid for the requested length.
+ * @post Hardware / software state reflects the requested operation on success.
+ * @post No side effects beyond those documented above.
+ *
+ * @note Not thread-safe; the caller must serialise concurrent access.
+ * @since 0.1.0
+ */
 ra_err_t ra_rsip_dotf_route(uint8_t which, uint8_t slot, bool on)
 {
   if (which > 1U) {
