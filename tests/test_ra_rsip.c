@@ -1628,6 +1628,93 @@ static void test_mcdc_hash_validate_shake_digest(void)
   TEST_END("rsip hash_validate MC/DC: shake bypass + short digest");
 }
 
+/**
+ * @test test_mcdc_hash_msg_null_len_pair
+ *
+ * @par MC/DC:
+ * Decision: ``if ((msg == nullptr) && (msg_len != 0U))``
+ * (2 conditions, libs/ra_hal/src/ra_rsip.c:2823 internal_hash_validate
+ *  reached via ra_rsip_hash_pull_digest /:2958 same shape).
+ * Short-circuit AND: N+1 = 3 vectors.
+ * - V1: msg=valid, msg_len=8 -> C1=F short  -> dec F (proceed).
+ * - V2: msg=NULL,  msg_len=0 -> C1=T, C2=F  -> dec F (zero-len OK).
+ * - V3: msg=NULL,  msg_len=8 -> C1=T, C2=T  -> dec T -> null_ptr.
+ * V1+V3 isolate C1; V2+V3 isolate C2.
+ *
+ * Same vectors apply to internal_hash_pull_digest (line 2958) which
+ * shares the predicate; both are reached through ra_rsip_hash().
+ */
+static void test_mcdc_hash_msg_null_len_pair(void)
+{
+  TEST_BEGIN("rsip hash_validate MC/DC: msg==NULL && msg_len!=0");
+  prep_running();
+  uint8_t       digest[32] = {};
+  const uint8_t msg[8]     = {0U};
+  /* V1: valid msg+len. */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_rsip_hash(k_ra_rsip_hash_sha256, msg, sizeof(msg), digest, 32U));
+  /* V2: NULL msg, len=0 -> empty hash is valid. */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_rsip_hash(k_ra_rsip_hash_sha256, NULL, 0U, digest, 32U));
+  /* V3: NULL msg, len>0 -> null_ptr. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_rsip_hash(k_ra_rsip_hash_sha256, NULL, 8U, digest, 32U));
+  TEST_END("rsip hash_validate MC/DC: msg==NULL && msg_len!=0");
+}
+
+/**
+ * @test test_mcdc_aead_aad_null_len_pair
+ *
+ * @par MC/DC:
+ * Decision: ``if ((aad != nullptr) && (aad_len > 0U))``
+ * (2 conditions, libs/ra_hal/src/ra_rsip.c:2395 internal_aead_pull_tag).
+ * Short-circuit AND: N+1 = 3 vectors.
+ * - V1: aad=NULL, aad_len=0 -> C1=F short -> dec F (skip AAD push).
+ * - V2: aad=valid, aad_len=0 -> C1=T, C2=F -> dec F (zero AAD).
+ * - V3: aad=valid, aad_len=8 -> C1=T, C2=T -> dec T (push AAD).
+ * V1+V3 isolate C1; V2+V3 isolate C2.
+ *
+ * Reached via ra_rsip_aes_gcm_encrypt with three AAD configurations.
+ */
+static void test_mcdc_aead_aad_null_len_pair(void)
+{
+  TEST_BEGIN("rsip aead_pull_tag MC/DC: aad!=NULL && aad_len>0");
+  prep_running();
+  /* Install an AES-128 plain key. */
+  const uint8_t        kbytes[16] = {};
+  ra_rsip_key_handle_t handle     = {};
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rsip_aes128_install_plain(kbytes, &handle));
+
+  const uint8_t pt[16]  = {0U};
+  const uint8_t iv[12]  = {0U};
+  const uint8_t aad[8]  = {0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF, 0x00, 0x11};
+  uint8_t       ct[16]  = {};
+  uint8_t       tag[16] = {};
+
+  /* V1: aad=NULL, aad_len=0 -> C1=F short. */
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_ok,
+    (int32_t)
+      ra_rsip_aes_gcm(&handle, k_ra_rsip_dir_encrypt, iv, NULL, 0U, pt, ct, sizeof(pt), tag));
+  /* V2: aad=valid, aad_len=0 -> C1=T, C2=F. */
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_ok,
+    (int32_t)ra_rsip_aes_gcm(&handle, k_ra_rsip_dir_encrypt, iv, aad, 0U, pt, ct, sizeof(pt), tag));
+  /* V3: aad=valid, aad_len>0 -> C1=T, C2=T. */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_rsip_aes_gcm(&handle,
+                                          k_ra_rsip_dir_encrypt,
+                                          iv,
+                                          aad,
+                                          sizeof(aad),
+                                          pt,
+                                          ct,
+                                          sizeof(pt),
+                                          tag));
+
+  TEST_END("rsip aead_pull_tag MC/DC: aad!=NULL && aad_len>0");
+}
+
 int32_t main(void)
 {
   test_init_happy();
@@ -1681,6 +1768,8 @@ int32_t main(void)
   test_mcdc_rsa_sign_size_quad();
   test_mcdc_rsa_verify_size_quad();
   test_mcdc_hash_validate_shake_digest();
+  test_mcdc_hash_msg_null_len_pair();
+  test_mcdc_aead_aad_null_len_pair();
   (void)fprintf(stderr, "[OK ] test_ra_rsip.c\n");
   return 0;
 }
