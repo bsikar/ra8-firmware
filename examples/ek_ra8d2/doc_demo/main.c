@@ -1,5 +1,5 @@
 /**
- * @file main.c
+ * @file examples/ek_ra8d2/doc_demo/main.c
  * @brief Data Operation Circuit (DOC) hardware vs software check
  *
  * @par Tag

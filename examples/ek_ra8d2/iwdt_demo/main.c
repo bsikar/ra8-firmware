@@ -1,5 +1,5 @@
 /**
- * @file main.c
+ * @file examples/ek_ra8d2/iwdt_demo/main.c
  * @brief IWDT window-mode refresh demo for EK-RA8D2
  *
  * @par Tag

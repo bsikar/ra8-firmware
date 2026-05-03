@@ -1,5 +1,5 @@
 /**
- * @file examples/crypto_aes_demo/trustzone_init.c
+ * @file examples/ek_ra8d2/crypto_aes_demo/trustzone_init.c
  * @brief Cortex-M85 TrustZone-M Security Attribution Unit (SAU) bring-up
  *
  * @par Tag

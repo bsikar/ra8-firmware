@@ -1,5 +1,5 @@
 /**
- * @file examples/threadx_sdcard_demo/main.c
+ * @file examples/_unsupported/threadx_sdcard_demo/main.c
  * @brief Eclipse ThreadX SD-card boot-sector dump on the EK-RA8D2
  *
  * @par Tag

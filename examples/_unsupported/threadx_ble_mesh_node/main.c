@@ -1,5 +1,5 @@
 /**
- * @file main.c
+ * @file examples/_unsupported/threadx_ble_mesh_node/main.c
  * @brief NimBLE Bluetooth Mesh node demo on ThreadX (RA8D2).
  *
  * @par Tag

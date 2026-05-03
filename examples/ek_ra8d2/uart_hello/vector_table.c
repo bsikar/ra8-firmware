@@ -1,5 +1,5 @@
 /**
- * @file examples/uart_hello/vector_table.c
+ * @file examples/ek_ra8d2/uart_hello/vector_table.c
  * @brief Cortex-M85 vector table and default interrupt handlers for RA8D2
  *
  * @details

@@ -1,5 +1,5 @@
 /**
- * @file examples/ble_peripheral/secure_exception.c
+ * @file examples/_unsupported/ble_peripheral/secure_exception.c
  * @brief Secure-side fault handler for NS -> S violations
  *
  * @par Tag

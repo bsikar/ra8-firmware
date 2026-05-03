@@ -1,5 +1,5 @@
 /**
- * @file examples/usb_audio_device/secure_exception.c
+ * @file examples/_unsupported/usb_audio_device/secure_exception.c
  * @brief Secure-side fault handler for NS -> S violations
  *
  * @par Tag

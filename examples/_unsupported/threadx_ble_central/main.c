@@ -1,5 +1,5 @@
 /**
- * @file main.c
+ * @file examples/_unsupported/threadx_ble_central/main.c
  * @brief NimBLE-based GATT-client central demo on ThreadX (RA8D2).
  *
  * @par Tag

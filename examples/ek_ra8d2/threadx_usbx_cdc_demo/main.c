@@ -1,5 +1,5 @@
 /**
- * @file main.c
+ * @file examples/ek_ra8d2/threadx_usbx_cdc_demo/main.c
  * @brief ThreadX + USBX CDC ACM echo demo for EK-RA8D2 (USB-FS)
  *
  * @par Tag

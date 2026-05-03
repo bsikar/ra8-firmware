@@ -1,5 +1,5 @@
 /**
- * @file examples/ra_bootloader/main.c
+ * @file examples/ek_ra8d2/ra_bootloader/main.c
  * @brief Minimal A/B bank-switch bootloader stub for RA8D2 OTA
  *
  * @par Tag

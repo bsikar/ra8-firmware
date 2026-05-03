@@ -1,5 +1,5 @@
 /**
- * @file main.c
+ * @file examples/ek_ra8d2/dac_b_demo/main.c
  * @brief DAC_B 12-bit DC sweep demo for EK-RA8D2
  *
  * @par Tag

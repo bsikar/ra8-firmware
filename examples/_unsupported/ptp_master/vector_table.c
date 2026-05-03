@@ -1,5 +1,5 @@
 /**
- * @file examples/ptp_master/vector_table.c
+ * @file examples/_unsupported/ptp_master/vector_table.c
  * @brief Cortex-M85 vector table and default interrupt handlers for RA8D2
  *
  * @details

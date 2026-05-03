@@ -1,5 +1,5 @@
 /**
- * @file examples/threadx_https_client/system_init.c
+ * @file examples/_unsupported/threadx_https_client/system_init.c
  * @brief Cortex-M85 / RA8D2 core bring-up (called from Reset_Handler)
  *
  * @details

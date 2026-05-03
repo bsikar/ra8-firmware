@@ -1,5 +1,5 @@
 /**
- * @file main.c
+ * @file examples/ek_ra8d2/rtc_alarm/main.c
  * @brief RTC alarm + UART log demo for EK-RA8D2
  *
  * @par Tag

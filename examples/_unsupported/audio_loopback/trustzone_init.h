@@ -1,5 +1,5 @@
 /**
- * @file examples/audio_loopback/trustzone_init.h
+ * @file examples/_unsupported/audio_loopback/trustzone_init.h
  * @brief Cortex-M85 TrustZone-M SAU bring-up entry point
  *
  * @par Tag

@@ -1,5 +1,5 @@
 /**
- * @file main.c
+ * @file examples/ek_ra8d2/i2c_loopback/main.c
  * @brief IIC_B (I3C-in-I2C-mode) self-test smoke app for the EK-RA8D2
  *
  * @par Tag

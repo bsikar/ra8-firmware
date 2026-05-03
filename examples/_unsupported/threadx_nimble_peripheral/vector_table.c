@@ -1,5 +1,5 @@
 /**
- * @file examples/threadx_nimble_peripheral/vector_table.c
+ * @file examples/_unsupported/threadx_nimble_peripheral/vector_table.c
  * @brief Cortex-M85 vector table and default interrupt handlers for RA8D2
  *
  * @details

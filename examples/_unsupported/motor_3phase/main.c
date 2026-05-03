@@ -1,5 +1,5 @@
 /**
- * @file main.c
+ * @file examples/_unsupported/motor_3phase/main.c
  * @brief Three-phase GPT PWM motor demo for EK-RA8D2 (GPT0/1/2 -> U/V/W)
  *
  * @par Tag

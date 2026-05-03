@@ -1,5 +1,5 @@
 /**
- * @file main.c
+ * @file examples/_unsupported/ble_peripheral/main.c
  * @brief BLE peripheral advertising the GATT Battery Service smoke test
  *        (Bluetooth Core 5.3 -- ``EK-RA8D2`` device, 0x180F service)
  *

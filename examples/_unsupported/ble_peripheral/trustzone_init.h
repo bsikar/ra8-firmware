@@ -1,5 +1,5 @@
 /**
- * @file examples/ble_peripheral/trustzone_init.h
+ * @file examples/_unsupported/ble_peripheral/trustzone_init.h
  * @brief Cortex-M85 TrustZone-M SAU bring-up entry point
  *
  * @par Tag

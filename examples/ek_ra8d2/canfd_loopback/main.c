@@ -1,5 +1,5 @@
 /**
- * @file main.c
+ * @file examples/ek_ra8d2/canfd_loopback/main.c
  * @brief CANFD0 internal-loopback smoke test for EK-RA8D2
  *
  * @par Tag

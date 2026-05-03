@@ -1,5 +1,5 @@
 /**
- * @file main.c
+ * @file examples/ek_ra8d2/crc_demo/main.c
  * @brief CRC-32 hardware vs. software cross-check demo for the EK-RA8D2
  *
  * @par Tag

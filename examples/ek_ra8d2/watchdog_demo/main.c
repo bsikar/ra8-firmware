@@ -1,5 +1,5 @@
 /**
- * @file main.c
+ * @file examples/ek_ra8d2/watchdog_demo/main.c
  * @brief IWDT watchdog + reset-cause demo for EK-RA8D2
  *
  * @par Tag

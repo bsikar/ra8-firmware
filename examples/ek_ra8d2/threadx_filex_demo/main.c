@@ -1,5 +1,5 @@
 /**
- * @file main.c
+ * @file examples/ek_ra8d2/threadx_filex_demo/main.c
  * @brief ThreadX + FileX SD-card demo for EK-RA8D2
  *
  * @par Tag

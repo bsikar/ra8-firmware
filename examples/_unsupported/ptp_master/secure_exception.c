@@ -1,5 +1,5 @@
 /**
- * @file examples/ptp_master/secure_exception.c
+ * @file examples/_unsupported/ptp_master/secure_exception.c
  * @brief Secure-side fault handler for NS -> S violations
  *
  * @par Tag

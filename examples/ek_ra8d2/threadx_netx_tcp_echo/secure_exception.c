@@ -1,5 +1,5 @@
 /**
- * @file examples/threadx_netx_tcp_echo/secure_exception.c
+ * @file examples/ek_ra8d2/threadx_netx_tcp_echo/secure_exception.c
  * @brief Secure-side fault handler for NS -> S violations
  *
  * @par Tag

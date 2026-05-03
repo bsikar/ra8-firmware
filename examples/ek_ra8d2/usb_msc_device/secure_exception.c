@@ -1,5 +1,5 @@
 /**
- * @file examples/usb_msc_device/secure_exception.c
+ * @file examples/ek_ra8d2/usb_msc_device/secure_exception.c
  * @brief Secure-side fault handler for NS -> S violations
  *
  * @par Tag

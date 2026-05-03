@@ -1,5 +1,5 @@
 /**
- * @file examples/threadx_ipc_demo/main.c
+ * @file examples/ek_ra8d2/threadx_ipc_demo/main.c
  * @brief Inter-Processor Communication (IPC) demo on the EK-RA8D2
  *
  * @par Tag

@@ -1,5 +1,5 @@
 /**
- * @file main.c
+ * @file examples/ek_ra8d2/clock_check/main.c
  * @brief Clock bring-up smoke test for EK-RA8D2 (CGC: HOCO + PLL)
  *
  * @par Tag

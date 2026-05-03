@@ -1,5 +1,5 @@
 /**
- * @file main.c
+ * @file examples/ek_ra8d2/power_profiler/main.c
  * @brief Power-mode profiler smoke app for the EK-RA8D2
  *
  * @par Tag

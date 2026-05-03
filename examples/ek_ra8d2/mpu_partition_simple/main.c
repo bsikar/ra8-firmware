@@ -1,5 +1,5 @@
 /**
- * @file main.c
+ * @file examples/ek_ra8d2/mpu_partition_simple/main.c
  * @brief Single-region MPU read-only partition demo
  *
  * @par Tag

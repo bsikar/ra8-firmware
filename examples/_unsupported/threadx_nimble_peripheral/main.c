@@ -1,5 +1,5 @@
 /**
- * @file main.c
+ * @file examples/_unsupported/threadx_nimble_peripheral/main.c
  * @brief NimBLE-based Battery Service peripheral on top of ThreadX (RA8D2)
  *
  * @par Tag
