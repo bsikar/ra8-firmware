@@ -118,6 +118,54 @@ SELF_EXEMPT_FILES: frozenset[str] = frozenset(
     }
 )
 
+# Whole-file skip list for vendor-symbol-dominated source. Each entry
+# represents a file where the legacy spelling is part of an upstream
+# contract (Renesas FSP CMSIS/HUM register-bit names, Renesas FSP
+# `r_iic_b_master_*` API names, Express Logic USBX `UX_SLAVE_*` types,
+# Mbed TLS macro symbols, IEEE 802.1AS / IEEE 1588 PTP role names that
+# appear verbatim in the spec, OctoSPI "slave 0/1" wording from the
+# silicon spec, etc.) and renaming would break the upstream interface
+# or misrepresent the silicon. Tests that exercise these vendor APIs
+# inherit the same skip because their fixtures must spell the symbols
+# verbatim.
+SKIP_FILE_PATTERNS: tuple[str, ...] = (
+    # Renesas RA8D2 Hardware User's Manual register-bit name citations.
+    # Every k_ra_*_bit_* / k_ra_*_mask_* enum mirrors a HUM bit name.
+    "libs/ra_hal/inc/ra8d2_iic_b_regs.h",
+    "libs/ra_hal/inc/ra8d2_i3c_regs.h",
+    "libs/ra_hal/inc/ra8d2_ospi_regs.h",
+    "libs/ra_hal/inc/ra8d2_mipi_phy_regs.h",
+    "libs/ra_hal/inc/ra8d2_ptp_regs.h",
+    "libs/ra_hal/inc/ra8d2_spi_regs.h",
+    "libs/ra_hal/inc/ra8d2_ssie_regs.h",
+    "libs/ra_hal/inc/ra8d2_vin_regs.h",
+    "libs/ra_hal/inc/ra8d2_vreg_regs.h",
+    # Renesas FSP `r_iic_b_master_*` API surface references.
+    "libs/ra_hal/inc/ra_iic_b.h",
+    "libs/ra_hal/src/ra_iic_b.c",
+    "tests/test_ra_iic_b.c",
+    "tests/test_ra_iic_b_edge_cases.c",
+    # Express Logic USBX `UX_SLAVE_*` upstream type names.
+    "port/usbx/ux_dcd_ra_usb.c",
+    "port/usbx/ux_dcd_ra_usb.h",
+    "tests/test_ux_dcd_ra_usb.c",
+    # Mbed TLS `MBEDTLS_SSL_EXTENDED_MASTER_SECRET` macro citation.
+    "port/mbedtls/mbedtls_config.h",
+    # IEEE 1588 PTP master/slave role names appear verbatim in the spec.
+    "libs/ra_hal/inc/ra_ptp.h",
+    "libs/ra_hal/src/ra_ptp.c",
+    "tests/test_ra_ptp.c",
+    # MIPI D-PHY `MASTEREN` register bit and DSI/CSI master/slave mode
+    # nomenclature mirrors the MIPI Alliance D-PHY specification.
+    "libs/ra_hal/inc/ra_mipi_phy.h",
+    "libs/ra_hal/src/ra_mipi_phy.c",
+    "tests/test_ra_mipi_phy.c",
+    # SOUP provenance docs cite upstream component descriptions verbatim.
+    "docs/SOUP/nimble.md",
+    "docs/SOUP/ble_patch_image.md",
+    "docs/SOUP/r_sce_AMC_firmware.md",
+)
+
 
 # --------------------------------------------------------------------------
 # Implementation
@@ -163,7 +211,10 @@ def iter_source_files(root: Path) -> list[Path]:
 
 def scan_file(path: Path, root: Path) -> list[tuple[Path, int, str, str]]:
     rel = path.relative_to(root)
-    if str(rel) in SELF_EXEMPT_FILES:
+    rel_str = str(rel)
+    if rel_str in SELF_EXEMPT_FILES:
+        return []
+    if rel_str in SKIP_FILE_PATTERNS:
         return []
     try:
         text = path.read_text(encoding="utf-8")
