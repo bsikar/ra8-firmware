@@ -1110,6 +1110,81 @@ static void test_mcdc_blank_check_region_or3(void)
   TEST_END("flash blank_check MC/DC: !in_code && !in_extra && !in_ofs");
 }
 
+/**
+ * @test test_mcdc_flash_status_or_pairs
+ *
+ * @par MC/DC:
+ * Three short-circuit OR decisions in libs/ra_hal/src/ra_flash.c
+ * ra_flash_status (line 2758, 2762, 2767), each 2-cond OR. The pre-
+ * existing test_get_status_paths supplies the all-F vector for each.
+ * This test adds the remaining two vectors per decision so MC/DC =
+ * 100% on each (N+1 = 3 vectors per 2-cond decision).
+ *
+ * Decision 2758: ``(prgbsyc) || (pe_mode)``
+ * - V1 (existing): both clear -> dec F.
+ * - V2: only prgbsyc set         -> C1=T short    -> dec T.
+ * - V3: only pe_mode set         -> C1=F, C2=T    -> dec T.
+ *
+ * Decision 2762: ``(cmdlk) || (ilgcomerr)``  (same shape).
+ * Decision 2767: ``(mrcbprot0&1==0) || (mrcbprot1&1==0)`` (same shape).
+ *
+ * For 2767 both bits SET means low-bit clear==0 evaluates F; clearing
+ * one of them flips the corresponding condition.
+ */
+static void test_mcdc_flash_status_or_pairs(void)
+{
+  TEST_BEGIN("flash status MC/DC: OR pairs in busy/illegal/protected");
+  ra_sim_mmap_reset();
+  ra_flash_status_t s = {};
+
+  /* Setup: enable both protect bits (low bit set => writable, decision F). */
+  *ra_mram_reg16((uint16_t)k_ra_mram_off_mrcbprot0) = 0x0001U;
+  *ra_mram_reg16((uint16_t)k_ra_mram_off_mrcbprot1) = 0x0001U;
+
+  /* V2 for 2758: prgbsyc set, pe_mode clear. */
+  *ra_mram_reg8((uint16_t)k_ra_mram_off_mrcps)    = (uint8_t)k_ra_mrcps_mask_prgbsyc;
+  *ra_mram_reg32((uint16_t)k_ra_mram_off_mentryr) = 0U;
+  *ra_mram_reg8((uint16_t)k_ra_mram_off_mastat)   = 0U;
+  *ra_mram_reg32((uint16_t)k_ra_mram_off_mstatr)  = 0U;
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_flash_status(&s));
+  TEST_ASSERT(s.programming_busy);
+  TEST_ASSERT(!s.illegal_command);
+  TEST_ASSERT(!s.sector_protected);
+
+  /* V3 for 2758: prgbsyc clear, pe_mode set. */
+  *ra_mram_reg8((uint16_t)k_ra_mram_off_mrcps)    = 0U;
+  *ra_mram_reg32((uint16_t)k_ra_mram_off_mentryr) = (uint32_t)k_ra_mentryr_mask_pe_mode;
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_flash_status(&s));
+  TEST_ASSERT(s.programming_busy);
+
+  /* V2 for 2762: cmdlk set, ilgcomerr clear. */
+  *ra_mram_reg32((uint16_t)k_ra_mram_off_mentryr) = 0U;
+  *ra_mram_reg8((uint16_t)k_ra_mram_off_mastat)   = (uint8_t)k_ra_mastat_mask_cmdlk;
+  *ra_mram_reg32((uint16_t)k_ra_mram_off_mstatr)  = 0U;
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_flash_status(&s));
+  TEST_ASSERT(s.illegal_command);
+
+  /* V3 for 2762: cmdlk clear, ilgcomerr set. */
+  *ra_mram_reg8((uint16_t)k_ra_mram_off_mastat)  = 0U;
+  *ra_mram_reg32((uint16_t)k_ra_mram_off_mstatr) = (uint32_t)k_ra_mstatr_mask_ilgcomerr;
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_flash_status(&s));
+  TEST_ASSERT(s.illegal_command);
+
+  /* V2 for 2767: prot0 cleared (write-protected), prot1 still set. */
+  *ra_mram_reg16((uint16_t)k_ra_mram_off_mrcbprot0) = 0x0000U;
+  *ra_mram_reg16((uint16_t)k_ra_mram_off_mrcbprot1) = 0x0001U;
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_flash_status(&s));
+  TEST_ASSERT(s.sector_protected);
+
+  /* V3 for 2767: prot0 set, prot1 cleared. */
+  *ra_mram_reg16((uint16_t)k_ra_mram_off_mrcbprot0) = 0x0001U;
+  *ra_mram_reg16((uint16_t)k_ra_mram_off_mrcbprot1) = 0x0000U;
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_flash_status(&s));
+  TEST_ASSERT(s.sector_protected);
+
+  TEST_END("flash status MC/DC: OR pairs in busy/illegal/protected");
+}
+
 int32_t main(void)
 {
   test_init_happy();
@@ -1172,6 +1247,7 @@ int32_t main(void)
   test_set_window_mcdc();
   test_write_validation_mcdc();
   test_mcdc_blank_check_region_or3();
+  test_mcdc_flash_status_or_pairs();
 
   (void)fprintf(stderr, "[OK  ] test_ra_flash.c\n");
   return 0;
