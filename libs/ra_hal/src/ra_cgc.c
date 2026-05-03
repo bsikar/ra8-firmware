@@ -1212,10 +1212,8 @@ ra_err_t ra_cgc_pll2_enable(uint8_t mul_int, uint8_t mul_quarters, ra_plodiv_t p
 
   ra_log_info_val(s_tag, "pll2 enable mul_int", (uint32_t)mul_int);
 
-  /* Compose PLL2CCR. PLL2 on RA8D2 reuses PLL1's `(mul * 4 + quarters) << 6`
-   * packing -- PLL2MULNF[7:6] | PLL2MUL[16:8] -- so the integer multiplier
-   * is a 9-bit field (max 0x12B = x300). PLL2CCR is a 32-bit register on
-   * this part (HUM Ch 9.2.9), distinct from the 16-bit RA8M1 layout. */
+  /* PLL2CCR (32-bit on RA8D2, HUM Ch 9.2.9): `(mul*4 + quarters) << 6`
+   * packing -- PLL2MULNF[7:6] | PLL2MUL[16:8] (9-bit, max 0x12B = x300). */
   const uint32_t mul_quarters_field =
     ((uint32_t)mul_int * (uint32_t)k_ra_cgc_quarters_per_unit) + (uint32_t)mul_quarters;
   const uint32_t pll2ccr =
@@ -1223,10 +1221,11 @@ ra_err_t ra_cgc_pll2_enable(uint8_t mul_int, uint8_t mul_quarters, ra_plodiv_t p
     ((uint32_t)k_ra_plsrcsel_main << k_ra_pllccr_shift_plsrcsel) |
     ((uint32_t)k_ra_plidiv_div2 & (uint32_t)k_ra_pll2ccr_mask_plidiv);
 
-  /* PLL2CCR2: programme P; leave Q and R at /1 (code 0) since this
-   * driver only consumes PLL2P today. */
-  const uint16_t pll2ccr2 = (uint16_t)(((uint16_t)k_ra_plodiv_div1 << k_ra_pllccr2_shift_plodivr) |
-                                       ((uint16_t)k_ra_plodiv_div1 << k_ra_pllccr2_shift_plodivq) |
+  /* PLL2CCR2: programme P; Q/R at /6 (code 5). Code 0 (=/1) is
+   * "Setting prohibited" per HUM Ch 9.2.10/9.2.12 -- a prohibited
+   * code in ANY field makes the chip drop the whole 16-bit write. */
+  const uint16_t pll2ccr2 = (uint16_t)(((uint16_t)k_ra_plodiv_div6 << k_ra_pllccr2_shift_plodivr) |
+                                       ((uint16_t)k_ra_plodiv_div6 << k_ra_pllccr2_shift_plodivq) |
                                        ((uint16_t)p_div_code << k_ra_pllccr2_shift_plodivp));
 
   ra_err_t err = k_ra_ok;

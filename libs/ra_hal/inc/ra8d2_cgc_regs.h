@@ -210,9 +210,16 @@ typedef enum : uint8_t {
  * @details
  * Encoded as `ratio - 1` for ratios 1..6, plus discrete codes for
  * /8, /9, /16. The quickstart EK-RA8D2 uses /2 for P, /6 for Q, /5 for R.
+ *
+ * @warning Per HUM Ch 9.2.7 (PLLCCR2) and Ch 9.2.10/9.2.12 (PLL2CCR2)
+ * the bit pattern `0000` is listed as "Setting prohibited". Writing
+ * code 0 in any PLODIVP/Q/R field is silently rejected by hardware:
+ * the entire 16-bit register write is dropped and the register stays
+ * at its previous (often reset-default) value. Use a valid divider
+ * code in every field, even for outputs you do not consume.
+ * `k_ra_plodiv_div1` is therefore intentionally absent from this enum.
  */
 typedef enum : uint8_t {
-  k_ra_plodiv_div1  = 0U,  /**< PLL output divide by 1.  */
   k_ra_plodiv_div2  = 1U,  /**< PLL output divide by 2.  */
   k_ra_plodiv_div3  = 2U,  /**< PLL output divide by 3.  */
   k_ra_plodiv_div4  = 3U,  /**< PLL output divide by 4.  */
