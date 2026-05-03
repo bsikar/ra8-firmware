@@ -12,7 +12,9 @@ The check is structural rather than full-graph: for every adjacent pair
 of init calls we ensure the earlier one has a lower-or-equal canonical
 rank. Calls outside the ranked set (e.g. ``ra_acmphs_init``) are
 treated as "peripheral" and must come last. The script emits a warning
-for each offending pair and exits non-zero if any app fails.
+for each offending pair and -- in the default STRICT mode -- exits
+non-zero if any app fails. Pass ``--no-strict`` to downgrade to
+warn-only output (useful while landing a fix).
 
 Optionally writes a Markdown report to a path given via ``--report``.
 
@@ -191,8 +193,12 @@ def main() -> int:
     )
     parser.add_argument(
         "--strict",
-        action="store_true",
-        help="Exit non-zero if any app has a violation.",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help=(
+            "Exit non-zero if any app has a violation (default: True). "
+            "Use --no-strict to suppress the non-zero exit (warn-only mode)."
+        ),
     )
     args = parser.parse_args()
 
