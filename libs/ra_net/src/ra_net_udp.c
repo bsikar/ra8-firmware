@@ -62,7 +62,7 @@
  *
  * @since 0.1.0
  */
-static int16_t find_udp_socket_by_port(uint16_t port)
+int16_t ra_net_udp_internal_find_socket_by_port(uint16_t port)
 {
   ra_net_state_t* s = ra_net_internal_state();
   for (uint16_t i = 0U; i < (uint16_t)k_ra_net_max_sockets; i++) {
@@ -106,7 +106,7 @@ ra_err_t ra_net_udp_socket(uint16_t local_port, ra_net_handle_t* out_handle)
   if (local_port == 0U) {
     return k_ra_err_invalid_arg;
   }
-  if (find_udp_socket_by_port(local_port) >= 0) {
+  if (ra_net_udp_internal_find_socket_by_port(local_port) >= 0) {
     return k_ra_err_exists;
   }
   ra_net_state_t* s = ra_net_internal_state();
@@ -340,7 +340,7 @@ ra_err_t ra_net_udp_recv(ra_net_handle_t h,
  *
  * @since 0.1.0
  */
-static void dns_consume_response(const uint8_t* dns, uint16_t dlen);
+/* Forward declaration moved to ra_net_internal.h for MC/DC test access. */
 
 /**
  * @brief Process an inbound UDP frame; enqueue to the bound socket
@@ -397,11 +397,11 @@ ra_err_t ra_net_udp_handle(const uint8_t* frame, uint16_t len)
    * the query; route them to the resolver before treating them as a
    * regular socket datagram. */
   if (s->dns_pending != 0U && sport == (uint16_t)k_dns_port) {
-    dns_consume_response(payload, payload_len);
+    ra_net_udp_internal_dns_consume_response(payload, payload_len);
     /* Fall through so a bound socket on dport still sees the bytes. */
   }
 
-  int16_t idx = find_udp_socket_by_port(dport);
+  int16_t idx = ra_net_udp_internal_find_socket_by_port(dport);
   if (idx < 0) {
     return k_ra_err_not_found;
   }
@@ -507,7 +507,7 @@ static uint16_t dns_encode_qname(const char* host, uint8_t* out)
  *
  * @since 0.1.0
  */
-static void dns_consume_response(const uint8_t* dns, uint16_t dlen)
+void ra_net_udp_internal_dns_consume_response(const uint8_t* dns, uint16_t dlen)
 {
   ra_net_state_t* s = ra_net_internal_state();
   if (dlen < (uint16_t)k_dns_hdr_len) {
