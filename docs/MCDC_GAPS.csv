@@ -6,9 +6,6 @@ libs/ra_ble_host/src/ra_ble_att.c,658,2,internal_handle_read,} else if ((a->kind
 libs/ra_ble_host/src/ra_ble_gatt.c,480,2,ra_ble_host_gatt_set_value,if ((len > 0U) && (a->value != NULL)) {,partial,false,
 libs/ra_ble_host/src/ra_ble_gatt.c,538,2,ra_ble_host_gatt_notify,if ((decl == NULL) || ((decl->props & (uint8_t)k_ra_ble_host_char_prop_notify) == 0U)) {,partial,false,
 libs/ra_ble_host/src/ra_ble_gatt.c,569,2,ra_ble_host_gatt_notify,if ((value_len > 0U) && (a->value != NULL)) {,partial,false,
-libs/ra_ble_host/src/ra_ble_l2cap.c,576,2,ra_ble_host_acl_in,if ((params == NULL) || (s_state.initialized == 0U)) {,no,false,
-libs/ra_ble_host/src/ra_ble_l2cap.c,580,3,ra_ble_host_acl_in,if ((evt_code == k_evt_le_meta) && (params_len >= k_min_lemeta_param_bytes) &&,no,false,
-libs/ra_ble_host/src/ra_ble_l2cap.c,597,2,ra_ble_host_acl_in,} else if ((evt_code == k_evt_disconn_complete) && (params_len >= k_min_disconn_param_bytes)) {,no,false,
 libs/ra_board_ek_ra8d2/src/ra_board_ek_ra8d2.c,975,2,ra_board_audio_init,if (channels != (uint8_t)k_ra_audio_channels_mono &&,partial,false,
 libs/ra_core/src/ra_log.c,261,2,internal_itm_put_u32,while (value != 0U && i < k_ra_u32_max_digits) {,partial,true,"Annotated deactivation: digit-buffer bound; uint32_t max is 10 digits (k_ra_u32_max_digits == 10), so the loop always terminates by `value == 0` first; the bound is a defensive watchdog."
 libs/ra_epub/src/ra_epub_chapter.c,225,2,priv_font_init,if (w < 0 || h < 0) {,no,false,
@@ -39,11 +36,9 @@ libs/ra_hal/src/ra_drw.c,776,2,internal_pack_texture_bits,if ((uint16_t)rect->wi
 libs/ra_hal/src/ra_drw.c,780,2,internal_pack_texture_bits,if ((uint16_t)rect->width_px > k_ra_drw_max_width_px ||,partial,false,
 libs/ra_hal/src/ra_eth.c,330,2,internal_init_rings,if ((tx == 0U) || (tx > k_ra_eth_num_tx_desc)) {,partial,true,Annotated deactivation: tx normalized to nonzero above; first OR-condition unreachable.
 libs/ra_hal/src/ra_eth.c,334,2,internal_init_rings,if ((rx == 0U) || (rx > k_ra_eth_num_rx_desc)) {,partial,true,Annotated deactivation: rx normalized to nonzero above; first OR-condition unreachable.
-libs/ra_hal/src/ra_flash.c,150,2,internal_wait_buffer_ready,if (((s & k_ra_mrcps_mask_prgbsyc) == 0U) && ((s & k_ra_mrcps_mask_abuffull) == 0U)) {,no,false,
-libs/ra_hal/src/ra_flash.c,181,2,internal_wait_commit_done,if (((s & k_ra_mrcps_mask_abufemp) != 0U) && ((s & k_ra_mrcps_mask_prgbsyc) == 0U)) {,no,false,
-libs/ra_hal/src/ra_flash.c,2737,2,ra_flash_blank_check,(address >= k_ra_flash_code_start) &&,partial,false,
-libs/ra_hal/src/ra_flash.c,2740,2,ra_flash_blank_check,(address >= k_ra_flash_extra_start) &&,no,false,
-libs/ra_hal/src/ra_flash.c,2746,3,ra_flash_blank_check,if (!in_code && !in_extra && !in_ofs) {,partial,false,
+libs/ra_hal/src/ra_flash.c,2785,2,ra_flash_blank_check,(address >= k_ra_flash_code_start) &&,partial,false,
+libs/ra_hal/src/ra_flash.c,2788,2,ra_flash_blank_check,(address >= k_ra_flash_extra_start) &&,no,false,
+libs/ra_hal/src/ra_flash.c,2794,3,ra_flash_blank_check,if (!in_code && !in_extra && !in_ofs) {,partial,false,
 libs/ra_hal/src/ra_i3c.c,688,2,ra_i3c_send_ccc,if ((target_addr > (uint8_t)k_ra_i3c_addr_mask) || (max_len == 0U)) {,no,false,
 libs/ra_hal/src/ra_i3c.c,815,3,ra_i3c_set_hdr_mode,if ((mode != k_ra_i3c_hdr_mode_sdr) && (mode != k_ra_i3c_hdr_mode_ddr) &&,partial,false,
 libs/ra_hal/src/ra_iic_b.c,129,2,internal_iic_b_half_period,if ((bus_hz == 0U) || (pclka_hz == 0U)) {,no,true,Annotated deactivation: both args validated by ra_iic_b_init upstream; defensive duplicate.
@@ -73,10 +68,8 @@ libs/ra_hal/src/ra_usb_cdc.c,185,2,internal_apply_line_coding,if ((data == nullp
 libs/ra_hal/src/ra_usb_hmsc.c,1274,3,internal_normalise_xfer_err,if ((err == k_ra_ok) || (err == k_ra_err_no_data) || (err == k_ra_err_hw_timeout)) {,no,false,
 libs/ra_hal/src/ra_vin.c,348,2,internal_mc_rmw,if (((mc_now & k_ra_vin_mc_me) != 0UL) || ((fc_now & k_ra_vin_fc_cc) != 0UL)) {,partial,false,
 libs/ra_modem_at/src/ra_modem_at.c,126,2,ra_modem_at_internal_str_len,while ((i < UINT16_MAX) && (s[i] != '\0')) {,partial,true,Annotated deactivation: 64KB-bound is a defensive watchdog; no input string in the project's documented call sites approaches UINT16_MAX bytes.
-libs/ra_modem_at/src/ra_modem_at.c,227,2,internal_reset_line,if ((s_mod.cfg.line_buf != nullptr) && (s_mod.cfg.line_buf_len > 0U)) {,no,false,
-libs/ra_modem_at/src/ra_modem_at.c,345,3,internal_dispatch_urc,if ((expected_response == nullptr) || (expected_response[0] == '\0') ||,partial,false,
-libs/ra_modem_at/src/ra_modem_at.c,534,3,internal_effective_timeout,if ((expected_response != nullptr) && (expected_response[0] != '\0') &&,partial,false,
-libs/ra_modem_at/src/ra_modem_at.c,625,2,internal_pump_one,if ((capture != nullptr) && (capture_len > 0U)) {,partial,false,
+libs/ra_modem_at/src/ra_modem_at.c,573,3,internal_effective_timeout,if ((expected_response != nullptr) && (expected_response[0] != '\0') &&,partial,false,
+libs/ra_modem_at/src/ra_modem_at.c,664,2,internal_pump_one,if ((capture != nullptr) && (capture_len > 0U)) {,partial,false,
 libs/ra_net/src/ra_net_arp.c,154,2,arp_insert,"if (s->arp[i].timestamp_ms != 0U && memcmp(s->arp[i].ip.bytes, ip->bytes, 4U) == 0) {",no,false,
 libs/ra_net/src/ra_net_udp.c,539,2,ra_net_udp_internal_dns_consume_response,if (pos < dlen && dns[pos] == 0U) {,partial,false,
 libs/ra_net/src/ra_net_udp.c,554,2,ra_net_udp_internal_dns_consume_response,while (pos < dlen && dns[pos] != 0U) {,no,false,
