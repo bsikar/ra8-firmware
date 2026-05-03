@@ -121,10 +121,10 @@ static void pp_demo_clocks_or_halt(uint32_t* out_pclka_hz)
   if (ra_cgc_get_clock_hz(k_ra_clock_id_pclka, out_pclka_hz) != k_ra_ok) {
     pp_demo_panic_halt();
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra_mstp_init() != k_ra_ok) {
     pp_demo_panic_halt();
   }
-  if (ra_mstp_init() != k_ra_ok) {
+  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
     pp_demo_panic_halt();
   }
   if (ra_pfs_route_peripheral(k_pp_demo_pin_txd, k_ra_psel_sci_async, "power_profiler.txd8") !=
