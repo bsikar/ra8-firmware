@@ -544,7 +544,15 @@ static void demo_panic_halt(void)
   if (err != k_ra_ok) {
     return err;
   }
-  err = ra_pfs_route_peripheral(k_demo_pin_vbusen, k_ra_psel_usb_fs, "usb_cdc.vbusen");
+  /* P500 is the EK-RA8D2 USB-FS role-select GPIO per the v1 User's
+   * Manual section "USB Full Speed" (J11 connector): drive LOW for
+   * device mode, HIGH for host mode. Routing P500 to the USBFS
+   * peripheral function lets the USB module drive it as VBUSEN
+   * (host-mode VBUS supply enable, default HIGH) which keeps the chip
+   * in HOST mode and prevents enumeration. For this device-mode demo
+   * we instead claim P500 as a GPIO output and drive it LOW so the
+   * board's role-select circuitry presents a USB device to the host. */
+  err = ra_gpio_output_init(k_demo_pin_vbusen, k_ra_level_low);
   if (err != k_ra_ok) {
     return err;
   }

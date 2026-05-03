@@ -62,7 +62,7 @@ $(foreach m,$(_RA_APP_MAINS),$(eval RA_APP_DIR_$(notdir $(patsubst %/main.c,%,$m
 
 # We forward each <app> name to the app's own Makefile, so reserve the names
 # below from being shadowed by .PHONY targets.
-.PHONY: help apps default clean format check tidy test test-cov test-docker ctest coverage mcdc misra docs dashboard ascii version qe-test smoke stack-usage scan-build scan-build-strict iwyu fuzz bench app-sizes all $(RA_APPS)
+.PHONY: help apps default clean format check tidy test test-cov test-docker ctest coverage mcdc misra docs dashboard ascii version qe-test smoke stack-usage scan-build scan-build-strict iwyu fuzz bench app-sizes check-annotations all $(RA_APPS)
 
 # EVM-tier apps (everything under examples/ek_ra8d2/) -- these are the
 # apps the hardware smoke test sweeps because they run on a stock
@@ -253,6 +253,15 @@ scan-build:
 # scaffolding) are applied. This is the CI-gating entry point.
 scan-build-strict:
 	bash scripts/utils/scan_build.sh --strict
+
+# Annotation-attribute enforcement. Walks the AST of every TU via
+# libclang (python3 -m pip install --user --break-system-packages
+# libclang) and applies the 19 ra_* rules documented in
+# docs/ANNOTATIONS.md. `make check-annotations` runs in CI mode
+# (exits non-zero on violation); the bare hook invocation defaults
+# to warn-only via the WAVE_0_WARN_ONLY flag at the top of the script.
+check-annotations:
+	python3 scripts/utils/check_annotations.py --check
 
 # include-what-you-use (IWYU). Reports per-TU include-graph hygiene
 # violations: missing direct includes, unnecessary transitive
