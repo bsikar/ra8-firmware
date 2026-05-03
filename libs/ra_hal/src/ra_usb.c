@@ -791,20 +791,146 @@ ra_err_t ra_usb_queue_in(ra_usb_speed_t speed, uint8_t pipe_num, const uint8_t* 
 }
 
 /**
+ * @brief Push a single DCP IN chunk: wait for FRDY, write FIFO, pulse BVAL.
+ *
+ * @details Bounded helper extracted from ``ra_usb_dcp_in_data`` so the
+ * top-level function stays under the clang-tidy
+ * ``readability-function-size`` threshold. Performs exactly one
+ * controller-buffer transfer cycle.
+ *
+ * @param[in,out] reg DCP register block (chip or host shim).
+ * @param[in]     p   Source byte pointer; must hold at least ``n`` bytes.
+ * @param[in]     n   Chunk size in bytes; must be > 0 and <= the DCP MPS.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok            Chunk queued; BVAL pulsed.
+ * @retval k_ra_err_timeout   FRDY never asserted within the bound.
+ *
+ * @pre ``reg`` was returned by ``internal_pick()`` and is non-NULL.
+ * @pre CFIFO is already selected on DCP (CURPIPE=0) in IN direction.
+ * @post On success, the controller buffer holds the new chunk and BVAL
+ *       has been pulsed.
+ * @post On error, no PID transition has been performed.
+ *
+ * @note Not thread-safe; the parent function holds the DCP lock.
+ * @since 0.1.0
+ */
+static ra_err_t internal_dcp_push_chunk(volatile r_usb_regs_t* reg, const uint8_t* p, uint16_t n)
+{
+  const ra_err_t ready = internal_wait_frdy(reg);
+  RA_RETURN_ON_ERROR(ready, s_tag, "dcp_in_data: FRDY timeout (chunk)");
+  internal_fifo_write(reg, p, n);
+  /* HUM Ch 36.2.8 "CFIFOCTR : CFIFO Port Control Register", p 1979 */
+  reg->CFIFOCTR = k_ra_fifoctr_bval;
+  return k_ra_ok;
+}
+
+/**
+ * @brief Send the EP0 IN data-stage payload as one or more DCP chunks.
+ *
+ * @details Drives the multi-chunk loop so ``ra_usb_dcp_in_data`` stays
+ * under the clang-tidy statement-count threshold. Pushes at most
+ * DCPMAXP bytes per iteration via ``internal_dcp_push_chunk``, then
+ * raises DCPCTR.PID to BUF after the first successful push. The
+ * controller services subsequent IN tokens automatically.
+ *
+ * @param[in,out] reg  Selected DCP register block (CFIFO already
+ *                     pointed at DCP / IN direction by the caller).
+ * @param[in]     data Source payload; must hold at least ``len`` bytes.
+ * @param[in]     len  Total payload length in bytes; must be > 0.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok            Payload fully queued; PID set to BUF.
+ * @retval k_ra_err_timeout   FRDY never asserted for some chunk.
+ *
+ * @pre ``reg`` is non-NULL and CFIFOSEL is already programmed for DCP IN.
+ * @pre ``data`` is non-NULL and ``len > 0``.
+ * @post On success, all ``len`` bytes have been queued and DCPCTR.PID == BUF.
+ * @post On error, DCPCTR.PID is left unchanged from its prior value.
+ *
+ * @note Not thread-safe; caller holds the DCP lock.
+ * @since 0.1.0
+ */
+static ra_err_t
+internal_dcp_in_payload(volatile r_usb_regs_t* reg, const uint8_t* data, uint16_t len)
+{
+  uint16_t remaining  = len;
+  uint16_t offset     = 0U;
+  bool     pid_raised = false;
+  while (remaining > 0U) {
+    const uint16_t chunk =
+      (remaining > k_ra_usb_dcp_max_packet) ? (uint16_t)k_ra_usb_dcp_max_packet : remaining;
+    const ra_err_t pushed = internal_dcp_push_chunk(reg, &data[offset], chunk);
+    RA_RETURN_ON_ERROR(pushed, s_tag, "dcp_in_data: chunk push failed");
+    if (!pid_raised) {
+      /* HUM Ch 36.2.21 "DCPCTR : DCP Control Register", p 1991 */
+      internal_dcp_pid(reg, k_ra_pid_buf);
+      pid_raised = true;
+    }
+    offset    = (uint16_t)(offset + chunk);
+    remaining = (uint16_t)(remaining - chunk);
+  }
+  return k_ra_ok;
+}
+
+/**
+ * @brief Send a zero-length data stage on the DCP IN endpoint.
+ *
+ * @details Waits for FRDY, pulses CFIFOCTR.BVAL on an empty buffer
+ * (producing a ZLP on the wire) and raises DCPCTR.PID to BUF.
+ * Extracted from ``ra_usb_dcp_in_data`` so the top-level function fits
+ * under the clang-tidy statement-count threshold.
+ *
+ * @param[in,out] reg Selected DCP register block (CFIFO already
+ *                    pointed at DCP / IN direction by the caller).
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok           ZLP queued; PID set to BUF.
+ * @retval k_ra_err_timeout  FRDY never asserted.
+ *
+ * @pre ``reg`` is non-NULL and CFIFOSEL is already programmed for DCP IN.
+ * @pre USB module clock and power are on.
+ * @post On success, an empty buffer is queued and DCPCTR.PID == BUF.
+ * @post On error, DCPCTR.PID is left unchanged from its prior value.
+ *
+ * @note Not thread-safe; caller holds the DCP lock.
+ * @since 0.1.0
+ */
+static ra_err_t internal_dcp_in_zlp(volatile r_usb_regs_t* reg)
+{
+  const ra_err_t ready = internal_wait_frdy(reg);
+  RA_RETURN_ON_ERROR(ready, s_tag, "dcp_in_data: FRDY timeout (zlp)");
+  /* HUM Ch 36.2.8 "CFIFOCTR : CFIFO Port Control Register", p 1979 */
+  reg->CFIFOCTR = k_ra_fifoctr_bval;
+  /* HUM Ch 36.2.21 "DCPCTR : DCP Control Register", p 1991 */
+  internal_dcp_pid(reg, k_ra_pid_buf);
+  return k_ra_ok;
+}
+
+/**
  * @brief Implementation of ra_usb_dcp_in_data (see header for full contract).
- * @details Writes the EP0 IN data-stage payload into the DCP CFIFO and
- * raises DCPCTR.PID to BUF. Status stage (CCPL) is intentionally NOT
- * pulsed here -- the bridge handles that on the CTSQ status-stage edge.
- * @param[in] speed See implementation.
- * @param[in] data See implementation.
- * @param[in] len See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
+ *
+ * @details Selects DCP on CFIFO once, then dispatches to either
+ * ``internal_dcp_in_zlp`` (zero-length) or ``internal_dcp_in_payload``
+ * (one or more chunks). Status stage (CCPL) is intentionally NOT
+ * pulsed here -- the bridge handles it on the CTSQ status-stage edge.
+ *
+ * @param[in] speed USB speed selector (FS / HS) -> picks the controller block.
+ * @param[in] data  Source payload; may be NULL only when ``len == 0``.
+ * @param[in] len   Payload length in bytes (0 sends a ZLP).
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok               Payload queued; PID set to BUF.
+ * @retval k_ra_err_invalid_arg  ``speed`` not recognised, or NULL data
+ *                               with non-zero ``len``.
+ * @retval k_ra_err_timeout      FRDY never asserted for ZLP or any chunk.
+ *
+ * @pre USB module clock and power are on.
+ * @pre Caller serialises DCP IN/OUT issue.
+ * @post On success, CFIFO is empty and DCPCTR.PID == BUF.
+ * @post On error, DCPCTR.PID is left unchanged from its prior value.
+ *
+ * @note Not thread-safe.
  * @since 0.1.0
  */
 ra_err_t ra_usb_dcp_in_data(ra_usb_speed_t speed, const uint8_t* data, uint16_t len)
@@ -822,49 +948,10 @@ ra_err_t ra_usb_dcp_in_data(ra_usb_speed_t speed, const uint8_t* data, uint16_t 
    * HUM Ch 36.2.7 "CFIFOSEL : CFIFO Port Select Register", p 1976 */
   internal_select_cfifo(reg, 0U, true);
 
-  /* Zero-length data stage: just wait for FRDY, pulse BVAL on an empty
-   * buffer to send a ZLP, raise PID. */
   if (len == 0U) {
-    const ra_err_t ready = internal_wait_frdy(reg);
-    RA_RETURN_ON_ERROR(ready, s_tag, "dcp_in_data: FRDY timeout (zlp)");
-    /* HUM Ch 36.2.8 "CFIFOCTR : CFIFO Port Control Register", p 1979 */
-    reg->CFIFOCTR = k_ra_fifoctr_bval;
-    /* HUM Ch 36.2.21 "DCPCTR : DCP Control Register", p 1991 */
-    internal_dcp_pid(reg, k_ra_pid_buf);
-    return k_ra_ok;
+    return internal_dcp_in_zlp(reg);
   }
-
-  /* Multi-chunk path: the DCP buffer is one MPS deep. Push at most
-   * DCPMAXP bytes per chunk, pulse BVAL, then wait for FRDY (asserted
-   * by the controller after it has shipped the previous chunk to the
-   * host). PID is raised once after the first chunk is queued so the
-   * controller answers the first IN token; it stays in BUF for the
-   * remaining chunks. */
-  uint16_t remaining  = len;
-  uint16_t offset     = 0U;
-  bool     pid_raised = false;
-  while (remaining > 0U) {
-    const ra_err_t ready = internal_wait_frdy(reg);
-    RA_RETURN_ON_ERROR(ready, s_tag, "dcp_in_data: FRDY timeout (chunk)");
-
-    const uint16_t chunk =
-      (remaining > k_ra_usb_dcp_max_packet) ? (uint16_t)k_ra_usb_dcp_max_packet : remaining;
-    internal_fifo_write(reg, &data[offset], chunk);
-    /* HUM Ch 36.2.8 "CFIFOCTR : CFIFO Port Control Register", p 1979 */
-    reg->CFIFOCTR = k_ra_fifoctr_bval;
-    if (!pid_raised) {
-      /* HUM Ch 36.2.21 "DCPCTR : DCP Control Register", p 1991 -- raise
-       * PID from NAK to BUF for the first chunk; the controller keeps
-       * answering subsequent IN tokens once PID is BUF. CCPL is NOT
-       * pulsed here; the host-initiated status stage is acknowledged on
-       * the next CTSQ transition (handled by the bridge). */
-      internal_dcp_pid(reg, k_ra_pid_buf);
-      pid_raised = true;
-    }
-    offset    = (uint16_t)(offset + chunk);
-    remaining = (uint16_t)(remaining - chunk);
-  }
-  return k_ra_ok;
+  return internal_dcp_in_payload(reg, data, len);
 }
 
 /**
