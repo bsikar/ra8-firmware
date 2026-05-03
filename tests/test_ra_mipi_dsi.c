@@ -1530,12 +1530,17 @@ static void test_mcdc_dispatch_receive_pending(void)
 /**
  * @test test_mcdc_program_descriptor_buf_addr
  * @par MC/DC:
- * Decision (libs/ra_hal/src/ra_mipi_dsi.c line 756, 2 conditions):
- * `(cmd->bta == bta_read) || (cmd->p_rx_buffer != NULL)`. V1 bta=none
- * rx=NULL (F descriptor.D=tx), V2 bta=read rx=buf (C1=T descriptor.D=rx).
- * The (bta=none, rx!=NULL) row is unreachable from public API (read paths
- * always set bta=read); documented as deactivated. N+1=2 for the
- * reachable subset.
+ * Decision (libs/ra_hal/src/ra_mipi_dsi.c line 859, 2 conditions):
+ * `(cmd->bta == bta_read) || (cmd->p_rx_buffer != NULL)`.
+ *  - V1: bta=none,  rx=NULL  -> C1=F, C2=F -> descriptor.D = tx_buffer.
+ *  - V2: bta=read,  rx=buf   -> C1=T (shorts) -> descriptor.D = rx_buffer.
+ *  - V3: bta=none,  rx=buf   -> C1=F, C2=T   -> descriptor.D = rx_buffer.
+ * V1+V2 prove C1 independently flips outcome; V1+V3 prove C2.
+ * V3 reaches the production decision via the public ra_mipi_dsi_send_command
+ * entry with a hand-built ra_mipi_dsi_command_t carrying bta=none and a
+ * non-NULL p_rx_buffer (write-with-rx is structurally legal at the API
+ * boundary even though the higher-level read_packet wrapper always sets
+ * bta=read). N+1 = 3 vectors satisfy MC/DC fully.
  */
 static void test_mcdc_program_descriptor_buf_addr(void)
 {
@@ -1563,6 +1568,29 @@ static void test_mcdc_program_descriptor_buf_addr(void)
                                               rx,
                                               (uint16_t)sizeof(rx)));
   TEST_ASSERT_EQ((int)(uintptr_t)rx, (int)reg->SQCH0DSC[0].D);
+
+  /* V3: bta=none, rx!=NULL via send_command. The descriptor's D word
+   * must come from the rx buffer (C2 alone forces the OR true). */
+  prep();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_mipi_dsi_init(&cfg));
+  reg                                    = ra_mipi_dsi();
+  reg->LINKSR                            = 0U;
+  static uint8_t              rx_only[4] = {0U};
+  static uint8_t              tx_buf[2]  = {0xAAU, 0xBBU};
+  const ra_mipi_dsi_command_t cmd        = {
+    .cmd_id          = k_ra_mipi_dsi_dt_dcs_short_write_1,
+    .virtual_channel = k_ra_mipi_dsi_vc0,
+    .bta             = k_ra_mipi_dsi_bta_none,
+    .low_power       = true,
+    .ack_request     = false,
+    .aux_operation   = false,
+    .action_code     = 0U,
+    .tx_len          = (uint16_t)sizeof(tx_buf),
+    .p_tx_buffer     = tx_buf,
+    .p_rx_buffer     = rx_only,
+  };
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_mipi_dsi_send_command(&cmd));
+  TEST_ASSERT_EQ((int)(uintptr_t)rx_only, (int)reg->SQCH0DSC[0].D);
   TEST_END("mipi_dsi MC/DC program_descriptor: bta==read || p_rx!=NULL");
 }
 
