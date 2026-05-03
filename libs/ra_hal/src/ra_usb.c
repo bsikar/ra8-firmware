@@ -1084,6 +1084,52 @@ ra_usb_queue_out(ra_usb_speed_t speed, uint8_t pipe_num, uint8_t* out_buf, uint1
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_usb_rearm_out_pipe (see header for full contract).
+ *
+ * @details See the public header for the documented contract; this
+ * definition implements it. The hardware-required sequence per HUM
+ * Ch 36.2.13 (NRDYSTS, W0C) and Ch 36.2.27 (PIPECTR.PID) is:
+ *   1. Ack NRDYSTS bit `pipe_num` by writing 0 to that bit (W0C: write
+ *      `~pipe_bit` to clear only the target bit and preserve the rest).
+ *   2. Force PID=BUF on the pipe so the controller ACKs the next OUT
+ *      token from the host instead of NAK'ing it.
+ *
+ * @param[in] speed    See header.
+ * @param[in] pipe_num See header.
+ *
+ * @return Result code.
+ * @retval k_ra_ok              Pipe re-armed.
+ * @retval k_ra_err_invalid_arg Argument out of range.
+ *
+ * @pre Speed maps to a real controller.
+ * @pre Pipe 1..9.
+ * @post NRDYSTS bit `pipe_num` cleared.
+ * @post PIPECTR PID == BUF for `pipe_num`.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+ra_err_t ra_usb_rearm_out_pipe(ra_usb_speed_t speed, uint8_t pipe_num)
+{
+  volatile r_usb_regs_t* reg = internal_pick(speed);
+  if (reg == nullptr) {
+    return k_ra_err_invalid_arg;
+  }
+  if ((pipe_num == 0U) || (pipe_num > k_ra_usb_max_pipe_num)) {
+    return k_ra_err_invalid_arg;
+  }
+  /* HUM Ch 36.2.13 "NRDYSTS : NRDY Interrupt Status Register", p 1984.
+   * W0C semantics: write 0 to clear the target bit, 1 to preserve the
+   * rest. */
+  const uint16_t pipe_bit = (uint16_t)(1U << pipe_num);
+  reg->NRDYSTS            = (uint16_t)(~pipe_bit);
+  /* HUM Ch 36.2.27 "PIPEnCTR : PIPE n Control Register", p 2005. Force
+   * PID=BUF so the next host OUT token is ACKed. */
+  internal_pipe_pid(reg, pipe_num, k_ra_pid_buf);
+  return k_ra_ok;
+}
+
 /* =============================================================================
  * Control transfers
  * =============================================================================

@@ -829,15 +829,26 @@ void ux_dcd_ra_usb_irq(ra_usb_speed_t speed, uint16_t intsts0)
       (void)tx_semaphore_put(&tr->ux_slave_transfer_request_semaphore);
 #endif
     } else {
-      uint16_t len = (uint16_t)tr->ux_slave_transfer_request_requested_length;
-      if (ra_usb_queue_out(s_dcd.speed, i, tr->ux_slave_transfer_request_data_pointer, &len) ==
-          k_ra_ok) {
+      uint16_t       len    = (uint16_t)tr->ux_slave_transfer_request_requested_length;
+      const ra_err_t qo_err = ra_usb_queue_out(
+        s_dcd.speed, i, tr->ux_slave_transfer_request_data_pointer, &len);
+      if (qo_err == k_ra_ok) {
         tr->ux_slave_transfer_request_actual_length   = len;
         tr->ux_slave_transfer_request_completion_code = UX_SUCCESS;
         s_dcd.pipes[i].xfer                           = nullptr;
 #ifndef UX_DEVICE_STANDALONE
         (void)tx_semaphore_put(&tr->ux_slave_transfer_request_semaphore);
 #endif
+      } else if (qo_err == k_ra_err_no_data) {
+        /* No BRDY pending. The RA8D2 USB single-buffered OUT pipe
+         * state machine can leave PID at NAK between drains; if the
+         * controller has already responded NAK to one or more host
+         * OUT tokens (NRDYSTS bit `i` accumulating), the pipe will
+         * stay parked at NAK indefinitely and the host (macOS) gives
+         * up. Proactively ack NRDYSTS for this pipe and force
+         * PID=BUF so the next host OUT token is ACKed.
+         * HUM Ch 36.2.13 NRDYSTS (W0C) + Ch 36.2.27 PIPECTR.PID. */
+        (void)ra_usb_rearm_out_pipe(s_dcd.speed, i);
       }
     }
   }

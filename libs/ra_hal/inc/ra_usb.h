@@ -414,6 +414,46 @@ ra_usb_queue_in(ra_usb_speed_t speed, uint8_t pipe_num, const uint8_t* data, uin
 [[nodiscard]] ra_err_t
 ra_usb_queue_out(ra_usb_speed_t speed, uint8_t pipe_num, uint8_t* out_buf, uint16_t* inout_len);
 
+/**
+ * @brief Re-arm an OUT pipe that the controller has parked at PID=NAK.
+ *
+ * @details
+ * The RA8D2 USB-FS / USB-HS pipe state machine auto-flips PID from BUF
+ * to NAK after every successful BUF cycle on a single-buffered pipe
+ * (HUM Ch 36 -- single-buffered OUT pipes). The drain path in
+ * `ra_usb_queue_out` re-arms PID=BUF after a successful read, but
+ * between the drain and the next host OUT token there is a window in
+ * which the controller may NAK an incoming transaction (NRDYSTS
+ * accumulates the NAK responses). This helper clears the per-pipe
+ * NRDYSTS bit (W0C) and unconditionally re-asserts PID=BUF so the
+ * pipe is ready to ACK the next host OUT token. Safe to call
+ * proactively from the polled-dispatch worker on every iteration for
+ * each OUT pipe that has a pending USBX transfer.
+ *
+ * @param[in] speed    Which controller (FS / HS).
+ * @param[in] pipe_num PIPE1..PIPE9 (must not be 0; DCP uses DCPCTR).
+ *
+ * @return `ra_err_t` error code.
+ * @retval k_ra_ok               Pipe re-armed at PID=BUF, NRDYSTS bit acked.
+ * @retval k_ra_err_invalid_arg  `speed` invalid or `pipe_num` out of range.
+ *
+ * @pre Pipe was previously configured via `ra_usb_configure_endpoint`
+ *      with `dir = k_ra_usb_ep_dir_out`.
+ * @pre Caller serialises against `ra_usb_queue_out` for the same pipe.
+ *
+ * @post `NRDYSTS` bit `pipe_num` is cleared.
+ * @post `PIPECTR[pipe_num-1].PID == BUF`.
+ *
+ * @note Not thread-safe; the polled-dispatch worker is the sole caller
+ *       on hardware.
+ *
+ * @see ra_usb_queue_out
+ * @see ra_usb_configure_endpoint
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_usb_rearm_out_pipe(ra_usb_speed_t speed, uint8_t pipe_num);
+
 /* =============================================================================
  * Control transfers (EP0 / DCP)
  * =============================================================================
