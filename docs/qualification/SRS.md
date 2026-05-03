@@ -1,5 +1,9 @@
 # Software Requirements Specification (SRS)
 
+**Last refreshed**: 2026-05-03 (REQ-SAFE-016 met against the
+reachable-MC/DC gate; HIL posture re-stated as developer-laptop
+pre-push).
+
 **Status**: First draft, 2026-05-02. Authored against the Phase 7 schedule
 in [`../QUALIFICATION_ROADMAP.md`](../QUALIFICATION_ROADMAP.md) Section 3.
 **DO-178C reference**: Section 11.9 (Software Requirements Data).
@@ -64,10 +68,9 @@ Out of scope:
 - The Cortex-M33 secondary core (not currently built; reserved for
   future work).
 - Vendor binary blobs (RSIP-E50D firmware image, BLE controller patch
-  image) -- tracked separately in
-  [`../VENDOR_BLOBS.md`](../VENDOR_BLOBS.md) and listed as blockers in
-  [`../QUALIFICATION_ROADMAP.md`](../QUALIFICATION_ROADMAP.md)
-  Section 6.
+  image) -- vendored under
+  [`../../libs/third_party/fsp_blobs/`](../../libs/third_party/fsp_blobs/)
+  and tracked under SOUP per `docs/SOUP/`.
 
 ### 1.3 Target assurance levels
 
@@ -462,7 +465,7 @@ here as a software requirement so the SVP can pick it up.
 
 | ID               | Requirement                                                                                          | Source                                                                                                          | Test / artefact                                       |
 |------------------|------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------|-------------------------------------------------------|
-| REQ-SAFE-016     | First-party MC/DC SHALL reach 100 % per IEC 61508-3 Annex C / DO-178C 6.4.4.2 (Phase 1+2 of roadmap). | `make mcdc` driver `scripts/utils/mcdc_report.sh`                                                               | `build/mcdc-report/`, gate at `.github/mcdc-baseline.txt` |
+| REQ-SAFE-016     | First-party reachable MC/DC SHALL reach 100 % per IEC 61508-3 Annex C / DO-178C 6.4.4.2; deactivated conditions per DO-178C 6.4.4.3 are exempted. **Met (100.00 % reachable, 92.29 % absolute, wave-24 2026-05-03).** | `make mcdc` driver `scripts/utils/mcdc_report.sh`; deactivations in `docs/MCDC_DEACTIVATIONS.md` | `build/mcdc-report/`, gate at `.github/mcdc-baseline.txt` |
 | REQ-SAFE-017     | First-party branch + statement coverage SHALL reach 90/90 (IEC 61508 Annex C minimum).                | `scripts/coverage.sh --gate`                                                                                     | CI job `firmware.yml::coverage`                       |
 | REQ-SAFE-018     | The architecture SHALL provide ECC-protected SRAM (IEC 61508-2 hardware integrity contribution).      | `libs/ra_hal/src/ra_sram.c` (ECC enable)                                                                         | `tests/test_ra_sram.c`                                |
 | REQ-SAFE-019     | An IWDT SHALL be enabled in production builds and refreshed by `ra_wdt_supervisor`.                   | `libs/ra_hal/src/ra_iwdt.c`, `libs/ra_wdt_supervisor/src/ra_wdt_supervisor.c`                                   | `tests/test_ra_iwdt.c`, `tests/test_ra_wdt_supervisor.c` |
@@ -474,8 +477,9 @@ here as a software requirement so the SVP can pick it up.
 
 These are the headline performance budgets that downstream
 verification must measure. Numbers without measurements today are
-flagged `TBD-MEASURE`. The HW-in-the-loop runner planned in roadmap
-Phase 6 is the primary closure path.
+flagged `TBD-MEASURE`. The closure path is the developer-laptop
+HIL workflow in `docs/HIL_DEVELOPER_WORKFLOW.md` (a self-hosted CI
+runner is out of scope per `docs/CERTIFICATION_SCOPE.md`).
 
 | ID               | Requirement                                                                                          | Source                                                                                                          | Test / artefact                                       |
 |------------------|------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------|-------------------------------------------------------|
@@ -551,7 +555,8 @@ Section 6.5 (Traceability Data).
 - **REQ-SAFE-001/002/004/006/008** -- enforced by lint, not by host
   test.
 - **REQ-PERF-001/002/004/005** -- require HW-in-the-loop measurement;
-  scheduled for roadmap Phase 6.
+  closure path is the developer-laptop pre-push HIL workflow in
+  `docs/HIL_DEVELOPER_WORKFLOW.md`.
 - **REQ-EXT-007** (Arduino header) -- no targeted test today.
 - **REQ-DRV-006** (BLE patch end-to-end), **REQ-DRV-061/062** (RSIP key
   injection / protected on real hardware), **REQ-HAL-012** (BLE end-to-
@@ -559,8 +564,9 @@ Section 6.5 (Traceability Data).
   [`../VENDOR_BLOBS.md`](../VENDOR_BLOBS.md).
 
 The coverage gap is the input to [`./SVP.md`](./SVP.md) Section 1
-(verification objective tables) and to roadmap Phase 5 (per-app
-integration test layer) and Phase 6 (HW-in-the-loop CI).
+(verification objective tables). Phase 5 (per-app integration test
+layer) is now at 25/26; HIL is the developer-laptop pre-push workflow
+per `docs/HIL_DEVELOPER_WORKFLOW.md`.
 
 ---
 

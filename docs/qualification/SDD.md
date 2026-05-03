@@ -1,5 +1,9 @@
 # Software Design Description (SDD)
 
+**Last refreshed**: 2026-05-03 (refresh stamp recorded for audit-trail
+consistency with the rest of the qualification document set; design-
+level descriptions did not require number changes).
+
 **Status**: First draft, 2026-05-02. Authored against the Phase 7 schedule
 in [`../QUALIFICATION_ROADMAP.md`](../QUALIFICATION_ROADMAP.md) Section 3.
 **DO-178C reference**: Section 11.10 (Design Description).
