@@ -32,6 +32,7 @@
 
 #include "ra_err.h"
 #include "ra_ota.h"
+#include "ra_ota_internal.h"
 #include "unity_minimal.h"
 
 /* =============================================================================
@@ -660,36 +661,43 @@ static void test_mcdc_hex_nibble_pair_completion(void)
  * @test test_mcdc_priv_json_u32_skip_chars
  *
  * @par MC/DC:
- * Decision (libs/ra_ota/src/ra_ota.c line 403, priv_json_u32):
+ * Decision (libs/ra_ota/src/ra_ota.c, ra_ota_internal_json_u32, line 403):
  *   ``(*p == ':') || (*p == ' ') || (*p == '"')``
- * (3 conditions, OR-chain). Static helper -- mirrored byte-identically
- * for direct vector application per DO-178C 6.4.4.3 source-text
- * equivalence.
+ * (3 conditions, OR-chain). Driven directly against production source
+ * via ra_ota_internal.h (test-access policy, see CLAUDE.md).
  *
  * @par DO-178C 6.4.4.3 representative-subset rationale:
  * Full short-circuit MC/DC for an N=3 OR-chain requires N+1 = 4
  * vectors. Canonical short-circuit set:
- * - V1 c=':'  -> C1=T shorts.            Decision T (skip).
- * - V2 c=' '  -> C1=F,C2=T shorts.       Decision T (skip).
- * - V3 c='"'  -> C1=F,C2=F,C3=T.         Decision T (skip).
- * - V4 c='5'  -> all F.                  Decision F (stop skipping).
- *
- * Pairs isolating each condition:
- *   C1: V1 vs V4. C2: V2 vs V4. C3: V3 vs V4.
+ * - V1 first non-key char ':'  -> C1=T shorts.
+ * - V2 first non-key char ' '  -> C1=F,C2=T shorts.
+ * - V3 first non-key char '"'  -> C1=F,C2=F,C3=T.
+ * - V4 first non-key char '5'  -> all F (stop skipping immediately).
+ * Pairs isolating each condition: C1: V1 vs V4. C2: V2 vs V4. C3: V3 vs V4.
  */
-static int mirror_json_u32_skip_char(char c)
-{
-  return (c == ':') || (c == ' ') || (c == '"');
-}
-
 static void test_mcdc_priv_json_u32_skip_chars(void)
 {
-  TEST_BEGIN("ra_ota MC/DC: priv_json_u32 skip-char OR (line 403)");
-  TEST_ASSERT_EQ(1, mirror_json_u32_skip_char(':'));
-  TEST_ASSERT_EQ(1, mirror_json_u32_skip_char(' '));
-  TEST_ASSERT_EQ(1, mirror_json_u32_skip_char('"'));
-  TEST_ASSERT_EQ(0, mirror_json_u32_skip_char('5'));
-  TEST_END("ra_ota MC/DC: priv_json_u32 skip-char OR (line 403)");
+  TEST_BEGIN("ra_ota MC/DC: ra_ota_internal_json_u32 skip-char OR");
+  uint32_t v = 0U;
+  /* V1: colon between key and value. */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_ota_internal_json_u32("\"size\":42}", "\"size\"", &v));
+  TEST_ASSERT_EQ((int32_t)42, (int32_t)v);
+  /* V2: space (after key, before digits). */
+  v = 0U;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_ota_internal_json_u32("\"size\" 7}", "\"size\"", &v));
+  TEST_ASSERT_EQ((int32_t)7, (int32_t)v);
+  /* V3: quote (e.g. "size""123"). */
+  v = 0U;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_ota_internal_json_u32("\"size\"\"3", "\"size\"", &v));
+  TEST_ASSERT_EQ((int32_t)3, (int32_t)v);
+  /* V4: digit immediately after key -- skip loop exits at first iter. */
+  v = 0U;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ota_internal_json_u32("\"size\"9}", "\"size\"", &v));
+  TEST_ASSERT_EQ((int32_t)9, (int32_t)v);
+  TEST_END("ra_ota MC/DC: ra_ota_internal_json_u32 skip-char OR");
 }
 
 int main(void)

@@ -36,6 +36,7 @@
 
 #include "ra_check.h"
 #include "ra_err.h"
+#include "ra_ota_internal.h"
 
 /* =============================================================================
  * Module-static storage
@@ -391,7 +392,7 @@ static ra_err_t priv_json_str(const char* json, const char* key, char* dst, uint
  * @note Static helper; pure function.
  * @since 0.1.0
  */
-static ra_err_t priv_json_u32(const char* json, const char* key, uint32_t* out_v)
+ra_err_t ra_ota_internal_json_u32(const char* json, const char* key, uint32_t* out_v)
 {
   const char* p = strstr(json, key);
   if (p == NULL) {
@@ -588,7 +589,7 @@ static ra_err_t priv_manifest_decode(const char* json, ra_ota_manifest_t* out)
   if (e != k_ra_ok) {
     return e;
   }
-  e = priv_json_u32(json, "\"size\"", &out->image_size_bytes);
+  e = ra_ota_internal_json_u32(json, "\"size\"", &out->image_size_bytes);
   if (e != k_ra_ok) {
     return e;
   }
