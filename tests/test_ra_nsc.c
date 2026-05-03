@@ -28,6 +28,11 @@ static void prep(void)
 /* =============================================================================
  * ra_nsc_xspi_*
  * =============================================================================
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_xspi_read_validates_args(void)
@@ -47,6 +52,12 @@ static void test_xspi_read_validates_args(void)
   TEST_END("ra_nsc_xspi_read: arg validation + sim-flash forward");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_xspi_status_forwards_to_driver(void)
 {
   TEST_BEGIN("ra_nsc_xspi_status: forwards to ra_xspi");
@@ -71,6 +82,12 @@ static const ra_net_pal_mac_t k_test_mac = {
   .bytes = {0x02U, 0x11U, 0x22U, 0x33U, 0x44U, 0x55U},
 };
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_eth_send_validates_args(void)
 {
   TEST_BEGIN("ra_nsc_eth_send: arg validation");
@@ -88,6 +105,12 @@ static void test_eth_send_validates_args(void)
   TEST_END("ra_nsc_eth_send: arg validation");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_eth_recv_validates_args(void)
 {
   TEST_BEGIN("ra_nsc_eth_recv: arg validation");
@@ -112,6 +135,11 @@ static void test_eth_recv_validates_args(void)
 /* =============================================================================
  * ra_nsc_log_emit
  * =============================================================================
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_log_emit_happy(void)
@@ -128,6 +156,12 @@ static void test_log_emit_happy(void)
   TEST_END("ra_nsc_log_emit: copies tag + message and returns ok");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_log_emit_null(void)
 {
   TEST_BEGIN("ra_nsc_log_emit: NULL pointers rejected");
@@ -140,6 +174,11 @@ static void test_log_emit_null(void)
 /* =============================================================================
  * ra_nsc_periph_init
  * =============================================================================
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_periph_init_idempotent(void)

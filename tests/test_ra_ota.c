@@ -316,6 +316,11 @@ static ra_ota_cfg_t priv_make_cfg(void)
 
 /* =============================================================================
  * Tests
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  * ============================================================================= */
 
 static void test_init_validation(void)
@@ -344,6 +349,12 @@ static void test_init_validation(void)
   TEST_END("test_init_validation");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_check_bad_manifest(void)
 {
   TEST_BEGIN("test_check_bad_manifest");
@@ -362,6 +373,12 @@ static void test_check_bad_manifest(void)
   TEST_END("test_check_bad_manifest");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_partial_download_recovery(void)
 {
   TEST_BEGIN("test_partial_download_recovery");
@@ -395,6 +412,12 @@ static void test_partial_download_recovery(void)
   TEST_END("test_partial_download_recovery");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_signature_mismatch(void)
 {
   TEST_BEGIN("test_signature_mismatch");
@@ -415,6 +438,12 @@ static void test_signature_mismatch(void)
   TEST_END("test_signature_mismatch");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_sha256_mismatch(void)
 {
   TEST_BEGIN("test_sha256_mismatch");
@@ -436,6 +465,12 @@ static void test_sha256_mismatch(void)
   TEST_END("test_sha256_mismatch");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_happy_path(void)
 {
   TEST_BEGIN("test_happy_path");

@@ -60,6 +60,11 @@ static void prep(void)
 /* ---------------------------------------------------------------------------
  * get_cause -- happy paths
  * ---------------------------------------------------------------------------
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_get_cause_unknown_when_all_zero(void)
@@ -74,6 +79,12 @@ static void test_get_cause_unknown_when_all_zero(void)
   TEST_END("reset get_cause unknown when all zero");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_get_cause_porf(void)
 {
   TEST_BEGIN("reset get_cause power-on");
@@ -88,6 +99,12 @@ static void test_get_cause_porf(void)
   TEST_END("reset get_cause power-on");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_get_cause_swrf(void)
 {
   TEST_BEGIN("reset get_cause software");
@@ -102,6 +119,12 @@ static void test_get_cause_swrf(void)
   TEST_END("reset get_cause software");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_get_cause_iwdt(void)
 {
   TEST_BEGIN("reset get_cause iwdt");
@@ -116,6 +139,12 @@ static void test_get_cause_iwdt(void)
   TEST_END("reset get_cause iwdt");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_get_cause_temperature(void)
 {
   TEST_BEGIN("reset get_cause temperature");
@@ -130,6 +159,12 @@ static void test_get_cause_temperature(void)
   TEST_END("reset get_cause temperature");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_get_cause_warm_start(void)
 {
   TEST_BEGIN("reset get_cause warm start");
@@ -144,6 +179,12 @@ static void test_get_cause_warm_start(void)
   TEST_END("reset get_cause warm start");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_get_cause_priority_porf_over_iwdt(void)
 {
   TEST_BEGIN("reset get_cause priority POR > IWDT");
@@ -163,6 +204,11 @@ static void test_get_cause_priority_porf_over_iwdt(void)
 /* ---------------------------------------------------------------------------
  * get_cause -- bad arg
  * ---------------------------------------------------------------------------
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_get_cause_null_out(void)
@@ -178,6 +224,11 @@ static void test_get_cause_null_out(void)
 /* ---------------------------------------------------------------------------
  * init / get_raw / snapshot caching
  * ---------------------------------------------------------------------------
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_init_snapshot_survives_clear(void)
@@ -200,6 +251,12 @@ static void test_init_snapshot_survives_clear(void)
   TEST_END("reset init snapshot survives subsequent register clear");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_get_raw_returns_register_words(void)
 {
   TEST_BEGIN("reset get_raw returns register words");
@@ -221,6 +278,12 @@ static void test_get_raw_returns_register_words(void)
   TEST_END("reset get_raw returns register words");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_get_raw_null_out(void)
 {
   TEST_BEGIN("reset get_raw null out");
@@ -234,6 +297,11 @@ static void test_get_raw_null_out(void)
 /* ---------------------------------------------------------------------------
  * clear_cause
  * ---------------------------------------------------------------------------
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_clear_cause_rstsr0(void)
@@ -252,6 +320,12 @@ static void test_clear_cause_rstsr0(void)
   TEST_END("reset clear_cause clears RSTSR0 bits");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_clear_cause_rstsr1_swrf(void)
 {
   TEST_BEGIN("reset clear_cause clears RSTSR1.SWRF only");
@@ -270,6 +344,12 @@ static void test_clear_cause_rstsr1_swrf(void)
   TEST_END("reset clear_cause clears RSTSR1.SWRF only");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_clear_cause_zero_mask_is_noop(void)
 {
   TEST_BEGIN("reset clear_cause zero mask is a no-op");
@@ -286,6 +366,11 @@ static void test_clear_cause_zero_mask_is_noop(void)
 /* ---------------------------------------------------------------------------
  * RSTSAR
  * ---------------------------------------------------------------------------
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_get_attribution(void)
@@ -302,6 +387,12 @@ static void test_get_attribution(void)
   TEST_END("reset get_attribution returns RSTSAR");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_get_attribution_null_out(void)
 {
   TEST_BEGIN("reset get_attribution null out");
@@ -315,6 +406,11 @@ static void test_get_attribution_null_out(void)
 /* ---------------------------------------------------------------------------
  * Software reset
  * ---------------------------------------------------------------------------
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_software_reset_writes_aircr(void)

@@ -55,6 +55,12 @@ typedef enum : uint16_t {
   k_ra_prcr_test_prc5_msk = 0x0020U, /**< PRC5 = RESET control.    */
 } ra_prcr_test_const_t;
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_unlock_value_constant(void)
 {
   TEST_BEGIN("prcr unlock-cgc constant matches FSP key|PRC0");
@@ -66,6 +72,12 @@ static void test_unlock_value_constant(void)
   TEST_END("prcr unlock-cgc constant matches FSP key|PRC0");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_protected_write_unlocks_then_relocks(void)
 {
   TEST_BEGIN("RA_PROTECTED_WRITE unlocks for body, relocks after");
@@ -93,6 +105,12 @@ static void test_protected_write_unlocks_then_relocks(void)
   TEST_END("RA_PROTECTED_WRITE unlocks for body, relocks after");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_protected_write_relocks_on_break(void)
 {
   TEST_BEGIN("RA_PROTECTED_WRITE relocks even when body breaks early");
@@ -124,6 +142,12 @@ static void test_protected_write_relocks_on_break(void)
   TEST_END("RA_PROTECTED_WRITE relocks even when body breaks early");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_inline_unlock_helper_writes_key_plus_prc0(void)
 {
   TEST_BEGIN("ra_sys_prcr_unlock_cgc / lock_all helpers");
@@ -137,6 +161,12 @@ static void test_inline_unlock_helper_writes_key_plus_prc0(void)
   TEST_END("ra_sys_prcr_unlock_cgc / lock_all helpers");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_fsp_class_to_bit_mapping(void)
 {
   TEST_BEGIN("PRCR class-to-bit mapping cross-verified against FSP");

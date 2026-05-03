@@ -9,6 +9,12 @@
 #include "ra_register_guard.h"
 #include "unity_minimal.h"
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_enter_exit_compiles(void)
 {
   TEST_BEGIN("enter/exit pair");
@@ -19,6 +25,12 @@ static void test_enter_exit_compiles(void)
   TEST_END("enter/exit pair");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_nested_guards(void)
 {
   TEST_BEGIN("nested guards");

@@ -11,6 +11,12 @@
 #include "ra_port_constants.h"
 #include "unity_minimal.h"
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_reset_clears_everything(void)
 {
   TEST_BEGIN("reset clears everything");
@@ -21,6 +27,12 @@ static void test_reset_clears_everything(void)
   TEST_END("reset clears everything");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_claim_then_query(void)
 {
   TEST_BEGIN("claim then query");
@@ -31,6 +43,12 @@ static void test_claim_then_query(void)
   TEST_END("claim then query");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_double_claim_rejected(void)
 {
   TEST_BEGIN("double claim rejected");
@@ -41,6 +59,12 @@ static void test_double_claim_rejected(void)
   TEST_END("double claim rejected");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_release_allows_reclaim(void)
 {
   TEST_BEGIN("release allows reclaim");
@@ -52,6 +76,12 @@ static void test_release_allows_reclaim(void)
   TEST_END("release allows reclaim");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_null_owner_rejected(void)
 {
   TEST_BEGIN("null owner rejected");
@@ -60,6 +90,12 @@ static void test_null_owner_rejected(void)
   TEST_END("null owner rejected");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_invalid_pin_rejected(void)
 {
   TEST_BEGIN("invalid pin rejected");

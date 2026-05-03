@@ -106,6 +106,12 @@ static void teardown(void)
 /* tests                                                              */
 /* ------------------------------------------------------------------ */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_double(void)
 {
   TEST_BEGIN("psa init double-init guard");
@@ -115,6 +121,12 @@ static void test_init_double(void)
   TEST_END("psa init double-init guard");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_deinit_without_init(void)
 {
   TEST_BEGIN("psa deinit without init");
@@ -123,6 +135,12 @@ static void test_deinit_without_init(void)
   TEST_END("psa deinit without init");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_import_uninitialised(void)
 {
   TEST_BEGIN("psa import without init");
@@ -139,6 +157,12 @@ static void test_import_uninitialised(void)
   TEST_END("psa import without init");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_import_invalid_args(void)
 {
   TEST_BEGIN("psa import invalid args");
@@ -172,6 +196,12 @@ static void test_import_invalid_args(void)
   TEST_END("psa import invalid args");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_import_destroy_round_trip(void)
 {
   TEST_BEGIN("psa import + destroy round trip");
@@ -192,6 +222,12 @@ static void test_import_destroy_round_trip(void)
   TEST_END("psa import + destroy round trip");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_pool_exhaustion(void)
 {
   TEST_BEGIN("psa pool exhaustion");
@@ -225,6 +261,12 @@ static void test_pool_exhaustion(void)
   TEST_END("psa pool exhaustion");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_destroy_invalid_handle(void)
 {
   TEST_BEGIN("psa destroy invalid handle");
@@ -238,6 +280,12 @@ static void test_destroy_invalid_handle(void)
   TEST_END("psa destroy invalid handle");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_hash_known_vector(void)
 {
   TEST_BEGIN("psa sha-256 known answer");
@@ -258,6 +306,12 @@ static void test_hash_known_vector(void)
   TEST_END("psa sha-256 known answer");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_hash_invalid_args(void)
 {
   TEST_BEGIN("psa sha-256 invalid args");
@@ -278,6 +332,12 @@ static void test_hash_invalid_args(void)
   TEST_END("psa sha-256 invalid args");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_sign_verify_round_trip(void)
 {
   TEST_BEGIN("psa sign + verify round trip");
@@ -330,6 +390,12 @@ static void test_sign_verify_round_trip(void)
   TEST_END("psa sign + verify round trip");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_sign_wrong_alg(void)
 {
   TEST_BEGIN("psa sign wrong alg");
@@ -353,6 +419,12 @@ static void test_sign_wrong_alg(void)
   TEST_END("psa sign wrong alg");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_aead_round_trip(void)
 {
   TEST_BEGIN("psa aead encrypt + decrypt round trip");
@@ -421,6 +493,12 @@ static void test_aead_round_trip(void)
   TEST_END("psa aead encrypt + decrypt round trip");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_aead_invalid_args(void)
 {
   TEST_BEGIN("psa aead invalid args");

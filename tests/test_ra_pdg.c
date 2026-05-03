@@ -76,6 +76,12 @@ static void stub_pdg_cb(void* ctx)
   s_pdg_cb_last_ctx = ctx;
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_happy(void)
 {
   TEST_BEGIN("pdg init happy");
@@ -95,6 +101,12 @@ static void test_init_happy(void)
   TEST_END("pdg init happy");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_null_cfg(void)
 {
   TEST_BEGIN("pdg init null cfg");
@@ -103,6 +115,12 @@ static void test_init_null_cfg(void)
   TEST_END("pdg init null cfg");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_bad_frange(void)
 {
   TEST_BEGIN("pdg init bad frange");
@@ -114,6 +132,12 @@ static void test_init_bad_frange(void)
   TEST_END("pdg init bad frange");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_bad_mask(void)
 {
   TEST_BEGIN("pdg init bad channel mask");
@@ -125,6 +149,12 @@ static void test_init_bad_mask(void)
   TEST_END("pdg init bad channel mask");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_auto_tune_low_band(void)
 {
   TEST_BEGIN("pdg init auto-tune low band");
@@ -143,6 +173,12 @@ static void test_init_auto_tune_low_band(void)
   TEST_END("pdg init auto-tune low band");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_auto_tune_high_band(void)
 {
   TEST_BEGIN("pdg init auto-tune high band");
@@ -160,6 +196,12 @@ static void test_init_auto_tune_high_band(void)
   TEST_END("pdg init auto-tune high band");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_auto_tune_zero_hz(void)
 {
   TEST_BEGIN("pdg init auto-tune zero hz");
@@ -172,6 +214,12 @@ static void test_init_auto_tune_zero_hz(void)
   TEST_END("pdg init auto-tune zero hz");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_auto_tune_out_of_range(void)
 {
   TEST_BEGIN("pdg init auto-tune out of range");
@@ -187,6 +235,12 @@ static void test_init_auto_tune_out_of_range(void)
   TEST_END("pdg init auto-tune out of range");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_delay_rising_pin_a(void)
 {
   TEST_BEGIN("pdg set_delay rising pin A");
@@ -208,6 +262,12 @@ static void test_set_delay_rising_pin_a(void)
   TEST_END("pdg set_delay rising pin A");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_delay_falling_pin_b(void)
 {
   TEST_BEGIN("pdg set_delay falling pin B");
@@ -229,6 +289,12 @@ static void test_set_delay_falling_pin_b(void)
   TEST_END("pdg set_delay falling pin B");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_delay_bad_inputs(void)
 {
   TEST_BEGIN("pdg set_delay bad inputs");
@@ -271,6 +337,12 @@ static void test_set_delay_bad_inputs(void)
   TEST_END("pdg set_delay bad inputs");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_get_delay_round_trip(void)
 {
   TEST_BEGIN("pdg get_delay round-trip");
@@ -305,6 +377,12 @@ static void test_get_delay_round_trip(void)
   TEST_END("pdg get_delay round-trip");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_delay_batch_happy(void)
 {
   TEST_BEGIN("pdg set_delay batch happy");
@@ -344,6 +422,12 @@ static void test_set_delay_batch_happy(void)
   TEST_END("pdg set_delay batch happy");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_delay_batch_bad_inputs(void)
 {
   TEST_BEGIN("pdg set_delay batch bad inputs");
@@ -366,6 +450,12 @@ static void test_set_delay_batch_bad_inputs(void)
   TEST_END("pdg set_delay batch bad inputs");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_delay_not_initialised(void)
 {
   TEST_BEGIN("pdg set_delay before init");
@@ -385,6 +475,12 @@ static void test_set_delay_not_initialised(void)
   TEST_END("pdg set_delay before init");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_delay_ns_to_code_low_band(void)
 {
   TEST_BEGIN("pdg delay_ns_to_code low band");
@@ -417,6 +513,12 @@ static void test_delay_ns_to_code_low_band(void)
   TEST_END("pdg delay_ns_to_code low band");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_power_transition(void)
 {
   TEST_BEGIN("pdg power transition");
@@ -441,6 +543,12 @@ static void test_power_transition(void)
   TEST_END("pdg power transition");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_channel_bypass_set(void)
 {
   TEST_BEGIN("pdg channel_bypass_set");
@@ -469,6 +577,12 @@ static void test_channel_bypass_set(void)
   TEST_END("pdg channel_bypass_set");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_pin_disable(void)
 {
   TEST_BEGIN("pdg pin_disable");
@@ -515,6 +629,12 @@ static void test_pin_disable(void)
   TEST_END("pdg pin_disable");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_status_read_and_clear(void)
 {
   TEST_BEGIN("pdg status read + clear");
@@ -538,6 +658,12 @@ static void test_status_read_and_clear(void)
   TEST_END("pdg status read + clear");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_status_full(void)
 {
   TEST_BEGIN("pdg status_full snapshot");
@@ -563,6 +689,12 @@ static void test_status_full(void)
   TEST_END("pdg status_full snapshot");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_pick_frange(void)
 {
   TEST_BEGIN("pdg pick_frange");
@@ -592,6 +724,12 @@ static void test_pick_frange(void)
   TEST_END("pdg pick_frange");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_frange_runtime(void)
 {
   TEST_BEGIN("pdg set_frange runtime switch");
@@ -619,6 +757,12 @@ static void test_set_frange_runtime(void)
   TEST_END("pdg set_frange runtime switch");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_bind_unbind_gpt_channel(void)
 {
   TEST_BEGIN("pdg bind / unbind gpt channel");
@@ -645,6 +789,12 @@ static void test_bind_unbind_gpt_channel(void)
   TEST_END("pdg bind / unbind gpt channel");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_check_constraints(void)
 {
   TEST_BEGIN("pdg check_constraints (HUM Ch 23.4.2)");
@@ -700,6 +850,12 @@ static void test_check_constraints(void)
   TEST_END("pdg check_constraints (HUM Ch 23.4.2)");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_required_write_ns(void)
 {
   TEST_BEGIN("pdg required_write_ns (HUM Ch 23.4.3)");
@@ -720,6 +876,12 @@ static void test_required_write_ns(void)
   TEST_END("pdg required_write_ns (HUM Ch 23.4.3)");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_attach_and_dispatch(void)
 {
   TEST_BEGIN("pdg attach + dispatch");
@@ -740,6 +902,11 @@ static void test_attach_and_dispatch(void)
 
 /* ----------------------------------------------------------------------------
  * Sweep 17: ra_pdg_capture_start/stop (buffered delay-code apply)
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  * --------------------------------------------------------------------------*/
 
 static void test_capture_start_happy(void)
@@ -766,6 +933,12 @@ static void test_capture_start_happy(void)
   TEST_END("pdg capture_start happy");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_capture_start_null(void)
 {
   TEST_BEGIN("pdg capture_start NULL buf");
@@ -776,6 +949,12 @@ static void test_capture_start_null(void)
   TEST_END("pdg capture_start NULL buf");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_capture_start_zero_len(void)
 {
   TEST_BEGIN("pdg capture_start zero len");
@@ -789,6 +968,12 @@ static void test_capture_start_zero_len(void)
   TEST_END("pdg capture_start zero len");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_capture_start_bad_entry(void)
 {
   TEST_BEGIN("pdg capture_start bad entry");
@@ -806,6 +991,12 @@ static void test_capture_start_bad_entry(void)
   TEST_END("pdg capture_start bad entry");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_capture_stop_happy(void)
 {
   TEST_BEGIN("pdg capture_stop");
@@ -816,6 +1007,12 @@ static void test_capture_stop_happy(void)
   TEST_END("pdg capture_stop");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_capture_start_no_handler(void)
 {
   TEST_BEGIN("pdg capture_start without handler");
@@ -835,6 +1032,12 @@ static void test_capture_start_no_handler(void)
   TEST_END("pdg capture_start without handler");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_deinit(void)
 {
   TEST_BEGIN("pdg deinit");

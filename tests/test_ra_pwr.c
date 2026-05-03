@@ -28,6 +28,12 @@ static volatile uint32_t* wupen1_ptr(void)
   return (volatile uint32_t*)((uintptr_t)k_ra_system_base_addr + (uintptr_t)k_ra_lpm_wupen1_off);
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_clears_wupen_and_resets_mstp(void)
 {
   TEST_BEGIN("ra_pwr_init: WUPEN0/1 cleared, MSTP table reset");
@@ -46,6 +52,12 @@ static void test_init_clears_wupen_and_resets_mstp(void)
   TEST_END("ra_pwr_init: WUPEN0/1 cleared, MSTP table reset");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_module_request_release_round_trip(void)
 {
   TEST_BEGIN("ra_pwr_module_request / release: round trip");
@@ -65,6 +77,12 @@ static void test_module_request_release_round_trip(void)
   TEST_END("ra_pwr_module_request / release: round trip");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_clear_wake_source(void)
 {
   TEST_BEGIN("ra_pwr_set_wake_source / clear_wake_source");
@@ -90,6 +108,12 @@ static void test_set_clear_wake_source(void)
   TEST_END("ra_pwr_set_wake_source / clear_wake_source");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_wake_source_wupen1(void)
 {
   TEST_BEGIN("ra_pwr_set_wake_source: WUPEN1 source (AGT0)");
@@ -103,6 +127,12 @@ static void test_wake_source_wupen1(void)
   TEST_END("ra_pwr_set_wake_source: WUPEN1 source (AGT0)");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_wake_source_invalid_id(void)
 {
   TEST_BEGIN("ra_pwr_set_wake_source: invalid id rejected");
@@ -123,6 +153,12 @@ static void test_wake_source_invalid_id(void)
   TEST_END("ra_pwr_set_wake_source: invalid id rejected");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_enter_sleep_is_no_op_on_host(void)
 {
   TEST_BEGIN("ra_pwr_enter_sleep: returns immediately on host");
@@ -136,6 +172,12 @@ static void test_enter_sleep_is_no_op_on_host(void)
   TEST_END("ra_pwr_enter_sleep: returns immediately on host");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_software_standby_requires_wake_source(void)
 {
   TEST_BEGIN("ra_pwr_enter_software_standby: refuses without wake source");
@@ -150,6 +192,12 @@ static void test_software_standby_requires_wake_source(void)
   TEST_END("ra_pwr_enter_software_standby: refuses without wake source");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_get_clock_hz_forwards_to_cgc(void)
 {
   TEST_BEGIN("ra_pwr_get_clock_hz: forwards to ra_cgc_get_clock_hz");

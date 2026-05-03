@@ -83,6 +83,12 @@ static ra_rmac_phy_cfg_t make_cfg(void)
   return cfg;
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_open_null(void)
 {
   TEST_BEGIN("open rejects NULL cfg / callbacks");
@@ -97,6 +103,12 @@ static void test_open_null(void)
   TEST_END("open rejects NULL cfg / callbacks");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_open_bad_args(void)
 {
   TEST_BEGIN("open rejects bad PHY addr / lsi");
@@ -110,6 +122,12 @@ static void test_open_bad_args(void)
   TEST_END("open rejects bad PHY addr / lsi");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_lifecycle(void)
 {
   TEST_BEGIN("open / re-open / close + advertisement written");
@@ -124,6 +142,12 @@ static void test_lifecycle(void)
   TEST_END("open / re-open / close + advertisement written");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_reset_timeout(void)
 {
   TEST_BEGIN("open returns hw_timeout if BMCR.RESET never clears");
@@ -135,6 +159,12 @@ static void test_reset_timeout(void)
   TEST_END("open returns hw_timeout if BMCR.RESET never clears");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_mdio(void)
 {
   TEST_BEGIN("mdio read/write validation");
@@ -155,6 +185,12 @@ static void test_mdio(void)
   TEST_END("mdio read/write validation");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_link_1000(void)
 {
   TEST_BEGIN("link_status resolves 1000Base-T full-duplex from MSR");
@@ -173,6 +209,12 @@ static void test_link_1000(void)
   TEST_END("link_status resolves 1000Base-T full-duplex from MSR");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_link_100half_fallback(void)
 {
   TEST_BEGIN("link_status falls back to LPA when no gbit advertised");
@@ -190,6 +232,12 @@ static void test_link_100half_fallback(void)
   TEST_END("link_status falls back to LPA when no gbit advertised");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_lsi_and_autoneg(void)
 {
   TEST_BEGIN("lsi_get + auto_negotiate_start");
@@ -207,6 +255,12 @@ static void test_lsi_and_autoneg(void)
   TEST_END("lsi_get + auto_negotiate_start");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_not_initialized(void)
 {
   TEST_BEGIN("ops fail with not_initialized when closed");

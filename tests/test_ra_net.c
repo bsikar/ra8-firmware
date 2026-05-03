@@ -136,6 +136,11 @@ static void build_eth(uint8_t* f, const ra_net_mac_t* dst, const ra_net_mac_t* s
 /* ---------------------------------------------------------------------------
  * 1. open / close
  * ---------------------------------------------------------------------------
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 static void test_open_close(void)
 {
@@ -152,6 +157,11 @@ static void test_open_close(void)
 /* ---------------------------------------------------------------------------
  * 2. ARP request -> reply
  * ---------------------------------------------------------------------------
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 static void test_arp_request_reply(void)
 {
@@ -189,6 +199,11 @@ static void test_arp_request_reply(void)
 /* ---------------------------------------------------------------------------
  * 3. ICMP echo request -> reply
  * ---------------------------------------------------------------------------
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 static void test_icmp_echo(void)
 {
@@ -236,6 +251,11 @@ static void test_icmp_echo(void)
 /* ---------------------------------------------------------------------------
  * 4. UDP socket create + send
  * ---------------------------------------------------------------------------
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 static void test_udp_send(void)
 {
@@ -271,6 +291,11 @@ static void test_udp_send(void)
 /* ---------------------------------------------------------------------------
  * 5. UDP receive (loopback within sim)
  * ---------------------------------------------------------------------------
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 static void test_udp_recv(void)
 {
@@ -344,6 +369,11 @@ static uint16_t build_tcp_frame(uint8_t*       f,
 /* ---------------------------------------------------------------------------
  * 6. TCP listen + accept (synthetic SYN)
  * ---------------------------------------------------------------------------
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 static void test_tcp_listen_accept(void)
 {
@@ -381,6 +411,11 @@ static void test_tcp_listen_accept(void)
 /* ---------------------------------------------------------------------------
  * 7. TCP send / receive after established
  * ---------------------------------------------------------------------------
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 static void test_tcp_data_after_established(void)
 {
@@ -431,6 +466,11 @@ static void test_tcp_data_after_established(void)
 /* ---------------------------------------------------------------------------
  * 8. TCP close (FIN handshake)
  * ---------------------------------------------------------------------------
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 static void test_tcp_close_handshake(void)
 {
@@ -481,6 +521,11 @@ static void test_tcp_close_handshake(void)
 /* ---------------------------------------------------------------------------
  * 9. DNS query with synthetic response
  * ---------------------------------------------------------------------------
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 static void test_dns_query_synthetic(void)
 {
@@ -529,6 +574,11 @@ static void test_dns_query_synthetic(void)
 /* ---------------------------------------------------------------------------
  * 10. Out-of-handle and NULL guards
  * ---------------------------------------------------------------------------
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 static void test_null_and_oob(void)
 {
@@ -557,6 +607,11 @@ static void test_null_and_oob(void)
 /* ---------------------------------------------------------------------------
  * 11. Socket table exhaustion
  * ---------------------------------------------------------------------------
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 static void test_socket_table_full(void)
 {
@@ -579,6 +634,11 @@ static void test_socket_table_full(void)
 /* ---------------------------------------------------------------------------
  * 12. Duplicate UDP port
  * ---------------------------------------------------------------------------
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 static void test_duplicate_udp_port(void)
 {

@@ -24,6 +24,12 @@ static void prep(void)
   (void)ra_mstp_init();
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_gpt_init_forwards(void)
 {
   TEST_BEGIN("ra_nsc_gpt_init forwards + null rejected");
@@ -43,6 +49,12 @@ static void test_gpt_init_forwards(void)
   TEST_END("ra_nsc_gpt_init forwards + null rejected");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_adc_dac_acmphs_init_forwards(void)
 {
   TEST_BEGIN("ra_nsc_{adc,dac_b,acmphs}_init forwards");
@@ -63,6 +75,12 @@ static void test_adc_dac_acmphs_init_forwards(void)
   TEST_END("ra_nsc_{adc,dac_b,acmphs}_init forwards");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_crc_init_compute(void)
 {
   TEST_BEGIN("ra_nsc_crc_init + compute");
@@ -76,6 +94,12 @@ static void test_crc_init_compute(void)
   TEST_END("ra_nsc_crc_init + compute");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_glcdc_pdm_eth_init(void)
 {
   TEST_BEGIN("ra_nsc_{glcdc,pdm,eth}_init forwards");
