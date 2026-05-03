@@ -5,8 +5,9 @@ closure commits `f4fb1a6`, `7551634`, `f272dc7`, `ce76aa4`, `87b606f`).
 
 This file is the at-a-glance map of every driver in
 `libs/ra_hal/src/` plus the new top-level libraries (`libs/ra_net/`,
-`libs/ra_fs/`, `libs/ra_tls/`, `libs/ra_gfx/`, `libs/ra_ble_host/`)
-against their FSP `r_*` parity benchmark. Status classes:
+`libs/ra_fs/`, `libs/ra_tls/` (Mbed TLS facade), `libs/ra_gfx/`,
+`libs/ra_ble_host/`) against their FSP `r_*` parity benchmark. Status
+classes:
 
 - `feature-complete` -- the public API matches FSP `R_*` parity for
   the in-scope feature set on RA8D2. Real register I/O on real
@@ -277,4 +278,4 @@ Of the 6 "partial" entries, only two (ra_i3c HDR-DDR/IBI, ra_canfd
 GAFL/BRS) are realistic candidates for completion without external
 inputs. The crypto + BLE placeholders cannot be promoted to
 feature-complete without Renesas's closed-source firmware blobs --
-see `docs/MISSING.md` section 5 (DEFERRED).
+see `docs/VENDOR_BLOBS.md`.

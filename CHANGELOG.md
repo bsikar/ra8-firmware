@@ -147,7 +147,6 @@ three weeks.
   split.
 - **`docs/VENDOR_BLOBS.md`** documenting the RSIP-E50D and BLE patch
   binary blobs vendored in the tree.
-- **`docs/MISSING.md`** -- honest audit of unimplemented driver surface.
 - **`docs/ROADMAP.md`** progressively closed: WDT/IWDT/RTC/CAC, CRC/ULPT/
   AGT, ADC/DAC_B/ACMPHS, XSPI/SDRAMC, CANFD/SDHI/I3C, GLCDC/PDM,
   USB_FS/USB_HS, SCI/IIC/SPI/GPIO/GPT/POEG, plus DONE markers for
