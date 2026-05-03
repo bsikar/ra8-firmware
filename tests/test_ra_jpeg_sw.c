@@ -980,6 +980,298 @@ static void test_mcdc_decode_sos_without_sof(void)
   TEST_END("jpeg_sw MC/DC decode: SOS arrives before SOF0");
 }
 
+/**
+ * @test test_mcdc_decode_dht_tc_th_independent
+ * @par MC/DC:
+ * Decision dec_parse_dht line 1041:
+ *   `if (tc >= k_ra_jpeg_huff_classes || th >= k_ra_jpeg_huff_ids)` (2 conds).
+ * Reaches the DHT body with valid framing (`len > 2` and
+ * `len <= src_len - cursor`) so the OR can actually evaluate, and
+ * supplies a complete 16-byte BITS list of zeros (no symbols) so
+ * the `cursor + huff_lengths > end` and `total > huff_max` guards
+ * pass. tc_th nibble pair selects the condition under test:
+ *   V_F_F: tc_th=0x00 -> tc=0,th=0      -> F,F (DHT body completes
+ *           through the EOI exit; success leg of the OR)
+ *   V_T_F: tc_th=0x20 -> tc=2,th=0      -> T,F (returns not_supported,
+ *           proves C1 alone flips the outcome vs V_F_F)
+ *   V_F_T: tc_th=0x02 -> tc=0,th=2      -> F,T (returns not_supported,
+ *           proves C2 alone flips the outcome vs V_F_F)
+ * N+1 = 3 vectors for N=2 conditions.
+ *
+ * Layout (per-vector): SOI, DHT_marker, len=0x13 (19), tc_th, 16x 0x00
+ * (BITS list -- all-zero so total=0 symbols) and EOI. Total = 23 bytes;
+ * the framing satisfies `len <= src_len - cursor` (19 <= 23-4 = 19).
+ */
+static void test_mcdc_decode_dht_tc_th_independent(void)
+{
+  TEST_BEGIN("jpeg_sw MC/DC dec_parse_dht: tc/th independence pairs");
+  uint8_t  out[64] = {};
+  uint16_t dw      = 0U;
+  uint16_t dh      = 0U;
+  /* V_F_F: tc=0, th=0 -- valid DHT, no symbols. Decoder returns from
+   * dec_parse_dht successfully, then loop sees EOI and exits with
+   * protocol_error (no SOS) -- but line 1041 was evaluated F,F. */
+  static const uint8_t dht_ff[] = {
+    0xFFU, 0xD8U, 0xFFU, 0xC4U, 0x00U, 0x13U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U,
+    0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U,
+  };
+  (void)ra_jpeg_sw_decode(dht_ff, (uint32_t)sizeof dht_ff, out, (uint32_t)sizeof out, &dw, &dh);
+  /* V_T_F: tc_th=0x20 -> tc=2, th=0 -- C1=T, C2=F (short-circuit). */
+  static const uint8_t dht_tf[] = {
+    0xFFU, 0xD8U, 0xFFU, 0xC4U, 0x00U, 0x13U, 0x20U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U,
+    0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U,
+  };
+  TEST_ASSERT(
+    ra_jpeg_sw_decode(dht_tf, (uint32_t)sizeof dht_tf, out, (uint32_t)sizeof out, &dw, &dh) !=
+    k_ra_ok);
+  /* V_F_T: tc_th=0x02 -> tc=0, th=2 -- C1=F, C2=T. */
+  static const uint8_t dht_ft[] = {
+    0xFFU, 0xD8U, 0xFFU, 0xC4U, 0x00U, 0x13U, 0x02U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U,
+    0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U,
+  };
+  TEST_ASSERT(
+    ra_jpeg_sw_decode(dht_ft, (uint32_t)sizeof dht_ft, out, (uint32_t)sizeof out, &dw, &dh) !=
+    k_ra_ok);
+  TEST_END("jpeg_sw MC/DC dec_parse_dht: tc/th independence pairs");
+}
+
+/**
+ * @test test_mcdc_decode_sof0_ncomp1
+ * @par MC/DC:
+ * Decision dec_parse_sof0 line 1104:
+ *   `if (d->ncomp != 1U && d->ncomp != 3U)` (2 conds).
+ * Existing tests cover ncomp=3 (T,F success) and ncomp=2 (T,T fail).
+ * This test adds the missing C1-pair vector with ncomp=1 (F,-) so all
+ * three independence pairs are present.
+ *   V_F_dash: ncomp=1, hmax=vmax=1 -> dec_parse_sof0 returns ok (line
+ *             1130 ncomp==3 is false, so is_444/is_420 not evaluated;
+ *             decoder loop continues, hits EOI, returns protocol_error).
+ *
+ * Layout: SOI + SOF0(ncomp=1, 16x16, single component id=1, hv=0x11,
+ * qid=0) + EOI.
+ */
+static void test_mcdc_decode_sof0_ncomp1(void)
+{
+  TEST_BEGIN("jpeg_sw MC/DC dec_parse_sof0: ncomp=1 pair");
+  uint8_t              out[64]       = {};
+  uint16_t             dw            = 0U;
+  uint16_t             dh            = 0U;
+  static const uint8_t sof0_ncomp1[] = {
+    0xFFU,
+    0xD8U,
+    0xFFU,
+    0xC0U,
+    0x00U,
+    0x0BU,
+    0x08U,
+    0x00U,
+    0x10U,
+    0x00U,
+    0x10U,
+    0x01U,
+    0x01U,
+    0x11U,
+    0x00U,
+    0xFFU,
+    0xD9U,
+  };
+  /* dec_parse_sof0 succeeds with ncomp=1; the decoder eventually fails
+   * at EOI without a SOS, but line 1104 was evaluated with C1=F. */
+  (void)ra_jpeg_sw_decode(sof0_ncomp1,
+                          (uint32_t)sizeof sof0_ncomp1,
+                          out,
+                          (uint32_t)sizeof out,
+                          &dw,
+                          &dh);
+  TEST_END("jpeg_sw MC/DC dec_parse_sof0: ncomp=1 pair");
+}
+
+/**
+ * @test test_mcdc_decode_sof0_444_chroma
+ * @par MC/DC:
+ * Decision dec_parse_sof0 line 1131 `is_444 = (hmax==1 && vmax==1)`
+ * (2 conds). Existing 4:2:0 round-trip leaves is_444 with only F,-
+ * (because hmax==2 short-circuits C1 to F). This test adds a hand-
+ * built ncomp=3 SOF0 with hmax==1, vmax==1 so is_444 evaluates T,T
+ * (closing C1-pair and C2-pair) and is_420 short-circuits (C1=F).
+ *   V_T_T: hmax=1, vmax=1 (4:4:4) -> is_444=T (and !is_444 false at
+ *          line 1134, so dec_parse_sof0 returns ok)
+ *   V_T_F: hmax=1, vmax=2 (illegal subsamp) -> is_444 = T,F = F;
+ *          is_420 also F -> line 1134 not_supported.
+ * Combined with the existing F,- vector from the round-trip, line 1131
+ * has F,-, T,T, T,F: closes both pairs.
+ *
+ * Layout per fixture: SOI + SOF0(ncomp=3, 16x16) + EOI.
+ */
+static void test_mcdc_decode_sof0_444_chroma(void)
+{
+  TEST_BEGIN("jpeg_sw MC/DC dec_parse_sof0: 4:4:4 + hmax/vmax pairs");
+  uint8_t  out[64] = {};
+  uint16_t dw      = 0U;
+  uint16_t dh      = 0U;
+  /* V_T_T: full 4:4:4 (1,1,1). is_444 = T,T -> true; line 1134
+   * !is_444 = false so the if-body is skipped (covers is_444 C2
+   * independence pair and provides T,F,T,T,T,T row for is_420 too,
+   * since the OR there short-circuits at C2 once the order is right
+   * -- actually with hmax=1 line 1132 C1 = (hmax==2) = F, not T --
+   * but combined with the round-trip's T,T,T,T,T,T row it still
+   * helps cover line 1131 fully). */
+  static const uint8_t sof0_444[] = {
+    0xFFU, 0xD8U, 0xFFU, 0xC0U, 0x00U, 0x11U, 0x08U, 0x00U, 0x10U, 0x00U, 0x10U, 0x03U,
+    0x01U, 0x11U, 0x00U, 0x02U, 0x11U, 0x01U, 0x03U, 0x11U, 0x01U, 0xFFU, 0xD9U,
+  };
+  (void)ra_jpeg_sw_decode(sof0_444, (uint32_t)sizeof sof0_444, out, (uint32_t)sizeof out, &dw, &dh);
+  /* V_T_F: hmax=1, vmax=2 -- comp1 hv=0x12 forces vmax=2 alongside
+   * hmax=1. is_444 = (1==1 && 2==1) = T,F = F; is_420 starts (1==2)=F
+   * short-circuit; !is_444 && !is_420 = T && T = T -> not_supported. */
+  static const uint8_t sof0_h1v2[] = {
+    0xFFU, 0xD8U, 0xFFU, 0xC0U, 0x00U, 0x11U, 0x08U, 0x00U, 0x10U, 0x00U, 0x10U, 0x03U,
+    0x01U, 0x12U, 0x00U, 0x02U, 0x11U, 0x01U, 0x03U, 0x11U, 0x01U, 0xFFU, 0xD9U,
+  };
+  TEST_ASSERT(
+    ra_jpeg_sw_decode(sof0_h1v2, (uint32_t)sizeof sof0_h1v2, out, (uint32_t)sizeof out, &dw, &dh) !=
+    k_ra_ok);
+  TEST_END("jpeg_sw MC/DC dec_parse_sof0: 4:4:4 + hmax/vmax pairs");
+}
+
+/**
+ * @test test_mcdc_decode_sof0_is420_subconditions
+ * @par MC/DC:
+ * Decision dec_parse_sof0 line 1132/1133 `is_420` (6 conds).
+ * Existing covered rows: T,F,-,-,-,- (round-trip lo-quality 4:2:0
+ * almost? actually shows T,F) and T,T,T,T,T,T (full 4:2:0). This
+ * test adds vectors that flip C1, C3, C4, C5, C6 individually:
+ *   V_F_dash:    hmax=1 vmax=1 -> is_444 path; is_420 C1=F (closes
+ *                 C1-pair vs T,T,T,T,T,T from round-trip)
+ *   V_T_T_F_:    hmax=2 vmax=2 comp_h[1]=2 -> is_420 = T,T,F,-,...
+ *                 (closes C3-pair vs T,T,T,T,T,T)
+ *   V_T_T_T_F_:  hmax=2 vmax=2 comp_h[1]=1 comp_v[1]=2 -> T,T,T,F,-,
+ *                 (closes C4-pair)
+ *   V_TTTT_F_:   comp_h[2]=2 -> T,T,T,T,F,- (closes C5-pair)
+ *   V_TTTTT_F:   comp_v[2]=2 -> T,T,T,T,T,F (closes C6-pair)
+ * Each of these is_420=F variants triggers line 1134 not_supported.
+ */
+static void test_mcdc_decode_sof0_is420_subconditions(void)
+{
+  TEST_BEGIN("jpeg_sw MC/DC dec_parse_sof0: is_420 6-cond independence");
+  uint8_t  out[64] = {};
+  uint16_t dw      = 0U;
+  uint16_t dh      = 0U;
+  /* C1=F via 4:4:4 already covered by sof0_444 above. Re-run for
+   * MCDC isolation. */
+  static const uint8_t sof0_c1f[] = {
+    0xFFU, 0xD8U, 0xFFU, 0xC0U, 0x00U, 0x11U, 0x08U, 0x00U, 0x10U, 0x00U, 0x10U, 0x03U,
+    0x01U, 0x11U, 0x00U, 0x02U, 0x11U, 0x01U, 0x03U, 0x11U, 0x01U, 0xFFU, 0xD9U,
+  };
+  (void)ra_jpeg_sw_decode(sof0_c1f, (uint32_t)sizeof sof0_c1f, out, (uint32_t)sizeof out, &dw, &dh);
+  /* C3=F: 4:2:0 except comp_h[1]=2 (instead of 1). */
+  static const uint8_t sof0_c3f[] = {
+    0xFFU, 0xD8U, 0xFFU, 0xC0U, 0x00U, 0x11U, 0x08U, 0x00U, 0x10U, 0x00U, 0x10U, 0x03U,
+    0x01U, 0x22U, 0x00U, 0x02U, 0x21U, 0x01U, 0x03U, 0x11U, 0x01U, 0xFFU, 0xD9U,
+  };
+  TEST_ASSERT(
+    ra_jpeg_sw_decode(sof0_c3f, (uint32_t)sizeof sof0_c3f, out, (uint32_t)sizeof out, &dw, &dh) !=
+    k_ra_ok);
+  /* C4=F: 4:2:0 except comp_v[1]=2. */
+  static const uint8_t sof0_c4f[] = {
+    0xFFU, 0xD8U, 0xFFU, 0xC0U, 0x00U, 0x11U, 0x08U, 0x00U, 0x10U, 0x00U, 0x10U, 0x03U,
+    0x01U, 0x22U, 0x00U, 0x02U, 0x12U, 0x01U, 0x03U, 0x11U, 0x01U, 0xFFU, 0xD9U,
+  };
+  TEST_ASSERT(
+    ra_jpeg_sw_decode(sof0_c4f, (uint32_t)sizeof sof0_c4f, out, (uint32_t)sizeof out, &dw, &dh) !=
+    k_ra_ok);
+  /* C5=F: 4:2:0 except comp_h[2]=2. */
+  static const uint8_t sof0_c5f[] = {
+    0xFFU, 0xD8U, 0xFFU, 0xC0U, 0x00U, 0x11U, 0x08U, 0x00U, 0x10U, 0x00U, 0x10U, 0x03U,
+    0x01U, 0x22U, 0x00U, 0x02U, 0x11U, 0x01U, 0x03U, 0x21U, 0x01U, 0xFFU, 0xD9U,
+  };
+  TEST_ASSERT(
+    ra_jpeg_sw_decode(sof0_c5f, (uint32_t)sizeof sof0_c5f, out, (uint32_t)sizeof out, &dw, &dh) !=
+    k_ra_ok);
+  /* C6=F: 4:2:0 except comp_v[2]=2. */
+  static const uint8_t sof0_c6f[] = {
+    0xFFU, 0xD8U, 0xFFU, 0xC0U, 0x00U, 0x11U, 0x08U, 0x00U, 0x10U, 0x00U, 0x10U, 0x03U,
+    0x01U, 0x22U, 0x00U, 0x02U, 0x11U, 0x01U, 0x03U, 0x12U, 0x01U, 0xFFU, 0xD9U,
+  };
+  TEST_ASSERT(
+    ra_jpeg_sw_decode(sof0_c6f, (uint32_t)sizeof sof0_c6f, out, (uint32_t)sizeof out, &dw, &dh) !=
+    k_ra_ok);
+  TEST_END("jpeg_sw MC/DC dec_parse_sof0: is_420 6-cond independence");
+}
+
+/**
+ * @test test_mcdc_decode_sos_dc_ac_id_independent
+ * @par MC/DC:
+ * Decision dec_parse_sos line 1184:
+ *   `if (comp_dc_id[idx] >= k_ra_jpeg_huff_ids ||
+ *        comp_ac_id[idx] >= k_ra_jpeg_huff_ids)` (2 conds).
+ * Reaches dec_parse_sos with valid framing by first feeding a
+ * valid SOF0 (ncomp=1) so got_sof=true, then SOS with ns=1 and
+ * a tdta nibble pair selecting bad dc_id or bad ac_id.
+ *   V_T_F: tdta=0x20 -> dc_id=2 (>=2), ac_id=0 -> C1=T,C2=F
+ *   V_F_T: tdta=0x02 -> dc_id=0, ac_id=2 (>=2) -> C1=F,C2=T
+ *   (V_F_F success row not added here -- requires full Huffman
+ *    bitstream, deferred to wave-19.)
+ * Combined with 1 implicit F,F row from any future success path,
+ * V_T_F and V_F_T close C1-pair and C2-pair respectively.
+ *
+ * Layout: SOI + SOF0(ncomp=1, 16x16, comp_id=1) + SOS(ns=1, cs=1,
+ * tdta) + Ss/Se/AhAl(0,63,0) + EOI.
+ */
+static void test_mcdc_decode_sos_dc_ac_id_independent(void)
+{
+  TEST_BEGIN("jpeg_sw MC/DC dec_parse_sos: dc_id/ac_id independence pairs");
+  uint8_t  out[64] = {};
+  uint16_t dw      = 0U;
+  uint16_t dh      = 0U;
+  /* V_T_F: tdta=0x20 -> dc_id=2 (T), ac_id=0 (F). SOS length 8:
+   * 2(len) + 1(ns) + 2(cs+tdta)*1 + 3(Ss/Se/AhAl) = 8. */
+  static const uint8_t sos_tf[] = {
+    /* SOI */ 0xFFU,
+    0xD8U,
+    /* SOF0 ncomp=1 */
+    0xFFU,
+    0xC0U,
+    0x00U,
+    0x0BU,
+    0x08U,
+    0x00U,
+    0x10U,
+    0x00U,
+    0x10U,
+    0x01U,
+    0x01U,
+    0x11U,
+    0x00U,
+    /* SOS */
+    0xFFU,
+    0xDAU,
+    0x00U,
+    0x08U,
+    0x01U,
+    0x01U,
+    0x20U,
+    0x00U,
+    0x3FU,
+    0x00U,
+    /* EOI */ 0xFFU,
+    0xD9U,
+  };
+  TEST_ASSERT(
+    ra_jpeg_sw_decode(sos_tf, (uint32_t)sizeof sos_tf, out, (uint32_t)sizeof out, &dw, &dh) !=
+    k_ra_ok);
+  /* V_F_T: tdta=0x02 -> dc_id=0 (F), ac_id=2 (T). */
+  static const uint8_t sos_ft[] = {
+    0xFFU, 0xD8U, 0xFFU, 0xC0U, 0x00U, 0x0BU, 0x08U, 0x00U, 0x10U,
+    0x00U, 0x10U, 0x01U, 0x01U, 0x11U, 0x00U, 0xFFU, 0xDAU, 0x00U,
+    0x08U, 0x01U, 0x01U, 0x02U, 0x00U, 0x3FU, 0x00U, 0xFFU, 0xD9U,
+  };
+  TEST_ASSERT(
+    ra_jpeg_sw_decode(sos_ft, (uint32_t)sizeof sos_ft, out, (uint32_t)sizeof out, &dw, &dh) !=
+    k_ra_ok);
+  TEST_END("jpeg_sw MC/DC dec_parse_sos: dc_id/ac_id independence pairs");
+}
+
 int32_t main(void)
 {
   ra_sim_mmap_reset();
@@ -1001,6 +1293,11 @@ int32_t main(void)
   test_mcdc_decode_pad_byte_chain();
   test_mcdc_get_dimensions_seglen_independent();
   test_mcdc_decode_sos_without_sof();
+  test_mcdc_decode_dht_tc_th_independent();
+  test_mcdc_decode_sof0_ncomp1();
+  test_mcdc_decode_sof0_444_chroma();
+  test_mcdc_decode_sof0_is420_subconditions();
+  test_mcdc_decode_sos_dc_ac_id_independent();
   (void)fprintf(stderr, "[OK ] test_ra_jpeg_sw.c\n");
   return 0;
 }

@@ -436,6 +436,60 @@ static void test_load_corruption(void)
 }
 
 /**
+ * @test test_mcdc_load_magic_and_reserved_byte_pairs
+ *
+ * @par MC/DC:
+ * Two short-circuit ORs in libs/ra_touch_cal/src/ra_touch_cal.c
+ * ra_touch_cal_load:
+ *   D_magic (line 568, 4-cond OR): magic bytes 0..3 differ from
+ *     k_ra_touch_cal_magic_b0..b3.
+ *   D_reserved (line 577, 3-cond OR): reserved bytes 0..2 must all
+ *     be zero.
+ * Existing test_load_corruption supplies vectors for C1 only (magic[0]
+ * tampered, reserved[0] tampered). This test adds the trailing-byte
+ * tampers so each condition Cn flips with C1..Cn-1 held at their
+ * masking value (F):
+ *   D_magic V_C2: tamper magic[1]                   -> F,T,-,-      -> T
+ *           V_C3: tamper magic[2]                   -> F,F,T,-      -> T
+ *           V_C4: tamper magic[3]                   -> F,F,F,T      -> T
+ *   D_reserved V_C2: tamper reserved[1]             -> F,T,-        -> T
+ *              V_C3: tamper reserved[2]             -> F,F,T        -> T
+ * Combined with the existing C1 vectors and the all-F pass-through
+ * from test_save_load_roundtrip, every C-pair is closed (N+1 minimal
+ * MC/DC for each OR).
+ */
+static void test_mcdc_load_magic_and_reserved_byte_pairs(void)
+{
+  TEST_BEGIN("touch_cal load MC/DC: magic + reserved per-byte independence");
+  const ra_touch_cal_matrix_t in = {
+    .a = 1.0F,
+    .b = 0.0F,
+    .c = 0.0F,
+    .d = 0.0F,
+    .e = 1.0F,
+    .f = 0.0F,
+  };
+  uint8_t blob[k_tc_blob] = {};
+  TEST_ASSERT_EQ(k_ra_ok, ra_touch_cal_save(&in, blob, sizeof(blob)));
+  ra_touch_cal_matrix_t out = {};
+  /* D_magic per-byte flips. */
+  for (size_t i = 1U; i < 4U; ++i) {
+    uint8_t bad[k_tc_blob] = {};
+    (void)memcpy(bad, blob, sizeof(bad));
+    bad[(size_t)k_ra_touch_cal_off_magic + i] ^= 0xFFU;
+    TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_touch_cal_load(bad, sizeof(bad), &out));
+  }
+  /* D_reserved per-byte flips. */
+  for (size_t i = 1U; i < 3U; ++i) {
+    uint8_t bad[k_tc_blob] = {};
+    (void)memcpy(bad, blob, sizeof(bad));
+    bad[(size_t)k_ra_touch_cal_off_reserved + i] = 0x42U;
+    TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_touch_cal_load(bad, sizeof(bad), &out));
+  }
+  TEST_END("touch_cal load MC/DC: magic + reserved per-byte independence");
+}
+
+/**
  * @test test_compute_n_range_mcdc
  *
  * @par MC/DC:
@@ -704,6 +758,7 @@ int main(void)
   test_run_shim_error();
   test_save_load_roundtrip();
   test_load_corruption();
+  test_mcdc_load_magic_and_reserved_byte_pairs();
   test_compute_n_range_mcdc();
   test_run_margin_mcdc();
   test_mcdc_compute_null_or3();
