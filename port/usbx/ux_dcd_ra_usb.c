@@ -804,17 +804,22 @@ static void internal_handle_dvst(uint16_t intsts0)
       new_state = (unsigned long)UX_DEVICE_ATTACHED;
       break;
     case k_ra_dvsq_address:
+      /* ADDRESSED is normally written by the chapter-9 dispatcher
+       * (`_ux_device_stack_address_set`), but the RA USBFS peripheral can
+       * auto-handle SET_ADDRESS in hardware -- in that case the only
+       * software signal is a DVST whose DVSQ already reads ADDRESS. Map
+       * it here so the no-demote rank guard below can advance the
+       * software state when the dispatcher hasn't (and will skip when it
+       * already has). */
+      new_state = (unsigned long)UX_DEVICE_ADDRESSED;
+      break;
     case k_ra_dvsq_configured:
-      /* ADDRESSED / CONFIGURED are owned by the chapter-9 dispatcher
-       * (`_ux_device_stack_address_set` /
-       * `_ux_device_stack_configuration_set`), which writes
-       * `ux_slave_device_state` synchronously when the host's request
-       * is accepted. The DVST IRQ that follows the bus-side change can
-       * race with that write -- when CTRT and DVST are both pending in
-       * the same INTSTS0 snapshot we process CTRT first (advancing
-       * state) and would then overwrite it here using the stale pre-
-       * CTRT DVSQ. Leave these cases to the dispatcher entirely. */
-      return;
+      /* CONFIGURED is normally written by the chapter-9 dispatcher
+       * (`_ux_device_stack_configuration_set`); same rationale as
+       * ADDRESS above -- propose the advance and let the no-demote rank
+       * guard arbitrate. */
+      new_state = (unsigned long)UX_DEVICE_CONFIGURED;
+      break;
     default:
       return;
   }
