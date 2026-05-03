@@ -1,6 +1,6 @@
 /**
  * @file test_ra_spi.c
- * @brief Unit tests for the SPI_B master driver (``ra_spi_b.c``)
+ * @brief Unit tests for the SPI_B controller driver (``ra_spi_b.c``)
  *
  * @details
  * Validates the SPI_B-flavoured public ``ra_spi`` API against the
@@ -58,7 +58,7 @@ typedef enum : uint32_t {
 
 /**
  * @enum ra_spi_test_spcr_t
- * @brief Expected SPCR layout after init (master mode, SPE asserted).
+ * @brief Expected SPCR layout after init (controller mode, SPE asserted).
  *
  * @details
  * SPCR.SPE = bit 0 (mask 0x00000001), SPCR.SCKASE = bit 12
@@ -69,6 +69,12 @@ typedef enum : uint32_t {
   k_ra_spi_test_spcr_en = 0x40001001UL,
 } ra_spi_test_spcr_t;
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_master_init_happy_ch0(void)
 {
   TEST_BEGIN("spi master_init ch0");
@@ -89,6 +95,12 @@ static void test_master_init_happy_ch0(void)
   TEST_END("spi master_init ch0");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_master_init_happy_ch1(void)
 {
   TEST_BEGIN("spi master_init ch1");
@@ -98,6 +110,12 @@ static void test_master_init_happy_ch1(void)
   TEST_END("spi master_init ch1");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_master_init_bad_channel(void)
 {
   TEST_BEGIN("spi master_init bad channel");
@@ -107,6 +125,12 @@ static void test_master_init_bad_channel(void)
   TEST_END("spi master_init bad channel");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_master_init_huge_channel(void)
 {
   TEST_BEGIN("spi master_init huge channel");
@@ -116,6 +140,12 @@ static void test_master_init_huge_channel(void)
   TEST_END("spi master_init huge channel");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_xfer8_happy_with_rx(void)
 {
   TEST_BEGIN("spi xfer8 happy with rx");
@@ -136,6 +166,12 @@ static void test_xfer8_happy_with_rx(void)
   TEST_END("spi xfer8 happy with rx");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_xfer8_happy_null_rx(void)
 {
   TEST_BEGIN("spi xfer8 happy null rx");
@@ -150,6 +186,12 @@ static void test_xfer8_happy_null_rx(void)
   TEST_END("spi xfer8 happy null rx");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_xfer8_timeout_sptef(void)
 {
   TEST_BEGIN("spi xfer8 timeout sptef");
@@ -161,6 +203,12 @@ static void test_xfer8_timeout_sptef(void)
   TEST_END("spi xfer8 timeout sptef");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_xfer8_timeout_sprf(void)
 {
   TEST_BEGIN("spi xfer8 timeout sprf");
@@ -177,6 +225,12 @@ static void test_xfer8_timeout_sprf(void)
   TEST_END("spi xfer8 timeout sprf");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_xfer8_bad_channel(void)
 {
   TEST_BEGIN("spi xfer8 bad channel");
@@ -217,6 +271,12 @@ static const ra_spi_cfg_t k_spi_cfg = {
   .lsb_first = false,
 };
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_spi_init_configured(void)
 {
   TEST_BEGIN("ra_spi_init: SPCR.SPE set");
@@ -234,6 +294,12 @@ static void test_spi_init_configured(void)
   TEST_END("ra_spi_init: SPCR.SPE set");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_spi_init_mode_variants(void)
 {
   TEST_BEGIN("ra_spi_init: mode 1/2/3 programme SPCMD bits");
@@ -255,6 +321,12 @@ static void test_spi_init_mode_variants(void)
   TEST_END("ra_spi_init: mode 1/2/3 programme SPCMD bits");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_spi_init_bad(void)
 {
   TEST_BEGIN("ra_spi_init: bad inputs rejected");
@@ -264,6 +336,12 @@ static void test_spi_init_bad(void)
   TEST_END("ra_spi_init: bad inputs rejected");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_spi_deinit(void)
 {
   TEST_BEGIN("ra_spi_deinit: SPCR cleared, MSTP released");
@@ -277,6 +355,12 @@ static void test_spi_deinit(void)
   TEST_END("ra_spi_deinit: SPCR cleared, MSTP released");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_spi_set_clock(void)
 {
   TEST_BEGIN("ra_spi_set_clock: updates SPCR3.SPBR");
@@ -292,6 +376,12 @@ static void test_spi_set_clock(void)
   TEST_END("ra_spi_set_clock: updates SPCR3.SPBR");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_spi_errors(void)
 {
   TEST_BEGIN("ra_spi_get/clear_errors");
@@ -321,6 +411,12 @@ static void test_spi_errors(void)
   TEST_END("ra_spi_get/clear_errors");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_spi_attach(void)
 {
   TEST_BEGIN("ra_spi_attach_transfer_handler: dispatch fires callback");
@@ -352,6 +448,12 @@ static void test_spi_attach(void)
   TEST_END("ra_spi_attach_transfer_handler: dispatch fires callback");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_spi_power(void)
 {
   TEST_BEGIN("ra_spi_enter_stop / exit_stop");
@@ -375,6 +477,12 @@ static void stub_spi_dma_done(void* ctx)
   ++s_spi_dma_done;
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_spi_write_dma_streams_to_spdr(void)
 {
   TEST_BEGIN("ra_spi_write_dma: buffer streams into SPDR");
@@ -398,6 +506,12 @@ static void test_spi_write_dma_streams_to_spdr(void)
   TEST_END("ra_spi_write_dma: buffer streams into SPDR");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_spi_read_dma_streams_from_spdr(void)
 {
   TEST_BEGIN("ra_spi_read_dma: SPDR streams into buffer");
@@ -423,6 +537,12 @@ static void test_spi_read_dma_streams_from_spdr(void)
   TEST_END("ra_spi_read_dma: SPDR streams into buffer");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_spi_dma_arg_validation(void)
 {
   TEST_BEGIN("ra_spi_{write,read}_dma: arg validation");
@@ -485,6 +605,12 @@ static void prep_spsr_both(uint8_t channel)
   reg->SPSR                  = k_ra_spi_test_both;
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_spi_write_8bit_runs_loop(void)
 {
   TEST_BEGIN("ra_spi_write: 8-bit, 16-byte payload");
@@ -504,6 +630,12 @@ static void test_spi_write_8bit_runs_loop(void)
   TEST_END("ra_spi_write: 8-bit, 16-byte payload");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_spi_read_8bit_runs_loop(void)
 {
   TEST_BEGIN("ra_spi_read: 8-bit, 16-byte payload");
@@ -528,6 +660,12 @@ static void test_spi_read_8bit_runs_loop(void)
   TEST_END("ra_spi_read: 8-bit, 16-byte payload");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_spi_write_read_16bit(void)
 {
   TEST_BEGIN("ra_spi_write_read: 16-bit, 8-word full-duplex");
@@ -554,6 +692,12 @@ static void test_spi_write_read_16bit(void)
   TEST_END("ra_spi_write_read: 16-bit, 8-word full-duplex");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_spi_write_read_32bit(void)
 {
   TEST_BEGIN("ra_spi_write_read: 32-bit, 4-word full-duplex");
@@ -578,6 +722,12 @@ static void test_spi_write_read_32bit(void)
   TEST_END("ra_spi_write_read: 32-bit, 4-word full-duplex");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_spi_multi_null_args(void)
 {
   TEST_BEGIN("ra_spi_{write,read,write_read}: NULL-arg rejection");
@@ -595,6 +745,12 @@ static void test_spi_multi_null_args(void)
   TEST_END("ra_spi_{write,read,write_read}: NULL-arg rejection");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_spi_multi_zero_len(void)
 {
   TEST_BEGIN("ra_spi_{write,read,write_read}: len==0 is no-op success");
@@ -609,6 +765,12 @@ static void test_spi_multi_zero_len(void)
   TEST_END("ra_spi_{write,read,write_read}: len==0 is no-op success");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_spi_multi_bad_width(void)
 {
   TEST_BEGIN("ra_spi_{write,read,write_read}: invalid bit_width rejected");
@@ -624,6 +786,12 @@ static void test_spi_multi_bad_width(void)
   TEST_END("ra_spi_{write,read,write_read}: invalid bit_width rejected");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_spi_multi_bad_channel(void)
 {
   TEST_BEGIN("ra_spi_{write,read,write_read}: invalid channel rejected");
