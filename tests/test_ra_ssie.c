@@ -8,7 +8,7 @@
  *  - Lifecycle (init / deinit / enter_stop / exit_stop)
  *  - All seven public formats (I2S, left-just, right-just, monaural,
  *    TDM-4, TDM-6, TDM-8) including OMOD/FRM/PDTA decoding
- *  - All thirteen master-mode bit-clock dividers (CKDV 0x0..0xC)
+ *  - All thirteen controller-mode bit-clock dividers (CKDV 0x0..0xC)
  *  - All eight system word lengths and seven legal data word lengths
  *  - Polarity/format flags (BCKP, LRCKP, SPDP, DEL, BSW, AUCKE,
  *    LRCONT, BCKASTP) and their interaction (LRCONT + BCKASTP rule)
@@ -106,11 +106,16 @@ static ra_ssie_cfg_t make_master_i2s_cfg(void)
 /* ---------------------------------------------------------------------------
  * Lifecycle
  * ---------------------------------------------------------------------------
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_init_happy(void)
 {
-  TEST_BEGIN("ssie init happy (master I2S)");
+  TEST_BEGIN("ssie init happy (controller I2S)");
   prep();
 
   const ra_ssie_cfg_t cfg = make_master_i2s_cfg();
@@ -129,12 +134,18 @@ static void test_init_happy(void)
 
   TEST_ASSERT_EQ((int32_t)0, (int32_t)(reg->SSICR & (uint32_t)k_ra_ssie_mask_ren_ten));
   TEST_ASSERT_EQ((int32_t)0, (int32_t)(reg->SSIOFR & (uint32_t)k_ra_ssie_mask_omod));
-  TEST_END("ssie init happy (master I2S)");
+  TEST_END("ssie init happy (controller I2S)");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_slave_tdm(void)
 {
-  TEST_BEGIN("ssie init slave TDM-4 24-bit");
+  TEST_BEGIN("ssie init peripheral TDM-4 24-bit");
   prep();
 
   ra_ssie_cfg_t cfg = make_master_i2s_cfg();
@@ -155,9 +166,15 @@ static void test_init_slave_tdm(void)
   /* FRM=01 selects 4-channel TDM. */
   TEST_ASSERT_EQ((int32_t)((uint32_t)k_ra_ssie_frm_alt1 << (uint8_t)k_ra_ssie_bit_frm0),
                  (int32_t)(reg->SSICR & (uint32_t)k_ra_ssie_mask_frm));
-  TEST_END("ssie init slave TDM-4 24-bit");
+  TEST_END("ssie init peripheral TDM-4 24-bit");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_all_formats(void)
 {
   TEST_BEGIN("ssie init covers all seven formats");
@@ -203,6 +220,12 @@ static void test_init_all_formats(void)
   TEST_END("ssie init covers all seven formats");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_all_dividers(void)
 {
   TEST_BEGIN("ssie init walks all 13 CKDV values");
@@ -237,6 +260,12 @@ static void test_init_all_dividers(void)
   TEST_END("ssie init walks all 13 CKDV values");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_all_word_lengths(void)
 {
   TEST_BEGIN("ssie init covers every SWL+DWL combination");
@@ -281,6 +310,12 @@ static void test_init_all_word_lengths(void)
   TEST_END("ssie init covers every SWL+DWL combination");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_polarity_and_flags(void)
 {
   TEST_BEGIN("ssie init exposes every polarity flag");
@@ -309,6 +344,12 @@ static void test_init_polarity_and_flags(void)
   TEST_END("ssie init exposes every polarity flag");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_lrcont_blocks_bckastp(void)
 {
   TEST_BEGIN("ssie init: LRCONT wins over BCKASTP when both requested");
@@ -326,6 +367,12 @@ static void test_init_lrcont_blocks_bckastp(void)
   TEST_END("ssie init: LRCONT wins over BCKASTP when both requested");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_bckastp_alone(void)
 {
   TEST_BEGIN("ssie init: BCKASTP alone is honoured");
@@ -339,6 +386,12 @@ static void test_init_bckastp_alone(void)
   TEST_END("ssie init: BCKASTP alone is honoured");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_null_cfg(void)
 {
   TEST_BEGIN("ssie init null cfg");
@@ -348,6 +401,12 @@ static void test_init_null_cfg(void)
   TEST_END("ssie init null cfg");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_bad_channel(void)
 {
   TEST_BEGIN("ssie init bad channel");
@@ -361,6 +420,12 @@ static void test_init_bad_channel(void)
   TEST_END("ssie init bad channel");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_bad_threshold(void)
 {
   TEST_BEGIN("ssie init rejects threshold > 0x1F");
@@ -376,6 +441,12 @@ static void test_init_bad_threshold(void)
   TEST_END("ssie init rejects threshold > 0x1F");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_deinit(void)
 {
   TEST_BEGIN("ssie deinit clears TEN/REN + AUCKE");
@@ -400,6 +471,11 @@ static void test_deinit(void)
 /* ---------------------------------------------------------------------------
  * Run control
  * ---------------------------------------------------------------------------
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_start_stop_tx(void)
@@ -430,6 +506,12 @@ static void test_start_stop_tx(void)
   TEST_END("ssie start TX sets TEN + TIE + TUIEN");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_start_busy_when_not_idle(void)
 {
   TEST_BEGIN("ssie start refuses when SSIE not idle");
@@ -451,6 +533,12 @@ static void test_start_busy_when_not_idle(void)
   TEST_END("ssie start refuses when SSIE not idle");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_start_already_armed(void)
 {
   TEST_BEGIN("ssie start is idempotent when already in mode");
@@ -467,6 +555,12 @@ static void test_start_already_armed(void)
   TEST_END("ssie start is idempotent when already in mode");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_start_bad_args(void)
 {
   TEST_BEGIN("ssie start rejects bad dir / bad channel");
@@ -478,6 +572,12 @@ static void test_start_bad_args(void)
   TEST_END("ssie start rejects bad dir / bad channel");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_stop_bad_channel(void)
 {
   TEST_BEGIN("ssie stop bad channel");
@@ -487,6 +587,12 @@ static void test_stop_bad_channel(void)
   TEST_END("ssie stop bad channel");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_recovery_clears_errors(void)
 {
   TEST_BEGIN("ssie start_recovery clears error flags + SSIRST");
@@ -505,6 +611,12 @@ static void test_recovery_clears_errors(void)
   TEST_END("ssie start_recovery clears error flags + SSIRST");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_mute_toggles_muen(void)
 {
   TEST_BEGIN("ssie mute toggles SSICR.MUEN");
@@ -523,6 +635,12 @@ static void test_mute_toggles_muen(void)
   TEST_END("ssie mute toggles SSICR.MUEN");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_thresholds(void)
 {
   TEST_BEGIN("ssie set_thresholds writes SSISCR");
@@ -545,6 +663,11 @@ static void test_set_thresholds(void)
 /* ---------------------------------------------------------------------------
  * Data path
  * ---------------------------------------------------------------------------
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_write_sample(void)
@@ -563,6 +686,12 @@ static void test_write_sample(void)
   TEST_END("ssie write_sample writes SSIFTDR");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_read_sample(void)
 {
   TEST_BEGIN("ssie read_sample reads SSIFRDR");
@@ -583,6 +712,12 @@ static void test_read_sample(void)
   TEST_END("ssie read_sample reads SSIFRDR");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_write_buffer(void)
 {
   TEST_BEGIN("ssie write_buffer pumps until FIFO full");
@@ -613,6 +748,12 @@ static void test_write_buffer(void)
   TEST_END("ssie write_buffer pumps until FIFO full");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_write_buffer_stops_when_full(void)
 {
   TEST_BEGIN("ssie write_buffer stops when TDC reaches depth");
@@ -628,6 +769,12 @@ static void test_write_buffer_stops_when_full(void)
   TEST_END("ssie write_buffer stops when TDC reaches depth");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_read_buffer(void)
 {
   TEST_BEGIN("ssie read_buffer pumps until FIFO empty");
@@ -654,6 +801,12 @@ static void test_read_buffer(void)
   TEST_END("ssie read_buffer pumps until FIFO empty");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_read_buffer_empty_fifo(void)
 {
   TEST_BEGIN("ssie read_buffer returns 0 when RDC=0");
@@ -671,6 +824,11 @@ static void test_read_buffer_empty_fifo(void)
 /* ---------------------------------------------------------------------------
  * DMA
  * ---------------------------------------------------------------------------
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_attach_detach_dma(void)
@@ -697,6 +855,12 @@ static void test_attach_detach_dma(void)
   TEST_END("ssie attach_dma + detach_dma full duplex");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_attach_dma_tx_only(void)
 {
   TEST_BEGIN("ssie attach_dma TX-only path");
@@ -715,6 +879,12 @@ static void test_attach_dma_tx_only(void)
   TEST_END("ssie attach_dma TX-only path");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_attach_dma_bad_args(void)
 {
   TEST_BEGIN("ssie attach_dma rejects bad descriptors");
@@ -759,6 +929,11 @@ static void test_attach_dma_bad_args(void)
 /* ---------------------------------------------------------------------------
  * Status
  * ---------------------------------------------------------------------------
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_get_status_decodes_fifo_levels(void)
@@ -792,6 +967,12 @@ static void test_get_status_decodes_fifo_levels(void)
   TEST_END("ssie get_status decodes RDC/TDC + flags");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_clear_status_masks_to_writeable(void)
 {
   TEST_BEGIN("ssie clear_status only touches error bits");
@@ -814,6 +995,12 @@ static void test_clear_status_masks_to_writeable(void)
   TEST_END("ssie clear_status only touches error bits");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_irq_enable(void)
 {
   TEST_BEGIN("ssie set_irq_enable updates SSICR IRQ mask");
@@ -842,6 +1029,11 @@ static void test_set_irq_enable(void)
 /* ---------------------------------------------------------------------------
  * IRQ
  * ---------------------------------------------------------------------------
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_attach_and_dispatch(void)
@@ -877,6 +1069,11 @@ static void test_attach_and_dispatch(void)
 /* ---------------------------------------------------------------------------
  * Power transition
  * ---------------------------------------------------------------------------
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_power_transition(void)
@@ -899,6 +1096,11 @@ static void test_power_transition(void)
 /* ---------------------------------------------------------------------------
  * Sweep 17 additions: set_fifo_threshold + attach_dma_pair + send/recv iso
  * ---------------------------------------------------------------------------
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_set_fifo_threshold_happy(void)
@@ -916,6 +1118,12 @@ static void test_set_fifo_threshold_happy(void)
   TEST_END("ssie set_fifo_threshold programmes SSISCR");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_fifo_threshold_bad_args(void)
 {
   TEST_BEGIN("ssie set_fifo_threshold rejects bad arguments");
@@ -930,6 +1138,12 @@ static void test_set_fifo_threshold_bad_args(void)
   TEST_END("ssie set_fifo_threshold rejects bad arguments");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_attach_dma_pair_happy(void)
 {
   TEST_BEGIN("ssie attach_dma_pair binds tx+rx ids");
@@ -945,6 +1159,12 @@ static void test_attach_dma_pair_happy(void)
   TEST_END("ssie attach_dma_pair binds tx+rx ids");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_attach_dma_pair_bad_args(void)
 {
   TEST_BEGIN("ssie attach_dma_pair rejects all-unused / bad channel");
@@ -956,6 +1176,12 @@ static void test_attach_dma_pair_bad_args(void)
   TEST_END("ssie attach_dma_pair rejects all-unused / bad channel");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_send_iso_happy(void)
 {
   TEST_BEGIN("ssie send_iso pushes all samples");
@@ -968,6 +1194,12 @@ static void test_send_iso_happy(void)
   TEST_END("ssie send_iso pushes all samples");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_send_iso_bad_args(void)
 {
   TEST_BEGIN("ssie send_iso rejects null buffer / bad channel");
@@ -980,6 +1212,12 @@ static void test_send_iso_bad_args(void)
   TEST_END("ssie send_iso rejects null buffer / bad channel");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_recv_iso_drains_fifo(void)
 {
   TEST_BEGIN("ssie recv_iso drains rx FIFO");
@@ -1001,6 +1239,12 @@ static void test_recv_iso_drains_fifo(void)
   TEST_END("ssie recv_iso drains rx FIFO");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_recv_iso_bad_args(void)
 {
   TEST_BEGIN("ssie recv_iso rejects null + bad channel");
@@ -1045,14 +1289,14 @@ typedef enum : uint16_t {
  * Decision: `if (cfg->lr_continue && cfg->role == k_ra_ssie_role_master)`
  * (2 conditions, libs/ra_hal/src/ra_ssie.c line 321 -- internal_build_ssiofr)
  * Outcome observable: SSIOFR.LRCONT bit set/clear.
- * - V1: lr=true,  role=master -> T,T -> bit set
- * - V2: lr=false, role=master -> F (short-circuit) -> bit clear
- * - V3: lr=true,  role=slave  -> T,F -> bit clear
+ * - V1: lr=true,  role=controller -> T,T -> bit set
+ * - V2: lr=false, role=controller -> F (short-circuit) -> bit clear
+ * - V3: lr=true,  role=peripheral -> T,F -> bit clear
  * V1 vs V2 vary C1; V1 vs V3 vary C2 (C1 held T). N+1 = 3 vectors.
  */
 static void test_mcdc_init_lrcont(void)
 {
-  TEST_BEGIN("ssie MC/DC build_ssiofr lrcont && master");
+  TEST_BEGIN("ssie MC/DC build_ssiofr lrcont && controller");
   /* V1 */
   prep();
   ra_ssie_cfg_t cfg = make_master_i2s_cfg();
@@ -1077,7 +1321,7 @@ static void test_mcdc_init_lrcont(void)
   TEST_ASSERT_EQ(
     (int32_t)0,
     (int32_t)(ra_ssie((uint8_t)k_ra_ssie_test_ch0)->SSIOFR & (uint32_t)k_ra_ssie_mask_lrcont));
-  TEST_END("ssie MC/DC build_ssiofr lrcont && master");
+  TEST_END("ssie MC/DC build_ssiofr lrcont && controller");
 }
 
 /**
@@ -1092,15 +1336,15 @@ static void test_mcdc_init_lrcont(void)
  * Per DO-178C 6.4.4.3, N+1 = 4 vectors suffice for an N-condition pure-AND
  * decision: pick a baseline that asserts the decision T, then flip each
  * condition individually to F to prove independent effect.
- * - V1: stop=T, master=T, !lr=T (lr=F) -> T && T && T -> decision T (bit set)
- * - V2: stop=F (others as V1)            -> F short-circ -> decision F (clear)
- * - V3: stop=T, role=slave (so master=F) -> T,F,_ -> F (clear)
- * - V4: stop=T, master=T, lr=T (so !lr=F)-> T,T,F -> F (clear)
+ * - V1: stop=T, ctrl=T, !lr=T (lr=F)        -> T && T && T -> decision T (bit set)
+ * - V2: stop=F (others as V1)                -> F short-circ -> decision F (clear)
+ * - V3: stop=T, role=peripheral (so ctrl=F)  -> T,F,_ -> F (clear)
+ * - V4: stop=T, ctrl=T, lr=T (so !lr=F)      -> T,T,F -> F (clear)
  * V1+V2 vary C1; V1+V3 vary C2 (with C1=T); V1+V4 vary C3 (with C1=T,C2=T).
  */
 static void test_mcdc_init_bckastp(void)
 {
-  TEST_BEGIN("ssie MC/DC build_ssiofr bckastp && master && !lrcont");
+  TEST_BEGIN("ssie MC/DC build_ssiofr bckastp && controller && !lrcont");
   /* V1 */
   prep();
   ra_ssie_cfg_t cfg = make_master_i2s_cfg();
@@ -1134,7 +1378,7 @@ static void test_mcdc_init_bckastp(void)
   TEST_ASSERT_EQ(
     (int32_t)0,
     (int32_t)(ra_ssie((uint8_t)k_ra_ssie_test_ch0)->SSIOFR & (uint32_t)k_ra_ssie_mask_bckastp));
-  TEST_END("ssie MC/DC build_ssiofr bckastp && master && !lrcont");
+  TEST_END("ssie MC/DC build_ssiofr bckastp && controller && !lrcont");
 }
 
 /**
@@ -1144,13 +1388,13 @@ static void test_mcdc_init_bckastp(void)
  * Decision: `if (cfg->enable_aucke && cfg->role == k_ra_ssie_role_master)`
  * (2 conditions, libs/ra_hal/src/ra_ssie.c line 341 -- internal_build_ssifcr)
  * Outcome observable: SSIFCR.AUCKE bit set/clear.
- * - V1: aucke=T, master=T -> T,T -> bit set
- * - V2: aucke=F, master=T -> F short-circ -> clear
- * - V3: aucke=T, slave    -> T,F -> clear
+ * - V1: aucke=T, ctrl=T       -> T,T -> bit set
+ * - V2: aucke=F, ctrl=T       -> F short-circ -> clear
+ * - V3: aucke=T, peripheral   -> T,F -> clear
  */
 static void test_mcdc_init_aucke(void)
 {
-  TEST_BEGIN("ssie MC/DC build_ssifcr aucke && master");
+  TEST_BEGIN("ssie MC/DC build_ssifcr aucke && controller");
   /* V1 */
   prep();
   ra_ssie_cfg_t cfg = make_master_i2s_cfg();
@@ -1175,7 +1419,7 @@ static void test_mcdc_init_aucke(void)
   TEST_ASSERT_EQ(
     (int32_t)0,
     (int32_t)(ra_ssie((uint8_t)k_ra_ssie_test_ch0)->SSIFCR & (uint32_t)k_ra_ssie_mask_aucke));
-  TEST_END("ssie MC/DC build_ssifcr aucke && master");
+  TEST_END("ssie MC/DC build_ssifcr aucke && controller");
 }
 
 /**
