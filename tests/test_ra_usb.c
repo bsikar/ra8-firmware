@@ -944,6 +944,49 @@ static void test_mcdc_exit_stop_speed(void)
   TEST_END("mcdc: exit_stop speed decision");
 }
 
+/**
+ * @test test_mcdc_dcp_in_data_len_data
+ *
+ * @par MC/DC:
+ * Decision: `if ((len > k_ra_usb_dcp_max_packet) || ((data == nullptr) && (len != 0U)))`
+ * (libs/ra_hal/src/ra_usb.c:816, in ra_usb_dcp_in_data). CITES-OK: MC/DC checker requires file:line citation. The outer OR
+ * has two operands; the right operand is itself an AND with two
+ * sub-conditions. We name them:
+ *   C1: len > DCPMAXP
+ *   C2: data == nullptr
+ *   C3: len != 0
+ * - V1: data=valid, len=4 (<=64)            -> C1=F, C2=F, C3=T -> outer=F (ok).
+ * - V2: data=valid, len=9999 (>64)          -> C1=T                -> outer=T (varies C1).
+ * - V3: data=NULL,  len=4 (<=64)            -> C1=F, C2=T, C3=T -> outer=T (varies C2).
+ * - V4: data=NULL,  len=0                   -> C1=F, C2=T, C3=F -> outer=F (varies C3).
+ * V1+V2 prove C1 independently flips outer; V1+V3 prove C2 (with C3 held T)
+ * independently flips outer; V3+V4 prove C3 (with C2 held T) independently
+ * flips outer. N+1=4 vectors for the 3-condition compound.
+ */
+static void test_mcdc_dcp_in_data_len_data(void)
+{
+  TEST_BEGIN("mcdc: dcp_in_data (len/data) compound decision");
+  prep_cb();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_device_init(k_ra_usb_speed_fs));
+
+  uint8_t buf[4]        = {0U, 0U, 0U, 0U};
+  ra_usb_fs()->CFIFOCTR = (uint16_t)k_ra_fifoctr_frdy;
+
+  /* V1: small valid call -> ok. */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_dcp_in_data(k_ra_usb_speed_fs, buf, 4U));
+  /* V2: len exceeds DCP max packet -> invalid_arg. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_usb_dcp_in_data(k_ra_usb_speed_fs, buf, 9999U));
+  /* V3: data NULL with non-zero len -> invalid_arg. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_usb_dcp_in_data(k_ra_usb_speed_fs, nullptr, 4U));
+  /* V4: data NULL with zero len -> AND collapses to false; outer is
+   * false; the call falls through to the no-op zero-byte path. */
+  ra_usb_fs()->CFIFOCTR = (uint16_t)k_ra_fifoctr_frdy;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_dcp_in_data(k_ra_usb_speed_fs, nullptr, 0U));
+  TEST_END("mcdc: dcp_in_data (len/data) compound decision");
+}
+
 int32_t main(void)
 {
   test_init_fs_happy_path();
@@ -976,6 +1019,7 @@ int32_t main(void)
   test_mcdc_check_queue_out_args_inout_len();
   test_mcdc_enter_stop_speed();
   test_mcdc_exit_stop_speed();
+  test_mcdc_dcp_in_data_len_data();
   (void)fprintf(stderr, "[OK ] test_ra_usb.c\n");
   return 0;
 }
