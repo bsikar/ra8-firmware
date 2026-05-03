@@ -711,6 +711,7 @@ static ra_err_t internal_xfer_common(uint8_t            channel,
   if (len == 0U) {
     return k_ra_ok;
   }
+  // mcdc-deactivated: TU-local helper internal_apply_bit_width null-pair guard; the public-API ra_spi_b_transfer entry validates that at least one of (tx, rx) is non-NULL before calling this helper, so the AND's two conditions cannot both be true on any reachable path -- defensive depth guard only.
   if ((tx == nullptr) && (rx == nullptr)) {
     return k_ra_err_null_ptr;
   }

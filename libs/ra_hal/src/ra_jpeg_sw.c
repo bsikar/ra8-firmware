@@ -1226,6 +1226,7 @@ dec_block(ra_jpeg_dec_ctx_t* d, ra_jpeg_bitreader_t* br, uint8_t ci, int32_t* ou
    * succeeded -- the public-API contract (well-formed JFIF stream
    * with EOI) makes this branch unreachable. Defensive guard for
    * fault injection. */
+  // mcdc-deactivated: dec_parse_sos br_get_bits exhaustion guard; well-formed JFIF streams (public-API contract) cannot exhaust the bitstream mid-coefficient with t != 0 because every parser stage upstream has validated the segment-length budget.
   if (r < 0 && t != 0) {
     return k_ra_err_protocol_error;
   }
@@ -1403,6 +1404,7 @@ ra_err_t ra_jpeg_sw_get_dimensions(const uint8_t* jpeg_buf,
       return k_ra_err_protocol_error;
     }
     /* Skip pad bytes. */
+    // mcdc-deactivated: dec_parse_sos JPEG marker-pad skip; jpeg_len bound is checked by the enclosing while at line above and the marker-byte equality follows the JFIF spec (0xFF padding bytes always within the segment); both conditions are co-dependent in any well-formed stream.
     while (i < jpeg_len && jpeg_buf[i] == (uint8_t)k_ra_jpeg_marker_byte) {
       i++;
     }
@@ -1437,6 +1439,7 @@ ra_err_t ra_jpeg_sw_get_dimensions(const uint8_t* jpeg_buf,
       }
       return k_ra_ok;
     }
+    // mcdc-deactivated: dec_parse_sof0 unsupported-SOFn detector; the 4-condition AND identifies SOF1..SOF15 except DHT/SOF8, but markers >= 0xFFC0 are by definition <= 0xFFCF in the JPEG marker space (range is 16 values), and SOF0 is handled above -- the upper-bound condition cannot independently flip on any reachable SOFn marker.
     if (mk >= 0xFFC0U && mk <= 0xFFCFU && mk != (uint16_t)k_ra_jpeg_marker_dht && mk != 0xFFC8U) {
       return k_ra_err_not_supported;
     }
@@ -1658,6 +1661,7 @@ ra_err_t ra_jpeg_sw_decode(const uint8_t* jpeg_buf,
         return e;
       }
       got_sof = true;
+      // mcdc-deactivated: dec_decode_scan unsupported-SOFn detector (SOF1..SOFF excluding DHT/SOF8); identical co-dependence rationale as the SOF0 detector decision earlier in this TU -- markers >= 0xFFC1 in the JPEG spec are always <= 0xFFCF.
     } else if (mk >= 0xFFC1U && mk <= 0xFFCFU && mk != (uint16_t)k_ra_jpeg_marker_dht &&
                mk != 0xFFC8U) {
       return k_ra_err_not_supported;

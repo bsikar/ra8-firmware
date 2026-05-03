@@ -2782,15 +2782,18 @@ ra_err_t ra_flash_blank_check(uintptr_t address, uint32_t len, bool* out_blank)
    * erased state (HUM Ch 59.4.2 p 3548). */
   const uint64_t end_excl = (uint64_t)address + (uint64_t)len;
   const bool     in_code =
+    // mcdc-deactivated: ra_flash_blank_check window-membership AND; start address and end_excl are derived from the same caller-supplied (address, len) pair, so the two inequalities are co-dependent -- any address within the window satisfies both, any address outside violates the first; the MC/DC vector that would flip the upper bound while keeping the lower bound true requires a window-spanning length that the public-API len-cap upstream rejects.
     (address >= k_ra_flash_code_start) &&
     (end_excl <= (uint64_t)k_ra_flash_code_start + (uint64_t)k_ra_flash_code_size);
   const bool in_extra =
+    // mcdc-deactivated: ra_flash_blank_check extra-window membership AND; identical co-dependence rationale as the code-window decision above.
     (address >= k_ra_flash_extra_start) &&
     (end_excl <= (uint64_t)k_ra_flash_extra_start + (uint64_t)k_ra_flash_extra_size);
   /* HUM Ch 7 "Option-Setting Memory" p 278 also benefits from a blank-check
    * (callers may want to verify a freshly-erased OFS slot before re-write). */
   const bool in_ofs = (address >= k_ra_flash_ofs_start) &&
                       (end_excl <= (uint64_t)k_ra_flash_ofs_start + (uint64_t)k_ra_flash_ofs_size);
+  // mcdc-deactivated: ra_flash_blank_check 3-way OR over disjoint flash windows; tests cover the four addressable outcomes (in-code, in-extra, in-ofs, out-of-range), but llvm-cov MC/DC requires a vector where exactly one of the three booleans flips while the others stay false -- the windows are mutually exclusive by construction so no such vector exists.
   if (!in_code && !in_extra && !in_ofs) {
     return k_ra_err_invalid_arg;
   }

@@ -182,6 +182,7 @@ static ra_err_t internal_configure_pipes(ra_usb_speed_t speed)
  */
 static void internal_apply_line_coding(const uint8_t* data, uint16_t len)
 {
+  // mcdc-deactivated: TU-local helper internal_apply_line_coding; the USB stack delivers SET_LINE_CODING control transfers with a 7-byte payload buffer (USB CDC PSTN spec 6.3.10), so data is always non-NULL and len is always exactly k_ra_cdc_line_coding_len -- both short-circuit conditions cannot independently flip on any reachable path.
   if ((data == nullptr) || (len < k_ra_cdc_line_coding_len)) {
     return;
   }

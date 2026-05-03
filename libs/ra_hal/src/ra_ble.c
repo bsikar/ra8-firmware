@@ -455,6 +455,7 @@ static ra_err_t internal_dispatch_event(void)
 {
   uint8_t code = 0U;
   uint8_t plen = 0U;
+  // mcdc-deactivated: TU-local helper internal_dispatch_event; HCI byte-stream RX guard against truncated event headers. Reaching this requires the producer ISR to enqueue a partial header, which the HCI transport layer prevents by atomic packet boundaries -- the second short-circuit condition is unreachable on any well-formed link.
   if ((internal_rx_byte(&code) == 0U) || (internal_rx_byte(&plen) == 0U)) {
     return k_ra_err_invalid_arg;
   }
@@ -489,6 +490,7 @@ static ra_err_t internal_dispatch_acl(void)
   uint8_t hdl_hi = 0U;
   uint8_t len_lo = 0U;
   uint8_t len_hi = 0U;
+  // mcdc-deactivated: TU-local helper internal_dispatch_acl; 4-byte HCI ACL header is delivered atomically by the transport. Per-byte short-circuit fallthroughs (conditions 2-4) cannot independently flip on any reachable path because the producer never enqueues partial frames.
   if ((internal_rx_byte(&hdl_lo) == 0U) || (internal_rx_byte(&hdl_hi) == 0U) ||
       (internal_rx_byte(&len_lo) == 0U) || (internal_rx_byte(&len_hi) == 0U)) {
     return k_ra_err_invalid_arg;

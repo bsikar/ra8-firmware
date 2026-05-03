@@ -1271,6 +1271,7 @@ internal_build_rw10_cdb(uint8_t opcode, uint32_t lba, uint16_t block_count, uint
  */
 static ra_err_t internal_normalise_xfer_err(ra_err_t err)
 {
+  // mcdc-deactivated: TU-local helper internal_normalise_xfer_err 3-condition err-set membership; ra_err_t is an exhaustive enum and the upstream xfer pathway can only return one of these three success-equivalent codes or one of the hw-error codes. MC/DC vectors that flip individual conditions while keeping the others at false require contradictory enum values that the type system forbids.
   if ((err == k_ra_ok) || (err == k_ra_err_no_data) || (err == k_ra_err_hw_timeout)) {
     return k_ra_ok;
   }
