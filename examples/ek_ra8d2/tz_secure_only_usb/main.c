@@ -120,7 +120,7 @@ static const ra_port_pin_t k_demo_pin_dm =
  * @brief Compile-time settings for the echo loop and ThreadX worker.
  */
 typedef enum : uint32_t {
-  k_demo_thread_stack    = 4096U,  /**< Worker thread stack (bytes).        */
+  k_demo_thread_stack    = 8192U,  /**< Worker thread stack (bytes).        */
   k_demo_usbx_pool_bytes = 16384U, /**< USBX memory pool (bytes).           */
   k_demo_echo_buf_bytes  = 64U,    /**< One bulk-FS packet per recv/send.   */
   k_demo_idle_ticks      = 1U,     /**< Idle back-off when no class active. */
@@ -192,10 +192,15 @@ static UCHAR s_device_framework_fs[] = {
   0x02U,
   0x03U,
   0x01U,
-  /* Configuration descriptor (67 bytes total). */
+  /* Configuration descriptor (75 bytes total: 9 cfg + 8 IAD + 9 CCI +
+     5 hdr + 5 call-mgmt + 4 ACM + 5 union + 7 EP3 + 9 DCI + 7 EP2 +
+     7 EP1 = 75 = 0x4B).  Host reads wTotalLength then requests that
+     many bytes; truncating to 0x43 silently dropped EP1 IN, which
+     caused USBX to dereference a NULL endpoint after SET_CONFIG and
+     escalate to lockup (PC=0xEFFFFFFE). */
   0x09U,
   0x02U,
-  0x43U,
+  0x4BU,
   0x00U,
   0x02U,
   0x01U,
