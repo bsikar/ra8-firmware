@@ -119,7 +119,7 @@ static ra_modem_at_module_t s_mod;
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static uint16_t internal_str_len(const char* s)
+uint16_t ra_modem_at_internal_str_len(const char* s)
 {
   uint16_t i = 0U;
   while ((i < UINT16_MAX) && (s[i] != '\0')) {
@@ -144,7 +144,7 @@ static uint16_t internal_str_len(const char* s)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static uint8_t internal_starts_with(const char* hay, const char* needle)
+uint8_t ra_modem_at_internal_starts_with(const char* hay, const char* needle)
 {
   uint16_t i = 0U;
   while (needle[i] != '\0') {
@@ -172,7 +172,7 @@ static uint8_t internal_starts_with(const char* hay, const char* needle)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static uint8_t internal_str_eq(const char* a, const char* b)
+uint8_t ra_modem_at_internal_str_eq(const char* a, const char* b)
 {
   uint16_t i = 0U;
   while ((a[i] != '\0') && (b[i] != '\0')) {
@@ -247,26 +247,26 @@ static void internal_reset_line(void)
 static uint8_t internal_classify_final(const char* line, uint8_t* is_error)
 {
   *is_error = 0U;
-  if (internal_str_eq(line, "OK") != 0U) {
+  if (ra_modem_at_internal_str_eq(line, "OK") != 0U) {
     return 1U;
   }
-  if (internal_str_eq(line, "ERROR") != 0U) {
+  if (ra_modem_at_internal_str_eq(line, "ERROR") != 0U) {
     *is_error = 1U;
     return 1U;
   }
-  if (internal_starts_with(line, "+CME ERROR") != 0U) {
+  if (ra_modem_at_internal_starts_with(line, "+CME ERROR") != 0U) {
     *is_error = 1U;
     return 1U;
   }
-  if (internal_starts_with(line, "+CMS ERROR") != 0U) {
+  if (ra_modem_at_internal_starts_with(line, "+CMS ERROR") != 0U) {
     *is_error = 1U;
     return 1U;
   }
-  if (internal_str_eq(line, "BUSY") != 0U) {
+  if (ra_modem_at_internal_str_eq(line, "BUSY") != 0U) {
     *is_error = 1U;
     return 1U;
   }
-  if (internal_str_eq(line, "NO CARRIER") != 0U) {
+  if (ra_modem_at_internal_str_eq(line, "NO CARRIER") != 0U) {
     *is_error = 1U;
     return 1U;
   }
@@ -294,7 +294,7 @@ static uint8_t internal_dispatch_urc(const char* line)
     if (s_mod.urcs[i].used == 0U) {
       continue;
     }
-    if (internal_starts_with(line, (const char*)s_mod.urcs[i].prefix) != 0U) {
+    if (ra_modem_at_internal_starts_with(line, (const char*)s_mod.urcs[i].prefix) != 0U) {
       s_mod.urcs[i].fn(line, s_mod.urcs[i].ctx);
       return 1U;
     }
@@ -333,7 +333,7 @@ ra_modem_at_internal_classify(const char* line, const char* cmd_echo, const char
   if (line[0] == '\0') {
     return k_ra_modem_line_kind_empty;
   }
-  if ((cmd_echo != nullptr) && (internal_str_eq(line, cmd_echo) != 0U)) {
+  if ((cmd_echo != nullptr) && (ra_modem_at_internal_str_eq(line, cmd_echo) != 0U)) {
     return k_ra_modem_line_kind_echo;
   }
   uint8_t is_err = 0U;
@@ -342,7 +342,7 @@ ra_modem_at_internal_classify(const char* line, const char* cmd_echo, const char
   }
   /* If the caller didn't ask for a specific prefix, allow URC dispatch. */
   if ((expected_response == nullptr) || (expected_response[0] == '\0') ||
-      (internal_starts_with(line, expected_response) == 0U)) {
+      (ra_modem_at_internal_starts_with(line, expected_response) == 0U)) {
     if (internal_dispatch_urc(line) != 0U) {
       return k_ra_modem_line_kind_urc;
     }
@@ -528,7 +528,7 @@ static ra_modem_line_action_t internal_handle_line(const char*          line,
     case k_ra_modem_line_kind_payload:
     default:
       if ((expected_response != nullptr) && (expected_response[0] != '\0') &&
-          (internal_starts_with(line, expected_response) != 0U)) {
+          (ra_modem_at_internal_starts_with(line, expected_response) != 0U)) {
         *seen_exp = 1U;
       }
       internal_capture_line(line, capture, capture_len, used);
@@ -829,7 +829,7 @@ static uint8_t internal_urc_replace(const char* prefix, ra_modem_at_urc_fn_t fn,
     if (s_mod.urcs[i].used == 0U) {
       continue;
     }
-    if (internal_str_eq((const char*)s_mod.urcs[i].prefix, prefix) != 0U) {
+    if (ra_modem_at_internal_str_eq((const char*)s_mod.urcs[i].prefix, prefix) != 0U) {
       s_mod.urcs[i].fn  = fn;
       s_mod.urcs[i].ctx = ctx;
       return 1U;
@@ -900,7 +900,7 @@ ra_modem_at_register_unsolicited_handler(const char* prefix, ra_modem_at_urc_fn_
   RA_CHECK_NULL_PTR(prefix, RA_MODEM_AT_TAG, "prefix");
   RA_CHECK_NULL_PTR((void*)fn, RA_MODEM_AT_TAG, "fn");
 
-  const uint16_t plen = internal_str_len(prefix);
+  const uint16_t plen = ra_modem_at_internal_str_len(prefix);
   if ((plen == 0U) || (plen >= (uint16_t)k_ra_modem_at_max_prefix_len)) {
     return k_ra_err_invalid_size;
   }
