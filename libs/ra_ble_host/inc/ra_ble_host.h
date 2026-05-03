@@ -517,6 +517,40 @@ uint32_t ra_ble_host_test_event_count(void);
  * @since 0.1.0
  */
 void ra_ble_host_test_inject_connect(uint16_t conn_handle);
+
+/**
+ * @brief Test hook: synthesize an inbound HCI event as if delivered by
+ *        the controller through the host event-handler trampoline.
+ *
+ * @details Only present in UNIT_TEST builds. Bypasses the HCI transport
+ *          and feeds (evt_code, params, params_len) directly into the
+ *          host's internal HCI event trampoline. Used to drive MC/DC
+ *          coverage of the params==NULL / initialized==0 guard, the
+ *          LE_Connection_Complete subevent decision (Bluetooth Core
+ *          5.3 Vol 4 Part E 7.7.65.1), and the Disconnection_Complete
+ *          decision (7.7.5).
+ *
+ * @param[in] evt_code   HCI event code.
+ * @param[in] params     Parameter bytes (may be NULL when @p params_len
+ *                       is 0).
+ * @param[in] params_len Parameter byte count.
+ *
+ * @return None.
+ * @retval None Function returns void.
+ *
+ * @pre Caller is single-threaded.
+ * @pre @p params is non-NULL when @p params_len > 0 and the trampoline
+ *      is expected to dispatch.
+ * @post Connection bookkeeping (conn_handle / att_mtu / CCCDs) may have
+ *       been updated and a connect/disconnect event dispatched.
+ * @post No state change for unrecognised events or when the host is
+ *       not yet initialised.
+ *
+ * @note Not thread-safe; intended for the unit-test harness.
+ *
+ * @since 0.1.0
+ */
+void ra_ble_host_test_inject_event(uint8_t evt_code, const uint8_t* params, uint8_t params_len);
 #endif
 
 #ifdef __cplusplus
