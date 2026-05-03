@@ -234,6 +234,51 @@ static void test_power_transition(void)
   TEST_END("rtc power transition");
 }
 
+/**
+ * @brief MC/DC for ra_rtc_set_alarm range guard.
+ *
+ * @par MC/DC:
+ * Decision under test (libs/ra_hal/src/ra_rtc.c:310):  // CITES-OK: MC/DC tracker requires file:line
+ * ``alarm->hour > k_ra_rtc_alarm_max_hr || alarm->minute >
+ * k_ra_rtc_alarm_max_min || alarm->second > k_ra_rtc_alarm_max_sec``.
+ * Three atomic conditions x N+1 = 4 vectors:
+ *  - Vector A: all in range -> false  (returns ok).
+ *  - Vector B: hour out of range only -> true.
+ *  - Vector C: minute out of range only -> true.
+ *  - Vector D: second out of range only -> true.
+ * Vectors A+B prove `hour` independently flips the outcome; A+C the
+ * same for `minute`; A+D the same for `second`. Minimal MC/DC.
+ *
+ * @since 0.1.0
+ */
+static void test_mcdc_set_alarm_range_guard(void)
+{
+  TEST_BEGIN("mcdc rtc_set_alarm range guard");
+  ra_sim_mmap_reset();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rtc_init());
+  ra_rtc_datetime_t a = {.year    = (uint16_t)2026,
+                         .month   = (uint8_t)1,
+                         .day     = (uint8_t)1,
+                         .weekday = 0U,
+                         .hour    = 0U,
+                         .minute  = 0U,
+                         .second  = 0U};
+  /* Vector A: all in range. */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rtc_set_alarm(&a));
+  /* Vector B: bad hour only. */
+  a.hour = (uint8_t)24;
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_rtc_set_alarm(&a));
+  /* Vector C: bad minute only. */
+  a.hour   = 0U;
+  a.minute = (uint8_t)60;
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_rtc_set_alarm(&a));
+  /* Vector D: bad second only. */
+  a.minute = 0U;
+  a.second = (uint8_t)60;
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_rtc_set_alarm(&a));
+  TEST_END("mcdc rtc_set_alarm range guard");
+}
+
 int32_t main(void)
 {
   test_init_happy_path();
@@ -247,6 +292,7 @@ int32_t main(void)
   test_irq_enable_and_status();
   test_attach_and_dispatch();
   test_power_transition();
+  test_mcdc_set_alarm_range_guard();
   (void)fprintf(stderr, "[OK ] test_ra_rtc.c\n");
   return 0;
 }
