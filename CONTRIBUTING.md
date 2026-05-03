@@ -171,15 +171,22 @@ finding:
   block.
 * Stack-usage soft warning -- any function over 2 KB or with dynamic
   stack use is reported (currently warning-only for third-party SOUP).
+* AI-attribution ban (`scripts/utils/check_no_ai_attribution.py`) --
+  rejects `Co-Authored-By: Claude`, "Generated with Claude Code", and
+  similar footers anywhere in the tree. Re-run independently in CI by
+  `.github/workflows/no-ai-attribution.yml`. See
+  [`docs/AI_ATTRIBUTION_POLICY.md`](docs/AI_ATTRIBUTION_POLICY.md).
 
 ## 8. PR conventions
 
 * **Conventional commit subjects.** Examples: `fuzz: add ra_tls
   harness`, `hal: ra_gpt sets PMR before PFS`, `tests: cover the
   ra_net_arp duplicate-IP path`. Keep the subject under 70 characters.
-* **No AI attribution.** Do not add `Co-Authored-By: Claude`,
-  "Generated with Claude Code", or similar footers. Treat every commit
-  as if a human wrote it. This is a hard rule.
+* **No AI attribution.** Do not add `Co-Authored-By: Claude`, <!-- AI-OK: quoting the banned footer -->
+  "Generated with Claude Code", or similar footers. Treat every commit <!-- AI-OK: quoting the banned footer -->
+  as if a human wrote it. This is a hard rule. The pre-commit gate
+  `scripts/utils/check_no_ai_attribution.py` extends the rule to in-tree
+  files; see `docs/AI_ATTRIBUTION_POLICY.md`.
 * **No destructive git ops without an explicit ask.** Never push
   `--force` to `main`, never run `git reset --hard` on someone else's
   branch, never use `--no-verify` to skip the pre-commit hook.
