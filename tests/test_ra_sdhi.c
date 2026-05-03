@@ -83,6 +83,12 @@ static void prep(void)
   s_sdhi_cb_last_inst = 0U;
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_happy(void)
 {
   TEST_BEGIN("sdhi init happy");
@@ -92,6 +98,12 @@ static void test_init_happy(void)
   TEST_END("sdhi init happy");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_bad(void)
 {
   TEST_BEGIN("sdhi init bad");
@@ -101,6 +113,12 @@ static void test_init_bad(void)
   TEST_END("sdhi init bad");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_deinit(void)
 {
   TEST_BEGIN("sdhi deinit");
@@ -112,6 +130,12 @@ static void test_deinit(void)
   TEST_END("sdhi deinit");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_status_read_and_clear(void)
 {
   TEST_BEGIN("sdhi status read + clear");
@@ -132,6 +156,12 @@ static void test_status_read_and_clear(void)
   TEST_END("sdhi status read + clear");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_attach_and_dispatch(void)
 {
   TEST_BEGIN("sdhi attach + dispatch");
@@ -150,6 +180,12 @@ static void test_attach_and_dispatch(void)
   TEST_END("sdhi attach + dispatch");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_power_transition(void)
 {
   TEST_BEGIN("sdhi power transition");
@@ -164,6 +200,12 @@ static void test_power_transition(void)
   TEST_END("sdhi power transition");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_send_command_rspend_via_alarm(void)
 {
   TEST_BEGIN("sdhi send_command: RSPEND via alarm");
@@ -192,6 +234,12 @@ static void test_send_command_rspend_via_alarm(void)
   TEST_END("sdhi send_command: RSPEND via alarm");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_send_command_no_rsp_buffer(void)
 {
   TEST_BEGIN("sdhi send_command: null response buffer");
@@ -204,6 +252,12 @@ static void test_send_command_no_rsp_buffer(void)
   TEST_END("sdhi send_command: null response buffer");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_send_command_bad_instance(void)
 {
   TEST_BEGIN("sdhi send_command: bad instance");
@@ -214,6 +268,12 @@ static void test_send_command_bad_instance(void)
   TEST_END("sdhi send_command: bad instance");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_clock(void)
 {
   TEST_BEGIN("sdhi set_clock");
@@ -295,6 +355,12 @@ static void arm_periodic_alarm(uint8_t inst)
   (void)setitimer(ITIMER_REAL, &timer, nullptr);
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_read_block_single(void)
 {
   TEST_BEGIN("sdhi read_block: single block fills 512B with pattern");
@@ -330,6 +396,12 @@ static void test_read_block_single(void)
   TEST_END("sdhi read_block: single block fills 512B with pattern");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_read_block_multi(void)
 {
   TEST_BEGIN("sdhi read_block: multi-block sets SD_SECCNT and CMD18");
@@ -354,6 +426,12 @@ static void test_read_block_multi(void)
   TEST_END("sdhi read_block: multi-block sets SD_SECCNT and CMD18");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_write_block_single(void)
 {
   TEST_BEGIN("sdhi write_block: single block pushes 512B of payload");
@@ -384,6 +462,12 @@ static void test_write_block_single(void)
   TEST_END("sdhi write_block: single block pushes 512B of payload");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_write_block_multi_ends_in_cmd12(void)
 {
   TEST_BEGIN("sdhi write_block: multi-block ends in CMD12");
@@ -406,6 +490,12 @@ static void test_write_block_multi_ends_in_cmd12(void)
   TEST_END("sdhi write_block: multi-block ends in CMD12");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_block_xfer_null_args(void)
 {
   TEST_BEGIN("sdhi block xfer: null args + bad instance");
@@ -422,6 +512,12 @@ static void test_block_xfer_null_args(void)
   TEST_END("sdhi block xfer: null args + bad instance");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_block_xfer_zero_count(void)
 {
   TEST_BEGIN("sdhi block xfer: block_count=0 rejected");
@@ -432,6 +528,12 @@ static void test_block_xfer_zero_count(void)
   TEST_END("sdhi block xfer: block_count=0 rejected");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_attach_dma_toggle(void)
 {
   TEST_BEGIN("sdhi attach_dma: toggles SD_DMAEN + INFO2_MASK");

@@ -141,6 +141,11 @@ static ra_sram_config_t make_default_cfg(void)
 /* =============================================================================
  * Tests -- lifecycle
  * =============================================================================
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_init_null_cfg(void)
@@ -151,6 +156,12 @@ static void test_init_null_cfg(void)
   TEST_END("sram init null cfg");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_happy_disabled(void)
 {
   TEST_BEGIN("sram init happy (all banks disabled)");
@@ -169,6 +180,12 @@ static void test_init_happy_disabled(void)
   TEST_END("sram init happy (all banks disabled)");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_with_ecc_check_bank0(void)
 {
   TEST_BEGIN("sram init with ECC checking on bank 0");
@@ -196,6 +213,12 @@ static void test_init_with_ecc_check_bank0(void)
   TEST_END("sram init with ECC checking on bank 0");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_invalid_mode(void)
 {
   TEST_BEGIN("sram init invalid ecc_mode");
@@ -206,6 +229,12 @@ static void test_init_invalid_mode(void)
   TEST_END("sram init invalid ecc_mode");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_invalid_eccrgn_for_bank3(void)
 {
   TEST_BEGIN("sram init bank3 cannot exceed 128 KB region");
@@ -216,6 +245,12 @@ static void test_init_invalid_eccrgn_for_bank3(void)
   TEST_END("sram init bank3 cannot exceed 128 KB region");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_with_wait_state(void)
 {
   TEST_BEGIN("sram init applies wait state");
@@ -229,6 +264,12 @@ static void test_init_with_wait_state(void)
   TEST_END("sram init applies wait state");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_with_security(void)
 {
   TEST_BEGIN("sram init applies SRAMSAR / SRAMESAR / SRAMSABARn");
@@ -253,6 +294,12 @@ static void test_init_with_security(void)
   TEST_END("sram init applies SRAMSAR / SRAMESAR / SRAMSABARn");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_deinit_clears_cr(void)
 {
   TEST_BEGIN("sram deinit clears SRAMCRn");
@@ -271,6 +318,12 @@ static void test_deinit_clears_cr(void)
   TEST_END("sram deinit clears SRAMCRn");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_enter_exit_stop(void)
 {
   TEST_BEGIN("sram enter_stop / exit_stop ok");
@@ -290,6 +343,11 @@ static void test_enter_exit_stop(void)
 /* =============================================================================
  * Tests -- set_mode / set_eccrgn
  * =============================================================================
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_set_mode_happy(void)
@@ -319,6 +377,12 @@ static void test_set_mode_happy(void)
   TEST_END("sram set_mode reprograms one bank");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_mode_bad_bank(void)
 {
   TEST_BEGIN("sram set_mode bad bank");
@@ -335,6 +399,12 @@ static void test_set_mode_bad_bank(void)
   TEST_END("sram set_mode bad bank");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_mode_null_cfg(void)
 {
   TEST_BEGIN("sram set_mode null cfg");
@@ -344,6 +414,12 @@ static void test_set_mode_null_cfg(void)
   TEST_END("sram set_mode null cfg");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_eccrgn_happy(void)
 {
   TEST_BEGIN("sram set_eccrgn updates SRAMECCRGNn only");
@@ -359,6 +435,12 @@ static void test_set_eccrgn_happy(void)
   TEST_END("sram set_eccrgn updates SRAMECCRGNn only");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_eccrgn_rejects_bank3_oversize(void)
 {
   TEST_BEGIN("sram set_eccrgn bank3 over 128 KB rejected");
@@ -372,6 +454,11 @@ static void test_set_eccrgn_rejects_bank3_oversize(void)
 /* =============================================================================
  * Tests -- wait state
  * =============================================================================
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_set_wait_state_manual(void)
@@ -386,6 +473,12 @@ static void test_set_wait_state_manual(void)
   TEST_END("sram set_wait_state writes WTEN");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_wait_state_for_clock(void)
 {
   TEST_BEGIN("sram set_wait_state_for_clock follows HUM threshold");
@@ -415,6 +508,11 @@ static void test_set_wait_state_for_clock(void)
 /* =============================================================================
  * Tests -- status / clear
  * =============================================================================
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_status_decode(void)
@@ -445,6 +543,12 @@ static void test_status_decode(void)
   TEST_END("sram status decodes per-bank flags");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_status_null_out(void)
 {
   TEST_BEGIN("sram status null out");
@@ -453,6 +557,12 @@ static void test_status_null_out(void)
   TEST_END("sram status null out");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_clear_status_writes_esclr(void)
 {
   TEST_BEGIN("sram clear_status writes ESCLR");
@@ -464,6 +574,12 @@ static void test_clear_status_writes_esclr(void)
   TEST_END("sram clear_status writes ESCLR");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_clear_status_rejects_reserved(void)
 {
   TEST_BEGIN("sram clear_status rejects reserved bits");
@@ -473,6 +589,12 @@ static void test_clear_status_rejects_reserved(void)
   TEST_END("sram clear_status rejects reserved bits");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_clear_address_per_slot(void)
 {
   TEST_BEGIN("sram clear_address writes single ESCLR bit");
@@ -496,6 +618,11 @@ static void test_clear_address_per_slot(void)
 /* =============================================================================
  * Tests -- zero-init / self-test / introspection
  * =============================================================================
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_zero_init_bank_writes_all_zero(void)
@@ -528,6 +655,12 @@ static void test_zero_init_bank_writes_all_zero(void)
   TEST_END("sram zero_init_bank writes 64-bit zero across the bank");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_self_test_catches_1bit(void)
 {
   TEST_BEGIN("sram self_test catches a 1-bit injected error");
@@ -550,6 +683,12 @@ static void test_self_test_catches_1bit(void)
   TEST_END("sram self_test catches a 1-bit injected error");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_self_test_catches_2bit(void)
 {
   TEST_BEGIN("sram self_test catches a 2-bit injected error");
@@ -567,6 +706,12 @@ static void test_self_test_catches_2bit(void)
   TEST_END("sram self_test catches a 2-bit injected error");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_self_test_rejects_bad_offset(void)
 {
   TEST_BEGIN("sram self_test rejects bad probe offset");
@@ -595,6 +740,12 @@ static void test_self_test_rejects_bad_offset(void)
   TEST_END("sram self_test rejects bad probe offset");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_get_bank_info(void)
 {
   TEST_BEGIN("sram get_bank_info reports static layout");
@@ -629,6 +780,11 @@ static void test_get_bank_info(void)
 /* =============================================================================
  * Tests -- TrustZone security helpers
  * =============================================================================
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_set_security(void)
@@ -645,6 +801,12 @@ static void test_set_security(void)
   TEST_END("sram set_security writes SRAMSAR");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_ecc_security(void)
 {
   TEST_BEGIN("sram set_ecc_security writes SRAMESAR");
@@ -658,6 +820,12 @@ static void test_set_ecc_security(void)
   TEST_END("sram set_ecc_security writes SRAMESAR");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_boundary(void)
 {
   TEST_BEGIN("sram set_boundary writes SRAMSABARn");
@@ -683,6 +851,11 @@ static void test_set_boundary(void)
 /* =============================================================================
  * Tests -- callback dispatch
  * =============================================================================
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_attach_null_fn_rejected(void)
@@ -700,6 +873,12 @@ static void test_attach_null_fn_rejected(void)
   TEST_END("sram attach rejects null fn");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_dispatch_fires_callback(void)
 {
   TEST_BEGIN("sram dispatch fires global + bank callbacks");
@@ -733,6 +912,12 @@ static void test_dispatch_fires_callback(void)
   TEST_END("sram dispatch fires global + bank callbacks");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_dispatch_from_esr_walks_all_bits(void)
 {
   TEST_BEGIN("sram dispatch_from_esr fans every set bit");
