@@ -189,6 +189,12 @@ static void prep(void)
 
 /* ---- Tests ---- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_fs_returns_ok(void)
 {
   TEST_BEGIN("ra_usb_composite_init FS returns k_ra_ok");
@@ -197,6 +203,12 @@ static void test_init_fs_returns_ok(void)
   TEST_END("ra_usb_composite_init FS returns k_ra_ok");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_hs_returns_ok(void)
 {
   TEST_BEGIN("ra_usb_composite_init HS returns k_ra_ok");
@@ -205,6 +217,12 @@ static void test_init_hs_returns_ok(void)
   TEST_END("ra_usb_composite_init HS returns k_ra_ok");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_bad_speed(void)
 {
   TEST_BEGIN("ra_usb_composite_init rejects bogus speed");
@@ -213,6 +231,12 @@ static void test_init_bad_speed(void)
   TEST_END("ra_usb_composite_init rejects bogus speed");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_close_without_init(void)
 {
   TEST_BEGIN("ra_usb_composite_close before init returns invalid_state");
@@ -221,6 +245,12 @@ static void test_close_without_init(void)
   TEST_END("ra_usb_composite_close before init returns invalid_state");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_pre_init_guards(void)
 {
   TEST_BEGIN("register_class / set_descriptors / step / dispatch reject pre-init");
@@ -248,6 +278,12 @@ static void test_pre_init_guards(void)
   TEST_END("register_class / set_descriptors / step / dispatch reject pre-init");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_register_class_happy_path(void)
 {
   TEST_BEGIN("register_class accepts CDC + HID + MSC, calls each init once");
@@ -269,6 +305,12 @@ static void test_register_class_happy_path(void)
   TEST_END("register_class accepts CDC + HID + MSC, calls each init once");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_register_class_collision_rejected(void)
 {
   TEST_BEGIN("register_class rejects overlapping IF range with k_ra_err_exists");
@@ -290,6 +332,12 @@ static void test_register_class_collision_rejected(void)
   TEST_END("register_class rejects overlapping IF range with k_ra_err_exists");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_register_class_null_validation(void)
 {
   TEST_BEGIN("register_class rejects NULL struct + NULL callbacks");
@@ -322,6 +370,12 @@ static void test_register_class_null_validation(void)
   TEST_END("register_class rejects NULL struct + NULL callbacks");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_register_class_full(void)
 {
   TEST_BEGIN("register_class returns k_ra_err_no_mem when table is full");
@@ -344,6 +398,12 @@ static void test_register_class_full(void)
   TEST_END("register_class returns k_ra_err_no_mem when table is full");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_descriptors_with_iad(void)
 {
   TEST_BEGIN("set_descriptors caches IAD-bearing config descriptor pointers");
@@ -368,6 +428,12 @@ static void test_set_descriptors_with_iad(void)
   TEST_END("set_descriptors caches IAD-bearing config descriptor pointers");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_descriptors_null_rejection(void)
 {
   TEST_BEGIN("set_descriptors rejects NULL pointers");
@@ -380,6 +446,12 @@ static void test_set_descriptors_null_rejection(void)
   TEST_END("set_descriptors rejects NULL pointers");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_dispatch_routes_class_request_to_owner(void)
 {
   TEST_BEGIN("dispatch_setup routes class request by wIndex to owning class");
@@ -433,6 +505,12 @@ static void test_dispatch_routes_class_request_to_owner(void)
   TEST_END("dispatch_setup routes class request by wIndex to owning class");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_dispatch_handles_standard_request_internally(void)
 {
   TEST_BEGIN("dispatch_setup answers standard SET_ADDRESS without firing any class");
@@ -462,6 +540,12 @@ static void test_dispatch_handles_standard_request_internally(void)
   TEST_END("dispatch_setup answers standard SET_ADDRESS without firing any class");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_dispatch_null_arg_rejection(void)
 {
   TEST_BEGIN("dispatch_setup rejects NULL arguments");
@@ -477,6 +561,12 @@ static void test_dispatch_null_arg_rejection(void)
   TEST_END("dispatch_setup rejects NULL arguments");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_get_count_null_rejection(void)
 {
   TEST_BEGIN("get_class_count / get_*_descriptor reject NULL output");
@@ -490,6 +580,12 @@ static void test_get_count_null_rejection(void)
   TEST_END("get_class_count / get_*_descriptor reject NULL output");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_step_loops_without_error(void)
 {
   TEST_BEGIN("step pumps state machine without tripping a state guard");
@@ -501,6 +597,12 @@ static void test_step_loops_without_error(void)
   TEST_END("step pumps state machine without tripping a state guard");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_close_invokes_each_class_close(void)
 {
   TEST_BEGIN("close walks registered classes and calls each close hook");

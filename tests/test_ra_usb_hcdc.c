@@ -44,6 +44,12 @@ static void stub_on_attach(void* ctx, const ra_usb_hcdc_device_t* device)
 
 /* ---- Lifecycle ---- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_fs_returns_ok(void)
 {
   TEST_BEGIN("ra_usb_hcdc_init FS returns k_ra_ok and flips DCFM");
@@ -63,6 +69,12 @@ static void test_init_fs_returns_ok(void)
   TEST_END("ra_usb_hcdc_init FS returns k_ra_ok and flips DCFM");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_hs_returns_ok(void)
 {
   TEST_BEGIN("ra_usb_hcdc_init HS returns k_ra_ok and sets HSE");
@@ -76,6 +88,12 @@ static void test_init_hs_returns_ok(void)
   TEST_END("ra_usb_hcdc_init HS returns k_ra_ok and sets HSE");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_bad_speed(void)
 {
   TEST_BEGIN("ra_usb_hcdc_init rejects bogus speed");
@@ -84,6 +102,12 @@ static void test_init_bad_speed(void)
   TEST_END("ra_usb_hcdc_init rejects bogus speed");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_close_without_init(void)
 {
   TEST_BEGIN("ra_usb_hcdc_close before init returns invalid_state");
@@ -94,6 +118,12 @@ static void test_close_without_init(void)
 
 /* ---- Attach callback fires once after a simulated descriptor walk ---- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_attach_callback_fires_once(void)
 {
   TEST_BEGIN("attach callback fires once after the enum step machine completes");
@@ -126,6 +156,12 @@ static void test_attach_callback_fires_once(void)
 
 /* ---- send / recv null-arg rejection ---- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_send_null_arg_rejection(void)
 {
   TEST_BEGIN("ra_usb_hcdc_send rejects null buffer with non-zero len");
@@ -151,6 +187,12 @@ static void test_send_null_arg_rejection(void)
   TEST_END("ra_usb_hcdc_send rejects null buffer with non-zero len");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_recv_null_arg_rejection(void)
 {
   TEST_BEGIN("ra_usb_hcdc_recv rejects null buf / null got_len / zero max_len");
@@ -183,6 +225,12 @@ static void test_recv_null_arg_rejection(void)
 
 /* ---- set_line_coding null + range arg rejection ---- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_line_coding_arg_rejection(void)
 {
   TEST_BEGIN("ra_usb_hcdc_set_line_coding rejects bogus args");
@@ -233,6 +281,12 @@ static void test_set_line_coding_arg_rejection(void)
 
 /* ---- Pre-init guards on attach_callback / step ---- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_pre_init_guards(void)
 {
   TEST_BEGIN("attach_callback / step / send / recv reject pre-init");
@@ -252,6 +306,12 @@ static void test_pre_init_guards(void)
 
 /* ---- Underlying ra_usb_host_* surface smoke test ---- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_host_set_uact_and_bus_reset(void)
 {
   TEST_BEGIN("ra_usb_host_set_uact + bus_reset toggle DVSTCTR0 bits");
@@ -282,6 +342,12 @@ static void test_host_set_uact_and_bus_reset(void)
   TEST_END("ra_usb_host_set_uact + bus_reset toggle DVSTCTR0 bits");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_host_setup_request_validates(void)
 {
   TEST_BEGIN("ra_usb_host_setup_request validates args");

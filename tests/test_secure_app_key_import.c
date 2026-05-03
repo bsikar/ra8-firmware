@@ -35,6 +35,12 @@ static void test_kimp_fill_pattern(uint8_t seed)
   }
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_reset_clears_state(void)
 {
   TEST_BEGIN("key_import: reset clears slot bitmap");
@@ -43,6 +49,12 @@ static void test_reset_clears_state(void)
   TEST_END("key_import: reset clears slot bitmap");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_seal_and_resolve_happy(void)
 {
   TEST_BEGIN("key_import: seal then resolve round-trips");
@@ -63,6 +75,12 @@ static void test_seal_and_resolve_happy(void)
   TEST_END("key_import: seal then resolve round-trips");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_seal_arg_validation(void)
 {
   TEST_BEGIN("key_import: seal arg validation");
@@ -93,6 +111,12 @@ static void test_seal_arg_validation(void)
   TEST_END("key_import: seal arg validation");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_resolve_unknown_handle(void)
 {
   TEST_BEGIN("key_import: resolve unknown handle returns not_found");

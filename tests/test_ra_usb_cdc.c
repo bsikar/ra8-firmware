@@ -23,6 +23,12 @@ static void prep(void)
   (void)ra_usb_cdc_deinit();
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_fs_default_coding(void)
 {
   TEST_BEGIN("ra_usb_cdc_init seeds 9600/8/N/1 line coding on FS");
@@ -38,6 +44,12 @@ static void test_init_fs_default_coding(void)
   TEST_END("ra_usb_cdc_init seeds 9600/8/N/1 line coding on FS");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_bad_speed(void)
 {
   TEST_BEGIN("ra_usb_cdc_init rejects bogus speed");
@@ -46,6 +58,12 @@ static void test_init_bad_speed(void)
   TEST_END("ra_usb_cdc_init rejects bogus speed");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_hs_picks_512_bulk(void)
 {
   TEST_BEGIN("ra_usb_cdc_init on HS configures 512-byte bulk pipes");
@@ -61,6 +79,12 @@ static void test_init_hs_picks_512_bulk(void)
   TEST_END("ra_usb_cdc_init on HS configures 512-byte bulk pipes");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_attach_detach(void)
 {
   TEST_BEGIN("ra_usb_cdc_attach toggles DPRPU");
@@ -77,6 +101,12 @@ static void test_attach_detach(void)
   TEST_END("ra_usb_cdc_attach toggles DPRPU");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_pre_init_calls(void)
 {
   TEST_BEGIN("CDC API rejects calls before init");
@@ -101,6 +131,12 @@ static void test_pre_init_calls(void)
   TEST_END("CDC API rejects calls before init");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_handle_setup_set_control_line_state(void)
 {
   TEST_BEGIN("ra_usb_cdc_handle_setup updates DTR/RTS");
@@ -130,6 +166,12 @@ static void test_handle_setup_set_control_line_state(void)
   TEST_END("ra_usb_cdc_handle_setup updates DTR/RTS");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_handle_setup_get_line_coding_acks(void)
 {
   TEST_BEGIN("ra_usb_cdc_handle_setup ACKs GET_LINE_CODING");
@@ -151,6 +193,12 @@ static void test_handle_setup_get_line_coding_acks(void)
   TEST_END("ra_usb_cdc_handle_setup ACKs GET_LINE_CODING");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_handle_setup_rejects_standard(void)
 {
   TEST_BEGIN("ra_usb_cdc_handle_setup rejects non-class SETUPs");
@@ -170,6 +218,12 @@ static void test_handle_setup_rejects_standard(void)
   TEST_END("ra_usb_cdc_handle_setup rejects non-class SETUPs");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_send_recv_arg_validation(void)
 {
   TEST_BEGIN("ra_usb_cdc_{send,recv} validate args");

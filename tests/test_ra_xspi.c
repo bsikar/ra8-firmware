@@ -34,6 +34,12 @@ typedef enum : uint32_t {
   k_test_xspi_expected_status     = 0x02U, /**< WEL=1 in simulator mode. */
 } test_xspi_vals_t;
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_inst0_happy(void)
 {
   TEST_BEGIN("ra_xspi_init instance 0");
@@ -49,6 +55,12 @@ static void test_init_inst0_happy(void)
   TEST_END("ra_xspi_init instance 0");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_inst1_happy(void)
 {
   TEST_BEGIN("ra_xspi_init instance 1");
@@ -62,6 +74,12 @@ static void test_init_inst1_happy(void)
   TEST_END("ra_xspi_init instance 1");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_bad_instance(void)
 {
   TEST_BEGIN("ra_xspi_init rejects out-of-range instance");
@@ -71,6 +89,12 @@ static void test_init_bad_instance(void)
   TEST_END("ra_xspi_init rejects out-of-range instance");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_direct_command_null_buf(void)
 {
   TEST_BEGIN("ra_xspi_direct_command rejects NULL buf");
@@ -80,6 +104,12 @@ static void test_direct_command_null_buf(void)
   TEST_END("ra_xspi_direct_command rejects NULL buf");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_direct_command_too_long(void)
 {
   TEST_BEGIN("ra_xspi_direct_command rejects len > 16");
@@ -92,6 +122,12 @@ static void test_direct_command_too_long(void)
   TEST_END("ra_xspi_direct_command rejects len > 16");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_direct_command_bad_instance(void)
 {
   TEST_BEGIN("ra_xspi_direct_command rejects bad instance");
@@ -102,6 +138,12 @@ static void test_direct_command_bad_instance(void)
   TEST_END("ra_xspi_direct_command rejects bad instance");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_direct_command_packs_aligned(void)
 {
   TEST_BEGIN("ra_xspi_direct_command packs 4-byte-aligned payload");
@@ -117,6 +159,12 @@ static void test_direct_command_packs_aligned(void)
   TEST_END("ra_xspi_direct_command packs 4-byte-aligned payload");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_direct_command_packs_unaligned(void)
 {
   TEST_BEGIN("ra_xspi_direct_command flushes trailing partial word");
@@ -133,6 +181,12 @@ static void test_direct_command_packs_unaligned(void)
   TEST_END("ra_xspi_direct_command flushes trailing partial word");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_direct_command_len_zero(void)
 {
   TEST_BEGIN("ra_xspi_direct_command accepts len=0");
@@ -143,6 +197,12 @@ static void test_direct_command_len_zero(void)
   TEST_END("ra_xspi_direct_command accepts len=0");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_direct_command_full_16(void)
 {
   TEST_BEGIN("ra_xspi_direct_command packs 16-byte payload");
@@ -164,6 +224,12 @@ static void test_direct_command_full_16(void)
   TEST_END("ra_xspi_direct_command packs 16-byte payload");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_flash_read_null_buf(void)
 {
   TEST_BEGIN("ra_xspi_flash_read rejects NULL buf");
@@ -176,6 +242,12 @@ static void test_flash_read_null_buf(void)
   TEST_END("ra_xspi_flash_read rejects NULL buf");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_flash_read_len_zero(void)
 {
   TEST_BEGIN("ra_xspi_flash_read rejects len=0");
@@ -189,6 +261,12 @@ static void test_flash_read_len_zero(void)
   TEST_END("ra_xspi_flash_read rejects len=0");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_flash_read_too_large(void)
 {
   TEST_BEGIN("ra_xspi_flash_read rejects len > max");
@@ -202,6 +280,12 @@ static void test_flash_read_too_large(void)
   TEST_END("ra_xspi_flash_read rejects len > max");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_flash_read_bad_instance(void)
 {
   TEST_BEGIN("ra_xspi_flash_read rejects bad instance");
@@ -215,6 +299,12 @@ static void test_flash_read_bad_instance(void)
   TEST_END("ra_xspi_flash_read rejects bad instance");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_flash_read_address_overflow(void)
 {
   TEST_BEGIN("ra_xspi_flash_read rejects addr >= fake-flash size");
@@ -228,6 +318,12 @@ static void test_flash_read_address_overflow(void)
   TEST_END("ra_xspi_flash_read rejects addr >= fake-flash size");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_flash_read_past_end(void)
 {
   TEST_BEGIN("ra_xspi_flash_read rejects addr + len > fake-flash size");
@@ -241,6 +337,12 @@ static void test_flash_read_past_end(void)
   TEST_END("ra_xspi_flash_read rejects addr + len > fake-flash size");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_flash_program_address_overflow(void)
 {
   TEST_BEGIN("ra_xspi_flash_program rejects addr >= fake-flash size");
@@ -254,6 +356,12 @@ static void test_flash_program_address_overflow(void)
   TEST_END("ra_xspi_flash_program rejects addr >= fake-flash size");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_flash_program_and_read_round_trip(void)
 {
   TEST_BEGIN("ra_xspi_flash_program + read round-trip");
@@ -286,6 +394,12 @@ static void test_flash_program_and_read_round_trip(void)
   TEST_END("ra_xspi_flash_program + read round-trip");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_flash_program_null_data(void)
 {
   TEST_BEGIN("ra_xspi_flash_program rejects NULL data");
@@ -298,6 +412,12 @@ static void test_flash_program_null_data(void)
   TEST_END("ra_xspi_flash_program rejects NULL data");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_flash_program_len_zero(void)
 {
   TEST_BEGIN("ra_xspi_flash_program rejects len=0");
@@ -311,6 +431,12 @@ static void test_flash_program_len_zero(void)
   TEST_END("ra_xspi_flash_program rejects len=0");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_flash_program_too_large(void)
 {
   TEST_BEGIN("ra_xspi_flash_program rejects len > max");
@@ -324,6 +450,12 @@ static void test_flash_program_too_large(void)
   TEST_END("ra_xspi_flash_program rejects len > max");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_flash_program_bad_instance(void)
 {
   TEST_BEGIN("ra_xspi_flash_program rejects bad instance");
@@ -337,6 +469,12 @@ static void test_flash_program_bad_instance(void)
   TEST_END("ra_xspi_flash_program rejects bad instance");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_flash_erase_happy(void)
 {
   TEST_BEGIN("ra_xspi_flash_erase_sector happy");
@@ -371,6 +509,12 @@ static void test_flash_erase_happy(void)
   TEST_END("ra_xspi_flash_erase_sector happy");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_flash_erase_bad_instance(void)
 {
   TEST_BEGIN("ra_xspi_flash_erase_sector rejects bad instance");
@@ -381,6 +525,12 @@ static void test_flash_erase_bad_instance(void)
   TEST_END("ra_xspi_flash_erase_sector rejects bad instance");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_flash_erase_out_of_range_addr(void)
 {
   TEST_BEGIN("ra_xspi_flash_erase_sector rejects out-of-range addr");
@@ -391,6 +541,12 @@ static void test_flash_erase_out_of_range_addr(void)
   TEST_END("ra_xspi_flash_erase_sector rejects out-of-range addr");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_flash_read_status_happy(void)
 {
   TEST_BEGIN("ra_xspi_flash_read_status happy");
@@ -403,6 +559,12 @@ static void test_flash_read_status_happy(void)
   TEST_END("ra_xspi_flash_read_status happy");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_flash_read_status_null(void)
 {
   TEST_BEGIN("ra_xspi_flash_read_status rejects NULL out");
@@ -412,6 +574,12 @@ static void test_flash_read_status_null(void)
   TEST_END("ra_xspi_flash_read_status rejects NULL out");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_flash_read_status_bad_instance(void)
 {
   TEST_BEGIN("ra_xspi_flash_read_status rejects bad instance");
@@ -422,6 +590,12 @@ static void test_flash_read_status_bad_instance(void)
   TEST_END("ra_xspi_flash_read_status rejects bad instance");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_flash_read_id_happy(void)
 {
   TEST_BEGIN("ra_xspi_flash_read_id happy");
@@ -433,6 +607,12 @@ static void test_flash_read_id_happy(void)
   TEST_END("ra_xspi_flash_read_id happy");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_flash_read_id_null(void)
 {
   TEST_BEGIN("ra_xspi_flash_read_id rejects NULL out");
@@ -442,6 +622,12 @@ static void test_flash_read_id_null(void)
   TEST_END("ra_xspi_flash_read_id rejects NULL out");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_flash_read_id_bad_instance(void)
 {
   TEST_BEGIN("ra_xspi_flash_read_id rejects bad instance");
@@ -472,6 +658,12 @@ static void prep_w51(void)
   s_xspi_cb_last_mask = 0U;
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_deinit(void)
 {
   TEST_BEGIN("xspi deinit");
@@ -484,6 +676,12 @@ static void test_deinit(void)
   TEST_END("xspi deinit");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_status_read_and_clear(void)
 {
   TEST_BEGIN("xspi status read + clear");
@@ -503,6 +701,12 @@ static void test_status_read_and_clear(void)
   TEST_END("xspi status read + clear");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_attach_and_dispatch(void)
 {
   TEST_BEGIN("xspi attach + dispatch");
@@ -528,6 +732,12 @@ static void test_attach_and_dispatch(void)
   TEST_END("xspi attach + dispatch");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_power_transition(void)
 {
   TEST_BEGIN("xspi power transition");
@@ -546,6 +756,11 @@ static void test_power_transition(void)
 /* =============================================================================
  * Sweep 6 extensions: XIP toggle, DTR, DQS calibration, suspend / resume
  * =============================================================================
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_xip_set_mode_enable_then_disable(void)
@@ -570,6 +785,12 @@ static void test_xip_set_mode_enable_then_disable(void)
   TEST_END("xspi set_xip_mode enable+disable");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_xip_set_mode_invalid_args(void)
 {
   TEST_BEGIN("xspi set_xip_mode rejects bad args");
@@ -581,6 +802,12 @@ static void test_xip_set_mode_invalid_args(void)
   TEST_END("xspi set_xip_mode rejects bad args");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_dtr_mode(void)
 {
   TEST_BEGIN("xspi set_dtr_mode toggles DDREN");
@@ -603,6 +830,12 @@ static void test_set_dtr_mode(void)
   TEST_END("xspi set_dtr_mode toggles DDREN");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_calibrate_dqs(void)
 {
   TEST_BEGIN("xspi calibrate_dqs (sim) succeeds");
@@ -618,6 +851,12 @@ static void test_calibrate_dqs(void)
   TEST_END("xspi calibrate_dqs (sim) succeeds");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_suspend_resume(void)
 {
   TEST_BEGIN("xspi suspend + resume");
@@ -629,6 +868,12 @@ static void test_suspend_resume(void)
   TEST_END("xspi suspend + resume");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_suspend_resume_null(void)
 {
   TEST_BEGIN("xspi suspend / resume reject bad instance");

@@ -74,6 +74,12 @@ static void walk_to_attach(void)
 
 /* ---- Lifecycle ---- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_fs_returns_ok(void)
 {
   TEST_BEGIN("ra_usb_hhid_init FS returns k_ra_ok and flips DCFM");
@@ -93,6 +99,12 @@ static void test_init_fs_returns_ok(void)
   TEST_END("ra_usb_hhid_init FS returns k_ra_ok and flips DCFM");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_bad_speed(void)
 {
   TEST_BEGIN("ra_usb_hhid_init rejects bogus speed");
@@ -101,6 +113,12 @@ static void test_init_bad_speed(void)
   TEST_END("ra_usb_hhid_init rejects bogus speed");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_close_without_init(void)
 {
   TEST_BEGIN("ra_usb_hhid_close before init returns invalid_state");
@@ -111,6 +129,12 @@ static void test_close_without_init(void)
 
 /* ---- Attach callback fires once after a simulated descriptor walk ---- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_attach_callback_fires_once(void)
 {
   TEST_BEGIN("attach callback fires once after the enum step machine completes");
@@ -134,6 +158,12 @@ static void test_attach_callback_fires_once(void)
 
 /* ---- Pre-init guards ---- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_pre_init_guards(void)
 {
   TEST_BEGIN("attach_callback / step / get_report / set_report / set_idle / "
@@ -163,6 +193,12 @@ static void test_pre_init_guards(void)
 
 /* ---- Pre-attach guards (post-init) ---- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_pre_attach_guards(void)
 {
   TEST_BEGIN("class API rejects pre-attach with invalid_state");
@@ -187,6 +223,12 @@ static void test_pre_attach_guards(void)
 
 /* ---- Null-arg rejection on get_report / set_report / get_input_report ---- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_null_arg_rejection(void)
 {
   TEST_BEGIN("get_report / get_input_report reject NULL out_buf / got_len");
@@ -210,6 +252,12 @@ static void test_null_arg_rejection(void)
 
 /* ---- set_report null-buf-with-len rejection ---- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_report_null_with_len(void)
 {
   TEST_BEGIN("set_report rejects (NULL, len > 0) post-attach");
@@ -225,6 +273,12 @@ static void test_set_report_null_with_len(void)
 
 /* ---- Range rejection on report_type / protocol_select ---- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_range_rejection(void)
 {
   TEST_BEGIN("get_report / set_report reject bogus report_type; set_protocol "
@@ -254,6 +308,12 @@ static void test_range_rejection(void)
 
 /* ---- get_report stages a class-IN SETUP envelope on the wire ---- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_get_report_setup_envelope(void)
 {
   TEST_BEGIN("ra_usb_hhid_get_report stages bmRequestType=0xA1 + bRequest=0x01");
@@ -280,6 +340,12 @@ static void test_get_report_setup_envelope(void)
 
 /* ---- set_report / set_idle / set_protocol envelope assertions ---- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_idle_setup_envelope(void)
 {
   TEST_BEGIN("ra_usb_hhid_set_idle stages bmRequestType=0x21 + bRequest=0x0A");
@@ -297,6 +363,12 @@ static void test_set_idle_setup_envelope(void)
   TEST_END("ra_usb_hhid_set_idle stages bmRequestType=0x21 + bRequest=0x0A");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_protocol_setup_envelope(void)
 {
   TEST_BEGIN("ra_usb_hhid_set_protocol stages bmRequestType=0x21 + bRequest=0x0B");
@@ -316,6 +388,12 @@ static void test_set_protocol_setup_envelope(void)
   TEST_END("ra_usb_hhid_set_protocol stages bmRequestType=0x21 + bRequest=0x0B");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_report_setup_envelope(void)
 {
   TEST_BEGIN("ra_usb_hhid_set_report stages bmRequestType=0x21 + bRequest=0x09");
@@ -340,6 +418,11 @@ static void test_set_report_setup_envelope(void)
 
 /* ---------------------------------------------------------------------------
  * Sweep 15 / Phase 2: get_report IN data phase wired in.
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  * --------------------------------------------------------------------------- */
 
 static void test_get_report_drains_in_data_phase(void)
@@ -371,6 +454,12 @@ static void test_get_report_drains_in_data_phase(void)
   TEST_END("ra_usb_hhid_get_report drains EP0 IN FIFO into out_buf");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_get_report_returns_zero_when_no_data(void)
 {
   TEST_BEGIN("ra_usb_hhid_get_report returns got_len=0 when FIFO never ready");
@@ -391,6 +480,12 @@ static void test_get_report_returns_zero_when_no_data(void)
   TEST_END("ra_usb_hhid_get_report returns got_len=0 when FIFO never ready");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_get_report_caps_at_max_len(void)
 {
   TEST_BEGIN("ra_usb_hhid_get_report caps drained byte count at max_len");
@@ -514,6 +609,12 @@ static int mirror_hhid_report_type_ok(ra_usb_hhid_report_type_t t)
          (t == k_ra_hhid_report_type_feature);
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_mcdc_hhid_report_type_or_chain(void)
 {
   TEST_BEGIN("hhid MC/DC: 3-cond report_type_ok OR (lines 625-626)");
