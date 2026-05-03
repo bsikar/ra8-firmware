@@ -467,3 +467,38 @@ if(RA_REFLOW_USE_LITEHTML)
   endif()
   add_test(NAME test_ra_reflow_v2 COMMAND test_ra_reflow_v2)
 endif()
+
+# ---------------------------------------------------------------------------
+# C++ test target for ra_epub_xml_shim. The XML shim is a C++ TU that is
+# compiled into the ra_core_hal OBJECT library above; this executable
+# drives its public C-linkage entry points to land MC/DC vectors on the
+# decisions documented in tests/test_ra_epub_xml_shim.cpp.
+# ---------------------------------------------------------------------------
+add_executable(test_ra_epub_xml_shim
+  ${CMAKE_CURRENT_SOURCE_DIR}/test_ra_epub_xml_shim.cpp
+  $<TARGET_OBJECTS:ra_core_hal>
+)
+set_target_properties(test_ra_epub_xml_shim PROPERTIES LINKER_LANGUAGE CXX)
+target_compile_options(test_ra_epub_xml_shim PRIVATE
+  -Wall -Wextra -Wno-unused-function -Wno-unused-parameter
+  -Wno-unused-variable -Wno-address-of-packed-member
+)
+target_compile_features(test_ra_epub_xml_shim PRIVATE cxx_std_17)
+target_include_directories(test_ra_epub_xml_shim PRIVATE
+  ${CMAKE_CURRENT_SOURCE_DIR}
+  ${FW_ROOT}/libs/ra_core/inc
+  ${FW_ROOT}/libs/ra_epub/inc
+  ${FW_ROOT}/libs/third_party/tinyxml2
+  ${FW_ROOT}/libs/third_party/stb
+  ${CMAKE_CURRENT_SOURCE_DIR}/mocks
+)
+if(RA_REFLOW_USE_LITEHTML)
+  target_link_libraries(test_ra_epub_xml_shim PRIVATE litehtml gumbo)
+endif()
+if(APPLE)
+  target_link_options(test_ra_epub_xml_shim PRIVATE
+    "-Wl,-pagezero_size,0x4000"
+    "-Wl,-segalign,0x4000"
+  )
+endif()
+add_test(NAME test_ra_epub_xml_shim COMMAND test_ra_epub_xml_shim)
