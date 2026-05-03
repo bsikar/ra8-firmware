@@ -3,7 +3,7 @@
  * @brief Integration test: ThreadX + USBX CDC ACM echo bring-up
  *
  * @details
- * Mirrors the wave-1 multi-module integration-test pattern. The
+ * Mirrors the multi-module integration-test pattern. The
  * production app at examples/ek_ra8d2/usb_cdc_echo/main.c brings up
  * CGC, routes the four USB-FS pins (P4_07 VBUS, P5_00 VBUSEN, P8_14
  * D+, P8_15 D-), arms LED1, hands control to ThreadX, and lets USBX's

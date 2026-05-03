@@ -13,7 +13,7 @@
  *
  * The host implementation is a deterministic-but-decorrelated
  * xorshift64* PRNG. On the real chip the call drops through to
- * ``ra_rsip_trng_read`` (Wave 14). The split keeps the veneer code
+ * ``ra_rsip_trng_read``. The split keeps the veneer code
  * unaware of which entropy source is wired in.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie

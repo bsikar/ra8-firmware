@@ -1,7 +1,7 @@
 # Software Verification Plan (SVP)
 
 **Last refreshed**: 2026-05-03 (numbers re-synced to live audit
-artefacts after Wave 24 closure).
+artefacts after closure).
 
 **Status**: First draft, 2026-05-02. Populated during Phase 7 of
 `docs/QUALIFICATION_ROADMAP.md`. Subject to revision after the first
@@ -275,7 +275,7 @@ runner is out of scope.
   per-file MC/DC delta on every pull request.
 - Current measurement: **100.00 % reachable / 92.29 % absolute**
   first-party MC/DC (per `docs/MCDC.md` measurement-history table,
-  wave-24 2026-05-03; 190/190 host tests pass).
+ 2026-05-03; 190/190 host tests pass).
 - Gate: reachable MC/DC at 100% (met). Absolute target tracked
   informationally as additional wave work surfaces new decisions.
 - Deactivated-decision register: 58 entries in

@@ -3,7 +3,7 @@
  * @brief Integration test: USB host MSC bring-up + SCSI browse path
  *
  * @details
- * Mirrors the wave-1 multi-module integration-test pattern. The
+ * Mirrors the multi-module integration-test pattern. The
  * production app at examples/ek_ra8d2/usb_host_msc_browse/main.c
  * brings up CGC, routes the USBHS_VBUS-sense pin (P4_08, PSEL=0x14),
  * arms LED1, flips USBHS to host mode via ``ra_usb_hmsc_init(HS)``,

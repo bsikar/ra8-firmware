@@ -84,7 +84,7 @@ extern "C" {
  * ``ra8d2_icu_regs.h::k_ra_icu_num_ielsr``). This module tracks the
  * full 112-slot table; the substrate handles allocation
  * and the legacy ``ra_icu`` facade owns direct slot access for
- * pre-Wave-1 callers.
+ * previous callers.
  */
 typedef enum : uint16_t {
   k_ra_isr_slot_count = 112U, /**< Total ICU IELSR slots. */

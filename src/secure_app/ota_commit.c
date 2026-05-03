@@ -85,7 +85,7 @@ ra_err_t ra_ota_commit_reset(void)
  * @details
  * Records the requested target bank in the pending shadow. The
  * actual OFS3 option-byte write -- protected by the PRCR unlock
- * dance -- lands in Wave 13; idempotency policy lives here so the
+ * dance -- lands in ; idempotency policy lives here so the
  * NSC veneer does not need to grow that logic.
  *
  * @param[in] target Bank to activate after the next reset
@@ -113,7 +113,7 @@ ra_err_t ra_ota_commit_swap_bank(ra_ota_bank_t target)
   if (s_pending) {
     return k_ra_err_invalid_state;
   }
-  /* TODO(wave-13): unlock PRCR, call ra_flash_write on the OFS3
+  /* TODO: unlock PRCR, call ra_flash_write on the OFS3
    * option region, re-lock PRCR. The masking + idempotency policy
    * lives here so the veneer doesn't need to grow that logic. */
   s_pending_target = target;
@@ -158,7 +158,7 @@ ra_err_t ra_ota_commit_pending(ra_ota_bank_t* out_target)
  * @details
  * Applies ``k_ra_ota_bank_config_allowed`` to the supplied raw
  * value so reserved bits cannot be programmed by an NS caller.
- * The real PRCR-unlocked option-byte write lands in Wave 13.
+ * The real PRCR-unlocked option-byte write lands in .
  *
  * @param[in] raw_value Caller-proposed bank-config value.
  *
@@ -176,7 +176,7 @@ ra_err_t ra_ota_commit_pending(ra_ota_bank_t* out_target)
  */
 ra_err_t ra_ota_commit_set_bank_config(uint32_t raw_value)
 {
-  /* TODO(wave-13): same PRCR-unlock dance as swap_bank. */
+  /* TODO: same PRCR-unlock dance as swap_bank. */
   s_bank_config = raw_value & (uint32_t)k_ra_ota_bank_config_allowed;
   return k_ra_ok;
 }

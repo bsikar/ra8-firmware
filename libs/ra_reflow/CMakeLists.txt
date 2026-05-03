@@ -33,7 +33,7 @@
 #
 # The v1 engine (src/*.c + ra_reflow_xml_shim.cpp) is the hand-rolled
 # greedy line-break / page-break implementation that was validated
-# against the EK-RA8D2 panel during Wave 11. v2 lives in v2/ and uses
+# against the EK-RA8D2 panel. v2 lives in v2/ and uses
 # LiteHTML (vendored at libs/third_party/litehtml/) as the rendering
 # engine. v2 is OFF by default until validated.
 #

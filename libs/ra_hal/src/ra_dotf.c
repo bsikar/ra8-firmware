@@ -995,7 +995,7 @@ void ra_dotf_dispatch(uint8_t channel)
  *
  * @see ra_dotf_init
  *
- * @since Wave 11
+ * @since
  */
 [[nodiscard]] static ra_err_t internal_open_validate_init(const ra_dotf_open_cfg_t* cfg)
 {
@@ -1039,7 +1039,7 @@ void ra_dotf_dispatch(uint8_t channel)
  * @see ra_dotf_set_region
  * @see ra_dotf_select_region
  *
- * @since Wave 11
+ * @since
  */
 [[nodiscard]] static ra_err_t internal_open_stage_key_iv_region(const ra_dotf_open_cfg_t* cfg)
 {
@@ -1087,7 +1087,7 @@ void ra_dotf_dispatch(uint8_t channel)
  * @see ra_dotf_set_sca_level
  * @see ra_dotf_enable
  *
- * @since Wave 11
+ * @since
  */
 [[nodiscard]] static ra_err_t internal_open_finalise(const ra_dotf_open_cfg_t* cfg)
 {

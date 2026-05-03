@@ -16,7 +16,7 @@
  * pages 443..450 (Rev. 1.30) and cited inline.
  *
  * Drivers must NOT write these registers directly. The
- * Wave-1 substrate file ``libs/ra_hal/src/ra_mstp.c`` exposes a
+ * substrate file ``libs/ra_hal/src/ra_mstp.c`` exposes a
  * ref-counted ``ra_mstp_enable(id) / ra_mstp_disable(id)`` pair that
  * tracks shared modules (DMAC + DTC, RSIP + TRNG, etc.) so two
  * unrelated drivers can both request the same MSTP bit without

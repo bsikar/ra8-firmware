@@ -434,7 +434,7 @@ static ra_err_t priv_open_finalise(const ra_touch_cfg_t* cfg)
  * @see priv_stash_state
  * @see priv_open_finalise
  *
- * @since Wave 11
+ * @since
  */
 [[nodiscard]] static ra_err_t priv_open_bring_up(const ra_touch_cfg_t* cfg)
 {

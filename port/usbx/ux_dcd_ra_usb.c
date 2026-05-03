@@ -598,15 +598,15 @@ static void internal_event_cb(void* ctx, ra_usb_speed_t speed, uint16_t status_m
  * Mirrors the pattern in
  * ``ux_hcd_sim_host_transaction_schedule.c::SETUP``-handling block
  * which is the upstream reference for "controller has a SETUP packet,
- * push it into the slave stack".
+ * push it into the device stack".
  *
  * @param[in] setup Decoded SETUP packet snapshot from
  *                  ``ra_usb_read_setup``.
  *
  * @return UX_SUCCESS if the EP0 transfer request was dispatched,
- *         UX_ERROR if no slave device / EP0 is available yet.
+ *         UX_ERROR if no device / EP0 is available yet.
  * @retval UX_SUCCESS Chapter-9 dispatcher consumed the SETUP.
- * @retval UX_ERROR  Slave device pointer or EP0 endpoint not bound
+ * @retval UX_ERROR  Device pointer or EP0 endpoint not bound
  *                   (e.g. CTRT fired before USBX device-stack init).
  *
  * @pre ``setup`` is non-NULL.
@@ -759,7 +759,7 @@ static void internal_handle_ctrt(ra_usb_speed_t speed, uint16_t intsts0)
 
 /**
  * @brief Decode INTSTS0.DVSQ and propagate the device-state change
- *        into USBX's slave-state machine.
+ *        into USBX's device-state machine.
  *
  * @details
  * Called from ``ux_dcd_ra_usb_irq`` when ``INTSTS0.DVST`` (bit 12,

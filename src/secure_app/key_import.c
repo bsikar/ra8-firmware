@@ -161,7 +161,7 @@ static uint32_t internal_handle_for_slot(uint16_t slot)
  * Folds the 32 key bytes into a 32-bit accumulator (rotate-and-XOR
  * with the per-boot salt seed) and compares the result to the
  * trailing 4 big-endian bytes of the blob. The scheme is a stub for
- * the SCE CMAC engine slated for Wave 14; the interface is final.
+ * the SCE CMAC engine slated for ; the interface is final.
  *
  * @param[in] blob Sealed key blob; ``k_ra_key_import_blob_bytes`` long.
  *
@@ -181,7 +181,7 @@ static bool internal_verify_mac(const uint8_t* blob)
 {
   /* MAC scheme: fold the 32 key bytes into a 32-bit accumulator
    * with the salt mixed in, then compare to the trailing 4 bytes.
-   * A real CMAC swap-in lands in Wave 14; the interface stays the
+ * A real CMAC swap-in lands in ; the interface stays the
    * same so the veneer code survives. */
   uint32_t acc = s_salt;
   for (uint16_t i = 0U; i < k_ra_key_import_key_bytes; ++i) {

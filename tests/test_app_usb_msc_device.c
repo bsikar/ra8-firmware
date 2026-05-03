@@ -3,7 +3,7 @@
  * @brief Integration test: ThreadX + USBX MSC RAM-disk bring-up
  *
  * @details
- * Mirrors the wave-1 multi-module integration-test pattern. The
+ * Mirrors the multi-module integration-test pattern. The
  * production app at examples/ek_ra8d2/usb_msc_device/main.c brings up
  * CGC, routes the four USB-FS pins, hands control to ThreadX, and lets
  * USBX's Mass-Storage class drive the ra_usb_pal device-side

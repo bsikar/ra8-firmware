@@ -7,7 +7,7 @@
  *
  * @details
  * Host-friendly xorshift64* core. The real RSIP TRNG hookup lands
- * in Wave 14; the wrapper interface here is the part the NSC
+ * in ; the wrapper interface here is the part the NSC
  * veneer ``ra_nsc_trng_read`` depends on, so the seam is committed
  * now.
  *
@@ -93,7 +93,7 @@ static uint64_t internal_xorshift64(void)
  *
  * @details
  * Used between unit-test scenarios so reads are reproducible.
- * The real RSIP TRNG hookup will replace this in Wave 14.
+ * The real RSIP TRNG hookup will replace this in .
  *
  * @return ``ra_err_t`` error code.
  * @retval k_ra_ok Always; the operation cannot fail.
