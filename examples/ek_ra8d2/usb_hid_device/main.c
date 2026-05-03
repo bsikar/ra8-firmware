@@ -715,6 +715,12 @@ int32_t main(void)
   if (ra_cgc_init() != k_ra_ok) {
     demo_panic_halt();
   }
+  /* Bring up PLL2 -> USBCKCR / USBCKDIVCR so USBFS sees a spec-compliant
+   * 48 MHz reference (PLL2P 240 MHz / 5). Without this the SIE never
+   * leaves Powered after host bus-reset. */
+  if (ra_cgc_usbfs_clock_enable() != k_ra_ok) {
+    demo_panic_halt();
+  }
   if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
     demo_panic_halt();
   }

@@ -989,3 +989,94 @@ sweep until that hardware is available.
 The LCD test vehicles that actually validate today (no expansion
 board needed) are `clock_check`, `blink`, `blink_hal`,
 `threadx_blink` -- none of which try to drive the LCD bus.
+
+## USB-FS clock bring-up (PLL2 + USBCKCR) -- 2026-05-02
+
+### Status
+
+PLL2 brought up successfully. `ra_cgc_pll2_enable(80, 0, /4)` runs
+inside `ra_cgc_usbfs_clock_enable` and is verified live on the chip:
+
+```
+mem 0x4001E03C 1 1   ; OSCSF
+4001E03C = 68        ; bit 5 PLL1SF, bit 6 PLL2SF, bit 3 MOSCSF -- all set
+```
+
+Clock plan (EK-RA8D2, 24 MHz crystal):
+
+```
+XTAL 24 MHz / 2 (PL2IDIV) = 12 MHz
+12 MHz * 80 (PLL2MUL)     = 960 MHz VCO   (silicon min, in spec)
+960 MHz / 4 (PL2ODIVP)    = 240 MHz at PLL2P
+240 MHz / 5 (USBCKDIVCR)  = 48.000 MHz    -- spec: 48 MHz +/- 0.25 %
+```
+
+Spec compliance: 0 ppm error -> PASS.
+
+### Symptom
+
+Despite PLL2 locking cleanly, host enumeration still fails:
+
+```
+ioreg -p IOUSB -l | grep -c '"idVendor" = 4617'
+0
+```
+
+JLink readback after the panic-halt:
+
+```
+0x4001E03C OSCSF      = 0x68   ; PLL1SF=1, PLL2SF=1, MOSCSF=1 -- PLLs locked
+0x4001E074 USBCKCR    = 0x40   ; USBCKSREQ=1, USBCKSRDY=0, USBCKSEL=0 (HOCO)
+0x4001E06C USBCKDIVCR = 0x00   ; never reached -- still reset default /1
+0x40250000 SYSCFG     = 0x00   ; USBFS module unclocked (MSTPB11 still gating)
+0x40250040 INTSTS0    = 0x00   ; USBFS not running
+```
+
+The CPU is wedged in `demo_panic_halt()`, which means
+`ra_cgc_usbfs_clock_enable` returned `k_ra_err_hw_timeout`. The
+USBCKCR readback `0x40` proves the *first* register write
+(`USBCKCR = USBCKSREQ` mask) executed, but `internal_wait_usbcksrdy(1U)`
+never observed `USBCKSRDY = 1`.
+
+### Hypothesis (next to investigate)
+
+The USBCKCR.USBCKSRDY handshake on RA8D2 silicon may require the
+USBFS module clock to already be ungated before the SREQ/SRDY
+handshake can complete. The reset state has USBCKSEL = HOCO and
+USBFS in MSTP-stop -- there is no clock running on the controller
+for the gating logic to "stop" in response to USBCKSREQ = 1, so
+USBCKSRDY may stay 0 indefinitely.
+
+FSP runs the USBCKCR sequence inside `bsp_clock_init` *before*
+any module is ungated, but FSP also has `BSP_CFG_UCLK_SOURCE`
+default to HOCO, so the SREQ/SRDY path may only matter when the
+caller is *changing* the source. Switching from a not-yet-running
+HOCO selector to PLL2P may need either:
+
+1. Touch `MSTPCRB.MSTPB11` to ungate USBFS *before*
+   `ra_cgc_usbfs_clock_enable`, so there's a clock for the
+   gating logic to chase, or
+2. Skip the SREQ/SRDY handshake on first programming (write
+   USBCKDIVCR + USBCKCR = src directly with no SREQ bit), or
+3. Start the HOCO explicitly (it might be HCSTP=1 at this point;
+   `ra_cgc_init` does not call `ra_cgc_use_hoco`).
+
+Diagnostic next step: read `MSTPCRB` (0x40087004) and `HOCOCR`
+(0x4001E036) at the same halt-point to confirm which of (1) and
+(3) apply. Then either pre-ungate MSTPB11 or skip the SRDY=1
+wait when USBCKCR was 0 on entry.
+
+### What this commit does
+
+- Adds `ra_cgc_pll2_enable(mul_int, mul_quarters, p_div)` with
+  PLL2 stop -> programme -> start -> lock-poll sequence.
+- Switches `ra_cgc_usbfs_clock_enable` from PLL1Q/8 (41.67 MHz,
+  out of spec) to PLL2P/5 (48.000 MHz, in spec).
+- Wires `ra_cgc_usbfs_clock_enable` into `usb_hid_device/main.c`
+  (was previously declared but never called).
+- Adds register accessors `ra_sys_pll2cr / pll2ccr / pll2ccr2`
+  and offset / encoding enums in `ra8d2_system_regs.h` and
+  `ra8d2_cgc_regs.h`.
+
+The 48 MHz reference now exists; the remaining work is the
+USBCKSRDY handshake hypothesis above.
