@@ -764,7 +764,7 @@ typedef enum : uint32_t {
  *
  * @par MC/DC:
  * Decision: `if ((baud == 0U) || (pclk_hz == 0U))`
- * (libs/ra_hal/src/ra_sci.c:182, internal_brr -- reachable via
+ * (libs/ra_hal/src/ra_sci.c, internal_brr -- reachable via
  * ra_sci_init since init does not pre-validate baud/pclk).
  * - V1: baud=115200, pclk=60e6   -> false (BRR computed normally; init returns ok).
  * - V2: baud=0,      pclk=60e6   -> true  (varies C1; internal_brr returns 0; init still ok).
@@ -813,7 +813,7 @@ static void test_mcdc_internal_brr(void)
  *
  * @par MC/DC:
  * Decision: `if ((data == nullptr) && (len != 0U))`
- * (libs/ra_hal/src/ra_sci.c:467, ra_sci_write_polling).
+ * (libs/ra_hal/src/ra_sci.c, ra_sci_write_polling).
  * - V1: data=valid, len=1   -> C1=F, short-circuit  -> false (control).
  * - V2: data=NULL,  len=0   -> C1=T, C2=F           -> false (varies C2).
  * - V3: data=NULL,  len=1   -> C1=T, C2=T           -> true  (rejected).
@@ -849,7 +849,7 @@ static void test_mcdc_write_polling_data_len(void)
  *
  * @par MC/DC:
  * Decision: `if ((baud == 0U) || (pclk_hz == 0U))`
- * (libs/ra_hal/src/ra_sci.c:651, ra_sci_baud_calculate).
+ * (libs/ra_hal/src/ra_sci.c, ra_sci_baud_calculate).
  * - V1: baud=115200, pclk=60e6  -> false (success).
  * - V2: baud=0,      pclk=60e6  -> true  (varies C1).
  * - V3: baud=115200, pclk=0     -> true  (varies C2).
@@ -885,7 +885,7 @@ static void test_mcdc_baud_calculate_args(void)
  *
  * @par MC/DC:
  * Decision: `if ((data == nullptr) && (len != 0U))`
- * (libs/ra_hal/src/ra_sci.c:683, ra_sci_write).
+ * (libs/ra_hal/src/ra_sci.c, ra_sci_write).
  * - V1: data=buf, len=1    -> false (control).
  * - V2: data=NULL,len=0    -> false (varies C2).
  * - V3: data=NULL,len=1    -> true  (rejected).
@@ -918,7 +918,7 @@ static void test_mcdc_async_write_data_len(void)
  *
  * @par MC/DC:
  * Decision: `if ((buf == nullptr) && (len != 0U))`
- * (libs/ra_hal/src/ra_sci.c:711, ra_sci_read).
+ * (libs/ra_hal/src/ra_sci.c, ra_sci_read).
  * - V1: buf=valid, len=1   -> false (control).
  * - V2: buf=NULL,  len=0   -> false (varies C2).
  * - V3: buf=NULL,  len=1   -> true  (rejected).
@@ -952,7 +952,7 @@ static void test_mcdc_async_read_buf_len(void)
  * Decision: `if ((direction != k_ra_sci_dir_tx) &&
  *                (direction != k_ra_sci_dir_rx) &&
  *                (direction != k_ra_sci_dir_both))`
- * (libs/ra_hal/src/ra_sci.c:744, ra_sci_abort, 3 conditions).
+ * (libs/ra_hal/src/ra_sci.c, ra_sci_abort, 3 conditions).
  * The decision is true (rejected) only when direction matches none of
  * the three enum values. AND chain short-circuits left-to-right.
  * Naming: C1=(dir!=TX), C2=(dir!=RX), C3=(dir!=BOTH).
@@ -984,7 +984,7 @@ static void test_mcdc_abort_direction(void)
  *
  * @par MC/DC:
  * Decision: `if ((reg == nullptr) || (len == 0U))`
- * (libs/ra_hal/src/ra_sci.c:854, ra_sci_write_dma).
+ * (libs/ra_hal/src/ra_sci.c, ra_sci_write_dma).
  * `reg` is the result of internal_reg(channel) which returns NULL for
  * out-of-range channels.
  * - V1: ch=valid (reg!=NULL), len=1   -> false (control: ok path).
@@ -1031,7 +1031,7 @@ static void test_mcdc_write_dma_reg_len(void)
  *
  * @par MC/DC:
  * Decision: `if ((reg == nullptr) || (len == 0U))`
- * (libs/ra_hal/src/ra_sci.c:883, ra_sci_read_dma).
+ * (libs/ra_hal/src/ra_sci.c, ra_sci_read_dma).
  * - V1: ch=valid, len=1   -> false (control).
  * - V2: ch=99,    len=1   -> true  (varies C1).
  * - V3: ch=valid, len=0   -> true  (varies C2).

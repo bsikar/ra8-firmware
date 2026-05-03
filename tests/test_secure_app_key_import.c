@@ -6,7 +6,7 @@
  * Exercises the sealed-key import + opaque-handle vending API.
  * Includes targeted MC/DC vector sets for the compound boolean
  * decision identified in docs/MCDC_GAPS.csv at
- * src/secure_app/key_import.c:187.
+ * src/secure_app/key_import.c.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -111,7 +111,7 @@ static void test_resolve_unknown_handle(void)
  *
  * @par MC/DC:
  * Decision: `if (((s_slot_used & bit) != 0U) && (internal_handle_for_slot(i) == handle))`
- * (2 conditions, src/secure_app/key_import.c:187)
+ * (2 conditions, src/secure_app/key_import.c)
  *  - C1 = slot ``i`` is currently allocated (bit set in s_slot_used)
  *  - C2 = the handle vended for slot ``i`` matches ``handle``
  *

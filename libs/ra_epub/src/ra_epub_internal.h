@@ -53,7 +53,7 @@ void ra_epub_internal_join_path(const char* dir, const char* name, char* dst, si
  * @brief Pure predicate: width OR height is negative.
  *
  * @details Promoted from the inline OR at
- *          libs/ra_epub/src/ra_epub_chapter.c:225 inside
+ *          libs/ra_epub/src/ra_epub_chapter.c inside
  *          @c priv_font_init.
  *
  * @param[in] w Glyph bbox width.

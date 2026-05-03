@@ -474,7 +474,7 @@ REG = (1 << 7) | (3 << 3);        // Which bits? Why?
 
 ### Comment citations
 
-**In-tree source citations are FORBIDDEN.** Comments must NOT reference files in this repo by line number (e.g. `libs/foo.c:776`). Line numbers go stale on the next reformat. Reference the function or symbol name instead (`internal_rect_below_min`, `ra_dmac::internal_mode_to_dmtmd`). The `scripts/utils/check_line_citations.py` pre-commit gate enforces this.
+**In-tree source citations are FORBIDDEN.** Comments must NOT reference files in this repo by line number (e.g. `libs/foo.c:776`). Line numbers go stale on the next reformat. Reference the function or symbol name instead (`internal_rect_below_min`, `ra_dmac::internal_mode_to_dmtmd`). The `scripts/utils/check_line_citations.py` pre-commit gate enforces this. <!-- CITES-OK: literal example of the forbidden pattern documenting the rule -->
 
 **External/vendor citations are MANDATORY** for any HAL register access, ISR, or driver path. Cite the source (HUM section, FSP commit hash, RFC, datasheet page) so future readers can verify the implementation against the spec. Examples:
 

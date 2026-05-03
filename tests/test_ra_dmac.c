@@ -400,8 +400,8 @@ static void test_mcdc_set_address_mode_bounds(void)
  * @test test_mcdc_dmac_internal_mode_disables_dts
  *
  * @par MC/DC:
- * Decision at libs/ra_hal/src/ra_dmac.c:151 (call site) -> helper at
- * libs/ra_hal/src/ra_dmac.c:67:
+ * Decision at libs/ra_hal/src/ra_dmac.c (call site) -> helper at
+ * libs/ra_hal/src/ra_dmac.c:
  *   ``mode == k_ra_dmac_mode_normal || mode == k_ra_dmac_mode_repeat_block``
  *   (2 conditions, OR). Direct-call vectors:
  * - V1: mode=REPEAT(1)        -> false (both false-side)
@@ -428,8 +428,8 @@ static void test_mcdc_dmac_internal_mode_disables_dts(void)
  * @test test_mcdc_dmac_internal_dmint_extra_irq
  *
  * @par MC/DC:
- * Decision at libs/ra_hal/src/ra_dmac.c:246 (call site) -> helper at
- * libs/ra_hal/src/ra_dmac.c:88:
+ * Decision at libs/ra_hal/src/ra_dmac.c (call site) -> helper at
+ * libs/ra_hal/src/ra_dmac.c:
  *   ``cfg->irq_each && cfg->mode != k_ra_dmac_mode_repeat_block``
  *   (2 conditions, AND). Direct-call vectors:
  * - V1: irq_each=false, mode=NORMAL        -> false (both false-side)

@@ -1599,7 +1599,7 @@ static void test_mcdc_program_descriptor_buf_addr(void)
  *
  * @par MC/DC:
  * Decision: ``if ((cmd->tx_len > 0U) && (cmd->p_tx_buffer == nullptr))``
- * (libs/ra_hal/src/ra_mipi_dsi.c:570 internal_ra_mipi_dsi_validate_cmd).
+ * (libs/ra_hal/src/ra_mipi_dsi.c internal_ra_mipi_dsi_validate_cmd).
  * Reachable only via the public ra_mipi_dsi_send_command direct entry
  * (the ra_mipi_dsi_send_long_packet wrapper has its own pre-guard at
  * line 953 that intercepts the (tx_len>0, buf=NULL) case before it can
@@ -1672,7 +1672,7 @@ static void test_mcdc_validate_cmd_tx_null_pair(void)
  *
  * @par MC/DC:
  * Decision: ``if (cmd->aux_operation && ((link & VRUN) != 0U))``
- * (libs/ra_hal/src/ra_mipi_dsi.c:828 internal_check_link_state).
+ * (libs/ra_hal/src/ra_mipi_dsi.c internal_check_link_state).
  * Reachable only via send_command direct entry (action-code helpers do
  * not set aux_operation for HS-mode commands).
  *
@@ -1729,7 +1729,7 @@ static void test_mcdc_check_link_aux_op_vrun(void)
  *
  * @par MC/DC:
  * Decision: ``if (((lanes & CLOCK) != 0U) && s_clock_lanes_in_ulps)``
- * (libs/ra_hal/src/ra_mipi_dsi.c:1040 ra_mipi_dsi_ulps_exit).
+ * (libs/ra_hal/src/ra_mipi_dsi.c ra_mipi_dsi_ulps_exit).
  *
  * 2-condition AND, N+1 = 3 vectors:
  *  - V1: lanes=DATA only,  clock_in_ulps=*    -> C1=F short -> no-op.

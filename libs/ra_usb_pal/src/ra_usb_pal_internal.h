@@ -21,7 +21,7 @@ extern "C" {
  * @brief Pure predicate: callback non-NULL AND mask non-zero.
  *
  * @details
- * Promoted from the inline AND at libs/ra_usb_pal/src/ra_usb_pal.c:218
+ * Promoted from the inline AND at libs/ra_usb_pal/src/ra_usb_pal.c
  * inside @c internal_usb_event.
  *
  * @param[in] event_fn   Application callback (NULL when none).
@@ -55,7 +55,7 @@ bool ra_usb_pal_internal_should_dispatch_event(const void* event_fn,
  * @brief Pure predicate: endpoint number is zero OR exceeds max.
  *
  * @details
- * Promoted from the inline OR at libs/ra_usb_pal/src/ra_usb_pal.c:559
+ * Promoted from the inline OR at libs/ra_usb_pal/src/ra_usb_pal.c
  * inside @c ra_usb_pal_ep_recv.
  *
  * @param[in] ep_addr Endpoint number (after addr_mask strip).

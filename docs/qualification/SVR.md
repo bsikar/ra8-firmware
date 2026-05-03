@@ -82,31 +82,31 @@ section (the latest end-to-end run). Probe: on-board J-Link OB SN
 
 | App                            | Result   | PC          | Symbol                                       |
 |--------------------------------|----------|-------------|----------------------------------------------|
-| blink                          | PASS     | 0x02000B2E  | `ra_delay_ms` libs/ra_core/src/ra_time.c:94  |
-| blink_hal                      | PASS     | 0x02000B8A  | `ra_delay_ms` libs/ra_core/src/ra_time.c:203 |
-| clock_check                    | PASS     | 0x02000BEE  | `ra_delay_ms` libs/ra_core/src/ra_time.c:203 |
-| ereader                        | WIP      | 0x0200042C  | `ereader_panic_halt` main.c:524              |
-| ethernet_tcp_echo              | PASS     | 0x020018AE  | `ra_delay_ms` libs/ra_core/src/ra_time.c:203 |
-| lcd_demo                       | WIP      | 0x02000204  | `lcd_demo_panic_halt` main.c:353             |
-| ra_bootloader                  | UNKNOWN  | 0x02000452  | `internal_write32` system_init.c:89          |
+| blink                          | PASS     | 0x02000B2E  | `ra_delay_ms` libs/ra_core/src/ra_time.c  |
+| blink_hal                      | PASS     | 0x02000B8A  | `ra_delay_ms` libs/ra_core/src/ra_time.c |
+| clock_check                    | PASS     | 0x02000BEE  | `ra_delay_ms` libs/ra_core/src/ra_time.c |
+| ereader                        | WIP      | 0x0200042C  | `ereader_panic_halt` main.c              |
+| ethernet_tcp_echo              | PASS     | 0x020018AE  | `ra_delay_ms` libs/ra_core/src/ra_time.c |
+| lcd_demo                       | WIP      | 0x02000204  | `lcd_demo_panic_halt` main.c             |
+| ra_bootloader                  | UNKNOWN  | 0x02000452  | `internal_write32` system_init.c          |
 | threadx_blink                  | PASS     | 0x0200029A  | `__tx_ts_wait` tx_thread_schedule.S:264      |
 | threadx_canfd_demo             | PASS     | 0x020002A0  | `__tx_ts_wait` tx_thread_schedule.S:268      |
 | threadx_filex_demo             | PASS     | 0x0200029A  | `__tx_ts_wait` tx_thread_schedule.S:264      |
-| threadx_filex_levelx_demo      | WIP      | 0x0200035C  | `demo_panic_halt` main.c:151                 |
+| threadx_filex_levelx_demo      | WIP      | 0x0200035C  | `demo_panic_halt` main.c                 |
 | threadx_guix_demo              | PASS     | 0x020002A0  | `__tx_ts_wait` tx_thread_schedule.S:268      |
 | threadx_ipc_demo               | PASS     | 0x0200029A  | `__tx_ts_wait` tx_thread_schedule.S:264      |
-| threadx_levelx_demo            | WIP      | 0x02000326  | `demo_panic_halt` main.c:134                 |
+| threadx_levelx_demo            | WIP      | 0x02000326  | `demo_panic_halt` main.c                 |
 | threadx_lwip_tcp_echo          | PASS     | 0x020002A4  | `__tx_ts_wait` tx_thread_schedule.S:294      |
 | threadx_mpu_partition_demo     | PASS     | 0x020002A0  | `__tx_ts_wait` tx_thread_schedule.S:268      |
 | threadx_netx_tcp_echo          | PASS     | 0x0200029A  | `__tx_ts_wait` tx_thread_schedule.S:264      |
 | threadx_ota_demo               | PASS     | 0x020002A0  | `__tx_ts_wait` tx_thread_schedule.S:268      |
 | threadx_usbx_cdc_demo          | PASS     | 0x020002A0  | `__tx_ts_wait` tx_thread_schedule.S:268      |
-| uart_hello                     | PASS     | 0x02000CAA  | `ra_delay_ms` libs/ra_core/src/ra_time.c:94  |
+| uart_hello                     | PASS     | 0x02000CAA  | `ra_delay_ms` libs/ra_core/src/ra_time.c  |
 | usb_cdc_echo                   | PASS     | 0x0200029A  | `__tx_ts_wait` tx_thread_schedule.S:264      |
-| usb_hid_device                 | UNKNOWN  | 0x02001C8C  | `ra_usb_fs` libs/ra_hal/inc/ra8d2_usb_regs.h:297 |
-| usb_host_cdc_echo              | PASS     | 0x0200117E  | `ra_delay_ms` libs/ra_core/src/ra_time.c:203 |
-| usb_host_keyboard              | PASS     | 0x02001156  | `ra_delay_ms` libs/ra_core/src/ra_time.c:203 |
-| usb_host_msc_browse            | PASS     | 0x0200142E  | `ra_delay_ms` libs/ra_core/src/ra_time.c:203 |
+| usb_hid_device                 | UNKNOWN  | 0x02001C8C  | `ra_usb_fs` libs/ra_hal/inc/ra8d2_usb_regs.h |
+| usb_host_cdc_echo              | PASS     | 0x0200117E  | `ra_delay_ms` libs/ra_core/src/ra_time.c |
+| usb_host_keyboard              | PASS     | 0x02001156  | `ra_delay_ms` libs/ra_core/src/ra_time.c |
+| usb_host_msc_browse            | PASS     | 0x0200142E  | `ra_delay_ms` libs/ra_core/src/ra_time.c |
 | usb_msc_device                 | PASS     | 0x020002A0  | `__tx_ts_wait` tx_thread_schedule.S:268      |
 
 Tally: 20 PASS / 4 WIP / 2 UNKNOWN / 0 FAIL of 26 EVM apps. Zero
@@ -203,9 +203,9 @@ recorded as deferred work for the SAS to roll up.
 
 ### OP-003 -- Four EVM apps in `*_panic_halt` (WIP)
 
-- `ereader` (main.c:524), `lcd_demo` (main.c:353),
-  `threadx_filex_levelx_demo` (main.c:151),
-  `threadx_levelx_demo` (main.c:134).
+- `ereader` (main.c), `lcd_demo` (main.c),
+  `threadx_filex_levelx_demo` (main.c),
+  `threadx_levelx_demo` (main.c).
 - Each is an init-time failure caught by the app's own panic-halt
   sink. The two LevelX apps share OP-002 root cause; ereader and
   lcd_demo halt earlier in their respective init paths and need

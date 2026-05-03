@@ -59,7 +59,7 @@ internal_mirror_nor_write_guard(const void* flash, const void* src, uint32_t wor
  *
  * @par MC/DC:
  * Decision: `if ((flash_address == LX_NULL) || (destination == LX_NULL) || (words == 0U))`
- * (3 conditions, port/levelx/lx_nor_driver_ra_xspi.c:187)
+ * (3 conditions, port/levelx/lx_nor_driver_ra_xspi.c)
  *  - C1 = (flash_address == LX_NULL)
  *  - C2 = (destination == LX_NULL)
  *  - C3 = (words == 0U)
@@ -101,7 +101,7 @@ static void test_mcdc_nor_read_guard(void)
  *
  * @par MC/DC:
  * Decision: `if ((flash_address == LX_NULL) || (source == LX_NULL) || (words == 0U))`
- * (3 conditions, port/levelx/lx_nor_driver_ra_xspi.c:232)
+ * (3 conditions, port/levelx/lx_nor_driver_ra_xspi.c)
  *  - C1 = (flash_address == LX_NULL)
  *  - C2 = (source == LX_NULL)
  *  - C3 = (words == 0U)

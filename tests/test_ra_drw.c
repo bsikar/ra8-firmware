@@ -810,8 +810,8 @@ static void test_mcdc_drw(void)
  * @test test_mcdc_drw_internal_rect_below_min
  *
  * @par MC/DC:
- * Decision at libs/ra_hal/src/ra_drw.c:776 (call site) -> helper at
- * libs/ra_hal/src/ra_drw.c:61:
+ * Decision at libs/ra_hal/src/ra_drw.c (call site) -> helper at
+ * libs/ra_hal/src/ra_drw.c:
  *   ``width < min || height < min`` (2 conditions, OR).
  * - V1: w=10, h=10 -> false
  * - V2: w=0,  h=10 -> true (varies left)
@@ -831,8 +831,8 @@ static void test_mcdc_drw_internal_rect_below_min(void)
  * @test test_mcdc_drw_internal_rect_above_max
  *
  * @par MC/DC:
- * Decision at libs/ra_hal/src/ra_drw.c:780 (call site) -> helper at
- * libs/ra_hal/src/ra_drw.c:83:
+ * Decision at libs/ra_hal/src/ra_drw.c (call site) -> helper at
+ * libs/ra_hal/src/ra_drw.c:
  *   ``width > max_w || height > max_h`` (2 conditions, OR).
  * - V1: w=10,   h=10   -> false
  * - V2: w=2000, h=10   -> true (varies left)

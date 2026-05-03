@@ -476,7 +476,7 @@ static void test_happy_path(void)
  *
  * @par MC/DC:
  * Decision: `if ((s_state != k_ra_ota_state_idle) && (s_state != k_ra_ota_state_downloading))`
- * (libs/ra_ota/src/ra_ota.c:554, ra_ota_download_to_inactive_bank).
+ * (libs/ra_ota/src/ra_ota.c, ra_ota_download_to_inactive_bank).
  * - V1: state=idle      -> C1=F, short-circuit -> false (proceed; ok).
  * - V2: state=verifying -> C1=T, C2=T          -> true  (rejected: invalid_state).
  * - V3: state=downloading -> C1=T, C2=F        -> false (proceed; reached via re-init/check).
@@ -517,7 +517,7 @@ static void test_mcdc_download_state_guard(void)
  *
  * @par MC/DC:
  * Decision: `if ((s_state == k_ra_ota_state_done) || (s_state == k_ra_ota_state_error))`
- * (libs/ra_ota/src/ra_ota.c:718, ra_ota_run_full_update terminal-state break).
+ * (libs/ra_ota/src/ra_ota.c, ra_ota_run_full_update terminal-state break).
  * - V1: state=idle  -> C1=F, C2=F -> false (loop continues).
  * - V2: state=done  -> C1=T, short-circuit -> true (loop breaks; varies C1).
  * - V3: state=error -> C1=F, C2=T -> true (loop breaks; varies C2).
@@ -562,7 +562,7 @@ static void test_mcdc_run_full_update_terminal(void)
  *
  * @par MC/DC:
  * Decision: `if ((hi == k_ra_ota_hex_invalid_nibble) || (lo == k_ra_ota_hex_invalid_nibble))`
- * (libs/ra_ota/src/ra_ota.c:312, priv_hex_decode).
+ * (libs/ra_ota/src/ra_ota.c, priv_hex_decode).
  * Reached through ra_ota_check_for_update -> priv_manifest_decode_crypto
  * which decodes the "sha256" hex blob first.
  * - V1: both nibbles valid hex (C1=F, C2=F) -> false (decode succeeds).
@@ -704,8 +704,8 @@ static void test_mcdc_priv_json_u32_skip_chars(void)
  * @test test_mcdc_ota_internal_char_in_range
  *
  * @par MC/DC:
- * Decision at libs/ra_ota/src/ra_ota.c:455 (call site) -> helper at
- * libs/ra_ota/src/ra_ota.c:59:
+ * Decision at libs/ra_ota/src/ra_ota.c (call site) -> helper at
+ * libs/ra_ota/src/ra_ota.c:
  *   ``c >= lo && c <= hi`` (2 conditions, AND).
  * - V1: c<lo  -> false (varies left from V2)
  * - V2: lo<=c<=hi -> true
@@ -725,8 +725,8 @@ static void test_mcdc_ota_internal_char_in_range(void)
  * @test test_mcdc_ota_internal_download_state_invalid
  *
  * @par MC/DC:
- * Decision at libs/ra_ota/src/ra_ota.c:990 (call site) -> helper at
- * libs/ra_ota/src/ra_ota.c:82:
+ * Decision at libs/ra_ota/src/ra_ota.c (call site) -> helper at
+ * libs/ra_ota/src/ra_ota.c:
  *   ``state != IDLE && state != DOWNLOADING`` (2 conditions, AND).
  * - V1: state=IDLE        -> false (left varies vs V3)
  * - V2: state=DOWNLOADING -> false (right varies vs V3)

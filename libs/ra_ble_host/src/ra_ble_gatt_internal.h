@@ -49,7 +49,7 @@ bool ra_ble_gatt_internal_should_copy(uint16_t len, const void* value);
  * @brief Pure predicate: declaration is missing OR notify-property bit clear.
  *
  * @details
- * Promoted from the inline OR at libs/ra_ble_host/src/ra_ble_gatt.c:538
+ * Promoted from the inline OR at libs/ra_ble_host/src/ra_ble_gatt.c
  * inside @c ra_ble_host_gatt_notify.
  *
  * @param[in] decl_present  Non-zero if the declaration row exists.

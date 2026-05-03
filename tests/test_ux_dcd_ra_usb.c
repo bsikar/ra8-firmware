@@ -41,7 +41,7 @@
 /**
  * @brief Mirror of the transfer-request null-guard decision.
  *
- * Source: port/usbx/ux_dcd_ra_usb.c:156
+ * Source: port/usbx/ux_dcd_ra_usb.c
  *   `if (tr == nullptr || tr->ux_slave_transfer_request_endpoint == nullptr)`
  */
 static inline bool internal_mirror_xfer_null_guard(bool tr_is_null, const void* ep)
@@ -52,7 +52,7 @@ static inline bool internal_mirror_xfer_null_guard(bool tr_is_null, const void* 
 /**
  * @brief Mirror of the EP0 IN-data length + pointer guard.
  *
- * Source: port/usbx/ux_dcd_ra_usb.c:173
+ * Source: port/usbx/ux_dcd_ra_usb.c
  *   `if (tr->ux_slave_transfer_request_in_transfer_length != 0U &&
  *        tr->ux_slave_transfer_request_data_pointer != nullptr)`
  */
@@ -64,7 +64,7 @@ static inline bool internal_mirror_ep0_in_guard(uint32_t in_len, const void* dat
 /**
  * @brief Mirror of the endpoint-create pipe-range guard.
  *
- * Source: port/usbx/ux_dcd_ra_usb.c:215
+ * Source: port/usbx/ux_dcd_ra_usb.c
  *   `if (pipe == 0U || pipe >= (uint8_t)k_ux_dcd_ra_usb_max_pipes)`
  */
 static inline bool internal_mirror_ep_create_guard(uint8_t pipe)
@@ -78,7 +78,7 @@ static inline bool internal_mirror_ep_create_guard(uint8_t pipe)
 /**
  * @brief Mirror of the SETUP-dispatch null + slave-bound guard.
  *
- * Source: port/usbx/ux_dcd_ra_usb.c:506
+ * Source: port/usbx/ux_dcd_ra_usb.c
  *   `if (setup == nullptr || _ux_system_slave == UX_NULL)`
  */
 static inline bool internal_mirror_dispatch_setup_guard(const void* setup, const void* system_slave)
@@ -95,7 +95,7 @@ static inline bool internal_mirror_dispatch_setup_guard(const void* setup, const
  *
  * @par MC/DC:
  * Decision: `if (tr == nullptr || tr->ux_slave_transfer_request_endpoint == nullptr)`
- * (2 conditions, port/usbx/ux_dcd_ra_usb.c:156)
+ * (2 conditions, port/usbx/ux_dcd_ra_usb.c)
  *  - C1 = (tr == nullptr)
  *  - C2 = (tr->endpoint == nullptr)
  *
@@ -126,7 +126,7 @@ static void test_mcdc_xfer_request_null_guard(void)
  *
  * @par MC/DC:
  * Decision: `if (tr->in_transfer_length != 0U && tr->data_pointer != nullptr)`
- * (2 conditions, port/usbx/ux_dcd_ra_usb.c:173)
+ * (2 conditions, port/usbx/ux_dcd_ra_usb.c)
  *  - C1 = (in_transfer_length != 0U)
  *  - C2 = (data_pointer != nullptr)
  *
@@ -156,7 +156,7 @@ static void test_mcdc_ep0_in_data_guard(void)
  *
  * @par MC/DC:
  * Decision: `if (pipe == 0U || pipe >= (uint8_t)k_ux_dcd_ra_usb_max_pipes)`
- * (2 conditions, port/usbx/ux_dcd_ra_usb.c:215)
+ * (2 conditions, port/usbx/ux_dcd_ra_usb.c)
  *  - C1 = (pipe == 0U)
  *  - C2 = (pipe >= 10U)
  *
@@ -183,7 +183,7 @@ static void test_mcdc_ep_create_pipe_range(void)
  *
  * @par MC/DC:
  * Decision: `if (setup == nullptr || _ux_system_slave == UX_NULL)`
- * (2 conditions, port/usbx/ux_dcd_ra_usb.c:506)
+ * (2 conditions, port/usbx/ux_dcd_ra_usb.c)
  *  - C1 = (setup == nullptr)
  *  - C2 = (_ux_system_slave == UX_NULL)
  *

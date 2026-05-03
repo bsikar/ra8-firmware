@@ -37,7 +37,7 @@ namespace {
  * @test test_mcdc_lowercase_loop_bound
  *
  * @par MC/DC:
- * Decision at libs/ra_reflow/src/ra_reflow_xml_shim.cpp:70 (helper):
+ * Decision at libs/ra_reflow/src/ra_reflow_xml_shim.cpp (helper):
  *   ``while (tail[i] != '\0' && i + 1U < dst_cap)`` (2-cond AND).
  * - V1: src="ab", cap=8     -> exits on '\0'  (C1=F at end) [C1-pair].
  * - V2: src="aa..a"(8), cap=4 -> exits on cap (C1=T C2=F)  [C2-pair].
@@ -73,7 +73,7 @@ void test_mcdc_lowercase_loop_bound()
  * @test test_mcdc_uppercase_check
  *
  * @par MC/DC:
- * Decision at libs/ra_reflow/src/ra_reflow_xml_shim.cpp:72 (helper):
+ * Decision at libs/ra_reflow/src/ra_reflow_xml_shim.cpp (helper):
  *   ``if (c >= 'A' && c <= 'Z')`` (2-cond AND).
  * - V1: c='A' -> C1=T C2=T -> lowercased.
  * - V2: c='@' -> C1=F      -> kept as-is (varies C1).
@@ -104,7 +104,7 @@ void test_mcdc_uppercase_check()
  * @test test_mcdc_is_xml_whitespace
  *
  * @par MC/DC:
- * Decision at libs/ra_reflow/src/ra_reflow_xml_shim.cpp:232 (helper):
+ * Decision at libs/ra_reflow/src/ra_reflow_xml_shim.cpp (helper):
  *   ``c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\f'
  *     || c == '\v'`` (6-cond OR). N+1 = 7 vectors:
  *  - V1: 'a'   -> all-false control.
@@ -138,7 +138,7 @@ void test_mcdc_is_xml_whitespace()
  * @test test_mcdc_should_reject_null_args
  *
  * @par MC/DC:
- * Decision at libs/ra_reflow/src/ra_reflow_xml_shim.cpp:334 (helper):
+ * Decision at libs/ra_reflow/src/ra_reflow_xml_shim.cpp (helper):
  *   ``engine == nullptr || xhtml_buf == nullptr`` (2-cond OR).
  * - V1: both non-null -> false (control).
  * - V2: engine=null   -> true  (varies engine).

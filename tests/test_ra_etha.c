@@ -979,7 +979,7 @@ static void test_mcdc_set_queue_arb_triple(void)
  * @par MC/DC:
  * Decision: ``if (!internal_port_ok(port) || !internal_tc_ok(tc) ||
  *               (uint32_t)depth > k_ra_etha_mask_dqd)``
- * (3 conditions, libs/ra_hal/src/ra_etha.c:708 ra_etha_set_queue_depth).
+ * (3 conditions, libs/ra_hal/src/ra_etha.c ra_etha_set_queue_depth).
  * Short-circuit OR: N+1 = 4 vectors.
  * - V1: port=ok, tc=ok, depth=ok    -> all F        -> dec F (proceeds, ok)
  * - V2: port=oor                    -> C1=T short   -> dec T -> invalid_arg
@@ -1014,7 +1014,7 @@ static void test_mcdc_set_queue_depth_triple(void)
  * @test test_mcdc_descriptor_ring_args
  *
  * @par MC/DC:
- * Decision in ``internal_ring_args_ok`` (libs/ra_hal/src/ra_etha.c:1335-1337):
+ * Decision in ``internal_ring_args_ok`` (libs/ra_hal/src/ra_etha.c):
  * ``return (num_tx >= MIN) && (num_tx <= MAX) && (num_rx >= MIN) &&
  *          (num_rx <= MAX) && (buffer_size >= BUF_MIN) && (buffer_size <= BUF_MAX)``
  * 6-condition AND chain. Short-circuit MC/DC requires N+1 = 7 vectors.
@@ -1062,7 +1062,7 @@ static void test_mcdc_descriptor_ring_args(void)
  * @test test_mcdc_set_vlan_tag_six
  *
  * @par MC/DC:
- * Decision (libs/ra_hal/src/ra_etha.c:923-928): 6-condition OR over the six
+ * Decision (libs/ra_hal/src/ra_etha.c): 6-condition OR over the six
  * range checks (c.vid, s.vid, c.pcp, s.pcp, c.dei, s.dei). Short-circuit MC/DC
  * requires N+1 = 7 vectors.
  * Masks: vid<=0xFFF, pcp<=0x7, dei<=0x1.
@@ -1114,7 +1114,7 @@ static void test_mcdc_set_vlan_tag_six(void)
  *
  * @par MC/DC:
  * Decision: ``if (!internal_port_ok(port) || !internal_tc_ok(tc))``
- * (2 conditions, libs/ra_hal/src/ra_etha.c:741 ra_etha_get_queue_level).
+ * (2 conditions, libs/ra_hal/src/ra_etha.c ra_etha_get_queue_level).
  * Short-circuit OR: N+1 = 3 vectors.
  * - V1: port=ok, tc=ok      -> C1=F, C2=F -> dec F (proceeds, ok).
  * - V2: port=oor            -> C1=T short -> dec T -> invalid_arg.
@@ -1151,7 +1151,7 @@ static void test_mcdc_get_queue_level_pair(void)
  *
  * @par MC/DC:
  * Decision: ``if (!internal_port_ok(port) || !internal_tc_ok(tc))``
- * (2 conditions, libs/ra_hal/src/ra_etha.c:811 ra_etha_set_max_frame_size).
+ * (2 conditions, libs/ra_hal/src/ra_etha.c ra_etha_set_max_frame_size).
  * Short-circuit OR: N+1 = 3 vectors.
  * - V1: port=ok, tc=ok -> dec F.   (control case).
  * - V2: port=oor       -> C1=T short, dec T (V1 vs V2 isolates C1).
@@ -1181,14 +1181,14 @@ static void test_mcdc_set_max_frame_size_pair(void)
  *
  * @par MC/DC:
  * Decision: ``if (!internal_port_ok(port) || (uint32_t)dqd > k_ra_etha_mask_ctdqd)``
- * (2 conditions, libs/ra_hal/src/ra_etha.c:993 ra_etha_configure_cut_through).
+ * (2 conditions, libs/ra_hal/src/ra_etha.c ra_etha_configure_cut_through).
  * Short-circuit OR: N+1 = 3 vectors.
  * - V1: port=ok, dqd=ok -> dec F.
  * - V2: port=oor        -> C1=T short, dec T (V1 vs V2 isolates C1).
  * - V3: port=ok, dqd=oor-> C1=F,C2=T, dec T (V1 vs V3 isolates C2).
  *
  * @par MC/DC (paired):
- * Also exercises libs/ra_hal/src/ra_etha.c:1029 (configure_cbs port||tc),
+ * Also exercises libs/ra_hal/src/ra_etha.c (configure_cbs port||tc),
  * 1035 (cbs param range), 1091 (get_cbs_state port||tc) by issuing
  * configure_cbs and get_cbs_state with the same fault vectors. The
  * pre-existing happy-path tests already supply the all-F vector for

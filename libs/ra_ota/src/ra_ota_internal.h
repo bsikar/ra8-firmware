@@ -89,7 +89,7 @@ bool ra_ota_internal_char_in_range(char c, char lo, char hi);
 /**
  * @brief Pure predicate: state is neither IDLE nor DOWNLOADING.
  *
- * @details Promoted from the inline AND at libs/ra_ota/src/ra_ota.c:990
+ * @details Promoted from the inline AND at libs/ra_ota/src/ra_ota.c
  *          inside @c ra_ota_download_to_inactive_bank.
  *
  * @param[in] state_idle_val        Numeric value of @c k_ra_ota_state_idle.

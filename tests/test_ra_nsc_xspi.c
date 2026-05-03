@@ -4,7 +4,7 @@
  *
  * @details
  * Targets the single 2-condition compound decision identified in
- * docs/MCDC_GAPS.csv at libs/ra_nsc/src/ra_nsc_xspi.c:67
+ * docs/MCDC_GAPS.csv at libs/ra_nsc/src/ra_nsc_xspi.c
  * (``ra_nsc_xspi_read`` length validator).
  *
  * The veneer body is short:
@@ -45,7 +45,7 @@ typedef enum : uint32_t {
  * @par MC/DC:
  * Decision: ``ra_nsc_xspi_read`` line 67,
  * ``if ((len == 0U) || (len > k_ra_nsc_xspi_max_read))``
- * (libs/ra_nsc/src/ra_nsc_xspi.c:67). 2 conditions, ``||``.
+ * (libs/ra_nsc/src/ra_nsc_xspi.c). 2 conditions, ``||``.
  * N+1 = 3 vectors:
  * - V1: len=256  -> C1=F, C2=F -> dec F (validator accepts; tail call
  *                                         fails with non-invalid_arg)

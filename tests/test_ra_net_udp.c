@@ -475,8 +475,8 @@ static void test_mcdc_dns_query_null_guard(void)
  * @test test_mcdc_net_internal_dns_byte_match
  *
  * @par MC/DC:
- * Decision at libs/ra_net/src/ra_net_udp.c:539, 554 (call sites) -> helper at
- * libs/ra_net/src/ra_net_udp.c:63:
+ * Decision at libs/ra_net/src/ra_net_udp.c (call sites) -> helper at
+ * libs/ra_net/src/ra_net_udp.c:
  *   ``in_range && (byte == target  for ==)`` (2 conditions, AND).
  * - V1: in_range=0, byte=tgt -> false (varies left vs V2)
  * - V2: in_range=1, byte=tgt -> true
@@ -498,8 +498,8 @@ static void test_mcdc_net_internal_dns_byte_match(void)
  * @test test_mcdc_net_internal_dns_loop_active
  *
  * @par MC/DC:
- * Decision at libs/ra_net/src/ra_net_udp.c:657 (call site) -> helper at
- * libs/ra_net/src/ra_net_udp.c:84:
+ * Decision at libs/ra_net/src/ra_net_udp.c (call site) -> helper at
+ * libs/ra_net/src/ra_net_udp.c:
  *   ``pending && rcode==0 && budget>0`` (3 conditions, AND).
  * - V1: pending=1, rcode=0,  budget=10 -> true  (control)
  * - V2: pending=0, rcode=0,  budget=10 -> false (varies pending)
