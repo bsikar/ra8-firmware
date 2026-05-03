@@ -16,12 +16,21 @@ Scope:
   port/. Flags tokens matching `<file>.<ext>:<line>` inside `// ...`
   or `/* ... */` comments.
 
+  Also scans Markdown (`.md`) and plain-text (`.txt`) files under
+  `docs/` and the repo root. The same regex applies; in docs the
+  whole line is treated as the "comment" (no comment-span extraction).
+
 Exemptions:
   * docs/reference/* paths (HUM PDFs etc).
   * libs/third_party/* (SOUP -- not our citations to manage).
   * Any line containing `CITES-OK: <reason>` (reason text required).
   * CHANGELOG-style "moved from <file>:NNN to ..." historical notes.
   * `// SPDX-License-Identifier:` headers and `#include` directives.
+  * In docs: lines inside fenced code blocks whose info-string mentions
+    a tool name (`cppcheck`, `clang`, `clang-tidy`, `llvm-cov`, `gdb`,
+    `objdump`, `readelf`) -- these are tool transcripts, not citations.
+  * In docs: inline-code spans (backticked) whose first token is one
+    of the same tool names.
 """
 from __future__ import annotations
 
@@ -36,8 +45,19 @@ from pathlib import Path
 WAVE_0_WARN_ONLY = True
 
 SCAN_ROOTS = ("libs/", "src/", "tests/", "examples/", "port/")
-EXCLUDE_PREFIXES = ("libs/third_party/",)
+DOC_SCAN_ROOTS = ("docs/", "")  # "" => repo root (top-level *.md / *.txt)
+EXCLUDE_PREFIXES = ("libs/third_party/", "docs/reference/")
 SOURCE_EXTS = (".c", ".h", ".cpp", ".hpp", ".cc")
+DOC_EXTS = (".md", ".txt")
+TOOL_OUTPUT_TOKENS = (
+    "cppcheck",
+    "clang-tidy",
+    "clang",
+    "llvm-cov",
+    "gdb",
+    "objdump",
+    "readelf",
+)
 
 CITATION_RE = re.compile(
     r"\b[A-Za-z_][A-Za-z0-9_/.-]*\.(?:c|h|cpp|hpp|cc):\d+\b"
@@ -76,6 +96,94 @@ def is_in_scope(path: str) -> bool:
     if any(path.startswith(p) for p in EXCLUDE_PREFIXES):
         return False
     return True
+
+
+def is_doc_in_scope(path: str) -> bool:
+    """Markdown/plain-text under docs/ or at repo root."""
+    if not path.endswith(DOC_EXTS):
+        return False
+    if any(path.startswith(p) for p in EXCLUDE_PREFIXES):
+        return False
+    if path.startswith("docs/"):
+        return True
+    # Top-level (no `/`) markdown / txt at repo root.
+    if "/" not in path:
+        return True
+    return False
+
+
+def _line_is_tool_exempt(line: str) -> bool:
+    """Heuristic: line looks like tool transcript output."""
+    stripped = line.lstrip()
+    # Inline-code span starting with a known tool token.
+    # Examples:  `clang foo.c:12: warning: ...`
+    #            "  `cppcheck libs/x.c:99 ...`"
+    for tok in TOOL_OUTPUT_TOKENS:
+        if tok in line:
+            # Require the token to appear *before* the first file:line
+            # match on the line (i.e. it owns/produced that citation).
+            tok_pos = line.find(tok)
+            m = CITATION_RE.search(line)
+            if m and tok_pos < m.start():
+                return True
+    return False
+
+
+def scan_doc_file(path: Path) -> list[tuple[int, str, str]]:
+    """Scan a markdown/text doc file. Returns list of (line_no,
+    matched_text, snippet) violations.
+
+    Exemptions:
+      * Fenced code blocks whose info-string contains a tool name.
+      * Lines where a tool token precedes the citation (inline tool
+        transcript).
+      * `CITES-OK: <reason>` opt-out.
+      * `moved from <file>:NN to ...` historical notes.
+      * Anchor links / heading IDs of the form `(file:NN)` are still
+        considered violations -- that is exactly what we want to ban.
+    """
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return []
+    violations: list[tuple[int, str, str]] = []
+    in_fence = False
+    fence_is_tool = False
+    fence_marker = ""
+    for line_no, raw in enumerate(text.splitlines(), start=1):
+        stripped = raw.lstrip()
+        # Fence open/close tracking (``` or ~~~).
+        if not in_fence and (stripped.startswith("```") or stripped.startswith("~~~")):
+            in_fence = True
+            fence_marker = stripped[:3]
+            info = stripped[3:].strip().lower()
+            fence_is_tool = any(tok in info for tok in TOOL_OUTPUT_TOKENS)
+            continue
+        if in_fence and stripped.startswith(fence_marker):
+            in_fence = False
+            fence_is_tool = False
+            fence_marker = ""
+            continue
+        if in_fence and fence_is_tool:
+            continue
+        for m in CITATION_RE.finditer(raw):
+            matched = m.group(0)
+            if DOCS_REFERENCE_RE.search(matched) or DOCS_REFERENCE_RE.search(raw):
+                continue
+            if THIRD_PARTY_RE.search(matched) or THIRD_PARTY_RE.search(raw):
+                continue
+            cok = CITES_OK_RE.search(raw)
+            if cok and cok.group(1).strip():
+                continue
+            if MOVED_FROM_RE.search(raw):
+                continue
+            if _line_is_tool_exempt(raw):
+                continue
+            snippet = raw.strip()
+            if len(snippet) > 120:
+                snippet = snippet[:117] + "..."
+            violations.append((line_no, matched, snippet))
+    return violations
 
 
 def find_comment_spans(text: str) -> list[tuple[int, int]]:
@@ -199,15 +307,35 @@ def main() -> int:
             files = all_tracked_files()
             full_scan = True
 
-    files = [f for f in files if is_in_scope(f)]
+    src_files = [f for f in files if is_in_scope(f)]
+    doc_files = [f for f in files if is_doc_in_scope(f)]
 
     total_violations = 0
     per_file_counts: dict[str, int] = {}
-    for f in files:
+    for f in src_files:
         path = repo_root / f
         if not path.is_file():
             continue
         viols = scan_file(path)
+        if not viols:
+            continue
+        per_file_counts[f] = len(viols)
+        for line_no, matched, snippet in viols:
+            print(
+                f"{f}:{line_no}: line-citation found "
+                f"('{matched}'): {snippet}"
+            )
+            print(
+                "       fix: replace with function/symbol name, "
+                "or add `// CITES-OK: <reason>`"
+            )
+            total_violations += 1
+
+    for f in doc_files:
+        path = repo_root / f
+        if not path.is_file():
+            continue
+        viols = scan_doc_file(path)
         if not viols:
             continue
         per_file_counts[f] = len(viols)
