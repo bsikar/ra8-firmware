@@ -410,6 +410,35 @@ static void test_config_set_write_validation(void)
   TEST_END("flash config_set_write validation");
 }
 
+/**
+ * @test test_mcdc_config_set_write_extra_window
+ *
+ * @par MC/DC:
+ * Decision: ``in_extra = (target_addr >= k_ra_flash_extra_start) &&
+ *                       (target_addr < extra_end)`` (2 conds, line 1428).
+ * Pre-existing test_config_set_write_validation supplies F,- (addr 0)
+ * and T,F (addr 0xFFFFFFFF). This test adds the T,T vector by writing
+ * inside the extra-MRAM window so both conditions are true and in_extra
+ * resolves to T -- the in_ofs OR at line 1429 evaluates F,F = F (proceeds
+ * past the rejection path) and the MACI sequence completes via the
+ * pre-staged MRDY bit.
+ *   V_T_T: target_addr = 0x27000000 (start of extra MRAM, sim-mmap backed).
+ * Combined with the existing F,- and T,F vectors, both C1-pair and
+ * C2-pair are covered (3 vectors for N=2 conditions: minimal MC/DC).
+ */
+static void test_mcdc_config_set_write_extra_window(void)
+{
+  TEST_BEGIN("flash config_set_write MC/DC: in_extra T,T pair");
+  ra_sim_mmap_reset();
+  uint16_t buf[k_ra_mram_config_set_word_count] = {};
+  /* Pre-stage MRDY so the MACI wait at the end of the function succeeds. */
+  *ra_mram_reg32((uint16_t)k_ra_mram_off_mstatr) = (uint32_t)k_ra_mstatr_mask_mrdy;
+  /* V_T_T: address inside extra MRAM -- in_extra = T,T = T. */
+  TEST_ASSERT_EQ((int)k_ra_ok,
+                 (int)ra_flash_config_set_write((uint32_t)k_ra_flash_extra_start, buf));
+  TEST_END("flash config_set_write MC/DC: in_extra T,T pair");
+}
+
 static void test_extra_mram_write_validation(void)
 {
   TEST_BEGIN("flash extra_mram_write validation");
@@ -1211,6 +1240,7 @@ int32_t main(void)
   test_get_startup_area();
 
   test_config_set_write_validation();
+  test_mcdc_config_set_write_extra_window();
   test_extra_mram_write_validation();
   test_extra_mram_erase_validation();
 
