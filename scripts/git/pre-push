@@ -1,0 +1,93 @@
+#!/usr/bin/env bash
+# pre-push hook for ra8d2-firmware
+#
+# Optional hardware-in-the-loop smoke gate for contributors with an
+# EK-RA8D2 attached. Off by default. Enable with:
+#
+#   ln -s ../../scripts/git/pre-push .git/hooks/pre-push
+#   git config ra.hw-smoke true
+#
+# When enabled, this hook runs scripts/hw_smoke_test.sh on every
+# `git push` and blocks the push if any EVM app returns FAIL. If no
+# EK-RA8D2 is detected on USB, the hook prints a skip notice and
+# exits 0 -- contributors without a board are never blocked.
+#
+# See docs/HIL_DEVELOPER_WORKFLOW.md for the full workflow.
+
+set -uo pipefail
+
+# Read the opt-in flag.
+if [[ "$(git config --get ra.hw-smoke 2>/dev/null || echo false)" != "true" ]]; then
+    # Hook installed but not enabled -- exit silently. This is the
+    # expected state for contributors without a board.
+    exit 0
+fi
+
+ROOT_DIR="$(git rev-parse --show-toplevel)"
+SMOKE_SCRIPT="$ROOT_DIR/scripts/hw_smoke_test.sh"
+
+if [[ ! -x "$SMOKE_SCRIPT" ]]; then
+    echo "pre-push: $SMOKE_SCRIPT not found or not executable -- skipping HIL smoke."
+    exit 0
+fi
+
+# ----------------------------------------------------------------------
+# Detect the EK-RA8D2 J-Link OB on USB. Skip the smoke harness if no
+# board is attached. We try platform-specific detectors first and fall
+# back to JLinkExe ShowEmuList.
+# ----------------------------------------------------------------------
+board_detected=0
+case "$(uname -s)" in
+    Darwin)
+        if system_profiler SPUSBDataType 2>/dev/null \
+             | grep -qE "SEGGER|J-Link"; then
+            board_detected=1
+        fi
+        ;;
+    Linux)
+        if command -v lsusb >/dev/null 2>&1; then
+            if lsusb -d 1366: 2>/dev/null | grep -q .; then
+                board_detected=1
+            fi
+        fi
+        ;;
+esac
+
+if [[ "$board_detected" -eq 0 ]] && command -v JLinkExe >/dev/null 2>&1; then
+    if JLinkExe -nogui 1 -CommandFile <(printf 'ShowEmuList\nexit\n') 2>/dev/null \
+         | grep -qE "J-Link OB"; then
+        board_detected=1
+    fi
+fi
+
+if [[ "$board_detected" -eq 0 ]]; then
+    echo "pre-push: no EK-RA8D2 detected on USB -- skipping HIL smoke."
+    echo "          (Set 'git config ra.hw-smoke false' to silence this hook.)"
+    exit 0
+fi
+
+echo "pre-push: EK-RA8D2 detected -- running HIL smoke harness..."
+echo "          See docs/HIL_DEVELOPER_WORKFLOW.md for details."
+
+if ! bash "$SMOKE_SCRIPT"; then
+    rc=$?
+    echo ""
+    echo "pre-push: HIL smoke harness failed (exit $rc). Push BLOCKED."
+    echo "          Inspect build/smoke/results.md and the per-app .log files."
+    echo "          To bypass for an emergency docs-only push:"
+    echo "              git config ra.hw-smoke false"
+    echo "              git push"
+    echo "              git config ra.hw-smoke true"
+    exit "$rc"
+fi
+
+# Stash the results so the contributor can paste them into the PR.
+mkdir -p "$ROOT_DIR/build/smoke"
+if [[ -f "$ROOT_DIR/build/smoke/results.md" ]]; then
+    cp "$ROOT_DIR/build/smoke/results.md" "$ROOT_DIR/build/smoke/last-pre-push.md"
+    echo "pre-push: results saved to build/smoke/last-pre-push.md."
+    echo "          Paste them into the PR comment per HIL_DEVELOPER_WORKFLOW.md."
+fi
+
+echo "pre-push: HIL smoke PASSED."
+exit 0

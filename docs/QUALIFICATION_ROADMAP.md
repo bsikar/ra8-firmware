@@ -243,20 +243,24 @@ once Phase 2 lands. Total span is 22 weeks of focused effort.
 - **Acceptance gate**: `make test` exercises every app's
   application-level entry point.
 
-### Phase 6 -- Hardware-in-the-loop CI (weeks 17-18)
+### Phase 6 -- Hardware-in-the-loop coverage (weeks 17-18)
 
-- **Goal**: `make smoke` runs on every PR via a self-hosted CI
-  runner with an EK-RA8D2 + J-Link OB attached.
+- **Goal**: every PR that touches HAL or example code is gated on a
+  hardware smoke run. **Per the 2026-05-02 decision this is a
+  developer-local workflow, not a CI runner** -- see
+  `docs/HIL_DEVELOPER_WORKFLOW.md` and Section 6 blocker 5 below.
 - **Tasks**:
-  - Stand up a self-hosted runner (Mac mini or Linux SBC) wired
-    to the EK-RA8D2 USB-debug port.
-  - Add `.github/workflows/hw-smoke.yml` that triggers on PR and
-    on `main` push, invokes `make smoke`, and uploads
-    `build/smoke/results.md` as an artifact.
-  - Treat `FAIL` on any EVM app as a blocking CI failure; treat
-    `UNKNOWN` (PC unresolvable) as a warning.
-- **Acceptance gate**: a PR that intentionally breaks `blink`
-  is blocked by CI.
+  - Land `scripts/hw_smoke_test.sh` (already in tree).
+  - Land `scripts/git/pre-push` opt-in hook gated on
+    `git config ra.hw-smoke true`.
+  - Document the pre-push checklist in
+    `docs/HIL_DEVELOPER_WORKFLOW.md`.
+  - Convert `.github/workflows/hardware-smoke.yml` to a doc-only
+    workflow that explains the policy.
+- **Acceptance gate**: a PR that touches `libs/ra_hal/` or
+  `examples/ek_ra8d2/` carries a `<!-- hw-smoke-comment -->`
+  block in the PR thread, or an explicit no-board declaration
+  from the author.
 
 ### Phase 7 -- Formal review packs (weeks 19-22)
 
@@ -398,8 +402,19 @@ them.
    declared with caveats; for any external sale path the assessor
    must be third-party. Decision deferred to post-Phase 7.
 
-5. **Self-hosted CI runner hardware**. Phase 6 needs a dedicated
-   host with the EK-RA8D2 attached. Owner to nominate hardware.
+5. **Self-hosted CI runner hardware** -- **CLOSED 2026-05-02:
+   never**. The project will not provision a self-hosted GitHub
+   Actions runner. Hardware-in-the-loop coverage is achieved via a
+   developer-local pre-push workflow:
+   `bash scripts/hw_smoke_test.sh` plus the opt-in
+   `scripts/git/pre-push` hook (enabled with
+   `git config ra.hw-smoke true`). Each contributor with an
+   EK-RA8D2 attached runs the harness before push and pastes the
+   results into the PR per `docs/HIL_DEVELOPER_WORKFLOW.md`. The
+   `.github/workflows/hardware-smoke.yml` workflow is now a
+   documentation stub that explains the policy. Rationale:
+   incompatible with the MIT-licensed, $0 personal/research scope
+   (see `docs/CERTIFICATION_SCOPE.md`).
 
 ---
 

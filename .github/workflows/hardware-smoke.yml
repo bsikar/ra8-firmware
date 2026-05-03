@@ -1,127 +1,72 @@
 name: hardware-smoke
 
-# Hardware-in-the-loop CI for the EK-RA8D2.
+# ============================================================================
+# DEFERRED -- developer-local HIL workflow in use instead.
+# ============================================================================
 #
-# This workflow runs on a self-hosted runner that has a real EK-RA8D2
-# attached via the on-board J-Link OB. Every PR targeting main is
-# cross-built, flashed, halted, and classified by
-# scripts/hw_smoke_test.sh, then the PASS/WIP/UNKNOWN/FAIL table is
-# posted back to the PR as a sticky comment.
+# Per the 2026-05-02 decision, this project does NOT operate a self-hosted
+# GitHub Actions runner with an attached EK-RA8D2 board. Standing one up,
+# securing it against PR-driven flash abuse, and budgeting the host
+# hardware is incompatible with the project's MIT-licensed, $0
+# personal/research scope (see docs/CERTIFICATION_SCOPE.md).
 #
-# Failure semantics (mirrors hw_smoke_test.sh):
-#   FAIL    -> the job exits non-zero and the PR check is red.
-#   WIP     -> the job stays green; comment shows a warning row.
-#   UNKNOWN -> the job stays green; comment shows a warning row.
-#   PASS    -> the job stays green.
+# Hardware-in-the-loop coverage is achieved instead by a developer-local
+# pre-push workflow:
 #
-# The HW runner only executes this workflow. The cross-build matrix in
-# firmware.yml is pinned to ubuntu-latest so we never burn HW-runner
-# minutes on a job that does not need real silicon.
+#   1. Each contributor with an EK-RA8D2 attached runs:
+#          bash scripts/hw_smoke_test.sh
+#      before `git push`.
+#
+#   2. An opt-in pre-push hook automates this:
+#          ln -s ../../scripts/git/pre-push .git/hooks/pre-push
+#          git config ra.hw-smoke true
+#      The hook detects the J-Link OB via system_profiler / lsusb /
+#      JLinkExe and skips itself silently when no board is attached.
+#
+#   3. The contributor pastes build/smoke/results.md into the PR as a
+#      Markdown comment using the marker described in
+#      docs/HIL_DEVELOPER_WORKFLOW.md.
+#
+# Reviewers are expected to read the smoke comment before approving any
+# PR that touches libs/ra_hal/ or examples/ek_ra8d2/. PRs from
+# contributors without a board are still merge-eligible; the host
+# unit-test build (`make test`) and the cross-build CI (firmware.yml)
+# remain the gating CI signals for those PRs.
+#
+# This file is kept (rather than deleted) so a future operator who
+# wants to revive the self-hosted-runner approach has a documented
+# starting point. The historical workflow content is preserved in git
+# history; see commit 10b9eedfc and earlier for the active form.
+#
+# To revive:
+#   - Provision a self-hosted runner per docs/qualification/HW_IN_LOOP_RUNNER.md
+#   - Restore the `on:` trigger and `jobs:` block from git history
+#   - Re-evaluate the cost/benefit against docs/CERTIFICATION_SCOPE.md
+#
+# References:
+#   - docs/HIL_DEVELOPER_WORKFLOW.md      developer pre-push workflow
+#   - docs/qualification/HW_IN_LOOP_RUNNER.md  deferred runner setup
+#   - docs/CERTIFICATION_SCOPE.md          why no third-party CI funding
+#   - docs/QUALIFICATION_ROADMAP.md        Section 6, blocker 5 CLOSED
+# ============================================================================
 
+# Disabled trigger: only runs when manually dispatched, so the workflow
+# stays visible in the Actions tab without ever consuming runner minutes.
 on:
-  pull_request:
-    branches: [main]
-
-# One HW job at a time per PR. We cannot cancel an in-flight flash
-# because that leaves the J-Link session locked, so cancel-in-progress
-# is intentionally false here (unlike the firmware.yml workflow).
-concurrency:
-  group: hardware-smoke-${{ github.event.pull_request.number }}
-  cancel-in-progress: false
+  workflow_dispatch:
 
 jobs:
-  smoke:
-    name: EK-RA8D2 hardware smoke
-    # The runner must be registered with BOTH labels: the platform tag
-    # GitHub injects automatically (self-hosted) and the project tag
-    # the operator sets at registration time (ek-ra8d2). See
-    # docs/qualification/HW_IN_LOOP_RUNNER.md for the registration
-    # walkthrough.
-    runs-on: [self-hosted, ek-ra8d2]
-    timeout-minutes: 30
-    permissions:
-      pull-requests: write
-      contents: read
-
+  notice:
+    name: HIL is developer-local (see HIL_DEVELOPER_WORKFLOW.md)
+    runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Print toolchain versions
+      - name: Print HIL policy notice
         run: |
-          set -e
-          arm-none-eabi-gcc --version | head -1
-          JLinkExe -? 2>&1 | head -1 || true
-          uname -a
-
-      - name: Cross-build every EVM app
-        run: make apps
-
-      - name: Run hardware smoke sweep
-        id: smoke
-        # The script's exit code is the PR gate:
-        #   0 -> all PASS or WIP/UNKNOWN -> green check
-        #   1 -> at least one FAIL        -> red check (PR blocked)
-        #   2 -> harness misconfiguration -> red check
-        run: bash scripts/hw_smoke_test.sh
-
-      - name: Upload smoke results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: hw-smoke-results
-          path: |
-            build/smoke/results.md
-            build/smoke/*.log
-          retention-days: 30
-          if-no-files-found: warn
-
-      - name: Post PR comment with results table
-        if: always() && github.event_name == 'pull_request'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
-            const path = 'build/smoke/results.md';
-            const marker = '<!-- hw-smoke-comment -->';
-            const jobStatus = '${{ job.status }}';
-
-            let body = marker + '\n';
-            body += '## EK-RA8D2 hardware smoke (self-hosted runner)\n\n';
-
-            if (!fs.existsSync(path)) {
-              body += '**No results file produced.** ';
-              body += 'The harness died before `build/smoke/results.md` was written. ';
-              body += 'Check the job log for flash/JLink errors.\n';
-            } else {
-              const txt = fs.readFileSync(path, 'utf8');
-              body += txt + '\n';
-            }
-
-            body += '\n---\n';
-            body += 'Legend: **PASS** firmware reached its main loop, ';
-            body += '**WIP** firmware reached a caught-error sink (warning), ';
-            body += '**UNKNOWN** PC did not match any known pattern (warning), ';
-            body += '**FAIL** chip locked up or took a fault (PR blocked), ';
-            body += '**NOBUILD** binary missing.\n';
-            body += `\nJob status: \`${jobStatus}\`. `;
-            body += 'Per-app JLink transcripts are in the ';
-            body += '`hw-smoke-results` artifact.\n';
-
-            const { owner, repo } = context.repo;
-            const issue_number = context.payload.pull_request.number;
-            const existing = await github.rest.issues.listComments({
-              owner, repo, issue_number, per_page: 100,
-            });
-            const prior = existing.data.find(
-              c => c.body && c.body.includes(marker)
-            );
-            if (prior) {
-              await github.rest.issues.updateComment({
-                owner, repo, comment_id: prior.id, body,
-              });
-            } else {
-              await github.rest.issues.createComment({
-                owner, repo, issue_number, body,
-              });
-            }
+          cat <<'EOF'
+          ============================================================
+          Hardware-in-the-loop is developer-local for this project.
+          See docs/HIL_DEVELOPER_WORKFLOW.md for the pre-push workflow.
+          See docs/CERTIFICATION_SCOPE.md for the rationale (no
+          third-party certification, MIT license, $0 budget).
+          ============================================================
+          EOF
