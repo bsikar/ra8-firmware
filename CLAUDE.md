@@ -628,6 +628,38 @@ TEST(ra_isr, register_validates_inputs) { ... }
   ```
 - **Testable via mock injection**
 
+### Test access to internal symbols (MC/DC scope)
+
+Mock injection (DIP) is the **preferred** path to drive deep code paths
+under test, but some compound boolean decisions live in pure-data validation
+paths that cannot be reached through the public API: e.g. an internal helper
+that classifies a wire-format field after the public-API guard has already
+rejected the inputs that would let MC/DC vectors flip each condition. For
+those decisions, tests under `tests/` MAY include the matching
+`libs/<X>/src/<X>_internal.h` (or analogous src-private header) and call
+internal symbols directly, so MC/DC vectors land on the production source
+text rather than on a test-local mirror copy. The MC/DC tooling
+(`-fcoverage-mcdc`) only counts vectors that hit production source, so
+operand-identical `static inline mirror_*` helpers in the test TU do not
+move the metric -- they document the obligation but do not discharge it.
+
+Practical rules:
+
+- A `static` helper that needs MC/DC test access should be promoted to
+  TU-external linkage (drop `static`) and forward-declared in the module's
+  `_internal.h`. The header is **not** part of the public API; it is
+  installed only on the test target's include path
+  (`tests/CMakeLists.txt` exposes `libs/<X>/src/`).
+- The `_internal.h` declaration must carry a `@par MC/DC:` Doxygen note
+  explaining why the symbol is exposed for test access only and which
+  decision is being covered.
+- Production callers must keep using the public API; the only consumers of
+  the promoted symbol outside the defining TU are tests under `tests/`.
+- Mirror-test helpers are still acceptable for decisions that are unsafe to
+  expose (e.g. inside ISR-only code paths or constant-time crypto where
+  exposing intermediates would weaken the side-channel posture); document
+  the choice in the `@par MC/DC:` block.
+
 ## Repository Layout
 
 Each application lives in its own directory under `examples/` and is
