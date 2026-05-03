@@ -671,12 +671,33 @@ static void internal_handle_ctrt(ra_usb_speed_t speed, uint16_t intsts0)
   const uint16_t ctsq = (uint16_t)(intsts0 & (uint16_t)k_ra_intsts0_mask_ctsq);
   switch (ctsq) {
     case k_ra_ctsq_rdds:
-    case k_ra_ctsq_wrds:
-    case k_ra_ctsq_wrnd: {
+    case k_ra_ctsq_wrds: {
+      /* SETUP latched, data stage to follow. USBX dispatcher will
+       * either push IN payload (rdds -> ra_usb_dcp_in_data) or wait
+       * for OUT data (wrds). The status stage is acked separately on
+       * the matching CTSQ=rdss / wrss edge. */
       ra_usb_setup_t setup = {};
       if (ra_usb_read_setup(speed, &setup) == k_ra_ok) {
         (void)internal_dispatch_setup(&setup);
       }
+      break;
+    }
+    case k_ra_ctsq_wrnd: {
+      /* SETUP latched, no data stage (e.g. SET_ADDRESS,
+       * SET_CONFIGURATION, SET_INTERFACE, SET_CONTROL_LINE_STATE,
+       * SEND_BREAK). The Renesas USB IP is already in the no-data
+       * status stage and waiting for the device to drive an IN-ZLP
+       * via DCPCTR.CCPL. The chapter-9 / class dispatchers run
+       * synchronously and return UX_SUCCESS on accept without
+       * calling back through UX_DCD_TRANSFER_REQUEST for the status
+       * ZLP, so the bridge must pulse CCPL itself. STALL on error so
+       * the host sees the request rejected instead of hanging. */
+      ra_usb_setup_t setup = {};
+      if (ra_usb_read_setup(speed, &setup) != k_ra_ok) {
+        break;
+      }
+      const unsigned int rc = internal_dispatch_setup(&setup);
+      (void)ra_usb_control_response(speed, rc == UX_SUCCESS);
       break;
     }
     case k_ra_ctsq_rdss:
