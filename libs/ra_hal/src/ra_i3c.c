@@ -952,7 +952,7 @@ ra_err_t ra_i3c_slave_open(uint8_t static_addr)
    * before flipping the SLVE bit. */
   reg->BCTL = reg->BCTL & ~k_ra_i3c_bctl_buse_mask;
 
-  /* HUM Ch 40 "Peripheral Device Address Register" (HUM "NSDVAD") p 2445-2701 */
+  /* HUM Ch 40 "NSDVAD : Peripheral Device Address Register" p 2445-2701 */
   const uint32_t sdyad =
     (((uint32_t)static_addr) << k_ra_i3c_nsdvad_sdyad_shift) & k_ra_i3c_nsdvad_sdyad_mask;
   reg->NSDVAD = sdyad | k_ra_i3c_nsdvad_sdyadv_mask;

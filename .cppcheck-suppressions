@@ -117,6 +117,7 @@ unusedStructMember:libs/ra_hal/inc/ra_wdt.h
 # constParameterCallback on ISR trampolines whose signatures are dictated by
 # the registration API (ra_isr_register takes a fixed function-pointer type).
 constParameterCallback:libs/ra_hal/src/ra_ipc.c
+constParameterCallback:libs/ra_hal/src/ra_cnecc.c
 
 # unusedStructMember in ra_ble_host implementation files. These TUs each
 # define a forward-compatible state struct whose fields are populated by
@@ -146,6 +147,13 @@ unusedStructMember:libs/ra_net/src/ra_net_internal.h
 # a defensive early-out that cppcheck proves redundant from the loop
 # condition, but it documents intent when the surrounding logic evolves.
 knownConditionTrueFalse:libs/ra_net/src/ra_net_udp.c:664
+
+# knownConditionTrueFalse in ra_dual_core: internal_is_cpu0() returns
+# a compile-time constant that depends on RA_BUILD_FOR_CPU1. cppcheck
+# only ever sees one branch (CPU0 = host or M85 build), so the
+# !internal_is_cpu0() guard appears redundant; it is the documented
+# CPU1-build defensive path.
+knownConditionTrueFalse:libs/ra_hal/src/ra_dual_core.c
 
 # ---------------------------------------------------------------------------
 # misra-c2012-12.1 (Advisory) -- per-line suppressions under D-004 partial
