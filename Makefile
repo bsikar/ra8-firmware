@@ -171,10 +171,12 @@ fuzz:
 	    -DCMAKE_CXX_COMPILER=$(FUZZ_CXX) \
 	    -DCMAKE_BUILD_TYPE=Debug
 	$(CMAKE) --build $(FUZZ_BUILD) --target ra_fuzz_all -j
+	@bash scripts/utils/init_fuzz_corpora.sh
 	@for t in $(FUZZ_TARGETS); do \
 	  echo "==== Running $$t for $(FUZZ_SECONDS)s ===="; \
 	  mkdir -p $(FUZZ_BUILD)/crashes/$$t; \
 	  $(FUZZ_BUILD)/fuzz/$$t \
+	      tests/fuzz/corpus/$$t \
 	      -max_total_time=$(FUZZ_SECONDS) \
 	      -runs=10000 \
 	      -print_final_stats=1 \

@@ -67,10 +67,19 @@ if [[ ! -x "${bin}" ]]; then
     exit 1
 fi
 
-echo "Running ${target} for ${seconds}s (artefacts -> ${crash_dir})..."
+# Seed the corpus directory the first time and on every run -- the
+# init script is idempotent and only refreshes the known-good seeds,
+# so any crash reproducers added later are left in place.
+bash "${ROOT}/scripts/utils/init_fuzz_corpora.sh" >/dev/null
+corpus_dir="${ROOT}/tests/fuzz/corpus/${target}"
+
+echo "Running ${target} for ${seconds}s (corpus -> ${corpus_dir}, artefacts -> ${crash_dir})..."
 # -max_total_time bounds wall-clock; -print_final_stats shows coverage.
-# -artifact_prefix= writes any crash inputs into the crash dir.
+# -artifact_prefix= writes any crash inputs into the crash dir. The
+# positional corpus dir is consumed as the seed corpus and is also
+# where libFuzzer writes new interesting inputs.
 "${bin}" \
+    "${corpus_dir}" \
     -max_total_time="${seconds}" \
     -print_final_stats=1 \
     -artifact_prefix="${crash_dir}/"

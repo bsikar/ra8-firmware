@@ -89,6 +89,36 @@ sources with `-fsanitize=fuzzer-no-link,address,undefined` so coverage
 feedback reaches the parsers themselves. Not done yet because the
 current approach already finds bugs and keeps the cmake graph simple.
 
+## Seed corpora
+
+Each harness ships with a small set of known-good inputs under
+`tests/fuzz/corpus/<target>/`. Starting from real coverage rather
+than random bytes lets libFuzzer reach interesting parser states in
+seconds rather than minutes, which is the difference between the
+30-second smoke run finding a regression and missing it.
+
+The seeds are (re-)materialised by `scripts/utils/init_fuzz_corpora.sh`,
+which is invoked automatically by `make fuzz` and by
+`scripts/utils/run_fuzz.sh` before each session. The script is
+idempotent: it overwrites the seed files in place but does not touch
+crash reproducers added by the fuzzer or by hand.
+
+| Target              | Seeds | Generation                                                          |
+|---------------------|-------|---------------------------------------------------------------------|
+| `fuzz_ra_jpeg_sw`   | 5     | `scripts/utils/gen_jpeg_fixture.py` at five (W,H) sizes             |
+| `fuzz_ra_epub`      | 2     | Hand-crafted minimal EPUB ZIPs via Python `zipfile`                 |
+| `fuzz_ra_modem_at`  | 10    | Plain-text AT response strings (`OK`, `+CSQ:`, `+CME ERROR:`, ...)  |
+| `fuzz_ra_net_arp`   | 5     | Ethernet/ARP frames (request, reply, gratuitous variants)           |
+| `fuzz_ra_net_ipv4`  | 5     | Ethernet/IPv4 frames (ICMP echo, UDP DNS, TCP SYN, DHCP, reply)     |
+
+The corpus directory is passed to libFuzzer as a positional argument.
+libFuzzer also writes any *new* coverage-expanding inputs back into
+the same directory across runs -- this is how the corpus grows
+organically as the parsers gain new branches. Crash inputs are kept
+separate (under `tests/build-fuzz/crashes/<target>/`) and should be
+hand-promoted into `tests/fuzz/corpus/<target>/` as regression seeds
+once the underlying bug is fixed -- see "Filing crashes" below.
+
 ## Filing crashes
 
 A crash surfaces as a non-zero exit from the harness, plus a binary
