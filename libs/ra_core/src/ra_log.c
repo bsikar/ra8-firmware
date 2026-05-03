@@ -37,10 +37,15 @@
  */
 
 typedef enum : uintptr_t {
-  k_ra_itm_stim_base = 0xE0000000UL, /**< ITM stimulus port 0 base. */
-  k_ra_itm_tcr_addr  = 0xE0000E80UL, /**< ITM Trace Control Register. */
-  k_ra_itm_tenr_addr = 0xE0000E00UL, /**< ITM Trace Enable  Register. */
+  k_ra_itm_stim_base  = 0xE0000000UL, /**< ITM stimulus port 0 base. */
+  k_ra_itm_tcr_addr   = 0xE0000E80UL, /**< ITM Trace Control Register. */
+  k_ra_itm_tenr_addr  = 0xE0000E00UL, /**< ITM Trace Enable  Register. */
+  k_ra_scb_demcr_addr = 0xE000EDFCUL, /**< SCB DEMCR (TRCENA at bit 24). */
 } ra_itm_addr_t;
+
+typedef enum : uint32_t {
+  k_ra_demcr_trcena_mask = 0x01000000UL, /**< DEMCR.TRCENA -- bit 24. */
+} ra_demcr_bits_t;
 
 /**
  * @brief Get the ITM stimulus-port-0 register.
@@ -132,6 +137,33 @@ static inline volatile uint32_t* internal_itm_tenr(void)
  */
 static inline bool internal_itm_ready(void)
 {
+#ifndef RA_SIMULATOR_MODE
+  /* Hardening: if DEMCR.TRCENA is clear the ITM block is powered down
+   * and any read of its registers (TCR, TENR, STIM) will bus-fault.
+   * Pre-check TRCENA in DEMCR (always accessible) before touching ITM.
+   *
+   * This was the root cause of escalation-to-LOCKUP observed during
+   * USB bring-up: the original USB fault entered the fault handler,
+   * which called this function, which read ITM_TCR with TRCENA=0 ->
+   * second fault -> LOCKUP at PC=0xEFFFFFFE, hiding the real PC. */
+  const uint32_t demcr = *(volatile uint32_t*)k_ra_scb_demcr_addr;
+  if ((demcr & (uint32_t)k_ra_demcr_trcena_mask) == 0U) {
+    return false;
+  }
+  /* Additional belt-and-braces: never poke ITM from a fault context.
+   * IPSR != 0 means we are inside an exception handler. Even if
+   * TRCENA happens to be on, dropping log lines is preferable to a
+   * second fault that masks the original PC. */
+  /* cppcheck-suppress unreadVariable
+   * cppcheck-suppress knownConditionTrueFalse
+   * Inline asm `mrs` writes IPSR into the variable; cppcheck cannot
+   * see through the asm and assumes the value stays 0. */
+  volatile uint32_t ipsr = 0U;
+  __asm__ volatile("mrs %0, ipsr" : "=r"(ipsr));
+  if (ipsr != 0U) {
+    return false;
+  }
+#endif
   const uint32_t tcr  = *internal_itm_tcr();
   const uint32_t tenr = *internal_itm_tenr();
   /* TCR bit 0 = ITMENA. TENR bit 0 = stimulus port 0 enabled. */

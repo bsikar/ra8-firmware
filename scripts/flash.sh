@@ -42,14 +42,15 @@ TMP_SCRIPT=$(mktemp)
 trap 'rm -f "$TMP_SCRIPT"' EXIT
 
 # Notes on the device string:
-#   - `R7KA8D2KFLCAC` is not in the JLink device database (as of v9.38a),
-#     which causes the GUI "unknown device" dialog to pop on macOS.
-#   - `CORTEX-M85` is the actual M-profile core — safe fallback that
-#     skips the dialog and works for flash + halt.
+#   - `R7KA8D2KF_CPU0` is the JLink-recognised name for the EK-RA8D2 part
+#     (CPU0 = the Cortex-M85). This must be used instead of `CORTEX-M85`,
+#     because the generic core name causes JLink to bring up the device-
+#     selection GUI on macOS even with `-nogui 1`, and (worse) skips the
+#     RA-specific flash algorithm so MRAM writes silently fail.
 #   - `-nogui 1` suppresses the "Target device settings" picker.
 #   - `-SelectEmuBySN` pins the probe so multi-probe machines don't prompt.
 cat > "$TMP_SCRIPT" <<EOF
-device CORTEX-M85
+device R7KA8D2KF_CPU0
 si 1
 speed 4000
 connect
