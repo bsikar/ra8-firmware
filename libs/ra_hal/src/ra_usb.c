@@ -102,7 +102,9 @@ typedef enum : uint16_t {
  * loop runs in a dedicated ThreadX worker, not in NVIC context.
  */
 typedef enum : uint32_t {
-  k_ra_usb_frdy_poll_limit = 10000000UL, /**< Spin-loops before timeout. */
+  k_ra_usb_frdy_poll_limit    = 10000000UL, /**< FRDY spin-loops before timeout. */
+  k_ra_usb_curpipe_poll_limit = 1024UL,     /**< CURPIPE/ISEL ack spin (FSP-style). */
+  k_ra_usb_bval_settle_iters  = 8UL,        /**< Reads after BVAL pulse to ensure latch. */
 } ra_usb_internal_lim32_t;
 
 /**
@@ -196,35 +198,37 @@ static void internal_select_cfifo(volatile r_usb_regs_t* reg, uint16_t pipe_num,
 {
   /* HUM Ch 36.2.7 "CFIFOSEL : CFIFO Port Select Register", p 1976.
    *
-   * The Renesas USB IP requires a readback-poll after rewriting CURPIPE
-   * or ISEL: the controller takes a few peripheral-clock cycles to
-   * actually re-point the CFIFO at the requested pipe/direction, and
-   * during that window CFIFOCTR.FRDY can still report the *previous*
-   * pipe's buffer state. Without the spin we observed EP0 enumeration
-   * hang at CTSQ=read-data-stage on the very first GET_DESCRIPTOR(DEVICE):
-   * the SETUP arrives on DCP OUT (CFIFOSEL.ISEL=0), we then write
-   * CFIFOSEL with ISEL=1 to push the device descriptor, FRDY reads
-   * stale-asserted from the OUT-direction selection, internal_fifo_write
-   * drops bytes into a half-switched FIFO, and the host hangs waiting
-   * for IN data that never lands on the wire.
+   * Mirrors FSP `usb_cstd_chg_curpipe` (r_usb_creg_abs.c): RMW only the
+   * CURPIPE[3:0] and ISEL[5] bits, preserving the rest of the register
+   * (notably MBW and any reserved bits the IP touches internally), then
+   * poll on (CURPIPE | ISEL) until the readback reflects the request.
    *
-   * Mirrors the FSP `hw_usb_set_curpipe` retry pattern: rewrite-and-
-   * read back until the CURPIPE+ISEL+MBW field reflects the request.
-   * Bound the loop to the same FRDY budget so a wedged controller
-   * cannot livelock the worker thread. */
-  const uint16_t match_mask =
-    (uint16_t)(k_ra_fifosel_curpipe | k_ra_fifosel_isel | k_ra_fifosel_mbw_16);
-  uint16_t sel = (uint16_t)(pipe_num & k_ra_fifosel_curpipe);
-  sel          = (uint16_t)(sel | k_ra_fifosel_mbw_16);
+   * Earlier revision masked CURPIPE | ISEL | MBW in the readback test
+   * and rewrote the whole register on each iteration; the MBW bits
+   * occasionally read back as 0 between the IP latching the new pipe
+   * and the FIFO width re-arming, leaving the spin to burn its full
+   * 10M iteration budget (~10 ms wall) before falling through. With
+   * the EP0 IN data-stage that delay pushed the second chunk past the
+   * host's IN-token cadence and the first chunk landed in the FIFO
+   * (BSTS=1) but DCPCTR.PID was never advanced from NAK to BUF.
+   *
+   * Bound the loop to a small fixed budget rather than the FRDY limit:
+   * if the IP cannot acknowledge a CURPIPE/ISEL change within a few
+   * hundred peripheral-clock cycles it is wedged and a longer wait
+   * will not recover it. */
+  const uint16_t match_mask = (uint16_t)(k_ra_fifosel_curpipe | k_ra_fifosel_isel);
+  uint16_t       want       = (uint16_t)(pipe_num & k_ra_fifosel_curpipe);
   if (is_in_dir) {
-    sel = (uint16_t)(sel | k_ra_fifosel_isel);
+    want = (uint16_t)(want | k_ra_fifosel_isel);
   }
-  reg->CFIFOSEL = sel;
-  for (uint32_t i = 0U; i < (uint32_t)k_ra_usb_frdy_poll_limit; ++i) {
-    if ((uint16_t)(reg->CFIFOSEL & match_mask) == (uint16_t)(sel & match_mask)) {
+  /* RMW: clear CURPIPE+ISEL, OR in the requested value. */
+  const uint16_t cur     = reg->CFIFOSEL;
+  const uint16_t cleared = (uint16_t)(cur & (uint16_t)~match_mask);
+  reg->CFIFOSEL          = (uint16_t)(cleared | want);
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_usb_curpipe_poll_limit; ++i) {
+    if ((uint16_t)(reg->CFIFOSEL & match_mask) == want) {
       return;
     }
-    reg->CFIFOSEL = sel;
   }
 }
 
@@ -879,8 +883,17 @@ static ra_err_t internal_dcp_push_chunk(volatile r_usb_regs_t* reg, const uint8_
   const ra_err_t ready = internal_wait_frdy(reg);
   RA_RETURN_ON_ERROR(ready, s_tag, "dcp_in_data: FRDY timeout (chunk)");
   internal_fifo_write(reg, p, n);
-  /* HUM Ch 36.2.8 "CFIFOCTR : CFIFO Port Control Register", p 1979 */
+  /* HUM Ch 36.2.8 "CFIFOCTR : CFIFO Port Control Register", p 1979.
+   * Pulse BVAL to commit the FIFO contents to the controller's IN buffer. */
   reg->CFIFOCTR = k_ra_fifoctr_bval;
+  /* Ensure the BVAL write has propagated into DCPCTR.BSTS before the
+   * caller advances DCPCTR.PID to BUF. Without this read-back the PID
+   * RMW can race the IP's internal buffer-commit and the host sees an
+   * IN token NAK'd indefinitely with BSTS=1 already latched (observed
+   * on EP0 IN GET_DESCRIPTOR(DEVICE) right after VBUS attach). */
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_usb_bval_settle_iters; ++i) {
+    (void)reg->CFIFOCTR;
+  }
   return k_ra_ok;
 }
 
