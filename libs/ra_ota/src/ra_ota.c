@@ -1211,6 +1211,11 @@ static ra_err_t priv_step_dispatch(void)
 {
   switch (s_state) {
     case k_ra_ota_state_idle: {
+      /* If a previous run_step already fetched and validated the
+       * manifest, advance to download instead of re-fetching it. */
+      if (s_manifest_valid) {
+        return ra_ota_download_to_inactive_bank(&s_manifest);
+      }
       ra_ota_manifest_t m;
       return ra_ota_check_for_update(&m);
     }
