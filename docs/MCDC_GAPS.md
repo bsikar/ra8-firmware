@@ -15,12 +15,12 @@ Live audit of compound boolean decisions reported by `llvm-cov show --show-mcdc`
 
 - Source files with at least one decision: **93**
 - Total compound decisions in scope: **531**
-- Decisions at 100% MC/DC (`yes`): **473**
-- Decisions partially covered (`partial`): **30**
+- Decisions at 100% MC/DC (`yes`): **474**
+- Decisions partially covered (`partial`): **29**
 - Decisions fully uncovered (`no`): **28**
-- Coverage rate (yes / total): **89.08%**
-- Deactivated gap conditions (DO-178C 6.4.4.3): **58**
-- Reachable-condition denominator (total - deactivated): **473**
+- Coverage rate (yes / total): **89.27%**
+- Deactivated gap conditions (DO-178C 6.4.4.3): **57**
+- Reachable-condition denominator (total - deactivated): **474**
 - **Reachable MC/DC rate**: **100.00%** -- this is the gate threshold (100% required).
 
 See `docs/MCDC_DEACTIVATIONS.md` for the per-condition deactivation rationale catalog.
@@ -82,7 +82,6 @@ These conditions are unreachable on any public-API path and are therefore exempt
 | libs/ra_hal/src/ra_usb_cdc.c | 2 | internal_apply_line_coding | `if ((data == nullptr) \|\| (len < k_ra_cdc_line_coding_le...` | Annotated deactivation: TU-local helper internal_apply_li... |
 | libs/ra_hal/src/ra_usb_hmsc.c | 3 | internal_normalise_xfer_err | `if ((err == k_ra_ok) \|\| (err == k_ra_err_no_data) \|\| ...` | Annotated deactivation: TU-local helper internal_normalis... |
 | libs/ra_hal/src/ra_vin.c | 2 | internal_mc_rmw | `if (((mc_now & k_ra_vin_mc_me) != 0UL) \|\| ((fc_now & k_...` | Annotated deactivation: ra_vin idle-state guard; MC.ME (m... |
-| libs/ra_modem_at/src/ra_modem_at.c | 2 | ra_modem_at_internal_str_len | `while ((i < UINT16_MAX) && (s[i] != '\0')) {` | Annotated deactivation: 64KB-bound is a defensive watchdo... |
 | libs/ra_net/src/ra_net_arp.c | 2 | arp_insert | `if (s->arp[i].timestamp_ms != 0U && memcmp(s->arp[i].ip.b...` | Annotated deactivation: TU-local helper arp_insert occupi... |
 | libs/ra_net_pal/src/ra_net_pal.c | 2 | internal_eth_event | `if ((s_state.event_fn != nullptr) && (pal_mask != k_ra_ne...` | Annotated deactivation: TU-local helper internal_eth_even... |
 | libs/ra_psa_crypto/src/ra_psa_crypto.c | 2 | internal_sha256_rotr | `for (size_t i = 0U; (i < key_len) && (off < sizeof(buf));...` | Defensive scratch-buffer bound: input length is capped by... |
@@ -114,7 +113,6 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra_mipi_phy | 22 | 21 | 1 | 0 |
 | ra_vin | 14 | 13 | 1 | 0 |
 | ra_touch_cal | 13 | 12 | 1 | 0 |
-| ra_modem_at | 12 | 11 | 1 | 0 |
 | ra_spi_b | 9 | 8 | 0 | 1 |
 | ra_iic_b | 7 | 6 | 0 | 1 |
 | ra_dotf | 6 | 5 | 0 | 1 |
@@ -135,6 +133,7 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra_ble_l2cap | 12 | 12 | 0 | 0 |
 | ra_epub_chapter | 12 | 12 | 0 | 0 |
 | ra_gfx_text | 12 | 12 | 0 | 0 |
+| ra_modem_at | 12 | 12 | 0 | 0 |
 | ra_reflow_layout | 11 | 11 | 0 | 0 |
 | ra_usb | 11 | 11 | 0 | 0 |
 | ra_ble_gatt | 10 | 10 | 0 | 0 |
