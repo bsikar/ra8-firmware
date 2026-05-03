@@ -39,10 +39,10 @@ import subprocess
 import sys
 from pathlib import Path
 
-# Wave 0: warn but do not block. Many existing violations exist; the
-# cleanup wave will land them, then this flag flips to False.
-# TODO: flip to False once docs/CITATION_POLICY.md cleanup is complete.
-WAVE_0_WARN_ONLY = True
+# Strict: cleanup wave landed; gate now blocks any new line-citation
+# violation. See docs/CITATION_POLICY.md for the rule and the
+# `// CITES-OK: <reason>` per-line opt-out.
+WAVE_0_WARN_ONLY = False
 
 SCAN_ROOTS = ("libs/", "src/", "tests/", "examples/", "port/")
 DOC_SCAN_ROOTS = ("docs/", "")  # "" => repo root (top-level *.md / *.txt)
