@@ -18,6 +18,7 @@
 
 #include "ra_err.h"
 #include "ra_modem_at.h"
+#include "ra_modem_at_internal.h"
 #include "unity_minimal.h"
 
 /* ------------------------------------------------------------------------- */
@@ -655,41 +656,31 @@ static void test_mcdc_reset_line_buf_pair(void)
  * @test test_mcdc_internal_classify_cmd_echo_pair
  *
  * @par MC/DC:
- * Decision (libs/ra_modem_at/src/ra_modem_at.c line 344, internal_classify):
+ * Decision (libs/ra_modem_at/src/ra_modem_at.c, ra_modem_at_internal_classify):
  *   ``(cmd_echo != nullptr) && (internal_str_eq(line, cmd_echo) != 0U)``
- * (2 conditions, AND). N+1 = 3 vectors. Static helper -- mirrored
- * byte-identically per DO-178C 6.4.4.3 source-text equivalence.
+ * (2 conditions, AND). N+1 = 3 vectors. Driven directly against
+ * production source via ra_modem_at_internal.h (test-access policy,
+ * see CLAUDE.md "Test access to internal symbols").
  *
  * - V1 cmd_echo=NULL                  -> C1=F shorts.       Decision F.
- * - V2 cmd_echo="AT", line="AT"       -> C1=T, C2=T.        Decision T.
+ * - V2 cmd_echo="AT", line="AT"       -> C1=T, C2=T.        Decision T (echo).
  * - V3 cmd_echo="AT", line="OTHER"    -> C1=T, C2=F.        Decision F.
  * V1+V2 isolate C1; V2+V3 isolate C2.
+ *
+ * @par DO-178C 6.4.4.3 rationale:
+ * 2-condition decision; N+1 = 3 vectors satisfy MC/DC fully.
  */
-static int mirror_cmd_echo_match(const char* line, const char* cmd_echo)
-{
-  if (cmd_echo == NULL) {
-    return 0;
-  }
-  uint16_t i = 0U;
-  while ((line[i] != '\0') && (cmd_echo[i] != '\0')) {
-    if (line[i] != cmd_echo[i]) {
-      return 0;
-    }
-    ++i;
-  }
-  if (line[i] != cmd_echo[i]) {
-    return 0;
-  }
-  return 1;
-}
-
 static void test_mcdc_internal_classify_cmd_echo_pair(void)
 {
-  TEST_BEGIN("modem_at MC/DC: cmd_echo AND (line 344)");
-  TEST_ASSERT_EQ(0, mirror_cmd_echo_match("AT", NULL));
-  TEST_ASSERT_EQ(1, mirror_cmd_echo_match("AT", "AT"));
-  TEST_ASSERT_EQ(0, mirror_cmd_echo_match("OTHER", "AT"));
-  TEST_END("modem_at MC/DC: cmd_echo AND (line 344)");
+  TEST_BEGIN("modem_at MC/DC: cmd_echo AND (ra_modem_at_internal_classify)");
+  /* V1: cmd_echo=NULL -> short circuit -> not classified as echo. */
+  TEST_ASSERT(ra_modem_at_internal_classify("AT", NULL, NULL) != k_ra_modem_line_kind_echo);
+  /* V2: both true -> echo. */
+  TEST_ASSERT_EQ((int32_t)k_ra_modem_line_kind_echo,
+                 (int32_t)ra_modem_at_internal_classify("AT", "AT", NULL));
+  /* V3: cmd_echo non-NULL but line mismatch -> not echo. */
+  TEST_ASSERT(ra_modem_at_internal_classify("OTHER", "AT", NULL) != k_ra_modem_line_kind_echo);
+  TEST_END("modem_at MC/DC: cmd_echo AND (ra_modem_at_internal_classify)");
 }
 
 int32_t main(void)
