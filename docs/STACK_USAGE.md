@@ -147,17 +147,28 @@ zero critical-path-module breaches.
 ## Pre-commit gate
 
 `scripts/git/pre-commit` invokes
-`scripts/utils/stack_usage_check.py --warn-only --quiet` on every
-commit. Behaviour:
+`scripts/utils/stack_usage_check.py --strict --quiet` on every commit.
+Behaviour:
 
 * If no `.su` files exist yet (fresh clone) the gate is a no-op so
   the first commit on a clean tree never blocks.
-* Soft violations (per-app frame > 2048 bytes) and critical-module
-  breaches are reported but do not fail the commit -- this gate is
-  intentionally warn-only initially and will be promoted to strict
-  in a follow-up commit once every soft violator has been either
-  reduced or annotated with `RA_STACK_BUDGET(N)`.
-* A `dynamic` qualifier ANYWHERE in the report is a hard fail. NASA
+* **Soft violations in first-party TUs** (per-app frame > 2048 bytes
+  in any file outside `libs/third_party/`) -- HARD FAIL. The author
+  must either reduce the frame (move scratch buffers to module-static
+  storage) or enroll the function in `FIRST_PARTY_EXEMPTIONS` at the
+  top of `scripts/utils/stack_usage_check.py` with a written
+  rationale. Strict-mode promotion happened on 2026-05-02 once every
+  first-party function was verified at <2048 bytes against HEAD.
+* **Soft violations in third-party SOUP** (`libs/third_party/`) --
+  reported but ignored. The current 9 offenders all live in
+  `libs/third_party/miniz/miniz.c` (deflate / zip helpers, max
+  9936 B), invoked only from the ereader app's worker thread which
+  carries a generously-sized stack. SOUP is qualified per
+  `docs/SOUP/`.
+* **Critical-module breaches** (`ra_isr` / `ra_check` / `ra_err` /
+  `ra_mpu` / `ra_cgc` / `ra_pfs` > 256 bytes) -- HARD FAIL via the
+  existing critical-path gate inside the script.
+* A `dynamic` qualifier ANYWHERE in the report is a HARD FAIL. NASA
   Power-of-10 Rule 3 forbids VLAs and `alloca()` in this firmware
   regardless of frame size, so no deviation procedure is offered.
 

@@ -60,6 +60,63 @@ CRITICAL_MODULES = (
     "ra_pfs",
 )
 
+# --- Strict-mode partitioning -------------------------------------------------
+#
+# In `--strict` mode the soft per-app frame limit is promoted to a hard
+# gate, but only for *first-party* code (everything outside
+# THIRD_PARTY_PATH_FRAGMENTS). Third-party SOUP is exempt because:
+#
+#   * It is pre-qualified and lives under libs/third_party/ -- its
+#     justification documents are filed under docs/SOUP/ (see
+#     docs/SOUP/README.md).
+#   * The largest current offenders (miniz mz_zip_reader_*,
+#     tinfl_decompress_mem_to_*, ~10 kB frames) are deflate / zip
+#     decoder helpers that are only invoked from the ereader app's
+#     dedicated worker thread, which carries a generously-sized stack.
+#
+# The FIRST_PARTY_EXEMPTIONS list is the explicit, documented escape
+# hatch for first-party functions that have a justified large frame.
+# Add a tuple `(tu_substring, function_name, max_bytes, rationale)` per
+# entry; the gate will accept any first-party frame at or below
+# `max_bytes` for that function. Empty list today means *no* first-
+# party function is exempt.
+
+THIRD_PARTY_PATH_FRAGMENTS = (
+    "/libs/third_party/",
+    # Vendor-supplied port shims live under port/ but mostly call into
+    # third_party/ libraries; they remain first-party and gated.
+)
+
+FIRST_PARTY_EXEMPTIONS = (
+    # ("tu_substring", "function_name", max_bytes, "rationale"),
+    #
+    # Example template -- intentionally empty today (every first-party
+    # function is currently under the 2048-byte default limit, see
+    # `python3 scripts/utils/stack_usage_check.py --strict` against
+    # HEAD as of the commit that added this list):
+    #
+    # (
+    #     "libs/ra_epub/src/ra_epub_open.c",
+    #     "priv_parse_archive",
+    #     4344,
+    #     "ZIP central-directory parser: 4 kB scratch struct on stack "
+    #     "to avoid heap; only invoked once at chapter open from the "
+    #     "ereader worker thread (8 kB stack budget).",
+    # ),
+)
+
+
+def is_first_party(tu_path: str) -> bool:
+    return not any(frag in tu_path for frag in THIRD_PARTY_PATH_FRAGMENTS)
+
+
+def exemption_for(tu_path: str, func: str) -> int:
+    """Return the exempt max-bytes for a first-party (tu, func) pair, or 0."""
+    for tu_frag, fn_name, max_bytes, _why in FIRST_PARTY_EXEMPTIONS:
+        if tu_frag in tu_path and fn_name == func:
+            return max_bytes
+    return 0
+
 _SU_LINE = re.compile(
     r"^(?P<path>.+?):(?P<line>\d+):(?P<col>\d+):(?P<func>[^\s\t]+)"
     r"[\t ]+(?P<bytes>\d+)[\t ]+(?P<qual>[A-Za-z,]+)\s*$"
@@ -224,12 +281,23 @@ def main(argv: list) -> int:
             "yet (so a fresh clone never blocks a commit)."
         ),
     )
+    parser.add_argument(
+        "--strict",
+        action="store_true",
+        help=(
+            "Promote the soft frame limit to a hard gate for "
+            "*first-party* TUs (everything outside libs/third_party/). "
+            "Third-party SOUP remains exempt. First-party functions "
+            "with a justified large frame must be enrolled in "
+            "FIRST_PARTY_EXEMPTIONS at the top of this script."
+        ),
+    )
     args = parser.parse_args(argv)
 
     repo_root = args.repo_root.resolve()
     su_files = find_su_files(repo_root)
     if not su_files:
-        if args.warn_only:
+        if args.warn_only or args.strict:
             # Pre-commit-friendly: a freshly cloned tree has no .su
             # files yet, and forcing a full app build inside the hook
             # would slow every commit by minutes. Skip silently.
@@ -277,6 +345,38 @@ def main(argv: list) -> int:
                 f"  [{e.app}] {e.func} ({e.tu}): "
                 f"{e.bytes_} bytes [{e.qualifier}]"
             )
+
+    # --- Strict gate for first-party code -----------------------------------
+    # Promotes any soft violation in a first-party TU into a hard
+    # failure unless the (tu, func) pair is in FIRST_PARTY_EXEMPTIONS.
+    if args.strict:
+        offenders = []
+        for e in soft:
+            if not is_first_party(e.tu):
+                continue
+            allowed = exemption_for(e.tu, e.func)
+            if allowed > 0 and e.bytes_ <= allowed:
+                continue
+            offenders.append(e)
+        if offenders:
+            print(
+                f"\nSTRICT first-party violations: "
+                f"{len(offenders)} function(s) exceed "
+                f"{args.frame_limit} bytes and are not exempt:"
+            )
+            for e in sorted(offenders, key=lambda r: r.bytes_, reverse=True):
+                print(
+                    f"  [{e.app}] {e.func} ({e.tu}): "
+                    f"{e.bytes_} bytes [{e.qualifier}]"
+                )
+            print(
+                "\nFix: either reduce the frame size (move scratch "
+                "buffers to module-static storage) or enroll the "
+                "function in FIRST_PARTY_EXEMPTIONS at the top of "
+                "scripts/utils/stack_usage_check.py with a written "
+                "rationale."
+            )
+            return 1
 
     if critical:
         print(
