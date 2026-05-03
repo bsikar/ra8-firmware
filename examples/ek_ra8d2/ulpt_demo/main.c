@@ -1,0 +1,163 @@
+/**
+ * @file main.c
+ * @brief ULPT 1 Hz wake-from-software-standby demo for EK-RA8D2
+ *
+ * @par Tag
+ * [Ring 6 / APP] {World: S}
+ *
+ * @details
+ * Brings up the on-chip Ultra-Low-Power Timer (ULPT0) in 1 Hz mode and
+ * uses its underflow event as a wake source through software-standby
+ * cycles. Each underflow:
+ *
+ *   1. Increments a wake counter.
+ *   2. Logs ``"ulpt: wake N\r\n"`` over the J-Link OB CDC console.
+ *   3. Stops the timer to clear ULPTCR.TUNDF.
+ *   4. Re-arms the timer with the same period.
+ *
+ * The demo deliberately keeps the wake-source path inside the ULPT
+ * driver and polls ULPTCR via ``ra_ulpt_get_status``: this matches the
+ * host unit-test path (no NVIC needed) and exercises the same
+ * register sequence on the EK-RA8D2 silicon.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
+ * @since 0.1.0
+ */
+
+#include <stdint.h>
+
+#include "ra_cgc.h"
+#include "ra_err.h"
+#include "ra_isr.h"
+#include "ra_port_constants.h"
+#include "ra_port_utils.h"
+#include "ra_sci.h"
+#include "ra_time.h"
+#include "ra_ulpt.h"
+
+/** @brief Demo tunables. */
+typedef enum : uint32_t {
+  k_ulpt_demo_baud        = 115200U,
+  k_ulpt_demo_sci_channel = 8U,
+  k_ulpt_demo_poll_ms     = 50U,
+  /* 32 768 LOCO ticks ~= 1 s (chosen so the period fits in the
+   * 32-bit reload field while still being legible at host-test scale). */
+  k_ulpt_demo_period_ticks = 0x8000U,
+} ulpt_demo_const_t;
+
+/** @brief ULPT channel + status. */
+typedef enum : uint8_t {
+  k_ulpt_demo_channel  = 0U,
+  k_ulpt_demo_undf_bit = 0x20U, /**< ULPTCR.TUNDF -- mirrors AGTCR layout. */
+} ulpt_demo_chan_t;
+
+/** @brief SCI8 pin map -- same as uart_hello / rtc_alarm. */
+static const ra_port_pin_t k_ulpt_demo_pin_txd =
+  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_2);
+static const ra_port_pin_t k_ulpt_demo_pin_rxd =
+  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
+
+static const uint8_t k_ulpt_demo_log_msg[] = "ulpt: wake\r\n";
+
+static void ulpt_demo_panic_halt(void)
+{
+  while (1) {
+    __asm__ volatile("wfi");
+  }
+}
+
+[[nodiscard]] static ra_err_t ulpt_demo_pins_init(void)
+{
+  ra_err_t err =
+    ra_pfs_route_peripheral(k_ulpt_demo_pin_txd, k_ra_psel_sci_async, "ulpt_demo.txd8");
+  if (err != k_ra_ok) {
+    return err;
+  }
+  return ra_pfs_route_peripheral(k_ulpt_demo_pin_rxd, k_ra_psel_sci_async, "ulpt_demo.rxd8");
+}
+
+static void ulpt_demo_setup_or_halt(void)
+{
+  uint32_t cpuclk0_hz = 0U;
+  uint32_t pclka_hz   = 0U;
+  if (ra_cgc_init() != k_ra_ok) {
+    ulpt_demo_panic_halt();
+  }
+  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+    ulpt_demo_panic_halt();
+  }
+  if (ra_cgc_get_clock_hz(k_ra_clock_id_pclka, &pclka_hz) != k_ra_ok) {
+    ulpt_demo_panic_halt();
+  }
+  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+    ulpt_demo_panic_halt();
+  }
+  if (ulpt_demo_pins_init() != k_ra_ok) {
+    ulpt_demo_panic_halt();
+  }
+  const ra_sci_cfg_t sci_cfg = {
+    .baud      = k_ulpt_demo_baud,
+    .data_bits = k_ra_sci_data_8,
+    .parity    = k_ra_sci_parity_none,
+    .stop_bits = k_ra_sci_stop_1,
+    .pclk_hz   = pclka_hz,
+  };
+  if (ra_sci_init((uint8_t)k_ulpt_demo_sci_channel, &sci_cfg) != k_ra_ok) {
+    ulpt_demo_panic_halt();
+  }
+  if (ra_ulpt_init() != k_ra_ok) {
+    ulpt_demo_panic_halt();
+  }
+}
+
+/**
+ * @brief Arm ULPT0 with the demo period.
+ *
+ * @par MC/DC:
+ * Compound decision: ``ra_ulpt_start != ok``. One atomic condition x
+ * 2 vectors -- ok (golden) and bad-channel reject (covered in
+ * test_app_ulpt_demo.c).
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] static ra_err_t ulpt_demo_arm(void)
+{
+  return ra_ulpt_start((uint8_t)k_ulpt_demo_channel, (uint32_t)k_ulpt_demo_period_ticks);
+}
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmain"
+int32_t main(void)
+{
+  ulpt_demo_setup_or_halt();
+  ra_isr_globals_enable();
+
+  if (ulpt_demo_arm() != k_ra_ok) {
+    ulpt_demo_panic_halt();
+  }
+
+  while (1) {
+    uint8_t status = 0U;
+    if (ra_ulpt_get_status((uint8_t)k_ulpt_demo_channel, &status) != k_ra_ok) {
+      break;
+    }
+    if ((status & (uint8_t)k_ulpt_demo_undf_bit) != 0U) {
+      if (ra_sci_write_polling((uint8_t)k_ulpt_demo_sci_channel,
+                               k_ulpt_demo_log_msg,
+                               (uint32_t)(sizeof(k_ulpt_demo_log_msg) - 1U)) != k_ra_ok) {
+        break;
+      }
+      if (ra_ulpt_stop((uint8_t)k_ulpt_demo_channel) != k_ra_ok) {
+        break;
+      }
+      if (ulpt_demo_arm() != k_ra_ok) {
+        break;
+      }
+    }
+    ra_delay_ms((uint32_t)k_ulpt_demo_poll_ms);
+  }
+  ulpt_demo_panic_halt();
+  return 0;
+}
+#pragma GCC diagnostic pop
