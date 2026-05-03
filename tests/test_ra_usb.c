@@ -1100,7 +1100,11 @@ static void test_mcdc_dcp_in_data_len_data(void)
    * memory, so we cannot easily simulate the controller's FRDY
    * re-assertion between chunks; the on-target multi-chunk path is
    * exercised by the live USB enumeration test (75-byte CONFIGURATION
-   * descriptor on real silicon). */
+   * descriptor on real silicon). The loop bound itself
+   * (``k_ra_usb_frdy_poll_limit``) was bumped to ~10 ms ceiling so
+   * the second chunk no longer times out unconditionally; the bound
+   * itself is reachable on hardware (host pulls each chunk in <100
+   * us) so production calls return after a single FRDY=1 sample. */
   ra_usb_fs()->CFIFOCTR = (uint16_t)k_ra_fifoctr_frdy;
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_dcp_in_data(k_ra_usb_speed_fs, big_buf, 64U));
   TEST_END("mcdc: dcp_in_data (len/data) compound decision");
