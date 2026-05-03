@@ -82,8 +82,28 @@ typedef enum : uint16_t {
   k_ra_usb_max_address     = 127U,  /**< 7-bit USB address.             */
   k_ra_usb_dcp_max_packet  = 64U,   /**< EP0 default packet size.       */
   k_ra_usb_pipe_max_packet = 1024U, /**< Max packet ceiling for pipes.  */
-  k_ra_usb_frdy_poll_limit = 1000U, /**< Spin-loops before timeout.     */
 } ra_usb_internal_lim_t;
+
+/**
+ * @enum ra_usb_internal_lim32_t
+ * @brief 32-bit driver-wide bounds (don't fit in uint16_t).
+ *
+ * @details ``frdy_poll_limit`` is sized for the worst-case wait
+ * between two consecutive DCP IN chunks. The DCP is single-buffered:
+ * after pushing chunk N, FRDY does NOT re-assert until the host has
+ * actually pulled chunk N off the wire (one full IN token + data +
+ * ACK round-trip on USB-FS, ~50 us). The original 1000-spin limit
+ * (~1 us at 1 GHz) timed out unconditionally on every multi-chunk
+ * EP0 IN, so 75-byte CONFIGURATION descriptors stalled at chunk 1.
+ * 10 million spins == ~10 ms ceiling at 1 GHz, well above the
+ * USB-FS host's IN re-issue cadence; the loop exits early on the
+ * first FRDY=1 sample so the typical post-host-pull wait is still
+ * sub-100 us. Synchronous polling is acceptable because the dispatch
+ * loop runs in a dedicated ThreadX worker, not in NVIC context.
+ */
+typedef enum : uint32_t {
+  k_ra_usb_frdy_poll_limit = 10000000UL, /**< Spin-loops before timeout. */
+} ra_usb_internal_lim32_t;
 
 /**
  * @enum ra_usb_byte_mask_t
@@ -200,8 +220,12 @@ static void internal_select_cfifo(volatile r_usb_regs_t* reg, uint16_t pipe_num,
  */
 static ra_err_t internal_wait_frdy(volatile r_usb_regs_t* reg)
 {
-  /* HUM Ch 36.2.8 "CFIFOCTR : CFIFO Port Control Register", p 1979 */
-  for (uint16_t i = 0U; i < k_ra_usb_frdy_poll_limit; ++i) {
+  /* HUM Ch 36.2.8 "CFIFOCTR : CFIFO Port Control Register", p 1979.
+   * Loop bound is large (~10 ms ceiling at 1 GHz) because the DCP
+   * is single-buffered: between consecutive EP0 IN chunks FRDY stays
+   * low until the host actually pulls the previous chunk off the
+   * wire. See ra_usb_internal_lim32_t for the rationale. */
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_usb_frdy_poll_limit; ++i) {
     if ((reg->CFIFOCTR & k_ra_fifoctr_frdy) != 0U) {
       return k_ra_ok;
     }
