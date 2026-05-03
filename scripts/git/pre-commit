@@ -296,6 +296,11 @@ if [[ -f scripts/utils/stack_usage_check.py ]]; then
     fi
 fi
 
+# ---- Clang Static Analyzer (scan-build) -- warn-only -------------
+# scan-build is a multi-minute analyzer pass and is NOT invoked from
+# the per-commit hook. Run it locally with `make scan-build`, or in
+# CI; see docs/STATIC_ANALYSIS.md for the documented baseline.
+
 # -----------------------------------------------------------------------------
 # CONCLUSION
 # -----------------------------------------------------------------------------
