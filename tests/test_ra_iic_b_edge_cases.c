@@ -1,6 +1,6 @@
 /**
  * @file test_ra_iic_b_edge_cases.c
- * @brief Edge-case + stress unit tests for the IIC_B (I3C in I2C-mode) master.
+ * @brief Edge-case + stress unit tests for the IIC_B (I3C in I2C-mode) controller.
  *
  * @details
  * Complements ``test_ra_iic_b.c`` with focused stress / edge-case
@@ -11,7 +11,7 @@
  *     ``k_ra_err_nack`` with a final STOP);
  *   - repeated-START sequences via ``ra_iic_b_transfer`` (write -> read);
  *   - clock-stretching upper bound: a long-buffer transfer where the
- *     slave never ACKs (TDBEF0 stays low for the duration) returns the
+ *     peripheral never ACKs (TDBEF0 stays low for the duration) returns the
  *     hardware-timeout error rather than spinning forever;
  *   - ``set_clock`` rejects out-of-range bus_hz / pclka_hz.
  *
@@ -131,6 +131,12 @@ static void disarm_alarm(void)
 
 /* --- Bus-busy gate during repeated START attempts --- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_bus_busy_during_start_repeated(void)
 {
   TEST_BEGIN("iic_b bus-busy during START rejected on every retry");
@@ -153,6 +159,12 @@ static void test_bus_busy_during_start_repeated(void)
 
 /* --- NAK distinction: address vs. data --- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_nak_on_address_byte(void)
 {
   TEST_BEGIN("iic_b NAK on address byte yields nack + STOP");
@@ -173,6 +185,12 @@ static void test_nak_on_address_byte(void)
   TEST_END("iic_b NAK on address byte yields nack + STOP");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_nak_on_data_byte(void)
 {
   TEST_BEGIN("iic_b NAK after address (data byte) yields nack + STOP");
@@ -197,6 +215,12 @@ static void test_nak_on_data_byte(void)
 
 /* --- Repeated-START sequence (write-then-read combined transfer) --- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_repeated_start_sequence(void)
 {
   TEST_BEGIN("iic_b repeated-start: write+read transfer");
@@ -218,12 +242,18 @@ static void test_repeated_start_sequence(void)
 
 /* --- Clock-stretching limit: long buffer with no ACK -> timeout --- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_clock_stretch_timeout(void)
 {
   TEST_BEGIN("iic_b clock-stretch limit: TDBEF0 never sets => hw_timeout");
   prep();
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_iic_b_init(0U, &k_iic_b_edge_cfg));
-  /* Bus free so the busy gate passes, but NTST left clear -- the slave is
+  /* Bus free so the busy gate passes, but NTST left clear -- the peripheral is
    * holding SCL low (or just never ACKing). The driver must fail with
    * hw_timeout instead of looping forever. */
   ra_iic_b(0U)->BCST = (uint32_t)k_ra_iic_b_msk_bcst_bfref;
@@ -236,6 +266,12 @@ static void test_clock_stretch_timeout(void)
 
 /* --- set_clock argument validation (bus_hz / pclka_hz extremes) --- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_clock_extremes(void)
 {
   TEST_BEGIN("iic_b set_clock extreme values");
