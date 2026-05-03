@@ -220,14 +220,37 @@ static unsigned int internal_transfer_request(struct UX_SLAVE_TRANSFER_STRUCT* t
     const uint16_t len = (uint16_t)tr->ux_slave_transfer_request_requested_length;
     if (ra_usb_queue_in(s_dcd.speed, pipe, tr->ux_slave_transfer_request_data_pointer, len) !=
         k_ra_ok) {
+      s_dcd.pipes[pipe].xfer = nullptr;
       return UX_TRANSFER_ERROR;
     }
     tr->ux_slave_transfer_request_actual_length = len;
   }
-  /* OUT pipes block until the IRQ path delivers bytes; nothing else
-   * to do here. The class thread waits on
-   * ux_slave_transfer_request_semaphore. */
+
+  /* Synchronous bridge contract (matches ux_dcd_sim_slave_transfer_request):
+   * for non-EP0 transfers the DCD must block on
+   * ux_slave_transfer_request_semaphore until the IRQ path posts
+   * completion (sets completion_code and puts the semaphore). Returning
+   * UX_SUCCESS immediately would let USBX class drivers observe
+   * actual_length=0 and treat it as a short-packet completion --
+   * loopback consumers then busy-spin on (n == 0). */
+#ifndef UX_DEVICE_STANDALONE
+  ULONG timeout = tr->ux_slave_transfer_request_timeout;
+  if (timeout == 0U) {
+    timeout = TX_WAIT_FOREVER;
+  }
+  UINT sem_status =
+    tx_semaphore_get(&tr->ux_slave_transfer_request_semaphore, timeout);
+  if (sem_status != TX_SUCCESS) {
+    /* Timeout / aborted: drop the pipe slot so a stale stash cannot
+     * cause the IRQ path to complete a now-defunct request. */
+    s_dcd.pipes[pipe].xfer                        = nullptr;
+    tr->ux_slave_transfer_request_completion_code = UX_TRANSFER_ERROR;
+    return UX_TRANSFER_ERROR;
+  }
+  return tr->ux_slave_transfer_request_completion_code;
+#else
   return UX_SUCCESS;
+#endif
 }
 
 /**
