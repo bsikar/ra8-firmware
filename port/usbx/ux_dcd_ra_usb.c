@@ -861,22 +861,17 @@ void ux_dcd_ra_usb_irq(ra_usb_speed_t speed, uint16_t intsts0)
     return;
   }
 
-  /* DVST FIRST: bus reset / address / configured DVSQ updates must
-   * land in ux_slave_device_state BEFORE the CTRT path tries to
-   * dispatch a SETUP, because USBX gates EP0 transfers on
-   * state in {ATTACHED, ADDRESSED, CONFIGURED} (see
-   * ux_device_stack_transfer_request.c) and rejects them when the
-   * software state is still RESET=0. The no-demote rank guard in
-   * internal_handle_dvst ensures DVST never undoes a previous CTRT
-   * that already advanced state, so swapping the order is safe both
-   * for the initial-enum case and for the post-CTRT stale-snapshot
-   * case Wave 75 originally fixed. */
-  if ((intsts0 & (uint16_t)(1U << (uint8_t)k_ra_int0_bit_dvst)) != 0U) {
-    internal_handle_dvst(intsts0);
-  }
-
+  /* SETUP / chapter-9 path: must run before the bulk/interrupt walk
+   * so that the host's GET_DESCRIPTOR / SET_ADDRESS /
+   * SET_CONFIGURATION sequence completes during enumeration. */
   if ((intsts0 & (uint16_t)(1U << (uint8_t)k_ra_int0_bit_ctrt)) != 0U) {
     internal_handle_ctrt(speed, intsts0);
+  }
+
+  /* Bus reset / suspend / resume: keeps USBX's slave state machine
+   * in sync with the controller-reported DVSQ field. */
+  if ((intsts0 & (uint16_t)(1U << (uint8_t)k_ra_int0_bit_dvst)) != 0U) {
+    internal_handle_dvst(intsts0);
   }
 
   /* Walk every pipe with a queued OUT transfer. ra_usb_queue_out
