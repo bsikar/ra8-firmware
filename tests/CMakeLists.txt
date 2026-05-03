@@ -537,3 +537,14 @@ if(APPLE)
   )
 endif()
 add_test(NAME test_ra_reflow_xml_shim COMMAND test_ra_reflow_xml_shim)
+
+# ---------------------------------------------------------------------------
+# Optional libFuzzer harnesses (opt-in via -DRA_FUZZ=ON; clang-only).
+# Each fuzz target is built as a separate executable that links against
+# the existing ra_core_hal OBJECT library and adds
+# -fsanitize=fuzzer,address,undefined only on its own translation unit.
+# Default OFF so the normal host test build is unaffected.
+# See docs/FUZZING.md.
+# ---------------------------------------------------------------------------
+option(RA_FUZZ "Build libFuzzer harnesses for parsers (clang only)" OFF)
+add_subdirectory(fuzz)
