@@ -265,3 +265,10 @@ misra-c2012-12.1:port/lwip/arch/sys_arch.c:452
 misra-c2012-12.1:port/nimble/nimble_npl_threadx.c:354
 misra-c2012-12.1:port/nimble/nimble_npl_threadx.c:398
 misra-c2012-12.1:port/nimble/nimble_npl_threadx.c:417
+
+# False positive: cppcheck flags `n < t->rx_len` as "always false" because
+# n was assigned `(rx_len < max_len) ? rx_len : max_len`. The condition is
+# true when max_len < rx_len (caller buffer smaller than queued bytes), so
+# the check correctly guards the memmove. Surfaced after promoting
+# ra_net_tcp internals to external linkage for MC/DC test access.
+knownConditionTrueFalse:libs/ra_net/src/ra_net_tcp.c:463
