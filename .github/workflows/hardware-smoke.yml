@@ -1,0 +1,127 @@
+name: hardware-smoke
+
+# Hardware-in-the-loop CI for the EK-RA8D2.
+#
+# This workflow runs on a self-hosted runner that has a real EK-RA8D2
+# attached via the on-board J-Link OB. Every PR targeting main is
+# cross-built, flashed, halted, and classified by
+# scripts/hw_smoke_test.sh, then the PASS/WIP/UNKNOWN/FAIL table is
+# posted back to the PR as a sticky comment.
+#
+# Failure semantics (mirrors hw_smoke_test.sh):
+#   FAIL    -> the job exits non-zero and the PR check is red.
+#   WIP     -> the job stays green; comment shows a warning row.
+#   UNKNOWN -> the job stays green; comment shows a warning row.
+#   PASS    -> the job stays green.
+#
+# The HW runner only executes this workflow. The cross-build matrix in
+# firmware.yml is pinned to ubuntu-latest so we never burn HW-runner
+# minutes on a job that does not need real silicon.
+
+on:
+  pull_request:
+    branches: [main]
+
+# One HW job at a time per PR. We cannot cancel an in-flight flash
+# because that leaves the J-Link session locked, so cancel-in-progress
+# is intentionally false here (unlike the firmware.yml workflow).
+concurrency:
+  group: hardware-smoke-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  smoke:
+    name: EK-RA8D2 hardware smoke
+    # The runner must be registered with BOTH labels: the platform tag
+    # GitHub injects automatically (self-hosted) and the project tag
+    # the operator sets at registration time (ek-ra8d2). See
+    # docs/qualification/HW_IN_LOOP_RUNNER.md for the registration
+    # walkthrough.
+    runs-on: [self-hosted, ek-ra8d2]
+    timeout-minutes: 30
+    permissions:
+      pull-requests: write
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Print toolchain versions
+        run: |
+          set -e
+          arm-none-eabi-gcc --version | head -1
+          JLinkExe -? 2>&1 | head -1 || true
+          uname -a
+
+      - name: Cross-build every EVM app
+        run: make apps
+
+      - name: Run hardware smoke sweep
+        id: smoke
+        # The script's exit code is the PR gate:
+        #   0 -> all PASS or WIP/UNKNOWN -> green check
+        #   1 -> at least one FAIL        -> red check (PR blocked)
+        #   2 -> harness misconfiguration -> red check
+        run: bash scripts/hw_smoke_test.sh
+
+      - name: Upload smoke results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hw-smoke-results
+          path: |
+            build/smoke/results.md
+            build/smoke/*.log
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Post PR comment with results table
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = 'build/smoke/results.md';
+            const marker = '<!-- hw-smoke-comment -->';
+            const jobStatus = '${{ job.status }}';
+
+            let body = marker + '\n';
+            body += '## EK-RA8D2 hardware smoke (self-hosted runner)\n\n';
+
+            if (!fs.existsSync(path)) {
+              body += '**No results file produced.** ';
+              body += 'The harness died before `build/smoke/results.md` was written. ';
+              body += 'Check the job log for flash/JLink errors.\n';
+            } else {
+              const txt = fs.readFileSync(path, 'utf8');
+              body += txt + '\n';
+            }
+
+            body += '\n---\n';
+            body += 'Legend: **PASS** firmware reached its main loop, ';
+            body += '**WIP** firmware reached a caught-error sink (warning), ';
+            body += '**UNKNOWN** PC did not match any known pattern (warning), ';
+            body += '**FAIL** chip locked up or took a fault (PR blocked), ';
+            body += '**NOBUILD** binary missing.\n';
+            body += `\nJob status: \`${jobStatus}\`. `;
+            body += 'Per-app JLink transcripts are in the ';
+            body += '`hw-smoke-results` artifact.\n';
+
+            const { owner, repo } = context.repo;
+            const issue_number = context.payload.pull_request.number;
+            const existing = await github.rest.issues.listComments({
+              owner, repo, issue_number, per_page: 100,
+            });
+            const prior = existing.data.find(
+              c => c.body && c.body.includes(marker)
+            );
+            if (prior) {
+              await github.rest.issues.updateComment({
+                owner, repo, comment_id: prior.id, body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner, repo, issue_number, body,
+              });
+            }
