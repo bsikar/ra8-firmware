@@ -930,6 +930,77 @@ static void test_mcdc_internal_classify_expected_direct(void)
   TEST_END("modem_at MC/DC: classify expected_response (3-cond OR, direct)");
 }
 
+/**
+ * @test test_mcdc_handle_line_payload_prefix_match_pure
+ *
+ * @par MC/DC:
+ * Decision (ra_modem_at.c line 573, internal_handle_line payload case,
+ * carried by ra_modem_at_internal_handle_line_payload_prefix_match):
+ *   `(expected_response != nullptr) && (expected_response[0] != '\0') &&
+ *    (ra_modem_at_internal_starts_with(line, expected_response) != 0U)`
+ * (3 conditions, AND short-circuit). N+1 = 4 vectors.
+ *
+ * - V1: expected=NULL, line="+QRY:val"        -> C1=F. result=0 (short-circ).
+ * - V2: expected="",   line="+QRY:val"        -> C1=T,C2=F. result=0.
+ * - V3: expected="+QRY", line="OTHER"         -> C1=T,C2=T,C3=F. result=0.
+ * - V4: expected="+QRY", line="+QRY:val"      -> C1=T,C2=T,C3=T. result=1.
+ * V1 vs V4 isolate C1 (only C1 differs between them); V2 vs V4 isolate C2;
+ * V3 vs V4 isolate C3. N+1 = 4 vectors: minimal MC/DC.
+ */
+static void test_mcdc_handle_line_payload_prefix_match_pure(void)
+{
+  TEST_BEGIN("modem_at MC/DC: handle_line payload prefix match (3-cond AND, direct)");
+  /* V1 */
+  TEST_ASSERT_EQ((int)0,
+                 (int)ra_modem_at_internal_handle_line_payload_prefix_match("+QRY:val", NULL));
+  /* V2 */
+  TEST_ASSERT_EQ((int)0,
+                 (int)ra_modem_at_internal_handle_line_payload_prefix_match("+QRY:val", ""));
+  /* V3 */
+  TEST_ASSERT_EQ((int)0,
+                 (int)ra_modem_at_internal_handle_line_payload_prefix_match("OTHER", "+QRY"));
+  /* V4 */
+  TEST_ASSERT_EQ((int)1,
+                 (int)ra_modem_at_internal_handle_line_payload_prefix_match("+QRY:val", "+QRY"));
+  TEST_END("modem_at MC/DC: handle_line payload prefix match (3-cond AND, direct)");
+}
+
+/**
+ * @test test_mcdc_wait_response_should_clear_capture_pure
+ *
+ * @par MC/DC:
+ * Decision (ra_modem_at.c line 664, internal_wait_response capture-init,
+ * carried by ra_modem_at_internal_wait_response_should_clear_capture):
+ *   `(capture != nullptr) && (capture_len > 0U)`  (2 conditions, AND).
+ * 2-condition decision; N+1 = 3 vectors satisfy MC/DC fully.
+ *
+ * - V1: capture=NULL, capture_len=0  -> C1=F. result=0.
+ * - V2: capture=NULL, capture_len=8  -> C1=F (short-circ). result=0.
+ *       (V1 vs V2 cannot isolate either condition; V2 added so C2 is
+ *       proven independently against V3.)
+ * - V3: capture=buf,  capture_len=0  -> C1=T,C2=F. result=0.
+ * - V4: capture=buf,  capture_len=8  -> C1=T,C2=T. result=1.
+ * V1+V4 vary C1 (and C2 -- so use V3 vs V4 to isolate C1 cleanly with C2
+ * held T). V3+V4 isolate C2 (C1 held T). V1+V3 isolate C1 (C2 held F).
+ * Minimal MC/DC for 2-cond AND = 3 vectors {V1, V3, V4}; V2 added as a
+ * regression sentinel for the structurally-impossible-via-public-API
+ * (NULL, >0) input.
+ */
+static void test_mcdc_wait_response_should_clear_capture_pure(void)
+{
+  TEST_BEGIN("modem_at MC/DC: wait_response should-clear capture (2-cond AND, direct)");
+  char buf[8];
+  /* V1: F,F */
+  TEST_ASSERT_EQ((int)0, (int)ra_modem_at_internal_wait_response_should_clear_capture(NULL, 0U));
+  /* V2: F,T (short-circuited at C1) */
+  TEST_ASSERT_EQ((int)0, (int)ra_modem_at_internal_wait_response_should_clear_capture(NULL, 8U));
+  /* V3: T,F */
+  TEST_ASSERT_EQ((int)0, (int)ra_modem_at_internal_wait_response_should_clear_capture(buf, 0U));
+  /* V4: T,T */
+  TEST_ASSERT_EQ((int)1, (int)ra_modem_at_internal_wait_response_should_clear_capture(buf, 8U));
+  TEST_END("modem_at MC/DC: wait_response should-clear capture (2-cond AND, direct)");
+}
+
 int32_t main(void)
 {
   /* This test must run BEFORE bring_up() so the initialised flag is 0. */
@@ -965,6 +1036,8 @@ int32_t main(void)
   test_mcdc_internal_capture_line_guard();
   test_mcdc_reset_line_should_clear_pure();
   test_mcdc_internal_classify_expected_direct();
+  test_mcdc_handle_line_payload_prefix_match_pure();
+  test_mcdc_wait_response_should_clear_capture_pure();
   (void)fprintf(stderr, "[OK ] test_ra_modem_at.c\n");
   return 0;
 }
