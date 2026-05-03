@@ -34,3 +34,9 @@ Makefile       text eol=lf
 *.bin binary
 *.hex binary
 libs/third_party/** -text
+
+# Fuzz corpus seeds: every byte (including CRLF in AT responses and
+# the raw frame bytes for ARP/IPv4) must be preserved verbatim or the
+# parsers under test see a different input than the seed generator
+# emitted. Treat the entire corpus subtree as binary.
+tests/fuzz/corpus/** binary
