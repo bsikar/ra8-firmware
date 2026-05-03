@@ -8,6 +8,7 @@
 
 #include "ra8d2_dmac_regs.h"
 #include "ra_dmac.h"
+#include "ra_dmac_internal.h"
 #include "ra_err.h"
 #include "ra_sim_mmap.h"
 #include "unity_minimal.h"
@@ -395,6 +396,62 @@ static void test_mcdc_set_address_mode_bounds(void)
   TEST_END("dmac set_address_mode MC/DC: src>dec || dest>dec");
 }
 
+/**
+ * @test test_mcdc_dmac_internal_mode_disables_dts
+ *
+ * @par MC/DC:
+ * Decision at libs/ra_hal/src/ra_dmac.c:151 (call site) -> helper at
+ * libs/ra_hal/src/ra_dmac.c:67:
+ *   ``mode == k_ra_dmac_mode_normal || mode == k_ra_dmac_mode_repeat_block``
+ *   (2 conditions, OR). Direct-call vectors:
+ * - V1: mode=REPEAT(1)        -> false (both false-side)
+ * - V2: mode=NORMAL(0)        -> true  (varies left)
+ * - V3: mode=REPEAT_BLOCK(3)  -> true  (varies right)
+ * V1+V2 isolate left; V1+V3 isolate right. N+1 = 3.
+ */
+static void test_mcdc_dmac_internal_mode_disables_dts(void)
+{
+  TEST_BEGIN("dmac MC/DC: mode_disables_dts OR");
+  TEST_ASSERT(!ra_dmac_internal_mode_disables_dts((uint32_t)k_ra_dmac_mode_normal,
+                                                  (uint32_t)k_ra_dmac_mode_repeat_block,
+                                                  (uint32_t)k_ra_dmac_mode_repeat));
+  TEST_ASSERT(ra_dmac_internal_mode_disables_dts((uint32_t)k_ra_dmac_mode_normal,
+                                                 (uint32_t)k_ra_dmac_mode_repeat_block,
+                                                 (uint32_t)k_ra_dmac_mode_normal));
+  TEST_ASSERT(ra_dmac_internal_mode_disables_dts((uint32_t)k_ra_dmac_mode_normal,
+                                                 (uint32_t)k_ra_dmac_mode_repeat_block,
+                                                 (uint32_t)k_ra_dmac_mode_repeat_block));
+  TEST_END("dmac MC/DC: mode_disables_dts OR");
+}
+
+/**
+ * @test test_mcdc_dmac_internal_dmint_extra_irq
+ *
+ * @par MC/DC:
+ * Decision at libs/ra_hal/src/ra_dmac.c:246 (call site) -> helper at
+ * libs/ra_hal/src/ra_dmac.c:88:
+ *   ``cfg->irq_each && cfg->mode != k_ra_dmac_mode_repeat_block``
+ *   (2 conditions, AND). Direct-call vectors:
+ * - V1: irq_each=false, mode=NORMAL        -> false (both false-side)
+ * - V2: irq_each=true,  mode=NORMAL        -> true  (varies left)
+ * - V3: irq_each=true,  mode=REPEAT_BLOCK  -> false (varies right)
+ * V1+V2 isolate left; V2+V3 isolate right. N+1 = 3.
+ */
+static void test_mcdc_dmac_internal_dmint_extra_irq(void)
+{
+  TEST_BEGIN("dmac MC/DC: dmint_extra_irq AND");
+  TEST_ASSERT(!ra_dmac_internal_dmint_extra_irq(false,
+                                                (uint32_t)k_ra_dmac_mode_repeat_block,
+                                                (uint32_t)k_ra_dmac_mode_normal));
+  TEST_ASSERT(ra_dmac_internal_dmint_extra_irq(true,
+                                               (uint32_t)k_ra_dmac_mode_repeat_block,
+                                               (uint32_t)k_ra_dmac_mode_normal));
+  TEST_ASSERT(!ra_dmac_internal_dmint_extra_irq(true,
+                                                (uint32_t)k_ra_dmac_mode_repeat_block,
+                                                (uint32_t)k_ra_dmac_mode_repeat_block));
+  TEST_END("dmac MC/DC: dmint_extra_irq AND");
+}
+
 int32_t main(void)
 {
   test_start_null_cfg();
@@ -414,6 +471,8 @@ int32_t main(void)
   test_attach_half_complete_handler();
   test_attach_per_channel_callback();
   test_mcdc_set_address_mode_bounds();
+  test_mcdc_dmac_internal_mode_disables_dts();
+  test_mcdc_dmac_internal_dmint_extra_irq();
   (void)fprintf(stderr, "[OK  ] test_ra_dmac.c\n");
   return 0;
 }

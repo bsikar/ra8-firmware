@@ -37,6 +37,53 @@
 
 /* NOLINTBEGIN(readability-magic-numbers,readability-redundant-casting,clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling,readability-function-size,readability-identifier-naming,readability-function-cognitive-complexity) */
 
+/**
+ * @brief Pure DNS byte-match predicate -- see header for full contract.
+ * @details Promoted helper so the line-539/554 ANDs can be driven under MC/DC.
+ * @param[in] in_range     Non-zero iff pos < dlen.
+ * @param[in] byte_value   Value of dns[pos] when in_range.
+ * @param[in] target_value Comparison target.
+ * @param[in] equal        Non-zero for ==, zero for !=.
+ * @return Boolean predicate.
+ * @retval true  Predicate held.
+ * @retval false Predicate failed.
+ * @pre None.
+ * @pre None.
+ * @post No state mutated.
+ * @post Return depends solely on inputs.
+ * @note Pure; thread-safe.
+ * @since 0.1.0
+ */
+bool ra_net_internal_dns_byte_match(uint8_t in_range,
+                                    uint8_t byte_value,
+                                    uint8_t target_value,
+                                    uint8_t equal)
+{
+  const bool matches = (equal != 0U) ? (byte_value == target_value) : (byte_value != target_value);
+  return (in_range != 0U) && matches;
+}
+
+/**
+ * @brief Pure DNS-loop-active predicate -- see header for full contract.
+ * @details Promoted helper so the line-657 AND-chain can be driven under MC/DC.
+ * @param[in] dns_pending Non-zero while DNS request outstanding.
+ * @param[in] dns_rcode   Non-zero once a reply has set the RCODE.
+ * @param[in] poll_budget Remaining poll iterations.
+ * @return Boolean predicate.
+ * @retval true  Loop body must run.
+ * @retval false Loop terminates.
+ * @pre None.
+ * @pre None.
+ * @post No state mutated.
+ * @post Return depends solely on inputs.
+ * @note Pure; thread-safe.
+ * @since 0.1.0
+ */
+bool ra_net_internal_dns_loop_active(uint8_t dns_pending, uint8_t dns_rcode, uint32_t poll_budget)
+{
+  return (dns_pending != 0U) && (dns_rcode == 0U) && (poll_budget != 0U);
+}
+
 /* =============================================================================
  * UDP socket allocation
  * =============================================================================
@@ -536,7 +583,10 @@ void ra_net_udp_internal_dns_consume_response(const uint8_t* dns, uint16_t dlen)
       }
       pos = (uint16_t)(pos + dns[pos] + 1U);
     }
-    if (pos < dlen && dns[pos] == 0U) {
+    if (ra_net_internal_dns_byte_match((uint8_t)((pos < dlen) ? 1U : 0U),
+                                       (pos < dlen) ? dns[pos] : (uint8_t)0xFFU,
+                                       0U,
+                                       1U)) {
       pos++; /* root null */
     }
     pos = (uint16_t)(pos + 4U);
@@ -551,7 +601,10 @@ void ra_net_udp_internal_dns_consume_response(const uint8_t* dns, uint16_t dlen)
     if ((dns[pos] & 0xC0U) == 0xC0U) {
       pos = (uint16_t)(pos + 2U);
     } else {
-      while (pos < dlen && dns[pos] != 0U) {
+      while (ra_net_internal_dns_byte_match((uint8_t)((pos < dlen) ? 1U : 0U),
+                                            (pos < dlen) ? dns[pos] : (uint8_t)0U,
+                                            0U,
+                                            0U)) {
         pos = (uint16_t)(pos + dns[pos] + 1U);
       }
       pos = (uint16_t)(pos + 1U);
@@ -654,7 +707,7 @@ ra_err_t ra_net_dns_query(const char* hostname, ra_net_ipv4_t* out_ip)
    * hardware the SysTick-driven clock wins long before the budget. */
   uint32_t deadline    = ra_time_ms() + (uint32_t)k_ra_net_dns_timeout_ms;
   uint32_t poll_budget = (uint32_t)k_ra_net_dns_timeout_ms; /* one poll per ms cap */
-  while ((s->dns_pending != 0U) && (s->dns_rcode == 0U) && (poll_budget != 0U)) {
+  while (ra_net_internal_dns_loop_active(s->dns_pending, s->dns_rcode, poll_budget)) {
     (void)ra_net_poll();
     poll_budget--;
     if (ra_time_ms() >= deadline) {

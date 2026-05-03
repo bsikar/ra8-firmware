@@ -11,6 +11,7 @@
 
 #include "ra_err.h"
 #include "ra_rmac_phy.h"
+#include "ra_rmac_phy_internal.h"
 #include "ra_sim_mmap.h"
 #include "unity_minimal.h"
 
@@ -270,6 +271,27 @@ static void test_mcdc_link_status_link_and_an(void)
   TEST_END("rmac_phy link_status MC/DC: link_up && auto_neg_done");
 }
 
+/**
+ * @test test_mcdc_rmac_phy_internal_speed_ok
+ *
+ * @par MC/DC:
+ * Decision at libs/ra_hal/src/ra_rmac_phy.c:352, 356 (call sites) -> helper at
+ * libs/ra_hal/src/ra_rmac_phy.c:47:
+ *   ``err == k_ra_ok && (reg & mask) != 0`` (2 conditions, AND).
+ * - V1: err=ok, mask&val=0    -> false
+ * - V2: err=ok, mask&val!=0   -> true (varies right)
+ * - V3: err=fail, mask&val!=0 -> false (varies left)
+ * N+1 = 3.
+ */
+static void test_mcdc_rmac_phy_internal_speed_ok(void)
+{
+  TEST_BEGIN("rmac_phy MC/DC: speed_ok AND");
+  TEST_ASSERT(!ra_rmac_phy_internal_speed_ok(k_ra_ok, 0x0000U, 0x0800U));
+  TEST_ASSERT(ra_rmac_phy_internal_speed_ok(k_ra_ok, 0x0800U, 0x0800U));
+  TEST_ASSERT(!ra_rmac_phy_internal_speed_ok(k_ra_err_invalid_arg, 0x0800U, 0x0800U));
+  TEST_END("rmac_phy MC/DC: speed_ok AND");
+}
+
 int32_t main(void)
 {
   test_open_null();
@@ -282,6 +304,7 @@ int32_t main(void)
   test_lsi_and_autoneg();
   test_not_initialized();
   test_mcdc_link_status_link_and_an();
+  test_mcdc_rmac_phy_internal_speed_ok();
   (void)fprintf(stderr, "[OK ] test_ra_rmac_phy.c\n");
   return 0;
 }

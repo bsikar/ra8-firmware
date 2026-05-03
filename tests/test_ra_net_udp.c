@@ -471,6 +471,52 @@ static void test_mcdc_dns_query_null_guard(void)
   TEST_END("ra_net_dns_query MC/DC: hostname NULL || out_ip NULL");
 }
 
+/**
+ * @test test_mcdc_net_internal_dns_byte_match
+ *
+ * @par MC/DC:
+ * Decision at libs/ra_net/src/ra_net_udp.c:539, 554 (call sites) -> helper at
+ * libs/ra_net/src/ra_net_udp.c:63:
+ *   ``in_range && (byte == target  for ==)`` (2 conditions, AND).
+ * - V1: in_range=0, byte=tgt -> false (varies left vs V2)
+ * - V2: in_range=1, byte=tgt -> true
+ * - V3: in_range=1, byte!=tgt -> false (varies right vs V2)
+ * N+1 = 3.  The same vectors with @c equal=0 cover the != mode.
+ */
+static void test_mcdc_net_internal_dns_byte_match(void)
+{
+  TEST_BEGIN("net_udp MC/DC: dns_byte_match AND");
+  TEST_ASSERT(!ra_net_internal_dns_byte_match(0U, 0U, 0U, 1U));
+  TEST_ASSERT(ra_net_internal_dns_byte_match(1U, 0U, 0U, 1U));
+  TEST_ASSERT(!ra_net_internal_dns_byte_match(1U, 5U, 0U, 1U));
+  /* != mode: in_range=1 byte!=target -> true */
+  TEST_ASSERT(ra_net_internal_dns_byte_match(1U, 5U, 0U, 0U));
+  TEST_END("net_udp MC/DC: dns_byte_match AND");
+}
+
+/**
+ * @test test_mcdc_net_internal_dns_loop_active
+ *
+ * @par MC/DC:
+ * Decision at libs/ra_net/src/ra_net_udp.c:657 (call site) -> helper at
+ * libs/ra_net/src/ra_net_udp.c:84:
+ *   ``pending && rcode==0 && budget>0`` (3 conditions, AND).
+ * - V1: pending=1, rcode=0,  budget=10 -> true  (control)
+ * - V2: pending=0, rcode=0,  budget=10 -> false (varies pending)
+ * - V3: pending=1, rcode=2,  budget=10 -> false (varies rcode)
+ * - V4: pending=1, rcode=0,  budget=0  -> false (varies budget)
+ * N+1 = 4.
+ */
+static void test_mcdc_net_internal_dns_loop_active(void)
+{
+  TEST_BEGIN("net_udp MC/DC: dns_loop_active AND-chain");
+  TEST_ASSERT(ra_net_internal_dns_loop_active(1U, 0U, 10U));
+  TEST_ASSERT(!ra_net_internal_dns_loop_active(0U, 0U, 10U));
+  TEST_ASSERT(!ra_net_internal_dns_loop_active(1U, 2U, 10U));
+  TEST_ASSERT(!ra_net_internal_dns_loop_active(1U, 0U, 0U));
+  TEST_END("net_udp MC/DC: dns_loop_active AND-chain");
+}
+
 int32_t main(void)
 {
   test_mcdc_find_udp_socket_match();
@@ -480,6 +526,8 @@ int32_t main(void)
   test_mcdc_dns_qname_root_null();
   test_mcdc_dns_a_record_selector();
   test_mcdc_dns_query_null_guard();
+  test_mcdc_net_internal_dns_byte_match();
+  test_mcdc_net_internal_dns_loop_active();
   (void)fprintf(stderr, "[OK ] test_ra_net_udp.c\n");
   return 0;
 }

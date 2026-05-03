@@ -988,6 +988,71 @@ ra_err_t ra_net_ipv4_send(ra_net_ipv4_t     dst,
 
 /* NOLINTEND(readability-magic-numbers,readability-redundant-casting) */
 
+/**
+ * @brief Pure predicate: position in range AND DNS byte equals target.
+ *
+ * @details Reusable for the line-539 ``pos < dlen && dns[pos] == 0``
+ *          and line-554 ``pos < dlen && dns[pos] != 0`` decisions in
+ *          libs/ra_net/src/ra_net_udp.c.
+ *
+ * @param[in] in_range     Non-zero iff pos < dlen.
+ * @param[in] byte_value   Value of dns[pos] when in_range; ignored otherwise.
+ * @param[in] target_value Comparison target (0 for both call sites).
+ * @param[in] equal        Non-zero for ==, zero for !=.
+ *
+ * @return Boolean compound predicate.
+ * @retval true  Predicate held.
+ * @retval false Predicate failed.
+ *
+ * @pre None.
+ * @pre None.
+ * @post No state mutated.
+ * @post Return depends solely on the four inputs.
+ *
+ * @note Test-access only. Pure function.
+ *
+ * @par MC/DC:
+ * 2-condition AND; N+1 = 3 vectors per @p equal mode.
+ *
+ * @since 0.1.0
+ */
+bool ra_net_internal_dns_byte_match(uint8_t in_range,
+                                    uint8_t byte_value,
+                                    uint8_t target_value,
+                                    uint8_t equal);
+
+/**
+ * @brief Pure predicate: DNS query still pending AND poll budget left.
+ *
+ * @details Promoted from the inline 3-condition AND at
+ *          libs/ra_net/src/ra_net_udp.c:657 inside @c ra_net_dns_query.
+ *
+ * @param[in] dns_pending Non-zero while the DNS request is outstanding.
+ * @param[in] dns_rcode   Non-zero once a reply has set the RCODE.
+ * @param[in] poll_budget Remaining poll iterations.
+ *
+ * @return Boolean continue-loop predicate.
+ * @retval true  Loop body must execute another iteration.
+ * @retval false Loop terminates.
+ *
+ * @pre None.
+ * @pre None.
+ * @post No state mutated.
+ * @post Return depends solely on the three inputs.
+ *
+ * @note Test-access only. Pure function.
+ *
+ * @par MC/DC:
+ * 3-condition AND; N+1 = 4 vectors:
+ *  - V1: pending=1, rcode=0,  budget>0 -> true  (control)
+ *  - V2: pending=0, rcode=0,  budget>0 -> false (varies pending)
+ *  - V3: pending=1, rcode!=0, budget>0 -> false (varies rcode)
+ *  - V4: pending=1, rcode=0,  budget=0 -> false (varies budget)
+ *
+ * @since 0.1.0
+ */
+bool ra_net_internal_dns_loop_active(uint8_t dns_pending, uint8_t dns_rcode, uint32_t poll_budget);
+
 #ifdef __cplusplus
 }
 #endif

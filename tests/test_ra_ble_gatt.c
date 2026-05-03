@@ -9,6 +9,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra_ble_gatt_internal.h"
 #include "ra_ble_host.h"
 #include "ra_err.h"
 #include "ra_sim_mmap.h"
@@ -116,10 +117,60 @@ static void test_mcdc_gatt_set_value_zero_len(void)
   TEST_END("ra_ble_host_gatt_set_value MC/DC: len==0 path");
 }
 
+/**
+ * @test test_mcdc_gatt_internal_should_copy
+ *
+ * @par MC/DC:
+ * Decision at libs/ra_ble_host/src/ra_ble_gatt.c lines 480 and 569
+ * (call sites) -> helper at libs/ra_ble_host/src/ra_ble_gatt.c:50:
+ *   ``len > 0 && value != NULL`` (2 conditions, AND).
+ * - V1: len=0,  val!=NULL -> false (left varies vs V2)
+ * - V2: len>0,  val!=NULL -> true
+ * - V3: len>0,  val=NULL  -> false (right varies vs V2)
+ * N+1 = 3.
+ */
+static void test_mcdc_gatt_internal_should_copy(void)
+{
+  TEST_BEGIN("ra_ble_gatt MC/DC: should_copy AND");
+  uint8_t scratch = 0U;
+  TEST_ASSERT(!ra_ble_gatt_internal_should_copy(0U, &scratch));
+  TEST_ASSERT(ra_ble_gatt_internal_should_copy(4U, &scratch));
+  TEST_ASSERT(!ra_ble_gatt_internal_should_copy(4U, NULL));
+  TEST_END("ra_ble_gatt MC/DC: should_copy AND");
+}
+
+/**
+ * @test test_mcdc_gatt_internal_notify_invalid
+ *
+ * @par MC/DC:
+ * Decision at libs/ra_ble_host/src/ra_ble_gatt.c:538 (call site) -> helper at
+ * libs/ra_ble_host/src/ra_ble_gatt.c:71:
+ *   ``decl_present == 0 || (props & notify_mask) == 0``
+ *   (2 conditions, OR).
+ * - V1: present=1, notify-bit-set     -> false
+ * - V2: present=0, notify-bit-set     -> true (varies left)
+ * - V3: present=1, notify-bit-clear   -> true (varies right)
+ * N+1 = 3.
+ */
+static void test_mcdc_gatt_internal_notify_invalid(void)
+{
+  TEST_BEGIN("ra_ble_gatt MC/DC: notify_invalid OR");
+  TEST_ASSERT(!ra_ble_gatt_internal_notify_invalid(1U,
+                                                   (uint8_t)k_ra_ble_host_char_prop_notify,
+                                                   (uint8_t)k_ra_ble_host_char_prop_notify));
+  TEST_ASSERT(ra_ble_gatt_internal_notify_invalid(0U,
+                                                  (uint8_t)k_ra_ble_host_char_prop_notify,
+                                                  (uint8_t)k_ra_ble_host_char_prop_notify));
+  TEST_ASSERT(ra_ble_gatt_internal_notify_invalid(1U, 0U, (uint8_t)k_ra_ble_host_char_prop_notify));
+  TEST_END("ra_ble_gatt MC/DC: notify_invalid OR");
+}
+
 int32_t main(void)
 {
   test_mcdc_gatt_notify_init_and_lookup();
   test_mcdc_gatt_set_value_zero_len();
+  test_mcdc_gatt_internal_should_copy();
+  test_mcdc_gatt_internal_notify_invalid();
   (void)fprintf(stderr, "[OK ] test_ra_ble_gatt.c\n");
   return 0;
 }

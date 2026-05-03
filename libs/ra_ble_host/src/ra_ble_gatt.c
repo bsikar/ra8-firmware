@@ -26,8 +26,50 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra_ble_gatt_internal.h"
 #include "ra_ble_host.h"
 #include "ra_err.h"
+
+/**
+ * @brief Pure should-copy predicate -- see header for full contract.
+ * @details Promoted helper so the line-480/569 AND can be driven under MC/DC.
+ * @param[in] len   Payload length.
+ * @param[in] value Attribute value buffer.
+ * @return Boolean predicate.
+ * @retval true  Caller must memcpy.
+ * @retval false Skip memcpy.
+ * @pre None.
+ * @pre None.
+ * @post No state mutated.
+ * @post Return depends solely on inputs.
+ * @note Pure; thread-safe.
+ * @since 0.1.0
+ */
+bool ra_ble_gatt_internal_should_copy(uint16_t len, const void* value)
+{
+  return (len > 0U) && (value != NULL);
+}
+
+/**
+ * @brief Pure notify-invalid predicate -- see header for full contract.
+ * @details Promoted helper so the line-538 OR can be driven under MC/DC.
+ * @param[in] decl_present Non-zero if declaration row exists.
+ * @param[in] props        Properties bitmask.
+ * @param[in] notify_mask  Notify property bit mask.
+ * @return Boolean reject predicate.
+ * @retval true  Caller returns invalid-arg.
+ * @retval false Notify is permitted.
+ * @pre None.
+ * @pre None.
+ * @post No state mutated.
+ * @post Return depends solely on inputs.
+ * @note Pure; thread-safe.
+ * @since 0.1.0
+ */
+bool ra_ble_gatt_internal_notify_invalid(uint8_t decl_present, uint8_t props, uint8_t notify_mask)
+{
+  return (decl_present == 0U) || ((props & notify_mask) == 0U);
+}
 
 /* =============================================================================
  * Forward declarations of state shared with ra_ble_l2cap.c.
@@ -477,7 +519,7 @@ ra_err_t ra_ble_host_gatt_set_value(uint16_t char_handle, const uint8_t* value, 
   if (len > a->value_max) {
     return k_ra_err_invalid_arg;
   }
-  if ((len > 0U) && (a->value != NULL)) {
+  if (ra_ble_gatt_internal_should_copy(len, a->value)) {
     (void)memcpy(a->value, value, len);
   }
   a->value_len = len;
@@ -535,7 +577,9 @@ ra_err_t ra_ble_host_gatt_notify(uint16_t char_handle)
   /* Find the matching decl row (handle == char_handle - 1) to read
    * the props bits. */
   ra_ble_host_attr_t* decl = ra_ble_host_attr_lookup((uint16_t)(char_handle - 1U));
-  if ((decl == NULL) || ((decl->props & (uint8_t)k_ra_ble_host_char_prop_notify) == 0U)) {
+  if (ra_ble_gatt_internal_notify_invalid((uint8_t)((decl != NULL) ? 1U : 0U),
+                                          (decl != NULL) ? decl->props : (uint8_t)0U,
+                                          (uint8_t)k_ra_ble_host_char_prop_notify)) {
     return k_ra_err_invalid_arg;
   }
 
@@ -566,7 +610,7 @@ ra_err_t ra_ble_host_gatt_notify(uint16_t char_handle)
   pdu[0] = k_att_op_handle_value_notify;
   pdu[1] = (uint8_t)(char_handle & 0xFFU);
   pdu[2] = (uint8_t)((char_handle >> 8U) & 0xFFU);
-  if ((value_len > 0U) && (a->value != NULL)) {
+  if (ra_ble_gatt_internal_should_copy(value_len, a->value)) {
     (void)memcpy(&pdu[k_pdu_hdr_bytes], a->value, value_len);
   }
   return ra_ble_host_l2cap_send(st->conn_handle,
