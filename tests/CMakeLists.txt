@@ -251,6 +251,28 @@ target_include_directories(ra_core_hal PUBLIC
     ${FW_ROOT}/src
     ${FW_ROOT}/src/inc
     ${FW_ROOT}/src/secure_app
+    # Per-module src/ directories exposed for MC/DC test access to
+    # internal helpers (see CLAUDE.md "Test access to internal symbols").
+    # Tests under tests/ MAY include "<module>_internal.h" to drive MC/DC
+    # vectors on production source text. Only first-party libs are listed.
+    ${FW_ROOT}/libs/ra_core/src
+    ${FW_ROOT}/libs/ra_hal/src
+    ${FW_ROOT}/libs/ra_net_pal/src
+    ${FW_ROOT}/libs/ra_modem_at/src
+    ${FW_ROOT}/libs/ra_net/src
+    ${FW_ROOT}/libs/ra_ble_host/src
+    ${FW_ROOT}/libs/ra_tls/src
+    ${FW_ROOT}/libs/ra_usb_pal/src
+    ${FW_ROOT}/libs/ra_fs/src
+    ${FW_ROOT}/libs/ra_gfx/src
+    ${FW_ROOT}/libs/ra_nsc/src
+    ${FW_ROOT}/libs/ra_ota/src
+    ${FW_ROOT}/libs/ra_power_profile/src
+    ${FW_ROOT}/libs/ra_touch_cal/src
+    ${FW_ROOT}/libs/ra_mpu/src
+    ${FW_ROOT}/libs/ra_psa_crypto/src
+    ${FW_ROOT}/libs/ra_wdt_supervisor/src
+    ${FW_ROOT}/libs/ra_board_ek_ra8d2/src
     ${CMAKE_CURRENT_SOURCE_DIR}/mocks
 )
 # tinyxml2.cpp + ra_epub_xml_shim.cpp are C++; everything else is C.
@@ -348,6 +370,25 @@ function(ra_add_test name)
     ${FW_ROOT}/libs/third_party/tinyxml2
     ${FW_ROOT}/libs/third_party/stb
     ${FW_ROOT}/src/secure_app
+    # Per-module src/ for MC/DC test access (see CLAUDE.md).
+    ${FW_ROOT}/libs/ra_core/src
+    ${FW_ROOT}/libs/ra_hal/src
+    ${FW_ROOT}/libs/ra_net_pal/src
+    ${FW_ROOT}/libs/ra_modem_at/src
+    ${FW_ROOT}/libs/ra_net/src
+    ${FW_ROOT}/libs/ra_ble_host/src
+    ${FW_ROOT}/libs/ra_tls/src
+    ${FW_ROOT}/libs/ra_usb_pal/src
+    ${FW_ROOT}/libs/ra_fs/src
+    ${FW_ROOT}/libs/ra_gfx/src
+    ${FW_ROOT}/libs/ra_nsc/src
+    ${FW_ROOT}/libs/ra_ota/src
+    ${FW_ROOT}/libs/ra_power_profile/src
+    ${FW_ROOT}/libs/ra_touch_cal/src
+    ${FW_ROOT}/libs/ra_mpu/src
+    ${FW_ROOT}/libs/ra_psa_crypto/src
+    ${FW_ROOT}/libs/ra_wdt_supervisor/src
+    ${FW_ROOT}/libs/ra_board_ek_ra8d2/src
     ${CMAKE_CURRENT_SOURCE_DIR}/mocks
   )
   if(APPLE)
