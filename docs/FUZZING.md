@@ -19,6 +19,9 @@ the device (network, modem, removable media):
 | `fuzz_ra_modem_at`  | AT response parser (`ra_modem_at_send_cmd` + rx pump)   | Cellular modem byte stream   |
 | `fuzz_ra_net_arp`   | `ra_net_arp_handle()` via `ra_net_test_inject_frame()`  | Ethernet                     |
 | `fuzz_ra_net_ipv4`  | IPv4 dispatch (ICMP / UDP / TCP) via the same entry     | Ethernet                     |
+| `fuzz_ra_ble_att`   | ATT dispatcher via `ra_ble_host_test_inject_acl()`      | BLE peer (over the air)      |
+| `fuzz_ra_usb_pal`   | `ra_usb_pal_ep_open` / `ep_send` / `ep_recv`            | USB host / compliance stand  |
+| `fuzz_ra_tls`       | `ra_tls_*` facade lifecycle + BIO recv stream           | Network transport (TLS)      |
 
 Add a new harness by dropping `tests/fuzz/fuzz_<x>.c` next to the
 existing files, listing it in `tests/fuzz/CMakeLists.txt`
@@ -110,6 +113,9 @@ crash reproducers added by the fuzzer or by hand.
 | `fuzz_ra_modem_at`  | 10    | Plain-text AT response strings (`OK`, `+CSQ:`, `+CME ERROR:`, ...)  |
 | `fuzz_ra_net_arp`   | 5     | Ethernet/ARP frames (request, reply, gratuitous variants)           |
 | `fuzz_ra_net_ipv4`  | 5     | Ethernet/IPv4 frames (ICMP echo, UDP DNS, TCP SYN, DHCP, reply)     |
+| `fuzz_ra_ble_att`   | 4     | Hand-built ATT PDUs (FIND_INFO, READ_BY_TYPE, READ, WRITE)          |
+| `fuzz_ra_usb_pal`   | 4     | Endpoint-descriptor + payload packets (bulk in/out, intr, iso)      |
+| `fuzz_ra_tls`       | 4     | TLS record headers (ClientHello, Alert close, AppData, Finished)    |
 
 The corpus directory is passed to libFuzzer as a positional argument.
 libFuzzer also writes any *new* coverage-expanding inputs back into

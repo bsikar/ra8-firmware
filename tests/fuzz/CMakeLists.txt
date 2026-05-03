@@ -72,6 +72,9 @@ set(RA_FUZZ_TARGETS
     fuzz_ra_modem_at
     fuzz_ra_net_arp
     fuzz_ra_net_ipv4
+    fuzz_ra_ble_att
+    fuzz_ra_usb_pal
+    fuzz_ra_tls
 )
 
 foreach(_t ${RA_FUZZ_TARGETS})
@@ -88,6 +91,9 @@ foreach(_t ${RA_FUZZ_TARGETS})
       ${FW_ROOT}/libs/ra_net_pal/inc
       ${FW_ROOT}/libs/ra_net/inc
       ${FW_ROOT}/libs/ra_epub/inc
+      ${FW_ROOT}/libs/ra_ble_host/inc
+      ${FW_ROOT}/libs/ra_usb_pal/inc
+      ${FW_ROOT}/libs/ra_tls/inc
       ${CMAKE_CURRENT_SOURCE_DIR}/../mocks
   )
   set_target_properties(${_t} PROPERTIES LINKER_LANGUAGE CXX)
