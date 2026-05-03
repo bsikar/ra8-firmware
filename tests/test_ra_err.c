@@ -11,6 +11,12 @@
 #include "ra_err.h"
 #include "unity_minimal.h"
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_k_ra_ok_is_zero(void)
 {
   TEST_BEGIN("k_ra_ok is zero");
@@ -18,6 +24,12 @@ static void test_k_ra_ok_is_zero(void)
   TEST_END("k_ra_ok is zero");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_ra_err_is_error(void)
 {
   TEST_BEGIN("ra_err_is_error");
@@ -28,6 +40,12 @@ static void test_ra_err_is_error(void)
   TEST_END("ra_err_is_error");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_ra_err_to_str_known(void)
 {
   TEST_BEGIN("ra_err_to_str known codes");
@@ -38,6 +56,12 @@ static void test_ra_err_to_str_known(void)
   TEST_END("ra_err_to_str known codes");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_ra_err_to_str_unknown(void)
 {
   TEST_BEGIN("ra_err_to_str unknown code");

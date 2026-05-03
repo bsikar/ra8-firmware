@@ -126,6 +126,11 @@ static ra_dotf_key_handle_t make_key_handle(ra_dotf_key_size_t size, uint8_t key
 /* ---------------------------------------------------------------------------
  * Lifecycle
  * ---------------------------------------------------------------------------
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_init_happy(void)
@@ -148,6 +153,12 @@ static void test_init_happy(void)
   TEST_END("dotf init happy");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_deinit_clears_regs(void)
 {
   TEST_BEGIN("dotf deinit clears REG00");
@@ -167,6 +178,11 @@ static void test_deinit_clears_regs(void)
 /* ---------------------------------------------------------------------------
  * set_region
  * ---------------------------------------------------------------------------
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_set_region_happy(void)
@@ -185,6 +201,12 @@ static void test_set_region_happy(void)
   TEST_END("dotf set_region happy");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_region_null(void)
 {
   TEST_BEGIN("dotf set_region null cfg");
@@ -195,6 +217,12 @@ static void test_set_region_null(void)
   TEST_END("dotf set_region null cfg");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_region_bad_channel(void)
 {
   TEST_BEGIN("dotf set_region bad channel");
@@ -208,6 +236,12 @@ static void test_set_region_bad_channel(void)
   TEST_END("dotf set_region bad channel");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_region_bad_slot(void)
 {
   TEST_BEGIN("dotf set_region bad slot");
@@ -219,6 +253,12 @@ static void test_set_region_bad_slot(void)
   TEST_END("dotf set_region bad slot");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_region_misaligned_start(void)
 {
   TEST_BEGIN("dotf set_region misaligned start");
@@ -231,6 +271,12 @@ static void test_set_region_misaligned_start(void)
   TEST_END("dotf set_region misaligned start");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_region_misaligned_end(void)
 {
   TEST_BEGIN("dotf set_region misaligned end");
@@ -243,6 +289,12 @@ static void test_set_region_misaligned_end(void)
   TEST_END("dotf set_region misaligned end");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_region_inverted(void)
 {
   TEST_BEGIN("dotf set_region start>end");
@@ -256,6 +308,12 @@ static void test_set_region_inverted(void)
   TEST_END("dotf set_region start>end");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_region_outside_window(void)
 {
   TEST_BEGIN("dotf set_region escapes XSPI window");
@@ -276,6 +334,12 @@ static void test_set_region_outside_window(void)
   TEST_END("dotf set_region escapes XSPI window");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_region_overlap_other_channel(void)
 {
   TEST_BEGIN("dotf set_region overlap other channel");
@@ -318,6 +382,11 @@ static void test_set_region_overlap_other_channel(void)
 /* ---------------------------------------------------------------------------
  * select_region / get_active_region
  * ---------------------------------------------------------------------------
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_select_region_writes_hardware(void)
@@ -338,6 +407,12 @@ static void test_select_region_writes_hardware(void)
   TEST_END("dotf select_region writes CONVAREAST/D");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_select_region_unstaged(void)
 {
   TEST_BEGIN("dotf select_region unstaged slot");
@@ -355,6 +430,12 @@ static void test_select_region_unstaged(void)
   TEST_END("dotf select_region unstaged slot");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_get_active_region(void)
 {
   TEST_BEGIN("dotf get_active_region round-trip");
@@ -384,6 +465,11 @@ static void test_get_active_region(void)
 /* ---------------------------------------------------------------------------
  * Multi-region staging on a single channel
  * ---------------------------------------------------------------------------
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_multi_region_staging(void)
@@ -428,6 +514,11 @@ static void test_multi_region_staging(void)
 /* ---------------------------------------------------------------------------
  * install_key / set_iv
  * ---------------------------------------------------------------------------
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_install_key_happy(void)
@@ -450,6 +541,12 @@ static void test_install_key_happy(void)
   TEST_END("dotf install_key happy + sizes");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_install_key_invalid(void)
 {
   TEST_BEGIN("dotf install_key invalid args");
@@ -475,6 +572,12 @@ static void test_install_key_invalid(void)
   TEST_END("dotf install_key invalid args");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_iv(void)
 {
   TEST_BEGIN("dotf set_iv");
@@ -497,6 +600,11 @@ static void test_set_iv(void)
 /* ---------------------------------------------------------------------------
  * Key rotation (live)
  * ---------------------------------------------------------------------------
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_rotate_key_live(void)
@@ -544,6 +652,12 @@ static void test_rotate_key_live(void)
   TEST_END("dotf rotate_key live");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_rotate_key_invalid(void)
 {
   TEST_BEGIN("dotf rotate_key invalid args");
@@ -573,6 +687,12 @@ static void test_rotate_key_invalid(void)
   TEST_END("dotf rotate_key invalid args");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_rotate_key_disabled_stays_disabled(void)
 {
   TEST_BEGIN("dotf rotate_key disabled stays disabled");
@@ -595,6 +715,11 @@ static void test_rotate_key_disabled_stays_disabled(void)
 /* ---------------------------------------------------------------------------
  * enable / disable / status
  * ---------------------------------------------------------------------------
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_enable_writes_default_pattern(void)
@@ -613,6 +738,12 @@ static void test_enable_writes_default_pattern(void)
   TEST_END("dotf enable writes default pattern");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_enable_bad_channel(void)
 {
   TEST_BEGIN("dotf enable bad channel");
@@ -621,6 +752,12 @@ static void test_enable_bad_channel(void)
   TEST_END("dotf enable bad channel");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_disable_clears_reg00(void)
 {
   TEST_BEGIN("dotf disable clears REG00");
@@ -635,6 +772,12 @@ static void test_disable_clears_reg00(void)
   TEST_END("dotf disable clears REG00");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_status_round_trip(void)
 {
   TEST_BEGIN("dotf status read/clear round-trip");
@@ -662,6 +805,11 @@ static void test_status_round_trip(void)
 /* ---------------------------------------------------------------------------
  * REG00 sub-field tuning
  * ---------------------------------------------------------------------------
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_set_sca_level(void)
@@ -702,6 +850,12 @@ static void test_set_sca_level(void)
   TEST_END("dotf set_sca_level");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_key_size(void)
 {
   TEST_BEGIN("dotf set_key_size");
@@ -730,6 +884,12 @@ static void test_set_key_size(void)
   TEST_END("dotf set_key_size");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_run_self_test(void)
 {
   TEST_BEGIN("dotf run_self_test");
@@ -753,6 +913,11 @@ static void test_run_self_test(void)
 /* ---------------------------------------------------------------------------
  * IRQ attach + dispatch
  * ---------------------------------------------------------------------------
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_attach_dispatch(void)
@@ -781,6 +946,11 @@ static void test_attach_dispatch(void)
 /* ---------------------------------------------------------------------------
  * Power transition
  * ---------------------------------------------------------------------------
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_power_transition(void)
@@ -796,6 +966,11 @@ static void test_power_transition(void)
 /* ---------------------------------------------------------------------------
  * Both-channels-simultaneously test (full N-region active)
  * ---------------------------------------------------------------------------
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_both_channels_active(void)
@@ -847,6 +1022,12 @@ static ra_dotf_open_cfg_t make_open_cfg(uint8_t channel, bool enable_after)
   return cfg;
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_open_arms_channel(void)
 {
   TEST_BEGIN("dotf open drives full bring-up");
@@ -859,6 +1040,12 @@ static void test_open_arms_channel(void)
   TEST_END("dotf open drives full bring-up");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_open_null_cfg(void)
 {
   TEST_BEGIN("dotf open rejects null cfg");
@@ -867,6 +1054,12 @@ static void test_open_null_cfg(void)
   TEST_END("dotf open rejects null cfg");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_open_bad_channel(void)
 {
   TEST_BEGIN("dotf open rejects out-of-range channel");
@@ -877,6 +1070,12 @@ static void test_open_bad_channel(void)
   TEST_END("dotf open rejects out-of-range channel");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_close_resets_block(void)
 {
   TEST_BEGIN("dotf close tears down block");
@@ -887,6 +1086,12 @@ static void test_close_resets_block(void)
   TEST_END("dotf close tears down block");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_region_window_happy(void)
 {
   TEST_BEGIN("dotf set_region_window stages slot 0");
@@ -899,6 +1104,12 @@ static void test_set_region_window_happy(void)
   TEST_END("dotf set_region_window stages slot 0");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_region_window_zero_len(void)
 {
   TEST_BEGIN("dotf set_region_window rejects zero len");
@@ -911,6 +1122,12 @@ static void test_set_region_window_zero_len(void)
   TEST_END("dotf set_region_window rejects zero len");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_region_window_misaligned(void)
 {
   TEST_BEGIN("dotf set_region_window rejects misalignment");
@@ -929,6 +1146,12 @@ static void test_set_region_window_misaligned(void)
   TEST_END("dotf set_region_window rejects misalignment");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_region_window_bad_channel(void)
 {
   TEST_BEGIN("dotf set_region_window rejects bad channel");

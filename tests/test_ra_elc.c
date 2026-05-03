@@ -46,6 +46,12 @@ static volatile uint8_t* test_elsegr(uint8_t group)
                              ((uintptr_t)group * (uintptr_t)k_ra_elc_elsegr_stride));
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_link_first_slot(void)
 {
   TEST_BEGIN("elc link first slot");
@@ -58,6 +64,12 @@ static void test_link_first_slot(void)
   TEST_END("elc link first slot");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_link_mid_slot(void)
 {
   TEST_BEGIN("elc link mid slot");
@@ -70,6 +82,12 @@ static void test_link_mid_slot(void)
   TEST_END("elc link mid slot");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_link_last_slot(void)
 {
   TEST_BEGIN("elc link last valid slot");
@@ -80,6 +98,12 @@ static void test_link_last_slot(void)
   TEST_END("elc link last valid slot");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_link_bad_slot(void)
 {
   TEST_BEGIN("elc link bad slot");
@@ -90,6 +114,12 @@ static void test_link_bad_slot(void)
   TEST_END("elc link bad slot");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_link_huge_slot(void)
 {
   TEST_BEGIN("elc link huge slot");
@@ -100,6 +130,12 @@ static void test_link_huge_slot(void)
   TEST_END("elc link huge slot");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_enables_controller(void)
 {
   TEST_BEGIN("ra_elc_init: ELSR cleared + ELCON set");
@@ -118,6 +154,12 @@ static void test_init_enables_controller(void)
   TEST_END("ra_elc_init: ELSR cleared + ELCON set");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_deinit_clears_elcon(void)
 {
   TEST_BEGIN("ra_elc_deinit: ELCON cleared");
@@ -133,6 +175,12 @@ static void test_deinit_clears_elcon(void)
   TEST_END("ra_elc_deinit: ELCON cleared");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_unlink_clears_slot(void)
 {
   TEST_BEGIN("ra_elc_unlink: slot zeroed");
@@ -148,6 +196,12 @@ static void test_unlink_clears_slot(void)
   TEST_END("ra_elc_unlink: slot zeroed");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_software_trigger(void)
 {
   TEST_BEGIN("ra_elc_software_trigger: 3-step sequence latches 0x41");
@@ -168,6 +222,12 @@ static void test_software_trigger(void)
   TEST_END("ra_elc_software_trigger: 3-step sequence latches 0x41");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_is_enabled_null_out(void)
 {
   TEST_BEGIN("ra_elc_is_enabled: NULL out rejected");

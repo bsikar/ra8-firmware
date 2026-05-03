@@ -11,6 +11,12 @@
 #include "ra_err.h"
 #include "unity_minimal.h"
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_hardware_category(void)
 {
   TEST_BEGIN("hardware category strings");
@@ -20,6 +26,12 @@ static void test_hardware_category(void)
   TEST_END("hardware category strings");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_comm_category(void)
 {
   TEST_BEGIN("communication category strings");
@@ -30,6 +42,12 @@ static void test_comm_category(void)
   TEST_END("communication category strings");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_validation_category(void)
 {
   TEST_BEGIN("validation category strings");

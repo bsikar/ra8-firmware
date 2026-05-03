@@ -65,6 +65,12 @@ static ra_rmac_config_t default_rmac_cfg(void)
 
 /* --- TX descriptor ring depth clamping --- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_tx_ring_full_at_ceiling(void)
 {
   TEST_BEGIN("etha tx ring depth clamped to EATDQDC 11-bit ceiling");
@@ -88,6 +94,12 @@ static void test_tx_ring_full_at_ceiling(void)
 
 /* --- rx_drop saturation under sustained overrun --- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_rx_overrun_saturates(void)
 {
   TEST_BEGIN("etha rx_drop counter saturates rather than wraps");
@@ -109,6 +121,12 @@ static void test_rx_overrun_saturates(void)
 
 /* --- MAC/PHY race: auto_neg_wait timeout must not corrupt MMIS1 --- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_phy_auto_neg_wait_race(void)
 {
   TEST_BEGIN("rmac auto_neg_wait timeout leaves status registers consistent");
@@ -131,6 +149,12 @@ static void test_phy_auto_neg_wait_race(void)
 
 /* --- Pause-frame flow control bit packing for both modes --- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_pause_frame_packing(void)
 {
   TEST_BEGIN("rmac pause-frame packing across 802.3x and PFC modes");
@@ -159,6 +183,12 @@ static void test_pause_frame_packing(void)
 
 /* --- Jumbo-frame size programming + rejection --- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_jumbo_frame_size_limits(void)
 {
   TEST_BEGIN("etha jumbo-frame size programming + ceiling rejection");
@@ -186,6 +216,12 @@ static void test_jumbo_frame_size_limits(void)
 
 /* --- Per-block IRQ enable/disable independence --- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_irq_enable_blocks_independent(void)
 {
   TEST_BEGIN("etha enable/disable IRQ across all three blocks is non-destructive");

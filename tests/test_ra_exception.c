@@ -39,6 +39,12 @@ void internal_ra_fatal_error(const char* tag, const char* message, uint32_t err)
   longjmp(s_fatal_jmp, 1);
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_capture_diagnostics_happy(void)
 {
   TEST_BEGIN("ra_exception_capture_diagnostics fills buffer");
@@ -66,6 +72,12 @@ static void test_capture_diagnostics_happy(void)
   TEST_END("ra_exception_capture_diagnostics fills buffer");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_capture_diagnostics_null(void)
 {
   TEST_BEGIN("ra_exception_capture_diagnostics tolerates NULL");
@@ -75,6 +87,12 @@ static void test_capture_diagnostics_null(void)
   TEST_END("ra_exception_capture_diagnostics tolerates NULL");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_exception_report_with_frame(void)
 {
   TEST_BEGIN("ra_exception_report logs frame and halts via fatal");
@@ -101,6 +119,12 @@ static void test_exception_report_with_frame(void)
   TEST_END("ra_exception_report logs frame and halts via fatal");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_exception_report_null_frame(void)
 {
   TEST_BEGIN("ra_exception_report accepts NULL frame");

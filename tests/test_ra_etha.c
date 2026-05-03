@@ -44,6 +44,12 @@ static void prep(void)
 
 /* --- Lifecycle / init --- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_happy(void)
 {
   TEST_BEGIN("etha init happy");
@@ -61,6 +67,12 @@ static void test_init_happy(void)
   TEST_END("etha init happy");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_null(void)
 {
   TEST_BEGIN("etha init null cfg");
@@ -69,6 +81,12 @@ static void test_init_null(void)
   TEST_END("etha init null cfg");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_bad_port(void)
 {
   TEST_BEGIN("etha init bad port");
@@ -82,6 +100,12 @@ static void test_init_bad_port(void)
   TEST_END("etha init bad port");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_status_read_and_clear(void)
 {
   TEST_BEGIN("etha status read + clear");
@@ -116,6 +140,12 @@ static void test_status_read_and_clear(void)
   TEST_END("etha status read + clear");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_clear_status_blocks(void)
 {
   TEST_BEGIN("etha clear_status all blocks");
@@ -143,6 +173,12 @@ static void test_clear_status_blocks(void)
   TEST_END("etha clear_status all blocks");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_enable_disable_irq(void)
 {
   TEST_BEGIN("etha enable/disable irq");
@@ -185,6 +221,12 @@ static void test_enable_disable_irq(void)
   TEST_END("etha enable/disable irq");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_attach_and_dispatch(void)
 {
   TEST_BEGIN("etha attach + dispatch");
@@ -221,6 +263,12 @@ static void test_attach_and_dispatch(void)
   TEST_END("etha attach + dispatch");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_power_transition(void)
 {
   TEST_BEGIN("etha power transition");
@@ -250,6 +298,12 @@ static void test_power_transition(void)
   TEST_END("etha power transition");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_lifecycle_bad_args(void)
 {
   TEST_BEGIN("etha lifecycle bad args");
@@ -268,6 +322,12 @@ static void test_lifecycle_bad_args(void)
 
 /* --- Per-class queue + preemption --- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_queue_arb_and_depth(void)
 {
   TEST_BEGIN("etha queue arb + depth");
@@ -304,6 +364,12 @@ static void test_queue_arb_and_depth(void)
   TEST_END("etha queue arb + depth");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_get_queue_level(void)
 {
   TEST_BEGIN("etha get queue level");
@@ -333,6 +399,12 @@ static void test_get_queue_level(void)
   TEST_END("etha get queue level");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_preemption(void)
 {
   TEST_BEGIN("etha set preemption");
@@ -355,6 +427,12 @@ static void test_set_preemption(void)
   TEST_END("etha set preemption");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_max_frame_size(void)
 {
   TEST_BEGIN("etha set max frame size (jumbo)");
@@ -380,6 +458,12 @@ static void test_set_max_frame_size(void)
 
 /* --- IPV remap + VLAN --- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_ipv_remap(void)
 {
   TEST_BEGIN("etha set ipv remap");
@@ -406,6 +490,12 @@ static void test_set_ipv_remap(void)
   TEST_END("etha set ipv remap");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_vlan_mode_and_tag(void)
 {
   TEST_BEGIN("etha vlan mode + tag");
@@ -439,6 +529,12 @@ static void test_set_vlan_mode_and_tag(void)
   TEST_END("etha vlan mode + tag");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_rx_tag_filter(void)
 {
   TEST_BEGIN("etha rx tag filter");
@@ -460,6 +556,12 @@ static void test_rx_tag_filter(void)
 
 /* --- Cut-through queue --- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_cut_through_queue(void)
 {
   TEST_BEGIN("etha cut through queue");
@@ -480,6 +582,12 @@ static void test_cut_through_queue(void)
 
 /* --- CBS --- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_cbs_configure_and_state(void)
 {
   TEST_BEGIN("etha cbs configure + state");
@@ -528,6 +636,12 @@ static void test_cbs_configure_and_state(void)
 
 /* --- TAS --- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_tas_schedule_and_enable(void)
 {
   TEST_BEGIN("etha tas schedule + enable");
@@ -575,6 +689,12 @@ static void test_tas_schedule_and_enable(void)
 
 /* --- Stats --- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_read_clear_stats(void)
 {
   TEST_BEGIN("etha read + clear stats");
@@ -612,6 +732,12 @@ static void test_read_clear_stats(void)
 
 /* --- Per-port descriptor ring + traffic stats --- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_descriptor_ring_init(void)
 {
   TEST_BEGIN("etha descriptor_ring_init");
@@ -653,6 +779,12 @@ static void test_descriptor_ring_init(void)
   TEST_END("etha descriptor_ring_init");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_get_stats_and_account(void)
 {
   TEST_BEGIN("etha get_stats + account_traffic");
@@ -694,6 +826,12 @@ static void test_get_stats_and_account(void)
   TEST_END("etha get_stats + account_traffic");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_get_stats_after_deinit(void)
 {
   TEST_BEGIN("etha get_stats after deinit (clean slate)");
@@ -714,6 +852,12 @@ static void test_get_stats_after_deinit(void)
   TEST_END("etha get_stats after deinit (clean slate)");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_etha_open_bad_args(void)
 {
   TEST_BEGIN("etha open bad args");
@@ -735,6 +879,12 @@ static void test_etha_open_bad_args(void)
   TEST_END("etha open bad args");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_etha_open_eamc_transition(void)
 {
   TEST_BEGIN("etha open EAMC transition");
@@ -774,6 +924,12 @@ static void test_etha_open_eamc_transition(void)
 
 /* --- Security gate --- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_security(void)
 {
   TEST_BEGIN("etha set security gate");

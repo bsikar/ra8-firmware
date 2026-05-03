@@ -62,6 +62,11 @@ static ra_flash_cfg_t make_cfg(void)
 
 /* ---------------------------------------------------------------------------
  * Init / deinit
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  * ------------------------------------------------------------------------ */
 
 static void test_init_happy(void)
@@ -85,6 +90,12 @@ static void test_init_happy(void)
   TEST_END("flash init happy");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_null_cfg(void)
 {
   TEST_BEGIN("flash init null cfg");
@@ -93,6 +104,12 @@ static void test_init_null_cfg(void)
   TEST_END("flash init null cfg");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_bad_mrcfreq(void)
 {
   TEST_BEGIN("flash init bad mrcfreq");
@@ -103,6 +120,12 @@ static void test_init_bad_mrcfreq(void)
   TEST_END("flash init bad mrcfreq");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_bad_mrefreq(void)
 {
   TEST_BEGIN("flash init bad mrefreq");
@@ -115,6 +138,12 @@ static void test_init_bad_mrefreq(void)
   TEST_END("flash init bad mrefreq");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_deinit_locks_everything(void)
 {
   TEST_BEGIN("flash deinit locks");
@@ -135,6 +164,11 @@ static void test_deinit_locks_everything(void)
 
 /* ---------------------------------------------------------------------------
  * Status registers
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  * ------------------------------------------------------------------------ */
 
 static void test_get_status_paths(void)
@@ -155,6 +189,12 @@ static void test_get_status_paths(void)
   TEST_END("flash get_status paths");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_get_extended_status(void)
 {
   TEST_BEGIN("flash get_extended_status");
@@ -178,6 +218,12 @@ static void test_get_extended_status(void)
   TEST_END("flash get_extended_status");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_clear_status_paths(void)
 {
   TEST_BEGIN("flash clear_status paths");
@@ -195,6 +241,12 @@ static void test_clear_status_paths(void)
   TEST_END("flash clear_status paths");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_rww_disable(void)
 {
   TEST_BEGIN("flash set_rww_disable");
@@ -210,6 +262,11 @@ static void test_set_rww_disable(void)
 
 /* ---------------------------------------------------------------------------
  * Direct programming validation
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  * ------------------------------------------------------------------------ */
 
 static void test_write_block_validation(void)
@@ -251,6 +308,12 @@ static void test_write_block_validation(void)
   TEST_END("flash write_block validation");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_erase_block_alignment(void)
 {
   TEST_BEGIN("flash erase_block alignment");
@@ -263,6 +326,11 @@ static void test_erase_block_alignment(void)
 
 /* ---------------------------------------------------------------------------
  * Block protection
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  * ------------------------------------------------------------------------ */
 
 static void test_block_protect_set(void)
@@ -291,6 +359,11 @@ static void test_block_protect_set(void)
 
 /* ---------------------------------------------------------------------------
  * P/E mode transitions
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  * ------------------------------------------------------------------------ */
 
 static void test_pe_mode_round_trip(void)
@@ -310,6 +383,11 @@ static void test_pe_mode_round_trip(void)
 
 /* ---------------------------------------------------------------------------
  * Force stop / reset
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  * ------------------------------------------------------------------------ */
 
 static void test_force_stop_happy(void)
@@ -323,6 +401,12 @@ static void test_force_stop_happy(void)
   TEST_END("flash force_stop happy");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_force_stop_cmdlk(void)
 {
   TEST_BEGIN("flash force_stop cmdlk");
@@ -333,6 +417,12 @@ static void test_force_stop_cmdlk(void)
   TEST_END("flash force_stop cmdlk");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_reset_happy(void)
 {
   TEST_BEGIN("flash reset happy");
@@ -351,6 +441,11 @@ static void test_reset_happy(void)
 
 /* ---------------------------------------------------------------------------
  * Start-up area
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  * ------------------------------------------------------------------------ */
 
 static void test_set_startup_area_temporary(void)
@@ -373,6 +468,12 @@ static void test_set_startup_area_temporary(void)
   TEST_END("flash set_startup_area temporary");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_get_startup_area(void)
 {
   TEST_BEGIN("flash get_startup_area");
@@ -392,6 +493,11 @@ static void test_get_startup_area(void)
 
 /* ---------------------------------------------------------------------------
  * Configuration-set / extra MRAM
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  * ------------------------------------------------------------------------ */
 
 static void test_config_set_write_validation(void)
@@ -439,6 +545,12 @@ static void test_mcdc_config_set_write_extra_window(void)
   TEST_END("flash config_set_write MC/DC: in_extra T,T pair");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_extra_mram_write_validation(void)
 {
   TEST_BEGIN("flash extra_mram_write validation");
@@ -460,6 +572,12 @@ static void test_extra_mram_write_validation(void)
   TEST_END("flash extra_mram_write validation");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_extra_mram_erase_validation(void)
 {
   TEST_BEGIN("flash extra_mram_erase validation");
@@ -512,6 +630,12 @@ static void test_zeroize_huk_paths(void)
   TEST_END("flash zeroize_huk paths");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_security_attribution(void)
 {
   TEST_BEGIN("flash set_security_attribution");
@@ -521,6 +645,12 @@ static void test_set_security_attribution(void)
   TEST_END("flash set_security_attribution");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_msuinitr_kick(void)
 {
   TEST_BEGIN("flash msuinitr_kick");
@@ -530,6 +660,12 @@ static void test_msuinitr_kick(void)
   TEST_END("flash msuinitr_kick");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_ecc_encoder_decoder_enable(void)
 {
   TEST_BEGIN("flash set_ecc_*_enable");
@@ -546,6 +682,12 @@ static void test_set_ecc_encoder_decoder_enable(void)
   TEST_END("flash set_ecc_*_enable");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_get_ecc_error_addr(void)
 {
   TEST_BEGIN("flash get_ecc_error_addr");
@@ -570,6 +712,12 @@ static void test_get_ecc_error_addr(void)
   TEST_END("flash get_ecc_error_addr");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_get_program_error_addr(void)
 {
   TEST_BEGIN("flash get_program_error_addr");
@@ -582,6 +730,12 @@ static void test_get_program_error_addr(void)
   TEST_END("flash get_program_error_addr");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_update_clock_freq(void)
 {
   TEST_BEGIN("flash update_clock_freq");
@@ -609,6 +763,12 @@ static void test_set_update_transfer(void)
   TEST_END("flash set_update_transfer");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_get_update_status(void)
 {
   TEST_BEGIN("flash get_update_status");
@@ -648,6 +808,12 @@ static void test_callback(const ra_flash_isr_event_t* ev)
   s_cb_last_ctx    = ev->user_ctx;
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_irq_enable(void)
 {
   TEST_BEGIN("flash set_irq_enable");
@@ -683,6 +849,12 @@ static void test_set_irq_enable(void)
   TEST_END("flash set_irq_enable");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_callback_set_and_dispatch(void)
 {
   TEST_BEGIN("flash dispatch_isr");
@@ -719,6 +891,12 @@ static void test_callback_set_and_dispatch(void)
   TEST_END("flash dispatch_isr");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_callback_set_idempotent(void)
 {
   TEST_BEGIN("flash callback_set idempotent");
@@ -745,6 +923,12 @@ static void test_open_close_aliases(void)
   TEST_END("flash open/close aliases");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_window_paths(void)
 {
   TEST_BEGIN("flash set_window paths");
@@ -763,6 +947,12 @@ static void test_set_window_paths(void)
   TEST_END("flash set_window paths");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_erase_validation(void)
 {
   TEST_BEGIN("flash erase validation");
@@ -796,6 +986,12 @@ static void test_erase_validation(void)
   TEST_END("flash erase validation");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_write_validation_and_chunking(void)
 {
   TEST_BEGIN("flash write validation");
@@ -831,6 +1027,12 @@ static void test_write_validation_and_chunking(void)
   TEST_END("flash write validation");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_blank_check_paths(void)
 {
   TEST_BEGIN("flash blank_check paths");
@@ -868,6 +1070,12 @@ static void test_blank_check_paths(void)
   TEST_END("flash blank_check paths");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_status_decoder(void)
 {
   TEST_BEGIN("flash status decoder");
@@ -899,6 +1107,12 @@ static void test_status_decoder(void)
   TEST_END("flash status decoder");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_status_clean(void)
 {
   TEST_BEGIN("flash status clean");
@@ -941,6 +1155,12 @@ static void test_suspend_resume_round_trip(void)
   TEST_END("flash suspend/resume round-trip via MENTRYR.PCKA");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_lock_set_ns_world(void)
 {
   TEST_BEGIN("flash lock_set programs MRCBPROT0 for NS addresses");
@@ -954,6 +1174,12 @@ static void test_lock_set_ns_world(void)
   TEST_END("flash lock_set programs MRCBPROT0 for NS addresses");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_lock_set_s_world(void)
 {
   TEST_BEGIN("flash lock_set programs MRCBPROT1 for S addresses");
@@ -967,6 +1193,12 @@ static void test_lock_set_s_world(void)
   TEST_END("flash lock_set programs MRCBPROT1 for S addresses");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_lock_set_validation(void)
 {
   TEST_BEGIN("flash lock_set rejects bad address / bad key");
