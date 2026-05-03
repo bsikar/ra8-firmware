@@ -606,6 +606,52 @@ static void test_mcdc_hex_decode_invalid_nibble(void)
   TEST_END("mcdc: hex_decode invalid-nibble (hi||lo == invalid)");
 }
 
+/**
+ * @test test_mcdc_hex_nibble_pair_completion
+ *
+ * @par MC/DC:
+ * Three sibling decisions in libs/ra_ota/src/ra_ota.c priv_hex_nibble:
+ * - line 448: ``(c >= '0') && (c <= '9')``
+ * - line 451: ``(c >= 'a') && (c <= 'f')``
+ * - line 454: ``(c >= 'A') && (c <= 'F')``
+ *
+ * For each 2-cond AND, N+1 = 3 vectors. The pre-existing
+ * test_mcdc_hex_decode_invalid_nibble corrupts with 'Z' which gives:
+ *   448: T,F (Z >= '0' but Z > '9')
+ *   451: F,- (Z < 'a')
+ *   454: T,F (Z >= 'A' but Z > 'F')
+ *
+ * Missing vectors per decision:
+ *   448 needs C1=F (c < '0')         -> corrupt with '/'  (0x2F).
+ *   451 needs C1=T,C2=F (c > 'f')    -> corrupt with 'z'.
+ *   454 needs C1=F (c < 'A')         -> corrupt with ':'  (0x3A,
+ *                                       between '9' and 'A').
+ * Each is fed through ra_ota_check_for_update by mutating the sha256
+ * field of the manifest, so priv_hex_nibble is exercised on real input.
+ */
+static void test_mcdc_hex_nibble_pair_completion(void)
+{
+  TEST_BEGIN("ra_ota MC/DC: hex_nibble C1=F vectors for lines 448/451/454");
+  ra_ota_cfg_t      cfg = priv_make_cfg();
+  ra_ota_manifest_t m   = {};
+
+  /* Helper: corrupt the FIRST sha256 hex byte to character 'ch' and
+   * verify ra_ota_check_for_update rejects with invalid_arg. */
+  const char vectors[3] = {'/', 'z', ':'};
+  for (uint32_t i = 0U; i < 3U; ++i) {
+    priv_reset_globals();
+    priv_make_image();
+    priv_make_manifest();
+    char* sha_field = strstr(g_mock_manifest, "\"sha256\": \"");
+    TEST_ASSERT_NOT_NULL(sha_field);
+    sha_field[strlen("\"sha256\": \"")] = vectors[i];
+    TEST_ASSERT_EQ(k_ra_ok, ra_ota_init(&cfg));
+    TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ota_check_for_update(&m));
+    TEST_ASSERT_EQ(k_ra_ok, ra_ota_deinit());
+  }
+  TEST_END("ra_ota MC/DC: hex_nibble C1=F vectors for lines 448/451/454");
+}
+
 /* =============================================================================
  * main
  * ============================================================================= */
@@ -658,6 +704,7 @@ int main(void)
   test_mcdc_run_full_update_terminal();
   test_mcdc_hex_decode_invalid_nibble();
   test_mcdc_priv_json_u32_skip_chars();
+  test_mcdc_hex_nibble_pair_completion();
   (void)fprintf(stderr, "[OK  ] test_ra_ota.c\n");
   return 0;
 }

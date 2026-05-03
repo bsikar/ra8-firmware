@@ -642,6 +642,58 @@ static void test_mcdc_run_cfg_out_null_or(void)
 /**
  * @brief Test driver.
  */
+/**
+ * @test test_mcdc_apply_run_screen_dim_pair
+ *
+ * @par MC/DC:
+ * Decision A (libs/ra_touch_cal/src/ra_touch_cal.c:469 ra_touch_cal_apply):
+ *   ``if ((screen_width == 0U) || (screen_height == 0U))``
+ * 2-cond OR. test_apply_clip_and_null already supplies V1 (both >0) and
+ * V2 (width=0). This adds V3 (height=0) so MC/DC = 100%.
+ *
+ * Decision B (libs/ra_touch_cal/src/ra_touch_cal.c:395 ra_touch_cal_run):
+ *   ``if ((cfg->screen_width == 0U) || (cfg->screen_height == 0U))``
+ * Same shape; existing tests cover all-non-zero (V1) and width=0 (V2).
+ * This adds V3 (height=0).
+ *
+ * - V1 (existing): w=100,h=100 -> dec F (proceed).
+ * - V2 (existing): w=0,h=100   -> C1=T short -> dec T -> invalid_arg.
+ * - V3 (new):      w=100,h=0   -> C1=F,C2=T -> dec T -> invalid_arg.
+ * V1+V2 isolate C1; V1+V3 isolate C2.
+ */
+static void test_mcdc_apply_run_screen_dim_pair(void)
+{
+  TEST_BEGIN("touch_cal MC/DC: apply+run screen_height==0 (C2 of OR)");
+  const ra_touch_cal_matrix_t m = {
+    .a = 1.0F,
+    .b = 0.0F,
+    .c = 0.0F,
+    .d = 0.0F,
+    .e = 1.0F,
+    .f = 0.0F,
+  };
+  const ra_touch_cal_point_t raw = {0, 0};
+  ra_touch_cal_point_t       out = {0, 0};
+
+  /* Decision A V3: screen_height=0. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_touch_cal_apply(raw, &m, 100U, 0U, &out));
+
+  /* Decision B V3: cfg->screen_height=0. */
+  ra_touch_cal_run_cfg_t cfg = {
+    .draw_target   = (ra_touch_cal_draw_target_fn_t)0x1U, /* non-null sentinels */
+    .draw_ctx      = NULL,
+    .read_raw      = (ra_touch_cal_read_raw_fn_t)0x1U,
+    .read_ctx      = NULL,
+    .screen_width  = 320U,
+    .screen_height = 0U,
+    .inset_px      = 8U,
+  };
+  ra_touch_cal_matrix_t mat;
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_touch_cal_run(&cfg, &mat));
+  TEST_END("touch_cal MC/DC: apply+run screen_height==0 (C2 of OR)");
+}
+
 int main(void)
 {
   test_compute_three_point();
@@ -657,5 +709,6 @@ int main(void)
   test_mcdc_compute_null_or3();
   test_mcdc_run_cb_null_or();
   test_mcdc_run_cfg_out_null_or();
+  test_mcdc_apply_run_screen_dim_pair();
   return 0;
 }

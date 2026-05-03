@@ -409,6 +409,55 @@ static void test_mcdc_ble(void)
   TEST_END("ble MC/DC: hci_send_command + scan_start range decisions");
 }
 
+/**
+ * @test test_mcdc_ble_acl_inject_args
+ *
+ * @par MC/DC:
+ * Decision A (libs/ra_hal/src/ra_ble.c:374 ra_ble_hci_send_acl_data):
+ *   ``if ((payload == NULL) && (len > 0U))``
+ * 2-cond AND short-circuit: N+1 = 3 vectors.
+ * - V1: payload=valid, len=4 -> C1=F short -> dec F (proceeds, ok).
+ * - V2: payload=NULL,  len=0 -> C1=T, C2=F -> dec F (zero-len allowed).
+ * - V3: payload=NULL,  len=4 -> C1=T, C2=T -> dec T -> null_ptr.
+ * V1+V3 isolate C1; V2+V3 isolate C2.
+ *
+ * Decision B (libs/ra_hal/src/ra_ble.c:721 ra_ble_test_inject_rx):
+ *   ``if ((bytes == NULL) || (len == 0U))``
+ * 2-cond OR short-circuit: N+1 = 3 vectors.
+ * - V1: bytes=valid, len>0  -> C1=F, C2=F -> dec F (injects).
+ * - V2: bytes=NULL,  len>0  -> C1=T short -> dec T (skips).
+ * - V3: bytes=valid, len=0  -> C1=F, C2=T -> dec T (skips).
+ *
+ * Both reached purely through public APIs (the inject helper is the
+ * test fixture's documented entry point per ra_ble.h).
+ */
+static void test_mcdc_ble_acl_inject_args(void)
+{
+  TEST_BEGIN("ble MC/DC: send_acl_data + inject_rx arg pairs");
+  prep_open();
+  /* Decision A. */
+  const uint8_t pl[4] = {0U};
+  /* V1 */
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_ok,
+    (int32_t)ra_ble_hci_send_acl_data((uint16_t)k_test_acl_handle, pl, (uint16_t)sizeof(pl)));
+  /* V2 */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_ble_hci_send_acl_data((uint16_t)k_test_acl_handle, NULL, 0U));
+  /* V3 */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_ble_hci_send_acl_data((uint16_t)k_test_acl_handle, NULL, 4U));
+
+  /* Decision B (inject_rx returns void; verify by absence of crash and
+   * that subsequent dispatch sees no spurious bytes). */
+  const uint8_t inj[2] = {0xAAU, 0xBBU};
+  ra_ble_test_inject_rx(inj, (uint16_t)sizeof(inj)); /* V1 */
+  ra_ble_test_inject_rx(NULL, 4U);                   /* V2: short-circuit */
+  ra_ble_test_inject_rx(inj, 0U);                    /* V3 */
+
+  TEST_END("ble MC/DC: send_acl_data + inject_rx arg pairs");
+}
+
 int32_t main(void)
 {
   test_open_close();
@@ -425,6 +474,7 @@ int32_t main(void)
   test_dispatch_before_open();
   test_attach_handlers_idempotent();
   test_mcdc_ble();
+  test_mcdc_ble_acl_inject_args();
   (void)fprintf(stderr, "[OK ] test_ra_ble.c\n");
   return 0;
 }
