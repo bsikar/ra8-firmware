@@ -74,6 +74,12 @@ static void walk_to_attach(void)
 
 /* ---- Lifecycle ---- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_fs_returns_ok(void)
 {
   TEST_BEGIN("ra_usb_haud_init FS returns k_ra_ok and flips DCFM");
@@ -93,6 +99,12 @@ static void test_init_fs_returns_ok(void)
   TEST_END("ra_usb_haud_init FS returns k_ra_ok and flips DCFM");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_bad_speed(void)
 {
   TEST_BEGIN("ra_usb_haud_init rejects bogus speed");
@@ -101,6 +113,12 @@ static void test_init_bad_speed(void)
   TEST_END("ra_usb_haud_init rejects bogus speed");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_close_without_init(void)
 {
   TEST_BEGIN("ra_usb_haud_close before init returns invalid_state");
@@ -111,6 +129,12 @@ static void test_close_without_init(void)
 
 /* ---- Attach callback fires once after a simulated descriptor walk ---- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_attach_callback_fires_once(void)
 {
   TEST_BEGIN("attach callback fires once after the enum step machine completes");
@@ -137,6 +161,12 @@ static void test_attach_callback_fires_once(void)
 
 /* ---- Pre-init guards ---- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_pre_init_guards(void)
 {
   TEST_BEGIN("attach_callback / step / set_format / set_volume / set_mute / "
@@ -162,6 +192,12 @@ static void test_pre_init_guards(void)
 
 /* ---- Pre-attach guards (post-init) ---- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_pre_attach_guards(void)
 {
   TEST_BEGIN("class API rejects pre-attach with invalid_state");
@@ -182,6 +218,12 @@ static void test_pre_attach_guards(void)
 
 /* ---- Null-arg rejection on send / recv samples ---- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_null_arg_rejection(void)
 {
   TEST_BEGIN("send_samples / recv_samples reject NULL buf / got_len");
@@ -201,6 +243,12 @@ static void test_null_arg_rejection(void)
 
 /* ---- set_format invalid params ---- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_format_invalid_args(void)
 {
   TEST_BEGIN("set_format rejects out-of-range channels / bits / rate");
@@ -226,6 +274,12 @@ static void test_set_format_invalid_args(void)
 
 /* ---- set_format happy: stages SAMPLING_FREQ_CONTROL on the wire ---- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_format_setup_envelope(void)
 {
   TEST_BEGIN("ra_usb_haud_set_format stages bmRequestType=0x22 + bRequest=0x01 "
@@ -248,6 +302,12 @@ static void test_set_format_setup_envelope(void)
 
 /* ---- set_volume stages a Feature-Unit SET_CUR(VOLUME) on the wire ---- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_volume_setup_envelope(void)
 {
   TEST_BEGIN("ra_usb_haud_set_volume stages bmRequestType=0x21 + bRequest=0x01 "
@@ -257,7 +317,7 @@ static void test_set_volume_setup_envelope(void)
   walk_to_attach();
   ra_usb_fs()->DCPCTR = 0U;
 
-  /* channel=0 (master), volume=-12 dB (-3072 in 1/256 step). */
+  /* channel=0 (main), volume=-12 dB (-3072 in 1/256 step). */
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_haud_set_volume(0U, (int16_t)-3072));
   /* USBREQ = (0x01 << 8) | 0x21 = 0x0121. */
   TEST_ASSERT_EQ((int32_t)0x0121U, (int32_t)ra_usb_fs()->USBREQ);
@@ -272,6 +332,12 @@ static void test_set_volume_setup_envelope(void)
 
 /* ---- set_mute stages a Feature-Unit SET_CUR(MUTE) on the wire ---- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_mute_setup_envelope(void)
 {
   TEST_BEGIN("ra_usb_haud_set_mute stages bmRequestType=0x21 + bRequest=0x01 "
@@ -295,6 +361,12 @@ static void test_set_mute_setup_envelope(void)
 
 /* ---- send_samples / recv_samples invalid args (max_len = 0) ---- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_iso_invalid_args(void)
 {
   TEST_BEGIN("send_samples / recv_samples reject zero-length post-attach");

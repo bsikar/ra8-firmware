@@ -145,16 +145,6 @@ SKIP_FILE_PATTERNS: tuple[str, ...] = (
     # Renesas FSP `r_iic_b_master_*` API surface references.
     "libs/ra_hal/inc/ra_iic_b.h",
     "libs/ra_hal/src/ra_iic_b.c",
-    # The IIC_B / I3C / SPI / SSIE / USB-HAUD test fixtures below each
-    # carry 14-44 pre-existing tests that pre-date the strict MC/DC-block
-    # gate (scripts/utils/check_mcdc_block.py). The terminology rewrites
-    # themselves are trivial (a handful of comments and TEST_BEGIN strings
-    # per file) but staging the file re-runs the MC/DC gate over every
-    # test in it. Backfilling @par MC/DC: blocks across ~150 legacy tests
-    # is tracked separately and is orthogonal to the inclusive-terminology
-    # effort. Keep these in skip until the MC/DC backfill lands; removing
-    # the skip is a one-line follow-up at that point.
-    "tests/test_ra_usb_haud.c",
     # Express Logic USBX `UX_SLAVE_*` upstream type names referenced from
     # the port shim itself.
     "port/usbx/ux_dcd_ra_usb.c",
