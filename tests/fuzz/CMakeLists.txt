@@ -68,6 +68,7 @@ endif()
 # linked-in production code, which is the primary value we are after.
 set(RA_FUZZ_TARGETS
     fuzz_ra_jpeg_sw
+    fuzz_ra_jpeg_sw_block
     fuzz_ra_epub
     fuzz_ra_modem_at
     fuzz_ra_net_arp
@@ -75,6 +76,9 @@ set(RA_FUZZ_TARGETS
     fuzz_ra_ble_att
     fuzz_ra_usb_pal
     fuzz_ra_tls
+    fuzz_ra_canfd
+    fuzz_ra_etha
+    fuzz_ra_fs_fat
 )
 
 foreach(_t ${RA_FUZZ_TARGETS})
@@ -94,6 +98,7 @@ foreach(_t ${RA_FUZZ_TARGETS})
       ${FW_ROOT}/libs/ra_ble_host/inc
       ${FW_ROOT}/libs/ra_usb_pal/inc
       ${FW_ROOT}/libs/ra_tls/inc
+      ${FW_ROOT}/libs/ra_fs/inc
       ${CMAKE_CURRENT_SOURCE_DIR}/../mocks
   )
   set_target_properties(${_t} PROPERTIES LINKER_LANGUAGE CXX)

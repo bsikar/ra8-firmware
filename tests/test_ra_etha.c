@@ -1257,6 +1257,67 @@ static void test_mcdc_configure_cut_through_pair(void)
   TEST_END("etha configure_cut_through + cbs MC/DC");
 }
 
+/**
+ * @test test_mcdc_test_inject_rx_quad
+ *
+ * @par MC/DC:
+ * Decision in ra_etha_test_inject_rx (libs/ra_hal/src/ra_etha.c):
+ * 4-condition OR over the four NULL guards
+ * ``frame == nullptr || out_dst == nullptr || out_src == nullptr ||
+ *   out_etype == nullptr``. Short-circuit MC/DC requires N+1 = 5
+ * vectors:
+ *   - V1: all four pointers non-NULL                  -> dec F -> ok.
+ *   - V2: frame=NULL, others valid                    -> C1=T short.
+ *   - V3: frame valid, out_dst=NULL, others valid     -> C1=F, C2=T.
+ *   - V4: frame valid, out_dst valid, out_src=NULL    -> C1..C2=F, C3=T.
+ *   - V5: frame valid, out_dst/src valid, out_etype=NULL -> C1..C3=F, C4=T.
+ * Each Vi (i>=2) flips condition Ci with all earlier conditions held F.
+ */
+static void test_mcdc_test_inject_rx_quad(void)
+{
+  TEST_BEGIN("etha test_inject_rx MC/DC: 4-cond OR null-check");
+  uint8_t  frame[16] = {0xAAU,
+                        0xBBU,
+                        0xCCU,
+                        0xDDU,
+                        0xEEU,
+                        0xFFU, /* dst */
+                        0x11U,
+                        0x22U,
+                        0x33U,
+                        0x44U,
+                        0x55U,
+                        0x66U, /* src */
+                        0x08U,
+                        0x00U, /* etype = 0x0800 */
+                        0x00U,
+                        0x00U};
+  uint8_t  out_dst[6];
+  uint8_t  out_src[6];
+  uint16_t out_etype = 0U;
+  /* V1: all valid. */
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_ok,
+    (int32_t)ra_etha_test_inject_rx(frame, (uint32_t)sizeof(frame), out_dst, out_src, &out_etype));
+  /* V2: frame NULL (C1=T short). */
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_null_ptr,
+    (int32_t)ra_etha_test_inject_rx(NULL, (uint32_t)sizeof(frame), out_dst, out_src, &out_etype));
+  /* V3: out_dst NULL (C1=F, C2=T). */
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_null_ptr,
+    (int32_t)ra_etha_test_inject_rx(frame, (uint32_t)sizeof(frame), NULL, out_src, &out_etype));
+  /* V4: out_src NULL (C1..C2=F, C3=T). */
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_null_ptr,
+    (int32_t)ra_etha_test_inject_rx(frame, (uint32_t)sizeof(frame), out_dst, NULL, &out_etype));
+  /* V5: out_etype NULL (C1..C3=F, C4=T). */
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_null_ptr,
+    (int32_t)ra_etha_test_inject_rx(frame, (uint32_t)sizeof(frame), out_dst, out_src, NULL));
+  TEST_END("etha test_inject_rx MC/DC: 4-cond OR null-check");
+}
+
 int32_t main(void)
 {
   test_init_happy();
@@ -1296,6 +1357,7 @@ int32_t main(void)
   test_mcdc_get_queue_level_pair();
   test_mcdc_set_max_frame_size_pair();
   test_mcdc_configure_cut_through_pair();
+  test_mcdc_test_inject_rx_quad();
   (void)fprintf(stderr, "[OK  ] test_ra_etha.c\n");
   return 0;
 }

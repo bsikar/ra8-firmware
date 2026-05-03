@@ -24,13 +24,17 @@ CORPUS_ROOT="${ROOT}/tests/fuzz/corpus"
 
 mkdir -p \
     "${CORPUS_ROOT}/fuzz_ra_jpeg_sw" \
+    "${CORPUS_ROOT}/fuzz_ra_jpeg_sw_block" \
     "${CORPUS_ROOT}/fuzz_ra_epub" \
     "${CORPUS_ROOT}/fuzz_ra_modem_at" \
     "${CORPUS_ROOT}/fuzz_ra_net_arp" \
     "${CORPUS_ROOT}/fuzz_ra_net_ipv4" \
     "${CORPUS_ROOT}/fuzz_ra_ble_att" \
     "${CORPUS_ROOT}/fuzz_ra_usb_pal" \
-    "${CORPUS_ROOT}/fuzz_ra_tls"
+    "${CORPUS_ROOT}/fuzz_ra_tls" \
+    "${CORPUS_ROOT}/fuzz_ra_canfd" \
+    "${CORPUS_ROOT}/fuzz_ra_etha" \
+    "${CORPUS_ROOT}/fuzz_ra_fs_fat"
 
 # -----------------------------------------------------------------------------
 # fuzz_ra_jpeg_sw -- minimal baseline JPEGs at five sizes.
@@ -300,5 +304,121 @@ for name, blob in frames.items():
     with open(os.path.join(OUTDIR, name), "wb") as fh:
         fh.write(blob)
 PY
+
+# -----------------------------------------------------------------------------
+# fuzz_ra_canfd -- five raw CFDRF[0] frame-injection blobs.
+# Layout: 12-byte header (ID, PTR, FDSTS little-endian) + payload bytes.
+# -----------------------------------------------------------------------------
+CANFD_DIR="${CORPUS_ROOT}/fuzz_ra_canfd"
+python3 - "${CANFD_DIR}" <<'PY'
+import os
+import struct
+import sys
+
+OUTDIR = sys.argv[1]
+
+
+def frame(id_word, ptr_word, fdsts_word, payload):
+    return struct.pack("<III", id_word, ptr_word, fdsts_word) + payload
+
+
+frames = {
+    "seed_classic_id123_dlc8.bin": frame(0x123, (8 << 28), 0, bytes(range(8))),
+    "seed_extended_id1fffabcd.bin": frame((0x1FFFABCD | (1 << 31)),
+                                          (8 << 28), 0, b"\xAA" * 8),
+    "seed_canfd_brs_dlc15.bin": frame(0x456, (15 << 28), 0x3, b"\x55" * 64),
+    "seed_min_payload.bin": frame(0x000, 0, 0, b""),
+    "seed_max_payload.bin": frame(0x7FF, (15 << 28), 0, b"\xFF" * 64),
+}
+
+for name, blob in frames.items():
+    with open(os.path.join(OUTDIR, name), "wb") as fh:
+        fh.write(blob)
+PY
+
+# -----------------------------------------------------------------------------
+# fuzz_ra_etha -- five short Ethernet frames (ARP, IPv4, VLAN, runt, full).
+# -----------------------------------------------------------------------------
+ETHA_DIR="${CORPUS_ROOT}/fuzz_ra_etha"
+python3 - "${ETHA_DIR}" <<'PY'
+import os
+import sys
+
+OUTDIR = sys.argv[1]
+DST = bytes([0xFF] * 6)
+SRC = bytes([0x02, 0x00, 0x00, 0x00, 0x00, 0x01])
+
+frames = {
+    "seed_arp.bin":     DST + SRC + b"\x08\x06" + b"\x00" * 28,
+    "seed_ipv4.bin":    DST + SRC + b"\x08\x00" + b"\x45\x00\x00\x14" + b"\x00" * 16,
+    "seed_vlan.bin":    DST + SRC + b"\x81\x00\x00\x01" + b"\x08\x00" + b"\x00" * 20,
+    "seed_runt.bin":    DST + SRC + b"\x00\x00",
+    "seed_min_hdr.bin": DST + SRC + b"\x00\x00",
+}
+
+for name, blob in frames.items():
+    with open(os.path.join(OUTDIR, name), "wb") as fh:
+        fh.write(blob)
+PY
+
+# -----------------------------------------------------------------------------
+# fuzz_ra_fs_fat -- four sparse FAT BPB seeds. Real FAT mount almost
+# always rejects these; the goal is to give libFuzzer something with
+# the BPB byte layout to mutate from.
+# -----------------------------------------------------------------------------
+FAT_DIR="${CORPUS_ROOT}/fuzz_ra_fs_fat"
+python3 - "${FAT_DIR}" <<'PY'
+import os
+import struct
+import sys
+
+OUTDIR = sys.argv[1]
+
+
+def bpb(bytes_per_sec=512, sec_per_clus=8, rsvd=1, num_fats=2,
+        root_entries=512, tot_sec16=0, media=0xF8, fat_sz16=128,
+        sec_per_track=63, num_heads=2, hidden_sec=0, tot_sec32=131072):
+    sec = bytearray(512)
+    sec[0:3] = b"\xEB\x3C\x90"
+    sec[3:11] = b"MSDOS5.0"
+    struct.pack_into("<H", sec, 11, bytes_per_sec)
+    sec[13] = sec_per_clus
+    struct.pack_into("<H", sec, 14, rsvd)
+    sec[16] = num_fats
+    struct.pack_into("<H", sec, 17, root_entries)
+    struct.pack_into("<H", sec, 19, tot_sec16)
+    sec[21] = media
+    struct.pack_into("<H", sec, 22, fat_sz16)
+    struct.pack_into("<H", sec, 24, sec_per_track)
+    struct.pack_into("<H", sec, 26, num_heads)
+    struct.pack_into("<I", sec, 28, hidden_sec)
+    struct.pack_into("<I", sec, 32, tot_sec32)
+    sec[510] = 0x55
+    sec[511] = 0xAA
+    return bytes(sec)
+
+
+seeds = {
+    "seed_fat16_basic.bin":   bpb(),
+    "seed_fat16_4kclus.bin":  bpb(sec_per_clus=8, fat_sz16=64),
+    "seed_fat16_min.bin":     bpb(sec_per_clus=1, fat_sz16=16, tot_sec32=8192),
+    "seed_zero.bin":          bytes(512),
+}
+
+for name, blob in seeds.items():
+    with open(os.path.join(OUTDIR, name), "wb") as fh:
+        fh.write(blob)
+PY
+
+# -----------------------------------------------------------------------------
+# fuzz_ra_jpeg_sw_block -- seed scan-data fragments for the focused
+# Huffman-decoder fuzzer. The harness prefixes a fixed JFIF header so
+# these inputs land directly in the entropy-coded segment.
+# -----------------------------------------------------------------------------
+JPEG_BLOCK_DIR="${CORPUS_ROOT}/fuzz_ra_jpeg_sw_block"
+printf '\x00\x00\x00'           > "${JPEG_BLOCK_DIR}/seed_zero_dc.bin"
+printf '\xFF\x00\xFF\x00\xFF\x00' > "${JPEG_BLOCK_DIR}/seed_byte_stuffed.bin"
+printf '\xAA\xAA\xAA\xAA'       > "${JPEG_BLOCK_DIR}/seed_alternating.bin"
+printf '\x55\x55\x55\x55\x55\x55\x55\x55' > "${JPEG_BLOCK_DIR}/seed_low_freq.bin"
 
 echo "Seeded fuzz corpora under ${CORPUS_ROOT}/."

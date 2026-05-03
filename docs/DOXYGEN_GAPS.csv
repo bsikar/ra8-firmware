@@ -1,1 +1,3 @@
 source_file,line,function_name,missing_tags,severity
+libs/ra_hal/src/ra_canfd.c,1078,ra_canfd_test_inject_frame,@return,medium
+libs/ra_hal/src/ra_etha.c,1558,ra_etha_test_inject_rx,@return,medium
