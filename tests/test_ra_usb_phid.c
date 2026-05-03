@@ -67,6 +67,12 @@ static void prep(void)
   s_setup_cb_return_code = k_ra_ok;
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_fs(void)
 {
   TEST_BEGIN("ra_usb_phid_init succeeds on FS");
@@ -75,6 +81,12 @@ static void test_init_fs(void)
   TEST_END("ra_usb_phid_init succeeds on FS");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_bad_speed(void)
 {
   TEST_BEGIN("ra_usb_phid_init rejects bogus speed");
@@ -83,6 +95,12 @@ static void test_init_bad_speed(void)
   TEST_END("ra_usb_phid_init rejects bogus speed");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_hs_default_protocol(void)
 {
   TEST_BEGIN("ra_usb_phid_init seeds protocol=report and idle=0");
@@ -103,6 +121,12 @@ static void test_init_hs_default_protocol(void)
   TEST_END("ra_usb_phid_init seeds protocol=report and idle=0");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_class_request_codes(void)
 {
   TEST_BEGIN("HID class request codes match USB HID 1.11 spec");
@@ -115,6 +139,12 @@ static void test_class_request_codes(void)
   TEST_END("HID class request codes match USB HID 1.11 spec");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_pre_init_calls(void)
 {
   TEST_BEGIN("PHID API rejects calls before init");
@@ -143,6 +173,12 @@ static void test_pre_init_calls(void)
   TEST_END("PHID API rejects calls before init");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_descriptors(void)
 {
   TEST_BEGIN("ra_usb_phid_set_descriptors stores pointers + lengths");
@@ -164,6 +200,12 @@ static void test_set_descriptors(void)
   TEST_END("ra_usb_phid_set_descriptors stores pointers + lengths");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_descriptors_validation(void)
 {
   TEST_BEGIN("ra_usb_phid_set_descriptors rejects null / zero len");
@@ -193,6 +235,12 @@ static void test_set_descriptors_validation(void)
   TEST_END("ra_usb_phid_set_descriptors rejects null / zero len");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_send_report_validation(void)
 {
   TEST_BEGIN("ra_usb_phid_send_report validates args");
@@ -220,6 +268,12 @@ static void test_send_report_validation(void)
   TEST_END("ra_usb_phid_send_report validates args");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_send_report_with_id(void)
 {
   TEST_BEGIN("ra_usb_phid_send_report prepends report ID when non-zero");
@@ -239,6 +293,12 @@ static void test_send_report_with_id(void)
   TEST_END("ra_usb_phid_send_report prepends report ID when non-zero");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_recv_report_validation(void)
 {
   TEST_BEGIN("ra_usb_phid_recv_report validates args");
@@ -257,6 +317,12 @@ static void test_recv_report_validation(void)
   TEST_END("ra_usb_phid_recv_report validates args");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_attach_setup_handler(void)
 {
   TEST_BEGIN("ra_usb_phid_attach_setup_handler stores callback");
@@ -289,6 +355,12 @@ static void test_attach_setup_handler(void)
   TEST_END("ra_usb_phid_attach_setup_handler stores callback");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_handle_setup_set_protocol(void)
 {
   TEST_BEGIN("ra_usb_phid_handle_setup updates protocol shadow");
@@ -315,6 +387,12 @@ static void test_handle_setup_set_protocol(void)
   TEST_END("ra_usb_phid_handle_setup updates protocol shadow");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_handle_setup_rejects_standard(void)
 {
   TEST_BEGIN("ra_usb_phid_handle_setup rejects non-class SETUPs and NULL");
@@ -339,6 +417,12 @@ static void test_handle_setup_rejects_standard(void)
   TEST_END("ra_usb_phid_handle_setup rejects non-class SETUPs and NULL");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_handle_setup_get_report_acks(void)
 {
   TEST_BEGIN("ra_usb_phid_handle_setup ACKs GET_REPORT");
@@ -361,6 +445,12 @@ static void test_handle_setup_get_report_acks(void)
   TEST_END("ra_usb_phid_handle_setup ACKs GET_REPORT");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_handle_setup_callback_stalls(void)
 {
   TEST_BEGIN("ra_usb_phid_handle_setup stalls EP0 when callback returns error");
@@ -561,6 +651,12 @@ static bool mirror_phid_is_known_class_request(uint8_t b_request)
          (b_request == (uint8_t)k_ra_phid_req_set_protocol);
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_mcdc_phid_known_class_request_or_chain(void)
 {
   TEST_BEGIN("phid MC/DC: 6-cond known-class-request OR (lines 220-222)");

@@ -26,6 +26,12 @@ typedef enum : uint16_t {
   k_test_trng_len_too_big = 257U, /**< First over-cap value. */
 } test_trng_consts_t;
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_reset_is_idempotent(void)
 {
   TEST_BEGIN("secure_trng: reset returns ok and reseeds");
@@ -34,6 +40,12 @@ static void test_reset_is_idempotent(void)
   TEST_END("secure_trng: reset returns ok and reseeds");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_read_happy_path(void)
 {
   TEST_BEGIN("secure_trng: read fills buffer");
@@ -56,6 +68,12 @@ static void test_read_happy_path(void)
   TEST_END("secure_trng: read fills buffer");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_read_arg_validation(void)
 {
   TEST_BEGIN("secure_trng: read arg validation");

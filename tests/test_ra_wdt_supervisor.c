@@ -27,6 +27,12 @@ static uint32_t test_now_hook(void)
   return s_now_ms;
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_refresh_hook(void)
 {
   s_refresh_calls++;

@@ -65,6 +65,12 @@ static void prep(void)
   s_setup_cb_return_code = k_ra_ok;
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_default_status(void)
 {
   TEST_BEGIN("ra_usb_pprn_init seeds default port-status (online | not-error)");
@@ -80,6 +86,12 @@ static void test_init_default_status(void)
   TEST_END("ra_usb_pprn_init seeds default port-status (online | not-error)");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_bad_speed(void)
 {
   TEST_BEGIN("ra_usb_pprn_init rejects bogus speed");
@@ -88,6 +100,12 @@ static void test_init_bad_speed(void)
   TEST_END("ra_usb_pprn_init rejects bogus speed");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_class_request_codes(void)
 {
   TEST_BEGIN("Printer class request codes match USB Printer 1.1 spec");
@@ -97,6 +115,12 @@ static void test_class_request_codes(void)
   TEST_END("Printer class request codes match USB Printer 1.1 spec");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_pre_init_calls(void)
 {
   TEST_BEGIN("PPRN API rejects calls before init");
@@ -123,6 +147,12 @@ static void test_pre_init_calls(void)
   TEST_END("PPRN API rejects calls before init");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_descriptors(void)
 {
   TEST_BEGIN("ra_usb_pprn_set_descriptors validates pairing");
@@ -160,6 +190,12 @@ static void test_set_descriptors(void)
   TEST_END("ra_usb_pprn_set_descriptors validates pairing");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_send_recv_validation(void)
 {
   TEST_BEGIN("ra_usb_pprn_send / recv validate args");
@@ -184,6 +220,12 @@ static void test_send_recv_validation(void)
   TEST_END("ra_usb_pprn_send / recv validate args");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_port_status_round_trip(void)
 {
   TEST_BEGIN("ra_usb_pprn_set_port_status round-trips through get_port_status");
@@ -203,6 +245,12 @@ static void test_port_status_round_trip(void)
   TEST_END("ra_usb_pprn_set_port_status round-trips through get_port_status");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_handle_setup_dispatch(void)
 {
   TEST_BEGIN("ra_usb_pprn_handle_setup dispatches GET_DEVICE_ID / SOFT_RESET to callback");
@@ -238,6 +286,12 @@ static void test_handle_setup_dispatch(void)
   TEST_END("ra_usb_pprn_handle_setup dispatches GET_DEVICE_ID / SOFT_RESET to callback");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_handle_setup_rejects(void)
 {
   TEST_BEGIN("ra_usb_pprn_handle_setup rejects non-class / unknown / NULL");

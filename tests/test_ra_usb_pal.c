@@ -24,6 +24,12 @@ static void prep(void)
   (void)ra_usb_pal_deinit();
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_fs_starts_detached(void)
 {
   TEST_BEGIN("ra_usb_pal_init: FS init starts detached");
@@ -36,6 +42,12 @@ static void test_init_fs_starts_detached(void)
   TEST_END("ra_usb_pal_init: FS init starts detached");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_hs_starts_detached(void)
 {
   TEST_BEGIN("ra_usb_pal_init: HS init starts detached");
@@ -47,6 +59,12 @@ static void test_init_hs_starts_detached(void)
   TEST_END("ra_usb_pal_init: HS init starts detached");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_bad_speed(void)
 {
   TEST_BEGIN("ra_usb_pal_init: bad speed rejected");
@@ -55,6 +73,12 @@ static void test_init_bad_speed(void)
   TEST_END("ra_usb_pal_init: bad speed rejected");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_attach_detach_cycles_state(void)
 {
   TEST_BEGIN("ra_usb_pal_attach: cycles state attached/detached");
@@ -72,6 +96,12 @@ static void test_attach_detach_cycles_state(void)
   TEST_END("ra_usb_pal_attach: cycles state attached/detached");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_ep_open_validates_args(void)
 {
   TEST_BEGIN("ra_usb_pal_ep_open: arg validation");
@@ -108,6 +138,12 @@ static void test_ep_open_validates_args(void)
   TEST_END("ra_usb_pal_ep_open: arg validation");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_ep_send_recv_loopback(void)
 {
   TEST_BEGIN("ra_usb_pal_ep_{send,recv}: in-memory loopback round-trip");
@@ -142,6 +178,12 @@ static void test_ep_send_recv_loopback(void)
   TEST_END("ra_usb_pal_ep_{send,recv}: in-memory loopback round-trip");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_ep_send_recv_arg_validation(void)
 {
   TEST_BEGIN("ra_usb_pal_ep_{send,recv}: arg validation");
@@ -182,6 +224,12 @@ static void stub_usb_event(void* ctx, ra_usb_speed_t speed, uint16_t mask)
   ++s_usb_event_count;
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_event_handler_attach_detach(void)
 {
   TEST_BEGIN("ra_usb_pal_set_event_handler: attach + detach");
@@ -194,6 +242,12 @@ static void test_event_handler_attach_detach(void)
   TEST_END("ra_usb_pal_set_event_handler: attach + detach");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_dispatch_relays_intsts0(void)
 {
   TEST_BEGIN("ra_usb_dispatch -> PAL relay -> stack callback");
@@ -224,6 +278,12 @@ static void test_dispatch_relays_intsts0(void)
   TEST_END("ra_usb_dispatch -> PAL relay -> stack callback");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_calls_before_init_fail(void)
 {
   TEST_BEGIN("ra_usb_pal_*: pre-init calls return invalid_state");

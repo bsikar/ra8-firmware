@@ -173,6 +173,12 @@ static void build_cbw(uint8_t*       cbw,
 
 /* ---- Tests ---- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_fs_returns_ok(void)
 {
   TEST_BEGIN("ra_usb_pmsc_init FS returns k_ra_ok");
@@ -181,6 +187,12 @@ static void test_init_fs_returns_ok(void)
   TEST_END("ra_usb_pmsc_init FS returns k_ra_ok");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_hs_returns_ok(void)
 {
   TEST_BEGIN("ra_usb_pmsc_init HS returns k_ra_ok");
@@ -189,6 +201,12 @@ static void test_init_hs_returns_ok(void)
   TEST_END("ra_usb_pmsc_init HS returns k_ra_ok");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_bad_speed(void)
 {
   TEST_BEGIN("ra_usb_pmsc_init rejects bogus speed");
@@ -197,6 +215,12 @@ static void test_init_bad_speed(void)
   TEST_END("ra_usb_pmsc_init rejects bogus speed");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_close_without_init(void)
 {
   TEST_BEGIN("ra_usb_pmsc_close before init returns invalid_state");
@@ -205,6 +229,12 @@ static void test_close_without_init(void)
   TEST_END("ra_usb_pmsc_close before init returns invalid_state");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_pre_init_guards(void)
 {
   TEST_BEGIN("attach_storage / step / feed_cbw / dispatch / build_csw reject pre-init");
@@ -227,6 +257,12 @@ static void test_pre_init_guards(void)
   TEST_END("attach_storage / step / feed_cbw / dispatch / build_csw reject pre-init");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_pre_attach_guards(void)
 {
   TEST_BEGIN("step / feed_cbw / dispatch reject pre-attach (post-init)");
@@ -246,6 +282,12 @@ static void test_pre_attach_guards(void)
   TEST_END("step / feed_cbw / dispatch reject pre-attach (post-init)");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_attach_storage_null_validation(void)
 {
   TEST_BEGIN("attach_storage rejects NULL struct + NULL callbacks");
@@ -276,6 +318,12 @@ static void test_attach_storage_null_validation(void)
   TEST_END("attach_storage rejects NULL struct + NULL callbacks");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_feed_cbw_null_guard(void)
 {
   TEST_BEGIN("feed_cbw rejects NULL pointer");
@@ -286,6 +334,12 @@ static void test_feed_cbw_null_guard(void)
   TEST_END("feed_cbw rejects NULL pointer");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_feed_cbw_bad_signature_emits_phase_error(void)
 {
   TEST_BEGIN("feed_cbw with wrong signature -> phase-error CSW");
@@ -328,6 +382,12 @@ static void test_feed_cbw_bad_signature_emits_phase_error(void)
   TEST_END("feed_cbw with wrong signature -> phase-error CSW");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_inquiry_returns_backend_strings(void)
 {
   TEST_BEGIN("INQUIRY response includes backend-supplied vendor / product / revision");
@@ -378,6 +438,12 @@ static void test_inquiry_returns_backend_strings(void)
   TEST_END("INQUIRY response includes backend-supplied vendor / product / revision");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_read_capacity_returns_count_minus_one_be(void)
 {
   TEST_BEGIN("READ_CAPACITY(10) returns block_count-1 + block_size big-endian");
@@ -418,6 +484,12 @@ static void test_read_capacity_returns_count_minus_one_be(void)
   TEST_END("READ_CAPACITY(10) returns block_count-1 + block_size big-endian");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_read10_calls_backend_and_returns_512(void)
 {
   TEST_BEGIN("READ(10) happy path -- backend produces 512 bytes");
@@ -454,6 +526,12 @@ static void test_read10_calls_backend_and_returns_512(void)
   TEST_END("READ(10) happy path -- backend produces 512 bytes");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_write10_calls_backend(void)
 {
   TEST_BEGIN("WRITE(10) happy path -- backend receives 512 bytes");
@@ -493,6 +571,12 @@ static void test_write10_calls_backend(void)
   TEST_END("WRITE(10) happy path -- backend receives 512 bytes");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_test_unit_ready_no_data_phase(void)
 {
   TEST_BEGIN("TEST_UNIT_READY produces zero-byte data phase + passed CSW");
@@ -520,6 +604,12 @@ static void test_test_unit_ready_no_data_phase(void)
   TEST_END("TEST_UNIT_READY produces zero-byte data phase + passed CSW");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_unsupported_opcode_fails(void)
 {
   TEST_BEGIN("Unsupported SCSI opcode -> CSW status FAILED");
@@ -547,6 +637,12 @@ static void test_unsupported_opcode_fails(void)
   TEST_END("Unsupported SCSI opcode -> CSW status FAILED");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_step_state_machine_loops(void)
 {
   TEST_BEGIN("step transitions through phases and lands back at IDLE");
@@ -564,6 +660,12 @@ static void test_step_state_machine_loops(void)
   TEST_END("step transitions through phases and lands back at IDLE");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_dispatch_null_arg_rejection(void)
 {
   TEST_BEGIN("dispatch_command rejects NULL output pointers");
@@ -583,6 +685,12 @@ static void test_dispatch_null_arg_rejection(void)
   TEST_END("dispatch_command rejects NULL output pointers");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_build_csw_null_guard(void)
 {
   TEST_BEGIN("build_csw rejects NULL output");

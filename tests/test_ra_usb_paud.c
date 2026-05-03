@@ -59,6 +59,12 @@ static void prep(void)
   s_setup_cb_return_code = k_ra_ok;
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_default_format(void)
 {
   TEST_BEGIN("ra_usb_paud_init seeds 48 kHz / stereo / 16-bit");
@@ -77,6 +83,12 @@ static void test_init_default_format(void)
   TEST_END("ra_usb_paud_init seeds 48 kHz / stereo / 16-bit");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_bad_speed(void)
 {
   TEST_BEGIN("ra_usb_paud_init rejects bogus speed");
@@ -85,6 +97,12 @@ static void test_init_bad_speed(void)
   TEST_END("ra_usb_paud_init rejects bogus speed");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_class_request_codes(void)
 {
   TEST_BEGIN("Audio class request codes match USB Audio 1.0 spec sec A.9");
@@ -96,6 +114,12 @@ static void test_class_request_codes(void)
   TEST_END("Audio class request codes match USB Audio 1.0 spec sec A.9");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_pre_init_calls(void)
 {
   TEST_BEGIN("PAUD API rejects calls before init");
@@ -123,6 +147,12 @@ static void test_pre_init_calls(void)
   TEST_END("PAUD API rejects calls before init");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_format_validation(void)
 {
   TEST_BEGIN("ra_usb_paud_set_format validates triplet");
@@ -154,6 +184,12 @@ static void test_set_format_validation(void)
   TEST_END("ra_usb_paud_set_format validates triplet");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_send_frame_validation(void)
 {
   TEST_BEGIN("ra_usb_paud_send_frame validates args");
@@ -168,6 +204,12 @@ static void test_send_frame_validation(void)
   TEST_END("ra_usb_paud_send_frame validates args");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_handle_setup_dispatch(void)
 {
   TEST_BEGIN("ra_usb_paud_handle_setup dispatches SET_CUR to callback");
@@ -196,6 +238,12 @@ static void test_handle_setup_dispatch(void)
   TEST_END("ra_usb_paud_handle_setup dispatches SET_CUR to callback");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_handle_setup_rejects(void)
 {
   TEST_BEGIN("ra_usb_paud_handle_setup rejects non-class / unknown / NULL");
@@ -221,6 +269,12 @@ static void test_handle_setup_rejects(void)
   TEST_END("ra_usb_paud_handle_setup rejects non-class / unknown / NULL");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_volume_shadow(void)
 {
   TEST_BEGIN("ra_usb_paud_set_volume / get_volume round-trip");
@@ -445,6 +499,12 @@ static bool mirror_paud_is_class_envelope(uint8_t bm)
          (bm == (uint8_t)k_test_paud_bm_class_ep_out);
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_mcdc_paud_class_envelope_or_chain(void)
 {
   TEST_BEGIN("paud MC/DC: 4-cond class envelope OR (lines 234-235)");

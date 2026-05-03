@@ -28,6 +28,12 @@ typedef enum : uint32_t {
   k_test_ota_raw_zero    = 0x00000000U,
 } test_ota_raw_t;
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_reset_clears_pending(void)
 {
   TEST_BEGIN("ota_commit: reset drops pending swap");
@@ -38,6 +44,12 @@ static void test_reset_clears_pending(void)
   TEST_END("ota_commit: reset drops pending swap");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_swap_then_pending(void)
 {
   TEST_BEGIN("ota_commit: swap_bank arms pending target");
@@ -50,6 +62,12 @@ static void test_swap_then_pending(void)
   TEST_END("ota_commit: swap_bank arms pending target");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_swap_already_pending(void)
 {
   TEST_BEGIN("ota_commit: second swap while pending rejected");
@@ -60,6 +78,12 @@ static void test_swap_already_pending(void)
   TEST_END("ota_commit: second swap while pending rejected");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_pending_arg_validation(void)
 {
   TEST_BEGIN("ota_commit: pending null pointer rejected");
@@ -68,6 +92,12 @@ static void test_pending_arg_validation(void)
   TEST_END("ota_commit: pending null pointer rejected");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_bank_config_masking(void)
 {
   TEST_BEGIN("ota_commit: bank-config write masked to allowed bits");

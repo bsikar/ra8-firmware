@@ -14,6 +14,12 @@
 #include "ra_wdt.h"
 #include "unity_minimal.h"
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_wdt_init_ok(void)
 {
   TEST_BEGIN("ra_wdt_init returns ok");
@@ -30,6 +36,12 @@ static void test_wdt_init_ok(void)
   TEST_END("ra_wdt_init returns ok");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_wdt_refresh_writes_sequence(void)
 {
   TEST_BEGIN("ra_wdt_refresh_deferred writes 0xFF to WDTRR");
@@ -45,6 +57,12 @@ static void test_wdt_refresh_writes_sequence(void)
   TEST_END("ra_wdt_refresh_deferred writes 0xFF to WDTRR");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_wdt_refresh_many(void)
 {
   TEST_BEGIN("ra_wdt_refresh_deferred is safe to loop");
@@ -68,6 +86,12 @@ static void stub_wdt_cb(void* ctx, uint16_t mask)
   s_wdt_cb_last_mask = mask;
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_wdt_get_status(void)
 {
   TEST_BEGIN("wdt get_status");
@@ -82,6 +106,12 @@ static void test_wdt_get_status(void)
   TEST_END("wdt get_status");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_wdt_clear_status(void)
 {
   TEST_BEGIN("wdt clear_status");
@@ -92,6 +122,12 @@ static void test_wdt_clear_status(void)
   TEST_END("wdt clear_status");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_wdt_attach_and_dispatch(void)
 {
   TEST_BEGIN("wdt attach + dispatch");
