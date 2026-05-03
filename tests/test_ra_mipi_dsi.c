@@ -1566,6 +1566,181 @@ static void test_mcdc_program_descriptor_buf_addr(void)
   TEST_END("mipi_dsi MC/DC program_descriptor: bta==read || p_rx!=NULL");
 }
 
+/**
+ * @test test_mcdc_validate_cmd_tx_null_pair
+ *
+ * @par MC/DC:
+ * Decision: ``if ((cmd->tx_len > 0U) && (cmd->p_tx_buffer == nullptr))``
+ * (libs/ra_hal/src/ra_mipi_dsi.c:570 internal_ra_mipi_dsi_validate_cmd).
+ * Reachable only via the public ra_mipi_dsi_send_command direct entry
+ * (the ra_mipi_dsi_send_long_packet wrapper has its own pre-guard at
+ * line 953 that intercepts the (tx_len>0, buf=NULL) case before it can
+ * land on validate_cmd).
+ *
+ * 2-condition AND, N+1 = 3 vectors:
+ *  - V1: tx_len=0,  p_tx=NULL -> C1=F short -> dec F (proceed).
+ *  - V2: tx_len=4,  p_tx=NULL -> C1=T,C2=T  -> dec T (null_ptr).
+ *  - V3: tx_len=4,  p_tx=ok   -> C1=T,C2=F  -> dec F (proceed).
+ * V1+V2 isolate C1; V2+V3 isolate C2.
+ */
+static void test_mcdc_validate_cmd_tx_null_pair(void)
+{
+  TEST_BEGIN("mipi_dsi MC/DC validate_cmd: tx_len>0 && p_tx==NULL via send_command");
+  prep();
+  const ra_mipi_dsi_config_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_mipi_dsi_init(&cfg));
+
+  /* V1: tx_len=0, p_tx_buffer=NULL -> validate_cmd C1=F -> proceed. */
+  const ra_mipi_dsi_command_t v1_cmd = {
+    .cmd_id          = k_ra_mipi_dsi_dt_dcs_short_write_0,
+    .virtual_channel = k_ra_mipi_dsi_vc0,
+    .bta             = k_ra_mipi_dsi_bta_none,
+    .low_power       = false,
+    .ack_request     = false,
+    .aux_operation   = false,
+    .action_code     = 0U,
+    .tx_len          = 0U,
+    .p_tx_buffer     = nullptr,
+    .p_rx_buffer     = nullptr,
+  };
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_mipi_dsi_send_command(&v1_cmd));
+
+  /* V2: tx_len=4, p_tx_buffer=NULL -> validate_cmd C1=T,C2=T -> null_ptr. */
+  const ra_mipi_dsi_command_t v2_cmd = {
+    .cmd_id          = k_ra_mipi_dsi_dt_dcs_long_write,
+    .virtual_channel = k_ra_mipi_dsi_vc0,
+    .bta             = k_ra_mipi_dsi_bta_none,
+    .low_power       = false,
+    .ack_request     = false,
+    .aux_operation   = false,
+    .action_code     = 0U,
+    .tx_len          = 4U,
+    .p_tx_buffer     = nullptr,
+    .p_rx_buffer     = nullptr,
+  };
+  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_mipi_dsi_send_command(&v2_cmd));
+
+  /* V3: tx_len=4, p_tx_buffer=valid -> validate_cmd C1=T,C2=F -> proceed. */
+  static const uint8_t        v3_payload[] = {0x01U, 0x02U, 0x03U, 0x04U};
+  const ra_mipi_dsi_command_t v3_cmd       = {
+    .cmd_id          = k_ra_mipi_dsi_dt_dcs_long_write,
+    .virtual_channel = k_ra_mipi_dsi_vc0,
+    .bta             = k_ra_mipi_dsi_bta_none,
+    .low_power       = false,
+    .ack_request     = false,
+    .aux_operation   = false,
+    .action_code     = 0U,
+    .tx_len          = (uint16_t)sizeof(v3_payload),
+    .p_tx_buffer     = v3_payload,
+    .p_rx_buffer     = nullptr,
+  };
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_mipi_dsi_send_command(&v3_cmd));
+
+  TEST_END("mipi_dsi MC/DC validate_cmd: tx_len>0 && p_tx==NULL via send_command");
+}
+
+/**
+ * @test test_mcdc_check_link_aux_op_vrun
+ *
+ * @par MC/DC:
+ * Decision: ``if (cmd->aux_operation && ((link & VRUN) != 0U))``
+ * (libs/ra_hal/src/ra_mipi_dsi.c:828 internal_check_link_state).
+ * Reachable only via send_command direct entry (action-code helpers do
+ * not set aux_operation for HS-mode commands).
+ *
+ * 2-condition AND, N+1 = 3 vectors:
+ *  - V1: aux=false, vrun=0 -> C1=F short -> dec F (ok).
+ *  - V2: aux=true,  vrun=1 -> C1=T,C2=T  -> dec T (invalid_state).
+ *  - V3: aux=true,  vrun=0 -> C1=T,C2=F  -> dec F (ok).
+ * V1+V2 isolate C1; V2+V3 isolate C2. (cmd is HS-mode so the line-820
+ * lp+vrun guard does not preempt our line-828 check.)
+ */
+static void test_mcdc_check_link_aux_op_vrun(void)
+{
+  TEST_BEGIN("mipi_dsi MC/DC check_link_state: aux_op && VRUN");
+  prep();
+  const ra_mipi_dsi_config_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_mipi_dsi_init(&cfg));
+  volatile r_mipi_dsi_regs_t* reg = ra_mipi_dsi();
+
+  static const uint8_t        hs_payload[] = {0x10U, 0x20U};
+  const ra_mipi_dsi_command_t base         = {
+    .cmd_id          = k_ra_mipi_dsi_dt_dcs_long_write,
+    .virtual_channel = k_ra_mipi_dsi_vc0,
+    .bta             = k_ra_mipi_dsi_bta_none,
+    .low_power       = false,
+    .ack_request     = false,
+    .aux_operation   = false,
+    .action_code     = 0U,
+    .tx_len          = (uint16_t)sizeof(hs_payload),
+    .p_tx_buffer     = hs_payload,
+    .p_rx_buffer     = nullptr,
+  };
+
+  /* V1: aux=false, vrun=0 -> ok. */
+  reg->LINKSR = 0U;
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_mipi_dsi_send_command(&base));
+
+  /* V2: aux=true, vrun=1 -> invalid_state. */
+  ra_mipi_dsi_command_t v2 = base;
+  v2.aux_operation         = true;
+  reg->LINKSR              = (uint32_t)k_ra_mipi_dsi_link_vrun;
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_state, (int)ra_mipi_dsi_send_command(&v2));
+
+  /* V3: aux=true, vrun=0 -> ok. */
+  ra_mipi_dsi_command_t v3 = base;
+  v3.aux_operation         = true;
+  reg->LINKSR              = 0U;
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_mipi_dsi_send_command(&v3));
+
+  TEST_END("mipi_dsi MC/DC check_link_state: aux_op && VRUN");
+}
+
+/**
+ * @test test_mcdc_ulps_exit_clock_lane_state_pair
+ *
+ * @par MC/DC:
+ * Decision: ``if (((lanes & CLOCK) != 0U) && s_clock_lanes_in_ulps)``
+ * (libs/ra_hal/src/ra_mipi_dsi.c:1040 ra_mipi_dsi_ulps_exit).
+ *
+ * 2-condition AND, N+1 = 3 vectors:
+ *  - V1: lanes=DATA only,  clock_in_ulps=*    -> C1=F short -> no-op.
+ *  - V2: lanes=CLOCK,      clock_in_ulps=true -> C1=T,C2=T  -> CLEXIT set.
+ *  - V3: lanes=CLOCK,      clock_in_ulps=false-> C1=T,C2=F  -> no CLEXIT.
+ * V1+V2 isolate C1; V2+V3 isolate C2. The non-continuous-clock config is
+ * required because ulps_enter rejects clock-lane requests on continuous-
+ * clock setups (line 1010 guard).
+ */
+static void test_mcdc_ulps_exit_clock_lane_state_pair(void)
+{
+  TEST_BEGIN("mipi_dsi MC/DC ulps_exit: (lanes & CLOCK) && s_clock_in_ulps");
+  prep();
+  const ra_mipi_dsi_config_t cfg = make_cfg_non_continuous();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_mipi_dsi_init(&cfg));
+  volatile r_mipi_dsi_regs_t* reg = ra_mipi_dsi();
+
+  /* V1: clock NOT in lanes mask -> C1=F short. Must already be in ulps
+   * for data lane (set up via enter) so the data branch fires and we can
+   * still observe a non-spurious dlexit while clock branch is skipped. */
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_mipi_dsi_ulps_enter((uint8_t)k_ra_mipi_dsi_lane_data));
+  reg->ULPSCR = 0U;
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_mipi_dsi_ulps_exit((uint8_t)k_ra_mipi_dsi_lane_data));
+  TEST_ASSERT_EQ(0, (int)(reg->ULPSCR & (uint32_t)k_ra_mipi_dsi_ulpscr_clexit));
+
+  /* V2: lanes=CLOCK, s_clock_in_ulps=true -> CLEXIT set. */
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_mipi_dsi_ulps_enter((uint8_t)k_ra_mipi_dsi_lane_clock));
+  reg->ULPSCR = 0U;
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_mipi_dsi_ulps_exit((uint8_t)k_ra_mipi_dsi_lane_clock));
+  TEST_ASSERT(((reg->ULPSCR & (uint32_t)k_ra_mipi_dsi_ulpscr_clexit) != 0U));
+
+  /* V3: lanes=CLOCK, s_clock_in_ulps=false (just exited) -> no-op. */
+  reg->ULPSCR = 0U;
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_mipi_dsi_ulps_exit((uint8_t)k_ra_mipi_dsi_lane_clock));
+  TEST_ASSERT_EQ(0, (int)(reg->ULPSCR & (uint32_t)k_ra_mipi_dsi_ulpscr_clexit));
+
+  TEST_END("mipi_dsi MC/DC ulps_exit: (lanes & CLOCK) && s_clock_in_ulps");
+}
+
 int32_t main(void)
 {
   test_init_happy();
@@ -1620,6 +1795,9 @@ int32_t main(void)
   test_mcdc_set_video_timing_compound();
   test_mcdc_dispatch_receive_pending();
   test_mcdc_program_descriptor_buf_addr();
+  test_mcdc_validate_cmd_tx_null_pair();
+  test_mcdc_check_link_aux_op_vrun();
+  test_mcdc_ulps_exit_clock_lane_state_pair();
   (void)fprintf(stderr, "[OK  ] test_ra_mipi_dsi.c\n");
   return 0;
 }
