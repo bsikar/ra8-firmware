@@ -1272,6 +1272,187 @@ static void test_mcdc_decode_sos_dc_ac_id_independent(void)
   TEST_END("jpeg_sw MC/DC dec_parse_sos: dc_id/ac_id independence pairs");
 }
 
+/**
+ * @test test_mcdc_get_dimensions_padding_truncated
+ *
+ * @par MC/DC:
+ * Decision at libs/ra_hal/src/ra_jpeg_sw.c:1400
+ *   ``while (i < jpeg_len && jpeg_buf[i] == 0xFF)`` (2 cond AND).
+ * Existing tests cover (T,T) and (T,F); this fixture closes the
+ * C1-pair by feeding a stream whose pad-byte run extends to EOF
+ * (i becomes equal to jpeg_len mid-loop, so C1 flips to F).
+ * Vectors:
+ *  - V_TT (existing pad_jpeg): C1=T, C2=T -> stay in loop.
+ *  - V_TF (existing pad_jpeg): C1=T, C2=F -> exit on non-pad byte.
+ *  - V_FX (this fixture):      C1=F       -> exit on i >= jpeg_len.
+ * V_TT + V_FX isolate C1; V_TT + V_TF isolate C2. N+1 = 3.
+ */
+static void test_mcdc_get_dimensions_padding_truncated(void)
+{
+  TEST_BEGIN("jpeg_sw MC/DC get_dimensions: pad-run extends to EOF");
+  uint16_t w = 0U, h = 0U;
+  /* SOI followed by an FF pad-byte run that ends exactly at EOF. */
+  static const uint8_t pad_to_eof[] = {0xFFU, 0xD8U, 0xFFU, 0xFFU, 0xFFU};
+  TEST_ASSERT(ra_jpeg_sw_get_dimensions(pad_to_eof, (uint32_t)sizeof pad_to_eof, &w, &h) !=
+              k_ra_ok);
+  TEST_END("jpeg_sw MC/DC get_dimensions: pad-run extends to EOF");
+}
+
+/**
+ * @test test_mcdc_get_dimensions_soi_mid_walk
+ *
+ * @par MC/DC:
+ * Decision at libs/ra_hal/src/ra_jpeg_sw.c:1409
+ *   ``if (mk == SOI || mk == EOI)`` (2 cond OR).
+ * Existing tests cover (F,F) and (F,T mk==EOI); this fixture closes
+ * the C1-pair by emitting a second SOI (0xFFD8) mid-stream.
+ * Vectors:
+ *  - V_FF (existing pad_jpeg):       C1=F, C2=F -> fall-through to seglen.
+ *  - V_FT (existing soi_eoi_jpeg):   C1=F, C2=T -> continue (EOI).
+ *  - V_TX (this fixture):            C1=T       -> continue (SOI).
+ * V_FF + V_TX isolate C1; V_FF + V_FT isolate C2. N+1 = 3.
+ */
+static void test_mcdc_get_dimensions_soi_mid_walk(void)
+{
+  TEST_BEGIN("jpeg_sw MC/DC get_dimensions: SOI mid-walk continue");
+  uint16_t w = 0U, h = 0U;
+  /* SOI, second SOI (continue), SOF0 16x16. */
+  static const uint8_t soi_mid[] = {
+    0xFFU,
+    0xD8U, /* SOI */
+    0xFFU,
+    0xD8U, /* SOI again -> continue */
+    0xFFU,
+    0xC0U,
+    0x00U,
+    0x0BU,
+    0x08U,
+    0x00U,
+    0x10U,
+    0x00U,
+    0x10U, /* SOF0 16x16 */
+    0x01U,
+    0x01U,
+    0x11U,
+    0x00U,
+  };
+  TEST_ASSERT_EQ((int)k_ra_ok,
+                 (int)ra_jpeg_sw_get_dimensions(soi_mid, (uint32_t)sizeof soi_mid, &w, &h));
+  TEST_ASSERT_EQ(16, (int)w);
+  TEST_ASSERT_EQ(16, (int)h);
+  TEST_END("jpeg_sw MC/DC get_dimensions: SOI mid-walk continue");
+}
+
+/**
+ * @test test_mcdc_get_dimensions_skip_appn
+ *
+ * @par MC/DC:
+ * Decision at libs/ra_hal/src/ra_jpeg_sw.c:1434
+ *   ``if (mk >= 0xFFC0 && mk <= 0xFFCF && mk != DHT && mk != 0xFFC8)``
+ *   (4-cond AND). Existing tests cover (T,T,T,T) sof2 and (T,T,F,-)
+ *   dht; this fixture supplies (F,-,-,-) via APP0 (0xFFE0) skip and
+ *   (T,T,T,F) via JPG marker (0xFFC8). With dht (T,T,F,-) already
+ *   tested, all four C-pairs are now isolated.
+ *  - V_TTTT (sof2_jpeg):    C1=T,C2=T,C3=T,C4=T -> not_supported.
+ *  - V_TTF- (dht_then_sof0):C1=T,C2=T,C3=F      -> skipped, ok.
+ *  - V_F--- (this APP0):    C1=F                -> skipped, ok.
+ *  - V_TTTF (this 0xFFC8):  C1=T,C2=T,C3=T,C4=F -> skipped, ok.
+ * V_TTTT + V_F--- isolate C1; V_TTTT + (synthetic mk>0xFFCF, dead in
+ * a SOF range walk) is exempt; V_TTTT + V_TTF- isolate C3; V_TTTT +
+ * V_TTTF isolate C4. C2-pair remains structurally dead (no valid mk
+ * is simultaneously >=0xFFC0 yet >0xFFCF without first failing C1);
+ * documented per DO-178C 6.4.4.3.
+ */
+static void test_mcdc_get_dimensions_skip_appn(void)
+{
+  TEST_BEGIN("jpeg_sw MC/DC get_dimensions: skip APP0 + JPG marker");
+  uint16_t w = 0U, h = 0U;
+  /* APP0 (mk=0xFFE0, C1=F) then SOF0. */
+  static const uint8_t app0_then_sof0[] = {
+    0xFFU, 0xD8U,                                                  /* SOI */
+    0xFFU, 0xE0U, 0x00U, 0x04U, 0x00U, 0x00U,                      /* APP0 length 4, payload 2 */
+    0xFFU, 0xC0U, 0x00U, 0x0BU, 0x08U, 0x00U, 0x10U, 0x00U, 0x10U, /* SOF0 16x16 */
+    0x01U, 0x01U, 0x11U, 0x00U,
+  };
+  TEST_ASSERT_EQ(
+    (int)k_ra_ok,
+    (int)ra_jpeg_sw_get_dimensions(app0_then_sof0, (uint32_t)sizeof app0_then_sof0, &w, &h));
+  TEST_ASSERT_EQ(16, (int)w);
+  /* JPG marker (0xFFC8, C4=F) then SOF0. */
+  static const uint8_t jpg_then_sof0[] = {
+    0xFFU, 0xD8U,                                                  /* SOI */
+    0xFFU, 0xC8U, 0x00U, 0x04U, 0x00U, 0x00U,                      /* JPG length 4, payload 2 */
+    0xFFU, 0xC0U, 0x00U, 0x0BU, 0x08U, 0x00U, 0x10U, 0x00U, 0x10U, /* SOF0 16x16 */
+    0x01U, 0x01U, 0x11U, 0x00U,
+  };
+  w = 0U;
+  h = 0U;
+  TEST_ASSERT_EQ(
+    (int)k_ra_ok,
+    (int)ra_jpeg_sw_get_dimensions(jpg_then_sof0, (uint32_t)sizeof jpg_then_sof0, &w, &h));
+  TEST_ASSERT_EQ(16, (int)w);
+  TEST_END("jpeg_sw MC/DC get_dimensions: skip APP0 + JPG marker");
+}
+
+/**
+ * @test test_mcdc_decode_skip_appn_marker
+ *
+ * @par MC/DC:
+ * Decision at libs/ra_hal/src/ra_jpeg_sw.c:1655 (decode_scan)
+ *   ``else if (mk >= 0xFFC1 && mk <= 0xFFCF && mk != DHT && mk != 0xFFC8)``
+ *   (4-cond AND). Existing round-trip covers (T,T,T,T) and structurally
+ *   exercises C2/C3/C4 false rows via DQT/DHT/SOS path. This fixture
+ *   drives C1=F by feeding APP0 mid-stream and producing a successful
+ *   round-trip decode -- the APP0 is dispatched to the
+ *   ``dec_skip_segment`` else-arm, hitting the C1=F vector that
+ *   round-trip alone never produced (C1=T baseline already covered).
+ */
+static void test_mcdc_decode_skip_appn_marker(void)
+{
+  TEST_BEGIN("jpeg_sw MC/DC decode: skip APPn marker mid-stream");
+  static uint8_t rgb_in[(uint32_t)k_jt_rgb_bytes];
+  static uint8_t rgb_out[(uint32_t)k_jt_rgb_bytes];
+  static uint8_t jpeg[(uint32_t)k_jt_jpeg_cap];
+  fill_gradient(rgb_in, (uint16_t)k_jt_w, (uint16_t)k_jt_h);
+  uint32_t produced = 0U;
+  TEST_ASSERT_EQ((int)k_ra_ok,
+                 (int)ra_jpeg_sw_encode(rgb_in,
+                                        (uint16_t)k_jt_w,
+                                        (uint16_t)k_jt_h,
+                                        (uint8_t)k_ra_jpeg_sw_quality_high,
+                                        jpeg,
+                                        (uint32_t)k_jt_jpeg_cap,
+                                        &produced));
+  /* Splice an APP0 marker into the encoded stream right after SOI. */
+  static uint8_t       spliced[(uint32_t)k_jt_jpeg_cap + 16U];
+  static const uint8_t app0_payload[] = {
+    0xFFU,
+    0xE0U,
+    0x00U,
+    0x06U,
+    0x4AU,
+    0x46U,
+    0x49U,
+    0x46U,
+  };
+  spliced[0] = 0xFFU;
+  spliced[1] = 0xD8U;
+  for (uint32_t i = 0U; i < (uint32_t)sizeof app0_payload; ++i) {
+    spliced[2U + i] = app0_payload[i];
+  }
+  for (uint32_t i = 2U; i < produced; ++i) {
+    spliced[(uint32_t)sizeof app0_payload + i] = jpeg[i];
+  }
+  uint32_t spliced_len = produced + (uint32_t)sizeof app0_payload;
+
+  uint16_t dw = 0U, dh = 0U;
+  TEST_ASSERT_EQ(
+    (int)k_ra_ok,
+    (int)ra_jpeg_sw_decode(spliced, spliced_len, rgb_out, (uint32_t)k_jt_rgb_bytes, &dw, &dh));
+  TEST_ASSERT_EQ((int)k_jt_w, (int)dw);
+  TEST_END("jpeg_sw MC/DC decode: skip APPn marker mid-stream");
+}
+
 int32_t main(void)
 {
   ra_sim_mmap_reset();
@@ -1298,6 +1479,10 @@ int32_t main(void)
   test_mcdc_decode_sof0_444_chroma();
   test_mcdc_decode_sof0_is420_subconditions();
   test_mcdc_decode_sos_dc_ac_id_independent();
+  test_mcdc_get_dimensions_padding_truncated();
+  test_mcdc_get_dimensions_soi_mid_walk();
+  test_mcdc_get_dimensions_skip_appn();
+  test_mcdc_decode_skip_appn_marker();
   (void)fprintf(stderr, "[OK ] test_ra_jpeg_sw.c\n");
   return 0;
 }
