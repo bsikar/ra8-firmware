@@ -40,6 +40,20 @@
 #include "ra_error_handler.h"
 #include "ra_log.h"
 
+#ifdef RA_SIMULATOR_MODE
+/* Host-side test builds get the legacy halt-via-fatal-error path so
+ * tests can override `internal_ra_fatal_error` to longjmp out. */
+#define RA_EXCEPTION_HALT(tag, msg, exc) internal_ra_fatal_error((tag), (msg), (exc))
+#else
+#define RA_EXCEPTION_HALT(tag, msg, exc)                                                           \
+  do {                                                                                             \
+    (void)(tag);                                                                                   \
+    (void)(msg);                                                                                   \
+    (void)(exc);                                                                                   \
+    ra_exception_halt_loop();                                                                      \
+  } while (0)
+#endif
+
 typedef enum : uintptr_t {
   k_ra_scb_cfsr_addr  = 0xE000ED28UL,
   k_ra_scb_hfsr_addr  = 0xE000ED2CUL,
@@ -109,10 +123,106 @@ void ra_exception_capture_diagnostics(ra_exception_diagnostics_t* out)
 }
 
 /**
+ * @var g_ra_exception_last
+ * @brief Fixed-SRAM snapshot of the most recent fault.
+ *
+ * @details
+ * Populated UNCONDITIONALLY at the very top of ra_exception_report()
+ * BEFORE any function call that might itself fault (logging, ITM
+ * access, etc.). A debugger can recover the original-fault PC, LR,
+ * SP, frame pointer, and SCB diagnostics from this struct even when
+ * the log backend is unavailable or causes a secondary fault.
+ *
+ * `g_ra_exception_last.magic` is set to 0xFA17DEAD only after the
+ * struct is fully populated, so a half-written snapshot is detectable.
+ *
+ * @note Volatile so the compiler does not optimise away the writes.
+ * @since 0.1.0
+ */
+typedef struct {
+  uint32_t                   magic;      /**< 0xFA17DEAD when valid.        */
+  uint32_t                   exc_number; /**< Architectural exception num.  */
+  ra_exception_frame_t       frame;      /**< Stacked GPR frame.            */
+  ra_exception_diagnostics_t diag;       /**< SCB fault-status snapshot.    */
+  uintptr_t                  frame_ptr;  /**< Raw stack pointer at entry.   */
+} ra_exception_last_t;
+
+volatile ra_exception_last_t g_ra_exception_last;
+
+typedef enum : uint32_t {
+  k_ra_exc_magic_valid = 0xFA17DEADUL, /**< Sentinel for full snapshot.   */
+} ra_exc_magic_t;
+
+#ifndef RA_SIMULATOR_MODE
+/**
+ * @brief Spin halt with a known PC at a named symbol.
+ *
+ * @details
+ * The fault handler MUST terminate at a symbol the debugger can name
+ * rather than escalate to LOCKUP at PC=0xEFFFFFFE. This function is a
+ * `wfi` loop in its own translation-unit-local symbol so a backtrace
+ * unambiguously points at "we got here from the fault handler" rather
+ * than at a random unmapped address.
+ *
+ * @return None -- function does not return.
+ * @retval None
+ *
+ * @pre All maskable interrupts have been disabled by the caller.
+ * @pre g_ra_exception_last has been populated with the fault snapshot.
+ * @post Function never returns.
+ * @post CPU is parked in a wfi loop with IRQs masked.
+ *
+ * @note `noreturn`. Trivially thread-safe.
+ *
+ * @since 0.1.0
+ */
+__attribute__((noreturn, noinline)) static void ra_exception_halt_loop(void)
+{
+  /**
+   * @brief Volatile.
+   * @details See implementation for details.
+   * @param[in,out] memory See function signature for type and usage.
+   * @return Result code or value; see implementation.
+   * @retval 0 Success or default value.
+   * @pre Caller has validated arguments.
+   * @pre Module has been initialised.
+   * @post Side effects bounded to documented state.
+   * @post Returned value reflects current state.
+   * @note Not thread-safe unless documented otherwise.
+   * @since 0.1.0
+   */
+  __asm__ volatile("cpsid i" ::: "memory");
+  while (1) {
+    /**
+     * @brief Volatile.
+     * @details See implementation for details.
+     * @param[in,out] wfi See function signature for type and usage.
+     * @return Result code or value; see implementation.
+     * @retval 0 Success or default value.
+     * @pre Caller has validated arguments.
+     * @pre Module has been initialised.
+     * @post Side effects bounded to documented state.
+     * @post Returned value reflects current state.
+     * @note Not thread-safe unless documented otherwise.
+     * @since 0.1.0
+     */
+    __asm__ volatile("wfi");
+  }
+}
+#endif
+
+/**
  * @brief Implementation of `ra_exception_report()` -- fault dump + halt.
  *
- * @details Dumps the stacked frame and SCB diagnostics at ERROR level,
- *          then traps into `internal_ra_fatal_error()`.
+ * @details
+ * Captures the stacked frame and SCB diagnostics into the fixed-SRAM
+ * snapshot `g_ra_exception_last` BEFORE any function call that might
+ * itself fault. Then best-effort logs them via `ra_log_error_val`
+ * (which now silently drops every byte from a fault context, see
+ * libs/ra_core/src/ra_log.c). Finally parks the CPU at the named
+ * `ra_exception_halt_loop` symbol on target so the debugger can give
+ * the halt a clean backtrace instead of escalating to LOCKUP at
+ * PC=0xEFFFFFFE.
  *
  * @param[in] frame      Stacked exception frame; may be `nullptr`.
  * @param[in] exc_number Architectural exception number.
@@ -120,10 +230,10 @@ void ra_exception_capture_diagnostics(ra_exception_diagnostics_t* out)
  * @return Does not return.
  * @retval None
  *
- * @pre Invoked from a fault context.
- * @pre Log backend is callable.
- * @post Control never returns; CPU is halted.
- * @post Diagnostic registers are emitted at ERROR level.
+ * @pre Invoked from a fault context (IPSR != 0).
+ * @pre `g_ra_exception_last` is writable SRAM.
+ * @post `g_ra_exception_last.magic == 0xFA17DEAD` once snapshot is complete.
+ * @post Control never returns; CPU is halted at a named symbol.
  *
  * @note Marked `noreturn`. Not thread-safe.
  *
@@ -131,9 +241,32 @@ void ra_exception_capture_diagnostics(ra_exception_diagnostics_t* out)
  */
 void ra_exception_report(const ra_exception_frame_t* frame, uint32_t exc_number)
 {
+  /* Step 1: capture EVERYTHING into fixed SRAM FIRST -- before any
+   * function call that might itself fault. This guarantees that even
+   * if the log backend, ITM, or anything else takes a secondary fault,
+   * a debugger can still recover the original fault context from
+   * g_ra_exception_last. */
+  g_ra_exception_last.magic      = 0U;
+  g_ra_exception_last.exc_number = exc_number;
+  g_ra_exception_last.frame_ptr  = (uintptr_t)frame;
+  if (frame != nullptr) {
+    g_ra_exception_last.frame.r0   = frame->r0;
+    g_ra_exception_last.frame.r1   = frame->r1;
+    g_ra_exception_last.frame.r2   = frame->r2;
+    g_ra_exception_last.frame.r3   = frame->r3;
+    g_ra_exception_last.frame.r12  = frame->r12;
+    g_ra_exception_last.frame.lr   = frame->lr;
+    g_ra_exception_last.frame.pc   = frame->pc;
+    g_ra_exception_last.frame.xpsr = frame->xpsr;
+  }
   ra_exception_diagnostics_t diag = {};
   ra_exception_capture_diagnostics(&diag);
+  g_ra_exception_last.diag  = diag;
+  g_ra_exception_last.magic = (uint32_t)k_ra_exc_magic_valid;
 
+  /* Step 2: best-effort logging. The logging backend (ra_log) now
+   * gates ITM access on DEMCR.TRCENA and IPSR; in fault context this
+   * silently drops every byte instead of bus-faulting. */
   ra_log_error_val("EXC", "exception", exc_number);
 
   if (frame != nullptr) {
@@ -152,5 +285,12 @@ void ra_exception_report(const ra_exception_frame_t* frame, uint32_t exc_number)
   ra_log_error_val("EXC", "bfar ", diag.bfar);
   ra_log_error_val("EXC", "mmfar", diag.mmfar);
 
-  internal_ra_fatal_error("EXC", "fault", exc_number);
+  /* Step 3: halt at a named symbol. On target we do NOT call
+   * internal_ra_fatal_error from a fault context -- that path issues
+   * `bkpt #0`, which on a board without an attached debugger re-enters
+   * HardFault and can escalate to LOCKUP at PC=0xEFFFFFFE. The
+   * dedicated halt loop parks PC at a symbol the debugger can name.
+   * On host (simulator) builds we still go through the overridable
+   * fatal hook so unit tests can longjmp out. */
+  RA_EXCEPTION_HALT("EXC", "fault", exc_number);
 }
