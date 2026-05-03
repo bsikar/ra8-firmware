@@ -204,10 +204,12 @@ static void test_ppong_send_recv_round_trip(void)
   uint8_t ch_recv_cpu0 = 0xFFU;
   TEST_ASSERT_EQ((int)k_ra_ok,
                  (int)ra_ipc_channel_for_send(k_ra_ipc_core_cpu0,
-                                              (uint8_t)k_test_ppong_pair_zero, &ch_send_cpu0));
+                                              (uint8_t)k_test_ppong_pair_zero,
+                                              &ch_send_cpu0));
   TEST_ASSERT_EQ((int)k_ra_ok,
                  (int)ra_ipc_channel_for_recv(k_ra_ipc_core_cpu0,
-                                              (uint8_t)k_test_ppong_pair_zero, &ch_recv_cpu0));
+                                              (uint8_t)k_test_ppong_pair_zero,
+                                              &ch_recv_cpu0));
 
   ra_ipc_config_t cfg_send = {
     .channel      = ch_send_cpu0,
