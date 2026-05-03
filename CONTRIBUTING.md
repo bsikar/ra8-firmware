@@ -172,7 +172,7 @@ finding:
 * Stack-usage soft warning -- any function over 2 KB or with dynamic
   stack use is reported (currently warning-only for third-party SOUP).
 * AI-attribution ban (`scripts/utils/check_no_ai_attribution.py`) --
-  rejects `Co-Authored-By: Claude`, "Generated with Claude Code", and
+  rejects `Co-Authored-By: Claude`, "Generated with Claude Code", and <!-- AI-OK: quoting the banned footer -->
   similar footers anywhere in the tree. Re-run independently in CI by
   `.github/workflows/no-ai-attribution.yml`. See
   [`docs/AI_ATTRIBUTION_POLICY.md`](docs/AI_ATTRIBUTION_POLICY.md).
