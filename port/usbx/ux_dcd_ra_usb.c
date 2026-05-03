@@ -782,50 +782,42 @@ static void internal_handle_dvst(uint16_t intsts0)
   unsigned long    new_state;
   /* DVSQ[6] (suspend) overlays the underlying state. Test it first so
    * that "configured + suspend" (0x70) is correctly classified as
-   * SUSPENDED, not as the default-case fall-through. SUSPENDED is the
-   * only DVST-driven state allowed to demote a higher state, because it
-   * is a true bus-level event the chapter-9 dispatcher cannot observe. */
+   * SUSPENDED, not as the default-case fall-through. */
   if ((dvsq & (uint16_t)k_ra_dvsq_suspend) != 0U) {
-    new_state                     = (unsigned long)UX_DEVICE_SUSPENDED;
-    device->ux_slave_device_state = new_state;
-    if (_ux_system_slave->ux_system_slave_change_function != UX_NULL) {
-      (void)_ux_system_slave->ux_system_slave_change_function(new_state);
+    new_state = (unsigned long)UX_DEVICE_SUSPENDED;
+  } else {
+    switch (dvsq) {
+      case k_ra_dvsq_powered:
+        new_state = (unsigned long)UX_DEVICE_ATTACHED;
+        break;
+      case k_ra_dvsq_default:
+        /* Bus reset just deasserted: device is in USB DEFAULT state, ready
+         * to accept SET_ADDRESS on EP0. USBX gates EP0 SETUP/data responses
+         * in `_ux_device_stack_transfer_request` on
+         * `ux_slave_device_state in {ATTACHED, ADDRESSED, CONFIGURED}`;
+         * UX_DEVICE_RESET (0) returns UX_TRANSFER_NOT_READY and the device
+         * never replies to GET_DESCRIPTOR. Map DEFAULT to ATTACHED so the
+         * chapter-9 dispatcher can advance to ADDRESSED on SET_ADDRESS. */
+        new_state = (unsigned long)UX_DEVICE_ATTACHED;
+        break;
+      case k_ra_dvsq_address:
+      case k_ra_dvsq_configured:
+        /* ADDRESSED / CONFIGURED are owned by the chapter-9 dispatcher
+         * (`_ux_device_stack_address_set` /
+         * `_ux_device_stack_configuration_set`), which writes
+         * `ux_slave_device_state` synchronously when the host's request
+         * is accepted. The DVST IRQ that follows the bus-side state
+         * change can race with that write -- worse, when CTRT and DVST
+         * are both pending in the same INTSTS0 snapshot we process CTRT
+         * first (advancing state) and would then overwrite it here using
+         * the stale pre-CTRT DVSQ. Leaving these cases to the
+         * dispatcher avoids both races; the bridge still tracks bus-
+         * level resets / suspends / attaches, which the dispatcher
+         * cannot observe. */
+        return;
+      default:
+        return;
     }
-    return;
-  }
-  switch (dvsq) {
-    case k_ra_dvsq_powered:
-      new_state = (unsigned long)UX_DEVICE_ATTACHED;
-      break;
-    case k_ra_dvsq_default:
-      /* Bus reset just deasserted: device is in USB DEFAULT state, ready
-       * to accept SET_ADDRESS on EP0. Map DEFAULT to ATTACHED so the
-       * chapter-9 dispatcher can advance to ADDRESSED on SET_ADDRESS. */
-      new_state = (unsigned long)UX_DEVICE_ATTACHED;
-      break;
-    case k_ra_dvsq_address:
-    case k_ra_dvsq_configured:
-      /* ADDRESSED / CONFIGURED are owned by the chapter-9 dispatcher
-       * (`_ux_device_stack_address_set` /
-       * `_ux_device_stack_configuration_set`), which writes
-       * `ux_slave_device_state` synchronously when the host's request
-       * is accepted. The DVST IRQ that follows the bus-side change can
-       * race with that write -- when CTRT and DVST are both pending in
-       * the same INTSTS0 snapshot we process CTRT first (advancing
-       * state) and would then overwrite it here using the stale pre-
-       * CTRT DVSQ. Leave these cases to the dispatcher entirely. */
-      return;
-    default:
-      return;
-  }
-  /* Never demote: the chapter-9 dispatcher (CTRT-side) may have already
-   * advanced state to ADDRESSED/CONFIGURED before this DVST snapshot is
-   * processed. Comparing as numeric ranks (RESET<ATTACHED<ADDRESSED<
-   * CONFIGURED) lets ATTACHED-from-DVST update RESET but never overwrite
-   * a higher state. SUSPENDED was handled above and bypasses this
-   * monotonicity guard because suspend is a bus-level demotion. */
-  if (new_state <= device->ux_slave_device_state) {
-    return;
   }
   device->ux_slave_device_state = new_state;
   if (_ux_system_slave->ux_system_slave_change_function != UX_NULL) {
