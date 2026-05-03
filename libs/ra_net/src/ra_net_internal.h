@@ -878,6 +878,79 @@ int16_t ra_net_udp_internal_find_socket_by_port(uint16_t port);
  */
 void ra_net_udp_internal_dns_consume_response(const uint8_t* dns, uint16_t dlen);
 
+/**
+ * @brief Locate the TCP socket matching the given 4-tuple.
+ *
+ * @details Walks the socket table, returning the first slot whose
+ *          local_port (and, when not in LISTEN, remote_port + remote_ip)
+ *          matches. Promoted from TU-private static linkage so tests
+ *          can drive its compound boolean decisions under MC/DC.
+ *
+ * @param[in] local_port  Local TCP port to match.
+ * @param[in] remote_ip   Remote IP to match (ignored for LISTEN slots).
+ * @param[in] remote_port Remote TCP port to match (ignored for LISTEN).
+ * @param[in] want_state  State to require when match_state != 0.
+ * @param[in] match_state Non-zero to require want_state, 0 for any.
+ *
+ * @return int16_t Slot index, or -1 on no match.
+ * @retval -1   No matching socket.
+ * @retval >=0  Slot index of the matching socket.
+ *
+ * @pre ra_net_open has succeeded.
+ * @pre Caller is the network thread.
+ * @post No state mutation.
+ * @post Returned index is a valid index into ra_net_internal_state()->socks.
+ *
+ * @note Test-access only.
+ *
+ * @par MC/DC:
+ * Exposes the line-111 (match_state && state!=want) and line-117
+ * (remote_port match && memcmp ip == 0) decisions on production source.
+ *
+ * @since 0.1.0
+ */
+int16_t ra_net_tcp_internal_find_socket(uint16_t           local_port,
+                                        ra_net_ipv4_t      remote_ip,
+                                        uint16_t           remote_port,
+                                        ra_net_tcp_state_t want_state,
+                                        uint8_t            match_state);
+
+/**
+ * @brief Build and transmit one TCP segment for the given socket.
+ *
+ * @details Writes the 20-byte TCP header, optional payload, computes
+ *          the checksum, and pushes through ra_net_ipv4_send. Promoted
+ *          from TU-private static linkage so tests can drive its
+ *          payload-copy compound decision under MC/DC.
+ *
+ * @param[in] t        Socket whose remote/local ports drive the header.
+ * @param[in] flags    TCP control flags (SYN/ACK/etc.).
+ * @param[in] data     Optional payload (NULL when data_len == 0).
+ * @param[in] data_len Payload length.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok               Segment queued.
+ * @retval k_ra_err_invalid_size Header+payload exceeds PAL frame max.
+ * @retval other                 ra_net_ipv4_send error code.
+ *
+ * @pre t is non-NULL and references a valid TCP socket.
+ * @pre data is non-NULL when data_len > 0.
+ * @post On success the PAL has the segment queued.
+ * @post On failure no state mutation.
+ *
+ * @note Test-access only.
+ *
+ * @par MC/DC:
+ * Exposes the line-204 ``(data_len != 0U) && (data != nullptr)``
+ * decision on production source.
+ *
+ * @since 0.1.0
+ */
+ra_err_t ra_net_tcp_internal_emit_segment(ra_net_tcp_sock_t* t,
+                                          uint8_t            flags,
+                                          const uint8_t*     data,
+                                          uint16_t           data_len);
+
 /* IPv4 helpers used by sub-protocols when constructing TX frames. */
 /**
  * @brief Build an IPv4 frame around payload and emit it via the PAL.
