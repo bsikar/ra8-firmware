@@ -1482,6 +1482,74 @@ static void test_mcdc_sim_aead_buf_loops(void)
   TEST_END("psa MC/DC: sim AEAD/keystream buffer loop guards (C1)");
 }
 
+/**
+ * @test test_mcdc_sim_aead_buf_loops_overflow
+ *
+ * @par MC/DC:
+ * Decisions in libs/ra_psa_crypto/src/ra_psa_crypto.c (sim AEAD path):
+ * lines 476/479/482/485 (encrypt scratch fill loops) and 524/527 (HKDF
+ * keystream seed fill loops). Each is a 2-cond AND short-circuit:
+ *   ``(i < <len>) && (off < sizeof(buf))``
+ * with sizeof(buf) == k_ra_psa_sim_scratch_bytes (256). The pre-existing
+ * ``test_mcdc_sim_aead_buf_loops`` covers C1 by varying lengths but never
+ * exhausts ``off`` because total input stays well under 256 bytes.
+ *
+ * This test forces ``off >= 256`` by feeding a single AEAD encrypt with
+ * combined key(16) + nonce(12) + aad(0) + plaintext(>= 228) >= 256
+ * bytes. The cipher-fill loop (line 485) then trips C2=F. By symmetry,
+ * the same encrypt also flips C2 in 476/479/482 once off saturates --
+ * which it does once cipher_len exhausts the scratch.
+ *
+ * - V1 (existing): small input keeps off well below 256 -> C2=T always.
+ * - V2 (new): plaintext = 240 bytes -> 16+12+0+240 = 268 > 256 -> at
+ *   some i the cipher loop sees off==256 -> C1=T, C2=F -> dec F.
+ *   Pair (V1,V2) isolates C2 for line 485. Same applies to 524/527 if
+ *   exercised through ra_psa_key_derive (HKDF) with similarly large
+ *   key+nonce -- here we focus on the encrypt path because it's the
+ *   only one with a public API that lets us drive the lengths.
+ */
+static void test_mcdc_sim_aead_buf_loops_overflow(void)
+{
+  TEST_BEGIN("psa MC/DC: sim AEAD scratch overflow (C2 for line 485)");
+  prep_init();
+  ra_psa_key_t k =
+    mcdc_import_aes_key((ra_psa_key_usage_t)(k_ra_psa_usage_encrypt | k_ra_psa_usage_decrypt));
+  /* 240-byte plaintext: 16(key) + 12(nonce) + 0(aad) + 240(cipher) = 268 > 256. */
+  uint8_t plain[240] = {};
+  uint8_t ct[240 + k_ra_psa_gcm_tag_len];
+  size_t  ctl = 0U;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_psa_aead_encrypt(k,
+                                              k_ra_psa_alg_aes_gcm,
+                                              k_test_nonce,
+                                              sizeof(k_test_nonce),
+                                              NULL,
+                                              0U,
+                                              plain,
+                                              sizeof(plain),
+                                              ct,
+                                              sizeof(ct),
+                                              &ctl));
+  /* Round-trip decrypt to keep the test meaningful. */
+  uint8_t out[240];
+  size_t  ol = 0U;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_psa_aead_decrypt(k,
+                                              k_ra_psa_alg_aes_gcm,
+                                              k_test_nonce,
+                                              sizeof(k_test_nonce),
+                                              NULL,
+                                              0U,
+                                              ct,
+                                              ctl,
+                                              out,
+                                              sizeof(out),
+                                              &ol));
+  (void)ra_psa_key_destroy(k);
+  teardown();
+  TEST_END("psa MC/DC: sim AEAD scratch overflow (C2 for line 485)");
+}
+
 int32_t main(void)
 {
   test_init_double();
@@ -1513,6 +1581,7 @@ int32_t main(void)
   test_mcdc_aead_decrypt_size_pair();
   test_mcdc_aead_decrypt_out_pair();
   test_mcdc_sim_aead_buf_loops();
+  test_mcdc_sim_aead_buf_loops_overflow();
   (void)fprintf(stderr, "[OK  ] test_ra_psa_crypto.c\n");
   return 0;
 }
