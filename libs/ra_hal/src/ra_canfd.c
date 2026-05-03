@@ -310,6 +310,7 @@ static ra_err_t internal_solve_timing(uint32_t           clock_hz,
                                       uint32_t           prescaler_max,
                                       ra_canfd_timing_t* out)
 {
+  /* mcdc-deactivated: both args are validated by ra_canfd_init upstream; defensive duplicate. */
   if ((bitrate_bps == 0U) || (clock_hz == 0U)) {
     return k_ra_err_invalid_arg;
   }

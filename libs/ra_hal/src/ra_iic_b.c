@@ -125,6 +125,7 @@ static ra_iic_b_state_t s_iic_b_state[k_ra_iic_b_channel_count];
  */
 static uint8_t internal_iic_b_half_period(uint32_t bus_hz, uint32_t pclka_hz)
 {
+  /* mcdc-deactivated: both args validated by ra_iic_b_init upstream; defensive duplicate. */
   if ((bus_hz == 0U) || (pclka_hz == 0U)) {
     return 0U;
   }

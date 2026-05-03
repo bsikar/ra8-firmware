@@ -326,9 +326,11 @@ static ra_err_t internal_resolve_sizes(const ra_eth_cfg_t* cfg,
   if (bs == 0U) {
     bs = k_ra_eth_buf_size;
   }
+  /* mcdc-deactivated: tx normalized to nonzero above; first OR-condition unreachable. */
   if ((tx == 0U) || (tx > k_ra_eth_num_tx_desc)) {
     return k_ra_err_invalid_arg;
   }
+  /* mcdc-deactivated: rx normalized to nonzero above; first OR-condition unreachable. */
   if ((rx == 0U) || (rx > k_ra_eth_num_rx_desc)) {
     return k_ra_err_invalid_arg;
   }
