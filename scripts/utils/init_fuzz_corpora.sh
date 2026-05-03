@@ -27,7 +27,10 @@ mkdir -p \
     "${CORPUS_ROOT}/fuzz_ra_epub" \
     "${CORPUS_ROOT}/fuzz_ra_modem_at" \
     "${CORPUS_ROOT}/fuzz_ra_net_arp" \
-    "${CORPUS_ROOT}/fuzz_ra_net_ipv4"
+    "${CORPUS_ROOT}/fuzz_ra_net_ipv4" \
+    "${CORPUS_ROOT}/fuzz_ra_ble_att" \
+    "${CORPUS_ROOT}/fuzz_ra_usb_pal" \
+    "${CORPUS_ROOT}/fuzz_ra_tls"
 
 # -----------------------------------------------------------------------------
 # fuzz_ra_jpeg_sw -- minimal baseline JPEGs at five sizes.
