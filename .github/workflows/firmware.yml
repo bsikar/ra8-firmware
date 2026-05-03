@@ -195,7 +195,17 @@ jobs:
           drop=$(awk -v m="$measured" -v b="$baseline" 'BEGIN{print (m+0 < b+0) ? 1 : 0}')
           if [ "$drop" -eq 1 ]; then
             echo "FAIL: MC/DC coverage ${measured}% dropped below baseline ${baseline}%"
-            echo "      To raise the baseline intentionally, edit ${MCDC_BASELINE_FILE}."
+            echo ""
+            echo "      MC/DC dropped below baseline. Either add MC/DC test"
+            echo "      vectors for the new compound decisions OR reduce the"
+            echo "      decision count. Do NOT lower the baseline file to make"
+            echo "      this pass."
+            echo ""
+            echo "      The pre-commit gate scripts/utils/check_new_compound_has_mcdc.py"
+            echo "      is supposed to catch this locally; if a regression reached CI,"
+            echo "      it means either the hook was bypassed or a citation in an"
+            echo "      existing test drifted out of the +/- 25-line tolerance window."
+            echo "      See docs/MCDC.md for the worked example of adding vectors."
             exit 1
           fi
           echo "PASS: MC/DC coverage holds the baseline."
@@ -301,6 +311,13 @@ jobs:
 
   build-cross:
     name: Cross-build ${{ matrix.tier }}/${{ matrix.app }}
+    # IMPORTANT: pinned to ubuntu-latest on purpose. The hardware-in-loop
+    # smoke runner (label `ek-ra8d2`) is a single physical board and
+    # MUST NOT be used for the cross-build matrix -- doing so would
+    # queue every PR behind whichever job grabbed the board first and
+    # double-bill HW-runner minutes for work that does not need silicon.
+    # Real-hardware flashing lives in .github/workflows/hardware-smoke.yml.
+    # See docs/qualification/HW_IN_LOOP_RUNNER.md section 6.
     runs-on: ubuntu-latest
     needs: build-discover
     strategy:
