@@ -158,7 +158,8 @@ ctest:
 # See docs/FUZZING.md.
 FUZZ_BUILD    := $(TESTS_DIR)/build-fuzz
 FUZZ_SECONDS  ?= 30
-FUZZ_TARGETS  := fuzz_ra_jpeg_sw fuzz_ra_epub fuzz_ra_modem_at fuzz_ra_net_arp fuzz_ra_net_ipv4
+FUZZ_TARGETS  := fuzz_ra_jpeg_sw fuzz_ra_epub fuzz_ra_modem_at fuzz_ra_net_arp fuzz_ra_net_ipv4 \
+                 fuzz_ra_ble_att fuzz_ra_usb_pal fuzz_ra_tls
 FUZZ_CC       ?= clang
 FUZZ_CXX      ?= clang++
 
