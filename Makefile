@@ -195,7 +195,8 @@ dashboard:
 	python3 scripts/utils/roadmap_dashboard.py
 
 coverage:
-	bash scripts/coverage_report.sh
+	bash scripts/utils/coverage_report.sh
+	python3 scripts/utils/check_coverage.py
 
 mcdc:
 	bash scripts/utils/mcdc_report.sh
