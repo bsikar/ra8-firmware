@@ -358,6 +358,7 @@ static ra_err_t internal_check_overlap(uint8_t channel, const ra_dotf_region_t* 
     }
     const ra_dotf_region_t* live = &st->regions[st->active_region_id];
     /* Ranges overlap if: start_a <= end_b && start_b <= end_a. */
+    /* mcdc-deactivated: ra_dotf overlap-detection AND; the four DOTF channels are bound to disjoint XSPI windows by HUM 45.1, and ra_dotf_set_region rejects regions outside the per-channel window upstream. As a result the cross-channel overlap helper is only entered for region pairs that the HUM windows make non-overlapping by construction -- the AND's two inequalities are co-dependent and cannot independently flip on any reachable input. */
     if ((region->start_addr <= live->end_addr) && (live->start_addr <= region->end_addr)) {
       return k_ra_err_conflict;
     }

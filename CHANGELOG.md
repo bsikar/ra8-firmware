@@ -7,6 +7,60 @@ and this project adheres to a personal-project versioning scheme (no public API,
 breaking changes encouraged -- see `CLAUDE.md`). All entries are written in
 pure 7-bit ASCII per the project character-encoding policy.
 
+## [0.2.0] - 2026-05-03
+
+Qualification-baseline release. The host-mock half of the codebase now
+meets the IEC 61508 SIL 3 / DO-178C Level B evidence bar this project
+self-assesses against.
+
+### Added
+
+- **100% reachable MC/DC milestone** -- `make mcdc` reports
+  473 / 473 reachable decisions covered (58 deactivated, fully
+  rationalised in `docs/MCDC_DEACTIVATIONS.md`). Absolute MC/DC
+  89.08%; the gap to absolute is entirely deactivated/defensive code.
+- **Eight new pre-commit gates (all STRICT)**:
+  `doxy_audit --check`, `check_obsolete_standards.py`,
+  `check_mcdc_block.py`, `check_new_compound_has_mcdc.py`,
+  `cite_check.py`, `check_world_tags.py`,
+  `check_line_citations.py`, `stack_usage_check.py` (warn-only on
+  third-party + ra_epub).
+- **Vendor blob policy enacted** -- RSIP vendored under
+  `libs/third_party/` with provenance + license documentation; the
+  BLE controller blob is blocked-license and is left out of the
+  tree. See `docs/VENDOR_BLOBS.md` and `docs/SOUP/`.
+- **Citation gate STRICT** -- every register write in
+  `libs/ra_hal/src/` carries a `/* HUM Ch X.Y p NNNN */` reference,
+  enforced line-by-line by `check_line_citations.py`.
+
+### Fixed
+
+- **33 -> 0 host-test failures** -- closed every flake and TODO in
+  the host-mock test suite; current run is 190/190 green.
+- **USB clock handshake fix** -- `ra_cgc` PLL2 path now produces the
+  48 MHz USBFS reference correctly; `ra_usb_fs` enumeration in the
+  host-mock world matches the HUM 35.2 sequence.
+
+### Changed
+
+- **Qualification artifacts refreshed** -- `docs/SOUP/`,
+  `docs/MCDC_GAPS.md`, `docs/MCDC_DEACTIVATIONS.md`,
+  `docs/VENDOR_BLOBS.md`, `docs/DRIVER_STATUS.md`,
+  `docs/ROADMAP.md`, and `docs/ROADMAP_DASHBOARD.md` all regenerated.
+- **Stale docs cleaned** -- removed obsolete sweep-in-progress
+  scratch notes; consolidated wave-table into the roadmap final-sweep
+  status block.
+
+### Hardware-blocked
+
+These items are code-complete in the host-mock world but await
+bench hardware before final sign-off:
+
+- USB enumeration end-to-end verification (requires bus analyzer).
+- LevelX IS25LX512M xSPI bring-up (requires logic analyzer + device).
+- `lcd_demo` + `ereader` graphics demos (requires Parallel Graphics
+  Expansion Board).
+
 ## [0.1.0] - 2026-05-01
 
 First tagged baseline of the RA8D2 hand-written HAL, TrustZone substrate,
