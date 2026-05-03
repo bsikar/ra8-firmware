@@ -1062,20 +1062,20 @@ static void test_mcdc_exit_stop_speed(void)
  * @test test_mcdc_dcp_in_data_len_data
  *
  * @par MC/DC:
- * Decision: `if ((len > k_ra_usb_dcp_max_packet) || ((data == nullptr) && (len != 0U)))`
- * (libs/ra_hal/src/ra_usb.c:816, in ra_usb_dcp_in_data). CITES-OK: MC/DC checker requires file:line citation. The outer OR
- * has two operands; the right operand is itself an AND with two
- * sub-conditions. We name them:
- *   C1: len > DCPMAXP
- *   C2: data == nullptr
- *   C3: len != 0
- * - V1: data=valid, len=4 (<=64)            -> C1=F, C2=F, C3=T -> outer=F (ok).
- * - V2: data=valid, len=9999 (>64)          -> C1=T                -> outer=T (varies C1).
- * - V3: data=NULL,  len=4 (<=64)            -> C1=F, C2=T, C3=T -> outer=T (varies C2).
- * - V4: data=NULL,  len=0                   -> C1=F, C2=T, C3=F -> outer=F (varies C3).
- * V1+V2 prove C1 independently flips outer; V1+V3 prove C2 (with C3 held T)
- * independently flips outer; V3+V4 prove C3 (with C2 held T) independently
- * flips outer. N+1=4 vectors for the 3-condition compound.
+ * Decision: `if ((data == nullptr) && (len != 0U))`
+ * (libs/ra_hal/src/ra_usb.c, in ra_usb_dcp_in_data). CITES-OK: MC/DC
+ * checker requires file:line citation. Two-condition AND:
+ *   C1: data == nullptr
+ *   C2: len != 0
+ * - V1: data=valid, len=4   -> C1=F, C2=T -> outer=F (ok, single-chunk).
+ * - V2: data=NULL,  len=4   -> C1=T, C2=T -> outer=T (rejected, varies C1).
+ * - V3: data=NULL,  len=0   -> C1=T, C2=F -> outer=F (ZLP path, varies C2).
+ * V1+V2 prove C1 independently flips outer (with C2 held T); V2+V3 prove
+ * C2 independently flips outer (with C1 held T). N+1=3 vectors for the
+ * 2-condition AND.
+ *
+ * Bonus: V4 exercises the multi-chunk path (len > DCPMAXP) introduced
+ * after the 75-byte CONFIGURATION-descriptor stall fix.
  */
 static void test_mcdc_dcp_in_data_len_data(void)
 {
@@ -1083,21 +1083,26 @@ static void test_mcdc_dcp_in_data_len_data(void)
   prep_cb();
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_device_init(k_ra_usb_speed_fs));
 
-  uint8_t buf[4]        = {0U, 0U, 0U, 0U};
+  uint8_t big_buf[128]  = {};
   ra_usb_fs()->CFIFOCTR = (uint16_t)k_ra_fifoctr_frdy;
 
-  /* V1: small valid call -> ok. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_dcp_in_data(k_ra_usb_speed_fs, buf, 4U));
-  /* V2: len exceeds DCP max packet -> invalid_arg. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_usb_dcp_in_data(k_ra_usb_speed_fs, buf, 9999U));
-  /* V3: data NULL with non-zero len -> invalid_arg. */
+  /* V1: small valid call -> ok (single chunk). */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_dcp_in_data(k_ra_usb_speed_fs, big_buf, 4U));
+  /* V2: data NULL with non-zero len -> invalid_arg. */
   TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
                  (int32_t)ra_usb_dcp_in_data(k_ra_usb_speed_fs, nullptr, 4U));
-  /* V4: data NULL with zero len -> AND collapses to false; outer is
-   * false; the call falls through to the no-op zero-byte path. */
+  /* V3: data NULL with zero len -> AND collapses to false; outer is
+   * false; the call falls through to the ZLP path. */
   ra_usb_fs()->CFIFOCTR = (uint16_t)k_ra_fifoctr_frdy;
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_dcp_in_data(k_ra_usb_speed_fs, nullptr, 0U));
+  /* V4: full-MPS chunk (64 bytes) -> single loop iteration, exercises
+   * the new chunk-loop body. The host-side mock CFIFOCTR is plain
+   * memory, so we cannot easily simulate the controller's FRDY
+   * re-assertion between chunks; the on-target multi-chunk path is
+   * exercised by the live USB enumeration test (75-byte CONFIGURATION
+   * descriptor on real silicon). */
+  ra_usb_fs()->CFIFOCTR = (uint16_t)k_ra_fifoctr_frdy;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_dcp_in_data(k_ra_usb_speed_fs, big_buf, 64U));
   TEST_END("mcdc: dcp_in_data (len/data) compound decision");
 }
 

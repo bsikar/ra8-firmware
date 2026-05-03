@@ -1,0 +1,62 @@
+name: coverage
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CMAKE_BUILD_PARALLEL_LEVEL: 4
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Statement + branch coverage gate (gcc + gcovr).
+  #
+  # This is the plain coverage flow described in docs/COVERAGE.md.
+  # It runs in parallel with the existing MC/DC pipeline (which lives
+  # in firmware.yml -> mcdc job) and produces an independent
+  # ratchetable baseline against .github/coverage-baseline.txt.
+  # ---------------------------------------------------------------------------
+  coverage:
+    name: Statement + branch coverage
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build + coverage toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential cmake gcc g++ gcovr python3
+
+      - name: Run coverage report (in-container path)
+        # The script's macOS shim only triggers on Darwin; on Linux
+        # it runs natively. We pass --in-container as a no-op safety
+        # marker to skip any future macOS branch.
+        run: bash scripts/utils/coverage_report.sh --in-container
+
+      - name: Run coverage gate
+        run: python3 scripts/utils/check_coverage.py
+
+      - name: Upload HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-html
+          path: build/coverage/
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload Cobertura XML
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-xml
+          path: build/coverage/coverage.xml
+          if-no-files-found: error
+          retention-days: 30
