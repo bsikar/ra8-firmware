@@ -1,7 +1,7 @@
 source_file,line,condition_count,function_name,decision_excerpt,covered,deactivated,deactivation_rationale
 libs/ra_ble_host/src/ra_ble_att.c,385,2,internal_handle_find_info,if ((start == 0U) || (start > end)) {,no,false,
-libs/ra_ble_host/src/ra_ble_att.c,404,2,internal_handle_find_info,if ((a->handle < start) || (a->handle > end)) {,no,false,
-libs/ra_ble_host/src/ra_ble_att.c,492,2,internal_handle_read_by_type,if ((a->handle < start) || (a->handle > end)) {,no,false,
+libs/ra_ble_host/src/ra_ble_att.c,404,2,internal_handle_find_info,if ((a->handle < start) || (a->handle > end)) {,partial,false,
+libs/ra_ble_host/src/ra_ble_att.c,492,2,internal_handle_read_by_type,if ((a->handle < start) || (a->handle > end)) {,partial,false,
 libs/ra_ble_host/src/ra_ble_att.c,658,2,internal_handle_read,} else if ((a->kind == k_attr_kind_char_value) && (a->value != NULL)) {,no,false,
 libs/ra_ble_host/src/ra_ble_gatt.c,480,2,ra_ble_host_gatt_set_value,if ((len > 0U) && (a->value != NULL)) {,partial,false,
 libs/ra_ble_host/src/ra_ble_gatt.c,538,2,ra_ble_host_gatt_notify,if ((decl == NULL) || ((decl->props & (uint8_t)k_ra_ble_host_char_prop_notify) == 0U)) {,partial,false,
@@ -68,7 +68,6 @@ libs/ra_hal/src/ra_jpeg_sw.c,1434,4,dec_parse_sos,if (mk >= 0xFFC0U && mk <= 0xF
 libs/ra_hal/src/ra_jpeg_sw.c,1655,4,dec_decode_scan,} else if (mk >= 0xFFC1U && mk <= 0xFFCFU && mk != (uint16_t)k_ra_jpeg_marker_dht &&,partial,false,
 libs/ra_hal/src/ra_lvd.c,494,2,internal_validate_cfg,if ((cfg->hysteresis == k_ra_lvd_hysteresis_hvd) &&,partial,false,
 libs/ra_hal/src/ra_lvd.c,533,2,internal_compose_cr0,if ((cfg->response == k_ra_lvd_response_reset) ||,partial,false,
-libs/ra_hal/src/ra_mipi_dsi.c,859,2,internal_check_link_state,const uintptr_t buf_addr = (cmd->bta == k_ra_mipi_dsi_bta_read) || (cmd->p_rx_buffer != nullptr),partial,false,
 libs/ra_hal/src/ra_mipi_dsi.c,1453,2,ra_mipi_dsi_dispatch_receive,if ((s_pending_rx_buffer != nullptr) && (s_pending_rx_len > 0U)) {,partial,false,
 libs/ra_hal/src/ra_mipi_phy.c,1139,3,internal_mipi_phy_write_timing,if ((tbl[i].mode == mode_flag) && (tbl[i].pclka == pclka) && (tbl[i].rate_max >= rate_mbps)) {,partial,false,
 libs/ra_hal/src/ra_rmac.c,1565,2,ra_rmac_phy_auto_neg_start,if (out_link->up && ((bmsr & (uint16_t)k_ra_rmac_phy_bmsr_an_done) != 0U)) {,no,false,
