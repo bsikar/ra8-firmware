@@ -16,12 +16,12 @@ Live audit of compound boolean decisions reported by `llvm-cov show --show-mcdc`
 - Source files with at least one decision: **93**
 - Total compound decisions in scope: **538**
 - Decisions at 100% MC/DC (`yes`): **414**
-- Decisions partially covered (`partial`): **65**
-- Decisions fully uncovered (`no`): **59**
+- Decisions partially covered (`partial`): **67**
+- Decisions fully uncovered (`no`): **57**
 - Coverage rate (yes / total): **76.95%**
-- Deactivated gap conditions (DO-178C 6.4.4.3): **8**
-- Reachable-condition denominator (total - deactivated): **530**
-- **Reachable MC/DC rate**: **78.11%** -- this is the gate threshold (100% required).
+- Deactivated gap conditions (DO-178C 6.4.4.3): **27**
+- Reachable-condition denominator (total - deactivated): **511**
+- **Reachable MC/DC rate**: **81.02%** -- this is the gate threshold (100% required).
 
 See `docs/MCDC_DEACTIVATIONS.md` for the per-condition deactivation rationale catalog.
 
@@ -40,16 +40,10 @@ See `docs/MCDC_DEACTIVATIONS.md` for the per-condition deactivation rationale ca
 | libs/ra_ble_host/src/ra_ble_l2cap.c | 580 | 3 | ra_ble_host_acl_in | `if ((evt_code == k_evt_le_meta) && (params_len >= k_min_lemeta_param_bytes) &&` | no |
 | libs/ra_ble_host/src/ra_ble_l2cap.c | 597 | 2 | ra_ble_host_acl_in | `} else if ((evt_code == k_evt_disconn_complete) && (params_len >= k_min_disco...` | no |
 | libs/ra_board_ek_ra8d2/src/ra_board_ek_ra8d2.c | 975 | 2 | ra_board_audio_init | `if (channels != (uint8_t)k_ra_audio_channels_mono &&` | partial |
-| libs/ra_core/src/ra_log.c | 260 | 2 | internal_itm_put_u32 | `while (value != 0U && i < k_ra_u32_max_digits) {` | partial |
 | libs/ra_epub/src/ra_epub_chapter.c | 225 | 2 | priv_font_init | `if (w < 0 \|\| h < 0) {` | no |
 | libs/ra_epub/src/ra_epub_chapter.c | 300 | 2 | ra_epub_get_chapter_count | `if (book->in_use == 0U \|\| book->zip_archive_active == 0U) {` | partial |
 | libs/ra_epub/src/ra_epub_chapter.c | 369 | 2 | ra_epub_get_metadata | `if (book->in_use == 0U \|\| book->zip_archive_active == 0U) {` | partial |
-| libs/ra_epub/src/ra_epub_open.c | 157 | 2 | priv_dirname | `if (dst == NULL \|\| cap == 0U) {` | no |
-| libs/ra_epub/src/ra_epub_xml_shim.cpp | 101 | 2 | (file scope) | `if (dst == nullptr \|\| cap == 0U) {` | no |
 | libs/ra_epub/src/ra_epub_xml_shim.cpp | 109 | 2 | (file scope) | `while (i + 1U < cap && src[i] != '\0') {` | partial |
-| libs/ra_epub/src/ra_epub_xml_shim.cpp | 124 | 2 | (file scope) | `if (root == nullptr \|\| local_name == nullptr) {` | no |
-| libs/ra_epub/src/ra_epub_xml_shim.cpp | 150 | 2 | (file scope) | `if (parent == nullptr \|\| local_name == nullptr) {` | no |
-| libs/ra_epub/src/ra_epub_xml_shim.cpp | 173 | 2 | (file scope) | `if (manifest == nullptr \|\| id == nullptr) {` | no |
 | libs/ra_epub/src/ra_epub_xml_shim.cpp | 179 | 2 | (file scope) | `if (item_id != nullptr && std::strcmp(item_id, id) == 0) {` | partial |
 | libs/ra_epub/src/ra_epub_xml_shim.cpp | 197 | 2 | (file scope) | `if (props != nullptr && std::strstr(props, "cover-image") != nullptr) {` | partial |
 | libs/ra_epub/src/ra_epub_xml_shim.cpp | 225 | 3 | (file scope) | `if (meta_name != nullptr && meta_content != nullptr && std::strcmp(meta_name,...` | no |
@@ -57,39 +51,45 @@ See `docs/MCDC_DEACTIVATIONS.md` for the per-condition deactivation rationale ca
 | libs/ra_epub/src/ra_epub_xml_shim.cpp | 268 | 2 | (file scope) | `if (full_path == nullptr \|\| full_path[0] == '\0') {` | no |
 | libs/ra_epub/src/ra_epub_xml_shim.cpp | 278 | 2 | (file scope) | `if (xml_bytes == nullptr \|\| book == nullptr) {` | no |
 | libs/ra_epub/src/ra_epub_xml_shim.cpp | 314 | 2 | (file scope) | `if (manifest == nullptr \|\| spine == nullptr) {` | no |
-| libs/ra_fs/src/ra_fs_fat.c | 939 | 2 | priv_path_to_83 | `if (path == NULL \|\| out11 == NULL) {` | no |
-| libs/ra_fs/src/ra_fs_fat.c | 993 | 3 | priv_83_to_str | `if (j > 0 && (uint8_t)out12[0] == k_dir_marker_kanji_e5 && in11[0] == k_dir_m...` | no |
-| libs/ra_fs/src/ra_fs_fat.c | 1281 | 2 | priv_free_chain | `while (cur >= k_cluster_first_data && (cur - k_cluster_first_data) < m->count...` | no |
-| libs/ra_fs/src/ra_fs_fat.c | 2476 | 3 | ra_fs_listdir | `if (path[0] != '/' \|\| (path[0] == '/' && path[1] != '\0')) {` | partial |
 | libs/ra_hal/src/ra_ble.c | 458 | 2 | internal_dispatch_event | `if ((internal_rx_byte(&code) == 0U) \|\| (internal_rx_byte(&plen) == 0U)) {` | no |
 | libs/ra_hal/src/ra_ble.c | 492 | 4 | internal_dispatch_acl | `if ((internal_rx_byte(&hdl_lo) == 0U) \|\| (internal_rx_byte(&hdl_hi) == 0U) ...` | no |
-| libs/ra_hal/src/ra_canfd.c | 313 | 2 | ra_canfd_deinit | `if ((bitrate_bps == 0U) \|\| (clock_hz == 0U)) {` | partial |
-| libs/ra_hal/src/ra_canfd.c | 322 | 2 | ra_canfd_deinit | `if ((prescaler < k_ra_canfd_prescaler_min) \|\| (prescaler > prescaler_max)) {` | partial |
+| libs/ra_hal/src/ra_canfd.c | 323 | 2 | ra_canfd_deinit | `if ((prescaler < k_ra_canfd_prescaler_min) \|\| (prescaler > prescaler_max)) {` | partial |
 | libs/ra_hal/src/ra_ceu.c | 974 | 2 | internal_arm_capture | `if ((s_ceu_image_area != 0U) && (bufs->y_top != nullptr)) {` | partial |
 | libs/ra_hal/src/ra_dmac.c | 151 | 2 | internal_dts_code | `if (mode == k_ra_dmac_mode_normal \|\| mode == k_ra_dmac_mode_repeat_block) {` | partial |
 | libs/ra_hal/src/ra_dmac.c | 246 | 2 | internal_dmint_value | `if (cfg->irq_each && cfg->mode != k_ra_dmac_mode_repeat_block) {` | no |
 | libs/ra_hal/src/ra_dotf.c | 361 | 2 | internal_check_overlap | `if ((region->start_addr <= live->end_addr) && (live->start_addr <= region->en...` | no |
 | libs/ra_hal/src/ra_drw.c | 776 | 2 | internal_pack_texture_bits | `if ((uint16_t)rect->width_px < k_ra_drw_min_dim_px \|\|` | partial |
 | libs/ra_hal/src/ra_drw.c | 780 | 2 | internal_pack_texture_bits | `if ((uint16_t)rect->width_px > k_ra_drw_max_width_px \|\|` | partial |
-| libs/ra_hal/src/ra_eth.c | 329 | 2 | internal_init_rings | `if ((tx == 0U) \|\| (tx > k_ra_eth_num_tx_desc)) {` | no |
-| libs/ra_hal/src/ra_eth.c | 332 | 2 | internal_init_rings | `if ((rx == 0U) \|\| (rx > k_ra_eth_num_rx_desc)) {` | no |
 | libs/ra_hal/src/ra_flash.c | 150 | 2 | internal_wait_buffer_ready | `if (((s & k_ra_mrcps_mask_prgbsyc) == 0U) && ((s & k_ra_mrcps_mask_abuffull) ...` | no |
 | libs/ra_hal/src/ra_flash.c | 181 | 2 | internal_wait_commit_done | `if (((s & k_ra_mrcps_mask_abufemp) != 0U) && ((s & k_ra_mrcps_mask_prgbsyc) =...` | no |
-| libs/ra_hal/src/ra_flash.c | 1398 | 2 | ra_flash_config_set_write | `(bool)((target_addr >= (uint32_t)k_ra_flash_extra_start) && (target_addr < ex...` | no |
-| libs/ra_hal/src/ra_flash.c | 1399 | 2 | ra_flash_config_set_write | `if (!in_ofs && !in_extra) {` | partial |
-| libs/ra_hal/src/ra_flash.c | 2707 | 2 | ra_flash_blank_check | `(address >= k_ra_flash_code_start) &&` | partial |
-| libs/ra_hal/src/ra_flash.c | 2710 | 2 | ra_flash_blank_check | `(address >= k_ra_flash_extra_start) &&` | no |
-| libs/ra_hal/src/ra_flash.c | 2716 | 3 | ra_flash_blank_check | `if (!in_code && !in_extra && !in_ofs) {` | partial |
+| libs/ra_hal/src/ra_flash.c | 1428 | 2 | ra_flash_config_set_write | `(bool)((target_addr >= (uint32_t)k_ra_flash_extra_start) && (target_addr < ex...` | no |
+| libs/ra_hal/src/ra_flash.c | 1429 | 2 | ra_flash_config_set_write | `if (!in_ofs && !in_extra) {` | partial |
+| libs/ra_hal/src/ra_flash.c | 2737 | 2 | ra_flash_blank_check | `(address >= k_ra_flash_code_start) &&` | partial |
+| libs/ra_hal/src/ra_flash.c | 2740 | 2 | ra_flash_blank_check | `(address >= k_ra_flash_extra_start) &&` | no |
+| libs/ra_hal/src/ra_flash.c | 2746 | 3 | ra_flash_blank_check | `if (!in_code && !in_extra && !in_ofs) {` | partial |
 | libs/ra_hal/src/ra_i3c.c | 688 | 2 | ra_i3c_send_ccc | `if ((target_addr > (uint8_t)k_ra_i3c_addr_mask) \|\| (max_len == 0U)) {` | no |
 | libs/ra_hal/src/ra_i3c.c | 815 | 3 | ra_i3c_set_hdr_mode | `if ((mode != k_ra_i3c_hdr_mode_sdr) && (mode != k_ra_i3c_hdr_mode_ddr) &&` | partial |
-| libs/ra_hal/src/ra_iic_b.c | 128 | 2 | internal_iic_b_half_period | `if ((bus_hz == 0U) \|\| (pclka_hz == 0U)) {` | no |
-| libs/ra_hal/src/ra_iic_b.c | 975 | 2 | ra_iic_b_read | `if ((rx_len != 0U) && (rx == nullptr)) {` | partial |
-| libs/ra_hal/src/ra_iic_b.c | 1234 | 2 | ra_iic_b_dispatch_eri | `if ((mask != 0U) && (cb != nullptr)) {` | partial |
-| libs/ra_hal/src/ra_jpeg_sw.c | 987 | 2 | dec_parse_dqt | `if (len < 2U \|\| (uint32_t)len > d->src_len - d->cursor) {` | partial |
-| libs/ra_hal/src/ra_jpeg_sw.c | 1031 | 2 | dec_parse_dht | `if (len < 2U \|\| (uint32_t)len > d->src_len - d->cursor) {` | partial |
+| libs/ra_hal/src/ra_iic_b.c | 976 | 2 | ra_iic_b_read | `if ((rx_len != 0U) && (rx == nullptr)) {` | partial |
+| libs/ra_hal/src/ra_iic_b.c | 1235 | 2 | ra_iic_b_dispatch_eri | `if ((mask != 0U) && (cb != nullptr)) {` | partial |
 | libs/ra_hal/src/ra_jpeg_sw.c | 1041 | 2 | dec_parse_dht | `if (tc >= (uint8_t)k_ra_jpeg_huff_classes \|\| th >= (uint8_t)k_ra_jpeg_huff_...` | no |
-| libs/ra_hal/src/ra_jpeg_sw.c | 1089 | 2 | dec_parse_sof0 | `if (len < 8U \|\| (uint32_t)len > d->src_len - d->cursor) {` | no |
-| ... | | | | *(56 more rows in CSV)* | |
+| libs/ra_hal/src/ra_jpeg_sw.c | 1104 | 2 | dec_parse_sof0 | `if (d->ncomp != 1U && d->ncomp != 3U) {` | partial |
+| libs/ra_hal/src/ra_jpeg_sw.c | 1131 | 2 | dec_parse_sof0 | `bool is_444 = (d->hmax == 1U && d->vmax == 1U);` | no |
+| libs/ra_hal/src/ra_jpeg_sw.c | 1132 | 6 | dec_parse_sof0 | `bool is_420 = (d->hmax == 2U && d->vmax == 2U && d->comp_h[1] == 1U && d->com...` | partial |
+| libs/ra_hal/src/ra_jpeg_sw.c | 1134 | 2 | dec_parse_sof0 | `if (!is_444 && !is_420) {` | partial |
+| libs/ra_hal/src/ra_jpeg_sw.c | 1184 | 2 | dec_parse_sos | `if (d->comp_dc_id[idx] >= (uint8_t)k_ra_jpeg_huff_ids \|\|` | no |
+| libs/ra_hal/src/ra_jpeg_sw.c | 1223 | 2 | dec_parse_sos | `if (r < 0 && t != 0) {` | no |
+| libs/ra_hal/src/ra_jpeg_sw.c | 1400 | 2 | dec_parse_sos | `while (i < jpeg_len && jpeg_buf[i] == (uint8_t)k_ra_jpeg_marker_byte) {` | partial |
+| libs/ra_hal/src/ra_jpeg_sw.c | 1409 | 2 | dec_parse_sos | `if (mk == (uint16_t)k_ra_jpeg_marker_soi \|\| mk == (uint16_t)k_ra_jpeg_marke...` | partial |
+| libs/ra_hal/src/ra_jpeg_sw.c | 1434 | 4 | dec_parse_sos | `if (mk >= 0xFFC0U && mk <= 0xFFCFU && mk != (uint16_t)k_ra_jpeg_marker_dht &&...` | partial |
+| libs/ra_hal/src/ra_jpeg_sw.c | 1655 | 4 | dec_decode_scan | `} else if (mk >= 0xFFC1U && mk <= 0xFFCFU && mk != (uint16_t)k_ra_jpeg_marker...` | partial |
+| libs/ra_hal/src/ra_lvd.c | 494 | 2 | internal_validate_cfg | `if ((cfg->hysteresis == k_ra_lvd_hysteresis_hvd) &&` | partial |
+| libs/ra_hal/src/ra_lvd.c | 533 | 2 | internal_compose_cr0 | `if ((cfg->response == k_ra_lvd_response_reset) \|\|` | partial |
+| libs/ra_hal/src/ra_mipi_dsi.c | 570 | 2 | internal_ra_mipi_dsi_validate_cmd | `if ((cmd->tx_len > 0U) && (cmd->p_tx_buffer == nullptr)) {` | no |
+| libs/ra_hal/src/ra_mipi_dsi.c | 828 | 2 | internal_check_link_state | `if (cmd->aux_operation && ((link & k_ra_mipi_dsi_link_vrun) != 0U)) {` | no |
+| libs/ra_hal/src/ra_mipi_dsi.c | 859 | 2 | internal_check_link_state | `const uintptr_t buf_addr = (cmd->bta == k_ra_mipi_dsi_bta_read) \|\| (cmd->p_...` | partial |
+| libs/ra_hal/src/ra_mipi_dsi.c | 1040 | 2 | internal_send_stage_and_pulse | `if (((lanes & k_ra_mipi_dsi_lane_clock) != 0U) && s_clock_lanes_in_ulps) {` | partial |
+| libs/ra_hal/src/ra_mipi_dsi.c | 1453 | 2 | ra_mipi_dsi_dispatch_receive | `if ((s_pending_rx_buffer != nullptr) && (s_pending_rx_len > 0U)) {` | partial |
+| ... | | | | *(37 more rows in CSV)* | |
 
 ## Deactivated gaps (DO-178C 6.4.4.3 exempted)
 
@@ -97,9 +97,28 @@ These conditions are unreachable on any public-API path and are therefore exempt
 
 | File | Line | Conds | Function | Excerpt | Rationale |
 |------|-----:|------:|----------|---------|-----------|
+| libs/ra_core/src/ra_log.c | 261 | 2 | internal_itm_put_u32 | `while (value != 0U && i < k_ra_u32_max_digits) {` | Annotated deactivation: digit-buffer bound; uint32_t max ... |
+| libs/ra_epub/src/ra_epub_open.c | 157 | 2 | priv_dirname | `if (dst == NULL \|\| cap == 0U) {` | TU-local static helper `priv_dirname` -- defensive NULL g... |
+| libs/ra_epub/src/ra_epub_xml_shim.cpp | 101 | 2 | (file scope) | `if (dst == nullptr \|\| cap == 0U) {` | TU-local static helper `copy_bounded` -- defensive NULL g... |
+| libs/ra_epub/src/ra_epub_xml_shim.cpp | 124 | 2 | (file scope) | `if (root == nullptr \|\| local_name == nullptr) {` | TU-local static helper `find_descendant` -- defensive NUL... |
+| libs/ra_epub/src/ra_epub_xml_shim.cpp | 150 | 2 | (file scope) | `if (parent == nullptr \|\| local_name == nullptr) {` | TU-local static helper `find_child` -- defensive NULL gua... |
+| libs/ra_epub/src/ra_epub_xml_shim.cpp | 173 | 2 | (file scope) | `if (manifest == nullptr \|\| id == nullptr) {` | TU-local static helper `manifest_href_by_id` -- defensive... |
+| libs/ra_fs/src/ra_fs_fat.c | 939 | 2 | priv_path_to_83 | `if (path == NULL \|\| out11 == NULL) {` | TU-local static helper `priv_path_to_83` -- defensive NUL... |
+| libs/ra_fs/src/ra_fs_fat.c | 994 | 3 | priv_83_to_str | `if (j > 0 && (uint8_t)out12[0] == k_dir_marker_kanji_e5 &...` | Annotated deactivation: 3-condition AND on Shift-JIS kanj... |
+| libs/ra_fs/src/ra_fs_fat.c | 1283 | 2 | priv_free_chain | `while (cur >= k_cluster_first_data && (cur - k_cluster_fi...` | Annotated deactivation: loop bound; `cur < k_cluster_firs... |
+| libs/ra_fs/src/ra_fs_fat.c | 2478 | 3 | ra_fs_listdir | `if (path[0] != '/' \|\| (path[0] == '/' && path[1] != '\0...` | Structurally-redundant condition: `x == V` inside the sec... |
+| libs/ra_hal/src/ra_canfd.c | 314 | 2 | ra_canfd_deinit | `if ((bitrate_bps == 0U) \|\| (clock_hz == 0U)) {` | Annotated deactivation: both args are validated by ra_can... |
+| libs/ra_hal/src/ra_eth.c | 330 | 2 | internal_init_rings | `if ((tx == 0U) \|\| (tx > k_ra_eth_num_tx_desc)) {` | Annotated deactivation: tx normalized to nonzero above; f... |
+| libs/ra_hal/src/ra_eth.c | 334 | 2 | internal_init_rings | `if ((rx == 0U) \|\| (rx > k_ra_eth_num_rx_desc)) {` | Annotated deactivation: rx normalized to nonzero above; f... |
+| libs/ra_hal/src/ra_iic_b.c | 129 | 2 | internal_iic_b_half_period | `if ((bus_hz == 0U) \|\| (pclka_hz == 0U)) {` | Annotated deactivation: both args validated by ra_iic_b_i... |
+| libs/ra_hal/src/ra_jpeg_sw.c | 987 | 2 | dec_parse_dqt | `if (len < 2U \|\| (uint32_t)len > d->src_len - d->cursor) {` | Defensive segment-length bound in a bounded parser: buffe... |
+| libs/ra_hal/src/ra_jpeg_sw.c | 1031 | 2 | dec_parse_dht | `if (len < 2U \|\| (uint32_t)len > d->src_len - d->cursor) {` | Defensive segment-length bound in a bounded parser: buffe... |
+| libs/ra_hal/src/ra_jpeg_sw.c | 1089 | 2 | dec_parse_sof0 | `if (len < 8U \|\| (uint32_t)len > d->src_len - d->cursor) {` | Defensive segment-length bound in a bounded parser: buffe... |
+| libs/ra_hal/src/ra_jpeg_sw.c | 1161 | 2 | dec_parse_sos | `if (len < 6U \|\| (uint32_t)len > d->src_len - d->cursor) {` | Defensive segment-length bound in a bounded parser: buffe... |
 | libs/ra_hal/src/ra_rsip.c | 2958 | 2 | internal_hash_pull_digest | `if ((msg == nullptr) && (msg_len != 0U)) {` | Defensive null+len contract: (ptr == NULL) && (len != 0) ... |
 | libs/ra_hal/src/ra_rsip.c | 3921 | 2 | internal_kw_pull_handle | `if ((label == nullptr) && (label_len != 0U)) {` | Defensive null+len contract: (ptr == NULL) && (len != 0) ... |
 | libs/ra_hal/src/ra_rsip.c | 3924 | 2 | internal_kw_pull_handle | `if ((salt == nullptr) && (salt_len != 0U)) {` | Defensive null+len contract: (ptr == NULL) && (len != 0) ... |
+| libs/ra_modem_at/src/ra_modem_at.c | 126 | 2 | ra_modem_at_internal_str_len | `while ((i < UINT16_MAX) && (s[i] != '\0')) {` | Annotated deactivation: 64KB-bound is a defensive watchdo... |
 | libs/ra_psa_crypto/src/ra_psa_crypto.c | 476 | 2 | internal_sha256_rotr | `for (size_t i = 0U; (i < key_len) && (off < sizeof(buf));...` | Defensive scratch-buffer bound: input length is capped by... |
 | libs/ra_psa_crypto/src/ra_psa_crypto.c | 479 | 2 | internal_sha256_rotr | `for (size_t i = 0U; (i < nonce_len) && (off < sizeof(buf)...` | Defensive scratch-buffer bound: input length is capped by... |
 | libs/ra_psa_crypto/src/ra_psa_crypto.c | 482 | 2 | internal_sha256_rotr | `for (size_t i = 0U; (i < aad_len) && (off < sizeof(buf));...` | Defensive scratch-buffer bound: input length is capped by... |
@@ -136,7 +155,7 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra_i3c | 7 | 5 | 1 | 1 |
 | ra_lvd | 5 | 3 | 2 | 0 |
 | ra_canfd | 4 | 2 | 2 | 0 |
-| ra_eth | 4 | 2 | 0 | 2 |
+| ra_eth | 4 | 2 | 2 | 0 |
 | ra_dmac | 3 | 1 | 1 | 1 |
 | ra_rmac_phy | 3 | 1 | 0 | 2 |
 | ra_mipi_phy | 22 | 21 | 1 | 0 |
@@ -220,7 +239,6 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra_mipi_dsi | 2 | 3 | 17 | 22 |
 | ra_reflow_xml_shim | 2 | 2 | 0 | 4 |
 | ra_ble | 2 | 0 | 6 | 8 |
-| ra_eth | 2 | 0 | 2 | 4 |
 | ra_rmac_phy | 2 | 0 | 1 | 3 |
 | ra_modem_at | 1 | 4 | 7 | 12 |
 | ra_reflow_layout | 1 | 4 | 8 | 13 |

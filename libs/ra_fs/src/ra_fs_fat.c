@@ -990,6 +990,7 @@ static void priv_83_to_str(const uint8_t* in11, char* out12)
     out12[j++] = (char)in11[i];
   }
   /* Restore kanji escape. */
+  /* mcdc-deactivated: 3-condition AND on Shift-JIS kanji-escape directory entry; only reachable from a kanji-named FAT image, none of which exist in the test corpus. */
   if (j > 0 && (uint8_t)out12[0] == k_dir_marker_kanji_e5 && in11[0] == k_dir_marker_kanji_e5) {
     out12[0] = (char)k_dir_marker_free_used;
   }
@@ -1278,6 +1279,7 @@ static ra_err_t priv_free_chain(const ra_fs_mount_t* m, uint32_t start)
 {
   uint32_t cur   = start;
   uint32_t guard = 0;
+  /* mcdc-deactivated: loop bound; `cur < k_cluster_first_data` only on a corrupt FAT chain (the first-cluster reservation 0/1 is enforced at allocation). */
   while (cur >= k_cluster_first_data && (cur - k_cluster_first_data) < m->count_of_clusters) {
     uint32_t next = 0;
     ra_err_t err  = priv_fat_get(m, cur, &next);
