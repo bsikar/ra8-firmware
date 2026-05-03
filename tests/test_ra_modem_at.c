@@ -656,8 +656,8 @@ static void test_mcdc_reset_line_buf_pair(void)
  * @test test_mcdc_internal_classify_cmd_echo_pair
  *
  * @par MC/DC:
- * Decision (libs/ra_modem_at/src/ra_modem_at.c, ra_modem_at_internal_classify):
- *   ``(cmd_echo != nullptr) && (internal_str_eq(line, cmd_echo) != 0U)``
+ * Decision at libs/ra_modem_at/src/ra_modem_at.c:336
+ *   ``(cmd_echo != nullptr) && (ra_modem_at_internal_str_eq(line, cmd_echo) != 0U)``
  * (2 conditions, AND). N+1 = 3 vectors. Driven directly against
  * production source via ra_modem_at_internal.h (test-access policy,
  * see CLAUDE.md "Test access to internal symbols").
@@ -681,6 +681,117 @@ static void test_mcdc_internal_classify_cmd_echo_pair(void)
   /* V3: cmd_echo non-NULL but line mismatch -> not echo. */
   TEST_ASSERT(ra_modem_at_internal_classify("OTHER", "AT", NULL) != k_ra_modem_line_kind_echo);
   TEST_END("modem_at MC/DC: cmd_echo AND (ra_modem_at_internal_classify)");
+}
+
+/**
+ * @test test_mcdc_internal_str_len_pair
+ *
+ * @par MC/DC:
+ * Decision at libs/ra_modem_at/src/ra_modem_at.c:124
+ *   ``while ((i < UINT16_MAX) && (s[i] != '\0'))``
+ *
+ * - V1: s = "AB" -> at i=0 C1=T, C2=T (loop runs).
+ * - V2: s = ""   -> at i=0 C1=T, C2=F (loop exits via C2). Pair (V1,V2)
+ *   isolates C2 with C1 held at T.
+ *
+ * C1 cannot be flipped F at runtime in a host test (would require
+ * UINT16_MAX bytes of input); the cap is a defensive guard only. The
+ * (V1,V2) pair gives full MC/DC for the only condition that varies in
+ * practice. N=2 -> aim is N+1=3, but C1 is unreachable so 2 vectors are
+ * the documented best-attainable.
+ *
+ * @par DO-178C 6.4.4.3 rationale:
+ * C1 is a static guard against integer overflow that is not reachable
+ * at host-test scale; it is exercised by inspection (the loop bound
+ * matches the type's max value).
+ */
+static void test_mcdc_internal_str_len_pair(void)
+{
+  TEST_BEGIN("modem_at MC/DC: internal_str_len short-circuit");
+  TEST_ASSERT_EQ((int32_t)0, (int32_t)ra_modem_at_internal_str_len(""));
+  TEST_ASSERT_EQ((int32_t)2, (int32_t)ra_modem_at_internal_str_len("AB"));
+  TEST_ASSERT_EQ((int32_t)5, (int32_t)ra_modem_at_internal_str_len("HELLO"));
+  TEST_END("modem_at MC/DC: internal_str_len short-circuit");
+}
+
+/**
+ * @test test_mcdc_internal_str_eq_loop_pair
+ *
+ * @par MC/DC:
+ * Decision at libs/ra_modem_at/src/ra_modem_at.c:177
+ *   ``while ((a[i] != '\0') && (b[i] != '\0'))``
+ *
+ * - V1: a="X",  b="X"   -> i=0 C1=T C2=T (enter), i=1 C1=F (exit via C1).
+ * - V2: a="",   b="Y"   -> i=0 C1=F (exit via C1, C2 not evaluated -> false).
+ *   Pair (V1@i=0, V2) isolates C1 with C2=T held.
+ * - V3: a="X",  b=""    -> i=0 C1=T C2=F (exit via C2). Pair (V1@i=0, V3)
+ *   isolates C2 with C1=T held.
+ *
+ * N=2 -> N+1=3 vectors. Minimal MC/DC.
+ */
+static void test_mcdc_internal_str_eq_loop_pair(void)
+{
+  TEST_BEGIN("modem_at MC/DC: internal_str_eq loop short-circuit");
+  TEST_ASSERT_EQ((int32_t)1, (int32_t)ra_modem_at_internal_str_eq("X", "X"));
+  TEST_ASSERT_EQ((int32_t)0, (int32_t)ra_modem_at_internal_str_eq("", "Y"));
+  TEST_ASSERT_EQ((int32_t)0, (int32_t)ra_modem_at_internal_str_eq("X", ""));
+  TEST_ASSERT_EQ((int32_t)1, (int32_t)ra_modem_at_internal_str_eq("", ""));
+  TEST_ASSERT_EQ((int32_t)0, (int32_t)ra_modem_at_internal_str_eq("AB", "AC"));
+  TEST_END("modem_at MC/DC: internal_str_eq loop short-circuit");
+}
+
+/**
+ * @test test_mcdc_internal_str_eq_terminator_pair
+ *
+ * @par MC/DC:
+ * Decision at libs/ra_modem_at/src/ra_modem_at.c:184
+ *   ``return (uint8_t)((a[i] == '\0') && (b[i] == '\0'));``
+ *
+ * After the loop terminates, the terminator-AND is evaluated on the
+ * common index i. Vectors:
+ * - V1: a="",  b=""   -> C1=T C2=T -> 1 (equal empties).
+ * - V2: a="X", b=""   -> loop stops at i=0 with a[0]='X', b[0]='\0';
+ *   C1=F (exit via C1) -> 0.
+ * - V3: a="",  b="X"  -> C1=T C2=F -> 0.
+ * Pair (V1,V2) isolates C1; (V1,V3) isolates C2. N=2 -> 3 vectors.
+ */
+static void test_mcdc_internal_str_eq_terminator_pair(void)
+{
+  TEST_BEGIN("modem_at MC/DC: internal_str_eq terminator AND");
+  TEST_ASSERT_EQ((int32_t)1, (int32_t)ra_modem_at_internal_str_eq("", ""));
+  TEST_ASSERT_EQ((int32_t)0, (int32_t)ra_modem_at_internal_str_eq("X", ""));
+  TEST_ASSERT_EQ((int32_t)0, (int32_t)ra_modem_at_internal_str_eq("", "X"));
+  TEST_ASSERT_EQ((int32_t)1, (int32_t)ra_modem_at_internal_str_eq("AB", "AB"));
+  TEST_ASSERT_EQ((int32_t)0, (int32_t)ra_modem_at_internal_str_eq("AB", "ABC"));
+  TEST_END("modem_at MC/DC: internal_str_eq terminator AND");
+}
+
+/**
+ * @test test_mcdc_internal_starts_with
+ *
+ * @par MC/DC:
+ * Auxiliary direct-call coverage for the helper used in the
+ * ra_modem_at_internal_classify line-352 OR-chain. While the classify
+ * test exercises the chain at the call site, hitting starts_with
+ * directly forces the inner ``if (hay[i] != needle[i])`` branch on the
+ * production source.
+ *
+ * Vectors:
+ * - V1: hay="ABC", needle="AB" -> match (returns 1).
+ * - V2: hay="ABC", needle="AX" -> mismatch in body (returns 0).
+ * - V3: hay="A",   needle=""   -> empty needle short-circuits (returns 1).
+ *
+ * Single-condition decisions (`needle[i]!='\0'`, `hay[i]!=needle[i]`)
+ * each get T and F vectors. No compound decision in this helper, so
+ * MC/DC reduces to branch coverage; 3 vectors confirm both branches.
+ */
+static void test_mcdc_internal_starts_with(void)
+{
+  TEST_BEGIN("modem_at MC/DC: internal_starts_with branches");
+  TEST_ASSERT_EQ((int32_t)1, (int32_t)ra_modem_at_internal_starts_with("ABC", "AB"));
+  TEST_ASSERT_EQ((int32_t)0, (int32_t)ra_modem_at_internal_starts_with("ABC", "AX"));
+  TEST_ASSERT_EQ((int32_t)1, (int32_t)ra_modem_at_internal_starts_with("A", ""));
+  TEST_END("modem_at MC/DC: internal_starts_with branches");
 }
 
 int32_t main(void)
@@ -711,6 +822,10 @@ int32_t main(void)
   test_mcdc_capture_buf_guard();
   test_mcdc_reset_line_buf_pair();
   test_mcdc_internal_classify_cmd_echo_pair();
+  test_mcdc_internal_str_len_pair();
+  test_mcdc_internal_str_eq_loop_pair();
+  test_mcdc_internal_str_eq_terminator_pair();
+  test_mcdc_internal_starts_with();
   (void)fprintf(stderr, "[OK ] test_ra_modem_at.c\n");
   return 0;
 }
