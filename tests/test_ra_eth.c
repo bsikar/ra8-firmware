@@ -141,7 +141,7 @@ static void test_open_bad_channel(void)
  *
  * @par MC/DC:
  * Decision: ``if ((tx == 0U) || (tx > k_ra_eth_num_tx_desc))``
- * (libs/ra_hal/src/ra_eth.c:329; first OR-condition deactivated as the
+ * (libs/ra_hal/src/ra_eth.c; first OR-condition deactivated as the
  * `tx == 0` branch is normalized to `k_ra_eth_num_tx_desc` immediately
  * above this guard, leaving only the second condition as reachable).
  * Same shape for the rx variant on line 332.

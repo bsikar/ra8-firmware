@@ -490,7 +490,7 @@ static void test_mcdc_i3c(void)
  * @test test_mcdc_i3c_write_read_arg_pairs
  *
  * @par MC/DC:
- * Decision A (libs/ra_hal/src/ra_i3c.c:727 ra_i3c_write):
+ * Decision A (libs/ra_hal/src/ra_i3c.c ra_i3c_write):
  *   ``if ((len > 0U) && (data == nullptr))``
  * 2-cond AND, N+1 = 3 vectors.
  * - V1: len>0, data=valid -> C1=T, C2=F -> dec F (proceed).
@@ -498,7 +498,7 @@ static void test_mcdc_i3c(void)
  * - V3: len>0, data=NULL  -> C1=T, C2=T -> dec T -> null_ptr.
  * V1+V3 isolate C2; V2+V3 isolate C1.
  *
- * Decision B (libs/ra_hal/src/ra_i3c.c:777 ra_i3c_read):
+ * Decision B (libs/ra_hal/src/ra_i3c.c ra_i3c_read):
  *   ``if ((len == 0U) || (len > k_ra_i3c_cmd_xfer_length_max))``
  * 2-cond OR, N+1 = 3 vectors.
  * - V1: len=4              -> C1=F, C2=F -> dec F.
@@ -536,8 +536,8 @@ static void test_mcdc_i3c_write_read_arg_pairs(void)
  * @test test_mcdc_i3c_internal_recv_ccc_invalid
  *
  * @par MC/DC:
- * Decision at libs/ra_hal/src/ra_i3c.c:688 (call site) -> helper at
- * libs/ra_hal/src/ra_i3c.c:56:
+ * Decision at libs/ra_hal/src/ra_i3c.c (call site) -> helper at
+ * libs/ra_hal/src/ra_i3c.c:
  *   ``target > addr_mask || max_len == 0`` (2 conditions, OR).
  * - V1: target<=mask, max_len>0 -> false
  * - V2: target>mask,  max_len>0 -> true (varies left)
@@ -557,8 +557,8 @@ static void test_mcdc_i3c_internal_recv_ccc_invalid(void)
  * @test test_mcdc_i3c_internal_hdr_mode_invalid
  *
  * @par MC/DC:
- * Decision at libs/ra_hal/src/ra_i3c.c:815 (call site) -> helper at
- * libs/ra_hal/src/ra_i3c.c:81:
+ * Decision at libs/ra_hal/src/ra_i3c.c (call site) -> helper at
+ * libs/ra_hal/src/ra_i3c.c:
  *   ``mode != SDR && mode != DDR && mode != TS`` (3 conditions, AND).
  * - V1: mode=SDR -> false (SDR varies vs V4)
  * - V2: mode=DDR -> false (DDR varies vs V4)

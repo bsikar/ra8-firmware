@@ -456,7 +456,7 @@ typedef enum : uint32_t {
  * direction from the command index for CMD17/18/24/25, so the caller
  * does not need to pre-encode response-type or data-direction bits.
  * Mirrors the FSP r_sdhi_command_send_no_wait() prologue at
- * r_sdhi.c:1127 minus the IRQ-mask bookkeeping that the polled API
+ * r_sdhi.c minus the IRQ-mask bookkeeping that the polled API
  * does not need.
  *
  * @param[in] reg SDHI register window pointer.
@@ -502,7 +502,7 @@ static ra_err_t internal_sdhi_send(volatile r_sdhi_regs_t* reg, uint32_t cmd, ui
  * @brief Common data-phase setup shared by read_block / write_block.
  *
  * @details
- * Mirrors FSP ``r_sdhi_read_write_common`` (r_sdhi.c:1383). For
+ * Mirrors FSP ``r_sdhi_read_write_common`` (r_sdhi.c). For
  * multi-block transfers, SD_STOP.SEC must be set so the IP stops the
  * data phase after SD_SECCNT blocks; for single-block transfers
  * SD_STOP must be cleared. SD_SIZE is always 512 bytes for SD card
@@ -638,7 +638,7 @@ static ra_err_t internal_sdhi_fill(volatile r_sdhi_regs_t* reg, const uint8_t* b
  * @details
  * Issues CMD12 STOP_TRANSMISSION when ``block_count > 1`` to close
  * the open-ended multi-block transfer the way FSP does at
- * r_sdhi.c:1095, then zeroes SD_INFO1 / SD_INFO2 so the next caller
+ * r_sdhi.c, then zeroes SD_INFO1 / SD_INFO2 so the next caller
  * sees a clean slate. Factored out so the public read/write helpers
  * stay under the NASA Rule 4 statement limit.
  */

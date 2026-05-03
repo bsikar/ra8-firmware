@@ -83,7 +83,7 @@ typedef enum : uint8_t {
  * the FSP reference uses ``HW_SCE_AES{128,192,256}_KEY_INDEX_WORD_SIZE``
  * for the ratio. RA8D2 uses 4-word / 6-word / 8-word envelopes for
  * the 128 / 192 / 256-bit keys respectively when staged through the
- * ``OutputKeyForDotf`` paths (``r_ospi_b.c:1756``).
+ * ``OutputKeyForDotf`` paths (``r_ospi_b.c``).
  */
 typedef enum : uint8_t {
   k_ra_dotf_key_words_128 = 4U,
@@ -411,7 +411,7 @@ static void internal_stage_key(volatile ra_dotf_regs_t* reg, const ra_dotf_key_h
     /* HUM Ch 45.3 "Register Descriptions" p 3049: REG03 is the AES
      * IV staging window; the FSP reference re-uses it for wrapped-key
      * delivery via the OutputKeyForDotf adaptor. Big-endian per
-     * ``r_ospi_b.c:1654``. */
+     * ``r_ospi_b.c``. */
     reg->REG03 = internal_bswap32(h->words[i]);
   }
 }
@@ -588,7 +588,7 @@ static void internal_state_reset(uint8_t channel)
   RA_CHECK_NULL_PTR(reg, s_tag, "channel mapping failed");
 
   const ra_dotf_region_t* r = &st->regions[region_id];
-  /* FSP r_ospi_b.c:1660 "Set the end and start area for DOTF
+  /* FSP r_ospi_b.c "Set the end and start area for DOTF
    * conversion in that order to ensure that end address is always
    * higher than start address."
    * HUM Ch 45.3.2 "CONVAREAD : DOTF Conversion Area End Address Register" p 3049 */

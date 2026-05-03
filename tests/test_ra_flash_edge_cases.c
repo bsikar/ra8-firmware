@@ -186,7 +186,7 @@ static void test_write_during_read_collision(void)
  * @test test_mcdc_flash_window_allows_pure
  *
  * @par MC/DC:
- * Decision at libs/ra_hal/src/ra_flash.c:722
+ * Decision at libs/ra_hal/src/ra_flash.c
  *   ``if (s_rt.win_low == 0U && s_rt.win_high == 0U)`` (2 conditions, AND).
  * Promoted via @ref ra_flash_internal_window_allows_pure so the test
  * can drive the four input dimensions independently of module state.

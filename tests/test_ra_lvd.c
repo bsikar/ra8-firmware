@@ -938,8 +938,8 @@ static void test_mcdc_lvd(void)
  * @test test_mcdc_lvd_internal_reject_hvd_after
  *
  * @par MC/DC:
- * Decision at libs/ra_hal/src/ra_lvd.c:494 (call site) -> helper at
- * libs/ra_hal/src/ra_lvd.c:55:
+ * Decision at libs/ra_hal/src/ra_lvd.c (call site) -> helper at
+ * libs/ra_hal/src/ra_lvd.c:
  *   ``hyst == hvd && negate == after_assert`` (2 conditions, AND).
  * - V1: hyst=lvd, negate=after  -> false
  * - V2: hyst=hvd, negate=after  -> true  (varies hyst)
@@ -968,8 +968,8 @@ static void test_mcdc_lvd_internal_reject_hvd_after(void)
  * @test test_mcdc_lvd_internal_set_ri_bit
  *
  * @par MC/DC:
- * Decision at libs/ra_hal/src/ra_lvd.c:533 (call site) -> helper at
- * libs/ra_hal/src/ra_lvd.c:76:
+ * Decision at libs/ra_hal/src/ra_lvd.c (call site) -> helper at
+ * libs/ra_hal/src/ra_lvd.c:
  *   ``response == reset || response == reset_on_rise`` (2 conditions, OR).
  * - V1: resp=interrupt     -> false
  * - V2: resp=reset         -> true (varies left)

@@ -53,7 +53,7 @@ static void test_mcdc_adc_read_channel_chcr_addr_null(void)
   /* k_test_adc_ch_max_idx == 23: ADCHCR[23] exists but ADDR[23] does not
    * (silicon only provides 23 result slots, see ra_adc_b_addr() docs).
    * So channel 23 returns out_of_range -- this exercises the second
-   * operand of the OR decision in adc.c:311 independently. */
+   * operand of the OR decision in adc.c independently. */
   TEST_ASSERT_EQ((int32_t)k_ra_err_out_of_range,
                  (int32_t)ra_adc_read_channel((uint8_t)k_test_adc_ch_max_idx, &raw));
   TEST_ASSERT_EQ((int32_t)k_ra_err_out_of_range,

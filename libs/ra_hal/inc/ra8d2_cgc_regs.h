@@ -118,8 +118,8 @@ typedef enum : uint8_t {
  * PLLCCR (PLL1 Clock Control Register) -- RA8D2 layout
  * =============================================================================
  *
- * Cited from FSP CMSIS device header `R7KA8D2KF_core0.h:70470-70478` and
- * FSP `bsp_clocks.c:328-339`:
+ * Cited from FSP CMSIS device header `R7KA8D2KF_core0.h` and
+ * FSP `bsp_clocks.c`:
  *   - PLIDIV   [1:0]  -- input divider code
  *                       (0=/1, 1=/2, 2=/3, 3=/4, ... ratio = code+1 for /1../6)
  *   - PLSRCSEL [4]    -- PLL input source (0 = Main / XTAL, 1 = HOCO)
@@ -180,8 +180,8 @@ typedef enum : uint8_t {
  * PLLCCR2 (PLL1 Output Divider Register) -- RA8D2 layout
  * =============================================================================
  *
- * Cited from FSP CMSIS device header `R7KA8D2KF_core0.h:70298-70303` and
- * FSP `bsp_clocks.c:332-339`:
+ * Cited from FSP CMSIS device header `R7KA8D2KF_core0.h` and
+ * FSP `bsp_clocks.c`:
  *   - PLODIVP [3:0]   -- PLL1P output divider code
  *   - PLODIVQ [7:4]   -- PLL1Q output divider code
  *   - PLODIVR [11:8]  -- PLL1R output divider code

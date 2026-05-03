@@ -302,7 +302,7 @@ typedef void (*ra_dotf_event_fn_t)(void* ctx, uint8_t channel);
  * Atomically writes ``CONVAREAD`` then ``CONVAREAST`` (in that order
  * per the FSP reference comment "Set the end and start area for DOTF
  * conversion in that order to ensure that end address is always
- * higher than start address.", ``r_ospi_b.c:1660``). Caller is
+ * higher than start address.", ``r_ospi_b.c``). Caller is
  * expected to have called ``ra_dotf_disable`` first; the function
  * does NOT clear REG00 itself so the AES core stays primed for the
  * subsequent ``ra_dotf_enable`` call.
@@ -440,7 +440,7 @@ typedef void (*ra_dotf_event_fn_t)(void* ctx, uint8_t channel);
  * 128-bit IV; the hardware silently overwrites the bottom 28 bits
  * with the AXI address bits at decryption time. The four 32-bit
  * words are written into REG03 in big-endian byte order, mirroring
- * the FSP reference (``r_ospi_b.c:1654``).
+ * the FSP reference (``r_ospi_b.c``).
  *
  * @param[in] channel  Channel index 0..1.
  * @param[in] iv_words Pointer to ``k_ra_dotf_iv_word_count`` words.

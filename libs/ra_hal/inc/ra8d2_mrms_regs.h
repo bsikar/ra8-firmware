@@ -4,14 +4,14 @@
  *
  * @details
  * The Renesas RA8 Gen2 family does not expose the legacy MEMWAIT /
- * FLDWAITR / FLWT registers (`bsp_feature.h:135,137,139` set
+ * FLDWAITR / FLWT registers (`bsp_feature.h` set
  * `BSP_FEATURE_CGC_HAS_MEMWAIT = 0`, `HAS_FLDWAITR = 0`,
  * `HAS_FLWT = 0`). Wait states for the on-chip MRAM are programmed
  * through a dedicated **MRMS** (MRAM Memory System) register block at
  * `0x4013C000`.
  *
  * The CGC bring-up sequence (HUM Ch 54.4.3 "Frequency Change Procedure
- * for MRAM" / FSP `bsp_clocks.c:1182-1247`) requires:
+ * for MRAM" / FSP `bsp_clocks.c`) requires:
  *
  * 1. Clear the prefetch buffer (write `MRCPFB = 0`, then 3 dummy reads)
  *    *before* changing any clock source or divider.
@@ -84,7 +84,7 @@ typedef enum : uint16_t {
  *        MREFREQ for hardware to accept the write.
  *
  * @details
- * Cited from FSP `bsp_clocks.c:1227, 1245` (`BSP_PRV_MRCFREQ_KEY` /
+ * Cited from FSP `bsp_clocks.c` (`BSP_PRV_MRCFREQ_KEY` /
  * `BSP_PRV_MREFREQ_KEY`). MRCFREQ uses 0x1E in the upper byte; MREFREQ
  * uses 0xE1. Writes whose key byte is anything else are silently
  * dropped (the register continues to read back its previous value).
@@ -114,7 +114,7 @@ typedef enum : uint32_t {
  *        remain disabled.
  *
  * @details
- * FSP `bsp_clocks.c:1199` (`BSP_PRV_MRCPFB_LIMIT == 100`): only enable
+ * FSP `bsp_clocks.c` (`BSP_PRV_MRCPFB_LIMIT == 100`): only enable
  * the prefetch buffer when MRCFREQ reads back a value >= 100 MHz.
  */
 typedef enum : uint32_t {

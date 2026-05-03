@@ -798,8 +798,8 @@ static void test_mcdc_iic_b(void)
  * @test test_mcdc_iic_b_internal_len_buf_invalid
  *
  * @par MC/DC:
- * Decision at libs/ra_hal/src/ra_iic_b.c:976 (call site) -> helper at
- * libs/ra_hal/src/ra_iic_b.c:74:
+ * Decision at libs/ra_hal/src/ra_iic_b.c (call site) -> helper at
+ * libs/ra_hal/src/ra_iic_b.c:
  *   ``len != 0 && buf == NULL`` (2 conditions, AND).
  * - V1: len=0, buf=NULL -> false
  * - V2: len>0, buf=NULL -> true (varies left)
@@ -820,8 +820,8 @@ static void test_mcdc_iic_b_internal_len_buf_invalid(void)
  * @test test_mcdc_iic_b_internal_should_dispatch
  *
  * @par MC/DC:
- * Decision at libs/ra_hal/src/ra_iic_b.c:1235 (call site) -> helper at
- * libs/ra_hal/src/ra_iic_b.c:94:
+ * Decision at libs/ra_hal/src/ra_iic_b.c (call site) -> helper at
+ * libs/ra_hal/src/ra_iic_b.c:
  *   ``mask != 0 && cb != NULL`` (2 conditions, AND).
  * - V1: mask=0, cb!=NULL -> false (varies left from V2)
  * - V2: mask!=0, cb!=NULL -> true

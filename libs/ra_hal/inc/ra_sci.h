@@ -431,7 +431,7 @@ typedef enum : uint8_t {
  * @brief Arm an interrupt-driven TX of ``len`` bytes from ``data``.
  *
  * @details
- * Mirrors FSP `R_SCI_B_UART_Write` (r_sci_b_uart.c:557): installs an
+ * Mirrors FSP `R_SCI_B_UART_Write` (r_sci_b_uart.c): installs an
  * internal byte-counting state machine on the channel, sets CCR0.TIE,
  * and returns immediately. Each subsequent TXI then shifts one byte
  * out of TDR and decrements the remaining count; when the count reaches
@@ -469,7 +469,7 @@ typedef enum : uint8_t {
  * @brief Arm an interrupt-driven RX of ``len`` bytes into ``buf``.
  *
  * @details
- * Mirrors FSP `R_SCI_B_UART_Read` (r_sci_b_uart.c:496): installs an
+ * Mirrors FSP `R_SCI_B_UART_Read` (r_sci_b_uart.c): installs an
  * internal byte-counting RX state machine, sets CCR0.RIE, and returns
  * immediately. Each subsequent RXI copies the byte from RDR into
  * ``buf[index++]`` and decrements ``remaining``. When ``remaining``
@@ -505,7 +505,7 @@ typedef enum : uint8_t {
  * @brief Cancel an in-flight async TX or RX.
  *
  * @details
- * Mirrors FSP `R_SCI_B_UART_Abort` (r_sci_b_uart.c:789). When
+ * Mirrors FSP `R_SCI_B_UART_Abort` (r_sci_b_uart.c). When
  * ``direction`` includes ``k_ra_sci_dir_tx``, CCR0.TIE / CCR0.TEIE are
  * cleared and the per-channel TX state is zeroed. When ``direction``
  * includes ``k_ra_sci_dir_rx``, CCR0.RIE is cleared and the per-channel
@@ -536,7 +536,7 @@ typedef enum : uint8_t {
  * yet consumed.
  *
  * @details
- * Mirrors FSP `R_SCI_B_UART_ReadStop` (r_sci_b_uart.c:877). Clears
+ * Mirrors FSP `R_SCI_B_UART_ReadStop` (r_sci_b_uart.c). Clears
  * the per-channel RX byte counter, then writes the value that was
  * just cleared into ``*remaining`` so the caller knows how much of
  * the original ``len`` is still pending. Disarms RIE.
@@ -565,7 +565,7 @@ typedef enum : uint8_t {
  * divider settings.
  *
  * @details
- * Mirrors FSP `R_SCI_B_UART_BaudCalculate` (r_sci_b_uart.c:931) for
+ * Mirrors FSP `R_SCI_B_UART_BaudCalculate` (r_sci_b_uart.c) for
  * the simple non-modulated 16x base-clock path. Implements the
  * formula from HUM Ch 38.2.7 "CCR2 : Common Control Register 2",
  * p 2189 Table 38.7:
@@ -605,7 +605,7 @@ ra_sci_baud_calculate(uint32_t baud, uint32_t pclk_hz, uint16_t* brr_out, uint8_
  * @brief Suspend reception by clearing CCR0.RE.
  *
  * @details
- * Mirrors FSP `R_SCI_B_UART_ReceiveSuspend` (r_sci_b_uart.c:1078)
+ * Mirrors FSP `R_SCI_B_UART_ReceiveSuspend` (r_sci_b_uart.c)
  * but with a real implementation: FSP returns
  * ``FSP_ERR_UNSUPPORTED`` for SCI_B because the hardware does not
  * have a dedicated "RX-suspend" bit. We approximate it by dropping

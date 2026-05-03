@@ -700,12 +700,12 @@ static void test_mcdc_run_cfg_out_null_or(void)
  * @test test_mcdc_apply_run_screen_dim_pair
  *
  * @par MC/DC:
- * Decision A (libs/ra_touch_cal/src/ra_touch_cal.c:469 ra_touch_cal_apply):
+ * Decision A (libs/ra_touch_cal/src/ra_touch_cal.c ra_touch_cal_apply):
  *   ``if ((screen_width == 0U) || (screen_height == 0U))``
  * 2-cond OR. test_apply_clip_and_null already supplies V1 (both >0) and
  * V2 (width=0). This adds V3 (height=0) so MC/DC = 100%.
  *
- * Decision B (libs/ra_touch_cal/src/ra_touch_cal.c:395 ra_touch_cal_run):
+ * Decision B (libs/ra_touch_cal/src/ra_touch_cal.c ra_touch_cal_run):
  *   ``if ((cfg->screen_width == 0U) || (cfg->screen_height == 0U))``
  * Same shape; existing tests cover all-non-zero (V1) and width=0 (V2).
  * This adds V3 (height=0).

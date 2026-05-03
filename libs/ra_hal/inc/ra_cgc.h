@@ -307,7 +307,7 @@ ra_cgc_pll2_enable(uint8_t mul_int, uint8_t mul_quarters, ra_plodiv_t p_div_code
  * at 0x0002 (Powered, never Default), INTSTS0.CTRT = 0, no SETUP
  * packet ever delivered.
  *
- * Sequence per FSP `bsp_clocks.c:2648-2691` and HUM Ch 9 "Clock
+ * Sequence per FSP `bsp_clocks.c` and HUM Ch 9 "Clock
  * selection switching procedure" (canonical example: SPICKCR p 370):
  *   0. Force MSTPCRB.MSTPB11 = 1 (USBFS module-stopped). HUM step 1
  *      requires this whenever USBCKDIVCR is moved off 1/1; we are

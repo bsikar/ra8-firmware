@@ -413,7 +413,7 @@ static void test_mcdc_ble(void)
  * @test test_mcdc_ble_acl_inject_args
  *
  * @par MC/DC:
- * Decision A (libs/ra_hal/src/ra_ble.c:374 ra_ble_hci_send_acl_data):
+ * Decision A (libs/ra_hal/src/ra_ble.c ra_ble_hci_send_acl_data):
  *   ``if ((payload == NULL) && (len > 0U))``
  * 2-cond AND short-circuit: N+1 = 3 vectors.
  * - V1: payload=valid, len=4 -> C1=F short -> dec F (proceeds, ok).
@@ -421,7 +421,7 @@ static void test_mcdc_ble(void)
  * - V3: payload=NULL,  len=4 -> C1=T, C2=T -> dec T -> null_ptr.
  * V1+V3 isolate C1; V2+V3 isolate C2.
  *
- * Decision B (libs/ra_hal/src/ra_ble.c:721 ra_ble_test_inject_rx):
+ * Decision B (libs/ra_hal/src/ra_ble.c ra_ble_test_inject_rx):
  *   ``if ((bytes == NULL) || (len == 0U))``
  * 2-cond OR short-circuit: N+1 = 3 vectors.
  * - V1: bytes=valid, len>0  -> C1=F, C2=F -> dec F (injects).

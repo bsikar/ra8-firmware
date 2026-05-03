@@ -422,7 +422,7 @@ typedef enum : uint8_t {
  * |  29 | TDREC | 0x20000000 |
  * |  31 | RDRFC | 0x80000000 |
  *
- * Sum = 0x9D070010, matching FSP `r_sci_b_uart.c:71`
+ * Sum = 0x9D070010, matching FSP `r_sci_b_uart.c`
  * `SCI_B_UART_CFCLR_CLEAR_ALL_MASK`.
  */
 typedef enum : uint32_t {
@@ -452,7 +452,7 @@ typedef enum : uint8_t {
  *
  * @details HUM Ch 38.2.26 "FFCLR : FIFO Flag Clear Register",
  * p 2239. The only defined W1C bit is DRC (bit 0); a write of
- * 0x00000001 mirrors FSP `r_sci_b_uart.c:76`
+ * 0x00000001 mirrors FSP `r_sci_b_uart.c`
  * `SCI_B_UART_FFCLR_CLEAR_ALL_MASK`.
  */
 typedef enum : uint32_t {

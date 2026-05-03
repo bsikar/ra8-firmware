@@ -34,7 +34,7 @@
  *
  * Intentional gaps (deferred work, with FSP file:line + reason):
  *
- *  - HS PHY power-down / PLL bring-up (`r_usb_preg_access.c:248-314`)
+ *  - HS PHY power-down / PLL bring-up (`r_usb_preg_access.c`)
  *    -- the EK-RA8D2 boots its HS PHY from the same 48 MHz clock the
  *    bootloader leaves running, so the driver assumes the PHY is
  *    already powered. Adding a full HS PHY sequence is tracked
@@ -158,7 +158,7 @@ static void internal_rmw16(volatile uint16_t* reg, uint16_t set_mask, uint16_t c
  * @brief Configure the CFIFO port to talk to a given pipe + width.
  *
  * @details Mirrors the per-instance `CFIFOSEL` programming from
- * `hw_usb_pmodule_init` (FSP `r_usb_preg_access.c:235`). MBW is
+ * `hw_usb_pmodule_init` (FSP `r_usb_preg_access.c`). MBW is
  * always 16-bit on this driver path -- hardware FIFOs are
  * little-endian; the host build relies on identical behaviour.
  *
@@ -689,7 +689,7 @@ ra_err_t ra_usb_stall_endpoint(ra_usb_speed_t speed, uint8_t pipe_num)
 /**
  * @brief Push `len` bytes through the CFIFO data port (16-bit packed).
  *
- * @details Mirrors `usb_pstd_write_fifo` (FSP `r_usb_preg_abs.c:483`)
+ * @details Mirrors `usb_pstd_write_fifo` (FSP `r_usb_preg_abs.c`)
  * for the 16-bit MBW path. The trailing byte is written via the
  * 8-bit halfword-low aperture of CFIFO using a halfword-aligned
  * left-padded write.

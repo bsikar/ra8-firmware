@@ -1535,7 +1535,7 @@ static void test_mcdc_poly1305_msg_len(void)
  * @test test_mcdc_rsa_sign_size_quad
  *
  * @par MC/DC:
- * Decision (libs/ra_hal/src/ra_rsip.c:3092-3093 ra_rsip_rsa_sign):
+ * Decision (libs/ra_hal/src/ra_rsip.c ra_rsip_rsa_sign):
  * 4-cond AND-NOT chain:
  * ``size != 1024 && size != 2048 && size != 3072 && size != 4096``
  * Short-circuit MC/DC: N+1 = 5 vectors. Each accepted size must produce F at
@@ -1573,7 +1573,7 @@ static void test_mcdc_rsa_sign_size_quad(void)
  *
  * @par MC/DC:
  * Same shape as test_mcdc_rsa_sign_size_quad, applied to
- * ra_rsip_rsa_verify (libs/ra_hal/src/ra_rsip.c:3143-3144). N+1 = 5.
+ * ra_rsip_rsa_verify (libs/ra_hal/src/ra_rsip.c). N+1 = 5.
  */
 static void test_mcdc_rsa_verify_size_quad(void)
 {
@@ -1597,7 +1597,7 @@ static void test_mcdc_rsa_verify_size_quad(void)
  * @test test_mcdc_hash_validate_shake_digest
  *
  * @par MC/DC:
- * Decision (libs/ra_hal/src/ra_rsip.c:2830 internal_hash_validate, reached
+ * Decision (libs/ra_hal/src/ra_rsip.c internal_hash_validate, reached
  * via ra_rsip_hash):
  * ``alg != shake128 && alg != shake256 && digest_len < n``
  * 3-cond AND. N+1 = 4 vectors.
@@ -1633,7 +1633,7 @@ static void test_mcdc_hash_validate_shake_digest(void)
  *
  * @par MC/DC:
  * Decision: ``if ((msg == nullptr) && (msg_len != 0U))``
- * (2 conditions, libs/ra_hal/src/ra_rsip.c:2823 internal_hash_validate
+ * (2 conditions, libs/ra_hal/src/ra_rsip.c internal_hash_validate
  *  reached via ra_rsip_hash_pull_digest /:2958 same shape).
  * Short-circuit AND: N+1 = 3 vectors.
  * - V1: msg=valid, msg_len=8 -> C1=F short  -> dec F (proceed).
@@ -1667,7 +1667,7 @@ static void test_mcdc_hash_msg_null_len_pair(void)
  *
  * @par MC/DC:
  * Decision: ``if ((aad != nullptr) && (aad_len > 0U))``
- * (2 conditions, libs/ra_hal/src/ra_rsip.c:2395 internal_aead_pull_tag).
+ * (2 conditions, libs/ra_hal/src/ra_rsip.c internal_aead_pull_tag).
  * Short-circuit AND: N+1 = 3 vectors.
  * - V1: aad=NULL, aad_len=0 -> C1=F short -> dec F (skip AAD push).
  * - V2: aad=valid, aad_len=0 -> C1=T, C2=F -> dec F (zero AAD).
@@ -1721,7 +1721,7 @@ static void test_mcdc_aead_aad_null_len_pair(void)
  * @par MC/DC:
  * Decision: ``if (((mode == ECB) || (mode == CBC) || (mode == CMAC)) &&
  *               ((len & 15) != 0U))``
- * (4 conditions, libs/ra_hal/src/ra_rsip.c:2264 ra_rsip_aes_cipher).
+ * (4 conditions, libs/ra_hal/src/ra_rsip.c ra_rsip_aes_cipher).
  * Short-circuit AND-of-OR; minimal MC/DC = N+1 = 5 vectors:
  *  - V1: mode=ECB,  len=5  -> C1=T short -> dec T (reject).         [C1 indep]
  *  - V2: mode=CBC,  len=5  -> C1=F,C2=T short -> dec T (reject).    [C2 indep]
@@ -1796,7 +1796,7 @@ static void test_mcdc_aes_cipher_block_align_quad(void)
  * @par MC/DC:
  * Decision: ``if (((op == HKDF_SHA256) || (op == HKDF_SHA384) ||
  *               (op == HKDF_SHA512)) && (ikm == NULL))``
- * (4 conditions, libs/ra_hal/src/ra_rsip.c:3931 internal_kdf_validate).
+ * (4 conditions, libs/ra_hal/src/ra_rsip.c internal_kdf_validate).
  * Reached via the public ra_rsip_kdf entry point.
  * Short-circuit AND-of-OR; minimal MC/DC = N+1 = 5 vectors:
  *  - V1: op=HKDF256, ikm=NULL -> C1=T short, C4=T -> dec T (null_ptr). [C1 indep]

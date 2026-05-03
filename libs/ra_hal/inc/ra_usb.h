@@ -568,7 +568,7 @@ void ra_usb_dispatch(ra_usb_speed_t speed);
  *
  * @details
  * Mirrors FSP's `hw_usb_hmodule_init`
- * (`r_usb_basic/src/hw/r_usb_hreg_access.c:735`). Bring-up sequence:
+ * (`r_usb_basic/src/hw/r_usb_hreg_access.c`). Bring-up sequence:
  *
  *  1. Drop the controller's MSTP gate.
  *  2. Drive `SYSCFG.SCKE` and wait for the clock to be stable.
@@ -632,7 +632,7 @@ void ra_usb_dispatch(ra_usb_speed_t speed);
  * re-enabling SOF generation via `ra_usb_host_set_uact(true)`.
  *
  * Mirrors FSP's `usb_hstd_bus_reset` SET phase
- * (`r_usb_hreg_abs.c:525`).
+ * (`r_usb_hreg_abs.c`).
  *
  * @param[in] speed Which controller.
  * @param[in] assert_reset `true` to drive USBRST, `false` to release.

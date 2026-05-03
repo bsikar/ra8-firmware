@@ -85,7 +85,7 @@ static void test_mcdc_epub_set_font_null_pair(void)
  * @test test_mcdc_epub_internal_join_path_guard
  *
  * @par MC/DC:
- * Decision at libs/ra_epub/src/ra_epub_chapter.c:76
+ * Decision at libs/ra_epub/src/ra_epub_chapter.c
  *   ``if (dst == NULL || cap == 0U)``  (2 conditions, OR)
  *
  * - V1: dst!=NULL, cap=8   -> C1=F, C2=F -> overall F (function proceeds).
@@ -121,7 +121,7 @@ static void test_mcdc_epub_internal_join_path_guard(void)
  * @test test_mcdc_epub_internal_join_path_dir_loop
  *
  * @par MC/DC:
- * Decision at libs/ra_epub/src/ra_epub_chapter.c:82
+ * Decision at libs/ra_epub/src/ra_epub_chapter.c
  *   ``while (off + 1U < cap && dir[off] != '\0')``  (2 conditions, AND)
  *
  * - V1: cap=16, dir="ab"      -> at off=0: C1=T,C2=T (loop). off=1: C1=T,C2=T.
@@ -152,7 +152,7 @@ static void test_mcdc_epub_internal_join_path_dir_loop(void)
  * @test test_mcdc_epub_internal_join_path_name_loop
  *
  * @par MC/DC:
- * Decision at libs/ra_epub/src/ra_epub_chapter.c:89
+ * Decision at libs/ra_epub/src/ra_epub_chapter.c
  *   ``while (off + 1U < cap && name[i] != '\0')``  (2 conditions, AND)
  *
  * - V1: dir=NULL, name="cd",   cap=16 -> exits via C2 (NUL).
@@ -180,8 +180,8 @@ static void test_mcdc_epub_internal_join_path_name_loop(void)
  * @test test_mcdc_epub_internal_glyph_dim_invalid
  *
  * @par MC/DC:
- * Decision at libs/ra_epub/src/ra_epub_chapter.c:225 (call site) -> helper at
- * libs/ra_epub/src/ra_epub_chapter.c:77:
+ * Decision at libs/ra_epub/src/ra_epub_chapter.c (call site) -> helper at
+ * libs/ra_epub/src/ra_epub_chapter.c:
  *   ``w < 0 || h < 0`` (2 conditions, OR).
  * - V1: w=10, h=10 -> false
  * - V2: w=-1, h=10 -> true (varies left)
@@ -202,7 +202,7 @@ static void test_mcdc_epub_internal_glyph_dim_invalid(void)
  *
  * @par MC/DC:
  * Decision at libs/ra_epub/src/ra_epub_chapter.c lines 300, 369 (call sites)
- * -> helper at libs/ra_epub/src/ra_epub_chapter.c:97:
+ * -> helper at libs/ra_epub/src/ra_epub_chapter.c:
  *   ``in_use == 0 || zip_archive_active == 0`` (2 conditions, OR).
  * - V1: in_use=1, zip=1 -> false
  * - V2: in_use=0, zip=1 -> true (varies left)
