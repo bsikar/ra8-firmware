@@ -780,39 +780,26 @@ static void internal_handle_dvst(uint16_t intsts0)
   UX_SLAVE_DEVICE* device = &_ux_system_slave->ux_system_slave_device;
   const uint16_t   dvsq   = (uint16_t)(intsts0 & (uint16_t)k_ra_intsts0_mask_dvsq);
   unsigned long    new_state;
-  /* DVSQ[6] (suspend) overlays the underlying state. Test it first so
-   * that "configured + suspend" (0x70) is correctly classified as
-   * SUSPENDED, not as the default-case fall-through. */
-  if ((dvsq & (uint16_t)k_ra_dvsq_suspend) != 0U) {
-    new_state = (unsigned long)UX_DEVICE_SUSPENDED;
-  } else {
-    switch (dvsq) {
-      case k_ra_dvsq_powered:
-        new_state = (unsigned long)UX_DEVICE_ATTACHED;
-        break;
-      case k_ra_dvsq_default:
-        /* Bus reset just deasserted: USBX treats RESET as the
-         * pre-enumeration state, mirroring sim_host's port-reset path. */
-        new_state = (unsigned long)UX_DEVICE_RESET;
-        break;
-      case k_ra_dvsq_address:
-      case k_ra_dvsq_configured:
-        /* ADDRESSED / CONFIGURED are owned by the chapter-9 dispatcher
-         * (`_ux_device_stack_address_set` /
-         * `_ux_device_stack_configuration_set`), which writes
-         * `ux_slave_device_state` synchronously when the host's request
-         * is accepted. The DVST IRQ that follows the bus-side state
-         * change can race with that write -- worse, when CTRT and DVST
-         * are both pending in the same INTSTS0 snapshot we process CTRT
-         * first (advancing state) and would then overwrite it here using
-         * the stale pre-CTRT DVSQ. Leaving these cases to the
-         * dispatcher avoids both races; the bridge still tracks bus-
-         * level resets / suspends / attaches, which the dispatcher
-         * cannot observe. */
-        return;
-      default:
-        return;
-    }
+  switch (dvsq) {
+    case k_ra_dvsq_powered:
+      new_state = (unsigned long)UX_DEVICE_ATTACHED;
+      break;
+    case k_ra_dvsq_default:
+      /* Bus reset just deasserted: USBX treats RESET as the
+       * pre-enumeration state, mirroring sim_host's port-reset path. */
+      new_state = (unsigned long)UX_DEVICE_RESET;
+      break;
+    case k_ra_dvsq_address:
+      new_state = (unsigned long)UX_DEVICE_ADDRESSED;
+      break;
+    case k_ra_dvsq_configured:
+      new_state = (unsigned long)UX_DEVICE_CONFIGURED;
+      break;
+    case k_ra_dvsq_suspend:
+      new_state = (unsigned long)UX_DEVICE_SUSPENDED;
+      break;
+    default:
+      return;
   }
   device->ux_slave_device_state = new_state;
   if (_ux_system_slave->ux_system_slave_change_function != UX_NULL) {
