@@ -194,13 +194,38 @@ static void internal_rmw16(volatile uint16_t* reg, uint16_t set_mask, uint16_t c
  */
 static void internal_select_cfifo(volatile r_usb_regs_t* reg, uint16_t pipe_num, bool is_in_dir)
 {
-  /* HUM Ch 36.2.7 "CFIFOSEL : CFIFO Port Select Register", p 1976 */
+  /* HUM Ch 36.2.7 "CFIFOSEL : CFIFO Port Select Register", p 1976.
+   *
+   * The Renesas USB IP requires a readback-poll after rewriting CURPIPE
+   * or ISEL: the controller takes a few peripheral-clock cycles to
+   * actually re-point the CFIFO at the requested pipe/direction, and
+   * during that window CFIFOCTR.FRDY can still report the *previous*
+   * pipe's buffer state. Without the spin we observed EP0 enumeration
+   * hang at CTSQ=read-data-stage on the very first GET_DESCRIPTOR(DEVICE):
+   * the SETUP arrives on DCP OUT (CFIFOSEL.ISEL=0), we then write
+   * CFIFOSEL with ISEL=1 to push the device descriptor, FRDY reads
+   * stale-asserted from the OUT-direction selection, internal_fifo_write
+   * drops bytes into a half-switched FIFO, and the host hangs waiting
+   * for IN data that never lands on the wire.
+   *
+   * Mirrors the FSP `hw_usb_set_curpipe` retry pattern: rewrite-and-
+   * read back until the CURPIPE+ISEL+MBW field reflects the request.
+   * Bound the loop to the same FRDY budget so a wedged controller
+   * cannot livelock the worker thread. */
+  const uint16_t match_mask =
+    (uint16_t)(k_ra_fifosel_curpipe | k_ra_fifosel_isel | k_ra_fifosel_mbw_16);
   uint16_t sel = (uint16_t)(pipe_num & k_ra_fifosel_curpipe);
   sel          = (uint16_t)(sel | k_ra_fifosel_mbw_16);
   if (is_in_dir) {
     sel = (uint16_t)(sel | k_ra_fifosel_isel);
   }
   reg->CFIFOSEL = sel;
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_usb_frdy_poll_limit; ++i) {
+    if ((uint16_t)(reg->CFIFOSEL & match_mask) == (uint16_t)(sel & match_mask)) {
+      return;
+    }
+    reg->CFIFOSEL = sel;
+  }
 }
 
 /**
