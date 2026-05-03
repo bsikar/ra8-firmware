@@ -1,9 +1,9 @@
 /**
  * @file test_ra_iic_b.c
- * @brief Unit tests for the IIC_B (I3C in I2C-only mode) master driver.
+ * @brief Unit tests for the IIC_B (I3C in I2C-only mode) controller driver.
  *
  * @details
- * Drives the polling-mode IIC_B master against the host-side
+ * Drives the polling-mode IIC_B controller against the host-side
  * ``ra_sim_mmap`` substrate. Status flags are pre-armed where the
  * driver expects them (BST.STCNDDF, BST.SPCNDDF, NTST.TDBEF0,
  * NTST.RDBFF0, BST.TENDF) so the wait loops fall through immediately.
@@ -11,7 +11,7 @@
  * BCST.BFREF is also pre-armed (= bus free) ahead of every transfer
  * test so the new bus-busy gate (mirrors FSP
  * ``iic_b_master_run_hw_master`` BFREF check) does not falsely
- * reject the transaction.
+ * reject the transaction.  LEGACY-OK: vendor FSP function-name citation.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -106,6 +106,11 @@ static void prep(void)
 /* =============================================================================
  * Init / deinit
  * =============================================================================
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_init_configured(void)
@@ -119,6 +124,12 @@ static void test_init_configured(void)
   TEST_END("ra_iic_b_init: BCTL.BUSE set, STDBR programmed");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_bad_inputs(void)
 {
   TEST_BEGIN("ra_iic_b_init: bad inputs rejected");
@@ -134,6 +145,12 @@ static void test_init_bad_inputs(void)
   TEST_END("ra_iic_b_init: bad inputs rejected");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_deinit_releases(void)
 {
   TEST_BEGIN("ra_iic_b_deinit: BCTL cleared, MSTP gated");
@@ -148,6 +165,12 @@ static void test_deinit_releases(void)
   TEST_END("ra_iic_b_deinit: BCTL cleared, MSTP gated");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_clock_updates(void)
 {
   TEST_BEGIN("ra_iic_b_set_clock: STDBR changes");
@@ -167,6 +190,11 @@ static void test_set_clock_updates(void)
 /* =============================================================================
  * Polling write
  * =============================================================================
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_write_happy(void)
@@ -187,6 +215,12 @@ static void test_write_happy(void)
   TEST_END("ra_iic_b_write: 2-byte payload, START + STOP pulsed");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_write_zero_length(void)
 {
   TEST_BEGIN("ra_iic_b_write: zero-length is a probe");
@@ -199,6 +233,12 @@ static void test_write_zero_length(void)
   TEST_END("ra_iic_b_write: zero-length is a probe");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_write_null_data(void)
 {
   TEST_BEGIN("ra_iic_b_write: null data rejected");
@@ -209,6 +249,12 @@ static void test_write_null_data(void)
   TEST_END("ra_iic_b_write: null data rejected");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_write_bad_channel(void)
 {
   TEST_BEGIN("ra_iic_b_write: channel out of range");
@@ -222,6 +268,12 @@ static void test_write_bad_channel(void)
   TEST_END("ra_iic_b_write: channel out of range");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_write_timeout_on_start(void)
 {
   TEST_BEGIN("ra_iic_b_write: TDBEF0 never sets => timeout");
@@ -236,6 +288,12 @@ static void test_write_timeout_on_start(void)
   TEST_END("ra_iic_b_write: TDBEF0 never sets => timeout");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_write_busy_rejection(void)
 {
   TEST_BEGIN("ra_iic_b_write: BCST.BFREF=0 => k_ra_err_busy");
@@ -305,6 +363,12 @@ static void disarm_nack_alarm(void)
   (void)sigaction(SIGALRM, &sa, nullptr);
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_write_nack_returns_nack_and_stops(void)
 {
   TEST_BEGIN("ra_iic_b_write: NACKDF latched mid-transfer => k_ra_err_nack + STOP");
@@ -315,7 +379,7 @@ static void test_write_nack_returns_nack_and_stops(void)
    * start-of-transaction clear_bst would otherwise wipe a pre-armed
    * value. The alarm fires while the driver is in the long payload
    * spin loop, mirroring how the real hardware would latch NACKDF
-   * asynchronously when the slave declines. */
+   * asynchronously when the peripheral declines. */
   arm_nack_alarm(0U);
   const ra_err_t err = ra_iic_b_write(0U,
                                       (uint8_t)k_ra_iic_b_test_target,
@@ -329,6 +393,12 @@ static void test_write_nack_returns_nack_and_stops(void)
   TEST_END("ra_iic_b_write: NACKDF latched mid-transfer => k_ra_err_nack + STOP");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_write_restart_holds_bus(void)
 {
   TEST_BEGIN("ra_iic_b_write: restart=true holds bus, no STOP issued");
@@ -345,6 +415,11 @@ static void test_write_restart_holds_bus(void)
 /* =============================================================================
  * Polling read
  * =============================================================================
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_read_happy(void)
@@ -369,6 +444,12 @@ static void test_read_happy(void)
   TEST_END("ra_iic_b_read: 2-byte read returns ok, ACKBT set on last byte");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_read_zero_length_rejected(void)
 {
   TEST_BEGIN("ra_iic_b_read: len==0 rejected");
@@ -380,6 +461,12 @@ static void test_read_zero_length_rejected(void)
   TEST_END("ra_iic_b_read: len==0 rejected");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_read_null_out(void)
 {
   TEST_BEGIN("ra_iic_b_read: null buf rejected");
@@ -390,6 +477,12 @@ static void test_read_null_out(void)
   TEST_END("ra_iic_b_read: null buf rejected");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_read_bad_channel(void)
 {
   TEST_BEGIN("ra_iic_b_read: channel out of range");
@@ -404,6 +497,12 @@ static void test_read_bad_channel(void)
   TEST_END("ra_iic_b_read: channel out of range");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_read_timeout_on_start(void)
 {
   TEST_BEGIN("ra_iic_b_read: TDBEF0 never sets => timeout");
@@ -416,6 +515,12 @@ static void test_read_timeout_on_start(void)
   TEST_END("ra_iic_b_read: TDBEF0 never sets => timeout");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_read_busy_rejection(void)
 {
   TEST_BEGIN("ra_iic_b_read: BCST.BFREF=0 => k_ra_err_busy");
@@ -432,6 +537,11 @@ static void test_read_busy_rejection(void)
 /* =============================================================================
  * Combined transfer
  * =============================================================================
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_transfer_happy(void)
@@ -450,6 +560,12 @@ static void test_transfer_happy(void)
   TEST_END("ra_iic_b_transfer: write-then-RESTART-then-read");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_transfer_null_args_rejected(void)
 {
   TEST_BEGIN("ra_iic_b_transfer: null buffers / zero lens rejected");
@@ -480,6 +596,12 @@ static void test_transfer_null_args_rejected(void)
   TEST_END("ra_iic_b_transfer: null buffers / zero lens rejected");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_transfer_busy_rejection(void)
 {
   TEST_BEGIN("ra_iic_b_transfer: bus-busy => k_ra_err_busy");
@@ -497,6 +619,11 @@ static void test_transfer_busy_rejection(void)
 /* =============================================================================
  * Abort
  * =============================================================================
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_abort_resets_channel(void)
@@ -565,6 +692,12 @@ static void disarm_alarm(void)
   (void)sigaction(SIGALRM, &sa, nullptr);
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_write_long_break(void)
 {
   TEST_BEGIN("ra_iic_b_write: long buffer breaks on cleared NTST");
@@ -582,6 +715,12 @@ static void test_write_long_break(void)
   TEST_END("ra_iic_b_write: long buffer breaks on cleared NTST");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_read_long_break(void)
 {
   TEST_BEGIN("ra_iic_b_read: long buffer breaks on cleared NTST");
@@ -602,6 +741,11 @@ static void test_read_long_break(void)
 /* =============================================================================
  * Scan
  * =============================================================================
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_scan_no_response(void)
@@ -620,6 +764,12 @@ static void test_scan_no_response(void)
   TEST_END("ra_iic_b_scan: no BST flag => hw_timeout, acked false");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_scan_bad_args(void)
 {
   TEST_BEGIN("ra_iic_b_scan: arg validation");
@@ -638,6 +788,11 @@ static void test_scan_bad_args(void)
 /* =============================================================================
  * Error mask + handler dispatch
  * =============================================================================
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_errors_mask_and_clear(void)
@@ -676,6 +831,12 @@ static void    stub_iic_b_cb(void* ctx, uint8_t err_mask)
   s_iic_b_cb_err = (int32_t)err_mask;
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_attach_handler_toggles_iers(void)
 {
   TEST_BEGIN("ra_iic_b_attach_handler: BIE+NTIE toggled");
@@ -696,6 +857,12 @@ static void test_attach_handler_toggles_iers(void)
   TEST_END("ra_iic_b_attach_handler: BIE+NTIE toggled");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_dispatch_eri_fires_callback(void)
 {
   TEST_BEGIN("ra_iic_b_dispatch_eri: latched NACKDF -> callback fires");
@@ -724,6 +891,11 @@ static void test_dispatch_eri_fires_callback(void)
 /* =============================================================================
  * Legacy NSC pass-throughs
  * =============================================================================
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_legacy_pass_throughs(void)
