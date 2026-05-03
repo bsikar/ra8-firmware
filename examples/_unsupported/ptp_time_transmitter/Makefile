@@ -1,12 +1,12 @@
 #
-# Per-app Makefile for the `iic_b_slave_demo` firmware.
+# Per-app Makefile for the `ptp_time_transmitter` firmware.
 #
 # Standalone use:
-#   cd examples/iic_b_slave_demo/
-#   make             # configure + build -> examples/iic_b_slave_demo/build/iic_b_slave_demo.elf
+#   cd examples/ptp_time_transmitter/
+#   make             # configure + build -> examples/ptp_time_transmitter/build/ptp_time_transmitter.elf
 #   make flash       # JLinkExe load via scripts/flash.sh
 #   make ozone       # SEGGER Ozone GUI debugger
-#   make clean       # rm -rf examples/iic_b_slave_demo/build
+#   make clean       # rm -rf examples/ptp_time_transmitter/build
 #
 # This file is a thin wrapper around the per-app CMakeLists.txt and
 # the shared scripts/ helpers in the repo root.
@@ -17,7 +17,7 @@
 
 SHELL     := /bin/bash
 
-APP        := iic_b_slave_demo
+APP        := ptp_time_transmitter
 ROOT       := $(abspath $(CURDIR)/../../..)
 HERE       := $(CURDIR)
 BUILD_DIR  := $(HERE)/build

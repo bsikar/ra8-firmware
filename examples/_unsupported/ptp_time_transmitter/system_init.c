@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/iic_b_slave_demo/system_init.c
+ * @file examples/_unsupported/ptp_time_transmitter/system_init.c
  * @brief Cortex-M85 / RA8D2 core bring-up (called from Reset_Handler)
  *
  * @details

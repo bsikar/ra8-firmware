@@ -1,15 +1,15 @@
 #
-# Per-app CMake for the `ptp_master` firmware.
+# Per-app CMake for the `ptp_time_transmitter` firmware.
 #
 # Usable two ways:
-#   1. Standalone, from inside `ptp_master/`:
+#   1. Standalone, from inside `ptp_time_transmitter/`:
 #        cmake -S . -B build \
 #              -DCMAKE_TOOLCHAIN_FILE=../../../cmake/toolchain-ra8d2.cmake
 #        cmake --build build
-#   2. Pulled in by the top-level CMakeLists.txt via add_subdirectory(examples/ptp_master).
+#   2. Pulled in by the top-level CMakeLists.txt via add_subdirectory(examples/ptp_time_transmitter).
 #
-# Either path produces ptp_master.elf / ptp_master.hex /
-# ptp_master.bin in the build dir.
+# Either path produces ptp_time_transmitter.elf / ptp_time_transmitter.hex /
+# ptp_time_transmitter.bin in the build dir.
 #
 # Copyright (c) 2026 Brighton Sikarskie
 # SPDX-License-Identifier: MIT
@@ -32,10 +32,10 @@ if(RA_APP_STANDALONE)
     file(READ "${RA_REPO_ROOT}/VERSION" RA_PROJECT_VERSION)
     string(STRIP "${RA_PROJECT_VERSION}" RA_PROJECT_VERSION)
 
-    project(ptp_master
+    project(ptp_time_transmitter
         LANGUAGES C ASM
         VERSION ${RA_PROJECT_VERSION}
-        DESCRIPTION "ptp_master firmware for RA8D2"
+        DESCRIPTION "ptp_time_transmitter firmware for RA8D2"
     )
 
     if(NOT CMAKE_BUILD_TYPE)
@@ -65,7 +65,7 @@ include(${RA_REPO_ROOT}/cmake/ra_warnings.cmake)
 # Sources
 #############################################################################
 
-set(RA_APP_NAME ptp_master)
+set(RA_APP_NAME ptp_time_transmitter)
 
 set(APP_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/main.c

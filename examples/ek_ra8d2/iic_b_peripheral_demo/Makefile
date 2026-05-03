@@ -1,12 +1,12 @@
 #
-# Per-app Makefile for the `ptp_master` firmware.
+# Per-app Makefile for the `iic_b_peripheral_demo` firmware.
 #
 # Standalone use:
-#   cd examples/ptp_master/
-#   make             # configure + build -> examples/ptp_master/build/ptp_master.elf
+#   cd examples/iic_b_peripheral_demo/
+#   make             # configure + build -> examples/iic_b_peripheral_demo/build/iic_b_peripheral_demo.elf
 #   make flash       # JLinkExe load via scripts/flash.sh
 #   make ozone       # SEGGER Ozone GUI debugger
-#   make clean       # rm -rf examples/ptp_master/build
+#   make clean       # rm -rf examples/iic_b_peripheral_demo/build
 #
 # This file is a thin wrapper around the per-app CMakeLists.txt and
 # the shared scripts/ helpers in the repo root.
@@ -17,7 +17,7 @@
 
 SHELL     := /bin/bash
 
-APP        := ptp_master
+APP        := iic_b_peripheral_demo
 ROOT       := $(abspath $(CURDIR)/../../..)
 HERE       := $(CURDIR)
 BUILD_DIR  := $(HERE)/build

@@ -316,11 +316,11 @@ static UCHAR s_string_framework[] = {
   'k',
   'i',
   'e',
-  /* idx 2: "EK-RA8D2 CDC Echo!". */
+  /* idx 2: "EK-RA8D2 CDC Echo!" (18 ASCII bytes). */
   0x09U,
   0x04U,
   0x02U,
-  0x14U,
+  0x12U,
   'E',
   'K',
   '-',
