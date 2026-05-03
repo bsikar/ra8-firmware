@@ -68,6 +68,74 @@ bool ra_reflow_internal_is_indent_tag(uint8_t tag)
 }
 
 /**
+ * @brief AND helper for the right-margin overflow break decision.
+ * @details Promoted from inline expressions at original lines 404,
+ *          468 and 605 so MC/DC tests can drive both arms of the
+ *          ``(cur->x + advance > right_limit) && line_has_content``
+ *          decision directly.
+ * @param[in] cursor_x Pen x position in pixels.
+ * @param[in] advance Width about to be emitted in pixels.
+ * @param[in] right_limit Right edge in pixels.
+ * @param[in] line_has_content Non-zero iff the line already has glyphs.
+ * @return Boolean break-needed predicate.
+ * @retval true Caller must call priv_newline before emitting.
+ * @retval false Emitting in place is safe.
+ * @pre None.
+ * @pre None.
+ * @post No state mutated.
+ * @post Return value depends solely on the four arguments.
+ * @note Pure function; thread-safe.
+ * @since 0.1.0
+ */
+bool ra_reflow_internal_right_overflow_break(int32_t cursor_x,
+                                             int32_t advance,
+                                             int32_t right_limit,
+                                             uint8_t line_has_content)
+{
+  return (cursor_x + advance > right_limit) && (line_has_content != 0U);
+}
+
+/**
+ * @brief OR helper for the cached-XHTML invalid decision.
+ * @details Promoted from line 953 in @c ra_reflow_set_font_size.
+ * @param[in] xhtml_buf Cached buffer pointer (may be NULL).
+ * @param[in] xhtml_len Cached buffer length (may be zero).
+ * @return Boolean invalid-buffer predicate.
+ * @retval true Buffer is unusable.
+ * @retval false Buffer is usable.
+ * @pre None.
+ * @pre None.
+ * @post No state mutated.
+ * @post Return value depends solely on the two arguments.
+ * @note Pure function; thread-safe.
+ * @since 0.1.0
+ */
+bool ra_reflow_internal_xhtml_invalid(const void* xhtml_buf, uint32_t xhtml_len)
+{
+  return (xhtml_buf == NULL) || (xhtml_len == 0U);
+}
+
+/**
+ * @brief AND helper for the synthesise-final-page decision.
+ * @details Promoted from line 750 in @c ra_reflow_run_layout.
+ * @param[in] page_count Number of pages flushed during the pass.
+ * @param[in] token_count Total parsed-token count.
+ * @return Boolean fixup-needed predicate.
+ * @retval true Caller must synthesise a single final page.
+ * @retval false No fixup required.
+ * @pre None.
+ * @pre None.
+ * @post No state mutated.
+ * @post Return value depends solely on the two arguments.
+ * @note Pure function; thread-safe.
+ * @since 0.1.0
+ */
+bool ra_reflow_internal_final_page_needed(uint32_t page_count, uint32_t token_count)
+{
+  return (page_count == 0U) && (token_count > 0U);
+}
+
+/**
  * @brief Bounded zero-fill used in place of `memset(0)`.
  *
  * @details
@@ -401,7 +469,10 @@ static ra_err_t priv_emit_char(ra_reflow_t*          engine,
     (advance < (int32_t)k_priv_min_word_w_px) ? (int32_t)k_priv_min_word_w_px : advance;
 
   const int32_t right_limit = (int32_t)engine->viewport_w - (int32_t)k_ra_reflow_margin_px;
-  if (cur->x + advance_clamped > right_limit && cur->line_has_content != 0U) {
+  if (ra_reflow_internal_right_overflow_break(cur->x,
+                                              advance_clamped,
+                                              right_limit,
+                                              cur->line_has_content)) {
     if (!priv_newline(engine, cur)) {
       return k_ra_err_no_mem;
     }
@@ -465,7 +536,10 @@ static ra_err_t priv_layout_text(ra_reflow_t*             engine,
       ++word_end;
     }
     const int32_t right_limit = (int32_t)engine->viewport_w - (int32_t)k_ra_reflow_margin_px;
-    if (cur->x + word_w > right_limit && cur->line_has_content != 0U) {
+    if (ra_reflow_internal_right_overflow_break(cur->x,
+                                                word_w,
+                                                right_limit,
+                                                cur->line_has_content)) {
       if (!priv_newline(engine, cur)) {
         return k_ra_err_no_mem;
       }
@@ -602,7 +676,10 @@ static bool priv_apply_image(ra_reflow_t* engine, priv_cursor_t* cur)
 {
   const int32_t advance     = (int32_t)k_priv_image_placeholder_px;
   const int32_t right_limit = (int32_t)engine->viewport_w - (int32_t)k_ra_reflow_margin_px;
-  if (cur->x + advance > right_limit && cur->line_has_content != 0U) {
+  if (ra_reflow_internal_right_overflow_break(cur->x,
+                                              advance,
+                                              right_limit,
+                                              cur->line_has_content)) {
     if (!priv_newline(engine, cur)) {
       return false;
     }
@@ -747,7 +824,7 @@ ra_err_t ra_reflow_run_layout(ra_reflow_t* engine)
     return err;
   }
   /* Guarantee at least one page on non-empty input. */
-  if (engine->page_count == 0U && engine->token_count > 0U) {
+  if (ra_reflow_internal_final_page_needed(engine->page_count, engine->token_count)) {
     if (engine->page_count >= k_ra_reflow_max_pages) {
       return k_ra_err_no_mem;
     }
@@ -950,7 +1027,7 @@ ra_err_t ra_reflow_set_font_size(ra_reflow_t* engine, uint16_t new_font_px)
   if (new_font_px < k_ra_reflow_min_font_px || new_font_px > k_ra_reflow_max_font_px) {
     return k_ra_err_invalid_arg;
   }
-  if (engine->xhtml_buf == NULL || engine->xhtml_len == 0U) {
+  if (ra_reflow_internal_xhtml_invalid(engine->xhtml_buf, engine->xhtml_len)) {
     return k_ra_err_invalid_state;
   }
   engine->font_px = new_font_px;

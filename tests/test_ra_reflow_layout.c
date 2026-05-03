@@ -205,6 +205,71 @@ static void test_mcdc_reflow_internal_is_indent_tag(void)
   TEST_END("reflow MC/DC: is_indent_tag OR");
 }
 
+/**
+ * @test test_mcdc_reflow_internal_right_overflow_break
+ *
+ * @par MC/DC:
+ * Decision at libs/ra_reflow/src/ra_reflow_layout.c:95 (helper) which
+ * the inline call sites at lines 404, 468, 605 delegate to:
+ *   ``(cur->x + advance > right_limit) && (line_has_content != 0)``
+ *   (2 conditions, AND). Direct-call vectors:
+ * - V1: x+adv <= right, content=1 -> false (both false-side)
+ * - V2: x+adv >  right, content=1 -> true  (varies left)
+ * - V3: x+adv >  right, content=0 -> false (varies right)
+ * V1+V2 isolate left; V2+V3 isolate right. N+1 = 3.
+ */
+static void test_mcdc_reflow_internal_right_overflow_break(void)
+{
+  TEST_BEGIN("reflow MC/DC: right_overflow_break AND");
+  TEST_ASSERT(!ra_reflow_internal_right_overflow_break(0, 10, 100, 1U));
+  TEST_ASSERT(ra_reflow_internal_right_overflow_break(95, 10, 100, 1U));
+  TEST_ASSERT(!ra_reflow_internal_right_overflow_break(95, 10, 100, 0U));
+  TEST_END("reflow MC/DC: right_overflow_break AND");
+}
+
+/**
+ * @test test_mcdc_reflow_internal_xhtml_invalid
+ *
+ * @par MC/DC:
+ * Decision at libs/ra_reflow/src/ra_reflow_layout.c:115 (helper) which
+ * the inline call site at line 953 delegates to:
+ *   ``(xhtml_buf == NULL) || (xhtml_len == 0)`` (2 conditions, OR).
+ * - V1: buf!=NULL, len!=0 -> false
+ * - V2: buf==NULL, len!=0 -> true
+ * - V3: buf!=NULL, len==0 -> true
+ * V1+V2 isolate buf; V1+V3 isolate len. N+1 = 3.
+ */
+static void test_mcdc_reflow_internal_xhtml_invalid(void)
+{
+  TEST_BEGIN("reflow MC/DC: xhtml_invalid OR");
+  static const uint8_t buf[1] = {0U};
+  TEST_ASSERT(!ra_reflow_internal_xhtml_invalid(buf, 1U));
+  TEST_ASSERT(ra_reflow_internal_xhtml_invalid(NULL, 1U));
+  TEST_ASSERT(ra_reflow_internal_xhtml_invalid(buf, 0U));
+  TEST_END("reflow MC/DC: xhtml_invalid OR");
+}
+
+/**
+ * @test test_mcdc_reflow_internal_final_page_needed
+ *
+ * @par MC/DC:
+ * Decision at libs/ra_reflow/src/ra_reflow_layout.c:135 (helper) which
+ * the inline call site at line 750 delegates to:
+ *   ``(page_count == 0) && (token_count > 0)`` (2 conditions, AND).
+ * - V1: pages>0,  tokens>0  -> false
+ * - V2: pages==0, tokens>0  -> true
+ * - V3: pages==0, tokens==0 -> false
+ * V1+V2 isolate pages; V2+V3 isolate tokens. N+1 = 3.
+ */
+static void test_mcdc_reflow_internal_final_page_needed(void)
+{
+  TEST_BEGIN("reflow MC/DC: final_page_needed AND");
+  TEST_ASSERT(!ra_reflow_internal_final_page_needed(1U, 5U));
+  TEST_ASSERT(ra_reflow_internal_final_page_needed(0U, 5U));
+  TEST_ASSERT(!ra_reflow_internal_final_page_needed(0U, 0U));
+  TEST_END("reflow MC/DC: final_page_needed AND");
+}
+
 int32_t main(void)
 {
   test_mcdc_reflow_init_null_pair();
@@ -212,6 +277,9 @@ int32_t main(void)
   test_mcdc_reflow_init_font_px_range();
   test_mcdc_reflow_set_font_size_no_cached_buf();
   test_mcdc_reflow_internal_is_indent_tag();
+  test_mcdc_reflow_internal_right_overflow_break();
+  test_mcdc_reflow_internal_xhtml_invalid();
+  test_mcdc_reflow_internal_final_page_needed();
   (void)fprintf(stderr, "[OK ] test_ra_reflow_layout.c\n");
   return 0;
 }
