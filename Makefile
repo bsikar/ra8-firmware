@@ -62,7 +62,7 @@ $(foreach m,$(_RA_APP_MAINS),$(eval RA_APP_DIR_$(notdir $(patsubst %/main.c,%,$m
 
 # We forward each <app> name to the app's own Makefile, so reserve the names
 # below from being shadowed by .PHONY targets.
-.PHONY: help apps default clean format check tidy test test-cov test-docker ctest coverage mcdc misra docs dashboard ascii version qe-test smoke stack-usage scan-build scan-build-strict iwyu fuzz all $(RA_APPS)
+.PHONY: help apps default clean format check tidy test test-cov test-docker ctest coverage mcdc misra docs dashboard ascii version qe-test smoke stack-usage scan-build scan-build-strict iwyu fuzz bench app-sizes all $(RA_APPS)
 
 # EVM-tier apps (everything under examples/ek_ra8d2/) -- these are the
 # apps the hardware smoke test sweeps because they run on a stock
@@ -258,5 +258,38 @@ scan-build-strict:
 # scripts/utils/iwyu.sh.
 iwyu:
 	bash scripts/utils/iwyu.sh
+
+# ---------------------------------------------------------------------------
+# `make bench` -- build + run the host-side performance microbenchmarks.
+# Opt-in via -DRA_BENCH=ON; lives in its own build tree so the fast
+# unit-test build (tests/build/) is never invalidated. Each bench
+# binary prints a CSV results row per measurement to stdout.
+# See docs/PERFORMANCE.md.
+# ---------------------------------------------------------------------------
+BENCH_BUILD   := $(TESTS_DIR)/build-bench
+BENCH_TARGETS := bench_ra_crc bench_ra_jpeg_sw bench_ra_gfx_text
+
+bench:
+	$(CMAKE) -S $(TESTS_DIR) -B $(BENCH_BUILD) \
+	    -DRA_BENCH=ON -DRA_COVERAGE=OFF -DRA_MCDC=OFF \
+	    -DCMAKE_BUILD_TYPE=Release \
+	    -Wno-dev
+	$(CMAKE) --build $(BENCH_BUILD) --target ra_bench_all -j
+	@echo ""
+	@echo "==== ra_bench results ===="
+	@for t in $(BENCH_TARGETS); do \
+	    echo "---- $$t ----"; \
+	    $(BENCH_BUILD)/bench/$$t || { echo "FAIL: $$t"; exit 1; }; \
+	done
+	@echo "==== ra_bench done ===="
+
+# ---------------------------------------------------------------------------
+# `make app-sizes` -- run scripts/utils/app_sizes.py to summarise per-app
+# .text/.data/.bss footprints across every built example. If no apps
+# have been built yet the script prints a hint and exits cleanly.
+# Writes docs/APP_SIZES.md when --write is passed.
+# ---------------------------------------------------------------------------
+app-sizes:
+	python3 scripts/utils/app_sizes.py --write
 
 all: format tidy test default

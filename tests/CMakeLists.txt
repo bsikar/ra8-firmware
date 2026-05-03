@@ -548,3 +548,13 @@ add_test(NAME test_ra_reflow_xml_shim COMMAND test_ra_reflow_xml_shim)
 # ---------------------------------------------------------------------------
 option(RA_FUZZ "Build libFuzzer harnesses for parsers (clang only)" OFF)
 add_subdirectory(fuzz)
+
+# ---------------------------------------------------------------------------
+# Optional host-side performance benchmarks (opt-in via -DRA_BENCH=ON).
+# Each bench target prints CSV results to stdout. Decoupled from the
+# fast unit-test build because the bench binaries build at -O2 and we
+# do not want them entangled with coverage/MC-DC instrumentation.
+# See docs/PERFORMANCE.md.
+# ---------------------------------------------------------------------------
+option(RA_BENCH "Build host-side performance microbenchmarks" OFF)
+add_subdirectory(bench)
