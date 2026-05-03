@@ -62,7 +62,7 @@ $(foreach m,$(_RA_APP_MAINS),$(eval RA_APP_DIR_$(notdir $(patsubst %/main.c,%,$m
 
 # We forward each <app> name to the app's own Makefile, so reserve the names
 # below from being shadowed by .PHONY targets.
-.PHONY: help apps default clean format check tidy test test-cov test-docker ctest coverage mcdc misra docs dashboard ascii version qe-test smoke stack-usage scan-build iwyu all $(RA_APPS)
+.PHONY: help apps default clean format check tidy test test-cov test-docker ctest coverage mcdc misra docs dashboard ascii version qe-test smoke stack-usage scan-build scan-build-strict iwyu fuzz all $(RA_APPS)
 
 # EVM-tier apps (everything under examples/ek_ra8d2/) -- these are the
 # apps the hardware smoke test sweeps because they run on a stock
@@ -95,6 +95,7 @@ help:
 	@echo "  make stack-usage build EVM apps + aggregate -fstack-usage report"
 	@echo "  make scan-build run clang static analyzer over the host test build"
 	@echo "  make iwyu      run include-what-you-use over the host test build"
+	@echo "  make fuzz      build + smoke-run libFuzzer harnesses (clang only)"
 
 # `make` with no arg builds the default app.
 default: $(RA_DEFAULT_APP)
@@ -149,6 +150,38 @@ test-cov: mcdc
 
 ctest:
 	ctest --test-dir $(TESTS_BUILD) --output-on-failure
+
+# `make fuzz` -- build every libFuzzer harness (clang only; opt-in via
+# RA_FUZZ=ON) and run each for ~30 seconds as a smoke check. Crash
+# artefacts land in tests/build-fuzz/crashes/<target>/. For longer
+# fuzz sessions on a single target, use scripts/utils/run_fuzz.sh.
+# See docs/FUZZING.md.
+FUZZ_BUILD    := $(TESTS_DIR)/build-fuzz
+FUZZ_SECONDS  ?= 30
+FUZZ_TARGETS  := fuzz_ra_jpeg_sw fuzz_ra_epub fuzz_ra_modem_at fuzz_ra_net_arp fuzz_ra_net_ipv4
+FUZZ_CC       ?= clang
+FUZZ_CXX      ?= clang++
+
+fuzz:
+	@command -v $(FUZZ_CC) >/dev/null 2>&1 || { \
+	  echo "ERROR: $(FUZZ_CC) not found -- libFuzzer requires clang."; exit 1; }
+	$(CMAKE) -S $(TESTS_DIR) -B $(FUZZ_BUILD) \
+	    -DRA_FUZZ=ON -DRA_COVERAGE=OFF \
+	    -DCMAKE_C_COMPILER=$(FUZZ_CC) \
+	    -DCMAKE_CXX_COMPILER=$(FUZZ_CXX) \
+	    -DCMAKE_BUILD_TYPE=Debug
+	$(CMAKE) --build $(FUZZ_BUILD) --target ra_fuzz_all -j
+	@for t in $(FUZZ_TARGETS); do \
+	  echo "==== Running $$t for $(FUZZ_SECONDS)s ===="; \
+	  mkdir -p $(FUZZ_BUILD)/crashes/$$t; \
+	  $(FUZZ_BUILD)/fuzz/$$t \
+	      -max_total_time=$(FUZZ_SECONDS) \
+	      -runs=10000 \
+	      -print_final_stats=1 \
+	      -artifact_prefix=$(FUZZ_BUILD)/crashes/$$t/ \
+	    || { echo "FUZZ FAIL: $$t"; exit 1; }; \
+	done
+	@echo "All fuzz smoke runs passed."
 
 docs:
 	bash scripts/build_docs.sh
@@ -209,6 +242,12 @@ stack-usage: $(EK_APPS)
 # for the documented baseline of expected findings.
 scan-build:
 	bash scripts/utils/scan_build.sh
+
+# Strict variant -- exit non-zero on any first-party finding after the
+# documented suppressions (HAL MMIO accessor pattern, SOUP, host test
+# scaffolding) are applied. This is the CI-gating entry point.
+scan-build-strict:
+	bash scripts/utils/scan_build.sh --strict
 
 # include-what-you-use (IWYU). Reports per-TU include-graph hygiene
 # violations: missing direct includes, unnecessary transitive
