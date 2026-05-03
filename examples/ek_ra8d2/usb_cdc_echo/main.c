@@ -568,6 +568,15 @@ int32_t main(void)
   if (ra_cgc_init() != k_ra_ok) {
     demo_panic_halt();
   }
+  /* Bring up PLL2 -> USBCKCR / USBCKDIVCR so USBFS sees a spec-compliant
+   * 48 MHz reference (PLL2P 240 MHz / 5). Must run BEFORE any caller
+   * releases MSTPB11 (USBFS) -- the SREQ -> SRDY handshake silently
+   * hangs otherwise (HUM Ch 9 "Clock selection switching procedure"
+   * step 1). Without this the SIE never sees a 48 MHz clock and the
+   * host never enumerates the device. */
+  if (ra_cgc_usbfs_clock_enable() != k_ra_ok) {
+    demo_panic_halt();
+  }
   if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
     demo_panic_halt();
   }

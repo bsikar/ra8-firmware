@@ -50,6 +50,7 @@
 
 #include "ra8d2_cgc_regs.h"
 #include "ra8d2_mrms_regs.h"
+#include "ra8d2_mstp_regs.h"
 #include "ra8d2_system_regs.h"
 #include "ra_check.h"
 #include "ra_err.h"
@@ -1088,11 +1089,39 @@ ra_err_t ra_cgc_usbhs_pll_enable(void)
  *   /1=0, /2=1, /3=5, /4=2, /5=6, /6=3, /8=4, /10=7, /16=8.
  * We expose only the divisors this driver actually uses.
  */
-typedef enum : uint16_t {
-  k_ra_usbfs_srdy_poll_limit = 1000U, /**< Iterations before timeout.   */
-  k_ra_usbfs_div5_code       = 6U,    /**< USBCKDIVCR codepoint for /5. */
-  k_ra_usbfs_div8_code       = 4U,    /**< USBCKDIVCR codepoint for /8. */
+typedef enum : uint32_t {
+  /* The USBCKSREQ -> USBCKSRDY synchronizer chain crosses from ICLK
+   * into the UCK clock domain (currently HOCO @ ~20 MHz before this
+   * routine runs). Worst case is a few HOCO cycles plus the M85 spin
+   * latency at 1 GHz. FSP polls this unbounded; we cap at ~600 us to
+   * stay NASA-Rule-2-compliant while leaving four orders of magnitude
+   * of slack over the worst-case real handshake. */
+  k_ra_usbfs_srdy_poll_limit = 200000U, /**< Iterations before timeout.   */
+  k_ra_usbfs_div5_code       = 6U,      /**< USBCKDIVCR codepoint for /5. */
+  k_ra_usbfs_div8_code       = 4U,      /**< USBCKDIVCR codepoint for /8. */
 } ra_usbfs_clock_local_t;
+
+/**
+ * @enum ra_usbfs_mstp_local_t
+ * @brief Local sentinels for the USBFS module-stop pre-step.
+ *
+ * @details
+ * HUM Ch 9 -- the entire xCKCR / xCKDIVCR family ("Clock Selection
+ * Switching Procedure") requires the dependent module to be in the
+ * module-stop state (MSTP = 1) BEFORE asserting xCKSREQ when changing
+ * the divider from 1/n where n != 1. Since this routine programmes
+ * USBCKDIVCR from reset (1/1) to /5, that precondition applies. Pages
+ * 367 (ADCCKDIVCR), 370 (SPICKCR), 373 (GPTCKDIVCR), 378 (ETHPCKDIVCR),
+ * and 381 (ESWPCKCR) all give the same instruction. If the caller has
+ * already released MSTPB11 (USBFS) before us the SREQ -> SRDY handshake
+ * silently hangs -- the symptom we observed on real silicon was
+ * USBCKCR == 0x40 (SREQ=1, SRDY=0) and the host never seeing the
+ * device. Force the module-stop bit back to 1 inside the PRCR window so
+ * the routine is robust to call ordering.
+ */
+typedef enum : uint32_t {
+  k_ra_mstpb11_usbfs_mask = (uint32_t)(1UL << 11), /**< MSTPCRB.MSTPB11 (USBFS0). */
+} ra_usbfs_mstp_local_t;
 
 /**
  * @enum ra_pll2_local_t
@@ -1133,7 +1162,7 @@ typedef enum : uint16_t {
 static ra_err_t internal_wait_usbcksrdy(uint8_t expected)
 {
   const uint8_t mask = (uint8_t)(1U << k_ra_usbckcr_bit_srdy);
-  for (uint16_t i = 0U; i < k_ra_usbfs_srdy_poll_limit; ++i) {
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_usbfs_srdy_poll_limit; ++i) {
     const uint8_t got = (uint8_t)((*ra_sys_usbckcr() & mask) >> k_ra_usbckcr_bit_srdy);
     if (got == expected) {
       return k_ra_ok;
@@ -1260,12 +1289,52 @@ ra_err_t ra_cgc_pll2_enable(uint8_t mul_int, uint8_t mul_quarters, ra_plodiv_t p
  * @note Not thread-safe.
  * @since 0.1.0
  */
+/**
+ * @brief PRCR-protected USBCKCR / USBCKDIVCR handshake body.
+ * @details Steps 3..7 of the HUM "Clock selection switching procedure"
+ * inside the CGC-PRCR window: SREQ=1, wait SRDY=1, write USBCKDIVCR,
+ * write USBCKCR=src|SREQ, write USBCKCR=src, wait SRDY=0.
+ * @return ::ra_err_t error code.
+ * @retval k_ra_ok Handshake completed; USBCLK on PLL2P/5 = 48 MHz.
+ * @retval k_ra_err_hw_timeout SRDY=1 or SRDY=0 wait exceeded.
+ * @pre PLL2 locked at 240 MHz on PLL2P.
+ * @pre MSTPCRB.MSTPB11 = 1 (USBFS module-stopped).
+ * @post On k_ra_ok USBCKCR.USBCKSEL = PLL2P, USBCKDIVCR = /5.
+ * @post PRCR re-locked (RA_PROTECTED_WRITE always re-locks).
+ * @note Not thread-safe; init context only.
+ * @since 0.1.0
+ */
+static ra_err_t internal_usbckcr_switch_to_pll2p_div5(void)
+{
+  ra_err_t err = k_ra_ok;
+  RA_PROTECTED_WRITE(k_ra_prcr_unlock_cgc)
+  {
+    const uint8_t sreq_mask = (uint8_t)(1U << k_ra_usbckcr_bit_sreq);
+    *ra_sys_usbckcr()       = sreq_mask;
+    err                     = internal_wait_usbcksrdy(1U);
+    if (err != k_ra_ok) {
+      ra_log_error(s_tag, "usbfs: SRDY=1 timeout");
+      break;
+    }
+    *ra_sys_usbckdivcr() = (uint8_t)k_ra_usbfs_div5_code;
+    const uint8_t src    = (uint8_t)((uint8_t)k_ra_usbcksel_pll2p & k_ra_usbckcr_mask_sel);
+    *ra_sys_usbckcr()    = (uint8_t)(src | sreq_mask);
+    *ra_sys_usbckcr()    = src;
+    err                  = internal_wait_usbcksrdy(0U);
+    if (err != k_ra_ok) {
+      ra_log_error(s_tag, "usbfs: SRDY=0 timeout");
+      break;
+    }
+  }
+  return err;
+}
+
+// NOLINTNEXTLINE(readability-function-size,readability-function-cognitive-complexity)
 ra_err_t ra_cgc_usbfs_clock_enable(void)
 {
   ra_log_info(s_tag, "usbfs clock enable");
 
-  /* Step 1: bring up PLL2 to land 240 MHz on PLL2P. The PLL2 helper
-   * takes its own PRCR window. */
+  /* Step 1: bring up PLL2 to land 240 MHz on PLL2P. */
   const ra_err_t pll2_err = ra_cgc_pll2_enable((uint8_t)k_ra_pll2_usbfs_mul,
                                                (uint8_t)k_ra_pll2_usbfs_quarters,
                                                k_ra_plodiv_div4);
@@ -1274,39 +1343,17 @@ ra_err_t ra_cgc_usbfs_clock_enable(void)
     return pll2_err;
   }
 
-  /* Step 2: USBCKCR / USBCKDIVCR handshake to swap the USB-FS source
-   * over to PLL2P / 5 = 48 MHz. */
-  ra_err_t err = k_ra_ok;
-  RA_PROTECTED_WRITE(k_ra_prcr_unlock_cgc)
-  {
-    /* HUM Ch 9.2.55 "USBCKCR : USB Clock Control Register" p 365 */
-    const uint8_t sreq_mask = (uint8_t)(1U << k_ra_usbckcr_bit_sreq);
-    *ra_sys_usbckcr()       = sreq_mask;
+  /* Step 2a: Force USBFS into module-stop (MSTPB11 = 1) BEFORE the SREQ
+   * handshake. HUM Ch 9 "Clock selection switching procedure" step 1
+   * (p367 / p370 / p373 / p378 / p381) is mandatory whenever USBCKDIVCR
+   * is moved off 1/1; we are programming /5 below. MSTPCR is NOT
+   * PRCR-protected. ra_usb_device_init() releases MSTPB11 again later
+   * via the ref-counted ra_mstp_enable() path. */
+  ra_mstp()->MSTPCRB |= (uint32_t)k_ra_mstpb11_usbfs_mask;
+  (void)ra_mstp()->MSTPCRB; /* HUM 11.2.7 Note 2: read-back. */
 
-    err = internal_wait_usbcksrdy(1U);
-    if (err != k_ra_ok) {
-      ra_log_error(s_tag, "usbfs: SRDY=1 timeout");
-      break;
-    }
-
-    /* HUM Ch 9.2.54 "USBCKDIVCR : USB Clock Division Control Register" p 364
-     * Code 6 == /5 per FSP `bsp_clocks.c:149-151`. */
-    *ra_sys_usbckdivcr() = (uint8_t)k_ra_usbfs_div5_code;
-
-    /* HUM Ch 9.2.55 "USBCKCR : USB Clock Control Register" p 365.
-     * Spec compliance check: 240 MHz * (1 / 5) = 48.000 MHz, within
-     * the USB-FS spec (48 MHz +/- 0.25 %). */
-    const uint8_t src = (uint8_t)((uint8_t)k_ra_usbcksel_pll2p & k_ra_usbckcr_mask_sel);
-    *ra_sys_usbckcr() = (uint8_t)(src | sreq_mask);
-    *ra_sys_usbckcr() = src;
-
-    err = internal_wait_usbcksrdy(0U);
-    if (err != k_ra_ok) {
-      ra_log_error(s_tag, "usbfs: SRDY=0 timeout");
-      break;
-    }
-  }
-
+  /* Step 2b: USBCKCR / USBCKDIVCR handshake. */
+  const ra_err_t err = internal_usbckcr_switch_to_pll2p_div5();
   if (err != k_ra_ok) {
     return err;
   }
