@@ -146,6 +146,37 @@ uint8_t ra_modem_at_internal_starts_with(const char* hay, const char* needle);
  */
 uint8_t ra_modem_at_internal_str_eq(const char* a, const char* b);
 
+#include <stddef.h>
+
+/**
+ * @brief Append a NUL-terminated line into ``capture`` (with newline sep).
+ *
+ * @details Promoted from TU-private static linkage so tests can drive
+ *          the line-469 NULL+len AND-decision under -fcoverage-mcdc.
+ *          Production callers must keep using the public facade.
+ *
+ * @param[in]     line        NUL-terminated line to append (must be non-NULL).
+ * @param[in,out] capture     Caller-owned buffer (NULL allowed; no-op).
+ * @param[in]     capture_len Capacity of @p capture in bytes.
+ * @param[in,out] used        Bytes already populated; updated on append.
+ *
+ * @pre line is non-NULL and NUL-terminated.
+ * @pre used is non-NULL when capture is non-NULL.
+ * @post No write occurs when capture is NULL or capture_len is 0.
+ * @post Otherwise, *used is monotonically non-decreasing.
+ *
+ * @note Test-access only.
+ *
+ * @par MC/DC:
+ * Drives line 469 ``(capture == nullptr) || (capture_len == 0U)``.
+ *
+ * @since 0.1.0
+ */
+void ra_modem_at_internal_capture_line(const char* line,
+                                       char*       capture,
+                                       size_t      capture_len,
+                                       size_t*     used);
+
 #ifdef __cplusplus
 }
 #endif

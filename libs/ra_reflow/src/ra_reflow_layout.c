@@ -34,7 +34,38 @@
 
 #include "ra_err.h"
 #include "ra_reflow.h"
+#include "ra_reflow_internal.h"
 #include "stb_truetype.h"
+
+/**
+ * @brief Return true iff @p tag is a block-level indent tag.
+ *
+ * @details Pure helper factored out of @c priv_open_block (line 479)
+ *          and @c priv_close_block (line 513) so the
+ *          ``tag == li || tag == blockquote`` decision can be driven
+ *          directly by host MC/DC tests via
+ *          @ref ra_reflow_internal_is_indent_tag.
+ *
+ * @param[in] tag Token tag value (raw @c uint8_t storage of
+ *                @ref ra_reflow_html_tag_t).
+ *
+ * @return Boolean indent-tag predicate.
+ * @retval true  Tag is @c k_ra_reflow_tag_li or @c k_ra_reflow_tag_blockquote.
+ * @retval false Otherwise.
+ *
+ * @pre None.
+ * @pre None.
+ * @post No state mutated.
+ * @post Return value depends solely on @p tag.
+ *
+ * @note Pure function; thread-safe.
+ *
+ * @since 0.1.0
+ */
+bool ra_reflow_internal_is_indent_tag(uint8_t tag)
+{
+  return (tag == (uint8_t)k_ra_reflow_tag_li) || (tag == (uint8_t)k_ra_reflow_tag_blockquote);
+}
 
 /**
  * @brief Bounded zero-fill used in place of `memset(0)`.
@@ -476,7 +507,7 @@ static bool priv_open_block(ra_reflow_t* engine, priv_cursor_t* cur, const ra_re
   }
   cur->active_font_px = priv_block_font_px(engine->font_px, (ra_reflow_html_tag_t)tok->tag);
   cur->line_height_px = priv_line_height(cur->active_font_px);
-  if (tok->tag == k_ra_reflow_tag_li || tok->tag == k_ra_reflow_tag_blockquote) {
+  if (ra_reflow_internal_is_indent_tag((uint8_t)tok->tag)) {
     cur->indent_px = k_ra_reflow_indent_px;
     cur->x         = (int32_t)k_ra_reflow_margin_px + (int32_t)cur->indent_px;
   }
@@ -510,7 +541,7 @@ static bool priv_close_block(ra_reflow_t* engine, priv_cursor_t* cur, const ra_r
   cur->y += (int32_t)k_ra_reflow_paragraph_gap_px;
   cur->line_top = cur->y;
   cur->x        = (int32_t)k_ra_reflow_margin_px;
-  if (tok->tag == k_ra_reflow_tag_li || tok->tag == k_ra_reflow_tag_blockquote) {
+  if (ra_reflow_internal_is_indent_tag((uint8_t)tok->tag)) {
     cur->indent_px = 0U;
   }
   cur->active_font_px = engine->font_px;

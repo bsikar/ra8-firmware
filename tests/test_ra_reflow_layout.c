@@ -11,6 +11,7 @@
 
 #include "ra_err.h"
 #include "ra_reflow.h"
+#include "ra_reflow_internal.h"
 #include "unity_minimal.h"
 
 typedef enum : uint16_t {
@@ -175,12 +176,42 @@ static void test_mcdc_reflow_set_font_size_no_cached_buf(void)
   TEST_END("reflow_set_font_size MC/DC: no cached xhtml buffer");
 }
 
+/**
+ * @test test_mcdc_reflow_internal_is_indent_tag
+ *
+ * @par MC/DC:
+ * Decision at libs/ra_reflow/src/ra_reflow_layout.c:42 (helper)
+ * which both line 479 (priv_open_block) and line 513 (priv_close_block)
+ * delegate to:
+ *   ``(tag == k_ra_reflow_tag_li) || (tag == k_ra_reflow_tag_blockquote)``
+ *   (2 conditions, OR). A single MC/DC vector set on the underlying
+ *   helper covers both production call sites.
+ *
+ * - V1: tag = li         -> C1=T  (short-circuits) -> true.
+ * - V2: tag = blockquote -> C1=F C2=T              -> true.
+ * - V3: tag = h1         -> C1=F C2=F              -> false.
+ * V1+V3 isolate C1; V2+V3 isolate C2. N+1 = 3 vectors: minimal MC/DC.
+ *
+ * @par DO-178C 6.4.4.3 rationale:
+ * 2-condition OR; N+1 = 3 vectors satisfy MC/DC fully.
+ */
+static void test_mcdc_reflow_internal_is_indent_tag(void)
+{
+  TEST_BEGIN("reflow MC/DC: is_indent_tag OR");
+  TEST_ASSERT(ra_reflow_internal_is_indent_tag((uint8_t)k_ra_reflow_tag_li));
+  TEST_ASSERT(ra_reflow_internal_is_indent_tag((uint8_t)k_ra_reflow_tag_blockquote));
+  TEST_ASSERT(!ra_reflow_internal_is_indent_tag((uint8_t)k_ra_reflow_tag_h1));
+  TEST_ASSERT(!ra_reflow_internal_is_indent_tag((uint8_t)k_ra_reflow_tag_p));
+  TEST_END("reflow MC/DC: is_indent_tag OR");
+}
+
 int32_t main(void)
 {
   test_mcdc_reflow_init_null_pair();
   test_mcdc_reflow_init_viewport_zero();
   test_mcdc_reflow_init_font_px_range();
   test_mcdc_reflow_set_font_size_no_cached_buf();
+  test_mcdc_reflow_internal_is_indent_tag();
   (void)fprintf(stderr, "[OK ] test_ra_reflow_layout.c\n");
   return 0;
 }
