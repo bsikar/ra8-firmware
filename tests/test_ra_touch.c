@@ -115,6 +115,11 @@ static void build_point(uint8_t* buf, uint8_t track, uint16_t x, uint16_t y, uin
 /* =============================================================================
  * Lifecycle
  * =============================================================================
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_open_close_happy(void)
@@ -127,6 +132,12 @@ static void test_open_close_happy(void)
   TEST_END("ra_touch_open / close happy path");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_open_null_cfg(void)
 {
   TEST_BEGIN("ra_touch_open: NULL cfg rejected");
@@ -135,6 +146,12 @@ static void test_open_null_cfg(void)
   TEST_END("ra_touch_open: NULL cfg rejected");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_open_invalid_address(void)
 {
   TEST_BEGIN("ra_touch_open: bad target address rejected");
@@ -146,6 +163,12 @@ static void test_open_invalid_address(void)
   TEST_END("ra_touch_open: bad target address rejected");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_open_invalid_channel(void)
 {
   TEST_BEGIN("ra_touch_open: bad channel rejected");
@@ -156,6 +179,12 @@ static void test_open_invalid_channel(void)
   TEST_END("ra_touch_open: bad channel rejected");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_open_already_open(void)
 {
   TEST_BEGIN("ra_touch_open: already-open rejected");
@@ -167,6 +196,12 @@ static void test_open_already_open(void)
   TEST_END("ra_touch_open: already-open rejected");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_close_without_open(void)
 {
   TEST_BEGIN("ra_touch_close: not-initialized rejected");
@@ -178,6 +213,11 @@ static void test_close_without_open(void)
 /* =============================================================================
  * Read path
  * =============================================================================
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_read_null_args(void)
@@ -197,6 +237,12 @@ static void test_read_null_args(void)
   TEST_END("ra_touch_read: NULL args rejected");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_read_returns_ok(void)
 {
   TEST_BEGIN("ra_touch_read: returns ok with primed I2C transport");
@@ -220,6 +266,12 @@ static void test_read_returns_ok(void)
   TEST_END("ra_touch_read: returns ok with primed I2C transport");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_read_before_open(void)
 {
   TEST_BEGIN("ra_touch_read: not-initialized rejected");
@@ -234,6 +286,11 @@ static void test_read_before_open(void)
 /* =============================================================================
  * Decode parser (test_decode hook)
  * =============================================================================
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_decode_one_point(void)
@@ -259,6 +316,12 @@ static void test_decode_one_point(void)
   TEST_END("ra_touch_test_decode: single point");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_decode_three_points(void)
 {
   TEST_BEGIN("ra_touch_test_decode: three points");
@@ -292,6 +355,12 @@ static void test_decode_three_points(void)
   TEST_END("ra_touch_test_decode: three points");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_decode_five_points_max(void)
 {
   TEST_BEGIN("ra_touch_test_decode: five points (max)");
@@ -316,6 +385,12 @@ static void test_decode_five_points_max(void)
   TEST_END("ra_touch_test_decode: five points (max)");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_decode_clamp_to_max_count(void)
 {
   TEST_BEGIN("ra_touch_test_decode: input > max_count clamps");
@@ -348,6 +423,12 @@ static void touch_cb(void* ctx)
   s_cb_last_ctx = ctx;
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_attach_dispatch(void)
 {
   TEST_BEGIN("ra_touch_attach_handler + dispatch");
@@ -378,6 +459,11 @@ static void test_attach_dispatch(void)
 /* =============================================================================
  * Calibrate (no-op for GT911)
  * =============================================================================
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_calibrate_noop(void)

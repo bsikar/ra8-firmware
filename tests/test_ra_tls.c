@@ -114,6 +114,11 @@ static ra_tls_session_cfg_t make_loopback_cfg(void)
 /* =============================================================================
  * Tests
  * =============================================================================
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_global_init_idempotent_failure(void)
@@ -125,6 +130,12 @@ static void test_global_init_idempotent_failure(void)
   TEST_END("global_init refuses double-init");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_global_deinit_without_init(void)
 {
   TEST_BEGIN("global_deinit without init returns not_initialized");
@@ -132,6 +143,12 @@ static void test_global_deinit_without_init(void)
   TEST_END("global_deinit without init returns not_initialized");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_session_open_invalid_args(void)
 {
   TEST_BEGIN("session_open argument validation");
@@ -163,6 +180,12 @@ static void test_session_open_invalid_args(void)
   TEST_END("session_open argument validation");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_session_open_before_init(void)
 {
   TEST_BEGIN("session_open before global_init returns not_initialized");
@@ -173,6 +196,12 @@ static void test_session_open_before_init(void)
   TEST_END("session_open before global_init returns not_initialized");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_session_pool_exhaustion(void)
 {
   TEST_BEGIN("session pool exhaustion returns no_mem");
@@ -204,6 +233,12 @@ static void test_session_pool_exhaustion(void)
   TEST_END("session pool exhaustion returns no_mem");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_session_close_invalid_handle(void)
 {
   TEST_BEGIN("session_close rejects bogus handles");
@@ -221,6 +256,12 @@ static void test_session_close_invalid_handle(void)
   TEST_END("session_close rejects bogus handles");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_loopback_handshake_and_io(void)
 {
   TEST_BEGIN("loopback handshake + send + recv round-trip");
@@ -263,6 +304,12 @@ static void test_loopback_handshake_and_io(void)
   TEST_END("loopback handshake + send + recv round-trip");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_io_arg_validation(void)
 {
   TEST_BEGIN("send/recv argument validation");

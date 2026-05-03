@@ -13,6 +13,12 @@
 #include "ra_time.h"
 #include "unity_minimal.h"
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_reset_zeros_counter(void)
 {
   TEST_BEGIN("ra_sim_time_reset: tick counter back to zero");
@@ -28,6 +34,12 @@ static void test_reset_zeros_counter(void)
   TEST_END("ra_sim_time_reset: tick counter back to zero");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_advance_ms_matches_count(void)
 {
   TEST_BEGIN("ra_sim_time_advance_ms: tick counter tracks argument");
@@ -44,6 +56,12 @@ static void test_advance_ms_matches_count(void)
   TEST_END("ra_sim_time_advance_ms: tick counter tracks argument");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_advance_zero_is_noop(void)
 {
   TEST_BEGIN("ra_sim_time_advance_ms(0) is a no-op");

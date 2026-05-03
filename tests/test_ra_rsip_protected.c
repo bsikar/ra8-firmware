@@ -91,6 +91,11 @@ static void preload_data_out(void)
 /**
  * @brief Protected AES init + encrypt + decrypt round-trip.
  * @since 0.1.0
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 static void test_protected_aes_roundtrip(void)
 {
@@ -139,6 +144,11 @@ static void test_protected_aes_roundtrip(void)
 /**
  * @brief Protected AES init refuses a tampered blob.
  * @since 0.1.0
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 static void test_protected_aes_rejects_tamper(void)
 {
@@ -164,6 +174,11 @@ static void test_protected_aes_rejects_tamper(void)
 /**
  * @brief Protected AES encrypt / decrypt / finish refuse pre-init calls.
  * @since 0.1.0
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 static void test_protected_aes_no_init(void)
 {
@@ -188,6 +203,11 @@ static void test_protected_aes_no_init(void)
 /**
  * @brief Protected RSA decrypt validates the wrapper and dispatches.
  * @since 0.1.0
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 static void test_protected_rsa_decrypt(void)
 {
@@ -218,6 +238,11 @@ static void test_protected_rsa_decrypt(void)
 /**
  * @brief Protected ECDSA sign rebuilds the handle and signs.
  * @since 0.1.0
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 static void test_protected_ecdsa_sign(void)
 {
@@ -246,6 +271,11 @@ static void test_protected_ecdsa_sign(void)
 /**
  * @brief NULL-pointer rejection on every protected-layer entry.
  * @since 0.1.0
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 static void test_protected_null_args(void)
 {

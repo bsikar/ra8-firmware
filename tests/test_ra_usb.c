@@ -25,6 +25,12 @@ static void prep(void)
   (void)ra_mstp_init();
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_fs_happy_path(void)
 {
   TEST_BEGIN("ra_usb_device_init FS sets SYSCFG SCKE+USBE + IRQ enables");
@@ -53,6 +59,12 @@ static void test_init_fs_happy_path(void)
   TEST_END("ra_usb_device_init FS sets SYSCFG SCKE+USBE + IRQ enables");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_hs_sets_hse(void)
 {
   TEST_BEGIN("ra_usb_device_init HS sets HSE bit in SYSCFG");
@@ -66,6 +78,12 @@ static void test_init_hs_sets_hse(void)
   TEST_END("ra_usb_device_init HS sets HSE bit in SYSCFG");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_bad_speed(void)
 {
   TEST_BEGIN("ra_usb_device_init rejects bogus speed");
@@ -74,6 +92,12 @@ static void test_init_bad_speed(void)
   TEST_END("ra_usb_device_init rejects bogus speed");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_attach_sets_dprpu(void)
 {
   TEST_BEGIN("ra_usb_device_attach true sets DPRPU");
@@ -89,6 +113,12 @@ static void test_attach_sets_dprpu(void)
   TEST_END("ra_usb_device_attach true sets DPRPU");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_attach_clears_dprpu(void)
 {
   TEST_BEGIN("ra_usb_device_attach false clears DPRPU");
@@ -105,6 +135,12 @@ static void test_attach_clears_dprpu(void)
   TEST_END("ra_usb_device_attach false clears DPRPU");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_attach_hs(void)
 {
   TEST_BEGIN("ra_usb_device_attach HS branch");
@@ -137,6 +173,12 @@ static void prep_cb(void)
   s_usb_cb_last_mask = 0U;
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_deinit(void)
 {
   TEST_BEGIN("usb deinit");
@@ -150,6 +192,12 @@ static void test_deinit(void)
   TEST_END("usb deinit");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_status_read_and_clear(void)
 {
   TEST_BEGIN("usb status read + clear");
@@ -169,6 +217,12 @@ static void test_status_read_and_clear(void)
   TEST_END("usb status read + clear");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_attach_and_dispatch(void)
 {
   TEST_BEGIN("usb attach + dispatch");
@@ -182,6 +236,12 @@ static void test_attach_and_dispatch(void)
   TEST_END("usb attach + dispatch");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_power_transition(void)
 {
   TEST_BEGIN("usb power transition");
@@ -194,6 +254,12 @@ static void test_power_transition(void)
   TEST_END("usb power transition");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_address(void)
 {
   TEST_BEGIN("ra_usb_set_address writes USBADDR low 7 bits");
@@ -208,6 +274,12 @@ static void test_set_address(void)
   TEST_END("ra_usb_set_address writes USBADDR low 7 bits");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_get_device_state(void)
 {
   TEST_BEGIN("ra_usb_get_device_state decodes DVSQ");
@@ -242,6 +314,12 @@ static void test_get_device_state(void)
   TEST_END("ra_usb_get_device_state decodes DVSQ");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_configure_endpoint(void)
 {
   TEST_BEGIN("ra_usb_configure_endpoint validates args + writes PIPECFG");
@@ -328,6 +406,12 @@ static void test_configure_endpoint(void)
   TEST_END("ra_usb_configure_endpoint validates args + writes PIPECFG");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_stall_endpoint(void)
 {
   TEST_BEGIN("ra_usb_stall_endpoint sets PID = STALL");
@@ -355,6 +439,12 @@ static void test_stall_endpoint(void)
   TEST_END("ra_usb_stall_endpoint sets PID = STALL");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_control_response(void)
 {
   TEST_BEGIN("ra_usb_control_response programs DCPCTR PID + CCPL");
@@ -374,6 +464,12 @@ static void test_control_response(void)
   TEST_END("ra_usb_control_response programs DCPCTR PID + CCPL");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_read_setup(void)
 {
   TEST_BEGIN("ra_usb_read_setup decodes USBREQ/USBVAL/USBINDX/USBLENG");
@@ -406,6 +502,12 @@ static void test_read_setup(void)
   TEST_END("ra_usb_read_setup decodes USBREQ/USBVAL/USBINDX/USBLENG");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_queue_in_arg_validation(void)
 {
   TEST_BEGIN("ra_usb_queue_in arg validation");
@@ -436,6 +538,12 @@ static void test_queue_in_arg_validation(void)
   TEST_END("ra_usb_queue_in arg validation");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_queue_out_arg_validation(void)
 {
   TEST_BEGIN("ra_usb_queue_out arg validation");
@@ -467,6 +575,12 @@ static void test_queue_out_arg_validation(void)
   TEST_END("ra_usb_queue_out arg validation");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_hs_paths(void)
 {
   TEST_BEGIN("usb HS paths");

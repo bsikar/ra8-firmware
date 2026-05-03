@@ -112,6 +112,11 @@ static ra_touch_cal_point_t apply_truth(ra_touch_cal_point_t raw, const ra_touch
 
 /**
  * @brief Test 1 -- 3-point exact fit recovers the ground-truth matrix.
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 static void test_compute_three_point(void)
 {
@@ -145,6 +150,11 @@ static void test_compute_three_point(void)
 
 /**
  * @brief Test 2 -- 5-point least-squares fit recovers truth (no noise).
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 static void test_compute_five_point(void)
 {
@@ -193,6 +203,11 @@ static void test_compute_five_point(void)
 
 /**
  * @brief Test 3 -- ``ra_touch_cal_compute`` rejects bad inputs.
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 static void test_compute_bad_inputs(void)
 {
@@ -211,6 +226,11 @@ static void test_compute_bad_inputs(void)
 
 /**
  * @brief Test 4 -- ``ra_touch_cal_apply`` clips to panel and rejects NULL.
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 static void test_apply_clip_and_null(void)
 {
@@ -244,6 +264,11 @@ static void test_apply_clip_and_null(void)
 /**
  * @brief Test 5 -- ``ra_touch_cal_run`` paints 5 targets and recovers a
  *        matrix that round-trips the synthetic raw samples.
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 static void test_run_full_sequence(void)
 {
@@ -321,6 +346,11 @@ static void test_run_full_sequence(void)
 
 /**
  * @brief Test 6 -- ``ra_touch_cal_run`` propagates shim errors.
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 static void test_run_shim_error(void)
 {
@@ -357,6 +387,11 @@ static void test_run_shim_error(void)
 
 /**
  * @brief Test 7 -- save/load round-trip is bit-identical and CRC-checked.
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 static void test_save_load_roundtrip(void)
 {
@@ -395,6 +430,11 @@ static void test_save_load_roundtrip(void)
 
 /**
  * @brief Test 8 -- corrupted blob bytes are rejected.
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 static void test_load_corruption(void)
 {

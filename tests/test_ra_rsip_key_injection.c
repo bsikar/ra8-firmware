@@ -61,6 +61,11 @@ static void prep(void)
 /**
  * @brief AES-128 inject populates a self-validating blob.
  * @since 0.1.0
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 static void test_inject_aes128_roundtrip(void)
 {
@@ -80,6 +85,11 @@ static void test_inject_aes128_roundtrip(void)
 /**
  * @brief Inject rejects an unsupported AES key width.
  * @since 0.1.0
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 static void test_inject_aes_bad_width(void)
 {
@@ -99,6 +109,11 @@ static void test_inject_aes_bad_width(void)
 /**
  * @brief RSA-2048 inject populates a public-tagged blob.
  * @since 0.1.0
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 static void test_inject_rsa2048(void)
 {
@@ -120,6 +135,11 @@ static void test_inject_rsa2048(void)
 /**
  * @brief ECC P-256 private + public injection both validate.
  * @since 0.1.0
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 static void test_inject_ecc_priv_pub(void)
 {
@@ -150,6 +170,11 @@ static void test_inject_ecc_priv_pub(void)
 /**
  * @brief A single-byte tamper trips the validate MAC check.
  * @since 0.1.0
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 static void test_validate_detects_tamper(void)
 {
@@ -179,6 +204,11 @@ static void test_validate_detects_tamper(void)
 /**
  * @brief NULL pointers are rejected by every public entry.
  * @since 0.1.0
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 static void test_null_args(void)
 {

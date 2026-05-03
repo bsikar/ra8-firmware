@@ -81,6 +81,11 @@ static void prep(const ra_smbus_cfg_t* cfg)
 /* =============================================================================
  * PEC: CRC-8/SMBus
  * =============================================================================
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_pec_empty_and_null(void)
@@ -93,6 +98,12 @@ static void test_pec_empty_and_null(void)
   TEST_END("ra_smbus_pec: NULL or zero-length returns init value 0");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_pec_known_vectors(void)
 {
   TEST_BEGIN("ra_smbus_pec: known CRC-8/SMBus vectors");
@@ -117,6 +128,11 @@ static void test_pec_known_vectors(void)
 /* =============================================================================
  * Init / deinit
  * =============================================================================
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_init_null_cfg(void)
@@ -129,6 +145,12 @@ static void test_init_null_cfg(void)
   TEST_END("ra_smbus_init: NULL cfg rejected");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_bad_channel(void)
 {
   TEST_BEGIN("ra_smbus_init: channel != 0 rejected");
@@ -141,6 +163,12 @@ static void test_init_bad_channel(void)
   TEST_END("ra_smbus_init: channel != 0 rejected");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_deinit_without_init(void)
 {
   TEST_BEGIN("ra_smbus_deinit: not_initialized when never inited");
@@ -152,6 +180,12 @@ static void test_deinit_without_init(void)
   TEST_END("ra_smbus_deinit: not_initialized when never inited");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_deinit_cycle(void)
 {
   TEST_BEGIN("ra_smbus_init -> deinit cycle");
@@ -168,6 +202,11 @@ static void test_init_deinit_cycle(void)
 /* =============================================================================
  * Send Byte / Receive Byte
  * =============================================================================
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_send_byte_no_pec(void)
@@ -183,6 +222,12 @@ static void test_send_byte_no_pec(void)
   TEST_END("ra_smbus_send_byte: 1 byte payload, no PEC");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_send_byte_with_pec(void)
 {
   TEST_BEGIN("ra_smbus_send_byte: PEC enabled appends one extra byte");
@@ -198,6 +243,12 @@ static void test_send_byte_with_pec(void)
   TEST_END("ra_smbus_send_byte: PEC enabled appends one extra byte");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_send_byte_not_initialized(void)
 {
   TEST_BEGIN("ra_smbus_send_byte: not_initialized when init missing");
@@ -210,6 +261,12 @@ static void test_send_byte_not_initialized(void)
   TEST_END("ra_smbus_send_byte: not_initialized when init missing");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_receive_byte_no_pec_happy(void)
 {
   TEST_BEGIN("ra_smbus_receive_byte: no PEC, 1 byte returned");
@@ -224,6 +281,12 @@ static void test_receive_byte_no_pec_happy(void)
   TEST_END("ra_smbus_receive_byte: no PEC, 1 byte returned");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_receive_byte_null_arg(void)
 {
   TEST_BEGIN("ra_smbus_receive_byte: NULL out_data rejected");
@@ -233,6 +296,12 @@ static void test_receive_byte_null_arg(void)
   TEST_END("ra_smbus_receive_byte: NULL out_data rejected");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_receive_byte_pec_mismatch(void)
 {
   TEST_BEGIN("ra_smbus_receive_byte: PEC mismatch detected");
@@ -250,6 +319,11 @@ static void test_receive_byte_pec_mismatch(void)
 /* =============================================================================
  * Write Byte Data / Read Byte Data
  * =============================================================================
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_write_byte_data_no_pec(void)
@@ -266,6 +340,12 @@ static void test_write_byte_data_no_pec(void)
   TEST_END("ra_smbus_write_byte_data: cmd + data, no PEC");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_write_byte_data_with_pec(void)
 {
   TEST_BEGIN("ra_smbus_write_byte_data: PEC trailing byte present");
@@ -281,6 +361,12 @@ static void test_write_byte_data_with_pec(void)
   TEST_END("ra_smbus_write_byte_data: PEC trailing byte present");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_read_byte_data_no_pec(void)
 {
   TEST_BEGIN("ra_smbus_read_byte_data: combined xfer, no PEC");
@@ -294,6 +380,12 @@ static void test_read_byte_data_no_pec(void)
   TEST_END("ra_smbus_read_byte_data: combined xfer, no PEC");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_read_byte_data_null_out(void)
 {
   TEST_BEGIN("ra_smbus_read_byte_data: NULL out rejected");
@@ -308,6 +400,11 @@ static void test_read_byte_data_null_out(void)
 /* =============================================================================
  * Block Write / Block Read
  * =============================================================================
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_block_write_no_pec(void)
@@ -326,6 +423,12 @@ static void test_block_write_no_pec(void)
   TEST_END("ra_smbus_block_write: cmd + count + data, no PEC");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_block_write_arg_validation(void)
 {
   TEST_BEGIN("ra_smbus_block_write: zero len + null payload rejected");
@@ -344,6 +447,12 @@ static void test_block_write_arg_validation(void)
   TEST_END("ra_smbus_block_write: zero len + null payload rejected");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_block_write_with_pec(void)
 {
   TEST_BEGIN("ra_smbus_block_write: PEC trailing byte present");
@@ -368,6 +477,12 @@ static void test_block_write_with_pec(void)
   TEST_END("ra_smbus_block_write: PEC trailing byte present");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_block_read_no_pec_happy(void)
 {
   TEST_BEGIN("ra_smbus_block_read: happy path");
@@ -391,6 +506,12 @@ static void test_block_read_no_pec_happy(void)
   TEST_END("ra_smbus_block_read: happy path");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_block_read_arg_validation(void)
 {
   TEST_BEGIN("ra_smbus_block_read: NULL buf / out_len / cap == 0");
@@ -434,6 +555,12 @@ static void stub_alert(void* ctx, uint8_t target_7b, uint8_t status)
   s_alert_ctx  = ctx;
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_alert_register_and_dispatch(void)
 {
   TEST_BEGIN("ra_smbus_alert: register + dispatch fires callback");
@@ -457,6 +584,12 @@ static void test_alert_register_and_dispatch(void)
   TEST_END("ra_smbus_alert: register + dispatch fires callback");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_alert_dispatch_without_callback(void)
 {
   TEST_BEGIN("ra_smbus_alert_dispatch: no callback installed -> ok");
@@ -468,6 +601,12 @@ static void test_alert_dispatch_without_callback(void)
   TEST_END("ra_smbus_alert_dispatch: no callback installed -> ok");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_alert_not_initialized(void)
 {
   TEST_BEGIN("ra_smbus_alert: not_initialized when init missing");

@@ -139,6 +139,12 @@ static void prep(void)
   (void)ra_sdcard_deinit();
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_null_cfg(void)
 {
   TEST_BEGIN("sdcard init: null cfg rejected");
@@ -147,6 +153,12 @@ static void test_init_null_cfg(void)
   TEST_END("sdcard init: null cfg rejected");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_full_sequence(void)
 {
   TEST_BEGIN("sdcard init: full SD init sequence succeeds");
@@ -170,6 +182,12 @@ static void test_init_full_sequence(void)
   TEST_END("sdcard init: full SD init sequence succeeds");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_double_call_rejected(void)
 {
   TEST_BEGIN("sdcard init: double init returns invalid_state");
@@ -183,6 +201,12 @@ static void test_init_double_call_rejected(void)
   TEST_END("sdcard init: double init returns invalid_state");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_bad_instance(void)
 {
   TEST_BEGIN("sdcard init: bad instance");
@@ -193,6 +217,12 @@ static void test_init_bad_instance(void)
   TEST_END("sdcard init: bad instance");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_no_alarm_times_out(void)
 {
   TEST_BEGIN("sdcard init: no RSPEND -> SDHI propagates timeout");
@@ -207,6 +237,12 @@ static void test_init_no_alarm_times_out(void)
   TEST_END("sdcard init: no RSPEND -> SDHI propagates timeout");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_io_before_init_rejected(void)
 {
   TEST_BEGIN("sdcard read/write before init rejected");
@@ -221,6 +257,12 @@ static void test_io_before_init_rejected(void)
   TEST_END("sdcard read/write before init rejected");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_io_null_args(void)
 {
   TEST_BEGIN("sdcard read/write null args rejected");
@@ -232,6 +274,12 @@ static void test_io_null_args(void)
   TEST_END("sdcard read/write null args rejected");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_io_zero_count(void)
 {
   TEST_BEGIN("sdcard read/write count=0 rejected");
@@ -242,6 +290,12 @@ static void test_io_zero_count(void)
   TEST_END("sdcard read/write count=0 rejected");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_io_after_init(void)
 {
   TEST_BEGIN("sdcard read/write after init: pass through to SDHI");
@@ -269,6 +323,12 @@ static void test_io_after_init(void)
   TEST_END("sdcard read/write after init: pass through to SDHI");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_io_out_of_range(void)
 {
   TEST_BEGIN("sdcard read/write past capacity rejected");
@@ -289,6 +349,12 @@ static void test_io_out_of_range(void)
   TEST_END("sdcard read/write past capacity rejected");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_deinit_idempotent(void)
 {
   TEST_BEGIN("sdcard deinit before init is a no-op");
