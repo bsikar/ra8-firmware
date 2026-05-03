@@ -177,6 +177,41 @@ void ra_modem_at_internal_capture_line(const char* line,
                                        size_t      capture_len,
                                        size_t*     used);
 
+/**
+ * @brief Pure (state-free) reimplementation of @c internal_reset_line's
+ *        line-227 buffer-clear guard.
+ *
+ * @details Returns true iff @p line_buf is non-NULL and
+ *          @p line_buf_len > 0 -- the exact decision exercised by the
+ *          production helper @c internal_reset_line at line 227. The
+ *          state-reading wrapper passes through @c s_mod.cfg.line_buf /
+ *          @c s_mod.cfg.line_buf_len, both of which are gated by the
+ *          init validator. This pure sibling exists so tests can drive
+ *          the AND under -fcoverage-mcdc with all four input
+ *          combinations.
+ *
+ * @param[in] line_buf     Caller-owned line buffer (NULL when absent).
+ * @param[in] line_buf_len Capacity of @p line_buf in bytes.
+ *
+ * @return Boolean predicate.
+ * @retval true  Both arguments are non-NULL / non-zero (would clear).
+ * @retval false Either argument signals "no buffer installed".
+ *
+ * @pre None.
+ * @pre None.
+ * @post No state mutated.
+ * @post Return value depends solely on the two inputs.
+ *
+ * @note Test-access only. Pure function.
+ *
+ * @par MC/DC:
+ * Drives line 227 ``(s_mod.cfg.line_buf != nullptr) &&
+ * (s_mod.cfg.line_buf_len > 0U)`` (2 conditions, AND; N+1 = 3 vectors).
+ *
+ * @since 0.1.0
+ */
+uint8_t ra_modem_at_internal_reset_line_should_clear(const void* line_buf, uint16_t line_buf_len);
+
 #ifdef __cplusplus
 }
 #endif
