@@ -1,6 +1,6 @@
 /**
  * @file test_ra_spi_b.c
- * @brief MC/DC unit tests for ra_spi_b.c (SPI_B master driver).
+ * @brief MC/DC unit tests for ra_spi_b.c (SPI_B controller driver).
  *
  * @details
  * Targets the nine compound boolean decisions in ra_spi_b.c that
