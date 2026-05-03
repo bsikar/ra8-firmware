@@ -1,5 +1,8 @@
 # Plan for Software Aspects of Certification (PSAC)
 
+**Last refreshed**: 2026-05-03 (numbers re-synced to live audit
+artefacts after Wave 24 closure; see Section 8).
+
 **Status**: First draft, 2026-05-02. Authored against the Phase 7 schedule
 in [`../QUALIFICATION_ROADMAP.md`](../QUALIFICATION_ROADMAP.md) Section 3.
 **DO-178C reference**: Section 11.1.
@@ -121,9 +124,10 @@ miniz, stb, TinyXML-2). Each entry carries a written qualification
 basis and a 12-month re-review cadence.
 
 Vendor binary blobs that **cannot** be source-audited (RSIP-E50D
-firmware image, Renesas BLE controller patch image) are tracked
-separately in [`../VENDOR_BLOBS.md`](../VENDOR_BLOBS.md) and are
-listed as open blockers in Section 7 below.
+firmware image, Renesas BLE controller patch image) are vendored under
+[`../../libs/third_party/fsp_blobs/`](../../libs/third_party/fsp_blobs/)
+and tracked under SOUP per `docs/SOUP/`; they remain runtime
+dependencies for any app that exercises the corresponding peripheral.
 
 ---
 
@@ -187,9 +191,11 @@ MC/DC condition to be classified as one of:
 
 The current MC/DC instrumentation is described in
 [`../MCDC.md`](../MCDC.md). The first-party MC/DC measurement at
-the time of this draft is **70.40 %** (clang-18 instrumentation,
-149/178 host tests pass, captured 2026-05-02 evening; see
-[`../MCDC.md`](../MCDC.md) "Measurement history").
+the time of this refresh is **92.29 % absolute / 100.00 % reachable**
+(clang-18 instrumentation, 190/190 host tests pass, captured
+2026-05-03 wave-24; see [`../MCDC.md`](../MCDC.md) "Measurement
+history"). 58 conditions are catalogued as deactivated under
+DO-178C 6.4.4.3 in [`../MCDC_DEACTIVATIONS.md`](../MCDC_DEACTIVATIONS.md).
 
 ### 3.4 Parameter data items
 
@@ -362,7 +368,7 @@ out of scope until the RSIP blocker (Section 7.2) is resolved.
 
 ---
 
-## 8. Current-state metrics (2026-05-02)
+## 8. Current-state metrics (2026-05-03 refresh)
 
 These numbers are pulled from the live audit artefacts in this tree
 and reproduce the snapshot in
@@ -372,15 +378,15 @@ isolation has the gap picture without chasing references.
 
 | Metric                                                      | Value             | Source                                  |
 |-------------------------------------------------------------|-------------------|-----------------------------------------|
-| First-party MC/DC (latest measured)                         | 70.40 %           | [`../MCDC.md`](../MCDC.md) measurement history |
-| First-party compound decisions in scope                     | 609               | [`../MCDC_GAPS.md`](../MCDC_GAPS.md)    |
-| Estimated additional MC/DC vectors needed                   | 1956              | [`../MCDC_GAPS.md`](../MCDC_GAPS.md)    |
-| Functions audited for doxygen                               | 2588              | [`../DOXYGEN_GAPS.md`](../DOXYGEN_GAPS.md) |
-| Functions with at least one missing doxygen tag             | 2557              | [`../DOXYGEN_GAPS.md`](../DOXYGEN_GAPS.md) |
-| Total missing-tag instances                                 | 20328             | [`../DOXYGEN_GAPS.md`](../DOXYGEN_GAPS.md) |
-| MISRA-C 2012 unique findings (cppcheck advisory)            | 1271              | [`../MISRA.md`](../MISRA.md)            |
-| Test files (`tests/test_*.c`)                               | 157               | [`../QUALIFICATION_ROADMAP.md`](../QUALIFICATION_ROADMAP.md) |
-| First-party `.c` translation units                          | 143               | [`../QUALIFICATION_ROADMAP.md`](../QUALIFICATION_ROADMAP.md) |
+| First-party MC/DC, reachable (gate metric)                  | **100.00 %**      | [`../MCDC.md`](../MCDC.md) measurement history (wave-24) |
+| First-party MC/DC, absolute                                 | 92.29 %           | same                                    |
+| Deactivated conditions (DO-178C 6.4.4.3)                    | 58                | [`../MCDC_DEACTIVATIONS.md`](../MCDC_DEACTIVATIONS.md) |
+| Functions audited for doxygen                               | 2747              | [`../DOXYGEN_GAPS.md`](../DOXYGEN_GAPS.md) |
+| Functions with at least one missing doxygen tag             | **0**             | [`../DOXYGEN_GAPS.md`](../DOXYGEN_GAPS.md) |
+| Total missing-tag instances                                 | 0                 | [`../DOXYGEN_GAPS.md`](../DOXYGEN_GAPS.md) |
+| MISRA-C 2012 unique findings (cppcheck advisory)            | 1271              | [`../MISRA.md`](../MISRA.md); cppcheck-only policy ([`./MISRA_DEVIATIONS.md`](./MISRA_DEVIATIONS.md)) |
+| Host unit-test files (`tests/test_*.c`)                     | 190               | `ls tests/test_*.c \| wc -l` (190/190 PASS) |
+| Example apps under `examples/`                              | 36 (26 EVM + 10 unsupported) | `find examples -mindepth 2 -maxdepth 2 -type d` |
 | EVM apps swept on hardware (latest sweep)                   | 26                | [`../HARDWARE_BRINGUP.md`](../HARDWARE_BRINGUP.md) night sweep |
 | EVM apps PASS (latest sweep)                                | 20                | [`../HARDWARE_BRINGUP.md`](../HARDWARE_BRINGUP.md) night sweep |
 | EVM apps WIP (panic_halt -- caught init failure)            | 4                 | [`../HARDWARE_BRINGUP.md`](../HARDWARE_BRINGUP.md) night sweep |

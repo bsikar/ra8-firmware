@@ -1,5 +1,8 @@
 # MISRA-C 2012 Deviation Register
 
+**Last refreshed**: 2026-05-03 (cppcheck-only policy verified; D-001..D-005
+remain the active set; deviation counts unchanged from 2026-05-02 baseline).
+
 This document records every formal deviation taken against MISRA-C 2012
 in the ra8d2-firmware codebase, following the deviation procedure in
 **MISRA-C:2012 section 5.2** (rationale, scope, alternative

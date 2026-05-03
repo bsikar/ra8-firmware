@@ -1,5 +1,8 @@
 # Software Development Plan (SDP)
 
+**Last refreshed**: 2026-05-03 (numbers re-synced to live audit
+artefacts after Wave 24 closure).
+
 **Status**: First draft, 2026-05-02. Authored against the Phase 7 schedule
 in [`../QUALIFICATION_ROADMAP.md`](../QUALIFICATION_ROADMAP.md) Section 3.
 **DO-178C reference**: Section 11.2.
@@ -70,9 +73,9 @@ declarations in headers.
 Doxygen rules are stated in
 [`../../CLAUDE.md`](../../CLAUDE.md) "Doxygen Documentation
 Requirements" -- every applicable tag is mandatory. The current gap
-list is [`../DOXYGEN_GAPS.md`](../DOXYGEN_GAPS.md) (2557 functions
-with at least one missing tag at the time of writing). Phase 3 of
-the roadmap drives this to zero.
+list is [`../DOXYGEN_GAPS.md`](../DOXYGEN_GAPS.md) (**0 functions
+with gaps** out of 2747 audited at the time of refresh -- Phase 3
+acceptance gate met).
 
 ### 1.5 Hardware citation standard
 
@@ -122,11 +125,11 @@ CI; until that lands, the developer is responsible for running an
 CI runs in GitHub Actions via
 [`../../.github/workflows/firmware.yml`](../../.github/workflows/firmware.yml).
 The pre-commit hook ([`../../scripts/git/pre-commit`](../../scripts/git/pre-commit))
-enforces the same gates locally. The hardware-in-the-loop runner
-described in Phase 6 of
-[`../QUALIFICATION_ROADMAP.md`](../QUALIFICATION_ROADMAP.md) is not
-yet stood up; until then `make smoke` is executed manually as
-documented in [`../HARDWARE_BRINGUP.md`](../HARDWARE_BRINGUP.md).
+enforces the same gates locally. Hardware-in-the-loop is run from the
+developer laptop via the pre-push workflow documented in
+[`../HIL_DEVELOPER_WORKFLOW.md`](../HIL_DEVELOPER_WORKFLOW.md); a
+self-hosted CI runner is **not** in scope (the project's permanent
+HIL posture is developer-laptop pre-push, not a leased runner farm).
 
 ### 2.4 Probe and target
 
@@ -239,8 +242,8 @@ the source of truth for the gate set.
 
 ### 4.4 Test
 
-Host-side unit tests live under [`../../tests/`](../../tests/) (157
-files matching `test_*.c` at the time of writing) and run on the
+Host-side unit tests live under [`../../tests/`](../../tests/) (190
+files matching `test_*.c` at the time of refresh; 190/190 PASS) and run on the
 developer host with the platform `gcc`/`clang`. `make test` runs the
 suite; `make mcdc` re-runs it under clang's MC/DC instrumentation.
 
@@ -328,9 +331,11 @@ binary with `LLVM_PROFILE_FILE` set, merges via `llvm-profdata
 merge -sparse`, and renders the report under `build/mcdc-report/`.
 Default threshold is 100 % (per DO-178C Section 6.4.4.2 for Level B);
 the threshold is overridable via `RA_MCDC_THRESHOLD=NN` for
-intermediate phase gates. The current measurement is **70.40 %**
-(2026-05-02 evening, see [`../MCDC.md`](../MCDC.md) measurement
-history).
+intermediate phase gates. The current measurement is **100.00 %
+reachable / 92.29 % absolute** (2026-05-03 wave-24, see
+[`../MCDC.md`](../MCDC.md) measurement history). 58 conditions are
+catalogued as deactivated under DO-178C 6.4.4.3 in
+[`../MCDC_DEACTIVATIONS.md`](../MCDC_DEACTIVATIONS.md).
 
 ### 6.4 Hardware smoke
 
@@ -339,7 +344,9 @@ history).
 which flashes every EVM app, halts the chip, dumps registers, and
 classifies the resolved PC as PASS / WIP / FAIL / NOBUILD / UNKNOWN
 per the rubric in [`../HARDWARE_BRINGUP.md`](../HARDWARE_BRINGUP.md).
-Phase 6 of the roadmap wires this onto a self-hosted CI runner.
+Hardware-in-the-loop is a developer-laptop pre-push step (see
+[`../HIL_DEVELOPER_WORKFLOW.md`](../HIL_DEVELOPER_WORKFLOW.md)); a
+self-hosted runner is **not** in scope.
 
 ### 6.5 MISRA-C 2012
 
@@ -350,8 +357,10 @@ which runs cppcheck with the MISRA addon and writes
 findings** (down from 1371 after D-004 closure; see
 [`../MISRA.md`](../MISRA.md)). The deviation register at
 [`./MISRA_DEVIATIONS.md`](./MISRA_DEVIATIONS.md) tracks the formal
-disposition (D-001 .. D-005 today). Phase 4 of the roadmap closes the
-remaining findings and flips `make misra` from advisory to blocking.
+disposition (D-001 .. D-005 today). The project's permanent MISRA
+posture is **cppcheck-only** (no commercial checker -- LDRA / Helix
+QAC / Polyspace are out of scope under the MIT-licensed personal-
+project policy in [`../CERTIFICATION_SCOPE.md`](../CERTIFICATION_SCOPE.md)).
 
 ### 6.6 Stack-usage analysis
 
@@ -366,19 +375,18 @@ overflow).
 
 `scripts/utils/doxy_audit.py` walks `libs/`, `src/`, `port/` (third
 party excluded) and reports per-function missing-tag counts to
-[`../DOXYGEN_GAPS.md`](../DOXYGEN_GAPS.md). Current gap: **2557
-functions with at least one missing tag, 20328 missing-tag instances
-total**. Phase 3 of the roadmap drives this to zero.
+[`../DOXYGEN_GAPS.md`](../DOXYGEN_GAPS.md). Current gap: **0 functions
+with gaps** out of 2747 audited (Phase 3 acceptance gate met).
 
 ### 6.8 Coverage caveats
 
 cppcheck-MISRA implements roughly two thirds of the mandatory +
 required rules ([`../MISRA.md`](../MISRA.md) "The cppcheck-MISRA
-limitation"). A qualified commercial checker (LDRA / Helix QAC /
-Polyspace) is required before any external SOI-3 audit; procurement
-is open per
-[`../QUALIFICATION_ROADMAP.md`](../QUALIFICATION_ROADMAP.md)
-Section 6.
+limitation"). The project's permanent policy is **cppcheck-only**;
+commercial checker procurement is **out of scope** per
+[`../CERTIFICATION_SCOPE.md`](../CERTIFICATION_SCOPE.md). Downstream
+adopters who need full mandatory + required coverage must engage their
+own qualified checker.
 
 ---
 

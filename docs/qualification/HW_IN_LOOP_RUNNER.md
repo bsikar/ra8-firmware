@@ -1,4 +1,18 @@
-# Hardware-in-the-Loop CI Runner Setup (EK-RA8D2)
+# Hardware-in-the-Loop CI Runner Setup (EK-RA8D2) -- DEPRECATED
+
+**Status: DEPRECATED (2026-05-03).** This document describes a
+self-hosted GitHub Actions runner that the project no longer pursues.
+The current and **permanent** HIL posture is the developer-laptop
+pre-push workflow documented in
+[`../HIL_DEVELOPER_WORKFLOW.md`](../HIL_DEVELOPER_WORKFLOW.md).
+
+A self-hosted runner is **out of scope** per
+[`../CERTIFICATION_SCOPE.md`](../CERTIFICATION_SCOPE.md) (MIT-licensed
+personal project; leased runner farms are not pursued). The remainder
+of this document is preserved for historical reference only -- do not
+follow these steps.
+
+----
 
 This document is the operator's manual for standing up a self-hosted
 GitHub Actions runner that flashes every PR onto a real EK-RA8D2 board

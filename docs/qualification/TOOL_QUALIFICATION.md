@@ -2,6 +2,7 @@
 
 **Document ID**: ra8d2-toolq-001
 **Version**: 0.1 (first draft, Phase 7 of `docs/QUALIFICATION_ROADMAP.md`).
+**Last refreshed**: 2026-05-03 (HIL posture re-stated as developer-laptop pre-push).
 **Date**: 2026-05-02.
 **Author**: Brighton Sikarskie.
 **DO-178C reference**: Section 12.2 + RTCA DO-330.
@@ -198,14 +199,14 @@ hand-traced decisions, and so on.
 |                                 | environment skew between developer machine and CI surfaces as     |
 |                                 | a CI-only failure that blocks merge.                              |
 | Compensating verification       | (a) Local pre-commit hook reproduces the same gates. (b) HW       |
-|                                 | smoke is a separate self-hosted runner (Phase 6, pending).         |
+|                                 | smoke is the developer-laptop pre-push workflow                    |
+|                                 | (`docs/HIL_DEVELOPER_WORKFLOW.md`).                                |
 |                                 | (c) Artifact retention preserves the build log for post-mortem.   |
 | Re-qualification trigger        | Major OS-image bump on the hosted runner; toolchain installer     |
 |                                 | bump captured by the workflow file's version pin.                 |
-| Open item                       | Phase 6 (HW-in-the-loop CI on a self-hosted runner with the      |
-|                                 | EK-RA8D2 + J-Link OB attached) is not yet stood up. Tracked in   |
-|                                 | `docs/QUALIFICATION_ROADMAP.md` Section 3 Phase 6 and             |
-|                                 | `docs/qualification/SVR.md` OP-008.                               |
+| Open item                       | None. HIL is **permanently** developer-laptop pre-push per         |
+|                                 | `docs/CERTIFICATION_SCOPE.md`; a self-hosted runner is out of      |
+|                                 | scope.                                                             |
 
 ## 7. Adjunct tools (recorded for completeness)
 
@@ -230,8 +231,9 @@ output is downstream-verified.
 No tool in the chain currently requires TQL-1 because none of them
 emit certified production code without a downstream verification
 step. The closest call is the cross compiler; the mitigation is the
-hardware-in-the-loop smoke (Phase 6 of the roadmap) plus the
-host-side integration tests (Phase 5).
+developer-laptop pre-push hardware-in-the-loop smoke
+(`docs/HIL_DEVELOPER_WORKFLOW.md`) plus the host-side integration
+tests (25/26 EVM apps covered).
 
 ## 8. Re-qualification cadence summary
 
@@ -254,3 +256,4 @@ host-side integration tests (Phase 5).
 | Date       | Author             | Change                                            |
 |------------|--------------------|---------------------------------------------------|
 | 2026-05-02 | Brighton Sikarskie | Initial first-draft population (Phase 7 kickoff). |
+| 2026-05-03 | Brighton Sikarskie | Re-stated HIL posture as developer-laptop pre-push (`docs/HIL_DEVELOPER_WORKFLOW.md`); self-hosted runner out of scope. |
