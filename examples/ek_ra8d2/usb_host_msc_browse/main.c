@@ -1,5 +1,5 @@
 /**
- * @file main.c
+ * @file examples/ek_ra8d2/usb_host_msc_browse/main.c
  * @brief USB host-mode MSC (Mass Storage) browser smoke test for EK-RA8D2 (USB-HS)
  *
  * @par Tag

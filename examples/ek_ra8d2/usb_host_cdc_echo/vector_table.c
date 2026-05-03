@@ -1,5 +1,5 @@
 /**
- * @file examples/usb_host_cdc_echo/vector_table.c
+ * @file examples/ek_ra8d2/usb_host_cdc_echo/vector_table.c
  * @brief Cortex-M85 vector table and default interrupt handlers for RA8D2
  *
  * @details

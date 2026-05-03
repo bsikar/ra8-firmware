@@ -1,5 +1,5 @@
 /**
- * @file examples/audio_loopback/secure_exception.c
+ * @file examples/_unsupported/audio_loopback/secure_exception.c
  * @brief Secure-side fault handler for NS -> S violations
  *
  * @par Tag

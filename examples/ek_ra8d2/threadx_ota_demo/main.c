@@ -1,5 +1,5 @@
 /**
- * @file examples/threadx_ota_demo/main.c
+ * @file examples/ek_ra8d2/threadx_ota_demo/main.c
  * @brief Eclipse ThreadX OTA-orchestration demo for RA8D2
  *
  * @par Tag

@@ -1,5 +1,5 @@
 /**
- * @file main.c
+ * @file examples/ek_ra8d2/usb_host_cdc_echo/main.c
  * @brief USB host-mode CDC ACM echo smoke test for EK-RA8D2 (USB-HS controller)
  *
  * @par Tag

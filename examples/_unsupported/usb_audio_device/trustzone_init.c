@@ -1,5 +1,5 @@
 /**
- * @file examples/usb_audio_device/trustzone_init.c
+ * @file examples/_unsupported/usb_audio_device/trustzone_init.c
  * @brief Cortex-M85 TrustZone-M Security Attribution Unit (SAU) bring-up
  *
  * @par Tag

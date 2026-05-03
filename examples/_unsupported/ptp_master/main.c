@@ -1,5 +1,5 @@
 /**
- * @file main.c
+ * @file examples/_unsupported/ptp_master/main.c
  * @brief IEEE 1588-2019 PTP master smoke test for EK-RA8D2
  *        (1 Hz Sync + Announce over Ethernet, MAC 02:00:00:00:00:01)
  *

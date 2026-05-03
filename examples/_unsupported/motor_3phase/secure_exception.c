@@ -1,5 +1,5 @@
 /**
- * @file examples/motor_3phase/secure_exception.c
+ * @file examples/_unsupported/motor_3phase/secure_exception.c
  * @brief Secure-side fault handler for NS -> S violations
  *
  * @par Tag

@@ -1,5 +1,5 @@
 /**
- * @file main.c
+ * @file examples/ek_ra8d2/threadx_lwip_tcp_echo/main.c
  * @brief ThreadX + lwIP TCP echo demo for EK-RA8D2
  *
  * @par Tag

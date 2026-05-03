@@ -1,5 +1,5 @@
 /**
- * @file examples/usb_cdc_echo/secure_exception.c
+ * @file examples/ek_ra8d2/usb_cdc_echo/secure_exception.c
  * @brief Secure-side fault handler for NS -> S violations
  *
  * @par Tag

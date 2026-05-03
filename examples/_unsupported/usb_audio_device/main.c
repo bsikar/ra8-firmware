@@ -1,5 +1,5 @@
 /**
- * @file main.c
+ * @file examples/_unsupported/usb_audio_device/main.c
  * @brief USB Audio Class 1.0 device-mode smoke test for EK-RA8D2
  *        (USB-FS, 48 kHz / 16-bit / stereo iso-IN sine generator)
  *

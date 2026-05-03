@@ -1,5 +1,5 @@
 /**
- * @file main.c
+ * @file examples/ek_ra8d2/sdram_benchmark/main.c
  * @brief External SDRAM bring-up + 64 KB write/read benchmark on EK-RA8D2
  *
  * @par Tag

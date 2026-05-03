@@ -1,5 +1,5 @@
 /**
- * @file examples/threadx_guix_demo/main.c
+ * @file examples/ek_ra8d2/threadx_guix_demo/main.c
  * @brief Eclipse ThreadX + GUIX hello-world demo on the EK-RA8D2
  *
  * @par Tag

@@ -1,5 +1,5 @@
 /**
- * @file main.c
+ * @file examples/ek_ra8d2/lcd_demo/main.c
  * @brief Two-layer GLCDC demo for EK-RA8D2 (1024x600 7-inch parallel TFT)
  *
  * @par Tag

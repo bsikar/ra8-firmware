@@ -1,5 +1,5 @@
 /**
- * @file main.c
+ * @file examples/ek_ra8d2/ethernet_tcp_echo/main.c
  * @brief Ethernet TCP echo responder for EK-RA8D2 (sweep-2 ra_eth ring exercise)
  *
  * @par Tag

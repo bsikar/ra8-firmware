@@ -1,5 +1,5 @@
 /**
- * @file main.c
+ * @file examples/ek_ra8d2/blink_hal/main.c
  * @brief HAL-based LED-blink demo for EK-RA8D2 (using ra_board_ek_ra8d2)
  *
  * @par Tag

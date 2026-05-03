@@ -1,5 +1,5 @@
 /**
- * @file main.c
+ * @file examples/ek_ra8d2/icu_extint_demo/main.c
  * @brief ICU external-interrupt-on-user-button demo for EK-RA8D2
  *
  * @par Tag

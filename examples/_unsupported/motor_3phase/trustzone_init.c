@@ -1,5 +1,5 @@
 /**
- * @file examples/motor_3phase/trustzone_init.c
+ * @file examples/_unsupported/motor_3phase/trustzone_init.c
  * @brief Cortex-M85 TrustZone-M Security Attribution Unit (SAU) bring-up
  *
  * @par Tag

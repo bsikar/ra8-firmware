@@ -1,5 +1,5 @@
 /**
- * @file examples/ble_peripheral/trustzone_init.c
+ * @file examples/_unsupported/ble_peripheral/trustzone_init.c
  * @brief Cortex-M85 TrustZone-M Security Attribution Unit (SAU) bring-up
  *
  * @par Tag

@@ -1,5 +1,5 @@
 /**
- * @file examples/threadx_sdcard_demo/trustzone_init.c
+ * @file examples/_unsupported/threadx_sdcard_demo/trustzone_init.c
  * @brief Cortex-M85 TrustZone-M Security Attribution Unit (SAU) bring-up
  *
  * @par Tag

@@ -1,5 +1,5 @@
 /**
- * @file examples/threadx_https_client/main.c
+ * @file examples/_unsupported/threadx_https_client/main.c
  * @brief ThreadX + NetX Duo + Mbed TLS HTTPS client demo for EK-RA8D2
  *
  * @par Tag

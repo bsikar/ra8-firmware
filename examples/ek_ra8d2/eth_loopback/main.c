@@ -1,5 +1,5 @@
 /**
- * @file main.c
+ * @file examples/ek_ra8d2/eth_loopback/main.c
  * @brief ETHA per-port internal loopback bring-up demo for EK-RA8D2
  *
  * @par Tag
