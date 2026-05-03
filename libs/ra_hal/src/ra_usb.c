@@ -670,10 +670,20 @@ ra_err_t ra_usb_configure_endpoint(ra_usb_speed_t   speed,
   reg->PIPEMAXP = max_packet;
   reg->PIPEPERI = 0U;
 
-  /* HUM Ch 36.2.27 "PIPEnCTR : PIPE n Control Register", p 2005 */
-  /* PID = NAK; toggle clear so first packet is DATA0. */
-  internal_pipe_pid(reg, pipe_num, k_ra_pid_nak);
+  /* HUM Ch 36.2.27 "PIPEnCTR : PIPE n Control Register", p 2005.
+   * Clear the data-toggle so the first packet is DATA0. For OUT pipes,
+   * arm the controller with PID=BUF so the very first OUT token from
+   * the host is ACKed and the bytes land in the pipe FIFO -- otherwise
+   * the bridge waits for ra_usb_queue_out to flip PID=BUF, but
+   * ra_usb_queue_out only runs AFTER bytes arrive, leaving the pipe
+   * stuck in NAK forever. IN pipes stay NAK until ra_usb_queue_in
+   * actually has data to push (which then flips PID=BUF). */
   internal_rmw16(&reg->PIPECTR[(uint8_t)(pipe_num - 1U)], k_ra_pipectr_sqclr, 0U);
+  if (dir == k_ra_usb_ep_dir_out) {
+    internal_pipe_pid(reg, pipe_num, k_ra_pid_buf);
+  } else {
+    internal_pipe_pid(reg, pipe_num, k_ra_pid_nak);
+  }
   return k_ra_ok;
 }
 
@@ -1040,6 +1050,18 @@ ra_usb_queue_out(ra_usb_speed_t speed, uint8_t pipe_num, uint8_t* out_buf, uint1
     return arg_err;
   }
 
+  /* Fast path: BRDYSTS bit `pipe_num` is set by hardware when an OUT
+   * packet has landed in this pipe's FIFO buffer. If it's clear, no
+   * data is waiting -- return k_ra_err_no_data WITHOUT entering the
+   * 10ms FRDY spin (which would otherwise starve the polled-dispatch
+   * worker that calls this every iteration).
+   * HUM Ch 36.2.12 "BRDYSTS : BRDY Interrupt Status Register", p 1983. */
+  const uint16_t pipe_bit = (uint16_t)(1U << pipe_num);
+  if ((reg->BRDYSTS & pipe_bit) == 0U) {
+    *inout_len = 0U;
+    return k_ra_err_no_data;
+  }
+
   internal_select_cfifo(reg, pipe_num, false);
   const ra_err_t ready = internal_wait_frdy(reg);
   RA_RETURN_ON_ERROR(ready, s_tag, "queue_out: FRDY timeout");
@@ -1047,13 +1069,17 @@ ra_usb_queue_out(ra_usb_speed_t speed, uint8_t pipe_num, uint8_t* out_buf, uint1
   /* HUM Ch 36.2.8 "CFIFOCTR : CFIFO Port Control Register", p 1979 */
   const uint16_t available = (uint16_t)(reg->CFIFOCTR & k_ra_fifoctr_dtln);
   if (available == 0U) {
-    *inout_len = 0U;
+    /* Ack BRDY for this pipe and re-arm. */
+    reg->BRDYSTS = (uint16_t)(~pipe_bit);
+    *inout_len   = 0U;
     return k_ra_err_no_data;
   }
   const uint16_t take = (available < *inout_len) ? available : *inout_len;
   internal_fifo_read(reg, out_buf, take);
   *inout_len    = take;
   reg->CFIFOCTR = k_ra_fifoctr_bclr;
+  /* Ack BRDY for this pipe (W0C: write 0 to clear). */
+  reg->BRDYSTS = (uint16_t)(~pipe_bit);
   internal_pipe_pid(reg, pipe_num, k_ra_pid_buf);
   return k_ra_ok;
 }
