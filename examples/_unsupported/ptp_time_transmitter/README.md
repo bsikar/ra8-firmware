@@ -1,8 +1,8 @@
-# ptp_master
+# ptp_time_transmitter
 
-IEEE 1588-2019 PTP master smoke test for the EK-RA8D2. Brings up the
+IEEE 1588-2019 PTP controller smoke test for the EK-RA8D2. Brings up the
 on-chip Ethernet MAC at MAC `02:00:00:00:00:01`, waits for PHY link-up,
-arms the PTP block in master role on domain 0 with a 1 Hz Sync interval
+arms the PTP block in controller role on domain 0 with a 1 Hz Sync interval
 (`k_ra_ptp_sync_int_1`), and sends one Sync + one Announce message every
 second. SCI8 (PD_02 / PD_03 -- 115200 8N1) prints the running PTP wall
 clock once per loop iteration so an attached terminal can see the clock
@@ -13,7 +13,7 @@ advance.
 Same RMII pinout as `ethernet_tcp_echo` -- the EK-RA8D2 v1 J64
 connector exits to a Wiznet WIZ810SR-style RJ-45 module on a daughter
 board. Plug the EK-RA8D2 into a switch or a Linux host running `ptp4l`
-and watch the slave latch on.
+and watch the peripheral latch on.
 
 | Net          | Pin    | PSEL                       | Direction      |
 |--------------|--------|----------------------------|----------------|
@@ -33,22 +33,22 @@ and watch the slave latch on.
 
 The board sources Sync + Announce messages but does not respond to
 Delay_Req on the smoke-test path; that means a Linux host running
-`ptp4l` in slave-only mode latches its time onto the master and reports
+`ptp4l` in peripheral-only mode latches its time onto the controller and reports
 the offset. The Wiznet daughter board on the EK-RA8D2 v1 is wired to
 192.168.1.42 by default in the matching `ethernet_tcp_echo` example;
 this app does not own an IP stack but PTP uses raw L2 multicast
-(IEEE 1588-2019 Annex F), so any cable-connected slave on the same
+(IEEE 1588-2019 Annex F), so any cable-connected peripheral on the same
 broadcast domain will see the messages.
 
 ```sh
 sudo apt install linuxptp
 sudo ptp4l -i eth0 -s -m -2
 # -i eth0   : interface to attach to
-# -s        : slave-only mode
+# -s        : peripheral-only mode
 # -m        : print messages to stdout
 # -2        : IEEE 802.3 (Layer-2) PTP transport
-# Watch for "selected best master clock" lines naming our 02:00:00:00:00:01 MAC
-# and "master offset" lines that should converge to a small (sub-microsecond) value.
+# Watch for "selected best primary clock" lines naming our 02:00:00:00:00:01 MAC
+# and "controller offset" lines that should converge to a small (sub-microsecond) value.
 ```
 
 The IP address `192.168.1.42` mentioned in the task brief is *only*
@@ -62,15 +62,15 @@ no IP configuration is needed on this app.
 The on-board J-Link OB CDC bridge prints:
 
 - `ra8d2: link up` when the PHY first reports BMSR.LINK_STATUS.
-- `ra8d2: PTP master ready (1 Hz Sync, domain 0)` once init completes.
+- `ra8d2: PTP controller ready (1 Hz Sync, domain 0)` once init completes.
 - `ptp: <sec>.<nsec> s` once per Sync iteration so the operator can
   see the wall clock advance.
 
 ## Build + flash
 
 ```sh
-make ptp_master
-make -C examples/ptp_master flash
+make ptp_time_transmitter
+make -C examples/ptp_time_transmitter flash
 ```
 
 ## What the firmware does

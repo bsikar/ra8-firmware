@@ -1,5 +1,5 @@
 /**
- * @file examples/_unsupported/ptp_master/trustzone_init.c
+ * @file examples/ek_ra8d2/iic_b_peripheral_demo/trustzone_init.c
  * @brief Cortex-M85 TrustZone-M Security Attribution Unit (SAU) bring-up
  *
  * @par Tag
@@ -80,7 +80,7 @@ typedef enum : uintptr_t {
  * @brief SAU_CTRL bit positions.
  */
 typedef enum : uint32_t {
-  k_ra_sau_ctrl_enable = 1UL << 0, /**< ENABLE: master SAU enable. */
+  k_ra_sau_ctrl_enable = 1UL << 0, /**< ENABLE: main SAU enable. */
   k_ra_sau_ctrl_allns  = 1UL << 1, /**< ALLNS: default-NS unprogrammed. */
 } ra_tz_sau_ctrl_bit_t;
 
