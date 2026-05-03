@@ -35,6 +35,7 @@
 
 #include "ra_jpeg_sw.h"
 
+#include <assert.h>
 #include <stdint.h>
 #include <string.h>
 
@@ -1504,6 +1505,18 @@ static ra_err_t dec_decode_scan(ra_jpeg_dec_ctx_t* d, uint8_t* out_buf, uint32_t
     .nbits   = 0U,
     .had_eoi = 0U,
   };
+
+  /*
+   * Cross-function invariant: dec_parse_sof0() only returns success for
+   * 4:4:4, 4:2:2 (h+v), 4:2:2 (h-only), and 4:2:0 chroma layouts, all of
+   * which set hmax and vmax to a non-zero value (see lines 1110..1144).
+   * The clang static analyzer (scan-build, core.DivideZero) cannot follow
+   * the cross-function invariant, so re-state it here as an assertion to
+   * make the property locally provable to the analyzer and to NASA Power-
+   * of-10 Rule 5 readers.
+   */
+  assert(d->hmax > 0U);
+  assert(d->vmax > 0U);
 
   uint16_t mcu_w_px = (uint16_t)((uint16_t)k_ra_jpeg_block_dim * d->hmax);
   uint16_t mcu_h_px = (uint16_t)((uint16_t)k_ra_jpeg_block_dim * d->vmax);
