@@ -80,7 +80,7 @@ typedef enum : uintptr_t {
  * @brief SAU_CTRL bit positions.
  */
 typedef enum : uint32_t {
-  k_ra_sau_ctrl_enable = 1UL << 0, /**< ENABLE: master SAU enable. */
+  k_ra_sau_ctrl_enable = 1UL << 0, /**< ENABLE: main SAU enable. */
   k_ra_sau_ctrl_allns  = 1UL << 1, /**< ALLNS: default-NS unprogrammed. */
 } ra_tz_sau_ctrl_bit_t;
 
