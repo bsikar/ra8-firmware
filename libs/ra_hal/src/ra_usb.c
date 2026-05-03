@@ -671,14 +671,33 @@ ra_err_t ra_usb_configure_endpoint(ra_usb_speed_t   speed,
   reg->PIPEPERI = 0U;
 
   /* HUM Ch 36.2.27 "PIPEnCTR : PIPE n Control Register", p 2005.
-   * Clear the data-toggle so the first packet is DATA0. For OUT pipes,
-   * arm the controller with PID=BUF so the very first OUT token from
-   * the host is ACKed and the bytes land in the pipe FIFO -- otherwise
-   * the bridge waits for ra_usb_queue_out to flip PID=BUF, but
-   * ra_usb_queue_out only runs AFTER bytes arrive, leaving the pipe
-   * stuck in NAK forever. IN pipes stay NAK until ra_usb_queue_in
-   * actually has data to push (which then flips PID=BUF). */
-  internal_rmw16(&reg->PIPECTR[(uint8_t)(pipe_num - 1U)], k_ra_pipectr_sqclr, 0U);
+   *
+   * FIT-style finalize sequence (ported from RX72N
+   * ``rx_usb_hw.c::internal_usb_finalize_pipe``, which mirrors Renesas
+   * FIT ``r_usb_basic v1.44 r_usb_creg_abs.c::usb_cstd_pipe_init``
+   * steps 5..7):
+   *   1. Pulse SQCLR -- clear the data-toggle so the first packet is
+   *      DATA0.
+   *   2. Pulse ACLRM (set, then clear) -- auto-clear the pipe FIFO
+   *      buffer so any stale bytes from a previous configuration are
+   *      discarded.  Without this, the OUT pipe can come up with FIFO
+   *      contents that BRDY never fires for, leaving the host's
+   *      first bulk-OUT packet permanently NAK'd.
+   *   3. Clear BRDYSTS / BEMPSTS for this pipe (W0C: write 0 to the
+   *      pipe bit, 1 to all others) -- otherwise a stale status bit
+   *      from a prior session would mask the controller's first
+   *      genuine BRDY event for the freshly-configured pipe.
+   *   4. Set PID.  OUT pipes go to PID=BUF so the first host OUT
+   *      token is ACKed; IN pipes stay at PID=NAK until
+   *      ``ra_usb_queue_in`` has data to push (which then flips to
+   *      BUF). */
+  const uint8_t  ctr_idx  = (uint8_t)(pipe_num - 1U);
+  const uint16_t pipe_bit = (uint16_t)(1U << pipe_num);
+  internal_rmw16(&reg->PIPECTR[ctr_idx], k_ra_pipectr_sqclr, 0U);
+  internal_rmw16(&reg->PIPECTR[ctr_idx], k_ra_pipectr_aclrm, 0U);
+  internal_rmw16(&reg->PIPECTR[ctr_idx], 0U, k_ra_pipectr_aclrm);
+  reg->BRDYSTS = (uint16_t)(~pipe_bit);
+  reg->BEMPSTS = (uint16_t)(~pipe_bit);
   if (dir == k_ra_usb_ep_dir_out) {
     internal_pipe_pid(reg, pipe_num, k_ra_pid_buf);
   } else {
