@@ -35,6 +35,7 @@
  * function code out of the lint pass. We include only declarations
  * here. */
 #include "ra_epub.h"
+#include "ra_epub_internal.h"
 #include "ra_err.h"
 #include "stb_truetype.h"
 
@@ -71,7 +72,7 @@ typedef enum : uint16_t {
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static void priv_join_path(const char* dir, const char* name, char* dst, size_t cap)
+void ra_epub_internal_join_path(const char* dir, const char* name, char* dst, size_t cap)
 {
   if (dst == NULL || cap == 0U) {
     return;
@@ -307,7 +308,7 @@ ra_err_t ra_epub_load_chapter(ra_epub_book_t* book,
   }
 
   char full_path[k_ra_epub_max_path_len];
-  priv_join_path(book->opf_dir, book->chapter_paths[idx], full_path, sizeof(full_path));
+  ra_epub_internal_join_path(book->opf_dir, book->chapter_paths[idx], full_path, sizeof(full_path));
 
   void* const     zip_storage = &book->zip_archive_storage[0];
   mz_zip_archive* zip         = (mz_zip_archive*)zip_storage;
@@ -376,7 +377,7 @@ ra_epub_get_cover_image(ra_epub_book_t* book, uint8_t* out_buf, size_t max_len, 
   }
 
   char full_path[k_ra_epub_max_path_len];
-  priv_join_path(book->opf_dir, book->cover_path, full_path, sizeof(full_path));
+  ra_epub_internal_join_path(book->opf_dir, book->cover_path, full_path, sizeof(full_path));
 
   void* const     zip_storage = &book->zip_archive_storage[0];
   mz_zip_archive* zip         = (mz_zip_archive*)zip_storage;
