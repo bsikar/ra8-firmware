@@ -1378,6 +1378,34 @@ ra_err_t ra_cgc_usbfs_clock_enable(
   ra_mstp()->MSTPCRB |= (uint32_t)k_ra_mstpb11_usbfs_mask;
   (void)ra_mstp()->MSTPCRB; /* HUM 11.2.7 Note 2: read-back. */
 
+  /* Step 2a': Ensure HOCO is running. USBCKCR's reset-default source is
+   * HOCO; the SREQ -> SRDY synchronizer crosses from ICLK into the
+   * CURRENT UCK source's clock domain (HOCO). If HOCO is stopped
+   * (HCSTP=1, the chip reset state) the handshake never completes -- we
+   * observed USBCKCR=0x40 (SREQ=1, SRDY=0) with HOCOCR=0x01 and
+   * OSCSF.HOCOSF=0 on real silicon. ra_cgc_init() leaves HOCO stopped
+   * because it switches SCKSCR to PLL1; we have to start HOCO here so
+   * the source clock for USBCKCR is alive when SREQ is asserted.
+   * HOCOCR IS PRCR-protected (HUM Ch 9; FSP wraps writes inside its
+   * BSP_PRV_PRCR_UNLOCK / BSP_PRV_PRCR_LOCK window -- writes outside
+   * the window are silently dropped, which is what we observed when
+   * an earlier attempt left HOCOCR at 0x01 after the store). */
+  ra_err_t hoco_err = k_ra_ok;
+  RA_PROTECTED_WRITE(k_ra_prcr_unlock_cgc)
+  {
+    volatile uint8_t* const hococr = ra_sys_hococr();
+    if ((*hococr & (uint8_t)(1U << k_ra_hococr_hcstp)) != 0U) {
+      *hococr = (uint8_t)((uint8_t)*hococr & (uint8_t)~(1U << k_ra_hococr_hcstp));
+    }
+  }
+  /* OSCSF.HOCOSF poll outside PRCR window (read-only register). */
+  hoco_err = internal_wait_oscsf_set(k_ra_oscsf_bit_hocosf);
+  if (hoco_err != k_ra_ok) {
+    ra_log_error(s_tag, "usbfs: HOCO stabilization timeout");
+    return hoco_err;
+  }
+  ra_log_info(s_tag, "usbfs: HOCO running for USBCKCR source");
+
   /* Step 2b: USBCKCR / USBCKDIVCR handshake. */
   const ra_err_t err = internal_usbckcr_switch_to_pll2p_div5();
   if (err != k_ra_ok) {
