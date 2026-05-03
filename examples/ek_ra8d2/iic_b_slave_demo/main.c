@@ -1,0 +1,143 @@
+/**
+ * @file examples/ek_ra8d2/iic_b_slave_demo/main.c
+ * @brief IIC_B slave-mode demo on EK-RA8D2
+ *
+ * @par Tag
+ * [Ring 6 / APP] {World: S}
+ *
+ * @details
+ * Brings IIC_B0 up as a 7-bit-addressed slave at address 0x42, then
+ * loops:
+ *   1. Polls slave status, waiting for an Address-Matched (AAS) event.
+ *   2. On AAS + RDBFF0, drains a single byte from the controller.
+ *   3. On AAS + TDBEF0, pushes a one-byte response (echoing the
+ *      previously received command byte).
+ *   4. Toggles LED1 on every successful transaction.
+ *
+ * The demo is wired for an external IIC controller talking to the
+ * EK-RA8D2 (e.g. a Raspberry Pi as ``i2cset``/``i2cget``); when no
+ * controller is attached the slave simply idles. There is no
+ * internal IIC loopback path on the RA8D2.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
+ * @since 0.1.0
+ */
+
+#include <stdint.h>
+
+#include "ra_board_ek_ra8d2.h"
+#include "ra_cgc.h"
+#include "ra_err.h"
+#include "ra_iic_b_slave.h"
+#include "ra_isr.h"
+#include "ra_time.h"
+
+/** @brief Demo tunables. */
+typedef enum : uint32_t {
+  k_iic_slave_period_ms = 1U,
+} iic_slave_const_t;
+
+/** @brief Channel + slave address. */
+typedef enum : uint8_t {
+  k_iic_slave_channel = 0U,
+  k_iic_slave_addr_7b = 0x42U,
+} iic_slave_layout_t;
+
+/** @brief Park the CPU after a fatal init failure. */
+static void iic_slave_panic_halt(void)
+{
+  while (1) {
+    __asm__ volatile("wfi");
+  }
+}
+
+/**
+ * @brief Bring CGC + SysTick + LED1 + IIC_B slave up.
+ */
+static void iic_slave_setup_or_halt(void)
+{
+  uint32_t cpuclk0_hz = 0U;
+  if (ra_cgc_init() != k_ra_ok) {
+    iic_slave_panic_halt();
+  }
+  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+    iic_slave_panic_halt();
+  }
+  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+    iic_slave_panic_halt();
+  }
+  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
+    iic_slave_panic_halt();
+  }
+  const ra_iic_b_slave_cfg_t cfg = {
+    .slave_addr_7b = (uint8_t)k_iic_slave_addr_7b,
+    .general_call  = 0U,
+  };
+  if (ra_iic_b_slave_open((uint8_t)k_iic_slave_channel, &cfg) != k_ra_ok) {
+    iic_slave_panic_halt();
+  }
+}
+
+/**
+ * @brief Service one event from the slave status mask.
+ *
+ * @par MC/DC:
+ * Compound decision: ``(mask & rx_full) != 0 || (mask & tx_empty) != 0``.
+ * Two atomic conditions x N+1 = 3 vectors -- rx-only, tx-only, both;
+ * the host test exercises each independently by pre-loading the
+ * status mask before calling this function.
+ *
+ * @param[in,out] last_byte Latched controller-write byte; echoed back
+ *                          on the next controller-read.
+ *
+ * @retval k_ra_ok           Event handled (or no event present).
+ * @retval k_ra_err_hw_error Underlying HAL surfaced an error.
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] static ra_err_t iic_slave_service(uint8_t* last_byte)
+{
+  uint8_t mask = 0U;
+  if (ra_iic_b_slave_status((uint8_t)k_iic_slave_channel, &mask) != k_ra_ok) {
+    return k_ra_err_hw_error;
+  }
+  bool did_anything = false;
+  if ((mask & (uint8_t)k_ra_iic_b_slave_status_rx_full) != 0U) {
+    uint8_t b = 0U;
+    if (ra_iic_b_slave_receive((uint8_t)k_iic_slave_channel, &b, 1U) != k_ra_ok) {
+      return k_ra_err_hw_error;
+    }
+    *last_byte   = b;
+    did_anything = true;
+  }
+  if ((mask & (uint8_t)k_ra_iic_b_slave_status_tx_empty) != 0U) {
+    if (ra_iic_b_slave_send((uint8_t)k_iic_slave_channel, last_byte, 1U) != k_ra_ok) {
+      return k_ra_err_hw_error;
+    }
+    did_anything = true;
+  }
+  if (did_anything) {
+    (void)ra_board_led_toggle(k_ra_board_led1);
+  }
+  return k_ra_ok;
+}
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmain"
+int32_t main(void)
+{
+  iic_slave_setup_or_halt();
+  ra_isr_globals_enable();
+
+  uint8_t last_byte = 0U;
+  while (1) {
+    if (iic_slave_service(&last_byte) != k_ra_ok) {
+      break;
+    }
+    ra_delay_ms(k_iic_slave_period_ms);
+  }
+  iic_slave_panic_halt();
+  return 0;
+}
+#pragma GCC diagnostic pop
