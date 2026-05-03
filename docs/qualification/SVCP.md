@@ -2,6 +2,7 @@
 
 **Document ID**: ra8d2-svcp-001
 **Version**: 0.1 (first draft, Phase 7 of `docs/QUALIFICATION_ROADMAP.md`).
+**Last refreshed**: 2026-05-03 (test counts and HIL posture re-synced).
 **Date**: 2026-05-02.
 **Author**: Brighton Sikarskie.
 **DO-178C reference**: Section 11.13 (Software Verification Cases and
@@ -23,8 +24,9 @@ The captured outputs of running these procedures live in
 The verification cases below cover three layers:
 
 1. Host-side unit and module tests under `tests/test_*.c`
-   (180 files as of HEAD `402253ef`), executed natively on the host
-   under clang-18 + ctest with MC/DC instrumentation enabled.
+   (190 files at the 2026-05-03 refresh; 190/190 PASS), executed
+   natively on the host under clang-18 + ctest with MC/DC
+   instrumentation enabled.
 2. Host-side application-shape integration tests under
    `tests/test_app_*.c` (25 files), one per EVM-tier app.
 3. On-target hardware smoke run via `make smoke` against the 26
@@ -83,7 +85,7 @@ equivalent under `src/secure_app/` and `port/`).
 
 (Truncated for brevity. The complete row set is the union of the
 `tests/test_ra_*.c` glob with the matching `libs/ra_hal/src/*.c` --
-180 host-test files in total at HEAD `402253ef`.)
+190 host-test files in total at the 2026-05-03 refresh.)
 
 ### 1.2 Core, security and PAL libraries
 
@@ -279,7 +281,7 @@ TQL classifications in `docs/qualification/TOOL_QUALIFICATION.md`.
    - `docs/DOXYGEN_GAPS.csv` (per-function gap rows).
 3. Pass criterion (Phase 3 of `docs/QUALIFICATION_ROADMAP.md`):
    the "Functions with gaps" line in `DOXYGEN_GAPS.md` reads zero.
-   Today's value is 429.
+   Today's value is **0** (gate met, 2747 functions audited).
 
 ## 7. Requirements traceability matrix
 
@@ -307,7 +309,7 @@ A objectives so the SVR can roll up Annex A coverage.
 | Host run             | `ctest` exits 0; every test binary returns 0.                                 |
 | MC/DC                | First-party MC/DC fraction in `summary.txt` >= `RA_MCDC_THRESHOLD`.           |
 | Hardware smoke       | Zero rows classified `FAIL` in `build/smoke/results.md`; WIP / UNKNOWN allowed with written follow-up in `docs/HARDWARE_BRINGUP.md`. |
-| MISRA                | Every finding maps to an active D-### deviation in MISRA_DEVIATIONS.md.       |
+| MISRA                | cppcheck-only policy; every finding maps to an active D-### deviation in MISRA_DEVIATIONS.md (`docs/CERTIFICATION_SCOPE.md`). |
 | Doxygen              | `DOXYGEN_GAPS.md` "Functions with gaps" trends to zero (Phase 3 acceptance).  |
 
 ## 9. Test environment configuration

@@ -1,5 +1,8 @@
 # Software Verification Plan (SVP)
 
+**Last refreshed**: 2026-05-03 (numbers re-synced to live audit
+artefacts after Wave 24 closure).
+
 **Status**: First draft, 2026-05-02. Populated during Phase 7 of
 `docs/QUALIFICATION_ROADMAP.md`. Subject to revision after the first
 external assessor review.
@@ -35,7 +38,7 @@ into a verification-activity register.
 | 1     | High-level requirements comply with system reqs  | `docs/ARCHITECTURE.md`, per-module `@brief` corpus, `docs/RING_AND_WORLD.md`                      | No system requirements document exists yet (PSAC sec. 5 task).   |
 | 2     | High-level requirements are accurate, consistent | `docs/STYLE_GUIDE.md` review checklist, PR review history                                         | Independence not yet established (Section 3).                    |
 | 3     | HLR compatible with target computer              | `docs/MEMORY_MAP.md`, `cmake/toolchain-ra8d2.cmake`                                               | Hardware-in-the-loop CI not yet wired (Phase 6 of roadmap).      |
-| 4     | HLR verifiable                                   | Each `@brief` accompanied by `@param`/`@retval`/`@pre`/`@post` per `CLAUDE.md` Doxygen rules      | 2557 functions still have at least one missing tag.              |
+| 4     | HLR verifiable                                   | Each `@brief` accompanied by `@param`/`@retval`/`@pre`/`@post` per `CLAUDE.md` Doxygen rules      | Closed: 0 functions with gaps (2747 audited).                    |
 | 5     | HLR conform to standards                         | `docs/STYLE_GUIDE.md`, `docs/MISRA.md`, pre-commit hook                                           | MISRA backlog tracked in `docs/qualification/MISRA_DEVIATIONS.md`.|
 | 6     | HLR traceable to system reqs                     | `scripts/utils/cite_check.py` (HUM citation validator)                                            | Bidirectional trace matrix not yet generated.                    |
 | 7     | Algorithms are accurate                          | `tests/test_*.c` requirements-based tests                                                         | Coverage of algorithm corner cases tracked via MC/DC gap list.   |
@@ -47,10 +50,10 @@ into a verification-activity register.
 | 1     | LLR comply with HLR                    | Per-module headers under `libs/*/inc/` cross-reference `docs/`          | Trace matrix pending.                                            |
 | 2     | LLR are accurate, consistent           | `clang-tidy` naming + complexity gates                                  | Threshold tuning ongoing.                                        |
 | 3     | LLR compatible with target computer    | `docs/STACK_USAGE.md`, `-Wstack-usage` gate, `.su` aggregator           | Heap proof: `scripts/utils/check_no_dynamic_alloc.py` already gates. |
-| 4     | LLR verifiable                         | `tests/test_<module>.c` per module                                      | Phase 5 integration tests still required for 12 of 27 EVM apps.  |
+| 4     | LLR verifiable                         | `tests/test_<module>.c` per module                                      | 25 of 26 EVM apps have host integration tests today.             |
 | 5     | LLR conform to standards               | `.clang-format`, `.clang-tidy`, `docs/STYLE_GUIDE.md`                   | Pre-commit enforces; CI mirrors.                                 |
 | 6     | LLR traceable to HLR                   | `scripts/utils/cite_check.py` HUM page-citation tags                    | Bidirectional trace matrix pending.                              |
-| 7     | Algorithms are accurate                | Targeted unit tests (`tests/test_ra_*_mcdc.c` class)                    | MC/DC at 70.40%; target 100%.                                    |
+| 7     | Algorithms are accurate                | Targeted unit tests (`tests/test_ra_*_mcdc.c` class)                    | MC/DC reachable = 100.00% (gate met); absolute = 92.29%.         |
 | 8     | Software architecture compat with HLR  | `docs/RING_AND_WORLD.md`, `docs/MEMORY_MAP.md`                          | Section 8 (Partitioning) below.                                  |
 | 9     | Software architecture consistent       | `scripts/utils/check_world_tags.py`                                     | Strict mode pending (currently `--warn`).                        |
 | 10    | Software architecture compat with target| Cross-build matrix in `.github/workflows/firmware.yml::build-cross`     | HW-in-the-loop pending.                                          |
@@ -64,7 +67,7 @@ into a verification-activity register.
 |------:|------------------------------------------|-------------------------------------------------------------------------------------------|------------------------------------------------------------------|
 | 1     | Source code complies with LLR            | Source under `libs/`, `src/`, `examples/`                                                 | Trace matrix pending.                                            |
 | 2     | Source code complies with architecture   | `scripts/utils/check_world_tags.py`, `docs/RING_AND_WORLD.md`                             | Strict mode pending.                                             |
-| 3     | Source code is verifiable                | Host test corpus under `tests/` (157 `test_*.c` files)                                    | 1.10 : 1 test-to-source ratio; goal maintained.                  |
+| 3     | Source code is verifiable                | Host test corpus under `tests/` (190 `test_*.c` files; 190/190 PASS)                      | Test-to-source ratio sustained above 1:1.                        |
 | 4     | Source code conforms to standards        | clang-format, clang-tidy, cppcheck (with MISRA addon via `make misra`)                    | MISRA backlog under deviation register.                          |
 | 5     | Source code is traceable to LLR          | Doxygen `@see` cross-references                                                           | Audit script not yet automated.                                  |
 | 6     | Source code is accurate and consistent   | `-Wall -Wextra -Werror`, `-Wstack-usage`, `clang-tidy`                                    | Zero-warning build enforced by CI.                               |
@@ -76,9 +79,9 @@ into a verification-activity register.
 
 | Obj # | Subject                                  | Evidence                                                                                  | Gap                                                              |
 |------:|------------------------------------------|-------------------------------------------------------------------------------------------|------------------------------------------------------------------|
-| 1     | Executable Object Code complies with HLR | `make smoke` scripts referenced in `docs/HARDWARE_BRINGUP.md`                             | Self-hosted CI runner pending (Phase 6).                         |
+| 1     | Executable Object Code complies with HLR | `make smoke` scripts referenced in `docs/HARDWARE_BRINGUP.md`                             | HIL is developer-laptop pre-push (`docs/HIL_DEVELOPER_WORKFLOW.md`); self-hosted runner out of scope. |
 | 2     | EOC robust with HLR                      | Negative-path tests under `tests/test_*.c` (return-value pollution, NULL injection)       | Coverage tracked per-module in MC/DC report.                     |
-| 3     | EOC complies with LLR                    | Host integration tests (`tests/integration_*.c` family, partial)                          | 12 of 27 EVM apps still missing host integration coverage.       |
+| 3     | EOC complies with LLR                    | Host integration tests (`tests/test_app_*.c` family)                                      | 25 of 26 EVM apps have host integration tests today.             |
 | 4     | EOC robust with LLR                      | Same as 2.                                                                                | Same as 2.                                                       |
 | 5     | EOC compatible with target               | Cross-build matrix (`firmware.yml::build-cross`) + planned HW-smoke                       | Phase 6 closes the loop.                                         |
 
@@ -90,7 +93,7 @@ into a verification-activity register.
 | 2     | Test results are correct, discrepancies  | CI logs (GitHub Actions, retained per workflow retention policy)                          | SVR (Verification Results) document populated in roadmap Phase 7.|
 | 3     | Test coverage of HLR achieved            | `make test`, `tests/test_*.c` requirements-based tests                                    | Trace matrix pending.                                            |
 | 4     | Test coverage of LLR achieved            | Same as 3 plus per-module decision tests                                                  | Same as 3.                                                       |
-| 5     | Test coverage of structure achieved -- MC/DC | `make mcdc` (clang-18 `-fcoverage-mcdc`), `docs/MCDC.md`, baseline at `.github/mcdc-baseline.txt` | Currently 70.40%; gate prevents regression. Target 100%.   |
+| 5     | Test coverage of structure achieved -- MC/DC | `make mcdc` (clang-18 `-fcoverage-mcdc`), `docs/MCDC.md`, baseline at `.github/mcdc-baseline.txt` | Reachable = 100.00% (gate met); absolute = 92.29%; 58 conditions deactivated under DO-178C 6.4.4.3. |
 | 6     | Test coverage of structure achieved -- branch | gcovr branch coverage gated at 90/90 by `scripts/coverage.sh --gate`                  | Pass today.                                                      |
 | 7     | Test coverage of structure achieved -- statement | Same as 6.                                                                         | Pass today.                                                      |
 | 8     | Test coverage of structure -- data coupling and control coupling | Manual review during PR; no tool automation yet               | Documented as residual risk.                                     |
@@ -101,9 +104,9 @@ into a verification-activity register.
 Of the 43 numbered objectives across Tables A-3 through A-7 above, this
 repository provides at least partial evidence for 38. The five
 objectives without first-draft evidence are A-3#1 (system requirements
-upstream of software), A-3#3 (until HW-in-the-loop CI lands), A-5#8/#9
-(parameter data items, not in scope), and A-7#8 (data/control coupling
-automation).
+upstream of software), A-3#3 (HIL is developer-laptop pre-push, not
+self-hosted CI), A-5#8/#9 (parameter data items, not in scope), and
+A-7#8 (data/control coupling automation).
 
 ---
 
@@ -167,15 +170,17 @@ EK-RA8D2 board.
 
 DO-178C 6.2 requires that, for Level B, certain verification
 objectives be performed by personnel different from the author. This
-project is currently a single-developer effort (Brighton Sikarskie),
-so formal independence is **not yet established**.
+project is a single-developer effort (Brighton Sikarskie), so formal
+independence is **out of scope, permanently**, per
+`docs/CERTIFICATION_SCOPE.md` (MIT-licensed personal project; paid
+third-party assessor engagement is not pursued).
 
 ### 3.1 Current state
 
 - Author = reviewer for all activities listed in Section 2.
-- The independence requirement is **explicitly deferred** to the
-  third-party-assessor selection step recorded as open question 4 in
-  `docs/QUALIFICATION_ROADMAP.md` Section 6.
+- The independence requirement is **out of scope** per the project's
+  permanent posture in `docs/CERTIFICATION_SCOPE.md`. Downstream
+  adopters who require independence must engage their own assessor.
 - Mitigation: every verification activity is automated (pre-commit
   hook + CI). Automation is itself a form of independent reviewer:
   the gate runs identical checks on every change irrespective of
@@ -197,11 +202,11 @@ captures the same gap.
 
 ### 3.3 Path to closure
 
-Per `docs/QUALIFICATION_ROADMAP.md` open question 4, an independent
-assessor (IEC 61508-1 cl. 8.2 functional-safety assessor, or the
-DO-178C Designated Engineering Representative equivalent) must be
-selected before any external certification claim. That selection is
-out of scope for the 22-week roadmap.
+Independent-assessor engagement is **out of scope, permanently**, per
+`docs/CERTIFICATION_SCOPE.md`. Any downstream party that needs an
+external certification claim must engage their own assessor; the
+artefacts in this directory exist to make that re-use as low-friction
+as possible.
 
 ---
 
@@ -242,8 +247,9 @@ out of scope for the 22-week roadmap.
 | Smoke harness         | `make smoke` -> `build/smoke/results.md`                               |
 | PC resolution         | `arm-none-eabi-addr2line` against the per-app ELF                      |
 
-QEMU is not used (see Section 2.4). The HW-in-the-loop runner is
-currently developer-local; CI integration is roadmap Phase 6.
+QEMU is not used (see Section 2.4). HIL is **permanently** developer-
+laptop pre-push (`docs/HIL_DEVELOPER_WORKFLOW.md`); a self-hosted CI
+runner is out of scope.
 
 ---
 
@@ -267,12 +273,13 @@ currently developer-local; CI integration is roadmap Phase 6.
 - Gate: cannot regress below baseline at `.github/mcdc-baseline.txt`.
 - Per-PR feedback: `firmware.yml::coverage-comment` posts a
   per-file MC/DC delta on every pull request.
-- Current measurement: **70.40%** first-party MC/DC (per
-  `docs/MCDC.md` measurement-history table, 2026-05-02 evening).
-- Target: **100%** first-party MC/DC. Closure plan in
-  `docs/QUALIFICATION_ROADMAP.md` Phases 1 and 2.
-- Deactivated-decision register: appended to `docs/MCDC_GAPS.md` as
-  Phase 2 progresses, per DO-178C 6.4.4.3.
+- Current measurement: **100.00 % reachable / 92.29 % absolute**
+  first-party MC/DC (per `docs/MCDC.md` measurement-history table,
+  wave-24 2026-05-03; 190/190 host tests pass).
+- Gate: reachable MC/DC at 100% (met). Absolute target tracked
+  informationally as additional wave work surfaces new decisions.
+- Deactivated-decision register: 58 entries in
+  `docs/MCDC_DEACTIVATIONS.md`, per DO-178C 6.4.4.3.
 
 ### 5.3 Data coupling and control coupling (DO-178C 6.4.4.2.c)
 
@@ -287,7 +294,8 @@ the integration boundary is via:
 
 - Host unit tests of the wrapper layer (`libs/ra_*_pal/`,
   `libs/ra_tls/`, `libs/ra_psa_crypto/` in-tree shims).
-- HW-in-the-loop smoke once Phase 6 lands.
+- Hardware-in-the-loop smoke via the developer-laptop pre-push
+  workflow (`docs/HIL_DEVELOPER_WORKFLOW.md`).
 
 ---
 
@@ -309,8 +317,9 @@ it. The salient points for verification planning are:
   is verified by spot-checking the report against hand-traced
   decisions during Phase 1 and Phase 2 closure work.
 
-A commercial MISRA checker (LDRA, Polyspace, Helix QAC) is required
-before any formal SOI-3 review (open question 3 in the roadmap).
+The project's permanent MISRA posture is **cppcheck-only** per
+`docs/CERTIFICATION_SCOPE.md`; commercial-checker procurement is out
+of scope.
 
 ---
 

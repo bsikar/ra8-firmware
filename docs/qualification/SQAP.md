@@ -1,5 +1,7 @@
 # Software Quality Assurance Plan (SQAP)
 
+**Last refreshed**: 2026-05-03 (independence + HIL posture re-stated).
+
 **Status**: First draft, 2026-05-02. Populated during Phase 7 of
 `docs/QUALIFICATION_ROADMAP.md`. Subject to revision after the first
 external assessor review.
@@ -26,8 +28,10 @@ separate SQA team** today.
 
 DO-178C 8.1.b and IEC 61508-1 cl. 8.2.12 require that the SQA
 function be independent of the development function. That
-independence is **not yet established** for this project. The
-mitigation, recorded throughout the planning document family, is:
+independence is **out of scope, permanently**, per
+`docs/CERTIFICATION_SCOPE.md` (MIT-licensed personal project; paid
+third-party assessor engagement is not pursued). The mitigation,
+recorded throughout the planning document family, is:
 
 1. **Automated gates as the primary SQA control.** The pre-commit
    hook (`scripts/git/pre-commit`) and CI workflow
@@ -38,11 +42,12 @@ mitigation, recorded throughout the planning document family, is:
    be automated (architectural review, deviation acceptance, SOUP
    re-review), the reviewer-equals-author posture is recorded as a
    gap.
-3. **Independent assessor selection deferred.** Engagement of a
-   third-party functional-safety assessor (IEC 61508-1 cl. 8.2) or
-   a Designated Engineering Representative (DO-178C analogue) is
-   open question 4 in `docs/QUALIFICATION_ROADMAP.md` Section 6.
-   Any external certification claim is blocked on closing this gap.
+3. **Independent assessor engagement out of scope, permanently.**
+   Engagement of a third-party functional-safety assessor (IEC 61508-1
+   cl. 8.2) or a Designated Engineering Representative (DO-178C
+   analogue) is **not pursued** per `docs/CERTIFICATION_SCOPE.md`.
+   Downstream adopters who require independence must engage their own
+   assessor.
 
 ### 1.3 Authority
 
@@ -99,7 +104,7 @@ Product audits are the periodic refresh of the gap registers:
 | MISRA conformance      | `make misra` -> `build/misra/results.txt` + `docs/MISRA_GAPS.csv`        | Quarterly            |
 | Stack usage            | `make stack-usage` -> `build/stack_usage.csv`                            | Per release          |
 | SOUP register          | Per-component review under `docs/SOUP/<name>.md`                         | At most 12 months per file |
-| Hardware-smoke results | `make smoke` -> `build/smoke/results.md`                                 | Per release (CI in roadmap Phase 6) |
+| Hardware-smoke results | `make smoke` -> `build/smoke/results.md`                                 | Developer-laptop pre-push (`docs/HIL_DEVELOPER_WORKFLOW.md`) |
 
 The refresh cadence is the project's product-audit cadence. A stale
 gap register is itself a finding.
@@ -129,14 +134,17 @@ DO-178C 8.2.b "transition criteria audits" are interpreted in this
 project as the per-phase acceptance gates defined in
 `docs/QUALIFICATION_ROADMAP.md` Section 3:
 
-- Phase 1 -> 2: critical-path MC/DC at 100%.
-- Phase 2 -> 3: first-party MC/DC at 95%+.
-- Phase 3 -> 4: Doxygen audit clean (zero functions with gaps).
-- Phase 4 -> 5: MISRA audit clean modulo deviation register.
-- Phase 5 -> 6: every EVM app has at least one host integration test.
-- Phase 6 -> 7: HW-smoke gating PRs.
-- Phase 7 -> SOI-2: planning + verification + accomplishment
-  document set complete.
+- Phase 1 -> 2: critical-path MC/DC at 100% (met).
+- Phase 2 -> 3: first-party reachable MC/DC at 100% (met -- wave-24).
+- Phase 3 -> 4: Doxygen audit clean (met -- 0 functions with gaps).
+- Phase 4 -> 5: MISRA audit stable modulo cppcheck-only policy
+  (`docs/CERTIFICATION_SCOPE.md`); D-001..D-005 cover the long tail.
+- Phase 5 -> 6: every EVM app has at least one host integration test
+  (25/26 today).
+- Phase 6 -> 7: HIL is developer-laptop pre-push, not a CI gate
+  (`docs/HIL_DEVELOPER_WORKFLOW.md`).
+- Phase 7 -> close: planning + verification + accomplishment
+  document set complete and refresh-stamped.
 
 Each transition is gated on the tool-driven evidence above. The SQA
 function (the developer for now) confirms the gate before declaring

@@ -1,5 +1,7 @@
 # Software Configuration Management Plan (SCMP)
 
+**Last refreshed**: 2026-05-03 (numbers re-synced to live counts).
+
 **Status**: First draft, 2026-05-02. Populated during Phase 7 of
 `docs/QUALIFICATION_ROADMAP.md`. Subject to revision after the first
 external assessor review.
@@ -35,8 +37,8 @@ truth.
 | `libs/ra_modem_at/`               | AT-command modem stack.                                      |
 | `libs/ra_power_profile/`          | Power-profile management.                                    |
 | `libs/ra_ota/`                    | OTA orchestration (Phase 5).                                 |
-| `examples/ek_ra8d2/<app>/`        | Self-contained EVM applications (27 today).                  |
-| `examples/_unsupported/<app>/`    | Shelved applications (11 today).                             |
+| `examples/ek_ra8d2/<app>/`        | Self-contained EVM applications (26 today).                  |
+| `examples/_unsupported/<app>/`    | Shelved applications (10 today).                             |
 
 ### 1.2 Per-application boot code
 
@@ -70,7 +72,7 @@ explicit design goal:
 | `tests/CMakeLists.txt`            | Host test build configuration; gates MC/DC instrumentation.  |
 | `tests/build_tests.sh`            | Host-test build entry point.                                 |
 | `tests/run_tests.sh`              | Host-test execution entry point (ctest).                     |
-| `tests/test_*.c` (157 files)      | Per-module host unit tests.                                  |
+| `tests/test_*.c` (190 files)      | Per-module host unit tests (190/190 PASS).                   |
 
 ### 1.5 Verification + audit scripts
 
@@ -431,8 +433,9 @@ drift; CI is authoritative.
 - CI runner: `ubuntu-latest` (currently 24.04). Bumps are reviewed
   on the GitHub Actions release notes and accepted by ratcheting
   `firmware.yml`.
-- HW-in-the-loop runner: not yet provisioned (roadmap Phase 6,
-  open question 5).
+- HW-in-the-loop runner: developer-laptop pre-push only
+  (`docs/HIL_DEVELOPER_WORKFLOW.md`); a self-hosted runner is **out
+  of scope** per `docs/CERTIFICATION_SCOPE.md`.
 
 ---
 
