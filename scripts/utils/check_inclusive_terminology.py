@@ -14,7 +14,7 @@ verbatim in the source comment).
 
 Exit code:
   0 -- no violations (gate clean), or warn-only mode is on
-  1 -- violations exist (only when WAVE_0_WARN_ONLY is False)
+  1 -- violations exist (only when WARN_ONLY_MODE is False)
 
 The script is intentionally fast (pure-Python regex scan, no libclang) so
 the pre-commit hook stays interactive.
@@ -34,13 +34,13 @@ from pathlib import Path
 # Configuration
 # --------------------------------------------------------------------------
 
-# Wave 60+ sweep brought first-party source to 0 violations and the gate is
+# + sweep brought first-party source to 0 violations and the gate is
 # now strict (False). If a future agent reintroduces a violation the gate
 # fails the commit; either rewrite the wording or annotate the line with
 # `LEGACY-OK: <reason>` if the legacy symbol must literally appear, or add
 # the file to SKIP_FILE_PATTERNS below if it is dominated by upstream
 # vendor citations.
-WAVE_0_WARN_ONLY: bool = False
+WARN_ONLY_MODE: bool = False
 
 # Roots scanned for violations.
 SCAN_ROOTS: tuple[str, ...] = (
@@ -110,6 +110,7 @@ LEGACY_OK_RE: re.Pattern[str] = re.compile(r"LEGACY-OK\s*:")
 SELF_EXEMPT_FILES: frozenset[str] = frozenset(
     {
         "scripts/utils/check_inclusive_terminology.py",
+        "scripts/utils/fix_inclusive_terminology.py",
         "docs/STYLE_GUIDE.md",
         "docs/RING_AND_WORLD.md",
         "docs/ACRONYMS.md",
@@ -145,12 +146,6 @@ SKIP_FILE_PATTERNS: tuple[str, ...] = (
     # Renesas FSP `r_iic_b_master_*` API surface references.
     "libs/ra_hal/inc/ra_iic_b.h",
     "libs/ra_hal/src/ra_iic_b.c",
-    # Express Logic USBX `UX_SLAVE_*` upstream type names referenced from
-    # the port shim itself.
-    "port/usbx/ux_dcd_ra_usb.c",
-    "port/usbx/ux_dcd_ra_usb.h",
-    # Mbed TLS `MBEDTLS_SSL_EXTENDED_MASTER_SECRET` macro citation.
-    "port/mbedtls/mbedtls_config.h",
     # IEEE 1588 PTP master/slave role names appear verbatim in the spec.
     "libs/ra_hal/inc/ra_ptp.h",
     "libs/ra_hal/src/ra_ptp.c",
@@ -253,8 +248,8 @@ def main() -> int:
     print("Per-line opt-out: append `LEGACY-OK: <reason>` on the offending line.")
     print("See CLAUDE.md 'Terminology Standard' for the policy.")
 
-    if WAVE_0_WARN_ONLY:
-        print("[wave-0] WAVE_0_WARN_ONLY=True -- not failing the gate.")
+    if WARN_ONLY_MODE:
+        print("WARN_ONLY_MODE=True -- not failing the gate.")
         return 0
     return 1
 

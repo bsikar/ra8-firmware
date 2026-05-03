@@ -13,7 +13,7 @@ test_*(void) function (heuristic: presence of `TEST(` or function
 definitions matching `^[a-z_].*test.*\\(void\\)`), we require the
 function's preceding Doxygen block to contain `@par MC/DC:`.
 
-In Wave 0 this is a WARNING. Once the existing 1956-vector gap from
+In this is a WARNING. Once the existing 1956-vector gap from
 docs/MCDC_GAPS.csv is closed, the hook will be promoted to STRICT
 (non-zero exit on any missing block).
 """
@@ -25,7 +25,7 @@ import sys
 from pathlib import Path
 
 
-WAVE_0_WARN_ONLY = False  # Legacy 138-test backlog cleared (2026-05-02); STRICT enforcement enabled.
+WARN_ONLY_MODE = False  # Legacy 138-test backlog cleared (2026-05-02); STRICT enforcement enabled.
 
 TEST_FUNC_PATTERN = re.compile(
     r"""
@@ -88,7 +88,7 @@ def main() -> int:
                 findings.append((str(path), func_line, func_name))
 
     if findings:
-        verb = "WARN" if WAVE_0_WARN_ONLY else "FAIL"
+        verb = "WARN" if WARN_ONLY_MODE else "FAIL"
         print(f"[{verb}] Tests missing required @par MC/DC: block")
         print("       Per CLAUDE.md, every test of a compound boolean")
         print("       decision must document its MC/DC vector pattern.")
@@ -96,7 +96,7 @@ def main() -> int:
             print(f"  {name}:{lineno}: {func}")
         if len(findings) > 50:
             print(f"  ... and {len(findings) - 50} more")
-        if WAVE_0_WARN_ONLY:
+        if WARN_ONLY_MODE:
             return 0
         return 1
 

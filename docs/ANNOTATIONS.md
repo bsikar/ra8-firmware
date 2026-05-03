@@ -7,7 +7,7 @@ clang and to a comment-only no-op under other toolchains. They produce
 no codegen and have zero runtime cost.
 
 The libclang-based enforcement script that consumes these annotations
-will land in Wave 43b. Until then, the annotations are documentation
+will land in a follow-up. Until then, the annotations are documentation
 contracts that humans (and the citation gate) verify by hand.
 
 ## Citation policy
@@ -24,7 +24,7 @@ rejects any reason text containing a `<file>.<ext>:<line>` token.
 ### 1. `RA_TEST_HELPER`
 
 - **Purpose:** externally-linked symbol callable only from `tests/`.
-- **Enforcement:** libclang call-graph analyzer (Wave 43b).
+- **Enforcement:** libclang call-graph analyzer.
 - **Example:**
 
   ```c
@@ -76,7 +76,7 @@ rejects any reason text containing a `<file>.<ext>:<line>` token.
 - **Enforcement:**
   - `scripts/utils/check_world_tags.py` restricts `cmse_nonsecure_entry`
     to files under `libs/ra_nsc/`.
-  - libclang checker (Wave 43b) verifies every pointer parameter passes
+ - libclang checker verifies every pointer parameter passes
     through a `RA_NSC_CHECK_NS_RANGE_*` helper before being dereferenced.
 - **Example:**
 
@@ -297,7 +297,7 @@ the 19 rules documented above. Excluded subtrees: `build/`, `_deps/`,
 ### Running it
 
 ```sh
-# Warn-only (Wave 0 default; mirrors cite_check / world-tag pattern)
+# Warn-only (default; mirrors cite_check / world-tag pattern)
 python3 scripts/utils/check_annotations.py
 
 # CI gate -- exits non-zero on any non-warn-only violation
@@ -321,9 +321,9 @@ python3 -m pip install --user --break-system-packages libclang
 
 The wheel is `libclang-18.x` on macOS arm64 / Linux x86_64.
 
-### Wave 0 mode
+### mode
 
-The script header sets `WAVE_0_WARN_ONLY = True`. While the flag is
+The script header sets `WARN_ONLY_MODE = True`. While the flag is
 on, the pre-commit hook and the bare CLI never exit non-zero; only
 explicit `--check` invocations are fatal. Promotion to strict
 mirrors the `cite_check` / `check_world_tags` schedule documented
