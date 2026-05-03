@@ -514,6 +514,40 @@ def is_deactivated_decision(rel_path: str, line: int, excerpt: str) -> tuple[boo
 # Module-name extraction: libs/<group>/src/<module>.c -> <module>
 #                        src/<group>/<module>.c     -> <module>
 # ---------------------------------------------------------------------------
+def decision_snippet(excerpt: str, max_chars: int = 40) -> str:
+    """Build a stable text-derived anchor fragment from a decision's
+    source line.
+
+    Citation policy forbids `file:line` references because line numbers
+    drift on every reformat. Instead we hash the decision into a short,
+    grep-able slug derived from the source text itself: take the first
+    `max_chars` characters of the (whitespace-collapsed) line and
+    replace every run of non-alphanumeric bytes with a single `-`.
+
+    Example:
+        ' if (a->kind == k_attr_kind_char_value && a->value == NULL)'
+        -> 'a-kind-k_attr_kind_char_value-a-value-NULL'
+
+    Empty input returns 'unknown'. Result is always pure 7-bit ASCII
+    (project policy) and contains no leading/trailing dashes.
+    """
+    if not excerpt:
+        return "unknown"
+    text = excerpt.strip()[:max_chars]
+    slug_chars: list[str] = []
+    prev_dash = False
+    for ch in text:
+        if ch.isalnum() or ch == "_":
+            slug_chars.append(ch)
+            prev_dash = False
+        else:
+            if not prev_dash:
+                slug_chars.append("-")
+                prev_dash = True
+    slug = "".join(slug_chars).strip("-")
+    return slug if slug else "unknown"
+
+
 def module_of(rel_path: str) -> str:
     name = os.path.basename(rel_path)
     if name.endswith(".c"):
@@ -559,13 +593,16 @@ def main() -> int:
         deact, rationale = is_deactivated_decision(src, ln, excerpt)
         classified.append((src, ln, n, func, excerpt, covered, deact, rationale))
 
-    # Write CSV (gap-only). New columns: deactivated, deactivation_rationale.
+    # Write CSV (gap-only). The `line` column has been replaced with
+    # `decision_text_snippet` per project citation policy: line numbers
+    # drift on every reformat and produce stale anchors. The text-derived
+    # slug is grep-able and survives reformatting.
     with CSV_OUT.open("w", encoding="ascii", newline="") as fh:
         w = csv.writer(fh, lineterminator="\n")
         w.writerow(
             [
                 "source_file",
-                "line",
+                "decision_text_snippet",
                 "condition_count",
                 "function_name",
                 "decision_excerpt",
@@ -578,7 +615,7 @@ def main() -> int:
             w.writerow(
                 [
                     src,
-                    ln,
+                    decision_snippet(excerpt),
                     n,
                     func,
                     excerpt,
@@ -689,13 +726,13 @@ def main() -> int:
     md_lines.append("")
     md_lines.append("## Reachable gaps (require new MC/DC test vectors)")
     md_lines.append("")
-    md_lines.append("| File | Line | Conds | Function | Excerpt | Status |")
-    md_lines.append("|------|-----:|------:|----------|---------|--------|")
-    for src, ln, n, func, excerpt, covered, _deact, _rat in reachable_rows[:60]:
+    md_lines.append("| File | Conds | Function | Excerpt | Status |")
+    md_lines.append("|------|------:|----------|---------|--------|")
+    for src, _ln, n, func, excerpt, covered, _deact, _rat in reachable_rows[:60]:
         ex = excerpt.replace("|", "\\|")
         if len(ex) > 80:
             ex = ex[:77] + "..."
-        md_lines.append(f"| {src} | {ln} | {n} | {func} | `{ex}` | {covered} |")
+        md_lines.append(f"| {src} | {n} | {func} | `{ex}` | {covered} |")
     if len(reachable_rows) > 60:
         md_lines.append(
             f"| ... | | | | *({len(reachable_rows) - 60} more rows in CSV)* | |"
@@ -710,16 +747,16 @@ def main() -> int:
         " the per-condition narrative in `docs/MCDC_DEACTIVATIONS.md`."
     )
     md_lines.append("")
-    md_lines.append("| File | Line | Conds | Function | Excerpt | Rationale |")
-    md_lines.append("|------|-----:|------:|----------|---------|-----------|")
-    for src, ln, n, func, excerpt, _covered, _deact, rationale in deactivated_rows:
+    md_lines.append("| File | Conds | Function | Excerpt | Rationale |")
+    md_lines.append("|------|------:|----------|---------|-----------|")
+    for src, _ln, n, func, excerpt, _covered, _deact, rationale in deactivated_rows:
         ex = excerpt.replace("|", "\\|")
         if len(ex) > 60:
             ex = ex[:57] + "..."
         rt = rationale.replace("|", "\\|")
         if len(rt) > 60:
             rt = rt[:57] + "..."
-        md_lines.append(f"| {src} | {ln} | {n} | {func} | `{ex}` | {rt} |")
+        md_lines.append(f"| {src} | {n} | {func} | `{ex}` | {rt} |")
     md_lines.append("")
     md_lines.append("## Per-module gap counts (full table)")
     md_lines.append("")
@@ -747,8 +784,8 @@ def main() -> int:
     md_lines.append("")
     md_lines.append(
         "*Regenerated from the live `make mcdc` report. See"
-        " `docs/MCDC_GAPS.csv` for the full per-decision table including"
-        " line numbers and decision excerpts.*"
+        " `docs/MCDC_GAPS.csv` for the full per-decision table"
+        " including decision-text snippets and excerpts.*"
     )
     md_lines.append("")
 
@@ -797,15 +834,17 @@ def main() -> int:
         " `build/mcdc-report/mcdc.txt`. Do not edit by hand above the"
         " `<!-- MANUAL -->` marker; manual narrative may be added below"
         " the marker for a specific condition by appending its"
-        " `file:line` anchor."
+        " `file::function::snippet` anchor (line numbers are not used:"
+        " they drift on every reformat)."
     )
     deact_lines.append("")
     if not deactivated_rows:
         deact_lines.append("(no deactivated conditions detected)")
         deact_lines.append("")
     else:
-        for src, ln, n, func, excerpt, covered, _deact, rationale in deactivated_rows:
-            anchor = f"{src}:{ln}"
+        for src, _ln, n, func, excerpt, covered, _deact, rationale in deactivated_rows:
+            slug = decision_snippet(excerpt)
+            anchor = f"{src}::{func}::{slug}"
             deact_lines.append(f"### {anchor}")
             deact_lines.append("")
             deact_lines.append(f"- **Function**: `{func}`")
@@ -826,8 +865,9 @@ def main() -> int:
     deact_lines.append("## Manual narrative (per anchor)")
     deact_lines.append("")
     deact_lines.append(
-        "_Add expanded justification here keyed by the `file:line`"
-        " anchor above when the auto-generated rationale is"
+        "_Add expanded justification here keyed by the"
+        " `file::function::snippet` anchor above when the"
+        " auto-generated rationale is"
         " insufficient. Anything below this marker is preserved across"
         " regenerations only if you commit it -- the regenerator"
         " currently overwrites the entire file; future revisions may"
