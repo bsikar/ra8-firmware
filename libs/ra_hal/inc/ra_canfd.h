@@ -287,6 +287,38 @@ ra_canfd_filter_set(uint16_t filter_id, uint32_t accept_id, uint32_t mask, uint8
  */
 [[nodiscard]] ra_err_t ra_canfd_exit_stop(uint8_t channel);
 
+#ifdef RA_SIMULATOR_MODE
+/**
+ * @brief Inject a raw frame into the simulator's RX FIFO for fuzzing.
+ *
+ * @details
+ * Test-only veneer compiled when ``RA_SIMULATOR_MODE`` is defined.
+ * Stamps the supplied bytes into ``CFDRF[0].ID`` / ``PTR`` /
+ * ``FDSTS`` / ``DF[]`` and clears ``CFDRFSTS[0]`` so that a follow-up
+ * call to ::ra_canfd_receive consumes the frame. Used by the
+ * libFuzzer harness in ``tests/fuzz/fuzz_ra_canfd.c``.
+ *
+ * @param[in] channel    Channel index.
+ * @param[in] id_word    Raw value to drop into ``CFDRF[0].ID``.
+ * @param[in] ptr_word   Raw value to drop into ``CFDRF[0].PTR``.
+ * @param[in] fdsts_word Raw value to drop into ``CFDRF[0].FDSTS``.
+ * @param[in] data       Source bytes for ``CFDRF[0].DF[]``; may be NULL.
+ * @param[in] data_len   Number of bytes from @p data to copy (clamped
+ *                       to the 64-byte CAN-FD payload cap).
+ *
+ * @retval k_ra_ok            Frame staged.
+ * @retval k_ra_err_null_ptr  Channel out of range.
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_canfd_test_inject_frame(uint8_t        channel,
+                                                  uint32_t       id_word,
+                                                  uint32_t       ptr_word,
+                                                  uint32_t       fdsts_word,
+                                                  const uint8_t* data,
+                                                  uint32_t       data_len);
+#endif /* RA_SIMULATOR_MODE */
+
 #ifdef __cplusplus
 }
 #endif

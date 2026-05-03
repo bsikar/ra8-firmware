@@ -257,12 +257,13 @@ typedef enum : uint8_t {
  * @enum ra_pll2ccr_mask_t
  * @brief Field masks (post-shift) inside PLL2CCR.
  *
- * @details PLL2's multiplier field is 8 bits wide, so the (mul*4)
- * payload fits in 10 bits (8 integer + 2 fractional) once shifted by 6.
+ * @details RA8D2's PLL2MUL field is 9 bits wide (HUM Ch 9.2.9), so the
+ * (mul*4 + quarters) payload fits in 11 bits (9 integer + 2 fractional)
+ * once shifted by 6 to span PLL2MULNF[7:6] and PLL2MUL[16:8].
  */
-typedef enum : uint16_t {
-  k_ra_pll2ccr_mask_plidiv   = 0x0003U, /**< PL2IDIV   2-bit field.        */
-  k_ra_pll2ccr_mask_quarters = 0x03FFU, /**< 10-bit (mul*4) field.         */
+typedef enum : uint32_t {
+  k_ra_pll2ccr_mask_plidiv   = 0x00000003U, /**< PL2IDIV   2-bit field.        */
+  k_ra_pll2ccr_mask_quarters = 0x000007FFU, /**< 11-bit (mul*4) field.         */
 } ra_pll2ccr_mask_t;
 
 /* =============================================================================

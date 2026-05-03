@@ -1212,14 +1212,16 @@ ra_err_t ra_cgc_pll2_enable(uint8_t mul_int, uint8_t mul_quarters, ra_plodiv_t p
 
   ra_log_info_val(s_tag, "pll2 enable mul_int", (uint32_t)mul_int);
 
-  /* Compose PLL2CCR. PLL2 reuses PLL1's `(mul * 4 + quarters) << 6`
-   * packing, but the integer field is 8 bits wide instead of 9. */
-  const uint16_t mul_quarters_field =
-    (uint16_t)((uint16_t)mul_int * (uint16_t)k_ra_cgc_quarters_per_unit) + (uint16_t)mul_quarters;
-  const uint16_t pll2ccr = (uint16_t)(((uint16_t)(mul_quarters_field & k_ra_pll2ccr_mask_quarters)
-                                       << k_ra_pllccr_shift_quarters) |
-                                      ((uint16_t)k_ra_plsrcsel_main << k_ra_pllccr_shift_plsrcsel) |
-                                      ((uint16_t)k_ra_plidiv_div2 & k_ra_pll2ccr_mask_plidiv));
+  /* Compose PLL2CCR. PLL2 on RA8D2 reuses PLL1's `(mul * 4 + quarters) << 6`
+   * packing -- PLL2MULNF[7:6] | PLL2MUL[16:8] -- so the integer multiplier
+   * is a 9-bit field (max 0x12B = x300). PLL2CCR is a 32-bit register on
+   * this part (HUM Ch 9.2.9), distinct from the 16-bit RA8M1 layout. */
+  const uint32_t mul_quarters_field =
+    ((uint32_t)mul_int * (uint32_t)k_ra_cgc_quarters_per_unit) + (uint32_t)mul_quarters;
+  const uint32_t pll2ccr =
+    ((mul_quarters_field & (uint32_t)k_ra_pll2ccr_mask_quarters) << k_ra_pllccr_shift_quarters) |
+    ((uint32_t)k_ra_plsrcsel_main << k_ra_pllccr_shift_plsrcsel) |
+    ((uint32_t)k_ra_plidiv_div2 & (uint32_t)k_ra_pll2ccr_mask_plidiv);
 
   /* PLL2CCR2: programme P; leave Q and R at /1 (code 0) since this
    * driver only consumes PLL2P today. */

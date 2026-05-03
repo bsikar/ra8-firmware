@@ -22,6 +22,10 @@ the device (network, modem, removable media):
 | `fuzz_ra_ble_att`   | ATT dispatcher via `ra_ble_host_test_inject_acl()`      | BLE peer (over the air)      |
 | `fuzz_ra_usb_pal`   | `ra_usb_pal_ep_open` / `ep_send` / `ep_recv`            | USB host / compliance stand  |
 | `fuzz_ra_tls`       | `ra_tls_*` facade lifecycle + BIO recv stream           | Network transport (TLS)      |
+| `fuzz_ra_canfd`     | RX frame parser via `ra_canfd_test_inject_frame()`      | CAN-FD bus                   |
+| `fuzz_ra_etha`      | Ethernet header parser via `ra_etha_test_inject_rx()`   | Ethernet                     |
+| `fuzz_ra_fs_fat`    | FAT BPB / directory entry walk via `ra_fs_mount()`      | Removable media              |
+| `fuzz_ra_jpeg_sw_block` | Focused JPEG Huffman block decoder (dec_block path) | Camera frames                |
 
 Add a new harness by dropping `tests/fuzz/fuzz_<x>.c` next to the
 existing files, listing it in `tests/fuzz/CMakeLists.txt`
@@ -116,6 +120,10 @@ crash reproducers added by the fuzzer or by hand.
 | `fuzz_ra_ble_att`   | 4     | Hand-built ATT PDUs (FIND_INFO, READ_BY_TYPE, READ, WRITE)          |
 | `fuzz_ra_usb_pal`   | 4     | Endpoint-descriptor + payload packets (bulk in/out, intr, iso)      |
 | `fuzz_ra_tls`       | 4     | TLS record headers (ClientHello, Alert close, AppData, Finished)    |
+| `fuzz_ra_canfd`     | 5     | Raw `CFDRF[0]` frame blobs (classic, extended, FD, min, max DLC)    |
+| `fuzz_ra_etha`      | 5     | Short Ethernet frames (ARP, IPv4, VLAN, runt, min header)           |
+| `fuzz_ra_fs_fat`    | 4     | Sparse FAT BPB seeds (FAT16 basic / 4 KiB cluster / minimal / zero) |
+| `fuzz_ra_jpeg_sw_block` | 4 | Scan-data fragments appended to a fixed JFIF header by the harness  |
 
 The corpus directory is passed to libFuzzer as a positional argument.
 libFuzzer also writes any *new* coverage-expanding inputs back into

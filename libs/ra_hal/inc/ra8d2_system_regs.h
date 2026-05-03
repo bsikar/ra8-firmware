@@ -72,7 +72,6 @@ typedef enum : uint16_t {
   k_ra_sys_off_moscr      = 0x032U, /**< MOSCCR    (8-bit).  */
   k_ra_sys_off_hococr     = 0x036U, /**< HOCOCR    (8-bit).  */
   k_ra_sys_off_oscsf      = 0x03CU, /**< OSCSF     (8-bit).  */
-  k_ra_sys_off_pll2ccr    = 0x048U, /**< PLL2CCR  -- PLL2 input/mul/source (16-bit). */
   k_ra_sys_off_pll2cr     = 0x04AU, /**< PLL2CR   -- PLL2 stop control (8-bit).      */
   k_ra_sys_off_pllccr2    = 0x04CU, /**< PLLCCR2 -- PLL1 output dividers (16-bit). */
   k_ra_sys_off_pll2ccr2   = 0x04EU, /**< PLL2CCR2 -- PLL2 output dividers (16-bit). */
@@ -84,9 +83,11 @@ typedef enum : uint16_t {
   k_ra_sys_off_moscwtcr   = 0x0A2U, /**< MOSCWTCR  (8-bit).  */
   k_ra_sys_off_pllccr     = 0x0ACU, /**< PLLCCR    (32-bit). */
   k_ra_sys_off_rstsr1     = 0x0C0U, /**< RSTSR1    (32-bit). */
-  k_ra_sys_off_prcr       = 0x3FAU, /**< PRCR      (16-bit). */
-  k_ra_sys_off_rstsr0     = 0xA40U, /**< RSTSR0    (8-bit).  */
-  k_ra_sys_off_rstsr2     = 0xA44U, /**< RSTSR2    (8-bit).  */
+  k_ra_sys_off_pll2ccr =
+    0x0C8U, /**< PLL2CCR  -- PLL2 input/mul/source (32-bit, RA8D2 HUM Ch 9.2.9). */
+  k_ra_sys_off_prcr   = 0x3FAU, /**< PRCR      (16-bit). */
+  k_ra_sys_off_rstsr0 = 0xA40U, /**< RSTSR0    (8-bit).  */
+  k_ra_sys_off_rstsr2 = 0xA44U, /**< RSTSR2    (8-bit).  */
 } ra_system_offset_t;
 
 /**
@@ -259,16 +260,21 @@ static inline volatile uint16_t* ra_sys_pllccr2(void)
 }
 
 /**
- * @brief Get pointer to the 16-bit PLL2CCR register (PLL2 input/mul/source).
+ * @brief Get pointer to the 32-bit PLL2CCR register (PLL2 input/mul/source).
  *
  * @details
- * PLL2CCR layout (HUM Ch 9.2.10 "PLL2CCR : PLL2 Clock Control Register",
- * cross-reference FSP CMSIS device header `R7FA8M1AH.h` and
- * `R_SYSTEM_PLL2CCR_*_Pos`):
- *   - PL2IDIV   [1:0]  -- input divider (0=/1, 1=/2, 2=/3)
- *   - PL2SRCSEL [4]    -- 0 = Main XTAL, 1 = HOCO
- *   - PLL2MULNF [7:6]  -- fractional multiplier in 0.25 steps
- *   - PLL2MUL   [15:8] -- integer multiplier (8 bits, 1..255)
+ * PLL2CCR layout per RA8D2 HUM Ch 9.2.9 "PLL2CCR : PLL2 Clock Control
+ * Register" (offset 0x0C8, 32-bit access):
+ *   - PL2IDIV   [1:0]   -- input divider (0=/1, 1=/2, 2=/3)
+ *   - PL2SRCSEL [4]     -- 0 = Main XTAL, 1 = HOCO
+ *   - PLL2MULNF [7:6]   -- fractional multiplier in 0.25 steps
+ *   - PLL2MUL   [16:8]  -- integer multiplier (9 bits, 0x27..0x12B = x40..x300)
+ *   - bits 31:17, 5, 3:2 reserved (read 0, write 0)
+ *
+ * Note: this register on RA8D2 is 9-bit-MUL wide and located at offset
+ * 0x0C8 (NOT 0x048 as in older RA8M1 family parts). The previous
+ * accessor used the RA8M1 layout and silently dropped writes on real
+ * RA8D2 silicon.
  *
  * @return Pointer to the live PLL2CCR register.
  * @pre  Single-threaded init context with PRCR group 0 unlocked.
@@ -278,9 +284,9 @@ static inline volatile uint16_t* ra_sys_pllccr2(void)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static inline volatile uint16_t* ra_sys_pll2ccr(void)
+static inline volatile uint32_t* ra_sys_pll2ccr(void)
 {
-  return (volatile uint16_t*)(k_ra_system_base_addr + k_ra_sys_off_pll2ccr);
+  return (volatile uint32_t*)(k_ra_system_base_addr + k_ra_sys_off_pll2ccr);
 }
 
 /**
