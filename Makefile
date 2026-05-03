@@ -62,7 +62,7 @@ $(foreach m,$(_RA_APP_MAINS),$(eval RA_APP_DIR_$(notdir $(patsubst %/main.c,%,$m
 
 # We forward each <app> name to the app's own Makefile, so reserve the names
 # below from being shadowed by .PHONY targets.
-.PHONY: help apps default clean format check tidy test test-cov test-docker ctest coverage mcdc misra docs dashboard ascii version qe-test smoke stack-usage all $(RA_APPS)
+.PHONY: help apps default clean format check tidy test test-cov test-docker ctest coverage mcdc misra docs dashboard ascii version qe-test smoke stack-usage scan-build all $(RA_APPS)
 
 # EVM-tier apps (everything under examples/ek_ra8d2/) -- these are the
 # apps the hardware smoke test sweeps because they run on a stock
@@ -93,6 +93,7 @@ help:
 	@echo "  make qe-test   run tools/ra_qe (JSON configurator) unit tests"
 	@echo "  make smoke     hardware smoke-test sweep over examples/ek_ra8d2/"
 	@echo "  make stack-usage build EVM apps + aggregate -fstack-usage report"
+	@echo "  make scan-build run clang static analyzer over the host test build"
 
 # `make` with no arg builds the default app.
 default: $(RA_DEFAULT_APP)
@@ -200,5 +201,12 @@ smoke: $(EK_APPS)
 # See docs/STACK_USAGE.md.
 stack-usage: $(EK_APPS)
 	python3 scripts/utils/stack_usage_check.py --top 10
+
+# Clang Static Analyzer (scan-build). Drives a clean host-test build
+# under tests/build-scan/ with the analyzer interposed; emits HTML
+# reports under build/scan-build-reports/. See docs/STATIC_ANALYSIS.md
+# for the documented baseline of expected findings.
+scan-build:
+	bash scripts/utils/scan_build.sh
 
 all: format tidy test default
