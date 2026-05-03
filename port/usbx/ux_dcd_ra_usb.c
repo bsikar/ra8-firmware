@@ -220,14 +220,45 @@ static unsigned int internal_transfer_request(struct UX_SLAVE_TRANSFER_STRUCT* t
     const uint16_t len = (uint16_t)tr->ux_slave_transfer_request_requested_length;
     if (ra_usb_queue_in(s_dcd.speed, pipe, tr->ux_slave_transfer_request_data_pointer, len) !=
         k_ra_ok) {
+      s_dcd.pipes[pipe].xfer = nullptr;
       return UX_TRANSFER_ERROR;
     }
     tr->ux_slave_transfer_request_actual_length = len;
   }
-  /* OUT pipes block until the IRQ path delivers bytes; nothing else
-   * to do here. The class thread waits on
-   * ux_slave_transfer_request_semaphore. */
+
+  /* Block until the IRQ path (ux_dcd_ra_usb_irq) signals completion by
+   * tx_semaphore_put on ux_slave_transfer_request_semaphore.
+   *
+   * The upstream USBX device-stack contract is that the DCD's
+   * UX_DCD_TRANSFER_REQUEST handler is synchronous from the class
+   * driver's point of view: the matching pattern in
+   * ux_dcd_sim_slave_transfer_request.c calls
+   * _ux_device_semaphore_get(&tr->ux_slave_transfer_request_semaphore,
+   *                          tr->ux_slave_transfer_request_timeout)
+   * after stashing the request. _ux_device_stack_transfer_request
+   * (ux_device_stack_transfer_request.c) does NOT wait on its own --
+   * it just returns the DCD's status -- so without this wait the class
+   * thread observes actual_length=0 immediately and treats the (still
+   * pending!) read as a short-packet completion, busy-spinning while
+   * the BRDY IRQ later overwrites the stale slot. */
+#ifndef UX_DEVICE_STANDALONE
+  ULONG timeout = tr->ux_slave_transfer_request_timeout;
+  if (timeout == 0UL) {
+    timeout = TX_WAIT_FOREVER;
+  }
+  const UINT sem_status =
+    tx_semaphore_get(&tr->ux_slave_transfer_request_semaphore, timeout);
+  if (sem_status != TX_SUCCESS) {
+    /* Timeout or abort. Drop our slot so a stale BRDY does not write
+     * into a transfer the caller has already abandoned. */
+    s_dcd.pipes[pipe].xfer = nullptr;
+    tr->ux_slave_transfer_request_status = UX_TRANSFER_STATUS_ABORT;
+    return (sem_status == TX_NO_INSTANCE) ? UX_TRANSFER_NO_ANSWER : UX_TRANSFER_ERROR;
+  }
+  return tr->ux_slave_transfer_request_completion_code;
+#else
   return UX_SUCCESS;
+#endif
 }
 
 /**
