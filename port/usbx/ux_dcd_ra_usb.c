@@ -1222,6 +1222,18 @@ ra_err_t ux_dcd_ra_usb_initialize(ra_usb_speed_t speed)
   device->ux_slave_device_control_endpoint.ux_slave_endpoint_state = UX_ENDPOINT_RESET;
   tr->ux_slave_transfer_request_phase = UX_TRANSFER_PHASE_DATA_IN;
 
+  /* USBX gates EP0 transfers in _ux_device_stack_transfer_request on
+   * state in {ATTACHED, ADDRESSED, CONFIGURED}; .bss-zero leaves it
+   * at RESET(0). On the first DVST IRQ we advance to ATTACHED, but
+   * the host's first GET_DESCRIPTOR(DEVICE) can race ahead of that
+   * IRQ and get rejected with UX_TRANSFER_NOT_READY -- the chip then
+   * hangs at CTSQ=read-data-stage. Stamp ATTACHED here, before the
+   * caller raises DPRPU via ra_usb_device_attach(), so the very
+   * first SETUP from the host is always serviceable. The no-demote
+   * rank guard in internal_handle_dvst keeps subsequent CTRT-driven
+   * advances to ADDRESSED/CONFIGURED safe. */
+  device->ux_slave_device_state = (unsigned long)UX_DEVICE_ATTACHED;
+
   /* Spawn the polled-dispatch worker BEFORE returning so it is
    * already pumping ra_usb_dispatch by the time the application
    * calls ra_usb_device_attach(true). Without this the host raises
