@@ -96,6 +96,7 @@ help:
 	@echo "  make scan-build run clang static analyzer over the host test build"
 	@echo "  make iwyu      run include-what-you-use over the host test build"
 	@echo "  make fuzz      build + smoke-run libFuzzer harnesses (clang only)"
+	@echo "  make audit-init per-app init-order audit (writes docs/INIT_ORDER_AUDIT.md)"
 
 # `make` with no arg builds the default app.
 default: $(RA_DEFAULT_APP)
@@ -291,5 +292,15 @@ bench:
 # ---------------------------------------------------------------------------
 app-sizes:
 	python3 scripts/utils/app_sizes.py --write
+
+# ---------------------------------------------------------------------------
+# `make audit-init` -- per-app init-order linter. Walks each main.c and
+# verifies the canonical CGC -> MSTP -> IOPORT -> peripheral ordering
+# is respected. Writes docs/INIT_ORDER_AUDIT.md as a side-effect.
+# Warn-only today; pass --strict to fail on first violation.
+# ---------------------------------------------------------------------------
+.PHONY: audit-init
+audit-init:
+	python3 scripts/utils/audit_init_order.py --report docs/INIT_ORDER_AUDIT.md
 
 all: format tidy test default
