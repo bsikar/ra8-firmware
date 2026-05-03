@@ -54,9 +54,14 @@ coverage is roughly:
 * **Advisory rules** (~50): ~25 covered.
 
 So expect cppcheck to detect **roughly two thirds of the mandatory +
-required rules** -- a useful coverage floor, but not a substitute for a
-qualified commercial tool when the project enters formal SIL 3 / DAL B
-certification.
+required rules**. The remaining one third is **accepted as residual
+risk** under IEC 61508-7 Annex D.7 ("achievable assurance with
+available tools"). Commercial MISRA checkers (LDRA / Helix QAC /
+Polyspace / PVS-Studio) are **explicitly out of scope** for this
+project -- see `docs/qualification/MISRA_DEVIATIONS.md` Section
+"Tooling policy" and `docs/CERTIFICATION_SCOPE.md`. Any downstream
+party who adopts this codebase for a regulated product is responsible
+for procuring their own qualified checker.
 
 A second important limitation: cppcheck 2.20 does not yet support
 `--std=c23`. This codebase uses C23 typed enums (`enum : uint8_t`) and
@@ -175,10 +180,13 @@ The triage below tracks that decision per top-violated rule.
    `scripts/utils/misra_check.sh` already supports a baseline-pinned
    `--check` mode (the existing `scripts/misra_check.sh` follows the
    same pattern).
-4. **Commercial-tool re-audit before any certification claim.**
-   cppcheck-MISRA at ~two-thirds rule coverage is sufficient for
-   internal hygiene but not for IEC 61508 / DO-178C credit. Final
-   compliance evidence will require LDRA, Polyspace, or QAC.
+4. **No commercial-tool re-audit.** cppcheck-MISRA at ~two-thirds
+   rule coverage is the project's permanent MISRA enforcement
+   stance. The uncovered rules are accepted as residual risk per
+   IEC 61508-7 Annex D.7. This project will not seek certification
+   itself (see `docs/CERTIFICATION_SCOPE.md`); a downstream
+   adopter who pursues certification is responsible for their own
+   commercial-tool re-audit.
 
 ## Tooling reference
 

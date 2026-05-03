@@ -124,8 +124,12 @@ From `docs/MISRA.md` and `docs/MISRA_GAPS.csv`:
 - **Rule 12.1 (operator precedence)**: 101 violations -- advisory.
 - **Rule 9.2 (initializer braces)**: 35 violations -- required.
 - Coverage caveat: cppcheck implements roughly two thirds of
-  mandatory + required rules. A qualified commercial checker
-  (LDRA, Helix QAC, Polyspace) is required before SOI-3.
+  mandatory + required rules. The remaining one third is
+  **accepted as residual risk** per IEC 61508-7 Annex D.7; a
+  commercial checker (LDRA, Helix QAC, Polyspace) is **explicitly
+  out of scope** for this project. See
+  `docs/qualification/MISRA_DEVIATIONS.md` Section "Tooling
+  policy" for the final decision and rationale.
 
 ### SOUP / third-party register
 
@@ -330,8 +334,8 @@ Qualification Level (TQL):
 |---------------------------|---------------------------------------|-----------|-----------------------------------------------------------------------------------------------------|
 | `arm-none-eabi-gcc`       | Cross-compiler -> production object   | TQL-5     | Object code re-verified against requirements via `make smoke` on real hardware (Phase 6).           |
 | `clang-18` (host)         | MC/DC instrumentation + host tests    | TQL-5     | Output is test-only; no production code path. Instrumentation re-verified by host tests passing.    |
-| `cppcheck` (with misra)   | MISRA-C 2012 advisory checker         | TQL-5     | Findings reviewed manually + `MISRA_DEVIATIONS.md`. A commercial checker (LDRA/Polyspace) is the    |
-|                           |                                       |           | upgrade path before formal SOI-3.                                                                   |
+| `cppcheck` (with misra)   | MISRA-C 2012 advisory checker         | TQL-5     | Findings reviewed manually + `MISRA_DEVIATIONS.md`. Sole MISRA tool: commercial checkers (LDRA /    |
+|                           |                                       |           | Polyspace / Helix QAC) are explicitly out of scope per `docs/qualification/MISRA_DEVIATIONS.md`.    |
 | `clang-tidy`              | Naming + complexity gate              | TQL-5     | Advisory only; no autofix in CI; line-threshold gate cross-checked against NASA P10 Rule 4.         |
 | `clang-format`            | Style enforcement                     | TQL-5     | Idempotent; reviewed by humans on every PR.                                                         |
 | `llvm-profdata` / `llvm-cov` | MC/DC measurement                  | TQL-5     | Coverage results spot-checked against hand-traced decisions during Phase 1 and Phase 2.             |
@@ -378,10 +382,17 @@ functionality off the blob entirely. Both are documented in
 
 ### Process blockers
 
-3. **Commercial MISRA checker procurement**. cppcheck-misra is
-   sufficient for the advisory baseline but a qualified checker
-   (LDRA / Helix QAC / Polyspace) is needed before SOI-3. Cost
-   and licensing decision is open.
+3. **Commercial MISRA checker procurement** -- **CLOSED 2026-05-02:
+   never**. `cppcheck` (FOSS) remains the sole MISRA enforcement
+   tool. LDRA / Helix QAC / Polyspace / PVS-Studio are explicitly
+   out of scope: this is an MIT-licensed, $0 personal/research
+   project that will not seek certification (see
+   `docs/CERTIFICATION_SCOPE.md`). The ~30 % of MISRA-C:2012 rules
+   not covered by `cppcheck` are accepted as residual risk per
+   IEC 61508-7 Annex D.7 ("achievable assurance with available
+   tools"). Full rationale in
+   `docs/qualification/MISRA_DEVIATIONS.md` Section "Tooling
+   policy".
 
 4. **Independent assessor selection** (IEC 61508-1 cl. 8.2). For
    a personal-project context the assessor role can be self-
