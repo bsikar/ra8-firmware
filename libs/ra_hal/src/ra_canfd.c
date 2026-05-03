@@ -1052,3 +1052,52 @@ ra_err_t ra_canfd_exit_stop(uint8_t channel)
   /* HUM Ch 11.2.8 "MSTPCRC" p 447 */ /* ungate channel clock. */
   return ra_mstp_enable(s_canfd_mstp_table[channel]);
 }
+
+#ifdef RA_SIMULATOR_MODE
+/**
+ * @brief ra_canfd_test_inject_frame -- see header for full description.
+ * @details Test-only veneer used by the libFuzzer harness; writes the
+ * fuzz-controlled words into the simulator's CFDRF[0] register block
+ * and clears the empty bit so a subsequent ra_canfd_receive consumes
+ * the staged frame.
+ * @param[in] channel See header declaration for direction and constraints.
+ * @param[in] id_word See header declaration for direction and constraints.
+ * @param[in] ptr_word See header declaration for direction and constraints.
+ * @param[in] fdsts_word See header declaration for direction and constraints.
+ * @param[in] data See header declaration for direction and constraints.
+ * @param[in] data_len See header declaration for direction and constraints.
+ * @return ::ra_err_t outcome of the frame-staging operation.
+ * @retval k_ra_ok Frame staged.
+ * @retval k_ra_err_null_ptr Channel out of range.
+ * @pre RA_SIMULATOR_MODE compile guard active.
+ * @pre Caller is single-threaded test context.
+ * @post CFDRF[0] populated; RFEMP cleared.
+ * @post No global driver state is mutated.
+ * @note Test-only; not present on target builds.
+ * @since 0.1.0
+ */
+ra_err_t ra_canfd_test_inject_frame(uint8_t        channel,
+                                    uint32_t       id_word,
+                                    uint32_t       ptr_word,
+                                    uint32_t       fdsts_word,
+                                    const uint8_t* data,
+                                    uint32_t       data_len)
+{
+  volatile r_canfd_t* reg = ra_canfd(channel);
+  if (reg == nullptr) {
+    return k_ra_err_null_ptr;
+  }
+  reg->CFDRF[k_ra_canfd_rx_fifo_default].ID    = id_word;
+  reg->CFDRF[k_ra_canfd_rx_fifo_default].PTR   = ptr_word;
+  reg->CFDRF[k_ra_canfd_rx_fifo_default].FDSTS = fdsts_word;
+  const uint32_t copy_len                      = (data_len > (uint32_t)k_ra_canfd_data_bytes_max)
+                                                   ? (uint32_t)k_ra_canfd_data_bytes_max
+                                                   : data_len;
+  for (uint32_t b = 0U; b < copy_len; b++) {
+    reg->CFDRF[k_ra_canfd_rx_fifo_default].DF[b] = (data != nullptr) ? data[b] : 0U;
+  }
+  /* Clear the RFEMP bit so ra_canfd_receive sees a frame ready. */
+  reg->CFDRFSTS[k_ra_canfd_rx_fifo_default] &= ~(uint32_t)k_ra_rfsts_bit_empty;
+  return k_ra_ok;
+}
+#endif /* RA_SIMULATOR_MODE */

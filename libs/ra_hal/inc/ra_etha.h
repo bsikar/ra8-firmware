@@ -1018,6 +1018,37 @@ ra_etha_set_vlan_mode(ra_etha_port_t port, ra_etha_vim_t vim, ra_etha_vem_t vem)
 [[nodiscard]] ra_err_t
 ra_etha_open(ra_etha_port_t channel, const ra_etha_phy_open_t* phy, ra_rmac_phy_link_t* out_link);
 
+#ifdef RA_SIMULATOR_MODE
+/**
+ * @brief Inject a raw RX frame for fuzz / unit-test ingestion.
+ *
+ * @details
+ * Test-only veneer compiled when ``RA_SIMULATOR_MODE`` is defined.
+ * Performs the minimum sanity check the descriptor ISR would do
+ * (length >= Ethernet header) and decodes the destination MAC,
+ * source MAC, and EtherType into the supplied output struct. Returns
+ * an error if the frame is malformed. Used by the libFuzzer harness
+ * in ``tests/fuzz/fuzz_ra_etha.c``.
+ *
+ * @param[in]  frame      Raw bytes (untrusted).
+ * @param[in]  frame_len  Length in bytes of @p frame.
+ * @param[out] out_dst    6-byte destination MAC, populated on success.
+ * @param[out] out_src    6-byte source MAC, populated on success.
+ * @param[out] out_etype  16-bit big-endian EtherType, populated on success.
+ *
+ * @retval k_ra_ok               Frame parsed.
+ * @retval k_ra_err_null_ptr     Any required output is NULL.
+ * @retval k_ra_err_invalid_arg  Frame too short to be a legal Ethernet frame.
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_etha_test_inject_rx(const uint8_t* frame,
+                                              uint32_t       frame_len,
+                                              uint8_t        out_dst[6],
+                                              uint8_t        out_src[6],
+                                              uint16_t*      out_etype);
+#endif /* RA_SIMULATOR_MODE */
+
 #ifdef __cplusplus
 }
 #endif

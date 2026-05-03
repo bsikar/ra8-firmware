@@ -109,6 +109,7 @@ unusedStructMember:libs/ra_hal/inc/ra_sdcard.h
 unusedStructMember:libs/ra_hal/inc/ra_smbus.h
 unusedStructMember:libs/ra_wdt_supervisor/inc/ra_wdt_supervisor.h
 unusedStructMember:libs/ra_hal/inc/ra_eth.h
+unusedStructMember:libs/ra_hal/inc/ra_etha.h
 unusedStructMember:libs/ra_hal/inc/ra_touch.h
 unusedStructMember:libs/ra_hal/inc/ra_usb.h
 unusedStructMember:libs/ra_hal/inc/ra_wdt.h
