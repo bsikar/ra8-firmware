@@ -72,7 +72,10 @@ typedef enum : uint16_t {
   k_ra_sys_off_moscr      = 0x032U, /**< MOSCCR    (8-bit).  */
   k_ra_sys_off_hococr     = 0x036U, /**< HOCOCR    (8-bit).  */
   k_ra_sys_off_oscsf      = 0x03CU, /**< OSCSF     (8-bit).  */
+  k_ra_sys_off_pll2ccr    = 0x048U, /**< PLL2CCR  -- PLL2 input/mul/source (16-bit). */
+  k_ra_sys_off_pll2cr     = 0x04AU, /**< PLL2CR   -- PLL2 stop control (8-bit).      */
   k_ra_sys_off_pllccr2    = 0x04CU, /**< PLLCCR2 -- PLL1 output dividers (16-bit). */
+  k_ra_sys_off_pll2ccr2   = 0x04EU, /**< PLL2CCR2 -- PLL2 output dividers (16-bit). */
   k_ra_sys_off_scickdivcr = 0x054U, /**< SCICKDIVCR (8-bit). */
   k_ra_sys_off_scickcr    = 0x055U, /**< SCICKCR    (8-bit). */
   k_ra_sys_off_usbckdivcr = 0x06CU, /**< USBCKDIVCR (8-bit) -- USB clock divider. */
@@ -253,6 +256,78 @@ static inline volatile uint32_t* ra_sys_pllccr(void)
 static inline volatile uint16_t* ra_sys_pllccr2(void)
 {
   return (volatile uint16_t*)(k_ra_system_base_addr + k_ra_sys_off_pllccr2);
+}
+
+/**
+ * @brief Get pointer to the 16-bit PLL2CCR register (PLL2 input/mul/source).
+ *
+ * @details
+ * PLL2CCR layout (HUM Ch 9.2.10 "PLL2CCR : PLL2 Clock Control Register",
+ * cross-reference FSP CMSIS device header `R7FA8M1AH.h:14887` and
+ * `R_SYSTEM_PLL2CCR_*_Pos`):
+ *   - PL2IDIV   [1:0]  -- input divider (0=/1, 1=/2, 2=/3)
+ *   - PL2SRCSEL [4]    -- 0 = Main XTAL, 1 = HOCO
+ *   - PLL2MULNF [7:6]  -- fractional multiplier in 0.25 steps
+ *   - PLL2MUL   [15:8] -- integer multiplier (8 bits, 1..255)
+ *
+ * @return Pointer to the live PLL2CCR register.
+ * @pre  Single-threaded init context with PRCR group 0 unlocked.
+ * @pre  PLL2 has been stopped (PLL2CR.PLL2STP = 1) before any write.
+ * @post No mutation; pointer-only accessor.
+ * @post Pointer aliases live MMIO -- caller must use volatile semantics.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static inline volatile uint16_t* ra_sys_pll2ccr(void)
+{
+  return (volatile uint16_t*)(k_ra_system_base_addr + k_ra_sys_off_pll2ccr);
+}
+
+/**
+ * @brief Get pointer to the 8-bit PLL2CR register (PLL2 stop control).
+ *
+ * @details
+ * PLL2CR.PLL2STP at bit 0: write 1 to stop PLL2, 0 to run it
+ * (HUM Ch 9.2.11 "PLL2CR : PLL2 Control Register"; FSP
+ * `R_SYSTEM_PLL2CR_PLL2STP_Pos`).
+ *
+ * @return Pointer to the live PLL2CR register.
+ * @pre  Single-threaded init context with PRCR group 0 unlocked.
+ * @pre  CPU is not currently sourced from PLL2 (would self-stall).
+ * @post No mutation; pointer-only accessor.
+ * @post Pointer aliases live MMIO.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static inline volatile uint8_t* ra_sys_pll2cr(void)
+{
+  return (volatile uint8_t*)(k_ra_system_base_addr + k_ra_sys_off_pll2cr);
+}
+
+/**
+ * @brief Get pointer to the 16-bit PLL2CCR2 register (PLL2 output dividers).
+ *
+ * @details
+ * PLL2CCR2 layout (HUM Ch 9.2.12 "PLL2CCR2 : PLL2 Clock Control Register 2",
+ * FSP `R_SYSTEM_PLL2CCR2_PL2ODIVx_Pos`):
+ *   - PL2ODIVP [3:0]   -- PLL2P output divider code
+ *   - PL2ODIVQ [7:4]   -- PLL2Q output divider code
+ *   - PL2ODIVR [11:8]  -- PLL2R output divider code
+ *
+ * Code-to-ratio map matches PLL1's `ra_plodiv_t` (ratio - 1 for /1../6,
+ * /8 = 7, /9 = 8, /16 = 15).
+ *
+ * @return Pointer to the live PLL2CCR2 register.
+ * @pre  Single-threaded init context with PRCR group 0 unlocked.
+ * @pre  PLL2 has been stopped before any write.
+ * @post No mutation; pointer-only accessor.
+ * @post Pointer aliases live MMIO.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static inline volatile uint16_t* ra_sys_pll2ccr2(void)
+{
+  return (volatile uint16_t*)(k_ra_system_base_addr + k_ra_sys_off_pll2ccr2);
 }
 
 /** @brief Get pointer to the 8-bit OSCSF (oscillation stabilisation) register. */

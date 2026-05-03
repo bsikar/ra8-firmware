@@ -1081,12 +1081,40 @@ ra_err_t ra_cgc_usbhs_pll_enable(void)
 
 /**
  * @enum ra_usbfs_clock_local_t
- * @brief Local sentinels for the USBCKSRDY handshake.
+ * @brief Local sentinels for the USBCKSRDY handshake and divider codes.
+ *
+ * @details
+ * USBCKDIVCR uses a non-linear code-to-ratio map (FSP `bsp_clocks.c:140-160`):
+ *   /1=0, /2=1, /3=5, /4=2, /5=6, /6=3, /8=4, /10=7, /16=8.
+ * We expose only the divisors this driver actually uses.
  */
 typedef enum : uint16_t {
   k_ra_usbfs_srdy_poll_limit = 1000U, /**< Iterations before timeout.   */
+  k_ra_usbfs_div5_code       = 6U,    /**< USBCKDIVCR codepoint for /5. */
   k_ra_usbfs_div8_code       = 4U,    /**< USBCKDIVCR codepoint for /8. */
 } ra_usbfs_clock_local_t;
+
+/**
+ * @enum ra_pll2_local_t
+ * @brief Local constants for the PLL2 bring-up path.
+ *
+ * @details
+ * The EK-RA8D2 board fits a 24 MHz crystal (per the schematic and the
+ * existing PLL1 setup). For USB-FS we want a /5 divider downstream so
+ * PLL2P needs to be 240 MHz, which means a 960 MHz VCO (the silicon
+ * minimum). PL2IDIV = /2 -> 12 MHz pre-scale. PLL2MUL = 80 (integer)
+ * with PLL2MULNF = 0 (no quarter steps) -> 12 * 80 = 960 MHz. PL2ODIVP
+ * = /4 -> 240 MHz at PLL2P. USBCKDIVCR = /5 -> 48 MHz exactly.
+ *
+ * Spec compliance: USBCKCR source 240 MHz * (1/5) = 48.000 MHz
+ * (0 ppm error vs the USB-FS spec target of 48 MHz +/- 2500 ppm =
+ * +/- 0.25 %). PASS.
+ */
+typedef enum : uint16_t {
+  k_ra_pll2_max_quarters   = 3U,  /**< Max value of PLL2MULNF[7:6]. */
+  k_ra_pll2_usbfs_mul      = 80U, /**< Integer multiplier for PLL2 USBFS path. */
+  k_ra_pll2_usbfs_quarters = 0U,  /**< Fractional quarter-steps (none).        */
+} ra_pll2_local_t;
 
 /**
  * @brief Spin until USBCKCR.USBCKSRDY matches the expected value.
@@ -1115,20 +1143,119 @@ static ra_err_t internal_wait_usbcksrdy(uint8_t expected)
 }
 
 /**
- * @brief Implementation of ra_cgc_usbfs_clock_enable (see header).
- * @details Implements the FSP `bsp_clocks.c:2648-2691` USBCKCR /
- *          USBCKSREQ handshake. PLL1Q (333.33 MHz) /8 ~= 41.67 MHz:
- *          NOT a valid USB-FS reference (needs 48 MHz +/- 2500 ppm),
- *          but the closest available given the existing PLL1 plan.
- *          A follow-up commit must bring up PLL2 to deliver exact
- *          48 MHz; this commit only proves USBCKCR is being
- *          programmed at all (verifiable via g_ra_usb_phy_observed).
+ * @brief Implementation of ra_cgc_pll2_enable (see header for full contract).
+ *
+ * @details
+ * Stops PLL2 (with bounded poll on OSCSF.PLL2SF clear), programmes
+ * PLL2CCR + PLL2CCR2, then starts PLL2 (bounded poll on OSCSF.PLL2SF
+ * set). Input divider is hard-wired to /2 and source to main XTAL
+ * because that is the only configuration the EK-RA8D2 (24 MHz crystal)
+ * needs today; broaden the API once a second board lands.
+ *
+ * @param[in] mul_int      Integer multiplier (1..255).
+ * @param[in] mul_quarters Quarter-step fractional multiplier (0..3).
+ * @param[in] p_div_code   ::ra_plodiv_t code for the P output divider.
+ *
  * @return Result code.
- * @retval k_ra_ok USB-FS clock running.
- * @retval k_ra_err_hw_timeout USBCKSRDY handshake never completed.
- * @pre ra_cgc_init has been called (PLL1 locked).
+ * @retval k_ra_ok            PLL2 locked.
+ * @retval k_ra_err_invalid_arg ``mul_int`` is 0 or ``mul_quarters > 3``.
+ * @retval k_ra_err_hw_timeout PLL2SF stop or start handshake timed out.
+ *
+ * @pre  ::ra_cgc_init has been called and main XTAL is stable.
+ * @pre  Single-threaded init context; CPU not sourced from PLL2.
+ *
+ * @post On k_ra_ok: PLL2 is locked at the requested multiplier and
+ *       output divider; PRCR is re-locked.
+ * @post On any error path the PRCR window is closed by RA_PROTECTED_WRITE.
+ *
+ * @note Not thread-safe.
+ *
+ * @since 0.1.0
+ */
+ra_err_t ra_cgc_pll2_enable(uint8_t mul_int, uint8_t mul_quarters, ra_plodiv_t p_div_code)
+{
+  if (mul_int == 0U) {
+    return k_ra_err_invalid_arg;
+  }
+  if ((uint16_t)mul_quarters > (uint16_t)k_ra_pll2_max_quarters) {
+    return k_ra_err_invalid_arg;
+  }
+
+  ra_log_info_val(s_tag, "pll2 enable mul_int", (uint32_t)mul_int);
+
+  /* Compose PLL2CCR. PLL2 reuses PLL1's `(mul * 4 + quarters) << 6`
+   * packing, but the integer field is 8 bits wide instead of 9. */
+  const uint16_t mul_quarters_field =
+    (uint16_t)((uint16_t)mul_int * (uint16_t)k_ra_cgc_quarters_per_unit) + (uint16_t)mul_quarters;
+  const uint16_t pll2ccr = (uint16_t)(((uint16_t)(mul_quarters_field & k_ra_pll2ccr_mask_quarters)
+                                       << k_ra_pllccr_shift_quarters) |
+                                      ((uint16_t)k_ra_plsrcsel_main << k_ra_pllccr_shift_plsrcsel) |
+                                      ((uint16_t)k_ra_plidiv_div2 & k_ra_pll2ccr_mask_plidiv));
+
+  /* PLL2CCR2: programme P; leave Q and R at /1 (code 0) since this
+   * driver only consumes PLL2P today. */
+  const uint16_t pll2ccr2 = (uint16_t)(((uint16_t)k_ra_plodiv_div1 << k_ra_pllccr2_shift_plodivr) |
+                                       ((uint16_t)k_ra_plodiv_div1 << k_ra_pllccr2_shift_plodivq) |
+                                       ((uint16_t)p_div_code << k_ra_pllccr2_shift_plodivp));
+
+  ra_err_t err = k_ra_ok;
+  RA_PROTECTED_WRITE(k_ra_prcr_unlock_cgc)
+  {
+    /* Stop PLL2 first so PLL2CCR / PLL2CCR2 writes are accepted (mirrors
+     * the PLL1 behaviour where writes silently drop while the PLL is
+     * running). HUM Ch 9.2.11 "PLL2CR : PLL2 Control Register" p 336. */
+    *ra_sys_pll2cr() = (uint8_t)k_ra_pll2cr_stop;
+    err              = internal_wait_oscsf_clear(k_ra_oscsf_bit_pll2sf);
+    if (err != k_ra_ok) {
+      ra_log_error(s_tag, "pll2: stop wait timeout");
+      break;
+    }
+
+    /* HUM Ch 9.2.10 "PLL2CCR : PLL2 Clock Control Register" p 335 */
+    *ra_sys_pll2ccr() = pll2ccr;
+    /* HUM Ch 9.2.12 "PLL2CCR2 : PLL2 Clock Control Register 2" p 337 */
+    *ra_sys_pll2ccr2() = pll2ccr2;
+
+    /* Restart PLL2 and wait for OSCSF.PLL2SF. */
+    *ra_sys_pll2cr() = (uint8_t)k_ra_pll2cr_run;
+    err              = internal_wait_oscsf_set(k_ra_oscsf_bit_pll2sf);
+    if (err != k_ra_ok) {
+      ra_log_error(s_tag, "pll2: lock wait timeout");
+      break;
+    }
+  }
+
+  if (err != k_ra_ok) {
+    return err;
+  }
+  ra_log_info(s_tag, "pll2 locked");
+  return k_ra_ok;
+}
+
+/**
+ * @brief Implementation of ra_cgc_usbfs_clock_enable (see header).
+ *
+ * @details
+ * Step 1: bring up PLL2 via ::ra_cgc_pll2_enable.
+ *   XTAL = 24 MHz, PL2IDIV = /2 (fixed), PLL2MUL = 80, PLL2MULNF = 0
+ *   -> VCO = 12 MHz * 80 = 960 MHz (right at the silicon minimum).
+ *   PL2ODIVP = /4 -> PLL2P = 240 MHz.
+ *
+ * Step 2: USBCKCR / USBCKDIVCR handshake (FSP `bsp_clocks.c:2648-2691`).
+ *   USBCKDIVCR = /5 codepoint (= 6, per the non-linear FSP map).
+ *   USBCKSEL   = PLL2P.
+ *   Effective USB clock = 240 MHz / 5 = 48.000 MHz.
+ *
+ * Spec compliance: USB-FS requires 48 MHz +/- 2500 ppm (+/- 0.25 %).
+ * Achieved 48.000 MHz exactly (0 ppm) -> PASS.
+ *
+ * @return Result code.
+ * @retval k_ra_ok USB-FS clock running at exactly 48 MHz.
+ * @retval k_ra_err_hw_timeout PLL2 lock or USBCKSRDY handshake timed out.
+ * @pre ra_cgc_init has been called (PLL1 locked, main XTAL stable).
  * @pre Single-threaded init context.
- * @post USBCKCR programmed with PLL1Q source.
+ * @post PLL2 is locked at 240 MHz on PLL2P.
+ * @post USBCKCR.USBCKSEL = PLL2P, USBCKDIVCR = /5.
  * @post PRCR is re-locked.
  * @note Not thread-safe.
  * @since 0.1.0
@@ -1136,8 +1263,20 @@ static ra_err_t internal_wait_usbcksrdy(uint8_t expected)
 ra_err_t ra_cgc_usbfs_clock_enable(void)
 {
   ra_log_info(s_tag, "usbfs clock enable");
-  ra_err_t err = k_ra_ok;
 
+  /* Step 1: bring up PLL2 to land 240 MHz on PLL2P. The PLL2 helper
+   * takes its own PRCR window. */
+  const ra_err_t pll2_err = ra_cgc_pll2_enable((uint8_t)k_ra_pll2_usbfs_mul,
+                                               (uint8_t)k_ra_pll2_usbfs_quarters,
+                                               k_ra_plodiv_div4);
+  if (pll2_err != k_ra_ok) {
+    ra_log_error_val(s_tag, "usbfs: pll2 enable failed", (uint32_t)pll2_err);
+    return pll2_err;
+  }
+
+  /* Step 2: USBCKCR / USBCKDIVCR handshake to swap the USB-FS source
+   * over to PLL2P / 5 = 48 MHz. */
+  ra_err_t err = k_ra_ok;
   RA_PROTECTED_WRITE(k_ra_prcr_unlock_cgc)
   {
     /* HUM Ch 9.2.55 "USBCKCR : USB Clock Control Register" p 365 */
@@ -1150,11 +1289,14 @@ ra_err_t ra_cgc_usbfs_clock_enable(void)
       break;
     }
 
-    /* HUM Ch 9.2.54 "USBCKDIVCR : USB Clock Division Control Register" p 364 */
-    *ra_sys_usbckdivcr() = (uint8_t)k_ra_usbfs_div8_code;
+    /* HUM Ch 9.2.54 "USBCKDIVCR : USB Clock Division Control Register" p 364
+     * Code 6 == /5 per FSP `bsp_clocks.c:149-151`. */
+    *ra_sys_usbckdivcr() = (uint8_t)k_ra_usbfs_div5_code;
 
-    /* HUM Ch 9.2.55 "USBCKCR : USB Clock Control Register" p 365 */
-    const uint8_t src = (uint8_t)((uint8_t)k_ra_usbcksel_pll1q & k_ra_usbckcr_mask_sel);
+    /* HUM Ch 9.2.55 "USBCKCR : USB Clock Control Register" p 365.
+     * Spec compliance check: 240 MHz * (1 / 5) = 48.000 MHz, within
+     * the USB-FS spec (48 MHz +/- 0.25 %). */
+    const uint8_t src = (uint8_t)((uint8_t)k_ra_usbcksel_pll2p & k_ra_usbckcr_mask_sel);
     *ra_sys_usbckcr() = (uint8_t)(src | sreq_mask);
     *ra_sys_usbckcr() = src;
 
@@ -1168,7 +1310,7 @@ ra_err_t ra_cgc_usbfs_clock_enable(void)
   if (err != k_ra_ok) {
     return err;
   }
-  ra_log_info(s_tag, "usbfs clock ready (PLL1Q/8)");
+  ra_log_info(s_tag, "usbfs clock ready (PLL2P/5 = 48 MHz)");
   return k_ra_ok;
 }
 

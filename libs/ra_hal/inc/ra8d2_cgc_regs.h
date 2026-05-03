@@ -224,6 +224,48 @@ typedef enum : uint8_t {
 } ra_plodiv_t;
 
 /* =============================================================================
+ * PLL2CCR / PLL2CR / PLL2CCR2 -- PLL2 register encodings
+ * =============================================================================
+ *
+ * PLL2 has the same field layout as PLL1 except the multiplier is 8 bits
+ * (vs 9 for PLL1) and the register width is 16 bits (vs 32). The shifts
+ * and the (mul*4 + quarters) packing trick are identical, so we reuse
+ * `k_ra_pllccr_shift_*`, `k_ra_plidiv_*`, `k_ra_plsrcsel_*` and
+ * `k_ra_plodiv_*` from above and only add what is unique to PLL2:
+ *
+ *   - PLL2CR.PLL2STP at bit 0 (write 1 = stop, 0 = run).
+ *   - PLL2MUL is 8 bits (1..255), still encoded as `mul * 4 + quarters`
+ *     shifted by 6 so the integer part falls in [15:8] and the fraction
+ *     in [7:6].
+ *
+ * Cross-reference: FSP CMSIS device header (RA8 Gen2 family)
+ * `R_SYSTEM_PLL2CR_PLL2STP_Pos`, `R_SYSTEM_PLL2CCR_PL2IDIV_Pos`,
+ * `R_SYSTEM_PLL2CCR_PL2SRCSEL_Pos`, `R_SYSTEM_PLL2CCR_PLL2MUL_Pos`,
+ * `R_SYSTEM_PLL2CCR2_PL2ODIVP_Pos` etc.
+ */
+
+/**
+ * @enum ra_pll2cr_val_t
+ * @brief Discrete values written to the 8-bit PLL2CR register.
+ */
+typedef enum : uint8_t {
+  k_ra_pll2cr_run  = 0x00U, /**< Clear PLL2STP -> PLL2 runs.  */
+  k_ra_pll2cr_stop = 0x01U, /**< Set PLL2STP   -> PLL2 stops. */
+} ra_pll2cr_val_t;
+
+/**
+ * @enum ra_pll2ccr_mask_t
+ * @brief Field masks (post-shift) inside PLL2CCR.
+ *
+ * @details PLL2's multiplier field is 8 bits wide, so the (mul*4)
+ * payload fits in 10 bits (8 integer + 2 fractional) once shifted by 6.
+ */
+typedef enum : uint16_t {
+  k_ra_pll2ccr_mask_plidiv   = 0x0003U, /**< PL2IDIV   2-bit field.        */
+  k_ra_pll2ccr_mask_quarters = 0x03FFU, /**< 10-bit (mul*4) field.         */
+} ra_pll2ccr_mask_t;
+
+/* =============================================================================
  * HOCOCR / MOSCWTCR bit fields
  * =============================================================================
  */
