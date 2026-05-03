@@ -29,6 +29,12 @@ typedef enum : uint8_t {
   k_ra_agt_test_tstart_bit = 0x01U,
 } ra_agt_test_bits_t;
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_start_free_run_happy(void)
 {
   TEST_BEGIN("agt start_free_run happy");
@@ -47,6 +53,12 @@ static void test_start_free_run_happy(void)
   TEST_END("agt start_free_run happy");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_start_free_run_middle_channel(void)
 {
   TEST_BEGIN("agt start_free_run middle channel");
@@ -60,6 +72,12 @@ static void test_start_free_run_middle_channel(void)
   TEST_END("agt start_free_run middle channel");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_start_free_run_last_channel(void)
 {
   TEST_BEGIN("agt start_free_run last channel");
@@ -69,6 +87,12 @@ static void test_start_free_run_last_channel(void)
   TEST_END("agt start_free_run last channel");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_start_free_run_bad_channel(void)
 {
   TEST_BEGIN("agt start_free_run bad channel");
@@ -79,6 +103,12 @@ static void test_start_free_run_bad_channel(void)
   TEST_END("agt start_free_run bad channel");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_start_free_run_huge_channel(void)
 {
   TEST_BEGIN("agt start_free_run huge channel");
@@ -89,6 +119,12 @@ static void test_start_free_run_huge_channel(void)
   TEST_END("agt start_free_run huge channel");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_stop_happy(void)
 {
   TEST_BEGIN("agt stop happy");
@@ -104,6 +140,12 @@ static void test_stop_happy(void)
   TEST_END("agt stop happy");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_stop_bad_channel(void)
 {
   TEST_BEGIN("agt stop bad channel");
@@ -133,6 +175,12 @@ static void prep_w43(void)
   s_agt_cb_last_ch = 0U;
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_deinit(void)
 {
   TEST_BEGIN("agt deinit");
@@ -146,6 +194,12 @@ static void test_deinit(void)
   TEST_END("agt deinit");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_reload_and_status(void)
 {
   TEST_BEGIN("agt set_reload + status");
@@ -162,6 +216,12 @@ static void test_set_reload_and_status(void)
   TEST_END("agt set_reload + status");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_attach_and_dispatch(void)
 {
   TEST_BEGIN("agt attach + dispatch");
@@ -178,6 +238,12 @@ static void test_attach_and_dispatch(void)
   TEST_END("agt attach + dispatch");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_power_transition(void)
 {
   TEST_BEGIN("agt power transition");
@@ -195,6 +261,12 @@ static void test_power_transition(void)
   TEST_END("agt power transition");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_no_mstp_channel_power(void)
 {
   TEST_BEGIN("agt no-mstp channel power");

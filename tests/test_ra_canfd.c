@@ -44,6 +44,12 @@ typedef enum : uint32_t {
   k_ra_test_expected_rec = 0xAAU,
 } ra_canfd_test_vals_t;
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_channel0_happy(void)
 {
   TEST_BEGIN("canfd init channel 0 happy");
@@ -62,6 +68,12 @@ static void test_init_channel0_happy(void)
   TEST_END("canfd init channel 0 happy");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_channel0_timeout(void)
 {
   TEST_BEGIN("canfd init channel 0 timeout path");
@@ -72,6 +84,12 @@ static void test_init_channel0_timeout(void)
   TEST_END("canfd init channel 0 timeout path");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_channel1(void)
 {
   TEST_BEGIN("canfd init channel 1");
@@ -85,6 +103,12 @@ static void test_init_channel1(void)
   TEST_END("canfd init channel 1");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_channel_bad(void)
 {
   TEST_BEGIN("canfd init bad channel");
@@ -94,6 +118,12 @@ static void test_init_channel_bad(void)
   TEST_END("canfd init bad channel");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_deinit_happy(void)
 {
   TEST_BEGIN("canfd deinit happy");
@@ -107,6 +137,12 @@ static void test_deinit_happy(void)
   TEST_END("canfd deinit happy");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_deinit_bad_channel(void)
 {
   TEST_BEGIN("canfd deinit bad channel");
@@ -117,6 +153,12 @@ static void test_deinit_bad_channel(void)
   TEST_END("canfd deinit bad channel");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_bitrate_500k_happy(void)
 {
   TEST_BEGIN("canfd set_bitrate 500k happy");
@@ -131,6 +173,12 @@ static void test_set_bitrate_500k_happy(void)
   TEST_END("canfd set_bitrate 500k happy");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_bitrate_250k_with_fd(void)
 {
   TEST_BEGIN("canfd set_bitrate 250k nominal + 1M data");
@@ -147,6 +195,12 @@ static void test_set_bitrate_250k_with_fd(void)
   TEST_END("canfd set_bitrate 250k nominal + 1M data");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_bitrate_zero_rejected(void)
 {
   TEST_BEGIN("canfd set_bitrate rejects zero");
@@ -159,6 +213,12 @@ static void test_set_bitrate_zero_rejected(void)
   TEST_END("canfd set_bitrate rejects zero");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_bitrate_invalid_resolve(void)
 {
   TEST_BEGIN("canfd set_bitrate rejects unresolvable rate");
@@ -171,6 +231,12 @@ static void test_set_bitrate_invalid_resolve(void)
   TEST_END("canfd set_bitrate rejects unresolvable rate");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_bitrate_prescaler_too_big(void)
 {
   TEST_BEGIN("canfd set_bitrate rejects rate needing prescaler > 1024");
@@ -184,6 +250,12 @@ static void test_set_bitrate_prescaler_too_big(void)
   TEST_END("canfd set_bitrate rejects rate needing prescaler > 1024");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_bitrate_bad_data_rate(void)
 {
   TEST_BEGIN("canfd set_bitrate rejects bad data rate");
@@ -198,6 +270,12 @@ static void test_set_bitrate_bad_data_rate(void)
   TEST_END("canfd set_bitrate rejects bad data rate");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_bitrate_bad_channel(void)
 {
   TEST_BEGIN("canfd set_bitrate rejects bad channel");
@@ -210,6 +288,12 @@ static void test_set_bitrate_bad_channel(void)
   TEST_END("canfd set_bitrate rejects bad channel");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_transmit_standard_frame_happy(void)
 {
   TEST_BEGIN("canfd transmit standard frame happy");
@@ -238,6 +322,12 @@ static void test_transmit_standard_frame_happy(void)
   TEST_END("canfd transmit standard frame happy");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_transmit_extended_fd_frame(void)
 {
   TEST_BEGIN("canfd transmit extended CAN-FD frame");
@@ -260,6 +350,12 @@ static void test_transmit_extended_fd_frame(void)
   TEST_END("canfd transmit extended CAN-FD frame");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_transmit_null_frame(void)
 {
   TEST_BEGIN("canfd transmit rejects NULL frame");
@@ -270,6 +366,12 @@ static void test_transmit_null_frame(void)
   TEST_END("canfd transmit rejects NULL frame");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_transmit_bad_channel(void)
 {
   TEST_BEGIN("canfd transmit rejects bad channel");
@@ -280,6 +382,12 @@ static void test_transmit_bad_channel(void)
   TEST_END("canfd transmit rejects bad channel");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_transmit_bad_dlc(void)
 {
   TEST_BEGIN("canfd transmit rejects DLC > 15");
@@ -291,6 +399,12 @@ static void test_transmit_bad_dlc(void)
   TEST_END("canfd transmit rejects DLC > 15");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_transmit_oversized_std_id(void)
 {
   TEST_BEGIN("canfd transmit rejects 11-bit overflow");
@@ -303,6 +417,12 @@ static void test_transmit_oversized_std_id(void)
   TEST_END("canfd transmit rejects 11-bit overflow");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_transmit_oversized_ext_id(void)
 {
   TEST_BEGIN("canfd transmit rejects 29-bit overflow");
@@ -315,6 +435,12 @@ static void test_transmit_oversized_ext_id(void)
   TEST_END("canfd transmit rejects 29-bit overflow");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_transmit_brs_without_fd(void)
 {
   TEST_BEGIN("canfd transmit rejects BRS without FD");
@@ -327,6 +453,12 @@ static void test_transmit_brs_without_fd(void)
   TEST_END("canfd transmit rejects BRS without FD");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_receive_empty_fifo(void)
 {
   TEST_BEGIN("canfd receive returns no_data on empty FIFO");
@@ -342,6 +474,12 @@ static void test_receive_empty_fifo(void)
   TEST_END("canfd receive returns no_data on empty FIFO");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_receive_standard_frame(void)
 {
   TEST_BEGIN("canfd receive decodes standard frame");
@@ -370,6 +508,12 @@ static void test_receive_standard_frame(void)
   TEST_END("canfd receive decodes standard frame");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_receive_extended_fd_frame(void)
 {
   TEST_BEGIN("canfd receive decodes extended FD frame");
@@ -392,6 +536,12 @@ static void test_receive_extended_fd_frame(void)
   TEST_END("canfd receive decodes extended FD frame");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_receive_null_out(void)
 {
   TEST_BEGIN("canfd receive rejects NULL out");
@@ -401,6 +551,12 @@ static void test_receive_null_out(void)
   TEST_END("canfd receive rejects NULL out");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_receive_bad_channel(void)
 {
   TEST_BEGIN("canfd receive rejects bad channel");
@@ -411,6 +567,12 @@ static void test_receive_bad_channel(void)
   TEST_END("canfd receive rejects bad channel");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_get_error_state_happy(void)
 {
   TEST_BEGIN("canfd get_error_state happy");
@@ -430,6 +592,12 @@ static void test_get_error_state_happy(void)
   TEST_END("canfd get_error_state happy");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_get_error_state_null_tx(void)
 {
   TEST_BEGIN("canfd get_error_state rejects NULL tx_err");
@@ -442,6 +610,12 @@ static void test_get_error_state_null_tx(void)
   TEST_END("canfd get_error_state rejects NULL tx_err");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_get_error_state_null_rx(void)
 {
   TEST_BEGIN("canfd get_error_state rejects NULL rx_err");
@@ -454,6 +628,12 @@ static void test_get_error_state_null_rx(void)
   TEST_END("canfd get_error_state rejects NULL rx_err");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_get_error_state_bad_channel(void)
 {
   TEST_BEGIN("canfd get_error_state rejects bad channel");
@@ -489,6 +669,12 @@ static void prep_w53(void)
   s_canfd_cb_last_channel = 0U;
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_get_status(void)
 {
   TEST_BEGIN("canfd get_status");
@@ -505,6 +691,12 @@ static void test_get_status(void)
   TEST_END("canfd get_status");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_clear_status(void)
 {
   TEST_BEGIN("canfd clear_status");
@@ -519,6 +711,12 @@ static void test_clear_status(void)
   TEST_END("canfd clear_status");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_attach_and_dispatch(void)
 {
   TEST_BEGIN("canfd attach + dispatch");
@@ -537,6 +735,12 @@ static void test_attach_and_dispatch(void)
   TEST_END("canfd attach + dispatch");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_power_transition(void)
 {
   TEST_BEGIN("canfd power transition");
@@ -554,6 +758,11 @@ static void test_power_transition(void)
 
 /* ---------------------------------------------------------------------------
  * Sweep 15 / Phase 2: GAFL filter, BRS, ISO/non-ISO mode.
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  * --------------------------------------------------------------------------- */
 
 static void test_filter_set_writes_id_mask_dlc(void)
@@ -573,6 +782,12 @@ static void test_filter_set_writes_id_mask_dlc(void)
   TEST_END("canfd filter_set programs CFDGAFL slot");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_filter_set_validation(void)
 {
   TEST_BEGIN("canfd filter_set rejects out-of-range args");
@@ -590,6 +805,12 @@ static void test_filter_set_validation(void)
   TEST_END("canfd filter_set rejects out-of-range args");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_brs_updates_dcfg(void)
 {
   TEST_BEGIN("canfd set_brs reprograms CFDC2[0].DCFG");
@@ -606,6 +827,12 @@ static void test_set_brs_updates_dcfg(void)
   TEST_END("canfd set_brs reprograms CFDC2[0].DCFG");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_iso_mode_toggles_niso(void)
 {
   TEST_BEGIN("canfd set_iso_mode toggles CFDGFDCFG.NISO");

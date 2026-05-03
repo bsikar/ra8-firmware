@@ -26,6 +26,12 @@ typedef enum : uint16_t {
   k_ra_dac_b_test_max  = 0x0FFFU,
 } ra_dac_b_test_value_t;
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_clears_regs(void)
 {
   TEST_BEGIN("dac_b init clears both instances");
@@ -46,6 +52,12 @@ static void test_init_clears_regs(void)
   TEST_END("dac_b init clears both instances");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_write_channel_0(void)
 {
   TEST_BEGIN("dac_b write channel 0");
@@ -65,6 +77,12 @@ static void test_write_channel_0(void)
   TEST_END("dac_b write channel 0");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_write_channel_1(void)
 {
   TEST_BEGIN("dac_b write channel 1");
@@ -81,6 +99,12 @@ static void test_write_channel_1(void)
   TEST_END("dac_b write channel 1");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_write_clamps_over_range(void)
 {
   TEST_BEGIN("dac_b write clamps over-range");
@@ -95,6 +119,12 @@ static void test_write_clamps_over_range(void)
   TEST_END("dac_b write clamps over-range");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_write_bad_channel(void)
 {
   TEST_BEGIN("dac_b write bad channel");
@@ -127,6 +157,12 @@ static void prep_w42(void)
   s_dac_cb_last_ch = 0U;
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_configured(void)
 {
   TEST_BEGIN("dac_b init configured: both channels, vref low (OFSSEL=1)");
@@ -163,6 +199,12 @@ static void test_init_configured(void)
   TEST_END("dac_b init configured: both channels, vref low (OFSSEL=1)");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_null(void)
 {
   TEST_BEGIN("dac_b init null");
@@ -172,6 +214,12 @@ static void test_init_null(void)
   TEST_END("dac_b init null");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_deinit(void)
 {
   TEST_BEGIN("dac_b deinit");
@@ -194,6 +242,12 @@ static void test_deinit(void)
   TEST_END("dac_b deinit");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_vref(void)
 {
   TEST_BEGIN("dac_b set_vref");
@@ -214,6 +268,12 @@ static void test_set_vref(void)
   TEST_END("dac_b set_vref");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_output_enable_toggle(void)
 {
   TEST_BEGIN("dac_b output_enable toggle");
@@ -234,6 +294,12 @@ static void test_output_enable_toggle(void)
   TEST_END("dac_b output_enable toggle");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_configured_both_disabled(void)
 {
   TEST_BEGIN("dac_b init both channels disabled, external output");
@@ -257,6 +323,12 @@ static void test_init_configured_both_disabled(void)
   TEST_END("dac_b init both channels disabled, external output");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_status_read_and_clear(void)
 {
   TEST_BEGIN("dac_b status read + clear");
@@ -276,6 +348,12 @@ static void test_status_read_and_clear(void)
   TEST_END("dac_b status read + clear");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_attach_and_dispatch(void)
 {
   TEST_BEGIN("dac_b attach + dispatch");
@@ -292,6 +370,12 @@ static void test_attach_and_dispatch(void)
   TEST_END("dac_b attach + dispatch");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_power_transition(void)
 {
   TEST_BEGIN("dac_b power transition");

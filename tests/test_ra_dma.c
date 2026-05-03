@@ -37,6 +37,12 @@ static void stub_complete(void* ctx)
   }
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_marks_channels_free(void)
 {
   TEST_BEGIN("ra_dma_init: all channels free");
@@ -50,6 +56,12 @@ static void test_init_marks_channels_free(void)
   TEST_END("ra_dma_init: all channels free");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_request_allocates_channel_zero(void)
 {
   TEST_BEGIN("ra_dma_request: first allocation gets channel 0");
@@ -80,6 +92,12 @@ static void test_request_allocates_channel_zero(void)
   TEST_END("ra_dma_request: first allocation gets channel 0");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_request_rejects_zero_count(void)
 {
   TEST_BEGIN("ra_dma_request: zero count rejected");
@@ -97,6 +115,12 @@ static void test_request_rejects_zero_count(void)
   TEST_END("ra_dma_request: zero count rejected");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_request_null_ptrs(void)
 {
   TEST_BEGIN("ra_dma_request: null pointers rejected");
@@ -116,6 +140,12 @@ static void test_request_null_ptrs(void)
   TEST_END("ra_dma_request: null pointers rejected");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_release_round_trip(void)
 {
   TEST_BEGIN("ra_dma_release: channel returns to free pool");
@@ -142,6 +172,12 @@ static void test_release_round_trip(void)
   TEST_END("ra_dma_release: channel returns to free pool");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_release_bad_channel(void)
 {
   TEST_BEGIN("ra_dma_release: out-of-range rejected");
@@ -150,6 +186,12 @@ static void test_release_bad_channel(void)
   TEST_END("ra_dma_release: out-of-range rejected");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_channel_exhaustion(void)
 {
   TEST_BEGIN("ra_dma_request: no-mem when all channels busy");
@@ -173,6 +215,12 @@ static void test_channel_exhaustion(void)
   TEST_END("ra_dma_request: no-mem when all channels busy");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_sim_dma_memcpy_byte(void)
 {
   TEST_BEGIN("ra_sim_dma_memcpy: byte transfer");
@@ -198,6 +246,12 @@ static void test_sim_dma_memcpy_byte(void)
   TEST_END("ra_sim_dma_memcpy: byte transfer");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_sim_dma_memcpy_word(void)
 {
   TEST_BEGIN("ra_sim_dma_memcpy: word transfer");
@@ -223,6 +277,12 @@ static void test_sim_dma_memcpy_word(void)
   TEST_END("ra_sim_dma_memcpy: word transfer");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_sim_dma_complete_fires_callback(void)
 {
   TEST_BEGIN("ra_sim_dma_complete: callback invoked with ctx");
@@ -247,6 +307,12 @@ static void test_sim_dma_complete_fires_callback(void)
   TEST_END("ra_sim_dma_complete: callback invoked with ctx");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_dma_request_without_init_fails(void)
 {
   TEST_BEGIN("ra_dma_request: not-initialised rejected");
@@ -268,6 +334,12 @@ static void test_dma_request_without_init_fails(void)
   TEST_END("ra_dma_request: not-initialised rejected");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_channel_is_busy_bad_inputs(void)
 {
   TEST_BEGIN("ra_dma_channel_is_busy: bad inputs");
@@ -279,6 +351,12 @@ static void test_channel_is_busy_bad_inputs(void)
   TEST_END("ra_dma_channel_is_busy: bad inputs");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_dispatch_out_of_range(void)
 {
   TEST_BEGIN("ra_dma_dispatch_complete: out-of-range is no-op");

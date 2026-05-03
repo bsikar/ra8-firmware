@@ -9,6 +9,12 @@
 #include "ra_bit_constants.h"
 #include "unity_minimal.h"
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_bit_positions_monotonic(void)
 {
   TEST_BEGIN("bit positions are monotonic");
@@ -19,6 +25,12 @@ static void test_bit_positions_monotonic(void)
   TEST_END("bit positions are monotonic");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_byte_masks(void)
 {
   TEST_BEGIN("byte masks hold");
@@ -30,6 +42,12 @@ static void test_byte_masks(void)
   TEST_END("byte masks hold");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_bits_per_type(void)
 {
   TEST_BEGIN("bits per integer type");

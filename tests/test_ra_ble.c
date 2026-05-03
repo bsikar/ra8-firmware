@@ -95,6 +95,12 @@ static void stub_acl_cb(void* ctx, uint16_t handle, const uint8_t* payload, uint
 
 /* --------------------------------------------------------------------- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_open_close(void)
 {
   TEST_BEGIN("ble open + close");
@@ -108,6 +114,12 @@ static void test_open_close(void)
   TEST_END("ble open + close");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_open_null_cfg(void)
 {
   TEST_BEGIN("ble open NULL cfg");
@@ -117,6 +129,12 @@ static void test_open_null_cfg(void)
   TEST_END("ble open NULL cfg");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_send_command_before_open(void)
 {
   TEST_BEGIN("ble cmd before open rejected");
@@ -127,6 +145,12 @@ static void test_send_command_before_open(void)
   TEST_END("ble cmd before open rejected");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_hci_send_command_framing(void)
 {
   TEST_BEGIN("ble hci_send_command framing");
@@ -154,6 +178,12 @@ static void test_hci_send_command_framing(void)
   TEST_END("ble hci_send_command framing");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_hci_send_acl_framing(void)
 {
   TEST_BEGIN("ble hci_send_acl_data framing");
@@ -175,6 +205,12 @@ static void test_hci_send_acl_framing(void)
   TEST_END("ble hci_send_acl_data framing");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_event_dispatch(void)
 {
   TEST_BEGIN("ble event dispatch synthesises LE_Connection_Complete");
@@ -200,6 +236,12 @@ static void test_event_dispatch(void)
   TEST_END("ble event dispatch synthesises LE_Connection_Complete");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_acl_dispatch(void)
 {
   TEST_BEGIN("ble acl dispatch");
@@ -224,6 +266,12 @@ static void test_acl_dispatch(void)
   TEST_END("ble acl dispatch");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_random_address(void)
 {
   TEST_BEGIN("ble set_random_address");
@@ -249,6 +297,12 @@ static void test_set_random_address(void)
   TEST_END("ble set_random_address");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_advertising_data(void)
 {
   TEST_BEGIN("ble set_advertising_data");
@@ -277,6 +331,12 @@ static void test_set_advertising_data(void)
   TEST_END("ble set_advertising_data");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_advertising_enable(void)
 {
   TEST_BEGIN("ble set_advertising_enable");
@@ -292,6 +352,12 @@ static void test_set_advertising_enable(void)
   TEST_END("ble set_advertising_enable");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_scan_start(void)
 {
   TEST_BEGIN("ble scan_start emits two HCI commands");
@@ -329,6 +395,12 @@ static void test_scan_start(void)
   TEST_END("ble scan_start emits two HCI commands");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_dispatch_before_open(void)
 {
   TEST_BEGIN("ble dispatch before open rejected");
@@ -338,6 +410,12 @@ static void test_dispatch_before_open(void)
   TEST_END("ble dispatch before open rejected");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_attach_handlers_idempotent(void)
 {
   TEST_BEGIN("ble attach handlers detach + reattach");
