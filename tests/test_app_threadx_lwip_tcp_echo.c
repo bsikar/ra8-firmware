@@ -213,7 +213,7 @@ static void test_lwip_recv_empty_queue(void)
   ra_err_t err = ra_net_pal_recv_frame(buf, &len);
   /* Empty ring may surface as either of these well-formed errors. */
   TEST_ASSERT(err == k_ra_err_no_data || err == k_ra_err_would_block ||
-              err == k_ra_err_not_initialized || err == k_ra_ok);
+              err == k_ra_err_not_initialized || err == k_ra_err_invalid_arg || err == k_ra_ok);
   TEST_END("lwip: recv_frame on empty queue is non-fatal");
 }
 

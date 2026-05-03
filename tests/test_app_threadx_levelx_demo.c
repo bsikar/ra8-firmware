@@ -25,6 +25,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8d2_sci_regs.h"
 #include "ra8d2_system_regs.h"
 #include "ra_board_ek_ra8d2.h"
 #include "ra_cgc.h"
@@ -103,7 +104,12 @@ static void test_lx_console_heartbeat_loop_writes(void)
   TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_cgc_init());
   TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_uart_console_init((uint32_t)k_test_lx_baud));
   static const char heartbeat[] = "[lx] cycle\r\n";
+  /* ra_board_uart_console_init wraps ra_sci_init which clears CSR via
+   * CFCLR; re-seed TDRE so each putc spin completes immediately under
+   * RA_SIMULATOR_MODE. */
+  volatile r_sci_regs_t* sci_reg = ra_sci((uint8_t)k_ra_board_uart_console_sci_channel);
   for (uint8_t i = 0U; i < (uint8_t)k_test_lx_burnin_iters; i++) {
+    sci_reg->CSR = (uint32_t)(1U << (uint8_t)k_ra_sci_csr_bit_tdre);
     TEST_ASSERT_EQ(
       (int)k_ra_ok,
       (int)ra_board_uart_console_write((const uint8_t*)heartbeat, sizeof(heartbeat) - 1U));
