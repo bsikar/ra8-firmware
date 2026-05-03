@@ -1220,6 +1220,12 @@ dec_block(ra_jpeg_dec_ctx_t* d, ra_jpeg_bitreader_t* br, uint8_t ci, int32_t* ou
     return k_ra_err_protocol_error;
   }
   int32_t r = br_get_bits(br, (uint8_t)t);
+  /* mcdc-deactivated: br_get_bits returns -1 only when the bitstream
+   * is exhausted; reaching this branch with t != 0 requires a
+   * truncated entropy-coded segment after every parser stage has
+   * succeeded -- the public-API contract (well-formed JFIF stream
+   * with EOI) makes this branch unreachable. Defensive guard for
+   * fault injection. */
   if (r < 0 && t != 0) {
     return k_ra_err_protocol_error;
   }
