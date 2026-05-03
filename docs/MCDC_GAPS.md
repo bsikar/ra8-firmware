@@ -15,13 +15,13 @@ Live audit of compound boolean decisions reported by `llvm-cov show --show-mcdc`
 
 - Source files with at least one decision: **93**
 - Total compound decisions in scope: **538**
-- Decisions at 100% MC/DC (`yes`): **434**
-- Decisions partially covered (`partial`): **59**
-- Decisions fully uncovered (`no`): **45**
-- Coverage rate (yes / total): **80.67%**
+- Decisions at 100% MC/DC (`yes`): **441**
+- Decisions partially covered (`partial`): **58**
+- Decisions fully uncovered (`no`): **39**
+- Coverage rate (yes / total): **81.97%**
 - Deactivated gap conditions (DO-178C 6.4.4.3): **27**
 - Reachable-condition denominator (total - deactivated): **511**
-- **Reachable MC/DC rate**: **84.93%** -- this is the gate threshold (100% required).
+- **Reachable MC/DC rate**: **86.30%** -- this is the gate threshold (100% required).
 
 See `docs/MCDC_DEACTIVATIONS.md` for the per-condition deactivation rationale catalog.
 
@@ -36,9 +36,6 @@ See `docs/MCDC_DEACTIVATIONS.md` for the per-condition deactivation rationale ca
 | libs/ra_ble_host/src/ra_ble_gatt.c | 480 | 2 | ra_ble_host_gatt_set_value | `if ((len > 0U) && (a->value != NULL)) {` | partial |
 | libs/ra_ble_host/src/ra_ble_gatt.c | 538 | 2 | ra_ble_host_gatt_notify | `if ((decl == NULL) \|\| ((decl->props & (uint8_t)k_ra_ble_host_char_prop_noti...` | partial |
 | libs/ra_ble_host/src/ra_ble_gatt.c | 569 | 2 | ra_ble_host_gatt_notify | `if ((value_len > 0U) && (a->value != NULL)) {` | partial |
-| libs/ra_ble_host/src/ra_ble_l2cap.c | 576 | 2 | ra_ble_host_acl_in | `if ((params == NULL) \|\| (s_state.initialized == 0U)) {` | no |
-| libs/ra_ble_host/src/ra_ble_l2cap.c | 580 | 3 | ra_ble_host_acl_in | `if ((evt_code == k_evt_le_meta) && (params_len >= k_min_lemeta_param_bytes) &&` | no |
-| libs/ra_ble_host/src/ra_ble_l2cap.c | 597 | 2 | ra_ble_host_acl_in | `} else if ((evt_code == k_evt_disconn_complete) && (params_len >= k_min_disco...` | no |
 | libs/ra_board_ek_ra8d2/src/ra_board_ek_ra8d2.c | 975 | 2 | ra_board_audio_init | `if (channels != (uint8_t)k_ra_audio_channels_mono &&` | partial |
 | libs/ra_epub/src/ra_epub_chapter.c | 225 | 2 | priv_font_init | `if (w < 0 \|\| h < 0) {` | no |
 | libs/ra_epub/src/ra_epub_chapter.c | 300 | 2 | ra_epub_get_chapter_count | `if (book->in_use == 0U \|\| book->zip_archive_active == 0U) {` | partial |
@@ -56,11 +53,9 @@ See `docs/MCDC_DEACTIVATIONS.md` for the per-condition deactivation rationale ca
 | libs/ra_hal/src/ra_dotf.c | 361 | 2 | internal_check_overlap | `if ((region->start_addr <= live->end_addr) && (live->start_addr <= region->en...` | no |
 | libs/ra_hal/src/ra_drw.c | 776 | 2 | internal_pack_texture_bits | `if ((uint16_t)rect->width_px < k_ra_drw_min_dim_px \|\|` | partial |
 | libs/ra_hal/src/ra_drw.c | 780 | 2 | internal_pack_texture_bits | `if ((uint16_t)rect->width_px > k_ra_drw_max_width_px \|\|` | partial |
-| libs/ra_hal/src/ra_flash.c | 150 | 2 | internal_wait_buffer_ready | `if (((s & k_ra_mrcps_mask_prgbsyc) == 0U) && ((s & k_ra_mrcps_mask_abuffull) ...` | no |
-| libs/ra_hal/src/ra_flash.c | 181 | 2 | internal_wait_commit_done | `if (((s & k_ra_mrcps_mask_abufemp) != 0U) && ((s & k_ra_mrcps_mask_prgbsyc) =...` | no |
-| libs/ra_hal/src/ra_flash.c | 2737 | 2 | ra_flash_blank_check | `(address >= k_ra_flash_code_start) &&` | partial |
-| libs/ra_hal/src/ra_flash.c | 2740 | 2 | ra_flash_blank_check | `(address >= k_ra_flash_extra_start) &&` | no |
-| libs/ra_hal/src/ra_flash.c | 2746 | 3 | ra_flash_blank_check | `if (!in_code && !in_extra && !in_ofs) {` | partial |
+| libs/ra_hal/src/ra_flash.c | 2785 | 2 | ra_flash_blank_check | `(address >= k_ra_flash_code_start) &&` | partial |
+| libs/ra_hal/src/ra_flash.c | 2788 | 2 | ra_flash_blank_check | `(address >= k_ra_flash_extra_start) &&` | no |
+| libs/ra_hal/src/ra_flash.c | 2794 | 3 | ra_flash_blank_check | `if (!in_code && !in_extra && !in_ofs) {` | partial |
 | libs/ra_hal/src/ra_i3c.c | 688 | 2 | ra_i3c_send_ccc | `if ((target_addr > (uint8_t)k_ra_i3c_addr_mask) \|\| (max_len == 0U)) {` | no |
 | libs/ra_hal/src/ra_i3c.c | 815 | 3 | ra_i3c_set_hdr_mode | `if ((mode != k_ra_i3c_hdr_mode_sdr) && (mode != k_ra_i3c_hdr_mode_ddr) &&` | partial |
 | libs/ra_hal/src/ra_iic_b.c | 976 | 2 | ra_iic_b_read | `if ((rx_len != 0U) && (rx == nullptr)) {` | partial |
@@ -81,15 +76,20 @@ See `docs/MCDC_DEACTIVATIONS.md` for the per-condition deactivation rationale ca
 | libs/ra_hal/src/ra_usb_cdc.c | 185 | 2 | internal_apply_line_coding | `if ((data == nullptr) \|\| (len < k_ra_cdc_line_coding_len)) {` | no |
 | libs/ra_hal/src/ra_usb_hmsc.c | 1274 | 3 | internal_normalise_xfer_err | `if ((err == k_ra_ok) \|\| (err == k_ra_err_no_data) \|\| (err == k_ra_err_hw_...` | no |
 | libs/ra_hal/src/ra_vin.c | 348 | 2 | internal_mc_rmw | `if (((mc_now & k_ra_vin_mc_me) != 0UL) \|\| ((fc_now & k_ra_vin_fc_cc) != 0UL...` | partial |
-| libs/ra_modem_at/src/ra_modem_at.c | 227 | 2 | internal_reset_line | `if ((s_mod.cfg.line_buf != nullptr) && (s_mod.cfg.line_buf_len > 0U)) {` | no |
-| libs/ra_modem_at/src/ra_modem_at.c | 345 | 3 | internal_dispatch_urc | `if ((expected_response == nullptr) \|\| (expected_response[0] == '\0') \|\|` | partial |
-| libs/ra_modem_at/src/ra_modem_at.c | 534 | 3 | internal_effective_timeout | `if ((expected_response != nullptr) && (expected_response[0] != '\0') &&` | partial |
-| libs/ra_modem_at/src/ra_modem_at.c | 625 | 2 | internal_pump_one | `if ((capture != nullptr) && (capture_len > 0U)) {` | partial |
+| libs/ra_modem_at/src/ra_modem_at.c | 573 | 3 | internal_effective_timeout | `if ((expected_response != nullptr) && (expected_response[0] != '\0') &&` | partial |
+| libs/ra_modem_at/src/ra_modem_at.c | 664 | 2 | internal_pump_one | `if ((capture != nullptr) && (capture_len > 0U)) {` | partial |
 | libs/ra_net/src/ra_net_arp.c | 154 | 2 | arp_insert | `if (s->arp[i].timestamp_ms != 0U && memcmp(s->arp[i].ip.bytes, ip->bytes, 4U)...` | no |
 | libs/ra_net/src/ra_net_udp.c | 539 | 2 | ra_net_udp_internal_dns_consume_response | `if (pos < dlen && dns[pos] == 0U) {` | partial |
 | libs/ra_net/src/ra_net_udp.c | 554 | 2 | ra_net_udp_internal_dns_consume_response | `while (pos < dlen && dns[pos] != 0U) {` | no |
 | libs/ra_net/src/ra_net_udp.c | 657 | 3 | ra_net_dns_query | `while ((s->dns_pending != 0U) && (s->dns_rcode == 0U) && (poll_budget != 0U)) {` | partial |
-| ... | | | | *(17 more rows in CSV)* | |
+| libs/ra_net_pal/src/ra_net_pal.c | 215 | 2 | internal_eth_event | `if ((s_state.event_fn != nullptr) && (pal_mask != k_ra_net_pal_event_none)) {` | no |
+| libs/ra_ota/src/ra_ota.c | 455 | 2 | priv_hex_nibble | `if ((c >= 'A') && (c <= 'F')) {` | no |
+| libs/ra_ota/src/ra_ota.c | 990 | 2 | ra_ota_download_to_inactive_bank | `if ((s_state != k_ra_ota_state_idle) && (s_state != k_ra_ota_state_downloadin...` | partial |
+| libs/ra_reflow/src/ra_reflow_layout.c | 404 | 2 | priv_newline | `if (cur->x + advance_clamped > right_limit && cur->line_has_content != 0U) {` | partial |
+| libs/ra_reflow/src/ra_reflow_layout.c | 468 | 2 | priv_newline | `if (cur->x + word_w > right_limit && cur->line_has_content != 0U) {` | partial |
+| libs/ra_reflow/src/ra_reflow_layout.c | 605 | 2 | priv_apply_image | `if (cur->x + advance > right_limit && cur->line_has_content != 0U) {` | no |
+| libs/ra_reflow/src/ra_reflow_layout.c | 750 | 2 | ra_reflow_run_layout | `if (engine->page_count == 0U && engine->token_count > 0U) {` | partial |
+| ... | | | | *(10 more rows in CSV)* | |
 
 ## Deactivated gaps (DO-178C 6.4.4.3 exempted)
 
@@ -134,15 +134,14 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra_jpeg_sw | 24 | 15 | 6 | 3 |
 | ra_epub_xml_shim | 12 | 4 | 3 | 5 |
 | ra_psa_crypto | 21 | 16 | 5 | 0 |
-| ra_flash | 20 | 15 | 2 | 3 |
 | ra_reflow_layout | 13 | 8 | 4 | 1 |
-| ra_modem_at | 12 | 7 | 4 | 1 |
 | ra_fs_fat | 20 | 16 | 1 | 3 |
 | ra_ble_att | 5 | 1 | 2 | 2 |
 | ra_reflow_xml_shim | 4 | 0 | 2 | 2 |
+| ra_flash | 20 | 17 | 2 | 1 |
 | ra_rsip | 16 | 13 | 0 | 3 |
 | ra_epub_chapter | 13 | 10 | 2 | 1 |
-| ra_ble_l2cap | 12 | 9 | 0 | 3 |
+| ra_modem_at | 12 | 9 | 3 | 0 |
 | ra_ble_gatt | 11 | 8 | 3 | 0 |
 | ra_net_udp | 9 | 6 | 2 | 1 |
 | ra_iic_b | 7 | 4 | 2 | 1 |
@@ -174,6 +173,7 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra_net_arp | 1 | 0 | 0 | 1 |
 | ra_reflow_render | 1 | 0 | 0 | 1 |
 | ra_etha | 14 | 14 | 0 | 0 |
+| ra_ble_l2cap | 12 | 12 | 0 | 0 |
 | ra_gfx_text | 12 | 12 | 0 | 0 |
 | ra_usb | 11 | 11 | 0 | 0 |
 | ra_ssie | 10 | 10 | 0 | 0 |
@@ -231,17 +231,15 @@ Sorted by (uncovered + partial) descending, then total descending.
 |--------|----------:|--------:|--------:|------:|
 | ra_epub_xml_shim | 5 | 3 | 4 | 12 |
 | ra_jpeg_sw | 3 | 6 | 15 | 24 |
-| ra_flash | 3 | 2 | 15 | 20 |
 | ra_fs_fat | 3 | 1 | 16 | 20 |
-| ra_ble_l2cap | 3 | 0 | 9 | 12 |
 | ra_rsip | 3 | 0 | 13 | 16 |
 | ra_ble_att | 2 | 2 | 1 | 5 |
 | ra_reflow_xml_shim | 2 | 2 | 0 | 4 |
 | ra_ble | 2 | 0 | 6 | 8 |
 | ra_rmac_phy | 2 | 0 | 1 | 3 |
-| ra_modem_at | 1 | 4 | 7 | 12 |
 | ra_reflow_layout | 1 | 4 | 8 | 13 |
 | ra_epub_chapter | 1 | 2 | 10 | 13 |
+| ra_flash | 1 | 2 | 17 | 20 |
 | ra_iic_b | 1 | 2 | 4 | 7 |
 | ra_net_udp | 1 | 2 | 6 | 9 |
 | ra_dmac | 1 | 1 | 1 | 3 |
