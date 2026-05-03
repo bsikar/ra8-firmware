@@ -34,10 +34,8 @@ libs/ra_fs/src/ra_fs_fat.c,939,2,priv_path_to_83,if (path == NULL || out11 == NU
 libs/ra_fs/src/ra_fs_fat.c,993,3,priv_83_to_str,if (j > 0 && (uint8_t)out12[0] == k_dir_marker_kanji_e5 && in11[0] == k_dir_marker_kanji_e5) {,no
 libs/ra_fs/src/ra_fs_fat.c,1281,2,priv_free_chain,while (cur >= k_cluster_first_data && (cur - k_cluster_first_data) < m->count_of_clusters) {,no
 libs/ra_fs/src/ra_fs_fat.c,2476,3,ra_fs_listdir,if (path[0] != '/' || (path[0] == '/' && path[1] != '\0')) {,partial
-libs/ra_hal/src/ra_ble.c,374,2,ra_ble_hci_send_acl_data,if ((payload == NULL) && (len > 0U)) {,no
 libs/ra_hal/src/ra_ble.c,458,2,internal_dispatch_event,if ((internal_rx_byte(&code) == 0U) || (internal_rx_byte(&plen) == 0U)) {,no
 libs/ra_hal/src/ra_ble.c,492,4,internal_dispatch_acl,if ((internal_rx_byte(&hdl_lo) == 0U) || (internal_rx_byte(&hdl_hi) == 0U) ||,no
-libs/ra_hal/src/ra_ble.c,721,2,ra_ble_test_inject_rx,if ((bytes == NULL) || (len == 0U)) {,no
 libs/ra_hal/src/ra_canfd.c,313,2,ra_canfd_deinit,if ((bitrate_bps == 0U) || (clock_hz == 0U)) {,partial
 libs/ra_hal/src/ra_canfd.c,322,2,ra_canfd_deinit,if ((prescaler < k_ra_canfd_prescaler_min) || (prescaler > prescaler_max)) {,partial
 libs/ra_hal/src/ra_ceu.c,974,2,internal_arm_capture,if ((s_ceu_image_area != 0U) && (bufs->y_top != nullptr)) {,partial
@@ -48,12 +46,6 @@ libs/ra_hal/src/ra_drw.c,776,2,internal_pack_texture_bits,if ((uint16_t)rect->wi
 libs/ra_hal/src/ra_drw.c,780,2,internal_pack_texture_bits,if ((uint16_t)rect->width_px > k_ra_drw_max_width_px ||,partial
 libs/ra_hal/src/ra_eth.c,329,2,internal_init_rings,if ((tx == 0U) || (tx > k_ra_eth_num_tx_desc)) {,no
 libs/ra_hal/src/ra_eth.c,332,2,internal_init_rings,if ((rx == 0U) || (rx > k_ra_eth_num_rx_desc)) {,no
-libs/ra_hal/src/ra_etha.c,741,2,ra_etha_set_queue_depth,if (!internal_port_ok(port) || !internal_tc_ok(tc)) {,partial
-libs/ra_hal/src/ra_etha.c,811,2,ra_etha_set_max_frame_size,if (!internal_port_ok(port) || !internal_tc_ok(tc)) {,partial
-libs/ra_hal/src/ra_etha.c,993,2,ra_etha_configure_cut_through,if (!internal_port_ok(port) || (uint32_t)dqd > k_ra_etha_mask_ctdqd) {,partial
-libs/ra_hal/src/ra_etha.c,1029,2,ra_etha_configure_cut_through,if (!internal_port_ok(port) || !internal_tc_ok(tc)) {,no
-libs/ra_hal/src/ra_etha.c,1035,2,ra_etha_configure_cut_through,if (param->increment > k_ra_etha_mask_civ || param->upper_lim > k_ra_etha_mask_cul) {,no
-libs/ra_hal/src/ra_etha.c,1091,2,ra_etha_configure_cut_through,if (!internal_port_ok(port) || !internal_tc_ok(tc)) {,no
 libs/ra_hal/src/ra_flash.c,149,2,internal_wait_buffer_ready,if (((s & k_ra_mrcps_mask_prgbsyc) == 0U) && ((s & k_ra_mrcps_mask_abuffull) == 0U)) {,no
 libs/ra_hal/src/ra_flash.c,180,2,internal_wait_commit_done,if (((s & k_ra_mrcps_mask_abufemp) != 0U) && ((s & k_ra_mrcps_mask_prgbsyc) == 0U)) {,no
 libs/ra_hal/src/ra_flash.c,722,2,internal_window_allows,if (s_rt.win_low == 0U && s_rt.win_high == 0U) {,no
@@ -62,12 +54,7 @@ libs/ra_hal/src/ra_flash.c,1390,2,ra_flash_config_set_write,if (!in_ofs && !in_e
 libs/ra_hal/src/ra_flash.c,2698,2,ra_flash_blank_check,(address >= k_ra_flash_code_start) &&,partial
 libs/ra_hal/src/ra_flash.c,2701,2,ra_flash_blank_check,(address >= k_ra_flash_extra_start) &&,no
 libs/ra_hal/src/ra_flash.c,2707,3,ra_flash_blank_check,if (!in_code && !in_extra && !in_ofs) {,partial
-libs/ra_hal/src/ra_flash.c,2758,2,ra_flash_status,((mrcps & k_ra_mrcps_mask_prgbsyc) != 0U) || ((mentryr & k_ra_mentryr_mask_pe_mode) != 0U);,partial
-libs/ra_hal/src/ra_flash.c,2762,2,ra_flash_status,((mastat & k_ra_mastat_mask_cmdlk) != 0U) || ((mstatr & k_ra_mstatr_mask_ilgcomerr) != 0U);,partial
-libs/ra_hal/src/ra_flash.c,2767,2,ra_flash_status,out->sector_protected = ((mrcbprot0 & 0x0001U) == 0U) || ((mrcbprot1 & 0x0001U) == 0U);,partial
 libs/ra_hal/src/ra_i3c.c,688,2,ra_i3c_send_ccc,if ((target_addr > (uint8_t)k_ra_i3c_addr_mask) || (max_len == 0U)) {,no
-libs/ra_hal/src/ra_i3c.c,727,2,ra_i3c_write,if ((len > 0U) && (data == nullptr)) {,partial
-libs/ra_hal/src/ra_i3c.c,777,2,ra_i3c_read,if ((len == 0U) || (len > k_ra_i3c_cmd_xfer_length_max)) {,partial
 libs/ra_hal/src/ra_i3c.c,815,3,ra_i3c_set_hdr_mode,if ((mode != k_ra_i3c_hdr_mode_sdr) && (mode != k_ra_i3c_hdr_mode_ddr) &&,partial
 libs/ra_hal/src/ra_iic_b.c,128,2,internal_iic_b_half_period,if ((bus_hz == 0U) || (pclka_hz == 0U)) {,no
 libs/ra_hal/src/ra_iic_b.c,975,2,ra_iic_b_read,if ((rx_len != 0U) && (rx == nullptr)) {,partial
@@ -102,8 +89,6 @@ libs/ra_hal/src/ra_rmac.c,1565,2,ra_rmac_phy_auto_neg_start,if (out_link->up && 
 libs/ra_hal/src/ra_rmac_phy.c,352,2,ra_rmac_phy_link_status_get,if ((err == k_ra_ok) && ((msr & k_ra_rmac_phy_msr_1000full) != 0U)) {,no
 libs/ra_hal/src/ra_rmac_phy.c,356,2,ra_rmac_phy_link_status_get,if ((err == k_ra_ok) && ((msr & k_ra_rmac_phy_msr_1000half) != 0U)) {,no
 libs/ra_hal/src/ra_rsip.c,2264,4,internal_aes_alg_byte,if (((mode == k_ra_rsip_aes_mode_ecb) || (mode == k_ra_rsip_aes_mode_cbc) ||,partial
-libs/ra_hal/src/ra_rsip.c,2395,2,internal_aead_pull_tag,if ((aad != nullptr) && (aad_len > 0U)) {,partial
-libs/ra_hal/src/ra_rsip.c,2823,2,internal_hash_size,if ((msg == nullptr) && (msg_len != 0U)) {,no
 libs/ra_hal/src/ra_rsip.c,2958,2,internal_hash_pull_digest,if ((msg == nullptr) && (msg_len != 0U)) {,no
 libs/ra_hal/src/ra_rsip.c,3921,2,internal_kw_pull_handle,if ((label == nullptr) && (label_len != 0U)) {,no
 libs/ra_hal/src/ra_rsip.c,3924,2,internal_kw_pull_handle,if ((salt == nullptr) && (salt_len != 0U)) {,no
@@ -112,10 +97,6 @@ libs/ra_hal/src/ra_spi_b.c,714,2,internal_apply_bit_width,if ((tx == nullptr) &&
 libs/ra_hal/src/ra_usb_cdc.c,185,2,internal_apply_line_coding,if ((data == nullptr) || (len < k_ra_cdc_line_coding_len)) {,no
 libs/ra_hal/src/ra_usb_hmsc.c,1274,3,internal_normalise_xfer_err,if ((err == k_ra_ok) || (err == k_ra_err_no_data) || (err == k_ra_err_hw_timeout)) {,no
 libs/ra_hal/src/ra_vin.c,348,2,internal_mc_rmw,if (((mc_now & k_ra_vin_mc_me) != 0UL) || ((fc_now & k_ra_vin_fc_cc) != 0UL)) {,partial
-libs/ra_hal/src/ra_vin.c,445,2,internal_mc_rmw,if ((v_bwidth > (uint8_t)k_ra_vin_uds_max_bw) || (h_bwidth > (uint8_t)k_ra_vin_uds_max_bw)) {,partial
-libs/ra_hal/src/ra_vin.c,674,2,internal_mc_rmw,if ((mode->conv_mode > k_ra_vin_max_dtmd) || (mode->y_mode > k_ra_vin_max_ymode)) {,partial
-libs/ra_hal/src/ra_vin.c,700,2,internal_mc_rmw,if ((input->virtual_channel > k_ra_vin_max_vc_sel) || (input->data_type > k_ra_vin_max_dt)) {,partial
-libs/ra_hal/src/ra_vin.c,992,2,internal_format_bpp,if ((pixel_end > k_ra_vin_preclip_mask) || (line_end > k_ra_vin_preclip_mask)) {,partial
 libs/ra_modem_at/src/ra_modem_at.c,124,2,internal_str_len,while ((i < UINT16_MAX) && (s[i] != '\0')) {,partial
 libs/ra_modem_at/src/ra_modem_at.c,177,2,internal_str_eq,while ((a[i] != '\0') && (b[i] != '\0')) {,partial
 libs/ra_modem_at/src/ra_modem_at.c,183,2,internal_str_eq,return (uint8_t)((a[i] == '\0') && (b[i] == '\0'));,no
@@ -138,14 +119,11 @@ libs/ra_net/src/ra_net_udp.c,657,3,ra_net_dns_query,while ((s->dns_pending != 0U
 libs/ra_net_pal/src/ra_net_pal.c,215,2,internal_eth_event,if ((s_state.event_fn != nullptr) && (pal_mask != k_ra_net_pal_event_none)) {,no
 libs/ra_ota/src/ra_ota.c,403,3,priv_json_u32,"if (*p == ':' || *p == ' ' || *p == '""') {",partial
 libs/ra_ota/src/ra_ota.c,413,2,priv_json_u32,if ((c < '0') || (c > '9')) {,partial
-libs/ra_ota/src/ra_ota.c,448,2,priv_hex_nibble,if ((c >= '0') && (c <= '9')) {,partial
-libs/ra_ota/src/ra_ota.c,451,2,priv_hex_nibble,if ((c >= 'a') && (c <= 'f')) {,partial
 libs/ra_ota/src/ra_ota.c,454,2,priv_hex_nibble,if ((c >= 'A') && (c <= 'F')) {,no
 libs/ra_ota/src/ra_ota.c,989,2,ra_ota_download_to_inactive_bank,if ((s_state != k_ra_ota_state_idle) && (s_state != k_ra_ota_state_downloading)) {,partial
 libs/ra_psa_crypto/src/ra_psa_crypto.c,476,2,internal_sha256_rotr,for (size_t i = 0U; (i < key_len) && (off < sizeof(buf)); ++i) {,partial
 libs/ra_psa_crypto/src/ra_psa_crypto.c,479,2,internal_sha256_rotr,for (size_t i = 0U; (i < nonce_len) && (off < sizeof(buf)); ++i) {,partial
 libs/ra_psa_crypto/src/ra_psa_crypto.c,482,2,internal_sha256_rotr,for (size_t i = 0U; (i < aad_len) && (off < sizeof(buf)); ++i) {,partial
-libs/ra_psa_crypto/src/ra_psa_crypto.c,485,2,internal_sha256_rotr,for (size_t i = 0U; (i < cipher_len) && (off < sizeof(buf)); ++i) {,partial
 libs/ra_psa_crypto/src/ra_psa_crypto.c,524,2,internal_sha256_rotr,for (size_t i = 0U; (i < key_len) && (off < sizeof(seed)); ++i) {,partial
 libs/ra_psa_crypto/src/ra_psa_crypto.c,527,2,internal_sha256_rotr,for (size_t i = 0U; (i < nonce_len) && (off < sizeof(seed)); ++i) {,partial
 libs/ra_reflow/src/ra_reflow_layout.c,373,2,priv_newline,if (cur->x + advance_clamped > right_limit && cur->line_has_content != 0U) {,partial
@@ -161,8 +139,6 @@ libs/ra_reflow/src/ra_reflow_xml_shim.cpp,72,2,(file scope),if (c >= 'A' && c <=
 libs/ra_reflow/src/ra_reflow_xml_shim.cpp,232,6,(file scope),bool is_ws = (c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\f' || c == '\v');,partial
 libs/ra_reflow/src/ra_reflow_xml_shim.cpp,334,2,(file scope),if (engine == nullptr || xhtml_buf == nullptr) {,no
 libs/ra_touch_cal/src/ra_touch_cal.c,355,2,internal_clip32,if (!ok_u || !ok_v) {,partial
-libs/ra_touch_cal/src/ra_touch_cal.c,395,2,ra_touch_cal_run,if ((cfg->screen_width == 0U) || (cfg->screen_height == 0U)) {,partial
-libs/ra_touch_cal/src/ra_touch_cal.c,469,2,ra_touch_cal_run,if ((screen_width == 0U) || (screen_height == 0U)) {,partial
 libs/ra_touch_cal/src/ra_touch_cal.c,568,4,ra_touch_cal_load,if ((src[(size_t)k_ra_touch_cal_off_magic + 0U] != (uint8_t)k_ra_touch_cal_magic_b0) ||,partial
 libs/ra_touch_cal/src/ra_touch_cal.c,577,3,ra_touch_cal_load,if ((src[(size_t)k_ra_touch_cal_off_reserved + 0U] != 0U) ||,partial
 libs/ra_usb_pal/src/ra_usb_pal.c,218,2,internal_usb_event,if ((s_state.event_fn != nullptr) && (pal_mask != k_ra_usb_pal_event_none)) {,partial
