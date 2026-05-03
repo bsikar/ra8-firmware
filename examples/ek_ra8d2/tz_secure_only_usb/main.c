@@ -173,11 +173,13 @@ static UX_SLAVE_CLASS_CDC_ACM* s_cdc_acm = UX_NULL;
  * sec 5 + USB 2.0 sec 9.6.
  */
 static UCHAR s_device_framework_fs[] = {
-  /* Device descriptor (USB 2.0 sec 9.6.1) -- 18 bytes. */
+  /* Device descriptor (USB 2.0 sec 9.6.1) -- 18 bytes.
+     bcdUSB = 0x0200 (USB 2.0); macOS rejects IAD-based composite
+     devices that advertise USB 1.1 (IAD ECN was added in USB 2.0). */
   0x12U,
   0x01U,
-  0x10U,
-  0x01U,
+  0x00U,
+  0x02U,
   0xEFU, /* class      = MISC                 */
   0x02U, /* subclass   = common               */
   0x01U, /* protocol   = IAD                  */
@@ -205,7 +207,8 @@ static UCHAR s_device_framework_fs[] = {
   0x02U,
   0x01U,
   0x00U,
-  0xC0U,
+  0x80U, /* bmAttributes = bus-powered (bit 7 reserved-1).  Was 0xC0
+            (self-powered) which conflicted with bMaxPower=100mA. */
   0x32U,
   /* Interface association (CDC). */
   0x08U,
@@ -226,17 +229,19 @@ static UCHAR s_device_framework_fs[] = {
   0x02U,
   0x01U,
   0x00U,
-  /* CDC header functional descriptor. */
+  /* CDC header functional descriptor.  bcdCDC = 0x0120 (CDC 1.20). */
   0x05U,
   0x24U,
   0x00U,
-  0x10U,
+  0x20U,
   0x01U,
-  /* Call-management functional descriptor. */
+  /* Call-management functional descriptor.
+     bmCapabilities = 0x01 (device handles call management itself);
+     bDataInterface=0x01 only makes sense if D0 is set. */
   0x05U,
   0x24U,
   0x01U,
-  0x00U,
+  0x01U,
   0x01U,
   /* ACM functional descriptor. */
   0x04U,
