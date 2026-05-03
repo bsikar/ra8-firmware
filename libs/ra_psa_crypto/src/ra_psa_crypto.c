@@ -55,7 +55,7 @@
  */
 
 /** @brief Logging tag prefix used by every ``ra_psa_crypto`` log line. */
-static const char* const k_ra_psa_tag = "ra_psa_crypto";
+__attribute__((unused)) static const char* const k_ra_psa_tag = "ra_psa_crypto";
 
 /* =============================================================================
  * Internal typed constants (no magic numbers)
