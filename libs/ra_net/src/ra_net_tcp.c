@@ -93,11 +93,11 @@ typedef enum : uint32_t {
  *
  * @since 0.1.0
  */
-static int16_t find_tcp_socket(uint16_t           local_port,
-                               ra_net_ipv4_t      remote_ip,
-                               uint16_t           remote_port,
-                               ra_net_tcp_state_t want_state,
-                               uint8_t            match_state)
+int16_t ra_net_tcp_internal_find_socket(uint16_t           local_port,
+                                        ra_net_ipv4_t      remote_ip,
+                                        uint16_t           remote_port,
+                                        ra_net_tcp_state_t want_state,
+                                        uint8_t            match_state)
 {
   ra_net_state_t* s = ra_net_internal_state();
   for (uint16_t i = 0U; i < (uint16_t)k_ra_net_max_sockets; i++) {
@@ -183,8 +183,10 @@ static uint16_t tcp_pseudo_sum(const ra_net_ipv4_t* src, const ra_net_ipv4_t* ds
  *
  * @since 0.1.0
  */
-static ra_err_t
-tcp_emit_segment(ra_net_tcp_sock_t* t, uint8_t flags, const uint8_t* data, uint16_t data_len)
+ra_err_t ra_net_tcp_internal_emit_segment(ra_net_tcp_sock_t* t,
+                                          uint8_t            flags,
+                                          const uint8_t*     data,
+                                          uint16_t           data_len)
 {
   ra_net_state_t* s       = ra_net_internal_state();
   uint16_t        tcp_len = (uint16_t)(k_tcp_hdr_len + data_len);
@@ -349,7 +351,7 @@ ra_net_tcp_connect(ra_net_ipv4_t remote_ip, uint16_t remote_port, ra_net_handle_
   t->rcv_nxt           = 0U;
   *out_handle          = h;
 
-  ra_err_t e = tcp_emit_segment(t, (uint8_t)k_tcp_flag_syn, nullptr, 0U);
+  ra_err_t e = ra_net_tcp_internal_emit_segment(t, (uint8_t)k_tcp_flag_syn, nullptr, 0U);
   if (e == k_ra_ok) {
     t->snd_nxt++; /* SYN consumes one sequence number */
   }
@@ -403,7 +405,10 @@ ra_err_t ra_net_tcp_send(ra_net_handle_t h, const uint8_t* buf, uint16_t len)
 
   /* Send immediately. */
   ra_err_t e =
-    tcp_emit_segment(t, (uint8_t)((uint8_t)k_tcp_flag_psh | (uint8_t)k_tcp_flag_ack), buf, len);
+    ra_net_tcp_internal_emit_segment(t,
+                                     (uint8_t)((uint8_t)k_tcp_flag_psh | (uint8_t)k_tcp_flag_ack),
+                                     buf,
+                                     len);
   if (e == k_ra_ok) {
     t->snd_nxt += (uint32_t)len;
   }
@@ -503,10 +508,11 @@ ra_err_t ra_net_tcp_close(ra_net_handle_t h)
       return k_ra_ok;
     case k_tcp_state_established:
     case k_tcp_state_syn_received: {
-      ra_err_t e = tcp_emit_segment(t,
-                                    (uint8_t)((uint8_t)k_tcp_flag_fin | (uint8_t)k_tcp_flag_ack),
-                                    nullptr,
-                                    0U);
+      ra_err_t e = ra_net_tcp_internal_emit_segment(
+        t,
+        (uint8_t)((uint8_t)k_tcp_flag_fin | (uint8_t)k_tcp_flag_ack),
+        nullptr,
+        0U);
       if (e == k_ra_ok) {
         t->snd_nxt++;
         t->state = k_tcp_state_fin_wait;
@@ -514,10 +520,11 @@ ra_err_t ra_net_tcp_close(ra_net_handle_t h)
       return e;
     }
     case k_tcp_state_close_wait: {
-      ra_err_t e = tcp_emit_segment(t,
-                                    (uint8_t)((uint8_t)k_tcp_flag_fin | (uint8_t)k_tcp_flag_ack),
-                                    nullptr,
-                                    0U);
+      ra_err_t e = ra_net_tcp_internal_emit_segment(
+        t,
+        (uint8_t)((uint8_t)k_tcp_flag_fin | (uint8_t)k_tcp_flag_ack),
+        nullptr,
+        0U);
       if (e == k_ra_ok) {
         t->snd_nxt++;
         t->state = k_tcp_state_last_ack;
@@ -584,13 +591,13 @@ ra_err_t ra_net_tcp_handle(const uint8_t* frame, uint16_t len)
   uint16_t       seg_len = (uint16_t)(tlen - ihl - doff);
   const uint8_t* payload = &tcp[doff];
 
-  ra_net_ipv4_t src_ip;
+  ra_net_ipv4_t src_ip = {};
   (void)memcpy(src_ip.bytes, &ip[12], 4U);
 
   ra_net_state_t* s = ra_net_internal_state();
 
   /* Match: established connection first, then listening socket. */
-  int16_t idx = find_tcp_socket(dport, src_ip, sport, k_tcp_state_closed, 0U);
+  int16_t idx = ra_net_tcp_internal_find_socket(dport, src_ip, sport, k_tcp_state_closed, 0U);
   if (idx < 0) {
     return k_ra_err_not_found;
   }
@@ -608,10 +615,11 @@ ra_err_t ra_net_tcp_handle(const uint8_t* frame, uint16_t len)
     t->snd_nxt     = (uint32_t)k_tcp_initial_iss + (uint32_t)idx;
     t->snd_una     = t->snd_nxt;
     t->state       = k_tcp_state_syn_received;
-    ra_err_t e     = tcp_emit_segment(t,
-                                      (uint8_t)((uint8_t)k_tcp_flag_syn | (uint8_t)k_tcp_flag_ack),
-                                      nullptr,
-                                      0U);
+    ra_err_t e =
+      ra_net_tcp_internal_emit_segment(t,
+                                       (uint8_t)((uint8_t)k_tcp_flag_syn | (uint8_t)k_tcp_flag_ack),
+                                       nullptr,
+                                       0U);
     if (e == k_ra_ok) {
       t->snd_nxt++;
     }
@@ -624,7 +632,7 @@ ra_err_t ra_net_tcp_handle(const uint8_t* frame, uint16_t len)
       t->rcv_nxt = seq + 1U;
       t->snd_una = ack;
       t->state   = k_tcp_state_established;
-      return tcp_emit_segment(t, (uint8_t)k_tcp_flag_ack, nullptr, 0U);
+      return ra_net_tcp_internal_emit_segment(t, (uint8_t)k_tcp_flag_ack, nullptr, 0U);
     }
     return k_ra_ok;
   }
@@ -646,12 +654,12 @@ ra_err_t ra_net_tcp_handle(const uint8_t* frame, uint16_t len)
       (void)memcpy(&t->rx_buf[t->rx_len], payload, copy_len);
       t->rx_len  = (uint16_t)(t->rx_len + copy_len);
       t->rcv_nxt = seq + (uint32_t)seg_len;
-      (void)tcp_emit_segment(t, (uint8_t)k_tcp_flag_ack, nullptr, 0U);
+      (void)ra_net_tcp_internal_emit_segment(t, (uint8_t)k_tcp_flag_ack, nullptr, 0U);
     }
     if ((flags & (uint8_t)k_tcp_flag_fin) != 0U) {
       t->rcv_nxt++;
       t->state = k_tcp_state_close_wait;
-      (void)tcp_emit_segment(t, (uint8_t)k_tcp_flag_ack, nullptr, 0U);
+      (void)ra_net_tcp_internal_emit_segment(t, (uint8_t)k_tcp_flag_ack, nullptr, 0U);
     }
     if ((flags & (uint8_t)k_tcp_flag_ack) != 0U) {
       t->snd_una = ack;
@@ -662,7 +670,7 @@ ra_err_t ra_net_tcp_handle(const uint8_t* frame, uint16_t len)
   if (t->state == k_tcp_state_fin_wait) {
     if ((flags & (uint8_t)k_tcp_flag_fin) != 0U) {
       t->rcv_nxt++;
-      (void)tcp_emit_segment(t, (uint8_t)k_tcp_flag_ack, nullptr, 0U);
+      (void)ra_net_tcp_internal_emit_segment(t, (uint8_t)k_tcp_flag_ack, nullptr, 0U);
       t->state = k_tcp_state_closed;
       (void)memset(&s->socks[idx], 0, sizeof(s->socks[idx]));
     }
