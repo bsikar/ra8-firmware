@@ -143,6 +143,22 @@ if [[ -n "$c_files" ]]; then
         fi
     fi
 
+    # ---- Per-app init-order audit (strict: zero violations) ---------------
+    # Walks every examples/<tier>/<app>/main.c and verifies the canonical
+    # CGC -> MSTP -> IOPORT -> TIME -> ICU -> peripheral sequence is held
+    # in source order. Strict mode is the default; --no-strict downgrades
+    # to warn-only.
+    if [[ -f scripts/utils/audit_init_order.py ]]; then
+        if ! python3 scripts/utils/audit_init_order.py; then
+            echo "[FAIL] audit_init_order.py reported per-app init-order"
+            echo "       violations. Every examples/<tier>/<app>/main.c must"
+            echo "       follow CGC -> MSTP -> IOPORT -> TIME -> ICU ->"
+            echo "       peripheral order. Re-run \`make audit-init\` to"
+            echo "       refresh docs/INIT_ORDER_AUDIT.md."
+            error_found=1
+        fi
+    fi
+
     # ---- Doxygen @since tag enforcement -----------------------------------
     if ! python3 scripts/utils/check-since-version.py $c_files; then
         echo "[FAIL] public function declarations missing @since tags."
