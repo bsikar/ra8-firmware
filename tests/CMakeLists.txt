@@ -502,3 +502,38 @@ if(APPLE)
   )
 endif()
 add_test(NAME test_ra_epub_xml_shim COMMAND test_ra_epub_xml_shim)
+
+# ---------------------------------------------------------------------------
+# C++ test target for ra_reflow_xml_shim. Mirrors the ra_epub variant: drive
+# the TU-private helpers exposed via ra_reflow_xml_shim_internal.hpp directly
+# so MC/DC vectors land on the production decisions at lines 70/72/232/334.
+# ---------------------------------------------------------------------------
+add_executable(test_ra_reflow_xml_shim
+  ${CMAKE_CURRENT_SOURCE_DIR}/test_ra_reflow_xml_shim.cpp
+  $<TARGET_OBJECTS:ra_core_hal>
+)
+set_target_properties(test_ra_reflow_xml_shim PROPERTIES LINKER_LANGUAGE CXX)
+target_compile_options(test_ra_reflow_xml_shim PRIVATE
+  -Wall -Wextra -Wno-unused-function -Wno-unused-parameter
+  -Wno-unused-variable -Wno-address-of-packed-member
+)
+target_compile_features(test_ra_reflow_xml_shim PRIVATE cxx_std_17)
+target_include_directories(test_ra_reflow_xml_shim PRIVATE
+  ${CMAKE_CURRENT_SOURCE_DIR}
+  ${FW_ROOT}/libs/ra_core/inc
+  ${FW_ROOT}/libs/ra_reflow/inc
+  ${FW_ROOT}/libs/ra_reflow/src
+  ${FW_ROOT}/libs/third_party/tinyxml2
+  ${FW_ROOT}/libs/third_party/stb
+  ${CMAKE_CURRENT_SOURCE_DIR}/mocks
+)
+if(RA_REFLOW_USE_LITEHTML)
+  target_link_libraries(test_ra_reflow_xml_shim PRIVATE litehtml gumbo)
+endif()
+if(APPLE)
+  target_link_options(test_ra_reflow_xml_shim PRIVATE
+    "-Wl,-pagezero_size,0x4000"
+    "-Wl,-segalign,0x4000"
+  )
+endif()
+add_test(NAME test_ra_reflow_xml_shim COMMAND test_ra_reflow_xml_shim)

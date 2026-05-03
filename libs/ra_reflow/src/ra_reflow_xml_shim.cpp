@@ -30,7 +30,42 @@
 
 #include "ra_err.h"
 #include "ra_reflow.h"
+#include "ra_reflow_xml_shim_internal.hpp"
 #include "tinyxml2.h"
+
+namespace ra_reflow_xml_shim_internal {
+
+std::size_t lowercase_truncated_copy(const char* src, char* dst, std::size_t dst_cap)
+{
+  if (dst == nullptr || dst_cap == 0U) {
+    return 0U;
+  }
+  std::size_t i = 0U;
+  if (src != nullptr) {
+    while (src[i] != '\0' && i + 1U < dst_cap) {
+      char c = src[i];
+      if (c >= 'A' && c <= 'Z') {
+        c = static_cast<char>(c + ('a' - 'A'));
+      }
+      dst[i] = c;
+      ++i;
+    }
+  }
+  dst[i] = '\0';
+  return i;
+}
+
+bool is_xml_whitespace(char c)
+{
+  return (c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\f' || c == '\v');
+}
+
+bool should_reject_null_args(bool engine_is_null, bool xhtml_buf_is_null)
+{
+  return engine_is_null || xhtml_buf_is_null;
+}
+
+} /* namespace ra_reflow_xml_shim_internal */
 
 namespace {
 
@@ -65,17 +100,8 @@ ra_reflow_html_tag_t classify_tag(const char* name)
   const char* tail  = (colon != nullptr) ? (colon + 1) : name;
 
   /* Lower-case copy to keep the compare branch-free. */
-  char        lower[16];
-  std::size_t i = 0U;
-  while (tail[i] != '\0' && i + 1U < sizeof(lower)) {
-    char c = tail[i];
-    if (c >= 'A' && c <= 'Z') {
-      c = static_cast<char>(c + ('a' - 'A'));
-    }
-    lower[i] = c;
-    ++i;
-  }
-  lower[i] = '\0';
+  char lower[16];
+  (void)ra_reflow_xml_shim_internal::lowercase_truncated_copy(tail, lower, sizeof(lower));
 
   if (std::strcmp(lower, "p") == 0) {
     return k_ra_reflow_tag_p;
@@ -229,7 +255,7 @@ bool stash_text(ra_reflow_t* engine, const char* src, uint32_t* out_off, uint32_
   bool     last_ws   = true; /* Treat leading whitespace as already-consumed. */
   for (std::size_t i = 0U; src[i] != '\0'; ++i) {
     char c     = src[i];
-    bool is_ws = (c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\f' || c == '\v');
+    bool is_ws = ra_reflow_xml_shim_internal::is_xml_whitespace(c);
     if (is_ws) {
       if (last_ws) {
         continue;
@@ -331,7 +357,8 @@ ra_err_t walk_node(ra_reflow_t* engine, const XMLNode* node, uint8_t style, uint
 extern "C" ra_err_t
 priv_reflow_xml_walk(ra_reflow_t* engine, const uint8_t* xhtml_buf, size_t xhtml_len)
 {
-  if (engine == nullptr || xhtml_buf == nullptr) {
+  if (ra_reflow_xml_shim_internal::should_reject_null_args(engine == nullptr,
+                                                           xhtml_buf == nullptr)) {
     return k_ra_err_null_ptr;
   }
   if (xhtml_len == 0U) {
