@@ -48,6 +48,12 @@ static uint32_t compute_with_preseeded_result(ra_crc_poly_t poly, uint32_t prese
   return got;
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_programs_poly_crc8(void)
 {
   TEST_BEGIN("crc init programs poly crc8");
@@ -62,6 +68,12 @@ static void test_init_programs_poly_crc8(void)
   TEST_END("crc init programs poly crc8");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_programs_poly_crc16(void)
 {
   TEST_BEGIN("crc init programs poly crc16");
@@ -73,6 +85,12 @@ static void test_init_programs_poly_crc16(void)
   TEST_END("crc init programs poly crc16");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_programs_poly_crc32(void)
 {
   TEST_BEGIN("crc init programs poly crc32");
@@ -85,6 +103,12 @@ static void test_init_programs_poly_crc32(void)
   TEST_END("crc init programs poly crc32");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_programs_poly_none(void)
 {
   TEST_BEGIN("crc init poly none");
@@ -94,6 +118,12 @@ static void test_init_programs_poly_none(void)
   TEST_END("crc init poly none");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_pulses_dorclr(void)
 {
   TEST_BEGIN("crc init pulses DORCLR");
@@ -106,6 +136,12 @@ static void test_init_pulses_dorclr(void)
   TEST_END("crc init pulses DORCLR");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_reset_sets_crccr0_dorclr(void)
 {
   TEST_BEGIN("crc reset sets CRCCR0.DORCLR");
@@ -122,6 +158,12 @@ static void test_reset_sets_crccr0_dorclr(void)
   TEST_END("crc reset sets CRCCR0.DORCLR");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_compute_null_data(void)
 {
   TEST_BEGIN("crc compute null data");
@@ -133,6 +175,12 @@ static void test_compute_null_data(void)
   TEST_END("crc compute null data");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_compute_null_out(void)
 {
   TEST_BEGIN("crc compute null out");
@@ -143,6 +191,12 @@ static void test_compute_null_out(void)
   TEST_END("crc compute null out");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_compute_crc8_reads_dor(void)
 {
   TEST_BEGIN("crc compute crc8 reads dor");
@@ -159,6 +213,12 @@ static void test_compute_crc8_reads_dor(void)
   TEST_END("crc compute crc8 reads dor");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_compute_crc16_reads_dor(void)
 {
   TEST_BEGIN("crc compute crc16 reads dor");
@@ -170,6 +230,12 @@ static void test_compute_crc16_reads_dor(void)
   TEST_END("crc compute crc16 reads dor");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_compute_crc32_reads_dor(void)
 {
   TEST_BEGIN("crc compute crc32 reads dor");
@@ -186,6 +252,12 @@ static void test_compute_crc32_reads_dor(void)
   TEST_END("crc compute crc32 reads dor");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_compute_zero_length(void)
 {
   TEST_BEGIN("crc compute zero length");
@@ -210,6 +282,12 @@ static void prep_w44(void)
   (void)ra_mstp_init();
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_deinit(void)
 {
   TEST_BEGIN("crc deinit");
@@ -220,6 +298,12 @@ static void test_deinit(void)
   TEST_END("crc deinit");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_poly(void)
 {
   TEST_BEGIN("crc set_poly");
@@ -232,6 +316,12 @@ static void test_set_poly(void)
   TEST_END("crc set_poly");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_get_status(void)
 {
   TEST_BEGIN("crc get_status");
@@ -247,6 +337,12 @@ static void test_get_status(void)
   TEST_END("crc get_status");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_power_transition(void)
 {
   TEST_BEGIN("crc power transition");

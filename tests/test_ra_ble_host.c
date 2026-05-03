@@ -111,6 +111,12 @@ static void make_uuid(uint8_t* out, uint8_t marker)
 
 /* --------------------------------------------------------------------- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_close(void)
 {
   TEST_BEGIN("ble_host init + close");
@@ -127,6 +133,12 @@ static void test_init_close(void)
   TEST_END("ble_host init + close");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_null_and_role(void)
 {
   TEST_BEGIN("ble_host init NULL + bad role");
@@ -141,6 +153,12 @@ static void test_init_null_and_role(void)
   TEST_END("ble_host init NULL + bad role");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_pre_init_guards(void)
 {
   TEST_BEGIN("ble_host pre-init guards");
@@ -160,6 +178,12 @@ static void test_pre_init_guards(void)
   TEST_END("ble_host pre-init guards");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_advertise_start_sends_enable(void)
 {
   TEST_BEGIN("ble_host advertise_start emits LE_Set_Advertising_Enable");
@@ -191,6 +215,12 @@ static void test_advertise_start_sends_enable(void)
   TEST_END("ble_host advertise_start emits LE_Set_Advertising_Enable");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_advertise_arg_validation(void)
 {
   TEST_BEGIN("ble_host advertise_start arg validation");
@@ -213,6 +243,12 @@ static void test_advertise_arg_validation(void)
   TEST_END("ble_host advertise_start arg validation");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_register_service_and_char(void)
 {
   TEST_BEGIN("ble_host gatt register service + characteristic");
@@ -255,6 +291,12 @@ static void test_register_service_and_char(void)
   TEST_END("ble_host gatt register service + characteristic");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_value_and_notify_paths(void)
 {
   TEST_BEGIN("ble_host gatt set_value + notify");
@@ -326,6 +368,12 @@ static void test_set_value_and_notify_paths(void)
   TEST_END("ble_host gatt set_value + notify");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_att_write_via_acl(void)
 {
   TEST_BEGIN("ble_host ATT Write_Request -> write event");
@@ -367,6 +415,12 @@ static void test_att_write_via_acl(void)
   TEST_END("ble_host ATT Write_Request -> write event");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_max_services_exhaustion(void)
 {
   TEST_BEGIN("ble_host gatt service table exhaustion");
@@ -383,6 +437,12 @@ static void test_max_services_exhaustion(void)
   TEST_END("ble_host gatt service table exhaustion");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_event_handler_attach(void)
 {
   TEST_BEGIN("ble_host attach_event_handler accepts NULL");
@@ -394,6 +454,12 @@ static void test_event_handler_attach(void)
   TEST_END("ble_host attach_event_handler accepts NULL");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_advertise_stop_sends_disable(void)
 {
   TEST_BEGIN("ble_host advertise_stop emits LE_Set_Advertising_Enable disable");

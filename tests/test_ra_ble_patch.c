@@ -16,6 +16,12 @@
 extern void    ra_ble_patch_test_reset(void);
 extern uint8_t ra_ble_patch_test_warned(void);
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_probe_no_image(void)
 {
   TEST_BEGIN("test_probe_no_image");
@@ -28,6 +34,12 @@ static void test_probe_no_image(void)
   TEST_END("test_probe_no_image");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_null_with_len(void)
 {
   TEST_BEGIN("test_null_with_len");
@@ -36,6 +48,12 @@ static void test_null_with_len(void)
   TEST_END("test_null_with_len");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_invalid_len(void)
 {
   TEST_BEGIN("test_invalid_len");
@@ -46,6 +64,12 @@ static void test_invalid_len(void)
   TEST_END("test_invalid_len");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_real_image_unsupported(void)
 {
   TEST_BEGIN("test_real_image_unsupported");

@@ -87,6 +87,12 @@ static ra_cnecc_config_t make_default_cfg(void)
   return cfg;
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_null_cfg(void)
 {
   TEST_BEGIN("cnecc init null cfg");
@@ -95,6 +101,12 @@ static void test_init_null_cfg(void)
   TEST_END("cnecc init null cfg");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_happy(void)
 {
   TEST_BEGIN("cnecc init happy");
@@ -123,6 +135,12 @@ static void test_init_happy(void)
   TEST_END("cnecc init happy");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_no_correction_no_irqs(void)
 {
   TEST_BEGIN("cnecc init no correction, no irqs");
@@ -150,6 +168,12 @@ static void test_init_no_correction_no_irqs(void)
   TEST_END("cnecc init no correction, no irqs");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_judgment_disabled(void)
 {
   TEST_BEGIN("cnecc init with judgment disabled");
@@ -168,6 +192,12 @@ static void test_init_judgment_disabled(void)
   TEST_END("cnecc init with judgment disabled");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_enable_disable_instance_bounds(void)
 {
   TEST_BEGIN("cnecc enable/disable instance bounds");
@@ -179,6 +209,12 @@ static void test_enable_disable_instance_bounds(void)
   TEST_END("cnecc enable/disable instance bounds");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_enable_disable_instance_toggle(void)
 {
   TEST_BEGIN("cnecc enable/disable per-instance toggles ECERVF");
@@ -206,6 +242,12 @@ static void test_enable_disable_instance_toggle(void)
   TEST_END("cnecc enable/disable per-instance toggles ECERVF");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_irq_enables(void)
 {
   TEST_BEGIN("cnecc set_irq_enables");
@@ -234,6 +276,12 @@ static void test_set_irq_enables(void)
   TEST_END("cnecc set_irq_enables");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_correction_permission(void)
 {
   TEST_BEGIN("cnecc set_correction_permission");
@@ -259,6 +307,12 @@ static void test_set_correction_permission(void)
   TEST_END("cnecc set_correction_permission");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_get_status_null_out(void)
 {
   TEST_BEGIN("cnecc get_status null out");
@@ -268,6 +322,12 @@ static void test_get_status_null_out(void)
   TEST_END("cnecc get_status null out");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_get_status_bad_instance(void)
 {
   TEST_BEGIN("cnecc get_status bad instance");
@@ -280,6 +340,12 @@ static void test_get_status_bad_instance(void)
   TEST_END("cnecc get_status bad instance");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_get_status_decodes_flags(void)
 {
   TEST_BEGIN("cnecc get_status decodes flags");
@@ -331,6 +397,12 @@ static void test_get_status_decodes_flags(void)
   TEST_END("cnecc get_status decodes flags");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_get_status_masks_ead(void)
 {
   TEST_BEGIN("cnecc get_status masks ECEAD to 10 bits");
@@ -350,6 +422,12 @@ static void test_get_status_masks_ead(void)
   TEST_END("cnecc get_status masks ECEAD to 10 bits");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_get_counters(void)
 {
   TEST_BEGIN("cnecc get_counters");
@@ -371,6 +449,12 @@ static void test_get_counters(void)
   TEST_END("cnecc get_counters");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_reset_counters(void)
 {
   TEST_BEGIN("cnecc reset_counters");
@@ -404,6 +488,12 @@ static void test_reset_counters(void)
   TEST_END("cnecc reset_counters");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_bbr_mirror(void)
 {
   TEST_BEGIN("cnecc bbr mirror tracks dispatch + reset");
@@ -442,6 +532,12 @@ static void test_bbr_mirror(void)
   TEST_END("cnecc bbr mirror tracks dispatch + reset");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_clear_status_writes_clear_mask(void)
 {
   TEST_BEGIN("cnecc clear_status writes clear mask");
@@ -465,6 +561,12 @@ static void test_clear_status_writes_clear_mask(void)
   TEST_END("cnecc clear_status writes clear mask");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_clear_status_bad_instance(void)
 {
   TEST_BEGIN("cnecc clear_status bad instance");
@@ -474,6 +576,12 @@ static void test_clear_status_bad_instance(void)
   TEST_END("cnecc clear_status bad instance");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_attach_handler_null(void)
 {
   TEST_BEGIN("cnecc attach null handler");
@@ -482,6 +590,12 @@ static void test_attach_handler_null(void)
   TEST_END("cnecc attach null handler");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_dispatch_drops_bad_instance(void)
 {
   TEST_BEGIN("cnecc dispatch drops bad instance");
@@ -494,6 +608,12 @@ static void test_dispatch_drops_bad_instance(void)
   TEST_END("cnecc dispatch drops bad instance");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_dispatch_invokes_callback_and_counts(void)
 {
   TEST_BEGIN("cnecc dispatch invokes callback");
@@ -528,6 +648,12 @@ static void test_dispatch_invokes_callback_and_counts(void)
   TEST_END("cnecc dispatch invokes callback");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_inject_fault_writes_sequence(void)
 {
   TEST_BEGIN("cnecc inject_fault writes HUM 42.3.2 sequence");
@@ -566,6 +692,12 @@ static void test_inject_fault_writes_sequence(void)
   TEST_END("cnecc inject_fault writes HUM 42.3.2 sequence");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_test_mode_disable_and_query(void)
 {
   TEST_BEGIN("cnecc test_mode_disable + test_mode_active");
@@ -603,6 +735,12 @@ static void test_test_mode_disable_and_query(void)
   TEST_END("cnecc test_mode_disable + test_mode_active");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_attach_isr_bad_priority(void)
 {
   TEST_BEGIN("cnecc attach_isr bad priority");
@@ -612,6 +750,12 @@ static void test_attach_isr_bad_priority(void)
   TEST_END("cnecc attach_isr bad priority");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_attach_isr_routes_both_vectors(void)
 {
   TEST_BEGIN("cnecc attach_isr routes CAN0/CAN1 MRAM_ERI");
@@ -637,6 +781,12 @@ static void test_attach_isr_routes_both_vectors(void)
   TEST_END("cnecc attach_isr routes CAN0/CAN1 MRAM_ERI");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_isr_handler_dispatches_and_clears(void)
 {
   TEST_BEGIN("cnecc isr_handler dispatches faults and clears flags");
@@ -686,6 +836,12 @@ static void test_isr_handler_dispatches_and_clears(void)
   TEST_END("cnecc isr_handler dispatches faults and clears flags");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_enter_exit_standby(void)
 {
   TEST_BEGIN("cnecc enter_standby clears, exit_standby restores");
@@ -707,6 +863,12 @@ static void test_enter_exit_standby(void)
   TEST_END("cnecc enter_standby clears, exit_standby restores");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_exit_standby_without_init(void)
 {
   TEST_BEGIN("cnecc exit_standby without init");
@@ -718,6 +880,12 @@ static void test_exit_standby_without_init(void)
   TEST_END("cnecc exit_standby without init");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_deinit_clears_judgment(void)
 {
   TEST_BEGIN("cnecc deinit clears judgment");
@@ -742,6 +910,11 @@ static void test_deinit_clears_judgment(void)
 /* ---------------------------------------------------------------------------
  * Sweep 17 additions: open + compute + verify
  * ---------------------------------------------------------------------------
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_open_brings_up_with_defaults(void)
@@ -758,6 +931,12 @@ static void test_open_brings_up_with_defaults(void)
   TEST_END("cnecc open arms both instances with defaults");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_compute_happy(void)
 {
   TEST_BEGIN("cnecc compute returns deterministic CRC");
@@ -774,6 +953,12 @@ static void test_compute_happy(void)
   TEST_END("cnecc compute returns deterministic CRC");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_compute_null_out(void)
 {
   TEST_BEGIN("cnecc compute rejects null out_ecc");
@@ -784,6 +969,12 @@ static void test_compute_null_out(void)
   TEST_END("cnecc compute rejects null out_ecc");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_compute_misaligned_addr(void)
 {
   TEST_BEGIN("cnecc compute rejects misaligned addr");
@@ -793,6 +984,12 @@ static void test_compute_misaligned_addr(void)
   TEST_END("cnecc compute rejects misaligned addr");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_compute_short_len(void)
 {
   TEST_BEGIN("cnecc compute rejects len < 4");
@@ -804,6 +1001,12 @@ static void test_compute_short_len(void)
   TEST_END("cnecc compute rejects len < 4");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_compute_zero_addr(void)
 {
   TEST_BEGIN("cnecc compute rejects zero addr");
@@ -813,6 +1016,12 @@ static void test_compute_zero_addr(void)
   TEST_END("cnecc compute rejects zero addr");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_verify_match(void)
 {
   TEST_BEGIN("cnecc verify accepts matching ecc");
@@ -826,6 +1035,12 @@ static void test_verify_match(void)
   TEST_END("cnecc verify accepts matching ecc");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_verify_mismatch(void)
 {
   TEST_BEGIN("cnecc verify rejects mismatching ecc");

@@ -27,6 +27,12 @@ typedef enum : uint8_t {
   k_test_adc_chan_count_over = 9U,
 } test_adc_t;
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_setup(void)
 {
   ra_sim_mmap_reset();

@@ -23,6 +23,12 @@ typedef enum : uint8_t {
   k_ra_cac_test_mendf_bit = 1U, /**< CASTR.MENDF bit. */
 } ra_cac_test_bits_t;
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_writes_limits(void)
 {
   TEST_BEGIN("cac init writes limits");
@@ -40,6 +46,12 @@ static void test_init_writes_limits(void)
   TEST_END("cac init writes limits");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_measure_null_out_pointer(void)
 {
   TEST_BEGIN("cac measure null out pointer");
@@ -49,6 +61,12 @@ static void test_measure_null_out_pointer(void)
   TEST_END("cac measure null out pointer");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_measure_happy_path(void)
 {
   TEST_BEGIN("cac measure happy path");
@@ -69,6 +87,12 @@ static void test_measure_happy_path(void)
   TEST_END("cac measure happy path");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_measure_timeout(void)
 {
   TEST_BEGIN("cac measure timeout");
@@ -102,6 +126,12 @@ static void prep_w43(void)
   s_cac_cb_last_mask = 0U;
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_deinit(void)
 {
   TEST_BEGIN("cac deinit");
@@ -114,6 +144,12 @@ static void test_deinit(void)
   TEST_END("cac deinit");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_status_read_and_clear(void)
 {
   TEST_BEGIN("cac status read + clear");
@@ -143,6 +179,12 @@ static void test_status_read_and_clear(void)
   TEST_END("cac status read + clear");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_attach_and_dispatch(void)
 {
   TEST_BEGIN("cac attach + dispatch");
@@ -169,6 +211,12 @@ static void test_attach_and_dispatch(void)
   TEST_END("cac attach + dispatch");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_power_transition(void)
 {
   TEST_BEGIN("cac power transition");

@@ -41,6 +41,12 @@ typedef enum : uint8_t {
   k_ra_bscan_test_instr_reserved_a = 0xAU, /**< 0xA is reserved per 50.2.1. */
 } ra_bscan_test_instr_t;
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_happy(void)
 {
   TEST_BEGIN("bscan init happy");
@@ -61,6 +67,12 @@ static void test_init_happy(void)
   TEST_END("bscan init happy");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_get_idcode_happy(void)
 {
   TEST_BEGIN("bscan get_idcode happy");
@@ -74,6 +86,12 @@ static void test_get_idcode_happy(void)
   TEST_END("bscan get_idcode happy");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_get_idcode_null(void)
 {
   TEST_BEGIN("bscan get_idcode null");
@@ -84,6 +102,12 @@ static void test_get_idcode_null(void)
   TEST_END("bscan get_idcode null");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_get_idcode_not_initialised(void)
 {
   TEST_BEGIN("bscan get_idcode not initialised");
@@ -95,6 +119,12 @@ static void test_get_idcode_not_initialised(void)
   TEST_END("bscan get_idcode not initialised");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_get_status_null(void)
 {
   TEST_BEGIN("bscan get_status null");
@@ -104,6 +134,12 @@ static void test_get_status_null(void)
   TEST_END("bscan get_status null");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_instruction_happy(void)
 {
   TEST_BEGIN("bscan set_instruction happy");
@@ -123,6 +159,12 @@ static void test_set_instruction_happy(void)
   TEST_END("bscan set_instruction happy");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_instruction_reserved(void)
 {
   TEST_BEGIN("bscan set_instruction reserved");
@@ -142,6 +184,12 @@ static void test_set_instruction_reserved(void)
   TEST_END("bscan set_instruction reserved");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_instruction_not_initialised(void)
 {
   TEST_BEGIN("bscan set_instruction not initialised");
@@ -153,6 +201,12 @@ static void test_set_instruction_not_initialised(void)
   TEST_END("bscan set_instruction not initialised");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_clear_status_happy(void)
 {
   TEST_BEGIN("bscan clear_status happy");
@@ -174,6 +228,12 @@ static void test_clear_status_happy(void)
   TEST_END("bscan clear_status happy");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_clear_status_bad_mask(void)
 {
   TEST_BEGIN("bscan clear_status bad mask");
@@ -185,6 +245,12 @@ static void test_clear_status_bad_mask(void)
   TEST_END("bscan clear_status bad mask");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_clear_status_not_initialised(void)
 {
   TEST_BEGIN("bscan clear_status not initialised");
@@ -195,6 +261,12 @@ static void test_clear_status_not_initialised(void)
   TEST_END("bscan clear_status not initialised");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_deinit_idempotent(void)
 {
   TEST_BEGIN("bscan deinit idempotent");
@@ -214,6 +286,12 @@ static void test_deinit_idempotent(void)
   TEST_END("bscan deinit idempotent");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_idcode_constant_matches_header(void)
 {
   TEST_BEGIN("bscan idcode constant matches header");

@@ -106,6 +106,12 @@ static ra_ceu_config_t make_cfg(void)
   return cfg;
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_happy(void)
 {
   TEST_BEGIN("ceu init happy");
@@ -130,6 +136,12 @@ static void test_init_happy(void)
   TEST_END("ceu init happy");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_null_cfg(void)
 {
   TEST_BEGIN("ceu init null cfg");
@@ -138,6 +150,12 @@ static void test_init_null_cfg(void)
   TEST_END("ceu init null cfg");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_continuous_non_image_rejected(void)
 {
   TEST_BEGIN("ceu init continuous-only-image rule");
@@ -149,6 +167,12 @@ static void test_init_continuous_non_image_rejected(void)
   TEST_END("ceu init continuous-only-image rule");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_data_enable_format(void)
 {
   TEST_BEGIN("ceu init data-enable format");
@@ -166,6 +190,12 @@ static void test_init_data_enable_format(void)
   TEST_END("ceu init data-enable format");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_continuous_capture(void)
 {
   TEST_BEGIN("ceu init continuous mode");
@@ -178,6 +208,12 @@ static void test_init_continuous_capture(void)
   TEST_END("ceu init continuous mode");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_interlace_one_field(void)
 {
   TEST_BEGIN("ceu init interlace one-field");
@@ -194,6 +230,12 @@ static void test_init_interlace_one_field(void)
   TEST_END("ceu init interlace one-field");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_byte_swap_full(void)
 {
   TEST_BEGIN("ceu init byte swap all");
@@ -210,6 +252,12 @@ static void test_init_byte_swap_full(void)
   TEST_END("ceu init byte swap all");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_scale_down(void)
 {
   TEST_BEGIN("ceu init scale-down + clip");
@@ -230,6 +278,12 @@ static void test_init_scale_down(void)
   TEST_END("ceu init scale-down + clip");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_low_pass_and_burst(void)
 {
   TEST_BEGIN("ceu init LPF + burst + frame-drop");
@@ -250,6 +304,12 @@ static void test_init_low_pass_and_burst(void)
   TEST_END("ceu init LPF + burst + frame-drop");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_capture_arm_happy(void)
 {
   TEST_BEGIN("ceu capture_start happy");
@@ -269,6 +329,12 @@ static void test_capture_arm_happy(void)
   TEST_END("ceu capture_start happy");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_capture_arm_null(void)
 {
   TEST_BEGIN("ceu capture_start null buffer");
@@ -277,6 +343,12 @@ static void test_capture_arm_null(void)
   TEST_END("ceu capture_start null buffer");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_capture_arm_unaligned(void)
 {
   TEST_BEGIN("ceu capture_start unaligned");
@@ -286,6 +358,12 @@ static void test_capture_arm_unaligned(void)
   TEST_END("ceu capture_start unaligned");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_capture_arm_busy(void)
 {
   TEST_BEGIN("ceu capture_start busy");
@@ -306,6 +384,12 @@ static void test_capture_arm_busy(void)
   TEST_END("ceu capture_start busy");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_capture_start_ex_full_bundle(void)
 {
   TEST_BEGIN("ceu capture_start_ex full bundle");
@@ -336,6 +420,12 @@ static void test_capture_start_ex_full_bundle(void)
   TEST_END("ceu capture_start_ex full bundle");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_capture_start_ex_misaligned(void)
 {
   TEST_BEGIN("ceu capture_start_ex misaligned");
@@ -357,6 +447,12 @@ static void test_capture_start_ex_misaligned(void)
   TEST_END("ceu capture_start_ex misaligned");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_capture_start_ex_null(void)
 {
   TEST_BEGIN("ceu capture_start_ex null");
@@ -365,6 +461,12 @@ static void test_capture_start_ex_null(void)
   TEST_END("ceu capture_start_ex null");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_capture_disarm(void)
 {
   TEST_BEGIN("ceu capture_disarm");
@@ -378,6 +480,12 @@ static void test_capture_disarm(void)
   TEST_END("ceu capture_stop");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_data_enable_arms_firewall(void)
 {
   TEST_BEGIN("ceu data-enable arms firewall");
@@ -393,6 +501,12 @@ static void test_data_enable_arms_firewall(void)
   TEST_END("ceu data-enable arms firewall");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_status_get_clear(void)
 {
   TEST_BEGIN("ceu status get + clear");
@@ -417,6 +531,12 @@ static void test_status_get_clear(void)
   TEST_END("ceu status get + clear");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_status_snapshot(void)
 {
   TEST_BEGIN("ceu status_snapshot");
@@ -436,6 +556,12 @@ static void test_status_snapshot(void)
   TEST_END("ceu status_snapshot");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_data_size_get(void)
 {
   TEST_BEGIN("ceu data_size_get");
@@ -448,6 +574,12 @@ static void test_data_size_get(void)
   TEST_END("ceu data_size_get");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_interrupts_set(void)
 {
   TEST_BEGIN("ceu interrupts_set");
@@ -458,6 +590,12 @@ static void test_interrupts_set(void)
   TEST_END("ceu interrupts_set");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_attach_dispatch(void)
 {
   TEST_BEGIN("ceu attach + dispatch");
@@ -489,6 +627,12 @@ static void test_attach_dispatch(void)
   TEST_END("ceu attach + dispatch");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_dispatch_no_handler(void)
 {
   TEST_BEGIN("ceu dispatch no handler");
@@ -502,6 +646,12 @@ static void test_dispatch_no_handler(void)
   TEST_END("ceu dispatch no handler");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_power_transition(void)
 {
   TEST_BEGIN("ceu power transition");
@@ -520,6 +670,12 @@ static void test_power_transition(void)
   TEST_END("ceu power transition");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_reset(void)
 {
   TEST_BEGIN("ceu reset");
@@ -534,6 +690,12 @@ static void test_reset(void)
   TEST_END("ceu reset");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_plane_b_program(void)
 {
   TEST_BEGIN("ceu plane_b_program");
@@ -563,6 +725,12 @@ static void test_plane_b_program(void)
   TEST_END("ceu plane_b_program");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_plane_b_misaligned(void)
 {
   TEST_BEGIN("ceu plane_b misaligned");
@@ -582,6 +750,12 @@ static void test_plane_b_misaligned(void)
   TEST_END("ceu plane_b misaligned");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_plane_b_null_keeps_mirror(void)
 {
   TEST_BEGIN("ceu plane_b null mirror");
@@ -596,6 +770,12 @@ static void test_plane_b_null_keeps_mirror(void)
   TEST_END("ceu plane_b null mirror");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_plane_swap_force(void)
 {
   TEST_BEGIN("ceu plane_swap_force");
@@ -605,6 +785,12 @@ static void test_plane_swap_force(void)
   TEST_END("ceu plane_swap_force");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_firewall_set(void)
 {
   TEST_BEGIN("ceu firewall_set");
@@ -618,6 +804,12 @@ static void test_firewall_set(void)
   TEST_END("ceu firewall_set");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_byte_swap_set(void)
 {
   TEST_BEGIN("ceu byte_swap_set");
@@ -635,6 +827,12 @@ static void test_byte_swap_set(void)
   TEST_END("ceu byte_swap_set");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_bundle_size_set(void)
 {
   TEST_BEGIN("ceu bundle_size_set");
@@ -645,6 +843,12 @@ static void test_bundle_size_set(void)
   TEST_END("ceu bundle_size_set");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_low_pass_set(void)
 {
   TEST_BEGIN("ceu low_pass_set");
@@ -656,6 +860,12 @@ static void test_low_pass_set(void)
   TEST_END("ceu low_pass_set");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_capture_mode_set(void)
 {
   TEST_BEGIN("ceu capture_mode_set");
@@ -669,6 +879,12 @@ static void test_capture_mode_set(void)
   TEST_END("ceu capture_mode_set");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_frame_drop_set(void)
 {
   TEST_BEGIN("ceu frame_drop_set");
@@ -683,6 +899,12 @@ static void test_frame_drop_set(void)
   TEST_END("ceu frame_drop_set");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_dma_pump(void)
 {
   TEST_BEGIN("ceu dma_pump");
@@ -695,6 +917,12 @@ static void test_dma_pump(void)
   TEST_END("ceu dma_pump");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_dma_pump_bad_args(void)
 {
   TEST_BEGIN("ceu dma_pump bad args");
@@ -720,6 +948,11 @@ static void test_dma_pump_bad_args(void)
 
 /* ----------------------------------------------------------------------------
  * Sweep 17: ra_ceu_set_dma_buffer + multi-frame capture wrappers
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  * --------------------------------------------------------------------------*/
 
 static void test_set_dma_buffer_happy(void)
@@ -734,6 +967,12 @@ static void test_set_dma_buffer_happy(void)
   TEST_END("ceu set_dma_buffer happy");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_dma_buffer_null(void)
 {
   TEST_BEGIN("ceu set_dma_buffer null");
@@ -745,6 +984,12 @@ static void test_set_dma_buffer_null(void)
   TEST_END("ceu set_dma_buffer null");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_dma_buffer_zero_len(void)
 {
   TEST_BEGIN("ceu set_dma_buffer zero len");
@@ -756,6 +1001,12 @@ static void test_set_dma_buffer_zero_len(void)
   TEST_END("ceu set_dma_buffer zero len");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_dma_buffer_misaligned(void)
 {
   TEST_BEGIN("ceu set_dma_buffer misaligned");
@@ -768,6 +1019,12 @@ static void test_set_dma_buffer_misaligned(void)
   TEST_END("ceu set_dma_buffer misaligned");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_capture_start_n_single(void)
 {
   TEST_BEGIN("ceu capture_start single (num_frames=1)");
@@ -785,6 +1042,12 @@ static void test_capture_start_n_single(void)
   TEST_END("ceu capture_start single (num_frames=1)");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_capture_start_n_continuous(void)
 {
   TEST_BEGIN("ceu capture_start continuous (num_frames=0)");
@@ -800,6 +1063,12 @@ static void test_capture_start_n_continuous(void)
   TEST_END("ceu capture_start continuous (num_frames=0)");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_capture_start_no_buffer(void)
 {
   TEST_BEGIN("ceu capture_start without set_dma_buffer");
@@ -812,6 +1081,12 @@ static void test_capture_start_no_buffer(void)
   TEST_END("ceu capture_start without set_dma_buffer");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_capture_stop_wrapper(void)
 {
   TEST_BEGIN("ceu capture_stop wrapper");
@@ -828,6 +1103,12 @@ static void test_capture_stop_wrapper(void)
   TEST_END("ceu capture_stop wrapper");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_deinit(void)
 {
   TEST_BEGIN("ceu deinit");

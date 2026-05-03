@@ -26,6 +26,12 @@ static void evt_cb(void* ctx, const ra_ble_mesh_event_t* evt)
   s_evt_count++;
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_null(void)
 {
   TEST_BEGIN("test_init_null");
@@ -33,6 +39,12 @@ static void test_init_null(void)
   TEST_END("test_init_null");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_invalid_count(void)
 {
   TEST_BEGIN("test_init_invalid_count");
@@ -44,6 +56,12 @@ static void test_init_invalid_count(void)
   TEST_END("test_init_invalid_count");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_lifecycle(void)
 {
   TEST_BEGIN("test_lifecycle");

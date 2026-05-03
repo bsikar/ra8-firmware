@@ -17,6 +17,12 @@ typedef enum : uint8_t {
   k_ra_cgc_test_all_oscsf = 0xFFU, /**< All stabilisation bits set.    */
 } ra_cgc_test_bits_t;
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_get_clock_hz_null_out(void)
 {
   TEST_BEGIN("cgc get_clock_hz null out");
@@ -27,6 +33,12 @@ static void test_get_clock_hz_null_out(void)
   TEST_END("cgc get_clock_hz null out");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_get_clock_hz_all_ids(void)
 {
   TEST_BEGIN("cgc get_clock_hz all ids");
@@ -55,6 +67,12 @@ static void test_get_clock_hz_all_ids(void)
   TEST_END("cgc get_clock_hz all ids");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_get_clock_hz_out_of_range(void)
 {
   TEST_BEGIN("cgc get_clock_hz out of range");
@@ -66,6 +84,12 @@ static void test_get_clock_hz_out_of_range(void)
   TEST_END("cgc get_clock_hz out of range");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_happy_with_oscsf_preseed(void)
 {
   TEST_BEGIN("cgc init happy (oscsf preseeded)");
@@ -86,6 +110,12 @@ static void test_init_happy_with_oscsf_preseed(void)
   TEST_END("cgc init happy (oscsf preseeded)");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_main_osc_timeout(void)
 {
   TEST_BEGIN("cgc init main-osc timeout");
@@ -98,6 +128,12 @@ static void test_init_main_osc_timeout(void)
   TEST_END("cgc init main-osc timeout");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_use_hoco_happy(void)
 {
   TEST_BEGIN("cgc use_hoco happy (oscsf preseeded)");
@@ -109,6 +145,12 @@ static void test_use_hoco_happy(void)
   TEST_END("cgc use_hoco happy (oscsf preseeded)");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_use_hoco_timeout(void)
 {
   TEST_BEGIN("cgc use_hoco timeout");
@@ -130,6 +172,12 @@ static void    stub_ostd_handler(void* ctx)
   }
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_switch_pll1_target_updates_cpuclk0(void)
 {
   TEST_BEGIN("cgc switch_pll1_target: updates cpuclk0 reading");
@@ -148,6 +196,12 @@ static void test_switch_pll1_target_updates_cpuclk0(void)
   TEST_END("cgc switch_pll1_target: updates cpuclk0 reading");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_stop_detection_arm_and_fire(void)
 {
   TEST_BEGIN("cgc stop detection: handler fires via sim trigger");
