@@ -15,10 +15,10 @@ Live audit of compound boolean decisions reported by `llvm-cov show --show-mcdc`
 
 - Source files with at least one decision: **93**
 - Total compound decisions in scope: **539**
-- Decisions at 100% MC/DC (`yes`): **394**
-- Decisions partially covered (`partial`): **71**
-- Decisions fully uncovered (`no`): **74**
-- Coverage rate (yes / total): **73.1%**
+- Decisions at 100% MC/DC (`yes`): **411**
+- Decisions partially covered (`partial`): **66**
+- Decisions fully uncovered (`no`): **62**
+- Coverage rate (yes / total): **76.3%**
 
 ## Per-module gap counts (full table)
 
@@ -26,26 +26,25 @@ Sorted by (uncovered + partial) descending, then total descending.
 
 | Module | Total | Covered | Partial | Uncovered |
 |--------|------:|--------:|--------:|----------:|
-| ra_jpeg_sw | 24 | 6 | 10 | 8 |
+| ra_jpeg_sw | 24 | 9 | 9 | 6 |
 | ra_epub_xml_shim | 12 | 0 | 3 | 9 |
 | ra_flash | 20 | 12 | 3 | 5 |
-| ra_modem_at | 12 | 4 | 6 | 2 |
 | ra_reflow_layout | 14 | 7 | 4 | 3 |
-| ra_net_udp | 9 | 2 | 1 | 6 |
-| ra_epub_chapter | 13 | 7 | 4 | 2 |
+| ra_modem_at | 12 | 6 | 5 | 1 |
 | ra_mipi_dsi | 22 | 17 | 3 | 2 |
 | ra_psa_crypto | 21 | 16 | 5 | 0 |
 | ra_rsip | 16 | 11 | 2 | 3 |
 | ra_fs_fat | 20 | 16 | 1 | 3 |
-| ra_ota | 8 | 4 | 3 | 1 |
 | ra_ble_att | 5 | 1 | 0 | 4 |
 | ra_reflow_xml_shim | 4 | 0 | 2 | 2 |
+| ra_epub_chapter | 13 | 10 | 2 | 1 |
 | ra_touch_cal | 13 | 10 | 3 | 0 |
 | ra_ble_l2cap | 12 | 9 | 0 | 3 |
 | ra_ble_gatt | 11 | 8 | 3 | 0 |
+| ra_net_udp | 9 | 6 | 2 | 1 |
 | ra_iic_b | 7 | 4 | 2 | 1 |
-| ra_net_tcp | 3 | 0 | 0 | 3 |
 | ra_ble | 8 | 6 | 0 | 2 |
+| ra_ota | 8 | 6 | 1 | 1 |
 | ra_usb_pal | 8 | 6 | 2 | 0 |
 | ra_drw | 7 | 5 | 2 | 0 |
 | ra_i3c | 7 | 5 | 1 | 1 |
@@ -88,6 +87,7 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra_usb_pvnd | 4 | 4 | 0 | 0 |
 | ra_xspi | 4 | 4 | 0 | 0 |
 | ra_gpt | 3 | 3 | 0 | 0 |
+| ra_net_tcp | 3 | 3 | 0 | 0 |
 | adc | 2 | 2 | 0 | 0 |
 | ra_bkup | 2 | 2 | 0 | 0 |
 | ra_ble_mesh | 2 | 2 | 0 | 0 |
@@ -125,26 +125,25 @@ Sorted by (uncovered + partial) descending, then total descending.
 | Module | Uncovered | Partial | Covered | Total |
 |--------|----------:|--------:|--------:|------:|
 | ra_epub_xml_shim | 9 | 3 | 0 | 12 |
-| ra_jpeg_sw | 8 | 10 | 6 | 24 |
-| ra_net_udp | 6 | 1 | 2 | 9 |
+| ra_jpeg_sw | 6 | 9 | 9 | 24 |
 | ra_flash | 5 | 3 | 12 | 20 |
 | ra_ble_att | 4 | 0 | 1 | 5 |
 | ra_reflow_layout | 3 | 4 | 7 | 14 |
 | ra_rsip | 3 | 2 | 11 | 16 |
 | ra_fs_fat | 3 | 1 | 16 | 20 |
 | ra_ble_l2cap | 3 | 0 | 9 | 12 |
-| ra_net_tcp | 3 | 0 | 0 | 3 |
-| ra_modem_at | 2 | 6 | 4 | 12 |
-| ra_epub_chapter | 2 | 4 | 7 | 13 |
 | ra_mipi_dsi | 2 | 3 | 17 | 22 |
 | ra_reflow_xml_shim | 2 | 2 | 0 | 4 |
 | ra_ble | 2 | 0 | 6 | 8 |
 | ra_eth | 2 | 0 | 2 | 4 |
 | ra_rmac_phy | 2 | 0 | 1 | 3 |
-| ra_ota | 1 | 3 | 4 | 8 |
+| ra_modem_at | 1 | 5 | 6 | 12 |
+| ra_epub_chapter | 1 | 2 | 10 | 13 |
 | ra_iic_b | 1 | 2 | 4 | 7 |
+| ra_net_udp | 1 | 2 | 6 | 9 |
 | ra_dmac | 1 | 1 | 1 | 3 |
 | ra_i3c | 1 | 1 | 5 | 7 |
+| ra_ota | 1 | 1 | 6 | 8 |
 | ra_dotf | 1 | 0 | 5 | 6 |
 | ra_epub_open | 1 | 0 | 2 | 3 |
 | ra_net_arp | 1 | 0 | 0 | 1 |
