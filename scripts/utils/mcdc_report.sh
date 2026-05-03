@@ -212,9 +212,11 @@ cmake -B "$BUILD_DIR" -S "$REPO_ROOT/tests" \
 # 2. Build
 # ---------------------------------------------------------------------------
 echo "==> [2/5] Building host tests"
-cmake --build "$BUILD_DIR" --parallel 2>&1 | tail -20 || {
-    echo "build failed" >&2
-    exit 1
+# -j2 + --keep-going: full -j parallel link can OOM the devcontainer
+# (libclang_rt.profile is heavy); --keep-going lets us still produce a
+# report even if one or two targets fail to link.
+cmake --build "$BUILD_DIR" -j2 -- --keep-going 2>&1 | tail -40 || {
+    echo "(some targets failed; continuing with whatever built)" >&2
 }
 
 # ---------------------------------------------------------------------------

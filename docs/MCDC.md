@@ -182,3 +182,4 @@ for MC/DC and the gate.
 | 2026-05-02 | 68.31               | clang-18 in devcontainer; 142/169 host tests pass. |
 | 2026-05-02 evening | 70.40       | clang-18 in devcontainer; 149/178 host tests pass. |
 | 2026-05-02 late evening | 69.5   | clang-18 in devcontainer; 149/181 host tests pass; --keep-going build with -j2 to avoid linker OOM. |
+| 2026-05-02 night | 75.25       | clang-18 in devcontainer; 188/188 host tests pass; +5.68pp from new MC/DC tests added across ra_modem_at, ra_power_profile, ra_psa_crypto, secure_app/key_import, OTA commit veneers. |
