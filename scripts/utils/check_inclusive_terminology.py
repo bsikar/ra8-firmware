@@ -145,22 +145,20 @@ SKIP_FILE_PATTERNS: tuple[str, ...] = (
     # Renesas FSP `r_iic_b_master_*` API surface references.
     "libs/ra_hal/inc/ra_iic_b.h",
     "libs/ra_hal/src/ra_iic_b.c",
+    # The IIC_B / I3C / SPI / SSIE / USB-HAUD test fixtures below each
+    # carry 14-44 pre-existing tests that pre-date the strict MC/DC-block
+    # gate (scripts/utils/check_mcdc_block.py). The terminology rewrites
+    # themselves are trivial (a handful of comments and TEST_BEGIN strings
+    # per file) but staging the file re-runs the MC/DC gate over every
+    # test in it. Backfilling @par MC/DC: blocks across ~150 legacy tests
+    # is tracked separately and is orthogonal to the inclusive-terminology
+    # effort. Keep these in skip until the MC/DC backfill lands; removing
+    # the skip is a one-line follow-up at that point.
     "tests/test_ra_iic_b.c",
     "tests/test_ra_iic_b_edge_cases.c",
-    # I3C test fixture mirrors the FSP r_i3c API and IBI_ST register
-    # field names verbatim; touching this file would otherwise trip
-    # the MC/DC block checker on its many pre-existing functions.
     "tests/test_ra_i3c.c",
-    # SPI test fixtures mirror the FSP r_spi_b master-mode API names.
     "tests/test_ra_spi.c",
-    # SSIE test fixture references the SSICR.MST register field name and
-    # the FSP r_ssi_api master/slave role wording verbatim. Renaming
-    # would require adding @par MC/DC: blocks to ~50 pre-existing tests
-    # which is orthogonal to the inclusive-terminology effort.
     "tests/test_ra_ssie.c",
-    # USB HAUD test fixture mirrors the USB Audio Class master-channel
-    # ID 0 ("master channel" is the literal spec wording in USB-IF
-    # Audio Device Class spec).
     "tests/test_ra_usb_haud.c",
     # Express Logic USBX `UX_SLAVE_*` upstream type names referenced from
     # the port shim itself.
