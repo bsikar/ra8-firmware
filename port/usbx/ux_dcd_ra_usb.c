@@ -706,23 +706,10 @@ static void internal_handle_ctrt(ra_usb_speed_t speed, uint16_t intsts0)
       /* SETUP latched, data stage to follow. USBX dispatcher will
        * either push IN payload (rdds -> ra_usb_dcp_in_data) or wait
        * for OUT data (wrds). The status stage is acked separately on
-       * the matching CTSQ=rdss / wrss edge.
-       *
-       * If ra_usb_read_setup fails (INTSTS0.VALID never asserted, the
-       * snapshot raced past the SETUP latch) or _ux_device_stack_
-       * control_request_process rejects the request (unknown
-       * descriptor, bad state, class driver said no), the chip is
-       * left in CTSQ=rdds/wrds with PID=NAK and the host hangs
-       * waiting for data this device will never push. STALL EP0 in
-       * those cases so the host moves on instead of stalling
-       * enumeration. */
+       * the matching CTSQ=rdss / wrss edge. */
       ra_usb_setup_t setup = {};
-      if (ra_usb_read_setup(speed, &setup) != k_ra_ok) {
-        (void)ra_usb_control_response(speed, false);
-        break;
-      }
-      if (internal_dispatch_setup(&setup) != UX_SUCCESS) {
-        (void)ra_usb_control_response(speed, false);
+      if (ra_usb_read_setup(speed, &setup) == k_ra_ok) {
+        (void)internal_dispatch_setup(&setup);
       }
       break;
     }
@@ -874,28 +861,22 @@ void ux_dcd_ra_usb_irq(ra_usb_speed_t speed, uint16_t intsts0)
     return;
   }
 
-  /* CTRT FIRST: SETUP / chapter-9 path must run before any other
-   * handler so that ra_usb_read_setup can drain USBREQ/USBVAL/
-   * USBINDX/USBLENG while INTSTS0.VALID is still asserted -- the
-   * Renesas USB IP latches the SETUP packet briefly and a delayed
-   * read can race past it. The previous "DVST first" ordering was
-   * introduced to advance ux_slave_device_state before EP0 was
-   * gated by USBX (state in {ATTACHED, ADDRESSED, CONFIGURED}), but
-   * ux_dcd_ra_usb_initialize now stamps ATTACHED at init and the
-   * chapter-9 dispatcher advances state synchronously thereafter,
-   * so DVST-first is no longer required and only adds latency
-   * between the SETUP latch and our drain.
-   *
-   * The no-demote rank guard in internal_handle_dvst keeps the
-   * post-CTRT case safe: even if DVST runs after CTRT and reports
-   * a stale ADDRESS/CONFIGURED snapshot, it cannot demote the state
-   * the chapter-9 dispatcher already advanced. */
-  if ((intsts0 & (uint16_t)(1U << (uint8_t)k_ra_int0_bit_ctrt)) != 0U) {
-    internal_handle_ctrt(speed, intsts0);
-  }
-
+  /* DVST FIRST: bus reset / address / configured DVSQ updates must
+   * land in ux_slave_device_state BEFORE the CTRT path tries to
+   * dispatch a SETUP, because USBX gates EP0 transfers on
+   * state in {ATTACHED, ADDRESSED, CONFIGURED} (see
+   * ux_device_stack_transfer_request.c) and rejects them when the
+   * software state is still RESET=0. The no-demote rank guard in
+   * internal_handle_dvst ensures DVST never undoes a previous CTRT
+   * that already advanced state, so swapping the order is safe both
+   * for the initial-enum case and for the post-CTRT stale-snapshot
+   * case Wave 75 originally fixed. */
   if ((intsts0 & (uint16_t)(1U << (uint8_t)k_ra_int0_bit_dvst)) != 0U) {
     internal_handle_dvst(intsts0);
+  }
+
+  if ((intsts0 & (uint16_t)(1U << (uint8_t)k_ra_int0_bit_ctrt)) != 0U) {
+    internal_handle_ctrt(speed, intsts0);
   }
 
   /* Walk every pipe with a queued OUT transfer. ra_usb_queue_out
