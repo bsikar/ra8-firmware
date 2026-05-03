@@ -397,10 +397,17 @@ them.
    `docs/qualification/MISRA_DEVIATIONS.md` Section "Tooling
    policy".
 
-4. **Independent assessor selection** (IEC 61508-1 cl. 8.2). For
-   a personal-project context the assessor role can be self-
-   declared with caveats; for any external sale path the assessor
-   must be third-party. Decision deferred to post-Phase 7.
+4. **Independent assessor selection** (IEC 61508-1 cl. 8.2) --
+   **CLOSED 2026-05-02: never**. This MIT-licensed personal /
+   research project will not engage a paid third-party assessor
+   (TUV SUD / exida / Verocel / SGS-TUV Saar -- typical cost USD
+   $30k-$150k per campaign). The project achieves technical
+   compliance with IEC 61508 SIL 3 / DO-178C Level B / ISO 26262
+   ASIL C-D substantive software requirements but does not pursue
+   certification body signoff. Downstream adopters who require an
+   assessor are responsible for engaging their own. Full rationale
+   in `docs/CERTIFICATION_SCOPE.md` and the
+   `docs/qualification/PSAC.md` Section 3.2.1 restatement.
 
 5. **Self-hosted CI runner hardware** -- **CLOSED 2026-05-02:
    never**. The project will not provision a self-hosted GitHub

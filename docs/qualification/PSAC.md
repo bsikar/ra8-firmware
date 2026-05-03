@@ -148,12 +148,28 @@ Section 1 ("Side-by-side objective map") and is not duplicated here.
 ### 3.2 Independence of verification
 
 For SIL 3, IEC 61508-1:2010 Clause 8.2 requires an **independent
-person** for the functional safety assessment. In a single-developer
-context, "independent" is interpreted as a future third-party
-assessor; for the present draft the developer is also the verifier
-and this conflict is recorded as a known limitation. Any external
-sale path would require engaging an independent assessor before
-SOI-3 (DO-178C Section 9 stage of involvement 3).
+person** for the functional safety assessment. Per the 2026-05-02
+decision recorded in [`../CERTIFICATION_SCOPE.md`](../CERTIFICATION_SCOPE.md),
+this project will **not** engage a paid third-party assessor at any
+point: the developer is also the verifier, and this is the project's
+permanent posture, not a transitional state. Downstream adopters who
+require independence must engage their own assessor.
+
+### 3.2.1 Certification scope (final policy)
+
+Per [`../CERTIFICATION_SCOPE.md`](../CERTIFICATION_SCOPE.md), this
+project achieves **technical compliance** with the substantive
+software-engineering requirements of IEC 61508 SIL 3 / DO-178C
+Level B / ISO 26262 ASIL C/D (MC/DC, MISRA-C subset, structural
+coverage, full doc artefact set) but **does NOT pursue
+independent-assessor signoff**. The MIT licence plus single-
+maintainer non-commercial intent makes paid assessor engagement
+(TUV SUD / exida / Verocel / SGS-TUV Saar / etc., USD $30k-$150k
+typical per campaign) **out of scope, permanently**. Any downstream
+party who adopts this codebase as the basis for a regulated product
+is responsible for engaging their own assessor; the artefacts in
+this directory exist to make that re-use as low-friction as
+possible.
 
 ### 3.3 Deactivated and dead code
 
@@ -391,3 +407,4 @@ as the Phase 1 / Phase 2 / Phase 3 acceptance gates in
 - [`../SOUP/`](../SOUP/) -- pre-existing software register.
 - [`../VENDOR_BLOBS.md`](../VENDOR_BLOBS.md) -- blocker register.
 - [`../QUALIFICATION_ROADMAP.md`](../QUALIFICATION_ROADMAP.md) -- 22-week schedule and tooling-chain TQL classification.
+- [`../CERTIFICATION_SCOPE.md`](../CERTIFICATION_SCOPE.md) -- final policy: technical compliance pursued, third-party assessor engagement out of scope.
