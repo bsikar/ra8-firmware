@@ -24,6 +24,12 @@ static void prep(void)
   (void)ra_layer3_switch_close();
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_open_null(void)
 {
   TEST_BEGIN("open rejects NULL cfg");
@@ -32,6 +38,12 @@ static void test_open_null(void)
   TEST_END("open rejects NULL cfg");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_open_bad_args(void)
 {
   TEST_BEGIN("open rejects zero port_count or mtu_bytes");
@@ -44,6 +56,12 @@ static void test_open_bad_args(void)
   TEST_END("open rejects zero port_count or mtu_bytes");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_lifecycle(void)
 {
   TEST_BEGIN("open / close lifecycle");
@@ -56,6 +74,12 @@ static void test_lifecycle(void)
   TEST_END("open / close lifecycle");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_route_add(void)
 {
   TEST_BEGIN("route_add validates and refuses on placeholder");
@@ -72,6 +96,12 @@ static void test_route_add(void)
   TEST_END("route_add validates and refuses on placeholder");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_route_delete(void)
 {
   TEST_BEGIN("route_delete state-checked");
@@ -87,6 +117,12 @@ static void test_route_delete(void)
   TEST_END("route_delete state-checked");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_status(void)
 {
   TEST_BEGIN("status_get null + reflects state");

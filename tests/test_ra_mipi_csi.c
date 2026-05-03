@@ -219,6 +219,12 @@ static ra_mipi_csi_config_t make_cfg(void)
   return cfg;
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_happy(void)
 {
   TEST_BEGIN("mipi_csi init happy");
@@ -244,6 +250,12 @@ static void test_init_happy(void)
   TEST_END("mipi_csi init happy");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_ecc_and_frame_bits(void)
 {
   TEST_BEGIN("mipi_csi init ecc + frame bits");
@@ -266,6 +278,12 @@ static void test_init_ecc_and_frame_bits(void)
   TEST_END("mipi_csi init ecc + frame bits");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_dt_and_short_packet(void)
 {
   TEST_BEGIN("mipi_csi init dt filter + short packet");
@@ -290,6 +308,12 @@ static void test_init_dt_and_short_packet(void)
   TEST_END("mipi_csi init dt filter + short packet");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_epct_emct(void)
 {
   TEST_BEGIN("mipi_csi init epct + emct");
@@ -318,6 +342,12 @@ static void test_init_epct_emct(void)
   TEST_END("mipi_csi init epct + emct");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_irq_masks(void)
 {
   TEST_BEGIN("mipi_csi init programs all irq masks");
@@ -346,6 +376,12 @@ static void test_init_irq_masks(void)
   TEST_END("mipi_csi init programs all irq masks");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_null_cfg(void)
 {
   TEST_BEGIN("mipi_csi init null cfg");
@@ -354,6 +390,12 @@ static void test_init_null_cfg(void)
   TEST_END("mipi_csi init null cfg");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_bad_lanes(void)
 {
   TEST_BEGIN("mipi_csi init bad lanes");
@@ -368,6 +410,12 @@ static void test_init_bad_lanes(void)
   TEST_END("mipi_csi init bad lanes");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_bad_args(void)
 {
   TEST_BEGIN("mipi_csi init misc bad args");
@@ -391,6 +439,12 @@ static void test_init_bad_args(void)
   TEST_END("mipi_csi init misc bad args");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_start_then_stop(void)
 {
   TEST_BEGIN("mipi_csi start + stop");
@@ -414,6 +468,12 @@ static void test_start_then_stop(void)
   TEST_END("mipi_csi start + stop");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_reset(void)
 {
   TEST_BEGIN("mipi_csi explicit reset");
@@ -429,6 +489,12 @@ static void test_reset(void)
   TEST_END("mipi_csi explicit reset");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_status_get_clear(void)
 {
   TEST_BEGIN("mipi_csi status get + clear");
@@ -452,6 +518,12 @@ static void test_status_get_clear(void)
   TEST_END("mipi_csi status get + clear");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_rx_irq_enable(void)
 {
   TEST_BEGIN("mipi_csi set rx irq enable");
@@ -467,6 +539,12 @@ static void test_set_rx_irq_enable(void)
   TEST_END("mipi_csi set rx irq enable");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_get_module_irq_status(void)
 {
   TEST_BEGIN("mipi_csi get module irq status");
@@ -482,6 +560,12 @@ static void test_get_module_irq_status(void)
   TEST_END("mipi_csi get module irq status");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_get_module_info(void)
 {
   TEST_BEGIN("mipi_csi get module info");
@@ -502,6 +586,12 @@ static void test_get_module_info(void)
   TEST_END("mipi_csi get module info");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_data_type_filter(void)
 {
   TEST_BEGIN("mipi_csi set data type filter");
@@ -520,6 +610,12 @@ static void test_set_data_type_filter(void)
   TEST_END("mipi_csi set data type filter");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_ecc_mode(void)
 {
   TEST_BEGIN("mipi_csi set ecc mode");
@@ -543,6 +639,12 @@ static void test_set_ecc_mode(void)
   TEST_END("mipi_csi set ecc mode");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_frame_error_mode(void)
 {
   TEST_BEGIN("mipi_csi set frame error mode");
@@ -562,6 +664,12 @@ static void test_set_frame_error_mode(void)
   TEST_END("mipi_csi set frame error mode");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_epd(void)
 {
   TEST_BEGIN("mipi_csi set epd");
@@ -583,6 +691,12 @@ static void test_set_epd(void)
   TEST_END("mipi_csi set epd");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_lrte(void)
 {
   TEST_BEGIN("mipi_csi set lrte");
@@ -602,6 +716,12 @@ static void test_set_lrte(void)
   TEST_END("mipi_csi set lrte");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_dl_status_paths(void)
 {
   TEST_BEGIN("mipi_csi dl status get/clear/irq");
@@ -636,6 +756,12 @@ static void test_dl_status_paths(void)
   TEST_END("mipi_csi dl status get/clear/irq");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_vc_status_paths(void)
 {
   TEST_BEGIN("mipi_csi vc status get/clear/irq");
@@ -670,6 +796,12 @@ static void test_vc_status_paths(void)
   TEST_END("mipi_csi vc status get/clear/irq");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_pm_status_paths(void)
 {
   TEST_BEGIN("mipi_csi pm status get/clear/irq");
@@ -697,6 +829,12 @@ static void test_pm_status_paths(void)
   TEST_END("mipi_csi pm status get/clear/irq");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_short_packet_configure(void)
 {
   TEST_BEGIN("mipi_csi short packet configure + irq");
@@ -723,6 +861,12 @@ static void test_short_packet_configure(void)
   TEST_END("mipi_csi short packet configure + irq");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_short_packet_status(void)
 {
   TEST_BEGIN("mipi_csi short packet status get/clear");
@@ -746,6 +890,12 @@ static void test_short_packet_status(void)
   TEST_END("mipi_csi short packet status get/clear");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_read_short_packet(void)
 {
   TEST_BEGIN("mipi_csi read short packet");
@@ -775,6 +925,12 @@ static void test_read_short_packet(void)
   TEST_END("mipi_csi read short packet");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_short_packet_clear_fifo(void)
 {
   TEST_BEGIN("mipi_csi short packet clear fifo");
@@ -795,6 +951,12 @@ static void test_short_packet_clear_fifo(void)
   TEST_END("mipi_csi short packet clear fifo");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_short_packet_re_enable(void)
 {
   TEST_BEGIN("mipi_csi short packet re-enable store");
@@ -807,6 +969,12 @@ static void test_short_packet_re_enable(void)
   TEST_END("mipi_csi short packet re-enable store");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_attach_and_dispatch(void)
 {
   TEST_BEGIN("mipi_csi attach + dispatch");
@@ -836,6 +1004,12 @@ static void test_attach_and_dispatch(void)
   TEST_END("mipi_csi attach + dispatch");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_dispatch_dl(void)
 {
   TEST_BEGIN("mipi_csi dispatch dl per-lane");
@@ -866,6 +1040,12 @@ static void test_dispatch_dl(void)
   TEST_END("mipi_csi dispatch dl per-lane");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_dispatch_vc(void)
 {
   TEST_BEGIN("mipi_csi dispatch vc + generic err");
@@ -905,6 +1085,12 @@ static void test_dispatch_vc(void)
   TEST_END("mipi_csi dispatch vc + generic err");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_dispatch_pm(void)
 {
   TEST_BEGIN("mipi_csi dispatch pm");
@@ -928,6 +1114,12 @@ static void test_dispatch_pm(void)
   TEST_END("mipi_csi dispatch pm");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_dispatch_short_packet(void)
 {
   TEST_BEGIN("mipi_csi dispatch short packet");
@@ -951,6 +1143,12 @@ static void test_dispatch_short_packet(void)
   TEST_END("mipi_csi dispatch short packet");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_power_transition(void)
 {
   TEST_BEGIN("mipi_csi power transition");
@@ -963,6 +1161,12 @@ static void test_power_transition(void)
   TEST_END("mipi_csi power transition");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_deinit(void)
 {
   TEST_BEGIN("mipi_csi deinit");
@@ -1021,6 +1225,12 @@ static void stub_err_cb(void* ctx, const ra_mipi_csi_error_report_t* report)
   }
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_virtual_channels(void)
 {
   TEST_BEGIN("mipi_csi set_virtual_channels masks unselected VCIE");
@@ -1054,6 +1264,12 @@ static void test_set_virtual_channels(void)
   TEST_END("mipi_csi set_virtual_channels masks unselected VCIE");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_virtual_channels_empty_mask(void)
 {
   TEST_BEGIN("mipi_csi set_virtual_channels rejects empty mask");
@@ -1064,6 +1280,12 @@ static void test_set_virtual_channels_empty_mask(void)
   TEST_END("mipi_csi set_virtual_channels rejects empty mask");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_data_format_per_vc(void)
 {
   TEST_BEGIN("mipi_csi set_data_format programs DTEL/DTEH per VC");
@@ -1095,6 +1317,12 @@ static void test_set_data_format_per_vc(void)
   TEST_END("mipi_csi set_data_format programs DTEL/DTEH per VC");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_data_format_bad_args(void)
 {
   TEST_BEGIN("mipi_csi set_data_format rejects bad inputs");
@@ -1112,6 +1340,12 @@ static void test_set_data_format_bad_args(void)
   TEST_END("mipi_csi set_data_format rejects bad inputs");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_attach_error_handler(void)
 {
   TEST_BEGIN("mipi_csi attach_error_handler decodes ECC/CRC reports");
@@ -1151,6 +1385,12 @@ static void test_attach_error_handler(void)
   TEST_END("mipi_csi attach_error_handler decodes ECC/CRC reports");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_error_handler_no_errors_silent(void)
 {
   TEST_BEGIN("mipi_csi error handler silent on non-error VCST snapshot");
@@ -1171,6 +1411,12 @@ static void test_error_handler_no_errors_silent(void)
   TEST_END("mipi_csi error handler silent on non-error VCST snapshot");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_attach_error_handler_null_safe(void)
 {
   TEST_BEGIN("mipi_csi attach_error_handler accepts NULL detach");

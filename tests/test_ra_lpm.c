@@ -43,6 +43,12 @@ static ra_lpm_config_t make_default_cfg(void)
   return cfg;
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_happy(void)
 {
   TEST_BEGIN("lpm init happy");
@@ -72,6 +78,12 @@ static void test_init_happy(void)
   TEST_END("lpm init happy");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_null_cfg(void)
 {
   TEST_BEGIN("lpm init null cfg");
@@ -81,6 +93,12 @@ static void test_init_null_cfg(void)
   TEST_END("lpm init null cfg");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_no_keep_no_bus(void)
 {
   TEST_BEGIN("lpm init no keep no bus");
@@ -105,6 +123,12 @@ static void test_init_no_keep_no_bus(void)
   TEST_END("lpm init no keep no bus");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_wakeup_sources(void)
 {
   TEST_BEGIN("lpm set_wakeup_sources");
@@ -121,6 +145,12 @@ static void test_set_wakeup_sources(void)
   TEST_END("lpm set_wakeup_sources");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_arm_clear_wupen0(void)
 {
   TEST_BEGIN("lpm arm/clear wupen0");
@@ -137,6 +167,12 @@ static void test_arm_clear_wupen0(void)
   TEST_END("lpm arm/clear wupen0");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_arm_clear_wupen1(void)
 {
   TEST_BEGIN("lpm arm/clear wupen1");
@@ -153,6 +189,12 @@ static void test_arm_clear_wupen1(void)
   TEST_END("lpm arm/clear wupen1");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_arm_dpsier(void)
 {
   TEST_BEGIN("lpm arm_dpsier all four banks");
@@ -182,6 +224,12 @@ static void test_arm_dpsier(void)
   TEST_END("lpm arm_dpsier all four banks");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_clear_dpsifr(void)
 {
   TEST_BEGIN("lpm clear_dpsifr");
@@ -201,6 +249,12 @@ static void test_clear_dpsifr(void)
   TEST_END("lpm clear_dpsifr");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_dpsiegr(void)
 {
   TEST_BEGIN("lpm set_dpsiegr");
@@ -220,6 +274,12 @@ static void test_set_dpsiegr(void)
   TEST_END("lpm set_dpsiegr");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_snooze_request_sources(void)
 {
   TEST_BEGIN("lpm snooze_set_request_sources");
@@ -234,6 +294,12 @@ static void test_snooze_request_sources(void)
   TEST_END("lpm snooze_set_request_sources");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_snooze_end_sources(void)
 {
   TEST_BEGIN("lpm snooze_set_end_sources");
@@ -251,6 +317,12 @@ static void test_snooze_end_sources(void)
   TEST_END("lpm snooze_set_end_sources");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_ram_retention(void)
 {
   TEST_BEGIN("lpm set_ram_retention");
@@ -280,6 +352,12 @@ static void test_ram_retention(void)
   TEST_END("lpm set_ram_retention");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_ldo_standby(void)
 {
   TEST_BEGIN("lpm set_ldo_standby");
@@ -312,6 +390,12 @@ static void test_ldo_standby(void)
   TEST_END("lpm set_ldo_standby");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_clock_stop_each(void)
 {
   TEST_BEGIN("lpm set_clock_stop / get_clock_stop");
@@ -340,6 +424,12 @@ static void test_clock_stop_each(void)
   TEST_END("lpm set_clock_stop / get_clock_stop");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_opccr_read_and_wait(void)
 {
   TEST_BEGIN("lpm get_opccr + wait_for_opccr");
@@ -362,6 +452,12 @@ static void test_opccr_read_and_wait(void)
   TEST_END("lpm get_opccr + wait_for_opccr");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_prcr_unlock_relock(void)
 {
   TEST_BEGIN("lpm prcr unlock/relock");
@@ -380,6 +476,12 @@ static void test_prcr_unlock_relock(void)
   TEST_END("lpm prcr unlock/relock");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_enter_sleep_modes(void)
 {
   TEST_BEGIN("lpm enter sleep modes");
@@ -407,6 +509,12 @@ static void test_enter_sleep_modes(void)
   TEST_END("lpm enter sleep modes");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_enter_deep_standby_helper(void)
 {
   TEST_BEGIN("lpm enter_deep_standby helper");
@@ -417,6 +525,12 @@ static void test_enter_deep_standby_helper(void)
   TEST_END("lpm enter_deep_standby helper");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_enter_sleep_bad_mode(void)
 {
   TEST_BEGIN("lpm enter sleep bad mode");
@@ -429,6 +543,12 @@ static void test_enter_sleep_bad_mode(void)
   TEST_END("lpm enter sleep bad mode");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_get_status_packs_four_regs(void)
 {
   TEST_BEGIN("lpm get_status packs SBYCR/DPSBYCR/LPSCR/SSCR1");
@@ -448,6 +568,12 @@ static void test_get_status_packs_four_regs(void)
   TEST_END("lpm get_status packs SBYCR/DPSBYCR/LPSCR/SSCR1");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_get_exit_cause_packs_wupen(void)
 {
   TEST_BEGIN("lpm get_exit_cause packs WUPEN0/WUPEN1");
@@ -467,6 +593,12 @@ static void test_get_exit_cause_packs_wupen(void)
   TEST_END("lpm get_exit_cause packs WUPEN0/WUPEN1");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_get_dpsi_state(void)
 {
   TEST_BEGIN("lpm get_dpsi_state snapshots all banks");
@@ -500,6 +632,12 @@ static void test_get_dpsi_state(void)
   TEST_END("lpm get_dpsi_state snapshots all banks");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_deinit_resets_registers(void)
 {
   TEST_BEGIN("lpm deinit resets registers");

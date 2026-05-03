@@ -13,6 +13,12 @@
 #include "ra_sim_mmap.h"
 #include "unity_minimal.h"
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_clears_irqcr_and_nmi(void)
 {
   TEST_BEGIN("ra_icu_init: IRQCR + NMIER + WUPEN cleared");
@@ -35,6 +41,12 @@ static void test_init_clears_irqcr_and_nmi(void)
   TEST_END("ra_icu_init: IRQCR + NMIER + WUPEN cleared");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_ielsr_mask_is_10_bits(void)
 {
   TEST_BEGIN("ielsr IELS mask is 10 bits (FSP cross-check)");
@@ -44,6 +56,12 @@ static void test_ielsr_mask_is_10_bits(void)
   TEST_END("ielsr IELS mask is 10 bits (FSP cross-check)");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_configure_irq_pin_irqcrb(void)
 {
   TEST_BEGIN("ra_icu_configure_irq_pin: IRQCRb channel 20");
@@ -65,6 +83,12 @@ static void test_configure_irq_pin_irqcrb(void)
   TEST_END("ra_icu_configure_irq_pin: IRQCRb channel 20");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_configure_irq_pin(void)
 {
   TEST_BEGIN("ra_icu_configure_irq_pin: rising-edge w/ filter");
@@ -85,6 +109,12 @@ static void test_configure_irq_pin(void)
   TEST_END("ra_icu_configure_irq_pin: rising-edge w/ filter");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_configure_irq_pin_bad_inputs(void)
 {
   TEST_BEGIN("ra_icu_configure_irq_pin: bad inputs rejected");
@@ -106,6 +136,12 @@ static void test_configure_irq_pin_bad_inputs(void)
   TEST_END("ra_icu_configure_irq_pin: bad inputs rejected");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_nmi_enable_disable_clear(void)
 {
   TEST_BEGIN("ra_icu_nmi_enable / disable / clear");
@@ -178,6 +214,12 @@ static volatile uint8_t* test_ipr_byte(uint16_t nvic)
   return (volatile uint8_t*)(k_ra_icu_test_nvic_ipr_base + (uintptr_t)nvic);
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_route_happy(void)
 {
   TEST_BEGIN("icu route happy");
@@ -192,6 +234,12 @@ static void test_route_happy(void)
   TEST_END("icu route happy");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_route_last_slot(void)
 {
   TEST_BEGIN("icu route last slot");
@@ -202,6 +250,12 @@ static void test_route_last_slot(void)
   TEST_END("icu route last slot");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_route_bad_slot(void)
 {
   TEST_BEGIN("icu route bad slot");
@@ -212,6 +266,12 @@ static void test_route_bad_slot(void)
   TEST_END("icu route bad slot");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_route_huge_slot(void)
 {
   TEST_BEGIN("icu route huge slot");
@@ -222,6 +282,12 @@ static void test_route_huge_slot(void)
   TEST_END("icu route huge slot");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_nvic_enable_first(void)
 {
   TEST_BEGIN("icu nvic_enable first");
@@ -233,6 +299,12 @@ static void test_nvic_enable_first(void)
   TEST_END("icu nvic_enable first");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_nvic_enable_mid(void)
 {
   TEST_BEGIN("icu nvic_enable mid");
@@ -246,6 +318,12 @@ static void test_nvic_enable_mid(void)
   TEST_END("icu nvic_enable mid");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_nvic_disable(void)
 {
   TEST_BEGIN("icu nvic_disable");
@@ -258,6 +336,12 @@ static void test_nvic_disable(void)
   TEST_END("icu nvic_disable");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_nvic_set_priority(void)
 {
   TEST_BEGIN("icu nvic_set_priority");

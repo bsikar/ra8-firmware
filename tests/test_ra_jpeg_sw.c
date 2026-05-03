@@ -100,6 +100,12 @@ static uint32_t rgb_mse(const uint8_t* a, const uint8_t* b, uint32_t n)
   return (uint32_t)(sse / (uint64_t)n);
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_get_dimensions_parses_sof0(void)
 {
   TEST_BEGIN("jpeg_sw get_dimensions parses SOF0");
@@ -111,6 +117,12 @@ static void test_get_dimensions_parses_sof0(void)
   TEST_END("jpeg_sw get_dimensions parses SOF0");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_get_dimensions_null_args(void)
 {
   TEST_BEGIN("jpeg_sw get_dimensions NULL args");
@@ -123,6 +135,12 @@ static void test_get_dimensions_null_args(void)
   TEST_END("jpeg_sw get_dimensions NULL args");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_get_dimensions_invalid(void)
 {
   TEST_BEGIN("jpeg_sw get_dimensions rejects garbage");
@@ -133,6 +151,12 @@ static void test_get_dimensions_invalid(void)
   TEST_END("jpeg_sw get_dimensions rejects garbage");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_encode_decode_roundtrip(void)
 {
   TEST_BEGIN("jpeg_sw encode + decode roundtrip");
@@ -168,6 +192,12 @@ static void test_encode_decode_roundtrip(void)
   TEST_END("jpeg_sw encode + decode roundtrip");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_decode_invalid_rejected(void)
 {
   TEST_BEGIN("jpeg_sw decode rejects invalid stream");
@@ -179,6 +209,12 @@ static void test_decode_invalid_rejected(void)
   TEST_END("jpeg_sw decode rejects invalid stream");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_encode_null_args(void)
 {
   TEST_BEGIN("jpeg_sw encode NULL args");
@@ -194,6 +230,12 @@ static void test_encode_null_args(void)
   TEST_END("jpeg_sw encode NULL args");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_encode_out_of_buffer(void)
 {
   TEST_BEGIN("jpeg_sw encode rejects undersized out_buf");

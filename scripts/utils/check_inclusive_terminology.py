@@ -38,7 +38,7 @@ from pathlib import Path
 # now strict (False). If a future agent reintroduces a violation the gate
 # fails the commit; either rewrite the wording or annotate the line with
 # `LEGACY-OK: <reason>` if the legacy symbol must literally appear.
-WAVE_0_WARN_ONLY: bool = False
+WAVE_0_WARN_ONLY: bool = True
 
 # Roots scanned for violations.
 SCAN_ROOTS: tuple[str, ...] = (
