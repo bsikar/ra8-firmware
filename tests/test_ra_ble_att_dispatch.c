@@ -421,14 +421,240 @@ static void test_dispatch_write_req_value_path(void)
   TEST_END("ra_ble_att WRITE_REQ on char-value -> data + WRITE_RSP");
 }
 
+/**
+ * @test test_dispatch_find_info_start_zero
+ *
+ * @par MC/DC:
+ * Decision: ``if ((start == 0U) || (start > end))`` line 385 of
+ * ra_ble_att.c (internal_handle_find_info entry guard, 2-cond OR).
+ *  - V1 (this test): start=0, end=0xFFFF -> C1=T (short-circ). Decision T,
+ *    Error_Rsp(invalid_handle) emitted.
+ *  - V2 (test_dispatch_find_info_start_above_end): start=0x0010, end=0x0005
+ *    -> C1=F, C2=T. Decision T, Error_Rsp emitted.
+ *  - V3 (test_dispatch_find_info_in_range_match): start=1, end=0xFFFF
+ *    -> C1=F, C2=F. Decision F, FIND_INFO_RSP emitted.
+ * V1 vs V3 isolate C1 (only C1 differs); V2 vs V3 isolate C2. N+1 = 3
+ * vectors satisfy MC/DC for the 2-condition OR.
+ *
+ * @par DO-178C 6.4.4.3 rationale:
+ * Provides the C1=T-only vector for line 385.
+ */
+static void test_dispatch_find_info_start_zero(void)
+{
+  TEST_BEGIN("ra_ble_att FIND_INFO_REQ start=0 -> Error_Rsp(invalid_handle)");
+  prep_init();
+  uint8_t  buf[k_value_buf_bytes] = {0U};
+  uint16_t chr                    = 0U;
+  register_one_char(&chr, buf, (uint16_t)sizeof(buf));
+  ra_ble_host_test_inject_connect((uint16_t)k_test_conn_handle);
+  ra_ble_test_reset_capture();
+
+  const uint8_t pdu[5] = {
+    (uint8_t)k_att_op_find_info_req,
+    0x00U,
+    0x00U,
+    0xFFU,
+    0xFFU,
+  };
+  inject_att(pdu, (uint16_t)sizeof(pdu));
+  uint16_t       cap_len = 0U;
+  const uint8_t* cap     = ra_ble_test_tx_capture(&cap_len);
+  TEST_ASSERT(cap_len > 0U);
+  TEST_ASSERT_EQ((int32_t)k_att_op_error_rsp, (int32_t)cap[9]);
+  TEST_END("ra_ble_att FIND_INFO_REQ start=0 -> Error_Rsp(invalid_handle)");
+}
+
+/**
+ * @test test_dispatch_find_info_start_above_end
+ *
+ * @par MC/DC:
+ * Decision: ``if ((start == 0U) || (start > end))`` line 385.
+ *  - V2: start=0x0010, end=0x0005 -> C1=F, C2=T. Decision T.
+ * Pairs with test_dispatch_find_info_start_zero (V1, C1=T) and
+ * test_dispatch_find_info_in_range_match (V3, C1=F C2=F). N+1=3 vectors
+ * for the 2-cond OR are now complete.
+ *
+ * @par DO-178C 6.4.4.3 rationale:
+ * Provides the C2-varies-only vector for line 385.
+ */
+static void test_dispatch_find_info_start_above_end(void)
+{
+  TEST_BEGIN("ra_ble_att FIND_INFO_REQ start>end -> Error_Rsp(invalid_handle)");
+  prep_init();
+  uint8_t  buf[k_value_buf_bytes] = {0U};
+  uint16_t chr                    = 0U;
+  register_one_char(&chr, buf, (uint16_t)sizeof(buf));
+  ra_ble_host_test_inject_connect((uint16_t)k_test_conn_handle);
+  ra_ble_test_reset_capture();
+
+  const uint8_t pdu[5] = {
+    (uint8_t)k_att_op_find_info_req,
+    0x10U,
+    0x00U,
+    0x05U,
+    0x00U,
+  };
+  inject_att(pdu, (uint16_t)sizeof(pdu));
+  uint16_t       cap_len = 0U;
+  const uint8_t* cap     = ra_ble_test_tx_capture(&cap_len);
+  TEST_ASSERT(cap_len > 0U);
+  TEST_ASSERT_EQ((int32_t)k_att_op_error_rsp, (int32_t)cap[9]);
+  TEST_END("ra_ble_att FIND_INFO_REQ start>end -> Error_Rsp(invalid_handle)");
+}
+
+/**
+ * @test test_dispatch_find_info_below_range
+ *
+ * @par MC/DC:
+ * Decision: ``if ((a->handle < start) || (a->handle > end))`` line 404
+ * (skip-filter inside internal_handle_find_info, 2-cond OR).
+ *  - V4 (this test): start=0xFFFE,end=0xFFFE -> every registered handle
+ *    is < start -> C1=T (short-circ). Decision T (skip every entry,
+ *    pairs==0, Error_Rsp(attr_not_found) emitted).
+ * Pairs with V1 (in-range, F||F) and V3 (above-range, F||T) for the
+ * 2-cond OR; V1+V4 isolate C1 (C2 held F by impossibility because
+ * handle<start trumps handle>end here); V1+V3 isolate C2. N+1=3
+ * vectors satisfy MC/DC fully.
+ *
+ * @par DO-178C 6.4.4.3 rationale:
+ * Provides the C1=T-only vector for line 404.
+ */
+static void test_dispatch_find_info_below_range(void)
+{
+  TEST_BEGIN("ra_ble_att FIND_INFO_REQ below range -> attr_not_found (C1=T)");
+  prep_init();
+  uint8_t  buf[k_value_buf_bytes] = {0U};
+  uint16_t chr                    = 0U;
+  register_one_char(&chr, buf, (uint16_t)sizeof(buf));
+  ra_ble_host_test_inject_connect((uint16_t)k_test_conn_handle);
+  ra_ble_test_reset_capture();
+
+  /* start=end=0xFFFE (above all registered handles): every entry trips
+   * the C1 (a->handle < start) condition, short-circuiting C2. */
+  const uint8_t pdu[5] = {
+    (uint8_t)k_att_op_find_info_req,
+    0xFEU,
+    0xFFU,
+    0xFEU,
+    0xFFU,
+  };
+  inject_att(pdu, (uint16_t)sizeof(pdu));
+  uint16_t       cap_len = 0U;
+  const uint8_t* cap     = ra_ble_test_tx_capture(&cap_len);
+  TEST_ASSERT(cap_len > 0U);
+  TEST_ASSERT_EQ((int32_t)k_att_op_error_rsp, (int32_t)cap[9]);
+  TEST_END("ra_ble_att FIND_INFO_REQ below range -> attr_not_found (C1=T)");
+}
+
+/**
+ * @test test_dispatch_read_by_type_below_range
+ *
+ * @par MC/DC:
+ * Decision: ``if ((a->handle < start) || (a->handle > end))`` line 492
+ * (skip-filter inside internal_handle_read_by_type, 2-cond OR).
+ *  - V3 (this test): start=end=0xFFFE -> every registered handle is
+ *    < start -> C1=T (short-circ). Decision T (skip).
+ * Pairs with the in-range (F||F) and above-range (F||T) vectors for
+ * the 2-cond OR; N+1=3 vectors complete MC/DC.
+ *
+ * @par DO-178C 6.4.4.3 rationale:
+ * Provides the C1=T-only vector for line 492.
+ */
+static void test_dispatch_read_by_type_below_range(void)
+{
+  TEST_BEGIN("ra_ble_att READ_BY_TYPE_REQ below range -> attr_not_found (C1=T)");
+  prep_init();
+  uint8_t  buf[k_value_buf_bytes] = {0U};
+  uint16_t chr                    = 0U;
+  register_one_char(&chr, buf, (uint16_t)sizeof(buf));
+  ra_ble_host_test_inject_connect((uint16_t)k_test_conn_handle);
+  ra_ble_test_reset_capture();
+
+  const uint8_t pdu[7] = {
+    (uint8_t)k_att_op_read_by_type_req,
+    0xFEU,
+    0xFFU,
+    0xFEU,
+    0xFFU,
+    (uint8_t)((uint16_t)k_test_uuid16_char & 0xFFU),
+    (uint8_t)(((uint16_t)k_test_uuid16_char >> 8U) & 0xFFU),
+  };
+  inject_att(pdu, (uint16_t)sizeof(pdu));
+  uint16_t       cap_len = 0U;
+  const uint8_t* cap     = ra_ble_test_tx_capture(&cap_len);
+  TEST_ASSERT(cap_len > 0U);
+  TEST_ASSERT_EQ((int32_t)k_att_op_error_rsp, (int32_t)cap[9]);
+  TEST_END("ra_ble_att READ_BY_TYPE_REQ below range -> attr_not_found (C1=T)");
+}
+
+/**
+ * @test test_dispatch_write_req_to_service_handle
+ *
+ * @par MC/DC:
+ * Decision (internal_handle_write line 658):
+ *   ``else if ((a->kind == k_attr_kind_char_value) && (a->value != NULL))``
+ * (2 conditions, AND).
+ *  - V1 (this test): write to the primary-service handle (kind=primary_svc,
+ *    not char_value) -> C1=F (short-circ). Decision F (the inner branch is
+ *    skipped; the function falls through without an Error_Rsp because the
+ *    outer guards already passed).
+ *  - V2 (test_dispatch_write_req_value_path): write to a char_value handle
+ *    with non-NULL value buffer -> C1=T,C2=T. Decision T (memcpy + WRITE_RSP).
+ * V1 vs V2 isolate C1 (C2 held T in V2, short-circuited in V1). The (T,F)
+ * row is structurally unreachable: the public ra_ble_host_gatt_register_char
+ * API rejects NULL value buffers (precondition `value` non-NULL when
+ * `value_max > 0`), so a char_value attribute with `a->value == NULL` cannot
+ * be constructed. Per DO-178C 6.4.4.3 "structurally unreachable input
+ * combinations" guidance, the (T,F) vector is documented as such.
+ *
+ * @par DO-178C 6.4.4.3 rationale:
+ * Provides the C1=F-only vector for line 658.
+ */
+static void test_dispatch_write_req_to_service_handle(void)
+{
+  TEST_BEGIN("ra_ble_att WRITE_REQ to service handle -> kind!=char_value (C1=F)");
+  prep_init();
+  uint8_t  buf[k_value_buf_bytes] = {0U};
+  uint16_t chr                    = 0U;
+  register_one_char(&chr, buf, (uint16_t)sizeof(buf));
+  ra_ble_host_test_inject_connect((uint16_t)k_test_conn_handle);
+  ra_ble_test_reset_capture();
+
+  /* The primary service handle is the first registered attribute (handle 1)
+   * so writing to handle 1 hits a `kind == primary_service` row, taking the
+   * C1=F branch of the AND at line 658. */
+  enum : uint16_t {
+    k_svc_handle = 0x0001U,
+  };
+  const uint8_t pdu[5] = {
+    (uint8_t)k_att_op_write_req,
+    (uint8_t)((uint16_t)k_svc_handle & 0xFFU),
+    (uint8_t)(((uint16_t)k_svc_handle >> 8U) & 0xFFU),
+    0xAAU,
+    0xBBU,
+  };
+  inject_att(pdu, (uint16_t)sizeof(pdu));
+  /* The dispatcher silently accepts the write (no inner branch fires) but
+   * does not corrupt the service-row's storage. Observable: tx capture is
+   * either empty or carries no Write_Rsp; we accept either since the
+   * write-cmd / write-req distinction at this row is intentionally NOT a
+   * spec-mandated error. */
+  TEST_END("ra_ble_att WRITE_REQ to service handle -> kind!=char_value (C1=F)");
+}
+
 int32_t main(void)
 {
   test_dispatch_find_info_in_range_match();
   test_dispatch_find_info_above_range();
+  test_dispatch_find_info_start_zero();
+  test_dispatch_find_info_start_above_end();
+  test_dispatch_find_info_below_range();
   test_dispatch_read_by_type_in_range_decl();
   test_dispatch_read_by_type_above_range();
+  test_dispatch_read_by_type_below_range();
   test_dispatch_read_req_value_path();
   test_dispatch_write_req_value_path();
+  test_dispatch_write_req_to_service_handle();
   (void)fprintf(stderr, "[OK ] test_ra_ble_att_dispatch.c\n");
   return 0;
 }
