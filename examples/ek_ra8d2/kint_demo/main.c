@@ -92,6 +92,9 @@ static void kint_demo_setup_or_halt(void)
   if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
     kint_demo_panic_halt();
   }
+  if (ra_icu_init() != k_ra_ok) {
+    kint_demo_panic_halt();
+  }
   if (kint_demo_pins_init() != k_ra_ok) {
     kint_demo_panic_halt();
   }
@@ -119,11 +122,10 @@ static void kint_demo_setup_or_halt(void)
  */
 [[nodiscard]] static ra_err_t kint_demo_arm(void)
 {
-  ra_err_t err = ra_icu_init();
-  if (err != k_ra_ok) {
-    return err;
-  }
-  err = ra_board_sw_init(k_ra_board_sw1);
+  /* ICU bring-up is now performed in kint_demo_setup_or_halt so the
+   * canonical CGC -> MSTP -> IOPORT -> TIME -> ICU -> peripheral order
+   * is preserved (see audit_init_order). */
+  ra_err_t err = ra_board_sw_init(k_ra_board_sw1);
   if (err != k_ra_ok) {
     return err;
   }

@@ -45,6 +45,43 @@ typedef enum : uint32_t {
   k_blink_half_period_ms = 500U,
 } blink_period_t;
 
+/* Forward declarations -- definitions appear after main() so the
+ * audit_init_order linter sees the canonical CGC -> TIME -> peripheral
+ * sequence in source order. */
+[[nodiscard]] static ra_err_t blink_pins_init(void);
+[[nodiscard]] static ra_err_t blink_pins_toggle_all(void);
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmain"
+int32_t main(void)
+{
+  if (ra_time_init(k_blink_cpu_hz_at_reset) != k_ra_ok) {
+    while (1) {
+      __asm__ volatile("wfi");
+    }
+  }
+
+  if (blink_pins_init() != k_ra_ok) {
+    while (1) {
+      __asm__ volatile("wfi");
+    }
+  }
+
+  ra_isr_globals_enable();
+
+  while (1) {
+    if (blink_pins_toggle_all() != k_ra_ok) {
+      break;
+    }
+    ra_delay_ms(k_blink_half_period_ms);
+  }
+
+  while (1) {
+    __asm__ volatile("wfi");
+  }
+}
+#pragma GCC diagnostic pop
+
 /**
  * @brief Configure all three EK-RA8D2 user LEDs as outputs.
  *
@@ -87,34 +124,3 @@ typedef enum : uint32_t {
   }
   return k_ra_ok;
 }
-
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
-int32_t main(void)
-{
-  if (ra_time_init(k_blink_cpu_hz_at_reset) != k_ra_ok) {
-    while (1) {
-      __asm__ volatile("wfi");
-    }
-  }
-
-  if (blink_pins_init() != k_ra_ok) {
-    while (1) {
-      __asm__ volatile("wfi");
-    }
-  }
-
-  ra_isr_globals_enable();
-
-  while (1) {
-    if (blink_pins_toggle_all() != k_ra_ok) {
-      break;
-    }
-    ra_delay_ms(k_blink_half_period_ms);
-  }
-
-  while (1) {
-    __asm__ volatile("wfi");
-  }
-}
-#pragma GCC diagnostic pop

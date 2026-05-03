@@ -116,6 +116,9 @@ static void dma_demo_setup_or_halt(void)
   if (ra_cgc_get_clock_hz(k_ra_clock_id_pclka, &pclka_hz) != k_ra_ok) {
     dma_demo_panic_halt();
   }
+  if (ra_mstp_init() != k_ra_ok) {
+    dma_demo_panic_halt();
+  }
   if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
     dma_demo_panic_halt();
   }
@@ -136,9 +139,6 @@ static void dma_demo_setup_or_halt(void)
     dma_demo_panic_halt();
   }
   if (ra_board_led_init(k_ra_board_led2) != k_ra_ok) {
-    dma_demo_panic_halt();
-  }
-  if (ra_mstp_init() != k_ra_ok) {
     dma_demo_panic_halt();
   }
 }

@@ -113,9 +113,6 @@ static void wdt_demo_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
   uint32_t pclka_hz   = 0U;
-  if (ra_reset_init() != k_ra_ok) {
-    wdt_demo_panic_halt();
-  }
   if (ra_cgc_init() != k_ra_ok) {
     wdt_demo_panic_halt();
   }
@@ -129,6 +126,9 @@ static void wdt_demo_setup_or_halt(void)
     wdt_demo_panic_halt();
   }
   if (wdt_demo_pins_init() != k_ra_ok) {
+    wdt_demo_panic_halt();
+  }
+  if (ra_reset_init() != k_ra_ok) {
     wdt_demo_panic_halt();
   }
   const ra_sci_cfg_t sci_cfg = {
