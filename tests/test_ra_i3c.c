@@ -485,6 +485,52 @@ static void test_mcdc_i3c(void)
   TEST_END("i3c MC/DC: three 2-cond arg decisions");
 }
 
+/**
+ * @test test_mcdc_i3c_write_read_arg_pairs
+ *
+ * @par MC/DC:
+ * Decision A (libs/ra_hal/src/ra_i3c.c:727 ra_i3c_write):
+ *   ``if ((len > 0U) && (data == nullptr))``
+ * 2-cond AND, N+1 = 3 vectors.
+ * - V1: len>0, data=valid -> C1=T, C2=F -> dec F (proceed).
+ * - V2: len=0, data=NULL  -> C1=F short -> dec F (zero-length write).
+ * - V3: len>0, data=NULL  -> C1=T, C2=T -> dec T -> null_ptr.
+ * V1+V3 isolate C2; V2+V3 isolate C1.
+ *
+ * Decision B (libs/ra_hal/src/ra_i3c.c:777 ra_i3c_read):
+ *   ``if ((len == 0U) || (len > k_ra_i3c_cmd_xfer_length_max))``
+ * 2-cond OR, N+1 = 3 vectors.
+ * - V1: len=4              -> C1=F, C2=F -> dec F.
+ * - V2: len=0              -> C1=T short -> dec T -> invalid_arg.
+ * - V3: len=0x10000        -> C1=F, C2=T -> dec T -> invalid_arg.
+ * V1+V2 isolate C1; V1+V3 isolate C2.
+ */
+static void test_mcdc_i3c_write_read_arg_pairs(void)
+{
+  TEST_BEGIN("i3c MC/DC: write+read len/ptr pairs");
+  prep();
+  const uint8_t data[4] = {0xDEU, 0xADU, 0xBEU, 0xEFU};
+  uint8_t       buf[8]  = {0U};
+
+  /* Write Decision A. */
+  /* V1 */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_i3c_write(0x55U, data, 4U));
+  /* V2 */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_i3c_write(0x55U, NULL, 0U));
+  /* V3 */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_i3c_write(0x55U, NULL, 4U));
+
+  /* Read Decision B. */
+  /* V1 */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_i3c_read(0x55U, buf, 4U));
+  /* V2 */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_i3c_read(0x55U, buf, 0U));
+  /* V3 */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_i3c_read(0x55U, buf, 0x10000U));
+
+  TEST_END("i3c MC/DC: write+read len/ptr pairs");
+}
+
 int32_t main(void)
 {
   test_init();
@@ -511,6 +557,7 @@ int32_t main(void)
   test_ibi_drain_aliases_read();
   test_slave_open_sets_slve_and_nsdvad();
   test_mcdc_i3c();
+  test_mcdc_i3c_write_read_arg_pairs();
   (void)fprintf(stderr, "[OK  ] test_ra_i3c.c\n");
   return 0;
 }
