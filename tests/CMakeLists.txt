@@ -273,6 +273,7 @@ target_include_directories(ra_core_hal PUBLIC
     ${FW_ROOT}/libs/ra_psa_crypto/src
     ${FW_ROOT}/libs/ra_wdt_supervisor/src
     ${FW_ROOT}/libs/ra_board_ek_ra8d2/src
+    ${FW_ROOT}/libs/ra_epub/src
     ${CMAKE_CURRENT_SOURCE_DIR}/mocks
 )
 # tinyxml2.cpp + ra_epub_xml_shim.cpp are C++; everything else is C.
@@ -389,6 +390,7 @@ function(ra_add_test name)
     ${FW_ROOT}/libs/ra_psa_crypto/src
     ${FW_ROOT}/libs/ra_wdt_supervisor/src
     ${FW_ROOT}/libs/ra_board_ek_ra8d2/src
+    ${FW_ROOT}/libs/ra_epub/src
     ${CMAKE_CURRENT_SOURCE_DIR}/mocks
   )
   if(APPLE)
