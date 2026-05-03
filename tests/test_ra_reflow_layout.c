@@ -33,8 +33,8 @@ typedef enum : size_t {
 static const uint8_t s_dummy_font[64];
 static ra_reflow_t   s_engine;
 
-static ra_err_t init_with(uint16_t w, uint16_t h, const uint8_t* font, uint16_t font_px,
-                          ra_reflow_t* out)
+static ra_err_t
+init_with(uint16_t w, uint16_t h, const uint8_t* font, uint16_t font_px, ra_reflow_t* out)
 {
   return ra_reflow_init(w,
                         h,

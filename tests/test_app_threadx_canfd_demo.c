@@ -32,6 +32,7 @@
 #include "ra8d2_system_regs.h"
 #include "ra_board_ek_ra8d2.h"
 #include "ra_canfd.h"
+#include "ra_cgc.h"
 #include "ra_err.h"
 #include "ra_pin_validator.h"
 #include "ra_sim_mmap.h"
