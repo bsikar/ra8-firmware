@@ -108,7 +108,7 @@ file(GLOB_RECURSE LIB_RA_NSC_SOURCES     CONFIGURE_DEPENDS ${RA_REPO_ROOT}/libs/
 file(GLOB_RECURSE LIB_RA_BOARD_SOURCES     CONFIGURE_DEPENDS ${RA_REPO_ROOT}/libs/ra_board_ek_ra8d2/src/*.c)
 file(GLOB_RECURSE APP_SECURE_SOURCES     CONFIGURE_DEPENDS ${RA_REPO_ROOT}/src/secure_app/*.c)
 
-# ra_epub is a domain library (Wave 14); always pull it in for ereader.
+# ra_epub is a domain library; always pull it in for ereader.
 # It depends on libs/third_party/miniz (ZIP), libs/third_party/tinyxml2
 # (XML), and libs/third_party/stb (glyphs + image decode).
 file(GLOB_RECURSE LIB_RA_EPUB_C_SOURCES   CONFIGURE_DEPENDS ${RA_REPO_ROOT}/libs/ra_epub/src/*.c)
@@ -118,7 +118,7 @@ set(LIB_THIRD_PARTY_SOURCES
     ${RA_REPO_ROOT}/libs/third_party/tinyxml2/tinyxml2.cpp
 )
 
-# ra_reflow is a sibling sweep deliverable (Wave 11 / Sweep 15). The
+# ra_reflow is a sibling sweep deliverable (/ Sweep 15). The
 # header lives at ``libs/ra_reflow/inc/ra_reflow.h``; the engine
 # requires a TTF font blob, an ``ra_gfx`` framebuffer binding and a
 # proper viewport. Wiring that all up against the EK-RA8D2 panel is

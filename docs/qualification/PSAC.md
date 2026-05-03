@@ -1,7 +1,7 @@
 # Plan for Software Aspects of Certification (PSAC)
 
 **Last refreshed**: 2026-05-03 (numbers re-synced to live audit
-artefacts after Wave 24 closure; see Section 8).
+artefacts after closure; see Section 8).
 
 **Status**: First draft, 2026-05-02. Authored against the Phase 7 schedule
 in [`../QUALIFICATION_ROADMAP.md`](../QUALIFICATION_ROADMAP.md) Section 3.
@@ -193,7 +193,7 @@ The current MC/DC instrumentation is described in
 [`../MCDC.md`](../MCDC.md). The first-party MC/DC measurement at
 the time of this refresh is **92.29 % absolute / 100.00 % reachable**
 (clang-18 instrumentation, 190/190 host tests pass, captured
-2026-05-03 wave-24; see [`../MCDC.md`](../MCDC.md) "Measurement
+2026-05-03 ; see [`../MCDC.md`](../MCDC.md) "Measurement
 history"). 58 conditions are catalogued as deactivated under
 DO-178C 6.4.4.3 in [`../MCDC_DEACTIVATIONS.md`](../MCDC_DEACTIVATIONS.md).
 
@@ -378,7 +378,7 @@ isolation has the gap picture without chasing references.
 
 | Metric                                                      | Value             | Source                                  |
 |-------------------------------------------------------------|-------------------|-----------------------------------------|
-| First-party MC/DC, reachable (gate metric)                  | **100.00 %**      | [`../MCDC.md`](../MCDC.md) measurement history (wave-24) |
+| First-party MC/DC, reachable (gate metric) | **100.00 %** | [`../MCDC.md`](../MCDC.md) measurement history |
 | First-party MC/DC, absolute                                 | 92.29 %           | same                                    |
 | Deactivated conditions (DO-178C 6.4.4.3)                    | 58                | [`../MCDC_DEACTIVATIONS.md`](../MCDC_DEACTIVATIONS.md) |
 | Functions audited for doxygen                               | 2747              | [`../DOXYGEN_GAPS.md`](../DOXYGEN_GAPS.md) |

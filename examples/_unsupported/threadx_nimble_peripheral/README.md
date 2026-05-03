@@ -62,7 +62,7 @@ image at boot. `ra_ble_open` currently stubs the patch-load loop
 report success but no air activity will happen until the production
 patch loader is wired in.
 
-This Wave 14 / Phase 1.3 task closes the *software* path -- HCI
+This / Phase 1.3 task closes the *software* path -- HCI
 transport bridge + NPL + GATT skeleton -- so the patch-load gap is
 the only blocker remaining before the demo runs end-to-end.
 

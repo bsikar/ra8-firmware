@@ -33,7 +33,7 @@ Modes:
 In there are no Ring 3+ files yet that carry these tags
 (the existing 29 driver shells were written before the tag system
 was introduced and will be retrofitted starting). The
-script therefore EXEMPTS the existing pre-Wave-1 source files via
+script therefore EXEMPTS the existing previous source files via
 an allowlist of paths -- those files become non-exempt as the
 relevant / sessions touch them.
 """

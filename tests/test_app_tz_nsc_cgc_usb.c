@@ -3,7 +3,7 @@
  * @brief Integration test: NSC-veneer CGC + USB-FS bring-up
  *
  * @details
- * Mirrors the wave-1 multi-module integration-test pattern. The
+ * Mirrors the multi-module integration-test pattern. The
  * production app at examples/ek_ra8d2/tz_nsc_cgc_usb/main.c reaches
  * the secure-side CGC driver via three Non-Secure Callable veneers:
  *

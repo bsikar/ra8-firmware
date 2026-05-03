@@ -75,7 +75,7 @@ extern "C" {
 
 /**
  * @enum ra_usb_pal_limits_t
- * @brief Wave-7 USB sizing constants.
+ * @brief USB sizing constants.
  *
  * @details
  * USB 2.0 endpoint count: the RA8D2 USBFS controller has 10

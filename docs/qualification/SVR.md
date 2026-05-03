@@ -2,7 +2,7 @@
 
 **Document ID**: ra8d2-svr-001
 **Version**: 0.1 (first draft, Phase 7 of `docs/QUALIFICATION_ROADMAP.md`).
-**Last refreshed**: 2026-05-03 (post wave-24 closure: reachable MC/DC = 100.00%, doxygen gaps = 0).
+**Last refreshed**: 2026-05-03 ( closure: reachable MC/DC = 100.00%, doxygen gaps = 0).
 **Date**: 2026-05-02.
 **Author**: Brighton Sikarskie.
 **DO-178C reference**: Section 11.14 (Software Verification Results).
@@ -21,7 +21,7 @@ cited in-line so a reviewer can re-derive the number on demand.
 | Metric                                       | Value                | Source                                             |
 |----------------------------------------------|----------------------|----------------------------------------------------|
 | Host test files (`tests/test_*.c`)           | **190** (190/190 PASS) | `ls tests/test_*.c \| wc -l`                     |
-| First-party MC/DC, **reachable** (gate)      | **100.00%**          | `build/mcdc-report/summary.txt` TOTAL row (wave-24) |
+| First-party MC/DC, **reachable** (gate) | **100.00%** | `build/mcdc-report/summary.txt` TOTAL row |
 | First-party MC/DC, absolute                  | 92.29%               | same                                               |
 | Deactivated conditions (DO-178C 6.4.4.3)     | **58**               | `docs/MCDC_DEACTIVATIONS.md`                       |
 | Doxygen functions audited                    | 2747                 | `docs/DOXYGEN_GAPS.md` Summary section             |
@@ -64,7 +64,7 @@ land in `tests/build/Testing/Temporary/LastTest.log` and are
 archived per CI artifact retention policy.
 
 The most recent recorded summary in `docs/MCDC.md` (measurement
-history table, 2026-05-03 wave-24 row) is **190 of 190 host tests
+history table, 2026-05-03 row) is **190 of 190 host tests
 pass**. No host tests are currently failing.
 
 ## 3. Per-app hardware results (on-target smoke)
@@ -118,7 +118,7 @@ and are documented as such in `docs/HARDWARE_BRINGUP.md` and
 ## 4. Coverage results (MC/DC -- per-file)
 
 Source: `build/mcdc-report/summary.txt` (clang-18, `-fcoverage-mcdc`,
-2026-05-03 wave-24 run). The TOTAL row reports **92.29 % absolute /
+2026-05-03 run). The TOTAL row reports **92.29 % absolute /
 100.00 % reachable** first-party MC/DC. Selected high-priority and
 high-impact rows from the prior 2026-05-02 evening snapshot are
 preserved below for trend comparison; the live per-file table is in
@@ -143,7 +143,7 @@ preserved below for trend comparison; the live per-file table is in
 | `src/secure_app/key_import.c`                   | 2                | 0      | 100.00% |
 | `src/secure_app/ota_commit.c`                   | 2                | 0      | 100.00% |
 | `src/secure_app/secure_trng.c`                  | 4                | 0      | 100.00% |
-| **TOTAL (2026-05-03 wave-24)**                  | -                | -      | **92.29% absolute / 100.00% reachable** |
+| **TOTAL (2026-05-03 )** | - | - | **92.29% absolute / 100.00% reachable** |
 
 The complete per-file table (~150 rows) is preserved in
 `build/mcdc-report/summary.txt`.
@@ -152,7 +152,7 @@ The complete per-file table (~150 rows) is preserved in
 
 Phase 1 of `docs/QUALIFICATION_ROADMAP.md` requires 100% reachable
 MC/DC on `ra_isr`, `ra_mpu`, `ra_xspi`, `ra_usb`, `ra_sci`,
-`ra_psa_crypto`. Per `docs/MCDC_GAPS.md` and the wave-24 closure
+`ra_psa_crypto`. Per `docs/MCDC_GAPS.md` and the closure
 recorded in `docs/MCDC.md`: **all six modules satisfy the reachable-
 MC/DC = 100 % gate**. Residual absolute-MC/DC gaps are catalogued as
 deactivated under DO-178C 6.4.4.3 in `docs/MCDC_DEACTIVATIONS.md`.
@@ -234,7 +234,7 @@ recorded as deferred work for the SAS to roll up.
 
 ### OP-007 -- MC/DC under target (CLOSED, reachable)
 
-- First-party reachable MC/DC = 100.00 % (gate met, wave-24).
+- First-party reachable MC/DC = 100.00 % (gate met, ).
   Absolute MC/DC = 92.29 %; the difference is 58 conditions
   catalogued as deactivated under DO-178C 6.4.4.3 in
   `docs/MCDC_DEACTIVATIONS.md`.
@@ -312,4 +312,4 @@ up against the deferred-work narrative.
 | Date       | Author             | Change                                            |
 |------------|--------------------|---------------------------------------------------|
 | 2026-05-02 | Brighton Sikarskie | Initial first-draft population (Phase 7 kickoff). |
-| 2026-05-03 | Brighton Sikarskie | Refreshed numbers post wave-24: reachable MC/DC = 100.00%, absolute = 92.29%, doxygen gaps = 0, host tests = 190/190 PASS. Restated MISRA as cppcheck-only and HIL as developer-laptop pre-push per CERTIFICATION_SCOPE.md. |
+| 2026-05-03 | Brighton Sikarskie | Refreshed numbers : reachable MC/DC = 100.00%, absolute = 92.29%, doxygen gaps = 0, host tests = 190/190 PASS. Restated MISRA as cppcheck-only and HIL as developer-laptop pre-push per CERTIFICATION_SCOPE.md. |

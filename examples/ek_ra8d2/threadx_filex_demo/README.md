@@ -48,7 +48,7 @@ into the cmake configure step, which in turn pulls in
 `libs/third_party/threadx/` and `libs/third_party/filex/`.
 
 If the top-level `make threadx_filex_demo` complains about missing
-ThreadX targets, that means the sibling Wave 13 / Phase 4.1 ThreadX
+ThreadX targets, that means the sibling / Phase 4.1 ThreadX
 port has not landed yet -- see `cmake/threadx.cmake`.
 
 ## BSP usage

@@ -49,7 +49,7 @@ into the cmake configure step, which in turn pulls in
 `libs/third_party/threadx/` and `libs/third_party/levelx/`.
 
 If the top-level `make threadx_levelx_demo` complains about missing
-ThreadX targets, that means the sibling Wave 13 ThreadX port has not
+ThreadX targets, that means the sibling ThreadX port has not
 landed yet -- see `cmake/threadx.cmake`.
 
 Note: the EK-RA8D2 v1 board carries an **Infineon IS25LX512M-JHLE**

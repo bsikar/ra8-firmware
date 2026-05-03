@@ -1,7 +1,7 @@
 # Software Development Plan (SDP)
 
 **Last refreshed**: 2026-05-03 (numbers re-synced to live audit
-artefacts after Wave 24 closure).
+artefacts after closure).
 
 **Status**: First draft, 2026-05-02. Authored against the Phase 7 schedule
 in [`../QUALIFICATION_ROADMAP.md`](../QUALIFICATION_ROADMAP.md) Section 3.
@@ -332,7 +332,7 @@ merge -sparse`, and renders the report under `build/mcdc-report/`.
 Default threshold is 100 % (per DO-178C Section 6.4.4.2 for Level B);
 the threshold is overridable via `RA_MCDC_THRESHOLD=NN` for
 intermediate phase gates. The current measurement is **100.00 %
-reachable / 92.29 % absolute** (2026-05-03 wave-24, see
+reachable / 92.29 % absolute** (2026-05-03 , see
 [`../MCDC.md`](../MCDC.md) measurement history). 58 conditions are
 catalogued as deactivated under DO-178C 6.4.4.3 in
 [`../MCDC_DEACTIVATIONS.md`](../MCDC_DEACTIVATIONS.md).

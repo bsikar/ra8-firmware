@@ -1,6 +1,6 @@
 # Driver Status Matrix
 
-Audit date: 2026-04-29 (post-sweep-11 commit `ba54974`, plus Wave 11
+Audit date: 2026-04-29 (post-sweep-11 commit `ba54974`, plus
 closure commits `f4fb1a6`, `7551634`, `f272dc7`, `ce76aa4`, `87b606f`).
 
 This file is the at-a-glance map of every driver in

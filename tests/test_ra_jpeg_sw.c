@@ -1253,7 +1253,7 @@ static void test_mcdc_decode_sof0_is420_subconditions(void)
  *   V_T_F: tdta=0x20 -> dc_id=2 (>=2), ac_id=0 -> C1=T,C2=F
  *   V_F_T: tdta=0x02 -> dc_id=0, ac_id=2 (>=2) -> C1=F,C2=T
  *   (V_F_F success row not added here -- requires full Huffman
- *    bitstream, deferred to wave-19.)
+ * bitstream, deferred to .)
  * Combined with 1 implicit F,F row from any future success path,
  * V_T_F and V_F_T close C1-pair and C2-pair respectively.
  *

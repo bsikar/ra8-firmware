@@ -79,7 +79,7 @@ extern "C" {
 
 /**
  * @enum ra_net_pal_limits_t
- * @brief Wave-7 maximums / sizes baked into the PAL contract.
+ * @brief maximums / sizes baked into the PAL contract.
  *
  * @details
  * MTU is the standard Ethernet maximum payload (1500 bytes) plus

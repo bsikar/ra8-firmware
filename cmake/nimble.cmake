@@ -43,7 +43,7 @@ endif()
 # NimBLE's Native Porting Layer (NPL) is implemented on top of
 # ThreadX TX_MUTEX / TX_SEMAPHORE / TX_QUEUE / TX_TIMER primitives,
 # so the build must also pull in ThreadX. The companion
-# `cmake/threadx.cmake` is owned by Wave 13; if it has not landed
+# `cmake/threadx.cmake` is owned by ; if it has not landed
 # yet the NimBLE build cannot succeed and we surface a clear error
 # rather than letting the linker complain about missing `_tx_*`
 # symbols.

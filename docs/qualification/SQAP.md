@@ -135,7 +135,7 @@ project as the per-phase acceptance gates defined in
 `docs/QUALIFICATION_ROADMAP.md` Section 3:
 
 - Phase 1 -> 2: critical-path MC/DC at 100% (met).
-- Phase 2 -> 3: first-party reachable MC/DC at 100% (met -- wave-24).
+- Phase 2 -> 3: first-party reachable MC/DC at 100% (met.
 - Phase 3 -> 4: Doxygen audit clean (met -- 0 functions with gaps).
 - Phase 4 -> 5: MISRA audit stable modulo cppcheck-only policy
   (`docs/CERTIFICATION_SCOPE.md`); D-001..D-005 cover the long tail.

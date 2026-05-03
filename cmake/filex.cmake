@@ -35,7 +35,7 @@ endif()
 
 # FileX's protection macros call `tx_mutex_get` / `tx_mutex_put`, so
 # the build must also pull in ThreadX. The companion `cmake/threadx.cmake`
-# is owned by a sibling Wave 13 / Phase 4.1 agent; if it has not
+# is owned by a sibling / Phase 4.1 agent; if it has not
 # landed yet the FileX build cannot succeed and we surface a clear
 # error rather than letting the linker complain about missing
 # `_tx_*` symbols.
