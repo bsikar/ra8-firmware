@@ -89,6 +89,24 @@ hardware CRC32 instruction. JPEG decode throughput depends on the
 encoded byte-stream size, which itself depends on the quality factor
 chosen at encode time.
 
+## Host x86_64 reference numbers (2026-05-02)
+
+Captured by running `make bench` inside the project devcontainer
+(Ubuntu 24.04, gcc 13, Release build) on an Apple Silicon host. These
+numbers are **indicative only**; on-target Cortex-M85 numbers are
+pending hardware (see "EVM measurements" below). Variance across
+re-runs on the same host is roughly +/- 10% due to OS scheduler noise.
+
+| Binary             | Bench label                    | iterations | ns_per_op | MB_per_s  |
+|--------------------|--------------------------------|-----------:|----------:|----------:|
+| `bench_ra_crc`     | `crc32_1KiB`                   |  1 572 864 |     88.47 | 11 575.11 |
+| `bench_ra_crc`     | `crc32_16KiB`                  |     98 304 |   1346.37 | 12 169.04 |
+| `bench_ra_crc`     | `crc32_1MiB`                   |      1 536 |  90111.46 | 11 636.43 |
+| `bench_ra_jpeg_sw` | `jpeg_decode_64x64_q75`        |      6 144 |  22001.60 |     44.22 |
+| `bench_ra_gfx_text`| `gfx_text_pangram_8x16_rgb565` |     12 288 |   8836.26 |  3 708.36 |
+
+JPEG fixture: encoded 64x64 baseline JPEG @ q=75 -> 973 bytes.
+
 ## EVM measurements
 
 To be filled in once the EVM HIL workflow lands. The plan is:
