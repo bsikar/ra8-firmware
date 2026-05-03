@@ -570,7 +570,7 @@ typedef void (*ra_vin_event_fn_t)(void* ctx, uint32_t status_mask);
  * @details
  * HUM Ch 67.2.21 p 3996. Picks bilinear vs nearest-neighbour per
  * channel, plus the multi-tap mode flag and two advanced-mode
- * tweaks. `ra_vin_enable_scaling` toggles the MC.SCLE master enable.
+ * tweaks. `ra_vin_enable_scaling` toggles the MC.SCLE main enable.
  *
  * @param[in] ctrl Non-NULL UDS control descriptor.
  *
@@ -589,7 +589,7 @@ typedef void (*ra_vin_event_fn_t)(void* ctx, uint32_t status_mask);
 [[nodiscard]] ra_err_t ra_vin_set_uds_ctrl(const ra_vin_uds_ctrl_t* ctrl);
 
 /**
- * @brief Toggle the MC.SCLE master scaling-enable bit.
+ * @brief Toggle the MC.SCLE main scaling-enable bit.
  *
  * @param[in] enable True -> SCLE = 1, false -> SCLE = 0.
  *

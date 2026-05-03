@@ -302,7 +302,7 @@ RA_NSC_VENEER ra_err_t ra_nsc_spi_init(uint8_t channel, const ra_spi_cfg_t* cfg)
  *
  * @pre ``ra_nsc_spi_init`` succeeded for ``channel``.
  * @pre ``rx`` is NULL or in NS data region.
- * @post On success and ``rx`` non-NULL, ``*rx`` reflects the MISO byte.
+ * @post On success and ``rx`` non-NULL, ``*rx`` reflects the CIPO byte.
  * @post On failure the bus state is restored.
  *
  * @par TrustZone:

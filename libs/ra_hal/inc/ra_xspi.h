@@ -207,7 +207,7 @@ void ra_xspi_dispatch(uint8_t instance);
  *
  * @details
  * Programs ``CMCTLCH[0/1]`` with the supplied XiP enter/exit codes,
- * sets ``BMCTL0 = 0x55`` to map the slave window read-only on the
+ * sets ``BMCTL0 = 0x55`` to map the target window read-only on the
  * system bus, and arms ``CMCTLCH.XIPEN``. Tracks FSP
  * ``R_OSPI_B_XipEnter`` / ``r_ospi_b_xip(true)``. Cite: HUM Ch 44
  * "Octal Serial Peripheral Interface (OSPI)" p 2986.
@@ -309,7 +309,7 @@ ra_xspi_set_xip_mode(uint8_t instance, bool enable, uint8_t read_cmd, uint8_t ad
  *
  * @details
  * Project-native equivalent of FSP ``R_OSPI_B_AutoCalibrate`` for
- * slave 0. Programmes the ``CCCTLCS[0..7]`` calibration descriptor
+ * target 0. Programmes the ``CCCTLCS[0..7]`` calibration descriptor
  * with FSP-derived defaults, sets ``CAEN`` to start the controller's
  * automatic phase-scan state machine, then polls until the controller
  * clears ``CAEN`` itself or the bounded spin budget expires. On

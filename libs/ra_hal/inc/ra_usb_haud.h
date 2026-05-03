@@ -426,7 +426,7 @@ ra_usb_haud_set_format(uint8_t channel_count, uint8_t bits_per_sample, uint32_t 
  * byte. Volume is a signed 16-bit value in 1/256 dB steps; 0x8000
  * is the silence sentinel.
  *
- * @param[in] channel Logical channel (0 = master, 1..N per channel).
+ * @param[in] channel Logical channel (0 = main, 1..N per channel).
  * @param[in] volume Signed dB in 1/256 step.
  *
  * @return `ra_err_t` error code.
@@ -457,7 +457,7 @@ ra_usb_haud_set_format(uint8_t channel_count, uint8_t bits_per_sample, uint32_t 
  * Unit ID in the high byte and the AudioControl interface in the low
  * byte. Mute is a one-byte boolean (0 = unmute, 1 = mute).
  *
- * @param[in] channel Logical channel (0 = master, 1..N per channel).
+ * @param[in] channel Logical channel (0 = main, 1..N per channel).
  * @param[in] mute true = mute, false = unmute.
  *
  * @return `ra_err_t` error code.

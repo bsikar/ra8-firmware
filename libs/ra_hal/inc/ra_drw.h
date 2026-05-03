@@ -822,7 +822,7 @@ ra_drw_load_clut(uint8_t start_index, const uint32_t* entries, uint32_t count);
  *
  * @param[in] dlist_addr Pointer to the first display-list word in
  * memory; must be 4-byte aligned and reside in
- * a region the DRW bus master can read.
+ * a region the DRW bus initiator can read.
  *
  * @return ``ra_err_t`` error code.
  * @retval k_ra_ok Display list trigger written.

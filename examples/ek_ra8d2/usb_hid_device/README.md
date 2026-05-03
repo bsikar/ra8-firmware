@@ -17,7 +17,7 @@ make flash
 
 ```
 lsusb                # look for "Brighton Sikarskie EK-RA8D2 HID Mouse"
-xinput list          # the mouse appears as a slave pointer
+xinput list          # the mouse appears as an attached pointer
 ```
 
 The cursor should walk in a 4-pixel square once per second on whatever

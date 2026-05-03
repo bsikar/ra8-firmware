@@ -14,7 +14,7 @@ classes:
   silicon. May still be missing rarely-used FSP-only sub-modes;
   those are noted in the rightmost column.
 - `partial` -- a useful subset of the FSP API is implemented but
-  major features (slave mode, DMA, edge cases, etc.) are still
+  major features (peripheral mode, DMA, edge cases, etc.) are still
   missing. The driver moves real bytes today.
 - `placeholder` -- driver wraps an FSP-shape register block whose
   RA8D2-silicon presence we could not confirm. File header carries
@@ -43,12 +43,12 @@ work; subsequent fixes may live in later commits.
 | Driver | FSP parity | Status | Landed | Notes |
 |---|---|---|---|---|
 | ra_sci | r_sci_b_uart | feature-complete | sweep 1 (`3f97975`) | async read/write, abort, baud calc, DMA path, callback set |
-| ra_iic_b | r_iic_b_master | feature-complete | sweep 1 (`3f97975`) | polling+IRQ read/write, restart, abort, callback. Slave mode = ra_iic_b_slave |
+| ra_iic_b | r_iic_b_master | feature-complete | sweep 1 (`3f97975`) | polling+IRQ read/write, restart, abort, callback. Peripheral mode = ra_iic_b_slave (FSP API name) |
 | ra_iic_b_slave | r_iic_b_slave | feature-complete | sweep 10 (`59cc3c3`) | IIC_B peripheral mode, MSDVAD + BCTL.BUSE + SVCTL.GCAE |
-| ra_iic | r_iic_master + r_iic_slave | feature-complete | sweep 10 (`59cc3c3`) | legacy RIIC IP, master + slave on one driver |
+| ra_iic | r_iic_master + r_iic_slave (FSP API names) | feature-complete | sweep 10 (`59cc3c3`) | legacy RIIC IP, controller + peripheral on one driver |
 | ra_iica_master | r_iica_master | placeholder | sweep 11 (`ba54974`) | alternate IIC variant; RA8D2 silicon presence unverified |
 | ra_iica_slave | r_iica_slave | placeholder | sweep 11 (`ba54974`) | alternate IIC variant; RA8D2 silicon presence unverified |
-| ra_spi | r_spi_b | feature-complete | sweep 1 (`3f97975`) | read/write/write_read, 8/16/32-bit, DMA path. Slave mode = partial |
+| ra_spi | r_spi_b | feature-complete | sweep 1 (`3f97975`) | read/write/write_read, 8/16/32-bit, DMA path. Peripheral mode = partial |
 | ra_spi_b | r_spi_b | feature-complete | (pre-sweep) | extended ra_spi back-end |
 | ra_sau_uart | r_sau_uart | placeholder | sweep 11 (`ba54974`) | SAU sub-protocol; RA8D2 silicon presence unverified |
 | ra_sau_spi | r_sau_spi | placeholder | sweep 11 (`ba54974`) | SAU sub-protocol; RA8D2 silicon presence unverified |
@@ -148,7 +148,7 @@ work; subsequent fixes may live in later commits.
 | ra_eth_mfwd | (RA8D2-only) | feature-complete | (pre-sweep) | message-forwarding engine |
 | ra_eth_gptp | r_gptp | feature-complete | (pre-sweep) | timestamp counter + IRQ |
 | ra_etha | r_ether | scaffold | (pre-sweep) | bring-up; the live datapath uses gwca |
-| ra_ptp | r_ptp | feature-complete | sweep 6 (`3ff1a8d`) | IEEE 1588 master/slave roles, sync/announce, time/rate adjust |
+| ra_ptp | r_ptp | feature-complete | sweep 6 (`3ff1a8d`) | IEEE 1588 controller/peripheral roles (per spec), sync/announce, time/rate adjust |
 | ra_tsn | r_tsn | scaffold | (pre-sweep) | IEEE 802.1 TSN block |
 | ra_rmac | r_rmac | scaffold | (pre-sweep) | reduced-MAC variant |
 | ra_layer3_switch | r_layer3_switch | placeholder | sweep 11 (`ba54974`) | L3 packet switch; RA8D2 silicon presence unverified |

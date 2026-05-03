@@ -825,7 +825,7 @@ ra_etha_set_vlan_mode(ra_etha_port_t port, ra_etha_vim_t vim, ra_etha_vem_t vem)
                                                 uint64_t                  start_time);
 
 /**
- * @brief Enable or disable the TAS scheduler (master switch).
+ * @brief Enable or disable the TAS scheduler (main switch).
  *
  * @param[in] port Port identifier.
  * @param[in] enable Non-zero -> set EATASC.TASE; zero -> clear.

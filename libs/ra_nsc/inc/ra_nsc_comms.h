@@ -136,7 +136,7 @@ extern "C" {
  */
 
 /**
- * @brief NSC veneer: bring up an SPI master channel.
+ * @brief NSC veneer: bring up an SPI controller channel.
  * @since 0.1.0
  */
 [[nodiscard]] RA_NSC_VENEER ra_err_t ra_nsc_spi_init(uint8_t channel, const ra_spi_cfg_t* cfg);

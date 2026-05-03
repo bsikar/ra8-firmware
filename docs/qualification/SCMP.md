@@ -334,7 +334,7 @@ documented at the time of the first signed release.
 
 ### 6.1 Archive
 
-- Master record: this git repository (the GitHub remote is the
+- Primary record: this git repository (the GitHub remote is the
   authoritative copy).
 - Vendored SOUP source: `libs/third_party/` is checked into the same
   repository so that a single `git clone` retrieves the full build
@@ -360,7 +360,7 @@ A bit-exact rebuild of any historical state is achieved by:
 
 ### 6.3 Retention
 
-- `git log` retained indefinitely (this is the master record).
+- `git log` retained indefinitely (this is the primary record).
 - CI logs retained per GitHub Actions defaults (90 days for logs;
   14 days for the explicitly-configured artifact uploads).
 - Long-term audit-pack retention is via the `docs/qualification/

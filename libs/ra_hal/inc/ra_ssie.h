@@ -20,12 +20,12 @@
  *    justified through SDTA/PDTA polarity selectors.
  *  - All eight system word lengths (8/16/24/32/48/64/128/256 b)
  *    and all seven legal data word lengths (8/16/18/20/22/24/32 b).
- *  - All thirteen master-mode bit clock dividers (CKDV 0x0..0xC).
- *  - Master + slave mode with audio clock source selection (CKS).
+ *  - All thirteen controller-mode bit clock dividers (CKDV 0x0..0xC).
+ *  - Controller + peripheral mode with audio clock source selection (CKS).
  *  - Mute control with frame-boundary effect (HUM Ch 46.5.4 p 3107).
  *  - Polarity controls (BCKP, LRCKP, SPDP) and DEL short/long frame.
  *  - LRCONT (LR-clock continuation) and BCKASTP (idle BCK auto-stop)
- *    for power-friendly master operation.
+ *    for power-friendly controller operation.
  *  - Byte swap (BSW) and AUDIO_MCK enable (AUCKE).
  *  - FIFO threshold programming via SSISCR (TDES, RDFS).
  *  - Single-sample read/write + buffered TX/RX through the FIFO.
@@ -77,7 +77,7 @@ extern "C" {
 
 /**
  * @enum ra_ssie_role_t
- * @brief Master / slave selection (drives SSICR.MST).
+ * @brief Controller / peripheral selection (drives SSICR.MST).
  *
  * @details See HUM Ch 46.2.1 "MST" bit, p 3057.
  */
@@ -163,7 +163,7 @@ typedef enum : uint8_t {
  * @brief Bit-clock divider (drives SSICR.CKDV[3:0]).
  *
  * @details
- * Master-mode only. Divides AUDIO_MCK to produce SSIBCKn. See
+ * Controller-mode only. Divides AUDIO_MCK to produce SSIBCKn. See
  * HUM Ch 46.2.1 CKDV table, p 3056. Encodings 0xD..0xF are
  * "setting prohibited" and intentionally not exposed.
  */
@@ -226,20 +226,20 @@ typedef enum : uint8_t {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  ra_ssie_role_t        role;          /**< Master or slave.                  */
+  ra_ssie_role_t        role;          /**< Controller or peripheral.                  */
   ra_ssie_format_t      format;        /**< I2S / TDM / monaural.             */
   ra_ssie_data_word_t   data_word;     /**< Significant bits per channel.     */
   ra_ssie_system_word_t system_word;   /**< Total bits per channel.           */
-  ra_ssie_bclk_div_t    bclk_div;      /**< CKDV divider (master only).       */
+  ra_ssie_bclk_div_t    bclk_div;      /**< CKDV divider (controller only).       */
   bool                  use_gpt_clk;   /**< true: GTIOC2A; false: AUDIO_CLK.  */
   bool                  long_frame;    /**< true: SSICR.DEL = 0 (long).       */
   bool                  bckp_rising;   /**< true: SSICR.BCKP = 1.             */
   bool                  lrckp_low;     /**< true: SSICR.LRCKP = 1.            */
   bool                  spdp_high;     /**< true: SSICR.SPDP = 1.             */
   bool                  byte_swap;     /**< SSIFCR.BSW.                       */
-  bool                  lr_continue;   /**< SSIOFR.LRCONT (master only).      */
-  bool                  bck_idle_stop; /**< SSIOFR.BCKASTP (master only).   */
-  bool                  enable_aucke;  /**< SSIFCR.AUCKE (master only).      */
+  bool                  lr_continue;   /**< SSIOFR.LRCONT (controller only).      */
+  bool                  bck_idle_stop; /**< SSIOFR.BCKASTP (controller only).   */
+  bool                  enable_aucke;  /**< SSIFCR.AUCKE (controller only).      */
   uint8_t               tx_threshold;  /**< SSISCR.TDES[4:0] watermark.      */
   uint8_t               rx_threshold;  /**< SSISCR.RDFS[4:0] watermark.      */
 } ra_ssie_cfg_t;

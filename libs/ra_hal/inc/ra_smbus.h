@@ -32,7 +32,7 @@
  * The IIC_B driver is **not** modified -- SMBus is layered on top.
  *
  * Inclusive terminology: "controller" / "peripheral" replaces the
- * legacy master/slave wording in the SMBus spec.
+ * legacy controller/peripheral wording in the SMBus spec (the spec itself uses the older terminology).
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

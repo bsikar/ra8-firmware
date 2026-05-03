@@ -6,8 +6,8 @@
  * [Ring 6 / APP] {World: S}
  *
  * @details
- * Standalone EVM-tier app that exercises the IIC_B master driver
- * (``libs/ra_hal/ra_iic_b.h``) without requiring an external slave.
+ * Standalone EVM-tier app that exercises the IIC_B controller driver
+ * (``libs/ra_hal/ra_iic_b.h``) without requiring an external peripheral.
  * The flow:
  *
  *   1. ``ra_cgc_init`` -- bring CPUCLK0 / PCLKA up.
@@ -18,7 +18,7 @@
  *   3. ``ra_iic_b_init(0, ...)`` at 100 kHz Sm.
  *   4. ``ra_iic_b_scan`` against an unused 7-bit address (0x77,
  *      typical BME280 default). The bus is unpopulated on a bare
- *      EVM so the slave NACKs -- the call still returns ``k_ra_ok``
+ *      EVM so the peripheral NACKs -- the call still returns ``k_ra_ok``
  *      with ``out_acked = false``, which is treated as "the bus
  *      controller is alive and clocking SCL".
  *   5. LED1 toggles on each scan and SCI8 prints

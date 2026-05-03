@@ -6,7 +6,7 @@
  * [Ring 3 / HAL] {World: NS}
  *
  * @details
- * Master-mode driver for the RA8D2 I3C0 controller.  The transfer
+ * Primary-mode driver for the RA8D2 I3C0 controller.  The transfer
  * engine mirrors FSP ``r_i3c``: every operation is encoded as a
  * 32-bit (or two-word) command descriptor written to the NCMDQP
  * port, with payload bytes flowing through NTDTBP0.  IBI events
@@ -15,7 +15,7 @@
  * Bring-up order matches the FSP ``R_I3C_Open`` reference sequence:
  * enable the module clock (CECTL.CLKE), drop BCTL.BUSE, assert
  * RSTCTL.RI3CRST and wait for hardware to clear it, then assert
- * RSTCTL.INTLRST, clear PRTS, release RSTCTL.  Master dynamic
+ * RSTCTL.INTLRST, clear PRTS, release RSTCTL.  Primary dynamic
  * address (MSDVAD.MDYAD) is programmed before BCTL.BUSE is set per
  * HUM Ch 40 BCTL description (pp 2445-2701).
  *
@@ -367,7 +367,7 @@ ra_err_t ra_i3c_set_address(uint32_t addr)
   if (addr > k_ra_i3c_msdvad_addr_max) {
     return k_ra_err_invalid_arg;
   }
-  /* HUM Ch 40 "MSDVAD : Master Device Address Register" pp 2445-2701
+  /* HUM Ch 40 MSDVAD device address register pp 2445-2701
    * MDYAD occupies bits [22:16]; MDYADV (bit 31) marks the address
    * as valid. */
   const uint32_t mdyad = (addr << k_ra_i3c_msdvad_mdyad_shift) & k_ra_i3c_msdvad_mdyad_mask;
@@ -392,7 +392,7 @@ ra_err_t ra_i3c_bus_enable(bool enable)
 {
   volatile r_i3c_regs_t* reg = ra_i3c();
   /* HUM Ch 40 "BCTL : Bus Control Register" pp 2445-2701 -- BCTL.BUSE
-   * is bit 31, not bit 0; toggling it gates bus master operation. */
+   * is bit 31, not bit 0; toggling it gates bus primary operation. */
   if (enable) {
     reg->BCTL = reg->BCTL | k_ra_i3c_bctl_buse_mask;
   } else {
@@ -836,7 +836,7 @@ ra_err_t ra_i3c_read(uint8_t target_addr, uint8_t* buf, uint32_t len)
 }
 
 /* =============================================================================
- * Sweep 15 / Phase 2: HDR mode + IBI control + slave-mode entry
+ * Sweep 15 / Phase 2: HDR mode + IBI control + peripheral-mode entry
  * =============================================================================
  */
 
@@ -952,13 +952,13 @@ ra_err_t ra_i3c_slave_open(uint8_t static_addr)
    * before flipping the SLVE bit. */
   reg->BCTL = reg->BCTL & ~k_ra_i3c_bctl_buse_mask;
 
-  /* HUM Ch 40 "Slave Device Address Register" p 2445-2701 */
+  /* HUM Ch 40 "Peripheral Device Address Register" (HUM "NSDVAD") p 2445-2701 */
   const uint32_t sdyad =
     (((uint32_t)static_addr) << k_ra_i3c_nsdvad_sdyad_shift) & k_ra_i3c_nsdvad_sdyad_mask;
   reg->NSDVAD = sdyad | k_ra_i3c_nsdvad_sdyadv_mask;
 
   /* HUM Ch 40 "BCTL : Bus Control Register" pp 2445-2701 -- bit 16
-   * (SLVE) gates slave-mode reception. */
+   * (SLVE) gates peripheral-mode reception. */
   reg->BCTL = reg->BCTL | k_ra_i3c_bctl_slve_mask;
   return k_ra_ok;
 }
@@ -1002,7 +1002,7 @@ ra_err_t ra_i3c_ibi_read(ra_i3c_ibi_t* out_ibi)
   /* Encode IBI/HJ/MR using the lowest two bits of IBI ID.  See HUM
    * Ch 40 "IBI Status Descriptor" pp 2445-2701 -- bit 31 (IBI_ST)
    * separates IBI from HJ/MR; IBI_ID 0x02 == hot-join, 0x04 ==
-   * mastership-request in the MIPI I3C spec. */
+   * mainship-request in the MIPI I3C spec. */
   enum : uint8_t {
     k_ibi_id_hot_join = 0x02U,
   };
@@ -1011,7 +1011,7 @@ ra_err_t ra_i3c_ibi_read(ra_i3c_ibi_t* out_ibi)
   } else if (ibi_id == k_ibi_id_hot_join) {
     out_ibi->type = k_ra_i3c_ibi_type_hot_join;
   } else {
-    out_ibi->type = k_ra_i3c_ibi_type_master;
+    out_ibi->type = k_ra_i3c_ibi_type_main_request;
   }
 
   const uint8_t k_max_ibi_payload = (uint8_t)(sizeof(out_ibi->payload));
