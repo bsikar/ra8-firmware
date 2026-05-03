@@ -649,7 +649,7 @@ static void test_mcdc_decode_sof0_chroma_subsampling(void)
 /*                                                                     */
 /*  These cover the residual gaps in MCDC_GAPS.csv that the earlier    */
 /*  vectors marked "partial" or "no". Each fixture is a hand-built     */
-/*  byte array — no encoder round-trip — so the decision flips are     */
+/*  byte array -- no encoder round-trip -- so the decision flips are  */
 /*  independent and reachable.                                         */
 /* ------------------------------------------------------------------ */
 
