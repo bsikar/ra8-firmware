@@ -302,7 +302,8 @@ static void test_uart_console_pins(void)
   TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_13, k_ra_pin_3), (int)k_ra_board_uart_console_pin_rxd);
   TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_13, k_ra_pin_4), (int)k_ra_board_uart_console_pin_rts);
   TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_13, k_ra_pin_5), (int)k_ra_board_uart_console_pin_cts);
-  TEST_ASSERT_EQ((int)3, (int)k_ra_board_uart_console_sci_channel);
+  /* PD02/PD03 -> SCI8 alternate (verified on real EK-RA8D2 v1 silicon). */
+  TEST_ASSERT_EQ((int)8, (int)k_ra_board_uart_console_sci_channel);
   TEST_ASSERT_EQ((int)0, (int)k_ra_board_uart_console);
   TEST_END("uart console pins match UM Table 13");
 }
