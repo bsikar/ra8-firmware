@@ -40,6 +40,12 @@ static void prep(void)
   s_i3c_cb_last_mask = 0U;
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init(void)
 {
   TEST_BEGIN("i3c init");
@@ -52,6 +58,12 @@ static void test_init(void)
   TEST_END("i3c init");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_deinit(void)
 {
   TEST_BEGIN("i3c deinit");
@@ -62,6 +74,12 @@ static void test_deinit(void)
   TEST_END("i3c deinit");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_status_read_and_clear(void)
 {
   TEST_BEGIN("i3c status read + clear");
@@ -78,6 +96,12 @@ static void test_status_read_and_clear(void)
   TEST_END("i3c status read + clear");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_attach_and_dispatch(void)
 {
   TEST_BEGIN("i3c attach + dispatch");
@@ -96,6 +120,12 @@ static void test_attach_and_dispatch(void)
   TEST_END("i3c attach + dispatch");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_address(void)
 {
   TEST_BEGIN("i3c set address");
@@ -110,6 +140,12 @@ static void test_set_address(void)
   TEST_END("i3c set address");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_bus_enable(void)
 {
   TEST_BEGIN("i3c bus enable");
@@ -123,6 +159,12 @@ static void test_bus_enable(void)
   TEST_END("i3c bus enable");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_power_transition(void)
 {
   TEST_BEGIN("i3c power transition");
@@ -135,6 +177,11 @@ static void test_power_transition(void)
 
 /* ---------------------------------------------------------------------------
  * CCC engine: ENTDAA, SETDASA, RSTDAA, generic send/recv.
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  * --------------------------------------------------------------------------- */
 
 static void test_dynamic_address_assign(void)
@@ -172,6 +219,12 @@ static void test_dynamic_address_assign(void)
   TEST_END("i3c dynamic_address_assign (ENTDAA)");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_dynamic_address(void)
 {
   TEST_BEGIN("i3c set_dynamic_address (SETDASA)");
@@ -187,6 +240,12 @@ static void test_set_dynamic_address(void)
   TEST_END("i3c set_dynamic_address (SETDASA)");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_reset_dynamic_addresses(void)
 {
   TEST_BEGIN("i3c reset_dynamic_addresses (RSTDAA)");
@@ -202,6 +261,12 @@ static void test_reset_dynamic_addresses(void)
   TEST_END("i3c reset_dynamic_addresses (RSTDAA)");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_send_ccc_broadcast(void)
 {
   TEST_BEGIN("i3c send_ccc broadcast (ENEC, no payload)");
@@ -217,6 +282,12 @@ static void test_send_ccc_broadcast(void)
   TEST_END("i3c send_ccc broadcast");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_send_ccc_directed_with_payload(void)
 {
   TEST_BEGIN("i3c send_ccc directed with payload");
@@ -233,6 +304,12 @@ static void test_send_ccc_directed_with_payload(void)
   TEST_END("i3c send_ccc directed with payload");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_recv_ccc_directed(void)
 {
   TEST_BEGIN("i3c recv_ccc directed");
@@ -259,6 +336,12 @@ static void test_recv_ccc_directed(void)
   TEST_END("i3c recv_ccc directed");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_write_immediate(void)
 {
   TEST_BEGIN("i3c write (immediate-data)");
@@ -273,6 +356,12 @@ static void test_write_immediate(void)
   TEST_END("i3c write (immediate-data)");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_write_regular(void)
 {
   TEST_BEGIN("i3c write (regular FIFO)");
@@ -287,6 +376,12 @@ static void test_write_regular(void)
   TEST_END("i3c write (regular FIFO)");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_read_happy(void)
 {
   TEST_BEGIN("i3c read (happy path)");
@@ -305,6 +400,12 @@ static void test_read_happy(void)
   TEST_END("i3c read (happy path)");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_ibi_read_empty(void)
 {
   TEST_BEGIN("i3c ibi_read empty queue");
@@ -317,6 +418,12 @@ static void test_ibi_read_empty(void)
   TEST_END("i3c ibi_read empty queue");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_ibi_read_one(void)
 {
   TEST_BEGIN("i3c ibi_read one IBI");
@@ -327,7 +434,7 @@ static void test_ibi_read_one(void)
   ra_i3c()->NTST = (uint32_t)k_ra_i3c_ntst_ibiqeff_mask;
 
   /* Build an IBI status descriptor: length=2, IBI ID=0x84 (addr 0x42 + RnW),
-   * IBI_ST=0 (slave-initiated IBI). */
+   * IBI_ST=0 (peripheral-initiated IBI). */
   const uint32_t ibi_status = (2U << 0) | ((uint32_t)0x84U << 8);
   ra_i3c()->NIBIQP          = ibi_status;
   /* Stage the 2-byte IBI payload in NTDTBP0. */
@@ -344,9 +451,15 @@ static void test_ibi_read_one(void)
 }
 
 /* ---------------------------------------------------------------------------
- * Sweep 15 / Phase 2: HDR + IBI + slave-mode entry surface.
+ * Sweep 15 / Phase 2: HDR + IBI + peripheral-mode entry surface.
  * --------------------------------------------------------------------------- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_hdr_mode_ddr(void)
 {
   TEST_BEGIN("i3c set_hdr_mode DDR encodes [27:26]=01");
@@ -362,6 +475,12 @@ static void test_set_hdr_mode_ddr(void)
   TEST_END("i3c set_hdr_mode DDR encodes [27:26]=01");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_hdr_mode_ts_and_validation(void)
 {
   TEST_BEGIN("i3c set_hdr_mode TS + validation");
@@ -380,6 +499,12 @@ static void test_set_hdr_mode_ts_and_validation(void)
   TEST_END("i3c set_hdr_mode TS + validation");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_ibi_enable_writes_ntibivctl(void)
 {
   TEST_BEGIN("i3c ibi_enable writes NTIBIVCTL.VLCNT=1");
@@ -395,6 +520,12 @@ static void test_ibi_enable_writes_ntibivctl(void)
   TEST_END("i3c ibi_enable writes NTIBIVCTL.VLCNT=1");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_ibi_drain_aliases_read(void)
 {
   TEST_BEGIN("i3c ibi_drain mirrors ibi_read semantics");
@@ -415,6 +546,12 @@ static void test_ibi_drain_aliases_read(void)
   TEST_END("i3c ibi_drain mirrors ibi_read semantics");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_slave_open_sets_slve_and_nsdvad(void)
 {
   TEST_BEGIN("i3c slave_open sets BCTL.SLVE and NSDVAD");

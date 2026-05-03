@@ -154,7 +154,6 @@ SKIP_FILE_PATTERNS: tuple[str, ...] = (
     # is tracked separately and is orthogonal to the inclusive-terminology
     # effort. Keep these in skip until the MC/DC backfill lands; removing
     # the skip is a one-line follow-up at that point.
-    "tests/test_ra_i3c.c",
     "tests/test_ra_spi.c",
     "tests/test_ra_ssie.c",
     "tests/test_ra_usb_haud.c",
