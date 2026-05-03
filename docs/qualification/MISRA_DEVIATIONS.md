@@ -23,6 +23,55 @@ per-violation list lives in [`docs/MISRA_GAPS.csv`](../MISRA_GAPS.csv).
 - DO-178C section 11.8 ("Software Coding Standards").
 - ISO 26262-6:2018 table 1 (language-subset requirement at ASIL C/D).
 
+## Tooling policy
+
+`cppcheck` (with the upstream `misra.py` addon) is the **sole** MISRA-C
+2012 enforcement tool for this project. Commercial MISRA checkers --
+LDRA Testbed, Perforce Helix QAC, MathWorks Polyspace Bug Finder /
+Code Prover, and PVS-Studio -- are explicitly **out of scope** and
+will never be procured.
+
+### Rationale
+
+`ra8d2-firmware` is an MIT-licensed, FOSS, $0-budget personal /
+research project. It will not ship as a regulated commercial product
+and it will not seek third-party certification (see
+`docs/CERTIFICATION_SCOPE.md`). Paying $5k-$30k per seat per year for
+a commercial MISRA checker -- on top of the $30k-$150k independent-
+assessor engagement that would also be required to convert that
+checker's output into qualified evidence -- is incompatible with the
+project's funding model and serves no qualification goal that the
+project actually pursues.
+
+### Coverage envelope
+
+`cppcheck` 2.20's `misra.py` addon implements approximately
+**60-70 %** of the MISRA-C 2012 mandatory + required + advisory rule
+set. The remaining ~30 % is **accepted as residual risk** under
+**IEC 61508-7 Annex D.7** ("achievable assurance with available
+tools"): any MISRA rule that no FOSS tool can statically check
+remains uncovered by automated analysis but is still in force as a
+coding-standard obligation enforced via code review.
+
+### Decision-finality
+
+This decision is **final**. Future agents and contributors should
+not raise the procurement question again, and should not insert
+"upgrade path to LDRA / Polyspace / QAC" wording into any audit
+artefact. If a downstream party adopts this codebase for a regulated
+product they are responsible for procuring their own commercial
+checker -- see `docs/CERTIFICATION_SCOPE.md`.
+
+### Cross-references
+
+- `docs/CERTIFICATION_SCOPE.md` -- the "no independent assessor"
+  decision that makes the FOSS-only tooling stance internally
+  consistent.
+- `docs/QUALIFICATION_ROADMAP.md` Section 6 -- the procurement
+  question, marked CLOSED with reference to this section.
+- `docs/qualification/TOOL_QUALIFICATION.md` -- per-tool TQL
+  classification including `cppcheck`.
+
 ## Disposition classes
 
 Each entry in this register is one of three dispositions, per the
