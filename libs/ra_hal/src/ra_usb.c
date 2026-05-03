@@ -813,27 +813,57 @@ ra_err_t ra_usb_dcp_in_data(ra_usb_speed_t speed, const uint8_t* data, uint16_t 
   if (reg == nullptr) {
     return k_ra_err_invalid_arg;
   }
-  if ((len > k_ra_usb_dcp_max_packet) || ((data == nullptr) && (len != 0U))) {
+  if ((data == nullptr) && (len != 0U)) {
     return k_ra_err_invalid_arg;
   }
 
-  /* Select DCP (CURPIPE = 0) on CFIFO in IN direction.
+  /* Select DCP (CURPIPE = 0) on CFIFO in IN direction. Done once; the
+   * selection persists across chunks.
    * HUM Ch 36.2.7 "CFIFOSEL : CFIFO Port Select Register", p 1976 */
   internal_select_cfifo(reg, 0U, true);
-  const ra_err_t ready = internal_wait_frdy(reg);
-  RA_RETURN_ON_ERROR(ready, s_tag, "dcp_in_data: FRDY timeout");
 
-  if (len > 0U) {
-    internal_fifo_write(reg, data, len);
+  /* Zero-length data stage: just wait for FRDY, pulse BVAL on an empty
+   * buffer to send a ZLP, raise PID. */
+  if (len == 0U) {
+    const ra_err_t ready = internal_wait_frdy(reg);
+    RA_RETURN_ON_ERROR(ready, s_tag, "dcp_in_data: FRDY timeout (zlp)");
+    /* HUM Ch 36.2.8 "CFIFOCTR : CFIFO Port Control Register", p 1979 */
+    reg->CFIFOCTR = k_ra_fifoctr_bval;
+    /* HUM Ch 36.2.21 "DCPCTR : DCP Control Register", p 1991 */
+    internal_dcp_pid(reg, k_ra_pid_buf);
+    return k_ra_ok;
   }
 
-  /* HUM Ch 36.2.8 "CFIFOCTR : CFIFO Port Control Register", p 1979 */
-  reg->CFIFOCTR = k_ra_fifoctr_bval;
-  /* HUM Ch 36.2.21 "DCPCTR : DCP Control Register", p 1991 -- raise PID
-   * from NAK to BUF so the controller answers the next IN token. CCPL is
-   * NOT pulsed here; the host-initiated status stage is acknowledged on
-   * the next CTSQ transition (handled by the bridge). */
-  internal_dcp_pid(reg, k_ra_pid_buf);
+  /* Multi-chunk path: the DCP buffer is one MPS deep. Push at most
+   * DCPMAXP bytes per chunk, pulse BVAL, then wait for FRDY (asserted
+   * by the controller after it has shipped the previous chunk to the
+   * host). PID is raised once after the first chunk is queued so the
+   * controller answers the first IN token; it stays in BUF for the
+   * remaining chunks. */
+  uint16_t remaining  = len;
+  uint16_t offset     = 0U;
+  bool     pid_raised = false;
+  while (remaining > 0U) {
+    const ra_err_t ready = internal_wait_frdy(reg);
+    RA_RETURN_ON_ERROR(ready, s_tag, "dcp_in_data: FRDY timeout (chunk)");
+
+    const uint16_t chunk =
+      (remaining > k_ra_usb_dcp_max_packet) ? (uint16_t)k_ra_usb_dcp_max_packet : remaining;
+    internal_fifo_write(reg, &data[offset], chunk);
+    /* HUM Ch 36.2.8 "CFIFOCTR : CFIFO Port Control Register", p 1979 */
+    reg->CFIFOCTR = k_ra_fifoctr_bval;
+    if (!pid_raised) {
+      /* HUM Ch 36.2.21 "DCPCTR : DCP Control Register", p 1991 -- raise
+       * PID from NAK to BUF for the first chunk; the controller keeps
+       * answering subsequent IN tokens once PID is BUF. CCPL is NOT
+       * pulsed here; the host-initiated status stage is acknowledged on
+       * the next CTSQ transition (handled by the bridge). */
+      internal_dcp_pid(reg, k_ra_pid_buf);
+      pid_raised = true;
+    }
+    offset    = (uint16_t)(offset + chunk);
+    remaining = (uint16_t)(remaining - chunk);
+  }
   return k_ra_ok;
 }
 
