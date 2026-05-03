@@ -973,6 +973,142 @@ static void test_mcdc_set_queue_arb_triple(void)
   TEST_END("etha set_queue_arb MC/DC: !port_ok || !tc_ok || arb>mask");
 }
 
+/**
+ * @test test_mcdc_set_queue_depth_triple
+ *
+ * @par MC/DC:
+ * Decision: ``if (!internal_port_ok(port) || !internal_tc_ok(tc) ||
+ *               (uint32_t)depth > k_ra_etha_mask_dqd)``
+ * (3 conditions, libs/ra_hal/src/ra_etha.c:708 ra_etha_set_queue_depth).
+ * Short-circuit OR: N+1 = 4 vectors.
+ * - V1: port=ok, tc=ok, depth=ok    -> all F        -> dec F (proceeds, ok)
+ * - V2: port=oor                    -> C1=T short   -> dec T -> invalid_arg
+ * - V3: port=ok, tc=oor             -> C1=F, C2=T   -> dec T -> invalid_arg
+ * - V4: port=ok, tc=ok, depth=oor   -> C1=F, C2=F, C3=T -> dec T -> invalid_arg
+ * V1+V2 prove C1 independence; V2->V3 with C1 held F proves C2; V3->V4 with
+ * C1,C2 held F proves C3.
+ */
+static void test_mcdc_set_queue_depth_triple(void)
+{
+  TEST_BEGIN("etha set_queue_depth MC/DC: !port_ok || !tc_ok || depth>mask");
+  prep();
+  const ra_etha_config_t cfg = {.initial_mode = k_ra_etha_opc_config};
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_init(k_ra_etha_port_0, &cfg));
+  /* V1: all good. */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_etha_set_queue_depth(k_ra_etha_port_0, (ra_etha_tc_t)0U, 16U));
+  /* V2: bad port. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_etha_set_queue_depth((ra_etha_port_t)99U, (ra_etha_tc_t)0U, 16U));
+  /* V3: bad tc. */
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_invalid_arg,
+    (int32_t)ra_etha_set_queue_depth(k_ra_etha_port_0, (ra_etha_tc_t)k_ra_etha_tc_count, 16U));
+  /* V4: bad depth (> 0x7FF mask). */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_etha_set_queue_depth(k_ra_etha_port_0, (ra_etha_tc_t)0U, 0x800U));
+  TEST_END("etha set_queue_depth MC/DC: !port_ok || !tc_ok || depth>mask");
+}
+
+/**
+ * @test test_mcdc_descriptor_ring_args
+ *
+ * @par MC/DC:
+ * Decision in ``internal_ring_args_ok`` (libs/ra_hal/src/ra_etha.c:1335-1337):
+ * ``return (num_tx >= MIN) && (num_tx <= MAX) && (num_rx >= MIN) &&
+ *          (num_rx <= MAX) && (buffer_size >= BUF_MIN) && (buffer_size <= BUF_MAX)``
+ * 6-condition AND chain. Short-circuit MC/DC requires N+1 = 7 vectors.
+ * Reached via ra_etha_descriptor_ring_init.
+ * - V1: all in range                     -> all T -> ok (control)
+ * - V2: num_tx = 0                       -> C1=F short -> err
+ * - V3: num_tx = 4097                    -> C1=T, C2=F -> err
+ * - V4: num_rx = 0                       -> C3=F -> err
+ * - V5: num_rx = 4097                    -> C4=F -> err
+ * - V6: buffer_size = 1                  -> C5=F -> err
+ * - V7: buffer_size = 16384              -> C6=F -> err
+ * Each vector pairs with V1 to prove independence of one condition.
+ */
+static void test_mcdc_descriptor_ring_args(void)
+{
+  TEST_BEGIN("etha descriptor_ring_init MC/DC: 6-cond AND args_ok");
+  prep();
+  const ra_etha_config_t cfg = {.initial_mode = k_ra_etha_opc_config};
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_init(k_ra_etha_port_0, &cfg));
+  /* V1: control - all in range. */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_etha_descriptor_ring_init(k_ra_etha_port_0, 4U, 4U, 1500U));
+  /* V2: num_tx below min. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_etha_descriptor_ring_init(k_ra_etha_port_0, 0U, 4U, 1500U));
+  /* V3: num_tx above max. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_etha_descriptor_ring_init(k_ra_etha_port_0, 4097U, 4U, 1500U));
+  /* V4: num_rx below min. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_etha_descriptor_ring_init(k_ra_etha_port_0, 4U, 0U, 1500U));
+  /* V5: num_rx above max. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_etha_descriptor_ring_init(k_ra_etha_port_0, 4U, 4097U, 1500U));
+  /* V6: buffer_size below min (64). */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_etha_descriptor_ring_init(k_ra_etha_port_0, 4U, 4U, 1U));
+  /* V7: buffer_size above max (16383). */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_etha_descriptor_ring_init(k_ra_etha_port_0, 4U, 4U, 16384U));
+  TEST_END("etha descriptor_ring_init MC/DC: 6-cond AND args_ok");
+}
+
+/**
+ * @test test_mcdc_set_vlan_tag_six
+ *
+ * @par MC/DC:
+ * Decision (libs/ra_hal/src/ra_etha.c:923-928): 6-condition OR over the six
+ * range checks (c.vid, s.vid, c.pcp, s.pcp, c.dei, s.dei). Short-circuit MC/DC
+ * requires N+1 = 7 vectors.
+ * Masks: vid<=0xFFF, pcp<=0x7, dei<=0x1.
+ * - V1: all in range                 -> all F -> dec F -> ok (control)
+ * - V2: c.vid=0x1000                 -> C1=T short -> err
+ * - V3: s.vid=0x1000                 -> C1=F, C2=T -> err
+ * - V4: c.pcp=8                      -> C3=T -> err
+ * - V5: s.pcp=8                      -> C4=T -> err
+ * - V6: c.dei=2                      -> C5=T -> err
+ * - V7: s.dei=2                      -> C6=T -> err
+ * Each Vi (i>=2) flips condition Ci with all earlier conditions held F.
+ */
+static void test_mcdc_set_vlan_tag_six(void)
+{
+  TEST_BEGIN("etha set_vlan_tag MC/DC: 6-cond OR field range");
+  prep();
+  const ra_etha_config_t cfg = {.initial_mode = k_ra_etha_opc_config};
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_init(k_ra_etha_port_0, &cfg));
+  const ra_etha_vlan_tag_t ok_c = {.vid = 100U, .pcp = 5U, .dei = 1U};
+  const ra_etha_vlan_tag_t ok_s = {.vid = 200U, .pcp = 3U, .dei = 0U};
+  /* V1 */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_set_vlan_tag(k_ra_etha_port_0, &ok_c, &ok_s));
+  /* V2: c.vid out. */
+  const ra_etha_vlan_tag_t v2 = {.vid = 0x1000U, .pcp = 0U, .dei = 0U};
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_etha_set_vlan_tag(k_ra_etha_port_0, &v2, &ok_s));
+  /* V3: s.vid out. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_etha_set_vlan_tag(k_ra_etha_port_0, &ok_c, &v2));
+  /* V4: c.pcp out. */
+  const ra_etha_vlan_tag_t v4 = {.vid = 0U, .pcp = 8U, .dei = 0U};
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_etha_set_vlan_tag(k_ra_etha_port_0, &v4, &ok_s));
+  /* V5: s.pcp out. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_etha_set_vlan_tag(k_ra_etha_port_0, &ok_c, &v4));
+  /* V6: c.dei out. */
+  const ra_etha_vlan_tag_t v6 = {.vid = 0U, .pcp = 0U, .dei = 2U};
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_etha_set_vlan_tag(k_ra_etha_port_0, &v6, &ok_s));
+  /* V7: s.dei out. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_etha_set_vlan_tag(k_ra_etha_port_0, &ok_c, &v6));
+  TEST_END("etha set_vlan_tag MC/DC: 6-cond OR field range");
+}
+
 int32_t main(void)
 {
   test_init_happy();
@@ -1006,6 +1142,9 @@ int32_t main(void)
   test_mcdc_enable_irq_port_block();
   test_mcdc_disable_irq_port_block();
   test_mcdc_set_queue_arb_triple();
+  test_mcdc_set_queue_depth_triple();
+  test_mcdc_descriptor_ring_args();
+  test_mcdc_set_vlan_tag_six();
   (void)fprintf(stderr, "[OK  ] test_ra_etha.c\n");
   return 0;
 }
