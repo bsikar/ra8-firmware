@@ -1,0 +1,244 @@
+#!/usr/bin/env python3
+"""
+check_line_citations.py -- Reject in-tree source citations with line numbers.
+
+Per CLAUDE.md "Code Style / Comment citations":
+
+  Comments must NOT reference files in this repo by line number
+  (e.g. `libs/foo.c:776`). Line numbers go stale on the next reformat.
+  Reference the function / symbol name instead.
+
+  External / vendor citations (HUM, FSP, RFC, datasheet) remain
+  MANDATORY for any HAL register access, ISR, or driver path.
+
+Scope:
+  Scans C / C++ source comments under libs/, src/, tests/, examples/,
+  port/. Flags tokens matching `<file>.<ext>:<line>` inside `// ...`
+  or `/* ... */` comments.
+
+Exemptions:
+  * docs/reference/* paths (HUM PDFs etc).
+  * libs/third_party/* (SOUP -- not our citations to manage).
+  * Any line containing `CITES-OK: <reason>` (reason text required).
+  * CHANGELOG-style "moved from <file>:NNN to ..." historical notes.
+  * `// SPDX-License-Identifier:` headers and `#include` directives.
+"""
+from __future__ import annotations
+
+import re
+import subprocess
+import sys
+from pathlib import Path
+
+# Wave 0: warn but do not block. Many existing violations exist; the
+# cleanup wave will land them, then this flag flips to False.
+# TODO: flip to False once docs/CITATION_POLICY.md cleanup is complete.
+WAVE_0_WARN_ONLY = True
+
+SCAN_ROOTS = ("libs/", "src/", "tests/", "examples/", "port/")
+EXCLUDE_PREFIXES = ("libs/third_party/",)
+SOURCE_EXTS = (".c", ".h", ".cpp", ".hpp", ".cc")
+
+CITATION_RE = re.compile(
+    r"\b[A-Za-z_][A-Za-z0-9_/.-]*\.(?:c|h|cpp|hpp|cc):\d+\b"
+)
+CITES_OK_RE = re.compile(r"CITES-OK:\s*(\S.*?)\s*$")
+MOVED_FROM_RE = re.compile(r"moved from\s+\S+:\d+\s+to\b", re.IGNORECASE)
+DOCS_REFERENCE_RE = re.compile(r"\bdocs/reference/")
+THIRD_PARTY_RE = re.compile(r"\blibs/third_party/")
+
+
+def staged_files() -> list[str]:
+    out = subprocess.run(
+        ["git", "diff", "--cached", "--name-only", "--diff-filter=ACMR"],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout
+    return [line for line in out.splitlines() if line]
+
+
+def all_tracked_files() -> list[str]:
+    out = subprocess.run(
+        ["git", "ls-files"],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout
+    return [line for line in out.splitlines() if line]
+
+
+def is_in_scope(path: str) -> bool:
+    if not path.endswith(SOURCE_EXTS):
+        return False
+    if not any(path.startswith(r) for r in SCAN_ROOTS):
+        return False
+    if any(path.startswith(p) for p in EXCLUDE_PREFIXES):
+        return False
+    return True
+
+
+def find_comment_spans(text: str) -> list[tuple[int, int]]:
+    """Return list of (start, end) byte offsets that lie inside C/C++
+    comments. Block comments and line comments. String literal aware
+    enough to skip `"//foo"` and `"/* */"`."""
+    spans: list[tuple[int, int]] = []
+    i = 0
+    n = len(text)
+    while i < n:
+        ch = text[i]
+        # String literal
+        if ch == '"':
+            i += 1
+            while i < n and text[i] != '"':
+                if text[i] == "\\" and i + 1 < n:
+                    i += 2
+                    continue
+                if text[i] == "\n":
+                    break
+                i += 1
+            i += 1
+            continue
+        if ch == "'":
+            i += 1
+            while i < n and text[i] != "'":
+                if text[i] == "\\" and i + 1 < n:
+                    i += 2
+                    continue
+                if text[i] == "\n":
+                    break
+                i += 1
+            i += 1
+            continue
+        if ch == "/" and i + 1 < n:
+            if text[i + 1] == "/":
+                start = i
+                while i < n and text[i] != "\n":
+                    i += 1
+                spans.append((start, i))
+                continue
+            if text[i + 1] == "*":
+                start = i
+                i += 2
+                while i + 1 < n and not (text[i] == "*" and text[i + 1] == "/"):
+                    i += 1
+                i = min(n, i + 2)
+                spans.append((start, i))
+                continue
+        i += 1
+    return spans
+
+
+def line_of_offset(text: str, offset: int) -> int:
+    return text.count("\n", 0, offset) + 1
+
+
+def line_text(text: str, line_no: int) -> str:
+    lines = text.splitlines()
+    if 1 <= line_no <= len(lines):
+        return lines[line_no - 1]
+    return ""
+
+
+def scan_file(path: Path) -> list[tuple[int, str, str]]:
+    """Return list of (line_no, matched_text, comment_snippet) violations."""
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return []
+    violations: list[tuple[int, str, str]] = []
+    spans = find_comment_spans(text)
+    for start, end in spans:
+        comment = text[start:end]
+        # Per-line check: walk each match, validate against the
+        # specific physical line it sits on (so CITES-OK: on the same
+        # line excuses it).
+        for m in CITATION_RE.finditer(comment):
+            abs_off = start + m.start()
+            line_no = line_of_offset(text, abs_off)
+            matched = m.group(0)
+            line = line_text(text, line_no)
+            # Exemptions
+            if "SPDX-License-Identifier" in line:
+                continue
+            stripped = line.lstrip()
+            if stripped.startswith("#include"):
+                continue
+            if DOCS_REFERENCE_RE.search(matched) or DOCS_REFERENCE_RE.search(line):
+                continue
+            if THIRD_PARTY_RE.search(matched) or THIRD_PARTY_RE.search(line):
+                continue
+            cok = CITES_OK_RE.search(line)
+            if cok and cok.group(1).strip():
+                continue
+            if MOVED_FROM_RE.search(line):
+                continue
+            snippet = line.strip()
+            if len(snippet) > 120:
+                snippet = snippet[:117] + "..."
+            violations.append((line_no, matched, snippet))
+    return violations
+
+
+def main() -> int:
+    repo_root = Path(
+        subprocess.run(
+            ["git", "rev-parse", "--show-toplevel"],
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+    )
+
+    full_scan = "--all" in sys.argv
+    if full_scan:
+        files = all_tracked_files()
+    else:
+        files = staged_files()
+        if not files:
+            files = all_tracked_files()
+            full_scan = True
+
+    files = [f for f in files if is_in_scope(f)]
+
+    total_violations = 0
+    per_file_counts: dict[str, int] = {}
+    for f in files:
+        path = repo_root / f
+        if not path.is_file():
+            continue
+        viols = scan_file(path)
+        if not viols:
+            continue
+        per_file_counts[f] = len(viols)
+        for line_no, matched, snippet in viols:
+            print(
+                f"{f}:{line_no}: line-citation found "
+                f"('{matched}'): {snippet}"
+            )
+            print(
+                "       fix: replace with function/symbol name, "
+                "or add `// CITES-OK: <reason>`"
+            )
+            total_violations += 1
+
+    if total_violations == 0:
+        return 0
+
+    print("", file=sys.stderr)
+    print(
+        f"check_line_citations: {total_violations} violation(s) across "
+        f"{len(per_file_counts)} file(s).",
+        file=sys.stderr,
+    )
+    if WAVE_0_WARN_ONLY:
+        print(
+            "check_line_citations: WAVE 0 -- warn-only, not blocking commit.",
+            file=sys.stderr,
+        )
+        return 0
+    return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

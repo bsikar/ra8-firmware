@@ -472,6 +472,18 @@ REG = (1 << 7) | (3 << 3);        // Which bits? Why?
 - Zero use of `_Static_assert` (use C23 `static_assert`)
 - Zero use of `= {0}` zero-initializers (use C23 `= {}`)
 
+### Comment citations
+
+**In-tree source citations are FORBIDDEN.** Comments must NOT reference files in this repo by line number (e.g. `libs/foo.c:776`). Line numbers go stale on the next reformat. Reference the function or symbol name instead (`internal_rect_below_min`, `ra_dmac::internal_mode_to_dmtmd`). The `scripts/utils/check_line_citations.py` pre-commit gate enforces this.
+
+**External/vendor citations are MANDATORY** for any HAL register access, ISR, or driver path. Cite the source (HUM section, FSP commit hash, RFC, datasheet page) so future readers can verify the implementation against the spec. Examples:
+
+- `/* HUM section 11.2.7 PWPR write-protect register */`
+- `/* FSP r_sci_b/r_sci_b.c @ commit 8b3f2c1 */`
+- `/* RFC 791 section 3.2 IPv4 header layout */`
+
+The `// CITES-OK: <reason>` marker provides a per-line opt-out for unusual cases.
+
 ## NASA Power of 10 Rules (This Project)
 
 The project follows NASA/JPL Power of 10 rules for safety-critical embedded code with one intentional deviation for testability.
