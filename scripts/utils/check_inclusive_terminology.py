@@ -153,7 +153,6 @@ SKIP_FILE_PATTERNS: tuple[str, ...] = (
     "tests/test_ra_i3c.c",
     # SPI test fixtures mirror the FSP r_spi_b master-mode API names.
     "tests/test_ra_spi.c",
-    "tests/test_ra_spi_b.c",
     # SSIE test fixture references the SSICR.MST register field name and
     # the FSP r_ssi_api master/slave role wording verbatim. Renaming
     # would require adding @par MC/DC: blocks to ~50 pre-existing tests
