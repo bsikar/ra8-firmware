@@ -690,20 +690,14 @@ static void test_mcdc_internal_classify_cmd_echo_pair(void)
  * Decision at libs/ra_modem_at/src/ra_modem_at.c
  *   ``while ((i < UINT16_MAX) && (s[i] != '\0'))``
  *
- * - V1: s = "AB" -> at i=0 C1=T, C2=T (loop runs).
- * - V2: s = ""   -> at i=0 C1=T, C2=F (loop exits via C2). Pair (V1,V2)
- *   isolates C2 with C1 held at T.
+ * - V1: s = "AB" -> at i=0 C1=T, C2=T (loop runs and exits via C2 at i=2).
+ * - V2: s = ""   -> at i=0 C1=T, C2=F (loop exits via C2 immediately).
+ *   Pair (V1,V2) isolates C2 with C1 held at T.
+ * - V3: a 65535-byte buffer of non-zero bytes (no embedded NUL until
+ *   index 65535) drives ``i`` to ``UINT16_MAX`` so C1 evaluates F at
+ *   the loop-exit step. Pair (V1,V3) isolates C1 with C2 held at T.
  *
- * C1 cannot be flipped F at runtime in a host test (would require
- * UINT16_MAX bytes of input); the cap is a defensive guard only. The
- * (V1,V2) pair gives full MC/DC for the only condition that varies in
- * practice. N=2 -> aim is N+1=3, but C1 is unreachable so 2 vectors are
- * the documented best-attainable.
- *
- * @par DO-178C 6.4.4.3 rationale:
- * C1 is a static guard against integer overflow that is not reachable
- * at host-test scale; it is exercised by inspection (the loop bound
- * matches the type's max value).
+ * Three vectors = N+1 minimal MC/DC for N=2.
  */
 static void test_mcdc_internal_str_len_pair(void)
 {
@@ -711,6 +705,15 @@ static void test_mcdc_internal_str_len_pair(void)
   TEST_ASSERT_EQ((int32_t)0, (int32_t)ra_modem_at_internal_str_len(""));
   TEST_ASSERT_EQ((int32_t)2, (int32_t)ra_modem_at_internal_str_len("AB"));
   TEST_ASSERT_EQ((int32_t)5, (int32_t)ra_modem_at_internal_str_len("HELLO"));
+
+  /* V3: drive i to UINT16_MAX so C1 ("i < UINT16_MAX") flips to F. */
+  static char s_huge[(size_t)UINT16_MAX + 1U];
+  for (size_t k = 0U; k < (size_t)UINT16_MAX; ++k) {
+    s_huge[k] = 'x';
+  }
+  s_huge[(size_t)UINT16_MAX] = '\0';
+  TEST_ASSERT_EQ((int32_t)UINT16_MAX, (int32_t)ra_modem_at_internal_str_len(s_huge));
+
   TEST_END("modem_at MC/DC: internal_str_len short-circuit");
 }
 
