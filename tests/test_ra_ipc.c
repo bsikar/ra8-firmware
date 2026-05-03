@@ -1331,9 +1331,15 @@ static void test_mcdc_ra_ipc(void)
   volatile uint32_t* sar = ra_ipc_ipcsar();
   volatile uint32_t* par = ra_ipc_ipcpar();
   bool               ok  = false;
-  *sar                   = 0U;
-  *par                   = 0U;
-  ra_ipc_attr_t want_v1  = {.secure = true, .privileged = true};
+  /* Live attribution is read by ra_ipc_get_attribution from sar/par
+   * at bit [k_ra_ipc_attr_shift_ir_base + channel]. To force
+   * live={secure=T, privileged=T} for V1 we set both bits; V2/V3
+   * intentionally mismatch to drive the && decision to F. */
+  const uint32_t live_bit =
+    (uint32_t)1U << ((uint32_t)k_ra_ipc_attr_shift_ir_base + (uint32_t)k_ra_ipc_test_ch_mid);
+  *sar                  = live_bit;
+  *par                  = live_bit;
+  ra_ipc_attr_t want_v1 = {.secure = true, .privileged = true};
   TEST_ASSERT_EQ((int32_t)k_ra_ok,
                  (int32_t)ra_ipc_can_access((uint8_t)k_ra_ipc_test_ch_mid, &want_v1, &ok));
   TEST_ASSERT(ok == true);

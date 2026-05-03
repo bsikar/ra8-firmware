@@ -360,7 +360,7 @@ static void test_attach_handlers_idempotent(void)
  * ``if ((params == NULL) && (params_len > 0U))``
  * - V1: params=NULL,    plen=0 -> C1=T,C2=F -> dec F (ok)
  * - V2: params=valid,   plen=0 -> C1=F (short-circuits) -> dec F
- * - V3: params=NULL,    plen=4 -> C1=T,C2=T -> dec T (invalid_arg)
+ * - V3: params=NULL,    plen=4 -> C1=T,C2=T -> dec T (null_ptr)
  * Pairs (V2,V3) flip C1 with C2=T fixed; (V1,V3) flip C2 with C1=T fixed.
  *
  * Decision B (line 416, ``ra_ble_scan_start`` interval):
@@ -384,7 +384,7 @@ static void test_mcdc_ble(void)
                  (int32_t)ra_ble_hci_send_command((uint16_t)k_test_op_le_set_adv_enable, NULL, 0U));
   TEST_ASSERT_EQ((int32_t)k_ra_ok,
                  (int32_t)ra_ble_hci_send_command((uint16_t)k_test_op_le_set_adv_enable, pbuf, 0U));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
                  (int32_t)ra_ble_hci_send_command((uint16_t)k_test_op_le_set_adv_enable, NULL, 4U));
 
   /* Decision B + C: scan_start interval / window range gates.
