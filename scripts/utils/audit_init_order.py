@@ -49,6 +49,8 @@ RANK_TABLE = {
     "ra_pfs_init": RANK_IOPORT,
     "ra_pfs_route": RANK_IOPORT,
     "ra_gpio_init": RANK_IOPORT,
+    "ra_gpio_output_init": RANK_IOPORT,
+    "ra_gpio_input_init": RANK_IOPORT,
     "ra_port_init": RANK_IOPORT,
     "ra_pin_validator": RANK_IOPORT,
     "ra_time_init": RANK_TIME,
@@ -96,20 +98,49 @@ def is_init_call(symbol: str) -> bool:
     )
 
 
+_MAIN_SIG_RE = re.compile(r"\b(?:int|int32_t|void)\s+main\s*\(")
+
+
 def extract_calls(main_path: Path) -> list[InitCall]:
-    """Walk ``main_path`` and pull every init-style call in source order."""
+    """Walk ``main_path`` and pull every init-style call in source order.
+
+    Only calls whose source position falls inside the body of ``main()``
+    are considered: helper functions defined above ``main`` (like a
+    static ``demo_pins_init``) routinely call ``ra_*_init`` symbols in
+    an order that matches the helper's local logic, not the boot-time
+    sequence the audit cares about. The textual brace-tracker below is
+    intentionally simple -- it works for the project's hand-written
+    ``main()`` style (no nested function defs, no preprocessor games).
+    """
     calls: list[InitCall] = []
     text = main_path.read_text(encoding="ascii", errors="replace")
+    in_main = False
+    depth = 0
     for lineno, line in enumerate(text.splitlines(), start=1):
-        # Skip pure comment lines and string literals are out of scope.
+        # Skip pure comment lines.
         stripped = line.lstrip()
         if stripped.startswith("//") or stripped.startswith("*"):
             continue
-        for match in INIT_CALL_RE.finditer(line):
-            sym = match.group(1)
-            if not is_init_call(sym):
+        if not in_main and _MAIN_SIG_RE.search(line) is not None:
+            in_main = True
+            depth = 0
+        if in_main:
+            for ch in line:
+                if ch == "{":
+                    depth += 1
+                elif ch == "}":
+                    depth -= 1
+                    if depth <= 0:
+                        # Closed main(); stop scanning.
+                        return calls
+            if depth == 0:
+                # Haven't entered the body yet (signature line before '{').
                 continue
-            calls.append(InitCall(name=sym, line=lineno, rank=rank_for(sym)))
+            for match in INIT_CALL_RE.finditer(line):
+                sym = match.group(1)
+                if not is_init_call(sym):
+                    continue
+                calls.append(InitCall(name=sym, line=lineno, rank=rank_for(sym)))
     return calls
 
 
