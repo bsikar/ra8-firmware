@@ -300,6 +300,19 @@ if [[ -f scripts/utils/check_no_ai_attribution.py ]]; then
     fi
 fi
 
+# ---- "Wave N" session-bookkeeping reference gate (strict) ---------
+# Bans "Wave 70", "wave-3", "Wave_43b" style historical session refs
+# from comments / docs. Readers do not care WHEN a fix was found, only
+# WHY. Auto-fixer at scripts/utils/fix_wave_references.py --apply.
+if [[ -f scripts/utils/check_no_wave_references.py ]]; then
+    if ! python3 scripts/utils/check_no_wave_references.py; then
+        echo "[FAIL] check_no_wave_references.py reported issues."
+        echo "       Run: python3 scripts/utils/fix_wave_references.py --apply"
+        echo "       Per-line opt-out: append 'WAVE-OK: <reason>'."
+        error_found=1
+    fi
+fi
+
 # ---- Annotation-attribute enforcement (warn-only, Wave 0) ---------
 # Walks the AST of every TU under libs/, src/, examples/, tests/,
 # port/ via libclang and applies the 19 ra_* annotation rules
