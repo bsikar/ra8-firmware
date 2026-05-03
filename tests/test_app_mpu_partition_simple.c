@@ -17,6 +17,7 @@
 
 #include <stdint.h>
 
+#include "ra8d2_mpu_regs.h"
 #include "ra_err.h"
 #include "ra_mpu.h"
 #include "ra_sim_mmap.h"
@@ -26,13 +27,28 @@ typedef enum : uint32_t {
   k_test_mpu_simple_size     = 32U,
   k_test_mpu_simple_size_bad = 17U, /**< Not a power of two. */
   k_test_mpu_simple_mair0    = 0x000000FFU,
+  k_test_mpu_simple_dregion16 =
+    0x00001000UL, /**< MPU_TYPE.DREGION = 16 (Cortex-M85 silicon value). */
 } test_mpu_simple_const_t;
 
 static uint8_t s_buf[k_test_mpu_simple_size] __attribute__((aligned(32))) = {};
 
+/**
+ * @brief Reset host-side mock MMIO and seed MPU_TYPE.DREGION.
+ *
+ * @details
+ * The host simulator zero-fills the SCB/MPU window on each
+ * ``ra_sim_mmap_reset``. The production silicon ships ``MPU_TYPE.DREGION``
+ * = 16 (Cortex-M85 TRM, "MPU_TYPE"); without seeding that field the
+ * acceptance path in ``ra_mpu_validate_cfg`` would reject every region
+ * configuration as ``region_count > implemented``. We mirror the
+ * sibling ``test_app_threadx_mpu_partition_demo`` helper here so the
+ * golden bring-up vector can succeed on the host.
+ */
 static void reset_world(void)
 {
   ra_sim_mmap_reset();
+  ra_mpu_regs()->TYPE = (uint32_t)k_test_mpu_simple_dregion16;
 }
 
 /**
