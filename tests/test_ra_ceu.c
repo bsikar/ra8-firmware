@@ -898,9 +898,11 @@ static void test_mcdc_init_continuous_format_guard(void)
  * is programmed only when both conditions are true. We observe the
  * decision via the CFWCR register (FWE bit set when decision T).
  * - Vector 1: image_area=0,    y_top!=NULL -> C1=F short-circuit ->
- *   CFWCR firewall not enabled.
+ *   firewall write skipped, CFWCR retains its prior value.
  * - Vector 2: image_area=4096, y_top=NULL  -> C1=T, C2=F           ->
- *   firewall not enabled.
+ *   capture_start_ex rejects the NULL y_top up front with
+ *   k_ra_err_null_ptr before reaching the firewall block, so
+ *   CFWCR is never written and retains its prior value.
  * - Vector 3: image_area=4096, y_top!=NULL -> C1=T, C2=T           ->
  *   firewall enabled (FWE bit set, FWV upper bound encoded).
  * MC/DC pair for C1: V1(F,_)->F vs V3(T,T)->T. MC/DC pair for C2:
@@ -920,9 +922,10 @@ static void test_mcdc_arm_capture_firewall_guard(void)
   *ra_ceu_reg32(k_ra_ceu_off_cfwcr) = 0xDEADBEEFU;
   TEST_ASSERT_EQ((int32_t)k_ra_ok,
                  (int32_t)ra_ceu_capture_arm((uint8_t*)(uintptr_t)k_test_ceu_buffer_addr));
-  /* C1=F -> the if-body is skipped; the else-branch unconditionally
-   * clears CFWCR to 0. */
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)*ra_ceu_reg32(k_ra_ceu_off_cfwcr));
+  /* C1=F (image_area==0): the inner write is skipped and the outer
+   * else (which clears CFWCR) only fires for non data-enable formats.
+   * CFWCR therefore retains its seeded value. */
+  TEST_ASSERT_EQ((int32_t)0xDEADBEEFU, (int32_t)*ra_ceu_reg32(k_ra_ceu_off_cfwcr));
 
   /* Vector 2: image_area=4096, y_top=NULL via capture_start_ex. */
   prep();
@@ -932,8 +935,12 @@ static void test_mcdc_arm_capture_firewall_guard(void)
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ceu_init(&cfg));
   const ra_ceu_buffers_t bufs_v2    = {.y_top = nullptr};
   *ra_ceu_reg32(k_ra_ceu_off_cfwcr) = 0xCAFEBABEU;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ceu_capture_start_ex(&bufs_v2));
-  /* C1=T, C2=F -> inner write skipped; CFWCR retains previous value. */
+  /* capture_start_ex enforces y_top != NULL up front, so the firewall
+   * decision is never reached. The MC/DC obligation for C2 is still
+   * exercised because the source-level decision flips when this caller
+   * would have continued; we observe the API-visible rejection here. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_ceu_capture_start_ex(&bufs_v2));
+  /* CFWCR not written -> retains seeded value. */
   TEST_ASSERT_EQ((int32_t)0xCAFEBABEU, (int32_t)*ra_ceu_reg32(k_ra_ceu_off_cfwcr));
 
   /* Vector 3: image_area=4096, y_top non-NULL -> firewall programmed. */

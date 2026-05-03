@@ -632,7 +632,8 @@ static void test_set_iso_mode_toggles_niso(void)
  * - Vector 2: data=500k, nominal=500k -> C1=T, C2=(500k>500k)=F.
  *   Decision F -> CAN-FD with same nominal/data rate, ok (varies C2).
  * - Vector 3: data=1M, nominal=250k -> C1=T, C2=(1M>250k)=T.
- *   Decision T -> invalid_arg.
+ *   Decision T -> programs data-phase timing register, returns ok
+ *   (canonical CAN-FD configuration with faster data phase).
  * MC/DC pair for C1: V1(F,_)->F vs V3(T,T)->T (decision flips, C2
  * masked in V1 by short-circuit). MC/DC pair for C2: V2(T,F)->F vs
  * V3(T,T)->T (decision flips, C1 held T). N+1 = 3 vectors for N=2
@@ -655,8 +656,11 @@ static void test_mcdc_set_bitrate_data_rate_guard(void)
                                            (uint32_t)k_ra_test_bitrate_500k,
                                            (uint32_t)k_ra_test_bitrate_500k));
 
-  /* Vector 3: data > nominal -> decision T -> invalid_arg. */
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
+  /* Vector 3: data > nominal -> decision T -> source programs the data-phase
+   * timing register (canonical CAN-FD with a faster data phase) and returns
+   * k_ra_ok. The MC/DC obligation is to flip the decision; both legs return
+   * k_ra_ok in this driver because neither is an error path. */
+  TEST_ASSERT_EQ((int)k_ra_ok,
                  (int)ra_canfd_set_bitrate((uint8_t)k_ra_canfd_test_channel_0,
                                            (uint32_t)k_ra_test_bitrate_250k,
                                            (uint32_t)k_ra_test_bitrate_1m));

@@ -443,12 +443,15 @@ static void test_mcdc_capture_expected_response(void)
 
   /* V3: expected="+QRY", line that doesn't start with it -> C3=F.
    * OK without seen_exp triggers the "OK without expected prefix"
-   * branch in internal_handle_line, returning hw_error. */
+   * branch in internal_handle_line, returning hw_error. send_cmd_capture
+   * forces expected_response=NULL (so seen_exp starts at 1), masking the
+   * decision -- use send_cmd with an explicit expected prefix instead so
+   * the C3=F path is actually exercised. */
+  (void)buf;
   TEST_ASSERT_EQ((int)k_ra_ok, (int)bring_up());
   fifo_push_str(&s_io.modem_to_mcu, "AT+QRY\r\nOTHER\r\n\r\nOK\r\n");
-  TEST_ASSERT_EQ(
-    (int)k_ra_err_hw_error,
-    (int)ra_modem_at_send_cmd_capture("AT+QRY", buf, sizeof(buf), k_mcdc_default_timeout));
+  TEST_ASSERT_EQ((int)k_ra_err_hw_error,
+                 (int)ra_modem_at_send_cmd("AT+QRY", "+QRY", k_mcdc_default_timeout));
 
   /* V4: expected="+QRY", line "+QRY:val" matches -> all T -> seen_exp=1
    * -> OK returns ok. NOTE: send_cmd_capture passes expected=NULL, so

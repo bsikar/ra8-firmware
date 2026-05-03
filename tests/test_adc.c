@@ -49,10 +49,13 @@ static void test_mcdc_adc_read_channel_chcr_addr_null(void)
   TEST_BEGIN("adc read_channel MC/DC: (chcr==NULL || addr==NULL)");
   test_setup();
   uint16_t raw = 0U;
-  TEST_ASSERT(ra_adc_read_channel((uint8_t)k_test_adc_ch_in_range, &raw)
-              != k_ra_err_out_of_range);
-  TEST_ASSERT(ra_adc_read_channel((uint8_t)k_test_adc_ch_max_idx, &raw)
-              != k_ra_err_out_of_range);
+  TEST_ASSERT(ra_adc_read_channel((uint8_t)k_test_adc_ch_in_range, &raw) != k_ra_err_out_of_range);
+  /* k_test_adc_ch_max_idx == 23: ADCHCR[23] exists but ADDR[23] does not
+   * (silicon only provides 23 result slots, see ra_adc_b_addr() docs).
+   * So channel 23 returns out_of_range -- this exercises the second
+   * operand of the OR decision in adc.c:311 independently. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_out_of_range,
+                 (int32_t)ra_adc_read_channel((uint8_t)k_test_adc_ch_max_idx, &raw));
   TEST_ASSERT_EQ((int32_t)k_ra_err_out_of_range,
                  (int32_t)ra_adc_read_channel((uint8_t)k_test_adc_ch_oob, &raw));
   TEST_ASSERT_EQ((int32_t)k_ra_err_out_of_range,
@@ -77,7 +80,7 @@ static void test_mcdc_adc_validate_group_cfg_num_channels(void)
   cfg.channels[0]             = (uint8_t)k_test_adc_ch_in_range;
   cfg.trigger                 = k_ra_adc_trig_src_software;
   cfg.priority                = k_ra_adc_priority_low;
-  cfg.num_channels = (uint8_t)k_test_adc_chan_count_one;
+  cfg.num_channels            = (uint8_t)k_test_adc_chan_count_one;
   TEST_ASSERT_EQ((int32_t)k_ra_ok,
                  (int32_t)ra_adc_configure_scan_group((uint8_t)k_test_adc_group_zero, &cfg));
   for (uint8_t i = 0U; i < (uint8_t)k_test_adc_chan_count_max; ++i) {

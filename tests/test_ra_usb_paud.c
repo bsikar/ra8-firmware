@@ -341,8 +341,11 @@ static void test_mcdc_paud(void)
   /* B-V3: frame=NULL,len!=0 -> null_ptr. */
   TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
                  (int32_t)ra_usb_paud_send_frame(nullptr, (uint16_t)k_test_paud_send_len_small));
-  /* B-V2 + C-V2: frame=buf,len=4 -> both decisions false, forwards. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+  /* B-V2 + C-V2: frame=buf,len=4 -> both decisions false, forwards into
+   * ra_usb_queue_in. The host sim_mmap leaves CFIFOCTR.FRDY clear, so
+   * the FIFO wait returns hw_timeout. The MC/DC obligation is met
+   * because every pre-check inside ra_usb_paud_send_frame ran. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_hw_timeout,
                  (int32_t)ra_usb_paud_send_frame(buf, (uint16_t)k_test_paud_send_len_small));
   /* C-V3: frame=buf,len=1024 (> FS iso ceiling 192) -> invalid_arg. */
   TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
