@@ -1531,6 +1531,103 @@ static void test_mcdc_poly1305_msg_len(void)
   TEST_END("rsip poly1305 MC/DC: msg==null && msg_len!=0");
 }
 
+/**
+ * @test test_mcdc_rsa_sign_size_quad
+ *
+ * @par MC/DC:
+ * Decision (libs/ra_hal/src/ra_rsip.c:3092-3093 ra_rsip_rsa_sign):
+ * 4-cond AND-NOT chain:
+ * ``size != 1024 && size != 2048 && size != 3072 && size != 4096``
+ * Short-circuit MC/DC: N+1 = 5 vectors. Each accepted size must produce F at
+ * the position where it short-circuits to F; one out-of-range value drives
+ * all four conditions T -> dec T -> invalid_arg.
+ * - V1: size=1024  -> C1=F short -> dec F (proceeds; downstream may fail)
+ * - V2: size=2048  -> C1=T, C2=F -> dec F
+ * - V3: size=3072  -> C1=T, C2=T, C3=F -> dec F
+ * - V4: size=4096  -> C1=T, C2=T, C3=T, C4=F -> dec F
+ * - V5: size=999   -> all T -> dec T -> invalid_arg (independence anchor for all)
+ */
+static void test_mcdc_rsa_sign_size_quad(void)
+{
+  TEST_BEGIN("rsip rsa_sign MC/DC: 4-cond size selector");
+  prep_running();
+  ra_rsip_key_handle_t key    = {};
+  key.alg                     = (uint32_t)k_ra_rsip_sym_alg_aes128;
+  const uint8_t digest[64]    = {};
+  uint8_t       sig[4096 / 8] = {};
+  /* V1..V4: each accepted size; downstream may fail with non-real key, only
+   * the size-decision branch matters for MC/DC. */
+  (void)ra_rsip_rsa_sign(&key, k_ra_rsip_rsa_1024, digest, sizeof(digest), sig);
+  (void)ra_rsip_rsa_sign(&key, k_ra_rsip_rsa_2048, digest, sizeof(digest), sig);
+  (void)ra_rsip_rsa_sign(&key, k_ra_rsip_rsa_3072, digest, sizeof(digest), sig);
+  (void)ra_rsip_rsa_sign(&key, k_ra_rsip_rsa_4096, digest, sizeof(digest), sig);
+  /* V5: bogus size -> rejected. */
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_invalid_arg,
+    (int32_t)ra_rsip_rsa_sign(&key, (ra_rsip_rsa_size_t)999U, digest, sizeof(digest), sig));
+  TEST_END("rsip rsa_sign MC/DC: 4-cond size selector");
+}
+
+/**
+ * @test test_mcdc_rsa_verify_size_quad
+ *
+ * @par MC/DC:
+ * Same shape as test_mcdc_rsa_sign_size_quad, applied to
+ * ra_rsip_rsa_verify (libs/ra_hal/src/ra_rsip.c:3143-3144). N+1 = 5.
+ */
+static void test_mcdc_rsa_verify_size_quad(void)
+{
+  TEST_BEGIN("rsip rsa_verify MC/DC: 4-cond size selector");
+  prep_running();
+  ra_rsip_key_handle_t key    = {};
+  key.alg                     = (uint32_t)k_ra_rsip_sym_alg_aes128;
+  const uint8_t digest[64]    = {};
+  uint8_t       sig[4096 / 8] = {};
+  (void)ra_rsip_rsa_verify(&key, k_ra_rsip_rsa_1024, digest, sizeof(digest), sig);
+  (void)ra_rsip_rsa_verify(&key, k_ra_rsip_rsa_2048, digest, sizeof(digest), sig);
+  (void)ra_rsip_rsa_verify(&key, k_ra_rsip_rsa_3072, digest, sizeof(digest), sig);
+  (void)ra_rsip_rsa_verify(&key, k_ra_rsip_rsa_4096, digest, sizeof(digest), sig);
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_invalid_arg,
+    (int32_t)ra_rsip_rsa_verify(&key, (ra_rsip_rsa_size_t)999U, digest, sizeof(digest), sig));
+  TEST_END("rsip rsa_verify MC/DC: 4-cond size selector");
+}
+
+/**
+ * @test test_mcdc_hash_validate_shake_digest
+ *
+ * @par MC/DC:
+ * Decision (libs/ra_hal/src/ra_rsip.c:2830 internal_hash_validate, reached
+ * via ra_rsip_hash):
+ * ``alg != shake128 && alg != shake256 && digest_len < n``
+ * 3-cond AND. N+1 = 4 vectors.
+ * - V1: alg=SHA256, digest_len>=n        -> C1=T, C2=T, C3=F -> dec F -> ok
+ * - V2: alg=SHAKE128                     -> C1=F short -> dec F -> ok
+ * - V3: alg=SHAKE256                     -> C1=T, C2=F -> dec F -> ok
+ * - V4: alg=SHA256, digest_len<n         -> C1=T, C2=T, C3=T -> dec T -> err
+ * V1+V4 prove C3 independence; V1+V2 prove C1; V1+V3 prove C2.
+ */
+static void test_mcdc_hash_validate_shake_digest(void)
+{
+  TEST_BEGIN("rsip hash_validate MC/DC: shake bypass + short digest");
+  prep_running();
+  const uint8_t msg[8]     = {0U};
+  uint8_t       d_full[64] = {};
+  /* V1: SHA-256 with digest_len = 32 (== n). */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_rsip_hash(k_ra_rsip_hash_sha256, msg, sizeof(msg), d_full, 32U));
+  /* V2: SHAKE128 with shorter digest -- shake bypass means the size check is skipped. */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_rsip_hash(k_ra_rsip_hash_shake128, msg, sizeof(msg), d_full, 16U));
+  /* V3: SHAKE256 with shorter digest -- still bypassed. */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_rsip_hash(k_ra_rsip_hash_shake256, msg, sizeof(msg), d_full, 16U));
+  /* V4: SHA-256 with too-short digest (< 32). */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_rsip_hash(k_ra_rsip_hash_sha256, msg, sizeof(msg), d_full, 8U));
+  TEST_END("rsip hash_validate MC/DC: shake bypass + short digest");
+}
+
 int32_t main(void)
 {
   test_init_happy();
@@ -1581,6 +1678,9 @@ int32_t main(void)
   test_aes_cipher_mcdc_aead_modes();
   test_mcdc_hmac_init_key_len();
   test_mcdc_poly1305_msg_len();
+  test_mcdc_rsa_sign_size_quad();
+  test_mcdc_rsa_verify_size_quad();
+  test_mcdc_hash_validate_shake_digest();
   (void)fprintf(stderr, "[OK ] test_ra_rsip.c\n");
   return 0;
 }
