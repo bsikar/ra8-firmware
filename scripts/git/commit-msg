@@ -52,6 +52,23 @@ fi
 if echo "${PAYLOAD}" | grep -qiE '\bclaude\.ai\b|\bclaude code\b|\bchatgpt\b|\bcopilot\b|\bcursor\.(sh|com)\b|\bcodeium\b|\bwindsurf\b|\baider\b|\btabnine\b|\bcontinue\.dev\b|\bcody\.dev\b|\bdevin\.ai\b|\breplit ghostwriter\b|\bcodewhisperer\b|\bq developer\b|\bperplexity\.ai\b|\bcline\b'; then
     VIOLATIONS+=("AI tool brand name / domain in message body")
 fi
+# AI-bot email-domain checks (Author lines, Co-Authored-By trailers,
+# bare email mentions). Bot-user-suffix checks catch the GitHub
+# convention `<name>[bot]` that AI assistants use to identify
+# themselves as app-installed accounts.
+AI_EMAIL_DOMAINS='@(anthropic\.com|openai\.com|cursor\.(sh|com|so)|codeium\.com|tabnine\.com|aider\.chat|continue\.dev|sourcegraph\.com|perplexity\.ai|mistral\.ai|huggingface\.co|deepseek\.com|x\.ai|character\.ai|stability\.ai|midjourney\.com|runwayml\.com|suno\.ai|jetbrains-ai\.com)\b'
+if echo "${PAYLOAD}" | grep -qiE "${AI_EMAIL_DOMAINS}"; then
+    VIOLATIONS+=("AI vendor email domain in message")
+fi
+# Any '[bot]' suffix: blocks ALL bot-account authorship, not just AI
+# brand-prefixed ones. Catches github-actions[bot], dependabot[bot],
+# claude[bot], copilot[bot], cursor[bot], etc. uniformly. Per-commit
+# opt-out via 'AI-OK: <reason>' for the rare case where a bot commit
+# is legitimately desired (e.g. a deliberate dependabot SHA bump that
+# the developer is willing to take ownership of).
+if echo "${PAYLOAD}" | grep -qiE '\[bot\]\b'; then
+    VIOLATIONS+=("Bot-account suffix '[bot]' in message (any bot, not just AI)")
+fi
 
 if [[ ${#VIOLATIONS[@]} -eq 0 ]]; then
     exit 0

@@ -145,6 +145,44 @@ RX_COAUTH = re.compile(
     re.IGNORECASE,
 )
 
+# 6b. AI-bot email-address domains and usernames. Matches both
+#     ``Author: ... <foo@anthropic.com>`` and bare email mentions in
+#     prose / commit bodies. The ``[bot]`` user-suffix is the GitHub
+#     convention for app-installed bots (``copilot[bot]``, etc.) and is
+#     a strong signal that the commit was authored by an AI assistant.
+RX_AI_EMAIL = re.compile(
+    r"<?[a-zA-Z0-9._+-]+@("
+    r"anthropic\.com|"
+    r"openai\.com|"
+    r"cursor\.(?:sh|com|so)|"
+    r"codeium\.com|"
+    r"tabnine\.com|"
+    r"aider\.chat|"
+    r"continue\.dev|"
+    r"sourcegraph\.com|"
+    r"perplexity\.ai|"
+    r"mistral\.ai|"
+    r"huggingface\.co|"
+    r"deepseek\.com|"
+    r"x\.ai|"
+    r"character\.ai|"
+    r"stability\.ai|"
+    r"midjourney\.com|"
+    r"runwayml\.com|"
+    r"suno\.ai|"
+    r"replit\.com|"
+    r"jetbrains-ai\.com"
+    r")>?",
+    re.IGNORECASE,
+)
+# Match ANY ``[bot]`` suffix. The GitHub convention is that app-
+# installed accounts append ``[bot]`` to their login name; legitimate
+# CI bots (``github-actions[bot]``, ``dependabot[bot]``) and AI bots
+# (``claude[bot]``, ``copilot[bot]``, ``cursor[bot]``) both use this
+# suffix. Project policy: zero bot authorship. Per-line ``AI-OK:``
+# opt-out is the escape hatch when a bot commit is genuinely desired.
+RX_AI_BOT_USER = re.compile(r"\[bot\]\b")
+
 # 7. ``<verb> by/with/using <AI>`` and similar.
 RX_GENERATED = re.compile(
     rf"\b(?:generated|authored|created|written|refactored|reviewed|coded|implemented)\s+(?:by|with|using)\s+(?:{_AI_BRAND_LIST}|ai)\b",
@@ -178,7 +216,8 @@ def _scan_line(line: str) -> list[str]:
     if tok:
         hits.append(tok)
     for rx in (RX_GPT_BAD, RX_ANTHROPIC, RX_OPENAI, RX_COPILOT,
-               RX_OTHER_BRANDS, RX_COAUTH, RX_GENERATED):
+               RX_OTHER_BRANDS, RX_AI_EMAIL, RX_AI_BOT_USER,
+               RX_COAUTH, RX_GENERATED):
         m = rx.search(line)
         if m:
             hits.append(m.group(0))
