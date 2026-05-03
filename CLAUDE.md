@@ -324,6 +324,44 @@ ra_err_t ra_gpio_output_init(ra_port_t port, uint8_t pin, ra_level_t init_level)
 
 **Placement:** Place `#pragma once` immediately after the file header comment (copyright/license), before any includes or code.
 
+### Annotation contracts
+
+The `RA_*` annotation macros in `libs/ra_core/inc/ra_attributes.h`
+record architectural and safety contracts on individual functions.
+They expand to `__attribute__((annotate("...")))` under clang (so a
+libclang-based checker can read them from the AST) and to a comment-
+only no-op under other toolchains. They produce no codegen.
+
+The full reference -- purpose, enforcement script, and a name-only
+usage example for each macro -- lives in
+[`docs/ANNOTATIONS.md`](docs/ANNOTATIONS.md). Quick index:
+
+| Macro | One-line purpose |
+|-------|------------------|
+| `RA_TEST_HELPER` | Externally-linked symbol callable only from `tests/`. |
+| `RA_INTERNAL` | Marker that a function is intended to be `static`. |
+| `RA_PRIV` | Module-private helper shared across TUs in one library. |
+| `RA_DI_SLOT(role)` | Explicit Dependency Injection seam (mock required). |
+| `RA_NSC_VENEER` | TrustZone S/NS entry-point veneer in `libs/ra_nsc/`. |
+| `RA_HW_REGISTER_ACCESS` | Inline MMIO accessor returning a `volatile` pointer. |
+| `RA_NASA_RULE_3_OK` | Documented exception to NASA P10 Rule 3 (dynamic alloc). |
+| `RA_MCDC_DEACTIVATED(reason)` | MC/DC deactivation; reason text gated by citation policy. |
+| `RA_MAX_STACK(bytes)` | Per-function stack-frame budget (cross-checked via `.su`). |
+| `RA_ISR_SAFE` | Function is callable from interrupt context. |
+| `RA_EXPECTS_LOCK(name)` | Caller must hold the named lock on entry. |
+| `RA_HOST_FRIENDLY` | Safe under `RA_SIMULATOR_MODE` (no unmocked MMIO). |
+| `RA_LATENCY_BUDGET_NS(n)` | Real-time WCET deadline in nanoseconds. |
+| `RA_NO_RECURSION` | NASA P10 Rule 1: no direct or indirect self-call. |
+| `RA_BOUNDED_LOOP(symbol)` | NASA P10 Rule 2: every loop bounded by `symbol`. |
+| `RA_VALIDATES(n)` | NASA P10 Rule 5: at least `n` `RA_CHECK_*` calls. |
+| `RA_OWNS_RESOURCE(kind)` | RAII-style ownership; release on every return path. |
+| `RA_REVIEWED_BY(name)` | Safety-critical reviewer sign-off (rolled into SVR). |
+| `RA_REGISTER_BANK(peripheral)` | Group MMIO accessors by parent peripheral. |
+
+The libclang-based enforcement script that consumes these annotations
+lands in Wave 43b. Until then they are documentation contracts that
+humans (and the citation gate, for `RA_MCDC_DEACTIVATED`) verify.
+
 ### Constants and Macros (RA8D2 C Firmware)
 
 **Strict preference hierarchy:**
