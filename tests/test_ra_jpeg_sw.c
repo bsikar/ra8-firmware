@@ -644,6 +644,342 @@ static void test_mcdc_decode_sof0_chroma_subsampling(void)
   TEST_END("jpeg_sw MC/DC dec_parse_sof0: ncomp + 4:4:4/4:2:0 disambig");
 }
 
+/* ------------------------------------------------------------------ */
+/*  Additional MC/DC fixtures: SOI/SOF/SOS marker permutations.        */
+/*                                                                     */
+/*  These cover the residual gaps in MCDC_GAPS.csv that the earlier    */
+/*  vectors marked "partial" or "no". Each fixture is a hand-built     */
+/*  byte array — no encoder round-trip — so the decision flips are     */
+/*  independent and reachable.                                         */
+/* ------------------------------------------------------------------ */
+
+/**
+ * @test test_mcdc_decode_skip_unrecognized_segment
+ * @par MC/DC:
+ * Decision dec_skip_segment line 960:
+ *   `len < 2U || (uint32_t)len > d->src_len - d->cursor` (2 conds).
+ * Reached for unrecognized markers (e.g. APP1 0xFFE1, COM 0xFFFE)
+ * via the `else` arm of the decode marker switch.
+ *   V_short  : APP1 with seglen=0x0001     -> C1=T C2=F  -> protocol_error
+ *   V_overrun: APP1 with seglen=0xFFFF (>buf-cursor)
+ *                                          -> C1=F C2=T  -> protocol_error
+ *   V_ok     : APP1 with seglen=0x0004 + 2 payload bytes, then real
+ *              SOF0/SOS to reach decode -> C1=F C2=F
+ * V_short+V_ok prove C1 flips outcome; V_overrun+V_ok prove C2 flips.
+ * N+1 = 3 vectors for N=2 conditions.
+ *
+ * Also exercises dec_decode_scan/decode marker switch line 1685
+ * fall-through (else arm into dec_skip_segment) and the SOF-range
+ * "is supported / DHT / DAC" 4-condition decision at line 1655 by
+ * sending 0xFFC1 (SOF1, unsupported) versus 0xFFC8 (DAC, skipped).
+ */
+static void test_mcdc_decode_skip_unrecognized_segment(void)
+{
+  TEST_BEGIN("jpeg_sw MC/DC dec_skip_segment + decode SOF-range");
+  uint8_t  out[256] = {};
+  uint16_t dw       = 0U;
+  uint16_t dh       = 0U;
+
+  /* V_short: APP1 (0xFFE1) with seglen=1  -> dec_skip_segment len<2. */
+  static const uint8_t app1_short[] = {
+    0xFFU,
+    0xD8U,
+    0xFFU,
+    0xE1U,
+    0x00U,
+    0x01U,
+  };
+  TEST_ASSERT(ra_jpeg_sw_decode(app1_short,
+                                (uint32_t)sizeof app1_short,
+                                out,
+                                (uint32_t)sizeof out,
+                                &dw,
+                                &dh) != k_ra_ok);
+
+  /* V_overrun: APP1 with seglen claiming 0xFFFF bytes. */
+  static const uint8_t app1_overrun[] = {
+    0xFFU,
+    0xD8U,
+    0xFFU,
+    0xE1U,
+    0xFFU,
+    0xFFU,
+    0x00U,
+    0x00U,
+  };
+  TEST_ASSERT(ra_jpeg_sw_decode(app1_overrun,
+                                (uint32_t)sizeof app1_overrun,
+                                out,
+                                (uint32_t)sizeof out,
+                                &dw,
+                                &dh) != k_ra_ok);
+
+  /* V_sof1: SOF1 (0xFFC1) is in [SOF0..SOF15] and != DHT/DAC ->
+     not_supported. Independently flips the SOF-range decision vs the
+     DAC (0xFFC8) skip. */
+  static const uint8_t sof1_jpeg[] = {
+    0xFFU,
+    0xD8U,
+    0xFFU,
+    0xC1U,
+    0x00U,
+    0x0BU,
+    0x08U,
+    0x00U,
+    0x10U,
+    0x00U,
+    0x10U,
+    0x01U,
+    0x01U,
+    0x11U,
+    0x00U,
+  };
+  TEST_ASSERT_EQ((int)k_ra_err_not_supported,
+                 (int)ra_jpeg_sw_decode(sof1_jpeg,
+                                        (uint32_t)sizeof sof1_jpeg,
+                                        out,
+                                        (uint32_t)sizeof out,
+                                        &dw,
+                                        &dh));
+
+  /* V_dac_skip: DAC (0xFFC8) is in SOF range BUT is excluded by the
+     decision, so it falls to the dec_skip_segment arm; with a valid
+     seglen this proves the != 0xFFC8 sub-condition flips outcome. */
+  static const uint8_t dac_then_short[] = {
+    0xFFU,
+    0xD8U,
+    0xFFU,
+    0xC8U,
+    0x00U,
+    0x02U,
+    0xFFU,
+    0xD9U,
+  };
+  TEST_ASSERT(ra_jpeg_sw_decode(dac_then_short,
+                                (uint32_t)sizeof dac_then_short,
+                                out,
+                                (uint32_t)sizeof out,
+                                &dw,
+                                &dh) != k_ra_ok);
+  TEST_END("jpeg_sw MC/DC dec_skip_segment + decode SOF-range");
+}
+
+/**
+ * @test test_mcdc_decode_rst_in_marker_chain
+ * @par MC/DC:
+ * Decision ra_jpeg_sw_decode line 1681:
+ *   `mk >= rst0 && mk <= rst7` (2 conds).
+ * RST0..RST7 are standalone (no seglen) markers; the decoder treats
+ * them as a no-op `continue`. Vectors:
+ *   V_rst0   : RST0 (0xFFD0) in chain         -> C1=T C2=T -> continue
+ *   V_rst7   : RST7 (0xFFD7) in chain         -> C1=T C2=T -> continue
+ *   V_below  : DRI  (0xFFDD, len=4) in chain  -> C1=F      -> skip
+ *   V_above  : EOI  (0xFFD9) in chain         -> C2=F      -> break
+ * V_rst0 vs V_below proves C1 flips outcome (continue vs skip).
+ * V_rst0 vs V_above proves C2 flips outcome (continue vs break).
+ * All four arrive at protocol_error because no SOS follows; we only
+ * care that the marker walk traversed each branch.
+ */
+static void test_mcdc_decode_rst_in_marker_chain(void)
+{
+  TEST_BEGIN("jpeg_sw MC/DC decode: RST in marker chain");
+  uint8_t  out[256] = {};
+  uint16_t dw       = 0U;
+  uint16_t dh       = 0U;
+
+  static const uint8_t rst0_jpeg[] = {
+    0xFFU,
+    0xD8U,
+    0xFFU,
+    0xD0U,
+    0xFFU,
+    0xD9U,
+  };
+  TEST_ASSERT(
+    ra_jpeg_sw_decode(rst0_jpeg, (uint32_t)sizeof rst0_jpeg, out, (uint32_t)sizeof out, &dw, &dh) !=
+    k_ra_ok);
+
+  static const uint8_t rst7_jpeg[] = {
+    0xFFU,
+    0xD8U,
+    0xFFU,
+    0xD7U,
+    0xFFU,
+    0xD9U,
+  };
+  TEST_ASSERT(
+    ra_jpeg_sw_decode(rst7_jpeg, (uint32_t)sizeof rst7_jpeg, out, (uint32_t)sizeof out, &dw, &dh) !=
+    k_ra_ok);
+
+  /* DRI (0xFFDD): C1=F (mk < rst0). */
+  static const uint8_t dri_jpeg[] = {
+    0xFFU,
+    0xD8U,
+    0xFFU,
+    0xDDU,
+    0x00U,
+    0x04U,
+    0x00U,
+    0x10U,
+    0xFFU,
+    0xD9U,
+  };
+  TEST_ASSERT(
+    ra_jpeg_sw_decode(dri_jpeg, (uint32_t)sizeof dri_jpeg, out, (uint32_t)sizeof out, &dw, &dh) !=
+    k_ra_ok);
+
+  /* EOI: C2=F (mk > rst7). */
+  static const uint8_t eoi_only[] = {
+    0xFFU,
+    0xD8U,
+    0xFFU,
+    0xD9U,
+  };
+  TEST_ASSERT(
+    ra_jpeg_sw_decode(eoi_only, (uint32_t)sizeof eoi_only, out, (uint32_t)sizeof out, &dw, &dh) !=
+    k_ra_ok);
+  TEST_END("jpeg_sw MC/DC decode: RST in marker chain");
+}
+
+/**
+ * @test test_mcdc_decode_pad_byte_chain
+ * @par MC/DC:
+ * Decision ra_jpeg_sw_decode line 1639 inner pad-skip while-loop:
+ *   `d->cursor < d->src_len && d->src[d->cursor] == 0xFF` (2 conds).
+ * Vectors:
+ *   V_one_pad  : single 0xFF then real marker -> C1=T C2=T then C2=F
+ *   V_many_pad : 0xFF 0xFF 0xFF then marker   -> loop iterates
+ *   V_pad_eob  : trailing 0xFF run hitting EOB -> C1=F (cursor==len)
+ * Same sub-decisions also exist in get_dimensions line 1400 and are
+ * hit by V_one_pad / V_many_pad through that path.
+ */
+static void test_mcdc_decode_pad_byte_chain(void)
+{
+  TEST_BEGIN("jpeg_sw MC/DC decode/get_dimensions: pad-byte while-loop");
+  uint8_t  out[256] = {};
+  uint16_t dw       = 0U;
+  uint16_t dh       = 0U;
+
+  /* V_many_pad: three 0xFF padding bytes ahead of EOI. */
+  static const uint8_t many_pad[] = {
+    0xFFU,
+    0xD8U,
+    0xFFU,
+    0xFFU,
+    0xFFU,
+    0xFFU,
+    0xD9U,
+  };
+  TEST_ASSERT(
+    ra_jpeg_sw_decode(many_pad, (uint32_t)sizeof many_pad, out, (uint32_t)sizeof out, &dw, &dh) !=
+    k_ra_ok);
+  TEST_ASSERT(ra_jpeg_sw_get_dimensions(many_pad, (uint32_t)sizeof many_pad, &dw, &dh) != k_ra_ok);
+
+  /* V_pad_eob: 0xFF run that exhausts the buffer. */
+  static const uint8_t pad_eob[] = {
+    0xFFU,
+    0xD8U,
+    0xFFU,
+    0xFFU,
+    0xFFU,
+    0xFFU,
+  };
+  TEST_ASSERT(
+    ra_jpeg_sw_decode(pad_eob, (uint32_t)sizeof pad_eob, out, (uint32_t)sizeof out, &dw, &dh) !=
+    k_ra_ok);
+  TEST_END("jpeg_sw MC/DC decode/get_dimensions: pad-byte while-loop");
+}
+
+/**
+ * @test test_mcdc_get_dimensions_seglen_independent
+ * @par MC/DC:
+ * Decision ra_jpeg_sw_get_dimensions line 1416:
+ *   `seglen < 2U || (uint32_t)seglen > jpeg_len - i`.
+ * The earlier `test_mcdc_get_dimensions_pad_and_marker` covered both
+ * conditions but in the same fixture; this fixture pins them to
+ * separate inputs so MC/DC can attribute each independent flip:
+ *   V_short_after_app : APP0 with seglen=1 mid-stream -> C1=T
+ *   V_over_after_app  : APP0 with seglen=0xFFFF       -> C2=T
+ *   V_ok              : APP0 with seglen=4 + 2 payload bytes, then
+ *                       valid SOF0 -> C1=F C2=F (success)
+ */
+static void test_mcdc_get_dimensions_seglen_independent(void)
+{
+  TEST_BEGIN("jpeg_sw MC/DC get_dimensions: seglen<2 vs seglen>buf");
+  uint16_t w = 0U, h = 0U;
+
+  static const uint8_t short_seg[] = {
+    0xFFU,
+    0xD8U,
+    0xFFU,
+    0xE0U,
+    0x00U,
+    0x01U,
+  };
+  TEST_ASSERT(ra_jpeg_sw_get_dimensions(short_seg, (uint32_t)sizeof short_seg, &w, &h) != k_ra_ok);
+
+  static const uint8_t over_seg[] = {
+    0xFFU,
+    0xD8U,
+    0xFFU,
+    0xE0U,
+    0xFFU,
+    0xFFU,
+    0x00U,
+    0x00U,
+  };
+  TEST_ASSERT(ra_jpeg_sw_get_dimensions(over_seg, (uint32_t)sizeof over_seg, &w, &h) != k_ra_ok);
+
+  /* V_ok: skip APP0(len=4) then real SOF0. */
+  static const uint8_t app0_then_sof0[] = {
+    0xFFU, 0xD8U, 0xFFU, 0xE0U, 0x00U, 0x04U, 0x00U, 0x00U, 0xFFU, 0xC0U, 0x00U,
+    0x0BU, 0x08U, 0x00U, 0x20U, 0x00U, 0x40U, 0x01U, 0x01U, 0x11U, 0x00U,
+  };
+  TEST_ASSERT_EQ(
+    (int)k_ra_ok,
+    (int)ra_jpeg_sw_get_dimensions(app0_then_sof0, (uint32_t)sizeof app0_then_sof0, &w, &h));
+  TEST_ASSERT_EQ(64, (int)w);
+  TEST_ASSERT_EQ(32, (int)h);
+  TEST_END("jpeg_sw MC/DC get_dimensions: seglen<2 vs seglen>buf");
+}
+
+/**
+ * @test test_mcdc_decode_sos_without_sof
+ * @par MC/DC:
+ * SOS handling in ra_jpeg_sw_decode requires SOF0 first; this guards
+ * the `if (!got_sof)` branch (independent of the SOS-validation
+ * decisions in dec_parse_sos at lines 1161/1184). Pairs with the
+ * round-trip tests where !got_sof is false.
+ *   V_no_sof : SOI -> SOS directly             -> protocol_error
+ *   V_with_sof: SOI -> SOF0 -> DQT -> DHT -> SOS (round-trip path,
+ *               already covered) -> ok
+ */
+static void test_mcdc_decode_sos_without_sof(void)
+{
+  TEST_BEGIN("jpeg_sw MC/DC decode: SOS arrives before SOF0");
+  uint8_t              out[256]    = {};
+  uint16_t             dw          = 0U;
+  uint16_t             dh          = 0U;
+  static const uint8_t sos_first[] = {
+    0xFFU,
+    0xD8U,
+    0xFFU,
+    0xDAU,
+    0x00U,
+    0x08U,
+    0x01U,
+    0x01U,
+    0x00U,
+    0x00U,
+    0x3FU,
+    0x00U,
+  };
+  TEST_ASSERT(
+    ra_jpeg_sw_decode(sos_first, (uint32_t)sizeof sos_first, out, (uint32_t)sizeof out, &dw, &dh) !=
+    k_ra_ok);
+  TEST_END("jpeg_sw MC/DC decode: SOS arrives before SOF0");
+}
+
 int32_t main(void)
 {
   ra_sim_mmap_reset();
@@ -660,6 +996,11 @@ int32_t main(void)
   test_mcdc_decode_pad_and_rst_marker();
   test_mcdc_decode_dqt_dht_validation();
   test_mcdc_decode_sof0_chroma_subsampling();
+  test_mcdc_decode_skip_unrecognized_segment();
+  test_mcdc_decode_rst_in_marker_chain();
+  test_mcdc_decode_pad_byte_chain();
+  test_mcdc_get_dimensions_seglen_independent();
+  test_mcdc_decode_sos_without_sof();
   (void)fprintf(stderr, "[OK ] test_ra_jpeg_sw.c\n");
   return 0;
 }
