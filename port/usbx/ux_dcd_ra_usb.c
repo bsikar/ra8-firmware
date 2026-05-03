@@ -183,20 +183,27 @@ static unsigned int internal_transfer_request(struct UX_SLAVE_TRANSFER_STRUCT* t
     return UX_TRANSFER_ERROR;
   }
 
-  /* DCP / EP0: control responses are driven by the chapter-9 layer
-   * via PID + CCPL. We just ack with the queued data length here. */
+  /* DCP / EP0: split control IN data stage from the no-data status path.
+   * For a control transfer with payload (e.g. GET_DESCRIPTOR) we must
+   * push the bytes via ra_usb_dcp_in_data (which raises PID=BUF without
+   * pulsing CCPL); CCPL is asserted later on the CTSQ status-stage edge
+   * by the bridge's internal_handle_ctrt path. For zero-length control
+   * (e.g. SET_ADDRESS, SET_CONFIGURATION) ra_usb_control_response(true)
+   * sets PID=BUF and pulses CCPL, completing the status stage. */
   if (pipe == 0U) {
-    if (ra_usb_control_response(s_dcd.speed, true) != k_ra_ok) {
-      return UX_TRANSFER_ERROR;
-    }
     if (tr->ux_slave_transfer_request_in_transfer_length != 0U &&
         tr->ux_slave_transfer_request_data_pointer != nullptr) {
       const uint16_t len = (uint16_t)tr->ux_slave_transfer_request_in_transfer_length;
-      if (ra_usb_queue_in(s_dcd.speed, 0U, tr->ux_slave_transfer_request_data_pointer, len) !=
-          k_ra_ok) {
+      if (ra_usb_dcp_in_data(s_dcd.speed,
+                             tr->ux_slave_transfer_request_data_pointer,
+                             len) != k_ra_ok) {
         return UX_TRANSFER_ERROR;
       }
       tr->ux_slave_transfer_request_actual_length = len;
+      return UX_SUCCESS;
+    }
+    if (ra_usb_control_response(s_dcd.speed, true) != k_ra_ok) {
+      return UX_TRANSFER_ERROR;
     }
     return UX_SUCCESS;
   }
