@@ -42,12 +42,14 @@
  * @brief Indices into ::s_ra_sim_regions.
  */
 typedef enum : uint8_t {
-  k_ra_sim_region_peri  = 0, /**< Peripheral bus 0x40000000.       */
-  k_ra_sim_region_core  = 1, /**< ARM SCB / MPU 0xE0000000.        */
-  k_ra_sim_region_mram  = 2, /**< MRAM calibration 0x02C00000.     */
-  k_ra_sim_region_sram  = 3, /**< SRAM 0x22000000.                 */
-  k_ra_sim_region_sdram = 4, /**< SDRAM framebuffers 0x68000000.  */
-  k_ra_sim_region_count = 5,
+  k_ra_sim_region_peri       = 0, /**< Peripheral bus 0x40000000.       */
+  k_ra_sim_region_core       = 1, /**< ARM SCB / MPU 0xE0000000.        */
+  k_ra_sim_region_mram       = 2, /**< MRAM calibration 0x02C00000.     */
+  k_ra_sim_region_sram       = 3, /**< SRAM 0x22000000.                 */
+  k_ra_sim_region_sdram      = 4, /**< SDRAM framebuffers 0x68000000.  */
+  k_ra_sim_region_code_mram  = 5, /**< Code MRAM 0x02000000 (1 MiB).    */
+  k_ra_sim_region_extra_mram = 6, /**< Extra MRAM 0x27000000 (64 KiB). */
+  k_ra_sim_region_count      = 7,
 } ra_sim_region_id_t;
 
 /**
@@ -66,19 +68,23 @@ typedef struct {
  * base plus any future driver without revisiting this list.
  */
 enum : size_t {
-  k_ra_sim_peri_size  = 0x00800000U, /**< 8 MiB over the peri bus. */
-  k_ra_sim_core_size  = 0x00100000U, /**< 1 MiB SCB/MPU window.    */
-  k_ra_sim_mram_size  = 0x00100000U, /**< 1 MiB MRAM span.         */
-  k_ra_sim_sram_size  = 0x00200000U, /**< 2 MiB SRAM span.         */
-  k_ra_sim_sdram_size = 0x00100000U, /**< 1 MiB SDRAM head.        */
+  k_ra_sim_peri_size       = 0x00800000U, /**< 8 MiB over the peri bus. */
+  k_ra_sim_core_size       = 0x00100000U, /**< 1 MiB SCB/MPU window.    */
+  k_ra_sim_mram_size       = 0x00100000U, /**< 1 MiB MRAM span.         */
+  k_ra_sim_sram_size       = 0x00200000U, /**< 2 MiB SRAM span.         */
+  k_ra_sim_sdram_size      = 0x00100000U, /**< 1 MiB SDRAM head.        */
+  k_ra_sim_code_mram_size  = 0x00100000U, /**< 1 MiB code MRAM (HUM 59.1 p 3543). */
+  k_ra_sim_extra_mram_size = 0x00010000U, /**< 64 KiB extra MRAM head.  */
 };
 
 enum : uintptr_t {
-  k_ra_sim_peri_base  = 0x40000000UL,
-  k_ra_sim_core_base  = 0xE0000000UL,
-  k_ra_sim_mram_base  = 0x02C00000UL,
-  k_ra_sim_sram_base  = 0x22000000UL,
-  k_ra_sim_sdram_base = 0x68000000UL,
+  k_ra_sim_peri_base       = 0x40000000UL,
+  k_ra_sim_core_base       = 0xE0000000UL,
+  k_ra_sim_mram_base       = 0x02C00000UL,
+  k_ra_sim_sram_base       = 0x22000000UL,
+  k_ra_sim_sdram_base      = 0x68000000UL,
+  k_ra_sim_code_mram_base  = 0x02000000UL, /**< Code MRAM (matches k_ra_flash_code_start). */
+  k_ra_sim_extra_mram_base = 0x27000000UL, /**< Extra MRAM (matches k_ra_flash_extra_start). */
 };
 
 static const ra_sim_region_t s_ra_sim_regions[k_ra_sim_region_count] = {
@@ -87,6 +93,8 @@ static const ra_sim_region_t s_ra_sim_regions[k_ra_sim_region_count] = {
   {.base = (uintptr_t)k_ra_sim_mram_base, .size = (size_t)k_ra_sim_mram_size},
   {.base = (uintptr_t)k_ra_sim_sram_base, .size = (size_t)k_ra_sim_sram_size},
   {.base = (uintptr_t)k_ra_sim_sdram_base, .size = (size_t)k_ra_sim_sdram_size},
+  {.base = (uintptr_t)k_ra_sim_code_mram_base, .size = (size_t)k_ra_sim_code_mram_size},
+  {.base = (uintptr_t)k_ra_sim_extra_mram_base, .size = (size_t)k_ra_sim_extra_mram_size},
 };
 
 static uint8_t s_ra_sim_mapped = 0U;
