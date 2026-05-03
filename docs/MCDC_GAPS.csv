@@ -23,10 +23,6 @@ libs/ra_epub/src/ra_epub_xml_shim.cpp,173,2,(file scope),if (manifest == nullptr
 libs/ra_epub/src/ra_epub_xml_shim.cpp,179,2,(file scope),"if (item_id != nullptr && std::strcmp(item_id, id) == 0) {",partial,false,
 libs/ra_epub/src/ra_epub_xml_shim.cpp,197,2,(file scope),"if (props != nullptr && std::strstr(props, ""cover-image"") != nullptr) {",partial,false,
 libs/ra_epub/src/ra_epub_xml_shim.cpp,225,3,(file scope),"if (meta_name != nullptr && meta_content != nullptr && std::strcmp(meta_name, ""cover"") == 0) {",no,false,
-libs/ra_epub/src/ra_epub_xml_shim.cpp,241,2,(file scope),if (xml_bytes == nullptr || out == nullptr) {,no,false,
-libs/ra_epub/src/ra_epub_xml_shim.cpp,268,2,(file scope),if (full_path == nullptr || full_path[0] == '\0') {,no,false,
-libs/ra_epub/src/ra_epub_xml_shim.cpp,278,2,(file scope),if (xml_bytes == nullptr || book == nullptr) {,no,false,
-libs/ra_epub/src/ra_epub_xml_shim.cpp,314,2,(file scope),if (manifest == nullptr || spine == nullptr) {,no,false,
 libs/ra_fs/src/ra_fs_fat.c,939,2,priv_path_to_83,if (path == NULL || out11 == NULL) {,no,true,"TU-local static helper `priv_path_to_83` -- defensive NULL guard duplicates the public-API entry-point check, which has already rejected NULL on every reachable call path."
 libs/ra_fs/src/ra_fs_fat.c,994,3,priv_83_to_str,if (j > 0 && (uint8_t)out12[0] == k_dir_marker_kanji_e5 && in11[0] == k_dir_marker_kanji_e5) {,no,true,"Annotated deactivation: 3-condition AND on Shift-JIS kanji-escape directory entry; only reachable from a kanji-named FAT image, none of which exist in the test corpus."
 libs/ra_fs/src/ra_fs_fat.c,1283,2,priv_free_chain,while (cur >= k_cluster_first_data && (cur - k_cluster_first_data) < m->count_of_clusters) {,no,true,Annotated deactivation: loop bound; `cur < k_cluster_first_data` only on a corrupt FAT chain (the first-cluster reservation 0/1 is enforced at allocation).
@@ -72,20 +68,15 @@ libs/ra_hal/src/ra_jpeg_sw.c,1434,4,dec_parse_sos,if (mk >= 0xFFC0U && mk <= 0xF
 libs/ra_hal/src/ra_jpeg_sw.c,1655,4,dec_decode_scan,} else if (mk >= 0xFFC1U && mk <= 0xFFCFU && mk != (uint16_t)k_ra_jpeg_marker_dht &&,partial,false,
 libs/ra_hal/src/ra_lvd.c,494,2,internal_validate_cfg,if ((cfg->hysteresis == k_ra_lvd_hysteresis_hvd) &&,partial,false,
 libs/ra_hal/src/ra_lvd.c,533,2,internal_compose_cr0,if ((cfg->response == k_ra_lvd_response_reset) ||,partial,false,
-libs/ra_hal/src/ra_mipi_dsi.c,570,2,internal_ra_mipi_dsi_validate_cmd,if ((cmd->tx_len > 0U) && (cmd->p_tx_buffer == nullptr)) {,no,false,
-libs/ra_hal/src/ra_mipi_dsi.c,828,2,internal_check_link_state,if (cmd->aux_operation && ((link & k_ra_mipi_dsi_link_vrun) != 0U)) {,no,false,
 libs/ra_hal/src/ra_mipi_dsi.c,859,2,internal_check_link_state,const uintptr_t buf_addr = (cmd->bta == k_ra_mipi_dsi_bta_read) || (cmd->p_rx_buffer != nullptr),partial,false,
-libs/ra_hal/src/ra_mipi_dsi.c,1040,2,internal_send_stage_and_pulse,if (((lanes & k_ra_mipi_dsi_lane_clock) != 0U) && s_clock_lanes_in_ulps) {,partial,false,
 libs/ra_hal/src/ra_mipi_dsi.c,1453,2,ra_mipi_dsi_dispatch_receive,if ((s_pending_rx_buffer != nullptr) && (s_pending_rx_len > 0U)) {,partial,false,
 libs/ra_hal/src/ra_mipi_phy.c,1139,3,internal_mipi_phy_write_timing,if ((tbl[i].mode == mode_flag) && (tbl[i].pclka == pclka) && (tbl[i].rate_max >= rate_mbps)) {,partial,false,
 libs/ra_hal/src/ra_rmac.c,1565,2,ra_rmac_phy_auto_neg_start,if (out_link->up && ((bmsr & (uint16_t)k_ra_rmac_phy_bmsr_an_done) != 0U)) {,no,false,
 libs/ra_hal/src/ra_rmac_phy.c,352,2,ra_rmac_phy_link_status_get,if ((err == k_ra_ok) && ((msr & k_ra_rmac_phy_msr_1000full) != 0U)) {,no,false,
 libs/ra_hal/src/ra_rmac_phy.c,356,2,ra_rmac_phy_link_status_get,if ((err == k_ra_ok) && ((msr & k_ra_rmac_phy_msr_1000half) != 0U)) {,no,false,
-libs/ra_hal/src/ra_rsip.c,2264,4,internal_aes_alg_byte,if (((mode == k_ra_rsip_aes_mode_ecb) || (mode == k_ra_rsip_aes_mode_cbc) ||,partial,false,
 libs/ra_hal/src/ra_rsip.c,2958,2,internal_hash_pull_digest,if ((msg == nullptr) && (msg_len != 0U)) {,no,true,Defensive null+len contract: (ptr == NULL) && (len != 0) is rejected upstream by the public-API @pre clause.
 libs/ra_hal/src/ra_rsip.c,3921,2,internal_kw_pull_handle,if ((label == nullptr) && (label_len != 0U)) {,no,true,Defensive null+len contract: (ptr == NULL) && (len != 0) is rejected upstream by the public-API @pre clause.
 libs/ra_hal/src/ra_rsip.c,3924,2,internal_kw_pull_handle,if ((salt == nullptr) && (salt_len != 0U)) {,no,true,Defensive null+len contract: (ptr == NULL) && (len != 0) is rejected upstream by the public-API @pre clause.
-libs/ra_hal/src/ra_rsip.c,3931,4,internal_kw_pull_handle,if (((op == k_ra_rsip_kdf_op_hkdf_sha256) || (op == k_ra_rsip_kdf_op_hkdf_sha384) ||,partial,false,
 libs/ra_hal/src/ra_spi_b.c,714,2,internal_apply_bit_width,if ((tx == nullptr) && (rx == nullptr)) {,no,false,
 libs/ra_hal/src/ra_usb_cdc.c,185,2,internal_apply_line_coding,if ((data == nullptr) || (len < k_ra_cdc_line_coding_len)) {,no,false,
 libs/ra_hal/src/ra_usb_hmsc.c,1274,3,internal_normalise_xfer_err,if ((err == k_ra_ok) || (err == k_ra_err_no_data) || (err == k_ra_err_hw_timeout)) {,no,false,
