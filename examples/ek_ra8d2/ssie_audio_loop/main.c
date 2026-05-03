@@ -114,6 +114,9 @@ static void ssie_loop_setup_or_halt(void)
   if (ra_cgc_get_clock_hz(k_ra_clock_id_pclka, &pclka_hz) != k_ra_ok) {
     ssie_loop_panic_halt();
   }
+  if (ra_mstp_init() != k_ra_ok) {
+    ssie_loop_panic_halt();
+  }
   if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
     ssie_loop_panic_halt();
   }
@@ -128,9 +131,6 @@ static void ssie_loop_setup_or_halt(void)
     .pclk_hz   = pclka_hz,
   };
   if (ra_sci_init((uint8_t)k_ssie_loop_sci_channel, &sci_cfg) != k_ra_ok) {
-    ssie_loop_panic_halt();
-  }
-  if (ra_mstp_init() != k_ra_ok) {
     ssie_loop_panic_halt();
   }
 }

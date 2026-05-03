@@ -99,6 +99,9 @@ static void eth_loopback_setup_or_halt(void)
   if (ra_cgc_get_clock_hz(k_ra_clock_id_pclka, &pclka_hz) != k_ra_ok) {
     eth_loopback_panic_halt();
   }
+  if (ra_mstp_init() != k_ra_ok) {
+    eth_loopback_panic_halt();
+  }
   if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
     eth_loopback_panic_halt();
   }
@@ -113,9 +116,6 @@ static void eth_loopback_setup_or_halt(void)
     .pclk_hz   = pclka_hz,
   };
   if (ra_sci_init((uint8_t)k_eth_loopback_sci_channel, &sci_cfg) != k_ra_ok) {
-    eth_loopback_panic_halt();
-  }
-  if (ra_mstp_init() != k_ra_ok) {
     eth_loopback_panic_halt();
   }
 }
