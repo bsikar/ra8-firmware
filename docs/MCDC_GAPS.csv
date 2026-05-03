@@ -1,8 +1,5 @@
 source_file,line,condition_count,function_name,decision_excerpt,covered,deactivated,deactivation_rationale
-libs/ra_ble_host/src/ra_ble_att.c,385,2,internal_handle_find_info,if ((start == 0U) || (start > end)) {,no,false,
-libs/ra_ble_host/src/ra_ble_att.c,404,2,internal_handle_find_info,if ((a->handle < start) || (a->handle > end)) {,partial,false,
-libs/ra_ble_host/src/ra_ble_att.c,492,2,internal_handle_read_by_type,if ((a->handle < start) || (a->handle > end)) {,partial,false,
-libs/ra_ble_host/src/ra_ble_att.c,658,2,internal_handle_read,} else if ((a->kind == k_attr_kind_char_value) && (a->value != NULL)) {,no,false,
+libs/ra_ble_host/src/ra_ble_att.c,658,2,internal_handle_read,} else if ((a->kind == k_attr_kind_char_value) && (a->value != NULL)) {,partial,false,
 libs/ra_ble_host/src/ra_ble_gatt.c,480,2,ra_ble_host_gatt_set_value,if ((len > 0U) && (a->value != NULL)) {,partial,false,
 libs/ra_ble_host/src/ra_ble_gatt.c,538,2,ra_ble_host_gatt_notify,if ((decl == NULL) || ((decl->props & (uint8_t)k_ra_ble_host_char_prop_notify) == 0U)) {,partial,false,
 libs/ra_ble_host/src/ra_ble_gatt.c,569,2,ra_ble_host_gatt_notify,if ((value_len > 0U) && (a->value != NULL)) {,partial,false,
@@ -68,8 +65,6 @@ libs/ra_hal/src/ra_usb_cdc.c,185,2,internal_apply_line_coding,if ((data == nullp
 libs/ra_hal/src/ra_usb_hmsc.c,1274,3,internal_normalise_xfer_err,if ((err == k_ra_ok) || (err == k_ra_err_no_data) || (err == k_ra_err_hw_timeout)) {,no,false,
 libs/ra_hal/src/ra_vin.c,348,2,internal_mc_rmw,if (((mc_now & k_ra_vin_mc_me) != 0UL) || ((fc_now & k_ra_vin_fc_cc) != 0UL)) {,partial,false,
 libs/ra_modem_at/src/ra_modem_at.c,126,2,ra_modem_at_internal_str_len,while ((i < UINT16_MAX) && (s[i] != '\0')) {,partial,true,Annotated deactivation: 64KB-bound is a defensive watchdog; no input string in the project's documented call sites approaches UINT16_MAX bytes.
-libs/ra_modem_at/src/ra_modem_at.c,573,3,internal_effective_timeout,if ((expected_response != nullptr) && (expected_response[0] != '\0') &&,partial,false,
-libs/ra_modem_at/src/ra_modem_at.c,664,2,internal_pump_one,if ((capture != nullptr) && (capture_len > 0U)) {,partial,false,
 libs/ra_net/src/ra_net_arp.c,154,2,arp_insert,"if (s->arp[i].timestamp_ms != 0U && memcmp(s->arp[i].ip.bytes, ip->bytes, 4U) == 0) {",no,false,
 libs/ra_net/src/ra_net_udp.c,539,2,ra_net_udp_internal_dns_consume_response,if (pos < dlen && dns[pos] == 0U) {,partial,false,
 libs/ra_net/src/ra_net_udp.c,554,2,ra_net_udp_internal_dns_consume_response,while (pos < dlen && dns[pos] != 0U) {,no,false,
