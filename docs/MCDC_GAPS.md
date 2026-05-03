@@ -15,13 +15,13 @@ Live audit of compound boolean decisions reported by `llvm-cov show --show-mcdc`
 
 - Source files with at least one decision: **93**
 - Total compound decisions in scope: **538**
-- Decisions at 100% MC/DC (`yes`): **423**
-- Decisions partially covered (`partial`): **64**
-- Decisions fully uncovered (`no`): **51**
-- Coverage rate (yes / total): **78.62%**
+- Decisions at 100% MC/DC (`yes`): **424**
+- Decisions partially covered (`partial`): **65**
+- Decisions fully uncovered (`no`): **49**
+- Coverage rate (yes / total): **78.81%**
 - Deactivated gap conditions (DO-178C 6.4.4.3): **27**
 - Reachable-condition denominator (total - deactivated): **511**
-- **Reachable MC/DC rate**: **82.78%** -- this is the gate threshold (100% required).
+- **Reachable MC/DC rate**: **82.97%** -- this is the gate threshold (100% required).
 
 See `docs/MCDC_DEACTIVATIONS.md` for the per-condition deactivation rationale catalog.
 
@@ -30,8 +30,8 @@ See `docs/MCDC_DEACTIVATIONS.md` for the per-condition deactivation rationale ca
 | File | Line | Conds | Function | Excerpt | Status |
 |------|-----:|------:|----------|---------|--------|
 | libs/ra_ble_host/src/ra_ble_att.c | 385 | 2 | internal_handle_find_info | `if ((start == 0U) \|\| (start > end)) {` | no |
-| libs/ra_ble_host/src/ra_ble_att.c | 404 | 2 | internal_handle_find_info | `if ((a->handle < start) \|\| (a->handle > end)) {` | no |
-| libs/ra_ble_host/src/ra_ble_att.c | 492 | 2 | internal_handle_read_by_type | `if ((a->handle < start) \|\| (a->handle > end)) {` | no |
+| libs/ra_ble_host/src/ra_ble_att.c | 404 | 2 | internal_handle_find_info | `if ((a->handle < start) \|\| (a->handle > end)) {` | partial |
+| libs/ra_ble_host/src/ra_ble_att.c | 492 | 2 | internal_handle_read_by_type | `if ((a->handle < start) \|\| (a->handle > end)) {` | partial |
 | libs/ra_ble_host/src/ra_ble_att.c | 658 | 2 | internal_handle_read | `} else if ((a->kind == k_attr_kind_char_value) && (a->value != NULL)) {` | no |
 | libs/ra_ble_host/src/ra_ble_gatt.c | 480 | 2 | ra_ble_host_gatt_set_value | `if ((len > 0U) && (a->value != NULL)) {` | partial |
 | libs/ra_ble_host/src/ra_ble_gatt.c | 538 | 2 | ra_ble_host_gatt_notify | `if ((decl == NULL) \|\| ((decl->props & (uint8_t)k_ra_ble_host_char_prop_noti...` | partial |
@@ -80,7 +80,6 @@ See `docs/MCDC_DEACTIVATIONS.md` for the per-condition deactivation rationale ca
 | libs/ra_hal/src/ra_jpeg_sw.c | 1655 | 4 | dec_decode_scan | `} else if (mk >= 0xFFC1U && mk <= 0xFFCFU && mk != (uint16_t)k_ra_jpeg_marker...` | partial |
 | libs/ra_hal/src/ra_lvd.c | 494 | 2 | internal_validate_cfg | `if ((cfg->hysteresis == k_ra_lvd_hysteresis_hvd) &&` | partial |
 | libs/ra_hal/src/ra_lvd.c | 533 | 2 | internal_compose_cr0 | `if ((cfg->response == k_ra_lvd_response_reset) \|\|` | partial |
-| libs/ra_hal/src/ra_mipi_dsi.c | 859 | 2 | internal_check_link_state | `const uintptr_t buf_addr = (cmd->bta == k_ra_mipi_dsi_bta_read) \|\| (cmd->p_...` | partial |
 | libs/ra_hal/src/ra_mipi_dsi.c | 1453 | 2 | ra_mipi_dsi_dispatch_receive | `if ((s_pending_rx_buffer != nullptr) && (s_pending_rx_len > 0U)) {` | partial |
 | libs/ra_hal/src/ra_mipi_phy.c | 1139 | 3 | internal_mipi_phy_write_timing | `if ((tbl[i].mode == mode_flag) && (tbl[i].pclka == pclka) && (tbl[i].rate_max...` | partial |
 | libs/ra_hal/src/ra_rmac.c | 1565 | 2 | ra_rmac_phy_auto_neg_start | `if (out_link->up && ((bmsr & (uint16_t)k_ra_rmac_phy_bmsr_an_done) != 0U)) {` | no |
@@ -89,7 +88,8 @@ See `docs/MCDC_DEACTIVATIONS.md` for the per-condition deactivation rationale ca
 | libs/ra_hal/src/ra_spi_b.c | 714 | 2 | internal_apply_bit_width | `if ((tx == nullptr) && (rx == nullptr)) {` | no |
 | libs/ra_hal/src/ra_usb_cdc.c | 185 | 2 | internal_apply_line_coding | `if ((data == nullptr) \|\| (len < k_ra_cdc_line_coding_len)) {` | no |
 | libs/ra_hal/src/ra_usb_hmsc.c | 1274 | 3 | internal_normalise_xfer_err | `if ((err == k_ra_ok) \|\| (err == k_ra_err_no_data) \|\| (err == k_ra_err_hw_...` | no |
-| ... | | | | *(28 more rows in CSV)* | |
+| libs/ra_hal/src/ra_vin.c | 348 | 2 | internal_mc_rmw | `if (((mc_now & k_ra_vin_mc_me) != 0UL) \|\| ((fc_now & k_ra_vin_fc_cc) != 0UL...` | partial |
+| ... | | | | *(27 more rows in CSV)* | |
 
 ## Deactivated gaps (DO-178C 6.4.4.3 exempted)
 
@@ -138,7 +138,7 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra_reflow_layout | 13 | 8 | 4 | 1 |
 | ra_modem_at | 12 | 7 | 4 | 1 |
 | ra_fs_fat | 20 | 16 | 1 | 3 |
-| ra_ble_att | 5 | 1 | 0 | 4 |
+| ra_ble_att | 5 | 1 | 2 | 2 |
 | ra_reflow_xml_shim | 4 | 0 | 2 | 2 |
 | ra_rsip | 16 | 13 | 0 | 3 |
 | ra_epub_chapter | 13 | 10 | 2 | 1 |
@@ -147,7 +147,6 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra_ble_gatt | 11 | 8 | 3 | 0 |
 | ra_net_udp | 9 | 6 | 2 | 1 |
 | ra_iic_b | 7 | 4 | 2 | 1 |
-| ra_mipi_dsi | 22 | 20 | 2 | 0 |
 | ra_ble | 8 | 6 | 0 | 2 |
 | ra_ota | 8 | 6 | 1 | 1 |
 | ra_usb_pal | 8 | 6 | 2 | 0 |
@@ -158,6 +157,7 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra_eth | 4 | 2 | 2 | 0 |
 | ra_dmac | 3 | 1 | 1 | 1 |
 | ra_rmac_phy | 3 | 1 | 0 | 2 |
+| ra_mipi_dsi | 22 | 21 | 1 | 0 |
 | ra_mipi_phy | 22 | 21 | 1 | 0 |
 | ra_vin | 14 | 13 | 1 | 0 |
 | ra_spi_b | 9 | 8 | 0 | 1 |
@@ -232,10 +232,10 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra_jpeg_sw | 6 | 9 | 9 | 24 |
 | ra_epub_xml_shim | 5 | 3 | 4 | 12 |
 | ra_flash | 4 | 3 | 13 | 20 |
-| ra_ble_att | 4 | 0 | 1 | 5 |
 | ra_fs_fat | 3 | 1 | 16 | 20 |
 | ra_ble_l2cap | 3 | 0 | 9 | 12 |
 | ra_rsip | 3 | 0 | 13 | 16 |
+| ra_ble_att | 2 | 2 | 1 | 5 |
 | ra_reflow_xml_shim | 2 | 2 | 0 | 4 |
 | ra_ble | 2 | 0 | 6 | 8 |
 | ra_rmac_phy | 2 | 0 | 1 | 3 |
