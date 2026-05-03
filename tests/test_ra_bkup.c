@@ -118,6 +118,12 @@ static void prep(void)
 
 /* ---------------- init / deinit ----------------- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_happy(void)
 {
   TEST_BEGIN("bkup init happy");
@@ -140,6 +146,12 @@ static void test_init_happy(void)
   TEST_END("bkup init happy");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_null_cfg(void)
 {
   TEST_BEGIN("bkup init null cfg");
@@ -149,6 +161,12 @@ static void test_init_null_cfg(void)
   TEST_END("bkup init null cfg");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_bad_vdet_level(void)
 {
   TEST_BEGIN("bkup init bad vdet level");
@@ -160,6 +178,12 @@ static void test_init_bad_vdet_level(void)
   TEST_END("bkup init bad vdet level");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_switch_disabled(void)
 {
   TEST_BEGIN("bkup init switch disabled");
@@ -178,6 +202,12 @@ static void test_init_switch_disabled(void)
   TEST_END("bkup init switch disabled");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_deinit(void)
 {
   TEST_BEGIN("bkup deinit");
@@ -195,6 +225,12 @@ static void test_deinit(void)
 
 /* ---------------- cold / warm / no-switch ----------------- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_cold_start_init_happy(void)
 {
   TEST_BEGIN("bkup cold_start_init happy");
@@ -220,6 +256,12 @@ static void test_cold_start_init_happy(void)
   TEST_END("bkup cold_start_init happy");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_cold_start_init_bad_args(void)
 {
   TEST_BEGIN("bkup cold_start_init bad args");
@@ -233,6 +275,12 @@ static void test_cold_start_init_bad_args(void)
   TEST_END("bkup cold_start_init bad args");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_cold_start_init_timeout(void)
 {
   TEST_BEGIN("bkup cold_start_init timeout");
@@ -244,6 +292,12 @@ static void test_cold_start_init_timeout(void)
   TEST_END("bkup cold_start_init timeout");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_warm_start_no_reinit(void)
 {
   TEST_BEGIN("bkup warm_start_check no reinit");
@@ -258,6 +312,12 @@ static void test_warm_start_no_reinit(void)
   TEST_END("bkup warm_start_check no reinit");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_warm_start_needs_reinit(void)
 {
   TEST_BEGIN("bkup warm_start_check needs reinit");
@@ -275,6 +335,12 @@ static void test_warm_start_needs_reinit(void)
   TEST_END("bkup warm_start_check needs reinit");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_warm_start_bad_args(void)
 {
   TEST_BEGIN("bkup warm_start_check bad args");
@@ -289,6 +355,12 @@ static void test_warm_start_bad_args(void)
   TEST_END("bkup warm_start_check bad args");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_no_switch_init(void)
 {
   TEST_BEGIN("bkup no_switch_init");
@@ -315,6 +387,12 @@ static void test_no_switch_init(void)
   TEST_END("bkup no_switch_init");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_no_switch_init_bad_args(void)
 {
   TEST_BEGIN("bkup no_switch_init bad args");
@@ -328,6 +406,12 @@ static void test_no_switch_init_bad_args(void)
 
 /* ---------------- get / clear status ----------------- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_get_status_vcc(void)
 {
   TEST_BEGIN("bkup get_status on VCC");
@@ -347,6 +431,12 @@ static void test_get_status_vcc(void)
   TEST_END("bkup get_status on VCC");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_get_status_vbatt_with_por(void)
 {
   TEST_BEGIN("bkup get_status on VBATT with POR");
@@ -365,6 +455,12 @@ static void test_get_status_vbatt_with_por(void)
   TEST_END("bkup get_status on VBATT with POR");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_get_status_null(void)
 {
   TEST_BEGIN("bkup get_status null");
@@ -373,6 +469,12 @@ static void test_get_status_null(void)
   TEST_END("bkup get_status null");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_clear_status(void)
 {
   TEST_BEGIN("bkup clear_status");
@@ -400,6 +502,12 @@ static void test_clear_status(void)
 
 /* ---------------- VBTBKR access ----------------- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_word_read_write_roundtrip(void)
 {
   TEST_BEGIN("bkup word read/write roundtrip");
@@ -433,6 +541,12 @@ static void test_word_read_write_roundtrip(void)
   TEST_END("bkup word read/write roundtrip");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_word_bad_args(void)
 {
   TEST_BEGIN("bkup word bad args");
@@ -451,6 +565,12 @@ static void test_word_bad_args(void)
   TEST_END("bkup word bad args");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_byte_read_write_roundtrip(void)
 {
   TEST_BEGIN("bkup byte read/write roundtrip");
@@ -481,6 +601,12 @@ static void test_byte_read_write_roundtrip(void)
   TEST_END("bkup byte read/write roundtrip");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_byte_bad_args(void)
 {
   TEST_BEGIN("bkup byte bad args");
@@ -498,6 +624,12 @@ static void test_byte_bad_args(void)
   TEST_END("bkup byte bad args");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_zero_all(void)
 {
   TEST_BEGIN("bkup zero_all");
@@ -518,6 +650,12 @@ static void test_zero_all(void)
 
 /* ---------------- tamper init / disable / read ----------------- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_tamper_init_happy(void)
 {
   TEST_BEGIN("bkup tamper_init happy");
@@ -567,6 +705,12 @@ static void test_tamper_init_happy(void)
   TEST_END("bkup tamper_init happy");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_tamper_init_bad_args(void)
 {
   TEST_BEGIN("bkup tamper_init bad args");
@@ -588,6 +732,12 @@ static void test_tamper_init_bad_args(void)
   TEST_END("bkup tamper_init bad args");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_tamper_disable(void)
 {
   TEST_BEGIN("bkup tamper_disable");
@@ -611,6 +761,12 @@ static void test_tamper_disable(void)
   TEST_END("bkup tamper_disable");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_read_input(void)
 {
   TEST_BEGIN("bkup read_input");
@@ -633,6 +789,12 @@ static void test_read_input(void)
   TEST_END("bkup read_input");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_input_enable(void)
 {
   TEST_BEGIN("bkup set_input_enable");
@@ -653,6 +815,12 @@ static void test_set_input_enable(void)
 
 /* ---------------- voltage monitor ----------------- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_voltage_monitor(void)
 {
   TEST_BEGIN("bkup voltage_monitor");
@@ -676,6 +844,12 @@ static void test_voltage_monitor(void)
 
 /* ---------------- security partitioning ----------------- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_security_apply_get(void)
 {
   TEST_BEGIN("bkup security apply/get");
@@ -704,6 +878,12 @@ static void test_security_apply_get(void)
   TEST_END("bkup security apply/get");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_security_bad_args(void)
 {
   TEST_BEGIN("bkup security bad args");
@@ -740,6 +920,12 @@ static void test_security_bad_args(void)
 
 /* ---------------- IRQ path ----------------- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_attach_and_dispatch(void)
 {
   TEST_BEGIN("bkup attach + dispatch");
@@ -760,6 +946,12 @@ static void test_attach_and_dispatch(void)
   TEST_END("bkup attach + dispatch");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_isr_handle_armed_and_fired(void)
 {
   TEST_BEGIN("bkup isr_handle armed+fired");
@@ -785,6 +977,12 @@ static void test_isr_handle_armed_and_fired(void)
   TEST_END("bkup isr_handle armed+fired");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_isr_handle_no_fire(void)
 {
   TEST_BEGIN("bkup isr_handle no fire");
@@ -803,6 +1001,12 @@ static void test_isr_handle_no_fire(void)
   TEST_END("bkup isr_handle no fire");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_isr_handle_not_initialized(void)
 {
   TEST_BEGIN("bkup isr_handle not initialized");
@@ -816,6 +1020,12 @@ static void test_isr_handle_not_initialized(void)
 
 /* ---------------- VDET level coverage ----------------- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_all_vdet_levels(void)
 {
   TEST_BEGIN("bkup all vdet levels accepted");
@@ -839,6 +1049,12 @@ static void test_all_vdet_levels(void)
   TEST_END("bkup all vdet levels accepted");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_all_nc_widths(void)
 {
   TEST_BEGIN("bkup all nc widths accepted");

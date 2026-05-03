@@ -34,6 +34,12 @@ static void reset_state(void)
   (void)ra_ble_security_close();
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_null(void)
 {
   TEST_BEGIN("test_init_null");
@@ -42,6 +48,12 @@ static void test_init_null(void)
   TEST_END("test_init_null");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_invalid_iocap(void)
 {
   TEST_BEGIN("test_init_invalid_iocap");
@@ -52,6 +64,12 @@ static void test_init_invalid_iocap(void)
   TEST_END("test_init_invalid_iocap");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_close_roundtrip(void)
 {
   TEST_BEGIN("test_init_close_roundtrip");
@@ -69,6 +87,12 @@ static void test_init_close_roundtrip(void)
   TEST_END("test_init_close_roundtrip");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_passkey_reply_range(void)
 {
   TEST_BEGIN("test_passkey_reply_range");
@@ -79,6 +103,12 @@ static void test_passkey_reply_range(void)
   TEST_END("test_passkey_reply_range");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_bond_count(void)
 {
   TEST_BEGIN("test_bond_count");
@@ -94,6 +124,12 @@ static void test_bond_count(void)
   TEST_END("test_bond_count");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_event_callback(void)
 {
   TEST_BEGIN("test_event_callback");

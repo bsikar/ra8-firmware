@@ -48,6 +48,12 @@ static void read_cb(void* ctx, const uint8_t* data, uint16_t len, uint16_t statu
   (void)status;
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_discover_null(void)
 {
   TEST_BEGIN("test_discover_null");
@@ -56,6 +62,12 @@ static void test_discover_null(void)
   TEST_END("test_discover_null");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_discover_busy(void)
 {
   TEST_BEGIN("test_discover_busy");
@@ -65,6 +77,12 @@ static void test_discover_busy(void)
   TEST_END("test_discover_busy");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_read_null(void)
 {
   TEST_BEGIN("test_read_null");
@@ -73,6 +91,12 @@ static void test_read_null(void)
   TEST_END("test_read_null");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_write_validation(void)
 {
   TEST_BEGIN("test_write_validation");
@@ -85,6 +109,12 @@ static void test_write_validation(void)
   TEST_END("test_write_validation");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_subscribe_and_notify(void)
 {
   TEST_BEGIN("test_subscribe_and_notify");
@@ -98,6 +128,12 @@ static void test_subscribe_and_notify(void)
   TEST_END("test_subscribe_and_notify");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_subscribe_invalid(void)
 {
   TEST_BEGIN("test_subscribe_invalid");

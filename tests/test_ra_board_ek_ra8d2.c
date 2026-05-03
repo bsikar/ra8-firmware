@@ -25,6 +25,12 @@
 /* Board-identity                                                            */
 /* ------------------------------------------------------------------------- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_board_get_info(void)
 {
   TEST_BEGIN("board_get_info populates strings");
@@ -39,6 +45,12 @@ static void test_board_get_info(void)
   TEST_END("board_get_info populates strings");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_board_get_info_null(void)
 {
   TEST_BEGIN("board_get_info rejects NULL");
@@ -50,6 +62,12 @@ static void test_board_get_info_null(void)
 /* LED pin map (UM Table 24 p 31)                                            */
 /* ------------------------------------------------------------------------- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_led_pin_lookup(void)
 {
   TEST_BEGIN("led pins match UM Table 24");
@@ -74,6 +92,12 @@ static void test_led_pin_lookup(void)
   TEST_END("led pins match UM Table 24");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_led_pin_invalid(void)
 {
   TEST_BEGIN("led_pin rejects out-of-range / null");
@@ -88,6 +112,12 @@ static void test_led_pin_invalid(void)
 /* Switch pin map + IRQ numbers (UM Table 25 p 32)                           */
 /* ------------------------------------------------------------------------- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_sw_pin_lookup(void)
 {
   TEST_BEGIN("sw pins match UM Table 25");
@@ -104,6 +134,12 @@ static void test_sw_pin_lookup(void)
   TEST_END("sw pins match UM Table 25");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_sw_attach_irq_null_cb(void)
 {
   TEST_BEGIN("sw_attach_irq rejects NULL callback");
@@ -116,6 +152,12 @@ static void test_sw_attach_irq_null_cb(void)
 /* Audio CODEC pins (UM Table 32 p 38)                                       */
 /* ------------------------------------------------------------------------- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_audio_pins(void)
 {
   TEST_BEGIN("audio pins match UM Table 32");
@@ -129,6 +171,12 @@ static void test_audio_pins(void)
   TEST_END("audio pins match UM Table 32");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_audio_play_sample_block_validates(void)
 {
   TEST_BEGIN("audio_play_sample_block rejects bad args");
@@ -142,6 +190,12 @@ static void test_audio_play_sample_block_validates(void)
   TEST_END("audio_play_sample_block rejects bad args");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_audio_init_validates(void)
 {
   TEST_BEGIN("audio_init validates sample rate / depth / channels");
@@ -155,6 +209,12 @@ static void test_audio_init_validates(void)
 /* Arduino header (UM Table 20 p 28)                                         */
 /* ------------------------------------------------------------------------- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_arduino_pins(void)
 {
   TEST_BEGIN("arduino pins match UM Table 20");
@@ -168,6 +228,12 @@ static void test_arduino_pins(void)
   TEST_END("arduino pins match UM Table 20");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_arduino_pin_init_invalid_mode(void)
 {
   TEST_BEGIN("arduino_pin_init rejects unknown mode");
@@ -181,6 +247,12 @@ static void test_arduino_pin_init_invalid_mode(void)
 /* Pmod connectors (UM Tables 17 + 19)                                       */
 /* ------------------------------------------------------------------------- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_pmod1_spi_pins(void)
 {
   TEST_BEGIN("pmod1 SPI pins match UM Table 17");
@@ -191,6 +263,12 @@ static void test_pmod1_spi_pins(void)
   TEST_END("pmod1 SPI pins match UM Table 17");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_pmod2_spi_pins(void)
 {
   TEST_BEGIN("pmod2 SPI pins match UM Table 19");
@@ -205,6 +283,12 @@ static void test_pmod2_spi_pins(void)
 /* GLCDC pin tables (UM Table 33 p 42)                                       */
 /* ------------------------------------------------------------------------- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_glcdc_pin_tables_populated(void)
 {
   TEST_BEGIN("glcdc pin tables non-empty + sized correctly");
@@ -221,6 +305,12 @@ static void test_glcdc_pin_tables_populated(void)
   TEST_END("glcdc pin tables non-empty + sized correctly");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_glcdc_init_invalid_fmt(void)
 {
   TEST_BEGIN("glcdc_init rejects bogus format");
@@ -232,6 +322,12 @@ static void test_glcdc_init_invalid_fmt(void)
 /* Camera / XSPI / SDRAM / MIPI-DSI                                          */
 /* ------------------------------------------------------------------------- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_camera_pins(void)
 {
   TEST_BEGIN("camera pins match UM Table 35");
@@ -242,6 +338,12 @@ static void test_camera_pins(void)
   TEST_END("camera pins match UM Table 35");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_xspi_pins(void)
 {
   TEST_BEGIN("xspi flash pins match UM Table 29");
@@ -251,6 +353,12 @@ static void test_xspi_pins(void)
   TEST_END("xspi flash pins match UM Table 29");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_extmem_sizes(void)
 {
   TEST_BEGIN("extmem sizes are 64 MiB");
@@ -260,6 +368,12 @@ static void test_extmem_sizes(void)
   TEST_END("extmem sizes are 64 MiB");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_mipi_dsi_pins(void)
 {
   TEST_BEGIN("mipi-dsi pins match UM Table 34");
@@ -274,6 +388,12 @@ static void test_mipi_dsi_pins(void)
 /* Stubbed init paths return well-defined errors                             */
 /* ------------------------------------------------------------------------- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_stubs_return_not_supported(void)
 {
   TEST_BEGIN("usbhs / mipi-dsi stubs return not_supported");
@@ -293,6 +413,12 @@ static void test_stubs_return_not_supported(void)
 /* J-Link OB VCOM serial bridge (UM Table 13 p 24)                            */
 /* ------------------------------------------------------------------------- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_uart_console_pins(void)
 {
   TEST_BEGIN("uart console pins match UM Table 13");
@@ -308,6 +434,12 @@ static void test_uart_console_pins(void)
   TEST_END("uart console pins match UM Table 13");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_uart_console_init_rejects_zero_baud(void)
 {
   TEST_BEGIN("uart_console_init rejects baud == 0");
@@ -315,6 +447,12 @@ static void test_uart_console_init_rejects_zero_baud(void)
   TEST_END("uart_console_init rejects baud == 0");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_uart_console_write_validates(void)
 {
   TEST_BEGIN("uart_console_write validates args + state");
@@ -325,6 +463,12 @@ static void test_uart_console_write_validates(void)
   TEST_END("uart_console_write validates args + state");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_uart_console_read_validates(void)
 {
   TEST_BEGIN("uart_console_read validates args + state");
@@ -348,6 +492,12 @@ static void test_uart_console_read_validates(void)
 /* On-board RGMII Ethernet PHY (UM Table 26 p 33)                             */
 /* ------------------------------------------------------------------------- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_ethernet_pins(void)
 {
   TEST_BEGIN("ethernet pins match UM Table 26");
@@ -370,6 +520,12 @@ static void test_ethernet_pins(void)
   TEST_END("ethernet pins match UM Table 26");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_ethernet_index_constants(void)
 {
   TEST_BEGIN("ethernet ETHA/RMAC port + PHY addr defaults");

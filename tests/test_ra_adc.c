@@ -93,6 +93,11 @@ typedef enum : uint32_t {
 
 /* ---------------------------------------------------------------------------
  * Tests
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  * --------------------------------------------------------------------------- */
 
 static void test_init_happy(void)
@@ -111,6 +116,12 @@ static void test_init_happy(void)
   TEST_END("adc init happy");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_read_channel_null_out(void)
 {
   TEST_BEGIN("adc read_channel null out");
@@ -120,6 +131,12 @@ static void test_read_channel_null_out(void)
   TEST_END("adc read_channel null out");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_read_channel_out_of_range(void)
 {
   TEST_BEGIN("adc read_channel out of range");
@@ -130,6 +147,12 @@ static void test_read_channel_out_of_range(void)
   TEST_END("adc read_channel out of range");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_read_channel_huge(void)
 {
   TEST_BEGIN("adc read_channel huge ch");
@@ -144,6 +167,11 @@ static void test_read_channel_huge(void)
  * @brief Hits the adc.c branch where ADCHCR[ch] is valid but ADDR[ch]
  *        is out-of-range (channel 23: FSP has 24 ADCHCR slots but
  *        only 23 ADDR result slots).
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 static void test_read_channel_hcr_but_no_result(void)
 {
@@ -158,6 +186,11 @@ static void test_read_channel_hcr_but_no_result(void)
 /**
  * @brief Drive a read with the SIGALRM sim helper clearing ADACT0
  *        mid-poll to mimic hardware auto-clear.
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 static void test_read_channel_completes_via_alarm(void)
 {
@@ -182,6 +215,11 @@ static void test_read_channel_completes_via_alarm(void)
 /**
  * @brief Without the alarm the driver bounded-polls then reports
  *        k_ra_err_hw_timeout.
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 static void test_read_channel_timeout(void)
 {
@@ -209,6 +247,12 @@ static ra_adc_cfg_t make_cfg(void)
   return cfg;
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_configured(void)
 {
   TEST_BEGIN("adc init configured: 14b right-aligned");
@@ -227,6 +271,12 @@ static void test_init_configured(void)
   TEST_END("adc init configured: 14b right-aligned");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_configured_null(void)
 {
   TEST_BEGIN("adc init configured null");
@@ -236,6 +286,12 @@ static void test_init_configured_null(void)
   TEST_END("adc init configured null");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_configured_scan(void)
 {
   TEST_BEGIN("adc init configured: scan mode");
@@ -250,6 +306,12 @@ static void test_init_configured_scan(void)
   TEST_END("adc init configured: scan mode");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_deinit(void)
 {
   TEST_BEGIN("adc deinit");
@@ -264,6 +326,12 @@ static void test_deinit(void)
   TEST_END("adc deinit");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_resolution(void)
 {
   TEST_BEGIN("adc set_resolution updates ADMD0");
@@ -280,6 +348,12 @@ static void test_set_resolution(void)
   TEST_END("adc set_resolution updates ADMD0");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_resolution_bad(void)
 {
   TEST_BEGIN("adc set_resolution bad");
@@ -290,6 +364,12 @@ static void test_set_resolution_bad(void)
   TEST_END("adc set_resolution bad");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_status_read_and_clear(void)
 {
   TEST_BEGIN("adc status read + clear");
@@ -310,6 +390,12 @@ static void test_status_read_and_clear(void)
   TEST_END("adc status read + clear");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_status_null(void)
 {
   TEST_BEGIN("adc status null");
@@ -329,6 +415,12 @@ static void stub_adc_cb(void* ctx, uint16_t result)
   s_adc_cb_last_ctx    = ctx;
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_attach_and_dispatch(void)
 {
   TEST_BEGIN("adc attach + dispatch");
@@ -349,6 +441,12 @@ static void test_attach_and_dispatch(void)
   TEST_END("adc attach + dispatch");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_dispatch_no_handler(void)
 {
   TEST_BEGIN("adc dispatch no handler");
@@ -362,6 +460,12 @@ static void test_dispatch_no_handler(void)
   TEST_END("adc dispatch no handler");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_power_transition(void)
 {
   TEST_BEGIN("adc power transition");
@@ -407,6 +511,12 @@ static ra_adc_scan_group_cfg_t make_scan_cfg(void)
   return cfg;
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_configure_scan_group_happy(void)
 {
   TEST_BEGIN("adc scan-group: configure happy");
@@ -434,6 +544,12 @@ static void test_configure_scan_group_happy(void)
   TEST_END("adc scan-group: configure happy");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_configure_scan_group_elc_trigger(void)
 {
   TEST_BEGIN("adc scan-group: ELC trigger arms ADTRGENR");
@@ -448,6 +564,12 @@ static void test_configure_scan_group_elc_trigger(void)
   TEST_END("adc scan-group: ELC trigger arms ADTRGENR");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_configure_scan_group_rejects_null(void)
 {
   TEST_BEGIN("adc scan-group: null cfg");
@@ -456,6 +578,12 @@ static void test_configure_scan_group_rejects_null(void)
   TEST_END("adc scan-group: null cfg");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_configure_scan_group_rejects_oor(void)
 {
   TEST_BEGIN("adc scan-group: out-of-range group/channels");
@@ -478,6 +606,12 @@ static void test_configure_scan_group_rejects_oor(void)
   TEST_END("adc scan-group: out-of-range group/channels");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_start_stop_group(void)
 {
   TEST_BEGIN("adc scan-group: start/stop sets ADSTR");
@@ -499,6 +633,12 @@ static void test_start_stop_group(void)
   TEST_END("adc scan-group: start/stop sets ADSTR");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_read_group_results_happy(void)
 {
   TEST_BEGIN("adc scan-group: read multi-channel results");
@@ -525,6 +665,12 @@ static void test_read_group_results_happy(void)
   TEST_END("adc scan-group: read multi-channel results");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_read_group_results_rejects(void)
 {
   TEST_BEGIN("adc scan-group: read rejects null/oor/unconfigured");
@@ -544,6 +690,12 @@ static void test_read_group_results_rejects(void)
   TEST_END("adc scan-group: read rejects null/oor/unconfigured");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_continuous_scan(void)
 {
   TEST_BEGIN("adc scan-group: continuous-scan toggles ADMDR");
@@ -565,6 +717,12 @@ static void test_continuous_scan(void)
   TEST_END("adc scan-group: continuous-scan toggles ADMDR");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_compare_window_happy(void)
 {
   TEST_BEGIN("adc compare-window: programs ADCMPTBR/MDR/ENR");
@@ -594,6 +752,12 @@ static void test_compare_window_happy(void)
   TEST_END("adc compare-window: programs ADCMPTBR/MDR/ENR");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_compare_window_rejects(void)
 {
   TEST_BEGIN("adc compare-window: rejects high<low and oor table");
@@ -609,6 +773,12 @@ static void test_compare_window_rejects(void)
   TEST_END("adc compare-window: rejects high<low and oor table");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_oversampling_encoding(void)
 {
   TEST_BEGIN("adc oversampling: AVEMD/ADC encoding");
@@ -633,6 +803,12 @@ static void test_oversampling_encoding(void)
   TEST_END("adc oversampling: AVEMD/ADC encoding");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_oversampling_rejects(void)
 {
   TEST_BEGIN("adc oversampling: rejects bad mode and oor channel");

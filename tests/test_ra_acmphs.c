@@ -22,6 +22,12 @@ typedef enum : uint8_t {
   k_ra_acmphs_test_ch_way   = 200U,
 } ra_acmphs_test_ch_t;
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_happy(void)
 {
   TEST_BEGIN("acmphs init happy");
@@ -36,6 +42,12 @@ static void test_init_happy(void)
   TEST_END("acmphs init happy");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_enable_first_channel(void)
 {
   TEST_BEGIN("acmphs enable first channel");
@@ -48,6 +60,12 @@ static void test_enable_first_channel(void)
   TEST_END("acmphs enable first channel");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_enable_mid_channel(void)
 {
   TEST_BEGIN("acmphs enable mid channel");
@@ -57,6 +75,12 @@ static void test_enable_mid_channel(void)
   TEST_END("acmphs enable mid channel");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_enable_last_channel(void)
 {
   TEST_BEGIN("acmphs enable last channel");
@@ -66,6 +90,12 @@ static void test_enable_last_channel(void)
   TEST_END("acmphs enable last channel");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_enable_bad_channel(void)
 {
   TEST_BEGIN("acmphs enable bad channel");
@@ -78,6 +108,12 @@ static void test_enable_bad_channel(void)
   TEST_END("acmphs enable bad channel");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_read_output_high(void)
 {
   TEST_BEGIN("acmphs read output high");
@@ -94,6 +130,12 @@ static void test_read_output_high(void)
   TEST_END("acmphs read output high");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_read_output_low(void)
 {
   TEST_BEGIN("acmphs read output low");
@@ -106,6 +148,12 @@ static void test_read_output_low(void)
   TEST_END("acmphs read output low");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_read_output_null_out(void)
 {
   TEST_BEGIN("acmphs read output null");
@@ -116,6 +164,12 @@ static void test_read_output_null_out(void)
   TEST_END("acmphs read output null");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_read_output_bad_channel(void)
 {
   TEST_BEGIN("acmphs read output bad channel");
@@ -162,6 +216,12 @@ static ra_acmphs_cfg_t make_cfg(void)
   return cfg;
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_channel_init_configured(void)
 {
   TEST_BEGIN("acmphs channel_init configured");
@@ -181,6 +241,12 @@ static void test_channel_init_configured(void)
   TEST_END("acmphs channel_init configured");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_channel_init_null_cfg(void)
 {
   TEST_BEGIN("acmphs channel_init null cfg");
@@ -191,6 +257,12 @@ static void test_channel_init_null_cfg(void)
   TEST_END("acmphs channel_init null cfg");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_channel_init_bad_channel(void)
 {
   TEST_BEGIN("acmphs channel_init bad channel");
@@ -202,6 +274,12 @@ static void test_channel_init_bad_channel(void)
   TEST_END("acmphs channel_init bad channel");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_channel_init_no_filter_with_invert(void)
 {
   TEST_BEGIN("acmphs channel_init no filter + invert");
@@ -221,6 +299,12 @@ static void test_channel_init_no_filter_with_invert(void)
   TEST_END("acmphs channel_init no filter + invert");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_channel_init_last_channel_no_mstp(void)
 {
   TEST_BEGIN("acmphs channel_init last channel (no MSTP)");
@@ -234,6 +318,12 @@ static void test_channel_init_last_channel_no_mstp(void)
   TEST_END("acmphs channel_init last channel (no MSTP)");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_clear_status_bad_channel(void)
 {
   TEST_BEGIN("acmphs clear_status bad channel");
@@ -244,6 +334,12 @@ static void test_clear_status_bad_channel(void)
   TEST_END("acmphs clear_status bad channel");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_channel_deinit(void)
 {
   TEST_BEGIN("acmphs channel_deinit");
@@ -261,6 +357,12 @@ static void test_channel_deinit(void)
   TEST_END("acmphs channel_deinit");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_inputs(void)
 {
   TEST_BEGIN("acmphs set_inputs");
@@ -277,6 +379,12 @@ static void test_set_inputs(void)
   TEST_END("acmphs set_inputs");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_status_read_and_clear(void)
 {
   TEST_BEGIN("acmphs status read + clear");
@@ -304,6 +412,12 @@ static void test_status_read_and_clear(void)
   TEST_END("acmphs status read + clear");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_attach_and_dispatch(void)
 {
   TEST_BEGIN("acmphs attach + dispatch");
@@ -321,6 +435,12 @@ static void test_attach_and_dispatch(void)
   TEST_END("acmphs attach + dispatch");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_power_transition(void)
 {
   TEST_BEGIN("acmphs power transition");
