@@ -223,6 +223,96 @@ static void test_mcdc_flash_window_allows_pure(void)
   TEST_END("flash MC/DC: window_allows_pure AND");
 }
 
+/**
+ * @test test_mcdc_flash_wait_buffer_ready_pair
+ *
+ * @par MC/DC:
+ * Decision (libs/ra_hal/src/ra_flash.c line 150):
+ *   ``if (((s & PRGBSYC) == 0U) && ((s & ABUFFULL) == 0U))``
+ * (2 conditions, AND; N+1 = 3 vectors).
+ *
+ * Reaches the production helper directly through
+ * @ref ra_flash_internal_wait_buffer_ready_call (test-access wrapper)
+ * with the simulator-backed MRCPS register pre-populated.
+ *
+ * - V1: MRCPS = PRGBSYC|ABUFFULL -> C1=F, C2=F. Decision F. With limit=2
+ *       the loop exhausts and returns hw_timeout.
+ * - V2: MRCPS = PRGBSYC          -> C1=F, C2=T. Decision F. hw_timeout.
+ * - V3: MRCPS = ABUFFULL         -> C1=T, C2=F. Decision F. hw_timeout.
+ * - V4: MRCPS = 0                -> C1=T, C2=T. Decision T. ok.
+ * V1+V4 vary both; V2+V4 isolate C1; V3+V4 isolate C2. Provides the N+1
+ * minimal MC/DC for the 2-condition AND.
+ */
+static void test_mcdc_flash_wait_buffer_ready_pair(void)
+{
+  TEST_BEGIN("flash MC/DC: wait_buffer_ready AND (line 150)");
+  ra_sim_mmap_reset();
+
+  /* V1: both bits set -> decision F every iteration -> timeout. */
+  *ra_mram_reg8((uint16_t)k_ra_mram_off_mrcps) =
+    (uint8_t)(k_ra_mrcps_mask_prgbsyc | k_ra_mrcps_mask_abuffull);
+  TEST_ASSERT_EQ((int32_t)k_ra_err_hw_timeout,
+                 (int32_t)ra_flash_internal_wait_buffer_ready_call(2U));
+
+  /* V2: PRGBSYC=1, ABUFFULL=0 -> C1=F shorts -> still decision F -> timeout. */
+  *ra_mram_reg8((uint16_t)k_ra_mram_off_mrcps) = (uint8_t)k_ra_mrcps_mask_prgbsyc;
+  TEST_ASSERT_EQ((int32_t)k_ra_err_hw_timeout,
+                 (int32_t)ra_flash_internal_wait_buffer_ready_call(2U));
+
+  /* V3: PRGBSYC=0, ABUFFULL=1 -> C1=T C2=F -> decision F -> timeout. */
+  *ra_mram_reg8((uint16_t)k_ra_mram_off_mrcps) = (uint8_t)k_ra_mrcps_mask_abuffull;
+  TEST_ASSERT_EQ((int32_t)k_ra_err_hw_timeout,
+                 (int32_t)ra_flash_internal_wait_buffer_ready_call(2U));
+
+  /* V4: both clear -> decision T -> ok on first iteration. */
+  *ra_mram_reg8((uint16_t)k_ra_mram_off_mrcps) = 0U;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_flash_internal_wait_buffer_ready_call(2U));
+
+  TEST_END("flash MC/DC: wait_buffer_ready AND (line 150)");
+}
+
+/**
+ * @test test_mcdc_flash_wait_commit_done_pair
+ *
+ * @par MC/DC:
+ * Decision (libs/ra_hal/src/ra_flash.c line 181):
+ *   ``if (((s & ABUFEMP) != 0U) && ((s & PRGBSYC) == 0U))``
+ * (2 conditions, AND; N+1 = 3 vectors).
+ *
+ * - V1: MRCPS = 0                -> C1=F shorts. Decision F. hw_timeout.
+ * - V2: MRCPS = ABUFEMP|PRGBSYC  -> C1=T, C2=F. Decision F. hw_timeout.
+ * - V3: MRCPS = PRGBSYC          -> C1=F, C2=F. Decision F. hw_timeout.
+ * - V4: MRCPS = ABUFEMP          -> C1=T, C2=T. Decision T. ok.
+ * V1+V4 isolate C1; V2+V4 isolate C2.
+ */
+static void test_mcdc_flash_wait_commit_done_pair(void)
+{
+  TEST_BEGIN("flash MC/DC: wait_commit_done AND (line 181)");
+  ra_sim_mmap_reset();
+
+  /* V1: ABUFEMP=0, PRGBSYC=0 -> C1=F shorts -> timeout. */
+  *ra_mram_reg8((uint16_t)k_ra_mram_off_mrcps) = 0U;
+  TEST_ASSERT_EQ((int32_t)k_ra_err_hw_timeout,
+                 (int32_t)ra_flash_internal_wait_commit_done_call(2U));
+
+  /* V2: ABUFEMP=1, PRGBSYC=1 -> C1=T C2=F -> timeout. */
+  *ra_mram_reg8((uint16_t)k_ra_mram_off_mrcps) =
+    (uint8_t)(k_ra_mrcps_mask_abufemp | k_ra_mrcps_mask_prgbsyc);
+  TEST_ASSERT_EQ((int32_t)k_ra_err_hw_timeout,
+                 (int32_t)ra_flash_internal_wait_commit_done_call(2U));
+
+  /* V3: ABUFEMP=0, PRGBSYC=1 -> both conds F -> timeout. */
+  *ra_mram_reg8((uint16_t)k_ra_mram_off_mrcps) = (uint8_t)k_ra_mrcps_mask_prgbsyc;
+  TEST_ASSERT_EQ((int32_t)k_ra_err_hw_timeout,
+                 (int32_t)ra_flash_internal_wait_commit_done_call(2U));
+
+  /* V4: ABUFEMP=1, PRGBSYC=0 -> all T -> ok. */
+  *ra_mram_reg8((uint16_t)k_ra_mram_off_mrcps) = (uint8_t)k_ra_mrcps_mask_abufemp;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_flash_internal_wait_commit_done_call(2U));
+
+  TEST_END("flash MC/DC: wait_commit_done AND (line 181)");
+}
+
 int32_t main(void)
 {
   test_blank_check_partial_page();
@@ -232,6 +322,8 @@ int32_t main(void)
   test_extra_mram_erase_bad_addr();
   test_write_during_read_collision();
   test_mcdc_flash_window_allows_pure();
+  test_mcdc_flash_wait_buffer_ready_pair();
+  test_mcdc_flash_wait_commit_done_pair();
   (void)fprintf(stderr, "[OK  ] test_ra_flash_edge_cases.c\n");
   return 0;
 }

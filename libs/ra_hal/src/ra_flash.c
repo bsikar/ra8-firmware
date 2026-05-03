@@ -155,6 +155,30 @@ static ra_err_t internal_wait_buffer_ready(uint32_t limit)
 }
 
 /**
+ * @brief Test-access wrapper for @ref internal_wait_buffer_ready.
+ *
+ * @details Forwards the call so tests under @c tests/ can drive the
+ *          line-150 AND-decision directly on the production source.
+ *          Production code keeps using the static helper.
+ *
+ * @param[in] limit Maximum spin iterations.
+ * @return Forwarded ra_err_t outcome.
+ * @retval k_ra_ok           Both bits cleared within @p limit iterations.
+ * @retval k_ra_err_hw_timeout Limit exhausted without success.
+ *
+ * @pre Simulator MRCPS register is mapped (host-test build).
+ * @pre @p limit > 0.
+ * @post No state mutation beyond the underlying register reads.
+ * @post Return value matches the production helper.
+ * @note Test-access only.
+ * @since 0.1.0
+ */
+ra_err_t ra_flash_internal_wait_buffer_ready_call(uint32_t limit)
+{
+  return internal_wait_buffer_ready(limit);
+}
+
+/**
  * @brief Wait for MRCPS.ABUFEMP = 1 and PRGBSYC = 0 (commit done).
  *
  * @param[in] limit Maximum spin iterations.
@@ -183,6 +207,30 @@ static ra_err_t internal_wait_commit_done(uint32_t limit)
     }
   }
   return k_ra_err_hw_timeout;
+}
+
+/**
+ * @brief Test-access wrapper for @ref internal_wait_commit_done.
+ *
+ * @details Forwards the call so tests under @c tests/ can drive the
+ *          line-181 AND-decision directly on the production source.
+ *          Production code keeps using the static helper.
+ *
+ * @param[in] limit Maximum spin iterations.
+ * @return Forwarded ra_err_t outcome.
+ * @retval k_ra_ok           Commit observed within @p limit iterations.
+ * @retval k_ra_err_hw_timeout Limit exhausted without success.
+ *
+ * @pre Simulator MRCPS register is mapped (host-test build).
+ * @pre @p limit > 0.
+ * @post No state mutation beyond the underlying register reads.
+ * @post Return value matches the production helper.
+ * @note Test-access only.
+ * @since 0.1.0
+ */
+ra_err_t ra_flash_internal_wait_commit_done_call(uint32_t limit)
+{
+  return internal_wait_commit_done(limit);
 }
 
 /**

@@ -832,6 +832,104 @@ static void test_mcdc_internal_capture_line_guard(void)
   TEST_END("modem_at MC/DC: internal_capture_line guard OR");
 }
 
+/**
+ * @test test_mcdc_reset_line_should_clear_pure
+ *
+ * @par MC/DC:
+ * Decision (pure helper): ``(line_buf != nullptr) && (line_buf_len > 0U)``
+ * (2 conditions, AND; N+1 = 3 vectors). The decision was promoted out
+ * of @c internal_reset_line into the pure sibling
+ * @c ra_modem_at_internal_reset_line_should_clear so all four input
+ * combinations are reachable from a host test (the production wrapper
+ * is gated by the init validator -- see
+ * @c test_mcdc_reset_line_buf_pair for the validator-equivalence
+ * argument). Maps directly to libs/ra_modem_at/src/ra_modem_at.c:227
+ * and the promoted-helper site at libs/ra_modem_at/src/ra_modem_at.c:238.
+ *
+ * - V1: buf=NULL,    len=8 -> C1=F shorts.        Decision F (no clear).
+ * - V2: buf=valid,   len=0 -> C1=T C2=F.          Decision F (no clear).
+ * - V3: buf=valid,   len=8 -> all T.              Decision T (clear).
+ * V1+V3 isolate C1; V2+V3 isolate C2.
+ */
+static void test_mcdc_reset_line_should_clear_pure(void)
+{
+  TEST_BEGIN("modem_at MC/DC: reset_line_should_clear (pure)");
+  uint8_t scratch[8] = {0U};
+  TEST_ASSERT_EQ((int32_t)0, (int32_t)ra_modem_at_internal_reset_line_should_clear(NULL, 8U));
+  TEST_ASSERT_EQ((int32_t)0, (int32_t)ra_modem_at_internal_reset_line_should_clear(scratch, 0U));
+  TEST_ASSERT_EQ((int32_t)1, (int32_t)ra_modem_at_internal_reset_line_should_clear(scratch, 8U));
+  TEST_END("modem_at MC/DC: reset_line_should_clear (pure)");
+}
+
+/**
+ * @test test_mcdc_internal_classify_expected_direct
+ *
+ * @par MC/DC:
+ * Decision at libs/ra_modem_at/src/ra_modem_at.c:345
+ *   ``(expected_response == nullptr) || (expected_response[0] == '\0') ||
+ *    (ra_modem_at_internal_starts_with(line, expected_response) == 0U)``
+ * (3 conditions, OR; N+1 = 4 vectors).
+ *
+ * The existing @c test_mcdc_internal_classify_expected drives this
+ * through @c ra_modem_at_send_cmd_capture; the indirect path masks
+ * which condition actually flips the URC-allowed result. This test
+ * calls @c ra_modem_at_internal_classify directly so the production
+ * decision sees four vectors with one condition flipping per pair.
+ *
+ * - V1: expected=NULL,         line="OTHER" -> C1=T short.        URC-allowed -> kind=payload (no URC reg).
+ * - V2: expected="",           line="OTHER" -> C1=F C2=T.         URC-allowed -> kind=payload.
+ * - V3: expected="+QRY",       line="OTHER" -> C1=F C2=F C3=T.    URC-allowed -> kind=payload.
+ * - V4: expected="+QRY",       line="+QRY:val" -> C1=F C2=F C3=F. URC-suppressed -> kind=payload (no URC dispatch).
+ *
+ * V1 vs V4 isolate C1; V2 vs V4 isolate C2; V3 vs V4 isolate C3. The
+ * observable side-effect of "URC dispatch allowed" is whether the
+ * registered URC handler counter is incremented when the line matches
+ * a registered URC prefix.
+ */
+static uint32_t s_mcdc_classify_urc_calls = 0U;
+static void     mcdc_count_urc_handler(const char* line, void* ctx)
+{
+  (void)line;
+  (void)ctx;
+  s_mcdc_classify_urc_calls++;
+}
+
+static void test_mcdc_internal_classify_expected_direct(void)
+{
+  TEST_BEGIN("modem_at MC/DC: classify expected_response (3-cond OR, direct)");
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)bring_up());
+  /* Register a URC handler so we can observe URC dispatch. */
+  TEST_ASSERT_EQ(
+    (int)k_ra_ok,
+    (int)ra_modem_at_register_unsolicited_handler("+QRY", mcdc_count_urc_handler, NULL));
+  s_mcdc_classify_urc_calls = 0U;
+
+  /* V1: expected=NULL, line "+QRY:async" -> URC dispatch allowed
+   * (C1=T) and registered handler matches -> URC fires. */
+  ra_modem_line_kind_t k1 = ra_modem_at_internal_classify("+QRY:async", NULL, NULL);
+  TEST_ASSERT_EQ((int32_t)k_ra_modem_line_kind_urc, (int32_t)k1);
+  TEST_ASSERT_EQ((int32_t)1, (int32_t)s_mcdc_classify_urc_calls);
+
+  /* V2: expected="", line "+QRY:async" -> C1=F C2=T -> URC allowed -> URC fires. */
+  ra_modem_line_kind_t k2 = ra_modem_at_internal_classify("+QRY:async", NULL, "");
+  TEST_ASSERT_EQ((int32_t)k_ra_modem_line_kind_urc, (int32_t)k2);
+  TEST_ASSERT_EQ((int32_t)2, (int32_t)s_mcdc_classify_urc_calls);
+
+  /* V3: expected="+OTH", line "+QRY:async" -> C1=F C2=F C3=T (no
+   * starts_with match) -> URC allowed -> URC fires. */
+  ra_modem_line_kind_t k3 = ra_modem_at_internal_classify("+QRY:async", NULL, "+OTH");
+  TEST_ASSERT_EQ((int32_t)k_ra_modem_line_kind_urc, (int32_t)k3);
+  TEST_ASSERT_EQ((int32_t)3, (int32_t)s_mcdc_classify_urc_calls);
+
+  /* V4: expected="+QRY", line "+QRY:val" -> all conds F -> URC
+   * dispatch suppressed -> URC handler NOT fired -> kind=payload. */
+  ra_modem_line_kind_t k4 = ra_modem_at_internal_classify("+QRY:val", NULL, "+QRY");
+  TEST_ASSERT_EQ((int32_t)k_ra_modem_line_kind_payload, (int32_t)k4);
+  TEST_ASSERT_EQ((int32_t)3, (int32_t)s_mcdc_classify_urc_calls);
+
+  TEST_END("modem_at MC/DC: classify expected_response (3-cond OR, direct)");
+}
+
 int32_t main(void)
 {
   /* This test must run BEFORE bring_up() so the initialised flag is 0. */
@@ -865,6 +963,8 @@ int32_t main(void)
   test_mcdc_internal_str_eq_terminator_pair();
   test_mcdc_internal_starts_with();
   test_mcdc_internal_capture_line_guard();
+  test_mcdc_reset_line_should_clear_pure();
+  test_mcdc_internal_classify_expected_direct();
   (void)fprintf(stderr, "[OK ] test_ra_modem_at.c\n");
   return 0;
 }

@@ -61,6 +61,68 @@ bool ra_flash_internal_window_allows_pure(uintptr_t addr,
                                           uintptr_t win_low,
                                           uintptr_t win_high);
 
+#include "ra_err.h"
+
+/**
+ * @brief Direct-call test access to @c internal_wait_buffer_ready.
+ *
+ * @details Promoted from TU-private static linkage so tests can drive
+ *          the line-150 ``(s & PRGBSYC == 0) && (s & ABUFFULL == 0)``
+ *          AND-decision under @c -fcoverage-mcdc on the production
+ *          source. Tests poke the simulator-backed MRCPS register to
+ *          present each pair of bit values across calls.
+ *
+ * @param[in] limit Maximum spin iterations.
+ * @return @c k_ra_ok if both bits cleared within @p limit iterations,
+ *         else @c k_ra_err_hw_timeout.
+ * @retval k_ra_ok            Both bits observed clear within @p limit.
+ * @retval k_ra_err_hw_timeout Limit exhausted without both bits clear.
+ *
+ * @pre Simulator mmap window for MRCPS is mapped (host-test only).
+ * @pre Caller has staged the desired MRCPS bit pattern.
+ * @post No persistent state mutated outside of MRCPS read.
+ * @post Return value reflects the observed register sequence.
+ *
+ * @note Test-access only. Not part of the public ra_flash API.
+ *
+ * @par MC/DC:
+ * Drives line 150 ``(s & PRGBSYC) == 0 && (s & ABUFFULL) == 0``
+ * (2 conditions, AND; N+1 = 3 vectors).
+ *
+ * @since 0.1.0
+ */
+ra_err_t ra_flash_internal_wait_buffer_ready_call(uint32_t limit);
+
+/**
+ * @brief Direct-call test access to @c internal_wait_commit_done.
+ *
+ * @details Promoted from TU-private static linkage so tests can drive
+ *          the line-181 ``(s & ABUFEMP) != 0 && (s & PRGBSYC) == 0``
+ *          AND-decision under @c -fcoverage-mcdc on the production
+ *          source. Tests poke the simulator-backed MRCPS register to
+ *          present each pair of bit values across calls.
+ *
+ * @param[in] limit Maximum spin iterations.
+ * @return @c k_ra_ok if commit observed within @p limit iterations,
+ *         else @c k_ra_err_hw_timeout.
+ * @retval k_ra_ok            Commit observed within @p limit iterations.
+ * @retval k_ra_err_hw_timeout Limit exhausted without commit observed.
+ *
+ * @pre Simulator mmap window for MRCPS is mapped (host-test only).
+ * @pre Caller has staged the desired MRCPS bit pattern.
+ * @post No persistent state mutated outside of MRCPS read.
+ * @post Return value reflects the observed register sequence.
+ *
+ * @note Test-access only. Not part of the public ra_flash API.
+ *
+ * @par MC/DC:
+ * Drives line 181 ``(s & ABUFEMP) != 0 && (s & PRGBSYC) == 0``
+ * (2 conditions, AND; N+1 = 3 vectors).
+ *
+ * @since 0.1.0
+ */
+ra_err_t ra_flash_internal_wait_commit_done_call(uint32_t limit);
+
 #ifdef __cplusplus
 }
 #endif
