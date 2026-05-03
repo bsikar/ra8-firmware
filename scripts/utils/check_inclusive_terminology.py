@@ -158,8 +158,6 @@ SKIP_FILE_PATTERNS: tuple[str, ...] = (
     # would require adding @par MC/DC: blocks to ~50 pre-existing tests
     # which is orthogonal to the inclusive-terminology effort.
     "tests/test_ra_ssie.c",
-    # SSIE app-level test fixture mirrors the same terminology.
-    "tests/test_app_ssie_audio_loop.c",
     # USB HAUD test fixture mirrors the USB Audio Class master-channel
     # ID 0 ("master channel" is the literal spec wording in USB-IF
     # Audio Device Class spec).
