@@ -28,6 +28,12 @@ static const ra_net_pal_mac_t k_test_mac = {
   .bytes = {0x02U, 0x11U, 0x22U, 0x33U, 0x44U, 0x55U},
 };
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_with_mac(void)
 {
   TEST_BEGIN("ra_net_pal_init: stores MAC, link starts down");
@@ -45,6 +51,12 @@ static void test_init_with_mac(void)
   TEST_END("ra_net_pal_init: stores MAC, link starts down");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_null_mac_keeps_default(void)
 {
   TEST_BEGIN("ra_net_pal_init: NULL mac keeps default");
@@ -62,6 +74,12 @@ static void test_init_null_mac_keeps_default(void)
   TEST_END("ra_net_pal_init: NULL mac keeps default");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_get_mac_round_trip(void)
 {
   TEST_BEGIN("ra_net_pal_set_mac_addr round trip");
@@ -79,6 +97,12 @@ static void test_set_get_mac_round_trip(void)
   TEST_END("ra_net_pal_set_mac_addr round trip");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_send_recv_loopback(void)
 {
   TEST_BEGIN("ra_net_pal_{send,recv}_frame: in-memory loopback round-trip");
@@ -108,6 +132,12 @@ static void test_send_recv_loopback(void)
   TEST_END("ra_net_pal_{send,recv}_frame: in-memory loopback round-trip");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_send_fills_ring(void)
 {
   TEST_BEGIN("ra_net_pal_send_frame: TX ring full returns no_mem");
@@ -125,6 +155,12 @@ static void test_send_fills_ring(void)
   TEST_END("ra_net_pal_send_frame: TX ring full returns no_mem");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_send_recv_arg_validation(void)
 {
   TEST_BEGIN("ra_net_pal_{send,recv}_frame: arg validation");
@@ -157,6 +193,12 @@ static void stub_event(void* ctx, uint32_t mask)
   s_event_last_mask = mask;
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_event_handler_relays_eth_status(void)
 {
   TEST_BEGIN("ra_net_pal_set_event_handler relays ra_eth events");
@@ -181,6 +223,12 @@ static void test_event_handler_relays_eth_status(void)
   TEST_END("ra_net_pal_set_event_handler relays ra_eth events");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_calls_before_init_fail(void)
 {
   TEST_BEGIN("ra_net_pal_*: pre-init calls return invalid_state");

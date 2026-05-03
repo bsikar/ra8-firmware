@@ -42,6 +42,11 @@ static const ra_iic_cfg_t k_iic_cfg = {
 /* =============================================================================
  * SCI veneers
  * =============================================================================
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_sci_init_forwards(void)
@@ -52,6 +57,12 @@ static void test_sci_init_forwards(void)
   TEST_END("ra_nsc_sci_init forwards to ra_sci_init");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_sci_init_null(void)
 {
   TEST_BEGIN("ra_nsc_sci_init: NULL cfg rejected");
@@ -60,6 +71,12 @@ static void test_sci_init_null(void)
   TEST_END("ra_nsc_sci_init: NULL cfg rejected");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_sci_putc_getc_round_trip(void)
 {
   TEST_BEGIN("ra_nsc_sci_{putc,getc} round trip");
@@ -79,6 +96,11 @@ static void test_sci_putc_getc_round_trip(void)
 /* =============================================================================
  * IIC veneers
  * =============================================================================
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_iic_init_forwards(void)
@@ -90,6 +112,12 @@ static void test_iic_init_forwards(void)
   TEST_END("ra_nsc_iic_init forwards");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_iic_write_read_null(void)
 {
   TEST_BEGIN("ra_nsc_iic_{write,read}: NULL rejected");
@@ -106,6 +134,11 @@ static void test_iic_write_read_null(void)
 /* =============================================================================
  * SPI veneers
  * =============================================================================
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_spi_init_and_xfer(void)
@@ -134,6 +167,11 @@ static void test_spi_init_and_xfer(void)
 /* =============================================================================
  * USB veneers
  * =============================================================================
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_usb_init_and_attach(void)

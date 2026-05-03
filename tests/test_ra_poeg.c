@@ -50,6 +50,12 @@ static ra_poeg_cfg_t make_cfg(void)
   return cfg;
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_configured(void)
 {
   TEST_BEGIN("poeg init configured");
@@ -67,6 +73,12 @@ static void test_init_configured(void)
   TEST_END("poeg init configured");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_null_cfg(void)
 {
   TEST_BEGIN("poeg init null cfg");
@@ -77,6 +89,12 @@ static void test_init_null_cfg(void)
   TEST_END("poeg init null cfg");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_bad_group(void)
 {
   TEST_BEGIN("poeg init bad group");
@@ -88,6 +106,12 @@ static void test_init_bad_group(void)
   TEST_END("poeg init bad group");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_deinit(void)
 {
   TEST_BEGIN("poeg deinit");
@@ -103,6 +127,12 @@ static void test_deinit(void)
   TEST_END("poeg deinit");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_deinit_bad_group(void)
 {
   TEST_BEGIN("poeg deinit bad group");
@@ -113,6 +143,12 @@ static void test_deinit_bad_group(void)
   TEST_END("poeg deinit bad group");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_trigger_stop(void)
 {
   TEST_BEGIN("poeg trigger stop");
@@ -129,6 +165,12 @@ static void test_trigger_stop(void)
   TEST_END("poeg trigger stop");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_trigger_stop_bad_group(void)
 {
   TEST_BEGIN("poeg trigger stop bad group");
@@ -139,6 +181,12 @@ static void test_trigger_stop_bad_group(void)
   TEST_END("poeg trigger stop bad group");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_status_read_and_clear(void)
 {
   TEST_BEGIN("poeg status read + clear");
@@ -163,6 +211,12 @@ static void test_status_read_and_clear(void)
   TEST_END("poeg status read + clear");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_status_null_out(void)
 {
   TEST_BEGIN("poeg status null out");
@@ -173,6 +227,12 @@ static void test_status_null_out(void)
   TEST_END("poeg status null out");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_attach_and_dispatch(void)
 {
   TEST_BEGIN("poeg attach + dispatch");
@@ -192,6 +252,12 @@ static void test_attach_and_dispatch(void)
   TEST_END("poeg attach + dispatch");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_dispatch_no_handler(void)
 {
   TEST_BEGIN("poeg dispatch no handler");
@@ -207,6 +273,12 @@ static void test_dispatch_no_handler(void)
   TEST_END("poeg dispatch no handler");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_attach_bad_group(void)
 {
   TEST_BEGIN("poeg attach bad group");
@@ -218,6 +290,12 @@ static void test_attach_bad_group(void)
   TEST_END("poeg attach bad group");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_power_transition(void)
 {
   TEST_BEGIN("poeg power transition");

@@ -9,6 +9,12 @@
 #include "ra_port_constants.h"
 #include "unity_minimal.h"
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_pin_encoding_matches_led_constants(void)
 {
   TEST_BEGIN("LED constants decode correctly");
@@ -23,6 +29,12 @@ static void test_pin_encoding_matches_led_constants(void)
   TEST_END("LED constants decode correctly");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_ra_pin_macro_roundtrip(void)
 {
   TEST_BEGIN("RA_PIN roundtrip");
@@ -32,6 +44,12 @@ static void test_ra_pin_macro_roundtrip(void)
   TEST_END("RA_PIN roundtrip");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_port_count_invariants(void)
 {
   TEST_BEGIN("port count invariants");

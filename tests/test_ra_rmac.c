@@ -58,6 +58,12 @@ static ra_rmac_config_t default_cfg(void)
   };
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_happy(void)
 {
   TEST_BEGIN("rmac init happy");
@@ -72,6 +78,12 @@ static void test_init_happy(void)
   TEST_END("rmac init happy");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_null_cfg(void)
 {
   TEST_BEGIN("rmac init null cfg");
@@ -80,6 +92,12 @@ static void test_init_null_cfg(void)
   TEST_END("rmac init null cfg");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_bad_port(void)
 {
   TEST_BEGIN("rmac init bad port");
@@ -90,6 +108,12 @@ static void test_init_bad_port(void)
   TEST_END("rmac init bad port");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_bad_interface(void)
 {
   TEST_BEGIN("rmac init bad iface");
@@ -100,6 +124,12 @@ static void test_init_bad_interface(void)
   TEST_END("rmac init bad iface");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_bad_speed(void)
 {
   TEST_BEGIN("rmac init bad speed");
@@ -110,6 +140,12 @@ static void test_init_bad_speed(void)
   TEST_END("rmac init bad speed");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_mac_address(void)
 {
   TEST_BEGIN("rmac set mac address");
@@ -135,6 +171,12 @@ static void test_set_mac_address(void)
   TEST_END("rmac set mac address");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_rx_filter(void)
 {
   TEST_BEGIN("rmac set rx filter");
@@ -153,6 +195,12 @@ static void test_set_rx_filter(void)
   TEST_END("rmac set rx filter");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_status_read_and_clear(void)
 {
   TEST_BEGIN("rmac status read + clear");
@@ -187,6 +235,12 @@ static void test_status_read_and_clear(void)
   TEST_END("rmac status read + clear");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_link_modes(void)
 {
   TEST_BEGIN("rmac set link modes");
@@ -246,6 +300,12 @@ static void test_set_link_modes(void)
   TEST_END("rmac set link modes");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_frame_size_and_vlan(void)
 {
   TEST_BEGIN("rmac frame size + vlan");
@@ -287,6 +347,12 @@ static void test_frame_size_and_vlan(void)
   TEST_END("rmac frame size + vlan");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_pause_and_pfc(void)
 {
   TEST_BEGIN("rmac pause + pfc");
@@ -336,6 +402,12 @@ static void test_pause_and_pfc(void)
   TEST_END("rmac pause + pfc");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_lpi_and_magic_packet(void)
 {
   TEST_BEGIN("rmac lpi + magic packet");
@@ -363,6 +435,12 @@ static void test_lpi_and_magic_packet(void)
   TEST_END("rmac lpi + magic packet");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_loopback(void)
 {
   TEST_BEGIN("rmac loopback");
@@ -379,6 +457,12 @@ static void test_loopback(void)
   TEST_END("rmac loopback");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_ptp_filter(void)
 {
   TEST_BEGIN("rmac ptp filter");
@@ -407,6 +491,12 @@ static void test_ptp_filter(void)
   TEST_END("rmac ptp filter");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_mdio_c22(void)
 {
   TEST_BEGIN("rmac mdio c22");
@@ -444,6 +534,12 @@ static void test_mdio_c22(void)
   TEST_END("rmac mdio c22");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_mdio_c45(void)
 {
   TEST_BEGIN("rmac mdio c45");
@@ -473,6 +569,12 @@ static void test_mdio_c45(void)
   TEST_END("rmac mdio c45");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_read_stats(void)
 {
   TEST_BEGIN("rmac read stats");
@@ -547,6 +649,12 @@ static void test_read_stats(void)
   TEST_END("rmac read stats");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_attach_and_dispatch(void)
 {
   TEST_BEGIN("rmac attach + dispatch");
@@ -590,6 +698,12 @@ static void test_attach_and_dispatch(void)
   TEST_END("rmac attach + dispatch");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_stop_and_resume(void)
 {
   TEST_BEGIN("rmac stop + resume");
@@ -623,6 +737,12 @@ static void prime_mdio(ra_rmac_port_t port, uint16_t mpsm_prd)
   ra_rmac(port)->MMIS1 = (uint32_t)k_ra_rmac_mmis1_pwacs | (uint32_t)k_ra_rmac_mmis1_pracs;
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_phy_reset_happy(void)
 {
   TEST_BEGIN("rmac phy reset happy");
@@ -635,6 +755,12 @@ static void test_phy_reset_happy(void)
   TEST_END("rmac phy reset happy");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_phy_reset_bad_args(void)
 {
   TEST_BEGIN("rmac phy reset bad args");
@@ -647,6 +773,12 @@ static void test_phy_reset_bad_args(void)
   TEST_END("rmac phy reset bad args");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_phy_set_advertise(void)
 {
   TEST_BEGIN("rmac phy set_advertise");
@@ -670,6 +802,12 @@ static void test_phy_set_advertise(void)
   TEST_END("rmac phy set_advertise");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_phy_auto_neg_start(void)
 {
   TEST_BEGIN("rmac phy auto_neg_start");
@@ -688,6 +826,12 @@ static void test_phy_auto_neg_start(void)
   TEST_END("rmac phy auto_neg_start");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_phy_auto_neg_wait_happy(void)
 {
   TEST_BEGIN("rmac phy auto_neg_wait MPSM transaction shape");
@@ -708,6 +852,12 @@ static void test_phy_auto_neg_wait_happy(void)
   TEST_END("rmac phy auto_neg_wait MPSM transaction shape");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_phy_auto_neg_wait_timeout(void)
 {
   TEST_BEGIN("rmac phy auto_neg_wait timeout");
@@ -731,6 +881,12 @@ static void test_phy_auto_neg_wait_timeout(void)
   TEST_END("rmac phy auto_neg_wait timeout");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_phy_link_status(void)
 {
   TEST_BEGIN("rmac phy link_status");
@@ -750,6 +906,12 @@ static void test_phy_link_status(void)
   TEST_END("rmac phy link_status");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_deinit(void)
 {
   TEST_BEGIN("rmac deinit");

@@ -24,6 +24,12 @@ static bool peek_bit(ra_mstp_t id)
   return ((base[reg] & ((uint32_t)1U << bit)) != 0U);
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_zeroes_refcounts_and_sets_all_stopped(void)
 {
   TEST_BEGIN("ra_mstp_init -> all stopped, zero refcounts");
@@ -48,6 +54,12 @@ static void test_init_zeroes_refcounts_and_sets_all_stopped(void)
   TEST_END("ra_mstp_init -> all stopped, zero refcounts");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_enable_clears_bit_first_request(void)
 {
   TEST_BEGIN("ra_mstp_enable: first request clears bit");
@@ -66,6 +78,12 @@ static void test_enable_clears_bit_first_request(void)
   TEST_END("ra_mstp_enable: first request clears bit");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_enable_idempotent_increments_refcount(void)
 {
   TEST_BEGIN("ra_mstp_enable: second request increments refcount only");
@@ -85,6 +103,12 @@ static void test_enable_idempotent_increments_refcount(void)
   TEST_END("ra_mstp_enable: second request increments refcount only");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_disable_keeps_bit_clear_until_last_release(void)
 {
   TEST_BEGIN("ra_mstp_disable: bit stays clear until refcount hits 0");
@@ -109,6 +133,12 @@ static void test_disable_keeps_bit_clear_until_last_release(void)
   TEST_END("ra_mstp_disable: bit stays clear until refcount hits 0");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_disable_underflow_returns_invalid_state(void)
 {
   TEST_BEGIN("ra_mstp_disable: underflow rejected");
@@ -120,6 +150,12 @@ static void test_disable_underflow_returns_invalid_state(void)
   TEST_END("ra_mstp_disable: underflow rejected");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_invalid_id_rejected(void)
 {
   TEST_BEGIN("ra_mstp_enable / disable / get_refcount: invalid id");
@@ -142,6 +178,12 @@ static void test_invalid_id_rejected(void)
   TEST_END("ra_mstp_enable / disable / get_refcount: invalid id");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_get_refcount_null_out(void)
 {
   TEST_BEGIN("ra_mstp_get_refcount: NULL out_ref");
@@ -151,6 +193,12 @@ static void test_get_refcount_null_out(void)
   TEST_END("ra_mstp_get_refcount: NULL out_ref");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_is_stopped_reads_bit(void)
 {
   TEST_BEGIN("ra_mstp_is_stopped: tracks live bit");
@@ -170,6 +218,12 @@ static void test_is_stopped_reads_bit(void)
   TEST_END("ra_mstp_is_stopped: tracks live bit");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_neighbor_bits_undisturbed(void)
 {
   TEST_BEGIN("ra_mstp_enable: neighbor bits unchanged");
@@ -189,6 +243,12 @@ static void test_neighbor_bits_undisturbed(void)
   TEST_END("ra_mstp_enable: neighbor bits unchanged");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_all_five_registers_addressable(void)
 {
   TEST_BEGIN("ra_mstp_enable: covers MSTPCRA..MSTPCRE");
@@ -210,6 +270,12 @@ static void test_all_five_registers_addressable(void)
   TEST_END("ra_mstp_enable: covers MSTPCRA..MSTPCRE");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_refcount_saturation(void)
 {
   TEST_BEGIN("ra_mstp_enable: refcount saturation rejected");
@@ -232,6 +298,12 @@ static void test_refcount_saturation(void)
   TEST_END("ra_mstp_enable: refcount saturation rejected");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_is_stopped_invalid_id(void)
 {
   TEST_BEGIN("ra_mstp_is_stopped: invalid id rejected");

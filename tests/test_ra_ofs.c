@@ -21,6 +21,12 @@
 #include "ra_sim_mmap.h"
 #include "unity_minimal.h"
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_ra_ofs_compiled(void)
 {
   TEST_BEGIN("ra_ofs.c compiled into ra_core_hal");
