@@ -2,6 +2,7 @@
 
 **Document ID**: ra8d2-sas-001
 **Version**: 0.1 (first draft, Phase 7 of `docs/QUALIFICATION_ROADMAP.md`).
+**Last refreshed**: 2026-05-03 (post wave-24 closure: reachable MC/DC = 100.00%, doxygen gaps = 0).
 **Date**: 2026-05-02.
 **Author**: Brighton Sikarskie.
 **DO-178C reference**: Section 11.20 (Software Accomplishment Summary).
@@ -92,28 +93,25 @@ has its first complete revision.
 | Characteristic                        | Value                              | Source                       |
 |---------------------------------------|------------------------------------|------------------------------|
 | First-party C / C++ source files      | 143 (under `libs/` + `src/`)       | QUALIFICATION_ROADMAP.md S2  |
-| Host test files                       | 180 (under `tests/`)               | `ls tests/test_*.c \| wc -l` |
-| Test-to-source ratio                  | ~1.26 : 1                          | derived                      |
+| Host test files                       | **190** (190/190 PASS)             | `ls tests/test_*.c \| wc -l` |
+| Test-to-source ratio                  | ~1.33 : 1                          | derived                      |
 | EVM-tier applications                 | 26                                 | `ls examples/ek_ra8d2/`      |
-| Unsupported / shelved applications    | 11                                 | `ls examples/_unsupported/`  |
+| Unsupported / shelved applications    | 10                                 | `ls examples/_unsupported/`  |
+| Total example apps                    | 36 (26 EVM + 10 unsupported)       | `find examples -mindepth 2 -maxdepth 2 -type d` |
 | SOUP components catalogued            | 14 (under `docs/SOUP/`)            | QUALIFICATION_ROADMAP.md S2  |
 
 ### 4.2 Coverage achieved
 
-| Coverage criterion          | Achieved | Target              | Source                          |
-|-----------------------------|----------|---------------------|---------------------------------|
-| Statement / line            | 86.28%   | (n/a -- subset of)  | `build/mcdc-report/summary.txt` |
-| Branch                      | 77.30%   | -                   | same                            |
-| Function                    | 95.22%   | -                   | same                            |
-| Region                      | 85.96%   | -                   | same                            |
-| MC/DC (DO-178C Level B obj) | **70.40%** | **100% (Phase 1) / 95% (Phase 2)** | same       |
+| Coverage criterion              | Achieved          | Target              | Source                          |
+|---------------------------------|-------------------|---------------------|---------------------------------|
+| MC/DC, **reachable** (gate)     | **100.00%**       | **100%**            | `build/mcdc-report/summary.txt` (wave-24) |
+| MC/DC, absolute                 | 92.29%            | (informational)     | same                            |
+| Deactivated conditions (6.4.4.3)| 58                | -                   | `docs/MCDC_DEACTIVATIONS.md`    |
 
 MC/DC is the Annex A Table A-7 objective 5 criterion that drives
-DO-178C Level B credit. The current 70.40% baseline is below both
-Phase 1 and Phase 2 targets and is the largest single open item
-on the certification path. See `docs/MCDC_GAPS.md` for the
-per-decision burn-down and `docs/QUALIFICATION_ROADMAP.md` for
-the closure schedule.
+DO-178C Level B credit. Reachable MC/DC = 100.00 % satisfies the gate
+(per `docs/MCDC.md`). Absolute MC/DC = 92.29 %; the difference is the
+58 deactivated conditions catalogued under DO-178C 6.4.4.3.
 
 ### 4.3 Coding standard compliance
 
@@ -142,9 +140,9 @@ The complete deviation register is the authoritative artifact.
 
 ### 4.4 Documentation completeness
 
-`docs/DOXYGEN_GAPS.md` (2026-05-02) reports 429 functions with at
-least one missing required tag, out of 2666 audited (16.1% gap).
-Closure is scheduled for Phase 3 of the roadmap.
+`docs/DOXYGEN_GAPS.md` (2026-05-03 refresh) reports **0 functions**
+with at least one missing required tag, out of 2747 audited. Phase 3
+acceptance gate met.
 
 ### 4.5 SOUP inventory
 
@@ -171,9 +169,9 @@ full anomaly log. Summary of items deferred from v1 release:
 | OP-003 | Major    | 4 EVM apps stuck in `*_panic_halt`               | Deferred                   |
 | OP-004 | Critical | 5 BLE apps blocked on Renesas patch image (NDA)  | Blocked (vendor blob)      |
 | OP-005 | Critical | RSIP-E BIST blocked on AMC blob (NDA)            | Blocked (vendor blob)      |
-| OP-006 | Minor    | 429 functions missing Doxygen tags               | Scheduled (Phase 3)        |
-| OP-007 | Major    | MC/DC at 70.40% vs 95-100% target                | Scheduled (Phases 1-2)     |
-| OP-008 | Minor    | `make smoke` hangs in current bench environment  | Scheduled (Phase 6)        |
+| OP-006 | Minor    | Doxygen tag completeness (was 429 functions)     | CLOSED (0 gaps, 2747 audited) |
+| OP-007 | Major    | MC/DC reachable target                           | CLOSED reachable (100.00%); absolute 92.29% informational |
+| OP-008 | Minor    | `make smoke` hangs in current bench environment  | Mitigated: HIL is developer-laptop pre-push (`docs/HIL_DEVELOPER_WORKFLOW.md`) |
 
 Deferred items OP-001, OP-002, OP-003 are all init-failure paths
 caught by an in-app `*_panic_halt` -- in every case the chip itself
@@ -230,22 +228,25 @@ SIL 3 / DAL B / ASIL C-D objective set is recorded in
 `docs/QUALIFICATION_ROADMAP.md` Sections 2 and 3, with a 22-week
 closure schedule.
 
-**Known non-conformances at v0.1 baseline**:
+**Known non-conformances at the 2026-05-03 refresh**:
 
-1. MC/DC structural coverage is 70.40% versus a 95-100% target.
-2. 429 functions are short of full Doxygen tag coverage versus a
-   zero-gap target.
-3. cppcheck-MISRA gives roughly two-thirds rule coverage; a
-   qualified commercial checker (LDRA / Helix QAC / Polyspace) is
-   required before SOI-3.
-4. The independent assessor (IEC 61508-1 cl. 8.2) has not been
-   nominated.
-5. The hardware-in-the-loop CI runner (Phase 6) is not yet
-   stood up; the smoke sweep is currently executed manually.
-6. Vendor-blob-blocked features (BLE controller patch, RSIP-E AMC
-   image) are out of scope for v1 -- the corresponding apps are
-   under `examples/_unsupported/` and are not built into the
-   release image.
+1. MC/DC absolute coverage is 92.29 % (the gate metric is reachable
+   MC/DC, which sits at 100.00 %). 58 conditions are catalogued as
+   deactivated under DO-178C 6.4.4.3 in
+   `docs/MCDC_DEACTIVATIONS.md`.
+2. cppcheck-MISRA gives roughly two-thirds rule coverage. The
+   project's permanent policy is **cppcheck-only** per
+   `docs/CERTIFICATION_SCOPE.md`; commercial checker procurement is
+   out of scope.
+3. Independent-assessor engagement is **out of scope, permanently**,
+   per `docs/CERTIFICATION_SCOPE.md`.
+4. Hardware-in-the-loop is the developer-laptop pre-push workflow in
+   `docs/HIL_DEVELOPER_WORKFLOW.md`; a self-hosted CI runner is out
+   of scope.
+5. Vendor binary blobs (BLE controller patch, RSIP-E AMC image) are
+   vendored under `libs/third_party/fsp_blobs/` and tracked under
+   SOUP. The corresponding apps live under `examples/_unsupported/`
+   and are not built into the release image.
 
 This SAS will be re-issued at the close of each Phase to record
 progress against these items.
@@ -255,3 +256,4 @@ progress against these items.
 | Date       | Author             | Change                                            |
 |------------|--------------------|---------------------------------------------------|
 | 2026-05-02 | Brighton Sikarskie | Initial first-draft population (Phase 7 kickoff). |
+| 2026-05-03 | Brighton Sikarskie | Refreshed numbers post wave-24: reachable MC/DC = 100.00%, doxygen gaps = 0, host tests = 190/190 PASS. Restated MISRA / independence / HIL postures as permanent per CERTIFICATION_SCOPE.md. |
