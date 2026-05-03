@@ -302,8 +302,12 @@ fi
 
 # ---- Clang Static Analyzer (scan-build) -- warn-only -------------
 # scan-build is a multi-minute analyzer pass and is NOT invoked from
-# the per-commit hook. Run it locally with `make scan-build`, or in
-# CI; see docs/STATIC_ANALYSIS.md for the documented baseline.
+# the per-commit hook. Run it locally with `make scan-build` (or
+# `make scan-build-strict` to mirror the CI gate), or rely on CI;
+# see docs/STATIC_ANALYSIS.md for the documented baseline. The
+# baseline is currently 0 actionable first-party findings after the
+# HAL MMIO suppressions are applied -- regressions will be caught by
+# CI's `bash scripts/utils/scan_build.sh --strict` invocation.
 
 # ---- include-what-you-use (IWYU) -- warn-only --------------------
 # Same as scan-build: too slow for the per-commit hook. Run locally

@@ -29,13 +29,14 @@ visualisations.
 
 ## Suppression policy
 
-Two source partitions are silenced by the wrapper (see
+Three classes of findings are silenced by the wrapper (see
 `scripts/utils/scan_build.sh`):
 
-| Partition                | Why suppressed                                        |
-|--------------------------|-------------------------------------------------------|
-| `libs/third_party/`      | SOUP -- pre-qualified external code, see `docs/SOUP/` |
-| `tests/`                 | Host-only test scaffolding, exempt per CLAUDE.md      |
+| Partition / pattern                                                                                | Why suppressed                                                                                                |
+|----------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------|
+| `libs/third_party/`                                                                                | SOUP -- pre-qualified external code, see `docs/SOUP/`                                                          |
+| `tests/`                                                                                           | Host-only test scaffolding, exempt per CLAUDE.md                                                               |
+| `core.FixedAddressDereference` in `libs/ra_hal/{src,inc}/`, `libs/ra_mpu/{src,inc}/`, `libs/ra_core/src/ra_log.c`, `libs/ra_core/src/ra_exception.c` | Hardware-register MMIO accessor pattern -- see "MMIO suppression rationale" below for the full justification. |
 
 In addition the wrapper disables two checkers globally:
 
@@ -52,14 +53,28 @@ In addition the wrapper disables two checkers globally:
 ## Current baseline
 
 As of 2026-05-02 the analyzer reports the following first-party
-findings against the host test build:
+findings against the host test build (clang 18, llvm/Homebrew):
 
-| Count | Checker                          | Status     |
-|-------|----------------------------------|------------|
-| 683   | `core.FixedAddressDereference`   | **Expected -- hardware-register accessor pattern** |
-| 2     | `core.DivideZero`                | **Expected -- false positive across function boundary** |
+| Class                                              | Count | Disposition                                         |
+|----------------------------------------------------|-------|-----------------------------------------------------|
+| Actionable first-party                             | **0** | CI gate (`--strict`) passes                         |
+| `core.FixedAddressDereference` (HAL MMIO)          | 683   | Suppressed -- hardware-register accessor pattern    |
+| Third-party (`libs/third_party/`)                  | 4     | Suppressed -- SOUP                                  |
+| Test scaffolding (`tests/`)                        | 869   | Suppressed -- host-only test code, exempt           |
 
-### `core.FixedAddressDereference` (683 findings)
+Historical context: prior to 2026-05-02 the wrapper reported 685
+"first-party" findings (683 MMIO + 2 `core.DivideZero` false positives
+in `libs/ra_hal/src/ra_jpeg_sw.c::dec_decode_scan`). The two
+`core.DivideZero` findings were eliminated by adding an explicit
+`assert(d->hmax > 0U && d->vmax > 0U)` immediately before the MCU-grid
+size computation; the assertion re-states the cross-function invariant
+that `dec_parse_sof0()` already enforces (it returns success only for
+4:4:4, 4:2:2, 4:2:2-h-only, and 4:2:0 chroma layouts). The 683 MMIO
+findings were silenced by the path/check-id filter described below.
+
+## MMIO suppression rationale
+
+### `core.FixedAddressDereference` (683 findings, all suppressed)
 
 Every memory-mapped register access in the HAL goes through an inline
 accessor that returns a pointer cast from a `uintptr_t` enum constant
@@ -88,38 +103,41 @@ register-level access.
 **Mitigation:** the cross-compile build (`make blink_hal`) does the
 same thing on real hardware; the analyzer noise is purely an artefact
 of running on the host unit-test build where the addresses point at
-mock register banks.
+mock register banks. `scripts/utils/scan_build.sh` post-processes the
+generated HTML reports and bins every
+`core.FixedAddressDereference` finding under the suppressed-MMIO
+counter when the `BUGFILE` path matches one of the documented MMIO
+partitions. No source-level annotations or `// NOLINT` markers are
+required: the suppression is a single check-id + path filter,
+expressed in the wrapper, which keeps the source files free of
+analyzer-specific noise.
 
-### `core.DivideZero` (2 findings, both in `ra_jpeg_sw.c`)
+### `core.DivideZero` (eliminated 2026-05-02)
 
-Both findings sit inside the JPEG decoder MCU loop:
-
-```c
-// libs/ra_hal/src/ra_jpeg_sw.c -- decode_mcu_loop()
-uint16_t mcus_x = (uint16_t)((d->width  + mcu_w_px - 1U) / mcu_w_px);
-uint16_t mcus_y = (uint16_t)((d->height + mcu_h_px - 1U) / mcu_h_px);
-```
-
-`mcu_w_px` and `mcu_h_px` are derived from `d->hmax` / `d->vmax`, both
-of which are validated upstream in `ra_jpeg_sw_parse_sof()` -- the
-parser only returns success for chroma layouts 4:4:4, 4:2:2 (h+v),
-4:2:2 (h-only), 4:2:0, all of which set `hmax`/`vmax` to a non-zero
-value. The analyzer cannot follow the cross-function invariant and
-reports the classic intra-procedural false positive. Documented here
-rather than mitigated with a redundant guard.
+Previously two findings sat inside `dec_decode_scan()` in
+`libs/ra_hal/src/ra_jpeg_sw.c`. The MCU width/height divisions
+(`(d->width + mcu_w_px - 1U) / mcu_w_px` and the height analogue)
+depend on `d->hmax` / `d->vmax`, which are validated cross-function in
+`dec_parse_sof0()`. Adding an explicit
+`assert(d->hmax > 0U && d->vmax > 0U)` immediately before the
+divisions makes the invariant locally provable and the analyzer is now
+quiet on this path. The assertion also satisfies NASA Power-of-10
+Rule 5 (minimum two preconditions per function).
 
 ## CI / hook integration
 
 The per-commit hook does **not** invoke scan-build (a full pass takes
 several minutes -- too expensive to gate every commit). Instead:
 
-* Developers run `make scan-build` locally before opening a PR.
-* CI runs `bash scripts/utils/scan_build.sh --check` on every push;
-  today the gate is **warn-only** because the 685 first-party findings
-  (683 `core.FixedAddressDereference` + 2 `core.DivideZero` false
-  positives) are fully accounted for in this file. The gate will be
-  flipped to strict once those are annotated, suppressed, or
-  eliminated.
+* Developers run `make scan-build` locally before opening a PR
+  (`make scan-build-strict` mirrors the CI gate).
+* CI runs `bash scripts/utils/scan_build.sh --strict` (alias for
+  `--check`) on every push. The gate is **warn-only today** in
+  practice -- the runner is wired but the workflow does not yet flip
+  the job to required -- and is expected to flip to required once a
+  second clean run on a CI builder confirms the 0-finding baseline is
+  reproducible. Locally and on the development host the strict mode
+  exits 0.
 
 ## Cross-references
 
