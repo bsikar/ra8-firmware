@@ -307,7 +307,13 @@ ra_cgc_pll2_enable(uint8_t mul_int, uint8_t mul_quarters, ra_plodiv_t p_div_code
  * at 0x0002 (Powered, never Default), INTSTS0.CTRT = 0, no SETUP
  * packet ever delivered.
  *
- * Sequence per FSP `bsp_clocks.c:2648-2691`:
+ * Sequence per FSP `bsp_clocks.c:2648-2691` and HUM Ch 9 "Clock
+ * selection switching procedure" (canonical example: SPICKCR p 370):
+ *   0. Force MSTPCRB.MSTPB11 = 1 (USBFS module-stopped). HUM step 1
+ *      requires this whenever USBCKDIVCR is moved off 1/1; we are
+ *      programming /5 below, and a caller that has already released
+ *      MSTPB11 (e.g. by invoking ::ra_usb_device_init first) will
+ *      otherwise hang the SREQ -> SRDY handshake silently.
  *   1. PRCR-CGC unlock window.
  *   2. USBCKCR.USBCKSREQ = 1, wait USBCKSRDY = 1 (clock gated).
  *   3. Write USBCKDIVCR.
@@ -328,9 +334,16 @@ ra_cgc_pll2_enable(uint8_t mul_int, uint8_t mul_quarters, ra_plodiv_t p_div_code
  *
  * @pre  ::ra_cgc_init has been called (PLL1 locked).
  * @pre  Single-threaded init context.
+ * @pre  Should run BEFORE any caller releases MSTPB11 (USBFS) -- the
+ *       routine forces MSTPB11 = 1 internally for safety, but invoking
+ *       this from main() before any USB driver init is the documented
+ *       call order.
  *
  * @post USBCKCR.USBCKSEL = ::k_ra_usbcksel_pll2p.
  * @post USBCKDIVCR programmed for /5 (codepoint 6).
+ * @post MSTPCRB.MSTPB11 = 1 (USBFS module-stopped); the USB driver
+ *       must subsequently release it via ::ra_mstp_enable / its
+ *       ::ra_usb_device_init wrapper.
  * @post PRCR is re-locked.
  *
  * @note Not thread-safe.
