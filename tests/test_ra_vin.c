@@ -1409,6 +1409,125 @@ static void test_mcdc_capture_start_geom_quad(void)
   TEST_END("vin capture_start MC/DC: 4-cond OR geometry");
 }
 
+/**
+ * @test test_mcdc_set_uds_passband_pair
+ *
+ * @par MC/DC:
+ * Decision: ``if ((v_bwidth > k_ra_vin_uds_max_bw) || (h_bwidth > k_ra_vin_uds_max_bw))``
+ * (2 conditions, libs/ra_hal/src/ra_vin.c:445 ra_vin_set_uds_passband).
+ * Short-circuit OR: N+1 = 3 vectors.
+ * - V1: v=0, h=0       -> C1=F, C2=F -> dec F (ok).
+ * - V2: v=0xFF, h=0    -> C1=T short -> dec T -> invalid_arg.
+ *   (V1->V2 isolates C1.)
+ * - V3: v=0, h=0xFF    -> C1=F, C2=T -> dec T -> invalid_arg.
+ *   (V1->V3 isolates C2.)
+ */
+static void test_mcdc_set_uds_passband_pair(void)
+{
+  TEST_BEGIN("vin set_uds_passband MC/DC: v||h > max_bw");
+  prep();
+  const ra_vin_config_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_vin_init(&cfg));
+  /* V1 */
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_vin_set_uds_passband(0U, 0U));
+  /* V2 */
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_vin_set_uds_passband(0xFFU, 0U));
+  /* V3 */
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_vin_set_uds_passband(0U, 0xFFU));
+  TEST_END("vin set_uds_passband MC/DC: v||h > max_bw");
+}
+
+/**
+ * @test test_mcdc_set_data_mode_pair
+ *
+ * @par MC/DC:
+ * Decision: ``if ((mode->conv_mode > k_ra_vin_max_dtmd) || (mode->y_mode > k_ra_vin_max_ymode))``
+ * (2 conditions, libs/ra_hal/src/ra_vin.c:674 ra_vin_set_data_mode).
+ * Short-circuit OR: N+1 = 3 vectors.
+ * - V1: conv=0, y=0   -> C1=F, C2=F -> dec F (ok).
+ * - V2: conv=99, y=0  -> C1=T short -> dec T -> invalid_arg.
+ * - V3: conv=0, y=99  -> C1=F, C2=T -> dec T -> invalid_arg.
+ */
+static void test_mcdc_set_data_mode_pair(void)
+{
+  TEST_BEGIN("vin set_data_mode MC/DC: conv||y > max");
+  prep();
+  const ra_vin_config_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_vin_init(&cfg));
+  ra_vin_data_mode_t m = {};
+  m.conv_mode          = 0U;
+  m.y_mode             = 0U;
+  /* V1 */
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_vin_set_data_mode(&m));
+  /* V2 */
+  m.conv_mode = 99U;
+  m.y_mode    = 0U;
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_vin_set_data_mode(&m));
+  /* V3 */
+  m.conv_mode = 0U;
+  m.y_mode    = 99U;
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_vin_set_data_mode(&m));
+  TEST_END("vin set_data_mode MC/DC: conv||y > max");
+}
+
+/**
+ * @test test_mcdc_set_csi_input_pair
+ *
+ * @par MC/DC:
+ * Decision: ``if ((input->virtual_channel > k_ra_vin_max_vc_sel) ||
+ *               (input->data_type > k_ra_vin_max_dt))``
+ * (2 conditions, libs/ra_hal/src/ra_vin.c:700 ra_vin_set_csi_input).
+ * Short-circuit OR: N+1 = 3 vectors.
+ * - V1: vc=0, dt=0  -> C1=F, C2=F -> dec F.
+ * - V2: vc=99, dt=0 -> C1=T short -> dec T -> invalid_arg.
+ * - V3: vc=0, dt=99 -> C1=F, C2=T -> dec T -> invalid_arg.
+ */
+static void test_mcdc_set_csi_input_pair(void)
+{
+  TEST_BEGIN("vin set_csi_input MC/DC: vc||dt > max");
+  prep();
+  const ra_vin_config_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_vin_init(&cfg));
+  ra_vin_csi_input_t in = {};
+  /* V1 */
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_vin_set_csi_input(&in));
+  /* V2 */
+  in.virtual_channel = 99U;
+  in.data_type       = 0U;
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_vin_set_csi_input(&in));
+  /* V3 */
+  in.virtual_channel = 0U;
+  in.data_type       = 99U;
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_vin_set_csi_input(&in));
+  TEST_END("vin set_csi_input MC/DC: vc||dt > max");
+}
+
+/**
+ * @test test_mcdc_set_window_pair
+ *
+ * @par MC/DC:
+ * Decision: ``if ((pixel_end > k_ra_vin_preclip_mask) || (line_end > k_ra_vin_preclip_mask))``
+ * (2 conditions, libs/ra_hal/src/ra_vin.c:992 ra_vin_set_window).
+ * Short-circuit OR: N+1 = 3 vectors. preclip_mask = 0xFFF (4095).
+ * - V1: w=8,h=8 at (0,0) -> ends 7,7  -> C1=F, C2=F -> dec F.
+ * - V2: w=4096 at x=1    -> pixel_end=4096 > 4095   -> C1=T short -> invalid_arg.
+ * - V3: w=8,h=4096 at y=1 -> line_end=4096 > 4095   -> C1=F, C2=T -> invalid_arg.
+ */
+static void test_mcdc_set_window_pair(void)
+{
+  TEST_BEGIN("vin set_window MC/DC: pixel_end||line_end > mask");
+  prep();
+  const ra_vin_config_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_vin_init(&cfg));
+  /* V1: ok small window. */
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_vin_set_window(0U, 0U, 8U, 8U));
+  /* V2: pixel_end overflow. */
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_vin_set_window(1U, 0U, 4096U, 8U));
+  /* V3: line_end overflow. */
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_vin_set_window(0U, 1U, 8U, 4096U));
+  TEST_END("vin set_window MC/DC: pixel_end||line_end > mask");
+}
+
 int32_t main(void)
 {
   test_init_happy();
@@ -1466,6 +1585,10 @@ int32_t main(void)
   test_mcdc_set_uds_scale_quad();
   test_mcdc_set_framebuffers_align_triple();
   test_mcdc_capture_start_geom_quad();
+  test_mcdc_set_uds_passband_pair();
+  test_mcdc_set_data_mode_pair();
+  test_mcdc_set_csi_input_pair();
+  test_mcdc_set_window_pair();
   (void)fprintf(stderr, "[OK  ] test_ra_vin.c\n");
   return 0;
 }

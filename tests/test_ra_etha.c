@@ -1109,6 +1109,154 @@ static void test_mcdc_set_vlan_tag_six(void)
   TEST_END("etha set_vlan_tag MC/DC: 6-cond OR field range");
 }
 
+/**
+ * @test test_mcdc_get_queue_level_pair
+ *
+ * @par MC/DC:
+ * Decision: ``if (!internal_port_ok(port) || !internal_tc_ok(tc))``
+ * (2 conditions, libs/ra_hal/src/ra_etha.c:741 ra_etha_get_queue_level).
+ * Short-circuit OR: N+1 = 3 vectors.
+ * - V1: port=ok, tc=ok      -> C1=F, C2=F -> dec F (proceeds, ok).
+ * - V2: port=oor            -> C1=T short -> dec T -> invalid_arg.
+ *   (V1->V2 isolates C1.)
+ * - V3: port=ok, tc=oor     -> C1=F, C2=T -> dec T -> invalid_arg.
+ *   (V1->V3 isolates C2.)
+ */
+static void test_mcdc_get_queue_level_pair(void)
+{
+  TEST_BEGIN("etha get_queue_level MC/DC: !port_ok || !tc_ok");
+  prep();
+  const ra_etha_config_t cfg = {.initial_mode = k_ra_etha_opc_config};
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_init(k_ra_etha_port_0, &cfg));
+  uint16_t cur = 0U;
+  uint16_t pk  = 0U;
+  /* V1: all good. */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_etha_get_queue_level(k_ra_etha_port_0, (ra_etha_tc_t)0U, &cur, &pk));
+  /* V2: bad port (C1=T, short-circuits). */
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_invalid_arg,
+    (int32_t)ra_etha_get_queue_level((ra_etha_port_t)99U, (ra_etha_tc_t)0U, &cur, &pk));
+  /* V3: bad tc (C1=F, C2=T). */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_etha_get_queue_level(k_ra_etha_port_0,
+                                                  (ra_etha_tc_t)k_ra_etha_tc_count,
+                                                  &cur,
+                                                  &pk));
+  TEST_END("etha get_queue_level MC/DC: !port_ok || !tc_ok");
+}
+
+/**
+ * @test test_mcdc_set_max_frame_size_pair
+ *
+ * @par MC/DC:
+ * Decision: ``if (!internal_port_ok(port) || !internal_tc_ok(tc))``
+ * (2 conditions, libs/ra_hal/src/ra_etha.c:811 ra_etha_set_max_frame_size).
+ * Short-circuit OR: N+1 = 3 vectors.
+ * - V1: port=ok, tc=ok -> dec F.   (control case).
+ * - V2: port=oor       -> C1=T short, dec T (V1 vs V2 isolates C1).
+ * - V3: port=ok, tc=oor-> C1=F,C2=T, dec T (V1 vs V3 isolates C2).
+ */
+static void test_mcdc_set_max_frame_size_pair(void)
+{
+  TEST_BEGIN("etha set_max_frame_size MC/DC: !port_ok || !tc_ok");
+  prep();
+  const ra_etha_config_t cfg = {.initial_mode = k_ra_etha_opc_config};
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_init(k_ra_etha_port_0, &cfg));
+  /* V1: all good. */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_etha_set_max_frame_size(k_ra_etha_port_0, (ra_etha_tc_t)0U, 1500U));
+  /* V2: bad port. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_etha_set_max_frame_size((ra_etha_port_t)99U, (ra_etha_tc_t)0U, 1500U));
+  /* V3: bad tc. */
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_invalid_arg,
+    (int32_t)ra_etha_set_max_frame_size(k_ra_etha_port_0, (ra_etha_tc_t)k_ra_etha_tc_count, 1500U));
+  TEST_END("etha set_max_frame_size MC/DC: !port_ok || !tc_ok");
+}
+
+/**
+ * @test test_mcdc_configure_cut_through_pair
+ *
+ * @par MC/DC:
+ * Decision: ``if (!internal_port_ok(port) || (uint32_t)dqd > k_ra_etha_mask_ctdqd)``
+ * (2 conditions, libs/ra_hal/src/ra_etha.c:993 ra_etha_configure_cut_through).
+ * Short-circuit OR: N+1 = 3 vectors.
+ * - V1: port=ok, dqd=ok -> dec F.
+ * - V2: port=oor        -> C1=T short, dec T (V1 vs V2 isolates C1).
+ * - V3: port=ok, dqd=oor-> C1=F,C2=T, dec T (V1 vs V3 isolates C2).
+ *
+ * @par MC/DC (paired):
+ * Also exercises libs/ra_hal/src/ra_etha.c:1029 (configure_cbs port||tc),
+ * 1035 (cbs param range), 1091 (get_cbs_state port||tc) by issuing
+ * configure_cbs and get_cbs_state with the same fault vectors. The
+ * pre-existing happy-path tests already supply the all-F vector for
+ * each, so adding the C1=T and C1=F,C2=T failures completes MC/DC.
+ */
+static void test_mcdc_configure_cut_through_pair(void)
+{
+  TEST_BEGIN("etha configure_cut_through + cbs MC/DC");
+  prep();
+  const ra_etha_config_t cfg = {.initial_mode = k_ra_etha_opc_config};
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_etha_init(k_ra_etha_port_0, &cfg));
+
+  /* configure_cut_through (line 993) */
+  /* V1: all ok. */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_etha_configure_cut_through(k_ra_etha_port_0, 16U, 1U));
+  /* V2: bad port. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_etha_configure_cut_through((ra_etha_port_t)99U, 16U, 1U));
+  /* V3: bad dqd (mask is 0x7F so 0x80 is out-of-range). */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_etha_configure_cut_through(k_ra_etha_port_0, 16U, 0x80U));
+
+  /* configure_cbs (line 1029, 1035) */
+  const ra_etha_cbs_param_t ok_cbs = {.increment = 100U, .upper_lim = 1000U};
+  /* V1 (1029): all ok, enable=1. */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_etha_configure_cbs(k_ra_etha_port_0, (ra_etha_tc_t)0U, 1U, &ok_cbs));
+  /* V2 (1029): bad port. */
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_invalid_arg,
+    (int32_t)ra_etha_configure_cbs((ra_etha_port_t)99U, (ra_etha_tc_t)0U, 1U, &ok_cbs));
+  /* V3 (1029): bad tc. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_etha_configure_cbs(k_ra_etha_port_0,
+                                                (ra_etha_tc_t)k_ra_etha_tc_count,
+                                                1U,
+                                                &ok_cbs));
+  /* V_param_lo (1035): increment exceeds k_ra_etha_mask_civ (0xFFFFF). */
+  const ra_etha_cbs_param_t bad_inc = {.increment = 0x100000U, .upper_lim = 1U};
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_etha_configure_cbs(k_ra_etha_port_0, (ra_etha_tc_t)0U, 1U, &bad_inc));
+  /* V_param_hi (1035): upper_lim exceeds k_ra_etha_mask_cul (0x7FFFFFFF). */
+  const ra_etha_cbs_param_t bad_ul = {.increment = 1U, .upper_lim = 0x80000000U};
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_etha_configure_cbs(k_ra_etha_port_0, (ra_etha_tc_t)0U, 1U, &bad_ul));
+
+  /* get_cbs_state (line 1091) */
+  uint8_t             en   = 0U;
+  uint8_t             gop  = 0U;
+  ra_etha_cbs_param_t oprm = {};
+  /* V1: all ok. */
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_ok,
+    (int32_t)ra_etha_get_cbs_state(k_ra_etha_port_0, (ra_etha_tc_t)0U, &en, &gop, &oprm));
+  /* V2: bad port. */
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_invalid_arg,
+    (int32_t)ra_etha_get_cbs_state((ra_etha_port_t)99U, (ra_etha_tc_t)0U, &en, &gop, &oprm));
+  /* V3: bad tc. */
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_invalid_arg,
+    (int32_t)
+      ra_etha_get_cbs_state(k_ra_etha_port_0, (ra_etha_tc_t)k_ra_etha_tc_count, &en, &gop, &oprm));
+
+  TEST_END("etha configure_cut_through + cbs MC/DC");
+}
+
 int32_t main(void)
 {
   test_init_happy();
@@ -1145,6 +1293,9 @@ int32_t main(void)
   test_mcdc_set_queue_depth_triple();
   test_mcdc_descriptor_ring_args();
   test_mcdc_set_vlan_tag_six();
+  test_mcdc_get_queue_level_pair();
+  test_mcdc_set_max_frame_size_pair();
+  test_mcdc_configure_cut_through_pair();
   (void)fprintf(stderr, "[OK  ] test_ra_etha.c\n");
   return 0;
 }
