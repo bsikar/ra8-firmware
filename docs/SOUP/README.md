@@ -29,6 +29,8 @@ basis.
 | miniz           | 11.0.2   | Rich Geldreich / RAD        | [miniz.md](miniz.md)               |
 | stb             | image v2.30 / truetype v1.26 | Sean Barrett | [stb.md](stb.md)              |
 | TinyXML-2       | 11.0.0   | Lee Thomason / community    | [tinyxml2.md](tinyxml2.md)         |
+| RSIP-E50D firmware (`r_sce_AMC`) | FSP TBD | Renesas / FSP            | [r_sce_AMC_firmware.md](r_sce_AMC_firmware.md) |
+| BLE controller patch image       | FSP TBD | Renesas / FSP            | [ble_patch_image.md](ble_patch_image.md)       |
 
 ## One-line summaries
 
@@ -54,6 +56,15 @@ basis.
 - **stb** -- PNG / JPEG decoding (`stb_image`) and TTF rasterization
   (`stb_truetype`) for the EPUB reader.
 - **TinyXML-2** -- XML parser for EPUB container metadata.
+- **RSIP-E50D firmware (`r_sce_AMC`)** -- Renesas Secure IP protected
+  procedures (key install / wrap / unwrap) consumed by
+  `libs/ra_hal/src/ra_rsip*.c` and the secure-side key vault.
+  Vendored from `renesas/fsp` -- see
+  `libs/third_party/fsp_blobs/README.md`.
+- **BLE controller patch image** -- encrypted firmware payload
+  uploaded to the on-chip BLE radio at boot by
+  `libs/ra_hal/src/ra_ble_patch.c`. Required for any non-stub BLE
+  example. Vendored from `renesas/fsp`.
 
 ## Review cadence
 
