@@ -1199,6 +1199,24 @@ ra_err_t ra_usb_read_setup(ra_usb_speed_t speed, ra_usb_setup_t* out_setup)
     return k_ra_err_no_data;
   }
 
+  /* Clear VALID BEFORE reading USBREQ/USBVAL/USBINDX/USBLENG so a racing
+   * second SETUP cannot overwrite the registers mid-read. Matches the
+   * RX72N reference flow (rx_usb_isr.c::internal_handle_ctrt_interrupt
+   * clears VALID before consuming the SETUP fields). */
+  reg->INTSTS0 = (uint16_t)(reg->INTSTS0 & (uint16_t)~k_ra_intsts0_mask_valid);
+
+  /* CRITICAL: the Renesas USB IP (same core as RX72N) automatically
+   * clears DCPCTR.PID to NAK when a SETUP token is latched (HUM Ch
+   * 36.2.21 DCPCTR field description). Firmware must restore PID=BUF
+   * here -- BEFORE the chapter-9 dispatcher runs the data stage --
+   * otherwise the first IN token of the data stage is silently NAK'd
+   * by the controller, the host's wait_frdy spin in dcp_in_data
+   * never sees FRDY (BSTS stays 1 with PID=NAK forever), and macOS
+   * times out enumeration on GET_DESCRIPTOR(DEVICE) with DCPCTR
+   * stuck at 0x9F00. Mirrors the PID-restore in
+   * rx_usb_isr.c::internal_handle_ctrt_interrupt. */
+  internal_dcp_pid(reg, k_ra_pid_buf);
+
   /* HUM Ch 36.2.17 "USBREQ : USB Request Type Register", p 1989 */
   const uint16_t req         = reg->USBREQ;
   out_setup->bm_request_type = (uint8_t)(req & k_ra_usb_byte_mask);
@@ -1206,9 +1224,6 @@ ra_err_t ra_usb_read_setup(ra_usb_speed_t speed, ra_usb_setup_t* out_setup)
   out_setup->w_value         = reg->USBVAL;
   out_setup->w_index         = reg->USBINDX;
   out_setup->w_length        = reg->USBLENG;
-
-  /* Clear VALID by writing zero to the bit (W0C semantics). */
-  reg->INTSTS0 = (uint16_t)(reg->INTSTS0 & (uint16_t)~k_ra_intsts0_mask_valid);
   return k_ra_ok;
 }
 
