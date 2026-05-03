@@ -34,10 +34,8 @@ static void test_mcdc_epub_get_chapter_count_null_pair(void)
   uint16_t       cnt  = 0U;
   TEST_ASSERT_EQ((int32_t)k_ra_err_not_initialized,
                  (int32_t)ra_epub_get_chapter_count(&book, &cnt));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_epub_get_chapter_count(NULL, &cnt));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_epub_get_chapter_count(&book, NULL));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_epub_get_chapter_count(NULL, &cnt));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_epub_get_chapter_count(&book, NULL));
   TEST_END("epub_get_chapter_count MC/DC: (book||out_count) NULL");
 }
 
@@ -54,12 +52,9 @@ static void test_mcdc_epub_get_metadata_null_pair(void)
   TEST_BEGIN("epub_get_metadata MC/DC: (book||out_meta) NULL");
   ra_epub_book_t     book = {};
   ra_epub_metadata_t meta = {};
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_initialized,
-                 (int32_t)ra_epub_get_metadata(&book, &meta));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_epub_get_metadata(NULL, &meta));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_epub_get_metadata(&book, NULL));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_not_initialized, (int32_t)ra_epub_get_metadata(&book, &meta));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_epub_get_metadata(NULL, &meta));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_epub_get_metadata(&book, NULL));
   TEST_END("epub_get_metadata MC/DC: (book||out_meta) NULL");
 }
 
