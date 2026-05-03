@@ -24,10 +24,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       cppcheck \
       curl \
       doxygen \
+      clang-tools-18 \
       gcc-arm-none-eabi \
       gcovr \
       git \
       graphviz \
+      iwyu \
       libclang-rt-18-dev \
       libnewlib-arm-none-eabi \
       llvm-18 \

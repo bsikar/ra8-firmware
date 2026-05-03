@@ -301,6 +301,10 @@ fi
 # the per-commit hook. Run it locally with `make scan-build`, or in
 # CI; see docs/STATIC_ANALYSIS.md for the documented baseline.
 
+# ---- include-what-you-use (IWYU) -- warn-only --------------------
+# Same as scan-build: too slow for the per-commit hook. Run locally
+# with `make iwyu`. See scripts/utils/iwyu.sh.
+
 # -----------------------------------------------------------------------------
 # CONCLUSION
 # -----------------------------------------------------------------------------
