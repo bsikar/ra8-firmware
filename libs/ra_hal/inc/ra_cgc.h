@@ -19,6 +19,7 @@
 extern "C" {
 #endif
 
+#include "ra8d2_cgc_regs.h"
 #include "ra_err.h"
 
 /**
@@ -230,6 +231,69 @@ typedef void (*ra_cgc_ostd_fn_t)(void* ctx);
 [[nodiscard]] ra_err_t ra_cgc_usbhs_pll_enable(void);
 
 /**
+ * @brief Bring up PLL2 with caller-supplied multiplier and P divider.
+ *
+ * @details
+ * Sequence (mirrors FSP `bsp_clocks.c` PLL2 path and HUM Ch 9.2.10..12):
+ *   1. PRCR-CGC unlock window.
+ *   2. Stop PLL2 (PLL2CR.PLL2STP = 1) and wait OSCSF.PLL2SF = 0.
+ *   3. Programme PLL2CCR (input divider, source, multiplier) and
+ *      PLL2CCR2 (output dividers).
+ *   4. Start PLL2 (PLL2CR.PLL2STP = 0) and wait OSCSF.PLL2SF = 1.
+ *   5. PRCR re-lock.
+ *
+ * The multiplier is encoded the same way PLL1 encodes it: the integer
+ * part goes in `PLL2MUL[15:8]` and the quarter-step fractional part in
+ * `PLL2MULNF[7:6]`. Caller passes the *integer* multiplier (1..255) and
+ * the quarter-steps (0..3) separately.
+ *
+ * Output dividers use the standard ::ra_plodiv_t code-to-ratio map
+ * (e.g. /4 = 3, /5 = 4, /6 = 5).
+ *
+ * VCO frequency MUST land in the 960..2400 MHz range required by the
+ * RA8D2 silicon (per `BSP_FEATURE_CGC_PLLCCR_VCO_*`). PLL2 output
+ * frequency MUST land in 60..1200 MHz (`BSP_FEATURE_CGC_PLL2_OUT_*`).
+ * The driver does not enforce this; the caller is responsible.
+ *
+ * Input source is fixed to the main XTAL on EK-RA8D2 (PL2SRCSEL = 0)
+ * and input divider is fixed to /2 so the PLL pre-scale lands at
+ * 12 MHz, matching what the FSP quickstart does for the 24 MHz crystal.
+ *
+ * @param[in] mul_int   Integer multiplier (1..255). Effective multiplier
+ *                      is ``mul_int + (mul_quarters / 4)``.
+ * @param[in] mul_quarters Fractional quarter-steps (0..3).
+ * @param[in] p_div_code Output divider P code from ::ra_plodiv_t
+ *                      (e.g. ::k_ra_plodiv_div4 for /4).
+ *
+ * @return ::ra_err_t error code.
+ * @retval k_ra_ok            PLL2 locked.
+ * @retval k_ra_err_invalid_arg ``mul_int`` is 0 or ``mul_quarters > 3``.
+ * @retval k_ra_err_hw_timeout PLL2SF stop or start handshake exhausted
+ *                              its spin budget.
+ *
+ * @pre  ::ra_cgc_init has been called (main XTAL stable).
+ * @pre  Single-threaded init context.
+ * @pre  CPU is not currently sourced from PLL2.
+ *
+ * @post On k_ra_ok return, PLL2 is locked and ready to be selected as a
+ *       USBCKCR source.
+ * @post PRCR is re-locked.
+ *
+ * @note Not thread-safe.
+ *
+ * @par Example:
+ * @code
+ * // 24 MHz / 2 (fixed) * 80 = 960 MHz VCO; /4 -> 240 MHz PLL2P.
+ * ra_cgc_pll2_enable(80U, 0U, k_ra_plodiv_div4);
+ * @endcode
+ *
+ * @see ra_cgc_usbfs_clock_enable
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t
+ra_cgc_pll2_enable(uint8_t mul_int, uint8_t mul_quarters, ra_plodiv_t p_div_code);
+
+/**
  * @brief Bring up the USB-FS module clock (USBCKCR / USBCKDIVCR).
  *
  * @details
@@ -252,13 +316,11 @@ typedef void (*ra_cgc_ostd_fn_t)(void* ctx);
  *   6. Wait USBCKSRDY = 0 (new clock running).
  *   7. PRCR re-lock.
  *
- * Source picked here is PLL1Q with USBCKDIVCR = /8 codepoint.
- * PLL1Q is 333.33 MHz so /8 == 41.67 MHz, which is *outside* the
- * USB-FS spec (needs 48 MHz +/- 2500 ppm). This commit therefore
- * does **not** promise host enumeration -- it is the first step that
- * proves USBCKCR is being programmed at all (verifiable via
- * ``g_ra_usb_phy_observed``). A follow-up must bring up PLL2 to
- * deliver an exact 48 MHz.
+ * Source picked here is PLL2P with USBCKDIVCR = /5 codepoint.
+ * PLL2 is brought up via ::ra_cgc_pll2_enable to land on
+ * VCO = 24 MHz / 2 * 80 = 960 MHz, then PL2ODIVP = /4 -> PLL2P =
+ * 240 MHz. USBCKDIVCR = /5 then yields exactly 48.000 MHz, which is
+ * within the USB-FS spec (48 MHz +/- 2500 ppm = +/- 0.25 %).
  *
  * @return ::ra_err_t error code.
  * @retval k_ra_ok USB-FS module clock running.
@@ -267,8 +329,8 @@ typedef void (*ra_cgc_ostd_fn_t)(void* ctx);
  * @pre  ::ra_cgc_init has been called (PLL1 locked).
  * @pre  Single-threaded init context.
  *
- * @post USBCKCR.USBCKSEL = ::k_ra_usbcksel_pll1q.
- * @post USBCKDIVCR programmed.
+ * @post USBCKCR.USBCKSEL = ::k_ra_usbcksel_pll2p.
+ * @post USBCKDIVCR programmed for /5 (codepoint 6).
  * @post PRCR is re-locked.
  *
  * @note Not thread-safe.
