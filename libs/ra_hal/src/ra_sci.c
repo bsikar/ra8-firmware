@@ -30,13 +30,13 @@
  * The driver follows the FSP `r_sci_b_uart` reference closely but
  * deliberately omits four steps that do not apply to our usage:
  *
- *   - **`r_sci_b_uart.c:343,350` (CCR0 IDSEL pre-seed).** FSP pre-loads
+ *   - **`r_sci_b_uart.c` (CCR0 IDSEL pre-seed).** FSP pre-loads
  *     CCR0 with the IDSEL bit when the multi-processor bit is being
  *     turned on. IDSEL is only meaningful when CCR3.MP=1; this driver
  *     never enables multi-processor mode (see `internal_ccr3` -- MOD
  *     stays 000 / async and MP stays 0), so the bit is dead and we
  *     skip the extra write.
- *   - **`r_sci_b_uart.c:1344` (`r_sci_b_uart_synchronization_delay_cfg`).**
+ *   - **`r_sci_b_uart.c` (`r_sci_b_uart_synchronization_delay_cfg`).**
  *     The FSP delay loop accounts for the synchronizer hop between
  *     SCICLK and PCLK when those clocks are sourced independently.
  *     In our async-UART configuration the on-chip baud generator is
@@ -44,12 +44,12 @@
  *     `internal_ccr3`), so SCICLK and PCLK are the same edge and FSP's
  *     own delay-count formula evaluates to zero. The wait is a no-op
  *     for us and is intentionally not ported.
- *   - **`r_sci_b_uart.c:1323` (`SCI_B_UART_FCR_DEFAULT_VALUE = 0x1F1F0000`).**
+ *   - **`r_sci_b_uart.c` (`SCI_B_UART_FCR_DEFAULT_VALUE = 0x1F1F0000`).**
  *     FSP seeds FCR with RTRG=31 / TTRG=31 even when FIFO mode is
  *     off. RTRG/TTRG are dead bits when CCR3.FM=0 (HUM Ch 38.2.11
  *     p 2215, "valid only when FM = 1"); we keep `FCR = 0` here since
  *     we never enable FIFO mode.
- *   - **`r_sci_b_uart.c:437-440` (Close clears CCR3.FM before TE drop).**
+ *   - **`r_sci_b_uart.c` (Close clears CCR3.FM before TE drop).**
  *     FSP's Close path explicitly toggles FM off because there is a
  *     documented hang where TE -> 0 with FM=1 leaves CSR.TEND stuck
  *     at 0 and the peripheral wedged. Since this driver never sets
@@ -291,8 +291,8 @@ static uint32_t internal_ccr3(const ra_sci_cfg_t* cfg)
  * @brief Clear every stale CSR / FFCLR latch on a freshly-opened channel.
  *
  * @details
- * Mirrors FSP `r_sci_b_uart.c:375` (`p_ctrl->p_reg->CFCLR =
- * SCI_B_UART_CFCLR_DEFAULT`) and `r_sci_b_uart.c:378`
+ * Mirrors FSP `r_sci_b_uart.c` (`p_ctrl->p_reg->CFCLR =
+ * SCI_B_UART_CFCLR_DEFAULT`) and `r_sci_b_uart.c`
  * (`p_ctrl->p_reg->FFCLR = SCI_B_UART_FFCLR_DEFAULT`). Both clear
  * registers are write-1-to-clear: writing the "all bits" mask drops
  * every defined latch in a single store while leaving the reserved
@@ -323,7 +323,7 @@ static void internal_clear_csr_flags(volatile r_sci_regs_t* reg)
  * @brief Spin until CSR.TEND = 1 or the bounded budget runs out.
  *
  * @details
- * Mirrors FSP `r_sci_b_uart.c:576` and `:809`
+ * Mirrors FSP `r_sci_b_uart.c` and `:809`
  * (`FSP_HARDWARE_REGISTER_WAIT(p_ctrl->p_reg->CSR_b.TEND, 1U)`). TDRE
  * (transmit data register empty) is asserted as soon as TDR is
  * latched into the shift register, but the bits are not yet on the
@@ -456,7 +456,7 @@ ra_err_t ra_sci_init(uint8_t channel, const ra_sci_cfg_t* cfg)
   /* HUM Ch 38.2.24 "CFCLR : Common Flag Clear Register", p 2238 +
    * HUM Ch 38.2.26 "FFCLR : FIFO Flag Clear Register", p 2239 -- drop
    * any latches inherited from a previous boot before TX/RX go live.
-   * Mirrors FSP r_sci_b_uart.c:375,378. */
+   * Mirrors FSP r_sci_b_uart.c. */
   internal_clear_csr_flags(reg);
 
   /* HUM Ch 38.2.5 "CCR0 : Common Control Register 0", p 2182 -- enable
@@ -639,7 +639,7 @@ ra_err_t ra_sci_write_polling(uint8_t channel, const uint8_t* data, uint32_t len
    * goes high as soon as TDR latches into the shifter, but the byte
    * may still be on the wire. Wait for TEND so the call only returns
    * after the last frame is fully transmitted. Mirrors FSP
-   * r_sci_b_uart.c:576 (`R_SCI_B_UART_Close` blocks on TEND for the
+   * r_sci_b_uart.c (`R_SCI_B_UART_Close` blocks on TEND for the
    * same reason before dropping TE). */
   if (len != 0U) {
     return internal_wait_tx_end(reg);
@@ -994,7 +994,7 @@ ra_sci_baud_calculate(uint32_t baud, uint32_t pclk_hz, uint16_t* brr_out, uint8_
   /* HUM Ch 38.2.7 "CCR2 : Common Control Register 2", p 2189 -- walk
    * CKS = 0..3 and pick the smallest divider that yields a BRR <= 255.
    * Mirrors the FSP `R_SCI_B_UART_BaudCalculate` outer loop
-   * (r_sci_b_uart.c:962) but without the bit-rate-modulation pass
+   * (r_sci_b_uart.c) but without the bit-rate-modulation pass
    * since the project always programs BRME=0. */
   uint32_t divisor = (uint32_t)k_ra_sci_baud_n0_divisor;
   for (uint8_t n = 0U; n <= (uint8_t)k_ra_sci_baud_cks_max; ++n) {
@@ -1061,7 +1061,7 @@ ra_err_t ra_sci_write(uint8_t channel, const uint8_t* data, uint32_t len)
   s_state[channel].tx_idx = 0U;
   /* HUM Ch 38.2.5 "CCR0 : Common Control Register 0", p 2182 -- arm
    * TIE so the next TDRE event fires the dispatcher. Mirrors FSP
-   * r_sci_b_uart.c:616 which sets TE | TIE in a single store. */
+   * r_sci_b_uart.c which sets TE | TIE in a single store. */
   reg->CCR0 = reg->CCR0 | (1U << k_ra_sci_ccr0_bit_tie);
   return k_ra_ok;
 }
@@ -1110,7 +1110,7 @@ ra_err_t ra_sci_read(uint8_t channel, uint8_t* buf, uint32_t len)
   s_state[channel].rx_idx = 0U;
   /* HUM Ch 38.2.5 "CCR0 : Common Control Register 0", p 2182 -- arm
    * RIE so the next RDRF event fires the dispatcher. Mirrors FSP
-   * r_sci_b_uart.c:528 which stashes p_rx_dest / rx_dest_bytes for
+   * r_sci_b_uart.c which stashes p_rx_dest / rx_dest_bytes for
    * use by `rxi_isr`. */
   reg->CCR0 = reg->CCR0 | (1U << k_ra_sci_ccr0_bit_rie);
   return k_ra_ok;
@@ -1191,7 +1191,7 @@ ra_err_t ra_sci_read_stop(uint8_t channel, uint32_t* remaining)
   if (reg == nullptr) {
     return k_ra_err_invalid_arg;
   }
-  /* Mirror FSP `R_SCI_B_UART_ReadStop` r_sci_b_uart.c:887: stash the
+  /* Mirror FSP `R_SCI_B_UART_ReadStop` r_sci_b_uart.c: stash the
    * pre-stop count, zero state, then disarm RIE. */
   const uint32_t pending  = (s_state[channel].rx_len > s_state[channel].rx_idx)
                               ? (s_state[channel].rx_len - s_state[channel].rx_idx)
@@ -1451,7 +1451,7 @@ void ra_sci_dispatch_txi(uint8_t channel)
   const uint32_t       tie = (1U << k_ra_sci_ccr0_bit_tie);
 
   /* Async byte-stream path (ra_sci_write). Mirrors FSP r_sci_b_uart
-   * `txi_isr` (r_sci_b_uart.c:1480) which decrements `tx_src_bytes`
+   * `txi_isr` (r_sci_b_uart.c) which decrements `tx_src_bytes`
    * each TXI and clears TIE when the count hits zero. */
   if (s_state[channel].tx_len > 0U) {
     if (s_state[channel].tx_idx < s_state[channel].tx_len) {

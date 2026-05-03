@@ -43,7 +43,7 @@
  * @details
  * Mirrors the `g_prcr_masks[]` table in FSP
  * `bsp_register_protection.c` and the bitfield positions in the FSP
- * CMSIS device header `R7KA8D2KF_core0.h:70711+`.
+ * CMSIS device header `R7KA8D2KF_core0.h+`.
  */
 typedef enum : uint16_t {
   k_ra_prcr_test_key_only = 0xA500U, /**< Lock-everything pattern. */

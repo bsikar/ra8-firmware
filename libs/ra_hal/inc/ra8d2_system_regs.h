@@ -97,8 +97,8 @@ typedef enum : uint16_t {
  * On RA8 Gen2 silicon, software must drop the core to the
  * "not high voltage" range (`VSCM = 1`) before lifting PLL1 above its
  * default rate, then poll `VSCMTSF` until the transition completes
- * (FSP `bsp_clocks.c:2538-2539`, FSP CMSIS device header
- * `R7KA8D2KF_core0.h:70196,70198`).
+ * (FSP `bsp_clocks.c`, FSP CMSIS device header
+ * `R7KA8D2KF_core0.h`).
  *
  * Bit positions inside the 32-bit register:
  *   - VSCM     = bit 0 (write 1 to enter not-high-voltage mode)
@@ -263,7 +263,7 @@ static inline volatile uint16_t* ra_sys_pllccr2(void)
  *
  * @details
  * PLL2CCR layout (HUM Ch 9.2.10 "PLL2CCR : PLL2 Clock Control Register",
- * cross-reference FSP CMSIS device header `R7FA8M1AH.h:14887` and
+ * cross-reference FSP CMSIS device header `R7FA8M1AH.h` and
  * `R_SYSTEM_PLL2CCR_*_Pos`):
  *   - PL2IDIV   [1:0]  -- input divider (0=/1, 1=/2, 2=/3)
  *   - PL2SRCSEL [4]    -- 0 = Main XTAL, 1 = HOCO
@@ -377,7 +377,7 @@ static inline volatile uint8_t* ra_sys_rstsr2(void)
  * @brief USBCKCR / USB60CKCR bit positions (HUM Ch 9).
  *
  * @details Cited from FSP CMSIS device header
- * `R7KA8D2KF_core0.h:70402-70408`. USBCKSEL[3:0] selects the source
+ * `R7KA8D2KF_core0.h`. USBCKSEL[3:0] selects the source
  * clock; USBCKSREQ requests a switch; USBCKSRDY is the read-only
  * handshake-done flag.
  */

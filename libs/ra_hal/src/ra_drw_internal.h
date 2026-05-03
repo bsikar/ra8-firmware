@@ -19,7 +19,7 @@ extern "C" {
  *
  * @details
  * Returns true iff @p width or @p height is below @p min_dim.
- * Promoted from the inline compound OR at libs/ra_hal/src/ra_drw.c:776
+ * Promoted from the inline compound OR at libs/ra_hal/src/ra_drw.c
  * inside @c ra_drw_blit_textured_rect.
  *
  * @param[in] min_dim Minimum permitted dimension (1 px).
@@ -53,7 +53,7 @@ bool ra_drw_internal_rect_below_min(uint16_t min_dim, uint16_t width, uint16_t h
  * @details
  * Returns true iff @p width exceeds @p max_w or @p height exceeds
  * @p max_h.  Promoted from the inline compound OR at
- * libs/ra_hal/src/ra_drw.c:780 inside @c ra_drw_blit_textured_rect.
+ * libs/ra_hal/src/ra_drw.c inside @c ra_drw_blit_textured_rect.
  *
  * @param[in] max_w  Maximum permitted width  (1024 px).
  * @param[in] max_h  Maximum permitted height (1024 px).

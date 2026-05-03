@@ -211,7 +211,7 @@ static void test_calls_before_init_fail(void)
  *
  * @par MC/DC:
  * Decision: `if ((len == 0U) || (len > k_ra_net_pal_frame_max))`
- * (libs/ra_net_pal/src/ra_net_pal.c:222, ra_net_pal_send_frame).
+ * (libs/ra_net_pal/src/ra_net_pal.c, ra_net_pal_send_frame).
  * - V1: len=64                       -> C1=F, C2=F -> false (proceed; ok).
  * - V2: len=0                        -> C1=T short-circuit -> true (varies C1).
  * - V3: len=k_ra_net_pal_frame_max+1 -> C1=F, C2=T -> true (varies C2).
@@ -245,7 +245,7 @@ static void priv_mcdc_event(void* ctx, uint32_t mask)
  *
  * @par MC/DC:
  * Decision: `if ((s_state.event_fn != nullptr) && (pal_mask != k_ra_net_pal_event_none))`
- * (libs/ra_net_pal/src/ra_net_pal.c:138, internal_eth_event).
+ * (libs/ra_net_pal/src/ra_net_pal.c, internal_eth_event).
  * The same AND-guard semantics also gate the on-send fan-out at line
  * 233; we observe C1 (event_fn != nullptr) directly via the on-send
  * callback path.

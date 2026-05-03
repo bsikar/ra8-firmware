@@ -6,7 +6,7 @@
  * Exercises the secure-side OTA bank commit shadow + the bank-config
  * masking write path. Includes a targeted MC/DC vector set for the
  * compound boolean decision identified in docs/MCDC_GAPS.csv at
- * src/secure_app/ota_commit.c:65.
+ * src/secure_app/ota_commit.c.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -95,7 +95,7 @@ static void test_bank_config_masking(void)
  *
  * @par MC/DC:
  * Decision: `if ((target != k_ra_ota_bank_a) && (target != k_ra_ota_bank_b))`
- * (2 conditions, src/secure_app/ota_commit.c:65)
+ * (2 conditions, src/secure_app/ota_commit.c)
  *  - C1 = (target != k_ra_ota_bank_a)
  *  - C2 = (target != k_ra_ota_bank_b)
  *

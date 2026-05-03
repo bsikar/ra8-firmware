@@ -656,7 +656,7 @@ static void test_mcdc_reset_line_buf_pair(void)
  * @test test_mcdc_internal_classify_cmd_echo_pair
  *
  * @par MC/DC:
- * Decision at libs/ra_modem_at/src/ra_modem_at.c:336
+ * Decision at libs/ra_modem_at/src/ra_modem_at.c
  *   ``(cmd_echo != nullptr) && (ra_modem_at_internal_str_eq(line, cmd_echo) != 0U)``
  * (2 conditions, AND). N+1 = 3 vectors. Driven directly against
  * production source via ra_modem_at_internal.h (test-access policy,
@@ -687,7 +687,7 @@ static void test_mcdc_internal_classify_cmd_echo_pair(void)
  * @test test_mcdc_internal_str_len_pair
  *
  * @par MC/DC:
- * Decision at libs/ra_modem_at/src/ra_modem_at.c:124
+ * Decision at libs/ra_modem_at/src/ra_modem_at.c
  *   ``while ((i < UINT16_MAX) && (s[i] != '\0'))``
  *
  * - V1: s = "AB" -> at i=0 C1=T, C2=T (loop runs).
@@ -718,7 +718,7 @@ static void test_mcdc_internal_str_len_pair(void)
  * @test test_mcdc_internal_str_eq_loop_pair
  *
  * @par MC/DC:
- * Decision at libs/ra_modem_at/src/ra_modem_at.c:177
+ * Decision at libs/ra_modem_at/src/ra_modem_at.c
  *   ``while ((a[i] != '\0') && (b[i] != '\0'))``
  *
  * - V1: a="X",  b="X"   -> i=0 C1=T C2=T (enter), i=1 C1=F (exit via C1).
@@ -744,7 +744,7 @@ static void test_mcdc_internal_str_eq_loop_pair(void)
  * @test test_mcdc_internal_str_eq_terminator_pair
  *
  * @par MC/DC:
- * Decision at libs/ra_modem_at/src/ra_modem_at.c:184
+ * Decision at libs/ra_modem_at/src/ra_modem_at.c
  *   ``return (uint8_t)((a[i] == '\0') && (b[i] == '\0'));``
  *
  * After the loop terminates, the terminator-AND is evaluated on the
@@ -798,7 +798,7 @@ static void test_mcdc_internal_starts_with(void)
  * @test test_mcdc_internal_capture_line_guard
  *
  * @par MC/DC:
- * Decision at libs/ra_modem_at/src/ra_modem_at.c:469
+ * Decision at libs/ra_modem_at/src/ra_modem_at.c
  *   ``if ((capture == nullptr) || (capture_len == 0U))`` (2 conditions, OR)
  *
  * - V1: capture=NULL,  capture_len=10 -> C1=T short-circuit, returns early.
@@ -843,8 +843,8 @@ static void test_mcdc_internal_capture_line_guard(void)
  * combinations are reachable from a host test (the production wrapper
  * is gated by the init validator -- see
  * @c test_mcdc_reset_line_buf_pair for the validator-equivalence
- * argument). Maps directly to libs/ra_modem_at/src/ra_modem_at.c:227
- * and the promoted-helper site at libs/ra_modem_at/src/ra_modem_at.c:238.
+ * argument). Maps directly to libs/ra_modem_at/src/ra_modem_at.c
+ * and the promoted-helper site at libs/ra_modem_at/src/ra_modem_at.c.
  *
  * - V1: buf=NULL,    len=8 -> C1=F shorts.        Decision F (no clear).
  * - V2: buf=valid,   len=0 -> C1=T C2=F.          Decision F (no clear).
@@ -865,7 +865,7 @@ static void test_mcdc_reset_line_should_clear_pure(void)
  * @test test_mcdc_internal_classify_expected_direct
  *
  * @par MC/DC:
- * Decision at libs/ra_modem_at/src/ra_modem_at.c:345
+ * Decision at libs/ra_modem_at/src/ra_modem_at.c
  *   ``(expected_response == nullptr) || (expected_response[0] == '\0') ||
  *    (ra_modem_at_internal_starts_with(line, expected_response) == 0U)``
  * (3 conditions, OR; N+1 = 4 vectors).

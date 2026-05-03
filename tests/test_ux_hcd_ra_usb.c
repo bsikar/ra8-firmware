@@ -67,7 +67,7 @@ static inline bool internal_mirror_h_init_guard(const void* system_host, const v
  *
  * @par MC/DC:
  * Decision: `if (pipe == 0U || pipe >= 10U)`
- * (2 conditions, port/usbx/ux_hcd_ra_usb.c:76)
+ * (2 conditions, port/usbx/ux_hcd_ra_usb.c)
  *  - C1 = (pipe == 0U)
  *  - C2 = (pipe >= 10U)
  *
@@ -93,7 +93,7 @@ static void test_mcdc_h_ep_create_pipe_range(void)
  *
  * @par MC/DC:
  * Decision: `if (tr == nullptr || tr->ux_transfer_request_endpoint == nullptr)`
- * (2 conditions, port/usbx/ux_hcd_ra_usb.c:110)
+ * (2 conditions, port/usbx/ux_hcd_ra_usb.c)
  *  - C1 = (tr == nullptr)
  *  - C2 = (tr->endpoint == nullptr)
  *
@@ -121,7 +121,7 @@ static void test_mcdc_h_xfer_request_null_guard(void)
  *
  * @par MC/DC:
  * Decision: `if (tr->requested_length != 0U && tr->data_pointer != nullptr)`
- * (2 conditions, port/usbx/ux_hcd_ra_usb.c:130)
+ * (2 conditions, port/usbx/ux_hcd_ra_usb.c)
  *  - C1 = (requested_length != 0U)
  *  - C2 = (data_pointer != nullptr)
  *
@@ -149,7 +149,7 @@ static void test_mcdc_h_xfer_payload_guard(void)
  *
  * @par MC/DC:
  * Decision: `if (_ux_system_host == UX_NULL || _ux_system_host->ux_system_host_hcd_array == UX_NULL)`
- * (2 conditions, port/usbx/ux_hcd_ra_usb.c:260)
+ * (2 conditions, port/usbx/ux_hcd_ra_usb.c)
  *  - C1 = (_ux_system_host == UX_NULL)
  *  - C2 = (_ux_system_host->ux_system_host_hcd_array == UX_NULL)
  *

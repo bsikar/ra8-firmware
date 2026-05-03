@@ -7,7 +7,7 @@ citation rules. The short form lives in `CLAUDE.md` under
 ## Rule 1: in-tree line citations are FORBIDDEN
 
 Comments must not reference other files in this repository by
-`<file>:<line>` (e.g. `libs/ra_drw/src/ra_drw.c:776`). Line numbers
+`<file>:<line>` (e.g. `libs/ra_drw/src/ra_drw.c:776`). Line numbers <!-- CITES-OK: literal example of the forbidden pattern documenting the rule -->
 go stale the moment any agent reformats or edits the target file, and
 they are not searchable -- a reader cannot grep for `:776` and find
 anything useful.

@@ -18,7 +18,7 @@ extern "C" {
  * @brief Pure predicate: target_addr out of range OR max_len is zero.
  *
  * @details
- * Promoted from the inline OR at libs/ra_hal/src/ra_i3c.c:688 in
+ * Promoted from the inline OR at libs/ra_hal/src/ra_i3c.c in
  * @c ra_i3c_recv_ccc.
  *
  * @param[in] addr_mask  Maximum valid 7-bit address (mask).
@@ -50,7 +50,7 @@ bool ra_i3c_internal_recv_ccc_invalid(uint8_t addr_mask, uint8_t target, uint8_t
  * @brief Pure predicate: HDR mode value is not one of {SDR, DDR, TS}.
  *
  * @details
- * Promoted from the inline triple AND at libs/ra_hal/src/ra_i3c.c:815
+ * Promoted from the inline triple AND at libs/ra_hal/src/ra_i3c.c
  * in @c ra_i3c_set_hdr_mode.
  *
  * @param[in] sdr_val  Numeric value of @c k_ra_i3c_hdr_mode_sdr.

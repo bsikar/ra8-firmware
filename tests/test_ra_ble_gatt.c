@@ -71,7 +71,7 @@ static void test_mcdc_gatt_notify_init_and_lookup(void)
  * @test test_mcdc_gatt_set_value_zero_len
  *
  * @par MC/DC:
- * Decision (libs/ra_ble_host/src/ra_ble_gatt.c:480):
+ * Decision (libs/ra_ble_host/src/ra_ble_gatt.c):
  *   ``if ((len > 0U) && (a->value != NULL))``  (2 conditions)
  * - Vector 1 (T,T): set_value(chr, payload, 4) -- copies (covered elsewhere
  *   by tests/test_ra_ble_host.c::test_set_value_and_notify_paths).
@@ -122,7 +122,7 @@ static void test_mcdc_gatt_set_value_zero_len(void)
  *
  * @par MC/DC:
  * Decision at libs/ra_ble_host/src/ra_ble_gatt.c lines 480 and 569
- * (call sites) -> helper at libs/ra_ble_host/src/ra_ble_gatt.c:50:
+ * (call sites) -> helper at libs/ra_ble_host/src/ra_ble_gatt.c:
  *   ``len > 0 && value != NULL`` (2 conditions, AND).
  * - V1: len=0,  val!=NULL -> false (left varies vs V2)
  * - V2: len>0,  val!=NULL -> true
@@ -143,8 +143,8 @@ static void test_mcdc_gatt_internal_should_copy(void)
  * @test test_mcdc_gatt_internal_notify_invalid
  *
  * @par MC/DC:
- * Decision at libs/ra_ble_host/src/ra_ble_gatt.c:538 (call site) -> helper at
- * libs/ra_ble_host/src/ra_ble_gatt.c:71:
+ * Decision at libs/ra_ble_host/src/ra_ble_gatt.c (call site) -> helper at
+ * libs/ra_ble_host/src/ra_ble_gatt.c:
  *   ``decl_present == 0 || (props & notify_mask) == 0``
  *   (2 conditions, OR).
  * - V1: present=1, notify-bit-set     -> false

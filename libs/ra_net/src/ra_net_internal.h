@@ -1025,7 +1025,7 @@ bool ra_net_internal_dns_byte_match(uint8_t in_range,
  * @brief Pure predicate: DNS query still pending AND poll budget left.
  *
  * @details Promoted from the inline 3-condition AND at
- *          libs/ra_net/src/ra_net_udp.c:657 inside @c ra_net_dns_query.
+ *          libs/ra_net/src/ra_net_udp.c inside @c ra_net_dns_query.
  *
  * @param[in] dns_pending Non-zero while the DNS request is outstanding.
  * @param[in] dns_rcode   Non-zero once a reply has set the RCODE.

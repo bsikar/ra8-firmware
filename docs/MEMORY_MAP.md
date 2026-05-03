@@ -37,12 +37,12 @@ Notes on the core memory layout:
   `0x22100000`.
 - External SDRAM is at `0x68000000` (NOT `0x90000000`). On EK-RA8D2 v1
   the SDRAM controller drives a populated 64 MiB SDRAM at this address;
-  see `libs/ra_hal/src/ra_sdramc.c:66`
+  see `libs/ra_hal/src/ra_sdramc.c`
   (`"sdramc_init (64 MiB @ 0x68000000)"`).
 - The xSPI / Octo-SPI memory-mapped (XIP) read window address is NOT
   defined as a typed enum anywhere in this tree. Only the xSPI register
   windows (`0x40268000` / `0x40268400`) are pinned in code (see
-  `libs/ra_hal/inc/ra8d2_ospi_regs.h:89-91`). Treat the XIP base as
+  `libs/ra_hal/inc/ra8d2_ospi_regs.h`). Treat the XIP base as
   "look up in HUM Ch 5 once we add an XIP example" rather than
   hard-coding a guess here.
 

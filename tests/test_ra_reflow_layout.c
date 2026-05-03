@@ -148,7 +148,7 @@ static void test_mcdc_reflow_init_font_px_range(void)
  * @test test_mcdc_reflow_set_font_size_no_cached_buf
  *
  * @par MC/DC:
- * Decision (libs/ra_reflow/src/ra_reflow_layout.c:922):
+ * Decision (libs/ra_reflow/src/ra_reflow_layout.c):
  *   ``if (engine->xhtml_buf == NULL || engine->xhtml_len == 0U)``
  *   (2 conditions)
  * - Vector 1 (T,T): fresh init, no layout_chapter call yet; both
@@ -180,7 +180,7 @@ static void test_mcdc_reflow_set_font_size_no_cached_buf(void)
  * @test test_mcdc_reflow_internal_is_indent_tag
  *
  * @par MC/DC:
- * Decision at libs/ra_reflow/src/ra_reflow_layout.c:42 (helper)
+ * Decision at libs/ra_reflow/src/ra_reflow_layout.c (helper)
  * which both line 479 (priv_open_block) and line 513 (priv_close_block)
  * delegate to:
  *   ``(tag == k_ra_reflow_tag_li) || (tag == k_ra_reflow_tag_blockquote)``
@@ -209,7 +209,7 @@ static void test_mcdc_reflow_internal_is_indent_tag(void)
  * @test test_mcdc_reflow_internal_right_overflow_break
  *
  * @par MC/DC:
- * Decision at libs/ra_reflow/src/ra_reflow_layout.c:95 (helper) which
+ * Decision at libs/ra_reflow/src/ra_reflow_layout.c (helper) which
  * the inline call sites at lines 404, 468, 605 delegate to:
  *   ``(cur->x + advance > right_limit) && (line_has_content != 0)``
  *   (2 conditions, AND). Direct-call vectors:
@@ -231,7 +231,7 @@ static void test_mcdc_reflow_internal_right_overflow_break(void)
  * @test test_mcdc_reflow_internal_xhtml_invalid
  *
  * @par MC/DC:
- * Decision at libs/ra_reflow/src/ra_reflow_layout.c:115 (helper) which
+ * Decision at libs/ra_reflow/src/ra_reflow_layout.c (helper) which
  * the inline call site at line 953 delegates to:
  *   ``(xhtml_buf == NULL) || (xhtml_len == 0)`` (2 conditions, OR).
  * - V1: buf!=NULL, len!=0 -> false
@@ -253,7 +253,7 @@ static void test_mcdc_reflow_internal_xhtml_invalid(void)
  * @test test_mcdc_reflow_internal_final_page_needed
  *
  * @par MC/DC:
- * Decision at libs/ra_reflow/src/ra_reflow_layout.c:135 (helper) which
+ * Decision at libs/ra_reflow/src/ra_reflow_layout.c (helper) which
  * the inline call site at line 750 delegates to:
  *   ``(page_count == 0) && (token_count > 0)`` (2 conditions, AND).
  * - V1: pages>0,  tokens>0  -> false

@@ -25,7 +25,7 @@ extern "C" {
  * @details
  * Returns true iff @p hysteresis equals the HVD code AND @p negate
  * equals the after-assert code.  Promoted from the inline compound
- * AND at libs/ra_hal/src/ra_lvd.c:494.
+ * AND at libs/ra_hal/src/ra_lvd.c.
  *
  * @param[in] hvd_val           Numeric value of @c k_ra_lvd_hysteresis_hvd.
  * @param[in] after_assert_val  Numeric value of @c k_ra_lvd_negate_after_assert.
@@ -62,7 +62,7 @@ bool ra_lvd_internal_reject_hvd_after(uint32_t hvd_val,
  * @details
  * Returns true iff @p response equals the reset code OR equals the
  * reset-on-rise code.  Promoted from the inline compound OR at
- * libs/ra_hal/src/ra_lvd.c:533 inside @c internal_compose_cr0.
+ * libs/ra_hal/src/ra_lvd.c inside @c internal_compose_cr0.
  *
  * @param[in] reset_val          Numeric value of @c k_ra_lvd_response_reset.
  * @param[in] reset_on_rise_val  Numeric value of @c k_ra_lvd_response_reset_on_rise.

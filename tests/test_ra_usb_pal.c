@@ -255,7 +255,7 @@ static void test_calls_before_init_fail(void)
  *
  * @par MC/DC:
  * Decision: `if ((speed != k_ra_usb_speed_fs) && (speed != k_ra_usb_speed_hs))`
- * (libs/ra_usb_pal/src/ra_usb_pal.c:155, ra_usb_pal_init).
+ * (libs/ra_usb_pal/src/ra_usb_pal.c, ra_usb_pal_init).
  * - V1: speed=fs       -> C1=F short-circuit -> false (proceed; ok).
  * - V2: speed=99 (bad) -> C1=T, C2=T -> true (rejected; varies C1).
  * - V3: speed=hs       -> C1=T, C2=F -> false (proceed; varies C2).
@@ -278,7 +278,7 @@ static void test_mcdc_init_speed(void)
  *
  * @par MC/DC:
  * Decision: `if ((ep_addr == 0U) || (ep_addr > k_ra_usb_pal_ep_max))`
- * (libs/ra_usb_pal/src/ra_usb_pal.c:238, ra_usb_pal_ep_open).
+ * (libs/ra_usb_pal/src/ra_usb_pal.c, ra_usb_pal_ep_open).
  * - V1: ep_addr=1                     -> C1=F, C2=F -> false (proceed).
  * - V2: ep_addr=0                     -> C1=T short-circuit -> true (varies C1).
  * - V3: ep_addr=k_ra_usb_pal_ep_max+1 -> C1=F, C2=T -> true (varies C2).
@@ -308,7 +308,7 @@ static void test_mcdc_ep_open_addr(void)
  *
  * @par MC/DC:
  * Decision: `if ((dir != k_ra_usb_pal_ep_dir_out) && (dir != k_ra_usb_pal_ep_dir_in))`
- * (libs/ra_usb_pal/src/ra_usb_pal.c:241, ra_usb_pal_ep_open).
+ * (libs/ra_usb_pal/src/ra_usb_pal.c, ra_usb_pal_ep_open).
  * - V1: dir=out -> C1=F short-circuit -> false (proceed).
  * - V2: dir=99  -> C1=T, C2=T         -> true (reject; varies C1).
  * - V3: dir=in  -> C1=T, C2=F         -> false (proceed; varies C2).
@@ -337,7 +337,7 @@ static void test_mcdc_ep_open_dir(void)
  * @par MC/DC:
  * Decision (3 conditions OR): `if ((type > k_ra_usb_pal_ep_type_intr) ||
  * (max_packet == 0U) || (max_packet > k_ra_usb_pal_xfer_max))`
- * (libs/ra_usb_pal/src/ra_usb_pal.c:244, ra_usb_pal_ep_open).
+ * (libs/ra_usb_pal/src/ra_usb_pal.c, ra_usb_pal_ep_open).
  * - V1: type=bulk, packet=64           -> C1=F,C2=F,C3=F -> false (proceed).
  * - V2: type=99,   packet=64           -> C1=T short-circuit -> true (varies C1).
  * - V3: type=bulk, packet=0            -> C1=F,C2=T short-circuit -> true (varies C2).
@@ -378,7 +378,7 @@ static void test_mcdc_ep_open_type_packet(void)
  * @par MC/DC:
  * Decision (3 conditions): `if ((len > k_ra_usb_pal_xfer_max) ||
  * ((data == nullptr) && (len != 0U)))`
- * (libs/ra_usb_pal/src/ra_usb_pal.c:270, ra_usb_pal_ep_send).
+ * (libs/ra_usb_pal/src/ra_usb_pal.c, ra_usb_pal_ep_send).
  * Let A=`len>xfer_max`, B=`data==nullptr`, C=`len!=0U`. Decision
  * is `A || (B && C)`.
  * - V1: A=F,B=F,C=T (data!=NULL, len=1) -> false (send ok).
@@ -416,8 +416,8 @@ static void test_mcdc_ep_send_len_data(void)
  * @test test_mcdc_usb_pal_internal_should_dispatch_event
  *
  * @par MC/DC:
- * Decision at libs/ra_usb_pal/src/ra_usb_pal.c:218 (call site) -> helper at
- * libs/ra_usb_pal/src/ra_usb_pal.c:50:
+ * Decision at libs/ra_usb_pal/src/ra_usb_pal.c (call site) -> helper at
+ * libs/ra_usb_pal/src/ra_usb_pal.c:
  *   ``event_fn != NULL && mask != none`` (2 conditions, AND).
  * - V1: cb=NULL,  mask!=none -> false (left varies vs V2)
  * - V2: cb!=NULL, mask!=none -> true
@@ -438,8 +438,8 @@ static void test_mcdc_usb_pal_internal_should_dispatch_event(void)
  * @test test_mcdc_usb_pal_internal_ep_out_of_range
  *
  * @par MC/DC:
- * Decision at libs/ra_usb_pal/src/ra_usb_pal.c:559 (call site) -> helper at
- * libs/ra_usb_pal/src/ra_usb_pal.c:70:
+ * Decision at libs/ra_usb_pal/src/ra_usb_pal.c (call site) -> helper at
+ * libs/ra_usb_pal/src/ra_usb_pal.c:
  *   ``ep_addr == 0 || ep_addr > ep_max`` (2 conditions, OR).
  * - V1: ep=1,  ep_max=10 -> false
  * - V2: ep=0,  ep_max=10 -> true (varies left)

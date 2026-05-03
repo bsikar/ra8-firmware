@@ -4,7 +4,7 @@
  *
  * @details
  * Targets the single 2-condition compound decision identified in
- * docs/MCDC_GAPS.csv at libs/ra_nsc/src/ra_nsc_eth.c:53
+ * docs/MCDC_GAPS.csv at libs/ra_nsc/src/ra_nsc_eth.c
  * (``ra_nsc_eth_send`` length validator).  No other unit-test
  * coverage exists for this file -- the broader NSC-veneer harnesses
  * focus on ra_nsc_ota and ra_nsc_xspi.
@@ -49,7 +49,7 @@ typedef enum : uint16_t {
  * @par MC/DC:
  * Decision: ``ra_nsc_eth_send`` line 53,
  * ``if ((len == 0U) || (len > (uint16_t)k_ra_nsc_eth_frame_max))``
- * (libs/ra_nsc/src/ra_nsc_eth.c:53). 2 conditions, ``||``.
+ * (libs/ra_nsc/src/ra_nsc_eth.c). 2 conditions, ``||``.
  * N+1 = 3 vectors:
  * - V1: len=64   -> C1=F, C2=F -> dec F (proceeds; tail call fails
  *                                         with not_initialized -- the

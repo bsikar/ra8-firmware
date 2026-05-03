@@ -1292,7 +1292,7 @@ static void test_mcdc_set_preclip_window_pair(void)
  * @test test_mcdc_set_uds_scale_quad
  *
  * @par MC/DC:
- * Decision (libs/ra_hal/src/ra_vin.c:428-430): 4-cond OR over UDS scale fields.
+ * Decision (libs/ra_hal/src/ra_vin.c): 4-cond OR over UDS scale fields.
  * ``v_mant > MAX_MANT || h_mant > MAX_MANT || v_frac > MAX_FRAC || h_frac > MAX_FRAC``
  * MAX_MANT = 0xF, MAX_FRAC = 0xFFF. N+1 = 5 vectors.
  * - V1: all in range          -> all F -> dec F -> ok
@@ -1344,7 +1344,7 @@ static void test_mcdc_set_uds_scale_quad(void)
  * @test test_mcdc_set_framebuffers_align_triple
  *
  * @par MC/DC:
- * Decision (libs/ra_hal/src/ra_vin.c:740-741): 3-cond OR over alignment masks.
+ * Decision (libs/ra_hal/src/ra_vin.c): 3-cond OR over alignment masks.
  * ``(mb1 & MASK)!=0 || (mb2 & MASK)!=0 || (mb3 & MASK)!=0``  MASK=0x7F
  * N+1 = 4. Note: the prior all-zero check (line 737) gates this; we use
  * non-zero, aligned bases as the control.
@@ -1374,7 +1374,7 @@ static void test_mcdc_set_framebuffers_align_triple(void)
  * @test test_mcdc_capture_start_geom_quad
  *
  * @par MC/DC:
- * Decision (libs/ra_hal/src/ra_vin.c:958): 4-cond OR over geometry.
+ * Decision (libs/ra_hal/src/ra_vin.c): 4-cond OR over geometry.
  * ``w == 0 || h == 0 || w > MAX || h > MAX``  MAX = 4096.
  * N+1 = 5 vectors. Buffer must be aligned (separate check after).
  * - V1: w=640, h=480, aligned buf                -> all F -> ok
@@ -1414,7 +1414,7 @@ static void test_mcdc_capture_start_geom_quad(void)
  *
  * @par MC/DC:
  * Decision: ``if ((v_bwidth > k_ra_vin_uds_max_bw) || (h_bwidth > k_ra_vin_uds_max_bw))``
- * (2 conditions, libs/ra_hal/src/ra_vin.c:445 ra_vin_set_uds_passband).
+ * (2 conditions, libs/ra_hal/src/ra_vin.c ra_vin_set_uds_passband).
  * Short-circuit OR: N+1 = 3 vectors.
  * - V1: v=0, h=0       -> C1=F, C2=F -> dec F (ok).
  * - V2: v=0xFF, h=0    -> C1=T short -> dec T -> invalid_arg.
@@ -1442,7 +1442,7 @@ static void test_mcdc_set_uds_passband_pair(void)
  *
  * @par MC/DC:
  * Decision: ``if ((mode->conv_mode > k_ra_vin_max_dtmd) || (mode->y_mode > k_ra_vin_max_ymode))``
- * (2 conditions, libs/ra_hal/src/ra_vin.c:674 ra_vin_set_data_mode).
+ * (2 conditions, libs/ra_hal/src/ra_vin.c ra_vin_set_data_mode).
  * Short-circuit OR: N+1 = 3 vectors.
  * - V1: conv=0, y=0   -> C1=F, C2=F -> dec F (ok).
  * - V2: conv=99, y=0  -> C1=T short -> dec T -> invalid_arg.
@@ -1476,7 +1476,7 @@ static void test_mcdc_set_data_mode_pair(void)
  * @par MC/DC:
  * Decision: ``if ((input->virtual_channel > k_ra_vin_max_vc_sel) ||
  *               (input->data_type > k_ra_vin_max_dt))``
- * (2 conditions, libs/ra_hal/src/ra_vin.c:700 ra_vin_set_csi_input).
+ * (2 conditions, libs/ra_hal/src/ra_vin.c ra_vin_set_csi_input).
  * Short-circuit OR: N+1 = 3 vectors.
  * - V1: vc=0, dt=0  -> C1=F, C2=F -> dec F.
  * - V2: vc=99, dt=0 -> C1=T short -> dec T -> invalid_arg.
@@ -1507,7 +1507,7 @@ static void test_mcdc_set_csi_input_pair(void)
  *
  * @par MC/DC:
  * Decision: ``if ((pixel_end > k_ra_vin_preclip_mask) || (line_end > k_ra_vin_preclip_mask))``
- * (2 conditions, libs/ra_hal/src/ra_vin.c:992 ra_vin_set_window).
+ * (2 conditions, libs/ra_hal/src/ra_vin.c ra_vin_set_window).
  * Short-circuit OR: N+1 = 3 vectors. preclip_mask = 0xFFF (4095).
  * - V1: w=8,h=8 at (0,0) -> ends 7,7  -> C1=F, C2=F -> dec F.
  * - V2: w=4096 at x=1    -> pixel_end=4096 > 4095   -> C1=T short -> invalid_arg.

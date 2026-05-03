@@ -10,28 +10,28 @@
  * omission was previously HardFaulting the chip:
  *
  *  1. Flush the MRAM prefetch buffer (MRMS.MRCPFB = 0 + 3 dummy reads).
- *     FSP `bsp_clocks.c:1182-1189`.
+ *     FSP `bsp_clocks.c`.
  *  2. Drop the core voltage to "not high voltage" range
  *     (R_SYSTEM->VSCR.VSCM = 1) and wait for VSCMTSF to clear.
- *     FSP `bsp_clocks.c:2536-2539`. Required before lifting PLL above
+ *     FSP `bsp_clocks.c`. Required before lifting PLL above
  *     its boot rate.
  *  3. Stop PLL1 (PLLCR = 1), then poll OSCSF.PLLSF = 0. Without this
  *     barrier, PLLCCR / PLLCCR2 writes are silently dropped and read
- *     back as zero. FSP `bsp_clocks.c:2118-2124`.
+ *     back as zero. FSP `bsp_clocks.c`.
  *  4. Programme PLLCCR + PLLCCR2 with the new multiplier and output
- *     dividers. FSP `bsp_clocks.c:2486-2513`.
+ *     dividers. FSP `bsp_clocks.c`.
  *  5. Start PLL1 (PLLCR = 0), then poll OSCSF.PLLSF = 1.
- *     FSP `bsp_clocks.c:2548-2553`.
+ *     FSP `bsp_clocks.c`.
  *  6. Programme MRMS wait-state frequency latches (MRCFREQ for MRICLK,
  *     MREFREQ for MRPCLK). The hardware refuses any write whose key
  *     byte is wrong, so we spin-poll until readback matches.
- *     FSP `bsp_clocks.c:1208-1247`. **This is the wait-state step --
+ *     FSP `bsp_clocks.c`. **This is the wait-state step --
  *     RA8D2 does NOT have legacy MEMWAIT / FLDWAITR / FLWT.**
  *  7. Programme SCKDIVCR + SCKDIVCR2 for the full divider tree.
- *     FSP `bsp_clocks.c:1142-1175`.
+ *     FSP `bsp_clocks.c`.
  *  8. Switch SCKSCR to PLL1.
  *  9. Re-enable the prefetch buffer (MRCPFB = 1) iff MRICLK >= 100 MHz.
- *     FSP `bsp_clocks.c:1194-1203`.
+ *     FSP `bsp_clocks.c`.
  * 10. Programme SCICKCR + SCICKDIVCR per HUM 9.2.54 so SCI_B's TCLK
  *     has a real edge source.
  *
@@ -168,7 +168,7 @@ typedef enum : uint32_t {
  * @brief How many dummy reads to issue when flushing the MRAM PFB.
  *
  * @details
- * FSP `bsp_clocks.c:1186-1188` issues exactly three dummy reads after
+ * FSP `bsp_clocks.c` issues exactly three dummy reads after
  * writing `MRCPFB = 0` to ensure the prefetch buffer is fully flushed
  * before any clock-tree change.
  */
@@ -222,7 +222,7 @@ typedef enum : uint32_t {
  * @brief Bit positions inside SCICKCR (SCICLK clock-source control).
  *
  * @details
- * Cited from FSP CMSIS device header `R7KA8D2KF_core0.h:70335-70340`
+ * Cited from FSP CMSIS device header `R7KA8D2KF_core0.h`
  * and HUM 9.2.54 "SCICKCR : SCI Clock Control Register".
  */
 typedef enum : uint8_t {
@@ -333,7 +333,7 @@ static ra_err_t internal_wait_oscsf_clear(uint8_t bit)
  * @brief Step 1: clear the MRAM prefetch buffer before any clock change.
  *
  * @details
- * Mirrors FSP `bsp_prv_clear_pfb()` (`bsp_clocks.c:1182-1189`): write
+ * Mirrors FSP `bsp_prv_clear_pfb()` (`bsp_clocks.c`): write
  * `MRCPFB = 0` then issue 3 dummy reads to flush the prefetch pipeline.
  * Required before any frequency change per HUM Ch 54.4.3.
  *
@@ -351,7 +351,7 @@ static ra_err_t internal_wait_oscsf_clear(uint8_t bit)
 static void internal_clear_pfb(void)
 {
   /* HUM Ch 59.4.3 "Frequency Change Procedure" p 3548 */
-  /* Cross-reference: FSP bsp_clocks.c:1182-1189. */
+  /* Cross-reference: FSP bsp_clocks.c. */
   volatile uint32_t* const mrcpfb = ra_mrms_mrcpfb();
   *mrcpfb                         = k_ra_mrcpfb_disable;
   for (uint8_t i = 0U; i < k_ra_pfb_flush_dummy_reads; i++) {
@@ -363,7 +363,7 @@ static void internal_clear_pfb(void)
  * @brief Step 2: drop core to not-high-voltage range before lifting PLL.
  *
  * @details
- * FSP `bsp_clocks.c:2536-2539` writes VSCR.VSCM = 1 then waits VSCMTSF
+ * FSP `bsp_clocks.c` writes VSCR.VSCM = 1 then waits VSCMTSF
  * to clear. Required on RA8 Gen2 silicon before raising PLL above its
  * boot rate; without it, the PLL writes succeed but the chip browns
  * out as soon as CPUCLK0 lifts past the high-voltage threshold.
@@ -385,7 +385,7 @@ static void internal_clear_pfb(void)
 static ra_err_t internal_set_vscr_not_high_v(void)
 {
   /* HUM Ch 11.2.43 "VSCR : Voltage Scaling Control Register" p 477 */
-  /* Cross-reference: FSP bsp_clocks.c:2538-2539. */
+  /* Cross-reference: FSP bsp_clocks.c. */
   volatile uint32_t* const vscr = ra_sys_vscr();
   *vscr                         = k_ra_vscr_bit_vscm;
 
@@ -401,7 +401,7 @@ static ra_err_t internal_set_vscr_not_high_v(void)
  * @brief Step 3: stop PLL1 and wait for the PLLSF flag to clear.
  *
  * @details
- * FSP `bsp_clocks.c:2118-2124`. Without polling PLLSF=0 here, the
+ * FSP `bsp_clocks.c`. Without polling PLLSF=0 here, the
  * subsequent PLLCCR / PLLCCR2 writes are silently dropped (they read
  * back as 0). This was the missing barrier in the previous driver.
  *
@@ -422,10 +422,10 @@ static ra_err_t internal_set_vscr_not_high_v(void)
 static ra_err_t internal_stop_pll1(void)
 {
   /* HUM Ch 9.2.8 "PLLCR : PLL Control Register" p 333 */
-  /* Cross-reference: FSP bsp_clocks.c:2121. */
+  /* Cross-reference: FSP bsp_clocks.c. */
   *ra_sys_pllcr() = k_ra_pllcr_stop;
   /* HUM Ch 9.2.21 "OSCSF : Oscillation Stabilization Flag Register" p 344 */
-  /* Cross-reference: FSP bsp_clocks.c:2122. */
+  /* Cross-reference: FSP bsp_clocks.c. */
   return internal_wait_oscsf_clear(k_ra_oscsf_bit_pll1sf);
 }
 
@@ -473,17 +473,17 @@ static ra_err_t internal_program_and_start_pll1(void)
                                       ((uint16_t)k_ra_plodiv_div2 << k_ra_pllccr2_shift_plodivp));
 
   /* HUM Ch 9.2.6 "PLLCCR : PLL Clock Control Register" p 331 */
-  /* Cross-reference: FSP bsp_clocks.c:2510. */
+  /* Cross-reference: FSP bsp_clocks.c. */
   *ra_sys_pllccr() = pllccr;
   /* HUM Ch 9.2.7 "PLLCCR2 : PLL Clock Control Register 2" p 332 */
-  /* Cross-reference: FSP bsp_clocks.c:2512. */
+  /* Cross-reference: FSP bsp_clocks.c. */
   *ra_sys_pllccr2() = pllccr2;
 
   /* HUM Ch 9.2.8 "PLLCR : PLL Control Register" p 333 */
-  /* Cross-reference: FSP bsp_clocks.c:2548. */
+  /* Cross-reference: FSP bsp_clocks.c. */
   *ra_sys_pllcr() = k_ra_pllcr_run;
   /* HUM Ch 9.2.21 "OSCSF : Oscillation Stabilization Flag Register" p 344 */
-  /* Cross-reference: FSP bsp_clocks.c:2553. */
+  /* Cross-reference: FSP bsp_clocks.c. */
   return internal_wait_oscsf_set(k_ra_oscsf_bit_pll1sf);
 }
 
@@ -494,7 +494,7 @@ static ra_err_t internal_program_and_start_pll1(void)
  * The MRMS frequency latches accept a write only when the upper byte
  * matches the per-register key (0x1E for MRCFREQ, 0xE1 for MREFREQ).
  * FSP loops the write until the readback matches the freq_mhz payload
- * (see `bsp_clocks.c:1225-1228, 1243-1246`). We wrap the same pattern
+ * (see `bsp_clocks.c`). We wrap the same pattern
  * with a bounded spin so a wedged register reports `k_ra_err_hw_timeout`
  * instead of hanging forever.
  *
@@ -538,7 +538,7 @@ static ra_err_t internal_wait_mrm_freq(volatile uint32_t* reg, uint32_t key, uin
  *
  * @details
  * Mirrors FSP `bsp_prv_set_wait_state_frequency()` for RA8 Gen2
- * (`bsp_clocks.c:1208-1247`). Writes the MRICLK rate (rounded up to
+ * (`bsp_clocks.c`). Writes the MRICLK rate (rounded up to
  * MHz) to MRCFREQ and the MRPCLK rate to MREFREQ, in poll-until-readback
  * loops to handle the key-byte filter.
  *
@@ -569,13 +569,13 @@ static ra_err_t internal_set_mrm_wait_states(uint32_t mriclk_hz, uint32_t mrpclk
                              : ((mrpclk_hz + k_ra_cgc_hz_per_mhz - 1U) / k_ra_cgc_hz_per_mhz);
 
   /* HUM Ch 59.5.2 "MRCFREQ : Code MRAM Frequency Notifications Register" p 3551 */
-  /* Cross-reference: FSP bsp_clocks.c:1224-1228. */
+  /* Cross-reference: FSP bsp_clocks.c. */
   ra_err_t err = internal_wait_mrm_freq(ra_mrms_mrcfreq(), k_ra_mrcfreq_key, mri_mhz);
   if (err != k_ra_ok) {
     return err;
   }
   /* HUM Ch 59.5.3 "MREFREQ : Extra MRAM Frequency Notifications Register" p 3552 */
-  /* Cross-reference: FSP bsp_clocks.c:1242-1246. */
+  /* Cross-reference: FSP bsp_clocks.c. */
   err = internal_wait_mrm_freq(ra_mrms_mrefreq(), k_ra_mrefreq_key, mre_mhz);
   return err;
 }
@@ -605,7 +605,7 @@ static ra_err_t internal_set_mrm_wait_states(uint32_t mriclk_hz, uint32_t mrpclk
 static void internal_program_dividers(void)
 {
   /* HUM Ch 9.2.6 "SCKDIVCR : System Clock Division Control Register"
-   * / FSP bsp_clocks.c:1159 */
+   * / FSP bsp_clocks.c */
   const uint32_t sckdivcr = ((uint32_t)k_ra_clock_div_8 << k_ra_sckdivcr_fck_shift) |
                             ((uint32_t)k_ra_clock_div_4 << k_ra_sckdivcr_ick_shift) |
                             ((uint32_t)k_ra_clock_div_4 << k_ra_sckdivcr_pcke_shift) |
@@ -617,7 +617,7 @@ static void internal_program_dividers(void)
   *ra_sys_sckdivcr()      = sckdivcr;
 
   /* HUM Ch 9.2.7 "SCKDIVCR2 : System Clock Division Control Register 2"
-   * / FSP bsp_clocks.c:1160 */
+   * / FSP bsp_clocks.c */
   const uint16_t sckdivcr2 =
     (uint16_t)(((uint16_t)k_ra_clock_div_4 << k_ra_sckdivcr2_mriclk_shift) |
                ((uint16_t)k_ra_clock_div_1 << k_ra_sckdivcr2_npuclk_shift) |
@@ -630,7 +630,7 @@ static void internal_program_dividers(void)
  * @brief Step 9: re-enable the MRAM prefetch buffer if MRICLK >= 100 MHz.
  *
  * @details
- * Mirrors FSP `bsp_prv_set_pfb()` (`bsp_clocks.c:1194-1203`). Reading
+ * Mirrors FSP `bsp_prv_set_pfb()` (`bsp_clocks.c`). Reading
  * MRCFREQ confirms what the wait-state stage actually latched, then
  * the buffer is enabled only above the 100 MHz threshold required by
  * HUM Ch 54.4.3.
@@ -650,7 +650,7 @@ static void internal_set_pfb(void)
   const uint32_t mri_mhz = *ra_mrms_mrcfreq();
   if (mri_mhz >= k_ra_mrcpfb_threshold_mhz) {
     /* HUM Ch 59.5.1 "MRCPFB : Code MRAM Prefetch Buffer Enable Register" p 3551 */
-    /* Cross-reference: FSP bsp_clocks.c:1201. */
+    /* Cross-reference: FSP bsp_clocks.c. */
     *ra_mrms_mrcpfb() = k_ra_mrcpfb_enable;
   }
 }
@@ -1085,7 +1085,7 @@ ra_err_t ra_cgc_usbhs_pll_enable(void)
  * @brief Local sentinels for the USBCKSRDY handshake and divider codes.
  *
  * @details
- * USBCKDIVCR uses a non-linear code-to-ratio map (FSP `bsp_clocks.c:140-160`):
+ * USBCKDIVCR uses a non-linear code-to-ratio map (FSP `bsp_clocks.c`):
  *   /1=0, /2=1, /3=5, /4=2, /5=6, /6=3, /8=4, /10=7, /16=8.
  * We expose only the divisors this driver actually uses.
  */
@@ -1270,7 +1270,7 @@ ra_err_t ra_cgc_pll2_enable(uint8_t mul_int, uint8_t mul_quarters, ra_plodiv_t p
  *   -> VCO = 12 MHz * 80 = 960 MHz (right at the silicon minimum).
  *   PL2ODIVP = /4 -> PLL2P = 240 MHz.
  *
- * Step 2: USBCKCR / USBCKDIVCR handshake (FSP `bsp_clocks.c:2648-2691`).
+ * Step 2: USBCKCR / USBCKDIVCR handshake (FSP `bsp_clocks.c`).
  *   USBCKDIVCR = /5 codepoint (= 6, per the non-linear FSP map).
  *   USBCKSEL   = PLL2P.
  *   Effective USB clock = 240 MHz / 5 = 48.000 MHz.

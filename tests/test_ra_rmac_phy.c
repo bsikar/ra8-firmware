@@ -275,8 +275,8 @@ static void test_mcdc_link_status_link_and_an(void)
  * @test test_mcdc_rmac_phy_internal_speed_ok
  *
  * @par MC/DC:
- * Decision at libs/ra_hal/src/ra_rmac_phy.c:352, 356 (call sites) -> helper at
- * libs/ra_hal/src/ra_rmac_phy.c:47:
+ * Decision at libs/ra_hal/src/ra_rmac_phy.c (call sites) -> helper at
+ * libs/ra_hal/src/ra_rmac_phy.c:
  *   ``err == k_ra_ok && (reg & mask) != 0`` (2 conditions, AND).
  * - V1: err=ok, mask&val=0    -> false
  * - V2: err=ok, mask&val!=0   -> true (varies right)

@@ -51,7 +51,7 @@ static const char* s_tag = "USBHCDC";
  * @brief Enumeration step machine states.
  *
  * @details Mirrors FSP's `g_usb_hcdc_smpl_class_seq` step indices in
- * `r_usb_hcdc_driver.c:91`. Each step issues exactly one SETUP via
+ * `r_usb_hcdc_driver.c`. Each step issues exactly one SETUP via
  * `ra_usb_host_setup_request`; the next CTRT interrupt advances to
  * the next step.
  */
@@ -181,7 +181,7 @@ static uint16_t internal_bulk_max_packet(ra_usb_speed_t speed)
  *        device's endpoints.
  *
  * @details Mirrors FSP's `usb_hcdc_pipe_info`
- * (`r_usb_hcdc_driver.c:172`). Bulk pipes are PIPE1 / PIPE2; the
+ * (`r_usb_hcdc_driver.c`). Bulk pipes are PIPE1 / PIPE2; the
  * notification pipe is PIPE6.
  *
  * @return Result code.

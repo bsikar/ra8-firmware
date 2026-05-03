@@ -520,7 +520,7 @@ typedef enum : uint16_t {
  *
  * @par MC/DC:
  * Decision: `if ((pipe_num == 0U) || (pipe_num > k_ra_usb_max_pipe_num))`
- * (libs/ra_hal/src/ra_usb.c:385, 2 conditions, reached via
+ * (libs/ra_hal/src/ra_usb.c conditions, reached via
  * ra_usb_configure_endpoint -> internal_check_ep_args).
  * - V1: pipe=1, others valid               -> false (control: both false).
  * - V2: pipe=0, others valid               -> true  (varies C1 only).
@@ -566,7 +566,7 @@ static void test_mcdc_check_ep_args_pipe_num(void)
  *
  * @par MC/DC:
  * Decision: `if ((ep_addr == 0U) || (ep_addr > k_ra_usb_max_ep_addr))`
- * (libs/ra_hal/src/ra_usb.c:388, 2 conditions).
+ * (libs/ra_hal/src/ra_usb.c conditions).
  * - V1: ep=1, others valid     -> false (both false).
  * - V2: ep=0, others valid     -> true  (varies C1).
  * - V3: ep=99, others valid    -> true  (varies C2).
@@ -607,7 +607,7 @@ static void test_mcdc_check_ep_args_ep_addr(void)
  *
  * @par MC/DC:
  * Decision: `if ((dir != k_ra_usb_ep_dir_in) && (dir != k_ra_usb_ep_dir_out))`
- * (libs/ra_hal/src/ra_usb.c:391, 2 conditions). Note these are AND-of-NEs:
+ * (libs/ra_hal/src/ra_usb.c conditions). Note these are AND-of-NEs:
  * the decision is true only when dir matches NEITHER enum value.
  * - V1: dir = IN  -> C1 false, short-circuits  -> false (control).
  * - V2: dir = OUT -> C1 true, C2 false         -> false (varies C2).
@@ -652,7 +652,7 @@ static void test_mcdc_check_ep_args_dir(void)
  *
  * @par MC/DC:
  * Decision: `if ((max_packet == 0U) || (max_packet > k_ra_usb_pipe_max_packet))`
- * (libs/ra_hal/src/ra_usb.c:397, 2 conditions).
+ * (libs/ra_hal/src/ra_usb.c conditions).
  * - V1: mp=64,  others valid    -> false (both false).
  * - V2: mp=0,   others valid    -> true  (varies C1).
  * - V3: mp=9999,others valid    -> true  (varies C2, exceeds 1024 cap).
@@ -693,7 +693,7 @@ static void test_mcdc_check_ep_args_max_packet(void)
  *
  * @par MC/DC:
  * Decision: `if ((pipe_num == 0U) || (pipe_num > k_ra_usb_max_pipe_num))`
- * (libs/ra_hal/src/ra_usb.c:501, 2 conditions, in ra_usb_queue_in).
+ * (libs/ra_hal/src/ra_usb.c conditions, in ra_usb_queue_in).
  * - V1: pipe=1, FRDY pre-asserted, len=4   -> false (both false, returns ok).
  * - V2: pipe=0                              -> true  (varies C1).
  * - V3: pipe=99                             -> true  (varies C2).
@@ -734,7 +734,7 @@ static void test_mcdc_queue_in_pipe_num(void)
  * @par MC/DC:
  * Decision: `if ((len > k_ra_usb_pipe_max_packet) ||
  *                ((data == nullptr) && (len != 0U)))`
- * (libs/ra_hal/src/ra_usb.c:504, 3 conditions).
+ * (libs/ra_hal/src/ra_usb.c conditions).
  * Naming: C1 = (len > MAX), C2 = (data == NULL), C3 = (len != 0).
  * The inner AND short-circuits on C2, so we use the N+1 = 4 vector set:
  * - V1: data=buf, len=4              -> C1=F, (C2=F so AND=F)         -> false (control).
@@ -788,7 +788,7 @@ static void test_mcdc_queue_in_data_len(void)
  *
  * @par MC/DC:
  * Decision: `if ((out_buf == nullptr) || (inout_len == nullptr))`
- * (libs/ra_hal/src/ra_usb.c:532, 2 conditions, in
+ * (libs/ra_hal/src/ra_usb.c conditions, in
  * internal_check_queue_out_args via ra_usb_queue_out).
  * - V1: out_buf=valid, inout_len=valid (with FRDY+DTLN=0)  -> false (both false; reaches no_data).
  * - V2: out_buf=NULL,  inout_len=valid                     -> true  (varies C1).
@@ -826,7 +826,7 @@ static void test_mcdc_check_queue_out_args_buf(void)
  *
  * @par MC/DC:
  * Decision: `if ((pipe_num == 0U) || (pipe_num > k_ra_usb_max_pipe_num))`
- * (libs/ra_hal/src/ra_usb.c:535, 2 conditions, in
+ * (libs/ra_hal/src/ra_usb.c conditions, in
  * internal_check_queue_out_args).
  * - V1: pipe=1                      -> false.
  * - V2: pipe=0                      -> true (varies C1).
@@ -861,7 +861,7 @@ static void test_mcdc_check_queue_out_args_pipe(void)
  *
  * @par MC/DC:
  * Decision: `if ((*inout_len == 0U) || (*inout_len > k_ra_usb_pipe_max_packet))`
- * (libs/ra_hal/src/ra_usb.c:538, 2 conditions).
+ * (libs/ra_hal/src/ra_usb.c conditions).
  * - V1: *inout_len=8                -> false (both false).
  * - V2: *inout_len=0                -> true  (varies C1).
  * - V3: *inout_len=9999             -> true  (varies C2).
@@ -896,7 +896,7 @@ static void test_mcdc_check_queue_out_args_inout_len(void)
  *
  * @par MC/DC:
  * Decision: `if ((speed != k_ra_usb_speed_fs) && (speed != k_ra_usb_speed_hs))`
- * (libs/ra_hal/src/ra_usb.c:654, 2 conditions, in ra_usb_enter_stop).
+ * (libs/ra_hal/src/ra_usb.c conditions, in ra_usb_enter_stop).
  * - V1: speed=FS -> C1=F, short-circuits             -> false (control, returns ok).
  * - V2: speed=HS -> C1=T, C2=F                       -> false (varies C2).
  * - V3: speed=9  -> C1=T, C2=T                       -> true  (rejected).
@@ -922,7 +922,7 @@ static void test_mcdc_enter_stop_speed(void)
  *
  * @par MC/DC:
  * Decision: `if ((speed != k_ra_usb_speed_fs) && (speed != k_ra_usb_speed_hs))`
- * (libs/ra_hal/src/ra_usb.c:662, 2 conditions, in ra_usb_exit_stop).
+ * (libs/ra_hal/src/ra_usb.c conditions, in ra_usb_exit_stop).
  * - V1: speed=FS  -> false.
  * - V2: speed=HS  -> false (varies C2).
  * - V3: speed=9   -> true  (varies C1).

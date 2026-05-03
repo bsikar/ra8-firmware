@@ -50,7 +50,7 @@ bool ra_iic_b_internal_len_buf_invalid(uint32_t len, const void* buf);
  * @brief Pure predicate: non-zero error mask AND a non-NULL callback.
  *
  * @details
- * Promoted from the inline AND at libs/ra_hal/src/ra_iic_b.c:1235
+ * Promoted from the inline AND at libs/ra_hal/src/ra_iic_b.c
  * inside @c ra_iic_b_dispatch_eri.
  *
  * @param[in] mask Bitmask of pending error sources.
