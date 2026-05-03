@@ -115,9 +115,11 @@ hand-traced decisions, and so on.
 | Re-qualification trigger        | cppcheck major-version bump, especially the release that adds     |
 |                                 | `--std=c23` (D-002, D-003, D-005 retire as soon as the parser     |
 |                                 | accepts C23). Tracked at MAR 2026-11-02 in MISRA_DEVIATIONS.md.    |
-| Upgrade path                    | A qualified commercial MISRA checker (LDRA Testbed, Helix QAC,    |
-|                                 | Polyspace) is required before SOI-3, per                           |
-|                                 | `docs/QUALIFICATION_ROADMAP.md` Section 6 blocker 3.               |
+| Upgrade path                    | None. Commercial MISRA checkers (LDRA / Helix QAC / Polyspace /   |
+|                                 | PVS-Studio) are explicitly out of scope for this MIT-licensed,    |
+|                                 | non-certifying project. See                                        |
+|                                 | `docs/qualification/MISRA_DEVIATIONS.md` "Tooling policy" and     |
+|                                 | `docs/CERTIFICATION_SCOPE.md`.                                    |
 
 ## 4. JLinkExe (SEGGER J-Link OB)
 
