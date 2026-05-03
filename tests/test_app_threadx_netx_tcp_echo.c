@@ -27,6 +27,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8d2_system_regs.h"
 #include "ra_board_ek_ra8d2.h"
 #include "ra_cgc.h"
 #include "ra_err.h"
@@ -63,6 +64,9 @@ static void reset_world(void)
   (void)ra_eth_deinit();
   s_last_eth_event_mask = 0U;
   s_last_eth_event_ctx  = NULL;
+  /* Pre-seed OSCSF stabilisation bits so ra_cgc_init() spin loops
+   * complete on the first iteration in RA_SIMULATOR_MODE. */
+  *ra_sys_oscsf() = (uint8_t)0xFFU;
 }
 
 /**

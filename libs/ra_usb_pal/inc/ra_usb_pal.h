@@ -89,6 +89,7 @@ typedef enum : uint16_t {
   k_ra_usb_pal_bulk_max_fs    = 64U,   /**< Bulk max packet at full-speed. */
   k_ra_usb_pal_bulk_max_hs    = 512U,  /**< Bulk max packet at high-speed. */
   k_ra_usb_pal_xfer_max       = 1024U, /**< Single-shot xfer cap. */
+  k_ra_usb_pal_ep_addr_mask   = 0x7FU, /**< Strip USB-IN dir bit (bit 7) from descriptor ep_addr. */
 } ra_usb_pal_limits_t;
 
 /**

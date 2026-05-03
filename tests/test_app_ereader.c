@@ -24,6 +24,7 @@
 #include <string.h>
 
 #include "miniz.h"
+#include "ra8d2_system_regs.h"
 #include "ra_board_ek_ra8d2.h"
 #include "ra_cgc.h"
 #include "ra_epub.h"
@@ -126,6 +127,9 @@ static void reset_world(void)
 {
   ra_sim_mmap_reset();
   ra_pin_validator_reset();
+  /* Pre-seed OSCSF stabilisation bits so ra_cgc_init() spin loops
+   * complete on the first iteration in RA_SIMULATOR_MODE. */
+  *ra_sys_oscsf() = (uint8_t)0xFFU;
 }
 
 /* -------------------------------------------------------------------------
@@ -250,10 +254,12 @@ static void test_ereader_open_corrupt_blob_rejected(void)
 static void test_ereader_led_init_idempotent(void)
 {
   reset_world();
-  TEST_BEGIN("ereader: led_init(LED1) idempotent");
+  TEST_BEGIN("ereader: led_init(LED1) re-init reports gpio_conflict");
   TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_led_init(k_ra_board_led1));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_led_init(k_ra_board_led1));
-  TEST_END("ereader: led_init(LED1) idempotent");
+  /* Pin validator forbids a second claim of the same pin; the
+   * library_thread treats the conflict as already-mine, continue. */
+  TEST_ASSERT_EQ((int)k_ra_err_gpio_conflict, (int)ra_board_led_init(k_ra_board_led1));
+  TEST_END("ereader: led_init(LED1) re-init reports gpio_conflict");
 }
 
 int main(void)

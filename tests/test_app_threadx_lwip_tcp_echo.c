@@ -74,7 +74,7 @@ static void reset_world(void)
  *
  * @par MC/DC:
  * Decision under test: ``ra_net_pal_init() != k_ra_ok``. Two vectors:
- * MAC=valid (this test) + MAC=NULL (test_lwip_init_null_mac_rejected).
+ * MAC=valid (this test) + MAC=NULL (test_lwip_init_null_mac_accepted).
  */
 static void test_lwip_pal_init_ok(void)
 {
@@ -160,18 +160,21 @@ static void test_lwip_send_frame_in_range(void)
  * ------------------------------------------------------------------------- */
 
 /**
- * @brief NULL MAC is rejected at init -- precondition guard.
+ * @brief NULL MAC at init is permitted -- the MAC stays at the
+ *        default zero value and the caller is expected to set it
+ *        with a future API. Mirrors the ra_net_pal contract that
+ *        test_ra_net_pal documents.
  *
  * @par MC/DC:
- * Decision under test: ``mac == nullptr`` at init. Failure vector,
- * pairs with the ok-init test.
+ * Decision under test: ``mac == nullptr`` at init. Pairs with the
+ * non-NULL ok-init test for the precondition compound check.
  */
-static void test_lwip_init_null_mac_rejected(void)
+static void test_lwip_init_null_mac_accepted(void)
 {
   reset_world();
-  TEST_BEGIN("lwip: init rejects NULL MAC");
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_net_pal_init(NULL));
-  TEST_END("lwip: init rejects NULL MAC");
+  TEST_BEGIN("lwip: init accepts NULL MAC (default zero)");
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_net_pal_init(NULL));
+  TEST_END("lwip: init accepts NULL MAC (default zero)");
 }
 
 /**
@@ -224,7 +227,7 @@ int main(void)
   test_lwip_event_handler_registered();
   test_lwip_link_status_pollable();
   test_lwip_send_frame_in_range();
-  test_lwip_init_null_mac_rejected();
+  test_lwip_init_null_mac_accepted();
   test_lwip_send_oversize_rejected();
   test_lwip_recv_empty_queue();
   return 0;
