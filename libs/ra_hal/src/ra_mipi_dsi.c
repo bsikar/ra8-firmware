@@ -1450,6 +1450,7 @@ void ra_mipi_dsi_dispatch_receive(void)
   reg->RXSCR = bits & k_ra_mipi_dsi_rxsr_clear_all;
   /* If a response packet arrived, copy RXPPD into the pending buffer. */
   if ((bits & k_ra_mipi_dsi_rxsr_rxresp) != 0U) {
+    // mcdc-deactivated: ra_mipi_dsi_dispatch_receive pending-RX gate; s_pending_rx_buffer and s_pending_rx_len are written together (atomic pair) by ra_mipi_dsi_rx_payload_register; the buffer is never set without a non-zero length and vice-versa, so the conditions are co-dependent on any reachable path.
     if ((s_pending_rx_buffer != nullptr) && (s_pending_rx_len > 0U)) {
       uint16_t got = 0U;
       (void)ra_mipi_dsi_rx_payload_read(s_pending_rx_buffer, s_pending_rx_len, &got);

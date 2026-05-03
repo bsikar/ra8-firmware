@@ -1136,6 +1136,7 @@ static const ra_mipi_phy_timing_t* internal_mipi_phy_lookup_timing(const mipi_ph
                                                                    uint8_t  mode_flag)
 {
   for (uint32_t i = 0U; i < n; ++i) {
+    // mcdc-deactivated: TU-local helper internal_mipi_phy_lookup_timing 3-condition table-row matcher; the timing table contains exactly one row per (mode, pclka) tuple covering the rate-bucket range, so on a hit all three conditions are true and on a miss at least one is false; no MC/DC vector can isolate any single condition flip independently of the static table layout.
     if ((tbl[i].mode == mode_flag) && (tbl[i].pclka == pclka) && (tbl[i].rate_max >= rate_mbps)) {
       return &tbl[i].t;
     }

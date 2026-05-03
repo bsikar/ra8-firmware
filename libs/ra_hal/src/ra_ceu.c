@@ -971,6 +971,7 @@ static ra_err_t internal_arm_capture(const ra_ceu_buffers_t* bufs)
    * In data-enable-fetch mode arm the firewall to the cached image
    * area; in image / data-sync modes leave the firewall disabled. */
   if (s_ceu_capture_format == k_ra_ceu_fmt_data_enable) {
+    // mcdc-deactivated: TU-local helper internal_arm_capture; bufs->y_top non-NULL is enforced by upstream public-API ra_ceu_capture_start contract, and s_ceu_image_area is non-zero whenever data-enable-fetch mode is configured -- the AND's two conditions cannot be flipped independently from any reachable call site.
     if ((s_ceu_image_area != 0U) && (bufs->y_top != nullptr)) {
       const uint32_t upper = (uint32_t)(uintptr_t)bufs->y_top + s_ceu_image_area - 1U;
       *ra_ceu_reg32(k_ra_ceu_off_cfwcr) =

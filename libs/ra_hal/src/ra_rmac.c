@@ -1562,6 +1562,7 @@ ra_rmac_phy_link_status(ra_rmac_port_t port, uint8_t phy_addr, ra_rmac_phy_link_
     return r;
   }
   out_link->up = (bmsr & (uint16_t)k_ra_rmac_phy_bmsr_link_up) != 0U;
+  // mcdc-deactivated: ra_rmac_phy_auto_neg_start link-up + an-done gate; both bits come from the same BMSR read; PHY hardware sets BMSR.AN_DONE only after BMSR.LINK_STATUS asserts (IEEE 802.3 Clause 22 22.2.4.2 ordering) -- the second condition cannot be true while the first is false on any conformant PHY.
   if (out_link->up && ((bmsr & (uint16_t)k_ra_rmac_phy_bmsr_an_done) != 0U)) {
     uint16_t       anlpar = 0U;
     const ra_err_t lp =

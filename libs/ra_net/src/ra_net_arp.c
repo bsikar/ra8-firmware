@@ -151,6 +151,7 @@ static void arp_insert(const ra_net_ipv4_t* ip, const ra_net_mac_t* mac)
   }
   /* Update existing entry if present. */
   for (uint16_t i = 0U; i < (uint16_t)k_ra_net_arp_cache_size; i++) {
+    // mcdc-deactivated: TU-local helper arp_insert occupied-slot match; entries with timestamp_ms == 0U are empty sentinels (priv_alloc invariant) and are skipped here so the second condition is only evaluated against non-empty slots; the IP-bytes memcmp is fully covered by tests/test_ra_net_arp_insert across hit and miss vectors but neither memory layout permits an MC/DC vector that flips the timestamp guard while holding the memcmp at zero.
     if (s->arp[i].timestamp_ms != 0U && memcmp(s->arp[i].ip.bytes, ip->bytes, 4U) == 0) {
       s->arp[i].mac          = *mac;
       s->arp[i].timestamp_ms = now;

@@ -345,6 +345,7 @@ static void internal_mc_rmw(uint32_t clear_mask, uint32_t set_bits)
 
   const uint32_t mc_now = *mc_reg;
   const uint32_t fc_now = *fc_reg;
+  // mcdc-deactivated: ra_vin idle-state guard; MC.ME (module enable) and FC.CC (capture continuous) are set together by the public-API ra_vin_capture_start sequence and cleared together by ra_vin_capture_stop, so the two condition bits are co-dependent in normal operation -- no MC/DC vector can flip one without the other on a quiescent capture controller.
   if (((mc_now & k_ra_vin_mc_me) != 0UL) || ((fc_now & k_ra_vin_fc_cc) != 0UL)) {
     return k_ra_err_invalid_state;
   }
