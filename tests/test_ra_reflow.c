@@ -184,6 +184,11 @@ static uint32_t priv_count_lit_pixels(int32_t x0, int32_t y0, int32_t x1, int32_
 
 /**
  * @brief NULL / pre-init guards against every public entry point.
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 static void test_null_and_preinit_guards(void)
 {
@@ -259,6 +264,11 @@ static void test_null_and_preinit_guards(void)
 /**
  * @brief Parse a simple `<h1>Title</h1><p>Body</p>` and confirm
  *        layout returns >= 1 page with > 0 glyphs.
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 static void test_simple_layout(void)
 {
@@ -299,6 +309,11 @@ static void test_simple_layout(void)
 /**
  * @brief Render the simple page and verify non-zero pixel coverage in
  *        the upper-left region (where the 'T' of "Title" lives).
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 static void test_render_pixels_around_title(void)
 {
@@ -345,6 +360,11 @@ static void test_render_pixels_around_title(void)
 /**
  * @brief Multi-paragraph layout produces glyphs spanning multiple
  *        block-start / block-end pairs.
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 static void test_multi_paragraph(void)
 {
@@ -385,6 +405,11 @@ static void test_multi_paragraph(void)
 
 /**
  * @brief Bold / italic propagate the style stamp onto laid-out glyphs.
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 static void test_bold_italic_toggling(void)
 {
@@ -433,6 +458,11 @@ static void test_bold_italic_toggling(void)
 
 /**
  * @brief Larger font size yields >= as many pages as the smaller size.
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 static void test_set_font_size_reflows(void)
 {
@@ -475,6 +505,11 @@ static void test_set_font_size_reflows(void)
 
 /**
  * @brief set_font_size before any layout yields invalid_state.
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 static void test_set_font_size_without_layout(void)
 {
@@ -497,6 +532,11 @@ static void test_set_font_size_without_layout(void)
 
 /**
  * @brief layout_chapter rejects an empty buffer.
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 static void test_layout_rejects_empty_input(void)
 {

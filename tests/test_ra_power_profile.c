@@ -84,6 +84,11 @@ static ra_err_t init_with_mocks(void)
 
 /* ---------------------------------------------------------------------------
  * Tests
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  * ------------------------------------------------------------------------- */
 
 static void test_init_rejects_null_cfg(void)
@@ -93,6 +98,12 @@ static void test_init_rejects_null_cfg(void)
   TEST_END("init rejects null cfg");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_zeroes_stats(void)
 {
   TEST_BEGIN("init zeroes stats");
@@ -109,6 +120,12 @@ static void test_init_zeroes_stats(void)
   TEST_END("init zeroes stats");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_enter_exit_pulses_gpio(void)
 {
   TEST_BEGIN("enter/exit pulses gpio");
@@ -127,6 +144,12 @@ static void test_enter_exit_pulses_gpio(void)
   TEST_END("enter/exit pulses gpio");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_time_accumulation(void)
 {
   TEST_BEGIN("time accumulation");
@@ -156,6 +179,12 @@ static void test_time_accumulation(void)
   TEST_END("time accumulation");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_exit_without_enter_reports_invalid_state(void)
 {
   TEST_BEGIN("exit without enter -> invalid state");
@@ -171,6 +200,12 @@ static void test_exit_without_enter_reports_invalid_state(void)
   TEST_END("exit without enter -> invalid state");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_region_id_range_check(void)
 {
   TEST_BEGIN("region id range check");
@@ -185,6 +220,12 @@ static void test_region_id_range_check(void)
   TEST_END("region id range check");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_get_stats_null(void)
 {
   TEST_BEGIN("get_stats null");
@@ -193,6 +234,12 @@ static void test_get_stats_null(void)
   TEST_END("get_stats null");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_reset_stats_clears_accumulators(void)
 {
   TEST_BEGIN("reset_stats clears accumulators");
@@ -215,6 +262,12 @@ static void test_reset_stats_clears_accumulators(void)
   TEST_END("reset_stats clears accumulators");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_null_hooks_safe(void)
 {
   TEST_BEGIN("null hooks are safe");
@@ -231,6 +284,12 @@ static void test_null_hooks_safe(void)
   TEST_END("null hooks are safe");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_multiple_regions_independent(void)
 {
   TEST_BEGIN("multiple regions independent");
