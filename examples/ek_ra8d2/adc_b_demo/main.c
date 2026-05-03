@@ -1,5 +1,5 @@
 /**
- * @file main.c
+ * @file examples/ek_ra8d2/adc_b_demo/main.c
  * @brief ADC_B VREF-channel sample-and-log demo for EK-RA8D2
  *
  * @par Tag

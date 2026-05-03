@@ -1,5 +1,5 @@
 /**
- * @file examples/spi_loopback/secure_exception.c
+ * @file examples/ek_ra8d2/spi_loopback/secure_exception.c
  * @brief Secure-side fault handler for NS -> S violations
  *
  * @par Tag

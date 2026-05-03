@@ -1,5 +1,5 @@
 /**
- * @file examples/dac_waveform/system_init.c
+ * @file examples/ek_ra8d2/dac_waveform/system_init.c
  * @brief Cortex-M85 / RA8D2 core bring-up (called from Reset_Handler)
  *
  * @details

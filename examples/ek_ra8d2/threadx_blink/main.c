@@ -1,5 +1,5 @@
 /**
- * @file examples/threadx_blink/main.c
+ * @file examples/ek_ra8d2/threadx_blink/main.c
  * @brief Eclipse ThreadX bring-up smoke test on the EK-RA8D2
  *
  * @par Tag

@@ -1,5 +1,5 @@
 /**
- * @file main.c
+ * @file examples/ek_ra8d2/usb_host_keyboard/main.c
  * @brief USB host-mode HID keyboard smoke test for EK-RA8D2 (USB-HS)
  *
  * @par Tag

@@ -1,5 +1,5 @@
 /**
- * @file examples/threadx_ble_mesh_node/secure_exception.c
+ * @file examples/_unsupported/threadx_ble_mesh_node/secure_exception.c
  * @brief Secure-side fault handler for NS -> S violations
  *
  * @par Tag

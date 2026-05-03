@@ -1,5 +1,5 @@
 /**
- * @file main.c
+ * @file examples/ek_ra8d2/ssie_audio_loop/main.c
  * @brief SSIE I2S internal-loopback audio integrity demo for EK-RA8D2
  *
  * @par Tag

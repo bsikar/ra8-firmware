@@ -1,5 +1,5 @@
 /**
- * @file main.c
+ * @file examples/ek_ra8d2/dac_waveform/main.c
  * @brief 12-bit DAC_B triangle-wave generator for EK-RA8D2
  *
  * @par Tag

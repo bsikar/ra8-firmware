@@ -1,5 +1,5 @@
 /**
- * @file main.c
+ * @file examples/_unsupported/audio_loopback/main.c
  * @brief BSP-driven I2S audio playback demo for EK-RA8D2 (DA7212 CODEC)
  *
  * @par Tag

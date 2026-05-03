@@ -1,5 +1,5 @@
 /**
- * @file examples/threadx_blink/system_init.c
+ * @file examples/ek_ra8d2/threadx_blink/system_init.c
  * @brief Cortex-M85 / RA8D2 core bring-up (called from Reset_Handler)
  *
  * @details

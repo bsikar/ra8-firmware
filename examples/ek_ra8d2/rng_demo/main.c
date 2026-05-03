@@ -1,5 +1,5 @@
 /**
- * @file main.c
+ * @file examples/ek_ra8d2/rng_demo/main.c
  * @brief PSA TRNG dump over SCI8 for the bare EK-RA8D2 EVM
  *
  * @par Tag

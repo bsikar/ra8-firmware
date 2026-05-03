@@ -1,5 +1,5 @@
 /**
- * @file main.c
+ * @file examples/ek_ra8d2/blink/main.c
  * @brief Minimal LED-blink demo for EK-RA8D2 (single LED, BSP-driven)
  *
  * @par Tag

@@ -1,5 +1,5 @@
 /**
- * @file examples/ereader/main.c
+ * @file examples/ek_ra8d2/ereader/main.c
  * @brief Skeleton ePub e-reader application for the EK-RA8D2
  *
  * @par Tag

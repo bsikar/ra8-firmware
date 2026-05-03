@@ -1,5 +1,5 @@
 /**
- * @file main.c
+ * @file examples/ek_ra8d2/dma_memcopy_demo/main.c
  * @brief 1 KB DMAC SRAM-to-SRAM copy + verify demo for the EK-RA8D2
  *
  * @par Tag

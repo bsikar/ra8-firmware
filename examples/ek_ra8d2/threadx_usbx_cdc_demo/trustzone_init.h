@@ -1,5 +1,5 @@
 /**
- * @file examples/threadx_usbx_cdc_demo/trustzone_init.h
+ * @file examples/ek_ra8d2/threadx_usbx_cdc_demo/trustzone_init.h
  * @brief Cortex-M85 TrustZone-M SAU bring-up entry point
  *
  * @par Tag

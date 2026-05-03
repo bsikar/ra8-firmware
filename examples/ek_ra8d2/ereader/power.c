@@ -1,5 +1,5 @@
 /**
- * @file examples/ereader/power.c
+ * @file examples/ek_ra8d2/ereader/power.c
  * @brief Sleep / wake / brown-out implementation for the ereader app.
  *
  * @par Tag
