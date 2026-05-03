@@ -133,6 +133,15 @@ def should_scan(path: Path) -> bool:
     return path.suffix in SCAN_EXTS
 
 
+def _is_skip_dir(name: str) -> bool:
+    if name in SKIP_DIR_NAMES:
+        return True
+    # Glob-style: any CMake/build artefact dir like build-fuzz, build-bench.
+    if name.startswith("build-") or name == "build":
+        return True
+    return False
+
+
 def iter_source_files(root: Path) -> list[Path]:
     out: list[Path] = []
     for scan_root in SCAN_ROOTS:
@@ -140,7 +149,7 @@ def iter_source_files(root: Path) -> list[Path]:
         if not base.exists():
             continue
         for dirpath, dirnames, filenames in os.walk(base):
-            dirnames[:] = [d for d in dirnames if d not in SKIP_DIR_NAMES]
+            dirnames[:] = [d for d in dirnames if not _is_skip_dir(d)]
             for fn in filenames:
                 p = Path(dirpath) / fn
                 if should_scan(p):

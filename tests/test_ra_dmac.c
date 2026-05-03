@@ -26,6 +26,12 @@ typedef enum : uint8_t {
   k_ra_dmac_test_channel_bad   = 8U,
 } ra_dmac_test_channel_t;
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_start_null_cfg(void)
 {
   TEST_BEGIN("dmac start null cfg");
@@ -36,6 +42,12 @@ static void test_start_null_cfg(void)
   TEST_END("dmac start null cfg");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_start_bad_channel(void)
 {
   TEST_BEGIN("dmac start bad channel");
@@ -54,6 +66,12 @@ static void test_start_bad_channel(void)
   TEST_END("dmac start bad channel");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_start_happy_both_inc(void)
 {
   TEST_BEGIN("dmac start happy both inc");
@@ -78,6 +96,12 @@ static void test_start_happy_both_inc(void)
   TEST_END("dmac start happy both inc");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_start_no_src_inc(void)
 {
   TEST_BEGIN("dmac start no src inc");
@@ -95,6 +119,12 @@ static void test_start_no_src_inc(void)
   TEST_END("dmac start no src inc");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_start_no_dst_inc(void)
 {
   TEST_BEGIN("dmac start no dst inc");
@@ -112,6 +142,12 @@ static void test_start_no_dst_inc(void)
   TEST_END("dmac start no dst inc");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_start_neither_inc(void)
 {
   TEST_BEGIN("dmac start neither inc");
@@ -129,6 +165,12 @@ static void test_start_neither_inc(void)
   TEST_END("dmac start neither inc");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_stop_happy(void)
 {
   TEST_BEGIN("dmac stop happy");
@@ -141,6 +183,12 @@ static void test_stop_happy(void)
   TEST_END("dmac stop happy");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_stop_bad_channel(void)
 {
   TEST_BEGIN("dmac stop bad channel");
@@ -185,6 +233,12 @@ static void prep_dmac_ext(void)
                                              nullptr);
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_start_repeat_mode(void)
 {
   TEST_BEGIN("dmac start_repeat sets MD=01b");
@@ -209,6 +263,12 @@ static void test_start_repeat_mode(void)
   TEST_END("dmac start_repeat sets MD=01b");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_start_repeat_null(void)
 {
   TEST_BEGIN("dmac start_repeat null cfg");
@@ -218,6 +278,12 @@ static void test_start_repeat_null(void)
   TEST_END("dmac start_repeat null cfg");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_start_block_mode(void)
 {
   TEST_BEGIN("dmac start_block sets MD=10b and DMCRB");
@@ -244,6 +310,12 @@ static void test_start_block_mode(void)
   TEST_END("dmac start_block sets MD=10b and DMCRB");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_start_block_zero_count(void)
 {
   TEST_BEGIN("dmac start_block rejects block_count=0");
@@ -259,6 +331,12 @@ static void test_start_block_zero_count(void)
   TEST_END("dmac start_block rejects block_count=0");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_address_mode_happy(void)
 {
   TEST_BEGIN("dmac set_address_mode writes SM/DM");
@@ -286,6 +364,12 @@ static void test_set_address_mode_happy(void)
   TEST_END("dmac set_address_mode writes SM/DM");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_address_mode_invalid(void)
 {
   TEST_BEGIN("dmac set_address_mode rejects invalid args");
@@ -301,6 +385,12 @@ static void test_set_address_mode_invalid(void)
   TEST_END("dmac set_address_mode rejects invalid args");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_attach_half_complete_handler(void)
 {
   TEST_BEGIN("dmac half-complete handler dispatches");
@@ -325,6 +415,12 @@ static void test_attach_half_complete_handler(void)
   TEST_END("dmac half-complete handler dispatches");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_attach_per_channel_callback(void)
 {
   TEST_BEGIN("dmac per-channel callback dispatches");

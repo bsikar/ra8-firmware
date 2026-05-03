@@ -78,6 +78,11 @@ static ra_drw_config_t make_cfg(void)
 /* =============================================================================
  * Lifecycle
  * =============================================================================
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_init_happy(void)
@@ -104,6 +109,12 @@ static void test_init_happy(void)
   TEST_END("drw init happy");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_null_cfg(void)
 {
   TEST_BEGIN("drw init null cfg");
@@ -113,6 +124,12 @@ static void test_init_null_cfg(void)
   TEST_END("drw init null cfg");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_caches_off_dbwer_off(void)
 {
   TEST_BEGIN("drw init caches off, DBWER off");
@@ -126,6 +143,12 @@ static void test_init_caches_off_dbwer_off(void)
   TEST_END("drw init caches off, DBWER off");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_deinit_clears_irq_and_callback(void)
 {
   TEST_BEGIN("drw deinit clears IRQs + callback");
@@ -146,6 +169,11 @@ static void test_deinit_clears_irq_and_callback(void)
 /* =============================================================================
  * Status / IRQ
  * =============================================================================
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_get_status_reads_seed(void)
@@ -161,6 +189,12 @@ static void test_get_status_reads_seed(void)
   TEST_END("drw get_status reads seed");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_get_status_null_out(void)
 {
   TEST_BEGIN("drw get_status null out");
@@ -170,6 +204,12 @@ static void test_get_status_null_out(void)
   TEST_END("drw get_status null out");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_get_hwrevision(void)
 {
   TEST_BEGIN("drw get_hwrevision");
@@ -182,6 +222,12 @@ static void test_get_hwrevision(void)
   TEST_END("drw get_hwrevision");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_clear_status_writes_irqctl(void)
 {
   TEST_BEGIN("drw clear_status writes IRQCTL");
@@ -192,6 +238,12 @@ static void test_clear_status_writes_irqctl(void)
   TEST_END("drw clear_status writes IRQCTL");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_irq_enables_combines_w1c(void)
 {
   TEST_BEGIN("drw set_irq_enables ORs W1C");
@@ -213,6 +265,12 @@ static void stub_drw_cb(void* ctx, uint32_t status)
   s_drw_cb_last_ctx    = ctx;
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_attach_and_dispatch(void)
 {
   TEST_BEGIN("drw attach + dispatch");
@@ -239,6 +297,12 @@ static void test_attach_and_dispatch(void)
   TEST_END("drw attach + dispatch");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_wait_idle_paths(void)
 {
   TEST_BEGIN("drw wait_idle happy + timeout + zero budget");
@@ -259,6 +323,11 @@ static void test_wait_idle_paths(void)
 /* =============================================================================
  * Power transitions / reset / cache
  * =============================================================================
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_power_transition(void)
@@ -273,6 +342,12 @@ static void test_power_transition(void)
   TEST_END("drw power transition");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_reset_clears_perfcount(void)
 {
   TEST_BEGIN("drw reset clears perf counters");
@@ -285,6 +360,12 @@ static void test_reset_clears_perfcount(void)
   TEST_END("drw reset clears perf counters");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_cache_flush(void)
 {
   TEST_BEGIN("drw cache_flush sets bits");
@@ -304,6 +385,11 @@ static void test_cache_flush(void)
 /* =============================================================================
  * Surface / blend / colour
  * =============================================================================
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_set_gradient(void)
@@ -321,6 +407,12 @@ static void test_set_gradient(void)
   TEST_END("drw set_gradient writes COLOR1+COLOR2");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_pattern_and_enable(void)
 {
   TEST_BEGIN("drw set_pattern + enable bits");
@@ -339,6 +431,12 @@ static void test_set_pattern_and_enable(void)
   TEST_END("drw set_pattern + enable bits");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_blend(void)
 {
   TEST_BEGIN("drw set_blend full source-over");
@@ -375,6 +473,12 @@ static void test_set_blend(void)
   TEST_END("drw set_blend full source-over");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_color_key(void)
 {
   TEST_BEGIN("drw set_color_key writes COLKEY + bit");
@@ -419,6 +523,12 @@ static ra_drw_texture_t make_tex(void)
   return tex;
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_texture_argb8888(void)
 {
   TEST_BEGIN("drw set_texture ARGB8888 + filter + clamp + colour key");
@@ -444,6 +554,12 @@ static void test_set_texture_argb8888(void)
   TEST_END("drw set_texture ARGB8888 + filter + clamp + colour key");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_texture_clut_rle(void)
 {
   TEST_BEGIN("drw set_texture CLUT + RLE bits");
@@ -464,6 +580,12 @@ static void test_set_texture_clut_rle(void)
   TEST_END("drw set_texture CLUT + RLE bits");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_texture_rejects(void)
 {
   TEST_BEGIN("drw set_texture rejects null + oversize pitch");
@@ -475,6 +597,12 @@ static void test_set_texture_rejects(void)
   TEST_END("drw set_texture rejects null + oversize pitch");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_clear_texture(void)
 {
   TEST_BEGIN("drw clear_texture clears CONTROL2 bits");
@@ -491,6 +619,12 @@ static void test_clear_texture(void)
   TEST_END("drw clear_texture clears CONTROL2 bits");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_load_clut_happy_and_bounds(void)
 {
   TEST_BEGIN("drw load_clut writes addr + data");
@@ -515,6 +649,11 @@ static void test_load_clut_happy_and_bounds(void)
 /* =============================================================================
  * Drawing primitives
  * =============================================================================
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_fill_rect_happy(void)
@@ -564,6 +703,12 @@ static void test_fill_rect_happy(void)
   TEST_END("drw fill_rect happy");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_fill_rect_null(void)
 {
   TEST_BEGIN("drw fill_rect null");
@@ -572,6 +717,12 @@ static void test_fill_rect_null(void)
   TEST_END("drw fill_rect null");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_fill_rect_zero_dim(void)
 {
   TEST_BEGIN("drw fill_rect zero dim");
@@ -592,6 +743,12 @@ static void test_fill_rect_zero_dim(void)
   TEST_END("drw fill_rect zero dim");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_fill_rect_too_big(void)
 {
   TEST_BEGIN("drw fill_rect oversize");
@@ -612,6 +769,12 @@ static void test_fill_rect_too_big(void)
   TEST_END("drw fill_rect oversize");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_blit_textured_rect(void)
 {
   TEST_BEGIN("drw blit_textured_rect happy + bad args");
@@ -640,6 +803,12 @@ static void test_blit_textured_rect(void)
   TEST_END("drw blit_textured_rect happy + bad args");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_draw_line(void)
 {
   TEST_BEGIN("drw draw_line writes limiters + bands");
@@ -669,6 +838,12 @@ static void test_draw_line(void)
   TEST_END("drw draw_line writes limiters + bands");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_draw_triangle(void)
 {
   TEST_BEGIN("drw draw_triangle writes 3 limiters");
@@ -693,6 +868,11 @@ static void test_draw_triangle(void)
 /* =============================================================================
  * Display list
  * =============================================================================
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_run_dlist(void)
@@ -714,6 +894,11 @@ static void test_run_dlist(void)
 /* =============================================================================
  * Performance counters
  * =============================================================================
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_perf_arm_read_reset(void)

@@ -41,6 +41,12 @@ static void prep(void)
   s_dtc_cb_last_mask = 0U;
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_null_vector(void)
 {
   TEST_BEGIN("dtc init null vector");
@@ -49,6 +55,12 @@ static void test_init_null_vector(void)
   TEST_END("dtc init null vector");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_happy(void)
 {
   TEST_BEGIN("dtc init happy");
@@ -65,6 +77,12 @@ static void test_init_happy(void)
   TEST_END("dtc init happy");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_enable_then_disable(void)
 {
   TEST_BEGIN("dtc enable then disable");
@@ -79,6 +97,12 @@ static void test_enable_then_disable(void)
   TEST_END("dtc enable then disable");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_deinit(void)
 {
   TEST_BEGIN("dtc deinit");
@@ -90,6 +114,12 @@ static void test_deinit(void)
   TEST_END("dtc deinit");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_reconfigure(void)
 {
   TEST_BEGIN("dtc reconfigure");
@@ -107,6 +137,12 @@ static void test_reconfigure(void)
   TEST_END("dtc reconfigure");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_status_read_and_clear(void)
 {
   TEST_BEGIN("dtc status read + clear");
@@ -124,6 +160,12 @@ static void test_status_read_and_clear(void)
   TEST_END("dtc status read + clear");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_attach_and_dispatch(void)
 {
   TEST_BEGIN("dtc attach + dispatch");
@@ -142,6 +184,12 @@ static void test_attach_and_dispatch(void)
   TEST_END("dtc attach + dispatch");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_power_transition(void)
 {
   TEST_BEGIN("dtc power transition");

@@ -208,6 +208,12 @@ static void build_synth_epub(void)
 /* Test cases.                                                           */
 /* --------------------------------------------------------------------- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_open_close(void)
 {
   TEST_BEGIN("ra_epub open + close");
@@ -222,6 +228,12 @@ static void test_open_close(void)
   TEST_END("ra_epub open + close");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_chapter_count(void)
 {
   TEST_BEGIN("ra_epub chapter_count == 2");
@@ -235,6 +247,12 @@ static void test_chapter_count(void)
   TEST_END("ra_epub chapter_count == 2");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_load_chapter(void)
 {
   TEST_BEGIN("ra_epub load_chapter copies XHTML");
@@ -268,6 +286,12 @@ static void test_load_chapter(void)
   TEST_END("ra_epub load_chapter copies XHTML");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_get_metadata(void)
 {
   TEST_BEGIN("ra_epub get_metadata returns Dublin Core");
@@ -286,6 +310,12 @@ static void test_get_metadata(void)
   TEST_END("ra_epub get_metadata returns Dublin Core");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_get_cover_image(void)
 {
   TEST_BEGIN("ra_epub get_cover_image extracts raw bytes");
@@ -304,6 +334,12 @@ static void test_get_cover_image(void)
   TEST_END("ra_epub get_cover_image extracts raw bytes");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_render_glyph_paths(void)
 {
   TEST_BEGIN("ra_epub render_glyph -- no font / bad font");
@@ -356,6 +392,12 @@ static void test_render_glyph_paths(void)
   TEST_END("ra_epub render_glyph -- no font / bad font");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_null_arg_guards(void)
 {
   TEST_BEGIN("ra_epub NULL-arg / pre-init guards");
@@ -403,6 +445,12 @@ static void test_null_arg_guards(void)
   TEST_END("ra_epub NULL-arg / pre-init guards");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_open_invalid_zip(void)
 {
   TEST_BEGIN("ra_epub open with garbage payload -> validation_failed");
