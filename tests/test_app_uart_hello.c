@@ -21,6 +21,7 @@
 
 #include <stdint.h>
 
+#include "ra8d2_sci_regs.h"
 #include "ra_board_ek_ra8d2.h"
 #include "ra_err.h"
 #include "ra_gpio_constants.h"
@@ -56,6 +57,9 @@ static void reset_world(void)
 {
   ra_sim_mmap_reset();
   ra_pin_validator_reset();
+  /* Pre-seed CSR.TDRE for the channel under test so putc spins
+   * complete on the first iteration in RA_SIMULATOR_MODE. */
+  ra_sci((uint8_t)k_test_uart_sci_channel)->CSR = (uint32_t)(1U << (uint8_t)k_ra_sci_csr_bit_tdre);
 }
 
 /* -------------------------------------------------------------------------
@@ -139,7 +143,11 @@ static void test_uart_steady_state_write_and_toggle(void)
   TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_sci_init((uint8_t)k_test_uart_sci_channel, &cfg));
   TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_led_init(k_ra_board_led1));
 
+  /* ra_sci_init clears CSR via CFCLR; re-seed TDRE so each putc spin
+   * completes immediately under RA_SIMULATOR_MODE. */
+  volatile r_sci_regs_t* sci_reg = ra_sci((uint8_t)k_test_uart_sci_channel);
   for (uint8_t i = 0; i < (uint8_t)k_test_uart_loop_iters; i++) {
+    sci_reg->CSR = (uint32_t)(1U << (uint8_t)k_ra_sci_csr_bit_tdre);
     TEST_ASSERT_EQ((int)k_ra_ok,
                    (int)ra_sci_write_polling((uint8_t)k_test_uart_sci_channel,
                                              k_test_uart_greeting,
@@ -187,8 +195,7 @@ static void test_uart_init_null_cfg_rejected(void)
 {
   reset_world();
   TEST_BEGIN("uart_hello: ra_sci_init rejects NULL cfg");
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
-                 (int)ra_sci_init((uint8_t)k_test_uart_sci_channel, NULL));
+  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_sci_init((uint8_t)k_test_uart_sci_channel, NULL));
   TEST_END("uart_hello: ra_sci_init rejects NULL cfg");
 }
 

@@ -423,6 +423,10 @@ ra_err_t ra_usb_pal_ep_open(uint8_t              ep_addr,
                             ra_usb_pal_ep_type_t type,
                             uint16_t             max_packet)
 {
+  /* USB descriptor bEndpointAddress encodes direction in bit 7
+   * (0x80 = IN). Strip it so callers can pass either the descriptor
+   * form (e.g. 0x83) or the bare endpoint number (e.g. 3). */
+  ep_addr = (uint8_t)(ep_addr & (uint8_t)k_ra_usb_pal_ep_addr_mask);
   if (!s_state.initialised) {
     return k_ra_err_invalid_state;
   }
@@ -480,6 +484,8 @@ ra_err_t ra_usb_pal_ep_open(uint8_t              ep_addr,
  */
 ra_err_t ra_usb_pal_ep_send(uint8_t ep_addr, const uint8_t* data, uint16_t len)
 {
+  /* Accept descriptor-shaped (0x80 | ep) and bare-number ep_addr. */
+  ep_addr = (uint8_t)(ep_addr & (uint8_t)k_ra_usb_pal_ep_addr_mask);
   if (!s_state.initialised) {
     return k_ra_err_invalid_state;
   }
@@ -545,6 +551,8 @@ ra_err_t ra_usb_pal_ep_recv(uint8_t ep_addr, uint8_t* out_buf, uint16_t* inout_l
 {
   RA_CHECK_NULL_PTR(out_buf, s_tag, "ep_recv: out_buf");
   RA_CHECK_NULL_PTR(inout_len, s_tag, "ep_recv: inout_len");
+  /* Accept descriptor-shaped (0x80 | ep) and bare-number ep_addr. */
+  ep_addr = (uint8_t)(ep_addr & (uint8_t)k_ra_usb_pal_ep_addr_mask);
   if (!s_state.initialised) {
     return k_ra_err_invalid_state;
   }

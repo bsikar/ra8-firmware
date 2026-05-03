@@ -29,6 +29,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8d2_system_regs.h"
 #include "ra_board_ek_ra8d2.h"
 #include "ra_canfd.h"
 #include "ra_err.h"
@@ -54,6 +55,12 @@ static void reset_world(void)
   ra_sim_mmap_reset();
   ra_pin_validator_reset();
   (void)ra_canfd_deinit((uint8_t)k_test_canfd_channel);
+  /* Pre-seed OSCSF stabilisation bits so ra_cgc_init() spin loops
+   * complete on the first iteration in RA_SIMULATOR_MODE. */
+  *ra_sys_oscsf() = (uint8_t)0xFFU;
+  /* Populate the CGC published-clock table so ra_canfd_set_bitrate
+   * can read a non-zero PCLKA from ra_cgc_get_clock_hz(). */
+  (void)ra_cgc_init();
 }
 
 /**
