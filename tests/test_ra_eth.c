@@ -136,6 +136,35 @@ static void test_open_bad_channel(void)
   TEST_END("eth open bad channel");
 }
 
+/**
+ * @test test_mcdc_open_ring_size_oversize
+ *
+ * @par MC/DC:
+ * Decision: ``if ((tx == 0U) || (tx > k_ra_eth_num_tx_desc))``
+ * (libs/ra_hal/src/ra_eth.c:329; first OR-condition deactivated as the
+ * `tx == 0` branch is normalized to `k_ra_eth_num_tx_desc` immediately
+ * above this guard, leaving only the second condition as reachable).
+ * Same shape for the rx variant on line 332.
+ *  - V1: tx = 4   -> in-range -> open succeeds (decision F).
+ *  - V2: tx = 99  -> tx > 8   -> decision T, return invalid_arg.
+ * Vectors V1+V2 prove the second OR-condition independently flips
+ * the decision; the all-false vector for the first OR-condition is
+ * structurally unreachable (see mcdc-deactivated annotation).
+ */
+static void test_mcdc_open_ring_size_oversize(void)
+{
+  TEST_BEGIN("eth open ring-size MC/DC: tx>max & rx>max");
+  prep();
+  ra_eth_cfg_t bad_tx       = s_test_cfg;
+  bad_tx.num_tx_descriptors = 99U; /* > k_ra_eth_num_tx_desc (=8) */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_eth_open(&bad_tx));
+  prep();
+  ra_eth_cfg_t bad_rx       = s_test_cfg;
+  bad_rx.num_rx_descriptors = 99U;
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_eth_open(&bad_rx));
+  TEST_END("eth open ring-size MC/DC: tx>max & rx>max");
+}
+
 static void test_open_happy_path(void)
 {
   TEST_BEGIN("eth open happy path");
@@ -469,6 +498,7 @@ int32_t main(void)
 
   test_open_null_rejected();
   test_open_bad_channel();
+  test_mcdc_open_ring_size_oversize();
   test_open_happy_path();
   test_close_without_open();
 

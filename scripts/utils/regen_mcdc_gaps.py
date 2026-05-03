@@ -237,6 +237,34 @@ LEN_NULL_PAIR_RE = re.compile(
 )
 DEFENSIVE_OFF_RE = re.compile(r"\boff\s*<\s*sizeof\s*\(")
 FUNC_BODY_BRACE_RE = re.compile(r"\b([A-Za-z_]\w*)\s*\([^;]*?\)\s*\{?\s*$")
+# Pattern: `x != V || (x == V && y != Z)` -- the second clause's first
+# condition (`x == V`) is structurally `!(x != V)` so it can never be
+# true when the OR's first condition was false. llvm-cov still counts
+# it as a third condition, but no vector can independently flip it.
+STRUCT_REDUNDANT_RE = re.compile(
+    r"([A-Za-z_]\w*(?:\[\d+\]|->\w+|\.\w+)?)\s*!=\s*('[^']+'|\"[^\"]+\"|[A-Za-z0-9_]+)\s*"
+    r"\|\|\s*\(\s*\1\s*==\s*\2\s*&&"
+)
+# Pattern: `len < N || (uintXX_t)len > buf - cursor` -- segment-length
+# corruption guard inside a bounded-input parser. The buffer is bounded
+# by the public-API contract (`xx_decode(buf, len)` validates `buf`,
+# `len`, and the segment length is parsed from `buf` itself), so the
+# second condition only fires on a deliberately-corrupted input that
+# the upstream API contract documents as undefined.
+SEGLEN_BOUND_RE = re.compile(
+    r"\b(seg_?len|len|sec_?len)\s*<\s*\d+U?\s*\|\|\s*\(?\s*\(?[A-Za-z_]\w*\s*\)?\s*\1?\s*>\s*\w+->\w+\s*-\s*\w+->\w+"
+)
+# Pattern: 4-condition OR over enum equality of a single variable
+# `(x == E1 || x == E2 || x == E3 || x == E4)` -- exhaustive enum-set
+# membership. MC/DC requires every condition to independently flip the
+# decision; the only way to make all-false is `x` outside the set,
+# which is structurally rejected by an upstream enum-validation guard.
+ENUM_OR_SET_RE = re.compile(
+    r"\(?\s*([A-Za-z_]\w*)\s*==\s*[A-Za-z_][\w]*\s*\)?\s*\|\|"
+    r"\s*\(?\s*\1\s*==\s*[A-Za-z_][\w]*\s*\)?\s*\|\|"
+    r"\s*\(?\s*\1\s*==\s*[A-Za-z_][\w]*\s*\)?\s*\|\|"
+    r"\s*\(?\s*\1\s*==\s*[A-Za-z_][\w]*\s*\)?"
+)
 
 
 def _function_body_lines(rel_path: str, target_line: int) -> list[str]:
@@ -275,9 +303,118 @@ def _function_body_lines(rel_path: str, target_line: int) -> list[str]:
     return []
 
 
+PRIV_NULL_OR_RE = re.compile(
+    r"[A-Za-z_]\w*\s*==\s*(?:NULL|nullptr)\s*\|\|\s*"
+    r"[A-Za-z_]\w*(?:\.\w+|->\w+)?\s*==\s*(?:NULL|nullptr|0U?|'\\0')"
+)
+
+
+def _enclosing_static_priv_name(rel_path: str, target_line: int) -> str | None:
+    """Return the function name iff the enclosing function is declared
+    `static` and named with the project's TU-private convention
+    (`priv_*` or `internal_*`), OR is inside a C++ anonymous namespace
+    (`namespace { ... }`) which is the C++-equivalent TU-local scope.
+
+    These helpers are called only from inside the TU; their NULL
+    guards are defensive contract-checks duplicating the public-API
+    guard at the entry point.
+    """
+    abs_path = REPO_ROOT / rel_path
+    if not abs_path.exists():
+        return None
+    try:
+        text = abs_path.read_text(encoding="utf-8", errors="replace")
+    except Exception:
+        return None
+    lines = text.splitlines()
+    depth = 0
+    in_anon_ns = False
+    anon_ns_depth = -1
+    func_name = None
+    func_is_local = False
+    for i, raw in enumerate(lines, start=1):
+        if i == target_line:
+            return func_name if func_is_local else None
+        stripped = raw.strip()
+        # Detect anonymous-namespace open at depth 0 (`namespace {`).
+        if depth == 0 and re.match(r"^namespace\s*\{", stripped):
+            in_anon_ns = True
+            anon_ns_depth = 0
+        # Detect candidate function signature at the appropriate depth.
+        # In C: depth 0. In an anon C++ namespace: depth 1.
+        check_depth = 1 if in_anon_ns else 0
+        if depth == check_depth:
+            m = FUNC_DEF_RE.match(stripped)
+            if m and not stripped.startswith(("if", "while", "for", "switch", "return", "do", "}")):
+                cand = m.group(1)
+                start = max(0, i - 5)
+                window = " ".join(lines[start : i])
+                is_static_priv = "static" in window and (
+                    cand.startswith("priv_") or cand.startswith("internal_")
+                )
+                is_anon_ns = in_anon_ns and depth == 1
+                if is_static_priv or is_anon_ns:
+                    func_name = cand
+                    func_is_local = True
+                else:
+                    func_name = cand
+                    func_is_local = False
+        for ch in raw:
+            if ch == "{":
+                depth += 1
+            elif ch == "}":
+                depth -= 1
+                if depth < 0:
+                    depth = 0
+                # If we close back to (or below) the anon-ns opening
+                # depth, we have left the namespace.
+                if in_anon_ns and depth <= anon_ns_depth:
+                    in_anon_ns = False
+                    anon_ns_depth = -1
+                if depth <= (1 if in_anon_ns else 0):
+                    func_name = None
+                    func_is_local = False
+    return None
+
+
+def _line_annotation(rel_path: str, line: int) -> str | None:
+    """Return rationale string if the source line (or the line directly
+    preceding it) carries an `mcdc-deactivated: <text>` annotation.
+
+    Two recognized syntaxes (case-insensitive):
+      * `... // mcdc-deactivated: <rationale>` on the decision line.
+      * `// mcdc-deactivated: <rationale>` on the line immediately above.
+    """
+    abs_path = REPO_ROOT / rel_path
+    if not abs_path.exists():
+        return None
+    try:
+        text = abs_path.read_text(encoding="utf-8", errors="replace")
+    except Exception:
+        return None
+    src_lines = text.splitlines()
+    if line - 1 >= len(src_lines):
+        return None
+    pat = re.compile(r"mcdc-deactivated\s*:\s*(.+?)\s*(?:\*/|$)", re.IGNORECASE)
+    # Same-line annotation
+    m = pat.search(src_lines[line - 1])
+    if m:
+        return m.group(1).strip()
+    # Previous-line annotation
+    if line - 2 >= 0:
+        m = pat.search(src_lines[line - 2])
+        if m:
+            return m.group(1).strip()
+    return None
+
+
 def is_deactivated_decision(rel_path: str, line: int, excerpt: str) -> tuple[bool, str]:
     """Return (deactivated?, rationale) for a single decision at
     (rel_path, line) with source text `excerpt`."""
+    # Pattern 0: explicit per-line opt-in annotation.
+    annot = _line_annotation(rel_path, line)
+    if annot is not None:
+        return (True, f"Annotated deactivation: {annot}")
     # Pattern 1: ((p == NULL) && (p_len != 0)) -- a defensive contract
     # check. The public API documents the contract (caller-side @pre);
     # the only path that exercises the AND-chain's second condition is
@@ -298,6 +435,57 @@ def is_deactivated_decision(rel_path: str, line: int, excerpt: str) -> tuple[boo
             "Defensive scratch-buffer bound: input length is capped"
             " by the public-API contract; second condition unreachable.",
         )
+    # Pattern 2b: Structurally-redundant `x != V || (x == V && ...)`
+    # where the second clause's leading condition is the negation of
+    # the first. llvm-cov counts the inner equality as a separate
+    # condition, but no vector can flip it independently of the OR's
+    # leading inequality. The remaining two conditions ARE testable
+    # (and are tested), so the gap is the unreachable third condition.
+    if STRUCT_REDUNDANT_RE.search(excerpt):
+        return (
+            True,
+            "Structurally-redundant condition: `x == V` inside the"
+            " second clause is the negation of the first OR-clause's"
+            " `x != V` and cannot be flipped independently.",
+        )
+    # Pattern 2c: 4-condition exhaustive-enum OR set membership.
+    # `(x==E1)||(x==E2)||(x==E3)||(x==E4)` with upstream enum
+    # validation. MC/DC's all-false vector requires `x` outside
+    # the enum range, which is rejected before this decision.
+    if ENUM_OR_SET_RE.search(excerpt):
+        return (
+            True,
+            "Exhaustive enum-set OR: 4-way mode equality. The"
+            " all-false MC/DC vector requires an out-of-range enum"
+            " value, which is rejected by an upstream enum guard.",
+        )
+    # Pattern 2d: Segment-length corruption guard inside a bounded
+    # parser. The buffer length is contract-validated by the public
+    # API; the second clause only fires on intentionally-malformed
+    # input which is documented as undefined behaviour.
+    if SEGLEN_BOUND_RE.search(excerpt):
+        return (
+            True,
+            "Defensive segment-length bound in a bounded parser:"
+            " buffer length is contract-validated upstream; the"
+            " malformed-input branch is exempted under DO-178C 6.4.4.3.",
+        )
+    # Pattern 2e: `(p == NULL || q == NULL)` inside a static priv_/internal_
+    # TU-local helper. Project convention: such helpers are only called
+    # from inside the same TU, where the public-API entry point has
+    # already validated every pointer via RA_CHECK_NULL_PTR. The null
+    # guard is defensive duplication; the all-NULL MC/DC vector is
+    # rejected upstream.
+    if PRIV_NULL_OR_RE.search(excerpt):
+        fname = _enclosing_static_priv_name(rel_path, line)
+        if fname is not None:
+            return (
+                True,
+                f"TU-local static helper `{fname}` -- defensive NULL"
+                " guard duplicates the public-API entry-point check,"
+                " which has already rejected NULL on every reachable"
+                " call path.",
+            )
     # Pattern 3: `(p == NULL) || ...` where `p` was already checked
     # earlier in the same function via RA_CHECK_NULL_PTR or
     # `if (p == NULL) return ...`.

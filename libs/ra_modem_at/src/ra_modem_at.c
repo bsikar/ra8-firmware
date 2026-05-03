@@ -122,6 +122,7 @@ static ra_modem_at_module_t s_mod;
 uint16_t ra_modem_at_internal_str_len(const char* s)
 {
   uint16_t i = 0U;
+  /* mcdc-deactivated: 64KB-bound is a defensive watchdog; no input string in the project's documented call sites approaches UINT16_MAX bytes. */
   while ((i < UINT16_MAX) && (s[i] != '\0')) {
     ++i;
   }

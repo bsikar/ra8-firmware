@@ -257,6 +257,7 @@ static inline void internal_itm_put_u32(uint32_t value)
     internal_itm_putc('0');
     return;
   }
+  /* mcdc-deactivated: digit-buffer bound; uint32_t max is 10 digits (k_ra_u32_max_digits == 10), so the loop always terminates by `value == 0` first; the bound is a defensive watchdog. */
   while (value != 0U && i < k_ra_u32_max_digits) {
     buf[i++] = (char)('0' + (char)(value % (uint32_t)k_ra_decimal_base));
     value /= (uint32_t)k_ra_decimal_base;
