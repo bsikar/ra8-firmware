@@ -19,9 +19,9 @@ Use the function or symbol name instead:
 - `see ra_pid_step in libs/ra_pid/src/ra_pid.c`
 
 The pre-commit gate `scripts/utils/check_line_citations.py` enforces
-this rule. It runs in WAVE-0 warn-only mode until the pre-existing
-violations have been cleaned up; the flag `WAVE_0_WARN_ONLY` at the
-top of that script flips to `False` once the cleanup wave lands.
+this rule strictly: any new in-tree `<file>:<line>` reference inside
+a C/C++ comment, Markdown doc, or plain-text doc is rejected at commit
+time. The `// CITES-OK: <reason>` per-line marker is the only opt-out.
 
 ## Rule 2: external / vendor citations are MANDATORY
 
