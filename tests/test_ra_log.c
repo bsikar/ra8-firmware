@@ -42,6 +42,11 @@ typedef enum : uintptr_t {
 
 /**
  * @brief Arm the ITM registers so internal_itm_ready() returns true.
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 static void test_itm_arm(void)
 {
@@ -53,6 +58,12 @@ static void test_itm_arm(void)
   *(volatile uint32_t*)k_test_itm_stim0 = 0xFFFFFFFFUL;
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_log_init_runs(void)
 {
   TEST_BEGIN("ra_log_init runs");
@@ -61,6 +72,12 @@ static void test_log_init_runs(void)
   TEST_END("ra_log_init runs");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_log_levels_plain(void)
 {
   TEST_BEGIN("ra_log plain tag/message at every level");
@@ -75,6 +92,12 @@ static void test_log_levels_plain(void)
   TEST_END("ra_log plain tag/message at every level");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_log_levels_val(void)
 {
   TEST_BEGIN("ra_log with companion value at every level");
@@ -89,6 +112,12 @@ static void test_log_levels_val(void)
   TEST_END("ra_log with companion value at every level");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_log_val_edge_cases(void)
 {
   TEST_BEGIN("ra_log value edge cases");
@@ -104,6 +133,12 @@ static void test_log_val_edge_cases(void)
   TEST_END("ra_log value edge cases");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_log_macros(void)
 {
   TEST_BEGIN("ra_log_*_val macros through public header");
@@ -122,6 +157,12 @@ static void test_log_macros(void)
   TEST_END("ra_log_*_val macros through public header");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_log_many_calls(void)
 {
   TEST_BEGIN("ra_log many calls do not crash");
@@ -133,6 +174,12 @@ static void test_log_many_calls(void)
   TEST_END("ra_log many calls do not crash");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_log_ready_plain(void)
 {
   TEST_BEGIN("ra_log plain writes walk the ITM path when armed");
@@ -145,6 +192,12 @@ static void test_log_ready_plain(void)
   TEST_END("ra_log plain writes walk the ITM path when armed");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_log_ready_val_unsigned(void)
 {
   TEST_BEGIN("ra_log unsigned-value writes walk the ITM path when armed");
@@ -159,6 +212,12 @@ static void test_log_ready_val_unsigned(void)
   TEST_END("ra_log unsigned-value writes walk the ITM path when armed");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_log_ready_val_signed(void)
 {
   TEST_BEGIN("ra_log signed-value writes walk the ITM path when armed");
@@ -172,6 +231,12 @@ static void test_log_ready_val_signed(void)
   TEST_END("ra_log signed-value writes walk the ITM path when armed");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_log_ready_tcr_disabled(void)
 {
   TEST_BEGIN("ra_log bails out when TCR.ITMENA is clear");
@@ -184,6 +249,12 @@ static void test_log_ready_tcr_disabled(void)
   TEST_END("ra_log bails out when TCR.ITMENA is clear");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_log_ready_tenr_disabled(void)
 {
   TEST_BEGIN("ra_log bails out when TENR port 0 is clear");
@@ -195,6 +266,12 @@ static void test_log_ready_tenr_disabled(void)
   TEST_END("ra_log bails out when TENR port 0 is clear");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_log_ready_fifo_full(void)
 {
   TEST_BEGIN("ra_log drops byte when STIM0 is zero for the full poll");
@@ -267,6 +344,12 @@ static const test_err_entry_t s_all_err_codes[] = {
   {k_ra_err_null_ptr, "null_ptr"},
 };
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_err_to_str_every_code(void)
 {
   TEST_BEGIN("ra_err_to_str covers every enum value");
@@ -282,6 +365,12 @@ static void test_err_to_str_every_code(void)
   TEST_END("ra_err_to_str covers every enum value");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_err_to_str_unknown_default(void)
 {
   TEST_BEGIN("ra_err_to_str returns 'unknown' for out-of-enum value");

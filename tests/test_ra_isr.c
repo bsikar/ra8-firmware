@@ -40,6 +40,12 @@ static void stub_handler_b(void* ctx)
   ++s_call_count;
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_clears_state(void)
 {
   TEST_BEGIN("ra_isr_init clears slots");
@@ -53,6 +59,12 @@ static void test_init_clears_state(void)
   TEST_END("ra_isr_init clears slots");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_register_allocates_first_slot(void)
 {
   TEST_BEGIN("ra_isr_register: first registration gets slot 0");
@@ -77,6 +89,12 @@ static void test_register_allocates_first_slot(void)
   TEST_END("ra_isr_register: first registration gets slot 0");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_register_rejects_null_handler(void)
 {
   TEST_BEGIN("ra_isr_register: NULL handler rejected");
@@ -88,6 +106,12 @@ static void test_register_rejects_null_handler(void)
   TEST_END("ra_isr_register: NULL handler rejected");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_register_rejects_bad_priority(void)
 {
   TEST_BEGIN("ra_isr_register: priority out of range");
@@ -99,6 +123,12 @@ static void test_register_rejects_bad_priority(void)
   TEST_END("ra_isr_register: priority out of range");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_register_duplicate_rejected(void)
 {
   TEST_BEGIN("ra_isr_register: duplicate event rejected");
@@ -113,6 +143,12 @@ static void test_register_duplicate_rejected(void)
   TEST_END("ra_isr_register: duplicate event rejected");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_unregister_frees_slot(void)
 {
   TEST_BEGIN("ra_isr_unregister frees the slot");
@@ -126,6 +162,12 @@ static void test_unregister_frees_slot(void)
   TEST_END("ra_isr_unregister frees the slot");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_dispatch_invokes_handler_with_ctx(void)
 {
   TEST_BEGIN("ra_isr_dispatch invokes the registered handler");
@@ -143,6 +185,12 @@ static void test_dispatch_invokes_handler_with_ctx(void)
   TEST_END("ra_isr_dispatch invokes the registered handler");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_dispatch_out_of_range_is_noop(void)
 {
   TEST_BEGIN("ra_isr_dispatch out-of-range is a no-op");
@@ -155,6 +203,12 @@ static void test_dispatch_out_of_range_is_noop(void)
   TEST_END("ra_isr_dispatch out-of-range is a no-op");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_multiple_events_get_distinct_slots(void)
 {
   TEST_BEGIN("ra_isr_register: distinct events -> distinct slots");
@@ -173,6 +227,12 @@ static void test_multiple_events_get_distinct_slots(void)
   TEST_END("ra_isr_register: distinct events -> distinct slots");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_priority_roundtrip(void)
 {
   TEST_BEGIN("ra_isr_set_priority: updates stored priority");
@@ -190,6 +250,12 @@ static void test_set_priority_roundtrip(void)
   TEST_END("ra_isr_set_priority: updates stored priority");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_lookup_slot_null_out(void)
 {
   TEST_BEGIN("ra_isr_lookup_slot: NULL out rejected");

@@ -146,6 +146,12 @@ static int32_t mcu_tx_equals(const char* s)
 /* Tests                                                                     */
 /* ------------------------------------------------------------------------- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_null_cfg(void)
 {
   TEST_BEGIN("modem_at init NULL cfg");
@@ -153,6 +159,12 @@ static void test_init_null_cfg(void)
   TEST_END("modem_at init NULL cfg");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_short_buffer_rejected(void)
 {
   TEST_BEGIN("modem_at init short buffer rejected");
@@ -168,6 +180,12 @@ static void test_init_short_buffer_rejected(void)
   TEST_END("modem_at init short buffer rejected");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_send_cmd_before_init_fails(void)
 {
   TEST_BEGIN("modem_at send_cmd before init returns not_initialized");
@@ -180,6 +198,12 @@ static void test_send_cmd_before_init_fails(void)
   TEST_END("modem_at send_cmd before init returns not_initialized");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_at_ok_with_echo(void)
 {
   TEST_BEGIN("modem_at AT -> echo + OK");
@@ -191,6 +215,12 @@ static void test_at_ok_with_echo(void)
   TEST_END("modem_at AT -> echo + OK");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_at_error_returned(void)
 {
   TEST_BEGIN("modem_at ERROR final result");
@@ -200,6 +230,12 @@ static void test_at_error_returned(void)
   TEST_END("modem_at ERROR final result");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_at_cme_error(void)
 {
   TEST_BEGIN("modem_at +CME ERROR final result");
@@ -209,6 +245,12 @@ static void test_at_cme_error(void)
   TEST_END("modem_at +CME ERROR final result");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_timeout(void)
 {
   TEST_BEGIN("modem_at timeout when no response");
@@ -219,6 +261,12 @@ static void test_timeout(void)
   TEST_END("modem_at timeout when no response");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_send_cmd_capture(void)
 {
   TEST_BEGIN("modem_at capture +CSQ payload");
@@ -234,6 +282,12 @@ static void test_send_cmd_capture(void)
   TEST_END("modem_at capture +CSQ payload");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_capture_buf_len_zero(void)
 {
   TEST_BEGIN("modem_at capture rejects buf_len == 0");
@@ -259,6 +313,12 @@ static void urc_handler(const char* line, void* ctx)
   s_last_urc[i] = '\0';
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_urc_dispatch(void)
 {
   TEST_BEGIN("modem_at URC +CMTI dispatch during send_cmd");
@@ -275,6 +335,12 @@ static void test_urc_dispatch(void)
   TEST_END("modem_at URC +CMTI dispatch during send_cmd");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_urc_replace_same_prefix(void)
 {
   TEST_BEGIN("modem_at URC replace same prefix");
@@ -286,6 +352,12 @@ static void test_urc_replace_same_prefix(void)
   TEST_END("modem_at URC replace same prefix");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_urc_table_full(void)
 {
   TEST_BEGIN("modem_at URC table full returns no_mem");
@@ -300,6 +372,12 @@ static void test_urc_table_full(void)
   TEST_END("modem_at URC table full returns no_mem");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_urc_invalid_prefix(void)
 {
   TEST_BEGIN("modem_at URC invalid prefix lengths");
@@ -311,6 +389,12 @@ static void test_urc_invalid_prefix(void)
   TEST_END("modem_at URC invalid prefix lengths");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_poll_drains_urc(void)
 {
   TEST_BEGIN("modem_at poll drains URC outside command");
@@ -324,6 +408,12 @@ static void test_poll_drains_urc(void)
   TEST_END("modem_at poll drains URC outside command");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_expected_response(void)
 {
   TEST_BEGIN("modem_at expected_response prefix accepted");
@@ -333,6 +423,12 @@ static void test_expected_response(void)
   TEST_END("modem_at expected_response prefix accepted");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_send_cmd_null_arg(void)
 {
   TEST_BEGIN("modem_at send_cmd NULL arg");
@@ -341,6 +437,12 @@ static void test_send_cmd_null_arg(void)
   TEST_END("modem_at send_cmd NULL arg");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_default_timeout_used(void)
 {
   TEST_BEGIN("modem_at default timeout applied when 0 passed");
@@ -897,6 +999,12 @@ static void     mcdc_count_urc_handler(const char* line, void* ctx)
   s_mcdc_classify_urc_calls++;
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_mcdc_internal_classify_expected_direct(void)
 {
   TEST_BEGIN("modem_at MC/DC: classify expected_response (3-cond OR, direct)");

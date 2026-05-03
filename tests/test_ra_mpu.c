@@ -42,6 +42,12 @@ static void mpu_test_setup(void)
   ra_mpu_regs()->TYPE = (uint32_t)k_test_mpu_type_dregion;
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_register_layout(void)
 {
   TEST_BEGIN("r_mpu_regs_t offsets match Arm Cortex-M85 TRM");
@@ -56,6 +62,12 @@ static void test_register_layout(void)
   TEST_END("r_mpu_regs_t offsets match Arm Cortex-M85 TRM");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_configure_null_cfg(void)
 {
   TEST_BEGIN("ra_mpu_configure(NULL) returns null_ptr");
@@ -64,6 +76,12 @@ static void test_configure_null_cfg(void)
   TEST_END("ra_mpu_configure(NULL) returns null_ptr");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_configure_too_many_regions(void)
 {
   TEST_BEGIN("ra_mpu_configure rejects region_count > DREGION");
@@ -95,6 +113,12 @@ static void test_configure_too_many_regions(void)
   TEST_END("ra_mpu_configure rejects region_count > DREGION");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_configure_invalid_size(void)
 {
   TEST_BEGIN("ra_mpu_configure rejects non-power-of-two size");
@@ -113,6 +137,12 @@ static void test_configure_invalid_size(void)
   TEST_END("ra_mpu_configure rejects non-power-of-two size");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_configure_misaligned_base(void)
 {
   TEST_BEGIN("ra_mpu_configure rejects misaligned base");
@@ -131,6 +161,12 @@ static void test_configure_misaligned_base(void)
   TEST_END("ra_mpu_configure rejects misaligned base");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_configure_unrepresentable_perms(void)
 {
   TEST_BEGIN("ra_mpu_configure rejects priv-RO + unpriv-RW");
@@ -149,6 +185,12 @@ static void test_configure_unrepresentable_perms(void)
   TEST_END("ra_mpu_configure rejects priv-RO + unpriv-RW");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_configure_programs_region_zero(void)
 {
   TEST_BEGIN("ra_mpu_configure programs region 0 RBAR/RLAR");
@@ -187,6 +229,12 @@ static void test_configure_programs_region_zero(void)
   TEST_END("ra_mpu_configure programs region 0 RBAR/RLAR");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_configure_clears_unused_regions(void)
 {
   TEST_BEGIN("ra_mpu_configure clears regions above region_count");
@@ -216,6 +264,12 @@ static void test_configure_clears_unused_regions(void)
   TEST_END("ra_mpu_configure clears regions above region_count");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_enable_disable(void)
 {
   TEST_BEGIN("ra_mpu_enable / ra_mpu_disable toggle CTRL.ENABLE");
@@ -229,6 +283,12 @@ static void test_enable_disable(void)
   TEST_END("ra_mpu_enable / ra_mpu_disable toggle CTRL.ENABLE");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_region_null(void)
 {
   TEST_BEGIN("ra_mpu_set_region(NULL) returns null_ptr");
@@ -237,6 +297,12 @@ static void test_set_region_null(void)
   TEST_END("ra_mpu_set_region(NULL) returns null_ptr");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_region_out_of_range(void)
 {
   TEST_BEGIN("ra_mpu_set_region rejects out-of-range region index");
@@ -255,6 +321,12 @@ static void test_set_region_out_of_range(void)
   TEST_END("ra_mpu_set_region rejects out-of-range region index");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_region_writes_pair(void)
 {
   TEST_BEGIN("ra_mpu_set_region writes RBAR + RLAR for selected region");

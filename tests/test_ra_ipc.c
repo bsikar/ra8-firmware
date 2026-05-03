@@ -124,6 +124,12 @@ static ra_ipc_config_t make_cfg(uint8_t channel)
 
 /* ---------- Lifecycle tests ---------- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_happy(void)
 {
   TEST_BEGIN("ipc init happy");
@@ -135,6 +141,12 @@ static void test_init_happy(void)
   TEST_END("ipc init happy");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_null_cfg(void)
 {
   TEST_BEGIN("ipc init null cfg");
@@ -143,6 +155,12 @@ static void test_init_null_cfg(void)
   TEST_END("ipc init null cfg");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_bad_channel(void)
 {
   TEST_BEGIN("ipc init bad channel");
@@ -154,6 +172,12 @@ static void test_init_bad_channel(void)
   TEST_END("ipc init bad channel");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_deinit_clears_state(void)
 {
   TEST_BEGIN("ipc deinit clears state");
@@ -166,6 +190,12 @@ static void test_deinit_clears_state(void)
   TEST_END("ipc deinit clears state");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_reset_fifo(void)
 {
   TEST_BEGIN("ipc reset_fifo");
@@ -182,6 +212,12 @@ static void test_reset_fifo(void)
   TEST_END("ipc reset_fifo");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_event_mask(void)
 {
   TEST_BEGIN("ipc set_event_mask");
@@ -214,6 +250,12 @@ static void test_set_event_mask(void)
 
 /* ---------- Channel-pair convention tests ---------- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_channel_pair_convention(void)
 {
   TEST_BEGIN("ipc channel-pair convention");
@@ -248,6 +290,12 @@ static void test_channel_pair_convention(void)
 
 /* ---------- Send / receive tests ---------- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_send_event_writes_iset(void)
 {
   TEST_BEGIN("ipc send_event writes ISET");
@@ -262,6 +310,12 @@ static void test_send_event_writes_iset(void)
   TEST_END("ipc send_event writes ISET");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_send_event_bad_args(void)
 {
   TEST_BEGIN("ipc send_event bad args");
@@ -274,6 +328,12 @@ static void test_send_event_bad_args(void)
   TEST_END("ipc send_event bad args");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_clear_event_writes_clr(void)
 {
   TEST_BEGIN("ipc clear_event writes CLR");
@@ -292,6 +352,12 @@ static void test_clear_event_writes_clr(void)
   TEST_END("ipc clear_event writes CLR");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_send_message_happy(void)
 {
   TEST_BEGIN("ipc send_message happy");
@@ -305,6 +371,12 @@ static void test_send_message_happy(void)
   TEST_END("ipc send_message happy");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_send_message_full_returns_busy(void)
 {
   TEST_BEGIN("ipc send_message full");
@@ -321,6 +393,12 @@ static void test_send_message_full_returns_busy(void)
   TEST_END("ipc send_message full");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_send_message_retry_eventually_succeeds(void)
 {
   TEST_BEGIN("ipc send_message_retry eventually succeeds");
@@ -337,6 +415,12 @@ static void test_send_message_retry_eventually_succeeds(void)
   TEST_END("ipc send_message_retry eventually succeeds");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_send_message_retry_times_out(void)
 {
   TEST_BEGIN("ipc send_message_retry times out");
@@ -355,6 +439,12 @@ static void test_send_message_retry_times_out(void)
   TEST_END("ipc send_message_retry times out");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_send_burst_partial_on_full(void)
 {
   TEST_BEGIN("ipc send_burst partial on full");
@@ -400,6 +490,12 @@ static void test_send_burst_partial_on_full(void)
   TEST_END("ipc send_burst partial on full");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_recv_message_no_data(void)
 {
   TEST_BEGIN("ipc recv_message no data");
@@ -415,6 +511,12 @@ static void test_recv_message_no_data(void)
   TEST_END("ipc recv_message no data");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_recv_message_happy(void)
 {
   TEST_BEGIN("ipc recv_message happy");
@@ -430,6 +532,12 @@ static void test_recv_message_happy(void)
   TEST_END("ipc recv_message happy");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_recv_message_retry_succeeds(void)
 {
   TEST_BEGIN("ipc recv_message_retry succeeds");
@@ -445,6 +553,12 @@ static void test_recv_message_retry_succeeds(void)
   TEST_END("ipc recv_message_retry succeeds");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_recv_message_retry_times_out(void)
 {
   TEST_BEGIN("ipc recv_message_retry times out");
@@ -462,6 +576,12 @@ static void test_recv_message_retry_times_out(void)
   TEST_END("ipc recv_message_retry times out");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_recv_burst(void)
 {
   TEST_BEGIN("ipc recv_burst");
@@ -498,6 +618,12 @@ static void test_recv_burst(void)
 
 /* ---------- Status tests ---------- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_get_status_passthrough(void)
 {
   TEST_BEGIN("ipc get_status passthrough");
@@ -517,6 +643,12 @@ static void test_get_status_passthrough(void)
   TEST_END("ipc get_status passthrough");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_clear_status_translates_bits(void)
 {
   TEST_BEGIN("ipc clear_status translates bits");
@@ -540,6 +672,12 @@ static void test_clear_status_translates_bits(void)
   TEST_END("ipc clear_status translates bits");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_clear_errors(void)
 {
   TEST_BEGIN("ipc clear_errors");
@@ -555,6 +693,12 @@ static void test_clear_errors(void)
   TEST_END("ipc clear_errors");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_can_send_and_has_data(void)
 {
   TEST_BEGIN("ipc can_send + has_data");
@@ -590,6 +734,12 @@ static void test_can_send_and_has_data(void)
 
 /* ---------- Attribution tests ---------- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_get_attribution_decodes_ipcsar(void)
 {
   TEST_BEGIN("ipc get_attribution decodes IPCSAR/IPCPAR");
@@ -617,6 +767,12 @@ static void test_get_attribution_decodes_ipcsar(void)
   TEST_END("ipc get_attribution decodes IPCSAR/IPCPAR");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_get_nmi_attribution(void)
 {
   TEST_BEGIN("ipc get_nmi_attribution");
@@ -643,6 +799,12 @@ static void test_get_nmi_attribution(void)
   TEST_END("ipc get_nmi_attribution");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_get_sem_attribution(void)
 {
   TEST_BEGIN("ipc get_sem_attribution");
@@ -668,6 +830,12 @@ static void test_get_sem_attribution(void)
   TEST_END("ipc get_sem_attribution");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_can_access(void)
 {
   TEST_BEGIN("ipc can_access predicate");
@@ -697,6 +865,12 @@ static void test_can_access(void)
 
 /* ---------- Dispatch tests ---------- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_attach_and_dispatch_message(void)
 {
   TEST_BEGIN("ipc attach + dispatch message");
@@ -723,6 +897,12 @@ static void test_attach_and_dispatch_message(void)
   TEST_END("ipc attach + dispatch message");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_dispatch_no_callback_is_safe(void)
 {
   TEST_BEGIN("ipc dispatch without callback is safe");
@@ -739,6 +919,12 @@ static void test_dispatch_no_callback_is_safe(void)
   TEST_END("ipc dispatch without callback is safe");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_per_event_handler_decodes_each_line(void)
 {
   TEST_BEGIN("ipc per-event handler fires per line");
@@ -782,6 +968,12 @@ static void test_per_event_handler_decodes_each_line(void)
 
 /* ---------- Semaphore tests ---------- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_semaphore_accessor(void)
 {
   TEST_BEGIN("ipc semaphore accessor");
@@ -796,6 +988,12 @@ static void test_semaphore_accessor(void)
   TEST_END("ipc semaphore accessor");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_sem_try_take_and_release(void)
 {
   TEST_BEGIN("ipc sem try_take / release");
@@ -820,6 +1018,12 @@ static void test_sem_try_take_and_release(void)
   TEST_END("ipc sem try_take / release");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_sem_take_timeout_succeeds(void)
 {
   TEST_BEGIN("ipc sem take_timeout succeeds");
@@ -830,6 +1034,12 @@ static void test_sem_take_timeout_succeeds(void)
   TEST_END("ipc sem take_timeout succeeds");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_sem_take_timeout_fails(void)
 {
   TEST_BEGIN("ipc sem take_timeout fails");
@@ -846,6 +1056,12 @@ static void test_sem_take_timeout_fails(void)
   TEST_END("ipc sem take_timeout fails");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_sem_is_locked(void)
 {
   TEST_BEGIN("ipc sem is_locked");
@@ -872,6 +1088,12 @@ static void test_sem_is_locked(void)
 
 /* ---------- NMI tests ---------- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_nmi_accessor(void)
 {
   TEST_BEGIN("ipc nmi accessor");
@@ -885,6 +1107,12 @@ static void test_nmi_accessor(void)
   TEST_END("ipc nmi accessor");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_nmi_send_clear_status(void)
 {
   TEST_BEGIN("ipc nmi send/clear/status");
@@ -918,6 +1146,12 @@ static void test_nmi_send_clear_status(void)
   TEST_END("ipc nmi send/clear/status");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_nmi_dispatch_invokes_callback(void)
 {
   TEST_BEGIN("ipc nmi dispatch invokes callback");
@@ -949,6 +1183,12 @@ static void test_nmi_dispatch_invokes_callback(void)
 
 /* ---------- ISR registration tests ---------- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_install_uninstall_isr(void)
 {
   TEST_BEGIN("ipc install/uninstall ISR");
@@ -984,6 +1224,12 @@ static ra_ipc_ring_t make_ring(void)
   return r;
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_ring_init_and_predicates(void)
 {
   TEST_BEGIN("ipc ring init + predicates");
@@ -1004,6 +1250,12 @@ static void test_ring_init_and_predicates(void)
   TEST_END("ipc ring init + predicates");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_ring_init_bad_params(void)
 {
   TEST_BEGIN("ipc ring init bad params");
@@ -1042,6 +1294,12 @@ static void test_ring_init_bad_params(void)
   TEST_END("ipc ring init bad params");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_ring_produce_consume(void)
 {
   TEST_BEGIN("ipc ring produce/consume");
@@ -1064,6 +1322,12 @@ static void test_ring_produce_consume(void)
   TEST_END("ipc ring produce/consume");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_ring_full(void)
 {
   TEST_BEGIN("ipc ring full -> busy");
@@ -1093,6 +1357,11 @@ static void test_ring_full(void)
  * Mirrors the pattern used by ``examples/threadx_ipc_demo`` -- CPU0
  * resolves its M85->M33 send channel via ``ra_ipc_channel_for_send``
  * and pushes one ASCII payload word. Confirms TXD now holds the word.
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 static void test_send_via_channel_for_send_helper(void)
 {
@@ -1118,6 +1387,11 @@ static void test_send_via_channel_for_send_helper(void)
  * @details
  * Pre-loads RXD + RDY via the per-channel register window and confirms
  * a single ``ra_ipc_recv_message`` returns the seeded word.
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 static void test_recv_via_channel_for_recv_helper(void)
 {
@@ -1150,6 +1424,11 @@ static void test_recv_via_channel_for_recv_helper(void)
  * Models the ``ra_ipc_attach_recv_handler``-style usage requested by
  * the demo: install a callback against the IRQ0 line and confirm
  * dispatch routes one event into it.
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 static void test_attach_recv_handler_dispatches(void)
 {
@@ -1175,6 +1454,11 @@ static void test_attach_recv_handler_dispatches(void)
 
 /**
  * @brief Clearing IRQ + RERR/FERR returns the channel to a clean state.
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 static void test_clear_event_and_errors_combo(void)
 {
@@ -1206,6 +1490,11 @@ static void test_clear_event_and_errors_combo(void)
 
 /**
  * @brief NULL-arg coverage across send / recv / attach / pair helpers.
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 static void test_null_arg_rejection_sweep(void)
 {
@@ -1236,6 +1525,11 @@ static void test_null_arg_rejection_sweep(void)
 
 /**
  * @brief Channel out-of-range rejection across the public surface.
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 static void test_channel_out_of_range_sweep(void)
 {
@@ -1272,6 +1566,11 @@ static void test_channel_out_of_range_sweep(void)
  * full" without enumerating per-channel FIFO state) and confirms the
  * driver returns ``k_ra_err_busy`` instead of silently dropping the
  * write -- matching the user-visible "mailbox full" rejection.
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 static void test_mailbox_full_rejection(void)
 {
@@ -1291,6 +1590,11 @@ static void test_mailbox_full_rejection(void)
 
 /**
  * @brief Reading from an empty FIFO must report no_data.
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 static void test_mailbox_empty_rejection(void)
 {

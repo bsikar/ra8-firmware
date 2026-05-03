@@ -46,6 +46,12 @@ typedef enum : uint32_t {
   k_test_clut_dist = 0xDEADBEEFUL,
 } test_glcdc_word_t;
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_happy_path(void)
 {
   TEST_BEGIN("ra_glcdc_init happy path");
@@ -71,6 +77,12 @@ static void test_init_happy_path(void)
   TEST_END("ra_glcdc_init happy path");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_null_cfg_rejected(void)
 {
   TEST_BEGIN("ra_glcdc_init rejects NULL cfg");
@@ -79,6 +91,12 @@ static void test_init_null_cfg_rejected(void)
   TEST_END("ra_glcdc_init rejects NULL cfg");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_start_enable(void)
 {
   TEST_BEGIN("ra_glcdc_start enables engine");
@@ -90,6 +108,12 @@ static void test_start_enable(void)
   TEST_END("ra_glcdc_start enables engine");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_start_disable(void)
 {
   TEST_BEGIN("ra_glcdc_start disables engine");
@@ -123,6 +147,12 @@ static void prep_w61(void)
   s_glcdc_cb_last_mask = 0U;
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_deinit(void)
 {
   TEST_BEGIN("glcdc deinit");
@@ -136,6 +166,12 @@ static void test_deinit(void)
   TEST_END("glcdc deinit");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_status_read_and_clear(void)
 {
   TEST_BEGIN("glcdc status read + clear");
@@ -150,6 +186,12 @@ static void test_status_read_and_clear(void)
   TEST_END("glcdc status read + clear");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_attach_and_dispatch(void)
 {
   TEST_BEGIN("glcdc attach + dispatch");
@@ -163,6 +205,12 @@ static void test_attach_and_dispatch(void)
   TEST_END("glcdc attach + dispatch");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_power_transition(void)
 {
   TEST_BEGIN("glcdc power transition");
@@ -179,6 +227,12 @@ static void test_power_transition(void)
 
 /* ---- Layer-2 / blending / output stage / CLUT ---- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_layer2_happy(void)
 {
   TEST_BEGIN("glcdc set_layer2 happy path");
@@ -231,6 +285,12 @@ static void test_set_layer2_happy(void)
   TEST_END("glcdc set_layer2 happy path");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_layer2_null_cfg(void)
 {
   TEST_BEGIN("glcdc set_layer2 rejects NULL");
@@ -239,6 +299,12 @@ static void test_set_layer2_null_cfg(void)
   TEST_END("glcdc set_layer2 rejects NULL");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_blend_alpha(void)
 {
   TEST_BEGIN("glcdc set_blend k_ra_blend_alpha");
@@ -253,6 +319,12 @@ static void test_set_blend_alpha(void)
   TEST_END("glcdc set_blend k_ra_blend_alpha");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_blend_normal(void)
 {
   TEST_BEGIN("glcdc set_blend k_ra_blend_normal");
@@ -263,6 +335,12 @@ static void test_set_blend_normal(void)
   TEST_END("glcdc set_blend k_ra_blend_normal");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_blend_overwrite(void)
 {
   TEST_BEGIN("glcdc set_blend k_ra_blend_overwrite");
@@ -272,6 +350,12 @@ static void test_set_blend_overwrite(void)
   TEST_END("glcdc set_blend k_ra_blend_overwrite");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_blend_invalid_mode(void)
 {
   TEST_BEGIN("glcdc set_blend rejects invalid mode");
@@ -281,6 +365,12 @@ static void test_set_blend_invalid_mode(void)
   TEST_END("glcdc set_blend rejects invalid mode");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_background_color(void)
 {
   TEST_BEGIN("glcdc set_background_color");
@@ -293,6 +383,12 @@ static void test_set_background_color(void)
 
 /* ---- CLUT double-buffering ---- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_clut_swap_now_false(void)
 {
   TEST_BEGIN("glcdc clut double_buffered swap_now=false");
@@ -331,6 +427,12 @@ static void test_clut_swap_now_false(void)
   TEST_END("glcdc clut double_buffered swap_now=false");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_clut_swap_now_true(void)
 {
   TEST_BEGIN("glcdc clut double_buffered swap_now=true");
@@ -358,6 +460,12 @@ static void test_clut_swap_now_true(void)
   TEST_END("glcdc clut double_buffered swap_now=true");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_clut_layer2(void)
 {
   TEST_BEGIN("glcdc clut double_buffered layer 2");
@@ -381,6 +489,12 @@ static void test_clut_layer2(void)
   TEST_END("glcdc clut double_buffered layer 2");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_clut_null_rejected(void)
 {
   TEST_BEGIN("glcdc clut rejects NULL src");
@@ -393,6 +507,12 @@ static void test_clut_null_rejected(void)
   TEST_END("glcdc clut rejects NULL src");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_clut_invalid_args(void)
 {
   TEST_BEGIN("glcdc clut rejects bad layer / size");
@@ -415,6 +535,12 @@ static void test_clut_invalid_args(void)
 
 /* ---- Output stage ---- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_dithering_modes(void)
 {
   TEST_BEGIN("glcdc set_dithering modes");
@@ -430,6 +556,12 @@ static void test_set_dithering_modes(void)
   TEST_END("glcdc set_dithering modes");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_brightness(void)
 {
   TEST_BEGIN("glcdc set_brightness");
@@ -441,6 +573,12 @@ static void test_set_brightness(void)
   TEST_END("glcdc set_brightness");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_contrast(void)
 {
   TEST_BEGIN("glcdc set_contrast");

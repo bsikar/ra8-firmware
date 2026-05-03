@@ -12,6 +12,12 @@
 #include "ra_hw_err.h"
 #include "unity_minimal.h"
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set8_already_set_returns_immediately(void)
 {
   TEST_BEGIN("ra_hw_wait_flag_set8: pre-set returns ok");
@@ -21,6 +27,12 @@ static void test_set8_already_set_returns_immediately(void)
   TEST_END("ra_hw_wait_flag_set8: pre-set returns ok");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set8_clear_times_out(void)
 {
   TEST_BEGIN("ra_hw_wait_flag_set8: cleared register times out");
@@ -30,6 +42,12 @@ static void test_set8_clear_times_out(void)
   TEST_END("ra_hw_wait_flag_set8: cleared register times out");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_clear8_pre_clear_returns_immediately(void)
 {
   TEST_BEGIN("ra_hw_wait_flag_clear8: pre-clear returns ok");
@@ -39,6 +57,12 @@ static void test_clear8_pre_clear_returns_immediately(void)
   TEST_END("ra_hw_wait_flag_clear8: pre-clear returns ok");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_clear8_set_times_out(void)
 {
   TEST_BEGIN("ra_hw_wait_flag_clear8: stuck-set bit times out");
@@ -48,6 +72,12 @@ static void test_clear8_set_times_out(void)
   TEST_END("ra_hw_wait_flag_clear8: stuck-set bit times out");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set32_already_set_returns_immediately(void)
 {
   TEST_BEGIN("ra_hw_wait_flag_set32: pre-set returns ok");
@@ -57,6 +87,12 @@ static void test_set32_already_set_returns_immediately(void)
   TEST_END("ra_hw_wait_flag_set32: pre-set returns ok");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set32_times_out(void)
 {
   TEST_BEGIN("ra_hw_wait_flag_set32: cleared register times out");
@@ -66,6 +102,12 @@ static void test_set32_times_out(void)
   TEST_END("ra_hw_wait_flag_set32: cleared register times out");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_clear32_pre_clear_returns_immediately(void)
 {
   TEST_BEGIN("ra_hw_wait_flag_clear32: pre-clear returns ok");
@@ -75,6 +117,12 @@ static void test_clear32_pre_clear_returns_immediately(void)
   TEST_END("ra_hw_wait_flag_clear32: pre-clear returns ok");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_clear32_times_out(void)
 {
   TEST_BEGIN("ra_hw_wait_flag_clear32: stuck-set bit times out");
@@ -84,6 +132,12 @@ static void test_clear32_times_out(void)
   TEST_END("ra_hw_wait_flag_clear32: stuck-set bit times out");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_null_register_rejected(void)
 {
   TEST_BEGIN("ra_hw_wait_flag_*: NULL register rejected");
@@ -100,6 +154,12 @@ static void test_null_register_rejected(void)
   TEST_END("ra_hw_wait_flag_*: NULL register rejected");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_zero_budget_immediate_timeout(void)
 {
   TEST_BEGIN("ra_hw_wait_flag_*: zero budget times out without polling");

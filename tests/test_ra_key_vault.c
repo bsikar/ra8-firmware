@@ -25,6 +25,12 @@ static const uint8_t k_test_chal[k_ra_key_vault_chal_bytes] = {
   0xB6U, 0xB7U, 0xB8U, 0xB9U, 0xBAU, 0xBBU, 0xBCU, 0xBDU, 0xBEU, 0xBFU,
 };
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_zeroes_vault(void)
 {
   TEST_BEGIN("ra_key_vault_init zeroes everything");
@@ -32,6 +38,12 @@ static void test_init_zeroes_vault(void)
   TEST_END("ra_key_vault_init zeroes everything");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_store_then_challenge(void)
 {
   TEST_BEGIN("store + challenge produces deterministic digest");
@@ -51,6 +63,12 @@ static void test_store_then_challenge(void)
   TEST_END("store + challenge produces deterministic digest");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_different_challenge_different_digest(void)
 {
   TEST_BEGIN("changing the challenge changes the digest");
@@ -80,6 +98,12 @@ static void test_different_challenge_different_digest(void)
   TEST_END("changing the challenge changes the digest");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_arg_validation(void)
 {
   TEST_BEGIN("ra_key_vault_*: arg validation");
@@ -98,6 +122,12 @@ static void test_arg_validation(void)
   TEST_END("ra_key_vault_*: arg validation");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_nsc_veneer_forwards(void)
 {
   TEST_BEGIN("ra_nsc_key_vault_challenge forwards through veneer");

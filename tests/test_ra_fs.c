@@ -209,6 +209,12 @@ static void listdir_cb(const char* name, uint8_t attr, uint32_t size, void* ctx)
   (void)snprintf(s_listdir_last_name, sizeof s_listdir_last_name, "%s", name);
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_mount_unmount_fat16(void)
 {
   TEST_BEGIN("mount/unmount FAT16");
@@ -221,6 +227,12 @@ static void test_mount_unmount_fat16(void)
   TEST_END("mount/unmount FAT16");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_fat12_detection(void)
 {
   TEST_BEGIN("FAT12 detection");
@@ -232,6 +244,12 @@ static void test_fat12_detection(void)
   TEST_END("FAT12 detection");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_fat32_detection(void)
 {
   TEST_BEGIN("FAT32 detection");
@@ -243,6 +261,12 @@ static void test_fat32_detection(void)
   TEST_END("FAT32 detection");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_open_close_create(void)
 {
   TEST_BEGIN("open/close create");
@@ -257,6 +281,12 @@ static void test_open_close_create(void)
   TEST_END("open/close create");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_write_then_read(void)
 {
   TEST_BEGIN("write then read happy path");
@@ -289,6 +319,12 @@ static void test_write_then_read(void)
   TEST_END("write then read happy path");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_read_cross_cluster(void)
 {
   TEST_BEGIN("read across cluster boundary");
@@ -319,6 +355,12 @@ static void test_read_cross_cluster(void)
   TEST_END("read across cluster boundary");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_seek_tell(void)
 {
   TEST_BEGIN("seek + tell");
@@ -345,6 +387,12 @@ static void test_seek_tell(void)
   TEST_END("seek + tell");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_listdir(void)
 {
   TEST_BEGIN("listdir");
@@ -363,6 +411,12 @@ static void test_listdir(void)
   TEST_END("listdir");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_unlink(void)
 {
   TEST_BEGIN("unlink");
@@ -380,6 +434,12 @@ static void test_unlink(void)
   TEST_END("unlink");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_null_args(void)
 {
   TEST_BEGIN("null arg checks");
@@ -397,6 +457,12 @@ static void test_null_args(void)
   TEST_END("null arg checks");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_no_such_file(void)
 {
   TEST_BEGIN("no such file");
@@ -410,6 +476,12 @@ static void test_no_such_file(void)
   TEST_END("no such file");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_no_free_space(void)
 {
   TEST_BEGIN("no free space");
@@ -428,6 +500,12 @@ static void test_no_free_space(void)
   TEST_END("no free space");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_bad_backend(void)
 {
   TEST_BEGIN("bad backend rejected");

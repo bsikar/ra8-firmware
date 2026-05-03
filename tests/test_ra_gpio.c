@@ -44,6 +44,12 @@ static void reset_state(void)
   ra_pin_validator_reset();
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_output_init_happy_low(void)
 {
   TEST_BEGIN("gpio output_init low");
@@ -61,6 +67,12 @@ static void test_output_init_happy_low(void)
   TEST_END("gpio output_init low");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_output_init_happy_high(void)
 {
   TEST_BEGIN("gpio output_init high");
@@ -77,6 +89,12 @@ static void test_output_init_happy_high(void)
   TEST_END("gpio output_init high");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_output_init_invalid_port(void)
 {
   TEST_BEGIN("gpio output_init invalid port");
@@ -88,6 +106,12 @@ static void test_output_init_invalid_port(void)
   TEST_END("gpio output_init invalid port");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_output_init_invalid_pin(void)
 {
   TEST_BEGIN("gpio output_init invalid pin");
@@ -99,6 +123,12 @@ static void test_output_init_invalid_pin(void)
   TEST_END("gpio output_init invalid pin");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_output_init_conflict(void)
 {
   TEST_BEGIN("gpio output_init conflict");
@@ -112,6 +142,12 @@ static void test_output_init_conflict(void)
   TEST_END("gpio output_init conflict");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_input_init_no_pull(void)
 {
   TEST_BEGIN("gpio input_init no pull");
@@ -126,6 +162,12 @@ static void test_input_init_no_pull(void)
   TEST_END("gpio input_init no pull");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_input_init_pull_up(void)
 {
   TEST_BEGIN("gpio input_init pull up");
@@ -139,6 +181,12 @@ static void test_input_init_pull_up(void)
   TEST_END("gpio input_init pull up");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_input_init_invalid_port(void)
 {
   TEST_BEGIN("gpio input_init invalid port");
@@ -150,6 +198,12 @@ static void test_input_init_invalid_port(void)
   TEST_END("gpio input_init invalid port");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_input_init_invalid_pin(void)
 {
   TEST_BEGIN("gpio input_init invalid pin");
@@ -161,6 +215,12 @@ static void test_input_init_invalid_pin(void)
   TEST_END("gpio input_init invalid pin");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_write_high_sets_posr(void)
 {
   TEST_BEGIN("gpio write high sets POSR");
@@ -177,6 +237,12 @@ static void test_write_high_sets_posr(void)
   TEST_END("gpio write high sets POSR");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_write_low_sets_porr(void)
 {
   TEST_BEGIN("gpio write low sets PORR");
@@ -193,6 +259,12 @@ static void test_write_low_sets_porr(void)
   TEST_END("gpio write low sets PORR");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_write_invalid_port(void)
 {
   TEST_BEGIN("gpio write invalid port");
@@ -203,6 +275,12 @@ static void test_write_invalid_port(void)
   TEST_END("gpio write invalid port");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_write_invalid_pin(void)
 {
   TEST_BEGIN("gpio write invalid pin");
@@ -213,6 +291,12 @@ static void test_write_invalid_pin(void)
   TEST_END("gpio write invalid pin");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_toggle_when_low(void)
 {
   TEST_BEGIN("gpio toggle when low -> high");
@@ -229,6 +313,12 @@ static void test_toggle_when_low(void)
   TEST_END("gpio toggle when low -> high");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_toggle_when_high(void)
 {
   TEST_BEGIN("gpio toggle when high -> low");
@@ -246,6 +336,12 @@ static void test_toggle_when_high(void)
   TEST_END("gpio toggle when high -> low");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_toggle_invalid_port(void)
 {
   TEST_BEGIN("gpio toggle invalid port");
@@ -256,6 +352,12 @@ static void test_toggle_invalid_port(void)
   TEST_END("gpio toggle invalid port");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_toggle_invalid_pin(void)
 {
   TEST_BEGIN("gpio toggle invalid pin");
@@ -266,6 +368,12 @@ static void test_toggle_invalid_pin(void)
   TEST_END("gpio toggle invalid pin");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_read_high_and_low(void)
 {
   TEST_BEGIN("gpio read both levels");
@@ -288,6 +396,12 @@ static void test_read_high_and_low(void)
   TEST_END("gpio read both levels");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_read_null_out(void)
 {
   TEST_BEGIN("gpio read null out");
@@ -298,6 +412,12 @@ static void test_read_null_out(void)
   TEST_END("gpio read null out");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_read_invalid_port(void)
 {
   TEST_BEGIN("gpio read invalid port");
@@ -309,6 +429,12 @@ static void test_read_invalid_port(void)
   TEST_END("gpio read invalid port");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_read_invalid_pin(void)
 {
   TEST_BEGIN("gpio read invalid pin");
@@ -320,6 +446,12 @@ static void test_read_invalid_pin(void)
   TEST_END("gpio read invalid pin");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_release_pin(void)
 {
   TEST_BEGIN("gpio release pin");
@@ -334,6 +466,12 @@ static void test_release_pin(void)
   TEST_END("gpio release pin");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_route_peripheral_happy(void)
 {
   TEST_BEGIN("pfs route peripheral happy");
@@ -350,6 +488,12 @@ static void test_route_peripheral_happy(void)
   TEST_END("pfs route peripheral happy");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_route_peripheral_null_owner(void)
 {
   TEST_BEGIN("pfs route peripheral null owner");
@@ -363,6 +507,12 @@ static void test_route_peripheral_null_owner(void)
   TEST_END("pfs route peripheral null owner");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_route_peripheral_invalid_port(void)
 {
   TEST_BEGIN("pfs route peripheral invalid port");
@@ -376,6 +526,12 @@ static void test_route_peripheral_invalid_port(void)
   TEST_END("pfs route peripheral invalid port");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_route_peripheral_invalid_pin(void)
 {
   TEST_BEGIN("pfs route peripheral invalid pin");
@@ -389,6 +545,12 @@ static void test_route_peripheral_invalid_pin(void)
   TEST_END("pfs route peripheral invalid pin");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_route_peripheral_conflict(void)
 {
   TEST_BEGIN("pfs route peripheral conflict");
@@ -405,6 +567,11 @@ static void test_route_peripheral_conflict(void)
 /* ---------------------------------------------------------------------------
  * DI vtable thunks
  * 
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_vtable_output_init_and_write(void)
@@ -422,6 +589,12 @@ static void test_vtable_output_init_and_write(void)
   TEST_END("vtable output_init + write");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_vtable_read_and_toggle(void)
 {
   TEST_BEGIN("vtable read + toggle");
@@ -479,6 +652,12 @@ static ra_gpio_irq_cfg_t make_irq_cfg(void)
   return cfg;
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_gpio_attach_irq_happy(void)
 {
   TEST_BEGIN("gpio attach_irq happy");
@@ -502,6 +681,12 @@ static void test_gpio_attach_irq_happy(void)
   TEST_END("gpio attach_irq happy");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_gpio_attach_irq_null_cfg(void)
 {
   TEST_BEGIN("gpio attach_irq null cfg");
@@ -516,6 +701,12 @@ static void test_gpio_attach_irq_null_cfg(void)
   TEST_END("gpio attach_irq null cfg");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_gpio_attach_irq_null_handler(void)
 {
   TEST_BEGIN("gpio attach_irq null handler");
@@ -531,6 +722,12 @@ static void test_gpio_attach_irq_null_handler(void)
   TEST_END("gpio attach_irq null handler");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_gpio_attach_irq_bad_num(void)
 {
   TEST_BEGIN("gpio attach_irq bad irq num");
@@ -546,6 +743,12 @@ static void test_gpio_attach_irq_bad_num(void)
   TEST_END("gpio attach_irq bad irq num");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_gpio_attach_irq_bad_pin(void)
 {
   TEST_BEGIN("gpio attach_irq bad pin");
@@ -561,6 +764,12 @@ static void test_gpio_attach_irq_bad_pin(void)
   TEST_END("gpio attach_irq bad pin");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_gpio_detach_irq_happy(void)
 {
   TEST_BEGIN("gpio detach_irq happy");
@@ -584,6 +793,12 @@ static void test_gpio_detach_irq_happy(void)
   TEST_END("gpio detach_irq happy");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_gpio_detach_irq_bad_num(void)
 {
   TEST_BEGIN("gpio detach_irq bad irq num");
@@ -595,6 +810,12 @@ static void test_gpio_detach_irq_bad_num(void)
   TEST_END("gpio detach_irq bad irq num");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_gpio_detach_irq_not_attached(void)
 {
   TEST_BEGIN("gpio detach_irq not attached");

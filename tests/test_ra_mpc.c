@@ -14,6 +14,12 @@
 #include "ra_sim_mmap.h"
 #include "unity_minimal.h"
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_route_peripheral_sets_pmr_and_psel(void)
 {
   TEST_BEGIN("ra_mpc_route_peripheral: PMR+PSEL set");
@@ -32,6 +38,12 @@ static void test_route_peripheral_sets_pmr_and_psel(void)
   TEST_END("ra_mpc_route_peripheral: PMR+PSEL set");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_gpio_output_clears_pmr(void)
 {
   TEST_BEGIN("ra_mpc_set_gpio output: clears PMR, sets PDR");
@@ -48,6 +60,12 @@ static void test_set_gpio_output_clears_pmr(void)
   TEST_END("ra_mpc_set_gpio output: clears PMR, sets PDR");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_gpio_input(void)
 {
   TEST_BEGIN("ra_mpc_set_gpio input: all bits clear");
@@ -61,6 +79,12 @@ static void test_set_gpio_input(void)
   TEST_END("ra_mpc_set_gpio input: all bits clear");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_analog(void)
 {
   TEST_BEGIN("ra_mpc_set_analog: ASEL set");
@@ -70,6 +94,12 @@ static void test_set_analog(void)
   TEST_END("ra_mpc_set_analog: ASEL set");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_irq(void)
 {
   TEST_BEGIN("ra_mpc_set_irq: ISEL set");
@@ -79,6 +109,12 @@ static void test_set_irq(void)
   TEST_END("ra_mpc_set_irq: ISEL set");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_pull_up_then_off(void)
 {
   TEST_BEGIN("ra_mpc_set_pull: up -> off");
@@ -93,6 +129,12 @@ static void test_set_pull_up_then_off(void)
   TEST_END("ra_mpc_set_pull: up -> off");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_open_drain(void)
 {
   TEST_BEGIN("ra_mpc_set_open_drain: NCODR toggled");
@@ -107,6 +149,12 @@ static void test_set_open_drain(void)
   TEST_END("ra_mpc_set_open_drain: NCODR toggled");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_read_pfs_null_out(void)
 {
   TEST_BEGIN("ra_mpc_read_pfs: NULL out rejected");
@@ -115,6 +163,12 @@ static void test_read_pfs_null_out(void)
   TEST_END("ra_mpc_read_pfs: NULL out rejected");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_read_pfs_roundtrip(void)
 {
   TEST_BEGIN("ra_mpc_read_pfs: round-trip");
@@ -126,6 +180,12 @@ static void test_read_pfs_roundtrip(void)
   TEST_END("ra_mpc_read_pfs: round-trip");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_bounds_checks(void)
 {
   TEST_BEGIN("ra_mpc: bounds checks");

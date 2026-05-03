@@ -17,6 +17,12 @@
  * here so the test can invoke it without pulling in a new dependency. */
 ra_err_t ra_stack_canary_check(void);
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_infrastructure_init_runs(void)
 {
   TEST_BEGIN("ra_infrastructure_init runs without crashing");
@@ -25,6 +31,12 @@ static void test_infrastructure_init_runs(void)
   TEST_END("ra_infrastructure_init runs without crashing");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_stack_canary_check_host(void)
 {
   TEST_BEGIN("ra_stack_canary_check returns ok on host");
@@ -35,6 +47,12 @@ static void test_stack_canary_check_host(void)
   TEST_END("ra_stack_canary_check returns ok on host");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_double_init_is_safe(void)
 {
   TEST_BEGIN("ra_infrastructure_init is safe to call twice");

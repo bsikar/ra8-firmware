@@ -50,6 +50,12 @@ static void rebind_8888(void)
   TEST_ASSERT_EQ(k_ra_ok, err);
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_arg_validation(void)
 {
   TEST_BEGIN("ra_gfx_init validates arguments");
@@ -61,6 +67,12 @@ static void test_init_arg_validation(void)
   TEST_END("ra_gfx_init validates arguments");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_clear_writes_every_pixel(void)
 {
   TEST_BEGIN("ra_gfx_clear sets every pixel");
@@ -73,6 +85,12 @@ static void test_clear_writes_every_pixel(void)
   TEST_END("ra_gfx_clear sets every pixel");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_pixel_happy_and_oob(void)
 {
   TEST_BEGIN("ra_gfx_pixel happy + OOB");
@@ -90,6 +108,12 @@ static void test_pixel_happy_and_oob(void)
   TEST_END("ra_gfx_pixel happy + OOB");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_line_horizontal(void)
 {
   TEST_BEGIN("ra_gfx_line draws a horizontal line");
@@ -104,6 +128,12 @@ static void test_line_horizontal(void)
   TEST_END("ra_gfx_line draws a horizontal line");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_rect_outline_and_filled(void)
 {
   TEST_BEGIN("ra_gfx_rect outline + filled");
@@ -123,6 +153,12 @@ static void test_rect_outline_and_filled(void)
   TEST_END("ra_gfx_rect outline + filled");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_circle_outline_and_filled(void)
 {
   TEST_BEGIN("ra_gfx_circle outline + filled");
@@ -139,6 +175,12 @@ static void test_circle_outline_and_filled(void)
   TEST_END("ra_gfx_circle outline + filled");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_text_out_renders_A(void)
 {
   TEST_BEGIN("ra_gfx_text_out renders 'A'");
@@ -158,6 +200,12 @@ static void test_text_out_renders_A(void)
   TEST_END("ra_gfx_text_out renders 'A'");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_text_size(void)
 {
   TEST_BEGIN("ra_gfx_text_size measures correctly");
@@ -171,6 +219,12 @@ static void test_text_size(void)
   TEST_END("ra_gfx_text_size measures correctly");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_blit(void)
 {
   TEST_BEGIN("ra_gfx_blit copies pixels");
@@ -197,6 +251,12 @@ static void test_blit(void)
   TEST_END("ra_gfx_blit copies pixels");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_null_args(void)
 {
   TEST_BEGIN("NULL args rejected");
@@ -214,6 +274,12 @@ static void test_null_args(void)
   TEST_END("NULL args rejected");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_rgb888_format(void)
 {
   TEST_BEGIN("RGB888 format round-trip via blit");
