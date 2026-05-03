@@ -91,13 +91,44 @@ vendored tree.
 
 ## Procurement status
 
-- **Vendored**: NO (as of 2026-05-02). The `libs/third_party/fsp_blobs/r_sce_AMC/`
-  subdirectory is intentionally absent from the tree; only the
-  parent `libs/third_party/fsp_blobs/README.md` exists.
-- **Vendoring procedure**: see
-  `libs/third_party/fsp_blobs/README.md` Section "Procurement plan".
-  The next contributor with network access and a tagged FSP release
-  performs the copy + SHA-256 + commit.
+- **Vendored**: YES (as of 2026-05-02).
+- **FSP upstream commit SHA**: `40bbaa11b1a1b87e0ee0675e401aea6351f90d14`
+  (renesas/fsp `master` HEAD at vendor-in date; shallow clone, no
+  tag pinned -- next re-review will pin to the most recent tag).
+- **Local path**: `libs/third_party/fsp_blobs/r_sce_AMC/`.
+- **Mirrors upstream tree**: yes -- the original FSP path
+  `ra/fsp/src/r_rsip_protected/crypto_procedures_protected/src/rsip/ra/{primitive,private}/...`
+  is preserved verbatim under
+  `libs/third_party/fsp_blobs/r_sce_AMC/ra/fsp/src/...`.
+- **What was copied**:
+  - `ra/fsp/src/r_rsip_protected/crypto_procedures_protected/src/rsip/ra/primitive/ra_rsip_e50d/`
+    (313 files, ~3.2 MB) -- the obfuscated RSIP-E50D primitive
+    procedures (`r_rsip_func*.c`, `r_rsip_p*.c`, `r_rsip_data.c`,
+    `r_rsip_addr.h`, `r_rsip_data.h`).
+  - `ra/fsp/src/r_rsip_protected/crypto_procedures_protected/src/rsip/ra/private/ra_rsip_e5xx/`
+    (4 files, ~532 KB) -- the private CIP driver shim
+    (`r_cip_drv_api.c`, `r_cip_drv_if.h`, `r_cip_private.h`,
+    `r_vdev_fsbl_option.h`) that the primitive procedures call into.
+- **Total**: 314 files, ~3.8 MB on disk.
+- **Aggregate SHA-256** (sorted concatenation of per-file SHA-256s,
+  excluding `UPSTREAM_LICENSE.md`):
+  `718e4d454033ce5481e4cd846eb4e585731e1be41cb36dff0e8e214842037064`.
+- **Per-file license**: every `.c` / `.h` carries an SPDX
+  `BSD-3-Clause` header (`Copyright (c) 2020 - 2026 Renesas
+  Electronics Corporation and/or its affiliates`). FSP top-level
+  `LICENSE.md` is mirrored alongside the tree as
+  `libs/third_party/fsp_blobs/r_sce_AMC/UPSTREAM_LICENSE.md`.
+
+## Important nomenclature note
+
+Although this SOUP entry's title and the project's earlier
+`docs/VENDOR_BLOBS.md` use the term "RSIP-E50D firmware blob", the
+artefacts as they exist in upstream public FSP are NOT a separate
+binary `.dat` payload -- they are the obfuscated `r_rsip_*.c` source
+tree under `r_rsip_protected/`. There is no `.dat` / `.bin` blob in
+the public BSD-3-Clause distribution. The term "blob" in this
+project means "an opaque, vendor-controlled implementation" rather
+than literally a binary file.
 
 ## Last review date
 
