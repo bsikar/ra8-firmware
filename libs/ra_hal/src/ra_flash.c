@@ -42,6 +42,7 @@
 #include "ra8d2_flash_regs.h"
 #include "ra_check.h"
 #include "ra_err.h"
+#include "ra_flash_internal.h"
 #include "ra_log.h"
 
 static const char* s_tag = "FLASH";
@@ -693,6 +694,53 @@ ra_err_t ra_flash_set_rww_disable(bool disable)
 }
 
 /**
+ * @brief Pure (state-free) window allow/deny predicate -- see
+ *        @ref ra_flash_internal_window_allows_pure in
+ *        ra_flash_internal.h for the full contract.
+ *
+ * @details Promoted as a pure helper so the
+ *          ``win_low == 0U && win_high == 0U`` AND-decision can be
+ *          driven directly by host MC/DC tests with synthetic inputs
+ *          rather than mutating module state. The state-reading
+ *          wrapper @c internal_window_allows simply forwards.
+ *
+ * @param[in] addr     Start address of the candidate region.
+ * @param[in] len      Length in bytes of the candidate region.
+ * @param[in] win_low  Inclusive lower bound of the allow window.
+ * @param[in] win_high Exclusive upper bound of the allow window.
+ *
+ * @return ``true`` if the region is permitted, ``false`` if blocked.
+ * @retval true  Region permitted (or no window installed).
+ * @retval false Region overlaps outside the installed window.
+ *
+ * @pre None.
+ * @pre None.
+ * @post No side effects.
+ * @post Return value depends solely on the four inputs.
+ *
+ * @note Pure function; thread-safe.
+ *
+ * @since 0.1.0
+ */
+bool ra_flash_internal_window_allows_pure(uintptr_t addr,
+                                          uint32_t  len,
+                                          uintptr_t win_low,
+                                          uintptr_t win_high)
+{
+  if (win_low == 0U && win_high == 0U) {
+    return true;
+  }
+  const uintptr_t end_excl = (uintptr_t)((uint64_t)addr + (uint64_t)len);
+  if (addr < win_low) {
+    return false;
+  }
+  if (end_excl > win_high) {
+    return false;
+  }
+  return true;
+}
+
+/**
  * @brief Test whether [addr, addr+len) lies inside the configured soft window.
  *
  * @details
@@ -700,36 +748,27 @@ ra_err_t ra_flash_set_rww_disable(bool disable)
  * stored in driver state rather than in the silicon (RA8D2 has no
  * FAWMON / FAWMR; HUM Ch 59 substitutes block-protect bits). A window
  * with ``win_low == win_high == 0`` is treated as disabled (allow all).
+ * Forwards to @ref ra_flash_internal_window_allows_pure.
  *
  * @param[in] addr Start address of the candidate operation.
  * @param[in] len  Length in bytes (must be > 0 if the caller is writing).
  *
  * @return ``true`` if the operation is permitted, ``false`` if blocked.
+ * @retval true  Region permitted (or no window installed).
+ * @retval false Region overlaps outside the installed window.
  *
  * @pre None.
+ * @pre None.
  * @post No side effects.
+ * @post Return value depends solely on @p addr / @p len and module state.
  *
  * @note Internal helper, not thread-safe.
  *
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
  * @since 0.1.0
- * @pre Module/state preconditions hold (see function body).
- * @post Documented side effects are visible on success.
  */
 static bool internal_window_allows(uintptr_t addr, uint32_t len)
 {
-  if (s_rt.win_low == 0U && s_rt.win_high == 0U) {
-    return true;
-  }
-  const uintptr_t end_excl = (uintptr_t)((uint64_t)addr + (uint64_t)len);
-  if (addr < s_rt.win_low) {
-    return false;
-  }
-  if (end_excl > s_rt.win_high) {
-    return false;
-  }
-  return true;
+  return ra_flash_internal_window_allows_pure(addr, len, s_rt.win_low, s_rt.win_high);
 }
 
 /* =============================================================================

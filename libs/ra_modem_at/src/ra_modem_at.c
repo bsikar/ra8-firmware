@@ -464,7 +464,10 @@ typedef enum : uint8_t {
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static void internal_capture_line(const char* line, char* capture, size_t capture_len, size_t* used)
+void ra_modem_at_internal_capture_line(const char* line,
+                                       char*       capture,
+                                       size_t      capture_len,
+                                       size_t*     used)
 {
   if ((capture == nullptr) || (capture_len == 0U)) {
     return;
@@ -531,7 +534,7 @@ static ra_modem_line_action_t internal_handle_line(const char*          line,
           (ra_modem_at_internal_starts_with(line, expected_response) != 0U)) {
         *seen_exp = 1U;
       }
-      internal_capture_line(line, capture, capture_len, used);
+      ra_modem_at_internal_capture_line(line, capture, capture_len, used);
       if (s_mod.state == k_ra_modem_at_state_await_echo) {
         s_mod.state = k_ra_modem_at_state_await_resp;
       }
