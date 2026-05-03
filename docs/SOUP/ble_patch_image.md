@@ -85,12 +85,39 @@ must not modify the vendored payload.
 
 ## Procurement status
 
-- **Vendored**: NO (as of 2026-05-02). The
-  `libs/third_party/fsp_blobs/ble_patch/` subdirectory is
-  intentionally absent from the tree; only the parent
-  `libs/third_party/fsp_blobs/README.md` exists.
-- **Vendoring procedure**: see
-  `libs/third_party/fsp_blobs/README.md` Section "Procurement plan".
+- **Vendored**: NO -- `BLOCKED: not redistributed in public FSP`
+  (as of 2026-05-02).
+- **Investigation result** (renesas/fsp commit
+  `40bbaa11b1a1b87e0ee0675e401aea6351f90d14`, master HEAD on
+  2026-05-02): the public BSD-3-Clause FSP repository under
+  `ra/fsp/src/r_ble/` contains exactly **one file**, `r_ble.c`
+  (480 lines, BSD-3-Clause), which provides the host-side
+  RTOS-glue API. It does NOT contain any controller patch image
+  (`.dat`, `.bin`, `lc_pwr_pic.*`, or similar). The companion
+  `rm_ble_abs_spp/r_ble_spp_api.c` defines
+  `R_BLE_VS_UpdateModuleFirmware()` -- a function that *uploads* a
+  patch image -- but the payload itself is not part of the
+  redistributable source tree.
+- **Why**: the BLE controller patch is an encrypted firmware image
+  signed/keyed to Renesas-controlled material and ships **outside**
+  the public BSD-3-Clause FSP repository. End users obtain it via
+  Renesas's own distribution channels (e2 studio installer payloads
+  or a Renesas Software License Agreement download), neither of
+  which is admissible into this repo per the
+  `libs/third_party/fsp_blobs/README.md` "Policy" section
+  ("These blobs MUST be vendored from `renesas/fsp` only").
+- **End-user fetch procedure** (for downstream consumers who need
+  real BLE radio bring-up): obtain a Renesas FSP installer or e2
+  studio image directly from Renesas, accept the accompanying
+  Renesas Software License Agreement, locate the BLE patch payload
+  in the installer's `r_ble_*` subtree, and stage it locally at
+  `libs/third_party/fsp_blobs/ble_patch/` BEFORE building any
+  example app that depends on the BLE radio. The build system does
+  not fetch this for you.
+- **Effect on the firmware**: `libs/ra_hal/src/ra_ble_patch.c`
+  continues to return `k_ra_err_not_supported` at runtime when no
+  blob is staged; host unit tests under `tests/test_ra_ble_*.c`
+  continue to compile and run unaffected.
 
 ## Last review date
 

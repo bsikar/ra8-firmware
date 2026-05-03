@@ -83,6 +83,10 @@ ra_gen/
 ra/
 ra_cfg/
 
+# Vendored FSP blob trees intentionally preserve upstream "ra/" path layout.
+!libs/third_party/fsp_blobs/**/ra/
+!libs/third_party/fsp_blobs/**/ra/**
+
 # ARM / Keil / IAR artifacts
 *.uvprojx
 *.uvoptx
