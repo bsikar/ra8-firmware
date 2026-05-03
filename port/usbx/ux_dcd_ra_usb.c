@@ -791,9 +791,14 @@ static void internal_handle_dvst(uint16_t intsts0)
         new_state = (unsigned long)UX_DEVICE_ATTACHED;
         break;
       case k_ra_dvsq_default:
-        /* Bus reset just deasserted: USBX treats RESET as the
-         * pre-enumeration state, mirroring sim_host's port-reset path. */
-        new_state = (unsigned long)UX_DEVICE_RESET;
+        /* Bus reset just deasserted: device is in USB DEFAULT state, ready
+         * to accept SET_ADDRESS on EP0. USBX gates EP0 SETUP/data responses
+         * in `_ux_device_stack_transfer_request` on
+         * `ux_slave_device_state in {ATTACHED, ADDRESSED, CONFIGURED}`;
+         * UX_DEVICE_RESET (0) returns UX_TRANSFER_NOT_READY and the device
+         * never replies to GET_DESCRIPTOR. Map DEFAULT to ATTACHED so the
+         * chapter-9 dispatcher can advance to ADDRESSED on SET_ADDRESS. */
+        new_state = (unsigned long)UX_DEVICE_ATTACHED;
         break;
       case k_ra_dvsq_address:
       case k_ra_dvsq_configured:
