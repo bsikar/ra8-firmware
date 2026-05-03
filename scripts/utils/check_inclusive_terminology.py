@@ -162,10 +162,10 @@ SKIP_FILE_PATTERNS: tuple[str, ...] = (
     # ID 0 ("master channel" is the literal spec wording in USB-IF
     # Audio Device Class spec).
     "tests/test_ra_usb_haud.c",
-    # Express Logic USBX `UX_SLAVE_*` upstream type names.
+    # Express Logic USBX `UX_SLAVE_*` upstream type names referenced from
+    # the port shim itself.
     "port/usbx/ux_dcd_ra_usb.c",
     "port/usbx/ux_dcd_ra_usb.h",
-    "tests/test_ux_dcd_ra_usb.c",
     # Mbed TLS `MBEDTLS_SSL_EXTENDED_MASTER_SECRET` macro citation.
     "port/mbedtls/mbedtls_config.h",
     # IEEE 1588 PTP master/slave role names appear verbatim in the spec.

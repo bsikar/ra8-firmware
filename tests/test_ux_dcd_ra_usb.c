@@ -76,7 +76,7 @@ static inline bool internal_mirror_ep_create_guard(uint8_t pipe)
 }
 
 /**
- * @brief Mirror of the SETUP-dispatch null + slave-bound guard.
+ * @brief Mirror of the SETUP-dispatch null + system-bound guard.
  *
  * Source: port/usbx/ux_dcd_ra_usb.c
  *   `if (setup == nullptr || _ux_system_slave == UX_NULL)`
@@ -199,14 +199,14 @@ static void test_mcdc_ep_create_pipe_range(void)
 static void test_mcdc_dispatch_setup_guard(void)
 {
   TEST_BEGIN("ux_dcd_ra_usb MC/DC: dispatch_setup null-guard (line 506)");
-  uint32_t    setup_marker = 0U;
-  uint32_t    slave_marker = 0U;
-  const void* setup        = (const void*)&setup_marker;
-  const void* slave        = (const void*)&slave_marker;
+  uint32_t    setup_marker  = 0U;
+  uint32_t    system_marker = 0U;
+  const void* setup         = (const void*)&setup_marker;
+  const void* system        = (const void*)&system_marker;
 
-  TEST_ASSERT(!internal_mirror_dispatch_setup_guard(setup, slave));
+  TEST_ASSERT(!internal_mirror_dispatch_setup_guard(setup, system));
   TEST_ASSERT(internal_mirror_dispatch_setup_guard(setup, nullptr));
-  TEST_ASSERT(internal_mirror_dispatch_setup_guard(nullptr, slave));
+  TEST_ASSERT(internal_mirror_dispatch_setup_guard(nullptr, system));
   TEST_END("ux_dcd_ra_usb MC/DC: dispatch_setup null-guard (line 506)");
 }
 
