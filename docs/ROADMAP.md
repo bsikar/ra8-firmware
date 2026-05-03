@@ -45,8 +45,9 @@ Status snapshot at the close of sweep 11 (commit `ba54974`):
   was 12 at end of sweep 8).
 
 For the at-a-glance driver-vs-FSP-parity matrix see
-`docs/DRIVER_STATUS.md`. For the residual gap list and DEFERRED
-items see `docs/MISSING.md`.
+`docs/DRIVER_STATUS.md`. For the residual hardware-blob gap list see
+`docs/VENDOR_BLOBS.md`; for the post-baseline plan see
+`docs/PHASE7_ROADMAP.md`.
 
 Status markers:
 
