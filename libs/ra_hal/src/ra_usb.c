@@ -1038,11 +1038,32 @@ void ra_usb_dispatch(ra_usb_speed_t speed)
   if (reg == nullptr) { /* GCOVR_EXCL_BR_LINE -- speeds always valid */
     return;             /* GCOVR_EXCL_LINE */
   }
-  /* HUM Ch 36.2.14 "INTSTS0 : Interrupt Status Register 0", p 1985 */
-  const uint16_t          mask = reg->INTSTS0;
-  const ra_usb_event_fn_t fn   = s_usb_fn;
-  void* const             ctx  = s_usb_ctx;
-  reg->INTSTS0                 = 0U;
+  /* HUM Ch 36.2.14 "INTSTS0 : Interrupt Status Register 0", p 1985.
+   *
+   * INTSTS0 is W0C: writing 0 to a bit clears it. The previous
+   * implementation did `INTSTS0 = 0` which wiped *every* status bit
+   * including VALID (SETUP-latched). That left the downstream handler
+   * unable to read the SETUP packet because `ra_usb_read_setup` gates
+   * on `INTSTS0.VALID` -- by the time it ran, the controller had
+   * already cleared the latch. Result: GET_DESCRIPTOR(DEVICE) SETUPs
+   * arrived, IRQs fired, but no descriptor data was ever pushed and
+   * DCPCTR.PID stayed NAK.
+   *
+   * Fix: ack only the edge-triggered control/event bits we have
+   * actually consumed (CTRT/DVST/VBINT/RESM/SOFR + the BEMP/BRDY/NRDY
+   * group). VALID is preserved so the SETUP handler can drain USBREQ /
+   * USBVAL / USBINDX / USBLENG and then clear VALID itself. CTSQ/DVSQ
+   * are read-only fields and naturally pass through unchanged. */
+  const uint16_t mask = reg->INTSTS0;
+
+  const uint16_t ack_bits = (uint16_t)((1U << k_ra_int0_bit_ctrt) | (1U << k_ra_int0_bit_dvst) |
+                                       (1U << k_ra_int0_bit_bemp) | (1U << k_ra_int0_bit_brdy) |
+                                       (1U << k_ra_int0_bit_nrdy) | (1U << k_ra_int0_bit_vbse) |
+                                       (1U << k_ra_int0_bit_rsme) | (1U << k_ra_int0_bit_sofr));
+  reg->INTSTS0            = (uint16_t)(mask & (uint16_t)~ack_bits);
+
+  const ra_usb_event_fn_t fn  = s_usb_fn;
+  void* const             ctx = s_usb_ctx;
   if (fn != nullptr) {
     fn(ctx, speed, mask);
   }
