@@ -242,6 +242,74 @@ uint8_t ra_modem_at_internal_reset_line_should_clear(const void* line_buf, uint1
 }
 
 /**
+ * @brief Production carrier of the line-573 payload-prefix AND-decision.
+ *
+ * @details Holds the three-condition short-circuit AND that classifies a
+ *          payload-kind line as matching the caller-supplied
+ *          ``expected_response`` prefix. Promoted from inline-in-callsite to
+ *          a TU-external helper so all four short-circuit MC/DC vectors can
+ *          be driven from a host test (the public-API path through
+ *          ``send_cmd`` / ``send_cmd_capture`` reaches only a subset of the
+ *          four input combinations).
+ *
+ * @param[in] line              NUL-terminated input line (must be non-NULL).
+ * @param[in] expected_response Optional NUL-terminated expected prefix.
+ * @return 1 iff all three conditions hold.
+ * @retval 1 expected_response != NULL && expected_response[0] != '\0' &&
+ *           starts_with(line, expected_response).
+ * @retval 0 Any one of the three conditions fails.
+ *
+ * @pre line is non-NULL and NUL-terminated.
+ * @pre No precondition on expected_response (NULL accepted).
+ * @post No state mutated.
+ * @post Return value depends solely on the two inputs.
+ * @note Pure function; thread-safe.
+ * @since 0.1.0
+ */
+uint8_t ra_modem_at_internal_handle_line_payload_prefix_match(const char* line,
+                                                              const char* expected_response)
+{
+  if ((expected_response != nullptr) && (expected_response[0] != '\0') &&
+      (ra_modem_at_internal_starts_with(line, expected_response) != 0U)) {
+    return 1U;
+  }
+  return 0U;
+}
+
+/**
+ * @brief Production carrier of the line-664 capture-init AND-decision.
+ *
+ * @details Holds the AND-decision that gates the one-shot ``capture[0] =
+ *          '\\0'`` initialisation in @ref internal_wait_response. Promoted
+ *          from inline-in-callsite to a TU-external helper so all four
+ *          input combinations are reachable from a host test (the public
+ *          ``send_cmd_capture`` API rejects ``capture_len == 0`` at the
+ *          entry guard, so the inline form was structurally limited to
+ *          (NULL, 0) and (non-NULL, >0)).
+ *
+ * @param[in] capture     Caller-owned capture buffer (NULL allowed).
+ * @param[in] capture_len Capacity of @p capture in bytes.
+ * @return 1 iff capture is non-NULL AND capture_len > 0.
+ * @retval 1 Both conditions hold.
+ * @retval 0 Either condition fails.
+ *
+ * @pre None.
+ * @pre None.
+ * @post No state mutated.
+ * @post Return value depends solely on the two inputs.
+ * @note Pure function; thread-safe.
+ * @since 0.1.0
+ */
+uint8_t ra_modem_at_internal_wait_response_should_clear_capture(const void* capture,
+                                                                size_t      capture_len)
+{
+  if ((capture != nullptr) && (capture_len > 0U)) {
+    return 1U;
+  }
+  return 0U;
+}
+
+/**
  * @brief Reset the line accumulator for a fresh command cycle.
  *
  * @details Forwards the buffer-installed predicate to
@@ -570,8 +638,7 @@ static ra_modem_line_action_t internal_handle_line(const char*          line,
       return k_ra_modem_line_action_done_err;
     case k_ra_modem_line_kind_payload:
     default:
-      if ((expected_response != nullptr) && (expected_response[0] != '\0') &&
-          (ra_modem_at_internal_starts_with(line, expected_response) != 0U)) {
+      if (ra_modem_at_internal_handle_line_payload_prefix_match(line, expected_response) != 0U) {
         *seen_exp = 1U;
       }
       ra_modem_at_internal_capture_line(line, capture, capture_len, used);
@@ -661,7 +728,7 @@ static ra_err_t internal_wait_response(const char* cmd,
   size_t         used  = 0U;
   uint8_t seen_exp = (uint8_t)((expected_response == nullptr) || (expected_response[0] == '\0'));
 
-  if ((capture != nullptr) && (capture_len > 0U)) {
+  if (ra_modem_at_internal_wait_response_should_clear_capture(capture, capture_len) != 0U) {
     capture[0] = '\0';
   }
 

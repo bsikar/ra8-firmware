@@ -212,6 +212,77 @@ void ra_modem_at_internal_capture_line(const char* line,
  */
 uint8_t ra_modem_at_internal_reset_line_should_clear(const void* line_buf, uint16_t line_buf_len);
 
+/**
+ * @brief Pure sibling of the line-573 payload-prefix AND-decision.
+ *
+ * @details Returns true iff @p expected_response is non-NULL, non-empty, and
+ *          @p line begins with @p expected_response. This mirrors the
+ *          three-condition short-circuit AND in @c internal_handle_line at
+ *          line 573 of @c ra_modem_at.c
+ *          (``(expected_response != nullptr) && (expected_response[0] != '\0')
+ *          && (ra_modem_at_internal_starts_with(line, expected_response) !=
+ *          0U)``). The production helper consults @c s_mod state to mutate
+ *          ``seen_exp``; this pure sibling exposes the boolean predicate
+ *          alone so all four short-circuit MC/DC vectors are reachable from
+ *          a host test.
+ *
+ * @param[in] line              NUL-terminated input line (must be non-NULL).
+ * @param[in] expected_response Optional NUL-terminated expected prefix.
+ *
+ * @return Boolean predicate.
+ * @retval 1 All three conditions hold (line begins with the prefix).
+ * @retval 0 Any one of the three conditions fails (short-circuited).
+ *
+ * @pre line is non-NULL and NUL-terminated.
+ * @pre No state mutation.
+ * @post No state mutated.
+ * @post Return value depends solely on the two inputs.
+ *
+ * @note Test-access only. Pure function.
+ *
+ * @par MC/DC:
+ * Drives line 573 of ra_modem_at.c (3 conditions, AND; N+1 = 4 vectors).
+ *
+ * @since 0.1.0
+ */
+uint8_t ra_modem_at_internal_handle_line_payload_prefix_match(const char* line,
+                                                              const char* expected_response);
+
+/**
+ * @brief Pure sibling of the line-664 capture-buffer-init AND-decision.
+ *
+ * @details Returns true iff both @p capture is non-NULL and @p capture_len is
+ *          greater than zero, mirroring the AND-decision in
+ *          @c internal_wait_response at line 664 of @c ra_modem_at.c
+ *          (``(capture != nullptr) && (capture_len > 0U)``). The production
+ *          decision controls a single byte-clear of ``capture[0] = '\\0'``;
+ *          all four input combinations are exposed here so MC/DC can be
+ *          driven from a host test (the public ``send_cmd_capture`` API
+ *          rejects ``capture_len == 0`` at the entry guard before
+ *          @c internal_wait_response is reached).
+ *
+ * @param[in] capture     Caller-owned capture buffer (NULL allowed).
+ * @param[in] capture_len Capacity of @p capture in bytes.
+ *
+ * @return Boolean predicate.
+ * @retval 1 capture is non-NULL AND capture_len > 0.
+ * @retval 0 Either condition fails.
+ *
+ * @pre None.
+ * @pre None.
+ * @post No state mutated.
+ * @post Return value depends solely on the two inputs.
+ *
+ * @note Test-access only. Pure function.
+ *
+ * @par MC/DC:
+ * Drives line 664 of ra_modem_at.c (2 conditions, AND; N+1 = 3 vectors).
+ *
+ * @since 0.1.0
+ */
+uint8_t ra_modem_at_internal_wait_response_should_clear_capture(const void* capture,
+                                                                size_t      capture_len);
+
 #ifdef __cplusplus
 }
 #endif
