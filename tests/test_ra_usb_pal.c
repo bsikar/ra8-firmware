@@ -14,6 +14,7 @@
 #include "ra_sim_mmap.h"
 #include "ra_usb.h"
 #include "ra_usb_pal.h"
+#include "ra_usb_pal_internal.h"
 #include "unity_minimal.h"
 
 static void prep(void)
@@ -411,6 +412,49 @@ static void test_mcdc_ep_send_len_data(void)
   TEST_END("mcdc: ep_send len/data (3-cond mixed)");
 }
 
+/**
+ * @test test_mcdc_usb_pal_internal_should_dispatch_event
+ *
+ * @par MC/DC:
+ * Decision at libs/ra_usb_pal/src/ra_usb_pal.c:218 (call site) -> helper at
+ * libs/ra_usb_pal/src/ra_usb_pal.c:50:
+ *   ``event_fn != NULL && mask != none`` (2 conditions, AND).
+ * - V1: cb=NULL,  mask!=none -> false (left varies vs V2)
+ * - V2: cb!=NULL, mask!=none -> true
+ * - V3: cb!=NULL, mask=none  -> false (right varies vs V2)
+ * N+1 = 3.
+ */
+static void test_mcdc_usb_pal_internal_should_dispatch_event(void)
+{
+  TEST_BEGIN("usb_pal MC/DC: should_dispatch_event AND");
+  uint8_t fake_cb = 0U;
+  TEST_ASSERT(!ra_usb_pal_internal_should_dispatch_event(NULL, 0x0001U, 0x0000U));
+  TEST_ASSERT(ra_usb_pal_internal_should_dispatch_event(&fake_cb, 0x0001U, 0x0000U));
+  TEST_ASSERT(!ra_usb_pal_internal_should_dispatch_event(&fake_cb, 0x0000U, 0x0000U));
+  TEST_END("usb_pal MC/DC: should_dispatch_event AND");
+}
+
+/**
+ * @test test_mcdc_usb_pal_internal_ep_out_of_range
+ *
+ * @par MC/DC:
+ * Decision at libs/ra_usb_pal/src/ra_usb_pal.c:559 (call site) -> helper at
+ * libs/ra_usb_pal/src/ra_usb_pal.c:70:
+ *   ``ep_addr == 0 || ep_addr > ep_max`` (2 conditions, OR).
+ * - V1: ep=1,  ep_max=10 -> false
+ * - V2: ep=0,  ep_max=10 -> true (varies left)
+ * - V3: ep=11, ep_max=10 -> true (varies right)
+ * N+1 = 3.
+ */
+static void test_mcdc_usb_pal_internal_ep_out_of_range(void)
+{
+  TEST_BEGIN("usb_pal MC/DC: ep_out_of_range OR");
+  TEST_ASSERT(!ra_usb_pal_internal_ep_out_of_range(1U, 10U));
+  TEST_ASSERT(ra_usb_pal_internal_ep_out_of_range(0U, 10U));
+  TEST_ASSERT(ra_usb_pal_internal_ep_out_of_range(11U, 10U));
+  TEST_END("usb_pal MC/DC: ep_out_of_range OR");
+}
+
 int32_t main(void)
 {
   test_init_fs_starts_detached();
@@ -428,6 +472,8 @@ int32_t main(void)
   test_mcdc_ep_open_dir();
   test_mcdc_ep_open_type_packet();
   test_mcdc_ep_send_len_data();
+  test_mcdc_usb_pal_internal_should_dispatch_event();
+  test_mcdc_usb_pal_internal_ep_out_of_range();
   (void)fprintf(stderr, "[OK ] test_ra_usb_pal.c\n");
   return 0;
 }

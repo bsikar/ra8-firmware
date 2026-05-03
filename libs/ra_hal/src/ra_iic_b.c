@@ -50,8 +50,49 @@
 #include "ra8d2_iic_b_regs.h"
 #include "ra_check.h"
 #include "ra_err.h"
+#include "ra_iic_b_internal.h"
 #include "ra_log.h"
 #include "ra_mstp.h"
+
+/**
+ * @brief Pure len/buf reject predicate -- see header for full contract.
+ * @details Promoted helper so the line-976 AND can be driven under MC/DC.
+ * @param[in] len Length in bytes.
+ * @param[in] buf Buffer pointer.
+ * @return Boolean reject predicate.
+ * @retval true  Caller returns null-ptr error.
+ * @retval false Combination is OK.
+ * @pre None.
+ * @pre None.
+ * @post No state mutated.
+ * @post Return depends solely on inputs.
+ * @note Pure; thread-safe.
+ * @since 0.1.0
+ */
+bool ra_iic_b_internal_len_buf_invalid(uint32_t len, const void* buf)
+{
+  return (len != 0U) && (buf == NULL);
+}
+
+/**
+ * @brief Pure dispatch-callback predicate -- see header for full contract.
+ * @details Promoted helper so the line-1235 AND can be driven under MC/DC.
+ * @param[in] mask Bitmask of pending error sources.
+ * @param[in] cb   Callback pointer.
+ * @return Boolean predicate.
+ * @retval true  Caller invokes cb.
+ * @retval false Skip callback.
+ * @pre None.
+ * @pre None.
+ * @post No state mutated.
+ * @post Return depends solely on inputs.
+ * @note Pure; thread-safe.
+ * @since 0.1.0
+ */
+bool ra_iic_b_internal_should_dispatch(uint8_t mask, const void* cb)
+{
+  return (mask != 0U) && (cb != NULL);
+}
 
 /** @brief Log tag for this driver. */
 static const char* s_tag = "IIC_B";
@@ -973,7 +1014,7 @@ ra_err_t ra_iic_b_transfer(uint8_t        channel,
   if ((tx_len != 0U) && (tx == nullptr)) {
     return k_ra_err_null_ptr;
   }
-  if ((rx_len != 0U) && (rx == nullptr)) {
+  if (ra_iic_b_internal_len_buf_invalid(rx_len, rx)) {
     return k_ra_err_null_ptr;
   }
 
@@ -1232,7 +1273,7 @@ void ra_iic_b_dispatch_eri(uint8_t channel)
   (void)ra_iic_b_get_errors(channel, &mask);
   (void)ra_iic_b_clear_errors(channel);
   const ra_iic_b_complete_fn_t cb = s_iic_b_state[channel].cb;
-  if ((mask != 0U) && (cb != nullptr)) {
+  if (ra_iic_b_internal_should_dispatch(mask, (const void*)cb)) {
     cb(s_iic_b_state[channel].ctx, mask);
   }
 }

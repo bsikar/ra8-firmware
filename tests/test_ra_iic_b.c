@@ -24,6 +24,7 @@
 #include "ra8d2_iic_b_regs.h"
 #include "ra_err.h"
 #include "ra_iic_b.h"
+#include "ra_iic_b_internal.h"
 #include "ra_mstp.h"
 #include "ra_sim_mmap.h"
 #include "unity_minimal.h"
@@ -793,6 +794,50 @@ static void test_mcdc_iic_b(void)
   TEST_END("iic_b MC/DC: transfer arg-validation 2-cond decisions");
 }
 
+/**
+ * @test test_mcdc_iic_b_internal_len_buf_invalid
+ *
+ * @par MC/DC:
+ * Decision at libs/ra_hal/src/ra_iic_b.c:976 (call site) -> helper at
+ * libs/ra_hal/src/ra_iic_b.c:74:
+ *   ``len != 0 && buf == NULL`` (2 conditions, AND).
+ * - V1: len=0, buf=NULL -> false
+ * - V2: len>0, buf=NULL -> true (varies left)
+ * - V3: len>0, buf!=NULL -> false (varies right)
+ * N+1 = 3.
+ */
+static void test_mcdc_iic_b_internal_len_buf_invalid(void)
+{
+  TEST_BEGIN("iic_b MC/DC: len_buf_invalid AND");
+  uint8_t scratch = 0U;
+  TEST_ASSERT(!ra_iic_b_internal_len_buf_invalid(0U, NULL));
+  TEST_ASSERT(ra_iic_b_internal_len_buf_invalid(4U, NULL));
+  TEST_ASSERT(!ra_iic_b_internal_len_buf_invalid(4U, &scratch));
+  TEST_END("iic_b MC/DC: len_buf_invalid AND");
+}
+
+/**
+ * @test test_mcdc_iic_b_internal_should_dispatch
+ *
+ * @par MC/DC:
+ * Decision at libs/ra_hal/src/ra_iic_b.c:1235 (call site) -> helper at
+ * libs/ra_hal/src/ra_iic_b.c:94:
+ *   ``mask != 0 && cb != NULL`` (2 conditions, AND).
+ * - V1: mask=0, cb!=NULL -> false (varies left from V2)
+ * - V2: mask!=0, cb!=NULL -> true
+ * - V3: mask!=0, cb=NULL -> false (varies right from V2)
+ * N+1 = 3.
+ */
+static void test_mcdc_iic_b_internal_should_dispatch(void)
+{
+  TEST_BEGIN("iic_b MC/DC: should_dispatch AND");
+  uint8_t cb_dummy = 0U;
+  TEST_ASSERT(!ra_iic_b_internal_should_dispatch(0U, &cb_dummy));
+  TEST_ASSERT(ra_iic_b_internal_should_dispatch(0x10U, &cb_dummy));
+  TEST_ASSERT(!ra_iic_b_internal_should_dispatch(0x10U, NULL));
+  TEST_END("iic_b MC/DC: should_dispatch AND");
+}
+
 int32_t main(void)
 {
   test_init_configured();
@@ -826,6 +871,8 @@ int32_t main(void)
   test_dispatch_eri_fires_callback();
   test_legacy_pass_throughs();
   test_mcdc_iic_b();
+  test_mcdc_iic_b_internal_len_buf_invalid();
+  test_mcdc_iic_b_internal_should_dispatch();
   (void)fprintf(stderr, "[OK ] test_ra_iic_b.c\n");
   return 0;
 }

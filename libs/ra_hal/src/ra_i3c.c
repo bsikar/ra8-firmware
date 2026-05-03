@@ -31,8 +31,55 @@
 #include "ra8d2_mstp_regs.h"
 #include "ra_check.h"
 #include "ra_err.h"
+#include "ra_i3c_internal.h"
 #include "ra_log.h"
 #include "ra_mstp.h"
+
+/**
+ * @brief Pure recv-ccc-invalid predicate -- see header for full contract.
+ * @details Promoted helper so the line-688 OR can be driven under MC/DC.
+ * @param[in] addr_mask Maximum valid 7-bit address mask.
+ * @param[in] target    Candidate target address.
+ * @param[in] max_len   Caller-supplied max read length.
+ * @return Boolean reject predicate.
+ * @retval true  Inputs invalid.
+ * @retval false Inputs OK.
+ * @pre None.
+ * @pre None.
+ * @post No state mutated.
+ * @post Return depends solely on inputs.
+ * @note Pure; thread-safe.
+ * @since 0.1.0
+ */
+bool ra_i3c_internal_recv_ccc_invalid(uint8_t addr_mask, uint8_t target, uint8_t max_len)
+{
+  return (target > addr_mask) || (max_len == 0U);
+}
+
+/**
+ * @brief Pure HDR-mode-invalid predicate -- see header for full contract.
+ * @details Promoted helper so the line-815 AND can be driven under MC/DC.
+ * @param[in] sdr_val Numeric value of @c k_ra_i3c_hdr_mode_sdr.
+ * @param[in] ddr_val Numeric value of @c k_ra_i3c_hdr_mode_ddr.
+ * @param[in] ts_val  Numeric value of @c k_ra_i3c_hdr_mode_ts.
+ * @param[in] mode    Candidate mode value.
+ * @return Boolean reject predicate.
+ * @retval true  Mode is not legal.
+ * @retval false Mode is legal.
+ * @pre None.
+ * @pre None.
+ * @post No state mutated.
+ * @post Return depends solely on inputs.
+ * @note Pure; thread-safe.
+ * @since 0.1.0
+ */
+bool ra_i3c_internal_hdr_mode_invalid(uint32_t sdr_val,
+                                      uint32_t ddr_val,
+                                      uint32_t ts_val,
+                                      uint32_t mode)
+{
+  return (mode != sdr_val) && (mode != ddr_val) && (mode != ts_val);
+}
 
 /** @brief Logging tag for this module. */
 static const char* s_tag = "I3C";
@@ -685,7 +732,7 @@ ra_i3c_recv_ccc(uint8_t ccc, uint8_t target_addr, uint8_t* buf, uint8_t max_len,
     /* Only direct CCCs return data. */
     return k_ra_err_invalid_arg;
   }
-  if ((target_addr > (uint8_t)k_ra_i3c_addr_mask) || (max_len == 0U)) {
+  if (ra_i3c_internal_recv_ccc_invalid((uint8_t)k_ra_i3c_addr_mask, target_addr, max_len)) {
     return k_ra_err_invalid_arg;
   }
 
@@ -812,8 +859,10 @@ ra_err_t ra_i3c_set_hdr_mode(uint8_t target_addr, ra_i3c_hdr_mode_t mode)
   if (target_addr > (uint8_t)k_ra_i3c_addr_mask) {
     return k_ra_err_invalid_arg;
   }
-  if ((mode != k_ra_i3c_hdr_mode_sdr) && (mode != k_ra_i3c_hdr_mode_ddr) &&
-      (mode != k_ra_i3c_hdr_mode_ts)) {
+  if (ra_i3c_internal_hdr_mode_invalid((uint32_t)k_ra_i3c_hdr_mode_sdr,
+                                       (uint32_t)k_ra_i3c_hdr_mode_ddr,
+                                       (uint32_t)k_ra_i3c_hdr_mode_ts,
+                                       (uint32_t)mode)) {
     return k_ra_err_invalid_arg;
   }
 

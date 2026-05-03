@@ -176,6 +176,48 @@ static void test_mcdc_epub_internal_join_path_name_loop(void)
   TEST_END("epub MC/DC: join_path name-copy loop AND");
 }
 
+/**
+ * @test test_mcdc_epub_internal_glyph_dim_invalid
+ *
+ * @par MC/DC:
+ * Decision at libs/ra_epub/src/ra_epub_chapter.c:225 (call site) -> helper at
+ * libs/ra_epub/src/ra_epub_chapter.c:77:
+ *   ``w < 0 || h < 0`` (2 conditions, OR).
+ * - V1: w=10, h=10 -> false
+ * - V2: w=-1, h=10 -> true (varies left)
+ * - V3: w=10, h=-1 -> true (varies right)
+ * N+1 = 3.
+ */
+static void test_mcdc_epub_internal_glyph_dim_invalid(void)
+{
+  TEST_BEGIN("epub MC/DC: glyph_dim_invalid OR");
+  TEST_ASSERT(!ra_epub_internal_glyph_dim_invalid(10, 10));
+  TEST_ASSERT(ra_epub_internal_glyph_dim_invalid(-1, 10));
+  TEST_ASSERT(ra_epub_internal_glyph_dim_invalid(10, -1));
+  TEST_END("epub MC/DC: glyph_dim_invalid OR");
+}
+
+/**
+ * @test test_mcdc_epub_internal_book_not_ready
+ *
+ * @par MC/DC:
+ * Decision at libs/ra_epub/src/ra_epub_chapter.c lines 300, 369 (call sites)
+ * -> helper at libs/ra_epub/src/ra_epub_chapter.c:97:
+ *   ``in_use == 0 || zip_archive_active == 0`` (2 conditions, OR).
+ * - V1: in_use=1, zip=1 -> false
+ * - V2: in_use=0, zip=1 -> true (varies left)
+ * - V3: in_use=1, zip=0 -> true (varies right)
+ * N+1 = 3.
+ */
+static void test_mcdc_epub_internal_book_not_ready(void)
+{
+  TEST_BEGIN("epub MC/DC: book_not_ready OR");
+  TEST_ASSERT(!ra_epub_internal_book_not_ready(1U, 1U));
+  TEST_ASSERT(ra_epub_internal_book_not_ready(0U, 1U));
+  TEST_ASSERT(ra_epub_internal_book_not_ready(1U, 0U));
+  TEST_END("epub MC/DC: book_not_ready OR");
+}
+
 int32_t main(void)
 {
   test_mcdc_epub_get_chapter_count_null_pair();
@@ -184,6 +226,8 @@ int32_t main(void)
   test_mcdc_epub_internal_join_path_guard();
   test_mcdc_epub_internal_join_path_dir_loop();
   test_mcdc_epub_internal_join_path_name_loop();
+  test_mcdc_epub_internal_glyph_dim_invalid();
+  test_mcdc_epub_internal_book_not_ready();
   (void)fprintf(stderr, "[OK ] test_ra_epub_chapter.c\n");
   return 0;
 }

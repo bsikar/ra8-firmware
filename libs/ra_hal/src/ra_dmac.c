@@ -39,9 +39,54 @@
 
 #include "ra8d2_dmac_regs.h"
 #include "ra_check.h"
+#include "ra_dmac_internal.h"
 #include "ra_err.h"
 #include "ra_log.h"
 #include "ra_mstp.h"
+
+/**
+ * @brief Pure DTS-disabled predicate -- see header for full contract.
+ * @details Promoted helper so the line-151 OR can be driven under MC/DC.
+ * @param[in] mode_normal_val       Numeric value of @c k_ra_dmac_mode_normal.
+ * @param[in] mode_repeat_block_val Numeric value of @c k_ra_dmac_mode_repeat_block.
+ * @param[in] mode                  Candidate mode value.
+ * @return Boolean predicate.
+ * @retval true  Mode disables DTS.
+ * @retval false Mode requires non-zero DTS code.
+ * @pre None.
+ * @pre None.
+ * @post No state mutated.
+ * @post Return depends solely on inputs.
+ * @note Pure; thread-safe.
+ * @since 0.1.0
+ */
+bool ra_dmac_internal_mode_disables_dts(uint32_t mode_normal_val,
+                                        uint32_t mode_repeat_block_val,
+                                        uint32_t mode)
+{
+  return (mode == mode_normal_val) || (mode == mode_repeat_block_val);
+}
+
+/**
+ * @brief Pure extra-IRQ predicate -- see header for full contract.
+ * @details Promoted helper so the line-246 AND can be driven under MC/DC.
+ * @param[in] irq_each              Boolean: per-block IRQ enable.
+ * @param[in] mode_repeat_block_val Numeric value of @c k_ra_dmac_mode_repeat_block.
+ * @param[in] mode                  Candidate mode value.
+ * @return Boolean predicate.
+ * @retval true  Caller must OR in RPTIE | ESIE.
+ * @retval false Leave RPTIE / ESIE clear.
+ * @pre None.
+ * @pre None.
+ * @post No state mutated.
+ * @post Return depends solely on inputs.
+ * @note Pure; thread-safe.
+ * @since 0.1.0
+ */
+bool ra_dmac_internal_dmint_extra_irq(bool irq_each, uint32_t mode_repeat_block_val, uint32_t mode)
+{
+  return irq_each && (mode != mode_repeat_block_val);
+}
 
 static const char* s_tag = "DMAC";
 
@@ -148,7 +193,9 @@ static inline uint16_t internal_md_code(ra_dmac_mode_t mode)
  */
 static inline uint16_t internal_dts_code(ra_dmac_mode_t mode, ra_dmac_repeat_area_t area)
 {
-  if (mode == k_ra_dmac_mode_normal || mode == k_ra_dmac_mode_repeat_block) {
+  if (ra_dmac_internal_mode_disables_dts((uint32_t)k_ra_dmac_mode_normal,
+                                         (uint32_t)k_ra_dmac_mode_repeat_block,
+                                         (uint32_t)mode)) {
     return k_ra_dmtmd_dts_none;
   }
   switch (area) {
@@ -243,7 +290,9 @@ static inline uint8_t internal_dmint_value(const ra_dmac_config_t* cfg)
   if (cfg->enable_dtie) {
     v |= k_ra_dmint_dtie_mask;
   }
-  if (cfg->irq_each && cfg->mode != k_ra_dmac_mode_repeat_block) {
+  if (ra_dmac_internal_dmint_extra_irq(cfg->irq_each,
+                                       (uint32_t)k_ra_dmac_mode_repeat_block,
+                                       (uint32_t)cfg->mode)) {
     v |= (uint8_t)(k_ra_dmint_rptie_mask | k_ra_dmint_esie_mask);
   }
   return v;

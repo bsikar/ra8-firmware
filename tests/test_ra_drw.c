@@ -16,6 +16,7 @@
 
 #include "ra8d2_drw_regs.h"
 #include "ra_drw.h"
+#include "ra_drw_internal.h"
 #include "ra_err.h"
 #include "ra_mstp.h"
 #include "ra_sim_mmap.h"
@@ -805,6 +806,48 @@ static void test_mcdc_drw(void)
   TEST_END("drw MC/DC: cache_flush + perf_arm 2-cond decisions");
 }
 
+/**
+ * @test test_mcdc_drw_internal_rect_below_min
+ *
+ * @par MC/DC:
+ * Decision at libs/ra_hal/src/ra_drw.c:776 (call site) -> helper at
+ * libs/ra_hal/src/ra_drw.c:61:
+ *   ``width < min || height < min`` (2 conditions, OR).
+ * - V1: w=10, h=10 -> false
+ * - V2: w=0,  h=10 -> true (varies left)
+ * - V3: w=10, h=0  -> true (varies right)
+ * N+1 = 3.
+ */
+static void test_mcdc_drw_internal_rect_below_min(void)
+{
+  TEST_BEGIN("drw MC/DC: rect_below_min OR");
+  TEST_ASSERT(!ra_drw_internal_rect_below_min(1U, 10U, 10U));
+  TEST_ASSERT(ra_drw_internal_rect_below_min(1U, 0U, 10U));
+  TEST_ASSERT(ra_drw_internal_rect_below_min(1U, 10U, 0U));
+  TEST_END("drw MC/DC: rect_below_min OR");
+}
+
+/**
+ * @test test_mcdc_drw_internal_rect_above_max
+ *
+ * @par MC/DC:
+ * Decision at libs/ra_hal/src/ra_drw.c:780 (call site) -> helper at
+ * libs/ra_hal/src/ra_drw.c:83:
+ *   ``width > max_w || height > max_h`` (2 conditions, OR).
+ * - V1: w=10,   h=10   -> false
+ * - V2: w=2000, h=10   -> true (varies left)
+ * - V3: w=10,   h=2000 -> true (varies right)
+ * N+1 = 3.
+ */
+static void test_mcdc_drw_internal_rect_above_max(void)
+{
+  TEST_BEGIN("drw MC/DC: rect_above_max OR");
+  TEST_ASSERT(!ra_drw_internal_rect_above_max(1024U, 1024U, 10U, 10U));
+  TEST_ASSERT(ra_drw_internal_rect_above_max(1024U, 1024U, 2000U, 10U));
+  TEST_ASSERT(ra_drw_internal_rect_above_max(1024U, 1024U, 10U, 2000U));
+  TEST_END("drw MC/DC: rect_above_max OR");
+}
+
 int32_t main(void)
 {
   test_init_happy();
@@ -840,6 +883,8 @@ int32_t main(void)
   test_run_dlist();
   test_perf_arm_read_reset();
   test_mcdc_drw();
+  test_mcdc_drw_internal_rect_below_min();
+  test_mcdc_drw_internal_rect_above_max();
   (void)fprintf(stderr, "[OK  ] test_ra_drw.c\n");
   return 0;
 }
