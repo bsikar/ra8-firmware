@@ -211,20 +211,59 @@ static void internal_append_ch(char* out, size_t out_len, size_t* used, char ch)
 }
 
 /**
+ * @brief Pure helper for the @ref internal_reset_line line-227 AND.
+ *
+ * @details Promoted as a free function so tests can drive both
+ *          (line_buf, line_buf_len) input combinations directly under
+ *          @c -fcoverage-mcdc on the production source. The state-
+ *          reading wrapper @ref internal_reset_line forwards to this
+ *          helper with @c s_mod.cfg.line_buf and @c
+ *          s_mod.cfg.line_buf_len.
+ *
+ * @param[in] line_buf     Caller-owned buffer pointer (NULL allowed).
+ * @param[in] line_buf_len Capacity of @p line_buf in bytes.
+ * @return 1 iff both arguments indicate an installed buffer.
+ * @retval 1 line_buf!=NULL and line_buf_len>0.
+ * @retval 0 Either argument signals "no buffer".
+ *
+ * @pre None.
+ * @pre None.
+ * @post No state mutated.
+ * @post Return value depends solely on the two inputs.
+ * @note Pure function; thread-safe.
+ * @since 0.1.0
+ */
+uint8_t ra_modem_at_internal_reset_line_should_clear(const void* line_buf, uint16_t line_buf_len)
+{
+  if ((line_buf != nullptr) && (line_buf_len > 0U)) {
+    return 1U;
+  }
+  return 0U;
+}
+
+/**
  * @brief Reset the line accumulator for a fresh command cycle.
  *
- * @details See implementation.
+ * @details Forwards the buffer-installed predicate to
+ *          @ref ra_modem_at_internal_reset_line_should_clear so the
+ *          line-249 AND-decision is exercised in a pure free function
+ *          where tests can vary both inputs.
+ *
+ * @return Nothing.
+ * @retval void Always.
+ *
  * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
+ * @pre Caller holds the module lock.
+ * @post Line accumulator is empty.
+ * @post Configured line buffer's first byte is NUL when present.
+ * @note Not thread-safe; caller serialises access.
  * @since 0.1.0
  */
 static void internal_reset_line(void)
 {
   s_mod.line_len = 0U;
-  if ((s_mod.cfg.line_buf != nullptr) && (s_mod.cfg.line_buf_len > 0U)) {
+  if (ra_modem_at_internal_reset_line_should_clear(s_mod.cfg.line_buf, s_mod.cfg.line_buf_len) !=
+      0U) {
     s_mod.cfg.line_buf[0] = (uint8_t)'\0';
   }
 }
