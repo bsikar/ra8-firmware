@@ -16,8 +16,8 @@ the overall line-rate / branch-rate against the two numbers stored
 in `.github/coverage-baseline.txt`. It fails (exit 1) if either
 metric drops below baseline by more than the slack tolerance.
 
-Modeled on scripts/utils/check_mcdc_block.py. Wave 0 starts in
-warn-only mode -- flip WAVE_0_WARN_ONLY = False once the baseline
+Modeled on scripts/utils/check_mcdc_block.py. starts in
+warn-only mode -- flip WARN_ONLY_MODE = False once the baseline
 is stable across a few CI runs.
 
 Copyright (c) 2026 Brighton Sikarskie
@@ -30,8 +30,8 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 
-WAVE_0_WARN_ONLY = True
-"""Wave 0 introduces the gate as warn-only (does not fail CI). Set to
+WARN_ONLY_MODE = True
+"""introduces the gate as warn-only (does not fail CI). Set to
 False once the baseline has been observed-stable across several CI
 runs and any baseline-tightening PRs have landed."""
 
@@ -103,14 +103,14 @@ def main() -> int:
         )
 
     if failures:
-        verb = "WARN" if WAVE_0_WARN_ONLY else "FAIL"
+        verb = "WARN" if WARN_ONLY_MODE else "FAIL"
         print(f"[{verb}] coverage regressed below baseline:")
         for f in failures:
             print(f)
         print("       Either add tests to restore coverage, or, if the")
         print("       regression is intentional, update")
         print("       .github/coverage-baseline.txt.")
-        if WAVE_0_WARN_ONLY:
+        if WARN_ONLY_MODE:
             return 0
         return 1
 

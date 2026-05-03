@@ -112,7 +112,7 @@ gate prints a `HINT` suggesting the new numbers. Updating the
 baseline downward is forbidden; the only acceptable direction is
 upward.
 
-`WAVE_0_WARN_ONLY = True` in `check_coverage.py` keeps the gate
+`WARN_ONLY_MODE = True` in `check_coverage.py` keeps the gate
 in advisory mode for the first few CI runs while we verify the
 baseline is reproducible on GitHub Actions. Once stable, flip to
 `False` to make the gate blocking.

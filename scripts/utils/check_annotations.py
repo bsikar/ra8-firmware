@@ -8,16 +8,16 @@ This script walks the AST of every C / C++ translation unit under
 ``libs/``, ``src/``, ``examples/``, ``tests/``, and ``port/`` and
 applies the project's annotation-enforcement rules. The annotation
 macros themselves are defined in ``libs/ra_core/inc/ra_attributes.h``
-(produced by Wave 43a) and lower to GCC ``__attribute__((annotate
+(produced by ) and lower to GCC ``__attribute__((annotate
 ("ra_<rule>:...")))`` markers that libclang exposes via
 ``AnnotateAttr`` cursors.
 
 The 19 enforceable rules are documented in ``docs/ANNOTATIONS.md``;
 this script is the canonical implementation of their static checks.
 
-For Wave 0 the script defaults to **warn-only** (mirrors the
+For the script defaults to **warn-only** (mirrors the
 ``cite_check`` / ``check_world_tags`` pattern). Flip the
-``WAVE_0_WARN_ONLY`` flag at the top of the file to ``False`` once
+``WARN_ONLY_MODE`` flag at the top of the file to ``False`` once
 the codebase clears the gate.
 
 Usage::
@@ -38,9 +38,9 @@ from dataclasses import dataclass, field
 from typing import Iterable
 
 # --------------------------------------------------------------------------
-# Wave-0 warn-only gate. Flip to False to make violations fatal by default.
+# warn-only gate. Flip to False to make violations fatal by default.
 # --------------------------------------------------------------------------
-WAVE_0_WARN_ONLY = True
+WARN_ONLY_MODE = True
 
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
@@ -76,7 +76,7 @@ except ImportError:
         "check_annotations.py: 'libclang' Python package missing.\n"
         "  install: python3 -m pip install --user --break-system-packages libclang\n"
     )
-    sys.exit(0 if WAVE_0_WARN_ONLY else 2)
+    sys.exit(0 if WARN_ONLY_MODE else 2)
 
 
 # --------------------------------------------------------------------------
@@ -764,8 +764,8 @@ def main(argv: list[str]) -> int:
         f"{len(informational)} informational\n"
     )
 
-    if WAVE_0_WARN_ONLY and not args.check:
-        # Wave-0 mode: never fatal at the gate; promotion happens later.
+    if WARN_ONLY_MODE and not args.check:
+ # mode: never fatal at the gate; promotion happens later.
         return 0
     return 1 if fatal else 0
 
