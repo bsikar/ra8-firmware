@@ -95,7 +95,8 @@ static void test_mcdc_ra_net_test_drain_tx_null_guard(void)
   prep();
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_open(&k_test_cfg));
 
-  uint8_t  buf[64];
+  /* PAL recv_frame requires capacity >= k_ra_net_pal_frame_max (1518). */
+  uint8_t  buf[1518];
   uint16_t cap = (uint16_t)sizeof buf;
 
   /* V1: both non-NULL. Decision F. Returns no_data with empty TX ring. */
