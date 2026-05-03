@@ -97,6 +97,12 @@ static void stage_spsr_ready(void)
   }
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_null_cfg(void)
 {
   TEST_BEGIN("test_init_null_cfg");
@@ -105,6 +111,12 @@ static void test_init_null_cfg(void)
   TEST_END("test_init_null_cfg");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_bad_cfg(void)
 {
   TEST_BEGIN("test_init_bad_cfg");
@@ -124,6 +136,12 @@ static void test_init_bad_cfg(void)
   TEST_END("test_init_bad_cfg");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_calls_before_init(void)
 {
   TEST_BEGIN("test_calls_before_init");
@@ -137,6 +155,12 @@ static void test_calls_before_init(void)
   TEST_END("test_calls_before_init");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_happy_path(void)
 {
   TEST_BEGIN("test_happy_path");

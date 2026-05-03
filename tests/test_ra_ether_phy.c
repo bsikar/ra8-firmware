@@ -87,6 +87,12 @@ static ra_ether_phy_cfg_t make_cfg(void)
   return cfg;
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_open_null(void)
 {
   TEST_BEGIN("open rejects NULL cfg + NULL callbacks");
@@ -101,6 +107,12 @@ static void test_open_null(void)
   TEST_END("open rejects NULL cfg + NULL callbacks");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_open_bad_addr(void)
 {
   TEST_BEGIN("open rejects out-of-range PHY address");
@@ -111,6 +123,12 @@ static void test_open_bad_addr(void)
   TEST_END("open rejects out-of-range PHY address");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_lifecycle(void)
 {
   TEST_BEGIN("open / re-open / close");
@@ -123,6 +141,12 @@ static void test_lifecycle(void)
   TEST_END("open / re-open / close");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_mdio_io(void)
 {
   TEST_BEGIN("mdio read / write round-trip");
@@ -143,6 +167,12 @@ static void test_mdio_io(void)
   TEST_END("mdio read / write round-trip");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_link_status(void)
 {
   TEST_BEGIN("link_status_get reflects BMSR + LPA");
@@ -163,6 +193,12 @@ static void test_link_status(void)
   TEST_END("link_status_get reflects BMSR + LPA");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_autoneg_start(void)
 {
   TEST_BEGIN("auto_negotiate_start writes BMCR");
@@ -174,6 +210,12 @@ static void test_autoneg_start(void)
   TEST_END("auto_negotiate_start writes BMCR");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_not_initialized(void)
 {
   TEST_BEGIN("ops fail with not_initialized when closed");

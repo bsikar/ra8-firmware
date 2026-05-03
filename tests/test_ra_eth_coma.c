@@ -31,6 +31,12 @@ static void prep(void)
   s_coma_cb_last_mask = 0U;
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init(void)
 {
   TEST_BEGIN("coma init");
@@ -39,6 +45,12 @@ static void test_init(void)
   TEST_END("coma init");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_deinit(void)
 {
   TEST_BEGIN("coma deinit");
@@ -48,6 +60,12 @@ static void test_deinit(void)
   TEST_END("coma deinit");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_status_read_and_clear(void)
 {
   TEST_BEGIN("coma status read + clear");
@@ -61,6 +79,12 @@ static void test_status_read_and_clear(void)
   TEST_END("coma status read + clear");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_attach_and_dispatch(void)
 {
   TEST_BEGIN("coma attach + dispatch");
@@ -79,6 +103,12 @@ static void test_attach_and_dispatch(void)
   TEST_END("coma attach + dispatch");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_power_transition(void)
 {
   TEST_BEGIN("coma power transition");

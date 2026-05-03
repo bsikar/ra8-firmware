@@ -22,6 +22,12 @@ typedef enum : uint16_t {
   k_ra_doc_test_wrap   = 0xFFFBU,
 } ra_doc_test_value_t;
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_clears_regs(void)
 {
   TEST_BEGIN("doc init clears regs");
@@ -39,6 +45,12 @@ static void test_init_clears_regs(void)
   TEST_END("doc init clears regs");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_add16_happy(void)
 {
   TEST_BEGIN("doc add16 happy");
@@ -55,6 +67,12 @@ static void test_add16_happy(void)
   TEST_END("doc add16 happy");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_add16_wraps(void)
 {
   TEST_BEGIN("doc add16 wraps on overflow");
@@ -66,6 +84,12 @@ static void test_add16_wraps(void)
   TEST_END("doc add16 wraps on overflow");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_add16_null_out(void)
 {
   TEST_BEGIN("doc add16 null out");
@@ -75,6 +99,12 @@ static void test_add16_null_out(void)
   TEST_END("doc add16 null out");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_sub16_happy(void)
 {
   TEST_BEGIN("doc sub16 happy");
@@ -90,6 +120,12 @@ static void test_sub16_happy(void)
   TEST_END("doc sub16 happy");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_sub16_wraps(void)
 {
   TEST_BEGIN("doc sub16 wraps on borrow");
@@ -103,6 +139,12 @@ static void test_sub16_wraps(void)
   TEST_END("doc sub16 wraps on borrow");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_sub16_null_out(void)
 {
   TEST_BEGIN("doc sub16 null out");

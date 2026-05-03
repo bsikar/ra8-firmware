@@ -44,6 +44,12 @@ static void install_sigill_handler(void)
   (void)sigaction(SIGTRAP, &sa, NULL);
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_fatal_error_path(void)
 {
   TEST_BEGIN("internal_ra_fatal_error executes body then traps");
@@ -60,6 +66,12 @@ static void test_fatal_error_path(void)
   TEST_END("internal_ra_fatal_error executes body then traps");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_fatal_error_zero_code(void)
 {
   TEST_BEGIN("internal_ra_fatal_error with err=0");
@@ -76,6 +88,12 @@ static void test_fatal_error_zero_code(void)
   TEST_END("internal_ra_fatal_error with err=0");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_fatal_error_large_code(void)
 {
   TEST_BEGIN("internal_ra_fatal_error with large err");

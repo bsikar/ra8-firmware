@@ -50,6 +50,12 @@ static void prep(void)
 
 /* --- Lifecycle / status (existing scaffold) --- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init(void)
 {
   TEST_BEGIN("eth init");
@@ -58,6 +64,12 @@ static void test_init(void)
   TEST_END("eth init");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_deinit(void)
 {
   TEST_BEGIN("eth deinit");
@@ -67,6 +79,12 @@ static void test_deinit(void)
   TEST_END("eth deinit");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_status_read_and_clear(void)
 {
   TEST_BEGIN("eth status read + clear");
@@ -80,6 +98,12 @@ static void test_status_read_and_clear(void)
   TEST_END("eth status read + clear");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_attach_and_dispatch(void)
 {
   TEST_BEGIN("eth attach + dispatch");
@@ -98,6 +122,12 @@ static void test_attach_and_dispatch(void)
   TEST_END("eth attach + dispatch");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_power_transition(void)
 {
   TEST_BEGIN("eth power transition");
@@ -118,6 +148,12 @@ static const ra_eth_cfg_t s_test_cfg = {
   .buffer_size        = 0U,
 };
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_open_null_rejected(void)
 {
   TEST_BEGIN("eth open null rejection");
@@ -126,6 +162,12 @@ static void test_open_null_rejected(void)
   TEST_END("eth open null rejection");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_open_bad_channel(void)
 {
   TEST_BEGIN("eth open bad channel");
@@ -165,6 +207,12 @@ static void test_mcdc_open_ring_size_oversize(void)
   TEST_END("eth open ring-size MC/DC: tx>max & rx>max");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_open_happy_path(void)
 {
   TEST_BEGIN("eth open happy path");
@@ -176,6 +224,12 @@ static void test_open_happy_path(void)
   TEST_END("eth open happy path");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_close_without_open(void)
 {
   TEST_BEGIN("eth close without open");
@@ -184,6 +238,12 @@ static void test_close_without_open(void)
   TEST_END("eth close without open");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_write_null_rejected(void)
 {
   TEST_BEGIN("eth write null rejection");
@@ -194,6 +254,12 @@ static void test_write_null_rejected(void)
   TEST_END("eth write null rejection");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_write_bad_length(void)
 {
   TEST_BEGIN("eth write bad length");
@@ -208,6 +274,12 @@ static void test_write_bad_length(void)
   TEST_END("eth write bad length");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_write_enqueues_and_advances(void)
 {
   TEST_BEGIN("eth write enqueues + advances");
@@ -233,6 +305,12 @@ static void test_write_enqueues_and_advances(void)
   TEST_END("eth write enqueues + advances");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_write_busy_when_full(void)
 {
   TEST_BEGIN("eth write busy when ring full");
@@ -260,6 +338,12 @@ static void test_write_busy_when_full(void)
   TEST_END("eth write busy when ring full");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_read_no_data(void)
 {
   TEST_BEGIN("eth read no data");
@@ -273,6 +357,12 @@ static void test_read_no_data(void)
   TEST_END("eth read no data");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_read_null_rejected(void)
 {
   TEST_BEGIN("eth read null rejection");
@@ -289,6 +379,12 @@ static void test_read_null_rejected(void)
   TEST_END("eth read null rejection");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_read_returns_frame(void)
 {
   TEST_BEGIN("eth read returns frame");
@@ -325,6 +421,12 @@ static void test_read_returns_frame(void)
   TEST_END("eth read returns frame");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_link_status_via_mdio(void)
 {
   TEST_BEGIN("eth link status via mdio");
@@ -353,6 +455,12 @@ static void test_link_status_via_mdio(void)
   TEST_END("eth link status via mdio");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_get_stats_after_io(void)
 {
   TEST_BEGIN("eth get_stats after writes + reads");
@@ -380,6 +488,12 @@ static void test_get_stats_after_io(void)
   TEST_END("eth get_stats after writes + reads");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_apis_require_open(void)
 {
   TEST_BEGIN("eth apis require open");

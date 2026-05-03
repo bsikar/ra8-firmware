@@ -52,6 +52,12 @@ static ra_flash_cfg_t make_cfg(void)
 
 /* --- Blank-check: partially-erased page must report not blank --- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_blank_check_partial_page(void)
 {
   TEST_BEGIN("flash blank_check on partially-erased page returns false");
@@ -83,6 +89,12 @@ static void test_blank_check_partial_page(void)
 
 /* --- Blank-check spanning two adjacent pages --- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_blank_check_page_boundary(void)
 {
   TEST_BEGIN("flash blank_check spanning page boundary");
@@ -108,6 +120,12 @@ static void test_blank_check_page_boundary(void)
 
 /* --- write-block: span crossing a 32-byte page must be rejected --- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_write_block_crosses_page(void)
 {
   TEST_BEGIN("flash write_block rejects spans crossing the 32-byte page");
@@ -134,6 +152,12 @@ static void test_write_block_crosses_page(void)
 
 /* --- config-set write rollback under simulated mid-sequence error --- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_config_set_write_error_rollback(void)
 {
   TEST_BEGIN("flash config_set_write returns hw_error when MSTATR sets OTERR");
@@ -154,6 +178,12 @@ static void test_config_set_write_error_rollback(void)
 
 /* --- extra-MRAM erase: bad address rejected --- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_extra_mram_erase_bad_addr(void)
 {
   TEST_BEGIN("flash extra_mram_erase rejects address outside the window");
@@ -167,6 +197,12 @@ static void test_extra_mram_erase_bad_addr(void)
 
 /* --- write-during-read collision: MSTATR busy -> driver fails fast --- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_write_during_read_collision(void)
 {
   TEST_BEGIN("flash config_set_write returns hw_timeout if MRDY never asserts");
