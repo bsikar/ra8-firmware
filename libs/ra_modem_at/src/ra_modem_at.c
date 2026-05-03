@@ -28,6 +28,7 @@
 #include "ra_check.h"
 #include "ra_err.h"
 #include "ra_log.h"
+#include "ra_modem_at_internal.h"
 
 /**
  * @def RA_MODEM_AT_TAG
@@ -301,17 +302,8 @@ static uint8_t internal_dispatch_urc(const char* line)
   return 0U;
 }
 
-/**
- * @brief Result of processing a single completed line.
- */
-typedef enum : uint8_t {
-  k_ra_modem_line_kind_empty     = 0U, /**< Empty line (CRLF-only). */
-  k_ra_modem_line_kind_echo      = 1U, /**< Echo of the command we sent. */
-  k_ra_modem_line_kind_urc       = 2U, /**< Dispatched to URC handler. */
-  k_ra_modem_line_kind_final_ok  = 3U, /**< Final ``OK``. */
-  k_ra_modem_line_kind_final_err = 4U, /**< Final ``ERROR``/``+CME ERROR``. */
-  k_ra_modem_line_kind_payload   = 5U, /**< Response payload (incl. expected). */
-} ra_modem_line_kind_t;
+/* ra_modem_line_kind_t is defined in ra_modem_at_internal.h so tests
+ * can read the return value of ra_modem_at_internal_classify(). */
 
 /**
  * @brief Classify a complete (NUL-terminated) line for the FSM.
@@ -335,8 +327,8 @@ typedef enum : uint8_t {
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static ra_modem_line_kind_t
-internal_classify(const char* line, const char* cmd_echo, const char* expected_response)
+ra_modem_line_kind_t
+ra_modem_at_internal_classify(const char* line, const char* cmd_echo, const char* expected_response)
 {
   if (line[0] == '\0') {
     return k_ra_modem_line_kind_empty;
@@ -586,7 +578,8 @@ static ra_modem_line_action_t internal_pump_one(const ra_modem_wait_ctx_t* wc)
   if (line == nullptr) {
     return k_ra_modem_line_action_continue;
   }
-  const ra_modem_line_kind_t kind = internal_classify(line, wc->cmd, wc->expected_response);
+  const ra_modem_line_kind_t kind =
+    ra_modem_at_internal_classify(line, wc->cmd, wc->expected_response);
   return internal_handle_line(line,
                               kind,
                               wc->expected_response,
@@ -947,7 +940,7 @@ ra_err_t ra_modem_at_poll(void)
     const char* line = nullptr;
     internal_accumulate(byte, &line);
     if (line != nullptr) {
-      const ra_modem_line_kind_t kind = internal_classify(line, nullptr, nullptr);
+      const ra_modem_line_kind_t kind = ra_modem_at_internal_classify(line, nullptr, nullptr);
       (void)kind;
     }
   }
