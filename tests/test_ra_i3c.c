@@ -17,6 +17,7 @@
 #include "ra8d2_i3c_regs.h"
 #include "ra_err.h"
 #include "ra_i3c.h"
+#include "ra_i3c_internal.h"
 #include "ra_mstp.h"
 #include "ra_sim_mmap.h"
 #include "unity_minimal.h"
@@ -531,6 +532,62 @@ static void test_mcdc_i3c_write_read_arg_pairs(void)
   TEST_END("i3c MC/DC: write+read len/ptr pairs");
 }
 
+/**
+ * @test test_mcdc_i3c_internal_recv_ccc_invalid
+ *
+ * @par MC/DC:
+ * Decision at libs/ra_hal/src/ra_i3c.c:688 (call site) -> helper at
+ * libs/ra_hal/src/ra_i3c.c:56:
+ *   ``target > addr_mask || max_len == 0`` (2 conditions, OR).
+ * - V1: target<=mask, max_len>0 -> false
+ * - V2: target>mask,  max_len>0 -> true (varies left)
+ * - V3: target<=mask, max_len=0 -> true (varies right)
+ * N+1 = 3.
+ */
+static void test_mcdc_i3c_internal_recv_ccc_invalid(void)
+{
+  TEST_BEGIN("i3c MC/DC: recv_ccc_invalid OR");
+  TEST_ASSERT(!ra_i3c_internal_recv_ccc_invalid(0x7FU, 0x10U, 4U));
+  TEST_ASSERT(ra_i3c_internal_recv_ccc_invalid(0x7FU, 0xFFU, 4U));
+  TEST_ASSERT(ra_i3c_internal_recv_ccc_invalid(0x7FU, 0x10U, 0U));
+  TEST_END("i3c MC/DC: recv_ccc_invalid OR");
+}
+
+/**
+ * @test test_mcdc_i3c_internal_hdr_mode_invalid
+ *
+ * @par MC/DC:
+ * Decision at libs/ra_hal/src/ra_i3c.c:815 (call site) -> helper at
+ * libs/ra_hal/src/ra_i3c.c:81:
+ *   ``mode != SDR && mode != DDR && mode != TS`` (3 conditions, AND).
+ * - V1: mode=SDR -> false (SDR varies vs V4)
+ * - V2: mode=DDR -> false (DDR varies vs V4)
+ * - V3: mode=TS  -> false (TS varies vs V4)
+ * - V4: mode=99  -> true  (control: all true)
+ * N+1 = 4.
+ */
+static void test_mcdc_i3c_internal_hdr_mode_invalid(void)
+{
+  TEST_BEGIN("i3c MC/DC: hdr_mode_invalid AND");
+  TEST_ASSERT(!ra_i3c_internal_hdr_mode_invalid((uint32_t)k_ra_i3c_hdr_mode_sdr,
+                                                (uint32_t)k_ra_i3c_hdr_mode_ddr,
+                                                (uint32_t)k_ra_i3c_hdr_mode_ts,
+                                                (uint32_t)k_ra_i3c_hdr_mode_sdr));
+  TEST_ASSERT(!ra_i3c_internal_hdr_mode_invalid((uint32_t)k_ra_i3c_hdr_mode_sdr,
+                                                (uint32_t)k_ra_i3c_hdr_mode_ddr,
+                                                (uint32_t)k_ra_i3c_hdr_mode_ts,
+                                                (uint32_t)k_ra_i3c_hdr_mode_ddr));
+  TEST_ASSERT(!ra_i3c_internal_hdr_mode_invalid((uint32_t)k_ra_i3c_hdr_mode_sdr,
+                                                (uint32_t)k_ra_i3c_hdr_mode_ddr,
+                                                (uint32_t)k_ra_i3c_hdr_mode_ts,
+                                                (uint32_t)k_ra_i3c_hdr_mode_ts));
+  TEST_ASSERT(ra_i3c_internal_hdr_mode_invalid((uint32_t)k_ra_i3c_hdr_mode_sdr,
+                                               (uint32_t)k_ra_i3c_hdr_mode_ddr,
+                                               (uint32_t)k_ra_i3c_hdr_mode_ts,
+                                               99U));
+  TEST_END("i3c MC/DC: hdr_mode_invalid AND");
+}
+
 int32_t main(void)
 {
   test_init();
@@ -558,6 +615,8 @@ int32_t main(void)
   test_slave_open_sets_slve_and_nsdvad();
   test_mcdc_i3c();
   test_mcdc_i3c_write_read_arg_pairs();
+  test_mcdc_i3c_internal_recv_ccc_invalid();
+  test_mcdc_i3c_internal_hdr_mode_invalid();
   (void)fprintf(stderr, "[OK  ] test_ra_i3c.c\n");
   return 0;
 }

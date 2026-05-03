@@ -24,6 +24,28 @@
 #include "ra_check.h"
 #include "ra_err.h"
 #include "ra_log.h"
+#include "ra_rmac_phy_internal.h"
+
+/**
+ * @brief Pure speed-detected predicate -- see header for full contract.
+ * @details Promoted helper so the line-352/356 AND can be driven under MC/DC.
+ * @param[in] err       Result of the prior MIIM read.
+ * @param[in] reg_value Register value just read.
+ * @param[in] mask      Speed-bit mask to test.
+ * @return Boolean predicate.
+ * @retval true  Speed bit set and read OK.
+ * @retval false Otherwise.
+ * @pre None.
+ * @pre None.
+ * @post No state mutated.
+ * @post Return depends solely on inputs.
+ * @note Pure; thread-safe.
+ * @since 0.1.0
+ */
+bool ra_rmac_phy_internal_speed_ok(ra_err_t err, uint16_t reg_value, uint16_t mask)
+{
+  return (err == k_ra_ok) && ((reg_value & mask) != 0U);
+}
 
 static const char* s_tag = "RMPHY";
 
@@ -349,11 +371,11 @@ ra_err_t ra_rmac_phy_link_status_get(ra_rmac_phy_link_t* out)
     if (s_state.gbit_advertise != 0U) {
       err =
         s_state.io.read(s_state.io.ctx, s_state.phy_address, k_ra_rmac_phy_reg_1000t_status, &msr);
-      if ((err == k_ra_ok) && ((msr & k_ra_rmac_phy_msr_1000full) != 0U)) {
+      if (ra_rmac_phy_internal_speed_ok(err, msr, (uint16_t)k_ra_rmac_phy_msr_1000full)) {
         out->speed = k_ra_rmac_phy_speed_1000f;
         return k_ra_ok;
       }
-      if ((err == k_ra_ok) && ((msr & k_ra_rmac_phy_msr_1000half) != 0U)) {
+      if (ra_rmac_phy_internal_speed_ok(err, msr, (uint16_t)k_ra_rmac_phy_msr_1000half)) {
         out->speed = k_ra_rmac_phy_speed_1000h;
         return k_ra_ok;
       }

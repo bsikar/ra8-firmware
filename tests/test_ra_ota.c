@@ -700,6 +700,54 @@ static void test_mcdc_priv_json_u32_skip_chars(void)
   TEST_END("ra_ota MC/DC: ra_ota_internal_json_u32 skip-char OR");
 }
 
+/**
+ * @test test_mcdc_ota_internal_char_in_range
+ *
+ * @par MC/DC:
+ * Decision at libs/ra_ota/src/ra_ota.c:455 (call site) -> helper at
+ * libs/ra_ota/src/ra_ota.c:59:
+ *   ``c >= lo && c <= hi`` (2 conditions, AND).
+ * - V1: c<lo  -> false (varies left from V2)
+ * - V2: lo<=c<=hi -> true
+ * - V3: c>hi -> false (varies right from V2)
+ * N+1 = 3.
+ */
+static void test_mcdc_ota_internal_char_in_range(void)
+{
+  TEST_BEGIN("ra_ota MC/DC: char_in_range AND");
+  TEST_ASSERT(!ra_ota_internal_char_in_range('@', 'A', 'F'));
+  TEST_ASSERT(ra_ota_internal_char_in_range('C', 'A', 'F'));
+  TEST_ASSERT(!ra_ota_internal_char_in_range('Z', 'A', 'F'));
+  TEST_END("ra_ota MC/DC: char_in_range AND");
+}
+
+/**
+ * @test test_mcdc_ota_internal_download_state_invalid
+ *
+ * @par MC/DC:
+ * Decision at libs/ra_ota/src/ra_ota.c:990 (call site) -> helper at
+ * libs/ra_ota/src/ra_ota.c:82:
+ *   ``state != IDLE && state != DOWNLOADING`` (2 conditions, AND).
+ * - V1: state=IDLE        -> false (left varies vs V3)
+ * - V2: state=DOWNLOADING -> false (right varies vs V3)
+ * - V3: state=ERROR       -> true  (both true)
+ * N+1 = 3.
+ */
+static void test_mcdc_ota_internal_download_state_invalid(void)
+{
+  TEST_BEGIN("ra_ota MC/DC: download_state_invalid AND");
+  TEST_ASSERT(!ra_ota_internal_download_state_invalid((uint32_t)k_ra_ota_state_idle,
+                                                      (uint32_t)k_ra_ota_state_downloading,
+                                                      (uint32_t)k_ra_ota_state_idle));
+  TEST_ASSERT(!ra_ota_internal_download_state_invalid((uint32_t)k_ra_ota_state_idle,
+                                                      (uint32_t)k_ra_ota_state_downloading,
+                                                      (uint32_t)k_ra_ota_state_downloading));
+  TEST_ASSERT(ra_ota_internal_download_state_invalid((uint32_t)k_ra_ota_state_idle,
+                                                     (uint32_t)k_ra_ota_state_downloading,
+                                                     (uint32_t)k_ra_ota_state_error));
+  TEST_END("ra_ota MC/DC: download_state_invalid AND");
+}
+
 int main(void)
 {
   test_init_validation();
@@ -713,6 +761,8 @@ int main(void)
   test_mcdc_hex_decode_invalid_nibble();
   test_mcdc_priv_json_u32_skip_chars();
   test_mcdc_hex_nibble_pair_completion();
+  test_mcdc_ota_internal_char_in_range();
+  test_mcdc_ota_internal_download_state_invalid();
   (void)fprintf(stderr, "[OK  ] test_ra_ota.c\n");
   return 0;
 }

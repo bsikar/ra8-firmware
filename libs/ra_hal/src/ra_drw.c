@@ -35,9 +35,53 @@
 
 #include "ra8d2_drw_regs.h"
 #include "ra_check.h"
+#include "ra_drw_internal.h"
 #include "ra_err.h"
 #include "ra_log.h"
 #include "ra_mstp.h"
+
+/**
+ * @brief Pure rect-below-min predicate -- see header for full contract.
+ * @details Promoted helper so the line-776 OR can be driven under MC/DC.
+ * @param[in] min_dim Minimum permitted dimension (1 px).
+ * @param[in] width   Width in pixels.
+ * @param[in] height  Height in pixels.
+ * @return Boolean reject predicate.
+ * @retval true  Dimension below min.
+ * @retval false Both dimensions in range.
+ * @pre None.
+ * @pre None.
+ * @post No state mutated.
+ * @post Return depends solely on inputs.
+ * @note Pure; thread-safe.
+ * @since 0.1.0
+ */
+bool ra_drw_internal_rect_below_min(uint16_t min_dim, uint16_t width, uint16_t height)
+{
+  return (width < min_dim) || (height < min_dim);
+}
+
+/**
+ * @brief Pure rect-above-max predicate -- see header for full contract.
+ * @details Promoted helper so the line-780 OR can be driven under MC/DC.
+ * @param[in] max_w  Maximum permitted width.
+ * @param[in] max_h  Maximum permitted height.
+ * @param[in] width  Width in pixels.
+ * @param[in] height Height in pixels.
+ * @return Boolean reject predicate.
+ * @retval true  Dimension above max.
+ * @retval false Both within bounds.
+ * @pre None.
+ * @pre None.
+ * @post No state mutated.
+ * @post Return depends solely on inputs.
+ * @note Pure; thread-safe.
+ * @since 0.1.0
+ */
+bool ra_drw_internal_rect_above_max(uint16_t max_w, uint16_t max_h, uint16_t width, uint16_t height)
+{
+  return (width > max_w) || (height > max_h);
+}
 
 /* =============================================================================
  * Driver-private state
@@ -773,12 +817,15 @@ ra_drw_load_clut(uint8_t start_index, const uint32_t* entries, uint32_t count)
 [[nodiscard]] ra_err_t ra_drw_blit_textured_rect(const ra_drw_rect_t* rect)
 {
   RA_CHECK_NULL_PTR(rect, s_tag, "rect must not be nullptr");
-  if ((uint16_t)rect->width_px < k_ra_drw_min_dim_px ||
-      (uint16_t)rect->height_px < k_ra_drw_min_dim_px) {
+  if (ra_drw_internal_rect_below_min((uint16_t)k_ra_drw_min_dim_px,
+                                     (uint16_t)rect->width_px,
+                                     (uint16_t)rect->height_px)) {
     return k_ra_err_invalid_arg;
   }
-  if ((uint16_t)rect->width_px > k_ra_drw_max_width_px ||
-      (uint16_t)rect->height_px > k_ra_drw_max_height_px) {
+  if (ra_drw_internal_rect_above_max((uint16_t)k_ra_drw_max_width_px,
+                                     (uint16_t)k_ra_drw_max_height_px,
+                                     (uint16_t)rect->width_px,
+                                     (uint16_t)rect->height_px)) {
     return k_ra_err_invalid_arg;
   }
 

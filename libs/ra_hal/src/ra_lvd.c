@@ -28,6 +28,53 @@
 #include "ra8d2_lvd_regs.h"
 #include "ra_check.h"
 #include "ra_err.h"
+#include "ra_lvd_internal.h"
+
+/**
+ * @brief Pure RN+RHSEL reject predicate -- see header for full contract.
+ * @details Promoted helper so the line-494 AND can be driven under MC/DC.
+ * @param[in] hvd_val          Numeric value of @c k_ra_lvd_hysteresis_hvd.
+ * @param[in] after_assert_val Numeric value of @c k_ra_lvd_negate_after_assert.
+ * @param[in] hysteresis       Candidate hysteresis value.
+ * @param[in] negate           Candidate negate value.
+ * @return Boolean reject predicate.
+ * @retval true  Caller returns @c k_ra_err_invalid_arg.
+ * @retval false Combination is allowed.
+ * @pre None.
+ * @pre None.
+ * @post No state mutated.
+ * @post Return depends solely on inputs.
+ * @note Pure; thread-safe.
+ * @since 0.1.0
+ */
+bool ra_lvd_internal_reject_hvd_after(uint32_t hvd_val,
+                                      uint32_t after_assert_val,
+                                      uint32_t hysteresis,
+                                      uint32_t negate)
+{
+  return (hysteresis == hvd_val) && (negate == after_assert_val);
+}
+
+/**
+ * @brief Pure RI-bit predicate -- see header for full contract.
+ * @details Promoted helper so the line-533 OR can be driven under MC/DC.
+ * @param[in] reset_val         Numeric value of @c k_ra_lvd_response_reset.
+ * @param[in] reset_on_rise_val Numeric value of @c k_ra_lvd_response_reset_on_rise.
+ * @param[in] response          Candidate response value.
+ * @return Boolean predicate.
+ * @retval true  Caller ORs RI bit into CR0.
+ * @retval false RI bit stays clear.
+ * @pre None.
+ * @pre None.
+ * @post No state mutated.
+ * @post Return depends solely on inputs.
+ * @note Pure; thread-safe.
+ * @since 0.1.0
+ */
+bool ra_lvd_internal_set_ri_bit(uint32_t reset_val, uint32_t reset_on_rise_val, uint32_t response)
+{
+  return (response == reset_val) || (response == reset_on_rise_val);
+}
 #include "ra_log.h"
 
 /**
@@ -491,8 +538,10 @@ static ra_err_t internal_validate_cfg(const ra_lvd_channel_map_t* map, const ra_
   }
   /* HUM Ch 8.2.4 "PVDmCR0 : Voltage Monitor m Circuit Control Register 0" p 306*/
   /* RN=1 prohibited when RHSEL=1. */
-  if ((cfg->hysteresis == k_ra_lvd_hysteresis_hvd) &&
-      (cfg->negate == k_ra_lvd_negate_after_assert)) {
+  if (ra_lvd_internal_reject_hvd_after((uint32_t)k_ra_lvd_hysteresis_hvd,
+                                       (uint32_t)k_ra_lvd_negate_after_assert,
+                                       (uint32_t)cfg->hysteresis,
+                                       (uint32_t)cfg->negate)) {
     return k_ra_err_invalid_arg;
   }
   return k_ra_ok;
@@ -530,8 +579,9 @@ static uint8_t internal_compose_cr0(const ra_lvd_channel_map_t* map, const ra_lv
     if (cfg->negate == k_ra_lvd_negate_after_assert) {
       cr0 |= k_ra_lvd_cr0_mask_rn;
     }
-    if ((cfg->response == k_ra_lvd_response_reset) ||
-        (cfg->response == k_ra_lvd_response_reset_on_rise)) {
+    if (ra_lvd_internal_set_ri_bit((uint32_t)k_ra_lvd_response_reset,
+                                   (uint32_t)k_ra_lvd_response_reset_on_rise,
+                                   (uint32_t)cfg->response)) {
       cr0 |= k_ra_lvd_cr0_mask_ri;
     }
   }

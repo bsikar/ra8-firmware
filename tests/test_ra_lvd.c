@@ -15,6 +15,7 @@
 #include "ra8d2_lvd_regs.h"
 #include "ra_err.h"
 #include "ra_lvd.h"
+#include "ra_lvd_internal.h"
 #include "ra_sim_mmap.h"
 #include "unity_minimal.h"
 
@@ -933,6 +934,63 @@ static void test_mcdc_lvd(void)
   TEST_END("lvd MC/DC: set_hysteresis_mode RI gate (2-cond)");
 }
 
+/**
+ * @test test_mcdc_lvd_internal_reject_hvd_after
+ *
+ * @par MC/DC:
+ * Decision at libs/ra_hal/src/ra_lvd.c:494 (call site) -> helper at
+ * libs/ra_hal/src/ra_lvd.c:55:
+ *   ``hyst == hvd && negate == after_assert`` (2 conditions, AND).
+ * - V1: hyst=lvd, negate=after  -> false
+ * - V2: hyst=hvd, negate=after  -> true  (varies hyst)
+ * - V3: hyst=hvd, negate=normal -> false (varies negate)
+ * N+1 = 3.
+ */
+static void test_mcdc_lvd_internal_reject_hvd_after(void)
+{
+  TEST_BEGIN("lvd MC/DC: reject_hvd_after AND");
+  TEST_ASSERT(!ra_lvd_internal_reject_hvd_after((uint32_t)k_ra_lvd_hysteresis_hvd,
+                                                (uint32_t)k_ra_lvd_negate_after_assert,
+                                                (uint32_t)k_ra_lvd_hysteresis_lvd,
+                                                (uint32_t)k_ra_lvd_negate_after_assert));
+  TEST_ASSERT(ra_lvd_internal_reject_hvd_after((uint32_t)k_ra_lvd_hysteresis_hvd,
+                                               (uint32_t)k_ra_lvd_negate_after_assert,
+                                               (uint32_t)k_ra_lvd_hysteresis_hvd,
+                                               (uint32_t)k_ra_lvd_negate_after_assert));
+  TEST_ASSERT(!ra_lvd_internal_reject_hvd_after((uint32_t)k_ra_lvd_hysteresis_hvd,
+                                                (uint32_t)k_ra_lvd_negate_after_assert,
+                                                (uint32_t)k_ra_lvd_hysteresis_hvd,
+                                                (uint32_t)k_ra_lvd_negate_after_voltage));
+  TEST_END("lvd MC/DC: reject_hvd_after AND");
+}
+
+/**
+ * @test test_mcdc_lvd_internal_set_ri_bit
+ *
+ * @par MC/DC:
+ * Decision at libs/ra_hal/src/ra_lvd.c:533 (call site) -> helper at
+ * libs/ra_hal/src/ra_lvd.c:76:
+ *   ``response == reset || response == reset_on_rise`` (2 conditions, OR).
+ * - V1: resp=interrupt     -> false
+ * - V2: resp=reset         -> true (varies left)
+ * - V3: resp=reset_on_rise -> true (varies right)
+ * N+1 = 3.
+ */
+static void test_mcdc_lvd_internal_set_ri_bit(void)
+{
+  TEST_BEGIN("lvd MC/DC: set_ri_bit OR");
+  TEST_ASSERT(!ra_lvd_internal_set_ri_bit((uint32_t)k_ra_lvd_response_reset,
+                                          (uint32_t)k_ra_lvd_response_reset_on_rise,
+                                          (uint32_t)k_ra_lvd_response_interrupt));
+  TEST_ASSERT(ra_lvd_internal_set_ri_bit((uint32_t)k_ra_lvd_response_reset,
+                                         (uint32_t)k_ra_lvd_response_reset_on_rise,
+                                         (uint32_t)k_ra_lvd_response_reset));
+  TEST_ASSERT(ra_lvd_internal_set_ri_bit((uint32_t)k_ra_lvd_response_reset,
+                                         (uint32_t)k_ra_lvd_response_reset_on_rise,
+                                         (uint32_t)k_ra_lvd_response_reset_on_rise));
+  TEST_END("lvd MC/DC: set_ri_bit OR");
+}
+
 int32_t main(void)
 {
   test_init_happy_ch1();
@@ -971,6 +1029,8 @@ int32_t main(void)
   test_attach_per_channel_handler();
   test_every_threshold_value();
   test_mcdc_lvd();
+  test_mcdc_lvd_internal_reject_hvd_after();
+  test_mcdc_lvd_internal_set_ri_bit();
   (void)fprintf(stderr, "[OK  ] test_ra_lvd.c\n");
   return 0;
 }

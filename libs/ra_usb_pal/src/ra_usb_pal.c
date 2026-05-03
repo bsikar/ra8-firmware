@@ -25,6 +25,50 @@
 #include "ra_err.h"
 #include "ra_log.h"
 #include "ra_usb.h"
+#include "ra_usb_pal_internal.h"
+
+/**
+ * @brief Pure dispatch-event predicate -- see header for full contract.
+ * @details Promoted helper so the line-218 AND can be driven under MC/DC.
+ * @param[in] event_fn   Application callback.
+ * @param[in] mask       Translated event-mask bits.
+ * @param[in] none_value Numeric value of @c k_ra_usb_pal_event_none.
+ * @return Boolean predicate.
+ * @retval true  Caller invokes event_fn.
+ * @retval false Skip the callback.
+ * @pre None.
+ * @pre None.
+ * @post No state mutated.
+ * @post Return depends solely on inputs.
+ * @note Pure; thread-safe.
+ * @since 0.1.0
+ */
+bool ra_usb_pal_internal_should_dispatch_event(const void* event_fn,
+                                               uint16_t    mask,
+                                               uint16_t    none_value)
+{
+  return (event_fn != nullptr) && (mask != none_value);
+}
+
+/**
+ * @brief Pure ep-out-of-range predicate -- see header for full contract.
+ * @details Promoted helper so the line-559 OR can be driven under MC/DC.
+ * @param[in] ep_addr Endpoint number.
+ * @param[in] ep_max  Maximum permitted endpoint number.
+ * @return Boolean reject predicate.
+ * @retval true  Caller returns invalid-arg.
+ * @retval false Endpoint is in range.
+ * @pre None.
+ * @pre None.
+ * @post No state mutated.
+ * @post Return depends solely on inputs.
+ * @note Pure; thread-safe.
+ * @since 0.1.0
+ */
+bool ra_usb_pal_internal_ep_out_of_range(uint8_t ep_addr, uint8_t ep_max)
+{
+  return (ep_addr == 0U) || (ep_addr > ep_max);
+}
 
 static const char* s_tag = "USBPAL";
 
@@ -215,7 +259,9 @@ static void internal_usb_event(void* ctx, ra_usb_speed_t speed, uint16_t status_
     return;
   }
   const uint16_t pal_mask = internal_translate(status_mask);
-  if ((s_state.event_fn != nullptr) && (pal_mask != k_ra_usb_pal_event_none)) {
+  if (ra_usb_pal_internal_should_dispatch_event((const void*)s_state.event_fn,
+                                                pal_mask,
+                                                (uint16_t)k_ra_usb_pal_event_none)) {
     s_state.event_fn(s_state.event_ctx, speed, pal_mask);
   }
 }
@@ -430,7 +476,7 @@ ra_err_t ra_usb_pal_ep_open(uint8_t              ep_addr,
   if (!s_state.initialised) {
     return k_ra_err_invalid_state;
   }
-  if ((ep_addr == 0U) || (ep_addr > (uint8_t)k_ra_usb_pal_ep_max)) {
+  if (ra_usb_pal_internal_ep_out_of_range(ep_addr, (uint8_t)k_ra_usb_pal_ep_max)) {
     return k_ra_err_invalid_arg;
   }
   if ((dir != k_ra_usb_pal_ep_dir_out) && (dir != k_ra_usb_pal_ep_dir_in)) {
@@ -489,7 +535,7 @@ ra_err_t ra_usb_pal_ep_send(uint8_t ep_addr, const uint8_t* data, uint16_t len)
   if (!s_state.initialised) {
     return k_ra_err_invalid_state;
   }
-  if ((ep_addr == 0U) || (ep_addr > (uint8_t)k_ra_usb_pal_ep_max)) {
+  if (ra_usb_pal_internal_ep_out_of_range(ep_addr, (uint8_t)k_ra_usb_pal_ep_max)) {
     return k_ra_err_invalid_arg;
   }
   if ((len > k_ra_usb_pal_xfer_max) || ((data == nullptr) && (len != 0U))) {
@@ -556,7 +602,7 @@ ra_err_t ra_usb_pal_ep_recv(uint8_t ep_addr, uint8_t* out_buf, uint16_t* inout_l
   if (!s_state.initialised) {
     return k_ra_err_invalid_state;
   }
-  if ((ep_addr == 0U) || (ep_addr > (uint8_t)k_ra_usb_pal_ep_max)) {
+  if (ra_usb_pal_internal_ep_out_of_range(ep_addr, (uint8_t)k_ra_usb_pal_ep_max)) {
     return k_ra_err_invalid_arg;
   }
   if (*inout_len == 0U) {

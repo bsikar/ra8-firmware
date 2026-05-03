@@ -58,18 +58,59 @@ typedef enum : uint16_t {
  */
 
 /**
+ * @brief Pure glyph-dim-invalid predicate -- see header for full contract.
+ * @details Promoted helper so the line-225 OR can be driven under MC/DC.
+ * @param[in] w Glyph bbox width.
+ * @param[in] h Glyph bbox height.
+ * @return Boolean reject predicate.
+ * @retval true  Caller returns validation-failed.
+ * @retval false Both dimensions OK.
+ * @pre None.
+ * @pre None.
+ * @post No state mutated.
+ * @post Return depends solely on inputs.
+ * @note Pure; thread-safe.
+ * @since 0.1.0
+ */
+bool ra_epub_internal_glyph_dim_invalid(int w, int h)
+{
+  return (w < 0) || (h < 0);
+}
+
+/**
+ * @brief Pure book-not-ready predicate -- see header for full contract.
+ * @details Promoted helper so the line-300/369 OR can be driven under MC/DC.
+ * @param[in] in_use             Book "in_use" byte.
+ * @param[in] zip_archive_active Book "zip_archive_active" byte.
+ * @return Boolean reject predicate.
+ * @retval true  Caller returns not-initialized.
+ * @retval false Book is ready.
+ * @pre None.
+ * @pre None.
+ * @post No state mutated.
+ * @post Return depends solely on inputs.
+ * @note Pure; thread-safe.
+ * @since 0.1.0
+ */
+bool ra_epub_internal_book_not_ready(uint8_t in_use, uint8_t zip_archive_active)
+{
+  return (in_use == 0U) || (zip_archive_active == 0U);
+}
+
+/**
  * @brief Concatenate `dir` + `name` into `dst`, NUL-terminated.
  *
- * @details See implementation.
- * @param[in] dir See implementation.
- * @param[in] name See implementation.
- * @param[in] dst See implementation.
- * @param[in] cap See implementation.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
+ * @details Joins two NUL-terminated path components into the
+ *          caller-supplied buffer with bounded length.
+ * @param[in]  dir  Directory prefix (may be NULL).
+ * @param[in]  name Name suffix (may be NULL).
+ * @param[out] dst  Destination buffer.
+ * @param[in]  cap  Capacity of @p dst in bytes.
+ * @pre cap == 0 implies dst may be NULL.
+ * @pre cap > 0 implies dst is non-NULL and writeable.
+ * @post dst is NUL-terminated when cap > 0.
+ * @post No more than (cap - 1) bytes written from inputs.
+ * @note Not thread-safe.
  * @since 0.1.0
  */
 void ra_epub_internal_join_path(const char* dir, const char* name, char* dst, size_t cap)
@@ -222,7 +263,7 @@ static ra_err_t priv_render_into(const stbtt_fontinfo* font,
   stbtt_GetCodepointBitmapBox(font, codepoint, scale, scale, &x0, &y0, &x1, &y1);
   const int w = x1 - x0;
   const int h = y1 - y0;
-  if (w < 0 || h < 0) {
+  if (ra_epub_internal_glyph_dim_invalid(w, h)) {
     return k_ra_err_validation_failed;
   }
   const size_t total = (size_t)w * (size_t)h;
@@ -297,7 +338,7 @@ ra_err_t ra_epub_load_chapter(ra_epub_book_t* book,
     return k_ra_err_null_ptr;
   }
   *got_len = 0U;
-  if (book->in_use == 0U || book->zip_archive_active == 0U) {
+  if (ra_epub_internal_book_not_ready(book->in_use, book->zip_archive_active)) {
     return k_ra_err_not_initialized;
   }
   if (max_len == 0U) {
@@ -366,7 +407,7 @@ ra_epub_get_cover_image(ra_epub_book_t* book, uint8_t* out_buf, size_t max_len, 
     return k_ra_err_null_ptr;
   }
   *got_len = 0U;
-  if (book->in_use == 0U || book->zip_archive_active == 0U) {
+  if (ra_epub_internal_book_not_ready(book->in_use, book->zip_archive_active)) {
     return k_ra_err_not_initialized;
   }
   if (max_len == 0U) {
