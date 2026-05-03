@@ -791,6 +791,53 @@ ra_err_t ra_usb_queue_in(ra_usb_speed_t speed, uint8_t pipe_num, const uint8_t* 
 }
 
 /**
+ * @brief Implementation of ra_usb_dcp_in_data (see header for full contract).
+ * @details Writes the EP0 IN data-stage payload into the DCP CFIFO and
+ * raises DCPCTR.PID to BUF. Status stage (CCPL) is intentionally NOT
+ * pulsed here -- the bridge handles that on the CTSQ status-stage edge.
+ * @param[in] speed See implementation.
+ * @param[in] data See implementation.
+ * @param[in] len See implementation.
+ * @return Result code.
+ * @retval k_ra_ok Operation succeeded.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe unless documented otherwise.
+ * @since 0.1.0
+ */
+ra_err_t ra_usb_dcp_in_data(ra_usb_speed_t speed, const uint8_t* data, uint16_t len)
+{
+  volatile r_usb_regs_t* reg = internal_pick(speed);
+  if (reg == nullptr) {
+    return k_ra_err_invalid_arg;
+  }
+  if ((len > k_ra_usb_dcp_max_packet) || ((data == nullptr) && (len != 0U))) {
+    return k_ra_err_invalid_arg;
+  }
+
+  /* Select DCP (CURPIPE = 0) on CFIFO in IN direction.
+   * HUM Ch 36.2.7 "CFIFOSEL : CFIFO Port Select Register", p 1976 */
+  internal_select_cfifo(reg, 0U, true);
+  const ra_err_t ready = internal_wait_frdy(reg);
+  RA_RETURN_ON_ERROR(ready, s_tag, "dcp_in_data: FRDY timeout");
+
+  if (len > 0U) {
+    internal_fifo_write(reg, data, len);
+  }
+
+  /* HUM Ch 36.2.8 "CFIFOCTR : CFIFO Port Control Register", p 1979 */
+  reg->CFIFOCTR = k_ra_fifoctr_bval;
+  /* HUM Ch 36.2.21 "DCPCTR : DCP Control Register", p 1991 -- raise PID
+   * from NAK to BUF so the controller answers the next IN token. CCPL is
+   * NOT pulsed here; the host-initiated status stage is acknowledged on
+   * the next CTSQ transition (handled by the bridge). */
+  internal_dcp_pid(reg, k_ra_pid_buf);
+  return k_ra_ok;
+}
+
+/**
  * @brief Argument validation helper for `ra_usb_queue_out`.
  *
  * @details Read-only over the buffers; the caller mutates them on

@@ -470,6 +470,39 @@ ra_usb_queue_out(ra_usb_speed_t speed, uint8_t pipe_num, uint8_t* out_buf, uint1
  */
 [[nodiscard]] ra_err_t ra_usb_control_response(ra_usb_speed_t speed, bool accept);
 
+/**
+ * @brief Push the EP0 / DCP IN data-stage payload for a control transfer.
+ *
+ * @details
+ * The host has issued a control-IN SETUP (e.g. GET_DESCRIPTOR) and the
+ * device-side stack now needs to deliver the response bytes. This call
+ * selects the DCP via `CFIFOSEL.CURPIPE = 0`, waits for `FRDY`, writes
+ * `len` bytes (<= `DCPMAXP`) into `CFIFO`, asserts `BVAL` and switches
+ * `DCPCTR.PID` from NAK to BUF so the controller will answer the next
+ * IN token. CCPL is **not** pulsed here: the status stage is host-
+ * initiated and is acknowledged later when CTSQ transitions to the
+ * status-stage value (handled by the bridge's CTRT path).
+ *
+ * @param[in] speed Which controller (FS or HS).
+ * @param[in] data Pointer to up-to-`DCPMAXP` data bytes to send. May be
+ *                 `nullptr` only if `len == 0`.
+ * @param[in] len Byte count, 0..`DCPMAXP`.
+ *
+ * @return `ra_err_t` error code.
+ * @retval k_ra_ok Bytes written, PID raised to BUF.
+ * @retval k_ra_err_invalid_arg Bad speed / data / length combination.
+ * @retval k_ra_err_hw_timeout `FRDY` never asserted.
+ *
+ * @pre `ra_usb_device_init` ran for this `speed`.
+ * @pre A control-IN SETUP was just observed (CTSQ = read data stage).
+ *
+ * @post EP0 IN buffer holds the data, `DCPCTR.PID = BUF`.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_usb_dcp_in_data(ra_usb_speed_t speed, const uint8_t* data, uint16_t len);
+
 /* =============================================================================
  * IRQ delivery
  * =============================================================================
