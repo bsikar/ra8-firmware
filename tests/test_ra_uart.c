@@ -33,6 +33,12 @@ typedef enum : uint8_t {
   k_ra_uart_test_byte    = 0x55U,
 } ra_uart_test_val_t;
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_happy_first_channel(void)
 {
   TEST_BEGIN("uart init first channel");
@@ -62,6 +68,12 @@ static void test_init_happy_first_channel(void)
   TEST_END("uart init first channel");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_happy_middle_channel(void)
 {
   TEST_BEGIN("uart init middle channel");
@@ -73,6 +85,12 @@ static void test_init_happy_middle_channel(void)
   TEST_END("uart init middle channel");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_happy_last_channel(void)
 {
   TEST_BEGIN("uart init last channel");
@@ -86,6 +104,12 @@ static void test_init_happy_last_channel(void)
   TEST_END("uart init last channel");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_bad_channel(void)
 {
   TEST_BEGIN("uart init bad channel");
@@ -95,6 +119,12 @@ static void test_init_bad_channel(void)
   TEST_END("uart init bad channel");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_huge_channel(void)
 {
   TEST_BEGIN("uart init huge channel");
@@ -104,6 +134,12 @@ static void test_init_huge_channel(void)
   TEST_END("uart init huge channel");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_putc_happy(void)
 {
   TEST_BEGIN("uart putc happy");
@@ -120,6 +156,12 @@ static void test_putc_happy(void)
   TEST_END("uart putc happy");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_putc_timeout(void)
 {
   TEST_BEGIN("uart putc timeout");
@@ -131,6 +173,12 @@ static void test_putc_timeout(void)
   TEST_END("uart putc timeout");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_putc_bad_channel(void)
 {
   TEST_BEGIN("uart putc bad channel");
@@ -141,6 +189,12 @@ static void test_putc_bad_channel(void)
   TEST_END("uart putc bad channel");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_putc_last_channel(void)
 {
   TEST_BEGIN("uart putc last channel");

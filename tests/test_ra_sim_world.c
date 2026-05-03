@@ -15,6 +15,12 @@
 static uint8_t s_ns_buf[256];
 static uint8_t s_s_buf[256];
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_empty_world_rejects_everything(void)
 {
   TEST_BEGIN("ra_sim_world: empty world rejects every check");
@@ -23,6 +29,12 @@ static void test_empty_world_rejects_everything(void)
   TEST_END("ra_sim_world: empty world rejects every check");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_mark_ns_covers_query(void)
 {
   TEST_BEGIN("ra_sim_world: NS-tagged region passes");
@@ -35,6 +47,12 @@ static void test_mark_ns_covers_query(void)
   TEST_END("ra_sim_world: NS-tagged region passes");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_secure_overlap_blocks(void)
 {
   TEST_BEGIN("ra_sim_world: Secure overlap blocks the query");
@@ -49,6 +67,12 @@ static void test_secure_overlap_blocks(void)
   TEST_END("ra_sim_world: Secure overlap blocks the query");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_unrelated_secure_region_does_not_block(void)
 {
   TEST_BEGIN("ra_sim_world: unrelated Secure region does not block");
@@ -61,6 +85,12 @@ static void test_unrelated_secure_region_does_not_block(void)
   TEST_END("ra_sim_world: unrelated Secure region does not block");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_zero_length_check_is_false(void)
 {
   TEST_BEGIN("ra_sim_world: zero length check rejects");
@@ -71,6 +101,12 @@ static void test_zero_length_check_is_false(void)
   TEST_END("ra_sim_world: zero length check rejects");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_region_table_full(void)
 {
   TEST_BEGIN("ra_sim_world: table-full reports no_mem");

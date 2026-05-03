@@ -23,6 +23,12 @@ typedef enum : uint32_t {
   k_test_sdtr_default = 0x00010222UL,
 } test_sdramc_timing_t;
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_writes_defaults(void)
 {
   TEST_BEGIN("ra_sdramc_init writes expected register defaults");
@@ -42,6 +48,12 @@ static void test_init_writes_defaults(void)
   TEST_END("ra_sdramc_init writes expected register defaults");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_idempotent(void)
 {
   TEST_BEGIN("ra_sdramc_init is idempotent");
@@ -55,6 +67,12 @@ static void test_init_idempotent(void)
 
 /* ---- lifecycle + power ---- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_deinit(void)
 {
   TEST_BEGIN("sdramc deinit");
@@ -68,6 +86,12 @@ static void test_deinit(void)
   TEST_END("sdramc deinit");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_refresh_interval(void)
 {
   TEST_BEGIN("sdramc set_refresh_interval");
@@ -77,6 +101,12 @@ static void test_set_refresh_interval(void)
   TEST_END("sdramc set_refresh_interval");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_get_status(void)
 {
   TEST_BEGIN("sdramc get_status");
@@ -90,6 +120,12 @@ static void test_get_status(void)
   TEST_END("sdramc get_status");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_power_transition(void)
 {
   TEST_BEGIN("sdramc power transition");

@@ -49,6 +49,12 @@ static void prep_running(void)
 
 /* --- Concurrent key-import: back-to-back installs into the same handle --- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_back_to_back_key_install(void)
 {
   TEST_BEGIN("rsip back-to-back key installs leave handle consistent");
@@ -80,6 +86,12 @@ static void test_back_to_back_key_install(void)
 
 /* --- Wrong-key-size rejection on the HMAC install path --- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_wrong_key_size_rejected(void)
 {
   TEST_BEGIN("rsip HMAC install rejects zero-length key");
@@ -98,6 +110,12 @@ static void test_wrong_key_size_rejected(void)
 
 /* --- AES non-block-multiple lengths in ECB/CBC must be rejected --- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_aes_non_block_multiple_rejected(void)
 {
   TEST_BEGIN("rsip AES ECB/CBC reject non-block-multiple lengths");
@@ -133,6 +151,12 @@ static void test_aes_non_block_multiple_rejected(void)
 
 /* --- AES-GCM null-arg matrix --- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_aes_gcm_null_matrix(void)
 {
   TEST_BEGIN("rsip AES-GCM null-arg matrix");
@@ -185,6 +209,12 @@ static void test_aes_gcm_null_matrix(void)
 
 /* --- Status-clear rejects garbage bits --- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_clear_status_garbage_bits(void)
 {
   TEST_BEGIN("rsip clear_status rejects mask with bits outside ISR field");
@@ -201,6 +231,12 @@ static void test_clear_status_garbage_bits(void)
 
 /* --- TRNG bias sanity: bulk read produces non-zero output --- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_trng_bulk_nonzero(void)
 {
   TEST_BEGIN("rsip TRNG bulk read is not all-zero (silent-failure guard)");

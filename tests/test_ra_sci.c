@@ -62,6 +62,12 @@ static const ra_sci_cfg_t k_cfg = {
   .pclk_hz   = 60000000U,
 };
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_sets_ccr0_enables(void)
 {
   TEST_BEGIN("ra_sci_init: CCR0 enables TE + RE");
@@ -75,6 +81,12 @@ static void test_init_sets_ccr0_enables(void)
   TEST_END("ra_sci_init: CCR0 enables TE + RE");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_rejects_bad_channel(void)
 {
   TEST_BEGIN("ra_sci_init: bad channel rejected");
@@ -85,6 +97,12 @@ static void test_init_rejects_bad_channel(void)
   TEST_END("ra_sci_init: bad channel rejected");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_polling_tx_rx_round_trip(void)
 {
   TEST_BEGIN("ra_sci polling tx/rx round trip");
@@ -107,6 +125,12 @@ static void test_polling_tx_rx_round_trip(void)
   TEST_END("ra_sci polling tx/rx round trip");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_polling_tx_timeout(void)
 {
   TEST_BEGIN("ra_sci polling tx timeout");
@@ -119,6 +143,12 @@ static void test_polling_tx_timeout(void)
   TEST_END("ra_sci polling tx timeout");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_write_polling_null_plus_nonzero(void)
 {
   TEST_BEGIN("ra_sci write polling null buffer rejected");
@@ -130,6 +160,12 @@ static void test_write_polling_null_plus_nonzero(void)
   TEST_END("ra_sci write polling null buffer rejected");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_attach_rx_sets_rie(void)
 {
   TEST_BEGIN("ra_sci_attach_rx_handler sets CCR0.RIE");
@@ -146,6 +182,12 @@ static void test_attach_rx_sets_rie(void)
   TEST_END("ra_sci_attach_rx_handler sets CCR0.RIE");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_attach_tx_sets_tie(void)
 {
   TEST_BEGIN("ra_sci_attach_tx_handler sets CCR0.TIE");
@@ -163,6 +205,12 @@ static void test_attach_tx_sets_tie(void)
   TEST_END("ra_sci_attach_tx_handler sets CCR0.TIE");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_dispatch_rxi_invokes_handler(void)
 {
   TEST_BEGIN("ra_sci_dispatch_rxi: calls handler with RDR byte");
@@ -181,6 +229,12 @@ static void test_dispatch_rxi_invokes_handler(void)
   TEST_END("ra_sci_dispatch_rxi: calls handler with RDR byte");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_dispatch_txi_drains_callback(void)
 {
   TEST_BEGIN("ra_sci_dispatch_txi: advances TX handler until end");
@@ -202,6 +256,12 @@ static void test_dispatch_txi_drains_callback(void)
   TEST_END("ra_sci_dispatch_txi: advances TX handler until end");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_errors_mask_and_clear(void)
 {
   TEST_BEGIN("ra_sci_get_errors + clear_errors");
@@ -232,6 +292,12 @@ static void test_errors_mask_and_clear(void)
   TEST_END("ra_sci_get_errors + clear_errors");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_baud_round_trip(void)
 {
   TEST_BEGIN("ra_sci_set_baud: BRR recomputed");
@@ -248,6 +314,12 @@ static void test_set_baud_round_trip(void)
   TEST_END("ra_sci_set_baud: BRR recomputed");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_enter_exit_stop(void)
 {
   TEST_BEGIN("ra_sci_enter_stop / exit_stop");
@@ -269,6 +341,12 @@ static void test_enter_exit_stop(void)
   TEST_END("ra_sci_enter_stop / exit_stop");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_deinit_releases(void)
 {
   TEST_BEGIN("ra_sci_deinit releases MSTP");
@@ -283,6 +361,12 @@ static void test_deinit_releases(void)
   TEST_END("ra_sci_deinit releases MSTP");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_cfg_variants(void)
 {
   TEST_BEGIN("ra_sci_init: all cfg variants reach BRR/CCR3 branches");
@@ -331,6 +415,12 @@ static void test_cfg_variants(void)
   TEST_END("ra_sci_init: all cfg variants reach BRR/CCR3 branches");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_getc_polling_null(void)
 {
   TEST_BEGIN("ra_sci_getc_polling: null + bad channel");
@@ -347,6 +437,12 @@ static void test_getc_polling_null(void)
   TEST_END("ra_sci_getc_polling: null + bad channel");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_putc_polling_bad_channel(void)
 {
   TEST_BEGIN("ra_sci_putc_polling: bad channel rejected");
@@ -355,6 +451,12 @@ static void test_putc_polling_bad_channel(void)
   TEST_END("ra_sci_putc_polling: bad channel rejected");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_dispatch_txi_with_no_handler(void)
 {
   TEST_BEGIN("ra_sci_dispatch_txi: no-handler clears TIE");
@@ -369,6 +471,12 @@ static void test_dispatch_txi_with_no_handler(void)
   TEST_END("ra_sci_dispatch_txi: no-handler clears TIE");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_dispatch_rxi_with_no_handler(void)
 {
   TEST_BEGIN("ra_sci_dispatch_rxi: no-handler is no-op");
@@ -380,6 +488,12 @@ static void test_dispatch_rxi_with_no_handler(void)
   TEST_END("ra_sci_dispatch_rxi: no-handler is no-op");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_eri_dispatch_clears_errors(void)
 {
   TEST_BEGIN("ra_sci_dispatch_eri clears CSR flags");
@@ -409,6 +523,12 @@ static void stub_dma_done(void* ctx)
   ++s_dma_complete_count;
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_write_dma_streams_buffer_to_tdr(void)
 {
   TEST_BEGIN("ra_sci_write_dma: buffer streams into TDR via DMA");
@@ -436,6 +556,12 @@ static void test_write_dma_streams_buffer_to_tdr(void)
   TEST_END("ra_sci_write_dma: buffer streams into TDR via DMA");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_read_dma_streams_rdr_to_buffer(void)
 {
   TEST_BEGIN("ra_sci_read_dma: RDR streams into buffer via DMA");
@@ -466,6 +592,12 @@ static void test_read_dma_streams_rdr_to_buffer(void)
   TEST_END("ra_sci_read_dma: RDR streams into buffer via DMA");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_dma_arg_validation(void)
 {
   TEST_BEGIN("ra_sci_{write,read}_dma: arg validation");
@@ -520,6 +652,12 @@ static bool stub_async_tx_visibility(void* ctx, uint8_t* byte)
   return true;
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_async_write_drains_buffer(void)
 {
   TEST_BEGIN("ra_sci_write: 16-byte async TX drains via TXI");
@@ -552,6 +690,12 @@ static void test_async_write_drains_buffer(void)
   TEST_END("ra_sci_write: 16-byte async TX drains via TXI");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_async_read_fills_buffer(void)
 {
   TEST_BEGIN("ra_sci_read: 16-byte async RX captures via RXI");
@@ -580,6 +724,12 @@ static void test_async_read_fills_buffer(void)
   TEST_END("ra_sci_read: 16-byte async RX captures via RXI");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_async_abort_tx(void)
 {
   TEST_BEGIN("ra_sci_abort: TX direction disarms TIE mid-stream");
@@ -606,6 +756,12 @@ static void test_async_abort_tx(void)
   TEST_END("ra_sci_abort: TX direction disarms TIE mid-stream");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_async_read_stop_reports_remaining(void)
 {
   TEST_BEGIN("ra_sci_read_stop: returns bytes still pending");
@@ -632,6 +788,12 @@ static void test_async_read_stop_reports_remaining(void)
   TEST_END("ra_sci_read_stop: returns bytes still pending");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_baud_calculate_115200_at_60mhz(void)
 {
   TEST_BEGIN("ra_sci_baud_calculate: 115200 @ 60 MHz within 2 percent");
@@ -679,6 +841,12 @@ static void test_baud_calculate_115200_at_60mhz(void)
   TEST_END("ra_sci_baud_calculate: 115200 @ 60 MHz within 2 percent");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_receive_suspend_resume(void)
 {
   TEST_BEGIN("ra_sci_receive_suspend / resume toggles CCR0.RE");
@@ -699,6 +867,12 @@ static void test_receive_suspend_resume(void)
   TEST_END("ra_sci_receive_suspend / resume toggles CCR0.RE");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_async_null_arg_rejection(void)
 {
   TEST_BEGIN("ra_sci async API: NULL + bad-channel rejection");

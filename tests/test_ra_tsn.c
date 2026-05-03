@@ -58,6 +58,12 @@ static ra_tsn_config_t make_cfg(void)
   return cfg;
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_happy(void)
 {
   TEST_BEGIN("tsn init happy");
@@ -77,6 +83,12 @@ static void test_init_happy(void)
   TEST_END("tsn init happy");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_null_cfg(void)
 {
   TEST_BEGIN("tsn init null cfg");
@@ -87,6 +99,12 @@ static void test_init_null_cfg(void)
   TEST_END("tsn init null cfg");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_bad_stab(void)
 {
   TEST_BEGIN("tsn init bad stab");
@@ -99,6 +117,12 @@ static void test_init_bad_stab(void)
   TEST_END("tsn init bad stab");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_bad_high_ref(void)
 {
   TEST_BEGIN("tsn init bad high ref");
@@ -112,6 +136,12 @@ static void test_init_bad_high_ref(void)
   TEST_END("tsn init bad high ref");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_read_raw_masks_to_12_bits(void)
 {
   TEST_BEGIN("tsn read_raw masks to 12 bits");
@@ -132,6 +162,12 @@ static void test_read_raw_masks_to_12_bits(void)
   TEST_END("tsn read_raw masks to 12 bits");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_read_raw_null_out(void)
 {
   TEST_BEGIN("tsn read_raw null out");
@@ -145,6 +181,12 @@ static void test_read_raw_null_out(void)
   TEST_END("tsn read_raw null out");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_read_raw_before_init(void)
 {
   TEST_BEGIN("tsn read_raw before init");
@@ -159,6 +201,12 @@ static void test_read_raw_before_init(void)
   TEST_END("tsn read_raw before init");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_convert_at_high_ref(void)
 {
   TEST_BEGIN("tsn convert at high ref returns 125000 mC");
@@ -177,6 +225,12 @@ static void test_convert_at_high_ref(void)
   TEST_END("tsn convert at high ref returns 125000 mC");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_convert_at_low_ref(void)
 {
   TEST_BEGIN("tsn convert at low ref returns -40000 mC");
@@ -195,6 +249,12 @@ static void test_convert_at_low_ref(void)
   TEST_END("tsn convert at low ref returns -40000 mC");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_convert_unprogrammed_cal_rejected(void)
 {
   TEST_BEGIN("tsn convert refuses unprogrammed calibration");
@@ -211,6 +271,12 @@ static void test_convert_unprogrammed_cal_rejected(void)
   TEST_END("tsn convert refuses unprogrammed calibration");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_convert_null_out(void)
 {
   TEST_BEGIN("tsn convert null out");
@@ -225,6 +291,12 @@ static void test_convert_null_out(void)
   TEST_END("tsn convert null out");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_get_and_clear_status(void)
 {
   TEST_BEGIN("tsn get + clear status");
@@ -246,6 +318,12 @@ static void test_get_and_clear_status(void)
   TEST_END("tsn get + clear status");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_power_transition(void)
 {
   TEST_BEGIN("tsn power transition");

@@ -24,6 +24,12 @@ typedef enum : uint32_t {
   k_ra_ulpt_test_period = 0x00ABCDEFUL,
 } ra_ulpt_test_period_t;
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_clears_regs(void)
 {
   TEST_BEGIN("ulpt init clears regs");
@@ -38,6 +44,12 @@ static void test_init_clears_regs(void)
   TEST_END("ulpt init clears regs");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_start_channel_0(void)
 {
   TEST_BEGIN("ulpt start channel 0");
@@ -52,6 +64,12 @@ static void test_start_channel_0(void)
   TEST_END("ulpt start channel 0");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_start_channel_1(void)
 {
   TEST_BEGIN("ulpt start channel 1");
@@ -62,6 +80,12 @@ static void test_start_channel_1(void)
   TEST_END("ulpt start channel 1");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_start_bad_channel(void)
 {
   TEST_BEGIN("ulpt start bad channel");
@@ -72,6 +96,12 @@ static void test_start_bad_channel(void)
   TEST_END("ulpt start bad channel");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_stop_happy(void)
 {
   TEST_BEGIN("ulpt stop happy");
@@ -86,6 +116,12 @@ static void test_stop_happy(void)
   TEST_END("ulpt stop happy");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_stop_bad_channel(void)
 {
   TEST_BEGIN("ulpt stop bad channel");
@@ -115,6 +151,12 @@ static void prep_w43(void)
   s_ulpt_cb_last_ch = 0U;
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_deinit(void)
 {
   TEST_BEGIN("ulpt deinit");
@@ -126,6 +168,12 @@ static void test_deinit(void)
   TEST_END("ulpt deinit");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_period_and_status(void)
 {
   TEST_BEGIN("ulpt set_period + status");
@@ -145,6 +193,12 @@ static void test_set_period_and_status(void)
   TEST_END("ulpt set_period + status");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_attach_and_dispatch(void)
 {
   TEST_BEGIN("ulpt attach + dispatch");
@@ -161,6 +215,12 @@ static void test_attach_and_dispatch(void)
   TEST_END("ulpt attach + dispatch");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_power_transition(void)
 {
   TEST_BEGIN("ulpt power transition");

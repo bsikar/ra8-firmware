@@ -22,6 +22,12 @@ typedef enum : uint16_t {
   k_test_rtc_year = 2026U,
 } test_rtc_year_t;
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_happy_path(void)
 {
   TEST_BEGIN("ra_rtc_init writes RCR2 HR24+START");
@@ -37,6 +43,12 @@ static void test_init_happy_path(void)
   TEST_END("ra_rtc_init writes RCR2 HR24+START");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_null_rejected(void)
 {
   TEST_BEGIN("ra_rtc_set rejects NULL");
@@ -45,6 +57,12 @@ static void test_set_null_rejected(void)
   TEST_END("ra_rtc_set rejects NULL");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_get_null_rejected(void)
 {
   TEST_BEGIN("ra_rtc_get rejects NULL");
@@ -53,6 +71,12 @@ static void test_get_null_rejected(void)
   TEST_END("ra_rtc_get rejects NULL");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_rejects_year_before_2000(void)
 {
   TEST_BEGIN("ra_rtc_set rejects year < 2000");
@@ -70,6 +94,12 @@ static void test_set_rejects_year_before_2000(void)
   TEST_END("ra_rtc_set rejects year < 2000");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_then_get_round_trip(void)
 {
   TEST_BEGIN("ra_rtc_set then ra_rtc_get round-trips");
@@ -102,6 +132,12 @@ static void test_set_then_get_round_trip(void)
   TEST_END("ra_rtc_set then ra_rtc_get round-trips");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_bcd_boundary_values(void)
 {
   TEST_BEGIN("ra_rtc BCD 59 max");
@@ -131,6 +167,12 @@ static void test_bcd_boundary_values(void)
   TEST_END("ra_rtc BCD 59 max");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_bcd_zero(void)
 {
   TEST_BEGIN("ra_rtc BCD 0 minimum");
@@ -171,6 +213,12 @@ static void stub_rtc_cb(void* ctx, uint8_t mask)
   s_rtc_cb_last_mask = mask;
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_deinit(void)
 {
   TEST_BEGIN("rtc deinit");
@@ -182,6 +230,12 @@ static void test_deinit(void)
   TEST_END("rtc deinit");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_irq_enable_and_status(void)
 {
   TEST_BEGIN("rtc irq enable + status");
@@ -202,6 +256,12 @@ static void test_irq_enable_and_status(void)
   TEST_END("rtc irq enable + status");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_attach_and_dispatch(void)
 {
   TEST_BEGIN("rtc attach + dispatch");
@@ -222,6 +282,12 @@ static void test_attach_and_dispatch(void)
   TEST_END("rtc attach + dispatch");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_power_transition(void)
 {
   TEST_BEGIN("rtc power transition");

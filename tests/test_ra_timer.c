@@ -21,6 +21,12 @@ typedef enum : uint32_t {
   k_ra_timer_test_sleep_ms = 0U,        /**< Zero-length sleep (no wait). */
 } ra_timer_test_const_t;
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_now_ms_matches_time_ms(void)
 {
   TEST_BEGIN("timer now_ms matches time_ms");
@@ -33,6 +39,12 @@ static void test_now_ms_matches_time_ms(void)
   TEST_END("timer now_ms matches time_ms");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_now_ms_advances_with_ticks(void)
 {
   TEST_BEGIN("timer now_ms advances with ticks");
@@ -47,6 +59,12 @@ static void test_now_ms_advances_with_ticks(void)
   TEST_END("timer now_ms advances with ticks");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_sleep_ms_zero_returns_immediately(void)
 {
   TEST_BEGIN("timer sleep_ms zero returns immediately");
