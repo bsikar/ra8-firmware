@@ -1260,70 +1260,6 @@ ra_err_t ra_usb_attach_handler(ra_usb_event_fn_t fn, void* ctx)
 }
 
 /**
- * @brief Synthesize a CTRT dispatch when CTSQ has advanced to a
- *        control status stage without firing a fresh CTRT IRQ.
- *
- * @details
- * Status-stage CTSQ edges (rdss / wrss) are not reliably announced by
- * a fresh CTRT IRQ on the RA USB IP: when the chapter-9 dispatcher
- * pushes the IN data payload synchronously (rdds path -> dcp_in_data
- * -> chip transmits -> host issues OUT-status), the CTSQ field
- * advances from rdds to rdss while CTRT may have already been ACKed
- * by ra_usb_dispatch. The polling worker then sees INTSTS0 with no
- * CTRT bit set but CTSQ stuck at rdss/wrss, never pulses DCPCTR.CCPL,
- * and the host hangs at GET_DESCRIPTOR(DEVICE) status with PID=NAK.
- *
- * This helper re-reads INTSTS0 and, if CTSQ now reports a status-stage
- * value, synthesizes a CTRT-asserted snapshot so the bridge's CTRT
- * path can pulse CCPL. The synthesized snapshot masks out other event
- * bits to avoid double-dispatching DVST/BEMP/BRDY which were already
- * handled in the first pass.
- *
- * @param[in,out] reg    USBFS / USBHS register block selected by speed.
- * @param[in]     speed  Which controller fired (FS or HS).
- * @param[in]     fn     User event callback installed via
- *                       ra_usb_attach_handler (may be NULL).
- * @param[in]     ctx    Opaque context delivered to fn.
- *
- * @pre reg is non-NULL and points to a valid USB register block.
- * @pre Caller has already invoked the primary INTSTS0 handler pass.
- * @post On a status-stage CTSQ value, latent CTRT is ACKed and fn (if
- *       non-NULL) has been called once with a synthesized snapshot.
- * @post On any other CTSQ value, INTSTS0 is left untouched.
- *
- * @note Runs in dispatch-worker context (not ISR).
- *
- * @since 0.1.0
- */
-static void internal_synth_status_ctrt(volatile r_usb_regs_t*  reg,
-                                       ra_usb_speed_t          speed,
-                                       const ra_usb_event_fn_t fn,
-                                       void* const             ctx)
-{
-  const uint16_t post      = reg->INTSTS0;
-  const uint16_t post_ctsq = (uint16_t)(post & (uint16_t)k_ra_intsts0_mask_ctsq);
-  bool           is_status = false;
-  switch (post_ctsq) {
-    case (uint16_t)k_ra_ctsq_rdss:
-    case (uint16_t)k_ra_ctsq_wrss:
-      is_status = true;
-      break;
-    default:
-      break;
-  }
-  if (!is_status) {
-    return;
-  }
-  /* ACK any latent CTRT edge so we don't immediately re-enter on the
-   * next dispatch tick. */
-  reg->INTSTS0 = (uint16_t)(post & (uint16_t)~(1U << k_ra_int0_bit_ctrt));
-  if (fn != nullptr) {
-    const uint16_t synth = (uint16_t)((1U << k_ra_int0_bit_ctrt) | post_ctsq);
-    fn(ctx, speed, synth);
-  }
-}
-
-/**
  * @brief Implementation of ra_usb_dispatch (see header for full contract).
  * @details See the public header for the documented contract; this definition implements it.
  * @param[in] speed See implementation.
@@ -1369,8 +1305,6 @@ void ra_usb_dispatch(ra_usb_speed_t speed)
   if (fn != nullptr) {
     fn(ctx, speed, mask);
   }
-
-  internal_synth_status_ctrt(reg, speed, fn, ctx);
 }
 
 /**
