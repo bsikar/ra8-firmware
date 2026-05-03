@@ -105,7 +105,7 @@ The Makefile forces `RA_USE_THREADX=ON`, `RA_USE_FILEX=ON`, and
 
 ## Verify gates (host CI)
 
-The skeleton is part of the standard Wave-11 verification set:
+The skeleton is part of the standard verification set:
 
 ```sh
 make clean

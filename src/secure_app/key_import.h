@@ -27,7 +27,7 @@
  * The sealing MAC in is intentionally tiny -- a length-tagged
  * XOR-fold rather than full CMAC -- because the real authentication
  * stage gets wired in once the SCE driver supports CMAC-on-import
- * (Wave 14). The handle layer, however, lands now so the rest of
+ *. The handle layer, however, lands now so the rest of
  * the stack can be built against it.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie

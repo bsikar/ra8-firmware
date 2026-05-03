@@ -7,7 +7,7 @@
  *
  * @details
  * Bare-metal driver for the RA8D2 2D drawing engine ("D/AVE 2D").
- * After the wave-3 expansion the API now covers every register the
+ * After the expansion the API now covers every register the
  * HUM Ch 62 documents, every operating mode (solid fill, textured
  * blit, RLE source, CLUT lookup, color key, alpha blend, anti-
  * aliased line / triangle, display list) and every IRQ source (enum

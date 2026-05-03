@@ -3,7 +3,7 @@
  * @brief Integration test: USB host HID boot-keyboard bring-up
  *
  * @details
- * Mirrors the wave-1 multi-module integration-test pattern. The
+ * Mirrors the multi-module integration-test pattern. The
  * production app at examples/ek_ra8d2/usb_host_keyboard/main.c brings
  * up CGC, configures SCI8 (PD_02 / PD_03 at 115200 8N1) for the
  * J-Link OB CDC log channel, routes the USBHS_VBUS-sense pin (P4_08,

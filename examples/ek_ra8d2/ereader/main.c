@@ -7,7 +7,7 @@
  * Secure world.
  *
  * @details
- * Wave 11 / Sweep 15 / Phase 6: end-to-end skeleton tying ThreadX,
+ * / Sweep 15 / Phase 6: end-to-end skeleton tying ThreadX,
  * FileX, GUIX, ``libs/ra_epub`` and (when available)
  * ``libs/ra_reflow`` together into a working e-reader running on the
  * EK-RA8D2's on-board parallel TFT panel. The E-Ink panel + custom

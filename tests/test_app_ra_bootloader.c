@@ -3,7 +3,7 @@
  * @brief Integration test: A/B bank-switch bootloader selection logic
  *
  * @details
- * Mirrors the wave-1 multi-module integration-test pattern. The
+ * Mirrors the multi-module integration-test pattern. The
  * production bootloader at examples/ek_ra8d2/ra_bootloader/main.c
  * picks one of two MRAM banks (A at 0x02000000, B at 0x02080000)
  * based on a single selector byte at 0x02003F00, validates the bank's

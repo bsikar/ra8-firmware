@@ -21,7 +21,7 @@
  * NMIER / NMICR / NMICLR (HUM Ch 14 p 524..582).
  * - The ``ra_icu_route`` / ``ra_icu_nvic_*`` legacy functions
  * remain as thin wrappers around direct register access for
- * pre-Wave-2 demo main.c code.
+ * previous demo main.c code.
  *
  * All register writes go through ``ra_icu_irqcr`` / ``ra_icu_nmier``
  * accessors from ``ra8d2_icu_regs.h`` (HUM Ch 14 p 524).
@@ -221,7 +221,7 @@ typedef struct {
  * @brief Route an ELC event to a caller-specified IELSR slot.
  *
  * @deprecated New code should call ``ra_isr_register()`` instead.
- * Preserved so the pre-Wave-2 demo main and the existing
+ * Preserved so the previous demo main and the existing
  * test_ra_icu.c suite keep compiling.
  *
  * @param[in] nvic_index IELSR slot index 0..111.

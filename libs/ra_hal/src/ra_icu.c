@@ -7,7 +7,7 @@
  *
  * @details
  * rewrite. Adds IRQCRi + NMI programming while keeping
- * the pre-Wave-2 legacy API (``ra_icu_route`` / ``ra_icu_nvic_*``)
+ * the previous legacy API (``ra_icu_route`` / ``ra_icu_nvic_*``)
  * available for the existing demo main.c and test_ra_icu.c suite.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie

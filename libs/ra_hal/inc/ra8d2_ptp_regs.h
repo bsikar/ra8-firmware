@@ -12,7 +12,7 @@
  * The full FSP r_ptp surface lives at a separate ETHERC_EPTPC base on
  * older RA parts; on RA8D2 the equivalent registers are folded into
  * the GPTP window. To keep the existing ``r_gptp_regs_t`` scaffold in
- * ``ra8d2_ether_regs.h`` unchanged (a sibling Wave 11 driver consumes
+ * ``ra8d2_ether_regs.h`` unchanged (a sibling driver consumes
  * it), this header defines a *peer* SYNFP/STCA window at a distinct
  * 0x100 offset above the GPTP base. A real PTP stack walking the FSP
  * register definitions can later collapse the two windows.

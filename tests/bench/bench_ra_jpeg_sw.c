@@ -3,7 +3,7 @@
  * @brief Microbenchmark: software JPEG decode of a known fixture.
  *
  * @details
- * Reuses the wave-21 8x8 baseline-JPEG strategy from
+ * Reuses the 8x8 baseline-JPEG strategy from
  * `tests/test_ra_jpeg_sw.c`: a small RGB gradient is encoded once
  * outside the timed region (since the encoder also has its own
  * tests), then the encoded byte stream is decoded inside the timed

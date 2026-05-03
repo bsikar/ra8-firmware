@@ -3,7 +3,7 @@
  * @brief Integration test: USB host CDC ACM bring-up + echo flow
  *
  * @details
- * Mirrors the wave-1 multi-module integration-test pattern. The
+ * Mirrors the multi-module integration-test pattern. The
  * production app at examples/ek_ra8d2/usb_host_cdc_echo/main.c brings
  * up CGC, routes the SCI8 log port and the USBHS VBUS-sense pin,
  * flips USBHS to host mode via ``ra_usb_hcdc_init(HS)``, registers an

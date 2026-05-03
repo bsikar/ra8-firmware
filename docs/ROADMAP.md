@@ -12,7 +12,7 @@ instead.
 
 After the 14-checkbox waves closed at the cross-verify-loop entry
 point (commit `f2c3203`), eleven feature-completion sweeps landed on
-top, plus a Wave 11 closure pass. Each sweep is documented in its
+top, plus a closure pass. Each sweep is documented in its
 commit message; this is the one-line summary so the roadmap is
 self-contained.
 
@@ -29,7 +29,7 @@ self-contained.
 | 9 | `afeb54a` | FAT-FS adapter, TLS 1.2 client, font/glyph rendering, docs refresh |
 | 10 | `59cc3c3` | USB device classes, BLE host stack, legacy peers, USB hub |
 | 11 | `ba54974` | 20 missing peripherals, 3 demo apps, RSA/ECC/protected SCE |
-| 11.x | `f4fb1a6`, `7551634`, `f272dc7`, `ce76aa4`, `87b606f` | Wave 11 closure: coverage gate, doxygen, ADC_B/OSPI/ACMPHS layout fixes |
+| 11.x | `f4fb1a6`, `7551634`, `f272dc7`, `ce76aa4`, `87b606f` | closure: coverage gate, doxygen, ADC_B/OSPI/ACMPHS layout fixes |
 
 Status snapshot at the close of sweep 11 (commit `ba54974`):
 

@@ -21,7 +21,7 @@
  * no-op so portable builds compile without warning.
  *
  * The full reference (purpose, enforcement script, examples) lives in
- * `docs/ANNOTATIONS.md`. Wave 43b will introduce the libclang-based
+ * `docs/ANNOTATIONS.md`. will introduce the libclang-based
  * checker that reads these annotations from the AST.
  *
  * ## Citation policy
@@ -70,7 +70,7 @@ extern "C" {
  * @details
  * The symbol must have external linkage so unit tests under `tests/` can
  * link against it, but production callers in `libs/`, `src/`, and
- * `examples/` must not invoke it. Wave 43b's libclang checker walks the
+ * `examples/` must not invoke it. the libclang checker walks the
  * call graph and rejects any call to a `RA_TEST_HELPER` from a
  * non-test translation unit.
  *
@@ -185,7 +185,7 @@ extern "C" {
  * @par Enforcement:
  * - `check_world_tags.py` already restricts the CMSE non-secure-entry
  *   attribute to files under `libs/ra_nsc/`.
- * - libclang checker (Wave 43b) verifies every pointer parameter is fed
+ * - libclang checker verifies every pointer parameter is fed
  *   to a `RA_NSC_CHECK_NS_RANGE_*` call before being dereferenced.
  *
  * @par Example:
@@ -241,7 +241,7 @@ extern "C" {
  * @details
  * The function is permitted to call `malloc`, `calloc`, `realloc`, or
  * `free`. Tagging records the exception in the AST so the
- * `check_no_dynamic_alloc.py` helper (and Wave 43b's call-graph checker)
+ * `check_no_dynamic_alloc.py` helper (and the call-graph checker)
  * can verify only tagged functions touch the allocator and that every
  * caller chain that reaches them is itself tagged or carries an explicit
  * deviation entry.
@@ -425,7 +425,7 @@ extern "C" {
  * @param n Integer literal: maximum execution time in nanoseconds.
  *
  * @par Enforcement:
- * Future WCET analysis pass (planned post-Wave-43b).
+ * Future WCET analysis pass (planned ).
  *
  * @par Example:
  * @code

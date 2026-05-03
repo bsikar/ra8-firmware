@@ -32,7 +32,7 @@
  *     baked-in CA trust anchor.
  *   - **Server Name Indication (SNI)** -- needed for any host on a
  *     virtual-hosted HTTPS endpoint.
- *   - **Renegotiation + ALPN + session tickets + extended master
+ *   - **Renegotiation + ALPN + session tickets + extended primary
  *     secret** -- the modern hardening defaults Mbed TLS ships.
  *
  * ## Surface this config disables

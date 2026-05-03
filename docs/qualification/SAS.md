@@ -2,7 +2,7 @@
 
 **Document ID**: ra8d2-sas-001
 **Version**: 0.1 (first draft, Phase 7 of `docs/QUALIFICATION_ROADMAP.md`).
-**Last refreshed**: 2026-05-03 (post wave-24 closure: reachable MC/DC = 100.00%, doxygen gaps = 0).
+**Last refreshed**: 2026-05-03 ( closure: reachable MC/DC = 100.00%, doxygen gaps = 0).
 **Date**: 2026-05-02.
 **Author**: Brighton Sikarskie.
 **DO-178C reference**: Section 11.20 (Software Accomplishment Summary).
@@ -104,7 +104,7 @@ has its first complete revision.
 
 | Coverage criterion              | Achieved          | Target              | Source                          |
 |---------------------------------|-------------------|---------------------|---------------------------------|
-| MC/DC, **reachable** (gate)     | **100.00%**       | **100%**            | `build/mcdc-report/summary.txt` (wave-24) |
+| MC/DC, **reachable** (gate) | **100.00%** | **100%** | `build/mcdc-report/summary.txt` |
 | MC/DC, absolute                 | 92.29%            | (informational)     | same                            |
 | Deactivated conditions (6.4.4.3)| 58                | -                   | `docs/MCDC_DEACTIVATIONS.md`    |
 
@@ -256,4 +256,4 @@ progress against these items.
 | Date       | Author             | Change                                            |
 |------------|--------------------|---------------------------------------------------|
 | 2026-05-02 | Brighton Sikarskie | Initial first-draft population (Phase 7 kickoff). |
-| 2026-05-03 | Brighton Sikarskie | Refreshed numbers post wave-24: reachable MC/DC = 100.00%, doxygen gaps = 0, host tests = 190/190 PASS. Restated MISRA / independence / HIL postures as permanent per CERTIFICATION_SCOPE.md. |
+| 2026-05-03 | Brighton Sikarskie | Refreshed numbers : reachable MC/DC = 100.00%, doxygen gaps = 0, host tests = 190/190 PASS. Restated MISRA / independence / HIL postures as permanent per CERTIFICATION_SCOPE.md. |

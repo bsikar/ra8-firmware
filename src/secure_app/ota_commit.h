@@ -25,7 +25,7 @@
  * the unit tests can verify the masking and re-entry guards without
  * touching real flash. The real ``ra_flash_*`` driver call sites
  * are documented in the implementation; they get wired in once the
- * register-protect (PRCR) sequence is centralised in Wave 13.
+ * register-protect (PRCR) sequence is centralised in .
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

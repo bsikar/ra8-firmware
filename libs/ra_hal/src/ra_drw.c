@@ -6,7 +6,7 @@
  * [Ring 3 / HAL] {World: NS}
  *
  * @details
- * Full RA8D2 D/AVE 2D driver. The wave-3 expansion takes the driver
+ * Full RA8D2 D/AVE 2D driver. the expansion takes the driver
  * from the original solid-fill MVP up to the complete HUM Ch 62
  * register surface: textured blits, CLUT loads, RLE-encoded source,
  * per-pixel + global alpha blending, anti-aliased line / triangle,

@@ -8,7 +8,7 @@
  * (internal_handle_find_info / internal_handle_read_by_type /
  * internal_handle_read / internal_handle_write) because no attributes
  * are registered before the dispatcher runs. As a result the coverage
- * reachability gap analysis for Wave 17 lists ra_ble_att.c lines 385,
+ * reachability gap analysis for lists ra_ble_att.c lines 385,
  * 404, 492 and 658 as uncovered.
  *
  * This TU registers a small Primary Service + characteristic table
