@@ -25,7 +25,7 @@ import sys
 from pathlib import Path
 
 
-WAVE_0_WARN_ONLY = True  # Flip to False once the 1956-vector backlog is closed.
+WAVE_0_WARN_ONLY = False  # Legacy 138-test backlog cleared (2026-05-02); STRICT enforcement enabled.
 
 TEST_FUNC_PATTERN = re.compile(
     r"""
