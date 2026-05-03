@@ -295,7 +295,7 @@ typedef void (*ra_flash_callback_t)(const ra_flash_isr_event_t* ev);
  * @post ``MRPSC.MHSPEN`` is 0 (high-speed program disabled).
  *
  * @note Thread-safe: no, single-threaded init only.
- * @warning Calling this function while another bus master is
+ * @warning Calling this function while another bus initiator is
  * actively reading MRAM may produce one wait-state of
  * read corruption -- do it during boot only.
  *

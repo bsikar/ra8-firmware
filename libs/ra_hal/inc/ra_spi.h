@@ -1,14 +1,14 @@
 /**
  * @file ra_spi.h
- * @brief SPI_B master driver (RA8D2 Type-B SPI peripheral)
+ * @brief SPI_B controller driver (RA8D2 Type-B SPI peripheral)
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}
  *
  * @details
- * Public API for the SPI_B master driver. Implementation lives in
+ * Public API for the SPI_B controller driver. Implementation lives in
  * ``libs/ra_hal/src/ra_spi_b.c`` and mirrors FSP ``r_spi_b`` in
- * polling-mode master flow. The earlier register layout (legacy
+ * polling-mode controller flow. The earlier register layout (legacy
  * 8/16-bit SPI block) was replaced wholesale on RA8D2 -- see
  * ``ra8d2_spi_regs.h`` for the SPI_B register file.
  *

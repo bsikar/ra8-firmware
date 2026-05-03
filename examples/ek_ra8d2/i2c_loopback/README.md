@@ -5,7 +5,7 @@ Brings up `ra_iic_b` on channel 0 (SCL1 = P512, SDA1 = P511 -- the
 on-board I2C bus shared with Pmod1, the Arduino headers, and the
 DSI / camera buses) at 100 kHz Sm and probes a vacant 7-bit address
 (0x77, BME280 default) once a second. The bus is unpopulated on a
-bare EVM so the slave NACKs -- we treat that as "the controller is
+bare EVM so the peripheral NACKs -- we treat that as "the controller is
 alive and clocking SCL" and print
 
 ```

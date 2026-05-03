@@ -965,7 +965,7 @@ void ra_ceu_dispatch(void);
  *
  * @details
  * The CEU writes pixels straight to SRAM/SDRAM via its own bus
- * master, so it does not need the DMAC for the camera pixel path.
+ * initiator, so it does not need the DMAC for the camera pixel path.
  * This helper exists for the application-level pump that copies a
  * completed CEU frame into a second buffer (e.g. ping-ponging
  * frames into the GLCDC layer-2 framebuffer). It packages the
@@ -1003,7 +1003,7 @@ ra_ceu_dma_pump(uint8_t channel, const uint8_t* src, uint8_t* dst, uint32_t byte
  *        call.
  *
  * @details
- * The CEU writes pixel data straight to memory via its own bus master,
+ * The CEU writes pixel data straight to memory via its own bus initiator,
  * so the "DMA buffer" here is just the next CDAYR target the driver
  * will arm when `ra_ceu_capture_start(num_frames)` is called. The
  * length is cached so the frame-end callback can hand the whole

@@ -1016,7 +1016,7 @@ static void internal_program_line_limiters(const ra_drw_line_t* line)
 
   /* HUM Ch 62.2.4 "CACHECTL: Cache Control Register", p 3694 */
   /* Flush both caches so the dlist words written by the CPU are
- * visible to the DRW bus master. */
+ * visible to the DRW bus initiator. */
   const uint32_t cur_cc                = *ra_drw_reg32(k_ra_drw_off_cachectl);
   *ra_drw_reg32(k_ra_drw_off_cachectl) = cur_cc | k_ra_drw_cachectl_all_flush;
 

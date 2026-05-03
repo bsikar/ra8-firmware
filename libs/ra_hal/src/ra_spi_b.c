@@ -1,13 +1,13 @@
 /**
  * @file ra_spi_b.c
- * @brief SPI_B master driver (polling + IRQ dispatch + DMA pipes)
+ * @brief SPI_B controller driver (polling + IRQ dispatch + DMA pipes)
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}
  *
  * @details
  * Implements the public ``ra_spi`` API in ``ra_spi.h`` against the
- * RA8D2 SPI_B (Type-B SPI) peripheral. Mirrors the master-mode
+ * RA8D2 SPI_B (Type-B SPI) peripheral. Mirrors the controller-mode
  * polling flow from FSP ``r_spi_b.c`` (FSP ``R_SPI_B_Open`` /
  * ``r_spi_b_hw_config`` / ``r_spi_b_start_transfer``):
  *
@@ -16,7 +16,7 @@
  *    (delays), SPCR2, SPCMD0 (CPHA/CPOL/SPB/LSBF), SPDCR, then
  *    asserts SPCR with MSTR + SPE.
  *  - ``ra_spi_xfer8`` is a single-frame full-duplex polled xfer that
- *    follows HUM Ch 43.3.13 "Master Mode Operation" (p 2911) and the
+ *    follows HUM Ch 43.3.13 controller-mode operation section (p 2911) and the
  *    FSP ``r_spi_b_transmit`` / ``r_spi_b_receive`` pair: wait for
  *    SPTEF, write SPDR, wait for SPRF, read SPDR, clear SPSR via
  *    SPSRC. Driver explicitly polls SPSR (HUM Ch 43.2.9 p 2898) and
@@ -230,10 +230,10 @@ static uint32_t internal_spcmd(const ra_spi_cfg_t* cfg)
 }
 
 /**
- * @brief Build SPCR (control register 1) for master polling mode.
+ * @brief Build SPCR (control register 1) for controller polling mode.
  *
  * @details
- * Mirrors the master-mode subset of FSP ``r_spi_b_hw_config`` (lines
+ * Mirrors the controller-mode subset of FSP ``r_spi_b_hw_config`` (lines
  * 525-670). Sets MSTR + SCKASE + SPE; leaves IRQ-enable bits
  * (SPRIE/SPTIE/SPEIE/CENDIE) clear because the polling driver
  * services SPSR directly.
@@ -250,7 +250,7 @@ static uint32_t internal_spcmd(const ra_spi_cfg_t* cfg)
 static uint32_t internal_spcr_master(void)
 {
   uint32_t v = 0U;
-  v |= k_ra_spcr_mask_mstr;   /* Master mode.            */
+  v |= k_ra_spcr_mask_mstr;   /* Controller mode.            */
   v |= k_ra_spcr_mask_sckase; /* Auto-stop SCK.          */
   v |= k_ra_spcr_mask_spe;    /* SPI enable.             */
   return v;

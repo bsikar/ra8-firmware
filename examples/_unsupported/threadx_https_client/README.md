@@ -40,7 +40,7 @@ configuration keeps building cleanly.
    can reach `93.184.216.34:443`. A typical Linux setup is:
 
    ```
-   sudo ip link set eth1 master br0
+   sudo ip link set eth1 main br0
    sudo ip addr add 192.168.1.1/24 dev br0
    sudo iptables -t nat -A POSTROUTING -s 192.168.1.0/24 -o wlan0 -j MASQUERADE
    echo 1 | sudo tee /proc/sys/net/ipv4/ip_forward

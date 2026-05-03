@@ -527,7 +527,7 @@ static void internal_dcdc_disable_sequence(bool keep_lcboost)
 [[nodiscard]] ra_err_t ra_vreg_get_status(ra_vreg_status_t* out)
 {
   RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
-  /* DCDCCTL is the master status word.
+  /* DCDCCTL is the main status word.
    * HUM Ch 68.2.1 "DCDC Mode" p 4032 */
   const uint8_t dcdcctl = *ra_vreg_dcdcctl();
   /* VCCSEL is read-back-able.

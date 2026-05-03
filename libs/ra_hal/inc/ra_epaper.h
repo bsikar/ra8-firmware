@@ -19,7 +19,7 @@
  * 4 "Application Note"; see also Waveshare's IT8951-AP user guide):
  *
  *   - Every SPI transaction begins with a 16-bit preamble that tells
- *     the controller whether the master is about to send a command
+ *     the controller whether the controller is about to send a command
  *     (`0x6000`), send pixel data (`0x0000`), or read pixel/status
  *     data (`0x1000`).
  *   - For command writes the host then clocks the 16-bit command

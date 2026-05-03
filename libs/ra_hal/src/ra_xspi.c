@@ -283,10 +283,10 @@ ra_err_t ra_xspi_init(uint8_t instance, ra_xspi_lio_mode_t mode)
 
   /* HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986 */
   /* Wake the wrapper, idle the common config, set the link-IO
-   * protocol for slave 0, and clear any latent interrupt flags.
+   * protocol for target 0, and clear any latent interrupt flags.
    *
    * BMCTL0 is forced to ``disabled`` here so the AHB system-bus
-   * path to the slave window cannot race with the manual-command
+   * path to the target window cannot race with the manual-command
    * engine during JEDEC ID / RDSR / page-program traffic. FSP
    * performs the equivalent gate via ``r_ospi_b_xip(false)`` before
    * any manual transfer; without it the controller can NAK
@@ -294,7 +294,7 @@ ra_err_t ra_xspi_init(uint8_t instance, ra_xspi_lio_mode_t mode)
    * read is still in flight, which silently times out CMDCMP and
    * surfaces as ``k_ra_err_hw_timeout`` to LevelX. CMCTLCH[0/1] are
    * also zeroed so XIPEN cannot be left armed across ra_xspi_init.
-   * CDCTL0 is forced to 0 (CSSEL=0 -> slave 0 = on-board IS25LX,
+   * CDCTL0 is forced to 0 (CSSEL=0 -> target 0 = on-board IS25LX,
    * TRREQ=0) so the next manual command starts from a known state.
    * HUM Ch 44 p 2986 "CDCTL0 : Command Manual Control 0". */
   reg->BMCTL0      = (uint32_t)k_ra_xspi_bmctl0_disabled;
@@ -1248,7 +1248,7 @@ ra_err_t ra_xspi_xip_enter(uint8_t instance, uint8_t enter_code, uint8_t exit_co
   /* HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986 */
   /* FSP r_ospi_b_xip(true) flow:
    *   1. Stage XIP enter/exit codes in CMCTLCH for both channels.
-   *   2. Map the slave window read-only via BMCTL0 = 0x55.
+   *   2. Map the target window read-only via BMCTL0 = 0x55.
    *   3. Set CMCTLCH.XIPEN to arm execute-in-place.
    * The first read on the memory-mapped window then transmits the
    * enter code. We omit the bus-bridge prefetch dance because the

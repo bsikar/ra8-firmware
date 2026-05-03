@@ -939,7 +939,7 @@ ra_err_t ra_adc_set_compare_window(uint8_t channel, uint16_t low, uint16_t high)
     *mdr                     = (*mdr & ~mask) | code;
   }
 
-  /* ADCMPENR.CMPENn is the master enable for table N. */
+  /* ADCMPENR.CMPENn is the main enable for table N. */
   const uint32_t enable_bit = (uint32_t)(1UL << channel);
   *ra_adc_b_adcmpenr() |= enable_bit;
 

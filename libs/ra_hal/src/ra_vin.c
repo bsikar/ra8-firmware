@@ -10,7 +10,7 @@
  * every register documented in HUM Ch 67 "Video Input Module"
  * p 3973-4031:
  *
- * - MC / FC / MS / MTCSTOP / DMR for the master pipeline.
+ * - MC / FC / MS / MTCSTOP / DMR for the main pipeline.
  * - SLPRC / ELPRC / SPPRC / EPPRC for pre-clip windowing.
  * - UDS_CTRL / UDS_SCALE / UDS_PASS_BWIDTH / UDS_CLIP_SIZE for the
  * upscaling / downscaling pipeline.

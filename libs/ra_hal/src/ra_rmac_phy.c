@@ -326,7 +326,7 @@ ra_err_t ra_rmac_phy_auto_negotiate_start(void)
  *
  * @details
  * Reads BMSR (IEEE 802.3 register 1), then -- if AN is complete and
- * the link is up -- consults the gigabit master/slave status (MSR,
+ * the link is up -- consults the gigabit controller/peripheral status (MSR,
  * register 10) and the partner ability (LPA, register 5) to map the
  * advertised speeds to ::ra_rmac_phy_speed_t.
  *

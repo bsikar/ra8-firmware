@@ -1460,7 +1460,7 @@ ra_err_t ra_ceu_dma_pump(uint8_t channel, const uint8_t* src, uint8_t* dst, uint
     return k_ra_err_invalid_arg;
   }
 
-  /* The CEU writes pixels with its own bus master; the DMAC is only
+  /* The CEU writes pixels with its own bus initiator; the DMAC is only
    * used by the application-level pump that ferries finished
    * frames. Configure for word-wide block transfer with both
    * pointers incrementing. */

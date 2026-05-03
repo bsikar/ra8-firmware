@@ -152,7 +152,7 @@ md.append(" - Ch 3 \"Inter-Processor Communication (IPC)\", registers 3.2.1 `IPC
 md.append(" - Each peripheral chapter (SCI, IIC, SPI, GPT, ADC, CRC, USB, ETH, GLCDC, ...) carries its own `xxxSAR` register near the head of its register description block; cite_check picks these up by chapter rather than by exhaustive listing.")
 md.append("- **Memory map and address-space partitioning**")
 md.append(" - Ch 5 \"Address Space\", subsections 5.1 \"Address Space\", 5.2 \"External Address Space\", 5.3 \"Peripheral I/O Register Address Space\" -- the canonical Secure / Non-Secure address split lives here.")
-md.append(" - Ch 15 \"Buses\" -- bus master security attribution and the bus-side filters that back the per-peripheral SAR registers.")
+md.append(" - Ch 15 \"Buses\" -- bus initiator security attribution and the bus-side filters that back the per-peripheral SAR registers.")
 md.append(" - Ch 58 \"SRAM\" and Ch 59 \"MRAM\" -- the Secure / Non-Secure halves of MRAM and the SRAM-0 / SRAM-1 split that the linker script consumes.")
 md.append(" - Ch 7 \"Option-Setting Memory\" -- FSBL secure boot path, anti-rollback counters, OEM root-key hashes; the boot trust anchor for the Secure world.")
 md.append("- **NSC veneer placement**")

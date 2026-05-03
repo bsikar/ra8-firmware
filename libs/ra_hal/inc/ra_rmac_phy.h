@@ -13,7 +13,7 @@
  *  - Clause-22 register access through the same pluggable bus
  *    interface used by `ra_ether_phy`.
  *  - Auto-negotiation start / poll / read partner ability with
- *    1000Mbit support (Clause-22 register 9 master/slave).
+ *    1000Mbit support (Clause-22 register 9 controller/peripheral, per IEEE 802.3 spec).
  *  - RGMII rx/tx clock-skew tuning (vendor-specific PHY register).
  *  - Link-status and per-PHY callback hooks for the MAC ISR.
  *

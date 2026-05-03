@@ -6,7 +6,7 @@
  * [Ring 3 / HAL] {World: NS}
  *
  * @details
- * This module exposes the RA8D2 I3C0 controller as a master capable
+ * This module exposes the RA8D2 I3C0 controller as a primary capable
  * of issuing the standard MIPI Common Command Codes (CCCs), private
  * read / write transfers in SDR mode, and reading inbound
  * In-Band-Interrupt (IBI) descriptors from the IBI queue.  The
@@ -82,9 +82,9 @@ typedef struct {
  *        bits 1:0 of the IBI ID).
  */
 typedef enum : uint8_t {
-  k_ra_i3c_ibi_type_interrupt = 0U, /**< Slave-initiated IBI. */
-  k_ra_i3c_ibi_type_hot_join  = 1U, /**< Hot-join request. */
-  k_ra_i3c_ibi_type_master    = 2U, /**< Mastership request. */
+  k_ra_i3c_ibi_type_interrupt    = 0U, /**< Peripheral-initiated IBI. */
+  k_ra_i3c_ibi_type_hot_join     = 1U, /**< Hot-join request. */
+  k_ra_i3c_ibi_type_main_request = 2U, /**< Mainship request. */
 } ra_i3c_ibi_type_t;
 
 /**
@@ -133,13 +133,13 @@ typedef struct {
 [[nodiscard]] ra_err_t ra_i3c_deinit(void);
 
 /**
- * @brief Programme the active 7-bit master/slave device address.
+ * @brief Programme the active 7-bit primary/peripheral device address.
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_i3c_set_address(uint32_t addr);
 
 /**
- * @brief Enable / disable bus-master operation via BCTL.BUSE.
+ * @brief Enable / disable bus-primary operation via BCTL.BUSE.
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_i3c_bus_enable(bool enable);
@@ -393,21 +393,21 @@ typedef enum : uint8_t {
 [[nodiscard]] ra_err_t ra_i3c_ibi_drain(ra_i3c_ibi_t* ibi);
 
 /**
- * @brief Enter slave-mode by programming NSDVAD and asserting BCTL.SLVE.
+ * @brief Enter peripheral-mode by programming NSDVAD and asserting BCTL.SLVE.
  *
  * @details
  * Bring-up sequence for the I3C controller acting as a target:
- * 1. Drop BCTL.BUSE (master-mode bus operation off).
+ * 1. Drop BCTL.BUSE (primary-mode bus operation off).
  * 2. Programme NSDVAD with the static-address payload + valid bit.
- * 3. Set BCTL.SLVE (bit 16) to enable slave-mode reception.
+ * 3. Set BCTL.SLVE (bit 16) to enable peripheral-mode reception.
  *
- * See HUM Ch 40 "BCTL : Bus Control Register" + "Slave Device
+ * See HUM Ch 40 "BCTL : Bus Control Register" + "Peripheral Device
  * Address Register" pp 2445-2701.
  *
  * @param[in] static_addr Static (pre-DAA) 7-bit address.
  *
  * @return ::ra_err_t
- * @retval k_ra_ok               Slave-mode entered.
+ * @retval k_ra_ok               Peripheral-mode entered.
  * @retval k_ra_err_invalid_arg  @p static_addr out of 7-bit range.
  *
  * @pre  ``ra_i3c_init`` succeeded.
