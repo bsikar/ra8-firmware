@@ -62,7 +62,7 @@ $(foreach m,$(_RA_APP_MAINS),$(eval RA_APP_DIR_$(notdir $(patsubst %/main.c,%,$m
 
 # We forward each <app> name to the app's own Makefile, so reserve the names
 # below from being shadowed by .PHONY targets.
-.PHONY: help apps default clean format check tidy test test-cov test-docker ctest coverage mcdc misra docs dashboard ascii version qe-test smoke stack-usage scan-build all $(RA_APPS)
+.PHONY: help apps default clean format check tidy test test-cov test-docker ctest coverage mcdc misra docs dashboard ascii version qe-test smoke stack-usage scan-build iwyu all $(RA_APPS)
 
 # EVM-tier apps (everything under examples/ek_ra8d2/) -- these are the
 # apps the hardware smoke test sweeps because they run on a stock
@@ -94,6 +94,7 @@ help:
 	@echo "  make smoke     hardware smoke-test sweep over examples/ek_ra8d2/"
 	@echo "  make stack-usage build EVM apps + aggregate -fstack-usage report"
 	@echo "  make scan-build run clang static analyzer over the host test build"
+	@echo "  make iwyu      run include-what-you-use over the host test build"
 
 # `make` with no arg builds the default app.
 default: $(RA_DEFAULT_APP)
@@ -208,5 +209,12 @@ stack-usage: $(EK_APPS)
 # for the documented baseline of expected findings.
 scan-build:
 	bash scripts/utils/scan_build.sh
+
+# include-what-you-use (IWYU). Reports per-TU include-graph hygiene
+# violations: missing direct includes, unnecessary transitive
+# includes, and forward-decl opportunities. Warn-only today; see
+# scripts/utils/iwyu.sh.
+iwyu:
+	bash scripts/utils/iwyu.sh
 
 all: format tidy test default
