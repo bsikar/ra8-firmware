@@ -354,31 +354,30 @@ hardware-in-the-loop smoke (Phase 6) plus integration tests
 
 ## 6. Open questions and blockers
 
-### Vendor-blob blockers
+### Vendor-blob blockers -- CLOSED 2026-05-02
 
-These items cannot be cleared without either obtaining a
-license-bearing copy of the blob (NDA) or moving the
-functionality off the blob entirely. Both are documented in
-`docs/VENDOR_BLOBS.md`.
+Both vendor-blob items are **CLOSED**: the project pulls the
+blobs **directly from `renesas/fsp` as SOUP** per IEC 61508-3
+sec. 7.4.2.12 and DO-178C sec. 12.1.4. No NDA route, no
+clean-room rewrite. The runtime stubs in `libs/ra_hal/src/ra_rsip*.c`
+and `libs/ra_hal/src/ra_ble_patch.c` remain in place for host unit
+tests; the FSP-vendored blobs are dropped into
+`libs/third_party/fsp_blobs/` for any hardware build that needs
+them.
 
-1. **RSIP-E50D firmware blobs**.
-   - Required for production-grade Renesas Secure IP key
-     install / wrap operations.
-   - Today's mitigation is `RA_RSIP_SOFTWARE_BACKEND`, a
-     test-only emulator. This is **not** hardware-equivalent
-     and cannot ship in a certified build.
-   - Decision required from owner: pursue Renesas NDA route, or
-     drop RSIP-backed key wrap from the certification scope and
-     fall back to PSA-Crypto-only key handling.
+1. **RSIP-E50D firmware blobs** -- CLOSED. Vendored from
+   `renesas/fsp` as SOUP. SOUP entry:
+   `docs/SOUP/r_sce_AMC_firmware.md`. Drop-in path:
+   `libs/third_party/fsp_blobs/r_sce_AMC/` (procurement plan in
+   `libs/third_party/fsp_blobs/README.md`; the actual binary copy
+   is a follow-up commit when network and a tagged FSP release are
+   available).
 
-2. **Renesas BLE controller patch image**.
-   - Required for end-to-end BLE bring-up against the on-chip
-     controller.
-   - Today's mitigation: NimBLE host stack is staged but not
-     linked to a working controller path.
-   - Decision required from owner: defer BLE out of v1
-     certification scope, or pursue the patch image under
-     evaluation license.
+2. **Renesas BLE controller patch image** -- CLOSED. Vendored from
+   `renesas/fsp` as SOUP. SOUP entry:
+   `docs/SOUP/ble_patch_image.md`. Drop-in path:
+   `libs/third_party/fsp_blobs/ble_patch/` (same procurement plan
+   as above).
 
 ### Process blockers
 
