@@ -6,7 +6,7 @@
  * [Ring 6 / APP] {World: S}
  *
  * @details
- * Brings up SSIE channel 0 in master / I2S mode and exercises the
+ * Brings up SSIE channel 0 in controller / I2S mode and exercises the
  * full-duplex TX -> RX path with an internally generated 16-sample
  * sine pattern. The demo pushes the pattern into the TX FIFO via
  * ``ra_ssie_write_sample`` and (on real silicon, with the J11 audio
@@ -16,7 +16,7 @@
  *
  * Sequence:
  *   1. CGC + SysTick + UART (SCI8) bring-up.
- *   2. ``ra_ssie_init(0, &cfg)`` -- master I2S, 16-bit data / 32-bit
+ *   2. ``ra_ssie_init(0, &cfg)`` -- controller I2S, 16-bit data / 32-bit
  *      system word, AUDIO_MCK / 32 bit clock divider.
  *   3. ``ra_ssie_start(0, k_ra_ssie_dir_tx_rx)``.
  *   4. Push the 16-sample sine pattern into TX, log status.
@@ -136,7 +136,7 @@ static void ssie_loop_setup_or_halt(void)
 }
 
 /**
- * @brief Bring SSIE0 up in master I2S mode and stream the test pattern.
+ * @brief Bring SSIE0 up in controller I2S mode and stream the test pattern.
  *
  * @par MC/DC:
  * Compound decision: ``init != ok || start != ok || write_sample != ok``.

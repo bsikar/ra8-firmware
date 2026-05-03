@@ -205,7 +205,7 @@ pack. The full pack consists of the artifacts below.
 | Hardware bring-up record              | `docs/HARDWARE_BRINGUP.md`                    |
 | SOUP register                         | `docs/SOUP/`                                  |
 | Vendor-blob blockers                  | `docs/VENDOR_BLOBS.md`                        |
-| Roadmap (master tracker)              | `docs/QUALIFICATION_ROADMAP.md`               |
+| Roadmap (primary tracker)              | `docs/QUALIFICATION_ROADMAP.md`               |
 | Build outputs (regenerable)           | `build/`, `tests/build/`, `tests/build-cov/`  |
 
 The git repository at HEAD `402253ef` is the configuration-managed

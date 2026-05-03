@@ -36,7 +36,7 @@
  *   1. Plug an Ethernet cable from EK-RA8D2 J64 to the workstation.
  *      Bridge / NAT the workstation interface to the public Internet
  *      so the board can reach 93.184.216.34:443 -- a typical setup
- *      is ``sudo ip link set ... master br0`` on Linux or sharing the
+ *      is ``sudo ip link set ... main br0`` on Linux or sharing the
  *      Wi-Fi adapter on macOS.
  *   2. Open a serial terminal on the J-Link OB CDC port at 115200
  *      8N1, e.g. ``picocom -b 115200 /dev/cu.usbmodem0001234567891``.

@@ -511,10 +511,10 @@ typedef enum : uint16_t {
                      k_ra_pin_4), /**< Pmod1.1 SS  (SS2/IRQ14),  P804. UM Table 17 p 26. */
   k_ra_board_pmod1_spi_copi =
     (uint16_t)RA_PIN(k_ra_port_8,
-                     k_ra_pin_1), /**< Pmod1.2 MOSI (MOSI2/TXD2),P801. UM Table 17 p 26. */
+                     k_ra_pin_1), /**< Pmod1.2 COPI (MOSI2/TXD2 per UM),P801. UM Table 17 p 26. */
   k_ra_board_pmod1_spi_cipo =
     (uint16_t)RA_PIN(k_ra_port_8,
-                     k_ra_pin_2), /**< Pmod1.3 MISO (MISO2/RXD2),P802. UM Table 17 p 26. */
+                     k_ra_pin_2), /**< Pmod1.3 CIPO (MISO2/RXD2 per UM),P802. UM Table 17 p 26. */
   k_ra_board_pmod1_spi_sck =
     (uint16_t)RA_PIN(k_ra_port_8,
                      k_ra_pin_3), /**< Pmod1.4 SCK  (SCK2),       P803. UM Table 17 p 26. */
@@ -570,9 +570,11 @@ typedef enum : uint16_t {
   k_ra_board_pmod2_spi_cs =
     (uint16_t)RA_PIN(k_ra_port_6, k_ra_pin_4), /**< Pmod2.1 SS   (SSLB0), P604. UM Table 19 p 27. */
   k_ra_board_pmod2_spi_copi =
-    (uint16_t)RA_PIN(k_ra_port_6, k_ra_pin_3), /**< Pmod2.2 MOSI (MOSIB), P603. UM Table 19 p 27. */
+    (uint16_t)RA_PIN(k_ra_port_6,
+                     k_ra_pin_3), /**< Pmod2.2 COPI (MOSIB per UM), P603. UM Table 19 p 27. */
   k_ra_board_pmod2_spi_cipo =
-    (uint16_t)RA_PIN(k_ra_port_6, k_ra_pin_2), /**< Pmod2.3 MISO (MISOB), P602. UM Table 19 p 27. */
+    (uint16_t)RA_PIN(k_ra_port_6,
+                     k_ra_pin_2), /**< Pmod2.3 CIPO (MISOB per UM), P602. UM Table 19 p 27. */
   k_ra_board_pmod2_spi_sck =
     (uint16_t)RA_PIN(k_ra_port_6, k_ra_pin_1), /**< Pmod2.4 SCK  (RSPCKB),P601. UM Table 19 p 27. */
 } ra_board_pmod2_spi_pin_t;

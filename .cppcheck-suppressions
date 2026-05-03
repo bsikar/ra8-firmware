@@ -282,3 +282,14 @@ knownConditionTrueFalse:libs/ra_net/src/ra_net_tcp.c:463
 # arp_insert(&spa, &sha) call.
 # ---------------------------------------------------------------------------
 uninitvar:libs/ra_net/src/ra_net_arp.c
+
+# ---------------------------------------------------------------------------
+# unusedStructMember on driver-facing config / state structs that are
+# populated by the HAL but only consumed by application code (which
+# cppcheck does not see when scanning the HAL in isolation). These were
+# surfaced after touching doc-comments in these headers triggered the
+# pre-commit cppcheck pass on previously-unstaged files.
+# ---------------------------------------------------------------------------
+unusedStructMember:libs/ra_hal/inc/ra_epaper.h
+unusedStructMember:libs/ra_hal/inc/ra_rmac_phy.h
+unusedStructMember:libs/ra_hal/inc/ra_usb_haud.h

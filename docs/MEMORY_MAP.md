@@ -57,7 +57,7 @@ the corresponding driver source under `libs/ra_hal/src/`.
 
 | Peripheral      | Secure base   | Notes                                                | HAL driver                              |
 |-----------------|---------------|------------------------------------------------------|------------------------------------------|
-| MMPU            | `0x40000000`  | Bus-master MPU                                       | (no driver, used by HAL init)           |
+| MMPU            | `0x40000000`  | Bus-initiator MPU                                       | (no driver, used by HAL init)           |
 | SPMON           | `0x40000D00`  | Bus / stack monitor                                  | (no driver yet)                          |
 | SRAM control    | `0x40002000`  | SRAM register window                                  | `ra_sram.c`                              |
 | SDRAMC          | `0x40003C00`  | Bus.SDRAM sub-block                                   | `ra_sdramc.c`                            |

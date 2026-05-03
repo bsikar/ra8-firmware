@@ -129,7 +129,7 @@ RX_OTHER_BRANDS = re.compile(
     re.IGNORECASE,
 )
 
-# 6. ``Co-Authored-By: <ai-name>`` lines. Master brand list.
+# 6. ``Co-Authored-By: <ai-name>`` lines. Brand list.
 _AI_BRAND_LIST = (
     r"claude|anthropic|openai|chatgpt|codex|copilot|gpt|"
     r"cursor(?:\s+composer)?|aider|continue|cody|sourcegraph\s+cody|"

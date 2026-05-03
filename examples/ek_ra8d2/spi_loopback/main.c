@@ -6,7 +6,7 @@
  * [Ring 6 / APP] {World: S}
  *
  * @details
- * Standalone EVM-tier app that exercises the SPI_B master driver
+ * Standalone EVM-tier app that exercises the SPI_B controller driver
  * (``libs/ra_hal/ra_spi.h``) via the silicon's internal-loopback
  * mode -- no external CIPO/COPI jumper required. The flow:
  *
@@ -14,8 +14,8 @@
  *   2. ``ra_mstp_init`` + ``ra_pfs_route_peripheral`` for SCI8
  *      console pins (PD02 / PD03).
  *   3. ``ra_spi_init(0, ...)`` at 1 MHz mode-0 MSB-first.
- *   4. Direct register stamp ``SPCR2.SPLP = 1`` so MOSI is fed
- *      back into MISO inside the chip; no need to route or wire
+ *   4. Direct register stamp ``SPCR2.SPLP = 1`` so COPI is fed
+ *      back into CIPO inside the chip; no need to route or wire
  *      RSPI pins (HUM Ch 43.2.5 p 2889 -- ``k_ra_spcr2_mask_splp``).
  *      The HAL doesn't expose a "loopback" knob today; documenting
  *      the raw write keeps the demo single-file like canfd_loopback.
@@ -89,7 +89,7 @@ static void spi_demo_panic_halt(void)
  *
  * @details
  * Stamps SPCR2.SPLP = 1 directly after ``ra_spi_init`` so the
- * silicon ties MOSI to MISO internally and no external loopback
+ * silicon ties COPI to CIPO internally and no external loopback
  * jumper is needed. The HAL surface does not yet expose this knob;
  * the raw write is documented above per the canfd_loopback pattern.
  *
@@ -145,7 +145,7 @@ static void spi_demo_setup_or_halt(void)
   if (ra_spi_init((uint8_t)k_spi_demo_spi_channel, &spi_cfg) != k_ra_ok) {
     spi_demo_panic_halt();
   }
-  /* Internal-loopback: MOSI -> MISO, no external pins required. */
+  /* Internal-loopback: COPI -> CIPO, no external pins required. */
   ra_spi((uint8_t)k_spi_demo_spi_channel)->SPCR2 |= (uint32_t)k_ra_spcr2_mask_splp;
 
   if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
