@@ -476,17 +476,26 @@ ra_usb_queue_out(ra_usb_speed_t speed, uint8_t pipe_num, uint8_t* out_buf, uint1
  * @details
  * The host has issued a control-IN SETUP (e.g. GET_DESCRIPTOR) and the
  * device-side stack now needs to deliver the response bytes. This call
- * selects the DCP via `CFIFOSEL.CURPIPE = 0`, waits for `FRDY`, writes
- * `len` bytes (<= `DCPMAXP`) into `CFIFO`, asserts `BVAL` and switches
- * `DCPCTR.PID` from NAK to BUF so the controller will answer the next
- * IN token. CCPL is **not** pulsed here: the status stage is host-
- * initiated and is acknowledged later when CTSQ transitions to the
- * status-stage value (handled by the bridge's CTRT path).
+ * selects the DCP via `CFIFOSEL.CURPIPE = 0`, then iteratively writes
+ * the payload into `CFIFO` in `DCPMAXP`-sized chunks, asserting `BVAL`
+ * after each chunk and waiting for `FRDY` to re-assert (which the
+ * controller raises after sending the previous chunk to the host).
+ * `DCPCTR.PID` is raised from NAK to BUF after the first chunk so the
+ * controller answers the IN tokens. CCPL is **not** pulsed here: the
+ * status stage is host-initiated and is acknowledged later when CTSQ
+ * transitions to the status-stage value (handled by the bridge's CTRT
+ * path).
+ *
+ * For `len > DCPMAXP` (the common case for CONFIGURATION descriptors),
+ * the function blocks until every chunk has been handed to the
+ * controller. If `len` is an exact non-zero multiple of `DCPMAXP`, no
+ * terminating zero-length packet is sent here; the host asks for the
+ * exact wTotalLength and is satisfied by the last full-size packet.
  *
  * @param[in] speed Which controller (FS or HS).
- * @param[in] data Pointer to up-to-`DCPMAXP` data bytes to send. May be
+ * @param[in] data Pointer to the IN data-stage payload. May be
  *                 `nullptr` only if `len == 0`.
- * @param[in] len Byte count, 0..`DCPMAXP`.
+ * @param[in] len Byte count. May exceed `DCPMAXP`; the call will chunk.
  *
  * @return `ra_err_t` error code.
  * @retval k_ra_ok Bytes written, PID raised to BUF.
