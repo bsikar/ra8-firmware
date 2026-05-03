@@ -546,7 +546,7 @@ Pre-commit hooks catch most citation drift, but not all of it. Before pushing, s
 
 - `git diff | grep -E '\.[ch]:[0-9]+'` -- catches `file:line` anchors in source comments and docs that the gate may have missed (e.g. introduced in a previously-committed file you also touched).
 - Stale doc cross-references: search for any heading slug, function name, or filename you renamed in this change and confirm every Markdown link / table-of-contents entry still resolves.
-- TODO / FIXME / `WAVE_0_WARN_ONLY` flags whose work you just completed -- delete the marker in the same commit; do not leave breadcrumbs that lie.
+- TODO / FIXME / `WARN_ONLY_MODE` flags whose work you just completed -- delete the marker in the same commit; do not leave breadcrumbs that lie.
 - Auto-generated docs (`docs/MCDC_*`, `docs/DOXYGEN_GAPS.*`, `docs/MISRA_GAPS.csv`, `docs/STACK_USAGE.md`) -- if your change touches the generators or the inputs, regenerate them in the same commit so reviewers see the updated artifacts.
 - Diff for accidental non-ASCII (`LC_ALL=C grep -nP '[^\x00-\x7f]' <files>`); the encoding gate will catch it but a local check saves a CI round-trip.
 

@@ -42,7 +42,7 @@ from pathlib import Path
 # Strict: cleanup wave landed; gate now blocks any new line-citation
 # violation. See docs/CITATION_POLICY.md for the rule and the
 # `// CITES-OK: <reason>` per-line opt-out.
-WAVE_0_WARN_ONLY = False
+WARN_ONLY_MODE = False
 
 SCAN_ROOTS = ("libs/", "src/", "tests/", "examples/", "port/")
 DOC_SCAN_ROOTS = ("docs/", "")  # "" => repo root (top-level *.md / *.txt)
@@ -359,7 +359,7 @@ def main() -> int:
         f"{len(per_file_counts)} file(s).",
         file=sys.stderr,
     )
-    if WAVE_0_WARN_ONLY:
+    if WARN_ONLY_MODE:
         print(
             "check_line_citations: WAVE 0 -- warn-only, not blocking commit.",
             file=sys.stderr,
