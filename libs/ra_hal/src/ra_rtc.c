@@ -269,6 +269,69 @@ ra_err_t ra_rtc_get(ra_rtc_datetime_t* out)
   return k_ra_ok;
 }
 
+/**
+ * @enum ra_rtc_alarm_t
+ * @brief Bit positions / limits for the RxxAR alarm registers.
+ *
+ * @details
+ * HUM Ch 26.2.13..26.2.16 -- each alarm register's bit 7 is the ENB
+ * (alarm enable) flag; the lower 7 bits hold the BCD value to match.
+ */
+typedef enum : uint8_t {
+  k_ra_rtc_alarm_enb_bit = 7U,
+  k_ra_rtc_alarm_max_hr  = 23U,
+  k_ra_rtc_alarm_max_min = 59U,
+  k_ra_rtc_alarm_max_sec = 59U,
+} ra_rtc_alarm_t;
+
+/**
+ * @brief Implementation of ra_rtc_set_alarm (see header for full contract).
+ *
+ * @details
+ * Writes the BCD-encoded second / minute / hour into RSECAR / RMINAR /
+ * RHRAR with their ENB bits set, and clears every other AR register's
+ * ENB so the alarm matches purely on time-of-day.
+ *
+ * @param[in] alarm See header.
+ * @return Result code.
+ * @retval k_ra_ok Alarm written.
+ * @retval k_ra_err_null_ptr ``alarm`` is NULL.
+ * @retval k_ra_err_invalid_arg Out-of-range hour/min/sec.
+ * @pre Module state is consistent.
+ * @pre Module state is consistent.
+ * @post Caller-visible state matches the documented contract.
+ * @post Caller-visible state matches the documented contract.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+ra_err_t ra_rtc_set_alarm(const ra_rtc_datetime_t* alarm)
+{
+  RA_CHECK_NULL_PTR(alarm, s_tag, "alarm must not be nullptr");
+  if (alarm->hour > k_ra_rtc_alarm_max_hr || alarm->minute > k_ra_rtc_alarm_max_min ||
+      alarm->second > k_ra_rtc_alarm_max_sec) {
+    return k_ra_err_invalid_arg;
+  }
+
+  volatile r_rtc_regs_t* rtc = ra_rtc();
+  const uint8_t          enb = (uint8_t)(1U << k_ra_rtc_alarm_enb_bit);
+
+  /* HUM Ch 26.2.13 "RSECAR" / 26.2.14 "RMINAR" / 26.2.15 "RHRAR" --
+   * encode the BCD match value, OR in the ENB bit to enable the field. */
+  rtc->RSECAR = (uint8_t)(internal_bin_to_bcd(alarm->second) | enb);
+  rtc->RMINAR = (uint8_t)(internal_bin_to_bcd(alarm->minute) | enb);
+  rtc->RHRAR  = (uint8_t)(internal_bin_to_bcd(alarm->hour) | enb);
+
+  /* Wildcard the date / weekday / month / year alarms so the alarm
+   * fires on the next hh:mm:ss match regardless of date. */
+  rtc->RWKAR   = 0U;
+  rtc->RDAYAR  = 0U;
+  rtc->RMONAR  = 0U;
+  rtc->RYRAR   = 0U;
+  rtc->RYRAREN = 0U;
+
+  return k_ra_ok;
+}
+
 /* =============================================================================
  * full build-out
  * =============================================================================

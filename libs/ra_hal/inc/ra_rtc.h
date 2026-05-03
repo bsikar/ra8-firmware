@@ -80,6 +80,40 @@ typedef enum : uint8_t {
 typedef void (*ra_rtc_event_fn_t)(void* ctx, uint8_t status_mask);
 
 /**
+ * @brief Programme the alarm-match registers (hour/minute/second).
+ *
+ * @details
+ * Writes RSECAR / RMINAR / RHRAR with the BCD-encoded match values
+ * from @p alarm and sets each register's ENB bit (bit 7) so the
+ * field participates in the match. Day, month, year, weekday alarm
+ * registers are wildcarded (ENB cleared) so the alarm fires on the
+ * next time-of-day match within the current day.
+ *
+ * Caller is responsible for enabling RCR1.AIE via
+ * ``ra_rtc_set_irq_enable(k_ra_rtc_irq_alarm)`` after this call.
+ *
+ * @param[in] alarm Hour/minute/second to match. ``year`` and ``month``
+ *                  fields are ignored. Must not be NULL.
+ *
+ * @return ``ra_err_t`` outcome.
+ * @retval k_ra_ok               Alarm registers written.
+ * @retval k_ra_err_null_ptr     ``alarm`` is NULL.
+ * @retval k_ra_err_invalid_arg  ``alarm->hour > 23`` or
+ *                               ``alarm->minute > 59`` or
+ *                               ``alarm->second > 59``.
+ *
+ * @pre ``ra_rtc_init()`` previously succeeded.
+ * @pre ``alarm != nullptr``.
+ * @post RSECAR / RMINAR / RHRAR carry the encoded match values with
+ *       their ENB bits set.
+ * @post Day / month / year / weekday alarm-enable bits are clear.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_rtc_set_alarm(const ra_rtc_datetime_t* alarm);
+
+/**
  * @brief Tear down the RTC (stop counter + disable IRQs).
  * @since 0.1.0
  */
