@@ -9,9 +9,8 @@
  * NTST.RDBFF0, BST.TENDF) so the wait loops fall through immediately.
  *
  * BCST.BFREF is also pre-armed (= bus free) ahead of every transfer
- * test so the new bus-busy gate (mirrors FSP
- * ``iic_b_master_run_hw_master`` BFREF check) does not falsely
- * reject the transaction.  LEGACY-OK: vendor FSP function-name citation.
+ * test so the new bus-busy gate (mirrors the upstream Renesas FSP
+ * IIC controller BFREF check) does not falsely reject the transaction.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
