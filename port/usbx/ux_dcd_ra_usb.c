@@ -32,6 +32,8 @@
 #include "tx_api.h"
 #include "ux_api.h"
 #include "ux_device_stack.h"
+#include "ux_system.h"
+#include "ux_utility.h"
 
 /**
  * @enum ra_usb_dcd_isr_prio_t
@@ -618,6 +620,11 @@ static unsigned int internal_dispatch_setup(const ra_usb_setup_t* setup)
   tr->ux_slave_transfer_request_actual_length        = 0UL;
   tr->ux_slave_transfer_request_current_data_pointer =
     tr->ux_slave_transfer_request_data_pointer;
+  /* Chapter-9 dispatcher gates on completion_code == UX_SUCCESS
+   * (ux_device_stack_control_request_process.c line ~101). The
+   * previous SETUP may have left it as UX_TRANSFER_STALLED on a
+   * STALL'd request -- clear it so this fresh SETUP is honored. */
+  tr->ux_slave_transfer_request_completion_code = UX_SUCCESS;
 
   return _ux_device_stack_control_request_process(tr);
 }
@@ -1064,6 +1071,57 @@ ra_err_t ux_dcd_ra_usb_initialize(ra_usb_speed_t speed)
   /* Tell USBX system the speed. */
   _ux_system_slave->ux_system_slave_speed =
     (speed == k_ra_usb_speed_hs) ? UX_HIGH_SPEED_DEVICE : UX_FULL_SPEED_DEVICE;
+
+  /* Mirror the controller-bring-up work upstream DCDs do in their
+   * "initialize_complete" hook (see ux_dcd_sim_slave_initialize_complete.c).
+   * _ux_device_stack_initialize only stores the FS/HS framework
+   * pointer pairs and allocates the EP0 data buffer; the active
+   * device_framework / device_framework_length pair, the parsed
+   * device descriptor, the EP0 transfer-request endpoint binding
+   * and DCD CREATE_ENDPOINT for EP0 must be done by the DCD or the
+   * chapter-9 dispatcher silently STALLs the very first
+   * GET_DESCRIPTOR(DEVICE) request (DCPCTR.PID -> 0x42 / STALL). */
+  UX_SLAVE_DEVICE* device = &_ux_system_slave->ux_system_slave_device;
+  if (_ux_system_slave->ux_system_slave_speed == UX_HIGH_SPEED_DEVICE) {
+    _ux_system_slave->ux_system_slave_device_framework =
+      _ux_system_slave->ux_system_slave_device_framework_high_speed;
+    _ux_system_slave->ux_system_slave_device_framework_length =
+      _ux_system_slave->ux_system_slave_device_framework_length_high_speed;
+  } else {
+    _ux_system_slave->ux_system_slave_device_framework =
+      _ux_system_slave->ux_system_slave_device_framework_full_speed;
+    _ux_system_slave->ux_system_slave_device_framework_length =
+      _ux_system_slave->ux_system_slave_device_framework_length_full_speed;
+  }
+
+  if (_ux_system_slave->ux_system_slave_device_framework != UX_NULL) {
+    _ux_utility_descriptor_parse(_ux_system_slave->ux_system_slave_device_framework,
+                                 _ux_system_device_descriptor_structure,
+                                 UX_DEVICE_DESCRIPTOR_ENTRIES,
+                                 (UCHAR*)&device->ux_slave_device_descriptor);
+  }
+
+  UX_SLAVE_TRANSFER* tr =
+    &device->ux_slave_device_control_endpoint.ux_slave_endpoint_transfer_request;
+  tr->ux_slave_transfer_request_timeout = UX_MS_TO_TICK(UX_CONTROL_TRANSFER_TIMEOUT);
+  tr->ux_slave_transfer_request_current_data_pointer =
+    tr->ux_slave_transfer_request_data_pointer;
+  tr->ux_slave_transfer_request_endpoint = &device->ux_slave_device_control_endpoint;
+  device->ux_slave_device_control_endpoint.ux_slave_endpoint_descriptor.wMaxPacketSize =
+    device->ux_slave_device_descriptor.bMaxPacketSize0;
+  tr->ux_slave_transfer_request_requested_length =
+    device->ux_slave_device_descriptor.bMaxPacketSize0;
+  tr->ux_slave_transfer_request_transfer_length =
+    device->ux_slave_device_descriptor.bMaxPacketSize0;
+
+  /* Hand EP0 to ourselves so any future TRANSFER_REQUEST has the
+   * pipe table populated. */
+  (void)_ux_dcd_ra_usb_function(owner,
+                                UX_DCD_CREATE_ENDPOINT,
+                                (void*)&device->ux_slave_device_control_endpoint);
+
+  device->ux_slave_device_control_endpoint.ux_slave_endpoint_state = UX_ENDPOINT_RESET;
+  tr->ux_slave_transfer_request_phase = UX_TRANSFER_PHASE_DATA_IN;
 
   /* Spawn the polled-dispatch worker BEFORE returning so it is
    * already pumping ra_usb_dispatch by the time the application
