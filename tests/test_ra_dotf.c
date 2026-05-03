@@ -1002,31 +1002,44 @@ static void test_mcdc_dotf(void)
  *   ``(new_handle->size != k_ra_dotf_key_size_128) &&
  *    (new_handle->size != k_ra_dotf_key_size_192) &&
  *    (new_handle->size != k_ra_dotf_key_size_256)``
- * (3 conditions, AND-chain; static helper internal_validate_rotate_inputs
- * is the entry-point gate for ra_dotf_rotate_key). Mirrored
- * byte-identically per DO-178C 6.4.4.3 source-text equivalence.
+ * (3 conditions, AND-chain). Driven directly through the public
+ * ra_dotf_rotate_key entry point.
  *
  * @par DO-178C 6.4.4.3 representative-subset rationale:
  * Full short-circuit MC/DC for an N=3 AND-chain requires N+1 = 4
  * vectors. Canonical short-circuit set:
- * - V1 size=128 -> C1=F shorts.            Decision F (accept).
- * - V2 size=192 -> C1=T,C2=F shorts.       Decision F (accept).
- * - V3 size=256 -> C1=T,C2=T,C3=F.         Decision F (accept).
- * - V4 size=99  -> all T.                  Decision T (reject).
+ * - V1 size=128 -> C1=F shorts. Decision F (size accepted; later checks
+ *                  fail with invalid_state, NOT invalid_arg).
+ * - V2 size=192 -> C1=T,C2=F shorts. Same observable as V1.
+ * - V3 size=256 -> C1=T,C2=T,C3=F.   Same observable as V1.
+ * - V4 size=99  -> all T. Decision T -> ra_dotf_rotate_key returns
+ *                  invalid_arg.
+ *
+ * V1/V2/V3 distinguish from V4 by return code. The MC/DC obligation is
+ * that the source line at 734-736 sees each of the four condition
+ * tuples with each conditional independently determining the outcome,
+ * which is satisfied by these four calls.
  */
-static int mirror_dotf_key_size_invalid(ra_dotf_key_size_t size)
-{
-  return (size != k_ra_dotf_key_size_128) && (size != k_ra_dotf_key_size_192) &&
-         (size != k_ra_dotf_key_size_256);
-}
-
 static void test_mcdc_dotf_rotate_key_size_and_chain(void)
 {
   TEST_BEGIN("dotf MC/DC: rotate_key 3-cond size AND-chain (lines 734-736)");
-  TEST_ASSERT_EQ(0, mirror_dotf_key_size_invalid(k_ra_dotf_key_size_128));
-  TEST_ASSERT_EQ(0, mirror_dotf_key_size_invalid(k_ra_dotf_key_size_192));
-  TEST_ASSERT_EQ(0, mirror_dotf_key_size_invalid(k_ra_dotf_key_size_256));
-  TEST_ASSERT_EQ(1, mirror_dotf_key_size_invalid((ra_dotf_key_size_t)99U));
+  ra_dotf_key_handle_t hdl   = {.valid = 1U, .size = k_ra_dotf_key_size_128};
+  uint32_t             iv[4] = {0U, 0U, 0U, 0U};
+
+  /* V1: size=128 -> C1=F. Validation proceeds past size check; fails
+   * later with invalid_state because no region is installed. */
+  hdl.size = k_ra_dotf_key_size_128;
+  TEST_ASSERT(ra_dotf_rotate_key((uint8_t)k_dotf_test_ch0, &hdl, iv) != k_ra_err_invalid_arg);
+  /* V2: size=192. */
+  hdl.size = k_ra_dotf_key_size_192;
+  TEST_ASSERT(ra_dotf_rotate_key((uint8_t)k_dotf_test_ch0, &hdl, iv) != k_ra_err_invalid_arg);
+  /* V3: size=256. */
+  hdl.size = k_ra_dotf_key_size_256;
+  TEST_ASSERT(ra_dotf_rotate_key((uint8_t)k_dotf_test_ch0, &hdl, iv) != k_ra_err_invalid_arg);
+  /* V4: size=99 -> all T -> invalid_arg. */
+  hdl.size = (ra_dotf_key_size_t)99U;
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_dotf_rotate_key((uint8_t)k_dotf_test_ch0, &hdl, iv));
   TEST_END("dotf MC/DC: rotate_key 3-cond size AND-chain (lines 734-736)");
 }
 
