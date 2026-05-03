@@ -277,15 +277,19 @@ static ra_err_t priv_parse_archive(mz_zip_archive* zip,
                                    uint8_t*        opf_scratch,
                                    size_t          opf_cap)
 {
-  uint8_t  container_buf[k_ra_epub_container_xml_buf];
-  size_t   got = 0U;
-  ra_err_t err = priv_extract(zip, k_container_path, container_buf, sizeof(container_buf), &got);
+  /* Static rather than auto: 4 KiB on the stack would blow the
+   * NASA-rule stack-usage budget. EPUB parser is single-threaded
+   * init-context-only, so the static scratch buffer is safe. */
+  static uint8_t s_container_buf[k_ra_epub_container_xml_buf];
+  size_t         got = 0U;
+  ra_err_t       err =
+    priv_extract(zip, k_container_path, s_container_buf, sizeof(s_container_buf), &got);
   if (err != k_ra_ok) {
     return err;
   }
 
   ra_epub_container_result_t cres = {};
-  err                             = ra_epub_xml_parse_container(container_buf, got, &cres);
+  err                             = ra_epub_xml_parse_container(s_container_buf, got, &cres);
   if (err != k_ra_ok) {
     return err;
   }

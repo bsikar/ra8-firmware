@@ -1329,8 +1329,33 @@ static ra_err_t internal_usbckcr_switch_to_pll2p_div5(void)
   return err;
 }
 
-// NOLINTNEXTLINE(readability-function-size,readability-function-cognitive-complexity)
-ra_err_t ra_cgc_usbfs_clock_enable(void)
+/**
+ * @brief Bring up the 48 MHz USB-FS clock from PLL2P / 5.
+ *
+ * @details
+ * 1. Enable PLL2 at 960 MHz VCO with PLL2P = /4 = 240 MHz.
+ * 2. Force MSTPB11 = 1 (USBFS module-stop) before reprogramming
+ *    USBCKDIVCR per HUM Ch 9 "Clock selection switching procedure".
+ * 3. Run the SREQ / SRDY handshake to swap USBCKCR.SEL to PLL2P
+ *    and USBCKDIVCR to /5, landing 48.000 MHz on USBCLK
+ *    (0 ppm vs the USB-FS 48 MHz +/- 0.25 % spec).
+ *
+ * @return ::ra_err_t error code.
+ * @retval k_ra_ok USB-FS clock running at exactly 48 MHz.
+ * @retval k_ra_err_hw_init_failed PLL2 enable failed; see log.
+ * @retval k_ra_err_hw_timeout USBCKCR SREQ/SRDY handshake timed out.
+ *
+ * @pre  Caller is single-threaded init context.
+ * @pre  PLL1 / SCKSCR have already been programmed by ra_cgc_init.
+ * @post On k_ra_ok PLL2 is locked, MSTPB11 is set, USBCKCR sources
+ *       PLL2P / 5 = 48 MHz, and PRCR is re-locked.
+ * @post On error the USB-FS clock is left in a quiesced state.
+ *
+ * @note Not thread-safe; init context only.
+ * @since 0.1.0
+ */
+ra_err_t ra_cgc_usbfs_clock_enable(
+  void) // NOLINT(readability-function-size,readability-function-cognitive-complexity)
 {
   ra_log_info(s_tag, "usbfs clock enable");
 
