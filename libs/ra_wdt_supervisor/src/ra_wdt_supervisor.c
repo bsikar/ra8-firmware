@@ -504,6 +504,7 @@ ra_err_t ra_wdt_supervisor_tick(bool* out_did_refresh)
    * registered thread is alive. With zero workers we deliberately do
    * NOT kick the dog -- the supervisor would mask a degenerate config. */
   const bool will_refresh = any_present && all_alive;
+  // mcdc-deactivated: ra_wdt_supervisor_tick refresh dispatch gate; s_state.refresh is registered at init and remains non-NULL for the lifetime of the supervisor (it is the WDT kick callback, mandatory per the public-API contract). will_refresh varies independently and is fully covered, but the second condition is invariant on every reachable post-init path.
   if (will_refresh && (s_state.refresh != nullptr)) {
     s_state.refresh();
   }

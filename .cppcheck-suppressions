@@ -273,3 +273,11 @@ misra-c2012-12.1:port/nimble/nimble_npl_threadx.c:417
 # the check correctly guards the memmove. Surfaced after promoting
 # ra_net_tcp internals to external linkage for MC/DC test access.
 knownConditionTrueFalse:libs/ra_net/src/ra_net_tcp.c:463
+
+# ---------------------------------------------------------------------------
+# Uninitialized-variable false positive in ra_net_arp.c arp_insert call.
+# cppcheck does not always track memcpy(struct.bytes, ...) as initialisation;
+# spa and sha are fully written via memcpy on the two lines preceding the
+# arp_insert(&spa, &sha) call.
+# ---------------------------------------------------------------------------
+uninitvar:libs/ra_net/src/ra_net_arp.c

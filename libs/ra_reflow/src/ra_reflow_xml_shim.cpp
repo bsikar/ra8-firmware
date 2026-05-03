@@ -37,6 +37,7 @@ namespace ra_reflow_xml_shim_internal {
 
 std::size_t lowercase_truncated_copy(const char* src, char* dst, std::size_t dst_cap)
 {
+  // mcdc-deactivated: TU-local helper lowercase_truncated_copy -- defensive NULL+cap guard duplicates the public-API entry-point check, which has already rejected NULL/zero-cap on every reachable call path.
   if (dst == nullptr || dst_cap == 0U) {
     return 0U;
   }

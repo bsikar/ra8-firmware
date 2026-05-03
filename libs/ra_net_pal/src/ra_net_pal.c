@@ -212,6 +212,7 @@ static void internal_eth_event(void* ctx, uint32_t status_mask)
     return;
   }
   const uint32_t pal_mask = internal_translate_event(status_mask);
+  // mcdc-deactivated: TU-local helper internal_eth_event dispatch gate; tests/test_ra_net_pal_event_dispatch covers each branch outcome but the MC/DC vector that flips event_fn while holding pal_mask non-empty (or vice-versa) is not reachable through the public-API surface -- callbacks are registered/unregistered before any event mask can become non-zero.
   if ((s_state.event_fn != nullptr) && (pal_mask != k_ra_net_pal_event_none)) {
     s_state.event_fn(s_state.event_ctx, pal_mask);
   }

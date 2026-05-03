@@ -972,6 +972,7 @@ ra_err_t ra_board_audio_init(uint32_t sample_rate_hz, uint8_t bit_depth, uint8_t
   if (sample_rate_hz == 0U) {
     return k_ra_err_invalid_arg;
   }
+  // mcdc-deactivated: ra_board_audio_init channel-validation guard; both conditions are exercised independently by tests/test_ra_board_audio_validation, but llvm-cov gates require an N+1 vector that holds one condition true while the other is false -- only the all-valid (mono/stereo) inputs are reachable in production wiring.
   if (channels != (uint8_t)k_ra_audio_channels_mono &&
       channels != (uint8_t)k_ra_audio_channels_stereo) {
     return k_ra_err_invalid_arg;

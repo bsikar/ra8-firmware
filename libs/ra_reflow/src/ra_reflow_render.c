@@ -165,6 +165,7 @@ static void priv_blit_glyph(const stbtt_fontinfo* font, const ra_reflow_glyph_t*
   if (bitmap == NULL) {
     return;
   }
+  // mcdc-deactivated: TU-local helper priv_blit_glyph; stbtt_GetCodepointBitmap returns either a non-NULL bitmap with both w > 0 AND h > 0 (well-formed glyph rasterization), or a NULL pointer rejected at the early-return above -- the two bound conditions cannot independently flip on any reachable path.
   if (w > 0 && h > 0) {
     priv_blit_alpha_mask(g, bitmap, w, h, xoff, yoff);
   }

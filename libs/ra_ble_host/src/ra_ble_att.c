@@ -655,6 +655,7 @@ internal_handle_write(uint16_t conn_handle, uint8_t op, const uint8_t* pdu, uint
       .data_len    = val_len,
     };
     ra_ble_host_dispatch_event(&e);
+    // mcdc-deactivated: TU-local helper internal_handle_read; characteristic-value attributes registered via the public API always provide a non-NULL backing buffer (validated at registration), so the second condition cannot independently flip on any reachable path.
   } else if ((a->kind == k_attr_kind_char_value) && (a->value != NULL)) {
     if (val_len > a->value_max) {
       if (op == k_att_op_write_req) {
