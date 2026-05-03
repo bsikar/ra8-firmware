@@ -1,0 +1,235 @@
+/**
+ * @file examples/ek_ra8d2/rtt_log_demo/main.c
+ * @brief Minimal SEGGER RTT logging demo for EK-RA8D2
+ *
+ * @par Tag
+ * [Ring 6 / APP] {World: S}
+ *
+ * @details
+ * Allocates a SEGGER-compatible RTT control block in SRAM and writes
+ * a counter line into the up-buffer once per second. The on-board
+ * J-Link OB picks the block up by scanning RAM for the magic string
+ * ``"SEGGER RTT"``; ``JLinkRTTViewer`` on the host then renders the
+ * stream live with no UART pin needed.
+ *
+ * The control-block layout matches ``SEGGER_RTT.h`` (ring buffer with
+ * read/write indices). Channel 0 is the standard "Terminal" up-buffer.
+ * We keep a 1 KiB up-buffer and a 32 byte down-buffer (unused here).
+ *
+ * Sequence:
+ *   1. ``ra_cgc_init`` -- bring the chip up to the canonical clock tree.
+ *   2. ``ra_time_init`` -- 1 ms SysTick.
+ *   3. Initialise the RTT control block in BSS (idempotent).
+ *   4. Loop: ``rtt_write`` a counter line, toggle LED1, sleep 1 s.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
+ * @since 0.1.0
+ */
+
+#include <stddef.h>
+#include <stdint.h>
+#include <string.h>
+
+#include "ra_board_ek_ra8d2.h"
+#include "ra_cgc.h"
+#include "ra_err.h"
+#include "ra_isr.h"
+#include "ra_time.h"
+
+/** @brief Demo tunables. */
+typedef enum : uint32_t {
+  k_rtt_demo_period_ms = 1000U,
+  k_rtt_up_buf_bytes   = 1024U,
+  k_rtt_down_buf_bytes = 32U,
+  k_rtt_decimal_base   = 10U,
+  k_rtt_max_digits     = 10U,
+  k_rtt_msg_buf_bytes  = 32U,
+} rtt_demo_const_t;
+
+/**
+ * @brief One direction of an RTT channel (matches SEGGER layout).
+ */
+typedef struct {
+  const char* name;   /**< NUL-terminated channel name. */
+  uint8_t*    buf;    /**< Backing ring buffer. */
+  uint32_t    size;   /**< Bytes of @c buf. */
+  uint32_t    wr_off; /**< Write index (producer). */
+  uint32_t    rd_off; /**< Read index (consumer = host). */
+  uint32_t    flags;  /**< 0 = no-block-skip, default. */
+} rtt_buf_t;
+
+/**
+ * @brief SEGGER RTT control block. Scanned by the J-Link OB via the
+ *        leading ``id[]`` magic. Must live at a known SRAM region.
+ */
+typedef struct {
+  char      id[16];   /**< "SEGGER RTT" + padding. */
+  uint32_t  max_up;   /**< Number of up channels. */
+  uint32_t  max_down; /**< Number of down channels. */
+  rtt_buf_t up[1];    /**< Up channel array (host RX). */
+  rtt_buf_t down[1];  /**< Down channel array (host TX). */
+} rtt_cb_t;
+
+/** @brief Up-buffer storage for channel 0. */
+static uint8_t s_rtt_up_buf[k_rtt_up_buf_bytes];
+
+/** @brief Down-buffer storage for channel 0. */
+static uint8_t s_rtt_down_buf[k_rtt_down_buf_bytes];
+
+/** @brief The control block itself. */
+static rtt_cb_t s_rtt_cb;
+
+/** @brief Park the CPU after a fatal init failure. */
+static void rtt_demo_panic_halt(void)
+{
+  while (1) {
+    __asm__ volatile("wfi");
+  }
+}
+
+/**
+ * @brief Initialise the RTT control block in place.
+ *
+ * @details
+ * The id is written byte-by-byte (rather than as a string literal) so
+ * a search for ``"SEGGER RTT"`` in the firmware image only matches the
+ * runtime control block, not a stale literal pool entry.
+ *
+ * @pre Called once before the first @ref rtt_write.
+ * @post @c s_rtt_cb.id begins with ``S E G G E R sp R T T``.
+ *
+ * @since 0.1.0
+ */
+static void rtt_init(void)
+{
+  static const char k_magic[] = {'S', 'E', 'G', 'G', 'E', 'R', ' ', 'R', 'T', 'T', 0};
+  for (size_t i = 0U; i < sizeof k_magic; i++) {
+    s_rtt_cb.id[i] = k_magic[i];
+  }
+  s_rtt_cb.max_up         = 1U;
+  s_rtt_cb.max_down       = 1U;
+  s_rtt_cb.up[0].name     = "Terminal";
+  s_rtt_cb.up[0].buf      = s_rtt_up_buf;
+  s_rtt_cb.up[0].size     = (uint32_t)k_rtt_up_buf_bytes;
+  s_rtt_cb.up[0].wr_off   = 0U;
+  s_rtt_cb.up[0].rd_off   = 0U;
+  s_rtt_cb.up[0].flags    = 0U;
+  s_rtt_cb.down[0].name   = "Terminal";
+  s_rtt_cb.down[0].buf    = s_rtt_down_buf;
+  s_rtt_cb.down[0].size   = (uint32_t)k_rtt_down_buf_bytes;
+  s_rtt_cb.down[0].wr_off = 0U;
+  s_rtt_cb.down[0].rd_off = 0U;
+  s_rtt_cb.down[0].flags  = 0U;
+}
+
+/**
+ * @brief Push @c len bytes into channel 0's up-buffer (non-blocking).
+ *
+ * @par MC/DC:
+ * Compound decision: ``next == rd || size == 0``. Two atomic
+ * conditions x N+1 = 3 vectors; the host test exercises full / empty
+ * / mid-buffer wrap independently.
+ *
+ * @param[in] data Bytes to enqueue.
+ * @param[in] len  Byte count; data fitting beyond head is dropped.
+ *
+ * @retval k_ra_ok            Bytes were appended (or dropped silently).
+ * @retval k_ra_err_null_ptr  data was NULL.
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] static ra_err_t rtt_write(const uint8_t* data, uint32_t len)
+{
+  if (data == nullptr) {
+    return k_ra_err_null_ptr;
+  }
+  rtt_buf_t* up = &s_rtt_cb.up[0];
+  for (uint32_t i = 0U; i < len; i++) {
+    uint32_t next = up->wr_off + 1U;
+    if (next == up->size) {
+      next = 0U;
+    }
+    if (next == up->rd_off) {
+      break; /* host has not drained -- drop the tail. */
+    }
+    up->buf[up->wr_off] = data[i];
+    up->wr_off          = next;
+  }
+  return k_ra_ok;
+}
+
+/**
+ * @brief Format ``"rtt_log_demo: NNN\r\n"`` into @p buf.
+ *
+ * @param[in]  counter Number to render in base-10 ASCII.
+ * @param[out] buf     Output buffer (>= k_rtt_msg_buf_bytes).
+ * @return Number of bytes written.
+ */
+static uint8_t rtt_format_line(uint32_t counter, char* buf)
+{
+  static const char prefix[] = "rtt_log_demo: ";
+  uint8_t           n        = 0U;
+  for (size_t k = 0U; k < (sizeof prefix - 1U); k++) {
+    buf[n++] = prefix[k];
+  }
+  char     dig[k_rtt_max_digits];
+  uint8_t  d   = 0U;
+  uint32_t tmp = counter;
+  do {
+    dig[d++] = (char)('0' + (uint8_t)(tmp % (uint32_t)k_rtt_decimal_base));
+    tmp /= (uint32_t)k_rtt_decimal_base;
+  } while (tmp != 0U && d < (uint8_t)k_rtt_max_digits);
+  while (d > 0U) {
+    buf[n++] = dig[--d];
+  }
+  buf[n++] = '\r';
+  buf[n++] = '\n';
+  return n;
+}
+
+/**
+ * @brief Bring CGC + SysTick + LED1 + RTT control block up.
+ */
+static void rtt_demo_setup_or_halt(void)
+{
+  uint32_t cpuclk0_hz = 0U;
+  if (ra_cgc_init() != k_ra_ok) {
+    rtt_demo_panic_halt();
+  }
+  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+    rtt_demo_panic_halt();
+  }
+  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+    rtt_demo_panic_halt();
+  }
+  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
+    rtt_demo_panic_halt();
+  }
+  rtt_init();
+}
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmain"
+int32_t main(void)
+{
+  rtt_demo_setup_or_halt();
+  ra_isr_globals_enable();
+
+  uint32_t counter = 0U;
+  while (1) {
+    char          buf[k_rtt_msg_buf_bytes];
+    const uint8_t n = rtt_format_line(counter, buf);
+    if (rtt_write((const uint8_t*)buf, (uint32_t)n) != k_ra_ok) {
+      break;
+    }
+    if (ra_board_led_toggle(k_ra_board_led1) != k_ra_ok) {
+      break;
+    }
+    counter++;
+    ra_delay_ms(k_rtt_demo_period_ms);
+  }
+  rtt_demo_panic_halt();
+  return 0;
+}
+#pragma GCC diagnostic pop
