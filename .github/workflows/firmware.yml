@@ -259,6 +259,7 @@ jobs:
           python3 scripts/utils/check_mcdc_block.py
           # check_no_dynamic_alloc.py scans the production tree.
           python3 scripts/utils/check_no_dynamic_alloc.py
+          python3 scripts/utils/check_no_ai_attribution.py
       - name: clang-format dry run
         run: bash scripts/format_code.sh --check
       - name: clang-tidy
