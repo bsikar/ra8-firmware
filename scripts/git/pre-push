@@ -45,7 +45,11 @@ while read -r local_ref local_oid remote_ref remote_oid; do
         if echo "$msg" | grep -qiE "^[[:space:]]*Co-Authored-By:[[:space:]]*${AI_BRANDS}" ||
            echo "$msg" | grep -qiE "(Generated|Authored|Created|Written|Refactored|Reviewed|Coded|Implemented) (by|with|using) ${AI_BRANDS}" ||
            echo "$msg" | grep -qE '🤖[[:space:]]+(Generated|Created|Authored)[[:space:]]+(with|by)' ||
-           echo "$msg" | grep -qiE '\bclaude\.ai\b|\bclaude code\b|\bchatgpt\b|\bcopilot\b|\bcursor\.(sh|com)\b|\bcodeium\b|\bwindsurf\b|\baider\b|\btabnine\b|\bcontinue\.dev\b|\bcody\.dev\b|\bdevin\.ai\b|\breplit ghostwriter\b|\bcodewhisperer\b|\bq developer\b|\bperplexity\.ai\b|\bcline\b'; then
+           echo "$msg" | grep -qiE '\bclaude\.ai\b|\bclaude code\b|\bchatgpt\b|\bcopilot\b|\bcursor\.(sh|com)\b|\bcodeium\b|\bwindsurf\b|\baider\b|\btabnine\b|\bcontinue\.dev\b|\bcody\.dev\b|\bdevin\.ai\b|\breplit ghostwriter\b|\bcodewhisperer\b|\bq developer\b|\bperplexity\.ai\b|\bcline\b' ||
+           echo "$msg" | grep -qiE "@(anthropic\.com|openai\.com|cursor\.(sh|com|so)|codeium\.com|tabnine\.com|aider\.chat|continue\.dev|sourcegraph\.com|perplexity\.ai|mistral\.ai|huggingface\.co|deepseek\.com|x\.ai|character\.ai|stability\.ai|midjourney\.com|runwayml\.com|suno\.ai|jetbrains-ai\.com)\b" ||
+           echo "$msg" | grep -qiE '\[bot\]\b' ||
+           git log -1 --format='%an %ae %cn %ce' "$sha" | grep -qiE "@(anthropic\.com|openai\.com|cursor\.(sh|com|so)|codeium\.com|tabnine\.com|aider\.chat|continue\.dev|perplexity\.ai|mistral\.ai|huggingface\.co|deepseek\.com|x\.ai|character\.ai|stability\.ai|midjourney\.com|runwayml\.com|suno\.ai|jetbrains-ai\.com)\b" ||
+           git log -1 --format='%an %cn' "$sha" | grep -qiE '\[bot\]\b'; then
             echo "[FAIL] pre-push: commit ${sha} carries AI attribution. Rewrite message before pushing." >&2
             echo "       (per-commit opt-out: include 'AI-OK: <reason>' line)" >&2
             ai_attr_violation=1
