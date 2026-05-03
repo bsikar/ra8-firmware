@@ -183,3 +183,4 @@ for MC/DC and the gate.
 | 2026-05-02 evening | 70.40       | clang-18 in devcontainer; 149/178 host tests pass. |
 | 2026-05-02 late evening | 69.5   | clang-18 in devcontainer; 149/181 host tests pass; --keep-going build with -j2 to avoid linker OOM. |
 | 2026-05-02 night | 75.25       | clang-18 in devcontainer; 188/188 host tests pass; +5.68pp from new MC/DC tests added across ra_modem_at, ra_power_profile, ra_psa_crypto, secure_app/key_import, OTA commit veneers. |
+| 2026-05-02 late night | 77.26 | clang-18 in devcontainer; 187/187 host tests pass; +2.01pp from new MC/DC vectors added in ra_etha (set_queue_depth, descriptor_ring_init, set_vlan_tag), ra_vin (set_uds_scale, set_framebuffers alignment, capture_start geometry), ra_rsip (rsa_sign / rsa_verify size selectors, hash_validate shake bypass). |
