@@ -11,12 +11,9 @@ libs/ra_ble_host/src/ra_ble_l2cap.c,580,3,ra_ble_host_acl_in,if ((evt_code == k_
 libs/ra_ble_host/src/ra_ble_l2cap.c,597,2,ra_ble_host_acl_in,} else if ((evt_code == k_evt_disconn_complete) && (params_len >= k_min_disconn_param_bytes)) {,no
 libs/ra_board_ek_ra8d2/src/ra_board_ek_ra8d2.c,975,2,ra_board_audio_init,if (channels != (uint8_t)k_ra_audio_channels_mono &&,partial
 libs/ra_core/src/ra_log.c,260,2,internal_itm_put_u32,while (value != 0U && i < k_ra_u32_max_digits) {,partial
-libs/ra_epub/src/ra_epub_chapter.c,76,2,priv_join_path,if (dst == NULL || cap == 0U) {,no
-libs/ra_epub/src/ra_epub_chapter.c,82,2,priv_join_path,while (off + 1U < cap && dir[off] != '\0') {,partial
-libs/ra_epub/src/ra_epub_chapter.c,89,2,priv_join_path,while (off + 1U < cap && name[i] != '\0') {,partial
-libs/ra_epub/src/ra_epub_chapter.c,224,2,priv_font_init,if (w < 0 || h < 0) {,no
-libs/ra_epub/src/ra_epub_chapter.c,299,2,ra_epub_get_chapter_count,if (book->in_use == 0U || book->zip_archive_active == 0U) {,partial
-libs/ra_epub/src/ra_epub_chapter.c,368,2,ra_epub_get_metadata,if (book->in_use == 0U || book->zip_archive_active == 0U) {,partial
+libs/ra_epub/src/ra_epub_chapter.c,225,2,priv_font_init,if (w < 0 || h < 0) {,no
+libs/ra_epub/src/ra_epub_chapter.c,300,2,ra_epub_get_chapter_count,if (book->in_use == 0U || book->zip_archive_active == 0U) {,partial
+libs/ra_epub/src/ra_epub_chapter.c,369,2,ra_epub_get_metadata,if (book->in_use == 0U || book->zip_archive_active == 0U) {,partial
 libs/ra_epub/src/ra_epub_open.c,157,2,priv_dirname,if (dst == NULL || cap == 0U) {,no
 libs/ra_epub/src/ra_epub_xml_shim.cpp,101,2,(file scope),if (dst == nullptr || cap == 0U) {,no
 libs/ra_epub/src/ra_epub_xml_shim.cpp,109,2,(file scope),while (i + 1U < cap && src[i] != '\0') {,partial
@@ -59,7 +56,6 @@ libs/ra_hal/src/ra_i3c.c,815,3,ra_i3c_set_hdr_mode,if ((mode != k_ra_i3c_hdr_mod
 libs/ra_hal/src/ra_iic_b.c,128,2,internal_iic_b_half_period,if ((bus_hz == 0U) || (pclka_hz == 0U)) {,no
 libs/ra_hal/src/ra_iic_b.c,975,2,ra_iic_b_read,if ((rx_len != 0U) && (rx == nullptr)) {,partial
 libs/ra_hal/src/ra_iic_b.c,1234,2,ra_iic_b_dispatch_eri,if ((mask != 0U) && (cb != nullptr)) {,partial
-libs/ra_hal/src/ra_jpeg_sw.c,960,2,dec_skip_segment,if (len < 2U || (uint32_t)len > d->src_len - d->cursor) {,no
 libs/ra_hal/src/ra_jpeg_sw.c,987,2,dec_parse_dqt,if (len < 2U || (uint32_t)len > d->src_len - d->cursor) {,partial
 libs/ra_hal/src/ra_jpeg_sw.c,1031,2,dec_parse_dht,if (len < 2U || (uint32_t)len > d->src_len - d->cursor) {,partial
 libs/ra_hal/src/ra_jpeg_sw.c,1041,2,dec_parse_dht,if (tc >= (uint8_t)k_ra_jpeg_huff_classes || th >= (uint8_t)k_ra_jpeg_huff_ids) {,no
@@ -74,9 +70,7 @@ libs/ra_hal/src/ra_jpeg_sw.c,1223,2,dec_parse_sos,if (r < 0 && t != 0) {,no
 libs/ra_hal/src/ra_jpeg_sw.c,1400,2,dec_parse_sos,while (i < jpeg_len && jpeg_buf[i] == (uint8_t)k_ra_jpeg_marker_byte) {,partial
 libs/ra_hal/src/ra_jpeg_sw.c,1409,2,dec_parse_sos,if (mk == (uint16_t)k_ra_jpeg_marker_soi || mk == (uint16_t)k_ra_jpeg_marker_eoi) {,partial
 libs/ra_hal/src/ra_jpeg_sw.c,1434,4,dec_parse_sos,if (mk >= 0xFFC0U && mk <= 0xFFCFU && mk != (uint16_t)k_ra_jpeg_marker_dht && mk != 0xFFC8U) {,partial
-libs/ra_hal/src/ra_jpeg_sw.c,1639,2,dec_decode_scan,while (d->cursor < d->src_len && d->src[d->cursor] == (uint8_t)k_ra_jpeg_marker_byte) {,partial
 libs/ra_hal/src/ra_jpeg_sw.c,1655,4,dec_decode_scan,} else if (mk >= 0xFFC1U && mk <= 0xFFCFU && mk != (uint16_t)k_ra_jpeg_marker_dht &&,partial
-libs/ra_hal/src/ra_jpeg_sw.c,1681,2,dec_decode_scan,} else if (mk >= (uint16_t)k_ra_jpeg_marker_rst0 && mk <= (uint16_t)k_ra_jpeg_marker_rst7) {,no
 libs/ra_hal/src/ra_lvd.c,494,2,internal_validate_cfg,if ((cfg->hysteresis == k_ra_lvd_hysteresis_hvd) &&,partial
 libs/ra_hal/src/ra_lvd.c,533,2,internal_compose_cr0,if ((cfg->response == k_ra_lvd_response_reset) ||,partial
 libs/ra_hal/src/ra_mipi_dsi.c,570,2,internal_ra_mipi_dsi_validate_cmd,if ((cmd->tx_len > 0U) && (cmd->p_tx_buffer == nullptr)) {,no
@@ -97,30 +91,19 @@ libs/ra_hal/src/ra_spi_b.c,714,2,internal_apply_bit_width,if ((tx == nullptr) &&
 libs/ra_hal/src/ra_usb_cdc.c,185,2,internal_apply_line_coding,if ((data == nullptr) || (len < k_ra_cdc_line_coding_len)) {,no
 libs/ra_hal/src/ra_usb_hmsc.c,1274,3,internal_normalise_xfer_err,if ((err == k_ra_ok) || (err == k_ra_err_no_data) || (err == k_ra_err_hw_timeout)) {,no
 libs/ra_hal/src/ra_vin.c,348,2,internal_mc_rmw,if (((mc_now & k_ra_vin_mc_me) != 0UL) || ((fc_now & k_ra_vin_fc_cc) != 0UL)) {,partial
-libs/ra_modem_at/src/ra_modem_at.c,124,2,internal_str_len,while ((i < UINT16_MAX) && (s[i] != '\0')) {,partial
-libs/ra_modem_at/src/ra_modem_at.c,177,2,internal_str_eq,while ((a[i] != '\0') && (b[i] != '\0')) {,partial
-libs/ra_modem_at/src/ra_modem_at.c,183,2,internal_str_eq,return (uint8_t)((a[i] == '\0') && (b[i] == '\0'));,no
-libs/ra_modem_at/src/ra_modem_at.c,225,2,internal_reset_line,if ((s_mod.cfg.line_buf != nullptr) && (s_mod.cfg.line_buf_len > 0U)) {,no
-libs/ra_modem_at/src/ra_modem_at.c,352,3,internal_dispatch_urc,if ((expected_response == nullptr) || (expected_response[0] == '\0') ||,partial
-libs/ra_modem_at/src/ra_modem_at.c,477,2,internal_capture_line,if ((capture == nullptr) || (capture_len == 0U)) {,partial
-libs/ra_modem_at/src/ra_modem_at.c,538,3,internal_capture_line,if ((expected_response != nullptr) && (expected_response[0] != '\0') &&,partial
-libs/ra_modem_at/src/ra_modem_at.c,628,2,internal_pump_one,if ((capture != nullptr) && (capture_len > 0U)) {,partial
+libs/ra_modem_at/src/ra_modem_at.c,125,2,ra_modem_at_internal_str_len,while ((i < UINT16_MAX) && (s[i] != '\0')) {,partial
+libs/ra_modem_at/src/ra_modem_at.c,226,2,internal_reset_line,if ((s_mod.cfg.line_buf != nullptr) && (s_mod.cfg.line_buf_len > 0U)) {,no
+libs/ra_modem_at/src/ra_modem_at.c,344,3,internal_dispatch_urc,if ((expected_response == nullptr) || (expected_response[0] == '\0') ||,partial
+libs/ra_modem_at/src/ra_modem_at.c,469,2,internal_capture_line,if ((capture == nullptr) || (capture_len == 0U)) {,partial
+libs/ra_modem_at/src/ra_modem_at.c,530,3,internal_capture_line,if ((expected_response != nullptr) && (expected_response[0] != '\0') &&,partial
+libs/ra_modem_at/src/ra_modem_at.c,621,2,internal_pump_one,if ((capture != nullptr) && (capture_len > 0U)) {,partial
 libs/ra_net/src/ra_net_arp.c,154,2,arp_insert,"if (s->arp[i].timestamp_ms != 0U && memcmp(s->arp[i].ip.bytes, ip->bytes, 4U) == 0) {",no
-libs/ra_net/src/ra_net_tcp.c,111,2,(file scope),if (match_state != 0U && t->state != want_state) {,no
-libs/ra_net/src/ra_net_tcp.c,117,2,(file scope),"if (t->remote_port == remote_port && memcmp(t->remote_ip.bytes, remote_ip.bytes, 4U) == 0) {",no
-libs/ra_net/src/ra_net_tcp.c,204,2,tcp_pseudo_sum,if ((data_len != 0U) && (data != nullptr)) {,no
-libs/ra_net/src/ra_net_udp.c,258,2,ra_net_udp_socket,if ((dst_port == 0U) || (len == 0U)) {,no
-libs/ra_net/src/ra_net_udp.c,399,2,ra_net_udp_handle,if (s->dns_pending != 0U && sport == (uint16_t)k_dns_port) {,no
-libs/ra_net/src/ra_net_udp.c,532,2,dns_consume_response,while (pos < dlen && dns[pos] != 0U) {,no
-libs/ra_net/src/ra_net_udp.c,539,2,dns_consume_response,if (pos < dlen && dns[pos] == 0U) {,no
-libs/ra_net/src/ra_net_udp.c,554,2,dns_consume_response,while (pos < dlen && dns[pos] != 0U) {,no
-libs/ra_net/src/ra_net_udp.c,570,3,dns_consume_response,if (rrtype == (uint16_t)k_dns_rr_a && rrclass == (uint16_t)k_dns_rr_class_in && rdlen == 4U) {,no
+libs/ra_net/src/ra_net_udp.c,539,2,ra_net_udp_internal_dns_consume_response,if (pos < dlen && dns[pos] == 0U) {,partial
+libs/ra_net/src/ra_net_udp.c,554,2,ra_net_udp_internal_dns_consume_response,while (pos < dlen && dns[pos] != 0U) {,no
 libs/ra_net/src/ra_net_udp.c,657,3,ra_net_dns_query,while ((s->dns_pending != 0U) && (s->dns_rcode == 0U) && (poll_budget != 0U)) {,partial
 libs/ra_net_pal/src/ra_net_pal.c,215,2,internal_eth_event,if ((s_state.event_fn != nullptr) && (pal_mask != k_ra_net_pal_event_none)) {,no
-libs/ra_ota/src/ra_ota.c,403,3,priv_json_u32,"if (*p == ':' || *p == ' ' || *p == '""') {",partial
-libs/ra_ota/src/ra_ota.c,413,2,priv_json_u32,if ((c < '0') || (c > '9')) {,partial
-libs/ra_ota/src/ra_ota.c,454,2,priv_hex_nibble,if ((c >= 'A') && (c <= 'F')) {,no
-libs/ra_ota/src/ra_ota.c,989,2,ra_ota_download_to_inactive_bank,if ((s_state != k_ra_ota_state_idle) && (s_state != k_ra_ota_state_downloading)) {,partial
+libs/ra_ota/src/ra_ota.c,455,2,priv_hex_nibble,if ((c >= 'A') && (c <= 'F')) {,no
+libs/ra_ota/src/ra_ota.c,990,2,ra_ota_download_to_inactive_bank,if ((s_state != k_ra_ota_state_idle) && (s_state != k_ra_ota_state_downloading)) {,partial
 libs/ra_psa_crypto/src/ra_psa_crypto.c,476,2,internal_sha256_rotr,for (size_t i = 0U; (i < key_len) && (off < sizeof(buf)); ++i) {,partial
 libs/ra_psa_crypto/src/ra_psa_crypto.c,479,2,internal_sha256_rotr,for (size_t i = 0U; (i < nonce_len) && (off < sizeof(buf)); ++i) {,partial
 libs/ra_psa_crypto/src/ra_psa_crypto.c,482,2,internal_sha256_rotr,for (size_t i = 0U; (i < aad_len) && (off < sizeof(buf)); ++i) {,partial
