@@ -41,8 +41,15 @@ echo -e "${GREEN}=== Flashing ${HEX} ===${NC}"
 TMP_SCRIPT=$(mktemp)
 trap 'rm -f "$TMP_SCRIPT"' EXIT
 
+# Notes on the device string:
+#   - `R7KA8D2KFLCAC` is not in the JLink device database (as of v9.38a),
+#     which causes the GUI "unknown device" dialog to pop on macOS.
+#   - `CORTEX-M85` is the actual M-profile core — safe fallback that
+#     skips the dialog and works for flash + halt.
+#   - `-nogui 1` suppresses the "Target device settings" picker.
+#   - `-SelectEmuBySN` pins the probe so multi-probe machines don't prompt.
 cat > "$TMP_SCRIPT" <<EOF
-device R7KA8D2KF_CPU0
+device CORTEX-M85
 si 1
 speed 4000
 connect
@@ -54,6 +61,6 @@ g
 q
 EOF
 
-JLinkExe -NoGui 1 -commanderscript "$TMP_SCRIPT"
+JLinkExe -nogui 1 -SelectEmuBySN 1086567198 -commanderscript "$TMP_SCRIPT"
 
 echo -e "${GREEN}[DONE]${NC} Flashed $HEX"

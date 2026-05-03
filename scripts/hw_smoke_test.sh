@@ -155,8 +155,10 @@ halt_and_read_pc() {
     fi
 
     jscript="$(mktemp)"
+    # Device CORTEX-M85 + -nogui 1 + -SelectEmuBySN avoid every JLink dialog
+    # (chip P/N R7KA8D2KFLCAC is not in JLink's device DB as of v9.38a).
     cat > "$jscript" <<EOF
-device R7KA8D2KF_CPU0
+device CORTEX-M85
 si 1
 speed 4000
 connect
@@ -164,7 +166,7 @@ halt
 regs
 q
 EOF
-    JLinkExe -NoGui 1 -commanderscript "$jscript" >> "$log" 2>&1 || true
+    JLinkExe -nogui 1 -SelectEmuBySN 1086567198 -commanderscript "$jscript" >> "$log" 2>&1 || true
     rm -f "$jscript"
 
     # Parse PC + LR out of the JLink `regs` dump. JLink prints e.g.
