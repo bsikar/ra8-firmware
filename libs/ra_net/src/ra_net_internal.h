@@ -817,6 +817,67 @@ ra_err_t ra_net_tcp_recv(ra_net_handle_t h,
  */
 ra_err_t ra_net_tcp_close(ra_net_handle_t h);
 
+/* =============================================================================
+ * Internal helpers exposed for MC/DC test access only.
+ *
+ * @par MC/DC:
+ * These symbols are TU-private in spirit (not part of the public ra_net
+ * API surface) but have been promoted to external linkage so that
+ * tests/test_ra_net_udp.c can drive their compound boolean decisions
+ * directly under -fcoverage-mcdc. Production callers MUST keep using the
+ * public ra_net_*() facade. See CLAUDE.md "Test access to internal
+ * symbols (MC/DC scope)".
+ * =============================================================================
+ */
+
+/**
+ * @brief Locate the UDP socket bound to a local port.
+ *
+ * @details Linear scan over the socket table. Promoted from TU-private
+ *          static linkage so tests can drive its compound boolean
+ *          decision under -fcoverage-mcdc.
+ *
+ * @param[in] port Local UDP port.
+ * @return int16_t Slot index, or -1 on no match.
+ * @retval -1 No matching UDP socket.
+ * @retval >=0 Slot index of the bound socket.
+ * @pre ra_net_open has succeeded.
+ * @pre Caller is the network thread.
+ * @post No state mutation.
+ * @post Returned index is valid for ra_net_internal_state()->socks.
+ * @note Test-access only; use ra_net_*() in production.
+ * @par MC/DC:
+ * Exposed so tests exercise the
+ * `if (kind == k_ra_net_sock_udp && local_port == port)` decision on
+ * the production source line, not on a mirror copy.
+ * @since 0.1.0
+ */
+int16_t ra_net_udp_internal_find_socket_by_port(uint16_t port);
+
+/**
+ * @brief Walk a DNS response and capture the first A record.
+ *
+ * @details RFC 1035 sec 4.1 -- skips the question section, walks the
+ *          answers, and stores the first IN-A record into the
+ *          singleton's dns_answer field. Promoted from TU-private
+ *          static linkage so tests can drive its qname-loop guard,
+ *          root-null check, and A-record selector under -fcoverage-mcdc.
+ *
+ * @param[in] dns  DNS message bytes (UDP payload). Must not be NULL.
+ * @param[in] dlen Message length.
+ * @pre dns is non-NULL.
+ * @pre s_state.dns_pending == 1.
+ * @post On success s_state.dns_answer holds the resolved IPv4 and
+ *       s_state.dns_pending == 0.
+ * @post On failure s_state.dns_pending may stay 1 (caller times out).
+ * @note Test-access only; production goes through ra_net_dns_query().
+ * @par MC/DC:
+ * Exposed so tests exercise the qname loop guards, root-null check,
+ * and 3-condition A-record selector on production source.
+ * @since 0.1.0
+ */
+void ra_net_udp_internal_dns_consume_response(const uint8_t* dns, uint16_t dlen);
+
 /* IPv4 helpers used by sub-protocols when constructing TX frames. */
 /**
  * @brief Build an IPv4 frame around payload and emit it via the PAL.
