@@ -794,6 +794,44 @@ static void test_mcdc_internal_starts_with(void)
   TEST_END("modem_at MC/DC: internal_starts_with branches");
 }
 
+/**
+ * @test test_mcdc_internal_capture_line_guard
+ *
+ * @par MC/DC:
+ * Decision at libs/ra_modem_at/src/ra_modem_at.c:469
+ *   ``if ((capture == nullptr) || (capture_len == 0U))`` (2 conditions, OR)
+ *
+ * - V1: capture=NULL,  capture_len=10 -> C1=T short-circuit, returns early.
+ * - V2: capture=valid, capture_len=0  -> C1=F C2=T,         returns early.
+ * - V3: capture=valid, capture_len=64 -> C1=F C2=F,         performs append.
+ * V1+V3 isolate C1; V2+V3 isolate C2. N+1 = 3 vectors: minimal MC/DC.
+ *
+ * @par DO-178C 6.4.4.3 rationale:
+ * 2-condition decision; N+1 = 3 vectors satisfy MC/DC fully.
+ */
+static void test_mcdc_internal_capture_line_guard(void)
+{
+  TEST_BEGIN("modem_at MC/DC: internal_capture_line guard OR");
+  char   buf[64] = {};
+  size_t used    = 0U;
+
+  /* V1: capture=NULL -> short-circuit (no crash, used unchanged). */
+  ra_modem_at_internal_capture_line("hi", NULL, 64U, &used);
+  TEST_ASSERT_EQ((int32_t)0, (int32_t)used);
+
+  /* V2: capture valid but capture_len==0 -> early return. */
+  ra_modem_at_internal_capture_line("hi", buf, 0U, &used);
+  TEST_ASSERT_EQ((int32_t)0, (int32_t)used);
+
+  /* V3: both false -> append succeeds. */
+  ra_modem_at_internal_capture_line("hi", buf, sizeof(buf), &used);
+  TEST_ASSERT(used >= 2U);
+  TEST_ASSERT_EQ((int32_t)'h', (int32_t)buf[0]);
+  TEST_ASSERT_EQ((int32_t)'i', (int32_t)buf[1]);
+
+  TEST_END("modem_at MC/DC: internal_capture_line guard OR");
+}
+
 int32_t main(void)
 {
   /* This test must run BEFORE bring_up() so the initialised flag is 0. */
@@ -826,6 +864,7 @@ int32_t main(void)
   test_mcdc_internal_str_eq_loop_pair();
   test_mcdc_internal_str_eq_terminator_pair();
   test_mcdc_internal_starts_with();
+  test_mcdc_internal_capture_line_guard();
   (void)fprintf(stderr, "[OK ] test_ra_modem_at.c\n");
   return 0;
 }

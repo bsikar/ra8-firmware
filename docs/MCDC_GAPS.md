@@ -14,14 +14,14 @@ Live audit of compound boolean decisions reported by `llvm-cov show --show-mcdc`
 ## Top-line Numbers
 
 - Source files with at least one decision: **93**
-- Total compound decisions in scope: **539**
-- Decisions at 100% MC/DC (`yes`): **411**
-- Decisions partially covered (`partial`): **66**
-- Decisions fully uncovered (`no`): **62**
-- Coverage rate (yes / total): **76.25%**
+- Total compound decisions in scope: **538**
+- Decisions at 100% MC/DC (`yes`): **414**
+- Decisions partially covered (`partial`): **65**
+- Decisions fully uncovered (`no`): **59**
+- Coverage rate (yes / total): **76.95%**
 - Deactivated gap conditions (DO-178C 6.4.4.3): **8**
-- Reachable-condition denominator (total - deactivated): **531**
-- **Reachable MC/DC rate**: **77.40%** -- this is the gate threshold (100% required).
+- Reachable-condition denominator (total - deactivated): **530**
+- **Reachable MC/DC rate**: **78.11%** -- this is the gate threshold (100% required).
 
 See `docs/MCDC_DEACTIVATIONS.md` for the per-condition deactivation rationale catalog.
 
@@ -73,14 +73,13 @@ See `docs/MCDC_DEACTIVATIONS.md` for the per-condition deactivation rationale ca
 | libs/ra_hal/src/ra_drw.c | 780 | 2 | internal_pack_texture_bits | `if ((uint16_t)rect->width_px > k_ra_drw_max_width_px \|\|` | partial |
 | libs/ra_hal/src/ra_eth.c | 329 | 2 | internal_init_rings | `if ((tx == 0U) \|\| (tx > k_ra_eth_num_tx_desc)) {` | no |
 | libs/ra_hal/src/ra_eth.c | 332 | 2 | internal_init_rings | `if ((rx == 0U) \|\| (rx > k_ra_eth_num_rx_desc)) {` | no |
-| libs/ra_hal/src/ra_flash.c | 149 | 2 | internal_wait_buffer_ready | `if (((s & k_ra_mrcps_mask_prgbsyc) == 0U) && ((s & k_ra_mrcps_mask_abuffull) ...` | no |
-| libs/ra_hal/src/ra_flash.c | 180 | 2 | internal_wait_commit_done | `if (((s & k_ra_mrcps_mask_abufemp) != 0U) && ((s & k_ra_mrcps_mask_prgbsyc) =...` | no |
-| libs/ra_hal/src/ra_flash.c | 722 | 2 | internal_window_allows | `if (s_rt.win_low == 0U && s_rt.win_high == 0U) {` | no |
-| libs/ra_hal/src/ra_flash.c | 1389 | 2 | ra_flash_config_set_write | `(bool)((target_addr >= (uint32_t)k_ra_flash_extra_start) && (target_addr < ex...` | no |
-| libs/ra_hal/src/ra_flash.c | 1390 | 2 | ra_flash_config_set_write | `if (!in_ofs && !in_extra) {` | partial |
-| libs/ra_hal/src/ra_flash.c | 2698 | 2 | ra_flash_blank_check | `(address >= k_ra_flash_code_start) &&` | partial |
-| libs/ra_hal/src/ra_flash.c | 2701 | 2 | ra_flash_blank_check | `(address >= k_ra_flash_extra_start) &&` | no |
-| libs/ra_hal/src/ra_flash.c | 2707 | 3 | ra_flash_blank_check | `if (!in_code && !in_extra && !in_ofs) {` | partial |
+| libs/ra_hal/src/ra_flash.c | 150 | 2 | internal_wait_buffer_ready | `if (((s & k_ra_mrcps_mask_prgbsyc) == 0U) && ((s & k_ra_mrcps_mask_abuffull) ...` | no |
+| libs/ra_hal/src/ra_flash.c | 181 | 2 | internal_wait_commit_done | `if (((s & k_ra_mrcps_mask_abufemp) != 0U) && ((s & k_ra_mrcps_mask_prgbsyc) =...` | no |
+| libs/ra_hal/src/ra_flash.c | 1398 | 2 | ra_flash_config_set_write | `(bool)((target_addr >= (uint32_t)k_ra_flash_extra_start) && (target_addr < ex...` | no |
+| libs/ra_hal/src/ra_flash.c | 1399 | 2 | ra_flash_config_set_write | `if (!in_ofs && !in_extra) {` | partial |
+| libs/ra_hal/src/ra_flash.c | 2707 | 2 | ra_flash_blank_check | `(address >= k_ra_flash_code_start) &&` | partial |
+| libs/ra_hal/src/ra_flash.c | 2710 | 2 | ra_flash_blank_check | `(address >= k_ra_flash_extra_start) &&` | no |
+| libs/ra_hal/src/ra_flash.c | 2716 | 3 | ra_flash_blank_check | `if (!in_code && !in_extra && !in_ofs) {` | partial |
 | libs/ra_hal/src/ra_i3c.c | 688 | 2 | ra_i3c_send_ccc | `if ((target_addr > (uint8_t)k_ra_i3c_addr_mask) \|\| (max_len == 0U)) {` | no |
 | libs/ra_hal/src/ra_i3c.c | 815 | 3 | ra_i3c_set_hdr_mode | `if ((mode != k_ra_i3c_hdr_mode_sdr) && (mode != k_ra_i3c_hdr_mode_ddr) &&` | partial |
 | libs/ra_hal/src/ra_iic_b.c | 128 | 2 | internal_iic_b_half_period | `if ((bus_hz == 0U) \|\| (pclka_hz == 0U)) {` | no |
@@ -89,7 +88,8 @@ See `docs/MCDC_DEACTIVATIONS.md` for the per-condition deactivation rationale ca
 | libs/ra_hal/src/ra_jpeg_sw.c | 987 | 2 | dec_parse_dqt | `if (len < 2U \|\| (uint32_t)len > d->src_len - d->cursor) {` | partial |
 | libs/ra_hal/src/ra_jpeg_sw.c | 1031 | 2 | dec_parse_dht | `if (len < 2U \|\| (uint32_t)len > d->src_len - d->cursor) {` | partial |
 | libs/ra_hal/src/ra_jpeg_sw.c | 1041 | 2 | dec_parse_dht | `if (tc >= (uint8_t)k_ra_jpeg_huff_classes \|\| th >= (uint8_t)k_ra_jpeg_huff_...` | no |
-| ... | | | | *(60 more rows in CSV)* | |
+| libs/ra_hal/src/ra_jpeg_sw.c | 1089 | 2 | dec_parse_sof0 | `if (len < 8U \|\| (uint32_t)len > d->src_len - d->cursor) {` | no |
+| ... | | | | *(56 more rows in CSV)* | |
 
 ## Deactivated gaps (DO-178C 6.4.4.3 exempted)
 
@@ -114,12 +114,12 @@ Sorted by (uncovered + partial) descending, then total descending.
 |--------|------:|--------:|--------:|----------:|
 | ra_jpeg_sw | 24 | 9 | 9 | 6 |
 | ra_epub_xml_shim | 12 | 0 | 3 | 9 |
-| ra_flash | 20 | 12 | 3 | 5 |
-| ra_reflow_layout | 14 | 7 | 4 | 3 |
-| ra_modem_at | 12 | 6 | 5 | 1 |
+| ra_flash | 20 | 13 | 3 | 4 |
 | ra_mipi_dsi | 22 | 17 | 3 | 2 |
 | ra_psa_crypto | 21 | 16 | 5 | 0 |
 | ra_rsip | 16 | 11 | 2 | 3 |
+| ra_reflow_layout | 13 | 8 | 4 | 1 |
+| ra_modem_at | 12 | 7 | 4 | 1 |
 | ra_fs_fat | 20 | 16 | 1 | 3 |
 | ra_ble_att | 5 | 1 | 0 | 4 |
 | ra_reflow_xml_shim | 4 | 0 | 2 | 2 |
@@ -212,9 +212,8 @@ Sorted by (uncovered + partial) descending, then total descending.
 |--------|----------:|--------:|--------:|------:|
 | ra_epub_xml_shim | 9 | 3 | 0 | 12 |
 | ra_jpeg_sw | 6 | 9 | 9 | 24 |
-| ra_flash | 5 | 3 | 12 | 20 |
+| ra_flash | 4 | 3 | 13 | 20 |
 | ra_ble_att | 4 | 0 | 1 | 5 |
-| ra_reflow_layout | 3 | 4 | 7 | 14 |
 | ra_rsip | 3 | 2 | 11 | 16 |
 | ra_fs_fat | 3 | 1 | 16 | 20 |
 | ra_ble_l2cap | 3 | 0 | 9 | 12 |
@@ -223,7 +222,8 @@ Sorted by (uncovered + partial) descending, then total descending.
 | ra_ble | 2 | 0 | 6 | 8 |
 | ra_eth | 2 | 0 | 2 | 4 |
 | ra_rmac_phy | 2 | 0 | 1 | 3 |
-| ra_modem_at | 1 | 5 | 6 | 12 |
+| ra_modem_at | 1 | 4 | 7 | 12 |
+| ra_reflow_layout | 1 | 4 | 8 | 13 |
 | ra_epub_chapter | 1 | 2 | 10 | 13 |
 | ra_iic_b | 1 | 2 | 4 | 7 |
 | ra_net_udp | 1 | 2 | 6 | 9 |

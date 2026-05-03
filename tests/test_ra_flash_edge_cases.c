@@ -29,6 +29,7 @@
 #include "ra8d2_flash_regs.h"
 #include "ra_err.h"
 #include "ra_flash.h"
+#include "ra_flash_internal.h"
 #include "ra_sim_mmap.h"
 #include "unity_minimal.h"
 
@@ -181,6 +182,47 @@ static void test_write_during_read_collision(void)
   TEST_END("flash config_set_write returns hw_timeout if MRDY never asserts");
 }
 
+/**
+ * @test test_mcdc_flash_window_allows_pure
+ *
+ * @par MC/DC:
+ * Decision at libs/ra_hal/src/ra_flash.c:722
+ *   ``if (s_rt.win_low == 0U && s_rt.win_high == 0U)`` (2 conditions, AND).
+ * Promoted via @ref ra_flash_internal_window_allows_pure so the test
+ * can drive the four input dimensions independently of module state.
+ *
+ * - V1: win_low=0, win_high=0 -> C1=T C2=T -> "no window" -> true.
+ * - V2: win_low=1, win_high=0 -> C1=F short -> false-branch (range checks).
+ * - V3: win_low=0, win_high=1 -> C1=T C2=F -> false-branch (range checks).
+ * V1+V2 isolate C1; V1+V3 isolate C2. N+1 = 3 vectors: minimal MC/DC.
+ *
+ * Additional vectors exercise the two follow-on range guards
+ * (addr<low and end_excl>high) so the helper is fully covered.
+ *
+ * @par DO-178C 6.4.4.3 rationale:
+ * 2-condition AND; N+1 = 3 vectors satisfy MC/DC fully.
+ */
+static void test_mcdc_flash_window_allows_pure(void)
+{
+  TEST_BEGIN("flash MC/DC: window_allows_pure AND");
+
+  /* V1: both zero -> permissive sentinel, returns true regardless of addr/len. */
+  TEST_ASSERT(ra_flash_internal_window_allows_pure(0x100U, 16U, 0U, 0U));
+  TEST_ASSERT(ra_flash_internal_window_allows_pure(0xFFFFFFFFU, 1U, 0U, 0U));
+
+  /* V2: win_low non-zero (C1=F) -- addr inside window passes. */
+  TEST_ASSERT(ra_flash_internal_window_allows_pure(0x200U, 16U, 0x100U, 0x300U));
+  /* V2b: addr below window low -> false. */
+  TEST_ASSERT(!ra_flash_internal_window_allows_pure(0x50U, 16U, 0x100U, 0x300U));
+
+  /* V3: win_high non-zero (C2=F) -- end_excl exceeds high -> false. */
+  TEST_ASSERT(!ra_flash_internal_window_allows_pure(0x2F0U, 32U, 0U, 0x300U));
+  /* V3b: end_excl exactly equals high -> true (high is exclusive upper). */
+  TEST_ASSERT(ra_flash_internal_window_allows_pure(0x2F0U, 16U, 0U, 0x300U));
+
+  TEST_END("flash MC/DC: window_allows_pure AND");
+}
+
 int32_t main(void)
 {
   test_blank_check_partial_page();
@@ -189,6 +231,7 @@ int32_t main(void)
   test_config_set_write_error_rollback();
   test_extra_mram_erase_bad_addr();
   test_write_during_read_collision();
+  test_mcdc_flash_window_allows_pure();
   (void)fprintf(stderr, "[OK  ] test_ra_flash_edge_cases.c\n");
   return 0;
 }
