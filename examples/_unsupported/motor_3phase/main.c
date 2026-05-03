@@ -362,6 +362,9 @@ static void motor_3phase_init_clocks_and_led(uint32_t* out_pclka_hz)
   if (ra_cgc_get_clock_hz(k_ra_clock_id_pclka, out_pclka_hz) != k_ra_ok) {
     motor_3phase_panic_halt();
   }
+  if (ra_mstp_init() != k_ra_ok) {
+    motor_3phase_panic_halt();
+  }
   if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
     motor_3phase_panic_halt();
   }
@@ -419,10 +422,9 @@ static void motor_3phase_init_sci(uint32_t pclka_hz)
  */
 static void motor_3phase_init_pwm(void)
 {
-  if (ra_mstp_init() != k_ra_ok) {
-    motor_3phase_panic_halt();
-  }
-
+  /* MSTP enable is now performed in motor_3phase_init_clocks_and_led so
+   * the canonical CGC -> MSTP -> IOPORT -> TIME -> peripheral order is
+   * preserved (see audit_init_order). */
   const ra_gpt_three_phase_cfg_t three_phase_cfg = {
     .channels       = {k_motor_3phase_ch_u, k_motor_3phase_ch_v, k_motor_3phase_ch_w},
     .mode           = k_ra_gpt_mode_triangle_pwm,

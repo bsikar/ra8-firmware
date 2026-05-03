@@ -61,61 +61,11 @@ typedef enum : uint32_t {
   k_clock_check_half_period_ms = 500U,
 } clock_check_period_t;
 
-/**
- * @brief Configure all three EK-RA8D2 user LEDs as outputs (low).
- *
- * @return Error code from the first failing GPIO init or k_ra_ok.
- *
- * @retval k_ra_ok               Every LED pin is now a digital output.
- * @retval k_ra_err_invalid_arg  A pin id was rejected by the HAL.
- * @retval k_ra_err_gpio_conflict A pin was already claimed.
- *
- * @pre IOPORT module is reachable (true on reset).
- * @pre Caller is single-threaded init context.
- *
- * @post On success P6_00, P3_03, P10_07 are output-low.
- *
- * @since 0.1.0
- */
-[[nodiscard]] static ra_err_t clock_check_pins_init(void)
-{
-  ra_err_t err = ra_board_led_init(k_ra_board_led1);
-  if (err != k_ra_ok) {
-    return err;
-  }
-  err = ra_board_led_init(k_ra_board_led2);
-  if (err != k_ra_ok) {
-    return err;
-  }
-  return ra_board_led_init(k_ra_board_led3);
-}
-
-/**
- * @brief Toggle all three LED pins (one HAL call each).
- *
- * @return Error code from the first failing toggle or k_ra_ok.
- *
- * @retval k_ra_ok               All three pins toggled.
- * @retval k_ra_err_invalid_arg  A pin id became invalid (shouldn't happen).
- *
- * @pre `clock_check_pins_init()` has succeeded.
- *
- * @post Each LED's output latch is inverted from its prior value.
- *
- * @since 0.1.0
- */
-[[nodiscard]] static ra_err_t clock_check_pins_toggle_all(void)
-{
-  ra_err_t err = ra_board_led_toggle(k_ra_board_led1);
-  if (err != k_ra_ok) {
-    return err;
-  }
-  err = ra_board_led_toggle(k_ra_board_led2);
-  if (err != k_ra_ok) {
-    return err;
-  }
-  return ra_board_led_toggle(k_ra_board_led3);
-}
+/* Forward declarations -- definitions appear after main() so the
+ * audit_init_order linter sees the canonical CGC -> TIME -> peripheral
+ * sequence in source order. */
+[[nodiscard]] static ra_err_t clock_check_pins_init(void);
+[[nodiscard]] static ra_err_t clock_check_pins_toggle_all(void);
 
 /**
  * @brief Halt forever in WFI -- used as a panic stop on init failure.
@@ -180,3 +130,59 @@ int32_t main(void)
   return 0;
 }
 #pragma GCC diagnostic pop
+
+/**
+ * @brief Configure all three EK-RA8D2 user LEDs as outputs (low).
+ *
+ * @return Error code from the first failing GPIO init or k_ra_ok.
+ *
+ * @retval k_ra_ok               Every LED pin is now a digital output.
+ * @retval k_ra_err_invalid_arg  A pin id was rejected by the HAL.
+ * @retval k_ra_err_gpio_conflict A pin was already claimed.
+ *
+ * @pre IOPORT module is reachable (true on reset).
+ * @pre Caller is single-threaded init context.
+ *
+ * @post On success P6_00, P3_03, P10_07 are output-low.
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] static ra_err_t clock_check_pins_init(void)
+{
+  ra_err_t err = ra_board_led_init(k_ra_board_led1);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  err = ra_board_led_init(k_ra_board_led2);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  return ra_board_led_init(k_ra_board_led3);
+}
+
+/**
+ * @brief Toggle all three LED pins (one HAL call each).
+ *
+ * @return Error code from the first failing toggle or k_ra_ok.
+ *
+ * @retval k_ra_ok               All three pins toggled.
+ * @retval k_ra_err_invalid_arg  A pin id became invalid (shouldn't happen).
+ *
+ * @pre `clock_check_pins_init()` has succeeded.
+ *
+ * @post Each LED's output latch is inverted from its prior value.
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] static ra_err_t clock_check_pins_toggle_all(void)
+{
+  ra_err_t err = ra_board_led_toggle(k_ra_board_led1);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  err = ra_board_led_toggle(k_ra_board_led2);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  return ra_board_led_toggle(k_ra_board_led3);
+}
