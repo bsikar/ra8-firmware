@@ -627,6 +627,44 @@ ra_err_t ra_psa_aead_decrypt(ra_psa_key_t   handle,
                              size_t         out_cap,
                              size_t*        out_len);
 
+/**
+ * @brief Fill ``out[0..out_len-1]`` with cryptographically secure bytes.
+ *
+ * @details
+ * Wraps ``psa_generate_random`` (PSA Crypto API spec, ARM IHI 0086 v1.1.0,
+ * Section 10.4 "Random number generation"). On the target the underlying
+ * PSA implementation pulls entropy from the RSIP TRNG; in
+ * ``RA_SIMULATOR_MODE`` builds a deterministic xorshift32 stream seeded
+ * from the call index is used so host-side tests are reproducible.
+ *
+ * @param[out] out     Destination buffer that receives ``out_len`` bytes.
+ * @param[in]  out_len Number of bytes to fill; must be > 0.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok                  ``out`` filled with ``out_len`` bytes.
+ * @retval k_ra_err_invalid_arg     ``out`` was NULL.
+ * @retval k_ra_err_invalid_size    ``out_len`` was zero.
+ * @retval k_ra_err_not_initialized Facade not initialised.
+ * @retval k_ra_err_hw_error        Underlying ``psa_generate_random`` failed.
+ *
+ * @pre Facade has been initialised via ``ra_psa_crypto_init``.
+ * @pre ``out`` is non-NULL.
+ * @post On ``k_ra_ok``, ``out[0..out_len-1]`` has been written.
+ * @post On any error, ``out`` is unchanged.
+ *
+ * @note Not thread-safe; caller must serialise with concurrent crypto calls.
+ *
+ * @par Example:
+ * @code{.c}
+ * uint8_t nonce[12] = {};
+ * (void)ra_psa_crypto_random(nonce, sizeof(nonce));
+ * @endcode
+ *
+ * @see PSA Crypto API spec (ARM IHI 0086) Sec 10.4 "psa_generate_random".
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_psa_crypto_random(uint8_t* out, size_t out_len);
+
 #ifdef __cplusplus
 }
 #endif

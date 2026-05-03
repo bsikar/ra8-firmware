@@ -114,6 +114,25 @@ typedef enum : uint16_t {
 } ra_psa_internal_const_t;
 
 /**
+ * @enum ra_psa_xs32_const_t
+ * @brief xorshift32 simulator-mode RNG constants (Marsaglia 2003).
+ */
+typedef enum : uint32_t {
+  k_xs32_seed   = 0xACE1ACE1U, /**< Default seed.                         */
+  k_xs32_byte_m = 0xFFU,       /**< Mask isolating the low byte of state. */
+} ra_psa_xs32_const_t;
+
+/**
+ * @enum ra_psa_xs32_shift_t
+ * @brief xorshift32 shift amounts (Marsaglia 2003 Table 1 row "y[13,17,5]").
+ */
+typedef enum : uint8_t {
+  k_xs32_shl_a = 13U, /**< First left shift.   */
+  k_xs32_shr_b = 17U, /**< Right shift.        */
+  k_xs32_shl_c = 5U,  /**< Second left shift.  */
+} ra_psa_xs32_shift_t;
+
+/**
  * @enum ra_psa_sha256_iv_t
  * @brief SHA-256 initial hash values H0..H7 (FIPS 180-4 Sec 5.3.3).
  */
@@ -1539,4 +1558,64 @@ ra_err_t ra_psa_aead_decrypt(ra_psa_key_t   handle,
 #endif
 
   return k_ra_ok;
+}
+
+/**
+ * @brief Fill ``out`` with cryptographically secure bytes.
+ *
+ * @details See the matching header declaration for the full contract.
+ * On the target this delegates to ``psa_generate_random``; in
+ * ``RA_SIMULATOR_MODE`` builds a deterministic xorshift32 stream is
+ * used so host-side tests are reproducible across runs.
+ *
+ * @param[out] out     Destination buffer.
+ * @param[in]  out_len Number of bytes requested.
+ * @return ``ra_err_t`` error code per header.
+ * @retval k_ra_ok                  ``out`` filled with ``out_len`` bytes.
+ * @retval k_ra_err_invalid_arg     ``out`` was NULL.
+ * @retval k_ra_err_invalid_size    ``out_len`` was zero.
+ * @retval k_ra_err_not_initialized Facade not initialised.
+ * @retval k_ra_err_hw_error        Underlying ``psa_generate_random`` failed.
+ *
+ * @pre Facade has been initialised by ``ra_psa_crypto_init``.
+ * @pre ``out`` is non-NULL and ``out_len > 0``.
+ * @post On ``k_ra_ok`` ``out[0..out_len-1]`` has been written.
+ * @post On any error ``out`` is unchanged.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+ra_err_t ra_psa_crypto_random(uint8_t* out, size_t out_len)
+{
+  if (out == NULL) {
+    return k_ra_err_invalid_arg;
+  }
+  if (out_len == 0U) {
+    return k_ra_err_invalid_size;
+  }
+  if (!s_initialised) {
+    return k_ra_err_not_initialized;
+  }
+
+#ifdef RA_SIMULATOR_MODE
+  /* Deterministic xorshift32 -- reproducible host-test entropy.
+   * Constants from Marsaglia 2003 "Xorshift RNGs" J. Stat. Soft. 8(14). */
+  static uint32_t s_state = (uint32_t)k_xs32_seed;
+  for (size_t i = 0U; i < out_len; ++i) {
+    uint32_t x = s_state;
+    x ^= x << (uint32_t)k_xs32_shl_a;
+    x ^= x >> (uint32_t)k_xs32_shr_b;
+    x ^= x << (uint32_t)k_xs32_shl_c;
+    s_state = x;
+    out[i]  = (uint8_t)(x & (uint32_t)k_xs32_byte_m);
+  }
+  return k_ra_ok;
+#else
+  const psa_status_t st = psa_generate_random(out, out_len);
+  if (st != PSA_SUCCESS) {
+    ra_log_error(k_ra_psa_tag, "psa_generate_random failed");
+    return k_ra_err_hw_error;
+  }
+  return k_ra_ok;
+#endif
 }
