@@ -108,10 +108,10 @@ static void elc_demo_setup_or_halt(void)
   if (ra_cgc_get_clock_hz(k_ra_clock_id_pclka, &pclka_hz) != k_ra_ok) {
     elc_demo_panic_halt();
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra_mstp_init() != k_ra_ok) {
     elc_demo_panic_halt();
   }
-  if (ra_mstp_init() != k_ra_ok) {
+  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
     elc_demo_panic_halt();
   }
   if (ra_pfs_route_peripheral(k_elc_demo_pin_txd, k_ra_psel_sci_async, "elc_event_demo.txd8") !=
