@@ -1288,6 +1288,127 @@ static void test_mcdc_set_preclip_window_pair(void)
   TEST_END("vin set_preclip MC/DC: line_end<start || pixel_end<start");
 }
 
+/**
+ * @test test_mcdc_set_uds_scale_quad
+ *
+ * @par MC/DC:
+ * Decision (libs/ra_hal/src/ra_vin.c:428-430): 4-cond OR over UDS scale fields.
+ * ``v_mant > MAX_MANT || h_mant > MAX_MANT || v_frac > MAX_FRAC || h_frac > MAX_FRAC``
+ * MAX_MANT = 0xF, MAX_FRAC = 0xFFF. N+1 = 5 vectors.
+ * - V1: all in range          -> all F -> dec F -> ok
+ * - V2: v_mant = 0x10         -> C1=T short -> err
+ * - V3: h_mant = 0x10         -> C1=F, C2=T -> err
+ * - V4: v_frac = 0x1000       -> C3=T -> err
+ * - V5: h_frac = 0x1000       -> C4=T -> err
+ */
+static void test_mcdc_set_uds_scale_quad(void)
+{
+  TEST_BEGIN("vin set_uds_scale MC/DC: 4-cond OR field range");
+  prep();
+  const ra_vin_config_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_vin_init(&cfg));
+  /* V1 */
+  const ra_vin_uds_scale_t v1 = {.v_mantissa = 1U,
+                                 .h_mantissa = 1U,
+                                 .v_fraction = 0U,
+                                 .h_fraction = 0U};
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_vin_set_uds_scale(&v1));
+  /* V2: v_mant out. */
+  const ra_vin_uds_scale_t v2 = {.v_mantissa = 0x10U,
+                                 .h_mantissa = 1U,
+                                 .v_fraction = 0U,
+                                 .h_fraction = 0U};
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_vin_set_uds_scale(&v2));
+  /* V3: h_mant out. */
+  const ra_vin_uds_scale_t v3 = {.v_mantissa = 1U,
+                                 .h_mantissa = 0x10U,
+                                 .v_fraction = 0U,
+                                 .h_fraction = 0U};
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_vin_set_uds_scale(&v3));
+  /* V4: v_frac out. */
+  const ra_vin_uds_scale_t v4 = {.v_mantissa = 1U,
+                                 .h_mantissa = 1U,
+                                 .v_fraction = 0x1000U,
+                                 .h_fraction = 0U};
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_vin_set_uds_scale(&v4));
+  /* V5: h_frac out. */
+  const ra_vin_uds_scale_t v5 = {.v_mantissa = 1U,
+                                 .h_mantissa = 1U,
+                                 .v_fraction = 0U,
+                                 .h_fraction = 0x1000U};
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_vin_set_uds_scale(&v5));
+  TEST_END("vin set_uds_scale MC/DC: 4-cond OR field range");
+}
+
+/**
+ * @test test_mcdc_set_framebuffers_align_triple
+ *
+ * @par MC/DC:
+ * Decision (libs/ra_hal/src/ra_vin.c:740-741): 3-cond OR over alignment masks.
+ * ``(mb1 & MASK)!=0 || (mb2 & MASK)!=0 || (mb3 & MASK)!=0``  MASK=0x7F
+ * N+1 = 4. Note: the prior all-zero check (line 737) gates this; we use
+ * non-zero, aligned bases as the control.
+ * - V1: all aligned (e.g. 0x100, 0, 0)           -> all F -> ok
+ * - V2: mb1 misaligned (e.g. 0x101)              -> C1=T short -> err
+ * - V3: mb2 misaligned                           -> C1=F, C2=T -> err
+ * - V4: mb3 misaligned                           -> C3=T -> err
+ */
+static void test_mcdc_set_framebuffers_align_triple(void)
+{
+  TEST_BEGIN("vin set_framebuffers MC/DC: 3-cond OR misalignment");
+  prep();
+  const ra_vin_config_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_vin_init(&cfg));
+  /* V1: aligned mb1 only. */
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_vin_set_framebuffers(0x100U, 0U, 0U));
+  /* V2: mb1 misaligned. */
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_vin_set_framebuffers(0x101U, 0U, 0U));
+  /* V3: mb1 ok, mb2 misaligned. */
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_vin_set_framebuffers(0x100U, 0x101U, 0U));
+  /* V4: mb1, mb2 ok, mb3 misaligned. */
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_vin_set_framebuffers(0x100U, 0x200U, 0x101U));
+  TEST_END("vin set_framebuffers MC/DC: 3-cond OR misalignment");
+}
+
+/**
+ * @test test_mcdc_capture_start_geom_quad
+ *
+ * @par MC/DC:
+ * Decision (libs/ra_hal/src/ra_vin.c:958): 4-cond OR over geometry.
+ * ``w == 0 || h == 0 || w > MAX || h > MAX``  MAX = 4096.
+ * N+1 = 5 vectors. Buffer must be aligned (separate check after).
+ * - V1: w=640, h=480, aligned buf                -> all F -> ok
+ * - V2: w=0                                      -> C1=T short -> err
+ * - V3: w=640, h=0                               -> C2=T -> err
+ * - V4: w=4097, h=480                            -> C3=T -> err
+ * - V5: w=640, h=4097                            -> C4=T -> err
+ */
+static void test_mcdc_capture_start_geom_quad(void)
+{
+  TEST_BEGIN("vin capture_start MC/DC: 4-cond OR geometry");
+  prep();
+  const ra_vin_config_t cfg = make_cfg();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_vin_init(&cfg));
+  /* 128-byte aligned buffer. */
+  static uint8_t s_buf[1024] __attribute__((aligned(128)));
+  /* V1 */
+  TEST_ASSERT_EQ((int)k_ra_ok,
+                 (int)ra_vin_capture_start(s_buf, 640U, 480U, k_ra_vin_input_ycbcr422_8));
+  /* V2 */
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
+                 (int)ra_vin_capture_start(s_buf, 0U, 480U, k_ra_vin_input_ycbcr422_8));
+  /* V3 */
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
+                 (int)ra_vin_capture_start(s_buf, 640U, 0U, k_ra_vin_input_ycbcr422_8));
+  /* V4 */
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
+                 (int)ra_vin_capture_start(s_buf, 4097U, 480U, k_ra_vin_input_ycbcr422_8));
+  /* V5 */
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
+                 (int)ra_vin_capture_start(s_buf, 640U, 4097U, k_ra_vin_input_ycbcr422_8));
+  TEST_END("vin capture_start MC/DC: 4-cond OR geometry");
+}
+
 int32_t main(void)
 {
   test_init_happy();
@@ -1342,6 +1463,9 @@ int32_t main(void)
   test_mcdc_capture_arm_mode_triple();
   test_mcdc_capture_arm_continuous_pair();
   test_mcdc_set_preclip_window_pair();
+  test_mcdc_set_uds_scale_quad();
+  test_mcdc_set_framebuffers_align_triple();
+  test_mcdc_capture_start_geom_quad();
   (void)fprintf(stderr, "[OK  ] test_ra_vin.c\n");
   return 0;
 }
