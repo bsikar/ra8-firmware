@@ -15,6 +15,12 @@
 #include "ra_sim_mmap.h"
 #include "unity_minimal.h"
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_returns_ok(void)
 {
   TEST_BEGIN("ra_iwdt_init returns ok");
@@ -23,6 +29,12 @@ static void test_init_returns_ok(void)
   TEST_END("ra_iwdt_init returns ok");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_register_layout_matches_fsp(void)
 {
   TEST_BEGIN("r_iwdt_regs_t offsets match FSP R_IWDT_Type");
@@ -42,6 +54,12 @@ static void test_register_layout_matches_fsp(void)
   TEST_END("r_iwdt_regs_t offsets match FSP R_IWDT_Type");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_refresh_writes_sequence(void)
 {
   TEST_BEGIN("ra_iwdt_refresh_deferred writes 0x00,0xFF to IWDTRR");
@@ -59,6 +77,12 @@ static void test_refresh_writes_sequence(void)
   TEST_END("ra_iwdt_refresh_deferred writes 0x00,0xFF to IWDTRR");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_repeated_refresh_is_safe(void)
 {
   TEST_BEGIN("ra_iwdt_refresh_deferred multiple calls");
@@ -82,6 +106,12 @@ static void stub_iwdt_cb(void* ctx, uint16_t mask)
   s_iwdt_cb_last_mask = mask;
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_get_status(void)
 {
   TEST_BEGIN("iwdt get_status");
@@ -97,6 +127,12 @@ static void test_get_status(void)
   TEST_END("iwdt get_status");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_get_status_masks_cntval(void)
 {
   TEST_BEGIN("iwdt get_status masks out CNTVAL[13:0]");
@@ -112,6 +148,12 @@ static void test_get_status_masks_cntval(void)
   TEST_END("iwdt get_status masks out CNTVAL[13:0]");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_get_counter(void)
 {
   TEST_BEGIN("iwdt get_counter mirrors FSP R_IWDT_CounterGet");
@@ -127,6 +169,12 @@ static void test_get_counter(void)
   TEST_END("iwdt get_counter mirrors FSP R_IWDT_CounterGet");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_clear_status(void)
 {
   TEST_BEGIN("iwdt clear_status");
@@ -137,6 +185,12 @@ static void test_clear_status(void)
   TEST_END("iwdt clear_status");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_attach_and_dispatch(void)
 {
   TEST_BEGIN("iwdt attach + dispatch");

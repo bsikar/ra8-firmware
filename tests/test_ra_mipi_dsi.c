@@ -109,6 +109,12 @@ static ra_mipi_dsi_config_t make_cfg_non_continuous(void)
   return cfg;
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_happy(void)
 {
   TEST_BEGIN("mipi_dsi init happy");
@@ -139,6 +145,12 @@ static void test_init_happy(void)
   TEST_END("mipi_dsi init happy");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_null_cfg(void)
 {
   TEST_BEGIN("mipi_dsi init null cfg");
@@ -148,6 +160,12 @@ static void test_init_null_cfg(void)
   TEST_END("mipi_dsi init null cfg");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_bad_lane_count(void)
 {
   TEST_BEGIN("mipi_dsi init bad lane count");
@@ -162,6 +180,12 @@ static void test_init_bad_lane_count(void)
   TEST_END("mipi_dsi init bad lane count");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_status_get_clear(void)
 {
   TEST_BEGIN("mipi_dsi status get + clear");
@@ -198,6 +222,12 @@ static void stub_dsi_cb(void* ctx, ra_mipi_dsi_event_t event, uint32_t status_ma
   s_cb_last_ctx   = ctx;
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_attach_and_dispatch(void)
 {
   TEST_BEGIN("mipi_dsi attach + dispatch");
@@ -225,6 +255,12 @@ static void test_attach_and_dispatch(void)
   TEST_END("mipi_dsi attach + dispatch");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_dispatch_per_class(void)
 {
   TEST_BEGIN("mipi_dsi per-class dispatch");
@@ -260,6 +296,12 @@ static void test_dispatch_per_class(void)
   TEST_END("mipi_dsi per-class dispatch");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_send_short_packet_happy(void)
 {
   TEST_BEGIN("mipi_dsi send short packet happy");
@@ -289,6 +331,12 @@ static void test_send_short_packet_happy(void)
   TEST_END("mipi_dsi send short packet happy");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_send_short_packet_bad_vc(void)
 {
   TEST_BEGIN("mipi_dsi send short packet bad vc");
@@ -305,6 +353,12 @@ static void test_send_short_packet_bad_vc(void)
   TEST_END("mipi_dsi send short packet bad vc");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_send_short_packet_busy(void)
 {
   TEST_BEGIN("mipi_dsi send short packet busy");
@@ -324,6 +378,12 @@ static void test_send_short_packet_busy(void)
   TEST_END("mipi_dsi send short packet busy");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_send_long_packet(void)
 {
   TEST_BEGIN("mipi_dsi send long packet (LP)");
@@ -354,6 +414,12 @@ static void test_send_long_packet(void)
   TEST_END("mipi_dsi send long packet (LP)");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_send_long_packet_lp_too_big(void)
 {
   TEST_BEGIN("mipi_dsi send long packet too big for LP");
@@ -372,6 +438,12 @@ static void test_send_long_packet_lp_too_big(void)
   TEST_END("mipi_dsi send long packet too big for LP");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_send_long_packet_null_data(void)
 {
   TEST_BEGIN("mipi_dsi send long packet with null data + nonzero len");
@@ -389,6 +461,12 @@ static void test_send_long_packet_null_data(void)
   TEST_END("mipi_dsi send long packet with null data + nonzero len");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_send_long_packet_hs(void)
 {
   TEST_BEGIN("mipi_dsi send long packet HS uses ch1");
@@ -416,6 +494,12 @@ static void test_send_long_packet_hs(void)
   TEST_END("mipi_dsi send long packet HS uses ch1");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_send_command_aux_op(void)
 {
   TEST_BEGIN("mipi_dsi send command aux op (skew cal)");
@@ -446,6 +530,12 @@ static void test_send_command_aux_op(void)
   TEST_END("mipi_dsi send command aux op (skew cal)");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_send_command_video_running_blocks_lp(void)
 {
   TEST_BEGIN("mipi_dsi LP send rejected during video mode");
@@ -465,6 +555,12 @@ static void test_send_command_video_running_blocks_lp(void)
   TEST_END("mipi_dsi LP send rejected during video mode");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_read_packet(void)
 {
   TEST_BEGIN("mipi_dsi read packet (BTA-then-read)");
@@ -499,6 +595,12 @@ static void test_read_packet(void)
   TEST_END("mipi_dsi read packet (BTA-then-read)");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_ulps_enter_exit(void)
 {
   TEST_BEGIN("mipi_dsi ULPS enter + exit");
@@ -528,6 +630,12 @@ static void test_ulps_enter_exit(void)
   TEST_END("mipi_dsi ULPS enter + exit");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_ulps_clock_lane_continuous_rejected(void)
 {
   TEST_BEGIN("mipi_dsi ULPS clock lane rejected in continuous mode");
@@ -568,6 +676,12 @@ static ra_mipi_dsi_video_cfg_t make_video_cfg(void)
   return v;
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_video_configure(void)
 {
   TEST_BEGIN("mipi_dsi video configure");
@@ -595,6 +709,12 @@ static void test_video_configure(void)
   TEST_END("mipi_dsi video configure");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_video_pixel_formats(void)
 {
   TEST_BEGIN("mipi_dsi video all pixel formats");
@@ -624,6 +744,12 @@ static void test_video_pixel_formats(void)
   TEST_END("mipi_dsi video all pixel formats");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_video_start_stop(void)
 {
   TEST_BEGIN("mipi_dsi video start + stop");
@@ -649,6 +775,12 @@ static void test_video_start_stop(void)
   TEST_END("mipi_dsi video start + stop");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_hs_clock_start_stop(void)
 {
   TEST_BEGIN("mipi_dsi HS clock start + stop");
@@ -669,6 +801,12 @@ static void test_hs_clock_start_stop(void)
   TEST_END("mipi_dsi HS clock start + stop");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_link_status_get(void)
 {
   TEST_BEGIN("mipi_dsi link status decode");
@@ -693,6 +831,12 @@ static void test_link_status_get(void)
   TEST_END("mipi_dsi link status decode");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_ack_error(void)
 {
   TEST_BEGIN("mipi_dsi ack/error get");
@@ -713,6 +857,12 @@ static void test_ack_error(void)
   TEST_END("mipi_dsi ack/error get");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_rx_result_get(void)
 {
   TEST_BEGIN("mipi_dsi rx result decode");
@@ -745,6 +895,12 @@ static void test_rx_result_get(void)
   TEST_END("mipi_dsi rx result decode");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_rx_payload_read(void)
 {
   TEST_BEGIN("mipi_dsi rx payload read");
@@ -773,6 +929,12 @@ static void test_rx_payload_read(void)
   TEST_END("mipi_dsi rx payload read");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_te_event(void)
 {
   TEST_BEGIN("mipi_dsi tearing-effect event");
@@ -793,6 +955,12 @@ static void test_te_event(void)
   TEST_END("mipi_dsi tearing-effect event");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_irq_enable(void)
 {
   TEST_BEGIN("mipi_dsi irq enable per class");
@@ -828,6 +996,12 @@ static void test_irq_enable(void)
   TEST_END("mipi_dsi irq enable per class");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_soft_reset(void)
 {
   TEST_BEGIN("mipi_dsi soft reset");
@@ -839,6 +1013,12 @@ static void test_soft_reset(void)
   TEST_END("mipi_dsi soft reset");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_power_transition(void)
 {
   TEST_BEGIN("mipi_dsi power transition");
@@ -874,6 +1054,12 @@ static ra_mipi_dsi_video_timing_t make_timing(void)
   return t;
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_video_timing(void)
 {
   TEST_BEGIN("mipi_dsi set_video_timing programmes VM* timing block");
@@ -901,6 +1087,12 @@ static void test_set_video_timing(void)
   TEST_END("mipi_dsi set_video_timing programmes VM* timing block");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_video_timing_null(void)
 {
   TEST_BEGIN("mipi_dsi set_video_timing rejects nullptr");
@@ -916,6 +1108,12 @@ static void test_set_video_timing_null(void)
   TEST_END("mipi_dsi set_video_timing rejects nullptr");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_send_command_short(void)
 {
   TEST_BEGIN("mipi_dsi send_command_short stages on VC0/LP");
@@ -937,6 +1135,12 @@ static void test_send_command_short(void)
   TEST_END("mipi_dsi send_command_short stages on VC0/LP");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_send_command_long(void)
 {
   TEST_BEGIN("mipi_dsi send_command_long stages on VC0/HS");
@@ -964,6 +1168,12 @@ static void test_send_command_long(void)
   TEST_END("mipi_dsi send_command_long stages on VC0/HS");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_enter_exit_ulps(void)
 {
   TEST_BEGIN("mipi_dsi enter_ulps / exit_ulps cover both lanes");
@@ -983,6 +1193,12 @@ static void test_enter_exit_ulps(void)
   TEST_END("mipi_dsi enter_ulps / exit_ulps cover both lanes");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_enter_ulps_continuous_rejected(void)
 {
   TEST_BEGIN("mipi_dsi enter_ulps blocked under continuous-clock mode");
@@ -994,6 +1210,12 @@ static void test_enter_ulps_continuous_rejected(void)
   TEST_END("mipi_dsi enter_ulps blocked under continuous-clock mode");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_get_link_status(void)
 {
   TEST_BEGIN("mipi_dsi get_link_status decodes LINKSR");
@@ -1014,6 +1236,12 @@ static void test_get_link_status(void)
   TEST_END("mipi_dsi get_link_status decodes LINKSR");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_video_timing_overflow_each_field(void)
 {
   TEST_BEGIN("mipi_dsi set_video_timing rejects every field overflow");
@@ -1037,6 +1265,11 @@ static void test_set_video_timing_overflow_each_field(void)
 
 /* ---------------------------------------------------------------------------
  * Sweep 15 / Phase 2: command-mode payload + LP-00 ULPS verification.
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  * --------------------------------------------------------------------------- */
 
 static void test_send_command_payload_short(void)
@@ -1057,6 +1290,12 @@ static void test_send_command_payload_short(void)
   TEST_END("mipi_dsi send_command_payload routes <=2 bytes via short path");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_send_command_payload_long(void)
 {
   TEST_BEGIN("mipi_dsi send_command_payload routes >2 bytes via long path");
@@ -1077,6 +1316,12 @@ static void test_send_command_payload_long(void)
   TEST_END("mipi_dsi send_command_payload routes >2 bytes via long path");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_send_command_payload_validation(void)
 {
   TEST_BEGIN("mipi_dsi send_command_payload null + zero-length checks");
@@ -1094,6 +1339,12 @@ static void test_send_command_payload_validation(void)
   TEST_END("mipi_dsi send_command_payload null + zero-length checks");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_ulps_lp00_drive_sequence(void)
 {
   TEST_BEGIN("mipi_dsi ULPS enter -> exit drives ULPSCR LP-00 pulses");

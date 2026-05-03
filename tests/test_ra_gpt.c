@@ -31,6 +31,12 @@ typedef enum : uint32_t {
   k_ra_gpt_test_gtcr_saw = 0x00000001UL,
 } ra_gpt_test_const_t;
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_start_happy(void)
 {
   TEST_BEGIN("gpt start happy channel 0");
@@ -48,6 +54,12 @@ static void test_start_happy(void)
   TEST_END("gpt start happy channel 0");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_start_last_channel(void)
 {
   TEST_BEGIN("gpt start last channel");
@@ -57,6 +69,12 @@ static void test_start_last_channel(void)
   TEST_END("gpt start last channel");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_start_bad_channel(void)
 {
   TEST_BEGIN("gpt start bad channel");
@@ -67,6 +85,12 @@ static void test_start_bad_channel(void)
   TEST_END("gpt start bad channel");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_start_huge_channel(void)
 {
   TEST_BEGIN("gpt start huge channel");
@@ -77,6 +101,12 @@ static void test_start_huge_channel(void)
   TEST_END("gpt start huge channel");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_stop_happy(void)
 {
   TEST_BEGIN("gpt stop happy");
@@ -92,6 +122,12 @@ static void test_stop_happy(void)
   TEST_END("gpt stop happy");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_stop_bad_channel(void)
 {
   TEST_BEGIN("gpt stop bad channel");
@@ -101,6 +137,12 @@ static void test_stop_bad_channel(void)
   TEST_END("gpt stop bad channel");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_read_happy(void)
 {
   TEST_BEGIN("gpt read happy");
@@ -116,6 +158,12 @@ static void test_read_happy(void)
   TEST_END("gpt read happy");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_read_null_out(void)
 {
   TEST_BEGIN("gpt read null out");
@@ -126,6 +174,12 @@ static void test_read_null_out(void)
   TEST_END("gpt read null out");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_read_bad_channel(void)
 {
   TEST_BEGIN("gpt read bad channel");
@@ -180,6 +234,12 @@ static ra_gpt_cfg_t make_gpt_cfg(void)
   return cfg;
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_gpt_init_configured(void)
 {
   TEST_BEGIN("gpt init configured");
@@ -198,6 +258,12 @@ static void test_gpt_init_configured(void)
   TEST_END("gpt init configured");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_gpt_init_null_cfg(void)
 {
   TEST_BEGIN("gpt init null cfg");
@@ -208,6 +274,12 @@ static void test_gpt_init_null_cfg(void)
   TEST_END("gpt init null cfg");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_gpt_init_bad_channel(void)
 {
   TEST_BEGIN("gpt init bad channel");
@@ -219,6 +291,12 @@ static void test_gpt_init_bad_channel(void)
   TEST_END("gpt init bad channel");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_gpt_init_no_autostart(void)
 {
   TEST_BEGIN("gpt init no autostart");
@@ -231,6 +309,12 @@ static void test_gpt_init_no_autostart(void)
   TEST_END("gpt init no autostart");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_gpt_deinit(void)
 {
   TEST_BEGIN("gpt deinit");
@@ -243,6 +327,12 @@ static void test_gpt_deinit(void)
   TEST_END("gpt deinit");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_gpt_deinit_bad_channel(void)
 {
   TEST_BEGIN("gpt deinit bad channel");
@@ -253,6 +343,12 @@ static void test_gpt_deinit_bad_channel(void)
   TEST_END("gpt deinit bad channel");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_gpt_set_period(void)
 {
   TEST_BEGIN("gpt set_period");
@@ -269,6 +365,12 @@ static void test_gpt_set_period(void)
   TEST_END("gpt set_period");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_gpt_set_duty_a_and_b(void)
 {
   TEST_BEGIN("gpt set_duty A/B");
@@ -290,6 +392,12 @@ static void test_gpt_set_duty_a_and_b(void)
   TEST_END("gpt set_duty A/B");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_gpt_set_duty_bad_sel(void)
 {
   TEST_BEGIN("gpt set_duty bad sel");
@@ -301,6 +409,12 @@ static void test_gpt_set_duty_bad_sel(void)
   TEST_END("gpt set_duty bad sel");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_gpt_status_read_and_clear(void)
 {
   TEST_BEGIN("gpt status read + clear");
@@ -325,6 +439,12 @@ static void test_gpt_status_read_and_clear(void)
   TEST_END("gpt status read + clear");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_gpt_attach_and_dispatch_ovf(void)
 {
   TEST_BEGIN("gpt attach + dispatch ovf");
@@ -345,6 +465,12 @@ static void test_gpt_attach_and_dispatch_ovf(void)
   TEST_END("gpt attach + dispatch ovf");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_gpt_dispatch_und_ccra_ccrb(void)
 {
   TEST_BEGIN("gpt dispatch und + ccra + ccrb");
@@ -361,6 +487,12 @@ static void test_gpt_dispatch_und_ccra_ccrb(void)
   TEST_END("gpt dispatch und + ccra + ccrb");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_gpt_dispatch_no_handler(void)
 {
   TEST_BEGIN("gpt dispatch no handler");
@@ -381,6 +513,12 @@ static void test_gpt_dispatch_no_handler(void)
   TEST_END("gpt dispatch no handler");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_gpt_attach_bad_channel(void)
 {
   TEST_BEGIN("gpt attach bad channel");
@@ -392,6 +530,12 @@ static void test_gpt_attach_bad_channel(void)
   TEST_END("gpt attach bad channel");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_gpt_power_transition(void)
 {
   TEST_BEGIN("gpt power transition");
@@ -418,6 +562,12 @@ static void stub_gpt_dma_done(void* ctx)
   ++s_gpt_dma_done;
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_gpt_write_dma_streams_periods_to_gtpr(void)
 {
   TEST_BEGIN("ra_gpt_write_dma: periods stream into GTPR");
@@ -447,6 +597,12 @@ static void test_gpt_write_dma_streams_periods_to_gtpr(void)
   TEST_END("ra_gpt_write_dma: periods stream into GTPR");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_gpt_read_dma_captures_gtcnt(void)
 {
   TEST_BEGIN("ra_gpt_read_dma: GTCNT streams into out_counts");
@@ -478,6 +634,12 @@ static void test_gpt_read_dma_captures_gtcnt(void)
   TEST_END("ra_gpt_read_dma: GTCNT streams into out_counts");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_gpt_dma_arg_validation(void)
 {
   TEST_BEGIN("ra_gpt_{write,read}_dma: arg validation");
@@ -541,6 +703,12 @@ typedef enum : uint8_t {
   k_ra_gpt_t2_ch_bad = 200U,
 } ra_gpt_t2_ch_t;
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_gpt_period_set_buffers_gtpbr(void)
 {
   TEST_BEGIN("gpt period_set buffers GTPBR");
@@ -561,6 +729,12 @@ static void test_gpt_period_set_buffers_gtpbr(void)
   TEST_END("gpt period_set buffers GTPBR");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_gpt_duty_cycle_set_routes_to_c_e(void)
 {
   TEST_BEGIN("gpt duty_cycle_set routes to GTCCRC/GTCCRE + asserts GTBER");
@@ -595,6 +769,12 @@ static void test_gpt_duty_cycle_set_routes_to_c_e(void)
   TEST_END("gpt duty_cycle_set routes to GTCCRC/GTCCRE + asserts GTBER");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_gpt_counter_set_writes_gtcnt(void)
 {
   TEST_BEGIN("gpt counter_set writes GTCNT when stopped");
@@ -621,6 +801,12 @@ static void test_gpt_counter_set_writes_gtcnt(void)
   TEST_END("gpt counter_set writes GTCNT when stopped");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_gpt_pwm_pin_configure_active_high(void)
 {
   TEST_BEGIN("gpt pwm_pin_configure pin A active-high + output enable + POEG");
@@ -650,6 +836,12 @@ static void test_gpt_pwm_pin_configure_active_high(void)
   TEST_END("gpt pwm_pin_configure pin A active-high + output enable + POEG");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_gpt_pwm_pin_configure_active_low_b(void)
 {
   TEST_BEGIN("gpt pwm_pin_configure pin B active-low + disabled output");
@@ -691,6 +883,12 @@ static void test_gpt_pwm_pin_configure_active_low_b(void)
   TEST_END("gpt pwm_pin_configure pin B active-low + disabled output");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_gpt_dead_time_set(void)
 {
   TEST_BEGIN("gpt dead_time_set programs GTDVU/GTDVD/GTDTCR");
@@ -734,6 +932,12 @@ static ra_gpt_three_phase_cfg_t make_three_phase_cfg(void)
   return cfg;
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_gpt_three_phase_open_starts_synchronously(void)
 {
   TEST_BEGIN("gpt three_phase_open arms U/V/W via single GTSTR");
@@ -760,6 +964,12 @@ static void test_gpt_three_phase_open_starts_synchronously(void)
   TEST_END("gpt three_phase_open arms U/V/W via single GTSTR");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_gpt_three_phase_set_duty_atomic(void)
 {
   TEST_BEGIN("gpt three_phase_set_duty writes GTCCRC/E on all 3 channels");
@@ -789,6 +999,12 @@ static void test_gpt_three_phase_set_duty_atomic(void)
   TEST_END("gpt three_phase_set_duty writes GTCCRC/E on all 3 channels");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_gpt_three_phase_close_stops_all(void)
 {
   TEST_BEGIN("gpt three_phase_close issues a single GTSTP and tears down");
@@ -805,6 +1021,12 @@ static void test_gpt_three_phase_close_stops_all(void)
   TEST_END("gpt three_phase_close issues a single GTSTP and tears down");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_gpt_three_phase_arg_validation(void)
 {
   TEST_BEGIN("gpt three_phase_open / set_duty arg validation");

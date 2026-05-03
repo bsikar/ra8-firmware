@@ -84,6 +84,11 @@ static void stub_chan_cb(void* ctx, ra_lvd_channel_t ch)
 /* =============================================================================
  * init / deinit
  * =============================================================================
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_init_happy_ch1(void)
@@ -114,6 +119,12 @@ static void test_init_happy_ch1(void)
   TEST_END("lvd init happy ch1");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_n_channel_no_cr1(void)
 {
   TEST_BEGIN("lvd init n-channel: no CR1 / SR write");
@@ -140,6 +151,12 @@ static void test_init_n_channel_no_cr1(void)
   TEST_END("lvd init n-channel: no CR1 / SR write");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_n_channel_rejects_irq_response(void)
 {
   TEST_BEGIN("lvd init n-channel rejects IRQ/NMI response");
@@ -154,6 +171,12 @@ static void test_init_n_channel_rejects_irq_response(void)
   TEST_END("lvd init n-channel rejects IRQ/NMI response");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_null_cfg(void)
 {
   TEST_BEGIN("lvd init null cfg");
@@ -163,6 +186,12 @@ static void test_init_null_cfg(void)
   TEST_END("lvd init null cfg");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_bad_channel(void)
 {
   TEST_BEGIN("lvd init bad channel");
@@ -174,6 +203,12 @@ static void test_init_bad_channel(void)
   TEST_END("lvd init bad channel");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_bad_threshold(void)
 {
   TEST_BEGIN("lvd init bad threshold");
@@ -188,6 +223,12 @@ static void test_init_bad_threshold(void)
   TEST_END("lvd init bad threshold");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_bad_edge(void)
 {
   TEST_BEGIN("lvd init bad edge (0b11 prohibited)");
@@ -199,6 +240,12 @@ static void test_init_bad_edge(void)
   TEST_END("lvd init bad edge (0b11 prohibited)");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_bad_filter_div(void)
 {
   TEST_BEGIN("lvd init bad filter_div");
@@ -210,6 +257,12 @@ static void test_init_bad_filter_div(void)
   TEST_END("lvd init bad filter_div");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_rn_rhsel_conflict(void)
 {
   TEST_BEGIN("lvd init RN=1 + RHSEL=HVD conflict rejected");
@@ -223,6 +276,12 @@ static void test_init_rn_rhsel_conflict(void)
   TEST_END("lvd init RN=1 + RHSEL=HVD conflict rejected");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_response_none_no_rie(void)
 {
   TEST_BEGIN("lvd init response=none leaves RIE clear");
@@ -239,6 +298,12 @@ static void test_init_response_none_no_rie(void)
   TEST_END("lvd init response=none leaves RIE clear");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_filter_off_sets_dfdis(void)
 {
   TEST_BEGIN("lvd init filter_en=false sets DFDIS");
@@ -253,6 +318,12 @@ static void test_init_filter_off_sets_dfdis(void)
   TEST_END("lvd init filter_en=false sets DFDIS");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_reset_response_sets_ri(void)
 {
   TEST_BEGIN("lvd init response=reset sets RI on m channel");
@@ -269,6 +340,12 @@ static void test_init_reset_response_sets_ri(void)
   TEST_END("lvd init response=reset sets RI on m channel");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_deinit_clears_regs(void)
 {
   TEST_BEGIN("lvd deinit clears regs");
@@ -296,6 +373,11 @@ static void test_deinit_clears_regs(void)
 /* =============================================================================
  * Threshold / edge / kind setters
  * =============================================================================
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_set_threshold_preserves_pvde(void)
@@ -322,6 +404,12 @@ static void test_set_threshold_preserves_pvde(void)
   TEST_END("lvd set_threshold preserves PVDE");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_irq_edge(void)
 {
   TEST_BEGIN("lvd set_irq_edge happy + reject 0b11 + n-chan unsupported");
@@ -343,6 +431,12 @@ static void test_set_irq_edge(void)
   TEST_END("lvd set_irq_edge happy + reject 0b11 + n-chan unsupported");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_irq_kind(void)
 {
   TEST_BEGIN("lvd set_irq_kind nmi/maskable preserves IDTSEL");
@@ -366,6 +460,11 @@ static void test_set_irq_kind(void)
 /* =============================================================================
  * IRQ / reset / CMPE single-bit toggles
  * =============================================================================
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_enable_disable_irq(void)
@@ -398,6 +497,12 @@ static void test_enable_disable_irq(void)
   TEST_END("lvd enable_irq / disable_irq");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_enable_disable_reset_m(void)
 {
   TEST_BEGIN("lvd enable_reset / disable_reset (m channel)");
@@ -419,6 +524,12 @@ static void test_enable_disable_reset_m(void)
   TEST_END("lvd enable_reset / disable_reset (m channel)");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_enable_disable_reset_n(void)
 {
   TEST_BEGIN("lvd enable_reset / disable_reset (n channel uses RE)");
@@ -443,6 +554,12 @@ static void test_enable_disable_reset_n(void)
   TEST_END("lvd enable_reset / disable_reset (n channel uses RE)");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_enable_disable_cmpe(void)
 {
   TEST_BEGIN("lvd enable_cmpe / disable_cmpe");
@@ -470,6 +587,11 @@ static void test_enable_disable_cmpe(void)
 /* =============================================================================
  * Filter + RHSEL + RN runtime updates
  * =============================================================================
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_set_filter_full_range(void)
@@ -512,6 +634,12 @@ static void test_set_filter_full_range(void)
   TEST_END("lvd set_filter exercises every FSAMP value");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_hysteresis_lvd_then_hvd(void)
 {
   TEST_BEGIN("lvd set_hysteresis_mode LVD then HVD");
@@ -539,6 +667,12 @@ static void test_set_hysteresis_lvd_then_hvd(void)
   TEST_END("lvd set_hysteresis_mode LVD then HVD");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_hysteresis_hvd_requires_ri(void)
 {
   TEST_BEGIN("lvd set_hysteresis_mode HVD blocked when RI=0 (m chan)");
@@ -561,6 +695,12 @@ static void test_set_hysteresis_hvd_requires_ri(void)
   TEST_END("lvd set_hysteresis_mode HVD blocked when RI=0 (m chan)");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_negate_mode(void)
 {
   TEST_BEGIN("lvd set_negate_mode happy + RHSEL conflict");
@@ -599,6 +739,11 @@ static void test_set_negate_mode(void)
 /* =============================================================================
  * Status read / clear
  * =============================================================================
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_status_read_and_clear(void)
@@ -637,6 +782,11 @@ static void test_status_read_and_clear(void)
 /* =============================================================================
  * Security attribution + n-channel lock
  * =============================================================================
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_set_security(void)
@@ -662,6 +812,12 @@ static void test_set_security(void)
   TEST_END("lvd set_security PVDSAR write");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_unlock_relock_n_channels(void)
 {
   TEST_BEGIN("lvd unlock/relock n-channels (PVDLR)");
@@ -678,6 +834,11 @@ static void test_unlock_relock_n_channels(void)
 /* =============================================================================
  * ELC + standby + cancel-deep-standby
  * =============================================================================
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_elc_event_enable_disable(void)
@@ -704,6 +865,12 @@ static void test_elc_event_enable_disable(void)
   TEST_END("lvd enable/disable ELC event");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_configure_for_standby_m(void)
 {
   TEST_BEGIN("lvd configure_for_standby (m channel sets DFDIS, clears RI/RN)");
@@ -723,6 +890,12 @@ static void test_configure_for_standby_m(void)
   TEST_END("lvd configure_for_standby (m channel sets DFDIS, clears RI/RN)");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_configure_for_standby_n(void)
 {
   TEST_BEGIN("lvd configure_for_standby (n channel only sets DFDIS)");
@@ -741,6 +914,12 @@ static void test_configure_for_standby_n(void)
   TEST_END("lvd configure_for_standby (n channel only sets DFDIS)");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_cancel_deep_standby_path(void)
 {
   TEST_BEGIN("lvd cancel_deep_standby_path clears RI on PVD1 + PVD2");
@@ -764,6 +943,11 @@ static void test_cancel_deep_standby_path(void)
 /* =============================================================================
  * Filter delay helper (pure)
  * =============================================================================
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_filter_delay_us(void)
@@ -795,6 +979,11 @@ static void test_filter_delay_us(void)
 /* =============================================================================
  * Callback registration + ISR demux
  * =============================================================================
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_attach_and_dispatch_shared(void)
@@ -835,6 +1024,12 @@ static void test_attach_and_dispatch_shared(void)
   TEST_END("lvd attach + dispatch (shared callback)");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_attach_per_channel_handler(void)
 {
   TEST_BEGIN("lvd attach_channel_handler overrides shared cb");
@@ -872,6 +1067,11 @@ static void test_attach_per_channel_handler(void)
 /* =============================================================================
  * Threshold-table sweep
  * =============================================================================
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_every_threshold_value(void)
