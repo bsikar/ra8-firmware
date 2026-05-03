@@ -1715,6 +1715,150 @@ static void test_mcdc_aead_aad_null_len_pair(void)
   TEST_END("rsip aead_pull_tag MC/DC: aad!=NULL && aad_len>0");
 }
 
+/**
+ * @test test_mcdc_aes_cipher_block_align_quad
+ *
+ * @par MC/DC:
+ * Decision: ``if (((mode == ECB) || (mode == CBC) || (mode == CMAC)) &&
+ *               ((len & 15) != 0U))``
+ * (4 conditions, libs/ra_hal/src/ra_rsip.c:2264 ra_rsip_aes_cipher).
+ * Short-circuit AND-of-OR; minimal MC/DC = N+1 = 5 vectors:
+ *  - V1: mode=ECB,  len=5  -> C1=T short -> dec T (reject).         [C1 indep]
+ *  - V2: mode=CBC,  len=5  -> C1=F,C2=T short -> dec T (reject).    [C2 indep]
+ *  - V3: mode=CMAC, len=5  -> C1=F,C2=F,C3=T -> dec T (reject).     [C3 indep]
+ *  - V4: mode=CTR,  len=5  -> C1=F,C2=F,C3=F -> outer F (accept).   [outer-OR all-F]
+ *  - V5: mode=ECB,  len=16 -> C1=T,...,C4=F -> dec F (accept).      [C4 indep]
+ * V1+V5 isolate C4 (alignment). V1+V4 isolate C1 (and outer-OR all-false).
+ * V2+V4 isolate C2; V3+V4 isolate C3.
+ *
+ * @par Note:
+ * The CTR mode-2 case at V4 also discharges the structural obligation
+ * for the outer 3-way OR's all-false branch (line 2264 first row).
+ */
+static void test_mcdc_aes_cipher_block_align_quad(void)
+{
+  TEST_BEGIN("rsip aes_cipher MC/DC: (ECB||CBC||CMAC) && len%16!=0");
+  prep_running();
+
+  const uint8_t        kbytes[16] = {};
+  ra_rsip_key_handle_t handle     = {};
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rsip_aes128_install_plain(kbytes, &handle));
+
+  const uint8_t pt[16] = {};
+  uint8_t       ct[16] = {};
+
+  /* V1: ECB + 5 bytes -> reject (block-align). */
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_invalid_arg,
+    (int32_t)
+      ra_rsip_aes_cipher(&handle, k_ra_rsip_aes_mode_ecb, k_ra_rsip_dir_encrypt, NULL, pt, ct, 5U));
+
+  /* V2: CBC + 5 bytes -> reject. */
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_invalid_arg,
+    (int32_t)
+      ra_rsip_aes_cipher(&handle, k_ra_rsip_aes_mode_cbc, k_ra_rsip_dir_encrypt, NULL, pt, ct, 5U));
+
+  /* V3: CMAC + 5 bytes -> reject. */
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_rsip_aes_cipher(&handle,
+                                             k_ra_rsip_aes_mode_cmac,
+                                             k_ra_rsip_dir_encrypt,
+                                             NULL,
+                                             pt,
+                                             ct,
+                                             5U));
+
+  /* V4: CTR + 5 bytes -> outer-OR is all-false; alignment check skipped;
+   * function proceeds to dispatch and returns OK in the simulator. */
+  const uint8_t iv[16] = {};
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_ok,
+    (int32_t)
+      ra_rsip_aes_cipher(&handle, k_ra_rsip_aes_mode_ctr, k_ra_rsip_dir_encrypt, iv, pt, ct, 5U));
+
+  /* V5: ECB + 16 bytes -> outer-OR true, alignment OK -> accept. */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_rsip_aes_cipher(&handle,
+                                             k_ra_rsip_aes_mode_ecb,
+                                             k_ra_rsip_dir_encrypt,
+                                             NULL,
+                                             pt,
+                                             ct,
+                                             16U));
+
+  TEST_END("rsip aes_cipher MC/DC: (ECB||CBC||CMAC) && len%16!=0");
+}
+
+/**
+ * @test test_mcdc_kdf_hkdf_ikm_required_quad
+ *
+ * @par MC/DC:
+ * Decision: ``if (((op == HKDF_SHA256) || (op == HKDF_SHA384) ||
+ *               (op == HKDF_SHA512)) && (ikm == NULL))``
+ * (4 conditions, libs/ra_hal/src/ra_rsip.c:3931 internal_kdf_validate).
+ * Reached via the public ra_rsip_kdf entry point.
+ * Short-circuit AND-of-OR; minimal MC/DC = N+1 = 5 vectors:
+ *  - V1: op=HKDF256, ikm=NULL -> C1=T short, C4=T -> dec T (null_ptr). [C1 indep]
+ *  - V2: op=HKDF384, ikm=NULL -> C1=F,C2=T,C4=T -> dec T.              [C2 indep]
+ *  - V3: op=HKDF512, ikm=NULL -> C1=F,C2=F,C3=T,C4=T -> dec T.         [C3 indep]
+ *  - V4: op=HUK_LBL, ikm=NULL -> outer-OR all-F -> dec F.              [outer-OR all-F]
+ *  - V5: op=HKDF256, ikm!=NULL -> C1=T,C4=F -> dec F.                  [C4 indep]
+ *
+ * V1 vs V4 isolate C1 + outer-OR; V2 vs V4 isolate C2; V3 vs V4 isolate C3;
+ * V1 vs V5 isolate C4 (ikm pointer).
+ */
+static void test_mcdc_kdf_hkdf_ikm_required_quad(void)
+{
+  TEST_BEGIN("rsip kdf MC/DC: (HKDF256||HKDF384||HKDF512) && ikm==NULL");
+  prep_running();
+
+  const uint8_t        hmac_key[32] = {};
+  ra_rsip_key_handle_t ikm          = {};
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_rsip_hmac_install_plain(k_ra_rsip_oem_cmd_hmac_sha256,
+                                                     hmac_key,
+                                                     sizeof(hmac_key),
+                                                     &ikm));
+
+  const uint8_t        label[8] = {'l', 'a', 'b', 'e', 'l', 0U, 0U, 0U};
+  ra_rsip_key_handle_t out      = {};
+
+  /* V1: HKDF-SHA256 + ikm==NULL -> null_ptr. */
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_null_ptr,
+    (int32_t)
+      ra_rsip_kdf(k_ra_rsip_kdf_op_hkdf_sha256, NULL, label, sizeof(label), NULL, 0U, 32U, &out));
+
+  /* V2: HKDF-SHA384 + ikm==NULL -> null_ptr. */
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_null_ptr,
+    (int32_t)
+      ra_rsip_kdf(k_ra_rsip_kdf_op_hkdf_sha384, NULL, label, sizeof(label), NULL, 0U, 32U, &out));
+
+  /* V3: HKDF-SHA512 + ikm==NULL -> null_ptr. */
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_null_ptr,
+    (int32_t)
+      ra_rsip_kdf(k_ra_rsip_kdf_op_hkdf_sha512, NULL, label, sizeof(label), NULL, 0U, 32U, &out));
+
+  /* V4: HUK_LABEL + ikm==NULL -> outer-OR all-false -> proceed (OK). */
+  *ra_rsip_reg32(k_ra_rsip_off_kdf_out) = (uint32_t)k_ra_rsip_oem_cmd_hmac_sha256;
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_ok,
+    (int32_t)
+      ra_rsip_kdf(k_ra_rsip_kdf_op_huk_label, NULL, label, sizeof(label), NULL, 0U, 32U, &out));
+
+  /* V5: HKDF-SHA256 + valid ikm -> C4=F -> proceed (OK). */
+  *ra_rsip_reg32(k_ra_rsip_off_kdf_out) = (uint32_t)k_ra_rsip_oem_cmd_hmac_sha256;
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_ok,
+    (int32_t)
+      ra_rsip_kdf(k_ra_rsip_kdf_op_hkdf_sha256, &ikm, label, sizeof(label), NULL, 0U, 32U, &out));
+
+  TEST_END("rsip kdf MC/DC: (HKDF256||HKDF384||HKDF512) && ikm==NULL");
+}
+
 int32_t main(void)
 {
   test_init_happy();
@@ -1770,6 +1914,8 @@ int32_t main(void)
   test_mcdc_hash_validate_shake_digest();
   test_mcdc_hash_msg_null_len_pair();
   test_mcdc_aead_aad_null_len_pair();
+  test_mcdc_aes_cipher_block_align_quad();
+  test_mcdc_kdf_hkdf_ikm_required_quad();
   (void)fprintf(stderr, "[OK ] test_ra_rsip.c\n");
   return 0;
 }
