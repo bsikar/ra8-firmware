@@ -128,6 +128,7 @@ unusedStructMember:libs/ra_ble_host/src/ra_ble_gatt_client.c
 unusedStructMember:libs/ra_ble_host/src/ra_ble_l2cap.c
 unusedStructMember:libs/ra_ble_host/src/ra_ble_mesh.c
 unusedStructMember:libs/ra_ble_host/src/ra_ble_security.c
+unusedStructMember:libs/ra_ble_host/inc/ra_ble_host.h
 
 # unusedStructMember in NimBLE NPL-ThreadX bridge headers. Fields are
 # consumed by NimBLE host code at link time, not visible to the per-TU

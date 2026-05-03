@@ -992,5 +992,34 @@ void ra_ble_host_test_inject_connect(uint16_t conn_handle)
   };
   ra_ble_host_dispatch_event(&e);
 }
+
+/**
+ * @brief Test hook -- synthesize an inbound HCI event for MC/DC vectors.
+ *
+ * @details Forwards directly to the static
+ *          ``internal_evt_trampoline`` so tests can vary
+ *          (params, params_len, evt_code, subev) and exercise the
+ *          line-576 params-NULL-or-uninit guard and the line-580 /
+ *          line-597 decisions on the production source.
+ *
+ * @param[in] evt_code   HCI event code.
+ * @param[in] params     Parameter bytes (may be NULL).
+ * @param[in] params_len Parameter byte count.
+ *
+ * @pre Caller is single-threaded.
+ * @pre @p params is non-NULL when @p params_len > 0 and the caller
+ *      expects the trampoline to dispatch.
+ * @post No state mutation when guards reject the event.
+ * @post Connection bookkeeping advanced when the LE_Connection_Complete
+ *       or Disconnection_Complete decisions evaluate true.
+ *
+ * @note Not thread-safe; for unit-test harness use only.
+ *
+ * @since 0.1.0
+ */
+void ra_ble_host_test_inject_event(uint8_t evt_code, const uint8_t* params, uint8_t params_len)
+{
+  internal_evt_trampoline(NULL, evt_code, params, params_len);
+}
 #endif
 // NOLINTEND(readability-magic-numbers,readability-function-size,readability-function-cognitive-complexity)
