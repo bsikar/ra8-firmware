@@ -193,9 +193,12 @@ static void test_netx_attach_null_handler_rejected(void)
 {
   reset_world();
   TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_eth_init());
-  TEST_BEGIN("netx_tcp_echo: attach rejects NULL fn");
-  TEST_ASSERT(ra_eth_attach_handler(NULL, NULL) != k_ra_ok);
-  TEST_END("netx_tcp_echo: attach rejects NULL fn");
+  TEST_BEGIN("netx_tcp_echo: attach with NULL fn detaches");
+  /* The contract treats attach(NULL) as a detach -- it stores nullptr
+   * in the handler slot and returns ok. The NetX wrapper relies on
+   * this to drop its event hook during shutdown. */
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_eth_attach_handler(NULL, NULL));
+  TEST_END("netx_tcp_echo: attach with NULL fn detaches");
 }
 
 int main(void)
