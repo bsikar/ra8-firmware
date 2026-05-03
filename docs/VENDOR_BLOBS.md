@@ -67,9 +67,7 @@ genuine RSIP-E50D firmware blobs:
   in-tree wrapped-key MAC layout in `ra_rsip_key_injection.c` is
   explicitly documented as not cryptographically authenticated.
 - Renesas-managed attestation cannot run.
-- The RSIP-E50D register layer (HUM Ch 52) is the open path forward
-  and is tracked in `docs/MISSING.md` section 1.1 and
-  `docs/ROADMAP_RA8D2.md` section 1.1.
+- The RSIP-E50D register layer (HUM Ch 52) is the open path forward.
 
 ### Affected source files / functions
 
@@ -103,10 +101,6 @@ the failure mode is "not Renesas-signed".
 
 ### Cross-references
 
-- `docs/MISSING.md` section 1.1 (Crypto driver gap)
-- `docs/MISSING.md` section 7 (Genuinely impossible without Renesas IP)
-- `docs/ROADMAP_RA8D2.md` section 1.1 (Drive the RSIP-E50D registers
-  natively)
 - `docs/reference/CHAPTER_MAP.md` -- HUM Ch 52 "Renesas Secure IP
   (RSIP-E50D)", pp 3302-3307
 - `docs/reference/ra8d2-hardware-user-manual.pdf`, Ch 52
@@ -177,10 +171,6 @@ no-radio mode.
 
 ### Cross-references
 
-- `docs/MISSING.md` lines 49-55 (BLE driver requires Renesas-supplied
-  encrypted patch)
-- `docs/MISSING.md` section 7 (Genuinely impossible -- BLE patch
-  image)
 - The RA8D2 datasheet and HUM in `docs/reference/` describe the BLE
   controller interface but do not document the patch-image format;
   consult the Renesas RA SDK distribution / FAE.
