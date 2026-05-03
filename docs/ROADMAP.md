@@ -1393,3 +1393,51 @@ no-ops so the host-test build keeps working unchanged.
       vault, store + challenge produces deterministic digest,
       different challenge yields different digest, arg
       validation, NSC veneer round-trip matches direct call.
+
+## Final-sweep status (2026-05-03)
+
+All previously-tracked roadmap items closed. The repository is at the
+`0.2.0` qualification baseline:
+
+- **Quality gates** (all STRICT, all at zero findings):
+  `doxy_audit --check`, `check_obsolete_standards.py`,
+  `check_mcdc_block.py`, `check_new_compound_has_mcdc.py`,
+  `cite_check.py`, `check_world_tags.py`, `check_line_citations.py`,
+  `stack_usage_check.py` (warn-only, expected SOFT findings in
+  `libs/third_party/miniz` and `libs/ra_epub` only).
+- **Test suite**: 190/190 host tests passing
+  (`bash scripts/test-docker.sh`).
+- **Reachable MC/DC**: 100.00% (`make mcdc` --
+  473/473 reachable decisions covered, 58 deactivated decisions
+  documented in `docs/MCDC_DEACTIVATIONS.md`); absolute MC/DC 89.08%.
+- **Citation gate STRICT**: every register write carries a
+  `/* HUM Ch X.Y p NNNN */` reference; `check_line_citations.py`
+  enforces line-level cites.
+- **Vendor blob procurement**: `RSIP` blob vendored under
+  `libs/third_party/`; BLE controller blob remains
+  blocked-license and is documented in `docs/VENDOR_BLOBS.md`.
+- **Qualification artifacts refreshed**: `docs/SOUP/`,
+  `docs/MCDC_GAPS.md`, `docs/MCDC_DEACTIVATIONS.md`,
+  `docs/VENDOR_BLOBS.md`, `docs/DRIVER_STATUS.md`.
+- **User-policy decisions codified**:
+  1. MISRA enforcement is cppcheck-only (no commercial Coverity).
+  2. Renesas FSP code is reference-only; no FSP source enters this tree.
+  3. HIL is dev-laptop based; no dedicated lab rig in this phase.
+  4. No third-party assessor in this phase; SIL 3 / DO-178C Level B
+     is the self-assessed bar.
+
+### Hardware-blocked items (HW-BLOCKED)
+
+These items are code-complete in the host-mock world but cannot be
+end-to-end validated until the noted hardware is on the bench:
+
+- **USB enumeration end-to-end verification** -- HW-BLOCKED;
+  `requires:` USB-C host PC + bus analyzer (Total Phase Beagle 480 or
+  equivalent) connected to the EK-RA8D2 USBHS port.
+- **LevelX IS25LX512M xSPI bring-up** -- HW-BLOCKED;
+  `requires:` logic analyzer (Saleae Logic Pro 16 or equivalent) on
+  the OSPI clock/data lines plus the IS25LX512M device populated on
+  the board.
+- **`lcd_demo` and `ereader` graphics demos** -- HW-BLOCKED;
+  `requires:` Renesas Parallel Graphics Expansion Board
+  (RTK7EKAGLEXB00000BJ) plus the EK-RA8D2 7.0-inch panel cable.

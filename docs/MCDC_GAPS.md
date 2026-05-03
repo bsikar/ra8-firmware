@@ -57,7 +57,7 @@ These conditions are unreachable on any public-API path and are therefore exempt
 | libs/ra_hal/src/ra_canfd.c | 2 | ra_canfd_deinit | `if ((bitrate_bps == 0U) \|\| (clock_hz == 0U)) {` | Annotated deactivation: both args are validated by ra_can... |
 | libs/ra_hal/src/ra_canfd.c | 2 | ra_canfd_deinit | `if ((prescaler < k_ra_canfd_prescaler_min) \|\| (prescale...` | Annotated deactivation: ra_canfd_deinit (bit-timing solve... |
 | libs/ra_hal/src/ra_ceu.c | 2 | internal_arm_capture | `if ((s_ceu_image_area != 0U) && (bufs->y_top != nullptr)) {` | Annotated deactivation: TU-local helper internal_arm_capt... |
-| libs/ra_hal/src/ra_dotf.c | 2 | internal_check_overlap | `if ((region->start_addr <= live->end_addr) && (live->star...` | Annotated deactivation: TU-local helper internal_check_ov... |
+| libs/ra_hal/src/ra_dotf.c | 2 | internal_check_overlap | `if ((region->start_addr <= live->end_addr) && (live->star...` | Annotated deactivation: ra_dotf overlap-detection AND; th... |
 | libs/ra_hal/src/ra_eth.c | 2 | internal_init_rings | `if ((tx == 0U) \|\| (tx > k_ra_eth_num_tx_desc)) {` | Annotated deactivation: tx normalized to nonzero above; f... |
 | libs/ra_hal/src/ra_eth.c | 2 | internal_init_rings | `if ((rx == 0U) \|\| (rx > k_ra_eth_num_rx_desc)) {` | Annotated deactivation: rx normalized to nonzero above; f... |
 | libs/ra_hal/src/ra_flash.c | 2 | ra_flash_blank_check | `(address >= k_ra_flash_code_start) &&` | Annotated deactivation: ra_flash_blank_check window-membe... |
