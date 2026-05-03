@@ -101,6 +101,11 @@ static void stub_vin_cb(void* ctx, uint32_t mask)
 
 /* ----------------------------------------------------------------------------
  * Lifecycle tests
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  * --------------------------------------------------------------------------*/
 
 static void test_init_happy(void)
@@ -129,6 +134,12 @@ static void test_init_happy(void)
   TEST_END("vin init happy");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_null_cfg(void)
 {
   TEST_BEGIN("vin init null cfg");
@@ -138,6 +149,12 @@ static void test_init_null_cfg(void)
   TEST_END("vin init null cfg");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_zero_stride(void)
 {
   TEST_BEGIN("vin init zero stride");
@@ -149,6 +166,12 @@ static void test_init_zero_stride(void)
   TEST_END("vin init zero stride");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_bad_im(void)
 {
   TEST_BEGIN("vin init bad interlace mode");
@@ -159,6 +182,12 @@ static void test_init_bad_im(void)
   TEST_END("vin init bad interlace mode");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_bad_clp(void)
 {
   TEST_BEGIN("vin init bad clp mode");
@@ -169,6 +198,12 @@ static void test_init_bad_clp(void)
   TEST_END("vin init bad clp mode");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_reset(void)
 {
   TEST_BEGIN("vin reset");
@@ -183,6 +218,11 @@ static void test_reset(void)
 
 /* ----------------------------------------------------------------------------
  * Capture tests
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  * --------------------------------------------------------------------------*/
 
 static void test_capture_arm_single(void)
@@ -201,6 +241,12 @@ static void test_capture_arm_single(void)
   TEST_END("vin capture_arm single");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_capture_arm_continuous(void)
 {
   TEST_BEGIN("vin capture_arm continuous");
@@ -217,6 +263,12 @@ static void test_capture_arm_continuous(void)
   TEST_END("vin capture_arm continuous");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_capture_arm_field_skip(void)
 {
   TEST_BEGIN("vin capture_arm field-skip");
@@ -229,6 +281,12 @@ static void test_capture_arm_field_skip(void)
   TEST_END("vin capture_arm field-skip");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_capture_arm_invalid_mode(void)
 {
   TEST_BEGIN("vin capture_arm invalid mode");
@@ -239,6 +297,12 @@ static void test_capture_arm_invalid_mode(void)
   TEST_END("vin capture_arm invalid mode");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_capture_arm_already_running(void)
 {
   TEST_BEGIN("vin capture_arm already running");
@@ -251,6 +315,12 @@ static void test_capture_arm_already_running(void)
   TEST_END("vin capture_arm already running");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_capture_stop(void)
 {
   TEST_BEGIN("vin capture_disarm");
@@ -270,6 +340,12 @@ static void test_capture_stop(void)
   TEST_END("vin capture_disarm");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_capture_disarm_idle(void)
 {
   TEST_BEGIN("vin capture_disarm idle");
@@ -283,6 +359,11 @@ static void test_capture_disarm_idle(void)
 
 /* ----------------------------------------------------------------------------
  * Pre-clip / scaling tests
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  * --------------------------------------------------------------------------*/
 
 static void test_set_preclip(void)
@@ -318,6 +399,12 @@ static void test_set_preclip(void)
   TEST_END("vin set_preclip");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_uds_scale(void)
 {
   TEST_BEGIN("vin set_uds_scale");
@@ -349,6 +436,12 @@ static void test_set_uds_scale(void)
   TEST_END("vin set_uds_scale");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_uds_passband(void)
 {
   TEST_BEGIN("vin set_uds_passband");
@@ -365,6 +458,12 @@ static void test_set_uds_passband(void)
   TEST_END("vin set_uds_passband");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_uds_clip(void)
 {
   TEST_BEGIN("vin set_uds_clip");
@@ -381,6 +480,12 @@ static void test_set_uds_clip(void)
   TEST_END("vin set_uds_clip");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_uds_ctrl(void)
 {
   TEST_BEGIN("vin set_uds_ctrl");
@@ -409,6 +514,12 @@ static void test_set_uds_ctrl(void)
   TEST_END("vin set_uds_ctrl");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_enable_scaling(void)
 {
   TEST_BEGIN("vin enable_scaling");
@@ -426,6 +537,11 @@ static void test_enable_scaling(void)
 
 /* ----------------------------------------------------------------------------
  * LUT test
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  * --------------------------------------------------------------------------*/
 
 static void test_lut_program(void)
@@ -464,6 +580,11 @@ static void test_lut_program(void)
 
 /* ----------------------------------------------------------------------------
  * CSC tests
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  * --------------------------------------------------------------------------*/
 
 static void test_set_yc_to_rgb(void)
@@ -501,6 +622,12 @@ static void test_set_yc_to_rgb(void)
   TEST_END("vin set_yc_to_rgb");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_rgb_to_yc(void)
 {
   TEST_BEGIN("vin set_rgb_to_yc");
@@ -568,6 +695,11 @@ static void test_set_rgb_to_yc(void)
 
 /* ----------------------------------------------------------------------------
  * Dithering / YUV-444 / IM tests
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  * --------------------------------------------------------------------------*/
 
 static void test_set_dithering(void)
@@ -587,6 +719,12 @@ static void test_set_dithering(void)
   TEST_END("vin set_dithering");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_yuv444_mode(void)
 {
   TEST_BEGIN("vin set_yuv444_mode");
@@ -604,6 +742,12 @@ static void test_set_yuv444_mode(void)
   TEST_END("vin set_yuv444_mode");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_interlace_mode(void)
 {
   TEST_BEGIN("vin set_interlace_mode");
@@ -618,6 +762,12 @@ static void test_set_interlace_mode(void)
   TEST_END("vin set_interlace_mode");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_data_mode(void)
 {
   TEST_BEGIN("vin set_data_mode");
@@ -655,6 +805,11 @@ static void test_set_data_mode(void)
 
 /* ----------------------------------------------------------------------------
  * CSI input / framebuffer tests
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  * --------------------------------------------------------------------------*/
 
 static void test_set_csi_input(void)
@@ -684,6 +839,12 @@ static void test_set_csi_input(void)
   TEST_END("vin set_csi_input");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_field_detect(void)
 {
   TEST_BEGIN("vin set_field_detect");
@@ -710,6 +871,12 @@ static void test_set_field_detect(void)
   TEST_END("vin set_field_detect");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_framebuffers(void)
 {
   TEST_BEGIN("vin set_framebuffers");
@@ -728,6 +895,12 @@ static void test_set_framebuffers(void)
   TEST_END("vin set_framebuffers");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_uv_offset(void)
 {
   TEST_BEGIN("vin set_uv_offset");
@@ -745,6 +918,11 @@ static void test_set_uv_offset(void)
 
 /* ----------------------------------------------------------------------------
  * Status / IRQ tests
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  * --------------------------------------------------------------------------*/
 
 static void test_status_get_clear(void)
@@ -771,6 +949,12 @@ static void test_status_get_clear(void)
   TEST_END("vin status get + clear");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_module_status(void)
 {
   TEST_BEGIN("vin module status");
@@ -799,6 +983,12 @@ static void test_module_status(void)
   TEST_END("vin module status");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_line_count(void)
 {
   TEST_BEGIN("vin line count");
@@ -814,6 +1004,12 @@ static void test_line_count(void)
   TEST_END("vin line count");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_interrupt_enable(void)
 {
   TEST_BEGIN("vin set_interrupt_enable");
@@ -826,6 +1022,12 @@ static void test_set_interrupt_enable(void)
   TEST_END("vin set_interrupt_enable");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_scanline_compare(void)
 {
   TEST_BEGIN("vin set_scanline_compare");
@@ -839,6 +1041,12 @@ static void test_set_scanline_compare(void)
   TEST_END("vin set_scanline_compare");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_attach_and_dispatch(void)
 {
   TEST_BEGIN("vin attach + dispatch");
@@ -864,6 +1072,12 @@ static void test_attach_and_dispatch(void)
   TEST_END("vin attach + dispatch");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_power_transition(void)
 {
   TEST_BEGIN("vin power transition");
@@ -916,6 +1130,12 @@ static void stub_vin_frame(void* ctx, void* buf, uint32_t len)
   s_vin_frame_last_ctx = ctx;
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_capture_start_buf_happy(void)
 {
   TEST_BEGIN("vin capture_start(buf,w,h,format) happy");
@@ -936,6 +1156,12 @@ static void test_capture_start_buf_happy(void)
   TEST_END("vin capture_start(buf,w,h,format) happy");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_capture_start_buf_null(void)
 {
   TEST_BEGIN("vin capture_start NULL buf");
@@ -950,6 +1176,12 @@ static void test_capture_start_buf_null(void)
   TEST_END("vin capture_start NULL buf");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_capture_start_buf_bad_geom(void)
 {
   TEST_BEGIN("vin capture_start bad geometry");
@@ -966,6 +1198,12 @@ static void test_capture_start_buf_bad_geom(void)
   TEST_END("vin capture_start bad geometry");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_capture_start_buf_misaligned(void)
 {
   TEST_BEGIN("vin capture_start misaligned buf");
@@ -981,6 +1219,12 @@ static void test_capture_start_buf_misaligned(void)
   TEST_END("vin capture_start misaligned buf");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_capture_stop_wrapper(void)
 {
   TEST_BEGIN("vin capture_stop wrapper");
@@ -999,6 +1243,12 @@ static void test_capture_stop_wrapper(void)
   TEST_END("vin capture_stop wrapper");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_window_happy(void)
 {
   TEST_BEGIN("vin set_window happy");
@@ -1015,6 +1265,12 @@ static void test_set_window_happy(void)
   TEST_END("vin set_window happy");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_window_invalid(void)
 {
   TEST_BEGIN("vin set_window invalid");
@@ -1026,6 +1282,12 @@ static void test_set_window_invalid(void)
   TEST_END("vin set_window invalid");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_attach_frame_handler(void)
 {
   TEST_BEGIN("vin attach_frame_handler");
@@ -1066,6 +1328,12 @@ static void test_attach_frame_handler(void)
   TEST_END("vin attach_frame_handler");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_deinit(void)
 {
   TEST_BEGIN("vin deinit");

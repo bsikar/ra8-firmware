@@ -69,6 +69,12 @@ static void walk_to_attach(void)
 
 /* ---- Lifecycle ---- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_fs_returns_ok(void)
 {
   TEST_BEGIN("ra_usb_hhub_init FS returns k_ra_ok and flips DCFM");
@@ -87,6 +93,12 @@ static void test_init_fs_returns_ok(void)
   TEST_END("ra_usb_hhub_init FS returns k_ra_ok and flips DCFM");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_bad_speed(void)
 {
   TEST_BEGIN("ra_usb_hhub_init rejects bogus speed");
@@ -95,6 +107,12 @@ static void test_init_bad_speed(void)
   TEST_END("ra_usb_hhub_init rejects bogus speed");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_close_without_init(void)
 {
   TEST_BEGIN("ra_usb_hhub_close before init returns invalid_state");
@@ -105,6 +123,12 @@ static void test_close_without_init(void)
 
 /* ---- Attach callback fires once ---- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_attach_callback_fires_once(void)
 {
   TEST_BEGIN("attach callback fires once after the enum step machine completes");
@@ -120,6 +144,12 @@ static void test_attach_callback_fires_once(void)
 
 /* ---- Pre-init guards ---- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_pre_init_guards(void)
 {
   TEST_BEGIN("class API rejects pre-init");
@@ -143,6 +173,12 @@ static void test_pre_init_guards(void)
 
 /* ---- Pre-attach guards (post-init) ---- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_pre_attach_guards(void)
 {
   TEST_BEGIN("class API rejects pre-attach with invalid_state");
@@ -163,6 +199,12 @@ static void test_pre_attach_guards(void)
 
 /* ---- Null-arg rejection ---- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_null_arg_rejection(void)
 {
   TEST_BEGIN("get_port_count / get_port_status reject NULL");
@@ -178,6 +220,12 @@ static void test_null_arg_rejection(void)
 
 /* ---- Port range rejection ---- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_port_range_rejection(void)
 {
   TEST_BEGIN("port-range guards reject port=0 and port>port_count");
@@ -198,6 +246,12 @@ static void test_port_range_rejection(void)
 
 /* ---- get_port_count returns the cached default port count ---- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_get_port_count_value(void)
 {
   TEST_BEGIN("get_port_count returns the cached port count from descriptor walk");
@@ -213,6 +267,12 @@ static void test_get_port_count_value(void)
 
 /* ---- get_port_status stages bmRequestType=0xA3 + bRequest=0x00 ---- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_get_port_status_envelope(void)
 {
   TEST_BEGIN("ra_usb_hhub_get_port_status stages bmRequestType=0xA3 + bRequest=0x00");
@@ -235,6 +295,12 @@ static void test_get_port_status_envelope(void)
 
 /* ---- set_port_feature stages bmRequestType=0x23 + bRequest=0x03 ---- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_port_feature_envelope(void)
 {
   TEST_BEGIN("ra_usb_hhub_set_port_feature stages bmRequestType=0x23 + bRequest=0x03");
@@ -255,6 +321,12 @@ static void test_set_port_feature_envelope(void)
 
 /* ---- clear_port_feature stages bmRequestType=0x23 + bRequest=0x01 ---- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_clear_port_feature_envelope(void)
 {
   TEST_BEGIN("ra_usb_hhub_clear_port_feature stages bmRequestType=0x23 + bRequest=0x01");

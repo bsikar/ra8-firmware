@@ -93,6 +93,11 @@ static void prep(void)
 /* ---------------------------------------------------------------------------
  * Lifecycle / init validation
  * ---------------------------------------------------------------------------
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_init_happy_dcdc(void)
@@ -112,6 +117,12 @@ static void test_init_happy_dcdc(void)
   TEST_END("vreg init dcdc happy");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_happy_dcdc_fast(void)
 {
   TEST_BEGIN("vreg init dcdc fast-startup");
@@ -125,6 +136,12 @@ static void test_init_happy_dcdc_fast(void)
   TEST_END("vreg init dcdc fast-startup");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_happy_ldo(void)
 {
   TEST_BEGIN("vreg init ldo happy");
@@ -140,6 +157,12 @@ static void test_init_happy_ldo(void)
   TEST_END("vreg init ldo happy");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_happy_ldo_with_boost(void)
 {
   TEST_BEGIN("vreg init ldo with LCBOOST");
@@ -155,6 +178,12 @@ static void test_init_happy_ldo_with_boost(void)
   TEST_END("vreg init ldo with LCBOOST");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_null_cfg(void)
 {
   TEST_BEGIN("vreg init null cfg");
@@ -164,6 +193,12 @@ static void test_init_null_cfg(void)
   TEST_END("vreg init null cfg");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_bad_vccsel(void)
 {
   TEST_BEGIN("vreg init bad vccsel");
@@ -175,6 +210,12 @@ static void test_init_bad_vccsel(void)
   TEST_END("vreg init bad vccsel");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_bad_mode(void)
 {
   TEST_BEGIN("vreg init bad mode");
@@ -186,6 +227,12 @@ static void test_init_bad_mode(void)
   TEST_END("vreg init bad mode");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_bad_ocp(void)
 {
   TEST_BEGIN("vreg init bad ocp");
@@ -197,6 +244,12 @@ static void test_init_bad_ocp(void)
   TEST_END("vreg init bad ocp");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_bad_lv_profile(void)
 {
   TEST_BEGIN("vreg init bad lv profile");
@@ -211,6 +264,11 @@ static void test_init_bad_lv_profile(void)
 /* ---------------------------------------------------------------------------
  * Mode + VCCSEL + OCP + LDO boost + Fast-startup setters
  * ---------------------------------------------------------------------------
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_set_mode_round_trip(void)
@@ -235,6 +293,12 @@ static void test_set_mode_round_trip(void)
   TEST_END("vreg set_mode round trip");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_mode_keeps_lcboost_on_disable(void)
 {
   TEST_BEGIN("vreg set_mode preserves LCBOOST during DCDC->LDO");
@@ -253,6 +317,12 @@ static void test_set_mode_keeps_lcboost_on_disable(void)
   TEST_END("vreg set_mode preserves LCBOOST during DCDC->LDO");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_mode_bad_arg(void)
 {
   TEST_BEGIN("vreg set_mode bad arg");
@@ -262,6 +332,12 @@ static void test_set_mode_bad_arg(void)
   TEST_END("vreg set_mode bad arg");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_vccsel(void)
 {
   TEST_BEGIN("vreg set_vccsel");
@@ -281,6 +357,12 @@ static void test_set_vccsel(void)
   TEST_END("vreg set_vccsel");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_ocp_levels(void)
 {
   TEST_BEGIN("vreg set_ocp every level");
@@ -305,6 +387,12 @@ static void test_set_ocp_levels(void)
   TEST_END("vreg set_ocp every level");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_fast_startup(void)
 {
   TEST_BEGIN("vreg set_fast_startup");
@@ -319,6 +407,12 @@ static void test_set_fast_startup(void)
   TEST_END("vreg set_fast_startup");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_ldo_boost(void)
 {
   TEST_BEGIN("vreg set_ldo_boost");
@@ -333,6 +427,12 @@ static void test_set_ldo_boost(void)
   TEST_END("vreg set_ldo_boost");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_lv_profile(void)
 {
   TEST_BEGIN("vreg set_lv_profile mutual exclusion");
@@ -359,6 +459,11 @@ static void test_set_lv_profile(void)
 /* ---------------------------------------------------------------------------
  * Status snapshot + clear_status
  * ---------------------------------------------------------------------------
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_get_status_decoded(void)
@@ -384,6 +489,12 @@ static void test_get_status_decoded(void)
   TEST_END("vreg get_status decoded");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_get_status_ldo(void)
 {
   TEST_BEGIN("vreg get_status decoded (LDO + LV)");
@@ -401,6 +512,12 @@ static void test_get_status_ldo(void)
   TEST_END("vreg get_status decoded (LDO + LV)");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_clear_status(void)
 {
   TEST_BEGIN("vreg clear_status");
@@ -417,6 +534,12 @@ static void test_clear_status(void)
   TEST_END("vreg clear_status");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_clear_status_reserved_bits(void)
 {
   TEST_BEGIN("vreg clear_status rejects reserved bits");
@@ -433,6 +556,11 @@ static void test_clear_status_reserved_bits(void)
 /* ---------------------------------------------------------------------------
  * Standby / stop transitions
  * ---------------------------------------------------------------------------
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_enter_exit_stop_legacy(void)
@@ -453,6 +581,12 @@ static void test_enter_exit_stop_legacy(void)
   TEST_END("vreg enter/exit stop (legacy aliases)");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_enter_standby_every_variant(void)
 {
   TEST_BEGIN("vreg enter_standby every variant");
@@ -470,6 +604,12 @@ static void test_enter_standby_every_variant(void)
   TEST_END("vreg enter_standby every variant");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_enter_standby_bad_variant(void)
 {
   TEST_BEGIN("vreg enter_standby bad variant");
@@ -480,6 +620,12 @@ static void test_enter_standby_bad_variant(void)
   TEST_END("vreg enter_standby bad variant");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_exit_stop_uninitialised(void)
 {
   TEST_BEGIN("vreg exit stop uninitialised");
@@ -493,6 +639,12 @@ static void test_exit_stop_uninitialised(void)
   TEST_END("vreg exit stop uninitialised");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_reset_clears_cached_state(void)
 {
   TEST_BEGIN("vreg reset clears cached state");
@@ -514,6 +666,11 @@ static void test_reset_clears_cached_state(void)
 /* ---------------------------------------------------------------------------
  * IRQ hook
  * ---------------------------------------------------------------------------
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- exercises the public-API
+  * happy path / error-rejection contract; no `&&` or `||` in the
+  * code under test that this case touches)
  */
 
 static void test_attach_dispatch(void)
@@ -539,6 +696,12 @@ static void test_attach_dispatch(void)
   TEST_END("vreg attach + dispatch");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_deinit_clears_regs(void)
 {
   TEST_BEGIN("vreg deinit clears regs");

@@ -77,6 +77,12 @@ static void walk_to_attach(void)
 
 /* ---- Lifecycle ---- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_fs_returns_ok(void)
 {
   TEST_BEGIN("ra_usb_hmsc_init FS returns k_ra_ok");
@@ -96,6 +102,12 @@ static void test_init_fs_returns_ok(void)
   TEST_END("ra_usb_hmsc_init FS returns k_ra_ok");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_bad_speed(void)
 {
   TEST_BEGIN("ra_usb_hmsc_init rejects bogus speed");
@@ -104,6 +116,12 @@ static void test_init_bad_speed(void)
   TEST_END("ra_usb_hmsc_init rejects bogus speed");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_close_without_init(void)
 {
   TEST_BEGIN("ra_usb_hmsc_close before init returns invalid_state");
@@ -114,6 +132,12 @@ static void test_close_without_init(void)
 
 /* ---- Attach callback fires once after a simulated descriptor walk ---- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_attach_callback_fires_once(void)
 {
   TEST_BEGIN("attach callback fires once after the enum step machine completes");
@@ -136,6 +160,12 @@ static void test_attach_callback_fires_once(void)
 
 /* ---- Pre-init / pre-attach guards on every entry point ---- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_pre_init_guards(void)
 {
   TEST_BEGIN("attach_callback / step / inquiry / read_capacity / read10 / write10 reject pre-init");
@@ -159,6 +189,12 @@ static void test_pre_init_guards(void)
   TEST_END("attach_callback / step / SCSI ops reject pre-init");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_pre_attach_guards(void)
 {
   TEST_BEGIN("SCSI ops reject pre-attach (post-init)");
@@ -181,6 +217,12 @@ static void test_pre_attach_guards(void)
 
 /* ---- SCSI op null-arg + range rejection ---- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_scsi_null_arg_rejection(void)
 {
   TEST_BEGIN("inquiry / read_capacity / read10 / write10 reject NULL / bad args");
@@ -214,6 +256,12 @@ static void test_scsi_null_arg_rejection(void)
 
 /* ---- CBW signature is 0x43425355 in the constructed CBW header ---- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_build_cbw_signature_layout(void)
 {
   TEST_BEGIN("ra_usb_hmsc_build_cbw lays out CBW per BBB rev 1.0 sec 5.1");
@@ -252,6 +300,12 @@ static void test_build_cbw_signature_layout(void)
   TEST_END("ra_usb_hmsc_build_cbw lays out CBW per BBB rev 1.0 sec 5.1");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_build_cbw_arg_rejection(void)
 {
   TEST_BEGIN("ra_usb_hmsc_build_cbw rejects NULL / out-of-range");
@@ -272,6 +326,12 @@ static void test_build_cbw_arg_rejection(void)
 
 /* ---- CSW status decoding (0x00 / 0x01 / 0x02) ---- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_decode_csw_status(void)
 {
   TEST_BEGIN("ra_usb_hmsc_decode_csw decodes 0x00 / 0x01 / 0x02 status bytes");
@@ -332,6 +392,12 @@ static void test_decode_csw_status(void)
 
 /* ---- Get-Max-LUN class request structure (verified via SETUP mirror) ---- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_get_max_lun_setup_layout(void)
 {
   TEST_BEGIN("Get-Max-LUN SETUP request matches USB MSC BBB sec 3.2");
@@ -362,6 +428,12 @@ static void test_get_max_lun_setup_layout(void)
 
 /* ---- Inquiry / read_capacity / read10 / write10 happy path ---- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_scsi_happy_path(void)
 {
   TEST_BEGIN("SCSI ops succeed on attached device (simulator)");

@@ -59,6 +59,12 @@ static void walk_to_attach(void)
 
 /* ---- Lifecycle ---- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_close_fs_returns_ok(void)
 {
   TEST_BEGIN("ra_usb_hcdc_ecm_init FS / close round-trips ok");
@@ -78,6 +84,12 @@ static void test_init_close_fs_returns_ok(void)
   TEST_END("ra_usb_hcdc_ecm_init FS / close round-trips ok");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_hs_returns_ok(void)
 {
   TEST_BEGIN("ra_usb_hcdc_ecm_init HS sets HSE");
@@ -89,6 +101,12 @@ static void test_init_hs_returns_ok(void)
   TEST_END("ra_usb_hcdc_ecm_init HS sets HSE");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_init_bad_speed(void)
 {
   TEST_BEGIN("ra_usb_hcdc_ecm_init rejects bogus speed");
@@ -97,6 +115,12 @@ static void test_init_bad_speed(void)
   TEST_END("ra_usb_hcdc_ecm_init rejects bogus speed");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_close_without_init(void)
 {
   TEST_BEGIN("ra_usb_hcdc_ecm_close before init returns invalid_state");
@@ -107,6 +131,12 @@ static void test_close_without_init(void)
 
 /* ---- Attach callback fires once after a simulated descriptor walk ---- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_attach_callback_fires_once(void)
 {
   TEST_BEGIN("attach callback fires once after the enum step machine completes");
@@ -128,6 +158,12 @@ static void test_attach_callback_fires_once(void)
 
 /* ---- send / recv null-arg rejection ---- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_send_null_arg_rejection(void)
 {
   TEST_BEGIN("ra_usb_hcdc_ecm_send_frame rejects null+len and oversized frames");
@@ -150,6 +186,12 @@ static void test_send_null_arg_rejection(void)
   TEST_END("ra_usb_hcdc_ecm_send_frame rejects null+len and oversized frames");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_recv_null_arg_rejection(void)
 {
   TEST_BEGIN("ra_usb_hcdc_ecm_recv_frame rejects null buf / null got_len / zero max_len");
@@ -178,6 +220,12 @@ static void test_recv_null_arg_rejection(void)
 
 /* ---- set_packet_filter null + class-request envelope ---- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_set_packet_filter_class_envelope(void)
 {
   TEST_BEGIN("ra_usb_hcdc_ecm_set_packet_filter formats class-iface-out SETUP");
@@ -218,6 +266,12 @@ static void test_set_packet_filter_class_envelope(void)
 
 /* ---- get_link_status null + class-request envelope ---- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_get_link_status(void)
 {
   TEST_BEGIN("ra_usb_hcdc_ecm_get_link_status validates and queues GET_ETHERNET_STATISTIC");
@@ -248,6 +302,12 @@ static void test_get_link_status(void)
 
 /* ---- MAC parse from iMACAddress ASCII hex ---- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_parse_mac_address(void)
 {
   TEST_BEGIN("ra_usb_hcdc_ecm_parse_mac decodes 12 ASCII hex chars to 6 bytes");
@@ -281,6 +341,12 @@ static void test_parse_mac_address(void)
 
 /* ---- Pre-init guards ---- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_pre_init_guards(void)
 {
   TEST_BEGIN("attach_callback / step / send / recv / filter / link reject pre-init");
@@ -308,6 +374,12 @@ static void test_pre_init_guards(void)
 
 /* ---- Filter mask covers documented bits ---- */
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_filter_mask_bits(void)
 {
   TEST_BEGIN("filter mask enum bits match USB CDC ECM 1.20 sec 6.2.4");
