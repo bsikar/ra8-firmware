@@ -90,6 +90,7 @@ static const char* s_demo_tag = "TZSECONLY";
 #include "ux_dcd_ra_usb.h"
 #include "ux_device_class_cdc_acm.h"
 #include "ux_device_stack.h"
+#include "ux_system.h"
 #endif
 
 /* -------------------------------------------------------------------------- */
@@ -384,6 +385,16 @@ static UCHAR s_language_id_framework[] = {0x09U, 0x04U};
 static VOID demo_cdc_activate(VOID* cdc_instance)
 {
   s_cdc_acm = (UX_SLAVE_CLASS_CDC_ACM*)cdc_instance;
+  /* USBX writes ux_slave_device_state = CONFIGURED in
+   * _ux_device_stack_configuration_set just before invoking this
+   * activate callback. Pin it here so any concurrent IRQ/poll-driven
+   * write in the dispatch worker observes the chapter-9 result and
+   * does not demote it back to ATTACHED, which would break the
+   * subsequent cdc_acm_read state gate. */
+  if (_ux_system_slave != UX_NULL) {
+    _ux_system_slave->ux_system_slave_device.ux_slave_device_state =
+      (unsigned long)UX_DEVICE_CONFIGURED;
+  }
 }
 
 /**
