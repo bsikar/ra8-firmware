@@ -370,23 +370,6 @@ ra_err_t ra_net_udp_recv(ra_net_handle_t h,
  * =============================================================================
  */
 
-/**
- * @brief Dns consume response.
- *
- * @details See implementation for details.
- *
- * @param[in,out] dns See function signature for type and usage.
- * @param[in,out] dlen See function signature for type and usage.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
 /* Forward declaration moved to ra_net_internal.h for MC/DC test access. */
 
 /**
