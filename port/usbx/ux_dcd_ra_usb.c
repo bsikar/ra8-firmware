@@ -773,24 +773,19 @@ static void internal_handle_dvst(uint16_t intsts0)
   const uint16_t   dvsq   = (uint16_t)(intsts0 & (uint16_t)k_ra_intsts0_mask_dvsq);
   unsigned long    new_state;
   switch (dvsq) {
-    case k_ra_dvsq_powered:
-      new_state = (unsigned long)UX_DEVICE_ATTACHED;
-      break;
-    case k_ra_dvsq_default:
-      /* Bus reset just deasserted: USBX treats RESET as the
-       * pre-enumeration state, mirroring sim_host's port-reset path. */
-      new_state = (unsigned long)UX_DEVICE_RESET;
-      break;
-    case k_ra_dvsq_address:
-      new_state = (unsigned long)UX_DEVICE_ADDRESSED;
-      break;
-    case k_ra_dvsq_configured:
-      new_state = (unsigned long)UX_DEVICE_CONFIGURED;
-      break;
     case k_ra_dvsq_suspend:
       new_state = (unsigned long)UX_DEVICE_SUSPENDED;
       break;
+    case k_ra_dvsq_powered:
+    case k_ra_dvsq_default:
+    case k_ra_dvsq_address:
+    case k_ra_dvsq_configured:
     default:
+      /* Non-suspend states are owned by chapter-9 dispatcher writes
+       * (in sequence) plus the dispatch worker's polled DVSQ sync
+       * (internal_sync_state_from_dvsq, no-demote). The IRQ-driven
+       * write would race against both, with a stale snapshot value
+       * that demotes a freshly-advanced state. */
       return;
   }
   device->ux_slave_device_state = new_state;
@@ -1241,6 +1236,14 @@ ra_err_t ux_dcd_ra_usb_initialize(ra_usb_speed_t speed)
 
   device->ux_slave_device_control_endpoint.ux_slave_endpoint_state = UX_ENDPOINT_RESET;
   tr->ux_slave_transfer_request_phase = UX_TRANSFER_PHASE_DATA_IN;
+
+  /* Stamp ATTACHED so the chapter-9 dispatcher accepts the host's
+   * first SETUP. USBX's _ux_device_stack_transfer_request gates EP0
+   * on state in {ATTACHED, ADDRESSED, CONFIGURED}; .bss-zero RESET
+   * (0) returns UX_TRANSFER_NOT_READY and the chip hangs. The
+   * polled DVSQ sync in the dispatch worker keeps this in sync with
+   * subsequent bus events. */
+  device->ux_slave_device_state = (unsigned long)UX_DEVICE_ATTACHED;
 
   /* Spawn the polled-dispatch worker BEFORE returning so it is
    * already pumping ra_usb_dispatch by the time the application
