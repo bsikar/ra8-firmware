@@ -812,6 +812,36 @@ ra_err_t ra_board_arduino_gpio_read(ra_board_arduino_pin_t pin, ra_level_t* out_
  */
 
 /**
+ * @var s_usbhs_probe
+ * @brief Temporary bisect probe for USBHS bring-up HardFault.
+ *
+ * @details
+ * Stepped through the sub-calls of internal_usbhs_clock_and_mstp +
+ * ra_usb_device_init so a JLink session can read which sub-step is in
+ * flight when the worker thread takes the IACCVIOL/PRECISERR fault.
+ * Values: 1 = pre cgc_usbhs_pll_enable, 2 = pre mstp_init, 3 = pre
+ * mstp_enable(usbhs), 4 = pre ra_usb_device_init(hs), 5 = post
+ * ra_usb_device_init returned. Remove once the offending sub-call is
+ * identified.
+ *
+ * @note File-scope, single-writer (worker thread).
+ * @since 0.1.0
+ */
+volatile uint32_t s_usbhs_probe = 0U;
+
+/**
+ * @enum usbhs_probe_step_t
+ * @brief Bisect-probe step values for s_usbhs_probe.
+ */
+typedef enum : uint32_t {
+  k_usbhs_probe_pre_pll_enable    = 1U, /**< before ra_cgc_usbhs_pll_enable. */
+  k_usbhs_probe_pre_mstp_init     = 2U, /**< before ra_mstp_init.            */
+  k_usbhs_probe_pre_mstp_enable   = 3U, /**< before ra_mstp_enable(usbhs).   */
+  k_usbhs_probe_pre_usb_dev_init  = 4U, /**< before ra_usb_device_init(hs).  */
+  k_usbhs_probe_post_usb_dev_init = 5U, /**< after ra_usb_device_init.       */
+} usbhs_probe_step_t;
+
+/**
  * @brief Shared CGC + MSTP bring-up for both USBHS modes.
  *
  * @details
@@ -840,14 +870,17 @@ ra_err_t ra_board_arduino_gpio_read(ra_board_arduino_pin_t pin, ra_level_t* out_
  */
 static ra_err_t internal_usbhs_clock_and_mstp(void)
 {
-  ra_err_t err = ra_cgc_usbhs_pll_enable();
+  s_usbhs_probe = (uint32_t)k_usbhs_probe_pre_pll_enable;
+  ra_err_t err  = ra_cgc_usbhs_pll_enable();
   if (err != k_ra_ok) {
     return err;
   }
-  err = ra_mstp_init();
+  s_usbhs_probe = (uint32_t)k_usbhs_probe_pre_mstp_init;
+  err           = ra_mstp_init();
   if (err != k_ra_ok) {
     return err;
   }
+  s_usbhs_probe = (uint32_t)k_usbhs_probe_pre_mstp_enable;
   return ra_mstp_enable(k_ra_mstp_usbhs);
 }
 
@@ -865,7 +898,10 @@ ra_err_t ra_board_usbhs_device_init(void)
   if (err != k_ra_ok) {
     return err;
   }
-  return ra_usb_device_init(k_ra_usb_speed_hs);
+  s_usbhs_probe   = (uint32_t)k_usbhs_probe_pre_usb_dev_init;
+  ra_err_t rc_dev = ra_usb_device_init(k_ra_usb_speed_hs);
+  s_usbhs_probe   = (uint32_t)k_usbhs_probe_post_usb_dev_init;
+  return rc_dev;
 }
 
 /* Ra board usbhs host init -- see implementation for details. */
