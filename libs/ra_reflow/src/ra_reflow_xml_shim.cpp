@@ -76,7 +76,6 @@ using tinyxml2::XMLNode;
 using tinyxml2::XMLText;
 
 /**
- * @enum local_consts_t
  * @brief Internal-only sizing constants for the shim.
  */
 enum : uint32_t {
