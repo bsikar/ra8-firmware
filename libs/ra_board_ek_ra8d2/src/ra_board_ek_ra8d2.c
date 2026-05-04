@@ -1137,6 +1137,83 @@ ra_err_t ra_board_io_expander_set_usbhs_device_mode(void)
   return k_ra_ok;
 }
 
+/**
+ * @var s_usbhs_role_pin_probe
+ * @brief Bisect-probe progress counter for the PD07 USB-HS role-select drive.
+ *
+ * @details
+ * EK-RA8D2 v1 UM Rev 1.01 Section 6.2 p 34 ("USB High Speed"):
+ *   "For a USB Device configuration, set PD07 to low and configure the RA
+ *    MCU firmware to use the USB High Speed ports in device mode."
+ * PD07 is a direct-drive MCU GPIO (PORT 13, pin 7) that selects the J7
+ * role; the U15 I/O expander is an alternate override path but is not
+ * required when PD07 is driven explicitly. JLink-readable so a bench
+ * reflash can confirm the pin was reached and driven low.
+ *
+ * Step values:
+ *   0 = not yet entered
+ *   1 = pre ra_gpio_output_init(PD07, low)
+ *   2 = output-init returned (success or failure recorded in s_usbhs_role_pin_err)
+ *   3 = drive confirmed (gpio_init returned k_ra_ok)
+ *
+ * @since 0.1.0
+ */
+volatile uint32_t s_usbhs_role_pin_probe = 0U;
+
+/**
+ * @var s_usbhs_role_pin_err
+ * @brief Last ra_err_t returned by the PD07 GPIO drive (0 = k_ra_ok).
+ * @details JLink-readable so the bench operator can disambiguate a pin
+ *          conflict from a port-mux failure.
+ * @since 0.1.0
+ */
+volatile uint32_t s_usbhs_role_pin_err = 0U;
+
+/** @brief Probe step values for s_usbhs_role_pin_probe. */
+typedef enum : uint32_t {
+  k_usbhs_role_probe_pre_init  = 1U,
+  k_usbhs_role_probe_post_init = 2U,
+  k_usbhs_role_probe_success   = 3U,
+} usbhs_role_probe_step_t;
+
+/**
+ * @brief Drive PD07 low to strap the J7 USB-HS role line to "Device".
+ *
+ * @details
+ * EK-RA8D2 v1 UM Rev 1.01 Section 6.2 p 34: PD07 is the J7 USB-HS role
+ * select. Low = Device, High = Host. This is a plain MCU GPIO; the U15
+ * I/O expander only matters if the firmware needs to override the SW4-8
+ * strap from a different code path.
+ *
+ * @return ra_err_t Result of ra_gpio_output_init.
+ * @retval k_ra_ok PD07 owned and driven low.
+ * @pre IOPORT module clock is on (always-on after reset).
+ * @pre Pin validator initialised.
+ * @post On success, PD07 is GPIO-output low and owned by GPIO tag.
+ * @post On any return, s_usbhs_role_pin_probe is updated and
+ *       s_usbhs_role_pin_err records the gpio-init result.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static ra_err_t internal_usbhs_role_select_device(void)
+{
+  s_usbhs_role_pin_probe = (uint32_t)k_usbhs_role_probe_pre_init;
+  /* PD07 (port 13, pin 7). The ra_port_pin_t enum only pre-defines LED
+   * pins, so any other packed value lands outside the enumerator set
+   * and trips clang-analyzer EnumCastOutOfRange; suppress in the same
+   * pattern used elsewhere in this file for board-specific pins. */
+  /* NOLINTBEGIN(clang-analyzer-optin.core.EnumCastOutOfRange) */
+  const ra_port_pin_t pd07 = (ra_port_pin_t)RA_PIN(k_ra_port_13, k_ra_pin_7);
+  /* NOLINTEND(clang-analyzer-optin.core.EnumCastOutOfRange) */
+  const ra_err_t err     = ra_gpio_output_init(pd07, k_ra_level_low);
+  s_usbhs_role_pin_err   = (uint32_t)err;
+  s_usbhs_role_pin_probe = (uint32_t)k_usbhs_role_probe_post_init;
+  if (err == k_ra_ok) {
+    s_usbhs_role_pin_probe = (uint32_t)k_usbhs_role_probe_success;
+  }
+  return err;
+}
+
 /* Ra board usbhs device init -- see implementation for details. */
 ra_err_t ra_board_usbhs_device_init(void)
 {
@@ -1145,26 +1222,25 @@ ra_err_t ra_board_usbhs_device_init(void)
    * generic device-mode entry in libs/ra_hal/inc/ra_usb.h drives
    * SYSCFG.SCKE / USBE / HSE and arms the device IRQ set.
    *
-   * EK-RA8D2 v1 UM Rev 1.01 Section 5.5.3 / Section 4 p 16: J7's USB
-   * role-select line is gated by the U15 PI4IOE5V6408 I/O expander
-   * (which sits in parallel with SW4-8). The expander defaults to
-   * input-only after POR, so SW4-8's mechanical position alone
-   * decides the role -- and even with SW4-8 OFF the line is only
-   * pulled, not driven. We drive it explicitly with U15 first so the
-   * USBHS controller sees an unambiguous J7 = Device strap before the
-   * SYSCFG.USBE / DPRPU bring-up. */
-  /* DEBUG-MODE FALLBACK: if the U15 I/O-expander bring-up fails (I2C
-   * NACK, MSTP rejection, etc.), continue to USBHS init anyway. The
-   * bench has SW4-8 mechanically positioned for USB-Device, so the J7
-   * role-select strap is already correct via the SW4 pull network --
-   * driving U15 is a belt-and-suspenders override, not a hard
-   * requirement for enumeration. Letting USBHS init run regardless
-   * lets us isolate whether the actual bug lives in the I/O-expander
-   * path or in the USBHS controller bring-up. The exact failure
-   * point inside the I/O-expander is recoverable from
-   * s_io_expander_probe. */
+   * EK-RA8D2 v1 UM Rev 1.01 Section 6.2 p 34 ("USB High Speed"): J7's
+   * role is selected by the MCU GPIO PD07 -- LOW = Device, HIGH = Host.
+   * Drive PD07 low directly (no U15 I/O-expander dependency required;
+   * U15 is only an SW4 override path, see Section 4.3.4 p 16 / Table 23
+   * pullup-config p 31). The U15 helper is invoked best-effort below
+   * for boards where PD07 alone is insufficient (e.g. SW4-8 mechanical
+   * position contradicts the firmware intent), but its failure is
+   * non-fatal because PD07 already strapped the role line. */
+  const ra_err_t pd07_err = internal_usbhs_role_select_device();
+  if (pd07_err != k_ra_ok) {
+    return pd07_err;
+  }
+
+  /* Best-effort U15 override (logged via s_io_expander_probe). The U15
+   * I2C path may NACK if SW4-5 is OFF (I2C/I3C-Select strap routes the
+   * shared bus elsewhere) -- non-fatal because PD07 already strapped
+   * the role. */
   const ra_err_t io_err = ra_board_io_expander_set_usbhs_device_mode();
-  (void)io_err; /* logged via s_io_expander_probe; non-fatal */
+  (void)io_err;
   ra_err_t err = internal_usbhs_clock_and_mstp();
   if (err != k_ra_ok) {
     return err;
