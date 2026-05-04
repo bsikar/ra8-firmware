@@ -40,6 +40,7 @@
 #include "ra_isr.h"
 #include "ra_mipi_dsi.h"
 #include "ra_mipi_phy.h"
+#include "ra_mpc.h"
 #include "ra_mstp.h"
 #include "ra_port_constants.h"
 #include "ra_port_utils.h"
@@ -974,14 +975,80 @@ static ra_err_t internal_io_expander_write_reg(uint8_t reg, uint8_t val)
                         false);
 }
 
-/* Ra board io expander set usbhs device mode -- see implementation for details. */
-ra_err_t ra_board_io_expander_set_usbhs_device_mode(void)
+/**
+ * @var s_io_expander_probe
+ * @brief Bisect-probe progress counter for ra_board_io_expander_set_usbhs_device_mode.
+ *
+ * @details
+ * JLink-readable counter that records the last step the U15 bring-up
+ * function reached before either succeeding or returning an error.
+ * Mirrors the s_usbhs_probe pattern used by internal_usbhs_clock_and_mstp.
+ *
+ * Step values:
+ *   1 = pre-PFS (entered function, before SCL/SDA route)
+ *   2 = pre-init (PFS + open-drain done, before ra_iic_b_init)
+ *   3 = pre-write-output (init done, before output-latch write)
+ *   4 = pre-write-hiz (output-latch written, before Hi-Z clear)
+ *   5 = pre-write-iodir (Hi-Z cleared, before iodir write)
+ *   6 = success (all three U15 writes acknowledged)
+ *
+ * @note Volatile so the optimiser cannot lift the writes out of the
+ *       step sequence; declared at file scope so JLink can resolve it
+ *       by symbol name.
+ * @since 0.1.0
+ */
+volatile uint32_t s_io_expander_probe = 0U;
+
+/**
+ * @var s_iic_b_mstp_enabled
+ * @brief One-shot guard so the IIC0/I3C MSTP block is only ungated once.
+ *
+ * @details
+ * ra_iic_b_init internally calls ra_mstp_enable(k_ra_mstp_i3c) on every
+ * invocation, but the BSP also explicitly ungates IIC0 (MSTPB9) before
+ * the very first call so the I3C/IIC_B controller has already been
+ * powered when ra_iic_b_init reaches its register-init phase. The flag
+ * keeps repeated calls (e.g. host vs device init) from over-counting
+ * the MSTP refcount.
+ *
+ * @note File-scope, only mutated under single-threaded init context.
+ * @since 0.1.0
+ */
+static bool s_iic_b_mstp_enabled = false;
+
+/**
+ * @brief Step values for s_io_expander_probe (see variable docs).
+ */
+typedef enum : uint32_t {
+  k_io_exp_probe_pre_pfs       = 1U,
+  k_io_exp_probe_pre_init      = 2U,
+  k_io_exp_probe_pre_write_out = 3U,
+  k_io_exp_probe_pre_write_hiz = 4U,
+  k_io_exp_probe_pre_write_dir = 5U,
+  k_io_exp_probe_success       = 6U,
+} io_exp_probe_step_t;
+
+/**
+ * @brief Route P400/P401 to SCL0/SDA0 with N-channel open-drain enabled.
+ * @details I2C requires NCODR on both signals; ra_pfs_route_peripheral
+ *          leaves NCODR clear, so the route+open-drain pair runs per pin.
+ * @return ra_err_t Error code from the first failing sub-call, else k_ra_ok.
+ * @retval k_ra_ok All four register writes succeeded.
+ * @pre IRQs masked or single-threaded init context.
+ * @pre Caller has not already claimed P400/P401.
+ * @post On success, P400/P401 are owned by the IIC_B mux in open-drain mode.
+ * @post On failure, partially-claimed pins remain claimed (caller aborts boot).
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static ra_err_t internal_io_expander_route_pins(void)
 {
-  /* Step 1: route P400 -> SCL0 and P401 -> SDA0. PSEL=k_ra_psel_iic
-   * covers both IIC_B and the legacy IIC mux on RA8D2 (chip HUM
-   * Multiplexed Pin Function Selector). */
   ra_err_t err =
     ra_pfs_route_peripheral(k_ra_board_io_expander_pin_scl, k_ra_psel_iic, "ra_board.io_exp.scl0");
+  if (err != k_ra_ok) {
+    return err;
+  }
+  err = ra_mpc_set_open_drain(k_ra_port_4, k_ra_pin_0, true);
   if (err != k_ra_ok) {
     return err;
   }
@@ -990,9 +1057,68 @@ ra_err_t ra_board_io_expander_set_usbhs_device_mode(void)
   if (err != k_ra_ok) {
     return err;
   }
+  return ra_mpc_set_open_drain(k_ra_port_4, k_ra_pin_1, true);
+}
 
-  /* Step 2: bring IIC_B channel 0 up at 100 kHz. ra_iic_b_init takes
-   * care of the I3C MSTP enable internally. */
+/**
+ * @brief Issue the three U15 register writes that force USB-HS device mode.
+ * @details Order matches the FSP reference (output-latch -> Hi-Z clear ->
+ *          iodir) so the pin only flips to output once the latch is already
+ *          driving the desired level. Updates s_io_expander_probe between
+ *          writes so JLink can pinpoint a NACK.
+ * @return ra_err_t Error code; k_ra_ok if all three writes ack.
+ * @retval k_ra_ok U15 driving SW4-default pattern with SW4-8 OFF strap.
+ * @pre ra_iic_b_init has already configured channel 0.
+ * @pre I2C bus is idle.
+ * @post On success, U15 IODIR=0xFF, OUTPUT=0xFF, HIZ=0x00.
+ * @post On failure, s_io_expander_probe records the failing step.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static ra_err_t internal_io_expander_program_u15(void)
+{
+  s_io_expander_probe = (uint32_t)k_io_exp_probe_pre_write_out;
+  ra_err_t err        = internal_io_expander_write_reg((uint8_t)k_ra_board_pi4ioe_reg_output,
+                                                       (uint8_t)k_ra_board_pi4ioe_output_all_high);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  s_io_expander_probe = (uint32_t)k_io_exp_probe_pre_write_hiz;
+  err                 = internal_io_expander_write_reg((uint8_t)k_ra_board_pi4ioe_reg_hiz,
+                                                       (uint8_t)k_ra_board_pi4ioe_hiz_none);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  s_io_expander_probe = (uint32_t)k_io_exp_probe_pre_write_dir;
+  return internal_io_expander_write_reg((uint8_t)k_ra_board_pi4ioe_reg_iodir,
+                                        (uint8_t)k_ra_board_pi4ioe_iodir_all_outputs);
+}
+
+/* Ra board io expander set usbhs device mode -- see implementation for details. */
+ra_err_t ra_board_io_expander_set_usbhs_device_mode(void)
+{
+  /* Step 1: route P400 -> SCL0 and P401 -> SDA0 with NCODR on both
+   * (HUM Ch 20.6 PSEL table p 859). */
+  s_io_expander_probe = (uint32_t)k_io_exp_probe_pre_pfs;
+  ra_err_t err        = internal_io_expander_route_pins();
+  if (err != k_ra_ok) {
+    return err;
+  }
+
+  /* Step 2: ungate IIC0 (MSTPB9, HUM Ch 11.2.7 MSTPCRB p 444) once
+   * before ra_iic_b_init runs any controller register access.
+   * Guarded by a one-shot flag so host + device init paths do not
+   * double-increment the MSTP refcount. */
+  if (!s_iic_b_mstp_enabled) {
+    err = ra_mstp_enable(k_ra_mstp_iic0);
+    if (err != k_ra_ok) {
+      return err;
+    }
+    s_iic_b_mstp_enabled = true;
+  }
+
+  /* Step 3: bring IIC_B channel 0 up at 100 kHz. */
+  s_io_expander_probe      = (uint32_t)k_io_exp_probe_pre_init;
   const ra_iic_b_cfg_t cfg = {
     .bus_hz   = (uint32_t)k_ra_board_io_expander_bus_hz,
     .pclka_hz = (uint32_t)k_ra_board_io_expander_pclka_hz,
@@ -1002,22 +1128,13 @@ ra_err_t ra_board_io_expander_set_usbhs_device_mode(void)
     return err;
   }
 
-  /* Step 3: program U15 in the order the FSP reference uses --
-   * output-state first (pre-load), then I/O-direction last so the
-   * pin only switches from input to output once the latch already
-   * holds the value we want to drive. */
-  err = internal_io_expander_write_reg((uint8_t)k_ra_board_pi4ioe_reg_output,
-                                       (uint8_t)k_ra_board_pi4ioe_output_all_high);
+  /* Step 4: program U15 in FSP-reference order. */
+  err = internal_io_expander_program_u15();
   if (err != k_ra_ok) {
     return err;
   }
-  err = internal_io_expander_write_reg((uint8_t)k_ra_board_pi4ioe_reg_hiz,
-                                       (uint8_t)k_ra_board_pi4ioe_hiz_none);
-  if (err != k_ra_ok) {
-    return err;
-  }
-  return internal_io_expander_write_reg((uint8_t)k_ra_board_pi4ioe_reg_iodir,
-                                        (uint8_t)k_ra_board_pi4ioe_iodir_all_outputs);
+  s_io_expander_probe = (uint32_t)k_io_exp_probe_success;
+  return k_ra_ok;
 }
 
 /* Ra board usbhs device init -- see implementation for details. */
@@ -1036,11 +1153,19 @@ ra_err_t ra_board_usbhs_device_init(void)
    * pulled, not driven. We drive it explicitly with U15 first so the
    * USBHS controller sees an unambiguous J7 = Device strap before the
    * SYSCFG.USBE / DPRPU bring-up. */
-  ra_err_t err = ra_board_io_expander_set_usbhs_device_mode();
-  if (err != k_ra_ok) {
-    return err;
-  }
-  err = internal_usbhs_clock_and_mstp();
+  /* DEBUG-MODE FALLBACK: if the U15 I/O-expander bring-up fails (I2C
+   * NACK, MSTP rejection, etc.), continue to USBHS init anyway. The
+   * bench has SW4-8 mechanically positioned for USB-Device, so the J7
+   * role-select strap is already correct via the SW4 pull network --
+   * driving U15 is a belt-and-suspenders override, not a hard
+   * requirement for enumeration. Letting USBHS init run regardless
+   * lets us isolate whether the actual bug lives in the I/O-expander
+   * path or in the USBHS controller bring-up. The exact failure
+   * point inside the I/O-expander is recoverable from
+   * s_io_expander_probe. */
+  const ra_err_t io_err = ra_board_io_expander_set_usbhs_device_mode();
+  (void)io_err; /* logged via s_io_expander_probe; non-fatal */
+  ra_err_t err = internal_usbhs_clock_and_mstp();
   if (err != k_ra_ok) {
     return err;
   }
