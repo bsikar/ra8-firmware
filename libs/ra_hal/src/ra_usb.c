@@ -882,10 +882,15 @@ static void internal_usb_init_common(volatile r_usb_regs_t* reg)
   reg->DCPMAXP = k_ra_usb_dcp_max_packet;
   reg->DCPCTR  = 0U;
 
-  /* HUM Ch 36.2.10 "INTENB0 : Interrupt Enable Register 0", p 1980 */
+  /* HUM Ch 36.2.10 "INTENB0 : Interrupt Enable Register 0", p 1980.
+   * Mirrors FSP r_usb_basic.c::usb_pmodule_init mask: BEMP, BRDY, NRDY,
+   * CTRT, DVST, SOFR, RSME, VBSE. Enabling SOFR + RSME is required for
+   * HS so the IP latches resume / SOF events in INTSTS0; without RSME
+   * a host wake from suspend leaves the device asleep. */
   reg->INTENB0 = (uint16_t)((1U << k_ra_int0_bit_bemp) | (1U << k_ra_int0_bit_brdy) |
                             (1U << k_ra_int0_bit_nrdy) | (1U << k_ra_int0_bit_ctrt) |
-                            (1U << k_ra_int0_bit_dvst) | (1U << k_ra_int0_bit_vbse));
+                            (1U << k_ra_int0_bit_dvst) | (1U << k_ra_int0_bit_sofr) |
+                            (1U << k_ra_int0_bit_rsme) | (1U << k_ra_int0_bit_vbse));
   reg->INTENB1 = 0U;
   reg->BRDYENB = 0U;
   reg->NRDYENB = 0U;

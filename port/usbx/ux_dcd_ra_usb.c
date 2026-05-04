@@ -81,6 +81,87 @@ volatile uint16_t s_syscfg_after_dcd_init = 0U;
 volatile uint16_t s_lpsts_after_dcd_init = 0U;
 
 /**
+ * @var s_dispatch_tick_count
+ * @brief Counter of dispatch worker iterations.
+ *
+ * @details Bisect probe to confirm the polled worker is actually running.
+ * If this stays at 0 after attach, the worker thread never scheduled.
+ * HUM Ch 36.2.14 INTSTS0 p 1985.
+ *
+ * @note Written only by ::internal_dispatch_worker via ::ux_dcd_ra_usb_irq.
+ * @since 0.1.0
+ */
+volatile uint32_t s_dispatch_tick_count = 0U;
+
+/**
+ * @var s_ctrt_irq_count
+ * @brief Counter of INTSTS0.CTRT events seen by the dispatcher.
+ *
+ * @details Bisect probe. Non-zero after host SETUP means the chip is
+ * reporting control-stage transitions; zero means SETUPs aren't being
+ * latched (HS chirp / termination problem). HUM Ch 36.2.14 p 1985.
+ *
+ * @note Written only by ::ux_dcd_ra_usb_irq.
+ * @since 0.1.0
+ */
+volatile uint32_t s_ctrt_irq_count = 0U;
+
+/**
+ * @var s_dvst_irq_count
+ * @brief Counter of INTSTS0.DVST (device-state-transition) events.
+ *
+ * @details Bisect probe. Each bus reset / set-address / set-config
+ * raises DVST; zero after attach means the host isn't reaching the
+ * device. HUM Ch 36.2.14 p 1985.
+ *
+ * @note Written only by ::ux_dcd_ra_usb_irq.
+ * @since 0.1.0
+ */
+volatile uint32_t s_dvst_irq_count = 0U;
+
+/**
+ * @var s_setup_dispatch_count
+ * @brief Counter of SETUP packets fed into the chapter-9 dispatcher.
+ *
+ * @details Bisect probe. Non-zero confirms ra_usb_read_setup drained
+ * USBREQ/USBVAL/USBINDX/USBLENG and ::internal_dispatch_setup fired.
+ * Stays zero if VALID never asserts (no SETUP token reached the IP).
+ * HUM Ch 36.2.16..36.2.19 p 1623..1626.
+ *
+ * @note Written only by ::internal_handle_ctrt and the VALID fallback
+ *       in ::ux_dcd_ra_usb_irq.
+ * @since 0.1.0
+ */
+volatile uint32_t s_setup_dispatch_count = 0U;
+
+/**
+ * @var s_dvstctr0_at_first_dvst
+ * @brief Snapshot of DVSTCTR0 (RHST field) on first DVST event.
+ *
+ * @details Bisect probe. RHST[2:0] (HUM Ch 36.2.5 p 1971) reports the
+ * negotiated bus speed. 1=LS, 2=FS, 3=HS, 4=reset. If the HS chirp
+ * handshake succeeded this should latch 3 (HS); 2 means the chip is
+ * stuck in FS termination after bus reset.
+ *
+ * @note Latched once on the first DVST after attach; never overwritten.
+ * @since 0.1.0
+ */
+volatile uint16_t s_dvstctr0_at_first_dvst = 0xFFFFU;
+
+/**
+ * @var s_intsts0_last_dispatch
+ * @brief Most-recent INTSTS0 snapshot fed to ::ux_dcd_ra_usb_irq.
+ *
+ * @details Live-debug probe. Read this from JLink to see the current
+ * pending interrupt mask + DVSQ/CTSQ field state without halting the
+ * polled worker. HUM Ch 36.2.14 p 1985.
+ *
+ * @note Written only by ::ux_dcd_ra_usb_irq.
+ * @since 0.1.0
+ */
+volatile uint16_t s_intsts0_last_dispatch = 0U;
+
+/**
  * @struct ra_usb_dcd_pipe_slot_t
  * @brief Per-pipe class-layer cache so the IRQ handler can re-arm
  *        BRDY-driven transfers without crawling the device endpoint
@@ -783,6 +864,7 @@ static void internal_handle_ctrt(ra_usb_speed_t speed, uint16_t intsts0)
        * the matching CTSQ=rdss / wrss edge. */
       ra_usb_setup_t setup = {};
       if (ra_usb_read_setup(speed, &setup) == k_ra_ok) {
+        s_setup_dispatch_count++;
         (void)internal_dispatch_setup(&setup);
       }
       break;
@@ -801,6 +883,7 @@ static void internal_handle_ctrt(ra_usb_speed_t speed, uint16_t intsts0)
       if (ra_usb_read_setup(speed, &setup) != k_ra_ok) {
         break;
       }
+      s_setup_dispatch_count++;
       const unsigned int rc = internal_dispatch_setup(&setup);
       (void)ra_usb_control_response(speed, rc == UX_SUCCESS);
       break;
@@ -899,16 +982,34 @@ void ux_dcd_ra_usb_irq(ra_usb_speed_t speed, uint16_t intsts0)
     return;
   }
 
+  s_intsts0_last_dispatch = intsts0;
+
   /* SETUP / chapter-9 path: must run before the bulk/interrupt walk
    * so that the host's GET_DESCRIPTOR / SET_ADDRESS /
    * SET_CONFIGURATION sequence completes during enumeration. */
   if ((intsts0 & (uint16_t)(1U << (uint8_t)k_ra_int0_bit_ctrt)) != 0U) {
+    s_ctrt_irq_count++;
+    internal_handle_ctrt(speed, intsts0);
+  }
+  /* VALID-without-CTRT fallback. The polled worker can race the
+   * controller and snapshot INTSTS0 between the VALID-set edge and
+   * the CTRT-set edge -- on HS this window is wider because each
+   * dispatch tick yields the CPU. ra_usb_dispatch preserves VALID
+   * on its W0C ack so the fallback can drain USBREQ/USBVAL/USBINDX/
+   * USBLENG even if CTRT was already cleared by a previous tick.
+   * HUM Ch 36.2.14 INTSTS0 p 1985 (VALID = bit 3, CTSQ = bits 0..2). */
+  else if ((intsts0 & (uint16_t)k_ra_intsts0_mask_valid) != 0U) {
     internal_handle_ctrt(speed, intsts0);
   }
 
   /* Bus reset / suspend / resume: keeps USBX's device-state machine
    * in sync with the controller-reported DVSQ field. */
   if ((intsts0 & (uint16_t)(1U << (uint8_t)k_ra_int0_bit_dvst)) != 0U) {
+    s_dvst_irq_count++;
+    if (s_dvstctr0_at_first_dvst == 0xFFFFU) {
+      volatile r_usb_regs_t* reg = (speed == k_ra_usb_speed_hs) ? ra_usb_hs() : ra_usb_fs();
+      s_dvstctr0_at_first_dvst   = reg->DVSTCTR0;
+    }
     internal_handle_dvst(intsts0);
   }
 
@@ -1166,6 +1267,7 @@ static VOID internal_dispatch_worker(ULONG arg)
       tx_thread_relinquish();
       continue;
     }
+    s_dispatch_tick_count++;
     ra_usb_dispatch(s_dcd.speed);
     internal_sync_state_from_dvsq(s_dcd.speed);
     tx_thread_relinquish();
