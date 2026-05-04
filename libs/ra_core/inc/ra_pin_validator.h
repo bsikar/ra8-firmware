@@ -106,9 +106,6 @@ bool ra_pin_validator_is_claimed(ra_port_pin_t pin);
  * @details Called exactly once during `ra_infrastructure_init()`.
  *          Clears the claim bitmap and parallel owner-tag array.
  *
- * @return None.
- * @retval None
- *
  * @pre Called exactly once during early infrastructure bring-up.
  * @pre All driver state referencing pin claims has been torn down.
  * @post Every pin reads as free.

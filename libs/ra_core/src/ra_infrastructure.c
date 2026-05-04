@@ -74,9 +74,6 @@ static void internal_write_stack_canary(void)
  * @details Initialises the log backend, resets the pin validator, and
  *          seeds the stack canary region.
  *
- * @return None.
- * @retval None
- *
  * @pre `SystemInit()` has executed.
  * @pre Function is called from a single-threaded context.
  * @post Log backend, pin validator, and stack canary are initialised.

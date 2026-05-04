@@ -296,9 +296,6 @@ const ra_dma_request_t* ra_dma_sim_peek_request(uint8_t channel);
  *
  * @param[in] channel Channel whose completion just fired.
  *
- * @return None.
- * @retval None Function returns ``void``; out-of-range channel is silently ignored.
- *
  * @pre Called from ISR context or (for tests) from a direct test
  * helper such as ``ra_sim_dma_complete``.
  * @pre ``ra_dma_init()`` previously succeeded.

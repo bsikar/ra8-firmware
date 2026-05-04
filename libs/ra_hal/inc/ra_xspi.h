@@ -175,9 +175,6 @@ typedef void (*ra_xspi_event_fn_t)(void* ctx, uint32_t status_mask);
  *
  * @param[in] instance xSPI controller instance index (0 or 1).
  *
- * @return None.
- * @retval None
- *
  * @pre Called from ISR context or a host-test driver.
  * @pre ``instance`` < 2.
  *

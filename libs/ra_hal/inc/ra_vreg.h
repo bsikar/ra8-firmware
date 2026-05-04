@@ -655,9 +655,6 @@ typedef void (*ra_vreg_event_fn_t)(void* ctx, uint8_t status_word);
  * the value to the registered callback. No-op when no callback is
  * attached.
  *
- * @return None.
- * @retval None
- *
  * @pre Called from ISR context or a host-test driver.
  * @pre VREG MSTP gate is open.
  *

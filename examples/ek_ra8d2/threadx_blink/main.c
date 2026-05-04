@@ -143,9 +143,6 @@ static TX_THREAD s_thread_b;
  * advances the kernel tick counter, evaluates timers, and pre-empts
  * the running thread when a higher-priority thread becomes ready.
  *
- * @return Nothing -- AAPCS: lr at entry holds EXC_RETURN; we return
- *         to it transparently.
- *
  * @pre Called from exception context (IPSR == 15).
  * @pre `_tx_initialize_low_level` has programmed SysTick.
  *
@@ -173,8 +170,6 @@ void SysTick_Handler(void)
  *
  * @param[in] thread_input Unused (ThreadX cookie).
  *
- * @return Never returns -- threads run until tx_thread_terminate.
- *
  * @pre `ra_gpio_output_init` has succeeded for `k_ra_pin_led1`.
  * @pre ThreadX scheduler is running (`tx_kernel_enter` has dispatched
  *      a thread).
@@ -195,8 +190,6 @@ static void thread_a_entry(ULONG thread_input)
  * @brief Thread B entry point: toggle LED2 every `k_blink_b_ticks` ms.
  *
  * @param[in] thread_input Unused (ThreadX cookie).
- *
- * @return Never returns.
  *
  * @pre `ra_gpio_output_init` has succeeded for `k_ra_pin_led2`.
  * @pre ThreadX scheduler is running.
@@ -226,8 +219,6 @@ static void thread_b_entry(ULONG thread_input)
  * @param[in] first_unused_memory Pointer to the first byte of free RAM
  *            after the kernel's internal allocations. Unused here --
  *            both threads use static stacks declared at file scope.
- *
- * @return Nothing.
  *
  * @pre Called from `_tx_initialize_kernel_enter`, before the scheduler
  *      starts. IRQs are masked at this point.

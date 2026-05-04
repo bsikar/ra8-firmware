@@ -414,9 +414,6 @@ static inline uint16_t read_be16(const uint8_t* p)
  * @param[out] p Non-NULL pointer to two writable bytes.
  * @param[in]  v Value to encode.
  *
- * @return None.
- * @retval None
- *
  * @pre ``p`` is non-NULL.
  * @pre At least two bytes are writable starting at ``p``.
  * @post ``p[0]`` holds the high byte of ``v``, ``p[1]`` the low byte.
@@ -463,9 +460,6 @@ typedef struct {
  * inspect it).
  *
  * @param[in,out] br Bit reader (state mutated in place).
- *
- * @return None.
- * @retval None
  *
  * @pre ``br`` is non-NULL.
  * @pre ``br->buf`` and ``br->len`` describe a valid byte slice.
@@ -576,9 +570,6 @@ typedef struct {
  * used by the symbol decoder.
  *
  * @param[in,out] h Huffman table (BITS / VALS in, derived tables out).
- *
- * @return None.
- * @retval None
  *
  * @pre ``h`` is non-NULL.
  * @pre ``h->bits`` and ``h->vals`` populated from the JPEG DHT marker.

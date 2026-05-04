@@ -208,9 +208,6 @@ bool ra_pin_validator_is_claimed(ra_port_pin_t pin)
  *
  * @details Zeroes the claim bitmap and the owner array.
  *
- * @return None.
- * @retval None
- *
  * @pre Called exactly once during early init.
  * @pre No other code is currently inspecting validator state.
  * @post Every pin reads as free.

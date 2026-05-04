@@ -122,10 +122,6 @@ static void lpm_demo_word_to_hex(uint32_t v, uint8_t* dst)
 
 /** @brief Route PD_02 / PD_03 to SCI8 TXD/RXD via PFS.
  *
- * @return Error code from the first failing route call, or k_ra_ok.
- * @retval k_ra_ok                       Both pins routed.
- * @retval k_ra_err_gpio_invalid_port    PFS port out of range.
- *
  * @pre IOPORT module reachable.
  * @post On success PD_02 + PD_03 in SCI-async mode.
  *

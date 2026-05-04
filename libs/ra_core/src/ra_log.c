@@ -184,9 +184,6 @@ static inline bool internal_itm_ready(void)
  *
  * @param[in] byte Character to emit.
  *
- * @return None.
- * @retval None
- *
  * @pre None -- caller does not need to pre-check ready state.
  * @pre Underlying MMIO is mapped.
  * @post Either the byte has been pushed into the FIFO or the poll
@@ -220,9 +217,6 @@ static inline void internal_itm_putc(uint8_t byte)
  * @details Walks `s` and forwards each byte through `internal_itm_putc`.
  *
  * @param[in] s String to emit (must be non-NULL).
- *
- * @return None.
- * @retval None
  *
  * @pre `s` is non-NULL and NUL-terminated.
  * @pre Backend FIFO is reachable -- otherwise bytes are dropped.
@@ -310,9 +304,6 @@ static inline void internal_itm_put_u32(uint32_t value)
  *
  * @param[in] value Value to emit.
  *
- * @return None.
- * @retval None
- *
  * @pre Underlying MMIO is reachable -- otherwise dropped.
  * @pre Caller has already emitted any prefix it wants.
  * @post Sign + decimal digits have been pushed.
@@ -344,9 +335,6 @@ static inline void internal_itm_put_i32(int32_t value)
  * @details ITM is enabled by the debugger when it attaches; the
  *          firmware does not need to programme any control registers.
  *
- * @return None.
- * @retval None
- *
  * @pre Called exactly once during early boot.
  * @pre Build either has a debugger attached or is the simulator host.
  * @post Subsequent log calls follow the ITM emit path.
@@ -372,9 +360,6 @@ void ra_log_init(void)
  * @param[in] level String like `"ERROR"` or `"INFO"`. Must be non-NULL.
  * @param[in] tag   Component tag. Must be non-NULL.
  * @param[in] msg   Free-form message. Must be non-NULL.
- *
- * @return None.
- * @retval None
  *
  * @pre All three string parameters are non-NULL and NUL-terminated.
  * @pre `ra_log_init()` has run (otherwise dropped).
@@ -411,9 +396,6 @@ static void internal_emit_line(const char* level, const char* tag, const char* m
  * @param[in] tag   Component tag. Must be non-NULL.
  * @param[in] msg   Free-form message. Must be non-NULL.
  * @param[in] value Unsigned numeric companion value.
- *
- * @return None.
- * @retval None
  *
  * @pre All string parameters are non-NULL and NUL-terminated.
  * @pre `ra_log_init()` has run (otherwise dropped).
@@ -453,9 +435,6 @@ internal_emit_line_u(const char* level, const char* tag, const char* msg, uint32
  * @param[in] tag   Component tag. Must be non-NULL.
  * @param[in] msg   Free-form message. Must be non-NULL.
  * @param[in] value Signed numeric companion value.
- *
- * @return None.
- * @retval None
  *
  * @pre All string parameters are non-NULL and NUL-terminated.
  * @pre `ra_log_init()` has run (otherwise dropped).

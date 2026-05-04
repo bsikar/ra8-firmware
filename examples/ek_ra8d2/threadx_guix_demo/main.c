@@ -362,8 +362,6 @@ static void demo_panic_halt(void)
  *   6. `gx_widget_show` on the root, then `gx_system_start` (does
  *      not return).
  *
- * @return Never returns. On any failure halts via `demo_panic_halt`.
- *
  * @pre GLCDC is running and scanning out `s_framebuffer`.
  * @pre ThreadX scheduler is up.
  *
@@ -474,8 +472,6 @@ static void demo_gui_setup_and_run(void)
  *
  * @param[in] thread_input Unused (ThreadX cookie).
  *
- * @return Never returns.
- *
  * @pre `tx_application_define` has created the thread with auto-start.
  * @post Calls `demo_gui_setup_and_run`, which never returns.
  *
@@ -491,8 +487,6 @@ static void gui_thread_entry(ULONG thread_input)
  * @brief Application thread: cycles the label colour every 750 ms.
  *
  * @param[in] thread_input Unused (ThreadX cookie).
- *
- * @return Never returns.
  *
  * @pre GUIX has finished initialising (the GUI thread is running).
  * @post `s_label_color_state` toggles between blue and orange.

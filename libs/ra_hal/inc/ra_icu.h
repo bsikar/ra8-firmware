@@ -246,9 +246,6 @@ typedef struct {
  *
  * @param[in] nvic_index IELSR slot index 0..111.
  *
- * @return None.
- * @retval None Function returns ``void``; out-of-range is silently ignored.
- *
  * @pre ``ra_icu_init()`` previously succeeded.
  * @pre IELSRn for ``nvic_index`` has been programmed (e.g. via ``ra_icu_route``).
  * @post NVIC line for ``nvic_index`` is enabled.
@@ -269,9 +266,6 @@ void ra_icu_nvic_enable(uint16_t nvic_index);
  * should prefer ``ra_isr_unregister()``.
  *
  * @param[in] nvic_index IELSR slot index 0..111.
- *
- * @return None.
- * @retval None Function returns ``void``; out-of-range is silently ignored.
  *
  * @pre ``ra_icu_init()`` previously succeeded.
  * @pre Caller has accepted that pending IRQs may still latch.
@@ -295,9 +289,6 @@ void ra_icu_nvic_disable(uint16_t nvic_index);
  *
  * @param[in] nvic_index IELSR slot index 0..111.
  * @param[in] priority   Priority byte (0 = highest, 255 = lowest).
- *
- * @return None.
- * @retval None Function returns ``void``; out-of-range is silently ignored.
  *
  * @pre ``ra_icu_init()`` previously succeeded.
  * @pre ``priority`` reflects the project's interrupt-priority plan.

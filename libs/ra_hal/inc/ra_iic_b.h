@@ -432,9 +432,6 @@ ra_iic_b_attach_handler(uint8_t channel, ra_iic_b_complete_fn_t fn, void* ctx);
  *
  * @since 0.1.0
  *
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
  * @pre Driver state has been initialised by the matching ``*_init``.
  * @pre Caller has validated all pointer parameters.
  * @post Side effects are limited to those documented in the header.

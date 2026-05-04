@@ -180,9 +180,6 @@ typedef void (*ra_canfd_event_fn_t)(void* ctx, uint8_t channel, uint32_t status_
  * contract; this site adds no behaviour beyond what the public
  * API documents.
  * @param[in] channel See header declaration for direction and constraints.
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
  * @pre Driver state has been initialised by the matching ``*_init``.
  * @pre Caller has validated all pointer parameters.
  * @post Side effects are limited to those documented in the header.

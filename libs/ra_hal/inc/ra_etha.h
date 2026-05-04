@@ -391,9 +391,6 @@ ra_etha_attach_handler(ra_etha_port_t port, ra_etha_event_fn_t cb, void* ctx);
  *
  * @param[in] port Port identifier. Out-of-range silently ignored.
  *
- * @return None.
- * @retval None Function returns ``void``; out-of-range port is silently ignored.
- *
  * @pre Port previously brought up via ra_etha_init for the call to do work.
  * @pre Caller has masked the ETHA IRQ at the NVIC if reentrancy is undesirable.
  * @post All three EAEISx are cleared (matching what was passed to the handler).

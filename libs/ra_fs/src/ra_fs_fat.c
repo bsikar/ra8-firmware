@@ -204,9 +204,6 @@ static uint32_t priv_rd32(const uint8_t* p)
  * @param[out] p Pointer to two writable bytes.
  * @param[in]  v Value to encode.
  *
- * @return None.
- * @retval None
- *
  * @pre `p` is non-NULL and points to at least 2 writable bytes.
  * @pre Caller has bounds-checked `p`.
  * @post `p[0]` and `p[1]` reflect the little-endian encoding of `v`.
@@ -229,9 +226,6 @@ static void priv_wr16(uint8_t* p, uint16_t v)
  *
  * @param[out] p Pointer to four writable bytes.
  * @param[in]  v Value to encode.
- *
- * @return None.
- * @retval None
  *
  * @pre `p` is non-NULL and points to at least 4 writable bytes.
  * @pre Caller has bounds-checked `p`.
@@ -260,9 +254,6 @@ static void priv_wr32(uint8_t* p, uint32_t v)
  * @param[out] dst Destination buffer.
  * @param[in]  src Source buffer.
  * @param[in]  n   Number of bytes to copy.
- *
- * @return None.
- * @retval None
  *
  * @pre `dst` and `src` are non-NULL and point to at least `n` bytes.
  * @pre `dst` and `src` do not overlap.
@@ -967,9 +958,6 @@ static uint8_t priv_path_to_83(const char* path, uint8_t* out11)
  * @param[in]  in11  Packed 11-byte name.
  * @param[out] out12 Buffer of at least 12 bytes (8 + . + 3 + NUL).
  *
- * @return None.
- * @retval None
- *
  * @pre `in11` and `out12` are non-NULL.
  * @pre `out12` has at least 13 writable bytes.
  * @post `out12` is NUL-terminated.
@@ -1039,9 +1027,6 @@ typedef struct {
  *
  * @param[in]  m Mount providing geometry and FAT type.
  * @param[out] w Walker cursor to initialise.
- *
- * @return None.
- * @retval None
  *
  * @pre `m` and `w` are non-NULL.
  * @pre `m` has been fully populated by `priv_compute_geometry`.
@@ -1591,9 +1576,6 @@ static uint32_t priv_entry_first_cluster(const uint8_t* entry)
  * @param[in,out] entry   32-byte directory entry to update.
  * @param[in]     cluster New first cluster.
  * @param[in]     size    New file size in bytes.
- *
- * @return None.
- * @retval None
  *
  * @pre `entry` is non-NULL and points to 32 writable bytes.
  * @pre Caller has staged the entry in a sector buffer that will be

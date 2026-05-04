@@ -384,9 +384,6 @@ ra_err_t ra_poeg_exit_stop(uint8_t group)
  *
  * @param[in] group POEG group 0..3.
  *
- * @return None.
- * @retval None
- *
  * @pre Called from ISR context or a host-test driver.
  * @pre ``group`` < 4 (out-of-range silently dropped).
  *

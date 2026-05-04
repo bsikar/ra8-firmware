@@ -1153,9 +1153,6 @@ static void internal_plane_b_mirror_from_a(void)
  *
  * @param[in] buf See header declaration for direction and constraints.
  * @param[in] len See header declaration for direction and constraints.
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
  * @since 0.1.0
  *
  * @post Side effects bounded to documented state.

@@ -77,9 +77,6 @@ typedef void (*ra_agt_event_fn_t)(void* ctx, uint8_t channel);
  *
  * @param[in] channel AGT channel (0..9) whose ISR fired.
  *
- * @return None.
- * @retval None
- *
  * @pre Called from ISR context or a host-test driver.
  * @pre ``channel`` < 10.
  *

@@ -1081,9 +1081,6 @@ ra_ipc_can_access(uint8_t channel, ra_ipc_attr_t const* required, bool* out_can_
  *
  * @param[in] unit NMI unit id 0..1.
  *
- * @return None.
- * @retval None Function returns ``void``; out-of-range unit is silently ignored.
- *
  * @pre Called from NMI context (or test harness).
  * @pre Either a callback is attached, or the dispatch is being used
  *      purely to ack a stuck status bit.
@@ -1171,9 +1168,6 @@ void ra_ipc_dispatch_nmi(uint8_t unit);
  * event bit via CLR.
  *
  * @param[in] channel Channel id 0..3.
- *
- * @return None.
- * @retval None Function returns ``void``; out-of-range channel is silently ignored.
  *
  * @pre ``ra_ipc_init`` was called for this channel.
  * @pre A callback was attached via ``ra_ipc_attach_handler`` or per-line

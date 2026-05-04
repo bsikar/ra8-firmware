@@ -215,9 +215,6 @@ typedef void (*ra_poeg_event_fn_t)(void* ctx, uint32_t status_mask);
  *
  * @param[in] group POEG group 0..3.
  *
- * @return None.
- * @retval None
- *
  * @pre Called from ISR context or a host-test driver.
  * @pre ``group`` < 4.
  *
