@@ -488,6 +488,22 @@ volatile uint16_t s_dcpctr_pre_rearm = 0U;
 volatile uint32_t s_setup_token_observed = 0U;
 
 /**
+ * @var s_prev_dcpctr_sqmon
+ * @brief Last-observed value of ``DCPCTR.SQMON`` (masked to bit 6) so the
+ *        DVST handler can detect a 0->1 rising edge and dispatch the
+ *        latched SETUP exactly once.
+ *
+ * @details SQMON stays asserted after the SIE latches a SETUP packet
+ * until the next NAK/STALL/SETUP transaction clears it. Without
+ * rising-edge detection the SQMON path would re-dispatch the same
+ * SETUP on every Default-state DVST tick. HUM Ch 37.2.31 p 2095.
+ *
+ * @note Single-writer (::internal_handle_dvst).
+ * @since 0.1.0
+ */
+static volatile uint16_t s_prev_dcpctr_sqmon = 0U;
+
+/**
  * @struct ra_usb_dcd_pipe_slot_t
  * @brief Per-pipe class-layer cache so the IRQ handler can re-arm
  *        BRDY-driven transfers without crawling the device endpoint
@@ -590,6 +606,14 @@ typedef enum : uint16_t {
   k_setup_byte_shift = 8U,    /**< Bits per byte for the hi-byte extraction. */
   k_setup_byte_mask  = 0xFFU, /**< Low-byte mask after the shift. */
 } ra_setup_byte_pack_t;
+
+/**
+ * @enum ra_usb_dcpctr_bits_t
+ * @brief Selected DCPCTR bit masks (HUM Ch 37.2.31 p 2095).
+ */
+typedef enum : uint16_t {
+  k_ra_dcpctr_mask_sqmon = (uint16_t)(1U << 6U), /**< SQMON (bit 6): SETUP-latched flag. */
+} ra_usb_dcpctr_bits_t;
 
 /* -------------------------------------------------------------------------- */
 /* Internal helpers                                                           */
@@ -1310,11 +1334,25 @@ static void internal_handle_dvst(ra_usb_speed_t speed, uint16_t intsts0)
       s_dcpctr_pre_rearm        = dcpctr_pre;
       /* HUM Ch 37.2.31 p 2095: "In device controller mode, the USBHS
        * sets the SQMON bit to 1 ... on successful reception of the
-       * setup packet." Bit 6 (k_ra_dcpctr_bit_sqmon) is the SQMON
-       * field, so dcpctr_pre & 0x0040 is the SETUP-latched signal. */
-      if ((dcpctr_pre & (uint16_t)(1U << 6U)) != 0U) {
+       * setup packet." k_ra_dcpctr_mask_sqmon is bit 6, the SQMON
+       * field, so dcpctr_pre & SQMON is the SETUP-latched signal.
+       * On a 0->1 rising edge we drain USBREQ/USBVAL/USBINDX/USBLENG
+       * via ra_usb_read_setup and forward into the same chapter-9
+       * dispatcher used by the CTRT/VALID path -- the polled worker
+       * can race the controller and miss the VALID edge entirely on
+       * HS, so SQMON is the race-immune SETUP-arrival signal here. */
+      const uint16_t now_sqmon = (uint16_t)(dcpctr_pre & (uint16_t)k_ra_dcpctr_mask_sqmon);
+      if (now_sqmon != 0U) {
         s_setup_token_observed++;
       }
+      if (now_sqmon != 0U && s_prev_dcpctr_sqmon == 0U) {
+        ra_usb_setup_t setup = {};
+        if (ra_usb_read_setup(speed, &setup) == k_ra_ok) {
+          s_setup_dispatch_count++;
+          (void)internal_dispatch_setup(&setup);
+        }
+      }
+      s_prev_dcpctr_sqmon = now_sqmon;
     }
     (void)ra_usb_device_busreset_rearm(speed);
     s_busreset_rearm_count++;

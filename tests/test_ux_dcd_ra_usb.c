@@ -86,6 +86,17 @@ static inline bool internal_mirror_dispatch_setup_guard(const void* setup, const
   return (setup == nullptr) || (system_slave == nullptr);
 }
 
+/**
+ * @brief Mirror of the SQMON rising-edge SETUP-dispatch guard.
+ *
+ * Source: port/usbx/ux_dcd_ra_usb.c
+ *   `if (now_sqmon != 0U && s_prev_dcpctr_sqmon == 0U)`
+ */
+static inline bool internal_mirror_sqmon_edge_guard(uint16_t now_sqmon, uint16_t prev_sqmon)
+{
+  return (now_sqmon != 0U) && (prev_sqmon == 0U);
+}
+
 /* ------------------------------------------------------------------ */
 /* MC/DC vector tests                                                 */
 /* ------------------------------------------------------------------ */
@@ -210,12 +221,40 @@ static void test_mcdc_dispatch_setup_guard(void)
   TEST_END("ux_dcd_ra_usb MC/DC: dispatch_setup null-guard (line 506)");
 }
 
+/**
+ * @test test_mcdc_sqmon_edge_guard
+ *
+ * @par MC/DC:
+ * Decision: `if (now_sqmon != 0U && s_prev_dcpctr_sqmon == 0U)`
+ * (2 conditions, port/usbx/ux_dcd_ra_usb.c:1348) CITES-OK: MC/DC gate requires file:line
+ *  - C1 = (now_sqmon != 0U)
+ *  - C2 = (s_prev_dcpctr_sqmon == 0U)
+ *
+ * N=2 -> N+1=3 minimal MC/DC vectors:
+ *  - Vector 1: now=0,    prev=0    -> C1=F short-circuits. Decision F.
+ *  - Vector 2: now=0x40, prev=0x40 -> C1=T, C2=F. Decision F (no edge).
+ *  - Vector 3: now=0x40, prev=0    -> C1=T, C2=T. Decision T (rising edge).
+ *
+ * Vectors 1+3 vary C1 with C2 held T (decision F->T via C1).
+ * Vectors 2+3 vary C2 with C1 held T (decision F->T via C2).
+ * Minimum N+1 satisfied.
+ */
+static void test_mcdc_sqmon_edge_guard(void)
+{
+  TEST_BEGIN("ux_dcd_ra_usb MC/DC: SQMON rising-edge guard (line 1348)");
+  TEST_ASSERT(!internal_mirror_sqmon_edge_guard(0U, 0U));
+  TEST_ASSERT(!internal_mirror_sqmon_edge_guard(0x40U, 0x40U));
+  TEST_ASSERT(internal_mirror_sqmon_edge_guard(0x40U, 0U));
+  TEST_END("ux_dcd_ra_usb MC/DC: SQMON rising-edge guard (line 1348)");
+}
+
 int32_t main(void)
 {
   test_mcdc_xfer_request_null_guard();
   test_mcdc_ep0_in_data_guard();
   test_mcdc_ep_create_pipe_range();
   test_mcdc_dispatch_setup_guard();
+  test_mcdc_sqmon_edge_guard();
   (void)fprintf(stderr, "[OK ] test_ux_dcd_ra_usb.c\n");
   return 0;
 }
