@@ -163,6 +163,40 @@ static UCHAR s_usbx_pool[k_demo_usbx_pool_bytes];
  */
 static UX_SLAVE_CLASS_CDC_ACM* s_cdc_acm = UX_NULL;
 
+/**
+ * @struct demo_diag_t
+ * @brief Demo-loop counters; read via JLink to localise stalls.
+ */
+typedef struct {
+  volatile uint32_t loop_iter;
+  volatile uint32_t loop_cdc_null;
+  volatile uint32_t loop_pre_read;
+  volatile uint32_t loop_post_read;
+  volatile uint32_t loop_read_ok;
+  volatile uint32_t loop_read_zero;
+  volatile uint32_t loop_pre_write;
+  volatile uint32_t loop_post_write;
+} demo_diag_t;
+
+/**
+ * @var s_demo_diag
+ * @brief Externally-readable counters for demo loop progress.
+ * @note Increment-only; never cleared at runtime.
+ * @since 0.1.0
+ */
+volatile demo_diag_t s_demo_diag = {};
+
+/**
+ * @var s_cdc_active_sem
+ * @brief Posted by demo_cdc_activate; demo thread blocks on it instead
+ *        of polling s_cdc_acm with tx_thread_sleep (which never returned
+ *        on this silicon -- SysTick may be silenced under polled-dispatch
+ *        worker load).
+ * @note Single-producer (USBX class thread), single-consumer (demo).
+ * @since 0.1.0
+ */
+static TX_SEMAPHORE s_cdc_active_sem;
+
 /* -------------------------------------------------------------------------- */
 /* USB descriptors (DEVICE + CONFIG + IAD + CDC interfaces + endpoints)       */
 /* -------------------------------------------------------------------------- */
@@ -395,6 +429,10 @@ static VOID demo_cdc_activate(VOID* cdc_instance)
     _ux_system_slave->ux_system_slave_device.ux_slave_device_state =
       (unsigned long)UX_DEVICE_CONFIGURED;
   }
+  /* Wake the demo loop -- it blocks on s_cdc_active_sem instead of
+   * polling s_cdc_acm with tx_thread_sleep, which never returned on
+   * this hardware. */
+  (void)tx_semaphore_put(&s_cdc_active_sem);
 }
 
 /**
@@ -475,8 +513,13 @@ static VOID demo_worker(ULONG arg)
   UCHAR buf[k_demo_echo_buf_bytes];
   ULONG n = 0UL;
   while (1) {
+    s_demo_diag.loop_iter++;
     if (s_cdc_acm == UX_NULL) {
-      tx_thread_sleep(k_demo_idle_ticks);
+      s_demo_diag.loop_cdc_null++;
+      /* Block until demo_cdc_activate posts the semaphore. Avoids
+       * tx_thread_sleep, which we observed never returning on this
+       * silicon under polled-dispatch worker load. */
+      (void)tx_semaphore_get(&s_cdc_active_sem, TX_WAIT_FOREVER);
       continue;
     }
     /* Pin USBX state at CONFIGURED on every iteration. The chip's
@@ -492,16 +535,23 @@ static VOID demo_worker(ULONG arg)
       _ux_system_slave->ux_system_slave_device.ux_slave_device_state =
         (unsigned long)UX_DEVICE_CONFIGURED;
     }
-    if (_ux_device_class_cdc_acm_read(s_cdc_acm, buf, sizeof(buf), &n) != UX_SUCCESS) {
+    s_demo_diag.loop_pre_read++;
+    UINT read_status = _ux_device_class_cdc_acm_read(s_cdc_acm, buf, sizeof(buf), &n);
+    s_demo_diag.loop_post_read++;
+    if (read_status != UX_SUCCESS) {
       tx_thread_sleep(k_demo_idle_ticks);
       continue;
     }
+    s_demo_diag.loop_read_ok++;
     if (n == 0UL) {
+      s_demo_diag.loop_read_zero++;
       continue;
     }
+    s_demo_diag.loop_pre_write++;
     if (_ux_device_class_cdc_acm_write(s_cdc_acm, buf, n, &n) != UX_SUCCESS) {
       continue;
     }
+    s_demo_diag.loop_post_write++;
     for (ULONG i = 0UL; i < n; i++) {
       (void)ra_board_led_toggle(k_ra_board_led1);
     }
@@ -526,6 +576,7 @@ static VOID demo_worker(ULONG arg)
 VOID tx_application_define(VOID* first_unused_memory)
 {
   (void)first_unused_memory;
+  (void)tx_semaphore_create(&s_cdc_active_sem, "cdc_active", 0U);
   (void)tx_thread_create(&s_demo_thread,
                          "usb_cdc_echo",
                          demo_worker,
