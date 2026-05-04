@@ -1036,11 +1036,16 @@ static void internal_sync_state_from_dvsq(ra_usb_speed_t speed)
       return;
   }
   UX_SLAVE_DEVICE* device = &_ux_system_slave->ux_system_slave_device;
-  if (device->ux_slave_device_state != desired) {
-    device->ux_slave_device_state = desired;
-    if (_ux_system_slave->ux_system_slave_change_function != UX_NULL) {
-      (void)_ux_system_slave->ux_system_slave_change_function(desired);
-    }
+  /* No-demote: only advance state, never roll it back. The chapter-9
+   * dispatcher writes CONFIGURED on SET_CONFIGURATION; we must not
+   * demote it on a stale DVSQ snapshot. SUSPENDED is a true bus-level
+   * demotion handled by the IRQ-driven internal_handle_dvst path. */
+  if (desired <= device->ux_slave_device_state) {
+    return;
+  }
+  device->ux_slave_device_state = desired;
+  if (_ux_system_slave->ux_system_slave_change_function != UX_NULL) {
+    (void)_ux_system_slave->ux_system_slave_change_function(desired);
   }
 }
 
