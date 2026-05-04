@@ -507,8 +507,13 @@ static VOID demo_worker(ULONG arg)
   /* Pass our composite framework as both the FS and HS slot would --
    * the bridge announces UX_HIGH_SPEED_DEVICE and USBX accepts the
    * single framework as long as bcdUSB == 0x0200. */
-  if (_ux_device_stack_initialize((UCHAR*)UX_NULL, /* HS framework            */
-                                  0,
+  /* Pass the same descriptor framework for both speed slots: bcdUSB
+   * = 0x0200, EP1/EP2 are bulk, and the bridge announces
+   * UX_HIGH_SPEED_DEVICE. USBX picks the matching slot when SET_CONFIG
+   * lands; passing only FS would leave the HS slot empty and the
+   * chapter-9 dispatcher cannot answer GET_DESCRIPTOR(DEVICE) on HS. */
+  if (_ux_device_stack_initialize(s_device_framework_fs,
+                                  sizeof(s_device_framework_fs),
                                   s_device_framework_fs,
                                   sizeof(s_device_framework_fs),
                                   s_string_framework,
@@ -664,9 +669,11 @@ static void demo_panic_halt(void)
 {
   /* The HS PHY data lines (USBHSDP / USBHSDM / USBHSRREF) are
    * dedicated package balls on the BGA and bypass the PFS PSEL path.
-   * The board's J7 role-select GPIO (PD07) is pulled LOW by default
-   * for device mode, and VBUS / VBUSEN / OVRCUR are sourced by the
-   * on-board USB-PD controller. So only P4_08 needs routing. */
+   * VBUS / VBUSEN / OVRCUR are sourced by the on-board USB-PD
+   * controller. PD07 (the J7 host/device role-select strap, UM 6.2 p
+   * 34) is driven explicitly low later inside
+   * ra_board_usbhs_device_init -> internal_usbhs_role_select_device.
+   * So only P4_08 needs routing here. */
   return ra_pfs_route_peripheral(k_demo_pin_hs_vbus, k_ra_psel_usb_hs, "usb_cdc_hs.vbus");
 }
 
