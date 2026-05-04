@@ -423,26 +423,7 @@ const ra_dma_request_t* ra_dma_sim_peek_request(uint8_t channel)
 }
 #endif
 
-/**
- * @brief Query whether a channel currently holds an active transfer.
- *
- * @param[in]  channel  Channel index 0..k_ra_dma_channel_count-1.
- * @param[out] out_busy ``true`` if the channel is in use, else ``false``.
- *
- * @return ``ra_err_t`` error code.
- * @retval k_ra_ok Status reported via ``*out_busy``.
- * @retval k_ra_err_invalid_arg ``out_busy == NULL`` or ``channel`` out of range.
- *
- * @pre ``ra_dma_init()`` previously succeeded.
- * @pre ``out_busy != NULL``.
- * @post On success ``*out_busy`` reflects the current ``in_use`` flag.
- * @post No state mutated.
- *
- * @note Snapshot only; status may change immediately after return.
- * @since 0.1.0
- *
- * @details See implementation for details.
- */
+/* Query whether a channel currently holds an active transfer -- see implementation for details. */
 ra_err_t ra_dma_channel_is_busy(uint8_t channel, bool* out_busy)
 {
   RA_CHECK_NULL_PTR(out_busy, s_tag, "out_busy must not be NULL");

@@ -38,42 +38,13 @@ typedef enum : uint8_t {
   k_ra_mpu_ap_invalid             = 0xFFU, /**< Sentinel: not encodable. */
 } ra_mpu_ap_t;
 
-/**
- * @brief Test whether `value` is a positive power of two.
- * @param[in] value Value to test.
- * @return `true` iff exactly one bit is set in `value`.
- *
- * @details See implementation for details.
- * @retval 0 Success or default value.
- * @pre Module has been initialised.
- * @pre Caller has validated arguments.
- * @post Side effects bounded to documented state.
- * @post State reflects operation result.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Test whether `value` is a positive power of two -- see implementation for details. */
 static inline bool ra_mpu_is_pow2(uint32_t value)
 {
   return (value != 0U) && ((value & (value - 1U)) == 0U);
 }
 
-/**
- * @brief Map a (priv, unpriv) permission pair onto the Armv8-M AP code.
- *
- * @param[in] priv   Privileged-mode permission.
- * @param[in] unpriv Unprivileged-mode permission.
- * @return AP code 0..3, or `k_ra_mpu_ap_invalid` if the pair is not
- *         representable in the architectural AP[1:0] table.
- *
- * @details See implementation for details.
- * @retval 0 Success or default value.
- * @pre Module has been initialised.
- * @pre Caller has validated arguments.
- * @post Side effects bounded to documented state.
- * @post State reflects operation result.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Map a (priv, unpriv) permission pair onto the Armv8-M AP code -- see implementation for details. */
 static uint8_t ra_mpu_encode_ap(ra_mpu_perm_t priv, ra_mpu_perm_t unpriv)
 {
   /* Arm Cortex-M85 TRM "MPU_RBAR" -- AP[1:0] table. */
@@ -92,19 +63,7 @@ static uint8_t ra_mpu_encode_ap(ra_mpu_perm_t priv, ra_mpu_perm_t unpriv)
   return (uint8_t)k_ra_mpu_ap_invalid;
 }
 
-/**
- * @brief Read the implemented region count from `MPU_TYPE.DREGION`.
- * @return Number of regions implemented by the core (0..16 on M85).
- *
- * @details See implementation for details.
- * @retval 0 Success or default value.
- * @pre Module has been initialised.
- * @pre Caller has validated arguments.
- * @post Side effects bounded to documented state.
- * @post State reflects operation result.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Read the implemented region count from `MPU_TYPE -- see implementation for details. */
 static uint8_t ra_mpu_dregion_count(void)
 {
   /* Arm Cortex-M85 TRM "MPU_TYPE": DREGION lives in bits 15:8. */
@@ -113,22 +72,7 @@ static uint8_t ra_mpu_dregion_count(void)
                    (uint32_t)k_ra_mpu_type_dregion_shift);
 }
 
-/**
- * @brief Validate a single region descriptor.
- *
- * @param[in] r Region to check.
- * @return `k_ra_ok` if `r` is encodable, `k_ra_err_invalid_arg`
- *         otherwise.
- *
- * @details See implementation for details.
- * @retval 0 Success or default value.
- * @pre Module has been initialised.
- * @pre Caller has validated arguments.
- * @post Side effects bounded to documented state.
- * @post State reflects operation result.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Validate a single region descriptor -- see implementation for details. */
 static ra_err_t ra_mpu_validate_region(const ra_mpu_region_t* r)
 {
   if (!ra_mpu_is_pow2(r->size) || r->size < (uint32_t)k_ra_mpu_min_region_size) {
@@ -143,20 +87,7 @@ static ra_err_t ra_mpu_validate_region(const ra_mpu_region_t* r)
   return k_ra_ok;
 }
 
-/**
- * @brief Build the MPU_RBAR value for a region descriptor.
- * @param[in] r Region descriptor (already validated).
- * @return RBAR word ready for write.
- *
- * @details See implementation for details.
- * @retval 0 Success or default value.
- * @pre Module has been initialised.
- * @pre Caller has validated arguments.
- * @post Side effects bounded to documented state.
- * @post State reflects operation result.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Build the MPU_RBAR value for a region descriptor -- see implementation for details. */
 static uint32_t ra_mpu_build_rbar(const ra_mpu_region_t* r)
 {
   /* Arm Cortex-M85 TRM "MPU_RBAR": BASE[31:5] | SH[4:3] | AP[2:1] | XN[0]. */
@@ -170,20 +101,7 @@ static uint32_t ra_mpu_build_rbar(const ra_mpu_region_t* r)
   return base | sh | ap | xn;
 }
 
-/**
- * @brief Build the MPU_RLAR value for a region descriptor.
- * @param[in] r Region descriptor (already validated).
- * @return RLAR word ready for write, EN bit set.
- *
- * @details See implementation for details.
- * @retval 0 Success or default value.
- * @pre Module has been initialised.
- * @pre Caller has validated arguments.
- * @post Side effects bounded to documented state.
- * @post State reflects operation result.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Build the MPU_RLAR value for a region descriptor -- see implementation for details. */
 static uint32_t ra_mpu_build_rlar(const ra_mpu_region_t* r)
 {
   /* Arm Cortex-M85 TRM "MPU_RLAR": LIMIT[31:5] | AttrIndx[3:1] | EN[0]. */
@@ -194,19 +112,7 @@ static uint32_t ra_mpu_build_rlar(const ra_mpu_region_t* r)
   return limit | idx | (uint32_t)k_ra_mpu_rlar_en_mask;
 }
 
-/**
- * @brief Write a single region's RBAR/RLAR pair via MPU_RNR selection.
- * @param[in] region Region index.
- * @param[in] r      Validated descriptor.
- *
- * @details See implementation for details.
- * @pre Module has been initialised.
- * @pre Caller has validated arguments.
- * @post Side effects bounded to documented state.
- * @post State reflects operation result.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Write a single region's RBAR/RLAR pair via MPU_RNR selection -- see implementation for details. */
 static void ra_mpu_program_region(uint8_t region, const ra_mpu_region_t* r)
 {
   volatile r_mpu_regs_t* mpu = ra_mpu_regs();
@@ -215,18 +121,7 @@ static void ra_mpu_program_region(uint8_t region, const ra_mpu_region_t* r)
   mpu->RLAR                  = ra_mpu_build_rlar(r);
 }
 
-/**
- * @brief Disable a single region by clearing RLAR.EN.
- * @param[in] region Region index.
- *
- * @details See implementation for details.
- * @pre Module has been initialised.
- * @pre Caller has validated arguments.
- * @post Side effects bounded to documented state.
- * @post State reflects operation result.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Disable a single region by clearing RLAR -- see implementation for details. */
 static void ra_mpu_clear_region(uint8_t region)
 {
   volatile r_mpu_regs_t* mpu = ra_mpu_regs();
@@ -234,20 +129,7 @@ static void ra_mpu_clear_region(uint8_t region)
   mpu->RLAR                  = 0U;
 }
 
-/**
- * @brief Build the MPU_CTRL value from the static config.
- * @param[in] cfg Configuration block.
- * @return CTRL word with ENABLE set.
- *
- * @details See implementation for details.
- * @retval 0 Success or default value.
- * @pre Module has been initialised.
- * @pre Caller has validated arguments.
- * @post Side effects bounded to documented state.
- * @post State reflects operation result.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Build the MPU_CTRL value from the static config -- see implementation for details. */
 static uint32_t ra_mpu_build_ctrl(const ra_mpu_cfg_t* cfg)
 {
   uint32_t ctrl = (uint32_t)k_ra_mpu_ctrl_enable;
@@ -260,20 +142,7 @@ static uint32_t ra_mpu_build_ctrl(const ra_mpu_cfg_t* cfg)
   return ctrl;
 }
 
-/**
- * @brief Validate the whole config block before any register write.
- * @param[in] cfg Configuration block.
- * @return First non-OK error encountered, or `k_ra_ok`.
- *
- * @details See implementation for details.
- * @retval 0 Success or default value.
- * @pre Module has been initialised.
- * @pre Caller has validated arguments.
- * @post Side effects bounded to documented state.
- * @post State reflects operation result.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Validate the whole config block before any register write -- see implementation for details. */
 static ra_err_t ra_mpu_validate_cfg(const ra_mpu_cfg_t* cfg)
 {
   const uint8_t implemented = ra_mpu_dregion_count();
@@ -292,25 +161,7 @@ static ra_err_t ra_mpu_validate_cfg(const ra_mpu_cfg_t* cfg)
   return k_ra_ok;
 }
 
-/**
- * @brief Ra mpu configure.
- *
- * @details See implementation for details.
- *
- * @param[in,out] cfg See function signature for type and usage.
- *
- * @return Result code or value; see implementation.
- * @retval 0 Success or default value.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Ra mpu configure -- see implementation for details. */
 ra_err_t ra_mpu_configure(const ra_mpu_cfg_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
@@ -336,23 +187,7 @@ ra_err_t ra_mpu_configure(const ra_mpu_cfg_t* cfg)
   return k_ra_ok;
 }
 
-/**
- * @brief Ra mpu enable.
- *
- * @details See implementation for details.
- *
- * @return Result code or value; see implementation.
- * @retval 0 Success or default value.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Ra mpu enable -- see implementation for details. */
 ra_err_t ra_mpu_enable(void)
 {
   volatile r_mpu_regs_t* mpu = ra_mpu_regs();
@@ -361,23 +196,7 @@ ra_err_t ra_mpu_enable(void)
   return k_ra_ok;
 }
 
-/**
- * @brief Ra mpu disable.
- *
- * @details See implementation for details.
- *
- * @return Result code or value; see implementation.
- * @retval 0 Success or default value.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Ra mpu disable -- see implementation for details. */
 ra_err_t ra_mpu_disable(void)
 {
   volatile r_mpu_regs_t* mpu = ra_mpu_regs();
@@ -386,26 +205,7 @@ ra_err_t ra_mpu_disable(void)
   return k_ra_ok;
 }
 
-/**
- * @brief Ra mpu set region.
- *
- * @details See implementation for details.
- *
- * @param[in,out] region See function signature for type and usage.
- * @param[in,out] region_cfg See function signature for type and usage.
- *
- * @return Result code or value; see implementation.
- * @retval 0 Success or default value.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Ra mpu set region -- see implementation for details. */
 ra_err_t ra_mpu_set_region(uint8_t region, const ra_mpu_region_t* region_cfg)
 {
   RA_CHECK_NULL_PTR(region_cfg, s_tag, "region_cfg must not be nullptr");

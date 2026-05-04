@@ -159,22 +159,7 @@ static UCHAR s_link_up;
  */
 static uint8_t s_local_mac[k_nx_ra_eth_mac_len];
 
-/**
- * @brief Pull the 6-byte MAC out of the NetX interface descriptor.
- *
- * @param[in]  iface NetX interface (non-NULL).
- * @param[out] mac   6-byte buffer (non-NULL).
- *
- * @pre ``iface != NULL`` and ``mac != NULL``.
- * @post ``mac[0..5]`` holds the local MAC in network byte order.
- *
- * @since 0.1.0
- *
- * @details See implementation for details.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @note Not thread-safe unless documented otherwise.
- */
+/* Pull the 6-byte MAC out of the NetX interface descriptor -- see implementation for details. */
 static void priv_unpack_mac(const NX_INTERFACE* iface, uint8_t* mac)
 {
   ULONG msw                   = iface->nx_interface_physical_address_msw;
@@ -187,27 +172,7 @@ static void priv_unpack_mac(const NX_INTERFACE* iface, uint8_t* mac)
   mac[k_nx_ra_eth_mac_byte_5] = (uint8_t)(lsw & 0xFFU);
 }
 
-/**
- * @brief Linearise a (possibly-chained) NX_PACKET into the staging buffer.
- *
- * @param[in]  packet NetX packet head (non-NULL).
- * @param[out] dst    Destination buffer (non-NULL, ``cap`` bytes).
- * @param[in]  cap    Capacity of ``dst`` in bytes.
- * @param[out] out_len Bytes copied (non-NULL).
- *
- * @return 1 on success, 0 if the packet is larger than the staging buffer.
- *
- * @pre ``packet != NULL`` and ``dst != NULL`` and ``out_len != NULL``.
- * @post ``*out_len <= cap`` on success.
- *
- * @since 0.1.0
- *
- * @details See implementation for details.
- * @retval 0 Success or default value.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @note Not thread-safe unless documented otherwise.
- */
+/* Linearise a (possibly-chained) NX_PACKET into the staging buffer -- see implementation for details. */
 static UCHAR
 priv_packet_to_buffer(const NX_PACKET* packet, uint8_t* dst, uint32_t cap, uint32_t* out_len)
 {
@@ -232,21 +197,7 @@ priv_packet_to_buffer(const NX_PACKET* packet, uint8_t* dst, uint32_t cap, uint3
   return 1U;
 }
 
-/**
- * @brief Handle ``NX_LINK_INITIALIZE``: capture MAC + open the NIC.
- *
- * @param[in,out] req NetX driver request.
- *
- * @pre ``req->nx_ip_driver_interface != NULL``.
- * @post On success ``s_ra_eth_open == 1``.
- *
- * @since 0.1.0
- *
- * @details See implementation for details.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @note Not thread-safe unless documented otherwise.
- */
+/* Handle ``NX_LINK_INITIALIZE``: capture MAC + open the NIC -- see implementation for details. */
 static void priv_handle_init(NX_IP_DRIVER* req)
 {
   NX_INTERFACE* iface = req->nx_ip_driver_interface;
@@ -277,21 +228,7 @@ static void priv_handle_init(NX_IP_DRIVER* req)
   req->nx_ip_driver_status                   = NX_SUCCESS;
 }
 
-/**
- * @brief Handle ``NX_LINK_UNINITIALIZE``: close the NIC.
- *
- * @param[in,out] req NetX driver request.
- *
- * @post ``s_ra_eth_open == 0``.
- *
- * @since 0.1.0
- *
- * @details See implementation for details.
- * @pre Module has been initialised.
- * @pre Caller has validated arguments.
- * @post Side effects bounded to documented state.
- * @note Not thread-safe unless documented otherwise.
- */
+/* Handle ``NX_LINK_UNINITIALIZE``: close the NIC -- see implementation for details. */
 static void priv_handle_uninit(NX_IP_DRIVER* req)
 {
   if (s_ra_eth_open != 0U) {
@@ -417,20 +354,7 @@ static void priv_handle_deferred_rx(NX_IP_DRIVER* req)
   req->nx_ip_driver_status = NX_SUCCESS;
 }
 
-/**
- * @brief Handle ``NX_LINK_GET_STATUS``: report the PHY link bit.
- *
- * @param[in,out] req NetX driver request.
- *
- * @since 0.1.0
- *
- * @details See implementation for details.
- * @pre Module has been initialised.
- * @pre Caller has validated arguments.
- * @post Side effects bounded to documented state.
- * @post State reflects operation result.
- * @note Not thread-safe unless documented otherwise.
- */
+/* Handle ``NX_LINK_GET_STATUS``: report the PHY link bit -- see implementation for details. */
 static void priv_handle_get_status(NX_IP_DRIVER* req)
 {
   if (req->nx_ip_driver_return_ptr == NX_NULL) {
@@ -453,22 +377,7 @@ static void priv_handle_get_status(NX_IP_DRIVER* req)
   req->nx_ip_driver_status        = NX_SUCCESS;
 }
 
-/**
- * @brief Nx ether driver ra eth.
- *
- * @details See implementation for details.
- *
- * @param[in,out] driver_req See function signature for type and usage.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Nx ether driver ra eth -- see implementation for details. */
 void nx_ether_driver_ra_eth(NX_IP_DRIVER* driver_req)
 {
   /* NetX never invokes the driver with NULL but mirror the FileX

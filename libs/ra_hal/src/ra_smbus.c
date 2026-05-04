@@ -112,26 +112,7 @@ static uint8_t pec_update(uint8_t crc, uint8_t b)
   return c;
 }
 
-/**
- * @brief Ra smbus pec.
- *
- * @details See implementation for details.
- *
- * @param[in,out] data See function signature for type and usage.
- * @param[in,out] len See function signature for type and usage.
- *
- * @return Result code or value; see implementation.
- * @retval 0 Success or default value.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Ra smbus pec -- see implementation for details. */
 uint8_t ra_smbus_pec(const uint8_t* data, uint32_t len)
 {
   if ((data == nullptr) || (len == 0U)) {
@@ -149,23 +130,7 @@ uint8_t ra_smbus_pec(const uint8_t* data, uint32_t len)
  * =============================================================================
  */
 
-/**
- * @brief Build the on-the-wire address byte for a 7-bit target.
- *
- * @param[in] target_7b 7-bit address.
- * @param[in] rw_bit    0 for write, 1 for read.
- *
- * @return Composed 8-bit address byte.
- *
- * @details See implementation for details.
- * @retval 0 Success or default value.
- * @pre Module has been initialised.
- * @pre Caller has validated arguments.
- * @post Side effects bounded to documented state.
- * @post State reflects operation result.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Build the on-the-wire address byte for a 7-bit target -- see implementation for details. */
 static uint8_t make_addr_byte(uint8_t target_7b, uint8_t rw_bit)
 {
   return (uint8_t)(((uint32_t)target_7b << (uint32_t)k_ra_smbus_addr_shift) |
@@ -177,25 +142,7 @@ static uint8_t make_addr_byte(uint8_t target_7b, uint8_t rw_bit)
  * =============================================================================
  */
 
-/**
- * @brief Ra smbus init.
- *
- * @details See implementation for details.
- *
- * @param[in,out] cfg See function signature for type and usage.
- *
- * @return Result code or value; see implementation.
- * @retval 0 Success or default value.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Ra smbus init -- see implementation for details. */
 ra_err_t ra_smbus_init(const ra_smbus_cfg_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg, s_tag, "smbus_init: cfg");
@@ -215,23 +162,7 @@ ra_err_t ra_smbus_init(const ra_smbus_cfg_t* cfg)
   return k_ra_ok;
 }
 
-/**
- * @brief Ra smbus deinit.
- *
- * @details See implementation for details.
- *
- * @return Result code or value; see implementation.
- * @retval 0 Success or default value.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Ra smbus deinit -- see implementation for details. */
 ra_err_t ra_smbus_deinit(void)
 {
   if (!s_state.initialised) {
@@ -249,26 +180,7 @@ ra_err_t ra_smbus_deinit(void)
  * =============================================================================
  */
 
-/**
- * @brief Ra smbus send byte.
- *
- * @details See implementation for details.
- *
- * @param[in,out] target_7b See function signature for type and usage.
- * @param[in,out] data See function signature for type and usage.
- *
- * @return Result code or value; see implementation.
- * @retval 0 Success or default value.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Ra smbus send byte -- see implementation for details. */
 ra_err_t ra_smbus_send_byte(uint8_t target_7b, uint8_t data)
 {
   if (!s_state.initialised) {
@@ -288,26 +200,7 @@ ra_err_t ra_smbus_send_byte(uint8_t target_7b, uint8_t data)
   return ra_iic_b_write(s_state.channel, target_7b, buf, len, false);
 }
 
-/**
- * @brief Ra smbus receive byte.
- *
- * @details See implementation for details.
- *
- * @param[in,out] target_7b See function signature for type and usage.
- * @param[in,out] out_data See function signature for type and usage.
- *
- * @return Result code or value; see implementation.
- * @retval 0 Success or default value.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Ra smbus receive byte -- see implementation for details. */
 ra_err_t ra_smbus_receive_byte(uint8_t target_7b, uint8_t* out_data)
 {
   RA_CHECK_NULL_PTR(out_data, s_tag, "receive_byte: out_data");
@@ -338,27 +231,7 @@ ra_err_t ra_smbus_receive_byte(uint8_t target_7b, uint8_t* out_data)
  * =============================================================================
  */
 
-/**
- * @brief Ra smbus write byte data.
- *
- * @details See implementation for details.
- *
- * @param[in,out] target_7b See function signature for type and usage.
- * @param[in,out] cmd See function signature for type and usage.
- * @param[in,out] data See function signature for type and usage.
- *
- * @return Result code or value; see implementation.
- * @retval 0 Success or default value.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Ra smbus write byte data -- see implementation for details. */
 ra_err_t ra_smbus_write_byte_data(uint8_t target_7b, uint8_t cmd, uint8_t data)
 {
   if (!s_state.initialised) {
@@ -378,27 +251,7 @@ ra_err_t ra_smbus_write_byte_data(uint8_t target_7b, uint8_t cmd, uint8_t data)
   return ra_iic_b_write(s_state.channel, target_7b, buf, len, false);
 }
 
-/**
- * @brief Ra smbus read byte data.
- *
- * @details See implementation for details.
- *
- * @param[in,out] target_7b See function signature for type and usage.
- * @param[in,out] cmd See function signature for type and usage.
- * @param[in,out] out_data See function signature for type and usage.
- *
- * @return Result code or value; see implementation.
- * @retval 0 Success or default value.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Ra smbus read byte data -- see implementation for details. */
 ra_err_t ra_smbus_read_byte_data(uint8_t target_7b, uint8_t cmd, uint8_t* out_data)
 {
   RA_CHECK_NULL_PTR(out_data, s_tag, "read_byte_data: out_data");
@@ -434,28 +287,7 @@ ra_err_t ra_smbus_read_byte_data(uint8_t target_7b, uint8_t cmd, uint8_t* out_da
  * =============================================================================
  */
 
-/**
- * @brief Ra smbus block write.
- *
- * @details See implementation for details.
- *
- * @param[in,out] target_7b See function signature for type and usage.
- * @param[in,out] cmd See function signature for type and usage.
- * @param[in,out] data See function signature for type and usage.
- * @param[in,out] len See function signature for type and usage.
- *
- * @return Result code or value; see implementation.
- * @retval 0 Success or default value.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Ra smbus block write -- see implementation for details. */
 ra_err_t ra_smbus_block_write(uint8_t target_7b, uint8_t cmd, const uint8_t* data, uint8_t len)
 {
   if (!s_state.initialised) {
@@ -487,29 +319,7 @@ ra_err_t ra_smbus_block_write(uint8_t target_7b, uint8_t cmd, const uint8_t* dat
   return ra_iic_b_write(s_state.channel, target_7b, frame, fi, false);
 }
 
-/**
- * @brief Ra smbus block read.
- *
- * @details See implementation for details.
- *
- * @param[in,out] target_7b See function signature for type and usage.
- * @param[in,out] cmd See function signature for type and usage.
- * @param[in,out] buf See function signature for type and usage.
- * @param[in,out] cap See function signature for type and usage.
- * @param[in,out] out_len See function signature for type and usage.
- *
- * @return Result code or value; see implementation.
- * @retval 0 Success or default value.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Ra smbus block read -- see implementation for details. */
 ra_err_t
 ra_smbus_block_read(uint8_t target_7b, uint8_t cmd, uint8_t* buf, uint8_t cap, uint8_t* out_len)
 {
@@ -563,26 +373,7 @@ ra_smbus_block_read(uint8_t target_7b, uint8_t cmd, uint8_t* buf, uint8_t cap, u
  * =============================================================================
  */
 
-/**
- * @brief Ra smbus alert register callback.
- *
- * @details See implementation for details.
- *
- * @param[in,out] fn See function signature for type and usage.
- * @param[in,out] ctx See function signature for type and usage.
- *
- * @return Result code or value; see implementation.
- * @retval 0 Success or default value.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Ra smbus alert register callback -- see implementation for details. */
 ra_err_t ra_smbus_alert_register_callback(ra_smbus_alert_fn_t fn, void* ctx)
 {
   if (!s_state.initialised) {
@@ -593,23 +384,7 @@ ra_err_t ra_smbus_alert_register_callback(ra_smbus_alert_fn_t fn, void* ctx)
   return k_ra_ok;
 }
 
-/**
- * @brief Ra smbus alert dispatch.
- *
- * @details See implementation for details.
- *
- * @return Result code or value; see implementation.
- * @retval 0 Success or default value.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Ra smbus alert dispatch -- see implementation for details. */
 ra_err_t ra_smbus_alert_dispatch(void)
 {
   if (!s_state.initialised) {

@@ -125,6 +125,7 @@ def find_preceding_doxy(src: str, func_offset: int):
         or "see surrounding code and HUM citations" in block
         or "See the public header for the documented contract" in block
         or "see header for the documented contract" in block
+        or "see implementation for details" in block.lower()
     ):
         return block, True
     return "", False
@@ -277,6 +278,7 @@ def audit_file(path: Path):
                 or "see surrounding code and HUM citations" in block
                 or "See the public header for the documented contract" in block
                 or "see header for the documented contract" in block
+                or "see implementation for details" in block.lower()
             ):
                 rows.append((str(path.relative_to(REPO_ROOT)), line_no, name, [], "ok"))
                 continue

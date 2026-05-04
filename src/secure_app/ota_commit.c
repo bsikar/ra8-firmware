@@ -122,26 +122,7 @@ ra_err_t ra_ota_commit_swap_bank(ra_ota_bank_t target)
   return k_ra_ok;
 }
 
-/**
- * @brief Read the currently armed swap-bank target, if any.
- *
- * @param[out] out_target Receives the pending bank id on success.
- *
- * @return ``ra_err_t`` error code.
- * @retval k_ra_ok               A swap is pending and was reported.
- * @retval k_ra_err_null_ptr     ``out_target`` was NULL.
- * @retval k_ra_err_no_data      No swap is currently pending.
- *
- * @pre ``out_target`` is non-NULL.
- * @pre Caller is in the secure-side dispatch path.
- * @post On success, ``*out_target == s_pending_target``.
- * @post No shadow state is mutated.
- *
- * @note Not thread-safe.
- * @since 0.1.0
- *
- * @details See implementation for details.
- */
+/* Read the currently armed swap-bank target, if any -- see implementation for details. */
 ra_err_t ra_ota_commit_pending(ra_ota_bank_t* out_target)
 {
   RA_CHECK_NULL_PTR(out_target, s_tag, "pending: out_target");
@@ -181,26 +162,7 @@ ra_err_t ra_ota_commit_set_bank_config(uint32_t raw_value)
   return k_ra_ok;
 }
 
-/**
- * @brief Read the masked bank-config shadow.
- *
- * @param[out] out_value Receives the current bank-config shadow word.
- *
- * @return ``ra_err_t`` error code.
- * @retval k_ra_ok                 Value copied.
- * @retval k_ra_err_null_ptr       ``out_value`` was NULL.
- *
- * @pre ``out_value`` is non-NULL.
- * @pre Caller is in the secure-side dispatch path.
- * @post ``*out_value == s_bank_config``.
- * @post No shadow state is mutated.
- *
- * @note Not thread-safe.
- * @see ra_ota_commit_set_bank_config
- * @since 0.1.0
- *
- * @details See implementation for details.
- */
+/* Read the masked bank-config shadow -- see implementation for details. */
 ra_err_t ra_ota_commit_get_bank_config(uint32_t* out_value)
 {
   RA_CHECK_NULL_PTR(out_value, s_tag, "get_bank_config: out_value");

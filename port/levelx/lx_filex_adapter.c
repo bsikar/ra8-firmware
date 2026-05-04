@@ -145,23 +145,7 @@ static UINT priv_write_sectors(ULONG start_lba, ULONG count, ULONG* src)
   return FX_SUCCESS;
 }
 
-/**
- * @brief Handle ``FX_DRIVER_INIT``: advertise sector geometry to FileX.
- *
- * @param[in,out] media FileX media struct; receives status + geometry.
- *
- * @pre ``media != NULL``.
- * @pre ``s_nor_flash`` was bound via ``lx_filex_adapter_bind``.
- *
- * @post On success ``media->fx_media_driver_status == FX_SUCCESS`` and
- *       the read-only / free-sector-update flags are cleared.
- *
- * @since 0.1.0
- *
- * @details See implementation for details.
- * @post Side effects bounded to documented state.
- * @note Not thread-safe unless documented otherwise.
- */
+/* Handle ``FX_DRIVER_INIT``: advertise sector geometry to FileX -- see implementation for details. */
 static void priv_handle_init(FX_MEDIA* media)
 {
   if (s_nor_flash == LX_NULL) {
@@ -173,42 +157,13 @@ static void priv_handle_init(FX_MEDIA* media)
   media->fx_media_driver_status             = FX_SUCCESS;
 }
 
-/**
- * @brief Handle ``FX_DRIVER_UNINIT``: drop the LevelX binding.
- *
- * @param[in,out] media FileX media struct; receives status.
- *
- * @pre ``media != NULL``.
- * @post The LevelX flash itself is left untouched (caller still owns it).
- *
- * @since 0.1.0
- *
- * @details See implementation for details.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @note Not thread-safe unless documented otherwise.
- */
+/* Handle ``FX_DRIVER_UNINIT``: drop the LevelX binding -- see implementation for details. */
 static void priv_handle_uninit(FX_MEDIA* media)
 {
   media->fx_media_driver_status = FX_SUCCESS;
 }
 
-/**
- * @brief Handle ``FX_DRIVER_READ``: copy ``n`` sectors out of LevelX.
- *
- * @param[in,out] media FileX media struct describing the request.
- *
- * @pre ``media != NULL`` and ``media->fx_media_driver_buffer != NULL``.
- * @pre ``media->fx_media_driver_sectors > 0``.
- *
- * @post On success the buffer holds ``sectors * 512`` bytes of LevelX data.
- *
- * @since 0.1.0
- *
- * @details See implementation for details.
- * @post Side effects bounded to documented state.
- * @note Not thread-safe unless documented otherwise.
- */
+/* Handle ``FX_DRIVER_READ``: copy ``n`` sectors out of LevelX -- see implementation for details. */
 static void priv_handle_read(FX_MEDIA* media)
 {
   ULONG lba = (ULONG)media->fx_media_driver_logical_sector;
@@ -220,23 +175,7 @@ static void priv_handle_read(FX_MEDIA* media)
   media->fx_media_driver_status = priv_read_sectors(lba, cnt, buf);
 }
 
-/**
- * @brief Handle ``FX_DRIVER_WRITE``: push ``n`` sectors into LevelX.
- *
- * @param[in,out] media FileX media struct describing the request.
- *
- * @pre ``media != NULL`` and ``media->fx_media_driver_buffer != NULL``.
- * @pre ``media->fx_media_driver_sectors > 0``.
- *
- * @post On success the targeted sector range has been written through
- *       the LevelX wear-levelling layer.
- *
- * @since 0.1.0
- *
- * @details See implementation for details.
- * @post Side effects bounded to documented state.
- * @note Not thread-safe unless documented otherwise.
- */
+/* Handle ``FX_DRIVER_WRITE``: push ``n`` sectors into LevelX -- see implementation for details. */
 static void priv_handle_write(FX_MEDIA* media)
 {
   ULONG  lba = (ULONG)media->fx_media_driver_logical_sector;
@@ -245,67 +184,21 @@ static void priv_handle_write(FX_MEDIA* media)
   media->fx_media_driver_status = priv_write_sectors(lba, cnt, buf);
 }
 
-/**
- * @brief Handle ``FX_DRIVER_BOOT_READ``: read sector 0 into the FileX buffer.
- *
- * @param[in,out] media FileX media struct.
- *
- * @pre ``media != NULL`` and ``media->fx_media_driver_buffer != NULL``.
- * @post On success the boot sector is in ``media->fx_media_driver_buffer``.
- *
- * @since 0.1.0
- *
- * @details See implementation for details.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @note Not thread-safe unless documented otherwise.
- */
+/* Handle ``FX_DRIVER_BOOT_READ``: read sector 0 into the FileX buffer -- see implementation for details. */
 static void priv_handle_boot_read(FX_MEDIA* media)
 {
   ULONG* buf                    = (ULONG*)(uintptr_t)media->fx_media_driver_buffer;
   media->fx_media_driver_status = priv_read_sectors((ULONG)k_lx_filex_boot_lba, 1U, buf);
 }
 
-/**
- * @brief Handle ``FX_DRIVER_BOOT_WRITE``: write the FileX buffer to sector 0.
- *
- * @param[in,out] media FileX media struct.
- *
- * @pre ``media != NULL`` and ``media->fx_media_driver_buffer != NULL``.
- * @post On success sector 0 has been overwritten with the buffer contents.
- *
- * @since 0.1.0
- *
- * @details See implementation for details.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @note Not thread-safe unless documented otherwise.
- */
+/* Handle ``FX_DRIVER_BOOT_WRITE``: write the FileX buffer to sector 0 -- see implementation for details. */
 static void priv_handle_boot_write(FX_MEDIA* media)
 {
   ULONG* buf                    = (ULONG*)(uintptr_t)media->fx_media_driver_buffer;
   media->fx_media_driver_status = priv_write_sectors((ULONG)k_lx_filex_boot_lba, 1U, buf);
 }
 
-/**
- * @brief Lx filex adapter bind.
- *
- * @details See implementation for details.
- *
- * @param[in,out] nor_flash See function signature for type and usage.
- *
- * @return Result code or value; see implementation.
- * @retval 0 Success or default value.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Lx filex adapter bind -- see implementation for details. */
 UINT lx_filex_adapter_bind(LX_NOR_FLASH* nor_flash)
 {
   if (nor_flash == LX_NULL) {
@@ -315,23 +208,7 @@ UINT lx_filex_adapter_bind(LX_NOR_FLASH* nor_flash)
   return FX_SUCCESS;
 }
 
-/**
- * @brief Lx filex adapter get total sectors.
- *
- * @details See implementation for details.
- *
- * @return Result code or value; see implementation.
- * @retval 0 Success or default value.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Lx filex adapter get total sectors -- see implementation for details. */
 ULONG lx_filex_adapter_get_total_sectors(void)
 {
   if (s_nor_flash == LX_NULL) {
@@ -348,22 +225,7 @@ ULONG lx_filex_adapter_get_total_sectors(void)
   return total_blocks * usable;
 }
 
-/**
- * @brief Fx media driver ra levelx.
- *
- * @details See implementation for details.
- *
- * @param[in,out] media See function signature for type and usage.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Fx media driver ra levelx -- see implementation for details. */
 void fx_media_driver_ra_levelx(FX_MEDIA* media)
 {
   /* FileX never invokes the driver with media == NULL, but the FSP

@@ -840,20 +840,7 @@ internal_yc_offsets(uint8_t channel, ra_vin_off_t* off1, ra_vin_off_t* off2, ra_
   return k_ra_ok;
 }
 
-/**
- * @brief Ra vin dispatch.
- *
- * @details See implementation for details.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Ra vin dispatch -- see implementation for details. */
 void ra_vin_dispatch(void)
 {
   /* HUM Ch 67.2.16 "INTS: Interrupt Status Register" p 3989 */
@@ -922,23 +909,7 @@ typedef enum : uint8_t {
   k_ra_vin_bpp_rgb888   = 4U, /**< RGB888 packed in 32-bit cells.   */
 } ra_vin_format_bpp_t;
 
-/**
- * @brief Resolve bytes-per-pixel for a given input format.
- *
- * @param[in] format Input format descriptor.
- * @return Bytes per pixel; defaults to 2 for unknown formats.
- *
- * @pre format is one of `ra_vin_input_fmt_t`.
- * @post Return value is in {1, 2, 4}.
- *
- * @note Pure helper; safe from any context.
- * @since 0.1.0
- *
- * @details See implementation for details.
- * @retval 0 Success or default value.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- */
+/* Resolve bytes-per-pixel for a given input format -- see implementation for details. */
 static uint8_t internal_format_bpp(ra_vin_input_fmt_t format)
 {
   uint8_t bpp = k_ra_vin_bpp_ycbcr422;

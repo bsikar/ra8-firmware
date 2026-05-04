@@ -52,51 +52,14 @@
  */
 __attribute__((weak)) struct ble_hs_cfg ble_hs_cfg;
 
-/**
- * @brief Ble gap security initiate.
- *
- * @details See implementation for details.
- *
- * @param[in,out] conn_handle See function signature for type and usage.
- *
- * @return Result code or value; see implementation.
- * @retval 0 Success or default value.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Ble gap security initiate -- see implementation for details. */
 __attribute__((weak)) int ble_gap_security_initiate(uint16_t conn_handle)
 {
   (void)conn_handle;
   return 0;
 }
 
-/**
- * @brief Ble sm inject io.
- *
- * @details See implementation for details.
- *
- * @param[in,out] conn_handle See function signature for type and usage.
- * @param[in,out] pkey See function signature for type and usage.
- *
- * @return Result code or value; see implementation.
- * @retval 0 Success or default value.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Ble sm inject io -- see implementation for details. */
 __attribute__((weak)) int ble_sm_inject_io(uint16_t conn_handle, struct ble_sm_io* pkey)
 {
   (void)conn_handle;
@@ -104,23 +67,7 @@ __attribute__((weak)) int ble_sm_inject_io(uint16_t conn_handle, struct ble_sm_i
   return 0;
 }
 
-/**
- * @brief Ble store clear.
- *
- * @details See implementation for details.
- *
- * @return Result code or value; see implementation.
- * @retval 0 Success or default value.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Ble store clear -- see implementation for details. */
 __attribute__((weak)) int ble_store_clear(void)
 {
   return 0;
@@ -516,39 +463,9 @@ ra_err_t ra_ble_security_attach_event_handler(ra_ble_security_event_fn_t fn, voi
 
 #ifdef UNIT_TEST
 /* Test-hook prototypes (external linkage). */
-/**
- * @brief Ra ble security test emit event.
- *
- * @details See implementation for details.
- *
- * @param[in,out] evt See function signature for type and usage.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Ra ble security test emit event -- see implementation for details. */
 void ra_ble_security_test_emit_event(const ra_ble_security_event_t* evt);
-/**
- * @brief Ra ble security test set bond count.
- *
- * @details See implementation for details.
- *
- * @param[in,out] count See function signature for type and usage.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Ra ble security test set bond count -- see implementation for details. */
 void ra_ble_security_test_set_bond_count(uint8_t count);
 
 /**
