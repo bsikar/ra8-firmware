@@ -149,6 +149,39 @@ volatile uint32_t s_setup_dispatch_count = 0U;
 volatile uint16_t s_dvstctr0_at_first_dvst = 0xFFFFU;
 
 /**
+ * @enum ra_usb_dcd_rhst_hist_t
+ * @brief Sizing for the DVSTCTR0.RHST history ring.
+ */
+typedef enum : uint8_t {
+  k_ra_usb_dcd_rhst_hist_n = 16U, /**< Slots in s_rhst_history.       */
+} ra_usb_dcd_rhst_hist_t;
+
+/**
+ * @var s_rhst_history
+ * @brief Per-DVST-event capture of DVSTCTR0.RHST[2:0]. JLink-readable.
+ *
+ * @details RHST encoding (HUM Ch 36.2.5 p 1971 / Ch 37 DVSTCTR0):
+ *   0=undefined / chirp limbo, 1=LS, 2=FS, 3=HS, 4=in-reset.
+ * On a successful HS attach the array typically reads 0,4,3,...; on
+ * FS-fallback 0,4,2,...; on chirp failure (the 0.2.0 USB-HS bring-up
+ * symptom) every slot reads 0 even after dozens of host resets.
+ *
+ * @note Single-writer (::internal_handle_dvst from the polled worker).
+ * @since 0.1.0
+ */
+volatile uint8_t s_rhst_history[(uint32_t)k_ra_usb_dcd_rhst_hist_n] = {};
+
+/**
+ * @var s_rhst_history_count
+ * @brief Total DVST events seen; modulo k_ra_usb_dcd_rhst_hist_n is
+ *        the next write slot.
+ *
+ * @note Single-writer (::internal_handle_dvst).
+ * @since 0.1.0
+ */
+volatile uint32_t s_rhst_history_count = 0U;
+
+/**
  * @var s_intsts0_last_dispatch
  * @brief Most-recent INTSTS0 snapshot fed to ::ux_dcd_ra_usb_irq.
  *
@@ -1006,10 +1039,17 @@ void ux_dcd_ra_usb_irq(ra_usb_speed_t speed, uint16_t intsts0)
    * in sync with the controller-reported DVSQ field. */
   if ((intsts0 & (uint16_t)(1U << (uint8_t)k_ra_int0_bit_dvst)) != 0U) {
     s_dvst_irq_count++;
+    volatile r_usb_regs_t* reg = (speed == k_ra_usb_speed_hs) ? ra_usb_hs() : ra_usb_fs();
+    const uint16_t         dvstctr0 = reg->DVSTCTR0;
     if (s_dvstctr0_at_first_dvst == 0xFFFFU) {
-      volatile r_usb_regs_t* reg = (speed == k_ra_usb_speed_hs) ? ra_usb_hs() : ra_usb_fs();
-      s_dvstctr0_at_first_dvst   = reg->DVSTCTR0;
+      s_dvstctr0_at_first_dvst = dvstctr0;
     }
+    /* RHST occupies DVSTCTR0[2:0]. HUM Ch 36.2.5 p 1971. */
+    const uint8_t rhst_mask  = 0x07U;
+    const uint8_t hist_slot  = (uint8_t)(s_rhst_history_count
+                                         % (uint32_t)k_ra_usb_dcd_rhst_hist_n);
+    s_rhst_history[hist_slot] = (uint8_t)(dvstctr0 & rhst_mask);
+    s_rhst_history_count++;
     internal_handle_dvst(intsts0);
   }
 
