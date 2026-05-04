@@ -505,52 +505,6 @@ static VOID demo_cdc_deactivate(VOID* cdc_instance)
 }
 
 /* -------------------------------------------------------------------------- */
-/* HS-CHIRP-DIAG: test FS-mode fallback to isolate chirp issue                */
-/* -------------------------------------------------------------------------- */
-
-/**
- * @var s_syscfg_after_hse_clear
- * @brief HS-CHIRP-DIAG snapshot of HS SYSCFG after clearing HSE.
- * @details Expected: bit 7 (HSE) = 0, bit 0 (USBE) = 1. HUM Ch 37.2.1
- *          SYSCFG p 2060.
- * @since 0.1.0
- */
-volatile uint16_t s_syscfg_after_hse_clear = 0U;
-
-/**
- * @brief HS-CHIRP-DIAG: clear SYSCFG.HSE on the USBHS instance.
- * @details After ra_board_usbhs_device_init has already set HSE=1 and
- *          locked the PHY PLL, drop HSE so the USBHS controller falls
- *          back to FS-only signalling. HUM Ch 37.2.1 SYSCFG p 2060
- *          bit 7 HSE.
- * @since 0.1.0
- */
-static void internal_rmw16_hs_syscfg_clear_hse(void)
-{
-  /* HUM Ch 37.2.1 SYSCFG p 2060: bit 7 = HSE. Clearing it forces the
-   * USBHS IP to skip the chirp K/J sequence and present as an FS
-   * device via the DPRPU 1.5 kohm pull-up. */
-  const uint16_t           hse    = (uint16_t)(1U << k_ra_syscfg_bit_hse);
-  volatile uint16_t* const syscfg = &ra_usb_hs()->SYSCFG;
-  *syscfg                         = (uint16_t)(*syscfg & (uint16_t)~hse);
-}
-
-/**
- * @brief HS-CHIRP-DIAG: assert DPRPU on the USBHS instance (FS attach).
- * @details Open-coded attach that skips CNEN (HS-only single-end
- *          receiver enable) and just sets DPRPU so the host sees a
- *          Full-Speed pull-up. HUM Ch 37.2.1 SYSCFG p 2060 bit 4
- *          DPRPU.
- * @since 0.1.0
- */
-static void internal_attach_fs_only(void)
-{
-  const uint16_t           dprpu  = (uint16_t)(1U << k_ra_syscfg_bit_dprpu);
-  volatile uint16_t* const syscfg = &ra_usb_hs()->SYSCFG;
-  *syscfg                         = (uint16_t)(*syscfg | dprpu);
-}
-
-/* -------------------------------------------------------------------------- */
 /* Worker thread: bring USBX up + echo loop                                   */
 /* -------------------------------------------------------------------------- */
 
@@ -622,46 +576,16 @@ static VOID demo_worker(ULONG arg)
   }
   s_boot_probe = (uint32_t)k_boot_probe_post_board_usbhs_init;
 
-  /* HS-CHIRP-DIAG: test FS-mode fallback to isolate chirp issue.
-   *
-   * Hypothesis: HS chirp K signaling out of our USBHS PHY is malformed
-   * (timing or amplitude wrong) so the host never recognises us as a
-   * valid HS device and never issues the first SETUP packet. By
-   * clearing SYSCFG.HSE here -- after the PHY/PLL are already locked
-   * via internal_usbhs_phy_bringup -- the USBHS controller stays in
-   * FS-only signalling mode (no chirp K/J handshake; D+ 1.5 kohm
-   * pull-up via DPRPU advertises a Full-Speed device, which the host
-   * enumerates with the legacy USB-FS state machine). FSP supports
-   * USBHS+FS device-mode (r_usb_basic.c selects FS bring-up when the
-   * configured speed is FS regardless of which IP module is in use).
-   *
-   * If, after this change, s_usbreq_first_nonzero (in the SIE/USBX
-   * bridge) becomes non-zero on the first SETUP, the SIE / USBX layer
-   * is healthy and the original failure is isolated to HS chirp
-   * formation. If USBREQ stays 0 even in FS-only mode, the issue is
-   * upstream (PHY analog level, USB-C role/CC strap, or VBUS).
-   *
-   * HUM Ch 37.2.1 SYSCFG p 2060: HSE bit 7 = "High-Speed mode enable".
-   * Cleared = controller operates in Full-Speed mode (no chirp). */
-  internal_rmw16_hs_syscfg_clear_hse();
-  s_syscfg_after_hse_clear = ra_usb_hs()->SYSCFG;
-
-  /* Plug our DCD bridge into the device stack and turn the bus on.
-   *
-   * HS-CHIRP-DIAG: DCD bridge is still initialised with k_ra_usb_speed_hs
-   * because the IP block is the USBHS controller -- the speed argument
-   * here selects the register bank (USBHS @ 0x40351000) and the IRQ
-   * vectors, not the wire-protocol speed. The wire speed is now FS
-   * because HSE=0 (set above). */
+  /* Plug our DCD bridge into the device stack and turn the bus on. */
   s_boot_probe = (uint32_t)k_boot_probe_pre_ux_dcd_init;
   if (ux_dcd_ra_usb_initialize(k_ra_usb_speed_hs) != k_ra_ok) {
     return;
   }
   s_boot_probe = (uint32_t)k_boot_probe_post_ux_dcd_init;
   s_boot_probe = (uint32_t)k_boot_probe_pre_dev_attach;
-  /* HS-CHIRP-DIAG: open-coded attach (skip CNEN which is HS-PHY-only,
-   * just assert DPRPU so D+ 1.5 kohm pull-up advertises FS attach). */
-  internal_attach_fs_only();
+  if (ra_usb_device_attach(k_ra_usb_speed_hs, true) != k_ra_ok) {
+    return;
+  }
   s_boot_probe = (uint32_t)k_boot_probe_post_dev_attach;
 
   /* Echo loop. */
