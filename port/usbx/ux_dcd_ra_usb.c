@@ -774,14 +774,19 @@ static void internal_handle_dvst(uint16_t intsts0)
   unsigned long    new_state;
   switch (dvsq) {
     case k_ra_dvsq_powered:
+      new_state = (unsigned long)UX_DEVICE_ATTACHED;
+      break;
     case k_ra_dvsq_default:
+      /* Bus reset just deasserted: USBX treats RESET as the
+       * pre-enumeration state, mirroring sim_host's port-reset path. */
+      new_state = (unsigned long)UX_DEVICE_RESET;
+      break;
     case k_ra_dvsq_address:
+      new_state = (unsigned long)UX_DEVICE_ADDRESSED;
+      break;
     case k_ra_dvsq_configured:
-      /* Non-suspend states are owned by internal_sync_state_from_dvsq
-       * (polled in the dispatch worker, no-demote guard). Skip the
-       * IRQ-driven write to avoid a race where DVST runs against a
-       * stale snapshot and demotes a freshly-advanced state. */
-      return;
+      new_state = (unsigned long)UX_DEVICE_CONFIGURED;
+      break;
     case k_ra_dvsq_suspend:
       new_state = (unsigned long)UX_DEVICE_SUSPENDED;
       break;
@@ -1036,16 +1041,11 @@ static void internal_sync_state_from_dvsq(ra_usb_speed_t speed)
       return;
   }
   UX_SLAVE_DEVICE* device = &_ux_system_slave->ux_system_slave_device;
-  /* No-demote: only advance state, never roll it back. The chapter-9
-   * dispatcher writes CONFIGURED on SET_CONFIGURATION; we must not
-   * demote it on a stale DVSQ snapshot. SUSPENDED is handled by the
-   * IRQ path elsewhere because it is a true bus-level demotion. */
-  if (desired <= device->ux_slave_device_state) {
-    return;
-  }
-  device->ux_slave_device_state = desired;
-  if (_ux_system_slave->ux_system_slave_change_function != UX_NULL) {
-    (void)_ux_system_slave->ux_system_slave_change_function(desired);
+  if (device->ux_slave_device_state != desired) {
+    device->ux_slave_device_state = desired;
+    if (_ux_system_slave->ux_system_slave_change_function != UX_NULL) {
+      (void)_ux_system_slave->ux_system_slave_change_function(desired);
+    }
   }
 }
 
