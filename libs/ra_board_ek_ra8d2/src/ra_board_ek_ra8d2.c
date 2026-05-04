@@ -36,6 +36,7 @@
 #include "ra_etha.h"
 #include "ra_gpio_constants.h"
 #include "ra_icu.h"
+#include "ra_iic_b.h"
 #include "ra_isr.h"
 #include "ra_mipi_dsi.h"
 #include "ra_mipi_phy.h"
@@ -875,13 +876,148 @@ static ra_err_t internal_usbhs_clock_and_mstp(void)
   if (err != k_ra_ok) {
     return err;
   }
-  s_usbhs_probe = (uint32_t)k_usbhs_probe_pre_mstp_init;
-  err           = ra_mstp_init();
+  /* DO NOT call ra_mstp_init() here -- it gates ALL modules (IOPORT,
+   * SCI, etc.) and the chip faults trying to access already-running
+   * peripherals. ra_mstp_init must run exactly once per boot, before
+   * any peripheral is brought up; the boot-time path handles that.
+   * ra_mstp_enable below uses the existing ref-counted state. */
+  s_usbhs_probe = (uint32_t)k_usbhs_probe_pre_mstp_enable;
+  return ra_mstp_enable(k_ra_mstp_usbhs);
+}
+
+/* =============================================================================
+ * U15 PI4IOE5V6408 I/O expander -- SW4 override (J7 USB role select etc.)
+ *
+ * EK-RA8D2 v1 UM Rev 1.01 Section 5.5.3 + Section 4 p 16:
+ *   "The EK-RA8D2 features an I2C I/O Port Expander (PI4IOE5V6408) at
+ *    U15 which has the I2C address 0x43. The port expander is connected
+ *    to the configuration switches SW4 and allows the settings to be
+ *    read (when the I/O expander port is set to input) or overridden
+ *    (when the I/O expander port is set to output) by software."
+ *
+ * Register map and polarity convention come from Renesas's reference
+ * driver in ``ra-fsp-examples/ek_ra8t2/board_cfg_switch.c`` (the EK-RA8T2
+ * sister board uses an identical wiring).
+ * =============================================================================
+ */
+
+/** @brief PI4IOE5V6408 7-bit I2C address on EK-RA8D2 v1 (SW4 sibling). */
+typedef enum : uint8_t {
+  k_ra_board_io_expander_addr = 0x43U,
+} ra_board_io_expander_addr_t;
+
+/**
+ * @brief PI4IOE5V6408 register addresses.
+ *
+ * @details
+ * The expander is auto-incrementing; we always do single-byte writes.
+ * Values cite ``ra-fsp-examples/ek_ra8t2/board_cfg_switch.c``.
+ */
+typedef enum : uint8_t {
+  k_ra_board_pi4ioe_reg_devid     = 0x01U, /**< Device ID register. */
+  k_ra_board_pi4ioe_reg_iodir     = 0x03U, /**< 1 = output. */
+  k_ra_board_pi4ioe_reg_output    = 0x05U, /**< 1 = HIGH (== SW4 OFF). */
+  k_ra_board_pi4ioe_reg_hiz       = 0x07U, /**< 1 = output Hi-Z. */
+  k_ra_board_pi4ioe_reg_pud_sel   = 0x0DU, /**< Pull-up/down select. */
+  k_ra_board_pi4ioe_reg_input_lvl = 0x0FU, /**< Input state. */
+} ra_board_pi4ioe_reg_t;
+
+/**
+ * @brief Magic-value writes for ``ra_board_io_expander_set_usbhs_device_mode``.
+ *
+ * @details
+ * Polarity per FSP reference: ``OFF == output bit HIGH``. SW4-8 OFF
+ * selects USB-HS device mode on J7, so bit 7 must be HIGH. We write
+ * 0xFF (every SW4 channel in its mechanical-default OFF position),
+ * which keeps every other SW4-gated peripheral at its EK-RA8D2 default
+ * routing while still forcing SW4-8 = OFF.
+ */
+typedef enum : uint8_t {
+  k_ra_board_pi4ioe_iodir_all_outputs = 0xFFU,
+  k_ra_board_pi4ioe_output_all_high   = 0xFFU,
+  k_ra_board_pi4ioe_hiz_none          = 0x00U,
+} ra_board_pi4ioe_magic_t;
+
+/** @brief I2C0 (IIC_B channel 0) configuration shared by every U15 access. */
+typedef enum : uint32_t {
+  k_ra_board_io_expander_bus_hz   = 100000U,    /**< 100 kHz Sm. */
+  k_ra_board_io_expander_pclka_hz = 125000000U, /**< Reset CGC default. */
+} ra_board_io_expander_clk_t;
+
+/** @brief IIC_B channel index used for the U15 expander. */
+typedef enum : uint8_t {
+  k_ra_board_io_expander_iic_channel = 0U,
+} ra_board_io_expander_channel_t;
+
+/**
+ * @brief Pins that carry SCL0 / SDA0 to U15 (chip HUM I/O Ports).
+ *
+ * @details
+ * P400 = SCL0, P401 = SDA0 on the RA8D2 (HUM "Multiplexed Pin Function
+ * Selector"). The EK-RA8D2 v1 schematic ties U15's SCL/SDA to this
+ * same pair so that one IIC_B channel can drive both U15 and any
+ * Pmod1-side I2C peripheral the user wires up.
+ */
+static const ra_port_pin_t k_ra_board_io_expander_pin_scl =
+  (ra_port_pin_t)RA_PIN(k_ra_port_4, k_ra_pin_0); /**< SCL0 (P400). */
+static const ra_port_pin_t k_ra_board_io_expander_pin_sda =
+  (ra_port_pin_t)RA_PIN(k_ra_port_4, k_ra_pin_1); /**< SDA0 (P401). */
+
+/* internal_io_expander_write_reg -- see implementation for details. */
+static ra_err_t internal_io_expander_write_reg(uint8_t reg, uint8_t val)
+{
+  const uint8_t buf[2] = {reg, val};
+  return ra_iic_b_write((uint8_t)k_ra_board_io_expander_iic_channel,
+                        (uint8_t)k_ra_board_io_expander_addr,
+                        buf,
+                        sizeof(buf),
+                        false);
+}
+
+/* Ra board io expander set usbhs device mode -- see implementation for details. */
+ra_err_t ra_board_io_expander_set_usbhs_device_mode(void)
+{
+  /* Step 1: route P400 -> SCL0 and P401 -> SDA0. PSEL=k_ra_psel_iic
+   * covers both IIC_B and the legacy IIC mux on RA8D2 (chip HUM
+   * Multiplexed Pin Function Selector). */
+  ra_err_t err =
+    ra_pfs_route_peripheral(k_ra_board_io_expander_pin_scl, k_ra_psel_iic, "ra_board.io_exp.scl0");
   if (err != k_ra_ok) {
     return err;
   }
-  s_usbhs_probe = (uint32_t)k_usbhs_probe_pre_mstp_enable;
-  return ra_mstp_enable(k_ra_mstp_usbhs);
+  err =
+    ra_pfs_route_peripheral(k_ra_board_io_expander_pin_sda, k_ra_psel_iic, "ra_board.io_exp.sda0");
+  if (err != k_ra_ok) {
+    return err;
+  }
+
+  /* Step 2: bring IIC_B channel 0 up at 100 kHz. ra_iic_b_init takes
+   * care of the I3C MSTP enable internally. */
+  const ra_iic_b_cfg_t cfg = {
+    .bus_hz   = (uint32_t)k_ra_board_io_expander_bus_hz,
+    .pclka_hz = (uint32_t)k_ra_board_io_expander_pclka_hz,
+  };
+  err = ra_iic_b_init((uint8_t)k_ra_board_io_expander_iic_channel, &cfg);
+  if (err != k_ra_ok) {
+    return err;
+  }
+
+  /* Step 3: program U15 in the order the FSP reference uses --
+   * output-state first (pre-load), then I/O-direction last so the
+   * pin only switches from input to output once the latch already
+   * holds the value we want to drive. */
+  err = internal_io_expander_write_reg((uint8_t)k_ra_board_pi4ioe_reg_output,
+                                       (uint8_t)k_ra_board_pi4ioe_output_all_high);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  err = internal_io_expander_write_reg((uint8_t)k_ra_board_pi4ioe_reg_hiz,
+                                       (uint8_t)k_ra_board_pi4ioe_hiz_none);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  return internal_io_expander_write_reg((uint8_t)k_ra_board_pi4ioe_reg_iodir,
+                                        (uint8_t)k_ra_board_pi4ioe_iodir_all_outputs);
 }
 
 /* Ra board usbhs device init -- see implementation for details. */
@@ -890,11 +1026,21 @@ ra_err_t ra_board_usbhs_device_init(void)
   /* HUM Ch 9 (CGC) USBCKCR p 365 + HUM Ch 11 (MSTP) MSTPCRB12 p 469
    * stage the PHY clock and ungate the controller block; then the
    * generic device-mode entry in libs/ra_hal/inc/ra_usb.h drives
-   * SYSCFG.SCKE / USBE / HSE and arms the device IRQ set. The
-   * EK-RA8D2 v1 UM Rev 1.01 Section 6.2 (J7 USBHS) does not itemise
-   * an LDO-enable port pin -- the VBUS rail is gated by a discrete
-   * USB-PD controller -- so no BSP-side PFS routing is needed. */
-  ra_err_t err = internal_usbhs_clock_and_mstp();
+   * SYSCFG.SCKE / USBE / HSE and arms the device IRQ set.
+   *
+   * EK-RA8D2 v1 UM Rev 1.01 Section 5.5.3 / Section 4 p 16: J7's USB
+   * role-select line is gated by the U15 PI4IOE5V6408 I/O expander
+   * (which sits in parallel with SW4-8). The expander defaults to
+   * input-only after POR, so SW4-8's mechanical position alone
+   * decides the role -- and even with SW4-8 OFF the line is only
+   * pulled, not driven. We drive it explicitly with U15 first so the
+   * USBHS controller sees an unambiguous J7 = Device strap before the
+   * SYSCFG.USBE / DPRPU bring-up. */
+  ra_err_t err = ra_board_io_expander_set_usbhs_device_mode();
+  if (err != k_ra_ok) {
+    return err;
+  }
+  err = internal_usbhs_clock_and_mstp();
   if (err != k_ra_ok) {
     return err;
   }
