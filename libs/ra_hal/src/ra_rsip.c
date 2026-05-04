@@ -2274,32 +2274,6 @@ ra_err_t ra_rsip_aes_cipher(const ra_rsip_key_handle_t* key,
 }
 
 /**
- * @brief Common AEAD path used by GCM / CCM / ChaCha20-Poly1305.
- *
- * @param[in]  key       Wrapped key.
- * @param[in]  alg_byte  Low byte of SYM_CTRL.
- * @param[in]  mode      AEAD mode.
- * @param[in]  dir       Encrypt / decrypt.
- * @param[in]  iv        Nonce.
- * @param[in]  aad       Associated data; may be NULL.
- * @param[in]  aad_len   Associated-data length.
- * @param[in]  in        Plaintext / ciphertext input.
- * @param[out] out       Plaintext / ciphertext output.
- * @param[in]  in_len    Body length.
- * @param[in,out] tag    16-byte authenticator (in on decrypt, out on encrypt).
- *
- * @return ``ra_err_t``.
- *
- * @pre ``key``, ``iv``, ``in``, ``out``, ``tag`` are non-NULL.
- * @pre ``alg_byte`` matches ``key->alg``.
- *
- * @post On encrypt success, ``tag`` is the engine-computed tag.
- * @post On decrypt success, the engine has verified the supplied tag.
- *
- * @note Internal helper.
- * @since 0.1.0
- */
-/**
  * @brief Push 16 tag bytes through the SYM_TAG port (decrypt path).
  *
  * @param[in] tag 16-byte authenticator supplied by the caller.
