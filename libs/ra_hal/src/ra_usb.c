@@ -64,6 +64,7 @@
 #include "ra_log.h"
 #include "ra_mstp.h"
 #include "ra_port_constants.h"
+#include "ra_time.h"
 
 static const char* s_tag = "USB";
 
@@ -313,16 +314,296 @@ static ra_usb_dev_state_t internal_decode_dvsq(uint16_t intsts0)
  */
 
 /**
+ * @enum ra_usbhs_init_local_t
+ * @brief Local sentinels used by the USBHS PHY bring-up sequence.
+ *
+ * @details
+ * - ``delay_1us_iters`` -- NOP-loop iteration count for ~1 us at 1 GHz.
+ * - ``pll_lock_poll_limit`` -- bounded spin count for PLLSTA.PLLLOCK
+ *   wait (~200k iters; covers worst-case PHY analog ramp).
+ * - ``scke_poll_limit`` -- same bound for the FS-path SCKE settle wait.
+ * - ``probe_hi_shift`` -- shift to pack SYSCFG into the high half of
+ *   ``s_usbhs_init_probe``.
+ * - ``probe_lo_mask`` -- mask of the low half of the probe word.
+ */
+typedef enum : uint32_t {
+  k_ra_usbhs_delay_1us_iters     = 2000U,
+  k_ra_usbhs_pll_lock_poll_limit = 200000U,
+  k_ra_usbhs_scke_poll_limit     = 200000U,
+  k_ra_usbhs_probe_hi_shift      = 16U,
+  k_ra_usbhs_probe_lo_mask       = 0x0000FFFFU,
+} ra_usbhs_init_local_t;
+
+/**
+ * @var s_usbhs_init_probe
+ * @brief Diagnostic capture of staged USBHS bring-up register values.
+ *
+ * @details Each phase of the HS PHY bring-up writes a distinct slot
+ * here so a JLink read of this SRAM word reveals exactly which step
+ * was reached. Layout (low half = PHYSET-after-power-up, high half =
+ * SYSCFG-after-USBE-write). On a healthy boot the low half ends at
+ * ``DIRPD=0, PLLRESET=0, CLKSEL=0`` and the high half ends at
+ * ``USBE|HSE = 0x081``.
+ *
+ * @note Read-only from outside; written only by ::ra_usb_device_init.
+ * @warning Direct modification breaks the diagnostic invariant.
+ * @since 0.1.0
+ */
+static volatile uint32_t s_usbhs_init_probe = 0U;
+
+/**
+ * @var s_usbhs_pllsta_probe
+ * @brief Diagnostic capture of PLLSTA at end of PHY bring-up.
+ *
+ * @note Read-only from outside; written only by ::ra_usb_device_init.
+ * @warning Direct modification breaks the diagnostic invariant.
+ * @since 0.1.0
+ */
+static volatile uint16_t s_usbhs_pllsta_probe = 0U;
+
+/**
+ * @brief Microsecond busy-wait helper for USB PHY bring-up.
+ *
+ * @details Cortex-M85 at 1 GHz: ~1000 cycles per microsecond. We use
+ * a NOP loop calibrated to comfortably exceed 1 us so PHY power-up
+ * settling completes. FSP `r_usb_preg_access.c` calls
+ * `usb_cpu_delay_1us` -- this is the local equivalent.
+ *
+ * @pre Caller is in init context (busy-wait blocks the CPU).
+ * @pre CPU clock is the one assumed by ``k_ra_usbhs_delay_1us_iters``.
+ * @post No state mutation; loop iteration count is bounded.
+ * @post At least 1 us has elapsed.
+ * @note Not thread-safe; calibrated for 1 GHz Cortex-M85.
+ * @since 0.1.0
+ */
+static void internal_usb_delay_1us(void)
+{
+  for (volatile uint32_t i = 0U; i < (uint32_t)k_ra_usbhs_delay_1us_iters; ++i) {
+    __asm__ volatile("nop");
+  }
+}
+
+/**
+ * @brief Drive USBHS SYSCFG.USBE|HSE after the PHY-side init steps.
+ *
+ * @details Splits the SYSCFG mutation off from
+ * ::internal_usbhs_phy_bringup so each helper stays under the NASA
+ * Rule 4 / clang-tidy size budget. Also captures the SYSCFG-after-USBE
+ * value into the diagnostic probe word's high half.
+ *
+ * @param[in] reg HS register block pointer.
+ *
+ * @pre PHYSET DIRPD/PLLRESET are released.
+ * @pre s_usbhs_init_probe low half holds PHYSET-after-power-up.
+ * @post SYSCFG: DRPD=0, USBE=1, HSE=1.
+ * @post s_usbhs_init_probe high half = SYSCFG.
+ *
+ * @note Not thread-safe; init context only.
+ * @since 0.1.0
+ */
+static void internal_usbhs_enable_syscfg(volatile r_usb_regs_t* reg)
+{
+  /* HUM Ch 37.2.1 "SYSCFG : System Configuration Control Register", p 2060 */
+  reg->SYSCFG = (uint16_t)(reg->SYSCFG & (uint16_t)~(uint16_t)(1U << k_ra_syscfg_bit_drpd));
+  reg->SYSCFG = (uint16_t)(reg->SYSCFG | (uint16_t)(1U << k_ra_syscfg_bit_usbe) |
+                           (uint16_t)(1U << k_ra_syscfg_bit_hse));
+
+  const uint32_t lo  = s_usbhs_init_probe & (uint32_t)k_ra_usbhs_probe_lo_mask;
+  const uint32_t hi  = (uint32_t)reg->SYSCFG << (uint32_t)k_ra_usbhs_probe_hi_shift;
+  s_usbhs_init_probe = lo | hi;
+}
+
+/**
+ * @brief Wait for USBHS PHY PLL lock with bounded polling.
+ *
+ * @details Polls PLLSTA.PLLLOCK up to
+ * ::k_ra_usbhs_pll_lock_poll_limit iterations. Captures the final
+ * PLLSTA value into ``s_usbhs_pllsta_probe`` regardless of outcome.
+ *
+ * @return ::ra_err_t
+ * @retval k_ra_ok     PLLLOCK observed asserted.
+ * @retval k_ra_err_hw_timeout PLLLOCK never asserted.
+ *
+ * @pre LPSTS.SUSPENDM has been set.
+ * @pre USB60CLK is running at 60 MHz.
+ * @post Loop iteration count is bounded.
+ * @post s_usbhs_pllsta_probe holds the final PLLSTA word.
+ *
+ * @note Not thread-safe; init context only.
+ * @since 0.1.0
+ */
+static ra_err_t internal_usbhs_wait_pll_lock(void)
+{
+  volatile uint16_t* const pllsta = ra_usbhs_pllsta();
+  ra_err_t                 lock   = k_ra_err_hw_timeout;
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_usbhs_pll_lock_poll_limit; ++i) {
+    if ((*pllsta & (uint16_t)k_ra_pllsta_plllock) != 0U) {
+      lock = k_ra_ok;
+      break;
+    }
+  }
+  s_usbhs_pllsta_probe = *pllsta;
+  return lock;
+}
+
+/**
+ * @brief USBHS embedded-PHY bring-up (FSP `hw_usb_pmodule_init` IP1 branch).
+ *
+ * @details Mirrors the Renesas FSP USBHS device-mode bring-up sequence
+ * for the standard 12 MHz PHY reference (USB60CLK / 5):
+ *  1. PHYSET |= DIRPD | CLKSEL_mask  (assert PD, set CLKSEL field)
+ *  2. PHYSET &= ~CLKSEL; |= CLKSEL_12 (force 12 MHz reference)
+ *  3. delay 1 us
+ *  4. PHYSET &= ~DIRPD                (release PHY power-down)
+ *  5. delay 1 ms
+ *  6. PHYSET &= ~PLLRESET             (release PHY PLL reset)
+ *  7. SYSCFG &= ~DRPD                 (clear host pull-down)
+ *  8. SYSCFG |= USBE                  (enable USB module)
+ *  9. LPSTS  |= SUSPENDM              (release UTMI SuspendM)
+ * 10. wait PLLSTA.PLLLOCK = 1
+ * 11. BUSWAIT = 0x0F04                (4-wait + reserved b11-b8)
+ * 12. PHYSET |= REPSEL_16             (terminator adjust cycle)
+ *
+ * The HS instance has no SCKE bit (HUM Ch 37.2.1 "SYSCFG" register
+ * layout, p 2060); writing bit 10 there is a no-op.
+ *
+ * @param[in] reg HS register block pointer (must be ::ra_usb_hs()).
+ *
+ * @return ::ra_err_t
+ * @retval k_ra_ok HS PHY locked and ready for ``DPRPU`` attach.
+ * @retval k_ra_err_hw_timeout PLLSTA.PLLLOCK never asserted.
+ *
+ * @pre MSTPB12 ungated; USB60CLK = PLL2P / 4 = 60 MHz.
+ * @pre Caller is single-threaded init context.
+ *
+ * @post On success: PHY powered, PLL locked, USBE=1, SUSPENDM=1.
+ * @post BUSWAIT programmed.
+ *
+ * @note Not thread-safe; init context only.
+ * @since 0.1.0
+ */
+static ra_err_t internal_usbhs_phy_bringup(volatile r_usb_regs_t* reg)
+{
+  volatile uint16_t* const physet = ra_usbhs_physet();
+  volatile uint16_t* const lpsts  = ra_usbhs_lpsts();
+
+  /* HUM Ch 37.2.5 "PHYSET : PHY Setting Register", p 2065 */
+  *physet = (uint16_t)(*physet | (uint16_t)k_ra_physet_dirpd | (uint16_t)k_ra_physet_clksel);
+  *physet = (uint16_t)(*physet & (uint16_t)~(uint16_t)k_ra_physet_clksel);
+  *physet = (uint16_t)(*physet | (uint16_t)k_ra_physet_clksel_12);
+  internal_usb_delay_1us();
+
+  *physet = (uint16_t)(*physet & (uint16_t)~(uint16_t)k_ra_physet_dirpd);
+  ra_delay_ms(1U);
+  *physet = (uint16_t)(*physet & (uint16_t)~(uint16_t)k_ra_physet_pllreset);
+
+  s_usbhs_init_probe = (uint32_t)*physet;
+
+  internal_usbhs_enable_syscfg(reg);
+
+  /* HUM Ch 37.2.10 "LPSTS : Low Power Status Register", p 2073 */
+  *lpsts = (uint16_t)(*lpsts | (uint16_t)k_ra_lpsts_suspendm);
+
+  /* HUM Ch 37.2.4 "PLLSTA : PLL Status Register", p 2064 */
+  const ra_err_t lock_err = internal_usbhs_wait_pll_lock();
+  if (lock_err != k_ra_ok) {
+    ra_log_error(s_tag, "usbhs: PHY PLL lock timeout");
+    return lock_err;
+  }
+
+  /* HUM Ch 37.2.2 "BUSWAIT : CPU Bus Wait Register", p 2062 */
+  reg->BUSWAIT = (uint16_t)k_ra_buswait_default;
+  *physet      = (uint16_t)(*physet | (uint16_t)k_ra_physet_repsel_16);
+  return k_ra_ok;
+}
+
+/**
+ * @brief Programme the post-SYSCFG common registers (FIFO, DCP, INTENB).
+ *
+ * @details Shared tail of FS and HS device-mode bring-up: CFIFOSEL,
+ * DCP defaults, and the device-mode INTENB0 interrupt mask.
+ *
+ * @param[in] reg Selected USB instance register block.
+ *
+ * @pre Caller has already enabled SYSCFG.USBE.
+ * @pre reg is non-null.
+ * @post All listed registers carry deterministic device-mode defaults.
+ * @post INTENB1 / BRDYENB / NRDYENB / BEMPENB are cleared.
+ *
+ * @note Not thread-safe; init context only.
+ * @since 0.1.0
+ */
+static void internal_usb_init_common(volatile r_usb_regs_t* reg)
+{
+  /* HUM Ch 36.2.7 "CFIFOSEL : CFIFO Port Select Register", p 1976 */
+  reg->CFIFOSEL  = k_ra_fifosel_mbw_16;
+  reg->D0FIFOSEL = k_ra_fifosel_mbw_16;
+  reg->D1FIFOSEL = k_ra_fifosel_mbw_16;
+
+  /* HUM Ch 36.2.20 "DCPMAXP : DCP Max Packet Size Register", p 1990 */
+  reg->DCPCFG  = 0U;
+  reg->DCPMAXP = k_ra_usb_dcp_max_packet;
+  reg->DCPCTR  = 0U;
+
+  /* HUM Ch 36.2.10 "INTENB0 : Interrupt Enable Register 0", p 1980 */
+  reg->INTENB0 = (uint16_t)((1U << k_ra_int0_bit_bemp) | (1U << k_ra_int0_bit_brdy) |
+                            (1U << k_ra_int0_bit_nrdy) | (1U << k_ra_int0_bit_ctrt) |
+                            (1U << k_ra_int0_bit_dvst) | (1U << k_ra_int0_bit_vbse));
+  reg->INTENB1 = 0U;
+  reg->BRDYENB = 0U;
+  reg->NRDYENB = 0U;
+  reg->BEMPENB = 0U;
+}
+
+/**
+ * @brief USBFS module bring-up (FSP `hw_usb_pmodule_init` IP0 branch).
+ *
+ * @details Sets SCKE, polls SCKE-readback, clears DRPD, sets USBE.
+ * The FS instance has no PHY-side registers (PHYSET / LPSTS / PLLSTA
+ * are HS-only) so this is a pure SYSCFG-driven sequence.
+ *
+ * @param[in] reg FS register block pointer (must be ::ra_usb_fs()).
+ *
+ * @return ::ra_err_t
+ * @retval k_ra_ok USBE asserted.
+ *
+ * @pre MSTPB11 ungated; USB48CLK fed from PLL2P/5 = 48 MHz.
+ * @pre Caller is single-threaded init context.
+ *
+ * @post SYSCFG: SCKE=1, DRPD=0, USBE=1.
+ * @post Loop iteration count is bounded.
+ *
+ * @note Not thread-safe; init context only.
+ * @since 0.1.0
+ */
+static ra_err_t internal_usbfs_module_bringup(volatile r_usb_regs_t* reg)
+{
+  /* HUM Ch 36.2.1 "SYSCFG : System Configuration Control Register", p 1966 */
+  reg->SYSCFG = (uint16_t)(reg->SYSCFG | (uint16_t)(1U << k_ra_syscfg_bit_scke));
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_usbhs_scke_poll_limit; ++i) {
+    if ((reg->SYSCFG & (uint16_t)(1U << k_ra_syscfg_bit_scke)) != 0U) {
+      break;
+    }
+  }
+  reg->SYSCFG = (uint16_t)(reg->SYSCFG & (uint16_t)~(uint16_t)(1U << k_ra_syscfg_bit_drpd));
+  reg->SYSCFG = (uint16_t)(reg->SYSCFG | (uint16_t)(1U << k_ra_syscfg_bit_usbe));
+  return k_ra_ok;
+}
+
+/**
  * @brief Implementation of ra_usb_device_init (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
+ * @details Dispatches FS vs HS bring-up, then programmes shared FIFO,
+ *          DCP, and INTENB0 fields.
  * @param[in] speed See implementation.
  * @return Result code.
  * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
+ * @retval k_ra_err_invalid_arg Invalid speed.
+ * @retval k_ra_err_hw_timeout HS PHY PLL lock timeout.
+ * @pre MSTP and clock subsystem are armed.
+ * @pre Caller is single-threaded init context.
+ * @post Module powered and SYSCFG.USBE = 1.
+ * @post INTENB0 carries device-mode interrupt mask.
+ * @note Not thread-safe; init context only.
  * @since 0.1.0
  */
 ra_err_t ra_usb_device_init(ra_usb_speed_t speed)
@@ -336,35 +617,15 @@ ra_err_t ra_usb_device_init(ra_usb_speed_t speed)
   const ra_err_t mst_err = ra_mstp_enable(internal_mstp(speed));
   RA_RETURN_ON_ERROR(mst_err, s_tag, "usb_init: mstp enable");
 
-  /* HUM Ch 36.2.1 "SYSCFG : System Configuration Control Register", p 1966 */
-  /* HUM Ch 37.2.1 "SYSCFG : System Configuration Control Register", p 2060 */
-  /* SCKE first; clear DRPD (host pull-down); set USBE; HSE on HS only. */
-  uint16_t syscfg = (uint16_t)(1U << k_ra_syscfg_bit_scke);
-  syscfg          = (uint16_t)(syscfg | (uint16_t)(1U << k_ra_syscfg_bit_usbe));
   if (speed == k_ra_usb_speed_hs) {
-    syscfg = (uint16_t)(syscfg | (uint16_t)(1U << k_ra_syscfg_bit_hse));
+    const ra_err_t phy_err = internal_usbhs_phy_bringup(reg);
+    RA_RETURN_ON_ERROR(phy_err, s_tag, "usb_init: HS PHY bring-up");
+  } else {
+    const ra_err_t fs_err = internal_usbfs_module_bringup(reg);
+    RA_RETURN_ON_ERROR(fs_err, s_tag, "usb_init: FS module bring-up");
   }
-  reg->SYSCFG = syscfg;
 
-  /* HUM Ch 36.2.7 "CFIFOSEL : CFIFO Port Select Register", p 1976 */
-  reg->CFIFOSEL  = k_ra_fifosel_mbw_16;
-  reg->D0FIFOSEL = k_ra_fifosel_mbw_16;
-  reg->D1FIFOSEL = k_ra_fifosel_mbw_16;
-
-  /* HUM Ch 36.2.20 "DCPMAXP : DCP Max Packet Size Register", p 1990 */
-  reg->DCPCFG  = 0U;
-  reg->DCPMAXP = k_ra_usb_dcp_max_packet;
-  reg->DCPCTR  = 0U;
-
-  /* HUM Ch 36.2.10 "INTENB0 : Interrupt Enable Register 0", p 1980 */
-  /* Enable the device-mode interrupt set: BEMP/BRDY/NRDY/CTRT/DVST/VBSE. */
-  reg->INTENB0 = (uint16_t)((1U << k_ra_int0_bit_bemp) | (1U << k_ra_int0_bit_brdy) |
-                            (1U << k_ra_int0_bit_nrdy) | (1U << k_ra_int0_bit_ctrt) |
-                            (1U << k_ra_int0_bit_dvst) | (1U << k_ra_int0_bit_vbse));
-  reg->INTENB1 = 0U;
-  reg->BRDYENB = 0U;
-  reg->NRDYENB = 0U;
-  reg->BEMPENB = 0U;
+  internal_usb_init_common(reg);
 
   ra_log_info_val(s_tag, "usb device init speed", (uint32_t)speed);
   return k_ra_ok;
