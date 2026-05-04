@@ -45,8 +45,8 @@
  *  - 0x27       : digit '0'        (Shift -> ')')
  *  - 0x28       : '\n' (Enter)
  *  - 0x29       : ESC (printed as '^[')
- *  - 0x2A       : Backspace ('\b')
- *  - 0x2B       : Tab ('\t')
+ *  - 0x2A       : Backspace (`'\b'`)
+ *  - 0x2B       : Tab (`'\t'`)
  *  - 0x2C       : space (' ')
  *  - 0x2D       : '-' (Shift -> '_')
  *  - 0x2E       : '=' (Shift -> '+')
@@ -55,7 +55,7 @@
  *  - 0x31       : '\\' (Shift -> '|')
  *  - 0x33       : ';' (Shift -> ':')
  *  - 0x34       : '\'' (Shift -> '"')
- *  - 0x35       : '`' (Shift -> '~')
+ *  - 0x35       : backtick (Shift -> tilde)
  *  - 0x36       : ',' (Shift -> '<')
  *  - 0x37       : '.' (Shift -> '>')
  *  - 0x38       : '/' (Shift -> '?')
@@ -167,7 +167,7 @@ typedef enum : uint8_t {
   k_usb_kbd_kc_bsl   = 0x31U, /**< '\\'.*/
   k_usb_kbd_kc_semi  = 0x33U, /**< ';'. */
   k_usb_kbd_kc_quote = 0x34U, /**< '\''.*/
-  k_usb_kbd_kc_grave = 0x35U, /**< '`'. */
+  k_usb_kbd_kc_grave = 0x35U, /**< Backtick. */
   k_usb_kbd_kc_comma = 0x36U, /**< ','. */
   k_usb_kbd_kc_dot   = 0x37U, /**< '.'. */
   k_usb_kbd_kc_slash = 0x38U, /**< '/'. */
