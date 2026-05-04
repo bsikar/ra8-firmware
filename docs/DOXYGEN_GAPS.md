@@ -6,28 +6,38 @@ Doxygen Documentation Requirements in `CLAUDE.md`. Scope: `libs/`,
 
 ## Summary
 
-- Total functions audited: 2754
-- Functions with gaps: 2
-- Total missing-tag instances: 2
+- Total functions audited: 2781
+- Functions with gaps: 4
+- Total missing-tag instances: 24
 
 ## Most-frequently-missing tags
 
 | Tag | Count |
 |-----|-------|
+| `@pre` | 4 |
+| `@post` | 4 |
+| `@param` | 3 |
+| `@since` | 3 |
+| `@brief` | 2 |
+| `@details` | 2 |
 | `@return` | 2 |
+| `@retval` | 2 |
+| `@note` | 2 |
 
 ## Worst 10 modules by gap count
 
 | Module | Functions with gaps |
 |--------|---------------------|
 | `libs/ra_hal` | 2 |
+| `port/usbx` | 2 |
 
 ## Top 30 files by gap count
 
 | File | Functions with gaps |
 |------|---------------------|
-| `libs/ra_hal/src/ra_canfd.c` | 1 |
-| `libs/ra_hal/src/ra_etha.c` | 1 |
+| `port/usbx/ux_dcd_ra_usb.c` | 2 |
+| `libs/ra_hal/inc/ra_usb.h` | 1 |
+| `libs/ra_hal/src/ra_usb.c` | 1 |
 
 ## Severity legend
 
@@ -43,4 +53,4 @@ See `docs/DOXYGEN_GAPS.csv` for the full row-by-row data.
 |------|---------------------|-----------------------|
 | 2026-05-02 (original)                 | 2557 | 20328 |
 | 2026-05-02 (refresh)                  | 663  | 4935  |
-| 2026-05-02 (auditor false-pos fix)    | 2 | 2 |
+| 2026-05-02 (auditor false-pos fix)    | 4 | 24 |

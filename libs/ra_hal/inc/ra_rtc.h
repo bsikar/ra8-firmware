@@ -153,9 +153,6 @@ typedef void (*ra_rtc_event_fn_t)(void* ctx, uint8_t status_mask);
  * handler installed via ``ra_rtc_attach_handler()`` with the snapshot
  * mask. Silently returns if no handler is installed.
  *
- * @return None.
- * @retval None Function returns ``void``; missing handler is silently ignored.
- *
  * @pre ``ra_rtc_init()`` previously succeeded.
  * @pre Called from ISR context or unit-test driver.
  * @post ``RCR1`` interrupt-enable bits captured at entry are cleared.

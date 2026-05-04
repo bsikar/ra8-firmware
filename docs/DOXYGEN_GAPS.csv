@@ -1,3 +1,5 @@
 source_file,line,function_name,missing_tags,severity
-libs/ra_hal/src/ra_canfd.c,1078,ra_canfd_test_inject_frame,@return,medium
-libs/ra_hal/src/ra_etha.c,1558,ra_etha_test_inject_rx,@return,medium
+libs/ra_hal/inc/ra_usb.h,614,ra_usb_intsts0_snapshot,@pre(<2:1);@post(<2:1),medium
+libs/ra_hal/src/ra_usb.c,1363,ra_usb_intsts0_snapshot,@brief;@details;@param[speed];@return;@retval;@pre;@post;@note;@since,high
+port/usbx/ux_dcd_ra_usb.c,1017,internal_sync_state_from_dvsq,@param[speed];@pre(<2:1);@post(<2:1);@since,high
+port/usbx/ux_dcd_ra_usb.c,1048,internal_dispatch_worker,@brief;@details;@param[arg];@return;@retval;@pre;@post;@note;@since,high

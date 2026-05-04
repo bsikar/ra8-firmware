@@ -47,9 +47,6 @@ extern "C" {
  * - Enables the I-cache and D-cache for performance.
  * - Enables the branch prediction unit.
  *
- * @return None.
- * @retval None
- *
  * @pre `SystemInit()` has already executed.
  * @pre Function is called from a single-threaded context.
  * @post Log backend, pin validator, and stack canary are initialised.

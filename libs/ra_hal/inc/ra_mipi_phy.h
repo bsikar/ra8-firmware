@@ -619,9 +619,6 @@ bool ra_mipi_phy_is_pll_locked(void);
  * If neither bit moved, a single ``k_ra_mipi_phy_event_status_chg``
  * is emitted so the consumer at least knows the PHY was polled.
  *
- * @return None.
- * @retval None
- *
  * @pre -- (no preconditions; tolerates the callback being NULL).
  * @pre Called from ISR context, host-test driver or polling task.
  * @post DPHYSFR has been read once; no register has been written.

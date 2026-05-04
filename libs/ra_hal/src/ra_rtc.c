@@ -117,9 +117,6 @@ static uint8_t internal_bin_to_bcd(uint8_t bin)
  * @param[in] reg    Register pointer to poll.
  * @param[in] mask   Bits to mask before comparing.
  * @param[in] expect Expected masked value.
- * @return Always returns success in current builds; if the bit never
- *         flips the function still returns after the iteration cap so
- *         init can continue (the mock back-end echoes writes).
  *
  * @pre Module state is consistent.
  * @pre Module state is consistent.

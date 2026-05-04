@@ -415,8 +415,6 @@ void ble_transport_ll_init(void)
  *
  * @param[in] buf NimBLE-allocated command buffer.
  *
- * @return 0 on success, negative on failure (matches NimBLE convention).
- *
  * @pre ``ble_hci_ra_ble_init`` returned ``k_ra_ok``.
  * @pre buf != NULL.
  * @post buf has been freed via ``ble_transport_free``.

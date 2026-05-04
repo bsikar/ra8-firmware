@@ -290,9 +290,6 @@ typedef void (*ra_rsip_event_fn_t)(void* ctx, uint32_t isr);
  * (if any), and acks the bits the callback observed via
  * ``ra_rsip_clear_status``.
  *
- * @return None.
- * @retval None
- *
  * @pre Caller is the IRQ glue layer; runs in IRQ context.
  * @pre ``ra_rsip_init`` has been called at least once since reset.
  *

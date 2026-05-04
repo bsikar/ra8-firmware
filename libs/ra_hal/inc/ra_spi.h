@@ -456,9 +456,6 @@ ra_spi_attach_transfer_handler(uint8_t channel, ra_spi_complete_fn_t fn, void* c
  *
  * @param[in] channel SPI channel index (0..1).
  *
- * @return None.
- * @retval None Function returns ``void``.
- *
  * @pre ``ra_spi_init(channel, ...)`` succeeded.
  * @pre Called from ISR context (or unit-test driver).
  * @post Either one TX word was written or the transfer is complete.
@@ -480,9 +477,6 @@ void ra_spi_dispatch_spti(uint8_t channel);
  *
  * @param[in] channel SPI channel index (0..1).
  *
- * @return None.
- * @retval None Function returns ``void``.
- *
  * @pre ``ra_spi_init(channel, ...)`` succeeded.
  * @pre Called from ISR context (or unit-test driver).
  * @post Either one RX word was consumed or the completion callback ran.
@@ -503,9 +497,6 @@ void ra_spi_dispatch_spri(uint8_t channel);
  * invokes the registered error callback with the collected mask.
  *
  * @param[in] channel SPI channel index (0..1).
- *
- * @return None.
- * @retval None Function returns ``void``.
  *
  * @pre ``ra_spi_init(channel, ...)`` succeeded.
  * @pre Called from ISR context (or unit-test driver).

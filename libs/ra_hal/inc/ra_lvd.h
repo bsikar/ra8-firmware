@@ -997,9 +997,6 @@ ra_lvd_attach_channel_handler(ra_lvd_channel_t channel, ra_lvd_event_fn_t fn, vo
  *
  * @param[in] channel Channel id that fired the IRQ / NMI.
  *
- * @return None.
- * @retval None
- *
  * @pre Called from PVD ISR or NMI context.
  * @pre ``channel`` is a valid ::ra_lvd_channel_t value.
  *

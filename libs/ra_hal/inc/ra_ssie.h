@@ -868,9 +868,6 @@ ra_ssie_read_buffer(uint8_t channel, uint32_t* buffer, uint16_t samples, uint16_
  *
  * @param[in] channel Channel that fired.
  *
- * @return None.
- * @retval None
- *
  * @pre Channel index in range (out-of-range silently dropped).
  * @pre A handler was attached via ``ra_ssie_attach_handler``.
  *

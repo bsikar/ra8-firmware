@@ -598,9 +598,6 @@ static uint8_t internal_compose_cr0(const ra_lvd_channel_map_t* map, const ra_lv
  * @param[in] map Channel map.
  * @param[in] cfg Caller-supplied config.
  *
- * @return None.
- * @retval None
- *
  * @pre ``map`` describes an m channel (caller checks ``map->has_irq``).
  * @pre PRCR.PRC3 unlocked (caller-managed).
  * @post CR1 reflects ``cfg``, DET cleared if ``cfg->clear_status``.
@@ -633,9 +630,6 @@ static void internal_program_cr1(const ra_lvd_channel_map_t* map, const ra_lvd_c
  *
  * @param[in] map Channel map.
  * @param[in] cfg Caller-supplied config.
- *
- * @return None.
- * @retval None
  *
  * @pre Module clock ungated.
  * @pre PRCR.PRC3 unlocked (caller-managed).
@@ -673,9 +667,6 @@ static void internal_lvd_program_cmpcr(const ra_lvd_channel_map_t* map, const ra
  *
  * @param[in] map Channel map.
  * @param[in] cfg Caller-supplied config.
- *
- * @return None.
- * @retval None
  *
  * @pre ``ra_lvd_channel_init`` already ran the CMPCR steps.
  * @pre PRCR.PRC3 unlocked (caller-managed).
@@ -1813,9 +1804,6 @@ ra_err_t ra_lvd_attach_channel_handler(ra_lvd_channel_t channel, ra_lvd_event_fn
  * sequence (HUM Ch 12.2.7 "PVDmSR" p 600).
  *
  * @param[in] channel PVD channel id that fired the IRQ / NMI.
- *
- * @return None.
- * @retval None
  *
  * @pre Called from PVD ISR or NMI context.
  * @pre PRCR.PRC3 unlocked (caller-managed during ack).

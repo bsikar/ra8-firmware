@@ -830,9 +830,6 @@ typedef void (*ra_bkup_event_fn_t)(void* ctx, uint8_t tamper_flags);
  * @details See the matching header declaration for the full
  * contract; this site adds no behaviour beyond what the public
  * API documents.
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
  */
 void ra_bkup_dispatch(uint8_t tamper_flags);
 

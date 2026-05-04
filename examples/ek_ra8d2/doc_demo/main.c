@@ -97,8 +97,6 @@ static uint16_t doc_demo_sw_sum(void)
  * @pre out_sum non-NULL.
  * @post On success *out_sum == doc_demo_sw_sum().
  *
- * @return Error code from the first failing ra_doc_add16.
- *
  * @since 0.1.0
  */
 [[nodiscard]] static ra_err_t doc_demo_hw_sum(uint16_t* out_sum)

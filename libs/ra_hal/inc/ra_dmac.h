@@ -375,9 +375,6 @@ ra_dmac_attach_callback(uint8_t channel, ra_dmac_callback_fn_t fn, void* ctx);
  *
  * @param[in] channel DMAC0 channel index 0..7.
  *
- * @return None.
- * @retval None Function returns ``void``; out-of-range channel is silently ignored.
- *
  * @pre ``ra_mstp_init()`` and ``ra_dmac_start(channel, ...)`` have been called.
  * @pre Called from ISR context or unit-test driver.
  * @post Registered completion callback invoked at most once.
@@ -398,9 +395,6 @@ void ra_dmac_dispatch(uint8_t channel);
  * of range. Tied to ``DMINT.RPTIE`` (HUM Ch 16.2.7, p 612).
  *
  * @param[in] channel DMAC0 channel index 0..7.
- *
- * @return None.
- * @retval None Function returns ``void``; out-of-range channel is silently ignored.
  *
  * @pre ``ra_mstp_init()`` and ``ra_dmac_start_repeat(channel, ...)`` have been called.
  * @pre Called from ISR context or unit-test driver.

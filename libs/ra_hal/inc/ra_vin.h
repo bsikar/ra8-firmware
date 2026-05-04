@@ -1067,9 +1067,6 @@ typedef void (*ra_vin_event_fn_t)(void* ctx, uint32_t status_mask);
  * and writes back the W1C subset to acknowledge the event with the
  * hardware.
  *
- * @return None.
- * @retval None
- *
  * @pre Called from a single CPU context.
  * @pre `ra_vin_init` was successful.
  * @post W1C bits in INTS read as 0 after this returns.

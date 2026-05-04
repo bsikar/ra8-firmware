@@ -132,9 +132,6 @@ static uint8_t internal_find_free(void)
  * @param[in]  req      Source request descriptor (non-NULL).
  * @param[out] out_cfg  Destination DMAC config struct (non-NULL).
  *
- * @return None.
- * @retval None Function returns ``void``.
- *
  * @pre ``req != NULL`` and ``out_cfg != NULL``.
  * @pre ``internal_validate_request(req) == k_ra_ok``.
  * @post ``*out_cfg`` populated with values copied from ``*req``.
@@ -466,9 +463,6 @@ ra_err_t ra_dma_channel_is_busy(uint8_t channel, bool* out_busy)
  * are silently ignored.
  *
  * @param[in] channel Channel whose completion just fired.
- *
- * @return None.
- * @retval None Function returns ``void``; out-of-range channel is silently ignored.
  *
  * @pre ``ra_dma_init()`` previously succeeded.
  * @pre Called from ISR context or a test driver.

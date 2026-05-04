@@ -60,9 +60,6 @@ typedef enum : uint8_t {
  *          calls fall through to a fresh broadcast request (RFC 826
  *          sec 4).
  *
- * @return None.
- * @retval None Function returns void.
- *
  * @pre ra_net_open has succeeded.
  * @pre Caller is single-threaded.
  * @post Every ARP cache slot is empty.
@@ -129,9 +126,6 @@ static uint8_t arp_lookup(const ra_net_ipv4_t* ip, ra_net_mac_t* out)
  *
  * @param[in] ip  IPv4 address. Must not be NULL.
  * @param[in] mac MAC address to associate. Must not be NULL.
- *
- * @return None.
- * @retval None Function returns void.
  *
  * @pre ra_net_open has succeeded.
  * @pre ip and mac are non-NULL.

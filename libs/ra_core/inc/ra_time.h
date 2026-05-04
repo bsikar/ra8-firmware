@@ -71,9 +71,6 @@ uint32_t ra_time_ms(void);
  *
  * @param[in] ms Milliseconds to wait. Zero returns immediately.
  *
- * @return None.
- * @retval None
- *
  * @pre `ra_time_init()` has been called.
  * @pre IRQs are NOT globally masked.
  * @post At least `ms` milliseconds have elapsed.
@@ -94,9 +91,6 @@ void ra_delay_ms(uint32_t ms);
  * by declaring `void SysTick_Handler(void) { ra_time_on_tick(); }`
  * somewhere in the application, OR link `ra_time.c` with the
  * already-provided `SysTick_Handler` implementation in this file.
- *
- * @return None.
- * @retval None
  *
  * @pre Invoked from SysTick IRQ context (or test equivalent).
  * @pre `ra_time_init()` has set up the SysTick reload value.
@@ -139,9 +133,6 @@ uint32_t ra_now_ms(void);
  * @details Convenience wrapper that forwards to `ra_delay_ms()`.
  *
  * @param[in] ms Milliseconds to sleep. Zero returns immediately.
- *
- * @return None.
- * @retval None
  *
  * @pre Same as `ra_delay_ms()`.
  * @pre None additional.

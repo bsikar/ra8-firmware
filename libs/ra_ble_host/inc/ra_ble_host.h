@@ -458,9 +458,6 @@ ra_ble_host_gatt_set_value(uint16_t char_handle, const uint8_t* value, uint16_t 
  *                        + payload).
  * @param[in] len         Total byte count in l2cap_frame.
  *
- * @return None.
- * @retval None Function returns void.
- *
  * @pre ra_ble_host_init has succeeded.
  * @pre l2cap_frame is non-NULL when len > 0.
  * @post The L2CAP layer has consumed the frame and dispatched it.
@@ -504,9 +501,6 @@ uint32_t ra_ble_host_test_event_count(void);
  *
  * @param[in] conn_handle 12-bit ACL connection handle to assign.
  *
- * @return None.
- * @retval None Function returns void.
- *
  * @pre ra_ble_host_init has succeeded.
  * @pre Caller is single-threaded.
  * @post The host's conn_handle is set to conn_handle.
@@ -534,9 +528,6 @@ void ra_ble_host_test_inject_connect(uint16_t conn_handle);
  * @param[in] params     Parameter bytes (may be NULL when @p params_len
  *                       is 0).
  * @param[in] params_len Parameter byte count.
- *
- * @return None.
- * @retval None Function returns void.
  *
  * @pre Caller is single-threaded.
  * @pre @p params is non-NULL when @p params_len > 0 and the trampoline

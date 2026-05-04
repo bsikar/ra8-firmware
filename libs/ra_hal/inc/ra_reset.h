@@ -345,11 +345,6 @@ void ra_reset_test_only_reset_state(void);
  * After the reset completes ``RSTSR1.SWRF`` will read 1 and
  * ``ra_reset_get_cause`` will return ``k_ra_reset_cause_software``.
  *
- * @return Never returns on target. On the host (``RA_SIMULATOR_MODE``)
- *         the function performs the AIRCR write and then returns so
- *         unit tests can verify the bit pattern. ``__DSB`` is
- *         implemented as a no-op on the host build.
- *
  * @pre None.
  * @pre Caller has flushed any data that must survive the reset to
  *      non-volatile storage (MRAM, BKUP regs).

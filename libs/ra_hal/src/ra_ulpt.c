@@ -261,9 +261,6 @@ ra_err_t ra_ulpt_attach_handler(ra_ulpt_event_fn_t fn, void* ctx)
  *
  * @param[in] channel ULPT channel index (0 or 1).
  *
- * @return None.
- * @retval None
- *
  * @pre Called from ISR context or a host-test driver.
  * @pre ``channel`` < 2 (out-of-range silently dropped).
  *

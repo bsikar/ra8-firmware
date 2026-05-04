@@ -119,9 +119,6 @@ typedef void (*ra_dtc_event_fn_t)(void* ctx, uint16_t status);
  * ``ra_dtc_attach_handler()`` with that status word and the stored
  * context pointer. Silently returns when no handler is installed.
  *
- * @return None.
- * @retval None Function returns ``void``; missing handler is silently ignored.
- *
  * @pre ``ra_dtc_init()`` previously succeeded.
  * @pre Called from ISR context or unit-test driver.
  * @post Registered handler invoked at most once with current ``DTCSTS``.

@@ -106,9 +106,6 @@ typedef enum : uint8_t {
  * requires no hardware setup beyond this call. A UART backend is
  * provided as an alternative for boards without a J-Link.
  *
- * @return None.
- * @retval None
- *
  * @pre `SystemInit()` has run.
  * @pre Called exactly once.
  * @post Log calls become routable.
@@ -129,9 +126,6 @@ void ra_log_init(void);
  * @param[in] tag     Short component tag; must not be NULL.
  * @param[in] message Free-form ASCII message; must not be NULL.
  *
- * @return None.
- * @retval None
- *
  * @pre `tag` and `message` are NUL-terminated strings.
  * @pre `ra_log_init()` has run (otherwise dropped).
  * @post One log line emitted or dropped.
@@ -150,9 +144,6 @@ void internal_ra_log_error(const char* tag, const char* message);
  *
  * @param[in] tag     Short component tag; must not be NULL.
  * @param[in] message Free-form ASCII message; must not be NULL.
- *
- * @return None.
- * @retval None
  *
  * @pre `tag` and `message` are NUL-terminated strings.
  * @pre `ra_log_init()` has run.
@@ -173,9 +164,6 @@ void internal_ra_log_warn(const char* tag, const char* message);
  * @param[in] tag     Short component tag; must not be NULL.
  * @param[in] message Free-form ASCII message; must not be NULL.
  *
- * @return None.
- * @retval None
- *
  * @pre `tag` and `message` are NUL-terminated strings.
  * @pre `ra_log_init()` has run.
  * @post One log line emitted or dropped.
@@ -194,9 +182,6 @@ void internal_ra_log_info(const char* tag, const char* message);
  *
  * @param[in] tag     Short component tag; must not be NULL.
  * @param[in] message Free-form ASCII message; must not be NULL.
- *
- * @return None.
- * @retval None
  *
  * @pre `tag` and `message` are NUL-terminated strings.
  * @pre `ra_log_init()` has run.
@@ -218,9 +203,6 @@ void internal_ra_log_debug(const char* tag, const char* message);
  * @param[in] message Free-form ASCII message; must not be NULL.
  * @param[in] value   Unsigned numeric companion appended to the line.
  *
- * @return None.
- * @retval None
- *
  * @pre `tag` and `message` are NUL-terminated strings.
  * @pre `ra_log_init()` has run.
  * @post One log line emitted or dropped.
@@ -241,9 +223,6 @@ void internal_ra_log_error_val(const char* tag, const char* message, uint32_t va
  * @param[in] message Free-form ASCII message; must not be NULL.
  * @param[in] value   Unsigned numeric companion appended to the line.
  *
- * @return None.
- * @retval None
- *
  * @pre `tag` and `message` are NUL-terminated strings.
  * @pre `ra_log_init()` has run.
  * @post One log line emitted or dropped.
@@ -263,9 +242,6 @@ void internal_ra_log_warn_val(const char* tag, const char* message, uint32_t val
  * @param[in] tag     Short component tag; must not be NULL.
  * @param[in] message Free-form ASCII message; must not be NULL.
  * @param[in] value   Unsigned numeric companion appended to the line.
- *
- * @return None.
- * @retval None
  *
  * @pre `tag` and `message` are NUL-terminated strings.
  * @pre `ra_log_init()` has run.
@@ -288,9 +264,6 @@ void internal_ra_log_info_val(const char* tag, const char* message, uint32_t val
  * @param[in] tag     Short component tag; must not be NULL.
  * @param[in] message Free-form ASCII message; must not be NULL.
  * @param[in] value   Signed numeric companion appended to the line.
- *
- * @return None.
- * @retval None
  *
  * @pre `tag` and `message` are NUL-terminated strings.
  * @pre `ra_log_init()` has run.

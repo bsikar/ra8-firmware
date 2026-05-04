@@ -109,9 +109,6 @@ ra_sdhi_send_command(uint8_t instance, uint32_t cmd, uint32_t arg, uint32_t* out
  *
  * @param[in] instance SDHI instance index (0 or 1).
  *
- * @return None.
- * @retval None
- *
  * @pre Called from ISR context or a host-test driver.
  * @pre ``instance`` < 2.
  *
