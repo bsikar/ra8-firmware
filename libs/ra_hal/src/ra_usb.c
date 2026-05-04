@@ -428,6 +428,57 @@ static volatile uint32_t s_usbhs_init_probe = 0U;
 static volatile uint16_t s_usbhs_pllsta_probe = 0U;
 
 /**
+ * @var s_syscfg_after_phy_bringup
+ * @brief SYSCFG snapshot captured at the end of ra_usb_device_init.
+ *
+ * @details
+ * Bisect probe for the "USBE clears between phy bring-up and echo loop"
+ * regression. Captured AFTER internal_usbhs_phy_bringup AND
+ * internal_usb_init_common have both run. Expected value: 0x0081
+ * (USBE | HSE). HUM Ch 37.2.1 SYSCFG p 2060.
+ *
+ * @note Read-only from outside; written only by ::ra_usb_device_init.
+ * @since 0.1.0
+ */
+volatile uint16_t s_syscfg_after_phy_bringup = 0U;
+
+/**
+ * @var s_lpsts_after_phy_bringup
+ * @brief LPSTS snapshot at the end of ra_usb_device_init.
+ *
+ * @details Companion to ::s_syscfg_after_phy_bringup. Expected value:
+ * SUSPENDM=1 (bit 14), so 0x4000. HUM Ch 37.2.43 LPSTS p 2111.
+ *
+ * @note Read-only from outside; written only by ::ra_usb_device_init.
+ * @since 0.1.0
+ */
+volatile uint16_t s_lpsts_after_phy_bringup = 0U;
+
+/**
+ * @var s_syscfg_after_attach
+ * @brief SYSCFG snapshot captured at the end of ra_usb_device_attach(true).
+ *
+ * @details Bisect probe; expected value with attach=true: 0x0091
+ * (USBE | DPRPU | HSE). HUM Ch 37.2.1 SYSCFG p 2060.
+ *
+ * @note Read-only from outside; written only by ::ra_usb_device_attach.
+ * @since 0.1.0
+ */
+volatile uint16_t s_syscfg_after_attach = 0U;
+
+/**
+ * @var s_lpsts_after_attach
+ * @brief LPSTS snapshot at the end of ra_usb_device_attach(true).
+ *
+ * @details Bisect probe; expected SUSPENDM=1 (0x4000). HUM Ch 37.2.43
+ * LPSTS p 2111.
+ *
+ * @note Read-only from outside; written only by ::ra_usb_device_attach.
+ * @since 0.1.0
+ */
+volatile uint16_t s_lpsts_after_attach = 0U;
+
+/**
  * @var s_clksel_winner
  * @brief Diagnostic capture of the PHYSET.CLKSEL[1:0] codepoint that
  *        produced PLL lock during the bisect harness.
@@ -874,6 +925,14 @@ ra_err_t ra_usb_device_init(ra_usb_speed_t speed)
 
   internal_usb_init_common(reg);
 
+  /* Bisect probes: capture SYSCFG/LPSTS state at the END of device-init,
+   * BEFORE control returns to ra_board_usbhs_device_init / the DCD
+   * bridge. HUM Ch 37.2.1 SYSCFG p 2060, HUM Ch 37.2.43 LPSTS p 2111. */
+  if (speed == k_ra_usb_speed_hs) {
+    s_syscfg_after_phy_bringup = reg->SYSCFG;
+    s_lpsts_after_phy_bringup  = *ra_usbhs_lpsts();
+  }
+
   ra_log_info_val(s_tag, "usb device init speed", (uint32_t)speed);
   return k_ra_ok;
 }
@@ -938,6 +997,13 @@ ra_err_t ra_usb_device_attach(ra_usb_speed_t speed, bool attached)
     internal_rmw16(&reg->SYSCFG, dprpu, 0U);
   } else {
     internal_rmw16(&reg->SYSCFG, 0U, dprpu);
+  }
+
+  /* Bisect probes: capture SYSCFG/LPSTS at end of attach. HUM Ch 37.2.1
+   * SYSCFG p 2060, HUM Ch 37.2.43 LPSTS p 2111. */
+  if (speed == k_ra_usb_speed_hs) {
+    s_syscfg_after_attach = reg->SYSCFG;
+    s_lpsts_after_attach  = *ra_usbhs_lpsts();
   }
   return k_ra_ok;
 }

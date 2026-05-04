@@ -75,6 +75,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8d2_usb_regs.h"
 #include "ra_board_ek_ra8d2.h"
 #include "ra_cgc.h"
 #include "ra_err.h"
@@ -216,6 +217,31 @@ volatile demo_diag_t s_demo_diag = {};
  * @since 0.1.0
  */
 static volatile uint32_t s_boot_probe = 0U;
+
+/**
+ * @var s_syscfg_in_echo_loop
+ * @brief SYSCFG snapshot taken on the FIRST iteration of the echo loop.
+ *
+ * @details Bisect probe (HUM Ch 37.2.1 SYSCFG p 2060) for the "USBE
+ * clears between phy bring-up and echo loop" regression. Captured
+ * exactly once -- before the loop body has had a chance to do any
+ * USBX work -- so a JLink session can compare it against
+ * ::s_syscfg_after_attach to localise whether anything between
+ * ra_usb_device_attach and the echo-loop entry clears USBE.
+ *
+ * @note File-scope, single-writer (worker thread).
+ * @since 0.1.0
+ */
+volatile uint16_t s_syscfg_in_echo_loop = 0U;
+
+/**
+ * @var s_lpsts_in_echo_loop
+ * @brief LPSTS snapshot on first echo-loop iteration.
+ * @details Companion to ::s_syscfg_in_echo_loop; HUM Ch 37.2.43 LPSTS
+ * p 2111. Expected SUSPENDM=1 (0x4000).
+ * @since 0.1.0
+ */
+volatile uint16_t s_lpsts_in_echo_loop = 0U;
 
 /**
  * @enum boot_probe_step_t
@@ -564,6 +590,10 @@ static VOID demo_worker(ULONG arg)
 
   /* Echo loop. */
   s_boot_probe = (uint32_t)k_boot_probe_enter_echo_loop;
+  /* Bisect probes captured ONCE on entry to the echo loop. HUM
+   * Ch 37.2.1 SYSCFG p 2060, HUM Ch 37.2.43 LPSTS p 2111. */
+  s_syscfg_in_echo_loop = ra_usb_hs()->SYSCFG;
+  s_lpsts_in_echo_loop  = *ra_usbhs_lpsts();
   UCHAR buf[k_demo_echo_buf_bytes];
   ULONG n = 0UL;
   while (1) {
