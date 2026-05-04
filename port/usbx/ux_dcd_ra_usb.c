@@ -94,6 +94,39 @@ static ra_usb_dcd_t s_dcd = {
 };
 
 /**
+ * @struct ra_usb_dcd_diag_t
+ * @brief Externally-readable diagnostic counters for OUT-pipe stall debug.
+ * @details Read these via JLink to localise where bulk-OUT data flow stops.
+ *          Layout in declaration order, 4 bytes each. Address resolved
+ *          via `arm-none-eabi-nm | grep s_diag`. Increment-only; never
+ *          cleared at runtime so a JLink dump after a single host write
+ *          tells the full story.
+ */
+typedef struct {
+  volatile uint32_t xfer_req_total;          /**< +0x00 internal_transfer_request entered. */
+  volatile uint32_t xfer_req_null_arg;       /**< +0x04 tr or ep was NULL.                 */
+  volatile uint32_t xfer_req_bad_pipe;       /**< +0x08 pipe index >= max.                 */
+  volatile uint32_t xfer_req_pipe2_in;       /**< +0x0C pipe == 2.                         */
+  volatile uint32_t xfer_req_pipe2_out_dir;  /**< +0x10 pipe == 2 + OUT direction.         */
+  volatile uint32_t xfer_req_pipe2_stashed;  /**< +0x14 pipe2 OUT slot populated.          */
+  volatile uint32_t xfer_req_pipe2_block;    /**< +0x18 about to tx_semaphore_get.         */
+  volatile uint32_t xfer_req_pipe2_woken;    /**< +0x1C tx_semaphore_get returned.         */
+  volatile uint32_t irq_walk_total;          /**< +0x20 IRQ pipe-walk loop iterations.     */
+  volatile uint32_t irq_walk_pipe2_seen;     /**< +0x24 pipe2 walked with non-NULL xfer.   */
+  volatile uint32_t irq_walk_pipe2_complete; /**< +0x28 queue_out drained pipe2.           */
+  volatile uint32_t irq_walk_pipe2_no_data;  /**< +0x2C queue_out returned no_data.        */
+} ra_usb_dcd_diag_t;
+
+/**
+ * @var s_diag
+ * @brief Bridge diagnostic counter block. Read via JLink memory.
+ * @note Single-writer per counter; safe under the bridge's single-
+ *       worker-thread + single-class-thread model.
+ * @since 0.1.0
+ */
+static ra_usb_dcd_diag_t s_diag = {};
+
+/**
  * @enum ra_setup_byte_idx_t
  * @brief Wire-format byte indices into the USBX SETUP buffer.
  *
@@ -174,7 +207,13 @@ static uint8_t internal_ep_to_pipe(uint8_t ep_addr)
  */
 static unsigned int internal_transfer_request(struct UX_SLAVE_TRANSFER_STRUCT* tr)
 {
-  if (tr == nullptr || tr->ux_slave_transfer_request_endpoint == nullptr) {
+  s_diag.xfer_req_total++;
+  if (tr == nullptr) {
+    s_diag.xfer_req_null_arg++;
+    return UX_TRANSFER_ERROR;
+  }
+  if (tr->ux_slave_transfer_request_endpoint == nullptr) {
+    s_diag.xfer_req_null_arg++;
     return UX_TRANSFER_ERROR;
   }
 
@@ -182,7 +221,14 @@ static unsigned int internal_transfer_request(struct UX_SLAVE_TRANSFER_STRUCT* t
   const uint8_t      ep_addr = (uint8_t)ep->ux_slave_endpoint_descriptor.bEndpointAddress;
   const uint8_t      pipe    = internal_ep_to_pipe(ep_addr);
   if (pipe >= (uint8_t)k_ux_dcd_ra_usb_max_pipes) {
+    s_diag.xfer_req_bad_pipe++;
     return UX_TRANSFER_ERROR;
+  }
+  if (pipe == 2U) {
+    s_diag.xfer_req_pipe2_in++;
+    if ((ep_addr & 0x80U) == 0U) {
+      s_diag.xfer_req_pipe2_out_dir++;
+    }
   }
 
   /* DCP / EP0: split control IN data stage from the no-data status path.
@@ -215,6 +261,9 @@ static unsigned int internal_transfer_request(struct UX_SLAVE_TRANSFER_STRUCT* t
   s_dcd.pipes[pipe].ep_addr = ep_addr;
   s_dcd.pipes[pipe].dir_in  = (uint8_t)((ep_addr & 0x80U) != 0U ? 1U : 0U);
   s_dcd.pipes[pipe].max_pkt = (uint16_t)ep->ux_slave_endpoint_descriptor.wMaxPacketSize;
+  if (pipe == 2U) {
+    s_diag.xfer_req_pipe2_stashed++;
+  }
 
   if ((ep_addr & 0x80U) != 0U) {
     const uint16_t len = (uint16_t)tr->ux_slave_transfer_request_requested_length;
@@ -238,8 +287,14 @@ static unsigned int internal_transfer_request(struct UX_SLAVE_TRANSFER_STRUCT* t
   if (timeout == 0U) {
     timeout = TX_WAIT_FOREVER;
   }
+  if (pipe == 2U) {
+    s_diag.xfer_req_pipe2_block++;
+  }
   UINT sem_status =
     tx_semaphore_get(&tr->ux_slave_transfer_request_semaphore, timeout);
+  if (pipe == 2U) {
+    s_diag.xfer_req_pipe2_woken++;
+  }
   if (sem_status != TX_SUCCESS) {
     /* Timeout / aborted: drop the pipe slot so a stale stash cannot
      * cause the IRQ path to complete a now-defunct request. */
@@ -824,7 +879,7 @@ void ux_dcd_ra_usb_irq(ra_usb_speed_t speed, uint16_t intsts0)
     internal_handle_ctrt(speed, intsts0);
   }
 
-  /* Bus reset / suspend / resume: keeps USBX's slave state machine
+  /* Bus reset / suspend / resume: keeps USBX's device-state machine
    * in sync with the controller-reported DVSQ field. */
   if ((intsts0 & (uint16_t)(1U << (uint8_t)k_ra_int0_bit_dvst)) != 0U) {
     internal_handle_dvst(intsts0);
@@ -834,9 +889,13 @@ void ux_dcd_ra_usb_irq(ra_usb_speed_t speed, uint16_t intsts0)
    * returns k_ra_err_no_data if BRDY hasn't fired for that pipe;
    * we just retry on the next IRQ in that case. */
   for (uint8_t i = 1U; i < (uint8_t)k_ux_dcd_ra_usb_max_pipes; i++) {
+    s_diag.irq_walk_total++;
     UX_SLAVE_TRANSFER* tr = s_dcd.pipes[i].xfer;
     if (tr == nullptr) {
       continue;
+    }
+    if (i == 2U) {
+      s_diag.irq_walk_pipe2_seen++;
     }
     if (s_dcd.pipes[i].dir_in != 0U) {
       /* IN: data was already pushed in TRANSFER_REQUEST. Mark
@@ -851,6 +910,9 @@ void ux_dcd_ra_usb_irq(ra_usb_speed_t speed, uint16_t intsts0)
       const ra_err_t qo_err = ra_usb_queue_out(
         s_dcd.speed, i, tr->ux_slave_transfer_request_data_pointer, &len);
       if (qo_err == k_ra_ok) {
+        if (i == 2U) {
+          s_diag.irq_walk_pipe2_complete++;
+        }
         tr->ux_slave_transfer_request_actual_length   = len;
         tr->ux_slave_transfer_request_completion_code = UX_SUCCESS;
         s_dcd.pipes[i].xfer                           = nullptr;
@@ -858,6 +920,9 @@ void ux_dcd_ra_usb_irq(ra_usb_speed_t speed, uint16_t intsts0)
         (void)tx_semaphore_put(&tr->ux_slave_transfer_request_semaphore);
 #endif
       } else if (qo_err == k_ra_err_no_data) {
+        if (i == 2U) {
+          s_diag.irq_walk_pipe2_no_data++;
+        }
         /* No BRDY pending. The RA8D2 USB single-buffered OUT pipe
          * state machine can leave PID at NAK between drains; if the
          * controller has already responded NAK to one or more host
