@@ -397,7 +397,7 @@ ra_usb_phid_recv_report(uint8_t report_id, uint8_t* buf, uint16_t max_len, uint1
  * (non-class) SETUPs are rejected with `k_ra_err_not_supported` so
  * the caller can fall back to its own standard-request handler.
  *
- * @param[in] setup The SETUP packet returned by `ra_usb_read_setup`.
+ * @param[in] setup The SETUP packet returned by `ra_usb_read_setup_if_valid`.
  *
  * @return `ra_err_t` error code.
  * @retval k_ra_ok SETUP handled (status stage queued internally).

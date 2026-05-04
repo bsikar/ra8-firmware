@@ -389,7 +389,7 @@ typedef ra_err_t (*ra_usb_pprn_setup_fn_t)(void* ctx, const ra_usb_setup_t* setu
  * Standard (non-class) SETUPs are rejected with
  * `k_ra_err_not_supported`.
  *
- * @param[in] setup The SETUP packet returned by `ra_usb_read_setup`.
+ * @param[in] setup The SETUP packet returned by `ra_usb_read_setup_if_valid`.
  *
  * @return `ra_err_t` error code.
  * @retval k_ra_ok SETUP handled (status stage queued internally).
