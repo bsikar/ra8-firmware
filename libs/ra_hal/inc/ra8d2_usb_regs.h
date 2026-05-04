@@ -305,6 +305,92 @@ static inline volatile r_usb_regs_t* ra_usb_hs(void)
 }
 
 /* =============================================================================
+ * USBHS-only register offsets (HUM Ch 37 "USB 2.0 High-Speed Module")
+ * =============================================================================
+ */
+
+/**
+ * @enum ra_usbhs_offset_t
+ * @brief Byte offsets of USBHS-only registers not modelled in `r_usb_regs_t`.
+ *
+ * @details These exist only on the HS instance (HUM Ch 37) and are
+ * required for embedded-PHY bring-up. They sit either inside reserved
+ * gaps of the shared device-mode struct (PLLSTA at 0x06, PHYSET at
+ * 0x3E) or past it (LPSTS at 0x102). Accessed via base + offset rather
+ * than struct fields to keep the shared `r_usb_regs_t` layout common
+ * between FS and HS instances.
+ *
+ * - PLLSTA at 0x06 -- HUM Ch 37 "PLL Status Register"
+ * - PHYSET at 0x3E -- HUM Ch 37 "PHY Setting Register"
+ * - LPSTS  at 0x102 -- HUM Ch 37 "Low Power Status Register"
+ */
+typedef enum : uint16_t {
+  k_ra_usbhs_off_pllsta = 0x006U, /**< PLLSTA  : PLL lock flag.       */
+  k_ra_usbhs_off_physet = 0x03EU, /**< PHYSET  : embedded-PHY setup.  */
+  k_ra_usbhs_off_lpsts  = 0x102U, /**< LPSTS   : SUSPENDM gate.       */
+} ra_usbhs_offset_t;
+
+/** @brief Get pointer to USBHS PLLSTA register (read-only). */
+static inline volatile uint16_t* ra_usbhs_pllsta(void)
+{
+  return (volatile uint16_t*)(k_ra_usb_hs0_base_addr + (uintptr_t)k_ra_usbhs_off_pllsta);
+}
+
+/** @brief Get pointer to USBHS PHYSET register. */
+static inline volatile uint16_t* ra_usbhs_physet(void)
+{
+  return (volatile uint16_t*)(k_ra_usb_hs0_base_addr + (uintptr_t)k_ra_usbhs_off_physet);
+}
+
+/** @brief Get pointer to USBHS LPSTS register. */
+static inline volatile uint16_t* ra_usbhs_lpsts(void)
+{
+  return (volatile uint16_t*)(k_ra_usb_hs0_base_addr + (uintptr_t)k_ra_usbhs_off_lpsts);
+}
+
+/**
+ * @enum ra_usbhs_physet_bit_t
+ * @brief PHYSET bit positions and masks (HUM Ch 37 "PHYSET" register).
+ */
+typedef enum : uint16_t {
+  k_ra_physet_dirpd     = 0x0001U, /**< b0  : PHY power-down (1=PD).    */
+  k_ra_physet_pllreset  = 0x0002U, /**< b1  : PHY PLL reset.            */
+  k_ra_physet_clksel    = 0x0030U, /**< b5-4: input clock select mask.  */
+  k_ra_physet_clksel_12 = 0x0000U, /**< b5-4: 12 MHz reference.         */
+  k_ra_physet_repsel_16 = 0x0100U, /**< b9-8: 16-cycle terminator.      */
+  k_ra_physet_hseb      = 0x8000U, /**< b15 : CL-only mode.             */
+} ra_usbhs_physet_bit_t;
+
+/**
+ * @enum ra_usbhs_lpsts_bit_t
+ * @brief LPSTS bit positions (HUM Ch 37 "LPSTS" register).
+ */
+typedef enum : uint16_t {
+  k_ra_lpsts_suspendm = 0x4000U, /**< b14: UTMI SuspendM (1=run).       */
+} ra_usbhs_lpsts_bit_t;
+
+/**
+ * @enum ra_usbhs_pllsta_bit_t
+ * @brief PLLSTA bit positions (HUM Ch 37 "PLLSTA" register).
+ */
+typedef enum : uint16_t {
+  k_ra_pllsta_plllock = 0x0001U, /**< b0 : PHY PLL locked flag.         */
+} ra_usbhs_pllsta_bit_t;
+
+/**
+ * @enum ra_usbhs_buswait_t
+ * @brief BUSWAIT canonical value (HUM Ch 37 "BUSWAIT").
+ *
+ * @details FSP `r_usb_preg_access.c` uses
+ * ``USB_CFG_BUSWAIT | USB_BWAIT_B11_B8_WRITE`` where the b11-b8
+ * "reserved must-write" pattern is 0x0F00 and the wait field defaults
+ * to 4 cycles (USB_BWAIT_4 == 0x0F04) on RA8.
+ */
+typedef enum : uint16_t {
+  k_ra_buswait_default = 0x0F04U, /**< 4-wait + b11-b8 reserved-write. */
+} ra_usbhs_buswait_t;
+
+/* =============================================================================
  * SYSCFG bit positions (HUM Ch 36.2.1 / Ch 37.2.1)
  * =============================================================================
  */
