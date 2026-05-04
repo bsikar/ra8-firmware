@@ -777,9 +777,13 @@ static void internal_handle_dvst(uint16_t intsts0)
       new_state = (unsigned long)UX_DEVICE_ATTACHED;
       break;
     case k_ra_dvsq_default:
-      /* Bus reset just deasserted: USBX treats RESET as the
-       * pre-enumeration state, mirroring sim_host's port-reset path. */
-      new_state = (unsigned long)UX_DEVICE_RESET;
+      /* Bus reset just deasserted. USBX gates EP0 in
+       * _ux_device_stack_transfer_request on state in {ATTACHED,
+       * ADDRESSED, CONFIGURED}; UX_DEVICE_RESET (0) returns
+       * UX_TRANSFER_NOT_READY and the host's first GET_DESCRIPTOR
+       * never replies. Map DEFAULT to ATTACHED so the chapter-9
+       * dispatcher can advance to ADDRESSED on SET_ADDRESS. */
+      new_state = (unsigned long)UX_DEVICE_ATTACHED;
       break;
     case k_ra_dvsq_address:
       new_state = (unsigned long)UX_DEVICE_ADDRESSED;
@@ -788,10 +792,26 @@ static void internal_handle_dvst(uint16_t intsts0)
       new_state = (unsigned long)UX_DEVICE_CONFIGURED;
       break;
     case k_ra_dvsq_suspend:
-      new_state = (unsigned long)UX_DEVICE_SUSPENDED;
-      break;
+      /* Suspend is the one bus-level demotion the chapter-9 dispatcher
+       * cannot observe; let it through unconditionally. */
+      device->ux_slave_device_state = (unsigned long)UX_DEVICE_SUSPENDED;
+      if (_ux_system_slave->ux_system_slave_change_function != UX_NULL) {
+        (void)_ux_system_slave->ux_system_slave_change_function(
+          (unsigned long)UX_DEVICE_SUSPENDED);
+      }
+      return;
     default:
       return;
+  }
+  /* No-demote rank guard: when CTRT and DVST are pending in the same
+   * INTSTS0 snapshot we process CTRT first (the chapter-9 dispatcher
+   * has already advanced ux_slave_device_state past whatever DVSQ field
+   * the snapshot still reflects). Allow only forward state advances
+   * here so a stale DVSQ does not silently demote a freshly written
+   * CONFIGURED back to ATTACHED, which left cdc_acm_read busy-spinning
+   * with actual_length=0 and bulk-OUT NAK'd indefinitely. */
+  if (new_state <= device->ux_slave_device_state) {
+    return;
   }
   device->ux_slave_device_state = new_state;
   if (_ux_system_slave->ux_system_slave_change_function != UX_NULL) {
