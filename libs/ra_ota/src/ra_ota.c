@@ -1378,8 +1378,6 @@ ra_err_t ra_ota_run_full_update(void)
  * weak no-op default so tests can observe post-commit state without
  * actually exiting the process.
  *
- * @return None.
- *
  * @pre Weak symbol; safe to leave unimplemented.
  * @post Default no-op; target override never returns.
  *

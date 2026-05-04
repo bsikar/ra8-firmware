@@ -541,9 +541,6 @@ static uint16_t dns_encode_qname(const char* host, uint8_t* out)
  * @param[in] dns  DNS message bytes (UDP payload).
  * @param[in] dlen Message length.
  *
- * @return None.
- * @retval None Function returns void.
- *
  * @pre dns is non-NULL.
  * @pre s_state.dns_pending == 1.
  * @post On success s_state.dns_answer holds the resolved IPv4 and

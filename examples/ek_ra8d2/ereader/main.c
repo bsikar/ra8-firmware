@@ -801,8 +801,6 @@ static void ereader_catalogue_try_book(const char* filename, size_t blob_len)
  *
  * @param[in] thread_input Unused (ThreadX cookie).
  *
- * @return Never returns; sleeps forever after posting.
- *
  * @pre fx_system_initialize() has been called (by tx_application_define).
  * @post ``s_books`` is populated, ``s_book_count`` is final, and
  *       ``k_ereader_msg_library_ready`` has been posted to
@@ -984,8 +982,6 @@ static inline ULONG ereader_msg_pack(ereader_msg_kind_t kind, uint32_t payload)
  * @brief reader_thread entry: react to load / page-prev / page-next.
  *
  * @param[in] thread_input Unused (ThreadX cookie).
- *
- * @return Never returns.
  *
  * @pre tx_application_define has created the queues.
  * @post For each accepted message a ``k_ereader_msg_rendered``
@@ -1215,8 +1211,6 @@ static void ereader_build_widgets(void)
  * @brief Bring up GUIX, the canvas, the widgets, then enter the
  *        message-pumping loop.
  *
- * @return Never returns under normal operation.
- *
  * @pre Framebuffer + GUIX shim are reachable (verified by
  *      ``ra_guix_display_driver_bind``).
  * @post GUIX is repainting the canvas in response to UI events.
@@ -1317,8 +1311,6 @@ static void ereader_ui_run(void)
  * @brief ui_thread entry: build GUIX widgets and enter the event loop.
  *
  * @param[in] thread_input Unused (ThreadX cookie).
- *
- * @return Never returns.
  *
  * @pre tx_application_define created the canvas storage.
  * @post GUIX repaints in response to messages.

@@ -316,9 +316,6 @@ uint8_t ra_modem_at_internal_wait_response_should_clear_capture(const void* capt
  *          line-249 AND-decision is exercised in a pure free function
  *          where tests can vary both inputs.
  *
- * @return Nothing.
- * @retval void Always.
- *
  * @pre Module state is consistent.
  * @pre Caller holds the module lock.
  * @post Line accumulator is empty.

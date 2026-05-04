@@ -589,8 +589,6 @@ static const ra_xspi_pin_ref_t s_ra_xspi_pin_refs[k_ra_xspi_pin_count] = {
  * AFTER ``ra_board_xspi_pins_init`` so any mis-routed pin where
  * PSEL != 0x1C is recorded for JLink readout.
  *
- * @return Nothing.
- *
  * @pre ``ra_board_xspi_pins_init`` has been called.
  * @pre IOPORT module clock is on.
  *

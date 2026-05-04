@@ -493,9 +493,6 @@ ra_err_t ra_net_arp_handle(const uint8_t* frame, uint16_t len);
  *
  * @details Defined in ra_net_arp.c.
  *
- * @return None.
- * @retval None Function returns void.
- *
  * @pre ra_net_open has succeeded.
  * @pre Caller is the network thread.
  * @post Every ARP cache slot is empty.

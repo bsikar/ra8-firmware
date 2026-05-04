@@ -704,9 +704,6 @@ internal_handle_write(uint16_t conn_handle, uint8_t op, const uint8_t* pdu, uint
  * @param[in] pdu         ATT PDU bytes (opcode + body).
  * @param[in] pdu_len     Total PDU byte count including the opcode.
  *
- * @return None.
- * @retval None Function returns void.
- *
  * @pre Stack is initialized.
  * @pre pdu is non-NULL when pdu_len > 0.
  * @post The matching per-opcode handler has run, or an Error_Response

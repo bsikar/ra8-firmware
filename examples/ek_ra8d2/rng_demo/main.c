@@ -98,13 +98,6 @@ static uint8_t rng_demo_nibble_to_hex(uint8_t nibble)
 /**
  * @brief Route PD_02 / PD_03 to SCI8 TXD/RXD via the PFS PSEL field.
  *
- * @return Error code from the first failing route call, or k_ra_ok.
- *
- * @retval k_ra_ok                       Both pins SCI-routed.
- * @retval k_ra_err_gpio_invalid_port    PFS port out of range.
- * @retval k_ra_err_gpio_invalid_pin     PFS pin out of range.
- * @retval k_ra_err_gpio_conflict        Pin already claimed.
- *
  * @pre IOPORT module is reachable.
  * @pre Caller is single-threaded init context.
  *

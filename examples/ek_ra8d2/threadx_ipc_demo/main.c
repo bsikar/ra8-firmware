@@ -144,8 +144,6 @@ static uint8_t s_ipc_recv_channel;
 /**
  * @brief Halt forever in WFI on a fatal init failure.
  *
- * @return Never returns.
- *
  * @pre Called only after a non-recoverable boot error.
  * @post CPU is parked at WFI; only debugger / reset wakes it.
  *
@@ -323,8 +321,6 @@ void SysTick_Handler(void)
  *   - Sleeps ``k_ipc_demo_thread_ticks`` ticks.
  *
  * @param[in] thread_input Unused ThreadX cookie.
- *
- * @return Never returns.
  *
  * @pre ``ipc_demo_setup_or_halt`` has succeeded.
  * @pre ThreadX scheduler is running.
