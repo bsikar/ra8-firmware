@@ -479,6 +479,45 @@ volatile uint16_t s_syscfg_after_attach = 0U;
 volatile uint16_t s_lpsts_after_attach = 0U;
 
 /**
+ * @var s_syssts0_after_attach
+ * @brief SYSSTS0 snapshot captured at the end of ra_usb_device_attach(true).
+ *
+ * @details Bisect probe; this is the LOAD-BEARING readback for the HS
+ * device-mode attach gate. Per HUM Ch 37.2.3 SYSSTS0 p 2063 and
+ * Table 37.4 p 2064:
+ *   - LNST[1:0] = 00b -> SE0    (D+ pull-up NOT visible)
+ *   - LNST[1:0] = 01b -> J-State (FS device pull-up visible to host)
+ *   - LNST[1:0] = 10b -> K-State (HS chirp / FS K)
+ *
+ * Expected post-attach value with HS cable plugged: 0x0001 (LNST=01,
+ * J-state) -- the host then issues a USB bus reset within ~100 ms,
+ * after which DVST fires and FRMNUM begins incrementing.
+ *
+ * Per HUM Ch 37.2.1 SYSCFG description on p 2062 (CNEN bit), LNST
+ * reads as SE0 unless SYSCFG.CNEN=1 in device-mode -- the single-end
+ * receivers must be powered before the line state is observable.
+ *
+ * @note Read-only from outside; written only by ::ra_usb_device_attach.
+ * @since 0.1.0
+ */
+volatile uint16_t s_syssts0_after_attach = 0U;
+
+/**
+ * @var s_syscfg_before_dprpu
+ * @brief SYSCFG snapshot captured immediately BEFORE the DPRPU write.
+ *
+ * @details Bisect probe; expected: 0x0181 (USBE | CNEN | HSE) on the
+ * HS instance after the CNEN-then-DPRPU split that aligns with HUM
+ * Ch 37.3.3 Figure 37.2 p 2121 ("Resistor control: set SYSCFG.DPRPU
+ * and SYSCFG.DRPD" comes AFTER "Enable USB operation: set SYSCFG.USBE
+ * = 1" and AFTER the CNEN single-end-receiver enable).
+ *
+ * @note Read-only from outside; written only by ::ra_usb_device_attach.
+ * @since 0.1.0
+ */
+volatile uint16_t s_syscfg_before_dprpu = 0U;
+
+/**
  * @var s_clksel_winner
  * @brief Diagnostic capture of the PHYSET.CLKSEL[1:0] codepoint that
  *        produced PLL lock during the bisect harness.
@@ -993,17 +1032,47 @@ ra_err_t ra_usb_device_attach(ra_usb_speed_t speed, bool attached)
   /* HUM Ch 36.2.1 "SYSCFG : System Configuration Control Register", p 1966 */
   /* HUM Ch 37.2.1 "SYSCFG : System Configuration Control Register", p 2060 */
   const uint16_t dprpu = (uint16_t)(1U << k_ra_syscfg_bit_dprpu);
+  const uint16_t cnen  = (uint16_t)(1U << k_ra_syscfg_bit_cnen);
+
   if (attached) {
+    /* HUM Ch 37.2.1 SYSCFG, "CNEN bit (Single-ended Receiver Enable)"
+     * p 2062: "In device controller mode, set this bit to 1 when VBUS
+     * is detected because of a VBUS interrupt, and set it to 0 when
+     * the VBUS line is removed."
+     *
+     * Without CNEN=1 the HS PHY's single-end receivers are powered
+     * down and SYSSTS0.LNST[1:0] reads 00b (SE0) regardless of what
+     * the host's 1.5 kohm-or-15 kohm pull-down arrangement and the
+     * device's DPRPU 1.5 kohm pull-up are doing on the wires.
+     *
+     * Programme CNEN BEFORE DPRPU so the receivers latch the line
+     * state the moment DPRPU pulls D+ high; this is the FS-attach
+     * sequence sketched in HUM Ch 37.3.3 Figure 37.2 p 2121
+     * ("Resistor control" step comes after USBE/CNEN are settled).
+     * The FS instance has no CNEN gate (HUM Ch 36.2.1 SYSCFG p 1966),
+     * so CNEN is HS-only here. */
+    if (speed == k_ra_usb_speed_hs) {
+      internal_rmw16(&reg->SYSCFG, cnen, 0U);
+      s_syscfg_before_dprpu = reg->SYSCFG;
+    }
     internal_rmw16(&reg->SYSCFG, dprpu, 0U);
   } else {
     internal_rmw16(&reg->SYSCFG, 0U, dprpu);
+    if (speed == k_ra_usb_speed_hs) {
+      /* HUM Ch 37.2.1 p 2062: clear CNEN when VBUS is removed /
+       * detach is requested, to avoid through-current on floating
+       * D+/D- when the cable is unplugged. */
+      internal_rmw16(&reg->SYSCFG, 0U, cnen);
+    }
   }
 
-  /* Bisect probes: capture SYSCFG/LPSTS at end of attach. HUM Ch 37.2.1
-   * SYSCFG p 2060, HUM Ch 37.2.43 LPSTS p 2111. */
+  /* Bisect probes: capture SYSCFG/LPSTS/SYSSTS0 at end of attach. HUM
+   * Ch 37.2.1 SYSCFG p 2060, HUM Ch 37.2.3 SYSSTS0 p 2063, HUM
+   * Ch 37.2.43 LPSTS p 2111. */
   if (speed == k_ra_usb_speed_hs) {
-    s_syscfg_after_attach = reg->SYSCFG;
-    s_lpsts_after_attach  = *ra_usbhs_lpsts();
+    s_syscfg_after_attach  = reg->SYSCFG;
+    s_lpsts_after_attach   = *ra_usbhs_lpsts();
+    s_syssts0_after_attach = reg->SYSSTS0;
   }
   return k_ra_ok;
 }
