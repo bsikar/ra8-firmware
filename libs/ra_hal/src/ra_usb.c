@@ -347,15 +347,16 @@ typedef enum : uint32_t {
  * @brief Iteration order for the CLKSEL[1:0] bisect harness.
  *
  * @details HUM Ch 37.2.17 PHYSET CLKSEL[1:0] bit-field, p 2080:
- *   - 00b = 12 MHz (board EXTAL is 24 MHz, USB60CLK = PLL2P/4 = 60 MHz;
- *     primary candidate per FSP USB_USBMCLK_HZ == USB_CLK_12MHZ branch)
- *   - 01b = 48 MHz
+ *   - 00b = 12 MHz
+ *   - 01b = 48 MHz (matches USB60CLK = PLL2P/5 = 240/5 = 48 MHz on
+ *     EK-RA8D2; the PHY consumes USB60CLK directly, no internal /5)
  *   - 10b = 20 MHz
  *   - 11b = 24 MHz (PHYSET reset value)
  *
- * The bisect tries these in turn so a single boot finds the codepoint
- * the silicon actually accepts. Capture the winner (or 0xFF on full
- * sweep failure) into ::s_clksel_winner.
+ * The bisect remains as a defensive harness in case USB60CKDIVCR
+ * regresses; on a healthy boot CLKSEL=48 wins on the first attempt.
+ * Capture the winner (or 0xFF on full sweep failure) into
+ * ::s_clksel_winner.
  */
 typedef enum : uint8_t {
   k_ra_usbhs_clksel_attempts_n = 4U,
@@ -807,16 +808,16 @@ static ra_err_t internal_usbhs_phy_bringup(volatile r_usb_regs_t* reg)
   reg->SYSCFG      = (uint16_t)(reg->SYSCFG | (uint16_t)(1U << k_ra_syscfg_bit_hse));
   s_phy_step_probe = (uint8_t)k_ra_usbhs_phy_step_hse_set;
 
-  /* Step 2: CLKSEL bisect harness. The previous fixed-CLKSEL=00 path
-   * stalled at "PLL never locks" on EK-RA8D2 with USB60CLK = PLL2P/4,
-   * so we now sweep all four codepoints in HUM Ch 37.2.17 PHYSET
-   * Table (p 2080) order: 12, 48, 20, 24 MHz. The first to drive
-   * PLLSTA.PLLLOCK = 1 wins and is recorded in ::s_clksel_winner.
+  /* Step 2: CLKSEL selection. With USB60CKDIVCR=/5 the PHY input is
+   * 48 MHz (PLL2P=240 MHz / 5), so CLKSEL=48 is the canonical match.
+   * The bisect is retained as a defensive sweep so a CGC regression
+   * surfaces as a different winner instead of a hard hang; CLKSEL=48
+   * is tried FIRST so a healthy boot locks on attempt 0.
    * Total wall time bound: 4 * (~50 ms attempt + ~1 ms settle) <
    * 250 ms budget per the bring-up debug spec. */
   const uint16_t s_clksel_sweep[(uint32_t)k_ra_usbhs_clksel_attempts_n] = {
-    (uint16_t)k_ra_physet_clksel_12,
     (uint16_t)k_ra_physet_clksel_48,
+    (uint16_t)k_ra_physet_clksel_12,
     (uint16_t)k_ra_physet_clksel_20,
     (uint16_t)k_ra_physet_clksel_24,
   };
