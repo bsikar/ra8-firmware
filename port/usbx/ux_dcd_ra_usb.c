@@ -195,6 +195,80 @@ volatile uint32_t s_rhst_history_count = 0U;
 volatile uint16_t s_intsts0_last_dispatch = 0U;
 
 /**
+ * @enum ra_usb_dcd_intsts0_hist_t
+ * @brief Sizing for the INTSTS0 / CTSQ history rings.
+ */
+typedef enum : uint8_t {
+  k_ra_usb_dcd_intsts0_hist_n = 8U, /**< Slots in s_intsts0_snapshot/s_ctsq_history. */
+} ra_usb_dcd_intsts0_hist_t;
+
+/**
+ * @var s_intsts0_valid_count
+ * @brief Number of dispatch ticks where INTSTS0.VALID was observed.
+ *
+ * @details Bisect probe. Distinguishes "controller never latched a
+ * SETUP" (count == 0) from "controller latched but our CTRT edge was
+ * lost" (count > 0 while ::s_ctrt_irq_count grows). HUM Ch 36.2.14
+ * INTSTS0.VALID = bit 3, p 1985.
+ *
+ * @note Single-writer (::ux_dcd_ra_usb_irq).
+ * @since 0.1.0
+ */
+volatile uint32_t s_intsts0_valid_count = 0U;
+
+/**
+ * @var s_intsts0_ctrt_count
+ * @brief Number of dispatch ticks where INTSTS0.CTRT was observed.
+ *
+ * @details Bisect probe. Identical to ::s_ctrt_irq_count but bumped on
+ * the snapshot value before the CTRT branch decides whether to handle
+ * the SETUP -- useful for detecting CTRT latches that hit a snapshot
+ * but failed the handler's CTSQ decode. HUM Ch 36.2.14 p 1985.
+ *
+ * @note Single-writer (::ux_dcd_ra_usb_irq).
+ * @since 0.1.0
+ */
+volatile uint32_t s_intsts0_ctrt_count = 0U;
+
+/**
+ * @var s_intsts0_snapshot
+ * @brief Ring buffer of the last 8 INTSTS0 values seen by the worker
+ *        on ticks where any of CTRT/VALID/DVST were set.
+ *
+ * @details JLink-readable trace. Index of next write slot is
+ * ``s_intsts0_snapshot_count % k_ra_usb_dcd_intsts0_hist_n``. Only
+ * "interesting" ticks are recorded so a noisy idle loop doesn't
+ * scroll a real SETUP edge out of the ring. HUM Ch 36.2.14 p 1985.
+ *
+ * @note Single-writer (::ux_dcd_ra_usb_irq).
+ * @since 0.1.0
+ */
+volatile uint16_t s_intsts0_snapshot[(uint32_t)k_ra_usb_dcd_intsts0_hist_n] = {};
+
+/**
+ * @var s_intsts0_snapshot_count
+ * @brief Total interesting INTSTS0 snapshots seen; modulo
+ *        ::k_ra_usb_dcd_intsts0_hist_n is the next write slot.
+ *
+ * @note Single-writer (::ux_dcd_ra_usb_irq).
+ * @since 0.1.0
+ */
+volatile uint32_t s_intsts0_snapshot_count = 0U;
+
+/**
+ * @var s_ctsq_history
+ * @brief Ring buffer of the last 8 INTSTS0.CTSQ[2:0] values observed
+ *        with CTRT or VALID asserted.
+ *
+ * @details Encoding (HUM Ch 36.2.14 p 1985 / ra_usb_ctsq_t):
+ *   0=idle, 1=rdds, 2=rdss, 3=wrds, 4=wrss, 5=wrnd, 6=sqer.
+ *
+ * @note Single-writer (::ux_dcd_ra_usb_irq).
+ * @since 0.1.0
+ */
+volatile uint8_t s_ctsq_history[(uint32_t)k_ra_usb_dcd_intsts0_hist_n] = {};
+
+/**
  * @struct ra_usb_dcd_pipe_slot_t
  * @brief Per-pipe class-layer cache so the IRQ handler can re-arm
  *        BRDY-driven transfers without crawling the device endpoint
@@ -1017,10 +1091,36 @@ void ux_dcd_ra_usb_irq(ra_usb_speed_t speed, uint16_t intsts0)
 
   s_intsts0_last_dispatch = intsts0;
 
+  const uint16_t ctrt_bit  = (uint16_t)(1U << (uint8_t)k_ra_int0_bit_ctrt);
+  const uint16_t dvst_bit  = (uint16_t)(1U << (uint8_t)k_ra_int0_bit_dvst);
+  const uint16_t valid_bit = (uint16_t)k_ra_intsts0_mask_valid;
+  const bool     have_ctrt = (intsts0 & ctrt_bit) != 0U;
+  const bool     have_valid = (intsts0 & valid_bit) != 0U;
+  const bool     have_dvst  = (intsts0 & dvst_bit) != 0U;
+
+  if (have_valid) {
+    s_intsts0_valid_count++;
+  }
+  if (have_ctrt) {
+    s_intsts0_ctrt_count++;
+  }
+  /* Record any "interesting" tick into the JLink-readable ring. The
+   * three event bits are folded into a single mask test to keep the
+   * decision count at one boolean per branch (per docs/MCDC.md,
+   * compound boolean decisions need paired test vectors). */
+  const uint16_t interesting_mask = (uint16_t)(ctrt_bit | valid_bit | dvst_bit);
+  if ((intsts0 & interesting_mask) != 0U) {
+    const uint8_t slot = (uint8_t)(s_intsts0_snapshot_count
+                                   % (uint32_t)k_ra_usb_dcd_intsts0_hist_n);
+    s_intsts0_snapshot[slot] = intsts0;
+    s_ctsq_history[slot]     = (uint8_t)(intsts0 & (uint16_t)k_ra_intsts0_mask_ctsq);
+    s_intsts0_snapshot_count++;
+  }
+
   /* SETUP / chapter-9 path: must run before the bulk/interrupt walk
    * so that the host's GET_DESCRIPTOR / SET_ADDRESS /
    * SET_CONFIGURATION sequence completes during enumeration. */
-  if ((intsts0 & (uint16_t)(1U << (uint8_t)k_ra_int0_bit_ctrt)) != 0U) {
+  if (have_ctrt) {
     s_ctrt_irq_count++;
     internal_handle_ctrt(speed, intsts0);
   }
@@ -1031,13 +1131,13 @@ void ux_dcd_ra_usb_irq(ra_usb_speed_t speed, uint16_t intsts0)
    * on its W0C ack so the fallback can drain USBREQ/USBVAL/USBINDX/
    * USBLENG even if CTRT was already cleared by a previous tick.
    * HUM Ch 36.2.14 INTSTS0 p 1985 (VALID = bit 3, CTSQ = bits 0..2). */
-  else if ((intsts0 & (uint16_t)k_ra_intsts0_mask_valid) != 0U) {
+  else if (have_valid) {
     internal_handle_ctrt(speed, intsts0);
   }
 
   /* Bus reset / suspend / resume: keeps USBX's device-state machine
    * in sync with the controller-reported DVSQ field. */
-  if ((intsts0 & (uint16_t)(1U << (uint8_t)k_ra_int0_bit_dvst)) != 0U) {
+  if (have_dvst) {
     s_dvst_irq_count++;
     volatile r_usb_regs_t* reg = (speed == k_ra_usb_speed_hs) ? ra_usb_hs() : ra_usb_fs();
     const uint16_t         dvstctr0 = reg->DVSTCTR0;
