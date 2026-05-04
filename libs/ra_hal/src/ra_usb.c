@@ -348,16 +348,20 @@ typedef enum : uint32_t {
  * @brief Iteration order for the CLKSEL[1:0] bisect harness.
  *
  * @details HUM Ch 37.2.17 PHYSET CLKSEL[1:0] bit-field, p 2080:
- *   - 00b = 12 MHz
- *   - 01b = 48 MHz (matches USB60CLK = PLL2P/5 = 240/5 = 48 MHz on
- *     EK-RA8D2; the PHY consumes USB60CLK directly, no internal /5)
+ *   - 00b = 12 MHz (canonical UTMI reference; PHY divides USB60CLK
+ *     by 5 internally to obtain 12 MHz from a 60 MHz USB60CLK)
+ *   - 01b = 48 MHz
  *   - 10b = 20 MHz
  *   - 11b = 24 MHz (PHYSET reset value)
  *
- * The bisect remains as a defensive harness in case USB60CKDIVCR
- * regresses; on a healthy boot CLKSEL=48 wins on the first attempt.
- * Capture the winner (or 0xFF on full sweep failure) into
- * ::s_clksel_winner.
+ * USB60CKDIVCR is now /4 so USB60CLK = PLL2P/4 = 240/4 = 60.000 MHz,
+ * matching the HUM Ch 37.3.3 named-rate requirement (p 2102: "A
+ * 60-MHz clock must be supplied"). With a 60 MHz USB60CLK the
+ * canonical CLKSEL is 12 MHz (the standard UTMI+ reference), so the
+ * bisect tries CLKSEL=12 first and only falls through to 48 / 20 / 24
+ * as a defensive sweep if a CGC regression delivers an unexpected
+ * USB60CLK rate. Capture the winner (or 0xFF on full sweep failure)
+ * into ::s_clksel_winner.
  */
 typedef enum : uint8_t {
   k_ra_usbhs_clksel_attempts_n = 4U,
@@ -766,7 +770,8 @@ static ra_err_t internal_usbhs_try_clksel(volatile uint16_t* physet,
  * @brief USBHS embedded-PHY bring-up (FSP `hw_usb_pmodule_init` IP1 branch).
  *
  * @details Mirrors the Renesas FSP USBHS device-mode bring-up sequence
- * for the standard 12 MHz PHY reference (USB60CLK / 5):
+ * for the standard 12 MHz PHY UTMI reference (USB60CLK / 5; USB60CLK
+ * itself is supplied at 60 MHz by ::ra_cgc_usbhs_clock_enable):
  *  1. PHYSET |= DIRPD | CLKSEL_mask  (assert PD, set CLKSEL field)
  *  2. PHYSET &= ~CLKSEL; |= CLKSEL_12 (force 12 MHz reference)
  *  3. delay 1 us
@@ -809,18 +814,22 @@ static ra_err_t internal_usbhs_phy_bringup(volatile r_usb_regs_t* reg)
   reg->SYSCFG      = (uint16_t)(reg->SYSCFG | (uint16_t)(1U << k_ra_syscfg_bit_hse));
   s_phy_step_probe = (uint8_t)k_ra_usbhs_phy_step_hse_set;
 
-  /* Step 2: CLKSEL selection. With USB60CKDIVCR=/5 the PHY input is
-   * 48 MHz (PLL2P=240 MHz / 5), so CLKSEL=48 is the canonical match.
-   * The bisect is retained as a defensive sweep so a CGC regression
-   * surfaces as a different winner instead of a hard hang; CLKSEL=48
+  /* Step 2: CLKSEL selection. With USB60CKDIVCR=/4 the PHY input is
+   * 60 MHz (PLL2P=240 MHz / 4), matching the HUM Ch 37.3.3 named-rate
+   * requirement (p 2102 line 85433: "A 60-MHz clock must be supplied
+   * ... USB60CLK is the operating clock for the USBHS module"). The
+   * PHY then divides USB60CLK internally to derive its UTMI reference;
+   * the canonical CLKSEL for a 60 MHz USB60CLK is 12 MHz (60/5). The
+   * bisect is retained as a defensive sweep so a CGC regression
+   * surfaces as a different winner instead of a hard hang; CLKSEL=12
    * is tried FIRST so a healthy boot locks on attempt 0.
    * Total wall time bound: 4 * (~50 ms attempt + ~1 ms settle) <
    * 250 ms budget per the bring-up debug spec. */
   const uint16_t s_clksel_sweep[(uint32_t)k_ra_usbhs_clksel_attempts_n] = {
-    (uint16_t)k_ra_physet_clksel_48,
     (uint16_t)k_ra_physet_clksel_12,
-    (uint16_t)k_ra_physet_clksel_20,
+    (uint16_t)k_ra_physet_clksel_48,
     (uint16_t)k_ra_physet_clksel_24,
+    (uint16_t)k_ra_physet_clksel_20,
   };
 
   ra_err_t lock_err = k_ra_err_hw_timeout;
