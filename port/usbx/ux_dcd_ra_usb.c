@@ -1001,6 +1001,69 @@ static bool s_dispatch_thread_started = false;
  * @see ra_usb_dispatch
  * @since 0.1.0
  */
+/**
+ * @brief Sync USBX device state from chip-side DVSQ.
+ * @details Polls INTSTS0.DVSQ on every dispatch tick and writes
+ *          ux_slave_device_state to the matching USBX state. This is
+ *          authoritative because the chip transitions DVSQ as a hardware
+ *          consequence of bus events the chapter-9 dispatcher might race
+ *          with. Avoids the demote-then-advance loop seen with
+ *          interrupt-driven DVST handling.
+ * @param[in] speed Controller selector forwarded to ra_usb_intsts0_snapshot.
+ * @pre _ux_system_slave is bound.
+ * @pre Bridge initialise has run and the controller is powered.
+ * @post device->ux_slave_device_state matches DVSQ when DVSQ encodes a
+ *       USBX-mappable state.
+ * @post Other DVSQ values leave state untouched.
+ * @note Idle CPU cost: one MMIO read + one branch per loop tick.
+ * @since 0.1.0
+ */
+static void internal_sync_state_from_dvsq(ra_usb_speed_t speed)
+{
+  if (_ux_system_slave == UX_NULL) {
+    return;
+  }
+  const uint16_t intsts0 = ra_usb_intsts0_snapshot(speed);
+  const uint16_t dvsq    = (uint16_t)(intsts0 & (uint16_t)k_ra_intsts0_mask_dvsq);
+  unsigned long  desired;
+  switch (dvsq) {
+    case k_ra_dvsq_powered:
+    case k_ra_dvsq_default:
+      desired = (unsigned long)UX_DEVICE_ATTACHED;
+      break;
+    case k_ra_dvsq_address:
+      desired = (unsigned long)UX_DEVICE_ADDRESSED;
+      break;
+    case k_ra_dvsq_configured:
+      desired = (unsigned long)UX_DEVICE_CONFIGURED;
+      break;
+    default:
+      return;
+  }
+  UX_SLAVE_DEVICE* device = &_ux_system_slave->ux_system_slave_device;
+  if (device->ux_slave_device_state != desired) {
+    device->ux_slave_device_state = desired;
+    if (_ux_system_slave->ux_system_slave_change_function != UX_NULL) {
+      (void)_ux_system_slave->ux_system_slave_change_function(desired);
+    }
+  }
+}
+
+/**
+ * @brief Polled-dispatch worker entry point.
+ * @details Pumps ra_usb_dispatch + DVSQ-state sync forever once the
+ *          bridge has been initialised. Yields equal-priority threads
+ *          via tx_thread_relinquish so the demo / class threads can run.
+ * @param[in] arg ThreadX entry argument; unused.
+ * @return Never returns.
+ * @retval none Worker is an infinite loop.
+ * @pre ThreadX scheduler is running.
+ * @pre internal_start_dispatch_worker has been called.
+ * @post Indefinitely services ra_usb_dispatch and DVSQ state sync.
+ * @post Yields between iterations via tx_thread_relinquish.
+ * @note Called by ThreadX; not user-callable.
+ * @since 0.1.0
+ */
 static VOID internal_dispatch_worker(ULONG arg)
 {
   (void)arg;
@@ -1010,6 +1073,7 @@ static VOID internal_dispatch_worker(ULONG arg)
       continue;
     }
     ra_usb_dispatch(s_dcd.speed);
+    internal_sync_state_from_dvsq(s_dcd.speed);
     tx_thread_relinquish();
   }
 }
