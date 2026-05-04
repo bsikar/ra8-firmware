@@ -197,7 +197,7 @@ typedef enum : uint32_t {
 } ra_etha_mask_t;
 
 /**
- * @enum ra_etha_eamc_bits_t
+ * @enum ra_etha_field_pos_t
  * @brief Convenience right-shift positions for EATPEC / EAVCC bit fields.
  */
 typedef enum : uint8_t {
