@@ -336,6 +336,51 @@ volatile uint8_t s_setup_packet_buffer[8] = {};
 volatile uint32_t s_setup_packet_count = 0U;
 
 /**
+ * @var s_dvst_state_history
+ * @brief Per-DVST-event capture of the decoded DVSQ[2:0] field.
+ *
+ * @details JLink-readable trace of every device-state transition
+ * (independent of the "interesting tick" filter that gates
+ * ::s_dvsq_history). Each DVST IRQ writes the pre-shifted DVSQ value
+ * (0=Powered, 1=Default, 2=Address, 3=Configured, 4..7=Suspend variant
+ * per HUM Ch 36.2.16 p 1986). A healthy enumeration shows
+ * 1, 1, 2, 2, 3, ...; the "stuck-in-default" symptom shows
+ * 1, 5, 1, 5, 1, 5, ... (Default <-> Suspended-from-Default loop).
+ *
+ * @note Single-writer (::internal_handle_dvst).
+ * @since 0.1.0
+ */
+volatile uint8_t s_dvst_state_history[(uint32_t)k_ra_usb_dcd_rhst_hist_n] = {};
+
+/**
+ * @var s_dvst_state_history_count
+ * @brief Total DVST events recorded into ::s_dvst_state_history.
+ *
+ * @details Modulo ::k_ra_usb_dcd_rhst_hist_n is the next write slot.
+ *
+ * @note Single-writer (::internal_handle_dvst).
+ * @since 0.1.0
+ */
+volatile uint32_t s_dvst_state_history_count = 0U;
+
+/**
+ * @var s_busreset_rearm_count
+ * @brief Number of times ::ra_usb_device_busreset_rearm was invoked
+ *        from the DVST handler in response to a Default-state entry.
+ *
+ * @details Bisect probe. After plug-in macOS issues a bus reset every
+ * ~10 ms until SETUP succeeds. If this counter grows but
+ * ::s_setup_packet_count stays at 0, the re-arm is firing but the IP
+ * is still failing to latch SETUP -- look at PIPECFG / DCPMAXP via
+ * JLink. If the counter never grows, the DVST -> Default branch
+ * isn't being taken (check ::s_dvst_state_history).
+ *
+ * @note Single-writer (::internal_handle_dvst).
+ * @since 0.1.0
+ */
+volatile uint32_t s_busreset_rearm_count = 0U;
+
+/**
  * @struct ra_usb_dcd_pipe_slot_t
  * @brief Per-pipe class-layer cache so the IRQ handler can re-arm
  *        BRDY-driven transfers without crawling the device endpoint
@@ -1107,42 +1152,68 @@ static void internal_handle_ctrt(ra_usb_speed_t speed, uint16_t intsts0)
  * callback so class drivers (CDC, HID, MSC) observe bus reset, address
  * assignment and suspend/resume.
  *
+ * On every Default-state transition this handler also invokes
+ * ::ra_usb_device_busreset_rearm to re-default DCPCFG / DCPMAXP /
+ * DCPCTR / PIPECTR / INTENB0 so the IP can latch the host's next
+ * SETUP token (FSP `usb_pstd_busreset` parity).
+ *
+ * @param[in] speed   Which controller block fired the DVST event.
  * @param[in] intsts0 Snapshot of INTSTS0 captured by ``ra_usb_dispatch``.
  *
  * @pre Bridge is past ``ux_dcd_ra_usb_initialize``.
- * @pre ``_ux_system_slave`` is bound.
+ * @pre Caller has already W0C-acked the DVST bit in INTSTS0.
  *
- * @post ``ux_slave_device_state`` reflects the new bus state.
- * @post ``ux_system_slave_change_function`` (if non-NULL) has been
- *       called once with the new state.
+ * @post ``ux_slave_device_state`` reflects the new bus state when
+ *       ``_ux_system_slave`` is bound.
+ * @post ::s_dvst_state_history records the decoded DVSQ slot.
+ * @post On Default-state entry, DCP is re-armed and
+ *       ::s_busreset_rearm_count incremented.
  *
  * @note Runs in IRQ-callback context.
  *
  * @since 0.1.0
  */
-static void internal_handle_dvst(uint16_t intsts0)
+static void internal_handle_dvst(ra_usb_speed_t speed, uint16_t intsts0)
 {
+  const uint16_t dvsq = (uint16_t)(intsts0 & (uint16_t)k_ra_intsts0_mask_dvsq);
+
+  /* Always trace the decoded DVSQ field, even before USBX is bound, so
+   * the JLink-readable ring captures pre-stack-init bus events. The
+   * decoded value (0..7) matches ::s_dvst_state_history's docs. */
+  const uint8_t dvst_slot =
+    (uint8_t)(s_dvst_state_history_count % (uint32_t)k_ra_usb_dcd_rhst_hist_n);
+  s_dvst_state_history[dvst_slot] = (uint8_t)((dvsq >> (uint8_t)k_ra_int0_dvsq_shift) & 0x07U);
+  s_dvst_state_history_count++;
+
+  /* On every Default-state entry (DVSQ == 0x10), re-arm DCP per
+   * FSP usb_pstd_busreset reference flow. Without this re-arm the IP
+   * silently drops the host's first SETUP token after bus reset and
+   * the host loops Default <-> Suspended-from-Default forever. The
+   * RA8D2 USB IP requires DCPCFG/DCPMAXP/DCPCTR be re-defaulted
+   * (and INTENB0 re-applied) before the next SETUP token can latch
+   * USBREQ. HUM Ch 36.2.20/21 p 1990-1991. */
+  if (dvsq == (uint16_t)k_ra_dvsq_default) {
+    (void)ra_usb_device_busreset_rearm(speed);
+    s_busreset_rearm_count++;
+  }
+
   if (_ux_system_slave == UX_NULL) {
     return;
   }
   UX_SLAVE_DEVICE* device = &_ux_system_slave->ux_system_slave_device;
-  const uint16_t   dvsq   = (uint16_t)(intsts0 & (uint16_t)k_ra_intsts0_mask_dvsq);
   unsigned long    new_state;
-  switch (dvsq) {
-    case k_ra_dvsq_suspend:
-      new_state = (unsigned long)UX_DEVICE_SUSPENDED;
-      break;
-    case k_ra_dvsq_powered:
-    case k_ra_dvsq_default:
-    case k_ra_dvsq_address:
-    case k_ra_dvsq_configured:
-    default:
-      /* Non-suspend states are owned by chapter-9 dispatcher writes
-       * (in sequence) plus the dispatch worker's polled DVSQ sync
-       * (internal_sync_state_from_dvsq, no-demote). The IRQ-driven
-       * write would race against both, with a stale snapshot value
-       * that demotes a freshly-advanced state. */
-      return;
+  /* DVSQ uses bits 6:4. Suspend variants are 0x40 (from Powered),
+   * 0x50 (from Default), 0x60 (from Address), 0x70 (from Configured)
+   * -- all share bit 6 set, so test (dvsq & 0x40). */
+  if ((dvsq & (uint16_t)k_ra_dvsq_suspend) != 0U) {
+    new_state = (unsigned long)UX_DEVICE_SUSPENDED;
+  } else {
+    /* Non-suspend states are owned by chapter-9 dispatcher writes
+     * (in sequence) plus the dispatch worker's polled DVSQ sync
+     * (internal_sync_state_from_dvsq, no-demote). The IRQ-driven
+     * write would race against both, with a stale snapshot value
+     * that demotes a freshly-advanced state. */
+    return;
   }
   device->ux_slave_device_state = new_state;
   if (_ux_system_slave->ux_system_slave_change_function != UX_NULL) {
@@ -1176,10 +1247,10 @@ void ux_dcd_ra_usb_irq(ra_usb_speed_t speed, uint16_t intsts0)
   s_intsts0_last_dispatch = intsts0;
   s_intsts0_observed_or   = (uint16_t)(s_intsts0_observed_or | intsts0);
 
-  const uint16_t ctrt_bit  = (uint16_t)(1U << (uint8_t)k_ra_int0_bit_ctrt);
-  const uint16_t dvst_bit  = (uint16_t)(1U << (uint8_t)k_ra_int0_bit_dvst);
-  const uint16_t valid_bit = (uint16_t)k_ra_intsts0_mask_valid;
-  const bool     have_ctrt = (intsts0 & ctrt_bit) != 0U;
+  const uint16_t ctrt_bit   = (uint16_t)(1U << (uint8_t)k_ra_int0_bit_ctrt);
+  const uint16_t dvst_bit   = (uint16_t)(1U << (uint8_t)k_ra_int0_bit_dvst);
+  const uint16_t valid_bit  = (uint16_t)k_ra_intsts0_mask_valid;
+  const bool     have_ctrt  = (intsts0 & ctrt_bit) != 0U;
   const bool     have_valid = (intsts0 & valid_bit) != 0U;
   const bool     have_dvst  = (intsts0 & dvst_bit) != 0U;
 
@@ -1195,8 +1266,8 @@ void ux_dcd_ra_usb_irq(ra_usb_speed_t speed, uint16_t intsts0)
    * compound boolean decisions need paired test vectors). */
   const uint16_t interesting_mask = (uint16_t)(ctrt_bit | valid_bit | dvst_bit);
   if ((intsts0 & interesting_mask) != 0U) {
-    const uint8_t slot = (uint8_t)(s_intsts0_snapshot_count
-                                   % (uint32_t)k_ra_usb_dcd_intsts0_hist_n);
+    const uint8_t slot =
+      (uint8_t)(s_intsts0_snapshot_count % (uint32_t)k_ra_usb_dcd_intsts0_hist_n);
     s_intsts0_snapshot[slot] = intsts0;
     s_ctsq_history[slot]     = (uint8_t)(intsts0 & (uint16_t)k_ra_intsts0_mask_ctsq);
     /* DVSQ field is bits 6:4; shift right 4 so the slot reads 0..7 in
@@ -1229,18 +1300,17 @@ void ux_dcd_ra_usb_irq(ra_usb_speed_t speed, uint16_t intsts0)
    * in sync with the controller-reported DVSQ field. */
   if (have_dvst) {
     s_dvst_irq_count++;
-    volatile r_usb_regs_t* reg = (speed == k_ra_usb_speed_hs) ? ra_usb_hs() : ra_usb_fs();
+    volatile r_usb_regs_t* reg      = (speed == k_ra_usb_speed_hs) ? ra_usb_hs() : ra_usb_fs();
     const uint16_t         dvstctr0 = reg->DVSTCTR0;
     if (s_dvstctr0_at_first_dvst == 0xFFFFU) {
       s_dvstctr0_at_first_dvst = dvstctr0;
     }
     /* RHST occupies DVSTCTR0[2:0]. HUM Ch 36.2.5 p 1971. */
-    const uint8_t rhst_mask  = 0x07U;
-    const uint8_t hist_slot  = (uint8_t)(s_rhst_history_count
-                                         % (uint32_t)k_ra_usb_dcd_rhst_hist_n);
+    const uint8_t rhst_mask = 0x07U;
+    const uint8_t hist_slot = (uint8_t)(s_rhst_history_count % (uint32_t)k_ra_usb_dcd_rhst_hist_n);
     s_rhst_history[hist_slot] = (uint8_t)(dvstctr0 & rhst_mask);
     s_rhst_history_count++;
-    internal_handle_dvst(intsts0);
+    internal_handle_dvst(speed, intsts0);
   }
 
   /* Walk every pipe with a queued OUT transfer. ra_usb_queue_out

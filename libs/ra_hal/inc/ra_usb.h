@@ -290,6 +290,49 @@ typedef void (*ra_usb_event_fn_t)(void* ctx, ra_usb_speed_t speed, uint16_t stat
  */
 [[nodiscard]] ra_err_t ra_usb_set_address(ra_usb_speed_t speed, uint8_t address);
 
+/**
+ * @brief Re-arm the default control pipe (DCP) after a host-issued bus reset.
+ *
+ * @details
+ * The RA8D2 USB IP latches `INTSTS0.DVST` whenever the host drives a
+ * USB bus reset that puts the controller into the Default state
+ * (`DVSQ == 0x10`). FSP's reference flow (`usb_pstd_busreset` in
+ * `r_usb_basic/src/driver/r_usb_psignal.c`) re-programmes `DCPCFG = 0`
+ * and `DCPMAXP = max_packet` on every such transition so the IP is
+ * ready to ACK the host's first SETUP token within the 10 ms window
+ * USB 2.0 Section 9.2.6.3 mandates between reset-deassert and the
+ * first GET_DESCRIPTOR. Without this re-arm the controller silently
+ * drops SETUP tokens, the host re-issues bus reset, and the device
+ * loops forever between Default and Suspended-from-Default
+ * (`DVSQ = 0x10` -> `0x50`).
+ *
+ * Specifically this call:
+ *  1. Re-writes `DCPCFG = 0` (no continuous transfers).
+ *  2. Re-writes `DCPMAXP = 64` (HS / FS bMaxPacketSize0).
+ *  3. Clears `DCPCTR` so PID returns to NAK and CCPL is de-asserted.
+ *  4. Walks `PIPECTR[1..9]` clearing PID + ACLRM so any pre-reset
+ *     pipe state is forgotten.
+ *  5. Re-applies the device-mode `INTENB0` mask (BEMP / BRDY / NRDY /
+ *     CTRT / DVST / SOFR / RSME / VBSE) -- the IP can drop CTRT
+ *     enables across a bus reset on some silicon revisions.
+ *
+ * @param[in] speed Which controller (`k_ra_usb_speed_fs` or `_hs`).
+ *
+ * @return `ra_err_t` error code.
+ * @retval k_ra_ok DCP re-armed.
+ * @retval k_ra_err_invalid_arg `speed` out of range.
+ *
+ * @pre `ra_usb_device_init` ran for this `speed`.
+ * @pre Caller observed a `DVST` interrupt with `DVSQ == default`.
+ *
+ * @post `DCPMAXP == 64`, `DCPCTR == 0`, all `PIPECTR[i]` PID == NAK.
+ * @post `INTENB0` matches the post-init device-mode mask.
+ *
+ * @note Safe to call from IRQ-callback context.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_usb_device_busreset_rearm(ra_usb_speed_t speed);
+
 /* =============================================================================
  * Endpoints
  * =============================================================================

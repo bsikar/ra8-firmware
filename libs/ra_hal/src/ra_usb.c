@@ -1194,6 +1194,66 @@ ra_err_t ra_usb_set_address(ra_usb_speed_t speed, uint8_t address)
   return k_ra_ok;
 }
 
+/**
+ * @brief Implementation of ra_usb_device_busreset_rearm (see header for full contract).
+ *
+ * @details Mirrors FSP `usb_pstd_bus_reset` (r_usb_basic/src/driver/r_usb_psignal.c):
+ * re-programmes DCPCFG / DCPMAXP / DCPCTR, clears PIPECTR[1..9], and
+ * re-applies the device-mode INTENB0 mask. The IP requires this on
+ * every transition to the Default state or it silently NAKs the host's
+ * first SETUP and the host loops back to bus reset.
+ *
+ * @param[in] speed See header.
+ * @return Result code (see header).
+ * @retval k_ra_ok DCP re-armed.
+ * @retval k_ra_err_invalid_arg speed out of range.
+ * @pre Caller observed DVST with DVSQ == default.
+ * @pre ra_usb_device_init has run for this speed.
+ * @post DCP regs re-defaulted; INTENB0 mask re-applied.
+ * @post All PIPECTR PID fields cleared (NAK).
+ * @note Safe in IRQ-callback context (no spin loops).
+ * @since 0.1.0
+ */
+ra_err_t ra_usb_device_busreset_rearm(ra_usb_speed_t speed)
+{
+  volatile r_usb_regs_t* reg = internal_pick(speed);
+  if (reg == nullptr) {
+    return k_ra_err_invalid_arg;
+  }
+
+  /* HUM Ch 36.2.20 "DCPMAXP : DCP Max Packet Size Register", p 1990
+   * HUM Ch 36.2.21 "DCPCTR  : DCP Control Register",         p 1991
+   *
+   * Re-default the control pipe. After a host bus reset the IP holds
+   * the previous DCPMAXP / DCPCFG values, but DCPCTR.PID may have
+   * been forced to STALL by the previous transfer's error path. Re-
+   * writing DCPCTR = 0 puts PID back to NAK so the next SETUP token
+   * is latched into USBREQ. */
+  reg->DCPCFG  = 0U;
+  reg->DCPMAXP = (uint16_t)k_ra_usb_dcp_max_packet;
+  reg->DCPCTR  = 0U;
+
+  /* HUM Ch 36.2.27 "PIPECTR : Pipe n Control Register", p 1998.
+   * Clear PID for every non-control pipe so any half-completed pre-
+   * reset transfer is forgotten. The class driver re-issues queue_in /
+   * queue_out which will set PID=BUF when ready. */
+  for (uint8_t i = 0U; i < (uint8_t)k_ra_usb_pipectr_count; i++) {
+    reg->PIPECTR[i] = 0U;
+  }
+
+  /* HUM Ch 36.2.10 "INTENB0 : Interrupt Enable Register 0", p 1980.
+   * Some RA silicon revisions clear individual INTENB0 bits across a
+   * bus reset (notably CTRT). Re-apply the post-init mask defensively
+   * so the next SETUP raises CTRT as expected. Mirrors the mask in
+   * internal_usb_init_common. */
+  reg->INTENB0 = (uint16_t)((1U << k_ra_int0_bit_bemp) | (1U << k_ra_int0_bit_brdy) |
+                            (1U << k_ra_int0_bit_nrdy) | (1U << k_ra_int0_bit_ctrt) |
+                            (1U << k_ra_int0_bit_dvst) | (1U << k_ra_int0_bit_sofr) |
+                            (1U << k_ra_int0_bit_rsme) | (1U << k_ra_int0_bit_vbse));
+
+  return k_ra_ok;
+}
+
 /* =============================================================================
  * Endpoints
  * =============================================================================
