@@ -633,6 +633,55 @@ typedef enum : uint16_t {
 } ra_board_usbhs_pin_t;
 
 /**
+ * @brief Drive the U15 PI4IOE5V6408 I/O expander to select USB-HS device mode.
+ *
+ * @details
+ * The EK-RA8D2 v1 carries a PI4IOE5V6408 8-bit I2C I/O expander at U15
+ * (I2C address 0x43, EK-RA8D2 v1 UM Rev 1.01 Section 5.5.3 p 32 +
+ * Section 4 p 16). U15 sits in parallel with the eight DIP switches of
+ * SW4 -- when configured as outputs, U15's port pins override SW4 and
+ * gate the same on-board mux that SW4 drives, including SW4-8 which
+ * selects USB function on J7 (USB-HS): OFF = Device, ON = Host.
+ *
+ * U15 register convention (PI4IOE5V6408, see Renesas
+ * ``ra-fsp-examples/ek_ra8t2/board_cfg_switch.c``):
+ *  - 0x01 Device-ID  (expect 0xA0 or 0xA2)
+ *  - 0x03 I/O direction      (1 = output)
+ *  - 0x05 Output state       (1 = HIGH = SW4 OFF, 0 = LOW = SW4 ON)
+ *  - 0x07 Output Hi-Z        (1 = Hi-Z)
+ *  - 0x0D Pull-up / pull-down select
+ *
+ * Polarity: the FSP reference driver treats ``OFF == output bit HIGH``,
+ * so SW4-8 OFF (the silk-screen "Device" position) corresponds to
+ * U15.P7 = 1. We write 0xFF (all bits HIGH = all SW4 channels in their
+ * default OFF position) which puts USB-HS into Device mode and leaves
+ * the other muxed peripherals at their EK-RA8D2 default routing.
+ *
+ * Routes P400 -> SCL0 and P401 -> SDA0 (chip HUM I/O Ports +
+ * EK-RA8D2 v1 UM Section 5.5.3) and brings IIC_B channel 0 up at
+ * 100 kHz (PCLKA = 125 MHz, same divisor used by every other I2C
+ * bring-up in this tree -- see ``tests/test_app_i2c_loopback.c``).
+ *
+ * @return ``ra_err_t`` Error code.
+ * @retval k_ra_ok All five register writes succeeded; U15 is driving
+ *                 SW4-8 = OFF (Device mode).
+ * @retval k_ra_err_gpio_conflict P400/P401 already owned.
+ * @retval k_ra_err_hw_init_failed IIC_B init failed.
+ * @retval k_ra_err_nack U15 didn't ACK the register write.
+ *
+ * @pre IOPORT module powered (reset default).
+ * @pre ``ra_mstp_init`` has run.
+ * @post P400/P401 are routed to SCL0/SDA0; IIC_B0 is initialised at
+ *       100 kHz; U15.P0..P7 are configured as outputs driven HIGH.
+ *
+ * @note Not thread-safe; call once from the boot context immediately
+ *       before ``ra_board_usbhs_device_init``.
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_board_io_expander_set_usbhs_device_mode(void);
+
+/**
  * @brief Bring the chip USBHS module up in device mode (HS PHY).
  *
  * @retval k_ra_ok / k_ra_err_not_supported (until USBHS HAL lands)
