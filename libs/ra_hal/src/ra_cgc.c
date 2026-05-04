@@ -1392,11 +1392,15 @@ ra_err_t ra_cgc_usbfs_clock_enable(
  * (FSP `bsp_clocks.c`):
  *   /1=0, /2=1, /3=5, /4=2, /5=6, /6=3, /8=4, /10=7, /16=8.
  * For the EK-RA8D2 USBHS PHY we land 60.000 MHz on USB60CLK from
- * PLL2P (240 MHz) / 5 = 48.000 MHz exactly. The USBHS PHY directly
- * consumes USB60CLK as its CLKSEL=48 reference (PHYSET CLKSEL[1:0]
- * field, HUM Ch 37.2.17 PHYSET p 2080); the previously assumed
- * "internal /5 of 60 MHz" path produced PLL chirp at the wrong rate
- * and macOS issued ~43 USB resets without RHST ever advancing past
+ * PLL2P (240 MHz) / 4 = 60.000 MHz, matching the HUM Ch 37.3.3
+ * "Supplying the Clock" requirement: "A 60-MHz clock must be supplied
+ * ... USB60CLK is the operating clock for the USBHS module" (HUM
+ * p 2102, line 85433). The PHY then internally divides USB60CLK to
+ * derive its USBMCLK reference; the PHYSET CLKSEL[1:0] field selects
+ * the after-division frequency (12 / 20 / 24 / 48 MHz; HUM Ch 37.2.17
+ * PHYSET, p 2080). The earlier "USB60CLK = 48 MHz, CLKSEL=48"
+ * configuration violated the named-rate contract on the register and
+ * made macOS issue ~43 USB resets without RHST ever advancing past
  * 000 (chirp limbo). PLL2 is configured at 960 MHz VCO with
  * PL2ODIVP=/4 -> PLL2P=240 MHz, the same setup the FS path uses
  * (see ::ra_cgc_usbfs_clock_enable).
@@ -1406,7 +1410,7 @@ ra_err_t ra_cgc_usbfs_clock_enable(
  */
 typedef enum : uint32_t {
   k_ra_usbhs_srdy_poll_limit = 200000U, /**< Iterations before timeout.   */
-  k_ra_usbhs_div5_code       = 6U,      /**< USB60CKDIVCR codepoint /5.   */
+  k_ra_usbhs_div4_code       = 2U,      /**< USB60CKDIVCR codepoint /4.   */
 } ra_usbhs_clock_local_t;
 
 /**
@@ -1499,7 +1503,7 @@ static ra_err_t internal_usb60ckcr_switch_to_pll2p_div4(void)
       ra_log_error(s_tag, "usbhs: SRDY=1 timeout");
       break;
     }
-    *ra_sys_usb60ckdivcr() = (uint8_t)k_ra_usbhs_div5_code;
+    *ra_sys_usb60ckdivcr() = (uint8_t)k_ra_usbhs_div4_code;
     const uint8_t src      = (uint8_t)((uint8_t)k_ra_usbcksel_pll2p & k_ra_usbckcr_mask_sel);
     *ckcr                  = (uint8_t)(src | sreq_mask | srdy_mask);
     *ckcr                  = (uint8_t)(*ckcr & (uint8_t)~sreq_mask);
