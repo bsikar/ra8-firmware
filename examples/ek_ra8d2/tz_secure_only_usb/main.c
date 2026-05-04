@@ -479,6 +479,19 @@ static VOID demo_worker(ULONG arg)
       tx_thread_sleep(k_demo_idle_ticks);
       continue;
     }
+    /* Pin USBX state at CONFIGURED on every iteration. The chip's
+     * DVSQ field is the source of truth for bus state and reads
+     * CONFIGURED once SET_CONFIGURATION lands; the polled DVSQ
+     * sync in the dispatch worker should keep ux_slave_device_state
+     * advanced, but on this silicon there is a residual race that
+     * leaves it at ATTACHED, breaking _ux_device_class_cdc_acm_read's
+     * state gate. Once s_cdc_acm is non-NULL the chapter-9 stack has
+     * already activated the class, so it is safe to assert
+     * CONFIGURED here. */
+    if (_ux_system_slave != UX_NULL) {
+      _ux_system_slave->ux_system_slave_device.ux_slave_device_state =
+        (unsigned long)UX_DEVICE_CONFIGURED;
+    }
     if (_ux_device_class_cdc_acm_read(s_cdc_acm, buf, sizeof(buf), &n) != UX_SUCCESS) {
       tx_thread_sleep(k_demo_idle_ticks);
       continue;
