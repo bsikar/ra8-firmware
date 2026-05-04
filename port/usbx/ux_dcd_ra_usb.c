@@ -203,6 +203,16 @@ typedef enum : uint8_t {
 } ra_usb_dcd_intsts0_hist_t;
 
 /**
+ * @enum ra_usb_dcd_intsts0_field_shift_t
+ * @brief Bit-position shifts used to extract INTSTS0 multi-bit fields.
+ *
+ * @details HUM Ch 36.2.16 INTSTS0 p 1986: DVSQ occupies bits 6:4.
+ */
+typedef enum : uint8_t {
+  k_ra_int0_dvsq_shift = 4U, /**< DVSQ[2:0] field starts at bit 4. */
+} ra_usb_dcd_intsts0_field_shift_t;
+
+/**
  * @var s_intsts0_valid_count
  * @brief Number of dispatch ticks where INTSTS0.VALID was observed.
  *
@@ -267,6 +277,63 @@ volatile uint32_t s_intsts0_snapshot_count = 0U;
  * @since 0.1.0
  */
 volatile uint8_t s_ctsq_history[(uint32_t)k_ra_usb_dcd_intsts0_hist_n] = {};
+
+/**
+ * @var s_intsts0_observed_or
+ * @brief Bitwise OR of every INTSTS0 value ever fed to ::ux_dcd_ra_usb_irq.
+ *
+ * @details Definitive bisect probe. Read this once via JLink and check
+ * bit 3 (mask 0x0008 = VALID) -- if it's clear, the controller has
+ * NEVER latched a SETUP token since power-on. Distinct from the
+ * snapshot ring (which can scroll edges out of view) because OR-
+ * accumulating bits is monotonic. HUM Ch 36.2.16 INTSTS0 p 1986
+ * (VALID = bit 3, CTRT = bit 11, DVST = bit 12).
+ *
+ * @note Single-writer (::ux_dcd_ra_usb_irq).
+ * @since 0.1.0
+ */
+volatile uint16_t s_intsts0_observed_or = 0U;
+
+/**
+ * @var s_dvsq_history
+ * @brief Per-snapshot DVSQ[2:0] field, pre-decoded for JLink readers.
+ *
+ * @details Companion to ::s_intsts0_snapshot. Slot ``i`` holds
+ * ``(intsts0[i] >> 4) & 0x07``, i.e. 0=Powered, 1=Default, 2=Address,
+ * 3=Configured, 4..7=Suspend (per HUM Ch 36.2.16 p 1986).
+ * Saves the human reader from mentally decoding the raw bits.
+ *
+ * @note Single-writer (::ux_dcd_ra_usb_irq).
+ * @since 0.1.0
+ */
+volatile uint8_t s_dvsq_history[(uint32_t)k_ra_usb_dcd_intsts0_hist_n] = {};
+
+/**
+ * @var s_setup_packet_buffer
+ * @brief Wire-format bytes of the most recent SETUP packet drained from
+ *        the controller, ready for JLink inspection.
+ *
+ * @details Layout matches USB 2.0 Ch 9.3:
+ *   [0]=bmRequestType, [1]=bRequest, [2..3]=wValue (LE),
+ *   [4..5]=wIndex (LE), [6..7]=wLength (LE).
+ * A standard GET_DESCRIPTOR(DEVICE) shows as
+ *   80 06 00 01 00 00 40 00.
+ * Stays all-zero until the first VALID/CTRT edge drains a SETUP.
+ * HUM Ch 36.2.17..36.2.20 (USBREQ/USBVAL/USBINDX/USBLENG).
+ *
+ * @note Single-writer (::internal_dispatch_setup).
+ * @since 0.1.0
+ */
+volatile uint8_t s_setup_packet_buffer[8] = {};
+
+/**
+ * @var s_setup_packet_count
+ * @brief Total SETUP packets latched into ::s_setup_packet_buffer.
+ *
+ * @note Single-writer (::internal_dispatch_setup).
+ * @since 0.1.0
+ */
+volatile uint32_t s_setup_packet_count = 0U;
 
 /**
  * @struct ra_usb_dcd_pipe_slot_t
@@ -911,6 +978,23 @@ static unsigned int internal_dispatch_setup(const ra_usb_setup_t* setup)
   tr->ux_slave_transfer_request_setup[k_setup_idx_len_hi] =
     (uint8_t)((setup->w_length >> k_setup_byte_shift) & k_setup_byte_mask);
 
+  /* Mirror the just-decoded SETUP into the JLink-readable probe so a
+   * halted target can be inspected with `mem 0xADDR 8 1`. Same byte
+   * order as ux_slave_transfer_request_setup above (USB 2.0 Ch 9.3).
+   * HUM Ch 36.2.17..36.2.20 (USBREQ/USBVAL/USBINDX/USBLENG). */
+  s_setup_packet_buffer[k_setup_idx_bmrt]   = setup->bm_request_type;
+  s_setup_packet_buffer[k_setup_idx_brq]    = setup->b_request;
+  s_setup_packet_buffer[k_setup_idx_val_lo] = (uint8_t)(setup->w_value & k_setup_byte_mask);
+  s_setup_packet_buffer[k_setup_idx_val_hi] =
+    (uint8_t)((setup->w_value >> k_setup_byte_shift) & k_setup_byte_mask);
+  s_setup_packet_buffer[k_setup_idx_idx_lo] = (uint8_t)(setup->w_index & k_setup_byte_mask);
+  s_setup_packet_buffer[k_setup_idx_idx_hi] =
+    (uint8_t)((setup->w_index >> k_setup_byte_shift) & k_setup_byte_mask);
+  s_setup_packet_buffer[k_setup_idx_len_lo] = (uint8_t)(setup->w_length & k_setup_byte_mask);
+  s_setup_packet_buffer[k_setup_idx_len_hi] =
+    (uint8_t)((setup->w_length >> k_setup_byte_shift) & k_setup_byte_mask);
+  s_setup_packet_count++;
+
   tr->ux_slave_transfer_request_actual_length        = 0UL;
   tr->ux_slave_transfer_request_current_data_pointer = tr->ux_slave_transfer_request_data_pointer;
   /* Chapter-9 dispatcher gates on completion_code == UX_SUCCESS
@@ -1090,6 +1174,7 @@ void ux_dcd_ra_usb_irq(ra_usb_speed_t speed, uint16_t intsts0)
   }
 
   s_intsts0_last_dispatch = intsts0;
+  s_intsts0_observed_or   = (uint16_t)(s_intsts0_observed_or | intsts0);
 
   const uint16_t ctrt_bit  = (uint16_t)(1U << (uint8_t)k_ra_int0_bit_ctrt);
   const uint16_t dvst_bit  = (uint16_t)(1U << (uint8_t)k_ra_int0_bit_dvst);
@@ -1114,6 +1199,11 @@ void ux_dcd_ra_usb_irq(ra_usb_speed_t speed, uint16_t intsts0)
                                    % (uint32_t)k_ra_usb_dcd_intsts0_hist_n);
     s_intsts0_snapshot[slot] = intsts0;
     s_ctsq_history[slot]     = (uint8_t)(intsts0 & (uint16_t)k_ra_intsts0_mask_ctsq);
+    /* DVSQ field is bits 6:4; shift right 4 so the slot reads 0..7 in
+     * the encoding documented at ::s_dvsq_history. HUM Ch 36.2.16
+     * INTSTS0 p 1986. */
+    s_dvsq_history[slot] =
+      (uint8_t)((intsts0 & (uint16_t)k_ra_intsts0_mask_dvsq) >> (uint8_t)k_ra_int0_dvsq_shift);
     s_intsts0_snapshot_count++;
   }
 
