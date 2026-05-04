@@ -304,4 +304,7 @@ uninitvar:libs/ra_net/src/ra_net_arp.c
 unusedStructMember:libs/ra_hal/inc/ra_epaper.h
 unusedStructMember:libs/ra_hal/inc/ra_rmac_phy.h
 unusedStructMember:libs/ra_hal/inc/ra_usb_haud.h
+unusedStructMember:libs/ra_hal/inc/ra_usb_cdc.h
+unusedStructMember:libs/ra_hal/inc/ra_usb_composite.h
+unusedStructMember:libs/ra_hal/inc/ra_usb_paud.h
 unusedStructMember:port/usbx/ux_dcd_ra_usb.c
