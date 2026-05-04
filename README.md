@@ -123,6 +123,15 @@ ln -s ../../scripts/git/pre-commit .git/hooks/pre-commit
 `.github/workflows/firmware.yml` runs every gate on push to `main` and
 on every pull request.
 
+## USB demos
+
+EK-RA8D2 USB device-mode CDC ACM echo demos (build, flash, verify):
+[`examples/ek_ra8d2/tz_secure_only_usb/`](examples/ek_ra8d2/tz_secure_only_usb/README.md)
+(USB-FS, J11) and
+[`examples/ek_ra8d2/tz_secure_only_usb_hs/`](examples/ek_ra8d2/tz_secure_only_usb_hs/README.md)
+(USB-HS, J7). Round-trip verifier:
+[`scripts/usb/usb_cdc_echo_test.py`](scripts/usb/usb_cdc_echo_test.py).
+
 ## License
 
 MIT. See [`LICENSE.txt`](LICENSE.txt).
