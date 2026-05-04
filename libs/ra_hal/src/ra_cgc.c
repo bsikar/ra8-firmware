@@ -1038,9 +1038,60 @@ static ra_err_t internal_wait_usbcksrdy(uint8_t expected)
 }
 
 /**
+ * @brief PRCR-protected stop+program+restart body of ::ra_cgc_pll2_enable.
+ * @details See implementation; mirrors ::internal_cgc_init_protected.
+ * @param[in] pll2ccr  Pre-computed PLL2CCR value.
+ * @param[in] pll2ccr2 Pre-computed PLL2CCR2 value.
+ * @return ra_err_t error code.
+ * @retval k_ra_ok PLL2 stopped, re-programmed, and re-locked.
+ * @retval k_ra_err_hw_timeout PLL2SF stop or lock wait exceeded.
+ * @pre  Caller is single-threaded init context; CPU not sourced from PLL2.
+ * @pre  PLL2 was previously stopped (OSCSF.PLL2SF=0 expected on entry).
+ * @post On k_ra_ok PLL2 is locked at the new mul / divider.
+ * @post PRCR re-locked unconditionally (RA_PROTECTED_WRITE invariant).
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static ra_err_t internal_pll2_program_protected(uint32_t pll2ccr, uint16_t pll2ccr2)
+{
+  ra_err_t err = k_ra_ok;
+  RA_PROTECTED_WRITE(k_ra_prcr_unlock_cgc)
+  {
+    /* HUM Ch 9.2.11 "PLL2CR : PLL2 Control Register" p 336 -- stop
+     * PLL2 before writing PLL2CCR / PLL2CCR2. */
+    *ra_sys_pll2cr() = (uint8_t)k_ra_pll2cr_stop;
+    err              = internal_wait_oscsf_clear(k_ra_oscsf_bit_pll2sf);
+    if (err != k_ra_ok) {
+      ra_log_error(s_tag, "pll2: stop wait timeout");
+      break;
+    }
+    /* HUM Ch 9.2.10 "PLL2CCR : PLL2 Clock Control Register" p 335 */
+    *ra_sys_pll2ccr() = pll2ccr;
+    /* HUM Ch 9.2.12 "PLL2CCR2 : PLL2 Clock Control Register 2" p 337 */
+    *ra_sys_pll2ccr2() = pll2ccr2;
+    *ra_sys_pll2cr()   = (uint8_t)k_ra_pll2cr_run;
+    err                = internal_wait_oscsf_set(k_ra_oscsf_bit_pll2sf);
+    if (err != k_ra_ok) {
+      ra_log_error(s_tag, "pll2: lock wait timeout");
+      break;
+    }
+  }
+  return err;
+}
+
+/**
  * @brief Implementation of ra_cgc_pll2_enable (see header for full contract).
  *
  * @details
+ * Idempotent: if OSCSF.PLL2SF is already asserted on entry the
+ * function returns ::k_ra_ok without touching PLL2CCR / PLL2CCR2 /
+ * PLL2CR. This lets the FS and HS USB bring-up paths (which both want
+ * the same 960 MHz VCO with PLL2P = /4 = 240 MHz) coexist on the same
+ * boot without re-programming a live PLL2 (HUM Ch 9 forbids writing
+ * PLL2CCR while PLL2 is running, and downstream consumers -- including
+ * USBCKCR sourced from PLL2P after the FS path runs -- would lose
+ * their clock during the re-program).
+ *
  * Stops PLL2 (with bounded poll on OSCSF.PLL2SF clear), programmes
  * PLL2CCR + PLL2CCR2, then starts PLL2 (bounded poll on OSCSF.PLL2SF
  * set). Input divider is hard-wired to /2 and source to main XTAL
@@ -1078,8 +1129,14 @@ ra_err_t ra_cgc_pll2_enable(uint8_t mul_int, uint8_t mul_quarters, ra_plodiv_t p
 
   ra_log_info_val(s_tag, "pll2 enable mul_int", (uint32_t)mul_int);
 
-  /* PLL2CCR (32-bit on RA8D2, HUM Ch 9.2.9): `(mul*4 + quarters) << 6`
-   * packing -- PLL2MULNF[7:6] | PLL2MUL[16:8] (9-bit, max 0x12B = x300). */
+  /* Idempotency (HUM Ch 9): never re-program a running PLL2 -- if FS
+   * path already locked it, the HS path's "same VCO" request is a no-op. */
+  if ((*ra_sys_oscsf() & (uint8_t)(1U << k_ra_oscsf_bit_pll2sf)) != 0U) {
+    ra_log_info(s_tag, "pll2 already locked -- skip re-program");
+    return k_ra_ok;
+  }
+
+  /* PLL2CCR (32-bit, HUM Ch 9.2.9): PLL2MULNF[7:6] | PLL2MUL[16:8]. */
   const uint32_t mul_quarters_field =
     ((uint32_t)mul_int * (uint32_t)k_ra_cgc_quarters_per_unit) + (uint32_t)mul_quarters;
   const uint32_t pll2ccr =
@@ -1087,40 +1144,13 @@ ra_err_t ra_cgc_pll2_enable(uint8_t mul_int, uint8_t mul_quarters, ra_plodiv_t p
     ((uint32_t)k_ra_plsrcsel_main << k_ra_pllccr_shift_plsrcsel) |
     ((uint32_t)k_ra_plidiv_div2 & (uint32_t)k_ra_pll2ccr_mask_plidiv);
 
-  /* PLL2CCR2: programme P; Q/R at /6 (code 5). Code 0 (=/1) is
-   * "Setting prohibited" per HUM Ch 9.2.10/9.2.12 -- a prohibited
-   * code in ANY field makes the chip drop the whole 16-bit write. */
+  /* PLL2CCR2: P from caller; Q/R fixed at /6. Code 0 is prohibited
+   * per HUM Ch 9.2.10/9.2.12 (drops the whole 16-bit write). */
   const uint16_t pll2ccr2 = (uint16_t)(((uint16_t)k_ra_plodiv_div6 << k_ra_pllccr2_shift_plodivr) |
                                        ((uint16_t)k_ra_plodiv_div6 << k_ra_pllccr2_shift_plodivq) |
                                        ((uint16_t)p_div_code << k_ra_pllccr2_shift_plodivp));
 
-  ra_err_t err = k_ra_ok;
-  RA_PROTECTED_WRITE(k_ra_prcr_unlock_cgc)
-  {
-    /* Stop PLL2 first so PLL2CCR / PLL2CCR2 writes are accepted (mirrors
-     * the PLL1 behaviour where writes silently drop while the PLL is
-     * running). HUM Ch 9.2.11 "PLL2CR : PLL2 Control Register" p 336. */
-    *ra_sys_pll2cr() = (uint8_t)k_ra_pll2cr_stop;
-    err              = internal_wait_oscsf_clear(k_ra_oscsf_bit_pll2sf);
-    if (err != k_ra_ok) {
-      ra_log_error(s_tag, "pll2: stop wait timeout");
-      break;
-    }
-
-    /* HUM Ch 9.2.10 "PLL2CCR : PLL2 Clock Control Register" p 335 */
-    *ra_sys_pll2ccr() = pll2ccr;
-    /* HUM Ch 9.2.12 "PLL2CCR2 : PLL2 Clock Control Register 2" p 337 */
-    *ra_sys_pll2ccr2() = pll2ccr2;
-
-    /* Restart PLL2 and wait for OSCSF.PLL2SF. */
-    *ra_sys_pll2cr() = (uint8_t)k_ra_pll2cr_run;
-    err              = internal_wait_oscsf_set(k_ra_oscsf_bit_pll2sf);
-    if (err != k_ra_ok) {
-      ra_log_error(s_tag, "pll2: lock wait timeout");
-      break;
-    }
-  }
-
+  const ra_err_t err = internal_pll2_program_protected(pll2ccr, pll2ccr2);
   if (err != k_ra_ok) {
     return err;
   }
