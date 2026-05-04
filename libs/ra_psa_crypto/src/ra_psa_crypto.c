@@ -186,7 +186,6 @@ static bool s_initialised;
 /**
  * @brief Validate that a typed handle points into the static pool.
  *
- * @param[in] h Handle to validate.
  * @return ``true`` when ``h`` resolves to an in-use pool slot.
  *
  * @details See implementation for details.

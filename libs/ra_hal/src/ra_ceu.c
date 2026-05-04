@@ -1151,8 +1151,6 @@ static void internal_plane_b_mirror_from_a(void)
  *
  * @note Internal helper, not thread-safe.
  *
- * @param[in] buf See header declaration for direction and constraints.
- * @param[in] len See header declaration for direction and constraints.
  * @since 0.1.0
  *
  * @post Side effects bounded to documented state.

@@ -119,7 +119,6 @@ static void internal_read_raw(ra_reset_raw_t* out)
  * dominance (every higher-priority reset clears the lower-priority
  * flag, so by the time firmware runs only the dominant cause is set).
  *
- * @param[in] raw  Raw register snapshot.
  * @return Decoded cause.
  */
 /**

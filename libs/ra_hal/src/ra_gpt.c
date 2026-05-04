@@ -168,7 +168,6 @@ typedef enum : uint8_t {
  * @details See the matching header declaration for the full
  * contract; this site adds no behaviour beyond what the public
  * API documents.
- * @param[in] channel See header declaration for direction and constraints.
  * @param[in] period_counts See header declaration for direction and constraints.
  * @return ``ra_err_t`` error code (or void if the signature returns void).
  * @retval k_ra_ok Success path.
@@ -961,8 +960,6 @@ static ra_gpt_three_phase_state_t s_three_phase;
  * @details See the matching header declaration for the full
  * contract; this site adds no behaviour beyond what the public
  * API documents.
- * @param[in] channel See header declaration for direction and constraints.
- * @param[in] status_mask See header declaration for direction and constraints.
  * @pre Driver state has been initialised by the matching ``*_init``.
  * @pre Caller has validated all pointer parameters.
  * @post Side effects are limited to those documented in the header.

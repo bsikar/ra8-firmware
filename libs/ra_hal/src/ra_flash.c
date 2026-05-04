@@ -488,13 +488,11 @@ static uint32_t internal_arc_max_count(ra_flash_arc_id_t id)
  * @details See the matching header declaration for the full
  * contract; this site adds no behaviour beyond what the public
  * API documents.
- * @param[in] out_status See header declaration for direction and constraints.
  * @retval k_ra_ok Success path.
  * @retval k_ra_err_invalid_arg Caller violated a precondition.
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  *
- * @param[in] cfg See header declaration for direction and constraints.
  * @pre Module/state preconditions hold (see function body).
  * @post Documented side effects are visible on success.
  */
@@ -895,17 +893,11 @@ static ra_err_t internal_validate_write_block(uint32_t mram_addr, uint32_t len)
  *
  * @note Internal helper, not thread-safe.
  *
- * @param[in] target_addr See header declaration for direction and constraints.
- * @param[in] words See header declaration for direction and constraints.
  * @retval k_ra_ok Success path.
  * @retval k_ra_err_invalid_arg Caller violated a precondition.
  * @since 0.1.0
  *
- * @param[in] target See header declaration for direction and constraints.
- * @param[in] temporary See header declaration for direction and constraints.
  *
- * @param[in] lock See header declaration for direction and constraints.
- * @param[in] permanent See header declaration for direction and constraints.
  * @pre Module/state preconditions hold (see function body).
  * @post Documented side effects are visible on success.
  */
@@ -1533,7 +1525,6 @@ static ra_err_t internal_arc_cmd(uint8_t mcntselr, uint8_t cmd)
  * @brief Read an ARC counter through whatever path the HUM mandates.
  *
  * @param[in]  id        Logical counter id.
- * @param[out] out_count Population count of the counter bit-vector.
  * @return ``ra_err_t``.
  *
  * @pre Caller is in P/E mode for the OEMBL path; read-mode is fine
@@ -1556,14 +1547,10 @@ static ra_err_t internal_arc_cmd(uint8_t mcntselr, uint8_t cmd)
  *
  * @note Internal helper, not thread-safe.
  *
- * @param[in] mram_addr See header declaration for direction and constraints.
- * @param[in] src See header declaration for direction and constraints.
- * @param[in] len See header declaration for direction and constraints.
  * @retval k_ra_ok Success path.
  * @retval k_ra_err_invalid_arg Caller violated a precondition.
  * @since 0.1.0
  *
- * @param[in] list_select See header declaration for direction and constraints.
  * @pre Module/state preconditions hold (see function body).
  * @post Documented side effects are visible on success.
  */
@@ -2385,7 +2372,6 @@ static void internal_deliver(ra_flash_irq_src_t src, uint32_t fault_addr, uint32
  *
  * @note Internal helper, not thread-safe.
  *
- * @param[in] cfg See header declaration for direction and constraints.
  * @retval k_ra_ok Success path.
  * @retval k_ra_err_invalid_arg Caller violated a precondition.
  * @since 0.1.0
