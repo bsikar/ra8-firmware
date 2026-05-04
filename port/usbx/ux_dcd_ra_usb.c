@@ -54,6 +54,33 @@ typedef enum : uint8_t {
 static const char* const s_tag = "ux_dcd_ra_usb";
 
 /**
+ * @var s_syscfg_after_dcd_init
+ * @brief SYSCFG snapshot at end of ux_dcd_ra_usb_initialize.
+ *
+ * @details Bisect probe for the "USBE clears between phy bring-up and
+ * echo loop" regression. Read via JLink to confirm whether the DCD
+ * bridge or anything it calls (e.g. _ux_dcd_ra_usb_function
+ * CREATE_ENDPOINT, _ux_utility_descriptor_parse, the dispatch worker
+ * spawn) clobbers SYSCFG. HUM Ch 37.2.1 SYSCFG p 2060.
+ *
+ * @note Read-only from outside; written only by ::ux_dcd_ra_usb_initialize.
+ * @since 0.1.0
+ */
+volatile uint16_t s_syscfg_after_dcd_init = 0U;
+
+/**
+ * @var s_lpsts_after_dcd_init
+ * @brief LPSTS snapshot at end of ux_dcd_ra_usb_initialize.
+ *
+ * @details Companion bisect probe; expected SUSPENDM=1 (0x4000). HUM
+ * Ch 37.2.43 LPSTS p 2111.
+ *
+ * @note Read-only from outside; written only by ::ux_dcd_ra_usb_initialize.
+ * @since 0.1.0
+ */
+volatile uint16_t s_lpsts_after_dcd_init = 0U;
+
+/**
  * @struct ra_usb_dcd_pipe_slot_t
  * @brief Per-pipe class-layer cache so the IRQ handler can re-arm
  *        BRDY-driven transfers without crawling the device endpoint
@@ -242,9 +269,8 @@ static unsigned int internal_transfer_request(struct UX_SLAVE_TRANSFER_STRUCT* t
     if (tr->ux_slave_transfer_request_in_transfer_length != 0U &&
         tr->ux_slave_transfer_request_data_pointer != nullptr) {
       const uint16_t len = (uint16_t)tr->ux_slave_transfer_request_in_transfer_length;
-      if (ra_usb_dcp_in_data(s_dcd.speed,
-                             tr->ux_slave_transfer_request_data_pointer,
-                             len) != k_ra_ok) {
+      if (ra_usb_dcp_in_data(s_dcd.speed, tr->ux_slave_transfer_request_data_pointer, len) !=
+          k_ra_ok) {
         return UX_TRANSFER_ERROR;
       }
       tr->ux_slave_transfer_request_actual_length = len;
@@ -290,8 +316,7 @@ static unsigned int internal_transfer_request(struct UX_SLAVE_TRANSFER_STRUCT* t
   if (pipe == 2U) {
     s_diag.xfer_req_pipe2_block++;
   }
-  UINT sem_status =
-    tx_semaphore_get(&tr->ux_slave_transfer_request_semaphore, timeout);
+  UINT sem_status = tx_semaphore_get(&tr->ux_slave_transfer_request_semaphore, timeout);
   if (pipe == 2U) {
     s_diag.xfer_req_pipe2_woken++;
   }
@@ -676,28 +701,30 @@ static unsigned int internal_dispatch_setup(const ra_usb_setup_t* setup)
   if (setup == nullptr || _ux_system_slave == UX_NULL) {
     return UX_ERROR;
   }
-  UX_SLAVE_DEVICE* device = &_ux_system_slave->ux_system_slave_device;
+  UX_SLAVE_DEVICE*   device = &_ux_system_slave->ux_system_slave_device;
   UX_SLAVE_TRANSFER* tr =
     &device->ux_slave_device_control_endpoint.ux_slave_endpoint_transfer_request;
   if (tr == UX_NULL) {
     return UX_ERROR;
   }
 
-  tr->ux_slave_transfer_request_setup[k_setup_idx_bmrt]   = setup->bm_request_type;
-  tr->ux_slave_transfer_request_setup[k_setup_idx_brq]    = setup->b_request;
-  tr->ux_slave_transfer_request_setup[k_setup_idx_val_lo] = (uint8_t)(setup->w_value & k_setup_byte_mask);
+  tr->ux_slave_transfer_request_setup[k_setup_idx_bmrt] = setup->bm_request_type;
+  tr->ux_slave_transfer_request_setup[k_setup_idx_brq]  = setup->b_request;
+  tr->ux_slave_transfer_request_setup[k_setup_idx_val_lo] =
+    (uint8_t)(setup->w_value & k_setup_byte_mask);
   tr->ux_slave_transfer_request_setup[k_setup_idx_val_hi] =
     (uint8_t)((setup->w_value >> k_setup_byte_shift) & k_setup_byte_mask);
-  tr->ux_slave_transfer_request_setup[k_setup_idx_idx_lo] = (uint8_t)(setup->w_index & k_setup_byte_mask);
+  tr->ux_slave_transfer_request_setup[k_setup_idx_idx_lo] =
+    (uint8_t)(setup->w_index & k_setup_byte_mask);
   tr->ux_slave_transfer_request_setup[k_setup_idx_idx_hi] =
     (uint8_t)((setup->w_index >> k_setup_byte_shift) & k_setup_byte_mask);
-  tr->ux_slave_transfer_request_setup[k_setup_idx_len_lo] = (uint8_t)(setup->w_length & k_setup_byte_mask);
+  tr->ux_slave_transfer_request_setup[k_setup_idx_len_lo] =
+    (uint8_t)(setup->w_length & k_setup_byte_mask);
   tr->ux_slave_transfer_request_setup[k_setup_idx_len_hi] =
     (uint8_t)((setup->w_length >> k_setup_byte_shift) & k_setup_byte_mask);
 
   tr->ux_slave_transfer_request_actual_length        = 0UL;
-  tr->ux_slave_transfer_request_current_data_pointer =
-    tr->ux_slave_transfer_request_data_pointer;
+  tr->ux_slave_transfer_request_current_data_pointer = tr->ux_slave_transfer_request_data_pointer;
   /* Chapter-9 dispatcher gates on completion_code == UX_SUCCESS
    * (ux_device_stack_control_request_process.c line ~101). The
    * previous SETUP may have left it as UX_TRANSFER_STALLED on a
@@ -906,9 +933,9 @@ void ux_dcd_ra_usb_irq(ra_usb_speed_t speed, uint16_t intsts0)
       (void)tx_semaphore_put(&tr->ux_slave_transfer_request_semaphore);
 #endif
     } else {
-      uint16_t       len    = (uint16_t)tr->ux_slave_transfer_request_requested_length;
-      const ra_err_t qo_err = ra_usb_queue_out(
-        s_dcd.speed, i, tr->ux_slave_transfer_request_data_pointer, &len);
+      uint16_t       len = (uint16_t)tr->ux_slave_transfer_request_requested_length;
+      const ra_err_t qo_err =
+        ra_usb_queue_out(s_dcd.speed, i, tr->ux_slave_transfer_request_data_pointer, &len);
       if (qo_err == k_ra_ok) {
         if (i == 2U) {
           s_diag.irq_walk_pipe2_complete++;
@@ -1289,10 +1316,9 @@ ra_err_t ux_dcd_ra_usb_initialize(ra_usb_speed_t speed)
 
   UX_SLAVE_TRANSFER* tr =
     &device->ux_slave_device_control_endpoint.ux_slave_endpoint_transfer_request;
-  tr->ux_slave_transfer_request_timeout = UX_MS_TO_TICK(UX_CONTROL_TRANSFER_TIMEOUT);
-  tr->ux_slave_transfer_request_current_data_pointer =
-    tr->ux_slave_transfer_request_data_pointer;
-  tr->ux_slave_transfer_request_endpoint = &device->ux_slave_device_control_endpoint;
+  tr->ux_slave_transfer_request_timeout              = UX_MS_TO_TICK(UX_CONTROL_TRANSFER_TIMEOUT);
+  tr->ux_slave_transfer_request_current_data_pointer = tr->ux_slave_transfer_request_data_pointer;
+  tr->ux_slave_transfer_request_endpoint             = &device->ux_slave_device_control_endpoint;
   device->ux_slave_device_control_endpoint.ux_slave_endpoint_descriptor.wMaxPacketSize =
     device->ux_slave_device_descriptor.bMaxPacketSize0;
   tr->ux_slave_transfer_request_requested_length =
@@ -1307,7 +1333,7 @@ ra_err_t ux_dcd_ra_usb_initialize(ra_usb_speed_t speed)
                                 (void*)&device->ux_slave_device_control_endpoint);
 
   device->ux_slave_device_control_endpoint.ux_slave_endpoint_state = UX_ENDPOINT_RESET;
-  tr->ux_slave_transfer_request_phase = UX_TRANSFER_PHASE_DATA_IN;
+  tr->ux_slave_transfer_request_phase                              = UX_TRANSFER_PHASE_DATA_IN;
 
   /* Stamp ATTACHED so the chapter-9 dispatcher accepts the host's
    * first SETUP. USBX's _ux_device_stack_transfer_request gates EP0
@@ -1324,9 +1350,15 @@ ra_err_t ux_dcd_ra_usb_initialize(ra_usb_speed_t speed)
    * suspends the bus before the application worker even reaches its
    * first ra_usb_dispatch call (ctrt_count=0, setup_count=0 -- see
    * HARDWARE_BRINGUP.md "night sweep"). */
-  RA_RETURN_ON_ERROR(internal_start_dispatch_worker(),
-                     s_tag,
-                     "internal_start_dispatch_worker");
+  RA_RETURN_ON_ERROR(internal_start_dispatch_worker(), s_tag, "internal_start_dispatch_worker");
+
+  /* Bisect probes: SYSCFG/LPSTS state captured at the END of DCD init,
+   * BEFORE the application calls ra_usb_device_attach(true). HUM
+   * Ch 37.2.1 SYSCFG p 2060, HUM Ch 37.2.43 LPSTS p 2111. */
+  if (speed == k_ra_usb_speed_hs) {
+    s_syscfg_after_dcd_init = ra_usb_hs()->SYSCFG;
+    s_lpsts_after_dcd_init  = *ra_usbhs_lpsts();
+  }
 
   ra_log_info(s_tag, "DCD bridge installed");
   return k_ra_ok;
