@@ -22,7 +22,7 @@ extern "C" {
 
 /**
  * @brief Return true iff @p tag is a tag that introduces / removes a
- *        block-level indent (currently @c <li> and @c <blockquote>).
+ *        block-level indent (currently `<li>` and `<blockquote>`).
  *
  * @details Promoted from the inline expressions in
  *          ``priv_open_block`` (line 479) and ``priv_close_block``

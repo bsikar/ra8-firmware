@@ -63,9 +63,10 @@ layer in `libs/ra_hal/src/ra_usb_hhid.c`.
    `LED2` (P3_03) toggles per keystroke.
 
    Supported keys: letters `a..z` (Shift -> uppercase), digits `0..9`
-   with shifted symbols `!@#$%^&*()`, Enter (`\n`), Backspace (`\b`),
-   Tab (`\t`), Space, and the common punctuation row
-   `-=[]\;'`,./` (with their shifted variants `_+{}|:~<>?`). Escape
+   with shifted symbols `!@#$%^&*()`, Enter, Backspace,
+   Tab, Space, and the common punctuation row
+   `-`, `=`, `[`, `]`, backslash, `;`, apostrophe, backtick, `,`, `.`, `/`
+   (with their shifted variants `_+{}|:~<>?`). Escape
    prints as the marker `^[`. Anything outside the table (function
    keys, arrow keys, F1..F12, ...) blinks LED2 but emits nothing on
    SCI8 -- that is the intentional limit of the boot-protocol decoder.
