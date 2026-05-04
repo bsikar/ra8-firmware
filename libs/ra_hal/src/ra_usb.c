@@ -333,10 +333,34 @@ typedef enum : uint32_t {
    * (~5 ms ceiling at 1 GHz Cortex-M85) which is well above the
    * worst-case observed lock time but still bounded for NASA Rule 2. */
   k_ra_usbhs_pll_lock_poll_limit = 5000000U,
-  k_ra_usbhs_scke_poll_limit     = 200000U,
-  k_ra_usbhs_probe_hi_shift      = 16U,
-  k_ra_usbhs_probe_lo_mask       = 0x0000FFFFU,
+  /* Per-CLKSEL bisect attempt: ~50 ms ceiling at 1 GHz so the 4-attempt
+   * sweep stays under the 250 ms total wall-time budget mandated by the
+   * USB-HS bring-up debug spec. */
+  k_ra_usbhs_pll_lock_attempt_limit = 50000000U / 100U,
+  k_ra_usbhs_scke_poll_limit        = 200000U,
+  k_ra_usbhs_probe_hi_shift         = 16U,
+  k_ra_usbhs_probe_lo_mask          = 0x0000FFFFU,
 } ra_usbhs_init_local_t;
+
+/**
+ * @enum ra_usbhs_clksel_attempt_t
+ * @brief Iteration order for the CLKSEL[1:0] bisect harness.
+ *
+ * @details HUM Ch 37.2.17 PHYSET CLKSEL[1:0] bit-field, p 2080:
+ *   - 00b = 12 MHz (board EXTAL is 24 MHz, USB60CLK = PLL2P/4 = 60 MHz;
+ *     primary candidate per FSP USB_USBMCLK_HZ == USB_CLK_12MHZ branch)
+ *   - 01b = 48 MHz
+ *   - 10b = 20 MHz
+ *   - 11b = 24 MHz (PHYSET reset value)
+ *
+ * The bisect tries these in turn so a single boot finds the codepoint
+ * the silicon actually accepts. Capture the winner (or 0xFF on full
+ * sweep failure) into ::s_clksel_winner.
+ */
+typedef enum : uint8_t {
+  k_ra_usbhs_clksel_attempts_n = 4U,
+  k_ra_usbhs_clksel_no_winner  = 0xFFU, /**< Sentinel: bisect exhausted. */
+} ra_usbhs_clksel_attempt_t;
 
 /**
  * @enum ra_usbhs_phy_step_t
@@ -402,6 +426,37 @@ static volatile uint32_t s_usbhs_init_probe = 0U;
  * @since 0.1.0
  */
 static volatile uint16_t s_usbhs_pllsta_probe = 0U;
+
+/**
+ * @var s_clksel_winner
+ * @brief Diagnostic capture of the PHYSET.CLKSEL[1:0] codepoint that
+ *        produced PLL lock during the bisect harness.
+ *
+ * @details Layout: low nibble is the masked PHYSET CLKSEL field
+ * (0x00, 0x10, 0x20, or 0x30 corresponding to 12 / 48 / 20 / 24 MHz
+ * per HUM Ch 37.2.17 PHYSET p 2080 Table). Sentinel 0xFF means the
+ * full 4-codepoint sweep completed without observing PLLSTA.PLLLOCK.
+ *
+ * @note Read-only from outside; written only by ::internal_usbhs_phy_bringup.
+ * @warning Direct modification breaks the diagnostic invariant.
+ * @since 0.1.0
+ */
+static volatile uint8_t s_clksel_winner = (uint8_t)k_ra_usbhs_clksel_no_winner;
+
+/**
+ * @var s_clksel_attempt_pllsta
+ * @brief Per-attempt PLLSTA capture array for the bisect harness.
+ *
+ * @details Index = attempt number (0..3). Each slot captures the
+ * PLLSTA value observed at the end of that attempt's polling window
+ * so a JLink read of all four words tells the operator which CLKSEL
+ * codepoints saw any partial lock activity.
+ *
+ * @note Read-only from outside.
+ * @warning Direct modification breaks the diagnostic invariant.
+ * @since 0.1.0
+ */
+static volatile uint16_t s_clksel_attempt_pllsta[4] = {0U, 0U, 0U, 0U};
 
 /**
  * @brief Microsecond busy-wait helper for USB PHY bring-up.
@@ -491,6 +546,131 @@ static ra_err_t internal_usbhs_wait_pll_lock(void)
 }
 
 /**
+ * @brief Bounded per-CLKSEL-attempt PLL-lock poll.
+ *
+ * @details Same loop as ::internal_usbhs_wait_pll_lock but with a
+ * tighter (~50 ms) ceiling so the 4-codepoint bisect harness fits
+ * inside its 250 ms total wall-time budget.
+ *
+ * @return ::ra_err_t
+ * @retval k_ra_ok PLLLOCK observed within the per-attempt window.
+ * @retval k_ra_err_hw_timeout PLLLOCK never asserted.
+ *
+ * @pre LPSTS.SUSPENDM = 1 and PHYSET is configured for one CLKSEL.
+ * @pre USB60CLK is running (PLL2P / 4 = 60 MHz).
+ * @post Loop iteration count is bounded.
+ * @post s_usbhs_pllsta_probe holds the final PLLSTA word.
+ *
+ * @note Not thread-safe; init context only.
+ * @since 0.1.0
+ */
+static ra_err_t internal_usbhs_wait_pll_lock_short(void)
+{
+  volatile uint16_t* const pllsta = ra_usbhs_pllsta();
+  ra_err_t                 lock   = k_ra_err_hw_timeout;
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_usbhs_pll_lock_attempt_limit; ++i) {
+    if ((*pllsta & (uint16_t)k_ra_pllsta_plllock) != 0U) {
+      lock = k_ra_ok;
+      break;
+    }
+  }
+  s_usbhs_pllsta_probe = *pllsta;
+  return lock;
+}
+
+/**
+ * @brief Drive PHYSET into "PHY in reset" with the given CLKSEL field.
+ *
+ * @details Asserts DIRPD=1 and PLLRESET=1, then writes the chosen
+ * CLKSEL[1:0] codepoint. HUM Ch 37.2.17 PHYSET, p 2080 Table:
+ * 00b=12 MHz, 01b=48 MHz, 10b=20 MHz, 11b=24 MHz. Used by both
+ * the canonical bring-up path and the CLKSEL bisect harness.
+ *
+ * @param[in] physet_reg PHYSET register pointer (::ra_usbhs_physet()).
+ * @param[in] clksel_value Pre-shifted CLKSEL field value (0x00, 0x10,
+ *                         0x20, or 0x30).
+ *
+ * @pre physet_reg non-null.
+ * @pre LPSTS.SUSPENDM may be 0 or 1; HUM Ch 37.2.43 LPSTS, p 2111
+ *      states only a small whitelist of registers can be written
+ *      while SUSPENDM=0 and PHYSET is not on it. The harness clears
+ *      SUSPENDM-then-sets it again per attempt to flush latched
+ *      writes regardless.
+ * @post PHYSET: DIRPD=1, PLLRESET=1, CLKSEL field = clksel_value.
+ * @post No other PHYSET fields (REPSEL, HSEB, CDPEN) are touched.
+ *
+ * @note Not thread-safe; init context only.
+ * @since 0.1.0
+ */
+static void internal_usbhs_arm_phy_reset(volatile uint16_t* physet_reg, uint16_t clksel_value)
+{
+  /* HUM Ch 37.2.17 PHYSET, p 2080: assert PHY power-down and PLL
+   * reset, mask out CLKSEL[1:0], then OR in the candidate field. */
+  uint16_t v  = *physet_reg;
+  v           = (uint16_t)(v | (uint16_t)k_ra_physet_dirpd | (uint16_t)k_ra_physet_pllreset);
+  v           = (uint16_t)(v & (uint16_t)~(uint16_t)k_ra_physet_clksel);
+  v           = (uint16_t)(v | (uint16_t)(clksel_value & (uint16_t)k_ra_physet_clksel));
+  *physet_reg = v;
+}
+
+/**
+ * @brief One iteration of the CLKSEL bisect: try a single codepoint.
+ *
+ * @details For the given CLKSEL value:
+ *   1. Toggle LPSTS.SUSPENDM 1->0->1 to flush latched PHYSET writes
+ *      (HUM Ch 37.2.43 LPSTS p 2111: writes to USBHS regs only take
+ *      effect once the PHY clock oscillates, which happens when
+ *      SUSPENDM is set to 1).
+ *   2. Arm PHYSET in reset with this CLKSEL.
+ *   3. Release DIRPD (1 us settle), wait 1 ms, release PLLRESET.
+ *   4. Set LPSTS.SUSPENDM = 1.
+ *   5. Poll PLLSTA.PLLLOCK with the per-attempt budget.
+ *
+ * @param[in] physet PHYSET register pointer.
+ * @param[in] lpsts  LPSTS register pointer.
+ * @param[in] clksel_value PHYSET CLKSEL field value (0x00/10/20/30).
+ *
+ * @return ::ra_err_t
+ * @retval k_ra_ok PLL locked under this CLKSEL.
+ * @retval k_ra_err_hw_timeout PLL did not lock within the per-attempt
+ *                              window.
+ *
+ * @pre SYSCFG.HSE = 1.
+ * @pre physet and lpsts pointers are non-null and point at the HS
+ *      USBHS register block.
+ * @post On success: PHY powered, PLLRESET cleared, SUSPENDM=1.
+ * @post On failure: SUSPENDM=1 is left asserted; caller may retry the
+ *       next CLKSEL value or surface the timeout.
+ *
+ * @note Not thread-safe; init context only.
+ * @since 0.1.0
+ */
+static ra_err_t internal_usbhs_try_clksel(volatile uint16_t* physet,
+                                          volatile uint16_t* lpsts,
+                                          uint16_t           clksel_value)
+{
+  /* Drop SUSPENDM so the PHY clock is gated; subsequent PHYSET writes
+   * are then sequenced through a single SUSPENDM 0->1 transition. */
+  *lpsts = (uint16_t)(*lpsts & (uint16_t)~(uint16_t)k_ra_lpsts_suspendm);
+  internal_usb_delay_1us();
+
+  internal_usbhs_arm_phy_reset(physet, clksel_value);
+  internal_usb_delay_1us();
+
+  /* Release DIRPD (PHY analog up), wait 1 ms, release PLLRESET. */
+  *physet = (uint16_t)(*physet & (uint16_t)~(uint16_t)k_ra_physet_dirpd);
+  ra_delay_ms(1U);
+  *physet = (uint16_t)(*physet & (uint16_t)~(uint16_t)k_ra_physet_pllreset);
+
+  /* HUM Ch 37.2.43 LPSTS, p 2111: SUSPENDM=1 starts the PHY clock,
+   * which both commits any previously-latched PHYSET writes and
+   * begins the PLL lock countdown. */
+  *lpsts = (uint16_t)(*lpsts | (uint16_t)k_ra_lpsts_suspendm);
+
+  return internal_usbhs_wait_pll_lock_short();
+}
+
+/**
  * @brief USBHS embedded-PHY bring-up (FSP `hw_usb_pmodule_init` IP1 branch).
  *
  * @details Mirrors the Renesas FSP USBHS device-mode bring-up sequence
@@ -532,51 +712,51 @@ static ra_err_t internal_usbhs_phy_bringup(volatile r_usb_regs_t* reg)
   volatile uint16_t* const lpsts  = ra_usbhs_lpsts();
 
   /* Step 1: SYSCFG.HSE = 1 (mirrors FSP `hw_usb_set_hse`, called from
-   * r_usb_basic.c BEFORE hw_usb_pmodule_init). HUM Ch 37.2.1 SYSCFG. */
+   * r_usb_basic.c BEFORE hw_usb_pmodule_init). HUM Ch 37 "SYSCFG"
+   * register, p 2060. */
   reg->SYSCFG      = (uint16_t)(reg->SYSCFG | (uint16_t)(1U << k_ra_syscfg_bit_hse));
   s_phy_step_probe = (uint8_t)k_ra_usbhs_phy_step_hse_set;
 
-  /* Step 2: PHYSET DIRPD + CLKSEL mask, then force CLKSEL = 12 MHz.
-   * Mirrors FSP r_usb_preg_access.c::hw_usb_pmodule_init IP1 path,
-   * USB_USBMCLK_HZ == USB_CLK_12MHZ branch. HUM Ch 37.2.5 PHYSET. */
-  *physet = (uint16_t)(*physet | (uint16_t)k_ra_physet_dirpd | (uint16_t)k_ra_physet_clksel);
-  *physet = (uint16_t)(*physet & (uint16_t)~(uint16_t)k_ra_physet_clksel);
-  *physet = (uint16_t)(*physet | (uint16_t)k_ra_physet_clksel_12);
-  internal_usb_delay_1us();
-  s_phy_step_probe = (uint8_t)k_ra_usbhs_phy_step_clksel_12;
+  /* Step 2: CLKSEL bisect harness. The previous fixed-CLKSEL=00 path
+   * stalled at "PLL never locks" on EK-RA8D2 with USB60CLK = PLL2P/4,
+   * so we now sweep all four codepoints in HUM Ch 37.2.17 PHYSET
+   * Table (p 2080) order: 12, 48, 20, 24 MHz. The first to drive
+   * PLLSTA.PLLLOCK = 1 wins and is recorded in ::s_clksel_winner.
+   * Total wall time bound: 4 * (~50 ms attempt + ~1 ms settle) <
+   * 250 ms budget per the bring-up debug spec. */
+  const uint16_t s_clksel_sweep[(uint32_t)k_ra_usbhs_clksel_attempts_n] = {
+    (uint16_t)k_ra_physet_clksel_12,
+    (uint16_t)k_ra_physet_clksel_48,
+    (uint16_t)k_ra_physet_clksel_20,
+    (uint16_t)k_ra_physet_clksel_24,
+  };
 
-  /* Step 3: release PHY power-down, then wait 1 ms for analog ramp.
-   * FSP: usb_cpu_delay_xms(1) between DIRPD clear and PLLRESET clear. */
-  *physet = (uint16_t)(*physet & (uint16_t)~(uint16_t)k_ra_physet_dirpd);
-  ra_delay_ms(1U);
-  s_phy_step_probe = (uint8_t)k_ra_usbhs_phy_step_dirpd_clear;
-
-  /* Step 4: release PHY internal PLL reset. */
-  *physet          = (uint16_t)(*physet & (uint16_t)~(uint16_t)k_ra_physet_pllreset);
-  s_phy_step_probe = (uint8_t)k_ra_usbhs_phy_step_pll_released;
+  ra_err_t lock_err = k_ra_err_hw_timeout;
+  for (uint8_t attempt = 0U; attempt < (uint8_t)k_ra_usbhs_clksel_attempts_n; ++attempt) {
+    s_phy_step_probe = (uint8_t)k_ra_usbhs_phy_step_clksel_12;
+    lock_err         = internal_usbhs_try_clksel(physet, lpsts, s_clksel_sweep[attempt]);
+    s_clksel_attempt_pllsta[attempt] = s_usbhs_pllsta_probe;
+    s_phy_step_probe                 = (uint8_t)k_ra_usbhs_phy_step_pll_released;
+    if (lock_err == k_ra_ok) {
+      s_clksel_winner = (uint8_t)(s_clksel_sweep[attempt] & (uint16_t)k_ra_physet_clksel);
+      break;
+    }
+  }
 
   s_usbhs_init_probe = (uint32_t)*physet;
 
-  /* Step 5: SYSCFG DRPD = 0 then USBE = 1. FSP order: PLLRESET cleared
-   * BEFORE the SYSCFG mutate. HSE was set in step 1 above so this
-   * helper now only touches DRPD/USBE. */
-  internal_usbhs_enable_syscfg(reg);
-  s_phy_step_probe = (uint8_t)k_ra_usbhs_phy_step_usbe_set;
-
-  /* Step 6: LPSTS SUSPENDM = 1 (UTMI out of suspend).
-   * HUM Ch 37.2.10 LPSTS. FSP sets SUSPENDM AFTER USBE and BEFORE the
-   * PLLLOCK wait. */
-  *lpsts           = (uint16_t)(*lpsts | (uint16_t)k_ra_lpsts_suspendm);
-  s_phy_step_probe = (uint8_t)k_ra_usbhs_phy_step_suspendm_set;
-
-  /* Step 7: poll PLLSTA.PLLLOCK. HUM Ch 37.2.4 PLLSTA.
-   * Bound: ~5 ms at 1 GHz, well above worst-case PHY analog lock time. */
-  const ra_err_t lock_err = internal_usbhs_wait_pll_lock();
   if (lock_err != k_ra_ok) {
-    ra_log_error(s_tag, "usbhs: PHY PLL lock timeout");
+    s_clksel_winner = (uint8_t)k_ra_usbhs_clksel_no_winner;
+    ra_log_error(s_tag, "usbhs: PHY PLL lock timeout (CLKSEL bisect exhausted)");
     return lock_err;
   }
   s_phy_step_probe = (uint8_t)k_ra_usbhs_phy_step_pll_locked;
+
+  /* HUM Figure 37.2 p 2121: USBE/DRPD are programmed AFTER PLLLOCK
+   * is observed. Internally splits into a separate helper to keep
+   * each function under the NASA Rule 4 budget. */
+  internal_usbhs_enable_syscfg(reg);
+  s_phy_step_probe = (uint8_t)k_ra_usbhs_phy_step_usbe_set;
 
   /* HUM Ch 37.2.2 "BUSWAIT : CPU Bus Wait Register", p 2062 */
   reg->BUSWAIT = (uint16_t)k_ra_buswait_default;

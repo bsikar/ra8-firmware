@@ -356,7 +356,10 @@ typedef enum : uint16_t {
   k_ra_physet_dirpd     = 0x0001U, /**< b0  : PHY power-down (1=PD).    */
   k_ra_physet_pllreset  = 0x0002U, /**< b1  : PHY PLL reset.            */
   k_ra_physet_clksel    = 0x0030U, /**< b5-4: input clock select mask.  */
-  k_ra_physet_clksel_12 = 0x0000U, /**< b5-4: 12 MHz reference.         */
+  k_ra_physet_clksel_12 = 0x0000U, /**< b5-4 = 00b: 12 MHz reference.   */
+  k_ra_physet_clksel_48 = 0x0010U, /**< b5-4 = 01b: 48 MHz reference.   */
+  k_ra_physet_clksel_20 = 0x0020U, /**< b5-4 = 10b: 20 MHz reference.   */
+  k_ra_physet_clksel_24 = 0x0030U, /**< b5-4 = 11b: 24 MHz reference.   */
   k_ra_physet_repsel_16 = 0x0100U, /**< b9-8: 16-cycle terminator.      */
   k_ra_physet_hseb      = 0x8000U, /**< b15 : CL-only mode.             */
 } ra_usbhs_physet_bit_t;
