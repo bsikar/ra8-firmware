@@ -96,6 +96,43 @@ static uint32_t s_clock_hz[k_ra_cgc_clock_count] = {
 };
 
 /**
+ * @var s_usb60ckcr_probe
+ * @brief Last value read back from R_SYSTEM->USB60CKCR at the end of
+ *        ::internal_usb60ckcr_switch_to_pll2p_div4.
+ *
+ * @details
+ * JLink-readable witness for the USBHS 60 MHz clock-source SREQ/SRDY
+ * handshake. After a successful handshake we expect:
+ *   USB60CKCR = 0x06 (USB60CKSEL=PLL2P, USB60CKSREQ=0, USB60CKSRDY=0).
+ * On timeout the value captured here pins down which step of the
+ * handshake stalled.
+ *
+ * Resolve the runtime address from the per-app .map file.
+ *
+ * @note Diagnostic-only; never read by production code paths.
+ * @since 0.1.0
+ */
+static volatile uint8_t s_usb60ckcr_probe = 0U;
+
+/**
+ * @var s_pll2_status_probe
+ * @brief Last value read back from R_SYSTEM->OSCSF at the end of
+ *        ::internal_usb60ckcr_switch_to_pll2p_div4.
+ *
+ * @details
+ * Bit 6 (PLL2SF) must be 1 for the USB60CKCR clock-switch handshake
+ * to make forward progress. JLink-readable witness used in tandem
+ * with ::s_usb60ckcr_probe to disambiguate "PLL2 never locked" from
+ * "SREQ/SRDY ordering wrong".
+ *
+ * Resolve the runtime address from the per-app .map file.
+ *
+ * @note Diagnostic-only; never read by production code paths.
+ * @since 0.1.0
+ */
+static volatile uint8_t s_pll2_status_probe = 0U;
+
+/**
  * @brief Internal helper.
  * @details See implementation.
  * @pre Module state is consistent.
@@ -1431,22 +1468,44 @@ static ra_err_t internal_usb60ckcr_switch_to_pll2p_div4(void)
   RA_PROTECTED_WRITE(k_ra_prcr_unlock_cgc)
   {
     const uint8_t sreq_mask = (uint8_t)(1U << k_ra_usbckcr_bit_sreq);
-    *ra_sys_usb60ckcr()     = sreq_mask;
-    err                     = internal_wait_usb60cksrdy(1U);
+    const uint8_t srdy_mask = (uint8_t)(1U << k_ra_usbckcr_bit_srdy);
+    /* FSP `bsp_clocks.c` ::bsp_peripheral_clock_set sequence (HUM Ch 9
+     * "Clock selection switching procedure"):
+     *
+     *   1. Set SREQ=1 with read-modify-write so the current SEL field
+     *      is preserved (the reset-default source is HOCO; clobbering
+     *      SEL to 0 also writes "HOCO" but loses the invariant that
+     *      SREQ is asserted on top of the EXISTING source -- this
+     *      matters when the previous source is no longer running).
+     *   2. Spin-wait SRDY=1 (handshake acknowledge).
+     *   3. Programme USB60CKDIVCR (peripheral clock now stopped).
+     *   4. Write `source | SREQ | SRDY` -- the SRDY bit being set in
+     *      the same write is mandatory per FSP (line 2896 of
+     *      `bsp_clocks.c`); on RA8 Gen2 silicon, omitting SRDY here
+     *      makes the subsequent SREQ-clear hang at step 6.
+     *   5. Clear SREQ via read-modify-write (peripheral clock starts).
+     *   6. Spin-wait SRDY=0 (start acknowledged).                       */
+    volatile uint8_t* const ckcr = ra_sys_usb60ckcr();
+    *ckcr                        = (uint8_t)(*ckcr | sreq_mask);
+    err                          = internal_wait_usb60cksrdy(1U);
     if (err != k_ra_ok) {
       ra_log_error(s_tag, "usbhs: SRDY=1 timeout");
       break;
     }
     *ra_sys_usb60ckdivcr() = (uint8_t)k_ra_usbhs_div4_code;
     const uint8_t src      = (uint8_t)((uint8_t)k_ra_usbcksel_pll2p & k_ra_usbckcr_mask_sel);
-    *ra_sys_usb60ckcr()    = (uint8_t)(src | sreq_mask);
-    *ra_sys_usb60ckcr()    = src;
+    *ckcr                  = (uint8_t)(src | sreq_mask | srdy_mask);
+    *ckcr                  = (uint8_t)(*ckcr & (uint8_t)~sreq_mask);
     err                    = internal_wait_usb60cksrdy(0U);
     if (err != k_ra_ok) {
       ra_log_error(s_tag, "usbhs: SRDY=0 timeout");
       break;
     }
   }
+  /* Diagnostic witnesses -- read OUTSIDE the PRCR window since
+   * USB60CKCR / OSCSF reads are not protected. */
+  s_usb60ckcr_probe   = *ra_sys_usb60ckcr();
+  s_pll2_status_probe = *ra_sys_oscsf();
   return err;
 }
 
