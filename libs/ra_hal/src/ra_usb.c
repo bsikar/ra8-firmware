@@ -627,21 +627,108 @@ static ra_err_t internal_check_ep_args(uint8_t          pipe_num,
 }
 
 /**
+ * @brief Quiesce the pipe so PIPECFG/PIPEMAXP/PIPEPERI become writable.
+ * @details Clears BRDYENB/NRDYENB/BEMPENB for this pipe and forces
+ *          PID=NAK (HUM Ch 36.2.24 NOTE 1, p 1996; mirrors STAR
+ *          rx_usb_hw.c::internal_usb_quiesce_pipe).
+ * @param[in,out] reg Controller register window.
+ * @param[in] pipe_num Pipe index 1..9.
+ * @pre reg is non-null and points at a powered controller.
+ * @pre pipe_num in [1,9].
+ * @post BRDY/NRDY/BEMPENB bit for pipe_num is cleared.
+ * @post PIPECTR PID for pipe_num == NAK.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static void internal_pipe_quiesce(volatile r_usb_regs_t* reg, uint8_t pipe_num)
+{
+  const uint16_t pipe_bit = (uint16_t)(1U << pipe_num);
+  reg->BRDYENB            = (uint16_t)(reg->BRDYENB & (uint16_t)~pipe_bit);
+  reg->NRDYENB            = (uint16_t)(reg->NRDYENB & (uint16_t)~pipe_bit);
+  reg->BEMPENB            = (uint16_t)(reg->BEMPENB & (uint16_t)~pipe_bit);
+  internal_pipe_pid(reg, pipe_num, k_ra_pid_nak);
+}
+
+/**
+ * @brief Finalize the pipe after PIPECFG/PIPEMAXP/PIPEPERI have landed.
+ * @details Pulses SQCLR + ACLRM, clears BRDYSTS/BEMPSTS for this pipe,
+ *          then sets PID. OUT goes to BUF so the first host OUT token
+ *          is ACKed; IN stays at NAK until the caller has data to push
+ *          (HUM Ch 36.2.27; mirrors STAR
+ *          rx_usb_hw.c::internal_usb_finalize_pipe).
+ * @param[in,out] reg Controller register window.
+ * @param[in] pipe_num Pipe index 1..9.
+ * @param[in] dir Endpoint direction.
+ * @pre reg is non-null and points at a powered controller.
+ * @pre pipe_num in [1,9] and PIPECFG has been written.
+ * @post Pipe FIFO buffer cleared and data toggle reset to DATA0.
+ * @post PIPECTR PID == BUF (OUT) or NAK (IN).
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static void
+internal_pipe_finalize(volatile r_usb_regs_t* reg, uint8_t pipe_num, ra_usb_ep_dir_t dir)
+{
+  const uint8_t  ctr_idx  = (uint8_t)(pipe_num - 1U);
+  const uint16_t pipe_bit = (uint16_t)(1U << pipe_num);
+  internal_rmw16(&reg->PIPECTR[ctr_idx], k_ra_pipectr_sqclr, 0U);
+  internal_rmw16(&reg->PIPECTR[ctr_idx], k_ra_pipectr_aclrm, 0U);
+  internal_rmw16(&reg->PIPECTR[ctr_idx], 0U, k_ra_pipectr_aclrm);
+  reg->BRDYSTS = (uint16_t)(~pipe_bit);
+  reg->BEMPSTS = (uint16_t)(~pipe_bit);
+  internal_pipe_pid(reg, pipe_num, (dir == k_ra_usb_ep_dir_out) ? k_ra_pid_buf : k_ra_pid_nak);
+}
+
+/**
+ * @brief Re-arm the per-pipe interrupt the dispatcher routes off of.
+ * @details Sets BRDYENB for OUT pipes and BEMPENB for IN pipes (mirrors
+ *          STAR rx_usb_hw.c::rx_usb_hw_configure_pipe step 8). Without
+ *          this, BRDYSTS for the freshly configured OUT pipe never
+ *          propagates to INTSTS0.BRDY -- the polled-dispatch BRDYSTS
+ *          scan stays clean forever, queue_out keeps returning
+ *          no_data, the pipe sits at PID=NAK forever, and the host
+ *          (macOS AppleUSBCDCACM) gives up retrying bulk-OUT tokens.
+ * @param[in,out] reg Controller register window.
+ * @param[in] pipe_num Pipe index 1..9.
+ * @param[in] dir Endpoint direction.
+ * @pre reg is non-null and points at a powered controller.
+ * @pre pipe_num in [1,9].
+ * @post BRDYENB bit set for OUT, BEMPENB bit set for IN.
+ * @post Other pipes' interrupt-enable bits unchanged.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static void internal_pipe_arm_irq(volatile r_usb_regs_t* reg, uint8_t pipe_num, ra_usb_ep_dir_t dir)
+{
+  const uint16_t pipe_bit = (uint16_t)(1U << pipe_num);
+  if (dir == k_ra_usb_ep_dir_out) {
+    reg->BRDYENB = (uint16_t)(reg->BRDYENB | pipe_bit);
+  } else {
+    reg->BEMPENB = (uint16_t)(reg->BEMPENB | pipe_bit);
+  }
+}
+
+/**
  * @brief Implementation of ra_usb_configure_endpoint (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] speed See implementation.
- * @param[in] pipe_num See implementation.
- * @param[in] ep_addr See implementation.
- * @param[in] dir See implementation.
- * @param[in] type See implementation.
- * @param[in] max_packet See implementation.
+ * @details See the public header for the documented contract; this
+ *          definition implements it. Sequence (FIT
+ *          r_usb_creg_abs.c::usb_cstd_pipe_init mirror): quiesce ->
+ *          PIPESEL window write of PIPECFG/PIPEMAXP/PIPEPERI ->
+ *          deselect window -> finalize PIPECTR -> arm per-pipe IRQ.
+ * @param[in] speed Which controller (FS/HS).
+ * @param[in] pipe_num Pipe index 1..9.
+ * @param[in] ep_addr USB endpoint address (low nibble = EP number).
+ * @param[in] dir IN/OUT direction.
+ * @param[in] type Bulk / Interrupt / Iso.
+ * @param[in] max_packet wMaxPacketSize from the descriptor.
  * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
+ * @retval k_ra_ok Pipe configured and PID set per direction.
+ * @retval k_ra_err_invalid_arg speed/pipe/ep/type/max_packet out of range.
+ * @pre Controller is powered (ra_usb_device_init has run).
+ * @pre Pipe is not currently mid-transfer (caller serialises).
+ * @post PIPECFG/PIPEMAXP/PIPEPERI reflect the requested config.
+ * @post BRDYENB or BEMPENB bit for pipe is set per direction.
+ * @note Not thread-safe.
  * @since 0.1.0
  */
 ra_err_t ra_usb_configure_endpoint(ra_usb_speed_t   speed,
@@ -660,49 +747,21 @@ ra_err_t ra_usb_configure_endpoint(ra_usb_speed_t   speed,
     return arg_err;
   }
 
+  internal_pipe_quiesce(reg, pipe_num);
+
   /* HUM Ch 36.2.23 "PIPESEL : Pipe Window Select Register", p 1995 */
   reg->PIPESEL = pipe_num;
-
   /* HUM Ch 36.2.24 "PIPECFG : Pipe Configuration Register", p 1996 */
   reg->PIPECFG = internal_pipecfg_word(ep_addr, dir, type);
-
   /* HUM Ch 36.2.26 "PIPEMAXP : Pipe Maximum Packet Size Register", p 2003 */
   reg->PIPEMAXP = max_packet;
   reg->PIPEPERI = 0U;
+  /* Deselect window (FIT step 4) so a later stray PIPECFG write does
+   * not land on this pipe. */
+  reg->PIPESEL = 0U;
 
-  /* HUM Ch 36.2.27 "PIPEnCTR : PIPE n Control Register", p 2005.
-   *
-   * FIT-style finalize sequence (ported from RX72N
-   * ``rx_usb_hw.c::internal_usb_finalize_pipe``, which mirrors Renesas
-   * FIT ``r_usb_basic v1.44 r_usb_creg_abs.c::usb_cstd_pipe_init``
-   * steps 5..7):
-   *   1. Pulse SQCLR -- clear the data-toggle so the first packet is
-   *      DATA0.
-   *   2. Pulse ACLRM (set, then clear) -- auto-clear the pipe FIFO
-   *      buffer so any stale bytes from a previous configuration are
-   *      discarded.  Without this, the OUT pipe can come up with FIFO
-   *      contents that BRDY never fires for, leaving the host's
-   *      first bulk-OUT packet permanently NAK'd.
-   *   3. Clear BRDYSTS / BEMPSTS for this pipe (W0C: write 0 to the
-   *      pipe bit, 1 to all others) -- otherwise a stale status bit
-   *      from a prior session would mask the controller's first
-   *      genuine BRDY event for the freshly-configured pipe.
-   *   4. Set PID.  OUT pipes go to PID=BUF so the first host OUT
-   *      token is ACKed; IN pipes stay at PID=NAK until
-   *      ``ra_usb_queue_in`` has data to push (which then flips to
-   *      BUF). */
-  const uint8_t  ctr_idx  = (uint8_t)(pipe_num - 1U);
-  const uint16_t pipe_bit = (uint16_t)(1U << pipe_num);
-  internal_rmw16(&reg->PIPECTR[ctr_idx], k_ra_pipectr_sqclr, 0U);
-  internal_rmw16(&reg->PIPECTR[ctr_idx], k_ra_pipectr_aclrm, 0U);
-  internal_rmw16(&reg->PIPECTR[ctr_idx], 0U, k_ra_pipectr_aclrm);
-  reg->BRDYSTS = (uint16_t)(~pipe_bit);
-  reg->BEMPSTS = (uint16_t)(~pipe_bit);
-  if (dir == k_ra_usb_ep_dir_out) {
-    internal_pipe_pid(reg, pipe_num, k_ra_pid_buf);
-  } else {
-    internal_pipe_pid(reg, pipe_num, k_ra_pid_nak);
-  }
+  internal_pipe_finalize(reg, pipe_num, dir);
+  internal_pipe_arm_irq(reg, pipe_num, dir);
   return k_ra_ok;
 }
 
