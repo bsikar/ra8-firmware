@@ -79,27 +79,7 @@ static ra_guix_aux_t s_aux = {};
  * Public binding API
  * ============================================================================= */
 
-/**
- * @brief Ra guix display driver bind.
- *
- * @details See implementation for details.
- *
- * @param[in,out] fb See function signature for type and usage.
- * @param[in,out] width See function signature for type and usage.
- * @param[in,out] height See function signature for type and usage.
- *
- * @return Result code or value; see implementation.
- * @retval 0 Success or default value.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Ra guix display driver bind -- see implementation for details. */
 ra_err_t ra_guix_display_driver_bind(void* fb, uint16_t width, uint16_t height)
 {
   /* NASA Rule 5: pre-condition checks (>= 2). */
@@ -170,25 +150,7 @@ typedef enum : uint16_t {
   k_ra_guix_mask_blue5  = 0x001FU,
 } ra_guix_mask_t;
 
-/**
- * @brief Ra guix argb to rgb565.
- *
- * @details See implementation for details.
- *
- * @param[in,out] argb See function signature for type and usage.
- *
- * @return Result code or value; see implementation.
- * @retval 0 Success or default value.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Ra guix argb to rgb565 -- see implementation for details. */
 static inline uint16_t ra_guix_argb_to_rgb565(uint32_t argb)
 {
   const uint32_t r5 = (argb >> k_ra_guix_shift_red5) & (uint32_t)k_ra_guix_mask_red5;
@@ -226,25 +188,7 @@ void ra_guix_display_driver_pixel_write(GX_DRAW_CONTEXT* context,
                                         INT              xcoord,
                                         INT              ycoord,
                                         GX_COLOR         color);
-/**
- * @brief Ra guix display driver pixel write.
- *
- * @details See implementation for details.
- *
- * @param[in,out] context See function signature for type and usage.
- * @param[in,out] xcoord See function signature for type and usage.
- * @param[in,out] ycoord See function signature for type and usage.
- * @param[in,out] color See function signature for type and usage.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Ra guix display driver pixel write -- see implementation for details. */
 void ra_guix_display_driver_pixel_write(GX_DRAW_CONTEXT* context,
                                         INT              xcoord,
                                         INT              ycoord,
@@ -303,25 +247,7 @@ void ra_guix_display_driver_block_move(GX_DRAW_CONTEXT* context,
                                        GX_RECTANGLE*    block,
                                        INT              xshift,
                                        INT              yshift);
-/**
- * @brief Ra guix display driver block move.
- *
- * @details See implementation for details.
- *
- * @param[in,out] context See function signature for type and usage.
- * @param[in,out] block See function signature for type and usage.
- * @param[in,out] xshift See function signature for type and usage.
- * @param[in,out] yshift See function signature for type and usage.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Ra guix display driver block move -- see implementation for details. */
 void ra_guix_display_driver_block_move(GX_DRAW_CONTEXT* context,
                                        GX_RECTANGLE*    block,
                                        INT              xshift,
@@ -371,23 +297,7 @@ void ra_guix_display_driver_block_move(GX_DRAW_CONTEXT* context,
  * @note Not thread-safe unless documented otherwise.
  */
 void ra_guix_display_driver_buffer_toggle(GX_CANVAS* canvas, GX_RECTANGLE* dirty_area);
-/**
- * @brief Ra guix display driver buffer toggle.
- *
- * @details See implementation for details.
- *
- * @param[in,out] canvas See function signature for type and usage.
- * @param[in,out] dirty_area See function signature for type and usage.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Ra guix display driver buffer toggle -- see implementation for details. */
 void ra_guix_display_driver_buffer_toggle(GX_CANVAS* canvas, GX_RECTANGLE* dirty_area)
 {
   (void)canvas;
@@ -398,25 +308,7 @@ void ra_guix_display_driver_buffer_toggle(GX_CANVAS* canvas, GX_RECTANGLE* dirty
   }
 }
 
-/**
- * @brief Ra guix display driver setup.
- *
- * @details See implementation for details.
- *
- * @param[in,out] display See function signature for type and usage.
- *
- * @return Result code or value; see implementation.
- * @retval 0 Success or default value.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Ra guix display driver setup -- see implementation for details. */
 UINT ra_guix_display_driver_setup(GX_DISPLAY* display)
 {
   if (display == NULL) {

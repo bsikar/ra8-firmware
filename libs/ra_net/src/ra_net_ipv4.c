@@ -559,28 +559,7 @@ ra_err_t ra_net_socket_udp(uint16_t local_port, ra_net_handle_t* out_handle)
   return ra_net_udp_socket(local_port, out_handle);
 }
 
-/**
- * @brief Public facade: allocate a passive TCP socket on local_port.
- *
- * @param[in]  local_port Local port (must be non-zero).
- * @param[out] out_handle Filled with the socket handle on success.
- *
- * @return ra_err_t Error code (see ra_net_tcp_listen).
- * @retval k_ra_ok                 Socket in LISTEN.
- * @retval k_ra_err_invalid_state  Stack not opened.
- * @retval other                   ra_net_tcp_listen error code.
- *
- * @pre ra_net_open has succeeded.
- * @pre out_handle is non-NULL.
- * @post On success a TCP socket is in LISTEN.
- * @post On failure no state mutation.
- *
- * @note Not thread-safe.
- *
- * @since 0.1.0
- *
- * @details See implementation for details.
- */
+/* Public facade: allocate a passive TCP socket on local_port -- see implementation for details. */
 ra_err_t ra_net_socket_tcp_listen(uint16_t local_port, ra_net_handle_t* out_handle)
 {
   if (s_state.opened == 0U) {
@@ -589,29 +568,7 @@ ra_err_t ra_net_socket_tcp_listen(uint16_t local_port, ra_net_handle_t* out_hand
   return ra_net_tcp_listen(local_port, out_handle);
 }
 
-/**
- * @brief Public facade: initiate an active TCP open.
- *
- * @param[in]  remote_ip   Destination IPv4 address.
- * @param[in]  remote_port Destination TCP port.
- * @param[out] out_handle  Filled with the socket handle on success.
- *
- * @return ra_err_t Error code (see ra_net_tcp_connect).
- * @retval k_ra_ok                 SYN sent.
- * @retval k_ra_err_invalid_state  Stack not opened.
- * @retval other                   ra_net_tcp_connect error code.
- *
- * @pre ra_net_open has succeeded.
- * @pre out_handle is non-NULL.
- * @post On success a TCP socket is in SYN_SENT and a SYN has been queued.
- * @post On failure no state mutation.
- *
- * @note Not thread-safe.
- *
- * @since 0.1.0
- *
- * @details See implementation for details.
- */
+/* Public facade: initiate an active TCP open -- see implementation for details. */
 ra_err_t ra_net_socket_tcp_connect(ra_net_ipv4_t    remote_ip,
                                    uint16_t         remote_port,
                                    ra_net_handle_t* out_handle)

@@ -487,27 +487,7 @@ ra_err_t ra_net_pal_recv_frame(uint8_t* out_buf, uint16_t* inout_len)
   return k_ra_ok;
 }
 
-/**
- * @brief Read the last observed link state.
- *
- * @param[out] out_state Receives ``link_up`` / ``link_down``.
- *
- * @return ``ra_err_t`` error code.
- * @retval k_ra_ok                  Link state copied.
- * @retval k_ra_err_null_ptr        ``out_state`` was NULL.
- * @retval k_ra_err_invalid_state   PAL not initialised.
- *
- * @pre ``out_state`` is non-NULL.
- * @pre PAL has been initialised.
- * @post ``*out_state`` reflects ``s_state.link_state`` at call time.
- * @post No PAL state is mutated.
- *
- * @note Not thread-safe with respect to the event handler which
- *       can update link state from ISR context.
- * @since 0.1.0
- *
- * @details See implementation for details.
- */
+/* Read the last observed link state -- see implementation for details. */
 ra_err_t ra_net_pal_link_status(ra_net_pal_link_state_t* out_state)
 {
   RA_CHECK_NULL_PTR(out_state, s_tag, "link_status: out_state");

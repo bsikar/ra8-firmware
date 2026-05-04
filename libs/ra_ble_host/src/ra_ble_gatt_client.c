@@ -103,30 +103,7 @@ ble_gattc_read(uint16_t conn_handle, uint16_t attr_handle, ble_gatt_attr_fn* cb,
   return 0;
 }
 
-/**
- * @brief Ble gattc write flat.
- *
- * @details See implementation for details.
- *
- * @param[in,out] conn_handle See function signature for type and usage.
- * @param[in,out] attr_handle See function signature for type and usage.
- * @param[in,out] data See function signature for type and usage.
- * @param[in,out] data_len See function signature for type and usage.
- * @param[in,out] cb See function signature for type and usage.
- * @param[in,out] cb_arg See function signature for type and usage.
- *
- * @return Result code or value; see implementation.
- * @retval 0 Success or default value.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Ble gattc write flat -- see implementation for details. */
 __attribute__((weak)) int ble_gattc_write_flat(uint16_t          conn_handle,
                                                uint16_t          attr_handle,
                                                const void*       data,
@@ -143,28 +120,7 @@ __attribute__((weak)) int ble_gattc_write_flat(uint16_t          conn_handle,
   return 0;
 }
 
-/**
- * @brief Ble gattc write no rsp flat.
- *
- * @details See implementation for details.
- *
- * @param[in,out] conn_handle See function signature for type and usage.
- * @param[in,out] attr_handle See function signature for type and usage.
- * @param[in,out] data See function signature for type and usage.
- * @param[in,out] data_len See function signature for type and usage.
- *
- * @return Result code or value; see implementation.
- * @retval 0 Success or default value.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Ble gattc write no rsp flat -- see implementation for details. */
 __attribute__((weak)) int ble_gattc_write_no_rsp_flat(uint16_t    conn_handle,
                                                       uint16_t    attr_handle,
                                                       const void* data,
@@ -729,61 +685,14 @@ ra_err_t ra_ble_gatt_subscribe(uint16_t                conn_handle,
 
 #ifdef UNIT_TEST
 /* Test-hook prototypes (external linkage). */
-/**
- * @brief Ra ble gatt client test inject notify.
- *
- * @details See implementation for details.
- *
- * @param[in,out] conn_handle See function signature for type and usage.
- * @param[in,out] attr_handle See function signature for type and usage.
- * @param[in,out] data See function signature for type and usage.
- * @param[in,out] len See function signature for type and usage.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Ra ble gatt client test inject notify -- see implementation for details. */
 void ra_ble_gatt_client_test_inject_notify(uint16_t       conn_handle,
                                            uint16_t       attr_handle,
                                            const uint8_t* data,
                                            uint16_t       len);
-/**
- * @brief Ra ble gatt client test pending count.
- *
- * @details See implementation for details.
- *
- * @return Result code or value; see implementation.
- * @retval 0 Success or default value.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Ra ble gatt client test pending count -- see implementation for details. */
 uint32_t ra_ble_gatt_client_test_pending_count(void);
-/**
- * @brief Ra ble gatt client test reset.
- *
- * @details See implementation for details.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Ra ble gatt client test reset -- see implementation for details. */
 void ra_ble_gatt_client_test_reset(void);
 
 /**
