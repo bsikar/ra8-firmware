@@ -1097,17 +1097,19 @@ static void internal_sync_state_from_dvsq(ra_usb_speed_t speed)
     case k_ra_dvsq_configured:
       desired = (unsigned long)UX_DEVICE_CONFIGURED;
       break;
+    case k_ra_dvsq_suspend:
+      desired = (unsigned long)UX_DEVICE_SUSPENDED;
+      break;
     default:
       return;
   }
   UX_SLAVE_DEVICE* device = &_ux_system_slave->ux_system_slave_device;
-  /* No-demote: only advance state, never roll it back. The chapter-9
-   * dispatcher writes CONFIGURED on SET_CONFIGURATION; we must not
-   * demote it on a stale DVSQ snapshot. SUSPENDED is a true bus-level
-   * demotion handled by the IRQ-driven internal_handle_dvst path. */
-  if (desired <= device->ux_slave_device_state) {
-    return;
-  }
+  /* DVSQ is the chip's authoritative bus state. Write through
+   * unconditionally. The previous no-demote guard left
+   * ux_slave_device_state stuck at SUSPENDED after a JLink-induced
+   * transient suspend, with nothing able to recover even after the
+   * chip returned to CONFIGURED. The polled read always reflects
+   * current hardware state, so an unconditional write is safe. */
   device->ux_slave_device_state = desired;
   if (_ux_system_slave->ux_system_slave_change_function != UX_NULL) {
     (void)_ux_system_slave->ux_system_slave_change_function(desired);
