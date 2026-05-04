@@ -385,10 +385,15 @@ volatile uint32_t s_busreset_rearm_count = 0U;
  * @brief Snapshot of ``DCPCTR`` taken at the end of every busreset_rearm.
  *
  * @details Bisect probe for the "VALID never asserts after bus reset"
- * symptom. Expected post-rearm value with PID=NAK and CCPL/SUREQ low:
- * 0x0000 (PID[1:0]=NAK, all other bits 0). A non-zero value means the
- * IP latched something (PBUSY=bit 5, BSTS=bit 15, SQMON=bit 6) that may
- * be blocking the next SETUP. HUM Ch 36.2.21 / 37.2.21 DCPCTR p 1991/2083.
+ * symptom. The rearm intentionally does NOT write DCPCTR (HUM Ch
+ * 36.2.21 / 37.2.31 p 1991 / 2093 documents that a USB bus reset
+ * auto-defaults PID to NAK and CCPL to 0), so this snapshot reflects
+ * whatever the SIE left in DCPCTR after the bus reset and any
+ * SETUP-receipt state machine that completed before the rearm fired.
+ * Expected value with PID=NAK and CCPL/SUREQ low: 0x0000. A non-zero
+ * value means the IP latched something (PBUSY=bit 5, SQMON=bit 6,
+ * BSTS=bit 15); SQMON=1 is the strongest "SETUP arrived" signal in
+ * device mode (HUM Ch 37.2.31 p 2095, SQMON flag description).
  *
  * @note Single-writer (::internal_handle_dvst).
  * @since 0.1.0
@@ -416,16 +421,71 @@ volatile uint16_t s_intenb0_after_rearm = 0U;
  * @var s_cfifosel_after_rearm
  * @brief Snapshot of ``CFIFOSEL`` taken at the end of every busreset_rearm.
  *
- * @details Bisect probe. Expected value 0x0400 (CURPIPE=DCP=0, ISEL=0
- * for OUT, MBW=10b for 16-bit access). If CURPIPE bits [3:0] read non-
- * zero, the rearm did not re-point the FIFO at the DCP and a stale
- * data-stage pipe may shadow control transfers. HUM Ch 36.2.7 CFIFOSEL
- * p 1976.
+ * @details Bisect probe. The rearm no longer writes CFIFOSEL (probe
+ * data showed the in-IRQ write of 0x0400 read back as 0x0000 on the
+ * HS instance, and FSP usb_pstd_bus_reset never touches CFIFOSEL --
+ * SETUP latching uses USBREQ/USBVAL/USBINDX/USBLENG, not the CFIFO
+ * port). This snapshot now just records whatever value was already
+ * programmed by the previous data-stage. HUM Ch 36.2.7 / 37.2.8
+ * CFIFOSEL p 1976 / 2071.
  *
  * @note Single-writer (::internal_handle_dvst).
  * @since 0.1.0
  */
 volatile uint16_t s_cfifosel_after_rearm = 0U;
+
+/**
+ * @var s_dcpctr_pre_rearm
+ * @brief Snapshot of ``DCPCTR`` taken at the START of every busreset_rearm.
+ *
+ * @details Captured BEFORE any rearm-side writes so it reflects the
+ * state the host's bus reset left the DCP in. Compared against
+ * ::s_dcpctr_after_rearm to confirm that the rearm did (or did not)
+ * mutate DCP fields.
+ *
+ * Bit positions of interest (HUM Ch 36.2.21 / 37.2.31 DCPCTR p 1991 /
+ * 2093, full bit table on p 2095..2096):
+ * - bits [1:0] PID:    00=NAK, 01=BUF, 11=STALL. After bus reset HUM
+ *   Ch 37.2.31 (p 2095) guarantees PID=NAK.
+ * - bit 5 PBUSY:       1 when SIE has the DCP. Should be 0 by the time
+ *   the rearm runs (DVST already fired).
+ * - bit 6 SQMON:       sequence-toggle monitor. HUM Ch 37.2.31 p 2095:
+ *   "the USBHS sets the SQMON bit to 1 ... on successful reception of
+ *   the setup packet." If this reads 1 BEFORE rearm, the chip already
+ *   latched a SETUP and INTSTS0.VALID should be 1 too.
+ * - bit 14 SUREQ:      host-mode-only; should always read 0 in device.
+ * - bit 15 BSTS:       buffer-status flag.
+ *
+ * @note Single-writer (::internal_handle_dvst).
+ * @since 0.1.0
+ */
+volatile uint16_t s_dcpctr_pre_rearm = 0U;
+
+/**
+ * @var s_setup_token_observed
+ * @brief Counter incremented every time the IRQ snapshot proves the
+ *        device-side controller latched a SETUP token from the host.
+ *
+ * @details Two independent evidence paths fold into this counter:
+ *  1. ``INTSTS0.VALID`` (bit 3, HUM Ch 36.2.14 / 37.2.18 p 1985 / 2081)
+ *     was set in the snapshot. This is the canonical SETUP-arrived
+ *     signal in device mode.
+ *  2. ``DCPCTR.SQMON`` (bit 6, HUM Ch 37.2.31 p 2095) was set after
+ *     a Default-state DVST. Per the HUM, SQMON transitions 0->1 only
+ *     "on successful reception of the setup packet" in device mode,
+ *     so a non-zero SQMON observed in ::s_dcpctr_pre_rearm is hard
+ *     proof that a SETUP was latched even if the IRQ never saw the
+ *     VALID edge (race between the polled-dispatch tick and the
+ *     SIE's SETUP-latch state machine).
+ *
+ * Note: INTSTS1.SACK is HOST-mode only (HUM Ch 37.2.19 SACK flag p
+ * 2084: "Values read from the SACK flag in device controller mode
+ * are invalid."), so SACK cannot serve as a SETUP-receipt probe.
+ *
+ * @note Single-writer (::ux_dcd_ra_usb_irq + ::internal_handle_dvst).
+ * @since 0.1.0
+ */
+volatile uint32_t s_setup_token_observed = 0U;
 
 /**
  * @struct ra_usb_dcd_pipe_slot_t
@@ -1240,9 +1300,24 @@ static void internal_handle_dvst(ra_usb_speed_t speed, uint16_t intsts0)
    * readable probes so we can verify the rearm restored the expected
    * state. HUM Ch 36.2.7 / 36.2.10 / 36.2.21 (FS) and Ch 37 mirrors. */
   if (dvsq == (uint16_t)k_ra_dvsq_default) {
+    /* HUM Ch 37.2.31 DCPCTR p 2093: capture DCPCTR BEFORE the rearm
+     * so we can see what the host's bus reset left it in. SQMON=1
+     * here means the chip already latched a SETUP (HUM Ch 37.2.31
+     * p 2095). */
+    volatile r_usb_regs_t* const reg = (speed == k_ra_usb_speed_hs) ? ra_usb_hs() : ra_usb_fs();
+    if (reg != nullptr) {
+      const uint16_t dcpctr_pre = reg->DCPCTR;
+      s_dcpctr_pre_rearm        = dcpctr_pre;
+      /* HUM Ch 37.2.31 p 2095: "In device controller mode, the USBHS
+       * sets the SQMON bit to 1 ... on successful reception of the
+       * setup packet." Bit 6 (k_ra_dcpctr_bit_sqmon) is the SQMON
+       * field, so dcpctr_pre & 0x0040 is the SETUP-latched signal. */
+      if ((dcpctr_pre & (uint16_t)(1U << 6U)) != 0U) {
+        s_setup_token_observed++;
+      }
+    }
     (void)ra_usb_device_busreset_rearm(speed);
     s_busreset_rearm_count++;
-    volatile r_usb_regs_t* const reg = (speed == k_ra_usb_speed_hs) ? ra_usb_hs() : ra_usb_fs();
     if (reg != nullptr) {
       s_dcpctr_after_rearm   = reg->DCPCTR;
       s_intenb0_after_rearm  = reg->INTENB0;
@@ -1309,6 +1384,12 @@ void ux_dcd_ra_usb_irq(ra_usb_speed_t speed, uint16_t intsts0)
 
   if (have_valid) {
     s_intsts0_valid_count++;
+    /* HUM Ch 37.2.18 INTSTS0 p 2081: VALID = "USB Request Reception
+     * Flag", set on SETUP-packet receipt in device mode. Fold this
+     * into the canonical SETUP-arrival counter so a single JLink read
+     * answers "did the chip ever see a SETUP token?" without having to
+     * inspect ::s_dcpctr_pre_rearm separately. */
+    s_setup_token_observed++;
   }
   if (have_ctrt) {
     s_intsts0_ctrt_count++;
