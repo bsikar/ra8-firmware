@@ -874,14 +874,30 @@ static ra_err_t internal_usbhs_phy_bringup(volatile r_usb_regs_t* reg)
 static void internal_usb_init_common(volatile r_usb_regs_t* reg)
 {
   /* HUM Ch 36.2.7 "CFIFOSEL : CFIFO Port Select Register", p 1976 */
+  /* HUM Ch 37.2.8 "CFIFOSEL : CFIFO Port Select Register", p 2071 */
   reg->CFIFOSEL  = k_ra_fifosel_mbw_16;
   reg->D0FIFOSEL = k_ra_fifosel_mbw_16;
   reg->D1FIFOSEL = k_ra_fifosel_mbw_16;
 
   /* HUM Ch 36.2.20 "DCPMAXP : DCP Max Packet Size Register", p 1990 */
+  /* HUM Ch 37.2.30 "DCPMAXP : DCP Max Packet Size Register", p 2092 */
   reg->DCPCFG  = 0U;
   reg->DCPMAXP = k_ra_usb_dcp_max_packet;
   reg->DCPCTR  = 0U;
+
+  /* HUM Ch 37.2.18 INTSTS0 Note 3 (p 2082): "To clear the CTRT, DVST,
+   * SOFR, RESM, or VBINT flags, write 0 only to the flags to be cleared.
+   * Write 1 to the other flags. Do not write 0 to the status flags
+   * indicating 0." A wholesale ``INTSTS0 = 0`` write therefore clears
+   * any stale CTRT/DVST/SOFR/RESM/VBINT edges that the PHY bring-up
+   * sequence latched (mirrors FSP IP1 ``hw_usb_pmodule_init``: see
+   * r_usb_preg_access.c::hw_usb_pmodule_init which writes
+   * ``INTSTS0 = 0`` immediately before INTENB0 on the HS branch).
+   * Without this flush a stale RESM/VBINT bit gets ORed into every
+   * polled-dispatch snapshot and clutters the JLink-readable
+   * ``s_intsts0_observed_or`` probe (observed value 0xD0D0 with bits
+   * 14/15 set even though the host issued no real resume). */
+  reg->INTSTS0 = 0U;
 
   /* HUM Ch 36.2.10 "INTENB0 : Interrupt Enable Register 0", p 1980.
    * Mirrors FSP r_usb_basic.c::usb_pmodule_init mask: BEMP, BRDY, NRDY,
@@ -1229,15 +1245,6 @@ ra_err_t ra_usb_device_busreset_rearm(ra_usb_speed_t speed)
     reg->PIPECTR[i] = 0U;
   }
 
-  /* HUM Ch 36.2.7 "CFIFOSEL : CFIFO Port Select Register", p 1976.
-   * Re-point the control FIFO at the DCP (CURPIPE=0, ISEL=0 for OUT
-   * direction by default) with MBW=16, matching internal_usb_init_common.
-   * A previous data-stage may have left CURPIPE pointing at a numbered
-   * pipe; that does NOT block SETUP latching (SETUP data goes to dedicated
-   * USBREQ/USBVAL/USBINDX/USBLENG registers, not CFIFO) but ensures the
-   * DCP path is clean for the data stage that follows the next SETUP. */
-  reg->CFIFOSEL = (uint16_t)k_ra_fifosel_mbw_16;
-
   /* HUM Ch 36.2.13/14 BRDYSTS / NRDYSTS / BEMPSTS, p 1983-1985 (W0C).
    * Drop any per-pipe status bits left over from before the reset so
    * stale BRDY edges don't fire spurious BRDY callbacks during the next
@@ -1246,20 +1253,38 @@ ra_err_t ra_usb_device_busreset_rearm(ra_usb_speed_t speed)
   reg->NRDYSTS = 0U;
   reg->BEMPSTS = 0U;
 
+  /* CFIFOSEL is intentionally NOT re-written here. Probe data showed
+   * that a write of 0x0400 (MBW=16) inside the IRQ-callback context
+   * reads back as 0x0000 (HS instance, HUM Ch 37.2.8 CFIFOSEL p 2071).
+   * SETUP data is latched into the dedicated USBREQ/USBVAL/USBINDX/
+   * USBLENG registers (HUM Ch 37.2.21..24, p 2087..2090), not via the
+   * CFIFO port, so leaving CFIFOSEL alone has no effect on SETUP
+   * reception. The data stage of the control transfer re-points
+   * CFIFOSEL just before draining or filling the DCP FIFO. FSP parity:
+   * usb_pstd_bus_reset (r_usb_psignal.c) writes only DCPCFG and
+   * DCPMAXP -- it does NOT touch CFIFOSEL.
+   *
+   * HUM Ch 36.2.19 / 37.2.29 DCPCFG p 1989 / 2091 and HUM Ch 36.2.20 /
+   * 37.2.30 DCPMAXP p 1990 / 2092. Mirror FSP usb_pstd_bus_reset by
+   * re-asserting the post-init DCP defaults so any stray write that
+   * touched DCPCFG/DCPMAXP between the previous reset and this one is
+   * undone. DCPCTR is NOT written here: HUM Ch 36.2.21 / 37.2.31
+   * (p 1991 / 2093) states "On detecting a USB bus reset, the USBHS
+   * sets PID[1:0] to NAK" and "[CCPL] is initialized by a USB bus
+   * reset" -- the IP auto-defaults the writable DCPCTR fields. Writing
+   * DCPCTR ourselves would race the SIE which may already be in the
+   * middle of SETUP-latch state-machine work (PID=NAK + VALID=1
+   * latched per HUM Ch 37.2.31 p 2095, "On receiving a setup packet,
+   * the USBHS sets PID[1:0] to NAK ... and the PID[1:0] setting cannot
+   * be changed until the software clears the VALID flag to 0"). */
+  reg->DCPCFG  = 0U;
+  reg->DCPMAXP = k_ra_usb_dcp_max_packet;
+
   /* HUM Ch 36.2.10 "INTENB0 : Interrupt Enable Register 0", p 1980.
    * Some RA silicon revisions clear individual INTENB0 bits across a
    * bus reset (notably CTRT). Re-apply the post-init mask defensively
    * so the next SETUP raises CTRT as expected. Mirrors the mask in
-   * internal_usb_init_common.
-   *
-   * Note (RA8D2 silicon erratum probe): we intentionally do NOT re-
-   * write DCPCFG / DCPMAXP / DCPCTR here. Per HUM Ch 36.2.19/20/21
-   * the IP auto-defaults the DCP across a bus reset; re-writing during
-   * the host's narrow post-reset window appears to disrupt the SIE so
-   * the first SETUP token is silently dropped (observed via JLink:
-   * INTSTS0.VALID never asserts, INTSTS0_or = 0xD0D0). The init-time
-   * values from internal_usb_init_common (DCPCFG=0, DCPMAXP=64, PID=NAK)
-   * remain valid through bus reset. */
+   * internal_usb_init_common. */
   reg->INTENB0 = (uint16_t)((1U << k_ra_int0_bit_bemp) | (1U << k_ra_int0_bit_brdy) |
                             (1U << k_ra_int0_bit_nrdy) | (1U << k_ra_int0_bit_ctrt) |
                             (1U << k_ra_int0_bit_dvst) | (1U << k_ra_int0_bit_sofr) |
