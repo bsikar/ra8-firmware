@@ -1221,18 +1221,6 @@ ra_err_t ra_usb_device_busreset_rearm(ra_usb_speed_t speed)
     return k_ra_err_invalid_arg;
   }
 
-  /* HUM Ch 36.2.20 "DCPMAXP : DCP Max Packet Size Register", p 1990
-   * HUM Ch 36.2.21 "DCPCTR  : DCP Control Register",         p 1991
-   *
-   * Re-default the control pipe. After a host bus reset the IP holds
-   * the previous DCPMAXP / DCPCFG values, but DCPCTR.PID may have
-   * been forced to STALL by the previous transfer's error path. Re-
-   * writing DCPCTR = 0 puts PID back to NAK so the next SETUP token
-   * is latched into USBREQ. */
-  reg->DCPCFG  = 0U;
-  reg->DCPMAXP = (uint16_t)k_ra_usb_dcp_max_packet;
-  reg->DCPCTR  = 0U;
-
   /* HUM Ch 36.2.27 "PIPECTR : Pipe n Control Register", p 1998.
    * Clear PID for every non-control pipe so any half-completed pre-
    * reset transfer is forgotten. The class driver re-issues queue_in /
@@ -1241,11 +1229,37 @@ ra_err_t ra_usb_device_busreset_rearm(ra_usb_speed_t speed)
     reg->PIPECTR[i] = 0U;
   }
 
+  /* HUM Ch 36.2.7 "CFIFOSEL : CFIFO Port Select Register", p 1976.
+   * Re-point the control FIFO at the DCP (CURPIPE=0, ISEL=0 for OUT
+   * direction by default) with MBW=16, matching internal_usb_init_common.
+   * A previous data-stage may have left CURPIPE pointing at a numbered
+   * pipe; that does NOT block SETUP latching (SETUP data goes to dedicated
+   * USBREQ/USBVAL/USBINDX/USBLENG registers, not CFIFO) but ensures the
+   * DCP path is clean for the data stage that follows the next SETUP. */
+  reg->CFIFOSEL = (uint16_t)k_ra_fifosel_mbw_16;
+
+  /* HUM Ch 36.2.13/14 BRDYSTS / NRDYSTS / BEMPSTS, p 1983-1985 (W0C).
+   * Drop any per-pipe status bits left over from before the reset so
+   * stale BRDY edges don't fire spurious BRDY callbacks during the next
+   * enumeration. Writing 0 clears every bit; writing 1 preserves. */
+  reg->BRDYSTS = 0U;
+  reg->NRDYSTS = 0U;
+  reg->BEMPSTS = 0U;
+
   /* HUM Ch 36.2.10 "INTENB0 : Interrupt Enable Register 0", p 1980.
    * Some RA silicon revisions clear individual INTENB0 bits across a
    * bus reset (notably CTRT). Re-apply the post-init mask defensively
    * so the next SETUP raises CTRT as expected. Mirrors the mask in
-   * internal_usb_init_common. */
+   * internal_usb_init_common.
+   *
+   * Note (RA8D2 silicon erratum probe): we intentionally do NOT re-
+   * write DCPCFG / DCPMAXP / DCPCTR here. Per HUM Ch 36.2.19/20/21
+   * the IP auto-defaults the DCP across a bus reset; re-writing during
+   * the host's narrow post-reset window appears to disrupt the SIE so
+   * the first SETUP token is silently dropped (observed via JLink:
+   * INTSTS0.VALID never asserts, INTSTS0_or = 0xD0D0). The init-time
+   * values from internal_usb_init_common (DCPCFG=0, DCPMAXP=64, PID=NAK)
+   * remain valid through bus reset. */
   reg->INTENB0 = (uint16_t)((1U << k_ra_int0_bit_bemp) | (1U << k_ra_int0_bit_brdy) |
                             (1U << k_ra_int0_bit_nrdy) | (1U << k_ra_int0_bit_ctrt) |
                             (1U << k_ra_int0_bit_dvst) | (1U << k_ra_int0_bit_sofr) |
