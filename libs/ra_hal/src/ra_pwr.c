@@ -123,25 +123,6 @@ static bool internal_decode_wake(ra_pwr_wake_t source, uint8_t* out_reg, uint8_t
 static inline void internal_wfi(void)
 {
 #ifndef RA_SIMULATOR_MODE
-  /**
-   * @brief Volatile.
-   *
-   * @details See implementation for details.
-   *
-   * @param[in,out] wfi See function signature for type and usage.
-   *
-   * @return Result code or value; see implementation.
-   * @retval 0 Success or default value.
-   *
-   * @pre Caller has validated arguments.
-   * @pre Module has been initialised.
-   * @post Side effects bounded to documented state.
-   * @post Returned value reflects current state.
-   *
-   * @note Not thread-safe unless documented otherwise.
-   *
-   * @since 0.1.0
-   */
   __asm__ volatile("wfi");
 #endif
 }

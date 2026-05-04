@@ -99,25 +99,6 @@ static void internal_busy_wait_us(uint16_t usec)
   for (uint16_t u = 0U; u < usec; ++u) {
     for (uint16_t i = 0U; i < k_ra_tsn_busy_loops_per_us; ++i) {
 #ifndef RA_SIMULATOR_MODE
-      /**
-       * @brief Volatile.
-       *
-       * @details See implementation for details.
-       *
-       * @param[in,out] nop See function signature for type and usage.
-       *
-       * @return Result code or value; see implementation.
-       * @retval 0 Success or default value.
-       *
-       * @pre Caller has validated arguments.
-       * @pre Module has been initialised.
-       * @post Side effects bounded to documented state.
-       * @post Returned value reflects current state.
-       *
-       * @note Not thread-safe unless documented otherwise.
-       *
-       * @since 0.1.0
-       */
       __asm__ volatile("nop");
 #endif
     }

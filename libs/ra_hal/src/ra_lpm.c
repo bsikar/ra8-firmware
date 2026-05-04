@@ -129,45 +129,7 @@ static inline void internal_wait_for_interrupt(void)
   /* Data Synchronization Barrier before sleeping per HUM Ch 11
    * "Low Power Mode" entry sequence (DSB ensures every prior
    * register write has retired). */
-  /**
-   * @brief Volatile.
-   *
-   * @details See implementation for details.
-   *
-   * @param[in,out] memory See function signature for type and usage.
-   *
-   * @return Result code or value; see implementation.
-   * @retval 0 Success or default value.
-   *
-   * @pre Caller has validated arguments.
-   * @pre Module has been initialised.
-   * @post Side effects bounded to documented state.
-   * @post Returned value reflects current state.
-   *
-   * @note Not thread-safe unless documented otherwise.
-   *
-   * @since 0.1.0
-   */
   __asm volatile("dsb 0xF" ::: "memory");
-  /**
-   * @brief Volatile.
-   *
-   * @details See implementation for details.
-   *
-   * @param[in,out] memory See function signature for type and usage.
-   *
-   * @return Result code or value; see implementation.
-   * @retval 0 Success or default value.
-   *
-   * @pre Caller has validated arguments.
-   * @pre Module has been initialised.
-   * @post Side effects bounded to documented state.
-   * @post Returned value reflects current state.
-   *
-   * @note Not thread-safe unless documented otherwise.
-   *
-   * @since 0.1.0
-   */
   __asm volatile("wfi" ::: "memory");
 #endif
 }

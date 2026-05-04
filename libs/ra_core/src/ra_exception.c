@@ -96,9 +96,6 @@ static inline uint32_t internal_read32(uintptr_t addr)
  *
  * @param[out] out Destination buffer. May be `nullptr`.
  *
- * @return None.
- * @retval None
- *
  * @pre `out` is either `nullptr` or points to writable storage.
  * @pre SCB MMIO at 0xE000ED00 is accessible.
  * @post On non-`nullptr` input, every field of `*out` reflects the SCB
@@ -164,9 +161,6 @@ typedef enum : uint32_t {
  * unambiguously points at "we got here from the fault handler" rather
  * than at a random unmapped address.
  *
- * @return None -- function does not return.
- * @retval None
- *
  * @pre All maskable interrupts have been disabled by the caller.
  * @pre g_ra_exception_last has been populated with the fault snapshot.
  * @post Function never returns.
@@ -178,34 +172,8 @@ typedef enum : uint32_t {
  */
 __attribute__((noreturn, noinline)) static void ra_exception_halt_loop(void)
 {
-  /**
-   * @brief Volatile.
-   * @details See implementation for details.
-   * @param[in,out] memory See function signature for type and usage.
-   * @return Result code or value; see implementation.
-   * @retval 0 Success or default value.
-   * @pre Caller has validated arguments.
-   * @pre Module has been initialised.
-   * @post Side effects bounded to documented state.
-   * @post Returned value reflects current state.
-   * @note Not thread-safe unless documented otherwise.
-   * @since 0.1.0
-   */
   __asm__ volatile("cpsid i" ::: "memory");
   while (1) {
-    /**
-     * @brief Volatile.
-     * @details See implementation for details.
-     * @param[in,out] wfi See function signature for type and usage.
-     * @return Result code or value; see implementation.
-     * @retval 0 Success or default value.
-     * @pre Caller has validated arguments.
-     * @pre Module has been initialised.
-     * @post Side effects bounded to documented state.
-     * @post Returned value reflects current state.
-     * @note Not thread-safe unless documented otherwise.
-     * @since 0.1.0
-     */
     __asm__ volatile("wfi");
   }
 }
@@ -226,9 +194,6 @@ __attribute__((noreturn, noinline)) static void ra_exception_halt_loop(void)
  *
  * @param[in] frame      Stacked exception frame; may be `nullptr`.
  * @param[in] exc_number Architectural exception number.
- *
- * @return Does not return.
- * @retval None
  *
  * @pre Invoked from a fault context (IPSR != 0).
  * @pre `g_ra_exception_last` is writable SRAM.

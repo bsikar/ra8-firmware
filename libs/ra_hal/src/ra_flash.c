@@ -923,25 +923,6 @@ static ra_err_t internal_flash_program_window(uint32_t         mram_addr,
     dst[i] = src[i];
   }
 
-  /**
-   * @brief volatile.
-   *
-   * @details Implementation detail; see surrounding code and HUM citations.
-   *
-   * @param[in] memory See declaration: ``"" ::: "memory"``.
-   *
-   * @return ::ra_err_t outcome (or scalar return value).
-   * @retval k_ra_ok Operation completed successfully.
-   * @retval other Non-zero error code from the underlying operation.
-   *
-   * @pre Module has been initialised where applicable.
-   * @pre Pointer arguments (if any) are valid for the requested length.
-   * @post Hardware / software state reflects the requested operation on success.
-   * @post No side effects beyond those documented above.
-   *
-   * @note Not thread-safe; the caller must serialise concurrent access.
-   * @since 0.1.0
-   */
   __asm__ volatile("" ::: "memory");
   /* HUM Ch 59 "MRCFLR : Code MRAM Flush Register" p 3601 */
   *ra_mram_reg16(k_ra_mram_off_mrcflr) = k_ra_mrcflr_key_flush;

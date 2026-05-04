@@ -47,6 +47,9 @@ NON_FUNC_NAMES = {
     "if", "for", "while", "switch", "return", "sizeof", "typeof",
     "do", "else", "case", "goto", "static_assert", "_Static_assert",
     "alignof", "_Alignof", "defined",
+    # Inline-asm misparse: `__asm__ volatile("...")` looks like a function
+    # named `volatile` to the regex; it has no real prototype to document.
+    "volatile",
 }
 
 

@@ -724,9 +724,6 @@ ra_rmac_attach_handler(ra_rmac_port_t port, ra_rmac_event_fn_t cb, void* ctx);
  * callback with the snapshot. Designed to be called from the NVIC ISR
  * registered for the RMAC error / monitor interrupt vectors.
  *
- * @return None.
- * @retval None
- *
  * @pre Port previously brought up via ra_rmac_init.
  * @pre Called from ISR context or a host-test driver.
  * @post All four status registers are cleared.

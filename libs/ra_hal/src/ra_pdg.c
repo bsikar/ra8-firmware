@@ -185,25 +185,6 @@ static void internal_busy_wait_us(uint16_t usec)
   for (uint16_t u = 0U; u < usec; ++u) {
     for (uint16_t i = 0U; i < k_ra_pdg_busy_loops_per_us; ++i) {
 #ifndef RA_SIMULATOR_MODE
-      /**
-       * @brief volatile.
-       *
-       * @details Implementation detail; see surrounding code and HUM citations.
-       *
-       * @param[in] nop See declaration: ``"nop"``.
-       *
-       * @return ::ra_err_t outcome (or scalar return value).
-       * @retval k_ra_ok Operation completed successfully.
-       * @retval other Non-zero error code from the underlying operation.
-       *
-       * @pre Module has been initialised where applicable.
-       * @pre Pointer arguments (if any) are valid for the requested length.
-       * @post Hardware / software state reflects the requested operation on success.
-       * @post No side effects beyond those documented above.
-       *
-       * @note Not thread-safe; the caller must serialise concurrent access.
-       * @since 0.1.0
-       */
       __asm__ volatile("nop");
 #endif
     }
@@ -229,25 +210,6 @@ static void internal_wait_5_gtclk(void)
  * absorbs more than that on any reasonable build. */
   for (uint16_t i = 0U; i < k_ra_pdg_post_reset_loops; ++i) {
 #ifndef RA_SIMULATOR_MODE
-    /**
-     * @brief volatile.
-     *
-     * @details Implementation detail; see surrounding code and HUM citations.
-     *
-     * @param[in] nop See declaration: ``"nop"``.
-     *
-     * @return ::ra_err_t outcome (or scalar return value).
-     * @retval k_ra_ok Operation completed successfully.
-     * @retval other Non-zero error code from the underlying operation.
-     *
-     * @pre Module has been initialised where applicable.
-     * @pre Pointer arguments (if any) are valid for the requested length.
-     * @post Hardware / software state reflects the requested operation on success.
-     * @post No side effects beyond those documented above.
-     *
-     * @note Not thread-safe; the caller must serialise concurrent access.
-     * @since 0.1.0
-     */
     __asm__ volatile("nop");
 #endif
   }
