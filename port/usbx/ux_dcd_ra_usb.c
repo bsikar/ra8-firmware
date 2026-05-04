@@ -123,7 +123,8 @@ volatile uint32_t s_dvst_irq_count = 0U;
  * @var s_setup_dispatch_count
  * @brief Counter of SETUP packets fed into the chapter-9 dispatcher.
  *
- * @details Bisect probe. Non-zero confirms ra_usb_read_setup drained
+ * @details Bisect probe. Non-zero confirms a SETUP-drain entry point
+ * (ra_usb_read_setup_if_valid or _unconditional) emptied
  * USBREQ/USBVAL/USBINDX/USBLENG and ::internal_dispatch_setup fired.
  * Stays zero if VALID never asserts (no SETUP token reached the IP).
  * HUM Ch 36.2.16..36.2.19 p 1623..1626.
@@ -495,8 +496,11 @@ volatile uint32_t s_setup_token_observed = 0U;
  * gate that consumed this value has been removed because it fired only
  * once per session and starved the dispatcher whenever the very first
  * SQMON observation already had VALID=0. Dispatch is now driven by
- * ``ra_usb_read_setup`` itself, which self-gates on INTSTS0.VALID and
- * clears VALID on success (HUM Ch 36.2.14 p 1985, Ch 37.2.31 p 2095).
+ * ``ra_usb_read_setup_unconditional`` on the HS / SQMON path, which
+ * skips the VALID gate entirely (the SIE auto-clears VALID before the
+ * polled worker observes the SETUP edge), drains the SETUP-latch
+ * mirrors directly, and W0C-clears VALID defensively on the way out.
+ * HUM Ch 36.2.14 p 1985, Ch 37.2.31 p 2095.
  *
  * @note Single-writer (::internal_handle_dvst).
  * @since 0.1.0
@@ -509,8 +513,8 @@ static volatile uint16_t s_prev_dcpctr_sqmon = 0U;
  *
  * @details Bits:
  *  - 0x01 prev_sqmon_already_set (legacy probe, no longer gates)
- *  - 0x02 ra_usb_read_setup_returned_no_data (VALID was 0)
- *  - 0x04 ra_usb_read_setup_returned_other_err
+ *  - 0x02 ra_usb_read_setup_if_valid_returned_no_data (legacy CTRT only)
+ *  - 0x04 ra_usb_read_setup_unconditional_returned_err
  *  - 0x08 internal_dispatch_setup returned non-zero (USBX rejected)
  *  - 0x10 _ux_system_slave was UX_NULL when dispatch ran
  *  - 0x20 ux_slave_endpoint_transfer_request unreachable
@@ -527,8 +531,8 @@ volatile uint32_t s_dispatch_skip_reason = 0U;
  * @brief Count of SQMON-driven dispatch attempts (regardless of outcome).
  *
  * @details Incremented on every Default-state DVST tick, before the
- * VALID-gated drain. Pair with ::s_setup_dispatch_count to see how many
- * attempts produced a successful drain.
+ * SQMON-driven SETUP drain. Pair with ::s_setup_dispatch_count to see
+ * how many attempts produced a successful drain.
  *
  * @note Single-writer (::internal_handle_dvst).
  * @since 0.1.0
@@ -538,13 +542,15 @@ volatile uint32_t s_dispatch_attempts = 0U;
 /**
  * @var s_intsts0_at_sqmon_edge
  * @brief Snapshot of INTSTS0 captured immediately before the SQMON-driven
- *        ``ra_usb_read_setup`` call.
+ *        ``ra_usb_read_setup_unconditional`` call.
  *
- * @details VALID is bit 3 of INTSTS0 (HUM Ch 36.2.14 p 1985). If this
- * probe consistently reads back without bit 3 set, the IP latched SQMON
- * but the VALID interrupt-status flag was already W0C-cleared by
- * something upstream -- in that case, ``ra_usb_read_setup`` will return
- * ``k_ra_err_no_data`` and the dispatcher cannot drain the SETUP buffer.
+ * @details VALID is bit 3 of INTSTS0 (HUM Ch 36.2.14 p 1985). On HS this
+ * probe routinely reads back without bit 3 set: the SIE auto-clears
+ * VALID before the polled worker observes the SQMON edge. The captured
+ * SETUP-latch registers (USBREQ/USBVAL/USBINDX/USBLENG, HUM Ch 37.2.21
+ * ..24 p 2087..2090) survive that auto-clear, which is why the HS path
+ * uses ``ra_usb_read_setup_unconditional`` -- it drains the latch
+ * directly without gating on VALID.
  *
  * @note Single-writer (::internal_handle_dvst).
  * @since 0.1.0
@@ -1152,7 +1158,8 @@ static void internal_event_cb(void* ctx, ra_usb_speed_t speed, uint16_t status_m
  * push it into the device stack".
  *
  * @param[in] setup Decoded SETUP packet snapshot from
- *                  ``ra_usb_read_setup``.
+ *                  ``ra_usb_read_setup_if_valid`` (CTRT path) or
+ *                  ``ra_usb_read_setup_unconditional`` (SQMON path).
  *
  * @return UX_SUCCESS if the EP0 transfer request was dispatched,
  *         UX_ERROR if no device / EP0 is available yet.
@@ -1259,8 +1266,8 @@ static unsigned int internal_dispatch_setup(const ra_usb_setup_t* setup)
  * controller has just transitioned into:
  *
  *  - ``k_ra_ctsq_rdds`` / ``_wrds`` / ``_wrnd`` -- a SETUP packet has
- *    just been latched; drain it via ``ra_usb_read_setup`` and feed
- *    the chapter-9 stack through ``internal_dispatch_setup``.
+ *    just been latched; drain it via ``ra_usb_read_setup_if_valid``
+ *    and feed the chapter-9 stack through ``internal_dispatch_setup``.
  *  - ``k_ra_ctsq_rdss`` / ``_wrss`` -- the data phase is finished and
  *    the controller is in the status stage; pulse ``DCPCTR.CCPL`` via
  *    ``ra_usb_control_response(true)`` so the host sees ACK.
@@ -1282,7 +1289,8 @@ static unsigned int internal_dispatch_setup(const ra_usb_setup_t* setup)
  *
  * @note Runs in IRQ-callback context.
  *
- * @see ra_usb_read_setup
+ * @see ra_usb_read_setup_if_valid
+ * @see ra_usb_read_setup_unconditional
  * @see ra_usb_control_response
  * @since 0.1.0
  */
@@ -1297,7 +1305,7 @@ static void internal_handle_ctrt(ra_usb_speed_t speed, uint16_t intsts0)
        * for OUT data (wrds). The status stage is acked separately on
        * the matching CTSQ=rdss / wrss edge. */
       ra_usb_setup_t setup = {};
-      if (ra_usb_read_setup(speed, &setup) == k_ra_ok) {
+      if (ra_usb_read_setup_if_valid(speed, &setup) == k_ra_ok) {
         s_setup_dispatch_count++;
         (void)internal_dispatch_setup(&setup);
       }
@@ -1314,7 +1322,7 @@ static void internal_handle_ctrt(ra_usb_speed_t speed, uint16_t intsts0)
        * ZLP, so the bridge must pulse CCPL itself. STALL on error so
        * the host sees the request rejected instead of hanging. */
       ra_usb_setup_t setup = {};
-      if (ra_usb_read_setup(speed, &setup) != k_ra_ok) {
+      if (ra_usb_read_setup_if_valid(speed, &setup) != k_ra_ok) {
         break;
       }
       s_setup_dispatch_count++;
@@ -1404,7 +1412,7 @@ static void internal_handle_dvst(ra_usb_speed_t speed, uint16_t intsts0)
        * setup packet." k_ra_dcpctr_mask_sqmon is bit 6, the SQMON
        * field, so dcpctr_pre & SQMON is the SETUP-latched signal.
        * On a 0->1 rising edge we drain USBREQ/USBVAL/USBINDX/USBLENG
-       * via ra_usb_read_setup and forward into the same chapter-9
+       * via ra_usb_read_setup_unconditional and forward into the same chapter-9
        * dispatcher used by the CTRT/VALID path -- the polled worker
        * can race the controller and miss the VALID edge entirely on
        * HS, so SQMON is the race-immune SETUP-arrival signal here. */
@@ -1412,26 +1420,28 @@ static void internal_handle_dvst(ra_usb_speed_t speed, uint16_t intsts0)
       if (now_sqmon != 0U) {
         s_setup_token_observed++;
       }
-      /* Drop the prior 0->1 rising-edge gate. SQMON stays asserted until
-       * a fresh SETUP (or NAK/STALL) clears it; ``ra_usb_read_setup``
-       * itself self-gates on INTSTS0.VALID and clears VALID on a
-       * successful drain, so re-running it on a re-asserted SQMON with
-       * VALID=0 is a single-MMIO-read no-op. The previous edge gate
-       * fired only once per session and starved the dispatcher whenever
-       * the first observed SQMON happened to come paired with VALID=0.
+      /* SQMON stays asserted until a fresh SETUP (or NAK/STALL) clears
+       * it (HUM Ch 37.2.31 p 2095). On HS the polled worker observes
+       * SQMON==1 reliably but the SIE has typically already auto-
+       * cleared INTSTS0.VALID by the time we get here, so a VALID-
+       * gated drain (``ra_usb_read_setup_if_valid``) returns
+       * ``k_ra_err_no_data`` and starves the chapter-9 dispatcher.
+       * Use ``ra_usb_read_setup_unconditional`` instead: SQMON==1 is
+       * our independent proof a SETUP was latched, and the captured
+       * registers USBREQ/USBVAL/USBINDX/USBLENG (HUM Ch 37.2.21..24
+       * p 2087..2090) survive VALID being auto-cleared. The function
+       * also defensively W0C-clears INTSTS0.VALID on its way out.
        * HUM Ch 36.2.14 INTSTS0 p 1985, Ch 37.2.31 DCPCTR p 2095. */
       s_dispatch_attempts++;
       s_intsts0_at_sqmon_edge = reg->INTSTS0;
       if (now_sqmon == 0U) {
         s_dispatch_skip_reason |= 0x40U;
       } else {
-        ra_usb_setup_t setup     = {};
-        const ra_err_t read_rc = ra_usb_read_setup(speed, &setup);
+        ra_usb_setup_t setup   = {};
+        const ra_err_t read_rc = ra_usb_read_setup_unconditional(speed, &setup);
         if (read_rc == k_ra_ok) {
           s_setup_dispatch_count++;
           (void)internal_dispatch_setup(&setup);
-        } else if (read_rc == k_ra_err_no_data) {
-          s_dispatch_skip_reason |= 0x02U;
         } else {
           s_dispatch_skip_reason |= 0x04U;
         }

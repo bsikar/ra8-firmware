@@ -472,13 +472,14 @@ static void test_control_response(void)
  */
 static void test_read_setup(void)
 {
-  TEST_BEGIN("ra_usb_read_setup decodes USBREQ/USBVAL/USBINDX/USBLENG");
+  TEST_BEGIN("ra_usb_read_setup_if_valid decodes USBREQ/USBVAL/USBINDX/USBLENG");
   prep_cb();
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_device_init(k_ra_usb_speed_fs));
 
   ra_usb_setup_t setup = {};
   /* No VALID flag yet -> no_data. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_no_data, (int32_t)ra_usb_read_setup(k_ra_usb_speed_fs, &setup));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_no_data,
+                 (int32_t)ra_usb_read_setup_if_valid(k_ra_usb_speed_fs, &setup));
 
   volatile r_usb_regs_t* reg = ra_usb_fs();
   reg->INTSTS0               = (uint16_t)k_ra_intsts0_mask_valid;
@@ -487,7 +488,7 @@ static void test_read_setup(void)
   reg->USBINDX               = (uint16_t)0x5678U;
   reg->USBLENG               = (uint16_t)0x000AU;
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_read_setup(k_ra_usb_speed_fs, &setup));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_read_setup_if_valid(k_ra_usb_speed_fs, &setup));
   TEST_ASSERT_EQ((int32_t)0x06U, (int32_t)setup.bm_request_type);
   TEST_ASSERT_EQ((int32_t)0x21U, (int32_t)setup.b_request);
   TEST_ASSERT_EQ((int32_t)0x1234U, (int32_t)setup.w_value);
@@ -496,10 +497,56 @@ static void test_read_setup(void)
   TEST_ASSERT_EQ(0, (int)(reg->INTSTS0 & k_ra_intsts0_mask_valid));
 
   TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_usb_read_setup(k_ra_usb_speed_fs, nullptr));
+                 (int32_t)ra_usb_read_setup_if_valid(k_ra_usb_speed_fs, nullptr));
   TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_usb_read_setup((ra_usb_speed_t)9U, &setup));
-  TEST_END("ra_usb_read_setup decodes USBREQ/USBVAL/USBINDX/USBLENG");
+                 (int32_t)ra_usb_read_setup_if_valid((ra_usb_speed_t)9U, &setup));
+  TEST_END("ra_usb_read_setup_if_valid decodes USBREQ/USBVAL/USBINDX/USBLENG");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
+static void test_read_setup_unconditional(void)
+{
+  TEST_BEGIN("ra_usb_read_setup_unconditional drains latch when VALID=0");
+  prep_cb();
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_device_init(k_ra_usb_speed_fs));
+
+  volatile r_usb_regs_t* reg = ra_usb_fs();
+  /* Simulate the HS race: SETUP latch is populated but the SIE has
+   * already auto-cleared INTSTS0.VALID before the polled worker runs. */
+  reg->INTSTS0 = (uint16_t)(reg->INTSTS0 & (uint16_t)~k_ra_intsts0_mask_valid);
+  reg->USBREQ  = (uint16_t)0x8006U; /* bRequest=0x80 bm=0x06 (GET_DESCRIPTOR) */
+  reg->USBVAL  = (uint16_t)0x0100U;
+  reg->USBINDX = (uint16_t)0x0000U;
+  reg->USBLENG = (uint16_t)0x0040U;
+
+  ra_usb_setup_t setup = {};
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_usb_read_setup_unconditional(k_ra_usb_speed_fs, &setup));
+  TEST_ASSERT_EQ((int32_t)0x06U, (int32_t)setup.bm_request_type);
+  TEST_ASSERT_EQ((int32_t)0x80U, (int32_t)setup.b_request);
+  TEST_ASSERT_EQ((int32_t)0x0100U, (int32_t)setup.w_value);
+  TEST_ASSERT_EQ((int32_t)0x0000U, (int32_t)setup.w_index);
+  TEST_ASSERT_EQ((int32_t)0x0040U, (int32_t)setup.w_length);
+  /* VALID stays cleared after drain (W0C is a no-op when already 0). */
+  TEST_ASSERT_EQ(0, (int)(reg->INTSTS0 & k_ra_intsts0_mask_valid));
+
+  /* Drain a second time: the latch is unchanged (no fresh SETUP), so
+   * the unconditional drain still succeeds and yields the same bytes. */
+  ra_usb_setup_t setup_again = {};
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_usb_read_setup_unconditional(k_ra_usb_speed_fs, &setup_again));
+  TEST_ASSERT_EQ((int32_t)0x06U, (int32_t)setup_again.bm_request_type);
+
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_usb_read_setup_unconditional(k_ra_usb_speed_fs, nullptr));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
+                 (int32_t)ra_usb_read_setup_unconditional((ra_usb_speed_t)9U, &setup));
+  TEST_END("ra_usb_read_setup_unconditional drains latch when VALID=0");
 }
 
 /**
@@ -1128,6 +1175,7 @@ int32_t main(void)
   test_stall_endpoint();
   test_control_response();
   test_read_setup();
+  test_read_setup_unconditional();
   test_queue_in_arg_validation();
   test_queue_out_arg_validation();
   test_hs_paths();
