@@ -489,19 +489,67 @@ volatile uint32_t s_setup_token_observed = 0U;
 
 /**
  * @var s_prev_dcpctr_sqmon
- * @brief Last-observed value of ``DCPCTR.SQMON`` (masked to bit 6) so the
- *        DVST handler can detect a 0->1 rising edge and dispatch the
- *        latched SETUP exactly once.
+ * @brief Last-observed value of ``DCPCTR.SQMON`` (masked to bit 6).
  *
- * @details SQMON stays asserted after the SIE latches a SETUP packet
- * until the next NAK/STALL/SETUP transaction clears it. Without
- * rising-edge detection the SQMON path would re-dispatch the same
- * SETUP on every Default-state DVST tick. HUM Ch 37.2.31 p 2095.
+ * @details Retained as a JLink-readable probe; the previous rising-edge
+ * gate that consumed this value has been removed because it fired only
+ * once per session and starved the dispatcher whenever the very first
+ * SQMON observation already had VALID=0. Dispatch is now driven by
+ * ``ra_usb_read_setup`` itself, which self-gates on INTSTS0.VALID and
+ * clears VALID on success (HUM Ch 36.2.14 p 1985, Ch 37.2.31 p 2095).
  *
  * @note Single-writer (::internal_handle_dvst).
  * @since 0.1.0
  */
 static volatile uint16_t s_prev_dcpctr_sqmon = 0U;
+
+/**
+ * @var s_dispatch_skip_reason
+ * @brief Last-iteration bitmask of why the SQMON dispatch path skipped.
+ *
+ * @details Bits:
+ *  - 0x01 prev_sqmon_already_set (legacy probe, no longer gates)
+ *  - 0x02 ra_usb_read_setup_returned_no_data (VALID was 0)
+ *  - 0x04 ra_usb_read_setup_returned_other_err
+ *  - 0x08 internal_dispatch_setup returned non-zero (USBX rejected)
+ *  - 0x10 _ux_system_slave was UX_NULL when dispatch ran
+ *  - 0x20 ux_slave_endpoint_transfer_request unreachable
+ *  - 0x40 sqmon was zero on this DVST entry
+ *  - 0x80 dispatch path actually ran to completion (success marker)
+ *
+ * @note Single-writer (::internal_handle_dvst, ::internal_dispatch_setup).
+ * @since 0.1.0
+ */
+volatile uint32_t s_dispatch_skip_reason = 0U;
+
+/**
+ * @var s_dispatch_attempts
+ * @brief Count of SQMON-driven dispatch attempts (regardless of outcome).
+ *
+ * @details Incremented on every Default-state DVST tick, before the
+ * VALID-gated drain. Pair with ::s_setup_dispatch_count to see how many
+ * attempts produced a successful drain.
+ *
+ * @note Single-writer (::internal_handle_dvst).
+ * @since 0.1.0
+ */
+volatile uint32_t s_dispatch_attempts = 0U;
+
+/**
+ * @var s_intsts0_at_sqmon_edge
+ * @brief Snapshot of INTSTS0 captured immediately before the SQMON-driven
+ *        ``ra_usb_read_setup`` call.
+ *
+ * @details VALID is bit 3 of INTSTS0 (HUM Ch 36.2.14 p 1985). If this
+ * probe consistently reads back without bit 3 set, the IP latched SQMON
+ * but the VALID interrupt-status flag was already W0C-cleared by
+ * something upstream -- in that case, ``ra_usb_read_setup`` will return
+ * ``k_ra_err_no_data`` and the dispatcher cannot drain the SETUP buffer.
+ *
+ * @note Single-writer (::internal_handle_dvst).
+ * @since 0.1.0
+ */
+volatile uint16_t s_intsts0_at_sqmon_edge = 0U;
 
 /**
  * @struct ra_usb_dcd_pipe_slot_t
@@ -1129,13 +1177,43 @@ static void internal_event_cb(void* ctx, ra_usb_speed_t speed, uint16_t status_m
  */
 static unsigned int internal_dispatch_setup(const ra_usb_setup_t* setup)
 {
-  if (setup == nullptr || _ux_system_slave == UX_NULL) {
+  if (setup == nullptr) {
+    return UX_ERROR;
+  }
+
+  /* Mirror the just-decoded SETUP into the JLink-readable probe BEFORE
+   * touching any USBX-owned state. Even if USBX is not yet bound (no
+   * device stack init, no class registration), the bench can confirm
+   * via JLink that the chip latched a real SETUP and the bridge drained
+   * USBREQ/USBVAL/USBINDX/USBLENG correctly. Same byte order as the
+   * USBX EP0 transfer-request buffer below (USB 2.0 Ch 9.3). HUM
+   * Ch 36.2.17..36.2.20 (USBREQ/USBVAL/USBINDX/USBLENG). */
+  s_setup_packet_buffer[k_setup_idx_bmrt]   = setup->bm_request_type;
+  s_setup_packet_buffer[k_setup_idx_brq]    = setup->b_request;
+  s_setup_packet_buffer[k_setup_idx_val_lo] = (uint8_t)(setup->w_value & k_setup_byte_mask);
+  s_setup_packet_buffer[k_setup_idx_val_hi] =
+    (uint8_t)((setup->w_value >> k_setup_byte_shift) & k_setup_byte_mask);
+  s_setup_packet_buffer[k_setup_idx_idx_lo] = (uint8_t)(setup->w_index & k_setup_byte_mask);
+  s_setup_packet_buffer[k_setup_idx_idx_hi] =
+    (uint8_t)((setup->w_index >> k_setup_byte_shift) & k_setup_byte_mask);
+  s_setup_packet_buffer[k_setup_idx_len_lo] = (uint8_t)(setup->w_length & k_setup_byte_mask);
+  s_setup_packet_buffer[k_setup_idx_len_hi] =
+    (uint8_t)((setup->w_length >> k_setup_byte_shift) & k_setup_byte_mask);
+  s_setup_packet_count++;
+
+  /* USBX must already be bound to forward the SETUP into the chapter-9
+   * dispatcher. If it is not, that is fine for the bench probe path --
+   * we still recorded the packet above. Mark the skip reason so a JLink
+   * read disambiguates "USBX not bound" from "drain failed". */
+  if (_ux_system_slave == UX_NULL) {
+    s_dispatch_skip_reason |= 0x10U;
     return UX_ERROR;
   }
   UX_SLAVE_DEVICE*   device = &_ux_system_slave->ux_system_slave_device;
   UX_SLAVE_TRANSFER* tr =
     &device->ux_slave_device_control_endpoint.ux_slave_endpoint_transfer_request;
   if (tr == UX_NULL) {
+    s_dispatch_skip_reason |= 0x20U;
     return UX_ERROR;
   }
 
@@ -1154,23 +1232,6 @@ static unsigned int internal_dispatch_setup(const ra_usb_setup_t* setup)
   tr->ux_slave_transfer_request_setup[k_setup_idx_len_hi] =
     (uint8_t)((setup->w_length >> k_setup_byte_shift) & k_setup_byte_mask);
 
-  /* Mirror the just-decoded SETUP into the JLink-readable probe so a
-   * halted target can be inspected with `mem 0xADDR 8 1`. Same byte
-   * order as ux_slave_transfer_request_setup above (USB 2.0 Ch 9.3).
-   * HUM Ch 36.2.17..36.2.20 (USBREQ/USBVAL/USBINDX/USBLENG). */
-  s_setup_packet_buffer[k_setup_idx_bmrt]   = setup->bm_request_type;
-  s_setup_packet_buffer[k_setup_idx_brq]    = setup->b_request;
-  s_setup_packet_buffer[k_setup_idx_val_lo] = (uint8_t)(setup->w_value & k_setup_byte_mask);
-  s_setup_packet_buffer[k_setup_idx_val_hi] =
-    (uint8_t)((setup->w_value >> k_setup_byte_shift) & k_setup_byte_mask);
-  s_setup_packet_buffer[k_setup_idx_idx_lo] = (uint8_t)(setup->w_index & k_setup_byte_mask);
-  s_setup_packet_buffer[k_setup_idx_idx_hi] =
-    (uint8_t)((setup->w_index >> k_setup_byte_shift) & k_setup_byte_mask);
-  s_setup_packet_buffer[k_setup_idx_len_lo] = (uint8_t)(setup->w_length & k_setup_byte_mask);
-  s_setup_packet_buffer[k_setup_idx_len_hi] =
-    (uint8_t)((setup->w_length >> k_setup_byte_shift) & k_setup_byte_mask);
-  s_setup_packet_count++;
-
   tr->ux_slave_transfer_request_actual_length        = 0UL;
   tr->ux_slave_transfer_request_current_data_pointer = tr->ux_slave_transfer_request_data_pointer;
   /* Chapter-9 dispatcher gates on completion_code == UX_SUCCESS
@@ -1179,7 +1240,13 @@ static unsigned int internal_dispatch_setup(const ra_usb_setup_t* setup)
    * STALL'd request -- clear it so this fresh SETUP is honored. */
   tr->ux_slave_transfer_request_completion_code = UX_SUCCESS;
 
-  return _ux_device_stack_control_request_process(tr);
+  const unsigned int rc = _ux_device_stack_control_request_process(tr);
+  if (rc != UX_SUCCESS) {
+    s_dispatch_skip_reason |= 0x08U;
+  } else {
+    s_dispatch_skip_reason |= 0x80U;
+  }
+  return rc;
 }
 
 /**
@@ -1345,11 +1412,28 @@ static void internal_handle_dvst(ra_usb_speed_t speed, uint16_t intsts0)
       if (now_sqmon != 0U) {
         s_setup_token_observed++;
       }
-      if (now_sqmon != 0U && s_prev_dcpctr_sqmon == 0U) {
-        ra_usb_setup_t setup = {};
-        if (ra_usb_read_setup(speed, &setup) == k_ra_ok) {
+      /* Drop the prior 0->1 rising-edge gate. SQMON stays asserted until
+       * a fresh SETUP (or NAK/STALL) clears it; ``ra_usb_read_setup``
+       * itself self-gates on INTSTS0.VALID and clears VALID on a
+       * successful drain, so re-running it on a re-asserted SQMON with
+       * VALID=0 is a single-MMIO-read no-op. The previous edge gate
+       * fired only once per session and starved the dispatcher whenever
+       * the first observed SQMON happened to come paired with VALID=0.
+       * HUM Ch 36.2.14 INTSTS0 p 1985, Ch 37.2.31 DCPCTR p 2095. */
+      s_dispatch_attempts++;
+      s_intsts0_at_sqmon_edge = reg->INTSTS0;
+      if (now_sqmon == 0U) {
+        s_dispatch_skip_reason |= 0x40U;
+      } else {
+        ra_usb_setup_t setup     = {};
+        const ra_err_t read_rc = ra_usb_read_setup(speed, &setup);
+        if (read_rc == k_ra_ok) {
           s_setup_dispatch_count++;
           (void)internal_dispatch_setup(&setup);
+        } else if (read_rc == k_ra_err_no_data) {
+          s_dispatch_skip_reason |= 0x02U;
+        } else {
+          s_dispatch_skip_reason |= 0x04U;
         }
       }
       s_prev_dcpctr_sqmon = now_sqmon;
