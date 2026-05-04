@@ -86,23 +86,7 @@ static inline void internal_cac_wait_cfme(volatile r_cac_regs_t* reg, uint8_t ex
   }
 }
 
-/**
- * @brief ra_cac_init -- see header for full description.
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @param[in] upper See header declaration for direction and constraints.
- * @param[in] lower See header declaration for direction and constraints.
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
+/* ra_cac_init -- see header for full description. */
 ra_err_t ra_cac_init(uint16_t upper, uint16_t lower)
 {
   /* HUM Ch 11.2.8 "MSTPCRC : Module Stop Control Register C", p 446 */
@@ -129,22 +113,7 @@ ra_err_t ra_cac_init(uint16_t upper, uint16_t lower)
   return k_ra_ok;
 }
 
-/**
- * @brief ra_cac_measure -- see header for full description.
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @param[in] out_count See header declaration for direction and constraints.
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
+/* ra_cac_measure -- see header for full description. */
 ra_err_t ra_cac_measure(uint16_t* out_count)
 {
   RA_CHECK_NULL_PTR(out_count, s_tag, "out_count must not be nullptr");
@@ -189,21 +158,7 @@ typedef struct {
 
 static ra_cac_state_t s_cac_state;
 
-/**
- * @brief ra_cac_deinit -- see header for full description.
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
+/* ra_cac_deinit -- see header for full description. */
 ra_err_t ra_cac_deinit(void)
 {
   volatile r_cac_regs_t* reg = ra_cac();
@@ -219,22 +174,7 @@ ra_err_t ra_cac_deinit(void)
   return ra_mstp_disable(k_ra_mstp_cac);
 }
 
-/**
- * @brief ra_cac_get_status -- see header for full description.
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @param[in] out_mask See header declaration for direction and constraints.
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
+/* ra_cac_get_status -- see header for full description. */
 ra_err_t ra_cac_get_status(uint8_t* out_mask)
 {
   RA_CHECK_NULL_PTR(out_mask, s_tag, "out_mask must not be nullptr");
@@ -242,22 +182,7 @@ ra_err_t ra_cac_get_status(uint8_t* out_mask)
   return k_ra_ok;
 }
 
-/**
- * @brief ra_cac_clear_status -- see header for full description.
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @param[in] mask See header declaration for direction and constraints.
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
+/* ra_cac_clear_status -- see header for full description. */
 ra_err_t ra_cac_clear_status(uint8_t mask)
 {
   volatile r_cac_regs_t* reg = ra_cac();
@@ -272,23 +197,7 @@ ra_err_t ra_cac_clear_status(uint8_t mask)
   return k_ra_ok;
 }
 
-/**
- * @brief ra_cac_attach_handler -- see header for full description.
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @param[in] fn See header declaration for direction and constraints.
- * @param[in] ctx See header declaration for direction and constraints.
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
+/* ra_cac_attach_handler -- see header for full description. */
 ra_err_t ra_cac_attach_handler(ra_cac_event_fn_t fn, void* ctx)
 {
   s_cac_state.fn  = fn;
@@ -296,18 +205,7 @@ ra_err_t ra_cac_attach_handler(ra_cac_event_fn_t fn, void* ctx)
   return k_ra_ok;
 }
 
-/**
- * @brief ra_cac_dispatch -- see header for full description.
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @pre Driver state has been initialised by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
+/* ra_cac_dispatch -- see header for full description. */
 void ra_cac_dispatch(void)
 {
   volatile r_cac_regs_t* reg  = ra_cac();
@@ -323,21 +221,7 @@ void ra_cac_dispatch(void)
   }
 }
 
-/**
- * @brief ra_cac_enter_stop -- see header for full description.
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
+/* ra_cac_enter_stop -- see header for full description. */
 ra_err_t ra_cac_enter_stop(void)
 {
   volatile r_cac_regs_t* reg = ra_cac();
@@ -347,21 +231,7 @@ ra_err_t ra_cac_enter_stop(void)
   return ra_mstp_disable(k_ra_mstp_cac);
 }
 
-/**
- * @brief ra_cac_exit_stop -- see header for full description.
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
+/* ra_cac_exit_stop -- see header for full description. */
 ra_err_t ra_cac_exit_stop(void)
 {
   return ra_mstp_enable(k_ra_mstp_cac);

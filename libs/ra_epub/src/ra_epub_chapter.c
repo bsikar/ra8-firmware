@@ -285,20 +285,7 @@ static ra_err_t priv_render_into(const stbtt_fontinfo* font,
  * ---------------------------------------------------------------------------
  */
 
-/**
- * @brief Implementation of ra_epub_get_chapter_count (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] book See implementation.
- * @param[in] out_count See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_epub_get_chapter_count (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_epub_get_chapter_count(const ra_epub_book_t* book, uint16_t* out_count)
 {
   if (book == NULL || out_count == NULL) {
@@ -311,23 +298,7 @@ ra_err_t ra_epub_get_chapter_count(const ra_epub_book_t* book, uint16_t* out_cou
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_epub_load_chapter (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] book See implementation.
- * @param[in] idx See implementation.
- * @param[in] out_xhtml See implementation.
- * @param[in] max_len See implementation.
- * @param[in] got_len See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_epub_load_chapter (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_epub_load_chapter(ra_epub_book_t* book,
                               uint16_t        idx,
                               uint8_t*        out_xhtml,
@@ -356,20 +327,7 @@ ra_err_t ra_epub_load_chapter(ra_epub_book_t* book,
   return priv_locate_extract(zip, full_path, book->chapter_paths[idx], out_xhtml, max_len, got_len);
 }
 
-/**
- * @brief Implementation of ra_epub_get_metadata (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] book See implementation.
- * @param[in] out_meta See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_epub_get_metadata (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_epub_get_metadata(const ra_epub_book_t* book, ra_epub_metadata_t* out_meta)
 {
   if (book == NULL || out_meta == NULL) {
@@ -384,22 +342,7 @@ ra_err_t ra_epub_get_metadata(const ra_epub_book_t* book, ra_epub_metadata_t* ou
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_epub_get_cover_image (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] book See implementation.
- * @param[in] out_buf See implementation.
- * @param[in] max_len See implementation.
- * @param[in] got_len See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_epub_get_cover_image (see header for full contract) -- see header for the documented contract. */
 ra_err_t
 ra_epub_get_cover_image(ra_epub_book_t* book, uint8_t* out_buf, size_t max_len, size_t* got_len)
 {
@@ -425,21 +368,7 @@ ra_epub_get_cover_image(ra_epub_book_t* book, uint8_t* out_buf, size_t max_len, 
   return priv_locate_extract(zip, full_path, book->cover_path, out_buf, max_len, got_len);
 }
 
-/**
- * @brief Implementation of ra_epub_set_font (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] book See implementation.
- * @param[in] font_data See implementation.
- * @param[in] font_size See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_epub_set_font (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_epub_set_font(ra_epub_book_t* book, const uint8_t* font_data, size_t font_size)
 {
   if (book == NULL || font_data == NULL) {
@@ -456,25 +385,7 @@ ra_err_t ra_epub_set_font(ra_epub_book_t* book, const uint8_t* font_data, size_t
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_epub_render_glyph (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] book See implementation.
- * @param[in] codepoint See implementation.
- * @param[in] font_size See implementation.
- * @param[in] out_bitmap See implementation.
- * @param[in] max_pixels See implementation.
- * @param[in] out_w See implementation.
- * @param[in] out_h See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_epub_render_glyph (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_epub_render_glyph(const ra_epub_book_t* book,
                               int32_t               codepoint,
                               float                 font_size,

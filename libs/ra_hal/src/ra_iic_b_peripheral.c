@@ -87,23 +87,7 @@ static ra_err_t internal_wait_ntst(volatile r_iic_b_regs_t* reg, uint32_t mask)
   return k_ra_err_hw_timeout;
 }
 
-/**
- * @brief ra_iic_b_peripheral_open -- see header for full description.
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @param[in] channel See header declaration for direction and constraints.
- * @param[in] cfg See header declaration for direction and constraints.
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
+/* ra_iic_b_peripheral_open -- see header for full description. */
 ra_err_t ra_iic_b_peripheral_open(uint8_t channel, const ra_iic_b_peripheral_cfg_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg, s_tag, "ra_iic_b_peripheral_open: cfg null");
@@ -124,22 +108,7 @@ ra_err_t ra_iic_b_peripheral_open(uint8_t channel, const ra_iic_b_peripheral_cfg
   return k_ra_ok;
 }
 
-/**
- * @brief ra_iic_b_peripheral_close -- see header for full description.
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @param[in] channel See header declaration for direction and constraints.
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
+/* ra_iic_b_peripheral_close -- see header for full description. */
 ra_err_t ra_iic_b_peripheral_close(uint8_t channel)
 {
   volatile r_iic_b_regs_t* reg = ra_iic_b(channel);
@@ -152,24 +121,7 @@ ra_err_t ra_iic_b_peripheral_close(uint8_t channel)
   return k_ra_ok;
 }
 
-/**
- * @brief ra_iic_b_peripheral_send -- see header for full description.
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @param[in] channel See header declaration for direction and constraints.
- * @param[in] data See header declaration for direction and constraints.
- * @param[in] len See header declaration for direction and constraints.
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
+/* ra_iic_b_peripheral_send -- see header for full description. */
 ra_err_t ra_iic_b_peripheral_send(uint8_t channel, const uint8_t* data, uint32_t len)
 {
   volatile r_iic_b_regs_t* reg = ra_iic_b(channel);
@@ -189,24 +141,7 @@ ra_err_t ra_iic_b_peripheral_send(uint8_t channel, const uint8_t* data, uint32_t
   return k_ra_ok;
 }
 
-/**
- * @brief ra_iic_b_peripheral_receive -- see header for full description.
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @param[in] channel See header declaration for direction and constraints.
- * @param[in] buf See header declaration for direction and constraints.
- * @param[in] len See header declaration for direction and constraints.
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
+/* ra_iic_b_peripheral_receive -- see header for full description. */
 ra_err_t ra_iic_b_peripheral_receive(uint8_t channel, uint8_t* buf, uint32_t len)
 {
   volatile r_iic_b_regs_t* reg = ra_iic_b(channel);
@@ -226,23 +161,7 @@ ra_err_t ra_iic_b_peripheral_receive(uint8_t channel, uint8_t* buf, uint32_t len
   return k_ra_ok;
 }
 
-/**
- * @brief ra_iic_b_peripheral_status -- see header for full description.
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @param[in] channel See header declaration for direction and constraints.
- * @param[in] out_mask See header declaration for direction and constraints.
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
+/* ra_iic_b_peripheral_status -- see header for full description. */
 ra_err_t ra_iic_b_peripheral_status(uint8_t channel, uint8_t* out_mask)
 {
   RA_CHECK_NULL_PTR(out_mask, s_tag, "ra_iic_b_peripheral_status: out_mask null");

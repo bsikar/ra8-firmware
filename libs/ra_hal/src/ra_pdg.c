@@ -418,19 +418,7 @@ static void internal_program_dll(const ra_pdg_config_t* cfg, ra_pdg_frange_t fra
   reg->GTDLYCR2 = bypass_off;
 }
 
-/**
- * @brief Implementation of ra_pdg_init (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] cfg See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_pdg_init (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_pdg_init(const ra_pdg_config_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
@@ -453,18 +441,7 @@ ra_err_t ra_pdg_init(const ra_pdg_config_t* cfg)
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_pdg_deinit (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_pdg_deinit (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_pdg_deinit(void)
 {
   volatile r_pdg_regs_t* reg = ra_pdg();
@@ -495,22 +472,7 @@ ra_err_t ra_pdg_deinit(void)
  * =============================================================================
  */
 
-/**
- * @brief Implementation of ra_pdg_set_delay (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] channel See implementation.
- * @param[in] pin See implementation.
- * @param[in] edge See implementation.
- * @param[in] code See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_pdg_set_delay (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_pdg_set_delay(uint8_t channel, ra_pdg_pin_t pin, ra_pdg_edge_t edge, uint8_t code)
 {
   if (!internal_pdg_is_initialised()) {
@@ -528,22 +490,7 @@ ra_err_t ra_pdg_set_delay(uint8_t channel, ra_pdg_pin_t pin, ra_pdg_edge_t edge,
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_pdg_get_delay (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] channel See implementation.
- * @param[in] pin See implementation.
- * @param[in] edge See implementation.
- * @param[in] out_code See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_pdg_get_delay (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_pdg_get_delay(uint8_t channel, ra_pdg_pin_t pin, ra_pdg_edge_t edge, uint8_t* out_code)
 {
   RA_CHECK_NULL_PTR(out_code, s_tag, "out_code must not be nullptr");
@@ -557,20 +504,7 @@ ra_err_t ra_pdg_get_delay(uint8_t channel, ra_pdg_pin_t pin, ra_pdg_edge_t edge,
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_pdg_set_delay_batch (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] entries See implementation.
- * @param[in] count See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_pdg_set_delay_batch (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_pdg_set_delay_batch(const ra_pdg_delay_entry_t* entries, uint8_t count)
 {
   RA_CHECK_NULL_PTR(entries, s_tag, "entries must not be nullptr");
@@ -600,22 +534,7 @@ ra_err_t ra_pdg_set_delay_batch(const ra_pdg_delay_entry_t* entries, uint8_t cou
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_pdg_delay_ns_to_code (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] delay_ns See implementation.
- * @param[in] gptclk_hz See implementation.
- * @param[in] frange See implementation.
- * @param[in] out_code See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_pdg_delay_ns_to_code (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_pdg_delay_ns_to_code(uint32_t        delay_ns,
                                  uint32_t        gptclk_hz,
                                  ra_pdg_frange_t frange,
@@ -650,19 +569,7 @@ ra_err_t ra_pdg_delay_ns_to_code(uint32_t        delay_ns,
  * =============================================================================
  */
 
-/**
- * @brief Implementation of ra_pdg_exit_stop (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] channel See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_pdg_exit_stop (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_pdg_exit_stop(uint8_t channel)
 {
   if ((uint16_t)channel >= (uint16_t)k_ra_pdg_channel_count) {
@@ -677,19 +584,7 @@ ra_err_t ra_pdg_exit_stop(uint8_t channel)
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_pdg_enter_stop (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] channel See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_pdg_enter_stop (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_pdg_enter_stop(uint8_t channel)
 {
   if ((uint16_t)channel >= (uint16_t)k_ra_pdg_channel_count) {
@@ -703,20 +598,7 @@ ra_err_t ra_pdg_enter_stop(uint8_t channel)
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_pdg_channel_bypass_set (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] channel See implementation.
- * @param[in] bypass See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_pdg_channel_bypass_set (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_pdg_channel_bypass_set(uint8_t channel, uint8_t bypass)
 {
   if (!internal_pdg_is_initialised()) {
@@ -738,20 +620,7 @@ ra_err_t ra_pdg_channel_bypass_set(uint8_t channel, uint8_t bypass)
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_pdg_pin_disable (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] channel See implementation.
- * @param[in] pin See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_pdg_pin_disable (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_pdg_pin_disable(uint8_t channel, ra_pdg_pin_t pin)
 {
   if (!internal_pdg_is_initialised()) {
@@ -778,19 +647,7 @@ ra_err_t ra_pdg_pin_disable(uint8_t channel, ra_pdg_pin_t pin)
  * =============================================================================
  */
 
-/**
- * @brief Implementation of ra_pdg_get_status (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] out See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_pdg_get_status (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_pdg_get_status(uint16_t* out)
 {
   RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
@@ -800,19 +657,7 @@ ra_err_t ra_pdg_get_status(uint16_t* out)
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_pdg_get_status_full (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] out See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_pdg_get_status_full (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_pdg_get_status_full(ra_pdg_status_full_t* out)
 {
   RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
@@ -837,19 +682,7 @@ ra_err_t ra_pdg_get_status_full(ra_pdg_status_full_t* out)
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_pdg_clear_status (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] mask See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_pdg_clear_status (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_pdg_clear_status(uint16_t mask)
 {
   /* Clearing DLYRST releases the block. */
@@ -861,20 +694,7 @@ ra_err_t ra_pdg_clear_status(uint16_t mask)
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_pdg_attach_handler (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] fn See implementation.
- * @param[in] ctx See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_pdg_attach_handler (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_pdg_attach_handler(ra_pdg_event_fn_t fn, void* ctx)
 {
   s_pdg_event_fn  = fn;
@@ -882,16 +702,7 @@ ra_err_t ra_pdg_attach_handler(ra_pdg_event_fn_t fn, void* ctx)
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_pdg_dispatch (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_pdg_dispatch (see header for full contract) -- see header for the documented contract. */
 void ra_pdg_dispatch(void)
 {
   const ra_pdg_event_fn_t fn  = s_pdg_event_fn;
@@ -915,20 +726,7 @@ void ra_pdg_dispatch(void)
  */
 static bool s_pdg_capture_in_flight;
 
-/**
- * @brief Implementation of ra_pdg_capture_start (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] buf See implementation.
- * @param[in] len See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_pdg_capture_start (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_pdg_capture_start(const ra_pdg_delay_entry_t* buf, uint8_t len)
 {
   RA_CHECK_NULL_PTR(buf, s_tag, "buf must not be nullptr");
@@ -945,18 +743,7 @@ ra_err_t ra_pdg_capture_start(const ra_pdg_delay_entry_t* buf, uint8_t len)
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_pdg_capture_stop (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_pdg_capture_stop (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_pdg_capture_stop(void)
 {
   s_pdg_capture_in_flight = false;
@@ -968,20 +755,7 @@ ra_err_t ra_pdg_capture_stop(void)
  * =============================================================================
  */
 
-/**
- * @brief Implementation of ra_pdg_pick_frange (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] gptclk_hz See implementation.
- * @param[in] out See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_pdg_pick_frange (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_pdg_pick_frange(uint32_t gptclk_hz, ra_pdg_frange_t* out)
 {
   RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
@@ -1004,19 +778,7 @@ ra_err_t ra_pdg_pick_frange(uint32_t gptclk_hz, ra_pdg_frange_t* out)
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_pdg_set_frange (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] new_frange See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_pdg_set_frange (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_pdg_set_frange(ra_pdg_frange_t new_frange)
 {
   if (!internal_pdg_is_initialised()) {
@@ -1069,19 +831,7 @@ ra_err_t ra_pdg_set_frange(ra_pdg_frange_t new_frange)
  * =============================================================================
  */
 
-/**
- * @brief Implementation of ra_pdg_bind_gpt_channel (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] channel See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_pdg_bind_gpt_channel (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_pdg_bind_gpt_channel(uint8_t channel)
 {
   if (!internal_pdg_is_initialised()) {
@@ -1103,19 +853,7 @@ ra_err_t ra_pdg_bind_gpt_channel(uint8_t channel)
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_pdg_unbind_gpt_channel (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] channel See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_pdg_unbind_gpt_channel (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_pdg_unbind_gpt_channel(uint8_t channel)
 {
   if ((uint16_t)channel >= (uint16_t)k_ra_pdg_channel_count) {
@@ -1137,22 +875,7 @@ ra_err_t ra_pdg_unbind_gpt_channel(uint8_t channel)
  * =============================================================================
  */
 
-/**
- * @brief Implementation of ra_pdg_check_constraints (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] mode See implementation.
- * @param[in] dir See implementation.
- * @param[in] compare_match See implementation.
- * @param[in] gtpr See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_pdg_check_constraints (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_pdg_check_constraints(ra_pdg_wave_mode_t mode,
                                   ra_pdg_count_dir_t dir,
                                   uint32_t           compare_match,
@@ -1193,21 +916,7 @@ ra_err_t ra_pdg_check_constraints(ra_pdg_wave_mode_t mode,
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_pdg_required_write_ns (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] pclka_hz See implementation.
- * @param[in] gptclk_hz See implementation.
- * @param[in] out_ns See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_pdg_required_write_ns (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_pdg_required_write_ns(uint32_t pclka_hz, uint32_t gptclk_hz, uint32_t* out_ns)
 {
   RA_CHECK_NULL_PTR(out_ns, s_tag, "out_ns must not be nullptr");

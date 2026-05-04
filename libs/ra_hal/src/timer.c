@@ -16,34 +16,13 @@
 
 #include "ra_time.h"
 
-/**
- * @brief Implementation of ra_now_ms (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_now_ms (see header for full contract) -- see header for the documented contract. */
 uint32_t ra_now_ms(void)
 {
   return ra_time_ms();
 }
 
-/**
- * @brief Implementation of ra_sleep_ms (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] ms See implementation.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_sleep_ms (see header for full contract) -- see header for the documented contract. */
 void ra_sleep_ms(uint32_t ms)
 {
   ra_delay_ms(ms);

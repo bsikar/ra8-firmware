@@ -392,26 +392,7 @@ static uint32_t internal_ccr2(const ra_sci_cfg_t* cfg)
  * =============================================================================
  */
 
-/**
- * @brief ra sci init.
- *
- * @details Implementation detail; see surrounding code and HUM citations.
- *
- * @param[in] channel See declaration: ``uint8_t channel``.
- * @param[in] cfg See declaration: ``const ra_sci_cfg_t* cfg``.
- *
- * @return ::ra_err_t outcome (or scalar return value).
- * @retval k_ra_ok Operation completed successfully.
- * @retval other Non-zero error code from the underlying operation.
- *
- * @pre Module has been initialised where applicable.
- * @pre Pointer arguments (if any) are valid for the requested length.
- * @post Hardware / software state reflects the requested operation on success.
- * @post No side effects beyond those documented above.
- *
- * @note Not thread-safe; the caller must serialise concurrent access.
- * @since 0.1.0
- */
+/* ra sci init -- see surrounding code and HUM citations. */
 ra_err_t ra_sci_init(uint8_t channel, const ra_sci_cfg_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg, s_tag, "sci_init: cfg");
@@ -475,25 +456,7 @@ ra_err_t ra_sci_init(uint8_t channel, const ra_sci_cfg_t* cfg)
   return k_ra_ok;
 }
 
-/**
- * @brief ra sci deinit.
- *
- * @details Implementation detail; see surrounding code and HUM citations.
- *
- * @param[in] channel See declaration: ``uint8_t channel``.
- *
- * @return ::ra_err_t outcome (or scalar return value).
- * @retval k_ra_ok Operation completed successfully.
- * @retval other Non-zero error code from the underlying operation.
- *
- * @pre Module has been initialised where applicable.
- * @pre Pointer arguments (if any) are valid for the requested length.
- * @post Hardware / software state reflects the requested operation on success.
- * @post No side effects beyond those documented above.
- *
- * @note Not thread-safe; the caller must serialise concurrent access.
- * @since 0.1.0
- */
+/* ra sci deinit -- see surrounding code and HUM citations. */
 ra_err_t ra_sci_deinit(uint8_t channel)
 {
   volatile r_sci_regs_t* reg = internal_reg(channel);
@@ -519,26 +482,7 @@ ra_err_t ra_sci_deinit(uint8_t channel)
 
 /* ---- Polling TX / RX -------------------------------------------------- */
 
-/**
- * @brief ra sci putc polling.
- *
- * @details Implementation detail; see surrounding code and HUM citations.
- *
- * @param[in] channel See declaration: ``uint8_t channel``.
- * @param[in] byte See declaration: ``uint8_t byte``.
- *
- * @return ::ra_err_t outcome (or scalar return value).
- * @retval k_ra_ok Operation completed successfully.
- * @retval other Non-zero error code from the underlying operation.
- *
- * @pre Module has been initialised where applicable.
- * @pre Pointer arguments (if any) are valid for the requested length.
- * @post Hardware / software state reflects the requested operation on success.
- * @post No side effects beyond those documented above.
- *
- * @note Not thread-safe; the caller must serialise concurrent access.
- * @since 0.1.0
- */
+/* ra sci putc polling -- see surrounding code and HUM citations. */
 ra_err_t ra_sci_putc_polling(uint8_t channel, uint8_t byte)
 {
   volatile r_sci_regs_t* reg = internal_reg(channel);
@@ -559,26 +503,7 @@ ra_err_t ra_sci_putc_polling(uint8_t channel, uint8_t byte)
   return k_ra_ok;
 }
 
-/**
- * @brief ra sci getc polling.
- *
- * @details Implementation detail; see surrounding code and HUM citations.
- *
- * @param[in] channel See declaration: ``uint8_t channel``.
- * @param[out] out_byte See declaration: ``uint8_t* out_byte``.
- *
- * @return ::ra_err_t outcome (or scalar return value).
- * @retval k_ra_ok Operation completed successfully.
- * @retval other Non-zero error code from the underlying operation.
- *
- * @pre Module has been initialised where applicable.
- * @pre Pointer arguments (if any) are valid for the requested length.
- * @post Hardware / software state reflects the requested operation on success.
- * @post No side effects beyond those documented above.
- *
- * @note Not thread-safe; the caller must serialise concurrent access.
- * @since 0.1.0
- */
+/* ra sci getc polling -- see surrounding code and HUM citations. */
 ra_err_t ra_sci_getc_polling(uint8_t channel, uint8_t* out_byte)
 {
   RA_CHECK_NULL_PTR(out_byte, s_tag, "getc: out_byte");
@@ -599,27 +524,7 @@ ra_err_t ra_sci_getc_polling(uint8_t channel, uint8_t* out_byte)
   return k_ra_ok;
 }
 
-/**
- * @brief ra sci write polling.
- *
- * @details Implementation detail; see surrounding code and HUM citations.
- *
- * @param[in] channel See declaration: ``uint8_t channel``.
- * @param[in] data See declaration: ``const uint8_t* data``.
- * @param[in] len See declaration: ``uint32_t len``.
- *
- * @return ::ra_err_t outcome (or scalar return value).
- * @retval k_ra_ok Operation completed successfully.
- * @retval other Non-zero error code from the underlying operation.
- *
- * @pre Module has been initialised where applicable.
- * @pre Pointer arguments (if any) are valid for the requested length.
- * @post Hardware / software state reflects the requested operation on success.
- * @post No side effects beyond those documented above.
- *
- * @note Not thread-safe; the caller must serialise concurrent access.
- * @since 0.1.0
- */
+/* ra sci write polling -- see surrounding code and HUM citations. */
 ra_err_t ra_sci_write_polling(uint8_t channel, const uint8_t* data, uint32_t len)
 {
   if ((data == nullptr) && (len != 0U)) {
@@ -647,25 +552,7 @@ ra_err_t ra_sci_write_polling(uint8_t channel, const uint8_t* data, uint32_t len
   return k_ra_ok;
 }
 
-/**
- * @brief ra sci flush.
- *
- * @details Implementation detail; see surrounding code and HUM citations.
- *
- * @param[in] channel See declaration: ``uint8_t channel``.
- *
- * @return ::ra_err_t outcome (or scalar return value).
- * @retval k_ra_ok Operation completed successfully.
- * @retval other Non-zero error code from the underlying operation.
- *
- * @pre Module has been initialised where applicable.
- * @pre Pointer arguments (if any) are valid for the requested length.
- * @post Hardware / software state reflects the requested operation on success.
- * @post No side effects beyond those documented above.
- *
- * @note Not thread-safe; the caller must serialise concurrent access.
- * @since 0.1.0
- */
+/* ra sci flush -- see surrounding code and HUM citations. */
 ra_err_t ra_sci_flush(uint8_t channel)
 {
   volatile r_sci_regs_t* reg = internal_reg(channel);
@@ -681,27 +568,7 @@ ra_err_t ra_sci_flush(uint8_t channel)
 
 /* ---- Interrupt handler attach ---------------------------------------- */
 
-/**
- * @brief ra sci attach rx handler.
- *
- * @details Implementation detail; see surrounding code and HUM citations.
- *
- * @param[in] channel See declaration: ``uint8_t channel``.
- * @param[in] fn See declaration: ``ra_sci_rx_fn_t fn``.
- * @param[out] ctx See declaration: ``void* ctx``.
- *
- * @return ::ra_err_t outcome (or scalar return value).
- * @retval k_ra_ok Operation completed successfully.
- * @retval other Non-zero error code from the underlying operation.
- *
- * @pre Module has been initialised where applicable.
- * @pre Pointer arguments (if any) are valid for the requested length.
- * @post Hardware / software state reflects the requested operation on success.
- * @post No side effects beyond those documented above.
- *
- * @note Not thread-safe; the caller must serialise concurrent access.
- * @since 0.1.0
- */
+/* ra sci attach rx handler -- see surrounding code and HUM citations. */
 ra_err_t ra_sci_attach_rx_handler(uint8_t channel, ra_sci_rx_fn_t fn, void* ctx)
 {
   volatile r_sci_regs_t* reg = internal_reg(channel);
@@ -721,27 +588,7 @@ ra_err_t ra_sci_attach_rx_handler(uint8_t channel, ra_sci_rx_fn_t fn, void* ctx)
   return k_ra_ok;
 }
 
-/**
- * @brief ra sci attach tx handler.
- *
- * @details Implementation detail; see surrounding code and HUM citations.
- *
- * @param[in] channel See declaration: ``uint8_t channel``.
- * @param[in] fn See declaration: ``ra_sci_tx_fn_t fn``.
- * @param[out] ctx See declaration: ``void* ctx``.
- *
- * @return ::ra_err_t outcome (or scalar return value).
- * @retval k_ra_ok Operation completed successfully.
- * @retval other Non-zero error code from the underlying operation.
- *
- * @pre Module has been initialised where applicable.
- * @pre Pointer arguments (if any) are valid for the requested length.
- * @post Hardware / software state reflects the requested operation on success.
- * @post No side effects beyond those documented above.
- *
- * @note Not thread-safe; the caller must serialise concurrent access.
- * @since 0.1.0
- */
+/* ra sci attach tx handler -- see surrounding code and HUM citations. */
 ra_err_t ra_sci_attach_tx_handler(uint8_t channel, ra_sci_tx_fn_t fn, void* ctx)
 {
   volatile r_sci_regs_t* reg = internal_reg(channel);
@@ -763,26 +610,7 @@ ra_err_t ra_sci_attach_tx_handler(uint8_t channel, ra_sci_tx_fn_t fn, void* ctx)
 
 /* ---- Error status ----------------------------------------------------- */
 
-/**
- * @brief ra sci get errors.
- *
- * @details Implementation detail; see surrounding code and HUM citations.
- *
- * @param[in] channel See declaration: ``uint8_t channel``.
- * @param[out] out_mask See declaration: ``uint8_t* out_mask``.
- *
- * @return ::ra_err_t outcome (or scalar return value).
- * @retval k_ra_ok Operation completed successfully.
- * @retval other Non-zero error code from the underlying operation.
- *
- * @pre Module has been initialised where applicable.
- * @pre Pointer arguments (if any) are valid for the requested length.
- * @post Hardware / software state reflects the requested operation on success.
- * @post No side effects beyond those documented above.
- *
- * @note Not thread-safe; the caller must serialise concurrent access.
- * @since 0.1.0
- */
+/* ra sci get errors -- see surrounding code and HUM citations. */
 ra_err_t ra_sci_get_errors(uint8_t channel, uint8_t* out_mask)
 {
   RA_CHECK_NULL_PTR(out_mask, s_tag, "get_errors: out");
@@ -807,25 +635,7 @@ ra_err_t ra_sci_get_errors(uint8_t channel, uint8_t* out_mask)
   return k_ra_ok;
 }
 
-/**
- * @brief ra sci clear errors.
- *
- * @details Implementation detail; see surrounding code and HUM citations.
- *
- * @param[in] channel See declaration: ``uint8_t channel``.
- *
- * @return ::ra_err_t outcome (or scalar return value).
- * @retval k_ra_ok Operation completed successfully.
- * @retval other Non-zero error code from the underlying operation.
- *
- * @pre Module has been initialised where applicable.
- * @pre Pointer arguments (if any) are valid for the requested length.
- * @post Hardware / software state reflects the requested operation on success.
- * @post No side effects beyond those documented above.
- *
- * @note Not thread-safe; the caller must serialise concurrent access.
- * @since 0.1.0
- */
+/* ra sci clear errors -- see surrounding code and HUM citations. */
 ra_err_t ra_sci_clear_errors(uint8_t channel)
 {
   volatile r_sci_regs_t* reg = internal_reg(channel);
@@ -841,27 +651,7 @@ ra_err_t ra_sci_clear_errors(uint8_t channel)
 
 /* ---- Runtime reconfigure --------------------------------------------- */
 
-/**
- * @brief ra sci set baud.
- *
- * @details Implementation detail; see surrounding code and HUM citations.
- *
- * @param[in] channel See declaration: ``uint8_t channel``.
- * @param[in] baud See declaration: ``uint32_t baud``.
- * @param[in] pclk_hz See declaration: ``uint32_t pclk_hz``.
- *
- * @return ::ra_err_t outcome (or scalar return value).
- * @retval k_ra_ok Operation completed successfully.
- * @retval other Non-zero error code from the underlying operation.
- *
- * @pre Module has been initialised where applicable.
- * @pre Pointer arguments (if any) are valid for the requested length.
- * @post Hardware / software state reflects the requested operation on success.
- * @post No side effects beyond those documented above.
- *
- * @note Not thread-safe; the caller must serialise concurrent access.
- * @since 0.1.0
- */
+/* ra sci set baud -- see surrounding code and HUM citations. */
 ra_err_t ra_sci_set_baud(uint8_t channel, uint32_t baud, uint32_t pclk_hz)
 {
   volatile r_sci_regs_t* reg = internal_reg(channel);
@@ -883,25 +673,7 @@ ra_err_t ra_sci_set_baud(uint8_t channel, uint32_t baud, uint32_t pclk_hz)
 
 /* ---- Power transition ------------------------------------------------- */
 
-/**
- * @brief ra sci enter stop.
- *
- * @details Implementation detail; see surrounding code and HUM citations.
- *
- * @param[in] channel See declaration: ``uint8_t channel``.
- *
- * @return ::ra_err_t outcome (or scalar return value).
- * @retval k_ra_ok Operation completed successfully.
- * @retval other Non-zero error code from the underlying operation.
- *
- * @pre Module has been initialised where applicable.
- * @pre Pointer arguments (if any) are valid for the requested length.
- * @post Hardware / software state reflects the requested operation on success.
- * @post No side effects beyond those documented above.
- *
- * @note Not thread-safe; the caller must serialise concurrent access.
- * @since 0.1.0
- */
+/* ra sci enter stop -- see surrounding code and HUM citations. */
 ra_err_t ra_sci_enter_stop(uint8_t channel)
 {
   volatile r_sci_regs_t* reg = internal_reg(channel);
@@ -913,25 +685,7 @@ ra_err_t ra_sci_enter_stop(uint8_t channel)
   return ra_mstp_disable(s_mstp_table[channel]);
 }
 
-/**
- * @brief ra sci exit stop.
- *
- * @details Implementation detail; see surrounding code and HUM citations.
- *
- * @param[in] channel See declaration: ``uint8_t channel``.
- *
- * @return ::ra_err_t outcome (or scalar return value).
- * @retval k_ra_ok Operation completed successfully.
- * @retval other Non-zero error code from the underlying operation.
- *
- * @pre Module has been initialised where applicable.
- * @pre Pointer arguments (if any) are valid for the requested length.
- * @post Hardware / software state reflects the requested operation on success.
- * @post No side effects beyond those documented above.
- *
- * @note Not thread-safe; the caller must serialise concurrent access.
- * @since 0.1.0
- */
+/* ra sci exit stop -- see surrounding code and HUM citations. */
 ra_err_t ra_sci_exit_stop(uint8_t channel)
 {
   if (channel > k_ra_sci_channel_max_index) {
@@ -960,28 +714,7 @@ typedef enum : uint16_t {
   k_ra_sci_baud_n0_divisor = 32U,  /**< 32 * 2^(2*0). */
 } ra_sci_baud_calc_const_t;
 
-/**
- * @brief ra sci baud calculate.
- *
- * @details Implementation detail; see surrounding code and HUM citations.
- *
- * @param[in] baud See declaration: ``uint32_t baud``.
- * @param[in] pclk_hz See declaration: ``uint32_t pclk_hz``.
- * @param[out] brr_out See declaration: ``uint16_t* brr_out``.
- * @param[out] clk_div_out See declaration: ``uint8_t* clk_div_out``.
- *
- * @return ::ra_err_t outcome (or scalar return value).
- * @retval k_ra_ok Operation completed successfully.
- * @retval other Non-zero error code from the underlying operation.
- *
- * @pre Module has been initialised where applicable.
- * @pre Pointer arguments (if any) are valid for the requested length.
- * @post Hardware / software state reflects the requested operation on success.
- * @post No side effects beyond those documented above.
- *
- * @note Not thread-safe; the caller must serialise concurrent access.
- * @since 0.1.0
- */
+/* ra sci baud calculate -- see surrounding code and HUM citations. */
 ra_err_t
 ra_sci_baud_calculate(uint32_t baud, uint32_t pclk_hz, uint16_t* brr_out, uint8_t* clk_div_out)
 {
@@ -1017,27 +750,7 @@ ra_sci_baud_calculate(uint32_t baud, uint32_t pclk_hz, uint16_t* brr_out, uint8_
   return k_ra_err_invalid_arg;
 }
 
-/**
- * @brief ra sci write.
- *
- * @details Implementation detail; see surrounding code and HUM citations.
- *
- * @param[in] channel See declaration: ``uint8_t channel``.
- * @param[in] data See declaration: ``const uint8_t* data``.
- * @param[in] len See declaration: ``uint32_t len``.
- *
- * @return ::ra_err_t outcome (or scalar return value).
- * @retval k_ra_ok Operation completed successfully.
- * @retval other Non-zero error code from the underlying operation.
- *
- * @pre Module has been initialised where applicable.
- * @pre Pointer arguments (if any) are valid for the requested length.
- * @post Hardware / software state reflects the requested operation on success.
- * @post No side effects beyond those documented above.
- *
- * @note Not thread-safe; the caller must serialise concurrent access.
- * @since 0.1.0
- */
+/* ra sci write -- see surrounding code and HUM citations. */
 ra_err_t ra_sci_write(uint8_t channel, const uint8_t* data, uint32_t len)
 {
   if ((data == nullptr) && (len != 0U)) {
@@ -1066,27 +779,7 @@ ra_err_t ra_sci_write(uint8_t channel, const uint8_t* data, uint32_t len)
   return k_ra_ok;
 }
 
-/**
- * @brief ra sci read.
- *
- * @details Implementation detail; see surrounding code and HUM citations.
- *
- * @param[in] channel See declaration: ``uint8_t channel``.
- * @param[out] buf See declaration: ``uint8_t* buf``.
- * @param[in] len See declaration: ``uint32_t len``.
- *
- * @return ::ra_err_t outcome (or scalar return value).
- * @retval k_ra_ok Operation completed successfully.
- * @retval other Non-zero error code from the underlying operation.
- *
- * @pre Module has been initialised where applicable.
- * @pre Pointer arguments (if any) are valid for the requested length.
- * @post Hardware / software state reflects the requested operation on success.
- * @post No side effects beyond those documented above.
- *
- * @note Not thread-safe; the caller must serialise concurrent access.
- * @since 0.1.0
- */
+/* ra sci read -- see surrounding code and HUM citations. */
 ra_err_t ra_sci_read(uint8_t channel, uint8_t* buf, uint32_t len)
 {
   if ((buf == nullptr) && (len != 0U)) {
@@ -1116,26 +809,7 @@ ra_err_t ra_sci_read(uint8_t channel, uint8_t* buf, uint32_t len)
   return k_ra_ok;
 }
 
-/**
- * @brief ra sci abort.
- *
- * @details Implementation detail; see surrounding code and HUM citations.
- *
- * @param[in] channel See declaration: ``uint8_t channel``.
- * @param[in] direction See declaration: ``ra_sci_dir_t direction``.
- *
- * @return ::ra_err_t outcome (or scalar return value).
- * @retval k_ra_ok Operation completed successfully.
- * @retval other Non-zero error code from the underlying operation.
- *
- * @pre Module has been initialised where applicable.
- * @pre Pointer arguments (if any) are valid for the requested length.
- * @post Hardware / software state reflects the requested operation on success.
- * @post No side effects beyond those documented above.
- *
- * @note Not thread-safe; the caller must serialise concurrent access.
- * @since 0.1.0
- */
+/* ra sci abort -- see surrounding code and HUM citations. */
 ra_err_t ra_sci_abort(uint8_t channel, ra_sci_dir_t direction)
 {
   volatile r_sci_regs_t* reg = internal_reg(channel);
@@ -1164,26 +838,7 @@ ra_err_t ra_sci_abort(uint8_t channel, ra_sci_dir_t direction)
   return k_ra_ok;
 }
 
-/**
- * @brief ra sci read stop.
- *
- * @details Implementation detail; see surrounding code and HUM citations.
- *
- * @param[in] channel See declaration: ``uint8_t channel``.
- * @param[out] remaining See declaration: ``uint32_t* remaining``.
- *
- * @return ::ra_err_t outcome (or scalar return value).
- * @retval k_ra_ok Operation completed successfully.
- * @retval other Non-zero error code from the underlying operation.
- *
- * @pre Module has been initialised where applicable.
- * @pre Pointer arguments (if any) are valid for the requested length.
- * @post Hardware / software state reflects the requested operation on success.
- * @post No side effects beyond those documented above.
- *
- * @note Not thread-safe; the caller must serialise concurrent access.
- * @since 0.1.0
- */
+/* ra sci read stop -- see surrounding code and HUM citations. */
 ra_err_t ra_sci_read_stop(uint8_t channel, uint32_t* remaining)
 {
   RA_CHECK_NULL_PTR(remaining, s_tag, "read_stop: remaining");
@@ -1206,25 +861,7 @@ ra_err_t ra_sci_read_stop(uint8_t channel, uint32_t* remaining)
   return k_ra_ok;
 }
 
-/**
- * @brief ra sci receive suspend.
- *
- * @details Implementation detail; see surrounding code and HUM citations.
- *
- * @param[in] channel See declaration: ``uint8_t channel``.
- *
- * @return ::ra_err_t outcome (or scalar return value).
- * @retval k_ra_ok Operation completed successfully.
- * @retval other Non-zero error code from the underlying operation.
- *
- * @pre Module has been initialised where applicable.
- * @pre Pointer arguments (if any) are valid for the requested length.
- * @post Hardware / software state reflects the requested operation on success.
- * @post No side effects beyond those documented above.
- *
- * @note Not thread-safe; the caller must serialise concurrent access.
- * @since 0.1.0
- */
+/* ra sci receive suspend -- see surrounding code and HUM citations. */
 ra_err_t ra_sci_receive_suspend(uint8_t channel)
 {
   volatile r_sci_regs_t* reg = internal_reg(channel);
@@ -1240,25 +877,7 @@ ra_err_t ra_sci_receive_suspend(uint8_t channel)
   return k_ra_ok;
 }
 
-/**
- * @brief ra sci receive resume.
- *
- * @details Implementation detail; see surrounding code and HUM citations.
- *
- * @param[in] channel See declaration: ``uint8_t channel``.
- *
- * @return ::ra_err_t outcome (or scalar return value).
- * @retval k_ra_ok Operation completed successfully.
- * @retval other Non-zero error code from the underlying operation.
- *
- * @pre Module has been initialised where applicable.
- * @pre Pointer arguments (if any) are valid for the requested length.
- * @post Hardware / software state reflects the requested operation on success.
- * @post No side effects beyond those documented above.
- *
- * @note Not thread-safe; the caller must serialise concurrent access.
- * @since 0.1.0
- */
+/* ra sci receive resume -- see surrounding code and HUM citations. */
 ra_err_t ra_sci_receive_resume(uint8_t channel)
 {
   volatile r_sci_regs_t* reg = internal_reg(channel);
@@ -1273,26 +892,7 @@ ra_err_t ra_sci_receive_resume(uint8_t channel)
 
 /* ---- DMA TX / RX ----------------------------------------- */
 
-/**
- * @brief Build a DMA request descriptor for byte-stream to/from SCI TDR/RDR.
- * @details Implementation detail; see surrounding code and HUM citations.
- * @param[in] src See declaration: ``uintptr_t            src``.
- * @param[in] dst See declaration: ``uintptr_t            dst``.
- * @param[in] len See declaration: ``uint16_t             len``.
- * @param[in] src_inc See declaration: ``bool                 src_inc``.
- * @param[in] dst_inc See declaration: ``bool                 dst_inc``.
- * @param[in] on_complete See declaration: ``ra_dma_complete_fn_t on_complete``.
- * @param[out] ctx See declaration: ``void*                ctx``.
- * @return ::ra_err_t outcome (or scalar return value).
- * @retval k_ra_ok Operation completed successfully.
- * @retval other Non-zero error code from the underlying operation.
- * @pre Module/state preconditions hold (see function body).
- * @pre Module/state preconditions hold (see function body).
- * @post Documented side effects are visible on success.
- * @post Documented side effects are visible on success.
- * @note Not thread-safe; the caller must serialise concurrent access.
- * @since 0.1.0
- */
+/* Build a DMA request descriptor for byte-stream to/from SCI TDR/RDR -- see surrounding code and HUM citations. */
 static ra_dma_request_t internal_make_dma_request(uintptr_t            src,
                                                   uintptr_t            dst,
                                                   uint16_t             len,
@@ -1317,30 +917,7 @@ static ra_dma_request_t internal_make_dma_request(uintptr_t            src,
   return req;
 }
 
-/**
- * @brief ra sci write dma.
- *
- * @details Implementation detail; see surrounding code and HUM citations.
- *
- * @param[in] channel See declaration: ``uint8_t              channel``.
- * @param[in] data See declaration: ``const uint8_t*       data``.
- * @param[in] len See declaration: ``uint16_t             len``.
- * @param[in] on_complete See declaration: ``ra_dma_complete_fn_t on_complete``.
- * @param[out] ctx See declaration: ``void*                ctx``.
- * @param[out] out_dma_channel See declaration: ``uint8_t*             out_dma_channel``.
- *
- * @return ::ra_err_t outcome (or scalar return value).
- * @retval k_ra_ok Operation completed successfully.
- * @retval other Non-zero error code from the underlying operation.
- *
- * @pre Module has been initialised where applicable.
- * @pre Pointer arguments (if any) are valid for the requested length.
- * @post Hardware / software state reflects the requested operation on success.
- * @post No side effects beyond those documented above.
- *
- * @note Not thread-safe; the caller must serialise concurrent access.
- * @since 0.1.0
- */
+/* ra sci write dma -- see surrounding code and HUM citations. */
 ra_err_t ra_sci_write_dma(uint8_t              channel,
                           const uint8_t*       data,
                           uint16_t             len,
@@ -1370,31 +947,7 @@ ra_err_t ra_sci_write_dma(uint8_t              channel,
 /* out_buf is written by the DMAC engine via the dst_addr path, not
  * through the pointer directly, so clang-tidy would otherwise flag
  * it as a const candidate. */
-/**
- * @brief ra sci read dma.
- *
- * @details Implementation detail; see surrounding code and HUM citations.
- *
- * @param[in] channel See declaration: ``uint8_t              channel``.
- * @param[out] out_buf See declaration: ``uint8_t*             out_buf``.
- * @param[in] len See declaration: ``// NOLINT(readability-non-const-parameter)
-                         uint16_t             len``.
- * @param[in] on_complete See declaration: ``ra_dma_complete_fn_t on_complete``.
- * @param[out] ctx See declaration: ``void*                ctx``.
- * @param[out] out_dma_channel See declaration: ``uint8_t*             out_dma_channel``.
- *
- * @return ::ra_err_t outcome (or scalar return value).
- * @retval k_ra_ok Operation completed successfully.
- * @retval other Non-zero error code from the underlying operation.
- *
- * @pre Module has been initialised where applicable.
- * @pre Pointer arguments (if any) are valid for the requested length.
- * @post Hardware / software state reflects the requested operation on success.
- * @post No side effects beyond those documented above.
- *
- * @note Not thread-safe; the caller must serialise concurrent access.
- * @since 0.1.0
- */
+/* ra sci read dma -- see surrounding code and HUM citations. */
 ra_err_t ra_sci_read_dma(uint8_t              channel,
                          uint8_t*             out_buf, // NOLINT(readability-non-const-parameter)
                          uint16_t             len,
@@ -1422,21 +975,7 @@ ra_err_t ra_sci_read_dma(uint8_t              channel,
 
 /* ---- ISR dispatch ----------------------------------------------------- */
 
-/**
- * @brief ra sci dispatch txi.
- *
- * @details Implementation detail; see surrounding code and HUM citations.
- *
- * @param[in] channel See declaration: ``uint8_t channel``.
- *
- * @pre Module has been initialised where applicable.
- * @pre Pointer arguments (if any) are valid for the requested length.
- * @post Hardware / software state reflects the requested operation on success.
- * @post No side effects beyond those documented above.
- *
- * @note Not thread-safe; the caller must serialise concurrent access.
- * @since 0.1.0
- */
+/* ra sci dispatch txi -- see surrounding code and HUM citations. */
 void ra_sci_dispatch_txi(uint8_t channel)
 {
   if (channel > k_ra_sci_channel_max_index) {
@@ -1492,21 +1031,7 @@ void ra_sci_dispatch_txi(uint8_t channel)
   }
 }
 
-/**
- * @brief ra sci dispatch rxi.
- *
- * @details Implementation detail; see surrounding code and HUM citations.
- *
- * @param[in] channel See declaration: ``uint8_t channel``.
- *
- * @pre Module has been initialised where applicable.
- * @pre Pointer arguments (if any) are valid for the requested length.
- * @post Hardware / software state reflects the requested operation on success.
- * @post No side effects beyond those documented above.
- *
- * @note Not thread-safe; the caller must serialise concurrent access.
- * @since 0.1.0
- */
+/* ra sci dispatch rxi -- see surrounding code and HUM citations. */
 void ra_sci_dispatch_rxi(uint8_t channel)
 {
   if (channel > k_ra_sci_channel_max_index) {
@@ -1546,21 +1071,7 @@ void ra_sci_dispatch_rxi(uint8_t channel)
   }
 }
 
-/**
- * @brief ra sci dispatch eri.
- *
- * @details Implementation detail; see surrounding code and HUM citations.
- *
- * @param[in] channel See declaration: ``uint8_t channel``.
- *
- * @pre Module has been initialised where applicable.
- * @pre Pointer arguments (if any) are valid for the requested length.
- * @post Hardware / software state reflects the requested operation on success.
- * @post No side effects beyond those documented above.
- *
- * @note Not thread-safe; the caller must serialise concurrent access.
- * @since 0.1.0
- */
+/* ra sci dispatch eri -- see surrounding code and HUM citations. */
 void ra_sci_dispatch_eri(uint8_t channel)
 {
   if (channel > k_ra_sci_channel_max_index) {

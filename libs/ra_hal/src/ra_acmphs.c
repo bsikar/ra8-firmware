@@ -156,23 +156,7 @@ typedef enum : uint8_t {
 static ra_acmphs_event_fn_t s_acmphs_fn;
 static void*                s_acmphs_ctx;
 
-/**
- * @brief ra_acmphs_channel_init -- see header for full description.
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @param[in] channel See header declaration for direction and constraints.
- * @param[in] cfg See header declaration for direction and constraints.
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
+/* ra_acmphs_channel_init -- see header for full description. */
 ra_err_t ra_acmphs_channel_init(uint8_t channel, const ra_acmphs_cfg_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
@@ -205,22 +189,7 @@ ra_err_t ra_acmphs_channel_init(uint8_t channel, const ra_acmphs_cfg_t* cfg)
   return k_ra_ok;
 }
 
-/**
- * @brief ra_acmphs_channel_deinit -- see header for full description.
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @param[in] channel See header declaration for direction and constraints.
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
+/* ra_acmphs_channel_deinit -- see header for full description. */
 ra_err_t ra_acmphs_channel_deinit(uint8_t channel)
 {
   if ((uint16_t)channel >= k_ra_acmphs_channel_count) {
@@ -238,24 +207,7 @@ ra_err_t ra_acmphs_channel_deinit(uint8_t channel)
   return k_ra_ok;
 }
 
-/**
- * @brief ra_acmphs_set_inputs -- see header for full description.
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @param[in] channel See header declaration for direction and constraints.
- * @param[in] ivpsel See header declaration for direction and constraints.
- * @param[in] ivrefsel See header declaration for direction and constraints.
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
+/* ra_acmphs_set_inputs -- see header for full description. */
 ra_err_t ra_acmphs_set_inputs(uint8_t channel, uint8_t ivpsel, uint8_t ivrefsel)
 {
   if ((uint16_t)channel >= k_ra_acmphs_channel_count) {
@@ -269,23 +221,7 @@ ra_err_t ra_acmphs_set_inputs(uint8_t channel, uint8_t ivpsel, uint8_t ivrefsel)
   return k_ra_ok;
 }
 
-/**
- * @brief ra_acmphs_get_status -- see header for full description.
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @param[in] channel See header declaration for direction and constraints.
- * @param[in] out_mask See header declaration for direction and constraints.
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
+/* ra_acmphs_get_status -- see header for full description. */
 ra_err_t ra_acmphs_get_status(uint8_t channel, uint8_t* out_mask)
 {
   RA_CHECK_NULL_PTR(out_mask, s_tag, "out_mask must not be nullptr");
@@ -299,22 +235,7 @@ ra_err_t ra_acmphs_get_status(uint8_t channel, uint8_t* out_mask)
   return k_ra_ok;
 }
 
-/**
- * @brief ra_acmphs_clear_status -- see header for full description.
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @param[in] channel See header declaration for direction and constraints.
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
+/* ra_acmphs_clear_status -- see header for full description. */
 ra_err_t ra_acmphs_clear_status(uint8_t channel)
 {
   if ((uint16_t)channel >= k_ra_acmphs_channel_count) {
@@ -327,23 +248,7 @@ ra_err_t ra_acmphs_clear_status(uint8_t channel)
   return k_ra_ok;
 }
 
-/**
- * @brief ra_acmphs_attach_handler -- see header for full description.
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @param[in] fn See header declaration for direction and constraints.
- * @param[in] ctx See header declaration for direction and constraints.
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
+/* ra_acmphs_attach_handler -- see header for full description. */
 ra_err_t ra_acmphs_attach_handler(ra_acmphs_event_fn_t fn, void* ctx)
 {
   s_acmphs_fn  = fn;
@@ -351,22 +256,7 @@ ra_err_t ra_acmphs_attach_handler(ra_acmphs_event_fn_t fn, void* ctx)
   return k_ra_ok;
 }
 
-/**
- * @brief ra_acmphs_enter_stop -- see header for full description.
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @param[in] channel See header declaration for direction and constraints.
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
+/* ra_acmphs_enter_stop -- see header for full description. */
 ra_err_t ra_acmphs_enter_stop(uint8_t channel)
 {
   if ((uint16_t)channel >= k_ra_acmphs_channel_count) {
@@ -378,22 +268,7 @@ ra_err_t ra_acmphs_enter_stop(uint8_t channel)
   return k_ra_ok;
 }
 
-/**
- * @brief ra_acmphs_exit_stop -- see header for full description.
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @param[in] channel See header declaration for direction and constraints.
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
+/* ra_acmphs_exit_stop -- see header for full description. */
 ra_err_t ra_acmphs_exit_stop(uint8_t channel)
 {
   if ((uint16_t)channel >= k_ra_acmphs_channel_count) {
@@ -405,19 +280,7 @@ ra_err_t ra_acmphs_exit_stop(uint8_t channel)
   return k_ra_ok;
 }
 
-/**
- * @brief ra_acmphs_dispatch -- see header for full description.
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @param[in] channel See header declaration for direction and constraints.
- * @pre Driver state has been initialised by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
+/* ra_acmphs_dispatch -- see header for full description. */
 void ra_acmphs_dispatch(uint8_t channel)
 {
   if ((uint16_t)channel >= k_ra_acmphs_channel_count) {

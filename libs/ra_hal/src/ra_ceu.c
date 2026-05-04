@@ -591,22 +591,7 @@ static void internal_program_destination(const ra_ceu_config_t* cfg)
   *ra_ceu_reg32(k_ra_ceu_off_cetcr) = 0U;
 }
 
-/**
- * @brief ra_ceu_init -- see header for full description.
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @param[in] cfg See header declaration for direction and constraints.
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
+/* ra_ceu_init -- see header for full description. */
 ra_err_t ra_ceu_init(const ra_ceu_config_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
@@ -641,21 +626,7 @@ ra_err_t ra_ceu_init(const ra_ceu_config_t* cfg)
   return k_ra_ok;
 }
 
-/**
- * @brief ra_ceu_deinit -- see header for full description.
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
+/* ra_ceu_deinit -- see header for full description. */
 ra_err_t ra_ceu_deinit(void)
 {
   /* HUM Ch 60.2.21 "CEIER : Capture Event Interrupt Enable Register" p 3663 */
@@ -675,21 +646,7 @@ ra_err_t ra_ceu_deinit(void)
   return ra_mstp_disable(k_ra_mstp_ceu);
 }
 
-/**
- * @brief ra_ceu_reset -- see header for full description.
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
+/* ra_ceu_reset -- see header for full description. */
 ra_err_t ra_ceu_reset(void)
 {
   /* HUM Ch 60.2.1 "CAPSR : Capture Start Register" p 3630 */
@@ -697,22 +654,7 @@ ra_err_t ra_ceu_reset(void)
   return internal_wait_idle();
 }
 
-/**
- * @brief ra_ceu_get_status -- see header for full description.
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @param[in] out_mask See header declaration for direction and constraints.
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
+/* ra_ceu_get_status -- see header for full description. */
 ra_err_t ra_ceu_get_status(uint32_t* out_mask)
 {
   RA_CHECK_NULL_PTR(out_mask, s_tag, "out_mask must not be nullptr");
@@ -721,22 +663,7 @@ ra_err_t ra_ceu_get_status(uint32_t* out_mask)
   return k_ra_ok;
 }
 
-/**
- * @brief ra_ceu_clear_status -- see header for full description.
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @param[in] mask See header declaration for direction and constraints.
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
+/* ra_ceu_clear_status -- see header for full description. */
 ra_err_t ra_ceu_clear_status(uint32_t mask)
 {
   /* HUM Ch 60.2.22 "CETCR : Capture Event Flag Clear Register" p 3664
@@ -750,22 +677,7 @@ ra_err_t ra_ceu_clear_status(uint32_t mask)
   return k_ra_ok;
 }
 
-/**
- * @brief ra_ceu_status_snapshot -- see header for full description.
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @param[in] out See header declaration for direction and constraints.
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
+/* ra_ceu_status_snapshot -- see header for full description. */
 ra_err_t ra_ceu_status_snapshot(ra_ceu_status_t* out)
 {
   RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
@@ -786,22 +698,7 @@ ra_err_t ra_ceu_status_snapshot(ra_ceu_status_t* out)
   return k_ra_ok;
 }
 
-/**
- * @brief ra_ceu_data_size_get -- see header for full description.
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @param[in] out_bytes See header declaration for direction and constraints.
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
+/* ra_ceu_data_size_get -- see header for full description. */
 ra_err_t ra_ceu_data_size_get(uint32_t* out_bytes)
 {
   RA_CHECK_NULL_PTR(out_bytes, s_tag, "out_bytes must not be nullptr");
@@ -810,22 +707,7 @@ ra_err_t ra_ceu_data_size_get(uint32_t* out_bytes)
   return k_ra_ok;
 }
 
-/**
- * @brief ra_ceu_interrupts_set -- see header for full description.
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @param[in] mask See header declaration for direction and constraints.
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
+/* ra_ceu_interrupts_set -- see header for full description. */
 ra_err_t ra_ceu_interrupts_set(uint32_t mask)
 {
   s_ceu_int_enable = mask;
@@ -834,23 +716,7 @@ ra_err_t ra_ceu_interrupts_set(uint32_t mask)
   return k_ra_ok;
 }
 
-/**
- * @brief ra_ceu_attach_handler -- see header for full description.
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @param[in] fn See header declaration for direction and constraints.
- * @param[in] ctx See header declaration for direction and constraints.
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
+/* ra_ceu_attach_handler -- see header for full description. */
 ra_err_t ra_ceu_attach_handler(ra_ceu_event_fn_t fn, void* ctx)
 {
   s_ceu_fn  = fn;
@@ -858,18 +724,7 @@ ra_err_t ra_ceu_attach_handler(ra_ceu_event_fn_t fn, void* ctx)
   return k_ra_ok;
 }
 
-/**
- * @brief ra_ceu_dispatch -- see header for full description.
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @pre Driver state has been initialised by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
+/* ra_ceu_dispatch -- see header for full description. */
 void ra_ceu_dispatch(void)
 {
   /* HUM Ch 60.2.22 "CETCR : Capture Event Flag Clear Register" p 3664
@@ -889,21 +744,7 @@ void ra_ceu_dispatch(void)
   }
 }
 
-/**
- * @brief ra_ceu_enter_stop -- see header for full description.
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
+/* ra_ceu_enter_stop -- see header for full description. */
 ra_err_t ra_ceu_enter_stop(void)
 {
   /* HUM Ch 60.2.1 "CAPSR : Capture Start Register" p 3630 */
@@ -912,21 +753,7 @@ ra_err_t ra_ceu_enter_stop(void)
   return ra_mstp_disable(k_ra_mstp_ceu);
 }
 
-/**
- * @brief ra_ceu_exit_stop -- see header for full description.
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
+/* ra_ceu_exit_stop -- see header for full description. */
 ra_err_t ra_ceu_exit_stop(void)
 {
   /* HUM Ch 11.2.8 "MSTPCRC : Module Stop Control Register C" p 446 */
@@ -990,22 +817,7 @@ static ra_err_t internal_arm_capture(const ra_ceu_buffers_t* bufs)
   return k_ra_ok;
 }
 
-/**
- * @brief ra_ceu_capture_arm -- see header for full description.
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @param[in] buffer See header declaration for direction and constraints.
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
+/* ra_ceu_capture_arm -- see header for full description. */
 ra_err_t ra_ceu_capture_arm(uint8_t* buffer)
 {
   RA_CHECK_NULL_PTR(buffer, s_tag, "buffer must not be nullptr");
@@ -1036,22 +848,7 @@ ra_err_t ra_ceu_capture_arm(uint8_t* buffer)
   return k_ra_ok;
 }
 
-/**
- * @brief ra_ceu_capture_start_ex -- see header for full description.
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @param[in] bufs See header declaration for direction and constraints.
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
+/* ra_ceu_capture_start_ex -- see header for full description. */
 ra_err_t ra_ceu_capture_start_ex(const ra_ceu_buffers_t* bufs)
 {
   RA_CHECK_NULL_PTR(bufs, s_tag, "bufs must not be nullptr");
@@ -1065,21 +862,7 @@ ra_err_t ra_ceu_capture_start_ex(const ra_ceu_buffers_t* bufs)
   return internal_arm_capture(bufs);
 }
 
-/**
- * @brief ra_ceu_capture_disarm -- see header for full description.
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
+/* ra_ceu_capture_disarm -- see header for full description. */
 ra_err_t ra_ceu_capture_disarm(void)
 {
   /* HUM Ch 60.2.1 "CAPSR : Capture Start Register" p 3630 -- clear
@@ -1195,22 +978,7 @@ static void internal_plane_b_apply_overrides(const ra_ceu_buffers_t* bufs)
   }
 }
 
-/**
- * @brief ra_ceu_plane_b_program -- see header for full description.
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @param[in] bufs See header declaration for direction and constraints.
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
+/* ra_ceu_plane_b_program -- see header for full description. */
 ra_err_t ra_ceu_plane_b_program(const ra_ceu_buffers_t* bufs)
 {
   if (bufs != nullptr) {
@@ -1232,21 +1000,7 @@ ra_err_t ra_ceu_plane_b_program(const ra_ceu_buffers_t* bufs)
   return k_ra_ok;
 }
 
-/**
- * @brief ra_ceu_plane_swap_force -- see header for full description.
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
+/* ra_ceu_plane_swap_force -- see header for full description. */
 ra_err_t ra_ceu_plane_swap_force(void)
 {
   /* HUM Ch 60.2.9 "CRCMPR : CEU Register Forcible Control Register" p 3649 */
@@ -1254,23 +1008,7 @@ ra_err_t ra_ceu_plane_swap_force(void)
   return k_ra_ok;
 }
 
-/**
- * @brief ra_ceu_firewall_set -- see header for full description.
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @param[in] enable See header declaration for direction and constraints.
- * @param[in] upper_bound See header declaration for direction and constraints.
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
+/* ra_ceu_firewall_set -- see header for full description. */
 ra_err_t ra_ceu_firewall_set(bool enable, uint32_t upper_bound)
 {
   uint32_t cfwcr = 0U;
@@ -1283,22 +1021,7 @@ ra_err_t ra_ceu_firewall_set(bool enable, uint32_t upper_bound)
   return k_ra_ok;
 }
 
-/**
- * @brief ra_ceu_byte_swap_set -- see header for full description.
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @param[in] swap See header declaration for direction and constraints.
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
+/* ra_ceu_byte_swap_set -- see header for full description. */
 ra_err_t ra_ceu_byte_swap_set(const ra_ceu_byte_swap_t* swap)
 {
   RA_CHECK_NULL_PTR(swap, s_tag, "swap must not be nullptr");
@@ -1319,22 +1042,7 @@ ra_err_t ra_ceu_byte_swap_set(const ra_ceu_byte_swap_t* swap)
   return k_ra_ok;
 }
 
-/**
- * @brief ra_ceu_bundle_size_set -- see header for full description.
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @param[in] size_bytes See header declaration for direction and constraints.
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
+/* ra_ceu_bundle_size_set -- see header for full description. */
 ra_err_t ra_ceu_bundle_size_set(uint32_t size_bytes)
 {
   /* HUM Ch 60.2.17 "CBDSR : Capture Bundle Destination Size" p 3660 */
@@ -1342,22 +1050,7 @@ ra_err_t ra_ceu_bundle_size_set(uint32_t size_bytes)
   return k_ra_ok;
 }
 
-/**
- * @brief ra_ceu_low_pass_set -- see header for full description.
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @param[in] enable See header declaration for direction and constraints.
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
+/* ra_ceu_low_pass_set -- see header for full description. */
 ra_err_t ra_ceu_low_pass_set(bool enable)
 {
   /* HUM Ch 60.2.19 "CLFCR : Capture Low-Pass Filter Control" p 3661 */
@@ -1369,22 +1062,7 @@ ra_err_t ra_ceu_low_pass_set(bool enable)
   return k_ra_ok;
 }
 
-/**
- * @brief ra_ceu_capture_mode_set -- see header for full description.
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @param[in] mode See header declaration for direction and constraints.
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
+/* ra_ceu_capture_mode_set -- see header for full description. */
 ra_err_t ra_ceu_capture_mode_set(ra_ceu_capture_mode_t mode)
 {
   /* HUM Ch 60.2.2 "CAPCR : Capture Control Register" p 3634 */
@@ -1398,22 +1076,7 @@ ra_err_t ra_ceu_capture_mode_set(ra_ceu_capture_mode_t mode)
   return k_ra_ok;
 }
 
-/**
- * @brief ra_ceu_frame_drop_set -- see header for full description.
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @param[in] count See header declaration for direction and constraints.
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
+/* ra_ceu_frame_drop_set -- see header for full description. */
 ra_err_t ra_ceu_frame_drop_set(uint8_t count)
 {
   /* HUM Ch 60.2.2 "CAPCR : Capture Control Register" p 3634 */
@@ -1425,25 +1088,7 @@ ra_err_t ra_ceu_frame_drop_set(uint8_t count)
   return k_ra_ok;
 }
 
-/**
- * @brief ra_ceu_dma_pump -- see header for full description.
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @param[in] channel See header declaration for direction and constraints.
- * @param[in] src See header declaration for direction and constraints.
- * @param[in] dst See header declaration for direction and constraints.
- * @param[in] bytes See header declaration for direction and constraints.
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
+/* ra_ceu_dma_pump -- see header for full description. */
 ra_err_t ra_ceu_dma_pump(uint8_t channel, const uint8_t* src, uint8_t* dst, uint32_t bytes)
 {
   RA_CHECK_NULL_PTR(src, s_tag, "src must not be nullptr");
@@ -1475,23 +1120,7 @@ ra_err_t ra_ceu_dma_pump(uint8_t channel, const uint8_t* src, uint8_t* dst, uint
  * =============================================================================
  */
 
-/**
- * @brief ra_ceu_set_dma_buffer -- see header for full description.
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @param[in] buf See header declaration for direction and constraints.
- * @param[in] len See header declaration for direction and constraints.
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
+/* ra_ceu_set_dma_buffer -- see header for full description. */
 ra_err_t ra_ceu_set_dma_buffer(uint8_t* buf, uint32_t len)
 {
   RA_CHECK_NULL_PTR(buf, s_tag, "buf must not be nullptr");
@@ -1507,22 +1136,7 @@ ra_err_t ra_ceu_set_dma_buffer(uint8_t* buf, uint32_t len)
   return k_ra_ok;
 }
 
-/**
- * @brief ra_ceu_capture_start -- see header for full description.
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @param[in] num_frames See header declaration for direction and constraints.
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
+/* ra_ceu_capture_start -- see header for full description. */
 ra_err_t ra_ceu_capture_start(uint32_t num_frames)
 {
   if (s_ceu_dma_buf == nullptr) {
@@ -1542,21 +1156,7 @@ ra_err_t ra_ceu_capture_start(uint32_t num_frames)
   return ra_ceu_capture_arm(s_ceu_dma_buf);
 }
 
-/**
- * @brief ra_ceu_capture_stop -- see header for full description.
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
+/* ra_ceu_capture_stop -- see header for full description. */
 ra_err_t ra_ceu_capture_stop(void)
 {
   return ra_ceu_capture_disarm();

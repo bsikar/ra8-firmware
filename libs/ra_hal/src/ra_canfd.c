@@ -192,22 +192,7 @@ static ra_err_t internal_set_global_mode(volatile r_canfd_t* reg, uint32_t gmdc_
   return k_ra_err_hw_timeout;
 }
 
-/**
- * @brief ra_canfd_init -- see header for full description.
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @param[in] channel See header declaration for direction and constraints.
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
+/* ra_canfd_init -- see header for full description. */
 ra_err_t ra_canfd_init(uint8_t channel)
 {
   volatile r_canfd_t* reg = ra_canfd(channel);
@@ -242,22 +227,7 @@ ra_err_t ra_canfd_init(uint8_t channel)
   return k_ra_ok;
 }
 
-/**
- * @brief ra_canfd_deinit -- see header for full description.
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @param[in] channel See header declaration for direction and constraints.
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
+/* ra_canfd_deinit -- see header for full description. */
 ra_err_t ra_canfd_deinit(uint8_t channel)
 {
   volatile r_canfd_t* reg = ra_canfd(channel);
@@ -398,24 +368,7 @@ static uint32_t internal_pack_dcfg(const ra_canfd_timing_t* t)
   return brp_field | tseg1_field | tseg2_field | sjw_field;
 }
 
-/**
- * @brief ra_canfd_set_bitrate -- see header for full description.
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @param[in] channel See header declaration for direction and constraints.
- * @param[in] bitrate_bps See header declaration for direction and constraints.
- * @param[in] data_bitrate_bps See header declaration for direction and constraints.
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
+/* ra_canfd_set_bitrate -- see header for full description. */
 ra_err_t ra_canfd_set_bitrate(uint8_t channel, uint32_t bitrate_bps, uint32_t data_bitrate_bps)
 {
   volatile r_canfd_t* reg = ra_canfd(channel);
@@ -566,23 +519,7 @@ static uint32_t internal_tx_fdctr(const ra_canfd_frame_t* frame)
   return w;
 }
 
-/**
- * @brief ra_canfd_transmit -- see header for full description.
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @param[in] channel See header declaration for direction and constraints.
- * @param[in] frame See header declaration for direction and constraints.
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
+/* ra_canfd_transmit -- see header for full description. */
 ra_err_t ra_canfd_transmit(uint8_t channel, const ra_canfd_frame_t* frame)
 {
   volatile r_canfd_t* reg = ra_canfd(channel);
@@ -661,23 +598,7 @@ static void internal_decode_rx_header(uint32_t          id_word,
   out->is_brs = ((fdsts_word & k_ra_canfd_fd_brs) != 0U) ? 1U : 0U;
 }
 
-/**
- * @brief ra_canfd_receive -- see header for full description.
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @param[in] channel See header declaration for direction and constraints.
- * @param[in] out_frame See header declaration for direction and constraints.
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
+/* ra_canfd_receive -- see header for full description. */
 ra_err_t ra_canfd_receive(uint8_t channel, ra_canfd_frame_t* out_frame)
 {
   volatile r_canfd_t* reg = ra_canfd(channel);
@@ -702,24 +623,7 @@ ra_err_t ra_canfd_receive(uint8_t channel, ra_canfd_frame_t* out_frame)
   return k_ra_ok;
 }
 
-/**
- * @brief ra_canfd_get_error_state -- see header for full description.
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @param[in] channel See header declaration for direction and constraints.
- * @param[in] tx_err See header declaration for direction and constraints.
- * @param[in] rx_err See header declaration for direction and constraints.
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
+/* ra_canfd_get_error_state -- see header for full description. */
 ra_err_t ra_canfd_get_error_state(uint8_t channel, uint8_t* tx_err, uint8_t* rx_err)
 {
   volatile r_canfd_t* reg = ra_canfd(channel);
@@ -743,23 +647,7 @@ ra_err_t ra_canfd_get_error_state(uint8_t channel, uint8_t* tx_err, uint8_t* rx_
 static ra_canfd_event_fn_t s_canfd_fn;
 static void*               s_canfd_ctx;
 
-/**
- * @brief ra_canfd_get_status -- see header for full description.
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @param[in] channel See header declaration for direction and constraints.
- * @param[in] out_mask See header declaration for direction and constraints.
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
+/* ra_canfd_get_status -- see header for full description. */
 ra_err_t ra_canfd_get_status(uint8_t channel, uint32_t* out_mask)
 {
   RA_CHECK_NULL_PTR(out_mask, s_tag, "out_mask must not be nullptr");
@@ -770,23 +658,7 @@ ra_err_t ra_canfd_get_status(uint8_t channel, uint32_t* out_mask)
   return k_ra_ok;
 }
 
-/**
- * @brief ra_canfd_clear_status -- see header for full description.
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @param[in] channel See header declaration for direction and constraints.
- * @param[in] mask See header declaration for direction and constraints.
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
+/* ra_canfd_clear_status -- see header for full description. */
 ra_err_t ra_canfd_clear_status(uint8_t channel, uint32_t mask)
 {
   volatile r_canfd_t* reg = ra_canfd(channel);
@@ -798,23 +670,7 @@ ra_err_t ra_canfd_clear_status(uint8_t channel, uint32_t mask)
   return k_ra_ok;
 }
 
-/**
- * @brief ra_canfd_attach_handler -- see header for full description.
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @param[in] fn See header declaration for direction and constraints.
- * @param[in] ctx See header declaration for direction and constraints.
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
+/* ra_canfd_attach_handler -- see header for full description. */
 ra_err_t ra_canfd_attach_handler(ra_canfd_event_fn_t fn, void* ctx)
 {
   s_canfd_fn  = fn;
@@ -822,19 +678,7 @@ ra_err_t ra_canfd_attach_handler(ra_canfd_event_fn_t fn, void* ctx)
   return k_ra_ok;
 }
 
-/**
- * @brief ra_canfd_dispatch -- see header for full description.
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @param[in] channel See header declaration for direction and constraints.
- * @pre Driver state has been initialised by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
+/* ra_canfd_dispatch -- see header for full description. */
 void ra_canfd_dispatch(uint8_t channel)
 {
   volatile r_canfd_t* reg = ra_canfd(channel);
@@ -892,25 +736,7 @@ static ra_err_t internal_program_data_phase(volatile r_canfd_t* reg, uint32_t da
   return k_ra_ok;
 }
 
-/**
- * @brief ra_canfd_filter_set -- see header for full description.
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @param[in] filter_id See header declaration for direction and constraints.
- * @param[in] accept_id See header declaration for direction and constraints.
- * @param[in] mask See header declaration for direction and constraints.
- * @param[in] dlc See header declaration for direction and constraints.
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
+/* ra_canfd_filter_set -- see header for full description. */
 ra_err_t ra_canfd_filter_set(uint16_t filter_id, uint32_t accept_id, uint32_t mask, uint8_t dlc)
 {
   if (filter_id >= k_ra_canfd_afl_total) {
@@ -947,23 +773,7 @@ ra_err_t ra_canfd_filter_set(uint16_t filter_id, uint32_t accept_id, uint32_t ma
   return k_ra_ok;
 }
 
-/**
- * @brief ra_canfd_set_brs -- see header for full description.
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @param[in] channel See header declaration for direction and constraints.
- * @param[in] fast_bitrate See header declaration for direction and constraints.
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
+/* ra_canfd_set_brs -- see header for full description. */
 ra_err_t ra_canfd_set_brs(uint8_t channel, uint32_t fast_bitrate)
 {
   volatile r_canfd_t* reg = ra_canfd(channel);
@@ -971,22 +781,7 @@ ra_err_t ra_canfd_set_brs(uint8_t channel, uint32_t fast_bitrate)
   return internal_program_data_phase(reg, fast_bitrate);
 }
 
-/**
- * @brief ra_canfd_set_iso_mode -- see header for full description.
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @param[in] enable See header declaration for direction and constraints.
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
+/* ra_canfd_set_iso_mode -- see header for full description. */
 ra_err_t ra_canfd_set_iso_mode(bool enable)
 {
   volatile r_canfd_t* reg = ra_canfd(0U);
@@ -1003,22 +798,7 @@ ra_err_t ra_canfd_set_iso_mode(bool enable)
   return k_ra_ok;
 }
 
-/**
- * @brief ra_canfd_enter_stop -- see header for full description.
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @param[in] channel See header declaration for direction and constraints.
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
+/* ra_canfd_enter_stop -- see header for full description. */
 ra_err_t ra_canfd_enter_stop(uint8_t channel)
 {
   if (channel >= k_ra_canfd_instance_count) {
@@ -1028,22 +808,7 @@ ra_err_t ra_canfd_enter_stop(uint8_t channel)
   return ra_mstp_disable(s_canfd_mstp_table[channel]);
 }
 
-/**
- * @brief ra_canfd_exit_stop -- see header for full description.
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @param[in] channel See header declaration for direction and constraints.
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
+/* ra_canfd_exit_stop -- see header for full description. */
 ra_err_t ra_canfd_exit_stop(uint8_t channel)
 {
   if (channel >= k_ra_canfd_instance_count) {
@@ -1054,28 +819,7 @@ ra_err_t ra_canfd_exit_stop(uint8_t channel)
 }
 
 #ifdef RA_SIMULATOR_MODE
-/**
- * @brief ra_canfd_test_inject_frame -- see header for full description.
- * @details Test-only veneer used by the libFuzzer harness; writes the
- * fuzz-controlled words into the simulator's CFDRF[0] register block
- * and clears the empty bit so a subsequent ra_canfd_receive consumes
- * the staged frame.
- * @param[in] channel See header declaration for direction and constraints.
- * @param[in] id_word See header declaration for direction and constraints.
- * @param[in] ptr_word See header declaration for direction and constraints.
- * @param[in] fdsts_word See header declaration for direction and constraints.
- * @param[in] data See header declaration for direction and constraints.
- * @param[in] data_len See header declaration for direction and constraints.
- * @return ::ra_err_t outcome of the frame-staging operation.
- * @retval k_ra_ok Frame staged.
- * @retval k_ra_err_null_ptr Channel out of range.
- * @pre RA_SIMULATOR_MODE compile guard active.
- * @pre Caller is single-threaded test context.
- * @post CFDRF[0] populated; RFEMP cleared.
- * @post No global driver state is mutated.
- * @note Test-only; not present on target builds.
- * @since 0.1.0
- */
+/* ra_canfd_test_inject_frame -- see header for full description. */
 ra_err_t ra_canfd_test_inject_frame(uint8_t        channel,
                                     uint32_t       id_word,
                                     uint32_t       ptr_word,

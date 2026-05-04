@@ -631,19 +631,7 @@ static bool internal_report_type_ok(ra_usb_hhid_report_type_t t)
  * =============================================================================
  */
 
-/**
- * @brief Implementation of ra_usb_hhid_init (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] speed See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_usb_hhid_init (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_hhid_init(ra_usb_speed_t speed)
 {
   if ((speed != k_ra_usb_speed_fs) && (speed != k_ra_usb_speed_hs)) {
@@ -667,18 +655,7 @@ ra_err_t ra_usb_hhid_init(ra_usb_speed_t speed)
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_usb_hhid_close (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_usb_hhid_close (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_hhid_close(void)
 {
   if (!s_state.initialised) {
@@ -700,20 +677,7 @@ ra_err_t ra_usb_hhid_close(void)
  * =============================================================================
  */
 
-/**
- * @brief Implementation of ra_usb_hhid_attach_callback (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] on_attach See implementation.
- * @param[in] ctx See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_usb_hhid_attach_callback (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_hhid_attach_callback(ra_usb_hhid_attach_fn_t on_attach, void* ctx)
 {
   if (!s_state.initialised) {
@@ -832,23 +796,7 @@ static uint16_t internal_dcp_in_drain(volatile r_usb_regs_t* reg, uint8_t* out, 
  *   wValue.high   = report type (1=Input / 2=Output / 3=Feature)
  *   wValue.low    = report ID (0 if device uses a single unnamed report)
  */
-/**
- * @brief Implementation of ra_usb_hhid_get_report (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] target_report_type See implementation.
- * @param[in] target_report_id See implementation.
- * @param[in] out_buf See implementation.
- * @param[in] max_len See implementation.
- * @param[in] got_len See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_usb_hhid_get_report (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_hhid_get_report(ra_usb_hhid_report_type_t target_report_type,
                                 uint8_t                   target_report_id,
                                 uint8_t*                  out_buf,
@@ -899,22 +847,7 @@ ra_err_t ra_usb_hhid_get_report(ra_usb_hhid_report_type_t target_report_type,
  *   bmRequestType = 0x21 (H2D | Class | Interface)
  *   bRequest      = 0x09 (SET_REPORT)
  */
-/**
- * @brief Implementation of ra_usb_hhid_set_report (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] target_report_type See implementation.
- * @param[in] target_report_id See implementation.
- * @param[in] in_buf See implementation.
- * @param[in] len See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_usb_hhid_set_report (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_hhid_set_report(ra_usb_hhid_report_type_t target_report_type,
                                 uint8_t                   target_report_id,
                                 const uint8_t*            in_buf,
@@ -955,20 +888,7 @@ ra_err_t ra_usb_hhid_set_report(ra_usb_hhid_report_type_t target_report_type,
  *   wValue.high   = duration (in 4 ms units)
  *   wValue.low    = report ID (0 = "all reports")
  */
-/**
- * @brief Implementation of ra_usb_hhid_set_idle (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] duration See implementation.
- * @param[in] report_id See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_usb_hhid_set_idle (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_hhid_set_idle(uint8_t duration, uint8_t report_id)
 {
   if (!s_state.initialised) {
@@ -994,19 +914,7 @@ ra_err_t ra_usb_hhid_set_idle(uint8_t duration, uint8_t report_id)
  *   bRequest      = 0x0B (SET_PROTOCOL)
  *   wValue        = 0 (boot protocol) or 1 (report protocol)
  */
-/**
- * @brief Implementation of ra_usb_hhid_set_protocol (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] boot_or_report See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_usb_hhid_set_protocol (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_hhid_set_protocol(ra_usb_hhid_protocol_select_t boot_or_report)
 {
   if (!s_state.initialised) {
@@ -1033,21 +941,7 @@ ra_err_t ra_usb_hhid_set_protocol(ra_usb_hhid_protocol_select_t boot_or_report)
  * =============================================================================
  */
 
-/**
- * @brief Implementation of ra_usb_hhid_get_input_report (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] out_buf See implementation.
- * @param[in] max_len See implementation.
- * @param[in] got_len See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_usb_hhid_get_input_report (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_hhid_get_input_report(uint8_t* out_buf, uint16_t max_len, uint16_t* got_len)
 {
   RA_CHECK_NULL_PTR(out_buf, s_tag, "get_input_report: out_buf");
@@ -1076,18 +970,7 @@ ra_err_t ra_usb_hhid_get_input_report(uint8_t* out_buf, uint16_t max_len, uint16
  * =============================================================================
  */
 
-/**
- * @brief Implementation of ra_usb_hhid_step (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_usb_hhid_step (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_hhid_step(void)
 {
   if (!s_state.initialised) {

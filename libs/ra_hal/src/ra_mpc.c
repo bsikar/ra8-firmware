@@ -118,21 +118,7 @@ static void internal_reset_pfs(ra_port_t port, ra_pin_t pin, uint32_t set_mask)
   ra_pfs_pwpr_lock();
 }
 
-/**
- * @brief Implementation of ra_mpc_route_peripheral (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] port See implementation.
- * @param[in] pin See implementation.
- * @param[in] psel See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_mpc_route_peripheral (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_mpc_route_peripheral(ra_port_t port, ra_pin_t pin, ra_mpc_psel_t psel)
 {
   const ra_err_t err = internal_check(port, pin);
@@ -167,21 +153,7 @@ ra_err_t ra_mpc_route_peripheral(ra_port_t port, ra_pin_t pin, ra_mpc_psel_t pse
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_mpc_set_gpio (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] port See implementation.
- * @param[in] pin See implementation.
- * @param[in] dir See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_mpc_set_gpio (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_mpc_set_gpio(ra_port_t port, ra_pin_t pin, ra_mpc_dir_t dir)
 {
   const ra_err_t err = internal_check(port, pin);
@@ -193,20 +165,7 @@ ra_err_t ra_mpc_set_gpio(ra_port_t port, ra_pin_t pin, ra_mpc_dir_t dir)
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_mpc_set_analog (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] port See implementation.
- * @param[in] pin See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_mpc_set_analog (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_mpc_set_analog(ra_port_t port, ra_pin_t pin)
 {
   const ra_err_t err = internal_check(port, pin);
@@ -217,20 +176,7 @@ ra_err_t ra_mpc_set_analog(ra_port_t port, ra_pin_t pin)
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_mpc_set_irq (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] port See implementation.
- * @param[in] pin See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_mpc_set_irq (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_mpc_set_irq(ra_port_t port, ra_pin_t pin)
 {
   const ra_err_t err = internal_check(port, pin);
@@ -241,21 +187,7 @@ ra_err_t ra_mpc_set_irq(ra_port_t port, ra_pin_t pin)
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_mpc_set_pull (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] port See implementation.
- * @param[in] pin See implementation.
- * @param[in] pull See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_mpc_set_pull (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_mpc_set_pull(ra_port_t port, ra_pin_t pin, ra_mpc_pull_t pull)
 {
   const ra_err_t err = internal_check(port, pin);
@@ -267,21 +199,7 @@ ra_err_t ra_mpc_set_pull(ra_port_t port, ra_pin_t pin, ra_mpc_pull_t pull)
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_mpc_set_open_drain (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] port See implementation.
- * @param[in] pin See implementation.
- * @param[in] enable See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_mpc_set_open_drain (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_mpc_set_open_drain(ra_port_t port, ra_pin_t pin, bool enable)
 {
   const ra_err_t err = internal_check(port, pin);
@@ -296,21 +214,7 @@ ra_err_t ra_mpc_set_open_drain(ra_port_t port, ra_pin_t pin, bool enable)
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_mpc_read_pfs (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] port See implementation.
- * @param[in] pin See implementation.
- * @param[in] out_val See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_mpc_read_pfs (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_mpc_read_pfs(ra_port_t port, ra_pin_t pin, uint32_t* out_val)
 {
   RA_CHECK_NULL_PTR(out_val, s_tag, "out_val must not be NULL");

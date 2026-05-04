@@ -707,19 +707,7 @@ static ra_err_t internal_step_advance(void)
  * =============================================================================
  */
 
-/**
- * @brief Implementation of ra_usb_hcdc_ecm_init (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] speed See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_usb_hcdc_ecm_init (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_hcdc_ecm_init(ra_usb_speed_t speed)
 {
   if ((speed != k_ra_usb_speed_fs) && (speed != k_ra_usb_speed_hs)) {
@@ -744,18 +732,7 @@ ra_err_t ra_usb_hcdc_ecm_init(ra_usb_speed_t speed)
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_usb_hcdc_ecm_close (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_usb_hcdc_ecm_close (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_hcdc_ecm_close(void)
 {
   if (!s_state.initialised) {
@@ -777,20 +754,7 @@ ra_err_t ra_usb_hcdc_ecm_close(void)
  * =============================================================================
  */
 
-/**
- * @brief Implementation of ra_usb_hcdc_ecm_attach_callback (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] on_attach See implementation.
- * @param[in] ctx See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_usb_hcdc_ecm_attach_callback (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_hcdc_ecm_attach_callback(ra_usb_hcdc_ecm_attach_fn_t on_attach, void* ctx)
 {
   if (!s_state.initialised) {
@@ -806,20 +770,7 @@ ra_err_t ra_usb_hcdc_ecm_attach_callback(ra_usb_hcdc_ecm_attach_fn_t on_attach, 
  * =============================================================================
  */
 
-/**
- * @brief Implementation of ra_usb_hcdc_ecm_send_frame (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] buf See implementation.
- * @param[in] len See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_usb_hcdc_ecm_send_frame (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_hcdc_ecm_send_frame(const uint8_t* buf, uint16_t len)
 {
   if (!s_state.initialised) {
@@ -837,21 +788,7 @@ ra_err_t ra_usb_hcdc_ecm_send_frame(const uint8_t* buf, uint16_t len)
   return ra_usb_queue_in(s_state.speed, k_ra_hcdc_ecm_pipe_bulk_out, buf, len);
 }
 
-/**
- * @brief Implementation of ra_usb_hcdc_ecm_recv_frame (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] buf See implementation.
- * @param[in] max_len See implementation.
- * @param[in] got_len See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_usb_hcdc_ecm_recv_frame (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_hcdc_ecm_recv_frame(uint8_t* buf, uint16_t max_len, uint16_t* got_len)
 {
   RA_CHECK_NULL_PTR(buf, s_tag, "ecm_recv: buf");
@@ -880,19 +817,7 @@ ra_err_t ra_usb_hcdc_ecm_recv_frame(uint8_t* buf, uint16_t max_len, uint16_t* go
  * =============================================================================
  */
 
-/**
- * @brief Implementation of ra_usb_hcdc_ecm_set_packet_filter (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] filter_mask See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_usb_hcdc_ecm_set_packet_filter (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_hcdc_ecm_set_packet_filter(uint16_t filter_mask)
 {
   if (!s_state.initialised) {
@@ -907,19 +832,7 @@ ra_err_t ra_usb_hcdc_ecm_set_packet_filter(uint16_t filter_mask)
   return internal_setup_set_packet_filter(filter_mask);
 }
 
-/**
- * @brief Implementation of ra_usb_hcdc_ecm_get_link_status (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] out_link See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_usb_hcdc_ecm_get_link_status (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_hcdc_ecm_get_link_status(ra_usb_hcdc_ecm_link_t* out_link)
 {
   RA_CHECK_NULL_PTR(out_link, s_tag, "ecm_link: out_link");
@@ -953,20 +866,7 @@ ra_err_t ra_usb_hcdc_ecm_get_link_status(ra_usb_hcdc_ecm_link_t* out_link)
  * =============================================================================
  */
 
-/**
- * @brief Implementation of ra_usb_hcdc_ecm_parse_mac (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] chars See implementation.
- * @param[in] out_mac See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_usb_hcdc_ecm_parse_mac (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_hcdc_ecm_parse_mac(const char* chars, uint8_t* out_mac)
 {
   RA_CHECK_NULL_PTR(chars, s_tag, "parse_mac: chars");
@@ -996,18 +896,7 @@ ra_err_t ra_usb_hcdc_ecm_parse_mac(const char* chars, uint8_t* out_mac)
  * =============================================================================
  */
 
-/**
- * @brief Implementation of ra_usb_hcdc_ecm_step (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_usb_hcdc_ecm_step (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_hcdc_ecm_step(void)
 {
   if (!s_state.initialised) {

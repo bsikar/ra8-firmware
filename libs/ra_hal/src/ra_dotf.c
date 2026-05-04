@@ -938,17 +938,7 @@ static ra_err_t internal_validate_rotate_inputs(uint8_t                     chan
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_dotf_dispatch (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] channel See implementation.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_dotf_dispatch (see header for full contract) -- see header for the documented contract. */
 void ra_dotf_dispatch(uint8_t channel)
 {
   if (!internal_channel_in_range(channel)) {

@@ -240,19 +240,7 @@ static bool internal_is_class_envelope(uint8_t bm)
  * =============================================================================
  */
 
-/**
- * @brief Implementation of ra_usb_paud_init (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] speed See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_usb_paud_init (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_paud_init(ra_usb_speed_t speed)
 {
   if ((speed != k_ra_usb_speed_fs) && (speed != k_ra_usb_speed_hs)) {
@@ -275,18 +263,7 @@ ra_err_t ra_usb_paud_init(ra_usb_speed_t speed)
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_usb_paud_close (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_usb_paud_close (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_paud_close(void)
 {
   if (!s_state.initialised) {
@@ -306,20 +283,7 @@ ra_err_t ra_usb_paud_close(void)
  * =============================================================================
  */
 
-/**
- * @brief Implementation of ra_usb_paud_set_descriptors (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] desc See implementation.
- * @param[in] desc_len See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_usb_paud_set_descriptors (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_paud_set_descriptors(const uint8_t* desc, uint16_t desc_len)
 {
   if (!s_state.initialised) {
@@ -339,20 +303,7 @@ ra_err_t ra_usb_paud_set_descriptors(const uint8_t* desc, uint16_t desc_len)
  * =============================================================================
  */
 
-/**
- * @brief Implementation of ra_usb_paud_send_frame (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] frame See implementation.
- * @param[in] len See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_usb_paud_send_frame (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_paud_send_frame(const uint8_t* frame, uint16_t len)
 {
   if (!s_state.initialised) {
@@ -367,21 +318,7 @@ ra_err_t ra_usb_paud_send_frame(const uint8_t* frame, uint16_t len)
   return ra_usb_queue_in(s_state.speed, k_ra_paud_pipe_iso_in, frame, len);
 }
 
-/**
- * @brief Implementation of ra_usb_paud_recv_frame (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] buf See implementation.
- * @param[in] max_len See implementation.
- * @param[in] got_len See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_usb_paud_recv_frame (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_paud_recv_frame(uint8_t* buf, uint16_t max_len, uint16_t* got_len)
 {
   RA_CHECK_NULL_PTR(buf, s_tag, "recv_frame: buf");
@@ -407,19 +344,7 @@ ra_err_t ra_usb_paud_recv_frame(uint8_t* buf, uint16_t max_len, uint16_t* got_le
  * =============================================================================
  */
 
-/**
- * @brief Implementation of ra_usb_paud_set_format (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] format See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_usb_paud_set_format (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_paud_set_format(ra_usb_paud_format_t format)
 {
   if (!s_state.initialised) {
@@ -440,19 +365,7 @@ ra_err_t ra_usb_paud_set_format(ra_usb_paud_format_t format)
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_usb_paud_get_format (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] out_format See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_usb_paud_get_format (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_paud_get_format(ra_usb_paud_format_t* out_format)
 {
   RA_CHECK_NULL_PTR(out_format, s_tag, "get_format: out_format");
@@ -463,19 +376,7 @@ ra_err_t ra_usb_paud_get_format(ra_usb_paud_format_t* out_format)
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_usb_paud_set_volume (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] volume_q8_8 See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_usb_paud_set_volume (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_paud_set_volume(int16_t volume_q8_8)
 {
   if (!s_state.initialised) {
@@ -485,19 +386,7 @@ ra_err_t ra_usb_paud_set_volume(int16_t volume_q8_8)
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_usb_paud_get_volume (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] out_volume See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_usb_paud_get_volume (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_paud_get_volume(int16_t* out_volume)
 {
   RA_CHECK_NULL_PTR(out_volume, s_tag, "get_volume: out_volume");
@@ -513,20 +402,7 @@ ra_err_t ra_usb_paud_get_volume(int16_t* out_volume)
  * =============================================================================
  */
 
-/**
- * @brief Implementation of ra_usb_paud_attach_setup_handler (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] setup_fn See implementation.
- * @param[in] ctx See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_usb_paud_attach_setup_handler (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_paud_attach_setup_handler(ra_usb_paud_setup_fn_t setup_fn, void* ctx)
 {
   if (!s_state.initialised) {
@@ -542,19 +418,7 @@ ra_err_t ra_usb_paud_attach_setup_handler(ra_usb_paud_setup_fn_t setup_fn, void*
  * =============================================================================
  */
 
-/**
- * @brief Implementation of ra_usb_paud_handle_setup (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] setup See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_usb_paud_handle_setup (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_paud_handle_setup(const ra_usb_setup_t* setup)
 {
   RA_CHECK_NULL_PTR(setup, s_tag, "handle_setup: setup");

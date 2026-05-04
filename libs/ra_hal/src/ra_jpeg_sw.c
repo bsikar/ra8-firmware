@@ -759,22 +759,7 @@ static const int32_t s_dct_w_q14[8] = {
   8192,
 };
 
-/**
- * @brief fwd dct 1d norm.
- *
- * @details Implementation detail; see surrounding code and HUM citations.
- *
- * @param[in] in See declaration: ``const int32_t* in``.
- * @param[out] out See declaration: ``int32_t* out``.
- *
- * @pre Module has been initialised where applicable.
- * @pre Pointer arguments (if any) are valid for the requested length.
- * @post Hardware / software state reflects the requested operation on success.
- * @post No side effects beyond those documented above.
- *
- * @note Not thread-safe; the caller must serialise concurrent access.
- * @since 0.1.0
- */
+/* fwd dct 1d norm -- see surrounding code and HUM citations. */
 static void fwd_dct_1d_norm(const int32_t* in, int32_t* out)
 {
   for (uint8_t k = 0U; k < (uint8_t)k_ra_jpeg_block_dim; k++) {
@@ -818,17 +803,7 @@ static void inv_dct_1d_norm(const int32_t* in, int32_t* out)
   }
 }
 
-/**
- * @brief Full 8x8 inverse DCT, in place.
- * @details Implementation detail; see surrounding code and HUM citations.
- * @param[out] block See declaration: ``int32_t* block``.
- * @pre Module/state preconditions hold (see function body).
- * @pre Module/state preconditions hold (see function body).
- * @post Documented side effects are visible on success.
- * @post Documented side effects are visible on success.
- * @note Not thread-safe; the caller must serialise concurrent access.
- * @since 0.1.0
- */
+/* Full 8x8 inverse DCT, in place -- see surrounding code and HUM citations. */
 static void idct8x8(int32_t* block)
 {
   int32_t tmp[(uint32_t)k_ra_jpeg_block_size];
@@ -859,17 +834,7 @@ static void idct8x8(int32_t* block)
 /*  Forward DCT (encoder, AAN scaled)                                  */
 /* ------------------------------------------------------------------ */
 
-/**
- * @brief 2-D forward DCT, in place, with normalization folded in.
- * @details Implementation detail; see surrounding code and HUM citations.
- * @param[out] block See declaration: ``int32_t* block``.
- * @pre Module/state preconditions hold (see function body).
- * @pre Module/state preconditions hold (see function body).
- * @post Documented side effects are visible on success.
- * @post Documented side effects are visible on success.
- * @note Not thread-safe; the caller must serialise concurrent access.
- * @since 0.1.0
- */
+/* 2-D forward DCT, in place, with normalization folded in -- see surrounding code and HUM citations. */
 static void fdct8x8(int32_t* block)
 {
   int32_t tmp[(uint32_t)k_ra_jpeg_block_size];
@@ -929,20 +894,7 @@ typedef struct {
   ra_jpeg_htab_t hac[k_ra_jpeg_huff_ids];
 } ra_jpeg_dec_ctx_t;
 
-/**
- * @brief Skip an unrecognized variable-length segment.
- * @details Implementation detail; see surrounding code and HUM citations.
- * @param[in] d See declaration: ``ra_jpeg_dec_ctx_t* d``.
- * @return ::ra_err_t outcome (or scalar return value).
- * @retval k_ra_ok Operation completed successfully.
- * @retval other Non-zero error code from the underlying operation.
- * @pre Module/state preconditions hold (see function body).
- * @pre Module/state preconditions hold (see function body).
- * @post Documented side effects are visible on success.
- * @post Documented side effects are visible on success.
- * @note Not thread-safe; the caller must serialise concurrent access.
- * @since 0.1.0
- */
+/* Skip an unrecognized variable-length segment -- see surrounding code and HUM citations. */
 static ra_err_t dec_skip_segment(ra_jpeg_dec_ctx_t* d)
 {
   if (d->cursor + 2U > d->src_len) {
@@ -956,20 +908,7 @@ static ra_err_t dec_skip_segment(ra_jpeg_dec_ctx_t* d)
   return k_ra_ok;
 }
 
-/**
- * @brief Parse a DQT segment (T.81 sec B.2.4.1).
- * @details Implementation detail; see surrounding code and HUM citations.
- * @param[in] d See declaration: ``ra_jpeg_dec_ctx_t* d``.
- * @return ::ra_err_t outcome (or scalar return value).
- * @retval k_ra_ok Operation completed successfully.
- * @retval other Non-zero error code from the underlying operation.
- * @pre Module/state preconditions hold (see function body).
- * @pre Module/state preconditions hold (see function body).
- * @post Documented side effects are visible on success.
- * @post Documented side effects are visible on success.
- * @note Not thread-safe; the caller must serialise concurrent access.
- * @since 0.1.0
- */
+/* Parse a DQT segment (T -- see surrounding code and HUM citations. */
 static ra_err_t dec_parse_dqt(ra_jpeg_dec_ctx_t* d)
 {
   if (d->cursor + 2U > d->src_len) {
@@ -1000,20 +939,7 @@ static ra_err_t dec_parse_dqt(ra_jpeg_dec_ctx_t* d)
   return k_ra_ok;
 }
 
-/**
- * @brief Parse a DHT segment (T.81 sec B.2.4.2).
- * @details Implementation detail; see surrounding code and HUM citations.
- * @param[in] d See declaration: ``ra_jpeg_dec_ctx_t* d``.
- * @return ::ra_err_t outcome (or scalar return value).
- * @retval k_ra_ok Operation completed successfully.
- * @retval other Non-zero error code from the underlying operation.
- * @pre Module/state preconditions hold (see function body).
- * @pre Module/state preconditions hold (see function body).
- * @post Documented side effects are visible on success.
- * @post Documented side effects are visible on success.
- * @note Not thread-safe; the caller must serialise concurrent access.
- * @since 0.1.0
- */
+/* Parse a DHT segment (T -- see surrounding code and HUM citations. */
 static ra_err_t dec_parse_dht(ra_jpeg_dec_ctx_t* d)
 {
   if (d->cursor + 2U > d->src_len) {
@@ -1058,20 +984,7 @@ static ra_err_t dec_parse_dht(ra_jpeg_dec_ctx_t* d)
   return k_ra_ok;
 }
 
-/**
- * @brief Parse SOF0 (T.81 sec B.2.2).
- * @details Implementation detail; see surrounding code and HUM citations.
- * @param[in] d See declaration: ``ra_jpeg_dec_ctx_t* d``.
- * @return ::ra_err_t outcome (or scalar return value).
- * @retval k_ra_ok Operation completed successfully.
- * @retval other Non-zero error code from the underlying operation.
- * @pre Module/state preconditions hold (see function body).
- * @pre Module/state preconditions hold (see function body).
- * @post Documented side effects are visible on success.
- * @post Documented side effects are visible on success.
- * @note Not thread-safe; the caller must serialise concurrent access.
- * @since 0.1.0
- */
+/* Parse SOF0 (T -- see surrounding code and HUM citations. */
 static ra_err_t dec_parse_sof0(ra_jpeg_dec_ctx_t* d)
 {
   if (d->cursor + 2U > d->src_len) {
@@ -1130,20 +1043,7 @@ static ra_err_t dec_parse_sof0(ra_jpeg_dec_ctx_t* d)
   return k_ra_ok;
 }
 
-/**
- * @brief Parse SOS scan-component selectors (T.81 sec B.2.3).
- * @details Implementation detail; see surrounding code and HUM citations.
- * @param[in] d See declaration: ``ra_jpeg_dec_ctx_t* d``.
- * @return ::ra_err_t outcome (or scalar return value).
- * @retval k_ra_ok Operation completed successfully.
- * @retval other Non-zero error code from the underlying operation.
- * @pre Module/state preconditions hold (see function body).
- * @pre Module/state preconditions hold (see function body).
- * @post Documented side effects are visible on success.
- * @post Documented side effects are visible on success.
- * @note Not thread-safe; the caller must serialise concurrent access.
- * @since 0.1.0
- */
+/* Parse SOS scan-component selectors (T -- see surrounding code and HUM citations. */
 static ra_err_t dec_parse_sos(ra_jpeg_dec_ctx_t* d)
 {
   if (d->cursor + 2U > d->src_len) {
@@ -1183,23 +1083,7 @@ static ra_err_t dec_parse_sos(ra_jpeg_dec_ctx_t* d)
   return k_ra_ok;
 }
 
-/**
- * @brief Decode one 8x8 block of coefficients.
- * @details Implementation detail; see surrounding code and HUM citations.
- * @param[in] d See declaration: ``ra_jpeg_dec_ctx_t* d``.
- * @param[out] br See declaration: ``ra_jpeg_bitreader_t* br``.
- * @param[in] ci See declaration: ``uint8_t ci``.
- * @param[out] outblk See declaration: ``int32_t* outblk``.
- * @return ::ra_err_t outcome (or scalar return value).
- * @retval k_ra_ok Operation completed successfully.
- * @retval other Non-zero error code from the underlying operation.
- * @pre Module/state preconditions hold (see function body).
- * @pre Module/state preconditions hold (see function body).
- * @post Documented side effects are visible on success.
- * @post Documented side effects are visible on success.
- * @note Not thread-safe; the caller must serialise concurrent access.
- * @since 0.1.0
- */
+/* Decode one 8x8 block of coefficients -- see surrounding code and HUM citations. */
 static ra_err_t
 dec_block(ra_jpeg_dec_ctx_t* d, ra_jpeg_bitreader_t* br, uint8_t ci, int32_t* outblk)
 {
@@ -1354,28 +1238,7 @@ ycc_to_rgb_row_mve(const int16_t* y, const int16_t* cb, const int16_t* cr, uint8
 /*  Public API: get_dimensions                                         */
 /* ------------------------------------------------------------------ */
 
-/**
- * @brief ra jpeg sw get dimensions.
- *
- * @details Implementation detail; see surrounding code and HUM citations.
- *
- * @param[in] jpeg_buf See declaration: ``const uint8_t* jpeg_buf``.
- * @param[in] jpeg_len See declaration: ``uint32_t       jpeg_len``.
- * @param[out] out_w See declaration: ``uint16_t*      out_w``.
- * @param[out] out_h See declaration: ``uint16_t*      out_h``.
- *
- * @return ::ra_err_t outcome (or scalar return value).
- * @retval k_ra_ok Operation completed successfully.
- * @retval other Non-zero error code from the underlying operation.
- *
- * @pre Module has been initialised where applicable.
- * @pre Pointer arguments (if any) are valid for the requested length.
- * @post Hardware / software state reflects the requested operation on success.
- * @post No side effects beyond those documented above.
- *
- * @note Not thread-safe; the caller must serialise concurrent access.
- * @since 0.1.0
- */
+/* ra jpeg sw get dimensions -- see surrounding code and HUM citations. */
 ra_err_t ra_jpeg_sw_get_dimensions(const uint8_t* jpeg_buf,
                                    uint32_t       jpeg_len,
                                    uint16_t*      out_w,
@@ -1444,18 +1307,7 @@ ra_err_t ra_jpeg_sw_get_dimensions(const uint8_t* jpeg_buf,
 /*  Public API: decode                                                 */
 /* ------------------------------------------------------------------ */
 
-/**
- * @brief Render a fully-dequantized+IDCTed component sample into a tile.
- * @details Implementation detail; see surrounding code and HUM citations.
- * @param[out] coeffs See declaration: ``int32_t* coeffs``.
- * @param[out] tile See declaration: ``uint8_t* tile``.
- * @pre Module/state preconditions hold (see function body).
- * @pre Module/state preconditions hold (see function body).
- * @post Documented side effects are visible on success.
- * @post Documented side effects are visible on success.
- * @note Not thread-safe; the caller must serialise concurrent access.
- * @since 0.1.0
- */
+/* Render a fully-dequantized+IDCTed component sample into a tile -- see surrounding code and HUM citations. */
 static void dec_idct_into(int32_t* coeffs, uint8_t* tile)
 {
   idct8x8(coeffs);
@@ -1465,22 +1317,7 @@ static void dec_idct_into(int32_t* coeffs, uint8_t* tile)
   }
 }
 
-/**
- * @brief Walk the entropy-coded segment, MCU by MCU.
- * @details Implementation detail; see surrounding code and HUM citations.
- * @param[in] d See declaration: ``ra_jpeg_dec_ctx_t* d``.
- * @param[out] out_buf See declaration: ``uint8_t* out_buf``.
- * @param[in] out_buf_len See declaration: ``uint32_t out_buf_len``.
- * @return ::ra_err_t outcome (or scalar return value).
- * @retval k_ra_ok Operation completed successfully.
- * @retval other Non-zero error code from the underlying operation.
- * @pre Module/state preconditions hold (see function body).
- * @pre Module/state preconditions hold (see function body).
- * @post Documented side effects are visible on success.
- * @post Documented side effects are visible on success.
- * @note Not thread-safe; the caller must serialise concurrent access.
- * @since 0.1.0
- */
+/* Walk the entropy-coded segment, MCU by MCU -- see surrounding code and HUM citations. */
 static ra_err_t dec_decode_scan(ra_jpeg_dec_ctx_t* d, uint8_t* out_buf, uint32_t out_buf_len)
 {
   uint32_t need = (uint32_t)d->width * (uint32_t)d->height * (uint32_t)k_ra_jpeg_rgb_components;
@@ -1590,30 +1427,7 @@ static ra_err_t dec_decode_scan(ra_jpeg_dec_ctx_t* d, uint8_t* out_buf, uint32_t
   return k_ra_ok;
 }
 
-/**
- * @brief ra jpeg sw decode.
- *
- * @details Implementation detail; see surrounding code and HUM citations.
- *
- * @param[in] jpeg_buf See declaration: ``const uint8_t* jpeg_buf``.
- * @param[in] jpeg_len See declaration: ``uint32_t       jpeg_len``.
- * @param[out] out_buf See declaration: ``uint8_t*       out_buf``.
- * @param[in] out_buf_len See declaration: ``uint32_t       out_buf_len``.
- * @param[out] out_w See declaration: ``uint16_t*      out_w``.
- * @param[out] out_h See declaration: ``uint16_t*      out_h``.
- *
- * @return ::ra_err_t outcome (or scalar return value).
- * @retval k_ra_ok Operation completed successfully.
- * @retval other Non-zero error code from the underlying operation.
- *
- * @pre Module has been initialised where applicable.
- * @pre Pointer arguments (if any) are valid for the requested length.
- * @post Hardware / software state reflects the requested operation on success.
- * @post No side effects beyond those documented above.
- *
- * @note Not thread-safe; the caller must serialise concurrent access.
- * @since 0.1.0
- */
+/* ra jpeg sw decode -- see surrounding code and HUM citations. */
 ra_err_t ra_jpeg_sw_decode(const uint8_t* jpeg_buf,
                            uint32_t       jpeg_len,
                            uint8_t*       out_buf,
@@ -1738,18 +1552,7 @@ typedef struct {
   bool     overflow;
 } ra_jpeg_enc_ctx_t;
 
-/**
- * @brief Append one byte; sets `overflow` on capacity exhaustion.
- * @details Implementation detail; see surrounding code and HUM citations.
- * @param[in] e See declaration: ``ra_jpeg_enc_ctx_t* e``.
- * @param[in] b See declaration: ``uint8_t b``.
- * @pre Module/state preconditions hold (see function body).
- * @pre Module/state preconditions hold (see function body).
- * @post Documented side effects are visible on success.
- * @post Documented side effects are visible on success.
- * @note Not thread-safe; the caller must serialise concurrent access.
- * @since 0.1.0
- */
+/* Append one byte; sets `overflow` on capacity exhaustion -- see surrounding code and HUM citations. */
 static void enc_emit_u8(ra_jpeg_enc_ctx_t* e, uint8_t b)
 {
   if (e->pos >= e->cap) {
@@ -1760,37 +1563,14 @@ static void enc_emit_u8(ra_jpeg_enc_ctx_t* e, uint8_t b)
   e->pos++;
 }
 
-/**
- * @brief Append a 16-bit big-endian word.
- * @details Implementation detail; see surrounding code and HUM citations.
- * @param[in] e See declaration: ``ra_jpeg_enc_ctx_t* e``.
- * @param[in] v See declaration: ``uint16_t v``.
- * @pre Module/state preconditions hold (see function body).
- * @pre Module/state preconditions hold (see function body).
- * @post Documented side effects are visible on success.
- * @post Documented side effects are visible on success.
- * @note Not thread-safe; the caller must serialise concurrent access.
- * @since 0.1.0
- */
+/* Append a 16-bit big-endian word -- see surrounding code and HUM citations. */
 static void enc_emit_u16(ra_jpeg_enc_ctx_t* e, uint16_t v)
 {
   enc_emit_u8(e, (uint8_t)(v >> k_ra_jpeg_byte_shift));
   enc_emit_u8(e, (uint8_t)(v & 0xFFU));
 }
 
-/**
- * @brief Push `n` bits MSB-first into the entropy stream with stuffing.
- * @details Implementation detail; see surrounding code and HUM citations.
- * @param[in] e See declaration: ``ra_jpeg_enc_ctx_t* e``.
- * @param[in] code See declaration: ``uint32_t code``.
- * @param[in] n See declaration: ``uint8_t n``.
- * @pre Module/state preconditions hold (see function body).
- * @pre Module/state preconditions hold (see function body).
- * @post Documented side effects are visible on success.
- * @post Documented side effects are visible on success.
- * @note Not thread-safe; the caller must serialise concurrent access.
- * @since 0.1.0
- */
+/* Push `n` bits MSB-first into the entropy stream with stuffing -- see surrounding code and HUM citations. */
 static void enc_put_bits(ra_jpeg_enc_ctx_t* e, uint32_t code, uint8_t n)
 {
   e->bit_buf = (e->bit_buf << n) | (code & ((1U << n) - 1U));
@@ -1805,17 +1585,7 @@ static void enc_put_bits(ra_jpeg_enc_ctx_t* e, uint32_t code, uint8_t n)
   }
 }
 
-/**
- * @brief Flush any partial byte at the end of a scan with 1-fill.
- * @details Implementation detail; see surrounding code and HUM citations.
- * @param[in] e See declaration: ``ra_jpeg_enc_ctx_t* e``.
- * @pre Module/state preconditions hold (see function body).
- * @pre Module/state preconditions hold (see function body).
- * @post Documented side effects are visible on success.
- * @post Documented side effects are visible on success.
- * @note Not thread-safe; the caller must serialise concurrent access.
- * @since 0.1.0
- */
+/* Flush any partial byte at the end of a scan with 1-fill -- see surrounding code and HUM citations. */
 static void enc_flush_bits(ra_jpeg_enc_ctx_t* e)
 {
   if (e->bit_cnt > 0U) {
@@ -1826,21 +1596,7 @@ static void enc_flush_bits(ra_jpeg_enc_ctx_t* e)
   }
 }
 
-/**
- * @brief Build the canonical-code table from BITS+HUFFVAL.
- * @details Implementation detail; see surrounding code and HUM citations.
- * @param[in] bits See declaration: ``const uint8_t* bits``.
- * @param[in] vals See declaration: ``const uint8_t* vals``.
- * @param[out] codes See declaration: ``uint16_t*      codes``.
- * @param[out] sizes See declaration: ``uint8_t*       sizes``.
- * @param[in] total See declaration: ``uint16_t       total``.
- * @pre Module/state preconditions hold (see function body).
- * @pre Module/state preconditions hold (see function body).
- * @post Documented side effects are visible on success.
- * @post Documented side effects are visible on success.
- * @note Not thread-safe; the caller must serialise concurrent access.
- * @since 0.1.0
- */
+/* Build the canonical-code table from BITS+HUFFVAL -- see surrounding code and HUM citations. */
 static void enc_build_codes(const uint8_t* bits,
                             const uint8_t* vals,
                             uint16_t*      codes,
@@ -1881,20 +1637,7 @@ static void enc_build_codes(const uint8_t* bits,
   }
 }
 
-/**
- * @brief Compute the IJG quality-scale factor.
- * @details Implementation detail; see surrounding code and HUM citations.
- * @param[in] q See declaration: ``uint8_t q``.
- * @return ::ra_err_t outcome (or scalar return value).
- * @retval k_ra_ok Operation completed successfully.
- * @retval other Non-zero error code from the underlying operation.
- * @pre Module/state preconditions hold (see function body).
- * @pre Module/state preconditions hold (see function body).
- * @post Documented side effects are visible on success.
- * @post Documented side effects are visible on success.
- * @note Not thread-safe; the caller must serialise concurrent access.
- * @since 0.1.0
- */
+/* Compute the IJG quality-scale factor -- see surrounding code and HUM citations. */
 static uint16_t enc_quality_scale(uint8_t q)
 {
   if (q < (uint8_t)k_ra_jpeg_quality_pivot) {
@@ -1903,19 +1646,7 @@ static uint16_t enc_quality_scale(uint8_t q)
   return (uint16_t)(200U - 2U * (uint16_t)q);
 }
 
-/**
- * @brief Scale a base quantization table by `scale_pct/100`, clamp 1..255.
- * @details Implementation detail; see surrounding code and HUM citations.
- * @param[in] base See declaration: ``const uint8_t* base``.
- * @param[out] dst See declaration: ``uint8_t* dst``.
- * @param[in] scale See declaration: ``uint16_t scale``.
- * @pre Module/state preconditions hold (see function body).
- * @pre Module/state preconditions hold (see function body).
- * @post Documented side effects are visible on success.
- * @post Documented side effects are visible on success.
- * @note Not thread-safe; the caller must serialise concurrent access.
- * @since 0.1.0
- */
+/* Scale a base quantization table by `scale_pct/100`, clamp 1 -- see surrounding code and HUM citations. */
 static void enc_scale_qtab(const uint8_t* base, uint8_t* dst, uint16_t scale)
 {
   for (uint8_t i = 0U; i < (uint8_t)k_ra_jpeg_block_size; i++) {
@@ -1929,20 +1660,7 @@ static void enc_scale_qtab(const uint8_t* base, uint8_t* dst, uint16_t scale)
   }
 }
 
-/**
- * @brief Compute number of significant-magnitude bits for `v`.
- * @details Implementation detail; see surrounding code and HUM citations.
- * @param[in] v See declaration: ``int32_t v``.
- * @return ::ra_err_t outcome (or scalar return value).
- * @retval k_ra_ok Operation completed successfully.
- * @retval other Non-zero error code from the underlying operation.
- * @pre Module/state preconditions hold (see function body).
- * @pre Module/state preconditions hold (see function body).
- * @post Documented side effects are visible on success.
- * @post Documented side effects are visible on success.
- * @note Not thread-safe; the caller must serialise concurrent access.
- * @since 0.1.0
- */
+/* Compute number of significant-magnitude bits for `v` -- see surrounding code and HUM citations. */
 static uint8_t enc_bits_needed(int32_t v)
 {
   uint32_t a = (v < 0) ? (uint32_t)(-v) : (uint32_t)v;
@@ -1954,21 +1672,7 @@ static uint8_t enc_bits_needed(int32_t v)
   return n;
 }
 
-/**
- * @brief Quantize one coeff in zig-zag position `i`.
- * @details Implementation detail; see surrounding code and HUM citations.
- * @param[in] v See declaration: ``int32_t v``.
- * @param[in] qv See declaration: ``uint8_t qv``.
- * @return ::ra_err_t outcome (or scalar return value).
- * @retval k_ra_ok Operation completed successfully.
- * @retval other Non-zero error code from the underlying operation.
- * @pre Module/state preconditions hold (see function body).
- * @pre Module/state preconditions hold (see function body).
- * @post Documented side effects are visible on success.
- * @post Documented side effects are visible on success.
- * @note Not thread-safe; the caller must serialise concurrent access.
- * @since 0.1.0
- */
+/* Quantize one coeff in zig-zag position `i` -- see surrounding code and HUM citations. */
 static int32_t enc_quantize(int32_t v, uint8_t qv)
 {
   int32_t q = (int32_t)qv;
@@ -1982,24 +1686,7 @@ static int32_t enc_quantize(int32_t v, uint8_t qv)
   return (v + (q >> 1)) / q;
 }
 
-/**
- * @brief Encode one 8x8 block of source samples.
- * @details Implementation detail; see surrounding code and HUM citations.
- * @param[in] e See declaration: ``ra_jpeg_enc_ctx_t* e``.
- * @param[in] spatial See declaration: ``const int32_t*     spatial``.
- * @param[in] qtab See declaration: ``const uint8_t*     qtab``.
- * @param[in] comp_idx See declaration: ``uint8_t            comp_idx``.
- * @param[in] dc_codes See declaration: ``const uint16_t*    dc_codes``.
- * @param[in] dc_sizes See declaration: ``const uint8_t*     dc_sizes``.
- * @param[in] ac_codes See declaration: ``const uint16_t*    ac_codes``.
- * @param[in] ac_sizes See declaration: ``const uint8_t*     ac_sizes``.
- * @pre Module/state preconditions hold (see function body).
- * @pre Module/state preconditions hold (see function body).
- * @post Documented side effects are visible on success.
- * @post Documented side effects are visible on success.
- * @note Not thread-safe; the caller must serialise concurrent access.
- * @since 0.1.0
- */
+/* Encode one 8x8 block of source samples -- see surrounding code and HUM citations. */
 static void enc_block(ra_jpeg_enc_ctx_t* e,
                       const int32_t*     spatial,
                       const uint8_t*     qtab,
@@ -2056,17 +1743,7 @@ static void enc_block(ra_jpeg_enc_ctx_t* e,
   }
 }
 
-/**
- * @brief Emit DQT segment for both luma and chroma tables.
- * @details Implementation detail; see surrounding code and HUM citations.
- * @param[in] e See declaration: ``ra_jpeg_enc_ctx_t* e``.
- * @pre Module/state preconditions hold (see function body).
- * @pre Module/state preconditions hold (see function body).
- * @post Documented side effects are visible on success.
- * @post Documented side effects are visible on success.
- * @note Not thread-safe; the caller must serialise concurrent access.
- * @since 0.1.0
- */
+/* Emit DQT segment for both luma and chroma tables -- see surrounding code and HUM citations. */
 static void enc_emit_dqt(ra_jpeg_enc_ctx_t* e)
 {
   enc_emit_u16(e, (uint16_t)k_ra_jpeg_marker_dqt);
@@ -2081,21 +1758,7 @@ static void enc_emit_dqt(ra_jpeg_enc_ctx_t* e)
   }
 }
 
-/**
- * @brief Emit one DHT segment.
- * @details Implementation detail; see surrounding code and HUM citations.
- * @param[in] e See declaration: ``ra_jpeg_enc_ctx_t* e``.
- * @param[in] tc_th See declaration: ``uint8_t            tc_th``.
- * @param[in] bits See declaration: ``const uint8_t*     bits``.
- * @param[in] vals See declaration: ``const uint8_t*     vals``.
- * @param[in] total See declaration: ``uint16_t           total``.
- * @pre Module/state preconditions hold (see function body).
- * @pre Module/state preconditions hold (see function body).
- * @post Documented side effects are visible on success.
- * @post Documented side effects are visible on success.
- * @note Not thread-safe; the caller must serialise concurrent access.
- * @since 0.1.0
- */
+/* Emit one DHT segment -- see surrounding code and HUM citations. */
 static void enc_emit_dht_one(ra_jpeg_enc_ctx_t* e,
                              uint8_t            tc_th,
                              const uint8_t*     bits,
@@ -2113,21 +1776,7 @@ static void enc_emit_dht_one(ra_jpeg_enc_ctx_t* e,
   }
 }
 
-/**
- * @brief Convert one row of RGB into Y, Cb, Cr samples (BT.601).
- * @details Implementation detail; see surrounding code and HUM citations.
- * @param[in] rgb See declaration: ``const uint8_t* rgb``.
- * @param[in] n See declaration: ``uint16_t n``.
- * @param[out] y See declaration: ``int32_t* y``.
- * @param[out] cb See declaration: ``int32_t* cb``.
- * @param[out] cr See declaration: ``int32_t* cr``.
- * @pre Module/state preconditions hold (see function body).
- * @pre Module/state preconditions hold (see function body).
- * @post Documented side effects are visible on success.
- * @post Documented side effects are visible on success.
- * @note Not thread-safe; the caller must serialise concurrent access.
- * @since 0.1.0
- */
+/* Convert one row of RGB into Y, Cb, Cr samples (BT -- see surrounding code and HUM citations. */
 static void enc_rgb_to_ycc_row(const uint8_t* rgb, uint16_t n, int32_t* y, int32_t* cb, int32_t* cr)
 {
   for (uint16_t i = 0U; i < n; i++) {
@@ -2148,22 +1797,7 @@ static void enc_rgb_to_ycc_row(const uint8_t* rgb, uint16_t n, int32_t* y, int32
   }
 }
 
-/**
- * @brief Sample one 8x8 luma block from the YCbCr planes.
- * @details Implementation detail; see surrounding code and HUM citations.
- * @param[in] yplane See declaration: ``const int32_t* yplane``.
- * @param[in] plane_w See declaration: ``uint16_t       plane_w``.
- * @param[in] plane_h See declaration: ``uint16_t       plane_h``.
- * @param[in] x0 See declaration: ``uint16_t       x0``.
- * @param[in] y0 See declaration: ``uint16_t       y0``.
- * @param[out] out See declaration: ``int32_t*       out``.
- * @pre Module/state preconditions hold (see function body).
- * @pre Module/state preconditions hold (see function body).
- * @post Documented side effects are visible on success.
- * @post Documented side effects are visible on success.
- * @note Not thread-safe; the caller must serialise concurrent access.
- * @since 0.1.0
- */
+/* Sample one 8x8 luma block from the YCbCr planes -- see surrounding code and HUM citations. */
 static void enc_sample_y_block(const int32_t* yplane,
                                uint16_t       plane_w,
                                uint16_t       plane_h,
@@ -2187,22 +1821,7 @@ static void enc_sample_y_block(const int32_t* yplane,
   }
 }
 
-/**
- * @brief Build one 8x8 chroma block by 2x2 averaging from a 16x16 region.
- * @details Implementation detail; see surrounding code and HUM citations.
- * @param[in] cplane See declaration: ``const int32_t* cplane``.
- * @param[in] plane_w See declaration: ``uint16_t       plane_w``.
- * @param[in] plane_h See declaration: ``uint16_t       plane_h``.
- * @param[in] x0 See declaration: ``uint16_t       x0``.
- * @param[in] y0 See declaration: ``uint16_t       y0``.
- * @param[out] out See declaration: ``int32_t*       out``.
- * @pre Module/state preconditions hold (see function body).
- * @pre Module/state preconditions hold (see function body).
- * @post Documented side effects are visible on success.
- * @post Documented side effects are visible on success.
- * @note Not thread-safe; the caller must serialise concurrent access.
- * @since 0.1.0
- */
+/* Build one 8x8 chroma block by 2x2 averaging from a 16x16 region -- see surrounding code and HUM citations. */
 static void enc_sample_c_block_420(const int32_t* cplane,
                                    uint16_t       plane_w,
                                    uint16_t       plane_h,
@@ -2236,24 +1855,7 @@ static void enc_sample_c_block_420(const int32_t* cplane,
   }
 }
 
-/**
- * @brief Top-level encode driver -- emits the full JFIF byte stream.
- * @details Implementation detail; see surrounding code and HUM citations.
- * @param[in] e See declaration: ``ra_jpeg_enc_ctx_t* e``.
- * @param[in] rgb See declaration: ``const uint8_t* rgb``.
- * @param[in] w See declaration: ``uint16_t w``.
- * @param[in] h See declaration: ``uint16_t h``.
- * @param[in] quality See declaration: ``uint8_t quality``.
- * @return ::ra_err_t outcome (or scalar return value).
- * @retval k_ra_ok Operation completed successfully.
- * @retval other Non-zero error code from the underlying operation.
- * @pre Module/state preconditions hold (see function body).
- * @pre Module/state preconditions hold (see function body).
- * @post Documented side effects are visible on success.
- * @post Documented side effects are visible on success.
- * @note Not thread-safe; the caller must serialise concurrent access.
- * @since 0.1.0
- */
+/* Top-level encode driver -- emits the full JFIF byte stream -- see surrounding code and HUM citations. */
 static ra_err_t
 enc_run(ra_jpeg_enc_ctx_t* e, const uint8_t* rgb, uint16_t w, uint16_t h, uint8_t quality)
 {
@@ -2408,31 +2010,7 @@ enc_run(ra_jpeg_enc_ctx_t* e, const uint8_t* rgb, uint16_t w, uint16_t h, uint8_
   return k_ra_ok;
 }
 
-/**
- * @brief ra jpeg sw encode.
- *
- * @details Implementation detail; see surrounding code and HUM citations.
- *
- * @param[in] rgb_buf See declaration: ``const uint8_t* rgb_buf``.
- * @param[in] width See declaration: ``uint16_t       width``.
- * @param[in] height See declaration: ``uint16_t       height``.
- * @param[in] quality See declaration: ``uint8_t        quality``.
- * @param[out] out_buf See declaration: ``uint8_t*       out_buf``.
- * @param[in] out_buf_len See declaration: ``uint32_t       out_buf_len``.
- * @param[out] out_len See declaration: ``uint32_t*      out_len``.
- *
- * @return ::ra_err_t outcome (or scalar return value).
- * @retval k_ra_ok Operation completed successfully.
- * @retval other Non-zero error code from the underlying operation.
- *
- * @pre Module has been initialised where applicable.
- * @pre Pointer arguments (if any) are valid for the requested length.
- * @post Hardware / software state reflects the requested operation on success.
- * @post No side effects beyond those documented above.
- *
- * @note Not thread-safe; the caller must serialise concurrent access.
- * @since 0.1.0
- */
+/* ra jpeg sw encode -- see surrounding code and HUM citations. */
 ra_err_t ra_jpeg_sw_encode(const uint8_t* rgb_buf,
                            uint16_t       width,
                            uint16_t       height,

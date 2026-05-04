@@ -93,19 +93,7 @@ typedef enum : uint32_t {
   k_ra_sdhi_cmd_spin = 2000000U,
 } ra_sdhi_timing_t;
 
-/**
- * @brief Implementation of ra_sdhi_init (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] instance See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_sdhi_init (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_sdhi_init(uint8_t instance)
 {
   volatile r_sdhi_regs_t* reg = ra_sdhi(instance);
@@ -162,19 +150,7 @@ ra_err_t ra_sdhi_init(uint8_t instance)
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_sdhi_deinit (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] instance See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_sdhi_deinit (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_sdhi_deinit(uint8_t instance)
 {
   volatile r_sdhi_regs_t* reg = ra_sdhi(instance);
@@ -194,22 +170,7 @@ ra_err_t ra_sdhi_deinit(uint8_t instance)
   return ra_mstp_disable(s_sdhi_mstp_table[instance]);
 }
 
-/**
- * @brief Implementation of ra_sdhi_send_command (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] instance See implementation.
- * @param[in] cmd See implementation.
- * @param[in] arg See implementation.
- * @param[in] out_rsp See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_sdhi_send_command (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_sdhi_send_command(uint8_t   instance,
                               uint32_t  cmd,
                               uint32_t  arg,
@@ -246,20 +207,7 @@ ra_err_t ra_sdhi_send_command(uint8_t   instance,
   return k_ra_err_hw_timeout;
 }
 
-/**
- * @brief Implementation of ra_sdhi_set_clock (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] instance See implementation.
- * @param[in] divider See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_sdhi_set_clock (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_sdhi_set_clock(uint8_t instance, uint32_t divider)
 {
   volatile r_sdhi_regs_t* reg = ra_sdhi(instance);
@@ -276,20 +224,7 @@ ra_err_t ra_sdhi_set_clock(uint8_t instance, uint32_t divider)
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_sdhi_get_status (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] instance See implementation.
- * @param[in] out_mask See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_sdhi_get_status (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_sdhi_get_status(uint8_t instance, uint32_t* out_mask)
 {
   RA_CHECK_NULL_PTR(out_mask, s_tag, "out_mask must not be nullptr");
@@ -300,20 +235,7 @@ ra_err_t ra_sdhi_get_status(uint8_t instance, uint32_t* out_mask)
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_sdhi_clear_status (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] instance See implementation.
- * @param[in] mask See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_sdhi_clear_status (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_sdhi_clear_status(uint8_t instance, uint32_t mask)
 {
   volatile r_sdhi_regs_t* reg = ra_sdhi(instance);
@@ -326,20 +248,7 @@ ra_err_t ra_sdhi_clear_status(uint8_t instance, uint32_t mask)
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_sdhi_attach_handler (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] fn See implementation.
- * @param[in] ctx See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_sdhi_attach_handler (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_sdhi_attach_handler(ra_sdhi_event_fn_t fn, void* ctx)
 {
   s_sdhi_fn  = fn;
@@ -347,17 +256,7 @@ ra_err_t ra_sdhi_attach_handler(ra_sdhi_event_fn_t fn, void* ctx)
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_sdhi_dispatch (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] instance See implementation.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_sdhi_dispatch (see header for full contract) -- see header for the documented contract. */
 void ra_sdhi_dispatch(uint8_t instance)
 {
   volatile r_sdhi_regs_t* reg = ra_sdhi(instance);
@@ -374,19 +273,7 @@ void ra_sdhi_dispatch(uint8_t instance)
   }
 }
 
-/**
- * @brief Implementation of ra_sdhi_enter_stop (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] instance See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_sdhi_enter_stop (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_sdhi_enter_stop(uint8_t instance)
 {
   if (instance >= k_ra_sdhi_instance_count) {
@@ -395,19 +282,7 @@ ra_err_t ra_sdhi_enter_stop(uint8_t instance)
   return ra_mstp_disable(s_sdhi_mstp_table[instance]);
 }
 
-/**
- * @brief Implementation of ra_sdhi_exit_stop (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] instance See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_sdhi_exit_stop (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_sdhi_exit_stop(uint8_t instance)
 {
   if (instance >= k_ra_sdhi_instance_count) {
@@ -670,22 +545,7 @@ static ra_err_t internal_sdhi_finish_xfer(volatile r_sdhi_regs_t* reg, uint32_t 
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_sdhi_read_block (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] instance See implementation.
- * @param[in] lba See implementation.
- * @param[in] buf See implementation.
- * @param[in] block_count See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_sdhi_read_block (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_sdhi_read_block(uint8_t instance, uint32_t lba, uint8_t* buf, uint32_t block_count)
 {
   RA_CHECK_NULL_PTR(buf, s_tag, "read_block: buf must not be nullptr");
@@ -710,22 +570,7 @@ ra_err_t ra_sdhi_read_block(uint8_t instance, uint32_t lba, uint8_t* buf, uint32
   return internal_sdhi_finish_xfer(reg, block_count);
 }
 
-/**
- * @brief Implementation of ra_sdhi_write_block (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] instance See implementation.
- * @param[in] lba See implementation.
- * @param[in] buf See implementation.
- * @param[in] block_count See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_sdhi_write_block (see header for full contract) -- see header for the documented contract. */
 ra_err_t
 ra_sdhi_write_block(uint8_t instance, uint32_t lba, const uint8_t* buf, uint32_t block_count)
 {
@@ -751,20 +596,7 @@ ra_sdhi_write_block(uint8_t instance, uint32_t lba, const uint8_t* buf, uint32_t
   return internal_sdhi_finish_xfer(reg, block_count);
 }
 
-/**
- * @brief Implementation of ra_sdhi_attach_dma (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] instance See implementation.
- * @param[in] enable See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_sdhi_attach_dma (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_sdhi_attach_dma(uint8_t instance, uint8_t enable)
 {
   volatile r_sdhi_regs_t* reg = ra_sdhi(instance);

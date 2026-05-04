@@ -976,19 +976,7 @@ ra_sram_self_test(uint8_t bank, uint32_t probe_offset, bool inject_two_bit, bool
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_sram_dispatch (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] bank See implementation.
- * @param[in] is_2bit See implementation.
- * @param[in] err_addr See implementation.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_sram_dispatch (see header for full contract) -- see header for the documented contract. */
 void ra_sram_dispatch(uint8_t bank, bool is_2bit, uintptr_t err_addr)
 {
   if ((uint16_t)bank >= (uint16_t)k_ra_sram_bank_count) {
@@ -1006,19 +994,7 @@ void ra_sram_dispatch(uint8_t bank, bool is_2bit, uintptr_t err_addr)
   }
 }
 
-/**
- * @brief Implementation of ra_sram_dispatch_from_esr (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] out_status See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_sram_dispatch_from_esr (see header for full contract) -- see header for the documented contract. */
 uint16_t ra_sram_dispatch_from_esr(ra_sram_status_t* out_status)
 {
   ra_sram_status_t local = {};
