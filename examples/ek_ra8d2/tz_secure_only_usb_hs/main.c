@@ -199,6 +199,43 @@ typedef struct {
 volatile demo_diag_t s_demo_diag = {};
 
 /**
+ * @var s_boot_probe
+ * @brief Temporary bisect probe for USBHS bring-up HardFault.
+ *
+ * @details
+ * Stepped through every major call in demo_worker so a JLink session
+ * can read the last value reached and localise which call faulted.
+ * Values: 1=thread entry, 2=pre _ux_system_initialize, 3=pre
+ * _ux_device_stack_initialize, 4=pre _ux_device_stack_class_register,
+ * 5=pre ra_board_usbhs_device_init, 7=post that, 8=pre
+ * ux_dcd_ra_usb_initialize, 9=post, 10=pre ra_usb_device_attach,
+ * 11=post, 12=entering echo while(1). Remove once the offending call
+ * is identified.
+ *
+ * @note File-scope, single-writer (worker thread).
+ * @since 0.1.0
+ */
+static volatile uint32_t s_boot_probe = 0U;
+
+/**
+ * @enum boot_probe_step_t
+ * @brief Bisect-probe step values for s_boot_probe.
+ */
+typedef enum : uint32_t {
+  k_boot_probe_thread_entry          = 1U,  /**< worker entry.                 */
+  k_boot_probe_pre_sys_init          = 2U,  /**< before _ux_system_initialize. */
+  k_boot_probe_pre_dev_stack_init    = 3U,  /**< before _ux_device_stack_init. */
+  k_boot_probe_pre_class_register    = 4U,  /**< before _ux_device_stack_class_register. */
+  k_boot_probe_pre_board_usbhs_init  = 5U,  /**< before ra_board_usbhs_device_init. */
+  k_boot_probe_post_board_usbhs_init = 7U,  /**< after ra_board_usbhs_device_init. */
+  k_boot_probe_pre_ux_dcd_init       = 8U,  /**< before ux_dcd_ra_usb_initialize. */
+  k_boot_probe_post_ux_dcd_init      = 9U,  /**< after ux_dcd_ra_usb_initialize. */
+  k_boot_probe_pre_dev_attach        = 10U, /**< before ra_usb_device_attach.  */
+  k_boot_probe_post_dev_attach       = 11U, /**< after ra_usb_device_attach.   */
+  k_boot_probe_enter_echo_loop       = 12U, /**< entering echo while(1).       */
+} boot_probe_step_t;
+
+/**
  * @var s_cdc_active_sem
  * @brief Posted by demo_cdc_activate; demo thread blocks on it instead
  *        of polling s_cdc_acm with tx_thread_sleep.
@@ -460,10 +497,13 @@ static VOID demo_worker(ULONG arg)
 {
   (void)arg;
 
+  s_boot_probe = (uint32_t)k_boot_probe_thread_entry;
   /* Bring USBX up. */
+  s_boot_probe = (uint32_t)k_boot_probe_pre_sys_init;
   if (_ux_system_initialize(s_usbx_pool, k_demo_usbx_pool_bytes, UX_NULL, 0) != UX_SUCCESS) {
     return;
   }
+  s_boot_probe = (uint32_t)k_boot_probe_pre_dev_stack_init;
   /* Pass our composite framework as both the FS and HS slot would --
    * the bridge announces UX_HIGH_SPEED_DEVICE and USBX accepts the
    * single framework as long as bcdUSB == 0x0200. */
@@ -485,6 +525,7 @@ static VOID demo_worker(ULONG arg)
     .ux_slave_class_cdc_acm_instance_deactivate = demo_cdc_deactivate,
     .ux_slave_class_cdc_acm_parameter_change    = UX_NULL,
   };
+  s_boot_probe = (uint32_t)k_boot_probe_pre_class_register;
   if (_ux_device_stack_class_register((UCHAR*)"ux_slave_class_cdc_acm",
                                       _ux_device_class_cdc_acm_entry,
                                       1, /* configuration #  */
@@ -498,19 +539,26 @@ static VOID demo_worker(ULONG arg)
    * (libs/ra_board_ek_ra8d2/src/ra_board_ek_ra8d2.c::
    * ra_board_usbhs_device_init -> internal_usbhs_clock_and_mstp ->
    * ra_usb_device_init(k_ra_usb_speed_hs)). */
+  s_boot_probe = (uint32_t)k_boot_probe_pre_board_usbhs_init;
   if (ra_board_usbhs_device_init() != k_ra_ok) {
     return;
   }
+  s_boot_probe = (uint32_t)k_boot_probe_post_board_usbhs_init;
 
   /* Plug our DCD bridge into the device stack and turn the bus on. */
+  s_boot_probe = (uint32_t)k_boot_probe_pre_ux_dcd_init;
   if (ux_dcd_ra_usb_initialize(k_ra_usb_speed_hs) != k_ra_ok) {
     return;
   }
+  s_boot_probe = (uint32_t)k_boot_probe_post_ux_dcd_init;
+  s_boot_probe = (uint32_t)k_boot_probe_pre_dev_attach;
   if (ra_usb_device_attach(k_ra_usb_speed_hs, true) != k_ra_ok) {
     return;
   }
+  s_boot_probe = (uint32_t)k_boot_probe_post_dev_attach;
 
   /* Echo loop. */
+  s_boot_probe = (uint32_t)k_boot_probe_enter_echo_loop;
   UCHAR buf[k_demo_echo_buf_bytes];
   ULONG n = 0UL;
   while (1) {
