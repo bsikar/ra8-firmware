@@ -381,6 +381,53 @@ volatile uint32_t s_dvst_state_history_count = 0U;
 volatile uint32_t s_busreset_rearm_count = 0U;
 
 /**
+ * @var s_dcpctr_after_rearm
+ * @brief Snapshot of ``DCPCTR`` taken at the end of every busreset_rearm.
+ *
+ * @details Bisect probe for the "VALID never asserts after bus reset"
+ * symptom. Expected post-rearm value with PID=NAK and CCPL/SUREQ low:
+ * 0x0000 (PID[1:0]=NAK, all other bits 0). A non-zero value means the
+ * IP latched something (PBUSY=bit 5, BSTS=bit 15, SQMON=bit 6) that may
+ * be blocking the next SETUP. HUM Ch 36.2.21 / 37.2.21 DCPCTR p 1991/2083.
+ *
+ * @note Single-writer (::internal_handle_dvst).
+ * @since 0.1.0
+ */
+volatile uint16_t s_dcpctr_after_rearm = 0U;
+
+/**
+ * @var s_intenb0_after_rearm
+ * @brief Snapshot of ``INTENB0`` taken at the end of every busreset_rearm.
+ *
+ * @details Bisect probe; expected value matches the device-mode mask in
+ * ``internal_usb_init_common`` --
+ * ``BEMP|BRDY|NRDY|CTRT|DVST|SOFR|RSME|VBSE`` = 0xFD00 (bits 8..15 set
+ * except bit 12 -- wait, bit 12 = DVST = set; bits 11..15 = CTRT/DVST/
+ * SOFR/RSME/VBSE; bits 8..10 = BRDY/NRDY/BEMP; combined = 0xFF00).
+ * If this reads back zero, INTENB0 was clobbered after rearm and the
+ * next CTRT edge will not raise an IRQ. HUM Ch 36.2.10 INTENB0 p 1980.
+ *
+ * @note Single-writer (::internal_handle_dvst).
+ * @since 0.1.0
+ */
+volatile uint16_t s_intenb0_after_rearm = 0U;
+
+/**
+ * @var s_cfifosel_after_rearm
+ * @brief Snapshot of ``CFIFOSEL`` taken at the end of every busreset_rearm.
+ *
+ * @details Bisect probe. Expected value 0x0400 (CURPIPE=DCP=0, ISEL=0
+ * for OUT, MBW=10b for 16-bit access). If CURPIPE bits [3:0] read non-
+ * zero, the rearm did not re-point the FIFO at the DCP and a stale
+ * data-stage pipe may shadow control transfers. HUM Ch 36.2.7 CFIFOSEL
+ * p 1976.
+ *
+ * @note Single-writer (::internal_handle_dvst).
+ * @since 0.1.0
+ */
+volatile uint16_t s_cfifosel_after_rearm = 0U;
+
+/**
  * @struct ra_usb_dcd_pipe_slot_t
  * @brief Per-pipe class-layer cache so the IRQ handler can re-arm
  *        BRDY-driven transfers without crawling the device endpoint
@@ -1188,13 +1235,19 @@ static void internal_handle_dvst(ra_usb_speed_t speed, uint16_t intsts0)
   /* On every Default-state entry (DVSQ == 0x10), re-arm DCP per
    * FSP usb_pstd_busreset reference flow. Without this re-arm the IP
    * silently drops the host's first SETUP token after bus reset and
-   * the host loops Default <-> Suspended-from-Default forever. The
-   * RA8D2 USB IP requires DCPCFG/DCPMAXP/DCPCTR be re-defaulted
-   * (and INTENB0 re-applied) before the next SETUP token can latch
-   * USBREQ. HUM Ch 36.2.20/21 p 1990-1991. */
+   * the host loops Default <-> Suspended-from-Default forever. After
+   * the rearm, capture DCPCTR / INTENB0 / CFIFOSEL into the JLink-
+   * readable probes so we can verify the rearm restored the expected
+   * state. HUM Ch 36.2.7 / 36.2.10 / 36.2.21 (FS) and Ch 37 mirrors. */
   if (dvsq == (uint16_t)k_ra_dvsq_default) {
     (void)ra_usb_device_busreset_rearm(speed);
     s_busreset_rearm_count++;
+    volatile r_usb_regs_t* const reg = (speed == k_ra_usb_speed_hs) ? ra_usb_hs() : ra_usb_fs();
+    if (reg != nullptr) {
+      s_dcpctr_after_rearm   = reg->DCPCTR;
+      s_intenb0_after_rearm  = reg->INTENB0;
+      s_cfifosel_after_rearm = reg->CFIFOSEL;
+    }
   }
 
   if (_ux_system_slave == UX_NULL) {
