@@ -947,69 +947,6 @@ ra_err_t ra_cgc_disable_stop_detection(void)
 }
 
 /**
- * @brief Bring up the USBHS PHY reference clock + module clock path.
- *
- * @details
- * The USBHS PHY's internal 480 MHz CDR PLL requires a stable 12 MHz
- * reference derived from the EK-RA8D2 main XTAL (24 MHz / 2). The CGC-
- * side prerequisite (HUM Ch 9 "Clock Generation Circuit", USBCKCR /
- * USBCKDIVCR description, p 365) is that the main oscillator stab-flag
- * (OSCSF.MOSCSF) is asserted before the USBHS MSTP ungate runs. We
- * verify that here, then take a PRCR-CGC unlock window so any future
- * USBCKCR.USBCKSREQ/USBCKSRDY handshake on real silicon happens under
- * the same protection-window contract the rest of this driver follows.
- *
- * On the host simulator the system registers are plain RAM, so the
- * helper short-circuits to ::k_ra_ok after the OSCSF check passes; on
- * silicon the PRCR window is the only thing that matters since
- * ::ra_cgc_init has already left MOSCSF asserted on a working board.
- *
- * @return ::ra_err_t error code.
- * @retval k_ra_ok USBHS clock subsystem armed.
- * @retval k_ra_err_hw_timeout Main XTAL never reported stable.
- *
- * @pre  ::ra_cgc_init has been called.
- * @pre  Caller is single-threaded init context.
- *
- * @post OSCSF.MOSCSF = 1.
- * @post PRCR is re-locked.
- *
- * @note Not thread-safe.
- *
- * @since 0.1.0
- */
-ra_err_t ra_cgc_usbhs_pll_enable(void)
-{
-  ra_log_info(s_tag, "usbhs phy clock enable");
-
-  /* Step 1: HUM Ch 9.2.21 "OSCSF : Oscillation Stabilization Flag
-   * Register", p 344. The USBHS PHY's 12 MHz reference is derived
-   * from the main XTAL; without MOSCSF=1 the PHY cannot lock. */
-  const ra_err_t osc_err = internal_wait_oscsf_set(k_ra_oscsf_bit_moscsf);
-  if (osc_err != k_ra_ok) {
-    ra_log_error_val(s_tag, "usbhs: main xtal not stable", (uint32_t)osc_err);
-    return osc_err;
-  }
-
-  /* Step 2: HUM Ch 9 "Clock Generation Circuit", USBCKCR / USBCKDIVCR
-   * description, p 365. Take a PRCR-CGC unlock window so the USBHS
-   * module-clock select is committed under the same protection
-   * contract as the other CGC writes. The detailed USBCKCR.USBCKSREQ /
-   * USBCKSRDY handshake is silicon-specific and runs only on target
-   * builds; on host the system block is plain RAM. */
-  RA_PROTECTED_WRITE(k_ra_prcr_unlock_cgc)
-  {
-    /* Reserved for future USBCKCR programming once the field
-     * encodings are added to ra8d2_cgc_regs.h. The PRCR window is
-     * still taken so the call site is correct on silicon. */
-    (void)0;
-  }
-
-  ra_log_info(s_tag, "usbhs phy clock ready");
-  return k_ra_ok;
-}
-
-/**
  * @enum ra_usbfs_clock_local_t
  * @brief Local sentinels for the USBCKSRDY handshake and divider codes.
  *
@@ -1341,6 +1278,287 @@ ra_err_t ra_cgc_usbfs_clock_enable(
     return err;
   }
   ra_log_info(s_tag, "usbfs clock ready (PLL2P/5 = 48 MHz)");
+  return k_ra_ok;
+}
+
+/**
+ * @brief Bring up the USBHS PHY reference clock + module clock path.
+ *
+ * @details
+ * The USBHS PHY's internal 480 MHz CDR PLL requires a stable 12 MHz
+ * reference derived from the EK-RA8D2 main XTAL (24 MHz / 2). The CGC-
+ * side prerequisite (HUM Ch 9 "Clock Generation Circuit", USBCKCR /
+ * USBCKDIVCR description, p 365) is that the main oscillator stab-flag
+ * (OSCSF.MOSCSF) is asserted before the USBHS MSTP ungate runs. We
+ * verify that here, then take a PRCR-CGC unlock window so any future
+ * USBCKCR.USBCKSREQ/USBCKSRDY handshake on real silicon happens under
+ * the same protection-window contract the rest of this driver follows.
+ *
+ * On the host simulator the system registers are plain RAM, so the
+ * helper short-circuits to ::k_ra_ok after the OSCSF check passes; on
+ * silicon the PRCR window is the only thing that matters since
+ * ::ra_cgc_init has already left MOSCSF asserted on a working board.
+ *
+ * @return ::ra_err_t error code.
+ * @retval k_ra_ok USBHS clock subsystem armed.
+ * @retval k_ra_err_hw_timeout Main XTAL never reported stable.
+ *
+ * @pre  ::ra_cgc_init has been called.
+ * @pre  Caller is single-threaded init context.
+ *
+ * @post OSCSF.MOSCSF = 1.
+ * @post PRCR is re-locked.
+ *
+ * @note Not thread-safe.
+ *
+ * @since 0.1.0
+ */
+/**
+ * @enum ra_usbhs_clock_local_t
+ * @brief Local sentinels for the USB60CKCR SREQ/SRDY handshake.
+ *
+ * @details
+ * USB60CKCR shares the bit layout of USBCKCR (HUM Ch 9; CMSIS
+ * `R7KA8D2KF_core0.h` -- `R_SYSTEM->USB60CKCR_b` mirrors
+ * `USBCKCR_b` with USB60CKSEL[3:0], USB60CKSREQ@bit6, USB60CKSRDY@bit7).
+ * USB60CKDIVCR uses the same non-linear codepoint map as USBCKDIVCR
+ * (FSP `bsp_clocks.c`):
+ *   /1=0, /2=1, /3=5, /4=2, /5=6, /6=3, /8=4, /10=7, /16=8.
+ * For the EK-RA8D2 USBHS PHY we land 60.000 MHz on USB60CLK from
+ * PLL2P (240 MHz) / 4 = 60.000 MHz exactly (USBHS PHY 12 MHz
+ * reference comes from internal /5 division of USB60CLK). PLL2 is
+ * configured at 960 MHz VCO with PL2ODIVP=/4 -> PLL2P=240 MHz, the
+ * same setup the FS path uses (see ::ra_cgc_usbfs_clock_enable).
+ */
+typedef enum : uint32_t {
+  k_ra_usbhs_srdy_poll_limit = 200000U, /**< Iterations before timeout.   */
+  k_ra_usbhs_div4_code       = 2U,      /**< USB60CKDIVCR codepoint /4.   */
+} ra_usbhs_clock_local_t;
+
+/**
+ * @enum ra_usbhs_mstp_local_t
+ * @brief Local sentinels for the USBHS module-stop pre-step.
+ *
+ * @details
+ * Mirrors the FS path's MSTPB11 pre-step. HUM Ch 9 "Clock Selection
+ * Switching Procedure" requires the dependent module to be in module-
+ * stop state (MSTP=1) BEFORE asserting SREQ when changing the divider
+ * from 1/n with n!=1. We programme USB60CKDIVCR from reset (1/1) to /4,
+ * so this precondition applies. If the caller has already released
+ * MSTPB12 (USBHS) the SREQ->SRDY handshake silently hangs.
+ */
+typedef enum : uint32_t {
+  k_ra_mstpb12_usbhs_mask = (uint32_t)(1UL << 12), /**< MSTPCRB.MSTPB12 (USBHS). */
+} ra_usbhs_mstp_local_t;
+
+/**
+ * @brief Spin until USB60CKCR.USB60CKSRDY matches the expected value.
+ * @details See implementation.
+ * @param[in] expected Expected value for USB60CKSRDY (0 or 1).
+ * @return Result code.
+ * @retval k_ra_ok      USB60CKSRDY reached the expected level.
+ * @retval k_ra_err_hw_timeout Polling exceeded the iteration cap.
+ * @pre PRCR-CGC must be unlocked at call site.
+ * @pre Caller is in single-threaded init context.
+ * @post No mutation; readback only.
+ * @post Iteration count is bounded.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static ra_err_t internal_wait_usb60cksrdy(uint8_t expected)
+{
+  const uint8_t mask = (uint8_t)(1U << k_ra_usbckcr_bit_srdy);
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_usbhs_srdy_poll_limit; ++i) {
+    const uint8_t got = (uint8_t)((*ra_sys_usb60ckcr() & mask) >> k_ra_usbckcr_bit_srdy);
+    if (got == expected) {
+      return k_ra_ok;
+    }
+  }
+  return k_ra_err_hw_timeout;
+}
+
+/**
+ * @brief PRCR-protected USB60CKCR / USB60CKDIVCR handshake body.
+ * @details Mirror of ::internal_usbckcr_switch_to_pll2p_div5 for the
+ *  USBHS 60 MHz path: SREQ=1, wait SRDY=1, write USB60CKDIVCR=/4,
+ *  write USB60CKCR=src|SREQ, write USB60CKCR=src, wait SRDY=0.
+ *  HUM Ch 9 "Clock Generation Circuit", USB60CKCR description (USBHS
+ *  60 MHz source select). FSP `bsp_clocks.c` ::bsp_peripheral_clock_set
+ *  is the canonical reference for the SREQ/SRDY ordering.
+ * @return ::ra_err_t error code.
+ * @retval k_ra_ok USBHS 60 MHz clock running on PLL2P/4.
+ * @retval k_ra_err_hw_timeout SRDY=1 or SRDY=0 wait exceeded.
+ * @pre PLL2 locked at 240 MHz on PLL2P.
+ * @pre MSTPCRB.MSTPB12 = 1 (USBHS module-stopped).
+ * @post On k_ra_ok USB60CKCR.USB60CKSEL = PLL2P, USB60CKDIVCR = /4.
+ * @post PRCR re-locked (RA_PROTECTED_WRITE always re-locks).
+ * @note Not thread-safe; init context only.
+ * @since 0.1.0
+ */
+static ra_err_t internal_usb60ckcr_switch_to_pll2p_div4(void)
+{
+  ra_err_t err = k_ra_ok;
+  RA_PROTECTED_WRITE(k_ra_prcr_unlock_cgc)
+  {
+    const uint8_t sreq_mask = (uint8_t)(1U << k_ra_usbckcr_bit_sreq);
+    *ra_sys_usb60ckcr()     = sreq_mask;
+    err                     = internal_wait_usb60cksrdy(1U);
+    if (err != k_ra_ok) {
+      ra_log_error(s_tag, "usbhs: SRDY=1 timeout");
+      break;
+    }
+    *ra_sys_usb60ckdivcr() = (uint8_t)k_ra_usbhs_div4_code;
+    const uint8_t src      = (uint8_t)((uint8_t)k_ra_usbcksel_pll2p & k_ra_usbckcr_mask_sel);
+    *ra_sys_usb60ckcr()    = (uint8_t)(src | sreq_mask);
+    *ra_sys_usb60ckcr()    = src;
+    err                    = internal_wait_usb60cksrdy(0U);
+    if (err != k_ra_ok) {
+      ra_log_error(s_tag, "usbhs: SRDY=0 timeout");
+      break;
+    }
+  }
+  return err;
+}
+
+/**
+ * @brief Ensure HOCO is running so a USBCKCR/USB60CKCR SREQ->SRDY
+ *        handshake can drain.
+ *
+ * @details
+ * USBCKCR / USB60CKCR's reset-default source is HOCO. The SREQ -> SRDY
+ * synchronizer chain crosses from ICLK into the CURRENT USB clock
+ * source's domain (HOCO at boot). If HOCO is stopped (HCSTP = 1) the
+ * handshake never completes (observed: USBCKCR = 0x40 with HOCOSF = 0).
+ * ::ra_cgc_init leaves HOCO stopped because it switches SCKSCR to PLL1,
+ * so this helper restarts HOCO under a PRCR-CGC unlock window (HOCOCR
+ * IS PRCR-protected; writes outside the window are silently dropped)
+ * and then waits OSCSF.HOCOSF outside the PRCR window (read-only).
+ *
+ * @return ::ra_err_t error code.
+ * @retval k_ra_ok HOCO running, OSCSF.HOCOSF asserted.
+ * @retval k_ra_err_hw_timeout HOCOSF never asserted.
+ *
+ * @pre Caller is single-threaded init context.
+ * @pre PRCR is currently locked (helper takes its own window).
+ *
+ * @post On k_ra_ok HOCO is running.
+ * @post PRCR is re-locked.
+ *
+ * @note Not thread-safe.
+ *
+ * @see ra_cgc_usbfs_clock_enable
+ * @see ra_cgc_usbhs_pll_enable
+ *
+ * @since 0.1.0
+ */
+static ra_err_t internal_ensure_hoco_running_for_usb_ck(void)
+{
+  RA_PROTECTED_WRITE(k_ra_prcr_unlock_cgc)
+  {
+    volatile uint8_t* const hococr = ra_sys_hococr();
+    if ((*hococr & (uint8_t)(1U << k_ra_hococr_hcstp)) != 0U) {
+      *hococr = (uint8_t)((uint8_t)*hococr & (uint8_t)~(1U << k_ra_hococr_hcstp));
+    }
+  }
+  return internal_wait_oscsf_set(k_ra_oscsf_bit_hocosf);
+}
+
+/**
+ * @brief Bring up the USBHS PHY 60 MHz reference clock + module clock path.
+ *
+ * @details
+ * The USBHS PHY's internal 480 MHz CDR PLL requires a stable 12 MHz
+ * reference, derived inside the PHY from a /5 division of the 60 MHz
+ * USB60CLK. This routine programmes USB60CKCR / USB60CKDIVCR (HUM
+ * Ch 9 "Clock Generation Circuit") so USB60CLK = PLL2P / 4 = 60.000
+ * MHz exactly (PLL2P = 240 MHz from the same configuration the FS
+ * path uses, see ::ra_cgc_usbfs_clock_enable). Mirrors the canonical
+ * FSP ``bsp_clocks.c`` ``bsp_peripheral_clock_set`` SREQ/SRDY ordering.
+ *
+ * Sequence:
+ *  1. Wait OSCSF.MOSCSF (main XTAL stable).
+ *  2. Enable PLL2 at 240 MHz on PLL2P.
+ *  3. Force MSTPCRB.MSTPB12 = 1 (USBHS module-stop) before changing
+ *     USB60CKDIVCR off 1/1, per HUM "Clock selection switching
+ *     procedure".
+ *  4. Ensure HOCO is running (USB60CKCR's reset-default source) so
+ *     the SREQ -> SRDY synchronizer chain can drain.
+ *  5. SREQ/SRDY handshake on USB60CKCR/USB60CKDIVCR, landing
+ *     USB60CLK = PLL2P / 4 = 60 MHz exactly.
+ *
+ * @return ::ra_err_t error code.
+ * @retval k_ra_ok USBHS 60 MHz clock running on PLL2P/4.
+ * @retval k_ra_err_hw_timeout Main XTAL, HOCO, or USB60CKSRDY handshake
+ *         timed out.
+ * @retval k_ra_err_invalid_arg PLL2 mul/quarters out of range
+ *         (propagated from ::ra_cgc_pll2_enable).
+ *
+ * @pre  ::ra_cgc_init has been called.
+ * @pre  Caller is single-threaded init context; CPU not on PLL2.
+ *
+ * @post On k_ra_ok: PLL2 locked at 240 MHz on PLL2P, MSTPB12 = 1,
+ *       USB60CKCR.USB60CKSEL = PLL2P, USB60CKDIVCR = /4.
+ * @post PRCR is re-locked.
+ *
+ * @note Not thread-safe; init context only.
+ *
+ * @see ra_cgc_usbfs_clock_enable
+ * @see ra_cgc_pll2_enable
+ *
+ * @since 0.1.0
+ */
+ra_err_t ra_cgc_usbhs_pll_enable(
+  void) // NOLINT(readability-function-size,readability-function-cognitive-complexity)
+{
+  ra_log_info(s_tag, "usbhs phy clock enable");
+
+  /* Step 1: HUM Ch 9.2.21 "OSCSF : Oscillation Stabilization Flag
+   * Register", p 344. The USBHS PHY's 12 MHz reference is derived
+   * from the main XTAL; without MOSCSF=1 the PHY cannot lock. */
+  const ra_err_t osc_err = internal_wait_oscsf_set(k_ra_oscsf_bit_moscsf);
+  if (osc_err != k_ra_ok) {
+    ra_log_error_val(s_tag, "usbhs: main xtal not stable", (uint32_t)osc_err);
+    return osc_err;
+  }
+
+  /* Step 2: bring up PLL2 to land 240 MHz on PLL2P. Reuse the FS path's
+   * configuration -- 24 MHz XTAL / PL2IDIV(/2) * MUL(80) = 960 MHz VCO,
+   * PL2ODIVP=/4 -> PLL2P = 240 MHz. PLL2P / 4 = 60.000 MHz on USB60CLK
+   * exactly (0 ppm vs the USBHS 60 MHz spec target). ra_cgc_pll2_enable
+   * is idempotent w.r.t. the PRCR window and tolerates being called
+   * once per USB controller bring-up (FS path also calls it). */
+  const ra_err_t pll2_err = ra_cgc_pll2_enable((uint8_t)k_ra_pll2_usbfs_mul,
+                                               (uint8_t)k_ra_pll2_usbfs_quarters,
+                                               k_ra_plodiv_div4);
+  if (pll2_err != k_ra_ok) {
+    ra_log_error_val(s_tag, "usbhs: pll2 enable failed", (uint32_t)pll2_err);
+    return pll2_err;
+  }
+
+  /* Step 3: Force USBHS into module-stop (MSTPB12 = 1) BEFORE the SREQ
+   * handshake. HUM Ch 9 "Clock selection switching procedure" step 1 is
+   * mandatory whenever USB60CKDIVCR is moved off 1/1 (we are programming
+   * /4 below). MSTPCR is NOT PRCR-protected. ra_usb_device_init() will
+   * release MSTPB12 again later via the ref-counted ra_mstp_enable
+   * path for k_ra_mstp_usbhs. */
+  ra_mstp()->MSTPCRB |= (uint32_t)k_ra_mstpb12_usbhs_mask;
+  (void)ra_mstp()->MSTPCRB; /* HUM 11.2.7 Note 2: read-back. */
+
+  /* Step 4: Ensure HOCO is running so the SREQ->SRDY synchronizer can
+   * drain (USB60CKCR's reset-default source is HOCO). */
+  const ra_err_t hoco_err = internal_ensure_hoco_running_for_usb_ck();
+  if (hoco_err != k_ra_ok) {
+    ra_log_error(s_tag, "usbhs: HOCO stabilization timeout");
+    return hoco_err;
+  }
+
+  /* Step 5: USB60CKCR / USB60CKDIVCR SREQ/SRDY handshake. */
+  const ra_err_t err = internal_usb60ckcr_switch_to_pll2p_div4();
+  if (err != k_ra_ok) {
+    return err;
+  }
+
+  ra_log_info(s_tag, "usbhs phy clock ready (PLL2P/4 = 60 MHz)");
   return k_ra_ok;
 }
 
