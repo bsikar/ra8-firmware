@@ -1393,20 +1393,7 @@ ra_err_t ra_ota_run_full_update(void)
 #if defined(__GNUC__) || defined(__clang__)
 __attribute__((weak))
 #endif
-/**
- * @brief Ra ota system reset hook.
- *
- * @details See implementation for details.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Ra ota system reset hook -- see implementation for details. */
 void ra_ota_system_reset_hook(void)
 {
   /* Intentionally empty. */

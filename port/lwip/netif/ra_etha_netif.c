@@ -115,22 +115,7 @@ static ra_etha_netif_slot_t s_slots[RA_ETHA_NETIF_MAX_PORTS];
 /* Helpers                                                                   */
 /* ------------------------------------------------------------------------- */
 
-/**
- * @brief Recover the ::ra_etha_port_t a netif was created for.
- *
- * @param[in] netif lwIP netif pointer (may be nullptr).
- *
- * @return Port index in [0, RA_ETHA_NETIF_MAX_PORTS) on success.
- * @retval RA_ETHA_NETIF_MAX_PORTS netif is nullptr or carries an invalid port.
- *
- * @details See implementation for details.
- * @pre Module has been initialised.
- * @pre Caller has validated arguments.
- * @post Side effects bounded to documented state.
- * @post State reflects operation result.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Recover the ::ra_etha_port_t a netif was created for -- see implementation for details. */
 static uint32_t internal_port_of(const struct netif* netif) {
     if (netif == NULL) {
         return RA_ETHA_NETIF_MAX_PORTS;
@@ -232,25 +217,7 @@ static err_t internal_linkoutput(struct netif* netif, struct pbuf* p) {
 /* Public API                                                                */
 /* ------------------------------------------------------------------------- */
 
-/**
- * @brief Ra etha netif init.
- *
- * @details See implementation for details.
- *
- * @param[in,out] netif See function signature for type and usage.
- *
- * @return Result code or value; see implementation.
- * @retval 0 Success or default value.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Ra etha netif init -- see implementation for details. */
 err_t ra_etha_netif_init(struct netif* netif) {
     if (netif == NULL) {
         return ERR_ARG;
@@ -292,27 +259,7 @@ err_t ra_etha_netif_init(struct netif* netif) {
     return ERR_OK;
 }
 
-/**
- * @brief Ra etha netif attach tx.
- *
- * @details See implementation for details.
- *
- * @param[in,out] netif See function signature for type and usage.
- * @param[in,out] fn See function signature for type and usage.
- * @param[in,out] ctx See function signature for type and usage.
- *
- * @return Result code or value; see implementation.
- * @retval 0 Success or default value.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Ra etha netif attach tx -- see implementation for details. */
 err_t ra_etha_netif_attach_tx(struct netif*       netif,
                               ra_etha_netif_tx_fn fn,
                               void*               ctx) {
@@ -331,27 +278,7 @@ err_t ra_etha_netif_attach_tx(struct netif*       netif,
     return ERR_OK;
 }
 
-/**
- * @brief Ra etha netif input.
- *
- * @details See implementation for details.
- *
- * @param[in,out] netif See function signature for type and usage.
- * @param[in,out] frame See function signature for type and usage.
- * @param[in,out] length See function signature for type and usage.
- *
- * @return Result code or value; see implementation.
- * @retval 0 Success or default value.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Ra etha netif input -- see implementation for details. */
 ra_err_t ra_etha_netif_input(struct netif* netif, const uint8_t* frame, uint16_t length) {
     if (netif == NULL || frame == NULL) {
         return k_ra_err_null_ptr;

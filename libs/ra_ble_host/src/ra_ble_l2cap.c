@@ -157,67 +157,14 @@ static ra_ble_host_state_t s_state;
  */
 
 ra_ble_host_state_t* ra_ble_host_state(void);
-/**
- * @brief Ra ble host dispatch event.
- *
- * @details See implementation for details.
- *
- * @param[in,out] evt See function signature for type and usage.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Ra ble host dispatch event -- see implementation for details. */
 void ra_ble_host_dispatch_event(const ra_ble_host_event_t* evt);
-/**
- * @brief Ra ble host l2cap send.
- *
- * @details See implementation for details.
- *
- * @param[in,out] conn_handle See function signature for type and usage.
- * @param[in,out] cid See function signature for type and usage.
- * @param[in,out] payload See function signature for type and usage.
- * @param[in,out] payload_len See function signature for type and usage.
- *
- * @return Result code or value; see implementation.
- * @retval 0 Success or default value.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Ra ble host l2cap send -- see implementation for details. */
 ra_err_t ra_ble_host_l2cap_send(uint16_t       conn_handle,
                                 uint16_t       cid,
                                 const uint8_t* payload,
                                 uint16_t       payload_len);
-/**
- * @brief Ra ble host att handle pdu.
- *
- * @details See implementation for details.
- *
- * @param[in,out] conn_handle See function signature for type and usage.
- * @param[in,out] pdu See function signature for type and usage.
- * @param[in,out] pdu_len See function signature for type and usage.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Ra ble host att handle pdu -- see implementation for details. */
 void ra_ble_host_att_handle_pdu(uint16_t conn_handle, const uint8_t* pdu, uint16_t pdu_len);
 
 /* =============================================================================
@@ -497,25 +444,7 @@ static void ra_ble_host_acl_in(uint16_t conn_handle, const uint8_t* payload, uin
   s_state.reassembly_len = 0U;
 }
 
-/**
- * @brief HCI ACL -> host trampoline registered via ra_ble_attach_acl_handler.
- *
- * @param[in] ctx     Unused (always NULL here).
- * @param[in] handle  HCI ACL handle word (handle | PB | BC).
- * @param[in] payload ACL data bytes.
- * @param[in] len     Byte count.
- *
- * @pre Registered via ra_ble_attach_acl_handler.
- * @pre Stack is initialized.
- * @post ra_ble_host_acl_in has been invoked with the masked handle.
- * @post Reassembly state may have advanced.
- *
- * @note Not thread-safe; called only from the HCI driver callback.
- *
- * @since 0.1.0
- *
- * @details See implementation for details.
- */
+/* HCI ACL -> host trampoline registered via ra_ble_attach_acl_handler -- see implementation for details. */
 static void
 internal_acl_trampoline(void* ctx, uint16_t handle, const uint8_t* payload, uint16_t len)
 {

@@ -73,25 +73,7 @@ typedef enum : uint32_t {
   k_ble_npl_ms_per_sec      = 1000U,       /**< Helper: ms / second.        */
 } ble_npl_threadx_const_t;
 
-/**
- * @brief Translate an NPL timeout into a ThreadX wait code.
- *
- * @param[in] tmo Timeout in NPL ticks; ``0xFFFFU`` means "forever",
- *                ``0`` means "no wait".
- *
- * @return ULONG suitable for ``tx_*_get`` / ``tx_*_put`` calls.
- *
- * @pre tmo is a valid NPL tick count or k_ble_npl_threadx_wait_forever.
- * @post Returned value is one of TX_WAIT_FOREVER / TX_NO_WAIT / tmo.
- *
- * @since 0.1.0
- *
- * @details See implementation for details.
- * @retval 0 Success or default value.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @note Not thread-safe unless documented otherwise.
- */
+/* Translate an NPL timeout into a ThreadX wait code -- see implementation for details. */
 static ULONG priv_tmo_to_tx(ble_npl_time_t tmo)
 {
   if (tmo == (ble_npl_time_t)k_ble_npl_threadx_wait_forever) {
@@ -105,24 +87,7 @@ static ULONG priv_tmo_to_tx(ble_npl_time_t tmo)
  * =============================================================================
  */
 
-/**
- * @brief Initialise an NPL mutex.
- *
- * @param[in,out] mu NPL mutex pointer.
- *
- * @return 0 on success, non-zero on failure (matches ``ble_npl_error_t``).
- *
- * @pre mu != NULL.
- * @post On success the underlying ``TX_MUTEX`` is created.
- *
- * @since 0.1.0
- *
- * @details See implementation for details.
- * @retval 0 Success or default value.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @note Not thread-safe unless documented otherwise.
- */
+/* Initialise an NPL mutex -- see implementation for details. */
 uint32_t ble_npl_mutex_init(struct ble_npl_mutex* mu)
 {
   if (mu == NULL) {
@@ -132,25 +97,7 @@ uint32_t ble_npl_mutex_init(struct ble_npl_mutex* mu)
   return (st == TX_SUCCESS) ? (uint32_t)k_ble_npl_ok : (uint32_t)k_ble_npl_error;
 }
 
-/**
- * @brief Pend on an NPL mutex with timeout.
- *
- * @param[in,out] mu      NPL mutex pointer.
- * @param[in]     timeout NPL ticks to wait; ``0xFFFFU`` is forever.
- *
- * @return 0 on acquired, non-zero on timeout/error.
- *
- * @pre mu != NULL.
- * @post On success the calling thread owns the mutex.
- *
- * @since 0.1.0
- *
- * @details See implementation for details.
- * @retval 0 Success or default value.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @note Not thread-safe unless documented otherwise.
- */
+/* Pend on an NPL mutex with timeout -- see implementation for details. */
 uint32_t ble_npl_mutex_pend(struct ble_npl_mutex* mu, ble_npl_time_t timeout)
 {
   if (mu == NULL) {
@@ -163,24 +110,7 @@ uint32_t ble_npl_mutex_pend(struct ble_npl_mutex* mu, ble_npl_time_t timeout)
   return (st == TX_NOT_AVAILABLE) ? (uint32_t)k_ble_npl_timeout : (uint32_t)k_ble_npl_error;
 }
 
-/**
- * @brief Release an NPL mutex.
- *
- * @param[in,out] mu NPL mutex pointer.
- *
- * @return 0 on released, non-zero on failure.
- *
- * @pre mu != NULL.
- * @pre Calling thread owns the mutex.
- * @post Calling thread no longer owns the mutex.
- *
- * @since 0.1.0
- *
- * @details See implementation for details.
- * @retval 0 Success or default value.
- * @post Side effects bounded to documented state.
- * @note Not thread-safe unless documented otherwise.
- */
+/* Release an NPL mutex -- see implementation for details. */
 uint32_t ble_npl_mutex_release(struct ble_npl_mutex* mu)
 {
   if (mu == NULL) {
@@ -195,26 +125,7 @@ uint32_t ble_npl_mutex_release(struct ble_npl_mutex* mu)
  * =============================================================================
  */
 
-/**
- * @brief Initialise an NPL counting semaphore.
- *
- * @param[in,out] sem    NPL semaphore pointer.
- * @param[in]     tokens Initial token count.
- *
- * @return 0 on success.
- *
- * @pre sem != NULL.
- * @post On success the underlying ``TX_SEMAPHORE`` is created with
- *       ``tokens`` initial counts.
- *
- * @since 0.1.0
- *
- * @details See implementation for details.
- * @retval 0 Success or default value.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @note Not thread-safe unless documented otherwise.
- */
+/* Initialise an NPL counting semaphore -- see implementation for details. */
 uint32_t ble_npl_sem_init(struct ble_npl_sem* sem, uint16_t tokens)
 {
   if (sem == NULL) {
@@ -224,25 +135,7 @@ uint32_t ble_npl_sem_init(struct ble_npl_sem* sem, uint16_t tokens)
   return (st == TX_SUCCESS) ? (uint32_t)k_ble_npl_ok : (uint32_t)k_ble_npl_error;
 }
 
-/**
- * @brief Pend on an NPL semaphore.
- *
- * @param[in,out] sem     NPL semaphore pointer.
- * @param[in]     timeout NPL ticks to wait; ``0xFFFFU`` is forever.
- *
- * @return 0 on acquired, non-zero on timeout/error.
- *
- * @pre sem != NULL.
- * @post On success one token has been consumed.
- *
- * @since 0.1.0
- *
- * @details See implementation for details.
- * @retval 0 Success or default value.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @note Not thread-safe unless documented otherwise.
- */
+/* Pend on an NPL semaphore -- see implementation for details. */
 uint32_t ble_npl_sem_pend(struct ble_npl_sem* sem, ble_npl_time_t timeout)
 {
   if (sem == NULL) {
@@ -255,24 +148,7 @@ uint32_t ble_npl_sem_pend(struct ble_npl_sem* sem, ble_npl_time_t timeout)
   return (st == TX_NO_INSTANCE) ? (uint32_t)k_ble_npl_timeout : (uint32_t)k_ble_npl_error;
 }
 
-/**
- * @brief Release a token back into an NPL semaphore.
- *
- * @param[in,out] sem NPL semaphore pointer.
- *
- * @return 0 on success.
- *
- * @pre sem != NULL.
- * @post Token count incremented by one.
- *
- * @since 0.1.0
- *
- * @details See implementation for details.
- * @retval 0 Success or default value.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @note Not thread-safe unless documented otherwise.
- */
+/* Release a token back into an NPL semaphore -- see implementation for details. */
 uint32_t ble_npl_sem_release(struct ble_npl_sem* sem)
 {
   if (sem == NULL) {
@@ -282,24 +158,7 @@ uint32_t ble_npl_sem_release(struct ble_npl_sem* sem)
   return (st == TX_SUCCESS) ? (uint32_t)k_ble_npl_ok : (uint32_t)k_ble_npl_error;
 }
 
-/**
- * @brief Read the current token count of an NPL semaphore.
- *
- * @param[in] sem NPL semaphore pointer.
- *
- * @return Current token count (0 on NULL).
- *
- * @pre sem may be NULL.
- * @post No state change.
- *
- * @since 0.1.0
- *
- * @details See implementation for details.
- * @retval 0 Success or default value.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @note Not thread-safe unless documented otherwise.
- */
+/* Read the current token count of an NPL semaphore -- see implementation for details. */
 uint16_t ble_npl_sem_get_count(struct ble_npl_sem* sem)
 {
   if (sem == NULL) {
@@ -315,23 +174,7 @@ uint16_t ble_npl_sem_get_count(struct ble_npl_sem* sem)
  * =============================================================================
  */
 
-/**
- * @brief Initialise an NPL event.
- *
- * @param[out] ev  NPL event pointer.
- * @param[in]  fn  Callback to fire when the event runs.
- * @param[in]  arg Opaque user argument.
- *
- * @pre ev != NULL.
- * @post ev is in the unqueued state.
- *
- * @since 0.1.0
- *
- * @details See implementation for details.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @note Not thread-safe unless documented otherwise.
- */
+/* Initialise an NPL event -- see implementation for details. */
 void ble_npl_event_init(struct ble_npl_event* ev, ble_npl_event_fn* fn, void* arg)
 {
   if (ev == NULL) {
@@ -342,21 +185,7 @@ void ble_npl_event_init(struct ble_npl_event* ev, ble_npl_event_fn* fn, void* ar
   ev->arg = arg;
 }
 
-/**
- * @brief Initialise an NPL event queue.
- *
- * @param[in,out] evq NPL event queue pointer.
- *
- * @pre evq != NULL.
- * @post Queue is empty and ready to accept events.
- *
- * @since 0.1.0
- *
- * @details See implementation for details.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @note Not thread-safe unless documented otherwise.
- */
+/* Initialise an NPL event queue -- see implementation for details. */
 void ble_npl_eventq_init(struct ble_npl_eventq* evq)
 {
   if (evq == NULL) {
@@ -395,22 +224,7 @@ struct ble_npl_event* ble_npl_eventq_get(struct ble_npl_eventq* evq, ble_npl_tim
   return ev;
 }
 
-/**
- * @brief Post an event into an NPL event queue (idempotent).
- *
- * @param[in,out] evq NPL event queue pointer.
- * @param[in,out] ev  NPL event pointer.
- *
- * @pre evq != NULL && ev != NULL.
- * @post On success ev->queued is 1.
- *
- * @since 0.1.0
- *
- * @details See implementation for details.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @note Not thread-safe unless documented otherwise.
- */
+/* Post an event into an NPL event queue (idempotent) -- see implementation for details. */
 void ble_npl_eventq_put(struct ble_npl_eventq* evq, struct ble_npl_event* ev)
 {
   if (evq == NULL || ev == NULL) {
@@ -424,23 +238,7 @@ void ble_npl_eventq_put(struct ble_npl_eventq* evq, struct ble_npl_event* ev)
   (void)tx_queue_send(&evq->q, &slot, TX_NO_WAIT);
 }
 
-/**
- * @brief Best-effort removal of an event from a queue.
- *
- * @param[in,out] evq NPL event queue pointer.
- * @param[in,out] ev  NPL event pointer.
- *
- * @pre evq != NULL && ev != NULL.
- * @post ev->queued is 0 (we cannot scan a TX_QUEUE; fall back to
- *       just clearing the queued flag so a later enqueue is honoured).
- *
- * @since 0.1.0
- *
- * @details See implementation for details.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @note Not thread-safe unless documented otherwise.
- */
+/* Best-effort removal of an event from a queue -- see implementation for details. */
 void ble_npl_eventq_remove(struct ble_npl_eventq* evq, struct ble_npl_event* ev)
 {
   (void)evq;
@@ -450,21 +248,7 @@ void ble_npl_eventq_remove(struct ble_npl_eventq* evq, struct ble_npl_event* ev)
   ev->queued = 0U;
 }
 
-/**
- * @brief Run an NPL event by invoking its callback.
- *
- * @param[in,out] ev NPL event pointer.
- *
- * @pre ev != NULL && ev->fn != NULL.
- * @post ev->fn() has been invoked synchronously.
- *
- * @since 0.1.0
- *
- * @details See implementation for details.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @note Not thread-safe unless documented otherwise.
- */
+/* Run an NPL event by invoking its callback -- see implementation for details. */
 void ble_npl_event_run(struct ble_npl_event* ev)
 {
   if (ev == NULL || ev->fn == NULL) {
@@ -473,24 +257,7 @@ void ble_npl_event_run(struct ble_npl_event* ev)
   ev->fn(ev);
 }
 
-/**
- * @brief Test whether an event is currently queued.
- *
- * @param[in] ev NPL event pointer.
- *
- * @return 1 when queued, 0 otherwise.
- *
- * @pre ev may be NULL.
- *
- * @since 0.1.0
- *
- * @details See implementation for details.
- * @retval 0 Success or default value.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post State reflects operation result.
- * @note Not thread-safe unless documented otherwise.
- */
+/* Test whether an event is currently queued -- see implementation for details. */
 uint8_t ble_npl_event_is_queued(struct ble_npl_event* ev)
 {
   return (ev != NULL && ev->queued != 0U) ? 1U : 0U;
@@ -512,22 +279,7 @@ void* ble_npl_event_get_arg(struct ble_npl_event* ev)
   return (ev == NULL) ? NULL : ev->arg;
 }
 
-/**
- * @brief Replace the user-arg pointer attached to an event.
- *
- * @param[in,out] ev  NPL event pointer.
- * @param[in]     arg New user argument.
- *
- * @pre ev != NULL.
- *
- * @since 0.1.0
- *
- * @details See implementation for details.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post State reflects operation result.
- * @note Not thread-safe unless documented otherwise.
- */
+/* Replace the user-arg pointer attached to an event -- see implementation for details. */
 void ble_npl_event_set_arg(struct ble_npl_event* ev, void* arg)
 {
   if (ev != NULL) {
@@ -535,24 +287,7 @@ void ble_npl_event_set_arg(struct ble_npl_event* ev, void* arg)
   }
 }
 
-/**
- * @brief True when the event queue is empty.
- *
- * @param[in] evq NPL event queue pointer.
- *
- * @return 1 when empty, 0 otherwise.
- *
- * @pre evq may be NULL.
- *
- * @since 0.1.0
- *
- * @details See implementation for details.
- * @retval 0 Success or default value.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post State reflects operation result.
- * @note Not thread-safe unless documented otherwise.
- */
+/* True when the event queue is empty -- see implementation for details. */
 uint8_t ble_npl_eventq_is_empty(struct ble_npl_eventq* evq)
 {
   if (evq == NULL) {
@@ -570,23 +305,7 @@ uint8_t ble_npl_eventq_is_empty(struct ble_npl_eventq* evq)
  * =============================================================================
  */
 
-/**
- * @brief ThreadX timer trampoline: posts our event into its eventq.
- *
- * @param[in] arg The owning ``struct ble_npl_callout *`` (cast through ULONG).
- *
- * @pre arg != 0.
- * @post On success the event has been pushed into the callout's evq.
- *
- * @note Runs in the ThreadX timer context (ISR if
- *       ``TX_TIMER_PROCESS_IN_ISR`` is defined).
- *
- * @since 0.1.0
- *
- * @details See implementation for details.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- */
+/* ThreadX timer trampoline: posts our event into its eventq -- see implementation for details. */
 static void priv_callout_trampoline(ULONG arg)
 {
   struct ble_npl_callout* co = (struct ble_npl_callout*)(uintptr_t)arg;
@@ -596,24 +315,7 @@ static void priv_callout_trampoline(ULONG arg)
   ble_npl_eventq_put(co->evq, &co->ev);
 }
 
-/**
- * @brief Initialise an NPL callout (does not start it).
- *
- * @param[out] co     NPL callout pointer.
- * @param[in]  evq    Queue to post the event into when the timer fires.
- * @param[in]  ev_cb  Event callback.
- * @param[in]  ev_arg Event user argument.
- *
- * @pre co != NULL && evq != NULL.
- * @post Underlying ``TX_TIMER`` is created in the inactive state.
- *
- * @since 0.1.0
- *
- * @details See implementation for details.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @note Not thread-safe unless documented otherwise.
- */
+/* Initialise an NPL callout (does not start it) -- see implementation for details. */
 void ble_npl_callout_init(struct ble_npl_callout* co,
                           struct ble_npl_eventq*  evq,
                           ble_npl_event_fn*       ev_cb,
@@ -635,25 +337,7 @@ void ble_npl_callout_init(struct ble_npl_callout* co,
                         TX_NO_ACTIVATE);
 }
 
-/**
- * @brief Arm the callout to fire ``ticks`` from now.
- *
- * @param[in,out] co    NPL callout pointer.
- * @param[in]     ticks Delay in NPL ticks.
- *
- * @return 0 on success.
- *
- * @pre co != NULL && co was previously initialised.
- * @post Timer is active; will fire once after ``ticks``.
- *
- * @since 0.1.0
- *
- * @details See implementation for details.
- * @retval 0 Success or default value.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @note Not thread-safe unless documented otherwise.
- */
+/* Arm the callout to fire ``ticks`` from now -- see implementation for details. */
 uint32_t ble_npl_callout_reset(struct ble_npl_callout* co, ble_npl_time_t ticks)
 {
   if (co == NULL) {
@@ -668,21 +352,7 @@ uint32_t ble_npl_callout_reset(struct ble_npl_callout* co, ble_npl_time_t ticks)
   return (st == TX_SUCCESS) ? (uint32_t)k_ble_npl_ok : (uint32_t)k_ble_npl_error;
 }
 
-/**
- * @brief Stop the callout if it is armed.
- *
- * @param[in,out] co NPL callout pointer.
- *
- * @pre co != NULL.
- * @post Timer is inactive.
- *
- * @since 0.1.0
- *
- * @details See implementation for details.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @note Not thread-safe unless documented otherwise.
- */
+/* Stop the callout if it is armed -- see implementation for details. */
 void ble_npl_callout_stop(struct ble_npl_callout* co)
 {
   if (co == NULL) {
@@ -691,24 +361,7 @@ void ble_npl_callout_stop(struct ble_npl_callout* co)
   (void)tx_timer_deactivate(&co->handle);
 }
 
-/**
- * @brief Test whether the callout is armed.
- *
- * @param[in] co NPL callout pointer.
- *
- * @return 1 when active, 0 otherwise.
- *
- * @pre co may be NULL.
- *
- * @since 0.1.0
- *
- * @details See implementation for details.
- * @retval 0 Success or default value.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post State reflects operation result.
- * @note Not thread-safe unless documented otherwise.
- */
+/* Test whether the callout is armed -- see implementation for details. */
 uint8_t ble_npl_callout_is_active(struct ble_npl_callout* co)
 {
   if (co == NULL) {
@@ -721,22 +374,7 @@ uint8_t ble_npl_callout_is_active(struct ble_npl_callout* co)
   return (active != 0U) ? 1U : 0U;
 }
 
-/**
- * @brief Replace the callout's event arg pointer.
- *
- * @param[in,out] co  NPL callout pointer.
- * @param[in]     arg New user argument.
- *
- * @pre co != NULL.
- *
- * @since 0.1.0
- *
- * @details See implementation for details.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post State reflects operation result.
- * @note Not thread-safe unless documented otherwise.
- */
+/* Replace the callout's event arg pointer -- see implementation for details. */
 void ble_npl_callout_set_arg(struct ble_npl_callout* co, void* arg)
 {
   if (co != NULL) {
@@ -749,45 +387,13 @@ void ble_npl_callout_set_arg(struct ble_npl_callout* co, void* arg)
  * =============================================================================
  */
 
-/**
- * @brief Read the kernel tick counter.
- *
- * @return Current ThreadX tick count.
- *
- * @since 0.1.0
- *
- * @details See implementation for details.
- * @retval 0 Success or default value.
- * @pre Module has been initialised.
- * @pre Caller has validated arguments.
- * @post Side effects bounded to documented state.
- * @post State reflects operation result.
- * @note Not thread-safe unless documented otherwise.
- */
+/* Read the kernel tick counter -- see implementation for details. */
 ble_npl_time_t ble_npl_time_get(void)
 {
   return (ble_npl_time_t)tx_time_get();
 }
 
-/**
- * @brief Convert ms to NPL ticks (lossless when tick == 1 ms).
- *
- * @param[in]  ms        Milliseconds.
- * @param[out] out_ticks Receives the NPL tick count.
- *
- * @return 0 on success.
- *
- * @pre out_ticks != NULL.
- *
- * @since 0.1.0
- *
- * @details See implementation for details.
- * @retval 0 Success or default value.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post State reflects operation result.
- * @note Not thread-safe unless documented otherwise.
- */
+/* Convert ms to NPL ticks (lossless when tick == 1 ms) -- see implementation for details. */
 uint32_t ble_npl_time_ms_to_ticks(uint32_t ms, ble_npl_time_t* out_ticks)
 {
   if (out_ticks == NULL) {
@@ -798,25 +404,7 @@ uint32_t ble_npl_time_ms_to_ticks(uint32_t ms, ble_npl_time_t* out_ticks)
   return (uint32_t)k_ble_npl_ok;
 }
 
-/**
- * @brief Convert NPL ticks to ms.
- *
- * @param[in]  ticks  NPL ticks.
- * @param[out] out_ms Receives milliseconds.
- *
- * @return 0 on success.
- *
- * @pre out_ms != NULL.
- *
- * @since 0.1.0
- *
- * @details See implementation for details.
- * @retval 0 Success or default value.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post State reflects operation result.
- * @note Not thread-safe unless documented otherwise.
- */
+/* Convert NPL ticks to ms -- see implementation for details. */
 uint32_t ble_npl_time_ticks_to_ms(ble_npl_time_t ticks, uint32_t* out_ms)
 {
   if (out_ms == NULL) {
@@ -826,21 +414,7 @@ uint32_t ble_npl_time_ticks_to_ms(ble_npl_time_t ticks, uint32_t* out_ms)
   return (uint32_t)k_ble_npl_ok;
 }
 
-/**
- * @brief Sleep for the given number of NPL ticks.
- *
- * @param[in] ticks NPL ticks to sleep.
- *
- * @pre ticks != k_ble_npl_threadx_wait_forever (would deadlock).
- * @post Calling thread has been suspended for at least ``ticks``.
- *
- * @since 0.1.0
- *
- * @details See implementation for details.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @note Not thread-safe unless documented otherwise.
- */
+/* Sleep for the given number of NPL ticks -- see implementation for details. */
 void ble_npl_time_delay(ble_npl_time_t ticks)
 {
   (void)tx_thread_sleep((ULONG)ticks);
@@ -851,43 +425,13 @@ void ble_npl_time_delay(ble_npl_time_t ticks)
  * =============================================================================
  */
 
-/**
- * @brief Enter a critical section by disabling interrupts.
- *
- * @return Previous interrupt-mask state, opaque.
- *
- * @post Interrupts are disabled in the calling context.
- *
- * @note Pairs with ``ble_npl_hw_exit_critical``.
- *
- * @since 0.1.0
- *
- * @details See implementation for details.
- * @retval 0 Success or default value.
- * @pre Module has been initialised.
- * @pre Caller has validated arguments.
- * @post Side effects bounded to documented state.
- */
+/* Enter a critical section by disabling interrupts -- see implementation for details. */
 uint32_t ble_npl_hw_enter_critical(void)
 {
   return (uint32_t)tx_interrupt_control(TX_INT_DISABLE);
 }
 
-/**
- * @brief Exit a critical section, restoring the previous int mask.
- *
- * @param[in] ctx Cookie returned by ``ble_npl_hw_enter_critical``.
- *
- * @post Interrupts are restored to ``ctx``.
- *
- * @since 0.1.0
- *
- * @details See implementation for details.
- * @pre Module has been initialised.
- * @pre Caller has validated arguments.
- * @post Side effects bounded to documented state.
- * @note Not thread-safe unless documented otherwise.
- */
+/* Exit a critical section, restoring the previous int mask -- see implementation for details. */
 void ble_npl_hw_exit_critical(uint32_t ctx)
 {
   (void)tx_interrupt_control((UINT)ctx);
@@ -938,20 +482,7 @@ static struct ble_npl_eventq s_dflt_eventq;
 /** @brief Initialised flag for the default eventq. */
 static uint8_t s_dflt_eventq_ready = 0U;
 
-/**
- * @brief Bring the default eventq up.
- *
- * @pre None.
- * @post Subsequent ``nimble_port_get_dflt_eventq`` returns a usable
- *       eventq.
- *
- * @since 0.1.0
- *
- * @details See implementation for details.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @note Not thread-safe unless documented otherwise.
- */
+/* Bring the default eventq up -- see implementation for details. */
 void nimble_port_init(void)
 {
   if (s_dflt_eventq_ready == 0U) {
@@ -1043,89 +574,27 @@ __attribute__((weak)) struct os_mbuf* ble_transport_alloc_acl_from_ll(void)
   return NULL;
 }
 
-/**
- * @brief Weak stub for the NimBLE event-buffer freer.
- *
- * @param[in] buf Buffer pointer; ignored by the stub.
- *
- * @since 0.1.0
- *
- * @details See implementation for details.
- * @pre Module has been initialised.
- * @pre Caller has validated arguments.
- * @post Side effects bounded to documented state.
- * @post State reflects operation result.
- * @note Not thread-safe unless documented otherwise.
- */
+/* Weak stub for the NimBLE event-buffer freer -- see implementation for details. */
 __attribute__((weak)) void ble_transport_free(void* buf)
 {
   (void)buf;
 }
 
-/**
- * @brief Weak stub for the NimBLE evt-uplink to host.
- *
- * @param[in] buf Event buffer; ignored by the stub.
- *
- * @return Always 0.
- *
- * @since 0.1.0
- *
- * @details See implementation for details.
- * @retval 0 Success or default value.
- * @pre Module has been initialised.
- * @pre Caller has validated arguments.
- * @post Side effects bounded to documented state.
- * @post State reflects operation result.
- * @note Not thread-safe unless documented otherwise.
- */
+/* Weak stub for the NimBLE evt-uplink to host -- see implementation for details. */
 __attribute__((weak)) int ble_transport_to_hs_evt(void* buf)
 {
   (void)buf;
   return 0;
 }
 
-/**
- * @brief Weak stub for the NimBLE acl-uplink to host.
- *
- * @param[in] om ACL mbuf chain; ignored by the stub.
- *
- * @return Always 0.
- *
- * @since 0.1.0
- *
- * @details See implementation for details.
- * @retval 0 Success or default value.
- * @pre Module has been initialised.
- * @pre Caller has validated arguments.
- * @post Side effects bounded to documented state.
- * @post State reflects operation result.
- * @note Not thread-safe unless documented otherwise.
- */
+/* Weak stub for the NimBLE acl-uplink to host -- see implementation for details. */
 __attribute__((weak)) int ble_transport_to_hs_acl(struct os_mbuf* om)
 {
   (void)om;
   return 0;
 }
 
-/**
- * @brief Weak stub for ``os_mbuf_append``.
- *
- * @return Always 0.
- *
- * @since 0.1.0
- *
- * @details See implementation for details.
- * @param[in,out] data See function signature.
- * @param[in,out] len See function signature.
- * @param[in,out] om See function signature.
- * @retval 0 Success or default value.
- * @pre Module has been initialised.
- * @pre Caller has validated arguments.
- * @post Side effects bounded to documented state.
- * @post State reflects operation result.
- * @note Not thread-safe unless documented otherwise.
- */
+/* Weak stub for ``os_mbuf_append`` -- see implementation for details. */
 __attribute__((weak)) int os_mbuf_append(struct os_mbuf* om, const void* data, uint16_t len)
 {
   (void)om;
@@ -1134,69 +603,21 @@ __attribute__((weak)) int os_mbuf_append(struct os_mbuf* om, const void* data, u
   return 0;
 }
 
-/**
- * @brief Weak stub for ``os_mbuf_free_chain``.
- *
- * @return Always 0.
- *
- * @since 0.1.0
- *
- * @details See implementation for details.
- * @param[in,out] om See function signature.
- * @retval 0 Success or default value.
- * @pre Module has been initialised.
- * @pre Caller has validated arguments.
- * @post Side effects bounded to documented state.
- * @post State reflects operation result.
- * @note Not thread-safe unless documented otherwise.
- */
+/* Weak stub for ``os_mbuf_free_chain`` -- see implementation for details. */
 __attribute__((weak)) int os_mbuf_free_chain(struct os_mbuf* om)
 {
   (void)om;
   return 0;
 }
 
-/**
- * @brief Weak stub for ``os_mbuf_len``.
- *
- * @return Always 0.
- *
- * @since 0.1.0
- *
- * @details See implementation for details.
- * @param[in,out] om See function signature.
- * @retval 0 Success or default value.
- * @pre Module has been initialised.
- * @pre Caller has validated arguments.
- * @post Side effects bounded to documented state.
- * @post State reflects operation result.
- * @note Not thread-safe unless documented otherwise.
- */
+/* Weak stub for ``os_mbuf_len`` -- see implementation for details. */
 __attribute__((weak)) uint16_t os_mbuf_len(const struct os_mbuf* om)
 {
   (void)om;
   return 0U;
 }
 
-/**
- * @brief Weak stub for ``os_mbuf_copydata``.
- *
- * @return Always 0.
- *
- * @since 0.1.0
- *
- * @details See implementation for details.
- * @param[in,out] dst See function signature.
- * @param[in,out] len See function signature.
- * @param[in,out] off See function signature.
- * @param[in,out] om See function signature.
- * @retval 0 Success or default value.
- * @pre Module has been initialised.
- * @pre Caller has validated arguments.
- * @post Side effects bounded to documented state.
- * @post State reflects operation result.
- * @note Not thread-safe unless documented otherwise.
- */
+/* Weak stub for ``os_mbuf_copydata`` -- see implementation for details. */
 __attribute__((weak)) int os_mbuf_copydata(const struct os_mbuf* om, int off, int len, void* dst)
 {
   (void)om;
@@ -1227,69 +648,15 @@ __attribute__((weak)) int os_mbuf_copydata(const struct os_mbuf* om, int off, in
  */
 __attribute__((weak)) int ble_transport_to_ll_cmd(void* buf)
 {
-  /**
-   * @brief Ble transport to ll cmd impl.
-   *
-   * @details See implementation for details.
-   *
-   * @param[in,out] buf See function signature for type and usage.
-   *
-   * @return Result code or value; see implementation.
-   * @retval 0 Success or default value.
-   *
-   * @pre Caller has validated arguments.
-   * @pre Module has been initialised.
-   * @post Side effects bounded to documented state.
-   * @post Returned value reflects current state.
-   *
-   * @note Not thread-safe unless documented otherwise.
-   *
-   * @since 0.1.0
-   */
+  /* Ble transport to ll cmd impl -- see implementation for details. */
   extern int ble_transport_to_ll_cmd_impl(void* buf);
   return ble_transport_to_ll_cmd_impl(buf);
 }
 
-/**
- * @brief Ble transport to ll acl.
- *
- * @details See implementation for details.
- *
- * @param[in,out] om See function signature for type and usage.
- *
- * @return Result code or value; see implementation.
- * @retval 0 Success or default value.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Ble transport to ll acl -- see implementation for details. */
 __attribute__((weak)) int ble_transport_to_ll_acl(struct os_mbuf* om)
 {
-  /**
-   * @brief Ble transport to ll acl impl.
-   *
-   * @details See implementation for details.
-   *
-   * @param[in,out] om See function signature for type and usage.
-   *
-   * @return Result code or value; see implementation.
-   * @retval 0 Success or default value.
-   *
-   * @pre Caller has validated arguments.
-   * @pre Module has been initialised.
-   * @post Side effects bounded to documented state.
-   * @post Returned value reflects current state.
-   *
-   * @note Not thread-safe unless documented otherwise.
-   *
-   * @since 0.1.0
-   */
+  /* Ble transport to ll acl impl -- see implementation for details. */
   extern int ble_transport_to_ll_acl_impl(struct os_mbuf * om);
   return ble_transport_to_ll_acl_impl(om);
 }

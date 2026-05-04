@@ -407,26 +407,7 @@ ra_err_t ra_usb_pal_attach(bool attached)
   return k_ra_ok;
 }
 
-/**
- * @brief Read the cached USB device state.
- *
- * @param[out] out_state Receives detached/attached/configured value.
- *
- * @return ``ra_err_t`` error code.
- * @retval k_ra_ok                  State copied.
- * @retval k_ra_err_null_ptr        ``out_state`` was NULL.
- * @retval k_ra_err_invalid_state   PAL not initialised.
- *
- * @pre ``out_state`` is non-NULL.
- * @pre PAL has been initialised.
- * @post ``*out_state`` reflects ``s_state.state`` at call time.
- * @post No PAL state is mutated.
- *
- * @note Not thread-safe.
- * @since 0.1.0
- *
- * @details See implementation for details.
- */
+/* Read the cached USB device state -- see implementation for details. */
 ra_err_t ra_usb_pal_get_state(ra_usb_pal_state_t* out_state)
 {
   RA_CHECK_NULL_PTR(out_state, s_tag, "get_state: out_state");

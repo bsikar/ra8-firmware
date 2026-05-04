@@ -47,25 +47,7 @@
 #include "ra_err.h"
 #include "ra_rsip.h"
 
-/**
- * @brief Translate ``ra_err_t`` failures into Mbed TLS SHA-256 error codes.
- *
- * @param[in] err HAL error code returned by ``ra_rsip_*``.
- *
- * @return ``0`` on ``k_ra_ok``, otherwise a negative error code
- *         suitable for direct ``return``.
- *
- * @pre None.
- *
- * @since 0.1.0
- *
- * @details See implementation for details.
- * @retval 0 Success or default value.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post State reflects operation result.
- * @note Not thread-safe unless documented otherwise.
- */
+/* Translate ``ra_err_t`` failures into Mbed TLS SHA-256 error codes -- see implementation for details. */
 static int priv_map_err(ra_err_t err)
 {
   if (err == k_ra_ok) {
@@ -77,21 +59,7 @@ static int priv_map_err(ra_err_t err)
   return MBEDTLS_ERR_PLATFORM_HW_ACCEL_FAILED;
 }
 
-/**
- * @brief Mbed TLS ``mbedtls_sha256_init`` ALT replacement.
- *
- * @param[in,out] ctx Context allocated by the caller.
- *
- * @post ``ctx`` is fully zeroed; ``starts`` is required before update.
- *
- * @since 0.1.0
- *
- * @details See implementation for details.
- * @pre Module has been initialised.
- * @pre Caller has validated arguments.
- * @post Side effects bounded to documented state.
- * @note Not thread-safe unless documented otherwise.
- */
+/* Mbed TLS ``mbedtls_sha256_init`` ALT replacement -- see implementation for details. */
 void mbedtls_sha256_init(mbedtls_sha256_context* ctx)
 {
   if (ctx == NULL) {
@@ -100,21 +68,7 @@ void mbedtls_sha256_init(mbedtls_sha256_context* ctx)
   (void)memset((void*)ctx, 0, sizeof(*ctx));
 }
 
-/**
- * @brief Mbed TLS ``mbedtls_sha256_free`` ALT replacement.
- *
- * @param[in,out] ctx Context to scrub. NULL is a no-op.
- *
- * @post ``ctx`` is fully zeroed if non-NULL.
- *
- * @since 0.1.0
- *
- * @details See implementation for details.
- * @pre Module has been initialised.
- * @pre Caller has validated arguments.
- * @post Side effects bounded to documented state.
- * @note Not thread-safe unless documented otherwise.
- */
+/* Mbed TLS ``mbedtls_sha256_free`` ALT replacement -- see implementation for details. */
 void mbedtls_sha256_free(mbedtls_sha256_context* ctx)
 {
   if (ctx == NULL) {
@@ -152,26 +106,7 @@ void mbedtls_sha256_clone(mbedtls_sha256_context* dst, const mbedtls_sha256_cont
   *dst = *src;
 }
 
-/**
- * @brief Mbed TLS ``mbedtls_sha256_starts`` ALT replacement.
- *
- * @param[in,out] ctx   Context primed by ``mbedtls_sha256_init``.
- * @param[in]     is224 0 for SHA-256, non-zero for SHA-224 (rejected).
- *
- * @return ``0`` on success, ``MBEDTLS_ERR_SHA256_BAD_INPUT_DATA`` on
- *         a SHA-224 request.
- *
- * @pre ``ctx != NULL``.
- *
- * @since 0.1.0
- *
- * @details See implementation for details.
- * @retval 0 Success or default value.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post State reflects operation result.
- * @note Not thread-safe unless documented otherwise.
- */
+/* Mbed TLS ``mbedtls_sha256_starts`` ALT replacement -- see implementation for details. */
 int mbedtls_sha256_starts(mbedtls_sha256_context* ctx, int is224)
 {
   if (ctx == NULL) {
@@ -191,26 +126,7 @@ int mbedtls_sha256_starts(mbedtls_sha256_context* ctx, int is224)
   return 0;
 }
 
-/**
- * @brief Mbed TLS ``mbedtls_sha256_update`` ALT replacement.
- *
- * @param[in,out] ctx   Context with ``starts`` previously called.
- * @param[in]     input Bytes to absorb (may be NULL when ``ilen == 0``).
- * @param[in]     ilen  Number of bytes.
- *
- * @return ``0`` on success.
- *
- * @pre ``ctx != NULL``.
- *
- * @since 0.1.0
- *
- * @details See implementation for details.
- * @retval 0 Success or default value.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post State reflects operation result.
- * @note Not thread-safe unless documented otherwise.
- */
+/* Mbed TLS ``mbedtls_sha256_update`` ALT replacement -- see implementation for details. */
 int mbedtls_sha256_update(mbedtls_sha256_context* ctx, const unsigned char* input, size_t ilen)
 {
   if (ctx == NULL) {
@@ -229,25 +145,7 @@ int mbedtls_sha256_update(mbedtls_sha256_context* ctx, const unsigned char* inpu
   return priv_map_err(err);
 }
 
-/**
- * @brief Mbed TLS ``mbedtls_sha256_finish`` ALT replacement.
- *
- * @param[in,out] ctx    Context populated by prior updates.
- * @param[out]    output 32-byte digest output buffer.
- *
- * @return ``0`` on success.
- *
- * @pre ``ctx != NULL`` and ``output != NULL``.
- *
- * @since 0.1.0
- *
- * @details See implementation for details.
- * @retval 0 Success or default value.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post State reflects operation result.
- * @note Not thread-safe unless documented otherwise.
- */
+/* Mbed TLS ``mbedtls_sha256_finish`` ALT replacement -- see implementation for details. */
 int mbedtls_sha256_finish(mbedtls_sha256_context* ctx, unsigned char* output)
 {
   if (ctx == NULL || output == NULL) {

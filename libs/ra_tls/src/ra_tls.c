@@ -172,23 +172,7 @@ static void internal_pool_reset(void)
  * =============================================================================
  */
 
-/**
- * @brief Ra tls global init.
- *
- * @details See implementation for details.
- *
- * @return Result code or value; see implementation.
- * @retval 0 Success or default value.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Ra tls global init -- see implementation for details. */
 ra_err_t ra_tls_global_init(void)
 {
   if (s_initialised) {
@@ -216,23 +200,7 @@ ra_err_t ra_tls_global_init(void)
   return k_ra_ok;
 }
 
-/**
- * @brief Ra tls global deinit.
- *
- * @details See implementation for details.
- *
- * @return Result code or value; see implementation.
- * @retval 0 Success or default value.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Ra tls global deinit -- see implementation for details. */
 ra_err_t ra_tls_global_deinit(void)
 {
   if (!s_initialised) {
@@ -250,26 +218,7 @@ ra_err_t ra_tls_global_deinit(void)
   return k_ra_ok;
 }
 
-/**
- * @brief Ra tls session open.
- *
- * @details See implementation for details.
- *
- * @param[in,out] out_session See function signature for type and usage.
- * @param[in,out] cfg See function signature for type and usage.
- *
- * @return Result code or value; see implementation.
- * @retval 0 Success or default value.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Ra tls session open -- see implementation for details. */
 ra_err_t ra_tls_session_open(ra_tls_session_t* out_session, const ra_tls_session_cfg_t* cfg)
 {
   if (out_session == NULL) {
@@ -339,25 +288,7 @@ ra_err_t ra_tls_session_open(ra_tls_session_t* out_session, const ra_tls_session
   return k_ra_ok;
 }
 
-/**
- * @brief Ra tls session close.
- *
- * @details See implementation for details.
- *
- * @param[in,out] session See function signature for type and usage.
- *
- * @return Result code or value; see implementation.
- * @retval 0 Success or default value.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Ra tls session close -- see implementation for details. */
 ra_err_t ra_tls_session_close(ra_tls_session_t session)
 {
   if (!s_initialised) {
@@ -375,25 +306,7 @@ ra_err_t ra_tls_session_close(ra_tls_session_t session)
   return k_ra_ok;
 }
 
-/**
- * @brief Ra tls handshake.
- *
- * @details See implementation for details.
- *
- * @param[in,out] session See function signature for type and usage.
- *
- * @return Result code or value; see implementation.
- * @retval 0 Success or default value.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Ra tls handshake -- see implementation for details. */
 ra_err_t ra_tls_handshake(ra_tls_session_t session)
 {
   if (!s_initialised) {
@@ -432,28 +345,7 @@ ra_err_t ra_tls_handshake(ra_tls_session_t session)
 #endif
 }
 
-/**
- * @brief Ra tls send.
- *
- * @details See implementation for details.
- *
- * @param[in,out] session See function signature for type and usage.
- * @param[in,out] buf See function signature for type and usage.
- * @param[in,out] len See function signature for type and usage.
- * @param[in,out] out_sent See function signature for type and usage.
- *
- * @return Result code or value; see implementation.
- * @retval 0 Success or default value.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Ra tls send -- see implementation for details. */
 ra_err_t ra_tls_send(ra_tls_session_t session, const uint8_t* buf, size_t len, size_t* out_sent)
 {
   if (out_sent == NULL) {
@@ -494,28 +386,7 @@ ra_err_t ra_tls_send(ra_tls_session_t session, const uint8_t* buf, size_t len, s
 #endif
 }
 
-/**
- * @brief Ra tls recv.
- *
- * @details See implementation for details.
- *
- * @param[in,out] session See function signature for type and usage.
- * @param[in,out] buf See function signature for type and usage.
- * @param[in,out] len See function signature for type and usage.
- * @param[in,out] out_received See function signature for type and usage.
- *
- * @return Result code or value; see implementation.
- * @retval 0 Success or default value.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Ra tls recv -- see implementation for details. */
 ra_err_t ra_tls_recv(ra_tls_session_t session, uint8_t* buf, size_t len, size_t* out_received)
 {
   if (out_received == NULL) {

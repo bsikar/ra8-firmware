@@ -133,25 +133,7 @@ typedef enum : uintptr_t {
  */
 static ULONG s_ra_lx_nor_sector_buffer[LX_NOR_SECTOR_SIZE];
 
-/**
- * @brief Convert a LevelX ``ULONG*`` flash pointer to a byte offset.
- *
- * @param[in] flash_address LevelX-supplied pointer into the flash window.
- *
- * @return Byte offset from the start of the LevelX-managed partition.
- *
- * @pre ``flash_address != NULL``.
- * @post Returned offset is < total partition size in bytes.
- *
- * @note Pure helper, no side effects.
- *
- * @since 0.1.0
- *
- * @details See implementation for details.
- * @retval 0 Success or default value.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- */
+/* Convert a LevelX ``ULONG*`` flash pointer to a byte offset -- see implementation for details. */
 static uint32_t priv_flash_offset_bytes(ULONG* flash_address)
 {
   /* LevelX adds a number-of-ULONGs offset onto base_address and hands
@@ -681,23 +663,7 @@ typedef enum : uint8_t {
   k_ra_xspi_reset_form_8d = 2U, /**< Opcode + complement for 8D-8D-8D. */
 } ra_xspi_reset_form_t;
 
-/**
- * @brief Bus init once.
- *
- * @details See implementation for details.
- *
- * @return Result code or value; see implementation.
- * @retval 0 Success or default value.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Bus init once -- see implementation for details. */
 static UINT priv_bus_init_once(void)
 {
   if (s_xspi_bus_ready) {
@@ -794,25 +760,7 @@ static UINT priv_bus_init_once(void)
   return (UINT)LX_SUCCESS;
 }
 
-/**
- * @brief Lx nor driver ra xspi initialize.
- *
- * @details See implementation for details.
- *
- * @param[in,out] nor_flash See function signature for type and usage.
- *
- * @return Result code or value; see implementation.
- * @retval 0 Success or default value.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Lx nor driver ra xspi initialize -- see implementation for details. */
 UINT lx_nor_driver_ra_xspi_initialize(LX_NOR_FLASH* nor_flash)
 {
   if (nor_flash == LX_NULL) {

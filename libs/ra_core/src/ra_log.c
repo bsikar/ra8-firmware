@@ -259,22 +259,7 @@ typedef enum : uint8_t {
   k_ra_decimal_base   = 10U, /**< Decimal radix.                    */
 } ra_log_u32_t;
 
-/**
- * @brief Itm put u32.
- *
- * @details See implementation for details.
- *
- * @param[in,out] value See function signature for type and usage.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Itm put u32 -- see implementation for details. */
 static inline void internal_itm_put_u32(uint32_t value)
 {
   char    buf[k_ra_u32_max_digits + 1U] = {};
@@ -466,89 +451,25 @@ static void internal_emit_line_i(const char* level, const char* tag, const char*
 
 /* ---- plain string log -------------------------------------------------- */
 
-/**
- * @brief Ra log error.
- *
- * @details See implementation for details.
- *
- * @param[in,out] tag See function signature for type and usage.
- * @param[in,out] message See function signature for type and usage.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Ra log error -- see implementation for details. */
 __attribute__((weak)) void internal_ra_log_error(const char* tag, const char* message)
 {
   internal_emit_line("ERROR", tag, message);
 }
 
-/**
- * @brief Ra log warn.
- *
- * @details See implementation for details.
- *
- * @param[in,out] tag See function signature for type and usage.
- * @param[in,out] message See function signature for type and usage.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Ra log warn -- see implementation for details. */
 __attribute__((weak)) void internal_ra_log_warn(const char* tag, const char* message)
 {
   internal_emit_line("WARN", tag, message);
 }
 
-/**
- * @brief Ra log info.
- *
- * @details See implementation for details.
- *
- * @param[in,out] tag See function signature for type and usage.
- * @param[in,out] message See function signature for type and usage.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Ra log info -- see implementation for details. */
 __attribute__((weak)) void internal_ra_log_info(const char* tag, const char* message)
 {
   internal_emit_line("INFO", tag, message);
 }
 
-/**
- * @brief Ra log debug.
- *
- * @details See implementation for details.
- *
- * @param[in,out] tag See function signature for type and usage.
- * @param[in,out] message See function signature for type and usage.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Ra log debug -- see implementation for details. */
 __attribute__((weak)) void internal_ra_log_debug(const char* tag, const char* message)
 {
   internal_emit_line("DEBUG", tag, message);

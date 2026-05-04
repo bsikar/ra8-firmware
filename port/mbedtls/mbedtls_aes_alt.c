@@ -68,25 +68,7 @@ typedef enum : uint8_t {
   k_mbedtls_aes_alt_dir_dec   = 2U, /**< Last setkey was setkey_dec.    */
 } mbedtls_aes_alt_dir_t;
 
-/**
- * @brief Translate ``ra_err_t`` failures into Mbed TLS AES error codes.
- *
- * @param[in] err HAL error code returned by ``ra_rsip_*``.
- *
- * @return ``0`` on ``k_ra_ok``, otherwise an Mbed TLS-style negative
- *         error code suitable for direct ``return``.
- *
- * @pre None.
- *
- * @since 0.1.0
- *
- * @details See implementation for details.
- * @retval 0 Success or default value.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post State reflects operation result.
- * @note Not thread-safe unless documented otherwise.
- */
+/* Translate ``ra_err_t`` failures into Mbed TLS AES error codes -- see implementation for details. */
 static int priv_map_err(ra_err_t err)
 {
   if (err == k_ra_ok) {
@@ -98,26 +80,7 @@ static int priv_map_err(ra_err_t err)
   return MBEDTLS_ERR_PLATFORM_HW_ACCEL_FAILED;
 }
 
-/**
- * @brief Wrap a plaintext key into a fresh ``ra_rsip_key_handle_t``.
- *
- * @param[in]  key      Plaintext AES key bytes (non-NULL).
- * @param[in]  key_bits Key length in bits -- 128 / 192 / 256.
- * @param[out] handle   Wrapped-handle output (non-NULL).
- *
- * @return ``k_ra_ok`` on success.
- *
- * @pre ``key != NULL`` and ``handle != NULL``.
- *
- * @since 0.1.0
- *
- * @details See implementation for details.
- * @retval 0 Success or default value.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post State reflects operation result.
- * @note Not thread-safe unless documented otherwise.
- */
+/* Wrap a plaintext key into a fresh ``ra_rsip_key_handle_t`` -- see implementation for details. */
 static ra_err_t
 priv_install_key(const unsigned char* key, unsigned int key_bits, ra_rsip_key_handle_t* handle)
 {
@@ -133,21 +96,7 @@ priv_install_key(const unsigned char* key, unsigned int key_bits, ra_rsip_key_ha
   return k_ra_err_invalid_arg;
 }
 
-/**
- * @brief Mbed TLS ``mbedtls_aes_init`` ALT replacement.
- *
- * @param[in,out] ctx Context allocated by the caller; never NULL.
- *
- * @pre ``ctx != NULL`` (Mbed TLS contract).
- * @post ``ctx`` is fully zeroed and ready for ``setkey_*``.
- *
- * @since 0.1.0
- *
- * @details See implementation for details.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @note Not thread-safe unless documented otherwise.
- */
+/* Mbed TLS ``mbedtls_aes_init`` ALT replacement -- see implementation for details. */
 void mbedtls_aes_init(mbedtls_aes_context* ctx)
 {
   if (ctx == NULL) {
@@ -157,21 +106,7 @@ void mbedtls_aes_init(mbedtls_aes_context* ctx)
   ctx->direction = (uint8_t)k_mbedtls_aes_alt_dir_unset;
 }
 
-/**
- * @brief Mbed TLS ``mbedtls_aes_free`` ALT replacement.
- *
- * @param[in,out] ctx Context to scrub. NULL is a no-op (Mbed TLS contract).
- *
- * @post ``ctx`` is fully zeroed if non-NULL.
- *
- * @since 0.1.0
- *
- * @details See implementation for details.
- * @pre Module has been initialised.
- * @pre Caller has validated arguments.
- * @post Side effects bounded to documented state.
- * @note Not thread-safe unless documented otherwise.
- */
+/* Mbed TLS ``mbedtls_aes_free`` ALT replacement -- see implementation for details. */
 void mbedtls_aes_free(mbedtls_aes_context* ctx)
 {
   if (ctx == NULL) {
@@ -183,26 +118,7 @@ void mbedtls_aes_free(mbedtls_aes_context* ctx)
   (void)memset((void*)ctx, 0, sizeof(*ctx));
 }
 
-/**
- * @brief Mbed TLS ``mbedtls_aes_setkey_enc`` ALT replacement.
- *
- * @param[in,out] ctx      Context primed by ``mbedtls_aes_init``.
- * @param[in]     key      Plaintext AES key (non-NULL).
- * @param[in]     keybits  Key length in bits -- 128 / 192 / 256.
- *
- * @return ``0`` on success, ``MBEDTLS_ERR_AES_*`` on failure.
- *
- * @pre ``ctx != NULL`` and ``key != NULL``.
- * @post On success, ``ctx`` carries a wrapped key handle.
- *
- * @since 0.1.0
- *
- * @details See implementation for details.
- * @retval 0 Success or default value.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @note Not thread-safe unless documented otherwise.
- */
+/* Mbed TLS ``mbedtls_aes_setkey_enc`` ALT replacement -- see implementation for details. */
 int mbedtls_aes_setkey_enc(mbedtls_aes_context* ctx, const unsigned char* key, unsigned int keybits)
 {
   if (ctx == NULL || key == NULL) {
@@ -219,26 +135,7 @@ int mbedtls_aes_setkey_enc(mbedtls_aes_context* ctx, const unsigned char* key, u
   return 0;
 }
 
-/**
- * @brief Mbed TLS ``mbedtls_aes_setkey_dec`` ALT replacement.
- *
- * @param[in,out] ctx      Context primed by ``mbedtls_aes_init``.
- * @param[in]     key      Plaintext AES key (non-NULL).
- * @param[in]     keybits  Key length in bits.
- *
- * @return ``0`` on success.
- *
- * @pre ``ctx != NULL`` and ``key != NULL``.
- * @post On success, ``ctx`` carries a wrapped key handle.
- *
- * @since 0.1.0
- *
- * @details See implementation for details.
- * @retval 0 Success or default value.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @note Not thread-safe unless documented otherwise.
- */
+/* Mbed TLS ``mbedtls_aes_setkey_dec`` ALT replacement -- see implementation for details. */
 int mbedtls_aes_setkey_dec(mbedtls_aes_context* ctx, const unsigned char* key, unsigned int keybits)
 {
   if (ctx == NULL || key == NULL) {
@@ -255,30 +152,7 @@ int mbedtls_aes_setkey_dec(mbedtls_aes_context* ctx, const unsigned char* key, u
   return 0;
 }
 
-/**
- * @brief Issue a single RSIP cipher call; helper for the public APIs.
- *
- * @param[in]     ctx  Mbed TLS context with a ready wrapped key.
- * @param[in]     mode RSIP block mode.
- * @param[in]     dir  RSIP direction.
- * @param[in]     iv   16-byte IV / counter / NULL for ECB.
- * @param[in]     in   Input buffer (non-NULL).
- * @param[out]    out  Output buffer (non-NULL).
- * @param[in]     len  Byte length.
- *
- * @return ``0`` on success.
- *
- * @pre ``ctx->ready == 1``.
- *
- * @since 0.1.0
- *
- * @details See implementation for details.
- * @retval 0 Success or default value.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post State reflects operation result.
- * @note Not thread-safe unless documented otherwise.
- */
+/* Issue a single RSIP cipher call; helper for the public APIs -- see implementation for details. */
 static int priv_issue(const mbedtls_aes_context* ctx,
                       ra_rsip_aes_mode_t         mode,
                       ra_rsip_aes_dir_t          dir,
@@ -294,27 +168,7 @@ static int priv_issue(const mbedtls_aes_context* ctx,
   return priv_map_err(err);
 }
 
-/**
- * @brief Mbed TLS ``mbedtls_aes_crypt_ecb`` ALT replacement.
- *
- * @param[in,out] ctx    Context with a ready wrapped key.
- * @param[in]     mode   ``MBEDTLS_AES_ENCRYPT`` (1) or ``..._DECRYPT`` (0).
- * @param[in]     input  16-byte input block.
- * @param[out]    output 16-byte output block.
- *
- * @return ``0`` on success.
- *
- * @pre ``ctx``, ``input`` and ``output`` are non-NULL.
- *
- * @since 0.1.0
- *
- * @details See implementation for details.
- * @retval 0 Success or default value.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post State reflects operation result.
- * @note Not thread-safe unless documented otherwise.
- */
+/* Mbed TLS ``mbedtls_aes_crypt_ecb`` ALT replacement -- see implementation for details. */
 int mbedtls_aes_crypt_ecb(mbedtls_aes_context* ctx,
                           int                  mode,
                           const unsigned char  input[16],
@@ -334,30 +188,7 @@ int mbedtls_aes_crypt_ecb(mbedtls_aes_context* ctx,
                     (uint32_t)k_mbedtls_aes_alt_block_bytes);
 }
 
-/**
- * @brief Mbed TLS ``mbedtls_aes_crypt_cbc`` ALT replacement.
- *
- * @param[in,out] ctx    Context with a ready wrapped key.
- * @param[in]     mode   ``MBEDTLS_AES_ENCRYPT`` or ``..._DECRYPT``.
- * @param[in]     length Bytes to process; must be a multiple of 16.
- * @param[in,out] iv     16-byte IV; updated to last cipher block.
- * @param[in]     input  Input buffer.
- * @param[out]    output Output buffer (>= ``length`` bytes).
- *
- * @return ``0`` on success, ``MBEDTLS_ERR_AES_INVALID_INPUT_LENGTH``
- *         when ``length`` is not a block multiple.
- *
- * @pre ``ctx``, ``iv``, ``input`` and ``output`` are non-NULL.
- *
- * @since 0.1.0
- *
- * @details See implementation for details.
- * @retval 0 Success or default value.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post State reflects operation result.
- * @note Not thread-safe unless documented otherwise.
- */
+/* Mbed TLS ``mbedtls_aes_crypt_cbc`` ALT replacement -- see implementation for details. */
 int mbedtls_aes_crypt_cbc(mbedtls_aes_context* ctx,
                           int                  mode,
                           size_t               length,

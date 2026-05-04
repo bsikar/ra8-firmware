@@ -73,30 +73,7 @@ typedef struct {
 
 /* Upstream symbols renamed by `--wrap=`. Declared so we can call
  * them in the forward path. */
-/**
- * @brief   real  nx crypto method aes init.
- *
- * @details See implementation for details.
- *
- * @param[in,out] method See function signature for type and usage.
- * @param[in,out] key See function signature for type and usage.
- * @param[in,out] key_size_in_bits See function signature for type and usage.
- * @param[in,out] handle See function signature for type and usage.
- * @param[in,out] crypto_metadata See function signature for type and usage.
- * @param[in,out] crypto_metadata_size See function signature for type and usage.
- *
- * @return Result code or value; see implementation.
- * @retval 0 Success or default value.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* real  nx crypto method aes init -- see implementation for details. */
 UINT __real__nx_crypto_method_aes_init(struct NX_CRYPTO_METHOD_STRUCT* method,
                                        UCHAR*                          key,
                                        NX_CRYPTO_KEY_SIZE              key_size_in_bits,
@@ -119,46 +96,10 @@ UINT __real__nx_crypto_method_aes_operation(UINT                            op,
                                             VOID*                           packet_ptr,
                                             VOID (*hw_cb)(VOID*, UINT));
 
-/**
- * @brief   real  nx crypto method aes cleanup.
- *
- * @details See implementation for details.
- *
- * @param[in,out] crypto_metadata See function signature for type and usage.
- *
- * @return Result code or value; see implementation.
- * @retval 0 Success or default value.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* real  nx crypto method aes cleanup -- see implementation for details. */
 UINT __real__nx_crypto_method_aes_cleanup(VOID* crypto_metadata);
 
-/**
- * @brief Decide whether an algorithm ID is one we accelerate.
- *
- * @param[in] alg ``method->nx_crypto_algorithm`` value.
- *
- * @return 1 if the wrap path should run on hardware, 0 to fall
- *         through to the upstream software implementation.
- *
- * @pre None.
- *
- * @since 0.1.0
- *
- * @details See implementation for details.
- * @retval 0 Success or default value.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post State reflects operation result.
- * @note Not thread-safe unless documented otherwise.
- */
+/* Decide whether an algorithm ID is one we accelerate -- see implementation for details. */
 static UCHAR priv_alg_is_accelerated(UINT alg)
 {
   if (alg == (UINT)NX_CRYPTO_ENCRYPTION_AES_CBC) {
@@ -170,26 +111,7 @@ static UCHAR priv_alg_is_accelerated(UINT alg)
   return 0U;
 }
 
-/**
- * @brief Translate a NetX Crypto AES key-length into ``ra_rsip_*_install_plain``.
- *
- * @param[in]  key_bits   Key length in bits (128 / 192 / 256).
- * @param[in]  key        Plaintext key bytes (non-NULL).
- * @param[out] out_handle Wrapped handle to fill (non-NULL).
- *
- * @return ``k_ra_ok`` on success, propagating ``ra_rsip_*`` failures.
- *
- * @pre ``key != NULL`` and ``out_handle != NULL``.
- * @post On success ``out_handle`` references a usable wrapped key.
- *
- * @since 0.1.0
- *
- * @details See implementation for details.
- * @retval 0 Success or default value.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @note Not thread-safe unless documented otherwise.
- */
+/* Translate a NetX Crypto AES key-length into ``ra_rsip_*_install_plain`` -- see implementation for details. */
 static ra_err_t
 priv_install_key(NX_CRYPTO_KEY_SIZE key_bits, const uint8_t* key, ra_rsip_key_handle_t* out_handle)
 {
@@ -293,27 +215,7 @@ UINT __wrap__nx_crypto_method_aes_init(struct NX_CRYPTO_METHOD_STRUCT* method,
   return (UINT)NX_CRYPTO_SUCCESS;
 }
 
-/**
- * @brief Map a NetX algorithm + op pair onto ``ra_rsip_aes_cipher`` args.
- *
- * @param[in]  alg NetX algorithm selector.
- * @param[in]  op  NetX operation (``NX_CRYPTO_ENCRYPT`` /
- *                 ``NX_CRYPTO_DECRYPT``).
- * @param[out] mode RSIP mode selector.
- * @param[out] dir  RSIP direction selector.
- *
- * @return 1 on success, 0 on unsupported combination.
- *
- * @since 0.1.0
- *
- * @details See implementation for details.
- * @retval 0 Success or default value.
- * @pre Module has been initialised.
- * @pre Caller has validated arguments.
- * @post Side effects bounded to documented state.
- * @post State reflects operation result.
- * @note Not thread-safe unless documented otherwise.
- */
+/* Map a NetX algorithm + op pair onto ``ra_rsip_aes_cipher`` args -- see implementation for details. */
 static UCHAR priv_map_mode(UINT alg, UINT op, ra_rsip_aes_mode_t* mode, ra_rsip_aes_dir_t* dir)
 {
   if (alg == (UINT)NX_CRYPTO_ENCRYPTION_AES_CBC) {

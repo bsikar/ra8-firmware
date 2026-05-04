@@ -57,25 +57,7 @@ const char* const k_ra_board_name    = "EK-RA8D2 v1";
 const char* const k_ra_board_doc_rev = "R20UT5523EG0101 Rev 1.01";
 const char* const k_ra_board_mcu     = "R7KA8D2KFLCAC";
 
-/**
- * @brief Ra board get info.
- *
- * @details See implementation for details.
- *
- * @param[in,out] out See function signature for type and usage.
- *
- * @return Result code or value; see implementation.
- * @retval 0 Success or default value.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Ra board get info -- see implementation for details. */
 ra_err_t ra_board_get_info(ra_board_info_t* out)
 {
   if (out == NULL) {
@@ -105,26 +87,7 @@ static const ra_port_pin_t s_led_pins[k_ra_board_led_count] = {
   [k_ra_board_led3] = (ra_port_pin_t)RA_PIN(k_ra_port_10, k_ra_pin_7), /**< PA07 (red).   */
 };
 
-/**
- * @brief Ra board led pin.
- *
- * @details See implementation for details.
- *
- * @param[in,out] led See function signature for type and usage.
- * @param[in,out] out_pin See function signature for type and usage.
- *
- * @return Result code or value; see implementation.
- * @retval 0 Success or default value.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Ra board led pin -- see implementation for details. */
 ra_err_t ra_board_led_pin(ra_board_led_id_t led, ra_port_pin_t* out_pin)
 {
   if (out_pin == NULL) {
@@ -137,25 +100,7 @@ ra_err_t ra_board_led_pin(ra_board_led_id_t led, ra_port_pin_t* out_pin)
   return k_ra_ok;
 }
 
-/**
- * @brief Ra board led init.
- *
- * @details See implementation for details.
- *
- * @param[in,out] led See function signature for type and usage.
- *
- * @return Result code or value; see implementation.
- * @retval 0 Success or default value.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Ra board led init -- see implementation for details. */
 ra_err_t ra_board_led_init(ra_board_led_id_t led)
 {
   ra_port_pin_t pin = k_ra_pin_none;
@@ -166,25 +111,7 @@ ra_err_t ra_board_led_init(ra_board_led_id_t led)
   return ra_gpio_output_init(pin, k_ra_level_low);
 }
 
-/**
- * @brief Ra board led on.
- *
- * @details See implementation for details.
- *
- * @param[in,out] led See function signature for type and usage.
- *
- * @return Result code or value; see implementation.
- * @retval 0 Success or default value.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Ra board led on -- see implementation for details. */
 ra_err_t ra_board_led_on(ra_board_led_id_t led)
 {
   ra_port_pin_t pin = k_ra_pin_none;
@@ -195,25 +122,7 @@ ra_err_t ra_board_led_on(ra_board_led_id_t led)
   return ra_gpio_write(pin, k_ra_level_high);
 }
 
-/**
- * @brief Ra board led off.
- *
- * @details See implementation for details.
- *
- * @param[in,out] led See function signature for type and usage.
- *
- * @return Result code or value; see implementation.
- * @retval 0 Success or default value.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Ra board led off -- see implementation for details. */
 ra_err_t ra_board_led_off(ra_board_led_id_t led)
 {
   ra_port_pin_t pin = k_ra_pin_none;
@@ -224,25 +133,7 @@ ra_err_t ra_board_led_off(ra_board_led_id_t led)
   return ra_gpio_write(pin, k_ra_level_low);
 }
 
-/**
- * @brief Ra board led toggle.
- *
- * @details See implementation for details.
- *
- * @param[in,out] led See function signature for type and usage.
- *
- * @return Result code or value; see implementation.
- * @retval 0 Success or default value.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Ra board led toggle -- see implementation for details. */
 ra_err_t ra_board_led_toggle(ra_board_led_id_t led)
 {
   ra_port_pin_t pin = k_ra_pin_none;
@@ -275,26 +166,7 @@ static const uint8_t s_sw_irq_nums[k_ra_board_sw_count] = {
   [k_ra_board_sw2] = (uint8_t)k_ra_board_sw2_irq, /**< 12 (IRQ12-DS). */
 };
 
-/**
- * @brief Ra board sw pin.
- *
- * @details See implementation for details.
- *
- * @param[in,out] sw See function signature for type and usage.
- * @param[in,out] out_pin See function signature for type and usage.
- *
- * @return Result code or value; see implementation.
- * @retval 0 Success or default value.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Ra board sw pin -- see implementation for details. */
 ra_err_t ra_board_sw_pin(ra_board_sw_id_t sw, ra_port_pin_t* out_pin)
 {
   if (out_pin == NULL) {
@@ -307,25 +179,7 @@ ra_err_t ra_board_sw_pin(ra_board_sw_id_t sw, ra_port_pin_t* out_pin)
   return k_ra_ok;
 }
 
-/**
- * @brief Ra board sw init.
- *
- * @details See implementation for details.
- *
- * @param[in,out] sw See function signature for type and usage.
- *
- * @return Result code or value; see implementation.
- * @retval 0 Success or default value.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Ra board sw init -- see implementation for details. */
 ra_err_t ra_board_sw_init(ra_board_sw_id_t sw)
 {
   ra_port_pin_t pin = k_ra_pin_none;
@@ -336,26 +190,7 @@ ra_err_t ra_board_sw_init(ra_board_sw_id_t sw)
   return ra_gpio_input_init(pin, k_ra_pull_up);
 }
 
-/**
- * @brief Ra board sw read.
- *
- * @details See implementation for details.
- *
- * @param[in,out] sw See function signature for type and usage.
- * @param[in,out] out_pressed See function signature for type and usage.
- *
- * @return Result code or value; see implementation.
- * @retval 0 Success or default value.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Ra board sw read -- see implementation for details. */
 ra_err_t ra_board_sw_read(ra_board_sw_id_t sw, ra_board_sw_state_t* out_pressed)
 {
   if (out_pressed == NULL) {
@@ -376,27 +211,7 @@ ra_err_t ra_board_sw_read(ra_board_sw_id_t sw, ra_board_sw_state_t* out_pressed)
   return k_ra_ok;
 }
 
-/**
- * @brief Ra board sw attach irq.
- *
- * @details See implementation for details.
- *
- * @param[in,out] sw See function signature for type and usage.
- * @param[in,out] cb See function signature for type and usage.
- * @param[in,out] ctx See function signature for type and usage.
- *
- * @return Result code or value; see implementation.
- * @retval 0 Success or default value.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Ra board sw attach irq -- see implementation for details. */
 ra_err_t ra_board_sw_attach_irq(ra_board_sw_id_t sw, ra_board_sw_irq_cb_t cb, void* ctx)
 {
   if (cb == NULL) {
@@ -597,25 +412,7 @@ const uint32_t g_ra_board_glcdc_rgb666_pin_count =
 const uint32_t g_ra_board_glcdc_rgb565_pin_count =
   sizeof(g_ra_board_glcdc_rgb565_pins) / sizeof(g_ra_board_glcdc_rgb565_pins[0]);
 
-/**
- * @brief Ra board glcdc init.
- *
- * @details See implementation for details.
- *
- * @param[in,out] fmt See function signature for type and usage.
- *
- * @return Result code or value; see implementation.
- * @retval 0 Success or default value.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Ra board glcdc init -- see implementation for details. */
 ra_err_t ra_board_glcdc_init(ra_board_glcdc_fmt_t fmt)
 {
   const ra_board_glcdc_pin_t* table = NULL;
@@ -710,23 +507,7 @@ typedef enum : uint32_t {
   k_ra_board_xspi_reset_high_ms = 15U, /**< Wait >= tPUW before first CS.  */
 } ra_board_xspi_reset_timing_t;
 
-/**
- * @brief Ra board xspi pins init.
- *
- * @details See implementation for details.
- *
- * @return Result code or value; see implementation.
- * @retval 0 Success or default value.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Ra board xspi pins init -- see implementation for details. */
 ra_err_t ra_board_xspi_pins_init(void)
 {
   /* Step 1: drive RESET_L low while the pin is still GPIO. PSEL=0x00
@@ -807,22 +588,7 @@ typedef enum : uint8_t {
   k_ra_audio_samples_per_word = 2U,
 } ra_audio_pack_t;
 
-/**
- * @brief Map ``bit_depth`` (significant bits) to SSIE DWL / SWL pair.
- *
- * @details See implementation for details.
- * @param[in,out] bit_depth See function signature.
- * @param[in,out] out_dwl See function signature.
- * @param[in,out] out_swl See function signature.
- * @return Result code or value; see implementation.
- * @retval 0 Success or default value.
- * @pre Module has been initialised.
- * @pre Caller has validated arguments.
- * @post Side effects bounded to documented state.
- * @post State reflects operation result.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Map ``bit_depth`` (significant bits) to SSIE DWL / SWL pair -- see implementation for details. */
 static ra_err_t internal_audio_bits_to_word(uint8_t                bit_depth,
                                             ra_ssie_data_word_t*   out_dwl,
                                             ra_ssie_system_word_t* out_swl)
@@ -861,19 +627,7 @@ static ra_err_t internal_audio_bits_to_word(uint8_t                bit_depth,
   }
 }
 
-/**
- * @brief Route the six DA7212 audio pins (4 SSIE + 2 IIC) to their alt fns.
- *
- * @details See implementation for details.
- * @return Result code or value; see implementation.
- * @retval 0 Success or default value.
- * @pre Module has been initialised.
- * @pre Caller has validated arguments.
- * @post Side effects bounded to documented state.
- * @post State reflects operation result.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Route the six DA7212 audio pins (4 SSIE + 2 IIC) to their alt fns -- see implementation for details. */
 static ra_err_t internal_audio_route_pins(void)
 {
   /* k_ra_psel_ssie comes from HUM Ch 19 PFS PSEL field. MCLK on PD06
@@ -946,27 +700,7 @@ internal_audio_build_ssie_cfg(uint8_t channels, ra_ssie_data_word_t dwl, ra_ssie
   };
 }
 
-/**
- * @brief Ra board audio init.
- *
- * @details See implementation for details.
- *
- * @param[in,out] sample_rate_hz See function signature for type and usage.
- * @param[in,out] bit_depth See function signature for type and usage.
- * @param[in,out] channels See function signature for type and usage.
- *
- * @return Result code or value; see implementation.
- * @retval 0 Success or default value.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Ra board audio init -- see implementation for details. */
 ra_err_t ra_board_audio_init(uint32_t sample_rate_hz, uint8_t bit_depth, uint8_t channels)
 {
   if (sample_rate_hz == 0U) {
@@ -1002,26 +736,7 @@ ra_err_t ra_board_audio_init(uint32_t sample_rate_hz, uint8_t bit_depth, uint8_t
   return k_ra_ok;
 }
 
-/**
- * @brief Ra board audio play sample block.
- *
- * @details See implementation for details.
- *
- * @param[in,out] buf See function signature for type and usage.
- * @param[in,out] len See function signature for type and usage.
- *
- * @return Result code or value; see implementation.
- * @retval 0 Success or default value.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Ra board audio play sample block -- see implementation for details. */
 ra_err_t ra_board_audio_play_sample_block(const int16_t* buf, uint32_t len)
 {
   if (buf == NULL) {
@@ -1061,26 +776,7 @@ ra_err_t ra_board_audio_play_sample_block(const int16_t* buf, uint32_t len)
  * =============================================================================
  */
 
-/**
- * @brief Ra board arduino pin init.
- *
- * @details See implementation for details.
- *
- * @param[in,out] pin See function signature for type and usage.
- * @param[in,out] mode See function signature for type and usage.
- *
- * @return Result code or value; see implementation.
- * @retval 0 Success or default value.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Ra board arduino pin init -- see implementation for details. */
 ra_err_t ra_board_arduino_pin_init(ra_board_arduino_pin_t pin, ra_board_arduino_mode_t mode)
 {
   switch (mode) {
@@ -1095,51 +791,13 @@ ra_err_t ra_board_arduino_pin_init(ra_board_arduino_pin_t pin, ra_board_arduino_
   }
 }
 
-/**
- * @brief Ra board arduino gpio write.
- *
- * @details See implementation for details.
- *
- * @param[in,out] pin See function signature for type and usage.
- * @param[in,out] level See function signature for type and usage.
- *
- * @return Result code or value; see implementation.
- * @retval 0 Success or default value.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Ra board arduino gpio write -- see implementation for details. */
 ra_err_t ra_board_arduino_gpio_write(ra_board_arduino_pin_t pin, ra_level_t level)
 {
   return ra_gpio_write((ra_port_pin_t)pin, level);
 }
 
-/**
- * @brief Ra board arduino gpio read.
- *
- * @details See implementation for details.
- *
- * @param[in,out] pin See function signature for type and usage.
- * @param[in,out] out_level See function signature for type and usage.
- *
- * @return Result code or value; see implementation.
- * @retval 0 Success or default value.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Ra board arduino gpio read -- see implementation for details. */
 ra_err_t ra_board_arduino_gpio_read(ra_board_arduino_pin_t pin, ra_level_t* out_level)
 {
   if (out_level == NULL) {
@@ -1193,23 +851,7 @@ static ra_err_t internal_usbhs_clock_and_mstp(void)
   return ra_mstp_enable(k_ra_mstp_usbhs);
 }
 
-/**
- * @brief Ra board usbhs device init.
- *
- * @details See implementation for details.
- *
- * @return Result code or value; see implementation.
- * @retval 0 Success or default value.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Ra board usbhs device init -- see implementation for details. */
 ra_err_t ra_board_usbhs_device_init(void)
 {
   /* HUM Ch 9 (CGC) USBCKCR p 365 + HUM Ch 11 (MSTP) MSTPCRB12 p 469
@@ -1226,23 +868,7 @@ ra_err_t ra_board_usbhs_device_init(void)
   return ra_usb_device_init(k_ra_usb_speed_hs);
 }
 
-/**
- * @brief Ra board usbhs host init.
- *
- * @details See implementation for details.
- *
- * @return Result code or value; see implementation.
- * @retval 0 Success or default value.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Ra board usbhs host init -- see implementation for details. */
 ra_err_t ra_board_usbhs_host_init(void)
 {
   /* Symmetric to ra_board_usbhs_device_init. EK-RA8D2 v1 UM Rev 1.01
@@ -1356,23 +982,7 @@ static const ra_mipi_phy_config_t s_mipi_phy_cfg = {
   .p_timing = &s_mipi_phy_timing_placeholder,
 };
 
-/**
- * @brief Ra board mipi dsi init.
- *
- * @details See implementation for details.
- *
- * @return Result code or value; see implementation.
- * @retval 0 Success or default value.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Ra board mipi dsi init -- see implementation for details. */
 ra_err_t ra_board_mipi_dsi_init(void)
 {
   /* Step 1: PHY first -- HUM Ch 64.3.1 startup procedure. The HAL warns
@@ -1432,25 +1042,7 @@ typedef enum : uint32_t {
   k_ra_board_uart_console_default_pclkb_hz = 60000000UL,
 } ra_board_uart_console_clock_t;
 
-/**
- * @brief Ra board uart console init.
- *
- * @details See implementation for details.
- *
- * @param[in,out] baud See function signature for type and usage.
- *
- * @return Result code or value; see implementation.
- * @retval 0 Success or default value.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Ra board uart console init -- see implementation for details. */
 ra_err_t ra_board_uart_console_init(uint32_t baud)
 {
   if (baud == 0U) {
@@ -1490,26 +1082,7 @@ ra_err_t ra_board_uart_console_init(uint32_t baud)
   return k_ra_ok;
 }
 
-/**
- * @brief Ra board uart console write.
- *
- * @details See implementation for details.
- *
- * @param[in,out] data See function signature for type and usage.
- * @param[in,out] len See function signature for type and usage.
- *
- * @return Result code or value; see implementation.
- * @retval 0 Success or default value.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Ra board uart console write -- see implementation for details. */
 ra_err_t ra_board_uart_console_write(const uint8_t* data, size_t len)
 {
   if (len == 0U) {
@@ -1524,27 +1097,7 @@ ra_err_t ra_board_uart_console_write(const uint8_t* data, size_t len)
   return ra_sci_write_polling((uint8_t)k_ra_board_uart_console_sci_channel, data, (uint32_t)len);
 }
 
-/**
- * @brief Ra board uart console read.
- *
- * @details See implementation for details.
- *
- * @param[in,out] out See function signature for type and usage.
- * @param[in,out] cap See function signature for type and usage.
- * @param[in,out] out_len See function signature for type and usage.
- *
- * @return Result code or value; see implementation.
- * @retval 0 Success or default value.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Ra board uart console read -- see implementation for details. */
 ra_err_t ra_board_uart_console_read(uint8_t* out, size_t cap, size_t* out_len)
 {
   if (out_len == NULL) {
@@ -1577,23 +1130,7 @@ ra_err_t ra_board_uart_console_read(uint8_t* out, size_t cap, size_t* out_len)
   return k_ra_ok;
 }
 
-/**
- * @brief Ra board uart console flush.
- *
- * @details See implementation for details.
- *
- * @return Result code or value; see implementation.
- * @retval 0 Success or default value.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Ra board uart console flush -- see implementation for details. */
 ra_err_t ra_board_uart_console_flush(void)
 {
   if (!s_uart_console_initialised) {
@@ -1642,23 +1179,7 @@ static const struct {
   {k_ra_board_eth_pin_rstn, "ra_board.eth.rstn"},
 };
 
-/**
- * @brief Ra board ethernet init.
- *
- * @details See implementation for details.
- *
- * @return Result code or value; see implementation.
- * @retval 0 Success or default value.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Ra board ethernet init -- see implementation for details. */
 ra_err_t ra_board_ethernet_init(void)
 {
   /* Step 1: route every Ethernet pin to its ETHERC alternate. */

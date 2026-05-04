@@ -47,28 +47,7 @@ static uint8_t s_claimed[(k_ra_port_count * k_ra_pin_count) / k_ra_bits_per_byte
  */
 static const char* s_owner[k_ra_port_count * k_ra_pin_count];
 
-/**
- * @brief Convert a packed `ra_port_pin_t` to a flat bit index.
- *
- * @param[in]  pin       Packed port/pin id.
- * @param[out] out_index On success, flat index into `s_claimed` / `s_owner`.
- *
- * @return `k_ra_ok` on valid input, error code otherwise.
- * @retval k_ra_ok                     Valid; `*out_index` is set.
- * @retval k_ra_err_gpio_invalid_port  Port out of range.
- * @retval k_ra_err_gpio_invalid_pin   Pin out of range within the port.
- *
- * @pre `out_index` is non-NULL when input is valid.
- * @pre `pin` is the result of `RA_PIN_PACK(port, idx)`.
- * @post On success, `*out_index < k_ra_port_count * k_ra_pin_count`.
- * @post On failure, `*out_index` is unspecified.
- *
- * @note Pure computation; trivially thread-safe.
- *
- * @since 0.1.0
- *
- * @details See implementation for details.
- */
+/* Convert a packed `ra_port_pin_t` to a flat bit index -- see implementation for details. */
 static ra_err_t internal_flat_index(ra_port_pin_t pin, uint16_t* out_index)
 {
   const uint8_t port = (uint8_t)RA_PIN_PORT(pin);

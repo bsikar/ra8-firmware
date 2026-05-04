@@ -234,37 +234,11 @@ void ra_time_on_tick(void)
  * this stronger weak symbol; an even stronger non-weak one in the
  * application file wins above both.
  */
-/**
- * @brief Systick handler.
- *
- * @details See implementation for details.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Systick handler -- see implementation for details. */
 void SysTick_Handler(void);
 
 /* NOLINTNEXTLINE(misc-use-internal-linkage) -- linker symbol for vector table. */
-/**
- * @brief Systick handler.
- *
- * @details See implementation for details.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
- *
- * @since 0.1.0
- */
+/* Systick handler -- see implementation for details. */
 __attribute__((weak)) void SysTick_Handler(void)
 {
   ra_time_on_tick();
