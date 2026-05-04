@@ -1980,27 +1980,36 @@ void ra_usb_dispatch(ra_usb_speed_t speed)
   }
   /* HUM Ch 36.2.14 "INTSTS0 : Interrupt Status Register 0", p 1985.
    *
-   * INTSTS0 is W0C: writing 0 to a bit clears it. The previous
-   * implementation did `INTSTS0 = 0` which wiped *every* status bit
-   * including VALID (SETUP-latched). That left the downstream handler
-   * unable to read the SETUP packet because `ra_usb_read_setup` gates
-   * on `INTSTS0.VALID` -- by the time it ran, the controller had
-   * already cleared the latch. Result: GET_DESCRIPTOR(DEVICE) SETUPs
-   * arrived, IRQs fired, but no descriptor data was ever pushed and
-   * DCPCTR.PID stayed NAK.
+   * INTSTS0 is W0C: writing 0 to a bit clears it, writing 1 has no
+   * effect. The previous mask-and-back pattern
+   *   INTSTS0 = mask & ~ack_bits
+   * unconditionally writes 0 to every bit in ack_bits, even bits that
+   * were 0 in the snapshot. That means a CTRT (or DVST) edge that
+   * asserts in HW *between* the read of `mask` and the write of the
+   * ack pattern is silently cleared before the dispatcher can act on
+   * it. With a free-running polled worker (1.7M ticks/sec) and SETUP
+   * tokens arriving at ~1 ms cadence, almost every CTRT edge falls
+   * inside this race window, which is why s_ctrt_irq_count stayed at
+   * 0 even though DVST was caught (DVST edges hold longer because the
+   * device-state remains in default until the next reset).
    *
-   * Fix: ack only the edge-triggered control/event bits we have
-   * actually consumed (CTRT/DVST/VBINT/RESM/SOFR + the BEMP/BRDY/NRDY
-   * group). VALID is preserved so the SETUP handler can drain USBREQ /
-   * USBVAL / USBINDX / USBLENG and then clear VALID itself. CTSQ/DVSQ
-   * are read-only fields and naturally pass through unchanged. */
+   * Correct W0C ack: write 0 ONLY to the bits we observed set, and 1
+   * (no-op) everywhere else. ``~(mask & ack_bits)`` does exactly that:
+   * for any bit not in ack_bits, we write 1 (preserve); for an
+   * ack_bits position that was 0 in the snapshot, we write 1 (no-op,
+   * does not clobber a freshly-set edge); for an ack_bits position
+   * that was 1 in the snapshot, we write 0 (clear).
+   *
+   * VALID is intentionally NOT in ack_bits -- the SETUP handler in
+   * ra_usb_read_setup drains USBREQ/USBVAL/USBINDX/USBLENG and clears
+   * VALID itself. CTSQ/DVSQ are read-only fields. */
   const uint16_t mask = reg->INTSTS0;
 
   const uint16_t ack_bits = (uint16_t)((1U << k_ra_int0_bit_ctrt) | (1U << k_ra_int0_bit_dvst) |
                                        (1U << k_ra_int0_bit_bemp) | (1U << k_ra_int0_bit_brdy) |
                                        (1U << k_ra_int0_bit_nrdy) | (1U << k_ra_int0_bit_vbse) |
                                        (1U << k_ra_int0_bit_rsme) | (1U << k_ra_int0_bit_sofr));
-  reg->INTSTS0            = (uint16_t)(mask & (uint16_t)~ack_bits);
+  reg->INTSTS0            = (uint16_t)~(uint16_t)(mask & ack_bits);
 
   const ra_usb_event_fn_t fn  = s_usb_fn;
   void* const             ctx = s_usb_ctx;
