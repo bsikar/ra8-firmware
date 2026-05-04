@@ -647,19 +647,7 @@ static bool internal_format_ok(uint8_t channel_count, uint8_t bits_per_sample, u
  * =============================================================================
  */
 
-/**
- * @brief Implementation of ra_usb_haud_init (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] speed See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_usb_haud_init (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_haud_init(ra_usb_speed_t speed)
 {
   if ((speed != k_ra_usb_speed_fs) && (speed != k_ra_usb_speed_hs)) {
@@ -683,18 +671,7 @@ ra_err_t ra_usb_haud_init(ra_usb_speed_t speed)
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_usb_haud_close (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_usb_haud_close (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_haud_close(void)
 {
   if (!s_state.initialised) {
@@ -716,20 +693,7 @@ ra_err_t ra_usb_haud_close(void)
  * =============================================================================
  */
 
-/**
- * @brief Implementation of ra_usb_haud_attach_callback (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] on_attach See implementation.
- * @param[in] ctx See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_usb_haud_attach_callback (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_haud_attach_callback(ra_usb_haud_attach_fn_t on_attach, void* ctx)
 {
   if (!s_state.initialised) {
@@ -753,21 +717,7 @@ ra_err_t ra_usb_haud_attach_callback(ra_usb_haud_attach_fn_t on_attach, void* ct
  *   wIndex        = endpoint address
  *   wLength       = 3 (24-bit LE sample rate)
  */
-/**
- * @brief Implementation of ra_usb_haud_set_format (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] channel_count See implementation.
- * @param[in] bits_per_sample See implementation.
- * @param[in] sample_rate_hz See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_usb_haud_set_format (see header for full contract) -- see header for the documented contract. */
 ra_err_t
 ra_usb_haud_set_format(uint8_t channel_count, uint8_t bits_per_sample, uint32_t sample_rate_hz)
 {
@@ -806,20 +756,7 @@ ra_usb_haud_set_format(uint8_t channel_count, uint8_t bits_per_sample, uint32_t 
  *   wIndex.low    = bInterfaceNumber (AC interface)
  *   wLength       = 2 (signed 16-bit dB in 1/256 step)
  */
-/**
- * @brief Implementation of ra_usb_haud_set_volume (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] channel See implementation.
- * @param[in] volume See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_usb_haud_set_volume (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_haud_set_volume(uint8_t channel, int16_t volume)
 {
   const ra_err_t pre = internal_class_preflight();
@@ -855,20 +792,7 @@ ra_err_t ra_usb_haud_set_volume(uint8_t channel, int16_t volume)
  *   wIndex.low    = bInterfaceNumber (AC interface)
  *   wLength       = 1 (boolean)
  */
-/**
- * @brief Implementation of ra_usb_haud_set_mute (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] channel See implementation.
- * @param[in] mute See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_usb_haud_set_mute (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_haud_set_mute(uint8_t channel, bool mute)
 {
   const ra_err_t pre = internal_class_preflight();
@@ -896,20 +820,7 @@ ra_err_t ra_usb_haud_set_mute(uint8_t channel, bool mute)
  * =============================================================================
  */
 
-/**
- * @brief Implementation of ra_usb_haud_send_samples (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] buf See implementation.
- * @param[in] len_bytes See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_usb_haud_send_samples (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_haud_send_samples(const uint8_t* buf, uint16_t len_bytes)
 {
   if ((buf == nullptr) && (len_bytes != 0U)) {
@@ -931,21 +842,7 @@ ra_err_t ra_usb_haud_send_samples(const uint8_t* buf, uint16_t len_bytes)
   return ra_usb_queue_in(s_state.speed, k_ra_haud_pipe_iso_out, buf, len_bytes);
 }
 
-/**
- * @brief Implementation of ra_usb_haud_recv_samples (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] buf See implementation.
- * @param[in] max_len_bytes See implementation.
- * @param[in] got_len_bytes See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_usb_haud_recv_samples (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_haud_recv_samples(uint8_t* buf, uint16_t max_len_bytes, uint16_t* got_len_bytes)
 {
   RA_CHECK_NULL_PTR(buf, s_tag, "recv_samples: buf");
@@ -975,18 +872,7 @@ ra_err_t ra_usb_haud_recv_samples(uint8_t* buf, uint16_t max_len_bytes, uint16_t
  * =============================================================================
  */
 
-/**
- * @brief Implementation of ra_usb_haud_step (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_usb_haud_step (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_haud_step(void)
 {
   if (!s_state.initialised) {

@@ -268,19 +268,7 @@ static void internal_apply_class_setup(const ra_usb_setup_t* setup)
  * =============================================================================
  */
 
-/**
- * @brief Implementation of ra_usb_phid_init (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] speed See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_usb_phid_init (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_phid_init(ra_usb_speed_t speed)
 {
   if ((speed != k_ra_usb_speed_fs) && (speed != k_ra_usb_speed_hs)) {
@@ -304,18 +292,7 @@ ra_err_t ra_usb_phid_init(ra_usb_speed_t speed)
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_usb_phid_close (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_usb_phid_close (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_phid_close(void)
 {
   if (!s_state.initialised) {
@@ -336,22 +313,7 @@ ra_err_t ra_usb_phid_close(void)
  * =============================================================================
  */
 
-/**
- * @brief Implementation of ra_usb_phid_set_descriptors (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] report_desc See implementation.
- * @param[in] report_desc_len See implementation.
- * @param[in] hid_desc See implementation.
- * @param[in] hid_desc_len See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_usb_phid_set_descriptors (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_phid_set_descriptors(const uint8_t* report_desc,
                                      uint16_t       report_desc_len,
                                      const uint8_t* hid_desc,
@@ -377,21 +339,7 @@ ra_err_t ra_usb_phid_set_descriptors(const uint8_t* report_desc,
  * =============================================================================
  */
 
-/**
- * @brief Implementation of ra_usb_phid_send_report (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] report_id See implementation.
- * @param[in] payload See implementation.
- * @param[in] len See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_usb_phid_send_report (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_phid_send_report(uint8_t report_id, const uint8_t* payload, uint16_t len)
 {
   if (!s_state.initialised) {
@@ -423,22 +371,7 @@ ra_err_t ra_usb_phid_send_report(uint8_t report_id, const uint8_t* payload, uint
   return ra_usb_queue_in(s_state.speed, k_ra_phid_pipe_intr_in, payload, len);
 }
 
-/**
- * @brief Implementation of ra_usb_phid_recv_report (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] report_id See implementation.
- * @param[in] buf See implementation.
- * @param[in] max_len See implementation.
- * @param[in] got_len See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_usb_phid_recv_report (see header for full contract) -- see header for the documented contract. */
 ra_err_t
 ra_usb_phid_recv_report(uint8_t report_id, uint8_t* buf, uint16_t max_len, uint16_t* got_len)
 {
@@ -470,20 +403,7 @@ ra_usb_phid_recv_report(uint8_t report_id, uint8_t* buf, uint16_t max_len, uint1
  * =============================================================================
  */
 
-/**
- * @brief Implementation of ra_usb_phid_attach_setup_handler (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] setup_fn See implementation.
- * @param[in] ctx See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_usb_phid_attach_setup_handler (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_phid_attach_setup_handler(ra_usb_phid_setup_fn_t setup_fn, void* ctx)
 {
   if (!s_state.initialised) {
@@ -499,19 +419,7 @@ ra_err_t ra_usb_phid_attach_setup_handler(ra_usb_phid_setup_fn_t setup_fn, void*
  * =============================================================================
  */
 
-/**
- * @brief Implementation of ra_usb_phid_handle_setup (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] setup See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_usb_phid_handle_setup (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_phid_handle_setup(const ra_usb_setup_t* setup)
 {
   RA_CHECK_NULL_PTR(setup, s_tag, "handle_setup: setup");
@@ -543,19 +451,7 @@ ra_err_t ra_usb_phid_handle_setup(const ra_usb_setup_t* setup)
  * =============================================================================
  */
 
-/**
- * @brief Implementation of ra_usb_phid_get_idle (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] out_idle_rate See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_usb_phid_get_idle (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_phid_get_idle(uint8_t* out_idle_rate)
 {
   RA_CHECK_NULL_PTR(out_idle_rate, s_tag, "get_idle: out_idle_rate");
@@ -566,19 +462,7 @@ ra_err_t ra_usb_phid_get_idle(uint8_t* out_idle_rate)
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_usb_phid_get_protocol (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] out_protocol See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_usb_phid_get_protocol (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_phid_get_protocol(ra_usb_phid_protocol_select_t* out_protocol)
 {
   RA_CHECK_NULL_PTR(out_protocol, s_tag, "get_protocol: out_protocol");

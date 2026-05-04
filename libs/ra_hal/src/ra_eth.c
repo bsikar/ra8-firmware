@@ -380,18 +380,7 @@ static ra_err_t internal_bring_up_rmac(const ra_eth_cfg_t* cfg)
   return ra_rmac_set_mac_address(rmac_port, mac_copy);
 }
 
-/**
- * @brief Implementation of ra_eth_init (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_eth_init (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_eth_init(void)
 {
   /* HUM Ch 11.2.8 "MSTPCRC : Module Stop Control Register C" p 446 */
@@ -408,18 +397,7 @@ ra_err_t ra_eth_init(void)
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_eth_deinit (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_eth_deinit (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_eth_deinit(void)
 {
   volatile r_eswm_regs_t* reg = ra_eswm();
@@ -431,19 +409,7 @@ ra_err_t ra_eth_deinit(void)
   return ra_mstp_disable(k_ra_mstp_eswm);
 }
 
-/**
- * @brief Implementation of ra_eth_get_status (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] out_mask See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_eth_get_status (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_eth_get_status(uint32_t* out_mask)
 {
   RA_CHECK_NULL_PTR(out_mask, s_tag, "out_mask must not be nullptr");
@@ -452,19 +418,7 @@ ra_err_t ra_eth_get_status(uint32_t* out_mask)
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_eth_clear_status (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] mask See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_eth_clear_status (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_eth_clear_status(uint32_t mask)
 {
   volatile r_eswm_regs_t* reg = ra_eswm();
@@ -474,20 +428,7 @@ ra_err_t ra_eth_clear_status(uint32_t mask)
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_eth_attach_handler (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] fn See implementation.
- * @param[in] ctx See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_eth_attach_handler (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_eth_attach_handler(ra_eth_event_fn_t fn, void* ctx)
 {
   s_eth_fn  = fn;
@@ -495,16 +436,7 @@ ra_err_t ra_eth_attach_handler(ra_eth_event_fn_t fn, void* ctx)
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_eth_dispatch (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_eth_dispatch (see header for full contract) -- see header for the documented contract. */
 void ra_eth_dispatch(void)
 {
   volatile r_eswm_regs_t* reg = ra_eswm();
@@ -519,18 +451,7 @@ void ra_eth_dispatch(void)
   }
 }
 
-/**
- * @brief Implementation of ra_eth_enter_stop (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_eth_enter_stop (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_eth_enter_stop(void)
 {
   /* HUM Ch 29 "Layer 3 Ethernet Switch Module (ESWM)" p 1287 */
@@ -538,18 +459,7 @@ ra_err_t ra_eth_enter_stop(void)
   return ra_mstp_disable(k_ra_mstp_eswm);
 }
 
-/**
- * @brief Implementation of ra_eth_exit_stop (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_eth_exit_stop (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_eth_exit_stop(void)
 {
   return ra_mstp_enable(k_ra_mstp_eswm);
@@ -640,19 +550,7 @@ static ra_err_t internal_open_prep(const ra_eth_cfg_t* cfg,
   return internal_bring_up_rmac(cfg);
 }
 
-/**
- * @brief Implementation of ra_eth_open (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] cfg See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_eth_open (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_eth_open(const ra_eth_cfg_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg, s_tag, "open: cfg must not be nullptr");
@@ -677,18 +575,7 @@ ra_err_t ra_eth_open(const ra_eth_cfg_t* cfg)
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_eth_close (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_eth_close (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_eth_close(void)
 {
   if (s_state.opened == 0U) {
@@ -711,20 +598,7 @@ ra_err_t ra_eth_close(void)
   return ra_mstp_disable(k_ra_mstp_eswm);
 }
 
-/**
- * @brief Implementation of ra_eth_write (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] buf See implementation.
- * @param[in] len See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_eth_write (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_eth_write(const uint8_t* buf, uint32_t len)
 {
   RA_CHECK_NULL_PTR(buf, s_tag, "write: buf must not be nullptr");
@@ -828,21 +702,7 @@ static inline uint32_t internal_clamp_rx_len(uint32_t desc_size, uint32_t max_le
   return copy_len;
 }
 
-/**
- * @brief Implementation of ra_eth_read (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] buf See implementation.
- * @param[in] max_len See implementation.
- * @param[in] got_len See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_eth_read (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_eth_read(uint8_t* buf, uint32_t max_len, uint32_t* got_len)
 {
   RA_CHECK_NULL_PTR(buf, s_tag, "read: buf must not be nullptr");
@@ -877,19 +737,7 @@ ra_err_t ra_eth_read(uint8_t* buf, uint32_t max_len, uint32_t* got_len)
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_eth_link_status (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] out_status See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_eth_link_status (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_eth_link_status(ra_eth_link_t* out_status)
 {
   RA_CHECK_NULL_PTR(out_status, s_tag, "link_status: out must not be nullptr");
@@ -925,19 +773,7 @@ ra_err_t ra_eth_link_status(ra_eth_link_t* out_status)
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_eth_get_stats (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] out_stats See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_eth_get_stats (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_eth_get_stats(ra_eth_stats_t* out_stats)
 {
   RA_CHECK_NULL_PTR(out_stats, s_tag, "get_stats: out must not be nullptr");

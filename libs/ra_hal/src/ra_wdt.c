@@ -341,16 +341,7 @@ static void internal_subs_clear_all(void)
  * =============================================================================
  */
 
-/**
- * @brief Implementation of ra_wdt_refresh_deferred (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_wdt_refresh_deferred (see header for full contract) -- see header for the documented contract. */
 void ra_wdt_refresh_deferred(void)
 {
   /* HUM Ch 27.2.1 "WDTRR : WDT Refresh Register", p 1257 */
@@ -557,18 +548,7 @@ void ra_wdt_refresh_deferred(void)
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_wdt_subscriber_count (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_wdt_subscriber_count (see header for full contract) -- see header for the documented contract. */
 uint8_t ra_wdt_subscriber_count(void)
 {
   uint8_t count = 0U;
@@ -580,16 +560,7 @@ uint8_t ra_wdt_subscriber_count(void)
   return count;
 }
 
-/**
- * @brief Implementation of ra_wdt_dispatch (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_wdt_dispatch (see header for full contract) -- see header for the documented contract. */
 void ra_wdt_dispatch(void)
 {
   volatile r_wdt_regs_t* reg = ra_wdt();

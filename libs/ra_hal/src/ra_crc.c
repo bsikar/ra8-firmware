@@ -70,22 +70,7 @@ static inline bool ra_crc_is_32bit_poly(ra_crc_poly_t poly)
   return (poly == k_ra_crc_poly_32_ieee802_3) || (poly == k_ra_crc_poly_32c_rev);
 }
 
-/**
- * @brief ra_crc_init -- see header for full description.
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @param[in] poly See header declaration for direction and constraints.
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
+/* ra_crc_init -- see header for full description. */
 ra_err_t ra_crc_init(ra_crc_poly_t poly)
 {
   /* HUM Ch 11.2.8 "MSTPCRC : Module Stop Control Register C", p 446 */
@@ -106,18 +91,7 @@ ra_err_t ra_crc_init(ra_crc_poly_t poly)
   return k_ra_ok;
 }
 
-/**
- * @brief ra_crc_reset -- see header for full description.
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @pre Driver state has been initialised by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
+/* ra_crc_reset -- see header for full description. */
 void ra_crc_reset(void)
 {
   volatile r_crc_regs_t* reg = ra_crc();
@@ -128,24 +102,7 @@ void ra_crc_reset(void)
   reg->CRCCR0 = (uint8_t)(reg->CRCCR0 | k_ra_crccr0_dorclr);
 }
 
-/**
- * @brief ra_crc_compute -- see header for full description.
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @param[in] data See header declaration for direction and constraints.
- * @param[in] len See header declaration for direction and constraints.
- * @param[in] out_crc See header declaration for direction and constraints.
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
+/* ra_crc_compute -- see header for full description. */
 ra_err_t ra_crc_compute(const uint8_t* data, uint32_t len, uint32_t* out_crc)
 {
   RA_CHECK_NULL_PTR(data, s_tag, "data must not be nullptr");
@@ -192,21 +149,7 @@ ra_err_t ra_crc_compute(const uint8_t* data, uint32_t len, uint32_t* out_crc)
  * =============================================================================
  */
 
-/**
- * @brief ra_crc_deinit -- see header for full description.
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
+/* ra_crc_deinit -- see header for full description. */
 ra_err_t ra_crc_deinit(void)
 {
   volatile r_crc_regs_t* reg = ra_crc();
@@ -217,22 +160,7 @@ ra_err_t ra_crc_deinit(void)
   return ra_mstp_disable(k_ra_mstp_crc);
 }
 
-/**
- * @brief ra_crc_set_poly -- see header for full description.
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @param[in] poly See header declaration for direction and constraints.
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
+/* ra_crc_set_poly -- see header for full description. */
 ra_err_t ra_crc_set_poly(ra_crc_poly_t poly)
 {
   volatile r_crc_regs_t* reg = ra_crc();
@@ -243,22 +171,7 @@ ra_err_t ra_crc_set_poly(ra_crc_poly_t poly)
   return k_ra_ok;
 }
 
-/**
- * @brief ra_crc_get_status -- see header for full description.
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @param[in] out_poly See header declaration for direction and constraints.
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
+/* ra_crc_get_status -- see header for full description. */
 ra_err_t ra_crc_get_status(uint8_t* out_poly)
 {
   RA_CHECK_NULL_PTR(out_poly, s_tag, "out_poly must not be nullptr");
@@ -267,21 +180,7 @@ ra_err_t ra_crc_get_status(uint8_t* out_poly)
   return k_ra_ok;
 }
 
-/**
- * @brief ra_crc_enter_stop -- see header for full description.
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
+/* ra_crc_enter_stop -- see header for full description. */
 ra_err_t ra_crc_enter_stop(void)
 {
   /* HUM Ch 48.2.1 "CRCCR0 : CRC Control Register 0" p 3181 */
@@ -289,21 +188,7 @@ ra_err_t ra_crc_enter_stop(void)
   return ra_mstp_disable(k_ra_mstp_crc);
 }
 
-/**
- * @brief ra_crc_exit_stop -- see header for full description.
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @return ``ra_err_t`` error code (or void if the signature returns void).
- * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
- * @pre Driver state has been initialised by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
+/* ra_crc_exit_stop -- see header for full description. */
 ra_err_t ra_crc_exit_stop(void)
 {
   return ra_mstp_enable(k_ra_mstp_crc);

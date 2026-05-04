@@ -632,19 +632,7 @@ static void internal_ctl_rmw(volatile r_cnecc_regs_t* reg, uint32_t new_bits, ui
   return k_ra_ok;
 }
 
-/**
- * @brief ra_cnecc_isr_handler -- see header for full description.
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @param[in] ctx See header declaration for direction and constraints.
- * @pre Driver state has been initialised by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
+/* ra_cnecc_isr_handler -- see header for full description. */
 void ra_cnecc_isr_handler(void* ctx)
 {
   const uint8_t instance = (uint8_t)((uintptr_t)ctx & (uintptr_t)k_ra_cnecc_isr_ctx_inst_mask);
@@ -687,21 +675,7 @@ void ra_cnecc_isr_handler(void* ctx)
   reg->EC710CTL = k_ra_cnecc_mask_clear_all;
 }
 
-/**
- * @brief ra_cnecc_dispatch -- see header for full description.
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @param[in] instance See header declaration for direction and constraints.
- * @param[in] is_2bit See header declaration for direction and constraints.
- * @param[in] err_addr See header declaration for direction and constraints.
- * @pre Driver state has been initialised by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
+/* ra_cnecc_dispatch -- see header for full description. */
 void ra_cnecc_dispatch(uint8_t instance, bool is_2bit, uint16_t err_addr)
 {
   if ((uint16_t)instance >= k_ra_cnecc_instance_count) {
@@ -725,19 +699,7 @@ void ra_cnecc_dispatch(uint8_t instance, bool is_2bit, uint16_t err_addr)
   }
 }
 
-/**
- * @brief ra_cnecc_dispatch_overflow -- see header for full description.
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @param[in] instance See header declaration for direction and constraints.
- * @pre Driver state has been initialised by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
+/* ra_cnecc_dispatch_overflow -- see header for full description. */
 void ra_cnecc_dispatch_overflow(uint8_t instance)
 {
   if ((uint16_t)instance >= k_ra_cnecc_instance_count) {

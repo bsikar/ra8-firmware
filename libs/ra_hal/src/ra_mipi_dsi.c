@@ -1364,16 +1364,7 @@ static void internal_ra_mipi_dsi_call_user(ra_mipi_dsi_event_t event, uint32_t m
   }
 }
 
-/**
- * @brief Implementation of ra_mipi_dsi_dispatch_seq0 (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_mipi_dsi_dispatch_seq0 (see header for full contract) -- see header for the documented contract. */
 void ra_mipi_dsi_dispatch_seq0(void)
 {
   volatile r_mipi_dsi_regs_t* reg = ra_mipi_dsi();
@@ -1384,16 +1375,7 @@ void ra_mipi_dsi_dispatch_seq0(void)
   internal_ra_mipi_dsi_call_user(k_ra_mipi_dsi_event_seq0, bits);
 }
 
-/**
- * @brief Implementation of ra_mipi_dsi_dispatch_seq1 (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_mipi_dsi_dispatch_seq1 (see header for full contract) -- see header for the documented contract. */
 void ra_mipi_dsi_dispatch_seq1(void)
 {
   volatile r_mipi_dsi_regs_t* reg = ra_mipi_dsi();
@@ -1404,16 +1386,7 @@ void ra_mipi_dsi_dispatch_seq1(void)
   internal_ra_mipi_dsi_call_user(k_ra_mipi_dsi_event_seq1, bits);
 }
 
-/**
- * @brief Implementation of ra_mipi_dsi_dispatch_video (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_mipi_dsi_dispatch_video (see header for full contract) -- see header for the documented contract. */
 void ra_mipi_dsi_dispatch_video(void)
 {
   volatile r_mipi_dsi_regs_t* reg = ra_mipi_dsi();
@@ -1431,16 +1404,7 @@ void ra_mipi_dsi_dispatch_video(void)
   internal_ra_mipi_dsi_call_user(k_ra_mipi_dsi_event_video, bits);
 }
 
-/**
- * @brief Implementation of ra_mipi_dsi_dispatch_receive (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_mipi_dsi_dispatch_receive (see header for full contract) -- see header for the documented contract. */
 void ra_mipi_dsi_dispatch_receive(void)
 {
   volatile r_mipi_dsi_regs_t* reg = ra_mipi_dsi();
@@ -1463,16 +1427,7 @@ void ra_mipi_dsi_dispatch_receive(void)
   internal_ra_mipi_dsi_call_user(k_ra_mipi_dsi_event_receive, bits);
 }
 
-/**
- * @brief Implementation of ra_mipi_dsi_dispatch_fatal (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_mipi_dsi_dispatch_fatal (see header for full contract) -- see header for the documented contract. */
 void ra_mipi_dsi_dispatch_fatal(void)
 {
   volatile r_mipi_dsi_regs_t* reg = ra_mipi_dsi();
@@ -1483,16 +1438,7 @@ void ra_mipi_dsi_dispatch_fatal(void)
   internal_ra_mipi_dsi_call_user(k_ra_mipi_dsi_event_fatal, bits);
 }
 
-/**
- * @brief Implementation of ra_mipi_dsi_dispatch_phy (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_mipi_dsi_dispatch_phy (see header for full contract) -- see header for the documented contract. */
 void ra_mipi_dsi_dispatch_phy(void)
 {
   volatile r_mipi_dsi_regs_t* reg = ra_mipi_dsi();
@@ -1503,16 +1449,7 @@ void ra_mipi_dsi_dispatch_phy(void)
   internal_ra_mipi_dsi_call_user(k_ra_mipi_dsi_event_phy, bits);
 }
 
-/**
- * @brief Implementation of ra_mipi_dsi_dispatch (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_mipi_dsi_dispatch (see header for full contract) -- see header for the documented contract. */
 void ra_mipi_dsi_dispatch(void)
 {
   /* HUM Ch 65.2 "ISR : Interrupt Status Register", p 3840 */

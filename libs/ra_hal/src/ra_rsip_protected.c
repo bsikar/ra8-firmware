@@ -182,30 +182,7 @@ p_aes_install(const uint8_t* raw_key, ra_rsip_aes_key_bits_t key_bits, ra_rsip_k
   }
 }
 
-/**
- * @brief Implementation of ra_rsip_protected_aes_init (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] wrapped_key See implementation.
- * @param[in] key_bits See implementation.
- * @param[in] mode See implementation.
- * @param[in] iv See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @par Stack-budget deviation:
- *      Holds a 32-byte raw-key scratch + a full ra_rsip_key_handle_t on
- *      the stack (~1128 bytes total per the .su file) so the unwrapped
- *      key material is scrubbed via `p_scrub` when the frame unwinds
- *      and never lives in .bss. Considered alternatives (a static
- *      single-use scratch struct in .bss, a heap allocation) both
- *      defeat the scrub-on-return security property. See
- *      docs/STACK_USAGE.md and the per-app STACK_USAGE_BYTES override.
- * @since 0.1.0
- */
+/* Implementation of ra_rsip_protected_aes_init (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_rsip_protected_aes_init(const uint8_t*         wrapped_key,
                                     ra_rsip_aes_key_bits_t key_bits,
                                     ra_rsip_aes_mode_t     mode,
@@ -250,21 +227,7 @@ ra_err_t ra_rsip_protected_aes_init(const uint8_t*         wrapped_key,
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_rsip_protected_aes_encrypt (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] plaintext See implementation.
- * @param[in] ciphertext See implementation.
- * @param[in] len See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_rsip_protected_aes_encrypt (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_rsip_protected_aes_encrypt(const uint8_t* plaintext, uint8_t* ciphertext, uint32_t len)
 {
   if (!s_p_aes_active) {
@@ -281,21 +244,7 @@ ra_err_t ra_rsip_protected_aes_encrypt(const uint8_t* plaintext, uint8_t* cipher
                             len);
 }
 
-/**
- * @brief Implementation of ra_rsip_protected_aes_decrypt (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] ciphertext See implementation.
- * @param[in] plaintext See implementation.
- * @param[in] len See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_rsip_protected_aes_decrypt (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_rsip_protected_aes_decrypt(const uint8_t* ciphertext, uint8_t* plaintext, uint32_t len)
 {
   if (!s_p_aes_active) {
@@ -312,18 +261,7 @@ ra_err_t ra_rsip_protected_aes_decrypt(const uint8_t* ciphertext, uint8_t* plain
                             len);
 }
 
-/**
- * @brief Implementation of ra_rsip_protected_aes_finish (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_rsip_protected_aes_finish (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_rsip_protected_aes_finish(void)
 {
   if (!s_p_aes_active) {
@@ -337,32 +275,7 @@ ra_err_t ra_rsip_protected_aes_finish(void)
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_rsip_protected_rsa_decrypt (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] wrapped_priv See implementation.
- * @param[in] size See implementation.
- * @param[in] ciphertext See implementation.
- * @param[in] ciphertext_len See implementation.
- * @param[in] plaintext_out See implementation.
- * @param[in] plaintext_cap See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @par Stack-budget deviation:
- *      Holds a 512-byte RSA-4096 modulus scratch + ra_rsip_key_handle_t
- *      + a 16-byte install IV (~1720 bytes total per the .su file) on
- *      the stack so the unwrapped private modulus is scrubbed via
- *      `p_scrub` when the frame unwinds. Moving the modulus into .bss
- *      would either persist the secret across calls or require an
- *      explicit clear-on-exit path that doubles the attack surface.
- *      See docs/STACK_USAGE.md.
- * @since 0.1.0
- */
+/* Implementation of ra_rsip_protected_rsa_decrypt (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_rsip_protected_rsa_decrypt(const uint8_t*     wrapped_priv,
                                        ra_rsip_rsa_size_t size,
                                        const uint8_t*     ciphertext,
@@ -443,29 +356,7 @@ ra_err_t ra_rsip_protected_rsa_decrypt(const uint8_t*     wrapped_priv,
   return ra_rsip_rsa_sign(&handle, size, ciphertext, ciphertext_len, plaintext_out);
 }
 
-/**
- * @brief Implementation of ra_rsip_protected_ecdsa_sign (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] wrapped_priv See implementation.
- * @param[in] curve See implementation.
- * @param[in] hash See implementation.
- * @param[in] hash_len See implementation.
- * @param[in] sig_out See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @par Stack-budget deviation:
- *      Holds an ECC private-key scratch + a full ra_rsip_key_handle_t
- *      on the stack (~1104 bytes total per the .su file) so the
- *      unwrapped private scalar is scrubbed via `p_scrub` when the
- *      frame unwinds. The same scrub-on-return security property
- *      forbids moving the buffer into .bss. See docs/STACK_USAGE.md.
- * @since 0.1.0
- */
+/* Implementation of ra_rsip_protected_ecdsa_sign (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_rsip_protected_ecdsa_sign(const uint8_t*  wrapped_priv,
                                       ra_rsip_curve_t curve,
                                       const uint8_t*  hash,

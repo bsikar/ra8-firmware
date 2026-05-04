@@ -49,19 +49,7 @@ static const char* s_tag = "DTC";
 static ra_dtc_event_fn_t s_dtc_fn;
 static void*             s_dtc_ctx;
 
-/**
- * @brief Implementation of ra_dtc_init (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] vector_base See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_dtc_init (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_dtc_init(void* vector_base)
 {
   RA_CHECK_NULL_PTR(vector_base, s_tag, "vector_base must not be nullptr");
@@ -82,18 +70,7 @@ ra_err_t ra_dtc_init(void* vector_base)
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_dtc_deinit (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_dtc_deinit (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_dtc_deinit(void)
 {
   volatile r_dtc_regs_t* reg = ra_dtc();
@@ -106,18 +83,7 @@ ra_err_t ra_dtc_deinit(void)
   return ra_mstp_disable(k_ra_mstp_dmac0_dtc0);
 }
 
-/**
- * @brief Implementation of ra_dtc_enable (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_dtc_enable (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_dtc_enable(void)
 {
   /* HUM 18.2.3 DTCST p 787. */
@@ -125,18 +91,7 @@ ra_err_t ra_dtc_enable(void)
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_dtc_disable (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_dtc_disable (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_dtc_disable(void)
 {
   /* HUM 18.2.3 DTCST p 787. */
@@ -144,19 +99,7 @@ ra_err_t ra_dtc_disable(void)
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_dtc_reconfigure (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] vector_base See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_dtc_reconfigure (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_dtc_reconfigure(void* vector_base)
 {
   RA_CHECK_NULL_PTR(vector_base, s_tag, "vector_base must not be nullptr");
@@ -172,19 +115,7 @@ ra_err_t ra_dtc_reconfigure(void* vector_base)
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_dtc_get_status (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] out_mask See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_dtc_get_status (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_dtc_get_status(uint16_t* out_mask)
 {
   RA_CHECK_NULL_PTR(out_mask, s_tag, "out_mask must not be nullptr");
@@ -193,19 +124,7 @@ ra_err_t ra_dtc_get_status(uint16_t* out_mask)
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_dtc_clear_status (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] mask See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_dtc_clear_status (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_dtc_clear_status(uint16_t mask)
 {
   volatile r_dtc_regs_t* reg = ra_dtc();
@@ -214,20 +133,7 @@ ra_err_t ra_dtc_clear_status(uint16_t mask)
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_dtc_attach_handler (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] fn See implementation.
- * @param[in] ctx See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_dtc_attach_handler (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_dtc_attach_handler(ra_dtc_event_fn_t fn, void* ctx)
 {
   s_dtc_fn  = fn;
@@ -235,16 +141,7 @@ ra_err_t ra_dtc_attach_handler(ra_dtc_event_fn_t fn, void* ctx)
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_dtc_dispatch (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_dtc_dispatch (see header for full contract) -- see header for the documented contract. */
 void ra_dtc_dispatch(void)
 {
   volatile r_dtc_regs_t* reg = ra_dtc();
@@ -258,18 +155,7 @@ void ra_dtc_dispatch(void)
   }
 }
 
-/**
- * @brief Implementation of ra_dtc_enter_stop (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_dtc_enter_stop (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_dtc_enter_stop(void)
 {
   /* HUM 18.2.3 DTCST p 787. */
@@ -277,18 +163,7 @@ ra_err_t ra_dtc_enter_stop(void)
   return ra_mstp_disable(k_ra_mstp_dmac0_dtc0);
 }
 
-/**
- * @brief Implementation of ra_dtc_exit_stop (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_dtc_exit_stop (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_dtc_exit_stop(void)
 {
   return ra_mstp_enable(k_ra_mstp_dmac0_dtc0);

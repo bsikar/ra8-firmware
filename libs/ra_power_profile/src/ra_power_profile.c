@@ -179,19 +179,7 @@ static void internal_fire_pulse(ra_power_profile_region_id_t region_id, bool ent
   s_cfg.pulse(s_cfg.user_ctx_gpio, region_id, entering);
 }
 
-/**
- * @brief Implementation of ra_power_profile_init (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] cfg See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_power_profile_init (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_power_profile_init(const ra_power_profile_config_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg, RA_POWER_PROFILE_TAG, "cfg must not be nullptr");
@@ -202,19 +190,7 @@ ra_err_t ra_power_profile_init(const ra_power_profile_config_t* cfg)
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_power_profile_mark_enter (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] region_id See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_power_profile_mark_enter (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_power_profile_mark_enter(ra_power_profile_region_id_t region_id)
 {
   RA_VALIDATE_INIT(s_initialized, RA_POWER_PROFILE_TAG, "init not called");
@@ -233,19 +209,7 @@ ra_err_t ra_power_profile_mark_enter(ra_power_profile_region_id_t region_id)
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_power_profile_mark_exit (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] region_id See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_power_profile_mark_exit (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_power_profile_mark_exit(ra_power_profile_region_id_t region_id)
 {
   RA_VALIDATE_INIT(s_initialized, RA_POWER_PROFILE_TAG, "init not called");
@@ -274,19 +238,7 @@ ra_err_t ra_power_profile_mark_exit(ra_power_profile_region_id_t region_id)
   return ret;
 }
 
-/**
- * @brief Implementation of ra_power_profile_get_stats (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] out_stats See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_power_profile_get_stats (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_power_profile_get_stats(ra_power_profile_stats_t* out_stats)
 {
   RA_VALIDATE_INIT(s_initialized, RA_POWER_PROFILE_TAG, "init not called");
@@ -296,18 +248,7 @@ ra_err_t ra_power_profile_get_stats(ra_power_profile_stats_t* out_stats)
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_power_profile_reset_stats (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_power_profile_reset_stats (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_power_profile_reset_stats(void)
 {
   RA_VALIDATE_INIT(s_initialized, RA_POWER_PROFILE_TAG, "init not called");

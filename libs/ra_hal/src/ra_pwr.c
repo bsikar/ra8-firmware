@@ -132,18 +132,7 @@ static inline void internal_wfi(void)
  * =============================================================================
  */
 
-/**
- * @brief Implementation of ra_pwr_init (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_pwr_init (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_pwr_init(void)
 {
   ra_log_info(s_tag, "ra_pwr_init");
@@ -161,55 +150,19 @@ ra_err_t ra_pwr_init(void)
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_pwr_module_request (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] id See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_pwr_module_request (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_pwr_module_request(ra_mstp_t id)
 {
   return ra_mstp_enable(id);
 }
 
-/**
- * @brief Implementation of ra_pwr_module_release (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] id See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_pwr_module_release (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_pwr_module_release(ra_mstp_t id)
 {
   return ra_mstp_disable(id);
 }
 
-/**
- * @brief Implementation of ra_pwr_set_wake_source (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] source See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_pwr_set_wake_source (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_pwr_set_wake_source(ra_pwr_wake_t source)
 {
   uint8_t reg = 0U;
@@ -225,19 +178,7 @@ ra_err_t ra_pwr_set_wake_source(ra_pwr_wake_t source)
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_pwr_clear_wake_source (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] source See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_pwr_clear_wake_source (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_pwr_clear_wake_source(ra_pwr_wake_t source)
 {
   uint8_t reg = 0U;
@@ -253,20 +194,7 @@ ra_err_t ra_pwr_clear_wake_source(ra_pwr_wake_t source)
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_pwr_wake_source_is_enabled (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] source See implementation.
- * @param[in] out_enabled See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_pwr_wake_source_is_enabled (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_pwr_wake_source_is_enabled(ra_pwr_wake_t source, bool* out_enabled)
 {
   RA_CHECK_NULL_PTR(out_enabled, s_tag, "wake_source_is_enabled: out_enabled");
@@ -281,33 +209,13 @@ ra_err_t ra_pwr_wake_source_is_enabled(ra_pwr_wake_t source, bool* out_enabled)
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_pwr_enter_sleep (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_pwr_enter_sleep (see header for full contract) -- see header for the documented contract. */
 void ra_pwr_enter_sleep(void)
 {
   internal_wfi();
 }
 
-/**
- * @brief Implementation of ra_pwr_enter_software_standby (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_pwr_enter_software_standby (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_pwr_enter_software_standby(void)
 {
   /* Validate at least one wake source is armed -- entering Software
@@ -331,20 +239,7 @@ ra_err_t ra_pwr_enter_software_standby(void)
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_pwr_get_clock_hz (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] id See implementation.
- * @param[in] out_hz See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_pwr_get_clock_hz (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_pwr_get_clock_hz(ra_clock_id_t id, uint32_t* out_hz)
 {
   return ra_cgc_get_clock_hz(id, out_hz);

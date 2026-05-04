@@ -494,16 +494,7 @@ static ra_err_t priv_open_finalise(const ra_touch_cfg_t* cfg)
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_touch_dispatch_irq (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_touch_dispatch_irq (see header for full contract) -- see header for the documented contract. */
 void ra_touch_dispatch_irq(void)
 {
   const ra_touch_event_fn_t fn  = s_state.cb;

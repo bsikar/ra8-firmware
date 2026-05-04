@@ -417,16 +417,7 @@ static void internal_program_rect_limiters(const ra_drw_rect_t* rect)
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_drw_dispatch (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_drw_dispatch (see header for full contract) -- see header for the documented contract. */
 void ra_drw_dispatch(void)
 {
   /* HUM Ch 62.2.5 "STATUS: Status Control Register", p 3695 */

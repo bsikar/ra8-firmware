@@ -761,19 +761,7 @@ static ra_err_t internal_handle_write10(const uint8_t* data_buf, uint32_t* out_l
  * =============================================================================
  */
 
-/**
- * @brief Implementation of ra_usb_pmsc_feed_cbw (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] cbw See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_usb_pmsc_feed_cbw (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_pmsc_feed_cbw(const uint8_t* cbw)
 {
   RA_CHECK_NULL_PTR(cbw, s_tag, "feed_cbw: cbw");
@@ -914,22 +902,7 @@ static void internal_dispatch_advance_state(uint32_t data_len)
   }
 }
 
-/**
- * @brief Implementation of ra_usb_pmsc_dispatch_command (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] data_buf See implementation.
- * @param[in] data_buf_capacity See implementation.
- * @param[in] data_len See implementation.
- * @param[in] csw_status See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_usb_pmsc_dispatch_command (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_pmsc_dispatch_command(uint8_t*                  data_buf,
                                       uint32_t                  data_buf_capacity,
                                       uint32_t*                 data_len,
@@ -954,21 +927,7 @@ ra_err_t ra_usb_pmsc_dispatch_command(uint8_t*                  data_buf,
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_usb_pmsc_build_csw (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] csw_status See implementation.
- * @param[in] residue See implementation.
- * @param[in] out_csw See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_usb_pmsc_build_csw (see header for full contract) -- see header for the documented contract. */
 ra_err_t
 ra_usb_pmsc_build_csw(ra_usb_pmsc_csw_status_t csw_status, uint32_t residue, uint8_t* out_csw)
 {
@@ -986,18 +945,7 @@ ra_usb_pmsc_build_csw(ra_usb_pmsc_csw_status_t csw_status, uint32_t residue, uin
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_usb_pmsc_step (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_usb_pmsc_step (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_pmsc_step(void)
 {
   if (!s_state.initialised) {
@@ -1043,19 +991,7 @@ ra_err_t ra_usb_pmsc_step(void)
  * =============================================================================
  */
 
-/**
- * @brief Implementation of ra_usb_pmsc_attach_storage (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] storage See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_usb_pmsc_attach_storage (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_pmsc_attach_storage(const ra_usb_pmsc_storage_t* storage)
 {
   if (!s_state.initialised) {
@@ -1079,19 +1015,7 @@ ra_err_t ra_usb_pmsc_attach_storage(const ra_usb_pmsc_storage_t* storage)
  * =============================================================================
  */
 
-/**
- * @brief Implementation of ra_usb_pmsc_init (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] speed See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_usb_pmsc_init (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_pmsc_init(ra_usb_speed_t speed)
 {
   if ((speed != k_ra_usb_speed_fs) && (speed != k_ra_usb_speed_hs)) {
@@ -1127,18 +1051,7 @@ ra_err_t ra_usb_pmsc_init(ra_usb_speed_t speed)
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_usb_pmsc_close (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_usb_pmsc_close (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_pmsc_close(void)
 {
   if (!s_state.initialised) {

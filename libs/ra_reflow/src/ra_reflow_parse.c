@@ -64,21 +64,7 @@ ra_err_t priv_reflow_xml_walk(ra_reflow_t* engine, const uint8_t* xhtml_buf, siz
  * ---------------------------------------------------------------------------
  */
 
-/**
- * @brief Implementation of ra_reflow_parse_xhtml (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] engine See implementation.
- * @param[in] xhtml_buf See implementation.
- * @param[in] xhtml_len See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_reflow_parse_xhtml (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_reflow_parse_xhtml(ra_reflow_t* engine, const uint8_t* xhtml_buf, size_t xhtml_len)
 {
   if (engine == NULL || xhtml_buf == NULL) {

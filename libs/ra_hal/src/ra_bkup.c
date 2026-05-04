@@ -942,19 +942,7 @@ static ra_err_t internal_validate_security_cfg(const ra_bkup_security_config_t* 
   return k_ra_ok;
 }
 
-/**
- * @brief ra_bkup_dispatch -- see header for full description.
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
- * @param[in] tamper_flags See header declaration for direction and constraints.
- * @pre Driver state has been initialised by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
- * @post Side effects are limited to those documented in the header.
- * @post No global state is modified on the error path.
- * @note Thread safety: see the header declaration.
- * @since 0.1.0
- */
+/* ra_bkup_dispatch -- see header for full description. */
 void ra_bkup_dispatch(uint8_t tamper_flags)
 {
   const ra_bkup_event_fn_t fn  = s_bkup_fn;

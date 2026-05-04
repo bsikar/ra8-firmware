@@ -119,20 +119,7 @@ static void internal_publish_clocks(void)
   s_clock_hz[k_ra_clock_id_mriclk]  = k_ra_mriclk_hz;
 }
 
-/**
- * @brief Implementation of ra_cgc_get_clock_hz (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] id See implementation.
- * @param[in] out_hz See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_cgc_get_clock_hz (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_cgc_get_clock_hz(ra_clock_id_t id, uint32_t* out_hz)
 {
   if (out_hz == nullptr) {
@@ -798,18 +785,7 @@ static ra_err_t internal_cgc_init_protected(void)
   return err;
 }
 
-/**
- * @brief Implementation of ra_cgc_init (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_cgc_init (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_cgc_init(void)
 {
   ra_log_info(s_tag, "cgc_init -> XTAL -> PLL1 (1 GHz)");
@@ -846,18 +822,7 @@ ra_err_t ra_cgc_init(void)
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_cgc_use_hoco (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_cgc_use_hoco (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_cgc_use_hoco(void)
 {
   volatile uint8_t* const hococr = ra_sys_hococr();
@@ -909,19 +874,7 @@ static void* s_ostd_ctx = nullptr;
  */
 static bool s_ostd_enabled = false;
 
-/**
- * @brief Implementation of ra_cgc_switch_pll1_target (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] new_cpuclk_hz See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_cgc_switch_pll1_target (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_cgc_switch_pll1_target(uint32_t new_cpuclk_hz)
 {
   if (new_cpuclk_hz == 0U) {
@@ -965,20 +918,7 @@ ra_err_t ra_cgc_switch_pll1_target(uint32_t new_cpuclk_hz)
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_cgc_enable_stop_detection (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] handler See implementation.
- * @param[in] ctx See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_cgc_enable_stop_detection (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_cgc_enable_stop_detection(ra_cgc_ostd_fn_t handler, void* ctx)
 {
   if (handler == nullptr) {
@@ -996,18 +936,7 @@ ra_err_t ra_cgc_enable_stop_detection(ra_cgc_ostd_fn_t handler, void* ctx)
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_cgc_disable_stop_detection (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_cgc_disable_stop_detection (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_cgc_disable_stop_detection(void)
 {
   s_ostd_handler = nullptr;
@@ -1415,16 +1344,7 @@ ra_err_t ra_cgc_usbfs_clock_enable(
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_cgc_sim_trigger_stop_detection (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_cgc_sim_trigger_stop_detection (see header for full contract) -- see header for the documented contract. */
 void ra_cgc_sim_trigger_stop_detection(void)
 {
   if (!s_ostd_enabled) {

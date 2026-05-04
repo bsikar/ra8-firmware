@@ -193,19 +193,7 @@ static bool internal_is_known_class_request(uint8_t b_request)
  * =============================================================================
  */
 
-/**
- * @brief Implementation of ra_usb_pprn_init (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] speed See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_usb_pprn_init (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_pprn_init(ra_usb_speed_t speed)
 {
   if ((speed != k_ra_usb_speed_fs) && (speed != k_ra_usb_speed_hs)) {
@@ -228,18 +216,7 @@ ra_err_t ra_usb_pprn_init(ra_usb_speed_t speed)
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_usb_pprn_close (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_usb_pprn_close (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_pprn_close(void)
 {
   if (!s_state.initialised) {
@@ -260,22 +237,7 @@ ra_err_t ra_usb_pprn_close(void)
  * =============================================================================
  */
 
-/**
- * @brief Implementation of ra_usb_pprn_set_descriptors (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] desc See implementation.
- * @param[in] desc_len See implementation.
- * @param[in] device_id See implementation.
- * @param[in] device_id_len See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_usb_pprn_set_descriptors (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_pprn_set_descriptors(const uint8_t* desc,
                                      uint16_t       desc_len,
                                      const uint8_t* device_id,
@@ -306,21 +268,7 @@ ra_err_t ra_usb_pprn_set_descriptors(const uint8_t* desc,
  * =============================================================================
  */
 
-/**
- * @brief Implementation of ra_usb_pprn_recv (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] buf See implementation.
- * @param[in] max_len See implementation.
- * @param[in] got_len See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_usb_pprn_recv (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_pprn_recv(uint8_t* buf, uint16_t max_len, uint16_t* got_len)
 {
   RA_CHECK_NULL_PTR(buf, s_tag, "recv: buf");
@@ -341,20 +289,7 @@ ra_err_t ra_usb_pprn_recv(uint8_t* buf, uint16_t max_len, uint16_t* got_len)
   return err;
 }
 
-/**
- * @brief Implementation of ra_usb_pprn_send (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] data See implementation.
- * @param[in] len See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_usb_pprn_send (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_pprn_send(const uint8_t* data, uint16_t len)
 {
   if (!s_state.initialised) {
@@ -374,19 +309,7 @@ ra_err_t ra_usb_pprn_send(const uint8_t* data, uint16_t len)
  * =============================================================================
  */
 
-/**
- * @brief Implementation of ra_usb_pprn_set_port_status (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] status_byte See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_usb_pprn_set_port_status (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_pprn_set_port_status(uint8_t status_byte)
 {
   if (!s_state.initialised) {
@@ -396,19 +319,7 @@ ra_err_t ra_usb_pprn_set_port_status(uint8_t status_byte)
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_usb_pprn_get_port_status (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] out_status See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_usb_pprn_get_port_status (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_pprn_get_port_status(uint8_t* out_status)
 {
   RA_CHECK_NULL_PTR(out_status, s_tag, "get_port_status: out_status");
@@ -424,20 +335,7 @@ ra_err_t ra_usb_pprn_get_port_status(uint8_t* out_status)
  * =============================================================================
  */
 
-/**
- * @brief Implementation of ra_usb_pprn_attach_setup_handler (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] setup_fn See implementation.
- * @param[in] ctx See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_usb_pprn_attach_setup_handler (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_pprn_attach_setup_handler(ra_usb_pprn_setup_fn_t setup_fn, void* ctx)
 {
   if (!s_state.initialised) {
@@ -453,19 +351,7 @@ ra_err_t ra_usb_pprn_attach_setup_handler(ra_usb_pprn_setup_fn_t setup_fn, void*
  * =============================================================================
  */
 
-/**
- * @brief Implementation of ra_usb_pprn_handle_setup (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] setup See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_usb_pprn_handle_setup (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_usb_pprn_handle_setup(const ra_usb_setup_t* setup)
 {
   RA_CHECK_NULL_PTR(setup, s_tag, "handle_setup: setup");
