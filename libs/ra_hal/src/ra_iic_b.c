@@ -876,8 +876,6 @@ static ra_err_t internal_iic_b_drain_rx(volatile r_iic_b_regs_t* reg, uint8_t* o
  * data byte into the buffer. ACKCTL is then restored to its default
  * (ACK every byte) for the next transaction.
  *
- * @param[in] channel See header declaration for direction and constraints.
- * @param[in] cfg See header declaration for direction and constraints.
  * @return ``ra_err_t`` error code (or void if the signature returns void).
  * @retval k_ra_ok Success path.
  * @retval k_ra_err_invalid_arg Caller violated a precondition.
@@ -888,18 +886,9 @@ static ra_err_t internal_iic_b_drain_rx(volatile r_iic_b_regs_t* reg, uint8_t* o
  * @note Thread safety: see the header declaration.
  * @since 0.1.0
  *
- * @param[in] fn See header declaration for direction and constraints.
- * @param[in] ctx See header declaration for direction and constraints.
  *
- * @param[in] out_mask See header declaration for direction and constraints.
  *
- * @param[in] target_7b See header declaration for direction and constraints.
- * @param[in] out_acked See header declaration for direction and constraints.
  *
- * @param[in] tx See header declaration for direction and constraints.
- * @param[in] tx_len See header declaration for direction and constraints.
- * @param[in] rx See header declaration for direction and constraints.
- * @param[in] rx_len See header declaration for direction and constraints.
  *
  * @param[in] reg See header declaration for direction and constraints.
  * @param[in] buf See header declaration for direction and constraints.

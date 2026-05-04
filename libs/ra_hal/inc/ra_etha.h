@@ -663,7 +663,7 @@ ra_etha_set_vlan_mode(ra_etha_port_t port, ra_etha_vim_t vim, ra_etha_vem_t vem)
  *
  * @param[in] port Port identifier.
  * @param[in] c_tag C-VLAN tag (inner). Pointer to descriptor.
- * @param[in] s_tag S-VLAN tag (outer). Pointer to descriptor.
+ * @param[in] s_tag_in S-VLAN tag (outer). Pointer to descriptor.
  *
  * @return::ra_err_t Error code.
  * @retval k_ra_ok EAVTC packed and written.
@@ -681,7 +681,7 @@ ra_etha_set_vlan_mode(ra_etha_port_t port, ra_etha_vim_t vim, ra_etha_vem_t vem)
  */
 [[nodiscard]] ra_err_t ra_etha_set_vlan_tag(ra_etha_port_t            port,
                                             const ra_etha_vlan_tag_t* c_tag,
-                                            const ra_etha_vlan_tag_t* s_tag);
+                                            const ra_etha_vlan_tag_t* s_tag_in);
 
 /**
  * @brief Configure the RX tag filter (multicast group + VLAN-tag filter).
