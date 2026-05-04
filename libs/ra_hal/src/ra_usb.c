@@ -327,12 +327,54 @@ static ra_usb_dev_state_t internal_decode_dvsq(uint16_t intsts0)
  * - ``probe_lo_mask`` -- mask of the low half of the probe word.
  */
 typedef enum : uint32_t {
-  k_ra_usbhs_delay_1us_iters     = 2000U,
-  k_ra_usbhs_pll_lock_poll_limit = 200000U,
+  k_ra_usbhs_delay_1us_iters = 2000U,
+  /* PHY analog PLL can take multiple ms to lock at cold start; FSP
+   * uses an unbounded while loop. We pick 5 million NOP-spins
+   * (~5 ms ceiling at 1 GHz Cortex-M85) which is well above the
+   * worst-case observed lock time but still bounded for NASA Rule 2. */
+  k_ra_usbhs_pll_lock_poll_limit = 5000000U,
   k_ra_usbhs_scke_poll_limit     = 200000U,
   k_ra_usbhs_probe_hi_shift      = 16U,
   k_ra_usbhs_probe_lo_mask       = 0x0000FFFFU,
 } ra_usbhs_init_local_t;
+
+/**
+ * @enum ra_usbhs_phy_step_t
+ * @brief Sentinel values for the per-step USBHS PHY bring-up probe.
+ *
+ * @details Each value marks a completed sub-step of
+ * ::internal_usbhs_phy_bringup. A JLink read of ``s_phy_step_probe``
+ * pinpoints the furthest-reached step on a stalled boot.
+ */
+typedef enum : uint8_t {
+  k_ra_usbhs_phy_step_hse_set      = 1U, /**< SYSCFG.HSE asserted.          */
+  k_ra_usbhs_phy_step_clksel_12    = 2U, /**< PHYSET CLKSEL forced to 12.   */
+  k_ra_usbhs_phy_step_dirpd_clear  = 3U, /**< PHY analog powered.           */
+  k_ra_usbhs_phy_step_pll_released = 4U, /**< PHY PLLRESET cleared.         */
+  k_ra_usbhs_phy_step_usbe_set     = 5U, /**< SYSCFG DRPD=0 USBE=1.         */
+  k_ra_usbhs_phy_step_suspendm_set = 6U, /**< LPSTS SUSPENDM=1.             */
+  k_ra_usbhs_phy_step_pll_locked   = 7U, /**< PLLSTA.PLLLOCK observed.      */
+} ra_usbhs_phy_step_t;
+
+/**
+ * @var s_phy_step_probe
+ * @brief Diagnostic step counter for the USBHS PHY bring-up sequence.
+ *
+ * @details Each step in ::internal_usbhs_phy_bringup writes a fixed
+ * sentinel here so a JLink read pinpoints the last completed step:
+ * - 1 = SYSCFG.HSE asserted (pre-PHY).
+ * - 2 = PHYSET DIRPD|CLKSEL set, CLKSEL field forced to 12 MHz.
+ * - 3 = PHYSET DIRPD released (PHY analog powered).
+ * - 4 = PHYSET PLLRESET released.
+ * - 5 = SYSCFG DRPD cleared, USBE set.
+ * - 6 = LPSTS.SUSPENDM set.
+ * - 7 = PLLSTA.PLLLOCK observed (PHY ready).
+ *
+ * @note Read-only from outside; written only by the PHY bring-up.
+ * @warning Direct modification breaks the diagnostic invariant.
+ * @since 0.1.0
+ */
+static volatile uint8_t s_phy_step_probe = 0U;
 
 /**
  * @var s_usbhs_init_probe
@@ -384,16 +426,19 @@ static void internal_usb_delay_1us(void)
 }
 
 /**
- * @brief Drive USBHS SYSCFG.USBE|HSE after the PHY-side init steps.
+ * @brief Drive USBHS SYSCFG DRPD=0, USBE=1 after PLLRESET is released.
  *
  * @details Splits the SYSCFG mutation off from
  * ::internal_usbhs_phy_bringup so each helper stays under the NASA
- * Rule 4 / clang-tidy size budget. Also captures the SYSCFG-after-USBE
- * value into the diagnostic probe word's high half.
+ * Rule 4 / clang-tidy size budget. HSE is set separately at the start
+ * of the bring-up (mirrors FSP `hw_usb_set_hse` which is called BEFORE
+ * `hw_usb_pmodule_init` -- r_usb_basic.c). Captures the
+ * SYSCFG-after-USBE value into the probe word's high half.
  *
  * @param[in] reg HS register block pointer.
  *
  * @pre PHYSET DIRPD/PLLRESET are released.
+ * @pre SYSCFG.HSE is already 1.
  * @pre s_usbhs_init_probe low half holds PHYSET-after-power-up.
  * @post SYSCFG: DRPD=0, USBE=1, HSE=1.
  * @post s_usbhs_init_probe high half = SYSCFG.
@@ -405,8 +450,7 @@ static void internal_usbhs_enable_syscfg(volatile r_usb_regs_t* reg)
 {
   /* HUM Ch 37.2.1 "SYSCFG : System Configuration Control Register", p 2060 */
   reg->SYSCFG = (uint16_t)(reg->SYSCFG & (uint16_t)~(uint16_t)(1U << k_ra_syscfg_bit_drpd));
-  reg->SYSCFG = (uint16_t)(reg->SYSCFG | (uint16_t)(1U << k_ra_syscfg_bit_usbe) |
-                           (uint16_t)(1U << k_ra_syscfg_bit_hse));
+  reg->SYSCFG = (uint16_t)(reg->SYSCFG | (uint16_t)(1U << k_ra_syscfg_bit_usbe));
 
   const uint32_t lo  = s_usbhs_init_probe & (uint32_t)k_ra_usbhs_probe_lo_mask;
   const uint32_t hi  = (uint32_t)reg->SYSCFG << (uint32_t)k_ra_usbhs_probe_hi_shift;
@@ -487,29 +531,52 @@ static ra_err_t internal_usbhs_phy_bringup(volatile r_usb_regs_t* reg)
   volatile uint16_t* const physet = ra_usbhs_physet();
   volatile uint16_t* const lpsts  = ra_usbhs_lpsts();
 
-  /* HUM Ch 37.2.5 "PHYSET : PHY Setting Register", p 2065 */
+  /* Step 1: SYSCFG.HSE = 1 (mirrors FSP `hw_usb_set_hse`, called from
+   * r_usb_basic.c BEFORE hw_usb_pmodule_init). HUM Ch 37.2.1 SYSCFG. */
+  reg->SYSCFG      = (uint16_t)(reg->SYSCFG | (uint16_t)(1U << k_ra_syscfg_bit_hse));
+  s_phy_step_probe = (uint8_t)k_ra_usbhs_phy_step_hse_set;
+
+  /* Step 2: PHYSET DIRPD + CLKSEL mask, then force CLKSEL = 12 MHz.
+   * Mirrors FSP r_usb_preg_access.c::hw_usb_pmodule_init IP1 path,
+   * USB_USBMCLK_HZ == USB_CLK_12MHZ branch. HUM Ch 37.2.5 PHYSET. */
   *physet = (uint16_t)(*physet | (uint16_t)k_ra_physet_dirpd | (uint16_t)k_ra_physet_clksel);
   *physet = (uint16_t)(*physet & (uint16_t)~(uint16_t)k_ra_physet_clksel);
   *physet = (uint16_t)(*physet | (uint16_t)k_ra_physet_clksel_12);
   internal_usb_delay_1us();
+  s_phy_step_probe = (uint8_t)k_ra_usbhs_phy_step_clksel_12;
 
+  /* Step 3: release PHY power-down, then wait 1 ms for analog ramp.
+   * FSP: usb_cpu_delay_xms(1) between DIRPD clear and PLLRESET clear. */
   *physet = (uint16_t)(*physet & (uint16_t)~(uint16_t)k_ra_physet_dirpd);
   ra_delay_ms(1U);
-  *physet = (uint16_t)(*physet & (uint16_t)~(uint16_t)k_ra_physet_pllreset);
+  s_phy_step_probe = (uint8_t)k_ra_usbhs_phy_step_dirpd_clear;
+
+  /* Step 4: release PHY internal PLL reset. */
+  *physet          = (uint16_t)(*physet & (uint16_t)~(uint16_t)k_ra_physet_pllreset);
+  s_phy_step_probe = (uint8_t)k_ra_usbhs_phy_step_pll_released;
 
   s_usbhs_init_probe = (uint32_t)*physet;
 
+  /* Step 5: SYSCFG DRPD = 0 then USBE = 1. FSP order: PLLRESET cleared
+   * BEFORE the SYSCFG mutate. HSE was set in step 1 above so this
+   * helper now only touches DRPD/USBE. */
   internal_usbhs_enable_syscfg(reg);
+  s_phy_step_probe = (uint8_t)k_ra_usbhs_phy_step_usbe_set;
 
-  /* HUM Ch 37.2.10 "LPSTS : Low Power Status Register", p 2073 */
-  *lpsts = (uint16_t)(*lpsts | (uint16_t)k_ra_lpsts_suspendm);
+  /* Step 6: LPSTS SUSPENDM = 1 (UTMI out of suspend).
+   * HUM Ch 37.2.10 LPSTS. FSP sets SUSPENDM AFTER USBE and BEFORE the
+   * PLLLOCK wait. */
+  *lpsts           = (uint16_t)(*lpsts | (uint16_t)k_ra_lpsts_suspendm);
+  s_phy_step_probe = (uint8_t)k_ra_usbhs_phy_step_suspendm_set;
 
-  /* HUM Ch 37.2.4 "PLLSTA : PLL Status Register", p 2064 */
+  /* Step 7: poll PLLSTA.PLLLOCK. HUM Ch 37.2.4 PLLSTA.
+   * Bound: ~5 ms at 1 GHz, well above worst-case PHY analog lock time. */
   const ra_err_t lock_err = internal_usbhs_wait_pll_lock();
   if (lock_err != k_ra_ok) {
     ra_log_error(s_tag, "usbhs: PHY PLL lock timeout");
     return lock_err;
   }
+  s_phy_step_probe = (uint8_t)k_ra_usbhs_phy_step_pll_locked;
 
   /* HUM Ch 37.2.2 "BUSWAIT : CPU Bus Wait Register", p 2062 */
   reg->BUSWAIT = (uint16_t)k_ra_buswait_default;
