@@ -363,22 +363,7 @@ static void internal_plot(int32_t x, int32_t y, uint32_t color)
 /* Public API                                                          */
 /* ------------------------------------------------------------------ */
 
-/**
- * @brief Implementation of ra_gfx_init (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] fb See implementation.
- * @param[in] width See implementation.
- * @param[in] height See implementation.
- * @param[in] format See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_gfx_init (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_gfx_init(void* fb, uint16_t width, uint16_t height, ra_gfx_format_t format)
 {
   if (fb == NULL) {
@@ -402,19 +387,7 @@ ra_err_t ra_gfx_init(void* fb, uint16_t width, uint16_t height, ra_gfx_format_t 
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_gfx_clear (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] color See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_gfx_clear (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_gfx_clear(uint32_t color)
 {
   if (!s_state.initialised) {
@@ -433,21 +406,7 @@ ra_err_t ra_gfx_clear(uint32_t color)
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_gfx_pixel (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] x See implementation.
- * @param[in] y See implementation.
- * @param[in] color See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_gfx_pixel (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_gfx_pixel(int32_t x, int32_t y, uint32_t color)
 {
   if (!s_state.initialised) {
@@ -460,23 +419,7 @@ ra_err_t ra_gfx_pixel(int32_t x, int32_t y, uint32_t color)
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_gfx_line (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] x0 See implementation.
- * @param[in] y0 See implementation.
- * @param[in] x1 See implementation.
- * @param[in] y1 See implementation.
- * @param[in] color See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_gfx_line (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_gfx_line(int32_t x0, int32_t y0, int32_t x1, int32_t y1, uint32_t color)
 {
   if (!s_state.initialised) {
@@ -510,24 +453,7 @@ ra_err_t ra_gfx_line(int32_t x0, int32_t y0, int32_t x1, int32_t y1, uint32_t co
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_gfx_rect (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] x See implementation.
- * @param[in] y See implementation.
- * @param[in] w See implementation.
- * @param[in] h See implementation.
- * @param[in] color See implementation.
- * @param[in] filled See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_gfx_rect (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_gfx_rect(int32_t x, int32_t y, int32_t w, int32_t h, uint32_t color, bool filled)
 {
   if (!s_state.initialised) {
@@ -613,23 +539,7 @@ internal_circle_filled_step(int32_t cx, int32_t cy, int32_t x, int32_t y, uint32
   }
 }
 
-/**
- * @brief Implementation of ra_gfx_circle (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] cx See implementation.
- * @param[in] cy See implementation.
- * @param[in] r See implementation.
- * @param[in] color See implementation.
- * @param[in] filled See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_gfx_circle (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_gfx_circle(int32_t cx, int32_t cy, int32_t r, uint32_t color, bool filled)
 {
   if (!s_state.initialised) {
@@ -707,24 +617,7 @@ static void internal_render_glyph(int32_t              x,
   }
 }
 
-/**
- * @brief Implementation of ra_gfx_text_out (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] x See implementation.
- * @param[in] y See implementation.
- * @param[in] str See implementation.
- * @param[in] font See implementation.
- * @param[in] fg_color See implementation.
- * @param[in] bg_color See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_gfx_text_out (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_gfx_text_out(int32_t              x,
                          int32_t              y,
                          const char*          str,
@@ -753,22 +646,7 @@ ra_err_t ra_gfx_text_out(int32_t              x,
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_gfx_text_size (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] str See implementation.
- * @param[in] font See implementation.
- * @param[in] out_w See implementation.
- * @param[in] out_h See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_gfx_text_size (see header for full contract) -- see header for the documented contract. */
 ra_err_t
 ra_gfx_text_size(const char* str, const ra_gfx_font_t* font, uint32_t* out_w, uint32_t* out_h)
 {
@@ -788,24 +666,7 @@ ra_gfx_text_size(const char* str, const ra_gfx_font_t* font, uint32_t* out_w, ui
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_gfx_blit (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] src_buf See implementation.
- * @param[in] src_w See implementation.
- * @param[in] src_h See implementation.
- * @param[in] src_format See implementation.
- * @param[in] dst_x See implementation.
- * @param[in] dst_y See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_gfx_blit (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_gfx_blit(const void*     src_buf,
                      uint16_t        src_w,
                      uint16_t        src_h,

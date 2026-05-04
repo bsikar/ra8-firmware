@@ -788,19 +788,7 @@ static ra_err_t priv_layout_tokens(ra_reflow_t* engine, const stbtt_fontinfo* fo
  * ===========================================================================
  */
 
-/**
- * @brief Implementation of ra_reflow_run_layout (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] engine See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_reflow_run_layout (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_reflow_run_layout(ra_reflow_t* engine)
 {
   if (engine == NULL) {
@@ -840,26 +828,7 @@ ra_err_t ra_reflow_run_layout(ra_reflow_t* engine)
  * ===========================================================================
  */
 
-/**
- * @brief Implementation of ra_reflow_init (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] viewport_w See implementation.
- * @param[in] viewport_h See implementation.
- * @param[in] font_data See implementation.
- * @param[in] font_len See implementation.
- * @param[in] font_px See implementation.
- * @param[in] body_color See implementation.
- * @param[in] link_color See implementation.
- * @param[in] out_engine See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_reflow_init (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_reflow_init(uint16_t       viewport_w,
                         uint16_t       viewport_h,
                         const uint8_t* font_data,
@@ -895,19 +864,7 @@ ra_err_t ra_reflow_init(uint16_t       viewport_w,
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_reflow_close (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] engine See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_reflow_close (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_reflow_close(ra_reflow_t* engine)
 {
   if (engine == NULL) {
@@ -926,22 +883,7 @@ ra_err_t ra_reflow_close(ra_reflow_t* engine)
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_reflow_layout_chapter (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] engine See implementation.
- * @param[in] xhtml_buf See implementation.
- * @param[in] xhtml_len See implementation.
- * @param[in] out_total_pages See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_reflow_layout_chapter (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_reflow_layout_chapter(ra_reflow_t*   engine,
                                   const uint8_t* xhtml_buf,
                                   size_t         xhtml_len,
@@ -976,20 +918,7 @@ ra_err_t ra_reflow_layout_chapter(ra_reflow_t*   engine,
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_reflow_get_page_count (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] engine See implementation.
- * @param[in] out_count See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_reflow_get_page_count (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_reflow_get_page_count(const ra_reflow_t* engine, uint32_t* out_count)
 {
   if (engine == NULL || out_count == NULL) {
@@ -1002,20 +931,7 @@ ra_err_t ra_reflow_get_page_count(const ra_reflow_t* engine, uint32_t* out_count
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_reflow_set_font_size (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] engine See implementation.
- * @param[in] new_font_px See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_reflow_set_font_size (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_reflow_set_font_size(ra_reflow_t* engine, uint16_t new_font_px)
 {
   if (engine == NULL) {

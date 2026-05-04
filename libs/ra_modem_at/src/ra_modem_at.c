@@ -810,19 +810,7 @@ static ra_err_t internal_validate_init_cfg(const ra_modem_at_cfg_t* cfg)
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_modem_at_init (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] cfg See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_modem_at_init (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_modem_at_init(const ra_modem_at_cfg_t* cfg)
 {
   const ra_err_t verr = internal_validate_init_cfg(cfg);
@@ -838,21 +826,7 @@ ra_err_t ra_modem_at_init(const ra_modem_at_cfg_t* cfg)
   return k_ra_ok;
 }
 
-/**
- * @brief Implementation of ra_modem_at_send_cmd (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] cmd See implementation.
- * @param[in] expected_response See implementation.
- * @param[in] timeout_ms See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_modem_at_send_cmd (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_modem_at_send_cmd(const char* cmd, const char* expected_response, uint16_t timeout_ms)
 {
   if (s_mod.initialised == 0U) {
@@ -872,22 +846,7 @@ ra_err_t ra_modem_at_send_cmd(const char* cmd, const char* expected_response, ui
                                 0U);
 }
 
-/**
- * @brief Implementation of ra_modem_at_send_cmd_capture (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] cmd See implementation.
- * @param[in] out_buf See implementation.
- * @param[in] buf_len See implementation.
- * @param[in] timeout_ms See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_modem_at_send_cmd_capture (see header for full contract) -- see header for the documented contract. */
 ra_err_t
 ra_modem_at_send_cmd_capture(const char* cmd, char* out_buf, size_t buf_len, uint16_t timeout_ms)
 {
@@ -982,21 +941,7 @@ internal_urc_insert(const char* prefix, uint16_t plen, ra_modem_at_urc_fn_t fn, 
   return 0U;
 }
 
-/**
- * @brief Implementation of ra_modem_at_register_unsolicited_handler (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] prefix See implementation.
- * @param[in] fn See implementation.
- * @param[in] ctx See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_modem_at_register_unsolicited_handler (see header for full contract) -- see header for the documented contract. */
 ra_err_t
 ra_modem_at_register_unsolicited_handler(const char* prefix, ra_modem_at_urc_fn_t fn, void* ctx)
 {
@@ -1020,18 +965,7 @@ ra_modem_at_register_unsolicited_handler(const char* prefix, ra_modem_at_urc_fn_
   return k_ra_err_no_mem;
 }
 
-/**
- * @brief Implementation of ra_modem_at_poll (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
+/* Implementation of ra_modem_at_poll (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_modem_at_poll(void)
 {
   if (s_mod.initialised == 0U) {
