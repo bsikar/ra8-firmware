@@ -24,7 +24,8 @@
  *  - `hw_usb_set_uact / _clear_uact`-> `ra_usb_host_set_uact`
  *  - `usb_hstd_bus_reset` (set/clr) -> `ra_usb_host_bus_reset`
  *  - `usb_hstd_setup_command`       -> `ra_usb_host_setup_request`
- *  - `usb_pstd_save_request`        -> `ra_usb_read_setup`
+ *  - `usb_pstd_save_request`        -> `ra_usb_read_setup_if_valid` /
+ *                                      `ra_usb_read_setup_unconditional`
  *  - `hw_usb_pcontrol_dcpctr_pid` + `hw_usb_pset_ccpl` ->
  *    `ra_usb_control_response`
  *  - `usb_pstd_set_pipe_table`      -> `ra_usb_configure_endpoint`
@@ -1962,22 +1963,27 @@ ra_err_t ra_usb_rearm_out_pipe(ra_usb_speed_t speed, uint8_t pipe_num)
  */
 
 /**
- * @brief Implementation of ra_usb_read_setup (see header for full contract).
- * @details See the public header for the documented contract; this definition implements it.
- * @param[in] speed See implementation.
- * @param[in] out_setup See implementation.
+ * @brief Implementation of ra_usb_read_setup_if_valid (see header for full contract).
+ * @details VALID-gated SETUP drain. Returns ::k_ra_err_no_data when
+ *          INTSTS0.VALID is clear; otherwise drains USBREQ/USBVAL/
+ *          USBINDX/USBLENG and W0C-clears VALID.
+ * @param[in] speed See header.
+ * @param[in] out_setup See header.
  * @return Result code.
  * @retval k_ra_ok Operation succeeded.
+ * @retval k_ra_err_no_data INTSTS0.VALID was clear at entry.
+ * @retval k_ra_err_invalid_arg speed out of range.
+ * @retval k_ra_err_null_ptr out_setup was NULL.
  * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
+ * @pre out_setup is non-NULL.
+ * @post On success, INTSTS0.VALID is W0C-cleared.
+ * @post On success, *out_setup mirrors the chip's SETUP latch.
+ * @note Not thread-safe; FS / CTRT path uses this variant.
  * @since 0.1.0
  */
-ra_err_t ra_usb_read_setup(ra_usb_speed_t speed, ra_usb_setup_t* out_setup)
+ra_err_t ra_usb_read_setup_if_valid(ra_usb_speed_t speed, ra_usb_setup_t* out_setup)
 {
-  RA_CHECK_NULL_PTR(out_setup, s_tag, "read_setup: out_setup");
+  RA_CHECK_NULL_PTR(out_setup, s_tag, "read_setup_if_valid: out_setup");
   volatile r_usb_regs_t* reg = internal_pick(speed);
   if (reg == nullptr) {
     return k_ra_err_invalid_arg;
@@ -1996,6 +2002,55 @@ ra_err_t ra_usb_read_setup(ra_usb_speed_t speed, ra_usb_setup_t* out_setup)
   out_setup->w_length        = reg->USBLENG;
 
   /* Clear VALID by writing zero to the bit (W0C semantics). */
+  reg->INTSTS0 = (uint16_t)(reg->INTSTS0 & (uint16_t)~k_ra_intsts0_mask_valid);
+  return k_ra_ok;
+}
+
+/**
+ * @brief Implementation of ra_usb_read_setup_unconditional (see header).
+ * @details Race-free SETUP drain for the HS / SQMON polled-worker path.
+ *          On HS the polled dispatcher routinely observes
+ *          DCPCTR.SQMON == 1 (race-immune SETUP-latched signal, HUM
+ *          Ch 37.2.31 p 2095) AFTER the SIE has already auto-cleared
+ *          INTSTS0.VALID. The captured registers USBREQ/USBVAL/USBINDX/
+ *          USBLENG remain latched (HUM Ch 37.2.21..24 p 2087..2090) --
+ *          only the VALID flag is cleared. This entry point therefore
+ *          skips the VALID gate and drains the captured registers
+ *          directly, then defensively W0C-acks VALID in case the SIE
+ *          re-asserted it before our store.
+ * @param[in] speed Which controller.
+ * @param[out] out_setup Decoded 8-byte SETUP packet.
+ * @return Result code.
+ * @retval k_ra_ok SETUP drained from the captured registers.
+ * @retval k_ra_err_invalid_arg speed out of range.
+ * @retval k_ra_err_null_ptr out_setup was NULL.
+ * @pre Caller has independent proof a SETUP arrived (e.g. SQMON==1).
+ * @pre out_setup is non-NULL.
+ * @post *out_setup mirrors USBREQ/USBVAL/USBINDX/USBLENG.
+ * @post INTSTS0.VALID is W0C-cleared (no-op if already 0).
+ * @note Not thread-safe; HS / SQMON path uses this variant.
+ * @since 0.1.0
+ */
+ra_err_t ra_usb_read_setup_unconditional(ra_usb_speed_t speed, ra_usb_setup_t* out_setup)
+{
+  RA_CHECK_NULL_PTR(out_setup, s_tag, "read_setup_unconditional: out_setup");
+  volatile r_usb_regs_t* reg = internal_pick(speed);
+  if (reg == nullptr) {
+    return k_ra_err_invalid_arg;
+  }
+
+  /* HUM Ch 36.2.17 / 37.2.21 "USBREQ : USB Request Type Register",
+   * p 1989 / 2087. The SETUP latch survives VALID being auto-cleared
+   * by the SIE; only a fresh SETUP token can overwrite it. */
+  const uint16_t req         = reg->USBREQ;
+  out_setup->bm_request_type = (uint8_t)(req & k_ra_usb_byte_mask);
+  out_setup->b_request       = (uint8_t)((req >> k_ra_usb_byte_bits) & k_ra_usb_byte_mask);
+  out_setup->w_value         = reg->USBVAL;
+  out_setup->w_index         = reg->USBINDX;
+  out_setup->w_length        = reg->USBLENG;
+
+  /* HUM Ch 36.2.14 INTSTS0 p 1985: defensively W0C-clear VALID in case
+   * the SIE has re-asserted it (no-op when already 0). */
   reg->INTSTS0 = (uint16_t)(reg->INTSTS0 & (uint16_t)~k_ra_intsts0_mask_valid);
   return k_ra_ok;
 }
@@ -2099,9 +2154,10 @@ void ra_usb_dispatch(ra_usb_speed_t speed)
    * does not clobber a freshly-set edge); for an ack_bits position
    * that was 1 in the snapshot, we write 0 (clear).
    *
-   * VALID is intentionally NOT in ack_bits -- the SETUP handler in
-   * ra_usb_read_setup drains USBREQ/USBVAL/USBINDX/USBLENG and clears
-   * VALID itself. CTSQ/DVSQ are read-only fields. */
+   * VALID is intentionally NOT in ack_bits -- the SETUP handlers
+   * (ra_usb_read_setup_if_valid / _unconditional) drain
+   * USBREQ/USBVAL/USBINDX/USBLENG and clear VALID themselves.
+   * CTSQ/DVSQ are read-only fields. */
   const uint16_t mask = reg->INTSTS0;
 
   const uint16_t ack_bits = (uint16_t)((1U << k_ra_int0_bit_ctrt) | (1U << k_ra_int0_bit_dvst) |

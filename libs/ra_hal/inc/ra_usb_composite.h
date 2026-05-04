@@ -370,7 +370,7 @@ typedef struct {
  * @details
  * Test / debug entry point. Production code receives SETUPs from the
  * controller's USBREQ / USBVAL / USBINDX / USBLENG mirrors via
- * `ra_usb_read_setup`; tests bypass the FIFO and feed an 8-byte
+ * `ra_usb_read_setup_if_valid`; tests bypass the FIFO and feed an 8-byte
  * decoded SETUP directly. Standard chapter-9 requests are answered
  * internally; class / vendor requests are routed to the registered
  * class whose IF range covers `setup->w_index`.

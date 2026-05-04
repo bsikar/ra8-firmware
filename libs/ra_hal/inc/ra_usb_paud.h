@@ -450,7 +450,7 @@ typedef ra_err_t (*ra_usb_paud_setup_fn_t)(void* ctx, const ra_usb_setup_t* setu
  * with `k_ra_err_not_supported` so the caller can fall back to its
  * own standard-request handler.
  *
- * @param[in] setup The SETUP packet returned by `ra_usb_read_setup`.
+ * @param[in] setup The SETUP packet returned by `ra_usb_read_setup_if_valid`.
  *
  * @return `ra_err_t` error code.
  * @retval k_ra_ok SETUP handled (status stage queued internally).

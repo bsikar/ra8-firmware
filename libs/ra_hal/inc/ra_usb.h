@@ -23,7 +23,8 @@
  * - **State** -- `ra_usb_get_device_state`, `ra_usb_set_address`.
  * - **Endpoints** -- `ra_usb_configure_endpoint`, `ra_usb_queue_in`,
  *   `ra_usb_queue_out`, `ra_usb_stall_endpoint`.
- * - **Control transfers** -- `ra_usb_read_setup`,
+ * - **Control transfers** -- `ra_usb_read_setup_if_valid` /
+ *   `ra_usb_read_setup_unconditional`,
  *   `ra_usb_control_response`.
  * - **IRQ delivery** -- `ra_usb_attach_handler` + `ra_usb_dispatch`.
  *
@@ -94,7 +95,8 @@ typedef enum : uint8_t {
  * @brief Decoded 8-byte USB SETUP packet.
  *
  * @details Mirrors USB 2.0 chapter 9 layout. Populated by
- * `ra_usb_read_setup` from the controller's USBREQ / USBVAL /
+ * `ra_usb_read_setup_if_valid` / `ra_usb_read_setup_unconditional`
+ * from the controller's USBREQ / USBVAL /
  * USBINDX / USBLENG mirror registers.
  */
 typedef struct {
@@ -503,13 +505,17 @@ ra_usb_queue_out(ra_usb_speed_t speed, uint8_t pipe_num, uint8_t* out_buf, uint1
  */
 
 /**
- * @brief Snapshot the current SETUP packet from the controller.
+ * @brief Snapshot the current SETUP packet from the controller, gated
+ *        on `INTSTS0.VALID` (FS / CTRT path).
  *
  * @details
  * Reads the four mirror registers `USBREQ`, `USBVAL`, `USBINDX`,
- * `USBLENG` and clears `INTSTS0.VALID`. The mirrors are valid only
- * while `INTSTS0.VALID == 1`; the stack must call this from the
- * `CTRT` ISR path before re-enabling further SETUP capture.
+ * `USBLENG` and clears `INTSTS0.VALID`. The function returns
+ * `k_ra_err_no_data` when `VALID == 0` so the FS / CTRT-driven path
+ * can poll the same routine without producing stale dispatches. Use
+ * ::ra_usb_read_setup_unconditional on the HS / SQMON polled-worker
+ * path where the SIE may auto-clear `VALID` before the worker observes
+ * the SETUP edge.
  *
  * @param[in] speed Which controller.
  * @param[out] out_setup Decoded 8-byte SETUP packet.
@@ -524,10 +530,49 @@ ra_usb_queue_out(ra_usb_speed_t speed, uint8_t pipe_num, uint8_t* out_buf, uint1
  *
  * @post `INTSTS0.VALID` cleared on success.
  *
- * @note Call from `CTRT`-handling ISR only.
+ * @note Call from `CTRT`-handling path. HS dispatcher must use
+ *       ::ra_usb_read_setup_unconditional instead.
+ *
+ * @see ra_usb_read_setup_unconditional
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t ra_usb_read_setup(ra_usb_speed_t speed, ra_usb_setup_t* out_setup);
+[[nodiscard]] ra_err_t ra_usb_read_setup_if_valid(ra_usb_speed_t speed, ra_usb_setup_t* out_setup);
+
+/**
+ * @brief Snapshot the current SETUP packet from the controller without
+ *        gating on `INTSTS0.VALID` (HS / SQMON polled-worker path).
+ *
+ * @details
+ * On HS the polled SETUP worker observes `DCPCTR.SQMON == 1` (HUM
+ * Ch 37.2.31 p 2095, race-immune SETUP-latched signal) AFTER the SIE
+ * has already auto-cleared `INTSTS0.VALID`. The captured SETUP latch
+ * registers `USBREQ` / `USBVAL` / `USBINDX` / `USBLENG`
+ * (HUM Ch 37.2.21..24 p 2087..2090) survive that auto-clear -- only a
+ * fresh SETUP token can overwrite them. This entry point therefore
+ * skips the `VALID` gate and drains the captured registers directly,
+ * then defensively W0C-clears `VALID` (no-op if already 0).
+ *
+ * @param[in] speed Which controller.
+ * @param[out] out_setup Decoded 8-byte SETUP packet.
+ *
+ * @return `ra_err_t` error code.
+ * @retval k_ra_ok SETUP drained from captured registers.
+ * @retval k_ra_err_invalid_arg `speed` out of range.
+ * @retval k_ra_err_null_ptr `out_setup` was NULL.
+ *
+ * @pre `out_setup` non-NULL.
+ * @pre Caller has independent proof a SETUP arrived (e.g. SQMON==1).
+ *
+ * @post `*out_setup` mirrors USBREQ/USBVAL/USBINDX/USBLENG.
+ * @post `INTSTS0.VALID` is W0C-cleared.
+ *
+ * @note Call from the HS / SQMON polled-dispatcher path.
+ *
+ * @see ra_usb_read_setup_if_valid
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_usb_read_setup_unconditional(ra_usb_speed_t  speed,
+                                                       ra_usb_setup_t* out_setup);
 
 /**
  * @brief Issue a control-transfer status response on EP0.
