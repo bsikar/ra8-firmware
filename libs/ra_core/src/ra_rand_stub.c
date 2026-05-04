@@ -39,6 +39,7 @@ typedef enum : uint32_t {
 
 static uint32_t s_state = (uint32_t)k_ra_rand_default_seed;
 
+/* NOLINTBEGIN(bugprone-reserved-identifier,cert-dcl37-c,cert-dcl51-cpp,readability-identifier-naming) */
 /**
  * @brief Strong override for newlib `srand()` -- xorshift32 seed.
  *
@@ -49,32 +50,12 @@ static uint32_t s_state = (uint32_t)k_ra_rand_default_seed;
  *
  * @param[in] seed Initial state. Zero rewritten to default seed.
  *
- * @return None.
- * @retval None
- *
  * @pre None.
  * @pre Linker pulls this strong symbol in before `-lc`.
  * @post `s_state` is non-zero.
  * @post Subsequent `rand()` results follow the new seed.
  *
  * @note Not thread-safe -- single shared state word.
- *
- * @since 0.1.0
- */
-/* NOLINTBEGIN(bugprone-reserved-identifier,cert-dcl37-c,cert-dcl51-cpp,readability-identifier-naming) */
-/**
- * @brief Srand.
- *
- * @details See implementation for details.
- *
- * @param[in,out] seed See function signature for type and usage.
- *
- * @pre Caller has validated arguments.
- * @pre Module has been initialised.
- * @post Side effects bounded to documented state.
- * @post Returned value reflects current state.
- *
- * @note Not thread-safe unless documented otherwise.
  *
  * @since 0.1.0
  */

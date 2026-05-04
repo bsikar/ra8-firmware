@@ -50,25 +50,6 @@
 static inline void internal_disable_irq(void)
 {
 #ifndef RA_SIMULATOR_MODE
-  /**
-   * @brief Volatile.
-   *
-   * @details See implementation for details.
-   *
-   * @param[in,out] memory See function signature for type and usage.
-   *
-   * @return Result code or value; see implementation.
-   * @retval 0 Success or default value.
-   *
-   * @pre Caller has validated arguments.
-   * @pre Module has been initialised.
-   * @post Side effects bounded to documented state.
-   * @post Returned value reflects current state.
-   *
-   * @note Not thread-safe unless documented otherwise.
-   *
-   * @since 0.1.0
-   */
   __asm__ volatile("cpsid i" ::: "memory");
 #endif
 }
@@ -94,25 +75,6 @@ static inline void internal_disable_irq(void)
 static inline void internal_bkpt(void)
 {
 #ifndef RA_SIMULATOR_MODE
-  /**
-   * @brief Volatile.
-   *
-   * @details See implementation for details.
-   *
-   * @param[in,out] bkpt See function signature for type and usage.
-   *
-   * @return Result code or value; see implementation.
-   * @retval 0 Success or default value.
-   *
-   * @pre Caller has validated arguments.
-   * @pre Module has been initialised.
-   * @post Side effects bounded to documented state.
-   * @post Returned value reflects current state.
-   *
-   * @note Not thread-safe unless documented otherwise.
-   *
-   * @since 0.1.0
-   */
   __asm__ volatile("bkpt #0");
 #endif
 }
@@ -136,25 +98,6 @@ static inline void internal_bkpt(void)
 static inline void internal_wfi(void)
 {
 #ifndef RA_SIMULATOR_MODE
-  /**
-   * @brief Volatile.
-   *
-   * @details See implementation for details.
-   *
-   * @param[in,out] wfi See function signature for type and usage.
-   *
-   * @return Result code or value; see implementation.
-   * @retval 0 Success or default value.
-   *
-   * @pre Caller has validated arguments.
-   * @pre Module has been initialised.
-   * @post Side effects bounded to documented state.
-   * @post Returned value reflects current state.
-   *
-   * @note Not thread-safe unless documented otherwise.
-   *
-   * @since 0.1.0
-   */
   __asm__ volatile("wfi");
 #endif
 }

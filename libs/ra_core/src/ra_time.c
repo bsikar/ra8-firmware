@@ -185,9 +185,6 @@ uint32_t ra_time_ms(void)
  *
  * @param[in] ms Milliseconds to wait. Zero returns immediately.
  *
- * @return None.
- * @retval None
- *
  * @pre `ra_time_init()` has been called.
  * @pre IRQs are NOT globally masked.
  * @post At least `ms` milliseconds have elapsed.
@@ -202,25 +199,6 @@ void ra_delay_ms(uint32_t ms)
   const uint32_t start = s_tick_ms;
   while ((uint32_t)(s_tick_ms - start) < ms) {
 #ifndef RA_SIMULATOR_MODE
-    /**
-     * @brief Volatile.
-     *
-     * @details See implementation for details.
-     *
-     * @param[in,out] wfi See function signature for type and usage.
-     *
-     * @return Result code or value; see implementation.
-     * @retval 0 Success or default value.
-     *
-     * @pre Caller has validated arguments.
-     * @pre Module has been initialised.
-     * @post Side effects bounded to documented state.
-     * @post Returned value reflects current state.
-     *
-     * @note Not thread-safe unless documented otherwise.
-     *
-     * @since 0.1.0
-     */
     __asm__ volatile("wfi");
 #endif
   }
@@ -230,9 +208,6 @@ void ra_delay_ms(uint32_t ms)
  * @brief Implementation of `ra_time_on_tick()` -- SysTick IRQ tick.
  *
  * @details Increments `s_tick_ms`. Invoked from SysTick IRQ.
- *
- * @return None.
- * @retval None
  *
  * @pre Invoked from SysTick IRQ context (or test equivalent).
  * @pre `ra_time_init()` has set up the SysTick reload.
