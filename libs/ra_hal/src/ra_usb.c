@@ -1361,6 +1361,28 @@ void ra_usb_dispatch(ra_usb_speed_t speed)
 }
 
 /**
+ * @brief Implementation of ra_usb_intsts0_snapshot (see header for full contract).
+ * @details Pure MMIO read; no INTSTS0 bits are modified.
+ * @param[in] speed See header.
+ * @return INTSTS0 raw value.
+ * @retval 0 Invalid speed or controller not powered.
+ * @pre Module state is consistent.
+ * @pre Controller register window is mapped.
+ * @post No bits in INTSTS0 modified.
+ * @post Caller-visible state matches the documented contract.
+ * @note Safe to call from any context.
+ * @since 0.1.0
+ */
+uint16_t ra_usb_intsts0_snapshot(ra_usb_speed_t speed)
+{
+  volatile r_usb_regs_t* reg = internal_pick(speed);
+  if (reg == nullptr) {
+    return 0U;
+  }
+  return reg->INTSTS0;
+}
+
+/**
  * @brief Implementation of ra_usb_enter_stop (see header for full contract).
  * @details See the public header for the documented contract; this definition implements it.
  * @param[in] speed See implementation.

@@ -598,6 +598,23 @@ ra_usb_queue_out(ra_usb_speed_t speed, uint8_t pipe_num, uint8_t* out_buf, uint1
  */
 void ra_usb_dispatch(ra_usb_speed_t speed);
 
+/**
+ * @brief Read INTSTS0 without acking any bits.
+ * @details Snapshot accessor used by callers that want to inspect
+ *          DVSQ / CTSQ status fields between dispatch ticks without
+ *          disturbing the IRQ-bit state. Returns 0 if `speed` is invalid.
+ * @param[in] speed Controller selector.
+ * @return Raw INTSTS0 value.
+ * @retval 0 invalid speed or controller not powered.
+ * @pre Module is initialised via ra_usb_device_init.
+ * @pre Caller has the controller powered.
+ * @post No INTSTS0 bits are modified.
+ * @post Returned value reflects the controller at call time.
+ * @note Pure MMIO read; safe to call from any context.
+ * @since 0.1.0
+ */
+uint16_t ra_usb_intsts0_snapshot(ra_usb_speed_t speed);
+
 /* =============================================================================
  * Power
  * =============================================================================
