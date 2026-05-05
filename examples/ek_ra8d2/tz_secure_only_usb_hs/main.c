@@ -409,10 +409,10 @@ static UCHAR s_device_framework_fs[] = {
   0x02U,
   0x01U,
   0x40U,
-  0x09U,
+  0x34U,
   0x12U,
-  0x0AU,
-  0x00U,
+  0x78U,
+  0x56U,
   0x00U,
   0x01U,
   0x01U,
@@ -513,64 +513,71 @@ static UCHAR s_device_framework_fs[] = {
  * @since 0.1.0
  */
 static UCHAR s_string_framework[] = {
-  /* idx 1: "Brighton Sikarskie". */
+  /* idx 1: "TestMfg-RA8D2-HS" (16 ASCII bytes). */
   0x09U,
   0x04U,
   0x01U,
-  0x12U,
-  'B',
-  'r',
-  'i',
-  'g',
-  'h',
-  't',
-  'o',
-  'n',
-  ' ',
-  'S',
-  'i',
-  'k',
-  'a',
-  'r',
-  's',
-  'k',
-  'i',
+  0x10U,
+  'T',
   'e',
-  /* idx 2: "EK-RA8D2 HS CDC Echo" (20 ASCII bytes). */
-  0x09U,
-  0x04U,
-  0x02U,
-  0x14U,
-  'E',
-  'K',
+  's',
+  't',
+  'M',
+  'f',
+  'g',
   '-',
   'R',
   'A',
   '8',
   'D',
   '2',
-  ' ',
+  '-',
   'H',
   'S',
-  ' ',
+  /* idx 2: "Test-RA8D2-HS-CDC-Echo" (22 ASCII bytes). */
+  0x09U,
+  0x04U,
+  0x02U,
+  0x16U,
+  'T',
+  'e',
+  's',
+  't',
+  '-',
+  'R',
+  'A',
+  '8',
+  'D',
+  '2',
+  '-',
+  'H',
+  'S',
+  '-',
   'C',
   'D',
   'C',
-  ' ',
+  '-',
   'E',
   'c',
   'h',
   'o',
-  /* idx 3: serial. */
+  /* idx 3: "RA8D2HS-NEW-002" (15 ASCII bytes). */
   0x09U,
   0x04U,
   0x03U,
-  0x08U,
-  '0',
-  '0',
-  '0',
-  '0',
-  '0',
+  0x0FU,
+  'R',
+  'A',
+  '8',
+  'D',
+  '2',
+  'H',
+  'S',
+  '-',
+  'N',
+  'E',
+  'W',
+  '-',
   '0',
   '0',
   '2',
@@ -655,16 +662,15 @@ static VOID demo_worker(ULONG arg)
     return;
   }
   s_boot_probe = (uint32_t)k_boot_probe_pre_dev_stack_init;
-  /* Pass our composite framework as both the FS and HS slot would --
-   * the bridge announces UX_HIGH_SPEED_DEVICE and USBX accepts the
-   * single framework as long as bcdUSB == 0x0200. */
-  /* Pass the same descriptor framework for both speed slots: bcdUSB
-   * = 0x0200, EP1/EP2 are bulk, and the bridge announces
-   * UX_HIGH_SPEED_DEVICE. USBX picks the matching slot when SET_CONFIG
-   * lands; passing only FS would leave the HS slot empty and the
-   * chapter-9 dispatcher cannot answer GET_DESCRIPTOR(DEVICE) on HS. */
-  if (_ux_device_stack_initialize(s_device_framework_fs,
-                                  sizeof(s_device_framework_fs),
+  /* Populate ONLY the FS framework slot; leave the HS slot empty
+   * (UX_NULL / 0). The DCD bridge now reports UX_FULL_SPEED_DEVICE to
+   * USBX even on the HS controller path (see ux_dcd_ra_usb.c), so the
+   * chapter-9 dispatcher binds against the FS framework and uses
+   * 64-byte EP0 / 12 Mbps assumptions. The chip-level USBHS controller
+   * is still programmed and chirps at high speed; we are only changing
+   * what USBX itself believes about the bus. */
+  if (_ux_device_stack_initialize(UX_NULL,
+                                  0,
                                   s_device_framework_fs,
                                   sizeof(s_device_framework_fs),
                                   s_string_framework,
