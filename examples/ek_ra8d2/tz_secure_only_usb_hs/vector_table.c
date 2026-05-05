@@ -26,6 +26,13 @@
 
 #include <stdint.h>
 
+#ifndef __APPLE__
+/* On the firmware target every IRQ vector slot forwards to the
+ * substrate dispatcher so drivers that called ra_isr_register get
+ * their (handler, ctx) pair invoked. HUM Ch 14 ICU + IELSR. */
+extern void ra_isr_dispatch(uint16_t slot);
+#endif
+
 /* =============================================================================
  * Linker-provided symbols
  * =============================================================================
@@ -106,13 +113,28 @@ enum : uint16_t {
   k_ra_irq_count = 112U,
 };
 
-/* Mach-O does not support `alias`; on Apple hosts we keep only
- * `weak` so the symbols exist but are not aliased. The host build
- * never invokes these vectors. */
+/* Each peripheral IRQ vector forwards to ra_isr_dispatch(slot) so any
+ * (handler, ctx) registered through the substrate (ra_isr_register)
+ * runs in NVIC handler-mode. Slots that were never registered land in
+ * the dispatcher's bounds-checked no-op path. The trampolines are
+ * weak so a driver can still install a fully-custom IRQ handler by
+ * defining a non-weak ``IRQ<n>_Handler``. HUM Ch 13 NVIC + Ch 14 ICU.
+ *
+ * On Apple host syntax-check we drop ra_isr_dispatch (host build
+ * never branches through these) and keep only a weak empty body. */
 #ifndef __APPLE__
-#define RA_IRQ_STUB(n) void IRQ##n##_Handler(void) __attribute__((weak, alias("Default_Handler")))
+#define RA_IRQ_STUB(n)                                                                             \
+  void                       IRQ##n##_Handler(void);                                               \
+  __attribute__((weak)) void IRQ##n##_Handler(void)                                                \
+  {                                                                                                \
+    ra_isr_dispatch((uint16_t)(n));                                                                \
+  }                                                                                                \
+  static_assert(1, "ra_irq_stub_" #n)
 #else
-#define RA_IRQ_STUB(n) void IRQ##n##_Handler(void) __attribute__((weak))
+#define RA_IRQ_STUB(n)                                                                             \
+  void                       IRQ##n##_Handler(void);                                               \
+  __attribute__((weak)) void IRQ##n##_Handler(void) {}                                             \
+  static_assert(1, "ra_irq_stub_" #n)
 #endif
 
 RA_IRQ_STUB(0);
