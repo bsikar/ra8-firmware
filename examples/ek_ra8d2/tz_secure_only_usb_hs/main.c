@@ -162,34 +162,6 @@ static TX_THREAD s_demo_thread;
 static UCHAR s_demo_stack[k_demo_thread_stack];
 
 /**
- * @var s_probe_thread
- * @brief Diagnostic thread: 1 Hz USBREQ snapshot ring (no INTSTS0 W0C).
- *
- * @details
- * Companion to the "disable polled DCD dispatch worker" diagnostic at
- * HEAD 447693253. Once per second this thread invokes
- * ``ra_usb_read_setup_unconditional`` and stores the resulting
- * ``bm_request_type:b_request`` packed value in the
- * ::s_usbreq_observed ring. ``ra_usb_read_setup_unconditional`` only
- * reads USBREQ / USBVAL / USBINDX / USBLENG (HUM Ch 37.2.21..24
- * p 2087..2090) and W0C-clears INTSTS0.VALID once at the very end --
- * but the captured-SETUP latch survives that clear, so this is the
- * lightest-touch read available from the HAL. We deliberately do NOT
- * touch INTSTS1, BCHG, BEMP, DVSTCTR0, FRMNUM, etc.
- *
- * @note Single-writer (this thread).
- * @since 0.1.0
- */
-static TX_THREAD s_probe_thread;
-
-/**
- * @var s_probe_stack
- * @brief Stack backing storage for ::s_probe_thread.
- * @since 0.1.0
- */
-static UCHAR s_probe_stack[k_demo_thread_stack];
-
-/**
  * @var s_usbx_pool
  * @brief USBX memory pool (USBX uses ``tx_byte_pool`` internally).
  * @since 0.1.0
@@ -308,58 +280,6 @@ volatile uint32_t s_psar_state = 0U;
  * @since 0.1.0
  */
 volatile uint32_t s_ppar_state = 0U;
-
-/**
- * @enum probe_ring_t
- * @brief Sizing constants for ::s_usbreq_observed ring buffer.
- */
-typedef enum : uint32_t {
-  k_probe_ring_depth = 8U, /**< Most-recent N samples kept. */
-} probe_ring_t;
-
-/**
- * @var s_usbreq_observed
- * @brief 1 Hz ring of (bm_request_type | (b_request << 8)) snapshots.
- *
- * @details
- * Bisect probe for the "polled DCD dispatch worker disturbs SIE" test
- * at HEAD 447693253. With the polled worker disabled the chip should
- * auto-handle Reset -> chirp -> Default state, and the host's SETUP
- * should land in the captured-SETUP latch (USBREQ / USBVAL / USBINDX /
- * USBLENG, HUM Ch 37.2.21..24 p 2087..2090). We sample once per
- * second from a separate ThreadX thread; if any entry shows 0x0680
- * (GET_DESCRIPTOR DEVICE: bmRequestType=0x80, bRequest=0x06) we have
- * isolated the regression to the polled worker. If every entry stays
- * 0x0000 the issue is upstream of the worker.
- *
- * @note Single-writer (probe thread); read via JLink only.
- * @since 0.1.0
- */
-volatile uint16_t s_usbreq_observed[k_probe_ring_depth] = {};
-
-/**
- * @var s_usbreq_observed_idx
- * @brief Next write index into ::s_usbreq_observed (mod k_probe_ring_depth).
- * @note Single-writer (probe thread); read via JLink only.
- * @since 0.1.0
- */
-volatile uint32_t s_usbreq_observed_idx = 0U;
-
-/**
- * @var s_probe_iter
- * @brief Probe-thread iteration counter (one tick per second).
- * @note Single-writer (probe thread); read via JLink only.
- * @since 0.1.0
- */
-volatile uint32_t s_probe_iter = 0U;
-
-/**
- * @var s_probe_last_status
- * @brief Last ::ra_usb_read_setup_unconditional return value (raw).
- * @note Single-writer (probe thread); read via JLink only.
- * @since 0.1.0
- */
-volatile uint32_t s_probe_last_status = 0U;
 
 /**
  * @enum boot_probe_step_t
@@ -642,25 +562,46 @@ static VOID demo_worker(ULONG arg)
   (void)arg;
 
   s_boot_probe = (uint32_t)k_boot_probe_thread_entry;
+  /* Bring USBX up. */
+  s_boot_probe = (uint32_t)k_boot_probe_pre_sys_init;
+  if (_ux_system_initialize(s_usbx_pool, k_demo_usbx_pool_bytes, UX_NULL, 0) != UX_SUCCESS) {
+    return;
+  }
+  s_boot_probe = (uint32_t)k_boot_probe_pre_dev_stack_init;
+  /* Pass our composite framework as both the FS and HS slot would --
+   * the bridge announces UX_HIGH_SPEED_DEVICE and USBX accepts the
+   * single framework as long as bcdUSB == 0x0200. */
+  /* Pass the same descriptor framework for both speed slots: bcdUSB
+   * = 0x0200, EP1/EP2 are bulk, and the bridge announces
+   * UX_HIGH_SPEED_DEVICE. USBX picks the matching slot when SET_CONFIG
+   * lands; passing only FS would leave the HS slot empty and the
+   * chapter-9 dispatcher cannot answer GET_DESCRIPTOR(DEVICE) on HS. */
+  if (_ux_device_stack_initialize(s_device_framework_fs,
+                                  sizeof(s_device_framework_fs),
+                                  s_device_framework_fs,
+                                  sizeof(s_device_framework_fs),
+                                  s_string_framework,
+                                  sizeof(s_string_framework),
+                                  s_language_id_framework,
+                                  sizeof(s_language_id_framework),
+                                  UX_NULL) != UX_SUCCESS) {
+    return;
+  }
 
-  /* DIAGNOSTIC (HEAD 447693253 follow-up): skip _ux_system_initialize,
-   * _ux_device_stack_initialize, _ux_device_stack_class_register, and
-   * ux_dcd_ra_usb_initialize entirely. Hypothesis: the polled DCD
-   * dispatch worker reads INTSTS0 every tick and W0C-acks bits the
-   * SIE needs for proper enumeration. With USBX disabled the chip
-   * should auto-handle USB Reset -> chirp -> Default state and the
-   * host's SETUP, if it arrives, lands in USBREQ regs without our
-   * worker disturbing the SIE. (void)-cast the activate / deactivate
-   * callbacks and the descriptor / framework arrays so the unused-
-   * function / unused-variable diagnostics stay quiet under -Werror. */
-  (void)demo_cdc_activate;
-  (void)demo_cdc_deactivate;
-  (void)s_device_framework_fs;
-  (void)s_string_framework;
-  (void)s_language_id_framework;
-  (void)s_usbx_pool;
-  (void)s_cdc_acm;
-  (void)s_cdc_active_sem;
+  /* Register CDC-ACM class against the configuration. */
+  UX_SLAVE_CLASS_CDC_ACM_PARAMETER cdc_params = {
+    .ux_slave_class_cdc_acm_instance_activate   = demo_cdc_activate,
+    .ux_slave_class_cdc_acm_instance_deactivate = demo_cdc_deactivate,
+    .ux_slave_class_cdc_acm_parameter_change    = UX_NULL,
+  };
+  s_boot_probe = (uint32_t)k_boot_probe_pre_class_register;
+  if (_ux_device_stack_class_register((UCHAR*)"ux_slave_class_cdc_acm",
+                                      _ux_device_class_cdc_acm_entry,
+                                      1, /* configuration #  */
+                                      0, /* interface #      */
+                                      &cdc_params) != UX_SUCCESS) {
+    return;
+  }
 
   /* Bring the USBHS controller up: PHY 12 MHz reference + MSTP ungate
    * + SYSCFG.SCKE/USBE/HSE. ra_board_usbhs_device_init wraps all three
@@ -673,66 +614,62 @@ static VOID demo_worker(ULONG arg)
   }
   s_boot_probe = (uint32_t)k_boot_probe_post_board_usbhs_init;
 
-  /* Raise DPRPU + CNEN (D+ pull-up) so the host begins enumeration. */
+  /* Plug our DCD bridge into the device stack and turn the bus on. */
+  s_boot_probe = (uint32_t)k_boot_probe_pre_ux_dcd_init;
+  if (ux_dcd_ra_usb_initialize(k_ra_usb_speed_hs) != k_ra_ok) {
+    return;
+  }
+  s_boot_probe = (uint32_t)k_boot_probe_post_ux_dcd_init;
   s_boot_probe = (uint32_t)k_boot_probe_pre_dev_attach;
   if (ra_usb_device_attach(k_ra_usb_speed_hs, true) != k_ra_ok) {
     return;
   }
   s_boot_probe = (uint32_t)k_boot_probe_post_dev_attach;
 
-  /* Bisect probes captured ONCE after attach. HUM Ch 37.2.1 SYSCFG p
-   * 2060, HUM Ch 37.2.43 LPSTS p 2111, HUM Ch 51.8.1 PSARB p 3284,
-   * HUM Ch 51.8.6 PPARB p 3292. */
+  /* Echo loop. */
+  s_boot_probe = (uint32_t)k_boot_probe_enter_echo_loop;
+  /* Bisect probes captured ONCE on entry to the echo loop. HUM
+   * Ch 37.2.1 SYSCFG p 2060, HUM Ch 37.2.43 LPSTS p 2111, HUM
+   * Ch 51.8.1 PSARB p 3284, HUM Ch 51.8.6 PPARB p 3292. */
   s_syscfg_in_echo_loop                  = ra_usb_hs()->SYSCFG;
   s_lpsts_in_echo_loop                   = *ra_usbhs_lpsts();
   volatile const uint32_t* const psarb_p = (volatile const uint32_t*)0x40204004UL;
   volatile const uint32_t* const pparb_p = (volatile const uint32_t*)0x4020401CUL;
   s_psar_state                           = *psarb_p;
   s_ppar_state                           = *pparb_p;
-
-  s_boot_probe = (uint32_t)k_boot_probe_enter_echo_loop;
-
-  /* Just hold the chip in attached state -- no INTSTS0 polling, no
-   * INTSTS1 polling, no W0C anywhere. Sleep 10 s at a time so this
-   * thread effectively never wakes up. The probe thread (1 Hz) does
-   * the only register reads. */
+  UCHAR buf[k_demo_echo_buf_bytes];
+  ULONG n = 0UL;
   while (1) {
     s_demo_diag.loop_iter++;
-    tx_thread_sleep(1000U); /* 10 s @ 100 Hz tick. */
-  }
-}
-
-/**
- * @brief Diagnostic probe thread: 1 Hz USBREQ snapshot ring.
- *
- * @param[in] arg Unused (ThreadX entry signature).
- *
- * @pre ::s_probe_thread was created by ::tx_application_define.
- * @pre ::ra_usb_device_init has run for HS (worker thread completed
- *      ::ra_board_usbhs_device_init before any wake-up of this
- *      thread is meaningful; if not, ::ra_usb_read_setup_unconditional
- *      simply returns the current USBREQ value, which will read 0
- *      until the worker has armed the controller).
- *
- * @post ::s_usbreq_observed[s_usbreq_observed_idx] receives one new
- *       sample per ~1 s.
- *
- * @note Single-instance probe thread; not re-entrant.
- * @since 0.1.0
- */
-static VOID demo_probe_thread(ULONG arg)
-{
-  (void)arg;
-  while (1) {
-    tx_thread_sleep(100U); /* 1 s @ 100 Hz tick. */
-    s_probe_iter++;
-    ra_usb_setup_t setup = {};
-    ra_err_t       rc    = ra_usb_read_setup_unconditional(k_ra_usb_speed_hs, &setup);
-    s_probe_last_status  = (uint32_t)rc;
-    uint16_t packed = (uint16_t)setup.bm_request_type | (uint16_t)((uint16_t)setup.b_request << 8U);
-    uint32_t i      = s_usbreq_observed_idx % (uint32_t)k_probe_ring_depth;
-    s_usbreq_observed[i]  = packed;
-    s_usbreq_observed_idx = (s_usbreq_observed_idx + 1U) % (uint32_t)k_probe_ring_depth;
+    if (s_cdc_acm == UX_NULL) {
+      s_demo_diag.loop_cdc_null++;
+      (void)tx_semaphore_get(&s_cdc_active_sem, TX_WAIT_FOREVER);
+      continue;
+    }
+    if (_ux_system_slave != UX_NULL) {
+      _ux_system_slave->ux_system_slave_device.ux_slave_device_state =
+        (unsigned long)UX_DEVICE_CONFIGURED;
+    }
+    s_demo_diag.loop_pre_read++;
+    UINT read_status = _ux_device_class_cdc_acm_read(s_cdc_acm, buf, sizeof(buf), &n);
+    s_demo_diag.loop_post_read++;
+    if (read_status != UX_SUCCESS) {
+      tx_thread_sleep(k_demo_idle_ticks);
+      continue;
+    }
+    s_demo_diag.loop_read_ok++;
+    if (n == 0UL) {
+      s_demo_diag.loop_read_zero++;
+      continue;
+    }
+    s_demo_diag.loop_pre_write++;
+    if (_ux_device_class_cdc_acm_write(s_cdc_acm, buf, n, &n) != UX_SUCCESS) {
+      continue;
+    }
+    s_demo_diag.loop_post_write++;
+    for (ULONG i = 0UL; i < n; i++) {
+      (void)ra_board_led_toggle(k_ra_board_led1);
+    }
   }
 }
 
@@ -763,16 +700,6 @@ VOID tx_application_define(VOID* first_unused_memory)
                          k_demo_thread_stack,
                          8U, /* priority         */
                          8U, /* preempt threshold */
-                         TX_NO_TIME_SLICE,
-                         TX_AUTO_START);
-  (void)tx_thread_create(&s_probe_thread,
-                         "usbhs_probe_1hz",
-                         demo_probe_thread,
-                         0UL,
-                         s_probe_stack,
-                         k_demo_thread_stack,
-                         9U, /* priority (lower than worker)  */
-                         9U, /* preempt threshold              */
                          TX_NO_TIME_SLICE,
                          TX_AUTO_START);
 }
