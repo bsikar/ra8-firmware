@@ -611,6 +611,38 @@ volatile uint16_t s_dcpctr_bit_map_observed = 0U;
 volatile uint16_t s_usbreq_first_nonzero = 0U;
 
 /**
+ * @var s_unconditional_dispatch_count
+ * @brief Count of unconditional ``_ux_device_stack_control_request_process``
+ *        invocations made by the Default-state polled worker.
+ *
+ * @details Incremented every time the worker dispatches a SETUP without
+ * gating on ``INTSTS0.VALID`` (HUM Ch 37.2.18 p 2081) or
+ * ``DCPCTR.SQMON`` (HUM Ch 37.2.32 p 2093). The dispatch fires whenever
+ * the latched ``USBREQ`` (HUM Ch 37.2.26 p 2090) differs from
+ * ::s_last_dispatched_usbreq, which prevents infinite re-dispatch of the
+ * same SETUP transaction.
+ *
+ * @note Single-writer (::internal_handle_dvst).
+ * @since 0.1.0
+ */
+volatile uint32_t s_unconditional_dispatch_count = 0U;
+
+/**
+ * @var s_last_dispatched_usbreq
+ * @brief Last ``USBREQ`` (HUM Ch 37.2.26 p 2090) value forwarded to the
+ *        chapter-9 dispatcher by the unconditional Default-state worker.
+ *
+ * @details Used as the de-duplication key: the worker dispatches only
+ * when the live ``USBREQ`` differs from this latch, so the same SETUP
+ * cannot be re-fired across loop iterations within a single bus-state
+ * dwell. Reset to 0 after a fresh dispatch records the new value.
+ *
+ * @note Single-writer (::internal_handle_dvst).
+ * @since 0.1.0
+ */
+volatile uint16_t s_last_dispatched_usbreq = 0U;
+
+/**
  * @enum ra_usb_dcd_default_poll_t
  * @brief Tight-poll loop sizing for the Default-state VALID hunt.
  *
@@ -1500,55 +1532,91 @@ static void internal_handle_dvst(ra_usb_speed_t speed, uint16_t intsts0)
       s_intsts0_at_sqmon_edge      = intsts0_pre;
       s_intsts0_observed_or_recent = intsts0_pre;
 
-      /* Tight-poll INTSTS0 for VALID (bit 3, mask 0x0008) without any
-       * yield. NASA P10 Rule 2: bounded by k_ra_usb_dcd_default_poll_iters.
-       * We also bail out if DVSQ leaves Default (host moved us forward
-       * or suspend), so the loop never blocks longer than the bus-state
-       * dwell time. HUM Ch 37.2.18 INTSTS0 p 2081. */
-      bool valid_seen = (intsts0_pre & (uint16_t)k_ra_intsts0_mask_valid) != 0U;
-      if (!valid_seen) {
-        for (uint32_t i = 0U; i < (uint32_t)k_ra_usb_dcd_default_poll_iters; i++) {
-          const uint16_t live_intsts0 = reg->INTSTS0;
-          if ((live_intsts0 & (uint16_t)k_ra_intsts0_mask_valid) != 0U) {
-            s_intsts0_observed_or_recent = live_intsts0;
-            valid_seen                   = true;
-            break;
-          }
-          /* Stop spinning if the bus state advances out of Default; a
-           * fresh DVST tick will bring us back here on the next reset. */
-          if ((live_intsts0 & (uint16_t)k_ra_intsts0_mask_dvsq) !=
-              (uint16_t)k_ra_dvsq_default) {
-            break;
-          }
+      /* Unconditional SETUP-mirror read. The HS SIE auto-clears
+       * INTSTS0.VALID (HUM Ch 37.2.18 p 2081) and DCPCTR.SQMON (HUM
+       * Ch 37.2.32 p 2093) faster than the polled worker can observe
+       * them, so flag-gated reads race the controller and miss every
+       * SETUP. The four mirrors USBREQ / USBVAL / USBINDX / USBLENG
+       * (HUM Ch 37.2.26..29 p 2090..2092) latch the wire-format SETUP
+       * and PERSIST across the SIE's flag auto-clears, so we drain
+       * them every Default-state tick regardless of VALID / SQMON.
+       *
+       * Read the four mirrors directly off the chip-side register
+       * struct (volatile uint16_t fields). bRequest sits in
+       * USBREQ[15:8], bmRequestType in USBREQ[7:0]. */
+      const uint16_t usbreq_live  = reg->USBREQ;
+      const uint16_t usbval_live  = reg->USBVAL;
+      const uint16_t usbindx_live = reg->USBINDX;
+      const uint16_t usbleng_live = reg->USBLENG;
+
+      /* If any mirror is non-zero, capture the 8-byte wire-format SETUP
+       * into the JLink-readable probe so the bench can confirm the SIE
+       * latched a real SETUP even when VALID / SQMON have already been
+       * auto-cleared. Same byte order as the USB 2.0 Ch 9.3 SETUP
+       * layout that the chapter-9 dispatcher expects. */
+      const bool any_nonzero =
+        ((usbreq_live | usbval_live | usbindx_live | usbleng_live) != 0U);
+      if (any_nonzero) {
+        s_setup_packet_buffer[k_setup_idx_bmrt] =
+          (uint8_t)(usbreq_live & k_setup_byte_mask);
+        s_setup_packet_buffer[k_setup_idx_brq] =
+          (uint8_t)((usbreq_live >> k_setup_byte_shift) & k_setup_byte_mask);
+        s_setup_packet_buffer[k_setup_idx_val_lo] =
+          (uint8_t)(usbval_live & k_setup_byte_mask);
+        s_setup_packet_buffer[k_setup_idx_val_hi] =
+          (uint8_t)((usbval_live >> k_setup_byte_shift) & k_setup_byte_mask);
+        s_setup_packet_buffer[k_setup_idx_idx_lo] =
+          (uint8_t)(usbindx_live & k_setup_byte_mask);
+        s_setup_packet_buffer[k_setup_idx_idx_hi] =
+          (uint8_t)((usbindx_live >> k_setup_byte_shift) & k_setup_byte_mask);
+        s_setup_packet_buffer[k_setup_idx_len_lo] =
+          (uint8_t)(usbleng_live & k_setup_byte_mask);
+        s_setup_packet_buffer[k_setup_idx_len_hi] =
+          (uint8_t)((usbleng_live >> k_setup_byte_shift) & k_setup_byte_mask);
+        s_setup_packet_count++;
+        if (s_usbreq_first_nonzero == 0U) {
+          s_usbreq_first_nonzero = usbreq_live;
         }
       }
 
-      if (valid_seen) {
+      /* Unconditional dispatch path. Gate ONLY on USBREQ-change so the
+       * same SETUP cannot re-fire across worker iterations within one
+       * Default dwell. A fresh USBREQ wire value (different from
+       * ::s_last_dispatched_usbreq) is treated as a new SETUP and
+       * pushed straight into the chapter-9 dispatcher, even when both
+       * VALID and SQMON have already been auto-cleared by the SIE. */
+      if (usbreq_live != s_last_dispatched_usbreq) {
+        ra_usb_setup_t setup = {};
+        setup.bm_request_type = (uint8_t)(usbreq_live & k_setup_byte_mask);
+        setup.b_request =
+          (uint8_t)((usbreq_live >> k_setup_byte_shift) & k_setup_byte_mask);
+        setup.w_value  = usbval_live;
+        setup.w_index  = usbindx_live;
+        setup.w_length = usbleng_live;
+
         s_setup_token_observed++;
-        ra_usb_setup_t setup   = {};
-        const ra_err_t read_rc = ra_usb_read_setup_unconditional(speed, &setup);
-        if (read_rc == k_ra_ok) {
-          /* USBREQ holds bRequest in bits 15..8 and bmRequestType in
-           * bits 7..0 (HUM Ch 37.2.26 p 2090). Reconstruct the wire
-           * value and latch the first non-zero observation. Single
-           * non-compound decision per branch (NASA P10 Rule 1). */
-          const uint16_t usbreq_wire =
-            (uint16_t)(((uint16_t)setup.b_request << (uint8_t)k_setup_byte_shift) |
-                       (uint16_t)setup.bm_request_type);
-          if (s_usbreq_first_nonzero == 0U) {
-            if (usbreq_wire != 0U) {
-              s_usbreq_first_nonzero = usbreq_wire;
-            }
-          }
-          s_setup_dispatch_count++;
-          (void)internal_dispatch_setup(&setup);
-        } else {
-          s_dispatch_skip_reason |= 0x04U;
-        }
+        s_setup_dispatch_count++;
+        s_unconditional_dispatch_count++;
+        (void)internal_dispatch_setup(&setup);
+        s_last_dispatched_usbreq = usbreq_live;
+
+        /* Post-dispatch W0C-ack of INTSTS0.VALID (HUM Ch 37.2.18
+         * p 2081, mask 0x0008) in case the SIE has it set on the
+         * trailing edge of this SETUP -- write-zero-to-clear keeps
+         * the unrelated bits intact. */
+        reg->INTSTS0 =
+          (uint16_t)(reg->INTSTS0 & (uint16_t)~(uint16_t)k_ra_intsts0_mask_valid);
+
+        /* Pulse DCPCTR write so any SIE-managed SQMON edge (HUM
+         * Ch 37.2.32 p 2093, bit 6) participating in the auto-clear
+         * dance is re-observed. The SQMON field is read-only on
+         * write but the register write is benign and serves as a
+         * JLink-visible W0C ack confirmation. */
+        reg->DCPCTR = (uint16_t)(reg->DCPCTR & (uint16_t)~(uint16_t)k_ra_dcpctr_mask_sqmon);
       } else {
-        /* No VALID inside the 2 ms window. Mark the skip reason so a
-         * JLink read disambiguates "tight-poll exhausted" from "drain
-         * failed" (0x04) and "USBX not bound" (0x10). */
+        /* USBREQ unchanged since last dispatch: do not re-fire. Mark
+         * the skip reason so a JLink read disambiguates "no new
+         * SETUP" (0x40) from "USBX not bound" (0x10). */
         s_dispatch_skip_reason |= 0x40U;
       }
       s_prev_dcpctr_sqmon = now_sqmon;
