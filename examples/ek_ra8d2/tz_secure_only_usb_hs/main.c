@@ -162,6 +162,54 @@ static TX_THREAD s_demo_thread;
 static UCHAR s_demo_stack[k_demo_thread_stack];
 
 /**
+ * @var s_intenb0_watchdog_thread
+ * @brief ThreadX TCB for the INTENB0 re-arm watchdog.
+ *
+ * @details
+ * USB Bus Reset on the HS controller auto-clears INTENB0 to 0. The
+ * driver's ``busreset_rearm`` is supposed to re-set INTENB0 = 0xFF00
+ * from the ISR's DVST(=Default) handler, but the ISR cannot fire while
+ * INTENB0 is zero (chicken-and-egg). This dedicated low-priority
+ * thread polls INTENB0 every ThreadX tick and re-asserts the device-
+ * mode interrupt mask whenever the IP has cleared it. With the mask
+ * back in place, the next bus event raises USBI0 and the ISR fires.
+ *
+ * @note Single-writer (this thread); read via JLink for diagnostics.
+ * @since 0.1.0
+ */
+static TX_THREAD s_intenb0_watchdog_thread;
+
+/**
+ * @var s_intenb0_watchdog_stack
+ * @brief Stack backing storage for the INTENB0 watchdog thread.
+ * @since 0.1.0
+ */
+static UCHAR s_intenb0_watchdog_stack[1024U];
+
+/**
+ * @var s_intenb0_rearm_count
+ * @brief Number of times the watchdog has re-asserted INTENB0 = 0xFF00.
+ *
+ * @details
+ * Increments once per polling tick where ``INTENB0 != 0xFF00`` was
+ * observed. A non-zero value here proves the watchdog is firing and
+ * that the IP is clearing INTENB0 (typically across a USB Bus Reset).
+ * Read via JLink: ``mem32 &s_intenb0_rearm_count``.
+ *
+ * @note Single-writer (watchdog thread); read-only elsewhere.
+ * @since 0.1.0
+ */
+volatile uint32_t s_intenb0_rearm_count = 0U;
+
+/**
+ * @var s_intenb0_watchdog_started
+ * @brief Set to 1 once the watchdog thread has begun polling.
+ * @note Single-writer (watchdog thread).
+ * @since 0.1.0
+ */
+volatile uint32_t s_intenb0_watchdog_started = 0U;
+
+/**
  * @var s_usbx_pool
  * @brief USBX memory pool (USBX uses ``tx_byte_pool`` internally).
  * @since 0.1.0
@@ -500,6 +548,10 @@ static UCHAR s_string_framework[] = {
  */
 static UCHAR s_language_id_framework[] = {0x09U, 0x04U};
 
+/* Forward declarations -------------------------------------------------- */
+
+static VOID intenb0_watchdog_entry(ULONG arg);
+
 /* -------------------------------------------------------------------------- */
 /* CDC-ACM activate / deactivate callbacks                                    */
 /* -------------------------------------------------------------------------- */
@@ -626,6 +678,24 @@ static VOID demo_worker(ULONG arg)
   }
   s_boot_probe = (uint32_t)k_boot_probe_post_dev_attach;
 
+  /* Spawn the INTENB0 re-arm watchdog. USB Bus Reset on the RA8D2 HS
+   * controller auto-clears INTENB0 to 0 (verified live via JLink: a
+   * manual write of INTENB0 = 0xFF00 immediately resumed ISR firing
+   * after a host bus reset). The driver's ``busreset_rearm`` is
+   * supposed to do this from the DVST(=Default) ISR path, but the ISR
+   * cannot run while INTENB0 is zero. This polled watchdog breaks the
+   * chicken-and-egg by re-writing INTENB0 outside the ISR. */
+  (void)tx_thread_create(&s_intenb0_watchdog_thread,
+                         "usbhs_intenb0_wdog",
+                         intenb0_watchdog_entry,
+                         0UL,
+                         s_intenb0_watchdog_stack,
+                         (ULONG)sizeof(s_intenb0_watchdog_stack),
+                         15U, /* lower priority than echo worker  */
+                         15U,
+                         TX_NO_TIME_SLICE,
+                         TX_AUTO_START);
+
   /* Echo loop. */
   s_boot_probe = (uint32_t)k_boot_probe_enter_echo_loop;
   /* Bisect probes captured ONCE on entry to the echo loop. HUM
@@ -670,6 +740,36 @@ static VOID demo_worker(ULONG arg)
     for (ULONG i = 0UL; i < n; i++) {
       (void)ra_board_led_toggle(k_ra_board_led1);
     }
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* INTENB0 re-arm watchdog                                                    */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * @brief Watchdog entry: re-asserts USBHS INTENB0 = 0xFF00 if cleared.
+ *
+ * @param[in] arg Unused (ThreadX entry signature).
+ *
+ * @pre USBHS MSTP ungated and SYSCFG.USBE=1 (otherwise reads return 0).
+ * @post Loops forever; never returns.
+ *
+ * @note Single-instance; reads/writes a single 16-bit MMIO register
+ *       which is naturally atomic on Cortex-M.
+ * @since 0.1.0
+ */
+static VOID intenb0_watchdog_entry(ULONG arg)
+{
+  (void)arg;
+  volatile r_usb_regs_t* reg = ra_usb_hs();
+  s_intenb0_watchdog_started = 1U;
+  while (1) {
+    if (reg->INTENB0 != (uint16_t)k_ra_int0_full_mask) {
+      reg->INTENB0 = (uint16_t)k_ra_int0_full_mask;
+      s_intenb0_rearm_count++;
+    }
+    tx_thread_sleep(1UL);
   }
 }
 

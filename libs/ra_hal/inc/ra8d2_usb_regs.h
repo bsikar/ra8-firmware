@@ -433,6 +433,20 @@ typedef enum : uint8_t {
 } ra_usb_intenb0_bit_t;
 
 /**
+ * @enum ra_usb_intenb0_mask_t
+ * @brief INTENB0 aggregate masks (HUM Ch 36.2.10 p 1980).
+ */
+typedef enum : uint16_t {
+  /**
+   * Device-mode "all top-byte sources" mask: BRDY | NRDY | BEMP | CTRT |
+   * DVST | SOFR | RSME | VBSE. Equals 0xFF00. Used by the watchdog
+   * thread in tz_secure_only_usb_hs to re-arm INTENB0 if a USB Reset
+   * (or any other event) clears it out from under the ISR.
+   */
+  k_ra_int0_full_mask = 0xFF00U,
+} ra_usb_intenb0_mask_t;
+
+/**
  * @enum ra_usb_intsts0_mask_t
  * @brief INTSTS0 multi-bit field masks.
  */
