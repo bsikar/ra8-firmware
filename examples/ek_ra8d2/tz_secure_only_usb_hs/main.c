@@ -82,7 +82,6 @@
 #include "ra_gpio_constants.h"
 #include "ra_isr.h"
 #include "ra_log.h"
-#include "ra_mstp.h"
 #include "ra_port_constants.h"
 #include "ra_port_utils.h"
 #include "ra_time.h"
@@ -553,60 +552,6 @@ static UCHAR s_language_id_framework[] = {0x09U, 0x04U};
 
 static VOID intenb0_watchdog_entry(ULONG arg);
 
-/**
- * @var s_phy_powercycle_done
- * @brief Set to 1 once the USBHS module-stop power-cycle has completed.
- *
- * @details
- * Diagnostic latch set by ::usbhs_powercycle after the second
- * ::ra_mstp_enable returns. JLink can read this address to confirm the
- * pre-bring-up power-cycle ran. The hypothesis under test is that the
- * USBHS PHY accumulates corrupt internal state across the earlier
- * failed bring-up attempts, and a full MSTPB12 stop -> wait -> start
- * sequence drops PHY power long enough to flush it before
- * ``ra_board_usbhs_device_init`` is called.
- *
- * @note Single-writer (worker thread); read via JLink only.
- * @since 0.1.0
- */
-volatile uint32_t s_phy_powercycle_done = 0U;
-
-/**
- * @brief Power-cycle the USBHS module via MSTPCRB.MSTPB12.
- *
- * @details
- * Drives a full ungate -> gate -> ungate sequence on MSTPB12 with a
- * 10 ms (one ThreadX tick) settle on each side of the gate so the
- * USBHS PHY observes a clean power-down before bring-up.
- *
- * Sequence (HUM Ch 11.2.5 MSTPCRB p 326, MSTPB12 = USBHS):
- *  1. ``ra_mstp_enable(k_ra_mstp_usbhs)``  (refcount 0 -> 1, MSTPB12=0)
- *  2. ``ra_mstp_disable(k_ra_mstp_usbhs)`` (refcount 1 -> 0, MSTPB12=1)
- *  3. ``tx_thread_sleep(1)``               (~10 ms power-off settle)
- *  4. ``ra_mstp_enable(k_ra_mstp_usbhs)``  (refcount 0 -> 1, MSTPB12=0)
- *  5. ``tx_thread_sleep(1)``               (~10 ms post-power-on settle)
- *
- * After this returns, ``ra_board_usbhs_device_init`` will call
- * ``ra_mstp_enable`` again (refcount 1 -> 2) which is benign.
- *
- * @pre Called from a ThreadX thread (not from an ISR).
- * @pre USBHS bring-up has not yet started.
- * @post MSTPB12 = 0 (USBHS module ungated).
- * @post ``s_phy_powercycle_done`` is 1.
- *
- * @note Not thread-safe; demo_worker is the only caller.
- * @since 0.1.0
- */
-static void usbhs_powercycle(void)
-{
-  (void)ra_mstp_enable(k_ra_mstp_usbhs);
-  (void)ra_mstp_disable(k_ra_mstp_usbhs);
-  (void)tx_thread_sleep(1UL);
-  (void)ra_mstp_enable(k_ra_mstp_usbhs);
-  (void)tx_thread_sleep(1UL);
-  s_phy_powercycle_done = 1U;
-}
-
 /* -------------------------------------------------------------------------- */
 /* CDC-ACM activate / deactivate callbacks                                    */
 /* -------------------------------------------------------------------------- */
@@ -715,13 +660,6 @@ static VOID demo_worker(ULONG arg)
    * (libs/ra_board_ek_ra8d2/src/ra_board_ek_ra8d2.c::
    * ra_board_usbhs_device_init -> internal_usbhs_clock_and_mstp ->
    * ra_usb_device_init(k_ra_usb_speed_hs)). */
-  /* Power-cycle MSTPB12 before bring-up. The USBHS PHY accumulates
-   * corrupt internal state across the earlier failed bring-up attempts
-   * (host sends zero USB transactions after our chirp completes;
-   * INTSTS0.VALID never asserts despite ISR firing 13M+ times). A
-   * stop -> 10 ms -> start cycle drops PHY power long enough to flush
-   * that state. */
-  usbhs_powercycle();
   s_boot_probe = (uint32_t)k_boot_probe_pre_board_usbhs_init;
   if (ra_board_usbhs_device_init() != k_ra_ok) {
     return;
