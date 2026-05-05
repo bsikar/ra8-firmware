@@ -244,6 +244,44 @@ volatile uint16_t s_syscfg_in_echo_loop = 0U;
 volatile uint16_t s_lpsts_in_echo_loop = 0U;
 
 /**
+ * @var s_psar_state
+ * @brief Snapshot of R_PSCU->PSARB on entry to the echo loop.
+ *
+ * @details
+ * PSCU base = 0x40204000, PSARB offset 0x04 (HUM Ch 51.8.1
+ * "PSARB : Peripheral Security Attribution Register B" p 3284).
+ * Bit 12 (PSARB12) is the USBHS Type1 secure/non-secure bit; bit 11
+ * (PSARB11) is the USBFS0 equivalent. 0 = Secure, 1 = Non-secure.
+ * Reset value = 0x00000000 -- both modules default to Secure, which
+ * is what this no-op-TrustZone build wants. We capture it once at
+ * the echo-loop entry so a JLink session can verify nothing else
+ * (e.g. ThreadX init or the USBX class layer) flipped PSARB12 to NS
+ * out from under us.
+ *
+ * @note Single-writer (worker thread); read via JLink only.
+ * @since 0.1.0
+ */
+volatile uint32_t s_psar_state = 0U;
+
+/**
+ * @var s_ppar_state
+ * @brief Snapshot of R_PSCU->PPARB on entry to the echo loop.
+ *
+ * @details
+ * PSCU base = 0x40204000, PPARB offset 0x1C (HUM Ch 51.8.6
+ * "PPARB : Peripheral Privilege Attribution Register B" p 3292).
+ * Bit 12 (PPARB12) is the USBHS Type1 privileged/unprivileged bit:
+ * 0 = Privileged-only access, 1 = Unprivileged access permitted.
+ * Reset value = 0xFFFFFFFF -- USBHS defaults to "unprivileged access
+ * permitted", which means both privileged-secure and unprivileged-
+ * secure register accesses are allowed by the TrustZone Filter.
+ *
+ * @note Single-writer (worker thread); read via JLink only.
+ * @since 0.1.0
+ */
+volatile uint32_t s_ppar_state = 0U;
+
+/**
  * @enum boot_probe_step_t
  * @brief Bisect-probe step values for s_boot_probe.
  */
@@ -591,9 +629,14 @@ static VOID demo_worker(ULONG arg)
   /* Echo loop. */
   s_boot_probe = (uint32_t)k_boot_probe_enter_echo_loop;
   /* Bisect probes captured ONCE on entry to the echo loop. HUM
-   * Ch 37.2.1 SYSCFG p 2060, HUM Ch 37.2.43 LPSTS p 2111. */
-  s_syscfg_in_echo_loop = ra_usb_hs()->SYSCFG;
-  s_lpsts_in_echo_loop  = *ra_usbhs_lpsts();
+   * Ch 37.2.1 SYSCFG p 2060, HUM Ch 37.2.43 LPSTS p 2111, HUM
+   * Ch 51.8.1 PSARB p 3284, HUM Ch 51.8.6 PPARB p 3292. */
+  s_syscfg_in_echo_loop                  = ra_usb_hs()->SYSCFG;
+  s_lpsts_in_echo_loop                   = *ra_usbhs_lpsts();
+  volatile const uint32_t* const psarb_p = (volatile const uint32_t*)0x40204004UL;
+  volatile const uint32_t* const pparb_p = (volatile const uint32_t*)0x4020401CUL;
+  s_psar_state                           = *psarb_p;
+  s_ppar_state                           = *pparb_p;
   UCHAR buf[k_demo_echo_buf_bytes];
   ULONG n = 0UL;
   while (1) {
