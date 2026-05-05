@@ -122,6 +122,23 @@ static const char* s_demo_tag = "TZSECONLYHS";
 static const ra_port_pin_t k_demo_pin_hs_vbus =
   (ra_port_pin_t)(((uint16_t)k_ra_port_4 << 8) | (uint16_t)k_ra_pin_8);
 
+/**
+ * @brief J7 USB-HS role-select strap (PD07), packed ``ra_port_pin_t``.
+ *
+ * @details
+ * EK-RA8D2 v1 UM Rev 1.01 Section 6.2 p 34: PD07 (port 13 / pin 7) is
+ * the J7 USB-HS role select line. Driving it LOW selects Device mode;
+ * driving it HIGH selects Host mode. The board does not pull this pin
+ * to any default level by hardware -- the firmware MUST own it.
+ *
+ * Built as a runtime cast so clang-tidy's enum-range check is happy
+ * with the otherwise out-of-enum value.
+ *
+ * @since 0.1.0
+ */
+static const ra_port_pin_t k_demo_pin_pd07_role =
+  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_7);
+
 /* -------------------------------------------------------------------------- */
 /* Tunables                                                                   */
 /* -------------------------------------------------------------------------- */
@@ -208,6 +225,24 @@ volatile uint32_t s_intenb0_rearm_count = 0U;
  * @since 0.1.0
  */
 volatile uint32_t s_intenb0_watchdog_started = 0U;
+
+/**
+ * @var s_host_kick_done
+ * @brief Set to 1 once the host-mode PHY analog kick has been applied.
+ *
+ * @details
+ * Some Renesas USB-OTG PHYs latch into a stuck analog state after
+ * power-on if the controller never enters host mode. The mitigation
+ * is to briefly assert ``SYSCFG.DCFM`` + ``SYSCFG.DRPD`` (host + bus
+ * pull-down), wait, then clear them again before completing the
+ * device-mode bring-up. ``s_host_kick_done`` is incremented after the
+ * kick sequence completes so a JLink session can confirm the path
+ * was taken: ``mem32 &s_host_kick_done`` should read 1 after boot.
+ *
+ * @note Single-writer (worker thread); read-only elsewhere.
+ * @since 0.1.0
+ */
+volatile uint32_t s_host_kick_done = 0U;
 
 /**
  * @var s_usbx_pool
@@ -655,16 +690,49 @@ static VOID demo_worker(ULONG arg)
     return;
   }
 
-  /* Bring the USBHS controller up: PHY 12 MHz reference + MSTP ungate
-   * + SYSCFG.SCKE/USBE/HSE. ra_board_usbhs_device_init wraps all three
-   * (libs/ra_board_ek_ra8d2/src/ra_board_ek_ra8d2.c::
-   * ra_board_usbhs_device_init -> internal_usbhs_clock_and_mstp ->
-   * ra_usb_device_init(k_ra_usb_speed_hs)). */
-  s_boot_probe = (uint32_t)k_boot_probe_pre_board_usbhs_init;
-  if (ra_board_usbhs_device_init() != k_ra_ok) {
-    return;
-  }
+  /* USBHS controller bring-up is now performed exactly once, inside
+   * ux_dcd_ra_usb_initialize below (which calls ra_usb_device_init
+   * itself). The PHY clock was armed in main() via
+   * ra_cgc_usbhs_pll_enable; PD07 role-select is owned by demo_pins_init.
+   * MSTPB12 ungate happens inside ra_usb_device_init via ra_mstp_enable.
+   *
+   * Previously this site called ra_board_usbhs_device_init() which also
+   * invoked ra_usb_device_init(hs), and ux_dcd_ra_usb_initialize then
+   * invoked ra_usb_device_init(hs) AGAIN. The duplicate PHY bring-up
+   * (HSE -> PLL CLKSEL bisect -> common init) re-cleared INTENB0 and
+   * left the controller in a state where chirp completed but the host
+   * never issued SETUP -- exactly the failure signature observed on
+   * J7. The FS demo never had this duplicate call, which is consistent
+   * with FS enumerating fine on the same hardware. */
   s_boot_probe = (uint32_t)k_boot_probe_post_board_usbhs_init;
+
+  /* PHY analog "host-mode kick" + chip-level SYSCFG reset (DISABLED).
+   *
+   * Originally added when investigating the "host completes chirp but
+   * never sends SETUP" symptom. We left the block in place but
+   * compile-time disabled it via ``#if 0`` once the more likely root
+   * cause -- duplicate ra_usb_device_init() calls -- was identified
+   * and removed above. The kick wrote SYSCFG=0 and then re-asserted
+   * SCKE/HSE/USBE which clobbered every register the (now-removed)
+   * ra_board_usbhs_device_init had just programmed; running it after
+   * ux_dcd_ra_usb_initialize would clobber that init too, and running
+   * it BEFORE that init is redundant because ra_usb_device_init drives
+   * SYSCFG itself.
+   *
+   * Sequence (HUM Ch 37.2.1 SYSCFG p 2060):
+   *   1. Snapshot DPRPU/HSE/USBE/SCKE bits we want to preserve.
+   *   2. Set DCFM=1, DRPD=1, clear DPRPU; keep USBE/SCKE/HSE intact.
+   *   3. Sleep 2 ticks (~20 ms) so the analog block settles in host
+   *      mode and the bus pull-downs are sampled.
+   *   4. Chip-level reset: write SYSCFG=0 to drop USBE+everything,
+   *      then re-assert SCKE, HSE, USBE in the original device-mode
+   *      configuration with DPRPU still cleared (attach happens later
+   *      via ra_usb_device_attach which sets DPRPU).
+   *   5. Sleep 1 tick (~10 ms) to let the PHY relock.
+   */
+  /* Host-mode kick disabled -- see comment above. The variable is kept
+   * so JLink scripts that read it still link; it is now always 0. */
+  s_host_kick_done = 0U;
 
   /* Plug our DCD bridge into the device stack and turn the bus on. */
   s_boot_probe = (uint32_t)k_boot_probe_pre_ux_dcd_init;
@@ -843,11 +911,23 @@ static void demo_panic_halt(void)
   /* The HS PHY data lines (USBHSDP / USBHSDM / USBHSRREF) are
    * dedicated package balls on the BGA and bypass the PFS PSEL path.
    * VBUS / VBUSEN / OVRCUR are sourced by the on-board USB-PD
-   * controller. PD07 (the J7 host/device role-select strap, UM 6.2 p
-   * 34) is driven explicitly low later inside
-   * ra_board_usbhs_device_init -> internal_usbhs_role_select_device.
-   * So only P4_08 needs routing here. */
-  return ra_pfs_route_peripheral(k_demo_pin_hs_vbus, k_ra_psel_usb_hs, "usb_cdc_hs.vbus");
+   * controller. So only P4_08 needs PFS routing for the controller. */
+  ra_err_t err = ra_pfs_route_peripheral(k_demo_pin_hs_vbus, k_ra_psel_usb_hs, "usb_cdc_hs.vbus");
+  if (err != k_ra_ok) {
+    return err;
+  }
+  /* PD07 (J7 USB-HS role select, UM 6.2 p 34): drive LOW for Device
+   * mode. Mirrors the FS demo's P5_00 / VBUSEN GPIO drive in shape:
+   * the role line is owned by the application early so the analog
+   * block sees a stable strap before the controller is brought up.
+   * Previously this happened inside ra_board_usbhs_device_init from
+   * the worker thread, but that caller also invoked ra_usb_device_init
+   * which is then re-invoked by ux_dcd_ra_usb_initialize -- the
+   * duplicate PHY bring-up is what kept INTENB0 from sticking and is
+   * the most plausible reason the host enumerates FS but never sends
+   * SETUP on HS. Owning PD07 here lets the worker drop the redundant
+   * board init call entirely. */
+  return ra_gpio_output_init(k_demo_pin_pd07_role, k_ra_level_low);
 }
 
 #pragma GCC diagnostic push
@@ -873,11 +953,24 @@ int32_t main(void)
     demo_panic_halt();
   }
 
-  /* Note: ra_cgc_usbhs_pll_enable() is invoked later from
-   * ra_board_usbhs_device_init() inside the worker thread, so we do
-   * NOT need to enable USBFS PLL2 here (this app does not use USBFS).
-   * The HS PHY 12 MHz reference is derived from the main XTAL via
-   * USB60CKCR, set by ra_cgc_usbhs_pll_enable. */
+  /* Bring up the USBHS PHY clock (USB60CKCR / USB60CLK = PLL2P / 4 =
+   * 60 MHz) BEFORE any caller releases MSTPB12 (USBHS) -- mirrors the
+   * FS demo's ra_cgc_usbfs_clock_enable() pattern. The bridge's
+   * ra_usb_device_init invocation later releases MSTPB12 and immediately
+   * starts the PHY-PLL CLKSEL bisect; without this clock arm step the
+   * PHY block has no reference and PLLLOCK never asserts.
+   *
+   * Previously this lived inside ra_board_usbhs_device_init() called
+   * from the worker, but that wrapper also called ra_usb_device_init
+   * which is then re-invoked by ux_dcd_ra_usb_initialize -- the
+   * duplicate PHY bring-up clobbered INTENB0 and is the most plausible
+   * explanation for the "ISR fires but host never sends SETUP" symptom
+   * on HS. With the clock armed here the worker can drop the wrapper
+   * call entirely, making the HS demo's worker-side init sequence a
+   * structural mirror of the working FS demo. */
+  if (ra_cgc_usbhs_pll_enable() != k_ra_ok) {
+    demo_panic_halt();
+  }
 
   if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
     demo_panic_halt();
