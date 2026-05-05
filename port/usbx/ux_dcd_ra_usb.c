@@ -183,6 +183,60 @@ volatile uint8_t s_rhst_history[(uint32_t)k_ra_usb_dcd_rhst_hist_n] = {};
 volatile uint32_t s_rhst_history_count = 0U;
 
 /**
+ * @var s_dvstctr0_history
+ * @brief Per-dispatch-tick capture of the full DVSTCTR0 register.
+ *
+ * @details Bisect probe for the post-chirp HS bring-up stall. After a
+ * successful HS chirp the controller settles ``DVSTCTR0.RHST = 011``
+ * (HUM Ch 37.2.5 DVSTCTR0 / Ch 36.2.5 mirror, p 1971). The hypothesis
+ * under test is whether ``DVSTCTR0.HSPROC`` (bit 2 of the RHST 3-bit
+ * encoding -- value 0b100 = 4 -- per FSP ``r_usb_bitdefine.h``
+ * ``USB_HSPROC = 0x0004``) auto-clears or wedges, and whether any
+ * other DVSTCTR0 bit (UACT bit 6, RESUME bit 5, USBRST bit 6 in host
+ * mirror, WKUP bit 8, RWUPE bit 9, USBRESM bit 10, HNPBTOA bit 11,
+ * EXICEN bit 12, VBUSEN bit 13) flips between the chirp completion
+ * and the host's first SETUP/SOF token. INTSTS1.BCHG-only events
+ * with no SACK/CTRT mean the host stopped after chirp; capturing the
+ * full DVSTCTR0 word per tick lets the bench confirm the field is
+ * stable at 0x???3 (RHST=HS) and not silently flapping.
+ *
+ * Ring size 16 chosen to match ::s_rhst_history so JLink scripts can
+ * read both arrays in one transaction.
+ *
+ * @note Single-writer (::internal_dispatch_worker tick).
+ * @since 0.1.0
+ */
+volatile uint16_t s_dvstctr0_history[(uint32_t)k_ra_usb_dcd_rhst_hist_n] = {};
+
+/**
+ * @var s_dvstctr0_history_count
+ * @brief Total dispatch ticks observed; modulo
+ *        ::k_ra_usb_dcd_rhst_hist_n is the next write slot in
+ *        ::s_dvstctr0_history.
+ *
+ * @note Single-writer (::internal_dispatch_worker tick).
+ * @since 0.1.0
+ */
+volatile uint32_t s_dvstctr0_history_count = 0U;
+
+/**
+ * @var s_intsts1_history
+ * @brief Per-dispatch-tick capture of the full INTSTS1 register.
+ *
+ * @details Companion probe to ::s_dvstctr0_history. INTSTS1
+ * (HUM Ch 36.2.17 p 2001) carries BCHG (bit 14), DTCH (bit 12),
+ * ATTCH (bit 11), EOFERR (bit 6), SIGN (bit 5), SACK (bit 4) for
+ * host mode and the bus-change shadow for device mode. The 0.2.0
+ * bring-up symptom is BCHG-only (bit 14) with no SACK ever; this
+ * ring lets the bench confirm whether any SACK / EOFERR / SIGN edge
+ * arrives in the dispatch window after RHST settles.
+ *
+ * @note Single-writer (::internal_dispatch_worker tick).
+ * @since 0.1.0
+ */
+volatile uint16_t s_intsts1_history[(uint32_t)k_ra_usb_dcd_rhst_hist_n] = {};
+
+/**
  * @var s_intsts0_last_dispatch
  * @brief Most-recent INTSTS0 snapshot fed to ::ux_dcd_ra_usb_irq.
  *
@@ -2007,6 +2061,21 @@ static VOID internal_dispatch_worker(ULONG arg)
       continue;
     }
     s_dispatch_tick_count++;
+    /* Per-tick DVSTCTR0 + INTSTS1 capture (post-chirp HS bring-up
+     * bisect). HUM Ch 37.2.5 DVSTCTR0 / Ch 36.2.17 INTSTS1. The two
+     * arrays share ::k_ra_usb_dcd_rhst_hist_n slots so a JLink read
+     * sees a coherent snapshot for the same tick index. */
+    {
+      volatile r_usb_regs_t* const probe_reg =
+        (s_dcd.speed == k_ra_usb_speed_hs) ? ra_usb_hs() : ra_usb_fs();
+      if (probe_reg != nullptr) {
+        const uint8_t probe_slot =
+          (uint8_t)(s_dvstctr0_history_count % (uint32_t)k_ra_usb_dcd_rhst_hist_n);
+        s_dvstctr0_history[probe_slot] = probe_reg->DVSTCTR0;
+        s_intsts1_history[probe_slot]  = probe_reg->INTSTS1;
+        s_dvstctr0_history_count++;
+      }
+    }
     ra_usb_dispatch(s_dcd.speed);
     internal_sync_state_from_dvsq(s_dcd.speed);
     tx_thread_relinquish();
