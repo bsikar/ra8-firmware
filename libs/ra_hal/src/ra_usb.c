@@ -808,10 +808,8 @@ static ra_err_t internal_usbhs_phy_bringup(volatile r_usb_regs_t* reg)
   volatile uint16_t* const physet = ra_usbhs_physet();
   volatile uint16_t* const lpsts  = ra_usbhs_lpsts();
 
-  /* Step 1: SYSCFG.HSE = 1 (mirrors FSP `hw_usb_set_hse`, called from
-   * r_usb_basic.c BEFORE hw_usb_pmodule_init). HUM Ch 37 "SYSCFG"
-   * register, p 2060. */
-  reg->SYSCFG      = (uint16_t)(reg->SYSCFG | (uint16_t)(1U << k_ra_syscfg_bit_hse));
+  /* HS-DEBUG: try FS-only on USBHS controller (SYSCFG.HSE write
+   * skipped so device advertises FS-only via DPRPU). */
   s_phy_step_probe = (uint8_t)k_ra_usbhs_phy_step_hse_set;
 
   /* Step 2: CLKSEL selection. With USB60CKDIVCR=/4 the PHY input is
