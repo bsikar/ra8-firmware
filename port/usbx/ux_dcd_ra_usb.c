@@ -99,6 +99,83 @@ volatile uint16_t s_lpsts_after_dcd_init = 0U;
 volatile uint32_t s_isr_invocations = 0U;
 
 /**
+ * @var s_isr_intsts0_or
+ * @brief Cumulative bitwise-OR of every ``INTSTS0`` value observed at
+ *        the entry of ::internal_usbhs_isr.
+ *
+ * @details
+ * Each ISR entry samples ``INTSTS0`` (HUM Ch 36.2.14 p 1985) and folds
+ * it into this accumulator with ``|=``. JLink-readable: the set bits
+ * tell which event sources have ever fired since boot
+ * (BRDY/NRDY/BEMP/CTRT/DVST/SOFR/RSME/VBSE in bits 8..15, plus VALID
+ * in bit 3 and the read-only DVSQ/VBSTS status fields). Used to
+ * distinguish "ISR runs but no event bits set" (interrupt storm from
+ * an un-acked source) from "ISR runs with real events".
+ *
+ * @note Written only by ::internal_usbhs_isr.
+ * @since 0.1.0
+ */
+volatile uint16_t s_isr_intsts0_or = 0U;
+
+/**
+ * @var s_isr_dvst_count
+ * @brief Per-bit ISR counter for ``INTSTS0.DVST`` (bit 12) entries.
+ *
+ * @details
+ * Incremented inside ::internal_usbhs_isr whenever the snapshot has
+ * the device-state-transition bit set. Distinguishes "ISR fired with
+ * DVST" from the bridge-side ::s_dvst_irq_count which counts events
+ * after they have already been forwarded to the USBX stack.
+ *
+ * @note Written only by ::internal_usbhs_isr.
+ * @since 0.1.0
+ */
+volatile uint32_t s_isr_dvst_count = 0U;
+
+/**
+ * @var s_isr_ctrt_count
+ * @brief Per-bit ISR counter for ``INTSTS0.CTRT`` (bit 11) entries.
+ *
+ * @details Sibling of ::s_isr_dvst_count for the control-transfer-
+ * stage-transition bit (HUM Ch 36.2.14 p 1985).
+ *
+ * @note Written only by ::internal_usbhs_isr.
+ * @since 0.1.0
+ */
+volatile uint32_t s_isr_ctrt_count = 0U;
+
+/**
+ * @var s_isr_valid_count
+ * @brief Per-bit ISR counter for ``INTSTS0.VALID`` (bit 3) entries.
+ *
+ * @details Counts ISR entries where the SETUP-detect flag was already
+ * latched at snapshot time. The actual SETUP drain is performed by
+ * ::ux_dcd_ra_usb_irq via ::ra_usb_dispatch -> ::internal_event_cb.
+ *
+ * @note Written only by ::internal_usbhs_isr.
+ * @since 0.1.0
+ */
+volatile uint32_t s_isr_valid_count = 0U;
+
+/**
+ * @var s_isr_brdy_count
+ * @brief Per-bit ISR counter for ``INTSTS0.BRDY`` (bit 8) entries.
+ *
+ * @note Written only by ::internal_usbhs_isr.
+ * @since 0.1.0
+ */
+volatile uint32_t s_isr_brdy_count = 0U;
+
+/**
+ * @var s_isr_bemp_count
+ * @brief Per-bit ISR counter for ``INTSTS0.BEMP`` (bit 10) entries.
+ *
+ * @note Written only by ::internal_usbhs_isr.
+ * @since 0.1.0
+ */
+volatile uint32_t s_isr_bemp_count = 0U;
+
+/**
  * @var s_ctrt_irq_count
  * @brief Counter of INTSTS0.CTRT events seen by the dispatcher.
  *
@@ -1232,6 +1309,63 @@ static void internal_usbhs_isr(void* ctx)
 {
   (void)ctx;
   s_isr_invocations++;
+
+  /* HUM Ch 36.2.14 "INTSTS0 : Interrupt Status Register 0", p 1985.
+   *
+   * Snapshot INTSTS0 first and gate the rest of the ISR on the event
+   * bits (8..15 plus the VALID flag in bit 3). DVSQ[6:4] and VBSTS[7]
+   * are read-only status fields and must NEVER be treated as events;
+   * a snapshot of 0x0090 (DVSQ=Default + VBSTS=1) means "no event
+   * pending, just status-bits asserted" and the ISR must return
+   * without writing INTSTS0 to avoid an interrupt storm caused by
+   * spurious NVIC re-entry. Without this gate ::s_isr_invocations
+   * climbs at ~1 MHz on USBHS bring-up. */
+  const uint16_t intsts0   = ra_usb_intsts0_snapshot(k_ra_usb_speed_hs);
+  const uint16_t event_msk = (uint16_t)((1U << k_ra_int0_bit_brdy) | (1U << k_ra_int0_bit_nrdy) |
+                                        (1U << k_ra_int0_bit_bemp) | (1U << k_ra_int0_bit_ctrt) |
+                                        (1U << k_ra_int0_bit_dvst) | (1U << k_ra_int0_bit_sofr) |
+                                        (1U << k_ra_int0_bit_rsme) | (1U << k_ra_int0_bit_vbse) |
+                                        (uint16_t)k_ra_intsts0_mask_valid);
+
+  s_isr_intsts0_or |= intsts0;
+
+  if ((intsts0 & event_msk) == 0U) {
+    /* Spurious entry: NVIC line raised but no event source latched.
+     * Returning without writing INTSTS0 preserves W0C semantics and
+     * lets the IP retire the spurious assertion on the next bus
+     * micro-frame. */
+    return;
+  }
+
+  /* Per-bit accounting -- counted at the snapshot point so a JLink
+   * reader can correlate ::s_isr_intsts0_or with which paths fired. */
+  if ((intsts0 & (uint16_t)(1U << k_ra_int0_bit_dvst)) != 0U) {
+    s_isr_dvst_count++;
+  }
+  if ((intsts0 & (uint16_t)(1U << k_ra_int0_bit_ctrt)) != 0U) {
+    s_isr_ctrt_count++;
+  }
+  if ((intsts0 & (uint16_t)k_ra_intsts0_mask_valid) != 0U) {
+    s_isr_valid_count++;
+  }
+  if ((intsts0 & (uint16_t)(1U << k_ra_int0_bit_brdy)) != 0U) {
+    s_isr_brdy_count++;
+  }
+  if ((intsts0 & (uint16_t)(1U << k_ra_int0_bit_bemp)) != 0U) {
+    s_isr_bemp_count++;
+  }
+
+  /* ::ra_usb_dispatch performs the W0C ack with the
+   * ``INTSTS0 = ~(snapshot & ack_bits)`` pattern (HUM Ch 37.2.18 Note
+   * 3 p 2082): writes 0 only to event bits that were observed set, 1
+   * to all other bits (no-op under W0C). VALID is intentionally NOT
+   * acked here -- the SETUP drain in ::ux_dcd_ra_usb_irq /
+   * ::ra_usb_read_setup_unconditional clears VALID after copying
+   * USBREQ/USBVAL/USBINDX/USBLENG. The dispatcher then forwards the
+   * snapshot to ::internal_event_cb -> ::ux_dcd_ra_usb_irq for
+   * per-bit USBX-side handling (DVST -> busreset_rearm, CTRT/VALID
+   * -> _ux_device_stack_control_request_process, BRDY/BEMP -> pipe
+   * completion). */
   ra_usb_dispatch(k_ra_usb_speed_hs);
 }
 
