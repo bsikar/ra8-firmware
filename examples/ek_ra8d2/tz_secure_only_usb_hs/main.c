@@ -138,6 +138,19 @@ typedef enum : uint32_t {
                                         keeps first-pass parity with the
                                         FS demo. */
   k_demo_idle_ticks      = 1U,     /**< Idle back-off when no class active. */
+  k_demo_detach_ticks    = 20U,    /**< 200 ms at 100 Hz tick: USB disconnect
+                                        signal so macOS treats the next
+                                        DPRPU=1 as a clean re-attach. */
+  k_demo_settle_ticks    = 10U,    /**< 100 ms at 100 Hz tick: PHY settle
+                                        delay between PLL/USBE/HSE up and
+                                        DPRPU/CNEN raise so macOS does not
+                                        sample the pull-up before the PHY
+                                        has stabilised. */
+  k_demo_attach_delay_ms = 300U,   /**< Total attach delay in ms (200 ms
+                                        forced detach + 100 ms PHY settle).
+                                        Captured into ::s_attach_delay_ms
+                                        so JLink can confirm the path
+                                        actually executed. */
 } demo_config_t;
 
 #ifndef RA_SIMULATOR_MODE
@@ -217,6 +230,24 @@ volatile demo_diag_t s_demo_diag = {};
  * @since 0.1.0
  */
 static volatile uint32_t s_boot_probe = 0U;
+
+/**
+ * @var s_attach_delay_ms
+ * @brief Total milliseconds spent in the pre-attach detach + settle window.
+ *
+ * @details
+ * Captured immediately before ``ra_usb_device_attach(..., true)`` so a
+ * JLink session can confirm the new force-detach + PHY-settle sequence
+ * actually executed. Hypothesis: macOS samples D+ pull-up before our
+ * USBHS PHY has stabilised, so we (1) drive DPRPU=0 for 200 ms to force
+ * a clean disconnect, then (2) sleep another 100 ms before raising
+ * DPRPU=1 again. If the host now issues SETUP, ``s_isr_valid_count``
+ * starts incrementing and ``/dev/cu.usbmodem*`` enumerates.
+ *
+ * @note Single-writer (worker thread) before the echo loop is entered.
+ * @since 0.1.0
+ */
+static volatile uint32_t s_attach_delay_ms = 0U;
 
 /**
  * @var s_syscfg_in_echo_loop
@@ -620,6 +651,19 @@ static VOID demo_worker(ULONG arg)
     return;
   }
   s_boot_probe = (uint32_t)k_boot_probe_post_ux_dcd_init;
+
+  /* Force a clean re-attach: drop DPRPU first (in case macOS has stale
+   * port state from a previous boot where the chirp completed but no
+   * SETUP arrived), wait 200 ms so the host registers the disconnect,
+   * then sleep another 100 ms so the USBHS PHY (PLL locked, USBE+HSE
+   * set by ra_board_usbhs_device_init / ux_dcd_ra_usb_initialize) is
+   * fully settled before we raise DPRPU=1+CNEN again. HUM Ch 37.2.6
+   * SYSCFG.DPRPU p 2068. */
+  (void)ra_usb_device_attach(k_ra_usb_speed_hs, false);
+  tx_thread_sleep(k_demo_detach_ticks);
+  tx_thread_sleep(k_demo_settle_ticks);
+  s_attach_delay_ms = (uint32_t)k_demo_attach_delay_ms;
+
   s_boot_probe = (uint32_t)k_boot_probe_pre_dev_attach;
   if (ra_usb_device_attach(k_ra_usb_speed_hs, true) != k_ra_ok) {
     return;
