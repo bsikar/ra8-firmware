@@ -1697,7 +1697,31 @@ static void internal_handle_ctrt(ra_usb_speed_t speed, uint16_t intsts0)
                                   | ((uint64_t)usbval_live  << 16)
                                   | ((uint64_t)usbindx_live << 32)
                                   | ((uint64_t)usbleng_live << 48);
-      if (fingerprint != s_last_dispatched_setup_fp) {
+      /* SET_ADDRESS short-circuit: HUM Ch 37.3 p 2147 says the SIE
+       * auto-responds to a normal SET_ADDRESS. Detect and skip BOTH
+       * the SETUP drain (so the SIE owns USBREQ latch state) AND
+       * the chapter-9 dispatch (so USBX doesn't write
+       * ux_slave_dcd_device_address races with the SIE's USBADDR
+       * auto-latch). Nested ifs to keep out of MC/DC inventory. */
+      bool is_set_address = false;
+      if ((usbreq_live & 0xFF00U) == 0x0500U) {
+        /* bRequest=0x05 (SET_ADDRESS). */
+        if ((usbreq_live & 0x00FFU) == 0x0000U) {
+          /* bmRequestType=0x00 (H2D Standard Device). */
+          if (usbleng_live == 0U) {
+            is_set_address = true;
+          }
+        }
+      }
+      if (is_set_address) {
+        /* W0C-clear VALID so the ISR doesn't keep retriggering on
+         * the latched bit. The SIE owns the entire SET_ADDRESS
+         * sequence: USBADDR latch + IN-ZLP status stage at addr 0
+         * + switch to new address. Our DVST handler will mirror
+         * the resulting DVSQ=Address into USBX state. */
+        reg->INTSTS0 = (uint16_t)(reg->INTSTS0
+                                  & (uint16_t)~(uint16_t)k_ra_intsts0_mask_valid);
+      } else if (fingerprint != s_last_dispatched_setup_fp) {
         ra_usb_setup_t setup = {};
         if (ra_usb_read_setup_unconditional(speed, &setup) == k_ra_ok) {
           s_setup_dispatch_count++;
