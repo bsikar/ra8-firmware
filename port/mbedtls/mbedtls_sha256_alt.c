@@ -62,7 +62,7 @@ static int priv_map_err(ra_err_t err)
 /* Mbed TLS ``mbedtls_sha256_init`` ALT replacement -- see implementation for details. */
 void mbedtls_sha256_init(mbedtls_sha256_context* ctx)
 {
-  if (ctx == NULL) {
+  if (ctx == nullptr) {
     return;
   }
   (void)memset((void*)ctx, 0, sizeof(*ctx));
@@ -71,7 +71,7 @@ void mbedtls_sha256_init(mbedtls_sha256_context* ctx)
 /* Mbed TLS ``mbedtls_sha256_free`` ALT replacement -- see implementation for details. */
 void mbedtls_sha256_free(mbedtls_sha256_context* ctx)
 {
-  if (ctx == NULL) {
+  if (ctx == nullptr) {
     return;
   }
   (void)memset((void*)ctx, 0, sizeof(*ctx));
@@ -100,7 +100,7 @@ void mbedtls_sha256_free(mbedtls_sha256_context* ctx)
  */
 void mbedtls_sha256_clone(mbedtls_sha256_context* dst, const mbedtls_sha256_context* src)
 {
-  if (dst == NULL || src == NULL) {
+  if (dst == nullptr || src == nullptr) {
     return;
   }
   *dst = *src;
@@ -109,7 +109,7 @@ void mbedtls_sha256_clone(mbedtls_sha256_context* dst, const mbedtls_sha256_cont
 /* Mbed TLS ``mbedtls_sha256_starts`` ALT replacement -- see implementation for details. */
 int mbedtls_sha256_starts(mbedtls_sha256_context* ctx, int is224)
 {
-  if (ctx == NULL) {
+  if (ctx == nullptr) {
     return MBEDTLS_ERR_SHA256_BAD_INPUT_DATA;
   }
   if (is224 != 0) {
@@ -129,7 +129,7 @@ int mbedtls_sha256_starts(mbedtls_sha256_context* ctx, int is224)
 /* Mbed TLS ``mbedtls_sha256_update`` ALT replacement -- see implementation for details. */
 int mbedtls_sha256_update(mbedtls_sha256_context* ctx, const unsigned char* input, size_t ilen)
 {
-  if (ctx == NULL) {
+  if (ctx == nullptr) {
     return MBEDTLS_ERR_SHA256_BAD_INPUT_DATA;
   }
   if (ctx->started == 0U) {
@@ -138,7 +138,7 @@ int mbedtls_sha256_update(mbedtls_sha256_context* ctx, const unsigned char* inpu
   if (ilen == 0U) {
     return 0;
   }
-  if (input == NULL) {
+  if (input == nullptr) {
     return MBEDTLS_ERR_SHA256_BAD_INPUT_DATA;
   }
   ra_err_t err = ra_rsip_sha256_update(&ctx->inner, (const uint8_t*)input, (uint32_t)ilen);
@@ -148,7 +148,7 @@ int mbedtls_sha256_update(mbedtls_sha256_context* ctx, const unsigned char* inpu
 /* Mbed TLS ``mbedtls_sha256_finish`` ALT replacement -- see implementation for details. */
 int mbedtls_sha256_finish(mbedtls_sha256_context* ctx, unsigned char* output)
 {
-  if (ctx == NULL || output == NULL) {
+  if (ctx == nullptr || output == nullptr) {
     return MBEDTLS_ERR_SHA256_BAD_INPUT_DATA;
   }
   if (ctx->started == 0U) {
@@ -186,7 +186,7 @@ int mbedtls_sha256_finish(mbedtls_sha256_context* ctx, unsigned char* output)
  */
 int mbedtls_internal_sha256_process(mbedtls_sha256_context* ctx, const unsigned char data[64])
 {
-  if (ctx == NULL || data == NULL) {
+  if (ctx == nullptr || data == nullptr) {
     return MBEDTLS_ERR_SHA256_BAD_INPUT_DATA;
   }
   if (ctx->started == 0U) {

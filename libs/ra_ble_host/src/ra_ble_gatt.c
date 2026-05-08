@@ -47,7 +47,7 @@
  */
 bool ra_ble_gatt_internal_should_copy(uint16_t len, const void* value)
 {
-  return (len > 0U) && (value != NULL);
+  return (len > 0U) && (value != nullptr);
 }
 
 /**
@@ -236,7 +236,7 @@ static ra_ble_host_attr_t* internal_append_attr(ra_ble_host_attr_kind_t kind,
     k_attr_table_cap = 96U,
   };
   if (st->attr_count >= k_attr_table_cap) {
-    return NULL;
+    return nullptr;
   }
   ra_ble_host_attr_t* a = &st->attrs[st->attr_count];
   (void)memset(a, 0, sizeof(*a));
@@ -247,7 +247,7 @@ static ra_ble_host_attr_t* internal_append_attr(ra_ble_host_attr_kind_t kind,
   a->value_len          = 0U;
   a->value_max          = value_max;
   a->value_handle_owner = 0U;
-  if (uuid_le_128 != NULL) {
+  if (uuid_le_128 != nullptr) {
     (void)memcpy(a->uuid, uuid_le_128, k_ra_ble_host_uuid_bytes);
   }
   st->attr_count  = (uint8_t)(st->attr_count + 1U);
@@ -290,7 +290,7 @@ static ra_ble_host_attr_t* internal_append_attr(ra_ble_host_attr_kind_t kind,
  */
 ra_err_t ra_ble_host_gatt_register_service(const uint8_t* uuid_128, uint16_t* out_handle)
 {
-  if ((uuid_128 == NULL) || (out_handle == NULL)) {
+  if ((uuid_128 == nullptr) || (out_handle == nullptr)) {
     return k_ra_err_null_ptr;
   }
   ra_ble_host_state_t* st = ra_ble_host_state();
@@ -306,8 +306,9 @@ ra_err_t ra_ble_host_gatt_register_service(const uint8_t* uuid_128, uint16_t* ou
    * in the row's uuid[] field for compactness -- the ATT layer's
    * Read handler emits it as the value when the attribute kind is
    * primary_service. */
-  ra_ble_host_attr_t* a = internal_append_attr(k_attr_kind_primary_service, uuid_128, 0U, NULL, 0U);
-  if (a == NULL) {
+  ra_ble_host_attr_t* a =
+    internal_append_attr(k_attr_kind_primary_service, uuid_128, 0U, nullptr, 0U);
+  if (a == nullptr) {
     return k_ra_err_no_mem;
   }
   st->service_count       = (uint8_t)(st->service_count + 1U);
@@ -364,10 +365,10 @@ ra_err_t ra_ble_host_gatt_register_char(uint16_t       svc_handle,
     k_uuid16_cccd   = 0x2902U,
   };
 
-  if ((uuid_128 == NULL) || (out_handle == NULL)) {
+  if ((uuid_128 == nullptr) || (out_handle == nullptr)) {
     return k_ra_err_null_ptr;
   }
-  if ((value_buf == NULL) && (value_max > 0U)) {
+  if ((value_buf == nullptr) && (value_max > 0U)) {
     return k_ra_err_null_ptr;
   }
   ra_ble_host_state_t* st = ra_ble_host_state();
@@ -404,8 +405,9 @@ ra_err_t ra_ble_host_gatt_register_char(uint16_t       svc_handle,
   /* The decl row stores the *characteristic*'s 128-bit UUID in uuid[]
    * (so Read_By_Type can splat it into the response), and its props
    * field carries the property bits. */
-  ra_ble_host_attr_t* decl = internal_append_attr(k_attr_kind_char_decl, uuid_128, props, NULL, 0U);
-  if (decl == NULL) {
+  ra_ble_host_attr_t* decl =
+    internal_append_attr(k_attr_kind_char_decl, uuid_128, props, nullptr, 0U);
+  if (decl == nullptr) {
     return k_ra_err_no_mem;
   }
   /* Override: store the decl's *type* UUID separately in the cccd_value
@@ -420,7 +422,7 @@ ra_err_t ra_ble_host_gatt_register_char(uint16_t       svc_handle,
 
   ra_ble_host_attr_t* val =
     internal_append_attr(k_attr_kind_char_value, uuid_128, 0U, value_buf, value_max);
-  if (val == NULL) {
+  if (val == nullptr) {
     return k_ra_err_no_mem;
   }
 
@@ -440,8 +442,8 @@ ra_err_t ra_ble_host_gatt_register_char(uint16_t       svc_handle,
       0U) {
     uint8_t cccd_uuid[k_ra_ble_host_uuid_bytes];
     internal_uuid16_to_128(cccd_uuid, k_uuid16_cccd);
-    ra_ble_host_attr_t* cccd = internal_append_attr(k_attr_kind_cccd, cccd_uuid, 0U, NULL, 0U);
-    if (cccd == NULL) {
+    ra_ble_host_attr_t* cccd = internal_append_attr(k_attr_kind_cccd, cccd_uuid, 0U, nullptr, 0U);
+    if (cccd == nullptr) {
       return k_ra_err_no_mem;
     }
     cccd->value_handle_owner = val->handle;
@@ -484,7 +486,7 @@ ra_err_t ra_ble_host_gatt_register_char(uint16_t       svc_handle,
  */
 ra_err_t ra_ble_host_gatt_set_value(uint16_t char_handle, const uint8_t* value, uint16_t len)
 {
-  if ((value == NULL) && (len > 0U)) {
+  if ((value == nullptr) && (len > 0U)) {
     return k_ra_err_null_ptr;
   }
   ra_ble_host_state_t* st = ra_ble_host_state();
@@ -492,7 +494,7 @@ ra_err_t ra_ble_host_gatt_set_value(uint16_t char_handle, const uint8_t* value, 
     return k_ra_err_not_initialized;
   }
   ra_ble_host_attr_t* a = ra_ble_host_attr_lookup(char_handle);
-  if ((a == NULL) || (a->kind != k_attr_kind_char_value)) {
+  if ((a == nullptr) || (a->kind != k_attr_kind_char_value)) {
     return k_ra_err_not_found;
   }
   if (len > a->value_max) {
@@ -550,14 +552,14 @@ ra_err_t ra_ble_host_gatt_notify(uint16_t char_handle)
     return k_ra_err_not_initialized;
   }
   ra_ble_host_attr_t* a = ra_ble_host_attr_lookup(char_handle);
-  if ((a == NULL) || (a->kind != k_attr_kind_char_value)) {
+  if ((a == nullptr) || (a->kind != k_attr_kind_char_value)) {
     return k_ra_err_not_found;
   }
   /* Find the matching decl row (handle == char_handle - 1) to read
    * the props bits. */
   ra_ble_host_attr_t* decl = ra_ble_host_attr_lookup((uint16_t)(char_handle - 1U));
-  if (ra_ble_gatt_internal_notify_invalid((uint8_t)((decl != NULL) ? 1U : 0U),
-                                          (decl != NULL) ? decl->props : (uint8_t)0U,
+  if (ra_ble_gatt_internal_notify_invalid((uint8_t)((decl != nullptr) ? 1U : 0U),
+                                          (decl != nullptr) ? decl->props : (uint8_t)0U,
                                           (uint8_t)k_ra_ble_host_char_prop_notify)) {
     return k_ra_err_invalid_arg;
   }

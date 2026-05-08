@@ -8,7 +8,7 @@ the refresh sequence when the counter sits inside the legal window
 each in-window refresh; SCI8 logs `iwdt: refresh in window`.
 
 The actual window bounds are programmed by the OFS0 option-setting
-register at flash time — the values in this demo are chosen to match
+register at flash time -- the values in this demo are chosen to match
 the conventional EK-RA8D2 OFS0 layout used by the project's shared
 linker scripts.
 

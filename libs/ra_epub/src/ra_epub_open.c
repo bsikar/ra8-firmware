@@ -126,15 +126,15 @@ static void priv_byte_zero(uint8_t* dst, size_t n)
  */
 static void priv_dirname(const char* path, char* dst, size_t cap)
 {
-  if (dst == NULL || cap == 0U) {
+  if (dst == nullptr || cap == 0U) {
     return;
   }
   dst[0] = '\0';
-  if (path == NULL) {
+  if (path == nullptr) {
     return;
   }
   const char* slash = strrchr(path, '/');
-  if (slash == NULL) {
+  if (slash == nullptr) {
     return;
   }
   size_t len = (size_t)(slash - path) + 1U;
@@ -170,7 +170,7 @@ static ra_err_t
 priv_extract(mz_zip_archive* zip, const char* name, uint8_t* buf, size_t cap, size_t* got)
 {
   *got        = 0U;
-  int32_t idx = mz_zip_reader_locate_file(zip, name, NULL, 0U);
+  int32_t idx = mz_zip_reader_locate_file(zip, name, nullptr, 0U);
   if (idx < 0) {
     return k_ra_err_not_found;
   }
@@ -217,7 +217,7 @@ static_assert(alignof(mz_zip_archive) <= alignof(max_align_t),
  */
 static void priv_zip_destroy(mz_zip_archive* zip)
 {
-  if (zip == NULL) {
+  if (zip == nullptr) {
     return;
   }
   mz_zip_reader_end(zip);
@@ -285,11 +285,11 @@ static ra_err_t priv_parse_archive(mz_zip_archive* zip,
 ra_err_t ra_epub_open(const void* media, const char* path, ra_epub_book_t* out_book)
 {
   (void)path;
-  if (media == NULL || out_book == NULL) {
+  if (media == nullptr || out_book == nullptr) {
     return k_ra_err_null_ptr;
   }
   const ra_epub_mem_media_t* mem = (const ra_epub_mem_media_t*)media;
-  if (mem->data == NULL || mem->size == 0U) {
+  if (mem->data == nullptr || mem->size == 0U) {
     return k_ra_err_invalid_arg;
   }
 
@@ -326,7 +326,7 @@ ra_err_t ra_epub_open(const void* media, const char* path, ra_epub_book_t* out_b
 /* Implementation of ra_epub_close (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_epub_close(ra_epub_book_t* book)
 {
-  if (book == NULL) {
+  if (book == nullptr) {
     return k_ra_err_null_ptr;
   }
   if (book->in_use == 0U) {

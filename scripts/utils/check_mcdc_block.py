@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 """
 check_mcdc_block.py -- Require @par MC/DC blocks on tests of compound decisions.
 

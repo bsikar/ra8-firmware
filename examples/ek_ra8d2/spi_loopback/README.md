@@ -3,7 +3,7 @@
 SPI_B internal-loopback smoke test for the EK-RA8D2. Brings up
 `ra_spi` on channel 0 at 1 MHz mode-0 MSB-first, then stamps
 `SPCR2.SPLP = 1` (HUM Ch 43.2.5 p 2889 -- `k_ra_spcr2_mask_splp`)
-so COPI is fed back into CIPO inside the chip. No external CIPO ↔
+so COPI is fed back into CIPO inside the chip. No external CIPO ?
 COPI wiring required.
 
 Each cycle walks a 16-byte test pattern (`0xA0..0xAF`) through

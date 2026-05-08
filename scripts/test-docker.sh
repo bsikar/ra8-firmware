@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # scripts/test-docker.sh -- run the host unit-test suite in a Linux container.
 #

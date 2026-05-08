@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 """Pre-commit gate: ban AI attribution anywhere in the codebase.
 
 Policy (see ``docs/AI_ATTRIBUTION_POLICY.md`` and ``CLAUDE.md``):

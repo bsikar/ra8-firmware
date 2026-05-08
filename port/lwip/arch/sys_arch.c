@@ -227,7 +227,7 @@ void sys_arch_unprotect(sys_prot_t pval) {
 
 /* Sys sem new -- see implementation for details. */
 err_t sys_sem_new(sys_sem_t* sem, u8_t count) {
-    if (sem == NULL) {
+    if (sem == nullptr) {
         return ERR_ARG;
     }
     UINT st = tx_semaphore_create(&sem->tx, "lwip_sem", (ULONG)count);
@@ -241,14 +241,14 @@ err_t sys_sem_new(sys_sem_t* sem, u8_t count) {
 
 /* Sys sem signal -- see implementation for details. */
 void sys_sem_signal(sys_sem_t* sem) {
-    if (sem != NULL && sem->valid != 0U) {
+    if (sem != nullptr && sem->valid != 0U) {
         (void)tx_semaphore_put(&sem->tx);
     }
 }
 
 /* Sys arch sem wait -- see implementation for details. */
 u32_t sys_arch_sem_wait(sys_sem_t* sem, u32_t timeout_ms) {
-    if (sem == NULL || sem->valid == 0U) {
+    if (sem == nullptr || sem->valid == 0U) {
         return SYS_ARCH_TIMEOUT;
     }
     const uint32_t start_ms = sys_now();
@@ -265,7 +265,7 @@ u32_t sys_arch_sem_wait(sys_sem_t* sem, u32_t timeout_ms) {
 
 /* Sys sem free -- see implementation for details. */
 void sys_sem_free(sys_sem_t* sem) {
-    if (sem != NULL && sem->valid != 0U) {
+    if (sem != nullptr && sem->valid != 0U) {
         (void)tx_semaphore_delete(&sem->tx);
         sem->valid = 0U;
     }
@@ -273,12 +273,12 @@ void sys_sem_free(sys_sem_t* sem) {
 
 /* Sys sem valid -- see implementation for details. */
 int sys_sem_valid(sys_sem_t* sem) {
-    return (sem != NULL && sem->valid != 0U) ? 1 : 0;
+    return (sem != nullptr && sem->valid != 0U) ? 1 : 0;
 }
 
 /* Sys sem set invalid -- see implementation for details. */
 void sys_sem_set_invalid(sys_sem_t* sem) {
-    if (sem != NULL) {
+    if (sem != nullptr) {
         sem->valid = 0U;
     }
 }
@@ -289,7 +289,7 @@ void sys_sem_set_invalid(sys_sem_t* sem) {
 
 /* Sys mutex new -- see implementation for details. */
 err_t sys_mutex_new(sys_mutex_t* mutex) {
-    if (mutex == NULL) {
+    if (mutex == nullptr) {
         return ERR_ARG;
     }
     UINT st = tx_mutex_create(&mutex->tx, "lwip_mtx", TX_INHERIT);
@@ -303,21 +303,21 @@ err_t sys_mutex_new(sys_mutex_t* mutex) {
 
 /* Sys mutex lock -- see implementation for details. */
 void sys_mutex_lock(sys_mutex_t* mutex) {
-    if (mutex != NULL && mutex->valid != 0U) {
+    if (mutex != nullptr && mutex->valid != 0U) {
         (void)tx_mutex_get(&mutex->tx, TX_WAIT_FOREVER);
     }
 }
 
 /* Sys mutex unlock -- see implementation for details. */
 void sys_mutex_unlock(sys_mutex_t* mutex) {
-    if (mutex != NULL && mutex->valid != 0U) {
+    if (mutex != nullptr && mutex->valid != 0U) {
         (void)tx_mutex_put(&mutex->tx);
     }
 }
 
 /* Sys mutex free -- see implementation for details. */
 void sys_mutex_free(sys_mutex_t* mutex) {
-    if (mutex != NULL && mutex->valid != 0U) {
+    if (mutex != nullptr && mutex->valid != 0U) {
         (void)tx_mutex_delete(&mutex->tx);
         mutex->valid = 0U;
     }
@@ -325,12 +325,12 @@ void sys_mutex_free(sys_mutex_t* mutex) {
 
 /* Sys mutex valid -- see implementation for details. */
 int sys_mutex_valid(sys_mutex_t* mutex) {
-    return (mutex != NULL && mutex->valid != 0U) ? 1 : 0;
+    return (mutex != nullptr && mutex->valid != 0U) ? 1 : 0;
 }
 
 /* Sys mutex set invalid -- see implementation for details. */
 void sys_mutex_set_invalid(sys_mutex_t* mutex) {
-    if (mutex != NULL) {
+    if (mutex != nullptr) {
         mutex->valid = 0U;
     }
 }
@@ -341,7 +341,7 @@ void sys_mutex_set_invalid(sys_mutex_t* mutex) {
 
 /* Sys mbox new -- see implementation for details. */
 err_t sys_mbox_new(sys_mbox_t* mbox, int size) {
-    if (mbox == NULL) {
+    if (mbox == nullptr) {
         return ERR_ARG;
     }
     if (size <= 0 || (uint32_t)size > RA_LWIP_MBOX_SIZE) {
@@ -362,7 +362,7 @@ err_t sys_mbox_new(sys_mbox_t* mbox, int size) {
 
 /* Sys mbox post -- see implementation for details. */
 void sys_mbox_post(sys_mbox_t* mbox, void* msg) {
-    if (mbox == NULL || mbox->valid == 0U) {
+    if (mbox == nullptr || mbox->valid == 0U) {
         return;
     }
     ULONG slot = (ULONG)(uintptr_t)msg;
@@ -371,7 +371,7 @@ void sys_mbox_post(sys_mbox_t* mbox, void* msg) {
 
 /* Sys mbox trypost -- see implementation for details. */
 err_t sys_mbox_trypost(sys_mbox_t* mbox, void* msg) {
-    if (mbox == NULL || mbox->valid == 0U) {
+    if (mbox == nullptr || mbox->valid == 0U) {
         return ERR_ARG;
     }
     ULONG slot = (ULONG)(uintptr_t)msg;
@@ -387,25 +387,25 @@ err_t sys_mbox_trypost_fromisr(sys_mbox_t* mbox, void* msg) {
 
 /* Sys arch mbox fetch -- see implementation for details. */
 u32_t sys_arch_mbox_fetch(sys_mbox_t* mbox, void** msg, u32_t timeout_ms) {
-    if (mbox == NULL || mbox->valid == 0U) {
+    if (mbox == nullptr || mbox->valid == 0U) {
         return SYS_ARCH_TIMEOUT;
     }
     const uint32_t start_ms = sys_now();
     ULONG          slot     = 0U;
     UINT           st       = tx_queue_receive(&mbox->tx, &slot, ms_to_ticks(timeout_ms));
     if (st == TX_QUEUE_EMPTY) {
-        if (msg != NULL) {
-            *msg = NULL;
+        if (msg != nullptr) {
+            *msg = nullptr;
         }
         return SYS_ARCH_TIMEOUT;
     }
     if (st != TX_SUCCESS) {
-        if (msg != NULL) {
-            *msg = NULL;
+        if (msg != nullptr) {
+            *msg = nullptr;
         }
         return SYS_ARCH_TIMEOUT;
     }
-    if (msg != NULL) {
+    if (msg != nullptr) {
         *msg = (void*)(uintptr_t)slot;
     }
     return (u32_t)(sys_now() - start_ms);
@@ -413,18 +413,18 @@ u32_t sys_arch_mbox_fetch(sys_mbox_t* mbox, void** msg, u32_t timeout_ms) {
 
 /* Sys arch mbox tryfetch -- see implementation for details. */
 u32_t sys_arch_mbox_tryfetch(sys_mbox_t* mbox, void** msg) {
-    if (mbox == NULL || mbox->valid == 0U) {
+    if (mbox == nullptr || mbox->valid == 0U) {
         return SYS_MBOX_EMPTY;
     }
     ULONG slot = 0U;
     UINT  st   = tx_queue_receive(&mbox->tx, &slot, TX_NO_WAIT);
     if (st != TX_SUCCESS) {
-        if (msg != NULL) {
-            *msg = NULL;
+        if (msg != nullptr) {
+            *msg = nullptr;
         }
         return SYS_MBOX_EMPTY;
     }
-    if (msg != NULL) {
+    if (msg != nullptr) {
         *msg = (void*)(uintptr_t)slot;
     }
     return 0U;
@@ -432,7 +432,7 @@ u32_t sys_arch_mbox_tryfetch(sys_mbox_t* mbox, void** msg) {
 
 /* Sys mbox free -- see implementation for details. */
 void sys_mbox_free(sys_mbox_t* mbox) {
-    if (mbox != NULL && mbox->valid != 0U) {
+    if (mbox != nullptr && mbox->valid != 0U) {
         (void)tx_queue_delete(&mbox->tx);
         mbox->valid = 0U;
     }
@@ -440,12 +440,12 @@ void sys_mbox_free(sys_mbox_t* mbox) {
 
 /* Sys mbox valid -- see implementation for details. */
 int sys_mbox_valid(sys_mbox_t* mbox) {
-    return (mbox != NULL && mbox->valid != 0U) ? 1 : 0;
+    return (mbox != nullptr && mbox->valid != 0U) ? 1 : 0;
 }
 
 /* Sys mbox set invalid -- see implementation for details. */
 void sys_mbox_set_invalid(sys_mbox_t* mbox) {
-    if (mbox != NULL) {
+    if (mbox != nullptr) {
         mbox->valid = 0U;
     }
 }
@@ -466,7 +466,7 @@ static ra_lwip_thread_slot_t* alloc_thread_slot(void) {
             return &s_thread_pool[i];
         }
     }
-    return NULL;
+    return nullptr;
 }
 
 /* Sys thread new -- see implementation for details. */
@@ -478,9 +478,9 @@ sys_thread_t sys_thread_new(const char*     name,
     (void)stacksize; /* stack is fixed-size out of the static pool */
 
     ra_lwip_thread_slot_t* slot = alloc_thread_slot();
-    LWIP_ASSERT("sys_thread_new: thread pool exhausted", slot != NULL);
-    if (slot == NULL) {
-        return NULL;
+    LWIP_ASSERT("sys_thread_new: thread pool exhausted", slot != nullptr);
+    if (slot == nullptr) {
+        return nullptr;
     }
 
     UINT tx_prio = (UINT)prio;
@@ -489,7 +489,7 @@ sys_thread_t sys_thread_new(const char*     name,
     }
 
     UINT st = tx_thread_create(&slot->tcb,
-                               (CHAR*)(name != NULL ? name : "lwip_thr"),
+                               (CHAR*)(name != nullptr ? name : "lwip_thr"),
                                (VOID (*)(ULONG))thread,
                                (ULONG)(uintptr_t)arg,
                                slot->stack,
@@ -501,7 +501,7 @@ sys_thread_t sys_thread_new(const char*     name,
     LWIP_ASSERT("sys_thread_new: tx_thread_create failed", st == TX_SUCCESS);
     if (st != TX_SUCCESS) {
         slot->in_use = 0U;
-        return NULL;
+        return nullptr;
     }
     return &slot->tcb;
 }

@@ -97,8 +97,14 @@ unusedStructMember:libs/ra_hal/inc/ra8d2_*_regs.h
 # cppcheck's suggestion conflicts with the habit of treating register access
 # as always-mutable at the language level. Suppressed project-wide.
 # ---------------------------------------------------------------------------
-constParameterPointer:*
-constVariablePointer:*
+# constParameterPointer / constVariablePointer suppression. cppcheck
+# 2.13 (Ubuntu 24.04) rejects bare ids and `id:*` with "Failed to
+# add suppression. No id."; the explicit `*.c` / `*.h` glob is the
+# format both 2.13 and 2.20 accept.
+constParameterPointer:*.c
+constParameterPointer:*.h
+constVariablePointer:*.c
+constVariablePointer:*.h
 
 
 # unusedStructMember on driver-facing config / matrix structs.

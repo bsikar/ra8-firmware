@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 #
 # check_stack_usage.sh -- thin wrapper around stack_usage_check.py.
 #

@@ -117,7 +117,7 @@ static ra_etha_netif_slot_t s_slots[RA_ETHA_NETIF_MAX_PORTS];
 
 /* Recover the ::ra_etha_port_t a netif was created for -- see implementation for details. */
 static uint32_t internal_port_of(const struct netif* netif) {
-    if (netif == NULL) {
+    if (netif == nullptr) {
         return RA_ETHA_NETIF_MAX_PORTS;
     }
     const uintptr_t raw = (uintptr_t)netif->state;
@@ -152,7 +152,7 @@ static uint32_t internal_port_of(const struct netif* netif) {
  * @since 0.1.0
  */
 static err_t internal_linkoutput(struct netif* netif, struct pbuf* p) {
-    if (netif == NULL || p == NULL) {
+    if (netif == nullptr || p == nullptr) {
         return ERR_ARG;
     }
     const uint32_t port_idx = internal_port_of(netif);
@@ -175,7 +175,7 @@ static err_t internal_linkoutput(struct netif* netif, struct pbuf* p) {
     }
 
     const ra_etha_netif_slot_t* slot = &s_slots[port_idx];
-    if (slot->tx.fn == NULL) {
+    if (slot->tx.fn == nullptr) {
         /* No hook attached -- silently drop and account as an error so the
          * upper stack notices via netif stats. */
         MIB2_STATS_NETIF_INC(netif, ifoutdiscards);
@@ -219,7 +219,7 @@ static err_t internal_linkoutput(struct netif* netif, struct pbuf* p) {
 
 /* Ra etha netif init -- see implementation for details. */
 err_t ra_etha_netif_init(struct netif* netif) {
-    if (netif == NULL) {
+    if (netif == nullptr) {
         return ERR_ARG;
     }
     const uint32_t port_idx = internal_port_of(netif);
@@ -252,8 +252,8 @@ err_t ra_etha_netif_init(struct netif* netif) {
     MIB2_INIT_NETIF(netif, snmp_ifType_ethernet_csmacd, 100000000U);
 
     s_slots[port_idx].netif  = netif;
-    s_slots[port_idx].tx.fn  = NULL;
-    s_slots[port_idx].tx.ctx = NULL;
+    s_slots[port_idx].tx.fn  = nullptr;
+    s_slots[port_idx].tx.ctx = nullptr;
 
     ra_log_info_val(s_tag, "netif init", port_idx);
     return ERR_OK;
@@ -263,7 +263,7 @@ err_t ra_etha_netif_init(struct netif* netif) {
 err_t ra_etha_netif_attach_tx(struct netif*       netif,
                               ra_etha_netif_tx_fn fn,
                               void*               ctx) {
-    if (netif == NULL) {
+    if (netif == nullptr) {
         return ERR_ARG;
     }
     const uint32_t port_idx = internal_port_of(netif);
@@ -280,7 +280,7 @@ err_t ra_etha_netif_attach_tx(struct netif*       netif,
 
 /* Ra etha netif input -- see implementation for details. */
 ra_err_t ra_etha_netif_input(struct netif* netif, const uint8_t* frame, uint16_t length) {
-    if (netif == NULL || frame == NULL) {
+    if (netif == nullptr || frame == nullptr) {
         return k_ra_err_null_ptr;
     }
     if (length < (uint16_t)k_ra_etha_netif_min_frame ||
@@ -293,7 +293,7 @@ ra_err_t ra_etha_netif_input(struct netif* netif, const uint8_t* frame, uint16_t
     }
 
     struct pbuf* p = pbuf_alloc(PBUF_RAW, (u16_t)length, PBUF_POOL);
-    if (p == NULL) {
+    if (p == nullptr) {
         ra_log_warn(s_tag, "pbuf pool exhausted -- dropping rx frame");
         MIB2_STATS_NETIF_INC(netif, ifindiscards);
         (void)ra_etha_account_traffic((ra_etha_port_t)port_idx,
@@ -308,7 +308,7 @@ ra_err_t ra_etha_netif_input(struct netif* netif, const uint8_t* frame, uint16_t
     /* Walk the pbuf chain; PBUF_POOL returns one or more linked segments. */
     u16_t       offset    = 0U;
     struct pbuf* segment  = p;
-    while (segment != NULL && offset < length) {
+    while (segment != nullptr && offset < length) {
         const u16_t chunk = (u16_t)((length - offset) < segment->len
                                         ? (length - offset)
                                         : segment->len);

@@ -162,7 +162,7 @@ ble_hs_mbuf_to_flat(const struct os_mbuf* om, void* flat, uint16_t max_len, uint
   (void)om;
   (void)flat;
   (void)max_len;
-  if (out_copy_len != NULL) {
+  if (out_copy_len != nullptr) {
     *out_copy_len = 0U;
   }
   return 0;
@@ -264,8 +264,8 @@ static int internal_disc_trampoline(uint16_t                     conn_handle,
   (void)arg;
   ra_ble_gatt_disc_fn_t cb     = s_pending_disc.disc_cb;
   void*                 ctx    = s_pending_disc.ctx;
-  uint16_t              status = (error != NULL) ? (uint16_t)error->status : (uint16_t)0U;
-  if (service != NULL && cb != NULL) {
+  uint16_t              status = (error != nullptr) ? (uint16_t)error->status : (uint16_t)0U;
+  if (service != nullptr && cb != nullptr) {
     ra_ble_gatt_service_t row = {};
     row.start_handle          = service->start_handle;
     row.end_handle            = service->end_handle;
@@ -289,8 +289,8 @@ static int internal_disc_trampoline(uint16_t                     conn_handle,
   }
   /* Final completion. */
   s_pending_disc.in_use = 0U;
-  if (cb != NULL) {
-    cb(ctx, NULL, status);
+  if (cb != nullptr) {
+    cb(ctx, nullptr, status);
   }
   return 0;
 }
@@ -328,10 +328,10 @@ static int internal_read_trampoline(uint16_t                     conn_handle,
   (void)arg;
   ra_ble_gatt_read_fn_t cb     = s_pending_read.read_cb;
   void*                 ctx    = s_pending_read.ctx;
-  uint16_t              status = (error != NULL) ? (uint16_t)error->status : (uint16_t)0U;
+  uint16_t              status = (error != nullptr) ? (uint16_t)error->status : (uint16_t)0U;
   s_pending_read.in_use        = 0U;
-  if (cb != NULL) {
-    if (attr != NULL && attr->om != NULL) {
+  if (cb != nullptr) {
+    if (attr != nullptr && attr->om != nullptr) {
       uint16_t len = OS_MBUF_PKTLEN(attr->om);
       if (len > (uint16_t)k_ra_ble_gatt_client_max_read_bytes) {
         len = (uint16_t)k_ra_ble_gatt_client_max_read_bytes;
@@ -343,7 +343,7 @@ static int internal_read_trampoline(uint16_t                     conn_handle,
        * Weak fallback returns 0; strong upstream returns non-zero on copy failure. */
       cb(ctx, buf, (mc == 0) ? out_len : 0U, status);
     } else {
-      cb(ctx, NULL, 0U, status);
+      cb(ctx, nullptr, 0U, status);
     }
   }
   return 0;
@@ -383,9 +383,9 @@ static int internal_write_trampoline(uint16_t                     conn_handle,
   (void)arg;
   ra_ble_gatt_write_fn_t cb     = s_pending_write.write_cb;
   void*                  ctx    = s_pending_write.ctx;
-  uint16_t               status = (error != NULL) ? (uint16_t)error->status : (uint16_t)0U;
+  uint16_t               status = (error != nullptr) ? (uint16_t)error->status : (uint16_t)0U;
   s_pending_write.in_use        = 0U;
-  if (cb != NULL) {
+  if (cb != nullptr) {
     cb(ctx, status);
   }
   return 0;
@@ -425,7 +425,7 @@ static int internal_write_trampoline(uint16_t                     conn_handle,
  */
 ra_err_t ra_ble_gatt_discover_services(uint16_t conn_handle, ra_ble_gatt_disc_fn_t cb, void* ctx)
 {
-  if (cb == NULL) {
+  if (cb == nullptr) {
     return k_ra_err_null_ptr;
   }
   if (s_pending_disc.in_use != 0U) {
@@ -436,7 +436,7 @@ ra_err_t ra_ble_gatt_discover_services(uint16_t conn_handle, ra_ble_gatt_disc_fn
   s_pending_disc.disc_cb     = cb;
   s_pending_disc.ctx         = ctx;
 #ifdef RA_TARGET_BUILD
-  int rc = ble_gattc_disc_all_svcs(conn_handle, internal_disc_trampoline, NULL);
+  int rc = ble_gattc_disc_all_svcs(conn_handle, internal_disc_trampoline, nullptr);
   /* cppcheck-suppress knownConditionTrueFalse
    * The weak fallback above returns 0 unconditionally; the strong upstream
    * symbol returns BLE_HS_E* on real failure. */
@@ -479,7 +479,7 @@ ra_err_t ra_ble_gatt_discover_services(uint16_t conn_handle, ra_ble_gatt_disc_fn
 ra_err_t
 ra_ble_gatt_read(uint16_t conn_handle, uint16_t value_handle, ra_ble_gatt_read_fn_t cb, void* ctx)
 {
-  if (cb == NULL) {
+  if (cb == nullptr) {
     return k_ra_err_null_ptr;
   }
   if (s_pending_read.in_use != 0U) {
@@ -490,7 +490,7 @@ ra_ble_gatt_read(uint16_t conn_handle, uint16_t value_handle, ra_ble_gatt_read_f
   s_pending_read.read_cb     = cb;
   s_pending_read.ctx         = ctx;
 #ifdef RA_TARGET_BUILD
-  int rc = ble_gattc_read(conn_handle, value_handle, internal_read_trampoline, NULL);
+  int rc = ble_gattc_read(conn_handle, value_handle, internal_read_trampoline, nullptr);
   /* cppcheck-suppress knownConditionTrueFalse
    * Weak fallback returns 0; strong upstream returns BLE_HS_E* on failure. */
   if (rc != 0) {
@@ -545,7 +545,7 @@ ra_err_t ra_ble_gatt_write(uint16_t               conn_handle,
                            ra_ble_gatt_write_fn_t cb,
                            void*                  ctx)
 {
-  if (data == NULL && len > 0U) {
+  if (data == nullptr && len > 0U) {
     return k_ra_err_null_ptr;
   }
   if (len > (uint16_t)k_ra_ble_gatt_client_max_write_bytes) {
@@ -560,8 +560,12 @@ ra_err_t ra_ble_gatt_write(uint16_t               conn_handle,
     s_pending_write.write_cb    = cb;
     s_pending_write.ctx         = ctx;
 #ifdef RA_TARGET_BUILD
-    int rc =
-      ble_gattc_write_flat(conn_handle, value_handle, data, len, internal_write_trampoline, NULL);
+    int rc = ble_gattc_write_flat(conn_handle,
+                                  value_handle,
+                                  data,
+                                  len,
+                                  internal_write_trampoline,
+                                  nullptr);
     /* cppcheck-suppress knownConditionTrueFalse
      * Weak fallback returns 0; strong upstream returns BLE_HS_E* on failure. */
     if (rc != 0) {
@@ -632,12 +636,12 @@ ra_err_t ra_ble_gatt_subscribe(uint16_t                conn_handle,
                                ra_ble_gatt_notify_fn_t notify_cb,
                                void*                   ctx)
 {
-  if (enable_notify == 0U && enable_indicate == 0U && notify_cb == NULL) {
+  if (enable_notify == 0U && enable_indicate == 0U && notify_cb == nullptr) {
     return k_ra_err_invalid_arg;
   }
 
   /* Find or allocate a subscription slot. */
-  ra_ble_gatt_client_sub_t* slot = NULL;
+  ra_ble_gatt_client_sub_t* slot = nullptr;
   for (uint8_t i = 0U; i < (uint8_t)k_ra_gatt_client_max_subs; i++) {
     if (s_subs[i].in_use != 0U && s_subs[i].conn_handle == conn_handle &&
         s_subs[i].cccd_handle == cccd_handle) {
@@ -645,7 +649,7 @@ ra_err_t ra_ble_gatt_subscribe(uint16_t                conn_handle,
       break;
     }
   }
-  if (slot == NULL) {
+  if (slot == nullptr) {
     for (uint8_t i = 0U; i < (uint8_t)k_ra_gatt_client_max_subs; i++) {
       if (s_subs[i].in_use == 0U) {
         slot = &s_subs[i];
@@ -653,7 +657,7 @@ ra_err_t ra_ble_gatt_subscribe(uint16_t                conn_handle,
       }
     }
   }
-  if (slot == NULL) {
+  if (slot == nullptr) {
     return k_ra_err_no_mem;
   }
   slot->in_use      = 1U;
@@ -679,8 +683,8 @@ ra_err_t ra_ble_gatt_subscribe(uint16_t                conn_handle,
                            cccd_bytes,
                            sizeof(cccd_bytes),
                            1U,
-                           NULL,
-                           NULL);
+                           nullptr,
+                           nullptr);
 }
 
 #ifdef UNIT_TEST
@@ -725,7 +729,7 @@ void ra_ble_gatt_client_test_inject_notify(uint16_t       conn_handle,
 {
   for (uint8_t i = 0U; i < (uint8_t)k_ra_gatt_client_max_subs; i++) {
     if (s_subs[i].in_use != 0U && s_subs[i].conn_handle == conn_handle &&
-        s_subs[i].notify_cb != NULL) {
+        s_subs[i].notify_cb != nullptr) {
       s_subs[i].notify_cb(s_subs[i].ctx, attr_handle, data, len);
     }
   }

@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 """
 check_no_dynamic_alloc.py -- enforce NASA Power-of-10 Rule 3
 ("no dynamic memory after initialization") on RA8D2 firmware code.

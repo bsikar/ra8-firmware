@@ -275,6 +275,10 @@ jobs:
           # of staged files via argv).
           python3 scripts/utils/check_no_dynamic_alloc.py --all
           python3 scripts/utils/check_no_ai_attribution.py
+          # check_no_null.py: enforce C23 nullptr-only in first-party
+          # code (libs/, src/, port/, examples/<app>/). Vendor macros
+          # UX_NULL / TX_NULL / FX_NULL / NX_NULL are exempted.
+          python3 scripts/utils/check_no_null.py --all
       - name: Install clang-format-22
         # Pre-commit gate must use the same clang-format major version
         # as the dedicated `format` job above, otherwise the project

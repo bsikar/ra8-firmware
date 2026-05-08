@@ -161,15 +161,24 @@ static void priv_blit_glyph(const stbtt_fontinfo* font, const ra_reflow_glyph_t*
   int            h      = 0;
   int            xoff   = 0;
   int            yoff   = 0;
-  unsigned char* bitmap = stbtt_GetCodepointBitmap(font, 0.0F, scale, g->cp, &w, &h, &xoff, &yoff);
-  if (bitmap == NULL) {
+  unsigned char* bitmap = stbtt_GetCodepointBitmap(
+    font,
+    0.0F,
+    scale,
+    g->cp,
+    &w,
+    &h,
+    &xoff,
+    &yoff); /* alloc-allow: stb_truetype is vendored SOUP; the matching stbtt_FreeBitmap below releases the alloc within the same function. */
+  if (bitmap == nullptr) {
     return;
   }
   // mcdc-deactivated: TU-local helper priv_blit_glyph; stbtt_GetCodepointBitmap returns either a non-NULL bitmap with both w > 0 AND h > 0 (well-formed glyph rasterization), or a NULL pointer rejected at the early-return above -- the two bound conditions cannot independently flip on any reachable path.
   if (w > 0 && h > 0) {
     priv_blit_alpha_mask(g, bitmap, w, h, xoff, yoff);
   }
-  stbtt_FreeBitmap(bitmap, NULL);
+  stbtt_FreeBitmap(bitmap,
+                   nullptr); /* alloc-allow: pairs with the stbtt_GetCodepointBitmap above. */
 
   if ((g->style & k_ra_reflow_style_underline) != 0U) {
     priv_draw_underline(font, g, scale);
@@ -185,7 +194,7 @@ static void priv_blit_glyph(const stbtt_fontinfo* font, const ra_reflow_glyph_t*
 ra_err_t ra_reflow_render_page(const ra_reflow_t* engine, uint32_t page_idx, void* framebuffer)
 {
   (void)framebuffer; /* Reserved hook -- ra_gfx is bound externally. */
-  if (engine == NULL) {
+  if (engine == nullptr) {
     return k_ra_err_null_ptr;
   }
   if (engine->in_use == 0U) {

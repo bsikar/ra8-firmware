@@ -308,7 +308,7 @@ static void demo_print(const char* s)
  */
 static void demo_write_bytes(const uint8_t* buf, uint32_t len)
 {
-  if (buf == NULL || len == 0U) {
+  if (buf == nullptr || len == 0U) {
     return;
   }
   (void)ra_board_uart_console_write(buf, (size_t)len);
@@ -458,7 +458,7 @@ static UINT demo_tcp_connect(void)
 static int demo_bio_send(void* ctx, const unsigned char* buf, size_t len)
 {
   (void)ctx;
-  if (buf == NULL || len == 0U) {
+  if (buf == nullptr || len == 0U) {
     return 0;
   }
   NX_PACKET* pkt = NX_NULL;
@@ -499,7 +499,7 @@ static int demo_bio_send(void* ctx, const unsigned char* buf, size_t len)
 static int demo_bio_recv(void* ctx, unsigned char* buf, size_t len)
 {
   (void)ctx;
-  if (buf == NULL || len == 0U) {
+  if (buf == nullptr || len == 0U) {
     return 0;
   }
   NX_PACKET* pkt = NX_NULL;
@@ -540,7 +540,7 @@ static int demo_bio_recv(void* ctx, unsigned char* buf, size_t len)
 static int demo_entropy_source(void* ctx, unsigned char* buf, size_t len, size_t* olen)
 {
   (void)ctx;
-  if (buf == NULL || olen == NULL) {
+  if (buf == nullptr || olen == nullptr) {
     return MBEDTLS_ERR_ENTROPY_SOURCE_FAILED;
   }
   ra_err_t err = ra_rsip_trng_read((uint8_t*)buf, (uint32_t)len);
@@ -585,7 +585,7 @@ psa_status_t mbedtls_psa_external_get_random(mbedtls_psa_external_random_context
                                              size_t*                                output_length)
 {
   (void)context;
-  if (output == NULL || output_length == NULL) {
+  if (output == nullptr || output_length == nullptr) {
     return PSA_ERROR_INVALID_ARGUMENT;
   }
   ra_err_t err = ra_rsip_trng_read((uint8_t*)output, (uint32_t)output_size);
@@ -621,7 +621,7 @@ static int demo_verify_cert_pin(void)
   return 0;
 #else
   const mbedtls_x509_crt* peer = mbedtls_ssl_get_peer_cert(&s_ssl);
-  if (peer == NULL) {
+  if (peer == nullptr) {
     return -1;
   }
   uint8_t got[32];
@@ -768,7 +768,7 @@ static int demo_tls_session(void)
   if (mbedtls_ssl_set_hostname(&s_ssl, k_demo_host_name) != 0) {
     return -1;
   }
-  mbedtls_ssl_set_bio(&s_ssl, NULL, demo_bio_send, demo_bio_recv, NULL);
+  mbedtls_ssl_set_bio(&s_ssl, nullptr, demo_bio_send, demo_bio_recv, nullptr);
 
   /* Drive the handshake to completion. */
   int rc = 0;
@@ -838,11 +838,11 @@ static void* demo_calloc(size_t n, size_t size)
 {
   size_t total = n * size;
   if (total == 0U) {
-    return NULL;
+    return nullptr;
   }
   VOID* p = NX_NULL;
   if (tx_byte_allocate(&s_byte_pool, &p, (ULONG)total, TX_NO_WAIT) != TX_SUCCESS) {
-    return NULL;
+    return nullptr;
   }
   (void)memset((void*)p, 0, total);
   return p;
@@ -857,7 +857,7 @@ static void* demo_calloc(size_t n, size_t size)
  */
 static void demo_free(void* p)
 {
-  if (p == NULL) {
+  if (p == nullptr) {
     return;
   }
   (void)tx_byte_release(p);

@@ -281,7 +281,7 @@ ra_ble_host_state_t* ra_ble_host_state(void)
 void ra_ble_host_dispatch_event(const ra_ble_host_event_t* evt)
 {
   s_state.evt_count++;
-  if (s_state.evt_fn != NULL) {
+  if (s_state.evt_fn != nullptr) {
     s_state.evt_fn(s_state.evt_ctx, evt);
   }
 }
@@ -326,7 +326,7 @@ ra_err_t ra_ble_host_l2cap_send(uint16_t       conn_handle,
                                 const uint8_t* payload,
                                 uint16_t       payload_len)
 {
-  if ((payload == NULL) && (payload_len > 0U)) {
+  if ((payload == nullptr) && (payload_len > 0U)) {
     return k_ra_err_null_ptr;
   }
   if (((uint32_t)payload_len + (uint32_t)k_l2cap_hdr_bytes) > (uint32_t)k_tx_scratch_bytes) {
@@ -388,7 +388,7 @@ ra_err_t ra_ble_host_l2cap_send(uint16_t       conn_handle,
  */
 static void ra_ble_host_acl_in(uint16_t conn_handle, const uint8_t* payload, uint16_t len)
 {
-  if ((payload == NULL) || (len == 0U)) {
+  if ((payload == nullptr) || (len == 0U)) {
     return;
   }
   if (s_state.initialized == 0U) {
@@ -502,7 +502,7 @@ internal_evt_trampoline(void* ctx, uint8_t evt_code, const uint8_t* params, uint
     k_min_lemeta_param_bytes  = 19U,
   };
 
-  if ((params == NULL) || (s_state.initialized == 0U)) {
+  if ((params == nullptr) || (s_state.initialized == 0U)) {
     return;
   }
 
@@ -518,7 +518,7 @@ internal_evt_trampoline(void* ctx, uint8_t evt_code, const uint8_t* params, uint
         .kind        = k_ra_ble_host_event_connected,
         .conn_handle = h,
         .attr_handle = 0U,
-        .data        = NULL,
+        .data        = nullptr,
         .data_len    = 0U,
       };
       ra_ble_host_dispatch_event(&e);
@@ -539,7 +539,7 @@ internal_evt_trampoline(void* ctx, uint8_t evt_code, const uint8_t* params, uint
         .kind        = k_ra_ble_host_event_disconnected,
         .conn_handle = h,
         .attr_handle = 0U,
-        .data        = NULL,
+        .data        = nullptr,
         .data_len    = 0U,
       };
       ra_ble_host_dispatch_event(&e);
@@ -582,7 +582,7 @@ internal_evt_trampoline(void* ctx, uint8_t evt_code, const uint8_t* params, uint
  */
 ra_err_t ra_ble_host_init(const ra_ble_host_config_t* cfg)
 {
-  if (cfg == NULL) {
+  if (cfg == nullptr) {
     return k_ra_err_null_ptr;
   }
   if (s_state.initialized != 0U) {
@@ -605,7 +605,7 @@ ra_err_t ra_ble_host_init(const ra_ble_host_config_t* cfg)
   s_state.next_handle = 1U; /* ATT handles are 1-based. */
   s_state.conn_handle = k_invalid_handle;
   s_state.att_mtu     = k_att_mtu_default;
-  if (cfg->name != NULL) {
+  if (cfg->name != nullptr) {
     /* Copy with bound. */
     enum : uint8_t {
       k_name_copy_max = 31U,
@@ -619,8 +619,8 @@ ra_err_t ra_ble_host_init(const ra_ble_host_config_t* cfg)
   }
 
   /* Wire up HCI callbacks. ra_ble_attach_* always return k_ra_ok. */
-  (void)ra_ble_attach_event_handler(internal_evt_trampoline, NULL);
-  (void)ra_ble_attach_acl_handler(internal_acl_trampoline, NULL);
+  (void)ra_ble_attach_event_handler(internal_evt_trampoline, nullptr);
+  (void)ra_ble_attach_acl_handler(internal_acl_trampoline, nullptr);
 
   s_state.initialized = 1U;
   return k_ra_ok;
@@ -650,8 +650,8 @@ ra_err_t ra_ble_host_close(void)
   if (s_state.initialized == 0U) {
     return k_ra_err_not_initialized;
   }
-  (void)ra_ble_attach_event_handler(NULL, NULL);
-  (void)ra_ble_attach_acl_handler(NULL, NULL);
+  (void)ra_ble_attach_event_handler(nullptr, nullptr);
+  (void)ra_ble_attach_acl_handler(nullptr, nullptr);
   (void)ra_ble_close();
   (void)memset(&s_state, 0, sizeof(s_state));
   return k_ra_ok;
@@ -715,10 +715,10 @@ ra_err_t ra_ble_host_advertise_start(const uint8_t* adv_data,
       (s_state.role != k_ra_ble_host_role_broadcaster)) {
     return k_ra_err_invalid_arg;
   }
-  if ((adv_data == NULL) && (adv_data_len > 0U)) {
+  if ((adv_data == nullptr) && (adv_data_len > 0U)) {
     return k_ra_err_null_ptr;
   }
-  if ((scan_resp == NULL) && (scan_resp_len > 0U)) {
+  if ((scan_resp == nullptr) && (scan_resp_len > 0U)) {
     return k_ra_err_null_ptr;
   }
   if ((adv_data_len > k_ra_ble_adv_data_max) || (scan_resp_len > k_ra_ble_adv_data_max)) {
@@ -916,7 +916,7 @@ void ra_ble_host_test_inject_connect(uint16_t conn_handle)
     .kind        = k_ra_ble_host_event_connected,
     .conn_handle = conn_handle,
     .attr_handle = 0U,
-    .data        = NULL,
+    .data        = nullptr,
     .data_len    = 0U,
   };
   ra_ble_host_dispatch_event(&e);
@@ -948,7 +948,7 @@ void ra_ble_host_test_inject_connect(uint16_t conn_handle)
  */
 void ra_ble_host_test_inject_event(uint8_t evt_code, const uint8_t* params, uint8_t params_len)
 {
-  internal_evt_trampoline(NULL, evt_code, params, params_len);
+  internal_evt_trampoline(nullptr, evt_code, params, params_len);
 }
 #endif
 // NOLINTEND(readability-magic-numbers,readability-function-size,readability-function-cognitive-complexity)

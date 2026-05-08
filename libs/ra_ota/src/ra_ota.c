@@ -156,7 +156,7 @@ static void priv_set_state(ra_ota_state_t new_state, ra_err_t err)
 {
   s_state    = new_state;
   s_last_err = err;
-  if (s_cfg.on_progress != NULL) {
+  if (s_cfg.on_progress != nullptr) {
     const ra_ota_progress_t snap = {
       .state       = new_state,
       .bytes_done  = s_bytes_done,
@@ -390,16 +390,16 @@ static ra_err_t priv_drain(uint8_t* dst, uint32_t cap, uint32_t* out_n)
 static ra_err_t priv_json_str(const char* json, const char* key, char* dst, uint32_t cap)
 {
   const char* p = strstr(json, key);
-  if (p == NULL) {
+  if (p == nullptr) {
     return k_ra_err_invalid_arg;
   }
   p = strchr(p + strlen(key), '"');
-  if (p == NULL) {
+  if (p == nullptr) {
     return k_ra_err_invalid_arg;
   }
   ++p;
   const char* q = strchr(p, '"');
-  if (q == NULL) {
+  if (q == nullptr) {
     return k_ra_err_invalid_arg;
   }
   const uint32_t n = (uint32_t)(q - p);
@@ -439,7 +439,7 @@ static ra_err_t priv_json_str(const char* json, const char* key, char* dst, uint
 ra_err_t ra_ota_internal_json_u32(const char* json, const char* key, uint32_t* out_v)
 {
   const char* p = strstr(json, key);
-  if (p == NULL) {
+  if (p == nullptr) {
     return k_ra_err_invalid_arg;
   }
   p += strlen(key);

@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: MIT */
+/* Copyright (c) 2026 Brighton Sikarskie */
+
 /**
  * \file psa/crypto_config.h
  * \brief PSA crypto configuration options (set of defines)

@@ -99,7 +99,7 @@ priv_install_key(const unsigned char* key, unsigned int key_bits, ra_rsip_key_ha
 /* Mbed TLS ``mbedtls_aes_init`` ALT replacement -- see implementation for details. */
 void mbedtls_aes_init(mbedtls_aes_context* ctx)
 {
-  if (ctx == NULL) {
+  if (ctx == nullptr) {
     return;
   }
   (void)memset((void*)ctx, 0, sizeof(*ctx));
@@ -109,7 +109,7 @@ void mbedtls_aes_init(mbedtls_aes_context* ctx)
 /* Mbed TLS ``mbedtls_aes_free`` ALT replacement -- see implementation for details. */
 void mbedtls_aes_free(mbedtls_aes_context* ctx)
 {
-  if (ctx == NULL) {
+  if (ctx == nullptr) {
     return;
   }
   /* The wrapped key handle never holds plaintext, but scrub the
@@ -121,7 +121,7 @@ void mbedtls_aes_free(mbedtls_aes_context* ctx)
 /* Mbed TLS ``mbedtls_aes_setkey_enc`` ALT replacement -- see implementation for details. */
 int mbedtls_aes_setkey_enc(mbedtls_aes_context* ctx, const unsigned char* key, unsigned int keybits)
 {
-  if (ctx == NULL || key == NULL) {
+  if (ctx == nullptr || key == nullptr) {
     return MBEDTLS_ERR_AES_BAD_INPUT_DATA;
   }
   ra_err_t err = priv_install_key(key, keybits, &ctx->key);
@@ -138,7 +138,7 @@ int mbedtls_aes_setkey_enc(mbedtls_aes_context* ctx, const unsigned char* key, u
 /* Mbed TLS ``mbedtls_aes_setkey_dec`` ALT replacement -- see implementation for details. */
 int mbedtls_aes_setkey_dec(mbedtls_aes_context* ctx, const unsigned char* key, unsigned int keybits)
 {
-  if (ctx == NULL || key == NULL) {
+  if (ctx == nullptr || key == nullptr) {
     return MBEDTLS_ERR_AES_BAD_INPUT_DATA;
   }
   ra_err_t err = priv_install_key(key, keybits, &ctx->key);
@@ -161,7 +161,7 @@ static int priv_issue(const mbedtls_aes_context* ctx,
                       uint8_t*                   out,
                       uint32_t                   len)
 {
-  if (ctx == NULL || ctx->ready == 0U) {
+  if (ctx == nullptr || ctx->ready == 0U) {
     return MBEDTLS_ERR_AES_BAD_INPUT_DATA;
   }
   ra_err_t err = ra_rsip_aes_cipher(&ctx->key, mode, dir, iv, in, out, len);
@@ -174,7 +174,7 @@ int mbedtls_aes_crypt_ecb(mbedtls_aes_context* ctx,
                           const unsigned char  input[16],
                           unsigned char        output[16])
 {
-  if (input == NULL || output == NULL) {
+  if (input == nullptr || output == nullptr) {
     return MBEDTLS_ERR_AES_BAD_INPUT_DATA;
   }
   ra_rsip_aes_dir_t dir =
@@ -182,7 +182,7 @@ int mbedtls_aes_crypt_ecb(mbedtls_aes_context* ctx,
   return priv_issue(ctx,
                     k_ra_rsip_aes_mode_ecb,
                     dir,
-                    NULL,
+                    nullptr,
                     (const uint8_t*)input,
                     (uint8_t*)output,
                     (uint32_t)k_mbedtls_aes_alt_block_bytes);
@@ -196,7 +196,7 @@ int mbedtls_aes_crypt_cbc(mbedtls_aes_context* ctx,
                           const unsigned char* input,
                           unsigned char*       output)
 {
-  if (iv == NULL || input == NULL || output == NULL) {
+  if (iv == nullptr || input == nullptr || output == nullptr) {
     return MBEDTLS_ERR_AES_BAD_INPUT_DATA;
   }
   if ((length % (size_t)k_mbedtls_aes_alt_block_bytes) != 0U) {
@@ -277,8 +277,8 @@ int mbedtls_aes_crypt_ctr(mbedtls_aes_context* ctx,
                           const unsigned char* input,
                           unsigned char*       output)
 {
-  if (nc_off == NULL || nonce_counter == NULL || stream_block == NULL || input == NULL ||
-      output == NULL) {
+  if (nc_off == nullptr || nonce_counter == nullptr || stream_block == nullptr || input == nullptr ||
+      output == nullptr) {
     return MBEDTLS_ERR_AES_BAD_INPUT_DATA;
   }
   if (*nc_off >= (size_t)k_mbedtls_aes_alt_block_bytes) {

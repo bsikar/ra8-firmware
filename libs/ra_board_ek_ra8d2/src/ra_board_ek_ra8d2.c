@@ -62,7 +62,7 @@ const char* const k_ra_board_mcu     = "R7KA8D2KFLCAC";
 /* Ra board get info -- see implementation for details. */
 ra_err_t ra_board_get_info(ra_board_info_t* out)
 {
-  if (out == NULL) {
+  if (out == nullptr) {
     return k_ra_err_invalid_arg;
   }
   out->name    = k_ra_board_name;
@@ -92,7 +92,7 @@ static const ra_port_pin_t s_led_pins[k_ra_board_led_count] = {
 /* Ra board led pin -- see implementation for details. */
 ra_err_t ra_board_led_pin(ra_board_led_id_t led, ra_port_pin_t* out_pin)
 {
-  if (out_pin == NULL) {
+  if (out_pin == nullptr) {
     return k_ra_err_invalid_arg;
   }
   if ((uint8_t)led >= (uint8_t)k_ra_board_led_count) {
@@ -171,7 +171,7 @@ static const uint8_t s_sw_irq_nums[k_ra_board_sw_count] = {
 /* Ra board sw pin -- see implementation for details. */
 ra_err_t ra_board_sw_pin(ra_board_sw_id_t sw, ra_port_pin_t* out_pin)
 {
-  if (out_pin == NULL) {
+  if (out_pin == nullptr) {
     return k_ra_err_invalid_arg;
   }
   if ((uint8_t)sw >= (uint8_t)k_ra_board_sw_count) {
@@ -195,7 +195,7 @@ ra_err_t ra_board_sw_init(ra_board_sw_id_t sw)
 /* Ra board sw read -- see implementation for details. */
 ra_err_t ra_board_sw_read(ra_board_sw_id_t sw, ra_board_sw_state_t* out_pressed)
 {
-  if (out_pressed == NULL) {
+  if (out_pressed == nullptr) {
     return k_ra_err_invalid_arg;
   }
   ra_port_pin_t pin = k_ra_pin_none;
@@ -216,7 +216,7 @@ ra_err_t ra_board_sw_read(ra_board_sw_id_t sw, ra_board_sw_state_t* out_pressed)
 /* Ra board sw attach irq -- see implementation for details. */
 ra_err_t ra_board_sw_attach_irq(ra_board_sw_id_t sw, ra_board_sw_irq_cb_t cb, void* ctx)
 {
-  if (cb == NULL) {
+  if (cb == nullptr) {
     return k_ra_err_invalid_arg;
   }
   if ((uint8_t)sw >= (uint8_t)k_ra_board_sw_count) {
@@ -241,7 +241,7 @@ ra_err_t ra_board_sw_attach_irq(ra_board_sw_id_t sw, ra_board_sw_irq_cb_t cb, vo
    * (event 0x00E), SW2 -> IRQ12-DS (event 0x00D). */
   const ra_elc_event_t evt =
     (sw == k_ra_board_sw1) ? k_ra_elc_event_icu_irq13 : k_ra_elc_event_icu_irq12;
-  return ra_isr_register(evt, (ra_isr_handler_t)cb, ctx, k_ra_isr_prio_default, NULL);
+  return ra_isr_register(evt, (ra_isr_handler_t)cb, ctx, k_ra_isr_prio_default, nullptr);
 }
 
 /* =============================================================================
@@ -417,7 +417,7 @@ const uint32_t g_ra_board_glcdc_rgb565_pin_count =
 /* Ra board glcdc init -- see implementation for details. */
 ra_err_t ra_board_glcdc_init(ra_board_glcdc_fmt_t fmt)
 {
-  const ra_board_glcdc_pin_t* table = NULL;
+  const ra_board_glcdc_pin_t* table = nullptr;
   uint32_t                    count = 0U;
 
   switch (fmt) {
@@ -741,7 +741,7 @@ ra_err_t ra_board_audio_init(uint32_t sample_rate_hz, uint8_t bit_depth, uint8_t
 /* Ra board audio play sample block -- see implementation for details. */
 ra_err_t ra_board_audio_play_sample_block(const int16_t* buf, uint32_t len)
 {
-  if (buf == NULL) {
+  if (buf == nullptr) {
     return k_ra_err_invalid_arg;
   }
   if (len == 0U || (len % (uint32_t)k_ra_audio_samples_per_word) != 0U) {
@@ -802,7 +802,7 @@ ra_err_t ra_board_arduino_gpio_write(ra_board_arduino_pin_t pin, ra_level_t leve
 /* Ra board arduino gpio read -- see implementation for details. */
 ra_err_t ra_board_arduino_gpio_read(ra_board_arduino_pin_t pin, ra_level_t* out_level)
 {
-  if (out_level == NULL) {
+  if (out_level == nullptr) {
     return k_ra_err_invalid_arg;
   }
   return ra_gpio_read((ra_port_pin_t)pin, out_level);
@@ -1471,7 +1471,7 @@ ra_err_t ra_board_uart_console_write(const uint8_t* data, size_t len)
   if (len == 0U) {
     return k_ra_ok;
   }
-  if (data == NULL) {
+  if (data == nullptr) {
     return k_ra_err_invalid_arg;
   }
   if (!s_uart_console_initialised) {
@@ -1483,14 +1483,14 @@ ra_err_t ra_board_uart_console_write(const uint8_t* data, size_t len)
 /* Ra board uart console read -- see implementation for details. */
 ra_err_t ra_board_uart_console_read(uint8_t* out, size_t cap, size_t* out_len)
 {
-  if (out_len == NULL) {
+  if (out_len == nullptr) {
     return k_ra_err_invalid_arg;
   }
   *out_len = 0U;
   if (cap == 0U) {
     return k_ra_ok;
   }
-  if (out == NULL) {
+  if (out == nullptr) {
     return k_ra_err_invalid_arg;
   }
   if (!s_uart_console_initialised) {

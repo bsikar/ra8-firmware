@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 """
 check_line_citations.py -- Reject in-tree source citations with line numbers.
 

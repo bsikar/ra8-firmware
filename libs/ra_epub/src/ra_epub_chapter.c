@@ -115,18 +115,18 @@ bool ra_epub_internal_book_not_ready(uint8_t in_use, uint8_t zip_archive_active)
  */
 void ra_epub_internal_join_path(const char* dir, const char* name, char* dst, size_t cap)
 {
-  if (dst == NULL || cap == 0U) {
+  if (dst == nullptr || cap == 0U) {
     return;
   }
   dst[0]     = '\0';
   size_t off = 0U;
-  if (dir != NULL) {
+  if (dir != nullptr) {
     while (off + 1U < cap && dir[off] != '\0') {
       dst[off] = dir[off];
       ++off;
     }
   }
-  if (name != NULL) {
+  if (name != nullptr) {
     size_t i = 0U;
     while (off + 1U < cap && name[i] != '\0') {
       dst[off] = name[i];
@@ -166,9 +166,9 @@ static ra_err_t priv_locate_extract(mz_zip_archive* zip,
                                     size_t          max_len,
                                     size_t*         got_len)
 {
-  int32_t file_idx = mz_zip_reader_locate_file(zip, prefixed_path, NULL, 0U);
+  int32_t file_idx = mz_zip_reader_locate_file(zip, prefixed_path, nullptr, 0U);
   if (file_idx < 0) {
-    file_idx = mz_zip_reader_locate_file(zip, bare_path, NULL, 0U);
+    file_idx = mz_zip_reader_locate_file(zip, bare_path, nullptr, 0U);
   }
   if (file_idx < 0) {
     return k_ra_err_not_found;
@@ -288,7 +288,7 @@ static ra_err_t priv_render_into(const stbtt_fontinfo* font,
 /* Implementation of ra_epub_get_chapter_count (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_epub_get_chapter_count(const ra_epub_book_t* book, uint16_t* out_count)
 {
-  if (book == NULL || out_count == NULL) {
+  if (book == nullptr || out_count == nullptr) {
     return k_ra_err_null_ptr;
   }
   if (book->in_use == 0U) {
@@ -305,7 +305,7 @@ ra_err_t ra_epub_load_chapter(ra_epub_book_t* book,
                               size_t          max_len,
                               size_t*         got_len)
 {
-  if (book == NULL || out_xhtml == NULL || got_len == NULL) {
+  if (book == nullptr || out_xhtml == nullptr || got_len == nullptr) {
     return k_ra_err_null_ptr;
   }
   *got_len = 0U;
@@ -330,7 +330,7 @@ ra_err_t ra_epub_load_chapter(ra_epub_book_t* book,
 /* Implementation of ra_epub_get_metadata (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_epub_get_metadata(const ra_epub_book_t* book, ra_epub_metadata_t* out_meta)
 {
-  if (book == NULL || out_meta == NULL) {
+  if (book == nullptr || out_meta == nullptr) {
     return k_ra_err_null_ptr;
   }
   if (book->in_use == 0U) {
@@ -346,7 +346,7 @@ ra_err_t ra_epub_get_metadata(const ra_epub_book_t* book, ra_epub_metadata_t* ou
 ra_err_t
 ra_epub_get_cover_image(ra_epub_book_t* book, uint8_t* out_buf, size_t max_len, size_t* got_len)
 {
-  if (book == NULL || out_buf == NULL || got_len == NULL) {
+  if (book == nullptr || out_buf == nullptr || got_len == nullptr) {
     return k_ra_err_null_ptr;
   }
   *got_len = 0U;
@@ -371,7 +371,7 @@ ra_epub_get_cover_image(ra_epub_book_t* book, uint8_t* out_buf, size_t max_len, 
 /* Implementation of ra_epub_set_font (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_epub_set_font(ra_epub_book_t* book, const uint8_t* font_data, size_t font_size)
 {
-  if (book == NULL || font_data == NULL) {
+  if (book == nullptr || font_data == nullptr) {
     return k_ra_err_null_ptr;
   }
   if (book->in_use == 0U) {
@@ -394,12 +394,12 @@ ra_err_t ra_epub_render_glyph(const ra_epub_book_t* book,
                               uint32_t*             out_w,
                               uint32_t*             out_h)
 {
-  if (book == NULL || out_bitmap == NULL || out_w == NULL || out_h == NULL) {
+  if (book == nullptr || out_bitmap == nullptr || out_w == nullptr || out_h == nullptr) {
     return k_ra_err_null_ptr;
   }
   *out_w = 0U;
   *out_h = 0U;
-  if (book->in_use == 0U || book->font_data == NULL) {
+  if (book->in_use == 0U || book->font_data == nullptr) {
     return k_ra_err_not_initialized;
   }
   if (font_size <= 0.0F) {

@@ -286,7 +286,7 @@ static err_t demo_netif_bring_up(void)
                                   (void*)(uintptr_t)k_ra_etha_port_0,
                                   ra_etha_netif_init,
                                   tcpip_input);
-  if (added == NULL) {
+  if (added == nullptr) {
     return ERR_IF;
   }
   netif_set_default(&s_netif);
@@ -408,7 +408,7 @@ void tx_application_define(void* first_unused_memory)
 
   /* Spin up the lwIP tcpip_thread once. NULL completion-callback is
    * fine; the call returns when the lwIP core is initialised. */
-  tcpip_init(NULL, NULL);
+  tcpip_init(nullptr, nullptr);
 
   (void)tx_thread_create(&s_demo_thread,
                          "lwip_echo",

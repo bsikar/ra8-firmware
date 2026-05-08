@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 # ozone.sh -- launch SEGGER Ozone debugger with a per-app ELF preloaded.
 #
 # Usage:
