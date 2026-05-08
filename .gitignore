@@ -124,3 +124,5 @@ venv/
 .env
 .env.local
 .claude/
+build_test/
+doxy_run.txt
