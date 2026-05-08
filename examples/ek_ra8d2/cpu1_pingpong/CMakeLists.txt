@@ -150,7 +150,8 @@ if(CMAKE_C_COMPILER_ID STREQUAL "GNU" AND CMAKE_SYSTEM_NAME STREQUAL "Generic")
     set(CPU1_NAME ${RA_APP_NAME}_cpu1)
     add_executable(${CPU1_NAME}.elf
         ${CMAKE_CURRENT_SOURCE_DIR}/cpu1_main.c
-        ${RA_REPO_ROOT}/libs/ra_hal/src/ra_ipc.c)
+        ${RA_REPO_ROOT}/libs/ra_hal/src/ra_ipc.c
+        ${RA_REPO_ROOT}/libs/ra_core/src/ra_log.c)
     target_compile_definitions(${CPU1_NAME}.elf PRIVATE RA_BUILD_FOR_CPU1)
     target_compile_options(${CPU1_NAME}.elf PRIVATE
         -mcpu=cortex-m33 -mthumb -mfloat-abi=hard -mfpu=fpv5-sp-d16

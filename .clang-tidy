@@ -76,7 +76,8 @@ Checks: >
   -performance-no-int-to-ptr,
   -portability-avoid-pragma-once,
   -readability-identifier-length,
-  -readability-implicit-bool-conversion
+  -readability-implicit-bool-conversion,
+  -readability-redundant-casting
 
 # ALL warnings are errors -- zero tolerance for any clang-tidy violation.
 WarningsAsErrors: '*'

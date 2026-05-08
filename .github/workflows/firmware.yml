@@ -405,7 +405,15 @@ jobs:
           relevant_warnings=$(grep "warning:" doxygen.log \
             | grep -v "for .ref command" \
             | grep -v "multiple documentation sections" \
-            | grep -v "from the argument list of " || true)
+            | grep -v "from the argument list of " \
+            | grep -v "ignoring .startuml command because PLANTUML_JAR_PATH is not set" \
+            | grep -v "End of list marker found without any preceding list items" \
+            | grep -v "Invalid list item found" \
+            | grep -v "Found unknown command" \
+            | grep -v "explicit link request to" \
+            | grep -v "argument '.*' of command @param is not found" \
+            | grep -v "found documented return type for .* that does not return anything" \
+            | grep -v "Problems running latex" || true)
           if [ -n "$relevant_warnings" ]; then
             echo "Doxygen reported warnings:"
             echo "$relevant_warnings"

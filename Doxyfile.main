@@ -112,6 +112,7 @@ FULL_SIDEBAR           = NO
 ENUM_VALUES_PER_LINE   = 1
 
 GENERATE_LATEX         = NO
+USE_MATHJAX            = YES
 GENERATE_XML           = NO
 GENERATE_MAN           = NO
 GENERATE_RTF           = NO
