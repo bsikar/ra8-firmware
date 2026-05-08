@@ -83,7 +83,7 @@ static ra_guix_aux_t s_aux = {};
 ra_err_t ra_guix_display_driver_bind(void* fb, uint16_t width, uint16_t height)
 {
   /* NASA Rule 5: pre-condition checks (>= 2). */
-  if (fb == NULL) {
+  if (fb == nullptr) {
     return k_ra_err_null_ptr;
   }
   if ((width == 0U) || (height == 0U)) {
@@ -104,8 +104,8 @@ ra_err_t ra_guix_display_driver_bind(void* fb, uint16_t width, uint16_t height)
 
 const ra_guix_aux_t* ra_guix_get_aux(void)
 {
-  if (s_aux.framebuffer == NULL) {
-    return NULL;
+  if (s_aux.framebuffer == nullptr) {
+    return nullptr;
   }
   return &s_aux;
 }
@@ -199,7 +199,7 @@ void ra_guix_display_driver_pixel_write(GX_DRAW_CONTEXT* context,
    * by upstream callers (`gx_canvas_pixel_draw`). */
   (void)context;
 
-  if (s_aux.framebuffer == NULL) {
+  if (s_aux.framebuffer == nullptr) {
     return;
   }
   if ((xcoord < 0) || (ycoord < 0)) {
@@ -253,10 +253,10 @@ void ra_guix_display_driver_block_move(GX_DRAW_CONTEXT* context,
                                        INT              xshift,
                                        INT              yshift)
 {
-  if ((context == NULL) || (block == NULL)) {
+  if ((context == nullptr) || (block == nullptr)) {
     return;
   }
-  if (s_aux.framebuffer == NULL) {
+  if (s_aux.framebuffer == nullptr) {
     return;
   }
 
@@ -311,10 +311,10 @@ void ra_guix_display_driver_buffer_toggle(GX_CANVAS* canvas, GX_RECTANGLE* dirty
 /* Ra guix display driver setup -- see implementation for details. */
 UINT ra_guix_display_driver_setup(GX_DISPLAY* display)
 {
-  if (display == NULL) {
+  if (display == nullptr) {
     return GX_INVALID_VALUE;
   }
-  if (s_aux.framebuffer == NULL) {
+  if (s_aux.framebuffer == nullptr) {
     return GX_INVALID_VALUE;
   }
 

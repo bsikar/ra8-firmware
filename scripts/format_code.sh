@@ -1,4 +1,6 @@
 #!/bin/bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 # ra8d2-firmware Code Formatting Script for Mac/Linux
 # Usage: ./scripts/format_code.sh [options]
 

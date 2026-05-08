@@ -284,7 +284,7 @@ ra_err_t ra_touch_cal_compute(const ra_touch_cal_point_t* raw,
                               uint8_t                     n,
                               ra_touch_cal_matrix_t*      out_mtx)
 {
-  if ((raw == NULL) || (screen == NULL) || (out_mtx == NULL)) {
+  if ((raw == nullptr) || (screen == nullptr) || (out_mtx == nullptr)) {
     return k_ra_err_null_ptr;
   }
   if ((n < (uint8_t)k_ra_touch_cal_min_targets) || (n > (uint8_t)k_ra_touch_cal_max_targets)) {
@@ -359,10 +359,10 @@ ra_err_t ra_touch_cal_compute(const ra_touch_cal_point_t* raw,
 /* Implementation of ra_touch_cal_run (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_touch_cal_run(const ra_touch_cal_run_cfg_t* cfg, ra_touch_cal_matrix_t* out_matrix)
 {
-  if ((cfg == NULL) || (out_matrix == NULL)) {
+  if ((cfg == nullptr) || (out_matrix == nullptr)) {
     return k_ra_err_null_ptr;
   }
-  if ((cfg->draw_target == NULL) || (cfg->read_raw == NULL)) {
+  if ((cfg->draw_target == nullptr) || (cfg->read_raw == nullptr)) {
     return k_ra_err_null_ptr;
   }
   if ((cfg->screen_width == 0U) || (cfg->screen_height == 0U)) {
@@ -420,7 +420,7 @@ ra_err_t ra_touch_cal_apply(ra_touch_cal_point_t         raw,
                             uint16_t                     screen_height,
                             ra_touch_cal_point_t*        out_screen)
 {
-  if ((matrix == NULL) || (out_screen == NULL)) {
+  if ((matrix == nullptr) || (out_screen == nullptr)) {
     return k_ra_err_null_ptr;
   }
   if ((screen_width == 0U) || (screen_height == 0U)) {
@@ -449,7 +449,7 @@ ra_err_t ra_touch_cal_apply(ra_touch_cal_point_t         raw,
 /* Implementation of ra_touch_cal_save (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_touch_cal_save(const ra_touch_cal_matrix_t* matrix, uint8_t* dst, size_t dst_size)
 {
-  if ((matrix == NULL) || (dst == NULL)) {
+  if ((matrix == nullptr) || (dst == nullptr)) {
     return k_ra_err_null_ptr;
   }
   if (dst_size < (size_t)k_ra_touch_cal_blob_size) {
@@ -487,7 +487,7 @@ ra_err_t ra_touch_cal_save(const ra_touch_cal_matrix_t* matrix, uint8_t* dst, si
 /* Implementation of ra_touch_cal_load (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_touch_cal_load(const uint8_t* src, size_t src_size, ra_touch_cal_matrix_t* out_matrix)
 {
-  if ((src == NULL) || (out_matrix == NULL)) {
+  if ((src == nullptr) || (out_matrix == nullptr)) {
     return k_ra_err_null_ptr;
   }
   if (src_size < (size_t)k_ra_touch_cal_blob_size) {

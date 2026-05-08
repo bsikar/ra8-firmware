@@ -278,7 +278,7 @@ ra_err_t ra_ble_hci_send_command(uint16_t opcode, const uint8_t* params, uint8_t
   if (s_state.open == 0U) {
     return k_ra_err_not_initialized;
   }
-  if ((params == NULL) && (params_len > 0U)) {
+  if ((params == nullptr) && (params_len > 0U)) {
     return k_ra_err_null_ptr;
   }
   /* params_len is uint8_t so it cannot exceed k_ra_ble_max_cmd_params (255). */
@@ -300,7 +300,7 @@ ra_err_t ra_ble_hci_send_acl_data(uint16_t handle, const uint8_t* payload, uint1
   if (s_state.open == 0U) {
     return k_ra_err_not_initialized;
   }
-  if ((payload == NULL) && (len > 0U)) {
+  if ((payload == nullptr) && (len > 0U)) {
     return k_ra_err_null_ptr;
   }
   if (len > k_ra_ble_max_acl_payload) {
@@ -368,7 +368,7 @@ static ra_err_t internal_dispatch_event(void)
       return k_ra_err_invalid_arg;
     }
   }
-  if (s_state.evt_fn != NULL) {
+  if (s_state.evt_fn != nullptr) {
     s_state.evt_fn(s_state.evt_ctx, code, s_evt_scratch, plen);
   }
   return k_ra_ok;
@@ -409,7 +409,7 @@ static ra_err_t internal_dispatch_acl(void)
       return k_ra_err_invalid_arg;
     }
   }
-  if (s_state.acl_fn != NULL) {
+  if (s_state.acl_fn != nullptr) {
     s_state.acl_fn(s_state.acl_ctx, handle, s_acl_scratch, len);
   }
   return k_ra_ok;
@@ -461,7 +461,7 @@ ra_err_t ra_ble_set_advertising_data(const uint8_t* data, uint8_t len)
   if (len > k_ra_ble_adv_data_max) {
     return k_ra_err_invalid_arg;
   }
-  if ((data == NULL) && (len > 0U)) {
+  if ((data == nullptr) && (len > 0U)) {
     return k_ra_err_null_ptr;
   }
   /* Spec frames the command as: [len:1][data:31][padding:31-len].
@@ -541,7 +541,7 @@ void ra_ble_test_reset_capture(void)
 /* Implementation of ra_ble_test_inject_rx (see header for full contract) -- see header for the documented contract. */
 void ra_ble_test_inject_rx(const uint8_t* bytes, uint16_t len)
 {
-  if ((bytes == NULL) || (len == 0U)) {
+  if ((bytes == nullptr) || (len == 0U)) {
     return;
   }
   if (len > k_ra_ble_rx_inject_bytes) {
@@ -554,7 +554,7 @@ void ra_ble_test_inject_rx(const uint8_t* bytes, uint16_t len)
 
 const uint8_t* ra_ble_test_tx_capture(uint16_t* out_len)
 {
-  if (out_len != NULL) {
+  if (out_len != nullptr) {
     *out_len = s_state.tx_capture_len;
   }
   return s_state.tx_capture;

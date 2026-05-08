@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 """
 check-since-version.py -- enforce ``@since`` Doxygen tags AND
 verify their values match the project ``VERSION`` file.

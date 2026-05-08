@@ -1,4 +1,6 @@
 #!/bin/bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 # openocd_flash.sh -- Flash an Intel HEX firmware image to an attached EK-RA8D2
 # via OpenOCD + the on-board J-Link OB. GPL-tools alternative to flash.sh.
 #

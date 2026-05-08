@@ -927,7 +927,7 @@ static uint8_t priv_pack_ext(const char* path, uint8_t* out11)
  */
 static uint8_t priv_path_to_83(const char* path, uint8_t* out11)
 {
-  if (path == NULL || out11 == NULL) {
+  if (path == nullptr || out11 == nullptr) {
     return 0U;
   }
   while (*path == '/') {
@@ -1318,7 +1318,7 @@ static ra_fs_mount_t* priv_alloc_mount_slot(void)
       return &s_mounts[i];
     }
   }
-  return NULL;
+  return nullptr;
 }
 
 /**
@@ -1346,7 +1346,7 @@ static ra_fs_file_t* priv_alloc_file_slot(void)
       return &s_files[i];
     }
   }
-  return NULL;
+  return nullptr;
 }
 
 /* =============================================================================
@@ -1472,15 +1472,15 @@ static ra_err_t priv_compute_geometry(ra_fs_mount_t* m)
  */
 ra_err_t ra_fs_mount(const ra_fs_backend_t* backend, ra_fs_mount_t** out_handle)
 {
-  if (backend == NULL || out_handle == NULL) {
+  if (backend == nullptr || out_handle == nullptr) {
     return k_ra_err_null_ptr;
   }
-  if (backend->read_block == NULL || backend->write_block == NULL ||
-      backend->get_capacity == NULL) {
+  if (backend->read_block == nullptr || backend->write_block == nullptr ||
+      backend->get_capacity == nullptr) {
     return k_ra_err_invalid_arg;
   }
   ra_fs_mount_t* m = priv_alloc_mount_slot();
-  if (m == NULL) {
+  if (m == nullptr) {
     return k_ra_err_no_mem;
   }
   m->backend   = *backend;
@@ -1525,7 +1525,7 @@ ra_err_t ra_fs_mount(const ra_fs_backend_t* backend, ra_fs_mount_t** out_handle)
  */
 ra_err_t ra_fs_unmount(ra_fs_mount_t* handle)
 {
-  if (handle == NULL) {
+  if (handle == nullptr) {
     return k_ra_err_null_ptr;
   }
   if (handle->in_use == 0U) {
@@ -1677,7 +1677,7 @@ static ra_err_t priv_open_existing(ra_fs_mount_t* handle,
                                    ra_fs_file_t** out_file)
 {
   ra_fs_file_t* f = priv_alloc_file_slot();
-  if (f == NULL) {
+  if (f == nullptr) {
     return k_ra_err_no_mem;
   }
   f->mount         = handle;
@@ -1741,7 +1741,7 @@ static ra_err_t priv_create_new(ra_fs_mount_t* handle,
     return err;
   }
   ra_fs_file_t* f = priv_alloc_file_slot();
-  if (f == NULL) {
+  if (f == nullptr) {
     return k_ra_err_no_mem;
   }
   uint8_t buf[k_ra_fs_bytes_per_sector] = {};
@@ -1805,7 +1805,7 @@ static ra_err_t priv_create_new(ra_fs_mount_t* handle,
 ra_err_t
 ra_fs_open(ra_fs_mount_t* handle, const char* path, ra_fs_mode_t mode, ra_fs_file_t** out_file)
 {
-  if (handle == NULL || path == NULL || out_file == NULL) {
+  if (handle == nullptr || path == nullptr || out_file == nullptr) {
     return k_ra_err_null_ptr;
   }
   if (handle->in_use == 0U) {
@@ -1854,11 +1854,11 @@ ra_fs_open(ra_fs_mount_t* handle, const char* path, ra_fs_mode_t mode, ra_fs_fil
  */
 ra_err_t ra_fs_close(ra_fs_file_t* file)
 {
-  if (file == NULL) {
+  if (file == nullptr) {
     return k_ra_err_null_ptr;
   }
   file->in_use = 0;
-  file->mount  = NULL;
+  file->mount  = nullptr;
   return k_ra_ok;
 }
 
@@ -1994,7 +1994,7 @@ priv_read_one_chunk(ra_fs_file_t* file, uint8_t* buf, uint32_t remaining, uint32
  */
 ra_err_t ra_fs_read(ra_fs_file_t* file, uint8_t* buf, uint32_t max_len, uint32_t* got_len)
 {
-  if (file == NULL || buf == NULL || got_len == NULL) {
+  if (file == nullptr || buf == nullptr || got_len == nullptr) {
     return k_ra_err_null_ptr;
   }
   if (file->in_use == 0U) {
@@ -2242,7 +2242,7 @@ static ra_err_t priv_write_stream(ra_fs_file_t* file, const uint8_t* buf, uint32
  */
 ra_err_t ra_fs_write(ra_fs_file_t* file, const uint8_t* buf, uint32_t len)
 {
-  if (file == NULL || buf == NULL) {
+  if (file == nullptr || buf == nullptr) {
     return k_ra_err_null_ptr;
   }
   if (file->in_use == 0U || file->mode == k_ra_fs_mode_read) {
@@ -2290,7 +2290,7 @@ ra_err_t ra_fs_write(ra_fs_file_t* file, const uint8_t* buf, uint32_t len)
  */
 ra_err_t ra_fs_seek(ra_fs_file_t* file, uint32_t offset_bytes)
 {
-  if (file == NULL) {
+  if (file == nullptr) {
     return k_ra_err_null_ptr;
   }
   if (file->in_use == 0U) {
@@ -2328,7 +2328,7 @@ ra_err_t ra_fs_seek(ra_fs_file_t* file, uint32_t offset_bytes)
  */
 ra_err_t ra_fs_tell(const ra_fs_file_t* file, uint32_t* out_offset)
 {
-  if (file == NULL || out_offset == NULL) {
+  if (file == nullptr || out_offset == nullptr) {
     return k_ra_err_null_ptr;
   }
   if (file->in_use == 0U) {
@@ -2362,7 +2362,7 @@ ra_err_t ra_fs_tell(const ra_fs_file_t* file, uint32_t* out_offset)
  */
 ra_err_t ra_fs_size(const ra_fs_file_t* file, uint32_t* out_bytes)
 {
-  if (file == NULL || out_bytes == NULL) {
+  if (file == nullptr || out_bytes == nullptr) {
     return k_ra_err_null_ptr;
   }
   if (file->in_use == 0U) {
@@ -2450,7 +2450,7 @@ static uint8_t priv_listdir_visit_sector(const uint8_t* buf, ra_fs_listdir_cb_t 
  */
 ra_err_t ra_fs_listdir(ra_fs_mount_t* handle, const char* path, ra_fs_listdir_cb_t cb, void* ctx)
 {
-  if (handle == NULL || cb == NULL || path == NULL) {
+  if (handle == nullptr || cb == nullptr || path == nullptr) {
     return k_ra_err_null_ptr;
   }
   if (handle->in_use == 0U) {
@@ -2508,7 +2508,7 @@ ra_err_t ra_fs_listdir(ra_fs_mount_t* handle, const char* path, ra_fs_listdir_cb
  */
 ra_err_t ra_fs_unlink(ra_fs_mount_t* handle, const char* path)
 {
-  if (handle == NULL || path == NULL) {
+  if (handle == nullptr || path == nullptr) {
     return k_ra_err_null_ptr;
   }
   if (handle->in_use == 0U) {

@@ -126,7 +126,7 @@ static ra_ble_security_state_t s_state;
  */
 static ra_err_t internal_validate_cfg(const ra_ble_security_config_t* cfg)
 {
-  if (cfg == NULL) {
+  if (cfg == nullptr) {
     return k_ra_err_null_ptr;
   }
   if ((uint8_t)cfg->io_cap > (uint8_t)k_ra_ble_io_cap_keyboard_display) {
@@ -215,8 +215,8 @@ ra_err_t ra_ble_security_init(const ra_ble_security_config_t* cfg)
   }
 
   s_state.config     = *cfg;
-  s_state.event_fn   = NULL;
-  s_state.event_ctx  = NULL;
+  s_state.event_fn   = nullptr;
+  s_state.event_ctx  = nullptr;
   s_state.bond_count = 0U;
 
 #ifdef RA_TARGET_BUILD
@@ -256,8 +256,8 @@ ra_err_t ra_ble_security_close(void)
     return k_ra_err_not_initialized;
   }
   s_state.initialized = 0U;
-  s_state.event_fn    = NULL;
-  s_state.event_ctx   = NULL;
+  s_state.event_fn    = nullptr;
+  s_state.event_ctx   = nullptr;
   return k_ra_ok;
 }
 
@@ -423,7 +423,7 @@ ra_err_t ra_ble_security_clear_bonds(void)
  */
 ra_err_t ra_ble_security_bond_count(uint8_t* out_count)
 {
-  if (out_count == NULL) {
+  if (out_count == nullptr) {
     return k_ra_err_null_ptr;
   }
   if (s_state.initialized == 0U) {
@@ -488,7 +488,7 @@ void ra_ble_security_test_set_bond_count(uint8_t count);
  */
 void ra_ble_security_test_emit_event(const ra_ble_security_event_t* evt)
 {
-  if (s_state.event_fn != NULL && evt != NULL) {
+  if (s_state.event_fn != nullptr && evt != nullptr) {
     s_state.event_fn(s_state.event_ctx, evt);
   }
 }

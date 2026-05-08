@@ -113,7 +113,7 @@ static mbedtls_entropy_context s_entropy;
  */
 static bool internal_handle_valid(const ra_tls_session_t session)
 {
-  if (session == NULL) {
+  if (session == nullptr) {
     return false;
   }
   const struct ra_tls_session_handle* base = &s_session_pool[0];
@@ -136,7 +136,7 @@ static struct ra_tls_session_handle* internal_pool_acquire(void)
       return &s_session_pool[i];
     }
   }
-  return NULL;
+  return nullptr;
 }
 
 /**
@@ -186,7 +186,7 @@ ra_err_t ra_tls_global_init(void)
   mbedtls_entropy_init(&s_entropy);
   mbedtls_ctr_drbg_init(&s_ctr_drbg);
   const int seed_rc =
-    mbedtls_ctr_drbg_seed(&s_ctr_drbg, mbedtls_entropy_func, &s_entropy, NULL, 0U);
+    mbedtls_ctr_drbg_seed(&s_ctr_drbg, mbedtls_entropy_func, &s_entropy, nullptr, 0U);
   if (seed_rc != 0) {
     mbedtls_ctr_drbg_free(&s_ctr_drbg);
     mbedtls_entropy_free(&s_entropy);
@@ -221,23 +221,23 @@ ra_err_t ra_tls_global_deinit(void)
 /* Ra tls session open -- see implementation for details. */
 ra_err_t ra_tls_session_open(ra_tls_session_t* out_session, const ra_tls_session_cfg_t* cfg)
 {
-  if (out_session == NULL) {
+  if (out_session == nullptr) {
     return k_ra_err_invalid_arg;
   }
-  *out_session = NULL;
+  *out_session = nullptr;
 
   if (!s_initialised) {
     return k_ra_err_not_initialized;
   }
-  if (cfg == NULL) {
+  if (cfg == nullptr) {
     return k_ra_err_invalid_arg;
   }
-  if ((cfg->bio_send == NULL) || (cfg->bio_recv == NULL)) {
+  if ((cfg->bio_send == nullptr) || (cfg->bio_recv == nullptr)) {
     return k_ra_err_invalid_arg;
   }
 
   struct ra_tls_session_handle* slot = internal_pool_acquire();
-  if (slot == NULL) {
+  if (slot == nullptr) {
     ra_log_warn(k_ra_tls_tag, "session pool exhausted");
     return k_ra_err_no_mem;
   }
@@ -269,7 +269,7 @@ ra_err_t ra_tls_session_open(ra_tls_session_t* out_session, const ra_tls_session
     return k_ra_err_hw_init_failed;
   }
 
-  if (cfg->server_name != NULL) {
+  if (cfg->server_name != nullptr) {
     (void)mbedtls_ssl_set_hostname(&slot->ssl, cfg->server_name);
   }
   /* Mbed TLS BIO send/recv signatures take ``unsigned char`` buffers; our
@@ -279,7 +279,7 @@ ra_err_t ra_tls_session_open(ra_tls_session_t* out_session, const ra_tls_session
                       slot->cfg.bio_ctx,
                       (mbedtls_ssl_send_t*)cfg->bio_send,
                       (mbedtls_ssl_recv_t*)cfg->bio_recv,
-                      NULL);
+                      nullptr);
 #else
   slot->handshake_done = false;
 #endif
@@ -348,7 +348,7 @@ ra_err_t ra_tls_handshake(ra_tls_session_t session)
 /* Ra tls send -- see implementation for details. */
 ra_err_t ra_tls_send(ra_tls_session_t session, const uint8_t* buf, size_t len, size_t* out_sent)
 {
-  if (out_sent == NULL) {
+  if (out_sent == nullptr) {
     return k_ra_err_invalid_arg;
   }
   *out_sent = 0U;
@@ -359,7 +359,7 @@ ra_err_t ra_tls_send(ra_tls_session_t session, const uint8_t* buf, size_t len, s
   if (!internal_handle_valid(session)) {
     return k_ra_err_invalid_arg;
   }
-  if ((buf == NULL) && (len > 0U)) {
+  if ((buf == nullptr) && (len > 0U)) {
     return k_ra_err_invalid_arg;
   }
   if (len == 0U) {
@@ -389,7 +389,7 @@ ra_err_t ra_tls_send(ra_tls_session_t session, const uint8_t* buf, size_t len, s
 /* Ra tls recv -- see implementation for details. */
 ra_err_t ra_tls_recv(ra_tls_session_t session, uint8_t* buf, size_t len, size_t* out_received)
 {
-  if (out_received == NULL) {
+  if (out_received == nullptr) {
     return k_ra_err_invalid_arg;
   }
   *out_received = 0U;
@@ -400,7 +400,7 @@ ra_err_t ra_tls_recv(ra_tls_session_t session, uint8_t* buf, size_t len, size_t*
   if (!internal_handle_valid(session)) {
     return k_ra_err_invalid_arg;
   }
-  if ((buf == NULL) && (len > 0U)) {
+  if ((buf == nullptr) && (len > 0U)) {
     return k_ra_err_invalid_arg;
   }
   if (len == 0U) {

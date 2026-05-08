@@ -186,7 +186,7 @@ static bool s_initialised;
 /* Validate that a typed handle points into the static pool -- see implementation for details. */
 static bool internal_handle_valid(ra_psa_key_t handle)
 {
-  if (handle == NULL) {
+  if (handle == nullptr) {
     return false;
   }
   const struct ra_psa_key_handle* base = &s_key_pool[0];
@@ -209,7 +209,7 @@ static struct ra_psa_key_handle* internal_alloc_slot(void)
       return &s_key_pool[i];
     }
   }
-  return NULL;
+  return nullptr;
 }
 
 #ifdef RA_SIMULATOR_MODE
@@ -750,10 +750,10 @@ ra_err_t ra_psa_key_import(ra_psa_key_t*            out_handle,
                            const uint8_t*           data,
                            size_t                   data_len)
 {
-  if (out_handle != NULL) {
-    *out_handle = NULL;
+  if (out_handle != nullptr) {
+    *out_handle = nullptr;
   }
-  if ((out_handle == NULL) || (attr == NULL) || (data == NULL) || (data_len == 0U)) {
+  if ((out_handle == nullptr) || (attr == nullptr) || (data == nullptr) || (data_len == 0U)) {
     return k_ra_err_invalid_arg;
   }
   if (!s_initialised) {
@@ -767,7 +767,7 @@ ra_err_t ra_psa_key_import(ra_psa_key_t*            out_handle,
   }
 
   struct ra_psa_key_handle* slot = internal_alloc_slot();
-  if (slot == NULL) {
+  if (slot == nullptr) {
     return k_ra_err_no_mem;
   }
 
@@ -814,13 +814,13 @@ ra_err_t ra_psa_hash_compute(ra_psa_alg_t   alg,
                              size_t         out_cap,
                              size_t*        out_len)
 {
-  if (out_len != NULL) {
+  if (out_len != nullptr) {
     *out_len = 0U;
   }
-  if ((out == NULL) || (out_len == NULL)) {
+  if ((out == nullptr) || (out_len == nullptr)) {
     return k_ra_err_invalid_arg;
   }
-  if ((input == NULL) && (input_len != 0U)) {
+  if ((input == nullptr) && (input_len != 0U)) {
     return k_ra_err_invalid_arg;
   }
   if (alg != k_ra_psa_alg_sha_256) {
@@ -858,10 +858,10 @@ ra_err_t ra_psa_sign_hash(ra_psa_key_t   handle,
                           size_t         sig_cap,
                           size_t*        sig_len)
 {
-  if (sig_len != NULL) {
+  if (sig_len != nullptr) {
     *sig_len = 0U;
   }
-  if ((hash == NULL) || (sig == NULL) || (sig_len == NULL)) {
+  if ((hash == nullptr) || (sig == nullptr) || (sig_len == nullptr)) {
     return k_ra_err_invalid_arg;
   }
   if (!s_initialised) {
@@ -918,7 +918,7 @@ ra_err_t ra_psa_verify_hash(ra_psa_key_t   handle,
                             const uint8_t* sig,
                             size_t         sig_len)
 {
-  if ((hash == NULL) || (sig == NULL)) {
+  if ((hash == nullptr) || (sig == nullptr)) {
     return k_ra_err_invalid_arg;
   }
   if (!s_initialised) {
@@ -978,10 +978,10 @@ static ra_err_t internal_aead_encrypt_check(ra_psa_key_t   handle,
                                             size_t         out_cap,
                                             const size_t*  out_len)
 {
-  if ((nonce == NULL) || (out == NULL) || (out_len == NULL)) {
+  if ((nonce == nullptr) || (out == nullptr) || (out_len == nullptr)) {
     return k_ra_err_invalid_arg;
   }
-  if (((plain == NULL) && (plain_len != 0U)) || ((aad == NULL) && (aad_len != 0U))) {
+  if (((plain == nullptr) && (plain_len != 0U)) || ((aad == nullptr) && (aad_len != 0U))) {
     return k_ra_err_invalid_arg;
   }
   if (!s_initialised) {
@@ -1011,7 +1011,7 @@ ra_err_t ra_psa_aead_encrypt(ra_psa_key_t   handle,
                              size_t         out_cap,
                              size_t*        out_len)
 {
-  if (out_len != NULL) {
+  if (out_len != nullptr) {
     *out_len = 0U;
   }
   const ra_err_t ck = internal_aead_encrypt_check(handle,
@@ -1079,10 +1079,10 @@ static ra_err_t internal_aead_decrypt_check(ra_psa_key_t   handle,
                                             const size_t*  out_len,
                                             size_t*        out_plain_len)
 {
-  if ((nonce == NULL) || (cipher == NULL) || (out_len == NULL)) {
+  if ((nonce == nullptr) || (cipher == nullptr) || (out_len == nullptr)) {
     return k_ra_err_invalid_arg;
   }
-  if ((aad == NULL) && (aad_len != 0U)) {
+  if ((aad == nullptr) && (aad_len != 0U)) {
     return k_ra_err_invalid_arg;
   }
   if (!s_initialised) {
@@ -1097,7 +1097,7 @@ static ra_err_t internal_aead_decrypt_check(ra_psa_key_t   handle,
     return k_ra_err_invalid_size;
   }
   const size_t plain_len = cipher_len - (size_t)k_ra_psa_gcm_tag_len;
-  if ((out == NULL) && (plain_len != 0U)) {
+  if ((out == nullptr) && (plain_len != 0U)) {
     return k_ra_err_invalid_arg;
   }
   if (out_cap < plain_len) {
@@ -1120,7 +1120,7 @@ ra_err_t ra_psa_aead_decrypt(ra_psa_key_t   handle,
                              size_t         out_cap,
                              size_t*        out_len)
 {
-  if (out_len != NULL) {
+  if (out_len != nullptr) {
     *out_len = 0U;
   }
   size_t         plain_len = 0U;
@@ -1205,7 +1205,7 @@ ra_err_t ra_psa_aead_decrypt(ra_psa_key_t   handle,
  */
 ra_err_t ra_psa_crypto_random(uint8_t* out, size_t out_len)
 {
-  if (out == NULL) {
+  if (out == nullptr) {
     return k_ra_err_invalid_arg;
   }
   if (out_len == 0U) {

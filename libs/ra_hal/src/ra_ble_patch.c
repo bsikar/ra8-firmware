@@ -78,7 +78,7 @@ static const char* s_ra_ble_patch_tag = "ble_patch";
 ra_err_t ra_ble_patch_load(const uint8_t* image, size_t len)
 {
   /* "Probe" path: caller asks if a patch is configured. */
-  if (image == NULL && len == 0U) {
+  if (image == nullptr && len == 0U) {
     if (s_warned == 0U) {
       ra_log_warn(s_ra_ble_patch_tag,
                   "no BLE patch image configured -- radio TX/RX will not work "
@@ -89,7 +89,7 @@ ra_err_t ra_ble_patch_load(const uint8_t* image, size_t len)
     return k_ra_err_not_supported;
   }
 
-  if (image == NULL) {
+  if (image == nullptr) {
     return k_ra_err_null_ptr;
   }
 

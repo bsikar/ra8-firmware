@@ -71,7 +71,7 @@
  */
 bool ra_iic_b_internal_len_buf_invalid(uint32_t len, const void* buf)
 {
-  return (len != 0U) && (buf == NULL);
+  return (len != 0U) && (buf == nullptr);
 }
 
 /**
@@ -91,7 +91,7 @@ bool ra_iic_b_internal_len_buf_invalid(uint32_t len, const void* buf)
  */
 bool ra_iic_b_internal_should_dispatch(uint8_t mask, const void* cb)
 {
-  return (mask != 0U) && (cb != NULL);
+  return (mask != 0U) && (cb != nullptr);
 }
 
 /** @brief Log tag for this driver. */

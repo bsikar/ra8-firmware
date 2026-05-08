@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 # Toolchain file for Renesas RA8D2 (Arm Cortex-M85) with ARM GNU Toolchain
 # Usage: cmake -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-ra8d2.cmake ..
 #

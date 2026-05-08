@@ -108,7 +108,7 @@ static void demo_panic_halt(void)
  */
 static void demo_log(const char* s)
 {
-  if (s == NULL) {
+  if (s == nullptr) {
     return;
   }
   uint32_t len = (uint32_t)strlen(s);

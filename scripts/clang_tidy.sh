@@ -1,4 +1,6 @@
 #!/bin/bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 # ra8d2-firmware - clang-tidy Static Analysis Script
 #
 # Runs clang-tidy against the host-compiled test build, which includes all
@@ -213,11 +215,22 @@ run_clang_tidy() {
     # config AND per-directory overrides (e.g. examples/.clang-tidy and
     # libs/ra_nsc/src/.clang-tidy), which --config-file would suppress.
     set +e
+    # The compile_commands.json captures GCC-only warning flags
+    # (-Wduplicated-branches, -Wduplicated-cond, -Wlogical-op,
+    # -Wformat-{overflow,truncation}=2). cmake/ra_warnings.cmake
+    # gates these via $<COMPILE_LANG_AND_ID:C,GNU> generator
+    # expressions so they're emitted only when CC=gcc, but the
+    # generator expression resolves to literal flags in the
+    # compile_commands.json, which clang-tidy then sees as
+    # "unknown warning option" errors when it parses the file with
+    # clang. -Wno-unknown-warning-option silences those without
+    # affecting the actual GCC firmware build.
     "$clang_tidy" \
         -p="$BUILD_DIR" \
         --extra-arg="-std=c2x" \
         --extra-arg="-DUNIT_TEST" \
         --extra-arg="-DRA_SIMULATOR_MODE" \
+        --extra-arg="-Wno-unknown-warning-option" \
         "${extra_sdk_arg[@]}" \
         ${fix_flag:+"$fix_flag"} \
         "${files[@]}" 2>&1
