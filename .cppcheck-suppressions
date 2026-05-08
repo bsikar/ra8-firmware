@@ -41,6 +41,7 @@ comparePointers:examples/*/*/vector_table.c
 # ---------------------------------------------------------------------------
 knownConditionTrueFalse:examples/_unsupported/threadx_https_client/main.c
 variableScope:examples/ek_ra8d2/threadx_netx_tcp_echo/main.c
+variableScope:libs/ra_hal/src/ra_touch.c
 
 # ---------------------------------------------------------------------------
 # duplicateExpression on ra_time.c tick rollover math
