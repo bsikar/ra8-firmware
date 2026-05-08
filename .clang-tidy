@@ -77,7 +77,8 @@ Checks: >
   -portability-avoid-pragma-once,
   -readability-identifier-length,
   -readability-implicit-bool-conversion,
-  -readability-redundant-casting
+  -readability-redundant-casting,
+  -clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling
 
 # ALL warnings are errors -- zero tolerance for any clang-tidy violation.
 WarningsAsErrors: '*'

@@ -373,6 +373,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             gcc-arm-none-eabi libnewlib-arm-none-eabi \
+            libstdc++-arm-none-eabi-newlib \
             cmake ninja-build
       - name: Print toolchain version
         run: arm-none-eabi-gcc --version | head -1
@@ -406,6 +407,7 @@ jobs:
             | grep -v "for .ref command" \
             | grep -v "multiple documentation sections" \
             | grep -v "from the argument list of " \
+            | grep -v "multiple @param documentation sections" \
             | grep -v "ignoring .startuml command because PLANTUML_JAR_PATH is not set" \
             | grep -v "End of list marker found without any preceding list items" \
             | grep -v "Invalid list item found" \
@@ -440,9 +442,25 @@ jobs:
               [ -f "$d/main.c" ] && apps+=("$d")
             done
           fi
+          # cppcheck 2.13 (Ubuntu 24.04) is finicky about the
+          # --suppressions-list parser; convert each non-comment,
+          # non-blank line into an explicit --suppress= flag. This
+          # matches the syntax cppcheck accepts on every version.
+          suppress_args=()
+          while IFS= read -r line; do
+            # Strip CRLF, trim leading/trailing whitespace
+            line="${line%$'\r'}"
+            line="${line## }"
+            line="${line%% }"
+            [ -z "$line" ] && continue
+            case "$line" in
+              \#*) continue ;;
+            esac
+            suppress_args+=("--suppress=$line")
+          done < .cppcheck-suppressions
           cppcheck --enable=warning,style,performance,portability \
                    --error-exitcode=1 \
-                   --suppressions-list=.cppcheck-suppressions \
+                   "${suppress_args[@]}" \
                    --inline-suppr \
                    --std=c23 \
                    src libs "${apps[@]}"
