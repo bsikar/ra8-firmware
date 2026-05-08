@@ -90,7 +90,7 @@ static ULONG priv_tmo_to_tx(ble_npl_time_t tmo)
 /* Initialise an NPL mutex -- see implementation for details. */
 uint32_t ble_npl_mutex_init(struct ble_npl_mutex* mu)
 {
-  if (mu == NULL) {
+  if (mu == nullptr) {
     return (uint32_t)k_ble_npl_invalid_param;
   }
   const UINT st = tx_mutex_create(&mu->handle, "npl_mu", TX_NO_INHERIT);
@@ -100,7 +100,7 @@ uint32_t ble_npl_mutex_init(struct ble_npl_mutex* mu)
 /* Pend on an NPL mutex with timeout -- see implementation for details. */
 uint32_t ble_npl_mutex_pend(struct ble_npl_mutex* mu, ble_npl_time_t timeout)
 {
-  if (mu == NULL) {
+  if (mu == nullptr) {
     return (uint32_t)k_ble_npl_invalid_param;
   }
   const UINT st = tx_mutex_get(&mu->handle, priv_tmo_to_tx(timeout));
@@ -113,7 +113,7 @@ uint32_t ble_npl_mutex_pend(struct ble_npl_mutex* mu, ble_npl_time_t timeout)
 /* Release an NPL mutex -- see implementation for details. */
 uint32_t ble_npl_mutex_release(struct ble_npl_mutex* mu)
 {
-  if (mu == NULL) {
+  if (mu == nullptr) {
     return (uint32_t)k_ble_npl_invalid_param;
   }
   const UINT st = tx_mutex_put(&mu->handle);
@@ -128,7 +128,7 @@ uint32_t ble_npl_mutex_release(struct ble_npl_mutex* mu)
 /* Initialise an NPL counting semaphore -- see implementation for details. */
 uint32_t ble_npl_sem_init(struct ble_npl_sem* sem, uint16_t tokens)
 {
-  if (sem == NULL) {
+  if (sem == nullptr) {
     return (uint32_t)k_ble_npl_invalid_param;
   }
   const UINT st = tx_semaphore_create(&sem->handle, "npl_sem", (ULONG)tokens);
@@ -138,7 +138,7 @@ uint32_t ble_npl_sem_init(struct ble_npl_sem* sem, uint16_t tokens)
 /* Pend on an NPL semaphore -- see implementation for details. */
 uint32_t ble_npl_sem_pend(struct ble_npl_sem* sem, ble_npl_time_t timeout)
 {
-  if (sem == NULL) {
+  if (sem == nullptr) {
     return (uint32_t)k_ble_npl_invalid_param;
   }
   const UINT st = tx_semaphore_get(&sem->handle, priv_tmo_to_tx(timeout));
@@ -151,7 +151,7 @@ uint32_t ble_npl_sem_pend(struct ble_npl_sem* sem, ble_npl_time_t timeout)
 /* Release a token back into an NPL semaphore -- see implementation for details. */
 uint32_t ble_npl_sem_release(struct ble_npl_sem* sem)
 {
-  if (sem == NULL) {
+  if (sem == nullptr) {
     return (uint32_t)k_ble_npl_invalid_param;
   }
   const UINT st = tx_semaphore_put(&sem->handle);
@@ -161,11 +161,11 @@ uint32_t ble_npl_sem_release(struct ble_npl_sem* sem)
 /* Read the current token count of an NPL semaphore -- see implementation for details. */
 uint16_t ble_npl_sem_get_count(struct ble_npl_sem* sem)
 {
-  if (sem == NULL) {
+  if (sem == nullptr) {
     return 0U;
   }
   ULONG current = 0U;
-  (void)tx_semaphore_info_get(&sem->handle, NULL, &current, NULL, NULL, NULL);
+  (void)tx_semaphore_info_get(&sem->handle, nullptr, &current, nullptr, nullptr, nullptr);
   return (uint16_t)current;
 }
 
@@ -177,7 +177,7 @@ uint16_t ble_npl_sem_get_count(struct ble_npl_sem* sem)
 /* Initialise an NPL event -- see implementation for details. */
 void ble_npl_event_init(struct ble_npl_event* ev, ble_npl_event_fn* fn, void* arg)
 {
-  if (ev == NULL) {
+  if (ev == nullptr) {
     return;
   }
   (void)memset(ev, 0, sizeof(*ev));
@@ -188,7 +188,7 @@ void ble_npl_event_init(struct ble_npl_event* ev, ble_npl_event_fn* fn, void* ar
 /* Initialise an NPL event queue -- see implementation for details. */
 void ble_npl_eventq_init(struct ble_npl_eventq* evq)
 {
-  if (evq == NULL) {
+  if (evq == nullptr) {
     return;
   }
   (void)memset(evq, 0, sizeof(*evq));
@@ -210,15 +210,15 @@ void ble_npl_eventq_init(struct ble_npl_eventq* evq)
  */
 struct ble_npl_event* ble_npl_eventq_get(struct ble_npl_eventq* evq, ble_npl_time_t tmo)
 {
-  if (evq == NULL) {
-    return NULL;
+  if (evq == nullptr) {
+    return nullptr;
   }
   ULONG slot = 0U;
   if (tx_queue_receive(&evq->q, &slot, priv_tmo_to_tx(tmo)) != TX_SUCCESS) {
-    return NULL;
+    return nullptr;
   }
   struct ble_npl_event* ev = (struct ble_npl_event*)(uintptr_t)slot;
-  if (ev != NULL) {
+  if (ev != nullptr) {
     ev->queued = 0U;
   }
   return ev;
@@ -227,7 +227,7 @@ struct ble_npl_event* ble_npl_eventq_get(struct ble_npl_eventq* evq, ble_npl_tim
 /* Post an event into an NPL event queue (idempotent) -- see implementation for details. */
 void ble_npl_eventq_put(struct ble_npl_eventq* evq, struct ble_npl_event* ev)
 {
-  if (evq == NULL || ev == NULL) {
+  if (evq == nullptr || ev == nullptr) {
     return;
   }
   if (ev->queued != 0U) {
@@ -242,7 +242,7 @@ void ble_npl_eventq_put(struct ble_npl_eventq* evq, struct ble_npl_event* ev)
 void ble_npl_eventq_remove(struct ble_npl_eventq* evq, struct ble_npl_event* ev)
 {
   (void)evq;
-  if (ev == NULL) {
+  if (ev == nullptr) {
     return;
   }
   ev->queued = 0U;
@@ -251,7 +251,7 @@ void ble_npl_eventq_remove(struct ble_npl_eventq* evq, struct ble_npl_event* ev)
 /* Run an NPL event by invoking its callback -- see implementation for details. */
 void ble_npl_event_run(struct ble_npl_event* ev)
 {
-  if (ev == NULL || ev->fn == NULL) {
+  if (ev == nullptr || ev->fn == nullptr) {
     return;
   }
   ev->fn(ev);
@@ -260,7 +260,7 @@ void ble_npl_event_run(struct ble_npl_event* ev)
 /* Test whether an event is currently queued -- see implementation for details. */
 uint8_t ble_npl_event_is_queued(struct ble_npl_event* ev)
 {
-  return (ev != NULL && ev->queued != 0U) ? 1U : 0U;
+  return (ev != nullptr && ev->queued != 0U) ? 1U : 0U;
 }
 
 /**
@@ -276,13 +276,13 @@ uint8_t ble_npl_event_is_queued(struct ble_npl_event* ev)
  */
 void* ble_npl_event_get_arg(struct ble_npl_event* ev)
 {
-  return (ev == NULL) ? NULL : ev->arg;
+  return (ev == nullptr) ? nullptr : ev->arg;
 }
 
 /* Replace the user-arg pointer attached to an event -- see implementation for details. */
 void ble_npl_event_set_arg(struct ble_npl_event* ev, void* arg)
 {
-  if (ev != NULL) {
+  if (ev != nullptr) {
     ev->arg = arg;
   }
 }
@@ -290,11 +290,11 @@ void ble_npl_event_set_arg(struct ble_npl_event* ev, void* arg)
 /* True when the event queue is empty -- see implementation for details. */
 uint8_t ble_npl_eventq_is_empty(struct ble_npl_eventq* evq)
 {
-  if (evq == NULL) {
+  if (evq == nullptr) {
     return 1U;
   }
   ULONG enqueued = 0U;
-  if (tx_queue_info_get(&evq->q, NULL, &enqueued, NULL, NULL, NULL, NULL) != TX_SUCCESS) {
+  if (tx_queue_info_get(&evq->q, nullptr, &enqueued, nullptr, nullptr, nullptr, nullptr) != TX_SUCCESS) {
     return 1U;
   }
   return (enqueued == 0U) ? 1U : 0U;
@@ -309,7 +309,7 @@ uint8_t ble_npl_eventq_is_empty(struct ble_npl_eventq* evq)
 static void priv_callout_trampoline(ULONG arg)
 {
   struct ble_npl_callout* co = (struct ble_npl_callout*)(uintptr_t)arg;
-  if (co == NULL) {
+  if (co == nullptr) {
     return;
   }
   ble_npl_eventq_put(co->evq, &co->ev);
@@ -321,7 +321,7 @@ void ble_npl_callout_init(struct ble_npl_callout* co,
                           ble_npl_event_fn*       ev_cb,
                           void*                   ev_arg)
 {
-  if (co == NULL) {
+  if (co == nullptr) {
     return;
   }
   (void)memset(co, 0, sizeof(*co));
@@ -340,7 +340,7 @@ void ble_npl_callout_init(struct ble_npl_callout* co,
 /* Arm the callout to fire ``ticks`` from now -- see implementation for details. */
 uint32_t ble_npl_callout_reset(struct ble_npl_callout* co, ble_npl_time_t ticks)
 {
-  if (co == NULL) {
+  if (co == nullptr) {
     return (uint32_t)k_ble_npl_invalid_param;
   }
   if (ticks == 0U) {
@@ -355,7 +355,7 @@ uint32_t ble_npl_callout_reset(struct ble_npl_callout* co, ble_npl_time_t ticks)
 /* Stop the callout if it is armed -- see implementation for details. */
 void ble_npl_callout_stop(struct ble_npl_callout* co)
 {
-  if (co == NULL) {
+  if (co == nullptr) {
     return;
   }
   (void)tx_timer_deactivate(&co->handle);
@@ -364,11 +364,11 @@ void ble_npl_callout_stop(struct ble_npl_callout* co)
 /* Test whether the callout is armed -- see implementation for details. */
 uint8_t ble_npl_callout_is_active(struct ble_npl_callout* co)
 {
-  if (co == NULL) {
+  if (co == nullptr) {
     return 0U;
   }
   UINT active = 0U;
-  if (tx_timer_info_get(&co->handle, NULL, &active, NULL, NULL, NULL) != TX_SUCCESS) {
+  if (tx_timer_info_get(&co->handle, nullptr, &active, nullptr, nullptr, nullptr) != TX_SUCCESS) {
     return 0U;
   }
   return (active != 0U) ? 1U : 0U;
@@ -377,7 +377,7 @@ uint8_t ble_npl_callout_is_active(struct ble_npl_callout* co)
 /* Replace the callout's event arg pointer -- see implementation for details. */
 void ble_npl_callout_set_arg(struct ble_npl_callout* co, void* arg)
 {
-  if (co != NULL) {
+  if (co != nullptr) {
     co->ev.arg = arg;
   }
 }
@@ -396,7 +396,7 @@ ble_npl_time_t ble_npl_time_get(void)
 /* Convert ms to NPL ticks (lossless when tick == 1 ms) -- see implementation for details. */
 uint32_t ble_npl_time_ms_to_ticks(uint32_t ms, ble_npl_time_t* out_ticks)
 {
-  if (out_ticks == NULL) {
+  if (out_ticks == nullptr) {
     return (uint32_t)k_ble_npl_invalid_param;
   }
   /* Project tick rate is 1000 Hz -> 1 tick == 1 ms. */
@@ -407,7 +407,7 @@ uint32_t ble_npl_time_ms_to_ticks(uint32_t ms, ble_npl_time_t* out_ticks)
 /* Convert NPL ticks to ms -- see implementation for details. */
 uint32_t ble_npl_time_ticks_to_ms(ble_npl_time_t ticks, uint32_t* out_ms)
 {
-  if (out_ms == NULL) {
+  if (out_ms == nullptr) {
     return (uint32_t)k_ble_npl_invalid_param;
   }
   *out_ms = (uint32_t)ticks;
@@ -526,7 +526,7 @@ void nimble_port_run(void)
   while (1) {
     struct ble_npl_event* ev =
       ble_npl_eventq_get(&s_dflt_eventq, (ble_npl_time_t)k_ble_npl_threadx_wait_forever);
-    if (ev != NULL) {
+    if (ev != nullptr) {
       ble_npl_event_run(ev);
     }
   }
@@ -559,7 +559,7 @@ void nimble_port_run(void)
 __attribute__((weak)) void* ble_transport_alloc_evt(int discardable)
 {
   (void)discardable;
-  return NULL;
+  return nullptr;
 }
 
 /**
@@ -571,7 +571,7 @@ __attribute__((weak)) void* ble_transport_alloc_evt(int discardable)
  */
 __attribute__((weak)) struct os_mbuf* ble_transport_alloc_acl_from_ll(void)
 {
-  return NULL;
+  return nullptr;
 }
 
 /* Weak stub for the NimBLE event-buffer freer -- see implementation for details. */

@@ -240,7 +240,7 @@ ra_ble_host_attr_t* ra_ble_host_attr_lookup(uint16_t handle)
       return &st->attrs[i];
     }
   }
-  return NULL;
+  return nullptr;
 }
 
 /**
@@ -500,7 +500,7 @@ static void internal_handle_read(uint16_t conn_handle, const uint8_t* pdu, uint1
   }
   const uint16_t            handle = internal_unpack_le16(&pdu[0]);
   const ra_ble_host_attr_t* a      = ra_ble_host_attr_lookup(handle);
-  if (a == NULL) {
+  if (a == nullptr) {
     internal_send_error(conn_handle, k_att_op_read_req, handle, k_att_err_invalid_handle);
     return;
   }
@@ -516,7 +516,7 @@ static void internal_handle_read(uint16_t conn_handle, const uint8_t* pdu, uint1
     };
     internal_pack_le16(&resp[pos], a->cccd_value);
     pos = (uint16_t)(pos + k_cccd_bytes);
-  } else if (a->value != NULL) {
+  } else if (a->value != nullptr) {
     uint16_t copy_len = a->value_len;
     if (copy_len > k_max_value_bytes) {
       copy_len = k_max_value_bytes;
@@ -577,7 +577,7 @@ internal_handle_write(uint16_t conn_handle, uint8_t op, const uint8_t* pdu, uint
   }
   const uint16_t      handle = internal_unpack_le16(&pdu[0]);
   ra_ble_host_attr_t* a      = ra_ble_host_attr_lookup(handle);
-  if (a == NULL) {
+  if (a == nullptr) {
     if (op == k_att_op_write_req) {
       internal_send_error(conn_handle, op, handle, k_att_err_invalid_handle);
     }
@@ -603,7 +603,7 @@ internal_handle_write(uint16_t conn_handle, uint8_t op, const uint8_t* pdu, uint
     };
     ra_ble_host_dispatch_event(&e);
     // mcdc-deactivated: TU-local helper internal_handle_read; characteristic-value attributes registered via the public API always provide a non-NULL backing buffer (validated at registration), so the second condition cannot independently flip on any reachable path.
-  } else if ((a->kind == k_attr_kind_char_value) && (a->value != NULL)) {
+  } else if ((a->kind == k_attr_kind_char_value) && (a->value != nullptr)) {
     if (val_len > a->value_max) {
       if (op == k_att_op_write_req) {
         internal_send_error(conn_handle, op, handle, k_att_err_invalid_value_len);
@@ -663,7 +663,7 @@ internal_handle_write(uint16_t conn_handle, uint8_t op, const uint8_t* pdu, uint
  */
 void ra_ble_host_att_handle_pdu(uint16_t conn_handle, const uint8_t* pdu, uint16_t pdu_len)
 {
-  if ((pdu == NULL) || (pdu_len == 0U)) {
+  if ((pdu == nullptr) || (pdu_len == 0U)) {
     return;
   }
   const uint8_t  op   = pdu[0];

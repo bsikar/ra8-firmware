@@ -126,7 +126,7 @@ static void demo_panic_halt(void)
  */
 static void demo_log(const char* s)
 {
-  if (s == NULL) {
+  if (s == nullptr) {
     return;
   }
   uint32_t len = (uint32_t)strlen(s);
@@ -256,7 +256,7 @@ static void demo_ble_or_halt(void)
     demo_log("[mesh] ra_ble_mesh_init failed\r\n");
     demo_panic_halt();
   }
-  (void)ra_ble_mesh_attach_event_handler(demo_mesh_evt, NULL);
+  (void)ra_ble_mesh_attach_event_handler(demo_mesh_evt, nullptr);
   if (ra_ble_mesh_prov_enable() != k_ra_ok) {
     demo_log("[mesh] prov_enable failed\r\n");
     demo_panic_halt();

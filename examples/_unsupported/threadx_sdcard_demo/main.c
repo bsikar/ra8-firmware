@@ -239,7 +239,7 @@ static void sdcard_hex_dump(const uint8_t* in, uint8_t len, char* out)
  */
 static void sdcard_log(const char* s)
 {
-  if (s == NULL) {
+  if (s == nullptr) {
     return;
   }
   size_t len = 0U;

@@ -366,7 +366,7 @@ static void internal_plot(int32_t x, int32_t y, uint32_t color)
 /* Implementation of ra_gfx_init (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_gfx_init(void* fb, uint16_t width, uint16_t height, ra_gfx_format_t format)
 {
-  if (fb == NULL) {
+  if (fb == nullptr) {
     return k_ra_err_null_ptr;
   }
   if ((width < k_ra_gfx_min_dim) || (width > k_ra_gfx_max_dim)) {
@@ -625,7 +625,7 @@ ra_err_t ra_gfx_text_out(int32_t              x,
                          uint32_t             fg_color,
                          uint32_t             bg_color)
 {
-  if ((str == NULL) || (font == NULL)) {
+  if ((str == nullptr) || (font == nullptr)) {
     return k_ra_err_null_ptr;
   }
   if (!s_state.initialised) {
@@ -650,7 +650,7 @@ ra_err_t ra_gfx_text_out(int32_t              x,
 ra_err_t
 ra_gfx_text_size(const char* str, const ra_gfx_font_t* font, uint32_t* out_w, uint32_t* out_h)
 {
-  if ((str == NULL) || (font == NULL) || (out_w == NULL) || (out_h == NULL)) {
+  if ((str == nullptr) || (font == nullptr) || (out_w == nullptr) || (out_h == nullptr)) {
     return k_ra_err_null_ptr;
   }
   uint32_t       n         = 0;
@@ -674,7 +674,7 @@ ra_err_t ra_gfx_blit(const void*     src_buf,
                      int32_t         dst_x,
                      int32_t         dst_y)
 {
-  if (src_buf == NULL) {
+  if (src_buf == nullptr) {
     return k_ra_err_null_ptr;
   }
   if (!s_state.initialised) {

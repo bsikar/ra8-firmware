@@ -169,12 +169,12 @@ static void priv_event_cb(void* ctx, uint8_t evt_code, const uint8_t* params, ui
   if (s_state != k_ble_hci_ra_ble_state_running) {
     return;
   }
-  if (params == NULL && params_len > 0U) {
+  if (params == nullptr && params_len > 0U) {
     return;
   }
 
   uint8_t* hci_evt = (uint8_t*)ble_transport_alloc_evt(0);
-  if (hci_evt == NULL) {
+  if (hci_evt == nullptr) {
     /* Transient OOM -- the controller will retry. */
     return;
   }
@@ -217,12 +217,12 @@ static void priv_acl_cb(void* ctx, uint16_t handle, const uint8_t* payload, uint
   if (s_state != k_ble_hci_ra_ble_state_running) {
     return;
   }
-  if (payload == NULL && len > 0U) {
+  if (payload == nullptr && len > 0U) {
     return;
   }
 
   struct os_mbuf* om = ble_transport_alloc_acl_from_ll();
-  if (om == NULL) {
+  if (om == nullptr) {
     return;
   }
 
@@ -259,12 +259,12 @@ ra_err_t ble_hci_ra_ble_init(void)
    * Renesas-supplied patch image is configured; we proceed anyway so
    * unit-test builds and dry-run smoke tests still come up.
    */
-  (void)ra_ble_patch_load(NULL, 0U);
+  (void)ra_ble_patch_load(nullptr, 0U);
 
-  if (ra_ble_attach_event_handler(priv_event_cb, NULL) != k_ra_ok) {
+  if (ra_ble_attach_event_handler(priv_event_cb, nullptr) != k_ra_ok) {
     return k_ra_err_not_initialized;
   }
-  if (ra_ble_attach_acl_handler(priv_acl_cb, NULL) != k_ra_ok) {
+  if (ra_ble_attach_acl_handler(priv_acl_cb, nullptr) != k_ra_ok) {
     return k_ra_err_not_initialized;
   }
   s_state = k_ble_hci_ra_ble_state_running;
@@ -275,8 +275,8 @@ ra_err_t ble_hci_ra_ble_init(void)
 ra_err_t ble_hci_ra_ble_deinit(void)
 {
   s_state = k_ble_hci_ra_ble_state_idle;
-  (void)ra_ble_attach_event_handler(NULL, NULL);
-  (void)ra_ble_attach_acl_handler(NULL, NULL);
+  (void)ra_ble_attach_event_handler(nullptr, nullptr);
+  (void)ra_ble_attach_acl_handler(nullptr, nullptr);
   return k_ra_ok;
 }
 
@@ -343,14 +343,14 @@ extern void ble_transport_free(void* buf);
 /* Ble transport to ll cmd impl -- see implementation for details. */
 int ble_transport_to_ll_cmd_impl(void* buf)
 {
-  if (buf == NULL) {
+  if (buf == nullptr) {
     return -1;
   }
   const uint8_t* bytes = (const uint8_t*)buf;
   const uint16_t opcode =
     (uint16_t)((uint16_t)bytes[0] | ((uint16_t)bytes[1] << k_ble_hci_shift_byte));
   const uint8_t  params_len = bytes[2];
-  const uint8_t* params     = (params_len == 0U) ? NULL : &bytes[3];
+  const uint8_t* params     = (params_len == 0U) ? nullptr : &bytes[3];
 
   const ra_err_t err = ra_ble_hci_send_command(opcode, params, params_len);
   ble_transport_free(buf);
@@ -388,7 +388,7 @@ extern int      os_mbuf_copydata(const struct os_mbuf* om, int off, int len, voi
 /* Ble transport to ll acl impl -- see implementation for details. */
 int ble_transport_to_ll_acl_impl(struct os_mbuf* om)
 {
-  if (om == NULL) {
+  if (om == nullptr) {
     return -1;
   }
   const uint16_t total = os_mbuf_len(om);
@@ -418,7 +418,7 @@ int ble_transport_to_ll_acl_impl(struct os_mbuf* om)
     return -1;
   }
 
-  const uint8_t* payload = (len == 0U) ? NULL : &flat[k_ble_hci_acl_off_payload];
+  const uint8_t* payload = (len == 0U) ? nullptr : &flat[k_ble_hci_acl_off_payload];
   const ra_err_t err     = ra_ble_hci_send_acl_data(handle, payload, len);
   return (err == k_ra_ok) ? 0 : -1;
 }
@@ -447,7 +447,7 @@ int ble_transport_to_ll_acl_impl(struct os_mbuf* om)
  */
 int ble_transport_to_ll_iso_impl(struct os_mbuf* om)
 {
-  if (om != NULL) {
+  if (om != nullptr) {
     (void)os_mbuf_free_chain(om);
   }
   return 0;

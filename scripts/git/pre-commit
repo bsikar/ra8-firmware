@@ -173,6 +173,14 @@ if [[ -n "$c_files" ]]; then
         error_found=1
     fi
 
+    # ---- nullptr (C23) instead of NULL ------------------------------------
+    if ! python3 scripts/utils/check_no_null.py $c_files; then
+        echo "[FAIL] bare NULL token(s) in code -- replace with C23 nullptr."
+        echo "   Allowed: UX_NULL/TX_NULL/FX_NULL/NX_NULL vendor macros,"
+        echo "   comments, string literals, third_party trees."
+        error_found=1
+    fi
+
     # ---- cppcheck ----------------------------------------------------------
     if command -v cppcheck &>/dev/null; then
         prod_files=$(echo "$c_files" | grep -vE "^tests/" || true)

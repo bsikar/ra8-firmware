@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 """USB CDC ACM round-trip echo verifier for the EK-RA8D2 USB demos.
 
 Verification contract:

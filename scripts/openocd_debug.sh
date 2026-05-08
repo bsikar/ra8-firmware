@@ -1,4 +1,6 @@
 #!/bin/bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 # openocd_debug.sh -- Attach arm-none-eabi-gdb to a running EK-RA8D2 via
 # OpenOCD's GDB server. GPL-tools alternative to debug.sh.
 #

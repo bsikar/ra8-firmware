@@ -112,7 +112,7 @@ bool ra_reflow_internal_right_overflow_break(int32_t cursor_x,
  */
 bool ra_reflow_internal_xhtml_invalid(const void* xhtml_buf, uint32_t xhtml_len)
 {
-  return (xhtml_buf == NULL) || (xhtml_len == 0U);
+  return (xhtml_buf == nullptr) || (xhtml_len == 0U);
 }
 
 /**
@@ -791,7 +791,7 @@ static ra_err_t priv_layout_tokens(ra_reflow_t* engine, const stbtt_fontinfo* fo
 /* Implementation of ra_reflow_run_layout (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_reflow_run_layout(ra_reflow_t* engine)
 {
-  if (engine == NULL) {
+  if (engine == nullptr) {
     return k_ra_err_null_ptr;
   }
   if (engine->in_use == 0U) {
@@ -838,7 +838,7 @@ ra_err_t ra_reflow_init(uint16_t       viewport_w,
                         uint32_t       link_color,
                         ra_reflow_t*   out_engine)
 {
-  if (font_data == NULL || out_engine == NULL) {
+  if (font_data == nullptr || out_engine == nullptr) {
     return k_ra_err_null_ptr;
   }
   if (viewport_w == 0U || viewport_h == 0U) {
@@ -867,7 +867,7 @@ ra_err_t ra_reflow_init(uint16_t       viewport_w,
 /* Implementation of ra_reflow_close (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_reflow_close(ra_reflow_t* engine)
 {
-  if (engine == NULL) {
+  if (engine == nullptr) {
     return k_ra_err_null_ptr;
   }
   if (engine->in_use == 0U) {
@@ -878,7 +878,7 @@ ra_err_t ra_reflow_close(ra_reflow_t* engine)
   engine->glyph_count    = 0U;
   engine->token_count    = 0U;
   engine->text_pool_used = 0U;
-  engine->xhtml_buf      = NULL;
+  engine->xhtml_buf      = nullptr;
   engine->xhtml_len      = 0U;
   return k_ra_ok;
 }
@@ -889,7 +889,7 @@ ra_err_t ra_reflow_layout_chapter(ra_reflow_t*   engine,
                                   size_t         xhtml_len,
                                   uint32_t*      out_total_pages)
 {
-  if (engine == NULL || xhtml_buf == NULL || out_total_pages == NULL) {
+  if (engine == nullptr || xhtml_buf == nullptr || out_total_pages == nullptr) {
     return k_ra_err_null_ptr;
   }
   if (engine->in_use == 0U) {
@@ -921,7 +921,7 @@ ra_err_t ra_reflow_layout_chapter(ra_reflow_t*   engine,
 /* Implementation of ra_reflow_get_page_count (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_reflow_get_page_count(const ra_reflow_t* engine, uint32_t* out_count)
 {
-  if (engine == NULL || out_count == NULL) {
+  if (engine == nullptr || out_count == nullptr) {
     return k_ra_err_null_ptr;
   }
   if (engine->in_use == 0U) {
@@ -934,7 +934,7 @@ ra_err_t ra_reflow_get_page_count(const ra_reflow_t* engine, uint32_t* out_count
 /* Implementation of ra_reflow_set_font_size (see header for full contract) -- see header for the documented contract. */
 ra_err_t ra_reflow_set_font_size(ra_reflow_t* engine, uint16_t new_font_px)
 {
-  if (engine == NULL) {
+  if (engine == nullptr) {
     return k_ra_err_null_ptr;
   }
   if (engine->in_use == 0U) {

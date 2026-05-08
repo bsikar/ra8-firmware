@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 """
 stack_usage_check.py -- aggregate gcc -fstack-usage `.su` files into a
 project-wide stack-bound report.

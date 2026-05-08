@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 """
 check_new_compound_has_mcdc.py -- Reject staged commits that introduce a new
 compound boolean decision (`&&` / `||`) without an accompanying MC/DC test.
@@ -173,9 +175,11 @@ def compound_decision_lines(text: str) -> set[tuple[int, str]]:
     for idx, raw in enumerate(text.splitlines(), start=1):
         scrubbed = _scrub(raw)
         if COMPOUND_OP_RE.search(scrubbed):
-            # Normalize whitespace so cosmetic reformatting in the staged
+            # Normalize whitespace + the NULL <-> nullptr swap so cosmetic
+            # reformatting (or the C23 nullptr migration) in the staged
             # file does not cause false-positive "new" decisions.
             normalized = re.sub(r"\s+", " ", scrubbed.strip())
+            normalized = re.sub(r"\bNULL\b", "nullptr", normalized)
             found.add((idx, normalized))
     return found
 
