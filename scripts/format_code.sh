@@ -16,6 +16,14 @@ NC='\033[0m' # No Color
 CHECK_ONLY=false
 VERBOSE=false
 EXTENSIONS=("*.c" "*.h" "*.cpp" "*.hpp")
+
+# Pin the clang-format binary via env var so CI can lock to a specific
+# major version (Ubuntu 24.04 ships v18 by default; Homebrew on macOS
+# ships v22). Both produce slightly different formatting on edge cases
+# so the check side and the auto-format side must agree on which
+# version they invoke. Default to plain `clang-format` for backward
+# compatibility on developer machines.
+CLANG_FORMAT="${CLANG_FORMAT:-clang-format}"
 # Scan every top-level dir except infrastructure / vendor / build trees.
 # The list of excluded dirs matches what the pre-commit linters skip.
 EXCLUDE_DIRS=("build" "docs" "cmake" "scripts" "fsp" "STAR" ".git" "node_modules" ".github" ".devcontainer" ".claude")
@@ -46,8 +54,8 @@ print_error()   { echo -e "${RED}[ERROR]${NC} $1" >&2; }
 
 # Check if clang-format is installed
 check_clang_format() {
-    if ! command -v clang-format &> /dev/null; then
-        print_error "clang-format not found!"
+    if ! command -v "$CLANG_FORMAT" &> /dev/null; then
+        print_error "$CLANG_FORMAT not found!"
         echo ""
         echo "Please install clang-format:"
         echo "  macOS: brew install clang-format"
@@ -57,7 +65,7 @@ check_clang_format() {
     fi
 
     local version
-    version=$(clang-format --version | head -n1)
+    version=$("$CLANG_FORMAT" --version | head -n1)
     if [ "$VERBOSE" = true ]; then
         print_status "Found $version"
     fi
@@ -160,7 +168,7 @@ check_formatting() {
             echo "  Checking: $file" >&2
         fi
 
-        if ! clang-format --dry-run --Werror "$file" >/dev/null 2>&1; then
+        if ! "$CLANG_FORMAT" --dry-run --Werror "$file" >/dev/null 2>&1; then
             if [ "$issues_found" = false ]; then
                 echo "" >&2
                 print_warning "Formatting issues found in:"
@@ -196,7 +204,7 @@ format_files() {
         local temp_file
         temp_file=$(mktemp)
 
-        clang-format "$file" > "$temp_file" 2>&1 || {
+        "$CLANG_FORMAT" "$file" > "$temp_file" 2>&1 || {
             echo "ERROR: clang-format failed on $file" >&2
             rm "$temp_file"
             continue

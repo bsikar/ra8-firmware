@@ -74,9 +74,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install clang-format
-        run: sudo apt-get update && sudo apt-get install -y clang-format
+      - name: Install clang-format 22 (apt.llvm.org)
+        # Pin to LLVM 22 to match the Homebrew default on macOS. Ubuntu
+        # 24.04's stock clang-format-18 produces slightly different
+        # output on edge cases (long-line wrapping, multi-arg spacing).
+        # apt.llvm.org ships matching binaries for noble.
+        run: |
+          set -e
+          wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key \
+            | sudo gpg --dearmor -o /usr/share/keyrings/apt.llvm.org.gpg
+          echo "deb [signed-by=/usr/share/keyrings/apt.llvm.org.gpg] http://apt.llvm.org/noble/ llvm-toolchain-noble-22 main" \
+            | sudo tee /etc/apt/sources.list.d/llvm.list
+          sudo apt-get update
+          sudo apt-get install -y clang-format-22
       - name: Run format check
+        env:
+          CLANG_FORMAT: clang-format-22
         run: bash scripts/format_code.sh --check --verbose
 
   # ---------------------------------------------------------------------------
@@ -257,10 +270,28 @@ jobs:
           python3 scripts/utils/check_obsolete_standards.py
           python3 scripts/utils/check_world_tags.py --warn
           python3 scripts/utils/check_mcdc_block.py
-          # check_no_dynamic_alloc.py scans the production tree.
-          python3 scripts/utils/check_no_dynamic_alloc.py
+          # check_no_dynamic_alloc.py scans the production tree (--all
+          # asks it to enumerate src/ + libs/ rather than read a list
+          # of staged files via argv).
+          python3 scripts/utils/check_no_dynamic_alloc.py --all
           python3 scripts/utils/check_no_ai_attribution.py
+      - name: Install clang-format-22
+        # Pre-commit gate must use the same clang-format major version
+        # as the dedicated `format` job above, otherwise the project
+        # baseline disagrees with what this gate enforces.
+        run: |
+          set -e
+          if ! [ -f /usr/share/keyrings/apt.llvm.org.gpg ]; then
+            wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key \
+              | sudo gpg --dearmor -o /usr/share/keyrings/apt.llvm.org.gpg
+            echo "deb [signed-by=/usr/share/keyrings/apt.llvm.org.gpg] http://apt.llvm.org/noble/ llvm-toolchain-noble-22 main" \
+              | sudo tee /etc/apt/sources.list.d/llvm.list
+            sudo apt-get update
+          fi
+          sudo apt-get install -y clang-format-22
       - name: clang-format dry run
+        env:
+          CLANG_FORMAT: clang-format-22
         run: bash scripts/format_code.sh --check
       - name: clang-tidy
         run: bash scripts/clang_tidy.sh --check
@@ -358,9 +389,22 @@ jobs:
         run: doxygen Doxyfile.main 2>&1 | tee doxygen.log
       - name: Fail on warnings
         run: |
-          if grep -q "warning:" doxygen.log; then
+          # Filter known-benign Doxygen warnings:
+          #   - "for \ref command" -- Doxygen treats Markdown links in
+          #     README.md ([text](path)) as \ref directives; targets
+          #     outside INPUT (CHANGELOG.md, docs/*.md, examples/*/README)
+          #     "fail" to resolve but render fine.
+          #   - "multiple documentation sections" / "from the argument
+          #     list of" -- triggered when @retval / @param appear in
+          #     both the public header (canonical) and the .c
+          #     definition. Cosmetic, no output impact.
+          relevant_warnings=$(grep "warning:" doxygen.log \
+            | grep -v "for .ref command" \
+            | grep -v "multiple documentation sections" \
+            | grep -v "from the argument list of " || true)
+          if [ -n "$relevant_warnings" ]; then
             echo "Doxygen reported warnings:"
-            grep "warning:" doxygen.log
+            echo "$relevant_warnings"
             exit 1
           fi
 

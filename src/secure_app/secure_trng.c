@@ -57,7 +57,7 @@ typedef enum : uint32_t {
  * @warning Direct modification outside this TU is forbidden.
  * @since 0.1.0
  */
-static uint64_t s_state = (uint64_t)k_xorshift_seed;
+static uint64_t s_state = k_xorshift_seed;
 
 /**
  * @brief Advance the xorshift64* state and return one 64-bit word.
@@ -81,11 +81,11 @@ static uint64_t s_state = (uint64_t)k_xorshift_seed;
 static uint64_t internal_xorshift64(void)
 {
   uint64_t x = s_state;
-  x ^= x >> (uint64_t)k_xorshift_shift_a;
-  x ^= x << (uint64_t)k_xorshift_shift_b;
-  x ^= x >> (uint64_t)k_xorshift_shift_c;
+  x ^= x >> k_xorshift_shift_a;
+  x ^= x << k_xorshift_shift_b;
+  x ^= x >> k_xorshift_shift_c;
   s_state = x;
-  return x * (uint64_t)k_xorshift_multiplier;
+  return x * k_xorshift_multiplier;
 }
 
 /**
@@ -108,32 +108,27 @@ static uint64_t internal_xorshift64(void)
  */
 ra_err_t ra_secure_trng_reset(void)
 {
-  s_state = (uint64_t)k_xorshift_seed;
+  s_state = k_xorshift_seed;
   return k_ra_ok;
 }
 
 /**
- * @brief Fill a caller buffer with pseudo-random bytes.
- *
- * @details
- * Drives ::internal_xorshift64 in a loop, splitting each 64-bit
- * word into eight bytes and writing them to ``out`` until ``len``
- * bytes have been emitted. Loop bound is the per-call cap so the
- * function is NASA Rule 2 compliant.
- *
+ * @brief Implementation of ra_secure_trng_read (see header for the
+ *        public contract).
+ * @details Drives ::internal_xorshift64 in a loop, splitting each
+ *          64-bit word into eight bytes and writing them to ``out``
+ *          until ``len`` bytes have been emitted. Loop bound is the
+ *          per-call cap so the function is NASA Rule 2 compliant.
  * @param[out] out Destination buffer.
  * @param[in]  len Number of bytes to emit; 1..k_ra_secure_trng_max_bytes.
- *
  * @return ``ra_err_t`` error code.
  * @retval k_ra_ok                 Buffer filled.
  * @retval k_ra_err_null_ptr       ``out`` was NULL.
  * @retval k_ra_err_invalid_arg    ``len`` zero or above the per-call cap.
- *
  * @pre ``out`` is non-NULL and spans at least ``len`` bytes.
  * @pre ``len`` is within the documented per-call cap.
  * @post On success, ``out[0..len-1]`` is filled with PRNG output.
  * @post ``s_state`` is advanced by ceil(len/8) iterations.
- *
  * @note Not thread-safe; secure-side serial dispatch only.
  * @since 0.1.0
  */
@@ -149,7 +144,7 @@ ra_err_t ra_secure_trng_read(uint8_t* out, uint32_t len)
     const uint64_t word = internal_xorshift64();
     /* Inner loop bound is constant 8. */
     for (uint32_t b = 0U; (b < (uint32_t)k_bytes_per_u64) && (written < len); ++b) {
-      out[written] = (uint8_t)((word >> (b * (uint32_t)k_byte_bits)) & (uint32_t)k_byte_mask);
+      out[written] = (uint8_t)((word >> (b * (uint32_t)k_byte_bits)) & k_byte_mask);
       ++written;
     }
   }

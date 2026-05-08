@@ -656,50 +656,18 @@ static void internal_usbhs_enable_syscfg(volatile r_usb_regs_t* reg)
 }
 
 /**
- * @brief Wait for USBHS PHY PLL lock with bounded polling.
+ * @brief Bounded PHY PLL-lock poll for a single CLKSEL attempt.
  *
- * @details Polls PLLSTA.PLLLOCK up to
- * ::k_ra_usbhs_pll_lock_poll_limit iterations. Captures the final
- * PLLSTA value into ``s_usbhs_pllsta_probe`` regardless of outcome.
- *
- * @return ::ra_err_t
- * @retval k_ra_ok     PLLLOCK observed asserted.
- * @retval k_ra_err_hw_timeout PLLLOCK never asserted.
- *
- * @pre LPSTS.SUSPENDM has been set.
- * @pre USB60CLK is running at 60 MHz.
- * @post Loop iteration count is bounded.
- * @post s_usbhs_pllsta_probe holds the final PLLSTA word.
- *
- * @note Not thread-safe; init context only.
- * @since 0.1.0
- */
-static ra_err_t internal_usbhs_wait_pll_lock(void)
-{
-  volatile uint16_t* const pllsta = ra_usbhs_pllsta();
-  ra_err_t                 lock   = k_ra_err_hw_timeout;
-  for (uint32_t i = 0U; i < (uint32_t)k_ra_usbhs_pll_lock_poll_limit; ++i) {
-    if ((*pllsta & (uint16_t)k_ra_pllsta_plllock) != 0U) {
-      lock = k_ra_ok;
-      break;
-    }
-  }
-  s_usbhs_pllsta_probe = *pllsta;
-  return lock;
-}
-
-/**
- * @brief Bounded per-CLKSEL-attempt PLL-lock poll.
- *
- * @details Same loop as ::internal_usbhs_wait_pll_lock but with a
- * tighter (~50 ms) ceiling so the 4-codepoint bisect harness fits
- * inside its 250 ms total wall-time budget.
+ * @details Polls PLLSTA.PLLLOCK up to a ~50 ms ceiling. Captures the
+ * final PLLSTA value into ``s_usbhs_pllsta_probe`` regardless of
+ * outcome so JLink reads can see the chip's view of the PLL state.
  *
  * @return ::ra_err_t
  * @retval k_ra_ok PLLLOCK observed within the per-attempt window.
  * @retval k_ra_err_hw_timeout PLLLOCK never asserted.
  *
- * @pre LPSTS.SUSPENDM = 1 and PHYSET is configured for one CLKSEL.
+ * @pre LPSTS.SUSPENDM = 1 and PHYSET is configured for the chosen
+ *      CLKSEL value.
  * @pre USB60CLK is running (PLL2P / 4 = 60 MHz).
  * @post Loop iteration count is bounded.
  * @post s_usbhs_pllsta_probe holds the final PLLSTA word.
