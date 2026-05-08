@@ -97,8 +97,8 @@ unusedStructMember:libs/ra_hal/inc/ra8d2_*_regs.h
 # cppcheck's suggestion conflicts with the habit of treating register access
 # as always-mutable at the language level. Suppressed project-wide.
 # ---------------------------------------------------------------------------
-constParameterPointer
-constVariablePointer
+constParameterPointer:*
+constVariablePointer:*
 
 
 # unusedStructMember on driver-facing config / matrix structs.
