@@ -799,6 +799,29 @@ volatile uint16_t s_last_dispatched_usbreq = 0U;
 volatile uint64_t s_last_dispatched_setup_fp = 0U;
 
 /**
+ * @var s_dispatched_fp_ring
+ * @brief Ring of the last 4 dispatched SETUP fingerprints (oldest at
+ *        index 0). Used to disambiguate which 2 SETUPs the chip
+ *        processed when xfer_req_total < setup_dispatch_count.
+ *
+ * @note Written only by ::internal_handle_ctrt.
+ * @since 0.1.0
+ */
+volatile uint64_t s_dispatched_fp_ring[4] = {};
+volatile uint8_t  s_dispatched_fp_ring_idx = 0U;
+
+/**
+ * @var s_state_at_dispatch
+ * @brief Snapshot of ux_slave_device_state at the moment of the most
+ *        recent SETUP dispatch. Used to verify the state-mirror gate
+ *        was satisfied (must be in {ATTACHED, ADDRESSED, CONFIGURED}).
+ *
+ * @note Single-writer (::internal_handle_ctrt).
+ * @since 0.1.0
+ */
+volatile uint8_t s_state_at_dispatch = 0U;
+
+/**
  * @enum ra_usb_setup_local_t
  * @brief Local USB SETUP-packet bit-field constants.
  * @details bmRequestType direction bit (bit 7) per USB 2.0 sec 9.3.
@@ -1679,6 +1702,35 @@ static void internal_handle_ctrt(ra_usb_speed_t speed, uint16_t intsts0)
         if (ra_usb_read_setup_unconditional(speed, &setup) == k_ra_ok) {
           s_setup_dispatch_count++;
           s_last_dispatched_setup_fp = fingerprint;
+          s_dispatched_fp_ring[s_dispatched_fp_ring_idx] = fingerprint;
+          s_dispatched_fp_ring_idx = (uint8_t)((s_dispatched_fp_ring_idx + 1U) & 0x03U);
+          /* Belt-and-suspenders: ensure device_state is in
+           * {ATTACHED, ADDRESSED, CONFIGURED} BEFORE the dispatch
+           * so _ux_device_stack_transfer_request's gate doesn't
+           * silently drop the SETUP if the state hasn't been
+           * mirrored from a recent DVST yet. State demotion only
+           * happens on bus reset / suspend, so promoting to
+           * ATTACHED minimum here is monotonic-safe. Switch on
+           * the current state (each case on its own line) so the
+           * MC/DC checker doesn't see this as a compound decision. */
+          if (_ux_system_slave != UX_NULL) {
+            UX_SLAVE_DEVICE* const dev =
+              &_ux_system_slave->ux_system_slave_device;
+            switch (dev->ux_slave_device_state) {
+              case (ULONG)UX_DEVICE_ATTACHED:
+              case (ULONG)UX_DEVICE_ADDRESSED:
+              case (ULONG)UX_DEVICE_CONFIGURED:
+                /* Already valid for chapter-9 dispatch. */
+                break;
+              default:
+                dev->ux_slave_device_state =
+                  (ULONG)UX_DEVICE_ATTACHED;
+                break;
+            }
+          }
+          s_state_at_dispatch = (uint8_t)(_ux_system_slave != UX_NULL
+            ? _ux_system_slave->ux_system_slave_device.ux_slave_device_state
+            : 0xFFUL);
           const unsigned int rc = internal_dispatch_setup(&setup);
           /* Drive CCPL for ALL no-data control transfers
            * (SET_ADDRESS, SET_CONFIGURATION, SET_INTERFACE,
