@@ -395,10 +395,14 @@ static TX_SEMAPHORE s_cdc_active_sem;
 /* USB descriptors (DEVICE + CONFIG + IAD + CDC interfaces + endpoints)       */
 /* -------------------------------------------------------------------------- */
 
-/* Same CDC-ACM composite descriptor set as the FS demo: 64-byte bulk
- * MPS keeps EP1/EP2 packets identical between the FS and HS variants
- * (HS allows up to 512 bytes per bulk packet but 64 is legal and
- * minimises descriptor churn during this first-pass HS bring-up). */
+/* CDC-ACM composite descriptor frameworks. Two slots are required so
+ * USBX can hand the right one to the host based on the negotiated bus
+ * speed. The HS slot (s_device_framework_hs) carries 512-byte bulk
+ * wMaxPacketSize values, which the USB 2.0 spec MANDATES for HS bulk
+ * endpoints; the FS fallback keeps 64-byte bulk MPS for FS-only hosts.
+ * All other fields (Device, Configuration, IAD, CDC class descriptors,
+ * Interrupt EP) are identical between the two -- only the two bulk EP
+ * wMaxPacketSize bytes differ. */
 static UCHAR s_device_framework_fs[] = {
   /* Device descriptor (USB 2.0 sec 9.6.1) -- 18 bytes. */
   0x12U,
@@ -504,6 +508,137 @@ static UCHAR s_device_framework_fs[] = {
   0x02U,
   0x40U,
   0x00U,
+  0x00U,
+};
+
+/* HS variant: identical to s_device_framework_fs except the bulk
+ * endpoints carry wMaxPacketSize = 512 (0x0200) per USB 2.0 sec
+ * 5.8.3 ("HS bulk endpoints must use 512-byte MPS"). Includes a
+ * DEVICE_QUALIFIER descriptor (USB 2.0 sec 9.6.2), which is
+ * mandatory for HS-capable devices -- the host (e.g. macOS)
+ * issues GET_DESCRIPTOR(DEVICE_QUALIFIER) during enumeration to
+ * learn the device's other-speed capabilities, and a STALL
+ * response causes some hosts to abandon enumeration. */
+static UCHAR s_device_framework_hs[] = {
+  /* Device descriptor (USB 2.0 sec 9.6.1) -- 18 bytes. */
+  0x12U,
+  0x01U,
+  0x00U,
+  0x02U,
+  0xEFU,
+  0x02U,
+  0x01U,
+  0x40U,
+  0x34U,
+  0x12U,
+  0x78U,
+  0x56U,
+  0x00U,
+  0x01U,
+  0x01U,
+  0x02U,
+  0x03U,
+  0x01U,
+  /* Device Qualifier descriptor (USB 2.0 sec 9.6.2) -- 10 bytes.
+   * Reports the device's capabilities at the OTHER speed (FS in this
+   * case). bcdUSB=0x0200, class/subclass/protocol mirror the device
+   * descriptor, MPS0=64, num-configurations=1, reserved=0. */
+  0x0AU,
+  0x06U,
+  0x00U,
+  0x02U,
+  0xEFU,
+  0x02U,
+  0x01U,
+  0x40U,
+  0x01U,
+  0x00U,
+  /* Configuration descriptor (75 bytes total). */
+  0x09U,
+  0x02U,
+  0x4BU,
+  0x00U,
+  0x02U,
+  0x01U,
+  0x00U,
+  0x80U,
+  0x32U,
+  /* Interface association (CDC). */
+  0x08U,
+  0x0BU,
+  0x00U,
+  0x02U,
+  0x02U,
+  0x02U,
+  0x01U,
+  0x00U,
+  /* Communications interface (CDC ACM). */
+  0x09U,
+  0x04U,
+  0x00U,
+  0x00U,
+  0x01U,
+  0x02U,
+  0x02U,
+  0x01U,
+  0x00U,
+  /* CDC header functional descriptor. bcdCDC = 0x0120 (CDC 1.20). */
+  0x05U,
+  0x24U,
+  0x00U,
+  0x20U,
+  0x01U,
+  /* Call-management functional descriptor. */
+  0x05U,
+  0x24U,
+  0x01U,
+  0x01U,
+  0x01U,
+  /* ACM functional descriptor. */
+  0x04U,
+  0x24U,
+  0x02U,
+  0x02U,
+  /* Union functional descriptor. */
+  0x05U,
+  0x24U,
+  0x06U,
+  0x00U,
+  0x01U,
+  /* Interrupt-IN endpoint (EP3 IN, 8-byte MPS, bInterval=8 microframes
+   * = 1 ms poll). HS uses bInterval=2^(n-1)*125us; n=8 -> 16ms. */
+  0x07U,
+  0x05U,
+  0x83U,
+  0x03U,
+  0x08U,
+  0x00U,
+  0x08U,
+  /* Data-class interface. */
+  0x09U,
+  0x04U,
+  0x01U,
+  0x00U,
+  0x02U,
+  0x0AU,
+  0x00U,
+  0x00U,
+  0x00U,
+  /* Bulk-OUT endpoint (EP2 OUT, 512-byte MPS for HS). */
+  0x07U,
+  0x05U,
+  0x02U,
+  0x02U,
+  0x00U,
+  0x02U,
+  0x00U,
+  /* Bulk-IN endpoint (EP1 IN, 512-byte MPS for HS). */
+  0x07U,
+  0x05U,
+  0x81U,
+  0x02U,
+  0x00U,
+  0x02U,
   0x00U,
 };
 
@@ -662,15 +797,14 @@ static VOID demo_worker(ULONG arg)
     return;
   }
   s_boot_probe = (uint32_t)k_boot_probe_pre_dev_stack_init;
-  /* Populate ONLY the FS framework slot; leave the HS slot empty
-   * (UX_NULL / 0). The DCD bridge now reports UX_FULL_SPEED_DEVICE to
-   * USBX even on the HS controller path (see ux_dcd_ra_usb.c), so the
-   * chapter-9 dispatcher binds against the FS framework and uses
-   * 64-byte EP0 / 12 Mbps assumptions. The chip-level USBHS controller
-   * is still programmed and chirps at high speed; we are only changing
-   * what USBX itself believes about the bus. */
-  if (_ux_device_stack_initialize(UX_NULL,
-                                  0,
+  /* Populate BOTH framework slots. With the PHY CLKSEL=24 fix landed
+   * (see ra_usb.c::internal_usbhs_phy_bringup), the HS chirp completes
+   * correctly and the host expects HS-conformant descriptors with
+   * 512-byte bulk MPS. USBX picks the framework matching the
+   * negotiated bus speed (RHST=011 -> HS framework, RHST=010 -> FS
+   * framework). */
+  if (_ux_device_stack_initialize(s_device_framework_hs,
+                                  sizeof(s_device_framework_hs),
                                   s_device_framework_fs,
                                   sizeof(s_device_framework_fs),
                                   s_string_framework,
