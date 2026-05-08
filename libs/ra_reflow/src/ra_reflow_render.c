@@ -156,20 +156,14 @@ static void priv_draw_underline(const stbtt_fontinfo* font, const ra_reflow_glyp
  */
 static void priv_blit_glyph(const stbtt_fontinfo* font, const ra_reflow_glyph_t* g)
 {
-  const float    scale  = stbtt_ScaleForPixelHeight(font, (float)g->font_px);
-  int            w      = 0;
-  int            h      = 0;
-  int            xoff   = 0;
-  int            yoff   = 0;
-  unsigned char* bitmap = stbtt_GetCodepointBitmap(
-    font,
-    0.0F,
-    scale,
-    g->cp,
-    &w,
-    &h,
-    &xoff,
-    &yoff); /* alloc-allow: stb_truetype is vendored SOUP; the matching stbtt_FreeBitmap below releases the alloc within the same function. */
+  const float scale = stbtt_ScaleForPixelHeight(font, (float)g->font_px);
+  int         w     = 0;
+  int         h     = 0;
+  int         xoff  = 0;
+  int         yoff  = 0;
+  /* clang-format off */
+  unsigned char* bitmap = stbtt_GetCodepointBitmap(font, 0.0F, scale, g->cp, &w, &h, &xoff, &yoff); /* alloc-allow: stb_truetype is vendored SOUP; the matching stbtt_FreeBitmap below releases the alloc within the same function. */
+  /* clang-format on */
   if (bitmap == nullptr) {
     return;
   }
@@ -177,8 +171,9 @@ static void priv_blit_glyph(const stbtt_fontinfo* font, const ra_reflow_glyph_t*
   if (w > 0 && h > 0) {
     priv_blit_alpha_mask(g, bitmap, w, h, xoff, yoff);
   }
-  stbtt_FreeBitmap(bitmap,
-                   nullptr); /* alloc-allow: pairs with the stbtt_GetCodepointBitmap above. */
+  /* clang-format off */
+  stbtt_FreeBitmap(bitmap, nullptr); /* alloc-allow: pairs with the stbtt_GetCodepointBitmap above. */
+  /* clang-format on */
 
   if ((g->style & k_ra_reflow_style_underline) != 0U) {
     priv_draw_underline(font, g, scale);
