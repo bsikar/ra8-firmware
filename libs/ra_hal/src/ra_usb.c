@@ -194,11 +194,58 @@ static void internal_rmw16(volatile uint16_t* reg, uint16_t set_mask, uint16_t c
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+/**
+ * @brief Detect whether reg points at the USBHS (IP1) register block.
+ * @details FSP gates `USB1_CFIFO_MBW = USB_MBW_32` on the same predicate
+ *          (`p_utr->ip == USB_CFG_IP1`), and the FIFO write helpers below
+ *          mirror that to keep CFIFOSEL.MBW and the CFIFO write width in
+ *          agreement on each controller.
+ * @param[in] reg USB instance register block pointer.
+ * @return true if reg is the HS instance, false for FS.
+ * @retval true USBHS (IP1) -- caller should use MBW=32 + 32-bit FIFO.
+ * @retval false USBFS (IP0) -- caller should use MBW=16 + 16-bit FIFO.
+ * @pre reg is a pointer returned by ra_usb_fs() or ra_usb_hs().
+ * @pre USB module pointers are populated.
+ * @post No state mutated.
+ * @post Returned value reflects controller identity.
+ * @note Pure function.
+ * @since 0.1.0
+ */
+static inline bool internal_is_hs(volatile r_usb_regs_t* reg)
+{
+  return reg == ra_usb_hs();
+}
+
+/**
+ * @brief Set CFIFOSEL.MBW + CURPIPE + ISEL for the given pipe / direction.
+ * @details Picks MBW=32 for USBHS (FSP USB1_CFIFO_MBW) and MBW=16 for
+ *          USBFS (FSP USB0_CFIFO_MBW). The CFIFO data-port access
+ *          width must match the MBW field on subsequent CFIFO accesses.
+ * @param[in] reg USB instance register block.
+ * @param[in] pipe_num CURPIPE value (0 = DCP, 1..n = data pipe).
+ * @param[in] is_in_dir true = device-to-host (write), false = host-to-device.
+ * @pre reg != NULL.
+ * @pre Caller holds the DCP / pipe lock.
+ * @post CFIFOSEL = MBW(speed) | (is_in_dir ? ISEL : 0) | pipe_num.
+ * @post Subsequent CFIFO accesses must use the matching width.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
 static void internal_select_cfifo(volatile r_usb_regs_t* reg, uint16_t pipe_num, bool is_in_dir)
 {
-  /* HUM Ch 36.2.7 "CFIFOSEL : CFIFO Port Select Register", p 1976 */
+  /* HUM Ch 36.2.7 / 37.2.8 CFIFOSEL p 1976 / 2071. The USBHS module
+   * (IP1) requires MBW=32 -- FSP wires `USB1_CFIFO_MBW = USB_MBW_32`
+   * unconditionally for this controller. With MBW=16 the SIE refuses
+   * to arm an IN response (BSTS reads 0 and PID stays effectively
+   * NAK on the wire even though DCPCTR.PID=BUF), and the host sees
+   * unending NAKs / "device descriptor read/N, error -110". The
+   * USBFS module (IP0) keeps MBW=16. */
   uint16_t sel = (uint16_t)(pipe_num & k_ra_fifosel_curpipe);
-  sel          = (uint16_t)(sel | k_ra_fifosel_mbw_16);
+  if (internal_is_hs(reg)) {
+    sel = (uint16_t)(sel | k_ra_fifosel_mbw_32);
+  } else {
+    sel = (uint16_t)(sel | k_ra_fifosel_mbw_16);
+  }
   if (is_in_dir) {
     sel = (uint16_t)(sel | k_ra_fifosel_isel);
   }
@@ -1587,9 +1634,112 @@ ra_err_t ra_usb_stall_endpoint(ra_usb_speed_t speed, uint8_t pipe_num)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+/**
+ * @enum ra_usb_fifo_shift_t
+ * @brief Byte-shift constants for packing CFIFO writes.
+ */
+typedef enum : uint8_t {
+  k_ra_usb_shift_b1 = 8U,  /**< Shift for byte 1. */
+  k_ra_usb_shift_b2 = 16U, /**< Shift for byte 2. */
+  k_ra_usb_shift_b3 = 24U, /**< Shift for byte 3. */
+} ra_usb_fifo_shift_t;
+
+/**
+ * @brief HS-only: write the residual 0-3 bytes after 32-bit chunks.
+ * @details FSP narrows CFIFOSEL.MBW to 16 then 8 for trailing
+ *          halfword/byte. We save+restore MBW around these writes.
+ * @param[in] reg HS register block.
+ * @param[in] data Source byte pointer.
+ * @param[in] len Total payload length.
+ * @pre Caller already wrote (len & ~0x3) bytes via 32-bit access.
+ * @pre CFIFOSEL.MBW currently == 32.
+ * @post Tail bytes pushed; CFIFOSEL.MBW restored.
+ * @post DTLN advanced by exactly (len & 0x3) bytes.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static void
+internal_fifo_write_hs_tail(volatile r_usb_regs_t* reg, const uint8_t* data, uint16_t len)
+{
+  const uint16_t tail = (uint16_t)(len & 0x3U);
+  if (tail == 0U) {
+    return;
+  }
+  const uint16_t sel_save = reg->CFIFOSEL;
+  const uint16_t sel_base = (uint16_t)(sel_save & (uint16_t)~(uint16_t)k_ra_fifosel_mbw_msk);
+  uint16_t       offset   = (uint16_t)(len & (uint16_t)~(uint16_t)0x3U);
+  if ((tail & 0x2U) != 0U) {
+    reg->CFIFOSEL     = (uint16_t)(sel_base | k_ra_fifosel_mbw_16);
+    const uint16_t lo = (uint16_t)data[offset + 0U];
+    const uint16_t hi = (uint16_t)data[offset + 1U];
+    reg->CFIFO        = (uint16_t)(lo | (uint16_t)(hi << k_ra_usb_byte_bits));
+    offset            = (uint16_t)(offset + 2U);
+  }
+  if ((tail & 0x1U) != 0U) {
+    reg->CFIFOSEL = (uint16_t)(sel_base | k_ra_fifosel_mbw_8);
+    reg->CFIFO    = (uint16_t)data[offset];
+  }
+  reg->CFIFOSEL = sel_save;
+}
+
+/**
+ * @brief HS-only: 32-bit CFIFO write loop for the head bytes.
+ * @details Mirrors FSP hw_usb_write_fifo32: cast &CFIFO to uint32_t*
+ *          and write `len/4` 32-bit words.
+ * @param[in] reg HS register block.
+ * @param[in] data Source byte pointer.
+ * @param[in] len Total payload length; this helper writes only the
+ *                head (len & ~0x3) bytes.
+ * @pre CFIFOSEL.MBW == 32.
+ * @pre data != NULL when len > 0.
+ * @post DTLN advanced by exactly (len & ~0x3) bytes.
+ * @post FIFO contains head bytes ready for BVAL commit.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static void
+internal_fifo_write_hs_head(volatile r_usb_regs_t* reg, const uint8_t* data, uint16_t len)
+{
+  volatile uint32_t* const cfifo32 = (volatile uint32_t*)(uintptr_t)&reg->CFIFO;
+  const uint16_t           quads   = (uint16_t)(len >> 2U);
+  for (uint16_t i = 0U; i < quads; ++i) {
+    const uint32_t b0 = (uint32_t)data[(4U * i) + 0U];
+    const uint32_t b1 = (uint32_t)data[(4U * i) + 1U];
+    const uint32_t b2 = (uint32_t)data[(4U * i) + 2U];
+    const uint32_t b3 = (uint32_t)data[(4U * i) + 3U];
+    *cfifo32 =
+      b0 | (b1 << k_ra_usb_shift_b1) | (b2 << k_ra_usb_shift_b2) | (b3 << k_ra_usb_shift_b3);
+  }
+}
+
+/**
+ * @brief Push a byte buffer into the CFIFO data port.
+ * @details Dispatches to the speed-appropriate access width: USBHS
+ *          uses 32-bit writes (with FSP-style 16/8 narrowing for the
+ *          trailing 0..3 bytes), USBFS uses 16-bit writes with a
+ *          single-byte tail. Mirrors FSP `usb_pstd_write_fifo` for
+ *          IP1 / IP0 respectively.
+ * @param[in] reg USB instance register block.
+ * @param[in] data Source byte pointer (may be NULL when len == 0).
+ * @param[in] len Number of bytes to push.
+ * @pre Caller selected DCP / pipe with internal_select_cfifo and
+ *      observed FRDY=1.
+ * @pre data != NULL when len > 0.
+ * @post DTLN advanced by len bytes.
+ * @post FIFO ready for caller's BVAL commit.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
 static void internal_fifo_write(volatile r_usb_regs_t* reg, const uint8_t* data, uint16_t len)
 {
-  /* HUM Ch 36.2.5 "CFIFO : CFIFO Port Register", p 1973 */
+  /* HUM Ch 36.2.5 / 37.2.7 CFIFO p 1973 / 2070. CFIFO access width
+   * must match CFIFOSEL.MBW. USBHS = 32-bit, USBFS = 16-bit. */
+  if (internal_is_hs(reg)) {
+    internal_fifo_write_hs_head(reg, data, len);
+    internal_fifo_write_hs_tail(reg, data, len);
+    return;
+  }
+  /* USBFS / MBW=16 path. */
   const uint16_t even = (uint16_t)(len >> 1U);
   for (uint16_t i = 0U; i < even; ++i) {
     const uint16_t lo = (uint16_t)data[(2U * i) + 0U];
