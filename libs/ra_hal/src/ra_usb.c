@@ -1668,16 +1668,28 @@ internal_fifo_write_hs_tail(volatile r_usb_regs_t* reg, const uint8_t* data, uin
   const uint16_t sel_save = reg->CFIFOSEL;
   const uint16_t sel_base = (uint16_t)(sel_save & (uint16_t)~(uint16_t)k_ra_fifosel_mbw_msk);
   uint16_t       offset   = (uint16_t)(len & (uint16_t)~(uint16_t)0x3U);
+  /* For USBHS in little-endian mode, FSP writes the 16-bit residual
+   * halfword to CFIFOH (CFIFO base + 0x02) and the 8-bit residual
+   * byte to CFIFOHH (CFIFO base + 0x03), NOT to CFIFO itself. See
+   * FSP r_usb_reg_access.h: USB1_CFIFO16=USB_M1->CFIFOH and
+   * USB1_CFIFO8=USB_M1->CFIFOHH (in USB_CFG_LITTLE branch). The
+   * chip uses these address aliases to commit the trailing 0..3
+   * bytes when MBW is narrowed; a write to CFIFO at offset +0x00
+   * in MBW=16/8 mode is silently dropped on USBHS, leaving DTLN
+   * unchanged at 4N (verified empirically: 18-byte push showed
+   * DTLN=16 instead of 18, and Linux saw -EOVERFLOW). */
+  volatile uint16_t* const cfifoh  = (volatile uint16_t*)((uintptr_t)&reg->CFIFO + 2U);
+  volatile uint8_t* const  cfifohh = (volatile uint8_t*)((uintptr_t)&reg->CFIFO + 3U);
   if ((tail & 0x2U) != 0U) {
     reg->CFIFOSEL     = (uint16_t)(sel_base | k_ra_fifosel_mbw_16);
     const uint16_t lo = (uint16_t)data[offset + 0U];
     const uint16_t hi = (uint16_t)data[offset + 1U];
-    reg->CFIFO        = (uint16_t)(lo | (uint16_t)(hi << k_ra_usb_byte_bits));
+    *cfifoh           = (uint16_t)(lo | (uint16_t)(hi << k_ra_usb_byte_bits));
     offset            = (uint16_t)(offset + 2U);
   }
   if ((tail & 0x1U) != 0U) {
     reg->CFIFOSEL = (uint16_t)(sel_base | k_ra_fifosel_mbw_8);
-    reg->CFIFO    = (uint16_t)data[offset];
+    *cfifohh      = data[offset];
   }
   reg->CFIFOSEL = sel_save;
 }
