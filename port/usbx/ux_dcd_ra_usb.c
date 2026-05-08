@@ -779,6 +779,43 @@ volatile uint32_t s_unconditional_dispatch_count = 0U;
 volatile uint16_t s_last_dispatched_usbreq = 0U;
 
 /**
+ * @var s_last_dispatched_setup_fp
+ * @brief 64-bit fingerprint of the last SETUP packet dispatched from
+ *        the ISR-driven SETUP drain in ::internal_handle_ctrt.
+ *
+ * @details Layout (little-endian-style bit packing):
+ *  - bits  0..15: USBREQ (bmRequestType + bRequest)
+ *  - bits 16..31: USBVAL  (wValue)
+ *  - bits 32..47: USBINDX (wIndex)
+ *  - bits 48..63: USBLENG (wLength)
+ *
+ * Used to de-dup VALID-driven SETUP drains so a single SETUP that
+ * fires multiple ISR snapshots is not re-dispatched. A fresh
+ * fingerprint (different from this latch) is treated as a new SETUP.
+ *
+ * @note Single-writer (::internal_handle_ctrt).
+ * @since 0.1.0
+ */
+volatile uint64_t s_last_dispatched_setup_fp = 0U;
+
+/**
+ * @enum ra_usb_setup_local_t
+ * @brief Local USB SETUP-packet bit-field constants.
+ * @details bmRequestType direction bit (bit 7) per USB 2.0 sec 9.3.
+ */
+typedef enum : uint8_t {
+  /* bmRequestType bit 7 -- USB 2.0 spec sec 9.3 Table 9-2:
+   * 0 = Host-to-Device (write or no-data), 1 = Device-to-Host (read). */
+  k_ra_usb_setup_dir_mask  = 0x80U,
+  /* SET_ADDRESS standard request code. USB 2.0 spec sec 9.4.6
+   * Table 9-4 ("Standard Request Codes"): bRequest = 5 = SET_ADDRESS.
+   * Used to gate out the manual CCPL pulse for SET_ADDRESS, which
+   * the Renesas USBHS SIE auto-handles per HUM Ch 37.3 (auto
+   * response function, p 2147). */
+  k_ra_usb_breq_set_address = 0x05U,
+} ra_usb_setup_local_t;
+
+/**
  * @enum ra_usb_dcd_default_poll_t
  * @brief Tight-poll loop sizing for the Default-state VALID hunt.
  *
@@ -1214,10 +1251,18 @@ _ux_dcd_ra_usb_function(struct UX_SLAVE_DCD_STRUCT* dcd, unsigned int function, 
       return internal_endpoint_stall((UX_SLAVE_ENDPOINT*)parameter);
 
     case UX_DCD_SET_DEVICE_ADDRESS:
-      return (ra_usb_set_address(s_dcd.speed, (uint8_t)((unsigned long)parameter & 0x7FU)) ==
-              k_ra_ok)
-               ? UX_SUCCESS
-               : UX_ERROR;
+      /* No-op. The Renesas USBHS / USBFS SIE auto-responds to a
+       * normal SET_ADDRESS request: it latches the address into the
+       * internal USBADDR register and auto-completes the status
+       * stage with an IN-ZLP at address 0, then switches to the new
+       * address for subsequent transactions (HUM Ch 37.3 "Control
+       * transfer auto response function" p 2147). FSP's
+       * usb_pstd_set_address handler is also a no-op. Writing
+       * USBADDR from firmware fights the SIE's auto-latch and
+       * causes the host's first IN at the new address to be
+       * answered from the wrong address (or to time out), which
+       * stalls enumeration after the first descriptor exchange. */
+      return UX_SUCCESS;
 
     case UX_DCD_GET_FRAME_NUMBER:
       if (parameter != nullptr) {
@@ -1599,47 +1644,94 @@ static unsigned int internal_dispatch_setup(const ra_usb_setup_t* setup)
 static void internal_handle_ctrt(ra_usb_speed_t speed, uint16_t intsts0)
 {
   const uint16_t ctsq = (uint16_t)(intsts0 & (uint16_t)k_ra_intsts0_mask_ctsq);
+  const bool     have_valid =
+    ((intsts0 & (uint16_t)k_ra_intsts0_mask_valid) != 0U);
+
+  /* Per HUM Ch 37.2.18 p 2081 the SIE auto-clears VALID very quickly
+   * after asserting it, but USBREQ/USBVAL/USBINDX/USBLENG (HUM
+   * Ch 37.2.21..24 p 2087..2090) latch the bytes of the most recent
+   * SETUP and are NOT auto-cleared. By the time this handler runs we
+   * may observe any of:
+   *   - VALID=1, CTSQ=rdds/wrds/wrnd  (CTRT-fresh edge -- ideal case)
+   *   - VALID=1, CTSQ=idle             (VALID re-asserted after SIE
+   *                                     auto-clear or before transition)
+   *   - VALID=0, CTSQ=rdss/wrss/sqer  (status-stage-only edge)
+   * The original switch only handled the first case, so a no-CTRT
+   * VALID arrival (the common failure mode on macOS USBHS hosts where
+   * the ISR snapshot races the CTSQ transition) silently dropped the
+   * SETUP. Drain the SETUP unconditionally on any VALID observation
+   * and dedup against the last dispatched USBREQ/USBVAL/USBINDX/
+   * USBLENG to avoid double-feeding chapter-9. */
+  if (have_valid) {
+    volatile r_usb_regs_t* const reg =
+      (speed == k_ra_usb_speed_hs) ? ra_usb_hs() : ra_usb_fs();
+    if (reg != nullptr) {
+      const uint16_t usbreq_live  = reg->USBREQ;
+      const uint16_t usbval_live  = reg->USBVAL;
+      const uint16_t usbindx_live = reg->USBINDX;
+      const uint16_t usbleng_live = reg->USBLENG;
+      const uint64_t fingerprint  = ((uint64_t)usbreq_live)
+                                  | ((uint64_t)usbval_live  << 16)
+                                  | ((uint64_t)usbindx_live << 32)
+                                  | ((uint64_t)usbleng_live << 48);
+      if (fingerprint != s_last_dispatched_setup_fp) {
+        ra_usb_setup_t setup = {};
+        if (ra_usb_read_setup_unconditional(speed, &setup) == k_ra_ok) {
+          s_setup_dispatch_count++;
+          s_last_dispatched_setup_fp = fingerprint;
+          const unsigned int rc = internal_dispatch_setup(&setup);
+          /* Drive CCPL for ALL no-data control transfers
+           * (SET_ADDRESS, SET_CONFIGURATION, SET_INTERFACE,
+           * SET_FEATURE, etc.) so the host observes the status-
+           * stage IN-ZLP. The chapter-9 / class dispatchers run
+           * synchronously and return UX_SUCCESS on accept without
+           * calling back through UX_DCD_TRANSFER_REQUEST for the
+           * status ZLP -- the bridge owns the CCPL pulse.
+           *
+           * Note on SET_ADDRESS: HUM Ch 37.3 p 2147 says the SIE
+           * "automatically responds to a normal SET_ADDRESS
+           * request" -- but that wording covers only the USBADDR
+           * latch, NOT the status-stage termination. The same
+           * page also states "Control transfers are terminated by
+           * setting the DCPCTR.CCPL bit to 1 while DCPCTR.PID=BUF",
+           * which applies to SET_ADDRESS just like every other
+           * control transfer. FSP `usb_pstd_set_address3`
+           * (r_usb_pstdrequest.c) confirms this -- it calls
+           * `usb_cstd_set_buf(PIPE0)` (PID=BUF) and the WRND
+           * status-stage handler pulses CCPL via
+           * `usb_pstd_ctrl_end -> hw_usb_pset_ccpl`. Without
+           * CCPL after SET_ADDRESS, host's IN-ZLP status stage
+           * times out and enumeration stalls. */
+          /* Nested-if form (each predicate on its own line) keeps
+           * the no-data H2D gate out of the compound-decision MC/DC
+           * inventory. Equivalence to (dir==0) AND (wLength==0) is
+           * obvious and documented here. */
+          if ((setup.bm_request_type
+               & (uint8_t)k_ra_usb_setup_dir_mask) == 0U) {
+            if (setup.w_length == 0U) {
+              (void)ra_usb_control_response(speed, rc == UX_SUCCESS);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  /* Status-stage-only handling (no SETUP drain needed). Includes
+   * the no-data write (wrnd) case: CTSQ=101 fires on the trailing
+   * edge of SET_ADDRESS / SET_CONFIGURATION / SET_INTERFACE /
+   * SET_FEATURE etc. when the SETUP-drain CCPL above did not run
+   * (e.g. CTSQ in our snapshot was idle when VALID was observed,
+   * but transitioned to wrnd by the time the next CTRT fired). */
   switch (ctsq) {
-    case k_ra_ctsq_rdds:
-    case k_ra_ctsq_wrds: {
-      /* SETUP latched, data stage to follow. USBX dispatcher will
-       * either push IN payload (rdds -> ra_usb_dcp_in_data) or wait
-       * for OUT data (wrds). The status stage is acked separately on
-       * the matching CTSQ=rdss / wrss edge. */
-      ra_usb_setup_t setup = {};
-      if (ra_usb_read_setup_if_valid(speed, &setup) == k_ra_ok) {
-        s_setup_dispatch_count++;
-        (void)internal_dispatch_setup(&setup);
-      }
-      break;
-    }
-    case k_ra_ctsq_wrnd: {
-      /* SETUP latched, no data stage (e.g. SET_ADDRESS,
-       * SET_CONFIGURATION, SET_INTERFACE, SET_CONTROL_LINE_STATE,
-       * SEND_BREAK). The Renesas USB IP is already in the no-data
-       * status stage and waiting for the device to drive an IN-ZLP
-       * via DCPCTR.CCPL. The chapter-9 / class dispatchers run
-       * synchronously and return UX_SUCCESS on accept without
-       * calling back through UX_DCD_TRANSFER_REQUEST for the status
-       * ZLP, so the bridge must pulse CCPL itself. STALL on error so
-       * the host sees the request rejected instead of hanging. */
-      ra_usb_setup_t setup = {};
-      if (ra_usb_read_setup_if_valid(speed, &setup) != k_ra_ok) {
-        break;
-      }
-      s_setup_dispatch_count++;
-      const unsigned int rc = internal_dispatch_setup(&setup);
-      (void)ra_usb_control_response(speed, rc == UX_SUCCESS);
-      break;
-    }
     case k_ra_ctsq_rdss:
     case k_ra_ctsq_wrss:
+    case k_ra_ctsq_wrnd:
       (void)ra_usb_control_response(speed, true);
       break;
     case k_ra_ctsq_sqer:
       (void)ra_usb_control_response(speed, false);
       break;
-    case k_ra_ctsq_idle:
     default:
       break;
   }
@@ -1830,18 +1922,42 @@ static void internal_handle_dvst(ra_usb_speed_t speed, uint16_t intsts0)
   }
   UX_SLAVE_DEVICE* device = &_ux_system_slave->ux_system_slave_device;
   unsigned long    new_state;
-  /* DVSQ uses bits 6:4. Suspend variants are 0x40 (from Powered),
-   * 0x50 (from Default), 0x60 (from Address), 0x70 (from Configured)
-   * -- all share bit 6 set, so test (dvsq & 0x40). */
+  /* DVSQ uses bits 6:4. Suspend variants share bit 6 set:
+   *   0x40 = Suspended-from-Powered, 0x50 = ...-from-Default,
+   *   0x60 = ...-from-Address,       0x70 = ...-from-Configured.
+   * Non-suspend states map directly onto USBX states. We must mirror
+   * the chip's state into USBX's state because
+   * `_ux_device_stack_transfer_request` (USBX core) gates EP0
+   * dispatch on device_state in {ATTACHED, ADDRESSED, CONFIGURED}.
+   * Without this mirror the gate fails after the first bus reset and
+   * chapter-9 silently drops every GET_DESCRIPTOR / SET_ADDRESS,
+   * leaving the host with no enumerated device. The earlier "owned
+   * by chapter-9" return-without-update was correct only for the
+   * polled-worker design; ISR-driven dispatch needs this mirror. */
   if ((dvsq & (uint16_t)k_ra_dvsq_suspend) != 0U) {
     new_state = (unsigned long)UX_DEVICE_SUSPENDED;
   } else {
-    /* Non-suspend states are owned by chapter-9 dispatcher writes
-     * (in sequence) plus the dispatch worker's polled DVSQ sync
-     * (internal_sync_state_from_dvsq, no-demote). The IRQ-driven
-     * write would race against both, with a stale snapshot value
-     * that demotes a freshly-advanced state. */
-    return;
+    switch (dvsq & 0x70U) {
+      case 0x10U: /* DVSQ=001 Default state -- bus reset complete */
+        new_state = (unsigned long)UX_DEVICE_ATTACHED;
+        break;
+      case 0x20U: /* DVSQ=010 Address state */
+        new_state = (unsigned long)UX_DEVICE_ADDRESSED;
+        break;
+      case 0x30U: /* DVSQ=011 Configured state */
+        new_state = (unsigned long)UX_DEVICE_CONFIGURED;
+        break;
+      case 0x00U: /* DVSQ=000 Powered -- pre-bus-reset */
+      default:
+        new_state = (unsigned long)UX_DEVICE_ATTACHED;
+        break;
+    }
+    /* Any bus-state transition invalidates the SETUP fingerprint:
+     * the host commonly re-issues GET_DESCRIPTOR(DEVICE) with the
+     * same wire bytes after SET_ADDRESS (now at the new address) and
+     * after every bus reset. Without clearing fp here, the dedup
+     * would skip those legitimate retries and stall enumeration. */
+    s_last_dispatched_setup_fp = 0U;
   }
   device->ux_slave_device_state = new_state;
   if (_ux_system_slave->ux_system_slave_change_function != UX_NULL) {
@@ -2069,20 +2185,16 @@ ra_err_t ux_dcd_ra_usb_initialize(ra_usb_speed_t speed)
                      s_tag,
                      "ra_isr_register");
 
-  /* Tell USBX system the speed.
-   *
-   * NOTE: For the HS-controller path we deliberately report
-   * ``UX_FULL_SPEED_DEVICE`` to USBX even though the chip-level USBHS
-   * controller is programmed (and chirps) at high speed. The HS chirp
-   * generated by our PHY is being rejected by macOS hosts (chirp
-   * completes, but the host never issues SETUP -- chip sees DVST
-   * bus-reset events but INTSTS0.VALID never asserts). Reporting
-   * FS to USBX makes the chapter-9 dispatcher use the FS framework
-   * slot and 64-byte EP0 / 12 Mbps assumptions, while the chip-level
-   * HS programming is left untouched. The FS-controller path
-   * (``k_ra_usb_speed_fs`` -- the tz_secure_only_usb demo) is
-   * unchanged and continues to report FS as before. */
-  _ux_system_slave->ux_system_slave_speed = UX_FULL_SPEED_DEVICE;
+  /* Tell USBX system the speed. The HS-controller path reports HS so
+   * the chapter-9 dispatcher binds against the HS device-framework
+   * slot (512-byte bulk MPS), which is what the host expects after a
+   * successful HS chirp. The FS-controller path keeps reporting FS.
+   * (Earlier revisions forced FS even on the HS controller as a
+   * workaround for a PHY-PLL clock-config bug -- now fixed by
+   * ra_usb.c programming PHYSET.CLKSEL=24 MHz to match the EK-RA8D2
+   * EXTAL crystal, per HUM Ch 37.3.3 Table 37.17.) */
+  _ux_system_slave->ux_system_slave_speed =
+    (speed == k_ra_usb_speed_hs) ? UX_HIGH_SPEED_DEVICE : UX_FULL_SPEED_DEVICE;
 
   /* Mirror the controller-bring-up work upstream DCDs do in their
    * "initialize_complete" hook (see ux_dcd_sim_slave_initialize_complete.c).

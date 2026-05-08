@@ -767,23 +767,23 @@ static ra_err_t internal_usbhs_try_clksel(volatile uint16_t* physet,
 }
 
 /**
- * @brief USBHS embedded-PHY bring-up (FSP `hw_usb_pmodule_init` IP1 branch).
+ * @brief USBHS embedded-PHY bring-up (HUM Figure 37.2 p 2121).
  *
- * @details Mirrors the Renesas FSP USBHS device-mode bring-up sequence
- * for the standard 12 MHz PHY UTMI reference (USB60CLK / 5; USB60CLK
- * itself is supplied at 60 MHz by ::ra_cgc_usbhs_clock_enable):
- *  1. PHYSET |= DIRPD | CLKSEL_mask  (assert PD, set CLKSEL field)
- *  2. PHYSET &= ~CLKSEL; |= CLKSEL_12 (force 12 MHz reference)
- *  3. delay 1 us
- *  4. PHYSET &= ~DIRPD                (release PHY power-down)
- *  5. delay 1 ms
- *  6. PHYSET &= ~PLLRESET             (release PHY PLL reset)
- *  7. SYSCFG &= ~DRPD                 (clear host pull-down)
- *  8. SYSCFG |= USBE                  (enable USB module)
- *  9. LPSTS  |= SUSPENDM              (release UTMI SuspendM)
- * 10. wait PLLSTA.PLLLOCK = 1
- * 11. BUSWAIT = 0x0F04                (4-wait + reserved b11-b8)
- * 12. PHYSET |= REPSEL_16             (terminator adjust cycle)
+ * @details Implements the device-mode PHY bring-up flow exactly as
+ * documented in HUM Ch 37.3.3 + Figure 37.2. The PHY UTMI internal PLL
+ * takes EXTAL directly (24 MHz on EK-RA8D2); USB60CLK = 60 MHz is the
+ * separate LINK domain clock supplied by ::ra_cgc_usbhs_pll_enable.
+ *  1. SYSCFG |= HSE                   (high-speed enable, before PHY)
+ *  2. PHYSET |= DIRPD | PLLRESET; CLKSEL = 11b (24 MHz)
+ *  3. delay 1 us                      (HUM "Wait 1 us" after CLKSEL)
+ *  4. PHYSET &= ~DIRPD                (release PHY analog power-down)
+ *  5. delay 1 ms                      (HUM "Wait 1 ms" after DIRPD)
+ *  6. PHYSET &= ~PLLRESET             (release UTMI PHY PLL reset)
+ *  7. LPSTS  |= SUSPENDM              (start the PHY clock)
+ *  8. wait PLLSTA.PLLLOCK = 1         (UTMI PLL lock confirmation)
+ *  9. SYSCFG &= ~DRPD; |= USBE        (enable module operation)
+ * 10. BUSWAIT = 0x0F04                (4-wait + reserved b11-b8)
+ * 11. PHYSET |= REPSEL_16             (terminator adjust cycle)
  *
  * The HS instance has no SCKE bit (HUM Ch 37.2.1 "SYSCFG" register
  * layout, p 2060); writing bit 10 there is a no-op.
@@ -814,43 +814,32 @@ static ra_err_t internal_usbhs_phy_bringup(volatile r_usb_regs_t* reg)
   reg->SYSCFG      = (uint16_t)(reg->SYSCFG | (uint16_t)(1U << k_ra_syscfg_bit_hse));
   s_phy_step_probe = (uint8_t)k_ra_usbhs_phy_step_hse_set;
 
-  /* Step 2: CLKSEL selection. With USB60CKDIVCR=/4 the PHY input is
-   * 60 MHz (PLL2P=240 MHz / 4), matching the HUM Ch 37.3.3 named-rate
-   * requirement (p 2102 line 85433: "A 60-MHz clock must be supplied
-   * ... USB60CLK is the operating clock for the USBHS module"). The
-   * PHY then divides USB60CLK internally to derive its UTMI reference;
-   * the canonical CLKSEL for a 60 MHz USB60CLK is 12 MHz (60/5). The
-   * bisect is retained as a defensive sweep so a CGC regression
-   * surfaces as a different winner instead of a hard hang; CLKSEL=12
-   * is tried FIRST so a healthy boot locks on attempt 0.
-   * Total wall time bound: 4 * (~50 ms attempt + ~1 ms settle) <
-   * 250 ms budget per the bring-up debug spec. */
-  const uint16_t s_clksel_sweep[(uint32_t)k_ra_usbhs_clksel_attempts_n] = {
-    (uint16_t)k_ra_physet_clksel_12,
-    (uint16_t)k_ra_physet_clksel_48,
-    (uint16_t)k_ra_physet_clksel_24,
-    (uint16_t)k_ra_physet_clksel_20,
-  };
-
-  ra_err_t lock_err = k_ra_err_hw_timeout;
-  for (uint8_t attempt = 0U; attempt < (uint8_t)k_ra_usbhs_clksel_attempts_n; ++attempt) {
-    s_phy_step_probe = (uint8_t)k_ra_usbhs_phy_step_clksel_12;
-    lock_err         = internal_usbhs_try_clksel(physet, lpsts, s_clksel_sweep[attempt]);
-    s_clksel_attempt_pllsta[attempt] = s_usbhs_pllsta_probe;
-    s_phy_step_probe                 = (uint8_t)k_ra_usbhs_phy_step_pll_released;
-    if (lock_err == k_ra_ok) {
-      s_clksel_winner = (uint8_t)(s_clksel_sweep[attempt] & (uint16_t)k_ra_physet_clksel);
-      break;
-    }
-  }
-
-  s_usbhs_init_probe = (uint32_t)*physet;
+  /* Step 2: CLKSEL = 24 MHz (PHYSET[5:4] = 11b, value 0x30).
+   *
+   * Per HUM Ch 37.3.3 "Supplying the Clock", Table 37.17 (p 2120) the
+   * USB-PHY internal PLL takes its reference clock DIRECTLY FROM THE
+   * EXTAL PIN -- not from USB60CLK. Allowed EXTAL frequencies are 12,
+   * 20, 24 or 48 MHz; PHYSET.CLKSEL[1:0] selects which one.
+   *
+   * EK-RA8D2 fits a 24 MHz crystal (see ra_cgc.c::k_ra_pll2_local_t
+   * comments), so CLKSEL must be 11b (k_ra_physet_clksel_24). USB60CLK
+   * (60 MHz, PLL2P/4) is still required -- it is the LINK domain clock
+   * for the USBHS module itself -- but it does NOT feed the PHY UTMI
+   * PLL. Earlier revisions of this code mis-modeled CLKSEL as
+   * "USB60CLK / 5 = 12 MHz" and bisected over {12,48,24,20}; the host
+   * never enumerated because the PHY PLL was locking at the wrong
+   * frequency, producing malformed HS chirp K signaling. */
+  s_phy_step_probe  = (uint8_t)k_ra_usbhs_phy_step_clksel_12;
+  ra_err_t lock_err = internal_usbhs_try_clksel(physet, lpsts, (uint16_t)k_ra_physet_clksel_24);
+  s_clksel_attempt_pllsta[0] = s_usbhs_pllsta_probe;
+  s_usbhs_init_probe         = (uint32_t)*physet;
 
   if (lock_err != k_ra_ok) {
     s_clksel_winner = (uint8_t)k_ra_usbhs_clksel_no_winner;
-    ra_log_error(s_tag, "usbhs: PHY PLL lock timeout (CLKSEL bisect exhausted)");
+    ra_log_error(s_tag, "usbhs: PHY PLL lock timeout (CLKSEL=24)");
     return lock_err;
   }
+  s_clksel_winner  = (uint8_t)k_ra_physet_clksel_24;
   s_phy_step_probe = (uint8_t)k_ra_usbhs_phy_step_pll_locked;
 
   /* HUM Figure 37.2 p 2121: USBE/DRPD are programmed AFTER PLLLOCK
