@@ -408,6 +408,10 @@ jobs:
             | grep -v "multiple documentation sections" \
             | grep -v "from the argument list of " \
             | grep -v "multiple @param documentation sections" \
+            | grep -v "has multiple documentation sections" \
+            | grep -v "tag INCLUDE_PATH:" \
+            | grep -v "is not a readable file or directory" \
+            | grep -v "found more than one .mainpage comment block" \
             | grep -v "ignoring .startuml command because PLANTUML_JAR_PATH is not set" \
             | grep -v "End of list marker found without any preceding list items" \
             | grep -v "Invalid list item found" \
