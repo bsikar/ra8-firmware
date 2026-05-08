@@ -21,6 +21,9 @@ COPYRIGHT_SIGNATURES = (
 
 EXTENSIONS = {".c", ".h", ".cpp", ".hpp", ".cmake", ".sh", ".py"}
 
+# Vendored / generated trees we don't author -- skip wholesale.
+EXCLUDED_PARTS = {"third_party", "_deps", "build", "build-cov"}
+
 
 def needs_header(path: pathlib.Path) -> bool:
     if path.suffix.lower() not in EXTENSIONS and path.name != "CMakeLists.txt":
@@ -28,6 +31,8 @@ def needs_header(path: pathlib.Path) -> bool:
     if path.is_dir():
         return False
     if not path.exists():
+        return False
+    if any(part in EXCLUDED_PARTS for part in path.parts):
         return False
     return True
 

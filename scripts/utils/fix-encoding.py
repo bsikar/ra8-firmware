@@ -51,6 +51,11 @@ EXTENSIONS = {
 }
 
 
+# Vendored / generated trees we don't author -- skip wholesale.
+# Mirrors check_no_ai_attribution.py and check_line_citations.py.
+EXCLUDED_PARTS = {"third_party", "_deps", "build", "build-cov"}
+
+
 def rewrite(text: str) -> tuple[str, int]:
     """Return replaced text and the number of substitutions."""
     count = 0
@@ -96,6 +101,8 @@ def walk(target: pathlib.Path, *, check_only: bool) -> int:
         if not path.is_file():
             continue
         if path.suffix.lower() not in EXTENSIONS:
+            continue
+        if any(part in EXCLUDED_PARTS for part in path.parts):
             continue
         total += process(path, check_only=check_only)
     return total

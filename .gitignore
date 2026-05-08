@@ -23,10 +23,12 @@ compile_commands.json
 *.la
 
 # OS-level crash dumps (e.g. host-side test executables that segfault
-# in the Docker test container land at the repo root)
-core
-core.*
-vgcore.*
+# in the Docker test container land at the repo root). Anchored to the
+# repo root so they don't shadow legitimate `core/` directories inside
+# vendored trees (libs/third_party/tf-psa-crypto/core, etc.).
+/core
+/core.*
+/vgcore.*
 
 # Test build artifacts
 tests/build/
