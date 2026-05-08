@@ -1229,6 +1229,50 @@ ra_err_t ra_usb_set_address(ra_usb_speed_t speed, uint8_t address)
  * @note Safe in IRQ-callback context (no spin loops).
  * @since 0.1.0
  */
+/**
+ * @brief Reset DCP defaults + clear DCP FIFO on bus-reset rearm.
+ * @details Helper extracted from ::ra_usb_device_busreset_rearm to keep
+ *          the top-level function under the clang-tidy line budget.
+ *          Re-asserts DCPCFG=0 and DCPMAXP=64, then pulses
+ *          CFIFOCTR.BCLR (HUM Ch 36.2.8 / 37.2.10 p 1979 / 2073) to
+ *          wipe any bytes a previous incomplete control transfer left
+ *          in the DCP FIFO. Without the BCLR pulse the next
+ *          ra_usb_dcp_in_data sees FRDY=0, times out, and the DCD
+ *          path STALLs EP0 (Linux dmesg "device descriptor read/N,
+ *          error -110" on every retry).
+ * @param[in] reg Selected USB instance register block.
+ * @pre reg != NULL.
+ * @pre Caller is in IRQ-callback context.
+ * @post DCPCFG = 0, DCPMAXP = 64, DCP FIFO cleared.
+ * @post CFIFOSEL points at DCP IN (CURPIPE=0, MBW=16, ISEL=1).
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static void internal_dcp_reset_defaults(volatile r_usb_regs_t* reg)
+{
+  reg->DCPCFG  = 0U;
+  reg->DCPMAXP = k_ra_usb_dcp_max_packet;
+  internal_select_cfifo(reg, 0U, true);
+  reg->CFIFOCTR = (uint16_t)k_ra_fifoctr_bclr;
+}
+
+/**
+ * @brief Implementation of ra_usb_device_busreset_rearm (see header).
+ * @details Re-default DCPCFG/DCPMAXP, clear all PIPECTR[*], drop
+ *          BRDYSTS/NRDYSTS/BEMPSTS, clear the DCP FIFO via
+ *          CFIFOCTR.BCLR, and re-arm INTENB0 with the post-init mask.
+ *          Mirrors FSP r_usb_psignal.c::usb_pstd_bus_reset.
+ * @param[in] speed Which controller (FS or HS).
+ * @return ra_err_t result code.
+ * @retval k_ra_ok               Success.
+ * @retval k_ra_err_invalid_arg  speed out of range.
+ * @pre Module clock and power are on.
+ * @pre Caller is in IRQ-callback context (DVST=Default branch).
+ * @post DCPCFG=0, DCPMAXP=64, DCP FIFO cleared, INTENB0 re-armed.
+ * @post All non-control PIPECTR[*] cleared (PID=NAK).
+ * @note Not thread-safe; caller holds the DCP lock.
+ * @since 0.1.0
+ */
 ra_err_t ra_usb_device_busreset_rearm(ra_usb_speed_t speed)
 {
   volatile r_usb_regs_t* reg = internal_pick(speed);
@@ -1252,32 +1296,12 @@ ra_err_t ra_usb_device_busreset_rearm(ra_usb_speed_t speed)
   reg->NRDYSTS = 0U;
   reg->BEMPSTS = 0U;
 
-  /* CFIFOSEL is intentionally NOT re-written here. Probe data showed
-   * that a write of 0x0400 (MBW=16) inside the IRQ-callback context
-   * reads back as 0x0000 (HS instance, HUM Ch 37.2.8 CFIFOSEL p 2071).
-   * SETUP data is latched into the dedicated USBREQ/USBVAL/USBINDX/
-   * USBLENG registers (HUM Ch 37.2.21..24, p 2087..2090), not via the
-   * CFIFO port, so leaving CFIFOSEL alone has no effect on SETUP
-   * reception. The data stage of the control transfer re-points
-   * CFIFOSEL just before draining or filling the DCP FIFO. FSP parity:
-   * usb_pstd_bus_reset (r_usb_psignal.c) writes only DCPCFG and
-   * DCPMAXP -- it does NOT touch CFIFOSEL.
-   *
-   * HUM Ch 36.2.19 / 37.2.29 DCPCFG p 1989 / 2091 and HUM Ch 36.2.20 /
-   * 37.2.30 DCPMAXP p 1990 / 2092. Mirror FSP usb_pstd_bus_reset by
-   * re-asserting the post-init DCP defaults so any stray write that
-   * touched DCPCFG/DCPMAXP between the previous reset and this one is
-   * undone. DCPCTR is NOT written here: HUM Ch 36.2.21 / 37.2.31
-   * (p 1991 / 2093) states "On detecting a USB bus reset, the USBHS
-   * sets PID[1:0] to NAK" and "[CCPL] is initialized by a USB bus
-   * reset" -- the IP auto-defaults the writable DCPCTR fields. Writing
-   * DCPCTR ourselves would race the SIE which may already be in the
-   * middle of SETUP-latch state-machine work (PID=NAK + VALID=1
-   * latched per HUM Ch 37.2.31 p 2095, "On receiving a setup packet,
-   * the USBHS sets PID[1:0] to NAK ... and the PID[1:0] setting cannot
-   * be changed until the software clears the VALID flag to 0"). */
-  reg->DCPCFG  = 0U;
-  reg->DCPMAXP = k_ra_usb_dcp_max_packet;
+  /* DCP defaults + FIFO clear (see helper). HUM Ch 36.2.19 / 37.2.29
+   * DCPCFG p 1989 / 2091 and HUM Ch 36.2.20 / 37.2.30 DCPMAXP p 1990
+   * / 2092. DCPCTR is intentionally NOT written here: HUM Ch 36.2.21
+   * / 37.2.31 (p 1991 / 2093) states the IP auto-defaults the
+   * writable DCPCTR fields on bus reset (PID=NAK, CCPL=0). */
+  internal_dcp_reset_defaults(reg);
 
   /* HUM Ch 36.2.10 "INTENB0 : Interrupt Enable Register 0", p 1980.
    * Some RA silicon revisions clear individual INTENB0 bits across a
@@ -1792,25 +1816,69 @@ static ra_err_t internal_dcp_in_zlp(volatile r_usb_regs_t* reg)
  * @note Not thread-safe.
  * @since 0.1.0
  */
+/* Diagnostic probes for the DCP IN data push (read via JLink). */
+volatile uint32_t s_dcp_push_count       = 0U;
+volatile uint16_t s_dcp_dcpctr_pre_push  = 0U;
+volatile uint16_t s_dcp_dcpctr_post_push = 0U;
+volatile uint16_t s_dcp_cfifoctr_pre     = 0U;
+volatile uint16_t s_dcp_cfifoctr_post    = 0U;
+volatile uint16_t s_dcp_last_len         = 0U;
+volatile uint8_t  s_dcp_last_err         = 0U; /* 0=ok, 1=frdy timeout, 2=null arg */
+
+/**
+ * @brief Implementation of ra_usb_dcp_in_data (see header for full contract).
+ * @details Push a control-IN data-stage payload (or zero-length packet) into
+ *          the DCP FIFO, set BVAL=1 and DCPCTR.PID=BUF so the chip
+ *          transmits on the next IN token from the host. Captures
+ *          pre/post register snapshots into ::s_dcp_push_count and
+ *          friends for JLink-readable diagnostic.
+ * @param[in] speed Which controller (FS or HS).
+ * @param[in] data  Payload bytes (may be NULL when len==0).
+ * @param[in] len   Byte count; may exceed DCPMAXP and will be chunked.
+ * @return ra_err_t result code.
+ * @retval k_ra_ok               Payload queued; PID=BUF.
+ * @retval k_ra_err_invalid_arg  speed out of range OR data NULL with
+ *                                len > 0.
+ * @retval k_ra_err_hw_timeout   FRDY never asserted within the bound.
+ * @pre Caller has cleared INTSTS0.VALID (PID writes are gated by VALID
+ *      per HUM Ch 37.2.31 p 2095).
+ * @pre USB module clock and power are on.
+ * @post On success, len bytes have been queued and DCPCTR.PID == BUF.
+ * @post On error, DCPCTR.PID is left unchanged from its prior value.
+ * @note Not thread-safe; caller holds the DCP lock.
+ * @since 0.1.0
+ */
 ra_err_t ra_usb_dcp_in_data(ra_usb_speed_t speed, const uint8_t* data, uint16_t len)
 {
   volatile r_usb_regs_t* reg = internal_pick(speed);
   if (reg == nullptr) {
+    s_dcp_last_err = 2U;
     return k_ra_err_invalid_arg;
   }
   if ((data == nullptr) && (len != 0U)) {
+    s_dcp_last_err = 2U;
     return k_ra_err_invalid_arg;
   }
+  s_dcp_push_count++;
+  s_dcp_last_len        = len;
+  s_dcp_dcpctr_pre_push = reg->DCPCTR;
 
   /* Select DCP (CURPIPE = 0) on CFIFO in IN direction. Done once; the
    * selection persists across chunks.
    * HUM Ch 36.2.7 "CFIFOSEL : CFIFO Port Select Register", p 1976 */
   internal_select_cfifo(reg, 0U, true);
+  s_dcp_cfifoctr_pre = reg->CFIFOCTR;
 
+  ra_err_t err;
   if (len == 0U) {
-    return internal_dcp_in_zlp(reg);
+    err = internal_dcp_in_zlp(reg);
+  } else {
+    err = internal_dcp_in_payload(reg, data, len);
   }
-  return internal_dcp_in_payload(reg, data, len);
+  s_dcp_cfifoctr_post    = reg->CFIFOCTR;
+  s_dcp_dcpctr_post_push = reg->DCPCTR;
+  s_dcp_last_err         = (err == k_ra_ok) ? 0U : 1U;
+  return err;
 }
 
 /**
