@@ -2104,26 +2104,16 @@ void ux_dcd_ra_usb_irq(ra_usb_speed_t speed, uint16_t intsts0)
     s_intsts0_snapshot_count++;
   }
 
-  /* SETUP / chapter-9 path: must run before the bulk/interrupt walk
-   * so that the host's GET_DESCRIPTOR / SET_ADDRESS /
-   * SET_CONFIGURATION sequence completes during enumeration. */
-  if (have_ctrt) {
-    s_ctrt_irq_count++;
-    internal_handle_ctrt(speed, intsts0);
-  }
-  /* VALID-without-CTRT fallback. The polled worker can race the
-   * controller and snapshot INTSTS0 between the VALID-set edge and
-   * the CTRT-set edge -- on HS this window is wider because each
-   * dispatch tick yields the CPU. ra_usb_dispatch preserves VALID
-   * on its W0C ack so the fallback can drain USBREQ/USBVAL/USBINDX/
-   * USBLENG even if CTRT was already cleared by a previous tick.
-   * HUM Ch 36.2.14 INTSTS0 p 1985 (VALID = bit 3, CTSQ = bits 0..2). */
-  else if (have_valid) {
-    internal_handle_ctrt(speed, intsts0);
-  }
-
-  /* Bus reset / suspend / resume: keeps USBX's device-state machine
-   * in sync with the controller-reported DVSQ field. */
+  /* DVST FIRST -- bus reset / suspend / resume must be processed
+   * BEFORE the SETUP drain. internal_handle_dvst calls
+   * ra_usb_device_busreset_rearm on Default-state which RESETS
+   * DCPCFG/DCPMAXP/DCPCTR (clearing PID and FIFO). If we drain the
+   * SETUP and push descriptor data FIRST and then run DVST, the
+   * busreset_rearm wipes our just-pushed data and PID=BUF, leaving
+   * the chip NAK'ing the host's IN tokens until timeout (Linux
+   * dmesg "device descriptor read/8, error -110"). Order: rearm
+   * first, then process the SETUP that arrived AFTER the bus reset
+   * with a clean DCP. */
   if (have_dvst) {
     s_dvst_irq_count++;
     volatile r_usb_regs_t* reg      = (speed == k_ra_usb_speed_hs) ? ra_usb_hs() : ra_usb_fs();
@@ -2137,6 +2127,24 @@ void ux_dcd_ra_usb_irq(ra_usb_speed_t speed, uint16_t intsts0)
     s_rhst_history[hist_slot] = (uint8_t)(dvstctr0 & rhst_mask);
     s_rhst_history_count++;
     internal_handle_dvst(speed, intsts0);
+  }
+
+  /* SETUP / chapter-9 path runs AFTER DVST so the busreset_rearm
+   * has already restored DCP defaults, then this path drains the
+   * SETUP latch and pushes the response data into a clean FIFO. */
+  if (have_ctrt) {
+    s_ctrt_irq_count++;
+    internal_handle_ctrt(speed, intsts0);
+  }
+  /* VALID-without-CTRT fallback. The polled worker can race the
+   * controller and snapshot INTSTS0 between the VALID-set edge and
+   * the CTRT-set edge -- on HS this window is wider because each
+   * dispatch tick yields the CPU. ra_usb_dispatch preserves VALID
+   * on its W0C ack so the fallback can drain USBREQ/USBVAL/USBINDX/
+   * USBLENG even if CTRT was already cleared by a previous tick.
+   * HUM Ch 36.2.14 INTSTS0 p 1985 (VALID = bit 3, CTSQ = bits 0..2). */
+  else if (have_valid) {
+    internal_handle_ctrt(speed, intsts0);
   }
 
   /* Walk every pipe with a queued OUT transfer. ra_usb_queue_out
