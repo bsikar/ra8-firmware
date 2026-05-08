@@ -1,0 +1,35 @@
+test_ra_usb 0 0
+test_ux_dcd_ra_usb 0 0
+test_ux_hcd_ra_usb 0 0
+test_ra_usb_cdc 0 0
+test_ra_usb_composite 0 0
+test_ra_usb_haud 0 0
+test_ra_usb_hcdc 0 0
+test_ra_usb_hcdc_ecm 0 0
+test_ra_usb_hhid 0 0
+test_ra_usb_hhub 0 0
+test_ra_usb_hmsc 0 0
+test_ra_usb_pal 0 0
+test_ra_usb_paud 0 0
+test_ra_usb_phid 0 0
+test_ra_usb_pmsc 0 0
+test_ra_usb_pprn 0 0
+test_ra_usb_pvnd 0 0
+---
+test_ra_usb
+test_ra_usb_cdc
+test_ra_usb_composite
+test_ra_usb_haud
+test_ra_usb_hcdc
+test_ra_usb_hcdc_ecm
+test_ra_usb_hhid
+test_ra_usb_hhub
+test_ra_usb_hmsc
+test_ra_usb_pal
+test_ra_usb_paud
+test_ra_usb_phid
+test_ra_usb_pmsc
+test_ra_usb_pprn
+test_ra_usb_pvnd
+test_ux_dcd_ra_usb
+test_ux_hcd_ra_usb
