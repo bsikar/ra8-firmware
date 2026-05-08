@@ -296,6 +296,7 @@ knownConditionTrueFalse:libs/ra_net/src/ra_net_tcp.c:463
 # arp_insert(&spa, &sha) call.
 # ---------------------------------------------------------------------------
 uninitvar:libs/ra_net/src/ra_net_arp.c
+uninitvar:libs/ra_net/src/ra_net_icmp.c
 
 # ---------------------------------------------------------------------------
 # unusedStructMember on driver-facing config / state structs that are
