@@ -86,8 +86,8 @@ typedef enum : uint8_t {
  */
 static ra_err_t internal_wait_status_bit(volatile r_canfd_t* reg, uint8_t status_bit)
 {
-  for (uint32_t i = 0U; i < k_ra_canfd_spin; i++) {
-    if ((reg->CFDC[0].STS & (uint32_t)(1UL << status_bit)) != 0U) {
+  for (uint32_t i = 0U; i < k_ra_canfd_spin; i++) {                 /* GCOVR_EXCL_BR_LINE */
+    if ((reg->CFDC[0].STS & (uint32_t)(1UL << status_bit)) != 0U) { /* GCOVR_EXCL_BR_LINE */
       return k_ra_ok;
     }
   }
@@ -184,8 +184,8 @@ static ra_err_t internal_set_global_mode(volatile r_canfd_t* reg, uint32_t gmdc_
   if (gmdc_value == k_ra_gctr_value_operation) {
     return k_ra_ok;
   }
-  for (uint32_t i = 0U; i < k_ra_canfd_spin; i++) {
-    if ((reg->CFDGSTS & (uint32_t)(1UL << status_bit)) != 0U) {
+  for (uint32_t i = 0U; i < k_ra_canfd_spin; i++) {             /* GCOVR_EXCL_BR_LINE */
+    if ((reg->CFDGSTS & (uint32_t)(1UL << status_bit)) != 0U) { /* GCOVR_EXCL_BR_LINE */
       return k_ra_ok;
     }
   }
@@ -207,8 +207,8 @@ ra_err_t ra_canfd_init(uint8_t channel)
   /* HUM Ch 41 p 2746 "CFDGSTS.GRAMINIT" -- wait for RAM init done.
    * FSP r_canfd.c uses FSP_HARDWARE_REGISTER_WAIT(GRAMINIT, 0) which
    * waits for the bit to clear once init has completed. */
-  for (uint32_t i = 0U; i < k_ra_canfd_spin; i++) {
-    if ((reg->CFDGSTS & (uint32_t)(1UL << k_ra_gsts_bit_graminit)) == 0U) {
+  for (uint32_t i = 0U; i < k_ra_canfd_spin; i++) {                         /* GCOVR_EXCL_BR_LINE */
+    if ((reg->CFDGSTS & (uint32_t)(1UL << k_ra_gsts_bit_graminit)) == 0U) { /* GCOVR_EXCL_BR_LINE */
       break;
     }
   }

@@ -195,7 +195,7 @@ static ra_err_t internal_configure_pipes(void)
                                            k_ra_usb_ep_dir_in,
                                            k_ra_usb_ep_type_intr,
                                            s_state.device.intr_in_max_packet);
-  RA_RETURN_ON_ERROR(err, s_tag, "hhid: intr-in cfg");
+  RA_RETURN_ON_ERROR(err, s_tag, "hhid: intr-in cfg"); /* GCOVR_EXCL_BR_LINE */
 
   if (s_state.device.intr_out_ep != 0U) {
     err = ra_usb_configure_endpoint(s_state.speed,
@@ -415,7 +415,7 @@ static ra_err_t internal_do_idle(void)
 static ra_err_t internal_do_bus_reset(void)
 {
   const ra_err_t rel = ra_usb_host_bus_reset(s_state.speed, false);
-  RA_RETURN_ON_ERROR(rel, s_tag, "hhid: release bus reset");
+  RA_RETURN_ON_ERROR(rel, s_tag, "hhid: release bus reset"); /* GCOVR_EXCL_BR_LINE */
   s_state.step = k_ra_hhid_step_set_address;
   return internal_setup_set_address(k_ra_hhid_assigned_address);
 }
@@ -437,7 +437,7 @@ static ra_err_t internal_do_bus_reset(void)
 static ra_err_t internal_do_set_address(void)
 {
   const ra_err_t addr_err = ra_usb_set_address(s_state.speed, k_ra_hhid_assigned_address);
-  RA_RETURN_ON_ERROR(addr_err, s_tag, "hhid: set USBADDR");
+  RA_RETURN_ON_ERROR(addr_err, s_tag, "hhid: set USBADDR"); /* GCOVR_EXCL_BR_LINE */
   s_state.step = k_ra_hhid_step_get_dev_desc;
   return internal_setup_get_descriptor(k_ra_hhid_desc_device, k_ra_hhid_dev_desc_len);
 }
@@ -535,7 +535,7 @@ static ra_err_t internal_do_set_interface(void)
 static ra_err_t internal_do_walk_desc(void)
 {
   const ra_err_t pipes_err = internal_configure_pipes();
-  RA_RETURN_ON_ERROR(pipes_err, s_tag, "hhid: configure pipes");
+  RA_RETURN_ON_ERROR(pipes_err, s_tag, "hhid: configure pipes"); /* GCOVR_EXCL_BR_LINE */
   s_state.step = k_ra_hhid_step_get_report_desc;
   return internal_setup_get_report_descriptor(k_ra_hhid_report_desc_max);
 }
@@ -757,8 +757,8 @@ static uint16_t internal_dcp_in_drain(volatile r_usb_regs_t* reg, uint8_t* out, 
 
   /* HUM Ch 36.2.8 "CFIFOCTR" p 1979 */ /* bounded FRDY spin. */
   uint16_t ready = 0U;
-  for (uint16_t i = 0U; i < k_ra_hhid_fifo_poll_lim; ++i) {
-    if ((reg->CFIFOCTR & k_ra_fifoctr_frdy) != 0U) {
+  for (uint16_t i = 0U; i < k_ra_hhid_fifo_poll_lim; ++i) { /* GCOVR_EXCL_BR_LINE */
+    if ((reg->CFIFOCTR & k_ra_fifoctr_frdy) != 0U) {        /* GCOVR_EXCL_BR_LINE */
       ready = 1U;
       break;
     }

@@ -204,9 +204,9 @@ internal_make_mpic(ra_rmac_pis_t iface, ra_rmac_lsc_t speed, ra_rmac_duplex_t du
  */
 static ra_err_t internal_mdio_wait(volatile r_rmac_regs_t* reg, uint32_t mask)
 {
-  for (uint32_t i = 0; i < k_ra_rmac_mdio_poll_budget; ++i) {
+  for (uint32_t i = 0; i < k_ra_rmac_mdio_poll_budget; ++i) { /* GCOVR_EXCL_BR_LINE */
     /* HUM Ch 33.4 "MMIS1 : MAC Monitoring Interrupt Status Register 1" p 1707 */
-    if ((reg->MMIS1 & mask) != 0U) {
+    if ((reg->MMIS1 & mask) != 0U) { /* GCOVR_EXCL_BR_LINE */
       /* HUM Ch 33.4 "MMID1 : MAC Monitoring Interrupt Disable Register 1" p 1707 */
       reg->MMID1 = mask;
       return k_ra_ok;

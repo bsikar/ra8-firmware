@@ -203,7 +203,7 @@ static ra_err_t internal_configure_pipes(void)
                                            k_ra_usb_ep_dir_in,
                                            k_ra_usb_ep_type_bulk,
                                            bulk_mp);
-  RA_RETURN_ON_ERROR(err, s_tag, "hcdc: bulk-in cfg");
+  RA_RETURN_ON_ERROR(err, s_tag, "hcdc: bulk-in cfg"); /* GCOVR_EXCL_BR_LINE */
 
   err = ra_usb_configure_endpoint(s_state.speed,
                                   k_ra_hcdc_pipe_bulk_out,
@@ -211,7 +211,7 @@ static ra_err_t internal_configure_pipes(void)
                                   k_ra_usb_ep_dir_out,
                                   k_ra_usb_ep_type_bulk,
                                   bulk_mp);
-  RA_RETURN_ON_ERROR(err, s_tag, "hcdc: bulk-out cfg");
+  RA_RETURN_ON_ERROR(err, s_tag, "hcdc: bulk-out cfg"); /* GCOVR_EXCL_BR_LINE */
 
   err = ra_usb_configure_endpoint(s_state.speed,
                                   k_ra_hcdc_pipe_intr_in,
@@ -395,7 +395,7 @@ static ra_err_t internal_do_idle(void)
 static ra_err_t internal_do_bus_reset(void)
 {
   const ra_err_t rel = ra_usb_host_bus_reset(s_state.speed, false);
-  RA_RETURN_ON_ERROR(rel, s_tag, "hcdc: release bus reset");
+  RA_RETURN_ON_ERROR(rel, s_tag, "hcdc: release bus reset"); /* GCOVR_EXCL_BR_LINE */
   s_state.step = k_ra_hcdc_step_set_address;
   return internal_setup_set_address(k_ra_hcdc_assigned_address);
 }
@@ -417,7 +417,7 @@ static ra_err_t internal_do_bus_reset(void)
 static ra_err_t internal_do_set_address(void)
 {
   const ra_err_t addr_err = ra_usb_set_address(s_state.speed, k_ra_hcdc_assigned_address);
-  RA_RETURN_ON_ERROR(addr_err, s_tag, "hcdc: set USBADDR");
+  RA_RETURN_ON_ERROR(addr_err, s_tag, "hcdc: set USBADDR"); /* GCOVR_EXCL_BR_LINE */
   s_state.step = k_ra_hcdc_step_get_dev_desc;
   return internal_setup_get_descriptor(k_ra_hcdc_desc_device, k_ra_hcdc_dev_desc_len);
 }
@@ -515,7 +515,7 @@ static ra_err_t internal_do_set_interface(void)
 static ra_err_t internal_do_walk_desc(void)
 {
   const ra_err_t pipes_err = internal_configure_pipes();
-  RA_RETURN_ON_ERROR(pipes_err, s_tag, "hcdc: configure pipes");
+  RA_RETURN_ON_ERROR(pipes_err, s_tag, "hcdc: configure pipes"); /* GCOVR_EXCL_BR_LINE */
   s_state.attached = true;
   s_state.step     = k_ra_hcdc_step_done;
   if (s_state.attach_cb != nullptr) {

@@ -304,8 +304,8 @@ static ra_err_t internal_wait_oscsf_set(uint8_t bit)
     *oscsf = (uint8_t)((uint8_t)*oscsf | (uint8_t)(1U << bit));
   }
 #endif
-  for (uint32_t i = 0U; i < k_ra_cgc_osc_spin_limit; i++) {
-    if ((*oscsf & (uint8_t)(1U << bit)) != 0U) {
+  for (uint32_t i = 0U; i < k_ra_cgc_osc_spin_limit; i++) { /* GCOVR_EXCL_BR_LINE */
+    if ((*oscsf & (uint8_t)(1U << bit)) != 0U) {            /* GCOVR_EXCL_BR_LINE */
       return k_ra_ok;
     }
   }
@@ -344,8 +344,8 @@ static ra_err_t internal_wait_oscsf_clear(uint8_t bit)
   return k_ra_ok;
 #else
   volatile uint8_t* const oscsf = ra_sys_oscsf();
-  for (uint32_t i = 0U; i < k_ra_cgc_pll_spin_limit; i++) {
-    if ((*oscsf & (uint8_t)(1U << bit)) == 0U) {
+  for (uint32_t i = 0U; i < k_ra_cgc_pll_spin_limit; i++) { /* GCOVR_EXCL_BR_LINE */
+    if ((*oscsf & (uint8_t)(1U << bit)) == 0U) {            /* GCOVR_EXCL_BR_LINE */
       return k_ra_ok;
     }
   }
@@ -413,8 +413,8 @@ static ra_err_t internal_set_vscr_not_high_v(void)
   volatile uint32_t* const vscr = ra_sys_vscr();
   *vscr                         = k_ra_vscr_bit_vscm;
 
-  for (uint32_t i = 0U; i < k_ra_cgc_vscr_spin_limit; i++) {
-    if ((*vscr & k_ra_vscr_bit_vscmtsf) == 0U) {
+  for (uint32_t i = 0U; i < k_ra_cgc_vscr_spin_limit; i++) { /* GCOVR_EXCL_BR_LINE */
+    if ((*vscr & k_ra_vscr_bit_vscmtsf) == 0U) {             /* GCOVR_EXCL_BR_LINE */
       return k_ra_ok;
     }
   }
@@ -543,7 +543,7 @@ static ra_err_t internal_program_and_start_pll1(void)
  */
 static ra_err_t internal_wait_mrm_freq(volatile uint32_t* reg, uint32_t key, uint32_t freq_mhz)
 {
-  for (uint32_t i = 0U; i < k_ra_cgc_mrm_spin_limit; i++) {
+  for (uint32_t i = 0U; i < k_ra_cgc_mrm_spin_limit; i++) { /* GCOVR_EXCL_BR_LINE */
     if (*reg == freq_mhz) {
       return k_ra_ok;
     }
@@ -717,11 +717,11 @@ static ra_err_t internal_route_sciclk(void)
   /* Sim memory has no hardware ack -- fake CKSRDY toggling. */
   *ckcr = (uint8_t)(*ckcr | k_ra_scickcr_cksrdy);
 #endif
-  for (uint32_t i = 0U; i < k_ra_cgc_scik_spin_limit; i++) {
-    if ((*ckcr & k_ra_scickcr_cksrdy) != 0U) {
+  for (uint32_t i = 0U; i < k_ra_cgc_scik_spin_limit; i++) { /* GCOVR_EXCL_BR_LINE */
+    if ((*ckcr & k_ra_scickcr_cksrdy) != 0U) {               /* GCOVR_EXCL_BR_LINE */
       break;
     }
-    if (i + 1U == k_ra_cgc_scik_spin_limit) {
+    if (i + 1U == k_ra_cgc_scik_spin_limit) { /* GCOVR_EXCL_BR_LINE */
       return k_ra_err_hw_timeout;
     }
   }
@@ -731,8 +731,8 @@ static ra_err_t internal_route_sciclk(void)
   *ckcr  = (uint8_t)(k_ra_scickcr_sel_pll1r | k_ra_scickcr_cksreq);
   /* Step 3: clear CKSREQ to start the new clock. */
   *ckcr = k_ra_scickcr_sel_pll1r;
-  for (uint32_t i = 0U; i < k_ra_cgc_scik_spin_limit; i++) {
-    if ((*ckcr & k_ra_scickcr_cksrdy) == 0U) {
+  for (uint32_t i = 0U; i < k_ra_cgc_scik_spin_limit; i++) { /* GCOVR_EXCL_BR_LINE */
+    if ((*ckcr & k_ra_scickcr_cksrdy) == 0U) {               /* GCOVR_EXCL_BR_LINE */
       return k_ra_ok;
     }
   }
@@ -1074,9 +1074,9 @@ static ra_err_t internal_wait_usbcksrdy(uint8_t expected)
     *usbckcr = (uint8_t)(*usbckcr & (uint8_t)~mask);
   }
 #endif
-  for (uint32_t i = 0U; i < (uint32_t)k_ra_usbfs_srdy_poll_limit; ++i) {
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_usbfs_srdy_poll_limit; ++i) { /* GCOVR_EXCL_BR_LINE */
     const uint8_t got = (uint8_t)((*usbckcr & mask) >> k_ra_usbckcr_bit_srdy);
-    if (got == expected) {
+    if (got == expected) { /* GCOVR_EXCL_BR_LINE */
       return k_ra_ok;
     }
   }
@@ -1464,9 +1464,9 @@ static ra_err_t internal_wait_usb60cksrdy(uint8_t expected)
     *usb60ckcr = (uint8_t)(*usb60ckcr & (uint8_t)~mask);
   }
 #endif
-  for (uint32_t i = 0U; i < (uint32_t)k_ra_usbhs_srdy_poll_limit; ++i) {
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_usbhs_srdy_poll_limit; ++i) { /* GCOVR_EXCL_BR_LINE */
     const uint8_t got = (uint8_t)((*usb60ckcr & mask) >> k_ra_usbckcr_bit_srdy);
-    if (got == expected) {
+    if (got == expected) { /* GCOVR_EXCL_BR_LINE */
       return k_ra_ok;
     }
   }

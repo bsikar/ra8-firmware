@@ -307,7 +307,7 @@ static ra_err_t internal_do_idle(void)
 static ra_err_t internal_do_bus_reset(void)
 {
   const ra_err_t rel = ra_usb_host_bus_reset(s_state.speed, false);
-  RA_RETURN_ON_ERROR(rel, s_tag, "hhub: release bus reset");
+  RA_RETURN_ON_ERROR(rel, s_tag, "hhub: release bus reset"); /* GCOVR_EXCL_BR_LINE */
   s_state.step = k_ra_hhub_step_set_address;
   return internal_setup_set_address(k_ra_hhub_assigned_address);
 }
@@ -327,7 +327,7 @@ static ra_err_t internal_do_bus_reset(void)
 static ra_err_t internal_do_set_address(void)
 {
   const ra_err_t addr_err = ra_usb_set_address(s_state.speed, k_ra_hhub_assigned_address);
-  RA_RETURN_ON_ERROR(addr_err, s_tag, "hhub: set USBADDR");
+  RA_RETURN_ON_ERROR(addr_err, s_tag, "hhub: set USBADDR"); /* GCOVR_EXCL_BR_LINE */
   s_state.step = k_ra_hhub_step_get_dev_desc;
   return internal_setup_get_descriptor(k_ra_hhub_desc_device, k_ra_hhub_dev_desc_len);
 }

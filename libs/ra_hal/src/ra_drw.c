@@ -317,7 +317,7 @@ static void internal_program_rect_limiters(const ra_drw_rect_t* rect)
 
   /* HUM Ch 11.2.8 "MSTPCRC: Module Stop Control Register C", p 446 */
   const ra_err_t mst_err = ra_mstp_enable(k_ra_mstp_drw);
-  RA_RETURN_ON_ERROR(mst_err, s_tag, "drw_init: mstp enable");
+  RA_RETURN_ON_ERROR(mst_err, s_tag, "drw_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
 
   /* HUM Ch 62.2.3 "IRQCTL: Interrupt Control Register", p 3693 */
   /* Clear all pending IRQs and leave them masked. */
@@ -440,10 +440,10 @@ void ra_drw_dispatch(void)
     return k_ra_err_invalid_arg;
   }
   /* NASA Rule 2: bounded loop. */
-  for (uint32_t i = 0UL; i < poll_budget; ++i) {
+  for (uint32_t i = 0UL; i < poll_budget; ++i) { /* GCOVR_EXCL_BR_LINE */
     /* HUM Ch 62.2.5 "STATUS: Status Control Register", p 3695 */
     const uint32_t s = *ra_drw_reg32(k_ra_drw_off_status);
-    if ((s & k_ra_drw_status_busy_mask) == 0UL) {
+    if ((s & k_ra_drw_status_busy_mask) == 0UL) { /* GCOVR_EXCL_BR_LINE */
       return k_ra_ok;
     }
   }

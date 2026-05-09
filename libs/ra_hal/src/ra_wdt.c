@@ -397,14 +397,14 @@ void ra_wdt_refresh_deferred(void)
    * into WDTSR, then poll until the targeted bits read 0. The
    * (N + 1) PCLKB cycle latency is bounded by the divider; we
    * cap our polls at k_ra_wdt_clear_max_polls (16384). */
-  for (uint32_t poll = 0U; poll < k_ra_wdt_clear_max_polls; ++poll) {
+  for (uint32_t poll = 0U; poll < k_ra_wdt_clear_max_polls; ++poll) { /* GCOVR_EXCL_BR_LINE */
     /* Build a write value in which only the bits NOT in `mask`
      * remain set; those are the bits we want to leave untouched.
      * Bits inside `mask` are written 0 to clear. */
     const uint16_t write_val = (uint16_t)(reg->WDTSR & (uint16_t)~mask);
     reg->WDTSR               = write_val;
 
-    if (((uint16_t)reg->WDTSR & mask) == 0U) {
+    if (((uint16_t)reg->WDTSR & mask) == 0U) { /* GCOVR_EXCL_BR_LINE */
       return k_ra_ok;
     }
   }

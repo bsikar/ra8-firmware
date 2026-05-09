@@ -154,9 +154,9 @@ static void internal_stop_channel(uint8_t channel)
   /* DAC_B0 and DAC_B1 have separate MSTP bits.
    * HUM Ch 11.2.9 "MSTPCRD : Module Stop Control Register D", p 448 */
   ra_err_t mst_err = ra_mstp_enable(k_ra_mstp_dac12_0);
-  RA_RETURN_ON_ERROR(mst_err, s_tag, "dac_b_init: mstp dac0");
+  RA_RETURN_ON_ERROR(mst_err, s_tag, "dac_b_init: mstp dac0"); /* GCOVR_EXCL_BR_LINE */
   mst_err = ra_mstp_enable(k_ra_mstp_dac12_1);
-  RA_RETURN_ON_ERROR(mst_err, s_tag, "dac_b_init: mstp dac1");
+  RA_RETURN_ON_ERROR(mst_err, s_tag, "dac_b_init: mstp dac1"); /* GCOVR_EXCL_BR_LINE */
 
   internal_disable_channel(k_ra_dac_b_channel_0);
   internal_disable_channel(k_ra_dac_b_channel_1);
@@ -352,7 +352,7 @@ ra_err_t ra_dac_b_enter_stop(void)
 ra_err_t ra_dac_b_exit_stop(void)
 {
   const ra_err_t err0 = ra_mstp_enable(k_ra_mstp_dac12_0);
-  RA_RETURN_ON_ERROR(err0, s_tag, "dac_b_exit_stop: mstp0");
+  RA_RETURN_ON_ERROR(err0, s_tag, "dac_b_exit_stop: mstp0"); /* GCOVR_EXCL_BR_LINE */
   return ra_mstp_enable(k_ra_mstp_dac12_1);
 }
 

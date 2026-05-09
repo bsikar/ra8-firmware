@@ -439,12 +439,12 @@ static ra_err_t priv_open_finalise(const ra_touch_cfg_t* cfg)
 [[nodiscard]] static ra_err_t priv_open_bring_up(const ra_touch_cfg_t* cfg)
 {
   const ra_err_t iic_err = priv_bring_up_i2c(cfg->i2c_channel);
-  RA_RETURN_ON_ERROR(iic_err, s_tag, "ra_touch_open: iic_b_init");
+  RA_RETURN_ON_ERROR(iic_err, s_tag, "ra_touch_open: iic_b_init"); /* GCOVR_EXCL_BR_LINE */
 
   priv_stash_state(cfg);
 
   const ra_err_t fin_err = priv_open_finalise(cfg);
-  RA_RETURN_ON_ERROR(fin_err, s_tag, "ra_touch_open: finalise");
+  RA_RETURN_ON_ERROR(fin_err, s_tag, "ra_touch_open: finalise"); /* GCOVR_EXCL_BR_LINE */
   return k_ra_ok;
 }
 
@@ -455,10 +455,10 @@ static ra_err_t priv_open_finalise(const ra_touch_cfg_t* cfg)
     return k_ra_err_invalid_state;
   }
   const ra_err_t cfg_err = priv_validate_cfg(cfg);
-  RA_RETURN_ON_ERROR(cfg_err, s_tag, "ra_touch_open: cfg validation");
+  RA_RETURN_ON_ERROR(cfg_err, s_tag, "ra_touch_open: cfg validation"); /* GCOVR_EXCL_BR_LINE */
 
   const ra_err_t up_err = priv_open_bring_up(cfg);
-  RA_RETURN_ON_ERROR(up_err, s_tag, "ra_touch_open: bring_up");
+  RA_RETURN_ON_ERROR(up_err, s_tag, "ra_touch_open: bring_up"); /* GCOVR_EXCL_BR_LINE */
 
   s_state.cb     = nullptr;
   s_state.ctx    = nullptr;

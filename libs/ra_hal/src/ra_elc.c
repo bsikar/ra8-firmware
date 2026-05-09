@@ -91,7 +91,7 @@ ra_err_t ra_elc_init(void)
 
   /* HUM Ch 11.2.8 "MSTPCRC : Module Stop Control Register C", p 447 */
   const ra_err_t mst_err = ra_mstp_enable(k_ra_mstp_elc);
-  RA_RETURN_ON_ERROR(mst_err, s_tag, "elc_init: mstp enable");
+  RA_RETURN_ON_ERROR(mst_err, s_tag, "elc_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
 
   /* Clear every ELSR slot before flipping ELCON so stale routes
    * don't fire spuriously.

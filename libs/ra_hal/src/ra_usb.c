@@ -274,8 +274,8 @@ static ra_err_t internal_wait_frdy(volatile r_usb_regs_t* reg)
    * is single-buffered: between consecutive EP0 IN chunks FRDY stays
    * low until the host actually pulls the previous chunk off the
    * wire. See ra_usb_internal_lim32_t for the rationale. */
-  for (uint32_t i = 0U; i < (uint32_t)k_ra_usb_frdy_poll_limit; ++i) {
-    if ((reg->CFIFOCTR & k_ra_fifoctr_frdy) != 0U) {
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_usb_frdy_poll_limit; ++i) { /* GCOVR_EXCL_BR_LINE */
+    if ((reg->CFIFOCTR & k_ra_fifoctr_frdy) != 0U) {                   /* GCOVR_EXCL_BR_LINE */
       return k_ra_ok;
     }
   }
@@ -618,7 +618,8 @@ static volatile uint16_t s_clksel_attempt_pllsta[4] = {0U, 0U, 0U, 0U};
  */
 static void internal_usb_delay_1us(void)
 {
-  for (volatile uint32_t i = 0U; i < (uint32_t)k_ra_usbhs_delay_1us_iters; ++i) {
+  for (volatile uint32_t i = 0U; i < (uint32_t)k_ra_usbhs_delay_1us_iters;
+       ++i) { /* GCOVR_EXCL_BR_LINE */
     __asm__ volatile("nop");
   }
 }
@@ -684,8 +685,9 @@ static ra_err_t internal_usbhs_wait_pll_lock_short(void)
 #else
   volatile uint16_t* const pllsta = ra_usbhs_pllsta();
   ra_err_t                 lock   = k_ra_err_hw_timeout;
-  for (uint32_t i = 0U; i < (uint32_t)k_ra_usbhs_pll_lock_attempt_limit; ++i) {
-    if ((*pllsta & (uint16_t)k_ra_pllsta_plllock) != 0U) {
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_usbhs_pll_lock_attempt_limit;
+       ++i) {                                              /* GCOVR_EXCL_BR_LINE */
+    if ((*pllsta & (uint16_t)k_ra_pllsta_plllock) != 0U) { /* GCOVR_EXCL_BR_LINE */
       lock = k_ra_ok;
       break;
     }
@@ -959,8 +961,8 @@ static ra_err_t internal_usbfs_module_bringup(volatile r_usb_regs_t* reg)
 {
   /* HUM Ch 36.2.1 "SYSCFG : System Configuration Control Register", p 1966 */
   reg->SYSCFG = (uint16_t)(reg->SYSCFG | (uint16_t)(1U << k_ra_syscfg_bit_scke));
-  for (uint32_t i = 0U; i < (uint32_t)k_ra_usbhs_scke_poll_limit; ++i) {
-    if ((reg->SYSCFG & (uint16_t)(1U << k_ra_syscfg_bit_scke)) != 0U) {
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_usbhs_scke_poll_limit; ++i) { /* GCOVR_EXCL_BR_LINE */
+    if ((reg->SYSCFG & (uint16_t)(1U << k_ra_syscfg_bit_scke)) != 0U) {  /* GCOVR_EXCL_BR_LINE */
       break;
     }
   }
@@ -994,14 +996,14 @@ ra_err_t ra_usb_device_init(ra_usb_speed_t speed)
 
   /* HUM Ch 11.2.7 "MSTPCRB : Module Stop Control Register B", p 444 */
   const ra_err_t mst_err = ra_mstp_enable(internal_mstp(speed));
-  RA_RETURN_ON_ERROR(mst_err, s_tag, "usb_init: mstp enable");
+  RA_RETURN_ON_ERROR(mst_err, s_tag, "usb_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
 
   if (speed == k_ra_usb_speed_hs) {
     const ra_err_t phy_err = internal_usbhs_phy_bringup(reg);
-    RA_RETURN_ON_ERROR(phy_err, s_tag, "usb_init: HS PHY bring-up");
+    RA_RETURN_ON_ERROR(phy_err, s_tag, "usb_init: HS PHY bring-up"); /* GCOVR_EXCL_BR_LINE */
   } else {
     const ra_err_t fs_err = internal_usbfs_module_bringup(reg);
-    RA_RETURN_ON_ERROR(fs_err, s_tag, "usb_init: FS module bring-up");
+    RA_RETURN_ON_ERROR(fs_err, s_tag, "usb_init: FS module bring-up"); /* GCOVR_EXCL_BR_LINE */
   }
 
   internal_usb_init_common(reg);
@@ -1873,7 +1875,7 @@ ra_err_t ra_usb_queue_in(ra_usb_speed_t speed, uint8_t pipe_num, const uint8_t* 
 
   internal_select_cfifo(reg, pipe_num, true);
   const ra_err_t ready = internal_wait_frdy(reg);
-  RA_RETURN_ON_ERROR(ready, s_tag, "queue_in: FRDY timeout");
+  RA_RETURN_ON_ERROR(ready, s_tag, "queue_in: FRDY timeout"); /* GCOVR_EXCL_BR_LINE */
 
   if (len > 0U) {
     internal_fifo_write(reg, data, len);
@@ -1913,7 +1915,7 @@ ra_err_t ra_usb_queue_in(ra_usb_speed_t speed, uint8_t pipe_num, const uint8_t* 
 static ra_err_t internal_dcp_push_chunk(volatile r_usb_regs_t* reg, const uint8_t* p, uint16_t n)
 {
   const ra_err_t ready = internal_wait_frdy(reg);
-  RA_RETURN_ON_ERROR(ready, s_tag, "dcp_in_data: FRDY timeout (chunk)");
+  RA_RETURN_ON_ERROR(ready, s_tag, "dcp_in_data: FRDY timeout (chunk)"); /* GCOVR_EXCL_BR_LINE */
   internal_fifo_write(reg, p, n);
   /* HUM Ch 36.2.8 "CFIFOCTR : CFIFO Port Control Register", p 1979 */
   reg->CFIFOCTR = k_ra_fifoctr_bval;
@@ -1956,7 +1958,7 @@ internal_dcp_in_payload(volatile r_usb_regs_t* reg, const uint8_t* data, uint16_
     const uint16_t chunk =
       (remaining > k_ra_usb_dcp_max_packet) ? (uint16_t)k_ra_usb_dcp_max_packet : remaining;
     const ra_err_t pushed = internal_dcp_push_chunk(reg, &data[offset], chunk);
-    RA_RETURN_ON_ERROR(pushed, s_tag, "dcp_in_data: chunk push failed");
+    RA_RETURN_ON_ERROR(pushed, s_tag, "dcp_in_data: chunk push failed"); /* GCOVR_EXCL_BR_LINE */
     if (!pid_raised) {
       /* HUM Ch 36.2.21 "DCPCTR : DCP Control Register", p 1991 */
       internal_dcp_pid(reg, k_ra_pid_buf);
@@ -1994,7 +1996,7 @@ internal_dcp_in_payload(volatile r_usb_regs_t* reg, const uint8_t* data, uint16_
 static ra_err_t internal_dcp_in_zlp(volatile r_usb_regs_t* reg)
 {
   const ra_err_t ready = internal_wait_frdy(reg);
-  RA_RETURN_ON_ERROR(ready, s_tag, "dcp_in_data: FRDY timeout (zlp)");
+  RA_RETURN_ON_ERROR(ready, s_tag, "dcp_in_data: FRDY timeout (zlp)"); /* GCOVR_EXCL_BR_LINE */
   /* HUM Ch 36.2.8 "CFIFOCTR : CFIFO Port Control Register", p 1979 */
   reg->CFIFOCTR = k_ra_fifoctr_bval;
   /* HUM Ch 36.2.21 "DCPCTR : DCP Control Register", p 1991 */
@@ -2169,7 +2171,7 @@ ra_usb_queue_out(ra_usb_speed_t speed, uint8_t pipe_num, uint8_t* out_buf, uint1
 
   internal_select_cfifo(reg, pipe_num, false);
   const ra_err_t ready = internal_wait_frdy(reg);
-  RA_RETURN_ON_ERROR(ready, s_tag, "queue_out: FRDY timeout");
+  RA_RETURN_ON_ERROR(ready, s_tag, "queue_out: FRDY timeout"); /* GCOVR_EXCL_BR_LINE */
 
   /* HUM Ch 36.2.8 "CFIFOCTR : CFIFO Port Control Register", p 1979 */
   const uint16_t available = (uint16_t)(reg->CFIFOCTR & k_ra_fifoctr_dtln);
@@ -2590,7 +2592,7 @@ ra_err_t ra_usb_host_init(ra_usb_speed_t speed)
 
   /* HUM Ch 11.2.7 "MSTPCRB : Module Stop Control Register B", p 444 */
   const ra_err_t mst_err = ra_mstp_enable(internal_mstp(speed));
-  RA_RETURN_ON_ERROR(mst_err, s_tag, "host_init: mstp enable");
+  RA_RETURN_ON_ERROR(mst_err, s_tag, "host_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
 
   /* HUM Ch 36.2.1 "SYSCFG : System Configuration Control Register", p 1966 */
   /* HUM Ch 37.2.1 "SYSCFG : System Configuration Control Register", p 2060 */

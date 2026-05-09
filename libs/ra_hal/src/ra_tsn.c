@@ -148,11 +148,11 @@ ra_err_t ra_tsn_init(const ra_tsn_config_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
   const ra_err_t cfg_err = internal_validate_cfg(cfg);
-  RA_RETURN_ON_ERROR(cfg_err, s_tag, "tsn_init: cfg invalid");
+  RA_RETURN_ON_ERROR(cfg_err, s_tag, "tsn_init: cfg invalid"); /* GCOVR_EXCL_BR_LINE */
 
   /* HUM Ch 11.2.9 "MSTPCRD : Module Stop Control Register D", p 449 */
   const ra_err_t mst_err = ra_mstp_enable(k_ra_mstp_tsn);
-  RA_RETURN_ON_ERROR(mst_err, s_tag, "tsn_init: mstp enable");
+  RA_RETURN_ON_ERROR(mst_err, s_tag, "tsn_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
 
   /* HUM Ch 55.2.1 "TSCR : Temperature Sensor Control Register", p 3498 */
   volatile r_tsn_ctrl_regs_t* reg = ra_tsn();

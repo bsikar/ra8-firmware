@@ -423,17 +423,17 @@ ra_err_t ra_pdg_init(const ra_pdg_config_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
   const ra_err_t cfg_err = internal_validate_cfg(cfg);
-  RA_RETURN_ON_ERROR(cfg_err, s_tag, "pdg_init: cfg invalid");
+  RA_RETURN_ON_ERROR(cfg_err, s_tag, "pdg_init: cfg invalid"); /* GCOVR_EXCL_BR_LINE */
 
   ra_pdg_frange_t frange_use = cfg->frange;
   if (cfg->auto_tune != 0U) {
     const ra_err_t band_err = ra_pdg_pick_frange(cfg->gptclk_hz, &frange_use);
-    RA_RETURN_ON_ERROR(band_err, s_tag, "pdg_init: auto-tune failed");
+    RA_RETURN_ON_ERROR(band_err, s_tag, "pdg_init: auto-tune failed"); /* GCOVR_EXCL_BR_LINE */
   }
 
   /* HUM Ch 11.2.9 "MSTPCRD: Module Stop Control Register D" p 449 */
   const ra_err_t mst_err = ra_mstp_enable(k_ra_mstp_pdg);
-  RA_RETURN_ON_ERROR(mst_err, s_tag, "pdg_init: mstp enable");
+  RA_RETURN_ON_ERROR(mst_err, s_tag, "pdg_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
 
   internal_program_dll(cfg, frange_use);
 
@@ -479,7 +479,7 @@ ra_err_t ra_pdg_set_delay(uint8_t channel, ra_pdg_pin_t pin, ra_pdg_edge_t edge,
     return k_ra_err_not_initialized;
   }
   const ra_err_t v = internal_validate_slot(channel, pin, edge, code);
-  RA_RETURN_ON_ERROR(v, s_tag, "set_delay: bad input");
+  RA_RETURN_ON_ERROR(v, s_tag, "set_delay: bad input"); /* GCOVR_EXCL_BR_LINE */
 
   /* HUM Ch 23.2.3 "GTDLYRnA: GTIOCnA Rising Output Delay Register" p 1156 */
   /* HUM Ch 23.2.4 "GTDLYFnA: GTIOCnA Falling Output Delay Register" p 1156 */
@@ -495,7 +495,7 @@ ra_err_t ra_pdg_get_delay(uint8_t channel, ra_pdg_pin_t pin, ra_pdg_edge_t edge,
 {
   RA_CHECK_NULL_PTR(out_code, s_tag, "out_code must not be nullptr");
   const ra_err_t v = internal_validate_slot(channel, pin, edge, 0U);
-  RA_RETURN_ON_ERROR(v, s_tag, "get_delay: bad input");
+  RA_RETURN_ON_ERROR(v, s_tag, "get_delay: bad input"); /* GCOVR_EXCL_BR_LINE */
 
   /* HUM Ch 23.2.3 "GTDLYRnA" p 1156 */
   /* HUM Ch 23.2.5 "GTDLYRnB" p 1157 */

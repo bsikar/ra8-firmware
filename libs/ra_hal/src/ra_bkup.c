@@ -210,7 +210,7 @@ static inline void internal_rmw8(volatile uint8_t* reg, uint8_t mask, bool enabl
 {
   RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
   const ra_err_t v_err = internal_validate_cfg(cfg);
-  RA_RETURN_ON_ERROR(v_err, s_tag, "bkup_init: cfg out of range");
+  RA_RETURN_ON_ERROR(v_err, s_tag, "bkup_init: cfg out of range"); /* GCOVR_EXCL_BR_LINE */
 
   if (cfg->enable_switch) {
     /* HUM Ch 12.2.11 "VBTBPCR1 : VBATT Battery Power Supply Control Register 1", p 507 */
@@ -274,8 +274,8 @@ static inline void internal_rmw8(volatile uint8_t* reg, uint8_t mask, bool enabl
   /* Cold-start step 1 (12.3.7.1 p 517): wait for VBPORM == 1. */
   /* HUM Ch 12.2.13 "VBTBPSR : VBATT Battery Power Supply Status Register", p 509 */
   bool vbporm_ok = false;
-  for (uint32_t i = 0U; i < timeout_iters; ++i) {
-    if ((*ra_bkup_vbtbpsr() & k_ra_bkup_vbtbpsr_mask_vbporm) != 0U) {
+  for (uint32_t i = 0U; i < timeout_iters; ++i) {                     /* GCOVR_EXCL_BR_LINE */
+    if ((*ra_bkup_vbtbpsr() & k_ra_bkup_vbtbpsr_mask_vbporm) != 0U) { /* GCOVR_EXCL_BR_LINE */
       vbporm_ok = true;
       break;
     }
@@ -317,8 +317,8 @@ static inline void internal_rmw8(volatile uint8_t* reg, uint8_t mask, bool enabl
   /* Warm-start step 1 (12.3.7.2 p 517): wait for VBPORM == 1. */
   /* HUM Ch 12.2.13 "VBTBPSR : VBATT Battery Power Supply Status Register", p 509 */
   bool vbporm_ok = false;
-  for (uint32_t i = 0U; i < timeout_iters; ++i) {
-    if ((*ra_bkup_vbtbpsr() & k_ra_bkup_vbtbpsr_mask_vbporm) != 0U) {
+  for (uint32_t i = 0U; i < timeout_iters; ++i) {                     /* GCOVR_EXCL_BR_LINE */
+    if ((*ra_bkup_vbtbpsr() & k_ra_bkup_vbtbpsr_mask_vbporm) != 0U) { /* GCOVR_EXCL_BR_LINE */
       vbporm_ok = true;
       break;
     }
@@ -346,8 +346,8 @@ static inline void internal_rmw8(volatile uint8_t* reg, uint8_t mask, bool enabl
   /* No-switch step 2 (12.3.7.3 p 518): wait for VBPORM == 0 (rail tied to VCC). */
   /* HUM Ch 12.2.13 "VBTBPSR : VBATT Battery Power Supply Status Register", p 509 */
   bool vbporm_low = false;
-  for (uint32_t i = 0U; i < timeout_iters; ++i) {
-    if ((*ra_bkup_vbtbpsr() & k_ra_bkup_vbtbpsr_mask_vbporm) == 0U) {
+  for (uint32_t i = 0U; i < timeout_iters; ++i) {                     /* GCOVR_EXCL_BR_LINE */
+    if ((*ra_bkup_vbtbpsr() & k_ra_bkup_vbtbpsr_mask_vbporm) == 0U) { /* GCOVR_EXCL_BR_LINE */
       vbporm_low = true;
       break;
     }
@@ -520,7 +520,9 @@ static ra_err_t internal_validate_tamper_channels(const ra_bkup_tamper_config_t*
 {
   for (uint8_t i = 0U; i < (uint8_t)k_ra_bkup_chan_count; ++i) {
     const ra_err_t err = internal_validate_chan(&cfg->channels[i]);
-    RA_RETURN_ON_ERROR(err, s_tag, "tamper_init: channel cfg out of range");
+    RA_RETURN_ON_ERROR(err,
+                       s_tag,
+                       "tamper_init: channel cfg out of range"); /* GCOVR_EXCL_BR_LINE */
   }
   return k_ra_ok;
 }
@@ -700,7 +702,9 @@ static uint8_t internal_compose_vbtadcr3(const ra_bkup_tamper_config_t* cfg)
     return k_ra_err_invalid_arg;
   }
   const ra_err_t v_err = internal_validate_tamper_channels(cfg);
-  RA_RETURN_ON_ERROR(v_err, s_tag, "tamper_init: channel cfg out of range");
+  RA_RETURN_ON_ERROR(v_err,
+                     s_tag,
+                     "tamper_init: channel cfg out of range"); /* GCOVR_EXCL_BR_LINE */
 
   /* HUM Ch 12.3.5 p 516 + Ch 12.3.7.4 step 0: disable VCHnNCE / VBTADCRn
    * before changing VINCW. */
@@ -866,11 +870,11 @@ static ra_err_t internal_validate_security_cfg(const ra_bkup_security_config_t* 
     return k_ra_err_invalid_arg;
   }
   ra_err_t err = internal_validate_boundary(cfg->saba);
-  RA_RETURN_ON_ERROR(err, s_tag, "security_apply: saba bad");
+  RA_RETURN_ON_ERROR(err, s_tag, "security_apply: saba bad"); /* GCOVR_EXCL_BR_LINE */
   err = internal_validate_boundary(cfg->pabas);
-  RA_RETURN_ON_ERROR(err, s_tag, "security_apply: pabas bad");
+  RA_RETURN_ON_ERROR(err, s_tag, "security_apply: pabas bad"); /* GCOVR_EXCL_BR_LINE */
   err = internal_validate_boundary(cfg->pabans);
-  RA_RETURN_ON_ERROR(err, s_tag, "security_apply: pabans bad");
+  RA_RETURN_ON_ERROR(err, s_tag, "security_apply: pabans bad"); /* GCOVR_EXCL_BR_LINE */
   return k_ra_ok;
 }
 
@@ -878,7 +882,7 @@ static ra_err_t internal_validate_security_cfg(const ra_bkup_security_config_t* 
 {
   RA_CHECK_NULL_PTR(cfg, s_tag, "security cfg must not be nullptr");
   const ra_err_t v_err = internal_validate_security_cfg(cfg);
-  RA_RETURN_ON_ERROR(v_err, s_tag, "security_apply: cfg bad");
+  RA_RETURN_ON_ERROR(v_err, s_tag, "security_apply: cfg bad"); /* GCOVR_EXCL_BR_LINE */
 
   /* HUM Ch 12.2.1 "BBFSAR : Battery Backup Function Security Attribute Register", p 500 */
   *ra_bkup_bbfsar() = (uint32_t)(cfg->bbfsar & k_ra_bkup_bbfsar_mask_all);

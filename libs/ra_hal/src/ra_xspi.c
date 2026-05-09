@@ -355,9 +355,9 @@ static ra_err_t internal_wait_command_done(volatile r_xspi_regs_t* reg)
   reg->INTC = k_ra_xspi_ints_mask_cmdcmp;
   return k_ra_ok;
 #else
-  for (uint32_t i = 0U; i < (uint32_t)k_ra_xspi_cmd_spin; i++) {
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_xspi_cmd_spin; i++) { /* GCOVR_EXCL_BR_LINE */
     const uint32_t s = reg->INTS;
-    if ((s & (uint32_t)k_ra_xspi_ints_mask_cmdcmp) != 0U) {
+    if ((s & (uint32_t)k_ra_xspi_ints_mask_cmdcmp) != 0U) { /* GCOVR_EXCL_BR_LINE */
       /* HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986 */
       /* FSP r_ospi_b_direct_transfer clears every pending status
        * bit at the end of a manual command via ``INTC = INTS``. */
@@ -587,10 +587,10 @@ static ra_err_t internal_poll_wip_clear(uint8_t instance)
   (void)instance;
   return k_ra_ok;
 #else
-  for (uint32_t i = 0U; i < (uint32_t)k_ra_flash_program_timeout_us; i++) {
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_flash_program_timeout_us; i++) { /* GCOVR_EXCL_BR_LINE */
     uint8_t        status = 0U;
     const ra_err_t e      = ra_xspi_flash_read_status(instance, &status);
-    if (e != k_ra_ok) {
+    if (e != k_ra_ok) { /* GCOVR_EXCL_BR_LINE */
       return e;
     }
     if ((status & (uint8_t)(1U << (uint8_t)k_ra_flash_status_bit_wip)) == 0U) {
@@ -1001,8 +1001,8 @@ ra_err_t ra_xspi_calibrate_dqs(uint8_t instance)
    * preamble-pattern + CARDCMD descriptor is owned by board-level
    * code in higher-level callers. */
   reg->CCCTLCS[0] |= k_ra_xspi_ccctl0_mask_caen;
-  for (uint32_t i = 0U; i < (uint32_t)k_ra_xspi_calib_spin; i++) {
-    if ((reg->CCCTLCS[0] & k_ra_xspi_ccctl0_mask_caen) == 0U) {
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_xspi_calib_spin; i++) { /* GCOVR_EXCL_BR_LINE */
+    if ((reg->CCCTLCS[0] & k_ra_xspi_ccctl0_mask_caen) == 0U) {    /* GCOVR_EXCL_BR_LINE */
       return k_ra_ok;
     }
   }

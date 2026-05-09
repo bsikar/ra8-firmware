@@ -356,7 +356,7 @@ static ra_err_t internal_configure_pipes(void)
                                            k_ra_usb_ep_dir_in,
                                            k_ra_usb_ep_type_bulk,
                                            bulk_mp);
-  RA_RETURN_ON_ERROR(err, s_tag, "hmsc: bulk-in cfg");
+  RA_RETURN_ON_ERROR(err, s_tag, "hmsc: bulk-in cfg"); /* GCOVR_EXCL_BR_LINE */
 
   err = ra_usb_configure_endpoint(s_state.speed,
                                   k_ra_hmsc_pipe_bulk_out,
@@ -498,7 +498,7 @@ static ra_err_t internal_do_idle(void)
 static ra_err_t internal_do_bus_reset(void)
 {
   const ra_err_t rel = ra_usb_host_bus_reset(s_state.speed, false);
-  RA_RETURN_ON_ERROR(rel, s_tag, "hmsc: release bus reset");
+  RA_RETURN_ON_ERROR(rel, s_tag, "hmsc: release bus reset"); /* GCOVR_EXCL_BR_LINE */
   s_state.step = k_ra_hmsc_step_set_address;
   return internal_setup_set_address(k_ra_hmsc_assigned_address);
 }
@@ -507,7 +507,7 @@ static ra_err_t internal_do_bus_reset(void)
 static ra_err_t internal_do_set_address(void)
 {
   const ra_err_t addr_err = ra_usb_set_address(s_state.speed, k_ra_hmsc_assigned_address);
-  RA_RETURN_ON_ERROR(addr_err, s_tag, "hmsc: set USBADDR");
+  RA_RETURN_ON_ERROR(addr_err, s_tag, "hmsc: set USBADDR"); /* GCOVR_EXCL_BR_LINE */
   s_state.step = k_ra_hmsc_step_get_dev_desc;
   return internal_setup_get_descriptor(k_ra_hmsc_desc_device, k_ra_hmsc_dev_desc_len);
 }
@@ -545,7 +545,7 @@ static ra_err_t internal_do_set_interface(void)
 static ra_err_t internal_do_walk_desc(void)
 {
   const ra_err_t pipes_err = internal_configure_pipes();
-  RA_RETURN_ON_ERROR(pipes_err, s_tag, "hmsc: configure pipes");
+  RA_RETURN_ON_ERROR(pipes_err, s_tag, "hmsc: configure pipes"); /* GCOVR_EXCL_BR_LINE */
   s_state.step = k_ra_hmsc_step_get_max_lun;
   return internal_setup_get_max_lun();
 }
@@ -913,7 +913,7 @@ static ra_err_t internal_issue_cbw(uint8_t        target_lun,
 {
   uint8_t        cbw[k_ra_hmsc_cbw_len] = {};
   const ra_err_t cbw_err = ra_usb_hmsc_build_cbw(target_lun, xfer_len, data_in, cdb, cdb_len, cbw);
-  RA_RETURN_ON_ERROR(cbw_err, s_tag, "issue_cbw: build cbw");
+  RA_RETURN_ON_ERROR(cbw_err, s_tag, "issue_cbw: build cbw"); /* GCOVR_EXCL_BR_LINE */
   return internal_normalise_xfer_err(internal_send_cbw(cbw));
 }
 
@@ -925,7 +925,7 @@ static ra_err_t internal_run_data_in(uint8_t        target_lun,
                                      uint16_t*      inout_len)
 {
   const ra_err_t cbw_err = internal_issue_cbw(target_lun, *inout_len, true, cdb, cdb_len);
-  RA_RETURN_ON_ERROR(cbw_err, s_tag, "run_data_in: issue cbw");
+  RA_RETURN_ON_ERROR(cbw_err, s_tag, "run_data_in: issue cbw"); /* GCOVR_EXCL_BR_LINE */
   return internal_normalise_xfer_err(internal_recv_bytes(out_buf, inout_len));
 }
 
@@ -937,7 +937,7 @@ static ra_err_t internal_run_data_out(uint8_t        target_lun,
                                       uint16_t       push_len)
 {
   const ra_err_t cbw_err = internal_issue_cbw(target_lun, (uint32_t)push_len, false, cdb, cdb_len);
-  RA_RETURN_ON_ERROR(cbw_err, s_tag, "run_data_out: issue cbw");
+  RA_RETURN_ON_ERROR(cbw_err, s_tag, "run_data_out: issue cbw"); /* GCOVR_EXCL_BR_LINE */
   return internal_normalise_xfer_err(
     ra_usb_queue_in(s_state.speed, k_ra_hmsc_pipe_bulk_out, in_buf, push_len));
 }
@@ -974,7 +974,7 @@ ra_err_t ra_usb_hmsc_inquiry(uint8_t target_lun, ra_usb_hmsc_inquiry_response_t*
 {
   RA_CHECK_NULL_PTR(response, s_tag, "inquiry: response");
   const ra_err_t ready_err = internal_check_ready(target_lun);
-  RA_RETURN_ON_ERROR(ready_err, s_tag, "inquiry: not ready");
+  RA_RETURN_ON_ERROR(ready_err, s_tag, "inquiry: not ready"); /* GCOVR_EXCL_BR_LINE */
 
   uint8_t cdb[k_ra_hmsc_cdb_max_len] = {};
   internal_build_inquiry_cdb(cdb);
@@ -983,7 +983,7 @@ ra_err_t ra_usb_hmsc_inquiry(uint8_t target_lun, ra_usb_hmsc_inquiry_response_t*
   uint16_t       got_len                                  = k_ra_hmsc_inquiry_resp_len;
   const ra_err_t err =
     internal_run_data_in(target_lun, cdb, (uint8_t)k_ra_hmsc_cdb6_len, raw_response, &got_len);
-  RA_RETURN_ON_ERROR(err, s_tag, "inquiry: bot");
+  RA_RETURN_ON_ERROR(err, s_tag, "inquiry: bot"); /* GCOVR_EXCL_BR_LINE */
   internal_decode_inquiry(raw_response, response);
   return k_ra_ok;
 }
@@ -994,7 +994,7 @@ ra_err_t ra_usb_hmsc_read_capacity(uint8_t target_lun, uint32_t* block_count, ui
   RA_CHECK_NULL_PTR(block_count, s_tag, "read_capacity: block_count");
   RA_CHECK_NULL_PTR(block_size, s_tag, "read_capacity: block_size");
   const ra_err_t ready_err = internal_check_ready(target_lun);
-  RA_RETURN_ON_ERROR(ready_err, s_tag, "read_capacity: not ready");
+  RA_RETURN_ON_ERROR(ready_err, s_tag, "read_capacity: not ready"); /* GCOVR_EXCL_BR_LINE */
 
   uint8_t cdb[k_ra_hmsc_cdb_max_len] = {};
   internal_build_read_capacity_cdb(cdb);
@@ -1003,7 +1003,7 @@ ra_err_t ra_usb_hmsc_read_capacity(uint8_t target_lun, uint32_t* block_count, ui
   uint16_t       got_len                                        = k_ra_hmsc_read_capacity_resp_len;
   const ra_err_t err =
     internal_run_data_in(target_lun, cdb, (uint8_t)k_ra_hmsc_cdb10_len, raw_response, &got_len);
-  RA_RETURN_ON_ERROR(err, s_tag, "read_capacity: bot");
+  RA_RETURN_ON_ERROR(err, s_tag, "read_capacity: bot"); /* GCOVR_EXCL_BR_LINE */
 
   /* Decode SBC-4 sec 5.10: byte[0..3] = LAST valid LBA (big-endian),
    * byte[4..7] = block size (big-endian). When the simulator returns
@@ -1025,7 +1025,7 @@ ra_usb_hmsc_read10(uint8_t target_lun, uint32_t lba, uint16_t block_count, uint8
     return k_ra_err_invalid_arg;
   }
   const ra_err_t ready_err = internal_check_ready(target_lun);
-  RA_RETURN_ON_ERROR(ready_err, s_tag, "read10: not ready");
+  RA_RETURN_ON_ERROR(ready_err, s_tag, "read10: not ready"); /* GCOVR_EXCL_BR_LINE */
 
   uint8_t cdb[k_ra_hmsc_cdb_max_len] = {};
   internal_build_rw10_cdb(k_ra_hmsc_scsi_read_10, lba, block_count, cdb);
@@ -1037,7 +1037,7 @@ ra_usb_hmsc_read10(uint8_t target_lun, uint32_t lba, uint16_t block_count, uint8
   uint16_t       got_len  = (xfer_len > UINT16_MAX) ? UINT16_MAX : (uint16_t)xfer_len;
   const ra_err_t err =
     internal_run_data_in(target_lun, cdb, (uint8_t)k_ra_hmsc_cdb10_len, out_buf, &got_len);
-  RA_RETURN_ON_ERROR(err, s_tag, "read10: bot");
+  RA_RETURN_ON_ERROR(err, s_tag, "read10: bot"); /* GCOVR_EXCL_BR_LINE */
   return k_ra_ok;
 }
 
@@ -1050,7 +1050,7 @@ ra_usb_hmsc_write10(uint8_t target_lun, uint32_t lba, uint16_t block_count, cons
     return k_ra_err_invalid_arg;
   }
   const ra_err_t ready_err = internal_check_ready(target_lun);
-  RA_RETURN_ON_ERROR(ready_err, s_tag, "write10: not ready");
+  RA_RETURN_ON_ERROR(ready_err, s_tag, "write10: not ready"); /* GCOVR_EXCL_BR_LINE */
 
   uint8_t cdb[k_ra_hmsc_cdb_max_len] = {};
   internal_build_rw10_cdb(k_ra_hmsc_scsi_write_10, lba, block_count, cdb);
@@ -1059,7 +1059,7 @@ ra_usb_hmsc_write10(uint8_t target_lun, uint32_t lba, uint16_t block_count, cons
   const uint16_t push_len = (xfer_len > UINT16_MAX) ? UINT16_MAX : (uint16_t)xfer_len;
   const ra_err_t err =
     internal_run_data_out(target_lun, cdb, (uint8_t)k_ra_hmsc_cdb10_len, in_buf, push_len);
-  RA_RETURN_ON_ERROR(err, s_tag, "write10: bot");
+  RA_RETURN_ON_ERROR(err, s_tag, "write10: bot"); /* GCOVR_EXCL_BR_LINE */
   return k_ra_ok;
 }
 

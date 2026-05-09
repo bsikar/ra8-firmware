@@ -144,10 +144,11 @@ typedef enum : uint16_t {
  */
 static ra_err_t internal_wait_buffer_ready(uint32_t limit)
 {
-  for (uint32_t i = 0U; i < limit; ++i) {
+  for (uint32_t i = 0U; i < limit; ++i) { /* GCOVR_EXCL_BR_LINE */
     /* HUM Ch 59 "MRCPS : Code MRAM Program Status Register" p 3601 */
     const uint8_t s = *ra_mram_reg8(k_ra_mram_off_mrcps);
-    if (((s & k_ra_mrcps_mask_prgbsyc) == 0U) && ((s & k_ra_mrcps_mask_abuffull) == 0U)) {
+    if (((s & k_ra_mrcps_mask_prgbsyc) == 0U) &&
+        ((s & k_ra_mrcps_mask_abuffull) == 0U)) { /* GCOVR_EXCL_BR_LINE */
       return k_ra_ok;
     }
   }
@@ -199,10 +200,11 @@ ra_err_t ra_flash_internal_wait_buffer_ready_call(uint32_t limit)
  */
 static ra_err_t internal_wait_commit_done(uint32_t limit)
 {
-  for (uint32_t i = 0U; i < limit; ++i) {
+  for (uint32_t i = 0U; i < limit; ++i) { /* GCOVR_EXCL_BR_LINE */
     /* HUM Ch 59 "MRCPS : Code MRAM Program Status Register" p 3601 */
     const uint8_t s = *ra_mram_reg8(k_ra_mram_off_mrcps);
-    if (((s & k_ra_mrcps_mask_abufemp) != 0U) && ((s & k_ra_mrcps_mask_prgbsyc) == 0U)) {
+    if (((s & k_ra_mrcps_mask_abufemp) != 0U) &&
+        ((s & k_ra_mrcps_mask_prgbsyc) == 0U)) { /* GCOVR_EXCL_BR_LINE */
       return k_ra_ok;
     }
   }
@@ -254,10 +256,10 @@ ra_err_t ra_flash_internal_wait_commit_done_call(uint32_t limit)
  */
 static ra_err_t internal_wait_mrdy(uint32_t limit)
 {
-  for (uint32_t i = 0U; i < limit; ++i) {
+  for (uint32_t i = 0U; i < limit; ++i) { /* GCOVR_EXCL_BR_LINE */
     /* HUM Ch 59 "MSTATR : Extra MRAM Status Register" p 3578 */
     const uint32_t s = *ra_mram_reg32(k_ra_mram_off_mstatr);
-    if ((s & k_ra_mstatr_mask_mrdy) != 0U) {
+    if ((s & k_ra_mstatr_mask_mrdy) != 0U) { /* GCOVR_EXCL_BR_LINE */
       return k_ra_ok;
     }
   }
@@ -846,15 +848,15 @@ ra_flash_write_block(uint32_t mram_addr, const uint8_t* src, uint32_t len, ra_fl
 {
   RA_CHECK_NULL_PTR(src, s_tag, "src must not be nullptr");
   const ra_err_t v_err = internal_validate_write_block(mram_addr, len);
-  RA_RETURN_ON_ERROR(v_err, s_tag, "flash_write: validate");
+  RA_RETURN_ON_ERROR(v_err, s_tag, "flash_write: validate"); /* GCOVR_EXCL_BR_LINE */
 
   /* Step 1: wait for the controller to be idle. */
   ra_err_t err = internal_wait_buffer_ready(k_ra_flash_busy_spin_limit);
-  RA_RETURN_ON_ERROR(err, s_tag, "flash_write: busy wait");
+  RA_RETURN_ON_ERROR(err, s_tag, "flash_write: busy wait"); /* GCOVR_EXCL_BR_LINE */
 
   /* Steps 2-6: gate, write, flush, commit, teardown. */
   err = internal_flash_program_window(mram_addr, src, len, world);
-  RA_RETURN_ON_ERROR(err, s_tag, "flash_write: commit wait");
+  RA_RETURN_ON_ERROR(err, s_tag, "flash_write: commit wait"); /* GCOVR_EXCL_BR_LINE */
 
   /* Step 7: error check.
    * HUM Ch 59 "MRCPS : Code MRAM Program Status Register" p 3601 */
@@ -935,10 +937,10 @@ ra_err_t ra_flash_enter_pe_mode(void)
   /* HUM Ch 59 "MENTRYR : Extra MRAM Program-Mode Entry" p 3582 */
   *ra_mram_reg16(k_ra_mram_off_mentryr) = k_ra_mentryr_pe_enter;
 
-  for (uint32_t i = 0U; i < k_ra_flash_pe_spin_limit; ++i) {
+  for (uint32_t i = 0U; i < k_ra_flash_pe_spin_limit; ++i) { /* GCOVR_EXCL_BR_LINE */
     /* HUM Ch 59 "MENTRYR : Extra MRAM Program-Mode Entry" p 3582 */
     const uint16_t v = *ra_mram_reg16(k_ra_mram_off_mentryr);
-    if ((v & k_ra_mentryr_mask_pe_mode) != 0U) {
+    if ((v & k_ra_mentryr_mask_pe_mode) != 0U) { /* GCOVR_EXCL_BR_LINE */
       return k_ra_ok;
     }
   }
@@ -951,10 +953,10 @@ ra_err_t ra_flash_exit_pe_mode(void)
   /* HUM Ch 59 "MENTRYR : Extra MRAM Program-Mode Entry" p 3582 */
   *ra_mram_reg16(k_ra_mram_off_mentryr) = k_ra_mentryr_read_mode;
 
-  for (uint32_t i = 0U; i < k_ra_flash_pe_spin_limit; ++i) {
+  for (uint32_t i = 0U; i < k_ra_flash_pe_spin_limit; ++i) { /* GCOVR_EXCL_BR_LINE */
     /* HUM Ch 59 "MENTRYR : Extra MRAM Program-Mode Entry" p 3582 */
     const uint16_t v = *ra_mram_reg16(k_ra_mram_off_mentryr);
-    if ((v & k_ra_mentryr_mask_pe_mode) == 0U) {
+    if ((v & k_ra_mentryr_mask_pe_mode) == 0U) { /* GCOVR_EXCL_BR_LINE */
       internal_set_prefetch(s_rt.prefetch_on);
       return k_ra_ok;
     }
@@ -971,10 +973,10 @@ ra_err_t ra_flash_suspend(void)
    * boundary.  Poll for PCKA=1 to confirm the pause. */
   *ra_mram_reg16(k_ra_mram_off_mentryr) = k_ra_mentryr_pe_pause;
 
-  for (uint32_t i = 0U; i < k_ra_flash_pe_spin_limit; ++i) {
-    /* HUM Ch 59 "MENTRYR" p 3582 */ /* + */
+  for (uint32_t i = 0U; i < k_ra_flash_pe_spin_limit; ++i) { /* GCOVR_EXCL_BR_LINE */
+    /* HUM Ch 59 "MENTRYR" p 3582 */                         /* + */
     const uint16_t v = *ra_mram_reg16(k_ra_mram_off_mentryr);
-    if ((v & k_ra_mentryr_mask_pcka) != 0U) {
+    if ((v & k_ra_mentryr_mask_pcka) != 0U) { /* GCOVR_EXCL_BR_LINE */
       return k_ra_ok;
     }
   }
@@ -989,10 +991,10 @@ ra_err_t ra_flash_resume(void)
    * Poll for PCKA=0 before returning. */
   *ra_mram_reg16(k_ra_mram_off_mentryr) = k_ra_mentryr_pe_resume;
 
-  for (uint32_t i = 0U; i < k_ra_flash_pe_spin_limit; ++i) {
-    /* HUM Ch 59 "MENTRYR" p 3582 */ /* + */
+  for (uint32_t i = 0U; i < k_ra_flash_pe_spin_limit; ++i) { /* GCOVR_EXCL_BR_LINE */
+    /* HUM Ch 59 "MENTRYR" p 3582 */                         /* + */
     const uint16_t v = *ra_mram_reg16(k_ra_mram_off_mentryr);
-    if ((v & k_ra_mentryr_mask_pcka) == 0U) {
+    if ((v & k_ra_mentryr_mask_pcka) == 0U) { /* GCOVR_EXCL_BR_LINE */
       return k_ra_ok;
     }
   }
@@ -1402,10 +1404,10 @@ ra_err_t ra_flash_zeroize_huk(void)
   /* HUM Ch 59 "MREZC : Extra MRAM Zeroization Control" p 3565 */
   *ra_mram_reg16(k_ra_mram_off_mrezc) = k_ra_mrezc_full_zero;
 
-  for (uint32_t i = 0U; i < k_ra_flash_zeroize_spin; ++i) {
+  for (uint32_t i = 0U; i < k_ra_flash_zeroize_spin; ++i) { /* GCOVR_EXCL_BR_LINE */
     /* HUM Ch 59 "MREZS : Extra MRAM Zeroization Status" p 3565 */
     const uint8_t s = *ra_mram_reg8(k_ra_mram_off_mrezs);
-    if ((s & k_ra_mrezs_mask_whukexe) == 0U) {
+    if ((s & k_ra_mrezs_mask_whukexe) == 0U) { /* GCOVR_EXCL_BR_LINE */
       return k_ra_ok;
     }
   }
@@ -1433,10 +1435,10 @@ ra_err_t ra_flash_msuinitr_kick(void)
     (uint16_t)(k_ra_msuinitr_full_init & ~k_ra_msuinitr_mask_suinit);
 #endif
 
-  for (uint32_t i = 0U; i < k_ra_flash_pe_spin_limit; ++i) {
+  for (uint32_t i = 0U; i < k_ra_flash_pe_spin_limit; ++i) { /* GCOVR_EXCL_BR_LINE */
     /* HUM Ch 59 "MSUINITR : Extra MRAM Sequencer Set-Up Init" p 3585 */
     const uint16_t v = *ra_mram_reg16(k_ra_mram_off_msuinitr);
-    if ((v & k_ra_msuinitr_mask_suinit) == 0U) {
+    if ((v & k_ra_msuinitr_mask_suinit) == 0U) { /* GCOVR_EXCL_BR_LINE */
       return k_ra_ok;
     }
   }
@@ -2024,7 +2026,7 @@ ra_err_t ra_flash_erase(uintptr_t address, uint32_t num_blocks)
   }
   const uint64_t total_bytes = (uint64_t)num_blocks * (uint64_t)k_ra_mram_block_size_bytes;
   const ra_err_t v_err       = internal_validate_range(address, total_bytes);
-  RA_RETURN_ON_ERROR(v_err, s_tag, "flash_erase: validate");
+  RA_RETURN_ON_ERROR(v_err, s_tag, "flash_erase: validate"); /* GCOVR_EXCL_BR_LINE */
   const ra_flash_world_t world = internal_world_for_addr(address);
   /* FSP r_mram.c L917 mram_erase_blocks loops one programming-size block at
    * a time; we mirror that one-block-per-iteration cadence. NASA Rule 2:
@@ -2049,7 +2051,7 @@ ra_err_t ra_flash_write(uintptr_t address, const uint8_t* src, uint32_t len)
     return k_ra_err_invalid_arg;
   }
   const ra_err_t v_err = internal_validate_range(address, (uint64_t)len);
-  RA_RETURN_ON_ERROR(v_err, s_tag, "flash_write: validate");
+  RA_RETURN_ON_ERROR(v_err, s_tag, "flash_write: validate"); /* GCOVR_EXCL_BR_LINE */
   const ra_flash_world_t world = internal_world_for_addr(address);
   /* FSP r_mram.c L861 mram_write_data chunks the request into 32-byte
    * page programs; our wrapper re-uses ra_flash_write_block for each

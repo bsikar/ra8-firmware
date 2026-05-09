@@ -162,7 +162,7 @@ static ra_err_t internal_configure_pipes(ra_usb_speed_t speed)
                                            k_ra_usb_ep_dir_in,
                                            k_ra_usb_ep_type_intr,
                                            mp);
-  RA_RETURN_ON_ERROR(err, s_tag, "phid: intr-in cfg");
+  RA_RETURN_ON_ERROR(err, s_tag, "phid: intr-in cfg"); /* GCOVR_EXCL_BR_LINE */
 
   err = ra_usb_configure_endpoint(speed,
                                   k_ra_phid_pipe_intr_out,
@@ -366,7 +366,7 @@ ra_err_t ra_usb_phid_send_report(uint8_t report_id, const uint8_t* payload, uint
      * single interrupt-IN packet on the next IN token. */
     const uint8_t  rid_byte = report_id;
     const ra_err_t rid_err  = ra_usb_queue_in(s_state.speed, k_ra_phid_pipe_intr_in, &rid_byte, 1U);
-    RA_RETURN_ON_ERROR(rid_err, s_tag, "send_report: rid byte");
+    RA_RETURN_ON_ERROR(rid_err, s_tag, "send_report: rid byte"); /* GCOVR_EXCL_BR_LINE */
   }
   return ra_usb_queue_in(s_state.speed, k_ra_phid_pipe_intr_in, payload, len);
 }

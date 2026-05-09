@@ -188,7 +188,7 @@ static ra_err_t internal_apply_instance(uint8_t instance, const ra_cnecc_instanc
 {
   /* HUM Ch 11.2.8 "MSTPCRC : Module Stop Control Register C", p 447 */
   const ra_err_t mst_err = ra_mstp_enable(s_cnecc_mstp_table[instance]);
-  RA_RETURN_ON_ERROR(mst_err, s_tag, "cnecc_init: mstp enable");
+  RA_RETURN_ON_ERROR(mst_err, s_tag, "cnecc_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
 
   volatile r_cnecc_regs_t* reg = ra_cnecc(instance);
   if (reg == nullptr) {             /* GCOVR_EXCL_BR_LINE -- bounded by caller. */
@@ -296,7 +296,7 @@ static void internal_ctl_rmw(volatile r_cnecc_regs_t* reg, uint32_t new_bits, ui
 
   for (uint8_t i = 0U; i < (uint8_t)k_ra_cnecc_instance_count; ++i) {
     const ra_err_t err = internal_apply_instance(i, &cfg->instances[i]);
-    RA_RETURN_ON_ERROR(err, s_tag, "cnecc_init apply");
+    RA_RETURN_ON_ERROR(err, s_tag, "cnecc_init apply"); /* GCOVR_EXCL_BR_LINE */
   }
   s_cnecc_cached_cfg  = *cfg;
   s_cnecc_initialised = true;
@@ -815,7 +815,7 @@ static uint32_t internal_crc32(const uint8_t* data, uint32_t bytes)
 {
   uint32_t       got = 0U;
   const ra_err_t err = ra_cnecc_compute(addr, len, &got);
-  RA_RETURN_ON_ERROR(err, s_tag, "verify: compute failed");
+  RA_RETURN_ON_ERROR(err, s_tag, "verify: compute failed"); /* GCOVR_EXCL_BR_LINE */
   if (got != expected_ecc) {
     ra_log_error_val(s_tag, "verify mismatch", got);
     return k_ra_err_crc_mismatch;

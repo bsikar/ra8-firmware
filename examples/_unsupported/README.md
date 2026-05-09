@@ -21,7 +21,7 @@ satisfy the same lint/format/MC/DC gates as the EVM-validated tier.
 | threadx_ble_central              | BLE radio module + Renesas vendor patch image           |
 | threadx_ble_mesh_node            | BLE radio module + Renesas vendor patch image           |
 | threadx_https_client             | RSIP BIST vendor blob (encrypted asset image)           |
-| ptp_master                       | PTP-aware Ethernet switch                               |
+| ptp_time_transmitter             | PTP-aware Ethernet switch                               |
 | motor_3phase                     | Renesas MCK motor-control daughter board                |
 | threadx_sdcard_demo              | SD card slot + an SD card                               |
 

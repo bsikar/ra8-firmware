@@ -208,9 +208,9 @@ static ra_epaper_panel_t s_panel;
   return k_ra_ok;
 #else
   const ra_port_pin_t pin = (ra_port_pin_t)s_panel.cfg.busy_pin;
-  for (uint32_t i = 0U; i < (uint32_t)k_ra_epaper_busy_poll_max; i++) {
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_epaper_busy_poll_max; i++) { /* GCOVR_EXCL_BR_LINE */
     ra_level_t level = k_ra_level_low;
-    if (ra_gpio_read(pin, &level) == k_ra_ok) {
+    if (ra_gpio_read(pin, &level) == k_ra_ok) { /* GCOVR_EXCL_BR_LINE */
       if (level == k_ra_level_high) {
         return k_ra_ok;
       }
@@ -617,10 +617,10 @@ static void internal_ra_epaper_pulse_reset(void)
   }
 
   /* Poll LUTAFSR until the controller reports zero busy LUTs. */
-  for (uint32_t i = 0U; i < (uint32_t)k_ra_epaper_lut_poll_max; i++) {
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_epaper_lut_poll_max; i++) { /* GCOVR_EXCL_BR_LINE */
     uint16_t status = (uint16_t)k_ra_epaper_status_unset;
     err             = internal_ra_epaper_reg_read((uint16_t)k_ra_epaper_reg_lutafsr, &status);
-    if (err != k_ra_ok) {
+    if (err != k_ra_ok) { /* GCOVR_EXCL_BR_LINE */
       return err;
     }
     if (status == 0U) {

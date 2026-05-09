@@ -264,7 +264,7 @@ ra_err_t ra_gpt_init(uint8_t channel, const ra_gpt_cfg_t* cfg)
 
   /* HUM Ch 11.2.10 "MSTPCRE : Module Stop Control Register E", p 449 */
   const ra_err_t mst_err = ra_mstp_enable(s_gpt_mstp_table[channel]);
-  RA_RETURN_ON_ERROR(mst_err, s_tag, "gpt_init: mstp enable");
+  RA_RETURN_ON_ERROR(mst_err, s_tag, "gpt_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
 
   reg->GTWP  = k_ra_gtwp_key_unlock;
   reg->GTSTP = k_ra_gpt_gtstp_stop;

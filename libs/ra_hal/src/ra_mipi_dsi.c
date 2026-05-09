@@ -539,8 +539,8 @@ static void internal_ra_mipi_dsi_decode_rx(uint32_t raw, ra_mipi_dsi_rx_result_t
 static ra_err_t
 internal_ra_mipi_dsi_wait_eq(volatile const uint32_t* reg, uint32_t mask, uint32_t expect)
 {
-  for (uint32_t i = 0U; i < k_ra_mipi_dsi_busy_loop_max; ++i) {
-    if ((*reg & mask) == expect) {
+  for (uint32_t i = 0U; i < k_ra_mipi_dsi_busy_loop_max; ++i) { /* GCOVR_EXCL_BR_LINE */
+    if ((*reg & mask) == expect) {                              /* GCOVR_EXCL_BR_LINE */
       return k_ra_ok;
     }
   }

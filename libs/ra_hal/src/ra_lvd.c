@@ -733,11 +733,11 @@ ra_err_t ra_lvd_channel_init(ra_lvd_channel_t channel, const ra_lvd_cfg_t* cfg)
 
   uint8_t        idx     = 0U;
   const ra_err_t map_err = internal_channel_to_idx(channel, &idx);
-  RA_RETURN_ON_ERROR(map_err, s_tag, "lvd_init: bad channel");
+  RA_RETURN_ON_ERROR(map_err, s_tag, "lvd_init: bad channel"); /* GCOVR_EXCL_BR_LINE */
 
   const ra_lvd_channel_map_t map     = s_lvd_map[idx];
   const ra_err_t             cfg_err = internal_validate_cfg(&map, cfg);
-  RA_RETURN_ON_ERROR(cfg_err, s_tag, "lvd_init: bad cfg");
+  RA_RETURN_ON_ERROR(cfg_err, s_tag, "lvd_init: bad cfg"); /* GCOVR_EXCL_BR_LINE */
 
   internal_lvd_program_cmpcr(&map, cfg);
   internal_lvd_program_cr0_chain(&map, cfg);
@@ -772,7 +772,7 @@ ra_err_t ra_lvd_channel_deinit(ra_lvd_channel_t channel)
 {
   uint8_t        idx     = 0U;
   const ra_err_t map_err = internal_channel_to_idx(channel, &idx);
-  RA_RETURN_ON_ERROR(map_err, s_tag, "lvd_deinit: bad channel");
+  RA_RETURN_ON_ERROR(map_err, s_tag, "lvd_deinit: bad channel"); /* GCOVR_EXCL_BR_LINE */
 
   const ra_lvd_channel_map_t map = s_lvd_map[idx];
 
@@ -836,10 +836,10 @@ ra_err_t ra_lvd_set_threshold(ra_lvd_channel_t channel, ra_lvd_pvdlvl_t threshol
 {
   uint8_t        idx     = 0U;
   const ra_err_t map_err = internal_channel_to_idx(channel, &idx);
-  RA_RETURN_ON_ERROR(map_err, s_tag, "lvd_set_threshold: bad channel");
+  RA_RETURN_ON_ERROR(map_err, s_tag, "lvd_set_threshold: bad channel"); /* GCOVR_EXCL_BR_LINE */
 
   const ra_err_t lvl_err = internal_validate_threshold(threshold);
-  RA_RETURN_ON_ERROR(lvl_err, s_tag, "lvd_set_threshold: bad threshold");
+  RA_RETURN_ON_ERROR(lvl_err, s_tag, "lvd_set_threshold: bad threshold"); /* GCOVR_EXCL_BR_LINE */
 
   const ra_lvd_channel_map_t map = s_lvd_map[idx];
 
@@ -884,10 +884,10 @@ ra_err_t ra_lvd_set_irq_edge(ra_lvd_channel_t channel, ra_lvd_edge_t edge)
 {
   uint8_t        idx     = 0U;
   const ra_err_t map_err = internal_channel_to_idx(channel, &idx);
-  RA_RETURN_ON_ERROR(map_err, s_tag, "lvd_set_irq_edge: bad channel");
+  RA_RETURN_ON_ERROR(map_err, s_tag, "lvd_set_irq_edge: bad channel"); /* GCOVR_EXCL_BR_LINE */
 
   const ra_err_t edge_err = internal_validate_edge(edge);
-  RA_RETURN_ON_ERROR(edge_err, s_tag, "lvd_set_irq_edge: bad edge");
+  RA_RETURN_ON_ERROR(edge_err, s_tag, "lvd_set_irq_edge: bad edge"); /* GCOVR_EXCL_BR_LINE */
 
   const ra_lvd_channel_map_t map = s_lvd_map[idx];
   if (!map.has_irq) {
@@ -929,7 +929,7 @@ ra_err_t ra_lvd_set_irq_kind(ra_lvd_channel_t channel, ra_lvd_irq_type_t kind)
 {
   uint8_t        idx     = 0U;
   const ra_err_t map_err = internal_channel_to_idx(channel, &idx);
-  RA_RETURN_ON_ERROR(map_err, s_tag, "lvd_set_irq_kind: bad channel");
+  RA_RETURN_ON_ERROR(map_err, s_tag, "lvd_set_irq_kind: bad channel"); /* GCOVR_EXCL_BR_LINE */
 
   const ra_lvd_channel_map_t map = s_lvd_map[idx];
   if (!map.has_irq) {
@@ -977,7 +977,7 @@ ra_err_t ra_lvd_enable_irq(ra_lvd_channel_t channel)
 {
   uint8_t        idx     = 0U;
   const ra_err_t map_err = internal_channel_to_idx(channel, &idx);
-  RA_RETURN_ON_ERROR(map_err, s_tag, "lvd_enable_irq: bad channel");
+  RA_RETURN_ON_ERROR(map_err, s_tag, "lvd_enable_irq: bad channel"); /* GCOVR_EXCL_BR_LINE */
 
   const ra_lvd_channel_map_t map = s_lvd_map[idx];
   if (!map.has_irq) {
@@ -1015,7 +1015,7 @@ ra_err_t ra_lvd_disable_irq(ra_lvd_channel_t channel)
 {
   uint8_t        idx     = 0U;
   const ra_err_t map_err = internal_channel_to_idx(channel, &idx);
-  RA_RETURN_ON_ERROR(map_err, s_tag, "lvd_disable_irq: bad channel");
+  RA_RETURN_ON_ERROR(map_err, s_tag, "lvd_disable_irq: bad channel"); /* GCOVR_EXCL_BR_LINE */
 
   const ra_lvd_channel_map_t map = s_lvd_map[idx];
   if (!map.has_irq) {
@@ -1051,7 +1051,7 @@ ra_err_t ra_lvd_enable_reset(ra_lvd_channel_t channel)
 {
   uint8_t        idx     = 0U;
   const ra_err_t map_err = internal_channel_to_idx(channel, &idx);
-  RA_RETURN_ON_ERROR(map_err, s_tag, "lvd_enable_reset: bad channel");
+  RA_RETURN_ON_ERROR(map_err, s_tag, "lvd_enable_reset: bad channel"); /* GCOVR_EXCL_BR_LINE */
 
   const ra_lvd_channel_map_t map = s_lvd_map[idx];
   if (map.has_irq) {
@@ -1091,7 +1091,7 @@ ra_err_t ra_lvd_disable_reset(ra_lvd_channel_t channel)
 {
   uint8_t        idx     = 0U;
   const ra_err_t map_err = internal_channel_to_idx(channel, &idx);
-  RA_RETURN_ON_ERROR(map_err, s_tag, "lvd_disable_reset: bad channel");
+  RA_RETURN_ON_ERROR(map_err, s_tag, "lvd_disable_reset: bad channel"); /* GCOVR_EXCL_BR_LINE */
 
   const ra_lvd_channel_map_t map = s_lvd_map[idx];
   /* HUM Ch 8.2.4 "PVDmCR0" p 305 */
@@ -1129,7 +1129,7 @@ ra_err_t ra_lvd_enable_cmpe(ra_lvd_channel_t channel)
 {
   uint8_t        idx     = 0U;
   const ra_err_t map_err = internal_channel_to_idx(channel, &idx);
-  RA_RETURN_ON_ERROR(map_err, s_tag, "lvd_enable_cmpe: bad channel");
+  RA_RETURN_ON_ERROR(map_err, s_tag, "lvd_enable_cmpe: bad channel"); /* GCOVR_EXCL_BR_LINE */
 
   const ra_lvd_channel_map_t map = s_lvd_map[idx];
   /* HUM Ch 8.2.4 "PVDmCR0" p 305 */
@@ -1162,7 +1162,7 @@ ra_err_t ra_lvd_disable_cmpe(ra_lvd_channel_t channel)
 {
   uint8_t        idx     = 0U;
   const ra_err_t map_err = internal_channel_to_idx(channel, &idx);
-  RA_RETURN_ON_ERROR(map_err, s_tag, "lvd_disable_cmpe: bad channel");
+  RA_RETURN_ON_ERROR(map_err, s_tag, "lvd_disable_cmpe: bad channel"); /* GCOVR_EXCL_BR_LINE */
 
   const ra_lvd_channel_map_t map = s_lvd_map[idx];
   /* HUM Ch 8.2.4 "PVDmCR0" p 305 */
@@ -1203,10 +1203,10 @@ ra_err_t ra_lvd_set_filter(ra_lvd_channel_t channel, ra_lvd_loco_div_t filter_di
 {
   uint8_t        idx     = 0U;
   const ra_err_t map_err = internal_channel_to_idx(channel, &idx);
-  RA_RETURN_ON_ERROR(map_err, s_tag, "lvd_set_filter: bad channel");
+  RA_RETURN_ON_ERROR(map_err, s_tag, "lvd_set_filter: bad channel"); /* GCOVR_EXCL_BR_LINE */
 
   const ra_err_t div_err = internal_validate_div(filter_div);
-  RA_RETURN_ON_ERROR(div_err, s_tag, "lvd_set_filter: bad div");
+  RA_RETURN_ON_ERROR(div_err, s_tag, "lvd_set_filter: bad div"); /* GCOVR_EXCL_BR_LINE */
 
   const ra_lvd_channel_map_t map = s_lvd_map[idx];
 
@@ -1254,7 +1254,9 @@ ra_err_t ra_lvd_set_hysteresis_mode(ra_lvd_channel_t channel, ra_lvd_hysteresis_
 {
   uint8_t        idx     = 0U;
   const ra_err_t map_err = internal_channel_to_idx(channel, &idx);
-  RA_RETURN_ON_ERROR(map_err, s_tag, "lvd_set_hysteresis_mode: bad channel");
+  RA_RETURN_ON_ERROR(map_err,
+                     s_tag,
+                     "lvd_set_hysteresis_mode: bad channel"); /* GCOVR_EXCL_BR_LINE */
 
   if ((uint8_t)hyst > k_ra_lvd_hysteresis_hvd) {
     return k_ra_err_invalid_arg;
@@ -1313,7 +1315,7 @@ ra_err_t ra_lvd_set_negate_mode(ra_lvd_channel_t channel, ra_lvd_negate_t negate
 {
   uint8_t        idx     = 0U;
   const ra_err_t map_err = internal_channel_to_idx(channel, &idx);
-  RA_RETURN_ON_ERROR(map_err, s_tag, "lvd_set_negate_mode: bad channel");
+  RA_RETURN_ON_ERROR(map_err, s_tag, "lvd_set_negate_mode: bad channel"); /* GCOVR_EXCL_BR_LINE */
 
   const ra_lvd_channel_map_t map = s_lvd_map[idx];
   if (!map.has_irq) {
@@ -1375,7 +1377,7 @@ ra_err_t ra_lvd_get_status(ra_lvd_channel_t channel, ra_lvd_status_t* out)
 
   uint8_t        idx     = 0U;
   const ra_err_t map_err = internal_channel_to_idx(channel, &idx);
-  RA_RETURN_ON_ERROR(map_err, s_tag, "lvd_get_status: bad channel");
+  RA_RETURN_ON_ERROR(map_err, s_tag, "lvd_get_status: bad channel"); /* GCOVR_EXCL_BR_LINE */
 
   const ra_lvd_channel_map_t map = s_lvd_map[idx];
   if (!map.has_irq) {
@@ -1415,7 +1417,7 @@ ra_err_t ra_lvd_clear_status(ra_lvd_channel_t channel)
 {
   uint8_t        idx     = 0U;
   const ra_err_t map_err = internal_channel_to_idx(channel, &idx);
-  RA_RETURN_ON_ERROR(map_err, s_tag, "lvd_clear_status: bad channel");
+  RA_RETURN_ON_ERROR(map_err, s_tag, "lvd_clear_status: bad channel"); /* GCOVR_EXCL_BR_LINE */
 
   const ra_lvd_channel_map_t map = s_lvd_map[idx];
   if (!map.has_irq) {
@@ -1554,7 +1556,7 @@ ra_err_t ra_lvd_enable_elc_event(ra_lvd_channel_t channel)
 {
   uint8_t        idx     = 0U;
   const ra_err_t map_err = internal_channel_to_idx(channel, &idx);
-  RA_RETURN_ON_ERROR(map_err, s_tag, "lvd_enable_elc_event: bad channel");
+  RA_RETURN_ON_ERROR(map_err, s_tag, "lvd_enable_elc_event: bad channel"); /* GCOVR_EXCL_BR_LINE */
 
   const ra_lvd_channel_map_t map = s_lvd_map[idx];
   if (!map.has_irq) {
@@ -1597,7 +1599,7 @@ ra_err_t ra_lvd_disable_elc_event(ra_lvd_channel_t channel)
 {
   uint8_t        idx     = 0U;
   const ra_err_t map_err = internal_channel_to_idx(channel, &idx);
-  RA_RETURN_ON_ERROR(map_err, s_tag, "lvd_disable_elc_event: bad channel");
+  RA_RETURN_ON_ERROR(map_err, s_tag, "lvd_disable_elc_event: bad channel"); /* GCOVR_EXCL_BR_LINE */
 
   const ra_lvd_channel_map_t map = s_lvd_map[idx];
   if (!map.has_irq) {
@@ -1634,7 +1636,9 @@ ra_err_t ra_lvd_configure_for_standby(ra_lvd_channel_t channel)
 {
   uint8_t        idx     = 0U;
   const ra_err_t map_err = internal_channel_to_idx(channel, &idx);
-  RA_RETURN_ON_ERROR(map_err, s_tag, "lvd_configure_for_standby: bad channel");
+  RA_RETURN_ON_ERROR(map_err,
+                     s_tag,
+                     "lvd_configure_for_standby: bad channel"); /* GCOVR_EXCL_BR_LINE */
 
   const ra_lvd_channel_map_t map = s_lvd_map[idx];
 
@@ -1783,7 +1787,9 @@ ra_err_t ra_lvd_attach_channel_handler(ra_lvd_channel_t channel, ra_lvd_event_fn
 {
   uint8_t        idx     = 0U;
   const ra_err_t map_err = internal_channel_to_idx(channel, &idx);
-  RA_RETURN_ON_ERROR(map_err, s_tag, "lvd_attach_channel_handler: bad channel");
+  RA_RETURN_ON_ERROR(map_err,
+                     s_tag,
+                     "lvd_attach_channel_handler: bad channel"); /* GCOVR_EXCL_BR_LINE */
 
   const ra_lvd_channel_map_t map = s_lvd_map[idx];
   if (!map.has_irq) {

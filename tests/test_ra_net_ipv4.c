@@ -13,6 +13,7 @@
 #include "ra_err.h"
 #include "ra_mstp.h"
 #include "ra_net.h"
+#include "ra_net_internal.h"
 #include "ra_net_pal.h"
 #include "ra_sim_mmap.h"
 #include "unity_minimal.h"
@@ -262,6 +263,86 @@ static void test_mcdc_ra_net_recv_arg_guard(void)
   TEST_END("ra_net_recv MC/DC: max_len==0 || handle >= max");
 }
 
+static void test_ra_net_ipv4_public_error_paths(void)
+{
+  TEST_BEGIN("ra_net_ipv4 public error paths");
+  prep();
+
+  uint8_t         payload[1] = {0xA5U};
+  ra_net_ipv4_t   dst        = {.bytes = {192U, 168U, 1U, 55U}};
+  ra_net_handle_t h          = 0U;
+
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_net_open(NULL));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_net_close());
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state,
+                 (int32_t)ra_net_ipv4_send(dst, k_ip_proto_udp, payload, 1U));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_net_socket_udp(4000U, &h));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_net_socket_tcp_listen(80U, &h));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_net_socket_tcp_connect(dst, 80U, &h));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_net_send(0U, payload, 1U, dst, 1U));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_net_close_socket(0U));
+
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_open(&k_test_cfg));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_net_open(&k_test_cfg));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_net_ipv4_send(dst, k_ip_proto_udp, NULL, 0U));
+
+  uint8_t big_payload[1500] = {0U};
+  TEST_ASSERT_EQ(
+    (int32_t)k_ra_err_invalid_size,
+    (int32_t)ra_net_ipv4_send(dst, k_ip_proto_udp, big_payload, (uint16_t)sizeof big_payload));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_net_close_socket((ra_net_handle_t)99U));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_net_close_socket(0U));
+
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_socket_udp(4000U, &h));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_close_socket(h));
+
+  TEST_END("ra_net_ipv4 public error paths");
+}
+
+static void test_ra_net_ipv4_inject_and_dispatch_edges(void)
+{
+  TEST_BEGIN("ra_net_ipv4 inject queue and dispatch edges");
+  prep();
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_net_test_inject_frame(NULL, 64U));
+
+  uint8_t f[64] = {0U};
+  f[12]         = 0x08U;
+  f[13]         = 0x00U;
+  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state,
+                 (int32_t)ra_net_test_inject_frame(f, (uint16_t)sizeof f));
+
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_open(&k_test_cfg));
+
+  /* Fill the simulator inject queue without polling, then force the full branch. */
+  for (uint16_t i = 0U; i < 8U; i++) {
+    TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_test_inject_frame(f, (uint16_t)sizeof f));
+  }
+  TEST_ASSERT_EQ((int32_t)k_ra_err_no_mem,
+                 (int32_t)ra_net_test_inject_frame(f, (uint16_t)sizeof f));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_poll());
+
+  /* IPv4 EtherType with too-short IPv4 payload. */
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_test_inject_frame(f, 14U));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_poll());
+
+  /* Full IPv4 header, but not version 4. */
+  (void)memset(f, 0, sizeof f);
+  f[12] = 0x08U;
+  f[13] = 0x00U;
+  f[14] = 0x60U;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_test_inject_frame(f, 34U));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_poll());
+
+  /* Version 4 with an unknown protocol takes the dispatch default. */
+  f[14] = 0x45U;
+  f[23] = 0xFFU;
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_test_inject_frame(f, 34U));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_net_poll());
+
+  TEST_END("ra_net_ipv4 inject queue and dispatch edges");
+}
+
 int32_t main(void)
 {
   test_mcdc_ra_net_test_inject_frame_len_guard();
@@ -269,6 +350,8 @@ int32_t main(void)
   test_mcdc_ra_net_send_arg_guard();
   test_mcdc_ra_net_recv_null_guard();
   test_mcdc_ra_net_recv_arg_guard();
+  test_ra_net_ipv4_public_error_paths();
+  test_ra_net_ipv4_inject_and_dispatch_edges();
   (void)fprintf(stderr, "[OK ] test_ra_net_ipv4.c\n");
   return 0;
 }

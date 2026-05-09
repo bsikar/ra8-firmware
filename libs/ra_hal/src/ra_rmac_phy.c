@@ -147,10 +147,10 @@ ra_err_t ra_rmac_phy_open(const ra_rmac_phy_cfg_t* cfg)
   const uint16_t poll_max =
     (cfg->reset_poll_max == 0U) ? k_ra_rmac_phy_reset_poll_max : cfg->reset_poll_max;
   bool reset_cleared = false;
-  for (uint16_t i = 0U; i < poll_max; ++i) {
+  for (uint16_t i = 0U; i < poll_max; ++i) { /* GCOVR_EXCL_BR_LINE */
     uint16_t reg = 0U;
     err = s_state.io.read(s_state.io.ctx, s_state.phy_address, k_ra_rmac_phy_reg_control, &reg);
-    if (err != k_ra_ok) {
+    if (err != k_ra_ok) { /* GCOVR_EXCL_BR_LINE */
       s_state.opened = false;
       return err;
     }

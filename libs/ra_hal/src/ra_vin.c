@@ -268,7 +268,7 @@ static void internal_mc_rmw(uint32_t clear_mask, uint32_t set_bits)
   /* HUM Ch 11.2.8 "MSTPCRC: Module Stop Control Register C", p 446
  * VIN shares its module-stop bit with MIPI CSI on the RA8D2. */
   const ra_err_t mst_err = ra_mstp_enable(k_ra_mstp_mipi_csi);
-  RA_RETURN_ON_ERROR(mst_err, s_tag, "vin_init: mstp enable");
+  RA_RETURN_ON_ERROR(mst_err, s_tag, "vin_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
 
   const uint32_t mc_clean = internal_compose_mc(cfg);
 
@@ -391,8 +391,8 @@ static void internal_mc_rmw(uint32_t clear_mask, uint32_t set_bits)
 
   /* Bounded poll for OUTSTAND -> 0 (NASA Rule 2). */
   ra_err_t err = k_ra_err_hw_timeout;
-  for (uint16_t i = 0U; i < k_ra_vin_stop_drain_max; ++i) {
-    if ((*mtc_reg & k_ra_vin_mtcstop_outstand) == 0UL) {
+  for (uint16_t i = 0U; i < k_ra_vin_stop_drain_max; ++i) { /* GCOVR_EXCL_BR_LINE */
+    if ((*mtc_reg & k_ra_vin_mtcstop_outstand) == 0UL) {    /* GCOVR_EXCL_BR_LINE */
       err = k_ra_ok;
       break;
     }

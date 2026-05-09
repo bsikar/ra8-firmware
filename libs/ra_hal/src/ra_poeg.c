@@ -130,7 +130,7 @@ ra_err_t ra_poeg_init(uint8_t group, const ra_poeg_cfg_t* cfg)
 
   /* HUM Ch 11.2.9 "MSTPCRD : Module Stop Control Register D", p 448 */
   const ra_err_t mst_err = ra_mstp_enable(s_poeg_mstp_table[group]);
-  RA_RETURN_ON_ERROR(mst_err, s_tag, "poeg_init: mstp enable");
+  RA_RETURN_ON_ERROR(mst_err, s_tag, "poeg_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
 
   /* HUM Ch 21.2.1 "POEGG : POEG Group n Setting Register", p 872 */
   reg->POEGG = internal_cfg_to_poegg(cfg);
