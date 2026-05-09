@@ -55,7 +55,8 @@ RA_DEFAULT_APP ?= blink
 # RA_APP_DIR_<app> resolves each one to its full per-app directory so
 # `make blink` works regardless of which tier/subtier it lives in.
 _RA_APP_MAINS := $(wildcard $(ROOT)/examples/*/*/main.c) \
-                 $(wildcard $(ROOT)/examples/*/*/*/main.c)
+                 $(wildcard $(ROOT)/examples/*/*/*/main.c) \
+                 $(wildcard $(ROOT)/examples/*/*/*/*/main.c)
 RA_APPS       := $(sort $(notdir $(patsubst %/main.c,%,$(_RA_APP_MAINS))))
 $(foreach m,$(_RA_APP_MAINS),$(eval RA_APP_DIR_$(notdir $(patsubst %/main.c,%,$m)) := $(patsubst %/main.c,%,$m)))
 
@@ -65,7 +66,8 @@ $(foreach m,$(_RA_APP_MAINS),$(eval RA_APP_DIR_$(notdir $(patsubst %/main.c,%,$m
 
 # hw_validated apps -- smoke test and stack-usage sweeps run over this
 # set only, since these are the apps confirmed working on a stock EK-RA8D2.
-_EK_APP_MAINS := $(wildcard $(ROOT)/examples/ek_ra8d2/hw_validated/*/main.c)
+_EK_APP_MAINS := $(wildcard $(ROOT)/examples/ek_ra8d2/hw_validated/*/main.c) \
+                 $(wildcard $(ROOT)/examples/ek_ra8d2/hw_validated/*/*/main.c)
 EK_APPS       := $(sort $(notdir $(patsubst %/main.c,%,$(_EK_APP_MAINS))))
 
 help:
@@ -103,21 +105,32 @@ apps:
 	@echo "Available apps (grouped by tier / subtier):"
 	@for tier_dir in $(ROOT)/examples/*/; do \
 		tier=$$(basename "$$tier_dir"); \
-		for entry in "$$tier_dir"*/; do \
-			[ -d "$$entry" ] || continue; \
-			if ls "$$entry"main.c >/dev/null 2>&1; then \
+		for l2 in "$$tier_dir"*/; do \
+			[ -d "$$l2" ] || continue; \
+			if ls "$${l2}"main.c >/dev/null 2>&1; then \
 				echo "  [$$tier]"; \
-				app=$$(basename "$$entry"); \
-				first_brief=$$(grep -m1 "@brief" "$${entry}main.c" 2>/dev/null | sed 's/.*@brief //'); \
+				app=$$(basename "$$l2"); \
+				first_brief=$$(grep -m1 "@brief" "$${l2}main.c" 2>/dev/null | sed 's/.*@brief //'); \
 				printf "    %-32s %s\n" "$$app" "$$first_brief"; \
 			else \
-				subtier=$$(basename "$$entry"); \
-				echo "  [$$tier/$$subtier]"; \
-				for main in "$$entry"*/main.c; do \
-					[ -f "$$main" ] || continue; \
-					app=$$(basename "$$(dirname "$$main")"); \
-					first_brief=$$(grep -m1 "@brief" "$$main" 2>/dev/null | sed 's/.*@brief //'); \
-					printf "    %-32s %s\n" "$$app" "$$first_brief"; \
+				l2name=$$(basename "$$l2"); \
+				for l3 in "$${l2}"*/; do \
+					[ -d "$$l3" ] || continue; \
+					if ls "$${l3}"main.c >/dev/null 2>&1; then \
+						echo "  [$$tier/$$l2name]"; \
+						app=$$(basename "$$l3"); \
+						first_brief=$$(grep -m1 "@brief" "$${l3}main.c" 2>/dev/null | sed 's/.*@brief //'); \
+						printf "    %-32s %s\n" "$$app" "$$first_brief"; \
+					else \
+						l3name=$$(basename "$$l3"); \
+						echo "  [$$tier/$$l2name/$$l3name]"; \
+						for main in "$${l3}"*/main.c; do \
+							[ -f "$$main" ] || continue; \
+							app=$$(basename "$$(dirname "$$main")"); \
+							first_brief=$$(grep -m1 "@brief" "$$main" 2>/dev/null | sed 's/.*@brief //'); \
+							printf "    %-32s %s\n" "$$app" "$$first_brief"; \
+						done; \
+					fi; \
 				done; \
 			fi; \
 		done; \
@@ -131,7 +144,7 @@ $(RA_APPS):
 	$(MAKE) -C $(RA_APP_DIR_$@) build
 
 clean:
-	@for d in $(ROOT)/examples/*/*/main.c $(ROOT)/examples/*/*/*/main.c; do \
+	@for d in $(ROOT)/examples/*/*/main.c $(ROOT)/examples/*/*/*/main.c $(ROOT)/examples/*/*/*/*/main.c; do \
 		[ -f "$$d" ] || continue; \
 		$(MAKE) -C "$$(dirname $$d)" clean; \
 	done
@@ -222,7 +235,7 @@ ascii:
 	@for dir in src libs tests; do \
 		python3 scripts/utils/fix-encoding.py --check "$$dir" || exit 1; \
 	done
-	@for d in $(ROOT)/examples/*/*/main.c $(ROOT)/examples/*/*/*/main.c; do \
+	@for d in $(ROOT)/examples/*/*/main.c $(ROOT)/examples/*/*/*/main.c $(ROOT)/examples/*/*/*/*/main.c; do \
 		[ -f "$$d" ] || continue; \
 		python3 scripts/utils/fix-encoding.py --check "$$(dirname $$d)" || exit 1; \
 	done
@@ -241,7 +254,7 @@ version:
 # Add one target per app as they are validated.  The target name is
 # hil-<appname>; `make hil` runs all of them.
 # ---------------------------------------------------------------------------
-HIL_UART_HELLO_HEX := $(ROOT)/examples/ek_ra8d2/hw_validated/uart_hello/build/uart_hello.hex
+HIL_UART_HELLO_HEX := $(ROOT)/examples/ek_ra8d2/hw_validated/uart/uart_hello/build/uart_hello.hex
 
 .PHONY: hil hil-uart-hello
 

@@ -91,13 +91,15 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/threadx.cmake OPTIONAL)
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/filex.cmake)
 
 #############################################################################
-# Auto-discover apps: examples/<tier>/<app>/ or examples/<tier>/<subtier>/<app>/
-# The tier layer groups apps by hardware-support category (ek_ra8d2/ for the
-# stock EK-RA8D2 EVM, _unsupported/ for apps requiring extra hardware).
-# Within ek_ra8d2/, hw_validated/ holds confirmed-working apps and
-# hw_pending/ holds apps that still need hardware sign-off.
-# The app directory name (e.g. "blink") is the build-target name regardless
-# of which tier or subtier it lives in.
+# Auto-discover apps up to 4 levels deep:
+#   examples/<tier>/<app>/
+#   examples/<tier>/<subtier>/<app>/
+#   examples/<tier>/<subtier>/<sub2>/<app>/
+#
+# ek_ra8d2/hw_validated/ is further split into uart/, smoke/, and manual/
+# based on HIL testability; this 4-level structure is transparent to CMake.
+# The app directory name (e.g. "blink") is the build-target regardless of
+# depth.
 #############################################################################
 
 set(RA_APPS "")
@@ -109,24 +111,38 @@ foreach(tier ${_ra_tier_entries})
         continue()
     endif()
     file(GLOB _ra_level2_entries RELATIVE ${tier_full} ${tier_full}/*)
-    foreach(entry ${_ra_level2_entries})
-        set(full ${tier_full}/${entry})
-        if(NOT IS_DIRECTORY ${full})
+    foreach(l2 ${_ra_level2_entries})
+        set(l2_full ${tier_full}/${l2})
+        if(NOT IS_DIRECTORY ${l2_full})
             continue()
         endif()
-        if(EXISTS ${full}/main.c AND EXISTS ${full}/CMakeLists.txt)
-            list(APPEND RA_APPS ${entry})
-            list(APPEND RA_APP_PATHS examples/${tier}/${entry})
+        if(EXISTS ${l2_full}/main.c AND EXISTS ${l2_full}/CMakeLists.txt)
+            # Level 2: examples/<tier>/<app>/
+            list(APPEND RA_APPS ${l2})
+            list(APPEND RA_APP_PATHS examples/${tier}/${l2})
         else()
-            # Subtier directory: examples/<tier>/<subtier>/<app>/
-            file(GLOB _ra_level3_entries RELATIVE ${full} ${full}/*)
-            foreach(subentry ${_ra_level3_entries})
-                set(subfull ${full}/${subentry})
-                if(IS_DIRECTORY ${subfull}
-                   AND EXISTS ${subfull}/main.c
-                   AND EXISTS ${subfull}/CMakeLists.txt)
-                    list(APPEND RA_APPS ${subentry})
-                    list(APPEND RA_APP_PATHS examples/${tier}/${entry}/${subentry})
+            file(GLOB _ra_level3_entries RELATIVE ${l2_full} ${l2_full}/*)
+            foreach(l3 ${_ra_level3_entries})
+                set(l3_full ${l2_full}/${l3})
+                if(NOT IS_DIRECTORY ${l3_full})
+                    continue()
+                endif()
+                if(EXISTS ${l3_full}/main.c AND EXISTS ${l3_full}/CMakeLists.txt)
+                    # Level 3: examples/<tier>/<subtier>/<app>/
+                    list(APPEND RA_APPS ${l3})
+                    list(APPEND RA_APP_PATHS examples/${tier}/${l2}/${l3})
+                else()
+                    file(GLOB _ra_level4_entries RELATIVE ${l3_full} ${l3_full}/*)
+                    foreach(l4 ${_ra_level4_entries})
+                        set(l4_full ${l3_full}/${l4})
+                        if(IS_DIRECTORY ${l4_full}
+                           AND EXISTS ${l4_full}/main.c
+                           AND EXISTS ${l4_full}/CMakeLists.txt)
+                            # Level 4: examples/<tier>/<subtier>/<sub2>/<app>/
+                            list(APPEND RA_APPS ${l4})
+                            list(APPEND RA_APP_PATHS examples/${tier}/${l2}/${l3}/${l4})
+                        endif()
+                    endforeach()
                 endif()
             endforeach()
         endif()
@@ -134,7 +150,7 @@ foreach(tier ${_ra_tier_entries})
 endforeach()
 
 if(NOT RA_APPS)
-    message(FATAL_ERROR "No apps discovered under examples/ (checked two levels deep for main.c + CMakeLists.txt).")
+    message(FATAL_ERROR "No apps discovered under examples/ (checked up to 4 levels deep).")
 endif()
 
 message(STATUS "Discovered apps: ${RA_APPS}")

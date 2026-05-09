@@ -29,7 +29,7 @@ jobs:
           # Auto-discover example app dirs (2-level and 3-level paths).
           apps=()
           if [ -d examples ]; then
-            for d in examples/*/*/ examples/*/*/*/; do
+            for d in examples/*/*/ examples/*/*/*/ examples/*/*/*/*/; do
               d="${d%/}"
               [ -f "$d/main.c" ] && apps+=("$d")
             done
@@ -275,9 +275,8 @@ jobs:
         run: |
           set -e
           apps=()
-          # Discover 2-level (examples/<tier>/<app>/) and 3-level
-          # (examples/<tier>/<subtier>/<app>/) app directories.
-          for d in examples/*/*/ examples/*/*/*/; do
+          # Discover 2-level, 3-level, and 4-level app directories.
+          for d in examples/*/*/ examples/*/*/*/ examples/*/*/*/*/; do
             d="${d%/}"
             [ -f "$d/main.c" ] || continue
             apps+=("$d")
@@ -364,7 +363,7 @@ jobs:
           set -e
           apps=()
           if [ -d examples ]; then
-            for d in examples/*/*/ examples/*/*/*/; do
+            for d in examples/*/*/ examples/*/*/*/ examples/*/*/*/*/; do
               d="${d%/}"
               [ -f "$d/main.c" ] && apps+=("$d")
             done
