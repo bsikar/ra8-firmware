@@ -61,16 +61,21 @@ typedef enum : uint16_t {
 
 /**
  * @enum ra_mstp_init_val_t
- * @brief All-stopped reset pattern for MSTPCRA..MSTPCRE.
+ * @brief Per-register safe all-stopped patterns for MSTPCRA..MSTPCRE.
  *
  * @details
- * Every documented MSTPCRx bit defaults to 1 ("module stopped") on
- * a power-on reset (HUM Ch 11.2.6..10 register tables, "Value after
- * reset" rows). Reserved bits are also "read as 1, write 1". So the
- * canonical reset value of every MSTPCR register is 0xFFFFFFFF.
+ * Most MSTPCRx bits default to 1 ("module stopped") on a power-on
+ * reset. Reserved bits are "read as 1, write 1" (HUM Ch 11.2.6..10).
+ *
+ * Exception -- MSTPCRA bits 0..3 (SRAM0..3): these control the ECC
+ * SRAM controllers that back the CPU stack and data. Stopping them
+ * (writing 1) while code is running causes a precise BusFault on the
+ * next stack access. They must be kept at 0 (running) at all times.
+ * HUM Ch 11.2.6 p 443, MSTPA0..MSTPA3.
  */
 typedef enum : uint32_t {
-  k_ra_mstp_all_stopped = 0xFFFFFFFFU,
+  k_ra_mstp_all_stopped    = 0xFFFFFFFFU,
+  k_ra_mstp_safe_stopped_a = 0xFFFFFFF0U, /**< MSTPCRA: bits 0-3 (SRAM0-3) kept 0. */
 } ra_mstp_init_val_t;
 
 /* =============================================================================
@@ -223,37 +228,44 @@ ra_err_t ra_mstp_init(void)
     }
   }
 
-  /* Mark every peripheral as stopped (post-reset state). HUM 11.2.6
-   * pp 443..449 list reserved bits as "These bits are read as 1.
-   * The write value should be 1." -- writing the all-stopped pattern
-   * satisfies both real bits and reserved bits in one shot. */
-  const uint32_t reset_val = k_ra_mstp_all_stopped;
+  /* Stop all peripherals. MSTPCRA bits 0..3 (SRAM0..3) must stay 0
+   * (running) or the CPU stack becomes inaccessible and causes a
+   * BusFault. All other registers use the full all-stopped pattern.
+   * HUM Ch 11.2.6..10 p 443..449. */
+  static const uint32_t k_init_vals[k_ra_mstp_reg_count] = {
+    (uint32_t)k_ra_mstp_safe_stopped_a, /* MSTPCRA: SRAM0-3 kept running */
+    (uint32_t)k_ra_mstp_all_stopped,    /* MSTPCRB */
+    (uint32_t)k_ra_mstp_all_stopped,    /* MSTPCRC */
+    (uint32_t)k_ra_mstp_all_stopped,    /* MSTPCRD */
+    (uint32_t)k_ra_mstp_all_stopped,    /* MSTPCRE */
+  };
   /* HUM Ch 11.2.6 "MSTPCRA : Module Stop Control Register A", p 443 */
-  *internal_reg_ptr(0U) = reset_val;
+  *internal_reg_ptr(0U) = k_init_vals[0U];
   /* HUM Ch 11.2.7 "MSTPCRB : Module Stop Control Register B", p 444 */
-  *internal_reg_ptr(1U) = reset_val;
+  *internal_reg_ptr(1U) = k_init_vals[1U];
   /* HUM Ch 11.2.8 "MSTPCRC : Module Stop Control Register C", p 446 */
-  *internal_reg_ptr(2U) = reset_val;
+  *internal_reg_ptr(2U) = k_init_vals[2U];
   /* HUM Ch 11.2.9 "MSTPCRD : Module Stop Control Register D", p 448 */
-  *internal_reg_ptr(3U) = reset_val;
+  *internal_reg_ptr(3U) = k_init_vals[3U];
   /* HUM Ch 11.2.10 "MSTPCRE : Module Stop Control Register E", p 449 */
-  *internal_reg_ptr(4U) = reset_val;
+  *internal_reg_ptr(4U) = k_init_vals[4U];
 
-  /* Read-back the registers we just wrote. Reserved bits inside the
-   * registers are always 1, so the all-stopped pattern is the only
-   * legal value after a reset-equivalent write. The not-observed
-   * branch is target-only (host simulator always succeeds). */
+  /* Read-back: each register must settle to the value written.
+   * Reserved bits are always 1 so they never cause mismatches.
+   * The not-observed branch is target-only (host simulator always
+   * succeeds). */
   for (uint8_t reg = 0U; reg < k_ra_mstp_reg_count; ++reg) {
-    volatile const uint32_t* p        = internal_reg_ptr(reg);
-    bool                     all_ones = false;
+    volatile const uint32_t* p       = internal_reg_ptr(reg);
+    const uint32_t           expect  = k_init_vals[reg];
+    bool                     matched = false;
     for (uint16_t i = 0U; i < k_ra_mstp_readback_spin; ++i) { /* GCOVR_EXCL_BR_LINE */
-      if (*p == reset_val) {                                  /* GCOVR_EXCL_BR_LINE */
-        all_ones = true;
+      if (*p == expect) {                                     /* GCOVR_EXCL_BR_LINE */
+        matched = true;
         break;
       }
     }
     /* GCOVR_EXCL_START -- target-only path; host MMIO always reads back. */
-    if (!all_ones) {
+    if (!matched) {
       ra_log_error_val(s_tag, "init read-back failed reg", (uint32_t)reg);
       return k_ra_err_hw_timeout;
     }
