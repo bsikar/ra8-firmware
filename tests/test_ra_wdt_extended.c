@@ -1,0 +1,970 @@
+/**
+ * @file test_ra_wdt_extended.c
+ * @brief Extended unit tests for ra_wdt.c covering previously uncovered paths
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
+ */
+
+#include <stdint.h>
+
+#include "ra8d2_wdt_regs.h"
+#include "ra_err.h"
+#include "ra_sim_mmap.h"
+#include "ra_wdt.h"
+#include "unity_minimal.h"
+
+/* ---------------------------------------------------------------------------
+ * Helpers shared by multiple tests
+ * ---------------------------------------------------------------------------
+ */
+
+static const ra_wdt_cfg_t k_valid_cfg = {
+  .timeout       = k_ra_wdt_timeout_16384,
+  .clock_div     = k_ra_wdt_clkdiv_8192,
+  .window_start  = k_ra_wdt_window_start_100,
+  .window_end    = k_ra_wdt_window_end_0,
+  .on_expiry     = k_ra_wdt_on_expiry_reset,
+  .stop_in_sleep = k_ra_wdt_sleep_keep_count,
+};
+
+/* ---------------------------------------------------------------------------
+ * ra_wdt_init -- invalid-arg paths
+ * ---------------------------------------------------------------------------
+ */
+
+/**
+ * @brief Verify null cfg pointer is rejected.
+ *
+ * @pre None.
+ * @post ra_wdt_init returns k_ra_err_null_ptr.
+ *
+ * @par MC/DC:
+ * (no compound decisions -- single null-ptr guard)
+ *
+ * @since 0.1.0
+ */
+static void test_wdt_init_null_cfg(void)
+{
+  TEST_BEGIN("ra_wdt_init null cfg rejected");
+  ra_sim_mmap_reset();
+  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_wdt_init(nullptr));
+  TEST_END("ra_wdt_init null cfg rejected");
+}
+
+/**
+ * @brief Verify invalid clock_div is rejected.
+ *
+ * @pre None.
+ * @post ra_wdt_init returns k_ra_err_invalid_arg for bad clock_div.
+ *
+ * @par MC/DC:
+ * Decision: ``!internal_clock_div_is_valid(cfg->clock_div)``
+ * - V1: valid div (8192)  -> false -> proceeds.
+ * - V2: invalid div (0)   -> true  -> error path.
+ *
+ * @since 0.1.0
+ */
+static void test_wdt_init_bad_clock_div(void)
+{
+  TEST_BEGIN("ra_wdt_init bad clock_div rejected");
+  ra_sim_mmap_reset();
+  ra_wdt_cfg_t cfg = k_valid_cfg;
+  cfg.clock_div    = (ra_wdt_clock_div_t)0U; /* "Setting prohibited" per HUM. */
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_wdt_init(&cfg));
+  TEST_END("ra_wdt_init bad clock_div rejected");
+}
+
+/**
+ * @brief Verify invalid timeout selector is rejected.
+ *
+ * @pre None.
+ * @post ra_wdt_init returns k_ra_err_invalid_arg for bad timeout.
+ *
+ * @par MC/DC:
+ * Decision: ``!internal_timeout_sel_is_valid(cfg->timeout)``
+ * - V1: valid sel (16384)  -> false -> proceeds.
+ * - V2: invalid sel (0xFF) -> true  -> error path.
+ *
+ * @since 0.1.0
+ */
+static void test_wdt_init_bad_timeout(void)
+{
+  TEST_BEGIN("ra_wdt_init bad timeout rejected");
+  ra_sim_mmap_reset();
+  ra_wdt_cfg_t cfg = k_valid_cfg;
+  cfg.timeout      = (ra_wdt_timeout_sel_t)0xFFU;
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_wdt_init(&cfg));
+  TEST_END("ra_wdt_init bad timeout rejected");
+}
+
+/**
+ * @brief Verify ra_wdt_init succeeds with NMI on-expiry setting.
+ *
+ * @pre None.
+ * @post ra_wdt_init returns k_ra_ok with on_expiry=nmi.
+ *
+ * @par MC/DC:
+ * Decision: ``cfg->on_expiry == k_ra_wdt_on_expiry_reset``
+ * - V1: on_expiry=reset -> RSTIRQS set.
+ * - V2: on_expiry=nmi   -> RSTIRQS cleared.
+ *
+ * @since 0.1.0
+ */
+static void test_wdt_init_nmi_expiry(void)
+{
+  TEST_BEGIN("ra_wdt_init with on_expiry=nmi ok");
+  ra_sim_mmap_reset();
+  ra_wdt_cfg_t cfg = k_valid_cfg;
+  cfg.on_expiry    = k_ra_wdt_on_expiry_nmi;
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_wdt_init(&cfg));
+  TEST_END("ra_wdt_init with on_expiry=nmi ok");
+}
+
+/**
+ * @brief Verify ra_wdt_init succeeds with stop-in-sleep enabled.
+ *
+ * @pre None.
+ * @post ra_wdt_init returns k_ra_ok with stop_in_sleep=stop.
+ *
+ * @par MC/DC:
+ * Decision: ``cfg->stop_in_sleep == k_ra_wdt_sleep_stop_count``
+ * - V1: stop_count  -> SLCSTP set.
+ * - V2: keep_count  -> SLCSTP cleared (covered by test_wdt_init_ok).
+ *
+ * @since 0.1.0
+ */
+static void test_wdt_init_stop_in_sleep(void)
+{
+  TEST_BEGIN("ra_wdt_init stop_in_sleep variant ok");
+  ra_sim_mmap_reset();
+  ra_wdt_cfg_t cfg  = k_valid_cfg;
+  cfg.stop_in_sleep = k_ra_wdt_sleep_stop_count;
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_wdt_init(&cfg));
+  TEST_END("ra_wdt_init stop_in_sleep variant ok");
+}
+
+/* ---------------------------------------------------------------------------
+ * ra_wdt_deinit
+ * ---------------------------------------------------------------------------
+ */
+
+/**
+ * @brief Verify deinit returns ok and clears all subscribers.
+ *
+ * @pre ra_wdt_init has been called.
+ * @post ra_wdt_deinit returns k_ra_ok.
+ *
+ * @par MC/DC:
+ * (no compound decisions -- straight-line path)
+ *
+ * @since 0.1.0
+ */
+static void test_wdt_deinit_ok(void)
+{
+  TEST_BEGIN("ra_wdt_deinit ok");
+  ra_sim_mmap_reset();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_wdt_init(&k_valid_cfg));
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_wdt_deinit());
+  TEST_END("ra_wdt_deinit ok");
+}
+
+/* ---------------------------------------------------------------------------
+ * ra_wdt_refresh_for
+ * ---------------------------------------------------------------------------
+ */
+
+/**
+ * @brief Verify refresh_for with valid instance succeeds.
+ *
+ * @pre None.
+ * @post ra_wdt_refresh_for returns k_ra_ok for valid instance.
+ *
+ * @par MC/DC:
+ * Decision: ``(uint8_t)which >= k_ra_wdt_instance_count``
+ * - V1: which=0 (valid)     -> false -> ok.
+ * - V2: which=count (oob)   -> true  -> error.
+ *
+ * @since 0.1.0
+ */
+static void test_wdt_refresh_for_valid(void)
+{
+  TEST_BEGIN("ra_wdt_refresh_for valid instance");
+  ra_sim_mmap_reset();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_wdt_refresh_for((ra_wdt_instance_t)0U));
+  TEST_END("ra_wdt_refresh_for valid instance");
+}
+
+/**
+ * @brief Verify refresh_for with out-of-range instance is rejected.
+ *
+ * @pre None.
+ * @post ra_wdt_refresh_for returns k_ra_err_invalid_arg for oob instance.
+ *
+ * @par MC/DC:
+ * See test_wdt_refresh_for_valid (V2).
+ *
+ * @since 0.1.0
+ */
+static void test_wdt_refresh_for_oob(void)
+{
+  TEST_BEGIN("ra_wdt_refresh_for oob instance rejected");
+  ra_sim_mmap_reset();
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
+                 (int)ra_wdt_refresh_for((ra_wdt_instance_t)k_ra_wdt_instance_count));
+  TEST_END("ra_wdt_refresh_for oob instance rejected");
+}
+
+/* ---------------------------------------------------------------------------
+ * ra_wdt_get_counter
+ * ---------------------------------------------------------------------------
+ */
+
+/**
+ * @brief Verify get_counter null pointer is rejected.
+ *
+ * @pre None.
+ * @post ra_wdt_get_counter returns k_ra_err_null_ptr.
+ *
+ * @par MC/DC:
+ * (no compound decisions -- null guard only)
+ *
+ * @since 0.1.0
+ */
+static void test_wdt_get_counter_null(void)
+{
+  TEST_BEGIN("ra_wdt_get_counter null rejected");
+  ra_sim_mmap_reset();
+  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_wdt_get_counter(nullptr));
+  TEST_END("ra_wdt_get_counter null rejected");
+}
+
+/**
+ * @brief Verify get_counter returns value from WDTSR.
+ *
+ * @pre ra_sim_mmap_reset called.
+ * @post out_count equals the masked CNTVAL field of WDTSR.
+ *
+ * @par MC/DC:
+ * (no compound decisions -- direct register read)
+ *
+ * @since 0.1.0
+ */
+static void test_wdt_get_counter_ok(void)
+{
+  TEST_BEGIN("ra_wdt_get_counter reads CNTVAL field");
+  ra_sim_mmap_reset();
+  /* Write a canned value into the CNTVAL[13:0] field of WDTSR. */
+  ra_wdt()->WDTSR = (uint16_t)(0x0100U);
+  uint16_t cnt    = 0xFFFFU;
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_wdt_get_counter(&cnt));
+  TEST_ASSERT_EQ((int)(0x0100U & (uint16_t)k_ra_wdt_sr_cnt_mask), (int)cnt);
+  TEST_END("ra_wdt_get_counter reads CNTVAL field");
+}
+
+/* ---------------------------------------------------------------------------
+ * ra_wdt_clear_status_blocking
+ * ---------------------------------------------------------------------------
+ */
+
+/**
+ * @brief Verify clear_status_blocking rejects bad mask bits.
+ *
+ * @pre None.
+ * @post Returns k_ra_err_invalid_arg for mask with reserved bits set.
+ *
+ * @par MC/DC:
+ * Decision: ``(mask & ~k_ra_wdt_status_all) != 0U``
+ * - V1: mask=0 (clean)         -> false -> ok path (early return for none).
+ * - V2: mask=0x0001 (reserved) -> true  -> error.
+ *
+ * @since 0.1.0
+ */
+static void test_wdt_clear_status_blocking_bad_mask(void)
+{
+  TEST_BEGIN("ra_wdt_clear_status_blocking bad mask rejected");
+  ra_sim_mmap_reset();
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_wdt_clear_status_blocking(0x0001U));
+  TEST_END("ra_wdt_clear_status_blocking bad mask rejected");
+}
+
+/**
+ * @brief Verify clear_status_blocking with none mask returns ok immediately.
+ *
+ * @pre None.
+ * @post Returns k_ra_ok without touching WDTSR.
+ *
+ * @par MC/DC:
+ * Decision: ``mask == k_ra_wdt_status_none``
+ * - V1: mask=none -> true -> early ok.
+ * - V2: mask=underflow -> false -> enter poll loop.
+ *
+ * @since 0.1.0
+ */
+static void test_wdt_clear_status_blocking_none(void)
+{
+  TEST_BEGIN("ra_wdt_clear_status_blocking mask=none returns ok");
+  ra_sim_mmap_reset();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_wdt_clear_status_blocking((uint16_t)k_ra_wdt_status_none));
+  TEST_END("ra_wdt_clear_status_blocking mask=none returns ok");
+}
+
+/**
+ * @brief Verify clear_status_blocking succeeds when flag is already clear.
+ *
+ * @pre WDTSR starts at 0.
+ * @post Returns k_ra_ok immediately because WDTSR bits are already 0.
+ *
+ * @par MC/DC:
+ * Decision (inner): ``((uint16_t)reg->WDTSR & mask) == 0U``
+ * - V1: flag already 0 -> true -> returns ok first iteration.
+ * - V2: flag set       -> false -> continues polling (timeout test covers this).
+ *
+ * @since 0.1.0
+ */
+static void test_wdt_clear_status_blocking_already_clear(void)
+{
+  TEST_BEGIN("ra_wdt_clear_status_blocking already clear returns ok");
+  ra_sim_mmap_reset();
+  /* WDTSR starts at zero after reset -- asking to clear underflow is a no-op. */
+  TEST_ASSERT_EQ((int)k_ra_ok,
+                 (int)ra_wdt_clear_status_blocking((uint16_t)k_ra_wdt_status_underflow));
+  TEST_END("ra_wdt_clear_status_blocking already clear returns ok");
+}
+
+/* ---------------------------------------------------------------------------
+ * ra_wdt_timeout_cycles_get
+ * ---------------------------------------------------------------------------
+ */
+
+/**
+ * @brief Verify all four valid timeout selectors return correct cycle counts.
+ *
+ * @pre None.
+ * @post Each valid selector returns the documented cycle count.
+ *
+ * @par MC/DC:
+ * (switch exhaustion covers all 4 case arms; no compound boolean)
+ *
+ * @since 0.1.0
+ */
+static void test_wdt_timeout_cycles_get_all(void)
+{
+  TEST_BEGIN("ra_wdt_timeout_cycles_get all valid selectors");
+  uint16_t cycles = 0U;
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_wdt_timeout_cycles_get(k_ra_wdt_timeout_1024, &cycles));
+  TEST_ASSERT_EQ((int)k_ra_wdt_cycles_1024, (int)cycles);
+
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_wdt_timeout_cycles_get(k_ra_wdt_timeout_4096, &cycles));
+  TEST_ASSERT_EQ((int)k_ra_wdt_cycles_4096, (int)cycles);
+
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_wdt_timeout_cycles_get(k_ra_wdt_timeout_8192, &cycles));
+  TEST_ASSERT_EQ((int)k_ra_wdt_cycles_8192, (int)cycles);
+
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_wdt_timeout_cycles_get(k_ra_wdt_timeout_16384, &cycles));
+  TEST_ASSERT_EQ((int)k_ra_wdt_cycles_16384, (int)cycles);
+  TEST_END("ra_wdt_timeout_cycles_get all valid selectors");
+}
+
+/**
+ * @brief Verify timeout_cycles_get rejects null pointer.
+ *
+ * @pre None.
+ * @post Returns k_ra_err_null_ptr.
+ *
+ * @par MC/DC:
+ * (null-ptr guard -- single condition)
+ *
+ * @since 0.1.0
+ */
+static void test_wdt_timeout_cycles_get_null(void)
+{
+  TEST_BEGIN("ra_wdt_timeout_cycles_get null rejected");
+  TEST_ASSERT_EQ((int)k_ra_err_null_ptr,
+                 (int)ra_wdt_timeout_cycles_get(k_ra_wdt_timeout_1024, nullptr));
+  TEST_END("ra_wdt_timeout_cycles_get null rejected");
+}
+
+/**
+ * @brief Verify timeout_cycles_get rejects invalid selector.
+ *
+ * @pre None.
+ * @post Returns k_ra_err_invalid_arg for unknown selector.
+ *
+ * @par MC/DC:
+ * (default arm of switch -- selector falls through to invalid path)
+ *
+ * @since 0.1.0
+ */
+static void test_wdt_timeout_cycles_get_invalid(void)
+{
+  TEST_BEGIN("ra_wdt_timeout_cycles_get invalid selector rejected");
+  uint16_t cycles = 0U;
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
+                 (int)ra_wdt_timeout_cycles_get((ra_wdt_timeout_sel_t)0xFFU, &cycles));
+  TEST_END("ra_wdt_timeout_cycles_get invalid selector rejected");
+}
+
+/* ---------------------------------------------------------------------------
+ * ra_wdt_pclkb_divisor
+ * ---------------------------------------------------------------------------
+ */
+
+/**
+ * @brief Verify all six valid clock-div values return correct divisors.
+ *
+ * @pre None.
+ * @post Each valid divisor enum returns the documented integer value.
+ *
+ * @par MC/DC:
+ * (switch exhaustion covers all 6 case arms; no compound boolean)
+ *
+ * @since 0.1.0
+ */
+static void test_wdt_pclkb_divisor_all(void)
+{
+  TEST_BEGIN("ra_wdt_pclkb_divisor all valid dividers");
+  uint16_t div = 0U;
+
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_wdt_pclkb_divisor(k_ra_wdt_clkdiv_4, &div));
+  TEST_ASSERT_EQ((int)k_ra_wdt_div_value_4, (int)div);
+
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_wdt_pclkb_divisor(k_ra_wdt_clkdiv_64, &div));
+  TEST_ASSERT_EQ((int)k_ra_wdt_div_value_64, (int)div);
+
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_wdt_pclkb_divisor(k_ra_wdt_clkdiv_128, &div));
+  TEST_ASSERT_EQ((int)k_ra_wdt_div_value_128, (int)div);
+
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_wdt_pclkb_divisor(k_ra_wdt_clkdiv_512, &div));
+  TEST_ASSERT_EQ((int)k_ra_wdt_div_value_512, (int)div);
+
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_wdt_pclkb_divisor(k_ra_wdt_clkdiv_2048, &div));
+  TEST_ASSERT_EQ((int)k_ra_wdt_div_value_2048, (int)div);
+
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_wdt_pclkb_divisor(k_ra_wdt_clkdiv_8192, &div));
+  TEST_ASSERT_EQ((int)k_ra_wdt_div_value_8192, (int)div);
+  TEST_END("ra_wdt_pclkb_divisor all valid dividers");
+}
+
+/**
+ * @brief Verify pclkb_divisor rejects null pointer.
+ *
+ * @pre None.
+ * @post Returns k_ra_err_null_ptr.
+ *
+ * @par MC/DC:
+ * (null-ptr guard -- single condition)
+ *
+ * @since 0.1.0
+ */
+static void test_wdt_pclkb_divisor_null(void)
+{
+  TEST_BEGIN("ra_wdt_pclkb_divisor null rejected");
+  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_wdt_pclkb_divisor(k_ra_wdt_clkdiv_8192, nullptr));
+  TEST_END("ra_wdt_pclkb_divisor null rejected");
+}
+
+/**
+ * @brief Verify pclkb_divisor rejects invalid clock-div.
+ *
+ * @pre None.
+ * @post Returns k_ra_err_invalid_arg for unknown divider.
+ *
+ * @par MC/DC:
+ * (default arm of switch)
+ *
+ * @since 0.1.0
+ */
+static void test_wdt_pclkb_divisor_invalid(void)
+{
+  TEST_BEGIN("ra_wdt_pclkb_divisor invalid rejected");
+  uint16_t div = 0U;
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
+                 (int)ra_wdt_pclkb_divisor((ra_wdt_clock_div_t)0xFFU, &div));
+  TEST_END("ra_wdt_pclkb_divisor invalid rejected");
+}
+
+/* ---------------------------------------------------------------------------
+ * ra_wdt_total_pclkb_cycles
+ * ---------------------------------------------------------------------------
+ */
+
+/**
+ * @brief Verify total_pclkb_cycles null out pointer rejected.
+ *
+ * @pre None.
+ * @post Returns k_ra_err_null_ptr.
+ *
+ * @par MC/DC:
+ * (null-ptr guard)
+ *
+ * @since 0.1.0
+ */
+static void test_wdt_total_pclkb_cycles_null(void)
+{
+  TEST_BEGIN("ra_wdt_total_pclkb_cycles null rejected");
+  TEST_ASSERT_EQ((int)k_ra_err_null_ptr,
+                 (int)ra_wdt_total_pclkb_cycles(k_ra_wdt_timeout_1024, k_ra_wdt_clkdiv_4, nullptr));
+  TEST_END("ra_wdt_total_pclkb_cycles null rejected");
+}
+
+/**
+ * @brief Verify total_pclkb_cycles returns correct product.
+ *
+ * @pre None.
+ * @post Returns 1024 * 4 = 4096.
+ *
+ * @par MC/DC:
+ * Decision: ``e1 != k_ra_ok``
+ * - V1: sel=1024, div=4 (valid) -> e1=ok, e2=ok -> product returned.
+ * - V2: sel=invalid             -> e1=err        -> early return.
+ *
+ * @since 0.1.0
+ */
+static void test_wdt_total_pclkb_cycles_ok(void)
+{
+  TEST_BEGIN("ra_wdt_total_pclkb_cycles computes product");
+  uint32_t total = 0U;
+  TEST_ASSERT_EQ((int)k_ra_ok,
+                 (int)ra_wdt_total_pclkb_cycles(k_ra_wdt_timeout_1024, k_ra_wdt_clkdiv_4, &total));
+  /* 1024 cycles * 4 div = 4096 */
+  const uint32_t k_expected = (uint32_t)k_ra_wdt_cycles_1024 * (uint32_t)k_ra_wdt_div_value_4;
+  TEST_ASSERT_EQ((int64_t)k_expected, (int64_t)total);
+  TEST_END("ra_wdt_total_pclkb_cycles computes product");
+}
+
+/**
+ * @brief Verify total_pclkb_cycles propagates invalid selector error.
+ *
+ * @pre None.
+ * @post Returns k_ra_err_invalid_arg when sel is bad.
+ *
+ * @par MC/DC:
+ * Decision: ``e1 != k_ra_ok`` -- V2 branch (see test above).
+ *
+ * @since 0.1.0
+ */
+static void test_wdt_total_pclkb_cycles_bad_sel(void)
+{
+  TEST_BEGIN("ra_wdt_total_pclkb_cycles bad sel propagated");
+  uint32_t total = 0U;
+  TEST_ASSERT_EQ(
+    (int)k_ra_err_invalid_arg,
+    (int)ra_wdt_total_pclkb_cycles((ra_wdt_timeout_sel_t)0xFFU, k_ra_wdt_clkdiv_4, &total));
+  TEST_END("ra_wdt_total_pclkb_cycles bad sel propagated");
+}
+
+/**
+ * @brief Verify total_pclkb_cycles propagates invalid div error.
+ *
+ * @pre None.
+ * @post Returns k_ra_err_invalid_arg when div is bad.
+ *
+ * @par MC/DC:
+ * Decision: ``e2 != k_ra_ok`` -- both e1=ok, e2=err path.
+ *
+ * @since 0.1.0
+ */
+static void test_wdt_total_pclkb_cycles_bad_div(void)
+{
+  TEST_BEGIN("ra_wdt_total_pclkb_cycles bad div propagated");
+  uint32_t total = 0U;
+  TEST_ASSERT_EQ(
+    (int)k_ra_err_invalid_arg,
+    (int)ra_wdt_total_pclkb_cycles(k_ra_wdt_timeout_1024, (ra_wdt_clock_div_t)0xFFU, &total));
+  TEST_END("ra_wdt_total_pclkb_cycles bad div propagated");
+}
+
+/* ---------------------------------------------------------------------------
+ * ra_wdt_subscribe / ra_wdt_unsubscribe / ra_wdt_subscriber_count
+ * ---------------------------------------------------------------------------
+ */
+
+static uint32_t s_sub_count;
+
+static void stub_sub(void* ctx, uint16_t mask)
+{
+  (void)ctx;
+  (void)mask;
+  ++s_sub_count;
+}
+
+/**
+ * @brief Verify subscribe null fn is rejected.
+ *
+ * @pre None.
+ * @post Returns k_ra_err_null_ptr.
+ *
+ * @par MC/DC:
+ * (null-ptr guard on fn -- single condition)
+ *
+ * @since 0.1.0
+ */
+static void test_wdt_subscribe_null_fn(void)
+{
+  TEST_BEGIN("ra_wdt_subscribe null fn rejected");
+  ra_sim_mmap_reset();
+  (void)ra_wdt_deinit();
+  uint8_t slot = 0xFFU;
+  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_wdt_subscribe(nullptr, nullptr, &slot));
+  TEST_END("ra_wdt_subscribe null fn rejected");
+}
+
+/**
+ * @brief Verify subscribe fills slots and subscriber_count reflects it.
+ *
+ * @pre deinit called to clear slots.
+ * @post subscriber_count increases with each subscribe.
+ *
+ * @par MC/DC:
+ * Decision (inner loop): ``s_wdt_subs[i].fn == nullptr``
+ * - V1: slot free  -> true  -> claim slot, return ok.
+ * - V2: slot used  -> false -> advance.
+ *
+ * @since 0.1.0
+ */
+static void test_wdt_subscribe_and_count(void)
+{
+  TEST_BEGIN("ra_wdt_subscribe and subscriber_count");
+  ra_sim_mmap_reset();
+  (void)ra_wdt_deinit();
+  s_sub_count = 0U;
+
+  uint8_t slot1 = 0xFFU;
+  uint8_t slot2 = 0xFFU;
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_wdt_subscribe(stub_sub, nullptr, &slot1));
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_wdt_subscribe(stub_sub, nullptr, &slot2));
+
+  /* Slots should be distinct. */
+  TEST_ASSERT(slot1 != slot2);
+  /* Count should include legacy slot (0) which is free, so count = 2. */
+  TEST_ASSERT(ra_wdt_subscriber_count() >= 2U);
+  TEST_END("ra_wdt_subscribe and subscriber_count");
+}
+
+/**
+ * @brief Verify unsubscribe with null slot fn returns not_found.
+ *
+ * @pre Slot is free (no subscriber).
+ * @post Returns k_ra_err_not_found.
+ *
+ * @par MC/DC:
+ * Decision: ``s_wdt_subs[slot].fn == nullptr``
+ * - V1: fn=nullptr (free slot)  -> true  -> k_ra_err_not_found.
+ * - V2: fn!=nullptr (used slot) -> false -> clears and returns ok.
+ *
+ * @since 0.1.0
+ */
+static void test_wdt_unsubscribe_free_slot(void)
+{
+  TEST_BEGIN("ra_wdt_unsubscribe free slot returns not_found");
+  ra_sim_mmap_reset();
+  (void)ra_wdt_deinit();
+
+  /* Slot 1 is free after deinit. */
+  TEST_ASSERT_EQ((int)k_ra_err_not_found, (int)ra_wdt_unsubscribe(1U));
+  TEST_END("ra_wdt_unsubscribe free slot returns not_found");
+}
+
+/**
+ * @brief Verify unsubscribe out-of-range slot is rejected.
+ *
+ * @pre None.
+ * @post Returns k_ra_err_invalid_arg.
+ *
+ * @par MC/DC:
+ * Decision: ``slot >= k_ra_wdt_max_subs``
+ * - V1: slot=0           -> false -> proceed.
+ * - V2: slot=max_subs    -> true  -> error.
+ *
+ * @since 0.1.0
+ */
+static void test_wdt_unsubscribe_oob(void)
+{
+  TEST_BEGIN("ra_wdt_unsubscribe oob slot rejected");
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_wdt_unsubscribe((uint8_t)k_ra_wdt_max_subs));
+  TEST_END("ra_wdt_unsubscribe oob slot rejected");
+}
+
+/**
+ * @brief Verify subscribe/unsubscribe round-trip works.
+ *
+ * @pre deinit called.
+ * @post After unsubscribe slot is free and count decreases.
+ *
+ * @par MC/DC:
+ * Exercises all three arms of the unsubscribe guard + the slot-free check.
+ *
+ * @since 0.1.0
+ */
+static void test_wdt_subscribe_unsubscribe_roundtrip(void)
+{
+  TEST_BEGIN("ra_wdt_subscribe/unsubscribe round-trip");
+  ra_sim_mmap_reset();
+  (void)ra_wdt_deinit();
+
+  uint8_t slot = 0xFFU;
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_wdt_subscribe(stub_sub, nullptr, &slot));
+  TEST_ASSERT(slot < k_ra_wdt_max_subs);
+
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_wdt_unsubscribe(slot));
+  /* Now unsubscribe again should return not_found. */
+  TEST_ASSERT_EQ((int)k_ra_err_not_found, (int)ra_wdt_unsubscribe(slot));
+  TEST_END("ra_wdt_subscribe/unsubscribe round-trip");
+}
+
+/**
+ * @brief Verify subscribe returns no_mem when all slots are taken.
+ *
+ * @pre deinit called; then fill all non-legacy slots.
+ * @post Returns k_ra_err_no_mem on the next subscribe.
+ *
+ * @par MC/DC:
+ * Decision (loop exit without finding free slot): exhaustion path.
+ *
+ * @since 0.1.0
+ */
+static void test_wdt_subscribe_table_full(void)
+{
+  TEST_BEGIN("ra_wdt_subscribe table full returns no_mem");
+  ra_sim_mmap_reset();
+  (void)ra_wdt_deinit();
+
+  /* Fill every non-legacy slot (slots 1..k_ra_wdt_max_subs-1). */
+  const uint8_t k_non_legacy = (uint8_t)(k_ra_wdt_max_subs - 1U);
+  for (uint8_t i = 0U; i < k_non_legacy; ++i) {
+    uint8_t        slot = 0xFFU;
+    const ra_err_t e    = ra_wdt_subscribe(stub_sub, nullptr, &slot);
+    TEST_ASSERT_EQ((int)k_ra_ok, (int)e);
+  }
+
+  uint8_t overflow = 0xFFU;
+  TEST_ASSERT_EQ((int)k_ra_err_no_mem, (int)ra_wdt_subscribe(stub_sub, nullptr, &overflow));
+  TEST_END("ra_wdt_subscribe table full returns no_mem");
+}
+
+/* ---------------------------------------------------------------------------
+ * ra_wdt_enter_stop / ra_wdt_exit_stop
+ * ---------------------------------------------------------------------------
+ */
+
+/**
+ * @brief Verify enter_stop sets SLCSTP in WDTCSTPR.
+ *
+ * @pre ra_sim_mmap_reset.
+ * @post WDTCSTPR has SLCSTP bit set after enter_stop.
+ *
+ * @par MC/DC:
+ * (no compound decisions -- straight-line register write)
+ *
+ * @since 0.1.0
+ */
+static void test_wdt_enter_exit_stop(void)
+{
+  TEST_BEGIN("ra_wdt_enter_stop / ra_wdt_exit_stop");
+  ra_sim_mmap_reset();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_wdt_enter_stop());
+  TEST_ASSERT_EQ((int)k_ra_wdt_cstpr_slcstp, (int)ra_wdt()->WDTCSTPR);
+
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_wdt_exit_stop());
+  TEST_ASSERT_EQ((int)0, (int)ra_wdt()->WDTCSTPR);
+  TEST_END("ra_wdt_enter_stop / ra_wdt_exit_stop");
+}
+
+/* ---------------------------------------------------------------------------
+ * ra_wdt_install_nmi / ra_wdt_uninstall_nmi
+ * ---------------------------------------------------------------------------
+ */
+
+/**
+ * @brief Verify install_nmi returns ok.
+ *
+ * @pre ra_sim_mmap_reset.
+ * @post install_nmi returns k_ra_ok.
+ *
+ * @par MC/DC:
+ * (no compound decisions -- sequential ICU calls; both return ok in sim)
+ *
+ * @since 0.1.0
+ */
+static void test_wdt_install_uninstall_nmi(void)
+{
+  TEST_BEGIN("ra_wdt_install_nmi / ra_wdt_uninstall_nmi");
+  ra_sim_mmap_reset();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_wdt_install_nmi());
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_wdt_uninstall_nmi());
+  TEST_END("ra_wdt_install_nmi / ra_wdt_uninstall_nmi");
+}
+
+/* ---------------------------------------------------------------------------
+ * ra_wdt_ofs_reader_set / ra_wdt_ofs_get
+ * ---------------------------------------------------------------------------
+ */
+
+static ra_err_t stub_ofs_reader_ok(uintptr_t addr, uint32_t* out)
+{
+  (void)addr;
+  /* Fabricate an OFSm word: auto-start mode, default values. */
+  *out = 0x00000000UL;
+  return k_ra_ok;
+}
+
+static ra_err_t stub_ofs_reader_err(uintptr_t addr, uint32_t* out)
+{
+  (void)addr;
+  (void)out;
+  return k_ra_err_hw_error;
+}
+
+/**
+ * @brief Verify ofs_get null out pointer is rejected.
+ *
+ * @pre None.
+ * @post Returns k_ra_err_null_ptr.
+ *
+ * @par MC/DC:
+ * (null-ptr guard)
+ *
+ * @since 0.1.0
+ */
+static void test_wdt_ofs_get_null(void)
+{
+  TEST_BEGIN("ra_wdt_ofs_get null out rejected");
+  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_wdt_ofs_get((ra_wdt_instance_t)0U, nullptr));
+  TEST_END("ra_wdt_ofs_get null out rejected");
+}
+
+/**
+ * @brief Verify ofs_get out-of-range instance is rejected.
+ *
+ * @pre None.
+ * @post Returns k_ra_err_invalid_arg.
+ *
+ * @par MC/DC:
+ * Decision: ``(uint8_t)which >= k_ra_wdt_instance_count``
+ * - V1: which=0 (valid) -> false -> proceed.
+ * - V2: which=count     -> true  -> error.
+ *
+ * @since 0.1.0
+ */
+static void test_wdt_ofs_get_oob(void)
+{
+  TEST_BEGIN("ra_wdt_ofs_get oob instance rejected");
+  ra_wdt_ofs_decoded_t out = {};
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
+                 (int)ra_wdt_ofs_get((ra_wdt_instance_t)k_ra_wdt_instance_count, &out));
+  TEST_END("ra_wdt_ofs_get oob instance rejected");
+}
+
+/**
+ * @brief Verify ofs_reader_set + ofs_get succeeds with stub reader.
+ *
+ * @pre None.
+ * @post ofs_get returns k_ra_ok and populates out struct.
+ *
+ * @par MC/DC:
+ * Decision: ``e != k_ra_ok`` (reader return check)
+ * - V1: reader returns ok  -> e=ok  -> decode and return ok.
+ * - V2: reader returns err -> e=err -> propagate error.
+ *
+ * @since 0.1.0
+ */
+static void test_wdt_ofs_reader_set_ok(void)
+{
+  TEST_BEGIN("ra_wdt_ofs_reader_set + ofs_get ok");
+  (void)ra_wdt_ofs_reader_set(stub_ofs_reader_ok);
+  ra_wdt_ofs_decoded_t out = {};
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_wdt_ofs_get((ra_wdt_instance_t)0U, &out));
+  /* Reset to default reader. */
+  (void)ra_wdt_ofs_reader_set(nullptr);
+  TEST_END("ra_wdt_ofs_reader_set + ofs_get ok");
+}
+
+/**
+ * @brief Verify ofs_get propagates reader error.
+ *
+ * @pre Stub reader installed that returns an error.
+ * @post ofs_get returns the reader's error code.
+ *
+ * @par MC/DC:
+ * Decision: ``e != k_ra_ok`` -- V2 (error path).
+ *
+ * @since 0.1.0
+ */
+static void test_wdt_ofs_reader_set_err(void)
+{
+  TEST_BEGIN("ra_wdt_ofs_get propagates reader error");
+  (void)ra_wdt_ofs_reader_set(stub_ofs_reader_err);
+  ra_wdt_ofs_decoded_t out = {};
+  TEST_ASSERT_EQ((int)k_ra_err_hw_error, (int)ra_wdt_ofs_get((ra_wdt_instance_t)0U, &out));
+  (void)ra_wdt_ofs_reader_set(nullptr);
+  TEST_END("ra_wdt_ofs_get propagates reader error");
+}
+
+/**
+ * @brief Verify ofs_get with auto-start bit set decodes correctly.
+ *
+ * @pre Stub reader returns OFSm with auto-start bit = 0 (auto-start).
+ * @post out.auto_start == true.
+ *
+ * @par MC/DC:
+ * Decision: ``out->start_mode == k_ra_wdt_ofs_strt_auto``
+ * - V1: strt=0 (auto)     -> auto_start=true.
+ * - V2: strt=1 (register) -> auto_start=false (tested below).
+ *
+ * @since 0.1.0
+ */
+static void test_wdt_ofs_get_auto_start(void)
+{
+  TEST_BEGIN("ra_wdt_ofs_get decodes auto-start correctly");
+  (void)ra_wdt_ofs_reader_set(stub_ofs_reader_ok);
+  ra_wdt_ofs_decoded_t out = {};
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_wdt_ofs_get((ra_wdt_instance_t)0U, &out));
+  /* stub returns 0 -> strt field = 0 = auto-start */
+  TEST_ASSERT_EQ((int)k_ra_wdt_ofs_strt_auto, (int)out.start_mode);
+  TEST_ASSERT_EQ((int)1, (int)(int)out.auto_start);
+  (void)ra_wdt_ofs_reader_set(nullptr);
+  TEST_END("ra_wdt_ofs_get decodes auto-start correctly");
+}
+
+int32_t main(void)
+{
+  test_wdt_init_null_cfg();
+  test_wdt_init_bad_clock_div();
+  test_wdt_init_bad_timeout();
+  test_wdt_init_nmi_expiry();
+  test_wdt_init_stop_in_sleep();
+  test_wdt_deinit_ok();
+  test_wdt_refresh_for_valid();
+  test_wdt_refresh_for_oob();
+  test_wdt_get_counter_null();
+  test_wdt_get_counter_ok();
+  test_wdt_clear_status_blocking_bad_mask();
+  test_wdt_clear_status_blocking_none();
+  test_wdt_clear_status_blocking_already_clear();
+  test_wdt_timeout_cycles_get_all();
+  test_wdt_timeout_cycles_get_null();
+  test_wdt_timeout_cycles_get_invalid();
+  test_wdt_pclkb_divisor_all();
+  test_wdt_pclkb_divisor_null();
+  test_wdt_pclkb_divisor_invalid();
+  test_wdt_total_pclkb_cycles_null();
+  test_wdt_total_pclkb_cycles_ok();
+  test_wdt_total_pclkb_cycles_bad_sel();
+  test_wdt_total_pclkb_cycles_bad_div();
+  test_wdt_subscribe_null_fn();
+  test_wdt_subscribe_and_count();
+  test_wdt_unsubscribe_free_slot();
+  test_wdt_unsubscribe_oob();
+  test_wdt_subscribe_unsubscribe_roundtrip();
+  test_wdt_subscribe_table_full();
+  test_wdt_enter_exit_stop();
+  test_wdt_install_uninstall_nmi();
+  test_wdt_ofs_get_null();
+  test_wdt_ofs_get_oob();
+  test_wdt_ofs_reader_set_ok();
+  test_wdt_ofs_reader_set_err();
+  test_wdt_ofs_get_auto_start();
+  (void)fprintf(stderr, "[OK  ] test_ra_wdt_extended.c\n");
+  return 0;
+}

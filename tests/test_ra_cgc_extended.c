@@ -1,0 +1,376 @@
+/**
+ * @file test_ra_cgc_extended.c
+ * @brief Extended unit tests for ra_cgc.c covering previously uncovered paths
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
+ */
+
+#include <stdint.h>
+
+#include "ra8d2_cgc_regs.h"
+#include "ra8d2_system_regs.h"
+#include "ra_cgc.h"
+#include "ra_err.h"
+#include "ra_sim_mmap.h"
+#include "unity_minimal.h"
+
+typedef enum : uint8_t {
+  k_cgc_ext_all_oscsf = 0xFFU, /**< All oscillator-stable bits set. */
+} ra_cgc_ext_bits_t;
+
+/* ---------------------------------------------------------------------------
+ * ra_cgc_get_clock_hz -- double-init / second-init paths
+ * ---------------------------------------------------------------------------
+ */
+
+/**
+ * @brief Verify get_clock_hz returns MOCO rate before init.
+ *
+ * @pre ra_sim_mmap_reset called; no ra_cgc_init.
+ * @post Returns k_ra_ok and a non-zero Hz value.
+ *
+ * @par MC/DC:
+ * (no compound decisions -- single bounds check)
+ *
+ * @since 0.1.0
+ */
+static void test_cgc_get_clock_hz_before_init(void)
+{
+  TEST_BEGIN("cgc get_clock_hz before init returns MOCO default");
+  ra_sim_mmap_reset();
+  uint32_t hz = 0U;
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk1, &hz));
+  TEST_ASSERT(hz != 0U);
+  TEST_END("cgc get_clock_hz before init returns MOCO default");
+}
+
+/* ---------------------------------------------------------------------------
+ * ra_cgc_switch_pll1_target -- zero hz rejected
+ * ---------------------------------------------------------------------------
+ */
+
+/**
+ * @brief Verify switch_pll1_target rejects zero hz.
+ *
+ * @pre None.
+ * @post Returns k_ra_err_invalid_arg.
+ *
+ * @par MC/DC:
+ * Decision: ``new_cpuclk_hz == 0U``
+ * - V1: hz=0        -> true  -> error.
+ * - V2: hz=500 MHz  -> false -> proceed (tested in test_ra_cgc.c).
+ *
+ * @since 0.1.0
+ */
+static void test_cgc_switch_pll1_zero_hz(void)
+{
+  TEST_BEGIN("cgc switch_pll1_target rejects 0 hz");
+  ra_sim_mmap_reset();
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_cgc_switch_pll1_target(0U));
+  TEST_END("cgc switch_pll1_target rejects 0 hz");
+}
+
+/**
+ * @brief Verify switch_pll1_target with preseeded OSCSF updates cpuclk0.
+ *
+ * @pre OSCSF preseeded; ra_cgc_init called.
+ * @post get_clock_hz for cpuclk0 returns the supplied value.
+ *
+ * @par MC/DC:
+ * (no compound decisions -- happy path covered; zero path covered above)
+ *
+ * @since 0.1.0
+ */
+static void test_cgc_switch_pll1_ok(void)
+{
+  TEST_BEGIN("cgc switch_pll1_target ok updates cpuclk0");
+  ra_sim_mmap_reset();
+  *ra_sys_oscsf() = (uint8_t)k_cgc_ext_all_oscsf;
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_cgc_init());
+
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_cgc_switch_pll1_target(250000000U));
+  uint32_t hz = 0U;
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &hz));
+  TEST_ASSERT_EQ((int64_t)250000000U, (int64_t)hz);
+  TEST_END("cgc switch_pll1_target ok updates cpuclk0");
+}
+
+/* ---------------------------------------------------------------------------
+ * ra_cgc_enable_stop_detection / ra_cgc_disable_stop_detection
+ * ---------------------------------------------------------------------------
+ */
+
+static int32_t s_cgc_ext_ostd_count;
+
+static void stub_ostd(void* ctx)
+{
+  (void)ctx;
+  ++s_cgc_ext_ostd_count;
+}
+
+/**
+ * @brief Verify enable_stop_detection null handler is rejected.
+ *
+ * @pre None.
+ * @post Returns k_ra_err_null_ptr.
+ *
+ * @par MC/DC:
+ * Decision: ``handler == nullptr``
+ * - V1: handler=null       -> true  -> error.
+ * - V2: handler=valid      -> false -> ok (covered in base tests).
+ *
+ * @since 0.1.0
+ */
+static void test_cgc_stop_detection_null_handler(void)
+{
+  TEST_BEGIN("cgc enable_stop_detection null handler rejected");
+  ra_sim_mmap_reset();
+  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_cgc_enable_stop_detection(nullptr, nullptr));
+  TEST_END("cgc enable_stop_detection null handler rejected");
+}
+
+/**
+ * @brief Verify stop detection enable/disable does not fire when disabled.
+ *
+ * @pre enable then disable before trigger.
+ * @post Callback count stays at 0 after trigger with handler disabled.
+ *
+ * @par MC/DC:
+ * Decision: ``s_ostd_enabled`` (inside sim_trigger)
+ * - V1: enabled=true  -> fires  (tested in base test_ra_cgc.c).
+ * - V2: enabled=false -> no-op.
+ *
+ * @since 0.1.0
+ */
+static void test_cgc_stop_detection_disabled_no_fire(void)
+{
+  TEST_BEGIN("cgc stop detection no fire when disabled");
+  ra_sim_mmap_reset();
+  s_cgc_ext_ostd_count = 0;
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_cgc_enable_stop_detection(stub_ostd, nullptr));
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_cgc_disable_stop_detection());
+  ra_cgc_sim_trigger_stop_detection();
+  TEST_ASSERT_EQ((int)0, (int)s_cgc_ext_ostd_count);
+  TEST_END("cgc stop detection no fire when disabled");
+}
+
+/* ---------------------------------------------------------------------------
+ * ra_cgc_pll2_enable -- validation paths
+ * ---------------------------------------------------------------------------
+ */
+
+/**
+ * @brief Verify pll2_enable rejects zero mul_int.
+ *
+ * @pre None.
+ * @post Returns k_ra_err_invalid_arg.
+ *
+ * @par MC/DC:
+ * Decision: ``mul_int == 0U``
+ * - V1: mul_int=0    -> true  -> error.
+ * - V2: mul_int=80   -> false -> proceed.
+ *
+ * @since 0.1.0
+ */
+static void test_cgc_pll2_enable_zero_mul(void)
+{
+  TEST_BEGIN("cgc pll2_enable zero mul_int rejected");
+  ra_sim_mmap_reset();
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_cgc_pll2_enable(0U, 0U, k_ra_plodiv_div4));
+  TEST_END("cgc pll2_enable zero mul_int rejected");
+}
+
+/**
+ * @brief Verify pll2_enable rejects out-of-range mul_quarters.
+ *
+ * @pre None.
+ * @post Returns k_ra_err_invalid_arg for mul_quarters > 3.
+ *
+ * @par MC/DC:
+ * Decision: ``(uint16_t)mul_quarters > (uint16_t)k_ra_pll2_max_quarters``
+ * - V1: quarters=0  -> false -> proceed.
+ * - V2: quarters=4  -> true  -> error.
+ *
+ * @since 0.1.0
+ */
+static void test_cgc_pll2_enable_bad_quarters(void)
+{
+  TEST_BEGIN("cgc pll2_enable bad mul_quarters rejected");
+  ra_sim_mmap_reset();
+  /* k_ra_pll2_max_quarters is 3; supply 4 to trigger the guard. */
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_cgc_pll2_enable(80U, 4U, k_ra_plodiv_div4));
+  TEST_END("cgc pll2_enable bad mul_quarters rejected");
+}
+
+/**
+ * @brief Verify pll2_enable skips re-programming when PLL2 already locked.
+ *
+ * @pre OSCSF PLL2SF bit preseeded.
+ * @post Returns k_ra_ok immediately without re-programming.
+ *
+ * @par MC/DC:
+ * Decision: ``(*ra_sys_oscsf() & pll2sf_bit) != 0U``
+ * - V1: PLL2SF=0 -> false -> program (normal path).
+ * - V2: PLL2SF=1 -> true  -> early ok (idempotency path).
+ *
+ * @since 0.1.0
+ */
+static void test_cgc_pll2_enable_already_locked(void)
+{
+  TEST_BEGIN("cgc pll2_enable returns ok when PLL2 already locked");
+  ra_sim_mmap_reset();
+  /* Set PLL2SF bit in OSCSF to pretend PLL2 is already running
+   * (HUM Ch 9.2.7, k_ra_oscsf_bit_pll2sf = 6). */
+  *ra_sys_oscsf() = (uint8_t)(1U << k_ra_oscsf_bit_pll2sf);
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_cgc_pll2_enable(80U, 0U, k_ra_plodiv_div4));
+  TEST_END("cgc pll2_enable returns ok when PLL2 already locked");
+}
+
+/**
+ * @brief Verify pll2_enable happy path with all OSCSF bits preseeded.
+ *
+ * @pre All OSCSF bits set so the PLL2 lock poll returns immediately.
+ * @post Returns k_ra_ok.
+ *
+ * @par MC/DC:
+ * (normal program path -- all guards false)
+ *
+ * @since 0.1.0
+ */
+static void test_cgc_pll2_enable_ok(void)
+{
+  TEST_BEGIN("cgc pll2_enable happy path");
+  ra_sim_mmap_reset();
+  *ra_sys_oscsf() = (uint8_t)k_cgc_ext_all_oscsf;
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_cgc_pll2_enable(80U, 0U, k_ra_plodiv_div4));
+  TEST_END("cgc pll2_enable happy path");
+}
+
+/**
+ * @brief Verify pll2_enable timeout when OSCSF never locks.
+ *
+ * @pre OSCSF left at zero.
+ * @post Returns k_ra_err_hw_timeout.
+ *
+ * @par MC/DC:
+ * (PLL2 lock wait timeout path)
+ *
+ * @since 0.1.0
+ */
+static void test_cgc_pll2_enable_timeout(void)
+{
+  TEST_BEGIN("cgc pll2_enable times out when OSCSF=0");
+  ra_sim_mmap_reset();
+  /* OSCSF stays 0 -> PLL2 lock poll exhausts and returns timeout. */
+  TEST_ASSERT_EQ((int)k_ra_err_hw_timeout, (int)ra_cgc_pll2_enable(80U, 0U, k_ra_plodiv_div4));
+  TEST_END("cgc pll2_enable times out when OSCSF=0");
+}
+
+/* ---------------------------------------------------------------------------
+ * ra_cgc_usbfs_clock_enable
+ * ---------------------------------------------------------------------------
+ */
+
+/**
+ * @brief Verify usbfs_clock_enable returns ok with all stabs preseeded.
+ *
+ * @pre All OSCSF bits preseeded.
+ * @post Returns k_ra_ok.
+ *
+ * @par MC/DC:
+ * (no compound decisions exercised here -- happy path)
+ *
+ * @since 0.1.0
+ */
+static void test_cgc_usbfs_clock_enable_ok(void)
+{
+  TEST_BEGIN("cgc usbfs_clock_enable ok with OSCSF preseeded");
+  ra_sim_mmap_reset();
+  *ra_sys_oscsf() = (uint8_t)k_cgc_ext_all_oscsf;
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_cgc_usbfs_clock_enable());
+  TEST_END("cgc usbfs_clock_enable ok with OSCSF preseeded");
+}
+
+/**
+ * @brief Verify usbfs_clock_enable times out when OSCSF=0.
+ *
+ * @pre OSCSF left at zero.
+ * @post Returns k_ra_err_hw_timeout.
+ *
+ * @par MC/DC:
+ * (PLL2 lock timeout branch inside usbfs_clock_enable)
+ *
+ * @since 0.1.0
+ */
+static void test_cgc_usbfs_clock_enable_timeout(void)
+{
+  TEST_BEGIN("cgc usbfs_clock_enable times out when OSCSF=0");
+  ra_sim_mmap_reset();
+  TEST_ASSERT_EQ((int)k_ra_err_hw_timeout, (int)ra_cgc_usbfs_clock_enable());
+  TEST_END("cgc usbfs_clock_enable times out when OSCSF=0");
+}
+
+/* ---------------------------------------------------------------------------
+ * ra_cgc_usbhs_pll_enable
+ * ---------------------------------------------------------------------------
+ */
+
+/**
+ * @brief Verify usbhs_pll_enable returns ok with all OSCSF bits preseeded.
+ *
+ * @pre All OSCSF bits preseeded.
+ * @post Returns k_ra_ok.
+ *
+ * @par MC/DC:
+ * (no compound decisions -- happy path)
+ *
+ * @since 0.1.0
+ */
+static void test_cgc_usbhs_pll_enable_ok(void)
+{
+  TEST_BEGIN("cgc usbhs_pll_enable ok with OSCSF preseeded");
+  ra_sim_mmap_reset();
+  *ra_sys_oscsf() = (uint8_t)k_cgc_ext_all_oscsf;
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_cgc_usbhs_pll_enable());
+  TEST_END("cgc usbhs_pll_enable ok with OSCSF preseeded");
+}
+
+/**
+ * @brief Verify usbhs_pll_enable times out when OSCSF=0.
+ *
+ * @pre OSCSF left at zero.
+ * @post Returns k_ra_err_hw_timeout.
+ *
+ * @par MC/DC:
+ * (PLL timeout branch)
+ *
+ * @since 0.1.0
+ */
+static void test_cgc_usbhs_pll_enable_timeout(void)
+{
+  TEST_BEGIN("cgc usbhs_pll_enable times out when OSCSF=0");
+  ra_sim_mmap_reset();
+  TEST_ASSERT_EQ((int)k_ra_err_hw_timeout, (int)ra_cgc_usbhs_pll_enable());
+  TEST_END("cgc usbhs_pll_enable times out when OSCSF=0");
+}
+
+int32_t main(void)
+{
+  test_cgc_get_clock_hz_before_init();
+  test_cgc_switch_pll1_zero_hz();
+  test_cgc_switch_pll1_ok();
+  test_cgc_stop_detection_null_handler();
+  test_cgc_stop_detection_disabled_no_fire();
+  test_cgc_pll2_enable_zero_mul();
+  test_cgc_pll2_enable_bad_quarters();
+  test_cgc_pll2_enable_already_locked();
+  test_cgc_pll2_enable_ok();
+  test_cgc_pll2_enable_timeout();
+  test_cgc_usbfs_clock_enable_ok();
+  test_cgc_usbfs_clock_enable_timeout();
+  test_cgc_usbhs_pll_enable_ok();
+  test_cgc_usbhs_pll_enable_timeout();
+  (void)fprintf(stderr, "[OK  ] test_ra_cgc_extended.c\n");
+  return 0;
+}
