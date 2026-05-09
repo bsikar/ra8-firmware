@@ -1,72 +1,24 @@
 name: hardware-smoke
 
-# ============================================================================
-# DEFERRED -- developer-local HIL workflow in use instead.
-# ============================================================================
+# Superseded by .github/workflows/hil.yml.
 #
-# Per the 2026-05-02 decision, this project does NOT operate a self-hosted
-# GitHub Actions runner with an attached EK-RA8D2 board. Standing one up,
-# securing it against PR-driven flash abuse, and budgeting the host
-# hardware is incompatible with the project's MIT-licensed, $0
-# personal/research scope (see docs/CERTIFICATION_SCOPE.md).
+# hil.yml runs on the Pi 5 self-hosted runner (pi5-star-hil, labels:
+# [self-hosted, hil, pi5, ra8d2]) which has the EK-RA8D2 board wired to
+# it.  That workflow handles the HIL gate for uart_hello today and is the
+# template for adding further apps.
 #
-# Hardware-in-the-loop coverage is achieved instead by a developer-local
-# pre-push workflow:
-#
-#   1. Each contributor with an EK-RA8D2 attached runs:
-#          bash scripts/hw_smoke_test.sh
-#      before `git push`.
-#
-#   2. An opt-in pre-push hook automates this:
-#          ln -s ../../scripts/git/pre-push .git/hooks/pre-push
-#          git config ra.hw-smoke true
-#      The hook detects the J-Link OB via system_profiler / lsusb /
-#      JLinkExe and skips itself silently when no board is attached.
-#
-#   3. The contributor pastes build/smoke/results.md into the PR as a
-#      Markdown comment using the marker described in
-#      docs/HIL_DEVELOPER_WORKFLOW.md.
-#
-# Reviewers are expected to read the smoke comment before approving any
-# PR that touches libs/ra_hal/ or examples/ek_ra8d2/. PRs from
-# contributors without a board are still merge-eligible; the host
-# unit-test build (`make test`) and the cross-build CI (firmware.yml)
-# remain the gating CI signals for those PRs.
-#
-# This file is kept (rather than deleted) so a future operator who
-# wants to revive the self-hosted-runner approach has a documented
-# starting point. The historical workflow content is preserved in git
-# history; see commit 10b9eedfc and earlier for the active form.
-#
-# To revive:
-#   - Provision a self-hosted runner per docs/qualification/HW_IN_LOOP_RUNNER.md
-#   - Restore the `on:` trigger and `jobs:` block from git history
-#   - Re-evaluate the cost/benefit against docs/CERTIFICATION_SCOPE.md
-#
-# References:
-#   - docs/HIL_DEVELOPER_WORKFLOW.md      developer pre-push workflow
-#   - docs/qualification/HW_IN_LOOP_RUNNER.md  deferred runner setup
-#   - docs/CERTIFICATION_SCOPE.md          why no third-party CI funding
-#   - docs/QUALIFICATION_ROADMAP.md        Section 6, blocker 5 CLOSED
-# ============================================================================
+# This file is kept so external references to the old name do not 404.
+# It does nothing -- all real gate logic lives in hil.yml.
 
-# Disabled trigger: only runs when manually dispatched, so the workflow
-# stays visible in the Actions tab without ever consuming runner minutes.
 on:
   workflow_dispatch:
 
 jobs:
-  notice:
-    name: HIL is developer-local (see HIL_DEVELOPER_WORKFLOW.md)
-    runs-on: ubuntu-latest
+  redirect:
+    name: "Superseded by hil.yml -- nothing to do here"
+    runs-on: [self-hosted, Linux, X64]
     steps:
-      - name: Print HIL policy notice
+      - name: Notice
         run: |
-          cat <<'EOF'
-          ============================================================
-          Hardware-in-the-loop is developer-local for this project.
-          See docs/HIL_DEVELOPER_WORKFLOW.md for the pre-push workflow.
-          See docs/CERTIFICATION_SCOPE.md for the rationale (no
-          third-party certification, MIT license, $0 budget).
-          ============================================================
-          EOF
+          echo "Hardware-in-the-loop CI is now in .github/workflows/hil.yml."
+          echo "This workflow is a tombstone kept for link-compatibility only."
