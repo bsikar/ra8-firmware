@@ -1801,7 +1801,9 @@ static void test_mcdc_program_descriptor_buf_addr(void)
                                          0x55U,
                                          rx,
                                          (uint16_t)sizeof(rx)));
-  TEST_ASSERT_EQ((uintptr_t)rx, reg->SQCH0DSC[0].D);
+  /* SQCH0DSC[0].D is a 32-bit HW register; truncate the host pointer. */
+  const uint32_t exp_rx_addr = (uint32_t)(uintptr_t)rx;
+  TEST_ASSERT_EQ(exp_rx_addr, reg->SQCH0DSC[0].D);
 
   /* V3: bta=none, rx!=NULL via send_command. The descriptor's D word
    * must come from the rx buffer (C2 alone forces the OR true). */
@@ -1824,7 +1826,8 @@ static void test_mcdc_program_descriptor_buf_addr(void)
     .p_rx_buffer     = rx_only,
   };
   TEST_ASSERT_EQ(k_ra_ok, ra_mipi_dsi_send_command(&cmd));
-  TEST_ASSERT_EQ((uintptr_t)rx_only, reg->SQCH0DSC[0].D);
+  const uint32_t exp_rx_only_addr = (uint32_t)(uintptr_t)rx_only;
+  TEST_ASSERT_EQ(exp_rx_only_addr, reg->SQCH0DSC[0].D);
   TEST_END("mipi_dsi MC/DC program_descriptor: bta==read || p_rx!=NULL");
 }
 

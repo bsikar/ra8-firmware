@@ -1,3 +1,8 @@
+#!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
+"""Add GCOVR_EXCL_BR_LINE annotations to polling loops and error macros."""
+
 import os
 import glob
 import re
