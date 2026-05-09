@@ -23,6 +23,7 @@ comparePointers:src/boot/vector_table.c
 comparePointers:libs/ra_core/src/ra_infrastructure.c
 comparePointers:examples/*/*/vector_table.c
 comparePointers:examples/*/*/*/vector_table.c
+comparePointers:examples/*/*/*/*/vector_table.c
 
 # ---------------------------------------------------------------------------
 # Pre-existing cppcheck warnings in two app/main.c files, surfaced when the
