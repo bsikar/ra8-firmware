@@ -1,0 +1,64 @@
+name: hil
+
+# Hardware-in-the-loop CI.  Runs on the Raspberry Pi 5 self-hosted runner
+# (labels: self-hosted, hil, pi5, ra8d2) that has the EK-RA8D2 board wired
+# to it: J-Link OB on /dev/ttyACM0 (SWD + VCOM).
+#
+# The job:
+#   1. Checks out the repo on the Pi.
+#   2. Builds the app cross-compiled on the Pi (arm-none-eabi-gcc from apt).
+#   3. Flashes via JLinkExe (local, no SSH).
+#   4. Reads /dev/ttyACM0 and asserts expected UART output appears.
+#
+# Only one HIL job runs at a time (concurrency group locks the board).
+# New apps are added as additional jobs following the same pattern.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'examples/ek_ra8d2/hw_validated/uart_hello/**'
+      - 'libs/ra_hal/**'
+      - 'scripts/hil_run_direct.sh'
+      - '.github/workflows/hil.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'examples/ek_ra8d2/hw_validated/uart_hello/**'
+      - 'libs/ra_hal/**'
+      - 'scripts/hil_run_direct.sh'
+      - '.github/workflows/hil.yml'
+  workflow_dispatch:
+
+# Serialize all HIL jobs so they never race on the single attached board.
+concurrency:
+  group: hil-board
+  cancel-in-progress: false
+
+jobs:
+  uart-hello:
+    name: HIL uart_hello
+    runs-on: [self-hosted, hil, ra8d2]
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install toolchain (idempotent)
+        run: |
+          if ! command -v arm-none-eabi-gcc >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y --no-install-recommends gcc-arm-none-eabi cmake
+          fi
+          arm-none-eabi-gcc --version
+          cmake --version
+
+      - name: Build uart_hello
+        run: make uart_hello
+
+      - name: Flash and verify UART output
+        run: |
+          bash scripts/hil_run_direct.sh \
+            --hex  examples/ek_ra8d2/hw_validated/uart_hello/build/uart_hello.hex \
+            --expect "hello, ra8d2!" \
+            --baud  115200 \
+            --timeout 15

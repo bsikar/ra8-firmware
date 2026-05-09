@@ -26,10 +26,10 @@ jobs:
       - name: Scan
         run: |
           set -e
-          # Auto-discover example app dirs (examples/<tier>/<app>/ with main.c).
+          # Auto-discover example app dirs (2-level and 3-level paths).
           apps=()
           if [ -d examples ]; then
-            for d in examples/*/*/; do
+            for d in examples/*/*/ examples/*/*/*/; do
               d="${d%/}"
               [ -f "$d/main.c" ] && apps+=("$d")
             done
@@ -275,7 +275,9 @@ jobs:
         run: |
           set -e
           apps=()
-          for d in examples/ek_ra8d2/*/ examples/_unsupported/*/; do
+          # Discover 2-level (examples/<tier>/<app>/) and 3-level
+          # (examples/<tier>/<subtier>/<app>/) app directories.
+          for d in examples/*/*/ examples/*/*/*/; do
             d="${d%/}"
             [ -f "$d/main.c" ] || continue
             apps+=("$d")
@@ -284,10 +286,9 @@ jobs:
           json="["
           first=1
           for a in "${apps[@]}"; do
-            tier=$(basename "$(dirname "$a")")
             name=$(basename "$a")
             if [ $first -eq 0 ]; then json+=","; fi
-            json+="{\"tier\":\"${tier}\",\"app\":\"${name}\",\"dir\":\"${a}\"}"
+            json+="{\"app\":\"${name}\",\"dir\":\"${a}\"}"
             first=0
           done
           json+="]"
@@ -295,7 +296,7 @@ jobs:
           echo "Discovered ${#apps[@]} apps."
 
   build-cross:
-    name: Cross-build ${{ matrix.tier }}/${{ matrix.app }}
+    name: Cross-build ${{ matrix.app }}
     runs-on: self-hosted
     needs: build-discover
     strategy:
@@ -363,7 +364,7 @@ jobs:
           set -e
           apps=()
           if [ -d examples ]; then
-            for d in examples/*/*/; do
+            for d in examples/*/*/ examples/*/*/*/; do
               d="${d%/}"
               [ -f "$d/main.c" ] && apps+=("$d")
             done
