@@ -53,4 +53,4 @@ fi
 echo "==> ra8d2-firmware tests: running ($LABEL)"
 echo "    build dir : $BUILD_DIR"
 
-ctest --test-dir "$BUILD_DIR" --output-on-failure "$@"
+ctest --test-dir "$BUILD_DIR" --output-on-failure --timeout 60 "$@"

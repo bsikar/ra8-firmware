@@ -112,14 +112,10 @@ jobs:
   # ---------------------------------------------------------------------------
   unit-tests:
     name: Unit tests (host)
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-      - name: Install build tools
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y cmake ninja-build gcc clang-18 llvm-18 \
-                                  libclang-rt-18-dev
       - name: Build host tests
         run: bash tests/build_tests.sh
       - name: Run host tests
@@ -130,15 +126,12 @@ jobs:
   # ---------------------------------------------------------------------------
   coverage:
     name: Coverage (gcovr 90/90)
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-      - name: Install build tools and gcovr
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y cmake ninja-build gcc python3-pip
-          python3 -m pip install --user gcovr
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Ensure gcovr on PATH
+        run: echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - name: Run coverage gate
         run: bash scripts/coverage.sh --gate
       - name: Upload HTML report
@@ -155,15 +148,10 @@ jobs:
   # ---------------------------------------------------------------------------
   mcdc:
     name: MC/DC coverage gate
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-      - name: Install clang-18 + LLVM 18 + compiler-rt
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            clang-18 llvm-18 libclang-rt-18-dev \
-            cmake ninja-build python3
       - name: Run MC/DC report (in-container path skipped on Linux runner)
         env:
           CC: clang-18
