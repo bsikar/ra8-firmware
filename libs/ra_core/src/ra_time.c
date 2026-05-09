@@ -196,12 +196,14 @@ uint32_t ra_time_ms(void)
  */
 void ra_delay_ms(uint32_t ms)
 {
+#ifdef RA_SIMULATOR_MODE
+  (void)ms; /* No SysTick in simulator -- s_tick_ms never advances. */
+#else
   const uint32_t start = s_tick_ms;
   while ((uint32_t)(s_tick_ms - start) < ms) {
-#ifndef RA_SIMULATOR_MODE
     __asm__ volatile("wfi");
-#endif
   }
+#endif
 }
 
 /**
