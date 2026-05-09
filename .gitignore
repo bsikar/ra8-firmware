@@ -126,3 +126,4 @@ venv/
 .claude/
 build_test/
 doxy_run.txt
+.pi-connection
