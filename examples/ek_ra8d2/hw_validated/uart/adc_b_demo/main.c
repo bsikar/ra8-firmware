@@ -34,6 +34,14 @@
 #include "ra_sci.h"
 #include "ra_time.h"
 
+/* TODO: Move this to its own test for 12-bit res and create another test that is 16-bit res:
+ * Analog (Datasheet Page 1):
+ * 16-bit A/D Converter (ADC16H) × 2, up to 23 channels
+ * 12-bit D/A Converter (DAC12) × 2
+ * High-Speed Analog Comparator (ACMPHS) × 4
+ * Temperature Sensor (TSN)
+ */
+
 /** @brief Demo tunables. */
 typedef enum : uint32_t {
   k_adc_b_demo_baud        = 115200U,
@@ -48,12 +56,43 @@ typedef enum : uint8_t {
   k_adc_b_demo_channel = 0U, /**< AN000 -- safe default. */
 } adc_b_demo_chan_t;
 
+/** @brief Formatting constants. */
+typedef enum : uint8_t {
+  k_adc_b_demo_dec_digits = 5U,  /**< Max decimal digits for uint16_t (65535). */
+  k_adc_b_demo_line_max   = 32U, /**< "adc: raw=XXXXX mv=XXXXX\r\n" fits here. */
+  k_adc_b_demo_radix      = 10U,
+  k_adc_b_demo_cr         = '\r',
+  k_adc_b_demo_lf         = '\n',
+} adc_b_demo_fmt_t;
+
 static const ra_port_pin_t k_adc_b_demo_pin_txd =
   (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_2);
 static const ra_port_pin_t k_adc_b_demo_pin_rxd =
   (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
 
 static const uint8_t k_adc_b_demo_log_prefix[] = "adc: raw=";
+static const uint8_t k_adc_b_demo_mv_sep[]     = " mv=";
+
+/** @brief Write decimal digits of val into buf; return count written. */
+static uint32_t adc_b_demo_u16_to_dec(uint8_t* buf, uint16_t val)
+{
+  if (val == 0U) {
+    buf[0] = (uint8_t)'0';
+    return 1U;
+  }
+  uint8_t  tmp[k_adc_b_demo_dec_digits];
+  uint32_t n = 0U;
+  uint16_t v = val;
+  while (v != 0U) {
+    tmp[n] = (uint8_t)('0' + (uint8_t)(v % (uint16_t)k_adc_b_demo_radix));
+    v      = (uint16_t)(v / (uint16_t)k_adc_b_demo_radix);
+    n++;
+  }
+  for (uint32_t i = 0U; i < n; i++) {
+    buf[i] = tmp[n - 1U - i];
+  }
+  return n;
+}
 
 static void adc_b_demo_panic_halt(void)
 {
@@ -141,9 +180,23 @@ int32_t main(void)
     if (ra_adc_read_channel((uint8_t)k_adc_b_demo_channel, &raw) != k_ra_ok) {
       break;
     }
-    if (ra_sci_write_polling((uint8_t)k_adc_b_demo_sci_channel,
-                             k_adc_b_demo_log_prefix,
-                             (uint32_t)(sizeof(k_adc_b_demo_log_prefix) - 1U)) != k_ra_ok) {
+    const uint16_t mv = (uint16_t)(((uint32_t)raw * (uint32_t)k_adc_b_demo_vref_mv) /
+                                   (uint32_t)k_adc_b_demo_full_scale);
+
+    uint8_t  line[k_adc_b_demo_line_max];
+    uint32_t pos = 0U;
+    for (uint32_t i = 0U; i < (sizeof(k_adc_b_demo_log_prefix) - 1U); i++) {
+      line[pos++] = k_adc_b_demo_log_prefix[i];
+    }
+    pos += adc_b_demo_u16_to_dec(&line[pos], raw);
+    for (uint32_t i = 0U; i < (sizeof(k_adc_b_demo_mv_sep) - 1U); i++) {
+      line[pos++] = k_adc_b_demo_mv_sep[i];
+    }
+    pos += adc_b_demo_u16_to_dec(&line[pos], mv);
+    line[pos++] = (uint8_t)k_adc_b_demo_cr;
+    line[pos++] = (uint8_t)k_adc_b_demo_lf;
+
+    if (ra_sci_write_polling((uint8_t)k_adc_b_demo_sci_channel, line, pos) != k_ra_ok) {
       break;
     }
     if (ra_board_led_toggle(k_ra_board_led1) != k_ra_ok) {
