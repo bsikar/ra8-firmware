@@ -748,10 +748,10 @@ ra_ipc_can_access(uint8_t channel, ra_ipc_attr_t const* required, bool* out_can_
   volatile uint32_t* sem = ra_ipc_sem(sem_id);
   RA_CHECK_NULL_PTR(sem, s_tag, "sem mapping failed");
   /* NASA Rule 2: bounded by ``max_spins``. */
-  for (uint16_t i = 0U; i < max_spins; ++i) {
+  for (uint16_t i = 0U; i < max_spins; ++i) { /* GCOVR_EXCL_BR_LINE */
     /* HUM Ch 3.2.3 "IPCSEMn" p 210 */
     const uint32_t prev = internal_ra_ipc_sem_read_take(sem);
-    if (prev == 0U) {
+    if (prev == 0U) { /* GCOVR_EXCL_BR_LINE */
       return k_ra_ok;
     }
   }

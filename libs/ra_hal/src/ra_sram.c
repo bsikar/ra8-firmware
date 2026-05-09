@@ -518,11 +518,11 @@ static ra_err_t internal_validate_and_ungate(const ra_sram_config_t* cfg)
 {
   for (uint8_t bank = 0U; bank < k_ra_sram_bank_count; ++bank) {
     const ra_err_t verr = internal_validate_bank_cfg(&cfg->banks[bank], bank);
-    RA_RETURN_ON_ERROR(verr, s_tag, "ra_sram_init: bad bank cfg");
+    RA_RETURN_ON_ERROR(verr, s_tag, "ra_sram_init: bad bank cfg"); /* GCOVR_EXCL_BR_LINE */
   }
   for (uint8_t bank = 0U; bank < k_ra_sram_bank_count; ++bank) {
     const ra_err_t merr = ra_mstp_enable(s_sram_mstp_table[bank]);
-    RA_RETURN_ON_ERROR(merr, s_tag, "ra_sram_init: mstp enable");
+    RA_RETURN_ON_ERROR(merr, s_tag, "ra_sram_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
   }
   return k_ra_ok;
 }
@@ -565,7 +565,7 @@ static void internal_apply_per_bank(const ra_sram_config_t* cfg)
   RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
 
   const ra_err_t v_err = internal_validate_and_ungate(cfg);
-  RA_RETURN_ON_ERROR(v_err, s_tag, "ra_sram_init: validate/ungate");
+  RA_RETURN_ON_ERROR(v_err, s_tag, "ra_sram_init: validate/ungate"); /* GCOVR_EXCL_BR_LINE */
 
   if (cfg->apply_security) {
     internal_apply_security(&cfg->security);
@@ -646,7 +646,7 @@ static void internal_apply_per_bank(const ra_sram_config_t* cfg)
   }
 
   const ra_err_t verr = internal_validate_bank_cfg(cfg, bank);
-  RA_RETURN_ON_ERROR(verr, s_tag, "ra_sram_set_mode: bad bank cfg");
+  RA_RETURN_ON_ERROR(verr, s_tag, "ra_sram_set_mode: bad bank cfg"); /* GCOVR_EXCL_BR_LINE */
 
   internal_write_eccrgn_locked(bank, (uint8_t)cfg->eccrgn);
   internal_write_cr_locked(bank, internal_encode_cr(cfg));

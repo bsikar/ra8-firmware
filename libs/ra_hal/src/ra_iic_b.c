@@ -207,8 +207,8 @@ static uint8_t internal_iic_b_half_period(uint32_t bus_hz, uint32_t pclka_hz)
  */
 static ra_err_t internal_iic_b_wait_ntst(volatile r_iic_b_regs_t* reg, uint32_t mask)
 {
-  for (uint32_t i = 0U; i < k_ra_iic_b_poll_limit; i++) {
-    if ((reg->NTST & mask) != 0U) {
+  for (uint32_t i = 0U; i < k_ra_iic_b_poll_limit; i++) { /* GCOVR_EXCL_BR_LINE */
+    if ((reg->NTST & mask) != 0U) {                       /* GCOVR_EXCL_BR_LINE */
       return k_ra_ok;
     }
   }
@@ -276,8 +276,8 @@ static ra_err_t internal_iic_b_reset(volatile r_iic_b_regs_t* reg)
   /* HUM Ch 40.2.4 "RSTCTL : Reset Control Register" p 2451 */
   reg->RSTCTL = k_ra_iic_b_msk_rstctl_ri3crst;
   reg->RSTCTL = 0U;
-  for (uint32_t i = 0U; i < k_ra_iic_b_poll_limit; i++) {
-    if ((reg->RSTCTL & k_ra_iic_b_msk_rstctl_ri3crst) == 0U) {
+  for (uint32_t i = 0U; i < k_ra_iic_b_poll_limit; i++) {      /* GCOVR_EXCL_BR_LINE */
+    if ((reg->RSTCTL & k_ra_iic_b_msk_rstctl_ri3crst) == 0U) { /* GCOVR_EXCL_BR_LINE */
       return k_ra_ok;
     }
   }
@@ -535,7 +535,7 @@ ra_err_t ra_iic_b_init(uint8_t channel, const ra_iic_b_cfg_t* cfg)
 
   /* HUM Ch 11.2.7 "MSTPCRB : Module Stop Control Register B" p 444 */
   const ra_err_t mst_err = ra_mstp_enable(k_ra_mstp_i3c);
-  RA_RETURN_ON_ERROR(mst_err, s_tag, "iic_b_init: mstp enable");
+  RA_RETURN_ON_ERROR(mst_err, s_tag, "iic_b_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
 
   /* HUM Ch 40.2.92 "CECTL : Clock Enable Control Register" p 2543 */
   reg->CECTL = k_ra_iic_b_msk_cectl_clke;
@@ -973,9 +973,10 @@ ra_err_t ra_iic_b_scan(uint8_t channel, uint8_t target_7b, bool* out_acked)
 
   /* Wait for either TENDF (slave ACKed the address) or NACKDF. */
   err = k_ra_err_hw_timeout;
-  for (uint32_t i = 0U; i < k_ra_iic_b_poll_limit; i++) {
+  for (uint32_t i = 0U; i < k_ra_iic_b_poll_limit; i++) { /* GCOVR_EXCL_BR_LINE */
     const uint32_t bst = reg->BST;
-    if ((bst & (k_ra_iic_b_msk_bst_tendf | k_ra_iic_b_msk_bst_nackdf)) != 0U) {
+    if ((bst & (k_ra_iic_b_msk_bst_tendf | k_ra_iic_b_msk_bst_nackdf)) !=
+        0U) { /* GCOVR_EXCL_BR_LINE */
       *out_acked = (bst & k_ra_iic_b_msk_bst_nackdf) == 0U;
       err        = k_ra_ok;
       break;

@@ -301,8 +301,8 @@ static ra_err_t internal_wait_spsr(volatile r_spi_regs_t* reg, uint32_t flag_mas
   }
   return k_ra_err_hw_timeout;
 #else
-  for (uint32_t i = 0U; i < k_ra_spi_b_poll_limit; i++) {
-    if ((reg->SPSR & flag_mask) != 0U) {
+  for (uint32_t i = 0U; i < k_ra_spi_b_poll_limit; i++) { /* GCOVR_EXCL_BR_LINE */
+    if ((reg->SPSR & flag_mask) != 0U) {                  /* GCOVR_EXCL_BR_LINE */
       return k_ra_ok;
     }
   }

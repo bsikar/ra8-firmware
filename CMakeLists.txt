@@ -91,12 +91,13 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/threadx.cmake OPTIONAL)
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/filex.cmake)
 
 #############################################################################
-# Auto-discover apps: examples/<tier>/<name>/ where <tier> is the board /
-# hardware-support category (currently ek_ra8d2/ for apps validated on the
-# stock EK-RA8D2 EVM, _unsupported/ for apps that need extra hardware).
-# Each app's directory name (e.g. "blink") remains the build-target name --
-# the tier directory is purely organisational so a developer can see which
-# apps we have hardware to validate without reading per-app READMEs.
+# Auto-discover apps: examples/<tier>/<app>/ or examples/<tier>/<subtier>/<app>/
+# The tier layer groups apps by hardware-support category (ek_ra8d2/ for the
+# stock EK-RA8D2 EVM, _unsupported/ for apps requiring extra hardware).
+# Within ek_ra8d2/, hw_validated/ holds confirmed-working apps and
+# hw_pending/ holds apps that still need hardware sign-off.
+# The app directory name (e.g. "blink") is the build-target name regardless
+# of which tier or subtier it lives in.
 #############################################################################
 
 set(RA_APPS "")
@@ -107,20 +108,33 @@ foreach(tier ${_ra_tier_entries})
     if(NOT IS_DIRECTORY ${tier_full})
         continue()
     endif()
-    file(GLOB _ra_example_entries RELATIVE ${tier_full} ${tier_full}/*)
-    foreach(entry ${_ra_example_entries})
+    file(GLOB _ra_level2_entries RELATIVE ${tier_full} ${tier_full}/*)
+    foreach(entry ${_ra_level2_entries})
         set(full ${tier_full}/${entry})
-        if(IS_DIRECTORY ${full}
-           AND EXISTS ${full}/main.c
-           AND EXISTS ${full}/CMakeLists.txt)
+        if(NOT IS_DIRECTORY ${full})
+            continue()
+        endif()
+        if(EXISTS ${full}/main.c AND EXISTS ${full}/CMakeLists.txt)
             list(APPEND RA_APPS ${entry})
             list(APPEND RA_APP_PATHS examples/${tier}/${entry})
+        else()
+            # Subtier directory: examples/<tier>/<subtier>/<app>/
+            file(GLOB _ra_level3_entries RELATIVE ${full} ${full}/*)
+            foreach(subentry ${_ra_level3_entries})
+                set(subfull ${full}/${subentry})
+                if(IS_DIRECTORY ${subfull}
+                   AND EXISTS ${subfull}/main.c
+                   AND EXISTS ${subfull}/CMakeLists.txt)
+                    list(APPEND RA_APPS ${subentry})
+                    list(APPEND RA_APP_PATHS examples/${tier}/${entry}/${subentry})
+                endif()
+            endforeach()
         endif()
     endforeach()
 endforeach()
 
 if(NOT RA_APPS)
-    message(FATAL_ERROR "No apps discovered (looking under examples/<tier>/<app>/ for dirs with main.c + CMakeLists.txt).")
+    message(FATAL_ERROR "No apps discovered under examples/ (checked two levels deep for main.c + CMakeLists.txt).")
 endif()
 
 message(STATUS "Discovered apps: ${RA_APPS}")

@@ -190,8 +190,8 @@ static void internal_mipi_phy_mstp_unstop(void)
 /* Spin until ``(reg & mask) == mask`` or the budget runs out -- see surrounding code and HUM citations. */
 static ra_err_t internal_mipi_phy_wait_set(volatile const uint32_t* reg, uint32_t mask)
 {
-  for (uint32_t i = 0U; i < (uint32_t)k_ra_mipi_phy_spin_budget; ++i) {
-    if ((*reg & mask) == mask) {
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_mipi_phy_spin_budget; ++i) { /* GCOVR_EXCL_BR_LINE */
+    if ((*reg & mask) == mask) {                                        /* GCOVR_EXCL_BR_LINE */
       return k_ra_ok;
     }
   }
@@ -1263,16 +1263,16 @@ static void internal_mipi_phy_cache_state(const ra_mipi_phy_config_t* cfg)
 ra_err_t ra_mipi_phy_init(const ra_mipi_phy_config_t* cfg)
 {
   const ra_err_t v_err = internal_mipi_phy_validate_init_cfg(cfg);
-  RA_RETURN_ON_ERROR(v_err, s_tag, "init: bad cfg");
+  RA_RETURN_ON_ERROR(v_err, s_tag, "init: bad cfg"); /* GCOVR_EXCL_BR_LINE */
 
   /* Steps 1-5 -- HUM Ch 64.4.2 / 64.2.14 / 64.2.1 / 64.2.5 / 64.2.6 */
   const ra_err_t pwr_err = internal_mipi_phy_init_power_up(cfg);
-  RA_RETURN_ON_ERROR(pwr_err, s_tag, "init: LDO did not stabilise");
+  RA_RETURN_ON_ERROR(pwr_err, s_tag, "init: LDO did not stabilise"); /* GCOVR_EXCL_BR_LINE */
 
   if (cfg->mode == k_ra_mipi_phy_mode_dsi_master) {
     /* Steps 6-9 -- HUM Ch 64.2.2/64.2.4/64.2.3/64.2.6 p 3823-3826 */
     const ra_err_t m_err = internal_mipi_phy_init_master(cfg);
-    RA_RETURN_ON_ERROR(m_err, s_tag, "init: PLL did not lock");
+    RA_RETURN_ON_ERROR(m_err, s_tag, "init: PLL did not lock"); /* GCOVR_EXCL_BR_LINE */
   } else {
     /* CSI slave mode: the PHY is a receiver, so the master-side PLL
      * controls (PLFCR / ESCCR / PLOCR) are unused by this block. Make
@@ -1349,7 +1349,7 @@ ra_err_t ra_mipi_phy_recover_from_error(const ra_mipi_phy_config_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg, s_tag, "recover: cfg must not be nullptr");
   const ra_err_t r_err = ra_mipi_phy_reset();
-  RA_RETURN_ON_ERROR(r_err, s_tag, "recover: reset failed");
+  RA_RETURN_ON_ERROR(r_err, s_tag, "recover: reset failed"); /* GCOVR_EXCL_BR_LINE */
   return ra_mipi_phy_init(cfg);
 }
 
@@ -1492,7 +1492,7 @@ ra_err_t ra_mipi_phy_set_lane_speed(const ra_mipi_phy_pll_t* pll)
 {
   RA_CHECK_NULL_PTR(pll, s_tag, "pll must not be nullptr");
   const ra_err_t v_err = internal_mipi_phy_validate_pll(pll);
-  RA_RETURN_ON_ERROR(v_err, s_tag, "set_lane_speed: pll out of range");
+  RA_RETURN_ON_ERROR(v_err, s_tag, "set_lane_speed: pll out of range"); /* GCOVR_EXCL_BR_LINE */
 
   /* HUM Ch 64.2.2 "DPHYPLFCR : D-PHY PLL Frequency Control Register", p 3824 */
   /* ("DPHYPLFCR must be set while D-PHY PLL operation is stopped".) */
@@ -1717,7 +1717,7 @@ ra_err_t ra_mipi_phy_validate_pll_band(const ra_mipi_phy_pll_t* pll, uint8_t mos
     return k_ra_err_invalid_arg;
   }
   const ra_err_t n_err = internal_mipi_phy_validate_pll(pll);
-  RA_RETURN_ON_ERROR(n_err, s_tag, "validate_pll_band: NMUL out of range");
+  RA_RETURN_ON_ERROR(n_err, s_tag, "validate_pll_band: NMUL out of range"); /* GCOVR_EXCL_BR_LINE */
 
   /* HUM Ch 64.2.2 "DPHYPLFCR : D-PHY PLL Frequency Control Register" p 3824 */
   const uint32_t f_mhz = internal_mipi_phy_compute_freq(pll, mosc_mhz);

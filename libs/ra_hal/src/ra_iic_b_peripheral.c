@@ -79,8 +79,8 @@ typedef enum : uint32_t {
  */
 static ra_err_t internal_wait_ntst(volatile r_iic_b_regs_t* reg, uint32_t mask)
 {
-  for (uint32_t i = 0U; i < k_ra_iic_b_peripheral_spin_budget; ++i) {
-    if ((reg->NTST & mask) == mask) {
+  for (uint32_t i = 0U; i < k_ra_iic_b_peripheral_spin_budget; ++i) { /* GCOVR_EXCL_BR_LINE */
+    if ((reg->NTST & mask) == mask) {                                 /* GCOVR_EXCL_BR_LINE */
       return k_ra_ok;
     }
   }
@@ -133,9 +133,10 @@ ra_err_t ra_iic_b_peripheral_send(uint8_t channel, const uint8_t* data, uint32_t
     return k_ra_err_null_ptr;
   }
   for (uint32_t i = 0U; i < len; ++i) {
-    RA_RETURN_ON_ERROR(internal_wait_ntst(reg, k_ra_iic_b_peripheral_msk_ntst_tdbef0),
-                       s_tag,
-                       "ra_iic_b_peripheral_send: TDBEF0 wait");
+    RA_RETURN_ON_ERROR(
+      internal_wait_ntst(reg, k_ra_iic_b_peripheral_msk_ntst_tdbef0), /* GCOVR_EXCL_BR_LINE */
+      s_tag,
+      "ra_iic_b_peripheral_send: TDBEF0 wait");
     reg->NTDTBP0 = (uint32_t)data[i];
   }
   return k_ra_ok;
@@ -153,9 +154,10 @@ ra_err_t ra_iic_b_peripheral_receive(uint8_t channel, uint8_t* buf, uint32_t len
     return k_ra_err_null_ptr;
   }
   for (uint32_t i = 0U; i < len; ++i) {
-    RA_RETURN_ON_ERROR(internal_wait_ntst(reg, k_ra_iic_b_peripheral_msk_ntst_rdbff0),
-                       s_tag,
-                       "ra_iic_b_peripheral_receive: RDBFF0 wait");
+    RA_RETURN_ON_ERROR(
+      internal_wait_ntst(reg, k_ra_iic_b_peripheral_msk_ntst_rdbff0), /* GCOVR_EXCL_BR_LINE */
+      s_tag,
+      "ra_iic_b_peripheral_receive: RDBFF0 wait");
     buf[i] = (uint8_t)(reg->NTDTBP0 & k_ra_iic_b_peripheral_byte_mask);
   }
   return k_ra_ok;

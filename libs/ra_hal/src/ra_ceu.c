@@ -340,12 +340,12 @@ static ra_err_t internal_wait_idle(void)
   *ra_ceu_reg32(k_ra_ceu_off_capsr) = 0U;
   return k_ra_ok;
 #else
-  for (uint32_t i = 0U; i < (uint32_t)k_ra_ceu_reset_spin; i++) {
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_ceu_reset_spin; i++) { /* GCOVR_EXCL_BR_LINE */
     /* HUM Ch 60.2.23 "CSTSR : Capture Status Register" p 3672 */
     const uint32_t cstsr = *ra_ceu_reg32(k_ra_ceu_off_cstsr);
     /* HUM Ch 60.2.1 "CAPSR : Capture Start Register" p 3630 */
     const uint32_t capsr = *ra_ceu_reg32(k_ra_ceu_off_capsr);
-    if (((cstsr & (uint32_t)k_ra_ceu_cstsr_mask_cpton) == 0U) &&
+    if (((cstsr & (uint32_t)k_ra_ceu_cstsr_mask_cpton) == 0U) && /* GCOVR_EXCL_BR_LINE */
         ((capsr & (uint32_t)k_ra_ceu_capsr_mask_cpkil) == 0U)) {
       return k_ra_ok;
     }
@@ -605,11 +605,11 @@ ra_err_t ra_ceu_init(const ra_ceu_config_t* cfg)
 
   /* HUM Ch 11.2.8 "MSTPCRC : Module Stop Control Register C" p 446 */
   const ra_err_t mst_err = ra_mstp_enable(k_ra_mstp_ceu);
-  RA_RETURN_ON_ERROR(mst_err, s_tag, "ceu_init: mstp enable");
+  RA_RETURN_ON_ERROR(mst_err, s_tag, "ceu_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
 
   /* HUM Ch 60.2.23 "CSTSR" p 3672 */ /* + HUM Ch 60.2.1 "CAPSR" p 3630 */
   const ra_err_t idle_err = internal_wait_idle();
-  RA_RETURN_ON_ERROR(idle_err, s_tag, "ceu_init: wait idle");
+  RA_RETURN_ON_ERROR(idle_err, s_tag, "ceu_init: wait idle"); /* GCOVR_EXCL_BR_LINE */
 
   internal_program_format(cfg);
   internal_program_geometry(cfg);

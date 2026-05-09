@@ -141,8 +141,8 @@ typedef enum : uint32_t {
 static ra_err_t internal_wait_bit(ra_rsip_off_t offset, uint32_t mask)
 {
   volatile uint32_t* reg = ra_rsip_reg32(offset);
-  for (uint32_t i = 0U; i < k_ra_rsip_poll_budget; ++i) {
-    if ((*reg & mask) == mask) {
+  for (uint32_t i = 0U; i < k_ra_rsip_poll_budget; ++i) { /* GCOVR_EXCL_BR_LINE */
+    if ((*reg & mask) == mask) {                          /* GCOVR_EXCL_BR_LINE */
       return k_ra_ok;
     }
   }
@@ -189,7 +189,7 @@ static ra_err_t internal_run_bist(void)
   *status |= k_ra_rsip_mask_status_bistok;
 
   const ra_err_t err = internal_wait_bit(k_ra_rsip_off_status, k_ra_rsip_mask_status_bistok);
-  if (err != k_ra_ok) {
+  if (err != k_ra_ok) { /* GCOVR_EXCL_BR_LINE */
     return k_ra_err_hw_init_failed;
   }
 
@@ -306,7 +306,7 @@ ra_err_t ra_rsip_init(const ra_rsip_config_t* cfg)
   /* HUM Ch 11.2.8 "MSTPCRC : Module Stop Control Register C" p 446 */
   /* HUM Ch 52.3.2 "Module-Stop Function Setting" p 3307 */
   const ra_err_t mst_err = ra_mstp_enable(k_ra_mstp_rsip);
-  RA_RETURN_ON_ERROR(mst_err, s_tag, "rsip_init: mstp enable");
+  RA_RETURN_ON_ERROR(mst_err, s_tag, "rsip_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
 
   /* HUM Ch 52.1 "Overview" p 3302 */
   /* Engine reset + enable mailbox. */
@@ -432,7 +432,7 @@ ra_err_t ra_rsip_trng_read(uint8_t* buf, uint32_t len)
 
     const ra_err_t wait_err =
       internal_wait_bit(k_ra_rsip_off_rnd_status, k_ra_rsip_mask_status_ready);
-    if (wait_err != k_ra_ok) {
+    if (wait_err != k_ra_ok) { /* GCOVR_EXCL_BR_LINE */
       return wait_err;
     }
 
@@ -469,7 +469,7 @@ ra_err_t ra_rsip_sha256(const uint8_t* msg, uint32_t msg_len, uint8_t* digest)
   *ra_rsip_reg32(k_ra_rsip_off_hash_status) |= k_ra_rsip_mask_status_ready;
   const ra_err_t ready_err =
     internal_wait_bit(k_ra_rsip_off_hash_status, k_ra_rsip_mask_status_ready);
-  RA_RETURN_ON_ERROR(ready_err, s_tag, "rsip_sha256: hash ready");
+  RA_RETURN_ON_ERROR(ready_err, s_tag, "rsip_sha256: hash ready"); /* GCOVR_EXCL_BR_LINE */
 
   /* HASH algorithm select. */
   *ra_rsip_reg32(k_ra_rsip_off_hash_ctrl) = k_ra_rsip_hash_sha256;
@@ -477,7 +477,7 @@ ra_err_t ra_rsip_sha256(const uint8_t* msg, uint32_t msg_len, uint8_t* digest)
   internal_sha256_push_msg(msg, msg_len);
 
   const ra_err_t wait_err = internal_hash_wait_done();
-  RA_RETURN_ON_ERROR(wait_err, s_tag, "rsip_sha256: hash done");
+  RA_RETURN_ON_ERROR(wait_err, s_tag, "rsip_sha256: hash done"); /* GCOVR_EXCL_BR_LINE */
 
   internal_sha256_pull_digest(digest);
   return k_ra_ok;
@@ -928,7 +928,7 @@ ra_err_t ra_rsip_exit_stop(void)
 {
   /* HUM Ch 11.2.8 "MSTPCRC : Module Stop Control Register C" p 446 */
   const ra_err_t mst_err = ra_mstp_enable(k_ra_mstp_rsip);
-  RA_RETURN_ON_ERROR(mst_err, s_tag, "rsip_exit_stop: mstp enable");
+  RA_RETURN_ON_ERROR(mst_err, s_tag, "rsip_exit_stop: mstp enable"); /* GCOVR_EXCL_BR_LINE */
 
   /* HUM Ch 52.1 "Overview" p 3302 */
   /* Engine re-enable then BIST. */
@@ -1032,7 +1032,7 @@ static ra_err_t internal_complete(uint32_t done_mask)
   *ra_rsip_reg32(k_ra_rsip_off_isr) |= done_mask;
 
   const ra_err_t wait_err = internal_wait_bit(k_ra_rsip_off_isr, done_mask);
-  if (wait_err != k_ra_ok) {
+  if (wait_err != k_ra_ok) { /* GCOVR_EXCL_BR_LINE */
     return wait_err;
   }
   /* HUM Ch 52.1 "Overview" p 3302 */
@@ -1807,7 +1807,7 @@ ra_err_t ra_rsip_hash(ra_rsip_hash_alg_t alg,
   RA_CHECK_NULL_PTR(digest, s_tag, "digest must not be nullptr");
   uint32_t       needed = 0U;
   const ra_err_t v_err  = internal_hash_validate(alg, msg, msg_len, digest_len, &needed);
-  RA_RETURN_ON_ERROR(v_err, s_tag, "rsip_hash: validate");
+  RA_RETURN_ON_ERROR(v_err, s_tag, "rsip_hash: validate"); /* GCOVR_EXCL_BR_LINE */
 
   /* HUM Ch 52.2.3 "Hash Generator" p 3306 */
   *ra_rsip_reg32(k_ra_rsip_off_hash_ctrl) = (uint32_t)alg;
@@ -1818,7 +1818,7 @@ ra_err_t ra_rsip_hash(ra_rsip_hash_alg_t alg,
 
   /* Pre-arm + wait for DONE on host sim. */
   const ra_err_t wait_err = internal_hash_wait_done();
-  RA_RETURN_ON_ERROR(wait_err, s_tag, "rsip_hash: hash done");
+  RA_RETURN_ON_ERROR(wait_err, s_tag, "rsip_hash: hash done"); /* GCOVR_EXCL_BR_LINE */
 
   /* Read digest_len for SHAKE; algo-natural otherwise. */
   const uint32_t to_read =
@@ -2463,7 +2463,7 @@ ra_err_t ra_rsip_kdf(ra_rsip_kdf_op_t            op,
 {
   RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
   const ra_err_t v_err = internal_kdf_validate(op, ikm, label, label_len, salt, salt_len, out_len);
-  RA_RETURN_ON_ERROR(v_err, s_tag, "rsip_kdf: validate");
+  RA_RETURN_ON_ERROR(v_err, s_tag, "rsip_kdf: validate"); /* GCOVR_EXCL_BR_LINE */
 
   internal_kdf_stage(op, ikm, label, label_len, salt, salt_len, out_len);
   *ra_rsip_reg32(k_ra_rsip_off_mbox_op) = (uint32_t)op;

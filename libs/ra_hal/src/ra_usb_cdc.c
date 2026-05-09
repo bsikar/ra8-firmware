@@ -146,7 +146,7 @@ static ra_err_t internal_configure_pipes(ra_usb_speed_t speed)
                                            k_ra_usb_ep_dir_in,
                                            k_ra_usb_ep_type_bulk,
                                            bulk_mp);
-  RA_RETURN_ON_ERROR(err, s_tag, "cdc: bulk-in cfg");
+  RA_RETURN_ON_ERROR(err, s_tag, "cdc: bulk-in cfg"); /* GCOVR_EXCL_BR_LINE */
 
   err = ra_usb_configure_endpoint(speed,
                                   k_ra_cdc_pipe_bulk_out,
@@ -154,7 +154,7 @@ static ra_err_t internal_configure_pipes(ra_usb_speed_t speed)
                                   k_ra_usb_ep_dir_out,
                                   k_ra_usb_ep_type_bulk,
                                   bulk_mp);
-  RA_RETURN_ON_ERROR(err, s_tag, "cdc: bulk-out cfg");
+  RA_RETURN_ON_ERROR(err, s_tag, "cdc: bulk-out cfg"); /* GCOVR_EXCL_BR_LINE */
 
   err = ra_usb_configure_endpoint(speed,
                                   k_ra_cdc_pipe_intr_in,

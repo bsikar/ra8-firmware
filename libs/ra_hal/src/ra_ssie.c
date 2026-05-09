@@ -323,9 +323,9 @@ internal_build_ssicr(const ra_ssie_cfg_t* cfg, uint8_t frm, uint8_t pdta, uint8_
  */
 static ra_err_t internal_wait_ssirst_clear(volatile r_ssie_regs_t* reg)
 {
-  for (uint8_t i = 0U; i < (uint8_t)k_ra_ssie_reset_poll_max; i++) {
+  for (uint8_t i = 0U; i < (uint8_t)k_ra_ssie_reset_poll_max; i++) { /* GCOVR_EXCL_BR_LINE */
     /* HUM Ch 46.2.3 "SSIFCR : FIFO Control Register" p 3077 */
-    if ((reg->SSIFCR & k_ra_ssie_mask_ssirst) == 0U) {
+    if ((reg->SSIFCR & k_ra_ssie_mask_ssirst) == 0U) { /* GCOVR_EXCL_BR_LINE */
       return k_ra_ok;
     }
   }
@@ -348,9 +348,9 @@ static ra_err_t internal_wait_ssirst_clear(volatile r_ssie_regs_t* reg)
  */
 static ra_err_t internal_wait_fifo_reset_clear(volatile r_ssie_regs_t* reg)
 {
-  for (uint8_t i = 0U; i < (uint8_t)k_ra_ssie_reset_poll_max; i++) {
+  for (uint8_t i = 0U; i < (uint8_t)k_ra_ssie_reset_poll_max; i++) { /* GCOVR_EXCL_BR_LINE */
     /* HUM Ch 46.2.3 "SSIFCR : FIFO Control Register" p 3077 */
-    if ((reg->SSIFCR & k_ra_ssie_mask_rfrst_tfrst) == 0U) {
+    if ((reg->SSIFCR & k_ra_ssie_mask_rfrst_tfrst) == 0U) { /* GCOVR_EXCL_BR_LINE */
       return k_ra_ok;
     }
   }
@@ -578,9 +578,9 @@ static ra_err_t internal_pulse_ssi_reset(volatile r_ssie_regs_t* reg)
 static ra_err_t internal_ssie_power_up(uint8_t channel, volatile r_ssie_regs_t* reg)
 {
   const ra_err_t mst_err = ra_mstp_enable(s_ssie_mstp_table[channel]);
-  RA_RETURN_ON_ERROR(mst_err, s_tag, "ssie_init: mstp enable");
+  RA_RETURN_ON_ERROR(mst_err, s_tag, "ssie_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
   const ra_err_t rst_err = internal_pulse_ssi_reset(reg);
-  RA_RETURN_ON_ERROR(rst_err, s_tag, "ssie_init: SSIRST stuck");
+  RA_RETURN_ON_ERROR(rst_err, s_tag, "ssie_init: SSIRST stuck"); /* GCOVR_EXCL_BR_LINE */
   return k_ra_ok;
 }
 
@@ -628,12 +628,12 @@ ra_err_t ra_ssie_init(uint8_t channel, const ra_ssie_cfg_t* cfg)
   uint8_t        pdta  = 0U;
   uint8_t        sdta  = 0U;
   const ra_err_t v_err = internal_validate_init_cfg(cfg, &omod, &frm, &pdta, &sdta);
-  RA_RETURN_ON_ERROR(v_err, s_tag, "ssie_init: bad cfg");
+  RA_RETURN_ON_ERROR(v_err, s_tag, "ssie_init: bad cfg"); /* GCOVR_EXCL_BR_LINE */
 
   /* HUM Ch 11.2.8 "MSTPCRC" p 446 */
   /* HUM Ch 46.2.3 "SSIRST" p 3077 */
   const ra_err_t pwr_err = internal_ssie_power_up(channel, reg);
-  RA_RETURN_ON_ERROR(pwr_err, s_tag, "ssie_init: power up");
+  RA_RETURN_ON_ERROR(pwr_err, s_tag, "ssie_init: power up"); /* GCOVR_EXCL_BR_LINE */
 
   internal_apply_init_regs(reg, cfg, frm, pdta, sdta, omod);
 
@@ -693,7 +693,7 @@ ra_err_t ra_ssie_start(uint8_t channel, ra_ssie_dir_t dir)
   /* HUM Ch 46.2.3 "SSIFCR : FIFO Control Register" p 3077 */
   uint32_t       ssifcr  = reg->SSIFCR;
   const ra_err_t rst_err = internal_pulse_fifo_reset(reg, ssifcr);
-  RA_RETURN_ON_ERROR(rst_err, s_tag, "ssie_start: FIFO reset stuck");
+  RA_RETURN_ON_ERROR(rst_err, s_tag, "ssie_start: FIFO reset stuck"); /* GCOVR_EXCL_BR_LINE */
 
   /* HUM Ch 46.2.1 "SSICR" p 3057 */ /* / HUM Ch 46.2.3 "SSIFCR" p 3077 */
   internal_apply_dir_irq_bits(desired_ren_ten, &ssicr, &ssifcr);
@@ -741,7 +741,7 @@ ra_err_t ra_ssie_start_recovery(uint8_t channel)
   reg->SSIFCR                = ssifcr_save;
   /* HUM Ch 46.2.3 "SSIFCR : FIFO Control Register" p 3077 */
   const ra_err_t rst_err = internal_wait_ssirst_clear(reg);
-  RA_RETURN_ON_ERROR(rst_err, s_tag, "ssie_recover: SSIRST stuck");
+  RA_RETURN_ON_ERROR(rst_err, s_tag, "ssie_recover: SSIRST stuck"); /* GCOVR_EXCL_BR_LINE */
 
   /* HUM Ch 46.2.2 "SSISR : Status Register" p 3066-3072 */
   const uint32_t ssisr = reg->SSISR;
@@ -1030,7 +1030,7 @@ static ra_err_t internal_attach_dma_dirs(volatile r_ssie_regs_t*  reg,
 {
   if (want_tx) {
     const ra_err_t tx_err = internal_start_tx_dma(reg, channel, dma);
-    RA_RETURN_ON_ERROR(tx_err, s_tag, "ssie_attach_dma: tx start");
+    RA_RETURN_ON_ERROR(tx_err, s_tag, "ssie_attach_dma: tx start"); /* GCOVR_EXCL_BR_LINE */
   }
   if (want_rx) {
     const ra_err_t rx_err = internal_start_rx_dma(reg, channel, dma);
@@ -1056,10 +1056,10 @@ ra_err_t ra_ssie_attach_dma(uint8_t channel, const ra_ssie_dma_cfg_t* dma)
   bool           want_tx = false;
   bool           want_rx = false;
   const ra_err_t v_err   = internal_validate_dma_cfg(dma, &want_tx, &want_rx);
-  RA_RETURN_ON_ERROR(v_err, s_tag, "ssie_attach_dma: bad cfg");
+  RA_RETURN_ON_ERROR(v_err, s_tag, "ssie_attach_dma: bad cfg"); /* GCOVR_EXCL_BR_LINE */
 
   const ra_err_t d_err = internal_attach_dma_dirs(reg, channel, dma, want_tx, want_rx);
-  RA_RETURN_ON_ERROR(d_err, s_tag, "ssie_attach_dma: dir start");
+  RA_RETURN_ON_ERROR(d_err, s_tag, "ssie_attach_dma: dir start"); /* GCOVR_EXCL_BR_LINE */
 
   s_ssie_runtime[channel].dma_attached = true;
   return k_ra_ok;

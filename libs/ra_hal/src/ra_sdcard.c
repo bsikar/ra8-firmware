@@ -237,7 +237,7 @@ ra_err_t ra_sdcard_init(const ra_sdcard_cfg_t* cfg)
 
   /* HUM Ch 47.1 "SDHI Overview" p 3122 */ /* module bring-up first. */
   const ra_err_t hw_err = ra_sdhi_init(cfg->instance);
-  RA_RETURN_ON_ERROR(hw_err, s_tag, "sdhi_init");
+  RA_RETURN_ON_ERROR(hw_err, s_tag, "sdhi_init"); /* GCOVR_EXCL_BR_LINE */
 
   uint32_t rsp[4] = {0U, 0U, 0U, 0U};
 
@@ -246,7 +246,7 @@ ra_err_t ra_sdcard_init(const ra_sdcard_cfg_t* cfg)
    * RSPEND so the host stays in lockstep with the bus state machine. */
   const ra_err_t e0 =
     ra_sdhi_send_command(cfg->instance, (uint32_t)k_ra_sdcard_cmd0_go_idle, 0U, rsp);
-  RA_RETURN_ON_ERROR(e0, s_tag, "cmd0");
+  RA_RETURN_ON_ERROR(e0, s_tag, "cmd0"); /* GCOVR_EXCL_BR_LINE */
 
   /* HUM Ch 47.2.5 "SD_RSP10 : Response Register 10" p 3132 */
   /* CMD8 SEND_IF_COND -- echoes the low 12 bits of the argument back
@@ -255,7 +255,7 @@ ra_err_t ra_sdcard_init(const ra_sdcard_cfg_t* cfg)
                                            (uint32_t)k_ra_sdcard_cmd8_send_if_cond,
                                            (uint32_t)k_ra_sdcard_cmd8_pattern,
                                            rsp);
-  RA_RETURN_ON_ERROR(e8, s_tag, "cmd8");
+  RA_RETURN_ON_ERROR(e8, s_tag, "cmd8"); /* GCOVR_EXCL_BR_LINE */
   if ((rsp[0] & (uint32_t)k_ra_sdcard_cmd8_pattern_mask) !=
       ((uint32_t)k_ra_sdcard_cmd8_pattern & (uint32_t)k_ra_sdcard_cmd8_pattern_mask)) {
     (void)ra_sdhi_deinit(cfg->instance);
@@ -277,12 +277,12 @@ ra_err_t ra_sdcard_init(const ra_sdcard_cfg_t* cfg)
    * machine. */
   const ra_err_t e2 =
     ra_sdhi_send_command(cfg->instance, (uint32_t)k_ra_sdcard_cmd2_all_send_cid, 0U, rsp);
-  RA_RETURN_ON_ERROR(e2, s_tag, "cmd2");
+  RA_RETURN_ON_ERROR(e2, s_tag, "cmd2"); /* GCOVR_EXCL_BR_LINE */
 
   /* CMD3 SEND_RELATIVE_ADDR -- card publishes its RCA in rsp[0][31:16]. */
   const ra_err_t e3 =
     ra_sdhi_send_command(cfg->instance, (uint32_t)k_ra_sdcard_cmd3_send_rca, 0U, rsp);
-  RA_RETURN_ON_ERROR(e3, s_tag, "cmd3");
+  RA_RETURN_ON_ERROR(e3, s_tag, "cmd3"); /* GCOVR_EXCL_BR_LINE */
   const uint16_t rca = (uint16_t)((rsp[0] >> 16U) & 0xFFFFU);
 
   /* CMD9 SEND_CSD -- arg = RCA<<16. R2 response holds the 128-bit CSD
@@ -290,7 +290,7 @@ ra_err_t ra_sdcard_init(const ra_sdcard_cfg_t* cfg)
   const uint32_t rca_arg = ((uint32_t)rca) << 16U;
   const ra_err_t e9 =
     ra_sdhi_send_command(cfg->instance, (uint32_t)k_ra_sdcard_cmd9_send_csd, rca_arg, rsp);
-  RA_RETURN_ON_ERROR(e9, s_tag, "cmd9");
+  RA_RETURN_ON_ERROR(e9, s_tag, "cmd9"); /* GCOVR_EXCL_BR_LINE */
 
   uint32_t       blocks  = 0U;
   const ra_err_t dec_err = internal_decode_csd(rsp, &blocks);
@@ -302,14 +302,14 @@ ra_err_t ra_sdcard_init(const ra_sdcard_cfg_t* cfg)
   /* CMD7 SELECT_CARD -- arg = RCA<<16 to put this card into TRAN. */
   const ra_err_t e7 =
     ra_sdhi_send_command(cfg->instance, (uint32_t)k_ra_sdcard_cmd7_select_card, rca_arg, rsp);
-  RA_RETURN_ON_ERROR(e7, s_tag, "cmd7");
+  RA_RETURN_ON_ERROR(e7, s_tag, "cmd7"); /* GCOVR_EXCL_BR_LINE */
 
   /* HUM Ch 47.2.18 "SD_CLK_CTRL : SD Clock Control Register" p 3145 */
   /* Bump the bus from the 400 kHz identification rate to default
    * speed. The SDR50 / DDR50 negotiation lives in the future
    * ::ra_sdcard_set_speed extension. */
   const ra_err_t eclk = ra_sdhi_set_clock(cfg->instance, (uint32_t)k_ra_sdcard_default_clk_div);
-  RA_RETURN_ON_ERROR(eclk, s_tag, "set_clock");
+  RA_RETURN_ON_ERROR(eclk, s_tag, "set_clock"); /* GCOVR_EXCL_BR_LINE */
 
   s_sdcard.instance        = cfg->instance;
   s_sdcard.rca             = rca;

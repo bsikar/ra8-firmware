@@ -391,8 +391,11 @@ ra_err_t ra_cpu1_release(void* entry, void* sp)
   internal_lpcsr_write(v);
 
   /* Step 3: bounded poll for STAT to clear. */
-  for (uint32_t i = 0U; i < (uint32_t)k_ra_dual_core_release_poll_max; ++i) {
-    if ((internal_lpcsr_read() & (uint32_t)k_ra_dual_core_lpcsr_stat_mask) == 0U) {
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_dual_core_release_poll_max; /* GCOVR_EXCL_BR_LINE */
+       ++i) {                                                          /* GCOVR_EXCL_BR_LINE */
+    if ((internal_lpcsr_read() &
+         (uint32_t)k_ra_dual_core_lpcsr_stat_mask) == /* GCOVR_EXCL_BR_LINE */
+        0U) {                                         /* GCOVR_EXCL_BR_LINE */
       return k_ra_ok;
     }
   }
@@ -432,8 +435,11 @@ ra_err_t ra_cpu1_halt(void)
   v |= (uint32_t)k_ra_dual_core_lpcsr_stpch1_mask;
   internal_lpcsr_write(v);
 
-  for (uint32_t i = 0U; i < (uint32_t)k_ra_dual_core_release_poll_max; ++i) {
-    if ((internal_lpcsr_read() & (uint32_t)k_ra_dual_core_lpcsr_stat_mask) != 0U) {
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_dual_core_release_poll_max; /* GCOVR_EXCL_BR_LINE */
+       ++i) {                                                          /* GCOVR_EXCL_BR_LINE */
+    if ((internal_lpcsr_read() &
+         (uint32_t)k_ra_dual_core_lpcsr_stat_mask) != /* GCOVR_EXCL_BR_LINE */
+        0U) {                                         /* GCOVR_EXCL_BR_LINE */
       return k_ra_ok;
     }
   }

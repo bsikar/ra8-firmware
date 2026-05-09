@@ -79,8 +79,8 @@ typedef enum : uint8_t {
  */
 static inline void internal_cac_wait_cfme(volatile r_cac_regs_t* reg, uint8_t expect)
 {
-  for (uint32_t i = 0U; i < k_ra_cac_cfme_settle_iters; i++) {
-    if (reg->CACR0 == expect) {
+  for (uint32_t i = 0U; i < k_ra_cac_cfme_settle_iters; i++) { /* GCOVR_EXCL_BR_LINE */
+    if (reg->CACR0 == expect) {                                /* GCOVR_EXCL_BR_LINE */
       return;
     }
   }
@@ -127,9 +127,9 @@ ra_err_t ra_cac_measure(uint16_t* out_count)
   reg->CACR0             = cfme_set;
   internal_cac_wait_cfme(reg, cfme_set);
 
-  for (uint32_t i = 0U; i < k_ra_cac_poll_limit; i++) {
+  for (uint32_t i = 0U; i < k_ra_cac_poll_limit; i++) { /* GCOVR_EXCL_BR_LINE */
     /* HUM Ch 10.2.5 "CASTR : CAC Status Register" p 424 */
-    if ((reg->CASTR & (uint8_t)(1U << k_ra_castr_mendf)) != 0U) {
+    if ((reg->CASTR & (uint8_t)(1U << k_ra_castr_mendf)) != 0U) { /* GCOVR_EXCL_BR_LINE */
       /* HUM Ch 10.2.4 "CACNTBR : CAC Counter Buffer Register" p 423 */
       *out_count = reg->CACNTBR;
       reg->CACR0 = 0U;

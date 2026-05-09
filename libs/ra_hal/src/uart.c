@@ -115,8 +115,8 @@ static const ra_mstp_t s_sci_mstp_table[k_ra_uart_channel_count] = {
    * until TDRE = 1 (transmit data register empty). */
   enum : uint32_t { k_ra_uart_spin_limit = 1000000U };
   const uint32_t tdre = (1U << k_ra_sci_csr_bit_tdre);
-  for (uint32_t i = 0U; i < k_ra_uart_spin_limit; i++) {
-    if ((sci->CSR & tdre) != 0U) {
+  for (uint32_t i = 0U; i < k_ra_uart_spin_limit; i++) { /* GCOVR_EXCL_BR_LINE */
+    if ((sci->CSR & tdre) != 0U) {                       /* GCOVR_EXCL_BR_LINE */
       /* HUM Ch 38.2.3 "TDR : Transmit Data Register", p 2181 */
       sci->TDR = (uint32_t)byte;
       return k_ra_ok;

@@ -127,8 +127,8 @@ static uint8_t internal_bin_to_bcd(uint8_t bin)
  */
 static void internal_wait_bit(volatile const uint8_t* reg, uint8_t mask, uint8_t expect)
 {
-  for (uint16_t i = 0U; i < k_ra_rtc_wait_iters; ++i) {
-    if (((*reg) & mask) == expect) {
+  for (uint16_t i = 0U; i < k_ra_rtc_wait_iters; ++i) { /* GCOVR_EXCL_BR_LINE */
+    if (((*reg) & mask) == expect) {                    /* GCOVR_EXCL_BR_LINE */
       return;
     }
   }

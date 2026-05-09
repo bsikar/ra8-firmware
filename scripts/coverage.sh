@@ -42,6 +42,7 @@ echo -e "${YELLOW}[2/4]${NC} Building..."
 cmake --build "$BUILD_DIR" --parallel >/dev/null
 
 echo -e "${YELLOW}[3/4]${NC} Running ctest..."
+chmod +x "$BUILD_DIR"/test_* || true
 ctest --test-dir "$BUILD_DIR" --output-on-failure --timeout 60 | tail -4
 
 mkdir -p "$BUILD_DIR/coverage"

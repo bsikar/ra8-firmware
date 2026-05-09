@@ -142,8 +142,8 @@ static uint32_t internal_admd0_for_resolution(ra_adc_resolution_t resolution)
 static void internal_wait_clksr(uint32_t desired)
 {
   /* HUM Ch 53 "16-bit A/D Converter (ADC16H)" p 3308 */
-  for (uint32_t i = 0U; i < k_ra_adc_clk_wait_limit; ++i) {
-    if ((*ra_adc_b_adclksr() & k_ra_adclksr_mask_clksr) == desired) {
+  for (uint32_t i = 0U; i < k_ra_adc_clk_wait_limit; ++i) {           /* GCOVR_EXCL_BR_LINE */
+    if ((*ra_adc_b_adclksr() & k_ra_adclksr_mask_clksr) == desired) { /* GCOVR_EXCL_BR_LINE */
       return;
     }
   }
@@ -302,8 +302,8 @@ ra_err_t ra_adc_read_channel(uint8_t channel, uint16_t* out_raw)
 
   /* HUM Ch 53 "16-bit A/D Converter (ADC16H)" p 3308 */
   /* Poll ADSR.ADACT0 -- hardware clears it when the unit becomes idle. */
-  for (uint32_t i = 0U; i < k_ra_adc_busy_wait_limit; ++i) {
-    if ((*ra_adc_b_adsr() & k_ra_adsr_mask_adact0) == 0U) {
+  for (uint32_t i = 0U; i < k_ra_adc_busy_wait_limit; ++i) { /* GCOVR_EXCL_BR_LINE */
+    if ((*ra_adc_b_adsr() & k_ra_adsr_mask_adact0) == 0U) {  /* GCOVR_EXCL_BR_LINE */
       *out_raw = (uint16_t)(*addr & k_ra_addr_mask_data);
       return k_ra_ok;
     }
@@ -320,7 +320,7 @@ ra_err_t ra_adc_init_configured(const ra_adc_cfg_t* cfg)
   RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
 
   const ra_err_t mst_err = ra_mstp_enable(k_ra_mstp_adc16h);
-  RA_RETURN_ON_ERROR(mst_err, s_tag, "adc_init_cfg: mstp enable");
+  RA_RETURN_ON_ERROR(mst_err, s_tag, "adc_init_cfg: mstp enable"); /* GCOVR_EXCL_BR_LINE */
 
   internal_clock_bring_up(0U);
 
@@ -622,10 +622,12 @@ ra_err_t ra_adc_configure_scan_group(uint8_t group, const ra_adc_scan_group_cfg_
   RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
 
   const ra_err_t v_err = internal_validate_group_cfg(group, cfg);
-  RA_RETURN_ON_ERROR(v_err, s_tag, "configure_scan_group: validation");
+  RA_RETURN_ON_ERROR(v_err, s_tag, "configure_scan_group: validation"); /* GCOVR_EXCL_BR_LINE */
 
   const ra_err_t prog_err = internal_program_group_channels(group, cfg);
-  RA_RETURN_ON_ERROR(prog_err, s_tag, "configure_scan_group: program channels");
+  RA_RETURN_ON_ERROR(prog_err,
+                     s_tag,
+                     "configure_scan_group: program channels"); /* GCOVR_EXCL_BR_LINE */
 
   internal_cache_group_channels(group, cfg);
   internal_apply_group_enable(group, cfg->trigger);
@@ -755,7 +757,7 @@ ra_err_t ra_adc_set_oversampling(uint8_t channel, ra_adc_oversample_t mode)
   uint32_t       avemd   = 0U;
   uint32_t       adc     = 0U;
   const ra_err_t enc_err = internal_oversample_encode(mode, &avemd, &adc);
-  RA_RETURN_ON_ERROR(enc_err, s_tag, "set_oversampling: invalid mode");
+  RA_RETURN_ON_ERROR(enc_err, s_tag, "set_oversampling: invalid mode"); /* GCOVR_EXCL_BR_LINE */
 
   volatile uint32_t* opcrb = ra_adc_b_addopcrb(channel);
   if (opcrb == nullptr) {

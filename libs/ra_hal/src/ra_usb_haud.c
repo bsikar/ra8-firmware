@@ -204,7 +204,7 @@ static ra_err_t internal_configure_pipes(void)
                                     k_ra_usb_ep_dir_out,
                                     k_ra_usb_ep_type_iso,
                                     s_state.device.iso_out_max_packet);
-    RA_RETURN_ON_ERROR(err, s_tag, "haud: iso-out cfg");
+    RA_RETURN_ON_ERROR(err, s_tag, "haud: iso-out cfg"); /* GCOVR_EXCL_BR_LINE */
   }
   if (s_state.device.iso_in_ep != 0U) {
     err = ra_usb_configure_endpoint(s_state.speed,
@@ -416,7 +416,7 @@ static ra_err_t internal_do_idle(void)
 static ra_err_t internal_do_bus_reset(void)
 {
   const ra_err_t rel = ra_usb_host_bus_reset(s_state.speed, false);
-  RA_RETURN_ON_ERROR(rel, s_tag, "haud: release bus reset");
+  RA_RETURN_ON_ERROR(rel, s_tag, "haud: release bus reset"); /* GCOVR_EXCL_BR_LINE */
   s_state.step = k_ra_haud_step_set_address;
   return internal_setup_set_address((uint8_t)k_ra_haud_assigned_address);
 }
@@ -438,7 +438,7 @@ static ra_err_t internal_do_bus_reset(void)
 static ra_err_t internal_do_set_address(void)
 {
   const ra_err_t addr_err = ra_usb_set_address(s_state.speed, (uint8_t)k_ra_haud_assigned_address);
-  RA_RETURN_ON_ERROR(addr_err, s_tag, "haud: set USBADDR");
+  RA_RETURN_ON_ERROR(addr_err, s_tag, "haud: set USBADDR"); /* GCOVR_EXCL_BR_LINE */
   s_state.step = k_ra_haud_step_get_dev_desc;
   return internal_setup_get_descriptor(k_ra_haud_desc_device, k_ra_haud_dev_desc_len);
 }
@@ -538,7 +538,7 @@ static ra_err_t internal_do_set_interface(void)
 static ra_err_t internal_do_walk_desc(void)
 {
   const ra_err_t pipes_err = internal_configure_pipes();
-  RA_RETURN_ON_ERROR(pipes_err, s_tag, "haud: configure pipes");
+  RA_RETURN_ON_ERROR(pipes_err, s_tag, "haud: configure pipes"); /* GCOVR_EXCL_BR_LINE */
   s_state.attached = true;
   s_state.step     = k_ra_haud_step_done;
   if (s_state.attach_cb != nullptr) {

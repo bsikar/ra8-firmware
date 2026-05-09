@@ -1,6 +1,6 @@
 # examples/ek_ra8d2/
 
-Apps in this tier are validated on a stock **EK-RA8D2 v1** evaluation kit
+Apps in this tier target a stock **EK-RA8D2 v1** evaluation kit
 (Renesas part 968-K7EKA8D2S01001BE) with no extra peripherals beyond what
 the board ships with:
 
@@ -14,22 +14,17 @@ the board ships with:
 - J12 USB Type-C High-Speed
 - MIPI-DSI / Pmod / Arduino headers (no shields)
 
-These are the apps the project hardware-validates every release. The
-pre-commit hook and CI run smoke tests against this set; new
-infrastructure changes are smoke-tested by re-flashing one app from each
-sub-category (LED, UART, USB, Ethernet, ThreadX, GUIX, OTA, etc.).
+Apps are split into two subtiers based on hardware sign-off status:
 
-A handful of host-USB demos (`usb_host_*`) need a cheap USB device
-plugged into J12 (a CDC-ACM adapter, a USB keyboard, or any USB mass-
-storage stick). Those are still in this tier because the required
-device is trivial commodity hardware and not a vendor blob.
+| Subtier | Description |
+|---------|-------------|
+| [`hw_validated/`](hw_validated/README.md) | Flashed and confirmed working on the EVM |
+| [`hw_pending/`](hw_pending/README.md) | Compiles and passes CI, but not yet flashed or has a known gap |
 
 To build any app: `make <appname>` from the repo root, e.g. `make blink`.
-The bare app name works regardless of which tier it lives in -- the
-top-level Makefile auto-discovers apps under `examples/<tier>/<app>/`.
+The bare app name works regardless of which subtier it lives in.
 
 ## Companion tier
 
 See [`examples/_unsupported/`](../_unsupported/README.md) for apps that
-require hardware we do not have on hand and therefore cannot
-hardware-validate.
+require hardware we do not have on hand.

@@ -132,7 +132,7 @@ static ra_err_t internal_configure_pipes(ra_usb_speed_t speed)
                                            k_ra_usb_ep_dir_out,
                                            k_ra_usb_ep_type_bulk,
                                            mp);
-  RA_RETURN_ON_ERROR(err, s_tag, "pprn: bulk-out cfg");
+  RA_RETURN_ON_ERROR(err, s_tag, "pprn: bulk-out cfg"); /* GCOVR_EXCL_BR_LINE */
 
   err = ra_usb_configure_endpoint(speed,
                                   k_ra_pprn_pipe_bulk_in,

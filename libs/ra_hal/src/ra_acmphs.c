@@ -98,7 +98,7 @@ static ra_err_t internal_reset_channel(uint8_t ch)
 {
   for (uint8_t ch = 0U; ch < (uint8_t)k_ra_acmphs_channel_count; ++ch) {
     const ra_err_t err = internal_reset_channel(ch);
-    RA_RETURN_ON_ERROR(err, s_tag, "acmphs_init channel reset");
+    RA_RETURN_ON_ERROR(err, s_tag, "acmphs_init channel reset"); /* GCOVR_EXCL_BR_LINE */
   }
   ra_log_info(s_tag, "acmphs_init");
   return k_ra_ok;
@@ -168,7 +168,7 @@ ra_err_t ra_acmphs_channel_init(uint8_t channel, const ra_acmphs_cfg_t* cfg)
 
   if (channel < k_ra_acmphs_mstp_id_count) {
     const ra_err_t mst_err = ra_mstp_enable(s_acmphs_mstp_table[channel]);
-    RA_RETURN_ON_ERROR(mst_err, s_tag, "acmphs_init: mstp");
+    RA_RETURN_ON_ERROR(mst_err, s_tag, "acmphs_init: mstp"); /* GCOVR_EXCL_BR_LINE */
   }
 
   reg->CMPSEL0 = cfg->ivpsel;

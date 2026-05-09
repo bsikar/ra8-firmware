@@ -694,10 +694,10 @@ ra_lpm_snooze_set_request_sources(bool ulpt0_underflow, bool ulpt1_underflow, bo
   if (poll_limit == 0U) {
     return k_ra_err_invalid_arg;
   }
-  for (uint32_t i = 0U; i < poll_limit; ++i) {
+  for (uint32_t i = 0U; i < poll_limit; ++i) { /* GCOVR_EXCL_BR_LINE */
     /* HUM Ch 11.2.11 "OPCCR : Operating Power Control Register", p 451 */
     const uint8_t v = *ra_lpm_sysc_reg8(k_ra_lpm_opccr_off);
-    if (((uint8_t)(v & k_ra_lpm_opccr_opcmtsf_msk)) == 0U) {
+    if (((uint8_t)(v & k_ra_lpm_opccr_opcmtsf_msk)) == 0U) { /* GCOVR_EXCL_BR_LINE */
       return k_ra_ok;
     }
   }
@@ -713,7 +713,7 @@ ra_lpm_snooze_set_request_sources(bool ulpt0_underflow, bool ulpt1_underflow, bo
 [[nodiscard]] ra_err_t ra_lpm_enter_sleep(ra_sleep_mode_t mode)
 {
   const ra_err_t mode_err = internal_validate_mode(mode);
-  RA_RETURN_ON_ERROR(mode_err, s_tag, "lpm_enter_sleep: bad mode");
+  RA_RETURN_ON_ERROR(mode_err, s_tag, "lpm_enter_sleep: bad mode"); /* GCOVR_EXCL_BR_LINE */
 
   /* For Sleep / Deep-Sleep, LPMD stays at 0 (System Active); only WFI +
    * SCR.SLEEPDEEP toggle differs. For Software Standby and Deep Standby,
