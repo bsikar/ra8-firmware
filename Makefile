@@ -88,6 +88,7 @@ help:
 	@echo "  make dashboard regenerate docs/ROADMAP_DASHBOARD.md + docs/badges/"
 	@echo "  make ascii     fix-encoding.py --check"
 	@echo "  make version   verify @since tags match the VERSION file"
+	@echo "  make hil       HIL tests: build + flash + verify UART output on Pi"
 	@echo "  make smoke     hardware smoke-test sweep over examples/ek_ra8d2/"
 	@echo "  make stack-usage build EVM apps + aggregate -fstack-usage report"
 	@echo "  make scan-build run clang static analyzer over the host test build"
@@ -230,6 +231,28 @@ version:
 	@echo "project VERSION: $$(cat VERSION)"
 	@python3 scripts/utils/check-since-version.py --all
 
+# ---------------------------------------------------------------------------
+# HIL (Hardware-In-the-Loop) tests.
+#
+# These build the app locally, SCP the hex to the Pi, flash via J-Link,
+# and verify expected UART output.  The Pi must be reachable at star.local
+# with the EK-RA8D2 wired to its USB ports.  See scripts/hil_run.sh.
+#
+# Add one target per app as they are validated.  The target name is
+# hil-<appname>; `make hil` runs all of them.
+# ---------------------------------------------------------------------------
+HIL_UART_HELLO_HEX := $(ROOT)/examples/ek_ra8d2/hw_validated/uart_hello/build/uart_hello.hex
+
+.PHONY: hil hil-uart-hello
+
+hil-uart-hello: uart_hello
+	bash scripts/hil_run.sh \
+	    --hex  $(HIL_UART_HELLO_HEX) \
+	    --expect "hello, ra8d2!" \
+	    --baud 115200 \
+	    --timeout 10
+
+hil: hil-uart-hello
 
 # Hardware smoke test -- builds every EVM-tier app, then flashes each
 # one through the on-board J-Link OB and classifies the halt-PC as
