@@ -16,10 +16,24 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8d2_port_regs.h"
 #include "ra_board_ek_ra8d2.h"
 #include "ra_err.h"
+#include "ra_pin_validator.h"
 #include "ra_port_constants.h"
+#include "ra_sim_mmap.h"
 #include "unity_minimal.h"
+
+static void reset_board_hal_state(void)
+{
+  ra_sim_mmap_reset();
+  ra_pin_validator_reset();
+}
+
+static void dummy_sw_irq_cb(void* ctx)
+{
+  (void)ctx;
+}
 
 /* ------------------------------------------------------------------------- */
 /* Board-identity                                                            */
@@ -54,7 +68,7 @@ static void test_board_get_info(void)
 static void test_board_get_info_null(void)
 {
   TEST_BEGIN("board_get_info rejects NULL");
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_board_get_info(NULL));
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_board_get_info(nullptr));
   TEST_END("board_get_info rejects NULL");
 }
 
@@ -104,7 +118,7 @@ static void test_led_pin_invalid(void)
   ra_port_pin_t pin = k_ra_pin_none;
   TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
                  (int)ra_board_led_pin((ra_board_led_id_t)k_ra_board_led_count, &pin));
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_board_led_pin(k_ra_board_led1, NULL));
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_board_led_pin(k_ra_board_led1, nullptr));
   TEST_END("led_pin rejects out-of-range / null");
 }
 
@@ -144,7 +158,7 @@ static void test_sw_attach_irq_null_cb(void)
 {
   TEST_BEGIN("sw_attach_irq rejects NULL callback");
   TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
-                 (int)ra_board_sw_attach_irq(k_ra_board_sw1, NULL, NULL));
+                 (int)ra_board_sw_attach_irq(k_ra_board_sw1, nullptr, nullptr));
   TEST_END("sw_attach_irq rejects NULL callback");
 }
 
@@ -181,7 +195,7 @@ static void test_audio_play_sample_block_validates(void)
 {
   TEST_BEGIN("audio_play_sample_block rejects bad args");
   int16_t buf[4] = {};
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_board_audio_play_sample_block(NULL, 4U));
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_board_audio_play_sample_block(nullptr, 4U));
   TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_board_audio_play_sample_block(buf, 0U));
   TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_board_audio_play_sample_block(buf, 3U));
   /* Even-length non-empty buffer reaches the SSIE hook; without a
@@ -457,9 +471,9 @@ static void test_uart_console_write_validates(void)
 {
   TEST_BEGIN("uart_console_write validates args + state");
   /* Zero-length write is a no-op success regardless of init state. */
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_uart_console_write(NULL, 0U));
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_uart_console_write(nullptr, 0U));
   /* NULL data with non-zero len -> invalid_arg. */
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_board_uart_console_write(NULL, 4U));
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_board_uart_console_write(nullptr, 4U));
   TEST_END("uart_console_write validates args + state");
 }
 
@@ -476,15 +490,15 @@ static void test_uart_console_read_validates(void)
   size_t  out_len = 0xAAU;
   /* NULL out_len always rejected. */
   TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
-                 (int)ra_board_uart_console_read(buf, sizeof(buf), NULL));
+                 (int)ra_board_uart_console_read(buf, sizeof(buf), nullptr));
   /* cap == 0 is a successful no-op (and zeroes *out_len). */
   out_len = 0xAAU;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_uart_console_read(NULL, 0U, &out_len));
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_uart_console_read(nullptr, 0U, &out_len));
   TEST_ASSERT_EQ((int64_t)0, (int64_t)out_len);
   /* NULL buffer with non-zero cap -> invalid_arg. */
   out_len = 0U;
   TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
-                 (int)ra_board_uart_console_read(NULL, sizeof(buf), &out_len));
+                 (int)ra_board_uart_console_read(nullptr, sizeof(buf), &out_len));
   TEST_END("uart_console_read validates args + state");
 }
 
@@ -536,6 +550,130 @@ static void test_ethernet_index_constants(void)
   TEST_END("ethernet ETHA/RMAC port + PHY addr defaults");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
+static void test_board_led_funcs(void)
+{
+  TEST_BEGIN("board_led_funcs forward to hal or return error");
+  reset_board_hal_state();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_led_init(k_ra_board_led1));
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_led_on(k_ra_board_led1));
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_board_led_on((ra_board_led_id_t)99));
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_led_off(k_ra_board_led1));
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_board_led_off((ra_board_led_id_t)99));
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_led_toggle(k_ra_board_led1));
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_board_led_toggle((ra_board_led_id_t)99));
+  TEST_END("board_led_funcs forward to hal or return error");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
+static void test_board_sw_funcs(void)
+{
+  TEST_BEGIN("board_sw_funcs forward to hal or return error");
+  reset_board_hal_state();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_sw_init(k_ra_board_sw1));
+  ra_board_sw_state_t sw_val  = k_ra_board_sw_released;
+  ra_level_t          ard_val = k_ra_level_low;
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_sw_read(k_ra_board_sw1, &sw_val));
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_board_sw_read((ra_board_sw_id_t)99, &sw_val));
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_board_sw_read(k_ra_board_sw1, nullptr));
+
+  TEST_ASSERT_EQ((int)k_ra_ok,
+                 (int)ra_board_sw_attach_irq(k_ra_board_sw1, dummy_sw_irq_cb, nullptr));
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
+                 (int)ra_board_sw_attach_irq((ra_board_sw_id_t)99, dummy_sw_irq_cb, nullptr));
+  TEST_END("board_sw_funcs forward to hal or return error");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
+static void test_board_xspi_init(void)
+{
+  TEST_BEGIN("board_xspi_pins_init forwards to hal");
+  reset_board_hal_state();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_xspi_pins_init());
+  TEST_END("board_xspi_pins_init forwards to hal");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
+static void test_board_arduino_gpio_funcs(void)
+{
+  TEST_BEGIN("board_arduino_gpio_funcs forward to hal or return error");
+  reset_board_hal_state();
+  TEST_ASSERT_EQ((int)k_ra_ok,
+                 (int)ra_board_arduino_gpio_write(k_ra_board_arduino_d2, k_ra_level_high));
+  TEST_ASSERT_EQ((int)k_ra_err_gpio_invalid_pin,
+                 (int)ra_board_arduino_gpio_write((ra_board_arduino_pin_t)99, k_ra_level_high));
+
+  ra_level_t ard_val = k_ra_level_low;
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_arduino_gpio_read(k_ra_board_arduino_d2, &ard_val));
+  TEST_ASSERT_EQ((int)k_ra_err_gpio_invalid_pin,
+                 (int)ra_board_arduino_gpio_read((ra_board_arduino_pin_t)99, &ard_val));
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
+                 (int)ra_board_arduino_gpio_read(k_ra_board_arduino_d2, nullptr));
+  TEST_END("board_arduino_gpio_funcs forward to hal or return error");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
+static void test_board_io_expander(void)
+{
+  TEST_BEGIN("board_io_expander_set_usbhs_device_mode forwards to hal");
+  reset_board_hal_state();
+  TEST_ASSERT_EQ((int)k_ra_err_busy, (int)ra_board_io_expander_set_usbhs_device_mode());
+  TEST_END("board_io_expander_set_usbhs_device_mode forwards to hal");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
+static void test_board_uart_console_flush(void)
+{
+  TEST_BEGIN("board_uart_console_flush forwards to hal");
+  reset_board_hal_state();
+  TEST_ASSERT_EQ((int)k_ra_err_not_initialized, (int)ra_board_uart_console_flush());
+  TEST_END("board_uart_console_flush forwards to hal");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
+static void test_board_ethernet_init(void)
+{
+  TEST_BEGIN("board_ethernet_init forwards to hal");
+  reset_board_hal_state();
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_ethernet_init());
+  TEST_END("board_ethernet_init forwards to hal");
+}
+
 int32_t main(void)
 {
   test_board_get_info();
@@ -564,6 +702,13 @@ int32_t main(void)
   test_uart_console_read_validates();
   test_ethernet_pins();
   test_ethernet_index_constants();
+  test_board_led_funcs();
+  test_board_sw_funcs();
+  test_board_xspi_init();
+  test_board_arduino_gpio_funcs();
+  test_board_io_expander();
+  test_board_uart_console_flush();
+  test_board_ethernet_init();
   (void)fprintf(stderr, "[OK ] test_ra_board_ek_ra8d2.c\n");
   return 0;
 }

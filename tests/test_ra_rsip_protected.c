@@ -142,6 +142,60 @@ static void test_protected_aes_roundtrip(void)
 }
 
 /**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
+static void test_protected_aes192_init(void)
+{
+  TEST_BEGIN("rsip protected aes-192 init");
+  prep();
+
+  uint8_t raw_key[24];
+  (void)memset(raw_key, (int)k_test_pattern_key, sizeof(raw_key));
+  uint8_t blob[k_ra_rsip_wrapped_max_total];
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_rsip_key_inject_aes(blob, raw_key, k_ra_rsip_aes_key_bits_192));
+
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_rsip_protected_aes_init(blob,
+                                                     k_ra_rsip_aes_key_bits_192,
+                                                     k_ra_rsip_aes_mode_ecb,
+                                                     nullptr));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rsip_protected_aes_finish());
+
+  TEST_END("rsip protected aes-192 init");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
+static void test_protected_aes256_init(void)
+{
+  TEST_BEGIN("rsip protected aes-256 init");
+  prep();
+
+  uint8_t raw_key[32];
+  (void)memset(raw_key, (int)k_test_pattern_key, sizeof(raw_key));
+  uint8_t blob[k_ra_rsip_wrapped_max_total];
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_rsip_key_inject_aes(blob, raw_key, k_ra_rsip_aes_key_bits_256));
+
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_rsip_protected_aes_init(blob,
+                                                     k_ra_rsip_aes_key_bits_256,
+                                                     k_ra_rsip_aes_mode_ecb,
+                                                     nullptr));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_rsip_protected_aes_finish());
+
+  TEST_END("rsip protected aes-256 init");
+}
+
+/**
  * @brief Protected AES init refuses a tampered blob.
  * @since 0.1.0
   *
@@ -348,6 +402,8 @@ static void test_protected_null_args(void)
 int32_t main(void)
 {
   test_protected_aes_roundtrip();
+  test_protected_aes192_init();
+  test_protected_aes256_init();
   test_protected_aes_rejects_tamper();
   test_protected_aes_no_init();
   test_protected_rsa_decrypt();

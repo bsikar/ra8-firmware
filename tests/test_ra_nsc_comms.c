@@ -164,6 +164,12 @@ static void test_spi_init_and_xfer(void)
   TEST_END("ra_nsc_spi_init + xfer8");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 static void test_spi_bulk_xfers(void)
 {
   TEST_BEGIN("ra_nsc_spi bulk transfers");
@@ -175,7 +181,7 @@ static void test_spi_bulk_xfers(void)
   (void)ra_nsc_spi_init(0U, &cfg);
 
   uint8_t tx[4] = {1, 2, 3, 4};
-  uint8_t rx[4] = {0};
+  uint8_t rx[4] = {};
 
   /* Pre-set SPSR flags for 4 bytes of transfer. In the real hardware
    * these spin loops would check SPSR, but our mock doesn't clear them
@@ -185,19 +191,24 @@ static void test_spi_bulk_xfers(void)
 
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_nsc_spi_write(0U, tx, 4U, k_ra_spi_width_8));
   sreg->SPSR = k_ra_spsr_mask_sptef | k_ra_spsr_mask_sprf;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_nsc_spi_write(0U, nullptr, 4U, k_ra_spi_width_8));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_nsc_spi_write(0U, nullptr, 4U, k_ra_spi_width_8));
 
   sreg->SPSR = k_ra_spsr_mask_sptef | k_ra_spsr_mask_sprf;
   TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_nsc_spi_read(0U, rx, 4U, k_ra_spi_width_8));
   sreg->SPSR = k_ra_spsr_mask_sptef | k_ra_spsr_mask_sprf;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_nsc_spi_read(0U, nullptr, 4U, k_ra_spi_width_8));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_nsc_spi_read(0U, nullptr, 4U, k_ra_spi_width_8));
 
   sreg->SPSR = k_ra_spsr_mask_sptef | k_ra_spsr_mask_sprf;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_nsc_spi_write_read(0U, tx, rx, 4U, k_ra_spi_width_8));
+  TEST_ASSERT_EQ((int32_t)k_ra_ok,
+                 (int32_t)ra_nsc_spi_write_read(0U, tx, rx, 4U, k_ra_spi_width_8));
   sreg->SPSR = k_ra_spsr_mask_sptef | k_ra_spsr_mask_sprf;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_nsc_spi_write_read(0U, nullptr, rx, 4U, k_ra_spi_width_8));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_nsc_spi_write_read(0U, nullptr, rx, 4U, k_ra_spi_width_8));
   sreg->SPSR = k_ra_spsr_mask_sptef | k_ra_spsr_mask_sprf;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_nsc_spi_write_read(0U, tx, nullptr, 4U, k_ra_spi_width_8));
+  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
+                 (int32_t)ra_nsc_spi_write_read(0U, tx, nullptr, 4U, k_ra_spi_width_8));
 
   TEST_END("ra_nsc_spi bulk transfers");
 }
