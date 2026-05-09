@@ -320,9 +320,6 @@ static void sigalarm_handler_nack(int sig)
     volatile r_iic_b_regs_t* reg = ra_iic_b(s_alarm_channel);
     if (reg != nullptr) {
       reg->BST = (uint32_t)k_ra_iic_b_msk_bst_nackdf;
-      /* Also clear NTST so the spin loop falls through to the
-       * post-data status check that observes NACKDF. */
-      reg->NTST = 0U;
     }
   }
 }

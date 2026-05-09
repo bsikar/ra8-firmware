@@ -135,8 +135,11 @@ static void test_dma_app_start_programmes_regs(void)
   TEST_ASSERT_EQ(k_ra_ok, ra_dmac_start((uint8_t)k_t_dma_channel, &cfg));
   volatile r_dmac_channel_regs_t* reg = ra_dmac((uint8_t)k_t_dma_channel);
   TEST_ASSERT_NOT_NULL((void*)reg);
-  TEST_ASSERT_EQ((uintptr_t)s_src, reg->DMSAR);
-  TEST_ASSERT_EQ((uintptr_t)s_dst, reg->DMDAR);
+  /* DMSAR/DMDAR are 32-bit registers; cfg.src/dst already truncated to uint32_t. */
+  const uint32_t exp_src = (uint32_t)(uintptr_t)s_src;
+  const uint32_t exp_dst = (uint32_t)(uintptr_t)s_dst;
+  TEST_ASSERT_EQ(exp_src, reg->DMSAR);
+  TEST_ASSERT_EQ(exp_dst, reg->DMDAR);
   TEST_ASSERT_EQ(k_t_dma_words, reg->DMCRA);
   (void)ra_dmac_stop((uint8_t)k_t_dma_channel);
   TEST_END("dma_memcopy_demo: start programmes DMSAR/DMDAR/DMCRA");

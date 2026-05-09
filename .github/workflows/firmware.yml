@@ -13,6 +13,7 @@ concurrency:
 env:
   CMAKE_BUILD_PARALLEL_LEVEL: 4
   MCDC_BASELINE_FILE: .github/mcdc-baseline.txt
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   # ---------------------------------------------------------------------------
