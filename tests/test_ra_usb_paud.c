@@ -69,17 +69,17 @@ static void test_init_default_format(void)
 {
   TEST_BEGIN("ra_usb_paud_init seeds 48 kHz / stereo / 16-bit");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_paud_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_paud_init(k_ra_usb_speed_fs));
 
   ra_usb_paud_format_t fmt = {};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_paud_get_format(&fmt));
-  TEST_ASSERT_EQ((int32_t)48000, (int32_t)fmt.sample_rate_hz);
-  TEST_ASSERT_EQ((int32_t)2U, (int32_t)fmt.channels);
-  TEST_ASSERT_EQ((int32_t)2U, (int32_t)fmt.bytes_per_sample);
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_paud_get_format(&fmt));
+  TEST_ASSERT_EQ(48000, fmt.sample_rate_hz);
+  TEST_ASSERT_EQ(2U, fmt.channels);
+  TEST_ASSERT_EQ(2U, fmt.bytes_per_sample);
 
   int16_t vol = 0x55;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_paud_get_volume(&vol));
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)vol);
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_paud_get_volume(&vol));
+  TEST_ASSERT_EQ(0, vol);
   TEST_END("ra_usb_paud_init seeds 48 kHz / stereo / 16-bit");
 }
 
@@ -93,7 +93,7 @@ static void test_init_bad_speed(void)
 {
   TEST_BEGIN("ra_usb_paud_init rejects bogus speed");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_usb_paud_init((ra_usb_speed_t)9U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_usb_paud_init((ra_usb_speed_t)9U));
   TEST_END("ra_usb_paud_init rejects bogus speed");
 }
 
@@ -106,11 +106,11 @@ static void test_init_bad_speed(void)
 static void test_class_request_codes(void)
 {
   TEST_BEGIN("Audio class request codes match USB Audio 1.0 spec sec A.9");
-  TEST_ASSERT_EQ((int32_t)0x01, (int32_t)k_ra_paud_req_set_cur);
-  TEST_ASSERT_EQ((int32_t)0x81, (int32_t)k_ra_paud_req_get_cur);
-  TEST_ASSERT_EQ((int32_t)0x82, (int32_t)k_ra_paud_req_get_min);
-  TEST_ASSERT_EQ((int32_t)0x83, (int32_t)k_ra_paud_req_get_max);
-  TEST_ASSERT_EQ((int32_t)0xFF, (int32_t)k_ra_paud_req_get_stat);
+  TEST_ASSERT_EQ(0x01, k_ra_paud_req_set_cur);
+  TEST_ASSERT_EQ(0x81, k_ra_paud_req_get_cur);
+  TEST_ASSERT_EQ(0x82, k_ra_paud_req_get_min);
+  TEST_ASSERT_EQ(0x83, k_ra_paud_req_get_max);
+  TEST_ASSERT_EQ(0xFF, k_ra_paud_req_get_stat);
   TEST_END("Audio class request codes match USB Audio 1.0 spec sec A.9");
 }
 
@@ -131,19 +131,17 @@ static void test_pre_init_calls(void)
   int16_t              vol    = 0;
   ra_usb_setup_t       setup  = {};
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_usb_paud_close());
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_state,
-    (int32_t)ra_usb_paud_set_descriptors(s_sample_desc, (uint16_t)sizeof(s_sample_desc)));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_usb_paud_send_frame(buf, 4U));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_usb_paud_recv_frame(buf, 8U, &got));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_usb_paud_set_format(fmt));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_usb_paud_get_format(&fmt));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_usb_paud_set_volume(0));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_usb_paud_get_volume(&vol));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state,
-                 (int32_t)ra_usb_paud_attach_setup_handler(test_setup_cb, nullptr));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_usb_paud_handle_setup(&setup));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_usb_paud_close());
+  TEST_ASSERT_EQ(k_ra_err_invalid_state,
+                 ra_usb_paud_set_descriptors(s_sample_desc, (uint16_t)sizeof(s_sample_desc)));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_usb_paud_send_frame(buf, 4U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_usb_paud_recv_frame(buf, 8U, &got));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_usb_paud_set_format(fmt));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_usb_paud_get_format(&fmt));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_usb_paud_set_volume(0));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_usb_paud_get_volume(&vol));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_usb_paud_attach_setup_handler(test_setup_cb, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_usb_paud_handle_setup(&setup));
   TEST_END("PAUD API rejects calls before init");
 }
 
@@ -157,30 +155,30 @@ static void test_set_format_validation(void)
 {
   TEST_BEGIN("ra_usb_paud_set_format validates triplet");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_paud_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_paud_init(k_ra_usb_speed_fs));
 
   ra_usb_paud_format_t bad = {.sample_rate_hz = 0U, .channels = 2U, .bytes_per_sample = 2U};
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_usb_paud_set_format(bad));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_usb_paud_set_format(bad));
 
   bad.sample_rate_hz = 44100U;
   bad.channels       = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_usb_paud_set_format(bad));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_usb_paud_set_format(bad));
 
   bad.channels         = 2U;
   bad.bytes_per_sample = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_usb_paud_set_format(bad));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_usb_paud_set_format(bad));
 
   bad.bytes_per_sample = 5U;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_usb_paud_set_format(bad));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_usb_paud_set_format(bad));
 
   ra_usb_paud_format_t good = {.sample_rate_hz = 96000U, .channels = 1U, .bytes_per_sample = 3U};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_paud_set_format(good));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_paud_set_format(good));
 
   ra_usb_paud_format_t out = {};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_paud_get_format(&out));
-  TEST_ASSERT_EQ((int32_t)96000, (int32_t)out.sample_rate_hz);
-  TEST_ASSERT_EQ((int32_t)1U, (int32_t)out.channels);
-  TEST_ASSERT_EQ((int32_t)3U, (int32_t)out.bytes_per_sample);
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_paud_get_format(&out));
+  TEST_ASSERT_EQ(96000, out.sample_rate_hz);
+  TEST_ASSERT_EQ(1U, out.channels);
+  TEST_ASSERT_EQ(3U, out.bytes_per_sample);
   TEST_END("ra_usb_paud_set_format validates triplet");
 }
 
@@ -194,13 +192,13 @@ static void test_send_frame_validation(void)
 {
   TEST_BEGIN("ra_usb_paud_send_frame validates args");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_paud_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_paud_init(k_ra_usb_speed_fs));
 
   uint8_t buf[16] = {};
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_usb_paud_send_frame(nullptr, 4U));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_usb_paud_send_frame(buf, 0U));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_usb_paud_send_frame(nullptr, 4U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_usb_paud_send_frame(buf, 0U));
   /* FS default iso ceiling = 192 bytes, 1024 should be rejected. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_usb_paud_send_frame(buf, 1024U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_usb_paud_send_frame(buf, 1024U));
   TEST_END("ra_usb_paud_send_frame validates args");
 }
 
@@ -214,9 +212,8 @@ static void test_handle_setup_dispatch(void)
 {
   TEST_BEGIN("ra_usb_paud_handle_setup dispatches SET_CUR to callback");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_paud_init(k_ra_usb_speed_fs));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_usb_paud_attach_setup_handler(test_setup_cb, nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_paud_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_paud_attach_setup_handler(test_setup_cb, nullptr));
 
   /* SET_CUR(volume) on the feature unit. */
   ra_usb_setup_t setup = {
@@ -226,15 +223,15 @@ static void test_handle_setup_dispatch(void)
     .w_index         = 0U,
     .w_length        = 2U,
   };
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_paud_handle_setup(&setup));
-  TEST_ASSERT_EQ((int32_t)1, s_setup_cb_calls);
-  TEST_ASSERT_EQ((int32_t)k_ra_paud_req_set_cur, (int32_t)s_setup_cb_last_breq);
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_paud_handle_setup(&setup));
+  TEST_ASSERT_EQ(1, s_setup_cb_calls);
+  TEST_ASSERT_EQ(k_ra_paud_req_set_cur, s_setup_cb_last_breq);
 
   /* GET_CUR(sampling-rate) on iso EP. */
   setup.bm_request_type = (uint8_t)0xA2U;
   setup.b_request       = (uint8_t)k_ra_paud_req_get_cur;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_paud_handle_setup(&setup));
-  TEST_ASSERT_EQ((int32_t)2, s_setup_cb_calls);
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_paud_handle_setup(&setup));
+  TEST_ASSERT_EQ(2, s_setup_cb_calls);
   TEST_END("ra_usb_paud_handle_setup dispatches SET_CUR to callback");
 }
 
@@ -248,7 +245,7 @@ static void test_handle_setup_rejects(void)
 {
   TEST_BEGIN("ra_usb_paud_handle_setup rejects non-class / unknown / NULL");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_paud_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_paud_init(k_ra_usb_speed_fs));
 
   /* Standard envelope -> not_supported. */
   ra_usb_setup_t setup = {
@@ -258,14 +255,14 @@ static void test_handle_setup_rejects(void)
     .w_index         = 0U,
     .w_length        = 0U,
   };
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_supported, (int32_t)ra_usb_paud_handle_setup(&setup));
+  TEST_ASSERT_EQ(k_ra_err_not_supported, ra_usb_paud_handle_setup(&setup));
 
   /* Class envelope but unknown bRequest -> not_supported. */
   setup.bm_request_type = (uint8_t)0x21U;
   setup.b_request       = (uint8_t)0x77U;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_supported, (int32_t)ra_usb_paud_handle_setup(&setup));
+  TEST_ASSERT_EQ(k_ra_err_not_supported, ra_usb_paud_handle_setup(&setup));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_usb_paud_handle_setup(nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_usb_paud_handle_setup(nullptr));
   TEST_END("ra_usb_paud_handle_setup rejects non-class / unknown / NULL");
 }
 
@@ -279,14 +276,14 @@ static void test_volume_shadow(void)
 {
   TEST_BEGIN("ra_usb_paud_set_volume / get_volume round-trip");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_paud_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_paud_init(k_ra_usb_speed_fs));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_paud_set_volume((int16_t)-2048));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_paud_set_volume((int16_t)-2048));
   int16_t out = 0;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_paud_get_volume(&out));
-  TEST_ASSERT_EQ((int32_t)-2048, (int32_t)out);
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_paud_get_volume(&out));
+  TEST_ASSERT_EQ(-2048, out);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_usb_paud_get_volume(nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_usb_paud_get_volume(nullptr));
   TEST_END("ra_usb_paud_set_volume / get_volume round-trip");
 }
 
@@ -375,57 +372,55 @@ static void test_mcdc_paud(void)
 
   /* ---- Decision A: init speed gate ---- */
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_paud_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_paud_init(k_ra_usb_speed_fs));
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_paud_init(k_ra_usb_speed_hs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_paud_init(k_ra_usb_speed_hs));
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_usb_paud_init((ra_usb_speed_t)k_test_paud_speed_bad));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_usb_paud_init((ra_usb_speed_t)k_test_paud_speed_bad));
 
   /* Re-init for the remaining decisions (FS = 192-byte iso ceiling). */
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_paud_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_paud_init(k_ra_usb_speed_fs));
 
   /* ---- Decisions B + C: send_frame ---- */
   uint8_t buf[16] = {};
   /* B-V1 / C-V1 collapse: frame=NULL,len=0 -- B returns false (C1=T,C2=F),
    * then C catches len==0 -> invalid_arg. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_usb_paud_send_frame(nullptr, (uint16_t)k_test_paud_send_len_zero));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_usb_paud_send_frame(nullptr, (uint16_t)k_test_paud_send_len_zero));
   /* B-V3: frame=NULL,len!=0 -> null_ptr. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_usb_paud_send_frame(nullptr, (uint16_t)k_test_paud_send_len_small));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_usb_paud_send_frame(nullptr, (uint16_t)k_test_paud_send_len_small));
   /* B-V2 + C-V2: frame=buf,len=4 -> both decisions false, forwards into
    * ra_usb_queue_in. The host sim_mmap leaves CFIFOCTR.FRDY clear, so
    * the FIFO wait returns hw_timeout. The MC/DC obligation is met
    * because every pre-check inside ra_usb_paud_send_frame ran. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_hw_timeout,
-                 (int32_t)ra_usb_paud_send_frame(buf, (uint16_t)k_test_paud_send_len_small));
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout,
+                 ra_usb_paud_send_frame(buf, (uint16_t)k_test_paud_send_len_small));
   /* C-V3: frame=buf,len=1024 (> FS iso ceiling 192) -> invalid_arg. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_usb_paud_send_frame(buf, (uint16_t)k_test_paud_send_len_huge));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_usb_paud_send_frame(buf, (uint16_t)k_test_paud_send_len_huge));
 
   /* ---- Decisions D + E: set_format ranges ---- */
   ra_usb_paud_format_t fmt = {.sample_rate_hz = 48000U, .channels = 2U, .bytes_per_sample = 2U};
   /* D-V2 + E-V2: in-range. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_paud_set_format(fmt));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_paud_set_format(fmt));
   /* D-V1: channels below min. */
   fmt.channels = (uint8_t)k_test_paud_chan_bad_low;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_usb_paud_set_format(fmt));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_usb_paud_set_format(fmt));
   /* D-V3: channels above max. */
   fmt.channels = (uint8_t)k_test_paud_chan_bad_high;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_usb_paud_set_format(fmt));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_usb_paud_set_format(fmt));
   /* E-V1: bps below min. */
   fmt.channels         = 2U;
   fmt.bytes_per_sample = (uint8_t)k_test_paud_bps_bad_low;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_usb_paud_set_format(fmt));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_usb_paud_set_format(fmt));
   /* E-V3: bps above max. */
   fmt.bytes_per_sample = (uint8_t)k_test_paud_bps_bad_high;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_usb_paud_set_format(fmt));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_usb_paud_set_format(fmt));
 
   /* ---- Decision G (envelope OR chain, 4 conds): per-condition lone-true ---- */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_usb_paud_attach_setup_handler(test_setup_cb, nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_paud_attach_setup_handler(test_setup_cb, nullptr));
   ra_usb_setup_t setup = {
     .bm_request_type = (uint8_t)k_test_paud_iface_in,
     .b_request       = (uint8_t)k_ra_paud_req_set_cur,
@@ -433,16 +428,16 @@ static void test_mcdc_paud(void)
     .w_index         = 0U,
     .w_length        = 0U,
   };
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_paud_handle_setup(&setup));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_paud_handle_setup(&setup));
   setup.bm_request_type = (uint8_t)k_test_paud_iface_out;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_paud_handle_setup(&setup));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_paud_handle_setup(&setup));
   setup.bm_request_type = (uint8_t)k_test_paud_ep_in;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_paud_handle_setup(&setup));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_paud_handle_setup(&setup));
   setup.bm_request_type = (uint8_t)k_test_paud_ep_out;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_paud_handle_setup(&setup));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_paud_handle_setup(&setup));
   /* All-false vector for G. */
   setup.bm_request_type = (uint8_t)k_test_paud_bm_bogus;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_supported, (int32_t)ra_usb_paud_handle_setup(&setup));
+  TEST_ASSERT_EQ(k_ra_err_not_supported, ra_usb_paud_handle_setup(&setup));
 
   /* ---- Decision F (request-code OR chain, 9 conds): per-condition lone-true ---- */
   setup.bm_request_type    = (uint8_t)k_test_paud_iface_in;
@@ -459,11 +454,11 @@ static void test_mcdc_paud(void)
   };
   for (uint8_t i = 0U; i < (uint8_t)(sizeof(requests) / sizeof(requests[0])); ++i) {
     setup.b_request = requests[i];
-    TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_paud_handle_setup(&setup));
+    TEST_ASSERT_EQ(k_ra_ok, ra_usb_paud_handle_setup(&setup));
   }
   /* All-false vector for F. */
   setup.b_request = (uint8_t)k_test_paud_breq_unknown;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_supported, (int32_t)ra_usb_paud_handle_setup(&setup));
+  TEST_ASSERT_EQ(k_ra_err_not_supported, ra_usb_paud_handle_setup(&setup));
 
   TEST_END("paud MC/DC: init speed, send_frame envelope, set_format ranges, setup OR chains");
 }
@@ -508,15 +503,11 @@ static bool mirror_paud_is_class_envelope(uint8_t bm)
 static void test_mcdc_paud_class_envelope_or_chain(void)
 {
   TEST_BEGIN("paud MC/DC: 4-cond class envelope OR (lines 234-235)");
-  TEST_ASSERT_EQ((int32_t)1,
-                 (int32_t)mirror_paud_is_class_envelope((uint8_t)k_test_paud_bm_class_iface_in));
-  TEST_ASSERT_EQ((int32_t)1,
-                 (int32_t)mirror_paud_is_class_envelope((uint8_t)k_test_paud_bm_class_iface_out));
-  TEST_ASSERT_EQ((int32_t)1,
-                 (int32_t)mirror_paud_is_class_envelope((uint8_t)k_test_paud_bm_class_ep_in));
-  TEST_ASSERT_EQ((int32_t)1,
-                 (int32_t)mirror_paud_is_class_envelope((uint8_t)k_test_paud_bm_class_ep_out));
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)mirror_paud_is_class_envelope(0x80U));
+  TEST_ASSERT_EQ(1, mirror_paud_is_class_envelope((uint8_t)k_test_paud_bm_class_iface_in));
+  TEST_ASSERT_EQ(1, mirror_paud_is_class_envelope((uint8_t)k_test_paud_bm_class_iface_out));
+  TEST_ASSERT_EQ(1, mirror_paud_is_class_envelope((uint8_t)k_test_paud_bm_class_ep_in));
+  TEST_ASSERT_EQ(1, mirror_paud_is_class_envelope((uint8_t)k_test_paud_bm_class_ep_out));
+  TEST_ASSERT_EQ(0, mirror_paud_is_class_envelope(0x80U));
   TEST_END("paud MC/DC: 4-cond class envelope OR (lines 234-235)");
 }
 

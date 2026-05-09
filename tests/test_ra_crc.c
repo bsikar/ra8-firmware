@@ -44,7 +44,7 @@ static uint32_t compute_with_preseeded_result(ra_crc_poly_t poly, uint32_t prese
   reg->CRCDOR                = preset;
   uint32_t       got         = 0U;
   const ra_err_t err         = ra_crc_compute(s_payload, (uint32_t)k_ra_crc_test_len, &got);
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)err);
+  TEST_ASSERT_EQ(k_ra_ok, err);
   return got;
 }
 
@@ -59,12 +59,12 @@ static void test_init_programs_poly_crc8(void)
   TEST_BEGIN("crc init programs poly crc8");
   ra_sim_mmap_reset();
 
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_crc_init(k_ra_crc_poly_8));
+  TEST_ASSERT_EQ(k_ra_ok, ra_crc_init(k_ra_crc_poly_8));
   volatile r_crc_regs_t* reg = ra_crc();
   /* Init writes GPS|DORCLR; mask off DORCLR before checking GPS. */
-  TEST_ASSERT_EQ((int)k_ra_crc_poly_8, (int)(reg->CRCCR0 & (uint8_t)k_ra_crc_test_gps_mask));
-  TEST_ASSERT_EQ((int)k_ra_crc_test_dorclr, (int)(reg->CRCCR0 & (uint8_t)k_ra_crc_test_dorclr));
-  TEST_ASSERT_EQ(0, (int)reg->CRCCR1);
+  TEST_ASSERT_EQ(k_ra_crc_poly_8, (reg->CRCCR0 & (uint8_t)k_ra_crc_test_gps_mask));
+  TEST_ASSERT_EQ(k_ra_crc_test_dorclr, (reg->CRCCR0 & (uint8_t)k_ra_crc_test_dorclr));
+  TEST_ASSERT_EQ(0, reg->CRCCR1);
   TEST_END("crc init programs poly crc8");
 }
 
@@ -79,9 +79,9 @@ static void test_init_programs_poly_crc16(void)
   TEST_BEGIN("crc init programs poly crc16");
   ra_sim_mmap_reset();
 
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_crc_init(k_ra_crc_poly_16));
+  TEST_ASSERT_EQ(k_ra_ok, ra_crc_init(k_ra_crc_poly_16));
   volatile r_crc_regs_t* reg = ra_crc();
-  TEST_ASSERT_EQ((int)k_ra_crc_poly_16, (int)(reg->CRCCR0 & (uint8_t)k_ra_crc_test_gps_mask));
+  TEST_ASSERT_EQ(k_ra_crc_poly_16, (reg->CRCCR0 & (uint8_t)k_ra_crc_test_gps_mask));
   TEST_END("crc init programs poly crc16");
 }
 
@@ -96,10 +96,9 @@ static void test_init_programs_poly_crc32(void)
   TEST_BEGIN("crc init programs poly crc32");
   ra_sim_mmap_reset();
 
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_crc_init(k_ra_crc_poly_32_ieee802_3));
+  TEST_ASSERT_EQ(k_ra_ok, ra_crc_init(k_ra_crc_poly_32_ieee802_3));
   volatile r_crc_regs_t* reg = ra_crc();
-  TEST_ASSERT_EQ((int)k_ra_crc_poly_32_ieee802_3,
-                 (int)(reg->CRCCR0 & (uint8_t)k_ra_crc_test_gps_mask));
+  TEST_ASSERT_EQ(k_ra_crc_poly_32_ieee802_3, (reg->CRCCR0 & (uint8_t)k_ra_crc_test_gps_mask));
   TEST_END("crc init programs poly crc32");
 }
 
@@ -114,7 +113,7 @@ static void test_init_programs_poly_none(void)
   TEST_BEGIN("crc init poly none");
   ra_sim_mmap_reset();
 
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_crc_init(k_ra_crc_poly_none));
+  TEST_ASSERT_EQ(k_ra_ok, ra_crc_init(k_ra_crc_poly_none));
   TEST_END("crc init poly none");
 }
 
@@ -128,11 +127,11 @@ static void test_init_pulses_dorclr(void)
 {
   TEST_BEGIN("crc init pulses DORCLR");
   ra_sim_mmap_reset();
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_crc_init(k_ra_crc_poly_16_ccitt));
+  TEST_ASSERT_EQ(k_ra_ok, ra_crc_init(k_ra_crc_poly_16_ccitt));
   volatile r_crc_regs_t* reg = ra_crc();
   /* DORCLR bit (0x80) should be set alongside GPS=3. */
-  TEST_ASSERT_EQ((int)k_ra_crc_test_dorclr, (int)(reg->CRCCR0 & (uint8_t)k_ra_crc_test_dorclr));
-  TEST_ASSERT_EQ((int)k_ra_crc_poly_16_ccitt, (int)(reg->CRCCR0 & (uint8_t)k_ra_crc_test_gps_mask));
+  TEST_ASSERT_EQ(k_ra_crc_test_dorclr, (reg->CRCCR0 & (uint8_t)k_ra_crc_test_dorclr));
+  TEST_ASSERT_EQ(k_ra_crc_poly_16_ccitt, (reg->CRCCR0 & (uint8_t)k_ra_crc_test_gps_mask));
   TEST_END("crc init pulses DORCLR");
 }
 
@@ -154,7 +153,7 @@ static void test_reset_sets_crccr0_dorclr(void)
    * we should see the GPS bits plus DORCLR in the final value. */
   volatile r_crc_regs_t* reg = ra_crc();
   const uint8_t expected     = (uint8_t)((uint8_t)k_ra_crc_poly_8 | (uint8_t)k_ra_crc_test_dorclr);
-  TEST_ASSERT_EQ((int)expected, (int)reg->CRCCR0);
+  TEST_ASSERT_EQ(expected, reg->CRCCR0);
   TEST_END("crc reset sets CRCCR0.DORCLR");
 }
 
@@ -170,8 +169,7 @@ static void test_compute_null_data(void)
   ra_sim_mmap_reset();
 
   uint32_t out = 0U;
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr,
-                 (int)ra_crc_compute(nullptr, (uint32_t)k_ra_crc_test_len, &out));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_crc_compute(nullptr, (uint32_t)k_ra_crc_test_len, &out));
   TEST_END("crc compute null data");
 }
 
@@ -186,8 +184,8 @@ static void test_compute_null_out(void)
   TEST_BEGIN("crc compute null out");
   ra_sim_mmap_reset();
 
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr,
-                 (int)ra_crc_compute(s_payload, (uint32_t)k_ra_crc_test_len, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_crc_compute(s_payload, (uint32_t)k_ra_crc_test_len, nullptr));
   TEST_END("crc compute null out");
 }
 
@@ -204,12 +202,12 @@ static void test_compute_crc8_reads_dor(void)
 
   const uint32_t got =
     compute_with_preseeded_result(k_ra_crc_poly_8, (uint32_t)k_ra_crc_test_marker);
-  TEST_ASSERT_EQ((int)k_ra_crc_test_marker, (int)got);
+  TEST_ASSERT_EQ(k_ra_crc_test_marker, got);
   /* CRC-8 path uses CRCDIR_BY (8-bit alias) -- last byte should be at
    * the byte register. The sim_mmap union exposes the same address
    * via reg->CRCDIR (low byte equals last write). */
   volatile r_crc_regs_t* reg = ra_crc();
-  TEST_ASSERT_EQ((int)s_payload[3], (int)reg->CRCDIR_BY);
+  TEST_ASSERT_EQ(s_payload[3], reg->CRCDIR_BY);
   TEST_END("crc compute crc8 reads dor");
 }
 
@@ -226,7 +224,7 @@ static void test_compute_crc16_reads_dor(void)
 
   const uint32_t marker = 0x1122UL;
   const uint32_t got    = compute_with_preseeded_result(k_ra_crc_poly_16_ccitt, marker);
-  TEST_ASSERT_EQ((int)marker, (int)got);
+  TEST_ASSERT_EQ(marker, got);
   TEST_END("crc compute crc16 reads dor");
 }
 
@@ -243,12 +241,12 @@ static void test_compute_crc32_reads_dor(void)
 
   const uint32_t marker = 0xA5A5A5A5UL;
   const uint32_t got    = compute_with_preseeded_result(k_ra_crc_poly_32c_rev, marker);
-  TEST_ASSERT_EQ((int)marker, (int)got);
+  TEST_ASSERT_EQ(marker, got);
   /* 32-bit poly path packs 4 input bytes into a single CRCDIR write. */
   volatile r_crc_regs_t* reg    = ra_crc();
   const uint32_t         packed = (uint32_t)s_payload[0] | ((uint32_t)s_payload[1] << 8U) |
                                   ((uint32_t)s_payload[2] << 16U) | ((uint32_t)s_payload[3] << 24U);
-  TEST_ASSERT_EQ((int)packed, (int)reg->CRCDIR);
+  TEST_ASSERT_EQ(packed, reg->CRCDIR);
   TEST_END("crc compute crc32 reads dor");
 }
 
@@ -269,8 +267,8 @@ static void test_compute_zero_length(void)
 
   uint32_t       got = 0U;
   const ra_err_t err = ra_crc_compute(s_payload, 0U, &got);
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)err);
-  TEST_ASSERT_EQ(0x12345678, (int)got);
+  TEST_ASSERT_EQ(k_ra_ok, err);
+  TEST_ASSERT_EQ(0x12345678, got);
   TEST_END("crc compute zero length");
 }
 
@@ -292,9 +290,9 @@ static void test_deinit(void)
 {
   TEST_BEGIN("crc deinit");
   prep_w44();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_crc_init(k_ra_crc_poly_32_ieee802_3));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_crc_deinit());
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)ra_crc()->CRCCR0);
+  TEST_ASSERT_EQ(k_ra_ok, ra_crc_init(k_ra_crc_poly_32_ieee802_3));
+  TEST_ASSERT_EQ(k_ra_ok, ra_crc_deinit());
+  TEST_ASSERT_EQ(0, ra_crc()->CRCCR0);
   TEST_END("crc deinit");
 }
 
@@ -308,11 +306,10 @@ static void test_set_poly(void)
 {
   TEST_BEGIN("crc set_poly");
   prep_w44();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_crc_init(k_ra_crc_poly_8));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_crc_set_poly(k_ra_crc_poly_16_ccitt));
+  TEST_ASSERT_EQ(k_ra_ok, ra_crc_init(k_ra_crc_poly_8));
+  TEST_ASSERT_EQ(k_ra_ok, ra_crc_set_poly(k_ra_crc_poly_16_ccitt));
   /* set_poly also pulses DORCLR; mask off bit 7 before comparing GPS. */
-  TEST_ASSERT_EQ((int32_t)k_ra_crc_poly_16_ccitt,
-                 (int32_t)(ra_crc()->CRCCR0 & (uint8_t)k_ra_crc_test_gps_mask));
+  TEST_ASSERT_EQ(k_ra_crc_poly_16_ccitt, (ra_crc()->CRCCR0 & (uint8_t)k_ra_crc_test_gps_mask));
   TEST_END("crc set_poly");
 }
 
@@ -326,14 +323,14 @@ static void test_get_status(void)
 {
   TEST_BEGIN("crc get_status");
   prep_w44();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_crc_init(k_ra_crc_poly_32c_rev));
+  TEST_ASSERT_EQ(k_ra_ok, ra_crc_init(k_ra_crc_poly_32c_rev));
 
   uint8_t mask = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_crc_get_status(&mask));
+  TEST_ASSERT_EQ(k_ra_ok, ra_crc_get_status(&mask));
   /* get_status returns the full CRCCR0 byte (GPS|LMS|DORCLR). Mask
    * off the DORCLR bit before comparing the polynomial. */
-  TEST_ASSERT_EQ((int32_t)k_ra_crc_poly_32c_rev, (int32_t)(mask & (uint8_t)k_ra_crc_test_gps_mask));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_crc_get_status(nullptr));
+  TEST_ASSERT_EQ(k_ra_crc_poly_32c_rev, (mask & (uint8_t)k_ra_crc_test_gps_mask));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_crc_get_status(nullptr));
   TEST_END("crc get_status");
 }
 
@@ -347,10 +344,10 @@ static void test_power_transition(void)
 {
   TEST_BEGIN("crc power transition");
   prep_w44();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_crc_init(k_ra_crc_poly_16));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_crc_enter_stop());
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)ra_crc()->CRCCR0);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_crc_exit_stop());
+  TEST_ASSERT_EQ(k_ra_ok, ra_crc_init(k_ra_crc_poly_16));
+  TEST_ASSERT_EQ(k_ra_ok, ra_crc_enter_stop());
+  TEST_ASSERT_EQ(0, ra_crc()->CRCCR0);
+  TEST_ASSERT_EQ(k_ra_ok, ra_crc_exit_stop());
   TEST_END("crc power transition");
 }
 
@@ -383,19 +380,16 @@ static void test_mcdc_is_32bit_poly(void)
   uint32_t crc = 0U;
 
   /* Vector 1: CRC-32 IEEE 802.3 -> C1=T -> word path. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_crc_init(k_ra_crc_poly_32_ieee802_3));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_crc_compute(s_payload, (uint32_t)k_ra_crc_test_len, &crc));
+  TEST_ASSERT_EQ(k_ra_ok, ra_crc_init(k_ra_crc_poly_32_ieee802_3));
+  TEST_ASSERT_EQ(k_ra_ok, ra_crc_compute(s_payload, (uint32_t)k_ra_crc_test_len, &crc));
 
   /* Vector 2: CRC-32C reversed -> C1=F, C2=T -> word path. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_crc_init(k_ra_crc_poly_32c_rev));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_crc_compute(s_payload, (uint32_t)k_ra_crc_test_len, &crc));
+  TEST_ASSERT_EQ(k_ra_ok, ra_crc_init(k_ra_crc_poly_32c_rev));
+  TEST_ASSERT_EQ(k_ra_ok, ra_crc_compute(s_payload, (uint32_t)k_ra_crc_test_len, &crc));
 
   /* Vector 3: CRC-16 -> C1=F, C2=F -> byte path. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_crc_init(k_ra_crc_poly_16));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_crc_compute(s_payload, (uint32_t)k_ra_crc_test_len, &crc));
+  TEST_ASSERT_EQ(k_ra_ok, ra_crc_init(k_ra_crc_poly_16));
+  TEST_ASSERT_EQ(k_ra_ok, ra_crc_compute(s_payload, (uint32_t)k_ra_crc_test_len, &crc));
 
   TEST_END("crc compute MC/DC: poly==32_ieee || poly==32c_rev");
 }

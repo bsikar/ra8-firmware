@@ -59,7 +59,7 @@ static void rebind_8888(void)
 static void test_init_arg_validation(void)
 {
   TEST_BEGIN("ra_gfx_init validates arguments");
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_gfx_init(NULL, 64, 32, k_ra_gfx_format_rgb565));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_gfx_init(nullptr, 64, 32, k_ra_gfx_format_rgb565));
   TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_gfx_init(s_fb565, 0, 32, k_ra_gfx_format_rgb565));
   TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_gfx_init(s_fb565, 64, 0, k_ra_gfx_format_rgb565));
   TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_gfx_init(s_fb565, 64, 32, (ra_gfx_format_t)0xAA));
@@ -263,13 +263,13 @@ static void test_null_args(void)
   rebind_8888();
   uint32_t w = 0;
   uint32_t h = 0;
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_gfx_text_out(0, 0, NULL, &ra_gfx_font_8x16, 0, 0));
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_gfx_text_out(0, 0, "x", NULL, 0, 0));
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_gfx_text_size(NULL, &ra_gfx_font_8x16, &w, &h));
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_gfx_text_size("x", NULL, &w, &h));
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_gfx_text_size("x", &ra_gfx_font_8x16, NULL, &h));
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_gfx_text_size("x", &ra_gfx_font_8x16, &w, NULL));
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_gfx_blit(NULL, 4, 4, k_ra_gfx_format_argb8888, 0, 0));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_gfx_text_out(0, 0, nullptr, &ra_gfx_font_8x16, 0, 0));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_gfx_text_out(0, 0, "x", nullptr, 0, 0));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_gfx_text_size(nullptr, &ra_gfx_font_8x16, &w, &h));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_gfx_text_size("x", nullptr, &w, &h));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_gfx_text_size("x", &ra_gfx_font_8x16, nullptr, &h));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_gfx_text_size("x", &ra_gfx_font_8x16, &w, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_gfx_blit(nullptr, 4, 4, k_ra_gfx_format_argb8888, 0, 0));
   TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_gfx_blit(s_fb8888, 0, 4, k_ra_gfx_format_argb8888, 0, 0));
   TEST_END("NULL args rejected");
 }
@@ -631,8 +631,8 @@ static void test_mcdc_text_out_null(void)
   TEST_BEGIN("gfx MC/DC ra_gfx_text_out null guard");
   rebind_8888();
   TEST_ASSERT_EQ(k_ra_ok, ra_gfx_text_out(0, 0, "x", &ra_gfx_font_8x16, 0u, 0u));
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_gfx_text_out(0, 0, NULL, &ra_gfx_font_8x16, 0u, 0u));
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_gfx_text_out(0, 0, "x", NULL, 0u, 0u));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_gfx_text_out(0, 0, nullptr, &ra_gfx_font_8x16, 0u, 0u));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_gfx_text_out(0, 0, "x", nullptr, 0u, 0u));
   TEST_END("gfx MC/DC ra_gfx_text_out null guard");
 }
 
@@ -659,10 +659,10 @@ static void test_mcdc_text_size_null(void)
   uint32_t w = 0;
   uint32_t h = 0;
   TEST_ASSERT_EQ(k_ra_ok, ra_gfx_text_size("x", &ra_gfx_font_8x16, &w, &h));
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_gfx_text_size(NULL, &ra_gfx_font_8x16, &w, &h));
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_gfx_text_size("x", NULL, &w, &h));
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_gfx_text_size("x", &ra_gfx_font_8x16, NULL, &h));
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_gfx_text_size("x", &ra_gfx_font_8x16, &w, NULL));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_gfx_text_size(nullptr, &ra_gfx_font_8x16, &w, &h));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_gfx_text_size("x", nullptr, &w, &h));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_gfx_text_size("x", &ra_gfx_font_8x16, nullptr, &h));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_gfx_text_size("x", &ra_gfx_font_8x16, &w, nullptr));
   TEST_END("gfx MC/DC ra_gfx_text_size 4-condition null guard");
 }
 

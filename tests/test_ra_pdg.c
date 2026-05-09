@@ -88,16 +88,15 @@ static void test_init_happy(void)
   prep();
 
   const ra_pdg_config_t cfg = make_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdg_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_pdg_init(&cfg));
 
   volatile r_pdg_regs_t* reg = ra_pdg();
   /* DLLEN must be set, DLYRST must be cleared after step 4. */
   TEST_ASSERT((reg->GTDLYCR & (uint16_t)k_ra_pdg_gtdlycr_mask_dllen) != 0U);
   TEST_ASSERT((reg->GTDLYCR & (uint16_t)k_ra_pdg_gtdlycr_mask_dlyrst) == 0U);
   /* DLYBS bits in GTDLYCR2 should match the channel mask. */
-  TEST_ASSERT_EQ(
-    (int32_t)((uint16_t)k_ra_pdg_test_mask_all << (uint16_t)k_ra_pdg_gtdlycr2_shift_dlybs),
-    (int32_t)(reg->GTDLYCR2 & (uint16_t)k_ra_pdg_gtdlycr2_mask_dlybs));
+  TEST_ASSERT_EQ(((uint16_t)k_ra_pdg_test_mask_all << (uint16_t)k_ra_pdg_gtdlycr2_shift_dlybs),
+                 (reg->GTDLYCR2 & (uint16_t)k_ra_pdg_gtdlycr2_mask_dlybs));
   TEST_END("pdg init happy");
 }
 
@@ -111,7 +110,7 @@ static void test_init_null_cfg(void)
 {
   TEST_BEGIN("pdg init null cfg");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_pdg_init(nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_pdg_init(nullptr));
   TEST_END("pdg init null cfg");
 }
 
@@ -128,7 +127,7 @@ static void test_init_bad_frange(void)
 
   ra_pdg_config_t cfg = make_cfg();
   cfg.frange          = (ra_pdg_frange_t)0x3U; /* 0b11 is "Setting prohibited" */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_pdg_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_pdg_init(&cfg));
   TEST_END("pdg init bad frange");
 }
 
@@ -145,7 +144,7 @@ static void test_init_bad_mask(void)
 
   ra_pdg_config_t cfg = make_cfg();
   cfg.channel_mask    = (uint8_t)k_ra_pdg_test_mask_bad;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_pdg_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_pdg_init(&cfg));
   TEST_END("pdg init bad channel mask");
 }
 
@@ -163,13 +162,13 @@ static void test_init_auto_tune_low_band(void)
   ra_pdg_config_t cfg = make_cfg();
   cfg.auto_tune       = 1U;
   cfg.gptclk_hz       = (uint32_t)k_ra_pdg_test_clk_low_band;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdg_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_pdg_init(&cfg));
 
   /* FRANGE field should be 00b after init. */
   volatile r_pdg_regs_t* reg = ra_pdg();
   const uint16_t         f   = (uint16_t)((reg->GTDLYCR & (uint16_t)k_ra_pdg_gtdlycr_mask_frange) >>
                                           (uint16_t)k_ra_pdg_gtdlycr_shift_frange);
-  TEST_ASSERT_EQ((int32_t)k_ra_pdg_frange_80_160_mhz, (int32_t)f);
+  TEST_ASSERT_EQ(k_ra_pdg_frange_80_160_mhz, f);
   TEST_END("pdg init auto-tune low band");
 }
 
@@ -187,12 +186,12 @@ static void test_init_auto_tune_high_band(void)
   ra_pdg_config_t cfg = make_cfg();
   cfg.auto_tune       = 1U;
   cfg.gptclk_hz       = (uint32_t)k_ra_pdg_test_clk_high_band;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdg_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_pdg_init(&cfg));
 
   volatile r_pdg_regs_t* reg = ra_pdg();
   const uint16_t         f   = (uint16_t)((reg->GTDLYCR & (uint16_t)k_ra_pdg_gtdlycr_mask_frange) >>
                                           (uint16_t)k_ra_pdg_gtdlycr_shift_frange);
-  TEST_ASSERT_EQ((int32_t)k_ra_pdg_frange_155_300_mhz, (int32_t)f);
+  TEST_ASSERT_EQ(k_ra_pdg_frange_155_300_mhz, f);
   TEST_END("pdg init auto-tune high band");
 }
 
@@ -210,7 +209,7 @@ static void test_init_auto_tune_zero_hz(void)
   ra_pdg_config_t cfg = make_cfg();
   cfg.auto_tune       = 1U;
   cfg.gptclk_hz       = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_pdg_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_pdg_init(&cfg));
   TEST_END("pdg init auto-tune zero hz");
 }
 
@@ -228,10 +227,10 @@ static void test_init_auto_tune_out_of_range(void)
   ra_pdg_config_t cfg = make_cfg();
   cfg.auto_tune       = 1U;
   cfg.gptclk_hz       = (uint32_t)k_ra_pdg_test_clk_too_low;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_out_of_range, (int32_t)ra_pdg_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_out_of_range, ra_pdg_init(&cfg));
 
   cfg.gptclk_hz = (uint32_t)k_ra_pdg_test_clk_too_high;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_out_of_range, (int32_t)ra_pdg_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_out_of_range, ra_pdg_init(&cfg));
   TEST_END("pdg init auto-tune out of range");
 }
 
@@ -247,18 +246,17 @@ static void test_set_delay_rising_pin_a(void)
   prep();
 
   const ra_pdg_config_t cfg = make_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdg_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_pdg_init(&cfg));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_pdg_set_delay((uint8_t)k_ra_pdg_test_ch_first,
-                                           k_ra_pdg_pin_a,
-                                           k_ra_pdg_edge_rising,
-                                           (uint8_t)k_ra_pdg_test_code_lo));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_pdg_set_delay((uint8_t)k_ra_pdg_test_ch_first,
+                                  k_ra_pdg_pin_a,
+                                  k_ra_pdg_edge_rising,
+                                  (uint8_t)k_ra_pdg_test_code_lo));
 
   volatile r_pdg_regs_t* reg = ra_pdg();
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_pdg_test_code_lo,
-    (int32_t)(reg->GTDLYR[(uint8_t)k_ra_pdg_test_ch_first].A & (uint16_t)k_ra_pdg_dly_mask));
+  TEST_ASSERT_EQ(k_ra_pdg_test_code_lo,
+                 (reg->GTDLYR[(uint8_t)k_ra_pdg_test_ch_first].A & (uint16_t)k_ra_pdg_dly_mask));
   TEST_END("pdg set_delay rising pin A");
 }
 
@@ -274,18 +272,17 @@ static void test_set_delay_falling_pin_b(void)
   prep();
 
   const ra_pdg_config_t cfg = make_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdg_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_pdg_init(&cfg));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_pdg_set_delay((uint8_t)k_ra_pdg_test_ch_mid,
-                                           k_ra_pdg_pin_b,
-                                           k_ra_pdg_edge_falling,
-                                           (uint8_t)k_ra_pdg_test_code_hi));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_pdg_set_delay((uint8_t)k_ra_pdg_test_ch_mid,
+                                  k_ra_pdg_pin_b,
+                                  k_ra_pdg_edge_falling,
+                                  (uint8_t)k_ra_pdg_test_code_hi));
 
   volatile r_pdg_regs_t* reg = ra_pdg();
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_pdg_test_code_hi,
-    (int32_t)(reg->GTDLYF[(uint8_t)k_ra_pdg_test_ch_mid].B & (uint16_t)k_ra_pdg_dly_mask));
+  TEST_ASSERT_EQ(k_ra_pdg_test_code_hi,
+                 (reg->GTDLYF[(uint8_t)k_ra_pdg_test_ch_mid].B & (uint16_t)k_ra_pdg_dly_mask));
   TEST_END("pdg set_delay falling pin B");
 }
 
@@ -300,40 +297,40 @@ static void test_set_delay_bad_inputs(void)
   TEST_BEGIN("pdg set_delay bad inputs");
   prep();
   /* Even when cfg has not run, the not_initialized check fires first. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_initialized,
-                 (int32_t)ra_pdg_set_delay((uint8_t)k_ra_pdg_test_ch_first,
-                                           k_ra_pdg_pin_a,
-                                           k_ra_pdg_edge_rising,
-                                           (uint8_t)k_ra_pdg_test_code_lo));
+  TEST_ASSERT_EQ(k_ra_err_not_initialized,
+                 ra_pdg_set_delay((uint8_t)k_ra_pdg_test_ch_first,
+                                  k_ra_pdg_pin_a,
+                                  k_ra_pdg_edge_rising,
+                                  (uint8_t)k_ra_pdg_test_code_lo));
 
   const ra_pdg_config_t cfg = make_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdg_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_pdg_init(&cfg));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_pdg_set_delay((uint8_t)k_ra_pdg_test_ch_bad,
-                                           k_ra_pdg_pin_a,
-                                           k_ra_pdg_edge_rising,
-                                           (uint8_t)k_ra_pdg_test_code_lo));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_pdg_set_delay((uint8_t)k_ra_pdg_test_ch_way,
-                                           k_ra_pdg_pin_a,
-                                           k_ra_pdg_edge_rising,
-                                           (uint8_t)k_ra_pdg_test_code_lo));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_pdg_set_delay((uint8_t)k_ra_pdg_test_ch_first,
-                                           (ra_pdg_pin_t)0xFFU,
-                                           k_ra_pdg_edge_rising,
-                                           (uint8_t)k_ra_pdg_test_code_lo));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_pdg_set_delay((uint8_t)k_ra_pdg_test_ch_first,
-                                           k_ra_pdg_pin_a,
-                                           (ra_pdg_edge_t)0xFFU,
-                                           (uint8_t)k_ra_pdg_test_code_lo));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_pdg_set_delay((uint8_t)k_ra_pdg_test_ch_first,
-                                           k_ra_pdg_pin_a,
-                                           k_ra_pdg_edge_rising,
-                                           (uint8_t)k_ra_pdg_test_code_bad));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_pdg_set_delay((uint8_t)k_ra_pdg_test_ch_bad,
+                                  k_ra_pdg_pin_a,
+                                  k_ra_pdg_edge_rising,
+                                  (uint8_t)k_ra_pdg_test_code_lo));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_pdg_set_delay((uint8_t)k_ra_pdg_test_ch_way,
+                                  k_ra_pdg_pin_a,
+                                  k_ra_pdg_edge_rising,
+                                  (uint8_t)k_ra_pdg_test_code_lo));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_pdg_set_delay((uint8_t)k_ra_pdg_test_ch_first,
+                                  (ra_pdg_pin_t)0xFFU,
+                                  k_ra_pdg_edge_rising,
+                                  (uint8_t)k_ra_pdg_test_code_lo));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_pdg_set_delay((uint8_t)k_ra_pdg_test_ch_first,
+                                  k_ra_pdg_pin_a,
+                                  (ra_pdg_edge_t)0xFFU,
+                                  (uint8_t)k_ra_pdg_test_code_lo));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_pdg_set_delay((uint8_t)k_ra_pdg_test_ch_first,
+                                  k_ra_pdg_pin_a,
+                                  k_ra_pdg_edge_rising,
+                                  (uint8_t)k_ra_pdg_test_code_bad));
   TEST_END("pdg set_delay bad inputs");
 }
 
@@ -349,31 +346,27 @@ static void test_get_delay_round_trip(void)
   prep();
 
   const ra_pdg_config_t cfg = make_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdg_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_pdg_init(&cfg));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_pdg_set_delay((uint8_t)k_ra_pdg_test_ch_last,
-                                           k_ra_pdg_pin_b,
-                                           k_ra_pdg_edge_rising,
-                                           (uint8_t)k_ra_pdg_test_code_hi));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_pdg_set_delay((uint8_t)k_ra_pdg_test_ch_last,
+                                  k_ra_pdg_pin_b,
+                                  k_ra_pdg_edge_rising,
+                                  (uint8_t)k_ra_pdg_test_code_hi));
   uint8_t got = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_pdg_get_delay((uint8_t)k_ra_pdg_test_ch_last,
-                                           k_ra_pdg_pin_b,
-                                           k_ra_pdg_edge_rising,
-                                           &got));
-  TEST_ASSERT_EQ((int32_t)k_ra_pdg_test_code_hi, (int32_t)got);
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    ra_pdg_get_delay((uint8_t)k_ra_pdg_test_ch_last, k_ra_pdg_pin_b, k_ra_pdg_edge_rising, &got));
+  TEST_ASSERT_EQ(k_ra_pdg_test_code_hi, got);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_pdg_get_delay((uint8_t)k_ra_pdg_test_ch_first,
-                                           k_ra_pdg_pin_a,
-                                           k_ra_pdg_edge_rising,
-                                           nullptr));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_pdg_get_delay((uint8_t)k_ra_pdg_test_ch_bad,
-                                           k_ra_pdg_pin_a,
-                                           k_ra_pdg_edge_rising,
-                                           &got));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_pdg_get_delay((uint8_t)k_ra_pdg_test_ch_first,
+                                  k_ra_pdg_pin_a,
+                                  k_ra_pdg_edge_rising,
+                                  nullptr));
+  TEST_ASSERT_EQ(
+    k_ra_err_invalid_arg,
+    ra_pdg_get_delay((uint8_t)k_ra_pdg_test_ch_bad, k_ra_pdg_pin_a, k_ra_pdg_edge_rising, &got));
   TEST_END("pdg get_delay round-trip");
 }
 
@@ -389,7 +382,7 @@ static void test_set_delay_batch_happy(void)
   prep();
 
   const ra_pdg_config_t cfg = make_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdg_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_pdg_init(&cfg));
 
   const ra_pdg_delay_entry_t batch[] = {
     {.channel = (uint8_t)k_ra_pdg_test_ch_first,
@@ -405,20 +398,16 @@ static void test_set_delay_batch_happy(void)
      .edge    = k_ra_pdg_edge_falling,
      .code    = (uint8_t)k_ra_pdg_test_code_max},
   };
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_pdg_set_delay_batch(batch, (uint8_t)(sizeof(batch) / sizeof(batch[0]))));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_pdg_set_delay_batch(batch, (uint8_t)(sizeof(batch) / sizeof(batch[0]))));
 
   volatile r_pdg_regs_t* reg = ra_pdg();
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_pdg_test_code_lo,
-    (int32_t)(reg->GTDLYR[(uint8_t)k_ra_pdg_test_ch_first].A & (uint16_t)k_ra_pdg_dly_mask));
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_pdg_test_code_hi,
-    (int32_t)(reg->GTDLYF[(uint8_t)k_ra_pdg_test_ch_first].B & (uint16_t)k_ra_pdg_dly_mask));
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_pdg_test_code_max,
-    (int32_t)(reg->GTDLYF[(uint8_t)k_ra_pdg_test_ch_last].A & (uint16_t)k_ra_pdg_dly_mask));
+  TEST_ASSERT_EQ(k_ra_pdg_test_code_lo,
+                 (reg->GTDLYR[(uint8_t)k_ra_pdg_test_ch_first].A & (uint16_t)k_ra_pdg_dly_mask));
+  TEST_ASSERT_EQ(k_ra_pdg_test_code_hi,
+                 (reg->GTDLYF[(uint8_t)k_ra_pdg_test_ch_first].B & (uint16_t)k_ra_pdg_dly_mask));
+  TEST_ASSERT_EQ(k_ra_pdg_test_code_max,
+                 (reg->GTDLYF[(uint8_t)k_ra_pdg_test_ch_last].A & (uint16_t)k_ra_pdg_dly_mask));
   TEST_END("pdg set_delay batch happy");
 }
 
@@ -432,10 +421,10 @@ static void test_set_delay_batch_bad_inputs(void)
 {
   TEST_BEGIN("pdg set_delay batch bad inputs");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_pdg_set_delay_batch(nullptr, 1U));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_pdg_set_delay_batch(nullptr, 1U));
 
   const ra_pdg_config_t cfg = make_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdg_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_pdg_init(&cfg));
 
   const ra_pdg_delay_entry_t one[] = {
     {.channel = (uint8_t)k_ra_pdg_test_ch_bad,
@@ -443,10 +432,10 @@ static void test_set_delay_batch_bad_inputs(void)
      .edge    = k_ra_pdg_edge_rising,
      .code    = (uint8_t)k_ra_pdg_test_code_lo},
   };
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_pdg_set_delay_batch(one, 1U));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_pdg_set_delay_batch(one, 0U));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_pdg_set_delay_batch(one, (uint8_t)(k_ra_pdg_slot_count + 1U)));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_pdg_set_delay_batch(one, 1U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_pdg_set_delay_batch(one, 0U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_pdg_set_delay_batch(one, (uint8_t)(k_ra_pdg_slot_count + 1U)));
   TEST_END("pdg set_delay batch bad inputs");
 }
 
@@ -460,18 +449,18 @@ static void test_set_delay_not_initialised(void)
 {
   TEST_BEGIN("pdg set_delay before init");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_initialized,
-                 (int32_t)ra_pdg_set_delay((uint8_t)k_ra_pdg_test_ch_first,
-                                           k_ra_pdg_pin_a,
-                                           k_ra_pdg_edge_rising,
-                                           (uint8_t)k_ra_pdg_test_code_lo));
+  TEST_ASSERT_EQ(k_ra_err_not_initialized,
+                 ra_pdg_set_delay((uint8_t)k_ra_pdg_test_ch_first,
+                                  k_ra_pdg_pin_a,
+                                  k_ra_pdg_edge_rising,
+                                  (uint8_t)k_ra_pdg_test_code_lo));
   const ra_pdg_delay_entry_t one[] = {
     {.channel = (uint8_t)k_ra_pdg_test_ch_first,
      .pin     = k_ra_pdg_pin_a,
      .edge    = k_ra_pdg_edge_rising,
      .code    = (uint8_t)k_ra_pdg_test_code_lo},
   };
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_initialized, (int32_t)ra_pdg_set_delay_batch(one, 1U));
+  TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_pdg_set_delay_batch(one, 1U));
   TEST_END("pdg set_delay before init");
 }
 
@@ -488,28 +477,28 @@ static void test_delay_ns_to_code_low_band(void)
 
   /* low band, GTCLK = 100 MHz -> period = 10 ns; one DLY step = 10/128 ns. */
   uint8_t code = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_pdg_delay_ns_to_code((uint32_t)k_ra_pdg_test_delay_long_ns,
-                                                  (uint32_t)k_ra_pdg_test_clk_low_band,
-                                                  k_ra_pdg_frange_80_160_mhz,
-                                                  &code));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_pdg_delay_ns_to_code((uint32_t)k_ra_pdg_test_delay_long_ns,
+                                         (uint32_t)k_ra_pdg_test_clk_low_band,
+                                         k_ra_pdg_frange_80_160_mhz,
+                                         &code));
   /* 100 ns -> 100 / (10/128) = 1280 -> clamped to 0x7F. */
-  TEST_ASSERT_EQ((int32_t)k_ra_pdg_test_code_max, (int32_t)code);
+  TEST_ASSERT_EQ(k_ra_pdg_test_code_max, code);
 
   /* small delay: 1 ns at 100 MHz low band -> 1 / (10/128) = 12.8 -> 13 */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_pdg_delay_ns_to_code((uint32_t)k_ra_pdg_test_delay_short_ns,
-                                                  (uint32_t)k_ra_pdg_test_clk_low_band,
-                                                  k_ra_pdg_frange_80_160_mhz,
-                                                  &code));
-  TEST_ASSERT_EQ((int32_t)13, (int32_t)code);
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_pdg_delay_ns_to_code((uint32_t)k_ra_pdg_test_delay_short_ns,
+                                         (uint32_t)k_ra_pdg_test_clk_low_band,
+                                         k_ra_pdg_frange_80_160_mhz,
+                                         &code));
+  TEST_ASSERT_EQ(13, code);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_pdg_delay_ns_to_code(1U, 1U, k_ra_pdg_frange_80_160_mhz, nullptr));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_pdg_delay_ns_to_code(1U, 0U, k_ra_pdg_frange_80_160_mhz, &code));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_pdg_delay_ns_to_code(1U, 1U, (ra_pdg_frange_t)0xFFU, &code));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_pdg_delay_ns_to_code(1U, 1U, k_ra_pdg_frange_80_160_mhz, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_pdg_delay_ns_to_code(1U, 0U, k_ra_pdg_frange_80_160_mhz, &code));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_pdg_delay_ns_to_code(1U, 1U, (ra_pdg_frange_t)0xFFU, &code));
   TEST_END("pdg delay_ns_to_code low band");
 }
 
@@ -525,21 +514,19 @@ static void test_power_transition(void)
   prep();
 
   const ra_pdg_config_t cfg = make_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdg_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_pdg_init(&cfg));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdg_enter_stop((uint8_t)k_ra_pdg_test_ch_first));
+  TEST_ASSERT_EQ(k_ra_ok, ra_pdg_enter_stop((uint8_t)k_ra_pdg_test_ch_first));
   volatile r_pdg_regs_t* reg = ra_pdg();
   const uint16_t         bit =
     (uint16_t)(1U << ((uint16_t)k_ra_pdg_gtdlycr2_shift_dlyen + (uint16_t)k_ra_pdg_test_ch_first));
   TEST_ASSERT((reg->GTDLYCR2 & bit) != 0U);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdg_exit_stop((uint8_t)k_ra_pdg_test_ch_first));
+  TEST_ASSERT_EQ(k_ra_ok, ra_pdg_exit_stop((uint8_t)k_ra_pdg_test_ch_first));
   TEST_ASSERT((reg->GTDLYCR2 & bit) == 0U);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_pdg_enter_stop((uint8_t)k_ra_pdg_test_ch_bad));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_pdg_exit_stop((uint8_t)k_ra_pdg_test_ch_bad));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_pdg_enter_stop((uint8_t)k_ra_pdg_test_ch_bad));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_pdg_exit_stop((uint8_t)k_ra_pdg_test_ch_bad));
   TEST_END("pdg power transition");
 }
 
@@ -553,27 +540,25 @@ static void test_channel_bypass_set(void)
 {
   TEST_BEGIN("pdg channel_bypass_set");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_initialized,
-                 (int32_t)ra_pdg_channel_bypass_set((uint8_t)k_ra_pdg_test_ch_first, 1U));
+  TEST_ASSERT_EQ(k_ra_err_not_initialized,
+                 ra_pdg_channel_bypass_set((uint8_t)k_ra_pdg_test_ch_first, 1U));
 
   const ra_pdg_config_t cfg = make_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdg_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_pdg_init(&cfg));
 
   /* Force bypass-on (clear DLYBSn) for ch first. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_pdg_channel_bypass_set((uint8_t)k_ra_pdg_test_ch_first, 0U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_pdg_channel_bypass_set((uint8_t)k_ra_pdg_test_ch_first, 0U));
   volatile r_pdg_regs_t* reg = ra_pdg();
   const uint16_t         bs_bit =
     (uint16_t)(1U << ((uint16_t)k_ra_pdg_gtdlycr2_shift_dlybs + (uint16_t)k_ra_pdg_test_ch_first));
   TEST_ASSERT((reg->GTDLYCR2 & bs_bit) == 0U);
 
   /* Restore bypass-off (delay applied). */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_pdg_channel_bypass_set((uint8_t)k_ra_pdg_test_ch_first, 1U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_pdg_channel_bypass_set((uint8_t)k_ra_pdg_test_ch_first, 1U));
   TEST_ASSERT((reg->GTDLYCR2 & bs_bit) != 0U);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_pdg_channel_bypass_set((uint8_t)k_ra_pdg_test_ch_bad, 1U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_pdg_channel_bypass_set((uint8_t)k_ra_pdg_test_ch_bad, 1U));
   TEST_END("pdg channel_bypass_set");
 }
 
@@ -587,45 +572,40 @@ static void test_pin_disable(void)
 {
   TEST_BEGIN("pdg pin_disable");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_initialized,
-                 (int32_t)ra_pdg_pin_disable((uint8_t)k_ra_pdg_test_ch_first, k_ra_pdg_pin_a));
+  TEST_ASSERT_EQ(k_ra_err_not_initialized,
+                 ra_pdg_pin_disable((uint8_t)k_ra_pdg_test_ch_first, k_ra_pdg_pin_a));
 
   const ra_pdg_config_t cfg = make_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdg_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_pdg_init(&cfg));
 
   /* Pre-load both rising + falling delays for ch_first pin A. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_pdg_set_delay((uint8_t)k_ra_pdg_test_ch_first,
-                                           k_ra_pdg_pin_a,
-                                           k_ra_pdg_edge_rising,
-                                           (uint8_t)k_ra_pdg_test_code_lo));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_pdg_set_delay((uint8_t)k_ra_pdg_test_ch_first,
-                                           k_ra_pdg_pin_a,
-                                           k_ra_pdg_edge_falling,
-                                           (uint8_t)k_ra_pdg_test_code_hi));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_pdg_set_delay((uint8_t)k_ra_pdg_test_ch_first,
+                                  k_ra_pdg_pin_a,
+                                  k_ra_pdg_edge_rising,
+                                  (uint8_t)k_ra_pdg_test_code_lo));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_pdg_set_delay((uint8_t)k_ra_pdg_test_ch_first,
+                                  k_ra_pdg_pin_a,
+                                  k_ra_pdg_edge_falling,
+                                  (uint8_t)k_ra_pdg_test_code_hi));
   /* Disable pin A -- both cells must drop to zero. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_pdg_pin_disable((uint8_t)k_ra_pdg_test_ch_first, k_ra_pdg_pin_a));
+  TEST_ASSERT_EQ(k_ra_ok, ra_pdg_pin_disable((uint8_t)k_ra_pdg_test_ch_first, k_ra_pdg_pin_a));
   uint8_t got = 0xFFU;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_pdg_get_delay((uint8_t)k_ra_pdg_test_ch_first,
-                                           k_ra_pdg_pin_a,
-                                           k_ra_pdg_edge_rising,
-                                           &got));
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)got);
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    ra_pdg_get_delay((uint8_t)k_ra_pdg_test_ch_first, k_ra_pdg_pin_a, k_ra_pdg_edge_rising, &got));
+  TEST_ASSERT_EQ(0, got);
   got = 0xFFU;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_pdg_get_delay((uint8_t)k_ra_pdg_test_ch_first,
-                                           k_ra_pdg_pin_a,
-                                           k_ra_pdg_edge_falling,
-                                           &got));
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)got);
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    ra_pdg_get_delay((uint8_t)k_ra_pdg_test_ch_first, k_ra_pdg_pin_a, k_ra_pdg_edge_falling, &got));
+  TEST_ASSERT_EQ(0, got);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_pdg_pin_disable((uint8_t)k_ra_pdg_test_ch_bad, k_ra_pdg_pin_a));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_pdg_pin_disable((uint8_t)k_ra_pdg_test_ch_first, (ra_pdg_pin_t)0xFFU));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_pdg_pin_disable((uint8_t)k_ra_pdg_test_ch_bad, k_ra_pdg_pin_a));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_pdg_pin_disable((uint8_t)k_ra_pdg_test_ch_first, (ra_pdg_pin_t)0xFFU));
   TEST_END("pdg pin_disable");
 }
 
@@ -641,20 +621,19 @@ static void test_status_read_and_clear(void)
   prep();
 
   const ra_pdg_config_t cfg = make_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdg_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_pdg_init(&cfg));
 
   uint16_t st = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdg_get_status(&st));
+  TEST_ASSERT_EQ(k_ra_ok, ra_pdg_get_status(&st));
   TEST_ASSERT((st & (uint16_t)k_ra_pdg_status_dll_locked) != 0U);
 
   /* Force DLYRST = 1, then ask the driver to clear it. */
   volatile r_pdg_regs_t* reg = ra_pdg();
   reg->GTDLYCR               = (uint16_t)(reg->GTDLYCR | (uint16_t)k_ra_pdg_gtdlycr_mask_dlyrst);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_pdg_clear_status((uint16_t)k_ra_pdg_status_in_reset));
+  TEST_ASSERT_EQ(k_ra_ok, ra_pdg_clear_status((uint16_t)k_ra_pdg_status_in_reset));
   TEST_ASSERT((reg->GTDLYCR & (uint16_t)k_ra_pdg_gtdlycr_mask_dlyrst) == 0U);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_pdg_get_status(nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_pdg_get_status(nullptr));
   TEST_END("pdg status read + clear");
 }
 
@@ -670,22 +649,22 @@ static void test_status_full(void)
   prep();
 
   const ra_pdg_config_t cfg = make_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdg_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_pdg_init(&cfg));
 
   /* Drop ch 1 into stop. */
   const uint8_t ch_one = 1U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdg_enter_stop(ch_one));
+  TEST_ASSERT_EQ(k_ra_ok, ra_pdg_enter_stop(ch_one));
 
   ra_pdg_status_full_t st = {};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdg_get_status_full(&st));
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)st.dll_enabled);
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)st.in_reset);
-  TEST_ASSERT_EQ((int32_t)k_ra_pdg_frange_80_160_mhz, (int32_t)st.frange);
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)st.per_channel_bypass_off[(uint8_t)k_ra_pdg_test_ch_first]);
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)st.per_channel_powered[(uint8_t)k_ra_pdg_test_ch_first]);
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)st.per_channel_powered[ch_one]);
+  TEST_ASSERT_EQ(k_ra_ok, ra_pdg_get_status_full(&st));
+  TEST_ASSERT_EQ(1, st.dll_enabled);
+  TEST_ASSERT_EQ(0, st.in_reset);
+  TEST_ASSERT_EQ(k_ra_pdg_frange_80_160_mhz, st.frange);
+  TEST_ASSERT_EQ(1, st.per_channel_bypass_off[(uint8_t)k_ra_pdg_test_ch_first]);
+  TEST_ASSERT_EQ(1, st.per_channel_powered[(uint8_t)k_ra_pdg_test_ch_first]);
+  TEST_ASSERT_EQ(0, st.per_channel_powered[ch_one]);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_pdg_get_status_full(nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_pdg_get_status_full(nullptr));
   TEST_END("pdg status_full snapshot");
 }
 
@@ -701,26 +680,23 @@ static void test_pick_frange(void)
   prep();
 
   ra_pdg_frange_t f = (ra_pdg_frange_t)0xFFU;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_pdg_pick_frange((uint32_t)k_ra_pdg_test_clk_low_band, &f));
-  TEST_ASSERT_EQ((int32_t)k_ra_pdg_frange_80_160_mhz, (int32_t)f);
+  TEST_ASSERT_EQ(k_ra_ok, ra_pdg_pick_frange((uint32_t)k_ra_pdg_test_clk_low_band, &f));
+  TEST_ASSERT_EQ(k_ra_pdg_frange_80_160_mhz, f);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_pdg_pick_frange((uint32_t)k_ra_pdg_test_clk_high_band, &f));
-  TEST_ASSERT_EQ((int32_t)k_ra_pdg_frange_155_300_mhz, (int32_t)f);
+  TEST_ASSERT_EQ(k_ra_ok, ra_pdg_pick_frange((uint32_t)k_ra_pdg_test_clk_high_band, &f));
+  TEST_ASSERT_EQ(k_ra_pdg_frange_155_300_mhz, f);
 
   /* Overlap zone: prefer the low band for finer resolution. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_pdg_pick_frange((uint32_t)k_ra_pdg_test_clk_overlap, &f));
-  TEST_ASSERT_EQ((int32_t)k_ra_pdg_frange_80_160_mhz, (int32_t)f);
+  TEST_ASSERT_EQ(k_ra_ok, ra_pdg_pick_frange((uint32_t)k_ra_pdg_test_clk_overlap, &f));
+  TEST_ASSERT_EQ(k_ra_pdg_frange_80_160_mhz, f);
 
   /* Bad inputs. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_pdg_pick_frange(1U, nullptr));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_pdg_pick_frange(0U, &f));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_out_of_range,
-                 (int32_t)ra_pdg_pick_frange((uint32_t)k_ra_pdg_test_clk_too_low, &f));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_out_of_range,
-                 (int32_t)ra_pdg_pick_frange((uint32_t)k_ra_pdg_test_clk_too_high, &f));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_pdg_pick_frange(1U, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_pdg_pick_frange(0U, &f));
+  TEST_ASSERT_EQ(k_ra_err_out_of_range,
+                 ra_pdg_pick_frange((uint32_t)k_ra_pdg_test_clk_too_low, &f));
+  TEST_ASSERT_EQ(k_ra_err_out_of_range,
+                 ra_pdg_pick_frange((uint32_t)k_ra_pdg_test_clk_too_high, &f));
   TEST_END("pdg pick_frange");
 }
 
@@ -734,26 +710,25 @@ static void test_set_frange_runtime(void)
 {
   TEST_BEGIN("pdg set_frange runtime switch");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_initialized,
-                 (int32_t)ra_pdg_set_frange(k_ra_pdg_frange_155_300_mhz));
+  TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_pdg_set_frange(k_ra_pdg_frange_155_300_mhz));
 
   const ra_pdg_config_t cfg = make_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdg_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_pdg_init(&cfg));
 
   /* Capture GTDLYCR2 then run the switch. */
   volatile r_pdg_regs_t* reg     = ra_pdg();
   const uint16_t         expect2 = reg->GTDLYCR2;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdg_set_frange(k_ra_pdg_frange_155_300_mhz));
+  TEST_ASSERT_EQ(k_ra_ok, ra_pdg_set_frange(k_ra_pdg_frange_155_300_mhz));
 
   /* New FRANGE value must be live, DLLEN re-asserted, DLYRST cleared. */
   const uint16_t f = (uint16_t)((reg->GTDLYCR & (uint16_t)k_ra_pdg_gtdlycr_mask_frange) >>
                                 (uint16_t)k_ra_pdg_gtdlycr_shift_frange);
-  TEST_ASSERT_EQ((int32_t)k_ra_pdg_frange_155_300_mhz, (int32_t)f);
+  TEST_ASSERT_EQ(k_ra_pdg_frange_155_300_mhz, f);
   TEST_ASSERT((reg->GTDLYCR & (uint16_t)k_ra_pdg_gtdlycr_mask_dllen) != 0U);
   TEST_ASSERT((reg->GTDLYCR & (uint16_t)k_ra_pdg_gtdlycr_mask_dlyrst) == 0U);
-  TEST_ASSERT_EQ((int32_t)expect2, (int32_t)reg->GTDLYCR2);
+  TEST_ASSERT_EQ(expect2, reg->GTDLYCR2);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_pdg_set_frange((ra_pdg_frange_t)0xFFU));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_pdg_set_frange((ra_pdg_frange_t)0xFFU));
   TEST_END("pdg set_frange runtime switch");
 }
 
@@ -767,25 +742,21 @@ static void test_bind_unbind_gpt_channel(void)
 {
   TEST_BEGIN("pdg bind / unbind gpt channel");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_initialized,
-                 (int32_t)ra_pdg_bind_gpt_channel((uint8_t)k_ra_pdg_test_ch_first));
+  TEST_ASSERT_EQ(k_ra_err_not_initialized,
+                 ra_pdg_bind_gpt_channel((uint8_t)k_ra_pdg_test_ch_first));
 
   const ra_pdg_config_t cfg = make_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdg_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_pdg_init(&cfg));
 
   volatile r_gpt_channel_regs_t* gpt = ra_gpt((uint8_t)k_ra_pdg_test_ch_first);
   TEST_ASSERT_NOT_NULL(gpt);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_pdg_bind_gpt_channel((uint8_t)k_ra_pdg_test_ch_first));
-  TEST_ASSERT_EQ((int32_t)0xA500U, (int32_t)gpt->GTWP);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_pdg_unbind_gpt_channel((uint8_t)k_ra_pdg_test_ch_first));
-  TEST_ASSERT_EQ((int32_t)0xA501U, (int32_t)gpt->GTWP);
+  TEST_ASSERT_EQ(k_ra_ok, ra_pdg_bind_gpt_channel((uint8_t)k_ra_pdg_test_ch_first));
+  TEST_ASSERT_EQ(0xA500U, gpt->GTWP);
+  TEST_ASSERT_EQ(k_ra_ok, ra_pdg_unbind_gpt_channel((uint8_t)k_ra_pdg_test_ch_first));
+  TEST_ASSERT_EQ(0xA501U, gpt->GTWP);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_pdg_bind_gpt_channel((uint8_t)k_ra_pdg_test_ch_bad));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_pdg_unbind_gpt_channel((uint8_t)k_ra_pdg_test_ch_bad));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_pdg_bind_gpt_channel((uint8_t)k_ra_pdg_test_ch_bad));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_pdg_unbind_gpt_channel((uint8_t)k_ra_pdg_test_ch_bad));
   TEST_END("pdg bind / unbind gpt channel");
 }
 
@@ -802,51 +773,49 @@ static void test_check_constraints(void)
 
   /* Saw + Up: forbidden when compare_match >= GTPR - 2. */
   const uint32_t gtpr = 100U;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state,
-                 (int32_t)ra_pdg_check_constraints(k_ra_pdg_wave_saw,
-                                                   k_ra_pdg_dir_up,
-                                                   /* compare_match */ 99U,
-                                                   gtpr));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_pdg_check_constraints(k_ra_pdg_wave_saw,
-                                                   k_ra_pdg_dir_up,
-                                                   /* compare_match */ 50U,
-                                                   gtpr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state,
+                 ra_pdg_check_constraints(k_ra_pdg_wave_saw,
+                                          k_ra_pdg_dir_up,
+                                          /* compare_match */ 99U,
+                                          gtpr));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_pdg_check_constraints(k_ra_pdg_wave_saw,
+                                          k_ra_pdg_dir_up,
+                                          /* compare_match */ 50U,
+                                          gtpr));
 
   /* Saw + Down: forbidden when compare_match <= 2. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state,
-                 (int32_t)ra_pdg_check_constraints(k_ra_pdg_wave_saw,
-                                                   k_ra_pdg_dir_down,
-                                                   /* compare_match */ 1U,
-                                                   gtpr));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_pdg_check_constraints(k_ra_pdg_wave_saw,
-                                                   k_ra_pdg_dir_down,
-                                                   /* compare_match */ 50U,
-                                                   gtpr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state,
+                 ra_pdg_check_constraints(k_ra_pdg_wave_saw,
+                                          k_ra_pdg_dir_down,
+                                          /* compare_match */ 1U,
+                                          gtpr));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_pdg_check_constraints(k_ra_pdg_wave_saw,
+                                          k_ra_pdg_dir_down,
+                                          /* compare_match */ 50U,
+                                          gtpr));
 
   /* Triangle + Down: forbidden when compare_match <= 2. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state,
-                 (int32_t)ra_pdg_check_constraints(k_ra_pdg_wave_triangle,
-                                                   k_ra_pdg_dir_down,
-                                                   /* compare_match */ 2U,
-                                                   gtpr));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_pdg_check_constraints(k_ra_pdg_wave_triangle,
-                                                   k_ra_pdg_dir_up,
-                                                   /* compare_match */ 1U,
-                                                   gtpr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state,
+                 ra_pdg_check_constraints(k_ra_pdg_wave_triangle,
+                                          k_ra_pdg_dir_down,
+                                          /* compare_match */ 2U,
+                                          gtpr));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_pdg_check_constraints(k_ra_pdg_wave_triangle,
+                                          k_ra_pdg_dir_up,
+                                          /* compare_match */ 1U,
+                                          gtpr));
 
   /* Bad arguments. */
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_arg,
-    (int32_t)ra_pdg_check_constraints((ra_pdg_wave_mode_t)0xFFU, k_ra_pdg_dir_up, 1U, gtpr));
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_arg,
-    (int32_t)ra_pdg_check_constraints(k_ra_pdg_wave_saw, (ra_pdg_count_dir_t)0xFFU, 1U, gtpr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_pdg_check_constraints((ra_pdg_wave_mode_t)0xFFU, k_ra_pdg_dir_up, 1U, gtpr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_pdg_check_constraints(k_ra_pdg_wave_saw, (ra_pdg_count_dir_t)0xFFU, 1U, gtpr));
   /* gtpr too small for saw-up (boundary underflow). */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state,
-                 (int32_t)ra_pdg_check_constraints(k_ra_pdg_wave_saw, k_ra_pdg_dir_up, 0U, 1U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state,
+                 ra_pdg_check_constraints(k_ra_pdg_wave_saw, k_ra_pdg_dir_up, 0U, 1U));
   TEST_END("pdg check_constraints (HUM Ch 23.4.2)");
 }
 
@@ -862,17 +831,17 @@ static void test_required_write_ns(void)
   prep();
 
   uint32_t ns = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_pdg_required_write_ns((uint32_t)k_ra_pdg_test_clk_pclka,
-                                                   (uint32_t)k_ra_pdg_test_clk_low_band,
-                                                   &ns));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_pdg_required_write_ns((uint32_t)k_ra_pdg_test_clk_pclka,
+                                          (uint32_t)k_ra_pdg_test_clk_low_band,
+                                          &ns));
   /* PCLKA = 200 MHz -> period 5 ns; GPTCLK = 100 MHz -> period 10 ns.
  * Interval = 5 * 6 + 10 * 4 = 30 + 40 = 70 ns. */
-  TEST_ASSERT_EQ((int32_t)70, (int32_t)ns);
+  TEST_ASSERT_EQ(70, ns);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_pdg_required_write_ns(1U, 1U, nullptr));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_pdg_required_write_ns(0U, 1U, &ns));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_pdg_required_write_ns(1U, 0U, &ns));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_pdg_required_write_ns(1U, 1U, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_pdg_required_write_ns(0U, 1U, &ns));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_pdg_required_write_ns(1U, 0U, &ns));
   TEST_END("pdg required_write_ns (HUM Ch 23.4.3)");
 }
 
@@ -887,16 +856,15 @@ static void test_attach_and_dispatch(void)
   TEST_BEGIN("pdg attach + dispatch");
   prep();
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_pdg_attach_handler(stub_pdg_cb, (void*)(uintptr_t)0xCAFEU));
+  TEST_ASSERT_EQ(k_ra_ok, ra_pdg_attach_handler(stub_pdg_cb, (void*)(uintptr_t)0xCAFEU));
   ra_pdg_dispatch();
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)s_pdg_cb_count);
-  TEST_ASSERT_EQ((int32_t)(uintptr_t)0xCAFEU, (int32_t)(uintptr_t)s_pdg_cb_last_ctx);
+  TEST_ASSERT_EQ(1, s_pdg_cb_count);
+  TEST_ASSERT_EQ((uintptr_t)0xCAFEU, (uintptr_t)s_pdg_cb_last_ctx);
 
   /* Detach (NULL handler) -- subsequent dispatch must be a no-op. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdg_attach_handler(nullptr, nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_pdg_attach_handler(nullptr, nullptr));
   ra_pdg_dispatch();
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)s_pdg_cb_count);
+  TEST_ASSERT_EQ(1, s_pdg_cb_count);
   TEST_END("pdg attach + dispatch");
 }
 
@@ -914,10 +882,9 @@ static void test_capture_start_happy(void)
   TEST_BEGIN("pdg capture_start happy");
   prep();
   const ra_pdg_config_t cfg = make_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdg_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_pdg_init(&cfg));
   s_pdg_cb_count = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_pdg_attach_handler(stub_pdg_cb, (void*)(uintptr_t)0xBEEFU));
+  TEST_ASSERT_EQ(k_ra_ok, ra_pdg_attach_handler(stub_pdg_cb, (void*)(uintptr_t)0xBEEFU));
 
   const ra_pdg_delay_entry_t entries[] = {
     {.channel = (uint8_t)k_ra_pdg_test_ch_first,
@@ -925,11 +892,10 @@ static void test_capture_start_happy(void)
      .edge    = k_ra_pdg_edge_rising,
      .code    = (uint8_t)k_ra_pdg_test_code_hi},
   };
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdg_capture_start(entries, 1U));
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)s_pdg_cb_count);
+  TEST_ASSERT_EQ(k_ra_ok, ra_pdg_capture_start(entries, 1U));
+  TEST_ASSERT_EQ(1, s_pdg_cb_count);
   volatile r_pdg_regs_t* reg = ra_pdg();
-  TEST_ASSERT_EQ((int32_t)k_ra_pdg_test_code_hi,
-                 (int32_t)reg->GTDLYR[(uint8_t)k_ra_pdg_test_ch_first].A);
+  TEST_ASSERT_EQ(k_ra_pdg_test_code_hi, reg->GTDLYR[(uint8_t)k_ra_pdg_test_ch_first].A);
   TEST_END("pdg capture_start happy");
 }
 
@@ -944,8 +910,8 @@ static void test_capture_start_null(void)
   TEST_BEGIN("pdg capture_start NULL buf");
   prep();
   const ra_pdg_config_t cfg = make_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdg_init(&cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_pdg_capture_start(nullptr, 1U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_pdg_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_pdg_capture_start(nullptr, 1U));
   TEST_END("pdg capture_start NULL buf");
 }
 
@@ -960,11 +926,11 @@ static void test_capture_start_zero_len(void)
   TEST_BEGIN("pdg capture_start zero len");
   prep();
   const ra_pdg_config_t cfg = make_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdg_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_pdg_init(&cfg));
   const ra_pdg_delay_entry_t entries[1] = {
     {.channel = 0U, .pin = k_ra_pdg_pin_a, .edge = k_ra_pdg_edge_rising, .code = 0U},
   };
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_pdg_capture_start(entries, 0U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_pdg_capture_start(entries, 0U));
   TEST_END("pdg capture_start zero len");
 }
 
@@ -979,7 +945,7 @@ static void test_capture_start_bad_entry(void)
   TEST_BEGIN("pdg capture_start bad entry");
   prep();
   const ra_pdg_config_t cfg = make_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdg_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_pdg_init(&cfg));
   const ra_pdg_delay_entry_t bad[] = {
     {.channel = (uint8_t)k_ra_pdg_test_ch_bad,
      .pin     = k_ra_pdg_pin_a,
@@ -1002,8 +968,8 @@ static void test_capture_stop_happy(void)
   TEST_BEGIN("pdg capture_stop");
   prep();
   const ra_pdg_config_t cfg = make_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdg_init(&cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdg_capture_stop());
+  TEST_ASSERT_EQ(k_ra_ok, ra_pdg_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_pdg_capture_stop());
   TEST_END("pdg capture_stop");
 }
 
@@ -1018,8 +984,8 @@ static void test_capture_start_no_handler(void)
   TEST_BEGIN("pdg capture_start without handler");
   prep();
   const ra_pdg_config_t cfg = make_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdg_init(&cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdg_attach_handler(nullptr, nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_pdg_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_pdg_attach_handler(nullptr, nullptr));
   s_pdg_cb_count                       = 0U;
   const ra_pdg_delay_entry_t entries[] = {
     {.channel = (uint8_t)k_ra_pdg_test_ch_first,
@@ -1027,8 +993,8 @@ static void test_capture_start_no_handler(void)
      .edge    = k_ra_pdg_edge_falling,
      .code    = 0x10U},
   };
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdg_capture_start(entries, 1U));
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)s_pdg_cb_count);
+  TEST_ASSERT_EQ(k_ra_ok, ra_pdg_capture_start(entries, 1U));
+  TEST_ASSERT_EQ(0, s_pdg_cb_count);
   TEST_END("pdg capture_start without handler");
 }
 
@@ -1044,22 +1010,22 @@ static void test_deinit(void)
   prep();
 
   const ra_pdg_config_t cfg = make_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdg_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_pdg_init(&cfg));
 
   /* Dirty a delay register so we can verify it gets wiped. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_pdg_set_delay((uint8_t)k_ra_pdg_test_ch_first,
-                                           k_ra_pdg_pin_a,
-                                           k_ra_pdg_edge_rising,
-                                           (uint8_t)k_ra_pdg_test_code_hi));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdg_deinit());
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_pdg_set_delay((uint8_t)k_ra_pdg_test_ch_first,
+                                  k_ra_pdg_pin_a,
+                                  k_ra_pdg_edge_rising,
+                                  (uint8_t)k_ra_pdg_test_code_hi));
+  TEST_ASSERT_EQ(k_ra_ok, ra_pdg_deinit());
 
   volatile r_pdg_regs_t* reg = ra_pdg();
   TEST_ASSERT((reg->GTDLYCR & (uint16_t)k_ra_pdg_gtdlycr_mask_dllen) == 0U);
   TEST_ASSERT((reg->GTDLYCR & (uint16_t)k_ra_pdg_gtdlycr_mask_dlyrst) != 0U);
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)reg->GTDLYCR2);
+  TEST_ASSERT_EQ(0, reg->GTDLYCR2);
   /* Every delay cell wiped to 0. */
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)reg->GTDLYR[(uint8_t)k_ra_pdg_test_ch_first].A);
+  TEST_ASSERT_EQ(0, reg->GTDLYR[(uint8_t)k_ra_pdg_test_ch_first].A);
   TEST_END("pdg deinit");
 }
 
@@ -1086,23 +1052,19 @@ static void test_mcdc_pdg(void)
   TEST_BEGIN("pdg MC/DC: check_constraints mode + dir 2-cond rejects");
   /* Decision A: mode validation. Use a benign dir + gtpr/cm so the
    * downstream constraint checks do not poison the A-result. */
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_pdg_check_constraints(k_ra_pdg_wave_saw, k_ra_pdg_dir_down, 100U, 200U));
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_pdg_check_constraints(k_ra_pdg_wave_triangle, k_ra_pdg_dir_up, 100U, 200U));
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_arg,
-    (int32_t)ra_pdg_check_constraints((ra_pdg_wave_mode_t)0xFFU, k_ra_pdg_dir_up, 100U, 200U));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_pdg_check_constraints(k_ra_pdg_wave_saw, k_ra_pdg_dir_down, 100U, 200U));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_pdg_check_constraints(k_ra_pdg_wave_triangle, k_ra_pdg_dir_up, 100U, 200U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_pdg_check_constraints((ra_pdg_wave_mode_t)0xFFU, k_ra_pdg_dir_up, 100U, 200U));
 
   /* Decision B: dir validation, with mode held at saw (passes A). */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_pdg_check_constraints(k_ra_pdg_wave_saw, k_ra_pdg_dir_up, 100U, 200U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_pdg_check_constraints(k_ra_pdg_wave_saw, k_ra_pdg_dir_up, 100U, 200U));
   /* dir=down already exercised in V1 of decision A above. */
   TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_arg,
-    (int32_t)ra_pdg_check_constraints(k_ra_pdg_wave_saw, (ra_pdg_count_dir_t)0xFFU, 100U, 200U));
+    k_ra_err_invalid_arg,
+    ra_pdg_check_constraints(k_ra_pdg_wave_saw, (ra_pdg_count_dir_t)0xFFU, 100U, 200U));
   TEST_END("pdg MC/DC: check_constraints mode + dir 2-cond rejects");
 }
 
@@ -1122,8 +1084,8 @@ static void test_mcdc_set_delay_batch_count(void)
 {
   TEST_BEGIN("pdg MC/DC: set_delay_batch count == 0 || count > slot_count");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_pdg_init(&(const ra_pdg_config_t){
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_pdg_init(&(const ra_pdg_config_t){
                    .frange       = k_ra_pdg_frange_80_160_mhz,
                    .channel_mask = (uint8_t)k_ra_pdg_test_mask_all,
                    .auto_tune    = 0U,
@@ -1136,12 +1098,12 @@ static void test_mcdc_set_delay_batch_count(void)
     .code    = (uint8_t)k_ra_pdg_test_code_lo,
   }};
   /* V1: count=1 in range -> proceeds */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdg_set_delay_batch(one, 1U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_pdg_set_delay_batch(one, 1U));
   /* V4: count=0 -> C1=T -> invalid_arg */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_pdg_set_delay_batch(one, 0U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_pdg_set_delay_batch(one, 0U));
   /* V3: count > slot_count -> C1=F, C2=T -> invalid_arg */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_pdg_set_delay_batch(one, (uint8_t)(k_ra_pdg_slot_count + 1U)));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_pdg_set_delay_batch(one, (uint8_t)(k_ra_pdg_slot_count + 1U)));
   TEST_END("pdg MC/DC: set_delay_batch count == 0 || count > slot_count");
 }
 
@@ -1160,22 +1122,20 @@ static void test_mcdc_pin_disable_pin_neither(void)
 {
   TEST_BEGIN("pdg MC/DC: pin_disable pin != A && pin != B");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_pdg_init(&(const ra_pdg_config_t){
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_pdg_init(&(const ra_pdg_config_t){
                    .frange       = k_ra_pdg_frange_80_160_mhz,
                    .channel_mask = (uint8_t)k_ra_pdg_test_mask_all,
                    .auto_tune    = 0U,
                    .gptclk_hz    = 0U,
                  }));
   /* V1: pin_a */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_pdg_pin_disable((uint8_t)k_ra_pdg_test_ch_first, k_ra_pdg_pin_a));
+  TEST_ASSERT_EQ(k_ra_ok, ra_pdg_pin_disable((uint8_t)k_ra_pdg_test_ch_first, k_ra_pdg_pin_a));
   /* V2: pin_b */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_pdg_pin_disable((uint8_t)k_ra_pdg_test_ch_first, k_ra_pdg_pin_b));
+  TEST_ASSERT_EQ(k_ra_ok, ra_pdg_pin_disable((uint8_t)k_ra_pdg_test_ch_first, k_ra_pdg_pin_b));
   /* V3: bogus */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_pdg_pin_disable((uint8_t)k_ra_pdg_test_ch_first, (ra_pdg_pin_t)0xFEU));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_pdg_pin_disable((uint8_t)k_ra_pdg_test_ch_first, (ra_pdg_pin_t)0xFEU));
   TEST_END("pdg MC/DC: pin_disable pin != A && pin != B");
 }
 
@@ -1202,14 +1162,14 @@ static void test_mcdc_validate_cfg_gptclk_range(void)
     .gptclk_hz    = (uint32_t)k_ra_pdg_test_clk_low_band,
   };
   /* V1: 100 MHz in band -> ok. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdg_init(&cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_pdg_deinit());
+  TEST_ASSERT_EQ(k_ra_ok, ra_pdg_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_pdg_deinit());
   /* V2: 50 MHz too low -> out_of_range. */
   cfg.gptclk_hz = (uint32_t)k_ra_pdg_test_clk_too_low;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_out_of_range, (int32_t)ra_pdg_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_out_of_range, ra_pdg_init(&cfg));
   /* V3: 400 MHz too high -> out_of_range. */
   cfg.gptclk_hz = (uint32_t)k_ra_pdg_test_clk_too_high;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_out_of_range, (int32_t)ra_pdg_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_out_of_range, ra_pdg_init(&cfg));
   TEST_END("pdg MC/DC: validate_cfg auto-tune gptclk band");
 }
 

@@ -38,9 +38,9 @@ static void test_mcdc_epub_open_media_or_book_null(void)
   ra_epub_book_t            book  = {};
   const ra_epub_mem_media_t media = {.data = s_blob, .size = (size_t)k_test_epub_size_nonzero};
   s_blob[0]                       = (uint8_t)k_test_epub_dummy_byte;
-  TEST_ASSERT(ra_epub_open(&media, NULL, &book) != k_ra_err_null_ptr);
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_epub_open(NULL, NULL, &book));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_epub_open(&media, NULL, NULL));
+  TEST_ASSERT(ra_epub_open(&media, nullptr, &book) != k_ra_err_null_ptr);
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_epub_open(nullptr, nullptr, &book));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_epub_open(&media, nullptr, nullptr));
   TEST_END("epub_open MC/DC: (media==NULL || out_book==NULL)");
 }
 
@@ -57,11 +57,11 @@ static void test_mcdc_epub_open_mem_data_or_size(void)
   TEST_BEGIN("epub_open MC/DC: (mem->data==NULL || mem->size==0)");
   ra_epub_book_t            book = {};
   const ra_epub_mem_media_t v1m  = {.data = s_blob, .size = (size_t)k_test_epub_size_nonzero};
-  TEST_ASSERT(ra_epub_open(&v1m, NULL, &book) != k_ra_err_invalid_arg);
-  const ra_epub_mem_media_t v2m = {.data = NULL, .size = (size_t)k_test_epub_size_nonzero};
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_epub_open(&v2m, NULL, &book));
+  TEST_ASSERT(ra_epub_open(&v1m, nullptr, &book) != k_ra_err_invalid_arg);
+  const ra_epub_mem_media_t v2m = {.data = nullptr, .size = (size_t)k_test_epub_size_nonzero};
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_epub_open(&v2m, nullptr, &book));
   const ra_epub_mem_media_t v3m = {.data = s_blob, .size = (size_t)k_test_epub_size_zero};
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_epub_open(&v3m, NULL, &book));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_epub_open(&v3m, nullptr, &book));
   TEST_END("epub_open MC/DC: (mem->data==NULL || mem->size==0)");
 }
 

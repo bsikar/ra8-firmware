@@ -95,7 +95,7 @@ static void prep_init(void)
     .name       = "ra8d2",
     .appearance = (uint16_t)((uint16_t)k_appearance_hi << 8U) | (uint16_t)k_appearance_lo,
   };
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ble_host_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_host_init(&cfg));
 }
 
 /**
@@ -114,13 +114,12 @@ static void register_one_char(uint16_t* out_chr, uint8_t* buf, uint16_t cap)
   make_uuid(chr_uuid, (uint8_t)k_uuid_marker_chr);
 
   uint16_t svc = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ble_host_gatt_register_service(svc_uuid, &svc));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_host_gatt_register_service(svc_uuid, &svc));
 
   const uint8_t props =
     (uint8_t)((uint8_t)k_ra_ble_host_char_prop_read | (uint8_t)k_ra_ble_host_char_prop_write |
               (uint8_t)k_ra_ble_host_char_prop_notify);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ble_host_gatt_register_char(svc, chr_uuid, props, buf, cap, out_chr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_host_gatt_register_char(svc, chr_uuid, props, buf, cap, out_chr));
 }
 
 /**
@@ -190,7 +189,7 @@ static void test_dispatch_find_info_in_range_match(void)
   TEST_ASSERT(cap_len > 0U);
   /* HCI ACL packet: [pkt_type=0x02][handle(2)][len(2)][L2CAP hdr(4)][ATT...]
    * The ATT opcode lives at offset 9 of the capture. */
-  TEST_ASSERT_EQ((int32_t)k_att_op_find_info_rsp, (int32_t)cap[9]);
+  TEST_ASSERT_EQ(k_att_op_find_info_rsp, cap[9]);
   TEST_END("ra_ble_att FIND_INFO_REQ in-range -> FIND_INFO_RSP");
 }
 
@@ -234,7 +233,7 @@ static void test_dispatch_find_info_above_range(void)
   uint16_t       cap_len = 0U;
   const uint8_t* cap     = ra_ble_test_tx_capture(&cap_len);
   TEST_ASSERT(cap_len > 0U);
-  TEST_ASSERT_EQ((int32_t)k_att_op_find_info_rsp, (int32_t)cap[9]);
+  TEST_ASSERT_EQ(k_att_op_find_info_rsp, cap[9]);
   TEST_END("ra_ble_att FIND_INFO_REQ above range -> exercises skip branch");
 }
 
@@ -283,7 +282,7 @@ static void test_dispatch_read_by_type_in_range_decl(void)
   uint16_t       cap_len = 0U;
   const uint8_t* cap     = ra_ble_test_tx_capture(&cap_len);
   TEST_ASSERT(cap_len > 0U);
-  TEST_ASSERT_EQ((int32_t)k_att_op_read_by_type_rsp, (int32_t)cap[9]);
+  TEST_ASSERT_EQ(k_att_op_read_by_type_rsp, cap[9]);
   TEST_END("ra_ble_att READ_BY_TYPE_REQ char-decl -> RSP");
 }
 
@@ -322,7 +321,7 @@ static void test_dispatch_read_by_type_above_range(void)
   uint16_t       cap_len = 0U;
   const uint8_t* cap     = ra_ble_test_tx_capture(&cap_len);
   TEST_ASSERT(cap_len > 0U);
-  TEST_ASSERT_EQ((int32_t)k_att_op_error_rsp, (int32_t)cap[9]);
+  TEST_ASSERT_EQ(k_att_op_error_rsp, cap[9]);
   TEST_END("ra_ble_att READ_BY_TYPE_REQ above range -> attr_not_found");
 }
 
@@ -353,8 +352,7 @@ static void test_dispatch_read_req_value_path(void)
   register_one_char(&chr, buf, (uint16_t)sizeof(buf));
   /* Seed the characteristic value with a recognizable byte. */
   const uint8_t seed[3] = {0x11U, 0x22U, 0x33U};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ble_host_gatt_set_value(chr, seed, (uint16_t)sizeof(seed)));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_host_gatt_set_value(chr, seed, (uint16_t)sizeof(seed)));
   ra_ble_host_test_inject_connect((uint16_t)k_test_conn_handle);
   ra_ble_test_reset_capture();
 
@@ -367,10 +365,10 @@ static void test_dispatch_read_req_value_path(void)
   uint16_t       cap_len = 0U;
   const uint8_t* cap     = ra_ble_test_tx_capture(&cap_len);
   TEST_ASSERT(cap_len > 0U);
-  TEST_ASSERT_EQ((int32_t)k_att_op_read_rsp, (int32_t)cap[9]);
-  TEST_ASSERT_EQ((int32_t)0x11U, (int32_t)cap[10]);
-  TEST_ASSERT_EQ((int32_t)0x22U, (int32_t)cap[11]);
-  TEST_ASSERT_EQ((int32_t)0x33U, (int32_t)cap[12]);
+  TEST_ASSERT_EQ(k_att_op_read_rsp, cap[9]);
+  TEST_ASSERT_EQ(0x11U, cap[10]);
+  TEST_ASSERT_EQ(0x22U, cap[11]);
+  TEST_ASSERT_EQ(0x33U, cap[12]);
   TEST_END("ra_ble_att READ_REQ on char-value -> READ_RSP carries value");
 }
 
@@ -411,13 +409,13 @@ static void test_dispatch_write_req_value_path(void)
   };
   inject_att(pdu, (uint16_t)sizeof(pdu));
   /* Buffer should hold the written bytes. */
-  TEST_ASSERT_EQ((int32_t)0xAAU, (int32_t)buf[0]);
-  TEST_ASSERT_EQ((int32_t)0xBBU, (int32_t)buf[1]);
+  TEST_ASSERT_EQ(0xAAU, buf[0]);
+  TEST_ASSERT_EQ(0xBBU, buf[1]);
   /* And we should have transmitted a WRITE_RSP. */
   uint16_t       cap_len = 0U;
   const uint8_t* cap     = ra_ble_test_tx_capture(&cap_len);
   TEST_ASSERT(cap_len > 0U);
-  TEST_ASSERT_EQ((int32_t)k_att_op_write_rsp, (int32_t)cap[9]);
+  TEST_ASSERT_EQ(k_att_op_write_rsp, cap[9]);
   TEST_END("ra_ble_att WRITE_REQ on char-value -> data + WRITE_RSP");
 }
 
@@ -460,7 +458,7 @@ static void test_dispatch_find_info_start_zero(void)
   uint16_t       cap_len = 0U;
   const uint8_t* cap     = ra_ble_test_tx_capture(&cap_len);
   TEST_ASSERT(cap_len > 0U);
-  TEST_ASSERT_EQ((int32_t)k_att_op_error_rsp, (int32_t)cap[9]);
+  TEST_ASSERT_EQ(k_att_op_error_rsp, cap[9]);
   TEST_END("ra_ble_att FIND_INFO_REQ start=0 -> Error_Rsp(invalid_handle)");
 }
 
@@ -498,7 +496,7 @@ static void test_dispatch_find_info_start_above_end(void)
   uint16_t       cap_len = 0U;
   const uint8_t* cap     = ra_ble_test_tx_capture(&cap_len);
   TEST_ASSERT(cap_len > 0U);
-  TEST_ASSERT_EQ((int32_t)k_att_op_error_rsp, (int32_t)cap[9]);
+  TEST_ASSERT_EQ(k_att_op_error_rsp, cap[9]);
   TEST_END("ra_ble_att FIND_INFO_REQ start>end -> Error_Rsp(invalid_handle)");
 }
 
@@ -542,7 +540,7 @@ static void test_dispatch_find_info_below_range(void)
   uint16_t       cap_len = 0U;
   const uint8_t* cap     = ra_ble_test_tx_capture(&cap_len);
   TEST_ASSERT(cap_len > 0U);
-  TEST_ASSERT_EQ((int32_t)k_att_op_error_rsp, (int32_t)cap[9]);
+  TEST_ASSERT_EQ(k_att_op_error_rsp, cap[9]);
   TEST_END("ra_ble_att FIND_INFO_REQ below range -> attr_not_found (C1=T)");
 }
 
@@ -583,7 +581,7 @@ static void test_dispatch_read_by_type_below_range(void)
   uint16_t       cap_len = 0U;
   const uint8_t* cap     = ra_ble_test_tx_capture(&cap_len);
   TEST_ASSERT(cap_len > 0U);
-  TEST_ASSERT_EQ((int32_t)k_att_op_error_rsp, (int32_t)cap[9]);
+  TEST_ASSERT_EQ(k_att_op_error_rsp, cap[9]);
   TEST_END("ra_ble_att READ_BY_TYPE_REQ below range -> attr_not_found (C1=T)");
 }
 

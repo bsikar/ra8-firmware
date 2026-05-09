@@ -140,6 +140,12 @@ static ra_mipi_phy_config_t make_csi_cfg(const ra_mipi_phy_timing_t* tim)
 }
 
 /* ---- Tests --------------------------------------------------------------- */
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 
 static void test_init_happy_dsi_master(void)
 {
@@ -149,41 +155,42 @@ static void test_init_happy_dsi_master(void)
   const ra_mipi_phy_timing_t tim = make_timing();
   const ra_mipi_phy_config_t cfg = make_dsi_cfg(&tim);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mipi_phy_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mipi_phy_init(&cfg));
 
   /* DPHYMDC should hold MASTEREN. */
-  TEST_ASSERT_EQ((int32_t)k_ra_mipi_phy_mdc_masteren,
-                 (int32_t)*ra_mipi_phy_reg32(k_ra_mipi_phy_off_mdc));
+  TEST_ASSERT_EQ(k_ra_mipi_phy_mdc_masteren, *ra_mipi_phy_reg32(k_ra_mipi_phy_off_mdc));
 
   /* DPHYREFCR.RFREQ encodes (MHz - 1) per HUM Ch 64.2.1 p 3822
    * (matches FSP r_mipi_phy.c which writes ``(pclka_hz / 1MHz) - 1``). */
-  TEST_ASSERT_EQ(
-    (int32_t)((uint32_t)k_test_mipi_phy_pclka_mhz - (uint32_t)k_ra_mipi_phy_refcr_rfreq_bias),
-    (int32_t)*ra_mipi_phy_reg32(k_ra_mipi_phy_off_refcr));
+  TEST_ASSERT_EQ(((uint32_t)k_test_mipi_phy_pclka_mhz - (uint32_t)k_ra_mipi_phy_refcr_rfreq_bias),
+                 *ra_mipi_phy_reg32(k_ra_mipi_phy_off_refcr));
 
   /* DPHYPWRCR.PWRSEN should be set. */
-  TEST_ASSERT_EQ((int32_t)k_ra_mipi_phy_pwrcr_pwrsen,
-                 (int32_t)*ra_mipi_phy_reg32(k_ra_mipi_phy_off_pwrcr));
+  TEST_ASSERT_EQ(k_ra_mipi_phy_pwrcr_pwrsen, *ra_mipi_phy_reg32(k_ra_mipi_phy_off_pwrcr));
 
   /* DPHYPLOCR.PLLSTP cleared (PLL allowed to run). */
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)*ra_mipi_phy_reg32(k_ra_mipi_phy_off_plocr));
+  TEST_ASSERT_EQ(0, *ra_mipi_phy_reg32(k_ra_mipi_phy_off_plocr));
 
   /* DPHYESCCR holds the configured ESCDIV. */
-  TEST_ASSERT_EQ((int32_t)k_test_mipi_phy_escdiv,
-                 (int32_t)*ra_mipi_phy_reg32(k_ra_mipi_phy_off_esccr));
+  TEST_ASSERT_EQ(k_test_mipi_phy_escdiv, *ra_mipi_phy_reg32(k_ra_mipi_phy_off_esccr));
 
   /* DPHYOCR.DPHYEN should be set. */
-  TEST_ASSERT_EQ((int32_t)k_ra_mipi_phy_ocr_dphyen,
-                 (int32_t)*ra_mipi_phy_reg32(k_ra_mipi_phy_off_ocr));
+  TEST_ASSERT_EQ(k_ra_mipi_phy_ocr_dphyen, *ra_mipi_phy_reg32(k_ra_mipi_phy_off_ocr));
 
   /* DPHYTIM1.TINIT verbatim. */
-  TEST_ASSERT_EQ((int32_t)tim.tinit, (int32_t)*ra_mipi_phy_reg32(k_ra_mipi_phy_off_tim1));
+  TEST_ASSERT_EQ(tim.tinit, *ra_mipi_phy_reg32(k_ra_mipi_phy_off_tim1));
 
   /* DPHYTIM6.TLPX verbatim. */
-  TEST_ASSERT_EQ((int32_t)tim.tlpx, (int32_t)*ra_mipi_phy_reg32(k_ra_mipi_phy_off_tim6));
+  TEST_ASSERT_EQ(tim.tlpx, *ra_mipi_phy_reg32(k_ra_mipi_phy_off_tim6));
 
   TEST_END("mipi_phy init dsi master happy path");
 }
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 
 static void test_init_csi_slave_skips_pll(void)
 {
@@ -197,32 +204,43 @@ static void test_init_csi_slave_skips_pll(void)
   const ra_mipi_phy_timing_t tim = make_timing();
   const ra_mipi_phy_config_t cfg = make_csi_cfg(&tim);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mipi_phy_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mipi_phy_init(&cfg));
 
   /* MASTEREN should be cleared in slave mode. */
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)*ra_mipi_phy_reg32(k_ra_mipi_phy_off_mdc));
+  TEST_ASSERT_EQ(0, *ra_mipi_phy_reg32(k_ra_mipi_phy_off_mdc));
 
   /* PLL/escape divider should NOT have been touched (still zero). */
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)*ra_mipi_phy_reg32(k_ra_mipi_phy_off_plfcr));
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)*ra_mipi_phy_reg32(k_ra_mipi_phy_off_esccr));
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)*ra_mipi_phy_reg32(k_ra_mipi_phy_off_plocr));
+  TEST_ASSERT_EQ(0, *ra_mipi_phy_reg32(k_ra_mipi_phy_off_plfcr));
+  TEST_ASSERT_EQ(0, *ra_mipi_phy_reg32(k_ra_mipi_phy_off_esccr));
+  TEST_ASSERT_EQ(0, *ra_mipi_phy_reg32(k_ra_mipi_phy_off_plocr));
 
   /* Timing + DPHYEN should still be programmed. */
-  TEST_ASSERT_EQ((int32_t)k_ra_mipi_phy_ocr_dphyen,
-                 (int32_t)*ra_mipi_phy_reg32(k_ra_mipi_phy_off_ocr));
+  TEST_ASSERT_EQ(k_ra_mipi_phy_ocr_dphyen, *ra_mipi_phy_reg32(k_ra_mipi_phy_off_ocr));
 
   TEST_END("mipi_phy init csi slave skips pll");
 }
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 
 static void test_init_null_cfg_rejected(void)
 {
   TEST_BEGIN("mipi_phy init rejects null cfg");
   prep_fixture();
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_mipi_phy_init(nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_mipi_phy_init(nullptr));
 
   TEST_END("mipi_phy init rejects null cfg");
 }
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 
 static void test_init_null_timing_rejected(void)
 {
@@ -231,10 +249,16 @@ static void test_init_null_timing_rejected(void)
 
   ra_mipi_phy_config_t cfg = make_dsi_cfg(nullptr);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_mipi_phy_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_mipi_phy_init(&cfg));
 
   TEST_END("mipi_phy init rejects null timing");
 }
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 
 static void test_init_pclka_out_of_range(void)
 {
@@ -245,13 +269,19 @@ static void test_init_pclka_out_of_range(void)
   ra_mipi_phy_config_t       cfg = make_dsi_cfg(&tim);
 
   cfg.pclka_mhz = (uint8_t)k_test_mipi_phy_pclka_lo;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_mipi_phy_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_mipi_phy_init(&cfg));
 
   cfg.pclka_mhz = (uint8_t)k_test_mipi_phy_pclka_hi;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_mipi_phy_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_mipi_phy_init(&cfg));
 
   TEST_END("mipi_phy init rejects pclka out of range");
 }
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 
 static void test_init_escdiv_out_of_range(void)
 {
@@ -262,10 +292,16 @@ static void test_init_escdiv_out_of_range(void)
   ra_mipi_phy_config_t       cfg = make_dsi_cfg(&tim);
   cfg.escdiv                     = (uint8_t)k_test_mipi_phy_escdiv_bad;
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_mipi_phy_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_mipi_phy_init(&cfg));
 
   TEST_END("mipi_phy init rejects bad escdiv");
 }
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 
 static void test_init_nmul_out_of_range(void)
 {
@@ -276,13 +312,19 @@ static void test_init_nmul_out_of_range(void)
   ra_mipi_phy_config_t       cfg = make_dsi_cfg(&tim);
 
   cfg.pll.nmul_int = (uint16_t)k_test_mipi_phy_nmul_bad_lo;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_mipi_phy_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_mipi_phy_init(&cfg));
 
   cfg.pll.nmul_int = (uint16_t)k_test_mipi_phy_nmul_bad_hi;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_mipi_phy_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_mipi_phy_init(&cfg));
 
   TEST_END("mipi_phy init rejects bad nmul");
 }
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 
 static void test_init_lane_count_3_4_rejected(void)
 {
@@ -293,13 +335,19 @@ static void test_init_lane_count_3_4_rejected(void)
   ra_mipi_phy_config_t       cfg = make_dsi_cfg(&tim);
 
   cfg.lane_count = k_ra_mipi_phy_lane_count_3;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_supported, (int32_t)ra_mipi_phy_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_not_supported, ra_mipi_phy_init(&cfg));
 
   cfg.lane_count = k_ra_mipi_phy_lane_count_4;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_supported, (int32_t)ra_mipi_phy_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_not_supported, ra_mipi_phy_init(&cfg));
 
   TEST_END("mipi_phy init rejects 3 / 4 lanes");
 }
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 
 static void test_init_lane_count_1_accepted(void)
 {
@@ -310,11 +358,17 @@ static void test_init_lane_count_1_accepted(void)
   ra_mipi_phy_config_t       cfg = make_dsi_cfg(&tim);
   cfg.lane_count                 = k_ra_mipi_phy_lane_count_1;
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mipi_phy_init(&cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_mipi_phy_lane_count_1, (int32_t)ra_mipi_phy_get_lane_count());
+  TEST_ASSERT_EQ(k_ra_ok, ra_mipi_phy_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_mipi_phy_lane_count_1, ra_mipi_phy_get_lane_count());
 
   TEST_END("mipi_phy init accepts 1 lane");
 }
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 
 static void test_init_ldo_timeout(void)
 {
@@ -324,10 +378,16 @@ static void test_init_ldo_timeout(void)
   const ra_mipi_phy_timing_t tim = make_timing();
   const ra_mipi_phy_config_t cfg = make_dsi_cfg(&tim);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_hw_timeout, (int32_t)ra_mipi_phy_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_mipi_phy_init(&cfg));
 
   TEST_END("mipi_phy init reports LDO timeout");
 }
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 
 static void test_init_pll_timeout(void)
 {
@@ -339,10 +399,16 @@ static void test_init_pll_timeout(void)
   const ra_mipi_phy_timing_t tim = make_timing();
   const ra_mipi_phy_config_t cfg = make_dsi_cfg(&tim);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_hw_timeout, (int32_t)ra_mipi_phy_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_mipi_phy_init(&cfg));
 
   TEST_END("mipi_phy init reports PLL timeout");
 }
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 
 static void test_deinit_clears_enables(void)
 {
@@ -351,17 +417,22 @@ static void test_deinit_clears_enables(void)
 
   const ra_mipi_phy_timing_t tim = make_timing();
   const ra_mipi_phy_config_t cfg = make_dsi_cfg(&tim);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mipi_phy_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mipi_phy_init(&cfg));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mipi_phy_deinit());
+  TEST_ASSERT_EQ(k_ra_ok, ra_mipi_phy_deinit());
 
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)*ra_mipi_phy_reg32(k_ra_mipi_phy_off_ocr));
-  TEST_ASSERT_EQ((int32_t)k_ra_mipi_phy_plocr_pllstp,
-                 (int32_t)*ra_mipi_phy_reg32(k_ra_mipi_phy_off_plocr));
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)*ra_mipi_phy_reg32(k_ra_mipi_phy_off_pwrcr));
+  TEST_ASSERT_EQ(0, *ra_mipi_phy_reg32(k_ra_mipi_phy_off_ocr));
+  TEST_ASSERT_EQ(k_ra_mipi_phy_plocr_pllstp, *ra_mipi_phy_reg32(k_ra_mipi_phy_off_plocr));
+  TEST_ASSERT_EQ(0, *ra_mipi_phy_reg32(k_ra_mipi_phy_off_pwrcr));
 
   TEST_END("mipi_phy deinit clears enables");
 }
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 
 static void test_reset_clears_all_regs(void)
 {
@@ -370,22 +441,27 @@ static void test_reset_clears_all_regs(void)
 
   const ra_mipi_phy_timing_t tim = make_timing();
   const ra_mipi_phy_config_t cfg = make_dsi_cfg(&tim);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mipi_phy_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mipi_phy_init(&cfg));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mipi_phy_reset());
+  TEST_ASSERT_EQ(k_ra_ok, ra_mipi_phy_reset());
 
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)*ra_mipi_phy_reg32(k_ra_mipi_phy_off_ocr));
-  TEST_ASSERT_EQ((int32_t)k_ra_mipi_phy_plocr_pllstp,
-                 (int32_t)*ra_mipi_phy_reg32(k_ra_mipi_phy_off_plocr));
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)*ra_mipi_phy_reg32(k_ra_mipi_phy_off_pwrcr));
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)*ra_mipi_phy_reg32(k_ra_mipi_phy_off_plfcr));
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)*ra_mipi_phy_reg32(k_ra_mipi_phy_off_refcr));
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)*ra_mipi_phy_reg32(k_ra_mipi_phy_off_mdc));
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)*ra_mipi_phy_reg32(k_ra_mipi_phy_off_tim1));
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)*ra_mipi_phy_reg32(k_ra_mipi_phy_off_tim6));
+  TEST_ASSERT_EQ(0, *ra_mipi_phy_reg32(k_ra_mipi_phy_off_ocr));
+  TEST_ASSERT_EQ(k_ra_mipi_phy_plocr_pllstp, *ra_mipi_phy_reg32(k_ra_mipi_phy_off_plocr));
+  TEST_ASSERT_EQ(0, *ra_mipi_phy_reg32(k_ra_mipi_phy_off_pwrcr));
+  TEST_ASSERT_EQ(0, *ra_mipi_phy_reg32(k_ra_mipi_phy_off_plfcr));
+  TEST_ASSERT_EQ(0, *ra_mipi_phy_reg32(k_ra_mipi_phy_off_refcr));
+  TEST_ASSERT_EQ(0, *ra_mipi_phy_reg32(k_ra_mipi_phy_off_mdc));
+  TEST_ASSERT_EQ(0, *ra_mipi_phy_reg32(k_ra_mipi_phy_off_tim1));
+  TEST_ASSERT_EQ(0, *ra_mipi_phy_reg32(k_ra_mipi_phy_off_tim6));
 
   TEST_END("mipi_phy reset clears every register");
 }
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 
 static void test_recover_from_error(void)
 {
@@ -395,18 +471,23 @@ static void test_recover_from_error(void)
   const ra_mipi_phy_timing_t tim = make_timing();
   const ra_mipi_phy_config_t cfg = make_dsi_cfg(&tim);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mipi_phy_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mipi_phy_init(&cfg));
   /* Re-seed flags before recover() (reset() will wipe them). */
   *ra_mipi_phy_reg32(k_ra_mipi_phy_off_sfr) =
     (uint32_t)k_ra_mipi_phy_sfr_pwrsf | (uint32_t)k_ra_mipi_phy_sfr_pllsf;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mipi_phy_recover_from_error(&cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_mipi_phy_ocr_dphyen,
-                 (int32_t)*ra_mipi_phy_reg32(k_ra_mipi_phy_off_ocr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mipi_phy_recover_from_error(&cfg));
+  TEST_ASSERT_EQ(k_ra_mipi_phy_ocr_dphyen, *ra_mipi_phy_reg32(k_ra_mipi_phy_off_ocr));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_mipi_phy_recover_from_error(nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_mipi_phy_recover_from_error(nullptr));
 
   TEST_END("mipi_phy recover_from_error re-runs init");
 }
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 
 static void test_status_get_and_clear(void)
 {
@@ -414,20 +495,25 @@ static void test_status_get_and_clear(void)
   prep_fixture();
 
   uint32_t mask = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mipi_phy_get_status(&mask));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mipi_phy_get_status(&mask));
   TEST_ASSERT((mask & (uint32_t)k_ra_mipi_phy_sfr_pwrsf) != 0U);
   TEST_ASSERT((mask & (uint32_t)k_ra_mipi_phy_sfr_pllsf) != 0U);
 
   /* clear_status is a no-op (DPHYSFR is read-only on this part). */
   const uint32_t before = *ra_mipi_phy_reg32(k_ra_mipi_phy_off_sfr);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_mipi_phy_clear_status((uint32_t)k_ra_mipi_phy_sfr_pwrsf));
-  TEST_ASSERT_EQ((int32_t)before, (int32_t)*ra_mipi_phy_reg32(k_ra_mipi_phy_off_sfr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mipi_phy_clear_status((uint32_t)k_ra_mipi_phy_sfr_pwrsf));
+  TEST_ASSERT_EQ(before, *ra_mipi_phy_reg32(k_ra_mipi_phy_off_sfr));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_mipi_phy_get_status(nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_mipi_phy_get_status(nullptr));
 
   TEST_END("mipi_phy status get + clear");
 }
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 
 static void test_is_helpers(void)
 {
@@ -436,50 +522,61 @@ static void test_is_helpers(void)
 
   TEST_ASSERT(ra_mipi_phy_is_ldo_stable());
   TEST_ASSERT(ra_mipi_phy_is_pll_locked());
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mipi_phy_wait_ready());
+  TEST_ASSERT_EQ(k_ra_ok, ra_mipi_phy_wait_ready());
 
   /* Clear flags -> is_* should report false and wait_ready should time out. */
   *ra_mipi_phy_reg32(k_ra_mipi_phy_off_sfr) = 0U;
   TEST_ASSERT(!ra_mipi_phy_is_ldo_stable());
   TEST_ASSERT(!ra_mipi_phy_is_pll_locked());
-  TEST_ASSERT_EQ((int32_t)k_ra_err_hw_timeout, (int32_t)ra_mipi_phy_wait_ready());
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_mipi_phy_wait_ready());
 
   TEST_END("mipi_phy is_pll_locked / is_ldo_stable / wait_ready");
 }
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 
 static void test_attach_and_dispatch_status_chg(void)
 {
   TEST_BEGIN("mipi_phy attach + dispatch (status_chg)");
   prep_fixture();
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_mipi_phy_attach_handler(stub_phy_cb, (void*)(uintptr_t)0xCAFEU));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mipi_phy_attach_handler(stub_phy_cb, (void*)(uintptr_t)0xCAFEU));
 
   /* Run dispatch once to load s_last_sfr with the seeded value. */
   ra_mipi_phy_dispatch();
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)s_phy_cb_count);
+  TEST_ASSERT_EQ(1, s_phy_cb_count);
 
   /* Second dispatch with no edges => status_chg event. */
   ra_mipi_phy_dispatch();
-  TEST_ASSERT_EQ((int32_t)2, (int32_t)s_phy_cb_count);
-  TEST_ASSERT_EQ((int32_t)k_ra_mipi_phy_event_status_chg, (int32_t)s_phy_cb_last_event);
-  TEST_ASSERT_EQ((int32_t)((uint32_t)k_ra_mipi_phy_sfr_pwrsf | (uint32_t)k_ra_mipi_phy_sfr_pllsf),
-                 (int32_t)s_phy_cb_last_sfr);
+  TEST_ASSERT_EQ(2, s_phy_cb_count);
+  TEST_ASSERT_EQ(k_ra_mipi_phy_event_status_chg, s_phy_cb_last_event);
+  TEST_ASSERT_EQ(((uint32_t)k_ra_mipi_phy_sfr_pwrsf | (uint32_t)k_ra_mipi_phy_sfr_pllsf),
+                 s_phy_cb_last_sfr);
   TEST_ASSERT(s_phy_cb_last_ctx == (void*)(uintptr_t)0xCAFEU);
 
   /* Detach -- next dispatch must not increment the count. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mipi_phy_attach_handler(nullptr, nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mipi_phy_attach_handler(nullptr, nullptr));
   ra_mipi_phy_dispatch();
-  TEST_ASSERT_EQ((int32_t)2, (int32_t)s_phy_cb_count);
+  TEST_ASSERT_EQ(2, s_phy_cb_count);
 
   TEST_END("mipi_phy attach + dispatch (status_chg)");
 }
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 
 static void test_dispatch_decodes_edges(void)
 {
   TEST_BEGIN("mipi_phy dispatch decodes ldo / pll edges");
   prep_fixture();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mipi_phy_attach_handler(stub_phy_cb, nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mipi_phy_attach_handler(stub_phy_cb, nullptr));
 
   /* Start with everything cleared and dispatch -- s_last_sfr seeds. */
   *ra_mipi_phy_reg32(k_ra_mipi_phy_off_sfr) = 0U;
@@ -488,26 +585,32 @@ static void test_dispatch_decodes_edges(void)
   /* PWRSF rising. */
   *ra_mipi_phy_reg32(k_ra_mipi_phy_off_sfr) = (uint32_t)k_ra_mipi_phy_sfr_pwrsf;
   ra_mipi_phy_dispatch();
-  TEST_ASSERT_EQ((int32_t)k_ra_mipi_phy_event_ldo_ready, (int32_t)s_phy_cb_last_event);
+  TEST_ASSERT_EQ(k_ra_mipi_phy_event_ldo_ready, s_phy_cb_last_event);
 
   /* PLLSF rising. */
   *ra_mipi_phy_reg32(k_ra_mipi_phy_off_sfr) =
     (uint32_t)k_ra_mipi_phy_sfr_pwrsf | (uint32_t)k_ra_mipi_phy_sfr_pllsf;
   ra_mipi_phy_dispatch();
-  TEST_ASSERT_EQ((int32_t)k_ra_mipi_phy_event_pll_locked, (int32_t)s_phy_cb_last_event);
+  TEST_ASSERT_EQ(k_ra_mipi_phy_event_pll_locked, s_phy_cb_last_event);
 
   /* PLLSF falling. */
   *ra_mipi_phy_reg32(k_ra_mipi_phy_off_sfr) = (uint32_t)k_ra_mipi_phy_sfr_pwrsf;
   ra_mipi_phy_dispatch();
-  TEST_ASSERT_EQ((int32_t)k_ra_mipi_phy_event_pll_lost, (int32_t)s_phy_cb_last_event);
+  TEST_ASSERT_EQ(k_ra_mipi_phy_event_pll_lost, s_phy_cb_last_event);
 
   /* PWRSF falling. */
   *ra_mipi_phy_reg32(k_ra_mipi_phy_off_sfr) = 0U;
   ra_mipi_phy_dispatch();
-  TEST_ASSERT_EQ((int32_t)k_ra_mipi_phy_event_ldo_lost, (int32_t)s_phy_cb_last_event);
+  TEST_ASSERT_EQ(k_ra_mipi_phy_event_ldo_lost, s_phy_cb_last_event);
 
   TEST_END("mipi_phy dispatch decodes ldo / pll edges");
 }
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 
 static void test_power_transition(void)
 {
@@ -517,20 +620,25 @@ static void test_power_transition(void)
   const ra_mipi_phy_timing_t tim = make_timing();
   const ra_mipi_phy_config_t cfg = make_dsi_cfg(&tim);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mipi_phy_init(&cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mipi_phy_enter_stop());
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)*ra_mipi_phy_reg32(k_ra_mipi_phy_off_pwrcr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mipi_phy_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mipi_phy_enter_stop());
+  TEST_ASSERT_EQ(0, *ra_mipi_phy_reg32(k_ra_mipi_phy_off_pwrcr));
 
   /* Restore the status flags before exit_stop reruns init(). */
   *ra_mipi_phy_reg32(k_ra_mipi_phy_off_sfr) =
     (uint32_t)k_ra_mipi_phy_sfr_pwrsf | (uint32_t)k_ra_mipi_phy_sfr_pllsf;
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mipi_phy_exit_stop(&cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_mipi_phy_ocr_dphyen,
-                 (int32_t)*ra_mipi_phy_reg32(k_ra_mipi_phy_off_ocr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mipi_phy_exit_stop(&cfg));
+  TEST_ASSERT_EQ(k_ra_mipi_phy_ocr_dphyen, *ra_mipi_phy_reg32(k_ra_mipi_phy_off_ocr));
 
   TEST_END("mipi_phy power transition");
 }
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 
 static void test_set_lane_speed_happy(void)
 {
@@ -539,37 +647,49 @@ static void test_set_lane_speed_happy(void)
 
   const ra_mipi_phy_timing_t tim = make_timing();
   const ra_mipi_phy_config_t cfg = make_dsi_cfg(&tim);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mipi_phy_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mipi_phy_init(&cfg));
 
   ra_mipi_phy_pll_t pll = make_pll();
   pll.nmul_int          = 200U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mipi_phy_set_lane_speed(&pll));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mipi_phy_set_lane_speed(&pll));
 
   /* DPHYPLFCR should hold the new NMUL in [24:16]. */
   const uint32_t plfcr = *ra_mipi_phy_reg32(k_ra_mipi_phy_off_plfcr);
   const uint32_t nmul_rb =
     (plfcr >> (uint32_t)k_ra_mipi_phy_plfcr_shift_nmul) & (uint32_t)k_ra_mipi_phy_plfcr_mask_nmul;
-  TEST_ASSERT_EQ((int32_t)200, (int32_t)nmul_rb);
+  TEST_ASSERT_EQ(200, nmul_rb);
 
   /* PLLSTP must be cleared after relock. */
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)*ra_mipi_phy_reg32(k_ra_mipi_phy_off_plocr));
+  TEST_ASSERT_EQ(0, *ra_mipi_phy_reg32(k_ra_mipi_phy_off_plocr));
 
   TEST_END("mipi_phy set_lane_speed happy");
 }
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 
 static void test_set_lane_speed_rejects(void)
 {
   TEST_BEGIN("mipi_phy set_lane_speed rejects bad input");
   prep_fixture();
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_mipi_phy_set_lane_speed(nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_mipi_phy_set_lane_speed(nullptr));
 
   ra_mipi_phy_pll_t pll = make_pll();
   pll.nmul_int          = (uint16_t)k_test_mipi_phy_nmul_bad_hi;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_mipi_phy_set_lane_speed(&pll));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_mipi_phy_set_lane_speed(&pll));
 
   TEST_END("mipi_phy set_lane_speed rejects bad input");
 }
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 
 static void test_switch_mode(void)
 {
@@ -578,171 +698,203 @@ static void test_switch_mode(void)
 
   const ra_mipi_phy_timing_t tim = make_timing();
   const ra_mipi_phy_config_t cfg = make_dsi_cfg(&tim);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mipi_phy_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mipi_phy_init(&cfg));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mipi_phy_switch_mode(k_ra_mipi_phy_mode_csi_slave));
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)*ra_mipi_phy_reg32(k_ra_mipi_phy_off_mdc));
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)*ra_mipi_phy_reg32(k_ra_mipi_phy_off_ocr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mipi_phy_switch_mode(k_ra_mipi_phy_mode_csi_slave));
+  TEST_ASSERT_EQ(0, *ra_mipi_phy_reg32(k_ra_mipi_phy_off_mdc));
+  TEST_ASSERT_EQ(0, *ra_mipi_phy_reg32(k_ra_mipi_phy_off_ocr));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mipi_phy_switch_mode(k_ra_mipi_phy_mode_dsi_master));
-  TEST_ASSERT_EQ((int32_t)k_ra_mipi_phy_mdc_masteren,
-                 (int32_t)*ra_mipi_phy_reg32(k_ra_mipi_phy_off_mdc));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mipi_phy_switch_mode(k_ra_mipi_phy_mode_dsi_master));
+  TEST_ASSERT_EQ(k_ra_mipi_phy_mdc_masteren, *ra_mipi_phy_reg32(k_ra_mipi_phy_off_mdc));
 
   /* Bad arg. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_mipi_phy_switch_mode((ra_mipi_phy_mode_t)9U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_mipi_phy_switch_mode((ra_mipi_phy_mode_t)9U));
 
   TEST_END("mipi_phy switch_mode toggles MASTEREN + clears DPHYEN");
 }
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 
 static void test_lane_count_get_set(void)
 {
   TEST_BEGIN("mipi_phy lane count get/set");
   prep_fixture();
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mipi_phy_set_lane_count(k_ra_mipi_phy_lane_count_1));
-  TEST_ASSERT_EQ((int32_t)k_ra_mipi_phy_lane_count_1, (int32_t)ra_mipi_phy_get_lane_count());
+  TEST_ASSERT_EQ(k_ra_ok, ra_mipi_phy_set_lane_count(k_ra_mipi_phy_lane_count_1));
+  TEST_ASSERT_EQ(k_ra_mipi_phy_lane_count_1, ra_mipi_phy_get_lane_count());
   /* Lane 1 should now be auto-disabled. */
   TEST_ASSERT(!ra_mipi_phy_is_lane_enabled(k_ra_mipi_phy_lane_d1));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mipi_phy_set_lane_count(k_ra_mipi_phy_lane_count_2));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mipi_phy_set_lane_count(k_ra_mipi_phy_lane_count_2));
   TEST_ASSERT(ra_mipi_phy_is_lane_enabled(k_ra_mipi_phy_lane_d1));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_supported,
-                 (int32_t)ra_mipi_phy_set_lane_count(k_ra_mipi_phy_lane_count_3));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_supported,
-                 (int32_t)ra_mipi_phy_set_lane_count(k_ra_mipi_phy_lane_count_4));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_mipi_phy_set_lane_count((ra_mipi_phy_lane_count_t)0U));
+  TEST_ASSERT_EQ(k_ra_err_not_supported, ra_mipi_phy_set_lane_count(k_ra_mipi_phy_lane_count_3));
+  TEST_ASSERT_EQ(k_ra_err_not_supported, ra_mipi_phy_set_lane_count(k_ra_mipi_phy_lane_count_4));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_mipi_phy_set_lane_count((ra_mipi_phy_lane_count_t)0U));
 
   TEST_END("mipi_phy lane count get/set");
 }
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 
 static void test_lane_enable_disable(void)
 {
   TEST_BEGIN("mipi_phy per-lane enable / disable");
   prep_fixture();
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mipi_phy_set_lane_count(k_ra_mipi_phy_lane_count_2));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mipi_phy_set_lane_count(k_ra_mipi_phy_lane_count_2));
 
   TEST_ASSERT(ra_mipi_phy_is_lane_enabled(k_ra_mipi_phy_lane_clk));
   TEST_ASSERT(ra_mipi_phy_is_lane_enabled(k_ra_mipi_phy_lane_d0));
   TEST_ASSERT(ra_mipi_phy_is_lane_enabled(k_ra_mipi_phy_lane_d1));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_mipi_phy_set_lane_enable(k_ra_mipi_phy_lane_d1, false));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mipi_phy_set_lane_enable(k_ra_mipi_phy_lane_d1, false));
   TEST_ASSERT(!ra_mipi_phy_is_lane_enabled(k_ra_mipi_phy_lane_d1));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_mipi_phy_set_lane_enable(k_ra_mipi_phy_lane_d1, true));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mipi_phy_set_lane_enable(k_ra_mipi_phy_lane_d1, true));
   TEST_ASSERT(ra_mipi_phy_is_lane_enabled(k_ra_mipi_phy_lane_d1));
 
   /* Cannot enable lane 1 when count == 1. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mipi_phy_set_lane_count(k_ra_mipi_phy_lane_count_1));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_mipi_phy_set_lane_enable(k_ra_mipi_phy_lane_d1, true));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mipi_phy_set_lane_count(k_ra_mipi_phy_lane_count_1));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_mipi_phy_set_lane_enable(k_ra_mipi_phy_lane_d1, true));
 
   /* Lanes 2 / 3 do not exist. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_supported,
-                 (int32_t)ra_mipi_phy_set_lane_enable(k_ra_mipi_phy_lane_d2, true));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_supported,
-                 (int32_t)ra_mipi_phy_set_lane_enable(k_ra_mipi_phy_lane_d3, false));
+  TEST_ASSERT_EQ(k_ra_err_not_supported, ra_mipi_phy_set_lane_enable(k_ra_mipi_phy_lane_d2, true));
+  TEST_ASSERT_EQ(k_ra_err_not_supported, ra_mipi_phy_set_lane_enable(k_ra_mipi_phy_lane_d3, false));
 
   TEST_END("mipi_phy per-lane enable / disable");
 }
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 
 static void test_clock_mode(void)
 {
   TEST_BEGIN("mipi_phy clock_mode setter / getter");
   prep_fixture();
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_mipi_phy_set_clock_mode(k_ra_mipi_phy_clk_continuous));
-  TEST_ASSERT_EQ((int32_t)k_ra_mipi_phy_clk_continuous, (int32_t)ra_mipi_phy_get_clock_mode());
+  TEST_ASSERT_EQ(k_ra_ok, ra_mipi_phy_set_clock_mode(k_ra_mipi_phy_clk_continuous));
+  TEST_ASSERT_EQ(k_ra_mipi_phy_clk_continuous, ra_mipi_phy_get_clock_mode());
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_mipi_phy_set_clock_mode(k_ra_mipi_phy_clk_noncontinuous));
-  TEST_ASSERT_EQ((int32_t)k_ra_mipi_phy_clk_noncontinuous, (int32_t)ra_mipi_phy_get_clock_mode());
+  TEST_ASSERT_EQ(k_ra_ok, ra_mipi_phy_set_clock_mode(k_ra_mipi_phy_clk_noncontinuous));
+  TEST_ASSERT_EQ(k_ra_mipi_phy_clk_noncontinuous, ra_mipi_phy_get_clock_mode());
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_mipi_phy_set_clock_mode((ra_mipi_phy_clk_mode_t)9U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_mipi_phy_set_clock_mode((ra_mipi_phy_clk_mode_t)9U));
 
   TEST_END("mipi_phy clock_mode setter / getter");
 }
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 
 static void test_eotp(void)
 {
   TEST_BEGIN("mipi_phy eotp setter / getter");
   prep_fixture();
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mipi_phy_set_eotp(k_ra_mipi_phy_eotp_enabled));
-  TEST_ASSERT_EQ((int32_t)k_ra_mipi_phy_eotp_enabled, (int32_t)ra_mipi_phy_get_eotp());
+  TEST_ASSERT_EQ(k_ra_ok, ra_mipi_phy_set_eotp(k_ra_mipi_phy_eotp_enabled));
+  TEST_ASSERT_EQ(k_ra_mipi_phy_eotp_enabled, ra_mipi_phy_get_eotp());
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mipi_phy_set_eotp(k_ra_mipi_phy_eotp_disabled));
-  TEST_ASSERT_EQ((int32_t)k_ra_mipi_phy_eotp_disabled, (int32_t)ra_mipi_phy_get_eotp());
+  TEST_ASSERT_EQ(k_ra_ok, ra_mipi_phy_set_eotp(k_ra_mipi_phy_eotp_disabled));
+  TEST_ASSERT_EQ(k_ra_mipi_phy_eotp_disabled, ra_mipi_phy_get_eotp());
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_mipi_phy_set_eotp((ra_mipi_phy_eotp_t)9U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_mipi_phy_set_eotp((ra_mipi_phy_eotp_t)9U));
 
   TEST_END("mipi_phy eotp setter / getter");
 }
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 
 static void test_set_pclka_freq(void)
 {
   TEST_BEGIN("mipi_phy set_pclka_freq");
   prep_fixture();
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mipi_phy_set_pclka_freq(80U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mipi_phy_set_pclka_freq(80U));
   /* RFREQ encodes (MHz - 1); 80 MHz -> 0x4F. HUM Ch 64.2.1 p 3822. */
-  TEST_ASSERT_EQ((int32_t)(80U - (uint32_t)k_ra_mipi_phy_refcr_rfreq_bias),
-                 (int32_t)*ra_mipi_phy_reg32(k_ra_mipi_phy_off_refcr));
+  TEST_ASSERT_EQ((80U - (uint32_t)k_ra_mipi_phy_refcr_rfreq_bias),
+                 *ra_mipi_phy_reg32(k_ra_mipi_phy_off_refcr));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_mipi_phy_set_pclka_freq(39U));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_mipi_phy_set_pclka_freq(126U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_mipi_phy_set_pclka_freq(39U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_mipi_phy_set_pclka_freq(126U));
 
   TEST_END("mipi_phy set_pclka_freq");
 }
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 
 static void test_set_escape_divisor(void)
 {
   TEST_BEGIN("mipi_phy set_escape_divisor");
   prep_fixture();
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mipi_phy_set_escape_divisor(7U));
-  TEST_ASSERT_EQ((int32_t)7, (int32_t)*ra_mipi_phy_reg32(k_ra_mipi_phy_off_esccr));
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)*ra_mipi_phy_reg32(k_ra_mipi_phy_off_plocr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mipi_phy_set_escape_divisor(7U));
+  TEST_ASSERT_EQ(7, *ra_mipi_phy_reg32(k_ra_mipi_phy_off_esccr));
+  TEST_ASSERT_EQ(0, *ra_mipi_phy_reg32(k_ra_mipi_phy_off_plocr));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_mipi_phy_set_escape_divisor(32U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_mipi_phy_set_escape_divisor(32U));
 
   TEST_END("mipi_phy set_escape_divisor");
 }
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 
 static void test_pll_start_stop(void)
 {
   TEST_BEGIN("mipi_phy pll start / stop / ldo enable / disable");
   prep_fixture();
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mipi_phy_ldo_enable());
-  TEST_ASSERT_EQ((int32_t)k_ra_mipi_phy_pwrcr_pwrsen,
-                 (int32_t)*ra_mipi_phy_reg32(k_ra_mipi_phy_off_pwrcr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mipi_phy_ldo_enable());
+  TEST_ASSERT_EQ(k_ra_mipi_phy_pwrcr_pwrsen, *ra_mipi_phy_reg32(k_ra_mipi_phy_off_pwrcr));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mipi_phy_pll_start());
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)*ra_mipi_phy_reg32(k_ra_mipi_phy_off_plocr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mipi_phy_pll_start());
+  TEST_ASSERT_EQ(0, *ra_mipi_phy_reg32(k_ra_mipi_phy_off_plocr));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mipi_phy_pll_stop());
-  TEST_ASSERT_EQ((int32_t)k_ra_mipi_phy_plocr_pllstp,
-                 (int32_t)*ra_mipi_phy_reg32(k_ra_mipi_phy_off_plocr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mipi_phy_pll_stop());
+  TEST_ASSERT_EQ(k_ra_mipi_phy_plocr_pllstp, *ra_mipi_phy_reg32(k_ra_mipi_phy_off_plocr));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mipi_phy_ldo_disable());
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)*ra_mipi_phy_reg32(k_ra_mipi_phy_off_pwrcr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mipi_phy_ldo_disable());
+  TEST_ASSERT_EQ(0, *ra_mipi_phy_reg32(k_ra_mipi_phy_off_pwrcr));
 
   /* Timeout paths. */
   *ra_mipi_phy_reg32(k_ra_mipi_phy_off_sfr) = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_hw_timeout, (int32_t)ra_mipi_phy_ldo_enable());
-  TEST_ASSERT_EQ((int32_t)k_ra_err_hw_timeout, (int32_t)ra_mipi_phy_pll_start());
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_mipi_phy_ldo_enable());
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_mipi_phy_pll_start());
 
   TEST_END("mipi_phy pll start / stop / ldo enable / disable");
 }
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 
 static void test_select_timing_dsi_125_250(void)
 {
@@ -750,16 +902,21 @@ static void test_select_timing_dsi_125_250(void)
   prep_fixture();
 
   ra_mipi_phy_timing_t out;
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_mipi_phy_select_timing(k_ra_mipi_phy_mode_dsi_master, 125U, 250U, &out));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_mipi_phy_select_timing(k_ra_mipi_phy_mode_dsi_master, 125U, 250U, &out));
   /* HUM Table 64.2 PCLKA 125 MHz / 150-250 column row, p 3832. */
-  TEST_ASSERT_EQ((int32_t)0x000124F9U, (int32_t)out.tinit);
-  TEST_ASSERT_EQ((int32_t)0x21U, (int32_t)out.tclkzero);
-  TEST_ASSERT_EQ((int32_t)0x08U, (int32_t)out.tlpx);
+  TEST_ASSERT_EQ(0x000124F9U, out.tinit);
+  TEST_ASSERT_EQ(0x21U, out.tclkzero);
+  TEST_ASSERT_EQ(0x08U, out.tlpx);
 
   TEST_END("mipi_phy select_timing DSI 125 MHz 250 Mbps");
 }
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 
 static void test_select_timing_csi_100_300(void)
 {
@@ -767,15 +924,20 @@ static void test_select_timing_csi_100_300(void)
   prep_fixture();
 
   ra_mipi_phy_timing_t out;
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_mipi_phy_select_timing(k_ra_mipi_phy_mode_csi_slave, 100U, 300U, &out));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_mipi_phy_select_timing(k_ra_mipi_phy_mode_csi_slave, 100U, 300U, &out));
   /* HUM Table 64.3 PCLKA 100 MHz / 200-300 column row, p 3835. */
-  TEST_ASSERT_EQ((int32_t)0x0000EA61U, (int32_t)out.tinit);
-  TEST_ASSERT_EQ((int32_t)0x0DU, (int32_t)out.tclkprep);
+  TEST_ASSERT_EQ(0x0000EA61U, out.tinit);
+  TEST_ASSERT_EQ(0x0DU, out.tclkprep);
 
   TEST_END("mipi_phy select_timing CSI 100 MHz 300 Mbps");
 }
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 
 static void test_select_timing_rejects(void)
 {
@@ -783,22 +945,25 @@ static void test_select_timing_rejects(void)
   prep_fixture();
 
   /* Out-of-range rate. */
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_arg,
-    (int32_t)ra_mipi_phy_select_timing(k_ra_mipi_phy_mode_dsi_master, 125U, 79U, nullptr));
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_arg,
-    (int32_t)ra_mipi_phy_select_timing(k_ra_mipi_phy_mode_dsi_master, 125U, 721U, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_mipi_phy_select_timing(k_ra_mipi_phy_mode_dsi_master, 125U, 79U, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_mipi_phy_select_timing(k_ra_mipi_phy_mode_dsi_master, 125U, 721U, nullptr));
   /* Bad mode. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_mipi_phy_select_timing((ra_mipi_phy_mode_t)9U, 125U, 250U, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_mipi_phy_select_timing((ra_mipi_phy_mode_t)9U, 125U, 250U, nullptr));
   /* PCLKA not in the table. */
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_not_supported,
-    (int32_t)ra_mipi_phy_select_timing(k_ra_mipi_phy_mode_dsi_master, 99U, 250U, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_not_supported,
+                 ra_mipi_phy_select_timing(k_ra_mipi_phy_mode_dsi_master, 99U, 250U, nullptr));
 
   TEST_END("mipi_phy select_timing rejects bad input");
 }
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 
 static void test_validate_pll_band(void)
 {
@@ -813,24 +978,30 @@ static void test_validate_pll_band(void)
     .nfmul    = k_ra_mipi_phy_nfmul_0_50,
     .nmul_int = 100U,
   };
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mipi_phy_validate_pll_band(&pll, 24U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mipi_phy_validate_pll_band(&pll, 24U));
 
   /* Force out-of-band: PMUL=1/8 with high N -> exceeds 375 MHz ceiling. */
   pll.pmul     = k_ra_mipi_phy_pmul_8;
   pll.nmul_int = 300U;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_mipi_phy_validate_pll_band(&pll, 24U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_mipi_phy_validate_pll_band(&pll, 24U));
 
   /* Bad MOSC. */
   pll.pmul     = k_ra_mipi_phy_pmul_1;
   pll.nmul_int = 100U;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_mipi_phy_validate_pll_band(&pll, 7U));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_mipi_phy_validate_pll_band(&pll, 49U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_mipi_phy_validate_pll_band(&pll, 7U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_mipi_phy_validate_pll_band(&pll, 49U));
 
   /* NULL pll. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_mipi_phy_validate_pll_band(nullptr, 24U));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_mipi_phy_validate_pll_band(nullptr, 24U));
 
   TEST_END("mipi_phy validate_pll_band");
 }
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
 
 static void test_init_writes_all_timings(void)
 {
@@ -839,23 +1010,22 @@ static void test_init_writes_all_timings(void)
 
   const ra_mipi_phy_timing_t tim = make_timing();
   const ra_mipi_phy_config_t cfg = make_dsi_cfg(&tim);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mipi_phy_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mipi_phy_init(&cfg));
 
   /* TIM2: TCLKPREP in byte 0. */
-  TEST_ASSERT_EQ((int32_t)tim.tclkprep,
-                 (int32_t)(*ra_mipi_phy_reg32(k_ra_mipi_phy_off_tim2) & 0xFFU));
+  TEST_ASSERT_EQ(tim.tclkprep, (*ra_mipi_phy_reg32(k_ra_mipi_phy_off_tim2) & 0xFFU));
   /* TIM3: THSPREP in byte 0, THSSETT in byte 1. */
   const uint32_t tim3 = *ra_mipi_phy_reg32(k_ra_mipi_phy_off_tim3);
-  TEST_ASSERT_EQ((int32_t)tim.thsprep, (int32_t)(tim3 & 0xFFU));
-  TEST_ASSERT_EQ((int32_t)tim.thssett, (int32_t)((tim3 >> 8U) & 0xFFU));
+  TEST_ASSERT_EQ(tim.thsprep, (tim3 & 0xFFU));
+  TEST_ASSERT_EQ(tim.thssett, ((tim3 >> 8U) & 0xFFU));
   /* TIM4: TCLKZERO in byte 0, TCLKTRL in byte 3. */
   const uint32_t tim4 = *ra_mipi_phy_reg32(k_ra_mipi_phy_off_tim4);
-  TEST_ASSERT_EQ((int32_t)tim.tclkzero, (int32_t)(tim4 & 0xFFU));
-  TEST_ASSERT_EQ((int32_t)tim.tclktrl, (int32_t)((tim4 >> 24U) & 0xFFU));
+  TEST_ASSERT_EQ(tim.tclkzero, (tim4 & 0xFFU));
+  TEST_ASSERT_EQ(tim.tclktrl, ((tim4 >> 24U) & 0xFFU));
   /* TIM5: THSZERO in byte 0, THSEXIT in byte 2. */
   const uint32_t tim5 = *ra_mipi_phy_reg32(k_ra_mipi_phy_off_tim5);
-  TEST_ASSERT_EQ((int32_t)tim.thszero, (int32_t)(tim5 & 0xFFU));
-  TEST_ASSERT_EQ((int32_t)tim.thsexit, (int32_t)((tim5 >> 16U) & 0xFFU));
+  TEST_ASSERT_EQ(tim.thszero, (tim5 & 0xFFU));
+  TEST_ASSERT_EQ(tim.thsexit, ((tim5 >> 16U) & 0xFFU));
 
   TEST_END("mipi_phy init writes every DPHYTIMx register");
 }
@@ -900,14 +1070,13 @@ static void test_mcdc_validate_pll_nmul(void)
   prep_fixture();
   ra_mipi_phy_pll_t pll = make_pll();
   pll.nmul_int          = (uint16_t)k_test_mipi_phy_nmul_int;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_mipi_phy_validate_pll_band(&pll, (uint8_t)k_mcdc_phy_mosc_in));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mipi_phy_validate_pll_band(&pll, (uint8_t)k_mcdc_phy_mosc_in));
   pll.nmul_int = (uint16_t)k_mcdc_phy_nmul_below;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_mipi_phy_validate_pll_band(&pll, (uint8_t)k_mcdc_phy_mosc_in));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_mipi_phy_validate_pll_band(&pll, (uint8_t)k_mcdc_phy_mosc_in));
   pll.nmul_int = (uint16_t)k_mcdc_phy_nmul_above;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_mipi_phy_validate_pll_band(&pll, (uint8_t)k_mcdc_phy_mosc_in));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_mipi_phy_validate_pll_band(&pll, (uint8_t)k_mcdc_phy_mosc_in));
   TEST_END("mipi_phy MC/DC validate_pll: nmul<min || nmul>max");
 }
 
@@ -924,13 +1093,13 @@ static void test_mcdc_validate_init_cfg_null(void)
   prep_fixture();
   const ra_mipi_phy_timing_t tim = make_timing();
   const ra_mipi_phy_config_t ok  = make_dsi_cfg(&tim);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mipi_phy_init(&ok));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mipi_phy_init(&ok));
   prep_fixture();
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_mipi_phy_init(nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_mipi_phy_init(nullptr));
   prep_fixture();
   ra_mipi_phy_config_t bad = make_dsi_cfg(&tim);
   bad.p_timing             = nullptr;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_mipi_phy_init(&bad));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_mipi_phy_init(&bad));
   TEST_END("mipi_phy MC/DC init: cfg==NULL || p_timing==NULL");
 }
 
@@ -948,15 +1117,15 @@ static void test_mcdc_validate_init_cfg_pclka(void)
   const ra_mipi_phy_timing_t tim = make_timing();
   ra_mipi_phy_config_t       cfg = make_dsi_cfg(&tim);
   cfg.pclka_mhz                  = (uint8_t)k_mcdc_phy_pclka_in;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mipi_phy_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mipi_phy_init(&cfg));
   prep_fixture();
   cfg           = make_dsi_cfg(&tim);
   cfg.pclka_mhz = (uint8_t)k_mcdc_phy_pclka_below;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_mipi_phy_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_mipi_phy_init(&cfg));
   prep_fixture();
   cfg           = make_dsi_cfg(&tim);
   cfg.pclka_mhz = (uint8_t)k_mcdc_phy_pclka_above;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_mipi_phy_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_mipi_phy_init(&cfg));
   TEST_END("mipi_phy MC/DC init: pclka<min || pclka>max");
 }
 
@@ -976,23 +1145,23 @@ static void test_mcdc_validate_init_cfg_lane_count(void)
   prep_fixture();
   ra_mipi_phy_config_t cfg = make_dsi_cfg(&tim);
   cfg.lane_count           = k_ra_mipi_phy_lane_count_2;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mipi_phy_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mipi_phy_init(&cfg));
   prep_fixture();
   cfg            = make_dsi_cfg(&tim);
   cfg.lane_count = k_ra_mipi_phy_lane_count_1;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mipi_phy_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mipi_phy_init(&cfg));
   prep_fixture();
   cfg            = make_dsi_cfg(&tim);
   cfg.lane_count = k_ra_mipi_phy_lane_count_3;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_supported, (int32_t)ra_mipi_phy_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_not_supported, ra_mipi_phy_init(&cfg));
   prep_fixture();
   cfg            = make_dsi_cfg(&tim);
   cfg.lane_count = (ra_mipi_phy_lane_count_t)k_mcdc_phy_lane_bad_5;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_mipi_phy_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_mipi_phy_init(&cfg));
   prep_fixture();
   cfg            = make_dsi_cfg(&tim);
   cfg.lane_count = k_ra_mipi_phy_lane_count_4;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_supported, (int32_t)ra_mipi_phy_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_not_supported, ra_mipi_phy_init(&cfg));
   TEST_END("mipi_phy MC/DC init: lane_count gating + 3/4 disambiguation");
 }
 
@@ -1010,35 +1179,34 @@ static void test_mcdc_dispatch_pwr_pll_edges(void)
   prep_fixture();
   const ra_mipi_phy_timing_t tim = make_timing();
   const ra_mipi_phy_config_t cfg = make_dsi_cfg(&tim);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mipi_phy_init(&cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_mipi_phy_attach_handler(stub_phy_cb, (void*)(uintptr_t)0xC0FFEEU));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mipi_phy_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mipi_phy_attach_handler(stub_phy_cb, (void*)(uintptr_t)0xC0FFEEU));
   volatile uint32_t* sfr = ra_mipi_phy_reg32(k_ra_mipi_phy_off_sfr);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mipi_phy_reset());
+  TEST_ASSERT_EQ(k_ra_ok, ra_mipi_phy_reset());
   *sfr           = (uint32_t)k_ra_mipi_phy_sfr_pwrsf;
   s_phy_cb_count = 0U;
   ra_mipi_phy_dispatch();
-  TEST_ASSERT_EQ((int32_t)k_ra_mipi_phy_event_ldo_ready, (int32_t)s_phy_cb_last_event);
+  TEST_ASSERT_EQ(k_ra_mipi_phy_event_ldo_ready, s_phy_cb_last_event);
   *sfr           = 0U;
   s_phy_cb_count = 0U;
   ra_mipi_phy_dispatch();
-  TEST_ASSERT_EQ((int32_t)k_ra_mipi_phy_event_ldo_lost, (int32_t)s_phy_cb_last_event);
+  TEST_ASSERT_EQ(k_ra_mipi_phy_event_ldo_lost, s_phy_cb_last_event);
   *sfr           = (uint32_t)k_ra_mipi_phy_sfr_pwrsf | (uint32_t)k_ra_mipi_phy_sfr_pllsf;
   s_phy_cb_count = 0U;
   ra_mipi_phy_dispatch();
-  TEST_ASSERT_EQ((int32_t)k_ra_mipi_phy_event_ldo_ready, (int32_t)s_phy_cb_last_event);
+  TEST_ASSERT_EQ(k_ra_mipi_phy_event_ldo_ready, s_phy_cb_last_event);
   *sfr           = (uint32_t)k_ra_mipi_phy_sfr_pwrsf | (uint32_t)k_ra_mipi_phy_sfr_pllsf;
   s_phy_cb_count = 0U;
   ra_mipi_phy_dispatch();
-  TEST_ASSERT_EQ((int32_t)k_ra_mipi_phy_event_status_chg, (int32_t)s_phy_cb_last_event);
+  TEST_ASSERT_EQ(k_ra_mipi_phy_event_status_chg, s_phy_cb_last_event);
   *sfr           = (uint32_t)k_ra_mipi_phy_sfr_pwrsf;
   s_phy_cb_count = 0U;
   ra_mipi_phy_dispatch();
-  TEST_ASSERT_EQ((int32_t)k_ra_mipi_phy_event_pll_lost, (int32_t)s_phy_cb_last_event);
+  TEST_ASSERT_EQ(k_ra_mipi_phy_event_pll_lost, s_phy_cb_last_event);
   *sfr           = (uint32_t)k_ra_mipi_phy_sfr_pwrsf | (uint32_t)k_ra_mipi_phy_sfr_pllsf;
   s_phy_cb_count = 0U;
   ra_mipi_phy_dispatch();
-  TEST_ASSERT_EQ((int32_t)k_ra_mipi_phy_event_pll_locked, (int32_t)s_phy_cb_last_event);
+  TEST_ASSERT_EQ(k_ra_mipi_phy_event_pll_locked, s_phy_cb_last_event);
   TEST_END("mipi_phy MC/DC dispatch: pwr/pll edge decisions");
 }
 
@@ -1053,10 +1221,10 @@ static void test_mcdc_switch_mode(void)
 {
   TEST_BEGIN("mipi_phy MC/DC switch_mode: mode != dsi && mode != csi");
   prep_fixture();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mipi_phy_switch_mode(k_ra_mipi_phy_mode_dsi_master));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mipi_phy_switch_mode(k_ra_mipi_phy_mode_csi_slave));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_mipi_phy_switch_mode((ra_mipi_phy_mode_t)k_mcdc_phy_mode_bad));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mipi_phy_switch_mode(k_ra_mipi_phy_mode_dsi_master));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mipi_phy_switch_mode(k_ra_mipi_phy_mode_csi_slave));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_mipi_phy_switch_mode((ra_mipi_phy_mode_t)k_mcdc_phy_mode_bad));
   TEST_END("mipi_phy MC/DC switch_mode: mode != dsi && mode != csi");
 }
 
@@ -1073,15 +1241,12 @@ static void test_mcdc_set_lane_count(void)
 {
   TEST_BEGIN("mipi_phy MC/DC set_lane_count: 3/4 reject + 1/2 accept");
   prep_fixture();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mipi_phy_set_lane_count(k_ra_mipi_phy_lane_count_1));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mipi_phy_set_lane_count(k_ra_mipi_phy_lane_count_2));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_supported,
-                 (int32_t)ra_mipi_phy_set_lane_count(k_ra_mipi_phy_lane_count_3));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_supported,
-                 (int32_t)ra_mipi_phy_set_lane_count(k_ra_mipi_phy_lane_count_4));
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_arg,
-    (int32_t)ra_mipi_phy_set_lane_count((ra_mipi_phy_lane_count_t)k_mcdc_phy_lane_bad_5));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mipi_phy_set_lane_count(k_ra_mipi_phy_lane_count_1));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mipi_phy_set_lane_count(k_ra_mipi_phy_lane_count_2));
+  TEST_ASSERT_EQ(k_ra_err_not_supported, ra_mipi_phy_set_lane_count(k_ra_mipi_phy_lane_count_3));
+  TEST_ASSERT_EQ(k_ra_err_not_supported, ra_mipi_phy_set_lane_count(k_ra_mipi_phy_lane_count_4));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_mipi_phy_set_lane_count((ra_mipi_phy_lane_count_t)k_mcdc_phy_lane_bad_5));
   TEST_END("mipi_phy MC/DC set_lane_count: 3/4 reject + 1/2 accept");
 }
 
@@ -1099,20 +1264,14 @@ static void test_mcdc_set_lane_enable(void)
 {
   TEST_BEGIN("mipi_phy MC/DC set_lane_enable: D2/D3 reject + D1 lane_count=1");
   prep_fixture();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mipi_phy_set_lane_count(k_ra_mipi_phy_lane_count_2));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_mipi_phy_set_lane_enable(k_ra_mipi_phy_lane_clk, true));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_supported,
-                 (int32_t)ra_mipi_phy_set_lane_enable(k_ra_mipi_phy_lane_d2, true));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_supported,
-                 (int32_t)ra_mipi_phy_set_lane_enable(k_ra_mipi_phy_lane_d3, true));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_mipi_phy_set_lane_enable(k_ra_mipi_phy_lane_d1, true));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mipi_phy_set_lane_count(k_ra_mipi_phy_lane_count_1));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_mipi_phy_set_lane_enable(k_ra_mipi_phy_lane_d1, false));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_mipi_phy_set_lane_enable(k_ra_mipi_phy_lane_d1, true));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mipi_phy_set_lane_count(k_ra_mipi_phy_lane_count_2));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mipi_phy_set_lane_enable(k_ra_mipi_phy_lane_clk, true));
+  TEST_ASSERT_EQ(k_ra_err_not_supported, ra_mipi_phy_set_lane_enable(k_ra_mipi_phy_lane_d2, true));
+  TEST_ASSERT_EQ(k_ra_err_not_supported, ra_mipi_phy_set_lane_enable(k_ra_mipi_phy_lane_d3, true));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mipi_phy_set_lane_enable(k_ra_mipi_phy_lane_d1, true));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mipi_phy_set_lane_count(k_ra_mipi_phy_lane_count_1));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mipi_phy_set_lane_enable(k_ra_mipi_phy_lane_d1, false));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_mipi_phy_set_lane_enable(k_ra_mipi_phy_lane_d1, true));
   TEST_END("mipi_phy MC/DC set_lane_enable: D2/D3 reject + D1 lane_count=1");
 }
 
@@ -1129,16 +1288,14 @@ static void test_mcdc_set_clock_mode_eotp(void)
 {
   TEST_BEGIN("mipi_phy MC/DC set_clock_mode + set_eotp guards");
   prep_fixture();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_mipi_phy_set_clock_mode(k_ra_mipi_phy_clk_continuous));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_mipi_phy_set_clock_mode(k_ra_mipi_phy_clk_noncontinuous));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_mipi_phy_set_clock_mode((ra_mipi_phy_clk_mode_t)k_mcdc_phy_clk_bad));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mipi_phy_set_eotp(k_ra_mipi_phy_eotp_enabled));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mipi_phy_set_eotp(k_ra_mipi_phy_eotp_disabled));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_mipi_phy_set_eotp((ra_mipi_phy_eotp_t)k_mcdc_phy_eotp_bad));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mipi_phy_set_clock_mode(k_ra_mipi_phy_clk_continuous));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mipi_phy_set_clock_mode(k_ra_mipi_phy_clk_noncontinuous));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_mipi_phy_set_clock_mode((ra_mipi_phy_clk_mode_t)k_mcdc_phy_clk_bad));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mipi_phy_set_eotp(k_ra_mipi_phy_eotp_enabled));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mipi_phy_set_eotp(k_ra_mipi_phy_eotp_disabled));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_mipi_phy_set_eotp((ra_mipi_phy_eotp_t)k_mcdc_phy_eotp_bad));
   TEST_END("mipi_phy MC/DC set_clock_mode + set_eotp guards");
 }
 
@@ -1152,12 +1309,9 @@ static void test_mcdc_set_pclka_freq(void)
 {
   TEST_BEGIN("mipi_phy MC/DC set_pclka_freq: mhz<min || mhz>max");
   prep_fixture();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_mipi_phy_set_pclka_freq((uint8_t)k_mcdc_phy_pclka_in));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_mipi_phy_set_pclka_freq((uint8_t)k_mcdc_phy_pclka_below));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_mipi_phy_set_pclka_freq((uint8_t)k_mcdc_phy_pclka_above));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mipi_phy_set_pclka_freq((uint8_t)k_mcdc_phy_pclka_in));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_mipi_phy_set_pclka_freq((uint8_t)k_mcdc_phy_pclka_below));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_mipi_phy_set_pclka_freq((uint8_t)k_mcdc_phy_pclka_above));
   TEST_END("mipi_phy MC/DC set_pclka_freq: mhz<min || mhz>max");
 }
 
@@ -1180,21 +1334,21 @@ static void test_mcdc_select_timing(void)
                                                        (uint16_t)k_mcdc_phy_rate_in,
                                                        &out);
   TEST_ASSERT(e1 == k_ra_ok || e1 == k_ra_err_not_supported);
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_mipi_phy_select_timing(k_ra_mipi_phy_mode_dsi_master,
-                                                    (uint8_t)k_test_mipi_phy_pclka_mhz,
-                                                    (uint16_t)k_mcdc_phy_rate_below,
-                                                    &out));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_mipi_phy_select_timing(k_ra_mipi_phy_mode_dsi_master,
-                                                    (uint8_t)k_test_mipi_phy_pclka_mhz,
-                                                    (uint16_t)k_mcdc_phy_rate_above,
-                                                    &out));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_mipi_phy_select_timing((ra_mipi_phy_mode_t)k_mcdc_phy_mode_bad,
-                                                    (uint8_t)k_test_mipi_phy_pclka_mhz,
-                                                    (uint16_t)k_mcdc_phy_rate_in,
-                                                    &out));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_mipi_phy_select_timing(k_ra_mipi_phy_mode_dsi_master,
+                                           (uint8_t)k_test_mipi_phy_pclka_mhz,
+                                           (uint16_t)k_mcdc_phy_rate_below,
+                                           &out));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_mipi_phy_select_timing(k_ra_mipi_phy_mode_dsi_master,
+                                           (uint8_t)k_test_mipi_phy_pclka_mhz,
+                                           (uint16_t)k_mcdc_phy_rate_above,
+                                           &out));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_mipi_phy_select_timing((ra_mipi_phy_mode_t)k_mcdc_phy_mode_bad,
+                                           (uint8_t)k_test_mipi_phy_pclka_mhz,
+                                           (uint16_t)k_mcdc_phy_rate_in,
+                                           &out));
   ra_err_t e5 = ra_mipi_phy_select_timing(k_ra_mipi_phy_mode_csi_slave,
                                           (uint8_t)k_test_mipi_phy_pclka_mhz,
                                           (uint16_t)k_mcdc_phy_rate_in,
@@ -1222,20 +1376,19 @@ static void test_mcdc_validate_pll_band_mosc_and_freq(void)
   pll.pmul              = k_ra_mipi_phy_pmul_1;
   pll.nfmul             = k_ra_mipi_phy_nfmul_0_00;
   pll.nmul_int          = 100U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_mipi_phy_validate_pll_band(&pll, (uint8_t)k_mcdc_phy_mosc_in));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_mipi_phy_validate_pll_band(&pll, (uint8_t)k_mcdc_phy_mosc_lo));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_mipi_phy_validate_pll_band(&pll, (uint8_t)k_mcdc_phy_mosc_hi));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mipi_phy_validate_pll_band(&pll, (uint8_t)k_mcdc_phy_mosc_in));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_mipi_phy_validate_pll_band(&pll, (uint8_t)k_mcdc_phy_mosc_lo));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_mipi_phy_validate_pll_band(&pll, (uint8_t)k_mcdc_phy_mosc_hi));
   pll.nmul_int = 40U;
   pll.idiv     = k_ra_mipi_phy_idiv_4;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_mipi_phy_validate_pll_band(&pll, (uint8_t)k_mcdc_phy_mosc_in));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_mipi_phy_validate_pll_band(&pll, (uint8_t)k_mcdc_phy_mosc_in));
   pll.nmul_int = 375U;
   pll.idiv     = k_ra_mipi_phy_idiv_1;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_mipi_phy_validate_pll_band(&pll, (uint8_t)k_mcdc_phy_mosc_in));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_mipi_phy_validate_pll_band(&pll, (uint8_t)k_mcdc_phy_mosc_in));
   TEST_END("mipi_phy MC/DC validate_pll_band: mosc range + freq band");
 }
 

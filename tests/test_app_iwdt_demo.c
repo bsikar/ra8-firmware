@@ -58,11 +58,11 @@ static void test_iwdt_arm_ok(void)
 {
   reset_world();
   TEST_BEGIN("iwdt_demo: init + counter + refresh + clear");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_iwdt_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_iwdt_init());
   uint16_t counter = 0U;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_iwdt_get_counter(&counter));
+  TEST_ASSERT_EQ(k_ra_ok, ra_iwdt_get_counter(&counter));
   ra_iwdt_refresh_deferred();
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_iwdt_clear_status());
+  TEST_ASSERT_EQ(k_ra_ok, ra_iwdt_clear_status());
   TEST_END("iwdt_demo: init + counter + refresh + clear");
 }
 

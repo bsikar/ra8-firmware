@@ -49,7 +49,7 @@ static ra_err_t mock_read_block(void* ctx, uint32_t lba, uint32_t count, uint8_t
 {
   (void)ctx;
   (void)lba;
-  if (buf == NULL) {
+  if (buf == nullptr) {
     return k_ra_err_null_ptr;
   }
   (void)memset(buf, 0, (size_t)count * (size_t)k_test_fxlx_block_size);
@@ -68,7 +68,7 @@ static ra_err_t mock_write_block(void* ctx, uint32_t lba, uint32_t count, const 
 static ra_err_t mock_get_capacity(void* ctx, uint32_t* block_count, uint32_t* block_size)
 {
   (void)ctx;
-  if ((block_count == NULL) || (block_size == NULL)) {
+  if ((block_count == nullptr) || (block_size == nullptr)) {
     return k_ra_err_null_ptr;
   }
   *block_count = (uint32_t)k_test_fxlx_block_count;
@@ -82,7 +82,7 @@ static ra_fs_backend_t make_mock_backend(void)
   b.read_block      = mock_read_block;
   b.write_block     = mock_write_block;
   b.get_capacity    = mock_get_capacity;
-  b.ctx             = NULL;
+  b.ctx             = nullptr;
   return b;
 }
 
@@ -109,12 +109,12 @@ static void test_fxlx_pre_kernel_bringup(void)
 {
   reset_world();
   TEST_BEGIN("fxlx_demo: pre-kernel CGC + clock readback");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_cgc_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_cgc_init());
   uint32_t cpuclk0_hz = 0U;
   uint32_t pclka_hz   = 0U;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_cgc_get_clock_hz(k_ra_clock_id_pclka, &pclka_hz));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_time_init(cpuclk0_hz));
+  TEST_ASSERT_EQ(k_ra_ok, ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz));
+  TEST_ASSERT_EQ(k_ra_ok, ra_cgc_get_clock_hz(k_ra_clock_id_pclka, &pclka_hz));
+  TEST_ASSERT_EQ(k_ra_ok, ra_time_init(cpuclk0_hz));
   TEST_END("fxlx_demo: pre-kernel CGC + clock readback");
 }
 
@@ -130,8 +130,8 @@ static void test_fxlx_mount_rejects_null_backend(void)
 {
   reset_world();
   TEST_BEGIN("fxlx_demo: mount(NULL backend) rejected");
-  ra_fs_mount_t* handle = NULL;
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_fs_mount(NULL, &handle));
+  ra_fs_mount_t* handle = nullptr;
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_fs_mount(nullptr, &handle));
   TEST_END("fxlx_demo: mount(NULL backend) rejected");
 }
 
@@ -147,7 +147,7 @@ static void test_fxlx_mount_rejects_null_handle(void)
   reset_world();
   TEST_BEGIN("fxlx_demo: mount(NULL out_handle) rejected");
   const ra_fs_backend_t backend = make_mock_backend();
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_fs_mount(&backend, NULL));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_fs_mount(&backend, nullptr));
   TEST_END("fxlx_demo: mount(NULL out_handle) rejected");
 }
 
@@ -168,7 +168,7 @@ static void test_fxlx_mount_rejects_unformatted(void)
   reset_world();
   TEST_BEGIN("fxlx_demo: mount of unformatted device fails");
   const ra_fs_backend_t backend = make_mock_backend();
-  ra_fs_mount_t*        handle  = NULL;
+  ra_fs_mount_t*        handle  = nullptr;
   TEST_ASSERT(ra_fs_mount(&backend, &handle) != k_ra_ok);
   TEST_END("fxlx_demo: mount of unformatted device fails");
 }
@@ -190,8 +190,8 @@ static void test_fxlx_mount_rejects_partial_backend(void)
   reset_world();
   TEST_BEGIN("fxlx_demo: mount rejects backend with NULL get_capacity");
   ra_fs_backend_t backend = make_mock_backend();
-  backend.get_capacity    = NULL;
-  ra_fs_mount_t* handle   = NULL;
+  backend.get_capacity    = nullptr;
+  ra_fs_mount_t* handle   = nullptr;
   TEST_ASSERT(ra_fs_mount(&backend, &handle) != k_ra_ok);
   TEST_END("fxlx_demo: mount rejects backend with NULL get_capacity");
 }

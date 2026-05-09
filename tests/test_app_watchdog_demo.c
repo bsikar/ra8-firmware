@@ -83,9 +83,9 @@ static void test_wdt_app_reset_cause_ok(void)
 {
   reset_world();
   TEST_BEGIN("watchdog_demo: reset_init + get_cause");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_reset_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_reset_init());
   ra_reset_cause_t cause = k_ra_reset_cause_unknown;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_reset_get_cause(&cause));
+  TEST_ASSERT_EQ(k_ra_ok, ra_reset_get_cause(&cause));
   TEST_END("watchdog_demo: reset_init + get_cause");
 }
 
@@ -99,8 +99,8 @@ static void test_wdt_app_cause_null(void)
 {
   reset_world();
   TEST_BEGIN("watchdog_demo: NULL get_cause rejected");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_reset_init());
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_reset_get_cause(nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_reset_init());
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_reset_get_cause(nullptr));
   TEST_END("watchdog_demo: NULL get_cause rejected");
 }
 
@@ -116,12 +116,12 @@ static void test_wdt_app_iwdt_loop(void)
 {
   reset_world();
   TEST_BEGIN("watchdog_demo: iwdt init + refresh loop");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_iwdt_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_iwdt_init());
   for (uint8_t i = 0U; i < 8U; ++i) {
     ra_iwdt_refresh_deferred();
   }
   uint16_t status = 0U;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_iwdt_get_status(&status));
+  TEST_ASSERT_EQ(k_ra_ok, ra_iwdt_get_status(&status));
   TEST_END("watchdog_demo: iwdt init + refresh loop");
 }
 

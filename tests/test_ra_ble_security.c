@@ -44,7 +44,7 @@ static void test_init_null(void)
 {
   TEST_BEGIN("test_init_null");
   reset_state();
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_ble_security_init(NULL));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_ble_security_init(nullptr));
   TEST_END("test_init_null");
 }
 
@@ -117,7 +117,7 @@ static void test_bond_count(void)
   const ra_ble_security_config_t cfg = {.io_cap = k_ra_ble_io_cap_no_input_no_out};
   TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_ble_security_bond_count(&c));
   TEST_ASSERT_EQ(k_ra_ok, ra_ble_security_init(&cfg));
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_ble_security_bond_count(NULL));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_ble_security_bond_count(nullptr));
   ra_ble_security_test_set_bond_count(2U);
   TEST_ASSERT_EQ(k_ra_ok, ra_ble_security_bond_count(&c));
   TEST_ASSERT_EQ(2U, c);
@@ -136,7 +136,7 @@ static void test_event_callback(void)
   reset_state();
   const ra_ble_security_config_t cfg = {.io_cap = k_ra_ble_io_cap_display_only};
   TEST_ASSERT_EQ(k_ra_ok, ra_ble_security_init(&cfg));
-  TEST_ASSERT_EQ(k_ra_ok, ra_ble_security_attach_event_handler(capture_evt, NULL));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_security_attach_event_handler(capture_evt, nullptr));
   ra_ble_security_event_t evt = {.kind = k_ra_ble_sec_evt_passkey_display, .passkey = 123456U};
   ra_ble_security_test_emit_event(&evt);
   TEST_ASSERT_EQ(1U, s_evt_count);
@@ -179,16 +179,16 @@ static void test_mcdc_security_emit_event_guard(void)
   TEST_ASSERT_EQ(k_ra_ok, ra_ble_security_init(&cfg));
   ra_ble_security_event_t evt = {.kind = k_ra_ble_sec_evt_passkey_display, .passkey = 1U};
   /* V1: handler registered, evt non-NULL -> fires. */
-  TEST_ASSERT_EQ(k_ra_ok, ra_ble_security_attach_event_handler(capture_evt, NULL));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_security_attach_event_handler(capture_evt, nullptr));
   ra_ble_security_test_emit_event(&evt);
   TEST_ASSERT_EQ(1U, s_evt_count);
   /* V2: handler NULL, evt non-NULL -> no fire. */
-  TEST_ASSERT_EQ(k_ra_ok, ra_ble_security_attach_event_handler(NULL, NULL));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_security_attach_event_handler(nullptr, nullptr));
   ra_ble_security_test_emit_event(&evt);
   TEST_ASSERT_EQ(1U, s_evt_count);
   /* V3: handler registered again, evt NULL -> no fire. */
-  TEST_ASSERT_EQ(k_ra_ok, ra_ble_security_attach_event_handler(capture_evt, NULL));
-  ra_ble_security_test_emit_event(NULL);
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_security_attach_event_handler(capture_evt, nullptr));
+  ra_ble_security_test_emit_event(nullptr);
   TEST_ASSERT_EQ(1U, s_evt_count);
   TEST_END("mcdc security emit_event (fn!=NULL && evt!=NULL)");
 }

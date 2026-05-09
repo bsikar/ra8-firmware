@@ -56,7 +56,7 @@ static void test_cc_cgc_init_ok(void)
 {
   reset_world();
   TEST_BEGIN("clock_check: ra_cgc_init succeeds");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_cgc_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_cgc_init());
   TEST_END("clock_check: ra_cgc_init succeeds");
 }
 
@@ -73,10 +73,10 @@ static void test_cc_cgc_init_ok(void)
 static void test_cc_readback_cpuclk0(void)
 {
   reset_world();
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_cgc_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_cgc_init());
   TEST_BEGIN("clock_check: get_clock_hz(CPUCLK0) returns non-zero");
   uint32_t hz = 0U;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &hz));
+  TEST_ASSERT_EQ(k_ra_ok, ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &hz));
   TEST_ASSERT(hz > 0U);
   TEST_END("clock_check: get_clock_hz(CPUCLK0) returns non-zero");
 }
@@ -91,11 +91,11 @@ static void test_cc_readback_cpuclk0(void)
 static void test_cc_systick_init_at_cpuclk0(void)
 {
   reset_world();
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_cgc_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_cgc_init());
   uint32_t hz = 0U;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &hz));
+  TEST_ASSERT_EQ(k_ra_ok, ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &hz));
   TEST_BEGIN("clock_check: ra_time_init at post-PLL CPUCLK0");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_time_init(hz));
+  TEST_ASSERT_EQ(k_ra_ok, ra_time_init(hz));
   TEST_END("clock_check: ra_time_init at post-PLL CPUCLK0");
 }
 
@@ -112,12 +112,12 @@ static void test_cc_pins_init_and_toggle_all(void)
 {
   reset_world();
   TEST_BEGIN("clock_check: init + toggle all three LEDs");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_led_init(k_ra_board_led1));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_led_init(k_ra_board_led2));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_led_init(k_ra_board_led3));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_led_toggle(k_ra_board_led1));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_led_toggle(k_ra_board_led2));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_led_toggle(k_ra_board_led3));
+  TEST_ASSERT_EQ(k_ra_ok, ra_board_led_init(k_ra_board_led1));
+  TEST_ASSERT_EQ(k_ra_ok, ra_board_led_init(k_ra_board_led2));
+  TEST_ASSERT_EQ(k_ra_ok, ra_board_led_init(k_ra_board_led3));
+  TEST_ASSERT_EQ(k_ra_ok, ra_board_led_toggle(k_ra_board_led1));
+  TEST_ASSERT_EQ(k_ra_ok, ra_board_led_toggle(k_ra_board_led2));
+  TEST_ASSERT_EQ(k_ra_ok, ra_board_led_toggle(k_ra_board_led3));
   TEST_END("clock_check: init + toggle all three LEDs");
 }
 
@@ -132,7 +132,7 @@ static void test_cc_pins_init_and_toggle_all(void)
 static void test_cc_get_clock_hz_invalid_id(void)
 {
   reset_world();
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_cgc_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_cgc_init());
   TEST_BEGIN("clock_check: get_clock_hz rejects bad id");
   uint32_t hz = 0U;
   TEST_ASSERT(ra_cgc_get_clock_hz((ra_clock_id_t)k_test_cc_clock_id_bad, &hz) != k_ra_ok);
@@ -149,9 +149,9 @@ static void test_cc_get_clock_hz_invalid_id(void)
 static void test_cc_get_clock_hz_null_out_rejected(void)
 {
   reset_world();
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_cgc_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_cgc_init());
   TEST_BEGIN("clock_check: get_clock_hz rejects NULL out");
-  TEST_ASSERT(ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, NULL) != k_ra_ok);
+  TEST_ASSERT(ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, nullptr) != k_ra_ok);
   TEST_END("clock_check: get_clock_hz rejects NULL out");
 }
 

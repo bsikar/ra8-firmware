@@ -53,7 +53,7 @@ static inline uint8_t mirror_attr_in_range(uint16_t a_handle, uint16_t start, ui
  *  ``else if ((a->kind == k_attr_kind_char_value) && (a->value != NULL))``. */
 static inline uint8_t mirror_writable_char_value(uint8_t kind, uint8_t want_kind, const void* value)
 {
-  if ((kind == want_kind) && (value != NULL)) {
+  if ((kind == want_kind) && (value != nullptr)) {
     return 1U;
   }
   return 0U;
@@ -76,9 +76,9 @@ static inline uint8_t mirror_writable_char_value(uint8_t kind, uint8_t want_kind
 static void test_mcdc_find_info_handle_range(void)
 {
   TEST_BEGIN("ra_ble_att find_info handle range MC/DC: start==0 || start>end");
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)mirror_find_info_handle_range(1U, 10U));
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)mirror_find_info_handle_range(0U, 10U));
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)mirror_find_info_handle_range(20U, 10U));
+  TEST_ASSERT_EQ(0, mirror_find_info_handle_range(1U, 10U));
+  TEST_ASSERT_EQ(1, mirror_find_info_handle_range(0U, 10U));
+  TEST_ASSERT_EQ(1, mirror_find_info_handle_range(20U, 10U));
   TEST_END("ra_ble_att find_info handle range MC/DC: start==0 || start>end");
 }
 
@@ -102,9 +102,9 @@ static void test_mcdc_find_info_handle_range(void)
 static void test_mcdc_attr_in_range(void)
 {
   TEST_BEGIN("ra_ble_att attr-in-range MC/DC: a<start || a>end");
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)mirror_attr_in_range(5U, 1U, 10U));
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)mirror_attr_in_range(0U, 1U, 10U));
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)mirror_attr_in_range(20U, 1U, 10U));
+  TEST_ASSERT_EQ(0, mirror_attr_in_range(5U, 1U, 10U));
+  TEST_ASSERT_EQ(1, mirror_attr_in_range(0U, 1U, 10U));
+  TEST_ASSERT_EQ(1, mirror_attr_in_range(20U, 1U, 10U));
   TEST_END("ra_ble_att attr-in-range MC/DC: a<start || a>end");
 }
 
@@ -133,12 +133,9 @@ static void test_mcdc_writable_char_value(void)
     k_kind_char_value = 4U,
     k_kind_other      = 7U,
   };
-  TEST_ASSERT_EQ((int32_t)1,
-                 (int32_t)mirror_writable_char_value(k_kind_char_value, k_kind_char_value, buf));
-  TEST_ASSERT_EQ((int32_t)0,
-                 (int32_t)mirror_writable_char_value(k_kind_other, k_kind_char_value, buf));
-  TEST_ASSERT_EQ((int32_t)0,
-                 (int32_t)mirror_writable_char_value(k_kind_char_value, k_kind_char_value, NULL));
+  TEST_ASSERT_EQ(1, mirror_writable_char_value(k_kind_char_value, k_kind_char_value, buf));
+  TEST_ASSERT_EQ(0, mirror_writable_char_value(k_kind_other, k_kind_char_value, buf));
+  TEST_ASSERT_EQ(0, mirror_writable_char_value(k_kind_char_value, k_kind_char_value, nullptr));
   TEST_END("ra_ble_att writable char-value MC/DC: kind==char && value!=NULL");
 }
 
@@ -167,12 +164,12 @@ static void test_mcdc_att_handle_pdu_null_guard(void)
   /* V1: non-NULL pdu, len=1 -> decision F, dispatch (unknown-opcode no-op). */
   ra_ble_host_att_handle_pdu(0U, pdu, 1U);
   /* V2: NULL pdu -> decision T, early return. */
-  ra_ble_host_att_handle_pdu(0U, NULL, 1U);
+  ra_ble_host_att_handle_pdu(0U, nullptr, 1U);
   /* V3: non-NULL pdu, len=0 -> decision T, early return. */
   ra_ble_host_att_handle_pdu(0U, pdu, 0U);
   /* No assertions: the contract is "do not crash". Reaching this point
    * is the structural test condition. */
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)1);
+  TEST_ASSERT_EQ(1, 1);
   TEST_END("ra_ble_host_att_handle_pdu MC/DC: pdu NULL || len==0");
 }
 

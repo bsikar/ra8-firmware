@@ -93,8 +93,8 @@ static void test_init_happy(void)
 {
   TEST_BEGIN("sdhi init happy");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sdhi_init((uint8_t)k_ra_sdhi_test_inst_0));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sdhi_init((uint8_t)k_ra_sdhi_test_inst_1));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sdhi_init((uint8_t)k_ra_sdhi_test_inst_0));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sdhi_init((uint8_t)k_ra_sdhi_test_inst_1));
   TEST_END("sdhi init happy");
 }
 
@@ -108,8 +108,7 @@ static void test_init_bad(void)
 {
   TEST_BEGIN("sdhi init bad");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_sdhi_init((uint8_t)k_ra_sdhi_test_inst_bad));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_sdhi_init((uint8_t)k_ra_sdhi_test_inst_bad));
   TEST_END("sdhi init bad");
 }
 
@@ -123,10 +122,9 @@ static void test_deinit(void)
 {
   TEST_BEGIN("sdhi deinit");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sdhi_init((uint8_t)k_ra_sdhi_test_inst_0));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sdhi_deinit((uint8_t)k_ra_sdhi_test_inst_0));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_sdhi_deinit((uint8_t)k_ra_sdhi_test_inst_bad));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sdhi_init((uint8_t)k_ra_sdhi_test_inst_0));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sdhi_deinit((uint8_t)k_ra_sdhi_test_inst_0));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_sdhi_deinit((uint8_t)k_ra_sdhi_test_inst_bad));
   TEST_END("sdhi deinit");
 }
 
@@ -143,16 +141,12 @@ static void test_status_read_and_clear(void)
 
   ra_sdhi((uint8_t)k_ra_sdhi_test_inst_0)->SD_INFO1 = 0xCAFEBABEUL;
   uint32_t mask                                     = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_sdhi_get_status((uint8_t)k_ra_sdhi_test_inst_0, &mask));
-  TEST_ASSERT_EQ((int32_t)0xCAFEBABEU, (int32_t)mask);
+  TEST_ASSERT_EQ(k_ra_ok, ra_sdhi_get_status((uint8_t)k_ra_sdhi_test_inst_0, &mask));
+  TEST_ASSERT_EQ(0xCAFEBABEU, mask);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_sdhi_clear_status((uint8_t)k_ra_sdhi_test_inst_0, 0x000000F0UL));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_sdhi_get_status((uint8_t)k_ra_sdhi_test_inst_0, nullptr));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_sdhi_clear_status((uint8_t)k_ra_sdhi_test_inst_bad, 0U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sdhi_clear_status((uint8_t)k_ra_sdhi_test_inst_0, 0x000000F0UL));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_sdhi_get_status((uint8_t)k_ra_sdhi_test_inst_0, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_sdhi_clear_status((uint8_t)k_ra_sdhi_test_inst_bad, 0U));
   TEST_END("sdhi status read + clear");
 }
 
@@ -167,16 +161,15 @@ static void test_attach_and_dispatch(void)
   TEST_BEGIN("sdhi attach + dispatch");
   prep();
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_sdhi_attach_handler(stub_sdhi_cb, (void*)(uintptr_t)0x5DU));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sdhi_attach_handler(stub_sdhi_cb, (void*)(uintptr_t)0x5DU));
   ra_sdhi((uint8_t)k_ra_sdhi_test_inst_1)->SD_INFO1 = 0xDEADBEEFUL;
   ra_sdhi_dispatch((uint8_t)k_ra_sdhi_test_inst_1);
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)s_sdhi_cb_count);
-  TEST_ASSERT_EQ((int32_t)0xDEADBEEFU, (int32_t)s_sdhi_cb_last_mask);
-  TEST_ASSERT_EQ((int32_t)k_ra_sdhi_test_inst_1, (int32_t)s_sdhi_cb_last_inst);
+  TEST_ASSERT_EQ(1, s_sdhi_cb_count);
+  TEST_ASSERT_EQ(0xDEADBEEFU, s_sdhi_cb_last_mask);
+  TEST_ASSERT_EQ(k_ra_sdhi_test_inst_1, s_sdhi_cb_last_inst);
 
   ra_sdhi_dispatch((uint8_t)k_ra_sdhi_test_inst_bad);
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)s_sdhi_cb_count);
+  TEST_ASSERT_EQ(1, s_sdhi_cb_count);
   TEST_END("sdhi attach + dispatch");
 }
 
@@ -190,13 +183,11 @@ static void test_power_transition(void)
 {
   TEST_BEGIN("sdhi power transition");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sdhi_init((uint8_t)k_ra_sdhi_test_inst_0));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sdhi_enter_stop((uint8_t)k_ra_sdhi_test_inst_0));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sdhi_exit_stop((uint8_t)k_ra_sdhi_test_inst_0));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_sdhi_enter_stop((uint8_t)k_ra_sdhi_test_inst_bad));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_sdhi_exit_stop((uint8_t)k_ra_sdhi_test_inst_bad));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sdhi_init((uint8_t)k_ra_sdhi_test_inst_0));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sdhi_enter_stop((uint8_t)k_ra_sdhi_test_inst_0));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sdhi_exit_stop((uint8_t)k_ra_sdhi_test_inst_0));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_sdhi_enter_stop((uint8_t)k_ra_sdhi_test_inst_bad));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_sdhi_exit_stop((uint8_t)k_ra_sdhi_test_inst_bad));
   TEST_END("sdhi power transition");
 }
 
@@ -224,13 +215,13 @@ static void test_send_command_rspend_via_alarm(void)
     ra_sdhi_send_command((uint8_t)k_ra_sdhi_test_inst_0, 0x0000ABCDU, 0xDEADBEEFUL, rsp);
   disarm_sdhi_alarm();
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)err);
-  TEST_ASSERT_EQ((int32_t)0x11111111, (int32_t)rsp[0]);
-  TEST_ASSERT_EQ((int32_t)0x22222222, (int32_t)rsp[1]);
-  TEST_ASSERT_EQ((int32_t)0x33333333, (int32_t)rsp[2]);
-  TEST_ASSERT_EQ((int32_t)0x44444444, (int32_t)rsp[3]);
-  TEST_ASSERT_EQ((int32_t)0xDEADBEEFUL, (int32_t)reg->SD_ARG);
-  TEST_ASSERT_EQ((int32_t)0x0000ABCDU, (int32_t)reg->SD_CMD);
+  TEST_ASSERT_EQ(k_ra_ok, err);
+  TEST_ASSERT_EQ(0x11111111, rsp[0]);
+  TEST_ASSERT_EQ(0x22222222, rsp[1]);
+  TEST_ASSERT_EQ(0x33333333, rsp[2]);
+  TEST_ASSERT_EQ(0x44444444, rsp[3]);
+  TEST_ASSERT_EQ(0xDEADBEEFUL, reg->SD_ARG);
+  TEST_ASSERT_EQ(0x0000ABCDU, reg->SD_CMD);
   TEST_END("sdhi send_command: RSPEND via alarm");
 }
 
@@ -248,7 +239,7 @@ static void test_send_command_no_rsp_buffer(void)
   arm_rspend_alarm((uint8_t)k_ra_sdhi_test_inst_1);
   const ra_err_t err = ra_sdhi_send_command((uint8_t)k_ra_sdhi_test_inst_1, 0x01U, 0U, nullptr);
   disarm_sdhi_alarm();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)err);
+  TEST_ASSERT_EQ(k_ra_ok, err);
   TEST_END("sdhi send_command: null response buffer");
 }
 
@@ -263,8 +254,8 @@ static void test_send_command_bad_instance(void)
   TEST_BEGIN("sdhi send_command: bad instance");
   prep();
   uint32_t rsp[4] = {0U};
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_sdhi_send_command((uint8_t)k_ra_sdhi_test_inst_bad, 0U, 0U, rsp));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_sdhi_send_command((uint8_t)k_ra_sdhi_test_inst_bad, 0U, 0U, rsp));
   TEST_END("sdhi send_command: bad instance");
 }
 
@@ -278,11 +269,9 @@ static void test_set_clock(void)
 {
   TEST_BEGIN("sdhi set_clock");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_sdhi_set_clock((uint8_t)k_ra_sdhi_test_inst_0, 0x0080U));
-  TEST_ASSERT_EQ((int32_t)0x0080U, (int32_t)ra_sdhi((uint8_t)k_ra_sdhi_test_inst_0)->SD_CLK_CTRL);
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_sdhi_set_clock((uint8_t)k_ra_sdhi_test_inst_bad, 0U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sdhi_set_clock((uint8_t)k_ra_sdhi_test_inst_0, 0x0080U));
+  TEST_ASSERT_EQ(0x0080U, ra_sdhi((uint8_t)k_ra_sdhi_test_inst_0)->SD_CLK_CTRL);
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_sdhi_set_clock((uint8_t)k_ra_sdhi_test_inst_bad, 0U));
   TEST_END("sdhi set_clock");
 }
 
@@ -365,7 +354,7 @@ static void test_read_block_single(void)
 {
   TEST_BEGIN("sdhi read_block: single block fills 512B with pattern");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sdhi_init((uint8_t)k_ra_sdhi_test_inst_0));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sdhi_init((uint8_t)k_ra_sdhi_test_inst_0));
 
   prime_block_xfer_flags((uint8_t)k_ra_sdhi_test_inst_0, k_ra_sdhi_test_pattern);
 
@@ -375,23 +364,23 @@ static void test_read_block_single(void)
   }
   const ra_err_t err =
     ra_sdhi_read_block((uint8_t)k_ra_sdhi_test_inst_0, k_ra_sdhi_test_lba, buf, 1U);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)err);
+  TEST_ASSERT_EQ(k_ra_ok, err);
 
   /* Verify SD_ARG was loaded with the LBA and SD_CMD was CMD17 (17). */
   volatile r_sdhi_regs_t* reg = ra_sdhi((uint8_t)k_ra_sdhi_test_inst_0);
-  TEST_ASSERT_EQ((int32_t)k_ra_sdhi_test_lba, (int32_t)reg->SD_ARG);
-  TEST_ASSERT_EQ((int32_t)k_ra_sdhi_cmd_read_single_block, (int32_t)reg->SD_CMD);
-  TEST_ASSERT_EQ((int32_t)k_ra_sdhi_block_bytes, (int32_t)reg->SD_SIZE);
+  TEST_ASSERT_EQ(k_ra_sdhi_test_lba, reg->SD_ARG);
+  TEST_ASSERT_EQ(k_ra_sdhi_cmd_read_single_block, reg->SD_CMD);
+  TEST_ASSERT_EQ(k_ra_sdhi_block_bytes, reg->SD_SIZE);
   /* Single-block: SD_STOP cleared, SD_SECCNT not configured. */
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)reg->SD_STOP);
+  TEST_ASSERT_EQ(0, reg->SD_STOP);
 
   /* The simulator returns the same SD_BUF0 word on every read so
    * each 4-byte slot in the destination should equal the pattern. */
   for (size_t i = 0U; i < sizeof(buf); i += 4U) {
-    TEST_ASSERT_EQ((int32_t)(k_ra_sdhi_test_pattern & 0xFFU), (int32_t)buf[i + 0U]);
-    TEST_ASSERT_EQ((int32_t)((k_ra_sdhi_test_pattern >> 8U) & 0xFFU), (int32_t)buf[i + 1U]);
-    TEST_ASSERT_EQ((int32_t)((k_ra_sdhi_test_pattern >> 16U) & 0xFFU), (int32_t)buf[i + 2U]);
-    TEST_ASSERT_EQ((int32_t)((k_ra_sdhi_test_pattern >> 24U) & 0xFFU), (int32_t)buf[i + 3U]);
+    TEST_ASSERT_EQ((k_ra_sdhi_test_pattern & 0xFFU), buf[i + 0U]);
+    TEST_ASSERT_EQ(((k_ra_sdhi_test_pattern >> 8U) & 0xFFU), buf[i + 1U]);
+    TEST_ASSERT_EQ(((k_ra_sdhi_test_pattern >> 16U) & 0xFFU), buf[i + 2U]);
+    TEST_ASSERT_EQ(((k_ra_sdhi_test_pattern >> 24U) & 0xFFU), buf[i + 3U]);
   }
   TEST_END("sdhi read_block: single block fills 512B with pattern");
 }
@@ -406,7 +395,7 @@ static void test_read_block_multi(void)
 {
   TEST_BEGIN("sdhi read_block: multi-block sets SD_SECCNT and CMD18");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sdhi_init((uint8_t)k_ra_sdhi_test_inst_0));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sdhi_init((uint8_t)k_ra_sdhi_test_inst_0));
 
   prime_block_xfer_flags((uint8_t)k_ra_sdhi_test_inst_0, k_ra_sdhi_test_pattern);
   arm_periodic_alarm((uint8_t)k_ra_sdhi_test_inst_0);
@@ -415,14 +404,14 @@ static void test_read_block_multi(void)
   const ra_err_t err =
     ra_sdhi_read_block((uint8_t)k_ra_sdhi_test_inst_0, k_ra_sdhi_test_multi_lba, buf, 4U);
   disarm_sdhi_alarm();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)err);
+  TEST_ASSERT_EQ(k_ra_ok, err);
 
   volatile r_sdhi_regs_t* reg = ra_sdhi((uint8_t)k_ra_sdhi_test_inst_0);
   /* Multi-block read: SD_SECCNT=4, SD_STOP.SEC enabled, last
    * SD_CMD value is CMD12 STOP_TRANSMISSION. */
-  TEST_ASSERT_EQ((int32_t)4, (int32_t)reg->SD_SECCNT);
-  TEST_ASSERT_EQ((int32_t)k_ra_sdhi_stop_seccnt_en, (int32_t)reg->SD_STOP);
-  TEST_ASSERT_EQ((int32_t)k_ra_sdhi_cmd_stop_transmission, (int32_t)reg->SD_CMD);
+  TEST_ASSERT_EQ(4, reg->SD_SECCNT);
+  TEST_ASSERT_EQ(k_ra_sdhi_stop_seccnt_en, reg->SD_STOP);
+  TEST_ASSERT_EQ(k_ra_sdhi_cmd_stop_transmission, reg->SD_CMD);
   TEST_END("sdhi read_block: multi-block sets SD_SECCNT and CMD18");
 }
 
@@ -436,7 +425,7 @@ static void test_write_block_single(void)
 {
   TEST_BEGIN("sdhi write_block: single block pushes 512B of payload");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sdhi_init((uint8_t)k_ra_sdhi_test_inst_1));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sdhi_init((uint8_t)k_ra_sdhi_test_inst_1));
 
   prime_block_xfer_flags((uint8_t)k_ra_sdhi_test_inst_1, 0U);
 
@@ -446,19 +435,19 @@ static void test_write_block_single(void)
   }
   const ra_err_t err =
     ra_sdhi_write_block((uint8_t)k_ra_sdhi_test_inst_1, k_ra_sdhi_test_lba, buf, 1U);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)err);
+  TEST_ASSERT_EQ(k_ra_ok, err);
 
   volatile r_sdhi_regs_t* reg = ra_sdhi((uint8_t)k_ra_sdhi_test_inst_1);
   /* CMD24 = WRITE_SINGLE_BLOCK = 24. */
-  TEST_ASSERT_EQ((int32_t)k_ra_sdhi_cmd_write_single_block, (int32_t)reg->SD_CMD);
-  TEST_ASSERT_EQ((int32_t)k_ra_sdhi_test_lba, (int32_t)reg->SD_ARG);
-  TEST_ASSERT_EQ((int32_t)k_ra_sdhi_block_bytes, (int32_t)reg->SD_SIZE);
+  TEST_ASSERT_EQ(k_ra_sdhi_cmd_write_single_block, reg->SD_CMD);
+  TEST_ASSERT_EQ(k_ra_sdhi_test_lba, reg->SD_ARG);
+  TEST_ASSERT_EQ(k_ra_sdhi_block_bytes, reg->SD_SIZE);
   /* Last-pushed FIFO word: bytes 508..511 of the buffer
    * (the simulator's SD_BUF0 backing store is overwritten on
    * every push so it ends up holding the final word). */
   const uint32_t last_word = (uint32_t)buf[508] | ((uint32_t)buf[509] << 8U) |
                              ((uint32_t)buf[510] << 16U) | ((uint32_t)buf[511] << 24U);
-  TEST_ASSERT_EQ((int32_t)last_word, (int32_t)reg->SD_BUF0);
+  TEST_ASSERT_EQ(last_word, reg->SD_BUF0);
   TEST_END("sdhi write_block: single block pushes 512B of payload");
 }
 
@@ -472,7 +461,7 @@ static void test_write_block_multi_ends_in_cmd12(void)
 {
   TEST_BEGIN("sdhi write_block: multi-block ends in CMD12");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sdhi_init((uint8_t)k_ra_sdhi_test_inst_0));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sdhi_init((uint8_t)k_ra_sdhi_test_inst_0));
 
   prime_block_xfer_flags((uint8_t)k_ra_sdhi_test_inst_0, 0U);
   arm_periodic_alarm((uint8_t)k_ra_sdhi_test_inst_0);
@@ -481,12 +470,12 @@ static void test_write_block_multi_ends_in_cmd12(void)
   const ra_err_t err =
     ra_sdhi_write_block((uint8_t)k_ra_sdhi_test_inst_0, k_ra_sdhi_test_multi_lba, buf, 2U);
   disarm_sdhi_alarm();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)err);
+  TEST_ASSERT_EQ(k_ra_ok, err);
 
   volatile r_sdhi_regs_t* reg = ra_sdhi((uint8_t)k_ra_sdhi_test_inst_0);
-  TEST_ASSERT_EQ((int32_t)2, (int32_t)reg->SD_SECCNT);
-  TEST_ASSERT_EQ((int32_t)k_ra_sdhi_stop_seccnt_en, (int32_t)reg->SD_STOP);
-  TEST_ASSERT_EQ((int32_t)k_ra_sdhi_cmd_stop_transmission, (int32_t)reg->SD_CMD);
+  TEST_ASSERT_EQ(2, reg->SD_SECCNT);
+  TEST_ASSERT_EQ(k_ra_sdhi_stop_seccnt_en, reg->SD_STOP);
+  TEST_ASSERT_EQ(k_ra_sdhi_cmd_stop_transmission, reg->SD_CMD);
   TEST_END("sdhi write_block: multi-block ends in CMD12");
 }
 
@@ -501,14 +490,13 @@ static void test_block_xfer_null_args(void)
   TEST_BEGIN("sdhi block xfer: null args + bad instance");
   prep();
   uint8_t buf[1];
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_sdhi_read_block(0U, 0U, nullptr, 1U));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_sdhi_write_block(0U, 0U, nullptr, 1U));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_sdhi_read_block((uint8_t)k_ra_sdhi_test_inst_bad, 0U, buf, 1U));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_sdhi_write_block((uint8_t)k_ra_sdhi_test_inst_bad, 0U, buf, 1U));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_sdhi_attach_dma((uint8_t)k_ra_sdhi_test_inst_bad, 1U));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_sdhi_read_block(0U, 0U, nullptr, 1U));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_sdhi_write_block(0U, 0U, nullptr, 1U));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_sdhi_read_block((uint8_t)k_ra_sdhi_test_inst_bad, 0U, buf, 1U));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_sdhi_write_block((uint8_t)k_ra_sdhi_test_inst_bad, 0U, buf, 1U));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_sdhi_attach_dma((uint8_t)k_ra_sdhi_test_inst_bad, 1U));
   TEST_END("sdhi block xfer: null args + bad instance");
 }
 
@@ -523,8 +511,8 @@ static void test_block_xfer_zero_count(void)
   TEST_BEGIN("sdhi block xfer: block_count=0 rejected");
   prep();
   uint8_t buf[1];
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_sdhi_read_block(0U, 0U, buf, 0U));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_sdhi_write_block(0U, 0U, buf, 0U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_sdhi_read_block(0U, 0U, buf, 0U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_sdhi_write_block(0U, 0U, buf, 0U));
   TEST_END("sdhi block xfer: block_count=0 rejected");
 }
 
@@ -538,17 +526,16 @@ static void test_attach_dma_toggle(void)
 {
   TEST_BEGIN("sdhi attach_dma: toggles SD_DMAEN + INFO2_MASK");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sdhi_init((uint8_t)k_ra_sdhi_test_inst_0));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sdhi_init((uint8_t)k_ra_sdhi_test_inst_0));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sdhi_attach_dma((uint8_t)k_ra_sdhi_test_inst_0, 1U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sdhi_attach_dma((uint8_t)k_ra_sdhi_test_inst_0, 1U));
   volatile r_sdhi_regs_t* reg = ra_sdhi((uint8_t)k_ra_sdhi_test_inst_0);
-  TEST_ASSERT_EQ((int32_t)k_ra_sdhi_dmaen_set, (int32_t)reg->SD_DMAEN);
-  TEST_ASSERT_EQ((int32_t)k_ra_sdhi_info2_brem_bwem,
-                 (int32_t)(reg->SD_INFO2_MASK & k_ra_sdhi_info2_brem_bwem));
+  TEST_ASSERT_EQ(k_ra_sdhi_dmaen_set, reg->SD_DMAEN);
+  TEST_ASSERT_EQ(k_ra_sdhi_info2_brem_bwem, (reg->SD_INFO2_MASK & k_ra_sdhi_info2_brem_bwem));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sdhi_attach_dma((uint8_t)k_ra_sdhi_test_inst_0, 0U));
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)reg->SD_DMAEN);
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)(reg->SD_INFO2_MASK & k_ra_sdhi_info2_brem_bwem));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sdhi_attach_dma((uint8_t)k_ra_sdhi_test_inst_0, 0U));
+  TEST_ASSERT_EQ(0, reg->SD_DMAEN);
+  TEST_ASSERT_EQ(0, (reg->SD_INFO2_MASK & k_ra_sdhi_info2_brem_bwem));
   TEST_END("sdhi attach_dma: toggles SD_DMAEN + INFO2_MASK");
 }
 

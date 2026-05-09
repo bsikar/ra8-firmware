@@ -27,10 +27,10 @@ static void test_reset_zeros_counter(void)
    * back down. */
   ra_sim_time_reset();
   ra_sim_time_advance_ms(500U);
-  TEST_ASSERT_EQ((int64_t)500, (int64_t)ra_time_ms());
+  TEST_ASSERT_EQ(500, ra_time_ms());
 
   ra_sim_time_reset();
-  TEST_ASSERT_EQ((int64_t)0, (int64_t)ra_time_ms());
+  TEST_ASSERT_EQ(0, ra_time_ms());
   TEST_END("ra_sim_time_reset: tick counter back to zero");
 }
 
@@ -46,13 +46,13 @@ static void test_advance_ms_matches_count(void)
   ra_sim_time_reset();
 
   ra_sim_time_advance_ms(1U);
-  TEST_ASSERT_EQ((int64_t)1, (int64_t)ra_time_ms());
+  TEST_ASSERT_EQ(1, ra_time_ms());
 
   ra_sim_time_advance_ms(10U);
-  TEST_ASSERT_EQ((int64_t)11, (int64_t)ra_time_ms());
+  TEST_ASSERT_EQ(11, ra_time_ms());
 
   ra_sim_time_advance_ms(1000U);
-  TEST_ASSERT_EQ((int64_t)1011, (int64_t)ra_time_ms());
+  TEST_ASSERT_EQ(1011, ra_time_ms());
   TEST_END("ra_sim_time_advance_ms: tick counter tracks argument");
 }
 
@@ -68,7 +68,7 @@ static void test_advance_zero_is_noop(void)
   ra_sim_time_reset();
   ra_sim_time_advance_ms(42U);
   ra_sim_time_advance_ms(0U);
-  TEST_ASSERT_EQ((int64_t)42, (int64_t)ra_time_ms());
+  TEST_ASSERT_EQ(42, ra_time_ms());
   TEST_END("ra_sim_time_advance_ms(0) is a no-op");
 }
 

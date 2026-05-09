@@ -130,19 +130,18 @@ static void test_init_happy(void)
   prep();
 
   const ra_bkup_config_t cfg = make_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_bkup_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_bkup_init(&cfg));
 
   /* HUM Ch 12.2.11 "VBTBPCR1 : VBATT Battery Power Supply Control Register 1", p 507 */
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)*ra_bkup_vbtbpcr1());
+  TEST_ASSERT_EQ(0, *ra_bkup_vbtbpcr1());
   /* HUM Ch 12.2.12 "VBTBPCR2 : VBATT Battery Power Supply Control Register 2", p 508 */
   const uint8_t bpcr2 = *ra_bkup_vbtbpcr2();
-  TEST_ASSERT_EQ((int32_t)((uint8_t)k_ra_bkup_vdet_2p10v),
-                 (int32_t)(bpcr2 & (uint8_t)k_ra_bkup_vbtbpcr2_mask_lvl));
+  TEST_ASSERT_EQ(((uint8_t)k_ra_bkup_vdet_2p10v), (bpcr2 & (uint8_t)k_ra_bkup_vbtbpcr2_mask_lvl));
   TEST_ASSERT((bpcr2 & (uint8_t)k_ra_bkup_vbtbpcr2_mask_vdete) != 0U);
   /* HUM Ch 12.2.6 "VBTBER : VBATT Backup Enable Register", p 504 */
-  TEST_ASSERT_EQ((int32_t)((uint8_t)k_ra_bkup_vbtber_mask_vbae), (int32_t)*ra_bkup_vbtber());
+  TEST_ASSERT_EQ(((uint8_t)k_ra_bkup_vbtber_mask_vbae), *ra_bkup_vbtber());
   /* Tamper flags wiped during init. */
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)*ra_bkup_vbtadsr());
+  TEST_ASSERT_EQ(0, *ra_bkup_vbtadsr());
   TEST_END("bkup init happy");
 }
 
@@ -157,7 +156,7 @@ static void test_init_null_cfg(void)
   TEST_BEGIN("bkup init null cfg");
   prep();
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_bkup_init(nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_bkup_init(nullptr));
   TEST_END("bkup init null cfg");
 }
 
@@ -174,7 +173,7 @@ static void test_init_bad_vdet_level(void)
 
   ra_bkup_config_t cfg = make_cfg();
   cfg.vdet_level       = (ra_bkup_vdet_level_t)k_ra_bkup_test_bad_level;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_bkup_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_bkup_init(&cfg));
   TEST_END("bkup init bad vdet level");
 }
 
@@ -192,13 +191,12 @@ static void test_init_switch_disabled(void)
   ra_bkup_config_t cfg = make_cfg();
   cfg.enable_switch    = false;
   cfg.enable_backup    = false;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_bkup_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_bkup_init(&cfg));
 
   /* HUM Ch 12.2.11 "VBTBPCR1 : VBATT Battery Power Supply Control Register 1", p 507 */
-  TEST_ASSERT_EQ((int32_t)((uint8_t)k_ra_bkup_vbtbpcr1_mask_bpwswstp),
-                 (int32_t)*ra_bkup_vbtbpcr1());
+  TEST_ASSERT_EQ(((uint8_t)k_ra_bkup_vbtbpcr1_mask_bpwswstp), *ra_bkup_vbtbpcr1());
   /* HUM Ch 12.2.6 "VBTBER : VBATT Backup Enable Register", p 504 */
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)*ra_bkup_vbtber());
+  TEST_ASSERT_EQ(0, *ra_bkup_vbtber());
   TEST_END("bkup init switch disabled");
 }
 
@@ -214,12 +212,11 @@ static void test_deinit(void)
   prep();
 
   const ra_bkup_config_t cfg = make_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_bkup_init(&cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_bkup_deinit());
+  TEST_ASSERT_EQ(k_ra_ok, ra_bkup_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_bkup_deinit());
 
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)*ra_bkup_vbtber());
-  TEST_ASSERT_EQ((int32_t)((uint8_t)k_ra_bkup_vbtbpcr1_mask_bpwswstp),
-                 (int32_t)*ra_bkup_vbtbpcr1());
+  TEST_ASSERT_EQ(0, *ra_bkup_vbtber());
+  TEST_ASSERT_EQ(((uint8_t)k_ra_bkup_vbtbpcr1_mask_bpwswstp), *ra_bkup_vbtbpcr1());
   TEST_END("bkup deinit");
 }
 
@@ -239,16 +236,14 @@ static void test_cold_start_init_happy(void)
   *ra_bkup_vbtbpsr() =
     (uint8_t)((uint8_t)k_ra_bkup_vbtbpsr_mask_vbporm | (uint8_t)k_ra_bkup_vbtbpsr_mask_vbporf);
 
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_bkup_cold_start_init(k_ra_bkup_vdet_1p95v, (uint32_t)k_ra_bkup_test_timeout));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_bkup_cold_start_init(k_ra_bkup_vdet_1p95v, (uint32_t)k_ra_bkup_test_timeout));
 
   /* HUM Ch 12.2.11 "VBTBPCR1 : VBATT Battery Power Supply Control Register 1", p 507 */
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)*ra_bkup_vbtbpcr1());
+  TEST_ASSERT_EQ(0, *ra_bkup_vbtbpcr1());
   /* HUM Ch 12.2.12 "VBTBPCR2 : VBATT Battery Power Supply Control Register 2", p 508 */
   const uint8_t bpcr2 = *ra_bkup_vbtbpcr2();
-  TEST_ASSERT_EQ((int32_t)((uint8_t)k_ra_bkup_vdet_1p95v),
-                 (int32_t)(bpcr2 & (uint8_t)k_ra_bkup_vbtbpcr2_mask_lvl));
+  TEST_ASSERT_EQ(((uint8_t)k_ra_bkup_vdet_1p95v), (bpcr2 & (uint8_t)k_ra_bkup_vbtbpcr2_mask_lvl));
   TEST_ASSERT((bpcr2 & (uint8_t)k_ra_bkup_vbtbpcr2_mask_vdete) != 0U);
   /* VBPORF was W0Ced -- VBPORM stays. */
   TEST_ASSERT((*ra_bkup_vbtbpsr() & (uint8_t)k_ra_bkup_vbtbpsr_mask_vbporf) == 0U);
@@ -267,11 +262,10 @@ static void test_cold_start_init_bad_args(void)
   TEST_BEGIN("bkup cold_start_init bad args");
   prep();
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_bkup_cold_start_init((ra_bkup_vdet_level_t)k_ra_bkup_test_bad_level,
-                                                  (uint32_t)k_ra_bkup_test_timeout));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_bkup_cold_start_init(k_ra_bkup_vdet_2p80v, 0U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_bkup_cold_start_init((ra_bkup_vdet_level_t)k_ra_bkup_test_bad_level,
+                                         (uint32_t)k_ra_bkup_test_timeout));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_bkup_cold_start_init(k_ra_bkup_vdet_2p80v, 0U));
   TEST_END("bkup cold_start_init bad args");
 }
 
@@ -287,8 +281,7 @@ static void test_cold_start_init_timeout(void)
   prep();
   /* VBPORM left at 0 -> poll loop must time out. */
   *ra_bkup_vbtbpsr() = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_hw_timeout,
-                 (int32_t)ra_bkup_cold_start_init(k_ra_bkup_vdet_2p80v, 4U));
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_bkup_cold_start_init(k_ra_bkup_vdet_2p80v, 4U));
   TEST_END("bkup cold_start_init timeout");
 }
 
@@ -306,8 +299,7 @@ static void test_warm_start_no_reinit(void)
   *ra_bkup_vbtbpsr() = (uint8_t)k_ra_bkup_vbtbpsr_mask_vbporm;
 
   bool needs = true;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_bkup_warm_start_check(&needs, (uint32_t)k_ra_bkup_test_timeout));
+  TEST_ASSERT_EQ(k_ra_ok, ra_bkup_warm_start_check(&needs, (uint32_t)k_ra_bkup_test_timeout));
   TEST_ASSERT(!needs);
   TEST_END("bkup warm_start_check no reinit");
 }
@@ -327,8 +319,7 @@ static void test_warm_start_needs_reinit(void)
     (uint8_t)((uint8_t)k_ra_bkup_vbtbpsr_mask_vbporm | (uint8_t)k_ra_bkup_vbtbpsr_mask_vbporf);
 
   bool needs = false;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_bkup_warm_start_check(&needs, (uint32_t)k_ra_bkup_test_timeout));
+  TEST_ASSERT_EQ(k_ra_ok, ra_bkup_warm_start_check(&needs, (uint32_t)k_ra_bkup_test_timeout));
   TEST_ASSERT(needs);
   /* The check must NOT W0C VBPORF -- caller decides. */
   TEST_ASSERT((*ra_bkup_vbtbpsr() & (uint8_t)k_ra_bkup_vbtbpsr_mask_vbporf) != 0U);
@@ -347,11 +338,11 @@ static void test_warm_start_bad_args(void)
   prep();
 
   bool needs = false;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_bkup_warm_start_check(nullptr, (uint32_t)k_ra_bkup_test_timeout));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_bkup_warm_start_check(&needs, 0U));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_bkup_warm_start_check(nullptr, (uint32_t)k_ra_bkup_test_timeout));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_bkup_warm_start_check(&needs, 0U));
   *ra_bkup_vbtbpsr() = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_hw_timeout, (int32_t)ra_bkup_warm_start_check(&needs, 4U));
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_bkup_warm_start_check(&needs, 4U));
   TEST_END("bkup warm_start_check bad args");
 }
 
@@ -368,22 +359,20 @@ static void test_no_switch_init(void)
   /* VBPORM=0 already so the wait loop succeeds. */
   *ra_bkup_vbtbpsr() = (uint8_t)k_ra_bkup_vbtbpsr_mask_vbporf; /* set VBPORF */
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_bkup_no_switch_init((uint32_t)k_ra_bkup_test_timeout));
+  TEST_ASSERT_EQ(k_ra_ok, ra_bkup_no_switch_init((uint32_t)k_ra_bkup_test_timeout));
 
   /* HUM Ch 12.2.11 "VBTBPCR1 : VBATT Battery Power Supply Control Register 1", p 507 */
-  TEST_ASSERT_EQ((int32_t)((uint8_t)k_ra_bkup_vbtbpcr1_mask_bpwswstp),
-                 (int32_t)*ra_bkup_vbtbpcr1());
+  TEST_ASSERT_EQ(((uint8_t)k_ra_bkup_vbtbpcr1_mask_bpwswstp), *ra_bkup_vbtbpcr1());
   /* HUM Ch 12.2.12 "VBTBPCR2 : VBATT Battery Power Supply Control Register 2", p 508 */
-  TEST_ASSERT_EQ((int32_t)0x06U, (int32_t)*ra_bkup_vbtbpcr2());
+  TEST_ASSERT_EQ(0x06U, *ra_bkup_vbtbpcr2());
   /* HUM Ch 12.2.13 "VBTBPSR : VBATT Battery Power Supply Status Register", p 509 */
   TEST_ASSERT((*ra_bkup_vbtbpsr() & (uint8_t)k_ra_bkup_vbtbpsr_mask_vbporf) == 0U);
   /* tamper-side regs zeroed */
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)*ra_bkup_vbtictlr());
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)*ra_bkup_vbtictlr2());
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)*ra_bkup_vbtadsr());
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)*ra_bkup_vbtadcr1());
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)*ra_bkup_vbtadcr2());
+  TEST_ASSERT_EQ(0, *ra_bkup_vbtictlr());
+  TEST_ASSERT_EQ(0, *ra_bkup_vbtictlr2());
+  TEST_ASSERT_EQ(0, *ra_bkup_vbtadsr());
+  TEST_ASSERT_EQ(0, *ra_bkup_vbtadcr1());
+  TEST_ASSERT_EQ(0, *ra_bkup_vbtadcr2());
   TEST_END("bkup no_switch_init");
 }
 
@@ -397,10 +386,10 @@ static void test_no_switch_init_bad_args(void)
 {
   TEST_BEGIN("bkup no_switch_init bad args");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_bkup_no_switch_init(0U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_bkup_no_switch_init(0U));
   /* VBPORM stuck at 1 -> timeout. */
   *ra_bkup_vbtbpsr() = (uint8_t)k_ra_bkup_vbtbpsr_mask_vbporm;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_hw_timeout, (int32_t)ra_bkup_no_switch_init(4U));
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_bkup_no_switch_init(4U));
   TEST_END("bkup no_switch_init bad args");
 }
 
@@ -423,11 +412,11 @@ static void test_get_status_vcc(void)
   *ra_bkup_vbtadsr() = 0U;
 
   ra_bkup_status_t st = {};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_bkup_get_status(&st));
-  TEST_ASSERT_EQ((int32_t)k_ra_bkup_source_vcc, (int32_t)st.source);
+  TEST_ASSERT_EQ(k_ra_ok, ra_bkup_get_status(&st));
+  TEST_ASSERT_EQ(k_ra_bkup_source_vcc, st.source);
   TEST_ASSERT(st.vbatt_r_ok);
   TEST_ASSERT(!st.por_detected);
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)st.tamper_flags);
+  TEST_ASSERT_EQ(0, st.tamper_flags);
   TEST_END("bkup get_status on VCC");
 }
 
@@ -447,11 +436,11 @@ static void test_get_status_vbatt_with_por(void)
   *ra_bkup_vbtadsr() = (uint8_t)k_ra_bkup_vbtadsr_mask_vbtadf1;
 
   ra_bkup_status_t st = {};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_bkup_get_status(&st));
-  TEST_ASSERT_EQ((int32_t)k_ra_bkup_source_vbatt, (int32_t)st.source);
+  TEST_ASSERT_EQ(k_ra_ok, ra_bkup_get_status(&st));
+  TEST_ASSERT_EQ(k_ra_bkup_source_vbatt, st.source);
   TEST_ASSERT(!st.vbatt_r_ok);
   TEST_ASSERT(st.por_detected);
-  TEST_ASSERT_EQ((int32_t)((uint8_t)k_ra_bkup_vbtadsr_mask_vbtadf1), (int32_t)st.tamper_flags);
+  TEST_ASSERT_EQ(((uint8_t)k_ra_bkup_vbtadsr_mask_vbtadf1), st.tamper_flags);
   TEST_END("bkup get_status on VBATT with POR");
 }
 
@@ -465,7 +454,7 @@ static void test_get_status_null(void)
 {
   TEST_BEGIN("bkup get_status null");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_bkup_get_status(nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_bkup_get_status(nullptr));
   TEST_END("bkup get_status null");
 }
 
@@ -484,9 +473,9 @@ static void test_clear_status(void)
     (uint8_t)((uint8_t)k_ra_bkup_vbtbpsr_mask_vbporf | (uint8_t)k_ra_bkup_vbtbpsr_mask_swm);
   *ra_bkup_vbtadsr() = (uint8_t)k_ra_bkup_vbtadsr_mask_all;
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_bkup_clear_status((uint8_t)((uint8_t)k_ra_bkup_vbtbpsr_mask_vbporf |
-                                                         (uint8_t)k_ra_bkup_vbtadsr_mask_vbtadf0)));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_bkup_clear_status((uint8_t)((uint8_t)k_ra_bkup_vbtbpsr_mask_vbporf |
+                                                (uint8_t)k_ra_bkup_vbtadsr_mask_vbtadf0)));
 
   /* VBPORF cleared, SWM preserved. */
   const uint8_t bpsr_after = *ra_bkup_vbtbpsr();
@@ -514,30 +503,27 @@ static void test_word_read_write_roundtrip(void)
   prep();
 
   const ra_bkup_config_t cfg = make_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_bkup_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_bkup_init(&cfg));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_bkup_write_word((uint8_t)k_ra_bkup_test_word_first,
-                                             (uint32_t)k_ra_bkup_test_pattern_a));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_bkup_write_word((uint8_t)k_ra_bkup_test_word_mid,
-                                             (uint32_t)k_ra_bkup_test_pattern_b));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_bkup_write_word((uint8_t)k_ra_bkup_test_word_last,
-                                             (uint32_t)k_ra_bkup_test_pattern_a));
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    ra_bkup_write_word((uint8_t)k_ra_bkup_test_word_first, (uint32_t)k_ra_bkup_test_pattern_a));
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    ra_bkup_write_word((uint8_t)k_ra_bkup_test_word_mid, (uint32_t)k_ra_bkup_test_pattern_b));
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    ra_bkup_write_word((uint8_t)k_ra_bkup_test_word_last, (uint32_t)k_ra_bkup_test_pattern_a));
 
   uint32_t v = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_bkup_read_word((uint8_t)k_ra_bkup_test_word_first, &v));
-  TEST_ASSERT_EQ((int32_t)k_ra_bkup_test_pattern_a, (int32_t)v);
+  TEST_ASSERT_EQ(k_ra_ok, ra_bkup_read_word((uint8_t)k_ra_bkup_test_word_first, &v));
+  TEST_ASSERT_EQ(k_ra_bkup_test_pattern_a, v);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_bkup_read_word((uint8_t)k_ra_bkup_test_word_mid, &v));
-  TEST_ASSERT_EQ((int32_t)k_ra_bkup_test_pattern_b, (int32_t)v);
+  TEST_ASSERT_EQ(k_ra_ok, ra_bkup_read_word((uint8_t)k_ra_bkup_test_word_mid, &v));
+  TEST_ASSERT_EQ(k_ra_bkup_test_pattern_b, v);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_bkup_read_word((uint8_t)k_ra_bkup_test_word_last, &v));
-  TEST_ASSERT_EQ((int32_t)k_ra_bkup_test_pattern_a, (int32_t)v);
+  TEST_ASSERT_EQ(k_ra_ok, ra_bkup_read_word((uint8_t)k_ra_bkup_test_word_last, &v));
+  TEST_ASSERT_EQ(k_ra_bkup_test_pattern_a, v);
   TEST_END("bkup word read/write roundtrip");
 }
 
@@ -553,15 +539,12 @@ static void test_word_bad_args(void)
   prep();
 
   uint32_t v = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_bkup_read_word((uint8_t)k_ra_bkup_test_word_bad, &v));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_bkup_read_word((uint8_t)k_ra_bkup_test_word_huge, &v));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_bkup_read_word((uint8_t)k_ra_bkup_test_word_first, nullptr));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_bkup_write_word((uint8_t)k_ra_bkup_test_word_bad,
-                                             (uint32_t)k_ra_bkup_test_pattern_a));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_bkup_read_word((uint8_t)k_ra_bkup_test_word_bad, &v));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_bkup_read_word((uint8_t)k_ra_bkup_test_word_huge, &v));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_bkup_read_word((uint8_t)k_ra_bkup_test_word_first, nullptr));
+  TEST_ASSERT_EQ(
+    k_ra_err_invalid_arg,
+    ra_bkup_write_word((uint8_t)k_ra_bkup_test_word_bad, (uint32_t)k_ra_bkup_test_pattern_a));
   TEST_END("bkup word bad args");
 }
 
@@ -576,28 +559,25 @@ static void test_byte_read_write_roundtrip(void)
   TEST_BEGIN("bkup byte read/write roundtrip");
   prep();
   const ra_bkup_config_t cfg = make_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_bkup_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_bkup_init(&cfg));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_bkup_write_byte((uint16_t)k_ra_bkup_test_byte_first,
-                                             (uint8_t)k_ra_bkup_test_byte_pat_a));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_bkup_write_byte((uint16_t)k_ra_bkup_test_byte_mid,
-                                             (uint8_t)k_ra_bkup_test_byte_pat_b));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_bkup_write_byte((uint16_t)k_ra_bkup_test_byte_last,
-                                             (uint8_t)k_ra_bkup_test_byte_pat_a));
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    ra_bkup_write_byte((uint16_t)k_ra_bkup_test_byte_first, (uint8_t)k_ra_bkup_test_byte_pat_a));
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    ra_bkup_write_byte((uint16_t)k_ra_bkup_test_byte_mid, (uint8_t)k_ra_bkup_test_byte_pat_b));
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    ra_bkup_write_byte((uint16_t)k_ra_bkup_test_byte_last, (uint8_t)k_ra_bkup_test_byte_pat_a));
 
   uint8_t b = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_bkup_read_byte((uint16_t)k_ra_bkup_test_byte_first, &b));
-  TEST_ASSERT_EQ((int32_t)((uint8_t)k_ra_bkup_test_byte_pat_a), (int32_t)b);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_bkup_read_byte((uint16_t)k_ra_bkup_test_byte_mid, &b));
-  TEST_ASSERT_EQ((int32_t)((uint8_t)k_ra_bkup_test_byte_pat_b), (int32_t)b);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_bkup_read_byte((uint16_t)k_ra_bkup_test_byte_last, &b));
-  TEST_ASSERT_EQ((int32_t)((uint8_t)k_ra_bkup_test_byte_pat_a), (int32_t)b);
+  TEST_ASSERT_EQ(k_ra_ok, ra_bkup_read_byte((uint16_t)k_ra_bkup_test_byte_first, &b));
+  TEST_ASSERT_EQ(((uint8_t)k_ra_bkup_test_byte_pat_a), b);
+  TEST_ASSERT_EQ(k_ra_ok, ra_bkup_read_byte((uint16_t)k_ra_bkup_test_byte_mid, &b));
+  TEST_ASSERT_EQ(((uint8_t)k_ra_bkup_test_byte_pat_b), b);
+  TEST_ASSERT_EQ(k_ra_ok, ra_bkup_read_byte((uint16_t)k_ra_bkup_test_byte_last, &b));
+  TEST_ASSERT_EQ(((uint8_t)k_ra_bkup_test_byte_pat_a), b);
   TEST_END("bkup byte read/write roundtrip");
 }
 
@@ -612,15 +592,13 @@ static void test_byte_bad_args(void)
   TEST_BEGIN("bkup byte bad args");
   prep();
   uint8_t b = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_bkup_read_byte((uint16_t)k_ra_bkup_test_byte_bad, &b));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_bkup_read_byte((uint16_t)k_ra_bkup_test_byte_huge, &b));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_bkup_read_byte((uint16_t)k_ra_bkup_test_byte_first, nullptr));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_bkup_write_byte((uint16_t)k_ra_bkup_test_byte_bad,
-                                             (uint8_t)k_ra_bkup_test_byte_pat_a));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_bkup_read_byte((uint16_t)k_ra_bkup_test_byte_bad, &b));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_bkup_read_byte((uint16_t)k_ra_bkup_test_byte_huge, &b));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_bkup_read_byte((uint16_t)k_ra_bkup_test_byte_first, nullptr));
+  TEST_ASSERT_EQ(
+    k_ra_err_invalid_arg,
+    ra_bkup_write_byte((uint16_t)k_ra_bkup_test_byte_bad, (uint8_t)k_ra_bkup_test_byte_pat_a));
   TEST_END("bkup byte bad args");
 }
 
@@ -636,14 +614,13 @@ static void test_zero_all(void)
   prep();
   /* Pre-fill with non-zero data. */
   for (uint16_t i = 0U; i < (uint16_t)k_ra_bkup_reg_count; ++i) {
-    TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                   (int32_t)ra_bkup_write_byte(i, (uint8_t)k_ra_bkup_test_byte_pat_a));
+    TEST_ASSERT_EQ(k_ra_ok, ra_bkup_write_byte(i, (uint8_t)k_ra_bkup_test_byte_pat_a));
   }
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_bkup_zero_all());
+  TEST_ASSERT_EQ(k_ra_ok, ra_bkup_zero_all());
   for (uint16_t i = 0U; i < (uint16_t)k_ra_bkup_reg_count; ++i) {
     uint8_t b = 0xFFU;
-    TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_bkup_read_byte(i, &b));
-    TEST_ASSERT_EQ((int32_t)0, (int32_t)b);
+    TEST_ASSERT_EQ(k_ra_ok, ra_bkup_read_byte(i, &b));
+    TEST_ASSERT_EQ(0, b);
   }
   TEST_END("bkup zero_all");
 }
@@ -664,22 +641,22 @@ static void test_tamper_init_happy(void)
   *ra_bkup_vbtadsr() = (uint8_t)k_ra_bkup_vbtadsr_mask_all;
 
   const ra_bkup_tamper_config_t cfg = make_tamper_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_bkup_tamper_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_bkup_tamper_init(&cfg));
 
   /* HUM Ch 12.2.8 "VBTICTLR : VBATT Input Control Register", p 505
    * channels 0+1 are input-enabled, channel 2 is not. */
   const uint8_t expected_ictlr = (uint8_t)((uint8_t)k_ra_bkup_vbtictlr_mask_vch0inen |
                                            (uint8_t)k_ra_bkup_vbtictlr_mask_vch1inen);
-  TEST_ASSERT_EQ((int32_t)expected_ictlr, (int32_t)*ra_bkup_vbtictlr());
+  TEST_ASSERT_EQ(expected_ictlr, *ra_bkup_vbtictlr());
 
   /* HUM Ch 12.2.9 "VBTICTLR2 : VBATT Input Control Register 2", p 506
    * NCE on all 3 channels; rising edge on channel 1 only. */
   const uint8_t expected_ictlr2 =
     (uint8_t)((uint8_t)k_ra_bkup_vbtictlr2_mask_nce_all | (uint8_t)k_ra_bkup_vbtictlr2_mask_vch1eg);
-  TEST_ASSERT_EQ((int32_t)expected_ictlr2, (int32_t)*ra_bkup_vbtictlr2());
+  TEST_ASSERT_EQ(expected_ictlr2, *ra_bkup_vbtictlr2());
 
   /* HUM Ch 12.2.18 "VBTNCWCR : VBATT Noise Canceler Width Control Register", p 511 */
-  TEST_ASSERT_EQ((int32_t)((uint8_t)k_ra_bkup_nc_width_64hz), (int32_t)*ra_bkup_vbtncwcr());
+  TEST_ASSERT_EQ(((uint8_t)k_ra_bkup_nc_width_64hz), *ra_bkup_vbtncwcr());
 
   /* HUM Ch 12.2.15 "VBTADCR1 : VBATT Tamper Detection Control Register 1", p 510
    * IE channels 0+1; CE channels 0+2. */
@@ -687,21 +664,21 @@ static void test_tamper_init_happy(void)
                                            (uint8_t)k_ra_bkup_vbtadcr1_mask_vbtadie1 |
                                            (uint8_t)k_ra_bkup_vbtadcr1_mask_vbtadce0 |
                                            (uint8_t)k_ra_bkup_vbtadcr1_mask_vbtadce2);
-  TEST_ASSERT_EQ((int32_t)expected_adcr1, (int32_t)*ra_bkup_vbtadcr1());
+  TEST_ASSERT_EQ(expected_adcr1, *ra_bkup_vbtadcr1());
 
   /* HUM Ch 12.2.16 "VBTADCR2 : VBATT Tamper Detection Control Register 2", p 511
    * All 3 channels routed to VBTADFn for capture. */
-  TEST_ASSERT_EQ((int32_t)((uint8_t)k_ra_bkup_vbtadcr2_mask_all), (int32_t)*ra_bkup_vbtadcr2());
+  TEST_ASSERT_EQ(((uint8_t)k_ra_bkup_vbtadcr2_mask_all), *ra_bkup_vbtadcr2());
 
   /* HUM Ch 12.2.17 "VBTADCR3 : VBATT Tamper Detection Control Register 3", p 511
    * HUK zeroize on channels 1+2. */
   const uint8_t expected_adcr3 = (uint8_t)((uint8_t)k_ra_bkup_vbtadcr3_mask_vbtadze1 |
                                            (uint8_t)k_ra_bkup_vbtadcr3_mask_vbtadze2);
-  TEST_ASSERT_EQ((int32_t)expected_adcr3, (int32_t)*ra_bkup_vbtadcr3());
+  TEST_ASSERT_EQ(expected_adcr3, *ra_bkup_vbtadcr3());
 
   /* HUM Ch 12.2.14 "VBTADSR : VBATT Tamper Detection Status Register", p 509
    * Stale flags must be wiped. */
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)*ra_bkup_vbtadsr());
+  TEST_ASSERT_EQ(0, *ra_bkup_vbtadsr());
   TEST_END("bkup tamper_init happy");
 }
 
@@ -716,19 +693,19 @@ static void test_tamper_init_bad_args(void)
   TEST_BEGIN("bkup tamper_init bad args");
   prep();
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_bkup_tamper_init(nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_bkup_tamper_init(nullptr));
 
   ra_bkup_tamper_config_t cfg = make_tamper_cfg();
   cfg.nc_width                = (ra_bkup_nc_width_t)k_ra_bkup_test_nc_width_bad;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_bkup_tamper_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_bkup_tamper_init(&cfg));
 
   cfg                  = make_tamper_cfg();
   cfg.channels[1].edge = (ra_bkup_edge_t)0xFFU;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_bkup_tamper_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_bkup_tamper_init(&cfg));
 
   cfg                         = make_tamper_cfg();
   cfg.channels[2].capture_src = (ra_bkup_capture_src_t)0xFFU;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_bkup_tamper_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_bkup_tamper_init(&cfg));
   TEST_END("bkup tamper_init bad args");
 }
 
@@ -750,14 +727,14 @@ static void test_tamper_disable(void)
   *ra_bkup_vbtadcr2()  = (uint8_t)k_ra_bkup_vbtadcr2_mask_all;
   *ra_bkup_vbtadcr3()  = (uint8_t)k_ra_bkup_vbtadcr3_mask_all;
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_bkup_tamper_disable());
+  TEST_ASSERT_EQ(k_ra_ok, ra_bkup_tamper_disable());
 
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)*ra_bkup_vbtictlr());
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)*ra_bkup_vbtictlr2());
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)*ra_bkup_vbtadsr());
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)*ra_bkup_vbtadcr1());
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)*ra_bkup_vbtadcr2());
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)*ra_bkup_vbtadcr3());
+  TEST_ASSERT_EQ(0, *ra_bkup_vbtictlr());
+  TEST_ASSERT_EQ(0, *ra_bkup_vbtictlr2());
+  TEST_ASSERT_EQ(0, *ra_bkup_vbtadsr());
+  TEST_ASSERT_EQ(0, *ra_bkup_vbtadcr1());
+  TEST_ASSERT_EQ(0, *ra_bkup_vbtadcr2());
+  TEST_ASSERT_EQ(0, *ra_bkup_vbtadcr3());
   TEST_END("bkup tamper_disable");
 }
 
@@ -775,17 +752,16 @@ static void test_read_input(void)
     (uint8_t)((uint8_t)k_ra_bkup_vbtimonr_mask_vch0mon | (uint8_t)k_ra_bkup_vbtimonr_mask_vch2mon);
 
   bool high = false;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_bkup_read_input(k_ra_bkup_chan_rtcic0, &high));
+  TEST_ASSERT_EQ(k_ra_ok, ra_bkup_read_input(k_ra_bkup_chan_rtcic0, &high));
   TEST_ASSERT(high);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_bkup_read_input(k_ra_bkup_chan_rtcic1, &high));
+  TEST_ASSERT_EQ(k_ra_ok, ra_bkup_read_input(k_ra_bkup_chan_rtcic1, &high));
   TEST_ASSERT(!high);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_bkup_read_input(k_ra_bkup_chan_rtcic2, &high));
+  TEST_ASSERT_EQ(k_ra_ok, ra_bkup_read_input(k_ra_bkup_chan_rtcic2, &high));
   TEST_ASSERT(high);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_bkup_read_input(k_ra_bkup_chan_rtcic0, nullptr));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_bkup_read_input((ra_bkup_channel_t)k_ra_bkup_test_chan_bad, &high));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_bkup_read_input(k_ra_bkup_chan_rtcic0, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_bkup_read_input((ra_bkup_channel_t)k_ra_bkup_test_chan_bad, &high));
   TEST_END("bkup read_input");
 }
 
@@ -801,15 +777,14 @@ static void test_set_input_enable(void)
   prep();
   *ra_bkup_vbtictlr() = 0U;
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_bkup_set_input_enable(k_ra_bkup_chan_rtcic1, true));
+  TEST_ASSERT_EQ(k_ra_ok, ra_bkup_set_input_enable(k_ra_bkup_chan_rtcic1, true));
   TEST_ASSERT((*ra_bkup_vbtictlr() & (uint8_t)k_ra_bkup_vbtictlr_mask_vch1inen) != 0U);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_bkup_set_input_enable(k_ra_bkup_chan_rtcic1, false));
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)*ra_bkup_vbtictlr());
+  TEST_ASSERT_EQ(k_ra_ok, ra_bkup_set_input_enable(k_ra_bkup_chan_rtcic1, false));
+  TEST_ASSERT_EQ(0, *ra_bkup_vbtictlr());
 
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_arg,
-    (int32_t)ra_bkup_set_input_enable((ra_bkup_channel_t)k_ra_bkup_test_chan_bad, true));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_bkup_set_input_enable((ra_bkup_channel_t)k_ra_bkup_test_chan_bad, true));
   TEST_END("bkup set_input_enable");
 }
 
@@ -826,19 +801,18 @@ static void test_voltage_monitor(void)
   TEST_BEGIN("bkup voltage_monitor");
   prep();
   bool en = true;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_bkup_get_voltage_monitor_enabled(&en));
+  TEST_ASSERT_EQ(k_ra_ok, ra_bkup_get_voltage_monitor_enabled(&en));
   TEST_ASSERT(!en);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_bkup_set_voltage_monitor(true));
-  TEST_ASSERT_EQ((int32_t)((uint8_t)k_ra_bkup_vbattmnselr_mask_vbtmnsel),
-                 (int32_t)*ra_bkup_vbattmnselr());
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_bkup_get_voltage_monitor_enabled(&en));
+  TEST_ASSERT_EQ(k_ra_ok, ra_bkup_set_voltage_monitor(true));
+  TEST_ASSERT_EQ(((uint8_t)k_ra_bkup_vbattmnselr_mask_vbtmnsel), *ra_bkup_vbattmnselr());
+  TEST_ASSERT_EQ(k_ra_ok, ra_bkup_get_voltage_monitor_enabled(&en));
   TEST_ASSERT(en);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_bkup_set_voltage_monitor(false));
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)*ra_bkup_vbattmnselr());
+  TEST_ASSERT_EQ(k_ra_ok, ra_bkup_set_voltage_monitor(false));
+  TEST_ASSERT_EQ(0, *ra_bkup_vbattmnselr());
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_bkup_get_voltage_monitor_enabled(nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_bkup_get_voltage_monitor_enabled(nullptr));
   TEST_END("bkup voltage_monitor");
 }
 
@@ -861,20 +835,20 @@ static void test_security_apply_get(void)
     .pabas  = 0U,
     .pabans = (uint16_t)k_ra_bkup_test_saba_max_ok,
   };
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_bkup_security_apply(&in));
+  TEST_ASSERT_EQ(k_ra_ok, ra_bkup_security_apply(&in));
 
   /* Live-register checks. */
-  TEST_ASSERT_EQ((int32_t)((uint32_t)k_ra_bkup_test_bbfsar_value), (int32_t)*ra_bkup_bbfsar());
-  TEST_ASSERT_EQ((int32_t)((uint16_t)k_ra_bkup_test_saba_aligned), (int32_t)*ra_bkup_vbrsabar());
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)*ra_bkup_vbrpabars());
-  TEST_ASSERT_EQ((int32_t)((uint16_t)k_ra_bkup_test_saba_max_ok), (int32_t)*ra_bkup_vbrpabarns());
+  TEST_ASSERT_EQ(((uint32_t)k_ra_bkup_test_bbfsar_value), *ra_bkup_bbfsar());
+  TEST_ASSERT_EQ(((uint16_t)k_ra_bkup_test_saba_aligned), *ra_bkup_vbrsabar());
+  TEST_ASSERT_EQ(0, *ra_bkup_vbrpabars());
+  TEST_ASSERT_EQ(((uint16_t)k_ra_bkup_test_saba_max_ok), *ra_bkup_vbrpabarns());
 
   ra_bkup_security_config_t out = {};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_bkup_security_get(&out));
-  TEST_ASSERT_EQ((int32_t)in.bbfsar, (int32_t)out.bbfsar);
-  TEST_ASSERT_EQ((int32_t)in.saba, (int32_t)out.saba);
-  TEST_ASSERT_EQ((int32_t)in.pabas, (int32_t)out.pabas);
-  TEST_ASSERT_EQ((int32_t)in.pabans, (int32_t)out.pabans);
+  TEST_ASSERT_EQ(k_ra_ok, ra_bkup_security_get(&out));
+  TEST_ASSERT_EQ(in.bbfsar, out.bbfsar);
+  TEST_ASSERT_EQ(in.saba, out.saba);
+  TEST_ASSERT_EQ(in.pabas, out.pabas);
+  TEST_ASSERT_EQ(in.pabans, out.pabans);
   TEST_END("bkup security apply/get");
 }
 
@@ -889,8 +863,8 @@ static void test_security_bad_args(void)
   TEST_BEGIN("bkup security bad args");
   prep();
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_bkup_security_apply(nullptr));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_bkup_security_get(nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_bkup_security_apply(nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_bkup_security_get(nullptr));
 
   /* Bad bbfsar (reserved bit set). */
   ra_bkup_security_config_t cfg = {
@@ -899,22 +873,22 @@ static void test_security_bad_args(void)
     .pabas  = 0U,
     .pabans = 0U,
   };
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_bkup_security_apply(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_bkup_security_apply(&cfg));
 
   /* Unaligned saba. */
   cfg.bbfsar = 0U;
   cfg.saba   = (uint16_t)k_ra_bkup_test_saba_unalign;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_bkup_security_apply(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_bkup_security_apply(&cfg));
 
   /* Bad pabas. */
   cfg.saba  = 0U;
   cfg.pabas = (uint16_t)k_ra_bkup_test_saba_unalign;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_bkup_security_apply(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_bkup_security_apply(&cfg));
 
   /* Bad pabans. */
   cfg.pabas  = 0U;
   cfg.pabans = (uint16_t)k_ra_bkup_test_saba_unalign;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_bkup_security_apply(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_bkup_security_apply(&cfg));
   TEST_END("bkup security bad args");
 }
 
@@ -932,17 +906,17 @@ static void test_attach_and_dispatch(void)
   prep();
 
   void* const cookie = (void*)(uintptr_t)0xCAFEU;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_bkup_attach_handler(stub_bkup_cb, cookie));
+  TEST_ASSERT_EQ(k_ra_ok, ra_bkup_attach_handler(stub_bkup_cb, cookie));
 
   ra_bkup_dispatch((uint8_t)k_ra_bkup_vbtadsr_mask_vbtadf2);
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)s_bkup_cb_count);
-  TEST_ASSERT_EQ((int32_t)((uint8_t)k_ra_bkup_vbtadsr_mask_vbtadf2), (int32_t)s_bkup_cb_last_flags);
+  TEST_ASSERT_EQ(1, s_bkup_cb_count);
+  TEST_ASSERT_EQ(((uint8_t)k_ra_bkup_vbtadsr_mask_vbtadf2), s_bkup_cb_last_flags);
   TEST_ASSERT(s_bkup_cb_last_ctx == cookie);
 
   /* Detach -> dispatch must be a silent no-op. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_bkup_attach_handler(nullptr, nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_bkup_attach_handler(nullptr, nullptr));
   ra_bkup_dispatch((uint8_t)k_ra_bkup_vbtadsr_mask_vbtadf0);
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)s_bkup_cb_count);
+  TEST_ASSERT_EQ(1, s_bkup_cb_count);
   TEST_END("bkup attach + dispatch");
 }
 
@@ -957,7 +931,7 @@ static void test_isr_handle_armed_and_fired(void)
   TEST_BEGIN("bkup isr_handle armed+fired");
   prep();
   const ra_bkup_config_t cfg = make_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_bkup_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_bkup_init(&cfg));
 
   /* Enable IE on channels 0 + 2; flag both 0 and 1. Expect dispatch
    * mask == 0x01 (only ch0 is both armed and flagged). */
@@ -966,11 +940,10 @@ static void test_isr_handle_armed_and_fired(void)
   *ra_bkup_vbtadsr() =
     (uint8_t)((uint8_t)k_ra_bkup_vbtadsr_mask_vbtadf0 | (uint8_t)k_ra_bkup_vbtadsr_mask_vbtadf1);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_bkup_attach_handler(stub_bkup_cb, (void*)(uintptr_t)1));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_bkup_isr_handle());
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)s_bkup_cb_count);
-  TEST_ASSERT_EQ((int32_t)((uint8_t)k_ra_bkup_vbtadsr_mask_vbtadf0), (int32_t)s_bkup_cb_last_flags);
+  TEST_ASSERT_EQ(k_ra_ok, ra_bkup_attach_handler(stub_bkup_cb, (void*)(uintptr_t)1));
+  TEST_ASSERT_EQ(k_ra_ok, ra_bkup_isr_handle());
+  TEST_ASSERT_EQ(1, s_bkup_cb_count);
+  TEST_ASSERT_EQ(((uint8_t)k_ra_bkup_vbtadsr_mask_vbtadf0), s_bkup_cb_last_flags);
   /* VBTADF0 W0Ced; VBTADF1 left set (not armed). */
   TEST_ASSERT((*ra_bkup_vbtadsr() & (uint8_t)k_ra_bkup_vbtadsr_mask_vbtadf0) == 0U);
   TEST_ASSERT((*ra_bkup_vbtadsr() & (uint8_t)k_ra_bkup_vbtadsr_mask_vbtadf1) != 0U);
@@ -988,15 +961,15 @@ static void test_isr_handle_no_fire(void)
   TEST_BEGIN("bkup isr_handle no fire");
   prep();
   const ra_bkup_config_t cfg = make_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_bkup_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_bkup_init(&cfg));
 
   /* Flag set but IE = 0 -> no dispatch, no clear. */
   *ra_bkup_vbtadcr1() = 0U;
   *ra_bkup_vbtadsr()  = (uint8_t)k_ra_bkup_vbtadsr_mask_vbtadf2;
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_bkup_attach_handler(stub_bkup_cb, nullptr));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_bkup_isr_handle());
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)s_bkup_cb_count);
+  TEST_ASSERT_EQ(k_ra_ok, ra_bkup_attach_handler(stub_bkup_cb, nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_bkup_isr_handle());
+  TEST_ASSERT_EQ(0, s_bkup_cb_count);
   TEST_ASSERT((*ra_bkup_vbtadsr() & (uint8_t)k_ra_bkup_vbtadsr_mask_vbtadf2) != 0U);
   TEST_END("bkup isr_handle no fire");
 }
@@ -1013,8 +986,8 @@ static void test_isr_handle_not_initialized(void)
   prep();
   /* Without init, isr_handle should refuse. We need to deinit first to
    * make sure the static state flag is clear. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_bkup_deinit());
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_initialized, (int32_t)ra_bkup_isr_handle());
+  TEST_ASSERT_EQ(k_ra_ok, ra_bkup_deinit());
+  TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_bkup_isr_handle());
   TEST_END("bkup isr_handle not initialized");
 }
 
@@ -1041,10 +1014,10 @@ static void test_all_vdet_levels(void)
   for (uint8_t i = 0U; i < (uint8_t)(sizeof(levels) / sizeof(levels[0])); ++i) {
     ra_bkup_config_t cfg = make_cfg();
     cfg.vdet_level       = levels[i];
-    TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_bkup_init(&cfg));
+    TEST_ASSERT_EQ(k_ra_ok, ra_bkup_init(&cfg));
     /* HUM Ch 12.2.12 "VBTBPCR2 : VBATT Battery Power Supply Control Register 2", p 508 */
-    TEST_ASSERT_EQ((int32_t)((uint8_t)levels[i]),
-                   (int32_t)(*ra_bkup_vbtbpcr2() & (uint8_t)k_ra_bkup_vbtbpcr2_mask_lvl));
+    TEST_ASSERT_EQ(((uint8_t)levels[i]),
+                   (*ra_bkup_vbtbpcr2() & (uint8_t)k_ra_bkup_vbtbpcr2_mask_lvl));
   }
   TEST_END("bkup all vdet levels accepted");
 }
@@ -1062,9 +1035,9 @@ static void test_all_nc_widths(void)
   for (uint8_t i = 0U; i <= (uint8_t)k_ra_bkup_nc_width_1hz; ++i) {
     ra_bkup_tamper_config_t cfg = make_tamper_cfg();
     cfg.nc_width                = (ra_bkup_nc_width_t)i;
-    TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_bkup_tamper_init(&cfg));
+    TEST_ASSERT_EQ(k_ra_ok, ra_bkup_tamper_init(&cfg));
     /* HUM Ch 12.2.18 "VBTNCWCR : VBATT Noise Canceler Width Control Register", p 511 */
-    TEST_ASSERT_EQ((int32_t)i, (int32_t)*ra_bkup_vbtncwcr());
+    TEST_ASSERT_EQ(i, *ra_bkup_vbtncwcr());
   }
   TEST_END("bkup all nc widths accepted");
 }
@@ -1096,17 +1069,17 @@ static void test_mcdc_ra_bkup(void)
   ra_bkup_tamper_config_t cfg = make_tamper_cfg();
   cfg.channels[0].edge        = k_ra_bkup_edge_falling;
   cfg.channels[1].edge        = k_ra_bkup_edge_rising;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_bkup_tamper_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_bkup_tamper_init(&cfg));
   cfg                  = make_tamper_cfg();
   cfg.channels[0].edge = (ra_bkup_edge_t)0xFFU;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_bkup_tamper_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_bkup_tamper_init(&cfg));
   cfg                         = make_tamper_cfg();
   cfg.channels[0].capture_src = k_ra_bkup_capture_src_pin;
   cfg.channels[1].capture_src = k_ra_bkup_capture_src_vbtadf;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_bkup_tamper_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_bkup_tamper_init(&cfg));
   cfg                         = make_tamper_cfg();
   cfg.channels[2].capture_src = (ra_bkup_capture_src_t)0xFFU;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_bkup_tamper_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_bkup_tamper_init(&cfg));
   TEST_END("bkup MC/DC: validate_chan edge + capture_src decisions");
 }
 

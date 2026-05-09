@@ -62,8 +62,8 @@ static void test_flash_pack_unpack_roundtrip(void)
   TEST_BEGIN("flash_journal: pack/unpack round-trip");
   uint8_t rec[k_test_flash_record_bytes];
   flash_journal_pack(0xDEADBEEFU, rec);
-  TEST_ASSERT_EQ((int)0xEF, (int)rec[0]);
-  TEST_ASSERT_EQ((int)0xDE, (int)rec[3]);
+  TEST_ASSERT_EQ(0xEF, rec[0]);
+  TEST_ASSERT_EQ(0xDE, rec[3]);
   TEST_ASSERT_EQ((unsigned int)0xDEADBEEFU, (unsigned int)flash_journal_unpack(rec));
   TEST_END("flash_journal: pack/unpack round-trip");
 }
@@ -81,20 +81,20 @@ static void test_flash_xspi_round_trip_ok(void)
   TEST_BEGIN("flash_journal: erase + program + read sequence ok");
   uint8_t rec[k_test_flash_record_bytes];
   flash_journal_pack(42U, rec);
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_xspi_flash_erase_sector((uint8_t)k_test_flash_instance,
-                                                 (uint32_t)k_test_flash_record_addr));
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_xspi_flash_program((uint8_t)k_test_flash_instance,
-                                            (uint32_t)k_test_flash_record_addr,
-                                            rec,
-                                            (uint32_t)k_test_flash_record_bytes));
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    ra_xspi_flash_erase_sector((uint8_t)k_test_flash_instance, (uint32_t)k_test_flash_record_addr));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_xspi_flash_program((uint8_t)k_test_flash_instance,
+                                       (uint32_t)k_test_flash_record_addr,
+                                       rec,
+                                       (uint32_t)k_test_flash_record_bytes));
   uint8_t back[k_test_flash_record_bytes] = {};
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_xspi_flash_read((uint8_t)k_test_flash_instance,
-                                         (uint32_t)k_test_flash_record_addr,
-                                         back,
-                                         (uint32_t)k_test_flash_record_bytes));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_xspi_flash_read((uint8_t)k_test_flash_instance,
+                                    (uint32_t)k_test_flash_record_addr,
+                                    back,
+                                    (uint32_t)k_test_flash_record_bytes));
   TEST_END("flash_journal: erase + program + read sequence ok");
 }
 
@@ -123,7 +123,7 @@ static void test_flash_xspi_read_null_buf(void)
   TEST_BEGIN("flash_journal: read rejects NULL buf");
   TEST_ASSERT(ra_xspi_flash_read((uint8_t)k_test_flash_instance,
                                  0U,
-                                 NULL,
+                                 nullptr,
                                  (uint32_t)k_test_flash_record_bytes) != k_ra_ok);
   TEST_END("flash_journal: read rejects NULL buf");
 }

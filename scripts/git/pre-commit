@@ -181,6 +181,15 @@ if [[ -n "$c_files" ]]; then
         error_found=1
     fi
 
+    # ---- no redundant casts inside TEST_ASSERT_EQ --------------------------
+    test_files=$(echo "$c_files" | grep -E "^tests/" || true)
+    if [[ -n "$test_files" ]] && [[ -f scripts/utils/check_assert_casts.py ]]; then
+        if ! python3 scripts/utils/check_assert_casts.py $test_files; then
+            echo "[FAIL] redundant cast(s) in TEST_ASSERT_EQ -- run strip_assert_casts.py."
+            error_found=1
+        fi
+    fi
+
     # ---- cppcheck ----------------------------------------------------------
     if command -v cppcheck &>/dev/null; then
         prod_files=$(echo "$c_files" | grep -vE "^tests/" || true)

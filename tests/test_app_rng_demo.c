@@ -53,9 +53,9 @@ static void test_rng_app_random_ok(void)
 {
   reset_world();
   TEST_BEGIN("rng_demo: init + random(32) ok");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_psa_crypto_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_psa_crypto_init());
   uint8_t buf[k_t_rng_bytes_per_line] = {};
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_psa_crypto_random(buf, sizeof(buf)));
+  TEST_ASSERT_EQ(k_ra_ok, ra_psa_crypto_random(buf, sizeof(buf)));
   /* xorshift32 sim is deterministic; at least one of the 32 bytes
    * must differ from the all-zero seed buffer. */
   uint8_t accum = 0U;
@@ -78,7 +78,7 @@ static void test_rng_app_random_not_initialised(void)
   reset_world();
   TEST_BEGIN("rng_demo: random before init rejected");
   uint8_t buf[k_t_rng_bytes_per_line] = {};
-  TEST_ASSERT_EQ((int)k_ra_err_not_initialized, (int)ra_psa_crypto_random(buf, sizeof(buf)));
+  TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_psa_crypto_random(buf, sizeof(buf)));
   TEST_END("rng_demo: random before init rejected");
 }
 
@@ -93,9 +93,9 @@ static void test_rng_app_random_null(void)
 {
   reset_world();
   TEST_BEGIN("rng_demo: NULL out rejected");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_psa_crypto_init());
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
-                 (int)ra_psa_crypto_random(nullptr, (size_t)k_t_rng_bytes_per_line));
+  TEST_ASSERT_EQ(k_ra_ok, ra_psa_crypto_init());
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_psa_crypto_random(nullptr, (size_t)k_t_rng_bytes_per_line));
   TEST_END("rng_demo: NULL out rejected");
 }
 
@@ -110,9 +110,9 @@ static void test_rng_app_random_zero_len(void)
 {
   reset_world();
   TEST_BEGIN("rng_demo: zero len rejected");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_psa_crypto_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_psa_crypto_init());
   uint8_t buf[1] = {};
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_size, (int)ra_psa_crypto_random(buf, 0U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_size, ra_psa_crypto_random(buf, 0U));
   TEST_END("rng_demo: zero len rejected");
 }
 
@@ -126,14 +126,14 @@ static void test_rng_app_random_zero_len(void)
 static void test_rng_app_nibble_to_hex(void)
 {
   TEST_BEGIN("rng_demo: nibble_to_hex digit + alpha branches");
-  TEST_ASSERT_EQ((int)'0', (int)banner_nibble(0U));
-  TEST_ASSERT_EQ((int)'5', (int)banner_nibble(5U));
-  TEST_ASSERT_EQ((int)'9', (int)banner_nibble(9U));
-  TEST_ASSERT_EQ((int)'a', (int)banner_nibble(10U));
-  TEST_ASSERT_EQ((int)'c', (int)banner_nibble(12U));
-  TEST_ASSERT_EQ((int)'f', (int)banner_nibble(15U));
+  TEST_ASSERT_EQ('0', banner_nibble(0U));
+  TEST_ASSERT_EQ('5', banner_nibble(5U));
+  TEST_ASSERT_EQ('9', banner_nibble(9U));
+  TEST_ASSERT_EQ('a', banner_nibble(10U));
+  TEST_ASSERT_EQ('c', banner_nibble(12U));
+  TEST_ASSERT_EQ('f', banner_nibble(15U));
   /* Upper nibble must be ignored. */
-  TEST_ASSERT_EQ((int)'5', (int)banner_nibble(0xF5U));
+  TEST_ASSERT_EQ('5', banner_nibble(0xF5U));
   TEST_END("rng_demo: nibble_to_hex digit + alpha branches");
 }
 

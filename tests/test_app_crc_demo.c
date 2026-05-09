@@ -86,7 +86,7 @@ static void test_crc_app_init_ok(void)
 {
   reset_world();
   TEST_BEGIN("crc_demo: init with IEEE 802.3 polynomial");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_crc_init(k_ra_crc_poly_32_ieee802_3));
+  TEST_ASSERT_EQ(k_ra_ok, ra_crc_init(k_ra_crc_poly_32_ieee802_3));
   TEST_END("crc_demo: init with IEEE 802.3 polynomial");
 }
 
@@ -101,14 +101,13 @@ static void test_crc_app_compute_drives_dor(void)
 {
   reset_world();
   TEST_BEGIN("crc_demo: compute returns DOR contents");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_crc_init(k_ra_crc_poly_32_ieee802_3));
+  TEST_ASSERT_EQ(k_ra_ok, ra_crc_init(k_ra_crc_poly_32_ieee802_3));
   ra_crc_reset();
   volatile r_crc_regs_t* reg = ra_crc();
   reg->CRCDOR                = 0xDEADBEEFUL;
   uint32_t got               = 0U;
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_crc_compute(k_t_crc_payload, (uint32_t)k_t_crc_payload_n, &got));
-  TEST_ASSERT_EQ((int)0xDEADBEEFUL, (int)got);
+  TEST_ASSERT_EQ(k_ra_ok, ra_crc_compute(k_t_crc_payload, (uint32_t)k_t_crc_payload_n, &got));
+  TEST_ASSERT_EQ(0xDEADBEEFUL, got);
   TEST_END("crc_demo: compute returns DOR contents");
 }
 
@@ -125,7 +124,7 @@ static void test_crc_app_sw_branches(void)
 {
   TEST_BEGIN("crc_demo: software CRC-32 takes both bit branches");
   /* Known value: CRC-32 of "" must equal 0 (init ^ xor_out). */
-  TEST_ASSERT_EQ((int)0U, (int)sw_crc32(k_t_crc_payload, 0U));
+  TEST_ASSERT_EQ(0U, sw_crc32(k_t_crc_payload, 0U));
   /* Non-trivial input must produce non-zero result. */
   const uint32_t v = sw_crc32(k_t_crc_payload, (uint32_t)k_t_crc_payload_n);
   TEST_ASSERT(v != 0U);
@@ -146,7 +145,7 @@ static void test_crc_app_compute_null(void)
 {
   reset_world();
   TEST_BEGIN("crc_demo: NULL data rejected");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_crc_init(k_ra_crc_poly_32_ieee802_3));
+  TEST_ASSERT_EQ(k_ra_ok, ra_crc_init(k_ra_crc_poly_32_ieee802_3));
   uint32_t out = 0U;
   TEST_ASSERT(ra_crc_compute(nullptr, (uint32_t)k_t_crc_payload_n, &out) != k_ra_ok);
   TEST_END("crc_demo: NULL data rejected");

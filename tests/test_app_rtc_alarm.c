@@ -51,7 +51,7 @@ static void test_rtc_app_arm_alarm_ok(void)
 {
   reset_world();
   TEST_BEGIN("rtc_alarm: arm +5 s alarm");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_rtc_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_rtc_init());
   const ra_rtc_datetime_t seed = {
     .year    = (uint16_t)(2000U + k_test_rtc_app_seed_year_lo),
     .month   = (uint8_t)k_test_rtc_app_seed_month,
@@ -61,7 +61,7 @@ static void test_rtc_app_arm_alarm_ok(void)
     .minute  = 0U,
     .second  = 0U,
   };
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_rtc_set(&seed));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rtc_set(&seed));
   const ra_rtc_datetime_t alarm = {
     .year    = seed.year,
     .month   = seed.month,
@@ -71,12 +71,12 @@ static void test_rtc_app_arm_alarm_ok(void)
     .minute  = 0U,
     .second  = (uint8_t)k_test_rtc_app_alarm_offset,
   };
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_rtc_set_alarm(&alarm));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_rtc_set_irq_enable((uint8_t)k_ra_rtc_irq_alarm));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rtc_set_alarm(&alarm));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rtc_set_irq_enable((uint8_t)k_ra_rtc_irq_alarm));
   /* RSECAR low nibble holds 5 in BCD; bit 7 is the ENB flag. */
   const uint8_t rsecar = ra_rtc()->RSECAR;
   TEST_ASSERT((rsecar & (uint8_t)k_test_rtc_app_alarm_enb) != 0U);
-  TEST_ASSERT_EQ((int)k_test_rtc_app_alarm_offset, (int)(rsecar & 0x0FU));
+  TEST_ASSERT_EQ(k_test_rtc_app_alarm_offset, (rsecar & 0x0FU));
   TEST_END("rtc_alarm: arm +5 s alarm");
 }
 
@@ -91,8 +91,8 @@ static void test_rtc_app_alarm_null(void)
 {
   reset_world();
   TEST_BEGIN("rtc_alarm: NULL alarm rejected");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_rtc_init());
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_rtc_set_alarm(nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rtc_init());
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_rtc_set_alarm(nullptr));
   TEST_END("rtc_alarm: NULL alarm rejected");
 }
 
@@ -109,7 +109,7 @@ static void test_rtc_app_alarm_bad_range(void)
 {
   reset_world();
   TEST_BEGIN("rtc_alarm: out-of-range fields rejected");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_rtc_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_rtc_init());
   ra_rtc_datetime_t a = {
     .year    = 2026U,
     .month   = 1U,
@@ -119,13 +119,13 @@ static void test_rtc_app_alarm_bad_range(void)
     .minute  = 0U,
     .second  = 0U,
   };
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_rtc_set_alarm(&a));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_rtc_set_alarm(&a));
   a.hour   = 0U;
   a.minute = (uint8_t)k_test_rtc_app_bad_min;
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_rtc_set_alarm(&a));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_rtc_set_alarm(&a));
   a.minute = 0U;
   a.second = (uint8_t)k_test_rtc_app_bad_sec;
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_rtc_set_alarm(&a));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_rtc_set_alarm(&a));
   TEST_END("rtc_alarm: out-of-range fields rejected");
 }
 
@@ -141,13 +141,13 @@ static void test_rtc_app_status_roundtrip(void)
 {
   reset_world();
   TEST_BEGIN("rtc_alarm: status set + clear");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_rtc_init());
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_rtc_set_irq_enable((uint8_t)k_ra_rtc_irq_alarm));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rtc_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_rtc_set_irq_enable((uint8_t)k_ra_rtc_irq_alarm));
   uint8_t status = 0U;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_rtc_get_status(&status));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rtc_get_status(&status));
   TEST_ASSERT((status & (uint8_t)k_ra_rtc_irq_alarm) != 0U);
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_rtc_clear_status((uint8_t)k_ra_rtc_irq_alarm));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_rtc_get_status(&status));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rtc_clear_status((uint8_t)k_ra_rtc_irq_alarm));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rtc_get_status(&status));
   TEST_ASSERT((status & (uint8_t)k_ra_rtc_irq_alarm) == 0U);
   TEST_END("rtc_alarm: status set + clear");
 }

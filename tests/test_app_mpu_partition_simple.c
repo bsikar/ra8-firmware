@@ -79,7 +79,7 @@ static void test_mpu_simple_configure_ok(void)
     .privdefena   = true,
     .hfnmiena     = false,
   };
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_mpu_configure(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mpu_configure(&cfg));
   TEST_END("mpu_partition_simple: configure single RO region");
 }
 
@@ -143,8 +143,8 @@ static void test_mpu_simple_enable_disable(void)
 {
   reset_world();
   TEST_BEGIN("mpu_partition_simple: enable/disable round-trip");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_mpu_disable());
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_mpu_enable());
+  TEST_ASSERT_EQ(k_ra_ok, ra_mpu_disable());
+  TEST_ASSERT_EQ(k_ra_ok, ra_mpu_enable());
   TEST_END("mpu_partition_simple: enable/disable round-trip");
 }
 

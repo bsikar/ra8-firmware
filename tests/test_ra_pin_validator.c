@@ -55,7 +55,7 @@ static void test_double_claim_rejected(void)
   ra_pin_validator_reset();
   TEST_ASSERT_EQ(k_ra_ok, ra_pin_validator_claim(k_ra_pin_led1, "FIRST"));
   const ra_err_t second = ra_pin_validator_claim(k_ra_pin_led1, "SECOND");
-  TEST_ASSERT_EQ((int)k_ra_err_gpio_conflict, (int)second);
+  TEST_ASSERT_EQ(k_ra_err_gpio_conflict, second);
   TEST_END("double claim rejected");
 }
 
@@ -86,7 +86,7 @@ static void test_null_owner_rejected(void)
 {
   TEST_BEGIN("null owner rejected");
   ra_pin_validator_reset();
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_pin_validator_claim(k_ra_pin_led1, NULL));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_pin_validator_claim(k_ra_pin_led1, nullptr));
   TEST_END("null owner rejected");
 }
 

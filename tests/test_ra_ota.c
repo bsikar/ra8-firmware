@@ -94,10 +94,10 @@ static void priv_compute_xor_hash(const uint8_t* data, uint32_t len, uint8_t out
 static ra_err_t mock_net_open(void* ctx, const char* url, uint32_t* out_len)
 {
   (void)ctx;
-  if ((url == NULL) || (out_len == NULL)) {
+  if ((url == nullptr) || (out_len == nullptr)) {
     return k_ra_err_null_ptr;
   }
-  if (strstr(url, "manifest") != NULL) {
+  if (strstr(url, "manifest") != nullptr) {
     g_net_payload   = (const uint8_t*)g_mock_manifest;
     g_net_remaining = (uint32_t)strlen(g_mock_manifest);
   } else {
@@ -112,7 +112,7 @@ static ra_err_t mock_net_open(void* ctx, const char* url, uint32_t* out_len)
 static ra_err_t mock_net_read(void* ctx, uint8_t* dst, uint32_t cap, uint32_t* out)
 {
   (void)ctx;
-  if ((dst == NULL) || (out == NULL)) {
+  if ((dst == nullptr) || (out == nullptr)) {
     return k_ra_err_null_ptr;
   }
   const uint32_t remain = g_net_remaining - g_net_offset;
@@ -295,7 +295,7 @@ static ra_ota_cfg_t priv_make_cfg(void)
   ra_ota_cfg_t cfg = {};
   (void)snprintf(cfg.manifest_url, k_ra_ota_url_max_bytes, "https://example.test/manifest.json");
   cfg.pubkey_handle             = k_test_pubkey;
-  cfg.on_progress               = NULL;
+  cfg.on_progress               = nullptr;
   cfg.run_as_thread             = false;
   cfg.net.open                  = mock_net_open;
   cfg.net.read                  = mock_net_read;
@@ -327,10 +327,10 @@ static void test_init_validation(void)
 {
   TEST_BEGIN("test_init_validation");
   (void)ra_ota_deinit();
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_ota_init(NULL));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_ota_init(nullptr));
 
   ra_ota_cfg_t cfg = priv_make_cfg();
-  cfg.net.read     = NULL;
+  cfg.net.read     = nullptr;
   TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_ota_init(&cfg));
 
   cfg                 = priv_make_cfg();
@@ -368,7 +368,7 @@ static void test_check_bad_manifest(void)
   ra_ota_manifest_t m = {};
   const ra_err_t    e = ra_ota_check_for_update(&m);
   TEST_ASSERT_EQ(k_ra_err_invalid_arg, e);
-  TEST_ASSERT_EQ((int)k_ra_ota_state_error, (int)ra_ota_get_state());
+  TEST_ASSERT_EQ(k_ra_ota_state_error, ra_ota_get_state());
   TEST_ASSERT_EQ(k_ra_ok, ra_ota_deinit());
   TEST_END("test_check_bad_manifest");
 }
@@ -397,7 +397,7 @@ static void test_partial_download_recovery(void)
   g_inject_short_eof = true;
   const ra_err_t e1  = ra_ota_download_to_inactive_bank(&m);
   TEST_ASSERT(e1 != k_ra_ok);
-  TEST_ASSERT_EQ((int)k_ra_ota_state_error, (int)ra_ota_get_state());
+  TEST_ASSERT_EQ(k_ra_ota_state_error, ra_ota_get_state());
 
   /* "Reboot" -> deinit + init clears the high-water mark and the
    * caller can retry from scratch with a healthy network. */
@@ -407,7 +407,7 @@ static void test_partial_download_recovery(void)
   TEST_ASSERT_EQ(k_ra_ok, ra_ota_check_for_update(&m));
   const ra_err_t e2 = ra_ota_download_to_inactive_bank(&m);
   TEST_ASSERT_EQ(k_ra_ok, e2);
-  TEST_ASSERT_EQ((int)k_ra_ota_state_verifying, (int)ra_ota_get_state());
+  TEST_ASSERT_EQ(k_ra_ota_state_verifying, ra_ota_get_state());
   TEST_ASSERT_EQ(k_ra_ok, ra_ota_deinit());
   TEST_END("test_partial_download_recovery");
 }
@@ -433,7 +433,7 @@ static void test_signature_mismatch(void)
 
   g_ecdsa_should_fail = true;
   TEST_ASSERT_EQ(k_ra_err_hw_error, ra_ota_verify_signature(&m));
-  TEST_ASSERT_EQ((int)k_ra_ota_state_error, (int)ra_ota_get_state());
+  TEST_ASSERT_EQ(k_ra_ota_state_error, ra_ota_get_state());
   TEST_ASSERT_EQ(k_ra_ok, ra_ota_deinit());
   TEST_END("test_signature_mismatch");
 }
@@ -460,7 +460,7 @@ static void test_sha256_mismatch(void)
   /* Corrupt the readback so the verify-side SHA differs. */
   g_corrupt_readback = true;
   TEST_ASSERT_EQ(k_ra_err_crc_mismatch, ra_ota_verify_signature(&m));
-  TEST_ASSERT_EQ((int)k_ra_ota_state_error, (int)ra_ota_get_state());
+  TEST_ASSERT_EQ(k_ra_ota_state_error, ra_ota_get_state());
   TEST_ASSERT_EQ(k_ra_ok, ra_ota_deinit());
   TEST_END("test_sha256_mismatch");
 }
@@ -483,17 +483,17 @@ static void test_happy_path(void)
 
   ra_ota_manifest_t m = {};
   TEST_ASSERT_EQ(k_ra_ok, ra_ota_check_for_update(&m));
-  TEST_ASSERT_EQ(k_test_image_size, (uint32_t)m.image_size_bytes);
-  TEST_ASSERT_EQ((int)k_ra_ota_state_idle, (int)ra_ota_get_state());
+  TEST_ASSERT_EQ(k_test_image_size, m.image_size_bytes);
+  TEST_ASSERT_EQ(k_ra_ota_state_idle, ra_ota_get_state());
 
   TEST_ASSERT_EQ(k_ra_ok, ra_ota_download_to_inactive_bank(&m));
-  TEST_ASSERT_EQ((int)k_ra_ota_state_verifying, (int)ra_ota_get_state());
+  TEST_ASSERT_EQ(k_ra_ota_state_verifying, ra_ota_get_state());
 
   TEST_ASSERT_EQ(k_ra_ok, ra_ota_verify_signature(&m));
-  TEST_ASSERT_EQ((int)k_ra_ota_state_committing, (int)ra_ota_get_state());
+  TEST_ASSERT_EQ(k_ra_ota_state_committing, ra_ota_get_state());
 
   TEST_ASSERT_EQ(k_ra_ok, ra_ota_commit_and_reboot());
-  TEST_ASSERT_EQ((int)k_ra_ota_state_done, (int)ra_ota_get_state());
+  TEST_ASSERT_EQ(k_ra_ota_state_done, ra_ota_get_state());
   TEST_ASSERT_EQ(1U, g_reset_count);
 
   /* Programmed bank should match the source image. */
@@ -531,12 +531,12 @@ static void test_mcdc_download_state_guard(void)
   TEST_ASSERT_EQ(k_ra_ok, ra_ota_check_for_update(&m));
 
   /* V1: state=idle -> proceed. */
-  TEST_ASSERT_EQ((int)k_ra_ota_state_idle, (int)ra_ota_get_state());
+  TEST_ASSERT_EQ(k_ra_ota_state_idle, ra_ota_get_state());
   TEST_ASSERT_EQ(k_ra_ok, ra_ota_download_to_inactive_bank(&m));
-  TEST_ASSERT_EQ((int)k_ra_ota_state_verifying, (int)ra_ota_get_state());
+  TEST_ASSERT_EQ(k_ra_ota_state_verifying, ra_ota_get_state());
 
   /* V2: state=verifying -> guard rejects. */
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_state, (int)ra_ota_download_to_inactive_bank(&m));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_ota_download_to_inactive_bank(&m));
 
   /* V3: re-init -> idle -> check -> download to exercise the C2=F leg. */
   TEST_ASSERT_EQ(k_ra_ok, ra_ota_deinit());
@@ -570,11 +570,11 @@ static void test_mcdc_run_full_update_terminal(void)
   /* V1: progress to done -> the guard breaks the loop on the first
    * iteration where C1 OR C2 holds. */
   TEST_ASSERT_EQ(k_ra_ok, ra_ota_run_full_update());
-  TEST_ASSERT_EQ((int)k_ra_ota_state_done, (int)ra_ota_get_state());
+  TEST_ASSERT_EQ(k_ra_ota_state_done, ra_ota_get_state());
 
   /* V2: state=done -> immediate no-op (loop breaks via C1). */
   TEST_ASSERT_EQ(k_ra_ok, ra_ota_run_full_update());
-  TEST_ASSERT_EQ((int)k_ra_ota_state_done, (int)ra_ota_get_state());
+  TEST_ASSERT_EQ(k_ra_ota_state_done, ra_ota_get_state());
   TEST_ASSERT_EQ(k_ra_ok, ra_ota_deinit());
 
   /* V3: error state -> terminal guard short-circuits via C2. */
@@ -584,10 +584,10 @@ static void test_mcdc_run_full_update_terminal(void)
   TEST_ASSERT_EQ(k_ra_ok, ra_ota_init(&cfg));
   ra_ota_manifest_t m = {};
   TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ota_check_for_update(&m));
-  TEST_ASSERT_EQ((int)k_ra_ota_state_error, (int)ra_ota_get_state());
+  TEST_ASSERT_EQ(k_ra_ota_state_error, ra_ota_get_state());
   const ra_err_t e = ra_ota_run_full_update();
   TEST_ASSERT(e != k_ra_ok);
-  TEST_ASSERT_EQ((int)k_ra_ota_state_error, (int)ra_ota_get_state());
+  TEST_ASSERT_EQ(k_ra_ota_state_error, ra_ota_get_state());
   TEST_ASSERT_EQ(k_ra_ok, ra_ota_deinit());
   TEST_END("mcdc: run_full_update terminal (state==done || state==error)");
 }
@@ -715,23 +715,20 @@ static void test_mcdc_priv_json_u32_skip_chars(void)
   TEST_BEGIN("ra_ota MC/DC: ra_ota_internal_json_u32 skip-char OR");
   uint32_t v = 0U;
   /* V1: colon between key and value. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ota_internal_json_u32("\"size\":42}", "\"size\"", &v));
-  TEST_ASSERT_EQ((int32_t)42, (int32_t)v);
+  TEST_ASSERT_EQ(k_ra_ok, ra_ota_internal_json_u32("\"size\":42}", "\"size\"", &v));
+  TEST_ASSERT_EQ(42, v);
   /* V2: space (after key, before digits). */
   v = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ota_internal_json_u32("\"size\" 7}", "\"size\"", &v));
-  TEST_ASSERT_EQ((int32_t)7, (int32_t)v);
+  TEST_ASSERT_EQ(k_ra_ok, ra_ota_internal_json_u32("\"size\" 7}", "\"size\"", &v));
+  TEST_ASSERT_EQ(7, v);
   /* V3: quote (e.g. "size""123"). */
   v = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_ota_internal_json_u32("\"size\"\"3", "\"size\"", &v));
-  TEST_ASSERT_EQ((int32_t)3, (int32_t)v);
+  TEST_ASSERT_EQ(k_ra_ok, ra_ota_internal_json_u32("\"size\"\"3", "\"size\"", &v));
+  TEST_ASSERT_EQ(3, v);
   /* V4: digit immediately after key -- skip loop exits at first iter. */
   v = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ota_internal_json_u32("\"size\"9}", "\"size\"", &v));
-  TEST_ASSERT_EQ((int32_t)9, (int32_t)v);
+  TEST_ASSERT_EQ(k_ra_ok, ra_ota_internal_json_u32("\"size\"9}", "\"size\"", &v));
+  TEST_ASSERT_EQ(9, v);
   TEST_END("ra_ota MC/DC: ra_ota_internal_json_u32 skip-char OR");
 }
 

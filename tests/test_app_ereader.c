@@ -112,11 +112,11 @@ static void er_build_synth_epub(void)
                              MZ_DEFAULT_COMPRESSION);
   TEST_ASSERT(ok == MZ_TRUE);
 
-  void*  heap_buf  = NULL;
+  void*  heap_buf  = nullptr;
   size_t heap_size = 0U;
   ok               = mz_zip_writer_finalize_heap_archive(&zip, &heap_buf, &heap_size);
   TEST_ASSERT(ok == MZ_TRUE);
-  TEST_ASSERT(heap_buf != NULL);
+  TEST_ASSERT(heap_buf != nullptr);
   TEST_ASSERT(heap_size <= sizeof(s_er_epub_buf));
   memcpy(s_er_epub_buf, heap_buf, heap_size);
   s_er_epub_size = heap_size;
@@ -146,12 +146,12 @@ static void test_ereader_pre_kernel_bringup(void)
 {
   reset_world();
   TEST_BEGIN("ereader: pre-kernel CGC + SysTick + LEDs");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_cgc_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_cgc_init());
   uint32_t hz = 0U;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &hz));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_time_init(hz));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_led_init(k_ra_board_led1));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_led_init(k_ra_board_led2));
+  TEST_ASSERT_EQ(k_ra_ok, ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &hz));
+  TEST_ASSERT_EQ(k_ra_ok, ra_time_init(hz));
+  TEST_ASSERT_EQ(k_ra_ok, ra_board_led_init(k_ra_board_led1));
+  TEST_ASSERT_EQ(k_ra_ok, ra_board_led_init(k_ra_board_led2));
   TEST_END("ereader: pre-kernel CGC + SysTick + LEDs");
 }
 
@@ -171,10 +171,10 @@ static void test_ereader_library_open_chapters_close(void)
   er_build_synth_epub();
   ra_epub_book_t            book  = {};
   const ra_epub_mem_media_t media = {.data = s_er_epub_buf, .size = s_er_epub_size};
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_epub_open(&media, "lib.epub", &book));
-  TEST_ASSERT_EQ((int)k_test_er_expected_chaps, (int)book.chapter_count);
-  TEST_ASSERT_EQ((int)1, (int)book.in_use);
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_epub_close(&book));
+  TEST_ASSERT_EQ(k_ra_ok, ra_epub_open(&media, "lib.epub", &book));
+  TEST_ASSERT_EQ(k_test_er_expected_chaps, book.chapter_count);
+  TEST_ASSERT_EQ(1, book.in_use);
+  TEST_ASSERT_EQ(k_ra_ok, ra_epub_close(&book));
   TEST_END("ereader: library_thread open + chapters + close");
 }
 
@@ -193,15 +193,15 @@ static void test_ereader_reader_load_chapter_zero(void)
   er_build_synth_epub();
   ra_epub_book_t            book  = {};
   const ra_epub_mem_media_t media = {.data = s_er_epub_buf, .size = s_er_epub_size};
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_epub_open(&media, NULL, &book));
+  TEST_ASSERT_EQ(k_ra_ok, ra_epub_open(&media, nullptr, &book));
 
   uint8_t  chunk[1024] = {};
   size_t   actual      = 0U;
   ra_err_t err         = ra_epub_load_chapter(&book, 0U, chunk, sizeof(chunk), &actual);
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)err);
+  TEST_ASSERT_EQ(k_ra_ok, err);
   TEST_ASSERT(actual > 0U);
 
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_epub_close(&book));
+  TEST_ASSERT_EQ(k_ra_ok, ra_epub_close(&book));
   TEST_END("ereader: reader_thread load_chapter(0)");
 }
 
@@ -222,7 +222,7 @@ static void test_ereader_open_null_outbook_rejected(void)
   TEST_BEGIN("ereader: open(NULL out_book) rejected");
   er_build_synth_epub();
   const ra_epub_mem_media_t media = {.data = s_er_epub_buf, .size = s_er_epub_size};
-  TEST_ASSERT(ra_epub_open(&media, "x.epub", NULL) != k_ra_ok);
+  TEST_ASSERT(ra_epub_open(&media, "x.epub", nullptr) != k_ra_ok);
   TEST_END("ereader: open(NULL out_book) rejected");
 }
 
@@ -255,10 +255,10 @@ static void test_ereader_led_init_idempotent(void)
 {
   reset_world();
   TEST_BEGIN("ereader: led_init(LED1) re-init reports gpio_conflict");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_led_init(k_ra_board_led1));
+  TEST_ASSERT_EQ(k_ra_ok, ra_board_led_init(k_ra_board_led1));
   /* Pin validator forbids a second claim of the same pin; the
    * library_thread treats the conflict as already-mine, continue. */
-  TEST_ASSERT_EQ((int)k_ra_err_gpio_conflict, (int)ra_board_led_init(k_ra_board_led1));
+  TEST_ASSERT_EQ(k_ra_err_gpio_conflict, ra_board_led_init(k_ra_board_led1));
   TEST_END("ereader: led_init(LED1) re-init reports gpio_conflict");
 }
 

@@ -149,7 +149,7 @@ static void test_init_null_cfg(void)
 {
   TEST_BEGIN("sdcard init: null cfg rejected");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_sdcard_init(nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_sdcard_init(nullptr));
   TEST_END("sdcard init: null cfg rejected");
 }
 
@@ -168,17 +168,17 @@ static void test_init_full_sequence(void)
   const ra_sdcard_cfg_t cfg = {.instance = (uint8_t)k_ra_sdcard_test_inst};
   const ra_err_t        err = ra_sdcard_init(&cfg);
   disarm_alarm();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)err);
+  TEST_ASSERT_EQ(k_ra_ok, err);
 
   uint32_t blocks = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sdcard_get_capacity(&blocks));
-  TEST_ASSERT_EQ((int32_t)k_ra_sdcard_test_expected_blocks, (int32_t)blocks);
+  TEST_ASSERT_EQ(k_ra_ok, ra_sdcard_get_capacity(&blocks));
+  TEST_ASSERT_EQ(k_ra_sdcard_test_expected_blocks, blocks);
 
   ra_sdcard_card_type_t type = k_ra_sdcard_type_unknown;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sdcard_get_type(&type));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sdcard_get_type(&type));
   TEST_ASSERT((type == k_ra_sdcard_type_sdhc) || (type == k_ra_sdcard_type_sdxc));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sdcard_deinit());
+  TEST_ASSERT_EQ(k_ra_ok, ra_sdcard_deinit());
   TEST_END("sdcard init: full SD init sequence succeeds");
 }
 
@@ -194,10 +194,10 @@ static void test_init_double_call_rejected(void)
   prep();
   arm_alarm((uint8_t)k_ra_sdcard_test_inst);
   const ra_sdcard_cfg_t cfg = {.instance = (uint8_t)k_ra_sdcard_test_inst};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sdcard_init(&cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_sdcard_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sdcard_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_sdcard_init(&cfg));
   disarm_alarm();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sdcard_deinit());
+  TEST_ASSERT_EQ(k_ra_ok, ra_sdcard_deinit());
   TEST_END("sdcard init: double init returns invalid_state");
 }
 
@@ -213,7 +213,7 @@ static void test_init_bad_instance(void)
   prep();
   const ra_sdcard_cfg_t cfg = {.instance = 9U};
   /* SDHI init rejects out-of-range instances with k_ra_err_null_ptr. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_sdcard_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_sdcard_init(&cfg));
   TEST_END("sdcard init: bad instance");
 }
 
@@ -249,11 +249,11 @@ static void test_io_before_init_rejected(void)
   prep();
   uint8_t  buf[512] = {};
   uint32_t blocks   = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_sdcard_read_blocks(0U, buf, 1U));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_sdcard_write_blocks(0U, buf, 1U));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_sdcard_get_capacity(&blocks));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_sdcard_read_blocks(0U, buf, 1U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_sdcard_write_blocks(0U, buf, 1U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_sdcard_get_capacity(&blocks));
   ra_sdcard_card_type_t type = k_ra_sdcard_type_unknown;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_sdcard_get_type(&type));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_sdcard_get_type(&type));
   TEST_END("sdcard read/write before init rejected");
 }
 
@@ -267,10 +267,10 @@ static void test_io_null_args(void)
 {
   TEST_BEGIN("sdcard read/write null args rejected");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_sdcard_read_blocks(0U, nullptr, 1U));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_sdcard_write_blocks(0U, nullptr, 1U));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_sdcard_get_capacity(nullptr));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_sdcard_get_type(nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_sdcard_read_blocks(0U, nullptr, 1U));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_sdcard_write_blocks(0U, nullptr, 1U));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_sdcard_get_capacity(nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_sdcard_get_type(nullptr));
   TEST_END("sdcard read/write null args rejected");
 }
 
@@ -285,8 +285,8 @@ static void test_io_zero_count(void)
   TEST_BEGIN("sdcard read/write count=0 rejected");
   prep();
   uint8_t buf[1];
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_sdcard_read_blocks(0U, buf, 0U));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_sdcard_write_blocks(0U, buf, 0U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_sdcard_read_blocks(0U, buf, 0U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_sdcard_write_blocks(0U, buf, 0U));
   TEST_END("sdcard read/write count=0 rejected");
 }
 
@@ -302,24 +302,24 @@ static void test_io_after_init(void)
   prep();
   arm_alarm((uint8_t)k_ra_sdcard_test_inst);
   const ra_sdcard_cfg_t cfg = {.instance = (uint8_t)k_ra_sdcard_test_inst};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sdcard_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sdcard_init(&cfg));
 
   /* Single block read at LBA 0. SDHI mock returns whatever SD_BUF0
    * holds; we don't care about content here, only that the call
    * returns ok. */
   uint8_t        buf[512] = {};
   const ra_err_t r        = ra_sdcard_read_blocks(0U, buf, 1U);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)r);
+  TEST_ASSERT_EQ(k_ra_ok, r);
 
   /* Single block write. */
   for (size_t i = 0U; i < sizeof(buf); ++i) {
     buf[i] = (uint8_t)i;
   }
   const ra_err_t w = ra_sdcard_write_blocks(1U, buf, 1U);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)w);
+  TEST_ASSERT_EQ(k_ra_ok, w);
 
   disarm_alarm();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sdcard_deinit());
+  TEST_ASSERT_EQ(k_ra_ok, ra_sdcard_deinit());
   TEST_END("sdcard read/write after init: pass through to SDHI");
 }
 
@@ -335,17 +335,17 @@ static void test_io_out_of_range(void)
   prep();
   arm_alarm((uint8_t)k_ra_sdcard_test_inst);
   const ra_sdcard_cfg_t cfg = {.instance = (uint8_t)k_ra_sdcard_test_inst};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sdcard_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sdcard_init(&cfg));
   disarm_alarm();
 
   uint8_t buf[512] = {};
   /* Capacity is k_ra_sdcard_test_expected_blocks. Read starting at
    * the very last block + a span of 2 should overflow. */
   const uint32_t lba = (uint32_t)k_ra_sdcard_test_expected_blocks - 1U;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_out_of_range, (int32_t)ra_sdcard_read_blocks(lba, buf, 2U));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_out_of_range, (int32_t)ra_sdcard_write_blocks(lba, buf, 2U));
+  TEST_ASSERT_EQ(k_ra_err_out_of_range, ra_sdcard_read_blocks(lba, buf, 2U));
+  TEST_ASSERT_EQ(k_ra_err_out_of_range, ra_sdcard_write_blocks(lba, buf, 2U));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sdcard_deinit());
+  TEST_ASSERT_EQ(k_ra_ok, ra_sdcard_deinit());
   TEST_END("sdcard read/write past capacity rejected");
 }
 
@@ -359,8 +359,8 @@ static void test_deinit_idempotent(void)
 {
   TEST_BEGIN("sdcard deinit before init is a no-op");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sdcard_deinit());
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sdcard_deinit());
+  TEST_ASSERT_EQ(k_ra_ok, ra_sdcard_deinit());
+  TEST_ASSERT_EQ(k_ra_ok, ra_sdcard_deinit());
   TEST_END("sdcard deinit before init is a no-op");
 }
 

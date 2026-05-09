@@ -34,11 +34,11 @@ static void test_init_fs_starts_detached(void)
 {
   TEST_BEGIN("ra_usb_pal_init: FS init starts detached");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pal_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_init(k_ra_usb_speed_fs));
 
   ra_usb_pal_state_t state = k_ra_usb_pal_state_configd;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pal_get_state(&state));
-  TEST_ASSERT_EQ((int32_t)k_ra_usb_pal_state_detached, (int32_t)state);
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_get_state(&state));
+  TEST_ASSERT_EQ(k_ra_usb_pal_state_detached, state);
   TEST_END("ra_usb_pal_init: FS init starts detached");
 }
 
@@ -52,10 +52,10 @@ static void test_init_hs_starts_detached(void)
 {
   TEST_BEGIN("ra_usb_pal_init: HS init starts detached");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pal_init(k_ra_usb_speed_hs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_init(k_ra_usb_speed_hs));
   ra_usb_pal_state_t state = k_ra_usb_pal_state_configd;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pal_get_state(&state));
-  TEST_ASSERT_EQ((int32_t)k_ra_usb_pal_state_detached, (int32_t)state);
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_get_state(&state));
+  TEST_ASSERT_EQ(k_ra_usb_pal_state_detached, state);
   TEST_END("ra_usb_pal_init: HS init starts detached");
 }
 
@@ -69,7 +69,7 @@ static void test_init_bad_speed(void)
 {
   TEST_BEGIN("ra_usb_pal_init: bad speed rejected");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_usb_pal_init((ra_usb_speed_t)99U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_usb_pal_init((ra_usb_speed_t)99U));
   TEST_END("ra_usb_pal_init: bad speed rejected");
 }
 
@@ -83,16 +83,16 @@ static void test_attach_detach_cycles_state(void)
 {
   TEST_BEGIN("ra_usb_pal_attach: cycles state attached/detached");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pal_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_init(k_ra_usb_speed_fs));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pal_attach(true));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_attach(true));
   ra_usb_pal_state_t state = k_ra_usb_pal_state_detached;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pal_get_state(&state));
-  TEST_ASSERT_EQ((int32_t)k_ra_usb_pal_state_attached, (int32_t)state);
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_get_state(&state));
+  TEST_ASSERT_EQ(k_ra_usb_pal_state_attached, state);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pal_attach(false));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pal_get_state(&state));
-  TEST_ASSERT_EQ((int32_t)k_ra_usb_pal_state_detached, (int32_t)state);
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_attach(false));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_get_state(&state));
+  TEST_ASSERT_EQ(k_ra_usb_pal_state_detached, state);
   TEST_END("ra_usb_pal_attach: cycles state attached/detached");
 }
 
@@ -106,35 +106,29 @@ static void test_ep_open_validates_args(void)
 {
   TEST_BEGIN("ra_usb_pal_ep_open: arg validation");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pal_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_init(k_ra_usb_speed_fs));
 
   /* Bad EP addr (0 = control reserved). */
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_arg,
-    (int32_t)ra_usb_pal_ep_open(0U, k_ra_usb_pal_ep_dir_in, k_ra_usb_pal_ep_type_bulk, 64U));
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_arg,
-    (int32_t)ra_usb_pal_ep_open(99U, k_ra_usb_pal_ep_dir_in, k_ra_usb_pal_ep_type_bulk, 64U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_usb_pal_ep_open(0U, k_ra_usb_pal_ep_dir_in, k_ra_usb_pal_ep_type_bulk, 64U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_usb_pal_ep_open(99U, k_ra_usb_pal_ep_dir_in, k_ra_usb_pal_ep_type_bulk, 64U));
 
   /* Bad direction. */
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_arg,
-    (int32_t)ra_usb_pal_ep_open(1U, (ra_usb_pal_ep_dir_t)9U, k_ra_usb_pal_ep_type_bulk, 64U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_usb_pal_ep_open(1U, (ra_usb_pal_ep_dir_t)9U, k_ra_usb_pal_ep_type_bulk, 64U));
 
   /* Bad type. */
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_arg,
-    (int32_t)ra_usb_pal_ep_open(1U, k_ra_usb_pal_ep_dir_in, (ra_usb_pal_ep_type_t)99U, 64U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_usb_pal_ep_open(1U, k_ra_usb_pal_ep_dir_in, (ra_usb_pal_ep_type_t)99U, 64U));
 
   /* Zero packet size. */
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_arg,
-    (int32_t)ra_usb_pal_ep_open(1U, k_ra_usb_pal_ep_dir_in, k_ra_usb_pal_ep_type_bulk, 0U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_usb_pal_ep_open(1U, k_ra_usb_pal_ep_dir_in, k_ra_usb_pal_ep_type_bulk, 0U));
 
   /* Valid args -> ep_open stores the slot. */
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_usb_pal_ep_open(1U, k_ra_usb_pal_ep_dir_in, k_ra_usb_pal_ep_type_bulk, 64U));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_usb_pal_ep_open(1U, k_ra_usb_pal_ep_dir_in, k_ra_usb_pal_ep_type_bulk, 64U));
   TEST_END("ra_usb_pal_ep_open: arg validation");
 }
 
@@ -148,10 +142,9 @@ static void test_ep_send_recv_loopback(void)
 {
   TEST_BEGIN("ra_usb_pal_ep_{send,recv}: in-memory loopback round-trip");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pal_init(k_ra_usb_speed_fs));
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_usb_pal_ep_open(1U, k_ra_usb_pal_ep_dir_in, k_ra_usb_pal_ep_type_bulk, 64U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_usb_pal_ep_open(1U, k_ra_usb_pal_ep_dir_in, k_ra_usb_pal_ep_type_bulk, 64U));
 
   uint8_t data[16] = {0U};
   for (uint16_t i = 0U; i < (uint16_t)sizeof(data); ++i) {
@@ -161,20 +154,20 @@ static void test_ep_send_recv_loopback(void)
   uint16_t rx_len = (uint16_t)sizeof(rx);
 
   /* Empty ring -> recv reports no_data. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_no_data, (int32_t)ra_usb_pal_ep_recv(1U, rx, &rx_len));
+  TEST_ASSERT_EQ(k_ra_err_no_data, ra_usb_pal_ep_recv(1U, rx, &rx_len));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pal_ep_send(1U, data, (uint16_t)sizeof(data)));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_ep_send(1U, data, (uint16_t)sizeof(data)));
 
   rx_len = (uint16_t)sizeof(rx);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pal_ep_recv(1U, rx, &rx_len));
-  TEST_ASSERT_EQ((int32_t)sizeof(data), (int32_t)rx_len);
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_ep_recv(1U, rx, &rx_len));
+  TEST_ASSERT_EQ(sizeof(data), rx_len);
   for (uint16_t i = 0U; i < (uint16_t)sizeof(data); ++i) {
-    TEST_ASSERT_EQ((int32_t)data[i], (int32_t)rx[i]);
+    TEST_ASSERT_EQ(data[i], rx[i]);
   }
 
   /* Ring empty again. */
   rx_len = (uint16_t)sizeof(rx);
-  TEST_ASSERT_EQ((int32_t)k_ra_err_no_data, (int32_t)ra_usb_pal_ep_recv(1U, rx, &rx_len));
+  TEST_ASSERT_EQ(k_ra_err_no_data, ra_usb_pal_ep_recv(1U, rx, &rx_len));
   TEST_END("ra_usb_pal_ep_{send,recv}: in-memory loopback round-trip");
 }
 
@@ -188,29 +181,28 @@ static void test_ep_send_recv_arg_validation(void)
 {
   TEST_BEGIN("ra_usb_pal_ep_{send,recv}: arg validation");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pal_init(k_ra_usb_speed_fs));
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_usb_pal_ep_open(1U, k_ra_usb_pal_ep_dir_in, k_ra_usb_pal_ep_type_bulk, 64U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_usb_pal_ep_open(1U, k_ra_usb_pal_ep_dir_in, k_ra_usb_pal_ep_type_bulk, 64U));
 
   uint8_t  buf[16] = {0U};
   uint16_t len     = (uint16_t)sizeof(buf);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_usb_pal_ep_send(0U, buf, 16U));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_usb_pal_ep_send(99U, buf, 16U));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_usb_pal_ep_send(1U, nullptr, 16U));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_usb_pal_ep_send(1U, buf, (uint16_t)(k_ra_usb_pal_xfer_max + 1U)));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_usb_pal_ep_send(0U, buf, 16U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_usb_pal_ep_send(99U, buf, 16U));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_usb_pal_ep_send(1U, nullptr, 16U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_usb_pal_ep_send(1U, buf, (uint16_t)(k_ra_usb_pal_xfer_max + 1U)));
   /* ep_send on an unopened EP returns invalid_state. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_usb_pal_ep_send(2U, buf, 16U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_usb_pal_ep_send(2U, buf, 16U));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_usb_pal_ep_recv(1U, nullptr, &len));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_usb_pal_ep_recv(1U, buf, nullptr));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_usb_pal_ep_recv(0U, buf, &len));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_usb_pal_ep_recv(1U, nullptr, &len));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_usb_pal_ep_recv(1U, buf, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_usb_pal_ep_recv(0U, buf, &len));
   uint16_t zero = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_usb_pal_ep_recv(1U, buf, &zero));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_usb_pal_ep_recv(1U, buf, &zero));
   /* ep_recv on an unopened EP returns invalid_state. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_usb_pal_ep_recv(2U, buf, &len));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_usb_pal_ep_recv(2U, buf, &len));
   TEST_END("ra_usb_pal_ep_{send,recv}: arg validation");
 }
 
@@ -234,11 +226,11 @@ static void test_event_handler_attach_detach(void)
 {
   TEST_BEGIN("ra_usb_pal_set_event_handler: attach + detach");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pal_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_init(k_ra_usb_speed_fs));
 
   s_usb_event_count = 0;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pal_set_event_handler(stub_usb_event, nullptr));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pal_set_event_handler(nullptr, nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_set_event_handler(stub_usb_event, nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_set_event_handler(nullptr, nullptr));
   TEST_END("ra_usb_pal_set_event_handler: attach + detach");
 }
 
@@ -252,10 +244,10 @@ static void test_dispatch_relays_intsts0(void)
 {
   TEST_BEGIN("ra_usb_dispatch -> PAL relay -> stack callback");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pal_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_init(k_ra_usb_speed_fs));
 
   s_usb_event_count = 0;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pal_set_event_handler(stub_usb_event, nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_set_event_handler(stub_usb_event, nullptr));
 
   /* Pre-set INTSTS0 to a non-zero value so dispatch sees a real event. */
   volatile r_usb_regs_t* reg = ra_usb_fs();
@@ -293,16 +285,14 @@ static void test_calls_before_init_fail(void)
   uint8_t            buf[16] = {0U};
   uint16_t           len     = 16U;
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_usb_pal_attach(true));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_usb_pal_get_state(&state));
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_state,
-    (int32_t)ra_usb_pal_ep_open(1U, k_ra_usb_pal_ep_dir_in, k_ra_usb_pal_ep_type_bulk, 64U));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_usb_pal_ep_send(1U, buf, 16U));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_usb_pal_ep_recv(1U, buf, &len));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state,
-                 (int32_t)ra_usb_pal_set_event_handler(stub_usb_event, nullptr));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_usb_pal_deinit());
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_usb_pal_attach(true));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_usb_pal_get_state(&state));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state,
+                 ra_usb_pal_ep_open(1U, k_ra_usb_pal_ep_dir_in, k_ra_usb_pal_ep_type_bulk, 64U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_usb_pal_ep_send(1U, buf, 16U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_usb_pal_ep_recv(1U, buf, &len));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_usb_pal_set_event_handler(stub_usb_event, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_usb_pal_deinit());
   TEST_END("ra_usb_pal_*: pre-init calls return invalid_state");
 }
 
@@ -325,11 +315,11 @@ static void test_mcdc_init_speed(void)
 {
   TEST_BEGIN("mcdc: ra_usb_pal_init speed (!=fs && !=hs)");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pal_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_init(k_ra_usb_speed_fs));
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_usb_pal_init((ra_usb_speed_t)99U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_usb_pal_init((ra_usb_speed_t)99U));
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pal_init(k_ra_usb_speed_hs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_init(k_ra_usb_speed_hs));
   TEST_END("mcdc: ra_usb_pal_init speed (!=fs && !=hs)");
 }
 
@@ -348,18 +338,16 @@ static void test_mcdc_ep_open_addr(void)
 {
   TEST_BEGIN("mcdc: ep_open ep_addr (==0 || >ep_max)");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pal_init(k_ra_usb_speed_fs));
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_usb_pal_ep_open(1U, k_ra_usb_pal_ep_dir_in, k_ra_usb_pal_ep_type_bulk, 64U));
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_arg,
-    (int32_t)ra_usb_pal_ep_open(0U, k_ra_usb_pal_ep_dir_in, k_ra_usb_pal_ep_type_bulk, 64U));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_usb_pal_ep_open((uint8_t)((uint32_t)k_ra_usb_pal_ep_max + 1U),
-                                             k_ra_usb_pal_ep_dir_in,
-                                             k_ra_usb_pal_ep_type_bulk,
-                                             64U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_usb_pal_ep_open(1U, k_ra_usb_pal_ep_dir_in, k_ra_usb_pal_ep_type_bulk, 64U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_usb_pal_ep_open(0U, k_ra_usb_pal_ep_dir_in, k_ra_usb_pal_ep_type_bulk, 64U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_usb_pal_ep_open((uint8_t)((uint32_t)k_ra_usb_pal_ep_max + 1U),
+                                    k_ra_usb_pal_ep_dir_in,
+                                    k_ra_usb_pal_ep_type_bulk,
+                                    64U));
   TEST_END("mcdc: ep_open ep_addr (==0 || >ep_max)");
 }
 
@@ -378,16 +366,13 @@ static void test_mcdc_ep_open_dir(void)
 {
   TEST_BEGIN("mcdc: ep_open dir (!=out && !=in)");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pal_init(k_ra_usb_speed_fs));
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_usb_pal_ep_open(1U, k_ra_usb_pal_ep_dir_out, k_ra_usb_pal_ep_type_bulk, 64U));
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_arg,
-    (int32_t)ra_usb_pal_ep_open(2U, (ra_usb_pal_ep_dir_t)99U, k_ra_usb_pal_ep_type_bulk, 64U));
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_usb_pal_ep_open(3U, k_ra_usb_pal_ep_dir_in, k_ra_usb_pal_ep_type_bulk, 64U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_usb_pal_ep_open(1U, k_ra_usb_pal_ep_dir_out, k_ra_usb_pal_ep_type_bulk, 64U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_usb_pal_ep_open(2U, (ra_usb_pal_ep_dir_t)99U, k_ra_usb_pal_ep_type_bulk, 64U));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_usb_pal_ep_open(3U, k_ra_usb_pal_ep_dir_in, k_ra_usb_pal_ep_type_bulk, 64U));
   TEST_END("mcdc: ep_open dir (!=out && !=in)");
 }
 
@@ -414,21 +399,18 @@ static void test_mcdc_ep_open_type_packet(void)
 {
   TEST_BEGIN("mcdc: ep_open type/packet (3-cond OR)");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pal_init(k_ra_usb_speed_fs));
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_usb_pal_ep_open(1U, k_ra_usb_pal_ep_dir_in, k_ra_usb_pal_ep_type_bulk, 64U));
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_arg,
-    (int32_t)ra_usb_pal_ep_open(2U, k_ra_usb_pal_ep_dir_in, (ra_usb_pal_ep_type_t)99U, 64U));
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_arg,
-    (int32_t)ra_usb_pal_ep_open(3U, k_ra_usb_pal_ep_dir_in, k_ra_usb_pal_ep_type_bulk, 0U));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_usb_pal_ep_open(4U,
-                                             k_ra_usb_pal_ep_dir_in,
-                                             k_ra_usb_pal_ep_type_bulk,
-                                             (uint16_t)((uint32_t)k_ra_usb_pal_xfer_max + 1U)));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_usb_pal_ep_open(1U, k_ra_usb_pal_ep_dir_in, k_ra_usb_pal_ep_type_bulk, 64U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_usb_pal_ep_open(2U, k_ra_usb_pal_ep_dir_in, (ra_usb_pal_ep_type_t)99U, 64U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_usb_pal_ep_open(3U, k_ra_usb_pal_ep_dir_in, k_ra_usb_pal_ep_type_bulk, 0U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_usb_pal_ep_open(4U,
+                                    k_ra_usb_pal_ep_dir_in,
+                                    k_ra_usb_pal_ep_type_bulk,
+                                    (uint16_t)((uint32_t)k_ra_usb_pal_xfer_max + 1U)));
   TEST_END("mcdc: ep_open type/packet (3-cond OR)");
 }
 
@@ -455,16 +437,15 @@ static void test_mcdc_ep_send_len_data(void)
 {
   TEST_BEGIN("mcdc: ep_send len/data (3-cond mixed)");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pal_init(k_ra_usb_speed_fs));
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_usb_pal_ep_open(1U, k_ra_usb_pal_ep_dir_in, k_ra_usb_pal_ep_type_bulk, 64U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_usb_pal_ep_open(1U, k_ra_usb_pal_ep_dir_in, k_ra_usb_pal_ep_type_bulk, 64U));
 
   uint8_t buf[16] = {0U};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_pal_ep_send(1U, buf, 1U));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_usb_pal_ep_send(1U, buf, (uint16_t)(k_ra_usb_pal_xfer_max + 1U)));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_usb_pal_ep_send(1U, nullptr, 1U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_ep_send(1U, buf, 1U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_usb_pal_ep_send(1U, buf, (uint16_t)(k_ra_usb_pal_xfer_max + 1U)));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_usb_pal_ep_send(1U, nullptr, 1U));
   /* V4: data=NULL,len=0 -> guard does not return null_ptr; the
    * compound decision evaluates FALSE here (B=T, C=F). */
   const ra_err_t v4 = ra_usb_pal_ep_send(1U, nullptr, 0U);
@@ -488,7 +469,7 @@ static void test_mcdc_usb_pal_internal_should_dispatch_event(void)
 {
   TEST_BEGIN("usb_pal MC/DC: should_dispatch_event AND");
   uint8_t fake_cb = 0U;
-  TEST_ASSERT(!ra_usb_pal_internal_should_dispatch_event(NULL, 0x0001U, 0x0000U));
+  TEST_ASSERT(!ra_usb_pal_internal_should_dispatch_event(nullptr, 0x0001U, 0x0000U));
   TEST_ASSERT(ra_usb_pal_internal_should_dispatch_event(&fake_cb, 0x0001U, 0x0000U));
   TEST_ASSERT(!ra_usb_pal_internal_should_dispatch_event(&fake_cb, 0x0000U, 0x0000U));
   TEST_END("usb_pal MC/DC: should_dispatch_event AND");

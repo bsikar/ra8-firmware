@@ -127,8 +127,8 @@ static void test_open_close_happy(void)
   TEST_BEGIN("ra_touch_open / close happy path");
   prep();
   prime_iic_b();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_touch_open(&k_cfg_default));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_touch_close());
+  TEST_ASSERT_EQ(k_ra_ok, ra_touch_open(&k_cfg_default));
+  TEST_ASSERT_EQ(k_ra_ok, ra_touch_close());
   TEST_END("ra_touch_open / close happy path");
 }
 
@@ -142,7 +142,7 @@ static void test_open_null_cfg(void)
 {
   TEST_BEGIN("ra_touch_open: NULL cfg rejected");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_touch_open(nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_touch_open(nullptr));
   TEST_END("ra_touch_open: NULL cfg rejected");
 }
 
@@ -159,7 +159,7 @@ static void test_open_invalid_address(void)
   prime_iic_b();
   ra_touch_cfg_t bad = k_cfg_default;
   bad.target_7b      = (uint8_t)k_test_addr_bad;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_touch_open(&bad));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_touch_open(&bad));
   TEST_END("ra_touch_open: bad target address rejected");
 }
 
@@ -175,7 +175,7 @@ static void test_open_invalid_channel(void)
   prep();
   ra_touch_cfg_t bad = k_cfg_default;
   bad.i2c_channel    = 1U; /* RA8D2 only has channel 0. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_touch_open(&bad));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_touch_open(&bad));
   TEST_END("ra_touch_open: bad channel rejected");
 }
 
@@ -190,9 +190,9 @@ static void test_open_already_open(void)
   TEST_BEGIN("ra_touch_open: already-open rejected");
   prep();
   prime_iic_b();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_touch_open(&k_cfg_default));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_touch_open(&k_cfg_default));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_touch_close());
+  TEST_ASSERT_EQ(k_ra_ok, ra_touch_open(&k_cfg_default));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_touch_open(&k_cfg_default));
+  TEST_ASSERT_EQ(k_ra_ok, ra_touch_close());
   TEST_END("ra_touch_open: already-open rejected");
 }
 
@@ -206,7 +206,7 @@ static void test_close_without_open(void)
 {
   TEST_BEGIN("ra_touch_close: not-initialized rejected");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_initialized, (int32_t)ra_touch_close());
+  TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_touch_close());
   TEST_END("ra_touch_close: not-initialized rejected");
 }
 
@@ -225,15 +225,14 @@ static void test_read_null_args(void)
   TEST_BEGIN("ra_touch_read: NULL args rejected");
   prep();
   prime_iic_b();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_touch_open(&k_cfg_default));
+  TEST_ASSERT_EQ(k_ra_ok, ra_touch_open(&k_cfg_default));
   ra_touch_point_t pt[5U];
   uint8_t          got = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_touch_read(nullptr, (uint8_t)k_test_max_points_default, &got));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_touch_read(pt, (uint8_t)k_test_max_points_default, nullptr));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_touch_read(pt, 0U, &got));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_touch_close());
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_touch_read(nullptr, (uint8_t)k_test_max_points_default, &got));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_touch_read(pt, (uint8_t)k_test_max_points_default, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_touch_read(pt, 0U, &got));
+  TEST_ASSERT_EQ(k_ra_ok, ra_touch_close());
   TEST_END("ra_touch_read: NULL args rejected");
 }
 
@@ -248,7 +247,7 @@ static void test_read_returns_ok(void)
   TEST_BEGIN("ra_touch_read: returns ok with primed I2C transport");
   prep();
   prime_iic_b();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_touch_open(&k_cfg_default));
+  TEST_ASSERT_EQ(k_ra_ok, ra_touch_open(&k_cfg_default));
 
   /* The simulator's NTDTBP0 read-back reflects whatever value the
    * driver last wrote (the address byte for the trailing read phase),
@@ -259,10 +258,9 @@ static void test_read_returns_ok(void)
    * ``test_decode_*`` against the parser hook. */
   ra_touch_point_t pt[5U];
   uint8_t          got = 99U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_touch_read(pt, (uint8_t)k_test_max_points_default, &got));
+  TEST_ASSERT_EQ(k_ra_ok, ra_touch_read(pt, (uint8_t)k_test_max_points_default, &got));
   TEST_ASSERT(got <= (uint8_t)k_test_max_points_default);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_touch_close());
+  TEST_ASSERT_EQ(k_ra_ok, ra_touch_close());
   TEST_END("ra_touch_read: returns ok with primed I2C transport");
 }
 
@@ -278,8 +276,8 @@ static void test_read_before_open(void)
   prep();
   ra_touch_point_t pt[5U];
   uint8_t          got = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_initialized,
-                 (int32_t)ra_touch_read(pt, (uint8_t)k_test_max_points_default, &got));
+  TEST_ASSERT_EQ(k_ra_err_not_initialized,
+                 ra_touch_read(pt, (uint8_t)k_test_max_points_default, &got));
   TEST_END("ra_touch_read: not-initialized rejected");
 }
 
@@ -305,14 +303,13 @@ static void test_decode_one_point(void)
 
   ra_touch_point_t pts[5U];
   uint8_t          got = 0U;
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_touch_test_decode(raw, 1U, pts, (uint8_t)k_test_max_points_default, &got));
-  TEST_ASSERT_EQ(1, (int32_t)got);
-  TEST_ASSERT_EQ((int32_t)k_test_track_zero, (int32_t)pts[0].track_id);
-  TEST_ASSERT_EQ((int32_t)k_test_x_one, (int32_t)pts[0].x);
-  TEST_ASSERT_EQ((int32_t)k_test_y_one, (int32_t)pts[0].y);
-  TEST_ASSERT_EQ((int32_t)k_test_pressure_one, (int32_t)pts[0].pressure);
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_touch_test_decode(raw, 1U, pts, (uint8_t)k_test_max_points_default, &got));
+  TEST_ASSERT_EQ(1, got);
+  TEST_ASSERT_EQ(k_test_track_zero, pts[0].track_id);
+  TEST_ASSERT_EQ(k_test_x_one, pts[0].x);
+  TEST_ASSERT_EQ(k_test_y_one, pts[0].y);
+  TEST_ASSERT_EQ(k_test_pressure_one, pts[0].pressure);
   TEST_END("ra_touch_test_decode: single point");
 }
 
@@ -344,14 +341,13 @@ static void test_decode_three_points(void)
 
   ra_touch_point_t pts[5U];
   uint8_t          got = 0U;
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_touch_test_decode(raw, 3U, pts, (uint8_t)k_test_max_points_default, &got));
-  TEST_ASSERT_EQ(3, (int32_t)got);
-  TEST_ASSERT_EQ((int32_t)k_test_x_one, (int32_t)pts[0].x);
-  TEST_ASSERT_EQ((int32_t)k_test_x_two, (int32_t)pts[1].x);
-  TEST_ASSERT_EQ((int32_t)k_test_y_three, (int32_t)pts[2].y);
-  TEST_ASSERT_EQ((int32_t)k_test_track_two, (int32_t)pts[2].track_id);
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_touch_test_decode(raw, 3U, pts, (uint8_t)k_test_max_points_default, &got));
+  TEST_ASSERT_EQ(3, got);
+  TEST_ASSERT_EQ(k_test_x_one, pts[0].x);
+  TEST_ASSERT_EQ(k_test_x_two, pts[1].x);
+  TEST_ASSERT_EQ(k_test_y_three, pts[2].y);
+  TEST_ASSERT_EQ(k_test_track_two, pts[2].track_id);
   TEST_END("ra_touch_test_decode: three points");
 }
 
@@ -375,12 +371,11 @@ static void test_decode_five_points_max(void)
 
   ra_touch_point_t pts[5U];
   uint8_t          got = 0U;
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_touch_test_decode(raw, 5U, pts, (uint8_t)k_test_max_points_default, &got));
-  TEST_ASSERT_EQ(5, (int32_t)got);
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_touch_test_decode(raw, 5U, pts, (uint8_t)k_test_max_points_default, &got));
+  TEST_ASSERT_EQ(5, got);
   for (uint8_t i = 0U; i < 5U; i++) {
-    TEST_ASSERT_EQ((int32_t)i, (int32_t)pts[i].track_id);
+    TEST_ASSERT_EQ(i, pts[i].track_id);
   }
   TEST_END("ra_touch_test_decode: five points (max)");
 }
@@ -404,8 +399,8 @@ static void test_decode_clamp_to_max_count(void)
   }
   ra_touch_point_t pts[2U];
   uint8_t          got = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_touch_test_decode(raw, 3U, pts, 2U, &got));
-  TEST_ASSERT_EQ(2, (int32_t)got);
+  TEST_ASSERT_EQ(k_ra_ok, ra_touch_test_decode(raw, 3U, pts, 2U, &got));
+  TEST_ASSERT_EQ(2, got);
   TEST_END("ra_touch_test_decode: input > max_count clamps");
 }
 
@@ -437,22 +432,21 @@ static void test_attach_dispatch(void)
   s_cb_count    = 0;
   s_cb_last_ctx = nullptr;
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_initialized,
-                 (int32_t)ra_touch_attach_handler(touch_cb, (void*)0xCAFEU));
+  TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_touch_attach_handler(touch_cb, (void*)0xCAFEU));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_touch_open(&k_cfg_default));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_touch_attach_handler(touch_cb, (void*)0xCAFEU));
+  TEST_ASSERT_EQ(k_ra_ok, ra_touch_open(&k_cfg_default));
+  TEST_ASSERT_EQ(k_ra_ok, ra_touch_attach_handler(touch_cb, (void*)0xCAFEU));
 
   ra_touch_dispatch_irq();
-  TEST_ASSERT_EQ(1, (int32_t)s_cb_count);
-  TEST_ASSERT_EQ((int64_t)0xCAFE, (int64_t)(uintptr_t)s_cb_last_ctx);
+  TEST_ASSERT_EQ(1, s_cb_count);
+  TEST_ASSERT_EQ(0xCAFE, (uintptr_t)s_cb_last_ctx);
 
   /* Detaching with NULL must not fire the callback again. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_touch_attach_handler(nullptr, nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_touch_attach_handler(nullptr, nullptr));
   ra_touch_dispatch_irq();
-  TEST_ASSERT_EQ(1, (int32_t)s_cb_count);
+  TEST_ASSERT_EQ(1, s_cb_count);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_touch_close());
+  TEST_ASSERT_EQ(k_ra_ok, ra_touch_close());
   TEST_END("ra_touch_attach_handler + dispatch");
 }
 
@@ -469,7 +463,7 @@ static void test_attach_dispatch(void)
 static void test_calibrate_noop(void)
 {
   TEST_BEGIN("ra_touch_calibrate: no-op returns ok");
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_touch_calibrate());
+  TEST_ASSERT_EQ(k_ra_ok, ra_touch_calibrate());
   TEST_END("ra_touch_calibrate: no-op returns ok");
 }
 
@@ -499,23 +493,23 @@ static void test_mcdc_ra_touch(void)
   prep();
   ra_touch_cfg_t cfg = k_cfg_default;
   cfg.target_7b      = (uint8_t)k_ra_touch_gt911_addr_low;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_touch_open(&cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_touch_close());
+  TEST_ASSERT_EQ(k_ra_ok, ra_touch_open(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_touch_close());
   cfg.target_7b = (uint8_t)k_ra_touch_gt911_addr_high;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_touch_open(&cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_touch_close());
+  TEST_ASSERT_EQ(k_ra_ok, ra_touch_open(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_touch_close());
   cfg.target_7b = (uint8_t)0x42U;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_touch_open(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_touch_open(&cfg));
   cfg            = k_cfg_default;
   cfg.max_points = 5U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_touch_open(&cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_touch_close());
+  TEST_ASSERT_EQ(k_ra_ok, ra_touch_open(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_touch_close());
   cfg.max_points = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_touch_open(&cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_touch_close());
+  TEST_ASSERT_EQ(k_ra_ok, ra_touch_open(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_touch_close());
   cfg.max_points = 99U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_touch_open(&cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_touch_close());
+  TEST_ASSERT_EQ(k_ra_ok, ra_touch_open(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_touch_close());
   TEST_END("touch MC/DC: validate_cfg + stash_state 2-cond decisions");
 }
 

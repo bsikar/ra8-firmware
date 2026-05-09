@@ -97,13 +97,13 @@ static void test_open_null(void)
 {
   TEST_BEGIN("open rejects NULL cfg + NULL callbacks");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_ether_phy_open(nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_ether_phy_open(nullptr));
   ra_ether_phy_cfg_t cfg = make_cfg();
   cfg.io.read            = nullptr;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_ether_phy_open(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_ether_phy_open(&cfg));
   cfg          = make_cfg();
   cfg.io.write = nullptr;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_ether_phy_open(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_ether_phy_open(&cfg));
   TEST_END("open rejects NULL cfg + NULL callbacks");
 }
 
@@ -119,7 +119,7 @@ static void test_open_bad_addr(void)
   prep();
   ra_ether_phy_cfg_t cfg = make_cfg();
   cfg.phy_address        = (uint8_t)(k_test_phy_addr_high + 1U);
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_ether_phy_open(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ether_phy_open(&cfg));
   TEST_END("open rejects out-of-range PHY address");
 }
 
@@ -134,10 +134,10 @@ static void test_lifecycle(void)
   TEST_BEGIN("open / re-open / close");
   prep();
   const ra_ether_phy_cfg_t cfg = make_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ether_phy_open(&cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_exists, (int32_t)ra_ether_phy_open(&cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ether_phy_close());
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_ether_phy_close());
+  TEST_ASSERT_EQ(k_ra_ok, ra_ether_phy_open(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_exists, ra_ether_phy_open(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ether_phy_close());
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_ether_phy_close());
   TEST_END("open / re-open / close");
 }
 
@@ -152,18 +152,16 @@ static void test_mdio_io(void)
   TEST_BEGIN("mdio read / write round-trip");
   prep();
   const ra_ether_phy_cfg_t cfg = make_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ether_phy_open(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ether_phy_open(&cfg));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ether_phy_mdio_write((uint8_t)k_test_reg_count, 0xABCDU));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ether_phy_mdio_write(5U, 0xBEEFU));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ether_phy_mdio_write((uint8_t)k_test_reg_count, 0xABCDU));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ether_phy_mdio_write(5U, 0xBEEFU));
 
   uint16_t v = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_ether_phy_mdio_read(5U, nullptr));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_ether_phy_mdio_read((uint8_t)k_test_reg_count, &v));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ether_phy_mdio_read(5U, &v));
-  TEST_ASSERT_EQ((int32_t)0xBEEF, (int32_t)v);
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_ether_phy_mdio_read(5U, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ether_phy_mdio_read((uint8_t)k_test_reg_count, &v));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ether_phy_mdio_read(5U, &v));
+  TEST_ASSERT_EQ(0xBEEF, v);
   TEST_END("mdio read / write round-trip");
 }
 
@@ -178,18 +176,18 @@ static void test_link_status(void)
   TEST_BEGIN("link_status_get reflects BMSR + LPA");
   prep();
   const ra_ether_phy_cfg_t cfg = make_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ether_phy_open(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ether_phy_open(&cfg));
 
   /* Stage BMSR = link up + AN complete; LPA = 100full. */
   s_io.regs[1] = (uint16_t)(0x0004U | 0x0020U);
   s_io.regs[5] = 0x0100U;
 
   ra_ether_phy_link_t link = {};
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_ether_phy_link_status_get(nullptr));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ether_phy_link_status_get(&link));
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)link.link_up);
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)link.auto_neg_done);
-  TEST_ASSERT_EQ((int32_t)k_ra_ether_phy_speed_100f, (int32_t)link.speed);
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_ether_phy_link_status_get(nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ether_phy_link_status_get(&link));
+  TEST_ASSERT_EQ(1, link.link_up);
+  TEST_ASSERT_EQ(1, link.auto_neg_done);
+  TEST_ASSERT_EQ(k_ra_ether_phy_speed_100f, link.speed);
   TEST_END("link_status_get reflects BMSR + LPA");
 }
 
@@ -204,9 +202,9 @@ static void test_autoneg_start(void)
   TEST_BEGIN("auto_negotiate_start writes BMCR");
   prep();
   const ra_ether_phy_cfg_t cfg = make_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ether_phy_open(&cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ether_phy_auto_negotiate_start());
-  TEST_ASSERT_EQ((int32_t)0x1200, (int32_t)s_io.regs[0]);
+  TEST_ASSERT_EQ(k_ra_ok, ra_ether_phy_open(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ether_phy_auto_negotiate_start());
+  TEST_ASSERT_EQ(0x1200, s_io.regs[0]);
   TEST_END("auto_negotiate_start writes BMCR");
 }
 
@@ -221,11 +219,11 @@ static void test_not_initialized(void)
   TEST_BEGIN("ops fail with not_initialized when closed");
   prep();
   uint16_t v = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_initialized, (int32_t)ra_ether_phy_mdio_read(0U, &v));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_initialized, (int32_t)ra_ether_phy_mdio_write(0U, 0U));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_initialized, (int32_t)ra_ether_phy_auto_negotiate_start());
+  TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_ether_phy_mdio_read(0U, &v));
+  TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_ether_phy_mdio_write(0U, 0U));
+  TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_ether_phy_auto_negotiate_start());
   ra_ether_phy_link_t link = {};
-  TEST_ASSERT_EQ((int32_t)k_ra_err_not_initialized, (int32_t)ra_ether_phy_link_status_get(&link));
+  TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_ether_phy_link_status_get(&link));
   TEST_END("ops fail with not_initialized when closed");
 }
 
@@ -257,33 +255,33 @@ static void test_mcdc_link_status_resolved_speed_guard(void)
   TEST_BEGIN("ra_ether_phy_link_status_get MC/DC: link_up && auto_neg_done");
   prep();
   const ra_ether_phy_cfg_t cfg = make_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ether_phy_open(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ether_phy_open(&cfg));
 
   ra_ether_phy_link_t link = {};
 
   /* V1: BMSR=0 -> link_up=0 -> C1=F, decision F. Speed stays no_link. */
   s_io.regs[1] = 0x0000U;
   s_io.regs[5] = 0x0100U; /* LPA=100full but should NOT be consulted */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ether_phy_link_status_get(&link));
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)link.link_up);
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)link.auto_neg_done);
-  TEST_ASSERT_EQ((int32_t)k_ra_ether_phy_speed_no_link, (int32_t)link.speed);
+  TEST_ASSERT_EQ(k_ra_ok, ra_ether_phy_link_status_get(&link));
+  TEST_ASSERT_EQ(0, link.link_up);
+  TEST_ASSERT_EQ(0, link.auto_neg_done);
+  TEST_ASSERT_EQ(k_ra_ether_phy_speed_no_link, link.speed);
 
   /* V2: BMSR=link_up only (no an_complete) -> C1=T, C2=F. Decision F. */
   s_io.regs[1] = 0x0004U; /* link_up bit only */
   s_io.regs[5] = 0x0100U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ether_phy_link_status_get(&link));
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)link.link_up);
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)link.auto_neg_done);
-  TEST_ASSERT_EQ((int32_t)k_ra_ether_phy_speed_no_link, (int32_t)link.speed);
+  TEST_ASSERT_EQ(k_ra_ok, ra_ether_phy_link_status_get(&link));
+  TEST_ASSERT_EQ(1, link.link_up);
+  TEST_ASSERT_EQ(0, link.auto_neg_done);
+  TEST_ASSERT_EQ(k_ra_ether_phy_speed_no_link, link.speed);
 
   /* V3: BMSR=link_up | an_complete -> C1=T, C2=T. Decision T. LPA read. */
   s_io.regs[1] = (uint16_t)(0x0004U | 0x0020U);
   s_io.regs[5] = 0x0100U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_ether_phy_link_status_get(&link));
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)link.link_up);
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)link.auto_neg_done);
-  TEST_ASSERT_EQ((int32_t)k_ra_ether_phy_speed_100f, (int32_t)link.speed);
+  TEST_ASSERT_EQ(k_ra_ok, ra_ether_phy_link_status_get(&link));
+  TEST_ASSERT_EQ(1, link.link_up);
+  TEST_ASSERT_EQ(1, link.auto_neg_done);
+  TEST_ASSERT_EQ(k_ra_ether_phy_speed_100f, link.speed);
 
   TEST_END("ra_ether_phy_link_status_get MC/DC: link_up && auto_neg_done");
 }

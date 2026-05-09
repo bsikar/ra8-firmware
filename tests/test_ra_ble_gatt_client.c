@@ -58,7 +58,7 @@ static void test_discover_null(void)
 {
   TEST_BEGIN("test_discover_null");
   ra_ble_gatt_client_test_reset();
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_ble_gatt_discover_services(0x40U, NULL, NULL));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_ble_gatt_discover_services(0x40U, nullptr, nullptr));
   TEST_END("test_discover_null");
 }
 
@@ -72,8 +72,8 @@ static void test_discover_busy(void)
 {
   TEST_BEGIN("test_discover_busy");
   ra_ble_gatt_client_test_reset();
-  TEST_ASSERT_EQ(k_ra_ok, ra_ble_gatt_discover_services(0x40U, disc_cb, NULL));
-  TEST_ASSERT_EQ(k_ra_err_busy, ra_ble_gatt_discover_services(0x40U, disc_cb, NULL));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_gatt_discover_services(0x40U, disc_cb, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_busy, ra_ble_gatt_discover_services(0x40U, disc_cb, nullptr));
   TEST_END("test_discover_busy");
 }
 
@@ -87,7 +87,7 @@ static void test_read_null(void)
 {
   TEST_BEGIN("test_read_null");
   ra_ble_gatt_client_test_reset();
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_ble_gatt_read(0x40U, 0x10U, NULL, NULL));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_ble_gatt_read(0x40U, 0x10U, nullptr, nullptr));
   TEST_END("test_read_null");
 }
 
@@ -101,11 +101,13 @@ static void test_write_validation(void)
 {
   TEST_BEGIN("test_write_validation");
   ra_ble_gatt_client_test_reset();
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_ble_gatt_write(0x40U, 0x10U, NULL, 1U, 0U, NULL, NULL));
-  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
-                 ra_ble_gatt_write(0x40U, 0x10U, (const uint8_t*)"x", 65535U, 0U, NULL, NULL));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_ble_gatt_write(0x40U, 0x10U, nullptr, 1U, 0U, nullptr, nullptr));
+  TEST_ASSERT_EQ(
+    k_ra_err_invalid_arg,
+    ra_ble_gatt_write(0x40U, 0x10U, (const uint8_t*)"x", 65535U, 0U, nullptr, nullptr));
   uint8_t b = 0xAB;
-  TEST_ASSERT_EQ(k_ra_ok, ra_ble_gatt_write(0x40U, 0x10U, &b, 1U, 0U, NULL, NULL));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_gatt_write(0x40U, 0x10U, &b, 1U, 0U, nullptr, nullptr));
   TEST_END("test_write_validation");
 }
 
@@ -120,7 +122,7 @@ static void test_subscribe_and_notify(void)
   TEST_BEGIN("test_subscribe_and_notify");
   ra_ble_gatt_client_test_reset();
   s_notify_count = 0U;
-  TEST_ASSERT_EQ(k_ra_ok, ra_ble_gatt_subscribe(0x40U, 0x12U, 1U, 0U, notify_cb, NULL));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_gatt_subscribe(0x40U, 0x12U, 1U, 0U, notify_cb, nullptr));
   uint8_t payload = 0x55U;
   ra_ble_gatt_client_test_inject_notify(0x40U, 0x11U, &payload, 1U);
   TEST_ASSERT_EQ(1U, s_notify_count);
@@ -138,7 +140,8 @@ static void test_subscribe_invalid(void)
 {
   TEST_BEGIN("test_subscribe_invalid");
   ra_ble_gatt_client_test_reset();
-  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ble_gatt_subscribe(0x40U, 0x12U, 0U, 0U, NULL, NULL));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_ble_gatt_subscribe(0x40U, 0x12U, 0U, 0U, nullptr, nullptr));
   TEST_END("test_subscribe_invalid");
 }
 
@@ -172,9 +175,10 @@ static void test_mcdc_gatt_write_data_null_with_len(void)
   TEST_BEGIN("mcdc gatt_write (data==NULL && len>0)");
   ra_ble_gatt_client_test_reset();
   uint8_t b = 0xAA;
-  TEST_ASSERT_EQ(k_ra_ok, ra_ble_gatt_write(0x40U, 0x10U, NULL, 0U, 0U, NULL, NULL));
-  TEST_ASSERT_EQ(k_ra_ok, ra_ble_gatt_write(0x40U, 0x10U, &b, 1U, 0U, NULL, NULL));
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_ble_gatt_write(0x40U, 0x10U, NULL, 1U, 0U, NULL, NULL));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_gatt_write(0x40U, 0x10U, nullptr, 0U, 0U, nullptr, nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_gatt_write(0x40U, 0x10U, &b, 1U, 0U, nullptr, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_ble_gatt_write(0x40U, 0x10U, nullptr, 1U, 0U, nullptr, nullptr));
   TEST_END("mcdc gatt_write (data==NULL && len>0)");
 }
 
@@ -199,13 +203,14 @@ static void test_mcdc_gatt_subscribe_invalid_args_3cond(void)
 {
   TEST_BEGIN("mcdc gatt_subscribe 3-cond AND (en_notify==0 && en_ind==0 && cb==NULL)");
   ra_ble_gatt_client_test_reset();
-  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ble_gatt_subscribe(0x40U, 0x12U, 0U, 0U, NULL, NULL));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_ble_gatt_subscribe(0x40U, 0x12U, 0U, 0U, nullptr, nullptr));
   ra_ble_gatt_client_test_reset();
-  TEST_ASSERT_EQ(k_ra_ok, ra_ble_gatt_subscribe(0x40U, 0x12U, 1U, 0U, NULL, NULL));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_gatt_subscribe(0x40U, 0x12U, 1U, 0U, nullptr, nullptr));
   ra_ble_gatt_client_test_reset();
-  TEST_ASSERT_EQ(k_ra_ok, ra_ble_gatt_subscribe(0x40U, 0x12U, 0U, 1U, NULL, NULL));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_gatt_subscribe(0x40U, 0x12U, 0U, 1U, nullptr, nullptr));
   ra_ble_gatt_client_test_reset();
-  TEST_ASSERT_EQ(k_ra_ok, ra_ble_gatt_subscribe(0x40U, 0x12U, 0U, 0U, notify_cb, NULL));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_gatt_subscribe(0x40U, 0x12U, 0U, 0U, notify_cb, nullptr));
   TEST_END("mcdc gatt_subscribe 3-cond AND (en_notify==0 && en_ind==0 && cb==NULL)");
 }
 
@@ -245,13 +250,13 @@ static void test_mcdc_gatt_subscribe_slot_match_3cond(void)
    * subsequent calls in the same vector group reach the same predicate
    * and then return busy from the inner write. Both ok and busy are
    * acceptable terminal codes for this MC/DC fixture. */
-  ra_err_t e1 = ra_ble_gatt_subscribe(0x40U, 0x12U, 1U, 0U, notify_cb, NULL);
+  ra_err_t e1 = ra_ble_gatt_subscribe(0x40U, 0x12U, 1U, 0U, notify_cb, nullptr);
   TEST_ASSERT(e1 == k_ra_ok || e1 == k_ra_err_busy);
-  ra_err_t e2 = ra_ble_gatt_subscribe(0x40U, 0x12U, 1U, 0U, notify_cb, NULL);
+  ra_err_t e2 = ra_ble_gatt_subscribe(0x40U, 0x12U, 1U, 0U, notify_cb, nullptr);
   TEST_ASSERT(e2 == k_ra_ok || e2 == k_ra_err_busy);
-  ra_err_t e3 = ra_ble_gatt_subscribe(0x41U, 0x12U, 1U, 0U, notify_cb, NULL);
+  ra_err_t e3 = ra_ble_gatt_subscribe(0x41U, 0x12U, 1U, 0U, notify_cb, nullptr);
   TEST_ASSERT(e3 == k_ra_ok || e3 == k_ra_err_busy);
-  ra_err_t e4 = ra_ble_gatt_subscribe(0x40U, 0x14U, 1U, 0U, notify_cb, NULL);
+  ra_err_t e4 = ra_ble_gatt_subscribe(0x40U, 0x14U, 1U, 0U, notify_cb, nullptr);
   TEST_ASSERT(e4 == k_ra_ok || e4 == k_ra_err_busy);
   TEST_END("mcdc gatt_subscribe slot-match 3-cond AND");
 }
@@ -283,14 +288,14 @@ static void test_mcdc_gatt_inject_notify_dispatch_3cond(void)
   uint8_t payload[] = {0x55U};
   ra_ble_gatt_client_test_inject_notify(0x40U, 0x11U, payload, 1U);
   TEST_ASSERT_EQ(0U, s_notify_count);
-  TEST_ASSERT_EQ(k_ra_ok, ra_ble_gatt_subscribe(0x40U, 0x12U, 1U, 0U, notify_cb, NULL));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_gatt_subscribe(0x40U, 0x12U, 1U, 0U, notify_cb, nullptr));
   ra_ble_gatt_client_test_inject_notify(0x40U, 0x11U, payload, 1U);
   TEST_ASSERT_EQ(1U, s_notify_count);
   ra_ble_gatt_client_test_inject_notify(0x41U, 0x11U, payload, 1U);
   TEST_ASSERT_EQ(1U, s_notify_count);
   ra_ble_gatt_client_test_reset();
   s_notify_count = 0U;
-  TEST_ASSERT_EQ(k_ra_ok, ra_ble_gatt_subscribe(0x42U, 0x16U, 1U, 0U, NULL, NULL));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ble_gatt_subscribe(0x42U, 0x16U, 1U, 0U, nullptr, nullptr));
   ra_ble_gatt_client_test_inject_notify(0x42U, 0x11U, payload, 1U);
   TEST_ASSERT_EQ(0U, s_notify_count);
   TEST_END("mcdc gatt inject_notify dispatch 3-cond AND");

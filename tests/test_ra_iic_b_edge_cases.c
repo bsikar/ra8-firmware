@@ -141,19 +141,18 @@ static void test_bus_busy_during_start_repeated(void)
 {
   TEST_BEGIN("iic_b bus-busy during START rejected on every retry");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_iic_b_init(0U, &k_iic_b_edge_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_iic_b_init(0U, &k_iic_b_edge_cfg));
   /* BFREF=0: bus reported busy. Hammer the gate; every call must return
    * busy without touching CNDCTL.STCND. */
   ra_iic_b(0U)->BCST   = 0U;
   ra_iic_b(0U)->CNDCTL = 0U;
   for (uint8_t i = 0U; i < 5U; ++i) {
     TEST_ASSERT_EQ(
-      (int32_t)k_ra_err_busy,
-      (int32_t)ra_iic_b_write(0U, (uint8_t)k_iic_b_edge_target, s_iic_b_edge_payload, 1U, false));
+      k_ra_err_busy,
+      ra_iic_b_write(0U, (uint8_t)k_iic_b_edge_target, s_iic_b_edge_payload, 1U, false));
   }
   /* CNDCTL must never have been set to START. */
-  TEST_ASSERT_EQ((int32_t)0U,
-                 (int32_t)(ra_iic_b(0U)->CNDCTL & (uint32_t)k_ra_iic_b_msk_cndctl_stcnd));
+  TEST_ASSERT_EQ(0U, (ra_iic_b(0U)->CNDCTL & (uint32_t)k_ra_iic_b_msk_cndctl_stcnd));
   TEST_END("iic_b bus-busy during START rejected on every retry");
 }
 
@@ -169,7 +168,7 @@ static void test_nak_on_address_byte(void)
 {
   TEST_BEGIN("iic_b NAK on address byte yields nack + STOP");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_iic_b_init(0U, &k_iic_b_edge_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_iic_b_init(0U, &k_iic_b_edge_cfg));
   prime_ntst_and_bus(0U);
   s_iic_b_inject_nack_addr = true;
   s_iic_b_inject_nack_data = false;
@@ -180,8 +179,8 @@ static void test_nak_on_address_byte(void)
                                     (uint32_t)k_iic_b_edge_long_len,
                                     false);
   disarm_alarm();
-  TEST_ASSERT_EQ((int32_t)k_ra_err_nack, (int32_t)r);
-  TEST_ASSERT_EQ((int32_t)(uint32_t)k_ra_iic_b_msk_cndctl_spcnd, (int32_t)ra_iic_b(0U)->CNDCTL);
+  TEST_ASSERT_EQ(k_ra_err_nack, r);
+  TEST_ASSERT_EQ(k_ra_iic_b_msk_cndctl_spcnd, ra_iic_b(0U)->CNDCTL);
   TEST_END("iic_b NAK on address byte yields nack + STOP");
 }
 
@@ -195,7 +194,7 @@ static void test_nak_on_data_byte(void)
 {
   TEST_BEGIN("iic_b NAK after address (data byte) yields nack + STOP");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_iic_b_init(0U, &k_iic_b_edge_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_iic_b_init(0U, &k_iic_b_edge_cfg));
   prime_ntst_and_bus(0U);
   s_iic_b_inject_nack_addr = false;
   s_iic_b_inject_nack_data = true;
@@ -208,8 +207,8 @@ static void test_nak_on_data_byte(void)
   disarm_alarm();
   /* Both paths funnel into the same return code today, but the post-state
    * STOP must be observable regardless of where the NACK was latched. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_nack, (int32_t)r);
-  TEST_ASSERT_EQ((int32_t)(uint32_t)k_ra_iic_b_msk_cndctl_spcnd, (int32_t)ra_iic_b(0U)->CNDCTL);
+  TEST_ASSERT_EQ(k_ra_err_nack, r);
+  TEST_ASSERT_EQ(k_ra_iic_b_msk_cndctl_spcnd, ra_iic_b(0U)->CNDCTL);
   TEST_END("iic_b NAK after address (data byte) yields nack + STOP");
 }
 
@@ -225,18 +224,17 @@ static void test_repeated_start_sequence(void)
 {
   TEST_BEGIN("iic_b repeated-start: write+read transfer");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_iic_b_init(0U, &k_iic_b_edge_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_iic_b_init(0U, &k_iic_b_edge_cfg));
   prime_ntst_and_bus(0U);
   uint8_t       rx     = 0U;
   const uint8_t tx[2U] = {(uint8_t)k_iic_b_edge_byte_a, (uint8_t)k_iic_b_edge_byte_b};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_iic_b_transfer(0U, (uint8_t)k_iic_b_edge_target, tx, 2U, &rx, 1U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_iic_b_transfer(0U, (uint8_t)k_iic_b_edge_target, tx, 2U, &rx, 1U));
   /* Combined transfer must close with STOP. The read phase overwrites
    * NTDTBP0 with the rx byte, so we only assert the bus-close state. */
-  TEST_ASSERT_EQ((int32_t)(uint32_t)k_ra_iic_b_msk_cndctl_spcnd, (int32_t)ra_iic_b(0U)->CNDCTL);
+  TEST_ASSERT_EQ(k_ra_iic_b_msk_cndctl_spcnd, ra_iic_b(0U)->CNDCTL);
   /* ACKCTL must be left in the plain ACKTWP state (NACK-on-last-byte
    * cleared by the read phase). */
-  TEST_ASSERT_EQ((int32_t)(uint32_t)k_ra_iic_b_msk_ackctl_acktwp, (int32_t)ra_iic_b(0U)->ACKCTL);
+  TEST_ASSERT_EQ(k_ra_iic_b_msk_ackctl_acktwp, ra_iic_b(0U)->ACKCTL);
   TEST_END("iic_b repeated-start: write+read transfer");
 }
 
@@ -252,15 +250,14 @@ static void test_clock_stretch_timeout(void)
 {
   TEST_BEGIN("iic_b clock-stretch limit: TDBEF0 never sets => hw_timeout");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_iic_b_init(0U, &k_iic_b_edge_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_iic_b_init(0U, &k_iic_b_edge_cfg));
   /* Bus free so the busy gate passes, but NTST left clear -- the peripheral is
    * holding SCL low (or just never ACKing). The driver must fail with
    * hw_timeout instead of looping forever. */
   ra_iic_b(0U)->BCST = (uint32_t)k_ra_iic_b_msk_bcst_bfref;
   ra_iic_b(0U)->NTST = 0U;
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_hw_timeout,
-    (int32_t)ra_iic_b_write(0U, (uint8_t)k_iic_b_edge_target, s_iic_b_edge_payload, 3U, false));
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout,
+                 ra_iic_b_write(0U, (uint8_t)k_iic_b_edge_target, s_iic_b_edge_payload, 3U, false));
   TEST_END("iic_b clock-stretch limit: TDBEF0 never sets => hw_timeout");
 }
 
@@ -276,18 +273,15 @@ static void test_set_clock_extremes(void)
 {
   TEST_BEGIN("iic_b set_clock extreme values");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_iic_b_init(0U, &k_iic_b_edge_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_iic_b_init(0U, &k_iic_b_edge_cfg));
   /* bus_hz = 0, pclka_hz = 0 -> invalid_arg. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_iic_b_set_clock(0U, 0U, 60000000U));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_iic_b_set_clock(0U, 100000U, 0U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_iic_b_set_clock(0U, 0U, 60000000U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_iic_b_set_clock(0U, 100000U, 0U));
   /* Channel out of range. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_iic_b_set_clock(99U, 100000U, 60000000U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_iic_b_set_clock(99U, 100000U, 60000000U));
   /* Standard + Fast modes both succeed. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_iic_b_set_clock(0U, (uint32_t)k_ra_iic_b_speed_standard, 60000000U));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_iic_b_set_clock(0U, (uint32_t)k_ra_iic_b_speed_fast, 60000000U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_iic_b_set_clock(0U, (uint32_t)k_ra_iic_b_speed_standard, 60000000U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_iic_b_set_clock(0U, (uint32_t)k_ra_iic_b_speed_fast, 60000000U));
   TEST_END("iic_b set_clock extreme values");
 }
 

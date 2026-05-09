@@ -34,16 +34,16 @@ static void test_init_writes_defaults(void)
   TEST_BEGIN("ra_sdramc_init writes expected register defaults");
   ra_sim_mmap_reset();
 
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_sdramc_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_sdramc_init());
 
   volatile r_sdramc_regs_t* reg = ra_sdramc();
-  TEST_ASSERT_EQ((int)k_test_sdccr_default, (int)reg->SDCCR);
-  TEST_ASSERT_EQ(0, (int)reg->SDCMOD);
-  TEST_ASSERT_EQ(0, (int)reg->SDAMOD);
-  TEST_ASSERT_EQ((int)k_test_sdtr_default, (int)reg->SDTR);
-  TEST_ASSERT_EQ((int)k_test_sdrfcr_default, (int)reg->SDRFCR);
-  TEST_ASSERT_EQ(1, (int)reg->SDRFEN);
-  TEST_ASSERT_EQ(1, (int)reg->SDICR);
+  TEST_ASSERT_EQ(k_test_sdccr_default, reg->SDCCR);
+  TEST_ASSERT_EQ(0, reg->SDCMOD);
+  TEST_ASSERT_EQ(0, reg->SDAMOD);
+  TEST_ASSERT_EQ(k_test_sdtr_default, reg->SDTR);
+  TEST_ASSERT_EQ(k_test_sdrfcr_default, reg->SDRFCR);
+  TEST_ASSERT_EQ(1, reg->SDRFEN);
+  TEST_ASSERT_EQ(1, reg->SDICR);
 
   TEST_END("ra_sdramc_init writes expected register defaults");
 }
@@ -58,10 +58,10 @@ static void test_init_idempotent(void)
 {
   TEST_BEGIN("ra_sdramc_init is idempotent");
   ra_sim_mmap_reset();
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_sdramc_init());
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_sdramc_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_sdramc_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_sdramc_init());
   volatile r_sdramc_regs_t* reg = ra_sdramc();
-  TEST_ASSERT_EQ((int)k_test_sdccr_default, (int)reg->SDCCR);
+  TEST_ASSERT_EQ(k_test_sdccr_default, reg->SDCCR);
   TEST_END("ra_sdramc_init is idempotent");
 }
 
@@ -77,12 +77,12 @@ static void test_deinit(void)
 {
   TEST_BEGIN("sdramc deinit");
   ra_sim_mmap_reset();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sdramc_init());
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sdramc_deinit());
+  TEST_ASSERT_EQ(k_ra_ok, ra_sdramc_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_sdramc_deinit());
   volatile r_sdramc_regs_t* reg = ra_sdramc();
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)reg->SDRFEN);
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)reg->SDICR);
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)reg->SDCCR);
+  TEST_ASSERT_EQ(0, reg->SDRFEN);
+  TEST_ASSERT_EQ(0, reg->SDICR);
+  TEST_ASSERT_EQ(0, reg->SDCCR);
   TEST_END("sdramc deinit");
 }
 
@@ -96,8 +96,8 @@ static void test_set_refresh_interval(void)
 {
   TEST_BEGIN("sdramc set_refresh_interval");
   ra_sim_mmap_reset();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sdramc_set_refresh_interval(0x00ABU));
-  TEST_ASSERT_EQ((int32_t)0x00ABU, (int32_t)ra_sdramc()->SDRFCR);
+  TEST_ASSERT_EQ(k_ra_ok, ra_sdramc_set_refresh_interval(0x00ABU));
+  TEST_ASSERT_EQ(0x00ABU, ra_sdramc()->SDRFCR);
   TEST_END("sdramc set_refresh_interval");
 }
 
@@ -111,12 +111,12 @@ static void test_get_status(void)
 {
   TEST_BEGIN("sdramc get_status");
   ra_sim_mmap_reset();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sdramc_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_sdramc_init());
 
   uint8_t enabled = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sdramc_get_status(&enabled));
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)enabled);
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_sdramc_get_status(nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sdramc_get_status(&enabled));
+  TEST_ASSERT_EQ(1, enabled);
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_sdramc_get_status(nullptr));
   TEST_END("sdramc get_status");
 }
 
@@ -130,11 +130,11 @@ static void test_power_transition(void)
 {
   TEST_BEGIN("sdramc power transition");
   ra_sim_mmap_reset();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sdramc_init());
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sdramc_enter_stop());
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)ra_sdramc()->SDRFEN);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sdramc_exit_stop());
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)ra_sdramc()->SDRFEN);
+  TEST_ASSERT_EQ(k_ra_ok, ra_sdramc_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_sdramc_enter_stop());
+  TEST_ASSERT_EQ(0, ra_sdramc()->SDRFEN);
+  TEST_ASSERT_EQ(k_ra_ok, ra_sdramc_exit_stop());
+  TEST_ASSERT_EQ(1, ra_sdramc()->SDRFEN);
   TEST_END("sdramc power transition");
 }
 

@@ -73,7 +73,7 @@ static void test_init_sets_ccr0_enables(void)
   TEST_BEGIN("ra_sci_init: CCR0 enables TE + RE");
   prep();
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_init(0U, &k_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_init(0U, &k_cfg));
   volatile const r_sci_regs_t* reg  = ra_sci(0U);
   const uint32_t               ccr0 = reg->CCR0;
   TEST_ASSERT((ccr0 & (1U << (uint8_t)k_ra_sci_ccr0_bit_te)) != 0U);
@@ -92,8 +92,8 @@ static void test_init_rejects_bad_channel(void)
   TEST_BEGIN("ra_sci_init: bad channel rejected");
   prep();
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_sci_init(99U, &k_cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_sci_init(0U, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_sci_init(99U, &k_cfg));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_sci_init(0U, nullptr));
   TEST_END("ra_sci_init: bad channel rejected");
 }
 
@@ -107,21 +107,21 @@ static void test_polling_tx_rx_round_trip(void)
 {
   TEST_BEGIN("ra_sci polling tx/rx round trip");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_init(1U, &k_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_init(1U, &k_cfg));
 
   /* Pre-seed CSR.TDRE so putc's spin completes on the first iteration. */
   volatile r_sci_regs_t* reg = ra_sci(1U);
   reg->CSR                   = (1U << (uint8_t)k_ra_sci_csr_bit_tdre);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_putc_polling(1U, 0x5AU));
-  TEST_ASSERT_EQ((int32_t)0x5A, (int32_t)(reg->TDR & 0xFFU));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_putc_polling(1U, 0x5AU));
+  TEST_ASSERT_EQ(0x5A, (reg->TDR & 0xFFU));
 
   /* Poll RX: pre-seed CSR.RDRF and stage a byte in RDR. */
   reg->CSR    = reg->CSR | (1U << (uint8_t)k_ra_sci_csr_bit_rdrf);
   reg->RDR    = 0xA5U;
   uint8_t got = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_getc_polling(1U, &got));
-  TEST_ASSERT_EQ((int32_t)0xA5, (int32_t)got);
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_getc_polling(1U, &got));
+  TEST_ASSERT_EQ(0xA5, got);
   TEST_END("ra_sci polling tx/rx round trip");
 }
 
@@ -135,11 +135,11 @@ static void test_polling_tx_timeout(void)
 {
   TEST_BEGIN("ra_sci polling tx timeout");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_init(0U, &k_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_init(0U, &k_cfg));
 
   /* Force-clear CSR so TDRE never sets and the wait fails. */
   ra_sci(0U)->CSR = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_hw_timeout, (int32_t)ra_sci_putc_polling(0U, 0x00U));
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_sci_putc_polling(0U, 0x00U));
   TEST_END("ra_sci polling tx timeout");
 }
 
@@ -153,10 +153,10 @@ static void test_write_polling_null_plus_nonzero(void)
 {
   TEST_BEGIN("ra_sci write polling null buffer rejected");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_init(0U, &k_cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_sci_write_polling(0U, nullptr, 1U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_init(0U, &k_cfg));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_sci_write_polling(0U, nullptr, 1U));
   /* Zero-length is always ok, even with NULL. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_write_polling(0U, nullptr, 0U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_write_polling(0U, nullptr, 0U));
   TEST_END("ra_sci write polling null buffer rejected");
 }
 
@@ -170,15 +170,15 @@ static void test_attach_rx_sets_rie(void)
 {
   TEST_BEGIN("ra_sci_attach_rx_handler sets CCR0.RIE");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_init(2U, &k_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_init(2U, &k_cfg));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_attach_rx_handler(2U, stub_rx, nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_attach_rx_handler(2U, stub_rx, nullptr));
   volatile const r_sci_regs_t* reg = ra_sci(2U);
   TEST_ASSERT((reg->CCR0 & (1U << (uint8_t)k_ra_sci_ccr0_bit_rie)) != 0U);
 
   /* Detach clears the bit. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_attach_rx_handler(2U, nullptr, nullptr));
-  TEST_ASSERT_EQ(0, (int32_t)(reg->CCR0 & (1U << (uint8_t)k_ra_sci_ccr0_bit_rie)));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_attach_rx_handler(2U, nullptr, nullptr));
+  TEST_ASSERT_EQ(0, (reg->CCR0 & (1U << (uint8_t)k_ra_sci_ccr0_bit_rie)));
   TEST_END("ra_sci_attach_rx_handler sets CCR0.RIE");
 }
 
@@ -192,16 +192,14 @@ static void test_attach_tx_sets_tie(void)
 {
   TEST_BEGIN("ra_sci_attach_tx_handler sets CCR0.TIE");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_init(3U, &k_cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_attach_tx_handler(3U, stub_tx, nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_init(3U, &k_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_attach_tx_handler(3U, stub_tx, nullptr));
   volatile const r_sci_regs_t* reg = ra_sci(3U);
   TEST_ASSERT((reg->CCR0 & (1U << (uint8_t)k_ra_sci_ccr0_bit_tie)) != 0U);
 
   /* Bad channel rejected. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_sci_attach_tx_handler(99U, stub_tx, nullptr));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_sci_attach_rx_handler(99U, stub_rx, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_sci_attach_tx_handler(99U, stub_tx, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_sci_attach_rx_handler(99U, stub_rx, nullptr));
   TEST_END("ra_sci_attach_tx_handler sets CCR0.TIE");
 }
 
@@ -215,17 +213,17 @@ static void test_dispatch_rxi_invokes_handler(void)
 {
   TEST_BEGIN("ra_sci_dispatch_rxi: calls handler with RDR byte");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_init(4U, &k_cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_attach_rx_handler(4U, stub_rx, nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_init(4U, &k_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_attach_rx_handler(4U, stub_rx, nullptr));
 
   ra_sci(4U)->RDR = 0x77U;
   ra_sci_dispatch_rxi(4U);
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)s_rx_count);
-  TEST_ASSERT_EQ((int32_t)0x77, (int32_t)s_rx_last);
+  TEST_ASSERT_EQ(1, s_rx_count);
+  TEST_ASSERT_EQ(0x77, s_rx_last);
 
   /* Bad channel = no-op. */
   ra_sci_dispatch_rxi(99U);
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)s_rx_count);
+  TEST_ASSERT_EQ(1, s_rx_count);
   TEST_END("ra_sci_dispatch_rxi: calls handler with RDR byte");
 }
 
@@ -239,8 +237,8 @@ static void test_dispatch_txi_drains_callback(void)
 {
   TEST_BEGIN("ra_sci_dispatch_txi: advances TX handler until end");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_init(5U, &k_cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_attach_tx_handler(5U, stub_tx, nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_init(5U, &k_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_attach_tx_handler(5U, stub_tx, nullptr));
 
   volatile r_sci_regs_t* reg = ra_sci(5U);
   for (int32_t i = 0; i < s_tx_total; ++i) {
@@ -248,8 +246,8 @@ static void test_dispatch_txi_drains_callback(void)
   }
   /* After the final byte, the next dispatch should clear TIE. */
   ra_sci_dispatch_txi(5U);
-  TEST_ASSERT_EQ(0, (int32_t)(reg->CCR0 & (1U << (uint8_t)k_ra_sci_ccr0_bit_tie)));
-  TEST_ASSERT_EQ((int32_t)s_tx_total, (int32_t)s_tx_count);
+  TEST_ASSERT_EQ(0, (reg->CCR0 & (1U << (uint8_t)k_ra_sci_ccr0_bit_tie)));
+  TEST_ASSERT_EQ(s_tx_total, s_tx_count);
 
   /* Bad channel = no-op. */
   ra_sci_dispatch_txi(99U);
@@ -266,29 +264,29 @@ static void test_errors_mask_and_clear(void)
 {
   TEST_BEGIN("ra_sci_get_errors + clear_errors");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_init(6U, &k_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_init(6U, &k_cfg));
 
   volatile r_sci_regs_t* reg = ra_sci(6U);
   reg->CSR = (1U << (uint8_t)k_ra_sci_csr_bit_orer) | (1U << (uint8_t)k_ra_sci_csr_bit_fer) |
              (1U << (uint8_t)k_ra_sci_csr_bit_per);
 
   uint8_t mask = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_get_errors(6U, &mask));
-  TEST_ASSERT_EQ((int32_t)((uint8_t)k_ra_sci_err_overrun | (uint8_t)k_ra_sci_err_framing |
-                           (uint8_t)k_ra_sci_err_parity),
-                 (int32_t)mask);
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_get_errors(6U, &mask));
+  TEST_ASSERT_EQ(
+    ((uint8_t)k_ra_sci_err_overrun | (uint8_t)k_ra_sci_err_framing | (uint8_t)k_ra_sci_err_parity),
+    mask);
 
   /* The simulator backs MMIO with ordinary RAM, so write-1-to-clear
    * does not auto-clear the source flags; emulate hardware by
    * zeroing CSR after the clear-register write. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_clear_errors(6U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_clear_errors(6U));
   reg->CSR = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_get_errors(6U, &mask));
-  TEST_ASSERT_EQ((int32_t)k_ra_sci_err_none, (int32_t)mask);
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_get_errors(6U, &mask));
+  TEST_ASSERT_EQ(k_ra_sci_err_none, mask);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_sci_get_errors(6U, nullptr));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_sci_get_errors(99U, &mask));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_sci_clear_errors(99U));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_sci_get_errors(6U, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_sci_get_errors(99U, &mask));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_sci_clear_errors(99U));
   TEST_END("ra_sci_get_errors + clear_errors");
 }
 
@@ -302,15 +300,15 @@ static void test_set_baud_round_trip(void)
 {
   TEST_BEGIN("ra_sci_set_baud: BRR recomputed");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_init(7U, &k_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_init(7U, &k_cfg));
 
   const uint32_t ccr2_before = ra_sci(7U)->CCR2;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_set_baud(7U, 9600U, 60000000U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_set_baud(7U, 9600U, 60000000U));
   const uint32_t ccr2_after = ra_sci(7U)->CCR2;
   TEST_ASSERT(ccr2_after != ccr2_before);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_sci_set_baud(7U, 0U, 60000000U));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_sci_set_baud(99U, 115200U, 60000000U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_sci_set_baud(7U, 0U, 60000000U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_sci_set_baud(99U, 115200U, 60000000U));
   TEST_END("ra_sci_set_baud: BRR recomputed");
 }
 
@@ -324,20 +322,20 @@ static void test_enter_exit_stop(void)
 {
   TEST_BEGIN("ra_sci_enter_stop / exit_stop");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_init(8U, &k_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_init(8U, &k_cfg));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_enter_stop(8U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_enter_stop(8U));
 
   bool stopped = false;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mstp_is_stopped(k_ra_mstp_sci8, &stopped));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mstp_is_stopped(k_ra_mstp_sci8, &stopped));
   TEST_ASSERT(stopped);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_exit_stop(8U));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mstp_is_stopped(k_ra_mstp_sci8, &stopped));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_exit_stop(8U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mstp_is_stopped(k_ra_mstp_sci8, &stopped));
   TEST_ASSERT(!stopped);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_sci_enter_stop(99U));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_sci_exit_stop(99U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_sci_enter_stop(99U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_sci_exit_stop(99U));
   TEST_END("ra_sci_enter_stop / exit_stop");
 }
 
@@ -351,13 +349,13 @@ static void test_deinit_releases(void)
 {
   TEST_BEGIN("ra_sci_deinit releases MSTP");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_init(9U, &k_cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_deinit(9U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_init(9U, &k_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_deinit(9U));
   bool stopped = false;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_mstp_is_stopped(k_ra_mstp_sci9, &stopped));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mstp_is_stopped(k_ra_mstp_sci9, &stopped));
   TEST_ASSERT(stopped);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_sci_deinit(99U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_sci_deinit(99U));
   TEST_END("ra_sci_deinit releases MSTP");
 }
 
@@ -380,7 +378,7 @@ static void test_cfg_variants(void)
     .stop_bits = k_ra_sci_stop_2,
     .pclk_hz   = 60000000U,
   };
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_init(0U, &cfg_a));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_init(0U, &cfg_a));
 
   /* Even parity path. */
   const ra_sci_cfg_t cfg_b = {
@@ -390,7 +388,7 @@ static void test_cfg_variants(void)
     .stop_bits = k_ra_sci_stop_1,
     .pclk_hz   = 60000000U,
   };
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_init(1U, &cfg_b));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_init(1U, &cfg_b));
 
   /* zero baud -> BRR returns 0, but init() still returns ok because
    * it does not validate the resulting BRR. */
@@ -401,7 +399,7 @@ static void test_cfg_variants(void)
     .stop_bits = k_ra_sci_stop_1,
     .pclk_hz   = 60000000U,
   };
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_init(2U, &cfg_c));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_init(2U, &cfg_c));
 
   /* Ridiculous baud so the divisor exceeds PCLK; n == 0 branch. */
   const ra_sci_cfg_t cfg_d = {
@@ -411,7 +409,7 @@ static void test_cfg_variants(void)
     .stop_bits = k_ra_sci_stop_1,
     .pclk_hz   = 60000000U,
   };
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_init(3U, &cfg_d));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_init(3U, &cfg_d));
   TEST_END("ra_sci_init: all cfg variants reach BRR/CCR3 branches");
 }
 
@@ -425,15 +423,15 @@ static void test_getc_polling_null(void)
 {
   TEST_BEGIN("ra_sci_getc_polling: null + bad channel");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_init(0U, &k_cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_sci_getc_polling(0U, nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_init(0U, &k_cfg));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_sci_getc_polling(0U, nullptr));
 
   uint8_t got = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_sci_getc_polling(99U, &got));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_sci_getc_polling(99U, &got));
 
   /* Timeout path on RX. */
   ra_sci(0U)->CSR = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_hw_timeout, (int32_t)ra_sci_getc_polling(0U, &got));
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_sci_getc_polling(0U, &got));
   TEST_END("ra_sci_getc_polling: null + bad channel");
 }
 
@@ -447,7 +445,7 @@ static void test_putc_polling_bad_channel(void)
 {
   TEST_BEGIN("ra_sci_putc_polling: bad channel rejected");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_sci_putc_polling(99U, 0U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_sci_putc_polling(99U, 0U));
   TEST_END("ra_sci_putc_polling: bad channel rejected");
 }
 
@@ -461,13 +459,13 @@ static void test_dispatch_txi_with_no_handler(void)
 {
   TEST_BEGIN("ra_sci_dispatch_txi: no-handler clears TIE");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_init(0U, &k_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_init(0U, &k_cfg));
   /* Manually set TIE. */
   volatile r_sci_regs_t* reg = ra_sci(0U);
   reg->CCR0                  = reg->CCR0 | (1U << (uint8_t)k_ra_sci_ccr0_bit_tie);
   /* Dispatch with no handler attached -- should clear TIE. */
   ra_sci_dispatch_txi(0U);
-  TEST_ASSERT_EQ(0, (int32_t)(reg->CCR0 & (1U << (uint8_t)k_ra_sci_ccr0_bit_tie)));
+  TEST_ASSERT_EQ(0, (reg->CCR0 & (1U << (uint8_t)k_ra_sci_ccr0_bit_tie)));
   TEST_END("ra_sci_dispatch_txi: no-handler clears TIE");
 }
 
@@ -481,7 +479,7 @@ static void test_dispatch_rxi_with_no_handler(void)
 {
   TEST_BEGIN("ra_sci_dispatch_rxi: no-handler is no-op");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_init(0U, &k_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_init(0U, &k_cfg));
   /* Dispatch without attaching a handler -- just reads RDR. */
   ra_sci_dispatch_rxi(0U);
   /* No assertion other than "did not crash"; covered the no-cb branch. */
@@ -498,7 +496,7 @@ static void test_eri_dispatch_clears_errors(void)
 {
   TEST_BEGIN("ra_sci_dispatch_eri clears CSR flags");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_init(0U, &k_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_init(0U, &k_cfg));
   volatile r_sci_regs_t* reg = ra_sci(0U);
   reg->CSR                   = reg->CSR | (1U << (uint8_t)k_ra_sci_csr_bit_orer);
 
@@ -507,8 +505,8 @@ static void test_eri_dispatch_clears_errors(void)
    * the hardware effect manually before re-reading the mask. */
   reg->CSR     = 0U;
   uint8_t mask = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_get_errors(0U, &mask));
-  TEST_ASSERT_EQ((int32_t)k_ra_sci_err_none, (int32_t)mask);
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_get_errors(0U, &mask));
+  TEST_ASSERT_EQ(k_ra_sci_err_none, mask);
 
   /* Out-of-range is a no-op. */
   ra_sci_dispatch_eri(99U);
@@ -533,26 +531,25 @@ static void test_write_dma_streams_buffer_to_tdr(void)
 {
   TEST_BEGIN("ra_sci_write_dma: buffer streams into TDR via DMA");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dma_init());
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_init(0U, &k_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_dma_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_init(0U, &k_cfg));
 
   const uint8_t src[]  = {0xAAU, 0xBBU, 0xCCU, 0xDDU};
   uint8_t       dma_ch = 0xFFU;
   s_dma_complete_count = 0;
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_sci_write_dma(0U, src, (uint16_t)sizeof(src), stub_dma_done, nullptr, &dma_ch));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_sci_write_dma(0U, src, (uint16_t)sizeof(src), stub_dma_done, nullptr, &dma_ch));
   TEST_ASSERT(dma_ch < 8U);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sim_dma_memcpy(dma_ch));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_dma_memcpy(dma_ch));
   volatile const r_sci_regs_t* reg = ra_sci(0U);
   /* Last byte streamed lands in TDR (dst_inc=false). DMA writes are
    * byte-wide, so only the low 8 bits of TDR are loaded. */
-  TEST_ASSERT_EQ((int32_t)0xDDU, (int32_t)(reg->TDR & 0xFFU));
+  TEST_ASSERT_EQ(0xDDU, (reg->TDR & 0xFFU));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sim_dma_complete(dma_ch));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_dma_complete(dma_ch));
   TEST_ASSERT_EQ(1, s_dma_complete_count);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dma_release(dma_ch));
+  TEST_ASSERT_EQ(k_ra_ok, ra_dma_release(dma_ch));
   TEST_END("ra_sci_write_dma: buffer streams into TDR via DMA");
 }
 
@@ -566,8 +563,8 @@ static void test_read_dma_streams_rdr_to_buffer(void)
 {
   TEST_BEGIN("ra_sci_read_dma: RDR streams into buffer via DMA");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dma_init());
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_init(0U, &k_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_dma_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_init(0U, &k_cfg));
 
   volatile r_sci_regs_t* reg = ra_sci(0U);
   reg->RDR                   = 0x42U;
@@ -575,20 +572,19 @@ static void test_read_dma_streams_rdr_to_buffer(void)
   uint8_t out[3]       = {0U, 0U, 0U};
   uint8_t dma_ch       = 0xFFU;
   s_dma_complete_count = 0;
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_sci_read_dma(0U, out, (uint16_t)sizeof(out), stub_dma_done, nullptr, &dma_ch));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_sci_read_dma(0U, out, (uint16_t)sizeof(out), stub_dma_done, nullptr, &dma_ch));
   TEST_ASSERT(dma_ch < 8U);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sim_dma_memcpy(dma_ch));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_dma_memcpy(dma_ch));
   /* RDR (src_inc=false) was 0x42 throughout, so all destinations match. */
-  TEST_ASSERT_EQ((int32_t)0x42U, (int32_t)out[0]);
-  TEST_ASSERT_EQ((int32_t)0x42U, (int32_t)out[1]);
-  TEST_ASSERT_EQ((int32_t)0x42U, (int32_t)out[2]);
+  TEST_ASSERT_EQ(0x42U, out[0]);
+  TEST_ASSERT_EQ(0x42U, out[1]);
+  TEST_ASSERT_EQ(0x42U, out[2]);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sim_dma_complete(dma_ch));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_dma_complete(dma_ch));
   TEST_ASSERT_EQ(1, s_dma_complete_count);
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dma_release(dma_ch));
+  TEST_ASSERT_EQ(k_ra_ok, ra_dma_release(dma_ch));
   TEST_END("ra_sci_read_dma: RDR streams into buffer via DMA");
 }
 
@@ -602,34 +598,26 @@ static void test_dma_arg_validation(void)
 {
   TEST_BEGIN("ra_sci_{write,read}_dma: arg validation");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dma_init());
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_init(0U, &k_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_dma_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_init(0U, &k_cfg));
 
   uint8_t       dma_ch = 0U;
   const uint8_t src[]  = {0x01U};
   uint8_t       dst[1] = {0U};
 
   /* NULL data / out_buf / out_dma_channel. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_sci_write_dma(0U, nullptr, 1U, nullptr, nullptr, &dma_ch));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_sci_write_dma(0U, src, 1U, nullptr, nullptr, nullptr));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_sci_read_dma(0U, nullptr, 1U, nullptr, nullptr, &dma_ch));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_sci_read_dma(0U, dst, 1U, nullptr, nullptr, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_sci_write_dma(0U, nullptr, 1U, nullptr, nullptr, &dma_ch));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_sci_write_dma(0U, src, 1U, nullptr, nullptr, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_sci_read_dma(0U, nullptr, 1U, nullptr, nullptr, &dma_ch));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_sci_read_dma(0U, dst, 1U, nullptr, nullptr, nullptr));
 
   /* Bad channel. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_sci_write_dma(99U, src, 1U, nullptr, nullptr, &dma_ch));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_sci_read_dma(99U, dst, 1U, nullptr, nullptr, &dma_ch));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_sci_write_dma(99U, src, 1U, nullptr, nullptr, &dma_ch));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_sci_read_dma(99U, dst, 1U, nullptr, nullptr, &dma_ch));
 
   /* Zero-length transfer. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_sci_write_dma(0U, src, 0U, nullptr, nullptr, &dma_ch));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_sci_read_dma(0U, dst, 0U, nullptr, nullptr, &dma_ch));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_sci_write_dma(0U, src, 0U, nullptr, nullptr, &dma_ch));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_sci_read_dma(0U, dst, 0U, nullptr, nullptr, &dma_ch));
 
   TEST_END("ra_sci_{write,read}_dma: arg validation");
 }
@@ -662,31 +650,30 @@ static void test_async_write_drains_buffer(void)
 {
   TEST_BEGIN("ra_sci_write: 16-byte async TX drains via TXI");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_init(0U, &k_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_init(0U, &k_cfg));
 
   s_async_tx_cb_count = 0;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_sci_attach_tx_handler(0U, stub_async_tx_visibility, nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_attach_tx_handler(0U, stub_async_tx_visibility, nullptr));
 
   uint8_t payload[k_test_async_len];
   for (uint32_t i = 0U; i < k_test_async_len; ++i) {
     payload[i] = (uint8_t)(0x40U + i);
   }
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_write(0U, payload, k_test_async_len));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_write(0U, payload, k_test_async_len));
 
   volatile r_sci_regs_t* reg = ra_sci(0U);
   TEST_ASSERT((reg->CCR0 & (1U << (uint8_t)k_ra_sci_ccr0_bit_tie)) != 0U);
 
   for (uint32_t i = 0U; i < k_test_async_len; ++i) {
     ra_sci_dispatch_txi(0U);
-    TEST_ASSERT_EQ((int32_t)payload[i], (int32_t)(reg->TDR & 0xFFU));
+    TEST_ASSERT_EQ(payload[i], (reg->TDR & 0xFFU));
   }
   /* All bytes pushed -- TIE auto-cleared. */
-  TEST_ASSERT_EQ(0, (int32_t)(reg->CCR0 & (1U << (uint8_t)k_ra_sci_ccr0_bit_tie)));
-  TEST_ASSERT_EQ((int32_t)k_test_async_len, (int32_t)s_async_tx_cb_count);
+  TEST_ASSERT_EQ(0, (reg->CCR0 & (1U << (uint8_t)k_ra_sci_ccr0_bit_tie)));
+  TEST_ASSERT_EQ(k_test_async_len, s_async_tx_cb_count);
 
   /* Re-arming the same channel works again now that TX state is idle. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_write(0U, payload, k_test_async_len));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_write(0U, payload, k_test_async_len));
   TEST_END("ra_sci_write: 16-byte async TX drains via TXI");
 }
 
@@ -700,13 +687,13 @@ static void test_async_read_fills_buffer(void)
 {
   TEST_BEGIN("ra_sci_read: 16-byte async RX captures via RXI");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_init(1U, &k_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_init(1U, &k_cfg));
 
   uint8_t buf[k_test_async_len];
   for (uint32_t i = 0U; i < k_test_async_len; ++i) {
     buf[i] = 0U;
   }
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_read(1U, buf, k_test_async_len));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_read(1U, buf, k_test_async_len));
 
   volatile r_sci_regs_t* reg = ra_sci(1U);
   TEST_ASSERT((reg->CCR0 & (1U << (uint8_t)k_ra_sci_ccr0_bit_rie)) != 0U);
@@ -717,9 +704,9 @@ static void test_async_read_fills_buffer(void)
     ra_sci_dispatch_rxi(1U);
   }
   /* All bytes captured -- RIE auto-cleared. */
-  TEST_ASSERT_EQ(0, (int32_t)(reg->CCR0 & (1U << (uint8_t)k_ra_sci_ccr0_bit_rie)));
+  TEST_ASSERT_EQ(0, (reg->CCR0 & (1U << (uint8_t)k_ra_sci_ccr0_bit_rie)));
   for (uint32_t i = 0U; i < k_test_async_len; ++i) {
-    TEST_ASSERT_EQ((int32_t)(0x80U + i), (int32_t)buf[i]);
+    TEST_ASSERT_EQ((0x80U + i), buf[i]);
   }
   TEST_END("ra_sci_read: 16-byte async RX captures via RXI");
 }
@@ -734,25 +721,25 @@ static void test_async_abort_tx(void)
 {
   TEST_BEGIN("ra_sci_abort: TX direction disarms TIE mid-stream");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_init(2U, &k_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_init(2U, &k_cfg));
 
   uint8_t payload[k_test_async_len];
   for (uint32_t i = 0U; i < k_test_async_len; ++i) {
     payload[i] = (uint8_t)i;
   }
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_write(2U, payload, k_test_async_len));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_write(2U, payload, k_test_async_len));
 
   /* Fire 8 of 16 dispatches, then abort. */
   for (uint32_t i = 0U; i < 8U; ++i) {
     ra_sci_dispatch_txi(2U);
   }
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_abort(2U, k_ra_sci_dir_tx));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_abort(2U, k_ra_sci_dir_tx));
 
   volatile const r_sci_regs_t* reg = ra_sci(2U);
-  TEST_ASSERT_EQ(0, (int32_t)(reg->CCR0 & (1U << (uint8_t)k_ra_sci_ccr0_bit_tie)));
+  TEST_ASSERT_EQ(0, (reg->CCR0 & (1U << (uint8_t)k_ra_sci_ccr0_bit_tie)));
 
   /* After abort the channel is idle again and a new write can start. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_write(2U, payload, k_test_async_len));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_write(2U, payload, k_test_async_len));
   TEST_END("ra_sci_abort: TX direction disarms TIE mid-stream");
 }
 
@@ -766,10 +753,10 @@ static void test_async_read_stop_reports_remaining(void)
 {
   TEST_BEGIN("ra_sci_read_stop: returns bytes still pending");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_init(3U, &k_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_init(3U, &k_cfg));
 
   uint8_t buf[k_test_async_len];
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_read(3U, buf, k_test_async_len));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_read(3U, buf, k_test_async_len));
 
   volatile r_sci_regs_t* reg = ra_sci(3U);
   for (uint32_t i = 0U; i < 4U; ++i) {
@@ -778,13 +765,13 @@ static void test_async_read_stop_reports_remaining(void)
   }
 
   uint32_t remaining = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_read_stop(3U, &remaining));
-  TEST_ASSERT_EQ((int32_t)(k_test_async_len - 4U), (int32_t)remaining);
-  TEST_ASSERT_EQ(0, (int32_t)(reg->CCR0 & (1U << (uint8_t)k_ra_sci_ccr0_bit_rie)));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_read_stop(3U, &remaining));
+  TEST_ASSERT_EQ((k_test_async_len - 4U), remaining);
+  TEST_ASSERT_EQ(0, (reg->CCR0 & (1U << (uint8_t)k_ra_sci_ccr0_bit_rie)));
 
   /* read_stop with no active RX reports zero, not an error. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_read_stop(3U, &remaining));
-  TEST_ASSERT_EQ(0, (int32_t)remaining);
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_read_stop(3U, &remaining));
+  TEST_ASSERT_EQ(0, remaining);
   TEST_END("ra_sci_read_stop: returns bytes still pending");
 }
 
@@ -801,13 +788,12 @@ static void test_baud_calculate_115200_at_60mhz(void)
 
   uint16_t brr     = 0U;
   uint8_t  clk_div = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_sci_baud_calculate(115200U, 60000000U, &brr, &clk_div));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_baud_calculate(115200U, 60000000U, &brr, &clk_div));
   /* HUM Ch 38.2.7: with n = 0 (CKS = 0), divisor = 32, so
    *   BRR = 60_000_000 / (32 * 115200) - 1 = 16 - 1 = 15.
    * Effective baud = 60_000_000 / (32 * (15+1)) = 117187.5 bps. */
-  TEST_ASSERT_EQ((int32_t)15U, (int32_t)brr);
-  TEST_ASSERT_EQ((int32_t)0U, (int32_t)clk_div);
+  TEST_ASSERT_EQ(15U, brr);
+  TEST_ASSERT_EQ(0U, clk_div);
 
   /* Verify the baud-rate error is < 2 percent. */
   const uint32_t divisor   = 32U * (1U << (2U * (uint32_t)clk_div));
@@ -819,25 +805,19 @@ static void test_baud_calculate_115200_at_60mhz(void)
   /* Slow baud forces a higher CKS divider. 1200 baud at 60 MHz needs
    * BRR ~= 1561 with n = 0 (overflows) so the loop must climb to a
    * larger divisor. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_sci_baud_calculate(1200U, 60000000U, &brr, &clk_div));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_baud_calculate(1200U, 60000000U, &brr, &clk_div));
   TEST_ASSERT(clk_div > 0U);
 
   /* Unreachable baud rejected. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_sci_baud_calculate(0xFFFFFFFFU, 1000U, &brr, &clk_div));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_sci_baud_calculate(0xFFFFFFFFU, 1000U, &brr, &clk_div));
 
   /* NULL-arg rejection. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_sci_baud_calculate(115200U, 60000000U, nullptr, &clk_div));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_sci_baud_calculate(115200U, 60000000U, &brr, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_sci_baud_calculate(115200U, 60000000U, nullptr, &clk_div));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_sci_baud_calculate(115200U, 60000000U, &brr, nullptr));
 
   /* Zero arguments. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_sci_baud_calculate(0U, 60000000U, &brr, &clk_div));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_sci_baud_calculate(115200U, 0U, &brr, &clk_div));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_sci_baud_calculate(0U, 60000000U, &brr, &clk_div));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_sci_baud_calculate(115200U, 0U, &brr, &clk_div));
   TEST_END("ra_sci_baud_calculate: 115200 @ 60 MHz within 2 percent");
 }
 
@@ -851,19 +831,19 @@ static void test_receive_suspend_resume(void)
 {
   TEST_BEGIN("ra_sci_receive_suspend / resume toggles CCR0.RE");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_init(4U, &k_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_init(4U, &k_cfg));
 
   volatile r_sci_regs_t* reg = ra_sci(4U);
   TEST_ASSERT((reg->CCR0 & (1U << (uint8_t)k_ra_sci_ccr0_bit_re)) != 0U);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_receive_suspend(4U));
-  TEST_ASSERT_EQ(0, (int32_t)(reg->CCR0 & (1U << (uint8_t)k_ra_sci_ccr0_bit_re)));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_receive_suspend(4U));
+  TEST_ASSERT_EQ(0, (reg->CCR0 & (1U << (uint8_t)k_ra_sci_ccr0_bit_re)));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_receive_resume(4U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_receive_resume(4U));
   TEST_ASSERT((reg->CCR0 & (1U << (uint8_t)k_ra_sci_ccr0_bit_re)) != 0U);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_sci_receive_suspend(99U));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_sci_receive_resume(99U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_sci_receive_suspend(99U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_sci_receive_resume(99U));
   TEST_END("ra_sci_receive_suspend / resume toggles CCR0.RE");
 }
 
@@ -877,39 +857,39 @@ static void test_async_null_arg_rejection(void)
 {
   TEST_BEGIN("ra_sci async API: NULL + bad-channel rejection");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_init(5U, &k_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_init(5U, &k_cfg));
 
   uint8_t buf[1] = {0U};
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_sci_write(5U, nullptr, 1U));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_sci_read(5U, nullptr, 1U));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_sci_write(5U, nullptr, 1U));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_sci_read(5U, nullptr, 1U));
 
   /* Zero-length is always ok. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_write(5U, nullptr, 0U));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_read(5U, nullptr, 0U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_write(5U, nullptr, 0U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_read(5U, nullptr, 0U));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_sci_write(99U, buf, 1U));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_sci_read(99U, buf, 1U));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_sci_abort(99U, k_ra_sci_dir_both));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_sci_abort(5U, (ra_sci_dir_t)0xFFU));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_sci_write(99U, buf, 1U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_sci_read(99U, buf, 1U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_sci_abort(99U, k_ra_sci_dir_both));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_sci_abort(5U, (ra_sci_dir_t)0xFFU));
 
   uint32_t remaining = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr, (int32_t)ra_sci_read_stop(5U, nullptr));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_sci_read_stop(99U, &remaining));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_sci_read_stop(5U, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_sci_read_stop(99U, &remaining));
 
   /* Busy rejection: re-arming a TX while one is in flight returns busy. */
   uint8_t pl[k_test_async_len];
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_write(5U, pl, k_test_async_len));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_busy, (int32_t)ra_sci_write(5U, pl, k_test_async_len));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_abort(5U, k_ra_sci_dir_tx));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_write(5U, pl, k_test_async_len));
+  TEST_ASSERT_EQ(k_ra_err_busy, ra_sci_write(5U, pl, k_test_async_len));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_abort(5U, k_ra_sci_dir_tx));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_read(5U, buf, 1U));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_busy, (int32_t)ra_sci_read(5U, buf, 1U));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_abort(5U, k_ra_sci_dir_rx));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_read(5U, buf, 1U));
+  TEST_ASSERT_EQ(k_ra_err_busy, ra_sci_read(5U, buf, 1U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_abort(5U, k_ra_sci_dir_rx));
 
   /* Calling write/read on an uninitialised channel is rejected. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_deinit(5U));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_sci_write(5U, pl, 1U));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_sci_read(5U, buf, 1U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_deinit(5U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_sci_write(5U, pl, 1U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_sci_read(5U, buf, 1U));
   TEST_END("ra_sci async API: NULL + bad-channel rejection");
 }
 
@@ -953,7 +933,7 @@ static void test_mcdc_internal_brr(void)
   prep();
 
   /* V1: both non-zero -> success path. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_init((uint8_t)k_mcdc_sci_ch_ok, &k_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_init((uint8_t)k_mcdc_sci_ch_ok, &k_cfg));
   const uint32_t ccr2_v1 = ra_sci((uint8_t)k_mcdc_sci_ch_ok)->CCR2;
   TEST_ASSERT(ccr2_v1 != 0U);
 
@@ -966,7 +946,7 @@ static void test_mcdc_internal_brr(void)
     .stop_bits = k_ra_sci_stop_1,
     .pclk_hz   = (uint32_t)k_mcdc_sci_pclk_ok,
   };
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_init((uint8_t)k_mcdc_sci_ch_ok, &cfg_v2));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_init((uint8_t)k_mcdc_sci_ch_ok, &cfg_v2));
 
   /* V3: pclk_hz == 0. */
   prep();
@@ -977,7 +957,7 @@ static void test_mcdc_internal_brr(void)
     .stop_bits = k_ra_sci_stop_1,
     .pclk_hz   = (uint32_t)k_mcdc_sci_pclk_zero,
   };
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_init((uint8_t)k_mcdc_sci_ch_ok, &cfg_v3));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_init((uint8_t)k_mcdc_sci_ch_ok, &cfg_v3));
 
   TEST_END("mcdc: internal_brr (baud|pclk == 0) decision");
 }
@@ -997,24 +977,22 @@ static void test_mcdc_write_polling_data_len(void)
 {
   TEST_BEGIN("mcdc: write_polling (data&&len) decision");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_init((uint8_t)k_mcdc_sci_ch_ok, &k_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_init((uint8_t)k_mcdc_sci_ch_ok, &k_cfg));
 
   const uint8_t buf[1] = {0xA5U};
   /* V1: pre-seed TDRE so the polling tx loop completes. */
   ra_sci((uint8_t)k_mcdc_sci_ch_ok)->CSR = (1U << (uint8_t)k_ra_sci_csr_bit_tdre);
   TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_sci_write_polling((uint8_t)k_mcdc_sci_ch_ok, buf, (uint32_t)k_mcdc_sci_len_one));
+    k_ra_ok,
+    ra_sci_write_polling((uint8_t)k_mcdc_sci_ch_ok, buf, (uint32_t)k_mcdc_sci_len_one));
   /* V2: zero-length is always ok even with NULL data. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_sci_write_polling((uint8_t)k_mcdc_sci_ch_ok,
-                                               nullptr,
-                                               (uint32_t)k_mcdc_sci_len_zero));
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    ra_sci_write_polling((uint8_t)k_mcdc_sci_ch_ok, nullptr, (uint32_t)k_mcdc_sci_len_zero));
   /* V3: NULL data with non-zero len -> rejected. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_sci_write_polling((uint8_t)k_mcdc_sci_ch_ok,
-                                               nullptr,
-                                               (uint32_t)k_mcdc_sci_len_one));
+  TEST_ASSERT_EQ(
+    k_ra_err_null_ptr,
+    ra_sci_write_polling((uint8_t)k_mcdc_sci_ch_ok, nullptr, (uint32_t)k_mcdc_sci_len_one));
   TEST_END("mcdc: write_polling (data&&len) decision");
 }
 
@@ -1036,21 +1014,21 @@ static void test_mcdc_baud_calculate_args(void)
 
   uint16_t brr     = 0U;
   uint8_t  clk_div = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_sci_baud_calculate((uint32_t)k_mcdc_sci_baud_ok,
-                                                (uint32_t)k_mcdc_sci_pclk_ok,
-                                                &brr,
-                                                &clk_div));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_sci_baud_calculate((uint32_t)k_mcdc_sci_baud_zero,
-                                                (uint32_t)k_mcdc_sci_pclk_ok,
-                                                &brr,
-                                                &clk_div));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_sci_baud_calculate((uint32_t)k_mcdc_sci_baud_ok,
-                                                (uint32_t)k_mcdc_sci_pclk_zero,
-                                                &brr,
-                                                &clk_div));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_sci_baud_calculate((uint32_t)k_mcdc_sci_baud_ok,
+                                       (uint32_t)k_mcdc_sci_pclk_ok,
+                                       &brr,
+                                       &clk_div));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_sci_baud_calculate((uint32_t)k_mcdc_sci_baud_zero,
+                                       (uint32_t)k_mcdc_sci_pclk_ok,
+                                       &brr,
+                                       &clk_div));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_sci_baud_calculate((uint32_t)k_mcdc_sci_baud_ok,
+                                       (uint32_t)k_mcdc_sci_pclk_zero,
+                                       &brr,
+                                       &clk_div));
   TEST_END("mcdc: baud_calculate (baud|pclk == 0) decision");
 }
 
@@ -1069,21 +1047,18 @@ static void test_mcdc_async_write_data_len(void)
 {
   TEST_BEGIN("mcdc: ra_sci_write (data&&len) decision");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_init((uint8_t)k_mcdc_sci_ch_ok, &k_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_init((uint8_t)k_mcdc_sci_ch_ok, &k_cfg));
 
   const uint8_t buf[1] = {0x5AU};
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_sci_write((uint8_t)k_mcdc_sci_ch_ok, buf, (uint32_t)k_mcdc_sci_len_one));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_sci_write((uint8_t)k_mcdc_sci_ch_ok, buf, (uint32_t)k_mcdc_sci_len_one));
   /* Abort to release the TX state for the next call. */
   (void)ra_sci_abort((uint8_t)k_mcdc_sci_ch_ok, k_ra_sci_dir_tx);
 
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_sci_write((uint8_t)k_mcdc_sci_ch_ok, nullptr, (uint32_t)k_mcdc_sci_len_zero));
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_null_ptr,
-    (int32_t)ra_sci_write((uint8_t)k_mcdc_sci_ch_ok, nullptr, (uint32_t)k_mcdc_sci_len_one));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_sci_write((uint8_t)k_mcdc_sci_ch_ok, nullptr, (uint32_t)k_mcdc_sci_len_zero));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_sci_write((uint8_t)k_mcdc_sci_ch_ok, nullptr, (uint32_t)k_mcdc_sci_len_one));
   TEST_END("mcdc: ra_sci_write (data&&len) decision");
 }
 
@@ -1102,20 +1077,17 @@ static void test_mcdc_async_read_buf_len(void)
 {
   TEST_BEGIN("mcdc: ra_sci_read (buf&&len) decision");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_init((uint8_t)k_mcdc_sci_ch_ok, &k_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_init((uint8_t)k_mcdc_sci_ch_ok, &k_cfg));
 
   uint8_t buf[1] = {0U};
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_sci_read((uint8_t)k_mcdc_sci_ch_ok, buf, (uint32_t)k_mcdc_sci_len_one));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_sci_read((uint8_t)k_mcdc_sci_ch_ok, buf, (uint32_t)k_mcdc_sci_len_one));
   (void)ra_sci_abort((uint8_t)k_mcdc_sci_ch_ok, k_ra_sci_dir_rx);
 
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_sci_read((uint8_t)k_mcdc_sci_ch_ok, nullptr, (uint32_t)k_mcdc_sci_len_zero));
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_null_ptr,
-    (int32_t)ra_sci_read((uint8_t)k_mcdc_sci_ch_ok, nullptr, (uint32_t)k_mcdc_sci_len_one));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_sci_read((uint8_t)k_mcdc_sci_ch_ok, nullptr, (uint32_t)k_mcdc_sci_len_zero));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_sci_read((uint8_t)k_mcdc_sci_ch_ok, nullptr, (uint32_t)k_mcdc_sci_len_one));
   TEST_END("mcdc: ra_sci_read (buf&&len) decision");
 }
 
@@ -1140,16 +1112,13 @@ static void test_mcdc_abort_direction(void)
 {
   TEST_BEGIN("mcdc: ra_sci_abort 3-condition direction decision");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_init((uint8_t)k_mcdc_sci_ch_ok, &k_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_init((uint8_t)k_mcdc_sci_ch_ok, &k_cfg));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_sci_abort((uint8_t)k_mcdc_sci_ch_ok, k_ra_sci_dir_tx));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_sci_abort((uint8_t)k_mcdc_sci_ch_ok, k_ra_sci_dir_rx));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_sci_abort((uint8_t)k_mcdc_sci_ch_ok, k_ra_sci_dir_both));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_sci_abort((uint8_t)k_mcdc_sci_ch_ok, (ra_sci_dir_t)0xFFU));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_abort((uint8_t)k_mcdc_sci_ch_ok, k_ra_sci_dir_tx));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_abort((uint8_t)k_mcdc_sci_ch_ok, k_ra_sci_dir_rx));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_abort((uint8_t)k_mcdc_sci_ch_ok, k_ra_sci_dir_both));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_sci_abort((uint8_t)k_mcdc_sci_ch_ok, (ra_sci_dir_t)0xFFU));
   TEST_END("mcdc: ra_sci_abort 3-condition direction decision");
 }
 
@@ -1170,33 +1139,33 @@ static void test_mcdc_write_dma_reg_len(void)
 {
   TEST_BEGIN("mcdc: write_dma (reg||len==0) decision");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dma_init());
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_init((uint8_t)k_mcdc_sci_ch_ok, &k_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_dma_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_init((uint8_t)k_mcdc_sci_ch_ok, &k_cfg));
 
   const uint8_t src[1] = {0x77U};
   uint8_t       dma_ch = 0xFFU;
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_sci_write_dma((uint8_t)k_mcdc_sci_ch_ok,
-                                           src,
-                                           (uint16_t)k_mcdc_sci_len_one,
-                                           nullptr,
-                                           nullptr,
-                                           &dma_ch));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_sci_write_dma((uint8_t)k_mcdc_sci_ch_bad,
-                                           src,
-                                           (uint16_t)k_mcdc_sci_len_one,
-                                           nullptr,
-                                           nullptr,
-                                           &dma_ch));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_sci_write_dma((uint8_t)k_mcdc_sci_ch_ok,
-                                           src,
-                                           (uint16_t)k_mcdc_sci_len_zero,
-                                           nullptr,
-                                           nullptr,
-                                           &dma_ch));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_sci_write_dma((uint8_t)k_mcdc_sci_ch_ok,
+                                  src,
+                                  (uint16_t)k_mcdc_sci_len_one,
+                                  nullptr,
+                                  nullptr,
+                                  &dma_ch));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_sci_write_dma((uint8_t)k_mcdc_sci_ch_bad,
+                                  src,
+                                  (uint16_t)k_mcdc_sci_len_one,
+                                  nullptr,
+                                  nullptr,
+                                  &dma_ch));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_sci_write_dma((uint8_t)k_mcdc_sci_ch_ok,
+                                  src,
+                                  (uint16_t)k_mcdc_sci_len_zero,
+                                  nullptr,
+                                  nullptr,
+                                  &dma_ch));
   TEST_END("mcdc: write_dma (reg||len==0) decision");
 }
 
@@ -1215,33 +1184,33 @@ static void test_mcdc_read_dma_reg_len(void)
 {
   TEST_BEGIN("mcdc: read_dma (reg||len==0) decision");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_dma_init());
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_sci_init((uint8_t)k_mcdc_sci_ch_ok, &k_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_dma_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_sci_init((uint8_t)k_mcdc_sci_ch_ok, &k_cfg));
 
   uint8_t dst[1] = {0U};
   uint8_t dma_ch = 0xFFU;
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_sci_read_dma((uint8_t)k_mcdc_sci_ch_ok,
-                                          dst,
-                                          (uint16_t)k_mcdc_sci_len_one,
-                                          nullptr,
-                                          nullptr,
-                                          &dma_ch));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_sci_read_dma((uint8_t)k_mcdc_sci_ch_bad,
-                                          dst,
-                                          (uint16_t)k_mcdc_sci_len_one,
-                                          nullptr,
-                                          nullptr,
-                                          &dma_ch));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_sci_read_dma((uint8_t)k_mcdc_sci_ch_ok,
-                                          dst,
-                                          (uint16_t)k_mcdc_sci_len_zero,
-                                          nullptr,
-                                          nullptr,
-                                          &dma_ch));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_sci_read_dma((uint8_t)k_mcdc_sci_ch_ok,
+                                 dst,
+                                 (uint16_t)k_mcdc_sci_len_one,
+                                 nullptr,
+                                 nullptr,
+                                 &dma_ch));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_sci_read_dma((uint8_t)k_mcdc_sci_ch_bad,
+                                 dst,
+                                 (uint16_t)k_mcdc_sci_len_one,
+                                 nullptr,
+                                 nullptr,
+                                 &dma_ch));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_sci_read_dma((uint8_t)k_mcdc_sci_ch_ok,
+                                 dst,
+                                 (uint16_t)k_mcdc_sci_len_zero,
+                                 nullptr,
+                                 nullptr,
+                                 &dma_ch));
   TEST_END("mcdc: read_dma (reg||len==0) decision");
 }
 

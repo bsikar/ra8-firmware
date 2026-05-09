@@ -39,8 +39,8 @@ static void test_gpio_app_bringup_ok(void)
 {
   reset_world();
   TEST_BEGIN("gpio_input_demo: bring-up ok");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_led_init(k_ra_board_led1));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_sw_init(k_ra_board_sw1));
+  TEST_ASSERT_EQ(k_ra_ok, ra_board_led_init(k_ra_board_led1));
+  TEST_ASSERT_EQ(k_ra_ok, ra_board_sw_init(k_ra_board_sw1));
   TEST_END("gpio_input_demo: bring-up ok");
 }
 
@@ -57,9 +57,9 @@ static void test_gpio_app_sw_read_legal(void)
 {
   reset_world();
   TEST_BEGIN("gpio_input_demo: sw_read returns legal value");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_sw_init(k_ra_board_sw1));
+  TEST_ASSERT_EQ(k_ra_ok, ra_board_sw_init(k_ra_board_sw1));
   ra_board_sw_state_t s = k_ra_board_sw_released;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_sw_read(k_ra_board_sw1, &s));
+  TEST_ASSERT_EQ(k_ra_ok, ra_board_sw_read(k_ra_board_sw1, &s));
   TEST_ASSERT(s == k_ra_board_sw_released || s == k_ra_board_sw_pressed);
   TEST_END("gpio_input_demo: sw_read returns legal value");
 }
@@ -75,9 +75,9 @@ static void test_gpio_app_led_drive(void)
 {
   reset_world();
   TEST_BEGIN("gpio_input_demo: led_on/off round-trip");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_led_init(k_ra_board_led1));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_led_on(k_ra_board_led1));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_led_off(k_ra_board_led1));
+  TEST_ASSERT_EQ(k_ra_ok, ra_board_led_init(k_ra_board_led1));
+  TEST_ASSERT_EQ(k_ra_ok, ra_board_led_on(k_ra_board_led1));
+  TEST_ASSERT_EQ(k_ra_ok, ra_board_led_off(k_ra_board_led1));
   TEST_END("gpio_input_demo: led_on/off round-trip");
 }
 
@@ -107,7 +107,7 @@ static void test_gpio_app_sw_read_null(void)
 {
   reset_world();
   TEST_BEGIN("gpio_input_demo: sw_read NULL rejected");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_sw_init(k_ra_board_sw1));
+  TEST_ASSERT_EQ(k_ra_ok, ra_board_sw_init(k_ra_board_sw1));
   TEST_ASSERT(ra_board_sw_read(k_ra_board_sw1, nullptr) != k_ra_ok);
   TEST_END("gpio_input_demo: sw_read NULL rejected");
 }

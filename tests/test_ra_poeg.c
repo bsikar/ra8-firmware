@@ -62,14 +62,13 @@ static void test_init_configured(void)
   prep();
 
   const ra_poeg_cfg_t cfg = make_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_poeg_init((uint8_t)k_ra_poeg_test_group_valid, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_poeg_init((uint8_t)k_ra_poeg_test_group_valid, &cfg));
 
   volatile r_poeg_regs_t* reg = ra_poeg((uint8_t)k_ra_poeg_test_group_valid);
   TEST_ASSERT_NOT_NULL((void*)reg);
   const uint32_t expected =
     (uint32_t)k_ra_poeg_en_pide | (uint32_t)k_ra_poeg_en_iocen | (uint32_t)k_ra_poeg_en_inv;
-  TEST_ASSERT_EQ((int32_t)expected, (int32_t)reg->POEGG);
+  TEST_ASSERT_EQ(expected, reg->POEGG);
   TEST_END("poeg init configured");
 }
 
@@ -84,8 +83,7 @@ static void test_init_null_cfg(void)
   TEST_BEGIN("poeg init null cfg");
   prep();
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_poeg_init((uint8_t)k_ra_poeg_test_group_valid, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_poeg_init((uint8_t)k_ra_poeg_test_group_valid, nullptr));
   TEST_END("poeg init null cfg");
 }
 
@@ -101,8 +99,7 @@ static void test_init_bad_group(void)
   prep();
 
   const ra_poeg_cfg_t cfg = make_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_poeg_init((uint8_t)k_ra_poeg_test_group_bad, &cfg));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_poeg_init((uint8_t)k_ra_poeg_test_group_bad, &cfg));
   TEST_END("poeg init bad group");
 }
 
@@ -118,12 +115,11 @@ static void test_deinit(void)
   prep();
 
   const ra_poeg_cfg_t cfg = make_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_poeg_init((uint8_t)k_ra_poeg_test_group_valid, &cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_poeg_deinit((uint8_t)k_ra_poeg_test_group_valid));
+  TEST_ASSERT_EQ(k_ra_ok, ra_poeg_init((uint8_t)k_ra_poeg_test_group_valid, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_poeg_deinit((uint8_t)k_ra_poeg_test_group_valid));
 
   volatile r_poeg_regs_t* reg = ra_poeg((uint8_t)k_ra_poeg_test_group_valid);
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)reg->POEGG);
+  TEST_ASSERT_EQ(0, reg->POEGG);
   TEST_END("poeg deinit");
 }
 
@@ -138,8 +134,7 @@ static void test_deinit_bad_group(void)
   TEST_BEGIN("poeg deinit bad group");
   prep();
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_poeg_deinit((uint8_t)k_ra_poeg_test_group_bad));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_poeg_deinit((uint8_t)k_ra_poeg_test_group_bad));
   TEST_END("poeg deinit bad group");
 }
 
@@ -155,10 +150,8 @@ static void test_trigger_stop(void)
   prep();
 
   const ra_poeg_cfg_t cfg = make_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_poeg_init((uint8_t)k_ra_poeg_test_group_valid, &cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_poeg_trigger_stop((uint8_t)k_ra_poeg_test_group_valid));
+  TEST_ASSERT_EQ(k_ra_ok, ra_poeg_init((uint8_t)k_ra_poeg_test_group_valid, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_poeg_trigger_stop((uint8_t)k_ra_poeg_test_group_valid));
 
   volatile r_poeg_regs_t* reg = ra_poeg((uint8_t)k_ra_poeg_test_group_valid);
   TEST_ASSERT((reg->POEGG & (uint32_t)k_ra_poeg_status_ssf) != 0U);
@@ -176,8 +169,7 @@ static void test_trigger_stop_bad_group(void)
   TEST_BEGIN("poeg trigger stop bad group");
   prep();
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_poeg_trigger_stop((uint8_t)k_ra_poeg_test_group_bad));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_poeg_trigger_stop((uint8_t)k_ra_poeg_test_group_bad));
   TEST_END("poeg trigger stop bad group");
 }
 
@@ -196,18 +188,15 @@ static void test_status_read_and_clear(void)
   reg->POEGG                  = (uint32_t)k_ra_poeg_status_pidf | (uint32_t)k_ra_poeg_status_iocf;
 
   uint32_t mask = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_poeg_get_status((uint8_t)k_ra_poeg_test_group_valid, &mask));
-  TEST_ASSERT_EQ((int32_t)((uint32_t)k_ra_poeg_status_pidf | (uint32_t)k_ra_poeg_status_iocf),
-                 (int32_t)mask);
+  TEST_ASSERT_EQ(k_ra_ok, ra_poeg_get_status((uint8_t)k_ra_poeg_test_group_valid, &mask));
+  TEST_ASSERT_EQ(((uint32_t)k_ra_poeg_status_pidf | (uint32_t)k_ra_poeg_status_iocf), mask);
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_poeg_clear_status((uint8_t)k_ra_poeg_test_group_valid,
-                                               (uint32_t)k_ra_poeg_status_pidf));
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    ra_poeg_clear_status((uint8_t)k_ra_poeg_test_group_valid, (uint32_t)k_ra_poeg_status_pidf));
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_poeg_get_status((uint8_t)k_ra_poeg_test_group_valid, &mask));
-  TEST_ASSERT_EQ((int32_t)k_ra_poeg_status_iocf, (int32_t)mask);
+  TEST_ASSERT_EQ(k_ra_ok, ra_poeg_get_status((uint8_t)k_ra_poeg_test_group_valid, &mask));
+  TEST_ASSERT_EQ(k_ra_poeg_status_iocf, mask);
   TEST_END("poeg status read + clear");
 }
 
@@ -222,8 +211,8 @@ static void test_status_null_out(void)
   TEST_BEGIN("poeg status null out");
   prep();
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_poeg_get_status((uint8_t)k_ra_poeg_test_group_valid, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_poeg_get_status((uint8_t)k_ra_poeg_test_group_valid, nullptr));
   TEST_END("poeg status null out");
 }
 
@@ -238,17 +227,17 @@ static void test_attach_and_dispatch(void)
   TEST_BEGIN("poeg attach + dispatch");
   prep();
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_poeg_attach_handler((uint8_t)k_ra_poeg_test_group_valid,
-                                                 stub_poeg_cb,
-                                                 (void*)(uintptr_t)0xA1A1U));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_poeg_attach_handler((uint8_t)k_ra_poeg_test_group_valid,
+                                        stub_poeg_cb,
+                                        (void*)(uintptr_t)0xA1A1U));
 
   volatile r_poeg_regs_t* reg = ra_poeg((uint8_t)k_ra_poeg_test_group_valid);
   reg->POEGG                  = (uint32_t)k_ra_poeg_status_ssf;
 
   ra_poeg_dispatch((uint8_t)k_ra_poeg_test_group_valid);
-  TEST_ASSERT_EQ((int32_t)1, (int32_t)s_poeg_cb_count);
-  TEST_ASSERT_EQ((int32_t)k_ra_poeg_status_ssf, (int32_t)s_poeg_cb_last_mask);
+  TEST_ASSERT_EQ(1, s_poeg_cb_count);
+  TEST_ASSERT_EQ(k_ra_poeg_status_ssf, s_poeg_cb_last_mask);
   TEST_END("poeg attach + dispatch");
 }
 
@@ -263,13 +252,12 @@ static void test_dispatch_no_handler(void)
   TEST_BEGIN("poeg dispatch no handler");
   prep();
 
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_poeg_attach_handler((uint8_t)k_ra_poeg_test_group_valid, nullptr, nullptr));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_poeg_attach_handler((uint8_t)k_ra_poeg_test_group_valid, nullptr, nullptr));
 
   ra_poeg_dispatch((uint8_t)k_ra_poeg_test_group_valid);
   ra_poeg_dispatch((uint8_t)k_ra_poeg_test_group_bad);
-  TEST_ASSERT_EQ((int32_t)0, (int32_t)s_poeg_cb_count);
+  TEST_ASSERT_EQ(0, s_poeg_cb_count);
   TEST_END("poeg dispatch no handler");
 }
 
@@ -284,9 +272,8 @@ static void test_attach_bad_group(void)
   TEST_BEGIN("poeg attach bad group");
   prep();
 
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_arg,
-    (int32_t)ra_poeg_attach_handler((uint8_t)k_ra_poeg_test_group_bad, stub_poeg_cb, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_poeg_attach_handler((uint8_t)k_ra_poeg_test_group_bad, stub_poeg_cb, nullptr));
   TEST_END("poeg attach bad group");
 }
 
@@ -302,15 +289,11 @@ static void test_power_transition(void)
   prep();
 
   const ra_poeg_cfg_t cfg = make_cfg();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_poeg_init((uint8_t)k_ra_poeg_test_group_valid, &cfg));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_poeg_enter_stop((uint8_t)k_ra_poeg_test_group_valid));
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_poeg_exit_stop((uint8_t)k_ra_poeg_test_group_valid));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_poeg_enter_stop((uint8_t)k_ra_poeg_test_group_bad));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_poeg_exit_stop((uint8_t)k_ra_poeg_test_group_bad));
+  TEST_ASSERT_EQ(k_ra_ok, ra_poeg_init((uint8_t)k_ra_poeg_test_group_valid, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_poeg_enter_stop((uint8_t)k_ra_poeg_test_group_valid));
+  TEST_ASSERT_EQ(k_ra_ok, ra_poeg_exit_stop((uint8_t)k_ra_poeg_test_group_valid));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_poeg_enter_stop((uint8_t)k_ra_poeg_test_group_bad));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_poeg_exit_stop((uint8_t)k_ra_poeg_test_group_bad));
   TEST_END("poeg power transition");
 }
 

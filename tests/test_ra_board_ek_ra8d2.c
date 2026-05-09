@@ -49,7 +49,7 @@ static void test_board_get_info(void)
 {
   TEST_BEGIN("board_get_info populates strings");
   ra_board_info_t info = {};
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_get_info(&info));
+  TEST_ASSERT_EQ(k_ra_ok, ra_board_get_info(&info));
   TEST_ASSERT_NOT_NULL(info.name);
   TEST_ASSERT_NOT_NULL(info.doc_rev);
   TEST_ASSERT_NOT_NULL(info.mcu);
@@ -68,7 +68,7 @@ static void test_board_get_info(void)
 static void test_board_get_info_null(void)
 {
   TEST_BEGIN("board_get_info rejects NULL");
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_board_get_info(nullptr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_board_get_info(nullptr));
   TEST_END("board_get_info rejects NULL");
 }
 
@@ -88,21 +88,21 @@ static void test_led_pin_lookup(void)
   ra_port_pin_t pin = k_ra_pin_none;
 
   /* LED1 -> P600 (blue). */
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_led_pin(k_ra_board_led1, &pin));
-  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_6, k_ra_pin_0), (int)pin);
+  TEST_ASSERT_EQ(k_ra_ok, ra_board_led_pin(k_ra_board_led1, &pin));
+  TEST_ASSERT_EQ(RA_PIN(k_ra_port_6, k_ra_pin_0), pin);
 
   /* LED2 -> P303 (green). */
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_led_pin(k_ra_board_led2, &pin));
-  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_3, k_ra_pin_3), (int)pin);
+  TEST_ASSERT_EQ(k_ra_ok, ra_board_led_pin(k_ra_board_led2, &pin));
+  TEST_ASSERT_EQ(RA_PIN(k_ra_port_3, k_ra_pin_3), pin);
 
   /* LED3 -> PA07 (red). */
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_led_pin(k_ra_board_led3, &pin));
-  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_10, k_ra_pin_7), (int)pin);
+  TEST_ASSERT_EQ(k_ra_ok, ra_board_led_pin(k_ra_board_led3, &pin));
+  TEST_ASSERT_EQ(RA_PIN(k_ra_port_10, k_ra_pin_7), pin);
 
   /* Colour aliases must match numeric IDs. */
-  TEST_ASSERT_EQ((int)k_ra_board_led1, (int)k_ra_board_led_blue);
-  TEST_ASSERT_EQ((int)k_ra_board_led2, (int)k_ra_board_led_green);
-  TEST_ASSERT_EQ((int)k_ra_board_led3, (int)k_ra_board_led_red);
+  TEST_ASSERT_EQ(k_ra_board_led1, k_ra_board_led_blue);
+  TEST_ASSERT_EQ(k_ra_board_led2, k_ra_board_led_green);
+  TEST_ASSERT_EQ(k_ra_board_led3, k_ra_board_led_red);
   TEST_END("led pins match UM Table 24");
 }
 
@@ -116,9 +116,9 @@ static void test_led_pin_invalid(void)
 {
   TEST_BEGIN("led_pin rejects out-of-range / null");
   ra_port_pin_t pin = k_ra_pin_none;
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
-                 (int)ra_board_led_pin((ra_board_led_id_t)k_ra_board_led_count, &pin));
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_board_led_pin(k_ra_board_led1, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_board_led_pin((ra_board_led_id_t)k_ra_board_led_count, &pin));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_board_led_pin(k_ra_board_led1, nullptr));
   TEST_END("led_pin rejects out-of-range / null");
 }
 
@@ -137,14 +137,14 @@ static void test_sw_pin_lookup(void)
   TEST_BEGIN("sw pins match UM Table 25");
   ra_port_pin_t pin = k_ra_pin_none;
 
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_sw_pin(k_ra_board_sw1, &pin));
-  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_0, k_ra_pin_9), (int)pin);
+  TEST_ASSERT_EQ(k_ra_ok, ra_board_sw_pin(k_ra_board_sw1, &pin));
+  TEST_ASSERT_EQ(RA_PIN(k_ra_port_0, k_ra_pin_9), pin);
 
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_sw_pin(k_ra_board_sw2, &pin));
-  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_0, k_ra_pin_8), (int)pin);
+  TEST_ASSERT_EQ(k_ra_ok, ra_board_sw_pin(k_ra_board_sw2, &pin));
+  TEST_ASSERT_EQ(RA_PIN(k_ra_port_0, k_ra_pin_8), pin);
 
-  TEST_ASSERT_EQ((int)13, (int)k_ra_board_sw1_irq);
-  TEST_ASSERT_EQ((int)12, (int)k_ra_board_sw2_irq);
+  TEST_ASSERT_EQ(13, k_ra_board_sw1_irq);
+  TEST_ASSERT_EQ(12, k_ra_board_sw2_irq);
   TEST_END("sw pins match UM Table 25");
 }
 
@@ -157,8 +157,7 @@ static void test_sw_pin_lookup(void)
 static void test_sw_attach_irq_null_cb(void)
 {
   TEST_BEGIN("sw_attach_irq rejects NULL callback");
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
-                 (int)ra_board_sw_attach_irq(k_ra_board_sw1, nullptr, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_board_sw_attach_irq(k_ra_board_sw1, nullptr, nullptr));
   TEST_END("sw_attach_irq rejects NULL callback");
 }
 
@@ -175,13 +174,13 @@ static void test_sw_attach_irq_null_cb(void)
 static void test_audio_pins(void)
 {
   TEST_BEGIN("audio pins match UM Table 32");
-  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_4, k_ra_pin_3), (int)k_ra_board_audio_pin_bclk);
-  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_4, k_ra_pin_4), (int)k_ra_board_audio_pin_wclk);
-  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_4, k_ra_pin_5), (int)k_ra_board_audio_pin_datin);
-  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_4, k_ra_pin_6), (int)k_ra_board_audio_pin_datout);
-  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_13, k_ra_pin_6), (int)k_ra_board_audio_pin_mclk);
-  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_5, k_ra_pin_11), (int)k_ra_board_audio_pin_i2c_sda);
-  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_5, k_ra_pin_12), (int)k_ra_board_audio_pin_i2c_scl);
+  TEST_ASSERT_EQ(RA_PIN(k_ra_port_4, k_ra_pin_3), k_ra_board_audio_pin_bclk);
+  TEST_ASSERT_EQ(RA_PIN(k_ra_port_4, k_ra_pin_4), k_ra_board_audio_pin_wclk);
+  TEST_ASSERT_EQ(RA_PIN(k_ra_port_4, k_ra_pin_5), k_ra_board_audio_pin_datin);
+  TEST_ASSERT_EQ(RA_PIN(k_ra_port_4, k_ra_pin_6), k_ra_board_audio_pin_datout);
+  TEST_ASSERT_EQ(RA_PIN(k_ra_port_13, k_ra_pin_6), k_ra_board_audio_pin_mclk);
+  TEST_ASSERT_EQ(RA_PIN(k_ra_port_5, k_ra_pin_11), k_ra_board_audio_pin_i2c_sda);
+  TEST_ASSERT_EQ(RA_PIN(k_ra_port_5, k_ra_pin_12), k_ra_board_audio_pin_i2c_scl);
   TEST_END("audio pins match UM Table 32");
 }
 
@@ -195,12 +194,12 @@ static void test_audio_play_sample_block_validates(void)
 {
   TEST_BEGIN("audio_play_sample_block rejects bad args");
   int16_t buf[4] = {};
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_board_audio_play_sample_block(nullptr, 4U));
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_board_audio_play_sample_block(buf, 0U));
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_board_audio_play_sample_block(buf, 3U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_board_audio_play_sample_block(nullptr, 4U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_board_audio_play_sample_block(buf, 0U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_board_audio_play_sample_block(buf, 3U));
   /* Even-length non-empty buffer reaches the SSIE hook; without a
    * preceding ra_board_audio_init the BSP refuses with not_initialized. */
-  TEST_ASSERT_EQ((int)k_ra_err_not_initialized, (int)ra_board_audio_play_sample_block(buf, 4U));
+  TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_board_audio_play_sample_block(buf, 4U));
   TEST_END("audio_play_sample_block rejects bad args");
 }
 
@@ -213,9 +212,9 @@ static void test_audio_play_sample_block_validates(void)
 static void test_audio_init_validates(void)
 {
   TEST_BEGIN("audio_init validates sample rate / depth / channels");
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_board_audio_init(0U, 16U, 2U));
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_board_audio_init(48000U, 12U, 2U));
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_board_audio_init(48000U, 16U, 3U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_board_audio_init(0U, 16U, 2U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_board_audio_init(48000U, 12U, 2U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_board_audio_init(48000U, 16U, 3U));
   TEST_END("audio_init validates sample rate / depth / channels");
 }
 
@@ -233,12 +232,12 @@ static void test_arduino_pins(void)
 {
   TEST_BEGIN("arduino pins match UM Table 20");
   /* Spot-check the most-cited pins: D6=GTIOC1A=P105, D8=PD01, D13=P102. */
-  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_1, k_ra_pin_5), (int)k_ra_board_arduino_d6);
-  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_13, k_ra_pin_1), (int)k_ra_board_arduino_d8);
-  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_1, k_ra_pin_2), (int)k_ra_board_arduino_d13);
+  TEST_ASSERT_EQ(RA_PIN(k_ra_port_1, k_ra_pin_5), k_ra_board_arduino_d6);
+  TEST_ASSERT_EQ(RA_PIN(k_ra_port_13, k_ra_pin_1), k_ra_board_arduino_d8);
+  TEST_ASSERT_EQ(RA_PIN(k_ra_port_1, k_ra_pin_2), k_ra_board_arduino_d13);
   /* Analog. */
-  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_0, k_ra_pin_1), (int)k_ra_board_arduino_a0);
-  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_0, k_ra_pin_15), (int)k_ra_board_arduino_a5);
+  TEST_ASSERT_EQ(RA_PIN(k_ra_port_0, k_ra_pin_1), k_ra_board_arduino_a0);
+  TEST_ASSERT_EQ(RA_PIN(k_ra_port_0, k_ra_pin_15), k_ra_board_arduino_a5);
   TEST_END("arduino pins match UM Table 20");
 }
 
@@ -251,9 +250,8 @@ static void test_arduino_pins(void)
 static void test_arduino_pin_init_invalid_mode(void)
 {
   TEST_BEGIN("arduino_pin_init rejects unknown mode");
-  TEST_ASSERT_EQ(
-    (int)k_ra_err_invalid_arg,
-    (int)ra_board_arduino_pin_init(k_ra_board_arduino_d2, (ra_board_arduino_mode_t)0xFFU));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_board_arduino_pin_init(k_ra_board_arduino_d2, (ra_board_arduino_mode_t)0xFFU));
   TEST_END("arduino_pin_init rejects unknown mode");
 }
 
@@ -270,10 +268,10 @@ static void test_arduino_pin_init_invalid_mode(void)
 static void test_pmod1_spi_pins(void)
 {
   TEST_BEGIN("pmod1 SPI pins match UM Table 17");
-  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_8, k_ra_pin_4), (int)k_ra_board_pmod1_spi_cs);
-  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_8, k_ra_pin_1), (int)k_ra_board_pmod1_spi_copi);
-  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_8, k_ra_pin_2), (int)k_ra_board_pmod1_spi_cipo);
-  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_8, k_ra_pin_3), (int)k_ra_board_pmod1_spi_sck);
+  TEST_ASSERT_EQ(RA_PIN(k_ra_port_8, k_ra_pin_4), k_ra_board_pmod1_spi_cs);
+  TEST_ASSERT_EQ(RA_PIN(k_ra_port_8, k_ra_pin_1), k_ra_board_pmod1_spi_copi);
+  TEST_ASSERT_EQ(RA_PIN(k_ra_port_8, k_ra_pin_2), k_ra_board_pmod1_spi_cipo);
+  TEST_ASSERT_EQ(RA_PIN(k_ra_port_8, k_ra_pin_3), k_ra_board_pmod1_spi_sck);
   TEST_END("pmod1 SPI pins match UM Table 17");
 }
 
@@ -286,10 +284,10 @@ static void test_pmod1_spi_pins(void)
 static void test_pmod2_spi_pins(void)
 {
   TEST_BEGIN("pmod2 SPI pins match UM Table 19");
-  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_6, k_ra_pin_4), (int)k_ra_board_pmod2_spi_cs);
-  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_6, k_ra_pin_3), (int)k_ra_board_pmod2_spi_copi);
-  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_6, k_ra_pin_2), (int)k_ra_board_pmod2_spi_cipo);
-  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_6, k_ra_pin_1), (int)k_ra_board_pmod2_spi_sck);
+  TEST_ASSERT_EQ(RA_PIN(k_ra_port_6, k_ra_pin_4), k_ra_board_pmod2_spi_cs);
+  TEST_ASSERT_EQ(RA_PIN(k_ra_port_6, k_ra_pin_3), k_ra_board_pmod2_spi_copi);
+  TEST_ASSERT_EQ(RA_PIN(k_ra_port_6, k_ra_pin_2), k_ra_board_pmod2_spi_cipo);
+  TEST_ASSERT_EQ(RA_PIN(k_ra_port_6, k_ra_pin_1), k_ra_board_pmod2_spi_sck);
   TEST_END("pmod2 SPI pins match UM Table 19");
 }
 
@@ -313,9 +311,9 @@ static void test_glcdc_pin_tables_populated(void)
   TEST_ASSERT(g_ra_board_glcdc_rgb666_pin_count >= g_ra_board_glcdc_rgb565_pin_count);
 
   /* Spot-check J1-1 BLEN = P514 across all tables. */
-  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_5, k_ra_pin_14), (int)g_ra_board_glcdc_rgb888_pins[0].pin);
-  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_5, k_ra_pin_14), (int)g_ra_board_glcdc_rgb666_pins[0].pin);
-  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_5, k_ra_pin_14), (int)g_ra_board_glcdc_rgb565_pins[0].pin);
+  TEST_ASSERT_EQ(RA_PIN(k_ra_port_5, k_ra_pin_14), g_ra_board_glcdc_rgb888_pins[0].pin);
+  TEST_ASSERT_EQ(RA_PIN(k_ra_port_5, k_ra_pin_14), g_ra_board_glcdc_rgb666_pins[0].pin);
+  TEST_ASSERT_EQ(RA_PIN(k_ra_port_5, k_ra_pin_14), g_ra_board_glcdc_rgb565_pins[0].pin);
   TEST_END("glcdc pin tables non-empty + sized correctly");
 }
 
@@ -328,7 +326,7 @@ static void test_glcdc_pin_tables_populated(void)
 static void test_glcdc_init_invalid_fmt(void)
 {
   TEST_BEGIN("glcdc_init rejects bogus format");
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_board_glcdc_init((ra_board_glcdc_fmt_t)0xFFU));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_board_glcdc_init((ra_board_glcdc_fmt_t)0xFFU));
   TEST_END("glcdc_init rejects bogus format");
 }
 
@@ -346,9 +344,9 @@ static void test_camera_pins(void)
 {
   TEST_BEGIN("camera pins match UM Table 35");
   /* Spot-check the unambiguous ones (no jumper / SW switch). */
-  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_4, k_ra_pin_0), (int)k_ra_board_cam_d0);
-  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_5, k_ra_pin_1), (int)k_ra_board_cam_xclk);
-  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_11, k_ra_pin_4), (int)k_ra_board_cam_pclk);
+  TEST_ASSERT_EQ(RA_PIN(k_ra_port_4, k_ra_pin_0), k_ra_board_cam_d0);
+  TEST_ASSERT_EQ(RA_PIN(k_ra_port_5, k_ra_pin_1), k_ra_board_cam_xclk);
+  TEST_ASSERT_EQ(RA_PIN(k_ra_port_11, k_ra_pin_4), k_ra_board_cam_pclk);
   TEST_END("camera pins match UM Table 35");
 }
 
@@ -361,9 +359,9 @@ static void test_camera_pins(void)
 static void test_xspi_pins(void)
 {
   TEST_BEGIN("xspi flash pins match UM Table 29");
-  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_1, k_ra_pin_4), (int)k_ra_board_xspi_cs);
-  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_8, k_ra_pin_8), (int)k_ra_board_xspi_clk);
-  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_1, k_ra_pin_0), (int)k_ra_board_xspi_dq0);
+  TEST_ASSERT_EQ(RA_PIN(k_ra_port_1, k_ra_pin_4), k_ra_board_xspi_cs);
+  TEST_ASSERT_EQ(RA_PIN(k_ra_port_8, k_ra_pin_8), k_ra_board_xspi_clk);
+  TEST_ASSERT_EQ(RA_PIN(k_ra_port_1, k_ra_pin_0), k_ra_board_xspi_dq0);
   TEST_END("xspi flash pins match UM Table 29");
 }
 
@@ -377,8 +375,8 @@ static void test_extmem_sizes(void)
 {
   TEST_BEGIN("extmem sizes are 64 MiB");
   const uint32_t sixty_four_mib = 0x04000000UL;
-  TEST_ASSERT_EQ((int64_t)sixty_four_mib, (int64_t)k_ra_board_xspi_flash_size);
-  TEST_ASSERT_EQ((int64_t)sixty_four_mib, (int64_t)k_ra_board_sdram_size);
+  TEST_ASSERT_EQ(sixty_four_mib, k_ra_board_xspi_flash_size);
+  TEST_ASSERT_EQ(sixty_four_mib, k_ra_board_sdram_size);
   TEST_END("extmem sizes are 64 MiB");
 }
 
@@ -391,10 +389,10 @@ static void test_extmem_sizes(void)
 static void test_mipi_dsi_pins(void)
 {
   TEST_BEGIN("mipi-dsi pins match UM Table 34");
-  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_4, k_ra_pin_11), (int)k_ra_board_mipi_dsi_te);
-  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_6, k_ra_pin_6), (int)k_ra_board_mipi_dsi_reset_n);
-  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_5, k_ra_pin_14), (int)k_ra_board_mipi_dsi_backlight);
-  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_1, k_ra_pin_11), (int)k_ra_board_mipi_dsi_touch_int);
+  TEST_ASSERT_EQ(RA_PIN(k_ra_port_4, k_ra_pin_11), k_ra_board_mipi_dsi_te);
+  TEST_ASSERT_EQ(RA_PIN(k_ra_port_6, k_ra_pin_6), k_ra_board_mipi_dsi_reset_n);
+  TEST_ASSERT_EQ(RA_PIN(k_ra_port_5, k_ra_pin_14), k_ra_board_mipi_dsi_backlight);
+  TEST_ASSERT_EQ(RA_PIN(k_ra_port_1, k_ra_pin_11), k_ra_board_mipi_dsi_touch_int);
   TEST_END("mipi-dsi pins match UM Table 34");
 }
 
@@ -438,13 +436,13 @@ static void test_uart_console_pins(void)
   TEST_BEGIN("uart console pins match UM Table 13");
   /* PD02 / PD03 are the always-wired TXD/RXD; PD04 / PD05 are the
    * optional flow-control pair. Port 13 = PDxx on the RA8D2. */
-  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_13, k_ra_pin_2), (int)k_ra_board_uart_console_pin_txd);
-  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_13, k_ra_pin_3), (int)k_ra_board_uart_console_pin_rxd);
-  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_13, k_ra_pin_4), (int)k_ra_board_uart_console_pin_rts);
-  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_13, k_ra_pin_5), (int)k_ra_board_uart_console_pin_cts);
+  TEST_ASSERT_EQ(RA_PIN(k_ra_port_13, k_ra_pin_2), k_ra_board_uart_console_pin_txd);
+  TEST_ASSERT_EQ(RA_PIN(k_ra_port_13, k_ra_pin_3), k_ra_board_uart_console_pin_rxd);
+  TEST_ASSERT_EQ(RA_PIN(k_ra_port_13, k_ra_pin_4), k_ra_board_uart_console_pin_rts);
+  TEST_ASSERT_EQ(RA_PIN(k_ra_port_13, k_ra_pin_5), k_ra_board_uart_console_pin_cts);
   /* PD02/PD03 -> SCI8 alternate (verified on real EK-RA8D2 v1 silicon). */
-  TEST_ASSERT_EQ((int)8, (int)k_ra_board_uart_console_sci_channel);
-  TEST_ASSERT_EQ((int)0, (int)k_ra_board_uart_console);
+  TEST_ASSERT_EQ(8, k_ra_board_uart_console_sci_channel);
+  TEST_ASSERT_EQ(0, k_ra_board_uart_console);
   TEST_END("uart console pins match UM Table 13");
 }
 
@@ -457,7 +455,7 @@ static void test_uart_console_pins(void)
 static void test_uart_console_init_rejects_zero_baud(void)
 {
   TEST_BEGIN("uart_console_init rejects baud == 0");
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_board_uart_console_init(0U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_board_uart_console_init(0U));
   TEST_END("uart_console_init rejects baud == 0");
 }
 
@@ -471,9 +469,9 @@ static void test_uart_console_write_validates(void)
 {
   TEST_BEGIN("uart_console_write validates args + state");
   /* Zero-length write is a no-op success regardless of init state. */
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_uart_console_write(nullptr, 0U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_board_uart_console_write(nullptr, 0U));
   /* NULL data with non-zero len -> invalid_arg. */
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_board_uart_console_write(nullptr, 4U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_board_uart_console_write(nullptr, 4U));
   TEST_END("uart_console_write validates args + state");
 }
 
@@ -489,16 +487,14 @@ static void test_uart_console_read_validates(void)
   uint8_t buf[4]  = {};
   size_t  out_len = 0xAAU;
   /* NULL out_len always rejected. */
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
-                 (int)ra_board_uart_console_read(buf, sizeof(buf), nullptr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_board_uart_console_read(buf, sizeof(buf), nullptr));
   /* cap == 0 is a successful no-op (and zeroes *out_len). */
   out_len = 0xAAU;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_uart_console_read(nullptr, 0U, &out_len));
-  TEST_ASSERT_EQ((int64_t)0, (int64_t)out_len);
+  TEST_ASSERT_EQ(k_ra_ok, ra_board_uart_console_read(nullptr, 0U, &out_len));
+  TEST_ASSERT_EQ(0, out_len);
   /* NULL buffer with non-zero cap -> invalid_arg. */
   out_len = 0U;
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
-                 (int)ra_board_uart_console_read(nullptr, sizeof(buf), &out_len));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_board_uart_console_read(nullptr, sizeof(buf), &out_len));
   TEST_END("uart_console_read validates args + state");
 }
 
@@ -515,22 +511,22 @@ static void test_uart_console_read_validates(void)
 static void test_ethernet_pins(void)
 {
   TEST_BEGIN("ethernet pins match UM Table 26");
-  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_1, k_ra_pin_7), (int)k_ra_board_eth_pin_mdint);
-  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_4, k_ra_pin_15), (int)k_ra_board_eth_pin_mdc);
-  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_4, k_ra_pin_14), (int)k_ra_board_eth_pin_mdio);
-  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_3, k_ra_pin_7), (int)k_ra_board_eth_pin_txd0);
-  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_3, k_ra_pin_6), (int)k_ra_board_eth_pin_txd1);
-  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_3, k_ra_pin_5), (int)k_ra_board_eth_pin_txd2);
-  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_3, k_ra_pin_4), (int)k_ra_board_eth_pin_txd3);
-  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_3, k_ra_pin_10), (int)k_ra_board_eth_pin_tx_ctl);
-  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_3, k_ra_pin_9), (int)k_ra_board_eth_pin_tx_clk);
-  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_9, k_ra_pin_6), (int)k_ra_board_eth_pin_rxd0);
-  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_9, k_ra_pin_7), (int)k_ra_board_eth_pin_rxd1);
-  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_9, k_ra_pin_8), (int)k_ra_board_eth_pin_rxd2);
-  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_9, k_ra_pin_9), (int)k_ra_board_eth_pin_rxd3);
-  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_2, k_ra_pin_6), (int)k_ra_board_eth_pin_rx_ctl);
-  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_9, k_ra_pin_5), (int)k_ra_board_eth_pin_rx_clk);
-  TEST_ASSERT_EQ((int)RA_PIN(k_ra_port_7, k_ra_pin_8), (int)k_ra_board_eth_pin_rstn);
+  TEST_ASSERT_EQ(RA_PIN(k_ra_port_1, k_ra_pin_7), k_ra_board_eth_pin_mdint);
+  TEST_ASSERT_EQ(RA_PIN(k_ra_port_4, k_ra_pin_15), k_ra_board_eth_pin_mdc);
+  TEST_ASSERT_EQ(RA_PIN(k_ra_port_4, k_ra_pin_14), k_ra_board_eth_pin_mdio);
+  TEST_ASSERT_EQ(RA_PIN(k_ra_port_3, k_ra_pin_7), k_ra_board_eth_pin_txd0);
+  TEST_ASSERT_EQ(RA_PIN(k_ra_port_3, k_ra_pin_6), k_ra_board_eth_pin_txd1);
+  TEST_ASSERT_EQ(RA_PIN(k_ra_port_3, k_ra_pin_5), k_ra_board_eth_pin_txd2);
+  TEST_ASSERT_EQ(RA_PIN(k_ra_port_3, k_ra_pin_4), k_ra_board_eth_pin_txd3);
+  TEST_ASSERT_EQ(RA_PIN(k_ra_port_3, k_ra_pin_10), k_ra_board_eth_pin_tx_ctl);
+  TEST_ASSERT_EQ(RA_PIN(k_ra_port_3, k_ra_pin_9), k_ra_board_eth_pin_tx_clk);
+  TEST_ASSERT_EQ(RA_PIN(k_ra_port_9, k_ra_pin_6), k_ra_board_eth_pin_rxd0);
+  TEST_ASSERT_EQ(RA_PIN(k_ra_port_9, k_ra_pin_7), k_ra_board_eth_pin_rxd1);
+  TEST_ASSERT_EQ(RA_PIN(k_ra_port_9, k_ra_pin_8), k_ra_board_eth_pin_rxd2);
+  TEST_ASSERT_EQ(RA_PIN(k_ra_port_9, k_ra_pin_9), k_ra_board_eth_pin_rxd3);
+  TEST_ASSERT_EQ(RA_PIN(k_ra_port_2, k_ra_pin_6), k_ra_board_eth_pin_rx_ctl);
+  TEST_ASSERT_EQ(RA_PIN(k_ra_port_9, k_ra_pin_5), k_ra_board_eth_pin_rx_clk);
+  TEST_ASSERT_EQ(RA_PIN(k_ra_port_7, k_ra_pin_8), k_ra_board_eth_pin_rstn);
   TEST_END("ethernet pins match UM Table 26");
 }
 
@@ -544,9 +540,9 @@ static void test_ethernet_index_constants(void)
 {
   TEST_BEGIN("ethernet ETHA/RMAC port + PHY addr defaults");
   /* The on-board PHY is on ETHA0 / RMAC0, MDIO addr 0 (PEF7071 strap). */
-  TEST_ASSERT_EQ((int)0, (int)k_ra_board_eth_etha_port);
-  TEST_ASSERT_EQ((int)0, (int)k_ra_board_eth_rmac_port);
-  TEST_ASSERT_EQ((int)0, (int)k_ra_board_eth_phy_addr);
+  TEST_ASSERT_EQ(0, k_ra_board_eth_etha_port);
+  TEST_ASSERT_EQ(0, k_ra_board_eth_rmac_port);
+  TEST_ASSERT_EQ(0, k_ra_board_eth_phy_addr);
   TEST_END("ethernet ETHA/RMAC port + PHY addr defaults");
 }
 
@@ -560,13 +556,13 @@ static void test_board_led_funcs(void)
 {
   TEST_BEGIN("board_led_funcs forward to hal or return error");
   reset_board_hal_state();
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_led_init(k_ra_board_led1));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_led_on(k_ra_board_led1));
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_board_led_on((ra_board_led_id_t)99));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_led_off(k_ra_board_led1));
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_board_led_off((ra_board_led_id_t)99));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_led_toggle(k_ra_board_led1));
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_board_led_toggle((ra_board_led_id_t)99));
+  TEST_ASSERT_EQ(k_ra_ok, ra_board_led_init(k_ra_board_led1));
+  TEST_ASSERT_EQ(k_ra_ok, ra_board_led_on(k_ra_board_led1));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_board_led_on((ra_board_led_id_t)99));
+  TEST_ASSERT_EQ(k_ra_ok, ra_board_led_off(k_ra_board_led1));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_board_led_off((ra_board_led_id_t)99));
+  TEST_ASSERT_EQ(k_ra_ok, ra_board_led_toggle(k_ra_board_led1));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_board_led_toggle((ra_board_led_id_t)99));
   TEST_END("board_led_funcs forward to hal or return error");
 }
 
@@ -580,17 +576,16 @@ static void test_board_sw_funcs(void)
 {
   TEST_BEGIN("board_sw_funcs forward to hal or return error");
   reset_board_hal_state();
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_sw_init(k_ra_board_sw1));
+  TEST_ASSERT_EQ(k_ra_ok, ra_board_sw_init(k_ra_board_sw1));
   ra_board_sw_state_t sw_val  = k_ra_board_sw_released;
   ra_level_t          ard_val = k_ra_level_low;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_sw_read(k_ra_board_sw1, &sw_val));
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_board_sw_read((ra_board_sw_id_t)99, &sw_val));
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_board_sw_read(k_ra_board_sw1, nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_board_sw_read(k_ra_board_sw1, &sw_val));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_board_sw_read((ra_board_sw_id_t)99, &sw_val));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_board_sw_read(k_ra_board_sw1, nullptr));
 
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_board_sw_attach_irq(k_ra_board_sw1, dummy_sw_irq_cb, nullptr));
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
-                 (int)ra_board_sw_attach_irq((ra_board_sw_id_t)99, dummy_sw_irq_cb, nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_board_sw_attach_irq(k_ra_board_sw1, dummy_sw_irq_cb, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_board_sw_attach_irq((ra_board_sw_id_t)99, dummy_sw_irq_cb, nullptr));
   TEST_END("board_sw_funcs forward to hal or return error");
 }
 
@@ -604,7 +599,7 @@ static void test_board_xspi_init(void)
 {
   TEST_BEGIN("board_xspi_pins_init forwards to hal");
   reset_board_hal_state();
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_xspi_pins_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_board_xspi_pins_init());
   TEST_END("board_xspi_pins_init forwards to hal");
 }
 
@@ -618,17 +613,15 @@ static void test_board_arduino_gpio_funcs(void)
 {
   TEST_BEGIN("board_arduino_gpio_funcs forward to hal or return error");
   reset_board_hal_state();
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_board_arduino_gpio_write(k_ra_board_arduino_d2, k_ra_level_high));
-  TEST_ASSERT_EQ((int)k_ra_err_gpio_invalid_pin,
-                 (int)ra_board_arduino_gpio_write((ra_board_arduino_pin_t)99, k_ra_level_high));
+  TEST_ASSERT_EQ(k_ra_ok, ra_board_arduino_gpio_write(k_ra_board_arduino_d2, k_ra_level_high));
+  TEST_ASSERT_EQ(k_ra_err_gpio_invalid_pin,
+                 ra_board_arduino_gpio_write((ra_board_arduino_pin_t)99, k_ra_level_high));
 
   ra_level_t ard_val = k_ra_level_low;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_arduino_gpio_read(k_ra_board_arduino_d2, &ard_val));
-  TEST_ASSERT_EQ((int)k_ra_err_gpio_invalid_pin,
-                 (int)ra_board_arduino_gpio_read((ra_board_arduino_pin_t)99, &ard_val));
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
-                 (int)ra_board_arduino_gpio_read(k_ra_board_arduino_d2, nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_board_arduino_gpio_read(k_ra_board_arduino_d2, &ard_val));
+  TEST_ASSERT_EQ(k_ra_err_gpio_invalid_pin,
+                 ra_board_arduino_gpio_read((ra_board_arduino_pin_t)99, &ard_val));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_board_arduino_gpio_read(k_ra_board_arduino_d2, nullptr));
   TEST_END("board_arduino_gpio_funcs forward to hal or return error");
 }
 
@@ -642,7 +635,7 @@ static void test_board_io_expander(void)
 {
   TEST_BEGIN("board_io_expander_set_usbhs_device_mode forwards to hal");
   reset_board_hal_state();
-  TEST_ASSERT_EQ((int)k_ra_err_busy, (int)ra_board_io_expander_set_usbhs_device_mode());
+  TEST_ASSERT_EQ(k_ra_err_busy, ra_board_io_expander_set_usbhs_device_mode());
   TEST_END("board_io_expander_set_usbhs_device_mode forwards to hal");
 }
 
@@ -656,7 +649,7 @@ static void test_board_uart_console_flush(void)
 {
   TEST_BEGIN("board_uart_console_flush forwards to hal");
   reset_board_hal_state();
-  TEST_ASSERT_EQ((int)k_ra_err_not_initialized, (int)ra_board_uart_console_flush());
+  TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_board_uart_console_flush());
   TEST_END("board_uart_console_flush forwards to hal");
 }
 
@@ -670,7 +663,7 @@ static void test_board_ethernet_init(void)
 {
   TEST_BEGIN("board_ethernet_init forwards to hal");
   reset_board_hal_state();
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_ethernet_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_board_ethernet_init());
   TEST_END("board_ethernet_init forwards to hal");
 }
 

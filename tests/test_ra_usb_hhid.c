@@ -57,9 +57,8 @@ static void stub_on_attach(void* ctx, const ra_usb_hhid_device_t* device)
 
 static void walk_to_attach(void)
 {
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_usb_hhid_attach_callback(stub_on_attach, (void*)k_test_hhid_ctx_token));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_usb_hhid_attach_callback(stub_on_attach, (void*)k_test_hhid_ctx_token));
   for (uint8_t i = 0U; i < k_test_hhid_max_steps; ++i) {
     if (s_attach_count != 0U) {
       break;
@@ -67,9 +66,9 @@ static void walk_to_attach(void)
     /* Clear DCPCTR.SUREQ in the simulated regs so subsequent SETUP
      * requests don't trip the busy guard. */
     ra_usb_fs()->DCPCTR = 0U;
-    TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hhid_step());
+    TEST_ASSERT_EQ(k_ra_ok, ra_usb_hhid_step());
   }
-  TEST_ASSERT_EQ((int32_t)1U, (int32_t)s_attach_count);
+  TEST_ASSERT_EQ(1U, s_attach_count);
 }
 
 /* ---- Lifecycle ---- */
@@ -85,7 +84,7 @@ static void test_init_fs_returns_ok(void)
   TEST_BEGIN("ra_usb_hhid_init FS returns k_ra_ok and flips DCFM");
   prep();
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hhid_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_hhid_init(k_ra_usb_speed_fs));
 
   /* Host-mode SYSCFG should have DCFM and DRPD set, not DPRPU. */
   volatile r_usb_regs_t* reg   = ra_usb_fs();
@@ -94,7 +93,7 @@ static void test_init_fs_returns_ok(void)
   const uint16_t         dprpu = (uint16_t)(1U << k_ra_syscfg_bit_dprpu);
   TEST_ASSERT((reg->SYSCFG & dcfm) != 0U);
   TEST_ASSERT((reg->SYSCFG & drpd) != 0U);
-  TEST_ASSERT_EQ(0, (int)(reg->SYSCFG & dprpu));
+  TEST_ASSERT_EQ(0, (reg->SYSCFG & dprpu));
 
   TEST_END("ra_usb_hhid_init FS returns k_ra_ok and flips DCFM");
 }
@@ -109,7 +108,7 @@ static void test_init_bad_speed(void)
 {
   TEST_BEGIN("ra_usb_hhid_init rejects bogus speed");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_usb_hhid_init((ra_usb_speed_t)9U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_usb_hhid_init((ra_usb_speed_t)9U));
   TEST_END("ra_usb_hhid_init rejects bogus speed");
 }
 
@@ -123,7 +122,7 @@ static void test_close_without_init(void)
 {
   TEST_BEGIN("ra_usb_hhid_close before init returns invalid_state");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_usb_hhid_close());
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_usb_hhid_close());
   TEST_END("ra_usb_hhid_close before init returns invalid_state");
 }
 
@@ -139,18 +138,18 @@ static void test_attach_callback_fires_once(void)
 {
   TEST_BEGIN("attach callback fires once after the enum step machine completes");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hhid_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_hhid_init(k_ra_usb_speed_fs));
   walk_to_attach();
 
-  TEST_ASSERT_EQ((int32_t)k_test_hhid_ctx_token, (int32_t)(uintptr_t)s_attach_last_ctx);
+  TEST_ASSERT_EQ(k_test_hhid_ctx_token, (uintptr_t)s_attach_last_ctx);
   /* Default boot-keyboard EP layout populated by the descriptor-walk stub. */
-  TEST_ASSERT_EQ((int32_t)1U, (int32_t)s_attach_last_device.device_address);
-  TEST_ASSERT_EQ((int32_t)1U, (int32_t)s_attach_last_device.intr_in_ep);
-  TEST_ASSERT_EQ((int32_t)0U, (int32_t)s_attach_last_device.intr_out_ep);
-  TEST_ASSERT_EQ((int32_t)0U, (int32_t)s_attach_last_device.interface_number);
-  TEST_ASSERT_EQ((int32_t)1U, (int32_t)s_attach_last_device.subclass); /* boot. */
-  TEST_ASSERT_EQ((int32_t)1U, (int32_t)s_attach_last_device.protocol); /* keyboard. */
-  TEST_ASSERT_EQ((int32_t)8U, (int32_t)s_attach_last_device.intr_in_max_packet);
+  TEST_ASSERT_EQ(1U, s_attach_last_device.device_address);
+  TEST_ASSERT_EQ(1U, s_attach_last_device.intr_in_ep);
+  TEST_ASSERT_EQ(0U, s_attach_last_device.intr_out_ep);
+  TEST_ASSERT_EQ(0U, s_attach_last_device.interface_number);
+  TEST_ASSERT_EQ(1U, s_attach_last_device.subclass); /* boot. */
+  TEST_ASSERT_EQ(1U, s_attach_last_device.protocol); /* keyboard. */
+  TEST_ASSERT_EQ(8U, s_attach_last_device.intr_in_max_packet);
   TEST_ASSERT(s_attach_last_device.hid_descriptor != nullptr);
   TEST_ASSERT(s_attach_last_device.report_descriptor != nullptr);
   TEST_END("attach callback fires once after the enum step machine completes");
@@ -170,23 +169,18 @@ static void test_pre_init_guards(void)
              "set_protocol / get_input_report reject pre-init");
   prep();
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state,
-                 (int32_t)ra_usb_hhid_attach_callback(stub_on_attach, nullptr));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_usb_hhid_step());
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_usb_hhid_attach_callback(stub_on_attach, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_usb_hhid_step());
 
   uint8_t  buf[8] = {};
   uint16_t got    = 0U;
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_state,
-    (int32_t)ra_usb_hhid_get_report(k_ra_hhid_report_type_input, 0U, buf, sizeof(buf), &got));
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_state,
-    (int32_t)ra_usb_hhid_set_report(k_ra_hhid_report_type_output, 0U, buf, sizeof(buf)));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_usb_hhid_set_idle(0U, 0U));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state,
-                 (int32_t)ra_usb_hhid_set_protocol(k_ra_hhid_proto_boot));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state,
-                 (int32_t)ra_usb_hhid_get_input_report(buf, sizeof(buf), &got));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state,
+                 ra_usb_hhid_get_report(k_ra_hhid_report_type_input, 0U, buf, sizeof(buf), &got));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state,
+                 ra_usb_hhid_set_report(k_ra_hhid_report_type_output, 0U, buf, sizeof(buf)));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_usb_hhid_set_idle(0U, 0U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_usb_hhid_set_protocol(k_ra_hhid_proto_boot));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_usb_hhid_get_input_report(buf, sizeof(buf), &got));
   TEST_END("attach_callback / step / get_report / set_report / set_idle / "
            "set_protocol / get_input_report reject pre-init");
 }
@@ -203,21 +197,17 @@ static void test_pre_attach_guards(void)
 {
   TEST_BEGIN("class API rejects pre-attach with invalid_state");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hhid_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_hhid_init(k_ra_usb_speed_fs));
 
   uint8_t  buf[8] = {};
   uint16_t got    = 0U;
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_state,
-    (int32_t)ra_usb_hhid_get_report(k_ra_hhid_report_type_input, 0U, buf, sizeof(buf), &got));
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_state,
-    (int32_t)ra_usb_hhid_set_report(k_ra_hhid_report_type_output, 0U, buf, sizeof(buf)));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state, (int32_t)ra_usb_hhid_set_idle(0U, 0U));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state,
-                 (int32_t)ra_usb_hhid_set_protocol(k_ra_hhid_proto_report));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_state,
-                 (int32_t)ra_usb_hhid_get_input_report(buf, sizeof(buf), &got));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state,
+                 ra_usb_hhid_get_report(k_ra_hhid_report_type_input, 0U, buf, sizeof(buf), &got));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state,
+                 ra_usb_hhid_set_report(k_ra_hhid_report_type_output, 0U, buf, sizeof(buf)));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_usb_hhid_set_idle(0U, 0U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_usb_hhid_set_protocol(k_ra_hhid_proto_report));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_usb_hhid_get_input_report(buf, sizeof(buf), &got));
   TEST_END("class API rejects pre-attach with invalid_state");
 }
 
@@ -233,20 +223,18 @@ static void test_null_arg_rejection(void)
 {
   TEST_BEGIN("get_report / get_input_report reject NULL out_buf / got_len");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hhid_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_hhid_init(k_ra_usb_speed_fs));
 
   uint8_t  buf[8] = {};
   uint16_t got    = 0U;
   TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_null_ptr,
-    (int32_t)ra_usb_hhid_get_report(k_ra_hhid_report_type_input, 0U, nullptr, sizeof(buf), &got));
+    k_ra_err_null_ptr,
+    ra_usb_hhid_get_report(k_ra_hhid_report_type_input, 0U, nullptr, sizeof(buf), &got));
   TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_null_ptr,
-    (int32_t)ra_usb_hhid_get_report(k_ra_hhid_report_type_input, 0U, buf, sizeof(buf), nullptr));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_usb_hhid_get_input_report(nullptr, sizeof(buf), &got));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_usb_hhid_get_input_report(buf, sizeof(buf), nullptr));
+    k_ra_err_null_ptr,
+    ra_usb_hhid_get_report(k_ra_hhid_report_type_input, 0U, buf, sizeof(buf), nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_usb_hhid_get_input_report(nullptr, sizeof(buf), &got));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_usb_hhid_get_input_report(buf, sizeof(buf), nullptr));
   TEST_END("get_report / get_input_report reject NULL out_buf / got_len");
 }
 
@@ -262,12 +250,12 @@ static void test_set_report_null_with_len(void)
 {
   TEST_BEGIN("set_report rejects (NULL, len > 0) post-attach");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hhid_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_hhid_init(k_ra_usb_speed_fs));
   walk_to_attach();
   ra_usb_fs()->DCPCTR = 0U;
 
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_usb_hhid_set_report(k_ra_hhid_report_type_output, 0U, nullptr, 8U));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_usb_hhid_set_report(k_ra_hhid_report_type_output, 0U, nullptr, 8U));
   TEST_END("set_report rejects (NULL, len > 0) post-attach");
 }
 
@@ -284,24 +272,20 @@ static void test_range_rejection(void)
   TEST_BEGIN("get_report / set_report reject bogus report_type; set_protocol "
              "rejects bogus selector; get_input_report rejects max_len=0");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hhid_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_hhid_init(k_ra_usb_speed_fs));
   walk_to_attach();
   ra_usb_fs()->DCPCTR = 0U;
 
   uint8_t  buf[8] = {};
   uint16_t got    = 0U;
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_arg,
-    (int32_t)ra_usb_hhid_get_report((ra_usb_hhid_report_type_t)9U, 0U, buf, sizeof(buf), &got));
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_arg,
-    (int32_t)ra_usb_hhid_set_report((ra_usb_hhid_report_type_t)9U, 0U, buf, sizeof(buf)));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_usb_hhid_set_protocol((ra_usb_hhid_protocol_select_t)9U));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_usb_hhid_get_input_report(buf, 0U, &got));
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_usb_hhid_get_report(k_ra_hhid_report_type_input, 0U, buf, 0U, &got));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_usb_hhid_get_report((ra_usb_hhid_report_type_t)9U, 0U, buf, sizeof(buf), &got));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_usb_hhid_set_report((ra_usb_hhid_report_type_t)9U, 0U, buf, sizeof(buf)));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_usb_hhid_set_protocol((ra_usb_hhid_protocol_select_t)9U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_usb_hhid_get_input_report(buf, 0U, &got));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_usb_hhid_get_report(k_ra_hhid_report_type_input, 0U, buf, 0U, &got));
   TEST_END("get_report / set_report reject bogus report_type; set_protocol "
            "rejects bogus selector; get_input_report rejects max_len=0");
 }
@@ -318,23 +302,23 @@ static void test_get_report_setup_envelope(void)
 {
   TEST_BEGIN("ra_usb_hhid_get_report stages bmRequestType=0xA1 + bRequest=0x01");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hhid_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_hhid_init(k_ra_usb_speed_fs));
   walk_to_attach();
   ra_usb_fs()->DCPCTR = 0U;
 
   uint8_t  buf[8] = {};
   uint16_t got    = 0U;
   TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_usb_hhid_get_report(k_ra_hhid_report_type_input, 0x05U, buf, sizeof(buf), &got));
+    k_ra_ok,
+    ra_usb_hhid_get_report(k_ra_hhid_report_type_input, 0x05U, buf, sizeof(buf), &got));
 
   /* USBREQ low byte = bmRequestType, high byte = bRequest.
    * For GET_REPORT: 0x01 << 8 | 0xA1 = 0x01A1. */
-  TEST_ASSERT_EQ((int32_t)0x01A1U, (int32_t)ra_usb_fs()->USBREQ);
+  TEST_ASSERT_EQ(0x01A1U, ra_usb_fs()->USBREQ);
   /* USBVAL = (report_type << 8) | report_id = 0x0105. */
-  TEST_ASSERT_EQ((int32_t)0x0105U, (int32_t)ra_usb_fs()->USBVAL);
+  TEST_ASSERT_EQ(0x0105U, ra_usb_fs()->USBVAL);
   /* USBLENG = max_len. */
-  TEST_ASSERT_EQ((int32_t)sizeof(buf), (int32_t)ra_usb_fs()->USBLENG);
+  TEST_ASSERT_EQ(sizeof(buf), ra_usb_fs()->USBLENG);
   TEST_END("ra_usb_hhid_get_report stages bmRequestType=0xA1 + bRequest=0x01");
 }
 
@@ -350,16 +334,16 @@ static void test_set_idle_setup_envelope(void)
 {
   TEST_BEGIN("ra_usb_hhid_set_idle stages bmRequestType=0x21 + bRequest=0x0A");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hhid_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_hhid_init(k_ra_usb_speed_fs));
   walk_to_attach();
   ra_usb_fs()->DCPCTR = 0U;
 
   /* duration=10 (40 ms), report_id=0. wValue = 10 << 8 = 0x0A00. */
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hhid_set_idle(10U, 0U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_hhid_set_idle(10U, 0U));
   /* USBREQ = (0x0A << 8) | 0x21 = 0x0A21. */
-  TEST_ASSERT_EQ((int32_t)0x0A21U, (int32_t)ra_usb_fs()->USBREQ);
-  TEST_ASSERT_EQ((int32_t)0x0A00U, (int32_t)ra_usb_fs()->USBVAL);
-  TEST_ASSERT_EQ((int32_t)0U, (int32_t)ra_usb_fs()->USBLENG);
+  TEST_ASSERT_EQ(0x0A21U, ra_usb_fs()->USBREQ);
+  TEST_ASSERT_EQ(0x0A00U, ra_usb_fs()->USBVAL);
+  TEST_ASSERT_EQ(0U, ra_usb_fs()->USBLENG);
   TEST_END("ra_usb_hhid_set_idle stages bmRequestType=0x21 + bRequest=0x0A");
 }
 
@@ -373,18 +357,18 @@ static void test_set_protocol_setup_envelope(void)
 {
   TEST_BEGIN("ra_usb_hhid_set_protocol stages bmRequestType=0x21 + bRequest=0x0B");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hhid_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_hhid_init(k_ra_usb_speed_fs));
   walk_to_attach();
   ra_usb_fs()->DCPCTR = 0U;
 
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hhid_set_protocol(k_ra_hhid_proto_report));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_hhid_set_protocol(k_ra_hhid_proto_report));
   /* USBREQ = (0x0B << 8) | 0x21 = 0x0B21. */
-  TEST_ASSERT_EQ((int32_t)0x0B21U, (int32_t)ra_usb_fs()->USBREQ);
-  TEST_ASSERT_EQ((int32_t)1U, (int32_t)ra_usb_fs()->USBVAL); /* report protocol. */
+  TEST_ASSERT_EQ(0x0B21U, ra_usb_fs()->USBREQ);
+  TEST_ASSERT_EQ(1U, ra_usb_fs()->USBVAL); /* report protocol. */
 
   ra_usb_fs()->DCPCTR = 0U;
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hhid_set_protocol(k_ra_hhid_proto_boot));
-  TEST_ASSERT_EQ((int32_t)0U, (int32_t)ra_usb_fs()->USBVAL); /* boot protocol. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_hhid_set_protocol(k_ra_hhid_proto_boot));
+  TEST_ASSERT_EQ(0U, ra_usb_fs()->USBVAL); /* boot protocol. */
   TEST_END("ra_usb_hhid_set_protocol stages bmRequestType=0x21 + bRequest=0x0B");
 }
 
@@ -398,21 +382,21 @@ static void test_set_report_setup_envelope(void)
 {
   TEST_BEGIN("ra_usb_hhid_set_report stages bmRequestType=0x21 + bRequest=0x09");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hhid_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_hhid_init(k_ra_usb_speed_fs));
   walk_to_attach();
   ra_usb_fs()->DCPCTR = 0U;
 
   const uint8_t led_payload[1] = {0x07U};
-  TEST_ASSERT_EQ((int32_t)k_ra_ok,
-                 (int32_t)ra_usb_hhid_set_report(k_ra_hhid_report_type_output,
-                                                 0x00U,
-                                                 led_payload,
-                                                 (uint16_t)sizeof(led_payload)));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_usb_hhid_set_report(k_ra_hhid_report_type_output,
+                                        0x00U,
+                                        led_payload,
+                                        (uint16_t)sizeof(led_payload)));
   /* USBREQ = (0x09 << 8) | 0x21 = 0x0921. */
-  TEST_ASSERT_EQ((int32_t)0x0921U, (int32_t)ra_usb_fs()->USBREQ);
+  TEST_ASSERT_EQ(0x0921U, ra_usb_fs()->USBREQ);
   /* USBVAL = (output_type << 8) | report_id = 0x0200. */
-  TEST_ASSERT_EQ((int32_t)0x0200U, (int32_t)ra_usb_fs()->USBVAL);
-  TEST_ASSERT_EQ((int32_t)1U, (int32_t)ra_usb_fs()->USBLENG);
+  TEST_ASSERT_EQ(0x0200U, ra_usb_fs()->USBVAL);
+  TEST_ASSERT_EQ(1U, ra_usb_fs()->USBLENG);
   TEST_END("ra_usb_hhid_set_report stages bmRequestType=0x21 + bRequest=0x09");
 }
 
@@ -429,7 +413,7 @@ static void test_get_report_drains_in_data_phase(void)
 {
   TEST_BEGIN("ra_usb_hhid_get_report drains EP0 IN FIFO into out_buf");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hhid_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_hhid_init(k_ra_usb_speed_fs));
   walk_to_attach();
   ra_usb_fs()->DCPCTR = 0U;
 
@@ -443,14 +427,13 @@ static void test_get_report_drains_in_data_phase(void)
 
   uint8_t  buf[8] = {};
   uint16_t got    = 0U;
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_usb_hhid_get_report(k_ra_hhid_report_type_input, 0U, buf, sizeof(buf), &got));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_usb_hhid_get_report(k_ra_hhid_report_type_input, 0U, buf, sizeof(buf), &got));
   /* The drain helper reads 16-bit LE: low byte 0xFE -> buf[0],
    * high byte 0xCA -> buf[1]. */
-  TEST_ASSERT_EQ((int32_t)2U, (int32_t)got);
-  TEST_ASSERT_EQ((int32_t)0xFEU, (int32_t)buf[0]);
-  TEST_ASSERT_EQ((int32_t)0xCAU, (int32_t)buf[1]);
+  TEST_ASSERT_EQ(2U, got);
+  TEST_ASSERT_EQ(0xFEU, buf[0]);
+  TEST_ASSERT_EQ(0xCAU, buf[1]);
   TEST_END("ra_usb_hhid_get_report drains EP0 IN FIFO into out_buf");
 }
 
@@ -464,7 +447,7 @@ static void test_get_report_returns_zero_when_no_data(void)
 {
   TEST_BEGIN("ra_usb_hhid_get_report returns got_len=0 when FIFO never ready");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hhid_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_hhid_init(k_ra_usb_speed_fs));
   walk_to_attach();
   ra_usb_fs()->DCPCTR = 0U;
 
@@ -473,10 +456,9 @@ static void test_get_report_returns_zero_when_no_data(void)
 
   uint8_t  buf[8] = {};
   uint16_t got    = 0xFFFFU;
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_usb_hhid_get_report(k_ra_hhid_report_type_input, 0U, buf, sizeof(buf), &got));
-  TEST_ASSERT_EQ((int32_t)0U, (int32_t)got);
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_usb_hhid_get_report(k_ra_hhid_report_type_input, 0U, buf, sizeof(buf), &got));
+  TEST_ASSERT_EQ(0U, got);
   TEST_END("ra_usb_hhid_get_report returns got_len=0 when FIFO never ready");
 }
 
@@ -490,7 +472,7 @@ static void test_get_report_caps_at_max_len(void)
 {
   TEST_BEGIN("ra_usb_hhid_get_report caps drained byte count at max_len");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hhid_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_hhid_init(k_ra_usb_speed_fs));
   walk_to_attach();
   ra_usb_fs()->DCPCTR = 0U;
 
@@ -502,12 +484,11 @@ static void test_get_report_caps_at_max_len(void)
 
   uint8_t  buf[1] = {0U};
   uint16_t got    = 0U;
-  TEST_ASSERT_EQ(
-    (int32_t)k_ra_ok,
-    (int32_t)ra_usb_hhid_get_report(k_ra_hhid_report_type_input, 0U, buf, sizeof(buf), &got));
-  TEST_ASSERT_EQ((int32_t)1U, (int32_t)got);
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_usb_hhid_get_report(k_ra_hhid_report_type_input, 0U, buf, sizeof(buf), &got));
+  TEST_ASSERT_EQ(1U, got);
   /* Drained byte was the trailing odd-byte path: buf[0] == 0xEF. */
-  TEST_ASSERT_EQ((int32_t)0xEFU, (int32_t)buf[0]);
+  TEST_ASSERT_EQ(0xEFU, buf[0]);
   TEST_END("ra_usb_hhid_get_report caps drained byte count at max_len");
 }
 
@@ -538,21 +519,21 @@ static void test_mcdc_hhid(void)
 {
   TEST_BEGIN("hhid MC/DC: init / set_report / set_protocol / report_type_ok");
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hhid_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_hhid_init(k_ra_usb_speed_fs));
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hhid_init(k_ra_usb_speed_hs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_hhid_init(k_ra_usb_speed_hs));
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg, (int32_t)ra_usb_hhid_init((ra_usb_speed_t)9U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_usb_hhid_init((ra_usb_speed_t)9U));
 
   prep();
-  TEST_ASSERT_EQ((int32_t)k_ra_ok, (int32_t)ra_usb_hhid_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_hhid_init(k_ra_usb_speed_fs));
   walk_to_attach();
 
   /* Decision B: set_report NULL/len matrix. */
   uint8_t buf[16] = {};
   /* B-V3: NULL,4 -> null_ptr. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_null_ptr,
-                 (int32_t)ra_usb_hhid_set_report(k_ra_hhid_report_type_input, 0U, nullptr, 4U));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_usb_hhid_set_report(k_ra_hhid_report_type_input, 0U, nullptr, 4U));
   /* B-V1: NULL,0 -> falls past null check; report_type ok then forwards. */
   const ra_err_t b_v1 = ra_usb_hhid_set_report(k_ra_hhid_report_type_input, 0U, nullptr, 0U);
   TEST_ASSERT(b_v1 != k_ra_err_null_ptr);
@@ -565,8 +546,8 @@ static void test_mcdc_hhid(void)
   TEST_ASSERT(c_v1 != k_ra_err_invalid_arg);
   const ra_err_t c_v2 = ra_usb_hhid_set_protocol(k_ra_hhid_proto_report);
   TEST_ASSERT(c_v2 != k_ra_err_invalid_arg);
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_usb_hhid_set_protocol((ra_usb_hhid_protocol_select_t)99U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_usb_hhid_set_protocol((ra_usb_hhid_protocol_select_t)99U));
 
   /* Decision D: report_type_ok via set_report. */
   const ra_err_t d_in = ra_usb_hhid_set_report(k_ra_hhid_report_type_input, 0U, buf, 4U);
@@ -576,8 +557,8 @@ static void test_mcdc_hhid(void)
   const ra_err_t d_feat = ra_usb_hhid_set_report(k_ra_hhid_report_type_feature, 0U, buf, 4U);
   TEST_ASSERT(d_feat != k_ra_err_invalid_arg);
   /* All-false vector. */
-  TEST_ASSERT_EQ((int32_t)k_ra_err_invalid_arg,
-                 (int32_t)ra_usb_hhid_set_report((ra_usb_hhid_report_type_t)0x77U, 0U, buf, 4U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_usb_hhid_set_report((ra_usb_hhid_report_type_t)0x77U, 0U, buf, 4U));
 
   TEST_END("hhid MC/DC: init / set_report / set_protocol / report_type_ok");
 }

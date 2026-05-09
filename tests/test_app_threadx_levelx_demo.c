@@ -64,10 +64,10 @@ static void test_lx_pre_kernel_bringup(void)
 {
   reset_world();
   TEST_BEGIN("threadx_levelx_demo: pre-kernel CGC + SysTick");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_cgc_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_cgc_init());
   uint32_t hz = 0U;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &hz));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_time_init(hz));
+  TEST_ASSERT_EQ(k_ra_ok, ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &hz));
+  TEST_ASSERT_EQ(k_ra_ok, ra_time_init(hz));
   TEST_END("threadx_levelx_demo: pre-kernel CGC + SysTick");
 }
 
@@ -83,8 +83,8 @@ static void test_lx_console_init_115200(void)
 {
   reset_world();
   TEST_BEGIN("threadx_levelx_demo: console init at 115200");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_cgc_init());
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_uart_console_init((uint32_t)k_test_lx_baud));
+  TEST_ASSERT_EQ(k_ra_ok, ra_cgc_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_board_uart_console_init((uint32_t)k_test_lx_baud));
   TEST_END("threadx_levelx_demo: console init at 115200");
 }
 
@@ -101,8 +101,8 @@ static void test_lx_console_heartbeat_loop_writes(void)
 {
   reset_world();
   TEST_BEGIN("threadx_levelx_demo: console heartbeat N iterations");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_cgc_init());
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_uart_console_init((uint32_t)k_test_lx_baud));
+  TEST_ASSERT_EQ(k_ra_ok, ra_cgc_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_board_uart_console_init((uint32_t)k_test_lx_baud));
   static const char heartbeat[] = "[lx] cycle\r\n";
   /* ra_board_uart_console_init wraps ra_sci_init which clears CSR via
    * CFCLR; re-seed TDRE so each putc spin completes immediately under
@@ -110,9 +110,8 @@ static void test_lx_console_heartbeat_loop_writes(void)
   volatile r_sci_regs_t* sci_reg = ra_sci((uint8_t)k_ra_board_uart_console_sci_channel);
   for (uint8_t i = 0U; i < (uint8_t)k_test_lx_burnin_iters; i++) {
     sci_reg->CSR = (uint32_t)(1U << (uint8_t)k_ra_sci_csr_bit_tdre);
-    TEST_ASSERT_EQ(
-      (int)k_ra_ok,
-      (int)ra_board_uart_console_write((const uint8_t*)heartbeat, sizeof(heartbeat) - 1U));
+    TEST_ASSERT_EQ(k_ra_ok,
+                   ra_board_uart_console_write((const uint8_t*)heartbeat, sizeof(heartbeat) - 1U));
   }
   TEST_END("threadx_levelx_demo: console heartbeat N iterations");
 }
@@ -132,7 +131,7 @@ static void test_lx_console_init_zero_baud_rejected(void)
 {
   reset_world();
   TEST_BEGIN("threadx_levelx_demo: console init rejects baud=0");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_cgc_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_cgc_init());
   TEST_ASSERT(ra_board_uart_console_init(0U) != k_ra_ok);
   TEST_END("threadx_levelx_demo: console init rejects baud=0");
 }

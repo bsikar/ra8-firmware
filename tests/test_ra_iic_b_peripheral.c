@@ -53,8 +53,8 @@ static void prearm(volatile r_iic_b_regs_t* reg)
 static void test_open_null(void)
 {
   TEST_BEGIN("ra_iic_b_peripheral_open null cfg");
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr,
-                 (int)ra_iic_b_peripheral_open((uint8_t)k_ra_iic_b_peripheral_test_ch0, NULL));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_iic_b_peripheral_open((uint8_t)k_ra_iic_b_peripheral_test_ch0, nullptr));
   TEST_END("ra_iic_b_peripheral_open null cfg");
 }
 
@@ -70,8 +70,8 @@ static void test_open_null(void)
 static void test_open_oor(void)
 {
   TEST_BEGIN("ra_iic_b_peripheral_open oor channel");
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
-                 (int)ra_iic_b_peripheral_open((uint8_t)k_ra_iic_b_peripheral_test_ch_oor, &k_cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_iic_b_peripheral_open((uint8_t)k_ra_iic_b_peripheral_test_ch_oor, &k_cfg));
   TEST_END("ra_iic_b_peripheral_open oor channel");
 }
 
@@ -91,12 +91,11 @@ static void test_open_close(void)
   TEST_BEGIN("ra_iic_b_peripheral_open + close happy");
   ra_sim_mmap_reset();
   volatile r_iic_b_regs_t* reg = ra_iic_b((uint8_t)k_ra_iic_b_peripheral_test_ch0);
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_iic_b_peripheral_open((uint8_t)k_ra_iic_b_peripheral_test_ch0, &k_cfg));
-  TEST_ASSERT_EQ((int)((uint32_t)k_ra_iic_b_peripheral_test_addr_7b << 1U), (int)reg->MSDVAD);
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_iic_b_peripheral_open((uint8_t)k_ra_iic_b_peripheral_test_ch0, &k_cfg));
+  TEST_ASSERT_EQ(((uint32_t)k_ra_iic_b_peripheral_test_addr_7b << 1U), reg->MSDVAD);
   TEST_ASSERT(reg->BCTL & (uint32_t)k_ra_iic_b_msk_bctl_buse);
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_iic_b_peripheral_close((uint8_t)k_ra_iic_b_peripheral_test_ch0));
+  TEST_ASSERT_EQ(k_ra_ok, ra_iic_b_peripheral_close((uint8_t)k_ra_iic_b_peripheral_test_ch0));
   TEST_END("ra_iic_b_peripheral_open + close happy");
 }
 
@@ -118,9 +117,9 @@ static void test_send_ok(void)
   volatile r_iic_b_regs_t* reg = ra_iic_b((uint8_t)k_ra_iic_b_peripheral_test_ch0);
   prearm(reg);
   const uint8_t data[1] = {(uint8_t)k_ra_iic_b_peripheral_test_byte_a};
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_iic_b_peripheral_send((uint8_t)k_ra_iic_b_peripheral_test_ch0, data, 1U));
-  TEST_ASSERT_EQ((int)k_ra_iic_b_peripheral_test_byte_a, (int)(reg->NTDTBP0 & 0xFFU));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_iic_b_peripheral_send((uint8_t)k_ra_iic_b_peripheral_test_ch0, data, 1U));
+  TEST_ASSERT_EQ(k_ra_iic_b_peripheral_test_byte_a, (reg->NTDTBP0 & 0xFFU));
   TEST_END("ra_iic_b_peripheral_send ok");
 }
 
@@ -137,8 +136,8 @@ static void test_send_ok(void)
 static void test_send_null(void)
 {
   TEST_BEGIN("ra_iic_b_peripheral_send null");
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr,
-                 (int)ra_iic_b_peripheral_send((uint8_t)k_ra_iic_b_peripheral_test_ch0, NULL, 1U));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_iic_b_peripheral_send((uint8_t)k_ra_iic_b_peripheral_test_ch0, nullptr, 1U));
   TEST_END("ra_iic_b_peripheral_send null");
 }
 
@@ -160,10 +159,9 @@ static void test_receive_ok(void)
   prearm(reg);
   reg->NTDTBP0   = (uint32_t)k_ra_iic_b_peripheral_test_byte_b;
   uint8_t buf[1] = {0U};
-  TEST_ASSERT_EQ(
-    (int)k_ra_ok,
-    (int)ra_iic_b_peripheral_receive((uint8_t)k_ra_iic_b_peripheral_test_ch0, buf, 1U));
-  TEST_ASSERT_EQ((int)k_ra_iic_b_peripheral_test_byte_b, (int)buf[0]);
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_iic_b_peripheral_receive((uint8_t)k_ra_iic_b_peripheral_test_ch0, buf, 1U));
+  TEST_ASSERT_EQ(k_ra_iic_b_peripheral_test_byte_b, buf[0]);
   TEST_END("ra_iic_b_peripheral_receive ok");
 }
 
@@ -188,14 +186,14 @@ static void test_status(void)
                                             (uint32_t)k_ra_iic_b_peripheral_test_ntst_rdbff0);
   reg->BST                     = (uint32_t)k_ra_iic_b_msk_bst_nackdf;
   uint8_t mask                 = 0U;
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_iic_b_peripheral_status((uint8_t)k_ra_iic_b_peripheral_test_ch0, &mask));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_iic_b_peripheral_status((uint8_t)k_ra_iic_b_peripheral_test_ch0, &mask));
   TEST_ASSERT(mask & (uint8_t)k_ra_iic_b_peripheral_status_tx_empty);
   TEST_ASSERT(mask & (uint8_t)k_ra_iic_b_peripheral_status_rx_full);
   TEST_ASSERT(mask & (uint8_t)k_ra_iic_b_peripheral_status_nack);
 
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr,
-                 (int)ra_iic_b_peripheral_status((uint8_t)k_ra_iic_b_peripheral_test_ch0, NULL));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_iic_b_peripheral_status((uint8_t)k_ra_iic_b_peripheral_test_ch0, nullptr));
   TEST_END("ra_iic_b_peripheral_status reflects flags");
 }
 
@@ -216,30 +214,27 @@ static void test_mcdc_ra_iic_b_peripheral(void)
 {
   TEST_BEGIN("iic_b_peripheral MC/DC: send/receive 2-cond null+len");
   ra_sim_mmap_reset();
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_iic_b_peripheral_open((uint8_t)k_ra_iic_b_peripheral_test_ch0, &k_cfg));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_iic_b_peripheral_open((uint8_t)k_ra_iic_b_peripheral_test_ch0, &k_cfg));
   volatile r_iic_b_regs_t* reg = ra_iic_b((uint8_t)k_ra_iic_b_peripheral_test_ch0);
   prearm(reg);
   const uint8_t data[1] = {(uint8_t)k_ra_iic_b_peripheral_test_byte_a};
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_iic_b_peripheral_send((uint8_t)k_ra_iic_b_peripheral_test_ch0, NULL, 0U));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_iic_b_peripheral_send((uint8_t)k_ra_iic_b_peripheral_test_ch0, nullptr, 0U));
   prearm(reg);
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_iic_b_peripheral_send((uint8_t)k_ra_iic_b_peripheral_test_ch0, data, 1U));
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr,
-                 (int)ra_iic_b_peripheral_send((uint8_t)k_ra_iic_b_peripheral_test_ch0, NULL, 1U));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_iic_b_peripheral_send((uint8_t)k_ra_iic_b_peripheral_test_ch0, data, 1U));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_iic_b_peripheral_send((uint8_t)k_ra_iic_b_peripheral_test_ch0, nullptr, 1U));
   uint8_t buf[1] = {0U};
-  TEST_ASSERT_EQ(
-    (int)k_ra_ok,
-    (int)ra_iic_b_peripheral_receive((uint8_t)k_ra_iic_b_peripheral_test_ch0, NULL, 0U));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_iic_b_peripheral_receive((uint8_t)k_ra_iic_b_peripheral_test_ch0, nullptr, 0U));
   prearm(reg);
   reg->NTDTBP0 = (uint32_t)k_ra_iic_b_peripheral_test_byte_b;
-  TEST_ASSERT_EQ(
-    (int)k_ra_ok,
-    (int)ra_iic_b_peripheral_receive((uint8_t)k_ra_iic_b_peripheral_test_ch0, buf, 1U));
-  TEST_ASSERT_EQ(
-    (int)k_ra_err_null_ptr,
-    (int)ra_iic_b_peripheral_receive((uint8_t)k_ra_iic_b_peripheral_test_ch0, NULL, 1U));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_iic_b_peripheral_receive((uint8_t)k_ra_iic_b_peripheral_test_ch0, buf, 1U));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_iic_b_peripheral_receive((uint8_t)k_ra_iic_b_peripheral_test_ch0, nullptr, 1U));
   (void)ra_iic_b_peripheral_close((uint8_t)k_ra_iic_b_peripheral_test_ch0);
   TEST_END("iic_b_peripheral MC/DC: send/receive 2-cond null+len");
 }

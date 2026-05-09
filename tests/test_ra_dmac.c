@@ -37,8 +37,7 @@ static void test_start_null_cfg(void)
   TEST_BEGIN("dmac start null cfg");
   ra_sim_mmap_reset();
 
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr,
-                 (int)ra_dmac_start((uint8_t)k_ra_dmac_test_channel_valid, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_dmac_start((uint8_t)k_ra_dmac_test_channel_valid, nullptr));
   TEST_END("dmac start null cfg");
 }
 
@@ -61,8 +60,7 @@ static void test_start_bad_channel(void)
     .src_inc = true,
     .dst_inc = true,
   };
-  TEST_ASSERT_EQ((int)k_ra_err_out_of_range,
-                 (int)ra_dmac_start((uint8_t)k_ra_dmac_test_channel_bad, &cfg));
+  TEST_ASSERT_EQ(k_ra_err_out_of_range, ra_dmac_start((uint8_t)k_ra_dmac_test_channel_bad, &cfg));
   TEST_END("dmac start bad channel");
 }
 
@@ -85,14 +83,14 @@ static void test_start_happy_both_inc(void)
     .src_inc = true,
     .dst_inc = true,
   };
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_dmac_start((uint8_t)k_ra_dmac_test_channel_valid, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_dmac_start((uint8_t)k_ra_dmac_test_channel_valid, &cfg));
 
   volatile r_dmac_channel_regs_t* reg = ra_dmac((uint8_t)k_ra_dmac_test_channel_valid);
   TEST_ASSERT_NOT_NULL((void*)reg);
-  TEST_ASSERT_EQ((int)k_ra_dmac_test_src, (int)reg->DMSAR);
-  TEST_ASSERT_EQ((int)k_ra_dmac_test_dst, (int)reg->DMDAR);
-  TEST_ASSERT_EQ((int)k_ra_dmac_test_count, (int)reg->DMCRA);
-  TEST_ASSERT_EQ((int)k_ra_dmac_test_enable, (int)reg->DMCNT);
+  TEST_ASSERT_EQ(k_ra_dmac_test_src, reg->DMSAR);
+  TEST_ASSERT_EQ(k_ra_dmac_test_dst, reg->DMDAR);
+  TEST_ASSERT_EQ(k_ra_dmac_test_count, reg->DMCRA);
+  TEST_ASSERT_EQ(k_ra_dmac_test_enable, reg->DMCNT);
   TEST_END("dmac start happy both inc");
 }
 
@@ -115,7 +113,7 @@ static void test_start_no_src_inc(void)
     .src_inc = false,
     .dst_inc = true,
   };
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_dmac_start((uint8_t)k_ra_dmac_test_channel_valid, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_dmac_start((uint8_t)k_ra_dmac_test_channel_valid, &cfg));
   TEST_END("dmac start no src inc");
 }
 
@@ -138,7 +136,7 @@ static void test_start_no_dst_inc(void)
     .src_inc = true,
     .dst_inc = false,
   };
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_dmac_start((uint8_t)k_ra_dmac_test_channel_valid, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_dmac_start((uint8_t)k_ra_dmac_test_channel_valid, &cfg));
   TEST_END("dmac start no dst inc");
 }
 
@@ -161,7 +159,7 @@ static void test_start_neither_inc(void)
     .src_inc = false,
     .dst_inc = false,
   };
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_dmac_start((uint8_t)k_ra_dmac_test_channel_last, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_dmac_start((uint8_t)k_ra_dmac_test_channel_last, &cfg));
   TEST_END("dmac start neither inc");
 }
 
@@ -176,10 +174,10 @@ static void test_stop_happy(void)
   TEST_BEGIN("dmac stop happy");
   ra_sim_mmap_reset();
 
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_dmac_stop((uint8_t)k_ra_dmac_test_channel_valid));
+  TEST_ASSERT_EQ(k_ra_ok, ra_dmac_stop((uint8_t)k_ra_dmac_test_channel_valid));
 
   volatile r_dmac_channel_regs_t* reg = ra_dmac((uint8_t)k_ra_dmac_test_channel_valid);
-  TEST_ASSERT_EQ(0, (int)reg->DMCNT);
+  TEST_ASSERT_EQ(0, reg->DMCNT);
   TEST_END("dmac stop happy");
 }
 
@@ -194,8 +192,7 @@ static void test_stop_bad_channel(void)
   TEST_BEGIN("dmac stop bad channel");
   ra_sim_mmap_reset();
 
-  TEST_ASSERT_EQ((int)k_ra_err_out_of_range,
-                 (int)ra_dmac_stop((uint8_t)k_ra_dmac_test_channel_bad));
+  TEST_ASSERT_EQ(k_ra_err_out_of_range, ra_dmac_stop((uint8_t)k_ra_dmac_test_channel_bad));
   TEST_END("dmac stop bad channel");
 }
 
@@ -253,13 +250,12 @@ static void test_start_repeat_mode(void)
     .dst_inc     = true,
     .repeat_area = k_ra_dmac_repeat_area_dest,
   };
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_dmac_start_repeat((uint8_t)k_ra_dmac_test_channel_valid, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_dmac_start_repeat((uint8_t)k_ra_dmac_test_channel_valid, &cfg));
 
   volatile r_dmac_channel_regs_t* reg = ra_dmac((uint8_t)k_ra_dmac_test_channel_valid);
   TEST_ASSERT_NOT_NULL((void*)reg);
   const uint16_t md = (uint16_t)((reg->DMTMD & k_ra_dmtmd_md_mask) >> k_ra_dmtmd_md_pos);
-  TEST_ASSERT_EQ((int)k_ra_dmtmd_md_repeat, (int)md);
+  TEST_ASSERT_EQ(k_ra_dmtmd_md_repeat, md);
   TEST_END("dmac start_repeat sets MD=01b");
 }
 
@@ -273,8 +269,8 @@ static void test_start_repeat_null(void)
 {
   TEST_BEGIN("dmac start_repeat null cfg");
   prep_dmac_ext();
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr,
-                 (int)ra_dmac_start_repeat((uint8_t)k_ra_dmac_test_channel_valid, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_dmac_start_repeat((uint8_t)k_ra_dmac_test_channel_valid, nullptr));
   TEST_END("dmac start_repeat null cfg");
 }
 
@@ -299,14 +295,13 @@ static void test_start_block_mode(void)
     .block_count = 4U,
     .repeat_area = k_ra_dmac_repeat_area_src,
   };
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_dmac_start_block((uint8_t)k_ra_dmac_test_channel_valid, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_dmac_start_block((uint8_t)k_ra_dmac_test_channel_valid, &cfg));
 
   volatile r_dmac_channel_regs_t* reg = ra_dmac((uint8_t)k_ra_dmac_test_channel_valid);
   TEST_ASSERT_NOT_NULL((void*)reg);
   const uint16_t md = (uint16_t)((reg->DMTMD & k_ra_dmtmd_md_mask) >> k_ra_dmtmd_md_pos);
-  TEST_ASSERT_EQ((int)k_ra_dmtmd_md_block, (int)md);
-  TEST_ASSERT_EQ(4, (int)reg->DMCRB);
+  TEST_ASSERT_EQ(k_ra_dmtmd_md_block, md);
+  TEST_ASSERT_EQ(4, reg->DMCRB);
   TEST_END("dmac start_block sets MD=10b and DMCRB");
 }
 
@@ -326,8 +321,8 @@ static void test_start_block_zero_count(void)
     .count = (uint16_t)k_ra_dmac_test_count,
     .width = k_ra_dmac_width_word,
   };
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
-                 (int)ra_dmac_start_block((uint8_t)k_ra_dmac_test_channel_valid, &cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_dmac_start_block((uint8_t)k_ra_dmac_test_channel_valid, &cfg));
   TEST_END("dmac start_block rejects block_count=0");
 }
 
@@ -350,17 +345,17 @@ static void test_set_address_mode_happy(void)
     .src_inc = true,
     .dst_inc = true,
   };
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_dmac_start((uint8_t)k_ra_dmac_test_channel_valid, &cfg));
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_dmac_set_address_mode((uint8_t)k_ra_dmac_test_channel_valid,
-                                               k_ra_dmac_addr_decrement,
-                                               k_ra_dmac_addr_offset));
+  TEST_ASSERT_EQ(k_ra_ok, ra_dmac_start((uint8_t)k_ra_dmac_test_channel_valid, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_dmac_set_address_mode((uint8_t)k_ra_dmac_test_channel_valid,
+                                          k_ra_dmac_addr_decrement,
+                                          k_ra_dmac_addr_offset));
 
   volatile r_dmac_channel_regs_t* reg = ra_dmac((uint8_t)k_ra_dmac_test_channel_valid);
   const uint16_t sm = (uint16_t)((reg->DMAMD & k_ra_dmamd_sm_mask) >> k_ra_dmamd_sm_pos);
   const uint16_t dm = (uint16_t)((reg->DMAMD & k_ra_dmamd_dm_mask) >> k_ra_dmamd_dm_pos);
-  TEST_ASSERT_EQ((int)k_ra_dmac_addr_decrement, (int)sm);
-  TEST_ASSERT_EQ((int)k_ra_dmac_addr_offset, (int)dm);
+  TEST_ASSERT_EQ(k_ra_dmac_addr_decrement, sm);
+  TEST_ASSERT_EQ(k_ra_dmac_addr_offset, dm);
   TEST_END("dmac set_address_mode writes SM/DM");
 }
 
@@ -374,14 +369,14 @@ static void test_set_address_mode_invalid(void)
 {
   TEST_BEGIN("dmac set_address_mode rejects invalid args");
   prep_dmac_ext();
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
-                 (int)ra_dmac_set_address_mode((uint8_t)k_ra_dmac_test_channel_valid,
-                                               (ra_dmac_addr_mode_t)0x77U,
-                                               k_ra_dmac_addr_fixed));
-  TEST_ASSERT_EQ((int)k_ra_err_out_of_range,
-                 (int)ra_dmac_set_address_mode((uint8_t)k_ra_dmac_test_channel_bad,
-                                               k_ra_dmac_addr_fixed,
-                                               k_ra_dmac_addr_fixed));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_dmac_set_address_mode((uint8_t)k_ra_dmac_test_channel_valid,
+                                          (ra_dmac_addr_mode_t)0x77U,
+                                          k_ra_dmac_addr_fixed));
+  TEST_ASSERT_EQ(k_ra_err_out_of_range,
+                 ra_dmac_set_address_mode((uint8_t)k_ra_dmac_test_channel_bad,
+                                          k_ra_dmac_addr_fixed,
+                                          k_ra_dmac_addr_fixed));
   TEST_END("dmac set_address_mode rejects invalid args");
 }
 
@@ -396,22 +391,22 @@ static void test_attach_half_complete_handler(void)
   TEST_BEGIN("dmac half-complete handler dispatches");
   prep_dmac_ext();
   int sentinel = 7;
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_dmac_attach_half_complete_handler((uint8_t)k_ra_dmac_test_channel_valid,
-                                                           stub_dmac_half_cb,
-                                                           &sentinel));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_dmac_attach_half_complete_handler((uint8_t)k_ra_dmac_test_channel_valid,
+                                                      stub_dmac_half_cb,
+                                                      &sentinel));
   ra_dmac_dispatch_half((uint8_t)k_ra_dmac_test_channel_valid);
-  TEST_ASSERT_EQ(1, (int)s_dmac_half_count);
+  TEST_ASSERT_EQ(1, s_dmac_half_count);
   TEST_ASSERT_EQ((void*)&sentinel, s_dmac_last_ctx);
 
   /* Out-of-range channel must early-exit. */
   ra_dmac_dispatch_half((uint8_t)k_ra_dmac_test_channel_bad);
-  TEST_ASSERT_EQ(1, (int)s_dmac_half_count);
+  TEST_ASSERT_EQ(1, s_dmac_half_count);
 
-  TEST_ASSERT_EQ((int)k_ra_err_out_of_range,
-                 (int)ra_dmac_attach_half_complete_handler((uint8_t)k_ra_dmac_test_channel_bad,
-                                                           stub_dmac_half_cb,
-                                                           nullptr));
+  TEST_ASSERT_EQ(k_ra_err_out_of_range,
+                 ra_dmac_attach_half_complete_handler((uint8_t)k_ra_dmac_test_channel_bad,
+                                                      stub_dmac_half_cb,
+                                                      nullptr));
   TEST_END("dmac half-complete handler dispatches");
 }
 
@@ -426,27 +421,25 @@ static void test_attach_per_channel_callback(void)
   TEST_BEGIN("dmac per-channel callback dispatches");
   prep_dmac_ext();
   int sentinel = 0xABCD;
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_dmac_attach_callback((uint8_t)k_ra_dmac_test_channel_valid,
-                                              stub_dmac_full_cb,
-                                              &sentinel));
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    ra_dmac_attach_callback((uint8_t)k_ra_dmac_test_channel_valid, stub_dmac_full_cb, &sentinel));
   ra_dmac_dispatch((uint8_t)k_ra_dmac_test_channel_valid);
-  TEST_ASSERT_EQ(1, (int)s_dmac_full_count);
+  TEST_ASSERT_EQ(1, s_dmac_full_count);
   TEST_ASSERT_EQ((void*)&sentinel, s_dmac_last_ctx);
 
   ra_dmac_dispatch((uint8_t)k_ra_dmac_test_channel_bad);
-  TEST_ASSERT_EQ(1, (int)s_dmac_full_count);
+  TEST_ASSERT_EQ(1, s_dmac_full_count);
 
   TEST_ASSERT_EQ(
-    (int)k_ra_err_out_of_range,
-    (int)ra_dmac_attach_callback((uint8_t)k_ra_dmac_test_channel_bad, stub_dmac_full_cb, nullptr));
+    k_ra_err_out_of_range,
+    ra_dmac_attach_callback((uint8_t)k_ra_dmac_test_channel_bad, stub_dmac_full_cb, nullptr));
 
   /* Clearing the slot must silence further dispatches. */
-  TEST_ASSERT_EQ(
-    (int)k_ra_ok,
-    (int)ra_dmac_attach_callback((uint8_t)k_ra_dmac_test_channel_valid, nullptr, nullptr));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_dmac_attach_callback((uint8_t)k_ra_dmac_test_channel_valid, nullptr, nullptr));
   ra_dmac_dispatch((uint8_t)k_ra_dmac_test_channel_valid);
-  TEST_ASSERT_EQ(1, (int)s_dmac_full_count);
+  TEST_ASSERT_EQ(1, s_dmac_full_count);
   TEST_END("dmac per-channel callback dispatches");
 }
 
@@ -472,22 +465,22 @@ static void test_mcdc_set_address_mode_bounds(void)
   prep_dmac_ext();
 
   /* Vector 1: both in range. */
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_dmac_set_address_mode((uint8_t)k_ra_dmac_test_channel_valid,
-                                               k_ra_dmac_addr_fixed,
-                                               k_ra_dmac_addr_fixed));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_dmac_set_address_mode((uint8_t)k_ra_dmac_test_channel_valid,
+                                          k_ra_dmac_addr_fixed,
+                                          k_ra_dmac_addr_fixed));
 
   /* Vector 2: src out of range, dest in range -> C1=T short-circuits. */
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
-                 (int)ra_dmac_set_address_mode((uint8_t)k_ra_dmac_test_channel_valid,
-                                               (ra_dmac_addr_mode_t)99U,
-                                               k_ra_dmac_addr_fixed));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_dmac_set_address_mode((uint8_t)k_ra_dmac_test_channel_valid,
+                                          (ra_dmac_addr_mode_t)99U,
+                                          k_ra_dmac_addr_fixed));
 
   /* Vector 3: src in range, dest out of range -> C1=F, C2=T. */
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
-                 (int)ra_dmac_set_address_mode((uint8_t)k_ra_dmac_test_channel_valid,
-                                               k_ra_dmac_addr_fixed,
-                                               (ra_dmac_addr_mode_t)99U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_dmac_set_address_mode((uint8_t)k_ra_dmac_test_channel_valid,
+                                          k_ra_dmac_addr_fixed,
+                                          (ra_dmac_addr_mode_t)99U));
 
   TEST_END("dmac set_address_mode MC/DC: src>dec || dest>dec");
 }

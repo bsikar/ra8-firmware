@@ -49,7 +49,7 @@ static ra_err_t stub_net_open(void* ctx, const char* url, uint32_t* out_len)
 {
   (void)ctx;
   (void)url;
-  if (out_len == NULL) {
+  if (out_len == nullptr) {
     return k_ra_err_null_ptr;
   }
   *out_len = 0U;
@@ -61,7 +61,7 @@ static ra_err_t stub_net_read(void* ctx, uint8_t* dst, uint32_t cap, uint32_t* o
   (void)ctx;
   (void)dst;
   (void)cap;
-  if (out != NULL) {
+  if (out != nullptr) {
     *out = 0U;
   }
   return k_ra_err_hw_error;
@@ -90,7 +90,7 @@ static ra_err_t stub_sha_update(void* ctx, const uint8_t* data, uint32_t len)
 static ra_err_t stub_sha_final(void* ctx, uint8_t out[k_ra_ota_sha256_bytes])
 {
   (void)ctx;
-  if (out == NULL) {
+  if (out == nullptr) {
     return k_ra_err_null_ptr;
   }
   (void)memset(out, 0, k_ra_ota_sha256_bytes);
@@ -140,7 +140,7 @@ static ra_err_t stub_flash_readback(void* ctx, uint32_t addr, uint8_t* dst, uint
 {
   (void)ctx;
   (void)addr;
-  if ((dst != NULL) && (len > 0U)) {
+  if ((dst != nullptr) && (len > 0U)) {
     (void)memset(dst, 0, len);
   }
   return k_ra_ok;
@@ -154,7 +154,7 @@ static ra_ota_cfg_t make_demo_cfg(void)
   ra_ota_cfg_t cfg = {};
   (void)snprintf(cfg.manifest_url, k_ra_ota_url_max_bytes, "https://example.test/manifest.json");
   cfg.pubkey_handle             = (uint32_t)k_test_ota_demo_pubkey;
-  cfg.on_progress               = NULL;
+  cfg.on_progress               = nullptr;
   cfg.run_as_thread             = false;
   cfg.net.open                  = stub_net_open;
   cfg.net.read                  = stub_net_read;
@@ -197,8 +197,8 @@ static void test_ota_demo_init_ok(void)
   reset_world();
   TEST_BEGIN("ota_demo: ra_ota_init with stub backends");
   const ra_ota_cfg_t cfg = make_demo_cfg();
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_ota_init(&cfg));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_ota_deinit());
+  TEST_ASSERT_EQ(k_ra_ok, ra_ota_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ota_deinit());
   TEST_END("ota_demo: ra_ota_init with stub backends");
 }
 
@@ -213,7 +213,7 @@ static void test_ota_demo_init_rejects_null_cfg(void)
 {
   reset_world();
   TEST_BEGIN("ota_demo: init rejects NULL cfg");
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_ota_init(NULL));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_ota_init(nullptr));
   TEST_END("ota_demo: init rejects NULL cfg");
 }
 
@@ -229,8 +229,8 @@ static void test_ota_demo_init_rejects_partial_net(void)
   reset_world();
   TEST_BEGIN("ota_demo: init rejects net.read == NULL");
   ra_ota_cfg_t cfg = make_demo_cfg();
-  cfg.net.read     = NULL;
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_ota_init(&cfg));
+  cfg.net.read     = nullptr;
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_ota_init(&cfg));
   TEST_END("ota_demo: init rejects net.read == NULL");
 }
 
@@ -247,7 +247,7 @@ static void test_ota_demo_init_rejects_zero_bank(void)
   TEST_BEGIN("ota_demo: init rejects bank_size == 0");
   ra_ota_cfg_t cfg          = make_demo_cfg();
   cfg.flash.bank_size_bytes = 0U;
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_ota_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ota_init(&cfg));
   TEST_END("ota_demo: init rejects bank_size == 0");
 }
 
@@ -263,9 +263,9 @@ static void test_ota_demo_init_rejects_double(void)
   reset_world();
   TEST_BEGIN("ota_demo: double-init rejected");
   const ra_ota_cfg_t cfg = make_demo_cfg();
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_ota_init(&cfg));
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_state, (int)ra_ota_init(&cfg));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_ota_deinit());
+  TEST_ASSERT_EQ(k_ra_ok, ra_ota_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_ota_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ota_deinit());
   TEST_END("ota_demo: double-init rejected");
 }
 
@@ -279,10 +279,10 @@ static void test_ota_demo_status_leds(void)
 {
   reset_world();
   TEST_BEGIN("ota_demo: LED1 + LED2 init + toggle");
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_led_init(k_ra_board_led1));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_led_init(k_ra_board_led2));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_led_toggle(k_ra_board_led1));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_board_led_toggle(k_ra_board_led2));
+  TEST_ASSERT_EQ(k_ra_ok, ra_board_led_init(k_ra_board_led1));
+  TEST_ASSERT_EQ(k_ra_ok, ra_board_led_init(k_ra_board_led2));
+  TEST_ASSERT_EQ(k_ra_ok, ra_board_led_toggle(k_ra_board_led1));
+  TEST_ASSERT_EQ(k_ra_ok, ra_board_led_toggle(k_ra_board_led2));
   TEST_END("ota_demo: LED1 + LED2 init + toggle");
 }
 

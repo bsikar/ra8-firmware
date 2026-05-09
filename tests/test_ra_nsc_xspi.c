@@ -67,13 +67,13 @@ static void test_mcdc_ra_nsc_xspi(void)
 
   /* V2: len=0 -> dec T via C1 -> invalid_arg. */
   TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_arg,
-    (int32_t)ra_nsc_xspi_read((uint32_t)k_test_xspi_offset, s_dst, (uint32_t)k_test_xspi_len_zero));
+    k_ra_err_invalid_arg,
+    ra_nsc_xspi_read((uint32_t)k_test_xspi_offset, s_dst, (uint32_t)k_test_xspi_len_zero));
 
   /* V3: len=4097 (one past max) -> dec T via C2 -> invalid_arg. */
   TEST_ASSERT_EQ(
-    (int32_t)k_ra_err_invalid_arg,
-    (int32_t)ra_nsc_xspi_read((uint32_t)k_test_xspi_offset, s_dst, (uint32_t)k_test_xspi_len_over));
+    k_ra_err_invalid_arg,
+    ra_nsc_xspi_read((uint32_t)k_test_xspi_offset, s_dst, (uint32_t)k_test_xspi_len_over));
 
   /* Bonus: maximum still accepted (not part of the N+1 set, but
    * confirms the ``>`` is strict). */
