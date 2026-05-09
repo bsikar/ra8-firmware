@@ -1738,22 +1738,98 @@ static void internal_fifo_write(volatile r_usb_regs_t* reg, const uint8_t* data,
 }
 
 /**
- * @brief Drain the CFIFO data port into a buffer (16-bit packed).
- *
- * @details See implementation.
- * @param[in] reg See implementation.
- * @param[in] data See implementation.
- * @param[in] len See implementation.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
+ * @brief HS-only: 32-bit CFIFO read loop for the head bytes.
+ * @details Mirrors FSP hw_usb_read_fifo32: cast &CFIFO to uint32_t* and
+ *          read `len/4` 32-bit words into the destination buffer
+ *          (little-endian byte order).
+ * @param[in]  reg  HS register block.
+ * @param[out] data Destination byte pointer.
+ * @param[in]  len  Total payload length; reads only the head (len & ~0x3) bytes.
+ * @pre CFIFOSEL.MBW == 32.
+ * @pre data != NULL when len > 0.
+ * @post DTLN advanced by exactly (len & ~0x3) bytes.
+ * @post data[0..(len&~0x3)-1] holds the received bytes in LE order.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static void internal_fifo_read_hs_head(volatile r_usb_regs_t* reg, uint8_t* data, uint16_t len)
+{
+  volatile uint32_t* const cfifo32 = (volatile uint32_t*)(uintptr_t)&reg->CFIFO;
+  const uint16_t           quads   = (uint16_t)(len >> 2U);
+  for (uint16_t i = 0U; i < quads; ++i) {
+    const uint32_t word = *cfifo32;
+    data[(4U * i) + 0U] = (uint8_t)(word & k_ra_usb_byte_mask);
+    data[(4U * i) + 1U] = (uint8_t)((word >> k_ra_usb_shift_b1) & k_ra_usb_byte_mask);
+    data[(4U * i) + 2U] = (uint8_t)((word >> k_ra_usb_shift_b2) & k_ra_usb_byte_mask);
+    data[(4U * i) + 3U] = (uint8_t)((word >> k_ra_usb_shift_b3) & k_ra_usb_byte_mask);
+  }
+}
+
+/**
+ * @brief HS-only: read trailing 1..3 bytes from CFIFOH / CFIFOHH aliases.
+ * @details Mirrors FSP hw_usb_read_fifo16 / hw_usb_read_fifo8 (little-endian).
+ *          On USBHS a narrow read must go to CFIFOH (+0x02) / CFIFOHH (+0x03);
+ *          reading CFIFO itself at MBW=16/8 does not advance the read pointer.
+ * @param[in]  reg  HS register block.
+ * @param[out] data Destination byte pointer.
+ * @param[in]  len  Total payload length; reads only the tail (len & 0x3) bytes.
+ * @pre CFIFOSEL.MBW == 32 on entry (restored on exit).
+ * @pre data != NULL when len > 0.
+ * @post Tail bytes written; CFIFOSEL.MBW restored.
+ * @post DTLN advanced by exactly (len & 0x3) bytes.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static void internal_fifo_read_hs_tail(volatile r_usb_regs_t* reg, uint8_t* data, uint16_t len)
+{
+  const uint16_t tail = (uint16_t)(len & 0x3U);
+  if (tail == 0U) {
+    return;
+  }
+  const uint16_t sel_save = reg->CFIFOSEL;
+  const uint16_t sel_base = (uint16_t)(sel_save & (uint16_t)~(uint16_t)k_ra_fifosel_mbw_msk);
+  uint16_t       offset   = (uint16_t)(len & (uint16_t)~(uint16_t)0x3U);
+  volatile uint16_t* const cfifoh  = (volatile uint16_t*)((uintptr_t)&reg->CFIFO + 2U);
+  volatile uint8_t* const  cfifohh = (volatile uint8_t*)((uintptr_t)&reg->CFIFO + 3U);
+  if ((tail & 0x2U) != 0U) {
+    reg->CFIFOSEL     = (uint16_t)(sel_base | k_ra_fifosel_mbw_16);
+    const uint16_t hw = *cfifoh;
+    data[offset + 0U] = (uint8_t)(hw & k_ra_usb_byte_mask);
+    data[offset + 1U] = (uint8_t)((hw >> k_ra_usb_byte_bits) & k_ra_usb_byte_mask);
+    offset            = (uint16_t)(offset + 2U);
+  }
+  if ((tail & 0x1U) != 0U) {
+    reg->CFIFOSEL = (uint16_t)(sel_base | k_ra_fifosel_mbw_8);
+    data[offset]  = *cfifohh;
+  }
+  reg->CFIFOSEL = sel_save;
+}
+
+/**
+ * @brief Drain the CFIFO data port into a buffer.
+ * @details Dispatches to the speed-appropriate access width: USBHS requires
+ *          32-bit reads (MBW=32) -- a 16-bit read does not advance the FIFO
+ *          read pointer (HUM Ch 37.2.7 p 2070, FSP hw_usb_read_fifo32).
+ *          USBFS keeps MBW=16. Mirrors FSP `usb_pstd_read_fifo` for IP1/IP0.
+ * @param[in]  reg  USB instance register block.
+ * @param[out] data Destination byte pointer (may be NULL when len == 0).
+ * @param[in]  len  Number of bytes to drain.
+ * @pre Caller selected DCP / pipe with internal_select_cfifo and FRDY=1.
+ * @pre data != NULL when len > 0.
+ * @post DTLN advanced by len bytes.
+ * @post data[0..len-1] holds the received payload bytes.
+ * @note Not thread-safe.
  * @since 0.1.0
  */
 static void internal_fifo_read(volatile r_usb_regs_t* reg, uint8_t* data, uint16_t len)
 {
-  /* HUM Ch 36.2.5 "CFIFO : CFIFO Port Register", p 1973 */
+  /* HUM Ch 37.2.7 "CFIFO : CFIFO Port Register" p 2070 */
+  if (internal_is_hs(reg)) {
+    internal_fifo_read_hs_head(reg, data, len);
+    internal_fifo_read_hs_tail(reg, data, len);
+    return;
+  }
+  /* USBFS / MBW=16 path. */
   const uint16_t even = (uint16_t)(len >> 1U);
   for (uint16_t i = 0U; i < even; ++i) {
     const uint16_t word = reg->CFIFO;
