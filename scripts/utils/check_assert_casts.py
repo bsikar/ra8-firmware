@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 """Gate: reject explicit integer casts inside TEST_ASSERT_EQ arguments.
 
 TEST_ASSERT_EQ widens both arguments to int64_t internally.  An outer
