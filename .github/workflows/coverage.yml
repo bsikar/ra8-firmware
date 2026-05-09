@@ -24,7 +24,7 @@ jobs:
   # ---------------------------------------------------------------------------
   coverage:
     name: Statement + branch coverage
-    runs-on: ubuntu-24.04
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
 

@@ -20,7 +20,7 @@ jobs:
   # ---------------------------------------------------------------------------
   ascii:
     name: ASCII-only source files
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       - name: Scan
@@ -43,7 +43,7 @@ jobs:
   # ---------------------------------------------------------------------------
   copyright:
     name: Copyright header check
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       - name: Scan
@@ -57,7 +57,7 @@ jobs:
   # ---------------------------------------------------------------------------
   since:
     name: Doxygen @since tags
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
       - name: Scan
@@ -71,22 +71,9 @@ jobs:
   # ---------------------------------------------------------------------------
   format:
     name: clang-format check
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
-      - name: Install clang-format 22 (apt.llvm.org)
-        # Pin to LLVM 22 to match the Homebrew default on macOS. Ubuntu
-        # 24.04's stock clang-format-18 produces slightly different
-        # output on edge cases (long-line wrapping, multi-arg spacing).
-        # apt.llvm.org ships matching binaries for noble.
-        run: |
-          set -e
-          wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key \
-            | sudo gpg --dearmor -o /usr/share/keyrings/apt.llvm.org.gpg
-          echo "deb [signed-by=/usr/share/keyrings/apt.llvm.org.gpg] http://apt.llvm.org/noble/ llvm-toolchain-noble-22 main" \
-            | sudo tee /etc/apt/sources.list.d/llvm.list
-          sudo apt-get update
-          sudo apt-get install -y clang-format-22
       - name: Run format check
         env:
           CLANG_FORMAT: clang-format-22
@@ -97,13 +84,9 @@ jobs:
   # ---------------------------------------------------------------------------
   tidy:
     name: clang-tidy
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
-      - name: Install toolchain
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y clang-tidy cmake ninja-build gcc
       - name: Run clang-tidy
         run: bash scripts/clang_tidy.sh --check --verbose
 
@@ -224,19 +207,11 @@ jobs:
   # ---------------------------------------------------------------------------
   pre-commit-checks:
     name: Pre-commit gate suite
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - name: Install gate tools
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y clang-format clang-tidy cppcheck \
-                                  cmake ninja-build gcc
       - name: Compute base ref for diff
         id: baseref
         run: |
@@ -267,20 +242,6 @@ jobs:
           # code (libs/, src/, port/, examples/<app>/). Vendor macros
           # UX_NULL / TX_NULL / FX_NULL / NX_NULL are exempted.
           python3 scripts/utils/check_no_null.py --all
-      - name: Install clang-format-22
-        # Pre-commit gate must use the same clang-format major version
-        # as the dedicated `format` job above, otherwise the project
-        # baseline disagrees with what this gate enforces.
-        run: |
-          set -e
-          if ! [ -f /usr/share/keyrings/apt.llvm.org.gpg ]; then
-            wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key \
-              | sudo gpg --dearmor -o /usr/share/keyrings/apt.llvm.org.gpg
-            echo "deb [signed-by=/usr/share/keyrings/apt.llvm.org.gpg] http://apt.llvm.org/noble/ llvm-toolchain-noble-22 main" \
-              | sudo tee /etc/apt/sources.list.d/llvm.list
-            sudo apt-get update
-          fi
-          sudo apt-get install -y clang-format-22
       - name: clang-format dry run
         env:
           CLANG_FORMAT: clang-format-22
@@ -304,7 +265,7 @@ jobs:
   # ---------------------------------------------------------------------------
   build-discover:
     name: Discover example apps
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     outputs:
       matrix: ${{ steps.list.outputs.matrix }}
     steps:
@@ -335,36 +296,13 @@ jobs:
 
   build-cross:
     name: Cross-build ${{ matrix.tier }}/${{ matrix.app }}
-    # IMPORTANT: pinned to ubuntu-latest on purpose. The hardware-in-loop
-    # smoke runner (label `ek-ra8d2`) is a single physical board and
-    # MUST NOT be used for the cross-build matrix -- doing so would
-    # queue every PR behind whichever job grabbed the board first and
-    # double-bill HW-runner minutes for work that does not need silicon.
-    # Real-hardware flashing lives in .github/workflows/hardware-smoke.yml.
-    # See docs/qualification/HW_IN_LOOP_RUNNER.md section 6.
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: build-discover
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.build-discover.outputs.matrix) }}
     steps:
       - uses: actions/checkout@v4
-      - name: Cache ARM GNU toolchain apt package
-        uses: actions/cache@v4
-        with:
-          path: |
-            /var/cache/apt/archives/gcc-arm-none-eabi*.deb
-            /var/cache/apt/archives/libnewlib-arm-none-eabi*.deb
-          key: arm-gnu-toolchain-${{ runner.os }}-apt-v1
-      - name: Install ARM GNU Toolchain
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            gcc-arm-none-eabi libnewlib-arm-none-eabi \
-            libstdc++-arm-none-eabi-newlib \
-            cmake ninja-build
-      - name: Print toolchain version
-        run: arm-none-eabi-gcc --version | head -1
       - name: Build ${{ matrix.app }}
         run: make ${{ matrix.app }}
 
@@ -373,11 +311,9 @@ jobs:
   # ---------------------------------------------------------------------------
   docs:
     name: Doxygen warnings
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
-      - name: Install doxygen
-        run: sudo apt-get update && sudo apt-get install -y doxygen graphviz
       - name: Run doxygen
         run: doxygen Doxyfile.main 2>&1 | tee doxygen.log
       - name: Fail on warnings
@@ -419,11 +355,9 @@ jobs:
   # ---------------------------------------------------------------------------
   cppcheck:
     name: cppcheck
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
-      - name: Install cppcheck
-        run: sudo apt-get update && sudo apt-get install -y cppcheck
       - name: Run cppcheck
         run: |
           set -e
@@ -464,7 +398,7 @@ jobs:
   # ---------------------------------------------------------------------------
   coverage-comment:
     name: MC/DC delta comment
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: mcdc
     if: github.event_name == 'pull_request'
     permissions:
@@ -479,12 +413,6 @@ jobs:
         with:
           name: mcdc-report
           path: pr-mcdc
-      - name: Install clang-18 + LLVM 18 + compiler-rt
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            clang-18 llvm-18 libclang-rt-18-dev \
-            cmake ninja-build python3
       - name: Build main MC/DC report (best-effort)
         id: main_run
         env:
