@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
 """Remove redundant integer casts from TEST_ASSERT_EQ arguments.
 
 TEST_ASSERT_EQ internally widens both arguments to int64_t, so any outer
